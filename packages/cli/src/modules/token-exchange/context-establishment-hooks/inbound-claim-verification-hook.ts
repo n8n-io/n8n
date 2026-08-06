@@ -83,6 +83,7 @@ export class InboundClaimVerificationHook implements IContextEstablishmentHook {
 			const claim: IVerifiedClaim = {
 				version: 1,
 				sourceId: result.claim.sourceId,
+				issuer: result.claim.issuer,
 				subject: result.claim.subject,
 				audience: Array.isArray(result.claim.audience)
 					? result.claim.audience[0]

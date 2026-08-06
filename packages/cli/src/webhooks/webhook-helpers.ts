@@ -19,6 +19,7 @@ import {
 	WAITING_TOKEN_QUERY_PARAM,
 } from 'n8n-core';
 import type {
+	CheckableExecutionContext,
 	IBinaryData,
 	IDataObject,
 	IExecuteData,
@@ -641,7 +642,7 @@ export async function executeWebhook(
 		if (!credentialCheckProxy || !workflow.id) {
 			return undefined;
 		}
-		const executionContext =
+		const executionContext: CheckableExecutionContext | undefined =
 			runExecutionData?.executionData?.runtimeData ??
 			(additionalData.encryptedRunnerIdentity
 				? {
@@ -653,7 +654,9 @@ export async function executeWebhook(
 			return undefined;
 		}
 
-		if (!executionContext.credentials) {
+		// An inbound IdP token establishes a claim without capturing a credential
+		// context, so either field on its own is enough to have something to check.
+		if (!executionContext.credentials && !executionContext.claims) {
 			return undefined;
 		}
 

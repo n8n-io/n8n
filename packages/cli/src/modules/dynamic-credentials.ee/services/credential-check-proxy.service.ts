@@ -4,14 +4,14 @@ import type {
 	CredentialCheckResult,
 	CredentialCheckStatus,
 	DynamicCredentialCheckProxyProvider,
-	ICredentialContext,
+	ICredentialResolutionContext,
 } from 'n8n-workflow';
 
 import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
 import { UrlService } from '@/services/url.service';
 
-import { ExecutionContextService } from 'n8n-core';
 import { AuthorizeIntentService } from './authorize-intent.service';
+import { CredentialResolutionContextBuilder } from './credential-resolution-context.builder';
 import { CredentialResolverWorkflowService } from './credential-resolver-workflow.service';
 import { DynamicCredentialService } from './dynamic-credential.service';
 
@@ -19,7 +19,7 @@ import { DynamicCredentialService } from './dynamic-credential.service';
 export class CredentialCheckProxyService implements DynamicCredentialCheckProxyProvider {
 	constructor(
 		private readonly credentialResolverWorkflowService: CredentialResolverWorkflowService,
-		private readonly executionContextService: ExecutionContextService,
+		private readonly resolutionContextBuilder: CredentialResolutionContextBuilder,
 		private readonly enterpriseCredentialsService: EnterpriseCredentialsService,
 		private readonly authorizeIntentService: AuthorizeIntentService,
 		private readonly dynamicCredentialService: DynamicCredentialService,
@@ -31,16 +31,12 @@ export class CredentialCheckProxyService implements DynamicCredentialCheckProxyP
 		workflowId: string,
 		executionContext: {
 			credentials?: string;
+			claims?: string;
 		},
 	): Promise<CredentialCheckResult> {
-		if (!executionContext.credentials) {
-			throw new Error(
-				'Execution context is present but contains no credential context. Ensure credential context establishment hooks are configured for this workflow.',
-			);
-		}
-		const plaintext = await this.executionContextService.decryptCredentialContext(
-			executionContext.credentials,
-		);
+		// A claim-only context is a valid identity too (inbound IdP token), so the
+		// gate reports on it exactly as it does for a captured credential context.
+		const plaintext = await this.resolutionContextBuilder.build(executionContext, workflowId);
 
 		if (!plaintext) {
 			throw new Error(
@@ -90,7 +86,7 @@ export class CredentialCheckProxyService implements DynamicCredentialCheckProxyP
 	private async generateAuthorizationUrl(
 		credentialId: string,
 		resolverId: string,
-		credentialContext: ICredentialContext,
+		credentialContext: ICredentialResolutionContext,
 	): Promise<string | undefined> {
 		const credential = await this.enterpriseCredentialsService.getOne(credentialId);
 		if (!credential) return undefined;

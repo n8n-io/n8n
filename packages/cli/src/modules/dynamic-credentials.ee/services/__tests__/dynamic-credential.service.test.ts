@@ -7,6 +7,7 @@ import type {
 	ICredentialContext,
 	ICredentialDataDecryptedObject,
 	IExecutionContext,
+	IVerifiedClaim,
 } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
 
@@ -27,6 +28,7 @@ import { CredentialResolutionError } from '../../errors/credential-resolution.er
 import { CredentialResolverNotConfiguredError } from '../../errors/credential-resolver-not-configured.error';
 import { CredentialResolverNotFoundError } from '../../errors/credential-resolver-not-found.error';
 import { MissingExecutionContextError } from '../../errors/missing-execution-context.error';
+import type { CredentialResolutionContextBuilder } from '../credential-resolution-context.builder';
 import type { DynamicCredentialResolverRegistry } from '../credential-resolver-registry.service';
 import { DynamicCredentialService } from '../dynamic-credential.service';
 import type { ResolverConfigExpressionService } from '../resolver-config-expression.service';
@@ -41,6 +43,7 @@ describe('DynamicCredentialService', () => {
 	let mockExpressionService: Mocked<ResolverConfigExpressionService>;
 	let mockDynamicCredentialConfig: Mocked<DynamicCredentialsConfig>;
 	let mockDynamicCredentialsProxy: Mocked<DynamicCredentialsProxy>;
+	let mockResolutionContextBuilder: Mocked<CredentialResolutionContextBuilder>;
 
 	beforeEach(() => {
 		mockDynamicCredentialConfig = {
@@ -216,6 +219,22 @@ describe('DynamicCredentialService', () => {
 			}),
 		} as unknown as Mocked<ResolverConfigExpressionService>;
 
+		// Mirrors the real builder: decrypts the credentials field (consuming a
+		// `decryptV2` call, so the tests' mock ordering stays meaningful) and
+		// synthesizes an external-idp context from a claim when there is none.
+		mockResolutionContextBuilder = {
+			build: vi.fn(async (executionContext?: { credentials?: string }) => {
+				if (!executionContext?.credentials) return undefined;
+				try {
+					const decrypted = await mockCipher.decryptV2(executionContext.credentials);
+					return JSON.parse(decrypted) as ICredentialContext;
+				} catch {
+					// The real builder logs and degrades to "no identity" rather than throwing.
+					return undefined;
+				}
+			}),
+		} as unknown as Mocked<CredentialResolutionContextBuilder>;
+
 		service = new DynamicCredentialService(
 			mockDynamicCredentialConfig,
 			mockResolverRegistry,
@@ -225,6 +244,7 @@ describe('DynamicCredentialService', () => {
 			mockLogger,
 			mockExpressionService,
 			mockDynamicCredentialsProxy,
+			mockResolutionContextBuilder,
 		);
 	});
 
@@ -233,6 +253,124 @@ describe('DynamicCredentialService', () => {
 			token: 'static-token',
 			apiKey: 'static-key',
 		};
+
+		describe('claim-based resolution', () => {
+			const claim: IVerifiedClaim = {
+				version: 1,
+				sourceId: 'source-1',
+				issuer: 'https://idp.example.com',
+				subject: 'external-subject-1',
+				audience: 'https://n8n.example.com',
+				expiresAt: Date.now() + 60_000,
+				boundWorkflowId: 'workflow-1',
+			};
+
+			const claimsOnlyContext: IExecutionContext = {
+				version: 1,
+				establishedAt: Date.now(),
+				source: 'webhook',
+				claims: 'sealed-claim',
+			};
+
+			it('resolves through the claim when the execution carries no credential context', async () => {
+				const credentialsEntity = createMockCredentialsMetadata();
+				const resolverEntity = createMockResolverEntity();
+				const mockResolver = createMockResolver();
+
+				mockResolverRepository.findOneBy.mockResolvedValue(resolverEntity);
+				mockResolverRegistry.getResolverByTypename.mockReturnValue(mockResolver);
+				mockResolutionContextBuilder.build.mockResolvedValue({
+					version: 1,
+					identity: '',
+					metadata: { source: 'external-idp' },
+					claims: claim,
+				});
+				mockCipher.decryptV2.mockResolvedValue(JSON.stringify({ prefix: 'test' }));
+
+				const result = await service.resolveIfNeeded(
+					credentialsEntity,
+					staticData,
+					claimsOnlyContext,
+					undefined,
+					'workflow-1',
+				);
+
+				expect(result.isDynamic).toBe(true);
+				expect(mockResolver.getSecret).toHaveBeenCalledWith(
+					'cred-123',
+					expect.objectContaining({ claims: claim, metadata: { source: 'external-idp' } }),
+					expect.anything(),
+				);
+			});
+
+			it('passes the workflow id to the builder so the sealed claim can be checked', async () => {
+				const credentialsEntity = createMockCredentialsMetadata();
+				const resolverEntity = createMockResolverEntity();
+
+				mockResolverRepository.findOneBy.mockResolvedValue(resolverEntity);
+				mockResolverRegistry.getResolverByTypename.mockReturnValue(createMockResolver());
+				mockCipher.decryptV2.mockResolvedValue(JSON.stringify({ prefix: 'test' }));
+
+				await service
+					.resolveIfNeeded(
+						credentialsEntity,
+						staticData,
+						claimsOnlyContext,
+						undefined,
+						'workflow-1',
+					)
+					.catch(() => {});
+
+				expect(mockResolutionContextBuilder.build).toHaveBeenCalledWith(
+					claimsOnlyContext,
+					'workflow-1',
+				);
+			});
+
+			it('reports a missing context when the claim yields no usable identity', async () => {
+				const credentialsEntity = createMockCredentialsMetadata();
+				const resolverEntity = createMockResolverEntity();
+
+				mockResolverRepository.findOneBy.mockResolvedValue(resolverEntity);
+				mockResolverRegistry.getResolverByTypename.mockReturnValue(createMockResolver());
+				// e.g. claim sealed for another workflow, or no workflow id to check it against
+				mockResolutionContextBuilder.build.mockResolvedValue(undefined);
+
+				await expect(
+					service.resolveIfNeeded(credentialsEntity, staticData, claimsOnlyContext, undefined, ''),
+				).rejects.toThrow(MissingExecutionContextError);
+			});
+
+			it('re-resolves on every access rather than caching the identity', async () => {
+				const credentialsEntity = createMockCredentialsMetadata();
+				const resolverEntity = createMockResolverEntity();
+				const mockResolver = createMockResolver();
+
+				mockResolverRepository.findOneBy.mockResolvedValue(resolverEntity);
+				mockResolverRegistry.getResolverByTypename.mockReturnValue(mockResolver);
+				mockResolutionContextBuilder.build.mockResolvedValue({
+					version: 1,
+					identity: '',
+					metadata: { source: 'external-idp' },
+					claims: claim,
+				});
+				mockCipher.decryptV2.mockResolvedValue(JSON.stringify({ prefix: 'test' }));
+
+				const resolve = async () =>
+					await service.resolveIfNeeded(
+						credentialsEntity,
+						staticData,
+						claimsOnlyContext,
+						undefined,
+						'workflow-1',
+					);
+				await resolve();
+				await resolve();
+
+				expect(mockResolutionContextBuilder.build).toHaveBeenCalledTimes(2);
+				expect(mockResolver.getSecret).toHaveBeenCalledTimes(2);
+			});
+		});
 
 		const expectStaticResult = (result: CredentialResolutionResult) => {
 			expect(result.data).toBe(staticData);
@@ -493,12 +631,9 @@ describe('DynamicCredentialService', () => {
 						additionalData.executionContext,
 						undefined,
 					),
-				).rejects.toThrow(CredentialResolutionError);
-
-				expect(mockLogger.error).toHaveBeenCalledWith(
-					'Failed to decrypt credential context from execution context',
-					expect.any(Object),
-				);
+					// A context that can't be decrypted carries no identity, so this is
+					// reported as a missing context (the builder logs the decrypt failure).
+				).rejects.toThrow(MissingExecutionContextError);
 			});
 
 			it('external-identity resolver throws CredentialResolverDataNotFoundError keeps the generic message', async () => {
@@ -1151,6 +1286,7 @@ describe('DynamicCredentialService', () => {
 					mockLogger,
 					mockExpressionService,
 					mockDynamicCredentialsProxy,
+					mockResolutionContextBuilder,
 				);
 				const middleware = service.getDynamicCredentialsEndpointsMiddleware();
 				const mockReq = {
@@ -1183,6 +1319,7 @@ describe('DynamicCredentialService', () => {
 					mockLogger,
 					mockExpressionService,
 					mockDynamicCredentialsProxy,
+					mockResolutionContextBuilder,
 				);
 				service.getDynamicCredentialsEndpointsMiddleware();
 				expect(getStaticAuthMiddlewareSpy).toHaveBeenCalledWith('test-token', 'x-authorization');
@@ -1201,6 +1338,7 @@ describe('DynamicCredentialService', () => {
 						mockLogger,
 						mockExpressionService,
 						mockDynamicCredentialsProxy,
+						mockResolutionContextBuilder,
 					);
 
 					const middleware = service.getDynamicCredentialsEndpointsMiddleware();
@@ -1237,6 +1375,7 @@ describe('DynamicCredentialService', () => {
 						mockLogger,
 						mockExpressionService,
 						mockDynamicCredentialsProxy,
+						mockResolutionContextBuilder,
 					);
 
 					const middleware = service.getDynamicCredentialsEndpointsMiddleware();

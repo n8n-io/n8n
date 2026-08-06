@@ -16,6 +16,7 @@ import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 
 import { DynamicCredentialResolverRegistry } from './credential-resolver-registry.service';
+import { InboundClaimConnectService } from './inbound-claim-connect.service';
 import { extractSharedFields } from './shared-fields';
 import { DynamicCredentialResolverRepository } from '../database/repositories/credential-resolver.repository';
 import { CredentialStorageError } from '../errors/credential-storage.error';
@@ -29,6 +30,7 @@ export class DynamicCredentialStorageService implements IDynamicCredentialStorag
 		private readonly cipher: Cipher,
 		private readonly logger: Logger,
 		private readonly dynamicCredentialsProxy: DynamicCredentialsProxy,
+		private readonly inboundClaimConnectService: InboundClaimConnectService,
 	) {}
 
 	async storeIfNeeded(
@@ -92,7 +94,12 @@ export class DynamicCredentialStorageService implements IDynamicCredentialStorag
 				}
 			}
 
-			await resolver.setSecret(credentialStoreMetadata.id, credentialContext, mergedDynamicData, {
+			// The OAuth callback rebuilds this context from the CSRF state, which
+			// carries the presented token but no claim, so re-derive it here.
+			const resolutionContext =
+				await this.inboundClaimConnectService.attachVerifiedClaim(credentialContext);
+
+			await resolver.setSecret(credentialStoreMetadata.id, resolutionContext, mergedDynamicData, {
 				configuration: resolverConfig,
 				resolverName: resolverEntity.name,
 				resolverId: resolverEntity.id,

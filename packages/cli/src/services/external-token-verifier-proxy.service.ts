@@ -32,6 +32,15 @@ export interface ExternalTokenVerifier {
 		token: string,
 		expectedAudience: string | string[],
 	): Promise<VerifiedClaimResult>;
+
+	/**
+	 * Same verification, but against the audience this instance accepts for
+	 * inbound tokens on surfaces with no protected resource to resolve a
+	 * per-surface audience from. Keeps that decision inside the module that
+	 * owns inbound identity, so callers don't each have to know what to
+	 * expect.
+	 */
+	verifyInboundToken(token: string): Promise<VerifiedClaimResult>;
 }
 
 /**
@@ -51,14 +60,25 @@ export class ExternalTokenVerifierProxy implements ExternalTokenVerifier {
 		expectedAudience: string | string[],
 	): Promise<VerifiedClaimResult> {
 		if (!this.provider) {
-			return {
-				claim: null,
-				context: {
-					reason: 'verifier_not_registered',
-					errorDetails: 'No external token verifier is registered on this instance',
-				},
-			};
+			return this.notRegistered();
 		}
 		return await this.provider.verifyExternalToken(token, expectedAudience);
+	}
+
+	async verifyInboundToken(token: string): Promise<VerifiedClaimResult> {
+		if (!this.provider) {
+			return this.notRegistered();
+		}
+		return await this.provider.verifyInboundToken(token);
+	}
+
+	private notRegistered(): VerifiedClaimResult {
+		return {
+			claim: null,
+			context: {
+				reason: 'verifier_not_registered',
+				errorDetails: 'No external token verifier is registered on this instance',
+			},
+		};
 	}
 }

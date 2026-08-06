@@ -8,6 +8,7 @@ import { AuthError } from '@/errors/response-errors/auth.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import type { JwtService } from '@/services/jwt.service';
 
+import type { InboundAudienceService } from '../../context-establishment-hooks/inbound-audience.service';
 import type { TokenExchangeConfig } from '../../token-exchange.config';
 import { TokenExchangeAuthError } from '../../token-exchange.errors';
 import type { ResolvedTrustedKey } from '../../token-exchange.schemas';
@@ -22,6 +23,7 @@ const jtiStore = mock<JtiStoreService>();
 const identityResolutionService = mock<IdentityResolutionService>();
 const config = mock<TokenExchangeConfig>();
 const jwtService = mock<JwtService>();
+const inboundAudienceService = mock<InboundAudienceService>();
 
 const service = new TokenExchangeService(
 	logger,
@@ -30,6 +32,7 @@ const service = new TokenExchangeService(
 	identityResolutionService,
 	config,
 	jwtService,
+	inboundAudienceService,
 );
 
 const resolvedKey: ResolvedTrustedKey = {
@@ -40,6 +43,7 @@ const resolvedKey: ResolvedTrustedKey = {
 	issuer: 'https://issuer.example.com',
 	allowedRoles: ['global:member', 'global:admin'],
 	requireVerifiedEmail: false,
+	subjectClaim: 'sub',
 };
 
 const mockUser = mock<User>({
@@ -361,6 +365,57 @@ describe('TokenExchangeService', () => {
 			expect(result.claims.jti).toBeUndefined();
 			expect(jtiStore.consume).not.toHaveBeenCalled();
 		});
+
+		describe('subjectClaim override', () => {
+			it('leaves sub unchanged when subjectClaim is the default', async () => {
+				mockValidToken();
+				jtiStore.consume.mockResolvedValue(true);
+
+				const result = await service.verifyToken('valid-token');
+
+				expect(result.claims.sub).toBe(validClaims.sub);
+			});
+
+			it('substitutes the configured claim for sub when present', async () => {
+				const payload = { ...validClaims, uid: 'stable-okta-id' };
+				vi.spyOn(jwt, 'decode').mockReturnValue({
+					header: { alg: 'RS256', kid: 'test-kid' },
+					payload,
+					signature: 'sig',
+				} as unknown as ReturnType<typeof jwt.decode>);
+				vi.spyOn(jwt, 'verify').mockReturnValue(
+					payload as unknown as ReturnType<typeof jwt.verify>,
+				);
+				trustedKeyStore.getByKidAndIss.mockResolvedValue({ ...resolvedKey, subjectClaim: 'uid' });
+				jtiStore.consume.mockResolvedValue(true);
+
+				const result = await service.verifyToken('valid-token');
+
+				expect(result.claims.sub).toBe('stable-okta-id');
+			});
+
+			it('rejects when the configured claim is missing from the payload', async () => {
+				mockValidToken();
+				trustedKeyStore.getByKidAndIss.mockResolvedValue({ ...resolvedKey, subjectClaim: 'uid' });
+
+				await expect(service.verifyToken('valid-token')).rejects.toThrow(TokenExchangeAuthError);
+			});
+
+			it('rejects when the configured claim is present but not a string', async () => {
+				const payload = { ...validClaims, uid: 12345 };
+				vi.spyOn(jwt, 'decode').mockReturnValue({
+					header: { alg: 'RS256', kid: 'test-kid' },
+					payload,
+					signature: 'sig',
+				} as unknown as ReturnType<typeof jwt.decode>);
+				vi.spyOn(jwt, 'verify').mockReturnValue(
+					payload as unknown as ReturnType<typeof jwt.verify>,
+				);
+				trustedKeyStore.getByKidAndIss.mockResolvedValue({ ...resolvedKey, subjectClaim: 'uid' });
+
+				await expect(service.verifyToken('valid-token')).rejects.toThrow(TokenExchangeAuthError);
+			});
+		});
 	});
 
 	describe('verifyExternalToken', () => {
@@ -390,6 +445,7 @@ describe('TokenExchangeService', () => {
 				key: publicKey,
 				issuer: keycloakClaims.iss,
 				requireVerifiedEmail: false,
+				subjectClaim: 'sub',
 			});
 
 			const result = await service.verifyExternalToken(token, keycloakClaims.aud);
@@ -417,6 +473,34 @@ describe('TokenExchangeService', () => {
 				claim: null,
 				context: { reason: 'invalid_token', errorDetails: expect.any(String) },
 			});
+		});
+
+		it('substitutes a configured subjectClaim for sub end-to-end (Okta-style divergence)', async () => {
+			const { publicKey, privateKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
+			const oktaClaims = {
+				sub: 'alice.example@acme.com',
+				uid: 'okta-immutable-id-42',
+				iss: 'https://acme.okta.com/oauth2/aus1abc',
+				aud: 'n8n-resource-server',
+				iat: now,
+				exp: now + 300,
+				jti: 'okta-token-id',
+			};
+			const token = jwt.sign(oktaClaims, privateKey, { algorithm: 'RS256', keyid: 'okta-kid' });
+
+			trustedKeyStore.getByKidAndIss.mockResolvedValue({
+				sourceId: 'okta-custom-as',
+				kid: 'okta-kid',
+				algorithms: ['RS256'],
+				key: publicKey,
+				issuer: oktaClaims.iss,
+				requireVerifiedEmail: false,
+				subjectClaim: 'uid',
+			});
+
+			const result = await service.verifyExternalToken(token, oktaClaims.aud);
+
+			expect(result).toMatchObject({ claim: { subject: oktaClaims.uid } });
 		});
 	});
 });

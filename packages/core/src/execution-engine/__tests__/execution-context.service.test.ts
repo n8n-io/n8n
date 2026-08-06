@@ -209,6 +209,7 @@ describe('ExecutionContextService', () => {
 		const sampleClaim = {
 			version: 1,
 			sourceId: 'idp-1',
+			issuer: 'https://idp-1.example.com',
 			subject: 'user-42',
 			audience: 'aud-1',
 			expiresAt: 999,
@@ -372,6 +373,7 @@ describe('ExecutionContextService', () => {
 			const claim: IVerifiedClaim = {
 				version: 1,
 				sourceId: 'idp-1',
+				issuer: 'https://idp-1.example.com',
 				subject: 'user-42',
 				audience: 'aud-1',
 				expiresAt: 999,
@@ -396,6 +398,7 @@ describe('ExecutionContextService', () => {
 			const claim: IVerifiedClaim = {
 				version: 1,
 				sourceId: 'idp-1',
+				issuer: 'https://idp-1.example.com',
 				subject: 'user-42',
 				audience: 'aud-1',
 				expiresAt: 999,
@@ -468,6 +471,7 @@ describe('ExecutionContextService', () => {
 		const sampleClaim: IVerifiedClaim = {
 			version: 1,
 			sourceId: 'idp-1',
+			issuer: 'https://idp-1.example.com',
 			subject: 'user-42',
 			audience: 'aud-1',
 			expiresAt: Date.now() + 60_000,
@@ -556,6 +560,7 @@ describe('ExecutionContextService', () => {
 			const claim: IVerifiedClaim = {
 				version: 1,
 				sourceId: 'idp-1',
+				issuer: 'https://idp-1.example.com',
 				subject: 'user-42',
 				audience: 'aud-1',
 				expiresAt: 12345,
@@ -674,6 +679,7 @@ describe('ExecutionContextService', () => {
 				claims: {
 					version: 1,
 					sourceId: 'idp-a',
+					issuer: 'https://idp-a.example.com',
 					subject: 'user-a',
 					audience: 'aud-a',
 					expiresAt: 1000,
@@ -685,6 +691,7 @@ describe('ExecutionContextService', () => {
 				claims: {
 					version: 1,
 					sourceId: 'idp-b',
+					issuer: 'https://idp-b.example.com',
 					subject: 'user-b',
 					audience: 'aud-b',
 					expiresAt: 2000,
@@ -705,6 +712,7 @@ describe('ExecutionContextService', () => {
 				claims: {
 					version: 1,
 					sourceId: 'idp-a',
+					issuer: 'https://idp-a.example.com',
 					subject: 'user-a',
 					audience: 'aud-a',
 					expiresAt: 1000,
@@ -781,6 +789,7 @@ describe('ExecutionContextService', () => {
 			const parentClaim = {
 				version: 1,
 				sourceId: 'idp-1',
+				issuer: 'https://idp-1.example.com',
 				subject: 'user-42',
 				audience: 'aud-1',
 				expiresAt: Date.now() + 60_000,
@@ -818,6 +827,7 @@ describe('ExecutionContextService', () => {
 			const parentClaim = {
 				version: 1,
 				sourceId: 'idp-1',
+				issuer: 'https://idp-1.example.com',
 				subject: 'user-42',
 				audience: 'aud-1',
 				expiresAt: Date.now() + 60_000,
@@ -1369,6 +1379,7 @@ describe('ExecutionContextService — no principal is ever persisted on the exec
 		const claim: IVerifiedClaim = {
 			version: 1,
 			sourceId: 'idp-1',
+			issuer: 'https://idp-1.example.com',
 			subject: 'user-42',
 			audience: 'aud-1',
 			expiresAt: Date.now() + 60_000,
