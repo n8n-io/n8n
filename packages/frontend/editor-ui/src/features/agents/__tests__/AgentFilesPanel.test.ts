@@ -56,12 +56,13 @@ const file: AgentFileDto = {
 };
 
 describe('AgentFilesPanel', () => {
-	it('enables the upload button with the normal upload tooltip', () => {
-		const wrapper = mountPanel();
+	it('enables the upload button with the normal upload tooltip when files exist', () => {
+		const wrapper = mountPanel({ files: [file] });
 
 		const uploadButton = wrapper.find('[data-testid="agent-files-upload"]');
 		expect(uploadButton.attributes('disabled')).toBeUndefined();
 		expect(uploadButton.attributes('aria-label')).toBe('agents.builder.files.addFile');
+		expect(wrapper.findComponent({ name: 'N8nEmptyState' }).exists()).toBe(false);
 	});
 
 	it('shows the normal empty-state message', () => {
@@ -70,7 +71,7 @@ describe('AgentFilesPanel', () => {
 		expect(wrapper.text()).toContain('agents.builder.files.empty');
 	});
 
-	it('shows the knowledge base title with a tooltip and icon-only add action', () => {
+	it('shows the knowledge base title with a tooltip and add action', () => {
 		const wrapper = mountPanel({ files: [file] });
 
 		expect(wrapper.find('[data-testid="agent-files-title"]').text()).toContain(
@@ -79,9 +80,7 @@ describe('AgentFilesPanel', () => {
 
 		const uploadButton = wrapper.findComponent({ name: 'N8nButton' });
 		expect(uploadButton.props('variant')).toBe('ghost');
-		expect(uploadButton.props('iconOnly')).toBe(true);
 		expect(uploadButton.props('icon')).toBe('plus');
-		expect(wrapper.find('[data-testid="agent-files-upload"]').text()).toBe('');
 	});
 
 	it('renders uploaded files as table rows with owner, type, size, and date metadata', () => {
