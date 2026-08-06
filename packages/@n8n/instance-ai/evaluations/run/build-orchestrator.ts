@@ -89,6 +89,7 @@ export type BuildArgs = Pick<
 	| 'seed'
 	| 'executionScenarios'
 	| 'outcomeExpectations'
+	| 'externalEdits'
 > & { timeoutMs: number };
 
 /** A lane plus the allocator-managed counters and the caller-provided (traced)
@@ -513,6 +514,7 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 						seed: entry.seed,
 						executionScenarios: entry.executionScenarios,
 						outcomeExpectations: entry.outcomeExpectations,
+						externalEdits: entry.externalEdits,
 						timeoutMs,
 					});
 				} finally {

@@ -53,6 +53,7 @@ import type {
 	ConversationMetrics,
 	ConversationTurn,
 	ExecutionScenario,
+	ExternalWorkflowEdit,
 	TestCaseCredential,
 	TranscriptTurn,
 	WorkflowTestCase,
@@ -120,6 +121,9 @@ interface MultiTurnDriverConfig {
 	/** Resource references sent with the FIRST message only — an attachment is a
 	 *  hand-off, not something a user re-sends every turn. */
 	openingAttachments?: InstanceAiWorkflowAttachment[];
+	/** Case-declared edits applied to a built workflow from outside the
+	 *  conversation — see `ExternalWorkflowEdit`. */
+	externalEdits?: ExternalWorkflowEdit[];
 }
 
 async function driveMultiTurnConversation(
@@ -181,6 +185,7 @@ async function driveMultiTurnConversation(
 		confirmationStrategy,
 		nextMessageDecider,
 		proxyResponses: config.proxyResponses,
+		externalEdits: config.externalEdits,
 	});
 
 	return { ...proxy.getDecisionStats() };
@@ -267,6 +272,9 @@ export interface BuildWorkflowConfig {
 	/** Execution scenarios whose declared `seedDataTables` are created + row-seeded
 	 *  after a successful build, before any scenario runs (TRUST-311). */
 	executionScenarios?: ExecutionScenario[];
+	/** Case-declared edits applied to a built workflow from outside the
+	 *  conversation, at a turn boundary — see `ExternalWorkflowEdit`. */
+	externalEdits?: ExternalWorkflowEdit[];
 	timeoutMs?: number;
 	preRunWorkflowIds: Set<string>;
 	/** Data tables present before any build on this lane — the only ones the
@@ -593,6 +601,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				openingMessageSuffix: scenarioSeedTablesNote,
 				openingAttachments,
 				recordedOpeningMessage,
+				externalEdits: config.externalEdits,
 			});
 		} else {
 			recordUserTurn(events, recordedOpeningMessage);

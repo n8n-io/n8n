@@ -18,7 +18,8 @@ import { setTimeout as delay } from 'node:timers/promises';
 import type { EvalLogger } from './logger';
 import type { N8nClient } from '../clients/n8n-client';
 import { consumeSseStream } from '../clients/sse-client';
-import type { CapturedEvent } from '../types';
+import { extractOutcomeFromEvents } from '../outcome/event-parser';
+import type { CapturedEvent, ExternalWorkflowEdit } from '../types';
 import { USER_TURN_EVENT } from '../types';
 import { getEventPayload, tryInfrastructureResponse } from '../utils/confirmation-payload';
 import { getNestedRecord } from '../utils/safe-extract';
@@ -279,9 +280,19 @@ export type NextMessageDecision = { kind: 'followUp'; message: string } | { kind
 
 export interface MultiTurnConfig extends WaitConfig {
 	nextMessageDecider: () => Promise<NextMessageDecision>;
+	/**
+	 * Edits applied to a built workflow from outside the conversation, at a turn
+	 * boundary — the agent is idle and the user hasn't spoken yet. Lets a case
+	 * exercise the optimistic-concurrency path ("modified outside this
+	 * conversation"), which the agent otherwise only reaches by accident when its
+	 * own setup or credential work happens to advance the checksum.
+	 */
+	externalEdits?: ExternalWorkflowEdit[];
 }
 
 export async function runMultiTurnConversation(config: MultiTurnConfig): Promise<void> {
+	const pendingEdits = [...(config.externalEdits ?? [])];
+
 	while (true) {
 		await waitForAllActivity(config);
 
@@ -291,6 +302,8 @@ export async function runMultiTurnConversation(config: MultiTurnConfig): Promise
 			);
 			return;
 		}
+
+		await applyDueExternalEdits(config, pendingEdits);
 
 		const decision = await config.nextMessageDecider();
 		if (decision.kind === 'done') {
@@ -308,6 +321,41 @@ export async function runMultiTurnConversation(config: MultiTurnConfig): Promise
 			const msg = error instanceof Error ? error.message : String(error);
 			config.logger.verbose(`[multi-turn] sendMessage failed: ${msg} — exiting loop`);
 			return;
+		}
+	}
+}
+
+/**
+ * Applies any external edit whose build threshold is now met, removing it from
+ * `pending` so it fires once per run. A failed edit is logged and dropped rather
+ * than thrown: the case it belongs to grades the agent's recovery, and killing
+ * the run here would report that as a build failure instead.
+ */
+async function applyDueExternalEdits(
+	config: MultiTurnConfig,
+	pending: ExternalWorkflowEdit[],
+): Promise<void> {
+	if (pending.length === 0) return;
+
+	const builtWorkflowIds = extractOutcomeFromEvents(config.events).workflowIds;
+
+	for (let index = pending.length - 1; index >= 0; index--) {
+		const edit = pending[index];
+		if (builtWorkflowIds.length < edit.afterBuildCount) continue;
+
+		const workflowId = builtWorkflowIds[edit.afterBuildCount - 1];
+		pending.splice(index, 1);
+
+		try {
+			await config.client.updateWorkflow(workflowId, { name: edit.rename });
+			config.logger.verbose(
+				`[external-edit] Renamed ${workflowId} to "${edit.rename}" outside the conversation`,
+			);
+		} catch (error: unknown) {
+			const message = error instanceof Error ? error.message : String(error);
+			config.logger.verbose(
+				`[external-edit] Failed to rename ${workflowId}: ${message} — the conflict path will not be exercised`,
+			);
 		}
 	}
 }

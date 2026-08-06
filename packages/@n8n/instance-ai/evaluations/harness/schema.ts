@@ -173,6 +173,32 @@ const evalTestCaseObjectSchema = z
 		 *  comes from. See `CaseSeedSchema`. */
 		seed: CaseSeedSchema.optional(),
 		/**
+		 * Edits made to a built workflow from outside the conversation, applied at a
+		 * turn boundary while the agent is idle. Exists so a case can exercise the
+		 * "workflow was modified outside this conversation" conflict deterministically
+		 * — without this the agent only meets that path when its own setup or
+		 * credential work happens to advance the workflow checksum, which is too
+		 * unreliable to assert on.
+		 *
+		 * Anchored on the number of workflows built so far, not on a turn index: the
+		 * user-proxy decides how many follow-ups a run takes, so a turn number drifts
+		 * between runs where "the first build exists" does not.
+		 */
+		externalEdits: z
+			.array(
+				z
+					.object({
+						/** Fire once at least this many workflows exist (1 = after the first build). */
+						afterBuildCount: z.number().int().positive().default(1),
+						/** New workflow name. `name` is one of WORKFLOW_CHECKSUM_FIELDS, so a
+						 *  rename conflicts the agent's next save without touching nodes. */
+						rename: z.string().min(1),
+					})
+					.strict(),
+			)
+			.max(5)
+			.optional(),
+		/**
 		 * Logical groupings this case belongs to (e.g. `['pr', 'full']`). Used by
 		 * the eval CLI's `--tier` flag and propagated to LangSmith as example
 		 * splits, so subsets can be evaluated and compared independently. Defaults

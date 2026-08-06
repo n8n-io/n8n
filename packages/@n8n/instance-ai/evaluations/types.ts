@@ -212,6 +212,23 @@ export interface TestCaseCredential {
 	name?: string;
 }
 
+/**
+ * An edit made to a built workflow from outside the conversation, applied at a
+ * turn boundary — the agent is idle and the simulated user hasn't spoken yet.
+ *
+ * Anchored on how many workflows the run has built rather than on a turn index:
+ * the user-proxy decides how many follow-ups a run takes, so a turn number
+ * drifts between runs while "the first build exists" does not.
+ */
+export interface ExternalWorkflowEdit {
+	/** Fire once at least this many workflows have been built (1 = after the first). */
+	afterBuildCount: number;
+	/** New workflow name. `name` is one of `WORKFLOW_CHECKSUM_FIELDS`, so a rename
+	 *  is enough to conflict the agent's next save without touching nodes or
+	 *  connections (which would risk corrupting the workflow under test). */
+	rename: string;
+}
+
 export interface WorkflowTestCase {
 	/** Optional human-readable note on what this case is testing (esp. for behaviour cases). */
 	description?: string;
@@ -251,6 +268,11 @@ export interface WorkflowTestCase {
 	 *  LangSmith trace at run time and supplies the live turn itself, which is why
 	 *  `conversation` is optional for it. See `harness/schema.ts`. */
 	seed?: CaseSeed;
+	/** Edits made to a built workflow from outside the conversation, applied at a
+	 *  turn boundary while the agent is idle. Lets a case reach the "workflow was
+	 *  modified outside this conversation" conflict on purpose rather than by
+	 *  chance. See `harness/chat-loop.ts`'s `ExternalWorkflowEdit`. */
+	externalEdits?: ExternalWorkflowEdit[];
 	/** Logical groupings this case belongs to (e.g. `['pr', 'full']`). Defaults to `['full']`. */
 	datasets: string[];
 }
