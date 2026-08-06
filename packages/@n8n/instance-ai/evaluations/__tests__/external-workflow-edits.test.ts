@@ -6,21 +6,28 @@ import type { EvalLogger } from '../harness/logger';
 import type { ExternalWorkflowEdit } from '../harness/schema';
 import type { CapturedEvent } from '../types';
 
-/** A `tool-result` for a workflow tool — the shape `extractOutcomeFromEvents`
- *  reads build ids out of, so the hook counts it as a build having happened. */
-function buildEvent(workflowId: string): CapturedEvent {
+/** A `tool-result` for a workflow tool — the shape the parser reads build ids
+ *  out of. `success` decides whether the build SAVED: a failed build reports a
+ *  workflowId too, and the hook must not count it. */
+function buildEvent(workflowId: string, success = true): CapturedEvent {
 	return {
 		timestamp: Date.now(),
 		type: 'tool-result',
 		data: {
 			type: 'tool-result',
 			payload: {
-				toolCallId: `call-${workflowId}`,
+				toolCallId: `call-${workflowId}-${String(success)}`,
 				toolName: 'build-workflow',
-				result: { workflowId },
+				result: { workflowId, success },
 			},
 		},
 	};
+}
+
+/** A build that parsed but did not persist. Still carries `workflowId` — this is
+ *  the shape that made an early version of the hook rename an untouched workflow. */
+function failedBuildEvent(workflowId: string): CapturedEvent {
+	return buildEvent(workflowId, false);
 }
 
 /** A finished run, so `waitForAllActivity` returns instead of polling for one. */
@@ -121,6 +128,30 @@ describe('externalEdits in runMultiTurnConversation', () => {
 			followUps: [null],
 		});
 
+		expect(renames).toHaveLength(0);
+	});
+
+	it('ignores a failed build — it reports a workflowId but saved nothing', async () => {
+		const { renames } = await runLoop({
+			events: [...runLifecycleEvents(), failedBuildEvent('wf-never-saved')],
+			externalEdits: [{ afterWorkflowCount: 1, rename: 'Should not be applied' }],
+			followUps: ['keep going', 'and again', null],
+		});
+
+		// Renaming here would mutate a workflow this run never created — an
+		// attached or pre-existing one the agent merely tried to save to.
+		expect(renames).toHaveLength(0);
+	});
+
+	it('does not let a failed build on another workflow push the count over the threshold', async () => {
+		const { renames } = await runLoop({
+			events: [...runLifecycleEvents(), failedBuildEvent('wf-attached'), buildEvent('wf-saved')],
+			externalEdits: [{ afterWorkflowCount: 2, rename: 'Should not be applied' }],
+			followUps: ['keep going', 'and again', null],
+		});
+
+		// Counting the failed build would reach 2 and rename `wf-saved` — or worse,
+		// `wf-attached`, a workflow this run never created.
 		expect(renames).toHaveLength(0);
 	});
 

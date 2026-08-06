@@ -19,7 +19,7 @@ import type { EvalLogger } from './logger';
 import type { ExternalWorkflowEdit } from './schema';
 import type { N8nClient } from '../clients/n8n-client';
 import { consumeSseStream } from '../clients/sse-client';
-import { extractOutcomeFromEvents } from '../outcome/event-parser';
+import { savedWorkflowIdsFromEvents } from '../outcome/event-parser';
 import type { CapturedEvent } from '../types';
 import { USER_TURN_EVENT } from '../types';
 import { getEventPayload, tryInfrastructureResponse } from '../utils/confirmation-payload';
@@ -341,9 +341,12 @@ async function applyDueExternalEdits(
 ): Promise<void> {
 	if (pending.length === 0) return;
 
-	// Deduped by the parser, so this is DISTINCT workflows — repeated rebuilds of
-	// one workflow stay at a count of 1, which is what `afterWorkflowCount` means.
-	const builtWorkflowIds = extractOutcomeFromEvents(config.events).workflowIds;
+	// Only builds that actually SAVED, deduped — so this is DISTINCT workflows and
+	// repeated rebuilds of one stay at a count of 1, which is what
+	// `afterWorkflowCount` means. Failed builds are excluded deliberately: they
+	// still report a workflowId, and acting on one would rename a workflow this
+	// run never created (an attached or pre-existing one).
+	const builtWorkflowIds = savedWorkflowIdsFromEvents(config.events);
 
 	const due = pending.filter((edit) => builtWorkflowIds.length >= edit.afterWorkflowCount);
 	if (due.length === 0) return;
