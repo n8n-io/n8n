@@ -1,4 +1,5 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import {
 	MCP_APPS_FLAG,
 	MCP_APPS_VARIANT_CONTROL,
@@ -30,6 +31,7 @@ import { ActiveExecutions } from '@/active-executions';
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { N8N_VERSION } from '@/constants';
 import { CredentialsService } from '@/credentials/credentials.service';
+import { EventService } from '@/events/event.service';
 import { ExecutionService } from '@/executions/execution.service';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
@@ -120,6 +122,49 @@ type McpAppTelemetryResolution = {
 	instanceOrigin?: string;
 };
 
+/**
+ * There is no standard failure contract across MCP tools: most set MCP's
+ * `isError` flag, but several catch their own errors and return a normal
+ * result marked only in the structured output, via `status: 'error'`
+ * (`execute_workflow`, `test_workflow`) or just an `error` message string
+ * (`publish_workflow`, `unpublish_workflow`, `get_execution`). A string
+ * `structuredContent.error` is set by every handled-failure shape and never
+ * on success, so it doubles as failure marker and message source, with the
+ * first text content item as fallback.
+ */
+function getToolCallOutcome(result: CallToolResult | undefined): {
+	status: 'success' | 'error';
+	errorMessage?: string;
+} {
+	if (!result) return { status: 'success' };
+
+	const structured = result.structuredContent;
+	const errorMessage = typeof structured?.error === 'string' ? structured.error : undefined;
+	if (result.isError !== true && structured?.status !== 'error' && errorMessage === undefined) {
+		return { status: 'success' };
+	}
+
+	if (errorMessage !== undefined) return { status: 'error', errorMessage };
+
+	for (const item of result.content ?? []) {
+		if (item.type === 'text') return { status: 'error', errorMessage: item.text };
+	}
+
+	return { status: 'error' };
+}
+
+/**
+ * Reads a `workflowId` off a tool's arguments or its structured output. Most
+ * tools take the workflow they act on as an argument, but the ones that create
+ * a workflow only report it back (`create_workflow_from_code`), so both sides
+ * are checked.
+ */
+function getWorkflowId(source: unknown): string | undefined {
+	if (!source || typeof source !== 'object' || !('workflowId' in source)) return undefined;
+	const workflowId = (source as { workflowId: unknown }).workflowId;
+	return typeof workflowId === 'string' ? workflowId : undefined;
+}
+
 @Service()
 export class McpService {
 	/**
@@ -162,6 +207,7 @@ export class McpService {
 		private readonly subworkflowPolicyChecker: SubworkflowPolicyChecker,
 		private readonly aiGatewayService: AiGatewayService,
 		private readonly moduleRegistry: ModuleRegistry,
+		private readonly eventService: EventService,
 	) {}
 
 	/**
@@ -240,6 +286,51 @@ export class McpService {
 	}
 
 	/**
+	 * Wraps `server.registerTool` so each tool invocation emits an `mcp-tool-called`
+	 * event (forwarded to log streaming). Applied once, before any tool is
+	 * registered, so it covers every tool including builder and data-table tools.
+	 */
+	private instrumentToolUsage(server: McpServer, user: User, clientInfo?: McpClientInfo) {
+		const originalRegisterTool: typeof server.registerTool = server.registerTool.bind(server);
+
+		server.registerTool = (name, config, handler) => {
+			// `ToolCallback` is a union of 1- and 2-arity signatures, so we invoke it
+			// through a generic callable and narrow the result back to a tool result.
+			const invoke = handler as (...handlerArgs: unknown[]) => Promise<CallToolResult>;
+
+			const instrumentedHandler = async (...handlerArgs: unknown[]) => {
+				const workflowId = getWorkflowId(handlerArgs[0]);
+
+				try {
+					const result = await invoke(...handlerArgs);
+					const { status, errorMessage } = getToolCallOutcome(result);
+					this.eventService.emit('mcp-tool-called', {
+						user,
+						toolName: name,
+						workflowId: workflowId ?? getWorkflowId(result?.structuredContent),
+						status,
+						errorMessage,
+						clientName: clientInfo?.name,
+					});
+					return result;
+				} catch (error) {
+					this.eventService.emit('mcp-tool-called', {
+						user,
+						toolName: name,
+						workflowId,
+						status: 'error',
+						errorMessage: error instanceof Error ? error.message : String(error),
+						clientName: clientInfo?.name,
+					});
+					throw error;
+				}
+			};
+
+			return originalRegisterTool(name, config, instrumentedHandler as typeof handler);
+		};
+	}
+
+	/**
 	 * Builds a per-request MCP server exposing only the tools covered by the
 	 * token's granted scopes. `grantedScopes: undefined` (API keys, legacy
 	 * tokens) exposes all tools. Filtering registration is sufficient
@@ -289,6 +380,10 @@ export class McpService {
 				}),
 			},
 		);
+
+		// Instrument every registered tool so MCP usage flows to log streaming:
+		// which tool was called, against which workflow, and whether it succeeded.
+		this.instrumentToolUsage(server, user, clientInfo);
 
 		const registerIfAllowed: RegisterToolFn = (tool) => {
 			if (allowedToolNames && !allowedToolNames.has(tool.name)) return;

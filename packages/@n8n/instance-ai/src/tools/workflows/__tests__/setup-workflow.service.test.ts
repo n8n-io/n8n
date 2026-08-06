@@ -117,6 +117,107 @@ describe('buildSetupRequests', () => {
 		(context.credentialService.test as Mock).mockResolvedValue({ success: true });
 	});
 
+	describe('credential-scoped parameter availability', () => {
+		function mockOpenAiNode() {
+			(context.nodeService.getDescription as Mock).mockResolvedValue({
+				group: [],
+				credentials: [{ name: 'openAiApi' }],
+				properties: [{ displayName: 'Model', name: 'model', type: 'resourceLocator' }],
+			});
+			(context.credentialService.list as Mock).mockResolvedValue([
+				{ id: 'cred-free', name: 'n8n free OpenAI API credits' },
+			]);
+		}
+
+		function mockUnavailable() {
+			const findUnavailableLocatorValues = vi
+				.fn()
+				.mockResolvedValue([{ name: 'model', displayName: 'Model', currentValue: 'gpt-6-mini' }]);
+			(context.nodeService as unknown as Record<string, unknown>).findUnavailableLocatorValues =
+				findUnavailableLocatorValues;
+			return findUnavailableLocatorValues;
+		}
+
+		function makeOpenAiNode(modelValue: unknown) {
+			return makeNode({
+				name: 'OpenAI Chat Model',
+				type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+				typeVersion: 1.3,
+				parameters: { model: modelValue },
+				credentials: { openAiApi: { id: 'cred-free', name: 'n8n free OpenAI API credits' } },
+			} as Partial<NodeJSON>);
+		}
+
+		it('raises an issue naming the unusable value and the credential', async () => {
+			mockOpenAiNode();
+			mockUnavailable();
+
+			const node = makeOpenAiNode({ __rl: true, mode: 'id', value: 'gpt-6-mini' });
+			const result = await buildSetupRequests(context, node);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].parameterIssues?.model).toEqual([
+				'"gpt-6-mini" isn\'t available with the connected credential "n8n free OpenAI API credits". ' +
+					'Pick a value the credential offers instead.',
+			]);
+			expect(result[0].needsAction).toBe(true);
+		});
+
+		it("leaves the configured value untouched — repair is the caller's job", async () => {
+			mockOpenAiNode();
+			mockUnavailable();
+
+			const node = makeOpenAiNode({ __rl: true, mode: 'id', value: 'gpt-6-mini' });
+			const result = await buildSetupRequests(context, node);
+
+			expect(result[0].node.parameters.model).toEqual({
+				__rl: true,
+				mode: 'id',
+				value: 'gpt-6-mini',
+			});
+		});
+
+		it('raises nothing when the host reports nothing unavailable', async () => {
+			mockOpenAiNode();
+			(context.nodeService as unknown as Record<string, unknown>).findUnavailableLocatorValues = vi
+				.fn()
+				.mockResolvedValue([]);
+
+			const node = makeOpenAiNode({ __rl: true, mode: 'id', value: 'gpt-5-mini' });
+			const result = await buildSetupRequests(context, node);
+
+			expect(result[0].parameterIssues).toBeUndefined();
+		});
+
+		it('degrades quietly when the availability lookup throws', async () => {
+			mockOpenAiNode();
+			(context.nodeService as unknown as Record<string, unknown>).findUnavailableLocatorValues = vi
+				.fn()
+				.mockRejectedValue(new Error('provider unreachable'));
+
+			const node = makeOpenAiNode({ __rl: true, mode: 'id', value: 'gpt-6-mini' });
+			const result = await buildSetupRequests(context, node);
+
+			expect(result[0].parameterIssues).toBeUndefined();
+		});
+
+		it('does not probe when no credential is resolved for the slot', async () => {
+			mockOpenAiNode();
+			(context.credentialService.list as Mock).mockResolvedValue([]);
+			const probe = mockUnavailable();
+
+			const node = makeNode({
+				name: 'OpenAI Chat Model',
+				type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+				typeVersion: 1.3,
+				parameters: { model: { __rl: true, mode: 'id', value: 'gpt-6-mini' } },
+			} as Partial<NodeJSON>);
+			await buildSetupRequests(context, node);
+
+			expect(probe).not.toHaveBeenCalled();
+		});
+	});
+
 	it('skips disabled nodes', async () => {
 		const node = makeNode({ disabled: true });
 		const result = await buildSetupRequests(context, node);
@@ -323,7 +424,7 @@ describe('buildSetupRequests', () => {
 		expect(context.credentialService.test).not.toHaveBeenCalled();
 	});
 
-	it('sets needsAction=true when credential test fails', async () => {
+	it('keeps needsAction=false when a bound stored credential fails its live test', async () => {
 		(context.credentialService.list as Mock).mockResolvedValue([
 			{ id: 'cred-1', name: 'My Slack', updatedAt: '2025-01-01T00:00:00.000Z' },
 		]);
@@ -334,6 +435,24 @@ describe('buildSetupRequests', () => {
 
 		const node = makeNode({
 			credentials: { slackApi: { id: 'cred-1', name: 'My Slack' } },
+		});
+		const result = await buildSetupRequests(context, node);
+
+		expect(result[0].needsAction).toBe(false);
+		expect(result[0].credentialTestResult).toEqual({ success: false, message: 'Invalid token' });
+	});
+
+	it('sets needsAction=true when the bound credential id is not a stored credential', async () => {
+		(context.credentialService.list as Mock).mockResolvedValue([
+			{ id: 'cred-1', name: 'My Slack', updatedAt: '2025-01-01T00:00:00.000Z' },
+		]);
+		(context.credentialService.test as Mock).mockResolvedValue({
+			success: false,
+			message: 'Credential not found',
+		});
+
+		const node = makeNode({
+			credentials: { slackApi: { id: 'cred-gone', name: 'Imported Slack' } },
 		});
 		const result = await buildSetupRequests(context, node);
 
@@ -761,7 +880,7 @@ describe('analyzeWorkflow', () => {
 		expect(result).toHaveLength(0);
 	});
 
-	it('keeps credential-only requests whose credential test fails', async () => {
+	it('drops credential-only requests whose bound stored credential fails its test', async () => {
 		const node = makeNode({
 			credentials: { slackApi: { id: 'cred-1', name: 'My Slack' } },
 		});
@@ -776,6 +895,52 @@ describe('analyzeWorkflow', () => {
 		(context.credentialService.test as Mock).mockResolvedValue({
 			success: false,
 			message: 'Invalid token',
+		});
+
+		const result = await analyzeWorkflow(context, 'wf-1');
+
+		expect(result).toHaveLength(0);
+	});
+
+	it('keeps settled failing-test requests when includeSettled is set', async () => {
+		const node = makeNode({
+			credentials: { slackApi: { id: 'cred-1', name: 'My Slack' } },
+		});
+		(context.workflowService.getAsWorkflowJSON as Mock).mockResolvedValue(makeWorkflowJSON([node]));
+		(context.nodeService.getDescription as Mock).mockResolvedValue({
+			group: [],
+			credentials: [{ name: 'slackApi' }],
+		});
+		(context.credentialService.list as Mock).mockResolvedValue([
+			{ id: 'cred-1', name: 'My Slack', updatedAt: '2025-01-01T00:00:00.000Z' },
+		]);
+		(context.credentialService.test as Mock).mockResolvedValue({
+			success: false,
+			message: 'Invalid token',
+		});
+
+		const result = await analyzeWorkflow(context, 'wf-1', undefined, { includeSettled: true });
+
+		expect(result).toHaveLength(1);
+		expect(result[0].needsAction).toBe(false);
+		expect(result[0].credentialTestResult).toEqual({ success: false, message: 'Invalid token' });
+	});
+
+	it('keeps credential-only requests whose bound credential id is not stored', async () => {
+		const node = makeNode({
+			credentials: { slackApi: { id: 'cred-gone', name: 'Imported Slack' } },
+		});
+		(context.workflowService.getAsWorkflowJSON as Mock).mockResolvedValue(makeWorkflowJSON([node]));
+		(context.nodeService.getDescription as Mock).mockResolvedValue({
+			group: [],
+			credentials: [{ name: 'slackApi' }],
+		});
+		(context.credentialService.list as Mock).mockResolvedValue([
+			{ id: 'cred-1', name: 'My Slack', updatedAt: '2025-01-01T00:00:00.000Z' },
+		]);
+		(context.credentialService.test as Mock).mockResolvedValue({
+			success: false,
+			message: 'Credential not found',
 		});
 
 		const result = await analyzeWorkflow(context, 'wf-1');

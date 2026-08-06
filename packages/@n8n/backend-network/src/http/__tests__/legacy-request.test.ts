@@ -210,9 +210,9 @@ describe('OutboundHttp.requests requestLegacy', () => {
 
 	describe('SSRF policy', () => {
 		const baseUrl = 'https://example.test';
+		const otherUrl = 'https://other.test';
 
-		it('validates the URL through the provided bridge', async () => {
-			nock(baseUrl).get('/ok').reply(200, 'ok');
+		function makeBridge() {
 			const validateUrl = vi.fn().mockResolvedValue({ ok: true, result: undefined });
 			const bridge = {
 				validateUrl,
@@ -220,11 +220,56 @@ describe('OutboundHttp.requests requestLegacy', () => {
 				validateRedirectSync: vi.fn(),
 				createSecureLookup: vi.fn().mockReturnValue(vi.fn()),
 			} as unknown as SsrfBridge;
+			return { bridge, validateUrl };
+		}
+
+		it('validates the URL through the provided bridge', async () => {
+			nock(baseUrl).get('/ok').reply(200, 'ok');
+			const { bridge, validateUrl } = makeBridge();
 			const client = makeFacade().requests({ ssrf: bridge });
 
 			await client.requestLegacy({ baseURL: baseUrl, url: '/ok' });
 
 			expect(validateUrl).toHaveBeenCalledWith(new URL(`${baseUrl}/ok`));
+		});
+
+		it('validates the url the request is sent to, not the uri alias', async () => {
+			const scope = nock(otherUrl).get('/target').reply(200, 'ok');
+			const { bridge, validateUrl } = makeBridge();
+			const client = makeFacade().requests({ ssrf: bridge });
+
+			await client.requestLegacy({ uri: `${baseUrl}/ok`, url: `${otherUrl}/target` });
+
+			expect(validateUrl).toHaveBeenCalledTimes(1);
+			expect(validateUrl).toHaveBeenCalledWith(new URL(`${otherUrl}/target`));
+			expect(scope.isDone()).toBe(true);
+		});
+
+		it('rejects a blocked url even when the uri alias is allowed', async () => {
+			const scope = nock(otherUrl).get('/target').reply(200, 'ok');
+			const { bridge, validateUrl } = makeBridge();
+			validateUrl.mockImplementation((url: URL) =>
+				url.href === `${otherUrl}/target`
+					? { ok: false, error: new Error('Blocked') }
+					: { ok: true, result: undefined },
+			);
+			const client = makeFacade().requests({ ssrf: bridge });
+
+			await expect(
+				client.requestLegacy({ uri: `${baseUrl}/ok`, url: `${otherUrl}/target` }),
+			).rejects.toThrow('Blocked');
+			expect(scope.isDone()).toBe(false);
+		});
+
+		it('validates a baseURL-only target', async () => {
+			const scope = nock(baseUrl).get('/only').reply(200, 'ok');
+			const { bridge, validateUrl } = makeBridge();
+			const client = makeFacade().requests({ ssrf: bridge });
+
+			await client.requestLegacy({ baseURL: `${baseUrl}/only` });
+
+			expect(validateUrl).toHaveBeenCalledWith(new URL(`${baseUrl}/only`));
+			expect(scope.isDone()).toBe(true);
 		});
 	});
 
