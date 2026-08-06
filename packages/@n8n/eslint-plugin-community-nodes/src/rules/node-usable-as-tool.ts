@@ -5,8 +5,18 @@ import {
 	isTriggerNodeClass,
 	findClassProperty,
 	findObjectProperty,
+	findArrayLiteralProperty,
 	createRule,
 } from '../utils/index.js';
+
+function hasTriggerGroup(descriptionValue: TSESTree.ObjectExpression): boolean {
+	const groupArray = findArrayLiteralProperty(descriptionValue, 'group');
+	return (
+		groupArray?.elements.some(
+			(element) => element?.type === TSESTree.AST_NODE_TYPES.Literal && element.value === 'trigger',
+		) ?? false
+	);
+}
 
 export const NodeUsableAsToolRule = createRule({
 	name: 'node-usable-as-tool',
@@ -30,10 +40,6 @@ export const NodeUsableAsToolRule = createRule({
 					return;
 				}
 
-				if (isTriggerNodeClass(node)) {
-					return;
-				}
-
 				const descriptionProperty = findClassProperty(node, 'description');
 				if (!descriptionProperty) {
 					return;
@@ -41,6 +47,12 @@ export const NodeUsableAsToolRule = createRule({
 
 				const descriptionValue = descriptionProperty.value;
 				if (descriptionValue?.type !== TSESTree.AST_NODE_TYPES.ObjectExpression) {
+					return;
+				}
+
+				// `group` is the authoritative signal (also catches e.g. Cron, Webhook, versioned
+				// `*TriggerV1` classes); the name suffix is kept as a fallback for dynamic `group` values.
+				if (hasTriggerGroup(descriptionValue) || isTriggerNodeClass(node)) {
 					return;
 				}
 

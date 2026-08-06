@@ -10,7 +10,7 @@
 
 Ensures your nodes declare whether they can be used as tools in AI workflows. This property helps n8n determine if your node is suitable for AI-assisted automation.
 
-Trigger nodes (class name ends with `Trigger`) are exempt from this check, since they aren't invoked as tools. A trigger node that legitimately supports tool usage can still set `usableAsTool: true` explicitly.
+Trigger nodes are exempt from this check, since they aren't invoked as tools. A node is treated as a trigger if `description.group` includes `'trigger'`, or (as a fallback) its class name ends with `Trigger`. A trigger node that legitimately supports tool usage can still set `usableAsTool: true` explicitly.
 
 ## Examples
 

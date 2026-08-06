@@ -51,25 +51,33 @@ export class RegularClass {
 }`;
 }
 
-function createTriggerNodeCode(usableAsTool?: boolean): string {
-	const usableAsToolProperty = usableAsTool === true ? ',\n\t\tusableAsTool: true' : '';
+function createTriggerNodeCode(
+	options: { className?: string; usableAsTool?: boolean } = {},
+): string {
+	const { className = 'TestTrigger', usableAsTool } = options;
+	const group = className.endsWith('Trigger') ? "['trigger']" : "['trigger', 'schedule']";
+
+	const properties = [
+		`displayName: '${className}'`,
+		`name: '${className.charAt(0).toLowerCase()}${className.slice(1)}'`,
+		`group: ${group}`,
+		'version: 1',
+		"description: 'A test trigger node'",
+		`defaults: { name: '${className}' }`,
+		'inputs: []',
+		"outputs: ['main']",
+		'properties: []',
+	];
+	if (usableAsTool) {
+		properties.push('usableAsTool: true');
+	}
 
 	return `
 import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
 
-export class TestTrigger implements INodeType {
+export class ${className} implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Test Trigger',
-		name: 'testTrigger',
-		group: ['trigger'],
-		version: 1,
-		description: 'A test trigger node',
-		defaults: {
-			name: 'Test Trigger',
-		},
-		inputs: [],
-		outputs: ['main'],
-		properties: []${usableAsToolProperty},
+		${properties.join(',\n\t\t')},
 	};
 }`;
 }
@@ -140,7 +148,11 @@ ruleTester.run('node-usable-as-tool', NodeUsableAsToolRule, {
 		},
 		{
 			name: 'trigger node (class name ends with Trigger) with usableAsTool set to true',
-			code: createTriggerNodeCode(true),
+			code: createTriggerNodeCode({ usableAsTool: true }),
+		},
+		{
+			name: "trigger node identified by group: ['trigger'] (class name does not end with Trigger) skips check",
+			code: createTriggerNodeCode({ className: 'TestCron' }),
 		},
 	],
 	invalid: [
