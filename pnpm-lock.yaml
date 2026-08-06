@@ -6039,9 +6039,6 @@ importers:
       vue-component-type-helpers:
         specifier: ^2.2.10
         version: 2.2.12
-      vue-github-button:
-        specifier: ^3.1.3
-        version: 3.1.3
       vue-i18n:
         specifier: catalog:frontend
         version: 11.4.5(vue@3.5.26(typescript@6.0.2))
@@ -16759,9 +16756,6 @@ packages:
   getpass@0.1.7:
     resolution: {integrity: sha512-0fzj9JxOLfJ+XGLhR8ze3unN0KZCgZwiSSDz168VERjK8Wl8kVSdcu2kspd4s4wtAa1y/qrVRiAA0WclVsu0ng==}
 
-  github-buttons@2.29.1:
-    resolution: {integrity: sha512-TV3YgAKda5hPz75n7QXmGCsSzgVya1vvmBieebg3EB5ScmashTZ0FldViG1aU2d4V5rcAGrtQ7k5uAaCo0A4PA==}
-
   github-from-package@0.0.0:
     resolution: {integrity: sha512-SyHy3T1v2NUXn29OsWdxmK6RwHD+vkj3v8en8AOBZ1wBQ/hCAQ5bAQTD02kW4W9tUp/3Qh6J8r9EvntiyCmOOw==}
 
@@ -22633,9 +22627,6 @@ packages:
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
     peerDependencies:
       eslint: ^8.57.0 || ^9.0.0
-
-  vue-github-button@3.1.3:
-    resolution: {integrity: sha512-ZdOnUuYJL/wUsxISsC96TARzCdf1twaWooZoI14+g4RHsJltPY+Agw6Ox6pjuMqMX0uhSK1JOMFUFNCQGlcZGA==}
 
   vue-i18n@11.4.5:
     resolution: {integrity: sha512-rm8YJ6RpjOrkcgS2GLrZwLvs/VbhxbTSuEspbyXDo233+fPK0OMFNLOj3fdQYVKdOgcpSfLW91JhbqgpkkcBWA==}
@@ -35311,8 +35302,6 @@ snapshots:
     dependencies:
       assert-plus: 1.0.0
 
-  github-buttons@2.29.1: {}
-
   github-from-package@0.0.0: {}
 
   glob-parent@5.1.2:
@@ -42369,10 +42358,6 @@ snapshots:
       semver: 7.7.3
     transitivePeerDependencies:
       - supports-color
-
-  vue-github-button@3.1.3:
-    dependencies:
-      github-buttons: 2.29.1
 
   vue-i18n@11.4.5(vue@3.5.26(@typescript/typescript6@6.0.2)):
     dependencies:
