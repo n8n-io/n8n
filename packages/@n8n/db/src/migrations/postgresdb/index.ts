@@ -240,6 +240,7 @@ import { AddSetupCompletedAtToAgents1785500832626 } from '../common/178550083262
 import { AddAgentExecutionRuntimeState1785828155091 } from '../common/1785828155091-AddAgentExecutionRuntimeState';
 import { AddManagedByAndIssuerToTrustedKeySource1785924000000 } from '../common/1785924000000-AddManagedByAndIssuerToTrustedKeySource';
 import { AddStatusToAuthIdentity1785930000000 } from '../common/1785930000000-AddStatusToAuthIdentity';
+import { AddPolicyToTrustedKeySource1786022834327 } from '../common/1786022834327-AddPolicyToTrustedKeySource';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -485,4 +486,5 @@ export const postgresMigrations: Migration[] = [
 	AddAgentExecutionRuntimeState1785828155091,
 	AddManagedByAndIssuerToTrustedKeySource1785924000000,
 	AddStatusToAuthIdentity1785930000000,
+	AddPolicyToTrustedKeySource1786022834327,
 ];

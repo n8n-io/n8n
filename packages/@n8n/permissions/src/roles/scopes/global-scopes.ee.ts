@@ -164,6 +164,7 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'roleMappingRule:list',
 	'otel:manage',
 	'trustedKeySource:list',
+	'trustedKeySource:update',
 ];
 
 export const GLOBAL_ADMIN_SCOPES = GLOBAL_OWNER_SCOPES.concat();

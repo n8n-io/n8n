@@ -108,6 +108,26 @@ export type TrustedKeySourceStatus = 'pending' | 'healthy' | 'error';
 export type TrustedKeySourceManagedBy = 'env-config' | 'sso-derived' | 'api';
 
 /**
+ * Admin-set overrides applied on top of a source's derived `config` when its
+ * keys are resolved. Stored in the source's own `policy` column, which no
+ * refresh path writes, so a discovery re-read or an `N8N_TRUSTED_KEYS` sync
+ * can't silently undo an admin's decision.
+ *
+ * Every field is optional and means "leave the derived value alone" when
+ * absent — an admin overrides the settings they care about, not the whole
+ * source.
+ */
+export const TrustedKeySourcePolicySchema = z.object({
+	expectedAudience: z.string().optional(),
+	inboundAudiences: z.array(z.string()).optional(),
+	subjectClaim: z.string().optional(),
+	requireVerifiedEmail: z.boolean().optional(),
+	allowedRoles: z.array(z.string()).optional(),
+});
+
+export type TrustedKeySourcePolicy = z.infer<typeof TrustedKeySourcePolicySchema>;
+
+/**
  * Serializable representation of a trusted key stored in the `trusted_key.data`
  * JSON column. Unlike `ResolvedTrustedKey`, this holds the raw PEM string
  * instead of a live `crypto.KeyObject`.

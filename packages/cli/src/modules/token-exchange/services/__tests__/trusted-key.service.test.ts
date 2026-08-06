@@ -112,6 +112,7 @@ function createMocks({
 		sourceRepo,
 		dbLockService,
 		instanceSettings,
+		jwksResolverService,
 		tx,
 	};
 }
@@ -414,6 +415,19 @@ describe('TrustedKeyService', () => {
 		const issuer = 'https://idp.example.com';
 		const jwksUri = 'https://idp.example.com/.well-known/jwks.json';
 
+		it("re-registering never writes the admin's policy, so a restart can't undo it", async () => {
+			const { service, tx, sourceRepo } = createMocks({ ssoInboundAudiences: 'from-env' });
+			tx.findOneBy.mockResolvedValueOnce(null);
+			sourceRepo.findOneBy.mockResolvedValue(mock<TrustedKeySourceEntity>());
+
+			await service.registerSsoDerivedSource(issuer, jwksUri);
+
+			// The whole point of the separate column: self-heal rewrites `config`
+			// on every startup, so it must not be able to touch `policy` at all.
+			const [, saved] = tx.save.mock.calls[0] as [unknown, Record<string, unknown>];
+			expect(saved).not.toHaveProperty('policy');
+		});
+
 		it('creates a new sso-derived source when the issuer is not yet registered', async () => {
 			const { service, tx, sourceRepo } = createMocks();
 			tx.findOneBy.mockResolvedValueOnce(null);
@@ -508,6 +522,130 @@ describe('TrustedKeyService', () => {
 
 			const [, saved] = tx.save.mock.calls[0] as [unknown, { config: string }];
 			expect(jsonParse(saved.config)).not.toHaveProperty('subjectClaim');
+		});
+	});
+
+	describe('admin policy', () => {
+		const issuer = 'https://idp.example.com';
+
+		function jwksSource(policy: string | null) {
+			return Object.assign(new TrustedKeySourceEntity(), {
+				id: 'sso-source',
+				type: 'jwks' as const,
+				issuer,
+				config: JSON.stringify({
+					type: 'jwks',
+					url: 'https://idp.example.com/jwks.json',
+					issuer,
+					inboundAudiences: ['from-env'],
+					requireVerifiedEmail: true,
+				}),
+				policy,
+			});
+		}
+
+		function stubJwks(jwksResolverService: ReturnType<typeof createMocks>['jwksResolverService']) {
+			jwksResolverService.resolveKeys.mockResolvedValue({
+				keys: [
+					{
+						kid: 'kid-1',
+						algorithms: ['RS256'],
+						keyMaterial: '-----BEGIN PUBLIC KEY-----\nx\n-----END PUBLIC KEY-----',
+						issuer,
+					},
+				],
+				skipped: [],
+				ttlSeconds: 300,
+			} as unknown as Awaited<ReturnType<JwksResolverService['resolveKeys']>>);
+		}
+
+		/** The `data` blob written for each key by a refresh. */
+		function savedKeyData(tx: ReturnType<typeof createMocks>['tx']) {
+			const call = tx.save.mock.calls.find(
+				([entity]) => entity === TrustedKeyEntity,
+			) as unknown as [unknown, { data: string }];
+			return jsonParse<Record<string, unknown>>(call[1].data);
+		}
+
+		it('overrides the derived config when resolving keys', async () => {
+			const { service, sourceRepo, tx, jwksResolverService } = createMocks();
+			const source = jwksSource(
+				JSON.stringify({ inboundAudiences: ['api://n8n'], requireVerifiedEmail: false }),
+			);
+			sourceRepo.findOneBy.mockResolvedValue(source);
+			tx.findOneBy.mockResolvedValue(source);
+			stubJwks(jwksResolverService);
+
+			await service.refreshSource('sso-source');
+
+			expect(savedKeyData(tx)).toMatchObject({
+				inboundAudiences: ['api://n8n'],
+				requireVerifiedEmail: false,
+			});
+		});
+
+		it('leaves derived values alone for fields it does not override', async () => {
+			const { service, sourceRepo, tx, jwksResolverService } = createMocks();
+			const source = jwksSource(JSON.stringify({ subjectClaim: 'uid' }));
+			sourceRepo.findOneBy.mockResolvedValue(source);
+			tx.findOneBy.mockResolvedValue(source);
+			stubJwks(jwksResolverService);
+
+			await service.refreshSource('sso-source');
+
+			// An absent policy field means "use the derived value", not "clear it".
+			expect(savedKeyData(tx)).toMatchObject({
+				subjectClaim: 'uid',
+				inboundAudiences: ['from-env'],
+			});
+		});
+
+		it('ignores a malformed policy rather than taking the keys offline', async () => {
+			const { service, sourceRepo, tx, jwksResolverService } = createMocks();
+			const source = jwksSource('{ not json');
+			sourceRepo.findOneBy.mockResolvedValue(source);
+			tx.findOneBy.mockResolvedValue(source);
+			stubJwks(jwksResolverService);
+
+			await service.refreshSource('sso-source');
+
+			expect(savedKeyData(tx)).toMatchObject({ inboundAudiences: ['from-env'] });
+		});
+
+		it('persists the policy and refreshes so the change takes effect', async () => {
+			const { service, sourceRepo, tx, jwksResolverService } = createMocks();
+			const source = jwksSource(null);
+			sourceRepo.findOneBy.mockResolvedValue(source);
+			tx.findOneBy.mockResolvedValue(source);
+			stubJwks(jwksResolverService);
+
+			await service.updateSourcePolicy('sso-source', { inboundAudiences: ['api://n8n'] });
+
+			expect(sourceRepo.update).toHaveBeenCalledWith('sso-source', {
+				policy: JSON.stringify({ inboundAudiences: ['api://n8n'] }),
+			});
+			// Key data is materialized at refresh time, so a policy write that
+			// didn't refresh would silently not apply.
+			expect(jwksResolverService.resolveKeys).toHaveBeenCalled();
+		});
+
+		it('clears the policy when every override is dropped', async () => {
+			const { service, sourceRepo, tx, jwksResolverService } = createMocks();
+			const source = jwksSource(JSON.stringify({ inboundAudiences: ['api://n8n'] }));
+			sourceRepo.findOneBy.mockResolvedValue(source);
+			tx.findOneBy.mockResolvedValue(source);
+			stubJwks(jwksResolverService);
+
+			await service.updateSourcePolicy('sso-source', {});
+
+			expect(sourceRepo.update).toHaveBeenCalledWith('sso-source', { policy: null });
+		});
+
+		it('rejects an unknown source', async () => {
+			const { service, sourceRepo } = createMocks();
+			sourceRepo.findOneBy.mockResolvedValue(null);
+
+			await expect(service.updateSourcePolicy('nope', {})).rejects.toThrow('not found');
 		});
 	});
 });

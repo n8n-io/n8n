@@ -31,6 +31,24 @@ const jwksTrustedKeyConfigSchema = trustedKeyConfigBaseSchema.extend({
 	cacheTtlSeconds: z.number().optional(),
 });
 
+/**
+ * Overrides an admin has set on a source, kept separate from `config` in the
+ * response for the same reason they're a separate column: `config` is derived
+ * and rewritten on every refresh, this is administered and isn't. Showing both
+ * lets the UI say which values came from where.
+ *
+ * An absent field means "no override" — the derived value applies.
+ */
+export const trustedKeySourcePolicySchema = z.object({
+	expectedAudience: z.string().optional(),
+	inboundAudiences: z.array(z.string()).optional(),
+	subjectClaim: z.string().optional(),
+	requireVerifiedEmail: z.boolean().optional(),
+	allowedRoles: z.array(z.string()).optional(),
+});
+
+export type TrustedKeySourcePolicy = z.infer<typeof trustedKeySourcePolicySchema>;
+
 const trustedKeySourceBaseSchema = z.object({
 	id: z.string(),
 	issuer: z.string().nullable(),
@@ -38,6 +56,7 @@ const trustedKeySourceBaseSchema = z.object({
 	lastError: z.string().nullable(),
 	lastRefreshedAt: z.coerce.date().nullable(),
 	managedBy: trustedKeySourceManagedBySchema,
+	policy: trustedKeySourcePolicySchema.nullable(),
 	createdAt: z.coerce.date(),
 	updatedAt: z.coerce.date(),
 });
