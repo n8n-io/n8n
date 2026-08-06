@@ -51,9 +51,18 @@ vi.mock('../composables/useAgentConfirmationModal', () => ({
 	useAgentConfirmationModal: () => ({ openAgentConfirmationModal }),
 }));
 
+// Renders interpolated values into the returned string as well as the key, so
+// assertions can pin the numbers the card computes and not just which key it picked.
 vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
-	useI18n: () => ({ baseText: (key: string) => `mocked-${key}` }),
+	useI18n: () => ({
+		baseText: (key: string, options?: { interpolate?: Record<string, string> }) => {
+			const args = Object.entries(options?.interpolate ?? {});
+			if (args.length === 0) return `mocked-${key}`;
+
+			return `mocked-${key}(${args.map(([name, value]) => `${name}=${value}`).join(',')})`;
+		},
+	}),
 }));
 
 const dataset = (columnMapping: AgentEvalDataTableDataset['columnMapping']) =>
@@ -108,12 +117,13 @@ describe('AgentEvalCasesCard', () => {
 	});
 
 	it('counts the run from the server total, not the loaded page', async () => {
+		// Two rows loaded, seven in the table — the run covers all seven.
 		fetchDataTableContent.mockResolvedValue({ count: 7, data: twoCases.data });
-		const { getByTestId } = renderComponent();
+		const { getByTestId, getAllByTestId } = renderComponent();
 
-		await waitFor(() => expect(getByTestId('agent-evals-run-all')).toBeEnabled());
+		await waitFor(() => expect(getAllByTestId('agent-evals-case-row')).toHaveLength(2));
 		expect(getByTestId('agent-evals-run-all')).toHaveTextContent(
-			'mocked-agents.builder.agentEvals.cases.runAll',
+			'mocked-agents.builder.agentEvals.cases.runAll(count=7)',
 		);
 	});
 
@@ -137,11 +147,47 @@ describe('AgentEvalCasesCard', () => {
 		await userEvent.click(getByTestId('agent-evals-run-all'));
 
 		expect(startRun).toHaveBeenCalledWith(expect.anything(), 'project-1', 'agent-1', 'd1');
+		// 2 total with 1 pending means 1 done — pins the arithmetic, not just the key.
 		await waitFor(() =>
 			expect(getByTestId('agent-evals-run-status')).toHaveTextContent(
-				'mocked-agents.builder.agentEvals.run.progress',
+				'mocked-agents.builder.agentEvals.run.progress(done=1,total=2)',
 			),
 		);
+	});
+
+	describe('when the rows cannot be read', () => {
+		// An empty row list is indistinguishable from a dataset that has no cases, so a
+		// failed read has to say so rather than render as empty.
+		it('says the read failed instead of showing an empty dataset', async () => {
+			fetchDataTableContent.mockRejectedValue(new Error('forbidden'));
+			const { getByTestId, queryByTestId } = renderComponent();
+
+			await waitFor(() => expect(getByTestId('agent-evals-cases-load-failed')).toBeInTheDocument());
+			expect(queryByTestId('agent-evals-case-row')).not.toBeInTheDocument();
+		});
+
+		// Adding on top of rows we failed to read would report a count that doesn't
+		// match the table, and the run covers the table rather than the list.
+		it('withholds writing while the rows are unknown', async () => {
+			fetchDataTableContent.mockRejectedValue(new Error('forbidden'));
+			const { getByTestId, queryByTestId } = renderComponent();
+			await waitFor(() => expect(getByTestId('agent-evals-cases-load-failed')).toBeInTheDocument());
+
+			expect(queryByTestId('agent-evals-add-case')).not.toBeInTheDocument();
+		});
+
+		it('recovers on retry', async () => {
+			fetchDataTableContent.mockRejectedValueOnce(new Error('offline'));
+			const { getByTestId, getAllByTestId, queryByTestId } = renderComponent();
+			await waitFor(() => expect(getByTestId('agent-evals-cases-retry')).toBeInTheDocument());
+
+			fetchDataTableContent.mockResolvedValue(twoCases);
+			await userEvent.click(getByTestId('agent-evals-cases-retry'));
+
+			await waitFor(() => expect(getAllByTestId('agent-evals-case-row')).toHaveLength(2));
+			expect(queryByTestId('agent-evals-cases-load-failed')).not.toBeInTheDocument();
+			expect(getByTestId('agent-evals-add-case')).toBeInTheDocument();
+		});
 	});
 
 	describe('stopping a run', () => {
@@ -196,14 +242,14 @@ describe('AgentEvalCasesCard', () => {
 	});
 
 	it('keeps only one editor open at a time', async () => {
-		const { getAllByTestId, getAllByTestId: all } = renderComponent();
+		const { getAllByTestId } = renderComponent();
 		await waitFor(() => expect(getAllByTestId('agent-evals-case-row')).toHaveLength(2));
 
 		await userEvent.click(getAllByTestId('agent-evals-case-edit')[0]);
 		// The remaining row's pencil is now the only one left.
 		await userEvent.click(getAllByTestId('agent-evals-case-edit')[0]);
 
-		expect(all('agent-evals-case-editor')).toHaveLength(1);
+		expect(getAllByTestId('agent-evals-case-editor')).toHaveLength(1);
 	});
 
 	it('saves an edit and returns the row to read mode', async () => {

@@ -54,8 +54,14 @@ const { openAgentConfirmationModal } = useAgentConfirmationModal();
 // Null when the dataset's mapping names no input column: the rows exist but this
 // view has no honest way to write them, so it renders read-only.
 const source = computed(() => toCaseSource(props.dataset));
-const isEditable = computed(() => !props.disabled && source.value !== null);
 const isRequestOnly = computed(() => source.value?.columns.whatToCheck === null);
+
+/** True when the last read of this dataset's rows failed, so the list is unknown rather than empty. */
+const loadFailed = ref(false);
+
+// Writing is withheld while the rows are unknown: adding a case on top of rows we
+// failed to read would report a count that doesn't match the table.
+const isEditable = computed(() => !props.disabled && source.value !== null && !loadFailed.value);
 
 const editingRowId = ref<number | null>(null);
 const isAddingCase = ref(false);
@@ -110,6 +116,22 @@ const runStatus = computed(() => {
 	});
 });
 
+async function loadCases() {
+	const current = source.value;
+	if (!current) return;
+
+	loadFailed.value = false;
+	try {
+		await store.fetchCases(props.projectId, current);
+	} catch (error) {
+		// Recorded as state, not just a toast: an empty row list is indistinguishable
+		// from a dataset that genuinely has no cases, and adding one on top of rows we
+		// failed to read would report a case count that doesn't match the table.
+		loadFailed.value = true;
+		showError(error, i18n.baseText('agents.builder.agentEvals.cases.loadError'));
+	}
+}
+
 // Reads the rows whenever the dataset changes — including the new dataset a
 // regeneration produces, since generating creates a dataset rather than replacing one.
 watch(
@@ -118,14 +140,7 @@ watch(
 		editingRowId.value = null;
 		isAddingCase.value = false;
 
-		const current = source.value;
-		if (!current) return;
-
-		try {
-			await store.fetchCases(props.projectId, current);
-		} catch (error) {
-			showError(error, i18n.baseText('agents.builder.agentEvals.cases.loadError'));
-		}
+		await loadCases();
 	},
 	{ immediate: true },
 );
@@ -259,6 +274,26 @@ async function onRegenerate() {
 			{{ i18n.baseText('agents.builder.agentEvals.cases.unmapped') }}
 		</N8nCallout>
 
+		<N8nCallout
+			v-if="loadFailed"
+			theme="danger"
+			:class="$style.notice"
+			data-testid="agent-evals-cases-load-failed"
+		>
+			{{ i18n.baseText('agents.builder.agentEvals.cases.loadError') }}
+			<template #actions>
+				<N8nButton
+					variant="ghost"
+					size="small"
+					type="button"
+					data-testid="agent-evals-cases-retry"
+					@click="loadCases"
+				>
+					{{ i18n.baseText('agents.builder.agentEvals.cases.retry') }}
+				</N8nButton>
+			</template>
+		</N8nCallout>
+
 		<div v-if="isLoading" :class="$style.loading" data-testid="agent-evals-cases-loading">
 			<N8nLoading variant="p" :rows="4" />
 		</div>
@@ -343,7 +378,7 @@ async function onRegenerate() {
 				size="medium"
 				type="button"
 				icon="play"
-				:disabled="!canRun || caseCount === 0"
+				:disabled="!canRun || caseCount === 0 || lostTrack"
 				:loading="isInFlight"
 				data-testid="agent-evals-run-all"
 				@click="startRun"

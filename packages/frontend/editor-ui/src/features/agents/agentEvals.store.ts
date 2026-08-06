@@ -155,6 +155,12 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 
 	// Sorted by row id so the numbering the view shows is stable across reads, and
 	// read as one page: generation caps a dataset well below the page size.
+	//
+	// `projectId` is the agent's, which the Data Table routes scope on. That holds for
+	// every dataset this UI can produce, since generation creates the table in the
+	// agent's own project — but a dataset attached through the API can point at a table
+	// in another project, and the runner resolves that case properly where this cannot.
+	// Such a dataset surfaces as a failed read rather than silently empty rows.
 	const fetchCases = async (projectId: string, source: AgentEvalCaseSource) => {
 		loadingCases.value = { ...loadingCases.value, [source.datasetId]: true };
 		try {

@@ -7787,6 +7787,7 @@
 	"agents.builder.agentEvals.cases.runAll": "Run all · {count} case | Run all · {count} cases",
 	"agents.builder.agentEvals.cases.editCase": "Edit case {index}",
 	"agents.builder.agentEvals.cases.loadError": "Couldn't load test cases",
+	"agents.builder.agentEvals.cases.retry": "Try again",
 	"agents.builder.agentEvals.cases.unmapped": "These cases were set up outside the builder, so they can't be edited here.",
 	"agents.builder.agentEvals.case.request.label": "Request",
 	"agents.builder.agentEvals.case.request.placeholder": "What should someone ask your agent?",
