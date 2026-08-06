@@ -30,7 +30,10 @@ interface HeaderRow {
  * differ deliberately from v1, so they are converted in one place rather than at
  * the call site.
  */
-function toProducerOptions(options: IDataObject): KafkaProducerOptions {
+function toProducerOptions(
+	options: IDataObject,
+	compression: KafkaJS.CompressionTypes,
+): KafkaProducerOptions {
 	return {
 		// -1 = all in-sync replicas, matching the option description. v1 maps
 		// `true` to 1 (leader only) — a bug not worth carrying into a new version.
@@ -41,6 +44,9 @@ function toProducerOptions(options: IDataObject): KafkaProducerOptions {
 		// param only carries keys the user explicitly set, ignoring its declared
 		// UI default. Fall back to that same default explicitly.
 		timeout: (options.timeout as number | undefined) ?? DEFAULT_TIMEOUT_MS,
+		// 'none' is a codec of its own, so the value always reaches the config
+		// explicitly — the native library crashes on an undefined one.
+		compression,
 	};
 }
 
@@ -289,6 +295,22 @@ const versionDescription: INodeTypeDescription = {
 				},
 			],
 		},
+		{
+			displayName: 'Compression',
+			name: 'compression',
+			type: 'options',
+			default: 'none',
+			description:
+				'Codec used to compress messages. Version 1 of the Kafka Trigger cannot read Snappy, LZ4 or Zstd — use GZIP or None while version 1 triggers consume this topic.',
+			// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items -- 'None' (no compression) reads better last than between LZ4 and Snappy
+			options: [
+				{ name: 'GZIP', value: 'gzip' },
+				{ name: 'LZ4', value: 'lz4' },
+				{ name: 'Snappy', value: 'snappy' },
+				{ name: 'Zstd', value: 'zstd' },
+				{ name: 'None', value: 'none' },
+			],
+		},
 	],
 };
 
@@ -313,7 +335,10 @@ export class KafkaV2 implements INodeType {
 		let responseData: IDataObject[];
 
 		try {
-			const producerOptions = toProducerOptions(this.getNodeParameter('options', 0));
+			const producerOptions = toProducerOptions(
+				this.getNodeParameter('options', 0),
+				this.getNodeParameter('compression', 0) as KafkaJS.CompressionTypes,
+			);
 			const sendInputData = this.getNodeParameter('sendInputData', 0) as boolean;
 
 			const useSchemaRegistry = this.getNodeParameter('useSchemaRegistry', 0) as boolean;
