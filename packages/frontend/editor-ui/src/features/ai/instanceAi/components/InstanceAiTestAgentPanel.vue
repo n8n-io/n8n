@@ -19,13 +19,15 @@ const i18n = useI18n();
 	<div :class="$style.root" data-test-id="instance-ai-test-agent-panel">
 		<div :class="$style.head">
 			<span :class="$style.iconWrap">
-				<N8nIcon icon="sparkles" size="small" />
+				<N8nIcon icon="sparkles" size="medium" />
 			</span>
 			<N8nText bold color="text-dark">
 				{{ i18n.baseText('instanceAi.testAgent.title') }}
 			</N8nText>
 		</div>
-		<N8nText size="small" color="text-base">
+		<!-- `step` rather than `size`: the design's 13px body is `--font-size--xs`,
+			 which the `size` scale skips between small (12px) and medium (14px). -->
+		<N8nText step="xs" color="text-base">
 			{{ i18n.baseText('instanceAi.testAgent.description') }}
 		</N8nText>
 		<div :class="$style.options">
@@ -61,7 +63,10 @@ const i18n = useI18n();
 	margin: var(--spacing--2xs) 0;
 	background-color: var(--background--surface);
 	border: var(--border);
-	border-radius: var(--radius--sm);
+	/* `--radius--lg` resolves to 8px, not the 20px its name suggests — the legacy
+	   layer overrides the primitive. It is the closest token to the design's 10px
+	   and the one the sibling offer card uses, so the two match in the thread. */
+	border-radius: var(--radius--lg);
 }
 
 .head {
