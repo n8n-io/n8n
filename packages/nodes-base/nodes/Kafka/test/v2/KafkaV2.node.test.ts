@@ -182,8 +182,7 @@ describe('KafkaV2 Node', () => {
 
 	test('publishes input data as messages with key and headers unchanged, acks/timeout on the producer config', async () => {
 		const params: IDataObject = {
-			options: { acks: true, timeout: 1000 },
-			compression: 'none',
+			options: { acks: true, compression: 'none', timeout: 1000 },
 			sendInputData: true,
 			useSchemaRegistry: false,
 			topic: 'test-topic',
@@ -231,10 +230,9 @@ describe('KafkaV2 Node', () => {
 		expect(mockProducerDisconnect).toHaveBeenCalledTimes(1);
 	});
 
-	test('maps acks off to 0 and falls back to the default timeout when the option is unset', async () => {
+	test('maps acks off to 0 and falls back to the default timeout and compression when the options are unset', async () => {
 		const params: IDataObject = {
 			options: {},
-			compression: 'none',
 			sendInputData: false,
 			useSchemaRegistry: false,
 			topic: 'test-topic',
@@ -266,8 +264,7 @@ describe('KafkaV2 Node', () => {
 		'passes the %s compression codec to the producer',
 		async (compression) => {
 			const params: IDataObject = {
-				options: {},
-				compression,
+				options: { compression },
 				sendInputData: false,
 				useSchemaRegistry: false,
 				topic: 'test-topic',

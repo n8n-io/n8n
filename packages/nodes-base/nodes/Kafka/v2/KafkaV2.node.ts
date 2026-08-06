@@ -30,23 +30,19 @@ interface HeaderRow {
  * differ deliberately from v1, so they are converted in one place rather than at
  * the call site.
  */
-function toProducerOptions(
-	options: IDataObject,
-	compression: KafkaJS.CompressionTypes,
-): KafkaProducerOptions {
+function toProducerOptions(options: IDataObject): KafkaProducerOptions {
 	return {
 		// -1 = all in-sync replicas, matching the option description. v1 maps
 		// `true` to 1 (leader only) — a bug not worth carrying into a new version.
 		acks: options.acks === true ? -1 : 0,
 		// Unlike v1 (kafkajs tolerates `undefined`), confluent's native library
-		// crashes if `timeout` reaches the producer config as `undefined` — which
-		// it would be here if the user never added the option, since a `collection`
-		// param only carries keys the user explicitly set, ignoring its declared
-		// UI default. Fall back to that same default explicitly.
+		// crashes if either of these reaches the producer config as `undefined` —
+		// which they would be if the user never added the option, since a
+		// `collection` param only carries the keys the user explicitly set,
+		// ignoring its declared UI default. Fall back to those defaults here.
+		// 'none' is a codec of its own, so it reaches the config explicitly.
+		compression: (options.compression ?? 'none') as KafkaJS.CompressionTypes,
 		timeout: (options.timeout as number | undefined) ?? DEFAULT_TIMEOUT_MS,
-		// 'none' is a codec of its own, so the value always reaches the config
-		// explicitly — the native library crashes on an undefined one.
-		compression,
 	};
 }
 
@@ -287,28 +283,28 @@ const versionDescription: INodeTypeDescription = {
 					description: 'Whether or not producer must wait for acknowledgement from all replicas',
 				},
 				{
+					displayName: 'Compression',
+					name: 'compression',
+					type: 'options',
+					default: 'none',
+					description:
+						'Codec used to compress messages. Version 1 of the Kafka Trigger cannot read Snappy, LZ4 or Zstd — use GZIP or None while version 1 triggers consume this topic.',
+					// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items -- 'None' (no compression) reads better last than between LZ4 and Snappy
+					options: [
+						{ name: 'GZIP', value: 'gzip' },
+						{ name: 'LZ4', value: 'lz4' },
+						{ name: 'Snappy', value: 'snappy' },
+						{ name: 'Zstd', value: 'zstd' },
+						{ name: 'None', value: 'none' },
+					],
+				},
+				{
 					displayName: 'Timeout',
 					name: 'timeout',
 					type: 'number',
 					default: DEFAULT_TIMEOUT_MS,
 					description: 'The time to await a response in ms',
 				},
-			],
-		},
-		{
-			displayName: 'Compression',
-			name: 'compression',
-			type: 'options',
-			default: 'none',
-			description:
-				'Codec used to compress messages. Version 1 of the Kafka Trigger cannot read Snappy, LZ4 or Zstd — use GZIP or None while version 1 triggers consume this topic.',
-			// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items -- 'None' (no compression) reads better last than between LZ4 and Snappy
-			options: [
-				{ name: 'GZIP', value: 'gzip' },
-				{ name: 'LZ4', value: 'lz4' },
-				{ name: 'Snappy', value: 'snappy' },
-				{ name: 'Zstd', value: 'zstd' },
-				{ name: 'None', value: 'none' },
 			],
 		},
 	],
@@ -335,10 +331,7 @@ export class KafkaV2 implements INodeType {
 		let responseData: IDataObject[];
 
 		try {
-			const producerOptions = toProducerOptions(
-				this.getNodeParameter('options', 0),
-				this.getNodeParameter('compression', 0) as KafkaJS.CompressionTypes,
-			);
+			const producerOptions = toProducerOptions(this.getNodeParameter('options', 0));
 			const sendInputData = this.getNodeParameter('sendInputData', 0) as boolean;
 
 			const useSchemaRegistry = this.getNodeParameter('useSchemaRegistry', 0) as boolean;
