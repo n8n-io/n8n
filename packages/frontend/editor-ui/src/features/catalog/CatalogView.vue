@@ -565,6 +565,9 @@ const removeSchedule = async (subscription: CatalogSubscription) => {
 	flex-direction: column;
 	gap: var(--spacing--2xs);
 	margin-top: var(--spacing--sm);
+	// The schedules are the last thing on the page, so the page's own padding is
+	// all that keeps the list off the bottom edge — not enough to read as an end.
+	margin-bottom: var(--spacing--xl);
 }
 
 .rowList {
