@@ -73,10 +73,7 @@ import {
 import { WorkflowPublishHistory } from './workflow-publish-history';
 import { WorkflowPublishedVersion } from './workflow-published-version';
 import { WorkflowReviewActivityComment } from './workflow-review-activity-comment.ee';
-import {
-	WorkflowReviewActivity,
-	type WorkflowReviewActivityType,
-} from './workflow-review-activity.ee';
+import { WorkflowReviewActivity } from './workflow-review-activity.ee';
 import { WorkflowReviewRequestAuthor } from './workflow-review-request-author.ee';
 import { WorkflowReviewRequestReviewer } from './workflow-review-request-reviewer.ee';
 import { WorkflowReviewRequestWorkflow } from './workflow-review-request-workflow.ee';
@@ -162,7 +159,6 @@ export {
 	WorkflowReviewRequestReviewer,
 	WorkflowReviewRequestAuthor,
 	WorkflowReviewActivity,
-	type WorkflowReviewActivityType,
 	WorkflowReviewActivityComment,
 	ExecutionData,
 	ExecutionMetadata,
