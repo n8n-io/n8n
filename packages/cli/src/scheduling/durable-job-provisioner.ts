@@ -260,28 +260,23 @@ export class DurableJobProvisioner {
 		);
 		if (!Number.isFinite(floor)) return misfireGraceSeconds;
 
-		if (truncated > MAX_MISFIRE_GRACE_SECONDS) {
-			this.logger.warn("Lowered a node's misfire grace to the scheduler's maximum", {
-				workflowId,
-				nodeId,
-				requestedMisfireGraceSeconds: truncated,
-				misfireGraceSeconds: MAX_MISFIRE_GRACE_SECONDS,
-			});
-			return MAX_MISFIRE_GRACE_SECONDS;
+		const effective = Math.min(Math.max(truncated, floor), MAX_MISFIRE_GRACE_SECONDS);
+
+		if (effective !== truncated) {
+			this.logger.warn(
+				effective > truncated
+					? "Raised a node's misfire grace to the scheduler's minimum"
+					: "Lowered a node's misfire grace to the scheduler's maximum",
+				{
+					workflowId,
+					nodeId,
+					requestedMisfireGraceSeconds: truncated,
+					misfireGraceSeconds: effective,
+				},
+			);
 		}
 
-		if (truncated >= floor) return truncated;
-
-		if (floor < MAX_MISFIRE_GRACE_SECONDS) {
-			this.logger.warn("Raised a node's misfire grace to the scheduler's minimum", {
-				workflowId,
-				nodeId,
-				requestedMisfireGraceSeconds: truncated,
-				misfireGraceSeconds: floor,
-			});
-		}
-
-		return floor;
+		return effective;
 	}
 
 	/**

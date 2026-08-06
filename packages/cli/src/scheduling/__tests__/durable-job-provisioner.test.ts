@@ -591,7 +591,7 @@ describe('DurableJobProvisioner', () => {
 			);
 		});
 
-		it('lowers a node-supplied grace to the thirty-day cap when the configured floors exceed the cap, without claiming it raised it to a minimum', async () => {
+		it('raises a node-supplied grace to the thirty-day cap when the configured floors exceed the cap, and warns that it raised it', async () => {
 			provisioner = makeProvisioner({
 				materializationWindowSeconds: THIRTY_DAYS_IN_SECONDS + 1000,
 			});
@@ -601,23 +601,39 @@ describe('DurableJobProvisioner', () => {
 			expect(jobs.insertMany).toHaveBeenCalledWith(manager, [
 				expect.objectContaining({ misfireGraceSeconds: THIRTY_DAYS_IN_SECONDS }),
 			]);
-			expect(logger.warn).not.toHaveBeenCalledWith(
+			expect(logger.warn).toHaveBeenCalledTimes(1);
+			expect(logger.warn).toHaveBeenCalledWith(
 				"Raised a node's misfire grace to the scheduler's minimum",
-				expect.anything(),
+				{
+					workflowId: 'wf',
+					nodeId: 'node',
+					requestedMisfireGraceSeconds: 300,
+					misfireGraceSeconds: THIRTY_DAYS_IN_SECONDS,
+				},
 			);
 		});
 
-		it('falls back to the instance-configured grace when a floor is not configured, never writing a non-finite grace', async () => {
-			provisioner = makeProvisioner({
-				materializationWindowSeconds: undefined as unknown as number,
-			});
+		it.each([
+			{
+				name: 'the materialisation window',
+				config: { materializationWindowSeconds: undefined as unknown as number },
+			},
+			{
+				name: 'the executor interval',
+				config: { executorIntervalSeconds: undefined as unknown as number },
+			},
+		])(
+			'falls back to the instance-configured grace when $name is not configured, never writing a non-finite grace',
+			async ({ config }) => {
+				provisioner = makeProvisioner(config);
 
-			await provisionWithGrace(300);
+				await provisionWithGrace(300);
 
-			expect(jobs.insertMany).toHaveBeenCalledWith(manager, [
-				expect.objectContaining({ misfireGraceSeconds: 90 }),
-			]);
-		});
+				expect(jobs.insertMany).toHaveBeenCalledWith(manager, [
+					expect.objectContaining({ misfireGraceSeconds: 90 }),
+				]);
+			},
+		);
 
 		it('reconciles a row stored at the raw node-supplied grace up to the clamped grace', async () => {
 			jobs.findManyByWorkflowNode.mockResolvedValue([jobRow({ misfireGraceSeconds: 30 })]);
@@ -631,13 +647,14 @@ describe('DurableJobProvisioner', () => {
 			expect(tasks.updateMissedAfterForJobs).toHaveBeenCalledWith(manager, [10], 60);
 		});
 
-		it('reconciles a job whose grace and policy both changed on the same activation only once', async () => {
+		it('reconciles a job whose grace and policy both changed on the same activation in a single update', async () => {
 			jobs.findManyByWorkflowNode.mockResolvedValue([
 				jobRow({ misfirePolicy: ScheduledJobMisfirePolicy.Skip, misfireGraceSeconds: 90 }),
 			]);
 
 			await provisionWithGrace(300);
 
+			expect(jobs.updateMisfirePolicy).toHaveBeenCalledTimes(1);
 			expect(jobs.updateMisfirePolicy).toHaveBeenCalledWith(manager, [10], {
 				misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 				misfireGraceSeconds: 300,
