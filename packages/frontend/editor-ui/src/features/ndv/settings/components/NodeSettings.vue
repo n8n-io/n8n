@@ -8,11 +8,21 @@ import type {
 import type {
 	INodeCredentialDescription,
 	INodeParameters,
+	INodeProperties,
 	NodeConnectionType,
 	NodeParameterValue,
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeHelpers, deepCopy, isCommunityPackageName } from 'n8n-workflow';
-import { computed, inject, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
+import {
+	computed,
+	inject,
+	nextTick,
+	onBeforeUnmount,
+	onMounted,
+	ref,
+	useTemplateRef,
+	watch,
+} from 'vue';
 
 import { BASE_NODE_SURVEY_URL, VIEWS } from '@/app/constants';
 
@@ -27,6 +37,7 @@ import AgentNdvReferencedSummary from '@/features/ndv/agents/components/AgentNdv
 import { NdvAgentConfigKey } from '@/features/ndv/agents/composables/useNdvAgentConfig';
 import { isAgentNodeV2 } from '@/features/agents/utils/agentNode';
 import get from 'lodash/get';
+import isEqual from 'lodash/isEqual';
 
 import ExperimentalEmbeddedNdvHeader from '@/features/workflows/canvas/experimental/components/ExperimentalEmbeddedNdvHeader.vue';
 import FreeAiCreditsCallout from '@/app/components/FreeAiCreditsCallout.vue';
@@ -66,7 +77,15 @@ import NodeExecuteButton from '@/app/components/NodeExecuteButton.vue';
 import QuickConnectBanner from '@/features/credentials/quickConnect/components/QuickConnectBanner.vue';
 import { useQuickConnect } from '@/features/credentials/quickConnect/composables/useQuickConnect';
 
-import { N8nBlockUi, N8nIcon, N8nNotice, N8nText } from '@n8n/design-system';
+import {
+	N8nBlockUi,
+	N8nButton,
+	N8nCheckbox,
+	N8nIcon,
+	N8nInput,
+	N8nNotice,
+	N8nText,
+} from '@n8n/design-system';
 import { useRoute } from 'vue-router';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
@@ -93,6 +112,13 @@ const props = withDefaults(
 		hideExecute?: boolean;
 		hideDocs?: boolean;
 		hideSubConnections?: boolean;
+		hideHeader?: boolean;
+		progressiveDisclosure?: boolean;
+		showAllSettings?: boolean;
+		settingsFilter?: string;
+		alwaysShowAllSettings?: boolean;
+		initialScrollTop?: number;
+		flattenSingleValueCollections?: boolean;
 	}>(),
 	{
 		inputSize: 0,
@@ -103,6 +129,13 @@ const props = withDefaults(
 		hideExecute: false,
 		hideDocs: true,
 		hideSubConnections: false,
+		hideHeader: false,
+		progressiveDisclosure: false,
+		showAllSettings: false,
+		settingsFilter: '',
+		alwaysShowAllSettings: false,
+		initialScrollTop: 0,
+		flattenSingleValueCollections: false,
 	},
 );
 
@@ -119,6 +152,10 @@ const emit = defineEmits<{
 	execute: [];
 	captureWheelBody: [WheelEvent];
 	dblclickHeader: [MouseEvent];
+	showAllSettingsChanged: [value: boolean];
+	settingsFilterChanged: [value: string];
+	alwaysShowAllSettingsChanged: [value: boolean];
+	scrollPositionChanged: [value: number];
 }>();
 
 const slots = defineSlots<{ actions?: {} }>();
@@ -162,6 +199,7 @@ const openPanel = ref<NodeSettingsTab>('params');
 
 // Used to prevent nodeValues from being overwritten by defaults on reopening ndv
 const nodeValuesInitialized = ref(false);
+const initiallyVisibleParameterNames = ref<Set<string>>(new Set());
 
 const hiddenIssuesInputs = ref<string[]>([]);
 const subConnections = ref<InstanceType<typeof NDVSubConnections> | null>(null);
@@ -250,6 +288,89 @@ const parameters = computed(() => {
 
 const parametersByTab = computed(() =>
 	collectParametersByTab(parameters.value, props.isEmbeddedInCanvas),
+);
+
+const nodeSettings = computed(() =>
+	createCommonNodeSettings(
+		isToolNode.value || isModelNode.value,
+		i18n.baseText.bind(i18n),
+		settingsStore.isOtelCustomSpanAttributesEnabled,
+	),
+);
+
+const normalizedSettingsFilter = computed(() => props.settingsFilter.trim().toLocaleLowerCase());
+
+function parameterMatchesFilter(parameter: INodeProperties) {
+	if (!normalizedSettingsFilter.value) return true;
+
+	return [parameter.displayName, parameter.name, parameter.description]
+		.filter((text): text is string => typeof text === 'string')
+		.some((text) => text.toLocaleLowerCase().includes(normalizedSettingsFilter.value));
+}
+
+function isParameterChanged(parameter: INodeProperties, path = 'parameters') {
+	const value = get(nodeValues.value, path ? `${path}.${parameter.name}` : parameter.name);
+	if (value === undefined) return false;
+
+	return !isEqual(value, parameter.default);
+}
+
+function isParameterInitiallyVisible(parameter: INodeProperties, path = 'parameters') {
+	return (
+		parameter.name === 'resource' ||
+		parameter.name === 'operation' ||
+		parameter.required === true ||
+		parameter.type === 'notice' ||
+		node.value?.issues?.parameters?.[parameter.name] !== undefined ||
+		isParameterChanged(parameter, path)
+	);
+}
+
+const visibleParameters = computed(() =>
+	parametersByTab.value.params.filter(
+		(parameter) =>
+			initiallyVisibleParameterNames.value.has(parameter.name) ||
+			parameter.name === 'resource' ||
+			parameter.name === 'operation' ||
+			parameter.required === true ||
+			node.value?.issues?.parameters?.[parameter.name] !== undefined,
+	),
+);
+const disclosedParameters = computed(() =>
+	parametersByTab.value.params.filter(
+		(parameter) => !visibleParameters.value.some((visible) => visible.name === parameter.name),
+	),
+);
+const displayedParameters = computed(() => {
+	if (!props.progressiveDisclosure) return parametersByTab.value.params;
+	if (!props.showAllSettings && !props.alwaysShowAllSettings) return visibleParameters.value;
+
+	return parametersByTab.value.params.filter(parameterMatchesFilter);
+});
+const setParametersCount = computed(
+	() => parametersByTab.value.params.filter((parameter) => isParameterChanged(parameter)).length,
+);
+
+const visibleNodeTypeSettings = computed(() =>
+	parametersByTab.value.settings.filter((parameter) => isParameterInitiallyVisible(parameter)),
+);
+const visibleCommonSettings = computed(() =>
+	nodeSettings.value.filter((parameter) => isParameterInitiallyVisible(parameter, '')),
+);
+const displayedNodeTypeSettings = computed(() =>
+	props.showAllSettings || props.alwaysShowAllSettings
+		? parametersByTab.value.settings.filter(parameterMatchesFilter)
+		: visibleNodeTypeSettings.value,
+);
+const displayedCommonSettings = computed(() =>
+	props.showAllSettings || props.alwaysShowAllSettings
+		? nodeSettings.value.filter(parameterMatchesFilter)
+		: visibleCommonSettings.value,
+);
+const showExecutionSettings = computed(
+	() =>
+		props.progressiveDisclosure &&
+		(displayedNodeTypeSettings.value.length > 0 || displayedCommonSettings.value.length > 0),
 );
 
 const isDisplayingCredentials = computed(
@@ -510,14 +631,6 @@ const populateHiddenIssuesSet = () => {
 	workflowDocumentStore?.value?.setNodePristine(node.value.name, false);
 };
 
-const nodeSettings = computed(() =>
-	createCommonNodeSettings(
-		isToolNode.value || isModelNode.value,
-		i18n.baseText.bind(i18n),
-		settingsStore.isOtelCustomSpanAttributesEnabled,
-	),
-);
-
 // The AI Agent node renders extra Parameters-tab surfaces (referenced-agent
 // summary OR inline-agent controls, by `agentSource` mode) —
 // all driven by the NDV container's provided facade. Guarded on the facade
@@ -534,6 +647,12 @@ const iconSource = useNodeIconSource(nodeType, node);
 const onParameterBlur = (parameterName: string) => {
 	hiddenIssuesInputs.value = hiddenIssuesInputs.value.filter((name) => name !== parameterName);
 };
+
+function onParametersScroll(event: Event) {
+	if (event.currentTarget instanceof HTMLElement) {
+		emit('scrollPositionChanged', event.currentTarget.scrollTop);
+	}
+}
 
 const onWorkflowActivate = () => {
 	hiddenIssuesInputs.value = [];
@@ -587,6 +706,14 @@ const setNodeValues = () => {
 	nodeValuesInitialized.value = true;
 };
 
+function captureInitiallyVisibleParameters() {
+	initiallyVisibleParameterNames.value = new Set(
+		parametersByTab.value.params
+			.filter((parameter) => isParameterInitiallyVisible(parameter))
+			.map((parameter) => parameter.name),
+	);
+}
+
 const onStopExecution = () => {
 	emit('stopExecution');
 };
@@ -619,6 +746,11 @@ watch(node, () => {
 onMounted(async () => {
 	populateHiddenIssuesSet();
 	setNodeValues();
+	captureInitiallyVisibleParameters();
+	await nextTick();
+	if (nodeParameterWrapper.value) {
+		nodeParameterWrapper.value.scrollTop = props.initialScrollTop;
+	}
 	props.eventBus?.on('openSettings', openSettings);
 	if (node.value !== null) {
 		nodeHelpers.updateNodeParameterIssues(node.value, nodeType.value);
@@ -671,7 +803,7 @@ function handleSelectAction(params: INodeParameters) {
 		:data-has-output-connection="hasOutputConnection"
 	>
 		<ExperimentalEmbeddedNdvHeader
-			v-if="isEmbeddedInCanvas && node"
+			v-if="!hideHeader && isEmbeddedInCanvas && node"
 			:node="node"
 			:selected-tab="openPanel"
 			:read-only="readOnly"
@@ -690,7 +822,7 @@ function handleSelectAction(params: INodeParameters) {
 				<slot name="actions" />
 			</template>
 		</ExperimentalEmbeddedNdvHeader>
-		<div v-else-if="!isNdvV2" :class="$style.header">
+		<div v-else-if="!hideHeader && !isNdvV2" :class="$style.header">
 			<div class="header-side-menu">
 				<NodeTitle
 					v-if="node"
@@ -723,7 +855,7 @@ function handleSelectAction(params: INodeParameters) {
 			/>
 		</div>
 		<NodeSettingsHeader
-			v-else-if="node && nodeValid"
+			v-else-if="!hideHeader && node && nodeValid"
 			:selected-tab="openPanel"
 			:node-name="node.name"
 			:node-type="nodeType"
@@ -756,6 +888,7 @@ function handleSelectAction(params: INodeParameters) {
 			]"
 			data-test-id="node-parameters"
 			@wheel.capture="emit('captureWheelBody', $event)"
+			@scroll.passive="onParametersScroll"
 		>
 			<N8nNotice
 				v-if="hasForeignCredential && !isHomeProjectTeam"
@@ -789,11 +922,13 @@ function handleSelectAction(params: INodeParameters) {
 
 				<ParameterInputList
 					v-if="nodeValuesInitialized"
-					:parameters="parametersByTab.params"
+					:parameters="displayedParameters"
 					:hide-delete="true"
 					:node-values="nodeValues"
 					:is-read-only="isReadOnly"
 					:hidden-issues-inputs="hiddenIssuesInputs"
+					:flatten-single-value-collections="flattenSingleValueCollections"
+					:notice-theme="progressiveDisclosure ? 'info' : undefined"
 					path="parameters"
 					:node="props.activeNode"
 					@value-changed="valueChanged"
@@ -826,6 +961,73 @@ function handleSelectAction(params: INodeParameters) {
 					v-if="showAgentNdvControls && agentNdvMode === 'inline'"
 					:is-read-only="isReadOnly"
 				/>
+				<div v-if="progressiveDisclosure && !alwaysShowAllSettings" :class="$style.disclosure">
+					<template v-if="showAllSettings || alwaysShowAllSettings">
+						<N8nInput
+							:model-value="settingsFilter"
+							:placeholder="i18n.baseText('nodePanel.filterSettings')"
+							clearable
+							@update:model-value="emit('settingsFilterChanged', String($event))"
+						/>
+						<N8nButton
+							v-if="!alwaysShowAllSettings"
+							variant="subtle"
+							size="small"
+							icon="chevron-up"
+							:label="i18n.baseText('nodePanel.showFewerSettings')"
+							@click="emit('showAllSettingsChanged', false)"
+						/>
+					</template>
+					<N8nButton
+						v-else-if="disclosedParameters.length > 0"
+						variant="subtle"
+						size="small"
+						icon="chevron-down"
+						:label="
+							i18n.baseText('nodePanel.showAllSettings', {
+								interpolate: {
+									count: disclosedParameters.length,
+									setCount: setParametersCount,
+								},
+							})
+						"
+						@click="emit('showAllSettingsChanged', true)"
+					/>
+					<N8nCheckbox
+						:model-value="alwaysShowAllSettings"
+						:label="i18n.baseText('nodePanel.alwaysShowAllSettings')"
+						@update:model-value="emit('alwaysShowAllSettingsChanged', Boolean($event))"
+					/>
+				</div>
+				<section v-if="showExecutionSettings" :class="$style.executionSettings">
+					<N8nText tag="h3" size="small" bold>
+						{{ i18n.baseText('nodePanel.executionSettings') }}
+					</N8nText>
+					<ParameterInputList
+						:parameters="displayedNodeTypeSettings"
+						:node-values="nodeValues"
+						:is-read-only="isReadOnly"
+						:hide-delete="true"
+						:hidden-issues-inputs="hiddenIssuesInputs"
+						:flatten-single-value-collections="flattenSingleValueCollections"
+						:notice-theme="progressiveDisclosure ? 'info' : undefined"
+						path="parameters"
+						@value-changed="valueChanged"
+						@parameter-blur="onParameterBlur"
+					/>
+					<ParameterInputList
+						:parameters="displayedCommonSettings"
+						:hide-delete="true"
+						:node-values="nodeValues"
+						:is-read-only="isReadOnly"
+						:hidden-issues-inputs="hiddenIssuesInputs"
+						:flatten-single-value-collections="flattenSingleValueCollections"
+						:notice-theme="progressiveDisclosure ? 'info' : undefined"
+						path=""
+						@value-changed="valueChanged"
+						@parameter-blur="onParameterBlur"
+					/>
+				</section>
 				<div v-if="showNoParametersNotice" class="no-parameters">
 					<N8nText>
 						{{ i18n.baseText('nodeSettings.thisNodeDoesNotHaveAnyParameters') }}
@@ -887,7 +1089,7 @@ function handleSelectAction(params: INodeParameters) {
 				</div>
 			</div>
 			<div
-				v-if="isNdvV2 && featureRequestUrl && !isEmbeddedInCanvas"
+				v-if="isNdvV2 && featureRequestUrl && !isEmbeddedInCanvas && !progressiveDisclosure"
 				:class="$style.featureRequest"
 			>
 				<a target="_blank" @click="onFeatureRequestClick">
@@ -940,6 +1142,27 @@ function handleSelectAction(params: INodeParameters) {
 
 .quickConnectBanner {
 	margin-top: var(--spacing--sm);
+}
+
+.disclosure {
+	display: flex;
+	flex-direction: column;
+	align-items: stretch;
+	gap: var(--spacing--2xs);
+	margin-top: var(--spacing--sm);
+
+	> button {
+		width: 100%;
+	}
+}
+
+.executionSettings {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+	margin-top: var(--spacing--sm);
+	padding-top: var(--spacing--sm);
+	border-top: 1px solid var(--border-color--subtle);
 }
 
 .uiBlockerNdvV2 {

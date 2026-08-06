@@ -101,6 +101,9 @@ type Props = {
 	optionsOverrides?: ParameterOptionsOverrides;
 	assignmentCollectionEditableValueIndices?: Record<string, number[]>;
 	layout?: 'inline';
+	flattenSingleValueCollections?: boolean;
+	noticeTheme?: 'warning' | 'info';
+	useParameterDefaultsForMissingValues?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -646,8 +649,14 @@ async function getDependentParametersValues(parameter: INodeProperties): Promise
 
 function getParameterValue<T extends NodeParameterValueType = NodeParameterValueType>(
 	name: string,
-): T {
-	return getParameterValueByPath(props.nodeValues, name, props.path) as T;
+): T;
+function getParameterValue(name: string) {
+	let value = getParameterValueByPath(props.nodeValues, name, props.path);
+	if (value === undefined && props.useParameterDefaultsForMissingValues) {
+		value = props.parameters.find((parameter) => parameter.name === name)?.default;
+	}
+
+	return value;
 }
 
 function isRagStarterCallout(parameter: INodeProperties): boolean {
@@ -840,6 +849,7 @@ watch(
 			<N8nNotice
 				v-else-if="item.parameter.type === 'notice'"
 				:class="['parameter-item', item.parameter.typeOptions?.containerClass ?? '']"
+				:theme="noticeTheme"
 				:content="i18n.nodeText(activeNode?.type).inputLabelDisplayName(item.parameter, path)"
 				@action="onNoticeAction"
 			/>
@@ -935,6 +945,7 @@ watch(
 							:path="item.path"
 							:is-read-only="isReadOnly"
 							:is-nested="isNested"
+							:flatten-single-value-collections="flattenSingleValueCollections"
 							@value-changed="valueChanged"
 						/>
 						<LazyFixedCollectionParameter
@@ -965,6 +976,7 @@ watch(
 						:path="getPath(item.parameter.name)"
 						:is-read-only="isReadOnly"
 						:is-nested="isNested"
+						:flatten-single-value-collections="flattenSingleValueCollections"
 						:is-newly-added="newlyAddedParameters.has(item.parameter.name)"
 						@value-changed="valueChanged"
 						@delete="deleteOption(item.parameter.name)"

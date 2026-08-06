@@ -199,6 +199,7 @@ const onViewSelected = (selected: string) => {
 				icon="panel-right"
 				:class="$style.focusButton"
 				:title="i18n.baseText('parameterInput.focusParameter')"
+				:aria-label="i18n.baseText('parameterInput.focusParameter')"
 				data-test-id="parameter-focus-button"
 				@click="$emit('update:modelValue', 'focus')"
 			/>
@@ -238,6 +239,7 @@ const onViewSelected = (selected: string) => {
 				icon="trash-2"
 				:class="$style.deleteButton"
 				:title="i18n.baseText('parameterInputList.delete')"
+				:aria-label="i18n.baseText('parameterInputList.delete')"
 				data-test-id="parameter-delete-button"
 				@click="onDelete"
 			/>

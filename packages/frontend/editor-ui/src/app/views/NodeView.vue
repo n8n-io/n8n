@@ -1610,6 +1610,17 @@ function selectNodes(ids: string[]) {
 	setTimeout(() => canvasEventBus.emit('nodes:select', { ids }));
 }
 
+watch(
+	() => ndvStore.value.activeNodeName,
+	(nodeName) => {
+		if (!experimentalNdvStore.isNdvInFocusPanelEnabled || !nodeName) return;
+
+		const node = workflowDocumentStore.value.getNodeByName(nodeName);
+		if (node) selectNodes([node.id]);
+		ndvStore.value.unsetActiveNodeName();
+	},
+);
+
 /**
  * Mouse events
  */
@@ -2147,7 +2158,7 @@ onBeforeUnmount(() => {
 			</Suspense>
 			<Suspense>
 				<LazyNodeDetailsView
-					v-if="!isNDVV2"
+					v-if="!experimentalNdvStore.isNdvInFocusPanelEnabled && !isNDVV2"
 					:read-only="isCanvasReadOnly"
 					:is-production-execution-preview="nodeHelpers.isProductionExecutionPreview.value"
 					:renaming="false"
@@ -2159,7 +2170,7 @@ onBeforeUnmount(() => {
 			</Suspense>
 			<Suspense>
 				<LazyNodeDetailsViewV2
-					v-if="isNDVV2"
+					v-if="!experimentalNdvStore.isNdvInFocusPanelEnabled && isNDVV2"
 					:read-only="isCanvasReadOnly"
 					:is-production-execution-preview="nodeHelpers.isProductionExecutionPreview.value"
 					@rename-node="onRenameNode"
@@ -2170,9 +2181,7 @@ onBeforeUnmount(() => {
 			</Suspense>
 		</WorkflowCanvas>
 		<FocusSidebar
-			v-if="
-				!isLoading && (experimentalNdvStore.isNdvInFocusPanelEnabled ? !isCanvasReadOnly : true)
-			"
+			v-if="!isLoading"
 			:is-canvas-read-only="isCanvasReadOnly"
 			@context-menu-action="onContextMenuAction"
 		/>
@@ -2184,6 +2193,7 @@ onBeforeUnmount(() => {
 
 .wrapper {
 	display: flex;
+	position: relative;
 	width: 100%;
 }
 

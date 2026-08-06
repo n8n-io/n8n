@@ -40,6 +40,7 @@ export interface Props {
 	isReadOnly?: boolean;
 	isNested?: boolean;
 	isNewlyAdded?: boolean;
+	flattenSingleValueCollections?: boolean;
 }
 const emit = defineEmits<{
 	valueChanged: [value: IUpdateInformation];
@@ -162,6 +163,24 @@ const filteredOptions = computed(() => {
 	});
 });
 
+const shouldFlattenOptions = computed(
+	() =>
+		props.flattenSingleValueCollections === true &&
+		filteredOptions.value.length > 0 &&
+		filteredOptions.value.every(
+			(option) =>
+				isINodeProperties(option) &&
+				option.typeOptions?.multipleValues !== true &&
+				!['collection', 'fixedCollection'].includes(option.type),
+		),
+);
+
+const displayedProperties = computed(() =>
+	shouldFlattenOptions.value
+		? filteredOptions.value.filter(isINodeProperties)
+		: getFlattenedProperties.value,
+);
+
 const parameterOptions = computed(() => {
 	return filteredOptions.value.filter((option) => !propertyNames.value.includes(option.name));
 });
@@ -272,7 +291,7 @@ function valueChanged(parameterData: IUpdateInformation) {
 		:show-actions-on-hover="!isDropdownOpen"
 		@keydown.stop
 	>
-		<template v-if="!isReadOnly" #actions>
+		<template v-if="!isReadOnly && !shouldFlattenOptions" #actions>
 			<N8nDropdownMenu
 				:items="dropdownOptions"
 				:disabled="isAddDisabled"
@@ -294,20 +313,25 @@ function valueChanged(parameterData: IUpdateInformation) {
 		</template>
 
 		<div>
-			<Suspense v-if="getFlattenedProperties.length > 0">
+			<Suspense v-if="displayedProperties.length > 0">
 				<ParameterInputList
 					:class="$style.parameterList"
-					:parameters="getFlattenedProperties"
+					:parameters="displayedProperties"
 					:node-values="nodeValues"
 					:path="path"
 					:is-read-only="isReadOnly"
 					:is-nested="true"
 					:newly-added-parameters="newlyAddedParameters"
+					:flatten-single-value-collections="flattenSingleValueCollections"
+					:use-parameter-defaults-for-missing-values="shouldFlattenOptions"
 					@value-changed="valueChanged"
 				/>
 			</Suspense>
 
-			<div v-if="!isReadOnly && !isAddDisabled" :class="$style.paramOptions">
+			<div
+				v-if="!isReadOnly && !isAddDisabled && !shouldFlattenOptions"
+				:class="$style.paramOptions"
+			>
 				<N8nDropdownMenu
 					ref="addDropdownRef"
 					:items="dropdownOptions"
@@ -345,7 +369,7 @@ function valueChanged(parameterData: IUpdateInformation) {
 				:bordered="showHeaderDivider"
 				:class="$style.collectionSectionHeader"
 			>
-				<template v-if="!isReadOnly" #actions>
+				<template v-if="!isReadOnly && !shouldFlattenOptions" #actions>
 					<N8nTooltip :disabled="!isAddDisabled" :show-after="TOOLTIP_DELAY_MS">
 						<template #content>{{ addTooltipText }}</template>
 						<N8nDropdownMenu
@@ -362,20 +386,25 @@ function valueChanged(parameterData: IUpdateInformation) {
 				</template>
 			</N8nSectionHeader>
 
-			<Suspense v-if="getFlattenedProperties.length > 0">
+			<Suspense v-if="displayedProperties.length > 0">
 				<ParameterInputList
 					:class="$style.parameterList"
-					:parameters="getFlattenedProperties"
+					:parameters="displayedProperties"
 					:node-values="nodeValues"
 					:path="path"
 					:is-read-only="isReadOnly"
 					:is-nested="true"
 					:newly-added-parameters="newlyAddedParameters"
+					:flatten-single-value-collections="flattenSingleValueCollections"
+					:use-parameter-defaults-for-missing-values="shouldFlattenOptions"
 					@value-changed="valueChanged"
 				/>
 			</Suspense>
 
-			<div v-if="!isReadOnly && !isAddDisabled" :class="$style.paramOptions">
+			<div
+				v-if="!isReadOnly && !isAddDisabled && !shouldFlattenOptions"
+				:class="$style.paramOptions"
+			>
 				<N8nDropdownMenu
 					ref="addDropdownRef"
 					:items="dropdownOptions"

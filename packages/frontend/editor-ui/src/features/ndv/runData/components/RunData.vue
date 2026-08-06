@@ -273,7 +273,7 @@ const isWaitNodeWaiting = computed(() => {
 	);
 });
 
-const activeNode = computed(() => ndvStore.value.activeNode);
+const activeNode = computed(() => props.node ?? ndvStore.value.activeNode);
 const nodeType = computed(() => {
 	if (!node.value) return null;
 

@@ -17,6 +17,7 @@ export interface Props {
 	isReadOnly?: boolean;
 	isNested?: boolean;
 	isNewlyAdded?: boolean;
+	flattenSingleValueCollections?: boolean;
 }
 
 defineProps<Props>();
