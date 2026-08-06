@@ -7,7 +7,7 @@
 // execution and cleanup.
 // ---------------------------------------------------------------------------
 
-import type { InstanceAiConfirmRequest } from '@n8n/api-types';
+import type { InstanceAiConfirmRequest, InstanceAiWorkflowAttachment } from '@n8n/api-types';
 import crypto from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
 
@@ -22,14 +22,20 @@ import {
 import { runWorkflowChecks, summarizeMissingWorkflowError } from './cleanup';
 import {
 	remapSeedWorkflowIds,
-	SEED_WORKFLOW_NAME_RE,
+	SEED_NAME_RE,
+	seedNameBase,
 	transcriptPrefixFromSeed,
 	type ConversationSeed,
 } from './conversation-seed';
 import { reconstructSeedFromThread } from './langsmith-seed';
 import type { EvalLogger } from './logger';
 import type { CaseSeed } from './schema';
-import { buildSeededTablesNote, dedupeScenarioSeedTables } from './seed-tables';
+import {
+	buildSeededTablesNote,
+	dedupeScenarioSeedTables,
+	evictLeftoverSeedTables,
+	uniquifyScenarioTableNames,
+} from './seed-tables';
 import type { CheckOutcome } from '../binaryChecks/types';
 import { N8nApiError, type N8nClient, type WorkflowResponse } from '../clients/n8n-client';
 import { createDeclaredCredentials } from '../credentials/seeder';
@@ -53,6 +59,7 @@ import type {
 } from '../types';
 import {
 	agentTurnsAsText,
+	attachedWorkflowNote,
 	failedBuildsPerTurn,
 	lastAgentText,
 	userTurnsAsText,
@@ -92,6 +99,10 @@ interface MultiTurnDriverConfig {
 	/** Appended to the FIRST sent message only (pre-seeded-table hint); the
 	 *  recorded turn and the proxy's conversation keep the clean prompt. */
 	openingMessageSuffix?: string;
+	/** What the RECORDED opening turn says, when it must differ from what's sent —
+	 *  an out-of-band attachment has to be named in the transcript the judge reads.
+	 *  Defaults to the sent text. */
+	recordedOpeningMessage?: string;
 	/** Ids already allowlisted for this thread (from pre-run `createDeclaredCredentials`
 	 *  seeding) — wires `UserProxyLlm.credentialCreation` so `manual` can create a
 	 *  real credential when a setup card shows zero existing candidates. Omitted
@@ -102,15 +113,25 @@ interface MultiTurnDriverConfig {
 	/** Shared with `createDeclaredCredentials`'s pre-run seeding — see
 	 *  `CredentialCreationConfig.nameCounts`. */
 	credentialNameCounts?: Map<string, number>;
+	/** Resource references sent with the FIRST message only — an attachment is a
+	 *  hand-off, not something a user re-sends every turn. */
+	openingAttachments?: InstanceAiWorkflowAttachment[];
 }
 
 async function driveMultiTurnConversation(
 	config: MultiTurnDriverConfig,
 ): Promise<ProxyDecisionStats> {
 	const openingMessage = config.conversation[0]?.text ?? '';
+	const recordedOpeningMessage = config.recordedOpeningMessage ?? openingMessage;
+	// The proxy renders both its script and its running transcript from `text` alone,
+	// so it needs the recorded opening too — otherwise it audits every plan and
+	// follow-up against a blank turn that never mentions the workflow.
+	const proxyConversation = config.conversation.map((turn, index) =>
+		index === 0 ? { ...turn, text: recordedOpeningMessage } : turn,
+	);
 
 	const proxy = new UserProxyLlm({
-		conversation: config.conversation,
+		conversation: proxyConversation,
 		messageBudget: config.messageBudget,
 		logger: config.logger,
 		...(config.allowlistedCredentialIds !== undefined
@@ -137,10 +158,11 @@ async function driveMultiTurnConversation(
 		return decision;
 	};
 
-	recordUserTurn(config.events, openingMessage);
+	recordUserTurn(config.events, recordedOpeningMessage);
 	await config.client.sendMessage(
 		config.threadId,
 		openingMessage + (config.openingMessageSuffix ?? ''),
+		config.openingAttachments,
 	);
 
 	await runMultiTurnConversation({
@@ -242,6 +264,9 @@ export interface BuildWorkflowConfig {
 	executionScenarios?: ExecutionScenario[];
 	timeoutMs?: number;
 	preRunWorkflowIds: Set<string>;
+	/** Data tables present before any build on this lane — the only ones the
+	 *  scenario-table eviction may delete. Omitted = no eviction. */
+	preRunDataTableIds?: Set<string>;
 	claimedWorkflowIds: Set<string>;
 	logger: EvalLogger;
 	/** Optional " [lane N/M]" suffix appended to the scenario log line. */
@@ -309,6 +334,9 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 	let builtDataTableIds: string[] = [];
 	let seededTranscript: TranscriptTurn[] = [];
 	let seedingFailed = false;
+	// Seed-declared workflow id -> the workflow as actually restored (fresh id and
+	// name). Lets an authored `attach` reference survive the per-run remap.
+	let seedWorkflowsBySeedId = new Map<string, { id: string; name: string }>();
 
 	try {
 		const buildStart = Date.now();
@@ -407,6 +435,12 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 		if (seed) {
 			try {
 				const remapped = remapSeedWorkflowIds(seed);
+				// The remap preserves order, so index-align the authored ids with the per-run
+				// ones. An author writes the id the seed declares; an attachment has to carry
+				// the id that actually exists on the instance.
+				seedWorkflowsBySeedId = new Map(
+					seed.workflows.map((workflow, index) => [workflow.id, remapped.workflows[index]]),
+				);
 				await evictLeftoverSeedWorkflows(
 					client,
 					remapped,
@@ -439,18 +473,30 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 		}
 
 		// TRUST-311 follow-up: create the case's execution-scenario data tables EMPTY
-		// under their EXACT declared names BEFORE the build turn, so the agent
-		// discovers the real table (Data Table list/schema) and binds its real id —
-		// the production-faithful flow where the user's table pre-exists. Rows are
-		// reset+seeded per scenario (reseedScenarioTables) because a build-time
-		// self-verification execution can mutate them. The created ids fold into
-		// restoredDataTableIds so the outer catch and cleanupBuild already cover them
-		// (a build failure still cleans them up); a create failure is a harness
-		// problem, so flag seedingFailed → the CLI attributes framework_issue.
+		// BEFORE the build turn, so the agent discovers the real table (Data Table
+		// list/schema) and binds its real id — the production-faithful flow where the
+		// user's table pre-exists. Rows are reset+seeded per scenario
+		// (reseedScenarioTables) because a build-time self-verification execution can
+		// mutate them. The created ids fold into restoredDataTableIds so the outer
+		// catch and cleanupBuild already cover them (a build failure still cleans them
+		// up); a create failure is a harness problem, so flag seedingFailed → the CLI
+		// attributes framework_issue.
 		try {
 			const scenarioSeedTables = dedupeScenarioSeedTables(config.executionScenarios ?? [], logger);
 			if (scenarioSeedTables.length > 0) {
-				const schemasOnly = scenarioSeedTables.map((table) => ({ ...table, rows: undefined }));
+				await evictLeftoverSeedTables(
+					client,
+					scenarioSeedTables,
+					config.preRunDataTableIds,
+					logger,
+					config.laneTag,
+				);
+				// `uniquifyNames: false` stays — the harness mints the suffix so it knows
+				// which name to give the agent below.
+				const schemasOnly = uniquifyScenarioTableNames(scenarioSeedTables).map((table) => ({
+					...table,
+					rows: undefined,
+				}));
 				const { dataTableIds } = await client.restoreThread(threadId, [], [], schemasOnly, {
 					uniquifyNames: false,
 				});
@@ -461,11 +507,13 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 						`Pre-seeding created ${String(dataTableIds.length)} data table(s) but the case declares ${String(scenarioSeedTables.length)}; cannot map names to ids.`,
 					);
 				}
+				// Keyed by the DECLARED name — what a scenario writes.
 				scenarioSeedTables.forEach((table, index) => {
 					scenarioTableIdsByName[table.name] = dataTableIds[index];
 				});
 				restoredDataTableIds = [...restoredDataTableIds, ...dataTableIds];
-				scenarioSeedTablesNote = buildSeededTablesNote(scenarioSeedTables);
+				// The agent looks up the name that exists, not the declared one.
+				scenarioSeedTablesNote = buildSeededTablesNote(schemasOnly);
 				logger.info(
 					`  Pre-seeded ${String(dataTableIds.length)} scenario data table schema(s)${config.laneTag ?? ''}`,
 				);
@@ -480,6 +528,34 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 		);
 
 		await delay(SSE_SETTLE_DELAY_MS);
+
+		// The opening turn may hand the agent a seeded workflow, the way the editor does.
+		// Resolved AFTER the restore so it carries the id that exists on the instance;
+		// the case schema already refused an `attach` no seeded workflow declares.
+		const attachedSeedWorkflow = conversation[0]?.attach?.workflow;
+		const restoredForAttach =
+			attachedSeedWorkflow === undefined
+				? undefined
+				: seedWorkflowsBySeedId.get(attachedSeedWorkflow);
+		// The schema already refused an `attach` no seeded workflow declares, so a miss
+		// here means the restore/remap dropped it. Fail loudly: sending no attachment
+		// would silently downgrade a hand-off case to a find-it one.
+		if (attachedSeedWorkflow !== undefined && restoredForAttach === undefined) {
+			seedingFailed = true;
+			throw new Error(
+				`The opening turn attaches seeded workflow "${attachedSeedWorkflow}", but the restore produced no workflow for that id — refusing to run the case unattached (it would silently become a find-it test).`,
+			);
+		}
+		const openingAttachments: InstanceAiWorkflowAttachment[] | undefined = restoredForAttach
+			? [{ type: 'workflow', id: restoredForAttach.id, name: restoredForAttach.name }]
+			: undefined;
+		// Name the out-of-band attachment in the RECORDED turn, or the judge and the
+		// prompt-aware checks read a text-less hand-off as a bare empty message — see
+		// `attachedWorkflowNote`. Mirrors `openingMessageSuffix`, which diverges
+		// sent-vs-recorded the other way.
+		const recordedOpeningMessage = [attachedWorkflowNote(restoredForAttach?.name), openingMessage]
+			.filter(Boolean)
+			.join(' ');
 
 		let proxyDecisionStats: ProxyDecisionStats | undefined;
 		if (isMultiTurn) {
@@ -508,10 +584,16 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				// The pre-seeded-table note goes to the agent, but the recorded turn
 				// (and the graded transcript) keeps the clean user prompt.
 				openingMessageSuffix: scenarioSeedTablesNote,
+				openingAttachments,
+				recordedOpeningMessage,
 			});
 		} else {
-			recordUserTurn(events, openingMessage);
-			await client.sendMessage(threadId, openingMessage + scenarioSeedTablesNote);
+			recordUserTurn(events, recordedOpeningMessage);
+			await client.sendMessage(
+				threadId,
+				openingMessage + scenarioSeedTablesNote,
+				openingAttachments,
+			);
 			await waitForAllActivity({
 				client,
 				threadId,
@@ -700,8 +782,8 @@ async function evictLeftoverSeedWorkflows(
 	laneTag?: string,
 ): Promise<void> {
 	const baseNames = new Set(
-		seed.workflows.map(
-			(workflow) => SEED_WORKFLOW_NAME_RE.exec(workflow.name)?.[1] ?? workflow.name,
+		seed.workflows.map((workflow) =>
+			seedNameBase(SEED_NAME_RE.exec(workflow.name)?.[1] ?? workflow.name),
 		),
 	);
 	if (baseNames.size === 0) return;
@@ -721,7 +803,7 @@ async function evictLeftoverSeedWorkflows(
 			// what was already lying there — a previous run's `--keep-workflows`
 			// leftover, or a crashed run that skipped its own cleanup.
 			if (!preRunWorkflowIds.has(workflow.id)) return false;
-			const base = SEED_WORKFLOW_NAME_RE.exec(workflow.name)?.[1];
+			const base = SEED_NAME_RE.exec(workflow.name)?.[1];
 			return base !== undefined && baseNames.has(base);
 		});
 		// Per-workflow, because best-effort has to mean each one: letting a single

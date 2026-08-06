@@ -8,7 +8,7 @@
  * `resolve` event that the consumer translates into its own confirm/resolve
  * transport call.
  */
-import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nLoading, N8nText } from '@n8n/design-system';
 import { updatedIconSet, type IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import { useI18n } from '@n8n/i18n';
 import type { ChatIntegrationDescriptor } from '@n8n/api-types';
@@ -20,6 +20,7 @@ import {
 	agentChannelPlatforms,
 	createAgentChannelRuntime,
 	getAgentChannelPlatform,
+	isRegisteredAgentChannelPlatform,
 } from '@/features/agents/channels/registry';
 import type { AgentChannelRuntime, AgentChannelViewExpose } from '@/features/agents/channels/types';
 import { getAgent } from '@/features/agents/composables/useAgentApi';
@@ -48,7 +49,7 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const rootStore = useRootStore();
-const { catalog, ensureLoaded } = useAgentIntegrationsCatalog();
+const { catalog, ensureLoaded, reload: reloadCatalog } = useAgentIntegrationsCatalog();
 const {
 	fetchStatus,
 	connectedCredentials,
@@ -64,6 +65,8 @@ const {
 const submitted = ref(false);
 const connectionInFlight = ref(false);
 const agent = ref<AgentResource | null>(null);
+const catalogLoading = ref(false);
+const catalogLoadFailed = ref(false);
 
 const currentIntegration = computed<ChatIntegrationDescriptor>(() => {
 	return (
@@ -200,14 +203,44 @@ function handlePlatformConnected() {
 	finish(true);
 }
 
-async function loadChannelState() {
-	const integrations = await ensureLoaded(props.projectId).catch(() => catalog.value ?? []);
-	await Promise.all([loadSharedChannelState(integrations), currentRuntime.value.load()]);
-
+async function loadChannelState(forceReload = false) {
+	catalogLoading.value = true;
+	catalogLoadFailed.value = false;
 	try {
-		agent.value = await getAgent(rootStore.restApiContext, props.projectId, props.agentId);
+		let integrations = await (forceReload
+			? reloadCatalog(props.projectId)
+			: ensureLoaded(props.projectId));
+		const requiresDescriptor =
+			props.integrationType !== 'slack' &&
+			isRegisteredAgentChannelPlatform(props.integrationType);
+
+		if (
+			requiresDescriptor &&
+			!forceReload &&
+			!integrations.some((integration) => integration.type === props.integrationType)
+		) {
+			integrations = await reloadCatalog(props.projectId);
+		}
+
+		if (
+			requiresDescriptor &&
+			!integrations.some((integration) => integration.type === props.integrationType)
+		) {
+			catalogLoadFailed.value = true;
+			return;
+		}
+
+		await Promise.all([loadSharedChannelState(integrations), currentRuntime.value.load()]);
+
+		try {
+			agent.value = await getAgent(rootStore.restApiContext, props.projectId, props.agentId);
+		} catch {
+			agent.value = null;
+		}
 	} catch {
-		agent.value = null;
+		catalogLoadFailed.value = true;
+	} finally {
+		catalogLoading.value = false;
 	}
 }
 
@@ -232,7 +265,33 @@ watch(
 		</header>
 
 		<div :class="$style.bodyWrapper">
+			<N8nLoading
+				v-if="catalogLoading"
+				:loading="true"
+				:rows="3"
+				data-testid="channel-setup-catalog-loading"
+			/>
+
+			<div
+				v-else-if="catalogLoadFailed"
+				:class="$style.catalogError"
+				data-testid="channel-setup-catalog-error"
+			>
+				<N8nText size="small" color="text-light">
+					{{ i18n.baseText('agents.channels.modal.setupLoadError') }}
+				</N8nText>
+				<N8nButton
+					variant="ghost"
+					size="small"
+					data-testid="channel-setup-catalog-retry"
+					@click="loadChannelState(true)"
+				>
+					{{ i18n.baseText('generic.retry') }}
+				</N8nButton>
+			</div>
+
 			<component
+				v-else
 				:is="currentPlatform.setupComponent"
 				ref="channelViewRef"
 				v-model="selectedCredentials[integrationType]"
@@ -248,7 +307,7 @@ watch(
 				:error-message="errorMessage"
 				:error-is-conflict="errorIsConflict[integrationType]"
 				:saved-settings="integrationSettings[integrationType]"
-				:is-published="false"
+				:is-published="Boolean(agent?.activeVersionId)"
 				:agent-name="agent?.name ?? agentId"
 				:project-id="projectId"
 				:agent-id="agentId"
@@ -306,8 +365,11 @@ watch(
 	padding: 0 var(--spacing--sm);
 }
 
-.setupSkeleton {
-	padding-block: var(--spacing--xs);
+.catalogError {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--sm);
 }
 
 .footer {
