@@ -17,8 +17,11 @@ const MACBOOK_WINDOW_SIZE = { width: 1536, height: 960 };
 
 // Sticky across processes: workers re-import this config, and Date.now()
 // would give each of them a different path than the one the webServer got.
+// Only workers honor the inherited value; the main process always mints a
+// fresh folder so a stale shell-exported variable can't leak in.
 const USER_FOLDER =
-	process.env.N8N_TEST_USER_FOLDER ?? path.join(os.tmpdir(), `n8n-main-${Date.now()}`);
+	(process.env.TEST_WORKER_INDEX !== undefined ? process.env.N8N_TEST_USER_FOLDER : undefined) ??
+	path.join(os.tmpdir(), `n8n-main-${Date.now()}`);
 
 // Helper to get environment variables from N8N_TEST_ENV
 const getTestEnv = () => {
@@ -57,7 +60,10 @@ const SKIP_WEB_SERVER = process.env.PLAYWRIGHT_SKIP_WEBSERVER === 'true';
 if (BACKEND_URL && !SKIP_WEB_SERVER) {
 	// Expose the user folder to specs (the dev-server smoke asserts the sqlite
 	// DB is created inside it). Only set when this run manages the webServer.
-	process.env.N8N_TEST_USER_FOLDER = USER_FOLDER;
+	// N8N_TEST_ENV may override N8N_USER_FOLDER (spread below wins), so export
+	// the folder the backend will actually use.
+	const envUserFolder: unknown = getTestEnv().N8N_USER_FOLDER;
+	process.env.N8N_TEST_USER_FOLDER = typeof envUserFolder === 'string' ? envUserFolder : USER_FOLDER;
 	webServer.push({
 		command: 'cd .. && pnpm start',
 		url: `${BACKEND_URL}/favicon.ico`,
