@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import type { Logger } from '@n8n/backend-common';
 import type { Project, WorkflowEntity } from '@n8n/db';
+import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { sleep } from '@n8n/utils/sleep';
 import type { ErrorReporter, IGetExecutePollFunctions, StorageConfig } from 'n8n-core';
@@ -61,6 +62,8 @@ describe('TriggerExecutionContextFactory', () => {
 	const nodeTypes = createNodeTypes();
 
 	let factory: TriggerExecutionContextFactory;
+	let logger: Logger;
+	let errorReporter: ErrorReporter;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -72,12 +75,13 @@ describe('TriggerExecutionContextFactory', () => {
 		);
 
 		scheduleTriggerJobRegistrar.interceptsNode.mockReturnValue(false);
-		const scopedLogger = mock<Logger>();
-		const rootLogger = mock<Logger>({ scoped: vi.fn().mockReturnValue(scopedLogger) });
+		logger = mock<Logger>();
+		const rootLogger = mock<Logger>({ scoped: vi.fn().mockReturnValue(logger) });
+		errorReporter = mock<ErrorReporter>();
 
 		factory = new TriggerExecutionContextFactory(
 			rootLogger,
-			mock<ErrorReporter>(),
+			errorReporter,
 			activeExecutions,
 			eventService,
 			executionService,
@@ -254,6 +258,171 @@ describe('TriggerExecutionContextFactory', () => {
 				context.emit([[]], undefined, donePromise, 'wf-1:node-1:1700000000000');
 
 				await expect(donePromise.promise).resolves.toBeUndefined();
+			});
+
+			describe('when the execution fails', () => {
+				// A trigger fires on a timer, so nothing is awaiting `emit`. Any promise
+				// it derives without a terminal handler surfaces as an unhandled
+				// rejection, which fails the whole vitest run even though every
+				// assertion passed. See DEVP-687.
+				const unhandled: unknown[] = [];
+				const captureUnhandled = (reason: unknown) => unhandled.push(reason);
+
+				beforeEach(() => {
+					unhandled.length = 0;
+					process.on('unhandledRejection', captureUnhandled);
+				});
+
+				afterEach(() => {
+					process.off('unhandledRejection', captureUnhandled);
+				});
+
+				/** Let Node reach the checkpoint where it reports unhandled rejections. */
+				const flush = async () => {
+					await sleep(0);
+					await new Promise((resolve) => setImmediate(resolve));
+				};
+
+				const emitWith = (donePromise?: IDeferredPromise<IRun>) => {
+					const workflowData = mock<WorkflowEntity>({ id: 'wf-1', name: 'Test Workflow' });
+					const additionalData = mock<IWorkflowExecuteAdditionalData>();
+					const mode: WorkflowExecuteMode = 'trigger';
+					const activation: WorkflowActivateMode = 'activate';
+					const workflow = mock<Workflow>({ name: 'Test Workflow' });
+					const node = mock<INode>({ name: 'Trigger Node', id: 'node-1' });
+
+					const getTriggerFunctions = factory.getExecuteTriggerFunctions(
+						workflowData,
+						additionalData,
+						mode,
+						activation,
+						async () => workflowData,
+						vi.fn(),
+						scheduleCollectionSession,
+					);
+					const context = getTriggerFunctions(workflow, node, additionalData, mode, activation);
+
+					context.emit([[]], undefined, donePromise);
+				};
+
+				test('logs the error and does not emit workflow-executed', async () => {
+					workflowExecutionService.runWorkflow.mockRejectedValueOnce(new UnexpectedError('boom'));
+
+					emitWith();
+					await flush();
+
+					expect(unhandled).toEqual([]);
+					expect(logger.error).toHaveBeenCalledWith('boom', expect.objectContaining({}));
+					expect(eventService.emit).not.toHaveBeenCalled();
+				});
+
+				test('rejects donePromise instead of leaving it pending', async () => {
+					workflowExecutionService.runWorkflow.mockRejectedValueOnce(new UnexpectedError('boom'));
+					const donePromise = createDeferredPromise<IRun>();
+
+					emitWith(donePromise);
+
+					await expect(donePromise.promise).rejects.toThrow('boom');
+					await flush();
+					expect(unhandled).toEqual([]);
+				});
+
+				test('rejects donePromise when the workflow data cannot be resolved', async () => {
+					const workflowData = mock<WorkflowEntity>({ id: 'wf-1', name: 'Test Workflow' });
+					const donePromise = createDeferredPromise<IRun>();
+
+					const getTriggerFunctions = factory.getExecuteTriggerFunctions(
+						workflowData,
+						mock<IWorkflowExecuteAdditionalData>(),
+						'trigger',
+						'activate',
+						async () => {
+							throw new UnexpectedError('Published version not found for workflow');
+						},
+						vi.fn(),
+						scheduleCollectionSession,
+					);
+					const context = getTriggerFunctions(
+						mock<Workflow>({ name: 'Test Workflow' }),
+						mock<INode>({ name: 'Trigger Node' }),
+						mock<IWorkflowExecuteAdditionalData>(),
+						'trigger',
+						'activate',
+					);
+
+					context.emit([[]], undefined, donePromise);
+
+					await expect(donePromise.promise).rejects.toThrow('Published version not found');
+					await flush();
+					expect(unhandled).toEqual([]);
+					expect(workflowExecutionService.runWorkflow).not.toHaveBeenCalled();
+				});
+
+				test('rejects donePromise with an Error when the failure is not one', async () => {
+					workflowExecutionService.runWorkflow.mockRejectedValueOnce('just a string');
+					const donePromise = createDeferredPromise<IRun>();
+
+					emitWith(donePromise);
+
+					await expect(donePromise.promise).rejects.toBeInstanceOf(Error);
+					await flush();
+					expect(unhandled).toEqual([]);
+				});
+
+				test('rejects donePromise when the post-execute promise fails', async () => {
+					activeExecutions.getPostExecutePromise.mockRejectedValueOnce(
+						new UnexpectedError('execution gone'),
+					);
+					const donePromise = createDeferredPromise<IRun>();
+
+					emitWith(donePromise);
+
+					await expect(donePromise.promise).rejects.toThrow('execution gone');
+					await flush();
+					expect(unhandled).toEqual([]);
+				});
+
+				test('does not report an unhandled rejection on the happy path', async () => {
+					activeExecutions.getPostExecutePromise.mockResolvedValue(mock<IRun>());
+					const donePromise = createDeferredPromise<IRun>();
+
+					emitWith(donePromise);
+					await flush();
+
+					expect(unhandled).toEqual([]);
+					expect(eventService.emit).toHaveBeenCalledTimes(1);
+				});
+
+				test('logs when the failed execution cannot be recorded', async () => {
+					vi.spyOn(factory, 'executeErrorWorkflow').mockImplementation(() => {});
+					executionService.createErrorExecution.mockRejectedValueOnce(
+						new UnexpectedError('db down'),
+					);
+
+					const workflowData = mock<WorkflowEntity>({ id: 'wf-1', name: 'Test Workflow' });
+					const getTriggerFunctions = factory.getExecuteTriggerFunctions(
+						workflowData,
+						mock<IWorkflowExecuteAdditionalData>(),
+						'trigger',
+						'activate',
+						async () => workflowData,
+						vi.fn(),
+						scheduleCollectionSession,
+					);
+					const context = getTriggerFunctions(
+						mock<Workflow>({ name: 'Test Workflow' }),
+						mock<INode>({ name: 'Trigger Node' }),
+						mock<IWorkflowExecuteAdditionalData>(),
+						'trigger',
+						'activate',
+					);
+
+					context.saveFailedExecution(mock<ExecutionError>());
+					await flush();
+
+					expect(unhandled).toEqual([]);
+					expect(errorReporter.error).toHaveBeenCalled();
+				});
 			});
 		});
 
@@ -454,6 +623,98 @@ describe('TriggerExecutionContextFactory', () => {
 
 				expect(activeExecutions.getPostExecutePromise).toHaveBeenCalledWith('exec-123');
 				await expect(donePromise.promise).resolves.toBe(runResult);
+			});
+
+			describe('when the execution fails', () => {
+				// See the equivalent block for `emit` — a poll fires on a timer too.
+				const unhandled: unknown[] = [];
+				const captureUnhandled = (reason: unknown) => unhandled.push(reason);
+
+				beforeEach(() => {
+					unhandled.length = 0;
+					process.on('unhandledRejection', captureUnhandled);
+				});
+
+				afterEach(() => {
+					process.off('unhandledRejection', captureUnhandled);
+				});
+
+				const flush = async () => {
+					await sleep(0);
+					await new Promise((resolve) => setImmediate(resolve));
+				};
+
+				const pollEmitWith = (donePromise?: IDeferredPromise<IRun>) => {
+					const workflowData = mock<WorkflowEntity>({ id: 'wf-1', name: 'Test Workflow' });
+					const additionalData = mock<IWorkflowExecuteAdditionalData>();
+
+					const getPollFunctions = factory.getExecutePollFunctions(
+						workflowData,
+						additionalData,
+						'trigger',
+						'activate',
+						async () => workflowData,
+					);
+					const context = getPollFunctions(
+						mock<Workflow>({ id: 'wf-1', name: 'Test Workflow' }),
+						mock<INode>({ name: 'Poll Node' }),
+						additionalData,
+						'trigger',
+						'activate',
+					);
+
+					context.__emit([[]], undefined, donePromise);
+				};
+
+				test('logs the error without a donePromise', async () => {
+					workflowExecutionService.runWorkflow.mockRejectedValueOnce(new UnexpectedError('boom'));
+
+					pollEmitWith();
+					await flush();
+
+					expect(unhandled).toEqual([]);
+					expect(logger.error).toHaveBeenCalledWith('boom', expect.objectContaining({}));
+				});
+
+				test('rejects donePromise instead of leaving it pending', async () => {
+					workflowExecutionService.runWorkflow.mockRejectedValueOnce(new UnexpectedError('boom'));
+					const donePromise = createDeferredPromise<IRun>();
+
+					pollEmitWith(donePromise);
+
+					await expect(donePromise.promise).rejects.toThrow('boom');
+					await flush();
+					expect(unhandled).toEqual([]);
+				});
+
+				test('logs when the failed execution cannot be recorded', async () => {
+					vi.spyOn(factory, 'executeErrorWorkflow').mockImplementation(() => {});
+					executionService.createErrorExecution.mockRejectedValueOnce(
+						new UnexpectedError('db down'),
+					);
+
+					const workflowData = mock<WorkflowEntity>({ id: 'wf-1', name: 'Test Workflow' });
+					const getPollFunctions = factory.getExecutePollFunctions(
+						workflowData,
+						mock<IWorkflowExecuteAdditionalData>(),
+						'trigger',
+						'activate',
+						async () => workflowData,
+					);
+					const context = getPollFunctions(
+						mock<Workflow>({ id: 'wf-1', name: 'Test Workflow' }),
+						mock<INode>({ name: 'Poll Node' }),
+						mock<IWorkflowExecuteAdditionalData>(),
+						'trigger',
+						'activate',
+					);
+
+					context.__emitError(mock<ExecutionError>());
+					await flush();
+
+					expect(unhandled).toEqual([]);
+					expect(errorReporter.error).toHaveBeenCalled();
+				});
 			});
 		});
 
