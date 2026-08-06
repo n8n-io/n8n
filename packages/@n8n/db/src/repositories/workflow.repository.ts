@@ -15,6 +15,11 @@ import { PROJECT_ROOT, UserError } from 'n8n-workflow';
 
 import { FolderRepository } from './folder.repository';
 import { SharedWorkflowRepository } from './shared-workflow.repository';
+import type {
+	AgentToolWorkflowReference,
+	PublishedWorkflowDataForExecution,
+	WorkflowVersionFingerprint,
+} from './workflow-execution-data';
 import { WorkflowHistoryRepository } from './workflow-history.repository';
 import {
 	WebhookEntity,
@@ -260,6 +265,83 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			where: { ...workflowWhere, shared: { projectId } },
 			relations: ['shared'],
 		});
+	}
+
+	async findPublishedWorkflowForAgentTool(
+		projectId: string,
+		reference: AgentToolWorkflowReference,
+	): Promise<PublishedWorkflowDataForExecution | null> {
+		const query = this.createQueryBuilder('workflow')
+			.innerJoinAndSelect('workflow.activeVersion', 'publishedVersion')
+			.innerJoin('workflow.shared', 'shared')
+			.select([
+				'workflow.id',
+				'workflow.name',
+				'workflow.description',
+				'workflow.active',
+				'workflow.isArchived',
+				'workflow.createdAt',
+				'workflow.updatedAt',
+				'workflow.settings',
+				'workflow.staticData',
+				'workflow.activeVersionId',
+				'workflow.versionCounter',
+				'publishedVersion.versionId',
+				'publishedVersion.nodes',
+				'publishedVersion.connections',
+				'publishedVersion.nodeGroups',
+			])
+			.where('workflow.isArchived = :isArchived', { isArchived: false })
+			.andWhere('workflow.activeVersionId IS NOT NULL')
+			.andWhere('shared.projectId = :projectId', { projectId });
+
+		if (reference.workflowId !== undefined) {
+			query.andWhere('workflow.id = :workflowId', { workflowId: reference.workflowId });
+		} else {
+			query.andWhere('workflow.name = :workflowName', { workflowName: reference.workflowName });
+		}
+
+		const workflow = await query.getOne();
+		if (workflow?.activeVersion === null || workflow?.activeVersion === undefined) return null;
+
+		return {
+			id: workflow.id,
+			name: workflow.name,
+			description: workflow.description,
+			active: workflow.active,
+			isArchived: workflow.isArchived,
+			createdAt: workflow.createdAt,
+			updatedAt: workflow.updatedAt,
+			settings: workflow.settings,
+			staticData: workflow.staticData,
+			activeVersionId: workflow.activeVersionId,
+			versionCounter: workflow.versionCounter,
+			versionId: workflow.activeVersion.versionId,
+			nodes: workflow.activeVersion.nodes,
+			connections: workflow.activeVersion.connections,
+			nodeGroups: workflow.activeVersion.nodeGroups,
+		};
+	}
+
+	async findPublishedVersionFingerprintsForAgentTools(
+		projectId: string,
+		workflowIds: string[],
+	): Promise<WorkflowVersionFingerprint[]> {
+		if (workflowIds.length === 0) return [];
+
+		const workflows = await this.find({
+			select: { id: true, activeVersionId: true },
+			where: {
+				id: In(workflowIds),
+				isArchived: false,
+				activeVersionId: Not(IsNull()),
+				shared: { projectId },
+			},
+		});
+
+		return workflows.flatMap(({ id, activeVersionId }) =>
+			activeVersionId === null ? [] : [{ workflowId: id, versionId: activeVersionId }],
+		);
 	}
 
 	async findPreExistingWorkflows(workflowIds: string[]): Promise<WorkflowEntity[]> {

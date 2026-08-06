@@ -36,7 +36,7 @@ const workflow = {
 
 function buildContext(run: ReturnType<typeof vi.fn>, extras: Partial<WorkflowToolContext> = {}) {
 	return {
-		workflowRepository: {} as never,
+		workflowLoader: {} as never,
 		workflowRunner: { run } as unknown as WorkflowRunner,
 		activeExecutions: { has: vi.fn().mockReturnValue(false) } as unknown as ActiveExecutions,
 		projectId: 'p1',
@@ -182,25 +182,29 @@ describe('executeWorkflow → execution mode', () => {
 		expect(findSingleExecution).not.toHaveBeenCalled();
 	});
 
-	it('excludes stored pin data from production runs', async () => {
-		const run = vi.fn().mockResolvedValue('exec-1');
-		const workflowWithPinData = {
-			...workflow,
-			pinData: { 'Pinned Node': [{ json: { value: 'editor-only' } }] },
-		} as WorkflowEntity;
+	it.each(['test', 'production'] as const)(
+		'excludes stored pin data from %s runs',
+		async (runType) => {
+			const run = vi.fn().mockResolvedValue('exec-1');
+			const workflowWithPinData = {
+				...workflow,
+				pinData: { 'Pinned Node': [{ json: { value: 'editor-only' } }] },
+			} as WorkflowEntity;
 
-		await executeWorkflow(
-			workflowWithPinData,
-			triggerNode,
-			'executeWorkflow',
-			{ input: 'production' },
-			buildContext(run, { runType: 'production' }),
-		);
+			await executeWorkflow(
+				workflowWithPinData,
+				triggerNode,
+				'executeWorkflow',
+				{ input: runType },
+				buildContext(run, { runType }),
+			);
 
-		const runData = run.mock.calls[0][0] as IWorkflowExecutionDataProcess;
-		expect(runData.pinData).not.toHaveProperty('Pinned Node');
-		expect(runData.pinData).toHaveProperty(triggerNode.name);
-	});
+			const runData = run.mock.calls[0][0] as IWorkflowExecutionDataProcess;
+			expect(runData.pinData).not.toHaveProperty('Pinned Node');
+			expect(runData.pinData).toHaveProperty(triggerNode.name);
+			expect(runData.workflowData.pinData).toBeUndefined();
+		},
+	);
 });
 
 describe('executeWorkflow → eval instrumentation', () => {

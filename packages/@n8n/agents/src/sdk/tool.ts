@@ -5,7 +5,7 @@ import type { BuiltTool, InterruptibleToolContext, ToolContext } from '../types'
 import { AgentEvent } from '../types/runtime/event';
 import type { AgentMessage } from '../types/sdk/message';
 import type { ToolDescriptor } from '../types/sdk/tool-descriptor';
-import type { JSONObject } from '../types/utils/json';
+import type { JSONObject, JSONValue } from '../types/utils/json';
 import { isZodSchema, zodToJsonSchema } from '../utils/zod';
 
 const APPROVAL_SUSPEND_SCHEMA = z.object({
@@ -22,12 +22,32 @@ const APPROVAL_RESUME_SCHEMA = z.object({
 const APPROVAL_GATE_CONTINUATION_SCHEMA = z
 	.object({
 		__n8nApprovalGate: z.literal(true),
+		approvalBinding: z.string().optional(),
 	})
 	.strict();
 
 const APPROVAL_GATE_CONTINUATION = {
 	__n8nApprovalGate: true,
 } satisfies z.infer<typeof APPROVAL_GATE_CONTINUATION_SCHEMA>;
+
+const jsonValueSchema: z.ZodType<JSONValue> = z.lazy(() =>
+	z.union([
+		z.string(),
+		z.number(),
+		z.boolean(),
+		z.null(),
+		z.array(jsonValueSchema),
+		z.record(z.string(), z.union([jsonValueSchema, z.undefined()])),
+	]),
+);
+
+const APPROVAL_BOUND_INNER_CONTINUATION_SCHEMA = z
+	.object({
+		__n8nApprovalBoundInnerTool: z.literal(true),
+		approvalBinding: z.string(),
+		continuation: jsonValueSchema.optional(),
+	})
+	.strict();
 
 type ZodOrJsonSchema = z.ZodType | JSONSchema7;
 
@@ -73,6 +93,70 @@ function isApprovalGateContinuation(value: unknown): boolean {
 	return APPROVAL_GATE_CONTINUATION_SCHEMA.safeParse(value).success;
 }
 
+function approvalGateContinuation(
+	approvalBinding?: string,
+): z.infer<typeof APPROVAL_GATE_CONTINUATION_SCHEMA> {
+	return approvalBinding === undefined
+		? APPROVAL_GATE_CONTINUATION
+		: { ...APPROVAL_GATE_CONTINUATION, approvalBinding };
+}
+
+function getApprovalBinding(value: unknown): string | undefined {
+	const parsed = APPROVAL_GATE_CONTINUATION_SCHEMA.safeParse(value);
+	return parsed.success ? parsed.data.approvalBinding : undefined;
+}
+
+function hasApprovalBoundInnerContinuationMarker(value: unknown): boolean {
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		Object.prototype.hasOwnProperty.call(value, '__n8nApprovalBoundInnerTool')
+	);
+}
+
+function parseApprovalBoundInnerContinuation(
+	value: unknown,
+	toolName: string,
+): z.infer<typeof APPROVAL_BOUND_INNER_CONTINUATION_SCHEMA> | undefined {
+	if (!hasApprovalBoundInnerContinuationMarker(value)) return undefined;
+	const parsed = APPROVAL_BOUND_INNER_CONTINUATION_SCHEMA.safeParse(value);
+	if (!parsed.success) {
+		throw new Error(`Tool "${toolName}" approval is no longer valid`);
+	}
+	return parsed.data;
+}
+
+function approvalBoundInnerContinuation(
+	approvalBinding: string,
+	continuation?: JSONValue,
+): z.infer<typeof APPROVAL_BOUND_INNER_CONTINUATION_SCHEMA> {
+	return {
+		__n8nApprovalBoundInnerTool: true,
+		approvalBinding,
+		...(continuation === undefined ? {} : { continuation }),
+	};
+}
+
+function bindInnerToolContext(
+	ctx: InterruptibleToolContext,
+	approvalBinding: string | undefined,
+	defaultResumeSchema: BuiltTool['resumeSchema'],
+): InterruptibleToolContext {
+	return {
+		...ctx,
+		...(approvalBinding === undefined ? {} : { approvalBinding }),
+		suspend: async (payload, options) =>
+			await ctx.suspend(payload, {
+				...options,
+				continuation:
+					approvalBinding === undefined
+						? options?.continuation
+						: approvalBoundInnerContinuation(approvalBinding, options?.continuation),
+				resumeSchema: options?.resumeSchema ?? defaultResumeSchema,
+			}),
+	};
+}
+
 /**
  * Wrap a BuiltTool with an approval gate that suspends before execution and
  * waits for human confirmation. Used by Tool.build() (when .requireApproval()
@@ -80,7 +164,7 @@ function isApprovalGateContinuation(value: unknown): boolean {
  *
  * The wrapped tool has suspendSchema/resumeSchema set, making it an
  * interruptible tool that uses the existing suspend/resume mechanism.
- * No validation is done here — all schema validation happens in the runtime.
+ * A tool-specific preparation hook may validate dynamic input before suspension.
  */
 
 export function wrapToolForApproval(tool: BuiltTool, config: ApprovalConfig): BuiltTool {
@@ -92,7 +176,20 @@ export function wrapToolForApproval(tool: BuiltTool, config: ApprovalConfig): Bu
 			? undefined
 			: async (input, ctx) => {
 					if (isApprovalGateContinuation(ctx.continuation)) return;
-					await originalOnCancellation(input, ctx);
+					const boundInnerContinuation = parseApprovalBoundInnerContinuation(
+						ctx.continuation,
+						tool.name,
+					);
+					await originalOnCancellation(
+						input,
+						boundInnerContinuation === undefined
+							? ctx
+							: {
+									...ctx,
+									approvalBinding: boundInnerContinuation.approvalBinding,
+									continuation: boundInnerContinuation.continuation,
+								},
+					);
 				};
 
 	return {
@@ -106,15 +203,42 @@ export function wrapToolForApproval(tool: BuiltTool, config: ApprovalConfig): Bu
 		resumeSchema: combineInterruptSchemas(APPROVAL_RESUME_SCHEMA, tool.resumeSchema),
 		async handler(this: BuiltTool | undefined, input, ctx) {
 			const currentTool = this ?? tool;
+			const prepareApproval = currentTool.prepareApproval;
 			// This handler is always called with InterruptibleToolContext because
 			// wrapToolForApproval adds suspendSchema/resumeSchema.
 			const interruptCtx = ctx as InterruptibleToolContext;
+			const boundInnerContinuation = parseApprovalBoundInnerContinuation(
+				interruptCtx.continuation,
+				currentTool.name,
+			);
 			const resumingInnerTool =
 				tool.suspendSchema !== undefined &&
 				interruptCtx.suspendPayload !== undefined &&
 				!isApprovalGateContinuation(interruptCtx.continuation);
 			if (resumingInnerTool) {
-				return await originalHandler(input, interruptCtx);
+				if (boundInnerContinuation === undefined) {
+					if (prepareApproval !== undefined && config.requireApproval === true) {
+						throw new Error(`Tool "${currentTool.name}" approval is no longer valid`);
+					}
+					return await originalHandler(input, interruptCtx);
+				}
+				if (prepareApproval === undefined) {
+					throw new Error(`Tool "${currentTool.name}" approval is no longer valid`);
+				}
+				return await originalHandler(
+					input,
+					bindInnerToolContext(
+						{
+							...interruptCtx,
+							continuation: boundInnerContinuation.continuation,
+						},
+						boundInnerContinuation.approvalBinding,
+						tool.resumeSchema,
+					),
+				);
+			}
+			if (boundInnerContinuation !== undefined) {
+				throw new Error(`Tool "${currentTool.name}" approval is no longer valid`);
 			}
 			if (interruptCtx.resumeData === undefined) {
 				let needs = config.requireApproval ?? false;
@@ -122,6 +246,7 @@ export function wrapToolForApproval(tool: BuiltTool, config: ApprovalConfig): Bu
 					needs = await config.needsApprovalFn(input);
 				}
 				if (needs) {
+					const approvalBinding = await prepareApproval?.(input);
 					const displayName = getToolApprovalDisplayName(currentTool);
 					return await interruptCtx.suspend(
 						{
@@ -132,7 +257,7 @@ export function wrapToolForApproval(tool: BuiltTool, config: ApprovalConfig): Bu
 						},
 						{
 							resumeSchema: APPROVAL_RESUME_SCHEMA,
-							continuation: APPROVAL_GATE_CONTINUATION,
+							continuation: approvalGateContinuation(approvalBinding),
 						},
 					);
 				}
@@ -146,22 +271,28 @@ export function wrapToolForApproval(tool: BuiltTool, config: ApprovalConfig): Bu
 			if (!approved) {
 				return { declined: true, message: `Tool "${currentTool.name}" was not approved` };
 			}
-			if (tool.suspendSchema === undefined) {
-				return await originalHandler(input, interruptCtx as ToolContext);
+			const approvalBinding = prepareApproval
+				? getApprovalBinding(interruptCtx.continuation)
+				: undefined;
+			if (prepareApproval && approvalBinding === undefined) {
+				throw new Error(`Tool "${currentTool.name}" approval is no longer valid`);
 			}
-			const initialInnerContext: InterruptibleToolContext = {
-				...interruptCtx,
-				suspend: async (payload, options) =>
-					await interruptCtx.suspend(payload, {
-						...options,
-						continuation: options?.continuation,
-						resumeSchema: options?.resumeSchema ?? tool.resumeSchema,
-					}),
-				resumeData: undefined,
-				suspendPayload: undefined,
-				continuation: undefined,
-				resumeSchema: undefined,
-			};
+			const approvedContext =
+				approvalBinding === undefined ? interruptCtx : { ...interruptCtx, approvalBinding };
+			if (tool.suspendSchema === undefined) {
+				return await originalHandler(input, approvedContext as ToolContext);
+			}
+			const initialInnerContext = bindInnerToolContext(
+				{
+					...approvedContext,
+					resumeData: undefined,
+					suspendPayload: undefined,
+					continuation: undefined,
+					resumeSchema: undefined,
+				},
+				approvalBinding,
+				tool.resumeSchema,
+			);
 			return await originalHandler(input, initialInnerContext);
 		},
 	};

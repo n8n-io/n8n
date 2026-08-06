@@ -72,6 +72,7 @@ import type { AgentRepository } from '../repositories/agent.repository';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { SubAgentForegroundRunner } from '../sub-agents/sub-agent-foreground-runner';
 import type { SubAgentCleanupService } from '../sub-agents/sub-agent-cleanup.service';
+import type { WorkflowToolWorkflowLoader } from '../tools/workflow-tool-workflow-loader.service';
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
@@ -138,6 +139,7 @@ function makeRuntimeReconstructionService(
 		mock<CredentialsFinderService>(),
 		mock<WorkflowFinderService>(),
 		mock<AgentChatAttachmentService>(),
+		mock<WorkflowToolWorkflowLoader>(),
 	);
 }
 
@@ -243,6 +245,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			globalConfig,
 			agentRuntimeReconstructionService,
 			credentialsService,
+			mock<WorkflowToolWorkflowLoader>(),
 		);
 		Container.set(AgentRuntimeCacheService, runtimeCacheService);
 		const modificationTelemetry = mock<AgentModificationTelemetryService>();

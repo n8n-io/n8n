@@ -1,11 +1,11 @@
-import type { BuiltTool } from '@n8n/agents';
+import type { BuiltTool, ToolContext } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
 import {
 	INCOMPATIBLE_WORKFLOW_TOOL_BODY_NODE_TYPES,
 	type AgentJsonToolConfig,
 	type SUPPORTED_WORKFLOW_TOOL_TRIGGERS,
 } from '@n8n/api-types';
-import type { WorkflowRepository, WorkflowEntity } from '@n8n/db';
+import type { WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
@@ -39,7 +39,11 @@ import type { WorkflowRunner } from '@/workflow-runner';
 
 import type { InstrumentToolAdditionalData } from '../agent-runtime-instrumentation';
 import { sanitizeToolName } from '../json-config/agent-config-composition';
-import { findWorkflowToolWorkflow } from './workflow-tool-workflow-resolver';
+import type {
+	LoadedPublishedWorkflow,
+	WorkflowToolWorkflowLoader,
+	WorkflowToolWorkflowReference,
+} from './workflow-tool-workflow-loader.service';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -83,7 +87,7 @@ function isWorkflowToolResponse(value: unknown): value is IExecuteResponsePromis
 // ---------------------------------------------------------------------------
 
 export interface WorkflowToolContext {
-	workflowRepository: WorkflowRepository;
+	workflowLoader: WorkflowToolWorkflowLoader;
 	workflowRunner: WorkflowRunner;
 	activeExecutions: ActiveExecutions;
 	projectId: string;
@@ -289,12 +293,10 @@ export async function executeWorkflow(
 }> {
 	const { workflowRunner, activeExecutions } = context;
 
-	// Build pin data for the trigger
+	// Saved pin data is an editor fixture; agent runs use only the synthesized trigger input.
 	const triggerPinData = normalizeTriggerInput(triggerNode, triggerType, inputData);
-
-	// Saved pin data is an editor fixture and must not affect published agent runs.
-	const workflowPinData = context.runType === 'test' ? (workflow.pinData ?? {}) : {};
-	const mergedPinData: IPinData = { ...workflowPinData, ...triggerPinData };
+	const workflowData =
+		workflow.pinData === undefined ? workflow : { ...workflow, pinData: undefined };
 
 	const executionMode: WorkflowExecuteMode = context.runType === 'test' ? 'manual' : 'agent';
 
@@ -302,12 +304,12 @@ export async function executeWorkflow(
 	const runData: IWorkflowExecutionDataProcess = {
 		executionMode,
 		forceFullExecutionData: true,
-		workflowData: workflow,
+		workflowData,
 		startNodes: [{ name: triggerNode.name, sourceData: null }],
-		pinData: mergedPinData,
+		pinData: triggerPinData,
 		executionData: createRunExecutionData({
 			startData: {},
-			resultData: { pinData: mergedPinData, runData: {} },
+			resultData: { pinData: triggerPinData, runData: {} },
 			executionData: {
 				contextData: {},
 				metadata: {},
@@ -603,114 +605,184 @@ async function buildWorkflowTool(
 	descriptor: Extract<AgentJsonToolConfig, { type: 'workflow' }>,
 	context: WorkflowToolContext,
 ): Promise<BuiltTool> {
-	const workflowName = descriptor.workflow;
+	const configuredWorkflowName = descriptor.workflow;
+	const initial = await context.workflowLoader.loadPublishedWorkflow(context.projectId, {
+		...(descriptor.workflowId ? { workflowId: descriptor.workflowId } : {}),
+		workflowName: configuredWorkflowName,
+	});
 
-	// Access control is project sharing: the
-	// workflow must be shared with the agent's project.
-	const candidateWorkflow = await findWorkflowToolWorkflow(
-		context.workflowRepository,
-		descriptor,
-		context.projectId,
-	);
-
-	if (!candidateWorkflow) {
-		throw new Error(`Workflow "${workflowName}" not found`);
+	if (!initial) {
+		throw new Error(
+			`Workflow "${configuredWorkflowName}" not found or unavailable as a published workflow. ` +
+				'It may be unpublished, deleted, archived, or unshared from this project.',
+		);
 	}
 
-	const workflow = candidateWorkflow;
-
-	validateCompatibility(workflow);
-	const { node: triggerNode, triggerType } = detectTriggerNode(workflow);
+	validateCompatibility(initial.workflow);
+	const { node: initialTriggerNode, triggerType: initialTriggerType } = detectTriggerNode(
+		initial.workflow,
+	);
 
 	// Always run through `toToolName` even when the user supplied `descriptor.name`.
 	// Anthropic and OpenAI both require tool names to match `^[a-zA-Z0-9_-]{1,128}$`,
 	// so a workflow display name like "D&D Invite" must be sanitized before reaching
 	// the model. Schema validation rejects invalid names on save (see
 	// `agent-json-config.ts`); this is the runtime safety net for legacy configs.
-	const toolName = toToolName(descriptor.name ?? workflowName);
-	const toolDescription = descriptor.description ?? `Execute the "${workflowName}" workflow`;
-	const inputSchema = inferInputSchema(triggerNode, triggerType);
+	const toolName = toToolName(descriptor.name ?? configuredWorkflowName);
+	const toolDescription =
+		descriptor.description ??
+		(initialTriggerType === 'form'
+			? `Send the user a link to the "${configuredWorkflowName}" form. The workflow runs automatically when they submit.`
+			: `Execute the "${configuredWorkflowName}" workflow`);
+	const inputSchema = inferInputSchema(initialTriggerNode, initialTriggerType);
 	const allOutputs = descriptor.allOutputs ?? false;
+	const stableReference: WorkflowToolWorkflowReference = {
+		workflowId: initial.workflow.id,
+		workflowName: initial.workflow.name,
+	};
 
-	// Form triggers return a link — the user fills out the form in their browser,
-	// and the workflow executes independently when they submit.
-	if (triggerType === 'form') {
-		const formPath =
-			(triggerNode.parameters?.path as string) ??
-			((triggerNode.parameters?.options as Record<string, unknown>)?.path as string) ??
-			triggerNode.webhookId ??
-			workflow.id;
-		const baseUrl = (context.webhookBaseUrl ?? 'http://localhost:5678/').replace(/\/$/, '');
-		const formUrl = `${baseUrl}/form/${formPath}`;
-
-		const builder = new Tool(toolName)
-			.description(
-				toolDescription === `Execute the "${workflowName}" workflow`
-					? `Send the user a link to the "${workflowName}" form. The workflow runs automatically when they submit.`
-					: toolDescription,
-			)
-			.input(inputSchema)
-			.toMessage(
-				() =>
-					({
-						type: 'custom',
-						components: [
-							{ type: 'section', text: `📋 *<${formUrl}|Click here to open the form>*` },
-						],
-					}) as never,
-			)
-			// eslint-disable-next-line @typescript-eslint/require-await -- Tool.handler() expects an async callback
-			.handler(async (input: Record<string, unknown>) => {
-				const reason = (input.reason as string) ?? `Please fill out the ${workflowName} form`;
-				return { status: 'form_link_sent', formUrl, message: reason };
-			});
-
-		const built = builder.build();
-		return {
-			...built,
-			metadata: {
-				kind: 'workflow',
-				workflowId: workflow.id,
-				workflowName: workflow.name,
-				triggerType,
-			},
-		};
-	}
-
-	// Standard execution-based tool for all other triggers
 	const builder = new Tool(toolName)
 		.description(toolDescription)
 		.input(inputSchema)
-		.output(
-			z.object({
-				executionId: z.string(),
-				status: z.string(),
-				data: z.record(z.unknown()).optional(),
-				error: z.string().optional(),
-			}),
-		)
-		.handler(async (input: Record<string, unknown>) => {
-			return await executeWorkflow(
-				workflow,
-				triggerNode,
-				triggerType,
-				input,
-				context,
-				allOutputs,
-				toolName,
-			);
-		});
+		.output(workflowToolResultSchema)
+		.handler(createWorkflowToolHandler(context, stableReference, allOutputs, toolName));
 
 	const built = builder.build();
 	return {
 		...built,
+		handlerValidatesInput: true,
+		prepareApproval: async (input) => {
+			const current = await loadCurrentPublishedWorkflow(context, stableReference);
+			validateCurrentWorkflowInput(current.workflow, input);
+			return current.publishedVersionId;
+		},
+		toMessage: workflowToolResultToMessage,
 		metadata: {
 			kind: 'workflow',
-			workflowId: workflow.id,
-			workflowName: workflow.name,
-			triggerType,
+			workflowId: initial.workflow.id,
+			workflowVersionId: initial.publishedVersionId,
+			workflowName: initial.workflow.name,
+			triggerType: initialTriggerType,
 		},
 	};
+}
+
+const workflowToolResultSchema = z.union([
+	z.object({
+		executionId: z.string(),
+		status: z.string(),
+		data: z.record(z.unknown()).optional(),
+		error: z.string().optional(),
+	}),
+	z.object({
+		status: z.literal('form_link_sent'),
+		formUrl: z.string(),
+		message: z.string(),
+	}),
+]);
+
+type WorkflowToolResult = z.infer<typeof workflowToolResultSchema>;
+
+function createWorkflowToolHandler(
+	context: WorkflowToolContext,
+	reference: WorkflowToolWorkflowReference,
+	allOutputs: boolean,
+	toolName: string,
+): (input: unknown, toolContext: ToolContext) => Promise<WorkflowToolResult> {
+	return async (input, toolContext) => {
+		const current = await loadCurrentPublishedWorkflow(context, reference);
+		if (
+			toolContext.approvalBinding !== undefined &&
+			toolContext.approvalBinding !== current.publishedVersionId
+		) {
+			throw new Error(
+				`Workflow "${reference.workflowName}" changed after approval. Request approval again before executing it.`,
+			);
+		}
+		const {
+			triggerNode: currentTriggerNode,
+			triggerType: currentTriggerType,
+			parsedInput,
+		} = validateCurrentWorkflowInput(current.workflow, input);
+
+		if (currentTriggerType === 'form') {
+			const formUrl = getFormUrl(current.workflow, currentTriggerNode, context.webhookBaseUrl);
+			const reason = parsedInput.reason;
+			return {
+				status: 'form_link_sent',
+				formUrl,
+				message:
+					typeof reason === 'string' ? reason : `Please fill out the ${current.workflow.name} form`,
+			};
+		}
+
+		return await executeWorkflow(
+			current.workflow,
+			currentTriggerNode,
+			currentTriggerType,
+			parsedInput,
+			context,
+			allOutputs,
+			toolName,
+		);
+	};
+}
+
+async function loadCurrentPublishedWorkflow(
+	context: WorkflowToolContext,
+	reference: WorkflowToolWorkflowReference,
+): Promise<LoadedPublishedWorkflow> {
+	const current = await context.workflowLoader.loadPublishedWorkflow(context.projectId, reference);
+	if (!current) {
+		throw new Error(
+			`Workflow "${reference.workflowName}" is no longer available as a published workflow. ` +
+				'It may have been unpublished, deleted, archived, or unshared from this project.',
+		);
+	}
+	return current;
+}
+
+function validateCurrentWorkflowInput(workflow: WorkflowEntity, input: unknown) {
+	validateCompatibility(workflow);
+	const { node: triggerNode, triggerType } = detectTriggerNode(workflow);
+	return {
+		triggerNode,
+		triggerType,
+		parsedInput: inferInputSchema(triggerNode, triggerType).parse(input),
+	};
+}
+
+function getFormUrl(
+	workflow: WorkflowEntity,
+	triggerNode: INode,
+	webhookBaseUrl: string | undefined,
+): string {
+	const directPath = triggerNode.parameters?.path;
+	const options: unknown = triggerNode.parameters?.options;
+	const optionPath = isRecord(options) ? options.path : undefined;
+	const formPath =
+		typeof directPath === 'string'
+			? directPath
+			: typeof optionPath === 'string'
+				? optionPath
+				: (triggerNode.webhookId ?? workflow.id);
+	const baseUrl = (webhookBaseUrl ?? 'http://localhost:5678/').replace(/\/$/, '');
+	return `${baseUrl}/form/${formPath}`;
+}
+
+function workflowToolResultToMessage(output: unknown) {
+	if (
+		!isRecord(output) ||
+		output.status !== 'form_link_sent' ||
+		typeof output.formUrl !== 'string'
+	) {
+		return undefined;
+	}
+
+	return {
+		type: 'custom',
+		components: [{ type: 'section', text: `📋 *<${output.formUrl}|Click here to open the form>*` }],
+	} as never;
 }
 
 // ---------------------------------------------------------------------------

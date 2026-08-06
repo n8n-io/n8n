@@ -94,8 +94,8 @@ export interface ResumeForChatConfig {
 	usePublishedVersion?: boolean;
 	/**
 	 * Required when the suspended turn invoked a platform-injected tool
-	 * (e.g. an integration action). Without it, `getRuntime` rebuilds the agent
-	 * with only its configured tools, and `runtime.resume` throws because the
+	 * (e.g. an integration action). Without it, runtime acquisition rebuilds
+	 * the agent with only its configured tools, and `runtime.resume` throws because the
 	 * persisted tool call references a tool the rebuilt runtime doesn't know.
 	 */
 	integrationType?: string;
@@ -330,7 +330,7 @@ export class AgentExecutionOrchestratorService {
 
 		const threadId = memoryScope.threadId;
 
-		const runtime = await this.runtimeCacheService.getRuntime({
+		const lease = await this.runtimeCacheService.acquireRuntime({
 			agentId,
 			projectId,
 			usePublishedVersion,
@@ -345,92 +345,100 @@ export class AgentExecutionOrchestratorService {
 			user: usePublishedVersion ? undefined : user,
 		});
 
-		const { agent: agentInstance, toolRegistry } = runtime;
-		let executionId: string | undefined;
-		const recorder = this.createRecorder(toolRegistry, () => executionId, {
-			projectId,
-			agentId,
-			threadId,
-		});
-		const startedAt = recorder.startedAt;
-		const runType: AgentRunTelemetryType = usePublishedVersion ? 'production' : 'test';
-
 		try {
-			// A resume request carries no `source` of its own — recover it from
-			// the suspended run being resumed so tracing stays consistent across
-			// the suspend/resume cycle. Skipped entirely when tracing is disabled,
-			// since `build()` would discard the result anyway.
-			const suspendedExecution = this.agentRunTracingService.enabled
-				? await this.agentExecutionService.findLatestSuspendedRun(threadId)
-				: undefined;
-
-			const tracing = await this.agentRunTracingService.build({
-				agentId,
+			const { runtime } = lease;
+			const { agent: agentInstance, toolRegistry } = runtime;
+			let executionId: string | undefined;
+			const recorder = this.createRecorder(toolRegistry, () => executionId, {
 				projectId,
+				agentId,
 				threadId,
-				userId: user?.id,
-				source: suspendedExecution?.source ?? 'unknown',
-				modelId: modelIdFromSnapshot(agentInstance.snapshot.model),
 			});
+			const startedAt = recorder.startedAt;
+			const runType: AgentRunTelemetryType = usePublishedVersion ? 'production' : 'test';
 
-			const resultStream = await agentInstance.resume('stream', resumeData, {
-				runId,
-				toolCallId,
-				executionCounter: createAgentExecutionCounter(this.telemetry, {
+			try {
+				// A resume request carries no `source` of its own — recover it from
+				// the suspended run being resumed so tracing stays consistent across
+				// the suspend/resume cycle. Skipped entirely when tracing is disabled,
+				// since `build()` would discard the result anyway.
+				const suspendedExecution = this.agentRunTracingService.enabled
+					? await this.agentExecutionService.findLatestSuspendedRun(threadId)
+					: undefined;
+
+				const tracing = await this.agentRunTracingService.build({
 					agentId,
+					projectId,
+					threadId,
 					userId: user?.id,
-					runType,
-				}),
-				...(tracing ? { telemetry: tracing } : {}),
-				...(abortSignal ? { abortSignal } : {}),
-			});
-			const startParams: StartExecutionParams = {
-				threadId,
-				agentId,
-				agentName: agentInstance.name,
-				projectId,
-				userMessage: null,
-				telemetry: {
-					runType,
-					configuration: runtime.telemetryConfiguration,
-				},
-			};
-			executionId = await this.tryStartExecution(
-				startParams,
-				startedAt,
-				'Failed to start resumed agent execution recording',
-			);
-			for await (const value of streamAgentChunks(resultStream.stream)) {
-				recorder.record(value);
-				yield value;
-			}
-		} catch (error) {
-			recorder.record({ type: 'error', error });
-			recorder.record({ type: 'finish', finishReason: 'error' });
-			throw error;
-		} finally {
-			// Always record resumed executions — even if they suspend again (chained HITL)
-			// or fail while streaming. Don't repeat the original user message — the
-			// pre-suspension execution already has it.
-			const messageRecord = normalizeAbortedMessageRecord(recorder.getMessageRecord(), abortSignal);
-			await this.persistRecordedExecution({
-				executionId,
-				onExecutionRecorded,
-				failureMessage: 'Failed to record resumed agent execution',
-				params: {
+					source: suspendedExecution?.source ?? 'unknown',
+					modelId: modelIdFromSnapshot(agentInstance.snapshot.model),
+				});
+
+				const resultStream = await agentInstance.resume('stream', resumeData, {
+					runId,
+					toolCallId,
+					executionCounter: createAgentExecutionCounter(this.telemetry, {
+						agentId,
+						userId: user?.id,
+						runType,
+					}),
+					...(tracing ? { telemetry: tracing } : {}),
+					...(abortSignal ? { abortSignal } : {}),
+				});
+				const startParams: StartExecutionParams = {
 					threadId,
 					agentId,
 					agentName: agentInstance.name,
 					projectId,
 					userMessage: null,
-					record: messageRecord,
-					hitlStatus: recorder.suspended ? 'suspended' : 'resumed',
 					telemetry: {
 						runType,
 						configuration: runtime.telemetryConfiguration,
 					},
-				},
-			});
+				};
+				executionId = await this.tryStartExecution(
+					startParams,
+					startedAt,
+					'Failed to start resumed agent execution recording',
+				);
+				for await (const value of streamAgentChunks(resultStream.stream)) {
+					recorder.record(value);
+					yield value;
+				}
+			} catch (error) {
+				recorder.record({ type: 'error', error });
+				recorder.record({ type: 'finish', finishReason: 'error' });
+				throw error;
+			} finally {
+				// Always record resumed executions — even if they suspend again (chained HITL)
+				// or fail while streaming. Don't repeat the original user message — the
+				// pre-suspension execution already has it.
+				const messageRecord = normalizeAbortedMessageRecord(
+					recorder.getMessageRecord(),
+					abortSignal,
+				);
+				await this.persistRecordedExecution({
+					executionId,
+					onExecutionRecorded,
+					failureMessage: 'Failed to record resumed agent execution',
+					params: {
+						threadId,
+						agentId,
+						agentName: agentInstance.name,
+						projectId,
+						userMessage: null,
+						record: messageRecord,
+						hitlStatus: recorder.suspended ? 'suspended' : 'resumed',
+						telemetry: {
+							runType,
+							configuration: runtime.telemetryConfiguration,
+						},
+					},
+				});
+			}
+		} finally {
+			lease.release();
 		}
 	}
 
@@ -452,38 +460,43 @@ export class AgentExecutionOrchestratorService {
 
 		// `user` is always set (see ExecuteForChatConfig) — this builds/reuses a
 		// runtime scoped to this specific user's tool access.
-		const runtime = await this.runtimeCacheService.getRuntime({
+		const lease = await this.runtimeCacheService.acquireRuntime({
 			agentId,
 			projectId,
 			integrationType: N8N_CHAT_INTEGRATION_TYPE,
 			user,
 		});
 
-		await this.integrationMessageContextService.setLatest(memory.threadId, memory.resourceId, {
-			integrationConnectionId: N8N_CHAT_INTEGRATION_TYPE,
-			platform: N8N_CHAT_INTEGRATION_TYPE,
-			target: { type: 'dm', userId: user.id, threadId: memory.threadId },
-			interactingUserId: user.id,
-			updatedAt: new Date().toISOString(),
-		});
+		try {
+			const { runtime } = lease;
+			await this.integrationMessageContextService.setLatest(memory.threadId, memory.resourceId, {
+				integrationConnectionId: N8N_CHAT_INTEGRATION_TYPE,
+				platform: N8N_CHAT_INTEGRATION_TYPE,
+				target: { type: 'dm', userId: user.id, threadId: memory.threadId },
+				interactingUserId: user.id,
+				updatedAt: new Date().toISOString(),
+			});
 
-		yield* this.streamChatResponse({
-			agentInstance: runtime.agent,
-			toolRegistry: runtime.toolRegistry,
-			agentId,
-			userId: user.id,
-			message,
-			attachments,
-			memory,
-			projectId: runtime.projectId,
-			source,
-			telemetry: {
-				runType: 'test',
-				configuration: runtime.telemetryConfiguration,
-			},
-			onExecutionRecorded,
-			abortSignal,
-		});
+			yield* this.streamChatResponse({
+				agentInstance: runtime.agent,
+				toolRegistry: runtime.toolRegistry,
+				agentId,
+				userId: user.id,
+				message,
+				attachments,
+				memory,
+				projectId: runtime.projectId,
+				source,
+				telemetry: {
+					runType: 'test',
+					configuration: runtime.telemetryConfiguration,
+				},
+				onExecutionRecorded,
+				abortSignal,
+			});
+		} finally {
+			lease.release();
+		}
 	}
 
 	/**
@@ -501,27 +514,32 @@ export class AgentExecutionOrchestratorService {
 		// project-scoped runtime — every caller of this published agent through
 		// this integration reuses the same cache entry regardless of who
 		// triggered the platform event.
-		const runtime = await this.runtimeCacheService.getRuntime({
+		const lease = await this.runtimeCacheService.acquireRuntime({
 			agentId,
 			projectId,
 			integrationType,
 			usePublishedVersion: true,
 		});
 
-		yield* this.streamChatResponse({
-			agentInstance: runtime.agent,
-			toolRegistry: runtime.toolRegistry,
-			agentId,
-			message,
-			attachments,
-			memory,
-			projectId: runtime.projectId,
-			source: integrationType,
-			telemetry: {
-				runType: 'production',
-				configuration: runtime.telemetryConfiguration,
-			},
-		});
+		try {
+			const { runtime } = lease;
+			yield* this.streamChatResponse({
+				agentInstance: runtime.agent,
+				toolRegistry: runtime.toolRegistry,
+				agentId,
+				message,
+				attachments,
+				memory,
+				projectId: runtime.projectId,
+				source: integrationType,
+				telemetry: {
+					runType: 'production',
+					configuration: runtime.telemetryConfiguration,
+				},
+			});
+		} finally {
+			lease.release();
+		}
 	}
 
 	/**
@@ -536,28 +554,33 @@ export class AgentExecutionOrchestratorService {
 
 		// No `user` (see ExecuteForTaskPublishedConfig): cron-fired, no human to
 		// attach — same shared, project-scoped runtime for every tick.
-		const runtime = await this.runtimeCacheService.getRuntime({
+		const lease = await this.runtimeCacheService.acquireRuntime({
 			agentId,
 			projectId,
 			integrationType: 'task',
 			usePublishedVersion: true,
 		});
 
-		yield* this.streamChatResponse({
-			agentInstance: runtime.agent,
-			toolRegistry: runtime.toolRegistry,
-			agentId,
-			message,
-			memory,
-			projectId: runtime.projectId,
-			source: 'task',
-			taskId,
-			taskVersionId,
-			telemetry: {
-				runType: 'production',
-				configuration: runtime.telemetryConfiguration,
-			},
-		});
+		try {
+			const { runtime } = lease;
+			yield* this.streamChatResponse({
+				agentInstance: runtime.agent,
+				toolRegistry: runtime.toolRegistry,
+				agentId,
+				message,
+				memory,
+				projectId: runtime.projectId,
+				source: 'task',
+				taskId,
+				taskVersionId,
+				telemetry: {
+					runType: 'production',
+					configuration: runtime.telemetryConfiguration,
+				},
+			});
+		} finally {
+			lease.release();
+		}
 	}
 
 	/**
@@ -570,27 +593,32 @@ export class AgentExecutionOrchestratorService {
 		// `user` is always set (see ExecuteForTaskNowConfig) — manual "Run now"
 		// runs get a runtime scoped to the requesting user's tool access, same
 		// as the in-app test chat.
-		const runtime = await this.runtimeCacheService.getRuntime({
+		const lease = await this.runtimeCacheService.acquireRuntime({
 			agentId,
 			projectId,
 			user,
 		});
 
-		yield* this.streamChatResponse({
-			agentInstance: runtime.agent,
-			toolRegistry: runtime.toolRegistry,
-			agentId,
-			userId: user.id,
-			message,
-			memory,
-			projectId: runtime.projectId,
-			source: 'task',
-			taskId,
-			telemetry: {
-				runType: 'test',
-				configuration: runtime.telemetryConfiguration,
-			},
-		});
+		try {
+			const { runtime } = lease;
+			yield* this.streamChatResponse({
+				agentInstance: runtime.agent,
+				toolRegistry: runtime.toolRegistry,
+				agentId,
+				userId: user.id,
+				message,
+				memory,
+				projectId: runtime.projectId,
+				source: 'task',
+				taskId,
+				telemetry: {
+					runType: 'test',
+					configuration: runtime.telemetryConfiguration,
+				},
+			});
+		} finally {
+			lease.release();
+		}
 	}
 
 	/**

@@ -35,6 +35,7 @@ import type { AgentFileRepository } from '../repositories/agent-file.repository'
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { SubAgentForegroundRunner } from '../sub-agents/sub-agent-foreground-runner';
+import type { WorkflowToolWorkflowLoader } from '../tools/workflow-tool-workflow-loader.service';
 
 vi.mock('@/permissions.ee/check-access', () => ({
 	userHasScopes: vi.fn(),
@@ -119,6 +120,7 @@ function makeService(overrides: {
 	credentialsFinderService?: ReturnType<typeof mock<CredentialsFinderService>>;
 	workflowFinderService?: ReturnType<typeof mock<WorkflowFinderService>>;
 	workflowRepository?: ReturnType<typeof mock<WorkflowRepository>>;
+	workflowLoader?: ReturnType<typeof mock<WorkflowToolWorkflowLoader>>;
 }) {
 	const secureRuntime = mock<AgentSecureRuntime>();
 	secureRuntime.createToolExecutor.mockReturnValue(mock<ToolExecutor>());
@@ -131,6 +133,7 @@ function makeService(overrides: {
 		overrides.credentialsFinderService ?? mock<CredentialsFinderService>();
 	const workflowFinderService = overrides.workflowFinderService ?? mock<WorkflowFinderService>();
 	const workflowRepository = overrides.workflowRepository ?? mock<WorkflowRepository>();
+	const workflowLoader = overrides.workflowLoader ?? mock<WorkflowToolWorkflowLoader>();
 
 	const service = new AgentRuntimeReconstructionService(
 		mock<Logger>(),
@@ -153,9 +156,16 @@ function makeService(overrides: {
 		credentialsFinderService,
 		workflowFinderService,
 		mock<AgentChatAttachmentService>(),
+		workflowLoader,
 	);
 
-	return { service, credentialsFinderService, workflowFinderService, workflowRepository };
+	return {
+		service,
+		credentialsFinderService,
+		workflowFinderService,
+		workflowRepository,
+		workflowLoader,
+	};
 }
 
 function toolNamesPassedToBuildFromJson(): string[] {
@@ -200,7 +210,7 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 	it.each(['test', 'production'] as const)(
 		'passes the %s run type to workflow tool resolution',
 		async (runType) => {
-			const { service } = makeService({});
+			const { service, workflowLoader } = makeService({});
 			const entity = makeAgentEntity([workflowTool]);
 
 			await service.reconstructFromAgentEntity(entity, mock<CredentialProvider>(), runType);
@@ -208,7 +218,7 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 
 			expect(resolveWorkflowToolMock).toHaveBeenCalledWith(
 				workflowTool,
-				expect.objectContaining({ projectId, runType }),
+				expect.objectContaining({ projectId, runType, workflowLoader }),
 			);
 		},
 	);

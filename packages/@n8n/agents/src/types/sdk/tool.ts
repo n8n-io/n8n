@@ -67,6 +67,8 @@ export interface ToolContext {
 	abortSignal?: ToolExecutionContext['abortSignal'];
 	/** Aggregate execution counter for usage telemetry inherited from the current agent run. */
 	executionCounter?: ToolExecutionContext['executionCounter'];
+	/** Opaque state prepared immediately before this tool's approval request. */
+	approvalBinding?: string;
 }
 
 export interface InterruptibleToolContext<S = unknown, R = unknown> {
@@ -96,6 +98,8 @@ export interface InterruptibleToolContext<S = unknown, R = unknown> {
 	abortSignal?: ToolExecutionContext['abortSignal'];
 	/** Aggregate execution counter for usage telemetry inherited from the current agent run. */
 	executionCounter?: ToolExecutionContext['executionCounter'];
+	/** Opaque state prepared immediately before this tool's approval request. */
+	approvalBinding?: string;
 	/** The payload this tool passed to `suspend()` when it suspended, restored from the checkpoint. Only set when the tool is being resumed. */
 	suspendPayload?: S;
 	/** Private continuation this tool passed to `suspend()`, restored from the checkpoint. */
@@ -132,6 +136,8 @@ export interface BuiltTool {
 		readonly required: boolean;
 		readonly conditional?: boolean;
 	};
+	/** Validate approval-time input and bind the approved action to current external state. */
+	readonly prepareApproval?: (input: unknown) => Promise<string> | string;
 	/** When `true`, the handler is called on cancellation with `ctx.cancellation` set instead of being bypassed. */
 	readonly handleCancellation?: boolean;
 	/** Run cleanup before the runtime auto-cancels a suspended tool call. */
@@ -146,6 +152,11 @@ export interface BuiltTool {
 		input: unknown,
 		ctx: ToolContext | InterruptibleToolContext,
 	) => Promise<unknown>;
+	/**
+	 * Pass raw JSON input to the handler instead of parsing it against `inputSchema` at runtime.
+	 * The schema remains provider-facing; the handler must validate input before any side effect.
+	 */
+	readonly handlerValidatesInput?: boolean;
 	/**
 	 * Input schema — either a Zod schema (SDK-defined tools) or a raw JSON Schema object
 	 * (MCP tools). Use `isZodSchema()` to distinguish between the two at runtime.

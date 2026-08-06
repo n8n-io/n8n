@@ -96,6 +96,7 @@ function makeRuntime(chunks: StreamChunk[] = [{ type: 'finish', finishReason: 's
 		projectId,
 		agentId,
 		telemetryConfiguration: telemetryContext.configuration,
+		workflowVersionFingerprint: new Map(),
 	};
 }
 
@@ -133,6 +134,15 @@ function makeService() {
 		agentRunTracingService,
 		externalHooks,
 	};
+}
+
+function mockRuntimeAcquisition(
+	runtimeCacheService: ReturnType<typeof makeService>['runtimeCacheService'],
+	runtime: ReturnType<typeof makeRuntime>,
+) {
+	const release = vi.fn();
+	runtimeCacheService.acquireRuntime.mockResolvedValue({ runtime, release });
+	return release;
 }
 
 async function collect(generator: AsyncGenerator<StreamChunk>) {
@@ -326,7 +336,7 @@ describe('AgentExecutionOrchestratorService', () => {
 			externalHooks,
 		} = makeService();
 		const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
-		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
+		const release = mockRuntimeAcquisition(runtimeCacheService, runtime);
 
 		await collect(
 			service.executeForChat({
@@ -339,7 +349,7 @@ describe('AgentExecutionOrchestratorService', () => {
 			}),
 		);
 
-		expect(runtimeCacheService.getRuntime).toHaveBeenCalledWith({
+		expect(runtimeCacheService.acquireRuntime).toHaveBeenCalledWith({
 			agentId,
 			projectId,
 			integrationType: N8N_CHAT_INTEGRATION_TYPE,
@@ -384,6 +394,31 @@ describe('AgentExecutionOrchestratorService', () => {
 				modelId: 'anthropic/claude-sonnet-4-5',
 			}),
 		);
+		expect(release).toHaveBeenCalledTimes(1);
+	});
+
+	it('releases the runtime lease when a chat stream consumer stops early', async () => {
+		const { service, runtimeCacheService } = makeService();
+		const runtime = makeRuntime([
+			{ type: 'text-delta', id: 'text-1', delta: 'partial answer' },
+			{ type: 'finish', finishReason: 'stop' },
+		]);
+		const release = vi.fn();
+		runtimeCacheService.acquireRuntime.mockResolvedValue({ runtime, release });
+
+		const stream = service.executeForChat({
+			agentId,
+			projectId,
+			message: 'hello',
+			user,
+			memory: { threadId: 'thread-1', resourceId: 'resource-1' },
+		});
+
+		await stream.next();
+		expect(release).not.toHaveBeenCalled();
+
+		await stream.return(undefined);
+		expect(release).toHaveBeenCalledTimes(1);
 	});
 
 	it('executes published integration chat with integration-scoped runtime', async () => {
@@ -395,7 +430,7 @@ describe('AgentExecutionOrchestratorService', () => {
 			externalHooks,
 		} = makeService();
 		const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
-		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
+		const release = mockRuntimeAcquisition(runtimeCacheService, runtime);
 
 		await collect(
 			service.executeForChatPublished({
@@ -407,7 +442,7 @@ describe('AgentExecutionOrchestratorService', () => {
 			}),
 		);
 
-		expect(runtimeCacheService.getRuntime).toHaveBeenCalledWith({
+		expect(runtimeCacheService.acquireRuntime).toHaveBeenCalledWith({
 			agentId,
 			projectId,
 			integrationType: 'slack',
@@ -416,7 +451,7 @@ describe('AgentExecutionOrchestratorService', () => {
 		expect(externalHooks.run).toHaveBeenCalledWith('agent.preExecute', [agentId]);
 		expect(externalHooks.run).toHaveBeenCalledTimes(1);
 		expect(externalHooks.run.mock.invocationCallOrder[0] ?? 0).toBeLessThan(
-			runtimeCacheService.getRuntime.mock.invocationCallOrder[0] ?? 0,
+			runtimeCacheService.acquireRuntime.mock.invocationCallOrder[0] ?? 0,
 		);
 		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
 			'execution-1',
@@ -431,6 +466,7 @@ describe('AgentExecutionOrchestratorService', () => {
 		expect(agentRunTracingService.build).toHaveBeenCalledWith(
 			expect.objectContaining({ source: 'slack' }),
 		);
+		expect(release).toHaveBeenCalledTimes(1);
 	});
 
 	it('executes published scheduled tasks with task-scoped runtime and metadata', async () => {
@@ -442,7 +478,7 @@ describe('AgentExecutionOrchestratorService', () => {
 			externalHooks,
 		} = makeService();
 		const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
-		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
+		const release = mockRuntimeAcquisition(runtimeCacheService, runtime);
 
 		await collect(
 			service.executeForTaskPublished({
@@ -455,7 +491,7 @@ describe('AgentExecutionOrchestratorService', () => {
 			}),
 		);
 
-		expect(runtimeCacheService.getRuntime).toHaveBeenCalledWith({
+		expect(runtimeCacheService.acquireRuntime).toHaveBeenCalledWith({
 			agentId,
 			projectId,
 			integrationType: 'task',
@@ -464,7 +500,7 @@ describe('AgentExecutionOrchestratorService', () => {
 		expect(externalHooks.run).toHaveBeenCalledWith('agent.preExecute', [agentId]);
 		expect(externalHooks.run).toHaveBeenCalledTimes(1);
 		expect(externalHooks.run.mock.invocationCallOrder[0] ?? 0).toBeLessThan(
-			runtimeCacheService.getRuntime.mock.invocationCallOrder[0] ?? 0,
+			runtimeCacheService.acquireRuntime.mock.invocationCallOrder[0] ?? 0,
 		);
 		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
 			'execution-1',
@@ -481,6 +517,7 @@ describe('AgentExecutionOrchestratorService', () => {
 		expect(agentRunTracingService.build).toHaveBeenCalledWith(
 			expect.objectContaining({ source: 'task' }),
 		);
+		expect(release).toHaveBeenCalledTimes(1);
 	});
 
 	it('does not execute a published scheduled task when the agent quota hook rejects it', async () => {
@@ -501,13 +538,13 @@ describe('AgentExecutionOrchestratorService', () => {
 			),
 		).rejects.toBe(quotaError);
 
-		expect(runtimeCacheService.getRuntime).not.toHaveBeenCalled();
+		expect(runtimeCacheService.acquireRuntime).not.toHaveBeenCalled();
 	});
 
 	it('does not run the quota hook for manually started scheduled tasks', async () => {
 		const { service, runtimeCacheService, externalHooks } = makeService();
 		const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
-		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
+		const release = mockRuntimeAcquisition(runtimeCacheService, runtime);
 
 		await collect(
 			service.executeForTaskNow({
@@ -521,6 +558,7 @@ describe('AgentExecutionOrchestratorService', () => {
 		);
 
 		expect(externalHooks.run).not.toHaveBeenCalled();
+		expect(release).toHaveBeenCalledTimes(1);
 	});
 
 	it('adds the max-iterations assistant text before the finish chunk and persists it', async () => {
@@ -686,7 +724,7 @@ describe('AgentExecutionOrchestratorService', () => {
 			status: 'active',
 			checkpoint: { persistence: { threadId: 'thread-1', resourceId: 'platform-user-1' } },
 		} as never);
-		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
+		const release = mockRuntimeAcquisition(runtimeCacheService, runtime);
 
 		const abortController = new AbortController();
 		await collect(
@@ -725,6 +763,7 @@ describe('AgentExecutionOrchestratorService', () => {
 				},
 			}),
 		);
+		expect(release).toHaveBeenCalledTimes(1);
 	});
 
 	it('persists an aborted resumed stream as cancelled without discarding partial output', async () => {
@@ -740,7 +779,7 @@ describe('AgentExecutionOrchestratorService', () => {
 			status: 'active',
 			checkpoint: { persistence: { threadId: 'thread-1', resourceId: 'resource-1' } },
 		} as never);
-		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
+		const release = mockRuntimeAcquisition(runtimeCacheService, runtime);
 		const stream = service.resumeForChat({
 			agentId,
 			projectId,
@@ -769,6 +808,7 @@ describe('AgentExecutionOrchestratorService', () => {
 				}),
 			}),
 		);
+		expect(release).toHaveBeenCalledTimes(1);
 	});
 
 	it('atomically cancels only suspended checkpoints owned by the preview user', async () => {
@@ -831,7 +871,7 @@ describe('AgentExecutionOrchestratorService', () => {
 				}),
 			),
 		).rejects.toThrow('Delegated actions must be resumed through their parent agent');
-		expect(runtimeCacheService.getRuntime).not.toHaveBeenCalled();
+		expect(runtimeCacheService.acquireRuntime).not.toHaveBeenCalled();
 	});
 
 	it('expires configured and inline child checkpoints when cancelling a suspended parent', async () => {
@@ -942,7 +982,7 @@ describe('AgentExecutionOrchestratorService', () => {
 			status: 'active',
 			checkpoint: { persistence: { threadId: 'thread-1', resourceId: 'platform-user-1' } },
 		} as never);
-		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
+		mockRuntimeAcquisition(runtimeCacheService, runtime);
 
 		await collect(
 			service.resumeForChat({
@@ -975,7 +1015,7 @@ describe('AgentExecutionOrchestratorService', () => {
 			status: 'active',
 			checkpoint: { persistence: { threadId: 'thread-1', resourceId: 'platform-user-1' } },
 		} as never);
-		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
+		mockRuntimeAcquisition(runtimeCacheService, runtime);
 		executionService.findLatestSuspendedRun.mockResolvedValueOnce({ source: 'telegram' } as never);
 
 		await collect(
@@ -1009,7 +1049,7 @@ describe('AgentExecutionOrchestratorService', () => {
 			status: 'active',
 			checkpoint: { persistence: { threadId: 'thread-1', resourceId: 'platform-user-1' } },
 		} as never);
-		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
+		mockRuntimeAcquisition(runtimeCacheService, runtime);
 		executionService.findLatestSuspendedRun.mockResolvedValueOnce(null);
 
 		await collect(
@@ -1043,7 +1083,7 @@ describe('AgentExecutionOrchestratorService', () => {
 			status: 'active',
 			checkpoint: { persistence: { threadId: 'thread-1', resourceId: 'platform-user-1' } },
 		} as never);
-		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
+		mockRuntimeAcquisition(runtimeCacheService, runtime);
 
 		await collect(
 			service.resumeForChat({
@@ -1077,7 +1117,7 @@ describe('AgentExecutionOrchestratorService', () => {
 			status: 'active',
 			checkpoint: { persistence: { threadId: 'thread-1', resourceId: 'platform-user-1' } },
 		} as never);
-		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
+		mockRuntimeAcquisition(runtimeCacheService, runtime);
 
 		await collect(
 			service.resumeForChat({

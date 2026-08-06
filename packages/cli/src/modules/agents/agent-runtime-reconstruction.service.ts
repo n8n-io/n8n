@@ -78,6 +78,7 @@ import { SubAgentForegroundRunner } from './sub-agents/sub-agent-foreground-runn
 import { buildToolRegistry, type ToolRegistry } from './tool-registry';
 import { createGetEnvironmentTool } from './tools/environment-tool';
 import { findWorkflowToolWorkflow } from './tools/workflow-tool-workflow-resolver';
+import { WorkflowToolWorkflowLoader } from './tools/workflow-tool-workflow-loader.service';
 import { resolveUniqueSubAgents } from './utils/sub-agent-resolver';
 /**
  * `inline` runs an agent defined in a workflow node's parameters: no entity
@@ -172,6 +173,7 @@ export class AgentRuntimeReconstructionService {
 		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly agentChatAttachmentService: AgentChatAttachmentService,
+		private readonly workflowToolWorkflowLoader: WorkflowToolWorkflowLoader,
 	) {}
 
 	async reconstructFromAgentEntity(
@@ -519,7 +521,7 @@ export class AgentRuntimeReconstructionService {
 			if (ref.type === 'workflow') {
 				const { resolveWorkflowTool } = await import('./tools/workflow-tool-factory.js');
 				return await resolveWorkflowTool(ref, {
-					workflowRepository: this.workflowRepository,
+					workflowLoader: this.workflowToolWorkflowLoader,
 					workflowRunner: await getWorkflowRunner(),
 					activeExecutions: this.activeExecutions,
 					projectId,

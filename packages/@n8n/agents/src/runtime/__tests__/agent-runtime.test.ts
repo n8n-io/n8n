@@ -3683,6 +3683,58 @@ describe('AgentRuntime — runtime input schema validation', () => {
 		vi.clearAllMocks();
 	});
 
+	it('passes raw input to tools whose handler validates against a dynamic schema', async () => {
+		const initialSchema = z.object({ oldField: z.string() });
+		const currentSchema = z.object({ currentField: z.string() });
+		const handlerFn = vi.fn(async (input: unknown) => {
+			return await Promise.resolve(currentSchema.parse(input));
+		});
+		const dynamicTool: BuiltTool = {
+			name: 'dynamic',
+			description: 'validates against its current schema',
+			inputSchema: initialSchema,
+			handlerValidatesInput: true,
+			handler: handlerFn,
+		};
+
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCall('tc-1', 'dynamic', { currentField: 'current value' }),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess('done'));
+
+		const runtimeWithTool = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'test',
+			tools: [dynamicTool],
+		});
+
+		const result = await runtimeWithTool.generate('go');
+
+		expect(handlerFn).toHaveBeenCalledWith({ currentField: 'current value' }, expect.anything());
+		const providerTools = generateText.mock.calls[0][0] as {
+			tools: Record<string, { inputSchema?: unknown }>;
+		};
+		expect(providerTools.tools.dynamic?.inputSchema).toEqual({
+			_type: 'jsonSchema',
+			schema: {
+				type: 'object',
+				properties: { oldField: { type: 'string' } },
+				required: ['oldField'],
+				additionalProperties: false,
+				$schema: 'http://json-schema.org/draft-07/schema#',
+			},
+		});
+
+		const assistantMsg = result.messages.find(
+			(m) =>
+				isLlmMessage(m) && m.role === 'assistant' && m.content.some((c) => c.type === 'tool-call'),
+		) as Message;
+		const call = assistantMsg.content.find((c) => c.type === 'tool-call') as ContentToolCall;
+		expect(call.state).toBe('resolved');
+	});
+
 	it('surfaces a ZodError as a tool error outcome when LLM provides invalid input', async () => {
 		// Tool expects { id: z.string() } but LLM will provide { id: 123 } (wrong type)
 		const strictTool: BuiltTool = {

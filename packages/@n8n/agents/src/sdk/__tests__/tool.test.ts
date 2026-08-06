@@ -173,6 +173,9 @@ describe('wrapToolForApproval — requireApproval: true', () => {
 			{ type: 'approval', toolName: 'testTool', args: { id: '1' } },
 			expect.objectContaining({ resumeSchema: expect.anything() }),
 		);
+		expect(suspendMock.mock.calls[0]?.[1]?.continuation).toEqual({
+			__n8nApprovalGate: true,
+		});
 	});
 
 	it('includes display metadata from the wrapped tool object when suspending', async () => {
@@ -194,6 +197,57 @@ describe('wrapToolForApproval — requireApproval: true', () => {
 			},
 			expect.objectContaining({ resumeSchema: expect.anything() }),
 		);
+	});
+
+	it('persists a prepared approval binding and exposes it to the approved handler', async () => {
+		const prepareApproval = vi.fn().mockResolvedValue('published-version-1');
+		const handler = vi.fn(async (_input, ctx) => {
+			return await Promise.resolve({ approvalBinding: ctx.approvalBinding });
+		});
+		const wrapped = wrapToolForApproval(makeBuiltTool({ prepareApproval, handler }), {
+			requireApproval: true,
+		});
+		const initialCall = makeCtx();
+
+		await wrapped.handler!({ id: 'abc' }, initialCall.ctx);
+
+		const [, suspendOptions] = initialCall.suspendMock.mock.calls[0] ?? [];
+		const approvedCall = makeCtx({ approved: true });
+		approvedCall.ctx.continuation = suspendOptions?.continuation;
+		const result = await wrapped.handler!({ id: 'abc' }, approvedCall.ctx);
+
+		expect(prepareApproval).toHaveBeenCalledOnce();
+		expect(prepareApproval).toHaveBeenCalledWith({ id: 'abc' });
+		expect(handler).toHaveBeenCalledOnce();
+		expect(result).toEqual({ approvalBinding: 'published-version-1' });
+	});
+
+	it('does not suspend when approval preparation rejects the input', async () => {
+		const prepareApproval = vi.fn().mockRejectedValue(new Error('Current input is invalid'));
+		const handler = vi.fn();
+		const wrapped = wrapToolForApproval(makeBuiltTool({ prepareApproval, handler }), {
+			requireApproval: true,
+		});
+		const { ctx, suspendMock } = makeCtx();
+
+		await expect(wrapped.handler!({ id: 'abc' }, ctx)).rejects.toThrow('Current input is invalid');
+
+		expect(suspendMock).not.toHaveBeenCalled();
+		expect(handler).not.toHaveBeenCalled();
+	});
+
+	it('rejects an approved resume when its prepared binding is missing', async () => {
+		const handler = vi.fn();
+		const wrapped = wrapToolForApproval(
+			makeBuiltTool({ prepareApproval: vi.fn().mockResolvedValue('version-1'), handler }),
+			{ requireApproval: true },
+		);
+		const { ctx } = makeCtx({ approved: true });
+
+		await expect(wrapped.handler!({ id: 'abc' }, ctx)).rejects.toThrow(
+			'approval is no longer valid',
+		);
+		expect(handler).not.toHaveBeenCalled();
 	});
 
 	it('executes original handler when approved on resume', async () => {
@@ -253,6 +307,161 @@ describe('wrapToolForApproval — requireApproval: true', () => {
 
 		expect(innerApproval.suspendMock).not.toHaveBeenCalled();
 		expect(result).toEqual({ resumedWith: { approved: true } });
+	});
+
+	it('preserves the approval binding and private continuation across repeated inner suspensions', async () => {
+		const observedContexts: Array<{
+			approvalBinding: string | undefined;
+			continuation: unknown;
+		}> = [];
+		const originalHandler = vi.fn(async (_input, ctx) => {
+			const interruptCtx = ctx as InterruptibleToolContext;
+			observedContexts.push({
+				approvalBinding: interruptCtx.approvalBinding,
+				continuation: interruptCtx.continuation,
+			});
+
+			const continuation = interruptCtx.continuation as { stage?: string } | undefined;
+			if (continuation?.stage === undefined) {
+				return await interruptCtx.suspend({ stage: 'first' }, { continuation: { stage: 'first' } });
+			}
+			if (continuation.stage === 'first') {
+				return await interruptCtx.suspend(
+					{ stage: 'second' },
+					{ continuation: { stage: 'second' } },
+				);
+			}
+			return { resumedWith: interruptCtx.resumeData };
+		});
+		const wrapped = wrapToolForApproval(
+			makeBuiltTool({
+				prepareApproval: vi.fn().mockResolvedValue('published-version-1'),
+				suspendSchema: z.unknown(),
+				resumeSchema: z.unknown(),
+				handler: originalHandler,
+			}),
+			{ requireApproval: true },
+		);
+		const initialCall = makeCtx();
+		await wrapped.handler!({ id: 'parent-call' }, initialCall.ctx);
+		const [approvalPayload, approvalOptions] = initialCall.suspendMock.mock.calls[0] ?? [];
+
+		const approvedCall = makeCtx({ approved: true });
+		approvedCall.ctx.suspendPayload = approvalPayload;
+		approvedCall.ctx.continuation = approvalOptions?.continuation;
+		await wrapped.handler!({ id: 'parent-call' }, approvedCall.ctx);
+		const [firstInnerPayload, firstInnerOptions] = approvedCall.suspendMock.mock.calls[0] ?? [];
+
+		const firstInnerResume = makeCtx({ answer: 'first' });
+		firstInnerResume.ctx.suspendPayload = firstInnerPayload;
+		firstInnerResume.ctx.continuation = firstInnerOptions?.continuation;
+		await wrapped.handler!({ id: 'parent-call' }, firstInnerResume.ctx);
+		const [secondInnerPayload, secondInnerOptions] =
+			firstInnerResume.suspendMock.mock.calls[0] ?? [];
+
+		const secondInnerResume = makeCtx({ answer: 'second' });
+		secondInnerResume.ctx.suspendPayload = secondInnerPayload;
+		secondInnerResume.ctx.continuation = secondInnerOptions?.continuation;
+		const result = await wrapped.handler!({ id: 'parent-call' }, secondInnerResume.ctx);
+
+		expect(observedContexts).toEqual([
+			{ approvalBinding: 'published-version-1', continuation: undefined },
+			{ approvalBinding: 'published-version-1', continuation: { stage: 'first' } },
+			{ approvalBinding: 'published-version-1', continuation: { stage: 'second' } },
+		]);
+		expect(result).toEqual({ resumedWith: { answer: 'second' } });
+	});
+
+	it('unwraps an approval-bound inner continuation for cancellation cleanup', async () => {
+		const innerContinuation = { childRunId: 'child-run-1' };
+		const onCancellation = vi.fn<NonNullable<BuiltTool['onCancellation']>>();
+		const originalHandler = vi.fn(async (_input, ctx) => {
+			return await (ctx as InterruptibleToolContext).suspend(
+				{ stage: 'inner' },
+				{ continuation: innerContinuation },
+			);
+		});
+		const wrapped = wrapToolForApproval(
+			makeBuiltTool({
+				prepareApproval: vi.fn().mockResolvedValue('published-version-1'),
+				suspendSchema: z.unknown(),
+				resumeSchema: z.unknown(),
+				handler: originalHandler,
+				onCancellation,
+			}),
+			{ requireApproval: true },
+		);
+		const initialCall = makeCtx();
+		await wrapped.handler!({ id: 'parent-call' }, initialCall.ctx);
+		const [approvalPayload, approvalOptions] = initialCall.suspendMock.mock.calls[0] ?? [];
+		const approvedCall = makeCtx({ approved: true });
+		approvedCall.ctx.suspendPayload = approvalPayload;
+		approvedCall.ctx.continuation = approvalOptions?.continuation;
+		await wrapped.handler!({ id: 'parent-call' }, approvedCall.ctx);
+		const [innerPayload, innerOptions] = approvedCall.suspendMock.mock.calls[0] ?? [];
+
+		await wrapped.onCancellation?.(
+			{ id: 'parent-call' },
+			{
+				cancellation: { message: 'cancelled' },
+				suspendPayload: innerPayload,
+				continuation: innerOptions?.continuation,
+			},
+		);
+
+		expect(onCancellation).toHaveBeenCalledWith(
+			{ id: 'parent-call' },
+			expect.objectContaining({
+				approvalBinding: 'published-version-1',
+				continuation: innerContinuation,
+			}),
+		);
+	});
+
+	it('rejects a malformed approval-bound inner continuation', async () => {
+		const originalHandler = vi.fn();
+		const wrapped = wrapToolForApproval(
+			makeBuiltTool({
+				prepareApproval: vi.fn().mockResolvedValue('published-version-1'),
+				suspendSchema: z.unknown(),
+				resumeSchema: z.unknown(),
+				handler: originalHandler,
+			}),
+			{ requireApproval: true },
+		);
+		const { ctx } = makeCtx({ answer: 'inner' });
+		ctx.suspendPayload = { stage: 'inner' };
+		ctx.continuation = {
+			__n8nApprovalBoundInnerTool: true,
+			approvalBinding: 42,
+			continuation: { childRunId: 'child-run-1' },
+		};
+
+		await expect(wrapped.handler!({ id: 'parent-call' }, ctx)).rejects.toThrow(
+			'approval is no longer valid',
+		);
+		expect(originalHandler).not.toHaveBeenCalled();
+	});
+
+	it('rejects a missing approval-bound envelope when resuming a required inner tool', async () => {
+		const originalHandler = vi.fn();
+		const wrapped = wrapToolForApproval(
+			makeBuiltTool({
+				prepareApproval: vi.fn().mockResolvedValue('published-version-1'),
+				suspendSchema: z.unknown(),
+				resumeSchema: z.unknown(),
+				handler: originalHandler,
+			}),
+			{ requireApproval: true },
+		);
+		const { ctx } = makeCtx({ answer: 'inner' });
+		ctx.suspendPayload = { stage: 'inner' };
+		ctx.continuation = { childRunId: 'legacy-child-run' };
+
+		await expect(wrapped.handler!({ id: 'parent-call' }, ctx)).rejects.toThrow(
+			'approval is no longer valid',
+		);
+		expect(originalHandler).not.toHaveBeenCalled();
 	});
 
 	it('does not run inner cancellation cleanup when the outer approval is cancelled', async () => {
@@ -327,6 +536,44 @@ describe('wrapToolForApproval — needsApprovalFn', () => {
 
 		expect(suspendMock).not.toHaveBeenCalled();
 		expect(result).toEqual({ result: 'public' });
+	});
+
+	it('resumes a raw inner continuation when conditional approval was not needed', async () => {
+		const innerContinuation = { childRunId: 'unapproved-child-run' };
+		const prepareApproval = vi.fn().mockResolvedValue('published-version-1');
+		const originalHandler = vi.fn(async (_input, ctx) => {
+			const interruptCtx = ctx as InterruptibleToolContext;
+			if (interruptCtx.continuation === undefined) {
+				return await interruptCtx.suspend({ stage: 'inner' }, { continuation: innerContinuation });
+			}
+			return {
+				approvalBinding: interruptCtx.approvalBinding,
+				continuation: interruptCtx.continuation,
+			};
+		});
+		const wrapped = wrapToolForApproval(
+			makeBuiltTool({
+				prepareApproval,
+				suspendSchema: z.unknown(),
+				resumeSchema: z.unknown(),
+				handler: originalHandler,
+			}),
+			{ needsApprovalFn: () => false },
+		);
+		const initialCall = makeCtx();
+
+		await wrapped.handler!({ id: 'public' }, initialCall.ctx);
+		const [innerPayload, innerOptions] = initialCall.suspendMock.mock.calls[0] ?? [];
+		const innerResume = makeCtx({ answer: 'continue' });
+		innerResume.ctx.suspendPayload = innerPayload;
+		innerResume.ctx.continuation = innerOptions?.continuation;
+		const result = await wrapped.handler!({ id: 'public' }, innerResume.ctx);
+
+		expect(prepareApproval).not.toHaveBeenCalled();
+		expect(result).toEqual({
+			approvalBinding: undefined,
+			continuation: innerContinuation,
+		});
 	});
 
 	it('emits tool execution start with the original structured args when approval is not needed', async () => {

@@ -914,6 +914,7 @@ export class ToolCallExecutor {
 		params: ProcessToolCallParams,
 		builtTool: BuiltTool,
 	): Promise<{ ok: true; input: JSONValue } | { ok: false; outcome: ToolCallOutcome }> {
+		if (builtTool.handlerValidatesInput) return { ok: true, input: params.input };
 		if (!builtTool.inputSchema) return { ok: true, input: params.input };
 		const result = await parseWithSchema(builtTool.inputSchema, params.input);
 		if (!result.success) {

@@ -17,6 +17,7 @@ describe('buildToolRegistry', () => {
 			mkTool('run-wf', {
 				kind: 'workflow',
 				workflowId: 'wf-1',
+				workflowVersionId: 'version-1',
 				workflowName: 'Run WF',
 				triggerType: 'manual',
 			}),
@@ -24,6 +25,7 @@ describe('buildToolRegistry', () => {
 		expect(r.get('run-wf')).toEqual({
 			kind: 'workflow',
 			workflowId: 'wf-1',
+			workflowVersionId: 'version-1',
 			workflowName: 'Run WF',
 			triggerType: 'manual',
 		});
@@ -42,6 +44,18 @@ describe('buildToolRegistry', () => {
 	it('omits triggerType when not a string', () => {
 		const r = buildToolRegistry([
 			mkTool('wf', { kind: 'workflow', workflowId: 'wf-1', workflowName: 'X', triggerType: 42 }),
+		]);
+		expect(r.get('wf')).toEqual({ kind: 'workflow', workflowId: 'wf-1', workflowName: 'X' });
+	});
+
+	it('omits workflowVersionId when not a string', () => {
+		const r = buildToolRegistry([
+			mkTool('wf', {
+				kind: 'workflow',
+				workflowId: 'wf-1',
+				workflowName: 'X',
+				workflowVersionId: 42,
+			}),
 		]);
 		expect(r.get('wf')).toEqual({ kind: 'workflow', workflowId: 'wf-1', workflowName: 'X' });
 	});

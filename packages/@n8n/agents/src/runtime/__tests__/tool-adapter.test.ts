@@ -1,3 +1,4 @@
+import { asSchema, safeValidateTypes } from '@ai-sdk/provider-utils';
 import type { JSONSchema7 } from 'json-schema';
 import { z } from 'zod';
 
@@ -12,15 +13,20 @@ import { executeTool, toAiSdkTools } from '../tools/tool-adapter';
 type AiImport = typeof import('ai');
 
 const { jsonSchemaMock } = vi.hoisted(() => ({
-	jsonSchemaMock: vi.fn((schema: JSONSchema7) => ({ __jsonSchema: schema })),
+	jsonSchemaMock: vi.fn((schema: JSONSchema7) => schema),
 }));
 
 vi.mock('ai', async () => {
 	const actual = await vi.importActual<AiImport>('ai');
+	const providerUtils =
+		await vi.importActual<typeof import('@ai-sdk/provider-utils')>('@ai-sdk/provider-utils');
 	return {
 		...actual,
 		tool: vi.fn((config: unknown) => config),
-		jsonSchema: (schema: JSONSchema7) => jsonSchemaMock(schema),
+		jsonSchema: (schema: JSONSchema7) => {
+			jsonSchemaMock(schema);
+			return providerUtils.jsonSchema(schema);
+		},
 	};
 });
 
@@ -94,6 +100,52 @@ describe('toAiSdkTools — Zod schemas', () => {
 			{ name: 'search', description: 'Search', inputSchema: zodSchema },
 		]);
 		expect((result['search'] as { inputSchema: unknown }).inputSchema).toBe(zodSchema);
+	});
+
+	it('keeps validating unflagged Zod tool input', async () => {
+		const result = toAiSdkTools([makeZodSchemaTool()]);
+		const providerTool = result.zodTool;
+		if (!providerTool) throw new Error('Expected zodTool to be registered');
+
+		const validation = await safeValidateTypes({
+			value: { currentField: 'current value' },
+			schema: providerTool.inputSchema,
+		});
+
+		expect(validation.success).toBe(false);
+	});
+
+	it('advertises a flagged Zod schema without using it to validate AI SDK input', async () => {
+		const initialSchema = z.object({ oldField: z.string() });
+		const currentInput = { currentField: 'current value' };
+		const expectedProviderSchema: JSONSchema7 = {
+			type: 'object',
+			properties: { oldField: { type: 'string' } },
+			required: ['oldField'],
+			additionalProperties: false,
+			$schema: 'http://json-schema.org/draft-07/schema#',
+		};
+		const result = toAiSdkTools([
+			{
+				name: 'dynamic',
+				description: 'Uses a dynamic schema',
+				inputSchema: initialSchema,
+				handlerValidatesInput: true,
+			},
+		]);
+		const providerTool = result.dynamic;
+		if (!providerTool) throw new Error('Expected dynamic tool to be registered');
+
+		expect(jsonSchemaMock).toHaveBeenCalledWith(expectedProviderSchema);
+		expect(jsonSchemaMock.mock.calls[0]).toHaveLength(1);
+		expect(providerTool.inputSchema).not.toBe(initialSchema);
+		expect(await asSchema(providerTool.inputSchema).jsonSchema).toEqual(expectedProviderSchema);
+
+		const validation = await safeValidateTypes({
+			value: currentInput,
+			schema: providerTool.inputSchema,
+		});
+		expect(validation).toMatchObject({ success: true, value: currentInput });
 	});
 });
 
@@ -192,6 +244,28 @@ describe('toAiSdkTools — JSON Schema / fixSchema', () => {
 		expect(result.testTool).toMatchObject({ strict: false });
 		expect(jsonSchemaMock).toHaveBeenCalledWith(rawSchema);
 		expect(jsonSchemaMock.mock.calls[0][0].required).toEqual(['team']);
+	});
+
+	it('does not validate flagged raw JSON Schema input in the AI SDK', async () => {
+		const rawSchema: JSONSchema7 = {
+			type: 'object',
+			properties: { oldField: { type: 'string' } },
+			required: ['oldField'],
+			additionalProperties: false,
+		};
+		const currentInput = { currentField: 'current value' };
+		const result = toAiSdkTools([
+			makeJsonSchemaTool(rawSchema, { name: 'dynamicJson', handlerValidatesInput: true }),
+		]);
+		const providerTool = result.dynamicJson;
+		if (!providerTool) throw new Error('Expected dynamicJson tool to be registered');
+
+		expect(await asSchema(providerTool.inputSchema).jsonSchema).toEqual(rawSchema);
+		const validation = await safeValidateTypes({
+			value: currentInput,
+			schema: providerTool.inputSchema,
+		});
+		expect(validation).toMatchObject({ success: true, value: currentInput });
 	});
 });
 

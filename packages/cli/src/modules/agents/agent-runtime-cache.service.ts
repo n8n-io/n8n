@@ -5,6 +5,7 @@ import { Time } from '@n8n/constants';
 import type { User } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
+import { UnexpectedError } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -18,8 +19,11 @@ import { AgentRuntimeReconstructionService } from './agent-runtime-reconstructio
 import type { Agent } from './entities/agent.entity';
 import { AgentRepository } from './repositories/agent.repository';
 import type { ToolRegistry } from './tool-registry';
+import { WorkflowToolWorkflowLoader } from './tools/workflow-tool-workflow-loader.service';
 import { createAgentCredentialProvider } from './utils/agent-credential-provider';
 import { getPublishedAgentSnapshot } from './utils/agent-published-snapshot';
+
+const AGENT_RUNTIME_CACHE_TTL_MS = 30 * Time.minutes.toMilliseconds;
 
 export interface GetRuntimeParams {
 	agentId: string;
@@ -42,11 +46,33 @@ export interface AgentRuntime {
 	toolRegistry: ToolRegistry;
 	projectId: string;
 	telemetryConfiguration: IAgentConfigurationTelemetryProperties;
+	workflowVersionFingerprint: ReadonlyMap<string, string>;
+}
+
+export interface AgentRuntimeLease {
+	runtime: AgentRuntime;
+	release: () => void;
+}
+
+interface ManagedAgentRuntime {
+	runtime: AgentRuntime;
+	borrowers: number;
+	retired: boolean;
+}
+
+interface RuntimeAcquisition {
+	managedRuntime?: ManagedAgentRuntime;
+}
+
+interface RuntimeInitializationState {
+	pendingAcquisitions: RuntimeAcquisition[];
+	managedRuntime?: ManagedAgentRuntime;
 }
 
 interface RuntimeInitialization {
 	token: symbol;
-	promise: Promise<AgentRuntime>;
+	promise: Promise<ManagedAgentRuntime>;
+	state: RuntimeInitializationState;
 }
 
 @Service()
@@ -70,7 +96,11 @@ export class AgentRuntimeCacheService {
 	 * different users hitting the same draft agent must never resolve to the
 	 * same cache entry — that would leak one user's tool access to the other.
 	 */
-	private readonly runtimes = new TtlMap<string, AgentRuntime>(30 * Time.minutes.toMilliseconds);
+	private readonly runtimes = new TtlMap<string, ManagedAgentRuntime>(
+		AGENT_RUNTIME_CACHE_TTL_MS,
+		AGENT_RUNTIME_CACHE_TTL_MS,
+		(_key, managedRuntime) => this.retireRuntime(managedRuntime),
+	);
 
 	private readonly runtimeInitializations = new Map<string, RuntimeInitialization>();
 
@@ -81,6 +111,7 @@ export class AgentRuntimeCacheService {
 		private readonly globalConfig: GlobalConfig,
 		private readonly agentRuntimeReconstructionService: AgentRuntimeReconstructionService,
 		private readonly credentialsService: CredentialsService,
+		private readonly workflowToolWorkflowLoader: WorkflowToolWorkflowLoader,
 	) {}
 
 	private computeRuntimeCacheKey(params: GetRuntimeParams): string {
@@ -115,7 +146,7 @@ export class AgentRuntimeCacheService {
 			if (this.isRuntimeCacheKeyForAgent(key, agentId)) {
 				const entry = this.runtimes.get(key);
 				this.runtimes.delete(key);
-				if (entry) this.closeAgentResources(entry.agent, agentId);
+				if (entry) this.retireRuntime(entry);
 			}
 		}
 
@@ -169,31 +200,138 @@ export class AgentRuntimeCacheService {
 		});
 	}
 
+	private retireRuntime(managedRuntime: ManagedAgentRuntime): void {
+		if (managedRuntime.retired) return;
+		managedRuntime.retired = true;
+		if (managedRuntime.borrowers === 0) {
+			this.closeAgentResources(managedRuntime.runtime.agent, managedRuntime.runtime.agentId);
+		}
+	}
+
+	private retainRuntime(
+		managedRuntime: ManagedAgentRuntime,
+		acquisition: RuntimeAcquisition,
+	): void {
+		if (managedRuntime.retired) {
+			throw new UnexpectedError(
+				`Agent ${managedRuntime.runtime.agentId} runtime was retired before acquisition`,
+			);
+		}
+		managedRuntime.borrowers++;
+		acquisition.managedRuntime = managedRuntime;
+	}
+
+	private releaseRuntime(managedRuntime: ManagedAgentRuntime): void {
+		if (managedRuntime.borrowers === 0) return;
+		managedRuntime.borrowers--;
+		if (managedRuntime.borrowers === 0 && managedRuntime.retired) {
+			this.closeAgentResources(managedRuntime.runtime.agent, managedRuntime.runtime.agentId);
+		}
+	}
+
+	private reserveRuntimeAcquisition(
+		initialization: RuntimeInitialization,
+		acquisition: RuntimeAcquisition,
+	): void {
+		if (initialization.state.managedRuntime) {
+			this.retainRuntime(initialization.state.managedRuntime, acquisition);
+			return;
+		}
+		initialization.state.pendingAcquisitions.push(acquisition);
+	}
+
+	private completeRuntimeInitialization(
+		state: RuntimeInitializationState,
+		managedRuntime: ManagedAgentRuntime,
+	): void {
+		state.managedRuntime = managedRuntime;
+		for (const acquisition of state.pendingAcquisitions) {
+			this.retainRuntime(managedRuntime, acquisition);
+		}
+		state.pendingAcquisitions.length = 0;
+	}
+
 	/**
 	 * Return a cached runtime, or reconstruct one from the DB.
 	 */
 	async getRuntime(params: GetRuntimeParams): Promise<AgentRuntime> {
+		return (await this.getManagedRuntime(params)).runtime;
+	}
+
+	async acquireRuntime(params: GetRuntimeParams): Promise<AgentRuntimeLease> {
+		const acquisition: RuntimeAcquisition = {};
+		const managedRuntime = await this.getManagedRuntime(params, acquisition);
+		if (acquisition.managedRuntime !== managedRuntime) {
+			throw new UnexpectedError(`Agent ${params.agentId} runtime acquisition was not retained`);
+		}
+
+		let released = false;
+		return {
+			runtime: managedRuntime.runtime,
+			release: () => {
+				if (released) return;
+				released = true;
+				this.releaseRuntime(managedRuntime);
+			},
+		};
+	}
+
+	private async getManagedRuntime(
+		params: GetRuntimeParams,
+		acquisition?: RuntimeAcquisition,
+	): Promise<ManagedAgentRuntime> {
 		const cacheKey = this.computeRuntimeCacheKey(params);
 
-		const cached = this.runtimes.get(cacheKey);
-		if (cached) return cached;
-
 		const initialization = this.runtimeInitializations.get(cacheKey);
-		if (initialization) return await initialization.promise;
+		if (initialization) {
+			if (acquisition) this.reserveRuntimeAcquisition(initialization, acquisition);
+			return await initialization.promise;
+		}
+
+		const cached = this.runtimes.get(cacheKey);
+		if (cached?.runtime.workflowVersionFingerprint.size === 0) {
+			if (acquisition) this.retainRuntime(cached, acquisition);
+			return cached;
+		}
 
 		const token = Symbol(cacheKey);
+		const initializationState: RuntimeInitializationState = {
+			pendingAcquisitions: acquisition ? [acquisition] : [],
+		};
 		const runtimeInitialization: RuntimeInitialization = {
 			token,
+			state: initializationState,
 			promise: (async () => {
-				const runtime = await this.reconstructRuntime(params);
-				if (this.runtimeInitializations.get(cacheKey)?.token !== token) {
-					this.closeAgentResources(runtime.agent, params.agentId);
-					throw new Error(`Agent ${params.agentId} runtime initialization was invalidated`);
+				if (cached) {
+					const isCurrent = await this.isWorkflowFingerprintCurrent(cached.runtime);
+					this.assertRuntimeInitializationIsCurrent(cacheKey, token, params.agentId);
+
+					if (isCurrent && this.runtimes.get(cacheKey) === cached) {
+						this.completeRuntimeInitialization(initializationState, cached);
+						return cached;
+					}
+
+					if (this.runtimes.get(cacheKey) === cached) {
+						this.runtimes.delete(cacheKey);
+						this.retireRuntime(cached);
+					}
 				}
 
-				this.runtimes.set(cacheKey, runtime);
+				const runtime = await this.reconstructStableRuntime(params, cacheKey, token);
+				this.assertRuntimeInitializationIsCurrent(cacheKey, token, params.agentId, runtime);
+
+				const managedRuntime: ManagedAgentRuntime = {
+					runtime,
+					borrowers: 0,
+					retired: false,
+				};
+				this.runtimes.set(cacheKey, managedRuntime);
 				const cachedRuntime = this.runtimes.get(cacheKey);
-				if (!cachedRuntime) throw new Error(`Agent ${params.agentId} failed to reconstruct`);
+				if (!cachedRuntime) {
+					this.closeAgentResources(runtime.agent, params.agentId);
+					throw new UnexpectedError(`Agent ${params.agentId} failed to reconstruct`);
+				}
+				this.completeRuntimeInitialization(initializationState, cachedRuntime);
 				return cachedRuntime;
 			})(),
 		};
@@ -205,6 +343,82 @@ export class AgentRuntimeCacheService {
 		this.runtimeInitializations.set(cacheKey, runtimeInitialization);
 
 		return await runtimeInitialization.promise;
+	}
+
+	private assertRuntimeInitializationIsCurrent(
+		cacheKey: string,
+		token: symbol,
+		agentId: string,
+		runtimeToClose?: AgentRuntime,
+	): void {
+		if (this.runtimeInitializations.get(cacheKey)?.token === token) return;
+
+		if (runtimeToClose) this.closeAgentResources(runtimeToClose.agent, agentId);
+		throw new UnexpectedError(`Agent ${agentId} runtime initialization was invalidated`);
+	}
+
+	private async reconstructStableRuntime(
+		params: GetRuntimeParams,
+		cacheKey: string,
+		token: symbol,
+	): Promise<AgentRuntime> {
+		for (let attempt = 0; attempt < 2; attempt++) {
+			const runtime = await this.reconstructRuntime(params);
+			this.assertRuntimeInitializationIsCurrent(cacheKey, token, params.agentId, runtime);
+
+			let isCurrent: boolean;
+			try {
+				isCurrent = await this.isWorkflowFingerprintCurrent(runtime);
+			} catch (error) {
+				this.closeAgentResources(runtime.agent, params.agentId);
+				throw error;
+			}
+			this.assertRuntimeInitializationIsCurrent(cacheKey, token, params.agentId, runtime);
+
+			if (isCurrent) return runtime;
+			this.closeAgentResources(runtime.agent, params.agentId);
+		}
+
+		throw new UnexpectedError(
+			`Agent ${params.agentId} runtime could not stabilize its workflow published versions`,
+		);
+	}
+
+	private async isWorkflowFingerprintCurrent(runtime: AgentRuntime): Promise<boolean> {
+		const expected = runtime.workflowVersionFingerprint;
+		if (expected.size === 0) return true;
+
+		const current = await this.workflowToolWorkflowLoader.getPublishedVersionFingerprints(
+			runtime.projectId,
+			[...expected.keys()],
+		);
+		if (current.size !== expected.size) return false;
+
+		for (const [workflowId, versionId] of expected) {
+			if (current.get(workflowId) !== versionId) return false;
+		}
+		return true;
+	}
+
+	private buildWorkflowVersionFingerprint(toolRegistry: ToolRegistry): ReadonlyMap<string, string> {
+		const fingerprint = new Map<string, string>();
+		for (const entry of toolRegistry.values()) {
+			if (entry.kind !== 'workflow') continue;
+			if (entry.workflowId === undefined || entry.workflowVersionId === undefined) {
+				throw new UnexpectedError(
+					`Workflow tool ${entry.workflowName ?? 'unknown'} is missing its published version fingerprint`,
+				);
+			}
+
+			const existingVersion = fingerprint.get(entry.workflowId);
+			if (existingVersion !== undefined && existingVersion !== entry.workflowVersionId) {
+				throw new UnexpectedError(
+					`Workflow ${entry.workflowId} was reconstructed with conflicting published versions`,
+				);
+			}
+			fingerprint.set(entry.workflowId, entry.workflowVersionId);
+		}
+		return fingerprint;
 	}
 
 	private async reconstructRuntime(params: GetRuntimeParams): Promise<AgentRuntime> {
@@ -236,6 +450,13 @@ export class AgentRuntimeCacheService {
 				integrationType,
 				user,
 			);
+		let workflowVersionFingerprint: ReadonlyMap<string, string>;
+		try {
+			workflowVersionFingerprint = this.buildWorkflowVersionFingerprint(toolRegistry);
+		} catch (error) {
+			this.closeAgentResources(agentInstance, agentId);
+			throw error;
+		}
 
 		return {
 			agent: agentInstance,
@@ -243,6 +464,7 @@ export class AgentRuntimeCacheService {
 			toolRegistry,
 			projectId,
 			telemetryConfiguration: buildAgentConfigurationTelemetry(agentData),
+			workflowVersionFingerprint,
 		};
 	}
 }

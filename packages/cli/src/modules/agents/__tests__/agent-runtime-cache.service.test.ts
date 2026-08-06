@@ -2,6 +2,7 @@ import type { Mock } from 'vitest';
 import type { Agent as RuntimeAgent } from '@n8n/agents';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
+import { Time } from '@n8n/constants';
 import type { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 import { OperationalError } from 'n8n-workflow';
@@ -13,10 +14,12 @@ import type { AgentRuntimeReconstructionService } from '../agent-runtime-reconst
 import { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import type { Agent } from '../entities/agent.entity';
 import type { AgentRepository } from '../repositories/agent.repository';
-import type { ToolRegistry } from '../tool-registry';
+import type { ToolRegistry, ToolRegistryEntry } from '../tool-registry';
+import type { WorkflowToolWorkflowLoader } from '../tools/workflow-tool-workflow-loader.service';
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
+const runtimeCacheTtlMs = 30 * Time.minutes.toMilliseconds;
 
 function makeAgent(overrides: Partial<Agent> = {}): Agent {
 	return {
@@ -32,12 +35,31 @@ function makeAgent(overrides: Partial<Agent> = {}): Agent {
 	} as unknown as Agent;
 }
 
-function makeRuntime() {
+function makeWorkflowRegistry(
+	entries: Array<{ toolName: string; workflowId: string; workflowVersionId: string }>,
+): ToolRegistry {
+	return new Map(
+		entries.map(
+			({ toolName, workflowId, workflowVersionId }) =>
+				[
+					toolName,
+					{
+						kind: 'workflow',
+						workflowId,
+						workflowName: toolName,
+						workflowVersionId,
+					},
+				] satisfies [string, ToolRegistryEntry],
+		),
+	);
+}
+
+function makeRuntime(toolRegistry: ToolRegistry = new Map()) {
 	return {
 		agent: { close: vi.fn().mockResolvedValue(undefined) } as unknown as RuntimeAgent & {
 			close: Mock;
 		},
-		toolRegistry: mock<ToolRegistry>(),
+		toolRegistry,
 	};
 }
 
@@ -46,6 +68,7 @@ function makeService({ multiMain = false }: { multiMain?: boolean } = {}) {
 	const publisher = mock<Publisher>();
 	const reconstructionService = mock<AgentRuntimeReconstructionService>();
 	const credentialsService = mock<CredentialsService>();
+	const workflowLoader = mock<WorkflowToolWorkflowLoader>();
 	const globalConfig = { multiMainSetup: { enabled: multiMain } } as GlobalConfig;
 
 	publisher.publishCommand.mockResolvedValue();
@@ -57,9 +80,10 @@ function makeService({ multiMain = false }: { multiMain?: boolean } = {}) {
 		globalConfig,
 		reconstructionService,
 		credentialsService,
+		workflowLoader,
 	);
 
-	return { service, agentRepository, publisher, reconstructionService };
+	return { service, agentRepository, publisher, reconstructionService, workflowLoader };
 }
 
 describe('AgentRuntimeCacheService', () => {
@@ -68,7 +92,7 @@ describe('AgentRuntimeCacheService', () => {
 	});
 
 	it('reconstructs a draft runtime once and reuses the cached instance', async () => {
-		const { service, agentRepository, reconstructionService } = makeService();
+		const { service, agentRepository, reconstructionService, workflowLoader } = makeService();
 		const agent = makeAgent();
 		const runtime = makeRuntime();
 
@@ -93,6 +117,397 @@ describe('AgentRuntimeCacheService', () => {
 			undefined,
 			undefined,
 		);
+		expect(workflowLoader.getPublishedVersionFingerprints).not.toHaveBeenCalled();
+	});
+
+	it('reuses a runtime when all workflow fingerprints are unchanged', async () => {
+		const { service, agentRepository, reconstructionService, workflowLoader } = makeService();
+		const registry = makeWorkflowRegistry([
+			{ toolName: 'run-workflow', workflowId: 'workflow-1', workflowVersionId: 'version-1' },
+		]);
+		const runtime = makeRuntime(registry);
+
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+		reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
+		workflowLoader.getPublishedVersionFingerprints.mockResolvedValue(
+			new Map([['workflow-1', 'version-1']]),
+		);
+
+		const first = await service.getRuntime({ agentId, projectId });
+		const second = await service.getRuntime({ agentId, projectId });
+
+		expect(first).toBe(second);
+		expect(first.workflowVersionFingerprint).toEqual(new Map([['workflow-1', 'version-1']]));
+		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenCalledTimes(1);
+		expect(workflowLoader.getPublishedVersionFingerprints).toHaveBeenCalledTimes(2);
+		expect(runtime.agent.close).not.toHaveBeenCalled();
+	});
+
+	it('closes and rebuilds a runtime when a workflow is republished', async () => {
+		const { service, agentRepository, publisher, reconstructionService, workflowLoader } =
+			makeService({ multiMain: true });
+		const oldRuntime = makeRuntime(
+			makeWorkflowRegistry([
+				{ toolName: 'run-workflow', workflowId: 'workflow-1', workflowVersionId: 'version-1' },
+			]),
+		);
+		const newRuntime = makeRuntime(
+			makeWorkflowRegistry([
+				{ toolName: 'run-workflow', workflowId: 'workflow-1', workflowVersionId: 'version-2' },
+			]),
+		);
+
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+		reconstructionService.reconstructFromAgentEntity
+			.mockResolvedValueOnce(oldRuntime)
+			.mockResolvedValueOnce(newRuntime);
+		workflowLoader.getPublishedVersionFingerprints
+			.mockResolvedValueOnce(new Map([['workflow-1', 'version-1']]))
+			.mockResolvedValueOnce(new Map([['workflow-1', 'version-2']]))
+			.mockResolvedValueOnce(new Map([['workflow-1', 'version-2']]));
+
+		await service.getRuntime({ agentId, projectId });
+		const rebuilt = await service.getRuntime({ agentId, projectId });
+
+		expect(rebuilt.agent).toBe(newRuntime.agent);
+		expect(oldRuntime.agent.close).toHaveBeenCalledTimes(1);
+		expect(newRuntime.agent.close).not.toHaveBeenCalled();
+		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenCalledTimes(2);
+		expect(publisher.publishCommand).not.toHaveBeenCalled();
+	});
+
+	it('keeps a stale runtime alive until its active lease is released', async () => {
+		const { service, agentRepository, reconstructionService, workflowLoader } = makeService();
+		const oldRuntime = makeRuntime(
+			makeWorkflowRegistry([
+				{ toolName: 'run-workflow', workflowId: 'workflow-1', workflowVersionId: 'version-1' },
+			]),
+		);
+		const newRuntime = makeRuntime(
+			makeWorkflowRegistry([
+				{ toolName: 'run-workflow', workflowId: 'workflow-1', workflowVersionId: 'version-2' },
+			]),
+		);
+
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+		reconstructionService.reconstructFromAgentEntity
+			.mockResolvedValueOnce(oldRuntime)
+			.mockResolvedValueOnce(newRuntime);
+		workflowLoader.getPublishedVersionFingerprints
+			.mockResolvedValueOnce(new Map([['workflow-1', 'version-1']]))
+			.mockResolvedValueOnce(new Map([['workflow-1', 'version-2']]))
+			.mockResolvedValueOnce(new Map([['workflow-1', 'version-2']]));
+
+		const oldLease = await service.acquireRuntime({ agentId, projectId });
+		const rebuilt = await service.getRuntime({ agentId, projectId });
+
+		expect(rebuilt.agent).toBe(newRuntime.agent);
+		expect(oldRuntime.agent.close).not.toHaveBeenCalled();
+
+		oldLease.release();
+		oldLease.release();
+
+		expect(oldRuntime.agent.close).toHaveBeenCalledTimes(1);
+	});
+
+	it('closes and rebuilds an idle runtime when its cache entry expires', async () => {
+		vi.useFakeTimers();
+		try {
+			const { service, agentRepository, reconstructionService } = makeService();
+			const oldRuntime = makeRuntime();
+			const newRuntime = makeRuntime();
+
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+			reconstructionService.reconstructFromAgentEntity
+				.mockResolvedValueOnce(oldRuntime)
+				.mockResolvedValueOnce(newRuntime);
+
+			const first = await service.getRuntime({ agentId, projectId });
+			await vi.advanceTimersByTimeAsync(runtimeCacheTtlMs + 1);
+			const rebuilt = await service.getRuntime({ agentId, projectId });
+
+			expect(first.agent).toBe(oldRuntime.agent);
+			expect(rebuilt.agent).toBe(newRuntime.agent);
+			expect(oldRuntime.agent.close).toHaveBeenCalledOnce();
+			expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenCalledTimes(2);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('defers closing an expired runtime until its active lease is released', async () => {
+		vi.useFakeTimers();
+		try {
+			const { service, agentRepository, reconstructionService } = makeService();
+			const oldRuntime = makeRuntime();
+			const newRuntime = makeRuntime();
+
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+			reconstructionService.reconstructFromAgentEntity
+				.mockResolvedValueOnce(oldRuntime)
+				.mockResolvedValueOnce(newRuntime);
+
+			const oldLease = await service.acquireRuntime({ agentId, projectId });
+			await vi.advanceTimersByTimeAsync(runtimeCacheTtlMs + 1);
+			const newLease = await service.acquireRuntime({ agentId, projectId });
+
+			expect(newLease.runtime.agent).toBe(newRuntime.agent);
+			expect(oldRuntime.agent.close).not.toHaveBeenCalled();
+
+			oldLease.release();
+			oldLease.release();
+
+			expect(oldRuntime.agent.close).toHaveBeenCalledOnce();
+			newLease.release();
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('reserves one borrower for every concurrent runtime acquisition', async () => {
+		const { service, agentRepository, reconstructionService } = makeService();
+		const runtime = makeRuntime();
+		let resolveRuntime: (runtime: ReturnType<typeof makeRuntime>) => void = () => {};
+		const pendingRuntime = new Promise<ReturnType<typeof makeRuntime>>((resolve) => {
+			resolveRuntime = resolve;
+		});
+
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+		reconstructionService.reconstructFromAgentEntity.mockReturnValue(pendingRuntime);
+
+		const first = service.acquireRuntime({ agentId, projectId });
+		const second = service.acquireRuntime({ agentId, projectId });
+		resolveRuntime(runtime);
+		const [firstLease, secondLease] = await Promise.all([first, second]);
+
+		service.clearRuntimes(agentId);
+		expect(runtime.agent.close).not.toHaveBeenCalled();
+
+		firstLease.release();
+		firstLease.release();
+		expect(runtime.agent.close).not.toHaveBeenCalled();
+
+		secondLease.release();
+		expect(runtime.agent.close).toHaveBeenCalledTimes(1);
+	});
+
+	it('invalidates a runtime when a workflow is no longer published', async () => {
+		const { service, agentRepository, reconstructionService, workflowLoader } = makeService();
+		const oldRuntime = makeRuntime(
+			makeWorkflowRegistry([
+				{ toolName: 'run-workflow', workflowId: 'workflow-1', workflowVersionId: 'version-1' },
+			]),
+		);
+
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+		reconstructionService.reconstructFromAgentEntity
+			.mockResolvedValueOnce(oldRuntime)
+			.mockRejectedValueOnce(new Error('workflow unavailable'));
+		workflowLoader.getPublishedVersionFingerprints
+			.mockResolvedValueOnce(new Map([['workflow-1', 'version-1']]))
+			.mockResolvedValueOnce(new Map());
+
+		await service.getRuntime({ agentId, projectId });
+		await expect(service.getRuntime({ agentId, projectId })).rejects.toThrow(
+			'workflow unavailable',
+		);
+
+		expect(oldRuntime.agent.close).toHaveBeenCalledTimes(1);
+		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenCalledTimes(2);
+	});
+
+	it('propagates fingerprint lookup failures and leaves the cached runtime available to retry', async () => {
+		const { service, agentRepository, reconstructionService, workflowLoader } = makeService();
+		const runtime = makeRuntime(
+			makeWorkflowRegistry([
+				{ toolName: 'run-workflow', workflowId: 'workflow-1', workflowVersionId: 'version-1' },
+			]),
+		);
+
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+		reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
+		workflowLoader.getPublishedVersionFingerprints
+			.mockResolvedValueOnce(new Map([['workflow-1', 'version-1']]))
+			.mockRejectedValueOnce(new Error('database unavailable'))
+			.mockResolvedValueOnce(new Map([['workflow-1', 'version-1']]));
+
+		const first = await service.getRuntime({ agentId, projectId });
+		await expect(service.getRuntime({ agentId, projectId })).rejects.toThrow(
+			'database unavailable',
+		);
+		const retried = await service.getRuntime({ agentId, projectId });
+
+		expect(retried).toBe(first);
+		expect(runtime.agent.close).not.toHaveBeenCalled();
+		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenCalledTimes(1);
+	});
+
+	it('checks multiple workflow dependencies in one batch', async () => {
+		const { service, agentRepository, reconstructionService, workflowLoader } = makeService();
+		const runtime = makeRuntime(
+			makeWorkflowRegistry([
+				{ toolName: 'run-one', workflowId: 'workflow-1', workflowVersionId: 'version-1' },
+				{ toolName: 'run-two', workflowId: 'workflow-2', workflowVersionId: 'version-2' },
+			]),
+		);
+
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+		reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
+		workflowLoader.getPublishedVersionFingerprints.mockResolvedValue(
+			new Map([
+				['workflow-1', 'version-1'],
+				['workflow-2', 'version-2'],
+			]),
+		);
+
+		await service.getRuntime({ agentId, projectId });
+		workflowLoader.getPublishedVersionFingerprints.mockClear();
+		await service.getRuntime({ agentId, projectId });
+
+		expect(workflowLoader.getPublishedVersionFingerprints).toHaveBeenCalledOnce();
+		expect(workflowLoader.getPublishedVersionFingerprints).toHaveBeenCalledWith(projectId, [
+			'workflow-1',
+			'workflow-2',
+		]);
+	});
+
+	it('shares one workflow freshness check and rebuild across concurrent stale hits', async () => {
+		const { service, agentRepository, reconstructionService, workflowLoader } = makeService();
+		const oldRuntime = makeRuntime(
+			makeWorkflowRegistry([
+				{ toolName: 'run-workflow', workflowId: 'workflow-1', workflowVersionId: 'version-1' },
+			]),
+		);
+		const newRuntime = makeRuntime(
+			makeWorkflowRegistry([
+				{ toolName: 'run-workflow', workflowId: 'workflow-1', workflowVersionId: 'version-2' },
+			]),
+		);
+
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+		reconstructionService.reconstructFromAgentEntity
+			.mockResolvedValueOnce(oldRuntime)
+			.mockResolvedValueOnce(newRuntime);
+		workflowLoader.getPublishedVersionFingerprints
+			.mockResolvedValueOnce(new Map([['workflow-1', 'version-1']]))
+			.mockResolvedValueOnce(new Map([['workflow-1', 'version-2']]))
+			.mockResolvedValueOnce(new Map([['workflow-1', 'version-2']]));
+
+		await service.getRuntime({ agentId, projectId });
+		const [first, second] = await Promise.all([
+			service.getRuntime({ agentId, projectId }),
+			service.getRuntime({ agentId, projectId }),
+		]);
+
+		expect(first).toBe(second);
+		expect(first.agent).toBe(newRuntime.agent);
+		expect(workflowLoader.getPublishedVersionFingerprints).toHaveBeenCalledTimes(3);
+		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenCalledTimes(2);
+		expect(oldRuntime.agent.close).toHaveBeenCalledTimes(1);
+	});
+
+	it('invalidates a freshness result when runtimes are cleared during its lookup', async () => {
+		const { service, agentRepository, reconstructionService, workflowLoader } = makeService();
+		const runtime = makeRuntime(
+			makeWorkflowRegistry([
+				{ toolName: 'run-workflow', workflowId: 'workflow-1', workflowVersionId: 'version-1' },
+			]),
+		);
+		let resolveFingerprint: (fingerprint: ReadonlyMap<string, string>) => void = () => {};
+		const pendingFingerprint = new Promise<ReadonlyMap<string, string>>((resolve) => {
+			resolveFingerprint = resolve;
+		});
+
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+		reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
+		workflowLoader.getPublishedVersionFingerprints
+			.mockResolvedValueOnce(new Map([['workflow-1', 'version-1']]))
+			.mockReturnValueOnce(pendingFingerprint);
+
+		await service.getRuntime({ agentId, projectId });
+		const pendingRuntime = service.getRuntime({ agentId, projectId });
+		await Promise.resolve();
+		service.clearRuntimes(agentId);
+		resolveFingerprint(new Map([['workflow-1', 'version-1']]));
+
+		await expect(pendingRuntime).rejects.toThrow(
+			`Agent ${agentId} runtime initialization was invalidated`,
+		);
+		expect(runtime.agent.close).toHaveBeenCalledTimes(1);
+	});
+
+	it('retries a reconstruction that changes publication version while it is building', async () => {
+		const { service, agentRepository, reconstructionService, workflowLoader } = makeService();
+		const changingRuntime = makeRuntime(
+			makeWorkflowRegistry([
+				{ toolName: 'run-workflow', workflowId: 'workflow-1', workflowVersionId: 'version-1' },
+			]),
+		);
+		const stableRuntime = makeRuntime(
+			makeWorkflowRegistry([
+				{ toolName: 'run-workflow', workflowId: 'workflow-1', workflowVersionId: 'version-2' },
+			]),
+		);
+
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+		reconstructionService.reconstructFromAgentEntity
+			.mockResolvedValueOnce(changingRuntime)
+			.mockResolvedValueOnce(stableRuntime);
+		workflowLoader.getPublishedVersionFingerprints.mockResolvedValue(
+			new Map([['workflow-1', 'version-2']]),
+		);
+
+		const result = await service.getRuntime({ agentId, projectId });
+
+		expect(result.agent).toBe(stableRuntime.agent);
+		expect(changingRuntime.agent.close).toHaveBeenCalledTimes(1);
+		expect(stableRuntime.agent.close).not.toHaveBeenCalled();
+		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenCalledTimes(2);
+		expect(workflowLoader.getPublishedVersionFingerprints).toHaveBeenCalledTimes(2);
+	});
+
+	it('closes a reconstructed runtime with conflicting workflow versions', async () => {
+		const { service, agentRepository, reconstructionService, workflowLoader } = makeService();
+		const runtime = makeRuntime(
+			makeWorkflowRegistry([
+				{ toolName: 'run-one', workflowId: 'workflow-1', workflowVersionId: 'version-1' },
+				{ toolName: 'run-two', workflowId: 'workflow-1', workflowVersionId: 'version-2' },
+			]),
+		);
+
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+		reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
+
+		await expect(service.getRuntime({ agentId, projectId })).rejects.toThrow(
+			'conflicting published versions',
+		);
+		expect(runtime.agent.close).toHaveBeenCalledTimes(1);
+		expect(workflowLoader.getPublishedVersionFingerprints).not.toHaveBeenCalled();
+	});
+
+	it('closes a reconstructed workflow runtime without a published version fingerprint', async () => {
+		const { service, agentRepository, reconstructionService, workflowLoader } = makeService();
+		const runtime = makeRuntime(
+			new Map([
+				[
+					'run-workflow',
+					{
+						kind: 'workflow',
+						workflowId: 'workflow-1',
+						workflowName: 'Run workflow',
+					} satisfies ToolRegistryEntry,
+				],
+			]),
+		);
+
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+		reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
+
+		await expect(service.getRuntime({ agentId, projectId })).rejects.toThrow(
+			'is missing its published version fingerprint',
+		);
+		expect(runtime.agent.close).toHaveBeenCalledTimes(1);
+		expect(workflowLoader.getPublishedVersionFingerprints).not.toHaveBeenCalled();
 	});
 
 	it('keeps draft runtimes separate by integration type', async () => {
@@ -248,7 +663,7 @@ describe('AgentRuntimeCacheService', () => {
 		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenCalledTimes(2);
 	});
 
-	it('loads published snapshot data when running a published runtime', async () => {
+	it('keeps draft and published runtimes separate and loads the published snapshot', async () => {
 		const { service, agentRepository, reconstructionService } = makeService();
 		const activeVersion = {
 			schema: {
@@ -262,21 +677,29 @@ describe('AgentRuntimeCacheService', () => {
 			skills: { skill: { name: 'Skill' } },
 			publishedById: 'publisher-1',
 		};
-		const runtime = makeRuntime();
+		const draftRuntime = makeRuntime();
+		const publishedRuntime = makeRuntime();
 
 		agentRepository.findByIdAndProjectId.mockResolvedValue(
 			makeAgent({ activeVersion: activeVersion as unknown as Agent['activeVersion'] }),
 		);
-		reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
+		reconstructionService.reconstructFromAgentEntity
+			.mockResolvedValueOnce(draftRuntime)
+			.mockResolvedValueOnce(publishedRuntime);
 
-		await service.getRuntime({
+		const draft = await service.getRuntime({ agentId, projectId, integrationType: 'slack' });
+		const published = await service.getRuntime({
 			agentId,
 			projectId,
 			usePublishedVersion: true,
 			integrationType: 'slack',
 		});
 
-		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenCalledWith(
+		expect(draft.agent).toBe(draftRuntime.agent);
+		expect(published.agent).toBe(publishedRuntime.agent);
+		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenCalledTimes(2);
+		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenNthCalledWith(
+			2,
 			expect.objectContaining({
 				schema: activeVersion.schema,
 				tools: activeVersion.tools,
