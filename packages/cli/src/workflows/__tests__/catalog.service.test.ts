@@ -34,12 +34,20 @@ describe('CatalogService', () => {
 		service = new CatalogService(logger, finder, schemas);
 	});
 
-	it('should list only workflows the user may execute', async () => {
+	it('should list only workflows shared with the person, not every one they may administer', async () => {
 		finder.findAllWorkflowsForUser.mockResolvedValue([entity('a')]);
 
 		await service.list(user);
 
-		expect(finder.findAllWorkflowsForUser).toHaveBeenCalledWith(user, ['workflow:execute']);
+		// An instance owner holds global execute, which would otherwise return every
+		// workflow there is — including other people's personal ones.
+		expect(finder.findAllWorkflowsForUser).toHaveBeenCalledWith(
+			user,
+			['workflow:execute'],
+			undefined,
+			undefined,
+			{ sharedWithUserOnly: true },
+		);
 	});
 
 	it('should return the declared contract without the graph', async () => {

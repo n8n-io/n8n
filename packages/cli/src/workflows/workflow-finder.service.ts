@@ -8,6 +8,20 @@ import { In, IsNull } from '@n8n/typeorm';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { RoleService } from '@/services/role.service';
 
+export type FindAllOptions = {
+	/**
+	 * Narrow to workflows actually shared with this person, even when a global
+	 * scope would permit every workflow on the instance.
+	 *
+	 * Holding a global scope is an administrative capability, not a statement
+	 * that someone was given a workflow. A caller answering "what may I run" —
+	 * as opposed to "what may I administer" — wants the second question, or an
+	 * instance owner's answer degenerates into every workflow there is,
+	 * including other people's personal ones.
+	 */
+	sharedWithUserOnly?: boolean;
+};
+
 @Service()
 export class WorkflowFinderService {
 	constructor(
@@ -92,7 +106,13 @@ export class WorkflowFinderService {
 		};
 	}
 
-	private async findAllWhere(user: User, scopes: Scope[], folderId?: string, projectId?: string) {
+	private async findAllWhere(
+		user: User,
+		scopes: Scope[],
+		folderId?: string,
+		projectId?: string,
+		options: FindAllOptions = {},
+	) {
 		let where: FindOptionsWhere<SharedWorkflow> = {};
 
 		if (folderId) {
@@ -109,7 +129,7 @@ export class WorkflowFinderService {
 			};
 		}
 
-		if (!hasGlobalScope(user, scopes, { mode: 'allOf' })) {
+		if (options.sharedWithUserOnly || !hasGlobalScope(user, scopes, { mode: 'allOf' })) {
 			const [projectRoles, workflowRoles] = await Promise.all([
 				this.roleService.rolesWithScope('project', scopes),
 				this.roleService.rolesWithScope('workflow', scopes),
@@ -302,8 +322,9 @@ export class WorkflowFinderService {
 		scopes: Scope[],
 		folderId?: string,
 		projectId?: string,
+		options: FindAllOptions = {},
 	) {
-		const where = await this.findAllWhere(user, scopes, folderId, projectId);
+		const where = await this.findAllWhere(user, scopes, folderId, projectId, options);
 
 		const sharedWorkflows = await this.sharedWorkflowRepository.find({
 			where,

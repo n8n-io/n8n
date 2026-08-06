@@ -49,9 +49,16 @@ export class CatalogService {
 	 * a way to obtain the graph.
 	 */
 	async list(user: User): Promise<CatalogListing> {
-		const shared = await this.workflowFinderService.findAllWorkflowsForUser(user, [
-			'workflow:execute',
-		]);
+		const shared = await this.workflowFinderService.findAllWorkflowsForUser(
+			user,
+			['workflow:execute'],
+			/* folderId= */ undefined,
+			/* projectId= */ undefined,
+			// The catalog answers "what was I given", not "what may I administer".
+			// Without this an instance owner's global execute scope turns the listing
+			// into every workflow there is, other people's personal ones included.
+			{ sharedWithUserOnly: true },
+		);
 
 		// The finder returns one row per share path, so a workflow reachable both
 		// through project membership and a direct share arrives twice.

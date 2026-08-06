@@ -6,6 +6,8 @@ import type {
 } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
+import type { User } from '@n8n/db';
+
 import type { RoleService } from '@/services/role.service';
 
 import { WorkflowFinderService } from '../workflow-finder.service';
@@ -29,6 +31,38 @@ function makeService(rows?: FolderRow[]) {
 }
 
 describe('WorkflowFinderService', () => {
+	describe('findAllWorkflowsForUser', () => {
+		// Someone holding the scope globally, the way an instance owner does.
+		const owner = mock<User>({
+			id: 'owner-1',
+			role: { slug: 'global:owner', scopes: [{ slug: 'workflow:execute' }] },
+		} as unknown as User);
+
+		it('returns every workflow when a global scope covers the ask', async () => {
+			const { service, sharedWorkflowRepository } = makeService([]);
+
+			await service.findAllWorkflowsForUser(owner, ['workflow:execute']);
+
+			const [{ where }] = sharedWorkflowRepository.find.mock.calls[0];
+			expect(where).toEqual({});
+		});
+
+		it('narrows to what was shared with them when the caller asks for that', async () => {
+			const { service, sharedWorkflowRepository } = makeService([]);
+
+			await service.findAllWorkflowsForUser(owner, ['workflow:execute'], undefined, undefined, {
+				sharedWithUserOnly: true,
+			});
+
+			// Otherwise an owner's catalog is every workflow on the instance, other
+			// people's personal ones included.
+			const [{ where }] = sharedWorkflowRepository.find.mock.calls[0];
+			expect(where).toMatchObject({
+				project: { projectRelations: { userId: 'owner-1' } },
+			});
+		});
+	});
+
 	describe('findWorkflowIdsByFolder', () => {
 		it('returns an empty map without querying when no folder ids are given', async () => {
 			const { service, sharedWorkflowRepository } = makeService();

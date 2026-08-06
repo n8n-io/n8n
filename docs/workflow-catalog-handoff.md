@@ -137,7 +137,11 @@ qualify".
 
 **`findAllWorkflowsForUser` already existed** in `WorkflowFinderService` and
 returns `{...workflow, projectId}` — one row per share path, so dedupe at the
-call site.
+call site. It also skips its own narrowing entirely when the caller holds the
+scope globally, which turned an instance owner's catalog into every workflow on
+the box. The catalog passes `sharedWithUserOnly` to keep the narrowing on:
+holding a global scope is an administrative capability, not a statement that
+someone was given a workflow.
 
 **Caller policy does not protect a direct run.** It only applies to
 `executeWorkflow`. The sole protection is the `workflow:execute` scope. Accept
