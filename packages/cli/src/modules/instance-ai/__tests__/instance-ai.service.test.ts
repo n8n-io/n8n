@@ -664,6 +664,8 @@ type TerminalGuardOrderServiceInternals = {
 	};
 	threadPushRef: Map<string, string>;
 	saveAgentTreeSnapshot: Mock;
+	/** The run-finish callback handed to the terminal-outcome collaborator. */
+	terminalRunFinish: Mock;
 	backgroundTasks: { getRunningTasks: Mock; getRunningTasksByParentCheckpoint?: Mock };
 	temporaryWorkflowService: { reapForRun: Mock };
 	creditService: { claimRunUsage: Mock };
@@ -780,6 +782,17 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 	service.drainPendingCheckpointReentries = vi.fn(async () => {});
 	service.preserveHitlOnShutdown = new Set();
 
+	service.terminalRunFinish = vi.fn(
+		(_threadId: string, runId: string, status: 'completed' | 'cancelled' | 'errored') => {
+			events.push({
+				type: 'run-finish',
+				runId,
+				agentId: 'agent-001',
+				payload: { status: status === 'errored' ? 'error' : status },
+			} as InstanceAiEvent);
+		},
+	);
+
 	service.terminalOutcome = new InstanceAiTerminalOutcomeService({
 		durableLog: false,
 		eventBus: service.eventBus,
@@ -790,18 +803,7 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 		runState: service.runState,
 		suspendedThreads: service.suspendedThreads,
 		tracing: service.tracing,
-		publishRunFinish: (
-			_threadId: string,
-			runId: string,
-			status: 'completed' | 'cancelled' | 'errored',
-		) => {
-			events.push({
-				type: 'run-finish',
-				runId,
-				agentId: 'agent-001',
-				payload: { status: status === 'errored' ? 'error' : status },
-			} as InstanceAiEvent);
-		},
+		publishRunFinish: service.terminalRunFinish,
 		saveAgentTreeSnapshot: async (threadId: string, runId: string, snapshotStorage: unknown) => {
 			await service.saveAgentTreeSnapshot(threadId, runId, snapshotStorage);
 		},
@@ -3577,6 +3579,53 @@ describe('InstanceAiService — run error reporter lifecycle', () => {
 		expect(service.runState.clearActiveRun).toHaveBeenCalledWith(
 			'thread-a',
 			opts.resumeExecutionToken,
+		);
+	});
+
+	it('reaps temporary workflows and reports the raw error and user for a failed resume', async () => {
+		const service = createTerminalGuardOrderService();
+		const abortController = new AbortController();
+		const opts = { ...resumedStreamOpts(abortController), messageGroupId: 'group-1' };
+		const resumeError = new Error('Invalid resume payload');
+		service.temporaryWorkflowService.reapForRun.mockResolvedValue(['wf-temp-1']);
+		vi.mocked(resumeAgentRun).mockRejectedValueOnce(resumeError);
+
+		await service.processResumedStream({}, {}, opts);
+
+		expect(service.temporaryWorkflowService.reapForRun).toHaveBeenCalledWith(
+			'thread-a',
+			fakeUser,
+			undefined,
+			0,
+		);
+		expect(service.terminalRunFinish).toHaveBeenCalledWith(
+			'thread-a',
+			'run-1',
+			'errored',
+			'Something went wrong before I could finish that response. Please try again.',
+			['wf-temp-1'],
+			'user-1',
+			{ errorMessage: 'Invalid resume payload', errorSource: 'exception' },
+		);
+	});
+
+	it('still finishes a failed resume when reaping temporary workflows throws', async () => {
+		const service = createTerminalGuardOrderService();
+		const abortController = new AbortController();
+		const opts = { ...resumedStreamOpts(abortController), messageGroupId: 'group-1' };
+		service.temporaryWorkflowService.reapForRun.mockRejectedValue(new Error('archive failed'));
+		vi.mocked(resumeAgentRun).mockRejectedValueOnce(new Error('Invalid resume payload'));
+
+		await service.processResumedStream({}, {}, opts);
+
+		expect(service.terminalRunFinish).toHaveBeenCalledWith(
+			'thread-a',
+			'run-1',
+			'errored',
+			expect.any(String),
+			[],
+			'user-1',
+			expect.any(Object),
 		);
 	});
 

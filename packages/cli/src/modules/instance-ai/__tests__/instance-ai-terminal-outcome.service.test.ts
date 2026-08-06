@@ -549,6 +549,31 @@ describe('InstanceAiTerminalOutcomeService — terminal response guard wiring', 
 		expect(deps.saveAgentTreeSnapshot).toHaveBeenCalledWith('thread-a', 'run-1', {});
 	});
 
+	it('reports the raw error, the acting user and the archived workflows on a failed resume', async () => {
+		const { service, deps } = createService();
+
+		await service.finishFailedResumeRun({
+			threadId: 'thread-a',
+			runId: 'run-1',
+			messageGroupId: 'group-1',
+			errorMessage: 'Safe user-facing error',
+			errorInfo: { errorMessage: 'Raw resume failure', errorSource: 'exception' },
+			userId: 'user-1',
+			archivedWorkflowIds: ['wf-temp-1'],
+			snapshotStorage: {} as never,
+		});
+
+		expect(deps.publishRunFinish).toHaveBeenCalledWith(
+			'thread-a',
+			'run-1',
+			'errored',
+			'Safe user-facing error',
+			['wf-temp-1'],
+			'user-1',
+			{ errorMessage: 'Raw resume failure', errorSource: 'exception' },
+		);
+	});
+
 	it('still finishes a failed resume when the guard read and the snapshot save fail', async () => {
 		const { service, deps } = createService();
 		deps.eventBus.getEventsForRuns.mockRejectedValue(new Error('event log unavailable'));
@@ -569,6 +594,9 @@ describe('InstanceAiTerminalOutcomeService — terminal response guard wiring', 
 			'run-1',
 			'errored',
 			'Safe user-facing error',
+			undefined,
+			undefined,
+			undefined,
 		);
 		expect(deps.logger.warn).toHaveBeenCalledTimes(2);
 	});

@@ -141,7 +141,10 @@ import { InstanceAiModelService } from './instance-ai-model.service';
 import { InstanceAiRunProbe } from './instance-ai-run-probe';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { InstanceAiTemporaryWorkflowService } from './instance-ai-temporary-workflow.service';
-import { InstanceAiTerminalOutcomeService } from './instance-ai-terminal-outcome.service';
+import {
+	InstanceAiTerminalOutcomeService,
+	type RunFinishErrorInfo,
+} from './instance-ai-terminal-outcome.service';
 import { InstanceAiAdapterService } from './instance-ai.adapter.service';
 import {
 	AUTO_FOLLOW_UP_MESSAGE,
@@ -414,14 +417,6 @@ function getAbortReason(signal: AbortSignal): string {
 	if (reason instanceof Error) return reason.message;
 	return typeof reason === 'string' ? reason : 'user_cancelled';
 }
-
-/** Error details for the 'Builder generation errored' telemetry event. */
-type RunFinishErrorInfo = {
-	/** Raw error message — the SSE run-finish payload carries the user-facing reason instead. */
-	errorMessage?: string;
-	/** 'stream' = the run reported an error but terminated cleanly; 'exception' = the run loop threw. */
-	errorSource?: 'stream' | 'exception';
-};
 
 type UnclaimedResumeContext = {
 	threadId: string;
@@ -715,9 +710,7 @@ export class InstanceAiService {
 			runState: this.runState,
 			suspendedThreads: this.suspendedThreads,
 			tracing: this.tracing,
-			publishRunFinish: (threadId, runId, status, reason) => {
-				this.publishRunFinish(threadId, runId, status, reason);
-			},
+			publishRunFinish: (...args) => this.publishRunFinish(...args),
 			saveAgentTreeSnapshot: async (threadId, runId, snapshotStorage) =>
 				await this.saveAgentTreeSnapshot(threadId, runId, snapshotStorage),
 		});
@@ -5495,8 +5488,32 @@ export class InstanceAiService {
 			messageGroupId: opts.messageGroupId,
 			errorMessage: getUserFacingErrorMessage(error),
 			errorCode: getUserFacingErrorCode(error),
+			errorInfo: { errorMessage: getErrorMessage(error), errorSource: 'exception' },
+			userId: opts.user.id,
+			archivedWorkflowIds: await this.reapTemporaryWorkflowsForUnclaimedResume(opts),
 			snapshotStorage: opts.snapshotStorage,
 		});
+	}
+
+	/** Best-effort: a failed reap must not cost the run its run-finish. */
+	private async reapTemporaryWorkflowsForUnclaimedResume(
+		opts: UnclaimedResumeContext,
+	): Promise<string[]> {
+		try {
+			return await this.temporaryWorkflowService.reapForRun(
+				opts.threadId,
+				opts.user,
+				undefined,
+				this.backgroundTasks.getRunningTasks(opts.threadId).length,
+			);
+		} catch (error) {
+			this.logger.warn('Failed to reap temporary workflows for an unclaimed resume', {
+				threadId: opts.threadId,
+				runId: opts.runId,
+				error: getErrorMessage(error),
+			});
+			return [];
+		}
 	}
 
 	// ── Background task management ──────────────────────────────────────────
