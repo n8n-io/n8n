@@ -49,6 +49,10 @@ export const messageOperations: INodeProperties[] = [
 				name: 'Remove Label',
 				value: 'removeLabels',
 				action: 'Remove label from message',
+				builderHint: {
+					propertyHint:
+						"Also the archive operation: there is no dedicated archive. To archive a message, use removeLabels with labelIds: ['INBOX']. Do not invent an ARCHIVE label.",
+				},
 			},
 			{
 				name: 'Reply',
@@ -67,10 +71,6 @@ export const messageOperations: INodeProperties[] = [
 			},
 		],
 		default: 'send',
-		builderHint: {
-			propertyHint:
-				"There is no archive operation. To archive a message, remove the INBOX label: operation 'removeLabels' with labelIds: ['INBOX']. Do not invent an ARCHIVE label.",
-		},
 	},
 ];
 
