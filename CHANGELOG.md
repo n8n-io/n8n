@@ -1,3 +1,11 @@
+## [2.33.5](https://github.com/n8n-io/n8n/compare/n8n@2.33.4...n8n@2.33.5) (2026-08-06)
+
+
+### Bug Fixes
+
+* **editor:** Focus Markdown editor input before toolbar ([#35606](https://github.com/n8n-io/n8n/issues/35606)) ([388e313](https://github.com/n8n-io/n8n/commit/388e3132e2623a59b53bec4bbe160c2c13e5a758))
+
+
 ## [2.33.4](https://github.com/n8n-io/n8n/compare/n8n@2.33.3...n8n@2.33.4) (2026-08-05)
 
 
