@@ -59,14 +59,14 @@ export interface StepStore {
 
 	/**
 	 * Claim a queued step for execution (`queued → running`). A compare-and-set,
-	 * so it returns `true` for at most one caller and duplicate/redelivered
-	 * events are handled idempotently.
+	 * so it returns the claimed step for at most one caller — `null` means the
+	 * claim was lost and duplicate/redelivered events are handled idempotently.
 	 *
 	 * Transitions are exposed one named method at a time rather than as a generic
 	 * `(from, to)` pair, so the interface can't express a transition the
 	 * lifecycle doesn't allow.
 	 */
-	claimStep(id: string): Promise<boolean>;
+	claimStep(id: string): Promise<StepRecord | null>;
 
 	/**
 	 * Record a successful run: persist `outputs` and mark the step completed.
@@ -78,6 +78,9 @@ export interface StepStore {
 
 	/** Record a failed run: persist `error` and mark the step failed. As `completeStep`. */
 	failStep(id: string, error: StepError): Promise<boolean>;
+
+	/** Cancel every step of the execution still `queued` (`queued → cancelled`). */
+	cancelQueuedSteps(executionId: string): Promise<void>;
 
 	/**
 	 * Outputs of the given nodes' *completed* steps within an execution, keyed by
