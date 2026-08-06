@@ -73,15 +73,7 @@ export interface EvaluationArgs {
 }
 
 type CliValueKind = 'boolean' | 'string';
-type FlagGroup =
-	| 'input'
-	| 'eval'
-	| 'pairwise'
-	| 'langsmith'
-	| 'output'
-	| 'feature'
-	| 'model'
-	| 'advanced';
+type FlagGroup = 'input' | 'eval' | 'pairwise' | 'langsmith' | 'output' | 'model' | 'advanced';
 
 // Model ID validation schema
 const modelIdSchema = z.enum(AVAILABLE_MODELS as [ModelId, ...ModelId[]]);
@@ -125,7 +117,6 @@ const cliSchema = z
 
 		checks: z.string().min(1).optional(),
 		langsmith: z.boolean().optional(),
-		templateExamples: z.boolean().default(false),
 		webhookUrl: z.string().url().optional(),
 		webhookSecret: z.string().min(16).optional(),
 
@@ -279,14 +270,6 @@ const FLAG_DEFS: Record<string, FlagDef> = {
 		desc: 'Secret for HMAC-SHA256 signature (min 16 chars)',
 	},
 
-	// Feature flags
-	'--template-examples': {
-		key: 'templateExamples',
-		kind: 'boolean',
-		group: 'feature',
-		desc: 'Enable template examples phase',
-	},
-
 	// Model configuration
 	'--model': {
 		key: 'model',
@@ -362,7 +345,6 @@ const GROUP_TITLES: Record<FlagGroup, string> = {
 	pairwise: 'Pairwise Options',
 	langsmith: 'LangSmith Options',
 	output: 'Output',
-	feature: 'Feature Flags',
 	model: 'Model Configuration',
 	advanced: 'Advanced',
 };
@@ -381,7 +363,6 @@ function formatHelp(): string {
 		'pairwise',
 		'langsmith',
 		'output',
-		'feature',
 		'model',
 		'advanced',
 	];
@@ -469,20 +450,13 @@ function parseCli(argv: string[]): {
 	return { values, seenKeys };
 }
 
-function parseFeatureFlags(args: {
-	templateExamples: boolean;
-	suite: EvaluationSuite;
-}): BuilderFeatureFlags | undefined {
-	const templateExamplesFromEnv = process.env.EVAL_FEATURE_TEMPLATE_EXAMPLES === 'true';
-	const templateExamples = templateExamplesFromEnv || args.templateExamples;
-
+function parseFeatureFlags(args: { suite: EvaluationSuite }): BuilderFeatureFlags | undefined {
 	// Auto-enable introspection for introspection suite
 	const enableIntrospection = args.suite === 'introspection';
 
-	if (!templateExamples && !enableIntrospection) return undefined;
+	if (!enableIntrospection) return undefined;
 
 	return {
-		templateExamples: templateExamples || undefined,
 		enableIntrospection: enableIntrospection || undefined,
 	};
 }
@@ -550,7 +524,6 @@ export function parseEvaluationArgs(argv: string[] = process.argv.slice(2)): Eva
 	const parsed = cliSchema.parse(values);
 
 	const featureFlags = parseFeatureFlags({
-		templateExamples: parsed.templateExamples,
 		suite: parsed.suite,
 	});
 

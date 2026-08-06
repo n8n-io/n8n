@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
-import { useWorkflowDocumentSettings, DEFAULT_SETTINGS } from './useWorkflowDocumentSettings';
+import { useWorkflowDocumentSettings } from './useWorkflowDocumentSettings';
+import { DEFAULT_SETTINGS } from '@/app/constants/workflows';
 
 vi.mock('../workflows.store', () => ({
 	useWorkflowsStore: vi.fn(() => ({

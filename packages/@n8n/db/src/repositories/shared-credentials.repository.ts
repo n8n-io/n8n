@@ -147,6 +147,42 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 	}
 
 	/**
+	 * Given a list of `(credentialId, userId)` pairs, returns the subset that
+	 * still retains `scope` on the credential through a project membership path:
+	 *
+	 *   SharedCredentials (credential ↔ project)
+	 *     ← ProjectRelation (project ↔ user, project role must grant `scope`)
+	 */
+	async findPairsWithCredentialAccess(
+		pairs: Array<{ credentialId: string; userId: string }>,
+		scope: Scope,
+		credentialRoles: string[],
+		trx?: EntityManager,
+	): Promise<Array<{ credentialId: string; userId: string }>> {
+		if (pairs.length === 0 || credentialRoles.length === 0) return [];
+
+		const manager = trx ?? this.manager;
+		const credentialIds = [...new Set(pairs.map((p) => p.credentialId))];
+		const userIds = [...new Set(pairs.map((p) => p.userId))];
+
+		const rows = await manager
+			.createQueryBuilder(SharedCredentials, 'sc')
+			.select(['sc.credentialsId AS "credentialId"', 'pr.userId AS "userId"'])
+			.distinct(true)
+			.innerJoin(ProjectRelation, 'pr', 'pr.projectId = sc.projectId')
+			.innerJoin('pr.role', 'pr_role')
+			.innerJoin('pr_role.scopes', 'pr_scope')
+			.where('sc.credentialsId IN (:...credentialIds)', { credentialIds })
+			.andWhere('pr.userId IN (:...userIds)', { userIds })
+			.andWhere('pr_scope.slug = :scope', { scope })
+			.andWhere('sc.role IN (:...credentialRoles)', { credentialRoles })
+			.getRawMany<{ credentialId: string; userId: string }>();
+
+		const requested = new Set(pairs.map((p) => `${p.credentialId}|${p.userId}`));
+		return rows.filter((r) => requested.has(`${r.credentialId}|${r.userId}`));
+	}
+
+	/**
 	 * Build a subquery that returns credential IDs based on sharing permissions.
 	 * This replicates the logic from CredentialsFinderService but as a subquery.
 	 *

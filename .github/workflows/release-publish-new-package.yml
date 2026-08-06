@@ -1,4 +1,5 @@
 name: 'Release: Publish New Package'
+run-name: "Release: Publish New Package (${{ inputs['package-path'] }})"
 
 on:
   workflow_dispatch:
@@ -47,7 +48,9 @@ jobs:
           echo "Package '$PACKAGE_NAME' does not exist on NPM yet. Proceeding with publish."
 
       - name: Configure NPM token
-        run: echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_DIST_TAG_AND_INITIAL_PUBLISH_TOKEN }}" > ~/.npmrc
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_DIST_TAG_AND_INITIAL_PUBLISH_TOKEN }}
+        run: echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" > ~/.npmrc
 
       - name: Publish package
         working-directory: ${{ github.event.inputs.package-path }}

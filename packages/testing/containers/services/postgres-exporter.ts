@@ -16,11 +16,8 @@ export interface PostgresExporterMeta {
 export type PostgresExporterResult = ServiceResult<PostgresExporterMeta>;
 
 /**
- * Runs a Prometheus-compatible exporter that scrapes PostgreSQL internal statistics
- * (connections, transactions, replication lag, etc.) and exposes them as metrics on /metrics.
- * VictoriaMetrics scrapes this endpoint to make Postgres performance data queryable via PromQL.
- * Opt-in only: include `postgresExporter` in `config.services` (e.g. for benchmark profiles).
- * E2E correctness tests don't need this and shouldn't pay the ~1.3s startup + extra container.
+ * Postgres-internal stats exposed as Prometheus metrics for VictoriaMetrics.
+ * Opt-in via `config.services.postgresExporter` — only useful for benchmarks.
  */
 export const postgresExporter: Service<PostgresExporterResult> = {
 	description: 'Postgres Exporter',
@@ -52,6 +49,8 @@ export const postgresExporter: Service<PostgresExporterResult> = {
 				DATA_SOURCE_NAME: dsn,
 			})
 			.withExposedPorts(EXPORTER_PORT)
+			// stat_bgwriter collector is off by default in v0.17.x.
+			.withCommand(['--collector.stat_bgwriter'])
 			.withWaitStrategy(
 				Wait.forHttp('/metrics', EXPORTER_PORT).forStatusCode(200).withStartupTimeout(30000),
 			)

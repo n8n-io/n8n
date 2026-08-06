@@ -1,5 +1,7 @@
 import type { InstanceAiPermissions } from '@n8n/api-types';
+import type { Mock } from 'vitest';
 
+import { executeTool } from '../../__tests__/tool-test-utils';
 import type { InstanceAiContext } from '../../types';
 import { createWorkspaceTool } from '../workspace.tool';
 
@@ -11,55 +13,55 @@ function createMockContext(
 	return {
 		userId: 'user-1',
 		workflowService: {
-			list: jest.fn(),
-			get: jest.fn(),
-			getAsWorkflowJSON: jest.fn(),
-			createFromWorkflowJSON: jest.fn(),
-			updateFromWorkflowJSON: jest.fn(),
-			archive: jest.fn(),
-			delete: jest.fn(),
-			publish: jest.fn(),
-			unpublish: jest.fn(),
+			list: vi.fn(),
+			get: vi.fn(),
+			getAsWorkflowJSON: vi.fn(),
+			createFromWorkflowJSON: vi.fn(),
+			updateFromWorkflowJSON: vi.fn(),
+			archive: vi.fn(),
+			delete: vi.fn(),
+			publish: vi.fn(),
+			unpublish: vi.fn(),
 		},
 		executionService: {
-			list: jest.fn(),
-			run: jest.fn(),
-			getStatus: jest.fn(),
-			getResult: jest.fn(),
-			stop: jest.fn(),
-			getDebugInfo: jest.fn(),
-			getNodeOutput: jest.fn(),
+			list: vi.fn(),
+			run: vi.fn(),
+			getStatus: vi.fn(),
+			getResult: vi.fn(),
+			stop: vi.fn(),
+			getDebugInfo: vi.fn(),
+			getNodeOutput: vi.fn(),
 		},
 		credentialService: {
-			list: jest.fn(),
-			get: jest.fn(),
-			delete: jest.fn(),
-			test: jest.fn(),
+			list: vi.fn(),
+			get: vi.fn(),
+			delete: vi.fn(),
+			test: vi.fn(),
 		},
 		nodeService: {
-			listAvailable: jest.fn(),
-			getDescription: jest.fn(),
-			listSearchable: jest.fn(),
+			listAvailable: vi.fn(),
+			getDescription: vi.fn(),
+			listSearchable: vi.fn(),
 		},
 		dataTableService: {
-			list: jest.fn(),
-			create: jest.fn(),
-			delete: jest.fn(),
-			getSchema: jest.fn(),
-			addColumn: jest.fn(),
-			deleteColumn: jest.fn(),
-			renameColumn: jest.fn(),
-			queryRows: jest.fn(),
-			insertRows: jest.fn(),
-			updateRows: jest.fn(),
-			deleteRows: jest.fn(),
+			list: vi.fn(),
+			create: vi.fn(),
+			delete: vi.fn(),
+			getSchema: vi.fn(),
+			addColumn: vi.fn(),
+			deleteColumn: vi.fn(),
+			renameColumn: vi.fn(),
+			queryRows: vi.fn(),
+			insertRows: vi.fn(),
+			updateRows: vi.fn(),
+			deleteRows: vi.fn(),
 		},
 		workspaceService: {
-			listProjects: jest.fn(),
-			listTags: jest.fn(),
-			tagWorkflow: jest.fn(),
-			createTag: jest.fn(),
-			cleanupTestExecutions: jest.fn(),
+			listProjects: vi.fn(),
+			listTags: vi.fn(),
+			tagWorkflow: vi.fn(),
+			createTag: vi.fn(),
+			cleanupTestExecutions: vi.fn(),
 		},
 		permissions: {},
 		...overrides,
@@ -72,7 +74,7 @@ describe('workspace tool', () => {
 			const context = createMockContext({ workspaceService: undefined });
 			const tool = createWorkspaceTool(context);
 
-			const result = await tool.execute!({ action: 'list-projects' }, {} as never);
+			const result = await executeTool(tool, { action: 'list-projects' }, {} as never);
 
 			expect(result).toEqual({ error: 'Workspace service is not available in this environment.' });
 		});
@@ -82,10 +84,10 @@ describe('workspace tool', () => {
 		it('should call workspaceService.listProjects and return result', async () => {
 			const projects = [{ id: 'p1', name: 'Project 1', type: 'team' as const }];
 			const context = createMockContext();
-			(context.workspaceService!.listProjects as jest.Mock).mockResolvedValue(projects);
+			(context.workspaceService!.listProjects as Mock).mockResolvedValue(projects);
 
 			const tool = createWorkspaceTool(context);
-			const result = await tool.execute!({ action: 'list-projects' }, {} as never);
+			const result = await executeTool(tool, { action: 'list-projects' }, {} as never);
 
 			expect(context.workspaceService!.listProjects).toHaveBeenCalled();
 			expect(result).toEqual({ projects });
@@ -96,10 +98,10 @@ describe('workspace tool', () => {
 		it('should call workspaceService.listTags and return result', async () => {
 			const tags = [{ id: 't1', name: 'production' }];
 			const context = createMockContext();
-			(context.workspaceService!.listTags as jest.Mock).mockResolvedValue(tags);
+			(context.workspaceService!.listTags as Mock).mockResolvedValue(tags);
 
 			const tool = createWorkspaceTool(context);
-			const result = await tool.execute!({ action: 'list-tags' }, {} as never);
+			const result = await executeTool(tool, { action: 'list-tags' }, {} as never);
 
 			expect(context.workspaceService!.listTags).toHaveBeenCalled();
 			expect(result).toEqual({ tags });
@@ -113,7 +115,8 @@ describe('workspace tool', () => {
 			});
 			const tool = createWorkspaceTool(context);
 
-			const result = await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{ action: 'tag-workflow', workflowId: 'wf1', tags: ['prod'] },
 				{} as never,
 			);
@@ -127,12 +130,13 @@ describe('workspace tool', () => {
 
 		it('should suspend for confirmation when permission requires approval', async () => {
 			const context = createMockContext();
-			const suspend = jest.fn();
+			const suspend = vi.fn();
 
 			const tool = createWorkspaceTool(context);
-			await tool.execute!(
+			await executeTool(
+				tool,
 				{ action: 'tag-workflow', workflowId: 'wf1', workflowName: 'My WF', tags: ['prod'] },
-				{ agent: { suspend, resumeData: undefined } } as never,
+				{ suspend, resumeData: undefined } as never,
 			);
 
 			expect(suspend).toHaveBeenCalled();
@@ -144,12 +148,13 @@ describe('workspace tool', () => {
 
 		it('should execute when approved via resume', async () => {
 			const context = createMockContext();
-			(context.workspaceService!.tagWorkflow as jest.Mock).mockResolvedValue(['prod']);
+			(context.workspaceService!.tagWorkflow as Mock).mockResolvedValue(['prod']);
 
 			const tool = createWorkspaceTool(context);
-			const result = await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{ action: 'tag-workflow', workflowId: 'wf1', tags: ['prod'] },
-				{ agent: { resumeData: { approved: true } } } as never,
+				{ resumeData: { approved: true } } as never,
 			);
 
 			expect(context.workspaceService!.tagWorkflow).toHaveBeenCalledWith('wf1', ['prod']);
@@ -160,9 +165,10 @@ describe('workspace tool', () => {
 			const context = createMockContext();
 			const tool = createWorkspaceTool(context);
 
-			const result = await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{ action: 'tag-workflow', workflowId: 'wf1', tags: ['prod'] },
-				{ agent: { resumeData: { approved: false } } } as never,
+				{ resumeData: { approved: false } } as never,
 			);
 
 			expect(result).toEqual({
@@ -176,12 +182,13 @@ describe('workspace tool', () => {
 			const context = createMockContext({
 				permissions: { tagWorkflow: 'always_allow' },
 			});
-			(context.workspaceService!.tagWorkflow as jest.Mock).mockResolvedValue(['prod']);
+			(context.workspaceService!.tagWorkflow as Mock).mockResolvedValue(['prod']);
 
 			const tool = createWorkspaceTool(context);
-			const result = await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{ action: 'tag-workflow', workflowId: 'wf1', tags: ['prod'] },
-				{ agent: { resumeData: undefined } } as never,
+				{ resumeData: undefined } as never,
 			);
 
 			expect(context.workspaceService!.tagWorkflow).toHaveBeenCalledWith('wf1', ['prod']);
@@ -193,13 +200,14 @@ describe('workspace tool', () => {
 		it('should accept folder actions when listFolders is present', async () => {
 			const context = createMockContext();
 			const folders = [{ id: 'f1', name: 'Test Folder', parentFolderId: null }];
-			context.workspaceService!.listFolders = jest.fn().mockResolvedValue(folders);
-			context.workspaceService!.createFolder = jest.fn();
-			context.workspaceService!.deleteFolder = jest.fn();
-			context.workspaceService!.moveWorkflowToFolder = jest.fn();
+			context.workspaceService!.listFolders = vi.fn().mockResolvedValue(folders);
+			context.workspaceService!.createFolder = vi.fn();
+			context.workspaceService!.deleteFolder = vi.fn();
+			context.workspaceService!.moveWorkflowToFolder = vi.fn();
 
 			const tool = createWorkspaceTool(context);
-			const result = await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{ action: 'list-folders', projectId: 'p1' } as never,
 				{} as never,
 			);
@@ -211,22 +219,23 @@ describe('workspace tool', () => {
 	describe('delete-folder', () => {
 		it('should suspend with destructive severity for confirmation', async () => {
 			const context = createMockContext();
-			context.workspaceService!.listFolders = jest.fn();
-			context.workspaceService!.createFolder = jest.fn();
-			context.workspaceService!.deleteFolder = jest.fn();
-			context.workspaceService!.moveWorkflowToFolder = jest.fn();
+			context.workspaceService!.listFolders = vi.fn();
+			context.workspaceService!.createFolder = vi.fn();
+			context.workspaceService!.deleteFolder = vi.fn();
+			context.workspaceService!.moveWorkflowToFolder = vi.fn();
 
-			const suspend = jest.fn();
+			const suspend = vi.fn();
 			const tool = createWorkspaceTool(context);
 
-			await tool.execute!(
+			await executeTool(
+				tool,
 				{
 					action: 'delete-folder',
 					folderId: 'f1',
 					folderName: 'Old Folder',
 					projectId: 'p1',
 				},
-				{ agent: { suspend, resumeData: undefined } } as never,
+				{ suspend, resumeData: undefined } as never,
 			);
 
 			expect(suspend).toHaveBeenCalled();
@@ -238,16 +247,17 @@ describe('workspace tool', () => {
 
 		it('should execute deletion when approved', async () => {
 			const context = createMockContext();
-			const deleteFolder = jest.fn().mockResolvedValue(undefined);
-			context.workspaceService!.listFolders = jest.fn();
-			context.workspaceService!.createFolder = jest.fn();
+			const deleteFolder = vi.fn().mockResolvedValue(undefined);
+			context.workspaceService!.listFolders = vi.fn();
+			context.workspaceService!.createFolder = vi.fn();
 			context.workspaceService!.deleteFolder = deleteFolder;
-			context.workspaceService!.moveWorkflowToFolder = jest.fn();
+			context.workspaceService!.moveWorkflowToFolder = vi.fn();
 
 			const tool = createWorkspaceTool(context);
-			const result = await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{ action: 'delete-folder', folderId: 'f1', projectId: 'p1' },
-				{ agent: { resumeData: { approved: true } } } as never,
+				{ resumeData: { approved: true } } as never,
 			);
 
 			expect(deleteFolder).toHaveBeenCalledWith('f1', 'p1', undefined);
@@ -260,14 +270,18 @@ describe('workspace tool', () => {
 			const context = createMockContext({
 				permissions: { cleanupTestExecutions: 'always_allow' },
 			});
-			(context.workspaceService!.cleanupTestExecutions as jest.Mock).mockResolvedValue({
+			(context.workspaceService!.cleanupTestExecutions as Mock).mockResolvedValue({
 				deletedCount: 5,
 			});
 
 			const tool = createWorkspaceTool(context);
-			const result = await tool.execute!({ action: 'cleanup-test-executions', workflowId: 'wf1' }, {
-				agent: { resumeData: undefined },
-			} as never);
+			const result = await executeTool(
+				tool,
+				{ action: 'cleanup-test-executions', workflowId: 'wf1' },
+				{
+					resumeData: undefined,
+				} as never,
+			);
 
 			expect(context.workspaceService!.cleanupTestExecutions).toHaveBeenCalledWith('wf1', {
 				olderThanHours: undefined,

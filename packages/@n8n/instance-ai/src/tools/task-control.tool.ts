@@ -1,7 +1,7 @@
 /**
  * Consolidated task-control tool — update-checklist + cancel-task + correct-task.
  */
-import { createTool } from '@mastra/core/tools';
+import { Tool } from '@n8n/agents';
 import { taskListSchema } from '@n8n/api-types';
 import { z } from 'zod';
 
@@ -13,7 +13,9 @@ import type { OrchestrationContext } from '../types';
 const updateChecklistAction = z.object({
 	action: z
 		.literal('update-checklist')
-		.describe('Write or update a visible task checklist for multi-step work'),
+		.describe(
+			'Write or update a lightweight visible checklist for multi-step work that does not need scheduler-driven execution. For coordinated background tasks, use create-tasks instead.',
+		),
 	tasks: taskListSchema.shape.tasks,
 });
 
@@ -92,11 +94,12 @@ async function handleCorrectTask(
 // ── Tool factory ────────────────────────────────────────────────────────────
 
 export function createTaskControlTool(context: OrchestrationContext) {
-	return createTool({
-		id: 'task-control',
-		description: 'Manage tasks and background work.',
-		inputSchema,
-		execute: async (input: Input) => {
+	return new Tool('task-control')
+		.description(
+			'Manage tasks and background work. Use action="update-checklist" only for lightweight visible checklists that do not need scheduler-driven execution; for coordinated background tasks use create-tasks instead.',
+		)
+		.input(inputSchema)
+		.handler(async (input: Input) => {
 			switch (input.action) {
 				case 'update-checklist':
 					return await handleUpdateChecklist(context, input);
@@ -105,6 +108,6 @@ export function createTaskControlTool(context: OrchestrationContext) {
 				case 'correct-task':
 					return await handleCorrectTask(context, input);
 			}
-		},
-	});
+		})
+		.build();
 }

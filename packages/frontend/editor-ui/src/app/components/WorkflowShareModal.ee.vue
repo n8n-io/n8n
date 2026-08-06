@@ -7,8 +7,8 @@ import Modal from './Modal.vue';
 import { EnterpriseEditionFeature, MODAL_CONFIRM, WORKFLOW_SHARE_MODAL_KEY } from '@/app/constants';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useMessage } from '@/app/composables/useMessage';
-import { useToast } from '@/app/composables/useToast';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useToast } from '@n8n/composables/useToast';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
@@ -21,7 +21,7 @@ import type { ProjectSharingData, Project } from '@/features/collaboration/proje
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 import { useRemoteProjectSearch } from '@/features/collaboration/projects/projects.utils';
 import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
-import { useRolesStore } from '@/app/stores/roles.store';
+import { useRolesStore } from '@n8n/stores/roles.store';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useI18n } from '@n8n/i18n';
 import { telemetry } from '@/app/plugins/telemetry';
@@ -66,10 +66,7 @@ const workflowName = computed(
 	() => workflowListEntry.value?.name ?? workflowDocumentStore.value.name,
 );
 const workflowHomeProject = computed(
-	() =>
-		workflowListEntry.value?.homeProject ??
-		workflowDocumentStore.value.homeProject ??
-		workflowsStore.workflow.homeProject,
+	() => workflowListEntry.value?.homeProject ?? workflowDocumentStore.value.homeProject,
 );
 const workflowScopes = computed(
 	() => workflowListEntry.value?.scopes ?? workflowDocumentStore.value.scopes,
@@ -304,6 +301,7 @@ watch(
 				<EnterpriseEdition :features="[EnterpriseEditionFeature.Sharing]" :class="$style.content">
 					<div>
 						<ProjectSharing
+							v-if="workflowHomeProject"
 							v-model="sharedWithProjects"
 							:home-project="workflowHomeProject"
 							:search-fn="searchFn"

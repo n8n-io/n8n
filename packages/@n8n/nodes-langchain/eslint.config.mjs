@@ -13,6 +13,7 @@ export default defineConfig(
 			// TODO: remove all the following rules
 			eqeqeq: 'warn',
 			'id-denylist': 'warn',
+			'n8n-local-rules/no-dynamic-regexp': 'error',
 			'no-case-declarations': 'warn',
 			'no-extra-boolean-cast': 'warn',
 			'no-empty': 'warn',
@@ -24,6 +25,7 @@ export default defineConfig(
 			'import-x/extensions': 'warn',
 
 			'n8n-local-rules/no-argument-spread': 'warn', // TODO: mark error
+			'@n8n/community-nodes/no-builder-hint-leakage': 'error',
 
 			'@n8n/community-nodes/credential-documentation-url': ['error', { allowSlugs: true }],
 
@@ -167,6 +169,7 @@ export default defineConfig(
 		rules: {
 			'import-x/no-extraneous-dependencies': 'warn',
 			'n8n-local-rules/no-uncaught-json-parse': 'warn',
+			'n8n-local-rules/no-dynamic-regexp': 'off',
 		},
 	},
 );

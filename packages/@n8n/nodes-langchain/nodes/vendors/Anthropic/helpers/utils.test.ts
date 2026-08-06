@@ -1,15 +1,17 @@
-import { mockDeep } from 'jest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
+import type { MockInstance } from 'vitest';
+import { mockDeep } from 'vitest-mock-extended';
 
 import { downloadFile, getBaseUrl, getMimeType, splitByComma, uploadFile } from './utils';
 import * as transport from '../transport';
 
 describe('Anthropic -> utils', () => {
 	const mockExecuteFunctions = mockDeep<IExecuteFunctions>();
-	const apiRequestMock = jest.spyOn(transport, 'apiRequest');
+	let apiRequestMock: MockInstance;
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
+		apiRequestMock = vi.spyOn(transport, 'apiRequest');
 	});
 
 	describe('getMimeType', () => {

@@ -10,9 +10,10 @@ export const noEmptySetNodes: BinaryCheck = {
 	name: 'no_empty_set_nodes',
 	description: 'Set nodes have at least one assignment configured',
 	kind: 'deterministic',
+	dimension: 'parameter_correctness',
 	run(workflow) {
 		const setNodes = (workflow.nodes ?? []).filter((n) => n.type === SET_NODE_TYPE);
-		if (setNodes.length === 0) return { pass: true };
+		if (setNodes.length === 0) return { pass: true, applicable: false };
 
 		const empty: string[] = [];
 		for (const node of setNodes) {

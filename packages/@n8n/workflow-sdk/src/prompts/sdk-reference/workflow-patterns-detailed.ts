@@ -64,15 +64,16 @@ startTrigger.to(sourceA.to(sourceB.to(processResults)));
 // Pairs items by index, merging fields from both inputs into one item.
 // @example input0: [{ a: 1 }, { a: 2 }] input1: [{ b: 10, c: 'x' }, { b: 20 }]
 //   output: [{ a: 1, b: 10, c: 'x' }, { a: 2, b: 20, c: undefined }]
+// .input(n) is 0-based: .input(0) = first input, .input(1) = second input.
 const combineResults = merge({
   version: 3.2,
   config: { name: 'Combine Results', parameters: { mode: 'combine', combineBy: 'combineByPosition' } }
 });
 export default workflow('id', 'name')
   .add(startTrigger)
-  .to(sourceA.to(combineResults.input(0)))
+  .to(sourceA.to(combineResults.input(0))) // first input (index 0)
   .add(startTrigger)
-  .to(sourceB.to(combineResults.input(1)))
+  .to(sourceB.to(combineResults.input(1))) // second input (index 1)
   .add(combineResults)
   .to(processResults);
 
@@ -86,9 +87,9 @@ const allResults = merge({
 });
 export default workflow('id', 'name')
   .add(startTrigger)
-  .to(sourceA.to(allResults.input(0)))
+  .to(sourceA.to(allResults.input(0))) // first input (index 0)
   .add(startTrigger)
-  .to(sourceB.to(allResults.input(1)))
+  .to(sourceB.to(allResults.input(1))) // second input (index 1)
   .add(allResults)
   .to(processResults);
 \`\`\`
@@ -143,12 +144,13 @@ const branch1 = node({ type: 'n8n-nodes-base.httpRequest', ... });
 const branch2 = node({ type: 'n8n-nodes-base.httpRequest', ... });
 const processResults = node({ type: 'n8n-nodes-base.set', ... });
 
-// Connect branches to specific merge inputs using .input(n)
+// Connect branches to specific merge inputs using .input(n).
+// Indices are 0-based: .input(0) is the FIRST input, .input(1) is the SECOND.
 export default workflow('id', 'name')
   .add(trigger({ ... }))
-  .to(branch1.to(combineResults.input(0)))
+  .to(branch1.to(combineResults.input(0)))  // first input (index 0)
   .add(trigger({ ... }))
-  .to(branch2.to(combineResults.input(1)))
+  .to(branch2.to(combineResults.input(1)))  // second input (index 1)
   .add(combineResults)
   .to(processResults);
 \`\`\`

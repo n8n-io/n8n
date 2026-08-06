@@ -1,3 +1,19 @@
+diff --git a/es/components/table/src/table/style-helper.mjs b/es/components/table/src/table/style-helper.mjs
+index b07e3e8184b60d293fa9755e00dbcab0a3843e70..be0ebe232c5e15e10cfbdeb5edc29a97eb339c38 100644
+--- a/es/components/table/src/table/style-helper.mjs
++++ b/es/components/table/src/table/style-helper.mjs
+@@ -70,6 +70,11 @@ function useStyle(props, layout, store, table) {
+     };
+   });
+   const doLayout = () => {
++    // Guard against post-teardown firing: lodash debounce schedules doLayout
++    // via setTimeout, which can fire after vitest tears down jsdom and deletes
++    // requestAnimationFrame from globalThis. The bare reference below would
++    // then throw a ReferenceError that vitest 4 promotes to a test failure.
++    if (typeof requestAnimationFrame === 'undefined') return;
+     if (shouldUpdateHeight.value) {
+       layout.updateElsHeight();
+     }
 diff --git a/es/hooks/use-lockscreen/index.mjs b/es/hooks/use-lockscreen/index.mjs
 index 482516a6c59f8dcf0caba62b7482f63f126c2280..82a37f344bd650e9d514397b4531c0ff36487c70 100644
 --- a/es/hooks/use-lockscreen/index.mjs
@@ -11,6 +27,22 @@ index 482516a6c59f8dcf0caba62b7482f63f126c2280..82a37f344bd650e9d514397b4531c0ff
        removeClass(document == null ? void 0 : document.body, hiddenCls.value);
        if (withoutHiddenClass && document) {
          document.body.style.width = bodyWidth;
+diff --git a/lib/components/table/src/table/style-helper.js b/lib/components/table/src/table/style-helper.js
+index dbf8c403dc7b89f9af550c2ea5047f02bc9f44c6..b80704a3eb614bcfa79da267a5910900f204e002 100644
+--- a/lib/components/table/src/table/style-helper.js
++++ b/lib/components/table/src/table/style-helper.js
+@@ -74,6 +74,11 @@ function useStyle(props, layout, store, table) {
+     };
+   });
+   const doLayout = () => {
++    // Guard against post-teardown firing: lodash debounce schedules doLayout
++    // via setTimeout, which can fire after vitest tears down jsdom and deletes
++    // requestAnimationFrame from globalThis. The bare reference below would
++    // then throw a ReferenceError that vitest 4 promotes to a test failure.
++    if (typeof requestAnimationFrame === 'undefined') return;
+     if (shouldUpdateHeight.value) {
+       layout.updateElsHeight();
+     }
 diff --git a/lib/hooks/use-lockscreen/index.js b/lib/hooks/use-lockscreen/index.js
 index ce7bd581a57cd0d7e834c42a954b48d148578ef5..496e4dc07bae546bea037cedb23ea0ee7b3a7955 100644
 --- a/lib/hooks/use-lockscreen/index.js

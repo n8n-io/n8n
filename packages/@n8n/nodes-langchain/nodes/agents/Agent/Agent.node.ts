@@ -30,6 +30,8 @@ export class Agent extends VersionedNodeType {
 			},
 			defaultVersion: 3.1,
 			builderHint: {
+				searchHint:
+					"Wire model/memory/tools/outputParser via the SDK `subnodes` config object using factory functions (`languageModel()`, `memory()`, `tool()`, `outputParser()`). Inside subnodes, reference upstream data with `nodeJson(triggerNode, 'path')`, not `$json` — subnodes do not share the main predecessor's item context.",
 				relatedNodes: [
 					{
 						nodeType: 'n8n-nodes-base.aggregate',
@@ -48,6 +50,73 @@ export class Agent extends VersionedNodeType {
 						nodeType: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
 						relationHint:
 							'Required for conversational workflows - connect memory to every agent that needs to recall previous messages in the conversation',
+					},
+				],
+				extraTypeDefContent: [
+					{
+						content: `<patterns>
+<pattern title="Agent with model, memory, structured output parser">
+const chatTrigger = trigger({
+  type: '@n8n/n8n-nodes-langchain.chatTrigger',
+  version: 1.3,
+  config: {
+    name: 'Chat Trigger',
+    parameters: { public: false },
+    output: [{ sessionId: 'chat-session-id', chatInput: 'Hello' }]
+  }
+});
+
+const model = languageModel({
+  type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+  version: 1.3,
+  config: {
+    name: 'OpenAI Chat Model',
+    parameters: { model: { __rl: true, mode: 'list', value: 'gpt-5.4' } },
+    credentials: { openAiApi: { id: 'credId', name: 'OpenAI account' } }
+  }
+});
+
+const parser = outputParser({
+  type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+  version: 1.3,
+  config: {
+    name: 'Output Parser',
+    parameters: {
+      schemaType: 'fromJson',
+      jsonSchemaExample: '{ "score": 75, "tier": "hot" }'
+    }
+  }
+});
+
+const memoryNode = memory({
+  type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+  version: 1.3,
+  config: {
+    name: 'Conversation Memory',
+    parameters: {
+      sessionIdType: 'customKey',
+      sessionKey: nodeJson(chatTrigger, 'sessionId'),
+      contextWindowLength: 10
+    }
+  }
+});
+
+const agent = node({
+  type: '@n8n/n8n-nodes-langchain.agent',
+  version: 3.1,
+  config: {
+    name: 'AI Agent',
+    parameters: {
+      promptType: 'define',
+      text: expr('{{ $json.prompt }}'),
+      hasOutputParser: true,
+      options: { systemMessage: 'You are an expert...' }
+    },
+    subnodes: { model, memory: memoryNode, outputParser: parser }
+  }
+});
+</pattern>
+</patterns>`,
 					},
 				],
 			},

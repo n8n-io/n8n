@@ -1,5 +1,5 @@
 import { computed, onBeforeUnmount, watch, type ComputedRef, type ShallowRef } from 'vue';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useLogsStore } from '@/app/stores/logs.store';
 import { useResizablePanel } from '@/app/composables/useResizablePanel';
 import { usePopOutWindow } from '@/features/execution/logs/composables/usePopOutWindow';

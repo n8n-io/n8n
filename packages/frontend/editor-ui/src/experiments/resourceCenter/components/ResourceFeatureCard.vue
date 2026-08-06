@@ -113,7 +113,8 @@ const resolvedArtworkNodeTypes = computed(() => {
 	border-radius: var(--radius--lg);
 	border: 1px solid
 		var(--feature--border-color--card, color-mix(in srgb, var(--feature--color--accent) 16%, white));
-	background: radial-gradient(circle at 88% 12%, rgba(255, 255, 255, 0.92), transparent 18rem),
+	background:
+		radial-gradient(circle at 88% 12%, rgba(255, 255, 255, 0.92), transparent 18rem),
 		linear-gradient(
 			122deg,
 			var(--feature--color--background--surface) 0%,
@@ -173,8 +174,8 @@ const resolvedArtworkNodeTypes = computed(() => {
 
 	&.dark {
 		--feature--border-color--card: rgba(255, 255, 255, 0.1);
-		--feature--shadow--card: 0 0 0 0.5px
-				color-mix(in srgb, var(--feature--color--accent) 28%, transparent),
+		--feature--shadow--card:
+			0 0 0 0.5px color-mix(in srgb, var(--feature--color--accent) 28%, transparent),
 			0 1px 3px -1px rgba(0, 0, 0, 0.18);
 	}
 }
@@ -240,7 +241,8 @@ const resolvedArtworkNodeTypes = computed(() => {
 	color: white;
 	font-size: var(--font-size--2xs);
 	font-weight: var(--font-weight--bold);
-	box-shadow: 0 0.75rem 1.5rem -1rem color-mix(in srgb, var(--feature--shadow--accent) 42%, transparent);
+	box-shadow: 0 0.75rem 1.5rem -1rem
+		color-mix(in srgb, var(--feature--shadow--accent) 42%, transparent);
 	cursor: pointer;
 	transition:
 		transform 0.18s ease,

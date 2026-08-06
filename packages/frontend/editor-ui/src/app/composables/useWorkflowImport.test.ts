@@ -52,8 +52,7 @@ describe('useWorkflowImport', () => {
 
 	it('should throw if workflow has no nodes', async () => {
 		const storeRef = shallowRef(null);
-		const ndvStoreRef = shallowRef(null);
-		const { importWorkflowExact } = useWorkflowImport(storeRef, ndvStoreRef);
+		const { importWorkflowExact } = useWorkflowImport(storeRef);
 
 		await expect(
 			importWorkflowExact({ workflow: { connections: {} } as WorkflowDataUpdate }),
@@ -62,8 +61,7 @@ describe('useWorkflowImport', () => {
 
 	it('should throw if workflow has no connections', async () => {
 		const storeRef = shallowRef(null);
-		const ndvStoreRef = shallowRef(null);
-		const { importWorkflowExact } = useWorkflowImport(storeRef, ndvStoreRef);
+		const { importWorkflowExact } = useWorkflowImport(storeRef);
 
 		await expect(
 			importWorkflowExact({ workflow: { nodes: [] } as unknown as WorkflowDataUpdate }),
@@ -72,8 +70,7 @@ describe('useWorkflowImport', () => {
 
 	it('should reset workspace, initialize, and fit view', async () => {
 		const storeRef = shallowRef(null);
-		const ndvStoreRef = shallowRef(null);
-		const { importWorkflowExact } = useWorkflowImport(storeRef, ndvStoreRef);
+		const { importWorkflowExact } = useWorkflowImport(storeRef);
 
 		await importWorkflowExact({ workflow: createWorkflowData() });
 
@@ -91,8 +88,7 @@ describe('useWorkflowImport', () => {
 		});
 
 		const storeRef = shallowRef(null);
-		const ndvStoreRef = shallowRef(null);
-		const { importWorkflowExact } = useWorkflowImport(storeRef, ndvStoreRef);
+		const { importWorkflowExact } = useWorkflowImport(storeRef);
 
 		await importWorkflowExact({ workflow: createWorkflowData() });
 
@@ -104,8 +100,7 @@ describe('useWorkflowImport', () => {
 		mockInitializeWorkspace.mockResolvedValue({ workflowDocumentStore: mockStore });
 
 		const storeRef = shallowRef(null);
-		const ndvStoreRef = shallowRef(null);
-		const { importWorkflowExact } = useWorkflowImport(storeRef, ndvStoreRef);
+		const { importWorkflowExact } = useWorkflowImport(storeRef);
 
 		await importWorkflowExact({ workflow: createWorkflowData() });
 
@@ -116,8 +111,7 @@ describe('useWorkflowImport', () => {
 		mockRoute.name = VIEWS.WORKFLOW;
 
 		const storeRef = shallowRef(null);
-		const ndvStoreRef = shallowRef(null);
-		const { importWorkflowExact } = useWorkflowImport(storeRef, ndvStoreRef);
+		const { importWorkflowExact } = useWorkflowImport(storeRef);
 
 		await importWorkflowExact({ workflow: createWorkflowData({ id: 'my-workflow-id' }) });
 
@@ -130,8 +124,7 @@ describe('useWorkflowImport', () => {
 		mockRoute.name = VIEWS.DEMO;
 
 		const storeRef = shallowRef(null);
-		const ndvStoreRef = shallowRef(null);
-		const { importWorkflowExact } = useWorkflowImport(storeRef, ndvStoreRef);
+		const { importWorkflowExact } = useWorkflowImport(storeRef);
 
 		await importWorkflowExact({ workflow: createWorkflowData({ id: 'real-workflow-id' }) });
 

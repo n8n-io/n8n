@@ -8,7 +8,7 @@ import NodeIcon from '@/app/components/NodeIcon.vue';
 
 import { useViewStacks } from '../../composables/useViewStacks';
 import { useActions } from '../../composables/useActions';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 
 import { N8nNodeCreatorNode } from '@n8n/design-system';
 export interface Props {

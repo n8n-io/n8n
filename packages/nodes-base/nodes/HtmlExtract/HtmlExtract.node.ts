@@ -1,4 +1,5 @@
-import cheerio from 'cheerio';
+import * as cheerio from 'cheerio';
+import type { CheerioAPI } from 'cheerio';
 import get from 'lodash/get';
 import type {
 	IDataObject,
@@ -9,7 +10,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
-type Cheerio = ReturnType<typeof cheerio>;
+type Cheerio = ReturnType<CheerioAPI>;
 
 interface IValueData {
 	attribute?: string;
@@ -27,7 +28,11 @@ const extractFunctions: {
 		$.attr(valueData.attribute!),
 	html: ($: Cheerio, _valueData: IValueData): string | undefined => $.html() || undefined,
 	text: ($: Cheerio, _valueData: IValueData): string | undefined => $.text(),
-	value: ($: Cheerio, _valueData: IValueData): string | undefined => $.val(),
+	value: ($: Cheerio, _valueData: IValueData): string | undefined => {
+		const val = $.val();
+		if (val === undefined) return undefined;
+		return Array.isArray(val) ? val.join(',') : val;
+	},
 };
 
 /**

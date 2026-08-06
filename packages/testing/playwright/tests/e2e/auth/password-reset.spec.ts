@@ -9,9 +9,7 @@ test(
 	},
 	async ({ api, services }) => {
 		const ownerEmail = 'nathan@n8n.io';
-		const res = await api.request.post('/rest/forgot-password', {
-			data: { email: ownerEmail },
-		});
+		const res = await api.users.forgotPassword(ownerEmail);
 		expect(res.ok()).toBeTruthy();
 
 		const msg = await services.mailpit.waitForMessage({

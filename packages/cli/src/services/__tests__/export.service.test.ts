@@ -1,32 +1,37 @@
 import { type Logger } from '@n8n/backend-common';
-import { ExportService } from '../export.service';
 import { type DataSource } from '@n8n/typeorm';
 import { mkdir, rm, readdir, appendFile, readFile } from 'fs/promises';
-import { mock } from 'jest-mock-extended';
 import type { Cipher } from 'n8n-core';
+import { mock } from 'vitest-mock-extended';
+
+import { compressFolder } from '@/utils/compression.util';
+
+import { ExportService } from '../export.service';
 
 // Mock fs/promises with proper implementations
-jest.mock('fs/promises', () => ({
-	mkdir: jest.fn(),
-	rm: jest.fn(),
-	readdir: jest.fn(),
-	appendFile: jest.fn(),
-	readFile: jest.fn(),
+vi.mock('fs/promises', () => ({
+	mkdir: vi.fn(),
+	rm: vi.fn(),
+	readdir: vi.fn(),
+	appendFile: vi.fn(),
+	readFile: vi.fn(),
 }));
 
 // Mock compression utility
-jest.mock('@/utils/compression.util', () => ({
-	compressFolder: jest.fn(),
+vi.mock('@/utils/compression.util', () => ({
+	compressFolder: vi.fn(),
 }));
 
 // Mock validateDbTypeForExportEntities
-jest.mock('@/utils/validate-database-type', () => ({
-	validateDbTypeForExportEntities: jest.fn(),
+vi.mock('@/utils/validate-database-type', () => ({
+	validateDbTypeForExportEntities: vi.fn(),
 }));
 
 // Mock @n8n/db
-jest.mock('@n8n/db', () => ({
-	DataSource: mock<DataSource>(),
+// Use the real `@n8n/db` exports; the test injects a mock DataSource via the
+// constructor, so the real classes are never instantiated.
+vi.mock('@n8n/db', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/db')>()),
 }));
 
 describe('ExportService', () => {
@@ -36,14 +41,14 @@ describe('ExportService', () => {
 	let mockCipher: Cipher;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		mockLogger = mock<Logger>();
 		mockDataSource = mock<DataSource>();
 		mockCipher = mock<Cipher>();
 
 		// Set up cipher mock
-		mockCipher.encryptV2 = jest.fn(
+		mockCipher.encryptV2 = vi.fn(
 			async (data: string) => `encrypted:${data}`,
 		) as Cipher['encryptV2'];
 
@@ -69,11 +74,11 @@ describe('ExportService', () => {
 		// @ts-expect-error Accessing private property for testing
 		mockDataSource.options = { type: 'sqlite' };
 		mockDataSource.driver = {
-			escape: jest.fn((identifier: string) => `"${identifier}"`),
+			escape: vi.fn((identifier: string) => `"${identifier}"`),
 		} as any;
 
 		// Add a default implementation for query method to prevent undefined errors
-		jest.mocked(mockDataSource.query).mockImplementation(async (query: string) => {
+		vi.mocked(mockDataSource.query).mockImplementation(async (query: string) => {
 			// Handle migrations table queries first since they're called during exportMigrationsTable
 			if (query.includes('migrations') && query.includes('COUNT')) {
 				throw new Error('Table not found'); // Simulating migrations table not existing
@@ -83,20 +88,19 @@ describe('ExportService', () => {
 		});
 
 		// Set up proper mock implementations for fs/promises
-		jest.mocked(mkdir).mockResolvedValue(undefined);
-		jest.mocked(rm).mockResolvedValue(undefined);
-		jest.mocked(readdir).mockResolvedValue([]);
-		jest.mocked(appendFile).mockResolvedValue(undefined);
+		vi.mocked(mkdir).mockResolvedValue(undefined);
+		vi.mocked(rm).mockResolvedValue(undefined);
+		vi.mocked(readdir).mockResolvedValue([]);
+		vi.mocked(appendFile).mockResolvedValue(undefined);
 
 		// Mock the compression utility
-		const { compressFolder } = require('@/utils/compression.util');
-		jest.mocked(compressFolder).mockResolvedValue(undefined);
+		vi.mocked(compressFolder).mockResolvedValue(undefined);
 
 		exportService = new ExportService(mockLogger, mockDataSource, mockCipher);
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('exportEntities', () => {
@@ -108,8 +112,7 @@ describe('ExportService', () => {
 			];
 
 			// Mock the migrations table query to fail (table doesn't exist)
-			jest
-				.mocked(mockDataSource.query)
+			vi.mocked(mockDataSource.query)
 				.mockImplementationOnce(async (query: string) => {
 					if (query.includes('migrations') && query.includes('COUNT')) {
 						throw new Error('Table not found');
@@ -118,7 +121,7 @@ describe('ExportService', () => {
 				})
 				.mockResolvedValueOnce(mockEntities) // First entity (User)
 				.mockResolvedValueOnce([]); // Workflow entities
-			jest.mocked(readdir).mockResolvedValue([]);
+			vi.mocked(readdir).mockResolvedValue([]);
 
 			await exportService.exportEntities(outputDir);
 
@@ -135,8 +138,7 @@ describe('ExportService', () => {
 			];
 
 			// Mock the migrations table query to fail (table doesn't exist)
-			jest
-				.mocked(mockDataSource.query)
+			vi.mocked(mockDataSource.query)
 				.mockImplementationOnce(async (query: string) => {
 					if (query.includes('migrations') && query.includes('COUNT')) {
 						throw new Error('Table not found');
@@ -145,8 +147,8 @@ describe('ExportService', () => {
 				})
 				.mockResolvedValueOnce(mockEntities) // First entity (User)
 				.mockResolvedValueOnce([]); // Workflow entities
-			jest.mocked(readdir).mockResolvedValue([]);
-			jest.mocked(readFile).mockResolvedValueOnce('custom-encryption-key');
+			vi.mocked(readdir).mockResolvedValue([]);
+			vi.mocked(readFile).mockResolvedValueOnce('custom-encryption-key');
 
 			await exportService.exportEntities(outputDir, undefined, 'custom-encryption-key');
 
@@ -167,8 +169,7 @@ describe('ExportService', () => {
 			}));
 
 			// Mock the migrations table query to fail (table doesn't exist)
-			jest
-				.mocked(mockDataSource.query)
+			vi.mocked(mockDataSource.query)
 				.mockImplementationOnce(async (query: string) => {
 					if (query.includes('migrations') && query.includes('COUNT')) {
 						throw new Error('Table not found');
@@ -178,11 +179,11 @@ describe('ExportService', () => {
 				.mockResolvedValueOnce(mockEntities) // First page for User
 				.mockResolvedValueOnce([]) // Second page for User (empty, end of data)
 				.mockResolvedValueOnce([]); // Workflow entities
-			jest.mocked(readdir).mockResolvedValue([]);
+			vi.mocked(readdir).mockResolvedValue([]);
 
 			await exportService.exportEntities(outputDir);
 
-			expect(mockDataSource.query).toHaveBeenCalledTimes(5); // 1 migrations + 3 entity queries
+			expect(mockDataSource.query).toHaveBeenCalledTimes(6); // 2 migrations + 1 data_table + 3 entity queries
 			expect(appendFile).toHaveBeenCalled();
 		});
 
@@ -195,8 +196,7 @@ describe('ExportService', () => {
 			}));
 
 			// Mock the migrations table query to fail (table doesn't exist)
-			jest
-				.mocked(mockDataSource.query)
+			vi.mocked(mockDataSource.query)
 				.mockImplementationOnce(async (query: string) => {
 					if (query.includes('migrations') && query.includes('COUNT')) {
 						throw new Error('Table not found');
@@ -206,24 +206,47 @@ describe('ExportService', () => {
 				.mockResolvedValueOnce(mockEntities) // First page for User
 				.mockResolvedValueOnce([]) // Second page for User (empty, end of data)
 				.mockResolvedValueOnce([]); // Workflow entities
-			jest.mocked(readdir).mockResolvedValue([]);
+			vi.mocked(readdir).mockResolvedValue([]);
 
 			await exportService.exportEntities(outputDir, new Set(['execution_data']));
 
-			expect(mockDataSource.query).toHaveBeenCalledTimes(4); // 1 migrations + 3 entity queries
+			expect(mockDataSource.query).toHaveBeenCalledTimes(5); // 2 migrations + 1 data_table + 2 entity queries
 			expect(appendFile).toHaveBeenCalled();
+		});
+
+		it('should skip data-table row export when includeDataTableRows is false', async () => {
+			const outputDir = '/test/output';
+
+			vi.mocked(mockDataSource.query).mockImplementation(async () => []);
+			vi.mocked(readdir).mockResolvedValue([]);
+
+			await exportService.exportEntities(outputDir, undefined, undefined, {
+				includeDataTableRows: false,
+			});
+
+			// Without the data_table SELECT id query, query count drops by 1 vs the
+			// includeDataTableRows=true path. Verify by ensuring no data_table query was
+			// issued and the schema-only log message was emitted.
+			const dataTableQueries = vi
+				.mocked(mockDataSource.query)
+				.mock.calls.filter(
+					([sql]) => typeof sql === 'string' && /SELECT id FROM "data_table"/.test(sql),
+				);
+			expect(dataTableQueries).toHaveLength(0);
+			expect(mockLogger.info).toHaveBeenCalledWith(
+				expect.stringContaining('Skipping data-table row export'),
+			);
 		});
 
 		it('should clear existing files before export', async () => {
 			const outputDir = '/test/output';
 			const existingFiles = ['user.jsonl', 'user.2.jsonl', 'other.txt'];
 
-			jest
-				.mocked(readdir)
+			vi.mocked(readdir)
 				.mockResolvedValueOnce([]) // For migrations table
 				.mockResolvedValueOnce(existingFiles as any) // For user files
 				.mockResolvedValueOnce([]); // For workflow files
-			jest.mocked(mockDataSource.query).mockImplementation(async (query: string) => {
+			vi.mocked(mockDataSource.query).mockImplementation(async (query: string) => {
 				if (query.includes('migrations') && query.includes('COUNT')) {
 					throw new Error('Table not found');
 				}
@@ -243,8 +266,7 @@ describe('ExportService', () => {
 			const outputDir = '/test/output';
 
 			// Mock the migrations table query to fail and entities to be empty
-			jest
-				.mocked(mockDataSource.query)
+			vi.mocked(mockDataSource.query)
 				.mockImplementationOnce(async (query: string) => {
 					if (query.includes('migrations') && query.includes('COUNT')) {
 						throw new Error('Table not found');
@@ -253,7 +275,7 @@ describe('ExportService', () => {
 				})
 				.mockResolvedValueOnce([]) // User empty
 				.mockResolvedValueOnce([]); // Workflow empty
-			jest.mocked(readdir).mockResolvedValue([]);
+			vi.mocked(readdir).mockResolvedValue([]);
 
 			await exportService.exportEntities(outputDir);
 
@@ -269,8 +291,8 @@ describe('ExportService', () => {
 		it('should handle database errors gracefully', async () => {
 			const outputDir = '/test/output';
 
-			jest.mocked(mockDataSource.query).mockRejectedValue(new Error('Database connection failed'));
-			jest.mocked(readdir).mockResolvedValue([]);
+			vi.mocked(mockDataSource.query).mockRejectedValue(new Error('Database connection failed'));
+			vi.mocked(readdir).mockResolvedValue([]);
 
 			// The service will throw the error since it's not caught
 			await expect(exportService.exportEntities(outputDir)).rejects.toThrow(
@@ -281,7 +303,7 @@ describe('ExportService', () => {
 		it('should handle file system errors gracefully', async () => {
 			const outputDir = '/test/output';
 
-			jest.mocked(mkdir).mockRejectedValue(new Error('Permission denied'));
+			vi.mocked(mkdir).mockRejectedValue(new Error('Permission denied'));
 
 			await expect(exportService.exportEntities(outputDir)).rejects.toThrow('Permission denied');
 		});
@@ -292,7 +314,7 @@ describe('ExportService', () => {
 			const outputDir = '/test/output';
 			const existingFiles = ['user.jsonl', 'user.2.jsonl', 'workflow.jsonl', 'other.txt'];
 
-			jest.mocked(readdir).mockResolvedValue(existingFiles as any);
+			vi.mocked(readdir).mockResolvedValue(existingFiles as any);
 
 			// @ts-expect-error Accessing private method for testing
 			await exportService.clearExistingEntityFiles(outputDir, 'user');
@@ -306,7 +328,7 @@ describe('ExportService', () => {
 		it('should handle no existing files gracefully', async () => {
 			const outputDir = '/test/output';
 
-			jest.mocked(readdir).mockResolvedValue(['other.txt'] as any);
+			vi.mocked(readdir).mockResolvedValue(['other.txt'] as any);
 
 			// @ts-expect-error Accessing private method for testing
 			await exportService.clearExistingEntityFiles(outputDir, 'user');
@@ -317,7 +339,7 @@ describe('ExportService', () => {
 		it('should handle empty directory gracefully', async () => {
 			const outputDir = '/test/output';
 
-			jest.mocked(readdir).mockResolvedValue([]);
+			vi.mocked(readdir).mockResolvedValue([]);
 
 			// @ts-expect-error Accessing private method for testing
 			await exportService.clearExistingEntityFiles(outputDir, 'user');
@@ -328,12 +350,109 @@ describe('ExportService', () => {
 		it('should handle file deletion errors gracefully', async () => {
 			const outputDir = '/test/output';
 
-			jest.mocked(readdir).mockResolvedValue(['user.jsonl'] as any);
-			jest.mocked(rm).mockRejectedValue(new Error('File in use'));
+			vi.mocked(readdir).mockResolvedValue(['user.jsonl'] as any);
+			vi.mocked(rm).mockRejectedValue(new Error('File in use'));
 
 			// @ts-expect-error Accessing private method for testing
 			await expect(exportService.clearExistingEntityFiles(outputDir, 'user')).rejects.toThrow(
 				'File in use',
+			);
+		});
+	});
+
+	describe('exportDataTableUserTables', () => {
+		it('should silently skip when the data_table registry is missing', async () => {
+			vi.mocked(mockDataSource.query).mockImplementation(async (query: string) => {
+				if (query.includes('data_table') && !query.includes('data_table_column')) {
+					throw new Error('relation does not exist');
+				}
+				return [];
+			});
+
+			// @ts-expect-error accessing private method for testing
+			const result = await exportService.exportDataTableUserTables('/test/output');
+
+			expect(result).toEqual({ totalTables: 0, totalRows: 0 });
+		});
+
+		it('should skip when there are no data tables', async () => {
+			vi.mocked(mockDataSource.query).mockResolvedValueOnce([]); // SELECT id FROM data_table -> empty
+
+			// @ts-expect-error accessing private method for testing
+			const result = await exportService.exportDataTableUserTables('/test/output');
+
+			expect(result).toEqual({ totalTables: 0, totalRows: 0 });
+			expect(appendFile).not.toHaveBeenCalled();
+		});
+
+		it('should keyset-paginate user rows by id and write JSONL files', async () => {
+			const dataTableId = 'abc';
+
+			const firstPage = Array.from({ length: 500 }, (_, i) => ({
+				id: i + 1,
+				createdAt: '2024-01-01 00:00:00',
+				updatedAt: '2024-01-01 00:00:00',
+				val: i,
+			}));
+			const secondPage = [
+				{
+					id: 501,
+					createdAt: '2024-01-01 00:00:00',
+					updatedAt: '2024-01-01 00:00:00',
+					val: 500,
+				},
+			];
+
+			let queryCount = 0;
+			vi.mocked(mockDataSource.query).mockImplementation(async (query: string) => {
+				queryCount++;
+				if (query.includes('FROM') && query.includes('data_table_column')) {
+					return [{ dataTableId, name: 'val', type: 'number', index: 0 }];
+				}
+				if (query.startsWith('SELECT id FROM') && query.includes('data_table')) {
+					return [{ id: dataTableId }];
+				}
+				if (query.includes('data_table_user_')) {
+					if (query.includes('WHERE "id" > 0')) return firstPage;
+					if (query.includes('WHERE "id" > 500')) return secondPage;
+					return [];
+				}
+				return [];
+			});
+
+			vi.mocked(readdir).mockResolvedValue([]);
+
+			// @ts-expect-error accessing private method for testing
+			const result = await exportService.exportDataTableUserTables('/test/output');
+
+			expect(result.totalTables).toBe(1);
+			expect(result.totalRows).toBe(501);
+			// First file appended once for first page; second page rolls into a new file
+			expect(appendFile).toHaveBeenCalledTimes(2);
+			// 1 list-tables + 2 page queries — second page has < pageSize
+			// rows, so the loop short-circuits without a terminator query.
+			expect(queryCount).toBe(3);
+		});
+
+		it('should handle a missing dynamic table gracefully without aborting', async () => {
+			vi.mocked(mockDataSource.query).mockImplementation(async (query: string) => {
+				if (query.startsWith('SELECT id FROM') && query.includes('data_table')) {
+					return [{ id: 'broken' }];
+				}
+				if (query.includes('data_table_column')) return [];
+				if (query.includes('data_table_user_')) {
+					throw new Error('no such table');
+				}
+				return [];
+			});
+
+			// @ts-expect-error accessing private method for testing
+			const result = await exportService.exportDataTableUserTables('/test/output');
+
+			expect(result).toEqual({ totalTables: 1, totalRows: 0 });
+			expect(mockLogger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('Could not read rows'),
+				expect.objectContaining({ error: expect.any(Error) }),
 			);
 		});
 	});
@@ -347,12 +466,12 @@ describe('ExportService', () => {
 			];
 
 			// Mock file system operations
-			jest.mocked(readdir).mockResolvedValue([]);
-			jest.mocked(mkdir).mockResolvedValue(undefined);
-			jest.mocked(appendFile).mockResolvedValue(undefined);
+			vi.mocked(readdir).mockResolvedValue([]);
+			vi.mocked(mkdir).mockResolvedValue(undefined);
+			vi.mocked(appendFile).mockResolvedValue(undefined);
 
 			// Mock database queries to return migrations data
-			jest.mocked(mockDataSource.query).mockImplementation(async (query: string) => {
+			vi.mocked(mockDataSource.query).mockImplementation(async (query: string) => {
 				if (query.includes('migrations') && query.includes('COUNT')) {
 					return [{ count: '2' }];
 				}
@@ -383,11 +502,11 @@ describe('ExportService', () => {
 			const outputDir = '/test/output';
 
 			// Mock file system operations
-			jest.mocked(readdir).mockResolvedValue([]);
-			jest.mocked(mkdir).mockResolvedValue(undefined);
+			vi.mocked(readdir).mockResolvedValue([]);
+			vi.mocked(mkdir).mockResolvedValue(undefined);
 
 			// Mock database query to fail for migrations table
-			jest.mocked(mockDataSource.query).mockImplementation(async (query: string) => {
+			vi.mocked(mockDataSource.query).mockImplementation(async (query: string) => {
 				if (query.includes('migrations')) {
 					throw new Error('Table not found');
 				}

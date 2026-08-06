@@ -1,5 +1,6 @@
 delete:
   x-eov-operation-id: deleteProject
+  x-required-scope: project:delete
   x-eov-operation-handler: v1/handlers/projects/projects.handler
   tags:
     - Projects
@@ -23,6 +24,7 @@ delete:
       $ref: '../../../../shared/spec/responses/notFound.yml'
 put:
   x-eov-operation-id: updateProject
+  x-required-scope: project:update
   x-eov-operation-handler: v1/handlers/projects/projects.handler
   tags:
     - Projects

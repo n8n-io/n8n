@@ -152,11 +152,17 @@ describe('WorkflowHistoryList', () => {
 
 		const listItem = getAllByTestId('workflow-history-list-item')[index];
 
-		await userEvent.click(within(listItem).getByTestId('action-toggle'));
-		const actionsDropdown = getAllByTestId('action-toggle-dropdown')[index];
+		const actionToggle = within(listItem).getByTestId('action-toggle');
+		const toggleButton = within(actionToggle).getByRole('button');
+		await userEvent.click(toggleButton);
+
+		const actionToggleId = toggleButton.getAttribute('aria-controls');
+		expect(actionToggleId).toBeTruthy();
+
+		const actionsDropdown = document.getElementById(actionToggleId as string);
 		expect(actionsDropdown).toBeInTheDocument();
 
-		await userEvent.click(within(actionsDropdown).getByTestId(`action-${action}`));
+		await userEvent.click(within(actionsDropdown as HTMLElement).getByTestId(`action-${action}`));
 		expect(emitted().action).toEqual([
 			[
 				{

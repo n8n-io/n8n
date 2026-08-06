@@ -6,7 +6,7 @@ import { testPollingTriggerNode } from '@test/nodes/TriggerHelpers';
 import { GmailTrigger } from '../GmailTrigger.node';
 import type { Message, ListMessage, MessageListResponse } from '../types';
 
-jest.mock('mailparser');
+vi.mock('mailparser');
 
 describe('GmailTrigger', () => {
 	const baseUrl = 'https://www.googleapis.com';
@@ -42,7 +42,7 @@ describe('GmailTrigger', () => {
 	}
 
 	beforeAll(() => {
-		jest.spyOn(mailparser, 'simpleParser').mockResolvedValue({
+		vi.spyOn(mailparser, 'simpleParser').mockResolvedValue({
 			headers: new Map([['headerKey', 'headerValue']]),
 			attachments: [],
 			headerLines: [{ key: 'headerKey', line: 'headerValue' }],

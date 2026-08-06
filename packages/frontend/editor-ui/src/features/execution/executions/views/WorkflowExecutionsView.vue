@@ -5,20 +5,20 @@ import { useExecutionsStore } from '../executions.store';
 import { useI18n } from '@n8n/i18n';
 import type { ExecutionFilterType } from '../executions.types';
 import type { IWorkflowDb } from '@/Interface';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { NO_NETWORK_ERROR_CODE } from '@n8n/rest-api-client';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { VIEWS } from '@/app/constants';
 import { useRoute, useRouter } from 'vue-router';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import type { ExecutionSummary } from 'n8n-workflow';
-import { useDebounce } from '@/app/composables/useDebounce';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useDebounce } from '@n8n/composables/useDebounce';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { executionRetryMessage } from '../executions.utils';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 const executionsStore = useExecutionsStore();
-const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const workflowsListStore = useWorkflowsListStore();
 const i18n = useI18n();
 const telemetry = useTelemetry();
@@ -113,6 +113,7 @@ async function fetchExecution() {
 		executionsStore.activeExecution = currentExecution.value;
 	} catch (error) {
 		toast.showError(error, i18n.baseText('nodeView.showError.openExecution.title'));
+		return;
 	}
 
 	if (!currentExecution.value) {
@@ -149,12 +150,13 @@ async function initializeRoute() {
 function fetchWorkflow() {
 	// Skip fetching if it's a new workflow that hasn't been saved yet
 	if (isNewWorkflowRoute.value || !workflowId.value) {
-		workflow.value = workflowsStore.workflow;
+		workflow.value = workflowDocumentStore.value.getSnapshot();
 		return;
 	}
 
 	// Use the workflow from the list store (already loaded by WorkflowLayout)
-	workflow.value = workflowsListStore.workflowsById[workflowId.value] ?? workflowsStore.workflow;
+	workflow.value =
+		workflowsListStore.workflowsById[workflowId.value] ?? workflowDocumentStore.value.getSnapshot();
 }
 
 async function onAutoRefreshToggle(value: boolean) {
@@ -305,7 +307,7 @@ async function onLoadMore(): Promise<void> {
 const hasMore = computed(
 	() =>
 		!executionsStore.executionsFilters.status?.includes('running') &&
-		executions.value.length < executionsStore.executionsCount,
+		executionsStore.hasMoreExecutions,
 );
 
 async function loadMore(): Promise<void> {

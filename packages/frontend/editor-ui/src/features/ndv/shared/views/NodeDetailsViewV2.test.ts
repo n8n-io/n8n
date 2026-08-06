@@ -14,15 +14,9 @@ import {
 } from '@/app/stores/workflowDocument.store';
 
 import { createComponentRenderer } from '@/__tests__/render';
-import {
-	createTestNode,
-	createTestWorkflow,
-	createTestWorkflowObject,
-	defaultNodeDescriptions,
-} from '@/__tests__/mocks';
-import type { Workflow } from 'n8n-workflow';
-import { computed } from 'vue';
-import { WorkflowIdKey } from '@/app/constants/injectionKeys';
+import { createTestNode, createTestWorkflow, defaultNodeDescriptions } from '@/__tests__/mocks';
+import { computed, shallowRef } from 'vue';
+import { WorkflowDocumentStoreKey, WorkflowIdKey } from '@/app/constants/injectionKeys';
 
 vi.mock('vue-router', () => ({
 	useRouter: () => ({}),
@@ -46,23 +40,26 @@ const setupStore = (nodes: Array<ReturnType<typeof createTestNode>>) => {
 	const nodeTypesStore = useNodeTypesStore();
 
 	nodeTypesStore.setNodeTypes(defaultNodeDescriptions);
-	workflowsStore.workflow = workflow;
+	workflowsStore.setWorkflowId(workflow.id);
 	const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id));
+	workflowDocumentStore.hydrate(workflow);
 	workflowDocumentStore.setAllNodeMetadata(
 		nodes.reduce((acc, node) => ({ ...acc, [node.name]: { pristine: true } }), {}),
 	);
 
+	const workflowDocumentStoreRef = shallowRef(workflowDocumentStore);
+
 	return {
 		pinia,
 		workflow,
-		workflowObject: createTestWorkflowObject(workflow),
+		workflowDocumentStoreRef,
 	};
 };
 
 describe('NodeDetailsViewV2', () => {
 	let pinia: ReturnType<typeof createTestingPinia>;
 	let workflowId: string;
-	let workflowObject: Workflow;
+	let workflowDocumentStoreRef: ReturnType<typeof setupStore>['workflowDocumentStoreRef'];
 	const manualTriggerNode = createTestNode({
 		name: 'Manual Trigger',
 		type: MANUAL_TRIGGER_NODE_TYPE,
@@ -73,7 +70,7 @@ describe('NodeDetailsViewV2', () => {
 	const renderComponent = (props: { readOnly?: boolean; activeNodeName?: string | null } = {}) => {
 		const { activeNodeName = null, ...componentProps } = props;
 
-		const ndvStore = useNDVStore();
+		const ndvStore = useNDVStore(createWorkflowDocumentId(workflowId));
 		if (activeNodeName) {
 			ndvStore.setActiveNodeName(activeNodeName, 'other');
 		} else {
@@ -82,12 +79,12 @@ describe('NodeDetailsViewV2', () => {
 
 		const render = createComponentRenderer(NodeDetailsViewV2, {
 			props: {
-				workflowObject,
 				...componentProps,
 			},
 			global: {
 				provide: {
 					[WorkflowIdKey as unknown as string]: computed(() => workflowId),
+					[WorkflowDocumentStoreKey as symbol]: workflowDocumentStoreRef,
 				},
 				mocks: {
 					$route: {
@@ -123,7 +120,7 @@ describe('NodeDetailsViewV2', () => {
 			const store = setupStore([manualTriggerNode, setNode, stickyNode]);
 			pinia = store.pinia;
 			workflowId = store.workflow.id;
-			workflowObject = store.workflowObject;
+			workflowDocumentStoreRef = store.workflowDocumentStoreRef;
 		});
 
 		test('should not render when no node is active', () => {
@@ -167,7 +164,7 @@ describe('NodeDetailsViewV2', () => {
 			const store = setupStore([manualTriggerNode, setNode, stickyNode]);
 			pinia = store.pinia;
 			workflowId = store.workflow.id;
-			workflowObject = store.workflowObject;
+			workflowDocumentStoreRef = store.workflowDocumentStoreRef;
 		});
 
 		test('should register keydown listener on mount', async () => {
@@ -201,7 +198,7 @@ describe('NodeDetailsViewV2', () => {
 			const store = setupStore([manualTriggerNode, setNode, stickyNode]);
 			pinia = store.pinia;
 			workflowId = store.workflow.id;
-			workflowObject = store.workflowObject;
+			workflowDocumentStoreRef = store.workflowDocumentStoreRef;
 		});
 
 		test('should open dialog on mount', async () => {
@@ -223,7 +220,7 @@ describe('NodeDetailsViewV2', () => {
 			expect(queryByTestId('ndv')).not.toBeInTheDocument();
 
 			// Activate a node
-			const ndvStore = useNDVStore();
+			const ndvStore = useNDVStore(createWorkflowDocumentId(workflowId));
 			ndvStore.setActiveNodeName('Set', 'other');
 
 			// NDV should appear
@@ -238,7 +235,7 @@ describe('NodeDetailsViewV2', () => {
 			const store = setupStore([manualTriggerNode, setNode, stickyNode]);
 			pinia = store.pinia;
 			workflowId = store.workflow.id;
-			workflowObject = store.workflowObject;
+			workflowDocumentStoreRef = store.workflowDocumentStoreRef;
 		});
 
 		test('should close NDV when close button is clicked', async () => {
@@ -250,7 +247,7 @@ describe('NodeDetailsViewV2', () => {
 			const closeButton = getByTestId('ndv-close-button');
 			await user.click(closeButton);
 
-			const ndvStore = useNDVStore();
+			const ndvStore = useNDVStore(createWorkflowDocumentId(workflowId));
 			await waitFor(() => {
 				expect(ndvStore.activeNodeName).toBeNull();
 			});
@@ -265,7 +262,7 @@ describe('NodeDetailsViewV2', () => {
 			const backdrop = getByTestId('ndv-backdrop');
 			await user.click(backdrop);
 
-			const ndvStore = useNDVStore();
+			const ndvStore = useNDVStore(createWorkflowDocumentId(workflowId));
 			await waitFor(() => {
 				expect(ndvStore.activeNodeName).toBeNull();
 			});

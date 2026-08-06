@@ -33,23 +33,16 @@ export function sanitizeWebContent(content: string): string {
 	return stripInvisibleUnicode(stripHtmlComments(content));
 }
 
-/** Wrap content in boundary tags to reinforce the untrusted-content boundary for the LLM. */
-export function wrapInBoundaryTags(content: string, url: string): string {
-	const safeUrl = url
-		.replace(/&/g, '&amp;')
-		.replace(/"/g, '&quot;')
-		.replace(/</g, '&lt;')
-		.replace(/>/g, '&gt;');
-	return `<web_content source="external" url="${safeUrl}">\n${content}\n</web_content>`;
-}
-
 /**
- * Wrap untrusted data (execution output, file content, search results) in
- * boundary tags so the LLM treats it as data, not instructions.
+ * Wrap untrusted data (fetched web pages, search snippets, execution output,
+ * file content) in boundary tags so the LLM treats it as data, not
+ * instructions.
  *
- * Unlike web content we don't strip HTML comments or invisible unicode —
- * that data may be meaningful in execution/file contexts — but we do
- * enforce a clear structural boundary.
+ * The only content rewrite this performs is escaping closing
+ * `</untrusted_data>` sequences to prevent breakout — HTML comments and
+ * invisible Unicode are preserved (they may be meaningful in execution/file
+ * contexts). For fetched web content, callers should pass the body through
+ * `sanitizeWebContent` first to strip those.
  */
 export function wrapUntrustedData(content: string, source: string, label?: string): string {
 	const safeSource = source

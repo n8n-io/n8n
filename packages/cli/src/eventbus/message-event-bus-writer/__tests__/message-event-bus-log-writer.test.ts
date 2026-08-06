@@ -1,17 +1,19 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
+import { InstanceSettings } from 'n8n-core';
 import { EventMessageTypeNames } from 'n8n-workflow';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import type { Mock, MockInstance } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import type { EventMessageTypes } from '../../event-message-classes';
 import { MessageEventBusLogWriter } from '../message-event-bus-log-writer';
 
-jest.unmock('node:fs');
-jest.unmock('node:fs/promises');
+vi.unmock('node:fs');
+vi.unmock('node:fs/promises');
 
 describe('MessageEventBusLogWriter.readLoggedMessagesFromFile', () => {
 	let tempDir: string;
@@ -295,5 +297,55 @@ describe('MessageEventBusLogWriter.readLoggedMessagesFromFile', () => {
 		const sampleMatch = warnCall?.match(/Sample \(truncated\): (.*)$/);
 		expect(sampleMatch).not.toBeNull();
 		expect(sampleMatch![1].length).toBeLessThanOrEqual(200);
+	});
+});
+
+describe('MessageEventBusLogWriter.getInstance path resolution', () => {
+	let tempDir: string;
+	let startThreadSpy: MockInstance;
+
+	beforeEach(() => {
+		tempDir = mkdtempSync(join(tmpdir(), 'eventbus-log-writer-getinstance-'));
+		Container.set(Logger, mock<Logger>());
+		Container.set(
+			GlobalConfig,
+			mock<GlobalConfig>({
+				eventBus: {
+					logWriter: {
+						logBaseName: 'n8nEventLog',
+						keepLogCount: 3,
+						maxFileSizeInKB: 10240,
+					},
+				},
+			}),
+		);
+		Container.set(InstanceSettings, mock<InstanceSettings>({ n8nFolder: tempDir }));
+		startThreadSpy = (
+			vi.spyOn(MessageEventBusLogWriter.prototype as never, 'startThread') as unknown as Mock
+		).mockResolvedValue(undefined as never);
+	});
+
+	afterEach(() => {
+		(MessageEventBusLogWriter as unknown as { instance: undefined }).instance = undefined;
+		startThreadSpy.mockRestore();
+		rmSync(tempDir, { recursive: true, force: true });
+		Container.reset();
+	});
+
+	it.each<{ name: string; resolvedPath?: { logFullBasePath: string }; expected: () => string }>([
+		{
+			name: 'uses resolvedPath verbatim when supplied',
+			resolvedPath: { logFullBasePath: '/var/log/custom-events' },
+			expected: () => '/var/log/custom-events',
+		},
+		{
+			name: 'falls back to <n8nFolder>/<logBaseName> when no options supplied',
+			resolvedPath: undefined,
+			expected: () => join(tempDir, 'n8nEventLog'),
+		},
+	])('$name', async ({ resolvedPath, expected }) => {
+		await MessageEventBusLogWriter.getInstance(resolvedPath ? { resolvedPath } : undefined);
+
+		expect(MessageEventBusLogWriter.options.logFullBasePath).toBe(expected());
 	});
 });

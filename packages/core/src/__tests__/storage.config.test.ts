@@ -1,8 +1,9 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
 import { existsSync, renameSync } from 'node:fs';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { InstanceSettings } from '@/instance-settings';
 import { mockInstance } from '@test/utils';
@@ -10,21 +11,21 @@ import { mockInstance } from '@test/utils';
 import { StoragePathError } from '../storage-path-conflict.error';
 import { StorageConfig } from '../storage.config';
 
-jest.mock('node:fs', () => ({
-	existsSync: jest.fn(),
-	renameSync: jest.fn(),
+vi.mock('node:fs', () => ({
+	existsSync: vi.fn(),
+	renameSync: vi.fn(),
 }));
 
 describe('StorageConfig', () => {
 	const n8nFolder = '~/.n8n';
-	let markFsStorageMigrated: jest.Mock;
+	let markFsStorageMigrated: Mock;
 	let logger: Logger;
 
 	beforeEach(() => {
 		process.env = {};
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 		Container.reset();
-		markFsStorageMigrated = jest.fn();
+		markFsStorageMigrated = vi.fn();
 		mockInstance(InstanceSettings, {
 			n8nFolder,
 			fsStorageMigrated: false,
@@ -32,7 +33,7 @@ describe('StorageConfig', () => {
 		});
 		logger = mock<Logger>();
 		Container.set(Logger, logger);
-		(existsSync as jest.Mock).mockReturnValue(false);
+		(existsSync as Mock).mockReturnValue(false);
 	});
 
 	it('should use default values when no env variables are defined', () => {
@@ -76,7 +77,7 @@ describe('StorageConfig', () => {
 
 	it('should fall back to default for invalid mode value', () => {
 		process.env.N8N_EXECUTION_DATA_STORAGE_MODE = 'invalid-mode';
-		console.warn = jest.fn();
+		console.warn = vi.fn();
 
 		const config = Container.get(StorageConfig);
 
@@ -88,7 +89,7 @@ describe('StorageConfig', () => {
 
 	describe('storage dir migration', () => {
 		it('should log deprecation warning and use old path when old path exists but migration not enabled', () => {
-			(existsSync as jest.Mock).mockReturnValueOnce(true); // old path exists
+			(existsSync as Mock).mockReturnValueOnce(true); // old path exists
 
 			const config = Container.get(StorageConfig);
 
@@ -103,7 +104,7 @@ describe('StorageConfig', () => {
 
 		it('should proceed when old path exists and migration is enabled', () => {
 			process.env.N8N_MIGRATE_FS_STORAGE_PATH = 'true';
-			(existsSync as jest.Mock)
+			(existsSync as Mock)
 				.mockReturnValueOnce(true) // old path exists
 				.mockReturnValueOnce(false); // new path does not exist
 
@@ -143,7 +144,7 @@ describe('StorageConfig', () => {
 		});
 
 		it('should skip if `binaryData` does not exist', () => {
-			(existsSync as jest.Mock).mockReturnValueOnce(false); // old path does not exist
+			(existsSync as Mock).mockReturnValueOnce(false); // old path does not exist
 
 			Container.get(StorageConfig);
 
@@ -152,7 +153,7 @@ describe('StorageConfig', () => {
 
 		it('should error if `storage` already exists when migration is enabled', () => {
 			process.env.N8N_MIGRATE_FS_STORAGE_PATH = 'true';
-			(existsSync as jest.Mock)
+			(existsSync as Mock)
 				.mockReturnValueOnce(true) // old path exists
 				.mockReturnValueOnce(true); // new path also exists
 
@@ -162,8 +163,8 @@ describe('StorageConfig', () => {
 
 		it.each(['ENOENT', 'EEXIST'])('should ignore `%s` error', (code) => {
 			process.env.N8N_MIGRATE_FS_STORAGE_PATH = 'true';
-			(existsSync as jest.Mock).mockReturnValueOnce(true).mockReturnValueOnce(false);
-			(renameSync as jest.Mock).mockImplementation(() => {
+			(existsSync as Mock).mockReturnValueOnce(true).mockReturnValueOnce(false);
+			(renameSync as Mock).mockImplementation(() => {
 				throw Object.assign(new Error(code), { code });
 			});
 
@@ -172,11 +173,11 @@ describe('StorageConfig', () => {
 
 		it('should rethrow other errors', () => {
 			process.env.N8N_MIGRATE_FS_STORAGE_PATH = 'true';
-			(existsSync as jest.Mock)
+			(existsSync as Mock)
 				.mockReturnValueOnce(true) // old path exists
 				.mockReturnValueOnce(false); // new path does not exist
 			const otherError = Object.assign(new Error('EACCES'), { code: 'EACCES' });
-			(renameSync as jest.Mock).mockImplementation(() => {
+			(renameSync as Mock).mockImplementation(() => {
 				throw otherError;
 			});
 

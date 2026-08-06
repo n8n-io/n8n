@@ -9,11 +9,13 @@ import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import type { ICredentialType } from 'n8n-workflow';
 
 import { N8nAssistantIcon, N8nAssistantText, N8nButton, N8nText } from '@n8n/design-system';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 
 const i18n = useI18n();
 const uiStore = useUIStore();
 const assistantStore = useAssistantStore();
 const chatPanelStore = useChatPanelStore();
+const workflowId = useWorkflowId();
 
 const props = defineProps<{
 	name: string;
@@ -33,6 +35,7 @@ const startNewSession = async () => {
 			source: 'error',
 			task: 'error',
 			has_existing_session: true,
+			workflowId: workflowId.value,
 		});
 	} else if ('credHelp' in props.data.context) {
 		await chatPanelStore.openWithCredHelp(props.data.context.credHelp.credType);

@@ -8,7 +8,7 @@ import type {
 	IRequestOptions,
 	IHttpRequestMethods,
 } from 'n8n-workflow';
-import { ApplicationError, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, UserError } from 'n8n-workflow';
 
 export async function twitterApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
@@ -87,18 +87,18 @@ export function returnId(tweetId: INodeParameterResourceLocator) {
 		try {
 			const url = new URL(tweetId.value as string);
 			if (!/(twitter|x).com$/.test(url.hostname)) {
-				throw new ApplicationError('Invalid domain');
+				throw new UserError('Invalid domain');
 			}
 			const parts = url.pathname.split('/');
 			if (parts.length !== 4 || parts[2] !== 'status' || !/^\d+$/.test(parts[3])) {
-				throw new ApplicationError('Invalid path');
+				throw new UserError('Invalid path');
 			}
 			return parts[3];
 		} catch (error) {
-			throw new ApplicationError('Not a valid tweet url', { level: 'warning', cause: error });
+			throw new UserError('Not a valid tweet url', { level: 'warning', cause: error });
 		}
 	} else {
-		throw new ApplicationError(`The mode ${tweetId.mode} is not valid!`, { level: 'warning' });
+		throw new UserError(`The mode ${tweetId.mode} is not valid!`, { level: 'warning' });
 	}
 }
 
@@ -129,7 +129,7 @@ export async function returnIdFromUsername(
 		)) as { id: string };
 		return list.id;
 	} else
-		throw new ApplicationError(`The username mode ${usernameRlc.mode} is not valid!`, {
+		throw new UserError(`The username mode ${usernameRlc.mode} is not valid!`, {
 			level: 'warning',
 		});
 }

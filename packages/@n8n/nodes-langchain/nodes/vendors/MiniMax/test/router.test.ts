@@ -1,29 +1,30 @@
-import { mock } from 'jest-mock-extended';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
-jest.mock('../actions/text', () => ({
-	message: { execute: jest.fn() },
+vi.mock('../actions/text', () => ({
+	message: { execute: vi.fn() },
 }));
 
-jest.mock('../actions/image', () => ({
-	generate: { execute: jest.fn() },
+vi.mock('../actions/image', () => ({
+	generate: { execute: vi.fn() },
 }));
 
-jest.mock('../actions/video', () => ({
-	textToVideo: { execute: jest.fn() },
-	imageToVideo: { execute: jest.fn() },
+vi.mock('../actions/video', () => ({
+	textToVideo: { execute: vi.fn() },
+	imageToVideo: { execute: vi.fn() },
 }));
 
-jest.mock('../actions/audio', () => ({
-	textToSpeech: { execute: jest.fn() },
+vi.mock('../actions/audio', () => ({
+	textToSpeech: { execute: vi.fn() },
 }));
 
+import * as audio from '../actions/audio';
+import * as image from '../actions/image';
 import { router } from '../actions/router';
 import * as text from '../actions/text';
-import * as image from '../actions/image';
 import * as video from '../actions/video';
-import * as audio from '../actions/audio';
 
 describe('MiniMax Router', () => {
 	let mockExecuteFunctions: ReturnType<typeof mock<IExecuteFunctions>>;
@@ -45,12 +46,12 @@ describe('MiniMax Router', () => {
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should route text/message to text.message.execute', async () => {
 		const expectedResult: INodeExecutionData = { json: { text: 'hello' }, pairedItem: 0 };
-		(text.message.execute as jest.Mock).mockResolvedValue([expectedResult]);
+		(text.message.execute as Mock).mockResolvedValue([expectedResult]);
 		mockExecuteFunctions.getNodeParameter.mockImplementation((param: string) => {
 			if (param === 'resource') return 'text';
 			if (param === 'operation') return 'message';
@@ -68,7 +69,7 @@ describe('MiniMax Router', () => {
 			json: { imageUrl: 'https://example.com/img.png' },
 			pairedItem: 0,
 		};
-		(image.generate.execute as jest.Mock).mockResolvedValue([expectedResult]);
+		(image.generate.execute as Mock).mockResolvedValue([expectedResult]);
 		mockExecuteFunctions.getNodeParameter.mockImplementation((param: string) => {
 			if (param === 'resource') return 'image';
 			if (param === 'operation') return 'generate';
@@ -86,7 +87,7 @@ describe('MiniMax Router', () => {
 			json: { videoUrl: 'https://example.com/video.mp4' },
 			pairedItem: 0,
 		};
-		(video.textToVideo.execute as jest.Mock).mockResolvedValue([expectedResult]);
+		(video.textToVideo.execute as Mock).mockResolvedValue([expectedResult]);
 		mockExecuteFunctions.getNodeParameter.mockImplementation((param: string) => {
 			if (param === 'resource') return 'video';
 			if (param === 'operation') return 'textToVideo';
@@ -104,7 +105,7 @@ describe('MiniMax Router', () => {
 			json: { videoUrl: 'https://example.com/video.mp4' },
 			pairedItem: 0,
 		};
-		(video.imageToVideo.execute as jest.Mock).mockResolvedValue([expectedResult]);
+		(video.imageToVideo.execute as Mock).mockResolvedValue([expectedResult]);
 		mockExecuteFunctions.getNodeParameter.mockImplementation((param: string) => {
 			if (param === 'resource') return 'video';
 			if (param === 'operation') return 'imageToVideo';
@@ -122,7 +123,7 @@ describe('MiniMax Router', () => {
 			json: { audioLength: 5 },
 			pairedItem: 0,
 		};
-		(audio.textToSpeech.execute as jest.Mock).mockResolvedValue([expectedResult]);
+		(audio.textToSpeech.execute as Mock).mockResolvedValue([expectedResult]);
 		mockExecuteFunctions.getNodeParameter.mockImplementation((param: string) => {
 			if (param === 'resource') return 'audio';
 			if (param === 'operation') return 'textToSpeech';
@@ -146,7 +147,7 @@ describe('MiniMax Router', () => {
 	});
 
 	it('should return error in json when continueOnFail is enabled and operation throws', async () => {
-		(text.message.execute as jest.Mock).mockRejectedValue(new Error('API limit reached'));
+		(text.message.execute as Mock).mockRejectedValue(new Error('API limit reached'));
 		mockExecuteFunctions.continueOnFail.mockReturnValue(true);
 		mockExecuteFunctions.getNodeParameter.mockImplementation((param: string) => {
 			if (param === 'resource') return 'text';

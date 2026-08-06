@@ -20,6 +20,30 @@ function createStructuredAgent(provider: 'anthropic' | 'openai'): Agent {
 		.structuredOutput(answerSchema);
 }
 
+// Raw JSON Schema equivalent of `answerSchema` — exercises the JSON Schema path
+// (as used when a workflow node supplies the schema dynamically).
+const answerJsonSchema = {
+	type: 'object' as const,
+	properties: {
+		city: { type: 'string' as const, description: 'The name of the city' },
+		country: { type: 'string' as const, description: 'The country the city is in' },
+		population_millions: {
+			type: 'number' as const,
+			description: 'Approximate population in millions',
+		},
+	},
+	required: ['city', 'country', 'population_millions'],
+};
+
+function createJsonSchemaStructuredAgent(provider: 'anthropic' | 'openai'): Agent {
+	return new Agent('structured-output-json-schema-test')
+		.model(getModel(provider))
+		.instructions(
+			'You answer geography questions. Always respond with the structured output schema. Be precise and factual.',
+		)
+		.structuredOutput(answerJsonSchema);
+}
+
 function createStructuredAgentWithTool(provider: 'anthropic' | 'openai'): Agent {
 	const lookupTool = new Tool('lookup_capital')
 		.description('Look up the capital city of a country')
@@ -84,6 +108,24 @@ describe('structured output integration', () => {
 		expect(result.finishReason).toBe('stop');
 		expect(result.structuredOutput).toBeDefined();
 
+		const parsed = answerSchema.safeParse(result.structuredOutput);
+		expect(parsed.success).toBe(true);
+		if (parsed.success) {
+			expect(parsed.data.city.toLowerCase()).toContain('paris');
+			expect(parsed.data.country.toLowerCase()).toContain('france');
+			expect(parsed.data.population_millions).toBeGreaterThan(0);
+		}
+	});
+
+	it('returns parsed structuredOutput when configured with a raw JSON Schema', async () => {
+		const agent = createJsonSchemaStructuredAgent('anthropic');
+
+		const result = await agent.generate('What is the capital of France?');
+
+		expect(result.finishReason).toBe('stop');
+		expect(result.structuredOutput).toBeDefined();
+
+		// The output still conforms to the equivalent Zod shape.
 		const parsed = answerSchema.safeParse(result.structuredOutput);
 		expect(parsed.success).toBe(true);
 		if (parsed.success) {

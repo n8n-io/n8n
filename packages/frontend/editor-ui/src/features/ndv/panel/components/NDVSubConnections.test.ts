@@ -12,6 +12,7 @@ import {
 	injectWorkflowDocumentStore,
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
+import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 
 const nodeType: INodeTypeDescription = {
 	displayName: 'OpenAI',
@@ -55,9 +56,10 @@ const getNodeType = vi.fn();
 let mockGetNodeByName: Mock<(name: string) => INodeUi | null> = vi.fn(() => node);
 
 vi.mock('@/app/stores/nodeTypes.store', () => ({
-	useNodeTypesStore: vi.fn(() => ({
+	useNodeTypesStore: () => ({
 		getNodeType,
-	})),
+		getAllNodeTypes: () => ({}),
+	}),
 }));
 
 vi.mock('@/app/stores/workflowDocument.store', async (importActual) => ({
@@ -85,6 +87,11 @@ describe('NDVSubConnections', () => {
 				rootNode: node,
 			},
 			global: {
+				provide: {
+					[WorkflowDocumentStoreKey as symbol]: shallowRef(
+						useWorkflowDocumentStore(createWorkflowDocumentId('wf0')),
+					),
+				},
 				stubs: {
 					N8nButton: true,
 				},
@@ -102,6 +109,13 @@ describe('NDVSubConnections', () => {
 		const component = render(NDVSubConnections, {
 			props: {
 				rootNode: node,
+			},
+			global: {
+				provide: {
+					[WorkflowDocumentStoreKey as symbol]: shallowRef(
+						useWorkflowDocumentStore(createWorkflowDocumentId('wf0')),
+					),
+				},
 			},
 		});
 		vi.advanceTimersByTime(1000); // Event debounce time
@@ -174,6 +188,13 @@ describe('NDVSubConnections', () => {
 		const { getByTestId } = render(NDVSubConnections, {
 			props: {
 				rootNode: multiConnectionNode,
+			},
+			global: {
+				provide: {
+					[WorkflowDocumentStoreKey as symbol]: shallowRef(
+						useWorkflowDocumentStore(createWorkflowDocumentId('wf0')),
+					),
+				},
 			},
 		});
 		vi.advanceTimersByTime(1);

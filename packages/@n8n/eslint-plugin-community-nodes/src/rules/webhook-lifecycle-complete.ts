@@ -5,10 +5,9 @@ import {
 	findClassProperty,
 	findObjectProperty,
 	isNodeTypeClass,
+	WEBHOOK_LIFECYCLE_METHODS,
+	type WebhookLifecycleMethod,
 } from '../utils/index.js';
-
-const REQUIRED_METHODS = ['checkExists', 'create', 'delete'] as const;
-type RequiredMethod = (typeof REQUIRED_METHODS)[number];
 
 /**
  * Returns true if the description declares webhook endpoints, indicating the
@@ -39,8 +38,8 @@ function isMethodProperty(property: TSESTree.ObjectLiteralElement, name: string)
 	);
 }
 
-function findMissingMethods(group: TSESTree.ObjectExpression): RequiredMethod[] {
-	return REQUIRED_METHODS.filter(
+function findMissingMethods(group: TSESTree.ObjectExpression): WebhookLifecycleMethod[] {
+	return WEBHOOK_LIFECYCLE_METHODS.filter(
 		(method) => !group.properties.some((property) => isMethodProperty(property, method)),
 	);
 }
@@ -56,6 +55,8 @@ export const WebhookLifecycleCompleteRule = createRule({
 		messages: {
 			missingWebhookMethods:
 				'Webhook trigger node is missing the `webhookMethods` property. Implement `checkExists`, `create`, and `delete` to register, verify, and clean up the webhook on the third-party service.',
+			emptyWebhookMethods:
+				'Webhook trigger node has an empty `webhookMethods` object. Define at least one lifecycle group with `checkExists`, `create`, and `delete` methods.',
 			missingLifecycleMethod:
 				'Webhook trigger lifecycle is incomplete. `webhookMethods.{{group}}` is missing: {{missing}}. All of `checkExists`, `create`, and `delete` must be implemented.',
 		},
@@ -88,6 +89,14 @@ export const WebhookLifecycleCompleteRule = createRule({
 				}
 
 				if (webhookMethodsProperty.value.type !== AST_NODE_TYPES.ObjectExpression) {
+					return;
+				}
+
+				if (webhookMethodsProperty.value.properties.length === 0) {
+					context.report({
+						node: webhookMethodsProperty.key,
+						messageId: 'emptyWebhookMethods',
+					});
 					return;
 				}
 

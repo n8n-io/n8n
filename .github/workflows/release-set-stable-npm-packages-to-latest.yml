@@ -25,6 +25,7 @@ jobs:
         with:
           build-command: ''
           install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace
+          cache-dependency-path: .github/scripts/pnpm-lock.yaml
 
       - name: Set npm packages to latest
         run: node ./.github/scripts/set-latest-for-monorepo-packages.mjs

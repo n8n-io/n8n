@@ -5,7 +5,10 @@ import type { ListDataTableQueryDto } from '../dto';
 export const insertRowReturnType = z.union([z.literal('all'), z.literal('count'), z.literal('id')]);
 
 export const dataTableNameSchema = z.string().trim().min(1).max(128);
-export const dataTableIdSchema = z.string().max(36);
+export const dataTableIdSchema = z
+	.string()
+	.max(36)
+	.regex(/^[a-zA-Z0-9]+$/);
 
 // Postgres does not allow leading numbers or -
 export const DATA_TABLE_COLUMN_REGEX = /^[a-zA-Z][a-zA-Z0-9_]*$/;

@@ -4,7 +4,7 @@ import type {
 	INodeExecutionData,
 	IDataObject,
 } from 'n8n-workflow';
-import { updateDisplayOptions } from 'n8n-workflow';
+import { NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
 
 import { apiRequest } from '../../../transport';
 import { imageGenerateOptions, imageGenerateOptionsRLC, modelRLC } from '../descriptions';
@@ -81,6 +81,11 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	}
 
 	const prompt = this.getNodeParameter('prompt', i) as string;
+	if (!prompt.trim()) {
+		throw new NodeOperationError(this.getNode(), 'A non-empty prompt is required.', {
+			itemIndex: i,
+		});
+	}
 	const options = this.getNodeParameter('options', i, {});
 	const supportsResponseFormat = !model.startsWith('gpt-image');
 	let response_format = 'b64_json';

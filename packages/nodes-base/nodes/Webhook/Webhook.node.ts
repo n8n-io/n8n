@@ -10,7 +10,7 @@ import type {
 	IWebhookResponseData,
 	INodeProperties,
 } from 'n8n-workflow';
-import { BINARY_ENCODING, NodeOperationError, Node } from 'n8n-workflow';
+import { BINARY_ENCODING, NodeOperationError, Node, n8nOAuth2Auth } from 'n8n-workflow';
 import { pipeline } from 'stream/promises';
 import { file as tmpFile } from 'tmp-promise';
 import { v4 as uuid } from 'uuid';
@@ -20,7 +20,9 @@ import {
 	credentialsProperty,
 	defaultWebhookDescription,
 	httpMethodsProperty,
+	inboundTriggerAuthenticationBuilderHint,
 	optionsProperty,
+	requireExecuteAccessProperty,
 	responseBinaryPropertyNameProperty,
 	responseCodeOption,
 	responseCodeProperty,
@@ -135,13 +137,17 @@ export class Webhook extends Node {
 				default: '',
 				placeholder: 'webhook',
 				builderHint: {
-					message: 'The webhook path that triggers this workflow',
+					propertyHint: 'The webhook path that triggers this workflow',
 					placeholderSupported: false,
 				},
 				description:
 					"The path to listen to, dynamic values could be specified by using ':', e.g. 'your-path/:dynamic-value'. If dynamic values are set 'webhookId' would be prepended to path.",
 			},
-			authenticationProperty(this.authPropertyName),
+			{
+				...authenticationProperty(this.authPropertyName, true),
+				builderHint: inboundTriggerAuthenticationBuilderHint,
+			},
+			requireExecuteAccessProperty(this.authPropertyName),
 			responseModeProperty,
 			responseModePropertyStreaming,
 			{
@@ -238,7 +244,26 @@ export class Webhook extends Node {
 		try {
 			if (options.ignoreBots && isbot(req.headers['user-agent']))
 				throw new WebhookAuthorizationError(403);
-			validationData = await this.validateAuth(context);
+			if (context.getNodeParameter('authentication', 'none') === 'n8nOAuth2') {
+				// Two-step n8n user-auth flow: (1) validate the bearer token and resolve
+				// the caller to an n8n user, then (2) seed the execution context so the
+				// run happens as that user (merging their private credentials). The method
+				// being served selects the resource, since disjoint-method triggers can
+				// share a path; take it from the request rather than the `httpMethod`
+				// parameter, which is an expression that can resolve differently from the
+				// rows written at activation time.
+				const authResult = await n8nOAuth2Auth(context, {
+					realm: 'n8n Webhook',
+					method: req.method,
+				});
+				if (authResult === 'handled') {
+					// Token missing/invalid: the helper already sent the response.
+					return { noWebhookResponse: true };
+				}
+				await context.establishTriggerIdentity(authResult.token, authResult.resource);
+			} else {
+				validationData = await this.validateAuth(context);
+			}
 		} catch (error) {
 			if (error instanceof WebhookAuthorizationError) {
 				resp.writeHead(error.responseCode, { 'WWW-Authenticate': 'Basic realm="Webhook"' });
@@ -246,6 +271,21 @@ export class Webhook extends Node {
 				return { noWebhookResponse: true };
 			}
 			throw error;
+		}
+
+		const node = context.getNode();
+		const rawOptions = node.parameters?.options as { onlyRunIf?: unknown } | undefined;
+		const rawOnlyRunIf = rawOptions?.onlyRunIf;
+		if (typeof rawOnlyRunIf === 'string' && rawOnlyRunIf.startsWith('=')) {
+			try {
+				const result = context.evaluateExpression(rawOnlyRunIf.slice(1), 0);
+				if (!result) return {};
+			} catch (error) {
+				context.logger.warn(
+					`Webhook "Only Run If" expression failed to evaluate; allowing request through. ${(error as Error).message}`,
+					{ nodeName: node.name },
+				);
+			}
 		}
 
 		const prepareOutput = setupOutputConnection(context, requestMethod, {

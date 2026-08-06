@@ -12,7 +12,7 @@ export const NoOverridesFieldRule = createRule({
 		},
 		messages: {
 			overridesForbidden:
-				'The "overrides" field is not allowed in community node packages. Dependency overrides can introduce incompatible versions of shared libraries into the n8n runtime and cause conflicts with other nodes.',
+				'The "overrides" field is not allowed in community node packages. Each community package installs into an isolated dependency tree, so overrides do not affect other nodes or n8n core — in practice they are copy-pasted boilerplate with no useful effect. Use the helpers on the execute context (this.helpers.httpRequest, etc.) instead; most community nodes do not need third-party runtime libraries.',
 		},
 		schema: [],
 	},

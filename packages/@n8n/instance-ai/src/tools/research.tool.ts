@@ -1,18 +1,40 @@
 /**
  * Consolidated research tool — web-search + fetch-url.
  */
-import { createTool } from '@mastra/core/tools';
+import { Tool } from '@n8n/agents';
 import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import {
 	checkDomainAccess,
+	checkWebSearchAccess,
 	applyDomainAccessResume,
+	applyWebSearchAccessResume,
 	domainGatingSuspendSchema,
 	domainGatingResumeSchema,
 } from '../domain-access';
 import type { InstanceAiContext } from '../types';
-import { sanitizeWebContent, wrapInBoundaryTags } from './web-research/sanitize-web-content';
+import { sanitizeWebContent, wrapUntrustedData } from './web-research/sanitize-web-content';
+
+/** True when both URLs share an eTLD+1 (per Public Suffix List) and target is HTTPS. */
+async function isSameRegistrableDomainOverHttps(
+	originalUrl: string,
+	redirectUrl: string,
+): Promise<boolean> {
+	let originalHost: string;
+	let redirectUrlObj: URL;
+	try {
+		originalHost = new URL(originalUrl).hostname;
+		redirectUrlObj = new URL(redirectUrl);
+	} catch {
+		return false;
+	}
+	if (redirectUrlObj.protocol !== 'https:') return false;
+	const { get: pslGet } = await import('psl');
+	const originalDomain = pslGet(originalHost);
+	const redirectDomain = pslGet(redirectUrlObj.hostname);
+	return originalDomain !== null && redirectDomain !== null && originalDomain === redirectDomain;
+}
 
 // ── Action schemas ──────────────────────────────────────────────────────────
 
@@ -53,23 +75,67 @@ const inputSchema = sanitizeInputSchema(
 );
 
 type Input = z.infer<typeof inputSchema>;
+type DomainGatingResumeData = z.infer<typeof domainGatingResumeSchema>;
+type DomainGatingSuspendPayload = z.infer<typeof domainGatingSuspendSchema>;
+interface DomainGatingToolContext {
+	resumeData: DomainGatingResumeData | undefined;
+	suspend?: (payload: DomainGatingSuspendPayload) => Promise<never>;
+	abortSignal?: AbortSignal;
+}
 
 // ── Handlers ────────────────────────────────────────────────────────────────
 
 async function handleWebSearch(
 	context: InstanceAiContext,
 	input: Extract<Input, { action: 'web-search' }>,
+	ctx: DomainGatingToolContext,
 ) {
 	if (!context.webResearchService?.search) {
 		return { query: input.query, results: [] };
 	}
 
+	const resumeData = ctx.resumeData;
+
+	// ── Resume path: apply user's decision ─────────────────────────
+	if (resumeData !== undefined && resumeData !== null) {
+		const { proceed } = await applyWebSearchAccessResume({
+			resumeData,
+			tracker: context.domainAccessTracker,
+			runId: context.runId,
+		});
+		if (!proceed) {
+			return { query: input.query, results: [] };
+		}
+	}
+
+	// ── Initial check: is web-search allowed? ──────────────────────
+	if (resumeData === undefined || resumeData === null) {
+		const check = checkWebSearchAccess({
+			query: input.query,
+			tracker: context.domainAccessTracker,
+			permissionMode: context.permissions?.webSearch,
+			runId: context.runId,
+		});
+		if (!check.allowed) {
+			if (check.blocked) {
+				return { query: input.query, results: [] };
+			}
+			if (ctx.suspend) return await ctx.suspend(check.suspendPayload!);
+			return { query: input.query, results: [] };
+		}
+	}
+
 	const result = await context.webResearchService.search(input.query, {
 		maxResults: input.maxResults ?? undefined,
 		includeDomains: input.includeDomains ?? undefined,
+		abortSignal: ctx.abortSignal,
 	});
+	// Snippets come from arbitrary third-party pages — sanitize against hidden
+	// payloads, then wrap so the LLM treats the content as data, not instructions.
+	// The wrapper also escapes any closing boundary tag in the snippet to
+	// prevent breakout into the surrounding prompt context.
 	for (const r of result.results) {
-		r.snippet = sanitizeWebContent(r.snippet);
+		r.snippet = wrapUntrustedData(sanitizeWebContent(r.snippet), r.url, r.title);
 	}
 	return result;
 }
@@ -77,7 +143,7 @@ async function handleWebSearch(
 async function handleFetchUrl(
 	context: InstanceAiContext,
 	input: Extract<Input, { action: 'fetch-url' }>,
-	ctx: { agent?: { resumeData?: unknown; suspend?: unknown } },
+	ctx: DomainGatingToolContext,
 ) {
 	if (!context.webResearchService) {
 		return {
@@ -90,10 +156,7 @@ async function handleFetchUrl(
 		};
 	}
 
-	const resumeData = ctx?.agent?.resumeData as z.infer<typeof domainGatingResumeSchema> | undefined;
-	const suspend = ctx?.agent?.suspend as
-		| ((payload: z.infer<typeof domainGatingSuspendSchema>) => Promise<void>)
-		| undefined;
+	const resumeData = ctx.resumeData;
 
 	// ── Resume path: apply user's domain decision ──────────────────
 	if (resumeData !== undefined && resumeData !== null) {
@@ -103,7 +166,7 @@ async function handleFetchUrl(
 		} catch {
 			host = input.url;
 		}
-		const { proceed } = applyDomainAccessResume({
+		const { proceed } = await applyDomainAccessResume({
 			resumeData,
 			host,
 			tracker: context.domainAccessTracker,
@@ -140,7 +203,7 @@ async function handleFetchUrl(
 					contentLength: 0,
 				};
 			}
-			await suspend?.(check.suspendPayload!);
+			if (ctx.suspend) return await ctx.suspend(check.suspendPayload!);
 			return {
 				url: input.url,
 				finalUrl: input.url,
@@ -153,7 +216,7 @@ async function handleFetchUrl(
 	}
 
 	// ── Execute fetch ──────────────────────────────────────────────
-	// eslint-disable-next-line @typescript-eslint/require-await -- must be async to match authorizeUrl signature
+
 	const authorizeUrl = async (targetUrl: string) => {
 		const redirectCheck = checkDomainAccess({
 			url: targetUrl,
@@ -161,39 +224,48 @@ async function handleFetchUrl(
 			permissionMode: context.permissions?.fetchUrl,
 			runId: context.runId,
 		});
-		if (!redirectCheck.allowed) {
-			const reason = redirectCheck.blocked
-				? `Access to ${new URL(targetUrl).hostname} is blocked by admin.`
-				: `Redirect to ${new URL(targetUrl).hostname} requires approval. ` +
-					`Retry with the direct URL: ${targetUrl}`;
-			throw new Error(reason);
+		if (redirectCheck.allowed) return;
+		if (redirectCheck.blocked) {
+			throw new Error(`Access to ${new URL(targetUrl).hostname} is blocked by admin.`);
 		}
+		if (await isSameRegistrableDomainOverHttps(input.url, targetUrl)) return;
+		throw new Error(
+			`Redirect from ${new URL(input.url).hostname} to ${new URL(targetUrl).hostname} is not allowed. ` +
+				'Skip this URL and try a different research strategy — retrying the same URL will not help.',
+		);
 	};
 
 	const result = await context.webResearchService.fetchUrl(input.url, {
 		maxContentLength: input.maxContentLength ?? undefined,
 		authorizeUrl,
+		abortSignal: ctx.abortSignal,
 	});
-	result.content = wrapInBoundaryTags(sanitizeWebContent(result.content), result.finalUrl);
+	result.content = wrapUntrustedData(sanitizeWebContent(result.content), result.finalUrl);
 	return result;
 }
 
 // ── Tool factory ────────────────────────────────────────────────────────────
 
 export function createResearchTool(context: InstanceAiContext) {
-	return createTool({
-		id: 'research',
-		description: 'Search the web or fetch page content.',
-		inputSchema,
-		suspendSchema: domainGatingSuspendSchema,
-		resumeSchema: domainGatingResumeSchema,
-		execute: async (input: Input, ctx) => {
+	return new Tool('research')
+		.description(
+			'Search the web or fetch page content for external (non-n8n) documentation. ' +
+				'For n8n-specific questions — product behavior, node setup, credentials, hosting, ' +
+				'or feature docs — prefer the sandbox knowledge base and `n8n-docs` ' +
+				'(via `n8n-docs-assistant` / load_tool) over web search. Use this tool when those ' +
+				'sources and node type definitions are insufficient, or when researching a ' +
+				'third-party API/service.',
+		)
+		.input(inputSchema)
+		.suspend(domainGatingSuspendSchema)
+		.resume(domainGatingResumeSchema)
+		.handler(async (input: Input, ctx) => {
 			switch (input.action) {
 				case 'web-search':
-					return await handleWebSearch(context, input);
+					return await handleWebSearch(context, input, ctx);
 				case 'fetch-url':
 					return await handleFetchUrl(context, input, ctx);
 			}
-		},
-	});
+		})
+		.build();
 }

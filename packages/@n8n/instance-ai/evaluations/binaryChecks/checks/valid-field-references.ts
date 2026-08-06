@@ -196,13 +196,14 @@ export const validFieldReferences: BinaryCheck = {
 	name: 'valid_field_references',
 	description: 'Expressions reference fields that exist in upstream node output schemas',
 	kind: 'deterministic',
+	dimension: 'parameter_correctness',
 	run(workflow: WorkflowResponse) {
 		const nodes = workflow.nodes ?? [];
-		if (nodes.length === 0) return { pass: true };
 
 		const nodeByName = new Map(nodes.map((n) => [n.name, n]));
 		const upstreamMap = buildUpstreamMap(workflow.connections ?? {});
 		const invalid: string[] = [];
+		let sawAnyFieldRef = false;
 
 		for (const node of nodes) {
 			if (!node.parameters) continue;
@@ -210,6 +211,7 @@ export const validFieldReferences: BinaryCheck = {
 			const expressions = extractExpressionsFromParams(node.parameters);
 			for (const expr of expressions) {
 				const refs = extractFieldReferences(expr);
+				if (refs.length > 0) sawAnyFieldRef = true;
 				for (const ref of refs) {
 					// Determine which node provides the data
 					let sourceNode: WorkflowNodeResponse | undefined;
@@ -239,6 +241,8 @@ export const validFieldReferences: BinaryCheck = {
 				}
 			}
 		}
+
+		if (!sawAnyFieldRef) return { pass: true, applicable: false };
 
 		const unique = [...new Set(invalid)];
 

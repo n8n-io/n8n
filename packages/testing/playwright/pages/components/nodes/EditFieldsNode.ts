@@ -59,10 +59,12 @@ export class EditFieldsNode extends BasePage {
 	private async setFieldType(assignment: Locator, type: string): Promise<void> {
 		const typeSelect = assignment.getByTestId('assignment-type-select');
 		await typeSelect.waitFor({ state: 'visible' });
-		await typeSelect.click();
+		await typeSelect.getByRole('button').click();
 
-		const typeOptionText = this.getTypeOptionText(type);
-		const option = this.page.getByRole('menuitem', { name: typeOptionText });
+		const option = this.page
+			.getByTestId('assignment-type-select-dropdown')
+			.filter({ visible: true })
+			.getByTestId(`action-${type}`);
 		await option.waitFor({ state: 'visible' });
 		await option.click();
 	}
@@ -82,17 +84,6 @@ export class EditFieldsNode extends BasePage {
 		}
 	}
 
-	private getTypeOptionText(type: string): string {
-		const typeMap = new Map([
-			['string', 'String'],
-			['number', 'Number'],
-			['boolean', 'Boolean'],
-			['array', 'Array'],
-			['object', 'Object'],
-		]);
-		return typeMap.get(type) ?? 'String';
-	}
-
 	private async setTextValue(valueContainer: Locator, value: string): Promise<void> {
 		const input = valueContainer
 			.getByRole('textbox')
@@ -104,7 +95,7 @@ export class EditFieldsNode extends BasePage {
 	private async setBooleanValue(valueContainer: Locator, value: boolean): Promise<void> {
 		await valueContainer.click();
 		const booleanValue = value ? 'True' : 'False';
-		const option = this.page.getByRole('option', { name: booleanValue });
+		const option = this.getVisiblePopoverOption(booleanValue);
 		await option.waitFor({ state: 'visible' });
 		await option.click();
 	}

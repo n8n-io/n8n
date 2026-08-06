@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-
 import { inTest, Logger, safeJoinPath } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
@@ -24,6 +22,8 @@ import {
 } from '../event-message-classes/event-message-confirm';
 import type { EventMessageGenericOptions } from '../event-message-classes/event-message-generic';
 import { EventMessageGeneric } from '../event-message-classes/event-message-generic';
+import type { EventMessageMcpOptions } from '../event-message-classes/event-message-mcp';
+import { EventMessageMcp } from '../event-message-classes/event-message-mcp';
 import type { EventMessageNodeOptions } from '../event-message-classes/event-message-node';
 import { EventMessageNode } from '../event-message-classes/event-message-node';
 import type { EventMessageWorkflowOptions } from '../event-message-classes/event-message-workflow';
@@ -31,6 +31,9 @@ import { EventMessageWorkflow } from '../event-message-classes/event-message-wor
 import type { EventMessageReturnMode } from '../message-event-bus/message-event-bus';
 
 interface MessageEventBusLogWriterConstructorOptions {
+	/** Resolved authoritative log file base path (without `.log`). When set,
+	 *  takes precedence over `logBaseName`/`logBasePath`. */
+	resolvedPath?: { logFullBasePath: string };
 	logBaseName?: string;
 	logBasePath?: string;
 	keepNumberOfFiles?: number;
@@ -83,11 +86,14 @@ export class MessageEventBusLogWriter {
 	): Promise<MessageEventBusLogWriter> {
 		if (!MessageEventBusLogWriter.instance) {
 			MessageEventBusLogWriter.instance = new MessageEventBusLogWriter();
-			MessageEventBusLogWriter.options = {
-				logFullBasePath: safeJoinPath(
+			const logFullBasePath =
+				options?.resolvedPath?.logFullBasePath ??
+				safeJoinPath(
 					options?.logBasePath ?? Container.get(InstanceSettings).n8nFolder,
 					options?.logBaseName ?? Container.get(GlobalConfig).eventBus.logWriter.logBaseName,
-				),
+				);
+			MessageEventBusLogWriter.options = {
+				logFullBasePath,
 				keepNumberOfFiles:
 					options?.keepNumberOfFiles ?? Container.get(GlobalConfig).eventBus.logWriter.keepLogCount,
 				maxFileSizeInKB:
@@ -284,7 +290,6 @@ export class MessageEventBusLogWriter {
 		return results;
 	}
 
-	// eslint-disable-next-line complexity
 	private processLoggedLine(
 		line: string,
 		results: ReadMessagesFromLogFileResult,
@@ -437,6 +442,8 @@ export class MessageEventBusLogWriter {
 				return new EventMessageAudit(message as EventMessageAuditOptions);
 			case EventMessageTypeNames.node:
 				return new EventMessageNode(message as EventMessageNodeOptions);
+			case EventMessageTypeNames.mcp:
+				return new EventMessageMcp(message as EventMessageMcpOptions);
 			default:
 				return null;
 		}

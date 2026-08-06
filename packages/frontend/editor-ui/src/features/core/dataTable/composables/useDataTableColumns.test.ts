@@ -166,6 +166,30 @@ describe('useDataTableColumns', () => {
 			expect(colDef.editable).toBe(false);
 			expect(colDef.width).toBe(100);
 		});
+
+		it('should suppress column move only in read-only mode', () => {
+			const column: DataTableColumn = { id: 'col1', name: 'Column 1', type: 'string', index: 0 };
+
+			const editable = useDataTableColumns({
+				onDeleteColumn: mockOnDeleteColumn,
+				onRenameColumn: mockOnRenameColumn,
+				onAddRowClick: mockOnAddRowClick,
+				onAddColumn: mockOnAddColumn,
+				isTextEditorOpen,
+				readOnly: ref(false),
+			});
+			expect(editable.createColumnDef(column).suppressMovable).toBe(false);
+
+			const readOnly = useDataTableColumns({
+				onDeleteColumn: mockOnDeleteColumn,
+				onRenameColumn: mockOnRenameColumn,
+				onAddRowClick: mockOnAddRowClick,
+				onAddColumn: mockOnAddColumn,
+				isTextEditorOpen,
+				readOnly: ref(true),
+			});
+			expect(readOnly.createColumnDef(column).suppressMovable).toBe(true);
+		});
 	});
 
 	describe('loadColumns', () => {

@@ -1,4 +1,3 @@
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import {
 	ChatHubConversationModel,
 	ChatHubLLMProvider,
@@ -7,13 +6,16 @@ import {
 	VECTOR_STORE_PROVIDER_CREDENTIAL_TYPE_MAP,
 	type ChatHubSemanticSearchSettings,
 } from '@n8n/api-types';
+import { DEFAULT_SEMANTIC_SEARCH_SETTINGS } from '@n8n/chat-hub';
 import { SettingsRepository } from '@n8n/db';
 import type { EntityManager } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { jsonParse } from 'n8n-workflow';
-import type { SemanticSearchOptions } from './chat-hub.types';
+
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+
 import { VECTOR_STORE_NODE_TYPE_MAP } from './chat-hub.constants';
-import { DEFAULT_SEMANTIC_SEARCH_SETTINGS } from '@n8n/chat-hub';
+import type { SemanticSearchOptions } from './chat-hub.types';
 
 const CHAT_PROVIDER_SETTINGS_KEY_PREFIX = 'chat.provider.';
 const CHAT_PROVIDER_SETTINGS_KEY = (provider: ChatHubLLMProvider) =>
@@ -36,8 +38,10 @@ export class ChatHubSettingsService {
 
 	async getEnabled(): Promise<boolean> {
 		const row = await this.settingsRepository.findByKey(CHAT_ENABLED_KEY);
-		// Allowed by default
-		if (!row) return true;
+		// Disabled by default. The deprecation migration persists an explicit
+		// value for every existing install, so a missing row is only the
+		// safety-net case (e.g. deleted row) and is treated as disabled.
+		if (!row) return false;
 		return row.value === 'true';
 	}
 

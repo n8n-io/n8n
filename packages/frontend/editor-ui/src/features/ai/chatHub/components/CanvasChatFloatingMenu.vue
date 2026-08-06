@@ -3,7 +3,7 @@ import { computed, inject, ref, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nDropdownMenu, type DropdownMenuItemProps } from '@n8n/design-system';
 import type { ChatHubSessionDto, ChatSessionId } from '@n8n/api-types';
-import { PopOutWindowKey } from '@/app/constants';
+import { PopOutWindowKey } from '@n8n/composables/injectionKeys';
 import { useChatStore } from '../chat.store';
 import { groupConversationsByDate } from '../chat.utils';
 

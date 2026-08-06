@@ -16,6 +16,7 @@ import {
 	AI_NODE_CREATOR_VIEW,
 	AI_OTHERS_NODE_CREATOR_VIEW,
 	HITL_SUBCATEGORY,
+	MESSAGE_AN_AGENT_NODE_TYPE,
 } from '@/app/constants';
 
 import type { BaseTextKey } from '@n8n/i18n';
@@ -76,7 +77,11 @@ const moreFromCommunity = computed(() => {
 	return filterAndSearchNodes(
 		communityNodesAndActions.value.mergedNodes,
 		activeViewStack.value.search ?? '',
-		isAiSubcategoryView(activeViewStack.value) || isHitlSubcategoryView(activeViewStack.value),
+		{
+			isAiSubcategory: isAiSubcategoryView(activeViewStack.value),
+			isHitlSubcategory: isHitlSubcategoryView(activeViewStack.value),
+			aiConnectionType: activeViewStack.value.connectionType,
+		},
 	);
 });
 
@@ -124,6 +129,7 @@ function onSelected(item: INodeCreateElement) {
 			nodeIcon,
 			...extendedInfo,
 			...(item.properties.panelClass ? { panelClass: item.properties.panelClass } : {}),
+			...(item.properties.connectionType ? { connectionType: item.properties.connectionType } : {}),
 			rootView: activeViewStack.value.rootView,
 			forceIncludeNodes: item.properties.forceIncludeNodes,
 			baseFilter: baseSubcategoriesFilter,
@@ -149,6 +155,22 @@ function onSelected(item: INodeCreateElement) {
 			null,
 			workflowDocumentStore?.value?.getExpressionHandler() ?? null,
 		);
+
+		// Instead of dropping the node on the canvas, open the agent picker
+		// sub-panel; it adds the node itself with the picked agent preset.
+		if (item.key === MESSAGE_AN_AGENT_NODE_TYPE) {
+			pushViewStack({
+				title: item.properties.displayName,
+				nodeIcon,
+				rootView: activeViewStack.value.rootView,
+				hasSearch: true,
+				mode: 'agents',
+				// Deliberately [] rather than undefined so the stack doesn't get
+				// baseline items from the default subcategory.
+				items: [],
+			});
+			return;
+		}
 
 		if (
 			shouldShowCommunityNodeDetails(isCommunityPackageName(item.key), activeViewStack.value) ||
@@ -282,9 +304,11 @@ function baseSubcategoriesFilter(item: INodeCreateElement): boolean {
 }
 
 const globalCallouts = computed<INodeCreateElement[]>(() => [
-	...getRootSearchCallouts(activeViewStack.value.search ?? '', {
-		isRagStarterCalloutVisible: isRagStarterCalloutVisible.value,
-	}),
+	...getRootSearchCallouts(
+		activeViewStack.value.search ?? '',
+		{ isRagStarterCalloutVisible: isRagStarterCalloutVisible.value },
+		mergedNodes,
+	),
 ]);
 
 function arrowLeft() {
