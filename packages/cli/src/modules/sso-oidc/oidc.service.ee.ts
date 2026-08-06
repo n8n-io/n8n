@@ -2,15 +2,7 @@ import { OidcConfigDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import { GlobalConfig } from '@n8n/config';
-import {
-	AuthIdentity,
-	AuthIdentityRepository,
-	isValidEmail,
-	GLOBAL_MEMBER_ROLE,
-	SettingsRepository,
-	type User,
-	UserRepository,
-} from '@n8n/db';
+import { isValidEmail, GLOBAL_MEMBER_ROLE, SettingsRepository, type User } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { randomUUID } from 'crypto';
@@ -23,6 +15,16 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { buildOidcClaimsContext } from '@/modules/provisioning.ee/claims-context.builder';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
+import {
+	IdentityBindingService,
+	interpretEmailVerified,
+} from '@/services/identity-binding.service';
+import {
+	IdentityResolutionError,
+	type IdentityPolicy,
+	type IdentitySource,
+} from '@/services/identity-binding.types';
+import type { VerifiedIdentityClaim } from '@/services/identity-resolution-proxy.service';
 import { JwtService } from '@/services/jwt.service';
 import { TrustedKeySourceRegistrationProxy } from '@/services/trusted-key-source-registration-proxy.service';
 import { UrlService } from '@/services/url.service';
@@ -92,10 +94,9 @@ export class OidcService {
 
 	constructor(
 		private readonly settingsRepository: SettingsRepository,
-		private readonly authIdentityRepository: AuthIdentityRepository,
+		private readonly identityBinding: IdentityBindingService,
 		private readonly urlService: UrlService,
 		private readonly globalConfig: GlobalConfig,
-		private readonly userRepository: UserRepository,
 		private readonly cipher: Cipher,
 		private readonly logger: Logger,
 		private readonly jwtService: JwtService,
@@ -348,86 +349,65 @@ export class OidcService {
 			userInfo as Record<string, unknown>,
 		);
 
-		const openidUser = await this.authIdentityRepository.findOne({
-			where: { providerId: claims.sub, providerType: 'oidc' },
-			relations: {
-				user: {
-					role: true,
-				},
-			},
-		});
-
-		if (openidUser) {
-			await this.applySsoProvisioning(
-				openidUser.user,
-				claims as Record<string, unknown>,
-				userInfo as Record<string, unknown>,
-			);
-
-			return { user: openidUser.user, idToken: tokens.id_token };
-		}
-
-		const foundUser = await this.userRepository.findOne({
-			where: { email: userInfo.email },
-			relations: ['authIdentities', 'role'],
-		});
-
-		if (foundUser) {
-			// Linking to an existing account uses the email as the key, so only do it
-			// when the IdP says the email is verified.
-			this.assertEmailVerified(userInfo.email_verified);
-
-			this.logger.debug(
-				`OIDC login: User with email ${userInfo.email} already exists, linking OIDC identity.`,
-			);
-			// If the user already exists, we just add the OIDC identity to the user
-			const id = this.authIdentityRepository.create({
-				providerId: claims.sub,
-				providerType: 'oidc',
-				userId: foundUser.id,
-			});
-
-			await this.authIdentityRepository.save(id);
-			await this.applySsoProvisioning(
-				foundUser,
-				claims as Record<string, unknown>,
-				userInfo as Record<string, unknown>,
-			);
-
-			return { user: foundUser, idToken: tokens.id_token };
-		}
-
-		const user = await this.userRepository.manager.transaction(async (trx) => {
-			const { user: newUser } = await this.userRepository.createUserWithProject(
-				{
-					firstName: userInfo.given_name,
-					lastName: userInfo.family_name,
-					email: userInfo.email,
-					authIdentities: [],
-					role: GLOBAL_MEMBER_ROLE,
-					password: 'no password set',
-				},
-				trx,
-			);
-
-			await trx.save(
-				trx.create(AuthIdentity, {
-					providerId: claims.sub,
-					providerType: 'oidc',
-					userId: newUser.id,
-				}),
-			);
-
-			return newUser;
-		});
-
-		await this.applySsoProvisioning(
-			user,
+		const user = await this.resolveUserFromClaims(
 			claims as Record<string, unknown>,
 			userInfo as Record<string, unknown>,
 		);
 
 		return { user, idToken: tokens.id_token };
+	}
+
+	/**
+	 * Hand the verified claims to the shared resolver. The subject comes from
+	 * the ID token while the profile fields come from the UserInfo response —
+	 * that asymmetry is deliberate, since UserInfo is the authoritative source
+	 * for email and name but the binding must key off the ID token's `sub`.
+	 */
+	private async resolveUserFromClaims(
+		claims: Record<string, unknown>,
+		userInfo: Record<string, unknown>,
+	): Promise<User> {
+		const normalizedClaims: VerifiedIdentityClaim = {
+			iss: String(claims.iss ?? ''),
+			sub: String(claims.sub),
+			email: typeof userInfo.email === 'string' ? userInfo.email : undefined,
+			email_verified: interpretEmailVerified(userInfo.email_verified) === 'verified',
+			given_name: typeof userInfo.given_name === 'string' ? userInfo.given_name : undefined,
+			family_name: typeof userInfo.family_name === 'string' ? userInfo.family_name : undefined,
+		};
+
+		const source: IdentitySource = {
+			providerType: 'oidc',
+			// Raw `sub`, unqualified. A modelled `(sourceId, subject)` key, with a
+			// migration for the existing rows, is tracked separately; until then
+			// changing it here would strand every account provisioned so far.
+			keyFor: (c) => c.sub,
+		};
+
+		const policy: IdentityPolicy = {
+			assertEmailVerified: () => this.assertEmailVerified(userInfo.email_verified),
+			// Role assignment belongs entirely to `ProvisioningService`, applied
+			// below in `onResolved`; every new account starts as a plain member.
+			roleForNewUser: async () => GLOBAL_MEMBER_ROLE,
+			profileSync: 'every-resolution',
+			onResolved: async (user) => {
+				await this.applySsoProvisioning(user, claims, userInfo);
+				return user;
+			},
+		};
+
+		try {
+			return await this.identityBinding.resolve(source, normalizedClaims, policy, {
+				allowProvisioning: true,
+			});
+		} catch (error) {
+			if (error instanceof IdentityResolutionError) {
+				throw error.failure === 'missing-email'
+					? new BadRequestError('An email is required')
+					: new ForbiddenError('This identity is no longer allowed to sign in');
+			}
+			throw error;
+		}
 	}
 
 	/**
