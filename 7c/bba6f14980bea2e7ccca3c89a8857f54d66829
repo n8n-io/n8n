@@ -1,0 +1,31 @@
+packages/cli/src/workflows/workflow-input-schema.service.ts
+  s_5e1597e8ea25b2::t_1fe081d4782467 67-72
+  s_5e1597e8ea25b2::t_c45082a08b69ce 23
+packages/cli/src/workflows/__tests__/workflow-finder.service.test.ts
+  s_5e1597e8ea25b2::t_3d8ea1fff0201e 46,58
+packages/cli/src/workflows/__tests__/workflow-input-schema.service.test.ts
+  s_5e1597e8ea25b2::t_d3380c0109a359 92-94,99-103,106-108,119-123
+docs/workflow-catalog-handoff.md
+  s_5e1597e8ea25b2::t_3c6a8636b513ad 134-137
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "7cbba6f14980bea2e7ccca3c89a8857f54d66829",
+  "prompts": {},
+  "humans": {
+    "h_21437a83314767": {
+      "author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_5e1597e8ea25b2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3addddf2-b534-4e10-93c7-b150ce8b013e",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}
