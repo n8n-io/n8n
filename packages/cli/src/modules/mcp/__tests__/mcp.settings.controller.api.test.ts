@@ -218,10 +218,29 @@ describe('PATCH /mcp/settings', () => {
 			.send({ mcpAccessEnabled: false });
 
 		expect(response.statusCode).toBe(200);
-		expect(response.body.data).toEqual({ mcpAccessEnabled: false });
+		expect(response.body.data).toEqual({ mcpAccessEnabled: false, autoExposeNewWorkflows: false });
 
 		const stored = await Container.get(SettingsRepository).findByKey(settingsKey);
 		expect(stored?.value).toBe('false');
+	});
+
+	test('disabling access also resets autoExposeNewWorkflows', async () => {
+		await Container.get(McpSettingsService).setEnabled(true);
+		await Container.get(McpSettingsService).setAutoExposeNewWorkflows(true);
+
+		const response = await testServer
+			.authAgentFor(owner)
+			.patch('/mcp/settings')
+			.send({ mcpAccessEnabled: false });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toEqual({
+			mcpAccessEnabled: false,
+			autoExposeNewWorkflows: false,
+		});
+
+		const stored = await Container.get(McpSettingsService).getAutoExposeNewWorkflows();
+		expect(stored).toBe(false);
 	});
 
 	test('member without mcp:manage scope is forbidden', async () => {

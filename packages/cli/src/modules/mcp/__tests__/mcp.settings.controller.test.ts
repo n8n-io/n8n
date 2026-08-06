@@ -112,6 +112,7 @@ describe('McpSettingsController', () => {
 			const req = createReq({ mcpAccessEnabled: false }, { user });
 			const dto = new UpdateMcpSettingsDto({ mcpAccessEnabled: false });
 			mcpSettingsService.setEnabled.mockResolvedValue(undefined);
+			mcpSettingsService.setAutoExposeNewWorkflows.mockResolvedValue(undefined);
 			moduleRegistry.refreshModuleSettings.mockResolvedValue(null);
 
 			const res = createRes();
@@ -123,7 +124,7 @@ describe('McpSettingsController', () => {
 				user,
 				enabled: false,
 			});
-			expect(result).toEqual({ mcpAccessEnabled: false });
+			expect(result).toEqual({ mcpAccessEnabled: false, autoExposeNewWorkflows: false });
 		});
 
 		test('enables MCP access correctly', async () => {
@@ -213,6 +214,73 @@ describe('McpSettingsController', () => {
 				enabled: true,
 			});
 			expect(result).toEqual({ mcpAccessEnabled: true });
+		});
+
+		test('resets autoExposeNewWorkflows when access is disabled without an explicit value', async () => {
+			const user = createUser();
+			const req = createReq({ mcpAccessEnabled: false }, { user });
+			const dto = UpdateMcpSettingsDto.parse({ mcpAccessEnabled: false });
+			mcpSettingsService.setEnabled.mockResolvedValue(undefined);
+			mcpSettingsService.setAutoExposeNewWorkflows.mockResolvedValue(undefined);
+			moduleRegistry.refreshModuleSettings.mockResolvedValue(null);
+
+			const res = createRes();
+			const result = await controller.updateSettings(req, res, dto);
+
+			expect(mcpSettingsService.setEnabled).toHaveBeenCalledWith(false);
+			expect(mcpSettingsService.setAutoExposeNewWorkflows).toHaveBeenCalledWith(false);
+			expect(mcpSettingsService.setAutoExposeNewWorkflows).toHaveBeenCalledTimes(1);
+			expect(result).toEqual({ mcpAccessEnabled: false, autoExposeNewWorkflows: false });
+		});
+
+		test('respects an explicit autoExposeNewWorkflows value when access is disabled in the same request', async () => {
+			const user = createUser();
+			const req = createReq({ mcpAccessEnabled: false, autoExposeNewWorkflows: true }, { user });
+			const dto = UpdateMcpSettingsDto.parse({
+				mcpAccessEnabled: false,
+				autoExposeNewWorkflows: true,
+			});
+			mcpSettingsService.setEnabled.mockResolvedValue(undefined);
+			mcpSettingsService.setAutoExposeNewWorkflows.mockResolvedValue(undefined);
+			moduleRegistry.refreshModuleSettings.mockResolvedValue(null);
+
+			const res = createRes();
+			const result = await controller.updateSettings(req, res, dto);
+
+			expect(mcpSettingsService.setEnabled).toHaveBeenCalledWith(false);
+			expect(mcpSettingsService.setAutoExposeNewWorkflows).toHaveBeenCalledWith(true);
+			expect(mcpSettingsService.setAutoExposeNewWorkflows).toHaveBeenCalledTimes(1);
+			expect(result).toEqual({ mcpAccessEnabled: false, autoExposeNewWorkflows: true });
+		});
+
+		test('does not reset autoExposeNewWorkflows when access is enabled', async () => {
+			const user = createUser();
+			const req = createReq({ mcpAccessEnabled: true }, { user });
+			const dto = UpdateMcpSettingsDto.parse({ mcpAccessEnabled: true });
+			mcpSettingsService.setEnabled.mockResolvedValue(undefined);
+			moduleRegistry.refreshModuleSettings.mockResolvedValue(null);
+
+			const res = createRes();
+			const result = await controller.updateSettings(req, res, dto);
+
+			expect(mcpSettingsService.setEnabled).toHaveBeenCalledWith(true);
+			expect(mcpSettingsService.setAutoExposeNewWorkflows).not.toHaveBeenCalled();
+			expect(result).toEqual({ mcpAccessEnabled: true });
+		});
+
+		test('does not apply the reset when only autoExposeNewWorkflows is patched', async () => {
+			const user = createUser();
+			const req = createReq({ autoExposeNewWorkflows: true }, { user });
+			const dto = UpdateMcpSettingsDto.parse({ autoExposeNewWorkflows: true });
+			moduleRegistry.refreshModuleSettings.mockResolvedValue(null);
+
+			const res = createRes();
+			const result = await controller.updateSettings(req, res, dto);
+
+			expect(mcpSettingsService.setEnabled).not.toHaveBeenCalled();
+			expect(mcpSettingsService.setAutoExposeNewWorkflows).toHaveBeenCalledWith(true);
+			expect(mcpSettingsService.setAutoExposeNewWorkflows).toHaveBeenCalledTimes(1);
+			expect(result).toEqual({ autoExposeNewWorkflows: true });
 		});
 
 		test('updates both fields when both are patched', async () => {
