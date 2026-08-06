@@ -126,8 +126,12 @@ describe('AgentTestRunService', () => {
 	});
 
 	it('rejects a session owned by another agent without starting a run', async () => {
-		const { service, agentExecutionService, agentValidationService, agentExecutionOrchestratorService } =
-			makeService();
+		const {
+			service,
+			agentExecutionService,
+			agentValidationService,
+			agentExecutionOrchestratorService,
+		} = makeService();
 		agentExecutionService.findThreadById.mockResolvedValue({
 			id: 'session-1',
 			projectId: 'another-project',

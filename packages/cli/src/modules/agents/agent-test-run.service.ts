@@ -143,9 +143,7 @@ export class AgentTestRunService {
 					toolCallId: chunk.toolCallId,
 					toolName: chunk.toolName,
 					...(chunk.input !== undefined ? { input: chunk.input } : {}),
-					...(chunk.suspendPayload !== undefined
-						? { suspendPayload: chunk.suspendPayload }
-						: {}),
+					...(chunk.suspendPayload !== undefined ? { suspendPayload: chunk.suspendPayload } : {}),
 					...(chunk.resumeSchema !== undefined ? { resumeSchema: chunk.resumeSchema } : {}),
 				});
 			}

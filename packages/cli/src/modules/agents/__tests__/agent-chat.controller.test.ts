@@ -342,11 +342,8 @@ describe('AgentChatController attachment cleanup on failed turns', () => {
 	}
 
 	it('deletes stored attachments when the run fails before an execution is recorded', async () => {
-		const {
-			controller,
-			agentExecutionOrchestratorService,
-			agentChatAttachmentService,
-		} = makeController();
+		const { controller, agentExecutionOrchestratorService, agentChatAttachmentService } =
+			makeController();
 		agentChatAttachmentService.storeInbound.mockResolvedValue({
 			id: 'att-1',
 			fileName: 'notes.txt',
@@ -373,11 +370,8 @@ describe('AgentChatController attachment cleanup on failed turns', () => {
 	});
 
 	it('keeps stored attachments when the run fails after an execution was recorded', async () => {
-		const {
-			controller,
-			agentExecutionOrchestratorService,
-			agentChatAttachmentService,
-		} = makeController();
+		const { controller, agentExecutionOrchestratorService, agentChatAttachmentService } =
+			makeController();
 		agentChatAttachmentService.storeInbound.mockResolvedValue({
 			id: 'att-1',
 			fileName: 'notes.txt',
@@ -403,11 +397,8 @@ describe('AgentChatController attachment cleanup on failed turns', () => {
 	});
 
 	it('deletes earlier attachments when a later one in the same message fails to store', async () => {
-		const {
-			controller,
-			agentExecutionOrchestratorService,
-			agentChatAttachmentService,
-		} = makeController();
+		const { controller, agentExecutionOrchestratorService, agentChatAttachmentService } =
+			makeController();
 		agentChatAttachmentService.storeInbound
 			.mockResolvedValueOnce({
 				id: 'att-1',

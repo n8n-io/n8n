@@ -1816,9 +1816,7 @@ describe('AgentsBuilderToolsService', () => {
 				response: 'I need approval.',
 				sessionId: 'session-1',
 				executionId: 'execution-1',
-				suspensions: [
-					{ runId: 'run-1', toolCallId: 'tool-call-1', toolName: 'delete_record' },
-				],
+				suspensions: [{ runId: 'run-1', toolCallId: 'tool-call-1', toolName: 'delete_record' }],
 				previewPath: '/projects/project-1/agents/agent-1/preview',
 			});
 		});
