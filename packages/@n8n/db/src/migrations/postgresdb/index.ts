@@ -239,6 +239,7 @@ import { CreateAgentChatAttachmentsTable1785255306000 } from '../common/17852553
 import { AddSetupCompletedAtToAgents1785500832626 } from '../common/1785500832626-AddSetupCompletedAtToAgents';
 import { AddAgentExecutionRuntimeState1785828155091 } from '../common/1785828155091-AddAgentExecutionRuntimeState';
 import { CreateAgentCredentialDependencyTable1785828155092 } from '../common/1785828155092-CreateAgentCredentialDependencyTable';
+import { AllowDiscordAgentChatSubscriptions1785840970000 } from '../common/1785840970000-AllowDiscordAgentChatSubscriptions';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -483,4 +484,5 @@ export const postgresMigrations: Migration[] = [
 	AddSetupCompletedAtToAgents1785500832626,
 	AddAgentExecutionRuntimeState1785828155091,
 	CreateAgentCredentialDependencyTable1785828155092,
+	AllowDiscordAgentChatSubscriptions1785840970000,
 ];
