@@ -1,0 +1,25 @@
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewStatusDot.vue
+  s_756f30de40ce04::t_f311259d7a8bc0 4-5,15-22,39
+  s_756f30de40ce04::t_86b89719b8481d 23-25,32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4b90928fe9ee8e437d784a183736a1cb64e43c81",
+  "prompts": {},
+  "humans": {
+    "h_760178ed151f13": {
+      "author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_756f30de40ce04": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "5124076b-1e6f-483c-b0cd-314e9eaa9724",
+        "model": "auto-smart"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}
