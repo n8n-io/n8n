@@ -14,6 +14,11 @@ confidence-only narrative: show proof where proof is possible and explicitly
 mark what you could not verify. An unmarked wrong "why" is the worst failure
 mode: it confidently teaches the reviewer a false mental model.
 
+Write the least text that explains the change accurately, as you would
+to a teammate. Story volume scales with the conceptual size of the
+change, never with the template: a trivial PR gets a gist and
+one-liners. Padding a section to look thorough teaches readers to skim.
+
 ## Input
 
 `/change-story [PR number | branch | nothing] [--review]`
@@ -167,17 +172,25 @@ and which were skipped and why.
 
 ### 5. Compose the story (interactive HTML)
 
-Fixed section structure. Fill every section; never omit one
-(Review findings exists only with --review).
+Fixed section structure, flexible section size. Never omit a section
+(Review findings exists only with --review): omission reads as
+unchecked. A section may be one line: a one-liner reads as checked and
+small. Volume scales with the change, never with the template.
 
 1. Header: one-line what as the title; subtitle
    `<branch> | <date> | diff vs <base>`, plus a link to the PR when one
    exists.
-2. Why: 2-4 sentences, product language. Mark unverified reasoning
+2. The gist: 1-3 sentences directly under the header, the single most
+   important thing about this change, in the voice you would use
+   telling a teammate ("the library is a drop-in replacement except
+   where it is not; this PR fixes two of those mismatch points"). A
+   reader who stops here must leave with the right mental model. For a
+   small change, the gist plus one-line sections IS the story.
+3. Why: 2-4 sentences, product language. Mark unverified reasoning
    "(inferred)".
-3. What changed for the user: behavior before -> after. Product
+4. What changed for the user: behavior before -> after. Product
    language, not files.
-4. How it works now: one mermaid diagram of the changed path only, not
+5. How it works now: one mermaid diagram of the changed path only, not
    the whole system. When there is no meaningful flow (dep bump, config
    value, one-line fix), one plain sentence instead: a filler diagram is
    decoration. Mermaid text is code, not prose: a semicolon in message
@@ -187,14 +200,14 @@ Fixed section structure. Fill every section; never omit one
    svg inside pre.mermaid, no "Syntax error" text) before opening the
    page; browser MCPs often block file://, so briefly serve the run
    directory over localhost for the check.
-5. Evidence: per change type: screenshots, real request/response pairs,
+6. Evidence: per change type: screenshots, real request/response pairs,
    test output. State how each was produced. Long output goes in
    collapsible blocks whose summary line carries the verdict (e.g.
    "Unit tests: 11/11 pass").
-6. Look here: risk flags from step 3, each with the file path and one
+7. Look here: risk flags from step 3, each with the file path and one
    line on why a human should read that code. If genuinely empty, say
    why you believe there is nothing to flag.
-7. Review findings (--review only, placed after Look here): the step 4b
+8. Review findings (--review only, placed after Look here): the step 4b
    synthesis, clearly attributed as the review lenses' opinion, not
    verified fact. The verdict is the FIRST line inside this section,
    never in the page header: a story with a verdict on top reads as a
@@ -237,7 +250,10 @@ No PR yet: keep plain `path:line` text, no links.
 Rules:
 
 - Product language throughout; file paths only in "Look here"
-- Under 3 minutes to read; cut before you compress into jargon
+- Peer voice: write as you would explain it to a teammate, least text
+  that is still accurate; never manufacture analysis to fill a section
+- Under 3 minutes to read as a ceiling, never a target; cut before you
+  compress into jargon
 - No em dashes anywhere
 - Reference assets by relative path so the story folder stays portable;
   the page must work from file:// (mermaid loads from a CDN and degrades

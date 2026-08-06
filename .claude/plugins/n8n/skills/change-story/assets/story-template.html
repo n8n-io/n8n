@@ -36,6 +36,9 @@ Fragment markup this page already supports:
   statement separator and kills the whole diagram; use commas/periods
   and avoid braces in message text.
 
+  Gist ({{GIST_HTML}}, always filled):
+    <p class="gist">1-3 sentences, the one thing to remember about this change.</p>
+
   Review (--review only; otherwise fill BOTH placeholders with ''):
     {{REVIEW_NAV_HTML}}     -> <a href="#review-findings">Review findings</a>
     {{REVIEW_SECTION_HTML}} ->
@@ -90,6 +93,10 @@ Fragment markup this page already supports:
   nav a:hover { color: var(--accent); }
   header h1 { font-size: 26px; line-height: 1.3; margin: 28px 0 6px; }
   .meta { color: var(--muted); font-size: 14px; }
+  .gist {
+    font-size: 18px; line-height: 1.55; margin: 16px 0 0;
+    padding-left: 14px; border-left: 3px solid var(--accent);
+  }
   section { margin-top: 40px; }
   h2 {
     font-size: 20px; border-bottom: 1px solid var(--line);
@@ -156,6 +163,7 @@ Fragment markup this page already supports:
   <header>
     <h1>{{TITLE}}</h1>
     <p class="meta"><code>{{BRANCH}}</code> | {{DATE}} | diff vs <code>{{BASE}}</code>{{PR_LINK_HTML}}</p>
+    {{GIST_HTML}}
   </header>
 
   <section id="why"><h2>Why</h2>{{WHY_HTML}}</section>
