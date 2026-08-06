@@ -45,7 +45,9 @@ const platforms = {
 		type: 'slack',
 		setupComponent: AgentChannelSlackSetupView,
 		editComponent: AgentChannelSlackEditView,
-		headerContent: AgentChannelSlackSetupKindSelector,
+		headerContent: {
+			setupModal: AgentChannelSlackSetupKindSelector,
+		},
 		disconnectConfirmationComponent: AgentChannelSlackRemoveConfirmation,
 		createRuntime: useSlackChannelRuntime,
 		shouldConfirmDisconnect: (runtime, credentialId, { isPublished }) =>

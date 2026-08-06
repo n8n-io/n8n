@@ -102,7 +102,11 @@ vi.mock('../channels/registry', async () => {
 				: null,
 	};
 	const examplePlatform = { ...basePlatform, type: 'example' };
-	const slackPlatform = { ...basePlatform, type: 'slack', headerContent: slackHeaderContent };
+	const slackPlatform = {
+		...basePlatform,
+		type: 'slack',
+		headerContent: { setupModal: slackHeaderContent },
+	};
 	const runtime = {
 		loading: ref(false),
 		load: vi.fn().mockResolvedValue(undefined),

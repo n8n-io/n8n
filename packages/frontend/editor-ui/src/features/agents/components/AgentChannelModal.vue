@@ -186,6 +186,15 @@ const headerContentDisabled = computed(
 		currentRuntime.value.loading.value ||
 		channelViewRef.value?.loading === true,
 );
+const headerContentComponent = computed(() => {
+	if (isSetupMode.value) {
+		return currentPlatform.value.headerContent?.setupModal;
+	}
+	if (isEditMode.value) {
+		return currentPlatform.value.headerContent?.editModal;
+	}
+	return undefined;
+});
 const canClose = computed(
 	() =>
 		!isCredentialReplacementInProgress.value &&
@@ -546,8 +555,8 @@ watch(
 					</div>
 					<div :class="$style.headerActions">
 						<component
-							:is="currentPlatform.headerContent"
-							v-if="currentPlatform.headerContent"
+							:is="headerContentComponent"
+							v-if="headerContentComponent"
 							:runtime="currentRuntime"
 							:disabled="headerContentDisabled"
 						/>

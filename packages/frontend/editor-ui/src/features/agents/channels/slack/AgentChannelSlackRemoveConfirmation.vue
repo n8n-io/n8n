@@ -22,12 +22,12 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
-const deleteExternalResource = ref(false);
+const deleteExternalResource = ref(true);
 
 watch(
 	() => props.open,
 	(open) => {
-		if (open) deleteExternalResource.value = false;
+		if (open) deleteExternalResource.value = true;
 	},
 );
 </script>

@@ -93,7 +93,10 @@ export interface AgentChannelPlatform {
 		runtime: AgentChannelRuntime,
 	) => AgentChannelConnectAction;
 	getConnectedDescription?: (context: AgentChannelPresentationContext) => string;
-	headerContent?: Component;
+	headerContent?: {
+		setupModal?: Component;
+		editModal?: Component;
+	};
 	disconnectConfirmationComponent?: Component;
 	shouldConfirmDisconnect?: (
 		runtime: AgentChannelRuntime,

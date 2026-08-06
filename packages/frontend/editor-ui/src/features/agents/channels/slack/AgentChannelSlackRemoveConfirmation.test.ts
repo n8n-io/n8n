@@ -49,10 +49,10 @@ describe('AgentChannelSlackRemoveConfirmation', () => {
 		expect(wrapper.attributes()).toHaveProperty('data-stacked');
 		expect(wrapper.attributes('data-size')).toBe('medium');
 		await wrapper.get('[data-testid="slack-managed-remove-confirm"]').trigger('click');
-		expect(wrapper.emitted('confirm')).toEqual([[false]]);
+		expect(wrapper.emitted('confirm')).toEqual([[true]]);
 
 		await wrapper.get('[data-testid="slack-managed-remove-delete-app"]').trigger('click');
 		await wrapper.get('[data-testid="slack-managed-remove-confirm"]').trigger('click');
-		expect(wrapper.emitted('confirm')).toEqual([[false], [true]]);
+		expect(wrapper.emitted('confirm')).toEqual([[true], [false]]);
 	});
 });
