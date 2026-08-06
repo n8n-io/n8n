@@ -434,12 +434,14 @@ const commonStubs = {
 			'headerActions',
 			'beforeRevertToPublished',
 			'artifactMode',
+			'isPreviewOpen',
 			'configValidationStatus',
 			'beforePublish',
 		],
 		emits: [
 			'header-action',
 			'open-preview',
+			'close-preview',
 			'published',
 			'unpublished',
 			'reverted',
@@ -709,6 +711,7 @@ describe('AgentBuilderView — preview routing', () => {
 		expect(wrapper.findComponent({ name: 'AgentBuilderHeader' }).exists()).toBe(true);
 		expect(wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).exists()).toBe(true);
 		expect(wrapper.findComponent({ name: 'AgentBuilderPreviewHeader' }).exists()).toBe(false);
+		expect(wrapper.findComponent({ name: 'AgentBuilderHeader' }).props('isPreviewOpen')).toBe(true);
 		expect(dock.exists()).toBe(true);
 		expect(dock.props()).toEqual(
 			expect.objectContaining({
@@ -728,7 +731,7 @@ describe('AgentBuilderView — preview routing', () => {
 		routeQuery.section = '__executions';
 
 		const wrapper = await renderView();
-		wrapper.findComponent({ name: 'AgentPreviewDock' }).vm.$emit('close');
+		wrapper.findComponent({ name: 'AgentBuilderHeader' }).vm.$emit('close-preview');
 		await flushPromises();
 
 		expect(routerPush).toHaveBeenCalledWith({

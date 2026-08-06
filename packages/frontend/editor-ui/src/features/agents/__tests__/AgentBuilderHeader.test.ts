@@ -40,7 +40,7 @@ vi.mock('@n8n/design-system', () => ({
 	N8nIcon: { template: '<i v-bind="$attrs"></i>', props: ['icon', 'size'] },
 	N8nButton: {
 		template:
-			'<component :is="href ? \'a\' : \'button\'" v-bind="$attrs" :href="href" :data-variant="variant" :disabled="!href && disabled" :aria-disabled="disabled || undefined" @click="$emit(\'click\', $event)"><slot /></component>',
+			'<component :is="href ? \'a\' : \'button\'" v-bind="$attrs" :href="href" :data-variant="variant" :data-icon="icon" :disabled="!href && disabled" :aria-disabled="disabled || undefined" @click="$emit(\'click\', $event)"><slot /></component>',
 		props: ['variant', 'size', 'icon', 'iconOnly', 'disabled', 'href'],
 		emits: ['click'],
 	},
@@ -128,6 +128,7 @@ function mountHeader(
 		headerActions: unknown[];
 		mode: 'edit' | 'preview';
 		artifactMode: boolean;
+		isPreviewOpen: boolean;
 		currentSessionTitle: string;
 		sessionOptions: Array<{ id: string; label: string }>;
 		configValidationStatus: 'valid' | 'invalid' | null;
@@ -143,6 +144,7 @@ function mountHeader(
 			headerActions: (overrides.headerActions ?? []) as Array<{ id: string; label: string }>,
 			mode: overrides.mode,
 			artifactMode: overrides.artifactMode,
+			isPreviewOpen: overrides.isPreviewOpen,
 			currentSessionTitle: overrides.currentSessionTitle,
 			sessionOptions: overrides.sessionOptions,
 			configValidationStatus: overrides.configValidationStatus,
@@ -289,6 +291,20 @@ describe('AgentBuilderHeader', () => {
 		const wrapper = mountHeader();
 		await wrapper.find('[data-testid="agent-header-preview-btn"]').trigger('click');
 		expect(wrapper.emitted('open-preview')).toEqual([[]]);
+	});
+
+	it('switches to a close-preview toggle while Preview is open', async () => {
+		const wrapper = mountHeader({ isPreviewOpen: true });
+		const previewButton = wrapper.find('[data-testid="agent-header-preview-btn"]');
+
+		expect(previewButton.attributes('data-icon')).toBe('x');
+		expect(previewButton.text()).toBe('agents.builder.preview.close.ariaLabel');
+		expect(previewButton.attributes('href')).toBeUndefined();
+
+		await previewButton.trigger('click');
+
+		expect(wrapper.emitted('close-preview')).toEqual([[]]);
+		expect(wrapper.emitted('open-preview')).toBeUndefined();
 	});
 
 	it('exposes the preview route href for browser new-tab actions', () => {
