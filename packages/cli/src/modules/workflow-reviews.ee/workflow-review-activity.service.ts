@@ -138,7 +138,7 @@ export class WorkflowReviewActivityService {
 		);
 	}
 
-	/** Deleted authors simply drop out, and the mapper surfaces them as `null`. */
+	/** Deleted authors simply drop out of the map, leaving their entries without a lookup hit. */
 	private async hydrateAuthors(
 		createdByIds: Array<string | null>,
 	): Promise<Map<string, WorkflowReviewEligibleReviewer>> {

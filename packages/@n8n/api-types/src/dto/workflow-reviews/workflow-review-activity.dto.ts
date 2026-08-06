@@ -5,7 +5,7 @@ import { Z } from '../../zod-class';
 
 export class ListWorkflowReviewActivityQueryDto extends Z.class({
 	limit: z.coerce.number().int().min(1).max(100).default(25),
-	/** Opaque base64url keyset cursor. Pages *backwards*: returns entries older than it. */
+	/** Opaque cursor from a previous response's `nextCursor`. Pages *backwards*: older entries. */
 	cursor: z.string().min(1).max(256).optional(),
 }) {}
 
@@ -27,8 +27,9 @@ export class CreateWorkflowReviewCommentDto extends Z.class({
 		.trim()
 		.min(1)
 		.max(WORKFLOW_REVIEW_COMMENT_MAX_LENGTH)
-		// C0 controls other than \n, \r and \t make the Postgres driver throw, turning user
-		// input into a 500.
+		// NUL cannot be stored in a Postgres text column at all, so it would turn user input
+		// into a 500. The rest of C0 is non-printing junk with no place in a comment body, and
+		// is rejected in the same pass. \n, \r and \t are deliberately allowed through.
 		// eslint-disable-next-line no-control-regex
 		.refine((v) => !/[\x00-\x08\x0B\x0C\x0E-\x1F]/.test(v), 'Body contains control characters'),
 }) {}

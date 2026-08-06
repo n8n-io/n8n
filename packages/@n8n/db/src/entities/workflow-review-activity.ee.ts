@@ -1,10 +1,11 @@
-import type { WorkflowReviewActivityType as WorkflowReviewActivityTypeType } from '@n8n/api-types';
+import type { WorkflowReviewActivityType } from '@n8n/api-types';
 import { Column, Entity, Index, PrimaryGeneratedColumn } from '@n8n/typeorm';
 import type { IDataObject } from 'n8n-workflow';
 
 import { JsonColumn, WithCreatedAt } from './abstract-entity';
 
-export type WorkflowReviewActivityType = WorkflowReviewActivityTypeType;
+/** Re-exported so consumers of the entity get the column's type without reaching for api-types. */
+export type { WorkflowReviewActivityType };
 
 /**
  * Altering this table on SQLite recreates it, and `workflow_review_activity_comment` references it

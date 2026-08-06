@@ -60,7 +60,8 @@ export const useReviewActivityStore = defineStore('workflowReviewActivity', () =
 			hasMore.value = response.hasMore;
 		} catch (e) {
 			if (requestSeq !== feedRequestSeq) return;
-			// Surfaced by the feed's own error row; the view must not also toast it.
+			// Deliberately recorded rather than thrown: load failures belong in the feed's
+			// error row, not in a toast.
 			error.value = toError(e);
 		} finally {
 			if (requestSeq === feedRequestSeq) {
