@@ -126,7 +126,12 @@ describe('Community packages (Public API)', () => {
 
 			expect(mockedExecuteNpmCommand).toHaveBeenCalledWith(
 				['outdated', '--json'],
-				expect.objectContaining({ doNotHandleError: true, cwd: expect.any(String) }),
+				expect.objectContaining({
+					doNotHandleError: true,
+					cwd: expect.any(String),
+					registry: 'https://registry.npmjs.org',
+					authToken: undefined,
+				}),
 			);
 		});
 

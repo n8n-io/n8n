@@ -34,6 +34,8 @@ describe('CommunityPackagesLifecycleService', () => {
 	});
 	const communityPackagesConfig = mock<CommunityPackagesConfig>({
 		unverifiedEnabled: true,
+		registry: 'https://example.registry',
+		authToken: 'test-token',
 	});
 	const instanceSettingsLoaderConfig = mock<InstanceSettingsLoaderConfig>({
 		communityPackagesManagedByEnv: false,
@@ -146,6 +148,8 @@ describe('CommunityPackagesLifecycleService', () => {
 			expect(mockedExecuteNpmCommand).toHaveBeenCalledWith(['outdated', '--json'], {
 				doNotHandleError: true,
 				cwd: '/tmp/n8n-nodes-download',
+				registry: 'https://example.registry',
+				authToken: 'test-token',
 			});
 		});
 
