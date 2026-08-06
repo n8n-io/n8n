@@ -405,6 +405,11 @@ export function useWorkflowSaving({
 			const dirtyCountBeforeSave = uiStore.dirtyStateSetCount;
 
 			const workflowDataRequest: WorkflowDataCreate = data || currentDocumentStore.serialize();
+			// A description staged on an unsaved workflow (via the description and
+			// tags modal) is not part of serialize(), so carry it into the first save.
+			if (!data && currentDocumentStore.description) {
+				workflowDataRequest.description = currentDocumentStore.description;
+			}
 			const changedNodes = {} as IDataObject;
 
 			if (requestNewId) {

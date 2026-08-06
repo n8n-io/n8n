@@ -3,6 +3,7 @@ import { computed, ref, useTemplateRef } from 'vue';
 import { N8nButton, N8nInput, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import {
@@ -25,6 +26,8 @@ const props = defineProps<{
 		workflowDescription?: string | null;
 		/** When provided (and tags are enabled), the modal also edits the workflow's tags. */
 		workflowTags?: string[];
+		/** New workflows are not persisted yet: edits are staged on the document and saved with the workflow. */
+		isNewWorkflow?: boolean;
 		onSave?: (description: string | null) => void;
 	};
 }>();
@@ -36,6 +39,7 @@ const toast = useToast();
 const telemetry = useTelemetry();
 
 const settingsStore = useSettingsStore();
+const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
 const workflowsListStore = useWorkflowsListStore();
 
@@ -76,6 +80,19 @@ const textareaTip = computed(() =>
 );
 
 async function saveWorkflowDescription(id: string, description: string | null) {
+	// A workflow that is not persisted yet cannot be updated through the API:
+	// stage the edits on the document instead, so its first save carries them.
+	// Re-checked live because an autosave may have persisted it mid-edit.
+	if (props.data.isNewWorkflow && !workflowsStore.isWorkflowSaved[id]) {
+		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(id));
+		workflowDocumentStore.setDescription(description ?? '');
+		if (showTags.value) {
+			workflowDocumentStore.setTags(tagIds.value);
+		}
+		uiStore.markStateDirty('metadata');
+		return;
+	}
+
 	let currentVersionId = '';
 	let currentChecksum = '';
 	const isCurrentWorkflow = id === workflowsStore.workflowId;
