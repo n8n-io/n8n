@@ -169,6 +169,63 @@ async function resolveDefaultModelForCredential(
 	return toLlmResolution(credential, defaults, preferred.value);
 }
 
+/**
+ * Resolve the n8n Connect managed credential for a provider on an explicit
+ * request; fails only when the provider is unknown or the gateway does not
+ * serve it (own-credential precedence is the caller's concern).
+ *
+ * Model failures flow straight through from the shared resolvers, so an
+ * `unknown_model` result still carries `availableModels` (the gateway's
+ * allowlist) for the caller to retry with or surface, and `model_lookup_failed`
+ * stays retryable.
+ */
+async function resolveManagedCredentialForProvider(
+	provider: string,
+	model: string | undefined,
+	deps: ResolveLlmToolDeps,
+) {
+	const providerEntry = findProviderDefault(provider);
+	if (!providerEntry) {
+		return {
+			ok: false as const,
+			reason: 'unsupported_provider' as const,
+			provider,
+			supportedProviders: Object.values(LLM_PROVIDER_DEFAULTS).map((defaults) => defaults.provider),
+		};
+	}
+
+	const [credentialType, defaults] = providerEntry;
+	const served = (await deps.isProviderServedByGateway?.(defaults.provider)) ?? false;
+	if (!served) {
+		return {
+			ok: false as const,
+			reason: 'n8n_credits_unsupported_provider' as const,
+			provider: defaults.provider,
+		};
+	}
+
+	const managed: CredentialListItem = {
+		id: AI_GATEWAY_MANAGED_TAG,
+		name: N8N_CONNECT_CREDENTIAL_NAME,
+		type: credentialType,
+	};
+	if (model?.trim()) {
+		return await resolveModelAgainstLookup(managed, defaults, model, deps.modelLookup);
+	}
+	return await resolveDefaultModelForCredential(managed, defaults, deps.modelLookup);
+}
+
+/** Distinct gateway-served providers, for resolving an unqualified n8n-credits request. */
+async function servedGatewayProviders(deps: ResolveLlmToolDeps): Promise<string[]> {
+	const served = new Set<string>();
+	for (const defaults of Object.values(LLM_PROVIDER_DEFAULTS)) {
+		if ((await deps.isProviderServedByGateway?.(defaults.provider)) ?? false) {
+			served.add(defaults.provider);
+		}
+	}
+	return [...served];
+}
+
 export function buildResolveLlmTool(deps: ResolveLlmToolDeps): BuiltTool {
 	return new Tool(BUILDER_TOOLS.RESOLVE_LLM)
 		.description(
@@ -188,7 +245,12 @@ export function buildResolveLlmTool(deps: ResolveLlmToolDeps): BuiltTool {
 				'claimedFreeOpenAiCredits: true; tell the user free OpenAI credits were set up. When the ' +
 				'provider has no own credential but n8n credits (the managed option) serves it, the tool ' +
 				'resolves to the managed credential — the result credentialName is "n8n credits"; persist it ' +
-				'like any credential and tell the user the model runs on n8n credits. When multiple ' +
+				'like any credential and tell the user the model runs on n8n credits. When the user ' +
+				'explicitly asks to use n8n credits, pass useN8nCredits: true (with provider when named): ' +
+				'the tool resolves n8n credits for that provider without a picker even if the user has their ' +
+				'own credential for it, and returns ok=false with reason "n8n_credits_unsupported_provider", ' +
+				'"ambiguous_n8n_credits_provider" (with providers), or "n8n_credits_unavailable" (n8n ' +
+				'credits serves no provider on this instance) when it cannot. When multiple ' +
 				'providers each have one credential, the tool auto-picks the recommended provider — the result ' +
 				'carries autoPicked: true and otherProviders; state the pick as changeable, do not ask to confirm it. ' +
 				'When the user picks between multiple credentials of one provider, pass the picked credentialId ' +
@@ -212,6 +274,14 @@ export function buildResolveLlmTool(deps: ResolveLlmToolDeps): BuiltTool {
 					.describe(
 						'Credential id picked by the user from an earlier ambiguous resolve_llm result.',
 					),
+				useN8nCredits: z
+					.boolean()
+					.optional()
+					.describe(
+						'Set true when the user explicitly asked to use n8n credits for the main model. ' +
+							'Resolves n8n credits for the requested provider even if the user already has ' +
+							'their own credential for it, and never asks. Pass `provider` when the user named one.',
+					),
 			}),
 		)
 		.handler(
@@ -219,11 +289,34 @@ export function buildResolveLlmTool(deps: ResolveLlmToolDeps): BuiltTool {
 				provider,
 				model,
 				credentialId,
+				useN8nCredits,
 			}: {
 				provider?: string;
 				model?: string;
 				credentialId?: string;
+				useN8nCredits?: boolean;
 			}) => {
+				// Explicit "use n8n credits" wins over own credentials and never asks:
+				// resolve the managed credential for the named provider, or the sole
+				// gateway-served provider when none is named.
+				if (useN8nCredits) {
+					if (provider) {
+						return await resolveManagedCredentialForProvider(provider, model, deps);
+					}
+					const served = await servedGatewayProviders(deps);
+					if (served.length === 1) {
+						return await resolveManagedCredentialForProvider(served[0], model, deps);
+					}
+					if (served.length === 0) {
+						return { ok: false as const, reason: 'n8n_credits_unavailable' as const };
+					}
+					return {
+						ok: false as const,
+						reason: 'ambiguous_n8n_credits_provider' as const,
+						providers: served,
+					};
+				}
+
 				const all = await deps.credentialProvider.list();
 				const ownCredentials = all.filter((credential) => LLM_PROVIDER_DEFAULTS[credential.type]);
 

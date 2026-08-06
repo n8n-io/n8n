@@ -6,6 +6,17 @@ import { stripToolSuffix } from '@/utils';
 /** Sentinel key the gateway uses for nodes with a flat `operation` param (no resource). */
 const OPERATION_ONLY = '__operation_only__';
 
+/**
+ * Node types excluded from managed-credential auto-assign: an HTTP request
+ * node calls a user-controlled URL, so a minted credential is never attached
+ * automatically (an explicit, eligible marker is still honored).
+ */
+export const HTTP_NODE_TYPES: ReadonlySet<string> = new Set([
+	'n8n-nodes-base.httpRequest',
+	'@n8n/n8n-nodes-langchain.toolHttpRequest',
+	'n8n-nodes-base.httpRequestTool',
+]);
+
 export type AiGatewayEligibilityReason =
 	| 'nodeNotCovered'
 	| 'credentialTypeNotCovered'

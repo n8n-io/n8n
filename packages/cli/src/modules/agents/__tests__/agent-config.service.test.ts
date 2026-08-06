@@ -17,6 +17,7 @@ import { AgentSetupCompletionService } from '../agent-setup-completion.service';
 import type { AgentSkillsService } from '../agent-skills.service';
 import type { AgentValidationService } from '../agent-validation.service';
 import type { Agent } from '../entities/agent.entity';
+import type { NodeToolAiGatewayService } from '../json-config/node-tool-ai-gateway.service';
 import type { AgentTaskRepository } from '../repositories/agent-task.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
 
@@ -59,6 +60,7 @@ function makeService() {
 	const runtimeCacheService = mock<AgentRuntimeCacheService>();
 	const credentialsService = mock<CredentialsService>();
 	const workflowRepository = mock<WorkflowRepository>();
+	const nodeToolAiGatewayService = mock<NodeToolAiGatewayService>();
 	const eventService = mock<EventService>();
 	const agentValidationService = mock<AgentValidationService>();
 	const telemetry = mock<Telemetry>();
@@ -89,6 +91,7 @@ function makeService() {
 		runtimeCacheService,
 		credentialsService,
 		workflowRepository,
+		nodeToolAiGatewayService,
 		eventService,
 		new AgentSetupCompletionService(agentValidationService, telemetry, agentRepository),
 		new AgentModificationTelemetryService(telemetry),
@@ -102,6 +105,7 @@ function makeService() {
 		runtimeCacheService,
 		credentialsService,
 		workflowRepository,
+		nodeToolAiGatewayService,
 		eventService,
 		agentValidationService,
 		telemetry,
@@ -249,6 +253,31 @@ describe('AgentConfigService', () => {
 			expect(result.config?.config?.webSearch).toEqual({ enabled: false });
 			expect(result.config?.providerTools).toEqual({});
 			expect(eventService.emit).toHaveBeenCalledWith('agent-saved', { agentId });
+		});
+
+		it('runs node-tool gateway credential assignment on every write with tools, passing the owned credential types', async () => {
+			const { service, agentRepository, credentialsService, nodeToolAiGatewayService } =
+				makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+				{ id: 'slack-1', type: 'slackApi', name: 'My Slack' },
+			] as never);
+
+			await service.updateConfig(
+				agentId,
+				projectId,
+				{
+					...baseConfig,
+					tools: [{ type: 'custom', id: 'tool_1' }],
+				} as unknown as AgentJsonConfig,
+				user,
+				byUser,
+			);
+
+			expect(nodeToolAiGatewayService.assignManagedCredentials).toHaveBeenCalledWith(
+				[{ type: 'custom', id: 'tool_1' }],
+				new Set(['slackApi']),
+			);
 		});
 
 		it('preserves omitted stored fields but clears explicitly empty integrations', async () => {

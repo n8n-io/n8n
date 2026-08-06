@@ -157,6 +157,50 @@ describe('sanitizeAgentJsonConfig', () => {
 		expect(AgentJsonConfigSchema.safeParse(sanitized).success).toBe(true);
 	});
 
+	it('strips unknown keys from a managed node-tool credential while keeping its marker', () => {
+		const sanitized = sanitizeAgentJsonConfig({
+			...baseConfig,
+			tools: [
+				{
+					type: 'node',
+					name: 'Send message',
+					node: {
+						nodeType: 'n8n-nodes-base.slack',
+						nodeTypeVersion: 1,
+						nodeParameters: {},
+						credentials: {
+							slackApi: {
+								id: null,
+								name: 'n8n credits',
+								__aiGatewayManaged: true,
+								legacyCredentialField: true,
+							},
+						},
+					},
+				},
+			],
+		});
+
+		expect(sanitized).toEqual({
+			...baseConfig,
+			tools: [
+				{
+					type: 'node',
+					name: 'Send message',
+					node: {
+						nodeType: 'n8n-nodes-base.slack',
+						nodeTypeVersion: 1,
+						nodeParameters: {},
+						credentials: {
+							slackApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+						},
+					},
+				},
+			],
+		});
+		expect(AgentJsonConfigSchema.safeParse(sanitized).success).toBe(true);
+	});
+
 	it('strips unknown keys from strict nested MCP config schemas', () => {
 		const sanitized = sanitizeAgentJsonConfig({
 			...baseConfig,
