@@ -92,4 +92,36 @@ describe('TrustedKeySourceController', () => {
 			}),
 		]);
 	});
+
+	it('exposes the inbound audience and subject claim of an SSO-derived source', async () => {
+		trustedKeyService.listSources.mockResolvedValue([
+			mock<TrustedKeySourceEntity>({
+				id: 'jwks-1',
+				type: 'jwks',
+				issuer: 'https://issuer.example.com',
+				status: 'healthy',
+				lastError: null,
+				lastRefreshedAt: null,
+				managedBy: 'sso-derived',
+				createdAt: new Date('2024-01-01T00:00:00.000Z'),
+				updatedAt: new Date('2024-01-02T00:00:00.000Z'),
+				config: JSON.stringify({
+					type: 'jwks',
+					url: 'https://issuer.example.com/.well-known/jwks.json',
+					issuer: 'https://issuer.example.com',
+					inboundAudiences: ['n8n-sso-client-id'],
+					subjectClaim: 'uid',
+				}),
+			}),
+		]);
+
+		const result = await controller.listSources(mock<AuthenticatedRequest>());
+
+		// These two decide whether a presented token is accepted at all, so an
+		// admin reviewing the trust configuration has to be able to see them.
+		expect(result[0].config).toMatchObject({
+			inboundAudiences: ['n8n-sso-client-id'],
+			subjectClaim: 'uid',
+		});
+	});
 });

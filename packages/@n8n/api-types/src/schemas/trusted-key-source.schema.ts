@@ -3,22 +3,32 @@ import { z } from 'zod';
 export const trustedKeySourceStatusSchema = z.enum(['pending', 'healthy', 'error']);
 export const trustedKeySourceManagedBySchema = z.enum(['env-config', 'sso-derived', 'api']);
 
-const staticTrustedKeyConfigSchema = z.object({
-	kid: z.string(),
-	algorithms: z.array(z.string()),
+/**
+ * Fields every trusted key config carries, whatever its source type.
+ *
+ * `inboundAudiences` and `subjectClaim` belong here rather than being
+ * omitted: both decide whether a presented token is accepted and who it
+ * resolves to, so an admin reviewing the instance's trust configuration has
+ * to be able to see them. Zod strips keys it doesn't know about, so a field
+ * missing here disappears from the API response without any error.
+ */
+const trustedKeyConfigBaseSchema = z.object({
 	issuer: z.string(),
 	expectedAudience: z.string().optional(),
+	inboundAudiences: z.array(z.string()).optional(),
+	subjectClaim: z.string().optional(),
 	allowedRoles: z.array(z.string()).optional(),
 	requireVerifiedEmail: z.boolean().optional(),
 });
 
-const jwksTrustedKeyConfigSchema = z.object({
+const staticTrustedKeyConfigSchema = trustedKeyConfigBaseSchema.extend({
+	kid: z.string(),
+	algorithms: z.array(z.string()),
+});
+
+const jwksTrustedKeyConfigSchema = trustedKeyConfigBaseSchema.extend({
 	url: z.string(),
-	issuer: z.string(),
 	cacheTtlSeconds: z.number().optional(),
-	expectedAudience: z.string().optional(),
-	allowedRoles: z.array(z.string()).optional(),
-	requireVerifiedEmail: z.boolean().optional(),
 });
 
 const trustedKeySourceBaseSchema = z.object({
