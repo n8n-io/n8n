@@ -297,3 +297,61 @@ describe('selectTests — fail-open contract', () => {
 		});
 	});
 });
+
+describe('selectTests — pnpm.overrides changes', () => {
+	let tempDir: string;
+
+	beforeEach(() => {
+		tempDir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'select-ovr-')));
+	});
+
+	afterEach(() => {
+		fs.rmSync(tempDir, { recursive: true, force: true });
+	});
+
+	const ALL_SPECS = ['tests/e2e/a.spec.ts', 'tests/e2e/b.spec.ts'];
+	const changedFiles = ['package.json', 'pnpm-lock.yaml'];
+
+	const setup = (target: string) => {
+		const map: ImpactMap = { 'packages/cli/src/x.ts': { '10': ['tests/e2e/a.spec.ts'] } };
+		const mapFile = path.join(tempDir, 'map.json');
+		fs.writeFileSync(mapFile, JSON.stringify(map));
+		const allSpecsFile = path.join(tempDir, 'all-specs.txt');
+		fs.writeFileSync(allSpecsFile, ALL_SPECS.join('\n'));
+		const manifests = {
+			'package.json': {
+				before: JSON.stringify({ pnpm: { overrides: {} } }),
+				after: JSON.stringify({ pnpm: { overrides: { [`${target}@<2`]: '2.0.0' } } }),
+			},
+		};
+		return { mapFile, allSpecsFile, manifests };
+	};
+
+	it('target outside the runtime closure → scoped with no specs (skip)', () => {
+		const result = selectTests({
+			changedFiles,
+			...setup('@vitest/browser'),
+			runtimeClosure: new Set(['ajv', 'fast-uri']),
+		});
+		expect(result.mode).toBe('scoped');
+		expect(result.specs).toEqual([]);
+	});
+
+	it('target inside the runtime closure → broad', () => {
+		const result = selectTests({
+			changedFiles,
+			...setup('fast-uri'),
+			runtimeClosure: new Set(['ajv', 'fast-uri']),
+		});
+		expect(result.mode).toBe('broad');
+		expect(result.specs).toEqual([...ALL_SPECS].sort());
+	});
+
+	it('no runtime closure supplied → broad (cannot prove dev-only)', () => {
+		const result = selectTests({
+			changedFiles,
+			...setup('@vitest/browser'),
+		});
+		expect(result.mode).toBe('broad');
+	});
+});
