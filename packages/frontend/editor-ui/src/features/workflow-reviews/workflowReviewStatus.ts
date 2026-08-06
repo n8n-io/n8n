@@ -3,9 +3,9 @@ import type { WorkflowReviewRequestDecision, WorkflowReviewRequestState } from '
 export type WorkflowReviewStatusVariant = 'pending' | 'changesRequested' | 'approved' | 'closed';
 
 const STATUS_LABEL_KEYS = {
-	pending: 'workflowReviews.status.pending',
-	changesRequested: 'workflowReviews.status.changesRequested',
-	approved: 'workflowReviews.status.approved',
+	pending: 'workflowReviews.decision.pending',
+	changesRequested: 'workflowReviews.decision.changes_requested',
+	approved: 'workflowReviews.decision.approved',
 	closed: 'workflowReviews.status.closed',
 } as const;
 

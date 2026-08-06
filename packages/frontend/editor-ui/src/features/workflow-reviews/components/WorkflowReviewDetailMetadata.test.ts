@@ -96,13 +96,14 @@ describe('WorkflowReviewDetailMetadata', () => {
 		);
 	});
 
-	it('shows a single label for closed reviews without an approval', () => {
+	it('pairs the closed state with a pending decision', () => {
 		const { getByTestId } = renderComponent({
 			props: { review: makeDetail({ state: 'closed', decision: 'pending' }) },
 		});
 
-		expect(getByTestId('workflow-review-detail-status-card')).toHaveTextContent('Closed');
-		expect(getByTestId('workflow-review-detail-status-card')).not.toHaveTextContent('•');
+		expect(getByTestId('workflow-review-detail-status-card')).toHaveTextContent(
+			'Closed • Waiting for review',
+		);
 	});
 
 	it('links each workflow to the editor', () => {
@@ -116,16 +117,14 @@ describe('WorkflowReviewDetailMetadata', () => {
 		);
 	});
 
-	it('renders clean fallbacks for missing reviewers and workflows', () => {
-		const { getByTestId } = renderComponent({
+	it('hides the changes card when there are no workflows', () => {
+		const { getByTestId, queryByTestId } = renderComponent({
 			props: { review: makeDetail({ reviewers: [], workflows: [] }) },
 		});
 
 		expect(getByTestId('workflow-review-detail-no-reviewers')).toHaveTextContent(
 			'No reviewers assigned.',
 		);
-		expect(getByTestId('workflow-review-detail-no-workflows')).toHaveTextContent(
-			'No workflows available.',
-		);
+		expect(queryByTestId('workflow-review-detail-changes-card')).not.toBeInTheDocument();
 	});
 });

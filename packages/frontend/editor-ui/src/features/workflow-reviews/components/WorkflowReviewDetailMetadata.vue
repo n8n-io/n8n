@@ -1,18 +1,12 @@
 <script setup lang="ts">
 import type { WorkflowReviewInboxItem, WorkflowReviewRequestDetail } from '@n8n/api-types';
 import { N8nAvatar, N8nCard, N8nIcon, N8nLink, N8nText } from '@n8n/design-system';
-import { useI18n } from '@n8n/i18n';
+import { type BaseTextKey, useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 
 import { VIEWS } from '@/app/constants';
 import { formatUserDisplayName } from '../formatUserDisplayName';
-import { resolveWorkflowReviewStatus } from '../workflowReviewStatus';
 import WorkflowReviewStatusDot from './WorkflowReviewStatusDot.vue';
-
-const STATE_LABEL_KEYS = {
-	open: 'workflowReviews.detail.metadata.state.open',
-	closed: 'workflowReviews.detail.metadata.state.closed',
-} as const;
 
 const props = defineProps<{
 	review: WorkflowReviewInboxItem | WorkflowReviewRequestDetail;
@@ -26,12 +20,11 @@ const detail = computed<WorkflowReviewRequestDetail | null>(() =>
 
 const statusSummary = computed(() => {
 	const { state, decision } = props.review;
-	const label = i18n.baseText(resolveWorkflowReviewStatus(state, decision).labelKey);
-
-	// avoid "Closed · Closed" for closed reviews without an approval decision.
-	if (state === 'closed' && decision !== 'approved') return label;
 	return i18n.baseText('workflowReviews.detail.metadata.state.combinedLabel', {
-		interpolate: { state: i18n.baseText(STATE_LABEL_KEYS[state]), status: label },
+		interpolate: {
+			state: i18n.baseText(`workflowReviews.status.${state}` as BaseTextKey),
+			status: i18n.baseText(`workflowReviews.decision.${decision}` as BaseTextKey),
+		},
 	});
 });
 </script>
@@ -76,13 +69,17 @@ const statusSummary = computed(() => {
 			</N8nText>
 		</N8nCard>
 
-		<N8nCard :class="$style.card" data-test-id="workflow-review-detail-changes-card">
+		<N8nCard
+			v-if="detail?.workflows.length"
+			:class="$style.card"
+			data-test-id="workflow-review-detail-changes-card"
+		>
 			<template #header>
 				<N8nText bold color="text-light" size="small">
-					{{ i18n.baseText('workflowReviews.detail.metadata.changes') }}
+					{{ i18n.baseText('workflowReviews.detail.metadata.workflow') }}
 				</N8nText>
 			</template>
-			<div v-if="detail?.workflows.length" :class="$style.workflows">
+			<div :class="$style.workflows">
 				<N8nLink
 					v-for="workflow in detail.workflows"
 					:key="workflow.workflowId"
@@ -96,14 +93,6 @@ const statusSummary = computed(() => {
 					<span :class="$style.workflowName">{{ workflow.workflowName }}</span>
 				</N8nLink>
 			</div>
-			<N8nText
-				v-else
-				color="text-light"
-				size="small"
-				data-test-id="workflow-review-detail-no-workflows"
-			>
-				{{ i18n.baseText('workflowReviews.detail.metadata.noWorkflows') }}
-			</N8nText>
 		</N8nCard>
 	</aside>
 </template>
