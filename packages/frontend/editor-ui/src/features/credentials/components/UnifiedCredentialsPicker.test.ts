@@ -342,6 +342,49 @@ describe('UnifiedCredentialsPicker', () => {
 		});
 	});
 
+	// ─── Non-Connect nodes (showN8nCredits=false) ────────────────────────────
+	describe('without n8n credits (unsupported type)', () => {
+		it('omits the n8n credits row from the configured menu', () => {
+			renderComponent({
+				props: {
+					...baseProps,
+					showN8nCredits: false,
+					selectedCredentialId: 'c1',
+					options: [option()],
+				},
+			});
+
+			expect(screen.queryByTestId(`menu-item-${N8N_CREDITS_ID}`)).not.toBeInTheDocument();
+			expect(screen.getByTestId('menu-item-c1')).toBeInTheDocument();
+			expect(screen.getByTestId(`menu-item-${CREATE_ID}`)).toBeInTheDocument();
+		});
+
+		it('shows only "Use my own credential" in the entry menu', () => {
+			renderComponent({ props: { ...baseProps, showN8nCredits: false } });
+
+			expect(screen.getByText('Connect to OpenAI')).toBeInTheDocument();
+			expect(screen.queryByTestId(`menu-item-${N8N_CREDITS_ID}`)).not.toBeInTheDocument();
+			const own = screen.getByTestId(`menu-item-${CREATE_ID}`);
+			expect(own).toHaveTextContent('Use my own credential');
+			expect(own).toHaveTextContent('Bring your own API key');
+		});
+
+		it('keeps the own-credential trigger and pen unchanged', () => {
+			renderComponent({
+				props: {
+					...baseProps,
+					showN8nCredits: false,
+					selectedCredentialId: 'c1',
+					options: [option()],
+				},
+			});
+
+			expect(screen.getByTestId('node-credentials-select')).toHaveTextContent('OpenAI global key');
+			expect(screen.getByTestId('ucp-trigger-icon-key')).toBeInTheDocument();
+			expect(screen.getByTestId('credential-edit-button')).toBeInTheDocument();
+		});
+	});
+
 	// ─── Trailing actions ────────────────────────────────────────────────────
 	describe('trailing actions', () => {
 		it('emits "edit" when the pen button is clicked for an own credential', async () => {

@@ -48,7 +48,10 @@ import { useUsersStore } from '@n8n/stores/users.store';
 import { assert } from '@n8n/utils/assert';
 import { isEmpty } from '@/app/utils/typesUtils';
 import { getResourcePermissions } from '@n8n/permissions';
-import { useNodeCredentialOptions } from '../composables/useNodeCredentialOptions';
+import {
+	useNodeCredentialOptions,
+	type CredentialDropdownOption,
+} from '../composables/useNodeCredentialOptions';
 import { getAutoSelectedCredential } from '../credentials.utils';
 import { usePrivateCredentials } from '@/features/resolvers/composables/usePrivateCredentials';
 import { SYSTEM_RESOLVER_ID } from '@n8n/api-types';
@@ -719,6 +722,21 @@ function resolveGatewayActivation(credentialType: string) {
 	return activation;
 }
 
+// The unified picker takes every credential row when the kill-switch is on,
+// except the quick-connect empty state, which keeps its dedicated CTA.
+function showUnifiedCredentialsPicker(
+	type: INodeCredentialDescription,
+	options: CredentialDropdownOption[],
+): boolean {
+	if (!props.useUnifiedCredentialsPicker) return false;
+	const isQuickConnectEmptyState =
+		options.length === 0 &&
+		showQuickConnectEmptyState(type) &&
+		!!getQuickConnectCredentialType(type) &&
+		!isAiGatewayManagedCredentials(type.name);
+	return !isQuickConnectEmptyState;
+}
+
 function showAiGatewaySelector(credentialType: string): boolean {
 	if (!aiGateway.isEnabled.value) return false;
 	if (!aiGateway.isNodeTypeVersionSupported(node.value.type, node.value.typeVersion)) return false;
@@ -986,12 +1004,13 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 					@toggle="onAiGatewaySelector(type.name, $event)"
 				/>
 				<UnifiedCredentialsPicker
-					v-if="useUnifiedCredentialsPicker && showAiGatewaySelector(type.name)"
+					v-if="showUnifiedCredentialsPicker(type, options)"
 					:credential-type="type.name"
 					:node-display-name="getServiceName(type.name)"
 					:options="options"
 					:selected-credential-id="getSelectedId(type) ?? null"
 					:is-ai-gateway-managed="isAiGatewayManagedCredentials(type.name)"
+					:show-n8n-credits="showAiGatewaySelector(type.name)"
 					:balance="walletBalance"
 					:readonly="readonly"
 					:permissions="credentialPermissions"

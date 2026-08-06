@@ -40,7 +40,7 @@ interface ItemData {
 
 type Item = DropdownMenuItemProps<string, ItemData>;
 
-const props = defineProps<{
+type Props = {
 	/** Credential type of this row — resolves the service icon for the entry state. */
 	credentialType: string;
 	/** Interpolated into the entry button label, "Connect to {node}". */
@@ -51,12 +51,16 @@ const props = defineProps<{
 	selectedCredentialId: string | null;
 	/** Whether the slot holds the gateway-managed "n8n credits" credential. */
 	isAiGatewayManaged: boolean;
+	/** Offer the n8n credits row — false for credential types the gateway does not serve. */
+	showN8nCredits?: boolean;
 	/** Wallet balance in USD; when undefined, no pill/badge is shown. */
 	balance?: number;
 	readonly?: boolean;
 	/** `create` gates the create / "use my own credential" rows. */
 	permissions: PermissionsRecord['credential'];
-}>();
+};
+
+const props = withDefaults(defineProps<Props>(), { showN8nCredits: true });
 
 const emit = defineEmits<{
 	/** The n8n credits row was picked. */
@@ -188,7 +192,7 @@ function toCredentialItem(option: CredentialOption): Item {
 }
 
 const items = computed<Item[]>(() => [
-	n8nCreditsItem.value,
+	...(props.showN8nCredits ? [n8nCreditsItem.value] : []),
 	...props.options.map(toCredentialItem),
 	createItem.value,
 ]);

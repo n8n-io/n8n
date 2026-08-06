@@ -201,6 +201,10 @@ describe('NodeCredentials', () => {
 				readonly: false,
 				showAll: false,
 				hideIssues: false,
+				// The suite predates the unified picker and exercises the legacy path,
+				// which stays shipped behind the kill-switch. The flag-on path has its
+				// own describe ('unified picker (all nodes)').
+				useUnifiedCredentialsPicker: false,
 			},
 			global: {
 				provide: {
@@ -739,6 +743,27 @@ describe('NodeCredentials', () => {
 
 			expect(screen.queryByTestId('quick-connect-empty-state')).toBeInTheDocument();
 			expect(screen.queryByTestId('node-credentials-empty-state')).not.toBeInTheDocument();
+			expect(screen.queryByTestId('node-credentials-select')).not.toBeInTheDocument();
+		});
+
+		it('keeps the quick-connect empty state when the unified picker is enabled', () => {
+			setupQuickConnectStores();
+
+			ndvStore.activeNode = slackNode;
+
+			renderComponent(
+				{
+					props: {
+						node: slackNode,
+						overrideCredType: 'slackOAuth2Api',
+						useUnifiedCredentialsPicker: true,
+					},
+				},
+				{ merge: true },
+			);
+
+			expect(screen.queryByTestId('quick-connect-empty-state')).toBeInTheDocument();
+			// The picker yields to the dedicated quick-connect CTA (§16 hard requirements).
 			expect(screen.queryByTestId('node-credentials-select')).not.toBeInTheDocument();
 		});
 
@@ -1499,7 +1524,6 @@ describe('NodeCredentials', () => {
 
 				renderComponent({
 					props: {
-						useUnifiedCredentialsPicker: false,
 						node: nodeWithCred,
 						overrideCredType: 'googlePalmApi',
 					},
@@ -1520,7 +1544,6 @@ describe('NodeCredentials', () => {
 
 				renderComponent({
 					props: {
-						useUnifiedCredentialsPicker: false,
 						node: nodeWithGateway,
 						overrideCredType: 'googlePalmApi',
 					},
@@ -1559,7 +1582,6 @@ describe('NodeCredentials', () => {
 
 				renderComponent({
 					props: {
-						useUnifiedCredentialsPicker: false,
 						node: nodeWithGateway,
 						overrideCredType: 'googlePalmApi',
 					},
@@ -1590,7 +1612,6 @@ describe('NodeCredentials', () => {
 
 				renderComponent({
 					props: {
-						useUnifiedCredentialsPicker: false,
 						node: googleAiNode,
 						overrideCredType: 'googlePalmApi',
 					},
@@ -1609,7 +1630,6 @@ describe('NodeCredentials', () => {
 
 				renderComponent({
 					props: {
-						useUnifiedCredentialsPicker: false,
 						node: nodeWithGateway,
 						overrideCredType: 'googlePalmApi',
 						readonly: true,
@@ -1631,7 +1651,6 @@ describe('NodeCredentials', () => {
 
 				renderComponent({
 					props: {
-						useUnifiedCredentialsPicker: false,
 						node: nodeWithCred,
 						overrideCredType: 'googlePalmApi',
 						readonly: true,
@@ -1737,7 +1756,7 @@ describe('NodeCredentials', () => {
 
 				renderComponent({
 					// Clear the suite-wide default override — these tests model the NDV row.
-					props: { useUnifiedCredentialsPicker: false, node: multiAuthNode, overrideCredType: '' },
+					props: { node: multiAuthNode, overrideCredType: '' },
 					global: { stubs: { AiGatewaySelector: aiGatewayToggleStub } },
 				});
 
@@ -1748,7 +1767,7 @@ describe('NodeCredentials', () => {
 				ndvStore.activeNode = multiAuthNode;
 
 				const { emitted } = renderComponent({
-					props: { useUnifiedCredentialsPicker: false, node: multiAuthNode, overrideCredType: '' },
+					props: { node: multiAuthNode, overrideCredType: '' },
 					global: {
 						stubs: {
 							AiGatewaySelector: {
@@ -1790,7 +1809,6 @@ describe('NodeCredentials', () => {
 
 				const { emitted } = renderComponent({
 					props: {
-						useUnifiedCredentialsPicker: false,
 						node: multiAuthNode,
 						overrideCredType: '',
 						showAll: true,
@@ -1834,7 +1852,6 @@ describe('NodeCredentials', () => {
 
 				renderComponent({
 					props: {
-						useUnifiedCredentialsPicker: false,
 						node: multiAuthNode,
 						overrideCredType: '',
 						standalone: true,
@@ -1850,7 +1867,6 @@ describe('NodeCredentials', () => {
 
 				renderComponent({
 					props: {
-						useUnifiedCredentialsPicker: false,
 						node: multiAuthNode,
 						overrideCredType: 'serviceOAuth2Api',
 					},
@@ -1916,7 +1932,7 @@ describe('NodeCredentials', () => {
 				ndvStore.activeNode = node;
 
 				renderComponent({
-					props: { useUnifiedCredentialsPicker: false, node, overrideCredType: 'someApi' },
+					props: { node, overrideCredType: 'someApi' },
 					global: { stubs: { AiGatewaySelector: aiGatewayToggleStub } },
 				});
 
@@ -1952,7 +1968,7 @@ describe('NodeCredentials', () => {
 				ndvStore.activeNode = node;
 
 				renderComponent({
-					props: { useUnifiedCredentialsPicker: false, node, overrideCredType: 'someApi' },
+					props: { node, overrideCredType: 'someApi' },
 					global: { stubs: { AiGatewaySelector: aiGatewayToggleStub } },
 				});
 
@@ -1988,7 +2004,7 @@ describe('NodeCredentials', () => {
 				ndvStore.activeNode = node;
 
 				const { emitted } = renderComponent({
-					props: { useUnifiedCredentialsPicker: false, node, overrideCredType: 'someApi' },
+					props: { node, overrideCredType: 'someApi' },
 					global: { stubs: { AiGatewaySelector: aiGatewayToggleStub } },
 				});
 
@@ -2029,7 +2045,7 @@ describe('NodeCredentials', () => {
 				ndvStore.activeNode = node;
 
 				const { emitted } = renderComponent({
-					props: { useUnifiedCredentialsPicker: false, node, overrideCredType: 'someApi' },
+					props: { node, overrideCredType: 'someApi' },
 					global: { stubs: { AiGatewaySelector: aiGatewayToggleStub } },
 				});
 
@@ -2042,7 +2058,6 @@ describe('NodeCredentials', () => {
 
 			const { emitted } = renderComponent({
 				props: {
-					useUnifiedCredentialsPicker: false,
 					node: googleAiNode,
 					overrideCredType: 'googlePalmApi',
 				},
@@ -2083,7 +2098,6 @@ describe('NodeCredentials', () => {
 
 			const { emitted } = renderComponent({
 				props: {
-					useUnifiedCredentialsPicker: false,
 					node: nodeWithAction,
 					overrideCredType: 'googlePalmApi',
 				},
@@ -2113,7 +2127,6 @@ describe('NodeCredentials', () => {
 
 			const { emitted } = renderComponent({
 				props: {
-					useUnifiedCredentialsPicker: false,
 					node: nodeWithAction,
 					overrideCredType: '',
 					showAll: true,
@@ -2143,7 +2156,6 @@ describe('NodeCredentials', () => {
 
 			const { emitted } = renderComponent({
 				props: {
-					useUnifiedCredentialsPicker: false,
 					node: nodeWithAction,
 					overrideCredType: 'googlePalmApi',
 				},
@@ -2174,7 +2186,6 @@ describe('NodeCredentials', () => {
 
 			const { emitted } = renderComponent({
 				props: {
-					useUnifiedCredentialsPicker: false,
 					node: nodeWithoutCred,
 					overrideCredType: 'googlePalmApi',
 				},
@@ -2216,7 +2227,6 @@ describe('NodeCredentials', () => {
 
 			const { emitted } = renderComponent({
 				props: {
-					useUnifiedCredentialsPicker: false,
 					node: nodeWithAction,
 					overrideCredType: 'googlePalmApi',
 				},
@@ -2237,7 +2247,6 @@ describe('NodeCredentials', () => {
 
 			const { emitted } = renderComponent({
 				props: {
-					useUnifiedCredentialsPicker: false,
 					node: nodeWithAction,
 					overrideCredType: 'googlePalmApi',
 				},
@@ -2286,7 +2295,6 @@ describe('NodeCredentials', () => {
 
 			const { emitted } = renderComponent({
 				props: {
-					useUnifiedCredentialsPicker: false,
 					node: nodeWithOwnCred,
 					overrideCredType: 'googlePalmApi',
 				},
@@ -2335,7 +2343,6 @@ describe('NodeCredentials', () => {
 
 			const { emitted } = renderComponent({
 				props: {
-					useUnifiedCredentialsPicker: false,
 					node: nodeWithGateway,
 					overrideCredType: 'googlePalmApi',
 				},
@@ -2386,7 +2393,6 @@ describe('NodeCredentials', () => {
 
 				renderComponent({
 					props: {
-						useUnifiedCredentialsPicker: false,
 						node: googleAiNode,
 						overrideCredType: 'googlePalmApi',
 					},
@@ -2424,7 +2430,6 @@ describe('NodeCredentials', () => {
 
 				renderComponent({
 					props: {
-						useUnifiedCredentialsPicker: false,
 						node: nodeWithGateway,
 						overrideCredType: 'googlePalmApi',
 					},
@@ -2460,7 +2465,6 @@ describe('NodeCredentials', () => {
 
 				renderComponent({
 					props: {
-						useUnifiedCredentialsPicker: false,
 						node: nodeWithGateway,
 						overrideCredType: 'googlePalmApi',
 					},
@@ -2478,7 +2482,6 @@ describe('NodeCredentials', () => {
 
 				renderComponent({
 					props: {
-						useUnifiedCredentialsPicker: false,
 						node: googleAiNode,
 						overrideCredType: 'googlePalmApi',
 					},
@@ -2497,7 +2500,6 @@ describe('NodeCredentials', () => {
 
 				renderComponent({
 					props: {
-						useUnifiedCredentialsPicker: false,
 						node: googleAiNode,
 						overrideCredType: 'googlePalmApi',
 						standalone: true,
@@ -2524,7 +2526,6 @@ describe('NodeCredentials', () => {
 
 			const { emitted } = renderComponent({
 				props: {
-					useUnifiedCredentialsPicker: false,
 					node: nodeWithGateway,
 					overrideCredType: 'googlePalmApi',
 				},
@@ -2717,6 +2718,84 @@ describe('NodeCredentials', () => {
 			renderComponent({ props: { node: notionNode, overrideCredType: 'openAiApi' } });
 
 			expect(screen.queryByTestId('node-credential-private-row')).not.toBeInTheDocument();
+		});
+	});
+
+	describe('unified picker (all nodes)', () => {
+		// Renders show-n8n-credits so per-row eligibility is assertable without
+		// mounting the real dropdown.
+		const unifiedPickerStub = {
+			props: ['showN8nCredits', 'credentialType'],
+			emits: ['selectCredential', 'selectN8nCredits', 'createCredential', 'edit', 'topUp'],
+			template: `<div data-test-id="unified-picker-stub" :data-show-credits="String(showN8nCredits)">
+				<button type="button" data-test-id="stub-pick" @click="$emit('selectCredential', 'cred-pick-1')" />
+			</div>`,
+		};
+
+		it('renders the picker without the n8n credits offer for a non-eligible type', () => {
+			ndvStore.activeNode = httpNode;
+
+			renderComponent({
+				props: { node: httpNode, overrideCredType: 'openAiApi', useUnifiedCredentialsPicker: true },
+				global: { stubs: { UnifiedCredentialsPicker: unifiedPickerStub } },
+			});
+
+			const stub = screen.getByTestId('unified-picker-stub');
+			expect(stub).toHaveAttribute('data-show-credits', 'false');
+			// The classic select chain is fully replaced.
+			expect(screen.queryByTestId('node-credentials-select')).not.toBeInTheDocument();
+			expect(screen.queryByTestId('node-credentials-empty-state')).not.toBeInTheDocument();
+		});
+
+		it('offers n8n credits when the type is gateway-served', () => {
+			vi.mocked(useAiGateway).mockReturnValue({
+				isEnabled: computed(() => true),
+				isCredentialTypeSupported: vi.fn((credType: string) => credType === 'openAiApi'),
+				canServeCredentialType: vi.fn((credType: string) => credType === 'openAiApi'),
+				isNodeTypeVersionSupported: vi.fn(() => true),
+				isActionSupported: vi.fn(() => true),
+				isActionOptionVisible: vi.fn(() => true),
+				isNodePropertyHidden: vi.fn(() => false),
+				balance: computed(() => undefined),
+				budget: computed(() => undefined),
+				fetchConfig: vi.fn().mockResolvedValue(undefined),
+				fetchWallet: vi.fn().mockResolvedValue(undefined),
+				saveAfterToggle: vi.fn().mockResolvedValue(undefined),
+				fetchError: computed(() => null),
+			});
+			ndvStore.activeNode = httpNode;
+
+			renderComponent({
+				props: { node: httpNode, overrideCredType: 'openAiApi', useUnifiedCredentialsPicker: true },
+				global: { stubs: { UnifiedCredentialsPicker: unifiedPickerStub } },
+			});
+
+			expect(screen.getByTestId('unified-picker-stub')).toHaveAttribute(
+				'data-show-credits',
+				'true',
+			);
+		});
+
+		it('routes the picker selection through onCredentialSelected unchanged', async () => {
+			credentialsStore.state.credentials = {
+				'cred-pick-1': createCredential({ id: 'cred-pick-1', name: 'Picked', type: 'openAiApi' }),
+			};
+			ndvStore.activeNode = httpNode;
+
+			const { emitted } = renderComponent({
+				props: { node: httpNode, overrideCredType: 'openAiApi', useUnifiedCredentialsPicker: true },
+				global: { stubs: { UnifiedCredentialsPicker: unifiedPickerStub } },
+			});
+
+			await userEvent.click(screen.getByTestId('stub-pick'));
+
+			const payload = ((emitted('credentialSelected')?.at(-1) as unknown[]) ?? [])[0] as {
+				properties: { credentials: Record<string, unknown> };
+			};
+			expect(payload.properties.credentials.openAiApi).toEqual({
+				id: 'cred-pick-1',
+				name: 'Picked',
+			});
 		});
 	});
 });
