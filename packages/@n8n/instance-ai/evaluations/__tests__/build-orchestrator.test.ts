@@ -179,6 +179,37 @@ describe('createBuildOrchestrator', () => {
 		expect(healthy).toHaveBeenCalledTimes(1);
 	});
 
+	it('retries a request-level abort on another lane — a wedged lane keeps passing readiness', async () => {
+		// Probe answers healthy, so the retry can only come from the message itself.
+		vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true }));
+		const wedged = vi
+			.fn()
+			.mockResolvedValue(failedBuild('The operation was aborted due to timeout'));
+		const healthy = vi.fn().mockResolvedValue(okBuild());
+		const orchestrator = createBuildOrchestrator(
+			makeDeps([makeLane(1, wedged), makeLane(2, healthy)]),
+		);
+
+		const { build } = await orchestrator.getOrBuild(0, 'case-a');
+
+		expect(build.success).toBe(true);
+		expect(wedged).toHaveBeenCalledTimes(1);
+		expect(healthy).toHaveBeenCalledTimes(1);
+	});
+
+	it("keeps the chat loop's own budget overrun a verdict, not a transport failure", async () => {
+		// Same shape, different message: the agent was slow on a healthy lane.
+		vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true }));
+		const slow = vi.fn().mockResolvedValue(failedBuild('Run timed out after 900000ms'));
+		const orchestrator = createBuildOrchestrator(makeDeps([makeLane(1, slow)]));
+
+		const { build } = await orchestrator.getOrBuild(0, 'case-a');
+
+		expect(build.success).toBe(false);
+		expect(build.transportFailure).toBe(false);
+		expect(slow).toHaveBeenCalledTimes(1);
+	});
+
 	it('gives up after MAX_BUILD_ATTEMPTS, evicts the entry, and rebuilds on the next request', async () => {
 		const failing1 = vi.fn().mockResolvedValue(failedBuild('fetch failed'));
 		const failing2 = vi.fn().mockResolvedValue(failedBuild('fetch failed'));

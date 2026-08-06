@@ -70,6 +70,7 @@ import { SKILL_BODY_GUIDANCE, SKILL_DESCRIPTION_RULE } from './skill-body-templa
 import { TASK_OBJECTIVE_GUIDANCE } from './task-objective-template';
 import { buildVerifyMcpServerTool } from './verify-mcp-server.tool';
 import { composeJsonConfig } from '../json-config/agent-config-composition';
+import { listAiGatewayManagedCredentialTypes } from '../json-config/reconcile-node-tool-gateway-credentials';
 import { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { getAgentConfigHash } from '../utils/agent-config-hash';
 
@@ -704,6 +705,10 @@ export class AgentsBuilderToolsService {
 						this.agentIntegrationPersistenceService
 							.listChatIntegrations()
 							.map((integration) => integration.type),
+					listAiGatewayManagedCredentialTypes: async () => {
+						const agent = await this.agentsService.findById(agentId, projectId);
+						return listAiGatewayManagedCredentialTypes(agent?.schema?.tools, this.nodeTypes);
+					},
 				}),
 				agentId,
 			),
