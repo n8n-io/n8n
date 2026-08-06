@@ -252,7 +252,10 @@ describe('createBuildWorkflowTool', () => {
 		expect(result.postBuildFlow?.instructions).not.toContain('## Credentials before build');
 		expect(result.postBuildFlow?.instructions).toContain('## After build-workflow succeeds');
 		expect(result.postBuildFlow?.guidance).toContain(
-			'run a real full-path test, ask to publish the primary workflow after it passes',
+			'then mocked/no-mock live-test when latest verification used mocks or simulations',
+		);
+		expect(result.postBuildFlow?.guidance).toContain(
+			'Do not replace the error-workflow opt-in with a generic add-anything',
 		);
 		expect(compileWorkflowSource).toHaveBeenCalledWith(context, filePath, source, undefined);
 		expect(context.workflowService.createFromWorkflowJSON).toHaveBeenCalledWith(
