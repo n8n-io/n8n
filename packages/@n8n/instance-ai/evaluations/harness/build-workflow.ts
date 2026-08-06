@@ -7,7 +7,7 @@
 // execution and cleanup.
 // ---------------------------------------------------------------------------
 
-import type { InstanceAiConfirmRequest } from '@n8n/api-types';
+import type { InstanceAiConfirmRequest, InstanceAiWorkflowAttachment } from '@n8n/api-types';
 import crypto from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
 
@@ -59,6 +59,7 @@ import type {
 } from '../types';
 import {
 	agentTurnsAsText,
+	attachedWorkflowNote,
 	failedBuildsPerTurn,
 	lastAgentText,
 	userTurnsAsText,
@@ -98,25 +99,43 @@ interface MultiTurnDriverConfig {
 	/** Appended to the FIRST sent message only (pre-seeded-table hint); the
 	 *  recorded turn and the proxy's conversation keep the clean prompt. */
 	openingMessageSuffix?: string;
+	/** What the RECORDED opening turn says, when it must differ from what's sent —
+	 *  an out-of-band attachment has to be named in the transcript the judge reads.
+	 *  Defaults to the sent text. */
+	recordedOpeningMessage?: string;
 	/** Ids already allowlisted for this thread (from pre-run `createDeclaredCredentials`
 	 *  seeding) — wires `UserProxyLlm.credentialCreation` so `manual` can create a
 	 *  real credential when a setup card shows zero existing candidates. Omitted
 	 *  when the credential view isn't pinned (see `credentialViewPinned`), since
 	 *  the allowlist endpoint isn't available in that case either. */
 	allowlistedCredentialIds?: string[];
+	/** Of those, the ids whose connection test the backend should resolve as
+	 *  passing — the proxy must carry them because a mid-run creation replaces
+	 *  the whole bypass list too. */
+	bypassCredentialTestIds?: string[];
 	createdCredentialIds?: Set<string>;
 	/** Shared with `createDeclaredCredentials`'s pre-run seeding — see
 	 *  `CredentialCreationConfig.nameCounts`. */
 	credentialNameCounts?: Map<string, number>;
+	/** Resource references sent with the FIRST message only — an attachment is a
+	 *  hand-off, not something a user re-sends every turn. */
+	openingAttachments?: InstanceAiWorkflowAttachment[];
 }
 
 async function driveMultiTurnConversation(
 	config: MultiTurnDriverConfig,
 ): Promise<ProxyDecisionStats> {
 	const openingMessage = config.conversation[0]?.text ?? '';
+	const recordedOpeningMessage = config.recordedOpeningMessage ?? openingMessage;
+	// The proxy renders both its script and its running transcript from `text` alone,
+	// so it needs the recorded opening too — otherwise it audits every plan and
+	// follow-up against a blank turn that never mentions the workflow.
+	const proxyConversation = config.conversation.map((turn, index) =>
+		index === 0 ? { ...turn, text: recordedOpeningMessage } : turn,
+	);
 
 	const proxy = new UserProxyLlm({
-		conversation: config.conversation,
+		conversation: proxyConversation,
 		messageBudget: config.messageBudget,
 		logger: config.logger,
 		...(config.allowlistedCredentialIds !== undefined
@@ -125,6 +144,7 @@ async function driveMultiTurnConversation(
 						client: config.client,
 						threadId: config.threadId,
 						allowlistedCredentialIds: config.allowlistedCredentialIds,
+						bypassCredentialTestIds: config.bypassCredentialTestIds,
 						createdCredentialIds: config.createdCredentialIds,
 						nameCounts: config.credentialNameCounts,
 					},
@@ -143,10 +163,11 @@ async function driveMultiTurnConversation(
 		return decision;
 	};
 
-	recordUserTurn(config.events, openingMessage);
+	recordUserTurn(config.events, recordedOpeningMessage);
 	await config.client.sendMessage(
 		config.threadId,
 		openingMessage + (config.openingMessageSuffix ?? ''),
+		config.openingAttachments,
 	);
 
 	await runMultiTurnConversation({
@@ -318,6 +339,9 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 	let builtDataTableIds: string[] = [];
 	let seededTranscript: TranscriptTurn[] = [];
 	let seedingFailed = false;
+	// Seed-declared workflow id -> the workflow as actually restored (fresh id and
+	// name). Lets an authored `attach` reference survive the per-run remap.
+	let seedWorkflowsBySeedId = new Map<string, { id: string; name: string }>();
 
 	try {
 		const buildStart = Date.now();
@@ -393,11 +417,12 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			logger,
 			nameCounts: credentialNameCounts,
 		});
+		const seededCredentialIds = createdCredentials.map((c) => c.id);
 		try {
-			await client.setThreadCredentialAllowlist(
-				threadId,
-				createdCredentials.map((c) => c.id),
-			);
+			// A seeded credential models one the user already has connected, so its
+			// connection test resolves as passing — same as one set up on a card
+			// during the run. Both carry a placeholder token that would really fail.
+			await client.setThreadCredentialAllowlist(threadId, seededCredentialIds, seededCredentialIds);
 		} catch (error: unknown) {
 			// Only a missing endpoint (older backend) may degrade to the legacy
 			// unpinned view, and only for cases that declared nothing — any other
@@ -416,6 +441,12 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 		if (seed) {
 			try {
 				const remapped = remapSeedWorkflowIds(seed);
+				// The remap preserves order, so index-align the authored ids with the per-run
+				// ones. An author writes the id the seed declares; an attachment has to carry
+				// the id that actually exists on the instance.
+				seedWorkflowsBySeedId = new Map(
+					seed.workflows.map((workflow, index) => [workflow.id, remapped.workflows[index]]),
+				);
 				await evictLeftoverSeedWorkflows(
 					client,
 					remapped,
@@ -504,6 +535,34 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 
 		await delay(SSE_SETTLE_DELAY_MS);
 
+		// The opening turn may hand the agent a seeded workflow, the way the editor does.
+		// Resolved AFTER the restore so it carries the id that exists on the instance;
+		// the case schema already refused an `attach` no seeded workflow declares.
+		const attachedSeedWorkflow = conversation[0]?.attach?.workflow;
+		const restoredForAttach =
+			attachedSeedWorkflow === undefined
+				? undefined
+				: seedWorkflowsBySeedId.get(attachedSeedWorkflow);
+		// The schema already refused an `attach` no seeded workflow declares, so a miss
+		// here means the restore/remap dropped it. Fail loudly: sending no attachment
+		// would silently downgrade a hand-off case to a find-it one.
+		if (attachedSeedWorkflow !== undefined && restoredForAttach === undefined) {
+			seedingFailed = true;
+			throw new Error(
+				`The opening turn attaches seeded workflow "${attachedSeedWorkflow}", but the restore produced no workflow for that id — refusing to run the case unattached (it would silently become a find-it test).`,
+			);
+		}
+		const openingAttachments: InstanceAiWorkflowAttachment[] | undefined = restoredForAttach
+			? [{ type: 'workflow', id: restoredForAttach.id, name: restoredForAttach.name }]
+			: undefined;
+		// Name the out-of-band attachment in the RECORDED turn, or the judge and the
+		// prompt-aware checks read a text-less hand-off as a bare empty message — see
+		// `attachedWorkflowNote`. Mirrors `openingMessageSuffix`, which diverges
+		// sent-vs-recorded the other way.
+		const recordedOpeningMessage = [attachedWorkflowNote(restoredForAttach?.name), openingMessage]
+			.filter(Boolean)
+			.join(' ');
+
 		let proxyDecisionStats: ProxyDecisionStats | undefined;
 		if (isMultiTurn) {
 			proxyDecisionStats = await driveMultiTurnConversation({
@@ -523,7 +582,8 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				// otherwise either (see the catch above).
 				...(credentialViewPinned
 					? {
-							allowlistedCredentialIds: createdCredentials.map((c) => c.id),
+							allowlistedCredentialIds: seededCredentialIds,
+							bypassCredentialTestIds: seededCredentialIds,
 							createdCredentialIds: config.createdCredentialIds,
 							credentialNameCounts,
 						}
@@ -531,10 +591,16 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				// The pre-seeded-table note goes to the agent, but the recorded turn
 				// (and the graded transcript) keeps the clean user prompt.
 				openingMessageSuffix: scenarioSeedTablesNote,
+				openingAttachments,
+				recordedOpeningMessage,
 			});
 		} else {
-			recordUserTurn(events, openingMessage);
-			await client.sendMessage(threadId, openingMessage + scenarioSeedTablesNote);
+			recordUserTurn(events, recordedOpeningMessage);
+			await client.sendMessage(
+				threadId,
+				openingMessage + scenarioSeedTablesNote,
+				openingAttachments,
+			);
 			await waitForAllActivity({
 				client,
 				threadId,

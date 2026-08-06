@@ -2,20 +2,8 @@ import { z } from 'zod';
 import { isRecord } from '@n8n/utils/is-record';
 
 import type { ChatInstance } from '../chat-integration.service';
-import { INTEGRATION_ERROR_CODES } from '../integration-error-codes';
-import {
-	integrationError,
-	stringValue,
-	unsupportedAction,
-	unsupportedQuery,
-} from '../integration-helpers';
-import type {
-	IntegrationAction,
-	IntegrationActionResult,
-	IntegrationContextQuery,
-	IntegrationMessageContext,
-	IntegrationToolConnectionDescriptor,
-} from '../integration-tools';
+import { stringValue, unsupportedQuery } from '../integration-helpers';
+import type { IntegrationContextQuery } from '../integration-tools';
 
 const PLATFORM = 'slack';
 
@@ -39,15 +27,9 @@ const searchChannelsSchema = z.object({
 	cursor: z.string().min(1).optional(),
 	includeArchived: z.boolean().default(false),
 });
-const addReactionSchema = z.object({
-	emoji: z.string().min(1),
-	threadId: z.string().min(1).optional(),
-	messageId: z.string().min(1).optional(),
-});
 
 type SearchUsersInput = z.infer<typeof searchUsersSchema>;
 type SearchChannelsInput = z.infer<typeof searchChannelsSchema>;
-type AddReactionInput = z.infer<typeof addReactionSchema>;
 
 interface SlackProfile {
 	display_name?: unknown;
@@ -105,7 +87,6 @@ interface SlackWebClient {
 interface SlackAdapter {
 	client?: SlackWebClient;
 	withToken?: (options: Record<string, unknown>) => Promise<Record<string, unknown>>;
-	addReaction?: (threadId: string, messageId: string, emoji: string) => Promise<void>;
 }
 
 interface SlackUserSearchResult {
@@ -153,22 +134,6 @@ export async function executeSlackContextQuery(params: {
 	}
 
 	return unsupportedQuery(PLATFORM, params.query);
-}
-
-export async function executeSlackAction(params: {
-	chat: ChatInstance;
-	descriptor: IntegrationToolConnectionDescriptor;
-	action: IntegrationAction;
-	input: Record<string, unknown>;
-	currentMessageContext?: IntegrationMessageContext;
-}): Promise<IntegrationActionResult | undefined> {
-	if (params.action !== 'add_reaction') return undefined;
-	return await addSlackReaction({
-		chat: params.chat,
-		descriptor: params.descriptor,
-		input: addReactionSchema.parse(params.input),
-		currentMessageContext: params.currentMessageContext,
-	});
 }
 
 async function searchSlackUsers(chat: ChatInstance, input: SearchUsersInput): Promise<unknown> {
@@ -274,41 +239,6 @@ async function searchSlackChannels(
 	};
 }
 
-async function addSlackReaction(params: {
-	chat: ChatInstance;
-	descriptor: IntegrationToolConnectionDescriptor;
-	input: AddReactionInput;
-	currentMessageContext?: IntegrationMessageContext;
-}): Promise<IntegrationActionResult> {
-	const adapter = getSlackAdapter(params.chat);
-	if (!adapter || typeof adapter.addReaction !== 'function') {
-		return unsupportedAction(PLATFORM, 'add_reaction');
-	}
-
-	const threadId = params.input.threadId ?? params.currentMessageContext?.target.threadId;
-	const messageId = params.input.messageId ?? params.currentMessageContext?.messageId;
-	if (!threadId || !messageId) {
-		return integrationError(
-			INTEGRATION_ERROR_CODES.NO_MESSAGE_CONTEXT,
-			'Slack reactions require a messageId and threadId or current message context.',
-		);
-	}
-
-	await adapter.addReaction(threadId, messageId, params.input.emoji);
-
-	return {
-		ok: true,
-		reaction: { emoji: params.input.emoji, threadId, messageId },
-		messageContext: {
-			integrationConnectionId: params.descriptor.integrationConnectionId,
-			platform: params.descriptor.integration.type,
-			target: buildSlackReactionTarget(threadId, params.currentMessageContext),
-			messageId,
-			updatedAt: new Date().toISOString(),
-		},
-	};
-}
-
 export async function subscribeSlackThread(thread: {
 	subscribe?: () => Promise<void>;
 }): Promise<void> {
@@ -321,7 +251,6 @@ function getSlackAdapter(chat: ChatInstance): SlackAdapter | undefined {
 	const candidate = adapter as {
 		client?: unknown;
 		withToken?: unknown;
-		addReaction?: unknown;
 	};
 	if (candidate.client !== undefined && !isRecord(candidate.client)) return undefined;
 	if (candidate.withToken !== undefined && typeof candidate.withToken !== 'function') {
@@ -427,24 +356,4 @@ function normalizeSearchTerm(value: string): string {
 
 function normalizeChannelSearchTerm(value: string): string {
 	return normalizeSearchTerm(value);
-}
-
-function buildSlackReactionTarget(
-	threadId: string,
-	currentMessageContext: IntegrationMessageContext | undefined,
-): IntegrationMessageContext['target'] {
-	if (currentMessageContext?.target.threadId === threadId) return currentMessageContext.target;
-
-	const channelId = parseSlackChannelId(threadId);
-	return {
-		type: 'thread',
-		threadId,
-		...(channelId ? { channelId } : {}),
-	};
-}
-
-function parseSlackChannelId(threadId: string): string | undefined {
-	const [platform, channel] = threadId.split(':');
-	if (platform !== 'slack' || !channel) return undefined;
-	return `${platform}:${channel}`;
 }

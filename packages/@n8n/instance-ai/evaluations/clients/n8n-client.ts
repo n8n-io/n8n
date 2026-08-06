@@ -16,6 +16,7 @@ import type {
 	InstanceAiThreadStatusResponse,
 	InstanceAiEvalSeedDataTable,
 	InstanceAiEvalSeedWorkflow,
+	InstanceAiWorkflowAttachment,
 	AgentJsonConfig,
 	AgentSkill,
 	EvaluationConfigDto,
@@ -27,6 +28,23 @@ import { z } from 'zod';
 // AbortSignal is the real bound. This is process-global: only ever imported by the
 // eval CLI harness — never import into the n8n server or shared runtime code.
 setGlobalDispatcher(new Agent({ headersTimeout: 0, bodyTimeout: 0 }));
+
+/** Floor for calls that pass no budget: the dispatcher above leaves those
+ *  unbounded, so a silent lane would hang rather than fail. Sized for a plain
+ *  REST call — slower callers pass their own. */
+const DEFAULT_REQUEST_TIMEOUT_MS = 120_000;
+
+/** Bulk creation of seed workflows + data tables; slower than a plain REST call. */
+const RESTORE_THREAD_TIMEOUT_MS = 300_000;
+
+/** How much longer the client waits than the server budget it hands over. */
+const CLIENT_ABORT_MARGIN_MS = 5_000;
+
+/** Server gives up just before the client, so the caller gets an in-band error
+ *  rather than a bare abort. Uncapped: 15 min truncated `complex` budgets. */
+function serverBudgetFor(timeoutMs: number): number {
+	return Math.max(timeoutMs - CLIENT_ABORT_MARGIN_MS, 30_000);
+}
 
 // -- Conversation seeding response shapes -------------------------------------
 
@@ -78,6 +96,10 @@ export interface WorkflowNodeResponse {
 	position?: [number, number];
 	parameters?: Record<string, unknown>;
 	executeOnce?: boolean;
+	alwaysOutputData?: boolean;
+	retryOnFail?: boolean;
+	maxTries?: number;
+	waitBetweenTries?: number;
 	onError?: 'stopWorkflow' | 'continueRegularOutput' | 'continueErrorOutput';
 	disabled?: boolean;
 	credentials?: Record<string, unknown>;
@@ -208,12 +230,20 @@ export class N8nClient {
 
 	/**
 	 * Send a chat message to the instance-ai agent.
-	 * POST /rest/instance-ai/chat/:threadId  body: { message }
+	 * POST /rest/instance-ai/chat/:threadId  body: { message, attachments? }
+	 *
+	 * `attachments` are resource references the agent resolves with its tools — the
+	 *  same channel the editor uses when a user opens the assistant with a workflow
+	 * in front of them, so the agent is handed it by id instead of hunting by name.
 	 */
-	async sendMessage(threadId: string, message: string): Promise<{ runId: string }> {
+	async sendMessage(
+		threadId: string,
+		message: string,
+		attachments?: InstanceAiWorkflowAttachment[],
+	): Promise<{ runId: string }> {
 		const result = await this.fetch(`/rest/instance-ai/chat/${threadId}`, {
 			method: 'POST',
-			body: { message },
+			body: attachments && attachments.length > 0 ? { message, attachments } : { message },
 		});
 		return result as { runId: string };
 	}
@@ -640,7 +670,13 @@ export class N8nClient {
 	): Promise<void> {
 		await this.fetch('/rest/instance-ai/eval/thread-credential-allowlist', {
 			method: 'POST',
-			body: { threadId, credentialIds, ...(bypassCredentialTest ? { bypassCredentialTest } : {}) },
+			// Omit an empty list so the request stays byte-identical to before for
+			// threads with no credentials at all.
+			body: {
+				threadId,
+				credentialIds,
+				...(bypassCredentialTest?.length ? { bypassCredentialTest } : {}),
+			},
 		});
 	}
 
@@ -670,6 +706,7 @@ export class N8nClient {
 		const result = await this.fetch('/rest/instance-ai/eval/restore-thread', {
 			method: 'POST',
 			body,
+			timeoutMs: RESTORE_THREAD_TIMEOUT_MS,
 		});
 		return RestoreThreadEnvelope.parse(result).data;
 	}
@@ -800,14 +837,17 @@ export class N8nClient {
 		timeoutMs: number = 120_000,
 		pinNodes?: string[],
 	): Promise<InstanceAiEvalExecutionResult> {
-		const body: { scenarioHints?: string; pinNodes?: string[] } = {};
+		const body: { scenarioHints?: string; pinNodes?: string[]; timeoutMs?: number } = {};
 		if (scenarioHints) body.scenarioHints = scenarioHints;
 		if (pinNodes && pinNodes.length > 0) body.pinNodes = pinNodes;
+		// Forwarded so the server stops the run rather than leaving it burning CPU.
+		const serverBudgetMs = serverBudgetFor(timeoutMs);
+		body.timeoutMs = serverBudgetMs;
 
 		const result = (await this.fetch(`/rest/instance-ai/eval/execute-with-llm-mock/${workflowId}`, {
 			method: 'POST',
 			body,
-			timeoutMs,
+			timeoutMs: serverBudgetMs + CLIENT_ABORT_MARGIN_MS,
 		})) as { data: InstanceAiEvalExecutionResult };
 		return result.data;
 	}
@@ -825,11 +865,7 @@ export class N8nClient {
 	): Promise<InstanceAiEvalAgentExecutionResult> {
 		const body: { projectId: string; scenarioHints?: string; timeoutMs?: number } = { projectId };
 		if (scenarioHints) body.scenarioHints = scenarioHints;
-		// Forward the budget server-side so the run is aborted rather than
-		// orphaned when the client gives up. The server floor is the schema min
-		// (30s), so the client abort is floored to 5s above it — a smaller
-		// caller value would leave the server running long after the client quit.
-		const serverBudgetMs = Math.min(Math.max(timeoutMs - 5_000, 30_000), 900_000);
+		const serverBudgetMs = serverBudgetFor(timeoutMs);
 		body.timeoutMs = serverBudgetMs;
 
 		const result = (await this.fetch(
@@ -837,7 +873,7 @@ export class N8nClient {
 			{
 				method: 'POST',
 				body,
-				timeoutMs: serverBudgetMs + 5_000,
+				timeoutMs: serverBudgetMs + CLIENT_ABORT_MARGIN_MS,
 			},
 		)) as { data: InstanceAiEvalAgentExecutionResult };
 		return result.data;
@@ -890,11 +926,20 @@ export class N8nClient {
 
 		const method = options.method ?? 'GET';
 
+		// A bare `?? DEFAULT` would turn `timeoutMs: 0` into `AbortSignal.timeout(0)` —
+		// an instant abort, where the old truthiness check meant "unbounded". No caller
+		// passes one, and unbounded is what this path exists to remove, so a
+		// non-positive value falls back to the default: bounded either way.
+		const timeoutMs =
+			options.timeoutMs !== undefined && options.timeoutMs > 0
+				? options.timeoutMs
+				: DEFAULT_REQUEST_TIMEOUT_MS;
+
 		const res = await fetch(`${this.baseUrl}${path}`, {
 			method,
 			headers,
 			body: options.body ? JSON.stringify(options.body) : undefined,
-			...(options.timeoutMs ? { signal: AbortSignal.timeout(options.timeoutMs) } : {}),
+			signal: AbortSignal.timeout(timeoutMs),
 		});
 
 		if (!res.ok) {
