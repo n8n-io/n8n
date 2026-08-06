@@ -4,12 +4,11 @@
  * per invocation.
  *
  * This is the interactive contract: the delegate session includes the
- * builder's full standard toolset, so it may suspend on `ask_questions`,
- * `ask_credential`, `ask_embedding_credential`, or `configure_channel`. When
- * it does, this tool cascades the suspension through its own `ctx.suspend()`
- * — using payloads derived from the shared interaction contract in
- * `@n8n/api-types` — so the question renders as a card in the calling
- * assistant's chat and the orchestrator's own checkpoint survives a process
+ * builder's full standard toolset, so it may suspend for builder interactions
+ * or for a target-agent tool approval. This tool cascades the suspension
+ * through its own `ctx.suspend()` using the interaction contracts in
+ * `@n8n/api-types` and the SDK approval contract in `@n8n/agents`, so it renders
+ * as a card in the calling assistant's chat and the orchestrator checkpoint survives a process
  * restart. On resume, the target agent and the builder's open suspension are
  * both re-derived from persistence (no in-memory state carried across the
  * suspend boundary) and checked for identity against the `builderCheckpoint`
@@ -23,7 +22,7 @@
  * builder UI — it is a private sub-agent conversation.
  */
 import type { InterruptibleToolContext } from '@n8n/agents';
-import { createAbortError, Tool } from '@n8n/agents';
+import { APPROVAL_SUSPEND_SCHEMA, createAbortError, Tool } from '@n8n/agents';
 import {
 	BUILDER_CHECKPOINT_UNAVAILABLE_CODE,
 	BUILDER_NOT_CONFIGURED_CODE,
@@ -247,12 +246,17 @@ const builderSuspendPayloadSchema = z.union([
 	questionsSuspendPayloadSchema,
 	credentialSuspendPayloadSchema,
 	channelSuspendPayloadSchema,
+	APPROVAL_SUSPEND_SCHEMA,
 ]);
 
 const buildAgentSuspendSchema = z.union([
 	questionsSuspendPayloadSchema.extend({ builderCheckpoint: builderCheckpointRefSchema }),
 	credentialSuspendPayloadSchema.extend({ builderCheckpoint: builderCheckpointRefSchema }),
 	channelSuspendPayloadSchema.extend({ builderCheckpoint: builderCheckpointRefSchema }),
+	APPROVAL_SUSPEND_SCHEMA.extend({
+		requestId: z.string(),
+		builderCheckpoint: builderCheckpointRefSchema,
+	}),
 ]);
 
 /**
@@ -948,7 +952,7 @@ export function createBuildAgentTool(context: OrchestrationContext) {
 				'agent when the user asks to publish, activate, make it live/usable, or unpublish — ' +
 				'forward that intent in `message`; never tell the user to open the agent editor and ' +
 				'click Publish. When the builder needs user input (a choice, a ' +
-				'credential, or a chat channel), it surfaces automatically as an interactive card in ' +
+				'credential, a chat channel, or approval for a target-agent tool), it surfaces automatically as an interactive card in ' +
 				'this chat — do not relay those questions yourself; this tool call resumes with the ' +
 				'user’s answer and returns the builder’s reply. Returns the builder’s reply, the ' +
 				'target `agentRef`/`agentId`, and whether it updated the agent config. Prefer the ' +

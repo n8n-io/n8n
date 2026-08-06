@@ -1,6 +1,18 @@
-import type { BuiltTool, CredentialProvider } from '@n8n/agents';
-import { isAbortError } from '@n8n/agents';
-import { Tool } from '@n8n/agents/tool';
+import { isDeepStrictEqual } from 'node:util';
+import {
+	isAbortError,
+	zodToJsonSchema,
+	type BuiltTool,
+	type CredentialProvider,
+	type InterruptibleToolContext,
+} from '@n8n/agents';
+import {
+	APPROVAL_RESUME_SCHEMA,
+	APPROVAL_SUSPEND_SCHEMA,
+	Tool,
+	type ApprovalResumePayload,
+	type ApprovalSuspendPayload,
+} from '@n8n/agents/tool';
 import {
 	applyNativeWebSearchDefaultOn,
 	getProviderPrefix,
@@ -48,7 +60,11 @@ import { AgentIntegrationPersistenceService } from '../agent-integration-persist
 import { AgentPublishService } from '../agent-publish.service';
 import { AgentSkillsService } from '../agent-skills.service';
 import { AgentTaskService } from '../agent-task.service';
-import { AgentTestRunService } from '../agent-test-run.service';
+import {
+	AgentTestRunService,
+	type AgentTestRunResult,
+	type AgentTestRunSuspension,
+} from '../agent-test-run.service';
 import { AgentsToolsService } from '../agents-tools.service';
 import { AgentsService } from '../agents.service';
 import { AttachableWorkflowsService } from '../attachable-workflows.service';
@@ -81,6 +97,30 @@ const STALE_CONFIG_ERROR: ConfigValidationError = {
 	message:
 		'Agent config changed since you last read it. Call read_config, then retry using the config and configHash it returns.',
 };
+
+const callAgentContinuationSchema = z
+	.object({
+		runId: z.string(),
+		toolCallId: z.string(),
+		sessionId: z.string(),
+		response: z.string(),
+	})
+	.strict();
+
+const expectedApprovalResumeJsonSchema = zodToJsonSchema(APPROVAL_RESUME_SCHEMA);
+
+function parseStandardApprovalSuspension(
+	suspension: AgentTestRunSuspension,
+): ApprovalSuspendPayload | undefined {
+	const payload = APPROVAL_SUSPEND_SCHEMA.safeParse(suspension.suspendPayload);
+	if (
+		!payload.success ||
+		!isDeepStrictEqual(suspension.resumeSchema, expectedApprovalResumeJsonSchema)
+	) {
+		return undefined;
+	}
+	return payload.data;
+}
 
 /** LLM-facing follow-up guidance for this builder surface (CLI skill-based tools). */
 const CLI_AGENT_CONFIG_MESSAGES: AgentConfigValidationMessages = {
@@ -620,8 +660,8 @@ export class AgentsBuilderToolsService {
 				'Tests the draft agent through built-in Preview chat. It does not test configured channel integrations, including their triggers, platform context, message delivery, or replies. ' +
 					'Pass the returned sessionId on later calls to continue the same conversation; omit it to start a new one. ' +
 					'The draft uses its real configured tools and credentials, so external side effects are possible. ' +
-					'Returns status completed with response/session identifiers, approval_required with a Preview path, or error. ' +
-					'If the result requires approval, direct the user to the returned Preview path.',
+					'Standard tool approvals pause this test until the user approves or rejects them in chat. ' +
+					'Unsupported interactive requests return approval_required with a Preview path.',
 			)
 			.input(
 				z.object({
@@ -634,90 +674,141 @@ export class AgentsBuilderToolsService {
 						.describe('Session ID from a previous call_agent result'),
 				}),
 			)
-			.handler(async ({ message, sessionId }: { message: string; sessionId?: string }, ctx) => {
-				if (!(await userHasScopes(user, ['agent:execute'], false, { projectId }))) {
-					return {
-						status: 'error',
-						code: 'forbidden',
-						message: 'You do not have permission to run agents in this project.',
-					};
-				}
-
-				const previewPath = buildAgentPreviewPath(projectId, agentId);
-				try {
-					const result = await this.agentTestRunService.executeDraftRun({
-						agentId,
-						projectId,
-						message,
-						sessionId,
-						credentialProvider,
-						user,
-						source: 'instance-ai',
-						...(ctx.abortSignal ? { abortSignal: ctx.abortSignal } : {}),
-					});
-					if (result.status === 'session_not_found') {
+			.suspend(APPROVAL_SUSPEND_SCHEMA)
+			.resume(APPROVAL_RESUME_SCHEMA)
+			.handler(
+				async (
+					{ message, sessionId }: { message: string; sessionId?: string },
+					ctx: InterruptibleToolContext<ApprovalSuspendPayload, ApprovalResumePayload>,
+				) => {
+					if (!(await userHasScopes(user, ['agent:execute'], false, { projectId }))) {
 						return {
 							status: 'error',
-							code: 'session_not_found',
-							message: 'Session not found.',
+							code: 'forbidden',
+							message: 'You do not have permission to run agents in this project.',
 						};
 					}
-					if (result.status === 'agent_misconfigured') {
-						return {
-							status: 'error',
-							code: 'agent_misconfigured',
-							message: "This agent isn't ready to run yet. Finish configuring it and try again.",
-							missing: result.missing,
-						};
-					}
-					if (result.status === 'completed') return result;
 
-					const runIds = [...new Set(result.suspensions.map(({ runId }) => runId))];
-					const cancellations = await Promise.all(
-						runIds.map(
-							async (runId) =>
-								await this.agentTestRunService.cancelSuspendedRun({
-									agentId,
-									runId,
-									userId: user.id,
-								}),
-						),
-					).catch(() => []);
-					if (
-						cancellations.length !== runIds.length ||
-						cancellations.some((cancelled) => !cancelled)
-					) {
+					const previewPath = buildAgentPreviewPath(projectId, agentId);
+					try {
+						let result: AgentTestRunResult;
+						if (ctx.resumeData === undefined) {
+							result = await this.agentTestRunService.executeDraftRun({
+								agentId,
+								projectId,
+								message,
+								sessionId,
+								credentialProvider,
+								user,
+								source: 'instance-ai',
+								...(ctx.abortSignal ? { abortSignal: ctx.abortSignal } : {}),
+							});
+						} else {
+							const continuation = callAgentContinuationSchema.safeParse(ctx.continuation);
+							if (
+								!continuation.success ||
+								!APPROVAL_SUSPEND_SCHEMA.safeParse(ctx.suspendPayload).success
+							) {
+								return {
+									status: 'error',
+									code: 'invalid_checkpoint',
+									message: 'This test run can no longer be resumed.',
+								};
+							}
+							result = await this.agentTestRunService.resumeDraftRun({
+								agentId,
+								projectId,
+								sessionId: continuation.data.sessionId,
+								runId: continuation.data.runId,
+								toolCallId: continuation.data.toolCallId,
+								resumeData: { approved: ctx.resumeData.approved },
+								user,
+								source: 'instance-ai',
+								response: continuation.data.response,
+								...(ctx.abortSignal ? { abortSignal: ctx.abortSignal } : {}),
+							});
+						}
+
+						if (result.status === 'session_not_found') {
+							return {
+								status: 'error',
+								code: 'session_not_found',
+								message: 'Session not found.',
+							};
+						}
+						if (result.status === 'agent_misconfigured') {
+							return {
+								status: 'error',
+								code: 'agent_misconfigured',
+								message: "This agent isn't ready to run yet. Finish configuring it and try again.",
+								missing: result.missing,
+							};
+						}
+						if (result.status === 'completed') return result;
+
+						const approvals = result.suspensions.map(parseStandardApprovalSuspension);
+						if (approvals.every((approval) => approval !== undefined)) {
+							const firstSuspension = result.suspensions[0];
+							const firstApproval = approvals[0];
+							if (firstSuspension && firstApproval) {
+								return await ctx.suspend(firstApproval, {
+									continuation: {
+										runId: firstSuspension.runId,
+										toolCallId: firstSuspension.toolCallId,
+										sessionId: result.sessionId,
+										response: result.response,
+									},
+								});
+							}
+						}
+
+						const runIds = [...new Set(result.suspensions.map(({ runId }) => runId))];
+						const cancellations = await Promise.all(
+							runIds.map(
+								async (runId) =>
+									await this.agentTestRunService.cancelSuspendedRun({
+										agentId,
+										runId,
+										userId: user.id,
+									}),
+							),
+						).catch(() => []);
+						if (
+							cancellations.length !== runIds.length ||
+							cancellations.some((cancelled) => !cancelled)
+						) {
+							return {
+								status: 'error',
+								code: 'cancellation_failed',
+								message:
+									'This test needs approval, but its suspended run could not be cancelled. Open Preview before continuing this session.',
+								sessionId: result.sessionId,
+								previewPath,
+							};
+						}
+
 						return {
-							status: 'error',
-							code: 'cancellation_failed',
-							message:
-								'This test needs approval, but its suspended run could not be cancelled. Open Preview before continuing this session.',
+							status: 'approval_required',
+							response: result.response,
 							sessionId: result.sessionId,
+							...(result.executionId ? { executionId: result.executionId } : {}),
+							suspensions: result.suspensions.map(({ runId, toolCallId, toolName }) => ({
+								runId,
+								toolCallId,
+								toolName,
+							})),
 							previewPath,
 						};
+					} catch (error) {
+						if (ctx.abortSignal ? ctx.abortSignal.aborted : isAbortError(error)) throw error;
+						return {
+							status: 'error',
+							code: 'execution_failed',
+							message: error instanceof Error ? error.message : 'Agent test run failed.',
+						};
 					}
-
-					return {
-						status: 'approval_required',
-						response: result.response,
-						sessionId: result.sessionId,
-						...(result.executionId ? { executionId: result.executionId } : {}),
-						suspensions: result.suspensions.map(({ runId, toolCallId, toolName }) => ({
-							runId,
-							toolCallId,
-							toolName,
-						})),
-						previewPath,
-					};
-				} catch (error) {
-					if (ctx.abortSignal ? ctx.abortSignal.aborted : isAbortError(error)) throw error;
-					return {
-						status: 'error',
-						code: 'execution_failed',
-						message: error instanceof Error ? error.message : 'Agent test run failed.',
-					};
-				}
-			})
+				},
+			)
 			.build();
 
 		const modelLookup: ModelLookup = {
