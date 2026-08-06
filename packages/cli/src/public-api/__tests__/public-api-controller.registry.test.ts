@@ -16,12 +16,6 @@ describe('PublicApiControllerRegistry', () => {
 	const lastActiveAtService = mock<LastActiveAtService>();
 	const eventService = mock<EventService>();
 
-	/**
-	 * Activates a fresh registry against whatever is currently in `ControllerRegistryMetadata`,
-	 * mounted on a bare Express app. Called after declaring the test controller class (whose
-	 * decorators populate the metadata as a side effect of the class being defined), mirroring
-	 * `resolvePublicApiRoutes()`'s call-after-declare usage in the sibling route-resolver tests.
-	 */
 	function activate(): express.Express {
 		const app = express();
 		const router = express.Router({ mergeParams: true });
