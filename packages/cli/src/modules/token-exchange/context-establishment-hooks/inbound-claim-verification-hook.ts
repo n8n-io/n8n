@@ -8,9 +8,9 @@ import type {
 import { ContextEstablishmentHook } from '@n8n/decorators';
 import type { IVerifiedClaim } from 'n8n-workflow';
 
+import { extractBearerToken } from '@/modules/identity-substrate/context-establishment-hooks/extract-bearer-token';
 import { ExternalTokenVerifierProxy } from '@/services/external-token-verifier-proxy.service';
 
-import { extractBearerToken } from './extract-bearer-token';
 import { InboundAudienceService } from './inbound-audience.service';
 
 /**

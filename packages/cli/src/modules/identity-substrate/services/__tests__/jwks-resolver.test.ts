@@ -1,11 +1,11 @@
-import { generateKeyPairSync } from 'node:crypto';
-
 import type { Logger } from '@n8n/backend-common';
 import type { OutboundHttp } from '@n8n/backend-network';
-import { mock } from 'vitest-mock-extended';
 import { OperationalError } from 'n8n-workflow';
+import { generateKeyPairSync } from 'node:crypto';
+import { mock } from 'vitest-mock-extended';
 
-import type { JwksKeySource } from '../../token-exchange.schemas';
+import type { JwksKeySource } from '@/modules/token-exchange/token-exchange.schemas';
+
 import { JwksResolverService } from '../jwks-resolver';
 
 // ──────────────────────────────────────────────────────────────────────
