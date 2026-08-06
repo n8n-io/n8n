@@ -151,14 +151,6 @@ export function agentBuilderTargetMetadata(targets: AgentBuilderTarget[]): Recor
 	};
 }
 
-/**
- * Binding metadata for a seeded thread, reconstructed from the seeded history
- * rather than invented. The model authored the refs its own `build-agent` calls
- * carry, and the LAST such call is what "most recently targeted" meant — array
- * order in the seed is an authoring artifact, not conversation order. An agent
- * the history never targeted keeps its display name as the ref and sorts first,
- * so it can't displace the real active target.
- */
 /** Epoch ms of a seed message's `createdAt`, or 0 when it is missing/unparseable. */
 function stampOf(message: Record<string, unknown>): number {
 	const raw = message.createdAt;
@@ -173,25 +165,13 @@ function idOf(message: Record<string, unknown>): string {
 }
 
 /**
- * The metadata patch that UNDOES `seedAgentBuilderTargetMetadata`, given the
- * thread's metadata from before it was written.
- *
- * `updateThread` MERGES its patch, so handing back the prior snapshot leaves the
- * binding keys standing — the thread would still point at agents a failed restore
- * has since deleted. This names both keys explicitly and restores each to what it
- * was (absent → `undefined`, which the readers' `safeParse` treats as no binding
- * and which drops out of the persisted JSON).
+ * Binding metadata for a seeded thread, reconstructed from the seeded history
+ * rather than invented. The model authored the refs its own `build-agent` calls
+ * carry, and the LAST such call is what "most recently targeted" meant — array
+ * order in the seed is an authoring artifact, not conversation order. An agent
+ * the history never targeted keeps its display name as the ref and sorts first,
+ * so it can't displace the real active target.
  */
-export function clearedAgentBuilderTargetMetadata(
-	priorMetadata: Record<string, unknown> | undefined,
-): Record<string, unknown> {
-	return {
-		...(priorMetadata ?? {}),
-		[METADATA_KEY]: priorMetadata?.[METADATA_KEY],
-		[REGISTRY_METADATA_KEY]: priorMetadata?.[REGISTRY_METADATA_KEY],
-	};
-}
-
 export function seedAgentBuilderTargetMetadata(
 	agents: AgentBuilderTarget[],
 	seededMessages: Array<Record<string, unknown>>,
@@ -227,6 +207,26 @@ export function seedAgentBuilderTargetMetadata(
 	return agentBuilderTargetMetadata(
 		ordered.map((agent) => ({ ...agent, ref: refById.get(agent.agentId) ?? agent.ref })),
 	);
+}
+
+/**
+ * The metadata patch that UNDOES `seedAgentBuilderTargetMetadata`, given the
+ * thread's metadata from before it was written.
+ *
+ * `updateThread` MERGES its patch, so handing back the prior snapshot leaves the
+ * binding keys standing — the thread would still point at agents a failed restore
+ * has since deleted. This names both keys explicitly and restores each to what it
+ * was (absent → `undefined`, which the readers' `safeParse` treats as no binding
+ * and which drops out of the persisted JSON).
+ */
+export function clearedAgentBuilderTargetMetadata(
+	priorMetadata: Record<string, unknown> | undefined,
+): Record<string, unknown> {
+	return {
+		...(priorMetadata ?? {}),
+		[METADATA_KEY]: priorMetadata?.[METADATA_KEY],
+		[REGISTRY_METADATA_KEY]: priorMetadata?.[REGISTRY_METADATA_KEY],
+	};
 }
 
 /**
