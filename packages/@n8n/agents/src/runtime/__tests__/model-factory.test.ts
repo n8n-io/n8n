@@ -8,6 +8,7 @@ type ProviderOpts = {
 	fetch?: typeof globalThis.fetch;
 	headers?: Record<string, string>;
 	includeUsage?: boolean;
+	supportsStructuredOutputs?: boolean;
 };
 
 // All providers are mocked via vi.mock so require() inside the registry entries
@@ -185,6 +186,7 @@ vi.mock('@ai-sdk/openai-compatible', () => ({
 		headers: opts.headers,
 		fetch: opts.fetch,
 		includeUsage: opts.includeUsage,
+		supportsStructuredOutputs: opts.supportsStructuredOutputs,
 		specificationVersion: 'v3',
 	}),
 }));
@@ -393,6 +395,7 @@ describe('createModel', () => {
 			expect(model.apiKey).toBe('bt-test');
 			expect(model.baseURL).toBe('https://inference.baseten.co/v1');
 			expect(model.includeUsage).toBe(true);
+			expect(model.supportsStructuredOutputs).toBe(true);
 		});
 
 		it('should create model for fireworks via openai-compatible', () => {
@@ -405,6 +408,7 @@ describe('createModel', () => {
 			expect(model.apiKey).toBe('fw-test');
 			expect(model.baseURL).toBe('https://api.fireworks.ai/inference/v1');
 			expect(model.includeUsage).toBe(true);
+			expect(model.supportsStructuredOutputs).toBe(true);
 		});
 
 		it('should create model for wafer via openai-compatible', () => {
@@ -417,6 +421,7 @@ describe('createModel', () => {
 			expect(model.apiKey).toBe('wafer-test');
 			expect(model.baseURL).toBe('https://pass.wafer.ai/v1');
 			expect(model.includeUsage).toBe(true);
+			expect(model.supportsStructuredOutputs).toBe(true);
 		});
 
 		it('should create model for morph via openai-compatible', () => {
@@ -429,6 +434,7 @@ describe('createModel', () => {
 			expect(model.apiKey).toBe('morph-test');
 			expect(model.baseURL).toBe('https://api.morphllm.com/v1');
 			expect(model.includeUsage).toBe(true);
+			expect(model.supportsStructuredOutputs).toBe(true);
 		});
 
 		it('should create model for togetherai via openai-compatible', () => {
@@ -441,6 +447,7 @@ describe('createModel', () => {
 			expect(model.apiKey).toBe('tgp-test');
 			expect(model.baseURL).toBe('https://api.together.ai/v1');
 			expect(model.includeUsage).toBe(true);
+			expect(model.supportsStructuredOutputs).toBe(true);
 		});
 
 		it('should create model for vertex Anthropic with project/location/credentials', () => {
@@ -494,6 +501,7 @@ describe('createModel', () => {
 			expect(model.modelId).toBe('nvidia/llama-3.3-nemotron-super-49b-v1');
 			expect(model.apiKey).toBe('nv-test');
 			expect(model.baseURL).toBe('https://integrate.api.nvidia.com/v1');
+			expect(model.supportsStructuredOutputs).toBe(true);
 		});
 	});
 

@@ -95,6 +95,8 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 				apiKey: creds.apiKey,
 				headers: creds.headers,
 				fetch,
+				// Without this the SDK drops JSON schemas and sends json_object only.
+				supportsStructuredOutputs: true,
 			})(model);
 		},
 	},
@@ -112,6 +114,7 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 				fetch,
 				// Request the final stream usage chunk so LangSmith/OTel get tokens.
 				includeUsage: true,
+				supportsStructuredOutputs: true,
 			})(model);
 		},
 	},
@@ -127,6 +130,7 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 				fetch,
 				// Without this, streams omit usage (e.g. kimi-k3-fast) → 0 tokens in LangSmith.
 				includeUsage: true,
+				supportsStructuredOutputs: true,
 			})(model);
 		},
 	},
@@ -141,6 +145,7 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 				apiKey: creds.apiKey,
 				fetch,
 				includeUsage: true,
+				supportsStructuredOutputs: true,
 			})(model);
 		},
 	},
@@ -156,6 +161,7 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 				apiKey: creds.apiKey,
 				fetch,
 				includeUsage: true,
+				supportsStructuredOutputs: true,
 			})(model);
 		},
 	},
@@ -171,6 +177,7 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 				apiKey: creds.apiKey,
 				fetch,
 				includeUsage: true,
+				supportsStructuredOutputs: true,
 			})(model);
 		},
 	},
@@ -281,6 +288,7 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 				apiKey: creds.apiKey,
 				headers: creds.headers,
 				fetch,
+				supportsStructuredOutputs: true,
 			})(model);
 		},
 	},
