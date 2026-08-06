@@ -25,6 +25,7 @@ vi.mock('@/modules/agents/json-config/mcp-client-factory', () => ({
 }));
 
 import { CredentialsService } from '@/credentials/credentials.service';
+import type { EventService } from '@/events/event.service';
 import { AgentConfigService } from '@/modules/agents/agent-config.service';
 import { AgentCustomToolsService } from '@/modules/agents/agent-custom-tools.service';
 import { AgentIntegrationPersistenceService } from '@/modules/agents/agent-integration-persistence.service';
@@ -41,6 +42,7 @@ import { AttachableWorkflowsService } from '@/modules/agents/attachable-workflow
 import type { Agent } from '@/modules/agents/entities/agent.entity';
 import { ChatIntegrationRegistry } from '@/modules/agents/integrations/agent-chat-integration';
 import { ChatIntegrationService } from '@/modules/agents/integrations/chat-integration.service';
+import type { NodeToolAiGatewayService } from '@/modules/agents/json-config/node-tool-ai-gateway.service';
 import type { AgentTaskRepository } from '@/modules/agents/repositories/agent-task.repository';
 import type { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { AgentSecureRuntime } from '@/modules/agents/runtime/agent-secure-runtime';
@@ -203,6 +205,8 @@ describe('McpAgentToolsService', () => {
 			runtimeCacheService,
 			localCredentialsService,
 			workflowRepository,
+			mock<NodeToolAiGatewayService>(),
+			mock<EventService>(),
 			mock<AgentSetupCompletionService>(),
 			modificationTelemetry,
 		);

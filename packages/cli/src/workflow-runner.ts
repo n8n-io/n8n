@@ -35,6 +35,8 @@ import PCancelable from 'p-cancelable';
 import { ActiveExecutions } from '@/active-executions';
 import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
 import { MaxStalledCountError } from '@/errors/max-stalled-count.error';
+// `no-cycle` still reports a cycle here, but only through the dynamic import
+// in `execute-error-workflow`, which creates no evaluation-order edge.
 // eslint-disable-next-line import-x/no-cycle
 import {
 	getLifecycleHooksForRegularMain,

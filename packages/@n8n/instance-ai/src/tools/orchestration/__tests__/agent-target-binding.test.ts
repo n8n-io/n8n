@@ -1,11 +1,14 @@
 import type { ThreadRecord } from '../../../storage/thread-patch';
 import type { InstanceAiContext } from '../../../types';
 import {
+	agentBuilderTargetMetadata,
 	getSessionAgentByRef,
 	normalizeAgentRef,
 	PENDING_AGENT_METADATA_KEY,
+	clearedAgentBuilderTargetMetadata,
 	resolveAgentBuilderTarget,
 	saveAgentBuilderTarget,
+	seedAgentBuilderTargetMetadata,
 } from '../agent-target-binding';
 
 /** In-memory thread store shared across "turns" (fresh contexts). */
@@ -219,5 +222,221 @@ describe('agent-builder target binding', () => {
 			});
 			await expect(getSessionAgentByRef(malformed, 'first')).resolves.toBeUndefined();
 		});
+	});
+});
+
+describe('agentBuilderTargetMetadata', () => {
+	it('registers every target under its normalized ref, last one active', () => {
+		const metadata = agentBuilderTargetMetadata([
+			{ agentId: 'agent-1', projectId: 'p', ref: 'First Agent' },
+			{ agentId: 'agent-2', projectId: 'p', ref: 'Second Agent' },
+		]);
+
+		expect(metadata.instanceAiAgentBuilderTarget).toMatchObject({ agentId: 'agent-2' });
+		expect(metadata.instanceAiAgentBuilderTargets).toEqual({
+			'first-agent': { agentId: 'agent-1', projectId: 'p', ref: 'first-agent' },
+			'second-agent': { agentId: 'agent-2', projectId: 'p', ref: 'second-agent' },
+		});
+	});
+
+	it('refuses two targets whose refs normalize to one key', () => {
+		// Silently keeping the last would leave the other unaddressable, and a later
+		// ref lookup would edit the surviving agent instead — the wrong one.
+		expect(() =>
+			agentBuilderTargetMetadata([
+				{ agentId: 'agent-1', projectId: 'p', name: 'Support Bot', ref: 'Support Bot' },
+				{ agentId: 'agent-2', projectId: 'p', name: 'support-bot', ref: 'support-bot' },
+			]),
+		).toThrow(/both address as "support-bot"/);
+	});
+
+	it('allows the same agent listed twice under one ref', () => {
+		const metadata = agentBuilderTargetMetadata([
+			{ agentId: 'agent-1', projectId: 'p', ref: 'Support Bot' },
+			{ agentId: 'agent-1', projectId: 'p', ref: 'support bot' },
+		]);
+		expect(metadata.instanceAiAgentBuilderTargets).toEqual({
+			'support-bot': { agentId: 'agent-1', projectId: 'p', ref: 'support-bot' },
+		});
+	});
+
+	it('resolves through the same readers the product uses', async () => {
+		// The point of the export: a thread seeded with this metadata addresses its
+		// agent exactly as one that really built it does.
+		const threadMemory = createThreadMemory(
+			agentBuilderTargetMetadata([
+				{ agentId: 'agent-1', projectId: 'p', name: 'Support Triage', ref: 'Support Triage' },
+			]),
+		);
+		const context = createContext({ threadMemory });
+
+		await expect(resolveAgentBuilderTarget(context)).resolves.toMatchObject({ agentId: 'agent-1' });
+		await expect(getSessionAgentByRef(context, 'support triage')).resolves.toMatchObject({
+			agentId: 'agent-1',
+		});
+	});
+});
+
+describe('seedAgentBuilderTargetMetadata', () => {
+	/** One resolved `build-agent` call in a seeded assistant turn.
+	 *
+	 *  Each call stamps a LATER `createdAt` than the last, because real seeded
+	 *  messages carry distinct ascending stamps and the scan orders by them. A
+	 *  fixture that stamped them all identically would only ever be exercising the
+	 *  id tiebreak. */
+	let turnSeq = 0;
+	function buildAgentTurn(agentId: string, agentRef: string) {
+		turnSeq += 1;
+		return {
+			id: `msg-${String(turnSeq).padStart(3, '0')}-${agentId}`,
+			type: 'llm',
+			role: 'assistant',
+			createdAt: `2026-01-01T00:00:${String(turnSeq).padStart(2, '0')}.000Z`,
+			content: [
+				{
+					type: 'tool-call',
+					toolCallId: `tc-${agentId}`,
+					toolName: 'build-agent',
+					state: 'resolved',
+					output: { ok: true, agentId, agentRef },
+				},
+			],
+		};
+	}
+
+	const AGENTS = [
+		{ agentId: 'agent-1', projectId: 'p', name: 'Support Triage', ref: 'Support Triage' },
+		{ agentId: 'agent-2', projectId: 'p', name: 'Billing Bot', ref: 'Billing Bot' },
+	];
+
+	it('uses the ref the model authored, not the display name', () => {
+		// The live turn addresses the agent with the ref its own history carries; a
+		// name-derived ref means the first `build-agent` call misses the registry.
+		const metadata = seedAgentBuilderTargetMetadata(AGENTS, [
+			buildAgentTurn('agent-1', 'triage'),
+			buildAgentTurn('agent-2', 'billing'),
+		]);
+
+		expect(metadata.instanceAiAgentBuilderTargets).toMatchObject({
+			triage: { agentId: 'agent-1' },
+			billing: { agentId: 'agent-2' },
+		});
+	});
+
+	it('makes the LAST targeted agent active, regardless of seed array order', () => {
+		// Array order is an authoring artifact. "Most recently targeted" is what the
+		// conversation actually did, so it has to come from the tool calls.
+		const metadata = seedAgentBuilderTargetMetadata(AGENTS, [
+			buildAgentTurn('agent-2', 'billing'),
+			buildAgentTurn('agent-1', 'triage'),
+		]);
+
+		expect(metadata.instanceAiAgentBuilderTarget).toMatchObject({ agentId: 'agent-1' });
+	});
+
+	it('re-targeting an agent later moves it back to active', () => {
+		const metadata = seedAgentBuilderTargetMetadata(AGENTS, [
+			buildAgentTurn('agent-1', 'triage'),
+			buildAgentTurn('agent-2', 'billing'),
+			buildAgentTurn('agent-1', 'triage'),
+		]);
+
+		expect(metadata.instanceAiAgentBuilderTarget).toMatchObject({ agentId: 'agent-1' });
+	});
+
+	it('falls back to the display name for an agent the history never targeted', () => {
+		// A hand-authored seed may carry an agent with no build-agent record at all.
+		const metadata = seedAgentBuilderTargetMetadata(AGENTS, [buildAgentTurn('agent-2', 'billing')]);
+
+		expect(metadata.instanceAiAgentBuilderTargets).toMatchObject({
+			'support-triage': { agentId: 'agent-1' },
+			billing: { agentId: 'agent-2' },
+		});
+		// Untargeted agents sort first, so they can't displace the real active target.
+		expect(metadata.instanceAiAgentBuilderTarget).toMatchObject({ agentId: 'agent-2' });
+	});
+
+	it('orders by createdAt, not array order', () => {
+		// The restore sorts messages by `createdAt` and so does every read, so an
+		// authored array in a different order would pick the wrong active target.
+		const later = buildAgentTurn('agent-1', 'triage');
+		later.createdAt = '2026-01-01T00:00:09.000Z';
+		const earlier = buildAgentTurn('agent-2', 'billing');
+		earlier.createdAt = '2026-01-01T00:00:01.000Z';
+
+		// Authored newest-first; chronologically agent-1 is the most recent target.
+		const metadata = seedAgentBuilderTargetMetadata(AGENTS, [later, earlier]);
+
+		expect(metadata.instanceAiAgentBuilderTarget).toMatchObject({ agentId: 'agent-1' });
+	});
+
+	it('tiebreaks a shared timestamp by id, like the store does', () => {
+		// `listMessages` orders by (createdAt, id), so stopping at createdAt would
+		// leave the active target undefined exactly when two turns share a stamp.
+		const a = buildAgentTurn('agent-1', 'triage');
+		const b = buildAgentTurn('agent-2', 'billing');
+		a.id = 'msg-b';
+		b.id = 'msg-a';
+		a.createdAt = '2026-01-01T00:00:00.000Z';
+		b.createdAt = '2026-01-01T00:00:00.000Z';
+
+		// Authored a-then-b, but by id b sorts first, so agent-1 is the last target.
+		const metadata = seedAgentBuilderTargetMetadata(AGENTS, [a, b]);
+
+		expect(metadata.instanceAiAgentBuilderTarget).toMatchObject({ agentId: 'agent-1' });
+	});
+
+	it('ignores a build-agent call whose output carries no agent id', () => {
+		// A failed call ("agent builder is not configured") records no identity.
+		const metadata = seedAgentBuilderTargetMetadata(AGENTS.slice(0, 1), [
+			{
+				id: 'msg-failed',
+				type: 'llm',
+				role: 'assistant',
+				createdAt: '2026-01-01T00:00:00.000Z',
+				content: [
+					{ type: 'tool-call', toolName: 'build-agent', state: 'resolved', output: { ok: false } },
+				],
+			},
+		]);
+
+		expect(metadata.instanceAiAgentBuilderTargets).toMatchObject({
+			'support-triage': { agentId: 'agent-1' },
+		});
+	});
+});
+
+describe('clearedAgentBuilderTargetMetadata', () => {
+	it('clears both binding keys while keeping unrelated metadata', async () => {
+		// `updateThread` MERGES, so a rollback that hands back only the prior snapshot
+		// leaves the thread bound to agents a failed restore already deleted.
+		const bound = seedAgentBuilderTargetMetadata(
+			[{ agentId: 'agent-1', projectId: 'p', name: 'Support Triage', ref: 'Support Triage' }],
+			[],
+		);
+		const prior = { somethingElse: 'keep me' };
+
+		const merged: Record<string, unknown> = {
+			...prior,
+			...bound,
+			...clearedAgentBuilderTargetMetadata(prior),
+		};
+
+		expect(merged.somethingElse).toBe('keep me');
+		expect(merged.instanceAiAgentBuilderTarget).toBeUndefined();
+		expect(merged.instanceAiAgentBuilderTargets).toBeUndefined();
+		// And it resolves as no binding through the real reader.
+		const context = createContext({ threadMemory: createThreadMemory(merged) });
+		await expect(resolveAgentBuilderTarget(context)).resolves.toBeUndefined();
+	});
+
+	it('restores a binding the thread already had before the seed wrote one', () => {
+		const existing = agentBuilderTargetMetadata([
+			{ agentId: 'agent-old', projectId: 'p', ref: 'old' },
+		]);
+
+		const restored = clearedAgentBuilderTargetMetadata(existing);
+
+		expect(restored.instanceAiAgentBuilderTarget).toEqual(existing.instanceAiAgentBuilderTarget);
 	});
 });
