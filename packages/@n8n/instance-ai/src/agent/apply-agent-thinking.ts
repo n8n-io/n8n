@@ -124,7 +124,7 @@ export function applyAgentThinking(agent: Agent, modelId: ModelConfig): void {
 
 	if (provider === 'custom') {
 		// OpenAI-compatible custom endpoints (e.g. dedicated Kimi-K3 routers).
-		agent.thinking('custom', { reasoningEffort: 'medium' });
+		agent.thinking('custom', { reasoningEffort: 'low' });
 		return;
 	}
 
