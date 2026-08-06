@@ -1,7 +1,11 @@
 import { ClientOAuth2 } from '@n8n/client-oauth2';
+import type { INodeProperties } from 'n8n-workflow';
+import { NodeHelpers } from 'n8n-workflow';
 import nock from 'nock';
 
+import { AtlassianOAuth2Api } from '../AtlassianOAuth2Api.credentials';
 import { JiraSoftwareCloudOAuth2Api } from '../JiraSoftwareCloudOAuth2Api.credentials';
+import { OAuth2Api } from '../OAuth2Api.credentials';
 
 describe('JiraSoftwareCloudOAuth2Api Credential', () => {
 	const jiraOAuth2Api = new JiraSoftwareCloudOAuth2Api();
@@ -14,7 +18,6 @@ describe('JiraSoftwareCloudOAuth2Api Credential', () => {
 		'offline_access',
 	];
 
-	// Shared OAuth2 configuration
 	const baseUrl = 'https://auth.atlassian.com';
 	const authorizationUri = `${baseUrl}/authorize`;
 	const accessTokenUri = `${baseUrl}/oauth/token`;
@@ -63,27 +66,42 @@ describe('JiraSoftwareCloudOAuth2Api Credential', () => {
 
 	it('should have correct credential metadata', () => {
 		expect(jiraOAuth2Api.name).toBe('jiraSoftwareCloudOAuth2Api');
-		expect(jiraOAuth2Api.extends).toEqual(['oAuth2Api']);
+		expect(jiraOAuth2Api.extends).toEqual(['atlassianOAuth2Api']);
 
 		const enabledScopesProperty = jiraOAuth2Api.properties.find((p) => p.name === 'enabledScopes');
 		expect(enabledScopesProperty?.default).toBe(
 			'read:jira-user read:jira-work write:jira-work manage:jira-webhook manage:jira-user offline_access',
 		);
+	});
 
-		// Verify Atlassian-specific OAuth2 endpoints
-		const authUrlProperty = jiraOAuth2Api.properties.find((p) => p.name === 'authUrl');
-		expect(authUrlProperty?.default).toBe('https://auth.atlassian.com/authorize');
+	it('should resolve the extends chain', () => {
+		const resolved: INodeProperties[] = [];
+		NodeHelpers.mergeNodeProperties(resolved, new OAuth2Api().properties);
+		NodeHelpers.mergeNodeProperties(resolved, new AtlassianOAuth2Api().properties);
+		NodeHelpers.mergeNodeProperties(resolved, jiraOAuth2Api.properties);
 
-		const accessTokenUrlProperty = jiraOAuth2Api.properties.find(
-			(p) => p.name === 'accessTokenUrl',
+		const byName = (name: string) => resolved.find((p) => p.name === name);
+
+		const domain = byName('domain');
+		expect(domain?.type).toBe('string');
+		expect(domain?.required).toBe(true);
+		expect(domain?.displayName).toBe('Site URL');
+
+		expect(byName('grantType')?.default).toBe('authorizationCode');
+		expect(byName('authUrl')?.default).toBe('https://auth.atlassian.com/authorize');
+		expect(byName('accessTokenUrl')?.default).toBe('https://auth.atlassian.com/oauth/token');
+		expect(byName('authQueryParameters')?.default).toBe(
+			'audience=api.atlassian.com&prompt=consent',
 		);
-		expect(accessTokenUrlProperty?.default).toBe('https://auth.atlassian.com/oauth/token');
+		expect(byName('authentication')?.default).toBe('header');
+		expect(byName('customScopes')?.default).toBe(false);
+		expect(byName('enabledScopes')?.default).toBe(defaultScopes.join(' '));
 
-		// Verify audience parameter is set (required for Atlassian OAuth2)
-		const authQueryParamsProperty = jiraOAuth2Api.properties.find(
-			(p) => p.name === 'authQueryParameters',
+		const scope = byName('scope');
+		expect(scope?.type).toBe('hidden');
+		expect(scope?.default).toBe(
+			'={{$self["customScopes"] ? $self["enabledScopes"] : "' + defaultScopes.join(' ') + '"}}',
 		);
-		expect(authQueryParamsProperty?.default).toBe('audience=api.atlassian.com&prompt=consent');
 	});
 
 	describe('OAuth2 flow with default scopes', () => {
