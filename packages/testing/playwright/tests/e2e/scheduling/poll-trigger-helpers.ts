@@ -66,7 +66,10 @@ export async function expectPollTriggerFires(
 	);
 	if (itemsAfterSeedPoll) await programPollResponse(proxy, path, itemsAfterSeedPoll);
 	if (errorAfterSeedPoll)
-		await programPollErrorResponse(proxy, path, errorAfterSeedPoll.statusCode);
+		await programPollErrorResponse(proxy, path, errorAfterSeedPoll.statusCode, {
+			remainingTimes: 1,
+			unlimited: false,
+		});
 
 	const { workflowId, createdWorkflow } = await api.workflows.createWorkflowFromDefinition(
 		makeWorkflow(path).toJSON() as IWorkflowBase,
