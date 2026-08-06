@@ -464,6 +464,13 @@ export const confirmationInputTypeSchema = z.enum([
 ]);
 export type InstanceAiConfirmationInputType = z.infer<typeof confirmationInputTypeSchema>;
 
+export const instanceAiTargetApprovalSchema = z.object({
+	toolName: z.string(),
+	displayName: z.string().optional(),
+	args: z.unknown(),
+});
+export type InstanceAiTargetApproval = z.infer<typeof instanceAiTargetApprovalSchema>;
+
 export const confirmationRequestPayloadSchema = z.object({
 	requestId: z.string(),
 	inputThreadId: z
@@ -475,6 +482,9 @@ export const confirmationRequestPayloadSchema = z.object({
 	args: z.record(z.unknown()),
 	severity: instanceAiConfirmationSeveritySchema,
 	message: z.string().describe('Human-readable description of the action'),
+	targetApproval: instanceAiTargetApprovalSchema
+		.optional()
+		.describe('Target-agent tool approval details rendered instead of the outer tool call'),
 	credentialRequests: z.array(credentialRequestSchema).optional(),
 	projectId: z
 		.string()
@@ -1045,6 +1055,7 @@ export interface InstanceAiConfirmation {
 	inputThreadId?: string;
 	severity: InstanceAiConfirmationSeverity;
 	message: string;
+	targetApproval?: InstanceAiTargetApproval;
 	credentialRequests?: InstanceAiCredentialRequest[];
 	projectId?: string;
 	inputType?: 'approval' | 'text' | 'questions' | 'plan-review' | 'resource-decision' | 'continue';

@@ -43,8 +43,9 @@ Use \`call_agent\` to verify the agent's behavior, not its channel integrations.
 After configuring a channel, tell the user that they must publish the agent and
 message it from the connected platform to verify the channel.
 
-If the result is \`approval_required\`, explain that the action needs approval
-and direct the user to [Preview](${agentPreviewPath}) to run it again.
+Standard tool approvals pause \`call_agent\` until the user approves or rejects them in this chat.
+If it returns \`approval_required\` for an unsupported interaction, explain that it cannot be
+completed here and direct the user to [Preview](${agentPreviewPath}) to run it again.
 
 After a successful build or config change that leaves the agent ready to try,
 include the same [Preview](${agentPreviewPath}) markdown link in your wrap-up

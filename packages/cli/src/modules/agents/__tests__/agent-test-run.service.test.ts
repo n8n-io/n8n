@@ -125,6 +125,69 @@ describe('AgentTestRunService', () => {
 		});
 	});
 
+	it('resumes the same draft session and returns the next suspended segment', async () => {
+		const { service, agentExecutionOrchestratorService } = makeService();
+		agentExecutionOrchestratorService.resumeForChat.mockImplementation(async function* (config) {
+			config.onExecutionRecorded?.('execution-2');
+			yield { type: 'text-delta', id: 'text-1', delta: ' Next step.' };
+			yield {
+				type: 'tool-call-suspended',
+				runId: 'run-2',
+				toolCallId: 'tool-call-2',
+				toolName: 'notify_owner',
+				suspendPayload: {
+					type: 'approval',
+					toolName: 'notify_owner',
+					args: { ownerId: 'owner-1' },
+				},
+			};
+		});
+
+		const result = await service.resumeDraftRun({
+			agentId,
+			projectId,
+			sessionId: 'session-1',
+			runId: 'run-1',
+			toolCallId: 'tool-call-1',
+			resumeData: { approved: true },
+			user,
+			source: 'instance-ai',
+			response: 'First step.',
+		});
+
+		expect(result).toEqual({
+			status: 'suspended',
+			response: 'First step. Next step.',
+			sessionId: 'session-1',
+			executionId: 'execution-2',
+			suspensions: [
+				{
+					runId: 'run-2',
+					toolCallId: 'tool-call-2',
+					toolName: 'notify_owner',
+					suspendPayload: {
+						type: 'approval',
+						toolName: 'notify_owner',
+						args: { ownerId: 'owner-1' },
+					},
+				},
+			],
+		});
+		expect(agentExecutionOrchestratorService.resumeForChat).toHaveBeenCalledWith(
+			expect.objectContaining({
+				runId: 'run-1',
+				toolCallId: 'tool-call-1',
+				resumeData: { approved: true },
+				source: 'instance-ai',
+				usePublishedVersion: false,
+				expectedMemory: {
+					threadId: 'session-1',
+					resourceId: 'draft-chat:user-1',
+				},
+			}),
+		);
+	});
+
 	it('rejects a session owned by another agent without starting a run', async () => {
 		const {
 			service,
@@ -148,8 +211,21 @@ describe('AgentTestRunService', () => {
 				credentialProvider,
 			}),
 		).resolves.toEqual({ status: 'session_not_found' });
+		await expect(
+			service.resumeDraftRun({
+				agentId,
+				projectId,
+				sessionId: 'session-1',
+				runId: 'run-1',
+				toolCallId: 'tool-call-1',
+				resumeData: { approved: false },
+				user,
+				response: '',
+			}),
+		).resolves.toEqual({ status: 'session_not_found' });
 		expect(agentValidationService.validateAgentIsRunnable).not.toHaveBeenCalled();
 		expect(agentExecutionOrchestratorService.executeForChat).not.toHaveBeenCalled();
+		expect(agentExecutionOrchestratorService.resumeForChat).not.toHaveBeenCalled();
 	});
 
 	it('returns missing configuration without starting a run', async () => {

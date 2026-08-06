@@ -132,6 +132,9 @@ function isDestructive(item: PendingConfirmationItem): boolean {
  * English strings over the wire.
  */
 function buildApprovalTitle(item: PendingConfirmationItem): string {
+	if (item.toolCall.confirmation.targetApproval) {
+		return i18n.baseText('agents.chat.approval.title');
+	}
 	const { toolName, args } = item.toolCall;
 	const action = typeof args?.action === 'string' ? args.action : undefined;
 	const imperativeKey = (
@@ -154,6 +157,12 @@ function buildApprovalTitle(item: PendingConfirmationItem): string {
  * message includes a trailing explanation doesn't bloat the card.
  */
 function buildApprovalSubtitle(item: PendingConfirmationItem): string {
+	const targetApproval = item.toolCall.confirmation.targetApproval;
+	if (targetApproval) {
+		return i18n.baseText('agents.chat.approval.description', {
+			interpolate: { toolName: targetApproval.displayName ?? targetApproval.toolName },
+		});
+	}
 	const message = item.toolCall.confirmation.message ?? '';
 	const idx = message.indexOf('?');
 	return idx === -1 ? message : message.slice(0, idx + 1);
@@ -167,7 +176,7 @@ function buildApprovalSubtitle(item: PendingConfirmationItem): string {
 function buildApprovalOptions(item: PendingConfirmationItem): ApprovalOption[] {
 	const destructive = isDestructive(item);
 	const options: ApprovalOption[] = [];
-	if (!destructive) {
+	if (!destructive && !item.toolCall.confirmation.targetApproval) {
 		options.push({
 			key: 'always-allow',
 			icon: 'check-check',
@@ -190,6 +199,16 @@ function buildApprovalOptions(item: PendingConfirmationItem): ApprovalOption[] {
 		testId: 'instance-ai-panel-confirm-deny',
 	});
 	return options;
+}
+
+function formatTargetApprovalArgs(conf: InstanceAiConfirmation): string {
+	const args = conf.targetApproval?.args;
+	if (args === undefined) return '';
+	try {
+		return JSON.stringify(args, null, 2) ?? String(args);
+	} catch {
+		return String(args);
+	}
 }
 
 function handleApprovalSelect(item: PendingConfirmationItem, key: string) {
@@ -228,7 +247,7 @@ async function handleConfirm(item: PendingConfirmationItem, approved: boolean) {
 		// "Always allow" is offered alongside Approve/Deny for non-destructive
 		// generic approvals; include it in the option set so telemetry reflects
 		// what the user actually chose between.
-		const alwaysAllowAvailable = !isDestructive(item);
+		const alwaysAllowAvailable = !isDestructive(item) && !conf.targetApproval;
 		trackInputCompleted(
 			conf,
 			[
@@ -581,6 +600,13 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 										{{ buildApprovalTitle(chunk.item) }}
 									</N8nText>
 									<ConfirmationPreview>{{ buildApprovalSubtitle(chunk.item) }}</ConfirmationPreview>
+									<ConfirmationPreview
+										v-if="formatTargetApprovalArgs(chunk.item.toolCall.confirmation)"
+										:class="$style.targetApprovalArgs"
+										data-test-id="instance-ai-target-approval-args"
+									>
+										{{ formatTargetApprovalArgs(chunk.item.toolCall.confirmation) }}
+									</ConfirmationPreview>
 								</div>
 
 								<ApprovalOptionList
@@ -620,6 +646,11 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 	& + & {
 		border-top: var(--border);
 	}
+}
+
+.targetApprovalArgs {
+	white-space: pre-wrap;
+	word-break: break-word;
 }
 
 .approvalRow {
