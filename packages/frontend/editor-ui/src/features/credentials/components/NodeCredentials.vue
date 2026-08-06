@@ -53,9 +53,11 @@ import { getAutoSelectedCredential } from '../credentials.utils';
 import { usePrivateCredentials } from '@/features/resolvers/composables/usePrivateCredentials';
 import { AI_GATEWAY_MANAGED_TAG, SYSTEM_RESOLVER_ID } from '@n8n/api-types';
 import CredentialPrivateConnectionRow from './CredentialPrivateConnectionRow.vue';
+import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { useAiGateway } from '@/app/composables/useAiGateway';
 
 import {
+	N8nActionPill,
 	N8nButton,
 	N8nIcon,
 	N8nInput,
@@ -146,6 +148,37 @@ const { canOAuthCredentialQuickConnect, hasManualCredentialInputFields, authoriz
 	useCredentialOAuth();
 
 const aiGateway = useAiGateway();
+const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
+
+const balancePill = computed(() => {
+	const balance = aiGateway.balance.value;
+	if (balance === undefined) return undefined;
+	const depleted = balance <= 0;
+	return {
+		text: depleted
+			? i18n.baseText('aiGateway.wallet.noCredits')
+			: i18n.baseText('aiGateway.wallet.balanceRemaining', {
+					interpolate: { balance: `$${Number(balance).toFixed(2)}` },
+				}),
+		type: depleted ? ('danger' as const) : ('default' as const),
+	};
+});
+
+// Refresh the balance after each run so the pill reflects consumed credits.
+watch(
+	() => workflowExecutionStateStore.value.activeExecution,
+	(executionData) => {
+		if (executionData?.finished || executionData?.stoppedAt !== undefined) {
+			void aiGateway.fetchWallet();
+		}
+	},
+);
+
+function selectedCredentialIcon(credentialType: string) {
+	if (isAiGatewayManagedCredentials(credentialType)) return 'wallet' as const;
+	if (!selected.value[credentialType]?.id) return undefined;
+	return isCredentialResolvable(credentialType) ? ('user-round' as const) : ('key-round' as const);
+}
 const hideAskAssistant = computed(() => props.hideAskAssistant || isToolContext);
 
 const canCreateCredentials = computed(
@@ -441,6 +474,7 @@ onMounted(() => {
 	}
 
 	void aiGateway.fetchConfig();
+	void aiGateway.fetchWallet();
 
 	// Clear stale AI Gateway managed credentials if the feature is disabled
 	if (!aiGateway.isEnabled.value) {
@@ -1081,12 +1115,17 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 							:label="i18n.baseText('aiGateway.credentialMode.n8nConnect.title')"
 							:value="AI_GATEWAY_MANAGED_TAG"
 						>
-							<div :class="[$style.credentialOption, 'mt-2xs', 'mb-2xs']">
-								<div :class="$style.credentialOptionName">
-									<N8nText bold>
-										{{ i18n.baseText('aiGateway.credentialMode.n8nConnect.title') }}
-									</N8nText>
-								</div>
+							<div :class="$style.credentialOption">
+								<N8nIcon icon="wallet" size="large" :class="$style.optionIcon" />
+								<N8nText :class="$style.optionName">
+									{{ i18n.baseText('aiGateway.credentialMode.n8nConnect.title') }}
+								</N8nText>
+								<N8nActionPill
+									v-if="balancePill"
+									size="small"
+									:type="balancePill.type"
+									:text="balancePill.text"
+								/>
 							</div>
 						</N8nOption>
 						<template #empty> </template>
@@ -1098,7 +1137,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 								:disabled="!canCreateCredentials"
 								@click="onClickCreateCredential(type)"
 							>
-								<N8nIcon size="xsmall" icon="plus" />
+								<N8nIcon size="large" icon="plus" :class="$style.optionIcon" />
 								{{ NEW_CREDENTIALS_TEXT }}
 							</button>
 						</template>
@@ -1139,10 +1178,21 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 							filterable
 							:filter-method="setFilter"
 							:popper-class="$style.selectPopper"
-							:class="{ [$style.selectWithDynamic]: isCredentialResolvable(type.name) }"
+							:class="{
+								[$style.selectWithDynamic]: isCredentialResolvable(type.name),
+								[$style.selectWithBalance]: isAiGatewayManagedCredentials(type.name) && balancePill,
+							}"
 							@update:model-value="(value: string) => onCredentialOptionSelected(type, value)"
 							@blur="emit('blur', 'credentials')"
 						>
+							<template #prefix>
+								<N8nIcon
+									v-if="selectedCredentialIcon(type.name)"
+									:icon="selectedCredentialIcon(type.name)!"
+									size="large"
+									:class="$style.optionIcon"
+								/>
+							</template>
 							<N8nOption
 								v-if="showN8nCreditsOption(type.name)"
 								:key="AI_GATEWAY_MANAGED_TAG"
@@ -1150,12 +1200,23 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 								:label="i18n.baseText('aiGateway.credentialMode.n8nConnect.title')"
 								:value="AI_GATEWAY_MANAGED_TAG"
 							>
-								<div :class="[$style.credentialOption, 'mt-2xs', 'mb-2xs']">
-									<div :class="$style.credentialOptionName">
-										<N8nText bold>
-											{{ i18n.baseText('aiGateway.credentialMode.n8nConnect.title') }}
-										</N8nText>
-									</div>
+								<div :class="$style.credentialOption">
+									<N8nIcon icon="wallet" size="large" :class="$style.optionIcon" />
+									<N8nText :class="$style.optionName">
+										{{ i18n.baseText('aiGateway.credentialMode.n8nConnect.title') }}
+									</N8nText>
+									<N8nActionPill
+										v-if="balancePill"
+										size="small"
+										:type="balancePill.type"
+										:text="balancePill.text"
+									/>
+									<N8nIcon
+										v-if="isAiGatewayManagedCredentials(type.name)"
+										icon="check"
+										size="large"
+										:class="$style.checkIcon"
+									/>
 								</div>
 							</N8nOption>
 							<N8nOption
@@ -1165,9 +1226,14 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 								:label="item.name"
 								:value="item.id"
 							>
-								<div :class="[$style.credentialOption, 'mt-2xs', 'mb-2xs']">
+								<div :class="$style.credentialOption">
+									<N8nIcon
+										:icon="item.isResolvable ? 'user-round' : 'key-round'"
+										size="large"
+										:class="$style.optionIcon"
+									/>
 									<div :class="$style.credentialOptionName">
-										<N8nText bold>{{ item.name }}</N8nText>
+										<N8nText :class="$style.optionName">{{ item.name }}</N8nText>
 										<N8nTooltip
 											v-if="isPrivateCredentialsEnabled && item.isResolvable"
 											placement="top"
@@ -1182,7 +1248,21 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 											/>
 										</N8nTooltip>
 									</div>
-									<N8nText size="small">{{ item.typeDisplayName }}</N8nText>
+									<N8nText size="small" color="text-light" :class="$style.optionMeta">
+										{{
+											item.isResolvable
+												? i18n.baseText(
+														'credentialEdit.credentialConfig.credentialType.endUser.title',
+													)
+												: item.typeDisplayName
+										}}
+									</N8nText>
+									<N8nIcon
+										v-if="getSelectedId(type) === item.id"
+										icon="check"
+										size="large"
+										:class="$style.checkIcon"
+									/>
 								</div>
 							</N8nOption>
 							<template #empty> </template>
@@ -1194,11 +1274,17 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 									:disabled="!canCreateCredentials"
 									@click="onClickCreateCredential(type)"
 								>
-									<N8nIcon size="xsmall" icon="plus" />
+									<N8nIcon size="large" icon="plus" :class="$style.optionIcon" />
 									{{ NEW_CREDENTIALS_TEXT }}
 								</button>
 							</template>
 						</N8nSelect>
+						<div
+							v-if="isAiGatewayManagedCredentials(type.name) && balancePill"
+							:class="$style.balanceIndicator"
+						>
+							<N8nActionPill size="small" :type="balancePill.type" :text="balancePill.text" />
+						</div>
 						<div v-if="isCredentialResolvable(type.name)" :class="$style.dynamicIndicator">
 							<N8nTooltip placement="top">
 								<template #content>{{ i18n.baseText('credentials.private.tooltip') }}</template>
@@ -1277,7 +1363,22 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 
 .selectPopper {
 	:global(.el-select-dropdown__list) {
-		padding: 0;
+		padding: var(--spacing--4xs) 0;
+	}
+
+	:global(.el-select-dropdown__item) {
+		display: flex;
+		align-items: center;
+		height: auto;
+		margin: 0 var(--spacing--4xs);
+		padding: var(--spacing--4xs) var(--spacing--2xs);
+		line-height: var(--line-height--md);
+		border-radius: var(--radius);
+	}
+
+	:global(.el-select-dropdown__item.selected) {
+		color: var(--color--text--shade-1);
+		font-weight: var(--font-weight--regular);
 	}
 
 	:has(.newCredential:hover) :global(.hover) {
@@ -1367,7 +1468,37 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 
 .credentialOption {
 	display: flex;
-	flex-direction: column;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	min-width: 0;
+	width: 100%;
+}
+
+.checkIcon {
+	flex-shrink: 0;
+	margin-left: auto;
+	color: var(--color--text--shade-1);
+}
+
+.optionIcon {
+	display: flex;
+	align-items: center;
+	flex-shrink: 0;
+	color: var(--color--text--tint-1);
+}
+
+.optionName {
+	font-size: var(--font-size--2xs);
+	font-weight: var(--font-weight--medium);
+	color: var(--color--text--shade-1);
+	white-space: nowrap;
+}
+
+.optionMeta {
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+	font-size: var(--font-size--2xs);
 }
 
 .credentialOptionName {
@@ -1386,6 +1517,22 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 	}
 }
 
+.selectWithBalance {
+	:global(.el-input__inner) {
+		padding-right: 120px;
+	}
+}
+
+// Non-interactive status pill rendered over the select, like .dynamicIndicator.
+.balanceIndicator {
+	position: absolute;
+	right: 28px;
+	top: 50%;
+	transform: translateY(-50%);
+	z-index: 1;
+	pointer-events: none;
+}
+
 .dynamicIndicator {
 	position: absolute;
 	right: 28px;
@@ -1401,22 +1548,22 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 .newCredential {
 	display: flex;
 	width: 100%;
-	gap: var(--spacing--3xs);
+	// Matches .credentialOption so the plus icon and label align with the rows.
+	gap: var(--spacing--2xs);
 	align-items: center;
-	font-weight: var(--font-weight--bold);
-	padding: var(--spacing--xs) var(--spacing--md);
-	background-color: var(--color--background--light-2);
+	font-weight: var(--font-weight--medium);
+	font-size: var(--font-size--2xs);
+	padding: var(--spacing--2xs) var(--spacing--xs);
+	background-color: transparent;
 	color: var(--color--text--shade-1);
 
 	border: 0;
 	border-top: var(--border);
-	box-shadow: var(--shadow--light);
-	clip-path: inset(-12px 0 0 0); // Only show box shadow on top
 
 	&:not([disabled]) {
 		cursor: pointer;
 		&:hover {
-			color: var(--color--primary);
+			background-color: var(--color--background--base);
 		}
 	}
 

@@ -1682,6 +1682,34 @@ describe('NodeCredentials', () => {
 				});
 			});
 
+			it('shows the balance pill on the n8n credits row and the managed trigger', async () => {
+				vi.mocked(useAiGateway).mockReturnValue({
+					isEnabled: computed(() => true),
+					isCredentialTypeSupported: vi.fn((credType: string) => credType === 'googlePalmApi'),
+					canServeCredentialType: vi.fn((credType: string) => credType === 'googlePalmApi'),
+					isNodeTypeVersionSupported: vi.fn(() => true),
+					isActionSupported: vi.fn(() => true),
+					isActionOptionVisible: vi.fn(() => true),
+					isNodePropertyHidden: vi.fn(() => false),
+					balance: computed(() => 2.75),
+					budget: computed(() => undefined),
+					fetchConfig: vi.fn().mockResolvedValue(undefined),
+					fetchWallet: vi.fn().mockResolvedValue(undefined),
+					saveAfterToggle: vi.fn().mockResolvedValue(undefined),
+					fetchError: computed(() => null),
+				});
+				const nodeWithGateway: INodeUi = {
+					...googleAiNode,
+					credentials: { googlePalmApi: { id: null, name: '', __aiGatewayManaged: true } },
+				};
+				ndvStore.activeNode = nodeWithGateway;
+
+				renderComponent({ props: { node: nodeWithGateway, overrideCredType: 'googlePalmApi' } });
+
+				// Trigger overlay + the dropdown row both carry the balance.
+				expect(screen.getAllByText('$2.75 remaining').length).toBeGreaterThanOrEqual(1);
+			});
+
 			it('shows a top-up gear instead of the pen while managed', () => {
 				const nodeWithGateway: INodeUi = {
 					...googleAiNode,
