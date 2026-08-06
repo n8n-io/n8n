@@ -64,8 +64,9 @@ interface WorkflowBuilderLike {
 
 const UNCHECKED_ALWAYS = [
 	'wrong-kind resource locator values',
-	// IF/Switch/SIB/Merge bounds are covered by connection-index-validator;
-	// other node types still need a full nodeTypesProvider.
+	// IF, Switch and Merge wiring gaps have dedicated provider-free checks
+	// (IF_MISSING_BRANCH, SWITCH_NO_OUTPUT_CONNECTIONS, MERGE input count);
+	// other node types still need a full nodeTypesProvider for index bounds.
 	'input/output index bounds for non-control-flow nodes',
 	'AI input type / required-input support',
 	'n8n credits aiGateway constraints (needs Instance AI metadata)',

@@ -48,6 +48,7 @@ export type ValidationErrorCode =
 	| 'INVALID_OUTPUT_FOR_MODE'
 	| 'SWITCH_NO_OUTPUT_CONNECTIONS'
 	| 'SWITCH_FALLBACK_OUTPUT_DISABLED'
+	| 'IF_MISSING_BRANCH'
 	| 'MAX_NODES_EXCEEDED'
 	| 'INVALID_EXPRESSION_PATH'
 	| 'PARTIAL_EXPRESSION_PATH'
@@ -645,6 +646,9 @@ export function validateWorkflow(
 	validateSwitchHasOutgoingConnections(json, warnings);
 	validateSwitchFallbackOutputConnections(json, warnings);
 
+	// IF branch wiring completeness
+	validateIfBranchConnections(json, warnings);
+
 	// Merge node input-count consistency
 	checkMergeNodeInputCount(json, warnings);
 
@@ -1218,6 +1222,50 @@ function validateSwitchHasOutgoingConnections(
 				'major',
 			),
 		);
+	}
+}
+
+/**
+ * An IF node routes every item to exactly one of its two outputs, so wiring
+ * gaps silently drop items: with no outgoing branch the node is a dead end,
+ * and with a single wired branch the other path's items vanish. The latter is
+ * sometimes intended (act only on matches), so it is informational only.
+ */
+function validateIfBranchConnections(json: WorkflowJSON, warnings: ValidationWarning[]): void {
+	for (const sourceNode of json.nodes) {
+		if (!sourceNode.name || sourceNode.type !== 'n8n-nodes-base.if') continue;
+
+		const mainOutputs = json.connections[sourceNode.name]?.main;
+		const trueWired = Array.isArray(mainOutputs) && hasOutputConnections(mainOutputs, 0);
+		const falseWired = Array.isArray(mainOutputs) && hasOutputConnections(mainOutputs, 1);
+
+		if (!trueWired && !falseWired) {
+			warnings.push(
+				new ValidationWarning(
+					'IF_MISSING_BRANCH',
+					`IF node '${sourceNode.name}' has no outgoing connections. Wire its branches on the workflow builder (\`.to(ifNode).onTrue(...).onFalse(...)\`), or remove the node. Branch calls placed after \`export default\` never reach the builder.`,
+					sourceNode.name,
+					'connections',
+					undefined,
+					'major',
+				),
+			);
+			continue;
+		}
+
+		if (trueWired !== falseWired) {
+			const unwired = trueWired ? 'false' : 'true';
+			warnings.push(
+				ValidationWarning.informational(
+					'IF_MISSING_BRANCH',
+					`IF node '${sourceNode.name}' has no connection on its ${unwired} output. Items routed there are dropped. Confirm this is intended, or wire the ${unwired} branch via \`.on${unwired === 'true' ? 'True' : 'False'}(...)\` on the workflow builder.`,
+					sourceNode.name,
+					'connections',
+					undefined,
+					'minor',
+				),
+			);
+		}
 	}
 }
 

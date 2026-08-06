@@ -3357,6 +3357,82 @@ describe('Validation', () => {
 		});
 	});
 
+	describe('IF_MISSING_BRANCH validation', () => {
+		function createIfWorkflow(wiredOutputs: number[]): WorkflowJSON {
+			const branches: Array<Array<{ node: string; type: string; index: number }>> = [[], []];
+			for (const outputIndex of wiredOutputs) {
+				branches[outputIndex] = [{ node: `Handle ${outputIndex}`, type: 'main', index: 0 }];
+			}
+			return {
+				id: 'test',
+				name: 'Test',
+				nodes: [
+					{
+						id: 'trigger-1',
+						name: 'Start',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+					{
+						id: 'if-1',
+						name: 'Is Important',
+						type: 'n8n-nodes-base.if',
+						typeVersion: 2.2,
+						position: [200, 0],
+						parameters: {},
+					},
+					...wiredOutputs.map((outputIndex) => ({
+						id: `action-${outputIndex}`,
+						name: `Handle ${outputIndex}`,
+						type: 'n8n-nodes-base.noOp',
+						typeVersion: 1,
+						position: [400, outputIndex * 100] as [number, number],
+						parameters: {},
+					})),
+				],
+				connections: {
+					Start: { main: [[{ node: 'Is Important', type: 'main', index: 0 }]] },
+					...(wiredOutputs.length > 0 ? { 'Is Important': { main: branches } } : {}),
+				},
+			};
+		}
+
+		function getIfWarnings(workflowJson: WorkflowJSON) {
+			return validateWorkflow(workflowJson).warnings.filter((w) => w.code === 'IF_MISSING_BRANCH');
+		}
+
+		it('warns (blocking) when an IF node has no outgoing connections', () => {
+			const warnings = getIfWarnings(createIfWorkflow([]));
+
+			expect(warnings).toHaveLength(1);
+			expect(warnings[0].nodeName).toBe('Is Important');
+			expect(warnings[0].severity).toBe('warning');
+			expect(warnings[0].message).toContain('no outgoing connections');
+		});
+
+		it('reports informational when only the true branch is wired', () => {
+			const warnings = getIfWarnings(createIfWorkflow([0]));
+
+			expect(warnings).toHaveLength(1);
+			expect(warnings[0].severity).toBe('informational');
+			expect(warnings[0].message).toContain('false output');
+		});
+
+		it('reports informational when only the false branch is wired', () => {
+			const warnings = getIfWarnings(createIfWorkflow([1]));
+
+			expect(warnings).toHaveLength(1);
+			expect(warnings[0].severity).toBe('informational');
+			expect(warnings[0].message).toContain('true output');
+		});
+
+		it('does not warn when both branches are wired', () => {
+			expect(getIfWarnings(createIfWorkflow([0, 1]))).toHaveLength(0);
+		});
+	});
+
 	describe('validatePlaceholderSlots (builderHint.placeholderSupported=false)', () => {
 		const mockNodeTypesProviderWithPlaceholderOptOut = {
 			getByNameAndVersion: (_type: string, _version?: number) => ({
