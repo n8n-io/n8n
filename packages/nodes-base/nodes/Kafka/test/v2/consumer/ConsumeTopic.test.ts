@@ -2,7 +2,7 @@ import type { INodeExecutionData, Logger } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { KafkaCredentials } from '../../../utils';
-import { consumeTopic, type PoisonMessagePolicy } from '../../../v2/consumer/ConsumeTopic';
+import { consumeTopic } from '../../../v2/consumer/ConsumeTopic';
 import type { EmitResult } from '../../../v2/consumer/DataEmitter';
 import { createKafkaConsumer } from '../../../v2/transport/consumer';
 import {
@@ -54,8 +54,6 @@ type StartOverrides = {
 	batchSize?: number;
 	partitionsConsumedConcurrently?: number;
 	errorRetryDelay?: number;
-	poisonMessagePolicy?: PoisonMessagePolicy;
-	poisonMessageAttempts?: number;
 };
 
 const start = async (overrides: StartOverrides = {}) => {
@@ -278,121 +276,6 @@ describe('consumeTopic', () => {
 			} finally {
 				vi.useRealTimers();
 			}
-		});
-	});
-
-	describe('poison messages', () => {
-		const failAlways = () => parseMessage.mockRejectedValue(new Error('cannot parse, ever'));
-
-		it('retries forever by default, never skipping and never pausing', async () => {
-			const { consumer } = await start();
-			failAlways();
-
-			for (let attempt = 0; attempt < 6; attempt++) {
-				await consumer.deliverBatch({ messages: messages('poison') });
-			}
-
-			expect(consumer.payloadSpies.resolveOffset).not.toHaveBeenCalled();
-			expect(consumer.payloadSpies.pause).not.toHaveBeenCalled();
-		});
-
-		it('pauses the partition on the first failure when told to', async () => {
-			const { consumer } = await start({ poisonMessagePolicy: 'pausePartition' });
-			failAlways();
-
-			await consumer.deliverBatch({ messages: messages('poison') });
-
-			expect(consumer.payloadSpies.pause).toHaveBeenCalledTimes(1);
-			expect(consumer.payloadSpies.resolveOffset).not.toHaveBeenCalled();
-		});
-
-		it('skips the chunk once the attempt limit is reached, and carries on', async () => {
-			const { consumer } = await start({
-				poisonMessagePolicy: 'skipAfterAttempts',
-				poisonMessageAttempts: 3,
-			});
-			failAlways();
-
-			// Attempts 1 and 2 leave it unresolved.
-			await consumer.deliverBatch({ messages: messages('poison') });
-			await consumer.deliverBatch({ messages: messages('poison') });
-			expect(consumer.payloadSpies.resolveOffset).not.toHaveBeenCalled();
-
-			// The third gives up on it and marks it read.
-			await consumer.deliverBatch({ messages: messages('poison') });
-			expect(consumer.payloadSpies.resolveOffset).toHaveBeenCalledWith('0');
-			expect(logger.warn).toHaveBeenCalledWith(
-				expect.stringContaining('Dropping 1 Kafka message(s)'),
-				expect.anything(),
-			);
-		});
-
-		it('delivers the readable messages of a chunk and drops only the bad one', async () => {
-			const { consumer } = await start({
-				batchSize: 3,
-				poisonMessagePolicy: 'skipAfterAttempts',
-				poisonMessageAttempts: 1,
-			});
-			// Fails whenever it sees 'poison', on the batch parse and the salvage pass.
-			parseMessage.mockImplementation(async (message, topic) => {
-				if (message.value?.toString() === 'poison') throw new Error('cannot parse, ever');
-				return await echoMessage(message, topic);
-			});
-
-			await consumer.deliverBatch({ topic: 'orders', messages: messages('a', 'poison', 'c') });
-
-			// 'a' and 'c' still reach a workflow; only 'poison' is lost.
-			expect(emit).toHaveBeenCalledTimes(1);
-			expect(emit).toHaveBeenCalledWith([
-				{ json: { message: 'a', topic: 'orders' } },
-				{ json: { message: 'c', topic: 'orders' } },
-			]);
-			expect(logger.warn).toHaveBeenCalledWith(
-				expect.stringContaining('Dropping 1 Kafka message(s)'),
-				expect.objectContaining({ delivered: 2 }),
-			);
-			expect(consumer.payloadSpies.resolveOffset).toHaveBeenCalledWith('2');
-		});
-
-		it('keeps processing the rest of the batch after skipping a poison chunk', async () => {
-			const { consumer } = await start({
-				poisonMessagePolicy: 'skipAfterAttempts',
-				poisonMessageAttempts: 1,
-			});
-			parseMessage.mockImplementation(async (message, topic) => {
-				if (message.value?.toString() === 'poison') throw new Error('cannot parse, ever');
-				return await echoMessage(message, topic);
-			});
-
-			await consumer.deliverBatch({ messages: messages('poison', 'good') });
-
-			// Poison dropped on its first attempt, then 'good' is handed over.
-			expect(emit).toHaveBeenCalledTimes(1);
-			expect(emit).toHaveBeenCalledWith([{ json: { message: 'good', topic: 'test-topic' } }]);
-			expect(consumer.payloadSpies.resolveOffset.mock.calls).toStrictEqual([['0'], ['1']]);
-		});
-
-		it('forgets the attempt count once a chunk gets through', async () => {
-			const { consumer } = await start({
-				poisonMessagePolicy: 'skipAfterAttempts',
-				poisonMessageAttempts: 2,
-			});
-
-			parseMessage.mockRejectedValueOnce(new Error('transient'));
-			await consumer.deliverBatch({ messages: messages('a') });
-			// Succeeds on the retry, so the earlier failure must not count towards a skip.
-			await consumer.deliverBatch({ messages: messages('a') });
-
-			parseMessage.mockRejectedValueOnce(new Error('transient again'));
-			await consumer.deliverBatch({ messages: messages('a') });
-
-			// Only the successful delivery advanced. Had the count survived it, this
-			// third failure would have been the second attempt and been dropped.
-			expect(consumer.payloadSpies.resolveOffset).toHaveBeenCalledTimes(1);
-			expect(logger.warn).not.toHaveBeenCalledWith(
-				expect.stringContaining('Dropping'),
-				expect.anything(),
-			);
 		});
 	});
 

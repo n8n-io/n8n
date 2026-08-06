@@ -1,6 +1,6 @@
 import type { KafkaJS } from '@confluentinc/kafka-javascript';
 import { sleep } from '@n8n/utils/sleep';
-import type { INodeExecutionData, Logger } from 'n8n-workflow';
+import type { Logger } from 'n8n-workflow';
 
 import type { DataEmitter } from './DataEmitter';
 import type { KafkaMessageParser } from './MessageParser';
@@ -26,22 +26,6 @@ export const DEFAULT_BATCH_SIZE = 1;
  */
 export const DEFAULT_PARTITIONS_CONSUMED_CONCURRENTLY = 1;
 
-/**
- * What to do with a chunk that can never be parsed. Left unhandled it stalls its
- * partition forever, which is what v1 does today.
- *
- * - `retryForever` keeps re-reading it. Never loses a message, but the partition
- *   stops progressing until someone intervenes. This is v1's behaviour.
- * - `pausePartition` stops consuming that partition. Other partitions keep going,
- *   and only a restart resumes it.
- * - `skipAfterAttempts` gives up after {@link DEFAULT_POISON_MESSAGE_ATTEMPTS}
- *   tries: it delivers whatever in the chunk does parse, drops only the rest, and
- *   moves on. Deliberately loses those messages, loudly.
- */
-export type PoisonMessagePolicy = 'retryForever' | 'pausePartition' | 'skipAfterAttempts';
-
-export const DEFAULT_POISON_MESSAGE_ATTEMPTS = 5;
-
 export interface ConsumeTopicOptions {
 	topic: string;
 	parseMessage: KafkaMessageParser;
@@ -58,10 +42,6 @@ export interface ConsumeTopicOptions {
 	 * only to failed offset resolution, so the parse path was unpaced.
 	 */
 	errorRetryDelay?: number;
-	/** Defaults to `retryForever`, which is what v1 does. */
-	poisonMessagePolicy?: PoisonMessagePolicy;
-	/** Only used by `skipAfterAttempts`. Defaults to {@link DEFAULT_POISON_MESSAGE_ATTEMPTS}. */
-	poisonMessageAttempts?: number;
 }
 
 export interface KafkaConsumerHandle {
@@ -87,18 +67,6 @@ export async function consumeTopic(
 	// advance and would re-emit the same chunk forever.
 	const batchSize = Math.max(DEFAULT_BATCH_SIZE, Math.trunc(options.batchSize ?? 0));
 	const errorRetryDelay = options.errorRetryDelay ?? DEFAULT_ERROR_RETRY_DELAY_MS;
-	const poisonPolicy = options.poisonMessagePolicy ?? 'retryForever';
-	const poisonAttempts = Math.max(
-		1,
-		Math.trunc(options.poisonMessageAttempts ?? DEFAULT_POISON_MESSAGE_ATTEMPTS),
-	);
-	/**
-	 * Consecutive parse failures per stuck chunk, keyed by where it would resume
-	 * from. Cleared once a chunk gets through or is skipped, so it only ever holds
-	 * one entry per stuck partition. In memory only: a rebalance or a restart
-	 * resets the count, which makes "after N attempts" best effort.
-	 */
-	const failedAttempts = new Map<string, number>();
 
 	const closeController = new AbortController();
 	const { signal } = closeController;
@@ -127,14 +95,7 @@ export async function consumeTopic(
 			// would mark a whole batch done the moment the callback returns, including
 			// messages no execution ever saw.
 			eachBatchAutoResolve: false,
-			eachBatch: async ({
-				batch,
-				resolveOffset,
-				commitOffsetsIfNecessary,
-				isRunning,
-				isStale,
-				pause,
-			}) => {
+			eachBatch: async ({ batch, resolveOffset, commitOffsetsIfNecessary, isRunning, isStale }) => {
 				const { messages } = batch;
 
 				for (let i = 0; i < messages.length; i += batchSize) {
@@ -147,14 +108,6 @@ export async function consumeTopic(
 					}
 
 					const chunk = messages.slice(i, Math.min(i + batchSize, messages.length));
-					const lastMessage = chunk[chunk.length - 1];
-					const chunkKey = `${batch.topic}/${batch.partition}/${chunk[0]?.offset}`;
-
-					const advance = async () => {
-						if (!lastMessage) return;
-						resolveOffset(lastMessage.offset);
-						await commitOffsetsIfNecessary();
-					};
 
 					let items;
 					try {
@@ -162,71 +115,7 @@ export async function consumeTopic(
 							chunk.map(async (message) => await parseMessage(message, batch.topic)),
 						);
 					} catch (error) {
-						const attempts = (failedAttempts.get(chunkKey) ?? 0) + 1;
-						failedAttempts.set(chunkKey, attempts);
-						logger.error('Kafka chunk could not be parsed, leaving it unresolved', {
-							error,
-							attempts,
-							topic: batch.topic,
-							partition: batch.partition,
-						});
-
-						if (poisonPolicy === 'skipAfterAttempts' && attempts >= poisonAttempts) {
-							// One bad message must not take the rest of its chunk with it, so
-							// re-parse one at a time and drop only what genuinely cannot be read.
-							const salvaged: INodeExecutionData[] = [];
-							let dropped = 0;
-							for (const message of chunk) {
-								try {
-									salvaged.push(await parseMessage(message, batch.topic));
-								} catch (dropError) {
-									dropped += 1;
-									// Per message, not just a count: this is the last trace of a
-									// message that is about to be lost, and two in the same chunk
-									// can fail for different reasons.
-									logger.error('Dropping a Kafka message that could not be parsed', {
-										error: dropError,
-										topic: batch.topic,
-										partition: batch.partition,
-										offset: message.offset,
-									});
-								}
-							}
-
-							if (salvaged.length) {
-								const salvagedResult = await emit(salvaged);
-								if (!salvagedResult.success) {
-									// Keep the attempt count, so this converges on another skip
-									// rather than losing the readable messages too.
-									logger.warn('Kafka chunk was not processed, leaving it unresolved');
-									break;
-								}
-							}
-
-							failedAttempts.delete(chunkKey);
-							logger.warn(
-								`Dropping ${dropped} Kafka message(s) that could not be parsed after ${attempts} attempts`,
-								{
-									topic: batch.topic,
-									partition: batch.partition,
-									offset: chunk[0]?.offset,
-									delivered: salvaged.length,
-								},
-							);
-							await advance();
-							continue;
-						}
-
-						if (poisonPolicy === 'pausePartition') {
-							logger.warn('Pausing the Kafka partition after a message that could not be parsed', {
-								topic: batch.topic,
-								partition: batch.partition,
-								offset: chunk[0]?.offset,
-							});
-							pause();
-							break;
-						}
-
+						logger.error('Kafka chunk could not be parsed, leaving it unresolved', { error });
 						await pauseBeforeRetry();
 						break;
 					}
@@ -237,8 +126,11 @@ export async function consumeTopic(
 						break;
 					}
 
-					failedAttempts.delete(chunkKey);
-					await advance();
+					const lastMessage = chunk[chunk.length - 1];
+					if (lastMessage) {
+						resolveOffset(lastMessage.offset);
+						await commitOffsetsIfNecessary();
+					}
 				}
 			},
 		});
