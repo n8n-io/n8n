@@ -9,6 +9,7 @@ import { z } from 'zod';
 
 import { planVerificationSimulation } from './plan-verification-simulation';
 import { preserveExistingNodePositions } from './preserve-node-positions';
+import { computeTriggerEndpoints, TRIGGER_ENDPOINTS_NOTE } from './trigger-endpoints';
 import {
 	buildCredentialMap,
 	buildCredentialResolutionNote,
@@ -143,6 +144,13 @@ export const buildWorkflowInputSchema = z
 const triggerNodeOutputSchema = z.object({
 	nodeName: z.string(),
 	nodeType: z.string(),
+});
+
+const triggerEndpointOutputSchema = z.object({
+	nodeName: z.string(),
+	kind: z.enum(['webhook', 'form', 'chat']),
+	url: z.string().optional(),
+	guidance: z.string().optional(),
 });
 
 const verificationReadinessOutputSchema = z.discriminatedUnion('status', [
@@ -300,6 +308,8 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				workflowName: z.string().optional(),
 				workItemId: z.string().optional(),
 				triggerNodes: z.array(triggerNodeOutputSchema).optional(),
+				triggerEndpoints: z.array(triggerEndpointOutputSchema).optional(),
+				triggerEndpointsNote: z.string().optional(),
 				verificationReadiness: verificationReadinessOutputSchema.optional(),
 				setupRequirement: setupRequirementOutputSchema.optional(),
 				postBuildFlow: postBuildFlowOutputSchema.optional(),
@@ -786,6 +796,10 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					});
 					const runId = buildContext?.runId ?? context.runId;
 					const workflowName = json.name || 'workflow';
+					const triggerEndpoints = computeTriggerEndpoints(json, {
+						webhookBaseUrl: context.webhookBaseUrl,
+						formBaseUrl: context.formBaseUrl,
+					});
 					const summary = `${operation === 'update' ? 'Updated' : 'Created'} ${isSupportingWorkflow ? 'supporting ' : ''}workflow "${workflowName}" (${saved.id}).`;
 					binding = await saveWorkflowSourceFileBinding(context, {
 						...binding,
@@ -885,6 +899,9 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						workItemId: resolvedWorkItemId,
 						isSupportingWorkflow: isSupportingWorkflow || undefined,
 						triggerNodes,
+						...(triggerEndpoints.length > 0
+							? { triggerEndpoints, triggerEndpointsNote: TRIGGER_ENDPOINTS_NOTE }
+							: {}),
 						verificationReadiness: outcome.verificationReadiness,
 						setupRequirement: outcome.setupRequirement,
 						...(postBuildFlow ? { postBuildFlow } : {}),
