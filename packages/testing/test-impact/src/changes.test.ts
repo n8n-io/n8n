@@ -8,6 +8,8 @@ import {
 	tsconfigForcesBroad,
 	classifyManifestChange,
 	dropDevDepOnlyDeps,
+	overrideTargetName,
+	changedOverrideTargets,
 } from './changes.js';
 
 describe('isNonImpactful', () => {
@@ -226,5 +228,125 @@ describe('dropDevDepOnlyDeps (safety-critical)', () => {
 		expect(
 			dropDevDepOnlyDeps(files, { 'a/package.json': devOnly, 'b/package.json': runtime }),
 		).toEqual(files);
+	});
+});
+
+const ovr = (overrides: Record<string, string>, deps = {}, devDeps = {}) =>
+	JSON.stringify({ name: 'x', dependencies: deps, devDependencies: devDeps, pnpm: { overrides } });
+
+describe('overrideTargetName', () => {
+	it.each([
+		['@vitest/browser@<4.1.10', '@vitest/browser'],
+		['brace-expansion@5', 'brace-expansion'],
+		['node-gyp>undici', 'undici'],
+		['@babel/traverse', '@babel/traverse'],
+		['undici@7', 'undici'],
+		['a>b>@scope/c@^1.0.0', '@scope/c'],
+		['@n8n/typeorm>@sentry/node', '@sentry/node'],
+		// `>` inside a version range is not a parent separator
+		['pkg@>=2.0.0', 'pkg'],
+		['pkg@>2', 'pkg'],
+		['pkg@1||>2', 'pkg'],
+		['pkg@^1||>=2.0.0', 'pkg'],
+		['pkg@>=1||>=2', 'pkg'],
+		['a@1>b@>=2', 'b'],
+		['a@=1.2.3>b', 'b'],
+		['pkg@1=>2', 'pkg'],
+	])('%s → %s', (selector, expected) => {
+		expect(overrideTargetName(selector)).toBe(expected);
+	});
+
+	it('returns null when no package name can be extracted', () => {
+		expect(overrideTargetName('>=2.0.0')).toBeNull();
+	});
+});
+
+describe('changedOverrideTargets', () => {
+	it('returns the target when a pin is added', () => {
+		expect(changedOverrideTargets(ovr({}), ovr({ 'ws@<8.21.1': '8.21.1' }))).toEqual(['ws']);
+	});
+	it('returns the target when a pin is removed', () => {
+		expect(changedOverrideTargets(ovr({ 'ws@<8.21.1': '8.21.1' }), ovr({}))).toEqual(['ws']);
+	});
+	it('returns the target when a pin version changes', () => {
+		expect(
+			changedOverrideTargets(
+				ovr({ 'brace-expansion@5': '5.0.7' }),
+				ovr({ 'brace-expansion@5': '5.0.9' }),
+			),
+		).toEqual(['brace-expansion']);
+	});
+	it('de-duplicates selectors pinning the same package', () => {
+		expect(
+			changedOverrideTargets(ovr({}), ovr({ 'undici@7': '7.29.0', 'node-gyp>undici': '7.29.0' })),
+		).toEqual(['undici']);
+	});
+	it('ignores untouched pins', () => {
+		const same = ovr({ 'ws@<8.21.1': '8.21.1' });
+		expect(changedOverrideTargets(same, same)).toEqual([]);
+	});
+});
+
+describe('classifyManifestChange — overrides', () => {
+	it('override when only a pnpm.overrides pin moves', () => {
+		expect(classifyManifestChange(ovr({}), ovr({ 'ws@1': '1.0.1' }))).toBe('override');
+	});
+	it('runtime wins over a co-occurring override change', () => {
+		expect(
+			classifyManifestChange(ovr({}, { axios: '1' }), ovr({ 'ws@1': '1.0.1' }, { axios: '2' })),
+		).toBe('runtime');
+	});
+	it('override wins over a co-occurring devDependencies change', () => {
+		expect(
+			classifyManifestChange(
+				ovr({}, {}, { vitest: '1' }),
+				ovr({ 'ws@1': '1.0.1' }, {}, { vitest: '2' }),
+			),
+		).toBe('override');
+	});
+});
+
+describe('dropDevDepOnlyDeps — overrides (safety-critical)', () => {
+	const files = ['pnpm-lock.yaml', 'package.json'];
+	const overrideDiff = (target: string) => ({
+		'package.json': { before: ovr({}), after: ovr({ [`${target}@<2`]: '2.0.0' }) },
+	});
+	const closure = new Set(['ajv', 'fast-uri']);
+
+	it('drops when every override target is outside the runtime closure', () => {
+		expect(dropDevDepOnlyDeps(files, overrideDiff('@vitest/browser'), closure)).toEqual([]);
+	});
+	it('KEEPS when the override target is inside the runtime closure', () => {
+		expect(dropDevDepOnlyDeps(files, overrideDiff('fast-uri'), closure)).toEqual(files);
+	});
+	it('KEEPS when no closure is supplied', () => {
+		expect(dropDevDepOnlyDeps(files, overrideDiff('@vitest/browser'), undefined)).toEqual(files);
+	});
+	it('KEEPS when the closure is empty (broken walk, not proof)', () => {
+		expect(dropDevDepOnlyDeps(files, overrideDiff('@vitest/browser'), new Set())).toEqual(files);
+	});
+	it('KEEPS when any one of several targets is inside the closure', () => {
+		const manifests = {
+			'package.json': {
+				before: ovr({}),
+				after: ovr({ '@vitest/browser@<2': '2.0.0', 'fast-uri@<4': '4.0.0' }),
+			},
+		};
+		expect(dropDevDepOnlyDeps(files, manifests, closure)).toEqual(files);
+	});
+	it('KEEPS a runtime-section change even when its override target is outside the closure', () => {
+		const manifests = {
+			'package.json': {
+				before: ovr({}, { axios: '1' }),
+				after: ovr({ '@vitest/browser@<2': '2.0.0' }, { axios: '2' }),
+			},
+		};
+		expect(dropDevDepOnlyDeps(files, manifests, closure)).toEqual(files);
+	});
+	it('KEEPS when a changed selector cannot be attributed to a package', () => {
+		const manifests = {
+			'package.json': { before: ovr({}), after: ovr({ '>=2.0.0': '2.0.0' }) },
+		};
+		expect(dropDevDepOnlyDeps(files, manifests, closure)).toEqual(files);
 	});
 });

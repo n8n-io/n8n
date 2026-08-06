@@ -8,7 +8,7 @@
  * `resolve` event that the consumer translates into its own confirm/resolve
  * transport call.
  */
-import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nLoading, N8nText } from '@n8n/design-system';
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import { useI18n } from '@n8n/i18n';
 import type { ChatIntegrationDescriptor } from '@n8n/api-types';
@@ -20,6 +20,7 @@ import { getAgent } from '@/features/agents/composables/useAgentApi';
 import { useAgentChannelSetup } from '@/features/agents/composables/useAgentChannelSetup';
 import { useAgentIntegrationStatus } from '@/features/agents/composables/useAgentIntegrationStatus';
 import { useAgentIntegrationsCatalog } from '@/features/agents/composables/useAgentIntegrationsCatalog';
+import AgentChannelDiscordSetup from '@/features/agents/components/AgentChannelDiscordSetup.vue';
 import AgentChannelLinearSetup from '@/features/agents/components/AgentChannelLinearSetup.vue';
 import AgentChannelSlackSetup from '@/features/agents/components/AgentChannelSlackSetup.vue';
 import AgentChannelTelegramSetup from '@/features/agents/components/AgentChannelTelegramSetup.vue';
@@ -45,7 +46,7 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const rootStore = useRootStore();
-const { catalog, ensureLoaded } = useAgentIntegrationsCatalog();
+const { catalog, ensureLoaded, reload: reloadCatalog } = useAgentIntegrationsCatalog();
 const {
 	fetchStatus,
 	connectedCredentials,
@@ -61,6 +62,8 @@ const {
 const submitted = ref(false);
 const connectionInFlight = ref(false);
 const agent = ref<AgentResource | null>(null);
+const catalogLoading = ref(false);
+const catalogLoadFailed = ref(false);
 
 const currentIntegration = computed<ChatIntegrationDescriptor | null>(() => {
 	return catalog.value?.find((integration) => integration.type === props.integrationType) ?? null;
@@ -105,15 +108,6 @@ const currentCredentials = computed(() => getCredentials(props.integrationType))
 const isConfigured = computed(() => isIntegrationConfigured(props.integrationType));
 const isLoading = computed(() => loadingMap.value[props.integrationType] ?? false);
 const errorMessage = computed(() => errorMessages.value[props.integrationType] ?? '');
-
-const hasUnsupportedIntegration = computed(() => {
-	if (props.integrationType === 'slack') return false;
-	if (!['telegram', 'linear'].includes(props.integrationType)) return true;
-	// Known type, but its catalog descriptor didn't load (e.g. catalog fetch
-	// failed) — the Linear/Telegram branches below need `currentIntegration`,
-	// so fall back here instead of rendering a blank body.
-	return !currentIntegration.value;
-});
 
 const cardTitle = computed(() =>
 	i18n.baseText('agents.channels.modal.connectTitle', {
@@ -180,16 +174,44 @@ async function setupSlackApp(appConfigurationToken: string): Promise<boolean> {
 	}
 }
 
-async function loadChannelState() {
-	const integrations = await ensureLoaded(props.projectId).catch(() => catalog.value ?? []);
-	await loadSharedChannelState(integrations);
+async function loadChannelState(forceReload = false) {
+	catalogLoading.value = true;
+	catalogLoadFailed.value = false;
+	try {
+		let integrations = await (forceReload
+			? reloadCatalog(props.projectId)
+			: ensureLoaded(props.projectId));
+		const requiresDescriptor = props.integrationType !== 'slack';
 
-	if (props.integrationType !== 'slack') {
-		try {
-			agent.value = await getAgent(rootStore.restApiContext, props.projectId, props.agentId);
-		} catch {
-			agent.value = null;
+		if (
+			requiresDescriptor &&
+			!forceReload &&
+			!integrations.some((integration) => integration.type === props.integrationType)
+		) {
+			integrations = await reloadCatalog(props.projectId);
 		}
+
+		if (
+			requiresDescriptor &&
+			!integrations.some((integration) => integration.type === props.integrationType)
+		) {
+			catalogLoadFailed.value = true;
+			return;
+		}
+
+		await loadSharedChannelState(integrations);
+
+		if (requiresDescriptor) {
+			try {
+				agent.value = await getAgent(rootStore.restApiContext, props.projectId, props.agentId);
+			} catch {
+				agent.value = null;
+			}
+		}
+	} catch {
+		catalogLoadFailed.value = true;
+	} finally {
+		catalogLoading.value = false;
 	}
 }
 
@@ -214,8 +236,33 @@ watch(
 		</header>
 
 		<div :class="$style.bodyWrapper">
+			<N8nLoading
+				v-if="catalogLoading"
+				:loading="true"
+				:rows="3"
+				data-testid="channel-setup-catalog-loading"
+			/>
+
+			<div
+				v-else-if="catalogLoadFailed"
+				:class="$style.catalogError"
+				data-testid="channel-setup-catalog-error"
+			>
+				<N8nText size="small" color="text-light">
+					{{ i18n.baseText('agents.channels.modal.setupLoadError') }}
+				</N8nText>
+				<N8nButton
+					variant="ghost"
+					size="small"
+					data-testid="channel-setup-catalog-retry"
+					@click="loadChannelState(true)"
+				>
+					{{ i18n.baseText('generic.retry') }}
+				</N8nButton>
+			</div>
+
 			<AgentChannelSlackSetup
-				v-if="integrationType === 'slack'"
+				v-else-if="integrationType === 'slack'"
 				ref="channelSetupRef"
 				v-model="selectedCredentials.slack"
 				:connected="isConfigured"
@@ -284,13 +331,27 @@ watch(
 				@connect="saveChannelConfig"
 			/>
 
-			<N8nText v-else-if="hasUnsupportedIntegration" size="small" color="text-light">
-				{{
-					i18n.baseText('agents.channels.modal.setupPlaceholder', {
-						interpolate: { channel: integrationLabel },
-					})
-				}}
-			</N8nText>
+			<AgentChannelDiscordSetup
+				v-else-if="currentIntegration?.type === 'discord'"
+				ref="channelSetupRef"
+				v-model="selectedCredentials[currentIntegration.type]"
+				mode="setup"
+				:integration="currentIntegration"
+				:credentials="currentCredentials"
+				:credential-permissions="credentialPermissions"
+				:credentials-loading="credentialsLoading"
+				:loading="isLoading"
+				:connected="isConfigured"
+				:error-message="errorMessage"
+				:error-is-conflict="errorIsConflict[currentIntegration.type]"
+				:is-published="Boolean(agent?.activeVersionId)"
+				:project-id="projectId"
+				:agent-id="agentId"
+				:force-new-credential="true"
+				@create="createCredential"
+				@edit="editCredential"
+				@connect="saveChannelConfig"
+			/>
 		</div>
 
 		<footer :class="$style.footer">
@@ -334,6 +395,13 @@ watch(
 
 .bodyWrapper {
 	padding: 0 var(--spacing--sm);
+}
+
+.catalogError {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--sm);
 }
 
 .footer {
