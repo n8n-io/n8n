@@ -30,13 +30,12 @@ export interface N8nChatInputProps {
 	refocusAfterSend?: boolean;
 	autofocus?: boolean;
 	buttonLabel?: string;
-	layout?: 'multiline' | 'single-line';
 	/**
-	 * Floor for the multiline layout, so a chat prompt still reads as a writing surface when
-	 * empty. Pass `'auto'` for a composer that should start one row tall and grow, Slack-style.
-	 * Ignored by `single-line`, which is a fixed height.
+	 * `multiline` stacks the actions under an 80px-floored textarea, `single-line` puts them
+	 * inline next to a fixed-height one, and `compact` puts them inline next to a textarea that
+	 * starts one row tall and grows, Slack-style.
 	 */
-	minHeight?: string;
+	layout?: 'multiline' | 'single-line' | 'compact';
 	autosize?: boolean | { minRows: number; maxRows: number };
 	submitDisabled?: boolean;
 	sendButtonTestId?: string;
@@ -60,7 +59,6 @@ const props = withDefaults(defineProps<N8nChatInputProps>(), {
 	autofocus: false,
 	buttonLabel: undefined,
 	layout: 'multiline',
-	minHeight: '80px',
 	autosize: true,
 	submitDisabled: undefined,
 	sendButtonTestId: 'send-message-button',
@@ -112,7 +110,7 @@ const sendDisabled = computed(
 );
 
 const containerStyle = computed(() => {
-	return props.layout === 'single-line' ? undefined : { minHeight: props.minHeight };
+	return props.layout === 'multiline' ? { minHeight: '80px' } : undefined;
 });
 
 const hasNoCredits = computed(() => {
@@ -280,7 +278,7 @@ defineExpose({
 					{
 						[$style.focused]: isFocused,
 						[$style.disabled]: disabled || hasNoCredits,
-						[$style.singleLineContainer]: layout === 'single-line',
+						[$style.rowContainer]: layout === 'single-line' || layout === 'compact',
 					},
 				]"
 				:style="containerStyle"
@@ -388,7 +386,7 @@ defineExpose({
 	}
 }
 
-.singleLineContainer {
+.rowContainer {
 	flex-direction: row;
 	align-items: center;
 }

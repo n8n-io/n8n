@@ -45,12 +45,10 @@ async function onSubmit() {
 		<span :class="$style.srOnly">
 			{{ i18n.baseText('workflowReviews.detail.activity.composer.label') }}
 		</span>
-		<!-- `min-height="auto"`: starts one row tall and grows, Slack-style. The component's
-			80px default suits a chat prompt, not a comment box sitting under a feed. -->
 		<N8nChatInput
 			v-model="draft"
+			layout="compact"
 			:max-length="WORKFLOW_REVIEW_COMMENT_MAX_LENGTH"
-			min-height="auto"
 			:placeholder="i18n.baseText('workflowReviews.detail.activity.composer.placeholder')"
 			refocus-after-send
 			:disabled="!canComment"
