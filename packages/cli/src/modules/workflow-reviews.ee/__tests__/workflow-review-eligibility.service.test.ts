@@ -45,7 +45,7 @@ describe('WorkflowReviewEligibilityService', () => {
 				workflowId,
 			);
 
-			expect(eligibility).toEqual({ canDecide: true, reason: null });
+			expect(eligibility).toEqual({ canDecide: true, decisionIneligibilityReason: null });
 			expect(workflowFinderService.findWorkflowForUser).toHaveBeenCalledWith(
 				workflowId,
 				expect.anything(),
@@ -62,7 +62,7 @@ describe('WorkflowReviewEligibilityService', () => {
 				workflowId,
 			);
 
-			expect(eligibility).toEqual({ canDecide: false, reason: 'author' });
+			expect(eligibility).toEqual({ canDecide: false, decisionIneligibilityReason: 'author' });
 		});
 
 		it.each([['global:admin'], ['global:owner']])(
@@ -73,7 +73,7 @@ describe('WorkflowReviewEligibilityService', () => {
 
 				const eligibility = await service.resolveViewerEligibility(admin, request(), workflowId);
 
-				expect(eligibility).toEqual({ canDecide: true, reason: null });
+				expect(eligibility).toEqual({ canDecide: true, decisionIneligibilityReason: null });
 				expect(projectRelationRepository.getAccessibleProjectsByRoles).not.toHaveBeenCalled();
 			},
 		);
@@ -88,7 +88,7 @@ describe('WorkflowReviewEligibilityService', () => {
 				workflowId,
 			);
 
-			expect(eligibility).toEqual({ canDecide: true, reason: null });
+			expect(eligibility).toEqual({ canDecide: true, decisionIneligibilityReason: null });
 		});
 
 		it('reports an author who is only a project admin elsewhere as ineligible', async () => {
@@ -101,7 +101,7 @@ describe('WorkflowReviewEligibilityService', () => {
 				workflowId,
 			);
 
-			expect(eligibility).toEqual({ canDecide: false, reason: 'author' });
+			expect(eligibility).toEqual({ canDecide: false, decisionIneligibilityReason: 'author' });
 		});
 
 		it('skips the roles query entirely for a non-author', async () => {
@@ -122,7 +122,7 @@ describe('WorkflowReviewEligibilityService', () => {
 				workflowId,
 			);
 
-			expect(eligibility).toEqual({ canDecide: false, reason: 'missing_publish_permission' });
+			expect(eligibility).toEqual({ canDecide: false, decisionIneligibilityReason: 'missing_publish_permission' });
 			expect(authorRepository.isAuthor).not.toHaveBeenCalled();
 		});
 
@@ -138,13 +138,13 @@ describe('WorkflowReviewEligibilityService', () => {
 				workflowId,
 			);
 
-			expect(eligibility).toEqual({ canDecide: true, reason: null });
+			expect(eligibility).toEqual({ canDecide: true, decisionIneligibilityReason: null });
 		});
 
 		it('reports a review with no linked workflow as ineligible without any lookup', async () => {
 			const eligibility = await service.resolveViewerEligibility(memberUser(), request(), null);
 
-			expect(eligibility).toEqual({ canDecide: false, reason: 'missing_publish_permission' });
+			expect(eligibility).toEqual({ canDecide: false, decisionIneligibilityReason: 'missing_publish_permission' });
 			expect(workflowFinderService.findWorkflowForUser).not.toHaveBeenCalled();
 		});
 	});

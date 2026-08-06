@@ -16,7 +16,7 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 export interface WorkflowReviewViewerEligibility {
 	canDecide: boolean;
-	reason: WorkflowReviewDecisionIneligibilityReason | null;
+	decisionIneligibilityReason: WorkflowReviewDecisionIneligibilityReason | null;
 }
 
 /**
