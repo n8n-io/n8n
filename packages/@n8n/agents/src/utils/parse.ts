@@ -62,61 +62,58 @@ async function getAjv(
 	return await instance;
 }
 
-/** Ajv bundles to try, in order: starts at 2020-12, MCP's default for JSON schemas */
+/** Only the declared dialect is tried: falling back to another one would turn a clear
+ *  compile error into silently weaker validation. Undeclared schemas start at 2020-12,
+ *  MCP's default dialect. */
 function candidateDialects(schema: JSONSchema7): Dialect[] {
 	const declaredMarker = schema.$schema;
 	const declared = declaredMarker
 		? DIALECT_MARKERS.find(([marker]) => marker.test(declaredMarker))?.[1]
 		: undefined;
-	const rest = (['2020-12', '2019-09', 'draft-07'] as const).filter((d) => d !== declared);
-	return declared ? [declared, ...rest] : rest;
+	return declared ? [declared] : ['2020-12', '2019-09', 'draft-07'];
 }
 
-type CompileResult =
-	| { success: true; ajv: InstanceType<typeof AjvType>; validate: ValidateFunction }
-	| { success: false; error: string };
-
-/** Compilation only depends on the dialect and the regex flavour, so a resolved
- *  attempt is reusable no matter how the caller wants unknown keys handled. */
-interface CompileAttempt {
-	dialect: Dialect;
-	unicodeRegExp: boolean;
+interface CompiledSchema {
+	ajv: InstanceType<typeof AjvType>;
+	validate: ValidateFunction;
 }
 
-const resolvedAttempts = new WeakMap<JSONSchema7, CompileAttempt>();
+type CompileResult = ({ success: true } & CompiledSchema) | { success: false; error: string };
+
+// Keyed by schema object, so a compiled validator lives exactly as long as its schema.
+const compiledStripping = new WeakMap<JSONSchema7, CompiledSchema>();
+const compiledPreserving = new WeakMap<JSONSchema7, CompiledSchema>();
 
 async function compileJsonSchema(
 	schema: JSONSchema7,
 	stripUnknown: boolean,
 ): Promise<CompileResult> {
-	const ordered: CompileAttempt[] = candidateDialects(schema).flatMap((dialect) => [
-		{ dialect, unicodeRegExp: true },
-		{ dialect, unicodeRegExp: false },
-	]);
-	const resolved = resolvedAttempts.get(schema);
-	const attempts = resolved
-		? [resolved, ...ordered.filter((a) => !isSameAttempt(a, resolved))]
-		: ordered;
+	const cache = stripUnknown ? compiledStripping : compiledPreserving;
+	const cached = cache.get(schema);
+	if (cached) return { success: true, ...cached };
 
 	let firstError: unknown;
-	for (const attempt of attempts) {
-		const ajv = await getAjv(attempt.dialect, attempt.unicodeRegExp, stripUnknown);
-		try {
-			const validate = ajv.compile(schema);
-			resolvedAttempts.set(schema, attempt);
-			return { success: true, ajv, validate };
-		} catch (error) {
-			firstError ??= error;
+	for (const dialect of candidateDialects(schema)) {
+		for (const unicodeRegExp of [true, false]) {
+			let ajv: InstanceType<typeof AjvType> | undefined;
+			try {
+				ajv = await getAjv(dialect, unicodeRegExp, stripUnknown);
+				const validate = ajv.compile(schema);
+				cache.set(schema, { ajv, validate });
+				return { success: true, ajv, validate };
+			} catch (error) {
+				firstError ??= error;
+			} finally {
+				// Ajv keeps every schema it is handed in a strong Map, so an instance that
+				// outlives the schemas compiled on it would retain all of them forever.
+				ajv?.removeSchema(schema);
+			}
 		}
 	}
 	return {
 		success: false,
 		error: firstError instanceof Error ? firstError.message : String(firstError),
 	};
-}
-
-function isSameAttempt(a: CompileAttempt, b: CompileAttempt): boolean {
-	return a.dialect === b.dialect && a.unicodeRegExp === b.unicodeRegExp;
 }
 
 /**

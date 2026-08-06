@@ -1,4 +1,5 @@
 import { toJsonValue } from '@n8n/utils/json/to-json-value';
+import type { JSONSchema7 } from 'json-schema';
 import type { JsonSchema7Type } from 'zod-to-json-schema';
 
 import {
@@ -22,7 +23,7 @@ import type { AgentPersistenceOptions, ToolResultEntry } from '../../types/sdk/a
 import type { AgentMessage, ContentToolCall, Message } from '../../types/sdk/message';
 import type { JSONObject, JSONValue } from '../../types/utils/json';
 import { parseWithSchema } from '../../utils/parse';
-import { toJsonSchemaOrNull } from '../../utils/zod';
+import { toModelJsonSchema } from '../../utils/zod';
 import { incrementToolCallCount } from '../loop/execution-counter';
 import type { AgentMessageList } from '../model/message-list';
 import { normalizeToolInputForModel } from '../model/messages';
@@ -158,40 +159,6 @@ function shouldEmitToolExecutionStart(tool: BuiltTool, resumeData: unknown): boo
 	if (!tool.approval.required && tool.approval.conditional !== true) return true;
 	if (resumeData === undefined) return false;
 	return !isDeniedApprovalResumeData(resumeData);
-}
-
-function getDeclaredResumeSchema(
-	tool: BuiltTool,
-	resumeSchemaOverride?: ToolSuspendOptions['resumeSchema'],
-): ToolSuspendOptions['resumeSchema'] {
-	return resumeSchemaOverride ?? tool.resumeSchema;
-}
-
-function describeCause(error: unknown): string {
-	if (error === undefined) return 'no schema was produced';
-	if (error instanceof Error) return error.message;
-	return typeof error === 'string' ? error : 'unknown error';
-}
-
-function serializeToolResumeSchema(
-	tool: BuiltTool,
-	resumeSchemaOverride?: ToolSuspendOptions['resumeSchema'],
-): { declared: boolean; schema?: JsonSchema7Type; error?: unknown } {
-	const resolvedSchema = getDeclaredResumeSchema(tool, resumeSchemaOverride);
-	if (!resolvedSchema) return { declared: false };
-	let error: unknown;
-	const schema =
-		toJsonSchemaOrNull(resolvedSchema, 'model', (cause) => {
-			error = cause;
-		}) ?? undefined;
-	return { declared: true, schema, error };
-}
-
-function getToolResumeJsonSchema(
-	tool: BuiltTool,
-	resumeSchemaOverride?: ToolSuspendOptions['resumeSchema'],
-): JsonSchema7Type | undefined {
-	return serializeToolResumeSchema(tool, resumeSchemaOverride).schema;
 }
 
 export interface ToolCallExecutorDeps {
@@ -726,17 +693,27 @@ export class ToolCallExecutor {
 		let abortObserved = false;
 		let suspensionCleanup: Promise<void> | undefined;
 		const cleanupInterruptedSuspension = async () => {
-			suspensionCleanup ??= this.runCancellationCleanup(
-				{
-					...params,
-					input,
-					suspendPayload: interruptedSuspendPayload,
-					continuation: interruptedSuspendOptions?.continuation,
-					resumeSchema: getToolResumeJsonSchema(builtTool, interruptedSuspendOptions?.resumeSchema),
-				},
-				builtTool,
-				'Run aborted',
-			).catch(() => undefined);
+			if (!suspensionCleanup) {
+				let resumeSchema: JSONSchema7 | undefined;
+				try {
+					resumeSchema =
+						toModelJsonSchema(interruptedSuspendOptions?.resumeSchema ?? builtTool.resumeSchema) ??
+						undefined;
+				} catch {
+					// Cleanup must still run when the tool's resume schema can't be serialized.
+				}
+				suspensionCleanup = this.runCancellationCleanup(
+					{
+						...params,
+						input,
+						suspendPayload: interruptedSuspendPayload,
+						continuation: interruptedSuspendOptions?.continuation,
+						resumeSchema,
+					},
+					builtTool,
+					'Run aborted',
+				).catch(() => undefined);
+			}
 			await suspensionCleanup;
 		};
 		try {
@@ -1007,22 +984,31 @@ export class ToolCallExecutor {
 			}
 			toolResult.payload = parseResult.data as JSONValue;
 		}
-		const resume = serializeToolResumeSchema(builtTool, toolResult.resumeSchema);
-		if (!resume.schema) {
-			// Only one of these two defects is the tool author's oversight.
+		const declaredResumeSchema = toolResult.resumeSchema ?? builtTool.resumeSchema;
+		if (!declaredResumeSchema) {
+			return this.toolError(params, new Error(`Tool ${params.toolName} has no resume schema`));
+		}
+
+		let resumeSchema: JSONSchema7 | null = null;
+		let cause = 'no schema was produced';
+		try {
+			resumeSchema = toModelJsonSchema(declaredResumeSchema);
+		} catch (error) {
+			cause = error instanceof Error ? error.message : String(error);
+		}
+		if (!resumeSchema) {
 			return this.toolError(
 				params,
 				new Error(
-					resume.declared
-						? `Tool ${params.toolName} has a resume schema that could not be serialized: ${describeCause(resume.error)}`
-						: `Tool ${params.toolName} has no resume schema`,
+					`Tool ${params.toolName} has a resume schema that could not be serialized: ${cause}`,
 				),
 			);
 		}
+
 		return {
 			outcome: 'suspended',
 			payload: toolResult.payload,
-			resumeSchema: resume.schema,
+			resumeSchema,
 			...(toolResult.continuation !== undefined ? { continuation: toolResult.continuation } : {}),
 		};
 	}

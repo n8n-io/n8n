@@ -423,6 +423,17 @@ type RunFinishErrorInfo = {
 	errorSource?: 'stream' | 'exception';
 };
 
+type UnclaimedResumeContext = {
+	threadId: string;
+	runId: string;
+	user: User;
+	signal: AbortSignal;
+	snapshotStorage: DbSnapshotStorage;
+	tracing?: InstanceAiTraceContext;
+	messageGroupId?: string;
+	discardTracingOnStale?: InstanceAiTraceContext;
+};
+
 const MAX_CONCURRENT_BACKGROUND_TASKS_PER_THREAD = 5;
 
 /**
@@ -5009,7 +5020,7 @@ export class InstanceAiService {
 			if (!resumeClaimed) {
 				skipPostRunCleanup = true;
 				const claimError = result.error ?? new Error('Resume checkpoint claim did not complete');
-				await this.failUnclaimedResume(opts, claimError);
+				await this.settleUnclaimedResume(opts, claimError);
 				return;
 			}
 			if (result.status === 'suspended') {
@@ -5249,22 +5260,9 @@ export class InstanceAiService {
 				});
 			}
 		} catch (error) {
-			if (!resumeClaimed && isStaleResumeError(error)) {
-				skipPostRunCleanup = true;
-				await this.tracing.finalizeDetachedTraceRun(
-					`stale-resume:${opts.runId}`,
-					opts.discardTracingOnStale,
-					{
-						status: 'cancelled',
-						outputs: { runId: opts.runId },
-						metadata: { completion_source: 'stale_resume' },
-					},
-				);
-				return;
-			}
 			if (!resumeClaimed) {
 				skipPostRunCleanup = true;
-				await this.failUnclaimedResume(opts, error);
+				await this.settleUnclaimedResume(opts, error);
 				return;
 			}
 
@@ -5447,22 +5445,28 @@ export class InstanceAiService {
 	}
 
 	/**
-	 * Unlike a stale resume, where another owner is driving the run and silence is
-	 * correct, nothing else will report back here — so the user has to be told.
+	 * A stale resume means another owner is driving the run — it may still finish
+	 * successfully, so telling this user anything would be wrong.
 	 */
-	private async failUnclaimedResume(
-		opts: {
-			threadId: string;
-			runId: string;
-			user: User;
-			signal: AbortSignal;
-			snapshotStorage: DbSnapshotStorage;
-			tracing?: InstanceAiTraceContext;
-			messageGroupId?: string;
-			discardTracingOnStale?: InstanceAiTraceContext;
-		},
-		error: unknown,
-	): Promise<void> {
+	private async settleUnclaimedResume(opts: UnclaimedResumeContext, error: unknown): Promise<void> {
+		if (isStaleResumeError(error)) {
+			await this.tracing.finalizeDetachedTraceRun(
+				`stale-resume:${opts.runId}`,
+				opts.discardTracingOnStale,
+				{
+					status: 'cancelled',
+					outputs: { runId: opts.runId },
+					metadata: { completion_source: 'stale_resume' },
+				},
+			);
+			return;
+		}
+
+		await this.failUnclaimedResume(opts, error);
+	}
+
+	/** Nothing else will report back on this run, so the user has to be told. */
+	private async failUnclaimedResume(opts: UnclaimedResumeContext, error: unknown): Promise<void> {
 		this.instanceAiErrorReporter.report(error, {
 			component: 'instance-ai-resume-claim',
 			threadId: opts.threadId,

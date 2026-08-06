@@ -354,9 +354,6 @@ export class InstanceAiTerminalOutcomeService {
 	}
 
 	/**
-	 * Settle a resume that failed before claiming its checkpoint, and so never
-	 * reaches the ordinary terminal path.
-	 *
 	 * The steps around the run-finish both hit the DB, so they stay best-effort:
 	 * letting either skip the run-finish would leave the run hanging.
 	 */

@@ -234,6 +234,20 @@ describe('parseWithSchema — JSON Schema dialects', () => {
 		expect(invalid.success).toBe(false);
 	});
 
+	it('does not fall back to another dialect when the declared one rejects the schema', async () => {
+		// Array-valued `items` is a draft-07 tuple, which 2020-12 cannot compile.
+		const schema = {
+			$schema: 'https://json-schema.org/draft/2020-12/schema',
+			type: 'array' as const,
+			items: [{ type: 'string' }, { type: 'number' }],
+		} as JSONSchema7;
+
+		const result = await parseWithSchema(schema, ['a', 1]);
+
+		expect(result.success).toBe(false);
+		if (!result.success) expect(result.schemaInvalid).toBe(true);
+	});
+
 	it('falls back to the legacy bundle for an undeclared draft-07 tuple', async () => {
 		const schema = {
 			type: 'array' as const,

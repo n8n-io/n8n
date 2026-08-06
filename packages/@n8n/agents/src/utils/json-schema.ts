@@ -40,7 +40,11 @@ export function lockAdditionalProperties(schema: JSONSchema7): JSONSchema7 {
 	return typeof result === 'object' ? result : schema;
 }
 
-function lockDefinition(schema: JSONSchema7Definition): JSONSchema7Definition {
+/**
+ * `closeSelf: false` marks a subschema that is evaluated against the *same*
+ * instance as its parent — closing it would reject the parent's own properties.
+ */
+function lockDefinition(schema: JSONSchema7Definition, closeSelf = true): JSONSchema7Definition {
 	if (typeof schema !== 'object' || schema === null) return schema;
 
 	const result: JSONSchema7 = { ...schema };
@@ -55,7 +59,9 @@ function lockDefinition(schema: JSONSchema7Definition): JSONSchema7Definition {
 		(Array.isArray(result.type) && result.type.includes('object')) ||
 		result.properties !== undefined;
 
-	if (isObjectSchema && !hasPropertiesElsewhere(result)) result.additionalProperties ??= false;
+	if (closeSelf && isObjectSchema && !composesOtherSchemas(result)) {
+		result.additionalProperties ??= false;
+	}
 
 	for (const key of ['properties', 'patternProperties', '$defs', 'definitions'] as const) {
 		const record = result[key];
@@ -63,23 +69,25 @@ function lockDefinition(schema: JSONSchema7Definition): JSONSchema7Definition {
 	}
 	if (result.items !== undefined) {
 		result.items = Array.isArray(result.items)
-			? result.items.map(lockDefinition)
+			? result.items.map((item) => lockDefinition(item))
 			: lockDefinition(result.items);
 	}
 	if (typeof result.additionalProperties === 'object' && result.additionalProperties !== null) {
 		result.additionalProperties = lockDefinition(result.additionalProperties);
 	}
-	for (const key of ['allOf', 'anyOf', 'oneOf'] as const) {
+	// `anyOf`/`oneOf` branches are standalone alternatives that fully describe the
+	// instance, so closing them is correct.
+	for (const key of ['anyOf', 'oneOf'] as const) {
 		const branch = result[key];
-		if (Array.isArray(branch)) {
-			result[key] = branch.map(lockDefinition);
-		}
+		if (Array.isArray(branch)) result[key] = branch.map((item) => lockDefinition(item));
 	}
-	for (const key of ['not', 'if', 'then', 'else', 'contains', 'propertyNames'] as const) {
-		if (result[key] !== undefined) result[key] = lockDefinition(result[key]);
+	if (Array.isArray(result.allOf)) {
+		result.allOf = result.allOf.map((item) => lockDefinition(item, false));
 	}
-
-	lockDialectExtensions(result);
+	for (const key of ['not', 'if', 'then', 'else'] as const) {
+		if (result[key] !== undefined) result[key] = lockDefinition(result[key], false);
+	}
+	if (result.contains !== undefined) result.contains = lockDefinition(result.contains);
 
 	return result;
 }
@@ -96,34 +104,10 @@ const COMPOSITION_KEYWORDS = [
 	'dependentSchemas',
 ] as const;
 
-function hasPropertiesElsewhere(schema: JSONSchema7): boolean {
+/** Whether the node composes with other schemas that may contribute properties. */
+function composesOtherSchemas(schema: JSONSchema7): boolean {
 	const node = schema as Record<string, unknown>;
 	return COMPOSITION_KEYWORDS.some((keyword) => node[keyword] !== undefined);
-}
-
-/**
- * 2020-12 keywords `JSONSchema7` predates. They reach us from MCP servers,
- * which default to that dialect, so skipping them would leave nested objects
- * untouched.
- */
-function lockDialectExtensions(node: JSONSchema7): void {
-	const extensions = node as Record<string, unknown>;
-
-	for (const key of ['unevaluatedProperties', 'unevaluatedItems']) {
-		const value = extensions[key];
-		if (typeof value === 'object' && value !== null)
-			extensions[key] = lockDefinition(value as JSONSchema7);
-	}
-	const prefixItems = extensions.prefixItems;
-	if (Array.isArray(prefixItems)) {
-		extensions.prefixItems = prefixItems.map((item: JSONSchema7Definition) => lockDefinition(item));
-	}
-	const dependentSchemas = extensions.dependentSchemas;
-	if (typeof dependentSchemas === 'object' && dependentSchemas !== null) {
-		extensions.dependentSchemas = lockDefinitions(
-			dependentSchemas as Record<string, JSONSchema7Definition>,
-		);
-	}
 }
 
 /**

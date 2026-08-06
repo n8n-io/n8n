@@ -147,7 +147,42 @@ describe('lockAdditionalProperties — composed objects', () => {
 
 		expect(result.additionalProperties).toBeUndefined();
 		const branch = (result.allOf ?? []) as JSONSchema7[];
-		expect(branch[0].additionalProperties).toBe(false);
+		expect(branch[0].additionalProperties).toBeUndefined();
+	});
+
+	it.each([
+		['allOf', { allOf: [{ type: 'object', properties: { b: { type: 'string' } } }] }],
+		[
+			'if/then',
+			{ if: { required: ['a'] }, then: { type: 'object', properties: { b: { type: 'string' } } } },
+		],
+	])('keeps { a, b } valid across a %s composition', (_keyword, composition) => {
+		const schema = {
+			type: 'object',
+			properties: { a: { type: 'string' } },
+			...composition,
+		} as JSONSchema7;
+
+		// A branch validates the whole instance: closing it would reject `a`, and
+		// closing the parent would reject `b`, so nothing here may be closed.
+		expect(lockAdditionalProperties(schema)).toEqual(schema);
+	});
+
+	it('still closes objects nested inside a branch', () => {
+		const result = lockAdditionalProperties({
+			type: 'object',
+			properties: { a: { type: 'string' } },
+			if: { required: ['a'] },
+			then: {
+				type: 'object',
+				properties: { nested: { type: 'object', properties: { c: { type: 'string' } } } },
+			},
+		});
+
+		const then = result.then as JSONSchema7;
+		expect(then.additionalProperties).toBeUndefined();
+		const nested = (then.properties as Record<string, JSONSchema7>).nested;
+		expect(nested.additionalProperties).toBe(false);
 	});
 
 	it('still closes an object that only lists its own properties', () => {
@@ -172,22 +207,28 @@ describe('lockAdditionalProperties — composed objects', () => {
 });
 
 describe('lockAdditionalProperties — nested keywords', () => {
-	it('reaches objects behind 2020-12 and conditional keywords', () => {
+	it('closes objects behind contains and patternProperties', () => {
 		const result = lockAdditionalProperties({
 			type: 'array',
-			prefixItems: [{ type: 'object', properties: {} }],
 			contains: { type: 'object', properties: {} },
+			patternProperties: { '^x-': { type: 'object', properties: {} } },
+		});
+
+		expect((result.contains as JSONSchema7).additionalProperties).toBe(false);
+		const patternProperties = result.patternProperties as Record<string, JSONSchema7>;
+		expect(patternProperties['^x-'].additionalProperties).toBe(false);
+	});
+
+	it('leaves if/then/else/not branches open', () => {
+		const result = lockAdditionalProperties({
 			if: { type: 'object', properties: {} },
 			then: { type: 'object', properties: {} },
-			patternProperties: { '^x-': { type: 'object', properties: {} } },
-		} as unknown as JSONSchema7) as unknown as Record<string, JSONSchema7>;
+			else: { type: 'object', properties: {} },
+			not: { type: 'object', properties: {} },
+		});
 
-		const prefixItems = result.prefixItems as unknown as JSONSchema7[];
-		expect(prefixItems[0].additionalProperties).toBe(false);
-		expect(result.contains.additionalProperties).toBe(false);
-		expect(result.if.additionalProperties).toBe(false);
-		expect(result.then.additionalProperties).toBe(false);
-		const patternProperties = result.patternProperties as unknown as Record<string, JSONSchema7>;
-		expect(patternProperties['^x-'].additionalProperties).toBe(false);
+		for (const key of ['if', 'then', 'else', 'not'] as const) {
+			expect((result[key] as JSONSchema7).additionalProperties).toBeUndefined();
+		}
 	});
 });

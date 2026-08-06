@@ -3502,6 +3502,52 @@ describe('InstanceAiService — run error reporter lifecycle', () => {
 		expect(service.taskProjector.syncFromWorkflowLoop).not.toHaveBeenCalled();
 	});
 
+	it('stays silent when checkpoint claiming returns a stale resume error', async () => {
+		const service = createTerminalGuardOrderService();
+		const abortController = new AbortController();
+		const resumeTracing = {
+			actorRun: { id: 'resume-actor' },
+			withActiveSpan: vi.fn(
+				async (_run: unknown, callback: () => Promise<unknown>) => await callback(),
+			),
+		} as unknown as InstanceAiTraceContext;
+		const opts = {
+			...resumedStreamOpts(abortController),
+			tracing: resumeTracing,
+			resumeTracing,
+			discardTracingOnStale: resumeTracing,
+			messageGroupId: 'group-1',
+		};
+		service.runState.hasSuspendedRun = vi.fn(() => false);
+		service.taskProjector = { syncFromWorkflowLoop: vi.fn(async () => {}) };
+		service.maybeStartWorkflowSetupFollowUp = vi.fn(async () => {});
+		const terminalResponse = vi.spyOn(service.terminalOutcome, 'evaluateTerminalResponse');
+		const staleError = Object.assign(new Error('already claimed'), { name: 'StaleResumeError' });
+		vi.mocked(resumeAgentRun).mockResolvedValueOnce({
+			status: 'errored',
+			agentRunId: 'agent-run-1',
+			text: Promise.resolve(''),
+			error: staleError,
+			workSummary: { toolCalls: [], totalToolCalls: 0, totalToolErrors: 0 },
+		});
+
+		await service.processResumedStream({}, {}, opts);
+
+		expect(service.instanceAiErrorReporter.report).not.toHaveBeenCalled();
+		expect(service.tracing.finalizeDetachedTraceRun).toHaveBeenCalledWith(
+			'stale-resume:run-1',
+			resumeTracing,
+			{
+				status: 'cancelled',
+				outputs: { runId: 'run-1' },
+				metadata: { completion_source: 'stale_resume' },
+			},
+		);
+		expect(terminalResponse).not.toHaveBeenCalled();
+		expect(service.eventBus.events).toEqual([]);
+		expect(service.saveAgentTreeSnapshot).not.toHaveBeenCalled();
+	});
+
 	it('surfaces an error to the user when a resume throws before claiming its checkpoint', async () => {
 		const service = createTerminalGuardOrderService();
 		const abortController = new AbortController();
