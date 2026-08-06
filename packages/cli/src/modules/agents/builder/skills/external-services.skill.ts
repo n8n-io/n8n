@@ -15,7 +15,7 @@ export function externalServicesSkill(): RuntimeSkill {
 		id: 'agent-builder-external-services',
 		name: 'Agent Builder External Services',
 		description:
-			'Use when connecting the target agent to any external product: deciding whether Slack, Linear, Telegram, or another platform is a chat integration/trigger versus an MCP, node, or workflow tool; adding, removing, or updating chat integrations or MCP servers; and wiring n8n node-backed tools (search_nodes/get_node_types discovery, nodeParameters, node credential slots, $fromAI usage, n8n expressions).',
+			'Use when connecting the target agent to any external product: deciding whether Slack, Discord, Linear, Telegram, or another platform is a chat integration/trigger versus an MCP, node, or workflow tool; adding, removing, or updating chat integrations or MCP servers; and wiring n8n node-backed tools (search_nodes/get_node_types discovery, nodeParameters, node credential slots, $fromAI usage, n8n expressions).',
 		recommendedTools: [
 			'resolve_integration',
 			'list_integration_types',
@@ -62,11 +62,21 @@ Use an MCP, node, or workflow tool when the product is only something the agent
 operates on: searching records, creating tickets, updating objects, or sending a
 business-process notification while the conversation happens elsewhere.
 
+When building an agent that should interact with Slack, Discord, or Telegram,
+prefer the matching chat integration over an MCP, node, or workflow tool, even
+when a callable tool could perform the same messaging action. Use a callable
+tool instead only when the user explicitly asks for one or the requested
+operation is not supported by the chat integration.
+
 Examples:
 
 - Slack integration: the agent should be chatted with in Slack, respond in
   Slack threads, DM users, message channels, add reactions, or render rich UI
   to Slack users.
+- Discord integration: the agent should be mentioned or messaged in Discord,
+  respond in Discord threads or DMs, or render approval buttons there.
+- Telegram integration: the agent should receive or send Telegram messages,
+  continue conversations there, or render supported interactive messages.
 - Linear integration: the agent should be triggered from Linear issues/comments,
   understand the current Linear subject, or reply in the same Linear
   conversation.
@@ -311,7 +321,10 @@ agent's \`tools[]\`, including \`nodeParameters\` and n8n expressions.
 - Never write literal \`"$fromAI"\` or bare \`$fromAI\`; the node will treat it as the actual value.
 - Do not pipe AI-chosen fields through \`$json\`.
 - Do not include \`inputSchema\` or \`toolDescription\` for node tools.
-- For each required credential slot, call \`ask_credential\` once before the config mutation for an addition to an existing agent. ${INITIAL_BUILD_NOTE} Add the tool with that credential slot omitted; after the trailing \`finish_setup\` resolves the credential, copy the returned credentials into \`node.credentials\` via \`patch_config\`; for resource-locator resolution follow \`agent-builder-resource-locators\` then. Pass the node's credential key as \`credentialSlot\`. On success, copy the returned \`credentials\` object directly to \`node.credentials\`. If skipped, still add the tool and omit only that credential slot.
+- n8n Connect (\`n8n credits\`) covers many services, including some community nodes. Adding a node tool with its credential slot omitted triggers server-side assignment: for a covered service the server attaches the managed \`n8n credits\` credential (\`{ id: null, name: "n8n credits", __aiGatewayManaged: true }\`) to each required, eligible slot on write — but only when the project has no credential of that type; an existing credential of the type wins and the slot stays empty for the normal credential flow below. Add the tool with the credential slot omitted, then \`read_config\`.
+- Exception — when the user explicitly asks to run a tool on n8n credits, write \`{ "id": null, "name": "n8n credits", "__aiGatewayManaged": true }\` into that credential slot yourself: the server keeps it when the service is covered (even if the user has their own credential of the type) and removes it when not covered — check \`read_config\` after the write and resolve a real credential if it was removed.
+- The \`n8n credits\` managed credential IS the real, working credential — the tool executes through n8n's gateway on n8n credits, so NO separate API key is needed. It is NOT a placeholder and NOT "invalid for the service", even for a community node. For a slot \`read_config\` shows populated with it: the slot is fully connected and the tool WILL run. Do NOT call \`ask_credential\` for it; do NOT include it in \`finish_setup\`; NEVER clear, remove, or replace it via \`patch_config\`; and NEVER seek a "real" API key to swap in for it. Report the tool as ready, running on n8n credits — exactly like a managed model. Never tell the user the credential is "not connected"/"not set up" or that the tool "won't run until a credential is added".
+- Only for a required slot that \`read_config\` shows still empty after the write (a service n8n Connect does not cover) do you resolve a real credential: call \`ask_credential\` once before the config mutation for an addition to an existing agent. ${INITIAL_BUILD_NOTE} After the trailing \`finish_setup\` resolves the credential, copy the returned credentials into \`node.credentials\` via \`patch_config\`; for resource-locator resolution follow \`agent-builder-resource-locators\` then. Pass the node's credential key as \`credentialSlot\`. On success, copy the returned \`credentials\` object directly to \`node.credentials\`. If skipped, still add the tool and omit only that credential slot.
 - When the agent already has a chat channel configured and the tool needs the same
   credential type, \`ask_credential\` reuses the channel's credential automatically —
   do not ask the user to pick a different one.

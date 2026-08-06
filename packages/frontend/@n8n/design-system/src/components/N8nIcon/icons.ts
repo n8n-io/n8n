@@ -2,6 +2,7 @@ import Anthropic from './custom/anthropic.svg';
 import Binary from './custom/binary.svg';
 import BoltFilled from './custom/bolt-filled.svg';
 import Continue from './custom/continue.svg';
+import Discord from './custom/discord.svg';
 import EmptyOutput from './custom/empty-output.svg';
 import FilledSquare from './custom/filled-square.svg';
 import Form from './custom/form.svg';
@@ -306,6 +307,7 @@ export const deprecatedIconSet = {
 	slack: Slack,
 	linear: Linear,
 	telegram: Telegram,
+	discord: Discord,
 	spinner: Spinner,
 	xmark: IconLucideX,
 	mcp: Mcp,
@@ -526,6 +528,7 @@ export const updatedIconSet = {
 	slack: Slack,
 	linear: Linear,
 	telegram: Telegram,
+	discord: Discord,
 	spinner: Spinner,
 	'node-dirty': NodeDirty,
 	'node-ellipsis': NodeEllipsis,
