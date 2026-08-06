@@ -15,8 +15,6 @@ function serializeInsightsFilter(filter?: InsightsDateFilterDto) {
 	};
 }
 
-// Calls the public API (see packages/cli/src/public-api/v1/handlers/insights/insights.handler.ts)
-// instead of the internal REST endpoint, authenticating via the browser's session cookie.
 export const fetchInsightsSummaryPublicApi = async (
 	context: IPublicApiContext,
 	filter?: InsightsDateFilterDto,

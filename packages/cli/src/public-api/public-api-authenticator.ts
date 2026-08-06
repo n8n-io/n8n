@@ -5,12 +5,7 @@ import { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
 import { PublicApiCookieAuthenticator } from '@/services/public-api-cookie-authenticator';
 
 /**
- * The public API's request-authentication entry point. Unlike `AuthStrategyRegistry`
- * — which is the shared, pluggable home for audience-scoped bearer-token strategies
- * (`ApiKeyAuthStrategy`, always registered; `ScopedJwtStrategy`, registered only if
- * token-exchange is configured) — public API auth is always available and always
- * needs to accept a browser session cookie as an alternative to those. This class
- * composes the two rather than folding the cookie authenticator into the registry.
+ * The public API's request-authentication entry point.
  */
 @Service()
 export class PublicApiAuthenticator {
@@ -20,9 +15,8 @@ export class PublicApiAuthenticator {
 	) {}
 
 	async authenticate(req: AuthenticatedRequest): Promise<boolean> {
-		return (
-			(await this.authStrategyRegistry.authenticate(req)) ||
-			Boolean(await this.cookieAuthenticator.authenticate(req))
-		);
+		const isAuthorizedViaApiKey = await this.authStrategyRegistry.authenticate(req);
+		const isAuthorizedViaCookie = Boolean(await this.cookieAuthenticator.authenticate(req));
+		return isAuthorizedViaApiKey || isAuthorizedViaCookie;
 	}
 }

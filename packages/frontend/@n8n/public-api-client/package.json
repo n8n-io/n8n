@@ -37,23 +37,15 @@
   },
   "dependencies": {
     "@n8n/api-types": "workspace:*",
-    "@n8n/constants": "workspace:*",
     "@n8n/frontend-utils": "workspace:*",
-    "@n8n/permissions": "workspace:*",
-    "@n8n/utils": "workspace:*",
-    "js-base64": "catalog:",
     "n8n-workflow": "workspace:*",
-    "axios": "catalog:",
-    "flatted": "catalog:"
+    "axios": "catalog:"
   },
   "devDependencies": {
     "@n8n/eslint-config": "workspace:*",
-    "@n8n/i18n": "workspace:*",
     "@n8n/playwright-janitor": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
-    "@testing-library/jest-dom": "catalog:frontend",
-    "@testing-library/user-event": "catalog:frontend",
     "tsdown": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
