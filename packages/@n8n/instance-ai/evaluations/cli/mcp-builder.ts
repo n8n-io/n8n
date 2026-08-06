@@ -136,10 +136,10 @@ type McpBuildKeySupport = 'supported' | 'orchestrator-only';
 /**
  * Classification of EVERY test-case schema key for the `claude -p` MCP build
  * path. `orchestrator-only` keys are build-side setup the orchestrator seeds
- * before driving the in-product agent (credential creation, conversation/thread
- * seeding), while `claude` receives only the flattened conversation prompt — a
- * case relying on them would build without its prerequisites and fail
- * misleadingly, so callers skip cases that declare them.
+ * before driving the in-product agent (conversation/thread seeding), while
+ * `claude` receives only the flattened conversation prompt — a case relying on
+ * them would build without its prerequisites and fail misleadingly, so callers
+ * skip cases that declare them.
  *
  * Deliberately exhaustive rather than a blocklist: the type covers the
  * WorkflowTestCase interface (plus the schema's forbidden legacy key), and a
@@ -167,7 +167,10 @@ export const MCP_BUILD_KEY_SUPPORT: Record<
 	// Forbidden legacy key — the schema rejects it at load, so it can never
 	// reach this check; classified only to keep the map schema-complete.
 	buildExpectations: 'supported',
-	credentials: 'orchestrator-only',
+	// The fused --build-via-mcp path seeds these into the per-build member
+	// user's personal project (the standalone manifest builder cannot — it has
+	// no n8n session).
+	credentials: 'supported',
 	seed: 'orchestrator-only',
 	datasets: 'supported',
 };
@@ -189,7 +192,7 @@ export function unsupportedMcpBuildSetupFields(testCase: WorkflowTestCase): stri
 	return ORCHESTRATOR_ONLY_KEYS.filter((key) => {
 		const value = values[key];
 		if (value === undefined || value === null || value === '') return false;
-		// An empty array (e.g. credentials: []) declares nothing to seed.
+		// An empty array declares nothing to seed.
 		return !Array.isArray(value) || value.length > 0;
 	});
 }
