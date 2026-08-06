@@ -30,6 +30,10 @@ describe('modelSearch', () => {
 					{ id: 'babbage-002' },
 					{ id: 'whisper-1' },
 					{ id: 'dall-e-3' },
+					// Image models are named gpt-image-* / chatgpt-image-* since dall-e
+					// was retired, so they pass the gpt- prefix and need excluding too
+					{ id: 'gpt-image-2' },
+					{ id: 'chatgpt-image-latest' },
 					{ id: 'gpt-4o-realtime-preview' },
 				],
 			});

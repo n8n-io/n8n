@@ -14,6 +14,9 @@ export function shouldIncludeOpenAiModel(modelId: string, isCustomApi: boolean):
 		modelId.startsWith('davinci') ||
 		modelId.startsWith('computer-use') ||
 		modelId.startsWith('dall-e') ||
+		// Covers gpt-image-* and chatgpt-image-*, which replaced dall-e and
+		// support neither chat/completions nor responses
+		modelId.includes('-image') ||
 		modelId.startsWith('text-embedding') ||
 		modelId.startsWith('tts') ||
 		modelId.includes('-tts') ||
