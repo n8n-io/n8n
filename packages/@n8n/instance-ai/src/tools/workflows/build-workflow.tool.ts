@@ -10,6 +10,7 @@ import { z } from 'zod';
 import { planVerificationSimulation } from './plan-verification-simulation';
 import { preserveExistingNodePositions } from './preserve-node-positions';
 import { computeTriggerEndpoints, TRIGGER_ENDPOINTS_NOTE } from './trigger-endpoints';
+import { validateErrorWorkflowReference } from './validate-error-workflow';
 import {
 	buildCredentialMap,
 	buildCredentialResolutionNote,
@@ -746,6 +747,46 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					errors: [
 						'Workflow name is required for new workflows. Provide a name parameter or set it in the SDK code.',
 					],
+					remediation,
+				};
+			}
+
+			const errorWorkflowErrors = await validateErrorWorkflowReference(json, context);
+			if (errorWorkflowErrors.length > 0) {
+				const remediation = createCodeFixableRemediation({
+					reason: 'error_workflow_invalid',
+					guidance:
+						'Fix settings.errorWorkflow in the workspace source file (or remove it), then call build-workflow again with the same filePath.',
+				});
+				binding = await markSourceBuildFailed(context, binding, sourceHash);
+				await reportFailedWorkflowBuildOutcome(context, {
+					targetWorkflowId,
+					sourceFilePath: filePath,
+					workItemId: resolvedWorkItemId,
+					taskId: resolvedTaskId,
+					plannedTaskId,
+					owner,
+					remediation,
+					errors: errorWorkflowErrors,
+					summary: 'settings.errorWorkflow does not reference a usable error workflow.',
+					storeOnRunContext: !isAuxiliarySupportingWorkflow,
+				});
+				trackWorkflowSourceBuild(context, {
+					result: 'failure',
+					stage: 'validation',
+					binding,
+					targetWorkflowId,
+					isSupportingWorkflow,
+					isAuxiliarySupportingWorkflow,
+					remediation,
+					errorCount: errorWorkflowErrors.length,
+				});
+				return {
+					success: false,
+					...sourceResponseBase(binding),
+					workflowId: targetWorkflowId,
+					workItemId: resolvedWorkItemId,
+					errors: errorWorkflowErrors,
 					remediation,
 				};
 			}
