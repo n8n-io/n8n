@@ -34,19 +34,27 @@ const resolveSpecifier = (specifier: string, importer: string): string | null =>
 };
 
 /**
- * Static value imports only. `import type` and dynamic `await import()` do not
- * create an evaluation-order edge, which is exactly why they are the escape
- * hatch when a cycle is unavoidable.
+ * Static value imports and re-exports only. `import type` and dynamic
+ * `await import()` do not create an evaluation-order edge, which is exactly
+ * why they are the escape hatch when a cycle is unavoidable.
  */
+// Clauses never contain quotes or semicolons, so [^'";]*? spans multi-line
+// braced imports without leaking past a bare side-effect import's statement.
+const importPattern = /(?:^|\n)\s*import\s+(type\s+)?(?:[^'";]*?\bfrom\s*)?['"]([^'"]+)['"]/g;
+// Re-exports (`export ... from`) are evaluation-order edges too — barrels route cycles.
+const exportPattern =
+	/(?:^|\n)\s*export\s+(type\s+)?(?:\*(?:\s+as\s+[\w$]+)?|\{[^}]*\})\s*from\s*['"]([^'"]+)['"]/g;
+
 const valueImportsOf = (file: string): string[] => {
 	const source = readFileSync(file, 'utf8');
-	const pattern = /(?:^|\n)\s*import\s+(type\s+)?(?:[\s\S]*?\s*from\s*)?['"]([^'"]+)['"]/g;
 	const edges: string[] = [];
 
-	for (const match of source.matchAll(pattern)) {
-		if (match[1]) continue;
-		const resolved = resolveSpecifier(match[2], file);
-		if (resolved) edges.push(resolved);
+	for (const pattern of [importPattern, exportPattern]) {
+		for (const match of source.matchAll(pattern)) {
+			if (match[1]) continue;
+			const resolved = resolveSpecifier(match[2], file);
+			if (resolved) edges.push(resolved);
+		}
 	}
 	return edges;
 };
