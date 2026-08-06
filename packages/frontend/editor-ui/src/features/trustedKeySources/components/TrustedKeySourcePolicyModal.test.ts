@@ -51,6 +51,52 @@ function jwksSource(policy: TrustedKeySource['policy'] = null): TrustedKeySource
 	};
 }
 
+describe('field visibility', () => {
+	it('shows an SSO source only the settings that decide token acceptance', () => {
+		const { queryByTestId } = renderModal({ props: { open: true, source: jwksSource() } });
+
+		expect(queryByTestId('trusted-key-source-policy-inbound-audiences')).toBeInTheDocument();
+		expect(queryByTestId('trusted-key-source-policy-subject-claim')).toBeInTheDocument();
+		expect(queryByTestId('trusted-key-source-policy-require-verified-email')).toBeInTheDocument();
+		// Belong to the token-exchange grant and to key-scoped role limits.
+		expect(queryByTestId('trusted-key-source-policy-expected-audience')).not.toBeInTheDocument();
+		expect(queryByTestId('trusted-key-source-policy-allowed-roles')).not.toBeInTheDocument();
+	});
+
+	it('still shows a hidden field when it already holds a value', () => {
+		const { queryByTestId } = renderModal({
+			props: {
+				open: true,
+				source: jwksSource({ expectedAudience: 'api://exchange', allowedRoles: ['global:member'] }),
+			},
+		});
+
+		// The form rebuilds the policy from its inputs, so hiding a field that
+		// holds a value would drop it on the next save.
+		expect(queryByTestId('trusted-key-source-policy-expected-audience')).toBeInTheDocument();
+		expect(queryByTestId('trusted-key-source-policy-allowed-roles')).toBeInTheDocument();
+	});
+
+	it('keeps every field for an env-managed source', () => {
+		const { queryByTestId } = renderModal({
+			props: { open: true, source: { ...jwksSource(), managedBy: 'env-config' } },
+		});
+
+		expect(queryByTestId('trusted-key-source-policy-expected-audience')).toBeInTheDocument();
+		expect(queryByTestId('trusted-key-source-policy-allowed-roles')).toBeInTheDocument();
+	});
+
+	it('preserves a hidden override through a save', async () => {
+		const { getByTestId, emitted } = renderModal({
+			props: { open: true, source: jwksSource({ expectedAudience: 'api://exchange' }) },
+		});
+
+		await userEvent.click(getByTestId('trusted-key-source-policy-save'));
+
+		expect(emitted().save).toEqual([['sso-source', { expectedAudience: 'api://exchange' }]]);
+	});
+});
+
 describe('TrustedKeySourcePolicyModal', () => {
 	it('emits only the fields the admin actually set', async () => {
 		const { getByTestId, emitted } = renderModal({

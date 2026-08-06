@@ -57,6 +57,36 @@ const derived = computed<Partial<JwksConfig>>(() => {
 
 const derivedInboundAudiences = computed(() => derived.value.inboundAudiences?.join(', ') ?? '');
 
+/**
+ * An SSO source has one job — validating tokens from the instance's identity
+ * provider — so it only needs the three settings that decide whether such a
+ * token is accepted and who it resolves to. The other two belong to the
+ * token-exchange grant and to key-scoped role limits, which an admin
+ * configuring their IdP is not thinking about; showing a second "audience"
+ * field beside the inbound one mostly invites filling in the wrong one.
+ *
+ * They stay visible whenever a value is already set, though. The form rebuilds
+ * the policy from its inputs, so a hidden field holding a value would be
+ * dropped on the next save.
+ */
+const isSsoManaged = computed(() => props.source?.managedBy === 'sso-derived');
+
+const showExchangeAudience = computed(
+	() => !isSsoManaged.value || Boolean(props.source?.policy?.expectedAudience),
+);
+
+const showAllowedRoles = computed(
+	() => !isSsoManaged.value || (props.source?.policy?.allowedRoles?.length ?? 0) > 0,
+);
+
+/**
+ * Every inline key from `N8N_TRUSTED_KEYS` is grouped under a single static
+ * row, and an override is applied to all of a source's keys — so on this row
+ * it is a blanket change across keys that may each carry their own issuer,
+ * audience and roles.
+ */
+const isGroupedStatic = computed(() => props.source?.type === 'static');
+
 function reset(source: TrustedKeySource | null) {
 	const policy = source?.policy ?? {};
 	inboundAudiences.value = policy.inboundAudiences ?? [];
@@ -104,7 +134,15 @@ function onSave() {
 		size="medium"
 	>
 		<div :class="$style.form" data-test-id="trusted-key-source-policy-modal">
-			<N8nNotice :content="i18n.baseText('settings.trustedKeySources.policy.notice')" />
+			<N8nNotice
+				theme="info"
+				:content="i18n.baseText('settings.trustedKeySources.policy.notice')"
+			/>
+			<N8nNotice
+				v-if="isGroupedStatic"
+				theme="warning"
+				:content="i18n.baseText('settings.trustedKeySources.policy.staticWarning')"
+			/>
 
 			<N8nInputLabel
 				:label="i18n.baseText('settings.trustedKeySources.policy.inboundAudiences')"
@@ -134,6 +172,7 @@ function onSave() {
 			</N8nInputLabel>
 
 			<N8nInputLabel
+				v-if="showExchangeAudience"
 				:label="i18n.baseText('settings.trustedKeySources.policy.expectedAudience')"
 				:tooltip-text="i18n.baseText('settings.trustedKeySources.policy.expectedAudienceHint')"
 				size="small"
@@ -189,6 +228,7 @@ function onSave() {
 			</N8nInputLabel>
 
 			<N8nInputLabel
+				v-if="showAllowedRoles"
 				:label="i18n.baseText('settings.trustedKeySources.policy.allowedRoles')"
 				:tooltip-text="i18n.baseText('settings.trustedKeySources.policy.allowedRolesHint')"
 				size="small"

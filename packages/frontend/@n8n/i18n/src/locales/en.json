@@ -4598,6 +4598,7 @@
 	"settings.trustedKeySources.policy.title": "Edit overrides",
 	"settings.trustedKeySources.policy.description": "Override how this instance validates tokens signed by this source.",
 	"settings.trustedKeySources.policy.notice": "Overrides are kept when the source is refreshed from your SSO provider or environment config. Leave a field empty to use the derived value.",
+	"settings.trustedKeySources.policy.staticWarning": "This source groups every key set in N8N_TRUSTED_KEYS. An override here applies to all of them, replacing settings each key may define individually.",
 	"settings.trustedKeySources.policy.saved": "Overrides saved",
 	"settings.trustedKeySources.policy.saveError": "Could not save overrides",
 	"settings.trustedKeySources.policy.inheritPlaceholder": "Use derived value",
