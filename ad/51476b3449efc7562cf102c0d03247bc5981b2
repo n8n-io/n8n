@@ -1,0 +1,28 @@
+packages/testing/playwright/pages/CanvasPage.ts
+  s_23ac9e46ab1748::t_9ed050d6379613 256-266
+  s_23ac9e46ab1748::t_c3e978f56ab345 255
+packages/frontend/@n8n/design-system/src/components/N8nSuggestedActions/SuggestedActions.test.ts
+  s_23ac9e46ab1748::t_94ff92dba353cb 2
+packages/testing/playwright/tests/e2e/workflows/editor/tags.spec.ts
+  s_23ac9e46ab1748::t_c551a815ccfc9d 20-21,59-60,104-105,137-138,168-169,196-197,226-227
+packages/frontend/editor-ui/src/app/composables/useWorkflowsCache.test.ts
+  s_23ac9e46ab1748::t_753c1e1218d850 2
+packages/frontend/@n8n/design-system/src/components/N8nSuggestedActions/SuggestedActions.stories.ts
+  s_23ac9e46ab1748::t_856eb2b5aa219e 176-177,182,188,193
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "ad51476b3449efc7562cf102c0d03247bc5981b2",
+  "prompts": {},
+  "sessions": {
+    "s_23ac9e46ab1748": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b113851a-c3ab-49d5-8c97-0a2c96719d51",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

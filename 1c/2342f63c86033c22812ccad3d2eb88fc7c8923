@@ -1,0 +1,114 @@
+packages/cli/src/modules/n8n-packages/__tests__/import-folders.integration.test.ts
+  ai_agent 16-17,36-47,261-270
+packages/@n8n/cli/src/commands/package/import.ts
+  ai_agent 53-58,60-62,65-70,150,152
+packages/cli/src/modules/n8n-packages/entities/project/project-conflict-policy.ts
+  ai_agent 1-22
+packages/@n8n/cli/docs/commands/package.md
+  s_ce38e707b3774d::t_a846b54a3e937e 67-68,83
+packages/cli/src/modules/n8n-packages/__tests__/import-projects.integration.test.ts
+  s_ce38e707b3774d::t_a846b54a3e937e 412-443
+packages/cli/src/modules/n8n-packages/entities/folder/folder-removal.types.ts
+  s_ce38e707b3774d::t_a846b54a3e937e 1-12
+packages/cli/src/modules/n8n-packages/entities/project/project-importer.ts
+  ai_agent 5,10-21,30-34,36-37,49,58-72,79,86-120,122-137,156
+packages/cli/src/modules/n8n-packages/__tests__/import-package.integration.test.ts
+  ai_agent 39,58-59,62-64
+packages/cli/src/public-api/v1/handlers/n8n-packages/n8n-packages.handler.ts
+  ai_agent 208,210
+packages/cli/test/integration/public-api/n8n-packages-import.test.ts
+  s_ce38e707b3774d::t_a846b54a3e937e 227
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_ce38e707b3774d::t_26844c7c32be5a 287-288
+  s_ce38e707b3774d::t_081fccd9363076 393-403,407,409,432,434,447-463,540-543
+packages/cli/src/modules/n8n-packages/engine/project-package-importer.ts
+  s_ce38e707b3774d::t_a846b54a3e937e 17-19,23,34,68,75-89,93-95,119,153-154,170-171,196-197,213,281,301-305
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  s_ce38e707b3774d::t_a846b54a3e937e 23,25-26,48-49,61-63,76,89-90,109-110,127,129,179-197,213,227-228,297-302,307-308
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-removal.types.ts
+  s_ce38e707b3774d::t_a846b54a3e937e 34-38
+packages/cli/src/modules/n8n-packages/engine/import-telemetry.ts
+  s_ce38e707b3774d::t_ea7ecee42449ba 8,103-110
+packages/@n8n/cli/src/__tests__/package-error.test.ts
+  ai_agent 32-44
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-telemetry.test.ts
+  s_ce38e707b3774d::t_b331cac0927b07 76
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-remover.test.ts
+  s_ce38e707b3774d::t_a846b54a3e937e 187-256
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-blocked.error.test.ts
+  ai_agent 16-22,52-53
+packages/cli/src/modules/n8n-packages/entities/project/__tests__/project-conflict-policy.test.ts
+  ai_agent 1-15
+packages/cli/src/modules/n8n-packages/entities/project/__tests__/project-importer.test.ts
+  ai_agent 7,78-166
+packages/cli/src/modules/n8n-packages/entities/folder/__tests__/folder-remover.test.ts
+  s_ce38e707b3774d::t_a846b54a3e937e 1-108
+packages/@n8n/cli/src/client.ts
+  ai_agent 22,24
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_ce38e707b3774d::t_ea7ecee42449ba 2236-2238,2296-2298
+packages/cli/src/modules/n8n-packages/__tests__/import-data-tables.integration.test.ts
+  ai_agent 23,67-69
+packages/cli/src/modules/n8n-packages/engine/workflow-package-importer.ts
+  s_ce38e707b3774d::t_a846b54a3e937e 172
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-remover.ts
+  s_ce38e707b3774d::t_a846b54a3e937e 38-136
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/n8n-packages.import.yml
+  s_ce38e707b3774d::t_a846b54a3e937e 179-207,442-500
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  ai_agent 34,36-37,308-323,325-338
+packages/cli/src/modules/n8n-packages/engine/import-blocked.error.ts
+  ai_agent 19
+packages/cli/src/modules/n8n-packages/entities/project/project-import.types.ts
+  ai_agent 1,12,14-15,22-34
+packages/cli/src/modules/n8n-packages/entities/folder/folder-remover.ts
+  s_ce38e707b3774d::t_a846b54a3e937e 1-120
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_ce38e707b3774d::t_ea7ecee42449ba 1061-1063
+packages/@n8n/api-types/src/dto/packages/__tests__/import-package-request.dto.test.ts
+  ai_agent 19-20,47-48,77-78,106-107,302-339,441-442
+packages/cli/src/modules/n8n-packages/__tests__/import-workflow-with-variables.integration.test.ts
+  ai_agent 22,65-67
+packages/cli/src/modules/n8n-packages/__tests__/fixtures/import-request.ts
+  ai_agent 1-32
+packages/cli/src/modules/n8n-packages/engine/import-result.ts
+  s_ce38e707b3774d::t_a846b54a3e937e 10-11,65-66,77-78
+packages/cli/src/events/__tests__/log-streaming-event-relay.test.ts
+  s_ce38e707b3774d::t_ea7ecee42449ba 76-78,147-149
+packages/cli/src/services/folder.service.ts
+  s_ce38e707b3774d::t_a846b54a3e937e 66-77
+packages/cli/src/modules/n8n-packages/entities/folder/folder-conflict-policy.ts
+  ai_agent 1,12-13,19-26
+packages/@n8n/cli/src/commands/package/package-error.ts
+  ai_agent 10-11,35-39
+packages/cli/src/modules/n8n-packages/entities/folder/__tests__/folder-conflict-policy.test.ts
+  ai_agent 1,11-21
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/schemas/importBlockingIssue.yml
+  ai_agent 90-110,150-172
+packages/@n8n/cli/src/__tests__/package-import.test.ts
+  ai_agent 22,24,73,75,102,104,209-217
+packages/@n8n/api-types/src/dto/packages/import-package-request.dto.ts
+  ai_agent 16,18,105-107
+packages/cli/src/modules/n8n-packages/__tests__/import-workflow-with-tags.integration.test.ts
+  ai_agent 18,59-61
+packages/cli/src/workflows/workflow-finder.service.ts
+  s_ce38e707b3774d::t_3da28489b7cfb5 220-224
+packages/cli/src/modules/n8n-packages/__tests__/import-subworkflows.integration.test.ts
+  ai_agent 12-13,27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1c2342f63c86033c22812ccad3d2eb88fc7c8923",
+  "prompts": {},
+  "sessions": {
+    "s_ce38e707b3774d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "26f3d3be-4e23-4ead-99eb-53993886261e",
+        "model": "claude-opus-5"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}
