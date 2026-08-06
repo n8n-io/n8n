@@ -1,18 +1,9 @@
-import { BROWSER_ID_STORAGE_KEY } from '@n8n/constants';
+import { getBrowserId } from '@n8n/frontend-utils/getBrowserId';
 import type { Method } from 'axios';
 import axios from 'axios';
 import type { GenericValue, IDataObject } from 'n8n-workflow';
 
 import type { IPublicApiContext } from './types';
-
-function getBrowserId() {
-	let browserId = localStorage.getItem(BROWSER_ID_STORAGE_KEY);
-	if (!browserId) {
-		browserId = crypto.randomUUID();
-		localStorage.setItem(BROWSER_ID_STORAGE_KEY, browserId);
-	}
-	return browserId;
-}
 
 // axios's default query serializer un-escapes `:`, `$`, `,` after encodeURIComponent for
 // readability, but the Public API's OpenAPI spec requires reserved characters (e.g. the
@@ -74,9 +65,3 @@ async function request<T>(
 
 export const get = async <T>(context: IPublicApiContext, endpoint: string, params?: IDataObject) =>
 	await request<T>(context, 'GET', endpoint, params);
-
-export const post = async <T>(context: IPublicApiContext, endpoint: string, data?: IDataObject) =>
-	await request<T>(context, 'POST', endpoint, data);
-
-export const patch = async <T>(context: IPublicApiContext, endpoint: string, data?: IDataObject) =>
-	await request<T>(context, 'PATCH', endpoint, data);

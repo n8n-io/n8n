@@ -8,7 +8,7 @@ import {
 	ROLE,
 	type UsersListFilterDto,
 } from '@n8n/api-types';
-import { BROWSER_ID_STORAGE_KEY } from '@n8n/constants';
+import { BROWSER_ID_STORAGE_KEY } from '@n8n/frontend-utils/getBrowserId';
 import { PERSONALIZATION_MODAL_KEY } from '@n8n/frontend-constants/users';
 import type { AssignableGlobalRole } from '@n8n/permissions';
 import * as cloudApi from '@n8n/rest-api-client/api/cloudPlans';
