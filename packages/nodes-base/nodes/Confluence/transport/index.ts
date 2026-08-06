@@ -99,7 +99,11 @@ export async function getConfluenceCloudId(
 	const site = matchSiteByHostname(resources, hostname);
 
 	if (!site) {
-		const reachable = resources.map((resource) => resource.url).join(', ');
+		// Same guard class as matchSiteByHostname: malformed entries must not break the error message
+		const reachable = resources
+			.filter((resource) => typeof resource?.url === 'string' && resource.url !== '')
+			.map((resource) => resource.url)
+			.join(', ');
 		throw new NodeOperationError(
 			this.getNode(),
 			`No Confluence site matched "${siteUrl}". This connection can access: ${reachable || 'no sites'}`,

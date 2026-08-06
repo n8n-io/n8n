@@ -124,6 +124,18 @@ describe('Confluence Transport', () => {
 			);
 		});
 
+		it('omits malformed entries from the reachable-sites list', async () => {
+			mockHttpRequestWithAuthentication.mockResolvedValueOnce([
+				null,
+				{ id: 'no-url' },
+				{ id: 'cloud-1', url: 'https://example.atlassian.net' },
+			]);
+
+			await expect(getConfluenceCloudId.call(ctx, 'foo.atlassian.net')).rejects.toThrow(
+				'This connection can access: https://example.atlassian.net',
+			);
+		});
+
 		it('throws a NodeOperationError for an unparseable site URL', async () => {
 			await expect(getConfluenceCloudId.call(ctx, 'not a url')).rejects.toThrow(NodeOperationError);
 			expect(mockHttpRequestWithAuthentication).not.toHaveBeenCalled();
