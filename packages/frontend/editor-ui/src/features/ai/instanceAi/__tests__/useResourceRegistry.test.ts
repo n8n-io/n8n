@@ -229,7 +229,7 @@ describe('useResourceRegistry', () => {
 	});
 
 	describe('producedArtifacts — message attachments', () => {
-		test('registers agent attachment from a user message', async () => {
+		test('preserves pending state from a new-agent attachment', async () => {
 			const { messages, producedArtifacts } = setup();
 
 			messages.value = [
@@ -241,6 +241,7 @@ describe('useResourceRegistry', () => {
 							id: 'agent-1',
 							name: 'Support Agent',
 							projectId: 'proj-1',
+							pending: true,
 						},
 					],
 				}),
@@ -252,6 +253,7 @@ describe('useResourceRegistry', () => {
 				id: 'agent-1',
 				name: 'Support Agent',
 				projectId: 'proj-1',
+				pending: true,
 			});
 		});
 	});
@@ -928,11 +930,25 @@ describe('useResourceRegistry', () => {
 		});
 
 		test('drops the pending flag once the agent is bound to the thread', async () => {
-			const { producedArtifacts } = setup(
+			const { messages, producedArtifacts } = setup(
 				undefined,
 				() => ({ agentId: 'aBcDeFgHiJkLmNoP', projectId: 'project-1', name: 'Support Triage' }),
 				() => ({ agentId: 'aBcDeFgHiJkLmNoP', projectId: 'project-1', name: 'New agent' }),
 			);
+			messages.value = [
+				makeMessage({
+					role: 'user',
+					attachments: [
+						{
+							type: 'agent',
+							id: 'aBcDeFgHiJkLmNoP',
+							name: 'New agent',
+							projectId: 'project-1',
+							pending: true,
+						},
+					],
+				}),
+			];
 			await nextTick();
 
 			const entry = producedArtifacts.get('aBcDeFgHiJkLmNoP');
