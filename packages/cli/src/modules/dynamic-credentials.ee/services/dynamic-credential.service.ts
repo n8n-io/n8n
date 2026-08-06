@@ -5,17 +5,18 @@ import { Service } from '@n8n/di';
 import type { NextFunction, Response } from 'express';
 import { Cipher } from 'n8n-core';
 import type {
-	ICredentialContext,
+	ICredentialResolutionContext,
 	ICredentialDataDecryptedObject,
 	IExecutionContext,
 	IWorkflowSettings,
 } from 'n8n-workflow';
-import { jsonParse, toCredentialContext } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
 
 import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { StaticAuthService } from '@/services/static-auth-service';
 
+import { CredentialResolutionContextBuilder } from './credential-resolution-context.builder';
 import { DynamicCredentialResolverRegistry } from './credential-resolver-registry.service';
 import { ResolverConfigExpressionService } from './resolver-config-expression.service';
 import { extractSharedFields } from './shared-fields';
@@ -47,6 +48,7 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 		private readonly logger: Logger,
 		private readonly expressionService: ResolverConfigExpressionService,
 		private readonly dynamicCredentialsProxy: DynamicCredentialsProxy,
+		private readonly resolutionContextBuilder: CredentialResolutionContextBuilder,
 	) {}
 
 	/**
@@ -56,6 +58,8 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 	 * @param credentialsResolveMetadata The credential resolve metadata
 	 * @param staticData The decrypted static credential data
 	 * @param additionalData Additional workflow execution data for context and settings
+	 * @param workflowId The workflow being executed, needed to unseal a claim carried
+	 *                   by the execution context (a claim is sealed per workflow)
 	 * @returns Resolved credential data (either dynamic or static)
 	 * @throws {CredentialResolutionError} If resolution fails and fallback is not allowed
 	 */
@@ -64,6 +68,7 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 		staticData: ICredentialDataDecryptedObject,
 		executionContext?: IExecutionContext,
 		workflowSettings?: IWorkflowSettings,
+		workflowId?: string,
 	): Promise<CredentialResolutionResult> {
 		// Determine which resolver ID to use: credential's own resolver or workflow's fallback
 		// (explicit workflow override, or the seeded system resolver looked up via the proxy).
@@ -96,8 +101,12 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 			return this.handleResolverNotFound(credentialsResolveMetadata, resolverId);
 		}
 
-		// Build credential context from execution context
-		const credentialContext = await this.buildCredentialContext(executionContext);
+		// Build the resolution context from the execution context (unsealing the
+		// caller's claim, when there is one, on every access)
+		const credentialContext = await this.resolutionContextBuilder.build(
+			executionContext,
+			workflowId,
+		);
 
 		if (!credentialContext) {
 			return this.handleMissingContext(credentialsResolveMetadata);
@@ -188,7 +197,7 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 	 * touching that hot path).
 	 */
 	async resolveOwningUserIdForAuthorization(
-		credentialContext: ICredentialContext,
+		credentialContext: ICredentialResolutionContext,
 		resolverId: string,
 	): Promise<
 		{ status: 'unbound' } | { status: 'bound'; userId: string } | { status: 'unresolved' }
@@ -213,26 +222,6 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 			return userId ? { status: 'bound', userId } : { status: 'unresolved' };
 		} catch {
 			return { status: 'unresolved' };
-		}
-	}
-
-	/**
-	 * Builds credential context from execution context by decrypting the credentials field
-	 */
-	private async buildCredentialContext(executionContext: IExecutionContext | undefined) {
-		if (!executionContext?.credentials) {
-			return undefined;
-		}
-
-		try {
-			// Decrypt credential context from execution context
-			const decrypted = await this.cipher.decryptV2(executionContext.credentials);
-			return toCredentialContext(decrypted);
-		} catch (error) {
-			this.logger.error('Failed to decrypt credential context from execution context', {
-				error: error instanceof Error ? error.message : String(error),
-			});
-			return undefined;
 		}
 	}
 

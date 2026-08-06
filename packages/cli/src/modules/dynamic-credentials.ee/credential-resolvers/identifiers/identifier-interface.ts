@@ -1,4 +1,4 @@
-import type { ICredentialContext } from 'n8n-workflow';
+import type { ICredentialResolutionContext } from 'n8n-workflow';
 
 import { CredentialResolutionError } from '../../errors/credential-resolution.error';
 
@@ -20,12 +20,16 @@ export interface ITokenIdentifier {
 	/**
 	 * Resolves a unique identifier for the entity in the given context
 	 *
-	 * @param context - Credential context with execution details
+	 * @param context - Credential context with execution details, including the
+	 *                  caller's verified claim when the execution carries one
 	 * @param identifierOptions - Implementation-specific options
 	 * @returns Unique identifier string
 	 * @throws {IdentifierValidationError} When validation or resolution fails
 	 */
-	resolve(context: ICredentialContext, identifierOptions: Record<string, unknown>): Promise<string>;
+	resolve(
+		context: ICredentialResolutionContext,
+		identifierOptions: Record<string, unknown>,
+	): Promise<string>;
 
 	/**
 	 * Validates identifier options before use

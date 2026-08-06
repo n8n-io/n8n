@@ -1,17 +1,18 @@
 import type { Mocked } from 'vitest';
 import type { GlobalConfig } from '@n8n/config';
 import type {
-	ICredentialContext,
+	ICredentialResolutionContext,
 	IExecutionContext,
+	IVerifiedClaim,
 	PlaintextExecutionContext,
 } from 'n8n-workflow';
 
 import type { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
 import type { UrlService } from '@/services/url.service';
-import type { ExecutionContextService } from 'n8n-core';
 import { CredentialsEntity } from '@n8n/db';
 
 import type { AuthorizeIntentService } from '../authorize-intent.service';
+import type { CredentialResolutionContextBuilder } from '../credential-resolution-context.builder';
 import type { CredentialResolverWorkflowService } from '../credential-resolver-workflow.service';
 import { CredentialCheckProxyService } from '../credential-check-proxy.service';
 import type { DynamicCredentialService } from '../dynamic-credential.service';
@@ -39,7 +40,7 @@ const createMockCredentialEntity = (
 describe('CredentialCheckProxyService', () => {
 	let service: CredentialCheckProxyService;
 	let mockCredentialResolverWorkflowService: Mocked<CredentialResolverWorkflowService>;
-	let mockExecutionContextService: Mocked<ExecutionContextService>;
+	let mockResolutionContextBuilder: Mocked<CredentialResolutionContextBuilder>;
 	let mockEnterpriseCredentialsService: Mocked<EnterpriseCredentialsService>;
 	let mockAuthorizeIntentService: Mocked<AuthorizeIntentService>;
 	let mockDynamicCredentialService: Mocked<DynamicCredentialService>;
@@ -70,9 +71,9 @@ describe('CredentialCheckProxyService', () => {
 			getWorkflowStatus: vi.fn(),
 		} as unknown as Mocked<CredentialResolverWorkflowService>;
 
-		mockExecutionContextService = {
-			decryptCredentialContext: vi.fn().mockResolvedValue(plaintextContext.credentials),
-		} as unknown as Mocked<ExecutionContextService>;
+		mockResolutionContextBuilder = {
+			build: vi.fn().mockResolvedValue(plaintextContext.credentials),
+		} as unknown as Mocked<CredentialResolutionContextBuilder>;
 
 		mockEnterpriseCredentialsService = {
 			getOne: vi.fn(),
@@ -94,7 +95,7 @@ describe('CredentialCheckProxyService', () => {
 
 		service = new CredentialCheckProxyService(
 			mockCredentialResolverWorkflowService,
-			mockExecutionContextService,
+			mockResolutionContextBuilder,
 			mockEnterpriseCredentialsService,
 			mockAuthorizeIntentService,
 			mockDynamicCredentialService,
@@ -181,9 +182,9 @@ describe('CredentialCheckProxyService', () => {
 			expect(mockAuthorizeIntentService.create).toHaveBeenCalledTimes(1);
 		});
 
-		it('should throw when no credential context in execution context', async () => {
-			mockExecutionContextService.decryptCredentialContext.mockResolvedValue(
-				undefined as unknown as ICredentialContext,
+		it('should throw when the execution context carries no identity at all', async () => {
+			mockResolutionContextBuilder.build.mockResolvedValue(
+				undefined as unknown as ICredentialResolutionContext,
 			);
 
 			await expect(service.checkCredentialStatus('workflow-1', executionContext)).rejects.toThrow(
@@ -245,10 +246,10 @@ describe('CredentialCheckProxyService', () => {
 		});
 
 		it('should capture an empty identity in the intent when identity is missing', async () => {
-			mockExecutionContextService.decryptCredentialContext.mockResolvedValue({
+			mockResolutionContextBuilder.build.mockResolvedValue({
 				version: 1,
 				metadata: {},
-			} as unknown as ICredentialContext);
+			} as unknown as ICredentialResolutionContext);
 
 			mockCredentialResolverWorkflowService.getWorkflowStatus.mockResolvedValue([
 				{
@@ -372,6 +373,52 @@ describe('CredentialCheckProxyService', () => {
 
 			expect(result.readyToExecute).toBe(true);
 			expect(result.credentials).toHaveLength(0);
+		});
+
+		it('should check a context that carries only a claim', async () => {
+			const claim: IVerifiedClaim = {
+				version: 1,
+				sourceId: 'source-1',
+				issuer: 'https://idp.example.com',
+				subject: 'external-subject-1',
+				audience: 'https://n8n.example.com',
+				expiresAt: Date.now() + 60_000,
+				boundWorkflowId: 'workflow-1',
+			};
+			const claimsOnlyContext: IExecutionContext = {
+				version: 1,
+				establishedAt: Date.now(),
+				source: 'webhook',
+				claims: 'sealed-claim',
+			};
+			mockResolutionContextBuilder.build.mockResolvedValue({
+				version: 1,
+				identity: '',
+				metadata: { source: 'external-idp' },
+				claims: claim,
+			});
+			mockCredentialResolverWorkflowService.getWorkflowStatus.mockResolvedValue([
+				{
+					credentialId: 'cred-1',
+					credentialName: 'OAuth2 API',
+					credentialType: 'oauth2Api',
+					resolverId: 'resolver-1',
+					status: 'configured',
+				},
+			]);
+
+			const result = await service.checkCredentialStatus('workflow-1', claimsOnlyContext);
+
+			expect(result.readyToExecute).toBe(true);
+			// The claim is sealed per workflow, so the workflow id must reach the builder.
+			expect(mockResolutionContextBuilder.build).toHaveBeenCalledWith(
+				claimsOnlyContext,
+				'workflow-1',
+			);
+			expect(mockCredentialResolverWorkflowService.getWorkflowStatus).toHaveBeenCalledWith(
+				'workflow-1',
+				expect.objectContaining({ claims: claim }),
+			);
 		});
 	});
 });

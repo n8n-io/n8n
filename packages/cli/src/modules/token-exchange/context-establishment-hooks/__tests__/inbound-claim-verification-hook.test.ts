@@ -79,6 +79,9 @@ describe('InboundClaimVerificationHook', () => {
 			expect(result.contextUpdate?.claims).toEqual({
 				version: 1,
 				sourceId: 'idp-1',
+				// Carried because a binding is keyed by issuer + subject, so resolution
+				// at access time needs it (see the external-idp source in N8NIdentifier).
+				issuer: 'https://idp.example.com',
 				subject: 'user-42',
 				audience: 'https://n8n.example.com',
 				expiresAt: expiresAt.getTime(),
@@ -90,9 +93,7 @@ describe('InboundClaimVerificationHook', () => {
 			expect(keys).not.toContain('principalId');
 			expect(keys).not.toContain('userId');
 			expect(keys).not.toContain('principal');
-			// Confirms issuer/attributes are deliberately dropped (not carried
-			// into the sealed claim - see plan §6.5).
-			expect(keys).not.toContain('issuer');
+			// Attributes stay out of the sealed claim - nothing resolves on them.
 			expect(keys).not.toContain('attributes');
 		});
 

@@ -1221,6 +1221,7 @@ describe('CredentialsHelper', () => {
 				{ apiKey: 'static-key' },
 				mockAdditionalData.executionContext,
 				mockAdditionalData.workflowSettings,
+				mockAdditionalData.workflowId,
 			);
 			expect(result).toEqual(resolvedData);
 		});

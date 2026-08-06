@@ -23,6 +23,7 @@ import {
 	CredentialConnectionStatusService,
 	DynamicCredentialResolverRegistry,
 	DynamicCredentialService,
+	InboundClaimConnectService,
 } from './services';
 import { DynamicCredentialCorsService } from './services/dynamic-credential-cors.service';
 import { DynamicCredentialWebService } from './services/dynamic-credential-web.service';
@@ -45,6 +46,7 @@ export class DynamicCredentialsController {
 		private readonly eventService: EventService,
 		private readonly authorizeIntentService: AuthorizeIntentService,
 		private readonly dynamicCredentialService: DynamicCredentialService,
+		private readonly inboundClaimConnectService: InboundClaimConnectService,
 		private readonly urlService: UrlService,
 	) {}
 
@@ -116,7 +118,8 @@ export class DynamicCredentialsController {
 	})
 	async revokeCredential(req: Request, res: Response): Promise<void> {
 		this.dynamicCredentialCorsService.applyCorsHeadersIfEnabled(req, res, ['delete', 'options']);
-		const credentialContext = this.dynamicCredentialWebService.getCredentialContextFromRequest(req);
+		const credentialContext =
+			await this.dynamicCredentialWebService.getCredentialContextFromRequest(req);
 		const user = isAuthenticatedRequest(req) ? req.user : undefined;
 		const credential = await this.findCredentialToUse(req.params.id, user, 'credential:update');
 
@@ -158,7 +161,8 @@ export class DynamicCredentialsController {
 	})
 	async authorizeCredential(req: Request, res: Response): Promise<string> {
 		this.dynamicCredentialCorsService.applyCorsHeadersIfEnabled(req, res, ['post', 'options']);
-		const credentialContext = this.dynamicCredentialWebService.getCredentialContextFromRequest(req);
+		const credentialContext =
+			await this.dynamicCredentialWebService.getCredentialContextFromRequest(req);
 		const user = isAuthenticatedRequest(req) ? req.user : undefined;
 		const credential = await this.findCredentialToUse(req.params.id, user, 'credential:update');
 
@@ -175,6 +179,14 @@ export class DynamicCredentialsController {
 				resolverName: resolverEntity.type,
 				configuration: resolverConfig,
 			});
+		}
+
+		// Connecting is the point at which an inbound identity may be bound to an
+		// n8n user: it is interactive, and the caller just presented a verified
+		// token. Without this, someone arriving with an IdP token they have never
+		// logged into n8n with would have nothing to store their connection under.
+		if (credentialContext.claims) {
+			await this.inboundClaimConnectService.ensureBinding(credentialContext.claims);
 		}
 
 		// Best-effort: bind the callback to the intended n8n user when the resolver

@@ -2,6 +2,7 @@ import type { Logger } from '@n8n/backend-common';
 import type { DbLockService } from '@n8n/db';
 import type { EntityManager } from '@n8n/typeorm';
 import type { InstanceSettings } from 'n8n-core';
+import { jsonParse } from 'n8n-workflow';
 import { createHash } from 'node:crypto';
 import { mock } from 'vitest-mock-extended';
 
@@ -62,10 +63,12 @@ function makeTrustedKeyEntity(
 function createMocks({
 	isLeader = true,
 	trustedKeys = '',
-}: { isLeader?: boolean; trustedKeys?: string } = {}) {
+	inboundSubjectClaim = '',
+}: { isLeader?: boolean; trustedKeys?: string; inboundSubjectClaim?: string } = {}) {
 	const config = mock<TokenExchangeConfig>({
 		trustedKeys,
 		keyRefreshIntervalSeconds: 300,
+		inboundSubjectClaim,
 	});
 	const sourceRepo = mock<TrustedKeySourceRepository>();
 	const keyRepo = mock<TrustedKeyRepository>();
@@ -94,6 +97,7 @@ function createMocks({
 
 	return {
 		service,
+		config,
 		keyRepo,
 		sourceRepo,
 		dbLockService,
@@ -153,6 +157,28 @@ describe('TrustedKeyService', () => {
 
 			// Different KeyObject (cache miss due to hash mismatch)
 			expect(result1!.key).not.toBe(result2!.key);
+		});
+	});
+
+	describe('subjectClaim resolution', () => {
+		it('defaults subjectClaim to sub when the stored data omits it', async () => {
+			const { service, keyRepo } = createMocks();
+			keyRepo.findAllByKid.mockResolvedValue([makeTrustedKeyEntity()]);
+
+			const result = await service.getByKidAndIss('test-kid', 'https://issuer.example.com');
+
+			expect(result!.subjectClaim).toBe('sub');
+		});
+
+		it('returns the configured subjectClaim when present in stored data', async () => {
+			const { service, keyRepo } = createMocks();
+			keyRepo.findAllByKid.mockResolvedValue([
+				makeTrustedKeyEntity({ data: makeTrustedKeyData({ subjectClaim: 'uid' }) }),
+			]);
+
+			const result = await service.getByKidAndIss('test-kid', 'https://issuer.example.com');
+
+			expect(result!.subjectClaim).toBe('uid');
 		});
 	});
 
@@ -413,6 +439,28 @@ describe('TrustedKeyService', () => {
 
 			await expect(service.registerSsoDerivedSource(issuer, jwksUri)).resolves.not.toThrow();
 			expect(tx.save).toHaveBeenCalled();
+		});
+
+		it('includes subjectClaim from config.inboundSubjectClaim when set', async () => {
+			const { service, tx, sourceRepo } = createMocks({ inboundSubjectClaim: 'uid' });
+			tx.findOneBy.mockResolvedValueOnce(null);
+			sourceRepo.findOneBy.mockResolvedValue(mock<TrustedKeySourceEntity>());
+
+			await service.registerSsoDerivedSource(issuer, jwksUri);
+
+			const [, saved] = tx.save.mock.calls[0] as [unknown, { config: string }];
+			expect(jsonParse(saved.config)).toMatchObject({ subjectClaim: 'uid' });
+		});
+
+		it('omits subjectClaim when config.inboundSubjectClaim is empty', async () => {
+			const { service, tx, sourceRepo } = createMocks({ inboundSubjectClaim: '' });
+			tx.findOneBy.mockResolvedValueOnce(null);
+			sourceRepo.findOneBy.mockResolvedValue(mock<TrustedKeySourceEntity>());
+
+			await service.registerSsoDerivedSource(issuer, jwksUri);
+
+			const [, saved] = tx.save.mock.calls[0] as [unknown, { config: string }];
+			expect(jsonParse(saved.config)).not.toHaveProperty('subjectClaim');
 		});
 	});
 });

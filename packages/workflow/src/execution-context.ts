@@ -88,6 +88,20 @@ export const CredentialContextSchema = z
  */
 export type ICredentialContext = z.output<typeof CredentialContextSchema>;
 
+/**
+ * Credential context as seen by a resolver, plus the caller's verified claim
+ * when the execution carries one.
+ *
+ * Runtime-only, and deliberately not part of `CredentialContextSchema`: the
+ * claim is unsealed per access from `IExecutionContext.claims` and attached
+ * here, so it can never be written into the persisted credential envelope.
+ * Resolvers that key on n8n users derive the principal from it on every
+ * access - a stored principal id would itself work as a bearer credential.
+ */
+export type ICredentialResolutionContext = ICredentialContext & {
+	claims?: IVerifiedClaim;
+};
+
 const ActorClaimSchemaV1 = z.object({
 	version: z.literal(1),
 	/** IdP that verified the actor (the caller), not the principal (who they're acting as). */
@@ -102,6 +116,12 @@ const VerifiedClaimSchemaV1 = z.object({
 	version: z.literal(1),
 	/** Which IdP verified this claim. */
 	sourceId: z.string(),
+	/**
+	 * The issuer that vouched for the subject (mirrors JWT `iss`). Needed to
+	 * resolve the claim: a binding is keyed by issuer + subject, and the
+	 * SSO bridge only applies to issuers n8n knows as SSO providers.
+	 */
+	issuer: z.string(),
 	/** The verified external subject, e.g. IdP `sub`. Not a principal id - see IVerifiedClaim. */
 	subject: z.string(),
 	/** What the claim was verified for (mirrors JWT `aud`). */

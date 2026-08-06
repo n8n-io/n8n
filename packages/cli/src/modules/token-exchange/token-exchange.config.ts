@@ -55,4 +55,14 @@ export class TokenExchangeConfig {
 	 */
 	@Env('N8N_TOKEN_EXCHANGE_INBOUND_AUDIENCE')
 	inboundAudience: string = '';
+
+	/**
+	 * Claim to use as the effective subject for SSO-derived trusted key
+	 * sources, instead of the standard `sub` claim - e.g. `uid` for an Okta
+	 * custom authorization server, whose access-token `sub` is often the
+	 * user's login rather than a stable id. Instance-wide, not per-issuer -
+	 * same limitation as `inboundAudience` above.
+	 */
+	@Env('N8N_TOKEN_EXCHANGE_INBOUND_SUBJECT_CLAIM')
+	inboundSubjectClaim: string = '';
 }

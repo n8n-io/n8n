@@ -96,6 +96,7 @@ describe('toVerifiedClaim', () => {
 	const baseClaim = {
 		version: 1 as const,
 		sourceId: 'idp-1',
+		issuer: 'https://idp-1.example.com',
 		subject: 'user-42',
 		audience: 'aud-1',
 		expiresAt: 1234567890,
@@ -130,7 +131,7 @@ describe('toVerifiedClaim', () => {
 		expect(parsed).toEqual(baseClaim);
 	});
 
-	it.each(['sourceId', 'subject', 'audience', 'expiresAt', 'boundWorkflowId'])(
+	it.each(['sourceId', 'issuer', 'subject', 'audience', 'expiresAt', 'boundWorkflowId'])(
 		'rejects a claim missing %s',
 		(field) => {
 			const invalid: Record<string, unknown> = { ...baseClaim };

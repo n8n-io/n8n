@@ -73,6 +73,7 @@ export const TrustedKeySourceSchema = z.discriminatedUnion('type', [
 		requireVerifiedEmail: z.boolean().optional(),
 		expectedAudience: z.string().optional(),
 		allowedRoles: z.array(z.string()).optional(),
+		subjectClaim: z.string().optional(),
 	}),
 	z.object({
 		type: z.literal('jwks'),
@@ -82,6 +83,7 @@ export const TrustedKeySourceSchema = z.discriminatedUnion('type', [
 		expectedAudience: z.string().optional(),
 		allowedRoles: z.array(z.string()).optional(),
 		cacheTtlSeconds: z.number().int().positive().optional(),
+		subjectClaim: z.string().optional(),
 	}),
 ]);
 
@@ -116,6 +118,7 @@ export const TrustedKeyDataSchema = z.object({
 	allowedRoles: z.array(z.string()).optional(),
 	expiresAt: z.string().optional(),
 	requireVerifiedEmail: z.boolean().optional(),
+	subjectClaim: z.string().optional(),
 });
 
 export type TrustedKeyData = z.infer<typeof TrustedKeyDataSchema>;
@@ -150,6 +153,16 @@ export interface ResolvedTrustedKey {
 
 	/** Flag indicating that the token's `email_verified` claim must be true, for email linking. */
 	requireVerifiedEmail: boolean;
+
+	/**
+	 * Claim to use as the effective subject when resolving identity, instead
+	 * of the standard `sub` claim (e.g. `uid` for an Okta custom Authorization
+	 * Server, whose access-token `sub` is often the user's login rather than
+	 * a stable id). Must be an immutable, issuer-assigned identifier —
+	 * pointing this at a mutable attribute (email, username) turns the
+	 * binding key into a forgeable value.
+	 */
+	subjectClaim: string;
 }
 
 /**
