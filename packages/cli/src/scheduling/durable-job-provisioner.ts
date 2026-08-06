@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import type { ScheduledJobMisfirePolicy } from '@n8n/constants';
+import { type ScheduledJobMisfirePolicy, Time } from '@n8n/constants';
 import type { EntityManager, NewScheduledJob, ScheduledJob } from '@n8n/db';
 import { DataSource, ScheduledJobRepository, ScheduledTaskRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -21,6 +21,8 @@ import { UnexpectedError } from 'n8n-workflow';
 
 import { createSchedulerTracer } from './scheduler-tracer';
 
+const MAX_MISFIRE_GRACE_SECONDS = 30 * Time.days.toSeconds;
+
 /** Identifies one workflow node's jobs, and stamps the rows provisioning inserts. */
 interface ProvisionScope {
 	workflowId: string;
@@ -28,6 +30,7 @@ interface ProvisionScope {
 	taskType: string;
 	payload: Record<string, unknown>;
 	misfirePolicy: ScheduledJobMisfirePolicy;
+	misfireGraceSeconds?: number;
 }
 
 /** Identifies jobs for deletion: one node's jobs, or one workflow's jobs of a task type. */
@@ -107,9 +110,10 @@ export class DurableJobProvisioner {
 		payload: Record<string, unknown>,
 		desired: DesiredJob[],
 		misfirePolicy: ScheduledJobMisfirePolicy,
+		misfireGraceSeconds?: number,
 	): Promise<ProvisionSummary> {
 		return await this.provisioner.provision(
-			{ workflowId, nodeId, taskType, payload, misfirePolicy },
+			{ workflowId, nodeId, taskType, payload, misfirePolicy, misfireGraceSeconds },
 			desired,
 		);
 	}
@@ -149,8 +153,9 @@ export class DurableJobProvisioner {
 		taskType,
 		payload,
 		misfirePolicy,
+		misfireGraceSeconds: requestedMisfireGraceSeconds,
 	}: ProvisionScope): RunInProvisionTransaction {
-		const misfireGraceSeconds = this.globalConfig.scheduler.misfireGraceSeconds;
+		const misfireGraceSeconds = this.resolveMisfireGraceSeconds(requestedMisfireGraceSeconds);
 		return async (work) =>
 			await this.dataSource.transaction(async (manager) => {
 				// Jobs freshly inserted or redefined this pass; their first window is
@@ -229,6 +234,34 @@ export class DurableJobProvisioner {
 				await this.seedInitialOccurrences(manager, seededJobIds);
 				return result;
 			});
+	}
+
+	private resolveMisfireGraceSeconds(requested: number | undefined): number {
+		const { misfireGraceSeconds, executorIntervalSeconds, materializationWindowSeconds } =
+			this.globalConfig.scheduler;
+
+		const numeric = Number(requested);
+		if (!Number.isFinite(numeric)) return misfireGraceSeconds;
+
+		const truncated = Math.trunc(numeric);
+		if (truncated < 1) return misfireGraceSeconds;
+
+		const floor = Math.max(executorIntervalSeconds + 1, materializationWindowSeconds);
+		const effective = Math.min(Math.max(truncated, floor), MAX_MISFIRE_GRACE_SECONDS);
+
+		if (effective > truncated) {
+			this.logger.warn("Raised a node's misfire grace to the scheduler's minimum", {
+				requestedMisfireGraceSeconds: truncated,
+				misfireGraceSeconds: effective,
+			});
+		} else if (effective < truncated) {
+			this.logger.warn("Lowered a node's misfire grace to the scheduler's maximum", {
+				requestedMisfireGraceSeconds: truncated,
+				misfireGraceSeconds: effective,
+			});
+		}
+
+		return effective;
 	}
 
 	/**
