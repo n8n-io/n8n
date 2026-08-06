@@ -118,10 +118,11 @@ describe.skipIf(!brokerUp)('version 1 and version 2 item parity', () => {
 				topic,
 				parseMessage: createMessageParser(PARSER_OPTIONS, mock<Logger>(), undefined, (async () =>
 					mock<IBinaryData>()) as unknown as ITriggerFunctions['helpers']['prepareBinaryData']),
-				onBatch: ({ items, done }) => {
+				emit: async (items) => {
 					v2Item ??= items[0];
-					done();
+					return { success: true };
 				},
+				logger: mock<Logger>(),
 			});
 			await waitFor(
 				() => (v2Consumer.assignment().length > 0 ? true : undefined),

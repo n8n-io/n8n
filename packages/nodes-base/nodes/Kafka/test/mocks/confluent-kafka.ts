@@ -11,6 +11,10 @@ export interface FakeBatch {
 	messages: Array<Partial<KafkaJS.KafkaMessage>>;
 	topic?: string;
 	partition?: number;
+	/** The partition was revoked mid-batch. Defaults to false. */
+	isStale?: boolean;
+	/** The consumer is still running. Defaults to true. */
+	isRunning?: boolean;
 }
 
 export interface FakeConsumer {
@@ -58,7 +62,13 @@ function createFakeConsumer(config: KafkaJS.ConsumerConstructorConfig): FakeCons
 		}),
 		disconnect: vi.fn(async () => {}),
 		payloadSpies,
-		deliverBatch: async ({ messages, topic = 'test-topic', partition = 0 }) => {
+		deliverBatch: async ({
+			messages,
+			topic = 'test-topic',
+			partition = 0,
+			isStale = false,
+			isRunning = true,
+		}) => {
 			if (!eachBatch) throw new Error('deliverBatch called before run() registered a handler');
 
 			const batchMessages = messages.map((message, index) => ({
@@ -82,8 +92,8 @@ function createFakeConsumer(config: KafkaJS.ConsumerConstructorConfig): FakeCons
 					offsetLag: () => '0',
 					offsetLagLow: () => '0',
 				},
-				isRunning: () => true,
-				isStale: () => false,
+				isRunning: () => isRunning,
+				isStale: () => isStale,
 				...payloadSpies,
 			});
 		},

@@ -153,10 +153,11 @@ async function startConsumer(
 	const handle = await consumeTopic(consumer, {
 		topic,
 		parseMessage: createMessageParser(parserOptions, logger, registry, prepareBinaryData),
-		onBatch: ({ items, done }) => {
+		emit: async (items) => {
 			if (items[0]) deliver(items[0]);
-			done();
+			return { success: true };
 		},
+		logger,
 	});
 
 	// Release the consumer if the assignment never arrives: the caller only gets a

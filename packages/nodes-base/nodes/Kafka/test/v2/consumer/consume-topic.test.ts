@@ -1,7 +1,9 @@
-import type { INodeExecutionData } from 'n8n-workflow';
+import type { INodeExecutionData, Logger } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import type { KafkaCredentials } from '../../../utils';
-import { consumeTopic, type KafkaBatchHandOff } from '../../../v2/consumer/consume-topic';
+import { consumeTopic } from '../../../v2/consumer/consume-topic';
+import type { EmitResult } from '../../../v2/consumer/data-emitter';
 import { createKafkaConsumer } from '../../../v2/transport/consumer';
 import {
 	confluentKafkaModuleMock,
@@ -26,238 +28,243 @@ const parseMessage = vi.fn(
 	}),
 );
 
+const emit = vi.fn(async (): Promise<EmitResult> => ({ success: true }));
+
+let logger: Logger;
+
 beforeEach(() => {
 	resetConfluentKafkaRecordings();
 	parseMessage.mockClear();
+	emit.mockClear();
+	logger = mock<Logger>();
 });
 
-const newConsumer = async (groupId = 'n8n-kafka'): Promise<FakeConsumer> => {
-	await createKafkaConsumer(credentials, { groupId });
+const newConsumer = async (): Promise<FakeConsumer> => {
+	await createKafkaConsumer(credentials, { groupId: 'n8n-kafka' });
 	const consumer = getFakeConsumers().at(-1);
 	if (!consumer) throw new Error('the fake recorded no consumer');
 	return consumer;
 };
 
+type StartOverrides = {
+	batchSize?: number;
+	partitionsConsumedConcurrently?: number;
+	errorRetryDelay?: number;
+};
+
+const start = async (overrides: StartOverrides = {}) => {
+	const consumer = await newConsumer();
+	const handle = await consumeTopic(consumer as never, {
+		topic: 'orders',
+		parseMessage,
+		emit,
+		logger,
+		// Zero unless a test is specifically about the delay, so failure tests
+		// assert behaviour without waiting out the real retry pacing.
+		errorRetryDelay: 0,
+		...overrides,
+	});
+	return { consumer, handle };
+};
+
+const messages = (...values: string[]) => values.map((value) => ({ value: Buffer.from(value) }));
+
 describe('consumeTopic', () => {
-	const start = async (
-		onBatch: (handOff: KafkaBatchHandOff) => void,
-		options: { partitionsConsumedConcurrently?: number; errorRetryDelay?: number } = {},
-	) => {
-		const consumer = await newConsumer();
-		const handle = await consumeTopic(consumer as never, {
-			topic: 'orders',
-			parseMessage,
-			onBatch,
-			// Zero unless a test is specifically about the delay, so failure tests
-			// assert propagation without waiting out the real retry pacing.
-			errorRetryDelay: 0,
-			...options,
-		});
-		return { consumer, handle };
-	};
+	describe('startup', () => {
+		it('connects, subscribes to the topic, and starts the loop', async () => {
+			const { consumer } = await start();
 
-	it('connects, subscribes to the topic, and starts the loop', async () => {
-		const { consumer } = await start(({ done }) => done());
-
-		expect(consumer.connect).toHaveBeenCalledTimes(1);
-		expect(consumer.subscribe).toHaveBeenCalledWith({ topics: ['orders'] });
-		expect(consumer.run).toHaveBeenCalledTimes(1);
-	});
-
-	it('reads one partition at a time unless told otherwise', async () => {
-		const { consumer } = await start(({ done }) => done());
-
-		expect(consumer.runConfig?.partitionsConsumedConcurrently).toBe(1);
-	});
-
-	it('passes through a caller-chosen partition concurrency', async () => {
-		const { consumer } = await start(({ done }) => done(), { partitionsConsumedConcurrently: 4 });
-
-		expect(consumer.runConfig?.partitionsConsumedConcurrently).toBe(4);
-	});
-
-	it('leaves the automatic progress-saving at the library default', async () => {
-		const { consumer } = await start(({ done }) => done());
-
-		expect(consumer.runConfig).not.toHaveProperty('eachBatchAutoResolve');
-	});
-
-	it('hands over the parsed batch with its topic and partition', async () => {
-		const handOffs: KafkaBatchHandOff[] = [];
-		const { consumer } = await start((handOff) => {
-			handOffs.push(handOff);
-			handOff.done();
+			expect(consumer.connect).toHaveBeenCalledTimes(1);
+			expect(consumer.subscribe).toHaveBeenCalledWith({ topics: ['orders'] });
+			expect(consumer.run).toHaveBeenCalledTimes(1);
 		});
 
-		await consumer.deliverBatch({
-			topic: 'orders',
-			partition: 2,
-			messages: [{ value: Buffer.from('first') }, { value: Buffer.from('second') }],
+		it('reads one partition at a time unless told otherwise', async () => {
+			const { consumer } = await start();
+
+			expect(consumer.runConfig?.partitionsConsumedConcurrently).toBe(1);
 		});
 
-		expect(handOffs).toHaveLength(1);
-		expect(handOffs[0].topic).toBe('orders');
-		expect(handOffs[0].partition).toBe(2);
-		expect(handOffs[0].items).toStrictEqual([
-			{ json: { message: 'first', topic: 'orders' } },
-			{ json: { message: 'second', topic: 'orders' } },
-		]);
-	});
+		it('passes through a caller-chosen partition concurrency', async () => {
+			const { consumer } = await start({ partitionsConsumedConcurrently: 4 });
 
-	it('parses every message in the batch with the batch topic', async () => {
-		const { consumer } = await start(({ done }) => done());
-
-		await consumer.deliverBatch({
-			topic: 'orders',
-			messages: [{ value: Buffer.from('a') }, { value: Buffer.from('b') }],
+			expect(consumer.runConfig?.partitionsConsumedConcurrently).toBe(4);
 		});
 
-		expect(parseMessage).toHaveBeenCalledTimes(2);
-		expect(parseMessage).toHaveBeenNthCalledWith(
-			1,
-			expect.objectContaining({ value: Buffer.from('a') }),
-			'orders',
-		);
-	});
+		it('turns the library automatic offset resolution off, as v1 does', async () => {
+			const { consumer } = await start();
 
-	it('stays inside eachBatch until the completion callback fires', async () => {
-		let release!: () => void;
-		let handedOff!: () => void;
-		const handOff = new Promise<void>((resolve) => (handedOff = resolve));
-
-		const { consumer } = await start(({ done }) => {
-			release = done;
-			handedOff();
+			expect(consumer.runConfig?.eachBatchAutoResolve).toBe(false);
 		});
 
-		let settled = false;
-		const delivery = consumer
-			.deliverBatch({ messages: [{ value: Buffer.from('a') }] })
-			.then(() => (settled = true));
+		it.each([
+			['connect', (consumer: FakeConsumer) => consumer.connect],
+			['subscribe', (consumer: FakeConsumer) => consumer.subscribe],
+			['run', (consumer: FakeConsumer) => consumer.run],
+		])('disconnects when %s fails, leaving no open connection behind', async (_, pick) => {
+			const consumer = await newConsumer();
+			pick(consumer).mockRejectedValueOnce(new Error('start failed'));
 
-		await handOff;
-		expect(settled).toBe(false);
-
-		release();
-		await delivery;
-		expect(settled).toBe(true);
+			await expect(
+				consumeTopic(consumer as never, { topic: 'orders', parseMessage, emit, logger }),
+			).rejects.toThrow('start failed');
+			expect(consumer.disconnect).toHaveBeenCalledTimes(1);
+		});
 	});
 
-	it.each([
-		['connect', (consumer: FakeConsumer) => consumer.connect],
-		['subscribe', (consumer: FakeConsumer) => consumer.subscribe],
-		['run', (consumer: FakeConsumer) => consumer.run],
-	])('disconnects when %s fails, leaving no open connection behind', async (_, pick) => {
-		const consumer = await newConsumer();
-		pick(consumer).mockRejectedValueOnce(new Error('start failed'));
+	describe('chunking', () => {
+		it('emits one execution per message by default', async () => {
+			const { consumer } = await start();
 
-		await expect(
-			consumeTopic(consumer as never, {
-				topic: 'orders',
-				parseMessage,
-				onBatch: ({ done }) => done(),
-			}),
-		).rejects.toThrow('start failed');
-		expect(consumer.disconnect).toHaveBeenCalledTimes(1);
+			await consumer.deliverBatch({ topic: 'orders', messages: messages('a', 'b', 'c') });
+
+			expect(emit).toHaveBeenCalledTimes(3);
+			expect(emit).toHaveBeenNthCalledWith(1, [{ json: { message: 'a', topic: 'orders' } }]);
+			expect(emit).toHaveBeenNthCalledWith(3, [{ json: { message: 'c', topic: 'orders' } }]);
+		});
+
+		it('groups messages into executions of the chosen batch size', async () => {
+			const { consumer } = await start({ batchSize: 2 });
+
+			await consumer.deliverBatch({ topic: 'orders', messages: messages('a', 'b', 'c') });
+
+			expect(emit).toHaveBeenCalledTimes(2);
+			expect(emit).toHaveBeenNthCalledWith(1, [
+				{ json: { message: 'a', topic: 'orders' } },
+				{ json: { message: 'b', topic: 'orders' } },
+			]);
+			// The trailing chunk is short rather than padded.
+			expect(emit).toHaveBeenNthCalledWith(2, [{ json: { message: 'c', topic: 'orders' } }]);
+		});
+
+		it('parses every message with the batch topic', async () => {
+			const { consumer } = await start();
+
+			await consumer.deliverBatch({ topic: 'orders', messages: messages('a', 'b') });
+
+			expect(parseMessage).toHaveBeenCalledTimes(2);
+			expect(parseMessage).toHaveBeenNthCalledWith(
+				1,
+				expect.objectContaining({ value: Buffer.from('a') }),
+				'orders',
+			);
+		});
 	});
 
-	it('lets a parse failure propagate, so the batch is retried rather than skipped', async () => {
-		// eachBatchAutoResolve is on: returning normally would mark the batch read.
-		const { consumer } = await start(({ done }) => done());
-		parseMessage.mockRejectedValueOnce(new Error('parse failed'));
+	describe('offset resolution', () => {
+		it('resolves the last offset of each chunk and commits', async () => {
+			const { consumer } = await start();
 
-		await expect(
-			consumer.deliverBatch({ messages: [{ value: Buffer.from('a') }] }),
-		).rejects.toThrow('parse failed');
-	});
+			await consumer.deliverBatch({ messages: messages('a', 'b') });
 
-	it('waits the retry delay before letting a failed batch be re-delivered', async () => {
-		vi.useFakeTimers();
-		try {
-			const { consumer } = await start(({ done }) => done(), { errorRetryDelay: 5000 });
+			expect(consumer.payloadSpies.resolveOffset.mock.calls).toStrictEqual([['0'], ['1']]);
+			expect(consumer.payloadSpies.commitOffsetsIfNecessary).toHaveBeenCalledTimes(2);
+		});
+
+		it('resolves once per chunk, not once per message', async () => {
+			const { consumer } = await start({ batchSize: 2 });
+
+			await consumer.deliverBatch({ messages: messages('a', 'b', 'c', 'd') });
+
+			expect(consumer.payloadSpies.resolveOffset.mock.calls).toStrictEqual([['1'], ['3']]);
+		});
+
+		it('keeps earlier chunks resolved when a later one fails to parse', async () => {
+			const { consumer } = await start();
+			parseMessage.mockImplementationOnce(async (message, topic) => ({
+				json: { message: message.value?.toString(), topic },
+			}));
 			parseMessage.mockRejectedValueOnce(new Error('parse failed'));
 
-			const delivery = consumer.deliverBatch({ messages: [{ value: Buffer.from('a') }] });
-			const assertion = expect(delivery).rejects.toThrow('parse failed');
+			await consumer.deliverBatch({ messages: messages('a', 'poison', 'c') });
 
-			await vi.advanceTimersByTimeAsync(4999);
-			expect(parseMessage).toHaveBeenCalledTimes(1);
-
-			await vi.advanceTimersByTimeAsync(1);
-			await assertion;
-		} finally {
-			vi.useRealTimers();
-		}
-	});
-
-	it('does not wait the retry delay when the failure is close itself', async () => {
-		// Teardown must not be held up by retry pacing.
-		const { consumer, handle } = await start(() => {
-			// Never finishes, so close is what ends the batch.
+			// 'a' stays done; the poison message and everything after it are re-delivered.
+			expect(consumer.payloadSpies.resolveOffset.mock.calls).toStrictEqual([['0']]);
+			expect(emit).toHaveBeenCalledTimes(1);
 		});
 
-		const delivery = consumer.deliverBatch({ messages: [{ value: Buffer.from('a') }] });
-		await handle.close();
+		it('stops without resolving when an execution does not permit it', async () => {
+			const { consumer } = await start();
+			emit.mockResolvedValueOnce({ success: true });
+			emit.mockResolvedValueOnce({ success: false });
 
-		await expect(delivery).rejects.toThrow('closed before the batch was handed off');
+			await consumer.deliverBatch({ messages: messages('a', 'b', 'c') });
+
+			expect(consumer.payloadSpies.resolveOffset.mock.calls).toStrictEqual([['0']]);
+			// Stops at the failure rather than carrying on to 'c'.
+			expect(emit).toHaveBeenCalledTimes(2);
+		});
 	});
 
-	it('lets a handler that throws synchronously propagate', async () => {
-		const { consumer } = await start(() => {
-			throw new Error('handler exploded');
+	describe('interruptions', () => {
+		it.each([
+			['the partition was revoked', { isStale: true }],
+			['the consumer stopped', { isRunning: false }],
+		])('stops the batch when %s', async (_, state) => {
+			const { consumer } = await start();
+
+			await consumer.deliverBatch({ messages: messages('a', 'b'), ...state });
+
+			expect(emit).not.toHaveBeenCalled();
+			expect(consumer.payloadSpies.resolveOffset).not.toHaveBeenCalled();
 		});
 
-		await expect(
-			consumer.deliverBatch({ messages: [{ value: Buffer.from('a') }] }),
-		).rejects.toThrow('handler exploded');
-	});
+		it('stops the batch after close, leaving offsets unresolved', async () => {
+			const { consumer, handle } = await start();
 
-	it('disconnects the consumer on close', async () => {
-		const { consumer, handle } = await start(({ done }) => done());
+			await handle.close();
+			await consumer.deliverBatch({ messages: messages('a') });
 
-		await handle.close();
-
-		expect(consumer.disconnect).toHaveBeenCalledTimes(1);
-	});
-
-	it('gives up on a disconnect that never settles, so teardown cannot hang', async () => {
-		vi.useFakeTimers();
-		try {
-			const { consumer, handle } = await start(({ done }) => done());
-			consumer.disconnect.mockReturnValueOnce(new Promise(() => {}));
-
-			const closing = expect(handle.close()).rejects.toThrow(
-				'Kafka consumer did not disconnect in time',
-			);
-			await vi.advanceTimersByTimeAsync(30_000);
-			await closing;
-		} finally {
-			vi.useRealTimers();
-		}
-	});
-
-	it('releases a batch still waiting on its completion callback when closing', async () => {
-		const { consumer, handle } = await start(() => {
-			// Never calls done(), as a workflow that has not finished yet.
+			expect(emit).not.toHaveBeenCalled();
+			expect(consumer.payloadSpies.resolveOffset).not.toHaveBeenCalled();
 		});
 
-		const delivery = consumer.deliverBatch({ messages: [{ value: Buffer.from('a') }] });
-		await handle.close();
+		it('waits the retry delay before a failed chunk is re-delivered', async () => {
+			vi.useFakeTimers();
+			try {
+				const { consumer } = await start({ errorRetryDelay: 5000 });
+				parseMessage.mockRejectedValueOnce(new Error('parse failed'));
 
-		// Rejects rather than resolves: eachBatchAutoResolve is on, so returning
-		// normally would mark messages read that no execution ever finished.
-		await expect(delivery).rejects.toThrow('closed before the batch was handed off');
+				let settled = false;
+				const delivery = consumer
+					.deliverBatch({ messages: messages('a') })
+					.then(() => (settled = true));
+
+				await vi.advanceTimersByTimeAsync(4999);
+				expect(settled).toBe(false);
+
+				await vi.advanceTimersByTimeAsync(1);
+				await delivery;
+				expect(settled).toBe(true);
+			} finally {
+				vi.useRealTimers();
+			}
+		});
 	});
 
-	it('refuses a batch that arrives after close, leaving its offsets unread', async () => {
-		const onBatch = vi.fn(({ done }: KafkaBatchHandOff) => done());
-		const { consumer, handle } = await start(onBatch);
+	describe('close', () => {
+		it('disconnects the consumer', async () => {
+			const { consumer, handle } = await start();
 
-		await handle.close();
+			await handle.close();
 
-		await expect(
-			consumer.deliverBatch({ messages: [{ value: Buffer.from('a') }] }),
-		).rejects.toThrow('closed before the batch was handed off');
-		expect(onBatch).not.toHaveBeenCalled();
+			expect(consumer.disconnect).toHaveBeenCalledTimes(1);
+		});
+
+		it('gives up on a disconnect that never settles, so teardown cannot hang', async () => {
+			vi.useFakeTimers();
+			try {
+				const { consumer, handle } = await start();
+				consumer.disconnect.mockReturnValueOnce(new Promise(() => {}));
+
+				const closing = expect(handle.close()).rejects.toThrow(
+					'Kafka consumer did not disconnect in time',
+				);
+				await vi.advanceTimersByTimeAsync(30_000);
+				await closing;
+			} finally {
+				vi.useRealTimers();
+			}
+		});
 	});
 });
