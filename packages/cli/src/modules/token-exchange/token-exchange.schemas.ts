@@ -74,6 +74,7 @@ export const TrustedKeySourceSchema = z.discriminatedUnion('type', [
 		expectedAudience: z.string().optional(),
 		allowedRoles: z.array(z.string()).optional(),
 		subjectClaim: z.string().optional(),
+		inboundAudiences: z.array(z.string()).optional(),
 	}),
 	z.object({
 		type: z.literal('jwks'),
@@ -84,6 +85,7 @@ export const TrustedKeySourceSchema = z.discriminatedUnion('type', [
 		allowedRoles: z.array(z.string()).optional(),
 		cacheTtlSeconds: z.number().int().positive().optional(),
 		subjectClaim: z.string().optional(),
+		inboundAudiences: z.array(z.string()).optional(),
 	}),
 ]);
 
@@ -119,6 +121,7 @@ export const TrustedKeyDataSchema = z.object({
 	expiresAt: z.string().optional(),
 	requireVerifiedEmail: z.boolean().optional(),
 	subjectClaim: z.string().optional(),
+	inboundAudiences: z.array(z.string()).optional(),
 });
 
 export type TrustedKeyData = z.infer<typeof TrustedKeyDataSchema>;
@@ -147,6 +150,21 @@ export interface ResolvedTrustedKey {
 
 	/** Expected `aud` claim value, if restricted. */
 	expectedAudience?: string;
+
+	/**
+	 * Extra `aud` values accepted when the token is presented *directly* to
+	 * n8n as a resource server (inbound bearer on a webhook or a
+	 * credential-connect route), on top of whatever audience the caller
+	 * expects.
+	 *
+	 * Kept separate from `expectedAudience` — which is the audience of the
+	 * one-shot exchange grant — so registering an inbound audience never
+	 * widens what the exchange endpoint accepts, or vice versa. Populated
+	 * automatically for SSO-derived sources with the OIDC client id: a token
+	 * the IdP minted for n8n's own SSO client names this instance as its
+	 * intended recipient, which is exactly what audience validation is for.
+	 */
+	inboundAudiences?: string[];
 
 	/** Roles allowed for tokens signed with this key, if restricted. */
 	allowedRoles?: string[];

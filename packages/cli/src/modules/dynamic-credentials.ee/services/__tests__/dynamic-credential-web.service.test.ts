@@ -3,6 +3,10 @@ import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { AuthService } from '@/auth/auth.service';
+import type {
+	VerifiedClaim,
+	VerifiedClaimPolicy,
+} from '@/services/external-token-verifier-proxy.service';
 
 import { DynamicCredentialWebService } from '../dynamic-credential-web.service';
 import type { InboundClaimConnectService } from '../inbound-claim-connect.service';
@@ -25,7 +29,7 @@ describe('DynamicCredentialWebService', () => {
 		mockInboundClaimConnectService = mock<InboundClaimConnectService>({
 			// Default: no trusted source vouches for the token, so contexts pass
 			// through untagged - today's behaviour for opaque bearer tokens.
-			attachVerifiedClaim: vi.fn(async (context) => context),
+			attachVerifiedClaim: vi.fn(async (context) => ({ context })),
 		});
 
 		service = new DynamicCredentialWebService(mockAuthService, mockInboundClaimConnectService);
@@ -43,10 +47,12 @@ describe('DynamicCredentialWebService', () => {
 				boundWorkflowId: '',
 			};
 			mockInboundClaimConnectService.attachVerifiedClaim.mockResolvedValue({
-				version: 1,
-				identity: 'idp-token',
-				metadata: { source: 'external-idp' },
-				claims: claim,
+				context: {
+					version: 1,
+					identity: 'idp-token',
+					metadata: { source: 'external-idp' },
+					claims: claim,
+				},
 			});
 			const req = mock<Request>({
 				query: { authSource: 'bearer' },
@@ -61,6 +67,23 @@ describe('DynamicCredentialWebService', () => {
 				metadata: {},
 			});
 			expect(result.claims).toEqual(claim);
+		});
+
+		it('unwraps the context, dropping the connect-only verified claim', async () => {
+			mockInboundClaimConnectService.attachVerifiedClaim.mockResolvedValue({
+				context: { version: 1, identity: 'idp-token', metadata: { source: 'external-idp' } },
+				verified: mock<VerifiedClaim>(),
+				policy: mock<VerifiedClaimPolicy>(),
+			});
+			const req = mock<Request>({ query: {}, headers: { authorization: 'Bearer idp-token' } });
+
+			const result = await service.getCredentialContextFromRequest(req);
+
+			expect(result).toEqual({
+				version: 1,
+				identity: 'idp-token',
+				metadata: { source: 'external-idp' },
+			});
 		});
 
 		describe('with explicit authSource=bearer', () => {
@@ -339,6 +362,34 @@ describe('DynamicCredentialWebService', () => {
 
 				expect(result.identity).toBe('token');
 			});
+		});
+	});
+
+	describe('getInboundIdentityFromRequest', () => {
+		it('carries the verified claim and its policy through for the connect route', async () => {
+			const verified = mock<VerifiedClaim>({ subject: 'external-subject-1' });
+			const policy = mock<VerifiedClaimPolicy>({ kid: 'kid-1' });
+			mockInboundClaimConnectService.attachVerifiedClaim.mockResolvedValue({
+				context: { version: 1, identity: 'idp-token', metadata: { source: 'external-idp' } },
+				verified,
+				policy,
+			});
+			const req = mock<Request>({ query: {}, headers: { authorization: 'Bearer idp-token' } });
+
+			const result = await service.getInboundIdentityFromRequest(req);
+
+			expect(result.verified).toBe(verified);
+			expect(result.policy).toBe(policy);
+		});
+
+		it('has nothing to bind for a cookie-authenticated caller', async () => {
+			mockAuthService.getCookieToken.mockReturnValue('n8n-auth-cookie');
+			const req = mock<Request>({ query: { authSource: 'cookie' }, headers: {} });
+
+			const result = await service.getInboundIdentityFromRequest(req);
+
+			expect(result.verified).toBeUndefined();
+			expect(result.context.identity).toBe('n8n-auth-cookie');
 		});
 	});
 });

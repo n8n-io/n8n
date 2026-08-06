@@ -1,9 +1,12 @@
 import type { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
-import type { ICredentialContext, IVerifiedClaim } from 'n8n-workflow';
+import type { ICredentialContext } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import type { ExternalTokenVerifierProxy } from '@/services/external-token-verifier-proxy.service';
+import type {
+	ExternalTokenVerifierProxy,
+	VerifiedClaimPolicy,
+} from '@/services/external-token-verifier-proxy.service';
 import type { IdentityResolutionProxy } from '@/services/identity-resolution-proxy.service';
 
 import { InboundClaimConnectService } from '../inbound-claim-connect.service';
@@ -24,6 +27,12 @@ describe('InboundClaimConnectService', () => {
 		expiresAt,
 	};
 
+	const policy: VerifiedClaimPolicy = {
+		kid: 'kid-1',
+		allowedRoles: ['global:member'],
+		requireVerifiedEmail: true,
+	};
+
 	const bearerContext: ICredentialContext = {
 		version: 1,
 		identity: 'inbound-token',
@@ -38,13 +47,13 @@ describe('InboundClaimConnectService', () => {
 
 	describe('attachVerifiedClaim', () => {
 		it('tags the context and attaches the claim when the token verifies', async () => {
-			vi.mocked(verifier.verifyInboundToken).mockResolvedValue({ claim: verifiedClaim });
+			vi.mocked(verifier.verifyInboundToken).mockResolvedValue({ claim: verifiedClaim, policy });
 
-			const result = await service.attachVerifiedClaim(bearerContext);
+			const { context } = await service.attachVerifiedClaim(bearerContext);
 
 			expect(verifier.verifyInboundToken).toHaveBeenCalledWith('inbound-token');
-			expect(result.metadata?.source).toBe('external-idp');
-			expect(result.claims).toEqual({
+			expect(context.metadata?.source).toBe('external-idp');
+			expect(context.claims).toEqual({
 				version: 1,
 				sourceId: 'idp-1',
 				issuer: 'https://idp.example.com',
@@ -54,11 +63,21 @@ describe('InboundClaimConnectService', () => {
 				boundWorkflowId: '',
 			});
 			// The token stays available for resolvers that key on its own subject.
-			expect(result.identity).toBe('inbound-token');
+			expect(context.identity).toBe('inbound-token');
+		});
+
+		it('returns the full verified claim and its policy alongside the context', async () => {
+			vi.mocked(verifier.verifyInboundToken).mockResolvedValue({ claim: verifiedClaim, policy });
+
+			const result = await service.attachVerifiedClaim(bearerContext);
+
+			// The sealed claim drops the IdP attributes; binding needs them.
+			expect(result.verified).toBe(verifiedClaim);
+			expect(result.policy).toBe(policy);
 		});
 
 		it('strips a Bearer prefix before verifying', async () => {
-			vi.mocked(verifier.verifyInboundToken).mockResolvedValue({ claim: verifiedClaim });
+			vi.mocked(verifier.verifyInboundToken).mockResolvedValue({ claim: verifiedClaim, policy });
 
 			await service.attachVerifiedClaim({ ...bearerContext, identity: 'Bearer inbound-token' });
 
@@ -68,11 +87,12 @@ describe('InboundClaimConnectService', () => {
 		it('normalizes a multi-value audience to its first entry', async () => {
 			vi.mocked(verifier.verifyInboundToken).mockResolvedValue({
 				claim: { ...verifiedClaim, audience: ['first', 'second'] },
+				policy,
 			});
 
-			const result = await service.attachVerifiedClaim(bearerContext);
+			const { context } = await service.attachVerifiedClaim(bearerContext);
 
-			expect(result.claims?.audience).toBe('first');
+			expect(context.claims?.audience).toBe('first');
 		});
 
 		it('leaves an unverifiable token untouched, so introspection resolvers keep working', async () => {
@@ -83,8 +103,9 @@ describe('InboundClaimConnectService', () => {
 
 			const result = await service.attachVerifiedClaim(bearerContext);
 
-			expect(result).toEqual(bearerContext);
-			expect(result.claims).toBeUndefined();
+			expect(result).toEqual({ context: bearerContext });
+			expect(result.context.claims).toBeUndefined();
+			expect(result.verified).toBeUndefined();
 		});
 
 		it('leaves a context that already names its source untouched', async () => {
@@ -96,41 +117,96 @@ describe('InboundClaimConnectService', () => {
 
 			const result = await service.attachVerifiedClaim(cookieContext);
 
-			expect(result).toEqual(cookieContext);
+			expect(result).toEqual({ context: cookieContext });
 			expect(verifier.verifyInboundToken).not.toHaveBeenCalled();
 		});
 
 		it('does not verify an empty identity', async () => {
-			const result = await service.attachVerifiedClaim({ ...bearerContext, identity: '' });
+			const { context } = await service.attachVerifiedClaim({ ...bearerContext, identity: '' });
 
-			expect(result.claims).toBeUndefined();
+			expect(context.claims).toBeUndefined();
 			expect(verifier.verifyInboundToken).not.toHaveBeenCalled();
 		});
 	});
 
 	describe('ensureBinding', () => {
-		const claim: IVerifiedClaim = {
-			version: 1,
-			sourceId: 'idp-1',
-			issuer: 'https://idp.example.com',
-			subject: 'external-subject-1',
-			audience: 'https://n8n.example.com',
-			expiresAt: expiresAt.getTime(),
-			boundWorkflowId: '',
-		};
-
 		it('resolves the claim with provisioning allowed and returns the bound user', async () => {
 			vi.mocked(identityResolution.resolve).mockResolvedValue(mock<User>({ id: 'user-1' }));
 
-			const userId = await service.ensureBinding(claim);
+			const userId = await service.ensureBinding(verifiedClaim, policy);
 
 			expect(userId).toBe('user-1');
 			expect(identityResolution.resolve).toHaveBeenCalledWith(
-				{ iss: 'https://idp.example.com', sub: 'external-subject-1' },
-				undefined,
-				{ issuer: 'https://idp.example.com' },
+				expect.objectContaining({
+					iss: 'https://idp.example.com',
+					sub: 'external-subject-1',
+				}),
+				['global:member'],
+				{ issuer: 'https://idp.example.com', kid: 'kid-1', requireVerifiedEmail: true },
 				// Connecting is interactive, so binding (and provisioning) is allowed here
 				// and nowhere else.
+				true,
+			);
+		});
+
+		it("passes the IdP's profile attributes through, so a first-time user can be provisioned", async () => {
+			vi.mocked(identityResolution.resolve).mockResolvedValue(mock<User>({ id: 'user-1' }));
+
+			await service.ensureBinding(
+				{
+					...verifiedClaim,
+					attributes: {
+						email: 'jo@example.com',
+						email_verified: true,
+						given_name: 'Jo',
+						family_name: 'Doe',
+						role: 'global:member',
+					},
+				},
+				policy,
+			);
+
+			expect(identityResolution.resolve).toHaveBeenCalledWith(
+				{
+					iss: 'https://idp.example.com',
+					sub: 'external-subject-1',
+					email: 'jo@example.com',
+					email_verified: true,
+					given_name: 'Jo',
+					family_name: 'Doe',
+					role: 'global:member',
+				},
+				expect.anything(),
+				expect.anything(),
+				true,
+			);
+		});
+
+		it('drops non-string attributes rather than passing them on', async () => {
+			vi.mocked(identityResolution.resolve).mockResolvedValue(mock<User>({ id: 'user-1' }));
+
+			await service.ensureBinding(
+				{ ...verifiedClaim, attributes: { email: 42, email_verified: 'yes', given_name: null } },
+				policy,
+			);
+
+			expect(identityResolution.resolve).toHaveBeenCalledWith(
+				expect.objectContaining({ email: undefined, email_verified: false, given_name: undefined }),
+				expect.anything(),
+				expect.anything(),
+				true,
+			);
+		});
+
+		it('requires a verified email when the policy is unknown', async () => {
+			vi.mocked(identityResolution.resolve).mockResolvedValue(mock<User>({ id: 'user-1' }));
+
+			await service.ensureBinding(verifiedClaim);
+
+			expect(identityResolution.resolve).toHaveBeenCalledWith(
+				expect.anything(),
+				undefined,
+				expect.objectContaining({ requireVerifiedEmail: true }),
 				true,
 			);
 		});
@@ -138,13 +214,13 @@ describe('InboundClaimConnectService', () => {
 		it('returns undefined when no binding could be established', async () => {
 			vi.mocked(identityResolution.resolve).mockResolvedValue(null);
 
-			expect(await service.ensureBinding(claim)).toBeUndefined();
+			expect(await service.ensureBinding(verifiedClaim, policy)).toBeUndefined();
 		});
 
 		it('returns undefined rather than throwing when the identity policy refuses', async () => {
 			vi.mocked(identityResolution.resolve).mockRejectedValue(new Error('Role not allowed'));
 
-			expect(await service.ensureBinding(claim)).toBeUndefined();
+			expect(await service.ensureBinding(verifiedClaim, policy)).toBeUndefined();
 		});
 	});
 });

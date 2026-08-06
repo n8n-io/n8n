@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { AuthService } from '@/auth/auth.service';
 import { UnauthenticatedError } from '@/errors/response-errors/unauthenticated.error';
 
+import type { InboundIdentity } from './inbound-claim-connect.service';
 import { InboundClaimConnectService } from './inbound-claim-connect.service';
 
 class AuthSourceQuerySchema extends Z.class({
@@ -56,13 +57,23 @@ export class DynamicCredentialWebService {
 		};
 	}
 
+	async getCredentialContextFromRequest(req: Request): Promise<ICredentialResolutionContext> {
+		const { context } = await this.getInboundIdentityFromRequest(req);
+		return context;
+	}
+
 	/**
 	 * A presented bearer token is verified here, so a caller arriving with an
 	 * external IdP token resolves as that identity. Tokens no trusted source
 	 * vouches for are returned untagged, exactly as before - they belong to a
 	 * resolver that keys on the token's own subject.
+	 *
+	 * Returns the full verified claim alongside the context, for the connect
+	 * route that needs the IdP's profile attributes to bind or provision a
+	 * user. Callers that only resolve credentials should use
+	 * `getCredentialContextFromRequest`.
 	 */
-	async getCredentialContextFromRequest(req: Request): Promise<ICredentialResolutionContext> {
+	async getInboundIdentityFromRequest(req: Request): Promise<InboundIdentity> {
 		const parseResult = AuthSourceQuerySchema.safeParse(req.query);
 
 		if (parseResult.success && parseResult.data.authSource !== undefined) {
@@ -74,7 +85,7 @@ export class DynamicCredentialWebService {
 				}
 				return await this.buildBearerCredentialContext(token);
 			} else if (authSource === 'cookie') {
-				return this.buildCookieCredentialContext(req);
+				return { context: this.buildCookieCredentialContext(req) };
 			} else {
 				throw new UnauthenticatedError('Invalid auth source');
 			}
@@ -85,10 +96,10 @@ export class DynamicCredentialWebService {
 			return await this.buildBearerCredentialContext(token);
 		}
 
-		return this.buildCookieCredentialContext(req);
+		return { context: this.buildCookieCredentialContext(req) };
 	}
 
-	private async buildBearerCredentialContext(token: string): Promise<ICredentialResolutionContext> {
+	private async buildBearerCredentialContext(token: string): Promise<InboundIdentity> {
 		const context: ICredentialContext = {
 			identity: token,
 			version: 1,

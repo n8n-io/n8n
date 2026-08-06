@@ -66,4 +66,17 @@ export class TokenExchangeConfig {
 	 */
 	@Env('N8N_TOKEN_EXCHANGE_INBOUND_SUBJECT_CLAIM')
 	inboundSubjectClaim: string = '';
+
+	/**
+	 * Whether an SSO-derived trusted key source requires `email_verified` on a
+	 * token before its email may be used to link or provision a user.
+	 *
+	 * Defaults to on, but many IdPs only emit `email_verified` on the ID token,
+	 * not on the access token a caller presents to n8n. Turn it off only when
+	 * the IdP itself is the authority on the email - otherwise a provider that
+	 * lets a user set an arbitrary email claim can take over an existing n8n
+	 * account by email.
+	 */
+	@Env('N8N_TOKEN_EXCHANGE_INBOUND_REQUIRE_VERIFIED_EMAIL')
+	inboundRequireVerifiedEmail: boolean = true;
 }

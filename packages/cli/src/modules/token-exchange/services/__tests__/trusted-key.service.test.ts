@@ -64,11 +64,18 @@ function createMocks({
 	isLeader = true,
 	trustedKeys = '',
 	inboundSubjectClaim = '',
-}: { isLeader?: boolean; trustedKeys?: string; inboundSubjectClaim?: string } = {}) {
+	inboundRequireVerifiedEmail = true,
+}: {
+	isLeader?: boolean;
+	trustedKeys?: string;
+	inboundSubjectClaim?: string;
+	inboundRequireVerifiedEmail?: boolean;
+} = {}) {
 	const config = mock<TokenExchangeConfig>({
 		trustedKeys,
 		keyRefreshIntervalSeconds: 300,
 		inboundSubjectClaim,
+		inboundRequireVerifiedEmail,
 	});
 	const sourceRepo = mock<TrustedKeySourceRepository>();
 	const keyRepo = mock<TrustedKeyRepository>();
@@ -439,6 +446,41 @@ describe('TrustedKeyService', () => {
 
 			await expect(service.registerSsoDerivedSource(issuer, jwksUri)).resolves.not.toThrow();
 			expect(tx.save).toHaveBeenCalled();
+		});
+
+		it('accepts the OIDC client id as an inbound audience', async () => {
+			const { service, tx, sourceRepo } = createMocks();
+			tx.findOneBy.mockResolvedValueOnce(null);
+			sourceRepo.findOneBy.mockResolvedValue(mock<TrustedKeySourceEntity>());
+
+			await service.registerSsoDerivedSource(issuer, jwksUri, 'n8n-sso-client-id');
+
+			const [, saved] = tx.save.mock.calls[0] as [unknown, { config: string }];
+			// So a token the IdP minted for n8n's SSO client verifies inbound
+			// without an admin also setting N8N_TOKEN_EXCHANGE_INBOUND_AUDIENCE.
+			expect(jsonParse(saved.config)).toMatchObject({ inboundAudiences: ['n8n-sso-client-id'] });
+		});
+
+		it('carries the instance-wide verified-email requirement onto the source', async () => {
+			const { service, tx, sourceRepo } = createMocks({ inboundRequireVerifiedEmail: false });
+			tx.findOneBy.mockResolvedValueOnce(null);
+			sourceRepo.findOneBy.mockResolvedValue(mock<TrustedKeySourceEntity>());
+
+			await service.registerSsoDerivedSource(issuer, jwksUri, 'n8n-sso-client-id');
+
+			const [, saved] = tx.save.mock.calls[0] as [unknown, { config: string }];
+			expect(jsonParse(saved.config)).toMatchObject({ requireVerifiedEmail: false });
+		});
+
+		it('omits inboundAudiences when no client id is supplied', async () => {
+			const { service, tx, sourceRepo } = createMocks();
+			tx.findOneBy.mockResolvedValueOnce(null);
+			sourceRepo.findOneBy.mockResolvedValue(mock<TrustedKeySourceEntity>());
+
+			await service.registerSsoDerivedSource(issuer, jwksUri);
+
+			const [, saved] = tx.save.mock.calls[0] as [unknown, { config: string }];
+			expect(jsonParse(saved.config)).not.toHaveProperty('inboundAudiences');
 		});
 
 		it('includes subjectClaim from config.inboundSubjectClaim when set', async () => {

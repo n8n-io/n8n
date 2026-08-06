@@ -299,7 +299,42 @@ describe('TokenExchangeService', () => {
 			expect(jwt.verify).toHaveBeenCalledWith(
 				'token',
 				resolvedKey.key,
-				expect.objectContaining({ audience: 'unexpected-audience' }),
+				expect.objectContaining({ audience: ['unexpected-audience'] }),
+			);
+		});
+
+		it("also accepts the source's own inbound audiences on the resource-server path", async () => {
+			mockValidToken();
+			trustedKeyStore.getByKidAndIss.mockResolvedValue({
+				...resolvedKey,
+				inboundAudiences: ['n8n-sso-client-id'],
+			});
+
+			await service.verifyToken('token', { expectedAudience: 'n8n', consumeJti: false });
+
+			expect(jwt.verify).toHaveBeenCalledWith(
+				'token',
+				resolvedKey.key,
+				expect.objectContaining({ audience: ['n8n', 'n8n-sso-client-id'] }),
+			);
+		});
+
+		it("keeps the exchange path on the source's expectedAudience alone", async () => {
+			mockValidToken();
+			jtiStore.consume.mockResolvedValue(true);
+			trustedKeyStore.getByKidAndIss.mockResolvedValue({
+				...resolvedKey,
+				expectedAudience: 'exchange-audience',
+				inboundAudiences: ['n8n-sso-client-id'],
+			});
+
+			await service.verifyToken('token');
+
+			// An inbound audience must never widen what the exchange endpoint accepts.
+			expect(jwt.verify).toHaveBeenCalledWith(
+				'token',
+				resolvedKey.key,
+				expect.objectContaining({ audience: 'exchange-audience' }),
 			);
 		});
 
@@ -463,6 +498,13 @@ describe('TokenExchangeService', () => {
 						family_name: 'Lovelace',
 					},
 					expiresAt: new Date(keycloakClaims.exp * 1000),
+				},
+				// Carried alongside the claim so whoever binds it to an n8n user
+				// applies the trust source's own restrictions.
+				policy: {
+					kid: 'keycloak-kid',
+					allowedRoles: undefined,
+					requireVerifiedEmail: false,
 				},
 			});
 			expect(jtiStore.consume).not.toHaveBeenCalled();

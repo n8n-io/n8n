@@ -415,6 +415,7 @@ describe('OidcService', () => {
 			expect(mockProxy.registerFromDiscovery).toHaveBeenCalledWith(
 				'https://idp.example.com',
 				'https://idp.example.com/jwks.json',
+				'test-client-id',
 			);
 		});
 
@@ -468,6 +469,7 @@ describe('OidcService', () => {
 			expect(mockProxy.registerFromDiscovery).toHaveBeenCalledWith(
 				'https://idp.example.com',
 				'https://idp.example.com/jwks.json',
+				'test-client-id',
 			);
 		});
 

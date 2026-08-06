@@ -161,8 +161,11 @@ export class DynamicCredentialsController {
 	})
 	async authorizeCredential(req: Request, res: Response): Promise<string> {
 		this.dynamicCredentialCorsService.applyCorsHeadersIfEnabled(req, res, ['post', 'options']);
-		const credentialContext =
-			await this.dynamicCredentialWebService.getCredentialContextFromRequest(req);
+		const {
+			context: credentialContext,
+			verified,
+			policy,
+		} = await this.dynamicCredentialWebService.getInboundIdentityFromRequest(req);
 		const user = isAuthenticatedRequest(req) ? req.user : undefined;
 		const credential = await this.findCredentialToUse(req.params.id, user, 'credential:update');
 
@@ -185,8 +188,8 @@ export class DynamicCredentialsController {
 		// n8n user: it is interactive, and the caller just presented a verified
 		// token. Without this, someone arriving with an IdP token they have never
 		// logged into n8n with would have nothing to store their connection under.
-		if (credentialContext.claims) {
-			await this.inboundClaimConnectService.ensureBinding(credentialContext.claims);
+		if (verified) {
+			await this.inboundClaimConnectService.ensureBinding(verified, policy);
 		}
 
 		// Best-effort: bind the callback to the intended n8n user when the resolver

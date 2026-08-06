@@ -107,7 +107,7 @@ describe('DynamicCredentialStorageService', () => {
 
 		mockInboundClaimConnectService = {
 			// No claim to derive in these tests: pass the context through untouched.
-			attachVerifiedClaim: vi.fn(async (context) => context),
+			attachVerifiedClaim: vi.fn(async (context) => ({ context })),
 		} as unknown as Mocked<InboundClaimConnectService>;
 
 		mockDynamicCredentialsProxy = {

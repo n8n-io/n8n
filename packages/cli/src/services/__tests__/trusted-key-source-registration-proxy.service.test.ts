@@ -22,11 +22,13 @@ describe('TrustedKeySourceRegistrationProxy', () => {
 		await proxy.registerFromDiscovery(
 			'https://idp.example.com',
 			'https://idp.example.com/jwks.json',
+			'n8n-client-id',
 		);
 
 		expect(provider.registerFromDiscovery).toHaveBeenCalledWith(
 			'https://idp.example.com',
 			'https://idp.example.com/jwks.json',
+			'n8n-client-id',
 		);
 	});
 });
