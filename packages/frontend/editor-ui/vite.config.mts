@@ -165,6 +165,12 @@ const plugins: UserConfig['plugins'] = [
 const target = browserslistToEsbuild(browsers);
 
 export default defineConfig({
+	server: {
+		host: '0.0.0.0',
+		// The editor's own dev port; N8N_PORT above is where the backend lives.
+		port: Number(process.env.N8N_EDITOR_PORT ?? 8080),
+		strictPort: true,
+	},
 	define: {
 		// This causes test to fail but is required for actually running it
 		// ...(NODE_ENV !== 'test' ? { 'global': 'globalThis' } : {}),

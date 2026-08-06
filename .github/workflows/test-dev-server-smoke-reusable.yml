@@ -38,9 +38,10 @@ jobs:
         # correctly. cd-ing into the playwright package double-nests it.
         run: pnpm --filter=n8n-playwright test:dev-server-smoke --reporter=list
 
-      - name: Run dev-server smoke spec (backend on non-default port)
-        # Same spec, backend on 5699: verifies the dev frontend derives its
-        # backend URL from N8N_PORT instead of assuming 5678.
+      - name: Run dev-server smoke spec (non-default ports)
+        # Same spec, backend on 5699 and editor on 8082: verifies the dev
+        # frontend derives its backend URL from N8N_PORT and its own port
+        # from N8N_EDITOR_PORT instead of assuming 5678/8080.
         run: pnpm --filter=n8n-playwright test:dev-server-smoke:alt-port --reporter=list
 
       - name: Upload Failure Artifacts
