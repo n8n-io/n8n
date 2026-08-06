@@ -684,7 +684,7 @@ watch(
 					</N8nButton>
 					<div :class="$style.footerActions">
 						<N8nButton
-							variant="ghost"
+							variant="outline"
 							size="medium"
 							:disabled="
 								isCredentialReplacementInProgress ||

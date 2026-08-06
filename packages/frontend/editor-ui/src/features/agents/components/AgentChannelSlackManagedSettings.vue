@@ -86,23 +86,15 @@ defineExpose({ currentSettings, validationError });
 				data-testid="slack-managed-app-description"
 			/>
 			<div :class="$style.switchRow">
-				<N8nText size="small" bold>
-					{{ i18n.baseText('agents.channels.slack.managed.settings.alwaysOnline') }}
-				</N8nText>
 				<N8nSwitch2
 					:model-value="alwaysOnline"
 					:disabled="disabled || loading"
 					data-testid="slack-managed-app-always-online"
+					:label="i18n.baseText('agents.channels.slack.managed.settings.alwaysOnline')"
 					@update:model-value="alwaysOnline = Boolean($event)"
 				/>
 			</div>
-			<N8nLink
-				:href="settings.appHomeUrl"
-				target="_blank"
-				rel="noopener noreferrer"
-				size="small"
-				bold
-			>
+			<N8nLink :href="settings.appHomeUrl" target="_blank" rel="noopener noreferrer" size="small">
 				<span :class="$style.linkContent">
 					{{ i18n.baseText('agents.channels.slack.managed.settings.openSlack') }}
 					<N8nIcon icon="external-link" size="xsmall" />
