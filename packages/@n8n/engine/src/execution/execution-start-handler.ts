@@ -38,10 +38,7 @@ export class ExecutionStartHandler {
 		}
 
 		// The trigger's output was captured at execution start; record it as
-		// already completed, carrying the payload as output slot 0, so successors
-		// read it exactly as they read any other predecessor's outputs. A trigger
-		// with no payload still fired — that's why the execution exists — so its
-		// slot holds an empty object rather than staying empty.
+		// already completed so successors can treat it as a satisfied predecessor.
 		// The claim above makes this the only writer, so the row cannot exist yet.
 		const [triggerStep] = await this.stepStore.createSteps([
 			{

@@ -90,37 +90,37 @@ export class StepReadyHandler {
 			},
 		});
 
-		// Graph validation only constrains edges, not what a node emits: a
-		// single-wired If passes it and still fires two slots. Until branching
-		// lands, an outcome the slot model can't yet represent fails the step, so
-		// the execution gets a legible error instead of misrouted data.
 		// TODO(CAT-2874): multi-slot outputs become routable with branching.
 		if (outputs.length > 1) {
 			throw new UnimplementedError(
 				`step ${step.id} runs node ${step.nodeId}, which produced ${outputs.length} output slots; only output slot 0 is supported yet`,
 			);
 		}
-		// TODO(CAT-2874): an unfilled connected slot becomes a dead branch with
-		// settlement; until then it is unrepresentable.
+		// TODO(CAT-2874): settlement turns this into a dead (skipped) branch.
+		this.assertOutputFiredForSuccessors(step, execution, outputs);
+
+		return outputs;
+	}
+
+	/**
+	 * We don't support stopping the execution on null outputs yet: planning is
+	 * status-based, so successors run even when this step fired nothing — on an
+	 * empty input slot, instead of not at all. Fail loudly until then.
+	 */
+	private assertOutputFiredForSuccessors(
+		step: StepRecord,
+		execution: ExecutionRecord,
+		outputs: StepSlots,
+	): void {
 		const hasSuccessors = execution.graph.edges.some((edge) => edge.from === step.nodeId);
 		if (hasSuccessors && (outputs.length === 0 || outputs[0] === null)) {
 			throw new UnimplementedError(
 				`step ${step.id} runs node ${step.nodeId}, which did not fire output slot 0 despite having successors; branch selection is not supported yet`,
 			);
 		}
-
-		return outputs;
 	}
 
-	/**
-	 * Inputs for `node`, routed by slot: its one incoming edge copies the
-	 * predecessor's output slot 0 into input slot 0. The trigger is no special
-	 * case — its step row carries the captured payload as its outputs.
-	 *
-	 * The slot checks below cannot fail for a graph that passed
-	 * `validateExecutableGraph`; they guard against state written by a
-	 * differently-shaped engine version or a store bug.
-	 */
+	/** Inputs for `node`, taken from its predecessor's output. */
 	private async gatherInputs(execution: ExecutionRecord, step: StepRecord): Promise<StepSlots> {
 		const incoming = execution.graph.edges.filter((edge) => edge.to === step.nodeId);
 		if (incoming.length === 0) {
@@ -130,12 +130,16 @@ export class StepReadyHandler {
 				`step ${step.id} runs node ${step.nodeId}, which has no predecessor in the execution graph`,
 			);
 		}
+		// TODO(CAT-2874): support multiple inputs. We should have rejected this
+		// graph at validation time.
 		if (incoming.length > 1) {
 			throw new UnexpectedError(
 				`step ${step.id} runs node ${step.nodeId}, which has ${incoming.length} incoming edges; validated graphs have at most one edge per input slot`,
 			);
 		}
 		const [edge] = incoming;
+		// TODO(CAT-2874): route by slot indices. We should have rejected this
+		// graph at validation time.
 		if (edge.outputIndex !== 0 || edge.inputIndex !== 0) {
 			throw new UnexpectedError(
 				`step ${step.id} runs node ${step.nodeId} through edge slots ${edge.outputIndex} → ${edge.inputIndex}; validated graphs only use slot 0`,

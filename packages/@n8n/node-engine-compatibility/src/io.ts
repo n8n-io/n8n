@@ -3,13 +3,6 @@ import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
 
 import { isRecord } from './guards';
 
-/**
- * Slot-indexed inputs to v1's `INodeExecutionData[][]`, which is also indexed
- * by input connection on its outer axis. A slot that carries no items — `null`
- * (nothing arrived) or non-item content like the raw trigger payload —
- * contributes an empty item list, matching v1's coercion of never-received
- * inputs.
- */
 export function fromStepInputs(value: StepSlots): INodeExecutionData[][] {
 	return value.map((items) => {
 		if (!Array.isArray(items)) return [];
@@ -21,12 +14,6 @@ export function fromStepInputs(value: StepSlots): INodeExecutionData[][] {
 	});
 }
 
-/**
- * v1's `INodeExecutionData[][]` to slot-indexed outputs — structurally the
- * same shape, so this is a pure retype. An empty slot stays `[]`: "produced no
- * items" and "branch not taken" only become distinct once branching lands
- * (CAT-2874), and the collapse belongs there.
- */
 export function toStepOutputs(outputs: INodeExecutionData[][]): StepSlots {
 	return outputs as unknown as StepSlots;
 }
