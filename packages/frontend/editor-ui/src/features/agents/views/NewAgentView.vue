@@ -11,6 +11,7 @@ import {
 	INSTANCE_AI_PENDING_AGENT_METADATA_KEY,
 	INSTANCE_AI_THREAD_VIEW,
 } from '@/features/ai/instanceAi/constants';
+import { stashPendingAgentAttachment } from '@/features/ai/instanceAi/composables/useInstanceAiHandoff';
 import { useInstanceAiStore } from '@/features/ai/instanceAi/instanceAi.store';
 import { AGENTS_LIST_VIEW, PROJECT_AGENTS } from '../constants';
 
@@ -58,6 +59,13 @@ onMounted(async () => {
 		});
 		await instanceAiStore.updateThreadMetadata(threadId, {
 			[INSTANCE_AI_PENDING_AGENT_METADATA_KEY]: { projectId, agentId },
+		});
+		stashPendingAgentAttachment(threadId, {
+			type: 'agent',
+			id: agentId,
+			name: i18n.baseText('agents.new.defaultName'),
+			projectId,
+			pending: true,
 		});
 		await router.replace({
 			name: INSTANCE_AI_THREAD_VIEW,

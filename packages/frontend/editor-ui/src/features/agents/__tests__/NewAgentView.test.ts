@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import NewAgentView from '../views/NewAgentView.vue';
 import { INSTANCE_AI_THREAD_VIEW } from '@/features/ai/instanceAi/constants';
+import { getPendingAgentAttachment } from '@/features/ai/instanceAi/composables/useInstanceAiHandoff';
 import { AGENTS_LIST_VIEW, PROJECT_AGENTS } from '../constants';
 
 const mocks = vi.hoisted(() => ({
@@ -37,6 +38,7 @@ describe('NewAgentView', () => {
 		vi.clearAllMocks();
 		mocks.route.query = { projectId: 'project-1' };
 		history.replaceState({}, '');
+		localStorage.clear();
 	});
 
 	it('opens an unsaved agent artifact without creating the agent', async () => {
@@ -53,6 +55,12 @@ describe('NewAgentView', () => {
 				projectId: 'project-1',
 				agentId: 'aBcDeFgHiJkLmNoP',
 			},
+		});
+		expect(getPendingAgentAttachment('thread-1')).toMatchObject({
+			type: 'agent',
+			id: 'aBcDeFgHiJkLmNoP',
+			projectId: 'project-1',
+			pending: true,
 		});
 		expect(mocks.replace).toHaveBeenCalledWith({
 			name: INSTANCE_AI_THREAD_VIEW,

@@ -416,6 +416,52 @@ describe('InstanceAiArtifactsPanel', () => {
 		expect(openAgentPreview).toHaveBeenCalledExactlyOnceWith('agent-1', 'proj-1');
 	});
 
+	it('keeps pending agents in the preview without exposing a standalone link', () => {
+		const openAgentPreview = vi.fn();
+		storeState.producedArtifacts = new Map<string, ResourceEntry>([
+			[
+				'agent-1',
+				{
+					type: 'agent',
+					id: 'agent-1',
+					projectId: 'proj-1',
+					name: 'New Agent',
+					pending: true,
+				},
+			],
+		]);
+
+		const { getByRole } = renderComponent({
+			global: {
+				provide: {
+					openAgentPreview,
+				},
+			},
+		});
+
+		const artifactLink = getByRole('link', { name: 'Open New Agent' });
+		expect(artifactLink).toHaveAttribute('href', '#');
+
+		const normalClick = new MouseEvent('click', { bubbles: true, cancelable: true });
+		expect(artifactLink.dispatchEvent(normalClick)).toBe(false);
+		expect(openAgentPreview).toHaveBeenCalledExactlyOnceWith('agent-1', 'proj-1');
+
+		openAgentPreview.mockClear();
+		let wasDefaultPreventedByComponent: boolean | undefined;
+		artifactLink.addEventListener('click', (event) => {
+			wasDefaultPreventedByComponent = event.defaultPrevented;
+		});
+		const modifiedClick = new MouseEvent('click', {
+			bubbles: true,
+			cancelable: true,
+			metaKey: true,
+		});
+		artifactLink.dispatchEvent(modifiedClick);
+
+		expect(wasDefaultPreventedByComponent).toBe(true);
+		expect(openAgentPreview).not.toHaveBeenCalled();
+	});
+
 	it('leaves modified agent artifact clicks to the browser', () => {
 		const openAgentPreview = vi.fn();
 		storeState.producedArtifacts = new Map<string, ResourceEntry>([

@@ -33,6 +33,7 @@ import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHe
 import { COLLAPSED_MAIN_SIDEBAR_WIDTH, useSidebarLayout } from '@/app/composables/useSidebarLayout';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { provideThread, useInstanceAiStore } from './instanceAi.store';
+import { getAgentBuilderTargetFromThreadMetadata } from './instanceAi.threadRuntime';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import { isPendingItemFloating } from './confirmationKinds';
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
@@ -93,6 +94,27 @@ const { isCollapsed: isMainSidebarCollapsed, sidebarWidth: mainSidebarWidth } = 
 const telemetry = useTelemetry();
 const pendingComposerContext = ref<InstanceAiHandoffContext | null>(null);
 const pendingAgentAttachment = ref<InstanceAiAgentAttachment | null>(null);
+const currentAgentAttachment = computed<InstanceAiAgentAttachment | null>(() => {
+	const queued = pendingAgentAttachment.value;
+	if (!queued) return null;
+
+	const boundTarget = getAgentBuilderTargetFromThreadMetadata(store.getThreadMetadata(thread.id));
+	if (
+		boundTarget?.agentId !== queued.id ||
+		boundTarget.projectId !== queued.projectId ||
+		!queued.pending
+	) {
+		return queued;
+	}
+
+	const name = boundTarget.name ?? queued.name;
+	return {
+		type: 'agent',
+		id: queued.id,
+		projectId: queued.projectId,
+		...(name ? { name } : {}),
+	};
+});
 
 // Running builders render in a dedicated bottom section of the conversation.
 // Once a builder finishes it falls out of this list and AgentTimeline renders
@@ -166,6 +188,8 @@ const currentThreadTitle = computed<string | undefined>(() => {
 const preview = useCanvasPreview({
 	thread,
 	threadId: () => props.threadId,
+	initialAgentId: () =>
+		getAgentBuilderTargetFromThreadMetadata(store.getThreadMetadata(props.threadId))?.agentId,
 });
 
 provide('openWorkflowPreview', preview.openWorkflowPreview);
@@ -285,7 +309,10 @@ const isArtifactsPanelInLayout = computed(
 		availableWidthForPinnedArtifactsPanel.value >= MIN_AVAILABLE_WIDTH_FOR_PINNED_ARTIFACTS_PANEL,
 );
 const canShowArtifactsPanel = computed(
-	() => thread.hasMessages || (Boolean(props.threadId) && thread.isHydratingThread),
+	() =>
+		thread.hasMessages ||
+		preview.allArtifactTabs.value.length > 0 ||
+		(Boolean(props.threadId) && thread.isHydratingThread),
 );
 const showArtifactsPanel = computed(
 	() =>
@@ -504,6 +531,16 @@ function isCurrentThreadRuntime(): boolean {
 }
 
 const composerContextChip = computed(() => {
+	const agentAttachment = currentAgentAttachment.value;
+	if (pendingAgentAttachment.value?.pending && agentAttachment) {
+		return {
+			key: `pending-agent:${agentAttachment.id}`,
+			label: agentAttachment.name ?? i18n.baseText('agents.new.defaultName'),
+			icon: 'robot',
+			isPending: true,
+		};
+	}
+
 	if (pendingComposerContext.value?.source === 'agent-preview') {
 		return {
 			key: handoffContextKey(pendingComposerContext.value),
@@ -658,7 +695,8 @@ function handleSubmit(message: string, attachments?: InstanceAiAttachment[]) {
 	}
 
 	const handoffContext = pendingComposerContext.value ?? undefined;
-	const agentAttachment = pendingAgentAttachment.value;
+	const queuedAgentAttachment = pendingAgentAttachment.value;
+	const agentAttachment = currentAgentAttachment.value;
 	const submittedAttachments = agentAttachment
 		? [...(attachments ?? []), agentAttachment]
 		: attachments;
@@ -670,7 +708,7 @@ function handleSubmit(message: string, attachments?: InstanceAiAttachment[]) {
 			if (handoffContext && pendingComposerContext.value === handoffContext) {
 				pendingComposerContext.value = null;
 			}
-			if (agentAttachment && pendingAgentAttachment.value === agentAttachment) {
+			if (queuedAgentAttachment && pendingAgentAttachment.value === queuedAgentAttachment) {
 				clearPendingAgentAttachment(props.threadId);
 				pendingAgentAttachment.value = null;
 			}
@@ -706,6 +744,12 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 
 async function dismissComposerContextChip() {
 	if (!composerContextChip.value) return;
+
+	if (pendingAgentAttachment.value?.pending) {
+		clearPendingAgentAttachment(props.threadId);
+		pendingAgentAttachment.value = null;
+		return;
+	}
 
 	if (composerContextChip.value.isPending) {
 		pendingComposerContext.value = null;

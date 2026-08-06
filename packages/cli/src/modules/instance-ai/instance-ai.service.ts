@@ -237,6 +237,9 @@ function buildContextResourcesBlock(contextAttachments: InstanceAiResourceAttach
 	const lines = contextAttachments.map((attachment) => {
 		const name = attachment.name ? ` "${attachment.name}"` : '';
 		if (attachment.type === 'agent') {
+			if (attachment.pending) {
+				return `- New unsaved Agent artifact${name} (pending id: \`${attachment.id}\`, in project \`${attachment.projectId}\`).`;
+			}
 			return `- Agent${name} (id: \`${attachment.id}\`, in project \`${attachment.projectId}\`).`;
 		}
 		// Only mention the execution when one was actually handed off.
@@ -248,11 +251,19 @@ function buildContextResourcesBlock(contextAttachments: InstanceAiResourceAttach
 	const header = contextAttachments.some((attachment) => attachment.type === 'agent')
 		? 'The user opened this conversation from the agent editor, where they are looking at:'
 		: 'The user opened this conversation from the workflow editor, where they are looking at:';
+	const pendingAgentGuidance = contextAttachments.some(
+		(attachment) => attachment.type === 'agent' && attachment.pending,
+	)
+		? "Treat references such as “the agent” as this pending artifact. It has no persisted agent row yet. When the user asks to build or change it, use `build-agent`'s new-agent path with a name; do not pass its pending id as an existing `agentId`. The thread's pending target will make creation reuse that id."
+		: '';
 	const prose = [
 		header,
 		...lines,
+		pendingAgentGuidance,
 		"Treat this purely as context. Until the user tells you what they need, don't read, inspect, run, or otherwise call tools on these resources, and don't make claims about their contents — just briefly acknowledge what they're working on and ask how you can help.",
-	].join('\n');
+	]
+		.filter(Boolean)
+		.join('\n');
 	// Wrap in EDITOR_CONTEXT_BLOCK so the UI strips it from the visible message
 	// (cleanStoredUserMessage) and the parser can reconstruct the attachments on
 	// reload from the leading JSON line — keeping the resource durable without

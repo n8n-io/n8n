@@ -374,6 +374,9 @@ describe('InstanceAiThreadView', () => {
 				updatedAt: '2026-04-01T00:00:00.000Z',
 			},
 		] as typeof store.threads;
+		store.getThreadMetadata.mockImplementation(
+			(threadId) => store.threads.find((item) => item.id === threadId)?.metadata ?? undefined,
+		);
 		mockWindowSizeState.width.value = 1200;
 
 		// Auto-stubbed push-store actions return undefined by default; addEventListener's
@@ -619,9 +622,20 @@ describe('InstanceAiThreadView', () => {
 		});
 	});
 
-	it('opens a pending agent and attaches it only to the first submitted message', async () => {
+	it('shows the new-agent context until the first successful message submission', async () => {
 		thread.sseState = 'disconnected';
 		vi.mocked(thread.loadHistoricalMessages).mockResolvedValue('skipped');
+		store.threads = [
+			{
+				...store.threads[0],
+				metadata: {
+					instanceAiPendingAgentTarget: {
+						agentId: 'agent-1',
+						projectId: 'project-1',
+					},
+				},
+			},
+		] as typeof store.threads;
 		thread.producedArtifacts = new Map([
 			[
 				'agent-1',
@@ -629,16 +643,19 @@ describe('InstanceAiThreadView', () => {
 					type: 'agent',
 					id: 'agent-1',
 					projectId: 'project-1',
-					name: 'New agent',
+					name: 'New Agent',
+					pending: true,
 				},
 			],
 		]) as typeof thread.producedArtifacts;
 		stashPendingAgentAttachment('thread-1', {
 			type: 'agent',
 			id: 'agent-1',
-			name: 'New agent',
+			name: 'New Agent',
 			projectId: 'project-1',
+			pending: true,
 		});
+		vi.mocked(thread.sendMessage).mockResolvedValueOnce(false).mockResolvedValueOnce(true);
 
 		const { findByTestId, getByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
@@ -646,6 +663,7 @@ describe('InstanceAiThreadView', () => {
 		expect(preview).toHaveAttribute('data-agent-id', 'agent-1');
 		expect(preview).toHaveAttribute('data-project-id', 'project-1');
 		expect(thread.sendMessage).not.toHaveBeenCalled();
+		expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('New Agent');
 
 		await userEvent.click(getByTestId('instance-ai-input-submit'));
 
@@ -656,8 +674,29 @@ describe('InstanceAiThreadView', () => {
 				{
 					type: 'agent',
 					id: 'agent-1',
-					name: 'New agent',
+					name: 'New Agent',
 					projectId: 'project-1',
+					pending: true,
+				},
+			],
+			expect.any(String),
+			undefined,
+		);
+		expect(getPendingAgentAttachment('thread-1')).not.toBeNull();
+		expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('New Agent');
+
+		await userEvent.click(getByTestId('instance-ai-input-submit'));
+
+		expect(thread.sendMessage).toHaveBeenNthCalledWith(
+			2,
+			'Normal message',
+			[
+				{
+					type: 'agent',
+					id: 'agent-1',
+					name: 'New Agent',
+					projectId: 'project-1',
+					pending: true,
 				},
 			],
 			expect.any(String),
@@ -665,12 +704,98 @@ describe('InstanceAiThreadView', () => {
 		);
 		await vi.waitFor(() => {
 			expect(getPendingAgentAttachment('thread-1')).toBeNull();
+			expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('');
 		});
 
 		await userEvent.click(getByTestId('instance-ai-input-submit'));
 
 		expect(thread.sendMessage).toHaveBeenNthCalledWith(
-			2,
+			3,
+			'Normal message',
+			undefined,
+			expect.any(String),
+			undefined,
+		);
+	});
+
+	it('attaches the bound target when the new agent was persisted before the first message', async () => {
+		thread.sseState = 'disconnected';
+		vi.mocked(thread.loadHistoricalMessages).mockResolvedValue('skipped');
+		store.threads = [
+			{
+				...store.threads[0],
+				metadata: {
+					instanceAiAgentBuilderTarget: {
+						agentId: 'agent-1',
+						projectId: 'project-1',
+						name: 'Support Agent',
+					},
+				},
+			},
+		] as typeof store.threads;
+		stashPendingAgentAttachment('thread-1', {
+			type: 'agent',
+			id: 'agent-1',
+			name: 'New Agent',
+			projectId: 'project-1',
+			pending: true,
+		});
+
+		const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+		await vi.waitFor(() => {
+			expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('Support Agent');
+		});
+		await userEvent.click(getByTestId('instance-ai-input-submit'));
+
+		expect(thread.sendMessage).toHaveBeenCalledWith(
+			'Normal message',
+			[
+				{
+					type: 'agent',
+					id: 'agent-1',
+					name: 'Support Agent',
+					projectId: 'project-1',
+				},
+			],
+			expect.any(String),
+			undefined,
+		);
+	});
+
+	it('detaches dismissed new-agent context without closing its preview', async () => {
+		thread.sseState = 'disconnected';
+		vi.mocked(thread.loadHistoricalMessages).mockResolvedValue('skipped');
+		thread.producedArtifacts = new Map([
+			[
+				'agent-1',
+				{
+					type: 'agent',
+					id: 'agent-1',
+					projectId: 'project-1',
+					name: 'New Agent',
+					pending: true,
+				},
+			],
+		]) as typeof thread.producedArtifacts;
+		stashPendingAgentAttachment('thread-1', {
+			type: 'agent',
+			id: 'agent-1',
+			name: 'New Agent',
+			projectId: 'project-1',
+			pending: true,
+		});
+
+		const { findByTestId, getByTestId } = renderView({ props: { threadId: 'thread-1' } });
+		const preview = await findByTestId('instance-ai-agent-preview-stub');
+
+		await userEvent.click(getByTestId('instance-ai-input-dismiss-context-chip'));
+
+		expect(getPendingAgentAttachment('thread-1')).toBeNull();
+		expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('');
+		expect(preview).toBeInTheDocument();
+		await userEvent.click(getByTestId('instance-ai-input-submit'));
+		expect(thread.sendMessage).toHaveBeenCalledWith(
 			'Normal message',
 			undefined,
 			expect.any(String),
@@ -1046,69 +1171,67 @@ describe('InstanceAiThreadView', () => {
 		expect(queryByTestId('instance-ai-assistant-message')).not.toBeInTheDocument();
 	});
 
-	it('closes the agent artifact preview from the wrapper toggle', async () => {
+	it('keeps the new-agent artifact accessible when closed and restores it after refresh', async () => {
+		mockWindowSizeState.width.value = 1700;
 		thread.producedArtifacts = new Map([
-			['agent-1', { type: 'agent', id: 'agent-1', projectId: 'proj-1', name: 'SEO Auditor' }],
+			[
+				'agent-1',
+				{
+					type: 'agent',
+					id: 'agent-1',
+					projectId: 'proj-1',
+					name: 'New Agent',
+					pending: true,
+				},
+			],
 		]) as typeof thread.producedArtifacts;
 
 		const user = userEvent.setup();
-		const { findByTestId, queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
+		const firstRender = renderView({ props: { threadId: 'thread-1' } });
 
-		thread.messages.push({
-			id: 'msg-agent',
-			role: 'assistant',
-			content: '',
-			reasoning: '',
-			isStreaming: false,
-			createdAt: '2026-04-01T00:00:00.000Z',
-			agentTree: {
-				agentId: 'agent-builder',
-				role: 'orchestrator',
-				status: 'completed',
-				textContent: '',
-				reasoning: '',
-				timeline: [],
-				children: [
-					{
-						agentId: 'agent-builder-child',
-						role: 'agent-builder',
-						kind: 'agent-builder',
-						status: 'completed',
-						textContent: '',
-						reasoning: '',
-						timeline: [],
-						children: [],
-						toolCalls: [],
-						targetResource: {
-							type: 'agent',
-							id: 'agent-1',
-							projectId: 'proj-1',
-							name: 'SEO Auditor',
-						},
-					},
-				],
-				toolCalls: [
-					{
-						toolCallId: 'tc-create-agent',
-						toolName: 'build-agent',
-						args: { message: 'build me an SEO auditor', name: 'SEO Auditor' },
-						isLoading: false,
-						result: { ok: true, builderReply: 'Created the agent.' },
-					},
-				],
-			},
-		} as never);
-
-		await findByTestId('instance-ai-agent-preview-stub');
-		const previewPanel = await findByTestId('instance-ai-preview-panel');
+		await firstRender.findByTestId('instance-ai-agent-preview-stub');
+		const previewPanel = await firstRender.findByTestId('instance-ai-preview-panel');
 		expect(previewPanel).toBeVisible();
 
-		await user.click(await findByTestId('instance-ai-artifacts-preview-toggle'));
+		await user.click(await firstRender.findByTestId('instance-ai-artifacts-preview-toggle'));
 
 		await vi.waitFor(() => {
 			expect(previewPanel).not.toBeVisible();
 		});
-		expect(queryByTestId('instance-ai-agent-preview-stub')).not.toBeInTheDocument();
+		expect(firstRender.queryByTestId('instance-ai-agent-preview-stub')).not.toBeInTheDocument();
+		expect(firstRender.getByTestId('instance-ai-artifacts-sidebar-slot')).toBeInTheDocument();
+		expect(firstRender.getByTestId('instance-ai-artifacts-panel-toggle')).toBeInTheDocument();
+
+		store.threads = [
+			{
+				...store.threads[0],
+				metadata: {
+					instanceAiAgentBuilderTarget: {
+						agentId: 'agent-1',
+						projectId: 'proj-1',
+						name: 'Support Agent',
+					},
+				},
+			},
+		] as typeof store.threads;
+		thread.producedArtifacts = new Map([
+			[
+				'agent-1',
+				{
+					type: 'agent',
+					id: 'agent-1',
+					projectId: 'proj-1',
+					name: 'Support Agent',
+				},
+			],
+		]) as typeof thread.producedArtifacts;
+
+		firstRender.unmount();
+		const refreshedRender = renderView({ props: { threadId: 'thread-1' } });
+		const restoredPreview = await refreshedRender.findByTestId('instance-ai-agent-preview-stub');
+
+		expect(restoredPreview).toHaveAttribute('data-agent-id', 'agent-1');
+		expect(await refreshedRender.findByTestId('instance-ai-preview-panel')).toBeVisible();
 	});
 
 	describe('Fix with AI card', () => {

@@ -887,6 +887,8 @@ export const instanceAiAgentAttachmentSchema = z.object({
 	name: z.string().max(255).optional(),
 	/** Project that owns the agent — required so the FE artifact preview can render. */
 	projectId: z.string().min(1).max(64),
+	/** The New Agent artifact has no persisted agent row yet. */
+	pending: z.literal(true).optional(),
 });
 export type InstanceAiAgentAttachment = z.infer<typeof instanceAiAgentAttachmentSchema>;
 
