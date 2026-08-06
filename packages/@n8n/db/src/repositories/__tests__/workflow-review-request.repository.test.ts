@@ -4,6 +4,7 @@ import type { Mock, Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { WorkflowReviewRequest } from '../../entities/workflow-review-request.ee';
+import { TypeOrmTransaction } from '../../services/typeorm-transaction';
 import { mockEntityManager } from '../../utils/test-utils/mock-entity-manager';
 import { WorkflowReviewRequestRepository } from '../workflow-review-request.repository';
 
@@ -39,13 +40,16 @@ describe('WorkflowReviewRequestRepository', () => {
 			);
 			entityManager.save.mockImplementationOnce(async (_target, entity) => entity);
 
-			await repo.createRequest({
-				id: 'req-1',
-				projectId: 'proj-1',
-				title: 'Review title',
-				description: 'Optional description',
-				createdById: 'user-1',
-			});
+			await repo.createRequest(
+				{
+					id: 'req-1',
+					projectId: 'proj-1',
+					title: 'Review title',
+					description: 'Optional description',
+					createdById: 'user-1',
+				},
+				{},
+			);
 
 			const savedEntity = entityManager.save.mock.calls[0]?.[1];
 			expect(savedEntity).toMatchObject({
@@ -68,12 +72,15 @@ describe('WorkflowReviewRequestRepository', () => {
 			);
 			entityManager.save.mockImplementationOnce(async (_target, entity) => entity);
 
-			await repo.createRequest({
-				projectId: 'proj-1',
-				title: 'Review title',
-				createdById: 'user-1',
-				updatedById: 'user-2',
-			});
+			await repo.createRequest(
+				{
+					projectId: 'proj-1',
+					title: 'Review title',
+					createdById: 'user-1',
+					updatedById: 'user-2',
+				},
+				{},
+			);
 
 			const savedEntity = entityManager.save.mock.calls[0]?.[1];
 			expect(savedEntity).toMatchObject({
@@ -201,15 +208,19 @@ describe('WorkflowReviewRequestRepository', () => {
 	});
 
 	describe('findById', () => {
-		it('reads through the provided transaction manager', async () => {
-			const trx = mock<EntityManager>();
+		it("reads through the context's transaction manager", async () => {
+			const transactionManager = mock<EntityManager>();
 			const request = mock<WorkflowReviewRequest>({ id: 'req-1' });
-			trx.findOne.mockResolvedValue(request);
+			transactionManager.findOne.mockResolvedValue(request);
 
-			const result = await repo.findById('req-1', trx);
+			const result = await repo.findById('req-1', {
+				trx: new TypeOrmTransaction(transactionManager),
+			});
 
 			expect(result).toBe(request);
-			expect(trx.findOne).toHaveBeenCalledWith(WorkflowReviewRequest, { where: { id: 'req-1' } });
+			expect(transactionManager.findOne).toHaveBeenCalledWith(WorkflowReviewRequest, {
+				where: { id: 'req-1' },
+			});
 			expect(entityManager.findOne).not.toHaveBeenCalled();
 		});
 	});

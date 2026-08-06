@@ -318,12 +318,12 @@ export class WorkflowReviewRequestService {
 			}
 		}
 
-		const request = await this.dbLockService.withLock(
+		const request = await this.dbLockService.withLockContext(
 			DbLock.WORKFLOW_REVIEW_REQUEST_CREATE,
-			async (tx, ctx) => {
+			async (ctx) => {
 				const existing = await this.workflowReviewRequestRepository.findOpenRequestForWorkflow(
 					workflowId,
-					tx,
+					ctx,
 				);
 				if (existing) {
 					throw new ConflictError(
@@ -340,7 +340,7 @@ export class WorkflowReviewRequestService {
 						description: dto.description ?? null,
 						createdById: user.id,
 					},
-					tx,
+					ctx,
 				);
 
 				await this.workflowReviewRequestWorkflowRepository.createWorkflowRow(
@@ -349,7 +349,7 @@ export class WorkflowReviewRequestService {
 						workflowId,
 						workflowVersionId,
 					},
-					tx,
+					ctx,
 				);
 
 				// After the conflict check, so a 409 never renames the version.
@@ -359,13 +359,13 @@ export class WorkflowReviewRequestService {
 
 				await this.workflowReviewRequestAuthorRepository.addAuthor(
 					{ workflowReviewRequestId: created.id, userId: user.id },
-					tx,
+					ctx,
 				);
 
 				if (reviewerUserIds.length > 0) {
 					await this.workflowReviewRequestReviewerRepository.addReviewers(
 						{ workflowReviewRequestId: created.id, userIds: reviewerUserIds },
-						tx,
+						ctx,
 					);
 				}
 
@@ -389,13 +389,18 @@ export class WorkflowReviewRequestService {
 	): Promise<WorkflowReviewRequestSummary> {
 		await this.featureGate.assertAvailable();
 
-		const request = await this.workflowReviewRequestRepository.findById(workflowReviewRequestId);
+		const request = await this.workflowReviewRequestRepository.findById(
+			workflowReviewRequestId,
+			{},
+		);
 		if (!request) {
 			throw new NotFoundError('Could not find review request');
 		}
 
-		const workflowRows =
-			await this.workflowReviewRequestWorkflowRepository.findByRequestId(workflowReviewRequestId);
+		const workflowRows = await this.workflowReviewRequestWorkflowRepository.findByRequestId(
+			workflowReviewRequestId,
+			{},
+		);
 		const workflowRow = workflowRows.find((row) => row.workflowId === dto.workflowId);
 		if (!workflowRow) {
 			throw new NotFoundError('Could not find review request');
@@ -440,13 +445,13 @@ export class WorkflowReviewRequestService {
 			return this.toSummary(request, workflowRow.workflowVersionId);
 		}
 
-		const { request: updated, changed } = await this.dbLockService.withLock(
+		const { request: updated, changed } = await this.dbLockService.withLockContext(
 			DbLock.WORKFLOW_REVIEW_REQUEST_CREATE,
-			async (tx, ctx) => {
+			async (ctx) => {
 				// Re-check under the lock so update can't race a concurrent close/approve.
 				const current = await this.workflowReviewRequestRepository.findById(
 					workflowReviewRequestId,
-					tx,
+					ctx,
 				);
 				if (!current) {
 					throw new NotFoundError('Could not find review request');
@@ -458,7 +463,7 @@ export class WorkflowReviewRequestService {
 				// reset the decision, and broadcast for a no-op.
 				const currentRows = await this.workflowReviewRequestWorkflowRepository.findByRequestId(
 					workflowReviewRequestId,
-					tx,
+					ctx,
 				);
 				const currentRow = currentRows.find((row) => row.workflowId === dto.workflowId);
 				if (!currentRow) {
@@ -481,7 +486,7 @@ export class WorkflowReviewRequestService {
 						workflowId: dto.workflowId,
 						workflowVersionId: dto.workflowVersionId,
 					},
-					tx,
+					ctx,
 				);
 
 				if (versionName) {
@@ -490,12 +495,11 @@ export class WorkflowReviewRequestService {
 
 				current.decision = 'pending';
 				current.updatedById = user.id;
-				// save (not update) so @BeforeUpdate bumps updatedAt
-				const saved = await tx.save(current);
+				const saved = await this.workflowReviewRequestRepository.saveRequest(current, ctx);
 
 				await this.workflowReviewRequestAuthorRepository.addAuthorIfMissing(
 					{ workflowReviewRequestId, userId: user.id },
-					tx,
+					ctx,
 				);
 
 				return { request: saved, changed: true };
@@ -521,13 +525,18 @@ export class WorkflowReviewRequestService {
 	): Promise<DecideWorkflowReviewRequestResponse> {
 		await this.featureGate.assertAvailable();
 
-		const request = await this.workflowReviewRequestRepository.findById(workflowReviewRequestId);
+		const request = await this.workflowReviewRequestRepository.findById(
+			workflowReviewRequestId,
+			{},
+		);
 		if (!request) {
 			throw new NotFoundError('Could not find review request');
 		}
 
-		const workflowRows =
-			await this.workflowReviewRequestWorkflowRepository.findByRequestId(workflowReviewRequestId);
+		const workflowRows = await this.workflowReviewRequestWorkflowRepository.findByRequestId(
+			workflowReviewRequestId,
+			{},
+		);
 		const workflowRow = workflowRows[0];
 		if (!workflowRow) {
 			throw new NotFoundError('Could not find review request');
@@ -554,20 +563,20 @@ export class WorkflowReviewRequestService {
 		);
 
 		// Fast path: reject a known author before queueing on the lock.
-		const isAuthor = await this.workflowReviewRequestAuthorRepository.isAuthor({
-			workflowReviewRequestId,
-			userId: user.id,
-		});
+		const isAuthor = await this.workflowReviewRequestAuthorRepository.isAuthor(
+			{ workflowReviewRequestId, userId: user.id },
+			{},
+		);
 		this.assertDecisionAllowed(isAuthor, hasAdminOverride);
 
-		const { request: saved, pinnedVersionId } = await this.dbLockService.withLock(
+		const { request: saved, pinnedVersionId } = await this.dbLockService.withLockContext(
 			DbLock.WORKFLOW_REVIEW_REQUEST_CREATE,
-			async (tx) => {
+			async (ctx) => {
 				// Re-check under the lock so a decision can't race a concurrent
 				// version sync (which resets the decision to pending) or another decision.
 				const current = await this.workflowReviewRequestRepository.findById(
 					workflowReviewRequestId,
-					tx,
+					ctx,
 				);
 				if (!current) {
 					throw new NotFoundError('Could not find review request');
@@ -579,7 +588,7 @@ export class WorkflowReviewRequestService {
 				// syncer must not be able to decide.
 				const isAuthorNow = await this.workflowReviewRequestAuthorRepository.isAuthor(
 					{ workflowReviewRequestId, userId: user.id },
-					tx,
+					ctx,
 				);
 				this.assertDecisionAllowed(isAuthorNow, hasAdminOverride);
 
@@ -587,7 +596,7 @@ export class WorkflowReviewRequestService {
 				// have re-pinned, and the summary must reflect the version being decided on.
 				const currentRows = await this.workflowReviewRequestWorkflowRepository.findByRequestId(
 					workflowReviewRequestId,
-					tx,
+					ctx,
 				);
 				const currentRow = currentRows.find((row) => row.workflowId === workflowRow.workflowId);
 				if (!currentRow) {
@@ -602,8 +611,7 @@ export class WorkflowReviewRequestService {
 					current.approvedAt = new Date();
 				}
 
-				// save (not update) so @BeforeUpdate bumps updatedAt
-				const savedRequest = await tx.save(current);
+				const savedRequest = await this.workflowReviewRequestRepository.saveRequest(current, ctx);
 				return { request: savedRequest, pinnedVersionId: currentRow.workflowVersionId };
 			},
 		);

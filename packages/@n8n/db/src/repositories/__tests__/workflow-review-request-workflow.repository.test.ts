@@ -4,6 +4,7 @@ import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { WorkflowReviewRequestWorkflow } from '../../entities/workflow-review-request-workflow.ee';
+import { TypeOrmTransaction } from '../../services/typeorm-transaction';
 import { mockEntityManager } from '../../utils/test-utils/mock-entity-manager';
 import { WorkflowReviewRequestWorkflowRepository } from '../workflow-review-request-workflow.repository';
 
@@ -22,12 +23,15 @@ describe('WorkflowReviewRequestWorkflowRepository', () => {
 			);
 			entityManager.save.mockImplementationOnce(async (_target, entity) => entity);
 
-			await repo.createWorkflowRow({
-				id: 'child-1',
-				workflowReviewRequestId: 'req-1',
-				workflowId: 'wf-1',
-				workflowVersionId: 'ver-1',
-			});
+			await repo.createWorkflowRow(
+				{
+					id: 'child-1',
+					workflowReviewRequestId: 'req-1',
+					workflowId: 'wf-1',
+					workflowVersionId: 'ver-1',
+				},
+				{},
+			);
 
 			const savedEntity = entityManager.save.mock.calls[0]?.[1];
 			expect(savedEntity).toMatchObject({
@@ -44,10 +48,13 @@ describe('WorkflowReviewRequestWorkflowRepository', () => {
 			);
 			entityManager.save.mockImplementationOnce(async (_target, entity) => entity);
 
-			await repo.createWorkflowRow({
-				workflowReviewRequestId: 'req-1',
-				workflowId: 'wf-1',
-			});
+			await repo.createWorkflowRow(
+				{
+					workflowReviewRequestId: 'req-1',
+					workflowId: 'wf-1',
+				},
+				{},
+			);
 
 			const savedEntity = entityManager.save.mock.calls[0]?.[1];
 			expect(savedEntity).toMatchObject({
@@ -58,11 +65,14 @@ describe('WorkflowReviewRequestWorkflowRepository', () => {
 
 	describe('updateWorkflowVersion', () => {
 		it('updates only the row matching the (requestId, workflowId) pair', async () => {
-			await repo.updateWorkflowVersion({
-				workflowReviewRequestId: 'req-1',
-				workflowId: 'wf-1',
-				workflowVersionId: 'ver-2',
-			});
+			await repo.updateWorkflowVersion(
+				{
+					workflowReviewRequestId: 'req-1',
+					workflowId: 'wf-1',
+					workflowVersionId: 'ver-2',
+				},
+				{},
+			);
 
 			expect(entityManager.update).toHaveBeenCalledWith(
 				WorkflowReviewRequestWorkflow,
@@ -71,15 +81,15 @@ describe('WorkflowReviewRequestWorkflowRepository', () => {
 			);
 		});
 
-		it('writes through the provided transaction manager', async () => {
-			const trx = mock<EntityManager>();
+		it("writes through the context's transaction manager", async () => {
+			const transactionManager = mock<EntityManager>();
 
 			await repo.updateWorkflowVersion(
 				{ workflowReviewRequestId: 'req-1', workflowId: 'wf-1', workflowVersionId: 'ver-2' },
-				trx,
+				{ trx: new TypeOrmTransaction(transactionManager) },
 			);
 
-			expect(trx.update).toHaveBeenCalledWith(
+			expect(transactionManager.update).toHaveBeenCalledWith(
 				WorkflowReviewRequestWorkflow,
 				{ workflowReviewRequestId: 'req-1', workflowId: 'wf-1' },
 				{ workflowVersionId: 'ver-2' },

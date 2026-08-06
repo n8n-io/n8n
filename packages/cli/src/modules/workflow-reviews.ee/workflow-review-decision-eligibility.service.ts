@@ -78,10 +78,10 @@ export class WorkflowReviewDecisionEligibilityService {
 			return { canDecide: false, reason: 'missing_publish_permission' };
 		}
 
-		const isAuthor = await this.workflowReviewRequestAuthorRepository.isAuthor({
-			workflowReviewRequestId: request.id,
-			userId: user.id,
-		});
+		const isAuthor = await this.workflowReviewRequestAuthorRepository.isAuthor(
+			{ workflowReviewRequestId: request.id, userId: user.id },
+			{},
+		);
 		if (isAuthor && !(await this.hasAdminOverride(user, request.projectId))) {
 			return { canDecide: false, reason: 'author' };
 		}
