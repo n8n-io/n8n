@@ -16,34 +16,35 @@ import { useI18n } from '@n8n/i18n';
 import { computed, onBeforeUnmount, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
-import { N8nActionDropdown, N8nButton, N8nIcon, N8nTableBase } from '@n8n/design-system';
+import {
+	N8nActionDropdown,
+	N8nButton,
+	N8nIcon,
+	N8nIconButton,
+	N8nTableBase,
+	N8nTooltip,
+} from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system';
 import { ElSkeletonItem } from 'element-plus';
 
-type SessionNavigationMode = 'route' | 'new-tab' | 'intent';
-type ParentTraceTarget = { agentId: string; threadId: string };
+type TraceTarget = { agentId: string; threadId: string };
 
 const props = withDefaults(
 	defineProps<{
 		embedded?: boolean;
 		projectId?: string;
 		agentId?: string;
-		navigationMode?: SessionNavigationMode;
+		openSessionInNewTab?: boolean;
 		manageStoreLifecycle?: boolean;
 	}>(),
 	{
 		embedded: false,
 		projectId: undefined,
 		agentId: undefined,
-		navigationMode: 'route',
+		openSessionInNewTab: false,
 		manageStoreLifecycle: true,
 	},
 );
-
-const emit = defineEmits<{
-	'open-conversation': [threadId: string];
-	'view-parent-trace': [target: ParentTraceTarget];
-}>();
 
 const i18n = useI18n();
 const threadTitleOf = useThreadTitle();
@@ -162,11 +163,6 @@ function rowActions(thread: AgentExecutionThread): Array<ActionDropdownItem<stri
 }
 
 function openConversation(threadId: string) {
-	if (props.navigationMode === 'intent') {
-		emit('open-conversation', threadId);
-		return;
-	}
-
 	const target = {
 		name: AGENT_PREVIEW_VIEW,
 		params: { projectId: projectId.value, agentId: agentId.value },
@@ -175,19 +171,14 @@ function openConversation(threadId: string) {
 			section: EXECUTIONS_SECTION_KEY,
 		},
 	};
-	if (props.navigationMode === 'new-tab') {
+	if (props.openSessionInNewTab) {
 		window.open(router.resolve(target).href, '_blank');
 		return;
 	}
 	void router.push(target);
 }
 
-function onViewParentTrace(target: ParentTraceTarget) {
-	if (props.navigationMode === 'intent') {
-		emit('view-parent-trace', target);
-		return;
-	}
-
+function onViewTrace(target: TraceTarget) {
 	const routeTarget = {
 		name: AGENT_SESSION_DETAIL_VIEW,
 		params: {
@@ -196,7 +187,7 @@ function onViewParentTrace(target: ParentTraceTarget) {
 			threadId: target.threadId,
 		},
 	};
-	if (props.navigationMode === 'new-tab') {
+	if (props.openSessionInNewTab) {
 		window.open(router.resolve(routeTarget).href, '_blank');
 		return;
 	}
@@ -206,7 +197,7 @@ function onViewParentTrace(target: ParentTraceTarget) {
 async function onAction(actionId: string, thread: AgentExecutionThread) {
 	if (actionId === 'goToParentRun') {
 		if (!thread.parentAgentId || !thread.parentThreadId) return;
-		onViewParentTrace({
+		onViewTrace({
 			agentId: thread.parentAgentId,
 			threadId: thread.parentThreadId,
 		});
@@ -288,6 +279,17 @@ async function loadMore() {
 						</td>
 						<td :class="$style.actionCell" @click.stop>
 							<div :class="$style.actionGroup">
+								<N8nTooltip :content="i18n.baseText('agentSessions.viewTrace')">
+									<N8nIconButton
+										icon="list-tree"
+										icon-size="medium"
+										size="xsmall"
+										variant="ghost"
+										:aria-label="i18n.baseText('agentSessions.viewTrace')"
+										data-test-id="agent-session-view-trace"
+										@click="onViewTrace({ agentId, threadId: thread.id })"
+									/>
+								</N8nTooltip>
 								<N8nActionDropdown
 									:items="rowActions(thread)"
 									activator-icon="ellipsis"

@@ -9,24 +9,20 @@ import { useKeybindings } from '@/app/composables/useKeybindings';
 import type { AgentContinueLoadedEvent, AgentJsonConfig, AgentResource } from '../types';
 import AgentPreviewChatPage from './AgentPreviewChatPage.vue';
 
-const props = withDefaults(
-	defineProps<{
-		sessionTitle: string;
-		hasSession: boolean;
-		initialized: boolean;
-		projectId: string;
-		agentId: string;
-		agent: AgentResource | null;
-		localConfig: AgentJsonConfig | null;
-		connectedTriggers: string[];
-		effectiveSessionId?: string;
-		initialPrompt?: string;
-		canSendToAssistant?: boolean;
-		beforeSend?: () => Promise<void> | void;
-		closeShortcutDisabled?: boolean;
-	}>(),
-	{ closeShortcutDisabled: false },
-);
+const props = defineProps<{
+	sessionTitle: string;
+	hasSession: boolean;
+	initialized: boolean;
+	projectId: string;
+	agentId: string;
+	agent: AgentResource | null;
+	localConfig: AgentJsonConfig | null;
+	connectedTriggers: string[];
+	effectiveSessionId?: string;
+	initialPrompt?: string;
+	canSendToAssistant?: boolean;
+	beforeSend?: () => Promise<void> | void;
+}>();
 
 const emit = defineEmits<{
 	'view-trace': [];
@@ -60,7 +56,7 @@ function isFocusWithinDock() {
 useKeybindings({
 	'ctrl+shift+;': createNewSession,
 	Escape: {
-		disabled: () => props.closeShortcutDisabled || !isFocusWithinDock(),
+		disabled: () => !isFocusWithinDock(),
 		run: close,
 	},
 });
@@ -121,7 +117,7 @@ useKeybindings({
 				<KeyboardShortcutTooltip
 					placement="bottom"
 					:label="i18n.baseText('generic.close')"
-					:shortcut="props.closeShortcutDisabled ? undefined : { keys: ['Esc'] }"
+					:shortcut="{ keys: ['Esc'] }"
 				>
 					<N8nIconButton
 						variant="ghost"

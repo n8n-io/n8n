@@ -160,7 +160,6 @@ const { canUpdate: canEditAgent, canDelete: canDeleteAgent } = useAgentPermissio
 const effectiveCanEditAgent = computed(() => canEditAgent.value && !props.artifactEditingLocked);
 
 const isVersionHistoryOpen = ref(false);
-const sessionDetailId = ref<string>();
 
 watch(
 	isPreviewDockOpen,
@@ -514,40 +513,20 @@ function openSessionTarget(target: RouteLocationRaw) {
 	void router.push(target);
 }
 
-function openSession(threadId: string) {
-	sessionDetailId.value = threadId;
-	if (isArtifactMode.value) {
-		openArtifactPreview(threadId);
-		return;
-	}
-
-	void openPreview(threadId);
-}
-
-function openSessionTrace(target: { agentId: string; threadId: string }) {
+function viewPreviewTrace() {
+	if (!currentSessionHasMessages.value || !effectiveSessionId.value) return;
 	openSessionTarget({
 		name: AGENT_SESSION_DETAIL_VIEW,
 		params: {
 			projectId: projectId.value,
-			agentId: target.agentId,
-			threadId: target.threadId,
+			agentId: agentId.value,
+			threadId: effectiveSessionId.value,
 		},
 	});
 }
 
-function viewPreviewTrace() {
-	if (!currentSessionHasMessages.value || !effectiveSessionId.value) return;
-	activeMainTab.value = 'sessions';
-	sessionDetailId.value = effectiveSessionId.value;
-}
-
-function closeSessionTrace() {
-	sessionDetailId.value = undefined;
-}
-
 function startNewPreviewSession() {
 	onNewChat();
-	sessionDetailId.value = undefined;
 }
 
 async function onOpenPreview() {
@@ -1304,7 +1283,6 @@ async function initialize() {
 	clearTimeout(externalRefreshTimer);
 	// A refresh queued for the previous agent must not fire against this one.
 	initialized.value = false;
-	sessionDetailId.value = undefined;
 	sessionsStore.reset();
 	// A refresh queued before this (re)initialize is obsolete: it targeted the
 	// agent that was current when the event fired, and the fetches below return
@@ -1431,43 +1409,11 @@ watch(
 		}
 
 		isArtifactPreviewDockOpen.value = false;
-		sessionDetailId.value = undefined;
 		activeChatSessionId.value = null;
 	},
 );
 
 watch([projectId, agentId], initialize, { immediate: true });
-
-watch(
-	[projectId, agentId, isPreviewDockOpen],
-	([, , previewOpen]) => {
-		const routeSessionId = continueSessionId.value;
-		if (
-			isArtifactMode.value ||
-			!previewOpen ||
-			activeMainTab.value !== 'sessions' ||
-			!routeSessionId
-		) {
-			return;
-		}
-
-		sessionDetailId.value = routeSessionId;
-	},
-	{ immediate: true },
-);
-
-watch(continueSessionId, (routeSessionId) => {
-	if (
-		isArtifactMode.value ||
-		!isPreviewDockOpen.value ||
-		!sessionDetailId.value ||
-		!routeSessionId
-	) {
-		return;
-	}
-
-	sessionDetailId.value = routeSessionId;
-});
 
 // If another surface creates the pending artifact, reload the now-persisted
 // agent. Local Preview sends already clear `isUnsaved` before emitting
@@ -1692,7 +1638,6 @@ function onSwitchAgent(nextAgentId: string) {
 					:agent-unsaved="isUnsaved"
 					:executions-description="executionsDescription"
 					:artifact-mode="isArtifactMode"
-					:session-detail-id="sessionDetailId"
 					:config-validation-issues="configValidation?.issues ?? []"
 					@update:config="onConfigFieldUpdate"
 					@open-tool="caps.onOpenToolFromList"
@@ -1712,9 +1657,6 @@ function onSwitchAgent(nextAgentId: string) {
 					@toggle-mcp-access="onToggleMcpAccess"
 					@tasks-changed="() => onConfigUpdated()"
 					@agent-changed="refreshAgentAfterIntegrationChange"
-					@open-session="openSession"
-					@view-parent-trace="openSessionTrace"
-					@close-session-trace="closeSessionTrace"
 				/>
 
 				<AgentVersionHistoryPanel
@@ -1749,7 +1691,6 @@ function onSwitchAgent(nextAgentId: string) {
 						:effective-session-id="effectiveSessionId"
 						:can-send-to-assistant="canSendPreviewToInstanceAi"
 						:before-send="beforePreviewSend"
-						:close-shortcut-disabled="Boolean(sessionDetailId)"
 						@view-trace="viewPreviewTrace"
 						@new-session="startNewPreviewSession"
 						@close="closePreviewDock"

@@ -63,7 +63,6 @@ function mountDock(
 	overrides: Partial<{
 		hasSession: boolean;
 		effectiveSessionId?: string;
-		closeShortcutDisabled: boolean;
 		beforeSend: () => Promise<void> | void;
 	}> = {},
 	attachTo?: HTMLElement,
@@ -275,30 +274,6 @@ describe('AgentPreviewDock', () => {
 		wrapper.unmount();
 		host.remove();
 		outsideButton.remove();
-	});
-
-	it('can yield the Escape shortcut to an open session trace', () => {
-		const host = document.createElement('div');
-		document.body.append(host);
-		const wrapper = mountDock({ closeShortcutDisabled: true }, host);
-
-		const escapeBinding = useKeybindingsMock.mock.calls[0]?.[0]?.Escape as {
-			disabled: () => boolean;
-		};
-		const closeButton = wrapper.get('[data-testid="agent-preview-close-btn"]')
-			.element as HTMLButtonElement;
-
-		try {
-			closeButton.focus();
-			expect(document.activeElement).toBe(closeButton);
-			expect(escapeBinding.disabled()).toBe(true);
-			expect(
-				wrapper.findAllComponents({ name: 'KeyboardShortcutTooltip' }).at(-1)?.props('shortcut'),
-			).toBeUndefined();
-		} finally {
-			wrapper.unmount();
-			host.remove();
-		}
 	});
 });
 

@@ -462,7 +462,7 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 	justify-content: space-between;
 	gap: var(--spacing--2xs);
 	padding: var(--spacing--xs) var(--spacing--sm);
-	background-color: var(--agent-session-timeline--background-color, var(--background--surface));
+	background-color: var(--background--surface);
 	border-bottom: var(--border);
 	flex-shrink: 0;
 	height: var(--height--4xl);

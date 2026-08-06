@@ -6,7 +6,6 @@ vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
 		baseText: (key: string) =>
 			({
-				'generic.back': 'Back',
 				'agents.builder.memory.episodicMemory.label': 'Episodic Memory',
 				'agents.builder.memory.episodicMemory.changeCredential': 'Change credential',
 				'agents.builder.editorColumn.ariaLabel': 'Agent editor',
@@ -119,19 +118,10 @@ vi.mock('../components/AgentSubAgentsPanel.vue', () => ({
 	},
 }));
 
-vi.mock('../components/AgentSessionTimelinePanel.vue', () => ({
-	default: {
-		name: 'AgentSessionTimelinePanel',
-		template: '<div data-testid="agent-session-timeline-panel"><slot name="toolbar-start" /></div>',
-		props: ['projectId', 'agentId', 'threadId', 'seamless'],
-	},
-}));
-
 vi.mock('../views/AgentSessionsListView.vue', () => ({
 	default: {
 		name: 'AgentSessionsListView',
-		props: ['embedded', 'projectId', 'agentId', 'navigationMode', 'manageStoreLifecycle'],
-		emits: ['open-conversation', 'view-parent-trace'],
+		props: ['embedded', 'projectId', 'agentId', 'openSessionInNewTab', 'manageStoreLifecycle'],
 		template: '<div />',
 	},
 }));
@@ -148,7 +138,6 @@ async function mountColumn(
 		}>;
 		knowledgeBaseEnabled: boolean;
 		artifactMode: boolean;
-		sessionDetailId: string;
 	}> = {},
 ) {
 	const { default: AgentBuilderEditorColumn } = await import(
@@ -181,7 +170,6 @@ async function mountColumn(
 			canEditAgent: true,
 			executionsDescription: '',
 			artifactMode: overrides.artifactMode,
-			sessionDetailId: overrides.sessionDetailId,
 		},
 		global: {
 			plugins: [createTestingPinia({ createSpy: vi.fn })],
@@ -277,67 +265,16 @@ describe('AgentBuilderEditorColumn', () => {
 	});
 
 	it.each([false, true])(
-		'uses owner-controlled intent navigation for embedded sessions when artifactMode is %s',
+		'opens embedded sessions in a new tab when artifactMode is %s',
 		async (artifactMode) => {
 			const wrapper = await mountColumn({ activeMainTab: 'sessions', artifactMode });
 
 			expect(wrapper.findComponent({ name: 'AgentSessionsListView' }).props()).toMatchObject({
-				navigationMode: 'intent',
+				openSessionInNewTab: artifactMode,
 				manageStoreLifecycle: false,
 			});
 		},
 	);
-
-	it('forwards the conversation intent from the Sessions list', async () => {
-		const wrapper = await mountColumn({ activeMainTab: 'sessions' });
-		const sessionsList = wrapper.findComponent({ name: 'AgentSessionsListView' });
-
-		sessionsList.vm.$emit('open-conversation', 'thread-1');
-
-		expect(wrapper.emitted('open-session')).toEqual([['thread-1']]);
-	});
-
-	it('forwards the typed parent trace intent from the Sessions list', async () => {
-		const wrapper = await mountColumn({ activeMainTab: 'sessions' });
-		const sessionsList = wrapper.findComponent({ name: 'AgentSessionsListView' });
-		const parentTrace = { agentId: 'parent-agent-1', threadId: 'parent-thread-1' };
-
-		sessionsList.vm.$emit('view-parent-trace', parentTrace);
-
-		expect(wrapper.emitted('view-parent-trace')).toEqual([[parentTrace]]);
-	});
-
-	it('renders controlled session detail under the Sessions tab and emits its back intent', async () => {
-		const wrapper = await mountColumn({
-			activeMainTab: 'sessions',
-			sessionDetailId: 'thread-1',
-		});
-
-		expect(wrapper.find('[data-testid="agent-builder-identity-header"]').exists()).toBe(true);
-		expect(wrapper.find('[data-testid="agent-header-tabs"]').exists()).toBe(true);
-		expect(wrapper.findComponent({ name: 'AgentSessionsListView' }).exists()).toBe(false);
-
-		const timeline = wrapper.findComponent({ name: 'AgentSessionTimelinePanel' });
-		expect(timeline.props()).toMatchObject({
-			projectId: 'project-1',
-			agentId: 'agent-1',
-			threadId: 'thread-1',
-			seamless: true,
-		});
-
-		const back = timeline.getComponent({ name: 'N8nButton' });
-		expect(back.props()).toMatchObject({
-			icon: 'arrow-left',
-			label: 'Back',
-			variant: 'ghost',
-			size: 'small',
-		});
-		expect(back.attributes('data-test-id')).toBe('agent-session-detail-back');
-
-		await back.trigger('click');
-
-		expect(wrapper.emitted('close-session-trace')).toEqual([[]]);
-	});
 
 	it('renders the knowledge files panel only on the Knowledge tab', async () => {
 		const agentWrapper = await mountColumn({ activeMainTab: 'agent' });

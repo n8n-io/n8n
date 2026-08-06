@@ -39,6 +39,7 @@ vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
 		baseText: (key: string) =>
 			({
+				'agentSessions.viewTrace': 'View session trace',
 				'agentSessions.origin.agent': 'Agent',
 				'agentSessions.origin.subAgent': 'Sub-agent',
 				'agentSessions.origin.task': 'Task',
@@ -61,7 +62,11 @@ vi.mock('@n8n/design-system', () => ({
 	},
 	N8nButton: { template: '<button><slot /><slot name="icon" /></button>' },
 	N8nIcon: { template: '<span />', props: ['icon', 'size'] },
+	N8nIconButton: {
+		template: '<button v-bind="$attrs"><slot /></button>',
+	},
 	N8nTableBase: { template: '<table><slot /></table>' },
+	N8nTooltip: { template: '<div><slot /></div>' },
 }));
 
 vi.mock('../agentSessions.store', () => ({
@@ -146,12 +151,12 @@ function makeThread(overrides: Partial<AgentExecutionThread> = {}): AgentExecuti
 
 async function mountView({
 	threads = [makeThread()],
-	navigationMode = 'route',
+	openSessionInNewTab = false,
 	manageStoreLifecycle = true,
 	embedded = true,
 }: {
 	threads?: AgentExecutionThread[];
-	navigationMode?: 'route' | 'new-tab' | 'intent';
+	openSessionInNewTab?: boolean;
 	manageStoreLifecycle?: boolean;
 	embedded?: boolean;
 } = {}) {
@@ -164,7 +169,7 @@ async function mountView({
 			embedded,
 			projectId: 'project-1',
 			agentId: 'agent-1',
-			navigationMode,
+			openSessionInNewTab,
 			manageStoreLifecycle,
 		},
 		global: { plugins: [createTestingPinia({ createSpy: vi.fn })] },
@@ -232,8 +237,8 @@ describe('AgentSessionsListView', () => {
 		});
 	});
 
-	it('opens the conversation in a new tab in new-tab navigation mode', async () => {
-		const wrapper = await mountView({ navigationMode: 'new-tab' });
+	it('opens the conversation in a new tab when requested', async () => {
+		const wrapper = await mountView({ openSessionInNewTab: true });
 		const target = {
 			name: 'AgentPreviewView',
 			params: { projectId: 'project-1', agentId: 'agent-1' },
@@ -247,15 +252,31 @@ describe('AgentSessionsListView', () => {
 		expect(windowOpenSpy).toHaveBeenCalledExactlyOnceWith('/resolved', '_blank');
 	});
 
-	it('emits an open-conversation intent without navigating when a row is clicked', async () => {
-		const wrapper = await mountView({ navigationMode: 'intent', manageStoreLifecycle: false });
+	it('opens the trace timeline when the trace icon button is clicked', async () => {
+		const wrapper = await mountView();
 
-		await wrapper.get('[data-test-id="agent-session-list-item"]').trigger('click');
+		await wrapper.get('[data-test-id="agent-session-view-trace"]').trigger('click');
 
-		expect(wrapper.emitted('open-conversation')).toEqual([['thread-1']]);
-		expect(routerPush).not.toHaveBeenCalled();
+		expect(routerPush).toHaveBeenCalledExactlyOnceWith({
+			name: 'AgentSessionDetailView',
+			params: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
+		});
 		expect(routerResolve).not.toHaveBeenCalled();
 		expect(windowOpenSpy).not.toHaveBeenCalled();
+	});
+
+	it('opens the trace in a new tab when requested', async () => {
+		const wrapper = await mountView({ openSessionInNewTab: true });
+		const target = {
+			name: 'AgentSessionDetailView',
+			params: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
+		};
+
+		await wrapper.get('[data-test-id="agent-session-view-trace"]').trigger('click');
+
+		expect(routerPush).not.toHaveBeenCalled();
+		expect(routerResolve).toHaveBeenCalledExactlyOnceWith(target);
+		expect(windowOpenSpy).toHaveBeenCalledExactlyOnceWith('/resolved', '_blank');
 	});
 
 	it('opens the parent trace in the current tab by default', async () => {
@@ -278,9 +299,9 @@ describe('AgentSessionsListView', () => {
 		expect(windowOpenSpy).not.toHaveBeenCalled();
 	});
 
-	it('opens the parent trace in a new tab in new-tab navigation mode', async () => {
+	it('opens the parent trace in a new tab when requested', async () => {
 		const wrapper = await mountView({
-			navigationMode: 'new-tab',
+			openSessionInNewTab: true,
 			threads: [makeThread({ parentAgentId: 'parent-agent-1', parentThreadId: 'parent-thread-1' })],
 		});
 		const target = {
@@ -298,24 +319,6 @@ describe('AgentSessionsListView', () => {
 		expect(routerPush).not.toHaveBeenCalled();
 		expect(routerResolve).toHaveBeenCalledExactlyOnceWith(target);
 		expect(windowOpenSpy).toHaveBeenCalledExactlyOnceWith('/resolved', '_blank');
-	});
-
-	it('emits a parent trace intent in intent navigation mode', async () => {
-		const wrapper = await mountView({
-			navigationMode: 'intent',
-			manageStoreLifecycle: false,
-			threads: [makeThread({ parentAgentId: 'parent-agent-1', parentThreadId: 'parent-thread-1' })],
-		});
-
-		wrapper.getComponent({ name: 'N8nActionDropdown' }).vm.$emit('select', 'goToParentRun');
-		await flushPromises();
-
-		expect(wrapper.emitted('view-parent-trace')).toEqual([
-			[{ agentId: 'parent-agent-1', threadId: 'parent-thread-1' }],
-		]);
-		expect(routerPush).not.toHaveBeenCalled();
-		expect(routerResolve).not.toHaveBeenCalled();
-		expect(windowOpenSpy).not.toHaveBeenCalled();
 	});
 
 	it('fetches, polls, and manages the visibility listener by default', async () => {
@@ -381,10 +384,11 @@ describe('AgentSessionsListView', () => {
 		);
 	});
 
-	it('does not render a redundant table trace control', async () => {
+	it('renders the trace button with the view-trace aria label', async () => {
 		const wrapper = await mountView();
+		const traceButton = wrapper.get('[data-test-id="agent-session-view-trace"]');
 
-		expect(wrapper.find('[data-test-id="agent-session-view-trace"]').exists()).toBe(false);
+		expect(traceButton.attributes('aria-label')).toBe('View session trace');
 	});
 
 	it.each([
