@@ -110,7 +110,7 @@ describe('WorkflowReviewRequestService.updateVersion', () => {
 			mock<WorkflowEntity>({ isArchived: false }),
 		);
 		workflowHistoryService.findVersion.mockResolvedValue(mock());
-		workflowHistoryRepository.updateVersionName.mockResolvedValue(1);
+		workflowHistoryRepository.updateVersionMetadata.mockResolvedValue(1);
 		requestRepository.saveRequest.mockImplementation(async (request) => request);
 	};
 
@@ -311,7 +311,10 @@ describe('WorkflowReviewRequestService.updateVersion', () => {
 
 	describe('pinned version naming', () => {
 		/** A no-op re-pin: the review already points at the version being submitted. */
-		const mockAlreadyPinned = (currentName: string | null) => {
+		const mockAlreadyPinned = (
+			currentName: string | null,
+			currentDescription: string | null = null,
+		) => {
 			mockSuccessfulUpdatePath();
 			workflowRepository.findByRequestId.mockResolvedValue([
 				mock<WorkflowReviewRequestWorkflow>({
@@ -321,7 +324,7 @@ describe('WorkflowReviewRequestService.updateVersion', () => {
 				}),
 			]);
 			workflowHistoryService.findVersion.mockResolvedValue(
-				mock<WorkflowHistory>({ name: currentName }),
+				mock<WorkflowHistory>({ name: currentName, description: currentDescription }),
 			);
 		};
 
@@ -333,15 +336,29 @@ describe('WorkflowReviewRequestService.updateVersion', () => {
 				workflowVersionName: '  Release candidate  ',
 			});
 
-			expect(workflowHistoryRepository.updateVersionName).toHaveBeenCalledWith(
+			expect(workflowHistoryRepository.updateVersionMetadata).toHaveBeenCalledWith(
 				{ workflowId: 'wf-1', versionId: 'ver-2', name: 'Release candidate' },
+				ctx,
+			);
+		});
+
+		it('writes a trimmed description alongside the name on a re-pin', async () => {
+			mockSuccessfulUpdatePath();
+
+			await service.updateVersion(user, requestId, {
+				...dto,
+				workflowVersionDescription: '  What changed  ',
+			});
+
+			expect(workflowHistoryRepository.updateVersionMetadata).toHaveBeenCalledWith(
+				expect.objectContaining({ description: 'What changed' }),
 				ctx,
 			);
 		});
 
 		it('throws BadRequestError when the version was pruned before the naming write', async () => {
 			mockSuccessfulUpdatePath();
-			workflowHistoryRepository.updateVersionName.mockResolvedValue(0);
+			workflowHistoryRepository.updateVersionMetadata.mockResolvedValue(0);
 
 			await expect(
 				service.updateVersion(user, requestId, {
@@ -356,7 +373,7 @@ describe('WorkflowReviewRequestService.updateVersion', () => {
 
 			await service.updateVersion(user, requestId, { ...dto, workflowVersionName: 'New name' });
 
-			expect(workflowHistoryRepository.updateVersionName).toHaveBeenCalledWith(
+			expect(workflowHistoryRepository.updateVersionMetadata).toHaveBeenCalledWith(
 				{ workflowId: 'wf-1', versionId: 'ver-2', name: 'New name' },
 				// Root context, not the lock's — this path deliberately runs untransacted.
 				{},
@@ -369,8 +386,57 @@ describe('WorkflowReviewRequestService.updateVersion', () => {
 			mockAlreadyPinned('Same name');
 
 			await service.updateVersion(user, requestId, { ...dto, workflowVersionName: 'Same name' });
+			expect(workflowHistoryRepository.updateVersionMetadata).not.toHaveBeenCalled();
+			expect(dbLockService.withLockContext).not.toHaveBeenCalled();
+		});
 
-			expect(workflowHistoryRepository.updateVersionName).not.toHaveBeenCalled();
+		it('updates without taking the lock when only the description changed', async () => {
+			mockAlreadyPinned('Same name', 'Old description');
+
+			await service.updateVersion(user, requestId, {
+				...dto,
+				workflowVersionName: 'Same name',
+				workflowVersionDescription: 'New description',
+			});
+
+			expect(workflowHistoryRepository.updateVersionMetadata).toHaveBeenCalledWith(
+				{
+					workflowId: 'wf-1',
+					versionId: 'ver-2',
+					name: 'Same name',
+					description: 'New description',
+				},
+				// Root context, not the lock's — this path deliberately runs untransacted.
+				{},
+			);
+			expect(dbLockService.withLockContext).not.toHaveBeenCalled();
+		});
+
+		it('clears the description when an empty string is sent for the pinned version', async () => {
+			mockAlreadyPinned('Same name', 'Old description');
+
+			await service.updateVersion(user, requestId, {
+				...dto,
+				workflowVersionName: 'Same name',
+				workflowVersionDescription: '   ',
+			});
+
+			expect(workflowHistoryRepository.updateVersionMetadata).toHaveBeenCalledWith(
+				expect.objectContaining({ description: null }),
+				{},
+			);
+		});
+
+		it('writes nothing when the pinned version already carries the same name and description', async () => {
+			mockAlreadyPinned('Same name', 'Same description');
+
+			await service.updateVersion(user, requestId, {
+				...dto,
+				workflowVersionName: 'Same name',
+				workflowVersionDescription: 'Same description',
+			});
+
+			expect(workflowHistoryRepository.updateVersionMetadata).not.toHaveBeenCalled();
 			expect(dbLockService.withLockContext).not.toHaveBeenCalled();
 		});
 
@@ -399,7 +465,7 @@ describe('WorkflowReviewRequestService.updateVersion', () => {
 
 			await service.updateVersion(user, requestId, { ...dto, workflowVersionName: 'New name' });
 
-			expect(workflowHistoryRepository.updateVersionName).toHaveBeenCalledWith(
+			expect(workflowHistoryRepository.updateVersionMetadata).toHaveBeenCalledWith(
 				{ workflowId: 'wf-1', versionId: 'ver-2', name: 'New name' },
 				ctx,
 			);
