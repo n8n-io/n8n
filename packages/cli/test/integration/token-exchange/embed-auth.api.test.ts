@@ -8,7 +8,8 @@ import { InstanceSettings } from 'n8n-core';
 import { generateKeyPairSync, randomUUID } from 'node:crypto';
 
 import { EventService } from '@/events/event.service';
-import { qualifiedProviderId } from '@/modules/token-exchange/services/identity-resolution.service';
+import { IdentitySubstrateConfig } from '@/modules/identity-substrate/identity-substrate.config';
+import { qualifiedProviderId } from '@/modules/identity-substrate/services/identity-resolution.service';
 import { TokenExchangeConfig } from '@/modules/token-exchange/token-exchange.config';
 
 import { createOwner, createUser } from '../shared/db/users';
@@ -41,8 +42,9 @@ const trustedKeysJson = JSON.stringify([
 // --- Seed config BEFORE setupTestServer so module init() picks it up ---
 
 const config = Container.get(TokenExchangeConfig);
-config.trustedKeys = trustedKeysJson;
 config.embedEnabled = true;
+const substrateConfig = Container.get(IdentitySubstrateConfig);
+substrateConfig.trustedKeys = trustedKeysJson;
 
 Container.get(InstanceSettings).markAsLeader();
 

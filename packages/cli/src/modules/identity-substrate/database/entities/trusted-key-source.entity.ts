@@ -5,7 +5,7 @@ import type {
 	TrustedKeySourceManagedBy,
 	TrustedKeySourceStatus,
 	TrustedKeySourceType,
-} from '@/modules/token-exchange/token-exchange.schemas';
+} from '../../identity-substrate.schemas';
 
 @Entity('trusted_key_source')
 export class TrustedKeySourceEntity extends WithTimestamps {

@@ -10,14 +10,13 @@ import { Body, Get, GlobalScope, Licensed, Param, Patch, RestController } from '
 import { jsonParse } from 'n8n-workflow';
 
 import type { TrustedKeySourceEntity } from '@/modules/identity-substrate/database/entities/trusted-key-source.entity';
-import { TrustedKeySyncService } from '@/modules/identity-substrate/services/trusted-key-sync.service';
-import { TrustedKeyService } from '@/modules/identity-substrate/services/trusted-key.service';
-
 import type {
 	JwksKeySource,
 	StaticKeySource,
 	TrustedKeySourcePolicy,
-} from '../token-exchange.schemas';
+} from '@/modules/identity-substrate/identity-substrate.schemas';
+import { TrustedKeySyncService } from '@/modules/identity-substrate/services/trusted-key-sync.service';
+import { TrustedKeyService } from '@/modules/identity-substrate/services/trusted-key.service';
 
 /**
  * Strips raw key material from a source's `config` before it leaves the

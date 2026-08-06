@@ -5,7 +5,6 @@ import { GLOBAL_OWNER_ROLE_SLUG, isBuiltInRole } from '@n8n/permissions';
 import { createHash } from 'node:crypto';
 
 import { EventService } from '@/events/event.service';
-import { TrustedKeyService } from '@/modules/identity-substrate/services/trusted-key.service';
 import {
 	IdentityBindingService,
 	interpretEmailVerified,
@@ -19,10 +18,11 @@ import type { IdentityResolver } from '@/services/identity-resolution-proxy.serv
 import { RoleService } from '@/services/role.service';
 import { UserService } from '@/services/user.service';
 
-import { TokenExchangeConfig } from '../token-exchange.config';
-import { TokenExchangeAuthError } from '../token-exchange.errors';
-import type { ExternalTokenClaims } from '../token-exchange.schemas';
-import { TokenExchangeFailureReason } from '../token-exchange.types';
+import { IdentitySubstrateConfig } from '../identity-substrate.config';
+import { TokenExchangeAuthError } from '../identity-substrate.errors';
+import type { ExternalTokenClaims } from '../identity-substrate.schemas';
+import { TokenExchangeFailureReason } from '../identity-substrate.types';
+import { TrustedKeyService } from './trusted-key.service';
 
 type TokenContext = { kid?: string; issuer: string; requireVerifiedEmail?: boolean };
 
@@ -49,7 +49,7 @@ export class IdentityResolutionService implements IdentityResolver {
 		private readonly userService: UserService,
 		private readonly trustedKeyService: TrustedKeyService,
 		private readonly roleService: RoleService,
-		private readonly config: TokenExchangeConfig,
+		private readonly config: IdentitySubstrateConfig,
 		private readonly identityBinding: IdentityBindingService,
 	) {
 		this.logger = logger.scoped('token-exchange');

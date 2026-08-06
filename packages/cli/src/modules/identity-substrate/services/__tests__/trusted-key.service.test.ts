@@ -1,12 +1,11 @@
 import type { Logger } from '@n8n/backend-common';
 import { mock } from 'vitest-mock-extended';
 
-import type { TrustedKeyData } from '@/modules/token-exchange/token-exchange.schemas';
-
 import { TrustedKeySourceEntity } from '../../database/entities/trusted-key-source.entity';
 import { TrustedKeyEntity } from '../../database/entities/trusted-key.entity';
 import type { TrustedKeySourceRepository } from '../../database/repositories/trusted-key-source.repository';
 import type { TrustedKeyRepository } from '../../database/repositories/trusted-key.repository';
+import type { TrustedKeyData } from '../../identity-substrate.schemas';
 import { TrustedKeyService } from '../trusted-key.service';
 
 // ──────────────────────────────────────────────────────────────────────

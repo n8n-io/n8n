@@ -4,8 +4,7 @@ import { OperationalError } from 'n8n-workflow';
 import { generateKeyPairSync } from 'node:crypto';
 import { mock } from 'vitest-mock-extended';
 
-import type { JwksKeySource } from '@/modules/token-exchange/token-exchange.schemas';
-
+import type { JwksKeySource } from '../../identity-substrate.schemas';
 import { JwksResolverService } from '../jwks-resolver';
 
 // ──────────────────────────────────────────────────────────────────────
