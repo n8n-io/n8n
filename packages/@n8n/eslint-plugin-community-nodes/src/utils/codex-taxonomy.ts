@@ -11,6 +11,10 @@
  * so the known values are mirrored here manually. Keep this list in sync with
  * `nodeCreator.ts` and the categories/subcategories actually used across
  * `packages/nodes-base` and `packages/@n8n/nodes-langchain`.
+ *
+ * `'Marketing & Content'` (not `'Marketing'`) matches the publicly documented
+ * category list (docs.n8n.io/integrations/creating-nodes/build/reference/node-codex-files)
+ * and the allowlist `community-node-tooling`'s review script checks against.
  */
 export const KNOWN_CODEX_CATEGORIES: Set<string> = new Set([
 	'AI',
@@ -23,7 +27,7 @@ export const KNOWN_CODEX_CATEGORIES: Set<string> = new Set([
 	'ECM',
 	'Finance & Accounting',
 	'HITL',
-	'Marketing',
+	'Marketing & Content',
 	'Miscellaneous',
 	'Productivity',
 	'Sales',
