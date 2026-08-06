@@ -161,9 +161,12 @@ export const workflowDetailsOutputSchema = z.object({
 				.nullable()
 				.describe('The active workflow version ID, if available'),
 			triggerCount: z.number(),
+			nodeCount: z
+				.number()
+				.describe('Number of nodes in the workflow, reported even when detailLevel omits them'),
 			createdAt: z.string().nullable(),
 			updatedAt: z.string().nullable(),
-			settings: workflowSettingsSchema.optional().describe(FULL_DETAIL_ONLY_NOTE),
+			settings: workflowSettingsSchema,
 			connections: z.record(z.unknown()).optional().describe(FULL_DETAIL_ONLY_NOTE),
 			nodes: z.array(nodeSchema).optional().describe(FULL_DETAIL_ONLY_NOTE),
 			nodeGroups: z

@@ -188,7 +188,8 @@ describe('get-workflow-details MCP tool', () => {
 				{ workflowId: 'wf-1', detailLevel: 'execution' },
 			);
 
-			// The active version relation stays loaded (it feeds activeVersionTriggerInfo)
+			// The published version stays loaded: its graph is omitted, but its
+			// triggers still feed activeVersionTriggerInfo
 			expect(findWorkflowForUser).toHaveBeenCalledWith(
 				'wf-1',
 				user,
@@ -200,7 +201,6 @@ describe('get-workflow-details MCP tool', () => {
 			expect(payload.workflow.connections).toBeUndefined();
 			expect(payload.workflow.nodeGroups).toBeUndefined();
 			expect(payload.workflow.activeVersion).toBeUndefined();
-			expect(payload.workflow.settings).toBeUndefined();
 			expect(payload.workflow.meta).toBeUndefined();
 
 			// Everything needed to execute is still present
@@ -210,8 +210,10 @@ describe('get-workflow-details MCP tool', () => {
 			expect(payload.workflow.scopes).toEqual(['workflow:read', 'workflow:execute']);
 			expect(payload.workflow.canExecute).toBe(true);
 			expect(payload.workflow.description).toBeUndefined();
-			// The workflow size stays reportable for telemetry despite the trimmed payload
-			expect(payload.nodeCount).toBe(2);
+			// settings carries timezone and errorWorkflow, which shape how a run behaves
+			expect(payload.workflow.settings).toEqual({ availableInMCP: true });
+			// The workflow size stays reportable despite the trimmed payload
+			expect(payload.workflow.nodeCount).toBe(2);
 		});
 
 		test("returns all graph fields when detailLevel is 'full'", async () => {
@@ -234,13 +236,12 @@ describe('get-workflow-details MCP tool', () => {
 				{ workflowId: 'wf-1', detailLevel: 'full' },
 			);
 
-			// Guards the full-mode contract: all six graph fields must be present,
+			// Guards the full-mode contract: every conditional field must be present,
 			// since the output schema marks them optional and cannot enforce this.
 			expect(payload.workflow.nodes).toBeDefined();
 			expect(payload.workflow.connections).toBeDefined();
 			expect(payload.workflow.nodeGroups).toBeDefined();
 			expect(payload.workflow.activeVersion).toBeDefined();
-			expect(payload.workflow.settings).toBeDefined();
 			expect(payload.workflow.meta).toBeDefined();
 		});
 
@@ -327,6 +328,35 @@ describe('get-workflow-details MCP tool', () => {
 				{ workflowId: 'wf-1', detailLevel: 'execution' },
 			);
 			expect(payload.activeVersionTriggerInfo).toBeUndefined();
+			// The node-level guard let this through, so the notice compare is what suppressed it
+			expect(getTriggerDetailsMock).toHaveBeenCalledTimes(2);
+		});
+
+		test('never emits activeVersionTriggerInfo when the published version is the draft', async () => {
+			// activeVersionId === versionId, so there is no divergence to report and
+			// the published triggers are never looked up.
+			getTriggerDetailsMock.mockClear();
+			const credentialsService = mockInstance(CredentialsService, {});
+			const endpoints = { webhook: 'webhook', webhookTest: 'webhook-test' };
+			const workflow = createWorkflow({ activeVersionId: 'some-version-id' });
+			const workflowFinderService = mockInstance(WorkflowFinderService, {
+				findWorkflowForUser: vi.fn().mockResolvedValue(workflow),
+			});
+
+			const payload = await getWorkflowDetails(
+				user,
+				baseWebhookUrl,
+				workflowFinderService,
+				credentialsService,
+				nodeTypes,
+				endpoints,
+				roleService,
+				projectService,
+				{ workflowId: 'wf-1', detailLevel: 'execution' },
+			);
+
+			expect(payload.activeVersionTriggerInfo).toBeUndefined();
+			expect(getTriggerDetailsMock).toHaveBeenCalledTimes(1);
 		});
 
 		test('omits activeVersion graph when the published version matches the current draft', async () => {
