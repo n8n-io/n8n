@@ -7,11 +7,10 @@ import {
 	N8nInputLabel,
 	N8nOption,
 	N8nSelect,
-	N8nSwitch,
 	N8nText,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed, ref, watch } from 'vue';
+import { ref, watch } from 'vue';
 
 import type {
 	CatalogEntry,
@@ -47,7 +46,6 @@ const WEEKDAYS = [1, 2, 3, 4, 5, 6, 0];
 
 const draft = ref<ScheduleDraft>({ ...DEFAULT_SCHEDULE_DRAFT });
 const inputs = ref<Record<string, string>>({});
-const enabled = ref(true);
 const timezone = ref(resolveBrowserTimezone());
 
 watch(
@@ -56,7 +54,6 @@ watch(
 		draft.value = subscription
 			? cronToDraft(subscription.cronExpression)
 			: { ...DEFAULT_SCHEDULE_DRAFT };
-		enabled.value = subscription?.enabled ?? true;
 		timezone.value = subscription?.timezone ?? resolveBrowserTimezone();
 		// Seed from the stored values so editing a schedule doesn't blank them, but
 		// only for fields the workflow still declares.
@@ -77,9 +74,6 @@ const weekdayLabel = (weekday: number) =>
 const frequencyLabel = (frequency: (typeof SCHEDULE_FREQUENCIES)[number]) =>
 	i18n.baseText(`catalog.schedule.frequency.${frequency}`);
 
-/** Shown so nobody has to trust the picker: this is exactly what will be saved. */
-const summary = computed(() => draftToCron(draft.value));
-
 const close = () => {
 	if (props.saving) return;
 	emit('close');
@@ -90,7 +84,9 @@ const submit = () => {
 		cronExpression: draftToCron(draft.value),
 		timezone: timezone.value,
 		inputs: { ...inputs.value },
-		enabled: enabled.value,
+		// Pausing lives in the list, not here. Carried through unchanged so editing
+		// a paused schedule doesn't quietly start it running again.
+		enabled: props.subscription?.enabled ?? true,
 	});
 };
 </script>
@@ -185,12 +181,6 @@ const submit = () => {
 					:placeholder="field.type"
 				/>
 			</N8nInputLabel>
-
-			<N8nSwitch v-model="enabled" :label="i18n.baseText('catalog.schedule.enabled')" />
-
-			<N8nText size="small" color="text-light">
-				{{ i18n.baseText('catalog.schedule.cron', { interpolate: { cron: summary } }) }}
-			</N8nText>
 
 			<N8nDialogFooter>
 				<N8nButton type="button" variant="outline" :disabled="saving" @click="close">

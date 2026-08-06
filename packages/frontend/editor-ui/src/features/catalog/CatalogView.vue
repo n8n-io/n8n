@@ -238,6 +238,29 @@ const editSchedule = (subscription: CatalogSubscription) => {
 	scheduling.value = { entry, subscription };
 };
 
+const pauseLabel = (subscription: CatalogSubscription) =>
+	subscription.enabled
+		? i18n.baseText('catalog.schedules.pause')
+		: i18n.baseText('catalog.schedules.resume');
+
+/**
+ * Pausing belongs beside the schedule, not inside the form that creates one:
+ * nobody sets up a schedule switched off. It keeps the row and its inputs and
+ * only takes the scheduler job away, so resuming needs no retyping.
+ */
+const togglePause = async (subscription: CatalogSubscription) => {
+	try {
+		await catalogStore.updateSubscription(subscription.id, {
+			cronExpression: subscription.cronExpression,
+			timezone: subscription.timezone,
+			inputs: subscription.inputs,
+			enabled: !subscription.enabled,
+		});
+	} catch (error) {
+		toast.showError(error, i18n.baseText('catalog.schedule.error'));
+	}
+};
+
 const removeSchedule = async (subscription: CatalogSubscription) => {
 	try {
 		await catalogStore.unsubscribe(subscription.id);
@@ -403,6 +426,16 @@ const removeSchedule = async (subscription: CatalogSubscription) => {
 							}}
 						</N8nText>
 						<div :class="$style.actions">
+							<N8nTooltip :content="pauseLabel(item)">
+								<N8nIconButton
+									:icon="item.enabled ? 'pause' : 'play'"
+									variant="ghost"
+									size="small"
+									:aria-label="pauseLabel(item)"
+									data-test-id="catalog-subscription-pause"
+									@click="togglePause(item)"
+								/>
+							</N8nTooltip>
 							<N8nTooltip :content="i18n.baseText('catalog.schedules.edit')">
 								<N8nIconButton
 									icon="pen"
