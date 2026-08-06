@@ -80,5 +80,26 @@ describe('useWorkflowDocumentNodesIssues', () => {
 
 			expect(hasPublishBlockingIssues.value).toBe(true);
 		});
+
+		it('does not count identityTrigger issues as publish-blocking (hotfix)', () => {
+			const node = connectedNode({
+				issues: { identityTrigger: { cred1: ["End-user credentials aren't supported..."] } },
+			});
+			const { hasPublishBlockingIssues } = useWorkflowDocumentNodesIssues(createDeps([node]));
+
+			expect(hasPublishBlockingIssues.value).toBe(false);
+		});
+
+		it('blocks on credential issues even when identityTrigger issues are also present', () => {
+			const node = connectedNode({
+				issues: {
+					identityTrigger: { cred1: ["End-user credentials aren't supported..."] },
+					credentials: { cred2: ['Not set'] },
+				},
+			});
+			const { hasPublishBlockingIssues } = useWorkflowDocumentNodesIssues(createDeps([node]));
+
+			expect(hasPublishBlockingIssues.value).toBe(true);
+		});
 	});
 });

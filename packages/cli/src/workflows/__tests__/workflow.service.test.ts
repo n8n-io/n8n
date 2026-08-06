@@ -1010,6 +1010,49 @@ describe('WorkflowService', () => {
 				);
 			});
 		});
+
+		test('republishes the active version when settings change on an already-active workflow', async () => {
+			const existingWorkflow = setupExistingWorkflow();
+			existingWorkflow.activeVersionId = 'v1';
+
+			const activateWorkflowSpy = vi
+				.spyOn(workflowService, 'activateWorkflow')
+				.mockResolvedValue(mock<WorkflowEntity>());
+
+			const user = mock<User>();
+			await workflowService.update(user, createUpdateData({ executionOrder: 'v1' }), 'workflow-1', {
+				forceSave: true,
+			});
+
+			expect(activateWorkflowSpy).toHaveBeenCalledWith(
+				user,
+				'workflow-1',
+				expect.objectContaining({ versionId: 'v1' }),
+			);
+		});
+
+		test('republishes the active version when the Public API republishes an already-active workflow', async () => {
+			const existingWorkflow = setupExistingWorkflow();
+			existingWorkflow.activeVersionId = 'v1';
+
+			const activateWorkflowSpy = vi
+				.spyOn(workflowService, 'activateWorkflow')
+				.mockResolvedValue(mock<WorkflowEntity>());
+
+			const user = mock<User>();
+			await workflowService.update(
+				user,
+				{ name: 'Renamed workflow' } as unknown as WorkflowEntity,
+				'workflow-1',
+				{ publishIfActive: true },
+			);
+
+			expect(activateWorkflowSpy).toHaveBeenCalledWith(
+				user,
+				'workflow-1',
+				expect.objectContaining({ versionId: 'v1' }),
+			);
+		});
 	});
 
 	describe('workflow.activate hook', () => {
@@ -1027,6 +1070,7 @@ describe('WorkflowService', () => {
 		let workflowHookContextServiceMock: MockProxy<WorkflowHookContextService>;
 		let pollTriggerJobRegistrarMock: MockProxy<PollTriggerJobRegistrar>;
 		let workflowPublishGuardMock: MockProxy<WorkflowPublishGuardProxy>;
+		let workflowValidationServiceMock: MockProxy<WorkflowValidationService>;
 
 		const WORKFLOW_ID = 'workflow-1';
 		const PREVIOUS_VERSION_ID = 'v1';
@@ -1081,6 +1125,9 @@ describe('WorkflowService', () => {
 			workflowHookContextServiceMock = mock<WorkflowHookContextService>();
 			pollTriggerJobRegistrarMock = mock();
 			workflowPublishGuardMock = mock<WorkflowPublishGuardProxy>();
+			workflowValidationServiceMock = Object.assign(mock<WorkflowValidationService>(), {
+				validateCredentialNodeRestrictions: () => ({ isValid: true }),
+			});
 
 			workflowRepositoryMock.create.mockImplementation(
 				(data) => Object.assign(new WorkflowEntity(), data) as WorkflowEntity,
@@ -1105,9 +1152,7 @@ describe('WorkflowService', () => {
 				workflowFinderServiceMock, // workflowFinderService
 				workflowPublishHistoryRepositoryMock, // workflowPublishHistoryRepository
 				outboxRepositoryMock, // outboxRepository
-				Object.assign(mock<WorkflowValidationService>(), {
-					validateCredentialNodeRestrictions: () => ({ isValid: true }),
-				}), // workflowValidationService
+				workflowValidationServiceMock, // workflowValidationService
 				mock(), // nodeTypes
 				mock(), // webhookService
 				mock(), // licenseState
@@ -1325,6 +1370,54 @@ describe('WorkflowService', () => {
 				role: 'global:admin',
 			});
 			expect(context).toBe(workflowHookContextServiceMock);
+		});
+
+		test('runs the dynamic-credentials guard by default', async () => {
+			const workflow = makeWorkflowEntity({ activeVersionId: PREVIOUS_VERSION_ID });
+			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(workflow);
+			workflowHistoryServiceMock.getVersion.mockResolvedValue(makeVersionToActivate());
+			workflowRepositoryMock.findOne.mockResolvedValue(workflow);
+			externalHooksMock.run.mockResolvedValue(undefined);
+			vi.spyOn(
+				workflowService as unknown as { _addToActiveWorkflowManager: () => Promise<void> },
+				'_addToActiveWorkflowManager',
+			).mockResolvedValue(undefined);
+
+			await workflowService.activateWorkflow(mock<User>(), WORKFLOW_ID, {
+				versionId: TARGET_VERSION_ID,
+			});
+
+			const internals = workflowService as unknown as { _validateDynamicCredentials: Mock };
+			expect(internals._validateDynamicCredentials).toHaveBeenCalled();
+		});
+
+		test('does not block activation when the workflow has incompatible dynamic credentials (hotfix)', async () => {
+			const workflow = makeWorkflowEntity({ activeVersionId: PREVIOUS_VERSION_ID });
+			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(workflow);
+			workflowHistoryServiceMock.getVersion.mockResolvedValue(makeVersionToActivate());
+			workflowRepositoryMock.findOne.mockResolvedValue(workflow);
+			externalHooksMock.run.mockResolvedValue(undefined);
+			vi.spyOn(
+				workflowService as unknown as { _addToActiveWorkflowManager: () => Promise<void> },
+				'_addToActiveWorkflowManager',
+			).mockResolvedValue(undefined);
+
+			// Let the real _validateDynamicCredentials run (undoing the blanket bypass from
+			// beforeEach) so it consults the underlying validation service for real.
+			const internals = workflowService as unknown as { _validateDynamicCredentials: Mock };
+			internals._validateDynamicCredentials.mockRestore();
+			workflowValidationServiceMock.validateDynamicCredentials.mockResolvedValue({
+				isValid: false,
+				error: 'End-user credentials are not supported by this trigger',
+			});
+
+			await expect(
+				workflowService.activateWorkflow(mock<User>(), WORKFLOW_ID, {
+					versionId: TARGET_VERSION_ID,
+				}),
+			).resolves.toBeInstanceOf(WorkflowEntity);
+
+			expect(workflowValidationServiceMock.validateDynamicCredentials).toHaveBeenCalled();
 		});
 
 		test('with the publication outbox enabled, updates the version, writes history, enqueues and emits events without touching the active workflow manager', async () => {

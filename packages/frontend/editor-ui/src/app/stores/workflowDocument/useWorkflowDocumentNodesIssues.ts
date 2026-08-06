@@ -37,10 +37,13 @@ export function useWorkflowDocumentNodesIssues(deps: WorkflowDocumentNodesIssues
 	const hasNodeValidationIssues = computed(() => nodesWithValidationIssuesCount.value > 0);
 
 	/** Whether any connected node has issues that should block publishing.
-	 *  Execution issues are excluded — they are runtime errors, not configuration problems. */
+	 *  Execution issues are excluded — they are runtime errors, not configuration
+	 *  problems. `identityTrigger` issues (dynamic-credential/trigger identity
+	 *  incompatibility) are also excluded — hotfix: informational on the canvas only,
+	 *  must not block save/publish. */
 	const hasPublishBlockingIssues = computed(() =>
 		deps.allNodes.value.some((node) => {
-			const { execution: _, ...configIssues } = node.issues ?? {};
+			const { execution: _, identityTrigger: __, ...configIssues } = node.issues ?? {};
 			if (Object.keys(configIssues).length === 0) return false;
 
 			const isConnected =

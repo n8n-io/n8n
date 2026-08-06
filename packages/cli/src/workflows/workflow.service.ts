@@ -1439,6 +1439,11 @@ export class WorkflowService {
 		}
 	}
 
+	/**
+	 * Hotfix: log-only. Dynamic credentials + webhook incompatibility is surfaced as a
+	 * canvas warning; it must not block save or activation while the compatibility model
+	 * is still being worked out.
+	 */
 	private async _validateDynamicCredentials(
 		workflowId: string,
 		nodes: INode[],
@@ -1451,13 +1456,10 @@ export class WorkflowService {
 		);
 
 		if (!validation.isValid) {
-			this.logger.warn('Workflow activation failed dynamic credentials validation', {
+			this.logger.warn('Workflow has incompatible dynamic credentials', {
 				workflowId,
 				error: validation.error,
 			});
-			throw new WorkflowValidationError(
-				validation.error ?? 'Dynamic credentials validation failed',
-			);
 		}
 	}
 

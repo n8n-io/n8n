@@ -1073,7 +1073,7 @@ describe('useNodeHelpers()', () => {
 				const { getNodeCredentialIssues } = useNodeHelpers();
 				const result = getNodeCredentialIssues(buildNotionNode(), notionNodeType);
 
-				expect(result?.credentials?.[NOTION_API]).toEqual([
+				expect(result?.identityTrigger?.[NOTION_API]).toEqual([
 					"End-user credentials aren't supported by this workflow's trigger. Supported triggers: Manual, Chat, MCP, and Sub-workflow. To use another trigger, switch this credential to Fixed.",
 				]);
 			});
@@ -1115,7 +1115,7 @@ describe('useNodeHelpers()', () => {
 					const { getNodeCredentialIssues } = useNodeHelpers();
 					const result = getNodeCredentialIssues(buildNotionNode(), notionNodeType);
 
-					expect(result?.credentials?.[NOTION_API]).toEqual([
+					expect(result?.identityTrigger?.[NOTION_API]).toEqual([
 						"End-user credentials aren't supported by this workflow's trigger. Supported triggers: Manual, Chat, MCP, and Sub-workflow. To use another trigger, switch this credential to Fixed.",
 					]);
 				});
@@ -1128,7 +1128,7 @@ describe('useNodeHelpers()', () => {
 					const { getNodeCredentialIssues } = useNodeHelpers();
 					const result = getNodeCredentialIssues(buildNotionNode(), notionNodeType);
 
-					expect(result?.credentials?.[NOTION_API]).toEqual([
+					expect(result?.identityTrigger?.[NOTION_API]).toEqual([
 						"End-user credentials aren't supported by this workflow's trigger. Supported triggers: Manual, Chat, MCP, Sub-workflow, and Webhook with n8n user authentication. To use another trigger, switch this credential to Fixed.",
 					]);
 				});
@@ -1157,7 +1157,7 @@ describe('useNodeHelpers()', () => {
 					const { getNodeCredentialIssues } = useNodeHelpers();
 					const result = getNodeCredentialIssues(buildNotionNode(), notionNodeType);
 
-					expect(result?.credentials?.[NOTION_API]).toEqual([
+					expect(result?.identityTrigger?.[NOTION_API]).toEqual([
 						"End-user credentials aren't supported by this workflow's trigger. Supported triggers: Manual, Chat, MCP, Sub-workflow, and Form with n8n user authentication. To use another trigger, switch this credential to Fixed.",
 					]);
 				});
@@ -1172,7 +1172,7 @@ describe('useNodeHelpers()', () => {
 					const { getNodeCredentialIssues } = useNodeHelpers();
 					const result = getNodeCredentialIssues(buildNotionNode(), notionNodeType);
 
-					expect(result?.credentials?.[NOTION_API]).toEqual([
+					expect(result?.identityTrigger?.[NOTION_API]).toEqual([
 						"End-user credentials aren't supported by this workflow's trigger. Supported triggers: Manual, Chat, MCP, and Sub-workflow. To use another trigger, switch this credential to Fixed.",
 					]);
 				});
@@ -1186,7 +1186,7 @@ describe('useNodeHelpers()', () => {
 					const { getNodeCredentialIssues } = useNodeHelpers();
 					const result = getNodeCredentialIssues(buildNotionNode(), notionNodeType);
 
-					expect(result?.credentials?.[NOTION_API]).toEqual([
+					expect(result?.identityTrigger?.[NOTION_API]).toEqual([
 						"End-user credentials aren't supported by this workflow's trigger. Supported triggers: Manual, Chat, MCP, Sub-workflow, and Form or Webhook with n8n user authentication. To use another trigger, switch this credential to Fixed.",
 					]);
 				});
@@ -1221,7 +1221,7 @@ describe('useNodeHelpers()', () => {
 				const { getNodeCredentialIssues } = useNodeHelpers();
 				const result = getNodeCredentialIssues(buildNotionNode(), notionNodeType);
 
-				expect(result?.credentials?.[NOTION_API]).toBeDefined();
+				expect(result?.identityTrigger?.[NOTION_API]).toBeDefined();
 			});
 
 			it('does not warn under a custom resolver when the trigger extracts an external identity', () => {
@@ -1253,7 +1253,7 @@ describe('useNodeHelpers()', () => {
 				const { getNodeCredentialIssues } = useNodeHelpers();
 				const result = getNodeCredentialIssues(buildNotionNode(), notionNodeType);
 
-				expect(result?.credentials?.[NOTION_API]?.[0]).toContain(
+				expect(result?.identityTrigger?.[NOTION_API]?.[0]).toContain(
 					'need a trigger that extracts an identity',
 				);
 			});
@@ -1303,7 +1303,7 @@ describe('useNodeHelpers()', () => {
 				const { getNodeCredentialIssues } = useNodeHelpers();
 				const result = getNodeCredentialIssues(buildNotionNode(), notionNodeType);
 
-				expect(result?.credentials?.[NOTION_API]?.[0]).toContain(
+				expect(result?.identityTrigger?.[NOTION_API]?.[0]).toContain(
 					"End-user credentials aren't supported by this workflow's trigger",
 				);
 			});
@@ -1318,7 +1318,7 @@ describe('useNodeHelpers()', () => {
 				const { getNodeCredentialIssues } = useNodeHelpers();
 				const result = getNodeCredentialIssues(buildNotionNode(), notionNodeType);
 
-				expect(result?.credentials?.[NOTION_API]?.[0]).toContain(
+				expect(result?.identityTrigger?.[NOTION_API]?.[0]).toContain(
 					"End-user credentials aren't supported by this workflow's trigger",
 				);
 			});
@@ -1408,7 +1408,7 @@ describe('useNodeHelpers()', () => {
 					const { getNodeCredentialIssues } = useNodeHelpers();
 					const result = getNodeCredentialIssues(buildGenericAuthNode(), httpRequestWithSslAuth);
 
-					expect(result?.credentials?.[OAUTH2_API]).toEqual([
+					expect(result?.identityTrigger?.[OAUTH2_API]).toEqual([
 						"End-user credentials aren't supported by this workflow's trigger. Supported triggers: Manual, Chat, MCP, and Sub-workflow. To use another trigger, switch this credential to Fixed.",
 					]);
 				});
@@ -1440,7 +1440,7 @@ describe('useNodeHelpers()', () => {
 					const { getNodeCredentialIssues } = useNodeHelpers();
 					const result = getNodeCredentialIssues(buildPredefinedAuthNode(), httpRequestWithSslAuth);
 
-					expect(result?.credentials?.[OAUTH2_API]).toEqual([
+					expect(result?.identityTrigger?.[OAUTH2_API]).toEqual([
 						"End-user credentials aren't supported by this workflow's trigger. Supported triggers: Manual, Chat, MCP, and Sub-workflow. To use another trigger, switch this credential to Fixed.",
 					]);
 				});
@@ -1469,7 +1469,7 @@ describe('useNodeHelpers()', () => {
 
 				// Trigger incompatibility blocks publish regardless of who connected the
 				// credential, so the editor warns even when the user did not connect it.
-				expect(result?.credentials?.[NOTION_API]?.[0]).toContain(
+				expect(result?.identityTrigger?.[NOTION_API]?.[0]).toContain(
 					"End-user credentials aren't supported by this workflow's trigger",
 				);
 			});

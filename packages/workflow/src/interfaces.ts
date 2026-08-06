@@ -2575,7 +2575,13 @@ export interface INodeCredentialDescription {
 	testedBy?: ICredentialTestRequest | string; // Name of a function inside `loadOptions.credentialTest`
 }
 
-export type INodeIssueTypes = 'credentials' | 'execution' | 'input' | 'parameters' | 'typeUnknown';
+export type INodeIssueTypes =
+	| 'credentials'
+	| 'execution'
+	| 'input'
+	| 'parameters'
+	| 'typeUnknown'
+	| 'identityTrigger';
 
 export interface INodeIssueObjectProperty {
 	[key: string]: string[];
@@ -2593,6 +2599,12 @@ export interface INodeIssues {
 	input?: INodeIssueObjectProperty;
 	parameters?: INodeIssueObjectProperty;
 	typeUnknown?: boolean;
+	/**
+	 * Trigger/credential-identity incompatibility (e.g. an end-user credential on a
+	 * trigger that can't establish an identity). Informational only — deliberately
+	 * excluded from publish-blocking checks; see `hasPublishBlockingIssues`.
+	 */
+	identityTrigger?: INodeIssueObjectProperty;
 	[key: string]: undefined | boolean | INodeIssueObjectProperty;
 }
 

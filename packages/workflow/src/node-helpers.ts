@@ -1294,7 +1294,12 @@ export function nodeIssuesToString(issues: INodeIssues, node?: INode): string[] 
 		messages.push('Execution Error.');
 	}
 
-	for (const propertyIssues of [issues.parameters, issues.credentials, issues.input]) {
+	for (const propertyIssues of [
+		issues.parameters,
+		issues.credentials,
+		issues.input,
+		issues.identityTrigger,
+	]) {
 		if (propertyIssues === undefined) continue;
 		for (const parameterName of Object.keys(propertyIssues)) {
 			messages.push(...propertyIssues[parameterName]);
@@ -1738,7 +1743,7 @@ export function mergeIssues(destination: INodeIssues, source: INodeIssues | null
 		destination.execution = true;
 	}
 
-	const objectProperties = ['parameters', 'credentials'];
+	const objectProperties = ['parameters', 'credentials', 'identityTrigger'];
 
 	let destinationProperty: INodeIssueObjectProperty;
 	for (const propertyName of objectProperties) {
