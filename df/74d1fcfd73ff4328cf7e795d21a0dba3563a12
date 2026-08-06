@@ -1,0 +1,38 @@
+packages/frontend/editor-ui/src/features/settings/serviceAccounts/components/CreateServiceAccountCredentialModal.vue
+  s_5edca35f219ea5::t_f2947e0255e75e 1-151
+packages/frontend/editor-ui/src/features/settings/serviceAccounts/serviceAccounts.store.ts
+  s_5edca35f219ea5::t_3d407093aa2e88 39-43,50
+  s_5edca35f219ea5::t_7fd993defedcb7 3
+packages/frontend/editor-ui/src/features/settings/serviceAccounts/views/SettingsServiceAccountsView.vue
+  s_5edca35f219ea5::t_724275d3035c71 67-69
+  s_5edca35f219ea5::t_00710ac611fff6 201-203
+  s_5edca35f219ea5::t_c24baa8d633ce9 47
+  s_5edca35f219ea5::t_b96fe3c96f8d62 22
+  s_5edca35f219ea5::t_b0abf3401da439 306-310
+  s_5edca35f219ea5::t_ba4c898570732b 2
+  s_5edca35f219ea5::t_5dee8b51bbd9cf 90-93
+  s_5edca35f219ea5::t_1a374fdbffabb3 89
+packages/frontend/@n8n/rest-api-client/src/api/service-account-credentials.ts
+  s_5edca35f219ea5::t_60789de5972ff6 1-28
+packages/frontend/editor-ui/src/features/settings/serviceAccounts/serviceAccounts.constants.ts
+  s_5edca35f219ea5::t_1462b44efba863 11
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_5edca35f219ea5::t_ff81b81510c847 3620-3629
+  s_5edca35f219ea5::t_76b8c4fc2661af 3599
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "df74d1fcfd73ff4328cf7e795d21a0dba3563a12",
+  "prompts": {},
+  "sessions": {
+    "s_5edca35f219ea5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "648c326a-5e28-4b35-9fa4-8e15c7085c47",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

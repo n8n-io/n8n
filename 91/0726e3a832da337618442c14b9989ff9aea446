@@ -1,0 +1,44 @@
+scripts/frontend-module/templates/package.json.template
+  s_c4fe131c2ca196::t_bd161473c6b8d3 1-46
+scripts/frontend-module/templates/setup.ts.template
+  s_c4fe131c2ca196::t_a01278cebd7738 1-12
+scripts/frontend-module/setup.mjs
+  s_c4fe131c2ca196::t_4f5f5ac8be2462 10,18-19,52,54,57-59,63,71-74,98-102,104-108,110-116,121-122,124-137,143-144,146-156,159-160,167-182,196
+  s_c4fe131c2ca196::t_6e0afe2d41995e 1-9,11-17,20-51,53,55-56,60-62,64-70,75-97,103,109,117-120,123,138-142,145,157-158,161-166,183-195,197
+scripts/frontend-module/templates/index.ts.template
+  s_c4fe131c2ca196::t_d21891f1ca43db 1-5
+package.json
+  s_c4fe131c2ca196::t_f84f902f927cc0 58
+scripts/frontend-module/templates/store.ts.template
+  s_c4fe131c2ca196::t_d6090ab8dabdd8 1-16
+scripts/frontend-module/templates/README.md.template
+  s_c4fe131c2ca196::t_28cb105792b7e7 1-29
+scripts/frontend-module/templates/biome.jsonc.template
+  s_c4fe131c2ca196::t_8e86e9442f4a51 1-4
+scripts/frontend-module/templates/module.ts.template
+  s_c4fe131c2ca196::t_8c0d24e1498461 1-30
+scripts/frontend-module/templates/tsconfig.json.template
+  s_c4fe131c2ca196::t_cbd532ed79da05 1-10
+scripts/frontend-module/templates/vite.config.ts.template
+  s_c4fe131c2ca196::t_3e7421c84368b2 1-22
+scripts/frontend-module/templates/eslint.config.mjs.template
+  s_c4fe131c2ca196::t_c3e0fd80a0d588 1-4
+scripts/frontend-module/templates/store.test.ts.template
+  s_c4fe131c2ca196::t_c17ae7b01e1acd 1-13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "910726e3a832da337618442c14b9989ff9aea446",
+  "prompts": {},
+  "sessions": {
+    "s_c4fe131c2ca196": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "22b23070-f51d-467f-bfdb-0b165ef0f700",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}
