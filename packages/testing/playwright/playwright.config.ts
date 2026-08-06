@@ -72,12 +72,8 @@ if (BACKEND_URL && !SKIP_WEB_SERVER) {
 	});
 }
 
-// Only spawn a Vite dev server when N8N_EDITOR_URL explicitly asks for one.
-// Without this gate, FRONTEND_URL falls back to N8N_BASE_URL in `test:local`
-// and spawns a Vite server on 8080 that nothing uses (the health check on the
-// backend port passes anyway) and that outlives the run.
-// Invoke vite via pnpm, not `turbo run dev`: turbo detaches tasks into their
-// own process group, which puts them out of reach of Playwright's tree-kill.
+// Gate on N8N_EDITOR_URL: FRONTEND_URL alone falls back to N8N_BASE_URL. Invoke vite via
+// pnpm, not turbo — turbo detaches tasks into process groups Playwright's tree-kill misses.
 if (IS_DEV && FRONTEND_URL) {
 	webServer.push({
 		command: 'pnpm --filter=n8n-editor-ui dev',
