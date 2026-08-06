@@ -179,6 +179,15 @@ function configureChannelSuspendPayload() {
 	};
 }
 
+function targetApprovalSuspendPayload() {
+	return {
+		type: 'approval' as const,
+		toolName: 'delete_record',
+		displayName: 'Delete record',
+		args: { id: 'record-1' },
+	};
+}
+
 /** Stub for `context.tracing`: a sentinel telemetry object plus mocked child-run lifecycle. */
 function makeTracingStub() {
 	const sentinelTelemetry = { functionId: 'sentinel' } as unknown as ReturnType<
@@ -1358,6 +1367,7 @@ describe('build-agent tool', () => {
 			['ask_questions', askQuestionsSuspendPayload],
 			['ask_credential', askCredentialSuspendPayload],
 			['configure_channel', configureChannelSuspendPayload],
+			['call_agent', targetApprovalSuspendPayload],
 		] as const)(
 			'cascades a %s suspension into ctx.suspend, passing the shared-contract payload through with a re-minted requestId and builderCheckpoint ref',
 			async (toolName, buildPayload) => {
@@ -1375,8 +1385,14 @@ describe('build-agent tool', () => {
 
 				expect(suspend).toHaveBeenCalledTimes(1);
 				const payload = suspend.mock.calls[0][0] as Record<string, unknown>;
-				const { requestId: originalRequestId, ...basePayload } = buildPayload();
-				expect(payload).toMatchObject(basePayload);
+				const original = buildPayload();
+				if ('requestId' in original) {
+					const { requestId: originalRequestId, ...basePayload } = original;
+					expect(payload).toMatchObject(basePayload);
+					expect(payload.requestId).not.toBe(originalRequestId);
+				} else {
+					expect(payload).toMatchObject(original);
+				}
 				expect(payload).toMatchObject({
 					builderCheckpoint: {
 						runId: 'builder-run-1',
@@ -1386,7 +1402,6 @@ describe('build-agent tool', () => {
 					},
 				});
 				expect(typeof payload.requestId).toBe('string');
-				expect(payload.requestId).not.toBe(originalRequestId);
 			},
 		);
 
