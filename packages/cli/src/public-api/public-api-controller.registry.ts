@@ -87,7 +87,13 @@ export class PublicApiControllerRegistry {
 				res.status(successStatus).json(result);
 			};
 
-			const middlewares: RequestHandler[] = [this.createAuthMiddleware(apiVersion)];
+			const middlewares: RequestHandler[] = [];
+
+			if (route.deprecated) {
+				middlewares.push(deprecated(route.deprecated));
+			}
+
+			middlewares.push(this.createAuthMiddleware(apiVersion));
 
 			if (route.apiKeyScope) {
 				middlewares.push(this.createApiKeyScopeMiddleware(route.apiKeyScope));
@@ -95,10 +101,6 @@ export class PublicApiControllerRegistry {
 
 			if (route.accessScope) {
 				middlewares.push(this.createAccessScopeMiddleware(route.accessScope));
-			}
-
-			if (route.deprecated) {
-				middlewares.push(deprecated(route.deprecated));
 			}
 
 			middlewares.push(...controllerMiddlewares, ...(route.middlewares ?? []));

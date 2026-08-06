@@ -54,6 +54,26 @@ describe('PublicApiControllerRegistry', () => {
 		expect(response.headers.deprecation).toBe(`@${Math.floor(since.getTime() / 1000)}`);
 	});
 
+	it('emits the Deprecation header even when authentication fails', async () => {
+		const since = new Date('2026-07-23T00:00:00Z');
+		authStrategyRegistry.authenticate.mockResolvedValue(false);
+
+		@Service()
+		class WidgetsPublicController {
+			@Get('/')
+			@ApiResponse(200)
+			@Deprecated({ since })
+			method() {
+				return { ok: true };
+			}
+		}
+		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+		const response = await request(activate()).get('/widgets').expect(401);
+
+		expect(response.headers.deprecation).toBe(`@${Math.floor(since.getTime() / 1000)}`);
+	});
+
 	it('omits the Deprecation header when @Deprecated is absent', async () => {
 		@Service()
 		class WidgetsPublicController {
