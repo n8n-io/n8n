@@ -305,7 +305,7 @@ describe('WorkflowReviewRequestRepository', () => {
 
 			expect(result).toBe(rows);
 			expect(repo.createQueryBuilder).toHaveBeenCalledWith('review');
-			expect(queryBuilder.where).toHaveBeenCalledWith('review.createdById = :requesterId', {
+			expect(queryBuilder.andWhere).toHaveBeenCalledWith('review.createdById = :requesterId', {
 				requesterId: 'user-1',
 			});
 			expect(queryBuilder.take).toHaveBeenCalledWith(15);
@@ -324,7 +324,10 @@ describe('WorkflowReviewRequestRepository', () => {
 
 			expect(result).toBe(rows);
 			expect(repo.createQueryBuilder).toHaveBeenCalledWith('review');
-			expect(queryBuilder.where).not.toHaveBeenCalled();
+			expect(queryBuilder.andWhere).not.toHaveBeenCalledWith(
+				expect.stringContaining('review.createdById'),
+				expect.anything(),
+			);
 			expect(queryBuilder.orderBy).toHaveBeenCalledWith('review.createdAt', 'DESC');
 			expect(queryBuilder.addOrderBy).toHaveBeenCalledWith('review.id', 'ASC');
 			expect(queryBuilder.andWhere).toHaveBeenCalledWith('review.state = :state', {
@@ -346,7 +349,7 @@ describe('WorkflowReviewRequestRepository', () => {
 
 			expect(result).toBe(rows);
 			expect(repo.createQueryBuilder).toHaveBeenCalledWith('review');
-			expect(queryBuilder.where).toHaveBeenCalledWith(
+			expect(queryBuilder.andWhere).toHaveBeenCalledWith(
 				'(review.projectId IN (:...projectIds) OR review.createdById = :requesterId)',
 				{ projectIds: ['proj-1', 'proj-2'], requesterId: 'user-1' },
 			);
@@ -356,6 +359,17 @@ describe('WorkflowReviewRequestRepository', () => {
 				state: 'open',
 			});
 			expect(queryBuilder.take).toHaveBeenCalledWith(15);
+		});
+
+		it('excludes open requests whose link rows are gone, even at global scope', async () => {
+			queryBuilder.getMany.mockResolvedValueOnce([]);
+
+			await repo.findManyForInbox({ projectIds: null, requesterId: 'user-1', limit: 15 });
+
+			// SQL shape (state != open OR EXISTS) is asserted by the inbox integration tests
+			expect(queryBuilder.andWhere).toHaveBeenCalledWith(expect.any(Function), {
+				openState: 'open',
+			});
 		});
 
 		it('applies the keyset boundary carried in the cursor without an anchor lookup', async () => {
@@ -389,7 +403,7 @@ describe('WorkflowReviewRequestRepository', () => {
 			expect(queryBuilder.select).toHaveBeenCalledWith('review.state', 'state');
 			expect(queryBuilder.addSelect).toHaveBeenCalledWith('COUNT(*)', 'count');
 			expect(queryBuilder.groupBy).toHaveBeenCalledWith('review.state');
-			expect(queryBuilder.where).toHaveBeenCalledWith('review.createdById = :requesterId', {
+			expect(queryBuilder.andWhere).toHaveBeenCalledWith('review.createdById = :requesterId', {
 				requesterId: 'user-1',
 			});
 		});
@@ -403,7 +417,10 @@ describe('WorkflowReviewRequestRepository', () => {
 			const result = await repo.countByStateForInbox({ projectIds: null, requesterId: 'user-1' });
 
 			expect(result).toEqual({ open: 3, closed: 12 });
-			expect(queryBuilder.where).not.toHaveBeenCalled();
+			expect(queryBuilder.andWhere).not.toHaveBeenCalledWith(
+				expect.stringContaining('review.createdById'),
+				expect.anything(),
+			);
 			expect(queryBuilder.groupBy).toHaveBeenCalledWith('review.state');
 		});
 
@@ -419,10 +436,20 @@ describe('WorkflowReviewRequestRepository', () => {
 			});
 
 			expect(result).toEqual({ open: 1, closed: 4 });
-			expect(queryBuilder.where).toHaveBeenCalledWith(
+			expect(queryBuilder.andWhere).toHaveBeenCalledWith(
 				'(review.projectId IN (:...projectIds) OR review.createdById = :requesterId)',
 				{ projectIds: ['proj-1', 'proj-2'], requesterId: 'user-1' },
 			);
+		});
+
+		it('excludes open requests whose link rows are gone, even at global scope', async () => {
+			queryBuilder.getRawMany.mockResolvedValueOnce([]);
+
+			await repo.countByStateForInbox({ projectIds: null, requesterId: 'user-1' });
+
+			expect(queryBuilder.andWhere).toHaveBeenCalledWith(expect.any(Function), {
+				openState: 'open',
+			});
 		});
 
 		it('defaults absent states to zero', async () => {
