@@ -1,0 +1,36 @@
+packages/cli/src/credentials/__tests__/credentials.service.test.ts
+  s_5b59468945b556::t_a174a9a9b0e00b 40-43
+  s_5b59468945b556::t_f8dd244c918464 17
+  s_5b59468945b556::t_1e0dfdaea524b3 212-310
+packages/cli/src/credentials-helper.ts
+  s_5b59468945b556::t_fbbaa69e25c9bd 44
+  s_5b59468945b556::t_3be1ac4b09b9f3 653-655
+packages/cli/src/oauth/oauth.service.ts
+  s_5b59468945b556::t_6a6cbe58bbc1b6 1142
+packages/cli/src/oauth/dcr-managed-fields.ts
+  s_5b59468945b556::t_757a6054568e85 4-5
+packages/cli/src/credentials/credentials.service.ts
+  s_5b59468945b556::t_98174245ae823b 832-834,837-842,844-848,850,853-865,867,869-873
+  s_5b59468945b556::t_21dd4d2a06c491 843,849
+  s_5b59468945b556::t_c557cae8d95c9b 818-822
+  s_5b59468945b556::t_c40a39a0968bd8 37
+  s_5b59468945b556::t_e1d78405c8f5df 835-836,851-852
+  s_5b59468945b556::t_503a9711b21e79 866
+  s_5b59468945b556::t_2f0c47c6c0dec6 868
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "2afcc96b4ebba8023654e39284186be0d09bc54d",
+  "prompts": {},
+  "sessions": {
+    "s_5b59468945b556": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "52c7c7e5-459b-468a-922e-757e430c544e",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

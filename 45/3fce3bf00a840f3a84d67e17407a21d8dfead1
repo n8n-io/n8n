@@ -1,0 +1,39 @@
+packages/@n8n/agents/src/runtime/tools/tool-result-guard.ts
+  s_8009f8cc456631::t_71513e5996ec10 5,10
+  s_8009f8cc456631::t_ce5f79438285ee 1-4,6-9,11-95
+packages/@n8n/agents/src/runtime/tools/tool-call-executor.ts
+  s_8009f8cc456631::t_8cb1a6205c5e4e 9-13,1020,1030,1033-1037,1048-1049
+  s_8009f8cc456631::t_4ccec9faee5c84 858
+  s_8009f8cc456631::t_3dba25af78d40a 31
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_8009f8cc456631::t_74039624feeff5 27,7403-7416,7425-7527,7529-7545,7547-7556,7558-7565,7567,7569-7592,7594-7600
+  s_8009f8cc456631::t_45fe4d6df2c272 7557,7566,7568
+  s_8009f8cc456631::t_9a8c06212fea37 7417-7424,7546,7593
+  s_8009f8cc456631::t_5772441937b6b1 7528
+  s_8009f8cc456631::t_59bbc1a83b13fe 7601
+packages/cli/src/modules/agents/builder/skills/external-services.skill.ts
+  s_8009f8cc456631::t_44325faeb2721b 91-101
+packages/cli/src/modules/agents/builder/prompts/tools.prompt.ts
+  s_8009f8cc456631::t_2e58bd54d3c0db 75-77
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "453fce3bf00a840f3a84d67e17407a21d8dfead1",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_8009f8cc456631": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "06ba22c8-e8d0-42f3-8948-7e098320c4f2",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
