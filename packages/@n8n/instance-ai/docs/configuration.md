@@ -254,6 +254,10 @@ Add `N8N_INSTANCE_AI_SEARXNG_URL` pointing to your SearXNG service:
 services:
   searxng:
     image: searxng/searxng:latest
+    environment:
+      SEARXNG_SECRET: replace-with-a-random-string
+    volumes:
+      - ./searxng-settings.yml:/etc/searxng/settings.yml:ro
     ports:
       - "8888:8080"  # optional: expose to host
   n8n:
@@ -262,13 +266,15 @@ services:
       N8N_INSTANCE_AI_SEARXNG_URL: http://searxng:8080
 ```
 
-SearXNG must have JSON format enabled in its `settings.yml`:
+The stock `searxng/searxng` image serves HTML only — `format=json` requests
+return `403 Forbidden` — so Instance AI's web search needs a mounted
+`settings.yml` that enables the JSON API:
 
 ```yaml
+# searxng-settings.yml
+use_default_settings: true
 search:
   formats:
     - html
     - json   # required for Instance AI
 ```
-
-Most SearXNG Docker images enable JSON format by default.

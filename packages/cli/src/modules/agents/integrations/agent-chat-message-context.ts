@@ -37,20 +37,27 @@ export class AgentChatMessageContextBridge {
 		const integrationConnectionId = buildIntegrationConnectionId(this.integration);
 		const previousContext = await this.getPreviousContext(threadId, integrationConnectionId);
 		const agentUserId = options.agentUserId ?? previousContext?.agentUserId;
+		const target: IntegrationMessageContext['target'] = {
+			type: 'thread',
+			threadId: thread.id,
+			channelId: thread.channelId,
+		};
 		const context: IntegrationMessageContext = {
 			integrationConnectionId,
 			platform: this.integration.type,
-			target: {
-				type: 'thread',
-				threadId: thread.id,
-				channelId: thread.channelId,
-			},
+			target,
 			...(options.messageId ? { messageId: options.messageId } : {}),
 			...(options.interactingUserId ? { interactingUserId: options.interactingUserId } : {}),
 			...(agentUserId ? { agentUserId } : {}),
 			...(options.subject ? { subject: options.subject } : {}),
 			...(!options.subject && previousContext?.subject ? { subject: previousContext.subject } : {}),
-			...(options.replyExpectation ? { replyExpectation: options.replyExpectation } : {}),
+			...(options.replyExpectation
+				? {
+						replyExpectation: options.replyExpectation,
+						replyTarget: target,
+						...(options.messageId ? { replyMessageId: options.messageId } : {}),
+					}
+				: {}),
 			updatedAt: new Date().toISOString(),
 		};
 

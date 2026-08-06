@@ -13,7 +13,8 @@ import { LicenseMocker } from '@test-integration/license';
 import { initNodeTypes } from '@test-integration/utils';
 
 import { N8nPackagesService } from '../n8n-packages.service';
-import type { FolderConflictPolicy, ImportPackageRequest } from '../n8n-packages.types';
+import { importPackageRequest } from './fixtures/import-request';
+import type { FolderConflictPolicy } from '../n8n-packages.types';
 import {
 	buildEntityPackageBuffer,
 	credentialRequirementsFromWorkflows,
@@ -32,28 +33,18 @@ type FolderImportParams = {
 };
 
 async function importFolders(params: FolderImportParams) {
-	const request: ImportPackageRequest = {
-		user: params.user,
-		projectId: params.projectId,
-		folderId: params.folderId,
-		packageBuffer: params.packageBuffer,
-		apiKeyScopes: params.apiKeyScopes,
-		credentialMatchingMode: 'id-only',
-		credentialMissingMode: 'must-preexist',
-		workflowConflictPolicy: 'new-version',
-		workflowPublishingPolicy: 'preserve-published-state',
-		workflowIdPolicy: 'new',
-		missingNodeTypeMode: 'fail',
-		folderConflictPolicy: params.folderConflictPolicy ?? 'merge',
-		dataTableMatchingMode: 'by-id',
-		dataTableMissingMode: 'create',
-		dataTableSchemaConflictPolicy: 'keep-existing',
-		variableMissingMode: 'do-nothing',
-		variableParentPolicy: 'project',
-		tagMissingMode: 'create',
-		tagConflictPolicy: 'skip',
-	};
-	return await Container.get(N8nPackagesService).importPackage(request);
+	return await Container.get(N8nPackagesService).importPackage(
+		importPackageRequest({
+			user: params.user,
+			projectId: params.projectId,
+			folderId: params.folderId,
+			packageBuffer: params.packageBuffer,
+			apiKeyScopes: params.apiKeyScopes,
+			workflowConflictPolicy: 'new-version',
+			folderConflictPolicy: params.folderConflictPolicy ?? 'merge',
+			variableParentPolicy: 'project',
+		}),
+	);
 }
 
 const licenseMocker = new LicenseMocker();

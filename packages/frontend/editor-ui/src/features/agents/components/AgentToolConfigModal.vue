@@ -13,7 +13,9 @@ import {
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { INode } from 'n8n-workflow';
+import { FocusScope } from 'reka-ui';
 
+import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import type {
 	AgentJsonMcpServerConfig,
 	AgentJsonToolRef,
@@ -73,6 +75,9 @@ const props = defineProps<{
 
 const i18n = useI18n();
 const uiStore = useUIStore();
+const isCredentialModalOpen = computed(
+	() => uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY]?.open === true,
+);
 
 const isOpen = computed({
 	get: () => uiStore.modalsById[props.modalName]?.open === true,
@@ -203,6 +208,10 @@ function closeDialog() {
 	uiStore.closeModal(props.modalName);
 }
 
+function handleInteractOutside(event: Event) {
+	if (isCredentialModalOpen.value) event.preventDefault();
+}
+
 function withApprovalRequirement(ref: AgentJsonToolRef): AgentJsonToolRef {
 	if (!supportsApproval.value) {
 		const { requireApproval: _requireApproval, ...rest } = ref;
@@ -311,9 +320,21 @@ function handleNodeUpdate(node: INode) {
 		v-if="canRender"
 		v-model:open="isOpen"
 		size="2xlarge"
+		:trap-focus="!isCredentialModalOpen"
+		:disable-outside-pointer-events="!isCredentialModalOpen"
 		:show-close-button="false"
 		data-test-id="agent-tool-config-modal"
+		@interact-outside="handleInteractOutside"
 	>
+		<FocusScope
+			v-if="isCredentialModalOpen"
+			as-child
+			@mount-auto-focus.prevent
+			@unmount-auto-focus.prevent
+		>
+			<span hidden aria-hidden="true" />
+		</FocusScope>
+
 		<N8nDialogHeader>
 			<AgentToolConfigModalHeader
 				:kind="headerKind"
