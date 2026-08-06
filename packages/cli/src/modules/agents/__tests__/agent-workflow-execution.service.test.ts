@@ -16,6 +16,7 @@ import type { AgentRunTracingService } from '../agent-run-tracing.service';
 import type { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
 import { AgentWorkflowExecutionService } from '../agent-workflow-execution.service';
 import type { Agent } from '../entities/agent.entity';
+import type { NodeToolAiGatewayService } from '../json-config/node-tool-ai-gateway.service';
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { ToolRegistry } from '../tool-registry';
 
@@ -111,11 +112,16 @@ function makeService() {
 	const reconstructionService = mock<AgentRuntimeReconstructionService>();
 	const agentRunTracingService = mock<AgentRunTracingService>();
 	const executionLevelTracer = mock<ExecutionLevelTracer>();
+	const nodeToolAiGatewayService = mock<NodeToolAiGatewayService>();
 
 	executionService.startExecutionRecording.mockResolvedValue('execution-1');
 	executionService.finalizeExecution.mockResolvedValue('execution-1');
 	agentRunTracingService.build.mockResolvedValue(undefined);
 	executionLevelTracer.getActiveContext.mockReturnValue(undefined);
+	// The inline path lists project credentials to pass owned types into the
+	// gateway reconcile — default to none so unrelated tests don't need to.
+	credentialsService.findAllCredentialIdsForProject.mockResolvedValue([]);
+	credentialsService.findAllGlobalCredentialIds.mockResolvedValue([]);
 
 	const service = new AgentWorkflowExecutionService(
 		mockLogger(),
@@ -126,6 +132,7 @@ function makeService() {
 		reconstructionService,
 		agentRunTracingService,
 		executionLevelTracer,
+		nodeToolAiGatewayService,
 	);
 
 	return {
@@ -136,6 +143,7 @@ function makeService() {
 		reconstructionService,
 		agentRunTracingService,
 		executionLevelTracer,
+		nodeToolAiGatewayService,
 	};
 }
 
@@ -665,6 +673,73 @@ describe('AgentWorkflowExecutionService', () => {
 					nodeId: 'node-1',
 				}),
 			);
+		});
+
+		it('re-validates inbound managed markers against gateway eligibility before running', async () => {
+			const { service, reconstructionService, nodeToolAiGatewayService } = makeService();
+			const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
+			reconstructionService.reconstructFromResolvedSource.mockResolvedValue(runtime);
+			Object.assign(runtime.agent, { tool: vi.fn(), declaredTools: [] });
+
+			// The inline config comes straight from a workflow node parameter, so a
+			// forged managed marker for an uncovered node must not survive to the
+			// executor. Simulate the gate stripping an ineligible marker and assert
+			// the stripped config — not the forged one — is what actually runs.
+			nodeToolAiGatewayService.assignManagedCredentials.mockImplementation(async (tools) => {
+				const node = tools?.[0];
+				if (node?.type === 'node') delete node.node.credentials?.httpBasicAuth;
+			});
+
+			const payloadWithForgedMarker = {
+				config: {
+					name: 'Inline Agent',
+					model: 'anthropic/claude-sonnet-4-5',
+					credential: 'cred-1',
+					instructions: 'Help users',
+					tools: [
+						{
+							type: 'node' as const,
+							name: 'Fetch',
+							description: 'Fetch a URL',
+							node: {
+								nodeType: 'n8n-nodes-base.httpRequestTool',
+								nodeTypeVersion: 1,
+								nodeParameters: { url: 'https://example.com' },
+								credentials: {
+									httpBasicAuth: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+								},
+							},
+						},
+					],
+				},
+			};
+
+			await service.executeInlineForWorkflow(
+				payloadWithForgedMarker,
+				'hello',
+				'execution-1',
+				'thread-1',
+				projectId,
+				userId,
+				'production',
+				undefined,
+				{
+					workflowId: 'wf-1',
+					callingNodeName: 'Message an Agent',
+					hasCallerSessionId: false,
+					nodes: [],
+					runExecutionData: { resultData: { runData: {} } } as unknown as IRunExecutionData,
+				},
+			);
+
+			expect(nodeToolAiGatewayService.assignManagedCredentials).toHaveBeenCalledWith(
+				expect.arrayContaining([expect.objectContaining({ type: 'node' })]),
+				expect.any(Set),
+			);
+			const [source] = reconstructionService.reconstructFromResolvedSource.mock.calls[0];
+			const nodeTool = source.config.tools?.[0];
+			expect(nodeTool?.type).toBe('node');
+			expect(nodeTool?.type === 'node' && nodeTool.node.credentials?.httpBasicAuth).toBeUndefined();
 		});
 
 		it('injects no memory when the caller supplied no session id (nothing to continue)', async () => {

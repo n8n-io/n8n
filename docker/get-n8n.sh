@@ -12,13 +12,18 @@
 # Source: https://github.com/n8n-io/n8n/blob/master/docker/get-n8n.sh
 set -eu
 
-SCRIPT_VERSION="1.0.0"
+SCRIPT_VERSION="1.1.0"
 # The version to install is derived from the latest stable GitHub release in
 # resolve_n8n_version(); this fallback only applies when that lookup fails.
 FALLBACK_N8N_VERSION="2.32.0"
 N8N_DIR="${N8N_DIR:-./n8n}"
 N8N_PORT=5678
 SOURCE_URL="https://github.com/n8n-io/n8n/blob/master/docker/get-n8n.sh"
+# The stack definition lives next to this script in the repo and is downloaded
+# at install time. A plain filesystem path also works (used by the test
+# harness to install from a working copy).
+COMPOSE_SOURCE="${N8N_COMPOSE_URL:-https://raw.githubusercontent.com/n8n-io/n8n/master/docker/get-n8n-compose.yml}"
+COMPOSE_HISTORY_URL="https://github.com/n8n-io/n8n/commits/master/docker/get-n8n-compose.yml"
 DOCS_HOSTING_URL="https://docs.n8n.io/hosting/"
 
 UPGRADE=0
@@ -108,6 +113,22 @@ check_deps() {
 	ok "Docker Compose found ($(docker compose version --short 2>/dev/null))"
 }
 
+# Prints the content of a URL (or plain file path) to stdout.
+fetch() {
+	case "$1" in
+	*://*)
+		if command -v curl >/dev/null 2>&1; then
+			curl -fsSL --max-time 10 "$1" 2>/dev/null
+		elif command -v wget >/dev/null 2>&1; then
+			wget -qO- -T 10 "$1" 2>/dev/null
+		else
+			return 2
+		fi
+		;;
+	*) cat "$1" 2>/dev/null ;;
+	esac
+}
+
 # Returns 0 if an HTTP GET against $1 gets any response at all.
 http_get() {
 	if command -v curl >/dev/null 2>&1; then
@@ -159,15 +180,7 @@ valid_n8n_version() {
 # which would silently upgrade (and run DB migrations) on any container recreate.
 resolve_n8n_version() {
 	releases_url="https://api.github.com/repos/n8n-io/n8n/releases/latest"
-	if command -v curl >/dev/null 2>&1; then
-		v="$(curl -fsSL --max-time 5 "$releases_url" 2>/dev/null |
-			sed -n 's/.*"tag_name": *"n8n@\([0-9][0-9.]*\)".*/\1/p' | head -n1)"
-	elif command -v wget >/dev/null 2>&1; then
-		v="$(wget -qO- -T 5 "$releases_url" 2>/dev/null |
-			sed -n 's/.*"tag_name": *"n8n@\([0-9][0-9.]*\)".*/\1/p' | head -n1)"
-	else
-		v=""
-	fi
+	v="$(fetch "$releases_url" | sed -n 's/.*"tag_name": *"n8n@\([0-9][0-9.]*\)".*/\1/p' | head -n1)"
 	if valid_n8n_version "$v"; then
 		printf '%s\n' "$v"
 	else
@@ -229,107 +242,35 @@ EOF
 	chmod 600 "${N8N_DIR}/.env"
 }
 
+# The stack definition is maintained in the repo (COMPOSE_SOURCE) and
+# versioned via its '# compose-version: N' line. It is downloaded once at
+# install time; after that the local copy belongs to the user.
+compose_version() { sed -n 's/^# compose-version: *//p' | head -n1; }
+
 write_compose() {
-	cat >"${N8N_DIR}/compose.yml" <<'EOF'
-volumes:
-  n8n-data:
-  sandbox-tls:
+	if ! fetch "$COMPOSE_SOURCE" >"${N8N_DIR}/compose.yml.tmp" ||
+		! grep -q '^services:' "${N8N_DIR}/compose.yml.tmp"; then
+		rm -f "${N8N_DIR}/compose.yml.tmp"
+		fail "could not download the stack definition from
+  ${COMPOSE_SOURCE}
+  Check your network connection and re-run."
+	fi
+	mv "${N8N_DIR}/compose.yml.tmp" "${N8N_DIR}/compose.yml"
+}
 
-services:
-  sandbox-certs:
-    image: ghcr.io/n8n-io/n8n-sandbox-service-api:latest
-    user: '0:0'
-    entrypoint: ['sh', '-c']
-    command:
-      - >
-        bootstrap-mtls.sh --out-dir /tls --api-san sandbox-api
-        --control-san-prefix sandbox-runner --world-readable &&
-        chown -R sandbox-api:sandbox-api /tls/api && chmod -R a+rX /tls
-    environment:
-      NUM_RUNNERS: '1'
-    volumes:
-      - sandbox-tls:/tls
-
-  sandbox-api:
-    image: ghcr.io/n8n-io/n8n-sandbox-service-api:latest
-    depends_on:
-      sandbox-certs:
-        condition: service_completed_successfully
-    env_file: .env
-    environment:
-      SANDBOX_API_GRPC_TLS_CERT_FILE: /tls/api/grpc-server.crt
-      SANDBOX_API_GRPC_TLS_KEY_FILE: /tls/api/grpc-server.key
-      SANDBOX_API_GRPC_TLS_CLIENT_CA_FILE: /tls/api/ca.crt
-      SANDBOX_API_RUNNER_CONTROL_GRPC_TLS_CA_FILE: /tls/api/ca.crt
-      SANDBOX_API_RUNNER_CONTROL_GRPC_TLS_CERT_FILE: /tls/api/control-grpc-api-client.crt
-      SANDBOX_API_RUNNER_CONTROL_GRPC_TLS_KEY_FILE: /tls/api/control-grpc-api-client.key
-      SANDBOX_API_RUNNER_CONTROL_GRPC_TLS_SERVER_NAME: sandbox-runner-1
-    volumes:
-      - sandbox-tls:/tls:ro
-    healthcheck:
-      test: ['CMD', 'wget', '-qO-', 'http://localhost:8080/healthz']
-      interval: 5s
-      timeout: 3s
-      retries: 5
-      start_period: 10s
-    # Never publish 8080/9090 to the host on an internet-facing server.
-    # n8n reaches this container by service name, over the default Compose network.
-
-  sandbox-runner-1:
-    image: ghcr.io/n8n-io/n8n-sandbox-service-runner-dind:latest
-    privileged: true
-    depends_on:
-      sandbox-api:
-        condition: service_healthy
-    env_file: .env
-    environment:
-      SANDBOX_RUNNER_API_GRPC_ADDR: sandbox-api:9090
-      SANDBOX_RUNNER_HTTP_BASE_URL: http://sandbox-runner-1:8080
-      SANDBOX_RUNNER_CONTROL_GRPC_LISTEN_ADDR: ':9091'
-      SANDBOX_RUNNER_CONTROL_GRPC_ADVERTISE_ADDR: sandbox-runner-1:9091
-      SANDBOX_RUNNER_ID: runner-1
-      SANDBOX_RUNNER_DOCKER_SANDBOX_IMAGE: ghcr.io/n8n-io/n8n-sandbox-service-sandbox:latest
-      SANDBOX_RUNNER_REGISTRATION_GRPC_CA_FILE: /tls/runner/ca.crt
-      SANDBOX_RUNNER_REGISTRATION_GRPC_CERT_FILE: /tls/runner/grpc-client.crt
-      SANDBOX_RUNNER_REGISTRATION_GRPC_KEY_FILE: /tls/runner/grpc-client.key
-      SANDBOX_RUNNER_REGISTRATION_GRPC_SERVER_NAME: sandbox-api
-      SANDBOX_RUNNER_CONTROL_GRPC_TLS_CERT_FILE: /tls/runner/control-grpc-server.crt
-      SANDBOX_RUNNER_CONTROL_GRPC_TLS_KEY_FILE: /tls/runner/control-grpc-server.key
-      SANDBOX_RUNNER_CONTROL_GRPC_TLS_CLIENT_CA_FILE: /tls/runner/ca.crt
-    volumes:
-      - sandbox-tls:/tls:ro
-    # Never expose this container's ports publicly — it runs privileged Docker-in-Docker.
-
-  n8n:
-    image: docker.io/n8nio/n8n:${N8N_VERSION}
-    depends_on:
-      sandbox-api:
-        condition: service_healthy
-    ports:
-      - '5678:5678' # the only port that should be internet-facing
-    env_file: .env
-    volumes:
-      - n8n-data:/home/node/.n8n
-
-  runners:
-    image: ghcr.io/n8n-io/runners:${N8N_VERSION}
-    depends_on:
-      - n8n
-    environment:
-      N8N_RUNNERS_AUTH_TOKEN: ${N8N_RUNNERS_AUTH_TOKEN}
-      N8N_RUNNERS_TASK_BROKER_URI: http://n8n:5679
-      # Idle runners exit and are relaunched on demand (per the task-runners docs)
-      N8N_RUNNERS_AUTO_SHUTDOWN_TIMEOUT: '15'
-    # Runs user code from Code nodes. Never publish this container's ports.
-
-  searxng:
-    image: ghcr.io/searxng/searxng:latest
-    environment:
-      SEARXNG_SECRET: ${SEARXNG_SECRET}
-    volumes:
-      - ./searxng-settings.yml:/etc/searxng/settings.yml:ro
-    # Internal-only: n8n reaches it by service name. Never publish its port.
-EOF
+# Existing installs keep their compose.yml untouched, so when the published
+# stack definition has moved on, say so instead of silently rewriting it.
+# Best-effort: stays quiet if offline or if the user removed the version line.
+check_compose_freshness() {
+	[ -f "${N8N_DIR}/compose.yml" ] || return 0
+	installed="$(compose_version <"${N8N_DIR}/compose.yml")"
+	[ -n "$installed" ] || return 0
+	latest="$(fetch "$COMPOSE_SOURCE" | compose_version)"
+	[ -n "$latest" ] && [ "$latest" != "$installed" ] || return 0
+	say ""
+	say "Note: the n8n stack definition is now v${latest}; this install was generated"
+	say "from v${installed}. get-n8n.sh never rewrites an existing compose.yml."
+	say "To review what changed: ${COMPOSE_HISTORY_URL}"
 }
 
 write_searxng_settings() {
@@ -386,6 +327,7 @@ do_upgrade() {
 		printf 'N8N_VERSION=%s\n' "$target" >>"${N8N_DIR}/.env"
 	fi
 	ok "n8n version: ${current:-unset} -> ${target}"
+	check_compose_freshness
 
 	if [ "$NO_START" -eq 1 ]; then
 		say ""
@@ -461,6 +403,7 @@ main() {
 			say "Once started, n8n runs at: http://localhost:${N8N_PORT}"
 		fi
 		say "To upgrade:  curl -fsSL https://get.n8n.io | sh -s -- --upgrade"
+		check_compose_freshness
 		exit 0
 	fi
 	[ "$UPGRADE" -eq 0 ] || fail "no existing install found in ${N8N_DIR} — run without --upgrade to install."
