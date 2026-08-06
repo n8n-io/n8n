@@ -272,6 +272,16 @@ describe('AgentBuilderEditorColumn', () => {
 		expect(wrapper.getComponent({ name: 'AgentEvalsSection' }).props('disabled')).toBe(true);
 	});
 
+	// The eval routes are agent-scoped, so the section can't read anything unless
+	// it is told which agent to read.
+	it('gives the evals section the agent it should read', async () => {
+		const wrapper = await mountColumn({ activeMainTab: 'evals' });
+		const section = wrapper.getComponent({ name: 'AgentEvalsSection' });
+
+		expect(section.props('projectId')).toBe('project-1');
+		expect(section.props('agentId')).toBe('agent-1');
+	});
+
 	it('uses embedded session list spacing inside the Sessions tab panel', async () => {
 		const wrapper = await mountColumn({ activeMainTab: 'sessions' });
 
