@@ -170,7 +170,7 @@ export function applyAgentThinking(agent: Agent, modelId: ModelConfig): void {
 	if (provider === 'openrouter') {
 		// Pin medium effort for models that default to heavy/max thinking.
 		if (isKimiK3Model(modelId) || isGrok45Model(modelId)) {
-			agent.thinking('openrouter', { reasoningEffort: 'medium' });
+			agent.thinking('openrouter', { reasoningEffort: 'high' });
 		}
 		return;
 	}
