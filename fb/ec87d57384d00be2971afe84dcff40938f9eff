@@ -1,0 +1,44 @@
+packages/cli/src/services/public-api-cookie-authenticator.ts
+  s_de2b513470956b::t_535b7d4218b770 15
+  h_c63dce324dfc7b 12
+  s_de2b513470956b::t_ed4a6f2cf68ba9 1-11,13-14,16-55
+packages/cli/src/public-api/index.ts
+  s_de2b513470956b::t_1209ddc430b90b 281,285
+  s_de2b513470956b::t_f668a580091c44 14
+  s_de2b513470956b::t_43947d7cab0472 253,259
+packages/cli/src/public-api/public-api-authenticator.ts
+  s_de2b513470956b::t_be3d23cfe1e1ee 5
+  s_de2b513470956b::t_1be4000e868842 1-4,6-28
+packages/cli/src/modules/mcp/__tests__/mcp-api-key.service.integration.test.ts
+  s_de2b513470956b::t_e8c89ab2bd3e4d 144-150
+  s_de2b513470956b::t_f0befb00ffa06b 7
+packages/cli/src/public-api/public-api-controller.registry.ts
+  s_de2b513470956b::t_b6b5e046ea79cc 11,24
+  s_de2b513470956b::t_6f4306df5958f9 122
+packages/cli/src/public-api/__tests__/public-api-authenticator.test.ts
+  s_de2b513470956b::t_f1541f87a85128 4-5
+  s_de2b513470956b::t_bdca913d4aac0f 1-3,6-52
+packages/cli/src/services/__tests__/public-api-cookie-authenticator.integration.test.ts
+  s_de2b513470956b::t_90d4e096ab82af 12,35,37,41,52-54,56-59,61-66,68-70,72-77,80,83-86,88-89,91-92
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "fbec87d57384d00be2971afe84dcff40938f9eff",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_de2b513470956b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "11a9f87b-5719-4ee2-b293-9e1c89f046ea",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}
