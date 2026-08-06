@@ -86,6 +86,9 @@ async function onExposeAll(close: () => void) {
 				: Promise.resolve(undefined),
 		]);
 		if (workflowsResponse.autoExposeNewWorkflows) {
+			// The backend already turned this on as part of the same expose-all
+			// request; sync it into local state so the UI doesn't need a reload.
+			mcpStore.applyAutoExposeNewWorkflowsLocally(true);
 			telemetry.track(TELEMETRY_EVENT.MCP.AUTO_EXPOSE_NEW_WORKFLOWS_TOGGLED, {
 				enabled: true,
 			});

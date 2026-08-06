@@ -558,4 +558,41 @@ describe('mcp.store', () => {
 			expect(settingsStore.moduleSettings.mcp?.mcpAccessEnabled).toBe(true);
 		});
 	});
+
+	describe('applyAutoExposeNewWorkflowsLocally', () => {
+		it('updates local state without making a network request', () => {
+			const updateSpy = vi.spyOn(mcpApi, 'updateMcpSettings');
+			const settingsStore = useSettingsStore();
+			settingsStore.moduleSettings.mcp = {
+				mcpAccessEnabled: true,
+				mcpManagedByEnv: false,
+				autoExposeNewWorkflows: false,
+			};
+
+			useMCPStore().applyAutoExposeNewWorkflowsLocally(true);
+
+			expect(settingsStore.moduleSettings.mcp?.autoExposeNewWorkflows).toBe(true);
+			expect(settingsStore.moduleSettings.mcp?.mcpAccessEnabled).toBe(true);
+			expect(updateSpy).not.toHaveBeenCalled();
+		});
+
+		it('preserves existing sibling keys such as serverUrl', () => {
+			const settingsStore = useSettingsStore();
+			settingsStore.moduleSettings.mcp = {
+				mcpAccessEnabled: true,
+				mcpManagedByEnv: true,
+				autoExposeNewWorkflows: false,
+				serverUrl: 'https://example.com/mcp',
+			};
+
+			useMCPStore().applyAutoExposeNewWorkflowsLocally(true);
+
+			expect(settingsStore.moduleSettings.mcp).toEqual({
+				mcpAccessEnabled: true,
+				mcpManagedByEnv: true,
+				autoExposeNewWorkflows: true,
+				serverUrl: 'https://example.com/mcp',
+			});
+		});
+	});
 });
