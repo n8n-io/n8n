@@ -87,6 +87,7 @@ describe('MicrosoftSharePointOAuth2Api Credential', () => {
 			expect(subdomainProperty).toBeDefined();
 			expect(subdomainProperty?.type).toBe('string');
 			expect(subdomainProperty?.required).toBe(true);
+			// The customScopesNotice text says "Subdomain value above", so subdomain must stay above it.
 			expect(credential.properties[0]?.name).toBe('subdomain');
 		});
 
@@ -95,7 +96,7 @@ describe('MicrosoftSharePointOAuth2Api Credential', () => {
 			expect(scopeProperty).toBeDefined();
 			expect(scopeProperty?.type).toBe('hidden');
 			expect(scopeProperty?.default).toBe(
-				'={{($self["customScopes"] ? $self["enabledScopes"] : "openid offline_access https://{subdomain}.sharepoint.com/.default").replace(/\\{subdomain\\}/g, $self["subdomain"])}}',
+				'={{($self["customScopes"] ? $self["enabledScopes"] : "openid offline_access https://{subdomain}.sharepoint.com/.default").replace(/\\{subdomain\\}/g, ($self["subdomain"] || "").trim())}}',
 			);
 		});
 	});
