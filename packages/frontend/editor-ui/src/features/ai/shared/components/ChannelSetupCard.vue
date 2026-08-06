@@ -211,8 +211,7 @@ async function loadChannelState(forceReload = false) {
 			? reloadCatalog(props.projectId)
 			: ensureLoaded(props.projectId));
 		const requiresDescriptor =
-			props.integrationType !== 'slack' &&
-			isRegisteredAgentChannelPlatform(props.integrationType);
+			props.integrationType !== 'slack' && isRegisteredAgentChannelPlatform(props.integrationType);
 
 		if (
 			requiresDescriptor &&
