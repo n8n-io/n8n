@@ -35,7 +35,9 @@ const datasets = computed(() => store.getDatasets(props.agentId));
 // Datasets come back newest-first, and generation makes exactly one; a picker is
 // the case-list view's to add.
 const dataset = computed(() => datasets.value[0]);
-const loaded = computed(() => store.isLoaded(props.agentId));
+// An agent with no row yet is never fetched for, so there is nothing to wait on:
+// it falls through to the first-run state instead of a skeleton that never ends.
+const awaitingDatasets = computed(() => !props.agentUnsaved && !store.isLoaded(props.agentId));
 const runId = computed(() => (dataset.value ? store.getLatestRunId(dataset.value.id) : undefined));
 
 const load = async () => {
@@ -65,7 +67,7 @@ watch(() => props.agentId, load);
 
 <template>
 	<div :class="$style.section" data-testid="agent-evals-section">
-		<N8nLoading v-if="!loaded" :rows="4" data-testid="agent-evals-loading" />
+		<N8nLoading v-if="awaitingDatasets" :rows="4" data-testid="agent-evals-loading" />
 
 		<AgentEvalResultsPanel
 			v-else-if="dataset && runId"

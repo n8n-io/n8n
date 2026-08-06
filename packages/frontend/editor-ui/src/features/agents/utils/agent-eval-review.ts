@@ -1,3 +1,4 @@
+import { isRecord } from '@n8n/utils/is-record';
 import type { JsonObject } from 'n8n-workflow';
 
 import type { AgentEvalRatingRecord, AgentEvalVote } from '../agentEvals.types';
@@ -49,10 +50,6 @@ export type ReviewRowView =
 			correction: string | null;
 			saving: boolean;
 	  };
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 /** A non-empty string, or null — the shape both `finalText` readers want. */
 function readText(source: JsonObject | null | undefined, key: string): string | null {

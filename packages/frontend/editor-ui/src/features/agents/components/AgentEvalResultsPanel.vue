@@ -58,6 +58,10 @@ const viewFor = (resultId: string) =>
 	});
 
 const load = async () => {
+	// Abandon any previous watcher first. Without this, moving to a run that is
+	// already settled leaves the old timer alive, and when *it* settles its own
+	// reload steals this one's stale-response guard — leaving the card blank.
+	store.stopPollingRun();
 	try {
 		await store.openRun(props.projectId, props.agentId, props.runId);
 		// A run opened mid-flight — usually one just started from here — is watched
@@ -92,8 +96,6 @@ const onVote = (resultId: string, vote: AgentEvalVote) =>
 	store.beginVote(props.runId, resultId, vote);
 
 onMounted(load);
-// Switching runs abandons the previous watcher rather than leaving it polling a
-// run that is no longer on screen.
 watch(() => props.runId, load);
 onBeforeUnmount(store.stopPollingRun);
 </script>

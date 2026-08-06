@@ -282,6 +282,24 @@ describe('useAgentEvalsStore', () => {
 			expect(store.getReview(RUN_ID).results).toEqual([]);
 		});
 
+		// Cases settle one at a time, so a reviewer can be part-way through a reason
+		// on a finished case while the run is still going — and the poll re-reads the
+		// run the moment it settles. Re-reading must not delete what they typed.
+		it('keeps a half-typed draft when the run is re-read', async () => {
+			mockRun({ results: [result('c1')], count: 1, ratings: [] });
+			const store = useAgentEvalsStore();
+			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
+			store.beginVote(RUN_ID, 'c1', 'down');
+			store.setDraftComment(RUN_ID, 'c1', 'half a thought');
+
+			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
+
+			expect(store.getDraft(RUN_ID, 'c1')).toMatchObject({
+				vote: 'down',
+				comment: 'half a thought',
+			});
+		});
+
 		it('clears loading when the read rejects', async () => {
 			getRunDetail.mockRejectedValue(new Error('boom'));
 			listLatestRatingsForRun.mockResolvedValue([]);

@@ -26,7 +26,7 @@ defineProps<{
 <style lang="scss" module>
 /* The chat renderer carries a bottom margin for its message flow; the row
    controls its own spacing with a flex gap. */
-.toolCalls > :global(*) {
+.toolCalls > * {
 	margin-bottom: 0;
 }
 </style>

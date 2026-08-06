@@ -141,6 +141,15 @@ describe('AgentEvalsSection', () => {
 
 			expect(store.fetchDatasets).not.toHaveBeenCalled();
 		});
+
+		// Nothing is loading, so there is nothing to wait for — a skeleton here would
+		// never resolve.
+		it('shows the first-run state rather than a skeleton while the agent is unsaved', () => {
+			const { getByTestId, queryByTestId } = render({ loaded: false }, { agentUnsaved: true });
+
+			expect(getByTestId('agent-evals-empty-state')).toBeInTheDocument();
+			expect(queryByTestId('agent-evals-loading')).not.toBeInTheDocument();
+		});
 	});
 
 	// The card only asks; the section owns which dataset gets run.

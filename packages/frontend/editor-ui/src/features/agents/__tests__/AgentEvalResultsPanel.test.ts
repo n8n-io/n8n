@@ -181,6 +181,15 @@ describe('AgentEvalResultsPanel', () => {
 
 			expect(store.stopPollingRun).toHaveBeenCalled();
 		});
+
+		// Otherwise moving to an already-settled run leaves the old timer alive, and
+		// its eventual reload steals this one's stale-response guard.
+		it('abandons the previous watcher before loading a run', async () => {
+			const { store } = render({}, 0, false);
+			await flushPromises();
+
+			expect(store.stopPollingRun).toHaveBeenCalled();
+		});
 	});
 
 	it('renders a row per loaded case', () => {

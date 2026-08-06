@@ -202,15 +202,17 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 			if (latestOpenKey !== key) return;
 
 			const { results, ...run } = detail;
+			// Drafts and in-flight votes are deliberately left alone. Cases settle
+			// individually, so a reviewer can be part-way through a reason on a
+			// finished case while the run is still going — and the poll re-reads the
+			// run the moment it settles. Clearing here would delete what they typed
+			// with no warning. A draft that outlives a visit is still their work, and
+			// the row already marks it unsaved.
 			patchReview(runId, {
 				run,
 				results: results.data,
 				resultsCount: results.count,
 				ratingsByResultId: indexRatings(ratings),
-				// Reopening a run starts from what is persisted: anything half-typed
-				// belonged to the previous visit.
-				pendingByResultId: {},
-				draftsByResultId: {},
 				loading: false,
 			});
 		} finally {
