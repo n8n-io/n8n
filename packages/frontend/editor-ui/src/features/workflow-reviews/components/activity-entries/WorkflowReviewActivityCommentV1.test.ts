@@ -87,7 +87,7 @@ describe('WorkflowReviewActivityCommentV1', () => {
 
 	// Keys on `deletedAt`, not on a null body: a null body from any other writer
 	// must not read as a tombstone.
-	it('shows a tombstone for a deleted message', () => {
+	it('shows that a comment was deleted instead of its text', () => {
 		const { getByTestId, queryByTestId } = renderComponent({
 			props: {
 				entry: makeEntry([makeMessage({ body: null, deletedAt: '2024-01-02T10:00:00.000Z' })]),

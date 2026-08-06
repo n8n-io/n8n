@@ -89,7 +89,6 @@ export const useReviewActivityStore = defineStore('workflowReviewActivity', () =
 			});
 			if (requestSeq !== feedRequestSeq || currentReviewId.value !== reviewId) return;
 
-			// One splice, so the older page keeps its ascending order.
 			entries.value = [...response.data, ...entries.value];
 			nextCursor.value = response.nextCursor;
 			// A page that returns nothing ends the walk: keeping `hasMore` would re-arm the
@@ -107,8 +106,7 @@ export const useReviewActivityStore = defineStore('workflowReviewActivity', () =
 
 	async function postComment(body: string) {
 		const reviewId = currentReviewId.value;
-		// Thrown, not swallowed: a silent return reads as success and the composer would
-		// clear the user's draft.
+		// Thrown, not swallowed: a silent return would read as success to the caller.
 		if (!reviewId) throw new Error('Cannot post a comment without a selected review');
 
 		posting.value = true;

@@ -81,13 +81,13 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 		eligibilityService,
 	);
 
-	/** The read gate resolved: `readableRows` are what the caller may still read. */
-	function mockGate(readableRows: WorkflowReviewRequestWorkflowDetailRow[] = []) {
+	/** The read gate resolved: `readableWorkflowRows` are what the caller may still read. */
+	function mockGate(readableWorkflowRows: WorkflowReviewRequestWorkflowDetailRow[] = []) {
 		accessService.findReadableRequestOrFail.mockResolvedValue({
 			request: reviewRequest(),
-			readableRows,
-			pinnedWorkflowId: readableRows.at(0)?.workflowId ?? null,
-			canReadPinnedWorkflow: readableRows.length > 0,
+			readableWorkflowRows,
+			pinnedWorkflowId: readableWorkflowRows.at(0)?.workflowId ?? null,
+			canReadPinnedWorkflow: readableWorkflowRows.length > 0,
 		});
 	}
 
@@ -103,7 +103,7 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 		workflowHistoryService.findVersion.mockResolvedValue(null);
 		eligibilityService.resolveViewerEligibility.mockResolvedValue({
 			canDecide: true,
-			reason: null,
+			decisionIneligibilityReason: null,
 			canComment: true,
 		});
 	});
@@ -166,7 +166,7 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 	});
 
 	describe('viewer eligibility', () => {
-		it('carries the resolved capabilities on the detail', async () => {
+		it('tells the client the viewer may both decide and comment', async () => {
 			const detail = await service.getDetail(requester, requestId);
 
 			expect(detail.viewerCanDecide).toBe(true);
@@ -174,10 +174,10 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 			expect(detail.viewerCanComment).toBe(true);
 		});
 
-		it('surfaces the ineligibility reason for an author who may still comment', async () => {
+		it('tells an author why they cannot decide while still letting them comment', async () => {
 			eligibilityService.resolveViewerEligibility.mockResolvedValue({
 				canDecide: false,
-				reason: 'author',
+				decisionIneligibilityReason: 'author',
 				canComment: true,
 			});
 
@@ -188,18 +188,18 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 			expect(detail.viewerCanComment).toBe(true);
 		});
 
-		it('resolves eligibility against the pinned workflow, even one the caller cannot read', async () => {
+		it('checks what the viewer may do against the workflow under review, even one they cannot open', async () => {
 			// The requester keeps their record after losing read access to the covered
 			// workflow — eligibility must still be checked against that pinned row.
 			accessService.findReadableRequestOrFail.mockResolvedValue({
 				request: reviewRequest(),
-				readableRows: [],
+				readableWorkflowRows: [],
 				pinnedWorkflowId: workflowId,
 				canReadPinnedWorkflow: false,
 			});
 			eligibilityService.resolveViewerEligibility.mockResolvedValue({
 				canDecide: false,
-				reason: 'missing_publish_permission',
+				decisionIneligibilityReason: 'missing_publish_permission',
 				canComment: false,
 			});
 
@@ -207,7 +207,7 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 
 			expect(eligibilityService.resolveViewerEligibility).toHaveBeenCalledWith(requester, {
 				request: expect.objectContaining({ id: requestId }),
-				readableRows: [],
+				readableWorkflowRows: [],
 				pinnedWorkflowId: workflowId,
 				canReadPinnedWorkflow: false,
 			});

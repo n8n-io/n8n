@@ -18,7 +18,7 @@ const list = ref<HTMLElement | null>(null);
 const sentinel = ref<HTMLElement | null>(null);
 // Held back until the initial scroll position is applied, so the sentinel cannot
 // intersect at scrollTop 0 and pull in the whole feed before the user sees it.
-const positioned = ref(false);
+const initialScrollApplied = ref(false);
 
 let prependAnchor: { element: Element; top: number } | null = null;
 
@@ -49,8 +49,6 @@ watch(
 	{ immediate: true, flush: 'post' },
 );
 
-// `flush: 'post'`, not `nextTick`: nextTick callbacks run after post-flush
-// watchers, so the observer would re-arm on the still-at-top sentinel first.
 watch(
 	entries,
 	(next, previous) => {
@@ -78,12 +76,10 @@ function retryInitialLoad() {
 	if (store.currentReviewId) void store.fetchFeed(store.currentReviewId);
 }
 
-// Not a watcher on `entries`: mounting with entries already loaded (the
-// Changes -> Activity round trip) mutates nothing, so a watcher never fires and
-// `positioned` would stay false for the rest of the mount.
+// Entries may already be loaded on mount (Changes -> Activity round trip).
 onMounted(() => {
 	if (entries.value.length > 0) scrollToBottom();
-	positioned.value = true;
+	initialScrollApplied.value = true;
 });
 </script>
 
@@ -115,7 +111,7 @@ onMounted(() => {
 		</div>
 		<template v-else>
 			<div
-				v-if="positioned && hasMore && !error"
+				v-if="initialScrollApplied && hasMore && !error"
 				ref="sentinel"
 				:class="$style.sentinel"
 				data-test-id="workflow-review-activity-load-more-sentinel"

@@ -29,13 +29,16 @@ describe('WorkflowReviewRequestsController route access', () => {
 		expect(route.skipAuth).toBe(false);
 	});
 
-	it.each(routeCases)('$handlerName declares its authorization site', ({ handlerName, route }) => {
-		if (serviceGatedHandlers.has(handlerName)) {
-			expect(route.accessScope).toBeUndefined();
-			return;
-		}
+	it.each(routeCases)(
+		'$handlerName is guarded either by a route scope or by its service',
+		({ handlerName, route }) => {
+			if (serviceGatedHandlers.has(handlerName)) {
+				expect(route.accessScope).toBeUndefined();
+				return;
+			}
 
-		expect(route.accessScope).toBeDefined();
-		expect(route.accessScope?.globalOnly).toBe(false);
-	});
+			expect(route.accessScope).toBeDefined();
+			expect(route.accessScope?.globalOnly).toBe(false);
+		},
+	);
 });

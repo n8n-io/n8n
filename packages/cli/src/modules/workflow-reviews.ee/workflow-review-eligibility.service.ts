@@ -17,16 +17,13 @@ import type { ReadableWorkflowReviewRequest } from './workflow-review-access.ser
 
 export interface WorkflowReviewViewerEligibility {
 	canDecide: boolean;
-	reason: WorkflowReviewDecisionIneligibilityReason | null;
+	decisionIneligibilityReason: WorkflowReviewDecisionIneligibilityReason | null;
 	canComment: boolean;
 }
 
 /**
  * The viewer-capability rules of a review — who may decide it and who may comment
- * on it — resolved in one pass so the two answers cannot disagree. Shared between
- * the decision endpoint (`WorkflowReviewRequestService.decide`), the comment
- * endpoint and the read side that surfaces both capabilities
- * (`WorkflowReviewInboxService.getDetail`), so none of them can drift.
+ * on it — resolved in one pass so the two answers cannot disagree.
  */
 @Service()
 export class WorkflowReviewEligibilityService {
@@ -59,9 +56,6 @@ export class WorkflowReviewEligibilityService {
 	 * the endpoint would return. The endpoint remains the source of truth and re-checks
 	 * under its lock.
 	 *
-	 * `canComment` is not advisory: it is the write gate the comment endpoint enforces
-	 * verbatim.
-	 *
 	 * Deliberately viewer-scoped: `decide()`'s `assertRequestUpdatable` lifecycle
 	 * guard is not mirrored here. It is shared with the update path and is not
 	 * viewer-specific, and folding it in would erase whether the viewer is
@@ -69,8 +63,6 @@ export class WorkflowReviewEligibilityService {
 	 */
 	async resolveViewerEligibility(
 		user: User,
-		// Taken whole from the read gate: passing these separately would allow
-		// `canReadPinnedWorkflow` to describe a different workflow, request or user.
 		access: Pick<
 			ReadableWorkflowReviewRequest,
 			'request' | 'pinnedWorkflowId' | 'canReadPinnedWorkflow'
@@ -78,10 +70,13 @@ export class WorkflowReviewEligibilityService {
 	): Promise<WorkflowReviewViewerEligibility> {
 		const { request, pinnedWorkflowId, canReadPinnedWorkflow } = access;
 
-		// No linked workflow means decide() would 404 before any permission check, and
-		// there is nothing left to discuss either.
+		// No pinned workflow, so nothing to check either capability against.
 		if (!pinnedWorkflowId) {
-			return { canDecide: false, reason: 'missing_publish_permission', canComment: false };
+			return {
+				canDecide: false,
+				decisionIneligibilityReason: 'missing_publish_permission',
+				canComment: false,
+			};
 		}
 
 		const [workflow, isAuthor] = await Promise.all([
@@ -98,12 +93,16 @@ export class WorkflowReviewEligibilityService {
 		const canComment = isAuthor ? canReadPinnedWorkflow : Boolean(workflow);
 
 		if (!workflow) {
-			return { canDecide: false, reason: 'missing_publish_permission', canComment };
+			return {
+				canDecide: false,
+				decisionIneligibilityReason: 'missing_publish_permission',
+				canComment,
+			};
 		}
 		if (isAuthor && !(await this.hasAdminOverride(user, request.projectId))) {
-			return { canDecide: false, reason: 'author', canComment };
+			return { canDecide: false, decisionIneligibilityReason: 'author', canComment };
 		}
 
-		return { canDecide: true, reason: null, canComment };
+		return { canDecide: true, decisionIneligibilityReason: null, canComment };
 	}
 }

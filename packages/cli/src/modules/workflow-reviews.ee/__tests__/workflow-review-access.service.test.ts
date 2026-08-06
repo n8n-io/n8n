@@ -61,7 +61,7 @@ describe('WorkflowReviewAccessService', () => {
 		]);
 	}
 
-	describe('findReadableRequestOrFail', () => {
+	describe('who is allowed to open a review', () => {
 		it('reports a review that does not exist as not found', async () => {
 			requestRepository.findById.mockResolvedValue(null);
 
@@ -114,7 +114,7 @@ describe('WorkflowReviewAccessService', () => {
 
 			// They keep their own review, but none of the workflow content
 			expect(result.request.id).toBe(requestId);
-			expect(result.readableRows).toEqual([]);
+			expect(result.readableWorkflowRows).toEqual([]);
 			// Eligibility still resolves against the pinned row, which they cannot read
 			expect(result.pinnedWorkflowId).toBe(workflowId);
 			expect(result.canReadPinnedWorkflow).toBe(false);
@@ -130,12 +130,12 @@ describe('WorkflowReviewAccessService', () => {
 			);
 		});
 
-		it('pins the first covered workflow and reports it readable', async () => {
+		it('treats the first covered workflow as the one under review', async () => {
 			mockChildRow();
 
 			const result = await service.findReadableRequestOrFail(requester, requestId);
 
-			expect(result.readableRows).toEqual([
+			expect(result.readableWorkflowRows).toEqual([
 				{ workflowId, workflowName: 'My workflow', workflowVersionId: 'ver-pinned' },
 			]);
 			expect(result.pinnedWorkflowId).toBe(workflowId);
@@ -147,7 +147,7 @@ describe('WorkflowReviewAccessService', () => {
 			);
 		});
 
-		it('reports no pinned workflow when the review no longer covers any', async () => {
+		it('has no workflow under review once the review covers none', async () => {
 			const result = await service.findReadableRequestOrFail(requester, requestId);
 
 			expect(result.pinnedWorkflowId).toBeNull();
@@ -155,8 +155,8 @@ describe('WorkflowReviewAccessService', () => {
 		});
 	});
 
-	describe('resolveAccessibleProjectIds', () => {
-		it('returns the publish-scoped project ids for members', async () => {
+	describe('which projects a viewer sees reviews from', () => {
+		it('limits a member to the projects where they may publish', async () => {
 			projectService.getProjectIdsWithScope.mockResolvedValueOnce(['publish-proj']);
 
 			expect(await service.resolveAccessibleProjectIds(member)).toEqual(['publish-proj']);
@@ -169,7 +169,7 @@ describe('WorkflowReviewAccessService', () => {
 			expect(projectService.getPersonalProject).not.toHaveBeenCalled();
 		});
 
-		it('returns null (all projects) for users with global workflow:publish without enumerating projects', async () => {
+		it('lets someone who can publish anywhere see reviews in every project', async () => {
 			const owner = mock<User>({
 				role: {
 					slug: 'global:owner',
@@ -181,7 +181,7 @@ describe('WorkflowReviewAccessService', () => {
 			expect(projectService.getProjectIdsWithScope).not.toHaveBeenCalled();
 		});
 
-		it('does not short-circuit for a global project:delete role without workflow:publish', async () => {
+		it('still checks project membership for a global role that cannot publish', async () => {
 			const admin = mock<User>({
 				role: {
 					slug: 'custom:global',

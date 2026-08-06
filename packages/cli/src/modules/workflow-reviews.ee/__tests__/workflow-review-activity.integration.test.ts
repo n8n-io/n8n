@@ -104,7 +104,7 @@ beforeEach(async () => {
 	viewerAgent = testServer.authAgentFor(viewer);
 });
 
-/** Seed a review request in `projectId` pinned to `versionId`, authored by `author`. */
+/** Seed a review in `projectId` pinned to `versionId`, authored by `author`. */
 async function seedRequest(
 	workflowId: string,
 	versionId: string | null,
@@ -154,12 +154,8 @@ async function getActivity(agent: SuperAgentTest, requestId: string, limit?: num
 	};
 }
 
-describe('POST /workflow-review-requests/:id/comments', () => {
-	test('lets a non-admin author comment on the review they opened', async () => {
-		// member authors, so `viewerCanDecide` is false with reason 'author' — the only shape
-		// that exercises the *decision* author arm, since owner gets the admin override.
-		// `canComment`'s author arm is not pinned here: member is project:editor and so
-		// carries workflow:publish. The author-only case is the read-access test below.
+describe('Commenting on a review', () => {
+	test('shows a comment in the feed the instant its writer posts it', async () => {
 		const { request } = await seedReviewInTeamProject(member);
 
 		const post = await memberAgent
@@ -185,7 +181,7 @@ describe('POST /workflow-review-requests/:id/comments', () => {
 		});
 	});
 
-	test('lets an eligible non-author comment', async () => {
+	test('lets a reviewer who can approve the review comment on it', async () => {
 		const { request } = await seedReviewInTeamProject(owner);
 
 		await memberAgent
@@ -197,7 +193,7 @@ describe('POST /workflow-review-requests/:id/comments', () => {
 		expect(detail.body.data.viewerCanComment).toBe(true);
 	});
 
-	test('refuses a reader who can see the review but not publish the workflow', async () => {
+	test('lets a reader who cannot approve read the feed but not post to it', async () => {
 		// The review lives in teamProject (where member may publish) while the workflow
 		// moved to a project member can only read.
 		const destinationProject = await createTeamProject('Destination Project', owner);
@@ -216,7 +212,7 @@ describe('POST /workflow-review-requests/:id/comments', () => {
 			.expect(403);
 	});
 
-	test('refuses an author who lost read access to the pinned workflow', async () => {
+	test('refuses an author who can no longer open the workflow under review', async () => {
 		const destinationProject = await createTeamProject('Out Of Reach', owner);
 		const workflow = await createWorkflow({}, destinationProject);
 		await createWorkflowHistoryItem(workflow.id, { versionId: 'version-pinned' });
@@ -232,7 +228,7 @@ describe('POST /workflow-review-requests/:id/comments', () => {
 			.expect(403);
 	});
 
-	test('lets an author with only read access on the pinned workflow comment', async () => {
+	test('lets the author of a review comment on it, even with view-only access to the workflow', async () => {
 		// project:viewer carries workflow:read but not workflow:publish — read is the
 		// scope that gates commenting, so this must pass while deciding does not.
 		const { request } = await seedReviewInTeamProject(viewer);
@@ -284,7 +280,7 @@ describe('POST /workflow-review-requests/:id/comments', () => {
 	});
 
 	test.each(['approved', 'closed'] as const)(
-		'still accepts comments on a %s review',
+		'keeps existing comments visible and still accepts new ones on a %s review',
 		async (settled) => {
 			const { request } = await seedReviewInTeamProject(owner);
 			await ownerAgent
@@ -306,7 +302,7 @@ describe('POST /workflow-review-requests/:id/comments', () => {
 		},
 	);
 
-	test('rolls back the thread header when its first message cannot be written', async () => {
+	test('leaves no empty comment behind when the write fails halfway', async () => {
 		const { request } = await seedReviewInTeamProject(owner);
 		await ownerAgent
 			.post(`/workflow-review-requests/${request.id}/comments`)
@@ -327,31 +323,14 @@ describe('POST /workflow-review-requests/:id/comments', () => {
 		expect(await activityCommentRepository.count()).toBe(1);
 	});
 
-	test('resolves a deleted author to null on both the entry and its message', async () => {
-		const { request } = await seedReviewInTeamProject(owner);
-		await memberAgent
-			.post(`/workflow-review-requests/${request.id}/comments`)
-			.send({ body: 'Written before leaving' })
-			.expect(201);
-
-		await userRepository.delete({ id: member.id });
-
-		const [entry] = (await getActivity(ownerAgent, request.id)).data;
-		// `undefined` would be dropped from the JSON; the client checks for `null`
-		expect('createdBy' in entry).toBe(true);
-		expect(entry.createdBy).toBeNull();
-		expect(entry.messages?.[0].createdBy).toBeNull();
-		expect(entry.messages?.[0].body).toBe('Written before leaving');
-	});
-
 	test.each([
-		['an empty body', '', 400],
-		['a whitespace-only body', '   \n  ', 400],
-		['a body at the length limit', 'x'.repeat(10_000), 201],
-		['a body over the length limit', 'x'.repeat(10_001), 400],
+		['rejects an empty comment', '', 400],
+		['rejects a comment that is only whitespace', '   \n  ', 400],
+		['accepts a comment at the length limit', 'x'.repeat(10_000), 201],
+		['rejects a comment over the length limit', 'x'.repeat(10_001), 400],
 		// A C0 control character reaches the Postgres driver as a 500 unless rejected here
-		['a body with a control character', 'oops \x00 here', 400],
-	])('returns %s -> %s', async (_label, body, status) => {
+		['rejects a comment containing a control character', 'oops \x00 here', 400],
+	])('%s', async (_label, body, status) => {
 		const { request } = await seedReviewInTeamProject(owner);
 
 		await ownerAgent
@@ -372,7 +351,7 @@ describe('POST /workflow-review-requests/:id/comments', () => {
 	});
 });
 
-describe('GET /workflow-review-requests/:id/activity', () => {
+describe('Reading the activity feed', () => {
 	/** Non-comment entries, cheap to seed and enough to pin the paging arithmetic. */
 	async function seedEntries(workflowReviewRequestId: string, count: number) {
 		const ids: string[] = [];
@@ -391,7 +370,7 @@ describe('GET /workflow-review-requests/:id/activity', () => {
 		return ids;
 	}
 
-	test('returns an empty feed for a review with no activity', async () => {
+	test('shows an empty feed for a review that has no activity — nothing is backfilled', async () => {
 		const { request } = await seedReviewInTeamProject(owner);
 
 		expect(await getActivity(ownerAgent, request.id)).toEqual({
@@ -422,7 +401,7 @@ describe('GET /workflow-review-requests/:id/activity', () => {
 		expect(pages).toEqual([[ids[3], ids[4]], [ids[1], ids[2]], [ids[0]]]);
 	});
 
-	test('settles on the last full page instead of promising an empty one', async () => {
+	test('stops paging when the last page comes out exactly full', async () => {
 		const { request } = await seedReviewInTeamProject(owner);
 		const ids = await seedEntries(request.id, 4);
 
@@ -445,7 +424,7 @@ describe('GET /workflow-review-requests/:id/activity', () => {
 		expect(secondPage.body.data.nextCursor).toBeNull();
 	});
 
-	test('leaves an entry posted mid-walk out of the older pages', async () => {
+	test('does not shift the older pages when someone comments while you scroll back', async () => {
 		const { request } = await seedReviewInTeamProject(owner);
 		const ids = await seedEntries(request.id, 4);
 
@@ -474,7 +453,7 @@ describe('GET /workflow-review-requests/:id/activity', () => {
 		]);
 	});
 
-	test('returns only the entries of the review being asked about', async () => {
+	test("never shows one review's comments on another review", async () => {
 		const first = await seedReviewInTeamProject(owner);
 		const second = await seedReviewInTeamProject(owner);
 		const firstIds = await seedEntries(first.request.id, 1);
@@ -505,7 +484,7 @@ describe('GET /workflow-review-requests/:id/activity', () => {
 		]);
 	});
 
-	test('passes a non-comment entry through untouched and attaches no messages to it', async () => {
+	test('shows a non-comment activity entry with its details intact and no messages', async () => {
 		const { request } = await seedReviewInTeamProject(owner);
 		const data = { workflowVersionIds: ['version-pinned'], note: 'needs work' };
 		await activityRepository.createActivity(
@@ -564,7 +543,24 @@ describe('GET /workflow-review-requests/:id/activity', () => {
 		]);
 	});
 
-	test('reports a deleted message as a tombstone without its body', async () => {
+	test('keeps a comment readable after its author is deleted from the instance', async () => {
+		const { request } = await seedReviewInTeamProject(owner);
+		await memberAgent
+			.post(`/workflow-review-requests/${request.id}/comments`)
+			.send({ body: 'Written before leaving' })
+			.expect(201);
+
+		await userRepository.delete({ id: member.id });
+
+		const [entry] = (await getActivity(ownerAgent, request.id)).data;
+		// `undefined` would be dropped from the JSON; the client checks for `null`
+		expect('createdBy' in entry).toBe(true);
+		expect(entry.createdBy).toBeNull();
+		expect(entry.messages?.[0].createdBy).toBeNull();
+		expect(entry.messages?.[0].body).toBe('Written before leaving');
+	});
+
+	test('hides the text of a deleted comment but keeps its place in the feed', async () => {
 		const { request } = await seedReviewInTeamProject(owner);
 		const post = await ownerAgent
 			.post(`/workflow-review-requests/${request.id}/comments`)
@@ -584,7 +580,7 @@ describe('GET /workflow-review-requests/:id/activity', () => {
 		['a limit below the minimum', { limit: 0 }],
 		['a limit above the maximum', { limit: 101 }],
 		// A parseInt-based decode would silently accept this as id 12
-		['a cursor that is not a bare id', { cursor: Buffer.from('12abc').toString('base64url') }],
+		['a tampered cursor', { cursor: Buffer.from('12abc').toString('base64url') }],
 	])('rejects %s', async (_label, query) => {
 		const { request } = await seedReviewInTeamProject(owner);
 

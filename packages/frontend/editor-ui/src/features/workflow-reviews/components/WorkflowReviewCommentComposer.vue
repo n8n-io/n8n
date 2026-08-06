@@ -34,7 +34,7 @@ async function onSubmit() {
 
 	try {
 		await store.postComment(body);
-		// The textarea stays enabled while posting, so anything typed meanwhile survives.
+		// Don't clear text typed while the post was in flight.
 		if (draft.value === submitted) draft.value = '';
 	} catch (error) {
 		showError(error, i18n.baseText('workflowReviews.detail.activity.error.post'));

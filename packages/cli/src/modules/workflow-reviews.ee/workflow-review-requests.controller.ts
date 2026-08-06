@@ -112,11 +112,6 @@ export class WorkflowReviewRequestsController {
 		return await this.workflowReviewInboxService.getInboxSummaryForUser(req.user);
 	}
 
-	/**
-	 * The review's activity feed, paginated newest-first and returned ascending.
-	 * Authorization lives in the service — `@ProjectScope` cannot resolve a project
-	 * from a review id.
-	 */
 	@Get('/:workflowReviewRequestId/activity')
 	@Licensed('feat:workflowReviews')
 	async listActivity(
@@ -132,7 +127,6 @@ export class WorkflowReviewRequestsController {
 		);
 	}
 
-	/** Same service-side authorization as the feed, plus the comment write gate. */
 	@Post('/:workflowReviewRequestId/comments')
 	@Licensed('feat:workflowReviews')
 	async createComment(

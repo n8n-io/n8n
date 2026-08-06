@@ -108,7 +108,6 @@ export class WorkflowReviewInboxService {
 		});
 	}
 
-	/** Read access is resolved by {@link WorkflowReviewAccessService.findReadableRequestOrFail}. */
 	async getDetail(
 		user: User,
 		workflowReviewRequestId: string,
@@ -119,10 +118,10 @@ export class WorkflowReviewInboxService {
 			user,
 			workflowReviewRequestId,
 		);
-		const { request, readableRows } = access;
+		const { request, readableWorkflowRows } = access;
 
 		const [workflows, participantsByRequestId, eligibility] = await Promise.all([
-			Promise.all(readableRows.map(async (row) => await this.toWorkflowDetail(row))),
+			Promise.all(readableWorkflowRows.map(async (row) => await this.toWorkflowDetail(row))),
 			this.resolveParticipants(request),
 			// Resolved against the pinned (pre-read-filter) row, matching the row
 			// decide() authorizes against — not against what the caller can read.
@@ -139,16 +138,11 @@ export class WorkflowReviewInboxService {
 			description: request.description,
 			workflows,
 			viewerCanDecide: eligibility.canDecide,
-			viewerDecisionIneligibilityReason: eligibility.reason,
+			viewerDecisionIneligibilityReason: eligibility.decisionIneligibilityReason,
 			viewerCanComment: eligibility.canComment,
 		};
 	}
 
-	/**
-	 * The reviewer rows are read only once the access gate has resolved. Starting them
-	 * earlier would need a floating promise that rejects unhandled when the gate throws,
-	 * which is not worth the one round trip.
-	 */
 	private async resolveParticipants(request: WorkflowReviewRequest) {
 		const reviewerRows = await this.workflowReviewRequestReviewerRepository.findByRequestIds([
 			request.id,

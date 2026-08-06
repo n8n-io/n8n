@@ -42,7 +42,6 @@ function authorName(message: WorkflowReviewActivityMessage): string {
 						</time>
 					</N8nText>
 				</div>
-				<!-- Keys on `deletedAt`, not on a null body: only a deletion is a tombstone. -->
 				<N8nText
 					v-if="message.deletedAt"
 					size="small"

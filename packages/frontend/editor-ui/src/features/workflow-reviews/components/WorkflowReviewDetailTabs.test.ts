@@ -112,7 +112,7 @@ describe('WorkflowReviewDetailTabs', () => {
 		createTestingPinia();
 	});
 
-	it('emits update:tab when a tab is selected', async () => {
+	it('lets the viewer switch between the Activity and Changes tabs', async () => {
 		const { getByText, emitted } = renderComponent({
 			props: { review: makeDetail(), tab: 'activity', deciding: false },
 		});
@@ -168,7 +168,10 @@ describe('WorkflowReviewDetailTabs', () => {
 			expect(order[1].compareDocumentPosition(order[2])).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
 		});
 
-		it.each([true, false])('passes viewerCanComment=%s to the composer', (viewerCanComment) => {
+		it.each([
+			['lets a viewer who may comment use the composer', true],
+			['locks the composer for a viewer who may not', false],
+		])('%s', (_label, viewerCanComment) => {
 			const { getByTestId } = renderComponent({
 				props: { review: makeDetail({ viewerCanComment }), tab: 'activity', deciding: false },
 			});
@@ -190,8 +193,7 @@ describe('WorkflowReviewDetailTabs', () => {
 			);
 		});
 
-		// Commenting stays open on settled reviews, unlike the changes panel.
-		it('keeps the feed and the composer on a closed review', () => {
+		it('still lets the viewer comment on a closed review', () => {
 			const { getByTestId } = renderComponent({
 				props: {
 					review: makeDetail({ state: 'closed', decision: 'approved' }),

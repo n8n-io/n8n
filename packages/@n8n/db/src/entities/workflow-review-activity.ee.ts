@@ -4,9 +4,6 @@ import type { IDataObject } from 'n8n-workflow';
 
 import { JsonColumn, WithCreatedAt } from './abstract-entity';
 
-/** Re-exported so consumers of the entity get the column's type without reaching for api-types. */
-export type { WorkflowReviewActivityType };
-
 /**
  * Altering this table on SQLite recreates it, and `workflow_review_activity_comment` references it
  * with ON DELETE CASCADE, so the rebuild takes the comment rows with it: any later migration

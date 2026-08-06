@@ -23,11 +23,7 @@ import { WorkflowReviewEligibilityService } from './workflow-review-eligibility.
 import { WorkflowReviewFeatureGate } from './workflow-review-feature-gate.service';
 import { toActivityEntry, toEligibleReviewer } from './workflow-review.mapper';
 
-/**
- * The review activity feed and the only entry a client writes to it, a comment.
- * Reading is open to anyone who can read the review; posting needs the same
- * eligibility the detail payload advertises as `viewerCanComment`.
- */
+/** The review activity feed and the only entry a client writes to it, a comment. */
 @Service()
 export class WorkflowReviewActivityService {
 	constructor(
@@ -57,7 +53,7 @@ export class WorkflowReviewActivityService {
 			{},
 		);
 
-		// The page is ascending, so the oldest entry it holds is the one to page back from.
+		// Ascending page, so the first entry is the oldest.
 		const oldest = entries.at(0);
 		const nextCursor = hasMore && oldest ? this.encodeCursor(oldest.activity.id) : null;
 
@@ -85,8 +81,8 @@ export class WorkflowReviewActivityService {
 		// Every query inside must go through `ctx`. A stray read here needs a second
 		// pooled connection while the transaction holds one — a deadlock on a
 		// single-connection pool.
-		const { created, message } = await this.txRunner.run({}, async (ctx) => {
-			const created = await this.activityRepository.createActivity(
+		const { activity, message } = await this.txRunner.run({}, async (ctx) => {
+			const activity = await this.activityRepository.createActivity(
 				{
 					workflowReviewRequestId,
 					type: 'comment.created',
@@ -96,14 +92,13 @@ export class WorkflowReviewActivityService {
 				ctx,
 			);
 			const message = await this.activityCommentRepository.createComment(
-				{ activityId: created.id, createdById: user.id, body: dto.body },
+				{ activityId: activity.id, createdById: user.id, body: dto.body },
 				ctx,
 			);
-			return { created, message };
+			return { activity, message };
 		});
 
-		// The same mapper the feed uses, so a comment does not change shape on reload.
-		return toActivityEntry(created, [message], new Map([[user.id, toEligibleReviewer(user)]]));
+		return toActivityEntry(activity, [message], new Map([[user.id, toEligibleReviewer(user)]]));
 	}
 
 	private async hydrate(
@@ -119,7 +114,6 @@ export class WorkflowReviewActivityService {
 		return entries.map((entry) => toActivityEntry(entry.activity, entry.messages, usersById));
 	}
 
-	/** Deleted authors simply drop out of the map, leaving their entries without a lookup hit. */
 	private async hydrateAuthors(
 		createdByIds: Array<string | null>,
 	): Promise<Map<string, WorkflowReviewEligibleReviewer>> {

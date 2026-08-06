@@ -167,7 +167,7 @@ describe('WorkflowReviewRequestsView', () => {
 		expect(store.fetchDetail).toHaveBeenCalledWith('req-1');
 	});
 
-	it('loads the activity feed of the route review on mount', async () => {
+	it('opens a review with its activity already loading', async () => {
 		await router.replace('/workflow-review-requests/req-1');
 		store.probeSettled = true;
 		store.showSidebar = true;
@@ -178,7 +178,7 @@ describe('WorkflowReviewRequestsView', () => {
 		expect(activityStore.fetchFeed).toHaveBeenCalledWith('req-1');
 	});
 
-	it('loads the activity feed of the newly selected review', async () => {
+	it('swaps in the activity of the next review the viewer picks', async () => {
 		await router.replace('/workflow-review-requests/req-1');
 		store.probeSettled = true;
 		store.showSidebar = true;

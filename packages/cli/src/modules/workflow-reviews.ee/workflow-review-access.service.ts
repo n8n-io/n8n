@@ -14,9 +14,7 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 export interface ReadableWorkflowReviewRequest {
 	request: WorkflowReviewRequest;
-	/** The covered workflows the caller may currently read. */
-	readableRows: WorkflowReviewRequestWorkflowDetailRow[];
-	/** The row every review-wide capability resolves against; rows order by id ASC. */
+	readableWorkflowRows: WorkflowReviewRequestWorkflowDetailRow[];
 	pinnedWorkflowId: string | null;
 	canReadPinnedWorkflow: boolean;
 }
@@ -32,8 +30,6 @@ export class WorkflowReviewAccessService {
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly projectService: ProjectService,
 		private readonly workflowReviewRequestRepository: WorkflowReviewRequestRepository,
-		// Read the linked rows here, never from a parameter: rows passed in would make the
-		// readable-rows narrowing optional per caller.
 		private readonly workflowReviewRequestWorkflowRepository: WorkflowReviewRequestWorkflowRepository,
 	) {}
 
@@ -70,21 +66,28 @@ export class WorkflowReviewAccessService {
 			await this.workflowReviewRequestWorkflowRepository.findLinkedWorkflowDetailsByRequestId(
 				request.id,
 			);
-		const readableRows = await this.filterReadableWorkflowRows(user, workflowRows);
+		const readableWorkflowRows = await this.filterReadableWorkflowRows(user, workflowRows);
 		// Someone who reaches this review through its project has no reason to learn it
 		// exists once they can read none of the workflows it covers. The requester already
 		// knows, and their inbox still lists it, so they keep the record — narrowed to the
 		// workflows they can currently read.
-		if (request.createdById !== user.id && workflowRows.length > 0 && readableRows.length === 0) {
+		if (
+			request.createdById !== user.id &&
+			workflowRows.length > 0 &&
+			readableWorkflowRows.length === 0
+		) {
 			throw new NotFoundError('Could not find review request');
 		}
 
+		// Rows come back id ASC, so the first is the pinned one.
 		const pinnedWorkflowId = workflowRows.at(0)?.workflowId ?? null;
 		return {
 			request,
-			readableRows,
+			readableWorkflowRows,
 			pinnedWorkflowId,
-			canReadPinnedWorkflow: readableRows.some((row) => row.workflowId === pinnedWorkflowId),
+			canReadPinnedWorkflow: readableWorkflowRows.some(
+				(row) => row.workflowId === pinnedWorkflowId,
+			),
 		};
 	}
 

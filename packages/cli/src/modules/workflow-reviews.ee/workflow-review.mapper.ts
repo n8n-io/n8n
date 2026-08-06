@@ -15,14 +15,6 @@ export function toEligibleReviewer(user: User): WorkflowReviewEligibleReviewer {
 	};
 }
 
-/**
- * Total over every activity type the column's CHECK constraint allows: an entry the
- * backend cannot map would either be dropped — making an incomplete feed look complete —
- * or break paging, since the page is sliced before any filter could run.
- *
- * `createdById` is `ON DELETE SET NULL` on both tables, so the author is resolved
- * separately for the header and for each message.
- */
 export function toActivityEntry(
 	row: WorkflowReviewActivity,
 	messages: WorkflowReviewActivityComment[],
@@ -40,7 +32,6 @@ export function toActivityEntry(
 		return {
 			...base,
 			type: row.type,
-			// The thread header carries no detail of its own; the text lives in the messages.
 			data: null,
 			messages: messages.map((message) => ({
 				id: String(message.id),

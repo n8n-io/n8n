@@ -79,14 +79,11 @@ export class WorkflowReviewActivityRepository extends BaseRepository<WorkflowRev
 	}
 
 	/**
-	 * Private on purpose: the ids come from the request-scoped query above, so the review
-	 * scoping is structural here and needs no join to re-assert it. A by-id access that takes
-	 * its ids from a client must authorise by joining comment -> activity -> request, because
-	 * this table carries no `workflowReviewRequestId` and its ids are globally enumerable.
-	 * That applies to the comment mutations in LIGO-609, not to this read.
+	 * Scoped only by the ids the caller passes; this table carries no
+	 * `workflowReviewRequestId`, so the review scoping comes from `findFeedPage`'s query.
 	 *
-	 * Unbounded per thread: the page size bounds threads, not messages. Fine while a thread
-	 * holds exactly one message; the replies ticket has to bound it.
+	 * ponytail: unbounded per thread — the page size bounds threads, not messages. Fine
+	 * while a thread holds one message; the replies ticket has to bound it.
 	 */
 	private async findMessagesForActivities(
 		activityIds: number[],

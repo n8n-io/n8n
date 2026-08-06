@@ -5,10 +5,6 @@ import { BaseRepository } from './base-repository';
 import { WorkflowReviewActivityComment } from '../entities/workflow-review-activity-comment.ee';
 import type { OperationContext } from '../services/transaction';
 
-/**
- * Writes to the messages of a comment thread, addressed by activity id. Reads go through
- * `WorkflowReviewActivityRepository.findFeedPage`, which owns the review-id scoping.
- */
 @Service()
 export class WorkflowReviewActivityCommentRepository extends BaseRepository<WorkflowReviewActivityComment> {
 	constructor(dataSource: DataSource) {

@@ -64,7 +64,11 @@ describe('WorkflowReviewActivityFeed', () => {
 		store.error = null;
 	});
 
-	it.each([0, 1, 3])('renders %i entries', async (count) => {
+	it.each([
+		['no', 0],
+		['one', 1],
+		['several', 3],
+	])('shows a feed with %s entries', async (_label, count) => {
 		store.entries = Array.from({ length: count }, (_, index) => makeEntry({ id: String(index) }));
 
 		const { queryAllByTestId } = renderComponent();
@@ -82,7 +86,7 @@ describe('WorkflowReviewActivityFeed', () => {
 		expect(queryByTestId('workflow-review-activity-empty')).not.toBeInTheDocument();
 	});
 
-	it('shows the empty state once settled with no entries', () => {
+	it('tells the viewer there is no activity yet', () => {
 		const { getByTestId } = renderComponent();
 
 		expect(getByTestId('workflow-review-activity-empty')).toHaveTextContent('No activity yet');
@@ -99,7 +103,7 @@ describe('WorkflowReviewActivityFeed', () => {
 		expect(queryByTestId('workflow-review-activity-empty')).not.toBeInTheDocument();
 	});
 
-	it('refetches the first page when the failed initial load is retried', () => {
+	it('reloads the feed when the viewer retries after a failure', () => {
 		store.error = new Error('boom');
 
 		const { getByTestId } = renderComponent();
@@ -136,7 +140,7 @@ describe('WorkflowReviewActivityFeed', () => {
 		);
 	});
 
-	it('renders the fallback for an entry version it does not know', async () => {
+	it('shows a placeholder for an activity type this frontend does not know', async () => {
 		store.entries = [makeEntry({ typeVersion: 2 })];
 
 		const { getByTestId } = renderComponent();
@@ -147,7 +151,7 @@ describe('WorkflowReviewActivityFeed', () => {
 		);
 	});
 
-	it('observes the sentinel and loads older entries when it intersects', async () => {
+	it('loads older entries when the viewer scrolls to the top of the feed', async () => {
 		store.entries = [makeEntry()];
 		store.hasMore = true;
 
@@ -164,7 +168,7 @@ describe('WorkflowReviewActivityFeed', () => {
 		expect(store.loadMore).toHaveBeenCalledTimes(1);
 	});
 
-	it('does not observe when there is nothing older to load', async () => {
+	it('stops loading once the oldest entry is on screen', async () => {
 		store.entries = [makeEntry()];
 		store.hasMore = false;
 
@@ -175,7 +179,7 @@ describe('WorkflowReviewActivityFeed', () => {
 		expect(observer.observe).not.toHaveBeenCalled();
 	});
 
-	it('does not observe while a page is already loading', async () => {
+	it('does not request the same older page twice', async () => {
 		store.entries = [makeEntry()];
 		store.hasMore = true;
 		store.loadingMore = true;
