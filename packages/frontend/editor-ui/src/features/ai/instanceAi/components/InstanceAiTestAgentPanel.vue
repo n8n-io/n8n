@@ -25,8 +25,8 @@ const i18n = useI18n();
 				{{ i18n.baseText('instanceAi.testAgent.title') }}
 			</N8nText>
 		</div>
-		<!-- `step` rather than `size`: the design's 13px body is `--font-size--xs`,
-			 which the `size` scale skips between small (12px) and medium (14px). -->
+		<!-- `step` rather than `size`: the `size` scale skips `--font-size--xs`,
+			 which is the step this body copy wants. -->
 		<N8nText step="xs" color="text-base">
 			{{ i18n.baseText('instanceAi.testAgent.description') }}
 		</N8nText>
@@ -63,9 +63,9 @@ const i18n = useI18n();
 	margin: var(--spacing--2xs) 0;
 	background-color: var(--background--surface);
 	border: var(--border);
-	/* `--radius--lg` resolves to 8px, not the 20px its name suggests — the legacy
-	   layer overrides the primitive. It is the closest token to the design's 10px
-	   and the one the sibling offer card uses, so the two match in the thread. */
+	/* Same radius token as the sibling offer card, so the two match in the thread.
+	   Note `--radius--sm` is not a smaller version of this one: the legacy layer
+	   overrides both, and it lands far tighter than the primitives file suggests. */
 	border-radius: var(--radius--lg);
 }
 
