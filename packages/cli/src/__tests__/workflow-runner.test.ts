@@ -166,6 +166,83 @@ describe('processError', () => {
 });
 
 describe('run', () => {
+	it('exposes the completion promise as soon as the execution is registered', async () => {
+		const activeExecutions = Container.get(ActiveExecutions);
+		vi.spyOn(activeExecutions, 'add').mockResolvedValue('1');
+		const completion = Promise.resolve(mock<IRun>());
+		vi.spyOn(activeExecutions, 'getPostExecutePromise').mockReturnValue(completion);
+		vi.spyOn(Container.get(CredentialsPermissionChecker), 'check').mockResolvedValueOnce();
+		const onExecutionRegistered = vi.fn();
+		// @ts-expect-error Private method
+		vi.spyOn(runner, 'runMainProcess').mockImplementationOnce(async () => {
+			expect(onExecutionRegistered).toHaveBeenCalledWith('1', completion);
+		});
+		const data = mock<IWorkflowExecutionDataProcess>({
+			executionMode: 'agent',
+			workflowData: {
+				id: 'workflow-id',
+				name: 'Agent tool workflow',
+				nodes: [],
+				connections: {},
+				settings: {},
+				staticData: {},
+			},
+			executionData: undefined,
+		});
+
+		await runner.run(data, undefined, undefined, undefined, undefined, {
+			onExecutionRegistered,
+		});
+
+		expect(onExecutionRegistered).toHaveBeenCalledWith('1', completion);
+	});
+
+	it.each([
+		{
+			behavior: 'throws',
+			callback: () => {
+				throw new Error('observer failed');
+			},
+		},
+		{
+			behavior: 'rejects',
+			callback: async () => {
+				throw new Error('observer failed');
+			},
+		},
+	])('continues execution when the registration observer $behavior', async ({ callback }) => {
+		const activeExecutions = Container.get(ActiveExecutions);
+		vi.spyOn(activeExecutions, 'add').mockResolvedValue('1');
+		vi.spyOn(activeExecutions, 'getPostExecutePromise').mockReturnValue(
+			Promise.resolve(mock<IRun>()),
+		);
+		vi.spyOn(Container.get(CredentialsPermissionChecker), 'check').mockResolvedValueOnce();
+		// @ts-expect-error Private method
+		vi.spyOn(runner, 'runMainProcess').mockResolvedValueOnce();
+		const reportError = vi.spyOn(Container.get(core.ErrorReporter), 'error').mockReturnValue();
+		const data = mock<IWorkflowExecutionDataProcess>({
+			executionMode: 'agent',
+			workflowData: {
+				id: 'workflow-id',
+				name: 'Agent tool workflow',
+				nodes: [],
+				connections: {},
+				settings: {},
+				staticData: {},
+			},
+			executionData: undefined,
+		});
+
+		await expect(
+			runner.run(data, undefined, undefined, undefined, undefined, {
+				onExecutionRegistered: callback,
+			}),
+		).resolves.toBe('1');
+		await vi.waitFor(() =>
+			expect(reportError).toHaveBeenCalledWith(expect.any(Error), { executionId: '1' }),
+		);
+	});
+
 	it('uses recreateNodeExecutionStack to create a partial execution if a triggerToStartFrom with data is sent', async () => {
 		// ARRANGE
 		const activeExecutions = Container.get(ActiveExecutions);
@@ -768,6 +845,64 @@ describe('needsFullExecutionData', () => {
 	});
 });
 
+describe('shouldEnqueue', () => {
+	const originalOffloadSetting = process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS;
+	const instanceSettings = Container.get(core.InstanceSettings);
+	const originalInstanceType = instanceSettings.instanceType;
+	const setInstanceType = (instanceType: core.InstanceSettings['instanceType']) => {
+		Object.defineProperty(instanceSettings, 'instanceType', {
+			configurable: true,
+			value: instanceType,
+		});
+	};
+
+	afterEach(() => {
+		globalConfig.executions.mode = 'regular';
+		setInstanceType(originalInstanceType);
+		if (originalOffloadSetting === undefined) {
+			delete process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS;
+		} else {
+			process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = originalOffloadSetting;
+		}
+	});
+
+	it.each([undefined, 'true'])(
+		'keeps agent sub-executions local on workers when offload is %s',
+		(setting) => {
+			globalConfig.executions.mode = 'queue';
+			setInstanceType('worker');
+			if (setting === undefined) delete process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS;
+			else process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = setting;
+
+			// @ts-expect-error Private method
+			expect(runner.shouldEnqueue('agent')).toBe(false);
+		},
+	);
+
+	it('enqueues agent sub-executions from a queue main', () => {
+		globalConfig.executions.mode = 'queue';
+		setInstanceType('main');
+
+		// @ts-expect-error Private method
+		expect(runner.shouldEnqueue('agent')).toBe(true);
+	});
+
+	it('runs agent sub-executions locally in regular mode', () => {
+		globalConfig.executions.mode = 'regular';
+		setInstanceType('main');
+
+		// @ts-expect-error Private method
+		expect(runner.shouldEnqueue('agent')).toBe(false);
+	});
+
+	it('enqueues root production executions in queue mode', () => {
+		globalConfig.executions.mode = 'queue';
+
+		// @ts-expect-error Private method
+		expect(runner.shouldEnqueue('trigger')).toBe(true);
+	});
+});
+
 describe('pre-persist context establishment', () => {
 	const callOrder: string[] = [];
 	let establishSpy: MockInstance;
@@ -945,6 +1080,7 @@ describe('pre-persist context establishment', () => {
 
 		it('creates a failed-execution record and rejects the responsePromise', async () => {
 			const data = buildRunData(buildExecutionDataWithHeader());
+			const finalizeExecution = vi.mocked(Container.get(ActiveExecutions).finalizeExecution);
 
 			const executionId = await runner.run(data, undefined, undefined, undefined, {
 				reject: responseReject,
@@ -960,6 +1096,17 @@ describe('pre-persist context establishment', () => {
 			expect(lifecycleRunHook).toHaveBeenCalledWith('workflowExecuteAfter', [expect.any(Object)]);
 			expect(responseReject).toHaveBeenCalledWith(
 				expect.objectContaining({ message: 'hook augmentation failed' }),
+			);
+			expect(finalizeExecution).toHaveBeenCalledWith(
+				'exec-1',
+				expect.objectContaining({
+					status: 'error',
+					data: expect.objectContaining({
+						resultData: expect.objectContaining({
+							error: expect.objectContaining({ message: 'hook augmentation failed' }),
+						}),
+					}),
+				}),
 			);
 		});
 	});

@@ -14,6 +14,9 @@ import type {
 	IExecuteResponsePromiseData,
 	INode,
 	IPinData,
+	IRun,
+	IRunData,
+	ITaskData,
 	IWorkflowExecutionDataProcess,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
@@ -30,6 +33,7 @@ import { z } from 'zod';
 
 import type { ActiveExecutions } from '@/active-executions';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
+import type { AgentRunTelemetryType } from '@/interfaces';
 import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
 import type { WorkflowRunner } from '@/workflow-runner';
 
@@ -83,6 +87,7 @@ export interface WorkflowToolContext {
 	workflowRunner: WorkflowRunner;
 	activeExecutions: ActiveExecutions;
 	projectId: string;
+	runType: AgentRunTelemetryType;
 	/** Base URL for webhooks/forms (e.g. http://localhost:5678/) */
 	webhookBaseUrl?: string;
 	/** Eval-only additionalData decoration for the sub-execution — absent on every production path. */
@@ -287,16 +292,16 @@ export async function executeWorkflow(
 	// Build pin data for the trigger
 	const triggerPinData = normalizeTriggerInput(triggerNode, triggerType, inputData);
 
-	// Merge with workflow's existing pinData
-	const workflowPinData = workflow.pinData ?? {};
+	// Saved pin data is an editor fixture and must not affect published agent runs.
+	const workflowPinData = context.runType === 'test' ? (workflow.pinData ?? {}) : {};
 	const mergedPinData: IPinData = { ...workflowPinData, ...triggerPinData };
 
-	// Determine execution mode from trigger type
-	const executionMode: WorkflowExecuteMode = triggerType === 'chat' ? 'chat' : 'manual';
+	const executionMode: WorkflowExecuteMode = context.runType === 'test' ? 'manual' : 'agent';
 
 	// Build execution data following Instance AI adapter's pattern
 	const runData: IWorkflowExecutionDataProcess = {
 		executionMode,
+		forceFullExecutionData: true,
 		workflowData: workflow,
 		startNodes: [{ name: triggerNode.name, sourceData: null }],
 		pinData: mergedPinData,
@@ -337,18 +342,31 @@ export async function executeWorkflow(
 		})
 		.catch(() => {});
 
+	let registeredCompletion: Promise<IRun | undefined> | undefined;
 	const executionId = await workflowRunner.run(
 		runData,
 		undefined,
 		undefined,
 		undefined,
 		responsePromise,
+		{
+			onExecutionRegistered: (_executionId, completion) => {
+				registeredCompletion = completion;
+			},
+		},
 	);
 
 	// Wait for completion with timeout protection
 	const timeoutMs = DEFAULT_TIMEOUT_MS;
 
-	if (activeExecutions.has(executionId)) {
+	const completion =
+		registeredCompletion ??
+		(activeExecutions.has(executionId)
+			? activeExecutions.getPostExecutePromise(executionId)
+			: undefined);
+	let completedRun: IRun | undefined;
+
+	if (completion) {
 		let timeoutId: NodeJS.Timeout | undefined;
 		const timeoutPromise = new Promise<never>((_, reject) => {
 			timeoutId = setTimeout(() => {
@@ -357,7 +375,7 @@ export async function executeWorkflow(
 		});
 
 		try {
-			await Promise.race([activeExecutions.getPostExecutePromise(executionId), timeoutPromise]);
+			completedRun = await Promise.race([completion, timeoutPromise]);
 			clearTimeout(timeoutId);
 		} catch (error) {
 			clearTimeout(timeoutId);
@@ -380,7 +398,9 @@ export async function executeWorkflow(
 		}
 	}
 
-	const result = await extractResult(executionId, allOutputs);
+	const result = completedRun
+		? formatResult(executionId, completedRun.status, completedRun.data, allOutputs)
+		: await extractResult(executionId, allOutputs);
 	if (isWorkflowToolResponse(webhookResponse)) {
 		const response = await Container.get(WebhookResponseRelay).restoreOffloadedBody(
 			webhookResponse,
@@ -407,22 +427,14 @@ function normaliseExecutionStatus(status: string | undefined): string {
 }
 
 /** Extract the JSON items produced by the last run of a node. */
-function outputItemsFromNodeRuns(
-	nodeRuns: Array<{ data?: { main?: Array<Array<{ json: unknown } | null | undefined>> } }>,
-): unknown[] {
+function outputItemsFromNodeRuns(nodeRuns: ITaskData[]): unknown[] {
 	const lastRun = nodeRuns[nodeRuns.length - 1];
 	if (!lastRun?.data?.main) return [];
-	return lastRun.data.main
-		.flat()
-		.filter((item): item is NonNullable<typeof item> => item !== null && item !== undefined)
-		.map((item) => item.json);
+	return lastRun.data.main.flatMap((items) => items ?? []).map((item) => item.json);
 }
 
 /** Build the resultData map from an execution's runData, scoped by `allOutputs`. */
-function collectResultData(
-	runData: Record<string, Parameters<typeof outputItemsFromNodeRuns>[0]>,
-	allOutputs: boolean,
-): Record<string, unknown> {
+function collectResultData(runData: IRunData, allOutputs: boolean): Record<string, unknown> {
 	const resultData: Record<string, unknown> = {};
 
 	if (allOutputs) {
@@ -446,6 +458,23 @@ function collectResultData(
 	return resultData;
 }
 
+function formatResult(
+	executionId: string,
+	status: string | undefined,
+	data: IRun['data'] | undefined,
+	allOutputs: boolean,
+) {
+	const runData = data?.resultData?.runData;
+	const resultData = runData ? collectResultData(runData, allOutputs) : {};
+
+	return {
+		executionId,
+		status: normaliseExecutionStatus(status),
+		data: Object.keys(resultData).length > 0 ? truncateResultData(resultData) : undefined,
+		error: data?.resultData?.error?.message,
+	};
+}
+
 export async function extractResult(
 	executionId: string,
 	allOutputs: boolean,
@@ -464,20 +493,7 @@ export async function extractResult(
 		return { executionId, status: 'unknown' };
 	}
 
-	const runData = execution.data?.resultData?.runData;
-	const resultData = runData
-		? collectResultData(
-				runData as Record<string, Parameters<typeof outputItemsFromNodeRuns>[0]>,
-				allOutputs,
-			)
-		: {};
-
-	return {
-		executionId,
-		status: normaliseExecutionStatus(execution.status),
-		data: Object.keys(resultData).length > 0 ? truncateResultData(resultData) : undefined,
-		error: execution.data?.resultData?.error?.message,
-	};
+	return formatResult(executionId, execution.status, execution.data, allOutputs);
 }
 
 // ---------------------------------------------------------------------------

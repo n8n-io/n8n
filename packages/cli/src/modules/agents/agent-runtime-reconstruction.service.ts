@@ -101,12 +101,11 @@ export interface ReconstructAgentRuntimeParams {
 	skills: Record<string, AgentSkill>;
 	runtimeProfile: AgentRuntimeProfile;
 	/**
-	 * Telemetry classification of the run this runtime serves. Baked in at build
-	 * time because it is a property of the runtime itself — a draft runtime is
-	 * always a test run, a published one always production — and the runtime
-	 * cache keys on exactly that split. Delegated children inherit it, so a
-	 * sub-agent invoked from a preview chat reports `test` even though it runs
-	 * its own published snapshot.
+	 * Test/production classification of the run this runtime serves. Baked in at
+	 * build time because it is a property of the runtime itself — a draft runtime
+	 * is always a test run, a published one always production — and the runtime
+	 * cache keys on exactly that split. Workflow tools and delegated children
+	 * inherit it from the parent run.
 	 */
 	runType: AgentRunTelemetryType;
 	/** Delegating parent agent id for sub-agent runs; defaults to memoryOwnerAgentId for top-level. */
@@ -360,7 +359,7 @@ export class AgentRuntimeReconstructionService {
 		} = options;
 
 		const toolExecutor = this.secureRuntime.createToolExecutor(toolCodeByName);
-		const toolResolver = this.makeToolResolver(projectId, instrumentation);
+		const toolResolver = this.makeToolResolver(projectId, runType, instrumentation);
 		const resolvedTools: BuiltTool[] = [];
 
 		// Transport for LLM calls
@@ -512,6 +511,7 @@ export class AgentRuntimeReconstructionService {
 	}
 	private makeToolResolver(
 		projectId: string,
+		runType: AgentRunTelemetryType,
 		instrumentation?: AgentRuntimeInstrumentation,
 	): ToolResolver {
 		const instrumentToolAdditionalData = instrumentation?.configureToolAdditionalData;
@@ -523,6 +523,7 @@ export class AgentRuntimeReconstructionService {
 					workflowRunner: await getWorkflowRunner(),
 					activeExecutions: this.activeExecutions,
 					projectId,
+					runType,
 					webhookBaseUrl: this.urlService.getWebhookBaseUrl(),
 					instrumentToolAdditionalData,
 				});

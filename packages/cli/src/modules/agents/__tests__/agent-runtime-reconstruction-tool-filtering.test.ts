@@ -20,6 +20,7 @@ import type { OauthService } from '@/oauth/oauth.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import type { AiService } from '@/services/ai.service';
 import type { UrlService } from '@/services/url.service';
+import { WorkflowRunner } from '@/workflow-runner';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
@@ -37,6 +38,17 @@ import { SubAgentForegroundRunner } from '../sub-agents/sub-agent-foreground-run
 
 vi.mock('@/permissions.ee/check-access', () => ({
 	userHasScopes: vi.fn(),
+}));
+
+const { resolveWorkflowToolMock } = vi.hoisted(() => ({
+	resolveWorkflowToolMock: vi.fn().mockResolvedValue({
+		name: 'Lookup_customer',
+		description: 'Lookup a customer',
+	}),
+}));
+
+vi.mock('../tools/workflow-tool-factory', () => ({
+	resolveWorkflowTool: (...args: unknown[]) => resolveWorkflowToolMock(...args),
 }));
 
 const projectId = 'project-1';
@@ -153,11 +165,19 @@ function toolNamesPassedToBuildFromJson(): string[] {
 	);
 }
 
+function toolResolverPassedToBuildFromJson() {
+	const [, , options] = buildFromJsonMock.mock.calls.at(-1) as Parameters<
+		typeof FromJsonConfig.buildFromJson
+	>;
+	return options.resolveTool;
+}
+
 describe('AgentRuntimeReconstructionService — per-user tool filtering', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		builtAgent.hasCheckpointStorage.mockReturnValue(true);
 		Container.set(SubAgentForegroundRunner, mock<SubAgentForegroundRunner>());
+		Container.set(WorkflowRunner, mock<WorkflowRunner>());
 	});
 
 	afterEach(() => {
@@ -176,6 +196,22 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 			expect.arrayContaining(['Send Slack message', 'Lookup customer', 'custom_tool']),
 		);
 	});
+
+	it.each(['test', 'production'] as const)(
+		'passes the %s run type to workflow tool resolution',
+		async (runType) => {
+			const { service } = makeService({});
+			const entity = makeAgentEntity([workflowTool]);
+
+			await service.reconstructFromAgentEntity(entity, mock<CredentialProvider>(), runType);
+			await toolResolverPassedToBuildFromJson()?.(workflowTool);
+
+			expect(resolveWorkflowToolMock).toHaveBeenCalledWith(
+				workflowTool,
+				expect.objectContaining({ projectId, runType }),
+			);
+		},
+	);
 
 	it('drops node and workflow tools for a user without workflow:execute, keeps custom tools', async () => {
 		vi.mocked(userHasScopes).mockResolvedValue(false);

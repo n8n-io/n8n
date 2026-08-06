@@ -40,6 +40,7 @@ properties:
         'webhook',
         'evaluation',
         'chat',
+        'agent',
       ]
   retryOf:
     type: number

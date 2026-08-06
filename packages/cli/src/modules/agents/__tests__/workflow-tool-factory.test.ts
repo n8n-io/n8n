@@ -96,6 +96,7 @@ function makeContext(foundWorkflow: WorkflowEntity | null): WorkflowToolContext 
 		workflowRunner,
 		activeExecutions,
 		projectId: 'project-1',
+		runType: 'test',
 	};
 }
 

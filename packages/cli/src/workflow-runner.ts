@@ -71,6 +71,13 @@ function flushResponse(res: { flush?: () => void }) {
 	}
 }
 
+export interface WorkflowRunnerCallbacks {
+	onExecutionRegistered?: (
+		executionId: string,
+		completion: Promise<IRun | undefined>,
+	) => void | Promise<void>;
+}
+
 @Service()
 export class WorkflowRunner {
 	private scalingService: ScalingService;
@@ -177,7 +184,7 @@ export class WorkflowRunner {
 		await lifecycleHooks.runHook('workflowExecuteBefore', [undefined, data.executionData]);
 		await lifecycleHooks.runHook('workflowExecuteAfter', [runData]);
 		responsePromise?.reject(error);
-		this.activeExecutions.finalizeExecution(executionId);
+		this.activeExecutions.finalizeExecution(executionId, runData);
 	}
 
 	/** Run the workflow
@@ -189,6 +196,7 @@ export class WorkflowRunner {
 		realtime?: boolean,
 		existingExecution?: ResumableExecution,
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
+		callbacks?: WorkflowRunnerCallbacks,
 	): Promise<string> {
 		// Establish the execution context before persisting to the DB.
 		// activeExecutions.add() -> executionPersistence.create() writes
@@ -236,6 +244,13 @@ export class WorkflowRunner {
 
 		// Register a new execution
 		const executionId = await this.activeExecutions.add(data, existingExecution);
+		if (callbacks?.onExecutionRegistered) {
+			this.notifyExecutionRegistered(
+				callbacks,
+				executionId,
+				this.activeExecutions.getPostExecutePromise(executionId),
+			);
+		}
 
 		if (establishContextError) {
 			await this.failExecution(data, executionId, establishContextError, responsePromise);
@@ -269,13 +284,7 @@ export class WorkflowRunner {
 			}, STREAMING_HEARTBEAT_INTERVAL_MS);
 		}
 
-		// @TODO: Reduce to true branch once feature is stable
-		const shouldEnqueue =
-			process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS === 'true'
-				? this.executionsConfig.mode === 'queue'
-				: this.executionsConfig.mode === 'queue' && data.executionMode !== 'manual';
-
-		if (shouldEnqueue) {
+		if (this.shouldEnqueue(data.executionMode)) {
 			await this.enqueueExecution(
 				executionId,
 				workflowId,
@@ -322,6 +331,34 @@ export class WorkflowRunner {
 		}
 
 		return executionId;
+	}
+
+	private notifyExecutionRegistered(
+		callbacks: WorkflowRunnerCallbacks | undefined,
+		executionId: string,
+		completion: Promise<IRun | undefined>,
+	): void {
+		const observer = callbacks?.onExecutionRegistered;
+		if (!observer) return;
+
+		try {
+			const observerResult = observer(executionId, completion);
+			if (observerResult) {
+				void observerResult.catch((error) => this.errorReporter.error(error, { executionId }));
+			}
+		} catch (error) {
+			this.errorReporter.error(error, { executionId });
+		}
+	}
+
+	private shouldEnqueue(executionMode: WorkflowExecuteMode): boolean {
+		// Agent tool workflows can run inside a worker. Re-enqueuing them can deadlock a small pool.
+		if (executionMode === 'agent' && this.instanceSettings.instanceType === 'worker') return false;
+
+		// @TODO: Reduce to true branch once feature is stable
+		return process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS === 'true'
+			? this.executionsConfig.mode === 'queue'
+			: this.executionsConfig.mode === 'queue' && executionMode !== 'manual';
 	}
 
 	/** Run the workflow in current process */

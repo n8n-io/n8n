@@ -353,35 +353,40 @@ describe('ConcurrencyControlService', () => {
 
 	describe('if enabled', () => {
 		describe('throttle', () => {
-			it.each<ExecutionMode>(['cli', 'error', 'integrated', 'internal', 'manual', 'retry'])(
-				'should do nothing on %s mode',
-				async (mode) => {
-					/**
-					 * Arrange
-					 */
-					globalConfig.executions.concurrency.productionLimit = 1;
+			it.each<ExecutionMode>([
+				'agent',
+				'cli',
+				'error',
+				'integrated',
+				'internal',
+				'manual',
+				'retry',
+			])('should do nothing on %s mode', async (mode) => {
+				/**
+				 * Arrange
+				 */
+				globalConfig.executions.concurrency.productionLimit = 1;
 
-					const service = new ConcurrencyControlService(
-						logger,
-						executionRepository,
-						telemetry,
-						eventService,
-						globalConfig,
-						license,
-					);
-					const enqueueSpy = vi.spyOn(ConcurrencyQueue.prototype, 'enqueue');
+				const service = new ConcurrencyControlService(
+					logger,
+					executionRepository,
+					telemetry,
+					eventService,
+					globalConfig,
+					license,
+				);
+				const enqueueSpy = vi.spyOn(ConcurrencyQueue.prototype, 'enqueue');
 
-					/**
-					 * Act
-					 */
-					await service.throttle({ mode, executionId: '1' });
+				/**
+				 * Act
+				 */
+				await service.throttle({ mode, executionId: '1' });
 
-					/**
-					 * Assert
-					 */
-					expect(enqueueSpy).not.toHaveBeenCalled();
-				},
-			);
+				/**
+				 * Assert
+				 */
+				expect(enqueueSpy).not.toHaveBeenCalled();
+			});
 
 			it.each<ExecutionMode>(['webhook', 'trigger', 'chat'])(
 				'should enqueue on %s mode',
@@ -442,35 +447,40 @@ describe('ConcurrencyControlService', () => {
 		});
 
 		describe('release', () => {
-			it.each<ExecutionMode>(['cli', 'error', 'integrated', 'internal', 'manual', 'retry'])(
-				'should do nothing on %s mode',
-				async (mode) => {
-					/**
-					 * Arrange
-					 */
-					globalConfig.executions.concurrency.evaluationLimit = 1;
+			it.each<ExecutionMode>([
+				'agent',
+				'cli',
+				'error',
+				'integrated',
+				'internal',
+				'manual',
+				'retry',
+			])('should do nothing on %s mode', async (mode) => {
+				/**
+				 * Arrange
+				 */
+				globalConfig.executions.concurrency.evaluationLimit = 1;
 
-					const service = new ConcurrencyControlService(
-						logger,
-						executionRepository,
-						telemetry,
-						eventService,
-						globalConfig,
-						license,
-					);
-					const dequeueSpy = vi.spyOn(ConcurrencyQueue.prototype, 'dequeue');
+				const service = new ConcurrencyControlService(
+					logger,
+					executionRepository,
+					telemetry,
+					eventService,
+					globalConfig,
+					license,
+				);
+				const dequeueSpy = vi.spyOn(ConcurrencyQueue.prototype, 'dequeue');
 
-					/**
-					 * Act
-					 */
-					await service.throttle({ mode, executionId: '1' });
+				/**
+				 * Act
+				 */
+				await service.throttle({ mode, executionId: '1' });
 
-					/**
-					 * Assert
-					 */
-					expect(dequeueSpy).not.toHaveBeenCalled();
-				},
-			);
+				/**
+				 * Assert
+				 */
+				expect(dequeueSpy).not.toHaveBeenCalled();
+			});
 
 			it.each<ExecutionMode>(['webhook', 'trigger', 'chat'])(
 				'should dequeue on %s mode',
@@ -531,35 +541,40 @@ describe('ConcurrencyControlService', () => {
 		});
 
 		describe('remove', () => {
-			it.each<ExecutionMode>(['cli', 'error', 'integrated', 'internal', 'manual', 'retry'])(
-				'should do nothing on %s mode',
-				async (mode) => {
-					/**
-					 * Arrange
-					 */
-					globalConfig.executions.concurrency.productionLimit = 1;
+			it.each<ExecutionMode>([
+				'agent',
+				'cli',
+				'error',
+				'integrated',
+				'internal',
+				'manual',
+				'retry',
+			])('should do nothing on %s mode', async (mode) => {
+				/**
+				 * Arrange
+				 */
+				globalConfig.executions.concurrency.productionLimit = 1;
 
-					const service = new ConcurrencyControlService(
-						logger,
-						executionRepository,
-						telemetry,
-						eventService,
-						globalConfig,
-						license,
-					);
-					const removeSpy = vi.spyOn(ConcurrencyQueue.prototype, 'remove');
+				const service = new ConcurrencyControlService(
+					logger,
+					executionRepository,
+					telemetry,
+					eventService,
+					globalConfig,
+					license,
+				);
+				const removeSpy = vi.spyOn(ConcurrencyQueue.prototype, 'remove');
 
-					/**
-					 * Act
-					 */
-					await service.throttle({ mode, executionId: '1' });
+				/**
+				 * Act
+				 */
+				await service.throttle({ mode, executionId: '1' });
 
-					/**
-					 * Assert
-					 */
-					expect(removeSpy).not.toHaveBeenCalled();
-				},
-			);
+				/**
+				 * Assert
+				 */
+				expect(removeSpy).not.toHaveBeenCalled();
+			});
 
 			it.each<ExecutionMode>(['webhook', 'trigger', 'chat'])(
 				'should remove an execution on %s mode',
