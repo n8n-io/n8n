@@ -1,9 +1,19 @@
 import { execSync } from 'child_process';
 
+import { getBackendUrl, getFrontendUrl, getPortFromUrl } from './utils/url-helper';
+
 function globalTeardown() {
 	console.log('🧹 Starting global teardown...');
 
-	const ports = [5678, 8080];
+	// Kill the ports this run actually used (they may differ from the
+	// defaults, e.g. the alt-port dev-server smoke runs the backend on 5699).
+	const ports = [
+		...new Set(
+			[getBackendUrl(), getFrontendUrl()]
+				.filter((url): url is string => !!url)
+				.map((url) => Number(getPortFromUrl(url))),
+		),
+	];
 
 	for (const port of ports) {
 		try {

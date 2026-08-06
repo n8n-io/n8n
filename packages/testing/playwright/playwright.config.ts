@@ -81,7 +81,9 @@ if (IS_DEV && FRONTEND_URL) {
 		reuseExistingServer: IS_DEV ? false : true,
 		env: {
 			E2E_TESTS: 'true',
-			N8N_PORT: getPortFromUrl(FRONTEND_URL),
+			// The dev frontend derives its backend URL (BASE_PATH + REST base)
+			// from N8N_PORT, so pass the backend's port, not the frontend's.
+			...(BACKEND_URL ? { N8N_PORT: getPortFromUrl(BACKEND_URL) } : {}),
 			...getTestEnv(),
 		},
 	});
