@@ -4,9 +4,11 @@ import { Get, GlobalScope, Licensed, RestController } from '@n8n/decorators';
 import { jsonParse } from 'n8n-workflow';
 
 import type { TrustedKeySourceEntity } from '@/modules/identity-substrate/database/entities/trusted-key-source.entity';
+import type {
+	JwksKeySource,
+	StaticKeySource,
+} from '@/modules/identity-substrate/identity-substrate.schemas';
 import { TrustedKeyService } from '@/modules/identity-substrate/services/trusted-key.service';
-
-import type { JwksKeySource, StaticKeySource } from '../token-exchange.schemas';
 
 /**
  * Strips raw key material from a source's `config` before it leaves the

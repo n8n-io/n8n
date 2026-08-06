@@ -8,12 +8,12 @@ import type {
 } from '@/services/protected-resource.registry';
 import type { UrlService } from '@/services/url.service';
 
-import type { TokenExchangeConfig } from '../../token-exchange.config';
+import type { IdentitySubstrateConfig } from '../../identity-substrate.config';
 import { InboundAudienceService } from '../inbound-audience.service';
 
 describe('InboundAudienceService', () => {
 	let registry: Mocked<ProtectedResourceRegistry>;
-	let config: TokenExchangeConfig;
+	let config: IdentitySubstrateConfig;
 	let urlService: Mocked<UrlService>;
 	let service: InboundAudienceService;
 
@@ -24,7 +24,7 @@ describe('InboundAudienceService', () => {
 		registry = {
 			getByWorkflowNode: vi.fn(),
 		} as unknown as Mocked<ProtectedResourceRegistry>;
-		config = { inboundAudience: '' } as TokenExchangeConfig;
+		config = { inboundAudience: '' } as IdentitySubstrateConfig;
 		urlService = {
 			getInstanceBaseUrl: vi.fn().mockReturnValue('https://n8n.example.com'),
 		} as unknown as Mocked<UrlService>;

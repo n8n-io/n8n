@@ -1,12 +1,12 @@
 import { GLOBAL_MEMBER_ROLE, type User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
+import type { ResolvedTrustedKey } from '@/modules/identity-substrate/identity-substrate.schemas';
 import type { ExternalTokenVerifierService } from '@/modules/identity-substrate/services/external-token-verifier.service';
+import type { IdentityResolutionService } from '@/modules/identity-substrate/services/identity-resolution.service';
 import type { JwtService } from '@/services/jwt.service';
 
 import type { TokenExchangeConfig } from '../../token-exchange.config';
-import type { ResolvedTrustedKey } from '../../token-exchange.schemas';
-import type { IdentityResolutionService } from '../identity-resolution.service';
 import { TokenExchangeService } from '../token-exchange.service';
 
 const externalTokenVerifierService = mock<ExternalTokenVerifierService>();

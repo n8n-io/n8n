@@ -6,10 +6,9 @@ import { jsonParse } from 'n8n-workflow';
 import { createHash } from 'node:crypto';
 import { mock } from 'vitest-mock-extended';
 
-import type { TokenExchangeConfig } from '@/modules/token-exchange/token-exchange.config';
-
 import { TrustedKeySourceEntity } from '../../database/entities/trusted-key-source.entity';
 import type { TrustedKeySourceRepository } from '../../database/repositories/trusted-key-source.repository';
+import type { IdentitySubstrateConfig } from '../../identity-substrate.config';
 import type { JwksResolverService } from '../jwks-resolver';
 import { TrustedKeySyncService } from '../trusted-key-sync.service';
 
@@ -38,7 +37,7 @@ function createMocks({
 	trustedKeys = '',
 	inboundSubjectClaim = '',
 }: { isLeader?: boolean; trustedKeys?: string; inboundSubjectClaim?: string } = {}) {
-	const config = mock<TokenExchangeConfig>({
+	const config = mock<IdentitySubstrateConfig>({
 		trustedKeys,
 		keyRefreshIntervalSeconds: 300,
 		inboundSubjectClaim,

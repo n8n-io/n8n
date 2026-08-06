@@ -7,7 +7,7 @@ import type {
 	TrustedKeyData,
 	TrustedKeySourceStatus,
 	TrustedKeySourceType,
-} from '@/modules/token-exchange/token-exchange.schemas';
+} from '@/modules/identity-substrate/identity-substrate.schemas';
 
 const makeSource = (
 	overrides: Partial<{

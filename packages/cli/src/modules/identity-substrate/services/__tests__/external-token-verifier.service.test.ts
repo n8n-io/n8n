@@ -3,10 +3,9 @@ import jwt from 'jsonwebtoken';
 import { generateKeyPairSync } from 'node:crypto';
 import { mock } from 'vitest-mock-extended';
 
-import type { InboundAudienceService } from '@/modules/token-exchange/context-establishment-hooks/inbound-audience.service';
-import { TokenExchangeAuthError } from '@/modules/token-exchange/token-exchange.errors';
-import type { ResolvedTrustedKey } from '@/modules/token-exchange/token-exchange.schemas';
-
+import type { InboundAudienceService } from '../../context-establishment-hooks/inbound-audience.service';
+import { TokenExchangeAuthError } from '../../identity-substrate.errors';
+import type { ResolvedTrustedKey } from '../../identity-substrate.schemas';
 import { ExternalTokenVerifierService } from '../external-token-verifier.service';
 import type { JtiStoreService } from '../jti-store.service';
 import type { TrustedKeyService } from '../trusted-key.service';

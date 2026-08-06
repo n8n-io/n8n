@@ -5,8 +5,9 @@ import { generateKeyPairSync, randomUUID } from 'crypto';
 import jwt from 'jsonwebtoken';
 import { InstanceSettings } from 'n8n-core';
 
+import { IdentitySubstrateConfig } from '@/modules/identity-substrate/identity-substrate.config';
+import { qualifiedProviderId } from '@/modules/identity-substrate/services/identity-resolution.service';
 import { TrustedKeySyncService } from '@/modules/identity-substrate/services/trusted-key-sync.service';
-import { qualifiedProviderId } from '@/modules/token-exchange/services/identity-resolution.service';
 import { TokenExchangeConfig } from '@/modules/token-exchange/token-exchange.config';
 import { TOKEN_EXCHANGE_GRANT_TYPE } from '@/modules/token-exchange/token-exchange.schemas';
 import {
@@ -74,6 +75,7 @@ const testServer = utils.setupTestServer({
 });
 
 let config: TokenExchangeConfig;
+let substrateConfig: IdentitySubstrateConfig;
 let jwtService: JwtService;
 
 beforeAll(async () => {
@@ -83,7 +85,8 @@ beforeAll(async () => {
 
 	config = Container.get(TokenExchangeConfig);
 	config.enabled = true;
-	config.trustedKeys = JSON.stringify([
+	substrateConfig = Container.get(IdentitySubstrateConfig);
+	substrateConfig.trustedKeys = JSON.stringify([
 		{
 			type: 'static',
 			kid: KID,
