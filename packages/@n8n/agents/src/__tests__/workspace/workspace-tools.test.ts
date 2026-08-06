@@ -1,4 +1,4 @@
-import { toModelJsonSchema } from '../../utils/zod';
+import { zodToJsonSchema } from '../../utils/zod';
 import { createWorkspaceTools } from '../../workspace/tools/workspace-tools';
 import type { WorkspaceFilesystem, WorkspaceSandbox, CommandResult } from '../../workspace/types';
 
@@ -126,8 +126,8 @@ describe('createWorkspaceTools', () => {
 			const strReplaceTool = tools.find((t) => t.name === 'workspace_str_replace_file')!;
 			const batchStrReplaceTool = tools.find((t) => t.name === 'workspace_batch_str_replace_file')!;
 
-			expect(toModelJsonSchema(strReplaceTool.inputSchema)).toMatchObject({ type: 'object' });
-			expect(toModelJsonSchema(batchStrReplaceTool.inputSchema)).toMatchObject({
+			expect(zodToJsonSchema(strReplaceTool.inputSchema)).toMatchObject({ type: 'object' });
+			expect(zodToJsonSchema(batchStrReplaceTool.inputSchema)).toMatchObject({
 				type: 'object',
 			});
 		});

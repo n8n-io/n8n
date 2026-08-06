@@ -5013,7 +5013,7 @@ export class InstanceAiService {
 			if (!resumeClaimed) {
 				skipPostRunCleanup = true;
 				const claimError = result.error ?? new Error('Resume checkpoint claim did not complete');
-				await this.settleUnclaimedResume(opts, claimError);
+				await this.settleUnclaimedResume(opts, claimError, 'stream');
 				return;
 			}
 			if (result.status === 'suspended') {
@@ -5255,7 +5255,7 @@ export class InstanceAiService {
 		} catch (error) {
 			if (!resumeClaimed) {
 				skipPostRunCleanup = true;
-				await this.settleUnclaimedResume(opts, error);
+				await this.settleUnclaimedResume(opts, error, 'exception');
 				return;
 			}
 
@@ -5441,7 +5441,11 @@ export class InstanceAiService {
 	 * A stale resume means another owner is driving the run — it may still finish
 	 * successfully, so telling this user anything would be wrong.
 	 */
-	private async settleUnclaimedResume(opts: UnclaimedResumeContext, error: unknown): Promise<void> {
+	private async settleUnclaimedResume(
+		opts: UnclaimedResumeContext,
+		error: unknown,
+		errorSource: RunFinishErrorInfo['errorSource'],
+	): Promise<void> {
 		if (isStaleResumeError(error)) {
 			await this.tracing.finalizeDetachedTraceRun(
 				`stale-resume:${opts.runId}`,
@@ -5455,11 +5459,15 @@ export class InstanceAiService {
 			return;
 		}
 
-		await this.failUnclaimedResume(opts, error);
+		await this.failUnclaimedResume(opts, error, errorSource);
 	}
 
 	/** Nothing else will report back on this run, so the user has to be told. */
-	private async failUnclaimedResume(opts: UnclaimedResumeContext, error: unknown): Promise<void> {
+	private async failUnclaimedResume(
+		opts: UnclaimedResumeContext,
+		error: unknown,
+		errorSource: RunFinishErrorInfo['errorSource'],
+	): Promise<void> {
 		this.instanceAiErrorReporter.report(error, {
 			component: 'instance-ai-resume-claim',
 			threadId: opts.threadId,
@@ -5488,7 +5496,7 @@ export class InstanceAiService {
 			messageGroupId: opts.messageGroupId,
 			errorMessage: getUserFacingErrorMessage(error),
 			errorCode: getUserFacingErrorCode(error),
-			errorInfo: { errorMessage: getErrorMessage(error), errorSource: 'exception' },
+			errorInfo: { errorMessage: getErrorMessage(error), errorSource },
 			userId: opts.user.id,
 			archivedWorkflowIds: await this.reapTemporaryWorkflowsForUnclaimedResume(opts),
 			snapshotStorage: opts.snapshotStorage,

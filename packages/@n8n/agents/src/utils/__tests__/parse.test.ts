@@ -315,10 +315,10 @@ describe('parseWithSchema — JSON Schema dialects', () => {
 });
 
 // ---------------------------------------------------------------------------
-// parseWithSchema — long-lived Ajv instances
+// parseWithSchema — schemas that declare an $id
 // ---------------------------------------------------------------------------
 
-describe('parseWithSchema — long-lived Ajv instances', () => {
+describe('parseWithSchema — schemas that declare an $id', () => {
 	const withId = (): JSONSchema7 =>
 		({
 			$id: 'https://example.com/parse-test/tool-input',
@@ -335,6 +335,23 @@ describe('parseWithSchema — long-lived Ajv instances', () => {
 			expect(invalid.success).toBe(false);
 			if (!invalid.success) expect(invalid.schemaInvalid).toBeUndefined();
 		}
+	});
+
+	it('resolves a recursive $ref back to the root $id', async () => {
+		const schema = {
+			$id: 'https://example.com/parse-test/node',
+			type: 'object' as const,
+			properties: {
+				name: { type: 'string' },
+				next: { $ref: 'https://example.com/parse-test/node' },
+			},
+			required: ['name'],
+		} as unknown as JSONSchema7;
+
+		expect((await parseWithSchema(schema, { name: 'a', next: { name: 'b' } })).success).toBe(true);
+		const invalid = await parseWithSchema(schema, { name: 'a', next: { name: 1 } });
+		expect(invalid.success).toBe(false);
+		if (!invalid.success) expect(invalid.schemaInvalid).toBeUndefined();
 	});
 
 	it('resolves internal $refs without registering the schema globally', async () => {

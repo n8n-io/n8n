@@ -40,11 +40,7 @@ export function lockAdditionalProperties(schema: JSONSchema7): JSONSchema7 {
 	return typeof result === 'object' ? result : schema;
 }
 
-/**
- * `closeSelf: false` marks a subschema that is evaluated against the *same*
- * instance as its parent — closing it would reject the parent's own properties.
- */
-function lockDefinition(schema: JSONSchema7Definition, closeSelf = true): JSONSchema7Definition {
+function lockDefinition(schema: JSONSchema7Definition): JSONSchema7Definition {
 	if (typeof schema !== 'object' || schema === null) return schema;
 
 	const result: JSONSchema7 = { ...schema };
@@ -59,63 +55,46 @@ function lockDefinition(schema: JSONSchema7Definition, closeSelf = true): JSONSc
 		(Array.isArray(result.type) && result.type.includes('object')) ||
 		result.properties !== undefined;
 
-	if (closeSelf && isObjectSchema && !composesOtherSchemas(result)) {
-		result.additionalProperties ??= false;
+	if (isObjectSchema && result.additionalProperties === undefined) {
+		result.additionalProperties = false;
 	}
 
-	for (const key of ['properties', 'patternProperties', '$defs', 'definitions'] as const) {
-		const record = result[key];
-		if (record) result[key] = lockDefinitions(record);
+	if (result.properties) {
+		result.properties = mapDefinitions(result.properties);
+	}
+	if (result.$defs) {
+		result.$defs = mapDefinitions(result.$defs);
+	}
+	if (result.definitions) {
+		result.definitions = mapDefinitions(result.definitions);
 	}
 	if (result.items !== undefined) {
 		result.items = Array.isArray(result.items)
-			? result.items.map((item) => lockDefinition(item))
+			? result.items.map(lockDefinition)
 			: lockDefinition(result.items);
 	}
 	if (typeof result.additionalProperties === 'object' && result.additionalProperties !== null) {
 		result.additionalProperties = lockDefinition(result.additionalProperties);
 	}
-	// `anyOf`/`oneOf` branches are standalone alternatives that fully describe the
-	// instance, so closing them is correct.
-	for (const key of ['anyOf', 'oneOf'] as const) {
+	for (const key of ['allOf', 'anyOf', 'oneOf'] as const) {
 		const branch = result[key];
-		if (Array.isArray(branch)) result[key] = branch.map((item) => lockDefinition(item));
+		if (Array.isArray(branch)) {
+			result[key] = branch.map(lockDefinition);
+		}
 	}
-	if (Array.isArray(result.allOf)) {
-		result.allOf = result.allOf.map((item) => lockDefinition(item, false));
+	if (result.not !== undefined) {
+		result.not = lockDefinition(result.not);
 	}
-	for (const key of ['not', 'if', 'then', 'else'] as const) {
-		if (result[key] !== undefined) result[key] = lockDefinition(result[key], false);
-	}
-	if (result.contains !== undefined) result.contains = lockDefinition(result.contains);
 
 	return result;
 }
 
-const COMPOSITION_KEYWORDS = [
-	'allOf',
-	'anyOf',
-	'oneOf',
-	'$ref',
-	'if',
-	'then',
-	'else',
-	'dependencies',
-	'dependentSchemas',
-] as const;
-
-/** Whether the node composes with other schemas that may contribute properties. */
-function composesOtherSchemas(schema: JSONSchema7): boolean {
-	const node = schema as Record<string, unknown>;
-	return COMPOSITION_KEYWORDS.some((keyword) => node[keyword] !== undefined);
-}
-
 /**
- * Re-map a record of sub-schemas. Uses `Object.defineProperty` so a
- * user-supplied property name like `__proto__` becomes a normal own property
- * instead of mutating the prototype chain.
+ * Re-map a record of sub-schemas, locking each value. Uses
+ * `Object.defineProperty` so a user-supplied property name like `__proto__`
+ * becomes a normal own property instead of mutating the prototype chain.
  */
-function lockDefinitions(
+function mapDefinitions(
 	record: Record<string, JSONSchema7Definition>,
 ): Record<string, JSONSchema7Definition> {
 	const out: Record<string, JSONSchema7Definition> = {};

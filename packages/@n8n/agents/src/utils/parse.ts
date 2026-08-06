@@ -22,44 +22,24 @@ const DIALECT_MARKERS: Array<[RegExp, Dialect]> = [
 	[/draft-0[4-7]/, 'draft-07'],
 ];
 
-const ajvInstances = new Map<string, Promise<InstanceType<typeof AjvType>>>();
+const ajvConstructors = new Map<Dialect, Promise<typeof AjvType>>();
 
 async function loadAjv(dialect: Dialect): Promise<typeof AjvType> {
-	const bundle =
-		dialect === '2020-12'
-			? await import('ajv/dist/2020.js')
-			: dialect === '2019-09'
-				? await import('ajv/dist/2019.js')
-				: await import('ajv');
-	return bundle.default.default;
-}
-
-async function getAjv(
-	dialect: Dialect,
-	unicodeRegExp: boolean,
-	stripUnknown: boolean,
-): Promise<InstanceType<typeof AjvType>> {
-	const key = `${dialect}:${unicodeRegExp}:${stripUnknown}`;
-	const cached = ajvInstances.get(key);
+	const cached = ajvConstructors.get(dialect);
 	if (cached) return await cached;
 
-	const instance = loadAjv(dialect).then(
-		(Ajv) =>
-			new Ajv({
-				strict: false,
-				allErrors: true,
-				// Ajv otherwise checks its version against the `$schema`
-				validateSchema: false,
-				// Ajv otherwise registers each schema under its `$id`, so the next
-				// deserialized copy collides with the one already registered
-				addUsedSchema: false,
-				...(unicodeRegExp ? {} : { unicodeRegExp: false }),
-				...(stripUnknown ? { removeAdditional: true } : {}),
-			}),
-	);
-	instance.catch(() => ajvInstances.delete(key));
-	ajvInstances.set(key, instance);
-	return await instance;
+	const loading = (async () => {
+		const bundle =
+			dialect === '2020-12'
+				? await import('ajv/dist/2020.js')
+				: dialect === '2019-09'
+					? await import('ajv/dist/2019.js')
+					: await import('ajv');
+		return bundle.default.default;
+	})();
+	loading.catch(() => ajvConstructors.delete(dialect));
+	ajvConstructors.set(dialect, loading);
+	return await loading;
 }
 
 /** Only the declared dialect is tried: falling back to another one would turn a clear
@@ -94,19 +74,32 @@ async function compileJsonSchema(
 
 	let firstError: unknown;
 	for (const dialect of candidateDialects(schema)) {
+		let Ajv: typeof AjvType;
+		try {
+			Ajv = await loadAjv(dialect);
+		} catch (error) {
+			firstError ??= error;
+			continue;
+		}
 		for (const unicodeRegExp of [true, false]) {
-			let ajv: InstanceType<typeof AjvType> | undefined;
 			try {
-				ajv = await getAjv(dialect, unicodeRegExp, stripUnknown);
+				// One instance per schema: Ajv retains everything it compiles — the schema,
+				// its patterns and the generated code — for the instance's lifetime, so a
+				// shared instance would accumulate every schema ever seen. Pairing the
+				// instance with its validator in the WeakMap lets both go when the schema does.
+				const ajv = new Ajv({
+					strict: false,
+					allErrors: true,
+					// Ajv otherwise checks its version against the `$schema`
+					validateSchema: false,
+					...(unicodeRegExp ? {} : { unicodeRegExp: false }),
+					...(stripUnknown ? { removeAdditional: true } : {}),
+				});
 				const validate = ajv.compile(schema);
 				cache.set(schema, { ajv, validate });
 				return { success: true, ajv, validate };
 			} catch (error) {
 				firstError ??= error;
-			} finally {
-				// Ajv keeps every schema it is handed in a strong Map, so an instance that
-				// outlives the schemas compiled on it would retain all of them forever.
-				ajv?.removeSchema(schema);
 			}
 		}
 	}
