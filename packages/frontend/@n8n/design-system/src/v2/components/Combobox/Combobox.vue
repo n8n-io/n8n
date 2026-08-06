@@ -598,7 +598,7 @@ function onTagsUpdate(value: TagsInputValue[]) {
 	border: none;
 	border-radius: var(--radius--full);
 	background: transparent;
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtle);
 	cursor: pointer;
 
 	&:hover {
@@ -663,13 +663,13 @@ function onTagsUpdate(value: TagsInputValue[]) {
 .comboboxEmpty {
 	padding: var(--spacing--xs) var(--spacing--sm);
 	font-size: var(--font-size--xs);
-	color: var(--text-color--subtler);
+	color: var(--text-color--subtle);
 	text-align: center;
 }
 
 .comboboxLabel {
 	padding: var(--spacing--3xs) var(--spacing--2xs) var(--spacing--4xs);
-	color: var(--text-color--subtler);
+	color: var(--text-color--subtle);
 	font-size: var(--font-size--2xs);
 }
 
