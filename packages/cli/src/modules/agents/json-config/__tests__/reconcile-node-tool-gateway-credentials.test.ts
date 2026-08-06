@@ -269,6 +269,52 @@ describe('reconcileNodeToolGatewayCredentials', () => {
 		expect(tools[0].node.nodeParameters).toEqual({ authentication: 'apiKeyLegacy' });
 	});
 
+	it('activates the auth parameter for an explicit marker on an inactive alternate auth slot', () => {
+		// Marker on the API-key slot while `authentication` still defaults to
+		// OAuth (and the project owns the OAuth type): without activation the
+		// marker is inert and the tool cannot run.
+		const tools = [nodeTool('n8n-nodes-base.serviceTool', { serviceApiKey: { ...SENTINEL } })];
+		reconcileNodeToolGatewayCredentials(
+			tools,
+			nodeTypesWithDescription(multiAuthNodeDescription),
+			SERVICE_GATEWAY_CONFIG,
+			new Set(['serviceOAuth2Api']),
+		);
+		expect(tools[0].node.credentials).toEqual({ serviceApiKey: SENTINEL });
+		expect(tools[0].node.nodeParameters).toEqual({ authentication: 'apiKey' });
+	});
+
+	it('leaves parameters untouched when the marked slot is already active', () => {
+		const tools = [nodeTool('n8n-nodes-base.serviceTool', { serviceApiKey: { ...SENTINEL } })];
+		tools[0].node.nodeParameters = { authentication: 'apiKey' };
+		reconcileNodeToolGatewayCredentials(
+			tools,
+			nodeTypesWithDescription(multiAuthNodeDescription),
+			SERVICE_GATEWAY_CONFIG,
+			NO_OWNED,
+		);
+		expect(tools[0].node.credentials).toEqual({ serviceApiKey: SENTINEL });
+		expect(tools[0].node.nodeParameters).toEqual({ authentication: 'apiKey' });
+	});
+
+	it('keeps an eligible marker on a slot the node description does not declare', () => {
+		// HTTP predefined credential types are not in description.credentials, so
+		// no activation resolves; the explicit marker must survive untouched.
+		const tools = [nodeTool('n8n-nodes-base.httpRequestTool', { serviceApiKey: { ...SENTINEL } })];
+		reconcileNodeToolGatewayCredentials(
+			tools,
+			nodeTypesWithCredentials([]),
+			{
+				nodes: ['n8n-nodes-base.httpRequest'],
+				credentialTypes: ['serviceApiKey'],
+				providerConfig: {},
+			} as unknown as AiGatewayConfigDto,
+			NO_OWNED,
+		);
+		expect(tools[0].node.credentials).toEqual({ serviceApiKey: SENTINEL });
+		expect(tools[0].node.nodeParameters).toEqual({});
+	});
+
 	it('deletes an inbound managed marker on an uncovered slot (trust gate)', () => {
 		const tools = [nodeTool('n8n-nodes-base.notionTool', { notionApi: { ...SENTINEL } })];
 		reconcileNodeToolGatewayCredentials(

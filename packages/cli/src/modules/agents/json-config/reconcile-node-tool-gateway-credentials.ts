@@ -67,17 +67,35 @@ function isCredentialDisplayed(
 	);
 }
 
+/** Returns whether node parameters were changed by slot activation. */
 function reconcileAiGatewayManagedMarkers(
 	node: NodeToolConfig,
+	description: INodeTypeDescription,
 	isEligible: (credentialType: string) => boolean,
-): void {
-	if (!node.credentials) return;
+): boolean {
+	if (!node.credentials) return false;
 
+	let parametersChanged = false;
 	for (const [slot, ref] of Object.entries(node.credentials)) {
 		if (!(AI_GATEWAY_MANAGED_CREDENTIAL_FLAG in ref)) continue;
-		if (isEligible(slot)) node.credentials[slot] = aiGatewayManagedCredential();
-		else delete node.credentials[slot];
+		if (!isEligible(slot)) {
+			delete node.credentials[slot];
+			continue;
+		}
+		// A kept marker can sit on a slot the node's parameters don't select
+		// (e.g. an API-key marker while `authentication` still points at OAuth),
+		// which leaves it inert: activate the marked type the same way sibling
+		// auto-assignment does. Slots the description doesn't declare (e.g. HTTP
+		// predefined credential types) resolve no activation and are kept as-is.
+		const activation = resolveSupportedCredentialActivation(
+			description,
+			{ typeVersion: node.nodeTypeVersion, parameters: resolveNodeParameters(node, description) },
+			(candidateType) => candidateType === slot,
+		);
+		setAiGatewayManagedCredential(node, slot, activation?.parameters);
+		if (activation && Object.keys(activation.parameters).length > 0) parametersChanged = true;
 	}
+	return parametersChanged;
 }
 
 /**
@@ -199,7 +217,9 @@ function reconcileNode(
 		resolvedParameters = resolveNodeParameters(node, description);
 	};
 
-	reconcileAiGatewayManagedMarkers(node, isEligible);
+	if (reconcileAiGatewayManagedMarkers(node, description, isEligible)) {
+		resolvedParameters = resolveNodeParameters(node, description);
+	}
 
 	if (aiGatewayConfig === undefined) return;
 	if (HTTP_NODE_TYPES.has(node.nodeType)) return;
