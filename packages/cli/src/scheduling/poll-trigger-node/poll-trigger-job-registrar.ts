@@ -9,6 +9,8 @@ import { PollJobManager } from 'n8n-core';
 import type { CronExpression, INode, TriggerTime } from 'n8n-workflow';
 import { createHash } from 'node:crypto';
 
+import { PollBackoffService } from '@/workflows/triggers/poll-backoff.service';
+
 import { DurableJobProvisioner } from '../durable-job-provisioner';
 import type { PollTriggerTaskPayload } from './poll-trigger-task';
 import { POLL_TRIGGER_TASK_TYPE } from './poll-trigger-task';
@@ -31,6 +33,7 @@ export class PollTriggerJobRegistrar extends PollJobManager {
 		private readonly logger: Logger,
 		globalConfig: GlobalConfig,
 		private readonly jobProvisioner: DurableJobProvisioner,
+		private readonly pollBackoffService: PollBackoffService,
 	) {
 		super();
 		this.defaultTimezone = globalConfig.generic.timezone;
@@ -73,7 +76,16 @@ export class PollTriggerJobRegistrar extends PollJobManager {
 			removed: summary.removed.length,
 		});
 
-		return { inserted: summary.inserted.length > 0 };
+		const inserted = summary.inserted.length > 0;
+		// A genuinely new job row means the node was just (re-)provisioned, which
+		// only happens on a deliberate user action (activation, save). Reconciling
+		// existing rows on boot or a leader change inserts nothing, so this never
+		// resets backoff on a plain restart.
+		if (inserted) {
+			await this.pollBackoffService.reset(workflowId, node.id);
+		}
+
+		return { inserted };
 	}
 
 	/**

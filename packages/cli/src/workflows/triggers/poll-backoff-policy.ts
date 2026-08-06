@@ -63,23 +63,30 @@ function parseNumericStatus(value: unknown): number | null {
 	return null;
 }
 
-function httpCodeStatus(error: unknown): number | null {
-	for (const candidate of candidateChain(error)) {
-		if (candidate.httpCode === null || candidate.httpCode === undefined) continue;
-		const status = parseNumericStatus(candidate.httpCode);
-		if (status !== null) return status;
-	}
-	return null;
-}
+// Walks the chain once for both candidates, rather than twice, since
+// classifyPollFailure otherwise re-walks it looking for response.status
+// whenever no httpCode is found. httpCode still wins whenever both are
+// present, wherever each sits in the chain.
+function chainStatus(error: unknown): number | null {
+	let httpCodeStatus: number | null = null;
+	let responseStatus: number | null = null;
 
-function statusFromWalk(error: unknown): number | null {
 	for (const candidate of candidateChain(error)) {
-		const response = getResponse(candidate);
-		if (!response) continue;
-		const status = parseNumericStatus(response.status);
-		if (status !== null) return status;
+		if (
+			httpCodeStatus === null &&
+			candidate.httpCode !== null &&
+			candidate.httpCode !== undefined
+		) {
+			httpCodeStatus = parseNumericStatus(candidate.httpCode);
+		}
+
+		if (responseStatus === null) {
+			const response = getResponse(candidate);
+			if (response) responseStatus = parseNumericStatus(response.status);
+		}
 	}
-	return null;
+
+	return httpCodeStatus ?? responseStatus;
 }
 
 function findHeaderValue(headers: unknown, name: string): string | string[] | undefined {
@@ -116,7 +123,7 @@ function parseRetryAfterValue(raw: string, now: Date): number | null {
  * never sends the header.
  */
 export function classifyPollFailure(error: unknown, retryAfterMs: number | null): PollFailureClass {
-	const status = httpCodeStatus(error) ?? statusFromWalk(error);
+	const status = chainStatus(error);
 	if (status === null || !PERMANENT_STATUS_CODES.has(status)) return 'transient';
 	return retryAfterMs !== null ? 'transient' : 'permanent';
 }
