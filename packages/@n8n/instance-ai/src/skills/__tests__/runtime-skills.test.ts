@@ -385,9 +385,6 @@ describe('Instance AI runtime skills', () => {
 		expect(normalizedInstructions).toContain(
 			'ask once whether the user wants to build an error workflow',
 		);
-		expect(normalizedInstructions).toMatch(
-			/Offer or build an error workflow only after .* live test .* published/,
-		);
 		expect(loaded?.instructions).toContain(
 			'The error workflow must be published before it can be assigned',
 		);

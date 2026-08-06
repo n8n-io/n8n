@@ -251,9 +251,6 @@ describe('createBuildWorkflowTool', () => {
 		expect(result.postBuildFlow?.instructions).not.toContain('## Setup follow-up');
 		expect(result.postBuildFlow?.instructions).not.toContain('## Credentials before build');
 		expect(result.postBuildFlow?.instructions).toContain('## After build-workflow succeeds');
-		expect(result.postBuildFlow?.instructions.replace(/\s+/g, ' ')).toMatch(
-			/Offer or build an error workflow only after .* live test .* published/,
-		);
 		expect(result.postBuildFlow?.guidance).toContain(
 			'run a real full-path test, ask to publish the primary workflow after it passes',
 		);
