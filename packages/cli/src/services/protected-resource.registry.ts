@@ -126,7 +126,7 @@ export interface ProtectedResourceResolver {
 	 * node a protectable resource at all", not "does it use this instance's
 	 * first-party OAuth flow".
 	 */
-	resolveByNode?(workflow: Workflow, node: INode): Promise<ProtectedResource | undefined>;
+	resolveByNode?: (workflow: Workflow, node: INode) => Promise<ProtectedResource | undefined>;
 }
 
 const trimTrailingSlash = (url: string): string => url.replace(/\/$/, '');
