@@ -873,7 +873,7 @@ describe('ExecutionService', () => {
 			executionPersistence.findManyInWorkflows.mockResolvedValue([
 				mock<IExecutionBase>({ id: '10' }),
 			]);
-			executionPersistence.countInWorkflows.mockResolvedValue(0);
+			executionRepository.countInWorkflows.mockResolvedValue(0);
 
 			await executionService.findManyAndCount(['wf-1'], {
 				limit: 10,
@@ -889,7 +889,7 @@ describe('ExecutionService', () => {
 
 		it('should not exclude running executions when excludeRunning is false', async () => {
 			executionPersistence.findManyInWorkflows.mockResolvedValue([]);
-			executionPersistence.countInWorkflows.mockResolvedValue(0);
+			executionRepository.countInWorkflows.mockResolvedValue(0);
 
 			await executionService.findManyAndCount(['wf-1'], {
 				limit: 10,

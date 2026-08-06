@@ -814,7 +814,7 @@ export class ExecutionService {
 		);
 
 		const newLastId = executions.length === 0 ? '0' : executions.at(-1)!.id;
-		const count = await this.executionPersistence.countInWorkflows(workflowIds, {
+		const count = await this.executionRepository.countInWorkflows(workflowIds, {
 			...listOptions,
 			lastId: newLastId,
 		});

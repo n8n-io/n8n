@@ -579,18 +579,6 @@ export class ExecutionPersistence {
 		);
 	}
 
-	async countInWorkflows(
-		workflowIds: string[],
-		options: {
-			limit: number;
-			lastId?: string;
-			status?: ExecutionStatus;
-			excludedExecutionsIds?: string[];
-		},
-	): Promise<number> {
-		return await this.executionRepository.countInWorkflows(workflowIds, options);
-	}
-
 	/**
 	 * Delete an in-flight execution that is not meant to be saved.
 	 *
