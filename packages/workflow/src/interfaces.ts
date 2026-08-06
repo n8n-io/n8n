@@ -3010,7 +3010,7 @@ export type WebhookType = 'default' | 'setup';
  * by `webhookDescriptionFields()` and read via `resolveWebhookDescriptionField()`.
  * Backend-only: not serialized with the description.
  */
-export const WEBHOOK_RESOLVERS: unique symbol = Symbol('webhookDescriptionResolvers');
+export const WEBHOOK_RESOLVERS: unique symbol = Symbol.for('n8n.webhookDescriptionResolvers');
 
 /**
  * Native resolvers for a webhook description's fields, keyed by field name.
