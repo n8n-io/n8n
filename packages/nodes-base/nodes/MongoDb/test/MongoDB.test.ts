@@ -130,6 +130,33 @@ function mockExecuteFunctions(typeVersion: number, operation: string) {
 	return executeFunctions;
 }
 
+function mockQueryOperation(operation: 'aggregate' | 'delete' | 'find') {
+	const executeFunctions = mockExecuteFunctions(1.3, operation);
+	executeFunctions.getInputData.mockReturnValue([inputItems[0]]);
+	executeFunctions.getNodeParameter.mockImplementation(
+		(parameterName: string, _itemIndex = 0, fallbackValue?: NodeParameterValueType) => {
+			switch (parameterName) {
+				case 'operation':
+					return operation;
+				case 'collection':
+					return 'users';
+				case 'query':
+					return operation === 'aggregate'
+						? '[{ "$match": { "name": "$1", "age": { "$gte": "$2" } } }]'
+						: '{ "name": "$1", "age": { "$gte": "$2" } }';
+				case 'queryParameters':
+					return ['Alice', 30];
+				case 'options':
+					return {};
+				default:
+					return fallbackValue;
+			}
+		},
+	);
+
+	return executeFunctions;
+}
+
 function collectionNames(collectionSpy: MockInstance): string[] {
 	return collectionSpy.mock.calls.reduce<string[]>((names, call) => {
 		const [collectionName] = call as unknown[];
@@ -160,6 +187,41 @@ describe('MongoDB CRUD Node', () => {
 		afterEach(() => {
 			collectionSpy.mockRestore();
 			vi.clearAllMocks();
+		});
+
+		describe('query parameters', () => {
+			const expectedQuery = { name: 'Alice', age: { $gte: 30 } };
+
+			it('passes the resolved query to find', async () => {
+				const findSpy = vi.spyOn(Collection.prototype, 'find').mockReturnValue({
+					toArray: async () => [],
+				} as never);
+
+				await node.execute.call(mockQueryOperation('find'));
+
+				expect(findSpy).toHaveBeenCalledWith(expectedQuery);
+			});
+
+			it('passes the resolved query to deleteMany', async () => {
+				const deleteManySpy = vi.spyOn(Collection.prototype, 'deleteMany').mockResolvedValue({
+					acknowledged: true,
+					deletedCount: 0,
+				});
+
+				await node.execute.call(mockQueryOperation('delete'));
+
+				expect(deleteManySpy).toHaveBeenCalledWith(expectedQuery);
+			});
+
+			it('passes the resolved query to aggregate', async () => {
+				const aggregateSpy = vi.spyOn(Collection.prototype, 'aggregate').mockReturnValue({
+					toArray: async () => [],
+				} as never);
+
+				await node.execute.call(mockQueryOperation('aggregate'));
+
+				expect(aggregateSpy).toHaveBeenCalledWith([{ $match: expectedQuery }]);
+			});
 		});
 
 		it('groups insert items by collection and uses insertMany per group', async () => {
