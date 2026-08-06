@@ -183,75 +183,35 @@ cadence.
 ## Misfires and catch-up runs
 
 A **misfire** is a run that came due while nothing was there to fire it, and is now
-past its grace window. The usual cause is downtime: the servers were off, or too
-busy, over a stretch that a rule's schedule crossed several times. When the planner
-next claims that rule, it finds a backlog of instants that are all in the past. Each
-job carries a grace window (`misfireGraceSeconds`); while a due instant is still
-inside its window it is simply queued and run late, and no policy applies. Only once
-the oldest overdue instant is past its window does the job's **misfire policy**
-decide what happens to the backlog.
-
-There are three policies:
+past its grace window (`misfireGraceSeconds`); while still inside that window a late
+instant is simply queued and run late, no policy involved. Once the oldest overdue
+instant is past its window, the job's **misfire policy** decides what happens to the
+rest of the backlog:
 
 | Policy | What it does |
 |---|---|
-| `skip` | Records nothing for the backlog. The missed instants are gone; the rule resumes from its next future instant. |
-| `coalesce` | Records one **catch-up run** for that job, standing in for the whole backlog, then resumes normally. |
-| `coalesce_owner` | Records one catch-up run for the whole **owner**, across all the jobs that share it. |
+| `skip` | Records nothing for the backlog; the rule resumes from its next future instant. |
+| `coalesce` | Records one **catch-up run** for that job, standing in for the whole backlog. |
+| `coalesce_owner` | Records one catch-up run for the whole **owner** (see below), across every job that shares it. |
 
-A catch-up run is a normal task, queued at the most recent missed instant and made
-claimable immediately, so the work happens once rather than N times back to back.
-Whichever policy applies, the job's clock still advances past the whole backlog, and
-that advance commits with the same transaction, so no two servers can disagree about
-what a backlog produced.
-
-### What an "owner" is
-
-An **owner** is an opaque key supplied per job (`ownerKey`). The scheduler never
-interprets it: it only groups by equality. In n8n it identifies the thing that
-provisioned the rules, in practice a workflow's trigger node, which provisions one
-job per schedule rule it holds.
+A catch-up run is a normal task, queued at the most recent missed instant and
+claimable immediately, so a backlog fires once rather than N times back to back. The
+job's clock advances past the backlog in the same transaction as the catch-up run, so
+no two servers can disagree about what a backlog produced.
 
 ### Why `coalesce_owner` exists
 
-A Schedule Trigger with N rules is N jobs. Per-job coalescing gives each of them its
-own catch-up run, so after downtime the node still fires N times in a row, which is
-exactly the pile-up coalescing was meant to prevent. `coalesce_owner` closes that
-gap: among the jobs sharing an owner that all have a catch-up run on the same
-planning pass, one wins (the latest missed instant; the lowest job id breaks a tie)
-and the rest drop theirs.
+`coalesce` operates per job, so a Schedule Trigger with several rules on one node
+still produces one catch-up run per rule after downtime, N fires in a row.
+`coalesce_owner` closes that gap: jobs that share an **owner** (`ownerKey`, an opaque
+per-job key the scheduler only compares for equality; in n8n, the trigger node) group
+when they also agree on task type, payload and grace window, and only the one with
+the latest missed instant survives a planning pass (ties break on the lowest job id).
 
-Grouping happens per planning pass, over the rows that pass has in hand, and it is by
-design rather than an oversight that **the surviving catch-up carries one
-`scheduledFor`**: the most recent missed instant across the owner's jobs. So a node
-that mixes a fast rule with a slow one will always see the fast rule's instant win,
-and the slow rule's catch-up is structurally superseded. The owner is caught up once,
-at the freshest missed instant, not once per rule.
-
-Jobs group only when they agree on the owner, the task type, the payload and the grace
-window. The Schedule Trigger writes the same values for every rule of a node, so its
-rules group; a provisioner whose sibling rows differ in one of them gets one catch-up
-run per distinct shape, which is not helpful but does not lose the difference. The
-attempt limit is deliberately not part of that: it is a delivery detail of the one
-surviving row, and a job's rows can legitimately disagree about it (the limit comes
-from configuration read at provisioning time, and existing rows are not rewritten when
-it changes), so keying on it would silently stop a node's rules grouping.
-
-### The residual gap
-
-Grouping only sees the jobs one pass claims together, so it is a best-effort
-collapse, not a guarantee of one fire per owner. A sibling not claimed in the same
-pass, whether because it was not yet due or because a batch boundary split it from
-its owner, catches up separately on a later pass. Likewise, a backlog larger than
-`maxPerJob` truncates that job's walk before it plans a catch-up at all, so it sits
-out its owner's group for this pass and catches up once the backlog has drained
-enough to fit. Concretely, after a long outage a node mixing a 1-minute rule with an
-hourly rule can still fire twice: the hourly rule's backlog fits and catches up
-immediately, while the 1-minute rule's does not.
-
-Poll triggers use `skip` on purpose: a poll asks "what changed since last time?", so
-replaying a missed poll adds nothing that the next poll will not pick up anyway. They
-are unaffected by any of the coalescing behaviour described here.
+Grouping only sees jobs claimed together in one pass, so it is best-effort, not a
+guarantee of one fire per owner: a sibling not yet due, or one whose backlog exceeds
+`maxPerJob`, still catches up on its own on a later pass. Poll triggers use `skip`,
+since a missed poll is superseded by the next one regardless.
 
 ## Durable and distributed
 
