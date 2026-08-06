@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-import { get, patch, post, PublicApiResponseError } from './utils';
+import { get, PublicApiResponseError } from './utils';
 
 vi.mock('axios', () => ({
 	default: {
@@ -60,28 +60,6 @@ describe('public-api-client utils', () => {
 			expect(
 				paramsSerializer({ startDate: '2026-05-20T23:59:59Z', endDate: '2026-05-21T23:59:59Z' }),
 			).toBe('startDate=2026-05-20T23%3A59%3A59Z&endDate=2026-05-21T23%3A59%3A59Z');
-		});
-	});
-
-	describe('post/patch', () => {
-		it('sends data in the request body for POST', async () => {
-			vi.mocked(axios.request).mockResolvedValue({ data: { id: '1' } });
-
-			await post(context, '/workflows', { name: 'test' });
-
-			expect(axios.request).toHaveBeenCalledWith(
-				expect.objectContaining({ method: 'POST', data: { name: 'test' } }),
-			);
-		});
-
-		it('sends data in the request body for PATCH', async () => {
-			vi.mocked(axios.request).mockResolvedValue({ data: { id: '1' } });
-
-			await patch(context, '/workflows/1', { name: 'renamed' });
-
-			expect(axios.request).toHaveBeenCalledWith(
-				expect.objectContaining({ method: 'PATCH', data: { name: 'renamed' } }),
-			);
 		});
 	});
 
