@@ -12,7 +12,6 @@ import { TransactionRunner } from '../services/transaction';
 
 export type { PollerCursor } from '../entities/poller-state';
 
-/** A fence miss can't tell a reclaimed lease apart from a genuinely gone cursor row. */
 export type PollLeaseFence = { taskId: string; leaseEpoch: number };
 
 @Service()
@@ -98,8 +97,8 @@ export class PollerStateRepository extends BaseRepository<PollerState> {
 
 		const result = await qb.execute();
 
-		// `affected` is optional and not reported by every driver, so only an exact
-		// single-row match counts as success.
+		// `affected` is typed optional, though both supported drivers populate it; only
+		// an exact single-row match counts as success.
 		if (result.affected === 1) return true;
 
 		if (fence) return false;
