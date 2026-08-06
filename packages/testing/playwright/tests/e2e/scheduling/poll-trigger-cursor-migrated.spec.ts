@@ -4,7 +4,7 @@ import {
 	expectNoNewTriggerExecution,
 	expectPollTriggerFires,
 	readNodeStaticData,
-	triggerExecutionIds,
+	fetchTriggerExecutionIds,
 } from './poll-trigger-helpers';
 import { makePollTriggerWorkflow, POLL_TRIGGER_NODE_NAME } from './poll-trigger-workflow';
 import { test, expect } from '../../../fixtures/base';
@@ -44,7 +44,7 @@ test.describe(
 				.poll(async () => await api.getPollerCursor(workflowId, nodeId), { timeout: 15_000 })
 				.toEqual({ lastItemId: 1 });
 
-			const afterSeedPoll = await triggerExecutionIds(api, workflowId);
+			const afterSeedPoll = await fetchTriggerExecutionIds(api, workflowId);
 			await api.fireScheduledJobsNow(workflowId, nodeId);
 
 			await expectNewTriggerExecution(api, workflowId, afterSeedPoll);
@@ -64,7 +64,7 @@ test.describe(
 				makePollTriggerWorkflow,
 			);
 
-			const afterSeedPoll = await triggerExecutionIds(api, workflowId);
+			const afterSeedPoll = await fetchTriggerExecutionIds(api, workflowId);
 			await clearStaticDataAndReactivate(api, workflowId);
 			await api.fireScheduledJobsNow(workflowId, nodeId);
 
@@ -99,7 +99,7 @@ test.describe(
 				.poll(async () => await api.getPollerCursor(workflowId, nodeId), { timeout: 15_000 })
 				.toEqual({ lastItemId: 1 });
 
-			const afterSeedPoll = await triggerExecutionIds(api, workflowId);
+			const afterSeedPoll = await fetchTriggerExecutionIds(api, workflowId);
 
 			await Promise.all([
 				api.fireScheduledJobsNow(workflowId, nodeId),
@@ -113,7 +113,9 @@ test.describe(
 			// Only one of the two concurrent ticks should have found item 2 new; the other
 			// must see it already reflected in the cursor and emit nothing.
 			await expect
-				.poll(async () => (await triggerExecutionIds(api, workflowId)).size, { timeout: 20_000 })
+				.poll(async () => (await fetchTriggerExecutionIds(api, workflowId)).size, {
+					timeout: 20_000,
+				})
 				.toBe(afterSeedPoll.size + 1);
 		});
 	},

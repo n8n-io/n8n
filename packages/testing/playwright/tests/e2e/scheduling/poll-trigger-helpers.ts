@@ -1,3 +1,4 @@
+import { sleep } from '@n8n/utils/sleep';
 import type { ProxyServer } from 'n8n-containers/services/proxy';
 import type { IDataObject, IWorkflowBase } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
@@ -63,7 +64,7 @@ export async function expectPollTriggerFires(
 	return { workflowId, nodeId: triggerNode.id, path };
 }
 
-export async function triggerExecutionIds(
+export async function fetchTriggerExecutionIds(
 	api: ApiHelpers,
 	workflowId: string,
 ): Promise<Set<string>> {
@@ -73,7 +74,7 @@ export async function triggerExecutionIds(
 	);
 }
 
-async function newTriggerExecutions(api: ApiHelpers, workflowId: string, known: Set<string>) {
+async function fetchNewTriggerExecutions(api: ApiHelpers, workflowId: string, known: Set<string>) {
 	const executions = await api.workflows.getExecutions(workflowId, 50);
 	return executions.filter((execution) => execution.mode === 'trigger' && !known.has(execution.id));
 }
@@ -90,15 +91,15 @@ export async function expectNewTriggerExecution(
 	timeoutMs = 20_000,
 ): Promise<void> {
 	await expect
-		.poll(async () => (await newTriggerExecutions(api, workflowId, known)).length, {
+		.poll(async () => (await fetchNewTriggerExecutions(api, workflowId, known)).length, {
 			timeout: timeoutMs,
 		})
 		.toBeGreaterThan(0);
 
 	// Give a straggler execution (e.g. a duplicate re-emit from a racing
 	// cursor commit) a chance to land before asserting cardinality.
-	await new Promise((resolve) => setTimeout(resolve, 500));
-	const fresh = await newTriggerExecutions(api, workflowId, known);
+	await sleep(500);
+	const fresh = await fetchNewTriggerExecutions(api, workflowId, known);
 
 	expect(fresh).toHaveLength(1);
 	expect(fresh[0].status).toBe('success');
@@ -111,7 +112,7 @@ export async function expectNoNewTriggerExecution(
 	windowMs = 8_000,
 ): Promise<void> {
 	await new Promise((resolve) => setTimeout(resolve, windowMs));
-	expect(await newTriggerExecutions(api, workflowId, known)).toHaveLength(0);
+	expect(await fetchNewTriggerExecutions(api, workflowId, known)).toHaveLength(0);
 }
 
 export async function readNodeStaticData(
