@@ -54,6 +54,7 @@ erDiagram
   varchar_255_ clientSecret
   bigint clientSecretExpiresAt
   timestamp_3__with_time_zone createdAt
+  uuid createdBy FK
   json grantTypes
   varchar id
   boolean isFirstParty

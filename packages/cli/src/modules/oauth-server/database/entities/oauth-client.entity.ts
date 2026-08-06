@@ -1,5 +1,5 @@
-import { JsonColumn, WithTimestamps } from '@n8n/db';
-import { Column, Entity, OneToMany } from '@n8n/typeorm';
+import { JsonColumn, User, WithTimestamps } from '@n8n/db';
+import { Column, Entity, JoinColumn, ManyToOne, OneToMany } from '@n8n/typeorm';
 
 import type { AccessToken } from './oauth-access-token.entity';
 import type { AuthorizationCode } from './oauth-authorization-code.entity';
@@ -37,6 +37,18 @@ export class OAuthClient extends WithTimestamps {
 
 	@OneToMany('UserConsent', 'client')
 	userConsents: UserConsent[];
+
+	/**
+	 * User who pre-registered this client by hand in the UI. `null` for clients
+	 * that self-registered over the unauthenticated DCR endpoint — that is the
+	 * only marker distinguishing the two registration paths.
+	 */
+	@Column({ type: String, nullable: true })
+	createdBy: string | null;
+
+	@ManyToOne(() => User, { onDelete: 'SET NULL' })
+	@JoinColumn({ name: 'createdBy' })
+	creator: User | null;
 
 	@Column({ type: String, nullable: true })
 	clientSecret: string | null;

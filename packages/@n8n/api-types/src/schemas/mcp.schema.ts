@@ -86,3 +86,21 @@ export const MCP_CLIENT_TYPE_FILTER_BUCKETS: Record<McpClientTypeFilter, McpClie
 export const MCP_CLIENT_CONNECTED_PERIODS = ['last7', 'last30', 'older'] as const;
 
 export type McpClientConnectedPeriod = (typeof MCP_CLIENT_CONNECTED_PERIODS)[number];
+
+/**
+ * How an OAuth client registration came to exist: `dcr` through the
+ * unauthenticated Dynamic Client Registration endpoint, `manual` pre-registered
+ * by a user in the UI for clients that don't implement DCR.
+ */
+export const MCP_OAUTH_CLIENT_REGISTRATIONS = ['dcr', 'manual'] as const;
+
+export type McpOAuthClientRegistration = (typeof MCP_OAUTH_CLIENT_REGISTRATIONS)[number];
+
+/** Grants every manually registered client is created with. */
+export const MANUAL_OAUTH_CLIENT_GRANT_TYPES = ['authorization_code', 'refresh_token'];
+
+/** Maximum number of redirect URIs per OAuth client. */
+export const MAX_OAUTH_REDIRECT_URIS = 10;
+
+/** Maximum length of a single redirect URI. */
+export const MAX_OAUTH_REDIRECT_URI_LENGTH = 2048;

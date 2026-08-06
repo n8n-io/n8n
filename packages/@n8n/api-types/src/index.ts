@@ -538,12 +538,17 @@ export {
 	MCP_CLIENT_TYPE_FILTERS,
 	MCP_CLIENT_TYPE_FILTER_BUCKETS,
 	MCP_CLIENT_CONNECTED_PERIODS,
+	MCP_OAUTH_CLIENT_REGISTRATIONS,
+	MANUAL_OAUTH_CLIENT_GRANT_TYPES,
+	MAX_OAUTH_REDIRECT_URIS,
+	MAX_OAUTH_REDIRECT_URI_LENGTH,
 	getMcpClientType,
 	type McpScope,
 	type McpClientType,
 	type McpClientBrandName,
 	type McpClientTypeFilter,
 	type McpClientConnectedPeriod,
+	type McpOAuthClientRegistration,
 } from './schemas/mcp.schema';
 
 export {

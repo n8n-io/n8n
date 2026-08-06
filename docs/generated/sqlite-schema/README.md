@@ -89,7 +89,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [mcp_registry_server](mcp_registry_server.md) | 7 |  | table |
 | [oauth_access_tokens](oauth_access_tokens.md) | 3 |  | table |
 | [oauth_authorization_codes](oauth_authorization_codes.md) | 13 |  | table |
-| [oauth_clients](oauth_clients.md) | 10 |  | table |
+| [oauth_clients](oauth_clients.md) | 11 |  | table |
 | [oauth_refresh_tokens](oauth_refresh_tokens.md) | 7 |  | table |
 | [oauth_user_consents](oauth_user_consents.md) | 5 |  | table |
 | [processed_data](processed_data.md) | 5 |  | table |
@@ -257,6 +257,7 @@ erDiagram
 "oauth_access_tokens" }o--|| "oauth_clients" : "FOREIGN KEY (clientId) REFERENCES oauth_clients (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "oauth_authorization_codes" }o--|| "oauth_clients" : "FOREIGN KEY (clientId) REFERENCES oauth_clients (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "oauth_authorization_codes" }o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"oauth_clients" }o--o| "user" : "FOREIGN KEY (createdBy) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "oauth_refresh_tokens" }o--|| "oauth_clients" : "FOREIGN KEY (clientId) REFERENCES oauth_clients (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "oauth_refresh_tokens" }o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "oauth_user_consents" }o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -1135,6 +1136,7 @@ erDiagram
   varchar_255_ clientSecret
   bigint clientSecretExpiresAt
   datetime_3_ createdAt
+  varchar createdBy FK
   TEXT grantTypes
   varchar id PK
   boolean isFirstParty

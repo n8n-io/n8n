@@ -20,16 +20,30 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 
+/**
+ * Withdrawing a manual registration invalidates the client id the user pasted
+ * into their MCP client, so it is worded as a deletion rather than a revoke.
+ */
+const isDeletingRegistration = computed(
+	() => props.client?.registration === 'manual' && props.client.canManage === true,
+);
+
 const title = computed(() =>
 	props.client
-		? i18n.baseText('settings.mcp.oAuthClients.revoke.title', {
-				interpolate: { name: props.client.name },
-			})
+		? i18n.baseText(
+				isDeletingRegistration.value
+					? 'settings.mcp.oAuthClients.delete.title'
+					: 'settings.mcp.oAuthClients.revoke.title',
+				{ interpolate: { name: props.client.name } },
+			)
 		: '',
 );
 
 const description = computed(() => {
 	if (!props.client) return '';
+	if (isDeletingRegistration.value) {
+		return i18n.baseText('settings.mcp.oAuthClients.delete.description');
+	}
 	if (props.revokingForOther) {
 		const owner = props.client.owner;
 		const ownerName =
@@ -47,7 +61,13 @@ const description = computed(() => {
 		:open="open"
 		:title="title"
 		:description="description"
-		:action-label="i18n.baseText('settings.mcp.oAuthClients.revoke.button')"
+		:action-label="
+			i18n.baseText(
+				isDeletingRegistration
+					? 'settings.mcp.oAuthClients.delete.button'
+					: 'settings.mcp.oAuthClients.revoke.button',
+			)
+		"
 		:cancel-label="i18n.baseText('generic.cancel')"
 		action-variant="destructive"
 		:loading="loading"

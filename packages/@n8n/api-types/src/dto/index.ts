@@ -248,6 +248,11 @@ export * from './evaluations';
 
 export {
 	OAuthClientResponseDto,
+	CreateOAuthClientRequestDto,
+	CreateOAuthClientResponseDto,
+	UpdateOAuthClientRequestDto,
+	ManualOAuthClientResponseDto,
+	RotateOAuthClientSecretResponseDto,
 	ListOAuthClientsQueryDto,
 	ListOAuthClientsResponseDto,
 	DeleteOAuthClientQueryDto,

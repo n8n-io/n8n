@@ -1,6 +1,12 @@
 import { z } from 'zod';
 
-import { MCP_CLIENT_CONNECTED_PERIODS, MCP_CLIENT_TYPE_FILTERS } from '../../schemas/mcp.schema';
+import {
+	MAX_OAUTH_REDIRECT_URI_LENGTH,
+	MAX_OAUTH_REDIRECT_URIS,
+	MCP_CLIENT_CONNECTED_PERIODS,
+	MCP_CLIENT_TYPE_FILTERS,
+	MCP_OAUTH_CLIENT_REGISTRATIONS,
+} from '../../schemas/mcp.schema';
 import { Z } from '../../zod-class';
 import { paginationSchema } from '../pagination/pagination.dto';
 
@@ -11,7 +17,8 @@ const oauthClientOwnerShape = z.object({
 	email: z.string(),
 });
 
-const oauthClientShape = {
+/** The registration itself, without any user's grant on it. */
+const oauthClientRegistrationShape = {
 	id: z.string(),
 	name: z.string(),
 	redirectUris: z.array(z.string()),
@@ -19,13 +26,99 @@ const oauthClientShape = {
 	tokenEndpointAuthMethod: z.string(),
 	createdAt: z.string().datetime(), // Using string for date serialization over HTTP
 	updatedAt: z.string().datetime(),
-	/** Unix ms when the user granted access on the consent screen. */
-	grantedAt: z.number(),
+	/** How the client registration came to exist. */
+	registration: z.enum(MCP_OAUTH_CLIENT_REGISTRATIONS),
+};
+
+const oauthClientShape = {
+	...oauthClientRegistrationShape,
+	/**
+	 * Unix ms when the user granted access on the consent screen. `null` for a
+	 * manually registered client the user has not connected with yet.
+	 */
+	grantedAt: z.number().nullable(),
 	/** Scopes granted on the consent screen. */
 	scopes: z.array(z.string()),
-	/** Consent owner; present only when listing with ownership=all. */
+	/**
+	 * Consent owner, or the creator for a manual client that has no consent yet.
+	 * Present only when listing with ownership=all.
+	 */
 	owner: oauthClientOwnerShape.optional(),
+	/** Whether the caller may edit or delete this registration. */
+	canManage: z.boolean().optional(),
 };
+
+/**
+ * A manually registered client's redirect URI is supplied by the user, so it is
+ * validated here rather than trusted: https anywhere, http only on loopback
+ * (RFC 8252 §7.3 — native clients bind an ephemeral loopback port).
+ */
+const redirectUriSchema = z
+	.string()
+	.trim()
+	.min(1)
+	.max(MAX_OAUTH_REDIRECT_URI_LENGTH)
+	.superRefine((value, ctx) => {
+		let url: URL;
+		try {
+			url = new URL(value);
+		} catch {
+			ctx.addIssue({ code: 'custom', message: `${value} is not a valid URL` });
+			return;
+		}
+
+		if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+			ctx.addIssue({ code: 'custom', message: `${value} must use http or https` });
+			return;
+		}
+
+		const isLoopback =
+			url.hostname === 'localhost' || url.hostname === '127.0.0.1' || url.hostname === '[::1]';
+		if (url.protocol === 'http:' && !isLoopback) {
+			ctx.addIssue({ code: 'custom', message: `${value} must use https` });
+		}
+	});
+
+const manualClientShape = {
+	name: z.string().trim().min(1).max(100),
+	redirectUris: z.array(redirectUriSchema).min(1).max(MAX_OAUTH_REDIRECT_URIS),
+};
+
+/**
+ * DTO for manually pre-registering an OAuth client (for MCP clients that don't
+ * implement Dynamic Client Registration).
+ */
+export class CreateOAuthClientRequestDto extends Z.class({
+	...manualClientShape,
+	/**
+	 * Issue a client secret, for a client that can keep one (a server-side
+	 * connector). Public clients are authenticated by PKCE and need no secret.
+	 */
+	confidential: z.boolean().optional(),
+}) {}
+
+/** DTO for editing a manually registered OAuth client. */
+export class UpdateOAuthClientRequestDto extends Z.class(manualClientShape) {}
+
+/**
+ * DTO for a manually registered client on its own, i.e. before anyone has
+ * consented to it. Grants are reported by the clients list, not here.
+ */
+export class ManualOAuthClientResponseDto extends Z.class(oauthClientRegistrationShape) {}
+
+/**
+ * DTO returned right after a manual registration. Carries the generated secret
+ * for a confidential client, which is the only time it is ever readable.
+ */
+export class CreateOAuthClientResponseDto extends Z.class({
+	...oauthClientRegistrationShape,
+	clientSecret: z.string().optional(),
+}) {}
+
+/** DTO for a freshly rotated client secret, readable only in this response. */
+export class RotateOAuthClientSecretResponseDto extends Z.class({
+	clientSecret: z.string(),
+}) {}
 
 /**
  * DTO for OAuth client response (excludes sensitive data like clientSecret)
