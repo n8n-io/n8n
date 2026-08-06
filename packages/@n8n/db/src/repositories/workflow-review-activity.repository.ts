@@ -1,6 +1,6 @@
 import type { WorkflowReviewActivityType } from '@n8n/api-types';
 import { Service } from '@n8n/di';
-import { DataSource, LessThan } from '@n8n/typeorm';
+import { DataSource, In, LessThan } from '@n8n/typeorm';
 import type { IDataObject } from 'n8n-workflow';
 
 import { BaseRepository } from './base-repository';
@@ -58,10 +58,7 @@ export class WorkflowReviewActivityRepository extends BaseRepository<WorkflowRev
 		const page = rows.slice(0, input.limit).reverse();
 
 		const messages = await this.findMessagesForActivities(
-			{
-				workflowReviewRequestId: input.workflowReviewRequestId,
-				activityIds: page.map((row) => row.id),
-			},
+			page.map((row) => row.id),
 			ctx,
 		);
 
@@ -82,34 +79,26 @@ export class WorkflowReviewActivityRepository extends BaseRepository<WorkflowRev
 	}
 
 	/**
-	 * Messages of the given threads, scoped to one review through an inner join on the
-	 * activity header: the comment table carries no `workflowReviewRequestId` and its ids
-	 * are globally enumerable, so every access authorises through the header.
+	 * Private on purpose: the ids come from the request-scoped query above, so the review
+	 * scoping is structural here and needs no join to re-assert it. A by-id access that takes
+	 * its ids from a client must authorise by joining comment -> activity -> request, because
+	 * this table carries no `workflowReviewRequestId` and its ids are globally enumerable.
+	 * That applies to the comment mutations in LIGO-609, not to this read.
 	 *
-	 * Unbounded per thread — the page size bounds threads, not messages. Fine while a thread
+	 * Unbounded per thread: the page size bounds threads, not messages. Fine while a thread
 	 * holds exactly one message; the replies ticket has to bound it.
 	 */
 	private async findMessagesForActivities(
-		input: {
-			workflowReviewRequestId: string;
-			activityIds: number[];
-		},
+		activityIds: number[],
 		ctx: OperationContext,
 	): Promise<WorkflowReviewActivityComment[]> {
-		if (input.activityIds.length === 0) {
+		if (activityIds.length === 0) {
 			return [];
 		}
 
-		return await this.managerFor(ctx)
-			.createQueryBuilder(WorkflowReviewActivityComment, 'comment')
-			// Join via entity so DB_TABLE_PREFIX is applied (postgres ITs).
-			.innerJoin(WorkflowReviewActivity, 'activity', 'activity.id = comment.activityId')
-			.where('comment.activityId IN (:...activityIds)', { activityIds: input.activityIds })
-			.andWhere('activity.workflowReviewRequestId = :workflowReviewRequestId', {
-				workflowReviewRequestId: input.workflowReviewRequestId,
-			})
-			.orderBy('comment.activityId', 'ASC')
-			.addOrderBy('comment.id', 'ASC')
-			.getMany();
+		return await this.managerFor(ctx).find(WorkflowReviewActivityComment, {
+			where: { activityId: In(activityIds) },
+			order: { activityId: 'ASC', id: 'ASC' },
+		});
 	}
 }
