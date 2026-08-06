@@ -144,6 +144,16 @@ export class McpSettingsService {
 			);
 		}
 
+		if (allWorkflows && availableInMCP) {
+			try {
+				await this.setAutoExposeNewWorkflows(true);
+			} catch (error) {
+				this.logger.warn('Failed to enable auto-expose after bulk-exposing all workflows', {
+					cause: error instanceof Error ? error.message : String(error),
+				});
+			}
+		}
+
 		const candidateIds = await this.resolveCandidateIds(user, {
 			workflowIds,
 			projectId,

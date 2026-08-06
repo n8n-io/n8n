@@ -949,6 +949,71 @@ describe('McpSettingsService', () => {
 				['workflow:update'],
 			);
 		});
+
+		describe('auto-expose side effect', () => {
+			test('enables auto-expose when scope is allWorkflows and availableInMCP is true', async () => {
+				findByKey.mockResolvedValue(null);
+				workflowFinderService.findAllWorkflowIdsForUser.mockResolvedValue([]);
+
+				const dto = new UpdateWorkflowsAvailabilityDto({
+					availableInMCP: true,
+					allWorkflows: true,
+				});
+
+				await service.bulkSetAvailableInMCP(user, dto);
+
+				expect(upsert).toHaveBeenCalledWith(
+					{ key: 'mcp.autoExposeNewWorkflows', value: 'true', loadOnStartup: true },
+					['key'],
+				);
+			});
+
+			test('does not touch auto-expose for a scoped (non-allWorkflows) update', async () => {
+				workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(new Set(['wf-1']));
+
+				const dto = new UpdateWorkflowsAvailabilityDto({
+					availableInMCP: true,
+					workflowIds: ['wf-1'],
+				});
+
+				await service.bulkSetAvailableInMCP(user, dto);
+
+				expect(upsert).not.toHaveBeenCalledWith(
+					expect.objectContaining({ key: 'mcp.autoExposeNewWorkflows' }),
+					['key'],
+				);
+			});
+
+			test('does not enable auto-expose when allWorkflows is used to turn access OFF', async () => {
+				workflowFinderService.findAllWorkflowIdsForUser.mockResolvedValue([]);
+
+				const dto = new UpdateWorkflowsAvailabilityDto({
+					availableInMCP: false,
+					allWorkflows: true,
+				});
+
+				await service.bulkSetAvailableInMCP(user, dto);
+
+				expect(upsert).not.toHaveBeenCalledWith(
+					expect.objectContaining({ key: 'mcp.autoExposeNewWorkflows' }),
+					['key'],
+				);
+			});
+
+			test('does not fail the bulk update if enabling auto-expose throws', async () => {
+				workflowFinderService.findAllWorkflowIdsForUser.mockResolvedValue([]);
+				upsert.mockImplementationOnce(() => {
+					throw new Error('db unavailable');
+				});
+
+				const dto = new UpdateWorkflowsAvailabilityDto({
+					availableInMCP: true,
+					allWorkflows: true,
+				});
+
+				await expect(service.bulkSetAvailableInMCP(user, dto)).resolves.toBeDefined();
+			});
+		});
 	});
 
 	describe('setAllowedRedirectUris', () => {

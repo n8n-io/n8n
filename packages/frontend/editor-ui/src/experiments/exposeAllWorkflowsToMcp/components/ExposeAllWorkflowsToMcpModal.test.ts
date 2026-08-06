@@ -3,10 +3,19 @@ import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import { useToast } from '@n8n/composables/useToast';
 import { useExposeAllWorkflowsToMcpStore } from '@/experiments/exposeAllWorkflowsToMcp/stores/exposeAllWorkflowsToMcp.store';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { defineComponent } from 'vue';
 import ExposeAllWorkflowsToMcpModal from './ExposeAllWorkflowsToMcpModal.vue';
+
+const { trackSpy } = vi.hoisted(() => ({
+	trackSpy: vi.fn(),
+}));
+
+vi.mock('@n8n/composables/useTelemetry', () => ({
+	useTelemetry: () => ({ track: trackSpy }),
+}));
 
 vi.mock('@n8n/composables/useToast', () => {
 	const showMessage = vi.fn();
@@ -119,5 +128,45 @@ describe('ExposeAllWorkflowsToMcpModal', () => {
 
 		expect(useToast().showError).toHaveBeenCalled();
 		expect(experimentStore.trackConfirmed).not.toHaveBeenCalled();
+	});
+
+	it('tracks auto-expose enabled after a successful expose-all', async () => {
+		mcpStore.toggleWorkflowsMcpAccess.mockResolvedValue({
+			updatedCount: 3,
+			unchangedCount: 0,
+			skippedCount: 0,
+			failedCount: 0,
+		});
+		mcpStore.autoExposeNewWorkflows = true;
+
+		const user = userEvent.setup();
+		const { getByTestId } = renderComponent({ pinia, props: defaultProps });
+
+		await user.click(getByTestId('expose-all-workflows-mcp-confirm-button'));
+
+		expect(trackSpy).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.MCP.AUTO_EXPOSE_NEW_WORKFLOWS_TOGGLED,
+			expect.objectContaining({ enabled: true }),
+		);
+	});
+
+	it('does not track auto-expose when the backend never turned it on', async () => {
+		mcpStore.toggleWorkflowsMcpAccess.mockResolvedValue({
+			updatedCount: 3,
+			unchangedCount: 0,
+			skippedCount: 0,
+			failedCount: 0,
+		});
+		mcpStore.autoExposeNewWorkflows = false;
+
+		const user = userEvent.setup();
+		const { getByTestId } = renderComponent({ pinia, props: defaultProps });
+
+		await user.click(getByTestId('expose-all-workflows-mcp-confirm-button'));
+
+		expect(trackSpy).not.toHaveBeenCalledWith(
+			TELEMETRY_EVENT.MCP.AUTO_EXPOSE_NEW_WORKFLOWS_TOGGLED,
+			expect.anything(),
+		);
 	});
 });
