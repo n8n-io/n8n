@@ -5,7 +5,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import InstanceAiView from '../InstanceAiView.vue';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { INSTANCE_AI_VIEW } from '../constants';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 
 const TEST_INSTANCE_ID = 'test-instance-id';

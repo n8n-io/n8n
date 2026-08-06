@@ -104,6 +104,7 @@ export {
 	type ChatInputAutoFocusOptions,
 	type ChatInputAutoFocusTarget,
 } from './N8nChatInput';
+export { default as N8nChatMessage } from './N8nChatMessage';
 export { default as N8nPulse } from './N8nPulse';
 export { default as N8nSendStopButton } from './N8nSendStopButton';
 export { default as N8nRadioButtons } from './N8nRadioButtons';

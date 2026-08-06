@@ -27,7 +27,7 @@ import { useRouter } from 'vue-router';
 import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useMessage } from '@/app/composables/useMessage';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useInstanceAiBrowserUseExperiment } from '@/experiments/instanceAiBrowserUse';
 import { useInstanceAiComputerUseExperiment } from '@/experiments/instanceAiComputerUse';

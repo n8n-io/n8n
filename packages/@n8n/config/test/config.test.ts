@@ -358,6 +358,7 @@ describe('GlobalConfig', () => {
 			runDebugEnabled: false,
 			thinkingEnabled: true,
 			durableLog: true,
+			mcpConnectionsEnabled: false,
 		},
 		queue: {
 			health: {
@@ -553,6 +554,9 @@ describe('GlobalConfig', () => {
 		},
 		aiAssistant: {
 			baseUrl: '',
+		},
+		aiGateway: {
+			enabled: true,
 		},
 		aiBuilder: {
 			apiKey: '',

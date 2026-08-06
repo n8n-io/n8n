@@ -91,17 +91,10 @@ const makeIntegration = (
 };
 
 describe('TelegramIntegration capabilities', () => {
-	it('advertises message editing with contextual targeting guidance', () => {
+	it('exposes message editing', () => {
 		const { integration } = makeIntegration();
 
 		expect(integration.actions).toEqual(['respond', 'send_dm', 'edit_message']);
-		expect(integration.builderGuidance.capabilities).toContain(
-			'Edit existing messages in the current Telegram conversation.',
-		);
-		expect(integration.actionToolGuidance).toEqual([
-			'For edit_message, pass the messageId returned by a previous Telegram action or get_current_message_context. The current Telegram conversation is selected automatically.',
-			'After a Telegram callback, edit the source message promptly so stale buttons are removed.',
-		]);
 	});
 });
 

@@ -4,7 +4,8 @@ import { N8nIcon, N8nText } from '@n8n/design-system';
 import { updatedIconSet, type IconName } from '@n8n/design-system/components/N8nIcon';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { agentsEventBus } from '../agents.eventBus';
 import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrationsCatalog';
 import { useAgentIntegrationStatus } from '../composables/useAgentIntegrationStatus';
 import AgentChannelModal, { type ChannelView } from './AgentChannelModal.vue';
@@ -15,6 +16,7 @@ const props = withDefaults(
 		disabled?: boolean;
 		projectId: string;
 		agentId: string;
+		isPublished?: boolean;
 		validationIssues?: AgentConfigValidationIssue[];
 		simpleChannelSetup?: boolean;
 		/** No agent row exists yet — nothing can be connected to it. */
@@ -24,6 +26,7 @@ const props = withDefaults(
 	{
 		connectedTriggers: () => [],
 		disabled: false,
+		isPublished: false,
 		validationIssues: () => [],
 		simpleChannelSetup: false,
 	},
@@ -120,6 +123,15 @@ async function loadChannelDetails() {
 onMounted(() => {
 	void loadChannelDetails();
 });
+
+function onChannelSetup(event: { agentId?: string; source?: string } | undefined) {
+	if (event?.agentId !== props.agentId || event.source !== 'channel-setup-card') return;
+	void loadChannelDetails();
+}
+
+agentsEventBus.on('agentUpdated', onChannelSetup);
+
+onBeforeUnmount(() => agentsEventBus.off('agentUpdated', onChannelSetup));
 
 watch([() => props.projectId, () => props.agentId], () => {
 	void loadChannelDetails();
@@ -220,6 +232,7 @@ const remainingChannelOptionLabels = computed(() => {
 			v-model:view="channelModalView"
 			:agent-id="agentId"
 			:project-id="projectId"
+			:is-published="isPublished"
 			:simple-setup="simpleChannelSetup"
 			:ensure-agent-persisted="ensureAgentPersisted"
 			@channel-connected="handleChannelConnected"

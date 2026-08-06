@@ -3,12 +3,14 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { storeToRefs } from 'pinia';
 import type { WorkflowReviewRequestState } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
-import { N8nButton, N8nHeading, N8nLoading, N8nText } from '@n8n/design-system';
+import { N8nHeading, N8nLoading, N8nText } from '@n8n/design-system';
 import { useRoute, useRouter } from 'vue-router';
 import PageViewLayout from '@/app/components/layouts/PageViewLayout.vue';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useToast } from '@n8n/composables/useToast';
 
+import WorkflowReviewDetailTabs from '../components/WorkflowReviewDetailTabs.vue';
+import type { WorkflowReviewDetailTab } from '../components/WorkflowReviewDetailTabs.vue';
 import WorkflowReviewRequestsSidebar from '../components/WorkflowReviewRequestsSidebar.vue';
 import { REVIEW_INBOX_QUERY_PARAM, WORKFLOW_REVIEW_REQUESTS_VIEW } from '../constants';
 import { useReviewInboxStore } from '../reviewInbox.store';
@@ -85,7 +87,10 @@ watch(
 );
 
 function onSelect(id: string) {
-	void router.replace({ params: { reviewRequestId: id }, query: route.query });
+	// Switching reviews lands on Activity tab. Deep links still win.
+	const query = { ...route.query };
+	if (id !== selectedReviewId.value) delete query[REVIEW_INBOX_QUERY_PARAM.tab];
+	void router.replace({ params: { reviewRequestId: id }, query });
 }
 
 function onClearSelection() {
@@ -96,6 +101,17 @@ function onActiveTabChange(tab: WorkflowReviewRequestState) {
 	const query = { ...route.query };
 	if (tab === 'closed') query[REVIEW_INBOX_QUERY_PARAM.state] = tab;
 	else delete query[REVIEW_INBOX_QUERY_PARAM.state];
+	void router.replace({ query });
+}
+
+const detailTab = computed<WorkflowReviewDetailTab>(() =>
+	route.query[REVIEW_INBOX_QUERY_PARAM.tab] === 'changes' ? 'changes' : 'activity',
+);
+
+function onDetailTabChange(tab: WorkflowReviewDetailTab) {
+	const query = { ...route.query };
+	if (tab === 'changes') query[REVIEW_INBOX_QUERY_PARAM.tab] = tab;
+	else delete query[REVIEW_INBOX_QUERY_PARAM.tab];
 	void router.replace({ query });
 }
 
@@ -189,7 +205,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-	<PageViewLayout data-test-id="workflow-review-requests-view">
+	<PageViewLayout full-width data-test-id="workflow-review-requests-view">
 		<div :class="$style.content">
 			<WorkflowReviewRequestsSidebar
 				v-if="showSidebar"
@@ -246,36 +262,14 @@ onUnmounted(() => {
 					<!-- Must precede the selectedItem branch: on a deep link the review is not
 						in the list yet, so selectedItem is null while the detail loads. -->
 					<N8nLoading v-else-if="selectedReviewId && detailLoading" :loading="true" :rows="3" />
-					<div v-else-if="selectedItem">
-						<N8nText
-							color="text-light"
-							size="medium"
-							data-test-id="workflow-review-request-detail-stub"
-						>
-							{{ i18n.baseText('workflowReviews.detail.placeholder') }}
-						</N8nText>
-						<!-- TODO(LIGO-892): placeholder actions with intentionally hardcoded copy.
-							Real design: disabled-with-explanation for non-admin authors ("you
-							contributed a version to this review"), i18n, and a `viewerCanDecide`
-							capability field from the backend. -->
-						<div v-if="selectedItem.state === 'open'" :class="$style.decisionActions">
-							<N8nButton
-								:disabled="deciding"
-								data-test-id="workflow-review-approve-button"
-								@click="onDecide(selectedItem.id, 'approved')"
-							>
-								Approve
-							</N8nButton>
-							<N8nButton
-								type="secondary"
-								:disabled="deciding"
-								data-test-id="workflow-review-request-changes-button"
-								@click="onDecide(selectedItem.id, 'changes_requested')"
-							>
-								Request changes
-							</N8nButton>
-						</div>
-					</div>
+					<WorkflowReviewDetailTabs
+						v-else-if="selectedItem"
+						:review="selectedItem"
+						:tab="detailTab"
+						:deciding="deciding"
+						@update:tab="onDetailTabChange"
+						@decide="onDecide(selectedItem.id, $event)"
+					/>
 					<N8nText
 						v-else-if="!showSidebar"
 						color="text-light"
@@ -308,6 +302,12 @@ onUnmounted(() => {
 
 <style lang="scss" module>
 .content {
+	--review-tab-bar--height: var(--height--sm);
+	--review-tab-bar--indicator-overhang: 11px;
+	--review-tab-bar--gap: calc(var(--spacing--sm) + var(--review-tab-bar--indicator-overhang));
+
+	--review-callout--max-width: 34rem;
+
 	display: flex;
 	width: 100%;
 	min-height: 0;
@@ -336,11 +336,5 @@ onUnmounted(() => {
 	flex: 1;
 	min-height: 0;
 	overflow: auto;
-}
-
-.decisionActions {
-	display: flex;
-	gap: var(--spacing--2xs);
-	margin-top: var(--spacing--sm);
 }
 </style>

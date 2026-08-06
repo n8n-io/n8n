@@ -9,7 +9,7 @@ import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useInstanceAiStore } from './instanceAi.store';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import InstanceAiThreadList from './components/InstanceAiThreadList.vue';

@@ -522,6 +522,57 @@ describe('mapAgentChunkToEvent', () => {
 		});
 	});
 
+	it('maps overloaded error records to an actionable message', () => {
+		expect(
+			map({
+				type: 'error',
+				error: { type: 'overloaded_error', message: 'Overloaded' },
+			}),
+		).toEqual({
+			type: 'error',
+			runId,
+			agentId,
+			payload: {
+				content: 'The model is overloaded. Try again in a few minutes.',
+			},
+		});
+	});
+
+	it('maps plain error records with a non-empty message', () => {
+		expect(
+			map({
+				type: 'error',
+				error: { type: 'api_error', message: 'Provider failed' },
+			}),
+		).toEqual({
+			type: 'error',
+			runId,
+			agentId,
+			payload: { content: 'Provider failed' },
+		});
+	});
+
+	it('falls back to an unknown error for malformed error records', () => {
+		expect(
+			map({
+				type: 'error',
+				error: { type: 'api_error', message: 42 },
+			}),
+		).toEqual({
+			type: 'error',
+			runId,
+			agentId,
+			payload: { content: 'Unknown error' },
+		});
+
+		expect(map({ type: 'error', error: null })).toEqual({
+			type: 'error',
+			runId,
+			agentId,
+			payload: { content: 'Unknown error' },
+		});
+	});
+
 	it('maps an error with a cyclic cause chain', () => {
 		const outer = new Error('stream failed');
 		const inner = new Error('request failed', { cause: outer });
