@@ -140,7 +140,8 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 		nameAndMetadata.push({
 			id: WORKFLOW_MENU_ACTIONS.EDIT_DESCRIPTION,
 			label: locale.baseText('menuActions.editDescriptionAndTags'),
-			disabled: !props.id,
+			// Editing happens through the API, so the workflow must be persisted first
+			disabled: !props.id || props.isNewWorkflow,
 		});
 	}
 
@@ -277,11 +278,12 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 
 function openDescriptionAndTagsModal(): void {
 	const workflowId = getWorkflowId(props.id, route.params.workflowId);
-	if (!workflowId) return;
+	// The modal updates the workflow via the API, so it needs a persisted workflow
+	if (!workflowId || props.isNewWorkflow) return;
 
 	const workflowDescription =
 		workflowDocumentStore?.value?.description ??
-		workflowsListStore.getWorkflowById(workflowId).description;
+		workflowsListStore.getWorkflowById(workflowId)?.description;
 	uiStore.openModalWithData({
 		name: WORKFLOW_DESCRIPTION_MODAL_KEY,
 		data: {
