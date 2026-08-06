@@ -48,7 +48,7 @@
 | `packages/frontend/editor-ui/src/features/ai/mcpAccess/mcp.store.ts` | Store state + action | 6 |
 | `packages/@n8n/telemetry/src/events/mcp.ts` | Event definition | 7 |
 | `packages/@n8n/telemetry/src/telemetry-events.ts` | Registry wiring | 7 |
-| `packages/frontend/editor-ui/src/features/ai/mcpAccess/SettingsMCPWorkflowsView.vue` | The settings row | 8 |
+| `packages/frontend/editor-ui/src/features/ai/mcpAccess/SettingsMCPView.vue` | The settings row — the top-level `/settings/mcp` page, before "Allowed callback URLs", **not** the workflows sub-page | 8 |
 | `packages/frontend/@n8n/i18n/src/locales/en.json` | Copy | 8 |
 
 Tasks 1–4 are backend and independently shippable. Task 5 is the one-line deletion that makes the feature live. Tasks 6–8 are the UI.
@@ -955,25 +955,103 @@ git commit -m "feat(core): Register auto-expose new workflows telemetry event"
 ## Task 8: The settings row
 
 **Files:**
-- Modify: `packages/frontend/editor-ui/src/features/ai/mcpAccess/SettingsMCPWorkflowsView.vue`
+- Modify: `packages/frontend/editor-ui/src/features/ai/mcpAccess/SettingsMCPView.vue`
 - Modify: `packages/frontend/@n8n/i18n/src/locales/en.json`
-- Test: `packages/frontend/editor-ui/src/features/ai/mcpAccess/SettingsMCPWorkflowsView.test.ts`
+- Test: `packages/frontend/editor-ui/src/features/ai/mcpAccess/SettingsMCPView.test.ts`
 
 **Interfaces:**
 - Consumes: `mcpStore.autoExposeNewWorkflows`, `mcpStore.setAutoExposeNewWorkflows` (Task 6); `TELEMETRY_EVENT.MCP.AUTO_EXPOSE_NEW_WORKFLOWS_TOGGLED` (Task 7); `useExposeAllWorkflowsToMcpStore` for `isEnabled` and the experiment telemetry payload.
 - Produces: no exports. `data-test-id="mcp-auto-expose-toggle"`.
 
-Compose `ElSwitch` + `N8nText` directly — `McpAccessToggle.vue` emits a payload-less `disableMcpAccess` (it is the one-way master kill switch) and `McpStatusControl.vue` is a dropdown, so neither fits.
+**This is `SettingsMCPView.vue` — the top-level `/settings/mcp` page — not
+`SettingsMCPWorkflowsView.vue`.** The latter is a drill-down sub-page reached by
+clicking "Workflows exposed"; the ticket asks for the row on the main MCP
+settings page, before the existing "Allowed callback URLs" row. Placing it in
+the workflows sub-page was tried once and was wrong — worth stating plainly so
+it isn't repeated.
 
-Gate on **all three**: `mcp:manage`, the experiment flag, and `mcpManagedByEnv` for the disabled state.
+The target page already has almost everything this task needs:
+- `canManageMcpInstance` (the `mcp:manage` gate) already exists as a computed —
+  reuse it, don't redeclare it.
+- `hasPermission` is already imported from `@/app/utils/rbac/permissions` (note
+  the real path — `@/app/rbac/permissions` does not exist).
+- The page already imports and uses `useExposeAllWorkflowsToMcpOffer` from the
+  same experiment, so `useExposeAllWorkflowsToMcpStore` needs adding but the
+  experiment is not new context for this file.
+- `SettingsMCPView.test.ts` already hoists `hasPermissionMock` and already
+  mocks `useExposeAllWorkflowsToMcpStore` via `mockedStore` — reuse both
+  directly rather than inventing parallel mocking.
+- The page has no `useTelemetry()` call yet — add it.
+
+**Placement inside the template:** the "Allowed callback URLs" row lives in the
+*second* `N8nSettingsRowGroup` of the "Access" section
+(`i18n.baseText('settings.mcp.access.title')`), gated
+`v-if="canManageMcpInstance"`:
+
+```vue
+			<N8nSettingsSection :title="i18n.baseText('settings.mcp.access.title')">
+				<N8nSettingsRowGroup>
+					<!-- "Workflows exposed" / "Agents exposed" rows -->
+				</N8nSettingsRowGroup>
+				<N8nSettingsRowGroup v-if="canManageMcpInstance">
+					<!-- "Allowed callback URLs" row -->
+				</N8nSettingsRowGroup>
+			</N8nSettingsSection>
+```
+
+Add a **new** `N8nSettingsRowGroup`, gated on the experiment flag in addition to
+`canManageMcpInstance`, immediately **before** the callback-URLs group — so it
+renders above it, still inside the "Access" section:
+
+```vue
+			<N8nSettingsSection :title="i18n.baseText('settings.mcp.access.title')">
+				<N8nSettingsRowGroup>
+					<!-- "Workflows exposed" / "Agents exposed" rows — unchanged -->
+				</N8nSettingsRowGroup>
+				<N8nSettingsRowGroup v-if="canManageMcpInstance && exposeAllWorkflowsToMcpStore.isEnabled">
+					<N8nSettingsRow
+						:title="i18n.baseText('settings.mcp.autoExpose.title')"
+						:description="i18n.baseText('settings.mcp.autoExpose.description')"
+					>
+						<template #action>
+							<ElSwitch
+								data-test-id="mcp-auto-expose-toggle"
+								:model-value="mcpStore.autoExposeNewWorkflows"
+								:disabled="mcpStore.mcpManagedByEnv"
+								:loading="autoExposeSaving"
+								@update:model-value="onAutoExposeSwitchUpdate"
+							/>
+						</template>
+					</N8nSettingsRow>
+				</N8nSettingsRowGroup>
+				<N8nSettingsRowGroup v-if="canManageMcpInstance">
+					<!-- "Allowed callback URLs" row — unchanged -->
+				</N8nSettingsRowGroup>
+			</N8nSettingsSection>
+```
+
+Using `N8nSettingsRow` + `N8nSettingsRowConfigure`-less `#action` slot (an
+`ElSwitch` directly in the action slot, matching how `McpStatusControl` sits in
+the "MCP status" row above) keeps this row visually consistent with every other
+row on this page — a bespoke flex div (as an earlier attempt did) would look
+inconsistent next to `N8nSettingsRow`'s own spacing.
+
+Gate on **all three**: `mcp:manage` (via the page's existing
+`canManageMcpInstance`), the experiment flag, and `mcpManagedByEnv` for the
+disabled-not-hidden state.
 
 - [ ] **Step 1: Write the failing test**
 
-Append to `SettingsMCPWorkflowsView.test.ts`, following its existing render helper and store mocking:
+Append to `SettingsMCPView.test.ts`, reusing its existing `hasPermissionMock`,
+`mockedStore(useExposeAllWorkflowsToMcpStore)`, and render helper — do not
+introduce a second mocking pattern:
 
 ```typescript
 describe('auto-expose toggle', () => {
 	it('renders for a user with mcp:manage when the experiment is on', async () => {
+		hasPermissionMock.mockReturnValue(true);
+		exposeAllWorkflowsToMcpStore.isEnabled = true;
+
 		const { getByTestId } = renderComponent();
 		await waitAllPromises();
 
@@ -981,9 +1059,8 @@ describe('auto-expose toggle', () => {
 	});
 
 	it('is hidden without the experiment flag', async () => {
-		vi.mocked(useExposeAllWorkflowsToMcpStore).mockReturnValue({
-			isEnabled: false,
-		} as ReturnType<typeof useExposeAllWorkflowsToMcpStore>);
+		hasPermissionMock.mockReturnValue(true);
+		exposeAllWorkflowsToMcpStore.isEnabled = false;
 
 		const { queryByTestId } = renderComponent();
 		await waitAllPromises();
@@ -992,7 +1069,8 @@ describe('auto-expose toggle', () => {
 	});
 
 	it('is hidden for a user without mcp:manage', async () => {
-		vi.mocked(hasPermission).mockReturnValue(false);
+		hasPermissionMock.mockReturnValue(false);
+		exposeAllWorkflowsToMcpStore.isEnabled = true;
 
 		const { queryByTestId } = renderComponent();
 		await waitAllPromises();
@@ -1001,6 +1079,10 @@ describe('auto-expose toggle', () => {
 	});
 
 	it('persists the new state and tracks the resulting value', async () => {
+		hasPermissionMock.mockReturnValue(true);
+		exposeAllWorkflowsToMcpStore.isEnabled = true;
+		mcpStore.setAutoExposeNewWorkflows.mockResolvedValue(true);
+
 		const { getByTestId } = renderComponent();
 		await waitAllPromises();
 
@@ -1008,17 +1090,21 @@ describe('auto-expose toggle', () => {
 
 		expect(mcpStore.setAutoExposeNewWorkflows).toHaveBeenCalledWith(true);
 		expect(telemetry.track).toHaveBeenCalledWith(
-			'User toggled auto-expose new workflows to MCP',
+			TELEMETRY_EVENT.MCP.AUTO_EXPOSE_NEW_WORKFLOWS_TOGGLED,
 			expect.objectContaining({ enabled: true }),
 		);
 	});
 });
 ```
 
+Assert against `TELEMETRY_EVENT.MCP.AUTO_EXPOSE_NEW_WORKFLOWS_TOGGLED` (the
+event-definition object), not the bare name string — the object is what
+`telemetry.track` is actually called with.
+
 - [ ] **Step 2: Run test to verify it fails**
 
 ```bash
-cd packages/frontend/editor-ui && pnpm test src/features/ai/mcpAccess/SettingsMCPWorkflowsView.test.ts
+cd packages/frontend/editor-ui && pnpm test src/features/ai/mcpAccess/SettingsMCPView.test.ts
 ```
 
 Expected: FAIL — no element with `mcp-auto-expose-toggle`.
@@ -1035,25 +1121,22 @@ In `packages/frontend/@n8n/i18n/src/locales/en.json`, alongside the other `setti
 
 - [ ] **Step 4: Write the component change**
 
-Add to the `<script setup>` block of `SettingsMCPWorkflowsView.vue`:
+Add to the `<script setup>` block of `SettingsMCPView.vue`:
 
 ```typescript
 import { ElSwitch } from 'element-plus';
-import { N8nText } from '@n8n/design-system';
-import { hasPermission } from '@/app/rbac/permissions';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { useExposeAllWorkflowsToMcpStore } from '@/experiments/exposeAllWorkflowsToMcp/stores/exposeAllWorkflowsToMcp.store';
 
-const exposeAllStore = useExposeAllWorkflowsToMcpStore();
+const telemetry = useTelemetry();
+const exposeAllWorkflowsToMcpStore = useExposeAllWorkflowsToMcpStore();
 
 const autoExposeSaving = ref(false);
 
-const canManageMcpInstance = computed(() =>
-	hasPermission(['rbac'], { rbac: { scope: 'mcp:manage' } }),
-);
-const showAutoExposeRow = computed(
-	() => canManageMcpInstance.value && exposeAllStore.isEnabled,
-);
+const onAutoExposeSwitchUpdate = (value: string | number | boolean) => {
+	void onToggleAutoExpose(value === true);
+};
 
 const onToggleAutoExpose = async (value: boolean) => {
 	autoExposeSaving.value = true;
@@ -1070,53 +1153,24 @@ const onToggleAutoExpose = async (value: boolean) => {
 };
 ```
 
-Add the row in the template, immediately inside `<div data-test-id="mcp-workflows-view">` and **above** `<div :class="$style.actions">`:
+`canManageMcpInstance` already exists in this file — do not redeclare it.
+`ElSwitch`'s `@update:model-value` hands back `string | number | boolean`;
+narrow with the wrapper above rather than casting.
 
-```vue
-			<div v-if="showAutoExposeRow" :class="$style.autoExposeRow">
-				<div :class="$style.autoExposeCopy">
-					<N8nText :bold="true" size="medium">
-						{{ i18n.baseText('settings.mcp.autoExpose.title') }}
-					</N8nText>
-					<N8nText size="small" color="text-light">
-						{{ i18n.baseText('settings.mcp.autoExpose.description') }}
-					</N8nText>
-				</div>
-				<ElSwitch
-					data-test-id="mcp-auto-expose-toggle"
-					:model-value="mcpStore.autoExposeNewWorkflows"
-					:disabled="mcpStore.mcpManagedByEnv"
-					:loading="autoExposeSaving"
-					@update:model-value="onToggleAutoExpose"
-				/>
-			</div>
-```
+Add the template block from the Placement section above, inside the "Access"
+`N8nSettingsSection`, between the existing two row groups.
 
-Add to the `<style module lang="scss">` block:
-
-```scss
-.autoExposeRow {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: var(--spacing--sm);
-	padding-bottom: var(--spacing--sm);
-}
-
-.autoExposeCopy {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--4xs);
-}
-```
+No new `<style>` is needed — the row uses `N8nSettingsRow`'s own layout, matching every other row on the page.
 
 - [ ] **Step 5: Run tests to verify they pass**
 
 ```bash
-cd packages/frontend/editor-ui && pnpm test src/features/ai/mcpAccess/SettingsMCPWorkflowsView.test.ts
+cd packages/frontend/editor-ui && pnpm test src/features/ai/mcpAccess/SettingsMCPView.test.ts
 ```
 
-Expected: PASS.
+Expected: PASS, including every pre-existing test in the file — this page has
+significant existing coverage (empty state, capacity notice, callback URLs
+dialog, etc.) that must not regress.
 
 - [ ] **Step 6: Lint and typecheck**
 
@@ -1124,12 +1178,12 @@ Expected: PASS.
 cd packages/frontend/editor-ui && pnpm lint && pnpm typecheck
 ```
 
-Expected: clean. `ElSwitch`'s `@update:model-value` hands back `string | number | boolean`; if the typecheck complains, narrow with `(value: string | number | boolean) => onToggleAutoExpose(value === true)`.
+Expected: clean.
 
 - [ ] **Step 7: Commit**
 
 ```bash
-git add packages/frontend/editor-ui/src/features/ai/mcpAccess/SettingsMCPWorkflowsView.vue packages/frontend/editor-ui/src/features/ai/mcpAccess/SettingsMCPWorkflowsView.test.ts packages/frontend/@n8n/i18n/src/locales/en.json
+git add packages/frontend/editor-ui/src/features/ai/mcpAccess/SettingsMCPView.vue packages/frontend/editor-ui/src/features/ai/mcpAccess/SettingsMCPView.test.ts packages/frontend/@n8n/i18n/src/locales/en.json
 git commit -m "feat(editor): Add auto-expose new workflows toggle to MCP settings"
 ```
 
