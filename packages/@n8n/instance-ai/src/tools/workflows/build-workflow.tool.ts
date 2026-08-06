@@ -793,6 +793,13 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 
 			const credentialMap = await buildCredentialMap(context.credentialService);
 			const mockResult = await resolveCredentials(json, targetWorkflowId, context, credentialMap);
+			for (const note of mockResult.gatewayConstraintNotes) {
+				informational.push({
+					code: 'AI_GATEWAY_CONSTRAINT',
+					message: note,
+					severity: 'informational',
+				});
+			}
 
 			await stripStaleCredentialsFromWorkflow(context, json);
 

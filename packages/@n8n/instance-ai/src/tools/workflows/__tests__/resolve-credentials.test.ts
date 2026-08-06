@@ -141,6 +141,74 @@ describe('resolveCredentials', () => {
 			expect(result.mockedCredentialTypes).toEqual([]);
 		});
 
+		it('skips the n8n credits attach and mocks instead when the node violates gateway constraints', async () => {
+			const json = makeWorkflow({
+				nodes: [
+					{
+						...makeSlackNode(),
+						typeVersion: 2,
+						parameters: { resource: 'message', operation: 'delete' },
+					},
+				],
+			});
+			const ctx = createMockContext();
+			(ctx.credentialService.list as Mock).mockResolvedValue([]);
+			(
+				ctx.credentialService as unknown as { isAiGatewayCredentialType: Mock }
+			).isAiGatewayCredentialType = vi.fn().mockResolvedValue(true);
+			(ctx.nodeService as unknown as { getDescription: Mock }).getDescription = vi
+				.fn()
+				.mockResolvedValue({
+					aiGateway: {
+						supported: true,
+						minVersion: 2.3,
+						operations: { message: ['post', 'postEphemeral'] },
+					},
+				});
+
+			const result = await resolveCredentials(json, undefined, ctx);
+
+			expect(json.nodes[0].credentials).toEqual({});
+			expect(result.resolvedCredentialsByNode).toEqual({});
+			expect(result.mockedCredentialsByNode).toEqual({ Slack: ['slackApi'] });
+			expect(result.gatewayConstraintNotes).toHaveLength(1);
+			expect(result.gatewayConstraintNotes[0]).toContain('typeVersion 2 is below');
+			expect(result.gatewayConstraintNotes[0]).toContain('operation "message.delete"');
+		});
+
+		it('attaches n8n credits when the node satisfies gateway constraints', async () => {
+			const json = makeWorkflow({
+				nodes: [
+					{
+						...makeSlackNode(),
+						typeVersion: 2.3,
+						parameters: { resource: 'message', operation: 'post' },
+					},
+				],
+			});
+			const ctx = createMockContext();
+			(ctx.credentialService.list as Mock).mockResolvedValue([]);
+			(
+				ctx.credentialService as unknown as { isAiGatewayCredentialType: Mock }
+			).isAiGatewayCredentialType = vi.fn().mockResolvedValue(true);
+			(ctx.nodeService as unknown as { getDescription: Mock }).getDescription = vi
+				.fn()
+				.mockResolvedValue({
+					aiGateway: {
+						supported: true,
+						minVersion: 2.3,
+						operations: { message: ['post', 'postEphemeral'] },
+					},
+				});
+
+			const result = await resolveCredentials(json, undefined, ctx);
+
+			expect(json.nodes[0].credentials).toEqual({
+				slackApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+			});
+			expect(result.gatewayConstraintNotes).toEqual([]);
+		});
+
 		it('switches the node auth to the attached n8n credits credential type', async () => {
 			// The LLM wrote the API-key credential slot but left auth at the OAuth2
 			// default; attaching n8n credits must switch auth so the slot is active.

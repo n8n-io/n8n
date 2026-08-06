@@ -17,7 +17,7 @@ import {
 	getValidCredentialTypes,
 	resolveSupportedSiblingCredentialType,
 } from './setup-workflow.service';
-import type { InstanceAiContext } from '../../types';
+import type { AiGatewayNodeMeta, InstanceAiContext } from '../../types';
 
 export type { ResolvedCredential };
 
@@ -70,6 +70,14 @@ export interface CredentialResolutionResult {
 	 * the user to connect or create them.
 	 */
 	resolvedCredentialsByNode: Record<string, ResolvedCredential[]>;
+	/**
+	 * Per-node notes explaining why an n8n credits attachment was skipped
+	 * because the node violates the gateway's constraints (minVersion,
+	 * covered operations, managed parameters). Surfaced as informational
+	 * build warnings so the agent can adjust the node instead of shipping a
+	 * managed credential that fails at runtime.
+	 */
+	gatewayConstraintNotes: string[];
 }
 
 /**
@@ -131,6 +139,32 @@ export async function resolveCredentials(
 	const mockedCredentialTypesSet = new Set<string>();
 	const mockedCredentialsByNode: Record<string, string[]> = {};
 	const resolvedCredentialsByNode: Record<string, ResolvedCredential[]> = {};
+	const gatewayConstraintNotes: string[] = [];
+	const gatewayCheckedNodes = new Set<string>();
+
+	// Gateway coverage is node-level, not just credential-type-level: a covered
+	// type on a node below minVersion / outside the covered operations would get
+	// a managed credential that fails at runtime. When the node description
+	// carries aiGateway constraints the node violates, skip the attach (the slot
+	// falls back to mock + setup) and note what to change.
+	const gatewayViolationsFor = async (node: NodeJSON): Promise<string[]> => {
+		let meta: AiGatewayNodeMeta | undefined;
+		try {
+			const description = await ctx.nodeService.getDescription(node.type, node.typeVersion ?? 1);
+			meta = description?.aiGateway;
+		} catch {
+			return [];
+		}
+		if (!meta) return [];
+		const violations = gatewayConstraintViolations(node, meta);
+		if (violations.length > 0 && node.name && !gatewayCheckedNodes.has(node.name)) {
+			gatewayCheckedNodes.add(node.name);
+			gatewayConstraintNotes.push(
+				`n8n credits skipped for "${node.name}" (${node.type}): ${violations.join('; ')}. Fix this to run the node on n8n credits, or a credential will be collected in setup.`,
+			);
+		}
+		return violations;
+	};
 
 	// n8n credits support is process-global config; memoize per type for this call.
 	const gatewaySupportCache = new Map<string, boolean>();
@@ -273,15 +307,18 @@ export async function resolveCredentials(
 			// a supported sibling (switching auth to it) and drop the unusable slot.
 			const mockOrAttachGateway = async () => {
 				if (!hasStoredCredential(key)) {
-					if (await isGatewayCredentialType(key)) {
-						await attachGatewayCredential();
-						return;
-					}
-					const siblingType = await resolveSupportedSiblingType(node, key);
-					if (siblingType) {
-						delete creds[key];
-						await attachGatewayCredential(siblingType);
-						return;
+					const violations = await gatewayViolationsFor(node);
+					if (violations.length === 0) {
+						if (await isGatewayCredentialType(key)) {
+							await attachGatewayCredential();
+							return;
+						}
+						const siblingType = await resolveSupportedSiblingType(node, key);
+						if (siblingType) {
+							delete creds[key];
+							await attachGatewayCredential(siblingType);
+							return;
+						}
 					}
 				}
 				mockCredential();
@@ -338,6 +375,8 @@ export async function resolveCredentials(
 			if (existing !== undefined && existing !== null) continue;
 			if (hasStoredCredential(credType)) continue;
 
+			if ((await gatewayViolationsFor(node)).length > 0) continue;
+
 			let managedType = credType;
 			if (!(await isGatewayCredentialType(credType))) {
 				const siblingType = await resolveSupportedSiblingType(node, credType);
@@ -368,7 +407,68 @@ export async function resolveCredentials(
 		mockedCredentialTypes: [...mockedCredentialTypesSet],
 		mockedCredentialsByNode,
 		resolvedCredentialsByNode,
+		gatewayConstraintNotes,
 	};
+}
+
+/** Concrete values only — expressions and placeholders cannot be checked. */
+function concreteStringParam(parameters: NodeJSON['parameters'], name: string): string | undefined {
+	const value = (parameters as Record<string, unknown> | undefined)?.[name];
+	if (typeof value !== 'string') return undefined;
+	if (value.includes('{{') || value.includes('__PLACEHOLDER')) return undefined;
+	return value;
+}
+
+const OPERATION_ONLY_KEY = '__operation_only__';
+
+function gatewayConstraintViolations(node: NodeJSON, meta: AiGatewayNodeMeta): string[] {
+	const violations: string[] = [];
+
+	const version =
+		typeof node.typeVersion === 'string' ? parseFloat(node.typeVersion) : (node.typeVersion ?? 1);
+	if (meta.minVersion !== undefined && version < meta.minVersion) {
+		violations.push(
+			`typeVersion ${version} is below the n8n credits minimum ${meta.minVersion} (set typeVersion >= ${meta.minVersion})`,
+		);
+	}
+
+	if (meta.operations) {
+		const operation = concreteStringParam(node.parameters, 'operation');
+		if (OPERATION_ONLY_KEY in meta.operations) {
+			const allowed = meta.operations[OPERATION_ONLY_KEY];
+			if (operation && !allowed.includes(operation)) {
+				violations.push(
+					`operation "${operation}" is not covered by n8n credits (covered: ${allowed.join(', ')})`,
+				);
+			}
+		} else {
+			const resource = concreteStringParam(node.parameters, 'resource');
+			if (resource) {
+				const allowed = meta.operations[resource];
+				if (!allowed) {
+					violations.push(
+						`resource "${resource}" is not covered by n8n credits (covered: ${Object.keys(meta.operations).join(', ')})`,
+					);
+				} else if (operation && !allowed.includes(operation)) {
+					violations.push(
+						`operation "${resource}.${operation}" is not covered by n8n credits (covered: ${allowed.join(', ')})`,
+					);
+				}
+			}
+		}
+	}
+
+	const setHiddenProperties = (meta.hiddenProperties ?? []).filter(
+		(property) =>
+			(node.parameters as Record<string, unknown> | undefined)?.[property] !== undefined,
+	);
+	if (setHiddenProperties.length > 0) {
+		violations.push(
+			`parameter(s) ${setHiddenProperties.join(', ')} are managed by n8n credits and must not be set (remove them)`,
+		);
+	}
+
+	return violations;
 }
 
 function getCredentialId(value: unknown): string | undefined {
