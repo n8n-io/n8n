@@ -15,9 +15,38 @@ export const CONSUMER_DEFAULTS = {
 	autoCommitInterval: 5000,
 } as const;
 
+/**
+ * The v1 options that reach the consumer itself. All optional: a `collection`
+ * node parameter only carries the keys a user actually set.
+ */
 export interface KafkaConsumerOptions {
 	/** ID of the consumer group Kafka uses to track how far the group has read. */
 	groupId: string;
+	sessionTimeout?: number;
+	heartbeatInterval?: number;
+	/**
+	 * Maximum time to rejoin the group. In this library it doubles as
+	 * `max.poll.interval.ms`, the deadline to finish processing one batch before
+	 * the consumer is dropped from its group, so the node derives it from the
+	 * workflow's execution timeout rather than passing the raw option.
+	 */
+	rebalanceTimeout?: number;
+	maxBytesPerPartition?: number;
+	minBytes?: number;
+	maxInFlightRequests?: number;
+	/** Start at the earliest offset. Per-consumer here, unlike kafkajs's per-subscribe. */
+	fromBeginning?: boolean;
+}
+
+/**
+ * Drops keys whose value is `undefined`. librdkafka does not treat a key that is
+ * present but undefined as absent: it skips the library's own default and then
+ * fails on the value, so an unset node option must never reach the config.
+ */
+function definedOnly<T extends object>(values: T): Partial<T> {
+	return Object.fromEntries(
+		Object.entries(values).filter(([, value]) => value !== undefined),
+	) as Partial<T>;
 }
 
 /**
@@ -34,10 +63,13 @@ export async function createKafkaConsumer(
 ): Promise<KafkaJS.Consumer> {
 	const kafka = await createKafkaClient(credentials);
 
+	const { groupId, ...rest } = options;
+
 	return kafka.consumer({
 		kafkaJS: {
-			groupId: options.groupId,
+			groupId,
 			...CONSUMER_DEFAULTS,
+			...definedOnly(rest),
 		},
 	});
 }

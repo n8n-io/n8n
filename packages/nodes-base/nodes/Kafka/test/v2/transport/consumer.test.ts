@@ -63,4 +63,45 @@ describe('createKafkaConsumer', () => {
 		expect(consumer.subscribe).not.toHaveBeenCalled();
 		expect(consumer.run).not.toHaveBeenCalled();
 	});
+
+	it('passes the v1 consumer options through alongside the defaults', async () => {
+		await createKafkaConsumer(credentials, {
+			groupId: 'my-group',
+			sessionTimeout: 45000,
+			heartbeatInterval: 9000,
+			rebalanceTimeout: 700000,
+			maxBytesPerPartition: 2048,
+			minBytes: 2,
+			maxInFlightRequests: 3,
+			fromBeginning: true,
+		});
+
+		expect(getFakeConsumers().at(-1)?.config).toStrictEqual({
+			kafkaJS: {
+				groupId: 'my-group',
+				maxWaitTimeInMs: 5000,
+				autoCommitInterval: 5000,
+				sessionTimeout: 45000,
+				heartbeatInterval: 9000,
+				rebalanceTimeout: 700000,
+				maxBytesPerPartition: 2048,
+				minBytes: 2,
+				maxInFlightRequests: 3,
+				fromBeginning: true,
+			},
+		});
+	});
+
+	it('omits options the user never set, rather than passing them as undefined', async () => {
+		// librdkafka treats a key present with value undefined as set, skips its own
+		// default, and then fails on the value.
+		await createKafkaConsumer(credentials, {
+			groupId: 'my-group',
+			sessionTimeout: undefined,
+			fromBeginning: undefined,
+		});
+
+		const config = getFakeConsumers().at(-1)?.config.kafkaJS ?? {};
+		expect(Object.keys(config)).toStrictEqual(['groupId', 'maxWaitTimeInMs', 'autoCommitInterval']);
+	});
 });
