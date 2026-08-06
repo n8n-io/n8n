@@ -64,7 +64,35 @@ export class AgentConfigService {
 		if (!config) {
 			throw new UserError('Agent has no JSON config yet.');
 		}
+		await this.hydrateTaskDefinitions(agentId, config);
 		return config;
+	}
+
+	/**
+	 * Inline each task ref's body (name/objective/cronExpression) from the
+	 * `agent_task_definition` table so the exported config is self-contained.
+	 * Without this the export carries only `{ type, id, enabled }` refs and the
+	 * task body is lost when the config is downloaded and imported elsewhere.
+	 */
+	private async hydrateTaskDefinitions(
+		agentId: string,
+		config: AgentJsonConfig,
+	): Promise<void> {
+		if (!config.tasks?.length) return;
+
+		const definitions = await this.agentTaskRepository.findByAgentId(agentId);
+		const definitionById = new Map(definitions.map((task) => [task.id, task]));
+
+		config.tasks = config.tasks.map((ref) => {
+			const definition = definitionById.get(ref.id);
+			if (!definition) return ref;
+			return {
+				...ref,
+				name: definition.name,
+				objective: definition.objective,
+				cronExpression: definition.cronExpression,
+			};
+		});
 	}
 
 	/**
@@ -168,10 +196,21 @@ export class AgentConfigService {
 			? (await this.agentTaskRepository.findByAgentId(agentId)).map((task) => task.id)
 			: [];
 
+		// Recreate task definitions that arrived inline with the config (e.g. an
+		// imported agent JSON) but have no row on this agent yet, so their refs
+		// survive instead of being dropped as orphans by `removeMissingConfigRefs`.
+		const importedTaskIds = tasksProvided
+			? await this.recreateImportedTaskDefinitions(
+					agentId,
+					validatedConfig.tasks ?? [],
+					new Set(existingTaskIds),
+				)
+			: [];
+
 		const resolvedSubAgents = await this.removeMissingConfigRefs(
 			validatedConfig,
 			entity,
-			new Set(existingTaskIds),
+			new Set([...existingTaskIds, ...importedTaskIds]),
 		);
 		this.validateSubAgentRefs(resolvedSubAgents, entity);
 
@@ -321,7 +360,12 @@ export class AgentConfigService {
 		}
 
 		if (config.tasks !== undefined) {
-			config.tasks = config.tasks.filter((ref) => existingTaskIds.has(ref.id));
+			// Keep only refs backed by a definition, and strip any inline body:
+			// the schema column stores just `{ type, id, enabled }`; the body
+			// lives in the `agent_task_definition` table.
+			config.tasks = config.tasks
+				.filter((ref) => existingTaskIds.has(ref.id))
+				.map((ref) => ({ type: ref.type, id: ref.id, enabled: ref.enabled }));
 		}
 
 		if (config.subAgents?.agents !== undefined) {
@@ -340,6 +384,42 @@ export class AgentConfigService {
 		}
 
 		return [];
+	}
+
+	/**
+	 * Persist task definitions that arrived inline on the config but have no row
+	 * for this agent yet (an imported agent JSON). A ref without a full inline
+	 * body can't be recreated and is left to be dropped as an orphan. Returns the
+	 * ids that now have a definition, so their refs are kept on import.
+	 */
+	private async recreateImportedTaskDefinitions(
+		agentId: string,
+		tasks: NonNullable<AgentJsonConfig['tasks']>,
+		existingTaskIds: ReadonlySet<string>,
+	): Promise<string[]> {
+		const created: string[] = [];
+		for (const task of tasks) {
+			if (existingTaskIds.has(task.id)) continue;
+			if (
+				task.name === undefined ||
+				task.objective === undefined ||
+				task.cronExpression === undefined
+			) {
+				continue;
+			}
+
+			await this.agentTaskRepository.save(
+				this.agentTaskRepository.create({
+					id: task.id,
+					agentId,
+					name: task.name,
+					objective: task.objective,
+					cronExpression: task.cronExpression,
+				}),
+			);
+			created.push(task.id);
+		}
+		return created;
 	}
 
 	private validateSubAgentRefs(resolvedSubAgents: ResolvedSubAgentRef[], entity: Agent) {
