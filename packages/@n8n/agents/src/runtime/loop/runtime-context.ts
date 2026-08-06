@@ -90,7 +90,7 @@ export class RuntimeContextBuilder {
 			reasoning: this.config.reasoning,
 			providerOptions: providerOptions as Record<string, JSONObject> | undefined,
 			outputSpec,
-			maxOutputTokens: resolveDefaultMaxOutputTokens(this.modelId),
+			maxOutputTokens: execOptions?.maxOutputTokens ?? resolveDefaultMaxOutputTokens(this.modelId),
 		};
 	}
 
