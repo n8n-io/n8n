@@ -511,6 +511,32 @@ describe('WebhookService', () => {
 		});
 	});
 
+	describe('createWebhook()', () => {
+		it('normalizes the path and adds dynamic path metadata', () => {
+			webhookRepository.create.mockImplementation(
+				(data) => Object.assign(new WebhookEntity(), data) as WebhookEntity,
+			);
+
+			const webhook = webhookService.createWebhook(
+				{
+					workflowId: 'wf-1',
+					webhookPath: ' /:id/team/ ',
+					node: 'Webhook',
+					method: 'GET',
+				},
+				'hook-id',
+			);
+
+			expect(webhook).toEqual(
+				expect.objectContaining({
+					webhookPath: ':id/team',
+					webhookId: 'hook-id',
+					pathLength: 2,
+				}),
+			);
+		});
+	});
+
 	describe('getStaticWebhookKeys()', () => {
 		const webhookNodeType = {
 			description: {

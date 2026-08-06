@@ -2,8 +2,8 @@ import { Logger } from '@n8n/backend-common';
 import type { WebhookEntity } from '@n8n/db';
 import { WebhookRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { HookContext, WebhookContext } from 'n8n-core';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { HookContext, WebhookContext } from 'n8n-core';
 import {
 	isNodeClassInstance,
 	NodeHelpers,
@@ -246,8 +246,27 @@ export class WebhookService {
 		}
 	}
 
-	createWebhook(data: Partial<WebhookEntity>) {
-		return this.webhookRepository.create(data);
+	createWebhook(data: Partial<WebhookEntity>, nodeWebhookId?: string) {
+		const webhook = this.webhookRepository.create(data);
+		webhook.webhookPath = this.normalizeWebhookPath(webhook.webhookPath);
+
+		if (this.isDynamicWebhookPath(webhook.webhookPath) && nodeWebhookId) {
+			webhook.webhookId = nodeWebhookId;
+			webhook.pathLength = webhook.webhookPath.split('/').length;
+		}
+
+		return webhook;
+	}
+
+	private normalizeWebhookPath(path: string) {
+		let normalizedPath = path.trim();
+		if (normalizedPath.startsWith('/')) normalizedPath = normalizedPath.slice(1);
+		if (normalizedPath.endsWith('/')) normalizedPath = normalizedPath.slice(0, -1);
+		return normalizedPath;
+	}
+
+	private isDynamicWebhookPath(path: string) {
+		return path.startsWith(':') || path.includes('/:');
 	}
 
 	/** The webhooks currently registered (stored locally) for a workflow. */
@@ -335,10 +354,8 @@ export class WebhookService {
 			const { path, httpMethod } = parameters;
 			if (typeof path !== 'string' || path.startsWith('=')) return [];
 
-			let webhookPath = path.trim();
-			if (webhookPath.startsWith('/')) webhookPath = webhookPath.slice(1);
-			if (webhookPath.endsWith('/')) webhookPath = webhookPath.slice(0, -1);
-			if (webhookPath === '' || webhookPath.includes(':')) return [];
+			const webhookPath = this.normalizeWebhookPath(path);
+			if (webhookPath === '' || this.isDynamicWebhookPath(webhookPath)) return [];
 
 			return [httpMethod]
 				.flat()
