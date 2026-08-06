@@ -3,6 +3,7 @@ import { Service } from '@n8n/di';
 import { randomUUID } from 'crypto';
 
 import { TokenExchangeAuthError } from '@/modules/identity-substrate/identity-substrate.errors';
+import { TokenExchangeFailureReason } from '@/modules/identity-substrate/identity-substrate.types';
 import { ExternalTokenVerifierService } from '@/modules/identity-substrate/services/external-token-verifier.service';
 import { IdentityResolutionService } from '@/modules/identity-substrate/services/identity-resolution.service';
 import { JwtService } from '@/services/jwt.service';
@@ -11,7 +12,6 @@ import { TokenExchangeConfig } from '../token-exchange.config';
 import type { TokenExchangeRequest } from '../token-exchange.schemas';
 import {
 	TOKEN_EXCHANGE_ISSUER,
-	TokenExchangeFailureReason,
 	type IssuedJwtPayload,
 	type IssuedTokenResult,
 } from '../token-exchange.types';

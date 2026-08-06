@@ -48,6 +48,7 @@ export const LICENSE_FEATURES = {
 	DYNAMIC_CREDENTIALS: 'feat:dynamicCredentials',
 	PERSONAL_SPACE_POLICY: 'feat:personalSpacePolicy',
 	TOKEN_EXCHANGE: 'feat:tokenExchange',
+	IDENTITY_SUBSTRATE: 'feat:identitySubstrate',
 	DATA_REDACTION: 'feat:dataRedaction',
 	OTEL_CUSTOM_SPAN_ATTRIBUTES: 'feat:otel:customSpanAttributes',
 	WORKFLOW_REVIEWS: 'feat:workflowReviews',
