@@ -111,7 +111,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.test_run](public.test_run.md) | 16 |  | BASE TABLE |
 | [public.token_exchange_jti](public.token_exchange_jti.md) | 3 |  | BASE TABLE |
 | [public.trusted_key](public.trusted_key.md) | 4 |  | BASE TABLE |
-| [public.trusted_key_source](public.trusted_key_source.md) | 10 |  | BASE TABLE |
+| [public.trusted_key_source](public.trusted_key_source.md) | 11 |  | BASE TABLE |
 | [public.user](public.user.md) | 15 |  | BASE TABLE |
 | [public.user_api_keys](public.user_api_keys.md) | 9 |  | BASE TABLE |
 | [public.user_favorites](public.user_favorites.md) | 4 |  | BASE TABLE |
@@ -1358,6 +1358,7 @@ erDiagram
   text lastError
   timestamp_3__with_time_zone lastRefreshedAt
   varchar_32_ managedBy
+  text policy
   varchar_32_ status
   varchar_32_ type
   timestamp_3__with_time_zone updatedAt

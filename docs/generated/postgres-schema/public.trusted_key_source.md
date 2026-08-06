@@ -11,6 +11,7 @@
 | lastError | text |  | true |  |  |  |
 | lastRefreshedAt | timestamp(3) with time zone |  | true |  |  |  |
 | managedBy | varchar(32) | 'env-config'::character varying | false |  |  |  |
+| policy | text |  | true |  |  |  |
 | status | varchar(32) | 'pending'::character varying | false |  |  |  |
 | type | varchar(32) |  | false |  |  |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
@@ -50,6 +51,7 @@ erDiagram
   text lastError
   timestamp_3__with_time_zone lastRefreshedAt
   varchar_32_ managedBy
+  text policy
   varchar_32_ status
   varchar_32_ type
   timestamp_3__with_time_zone updatedAt

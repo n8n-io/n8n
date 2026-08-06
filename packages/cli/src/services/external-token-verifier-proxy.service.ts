@@ -17,9 +17,24 @@ export interface VerifiedClaim {
 	expiresAt: Date;
 }
 
+/**
+ * What the *trust source* says may be done with a verified claim — not an
+ * attested fact about the caller, which is why it sits beside the claim
+ * rather than inside it.
+ *
+ * Anything that binds a claim to an n8n user must apply this. Dropping it
+ * would silently downgrade a source's `requireVerifiedEmail` and
+ * `allowedRoles` to "no restriction" on whichever path forgot to pass it.
+ */
+export interface VerifiedClaimPolicy {
+	kid: string;
+	allowedRoles?: string[];
+	requireVerifiedEmail: boolean;
+}
+
 export type VerifiedClaimResult =
-	| { claim: VerifiedClaim; context?: undefined }
-	| { claim: null; context: ExternalVerificationContext };
+	| { claim: VerifiedClaim; policy: VerifiedClaimPolicy; context?: undefined }
+	| { claim: null; policy?: undefined; context: ExternalVerificationContext };
 
 export interface ExternalTokenVerifier {
 	/**

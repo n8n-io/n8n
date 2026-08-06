@@ -56,6 +56,7 @@ erDiagram
   TEXT lastError
   datetime_3_ lastRefreshedAt
   varchar_32_ managedBy
+  TEXT policy
   varchar_32_ status
   varchar_32_ type
   datetime_3_ updatedAt

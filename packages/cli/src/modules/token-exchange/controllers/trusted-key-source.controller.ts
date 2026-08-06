@@ -1,11 +1,21 @@
-import { trustedKeySourcesSchema, type TrustedKeySource } from '@n8n/api-types';
+import {
+	trustedKeySourceSchema,
+	trustedKeySourcesSchema,
+	UpdateTrustedKeySourceDto,
+	type TrustedKeySource,
+} from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
 import { AuthenticatedRequest } from '@n8n/db';
-import { Get, GlobalScope, Licensed, RestController } from '@n8n/decorators';
+import { Body, Get, GlobalScope, Licensed, Param, Patch, RestController } from '@n8n/decorators';
 import { jsonParse } from 'n8n-workflow';
 
 import type { TrustedKeySourceEntity } from '../database/entities/trusted-key-source.entity';
 import { TrustedKeyService } from '../services/trusted-key.service';
-import type { JwksKeySource, StaticKeySource } from '../token-exchange.schemas';
+import type {
+	JwksKeySource,
+	StaticKeySource,
+	TrustedKeySourcePolicy,
+} from '../token-exchange.schemas';
 
 /**
  * Strips raw key material from a source's `config` before it leaves the
@@ -20,6 +30,9 @@ function sanitizeSource(source: TrustedKeySourceEntity): TrustedKeySource {
 		lastError: source.lastError,
 		lastRefreshedAt: source.lastRefreshedAt,
 		managedBy: source.managedBy,
+		policy: source.policy
+			? jsonParse<TrustedKeySourcePolicy>(source.policy, { fallbackValue: {} })
+			: null,
 		createdAt: source.createdAt,
 		updatedAt: source.updatedAt,
 	};
@@ -45,7 +58,10 @@ function sanitizeSource(source: TrustedKeySourceEntity): TrustedKeySource {
 
 @RestController('/trusted-key-sources')
 export class TrustedKeySourceController {
-	constructor(private readonly trustedKeyService: TrustedKeyService) {}
+	constructor(
+		private readonly trustedKeyService: TrustedKeyService,
+		private readonly logger: Logger,
+	) {}
 
 	@Get('/')
 	@GlobalScope('trustedKeySource:list')
@@ -53,5 +69,35 @@ export class TrustedKeySourceController {
 	async listSources(_req: AuthenticatedRequest): Promise<TrustedKeySource[]> {
 		const sources = await this.trustedKeyService.listSources();
 		return trustedKeySourcesSchema.parse(sources.map(sanitizeSource));
+	}
+
+	/**
+	 * Only the admin policy is writable. Everything else on a source is derived
+	 * — from the SSO discovery document or `N8N_TRUSTED_KEYS` — and is rewritten
+	 * on the next refresh, so accepting edits to it would be a lie.
+	 *
+	 * Logged, not just applied: widening the accepted audiences of a trusted
+	 * issuer changes who can authenticate to this instance, so the change needs
+	 * to be attributable after the fact.
+	 */
+	@Patch('/:id')
+	@GlobalScope('trustedKeySource:update')
+	@Licensed('feat:tokenExchange')
+	async updateSource(
+		req: AuthenticatedRequest,
+		_res: unknown,
+		@Param('id') id: string,
+		@Body payload: UpdateTrustedKeySourceDto,
+	): Promise<TrustedKeySource> {
+		const updated = await this.trustedKeyService.updateSourcePolicy(id, payload.policy);
+
+		this.logger.info('Trusted key source policy updated', {
+			sourceId: id,
+			issuer: updated.issuer,
+			userId: req.user.id,
+			policy: payload.policy,
+		});
+
+		return trustedKeySourceSchema.parse(sanitizeSource(updated));
 	}
 }

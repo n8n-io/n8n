@@ -72,6 +72,39 @@ export class TokenExchangeService implements ExternalTokenVerifier {
 	}
 
 	/**
+	 * The `aud` values `jwt.verify` will accept (it matches if any one of a
+	 * set matches).
+	 *
+	 * A caller that states an `expectedAudience` is verifying a token
+	 * presented inbound to n8n, so the source's own `inboundAudiences` count
+	 * too — that's how an admin says "this issuer stamps *this* audience on
+	 * tokens meant for us", scoped to one trust source instead of instance-
+	 * wide. Without the caller's expectation this is the plain exchange path,
+	 * which stays on the source's `expectedAudience` alone: an inbound
+	 * audience must never widen what the exchange endpoint accepts.
+	 *
+	 * Returns `undefined` only when nothing is configured anywhere, which
+	 * `jwt.verify` reads as "skip the audience check". That is safe for the
+	 * exchange path (JTI replay protection applies there); the `consumeJti:
+	 * false` overload separately requires an `expectedAudience`, so it can
+	 * never reach that case.
+	 */
+	private acceptedAudiences(
+		expectedAudience: string | string[] | undefined,
+		hasExpectedAudience: boolean,
+		resolvedKey: ResolvedTrustedKey,
+	): string | string[] | undefined {
+		if (!hasExpectedAudience) return resolvedKey.expectedAudience;
+		const expected =
+			expectedAudience === undefined
+				? []
+				: Array.isArray(expectedAudience)
+					? expectedAudience
+					: [expectedAudience];
+		return [...new Set([...expected, ...(resolvedKey.inboundAudiences ?? [])])];
+	}
+
+	/**
 	 * Verify and validate an external JWT subject token.
 	 *
 	 * Performs the full verification pipeline:
@@ -183,7 +216,7 @@ export class TokenExchangeService implements ExternalTokenVerifier {
 				algorithms: resolvedKey.algorithms as jwt.Algorithm[],
 				issuer: resolvedKey.issuer,
 				audience: this.toVerifyAudience(
-					hasExpectedAudience ? expectedAudience : resolvedKey.expectedAudience,
+					this.acceptedAudiences(expectedAudience, hasExpectedAudience, resolvedKey),
 				),
 				ignoreExpiration: false,
 				ignoreNotBefore: false,
@@ -276,6 +309,11 @@ export class TokenExchangeService implements ExternalTokenVerifier {
 					audience: aud,
 					attributes,
 					expiresAt: new Date(exp * 1000),
+				},
+				policy: {
+					kid: resolvedKey.kid,
+					allowedRoles: resolvedKey.allowedRoles,
+					requireVerifiedEmail: resolvedKey.requireVerifiedEmail,
 				},
 			};
 		} catch (error) {

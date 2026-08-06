@@ -111,7 +111,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [test_run](test_run.md) | 16 |  | table |
 | [token_exchange_jti](token_exchange_jti.md) | 3 |  | table |
 | [trusted_key](trusted_key.md) | 4 |  | table |
-| [trusted_key_source](trusted_key_source.md) | 10 |  | table |
+| [trusted_key_source](trusted_key_source.md) | 11 |  | table |
 | [user](user.md) | 15 |  | table |
 | [user_api_keys](user_api_keys.md) | 9 |  | table |
 | [user_favorites](user_favorites.md) | 4 |  | table |
@@ -1347,6 +1347,7 @@ erDiagram
   TEXT lastError
   datetime_3_ lastRefreshedAt
   varchar_32_ managedBy
+  TEXT policy
   varchar_32_ status
   varchar_32_ type
   datetime_3_ updatedAt
