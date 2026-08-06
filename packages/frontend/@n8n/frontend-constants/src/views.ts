@@ -96,5 +96,6 @@ export enum VIEWS {
 	MIGRATION_REPORT = 'MigrationReport',
 	MIGRATION_RULE_REPORT = 'MigrationRuleReport',
 	RESOLVERS = 'Resolvers',
+	TRUSTED_KEY_SOURCES_SETTINGS = 'TrustedKeySourcesSettings',
 	RESOURCE_CENTER = 'ResourceCenter',
 }

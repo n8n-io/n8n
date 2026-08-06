@@ -53,6 +53,8 @@ const SettingsPersonalView = async () =>
 const SettingsUsersView = async () =>
 	await import('@/features/settings/users/views/SettingsUsersView.vue');
 const SettingsResolversView = async () => await import('@/features/resolvers/ResolversView.vue');
+const TrustedKeySourcesView = async () =>
+	await import('@/features/trustedKeySources/TrustedKeySourcesView.vue');
 const SettingsCommunityNodesView = async () =>
 	await import('@/features/settings/communityNodes/views/SettingsCommunityNodesView.vue');
 const SettingsApiView = async () =>
@@ -803,6 +805,27 @@ export const routes: RouteRecordRaw[] = [
 						getProperties() {
 							return {
 								feature: 'resolvers',
+							};
+						},
+					},
+				},
+			},
+			{
+				path: 'trusted-key-sources',
+				name: VIEWS.TRUSTED_KEY_SOURCES_SETTINGS,
+				component: TrustedKeySourcesView,
+				meta: {
+					middleware: ['authenticated', 'rbac'],
+					middlewareOptions: {
+						rbac: {
+							scope: 'trustedKeySource:list',
+						},
+					},
+					telemetry: {
+						pageCategory: 'settings',
+						getProperties() {
+							return {
+								feature: 'trusted-key-sources',
 							};
 						},
 					},

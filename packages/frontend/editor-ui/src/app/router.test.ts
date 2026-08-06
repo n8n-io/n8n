@@ -141,6 +141,12 @@ describe('router', () => {
 		['/settings/ldap', VIEWS.LDAP_SETTINGS, ['ldap:manage']],
 		['/settings/security', VIEWS.WORKFLOWS, []],
 		['/settings/security', VIEWS.SECURITY_SETTINGS, ['securitySettings:manage']],
+		['/settings/trusted-key-sources', VIEWS.WORKFLOWS, []],
+		[
+			'/settings/trusted-key-sources',
+			VIEWS.TRUSTED_KEY_SOURCES_SETTINGS,
+			['trustedKeySource:list'],
+		],
 	])(
 		'should resolve %s to %s with %s user permissions',
 		async (path, name, scopes) => {

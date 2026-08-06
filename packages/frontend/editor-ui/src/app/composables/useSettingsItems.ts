@@ -104,6 +104,14 @@ export function useSettingsItems() {
 				route: { to: { name: VIEWS.RESOLVERS } },
 			},
 			{
+				id: 'settings-trusted-key-sources',
+				icon: 'shield',
+				label: i18n.baseText('settings.trustedKeySources.title'),
+				position: 'top',
+				available: canUserAccessRouteByName(VIEWS.TRUSTED_KEY_SOURCES_SETTINGS),
+				route: { to: { name: VIEWS.TRUSTED_KEY_SOURCES_SETTINGS } },
+			},
+			{
 				id: 'settings-source-control',
 				icon: 'git-branch',
 				label: i18n.baseText('settings.sourceControl.title'),
