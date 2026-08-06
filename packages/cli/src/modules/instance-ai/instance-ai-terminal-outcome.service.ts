@@ -119,14 +119,6 @@ export type InstanceAiTerminalOutcomeTracing = Pick<
 	'finalizeRunTracing' | 'buildMessageTraceMetadata'
 >;
 
-/** Error details for the 'Builder generation errored' telemetry event. */
-export type RunFinishErrorInfo = {
-	/** Raw error message — the SSE run-finish payload carries the user-facing reason instead. */
-	errorMessage?: string;
-	/** 'stream' = the run reported an error but terminated cleanly; 'exception' = the run loop threw. */
-	errorSource?: 'stream' | 'exception';
-};
-
 export interface InstanceAiTerminalOutcomeServiceOptions {
 	eventBus: InstanceAiTerminalOutcomeEventBus;
 	/**
@@ -152,9 +144,6 @@ export interface InstanceAiTerminalOutcomeServiceOptions {
 		runId: string,
 		status: 'completed' | 'cancelled' | 'errored',
 		reason?: string,
-		archivedWorkflowIds?: string[],
-		userId?: string,
-		errorInfo?: RunFinishErrorInfo,
 	) => void;
 	/**
 	 * Persists the orchestrator agent-tree snapshot. Owned by the run loop until
@@ -362,49 +351,6 @@ export class InstanceAiTerminalOutcomeService {
 				status: 'error',
 			}),
 		};
-	}
-
-	/**
-	 * The steps around the run-finish both hit the DB, so they stay best-effort:
-	 * letting either skip the run-finish would leave the run hanging.
-	 */
-	async finishFailedResumeRun(args: {
-		threadId: string;
-		runId: string;
-		messageGroupId?: string;
-		errorMessage: string;
-		errorCode?: InstanceAiErrorCode;
-		errorInfo?: RunFinishErrorInfo;
-		userId?: string;
-		archivedWorkflowIds?: string[];
-		snapshotStorage: DbSnapshotStorage;
-	}): Promise<void> {
-		const warn = (message: string) => (error: unknown) =>
-			this.logger.warn(message, {
-				threadId: args.threadId,
-				runId: args.runId,
-				error: getErrorMessage(error),
-			});
-
-		await this.evaluateTerminalResponse(args.threadId, args.runId, 'errored', {
-			messageGroupId: args.messageGroupId,
-			errorMessage: args.errorMessage,
-			errorCode: args.errorCode,
-		}).catch(warn('Failed to evaluate the terminal response for a failed resume'));
-
-		this.publishRunFinish(
-			args.threadId,
-			args.runId,
-			'errored',
-			args.errorMessage,
-			args.archivedWorkflowIds,
-			args.userId,
-			args.errorInfo,
-		);
-
-		await this.saveAgentTreeSnapshot(args.threadId, args.runId, args.snapshotStorage).catch(
-			warn('Failed to save the agent tree snapshot for a failed resume'),
-		);
 	}
 
 	private buildBackgroundTerminalOutcome(task: ManagedBackgroundTask): TerminalOutcome {

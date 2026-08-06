@@ -141,10 +141,7 @@ import { InstanceAiModelService } from './instance-ai-model.service';
 import { InstanceAiRunProbe } from './instance-ai-run-probe';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { InstanceAiTemporaryWorkflowService } from './instance-ai-temporary-workflow.service';
-import {
-	InstanceAiTerminalOutcomeService,
-	type RunFinishErrorInfo,
-} from './instance-ai-terminal-outcome.service';
+import { InstanceAiTerminalOutcomeService } from './instance-ai-terminal-outcome.service';
 import { InstanceAiAdapterService } from './instance-ai.adapter.service';
 import {
 	AUTO_FOLLOW_UP_MESSAGE,
@@ -341,6 +338,8 @@ function getUserFacingErrorCode(error: unknown): 'quota_exhausted' | undefined {
 	return isQuotaExhaustedError(error) ? 'quota_exhausted' : undefined;
 }
 
+type TerminalErrorCode = NonNullable<ReturnType<typeof getUserFacingErrorCode>>;
+
 export function getUserFacingErrorMessage(error: unknown): string {
 	if (isQuotaExhaustedError(error)) {
 		return QUOTA_EXHAUSTED_USER_MESSAGE;
@@ -418,6 +417,14 @@ function getAbortReason(signal: AbortSignal): string {
 	return typeof reason === 'string' ? reason : 'user_cancelled';
 }
 
+/** Error details for the 'Builder generation errored' telemetry event. */
+type RunFinishErrorInfo = {
+	/** Raw error message — the SSE run-finish payload carries the user-facing reason instead. */
+	errorMessage?: string;
+	/** 'stream' = the run reported an error but terminated cleanly; 'exception' = the run loop threw. */
+	errorSource?: 'stream' | 'exception';
+};
+
 type UnclaimedResumeContext = {
 	threadId: string;
 	runId: string;
@@ -426,8 +433,35 @@ type UnclaimedResumeContext = {
 	snapshotStorage: DbSnapshotStorage;
 	tracing?: InstanceAiTraceContext;
 	messageGroupId?: string;
-	discardTracingOnStale?: InstanceAiTraceContext;
+	unregisteredResumeTracing?: InstanceAiTraceContext;
 };
+
+type UnclaimedResumeOutcome =
+	| { kind: 'silent' }
+	| { kind: 'stale' }
+	| { kind: 'cancelled' }
+	| { kind: 'errored'; reason: string; errorCode?: TerminalErrorCode; errorMessage: string };
+
+/**
+ * A resume that never claimed its checkpoint gets no terminal event from the run
+ * loop, so one has to be issued for it — except when the checkpoint is stale,
+ * which means another owner is driving the run and may still finish it
+ * successfully. The cancellation reason is left to the caller because reading it
+ * consumes the run's timeout, which must not happen on the silent outcomes.
+ */
+function classifyUnclaimedResume(
+	error: unknown,
+	flags: { aborted: boolean; preserveHitl: boolean },
+): UnclaimedResumeOutcome {
+	if (isStaleResumeError(error)) return { kind: 'stale' };
+	if (flags.aborted) return flags.preserveHitl ? { kind: 'silent' } : { kind: 'cancelled' };
+	return {
+		kind: 'errored',
+		reason: getUserFacingErrorMessage(error),
+		errorCode: getUserFacingErrorCode(error),
+		errorMessage: getErrorMessage(error),
+	};
+}
 
 const MAX_CONCURRENT_BACKGROUND_TASKS_PER_THREAD = 5;
 
@@ -710,7 +744,9 @@ export class InstanceAiService {
 			runState: this.runState,
 			suspendedThreads: this.suspendedThreads,
 			tracing: this.tracing,
-			publishRunFinish: (...args) => this.publishRunFinish(...args),
+			publishRunFinish: (threadId, runId, status, reason) => {
+				this.publishRunFinish(threadId, runId, status, reason);
+			},
 			saveAgentTreeSnapshot: async (threadId, runId, snapshotStorage) =>
 				await this.saveAgentTreeSnapshot(threadId, runId, snapshotStorage),
 		});
@@ -4853,6 +4889,21 @@ export class InstanceAiService {
 					},
 				);
 				this.cancelRun(threadId, 'agent_rebuild_failed');
+				// `activateSuspendedRun` above already promoted this run to active, so
+				// `cancelRun` leaves the terminal event to a run loop that was never
+				// started — and the pending confirmation is already dropped, so the
+				// card can't be retried either.
+				await this.emitTerminalRun({
+					threadId,
+					runId,
+					status: 'errored',
+					reason: getUserFacingErrorMessage(new OperationalError('Agent rebuild failed')),
+					errorInfo: { errorMessage: 'Agent rebuild failed', errorSource: 'exception' },
+					messageGroupId,
+					user: activeUser,
+					snapshotStorage: this.dbSnapshotStorage,
+				});
+				this.runState.clearActiveRun(threadId, resumeExecutionToken);
 				return null;
 			}
 			resumeAgent = rebuilt.agent;
@@ -4880,7 +4931,7 @@ export class InstanceAiService {
 			resumeExecutionToken,
 			messageGroupId,
 			resumeTracing,
-			discardTracingOnStale: unregisteredResumeTracing,
+			unregisteredResumeTracing,
 		});
 		return { ok: true, runId };
 	}
@@ -4914,7 +4965,7 @@ export class InstanceAiService {
 			resumeExecutionToken?: symbol;
 			messageGroupId?: string;
 			resumeTracing?: InstanceAiTraceContext;
-			discardTracingOnStale?: InstanceAiTraceContext;
+			unregisteredResumeTracing?: InstanceAiTraceContext;
 		},
 	): Promise<void> {
 		let messageTraceFinalization: MessageTraceFinalization | undefined;
@@ -5437,90 +5488,163 @@ export class InstanceAiService {
 		}
 	}
 
-	/**
-	 * A stale resume means another owner is driving the run — it may still finish
-	 * successfully, so telling this user anything would be wrong.
-	 */
 	private async settleUnclaimedResume(
 		opts: UnclaimedResumeContext,
 		error: unknown,
 		errorSource: RunFinishErrorInfo['errorSource'],
 	): Promise<void> {
-		if (isStaleResumeError(error)) {
-			await this.tracing.finalizeDetachedTraceRun(
-				`stale-resume:${opts.runId}`,
-				opts.discardTracingOnStale,
-				{
-					status: 'cancelled',
-					outputs: { runId: opts.runId },
-					metadata: { completion_source: 'stale_resume' },
-				},
-			);
-			return;
-		}
+		const outcome = classifyUnclaimedResume(error, {
+			aborted: opts.signal.aborted,
+			preserveHitl: this.shouldPreserveHitlOnShutdown(opts.runId),
+		});
 
-		await this.failUnclaimedResume(opts, error, errorSource);
+		switch (outcome.kind) {
+			case 'silent':
+				return;
+
+			case 'stale':
+				await this.tracing.finalizeDetachedTraceRun(
+					`stale-resume:${opts.runId}`,
+					opts.unregisteredResumeTracing,
+					{
+						status: 'cancelled',
+						outputs: { runId: opts.runId },
+						metadata: { completion_source: 'stale_resume' },
+					},
+				);
+				return;
+
+			case 'cancelled': {
+				const reason = this.liveness.consumeRunTimeout(opts.runId).timedOut
+					? INSTANCE_AI_RUN_TIMEOUT_REASON
+					: getAbortReason(opts.signal);
+				await this.tracing.finalizeDetachedTraceRun(
+					`cancelled-resume:${opts.runId}`,
+					opts.unregisteredResumeTracing,
+					{
+						status: 'cancelled',
+						outputs: { runId: opts.runId },
+						metadata: { completion_source: 'resume_cancelled', cancellation_reason: reason },
+					},
+				);
+				await this.emitTerminalRun({
+					threadId: opts.threadId,
+					runId: opts.runId,
+					status: 'cancelled',
+					reason,
+					messageGroupId: opts.messageGroupId,
+					user: opts.user,
+					snapshotStorage: opts.snapshotStorage,
+				});
+				return;
+			}
+
+			case 'errored':
+				this.instanceAiErrorReporter.report(error, {
+					component: 'instance-ai-resume-claim',
+					threadId: opts.threadId,
+					runId: opts.runId,
+					tracing: opts.tracing,
+					agentId: orchestratorAgentId(opts.runId),
+					userId: opts.user.id,
+					messageGroupId: opts.messageGroupId,
+				});
+				await this.tracing.finalizeDetachedTraceRun(
+					`unclaimed-resume:${opts.runId}`,
+					opts.unregisteredResumeTracing,
+					{
+						status: 'failed',
+						error: outcome.errorMessage,
+						metadata: { completion_source: 'resume_claim' },
+					},
+				);
+				await this.emitTerminalRun({
+					threadId: opts.threadId,
+					runId: opts.runId,
+					status: 'errored',
+					reason: outcome.reason,
+					errorCode: outcome.errorCode,
+					errorInfo: { errorMessage: outcome.errorMessage, errorSource },
+					// The resume trace context is never registered before the claim, so the
+					// message group has to come from the suspended run, not the trace registry.
+					messageGroupId: opts.messageGroupId,
+					user: opts.user,
+					snapshotStorage: opts.snapshotStorage,
+				});
+				return;
+		}
 	}
 
-	/** Nothing else will report back on this run, so the user has to be told. */
-	private async failUnclaimedResume(
-		opts: UnclaimedResumeContext,
-		error: unknown,
-		errorSource: RunFinishErrorInfo['errorSource'],
-	): Promise<void> {
-		this.instanceAiErrorReporter.report(error, {
-			component: 'instance-ai-resume-claim',
-			threadId: opts.threadId,
-			runId: opts.runId,
-			tracing: opts.tracing,
-			agentId: orchestratorAgentId(opts.runId),
-			userId: opts.user.id,
-			messageGroupId: opts.messageGroupId,
-		});
-		await this.tracing.finalizeDetachedTraceRun(
-			`unclaimed-resume:${opts.runId}`,
-			opts.discardTracingOnStale,
-			{
-				status: 'failed',
-				error: getErrorMessage(error),
-				metadata: { completion_source: 'resume_claim' },
-			},
+	/**
+	 * Terminalizes a run that ended in a stop or a failure. `publishRunFinish` is
+	 * the one step that has to land — without it the chat hangs forever — so every
+	 * DB-touching step around it is best-effort. `saveAgentTreeSnapshot` rebuilds
+	 * the agent tree by folding the event bus, so it has to come last.
+	 */
+	private async emitTerminalRun(args: {
+		threadId: string;
+		runId: string;
+		status: 'cancelled' | 'errored';
+		reason: string;
+		errorCode?: TerminalErrorCode;
+		errorInfo?: RunFinishErrorInfo;
+		messageGroupId?: string;
+		user: User;
+		snapshotStorage: DbSnapshotStorage;
+	}): Promise<void> {
+		const { threadId, runId, status } = args;
+		const context = { threadId, runId };
+
+		await this.bestEffort(
+			'Failed to evaluate the terminal response for a settling run',
+			context,
+			async () =>
+				await this.terminalOutcome.evaluateTerminalResponse(threadId, runId, status, {
+					messageGroupId: args.messageGroupId,
+					...(status === 'errored' ? { errorMessage: args.reason, errorCode: args.errorCode } : {}),
+				}),
 		);
 
-		// A cancelled or shutting-down run settles through its own cancellation path.
-		if (opts.signal.aborted) return;
+		const archivedWorkflowIds =
+			(await this.bestEffort(
+				'Failed to reap temporary workflows for a settling run',
+				context,
+				async () =>
+					await this.temporaryWorkflowService.reapForRun(
+						threadId,
+						args.user,
+						undefined,
+						this.backgroundTasks.getRunningTasks(threadId).length,
+					),
+			)) ?? [];
 
-		await this.terminalOutcome.finishFailedResumeRun({
-			threadId: opts.threadId,
-			runId: opts.runId,
-			messageGroupId: opts.messageGroupId,
-			errorMessage: getUserFacingErrorMessage(error),
-			errorCode: getUserFacingErrorCode(error),
-			errorInfo: { errorMessage: getErrorMessage(error), errorSource },
-			userId: opts.user.id,
-			archivedWorkflowIds: await this.reapTemporaryWorkflowsForUnclaimedResume(opts),
-			snapshotStorage: opts.snapshotStorage,
-		});
+		this.publishRunFinish(
+			threadId,
+			runId,
+			status,
+			args.reason,
+			archivedWorkflowIds,
+			args.user.id,
+			args.errorInfo,
+		);
+
+		await this.bestEffort(
+			'Failed to save the agent tree snapshot for a settling run',
+			context,
+			async () => await this.saveAgentTreeSnapshot(threadId, runId, args.snapshotStorage),
+		);
 	}
 
-	/** Best-effort: a failed reap must not cost the run its run-finish. */
-	private async reapTemporaryWorkflowsForUnclaimedResume(
-		opts: UnclaimedResumeContext,
-	): Promise<string[]> {
+	private async bestEffort<T>(
+		failureMessage: string,
+		context: { threadId: string; runId: string },
+		step: () => T | Promise<T>,
+	): Promise<Awaited<T> | undefined> {
 		try {
-			return await this.temporaryWorkflowService.reapForRun(
-				opts.threadId,
-				opts.user,
-				undefined,
-				this.backgroundTasks.getRunningTasks(opts.threadId).length,
-			);
+			return await step();
 		} catch (error) {
-			this.logger.warn('Failed to reap temporary workflows for an unclaimed resume', {
-				threadId: opts.threadId,
-				runId: opts.runId,
-				error: getErrorMessage(error),
-			});
-			return [];
+			this.logger.warn(failureMessage, { ...context, error: getErrorMessage(error) });
+			return undefined;
 		}
 	}
 
