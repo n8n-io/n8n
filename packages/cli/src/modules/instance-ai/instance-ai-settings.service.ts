@@ -417,12 +417,19 @@ export class InstanceAiSettingsService {
 		const modelProviderApiKeyEnv = MODEL_PROVIDER_API_KEY_ENV.get(c.model.split('/', 1)[0] ?? '');
 		const isProxyEnabled = this.aiService.isProxyEnabled();
 		const isManaged = this.isCloud || isProxyEnabled;
-		const sandboxProvider = normalizeSandboxProvider(c.sandboxProvider);
 		const providerModelApiKeyConfigured = Boolean(
 			modelProviderApiKeyEnv && process.env[modelProviderApiKeyEnv]?.trim(),
 		);
 		const modelConnectionEnvConfigured = Boolean(
 			c.modelApiKey.trim() || c.modelUrl.trim() || providerModelApiKeyConfigured,
+		);
+		const sandboxEnvConfigured = this.hasEnvironmentSandboxConnection();
+		const searchEnvConfigured = this.hasEnvironmentSearchConnection();
+		const directEnvironmentConfig = !isManaged;
+		const sandboxProvider = normalizeSandboxProvider(
+			directEnvironmentConfig && sandboxEnvConfigured
+				? this.environmentSandboxProvider
+				: c.sandboxProvider,
 		);
 		return {
 			enabled: this.enabled,
@@ -430,19 +437,27 @@ export class InstanceAiSettingsService {
 			mcpAccessEnabled: this.mcpAccessEnabled,
 			sandboxEnabled: c.sandboxEnabled,
 			sandboxProvider,
-			daytonaCredentialId: isManaged ? null : credentialSelection.daytonaCredentialId,
-			n8nSandboxCredentialId: this.isCloud ? null : credentialSelection.n8nSandboxCredentialId,
-			searchCredentialId: isManaged ? null : credentialSelection.searchCredentialId,
-			modelCredentialId: isManaged ? null : credentialSelection.modelCredentialId,
-			modelName: isManaged ? null : credentialSelection.modelName,
+			daytonaCredentialId:
+				isManaged || (directEnvironmentConfig && sandboxEnvConfigured)
+					? null
+					: credentialSelection.daytonaCredentialId,
+			n8nSandboxCredentialId:
+				this.isCloud || (directEnvironmentConfig && sandboxEnvConfigured)
+					? null
+					: credentialSelection.n8nSandboxCredentialId,
+			searchCredentialId:
+				isManaged || (directEnvironmentConfig && searchEnvConfigured)
+					? null
+					: credentialSelection.searchCredentialId,
+			modelCredentialId:
+				isManaged || (directEnvironmentConfig && modelConnectionEnvConfigured)
+					? null
+					: credentialSelection.modelCredentialId,
+			modelName: isManaged || this.hasEnvironmentModelName() ? null : credentialSelection.modelName,
 			modelEnvConfigured: modelConnectionEnvConfigured,
-			// n8n-sandbox needs only the URL; the service accepts keyless clients.
-			sandboxEnvConfigured:
-				sandboxProvider === 'daytona'
-					? isProxyEnabled || Boolean(c.daytonaApiKey.trim())
-					: Boolean(this.environmentN8nSandboxServiceUrl.trim()),
-			searchEnvConfigured: Boolean(c.braveSearchApiKey.trim() || c.searxngUrl.trim()),
-			searchDisabled: this.searchDisabled,
+			sandboxEnvConfigured,
+			searchEnvConfigured,
+			searchDisabled: directEnvironmentConfig && searchEnvConfigured ? false : this.searchDisabled,
 			n8nSandboxServiceUrl: this.environmentN8nSandboxServiceUrl
 				? null
 				: this.adminN8nSandboxServiceUrl,
@@ -476,6 +491,7 @@ export class InstanceAiSettingsService {
 		update: InstanceAiAdminSettingsUpdateRequest,
 		user?: User,
 	): Promise<InstanceAiAdminSettingsResponse> {
+		this.rejectEnvironmentManagedFields(update);
 		this.rejectManagedFields(
 			update,
 			InstanceAiSettingsService.MANAGED_ADMIN_FIELDS,
@@ -1131,6 +1147,13 @@ export class InstanceAiSettingsService {
 			apiUrl: daytonaApiUrl || undefined,
 			apiKey: daytonaApiKey || undefined,
 		};
+		if (
+			this.isDirectSelfManaged() &&
+			this.environmentSandboxProvider === 'daytona' &&
+			this.hasEnvironmentSandboxConnection()
+		) {
+			return envConfig;
+		}
 		const resolved = await this.resolveServiceCredential(
 			INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY,
 			'Daytona sandbox',
@@ -1156,6 +1179,13 @@ export class InstanceAiSettingsService {
 			serviceUrl: n8nSandboxServiceUrl || undefined,
 			apiKey: n8nSandboxServiceApiKey || undefined,
 		};
+		if (
+			this.isDirectSelfManaged() &&
+			this.environmentSandboxProvider === 'n8n-sandbox' &&
+			this.hasEnvironmentSandboxConnection()
+		) {
+			return envConfig;
+		}
 		const resolved = await this.resolveServiceCredential(
 			INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY,
 			'n8n Sandbox',
@@ -1190,6 +1220,7 @@ export class InstanceAiSettingsService {
 			braveApiKey: braveSearchApiKey || undefined,
 			searxngUrl: searxngUrl || undefined,
 		};
+		if (this.isDirectSelfManaged() && this.hasEnvironmentSearchConnection()) return envConfig;
 		const resolved = await this.resolveServiceCredential(
 			INSTANCE_AI_SEARCH_CREDENTIAL_POLICY,
 			'search',
@@ -1343,6 +1374,8 @@ export class InstanceAiSettingsService {
 	/** Resolve just the model name (e.g. 'claude-sonnet-4-20250514') for proxy routing. */
 	resolveModelName(user: User): string {
 		const prefs = this.readUserPreferences(user);
+		if (this.isDirectSelfManaged() && this.hasEnvironmentModelName())
+			return this.extractModelName(this.config.model);
 		const adminModelName =
 			this.isCloud || this.aiService.isProxyEnabled() ? null : this.adminModelName;
 		return adminModelName ?? prefs.modelName ?? this.extractModelName(this.config.model);
@@ -1351,6 +1384,8 @@ export class InstanceAiSettingsService {
 	async resolveModelConfig(user: User): Promise<ModelConfig> {
 		const prefs = this.readUserPreferences(user);
 		const fallbackModelName = prefs.modelName ?? this.extractModelName(this.config.model);
+		if (this.isDirectSelfManaged() && this.hasEnvironmentModelConnection())
+			return this.envVarModelConfig();
 
 		const adminModelConfig = await this.resolveAdminModelConfig();
 		if (adminModelConfig) {
@@ -1413,7 +1448,12 @@ export class InstanceAiSettingsService {
 	}
 
 	private async resolveAdminModelConfig(): Promise<ModelConfig | null> {
-		if (this.isCloud || this.aiService.isProxyEnabled()) return null;
+		if (
+			this.isCloud ||
+			this.aiService.isProxyEnabled() ||
+			(this.isDirectSelfManaged() && this.hasEnvironmentModelConnection())
+		)
+			return null;
 
 		return await this.withPersistedAdminSettings(async (ctx, persisted) => {
 			const modelName = persisted.modelName ?? null;
@@ -1495,6 +1535,28 @@ export class InstanceAiSettingsService {
 		'modelName',
 	];
 
+	private rejectEnvironmentManagedFields(update: InstanceAiAdminSettingsUpdateRequest): void {
+		if (!this.isDirectSelfManaged()) return;
+		const managedFields: string[] = [];
+		if (this.hasEnvironmentModelConnection()) {
+			managedFields.push('modelCredentialId', 'modelConnection');
+		}
+		if (this.hasEnvironmentModelName()) managedFields.push('modelName');
+		if (this.hasEnvironmentSandboxConnection()) {
+			managedFields.push(
+				'sandboxProvider',
+				'daytonaCredentialId',
+				'n8nSandboxCredentialId',
+				'sandboxConnection',
+				'n8nSandboxServiceUrl',
+			);
+		}
+		if (this.hasEnvironmentSearchConnection()) {
+			managedFields.push('searchCredentialId', 'searchConnection', 'searchDisabled');
+		}
+		this.rejectManagedFields(update, managedFields, 'environment');
+	}
+
 	/** Label for the deployment surface that owns the env-managed config, used in error messages. */
 	private deploymentLabel(): string {
 		if (this.isCloud) return 'cloud';
@@ -1570,7 +1632,8 @@ export class InstanceAiSettingsService {
 
 	private envVarModelConfig(): ModelConfig {
 		const configuredModel = this.config.model;
-		if (!this.adminModelName) return this.envVarModelConfigForModel(configuredModel);
+		if (this.hasEnvironmentModelName() || !this.adminModelName)
+			return this.envVarModelConfigForModel(configuredModel);
 		const slash = configuredModel.indexOf('/');
 		const provider = slash >= 0 ? configuredModel.slice(0, slash) : 'custom';
 		return this.envVarModelConfigForModel(`${provider}/${this.adminModelName}`);
@@ -1584,6 +1647,26 @@ export class InstanceAiSettingsService {
 				this.config.modelUrl.trim() ||
 				(providerApiKeyEnv && process.env[providerApiKeyEnv]?.trim()),
 		);
+	}
+
+	private hasEnvironmentModelName(): boolean {
+		return Boolean(process.env.N8N_INSTANCE_AI_MODEL?.trim());
+	}
+
+	private hasEnvironmentSandboxConnection(): boolean {
+		if (this.environmentSandboxProvider === 'daytona') {
+			return this.aiService.isProxyEnabled() || Boolean(this.config.daytonaApiKey.trim());
+		}
+		// n8n Sandbox accepts keyless clients, so the service URL completes the connection.
+		return Boolean(this.environmentN8nSandboxServiceUrl.trim());
+	}
+
+	private hasEnvironmentSearchConnection(): boolean {
+		return Boolean(this.config.braveSearchApiKey.trim() || this.config.searxngUrl.trim());
+	}
+
+	private isDirectSelfManaged(): boolean {
+		return !this.isCloud && !this.aiService.isProxyEnabled();
 	}
 
 	private envVarModelConfigForModel(model: string): ModelConfig {
@@ -1622,14 +1705,20 @@ export class InstanceAiSettingsService {
 			this.mcpAccessEnabled = persisted.mcpAccessEnabled;
 		if (persisted.sandboxEnabled !== undefined) c.sandboxEnabled = persisted.sandboxEnabled;
 		this.sandboxProviderOverride =
-			this.isCloud || !persisted.sandboxProvider
+			this.isCloud ||
+			(this.isDirectSelfManaged() && this.hasEnvironmentSandboxConnection()) ||
+			!persisted.sandboxProvider
 				? undefined
 				: normalizeSandboxProvider(persisted.sandboxProvider);
 		c.sandboxProvider = this.sandboxProviderOverride ?? this.environmentSandboxProvider;
 		if (persisted.sandboxImage !== undefined) c.sandboxImage = persisted.sandboxImage;
 		if (persisted.sandboxTimeout !== undefined) c.sandboxTimeout = persisted.sandboxTimeout;
 		if (persisted.modelName !== undefined) this.adminModelName = persisted.modelName;
-		if (persisted.searchDisabled !== undefined) this.searchDisabled = persisted.searchDisabled;
+		if (persisted.searchDisabled !== undefined)
+			this.searchDisabled =
+				this.isDirectSelfManaged() && this.hasEnvironmentSearchConnection()
+					? false
+					: persisted.searchDisabled;
 		if (persisted.n8nSandboxServiceUrl !== undefined) {
 			this.adminN8nSandboxServiceUrl = persisted.n8nSandboxServiceUrl;
 			this.config.n8nSandboxServiceUrl =

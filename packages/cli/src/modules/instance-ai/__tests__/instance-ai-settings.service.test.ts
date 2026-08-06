@@ -46,7 +46,7 @@ describe('InstanceAiSettingsService', () => {
 			sandboxProvider: 'n8n-sandbox',
 			sandboxImage: '',
 			sandboxTimeout: 60,
-			n8nSandboxServiceUrl: 'http://sandbox-api:8080',
+			n8nSandboxServiceUrl: '',
 			n8nSandboxServiceApiKey: '',
 			localGatewayDisabled: false,
 		} as unknown as InstanceAiConfig,
@@ -82,6 +82,7 @@ describe('InstanceAiSettingsService', () => {
 
 	beforeEach(() => {
 		vi.resetAllMocks();
+		vi.stubEnv('N8N_INSTANCE_AI_MODEL', '');
 		vi.stubEnv('OPENAI_API_KEY', '');
 		vi.stubEnv('ANTHROPIC_API_KEY', '');
 		persistedSettingsValue = undefined;
@@ -93,7 +94,7 @@ describe('InstanceAiSettingsService', () => {
 			modelUrl: '',
 			sandboxEnabled: false,
 			sandboxProvider: 'n8n-sandbox',
-			n8nSandboxServiceUrl: 'http://sandbox-api:8080',
+			n8nSandboxServiceUrl: '',
 			n8nSandboxServiceApiKey: '',
 			mcpServers: '',
 			browserMcp: false,
@@ -172,7 +173,58 @@ describe('InstanceAiSettingsService', () => {
 			await expect(service.updateAdminSettings({ mcpServers: '[]' })).rejects.toThrow(
 				UnprocessableRequestError,
 			);
+			await service.updateAdminSettings({
+				n8nSandboxServiceUrl: 'http://sandbox-api:8080',
+			});
 			await expect(service.updateAdminSettings({ sandboxEnabled: true })).resolves.toBeDefined();
+		});
+
+		it('rejects model connection fields managed by the environment', async () => {
+			globalConfig.instanceAi.modelApiKey = 'environment-key';
+
+			await expect(
+				service.updateAdminSettings({
+					modelConnection: { type: 'openAiApi', data: { apiKey: 'database-key' } },
+					modelName: 'gpt-5',
+				}),
+			).rejects.toThrow('Cannot update environment-managed fields: modelConnection');
+			await expect(service.updateAdminSettings({ modelName: 'gpt-5' })).resolves.toBeDefined();
+
+			vi.stubEnv('N8N_INSTANCE_AI_MODEL', 'openai/gpt-5');
+			await expect(service.updateAdminSettings({ modelName: 'gpt-4' })).rejects.toThrow(
+				'Cannot update environment-managed fields: modelName',
+			);
+		});
+
+		it('rejects sandbox connection fields managed by the environment', async () => {
+			Object.assign(globalConfig.instanceAi, {
+				sandboxProvider: 'daytona',
+				daytonaApiKey: 'environment-key',
+			});
+			service = createService();
+
+			await expect(
+				service.updateAdminSettings({
+					sandboxConnection: {
+						type: 'daytonaApi',
+						data: { apiUrl: 'https://daytona.example.com', apiKey: 'database-key' },
+					},
+				}),
+			).rejects.toThrow('Cannot update environment-managed fields: sandboxConnection');
+			await expect(service.updateAdminSettings({ sandboxEnabled: true })).resolves.toBeDefined();
+		});
+
+		it('rejects search decisions managed by the environment', async () => {
+			globalConfig.instanceAi.braveSearchApiKey = 'environment-key';
+
+			await expect(service.updateAdminSettings({ searchDisabled: true })).rejects.toThrow(
+				'Cannot update environment-managed fields: searchDisabled',
+			);
+			await expect(
+				service.updateAdminSettings({
+					searchConnection: { type: 'braveSearchApi', data: { apiKey: 'database-key' } },
+				}),
+			).rejects.toThrow('Cannot update environment-managed fields: searchConnection');
 		});
 
 		it('persists an explicit decision to disable web search and clears its assignment', async () => {
@@ -201,6 +253,9 @@ describe('InstanceAiSettingsService', () => {
 
 		it('should store service credential selections as broker assignments', async () => {
 			aiService.isProxyEnabled.mockReturnValue(false);
+			await service.updateAdminSettings({
+				n8nSandboxServiceUrl: 'http://sandbox-api:8080',
+			});
 
 			await service.updateAdminSettings({
 				daytonaCredentialId: 'daytona-cred',
@@ -245,6 +300,9 @@ describe('InstanceAiSettingsService', () => {
 
 		it('should reject an n8n sandbox credential whose header name is not x-api-key', async () => {
 			aiService.isProxyEnabled.mockReturnValue(false);
+			await service.updateAdminSettings({
+				n8nSandboxServiceUrl: 'http://sandbox-api:8080',
+			});
 			instanceCredentialBroker.resolveForUse.mockResolvedValue({
 				id: 'sandbox-cred',
 				name: 'Sandbox header',
@@ -259,6 +317,9 @@ describe('InstanceAiSettingsService', () => {
 
 		it('should accept an n8n sandbox credential with the x-api-key header', async () => {
 			aiService.isProxyEnabled.mockReturnValue(false);
+			await service.updateAdminSettings({
+				n8nSandboxServiceUrl: 'http://sandbox-api:8080',
+			});
 			settingsRepository.upsert.mockResolvedValue(undefined as never);
 			instanceCredentialBroker.resolveForUse.mockResolvedValue({
 				id: 'sandbox-cred',
@@ -584,6 +645,9 @@ describe('InstanceAiSettingsService', () => {
 				credentialsService.createInstanceCredential.mockResolvedValue({
 					id: 'daytona-cred',
 				} as never);
+				await service.updateAdminSettings({
+					n8nSandboxServiceUrl: 'http://sandbox-api:8080',
+				});
 
 				await service.updateAdminSettings(
 					{
@@ -849,6 +913,8 @@ describe('InstanceAiSettingsService', () => {
 
 			it('should clear the inactive Daytona slot when selecting n8n Sandbox behind the proxy', async () => {
 				aiService.isProxyEnabled.mockReturnValue(true);
+				globalConfig.instanceAi.n8nSandboxServiceUrl = 'http://sandbox-api:8080';
+				service = createService();
 
 				await expect(
 					service.updateAdminSettings({
@@ -874,6 +940,8 @@ describe('InstanceAiSettingsService', () => {
 
 			it('should accept n8n Sandbox connections on proxy deployments', async () => {
 				aiService.isProxyEnabled.mockReturnValue(true);
+				globalConfig.instanceAi.n8nSandboxServiceUrl = 'http://sandbox-api:8080';
+				service = createService();
 				credentialsService.createInstanceCredential.mockResolvedValue({
 					id: 'sandbox-cred',
 				} as never);
@@ -936,7 +1004,10 @@ describe('InstanceAiSettingsService', () => {
 				});
 
 				await expect(
-					service.updateAdminSettings({ daytonaCredentialId: 'daytona-cred' }),
+					service.updateAdminSettings({
+						daytonaCredentialId: 'daytona-cred',
+						sandboxProvider: 'daytona',
+					}),
 				).rejects.toThrow(/apiKey/);
 			});
 
@@ -1333,6 +1404,26 @@ describe('InstanceAiSettingsService', () => {
 			);
 		});
 
+		it('uses the environment model connection without resolving stored credentials', async () => {
+			Object.assign(globalConfig.instanceAi, {
+				model: 'openai/gpt-5',
+				modelApiKey: 'environment-key',
+			});
+			instanceCredentialBroker.resolveForUse.mockResolvedValue({
+				id: 'stored-model',
+				name: 'Stored model',
+				type: 'openAiApi',
+				data: { apiKey: 'database-key' },
+			});
+
+			await expect(service.resolveModelConfig(mock<User>())).resolves.toEqual({
+				id: 'openai/gpt-5',
+				url: '',
+				apiKey: 'environment-key',
+			});
+			expect(instanceCredentialBroker.resolveForUse).not.toHaveBeenCalled();
+		});
+
 		it('reads the admin model name and same-id credential update in one locked snapshot', async () => {
 			instanceCredentialBroker.resolveForUse.mockResolvedValue({
 				id: 'credential-a',
@@ -1587,7 +1678,7 @@ describe('InstanceAiSettingsService', () => {
 	});
 
 	describe('search credential', () => {
-		it('uses the resolved credential data for the search config', async () => {
+		it('uses environment search settings without resolving the stored credential', async () => {
 			globalConfig.instanceAi.braveSearchApiKey = 'env-key';
 			globalConfig.instanceAi.searxngUrl = 'https://search.example.com';
 			instanceCredentialBroker.resolveForUse.mockResolvedValue({
@@ -1598,12 +1689,14 @@ describe('InstanceAiSettingsService', () => {
 			});
 
 			await expect(service.resolveSearchConfig()).resolves.toEqual({
-				braveApiKey: 'credential-key',
+				braveApiKey: 'env-key',
+				searxngUrl: 'https://search.example.com',
 			});
+			expect(instanceCredentialBroker.resolveForUse).not.toHaveBeenCalled();
 			expect(logger.warn).not.toHaveBeenCalled();
 		});
 
-		it('falls back to environment config when the selected credential cannot be resolved', async () => {
+		it('does not resolve an unavailable stored credential when search is environment-managed', async () => {
 			globalConfig.instanceAi.braveSearchApiKey = 'env-key';
 			globalConfig.instanceAi.searxngUrl = 'https://search.example.com';
 			instanceCredentialBroker.resolveForUse.mockRejectedValue(new Error('not found'));
@@ -1612,13 +1705,11 @@ describe('InstanceAiSettingsService', () => {
 				braveApiKey: 'env-key',
 				searxngUrl: 'https://search.example.com',
 			});
-			expect(logger.warn).toHaveBeenCalledWith(
-				'Could not resolve the configured search credential; using environment fallback',
-				{ credentialUseId: 'instance-ai:search', error: 'not found' },
-			);
+			expect(instanceCredentialBroker.resolveForUse).not.toHaveBeenCalled();
+			expect(logger.warn).not.toHaveBeenCalled();
 		});
 
-		it('falls back to environment config when resolved credential data is incomplete', async () => {
+		it('does not inspect incomplete stored credential data when search is environment-managed', async () => {
 			globalConfig.instanceAi.braveSearchApiKey = 'env-key';
 			globalConfig.instanceAi.searxngUrl = 'https://search.example.com';
 			instanceCredentialBroker.resolveForUse.mockResolvedValue({
@@ -1632,13 +1723,8 @@ describe('InstanceAiSettingsService', () => {
 				braveApiKey: 'env-key',
 				searxngUrl: 'https://search.example.com',
 			});
-			expect(logger.warn).toHaveBeenCalledWith(
-				'Could not resolve the configured search credential; using environment fallback',
-				{
-					credentialUseId: 'instance-ai:search',
-					error: 'Credential data is incomplete',
-				},
-			);
+			expect(instanceCredentialBroker.resolveForUse).not.toHaveBeenCalled();
+			expect(logger.warn).not.toHaveBeenCalled();
 		});
 	});
 
@@ -1708,7 +1794,8 @@ describe('InstanceAiSettingsService', () => {
 	});
 
 	describe('n8n sandbox credential', () => {
-		it('uses the resolved api key instead of the environment api key', async () => {
+		it('uses the resolved api key for an admin-configured service URL', async () => {
+			globalConfig.instanceAi.n8nSandboxServiceUrl = 'http://sandbox-api:8080';
 			globalConfig.instanceAi.n8nSandboxServiceApiKey = 'env-key';
 			instanceCredentialBroker.resolveForUse.mockResolvedValue({
 				id: 'sandbox-credential',
@@ -1723,8 +1810,29 @@ describe('InstanceAiSettingsService', () => {
 			});
 		});
 
+		it('uses environment settings without resolving the stored credential', async () => {
+			Object.assign(globalConfig.instanceAi, {
+				n8nSandboxServiceUrl: 'http://sandbox-api:8080',
+				n8nSandboxServiceApiKey: 'environment-key',
+			});
+			service = createService();
+			instanceCredentialBroker.resolveForUse.mockResolvedValue({
+				id: 'sandbox-credential',
+				name: 'Sandbox',
+				type: 'httpHeaderAuth',
+				data: { name: 'X-Api-Key', value: 'credential-key' },
+			});
+
+			await expect(service.resolveN8nSandboxConfig()).resolves.toEqual({
+				serviceUrl: 'http://sandbox-api:8080',
+				apiKey: 'environment-key',
+			});
+			expect(instanceCredentialBroker.resolveForUse).not.toHaveBeenCalled();
+		});
+
 		it('uses the resolved api key when the assistant proxy is enabled', async () => {
 			aiService.isProxyEnabled.mockReturnValue(true);
+			globalConfig.instanceAi.n8nSandboxServiceUrl = 'http://sandbox-api:8080';
 			globalConfig.instanceAi.n8nSandboxServiceApiKey = 'env-key';
 			instanceCredentialBroker.resolveForUse.mockResolvedValue({
 				id: 'sandbox-credential',
@@ -1740,6 +1848,7 @@ describe('InstanceAiSettingsService', () => {
 		});
 
 		it('falls back to environment config when the credential header is not x-api-key', async () => {
+			globalConfig.instanceAi.n8nSandboxServiceUrl = 'http://sandbox-api:8080';
 			globalConfig.instanceAi.n8nSandboxServiceApiKey = 'env-key';
 			instanceCredentialBroker.resolveForUse.mockResolvedValue({
 				id: 'sandbox-credential',
@@ -1762,6 +1871,7 @@ describe('InstanceAiSettingsService', () => {
 		});
 
 		it('falls back to environment config when the api key is missing', async () => {
+			globalConfig.instanceAi.n8nSandboxServiceUrl = 'http://sandbox-api:8080';
 			globalConfig.instanceAi.n8nSandboxServiceApiKey = 'env-key';
 			instanceCredentialBroker.resolveForUse.mockResolvedValue({
 				id: 'sandbox-credential',
@@ -1792,6 +1902,7 @@ describe('InstanceAiSettingsService', () => {
 				modelUrl: '',
 				n8nSandboxServiceUrl: '',
 			});
+			service = createService();
 		});
 
 		it('reports the model as env-configured when a custom or provider key is set', async () => {
@@ -1815,6 +1926,7 @@ describe('InstanceAiSettingsService', () => {
 		it('reports environment configuration for the selected sandbox provider', async () => {
 			globalConfig.instanceAi.sandboxProvider = 'daytona';
 			globalConfig.instanceAi.daytonaApiKey = 'dtn-key';
+			service = createService();
 			expect((await service.getAdminSettings()).sandboxEnvConfigured).toBe(true);
 
 			globalConfig.instanceAi.daytonaApiKey = '';
@@ -2088,6 +2200,25 @@ describe('InstanceAiSettingsService', () => {
 				daytonaCredentialId: 'daytona-cred',
 				n8nSandboxCredentialId: 'sandbox-cred',
 				searchCredentialId: 'search-cred',
+			});
+		});
+
+		it('hides stored assignments when environment connections are active', async () => {
+			Object.assign(globalConfig.instanceAi, {
+				modelApiKey: 'model-environment-key',
+				n8nSandboxServiceUrl: 'http://sandbox-api:8080',
+				braveSearchApiKey: 'search-environment-key',
+			});
+			service = createService();
+			instanceCredentialBroker.getAssignedCredentialId.mockImplementation(async (credentialUse) => {
+				return `${credentialUse.id}-credential`;
+			});
+
+			await expect(service.getAdminSettings()).resolves.toMatchObject({
+				modelCredentialId: null,
+				daytonaCredentialId: null,
+				n8nSandboxCredentialId: null,
+				searchCredentialId: null,
 			});
 		});
 

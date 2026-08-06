@@ -447,17 +447,17 @@ describe('SettingsInstanceAiView', () => {
 	});
 
 	describe('Sandbox credential dialog', () => {
-		it('preselects the environment option when the sandbox is env-configured', async () => {
+		it('shows environment-managed sandbox settings as read-only', async () => {
 			store.$patch({
 				settings: { ...store.settings!, sandboxEnvConfigured: true },
 			});
-			const { getByTestId } = renderSandboxDialog({ props: { open: true } });
+			const { findByTestId, findByText, queryByTestId } = renderSandboxDialog({
+				props: { open: true },
+			});
 
-			await waitFor(() =>
-				expect(getByTestId('n8n-agent-sandbox-provider-select').querySelector('input')!.value).toBe(
-					'settings.n8nAgent.connection.none',
-				),
-			);
+			expect(await findByText('instanceAi.onboarding.env.title')).toBeVisible();
+			expect(queryByTestId('n8n-agent-sandbox-provider-select')).toBeNull();
+			expect(await findByTestId('n8n-agent-sandbox-dialog-save')).toBeDisabled();
 		});
 
 		it('keeps the setup action disabled in read-only mode until a connection is selected', async () => {
@@ -486,7 +486,7 @@ describe('SettingsInstanceAiView', () => {
 			expect(getByTestId('n8n-agent-sandbox-dialog-save')).not.toBeDisabled();
 		});
 
-		it('clears both sandbox slots when switching back to the environment configuration', async () => {
+		it('does not expose stored sandbox assignments while environment settings are active', async () => {
 			store.$patch({
 				settings: {
 					...store.settings!,
@@ -502,22 +502,14 @@ describe('SettingsInstanceAiView', () => {
 					},
 				],
 			});
-			vi.spyOn(useCredentialsStore(), 'getCredentialData').mockResolvedValue({
-				data: { apiUrl: 'https://app.daytona.io/api', apiKey: '__blank' },
-			} as never);
-			const save = vi.spyOn(store, 'save').mockResolvedValue(true);
-			const { findByTestId, findByText, getByTestId } = renderSandboxDialog({
+			const save = vi.spyOn(store, 'save');
+			const { findByTestId, queryByTestId } = renderSandboxDialog({
 				props: { open: true },
 			});
 
-			const select = await findByTestId('n8n-agent-sandbox-provider-select');
-			await waitFor(() => expect(select.querySelector('input')!).not.toBeDisabled());
-			await fireEvent.click(select.querySelector('input')!);
-			await fireEvent.click(await findByText('settings.n8nAgent.connection.none'));
-			await fireEvent.click(getByTestId('n8n-agent-sandbox-dialog-save'));
-
-			expect(store.draft).toMatchObject({ sandboxConnection: null });
-			expect(save).toHaveBeenCalledOnce();
+			expect(queryByTestId('n8n-agent-sandbox-provider-select')).toBeNull();
+			expect(await findByTestId('n8n-agent-sandbox-dialog-save')).toBeDisabled();
+			expect(save).not.toHaveBeenCalled();
 		});
 
 		it('defaults the provider from settings and stages an inline Daytona connection', async () => {
@@ -619,17 +611,17 @@ describe('SettingsInstanceAiView', () => {
 			expect(getByTestId('n8n-agent-search-dialog-save')).toBeDisabled();
 		});
 
-		it('preselects the environment option when search is env-configured', async () => {
+		it('shows environment-managed search settings as read-only', async () => {
 			store.$patch({
 				settings: { ...store.settings!, searchEnvConfigured: true },
 			});
-			const { getByTestId } = renderSearchDialog({ props: { open: true } });
+			const { findByTestId, findByText, queryByTestId } = renderSearchDialog({
+				props: { open: true },
+			});
 
-			await waitFor(() =>
-				expect(getByTestId('n8n-agent-search-provider-select').querySelector('input')!.value).toBe(
-					'settings.n8nAgent.connection.none',
-				),
-			);
+			expect(await findByText('instanceAi.onboarding.env.title')).toBeVisible();
+			expect(queryByTestId('n8n-agent-search-provider-select')).toBeNull();
+			expect(await findByTestId('n8n-agent-search-dialog-save')).toBeDisabled();
 		});
 
 		it('keeps the setup save action disabled until the preselected default is edited', async () => {
@@ -893,6 +885,30 @@ describe('SettingsInstanceAiView', () => {
 			await fireEvent.click(getByTestId('n8n-agent-enable-button'));
 
 			expect(persistEnabled).toHaveBeenCalledWith(true);
+		});
+
+		it('activates an environment-managed sandbox before enabling', async () => {
+			const disabledSettings = {
+				...store.settings!,
+				enabled: false,
+				modelEnvConfigured: true,
+				sandboxEnabled: false,
+				sandboxEnvConfigured: true,
+				searchDisabled: true,
+			};
+			store.$patch({ settings: disabledSettings });
+			vi.mocked(fetchSettings).mockResolvedValue(disabledSettings);
+			setModuleSettings(settingsStore, { ...defaultModuleSettings, enabled: false });
+			const save = vi.spyOn(store, 'save').mockResolvedValue(true);
+			const persistEnabled = vi.spyOn(store, 'persistEnabled').mockResolvedValue(true);
+			const { getByTestId, queryByTestId } = renderComponent();
+
+			await fireEvent.click(getByTestId('n8n-agent-enable-button'));
+
+			expect(store.draft.sandboxEnabled).toBe(true);
+			expect(save).toHaveBeenCalledOnce();
+			expect(persistEnabled).toHaveBeenCalledWith(true);
+			expect(queryByTestId('n8n-agent-sandbox-dialog-step')).toBeNull();
 		});
 
 		it('opens search directly when it is the only missing setup decision', async () => {
@@ -1239,15 +1255,77 @@ describe('SettingsInstanceAiView', () => {
 			expect(getByText('OpenAI · gpt-4o')).toBeVisible();
 		});
 
-		it('opens configuration for environment-managed search', async () => {
+		it('keeps the model name editable when only the model connection is environment-managed', async () => {
+			store.$patch({
+				settings: {
+					...store.settings!,
+					modelEnvConfigured: true,
+					modelName: 'gpt-4o',
+					envManaged: {
+						model: { provider: true, apiKey: true, baseUrl: false, model: false },
+						sandbox: { provider: false, serviceUrl: false, apiKey: false },
+						search: { provider: false, apiKey: false, url: false },
+					},
+				},
+			});
+			vi.mocked(fetchSettings).mockResolvedValue(store.settings!);
+			vi.spyOn(store, 'save').mockResolvedValue(true);
+
+			const { findByTestId, getByTestId } = renderComponent();
+			await fireEvent.click(getByTestId('n8n-agent-model-row'));
+
+			const providerInput = await findByTestId('n8n-agent-model-provider-input');
+			const apiKeyInput = getByTestId('n8n-agent-model-api-key-input');
+			const modelField = getByTestId('n8n-agent-model-name-input');
+			const modelInput =
+				modelField.tagName === 'INPUT'
+					? (modelField as HTMLInputElement)
+					: modelField.querySelector('input')!;
+			expect(providerInput.querySelector('input') ?? providerInput).toBeDisabled();
+			expect(apiKeyInput.querySelector('input') ?? apiKeyInput).toBeDisabled();
+			expect(modelInput).not.toBeDisabled();
+
+			await fireEvent.update(modelInput, 'gpt-5');
+			await fireEvent.click(getByTestId('n8n-agent-model-dialog-save'));
+			expect(store.draft).toMatchObject({ modelName: 'gpt-5' });
+		});
+
+		it('shows fully environment-managed model and sandbox rows without edit affordances', async () => {
+			store.$patch({
+				settings: {
+					...store.settings!,
+					modelEnvConfigured: true,
+					sandboxEnvConfigured: true,
+					envManaged: {
+						model: { provider: true, apiKey: true, baseUrl: false, model: true },
+						sandbox: { provider: true, serviceUrl: true, apiKey: true },
+						search: { provider: false, apiKey: false, url: false },
+					},
+				},
+			});
+			vi.mocked(fetchSettings).mockResolvedValue(store.settings!);
+
+			const { getByTestId, queryByTestId } = renderComponent();
+			await waitFor(() => expect(store.isLoading).toBe(false));
+			expect(getByTestId('n8n-agent-model-env-value')).toBeVisible();
+			expect(getByTestId('n8n-agent-sandbox-env-value')).toBeVisible();
+
+			await fireEvent.click(getByTestId('n8n-agent-model-row'));
+			await fireEvent.click(getByTestId('n8n-agent-sandbox-row'));
+			expect(queryByTestId('n8n-agent-model-dialog')).toBeNull();
+			expect(queryByTestId('n8n-agent-sandbox-dialog')).toBeNull();
+		});
+
+		it('shows environment-managed search without an edit affordance', async () => {
 			store.$patch({ settings: { ...store.settings!, searchEnvConfigured: true } });
 
-			const { getByText, getByTestId, findByTestId, queryByTestId } = renderComponent();
+			const { getByText, getByTestId, queryByTestId } = renderComponent();
 			expect(queryByTestId('n8n-agent-search-setup')).toBeNull();
-			expect(getByText('settings.n8nAgent.search.env.value')).toBeVisible();
+			expect(getByText('instanceAi.onboarding.foundOnServer')).toBeVisible();
+			expect(getByTestId('n8n-agent-search-env-value')).toBeVisible();
 
 			await fireEvent.click(getByTestId('n8n-agent-search-row'));
-			expect(await findByTestId('n8n-agent-search-provider-select')).toBeVisible();
+			expect(queryByTestId('n8n-agent-search-provider-select')).toBeNull();
 		});
 
 		it('fetches credential types on mount so deep links can render connection fields', () => {

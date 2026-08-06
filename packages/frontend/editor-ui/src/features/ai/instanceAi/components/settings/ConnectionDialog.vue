@@ -7,6 +7,7 @@ import {
 } from '@n8n/api-types';
 import {
 	N8nButton,
+	N8nCallout,
 	N8nDialog,
 	N8nDialogDescription,
 	N8nDialogFooter,
@@ -14,6 +15,7 @@ import {
 	N8nDialogTitle,
 	N8nInput,
 	N8nInputLabel,
+	N8nLink,
 	N8nOption,
 	N8nSelect,
 	N8nText,
@@ -36,6 +38,9 @@ import ConnectionFields from './ConnectionFields.vue';
 
 const DAYTONA_DEFAULT_API_URL = 'https://app.daytona.io/api';
 const N8N_SANDBOX_HEADER = 'x-api-key';
+const STATIC_SECRET_MASK = '••••••••••••';
+const ENV_DOCS_URL =
+	'https://docs.n8n.io/deploy/host-n8n/configure-n8n/set-up-ai-assistant-preview';
 const DEFAULT_SEARCH_TYPE = INSTANCE_AI_SEARCH_PROVIDERS[0].credentialType;
 const SANDBOX_CREDENTIAL_TYPES = ['daytonaApi', 'httpHeaderAuth'] as const;
 const SETUP_STEP: Record<InstanceAiConnectionKind, number> = { model: 1, sandbox: 2, search: 3 };
@@ -52,6 +57,25 @@ const i18n = useI18n();
 const store = useInstanceAiSettingsStore();
 const credentialsStore = useCredentialsStore();
 const readOnly = computed(() => !store.canManageInstanceCredentials);
+const isDirectSelfManaged = computed(() => !store.isCloudManaged && !store.isProxyEnabled);
+const modelConnectionLocked = computed(
+	() =>
+		props.kind === 'model' &&
+		isDirectSelfManaged.value &&
+		(store.settings?.envManaged?.model.provider ?? store.settings?.modelEnvConfigured ?? false),
+);
+const modelNameLocked = computed(
+	() =>
+		props.kind === 'model' &&
+		isDirectSelfManaged.value &&
+		(store.settings?.envManaged?.model.model ?? false),
+);
+const environmentLocked = computed(() => {
+	if (props.kind === 'model') return modelConnectionLocked.value;
+	if (!isDirectSelfManaged.value) return false;
+	if (props.kind === 'sandbox') return store.settings?.sandboxEnvConfigured ?? false;
+	return store.settings?.searchEnvConfigured ?? false;
+});
 const {
 	credentialTestError,
 	isTestingCredential,
@@ -139,12 +163,13 @@ const DIALOG_COPY: Record<InstanceAiConnectionKind, DialogCopy> = {
 const copy = DIALOG_COPY[props.kind];
 
 function environmentConfigured(): boolean {
-	if (props.kind === 'model') return Boolean(store.settings?.modelEnvConfigured);
+	if (props.kind === 'model') return modelConnectionLocked.value;
 	if (props.kind === 'sandbox') return Boolean(store.settings?.sandboxEnvConfigured);
 	return Boolean(store.settings?.searchEnvConfigured);
 }
 
 function getAssignedId(): string | null {
+	if (environmentLocked.value) return null;
 	if (props.kind === 'model') return store.settings?.modelCredentialId ?? null;
 	if (props.kind === 'sandbox') {
 		return store.settings?.sandboxProvider === 'daytona'
@@ -315,8 +340,10 @@ async function refreshCredentials(): Promise<void> {
 }
 
 const assignedId = computed(getAssignedId);
-const hasSelection = computed(() =>
-	usingExisting.value ? selectedCredentialId.value : selection.value,
+const hasSelection = computed(
+	() =>
+		modelConnectionLocked.value ||
+		Boolean(usingExisting.value ? selectedCredentialId.value : selection.value),
 );
 const providerOptions = computed(getProviderOptions);
 const existingOptions = computed(getExistingCredentials);
@@ -417,6 +444,8 @@ function setFieldValue(name: string, value: IUpdateInformation['value']) {
 }
 
 const isComplete = computed(() => {
+	if (modelConnectionLocked.value)
+		return modelNameLocked.value || extraValue.value.trim().length > 0;
 	if (!hasSelection.value) return true;
 	if (props.kind === 'model' && extraValue.value.trim().length === 0) return false;
 	if (usingExisting.value) return true;
@@ -431,6 +460,17 @@ const primaryDisabled = computed(() => {
 });
 
 async function handlePrimary() {
+	if (modelConnectionLocked.value) {
+		if (isChanged.value && !modelNameLocked.value) {
+			store.setField('modelName', extraValue.value.trim());
+			if (!(await store.save())) return;
+		}
+		await refreshCredentials();
+		if (!open.value) return;
+		emit('saved');
+		open.value = false;
+		return;
+	}
 	const connectionData = buildConnectionData();
 	if (
 		!usingExisting.value &&
@@ -530,11 +570,24 @@ const primaryLabel = computed(() => {
 			<N8nDialogTitle>{{ title }}</N8nDialogTitle>
 			<N8nDialogDescription>{{ description }}</N8nDialogDescription>
 		</N8nDialogHeader>
+		<N8nCallout v-if="environmentLocked" theme="warning">
+			<span>{{ i18n.baseText('instanceAi.onboarding.env.title') }}</span>
+			{{ i18n.baseText('instanceAi.onboarding.env.description') }}
+			<N8nLink v-if="kind === 'model'" :to="ENV_DOCS_URL" size="small" new-window>
+				{{ i18n.baseText('instanceAi.onboarding.env.docs') }}
+			</N8nLink>
+		</N8nCallout>
 
-		<div :class="$style.fields">
+		<div v-if="!environmentLocked || kind === 'model'" :class="$style.fields">
 			<N8nInputLabel :label="i18n.baseText(copy.fieldLabelKey)">
+				<N8nInput
+					v-if="modelConnectionLocked"
+					:model-value="STATIC_SECRET_MASK"
+					disabled
+					:data-test-id="`${copy.idPrefix}-provider-input`"
+				/>
 				<N8nSelect
-					v-if="readOnly"
+					v-else-if="readOnly"
 					:model-value="selectedCredentialId"
 					size="medium"
 					:disabled="isBusy"
@@ -574,7 +627,7 @@ const primaryLabel = computed(() => {
 					/>
 				</N8nSelect>
 				<N8nText
-					v-if="copy.providerHintKey"
+					v-if="copy.providerHintKey && !environmentLocked"
 					tag="p"
 					:class="$style.providerHint"
 					size="small"
@@ -584,8 +637,21 @@ const primaryLabel = computed(() => {
 				</N8nText>
 			</N8nInputLabel>
 
+			<N8nInputLabel
+				v-if="modelConnectionLocked"
+				:label="i18n.baseText('instanceAi.onboarding.model.apiKey')"
+			>
+				<N8nInput
+					:model-value="STATIC_SECRET_MASK"
+					type="password"
+					disabled
+					data-test-id="n8n-agent-model-api-key-input"
+				/>
+			</N8nInputLabel>
+
 			<ConnectionFields
 				v-if="
+					!environmentLocked &&
 					!usingExisting &&
 					selection &&
 					!isProxyDaytonaSelection &&
@@ -604,13 +670,17 @@ const primaryLabel = computed(() => {
 				:label="i18n.baseText('settings.n8nAgent.modelName.label')"
 			>
 				<N8nInput
-					:model-value="extraValue"
+					:model-value="modelNameLocked ? '' : extraValue"
 					type="text"
 					size="medium"
-					:disabled="isBusy"
+					:disabled="isBusy || modelNameLocked"
 					autocomplete="off"
 					:spellcheck="false"
-					:placeholder="i18n.baseText('settings.n8nAgent.modelName.placeholder')"
+					:placeholder="
+						modelNameLocked
+							? STATIC_SECRET_MASK
+							: i18n.baseText('settings.n8nAgent.modelName.placeholder')
+					"
 					data-test-id="n8n-agent-model-name-input"
 					@update:model-value="extraValue = String($event)"
 				/>
