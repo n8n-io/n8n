@@ -15,6 +15,11 @@ export type { PollerCursor } from '../entities/poller-state';
 /** A fence miss can't tell a reclaimed lease apart from a genuinely gone cursor row. */
 export type PollLeaseFence = { taskId: string; leaseEpoch: number };
 
+export interface PollerFailureState {
+	consecutiveErrors: number;
+	backoffUntil: Date | null;
+}
+
 @Service()
 export class PollerStateRepository extends BaseRepository<PollerState> {
 	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
@@ -124,5 +129,65 @@ export class PollerStateRepository extends BaseRepository<PollerState> {
 		throw new UnexpectedError('Poller cursor row disappeared while its poll was running', {
 			extra: { workflowId, nodeId },
 		});
+	}
+
+	/** The node's failure counters, or `null` if it has no stored row. */
+	async findFailureState(
+		workflowId: string,
+		nodeId: string,
+		ctx: OperationContext = {},
+	): Promise<PollerFailureState | null> {
+		const row = await this.managerFor(ctx).findOne(PollerState, {
+			select: ['consecutiveErrors', 'backoffUntil'],
+			where: { workflowId, nodeId },
+		});
+		return row === null
+			? null
+			: { consecutiveErrors: row.consecutiveErrors, backoffUntil: row.backoffUntil };
+	}
+
+	/**
+	 * Increments the failure counter and sets the backoff deadline. Update-only:
+	 * the cursor read that runs before every poll guarantees the row already
+	 * exists, and an upsert would have to invent a cursor value, seeding `{}`
+	 * and destroying an unmigrated node's static-data seed. A missing row is
+	 * reported as `false`, not thrown.
+	 */
+	async recordFailure(
+		workflowId: string,
+		nodeId: string,
+		backoffUntil: Date,
+		ctx: OperationContext = {},
+	): Promise<boolean> {
+		const result = await this.managerFor(ctx)
+			.createQueryBuilder()
+			.update(PollerState)
+			.set({
+				// Incremented in SQL rather than read-then-write, so two overlapping
+				// failing polls of the same node both count instead of one clobbering
+				// the other.
+				consecutiveErrors: () => '"consecutiveErrors" + 1',
+				backoffUntil,
+				updatedAt: new Date(),
+			} as QueryDeepPartialEntity<PollerState>)
+			.where('workflowId = :workflowId AND nodeId = :nodeId', { workflowId, nodeId })
+			.execute();
+
+		return result.affected === 1;
+	}
+
+	/** Zeroes the counter and clears the deadline. Update-only, same `false` on a miss. */
+	async clearFailures(
+		workflowId: string,
+		nodeId: string,
+		ctx: OperationContext = {},
+	): Promise<boolean> {
+		const result = await this.managerFor(ctx).update(PollerState, { workflowId, nodeId }, {
+			consecutiveErrors: 0,
+			backoffUntil: null,
+			updatedAt: new Date(),
+		} as QueryDeepPartialEntity<PollerState>);
+
+		return result.affected === 1;
 	}
 }

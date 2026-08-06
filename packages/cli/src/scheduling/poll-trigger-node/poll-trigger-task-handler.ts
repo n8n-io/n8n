@@ -12,6 +12,7 @@ import {
 import type { INode, IWorkflowBase } from 'n8n-workflow';
 import { UnexpectedError } from 'n8n-workflow';
 
+import { PollBackoffService } from '@/workflows/triggers/poll-backoff.service';
 import { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
 
 import {
@@ -40,6 +41,7 @@ export class PollTriggerTaskHandler implements TaskHandler {
 		private readonly triggersAndPollers: TriggersAndPollers,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly errorReporter: ErrorReporter,
+		private readonly pollBackoffService: PollBackoffService,
 	) {
 		this.logger = this.logger.scoped('scheduler');
 	}
@@ -48,6 +50,23 @@ export class PollTriggerTaskHandler implements TaskHandler {
 		// A setup failure here retries to N8N_SCHEDULER_MAX_ATTEMPTS then dead-letters,
 		// unlike a `poll()` runtime failure below, which routes to the error workflow instead.
 		const { workflowId, nodeId } = this.parsePayload(task);
+
+		const now = new Date();
+		// peek runs before the tick's own try/catch, so this is the one call
+		// whose throw would otherwise escape execute() uncaught; kept even
+		// though the service itself never throws.
+		const state = await this.pollBackoffService.peek(workflowId, nodeId).catch(() => null);
+		if (this.pollBackoffService.isBackingOff(state, now)) {
+			this.logger.debug('Poll is backing off; skipping this occurrence', {
+				taskId: task.id,
+				jobId: task.jobId,
+				workflowId,
+				nodeId,
+				backoffUntil: state?.backoffUntil,
+			});
+			return report.notDispatched();
+		}
+
 		// bypassCache: the poll cursor in staticData must be read live, not from the publish-time cache.
 		const workflowData = await this.triggerExecutionContextFactory.loadPublishedWorkflowData(
 			workflowId,
@@ -73,6 +92,12 @@ export class PollTriggerTaskHandler implements TaskHandler {
 					node,
 					pollFunctions,
 				);
+
+				// Success means poll() returned, checked once here rather than
+				// separately on the items and empty paths below, so those branches
+				// (and a mid-poll deactivation) can't disagree about whether the
+				// backoff state cleared.
+				await this.pollBackoffService.recordSuccess({ workflowId, nodeId, state });
 
 				if (pollResponse !== null) {
 					// poll() can run for a while (network I/O against the polled source), so
@@ -128,6 +153,16 @@ export class PollTriggerTaskHandler implements TaskHandler {
 				// Routed to the error workflow instead of rethrown, which would retry and
 				// dead-letter without ever running it. __emitError commits no cursor, so
 				// the cursor holds and the next tick retries the same window.
+				// Read fresh here rather than reusing the tick-start `now`: a slow
+				// failing poll would otherwise have its deadline anchored before
+				// poll() ran and land already in the past.
+				await this.pollBackoffService.recordFailure({
+					workflowId,
+					nodeId,
+					error,
+					state,
+					now: new Date(),
+				});
 				pollFunctions.__emitError(ensureError(error));
 				this.logger.debug('Poll failed at runtime; routed to the error workflow', {
 					taskId: task.id,

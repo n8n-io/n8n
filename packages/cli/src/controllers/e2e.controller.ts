@@ -272,7 +272,12 @@ export class E2EController {
 	async getPollerState(req: Request<{}, {}, {}, { workflowId: string; nodeId: string }>) {
 		const { workflowId, nodeId } = req.query;
 		const cursor = await this.pollerStateRepository.findCursor(workflowId, nodeId);
-		return { cursor };
+		const failureState = await this.pollerStateRepository.findFailureState(workflowId, nodeId);
+		return {
+			cursor,
+			consecutiveErrors: failureState?.consecutiveErrors ?? 0,
+			backoffUntil: failureState?.backoffUntil ?? null,
+		};
 	}
 
 	/** Lets a test observe a real scheduled dispatch without waiting out the job's cron interval. */
