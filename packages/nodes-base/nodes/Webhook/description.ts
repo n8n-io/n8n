@@ -4,6 +4,7 @@ import type {
 	INodeTypeDescription,
 	IWebhookDescription,
 } from 'n8n-workflow';
+import { fromFunction, fromParameter, webhookDescriptionFields } from 'n8n-workflow';
 
 import { getResponseCode, getResponseData } from './utils';
 
@@ -20,18 +21,23 @@ const n8nOAuth2AuthOption: INodePropertyOptions = {
 	envFeatureFlag: 'WEBHOOK_PRIVATE_CREDENTIALS',
 };
 
+// Each field declares its expression template and native resolver in one place:
+// the editor evaluates the generated template strings, while the backend reads
+// parameters directly (no expression engine) whenever they are static.
 export const defaultWebhookDescription: IWebhookDescription = {
 	name: 'default',
-	httpMethod: '={{$parameter["httpMethod"] || "GET"}}',
 	isFullPath: true,
-	responseCode: `={{(${getResponseCode})($parameter)}}`,
-	responseMode: '={{$parameter["responseMode"]}}',
-	responseData: `={{(${getResponseData})($parameter)}}`,
-	responseBinaryPropertyName: '={{$parameter["responseBinaryPropertyName"]}}',
-	responseContentType: '={{$parameter["options"]["responseContentType"]}}',
-	responsePropertyName: '={{$parameter["options"]["responsePropertyName"]}}',
-	responseHeaders: '={{$parameter["options"]["responseHeaders"]}}',
-	path: '={{$parameter["path"]}}',
+	...webhookDescriptionFields({
+		httpMethod: fromParameter('httpMethod', 'GET'),
+		responseCode: fromFunction(getResponseCode),
+		responseMode: fromParameter('responseMode'),
+		responseData: fromFunction(getResponseData),
+		responseBinaryPropertyName: fromParameter('responseBinaryPropertyName'),
+		responseContentType: fromParameter(['options', 'responseContentType']),
+		responsePropertyName: fromParameter(['options', 'responsePropertyName']),
+		responseHeaders: fromParameter(['options', 'responseHeaders']),
+		path: fromParameter('path'),
+	}),
 };
 
 export const credentialsProperty = (
