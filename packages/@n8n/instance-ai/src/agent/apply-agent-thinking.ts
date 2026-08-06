@@ -118,7 +118,7 @@ export function applyAgentThinking(agent: Agent, modelId: ModelConfig): void {
 	}
 
 	if (provider === 'togetherai') {
-		agent.thinking('togetherai', { reasoningEffort: 'medium' });
+		agent.thinking('togetherai', { reasoningEffort: 'high' });
 		return;
 	}
 
