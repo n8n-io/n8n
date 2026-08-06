@@ -64,6 +64,16 @@ describe('Confluence Transport', () => {
 		it('returns undefined when nothing matches', () => {
 			expect(matchSiteByHostname(accessibleResources, 'missing.atlassian.net')).toBeUndefined();
 		});
+
+		it('skips entries with malformed URLs instead of throwing', () => {
+			const withMalformed: AccessibleResource[] = [
+				{ id: 'bad', url: 'not a url' },
+				...accessibleResources,
+			];
+			expect(matchSiteByHostname(withMalformed, 'example.atlassian.net')).toBe(
+				accessibleResources[0],
+			);
+		});
 	});
 
 	describe('getConfluenceCloudId', () => {
@@ -100,6 +110,14 @@ describe('Confluence Transport', () => {
 
 		it('says "no sites" when the connection reaches no Confluence sites', async () => {
 			mockHttpRequestWithAuthentication.mockResolvedValueOnce([]);
+
+			await expect(getConfluenceCloudId.call(ctx, 'foo.atlassian.net')).rejects.toThrow(
+				'can access: no sites',
+			);
+		});
+
+		it('treats a non-array accessible-resources body as no sites', async () => {
+			mockHttpRequestWithAuthentication.mockResolvedValueOnce({ error: 'unexpected' });
 
 			await expect(getConfluenceCloudId.call(ctx, 'foo.atlassian.net')).rejects.toThrow(
 				'can access: no sites',

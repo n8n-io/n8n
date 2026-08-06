@@ -2,7 +2,6 @@ import type { IExecuteFunctions } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 import { mockDeep } from 'vitest-mock-extended';
 
-import { router } from '../actions/router';
 import { Confluence } from '../Confluence.node';
 
 describe('Confluence Node', () => {
@@ -47,6 +46,6 @@ describe('Confluence Node', () => {
 			parameters: {},
 		});
 
-		await expect(router.call(ctx)).rejects.toThrow(NodeOperationError);
+		await expect(node.execute.call(ctx)).rejects.toThrow(NodeOperationError);
 	});
 });

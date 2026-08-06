@@ -35,7 +35,14 @@ export function matchSiteByHostname(
 	hostname: string,
 ): AccessibleResource | undefined {
 	const target = hostname.toLowerCase();
-	return resources.find((resource) => new URL(resource.url).hostname.toLowerCase() === target);
+	// Non-throwing on malformed entries: this is a reuse contract fed with an unvalidated API response
+	return resources.find((resource) => {
+		try {
+			return new URL(resource.url).hostname.toLowerCase() === target;
+		} catch {
+			return false;
+		}
+	});
 }
 
 // Module-level cache: normalized hostname → cloudId (Jira parity, nodes/Jira/GenericFunctions.ts:18).
@@ -85,6 +92,9 @@ export async function getConfluenceCloudId(
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
+
+	// A non-array body falls through to the no-match error instead of a raw TypeError
+	if (!Array.isArray(resources)) resources = [];
 
 	const site = matchSiteByHostname(resources, hostname);
 
