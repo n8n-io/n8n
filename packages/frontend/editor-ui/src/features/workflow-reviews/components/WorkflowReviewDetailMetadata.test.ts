@@ -86,13 +86,23 @@ describe('WorkflowReviewDetailMetadata', () => {
 		expect(getByText('Payment Handler')).toBeInTheDocument();
 	});
 
-	it('shows a single label for closed reviews', () => {
+	it('pairs the closed state with an approval decision', () => {
 		const { getByTestId } = renderComponent({
 			props: { review: makeDetail({ state: 'closed', decision: 'approved' }) },
 		});
 
-		expect(getByTestId('workflow-review-detail-status-card')).toHaveTextContent('Approved');
-		expect(getByTestId('workflow-review-detail-status-card')).not.toHaveTextContent('Open •');
+		expect(getByTestId('workflow-review-detail-status-card')).toHaveTextContent(
+			'Closed • Approved',
+		);
+	});
+
+	it('shows a single label for closed reviews without an approval', () => {
+		const { getByTestId } = renderComponent({
+			props: { review: makeDetail({ state: 'closed', decision: 'pending' }) },
+		});
+
+		expect(getByTestId('workflow-review-detail-status-card')).toHaveTextContent('Closed');
+		expect(getByTestId('workflow-review-detail-status-card')).not.toHaveTextContent('•');
 	});
 
 	it('links each workflow to the editor', () => {

@@ -9,6 +9,11 @@ import { formatUserDisplayName } from '../formatUserDisplayName';
 import { resolveWorkflowReviewStatus } from '../workflowReviewStatus';
 import WorkflowReviewStatusDot from './WorkflowReviewStatusDot.vue';
 
+const STATE_LABEL_KEYS = {
+	open: 'workflowReviews.detail.metadata.state.open',
+	closed: 'workflowReviews.detail.metadata.state.closed',
+} as const;
+
 const props = defineProps<{
 	review: WorkflowReviewInboxItem | WorkflowReviewRequestDetail;
 }>();
@@ -20,13 +25,13 @@ const detail = computed<WorkflowReviewRequestDetail | null>(() =>
 );
 
 const statusSummary = computed(() => {
-	const label = i18n.baseText(
-		resolveWorkflowReviewStatus(props.review.state, props.review.decision).labelKey,
-	);
-	// Closed reviews are already fully described by Approved / Closed — avoid "Closed · Closed".
-	if (props.review.state === 'closed') return label;
-	return i18n.baseText('workflowReviews.detail.metadata.state.openSummary', {
-		interpolate: { status: label },
+	const { state, decision } = props.review;
+	const label = i18n.baseText(resolveWorkflowReviewStatus(state, decision).labelKey);
+
+	// avoid "Closed · Closed" for closed reviews without an approval decision.
+	if (state === 'closed' && decision !== 'approved') return label;
+	return i18n.baseText('workflowReviews.detail.metadata.state.combinedLabel', {
+		interpolate: { state: i18n.baseText(STATE_LABEL_KEYS[state]), status: label },
 	});
 });
 </script>
