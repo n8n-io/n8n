@@ -37,6 +37,7 @@ import type { executeScenario } from '../harness/scenario-execution';
 import type { ScenarioSeedContext } from '../harness/seed-tables';
 import {
 	findProviderOutage,
+	isRequestAbort,
 	isTransientNetworkError,
 	MAX_PROVIDER_BUILD_ATTEMPTS,
 	providerRetryBackoffMs,
@@ -264,9 +265,16 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 
 	// A build that sat out its timeout against a dead lane reports "Run timed
 	// out", not "fetch failed" — so any failed build also health-probes its lane.
+	// A request abort counts too; the chat loop's own overrun ("Run timed out after
+	// Nms") does not — that is the agent being slow on a healthy lane.
 	async function isTransportFailure(build: BuildResult, lane: LaneState): Promise<boolean> {
 		if (build.success) return false;
-		if (build.error !== undefined && isTransientNetworkError(build.error)) return true;
+		if (
+			build.error !== undefined &&
+			(isTransientNetworkError(build.error) || isRequestAbort(build.error))
+		) {
+			return true;
+		}
 		return !(await laneHealthy(lane));
 	}
 
