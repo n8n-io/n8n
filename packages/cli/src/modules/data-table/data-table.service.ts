@@ -560,6 +560,13 @@ export class DataTableService {
 		dataTableId: string,
 		projectId: string,
 		dto: Omit<DeleteDataTableRowsDto, 'returnData' | 'dryRun'>,
+		returnData: boolean,
+		dryRun: boolean,
+	): Promise<DataTableRowReturn[] | true>;
+	async deleteRows(
+		dataTableId: string,
+		projectId: string,
+		dto: Omit<DeleteDataTableRowsDto, 'returnData' | 'dryRun'>,
 		returnData: boolean = false,
 		dryRun: boolean = false,
 	) {

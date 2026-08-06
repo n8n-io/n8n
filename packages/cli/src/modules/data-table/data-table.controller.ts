@@ -528,6 +528,7 @@ export class DataTableController {
 				req.params.projectId,
 				dto,
 				dto.returnData,
+				dto.dryRun,
 			);
 		} catch (e: unknown) {
 			if (e instanceof DataTableNotFoundError) {
