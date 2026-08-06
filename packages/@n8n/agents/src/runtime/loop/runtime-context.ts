@@ -271,17 +271,12 @@ export class RuntimeContextBuilder {
 		};
 	}
 
-	/** Build the providerOptions object for thinking/reasoning config. */
+	/** Build the providerOptions object for provider-specific thinking config. */
 	private buildThinkingProviderOptions(): Record<string, Record<string, unknown>> | undefined {
-		const quirks = getProviderQuirks(providerIdFromModelId(this.modelId));
+		if (!this.config.thinking) return undefined;
 
-		if (this.config.thinking) {
-			return quirks.thinkingToProviderOptions?.(this.config.thinking, this.modelId);
-		}
-		if (this.config.reasoning) {
-			return quirks.reasoningToProviderOptions?.(this.config.reasoning, this.modelId);
-		}
-		return undefined;
+		const quirks = getProviderQuirks(providerIdFromModelId(this.modelId));
+		return quirks.thinkingToProviderOptions?.(this.config.thinking, this.modelId);
 	}
 
 	/**
