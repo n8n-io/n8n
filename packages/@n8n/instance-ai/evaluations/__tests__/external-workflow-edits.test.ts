@@ -3,7 +3,8 @@ import { vi } from 'vitest';
 import type { N8nClient } from '../clients/n8n-client';
 import { runMultiTurnConversation } from '../harness/chat-loop';
 import type { EvalLogger } from '../harness/logger';
-import type { CapturedEvent, ExternalWorkflowEdit } from '../types';
+import type { ExternalWorkflowEdit } from '../harness/schema';
+import type { CapturedEvent } from '../types';
 
 /** A `tool-result` for a workflow tool — the shape `extractOutcomeFromEvents`
  *  reads build ids out of, so the hook counts it as a build having happened. */
@@ -91,17 +92,42 @@ describe('externalEdits in runMultiTurnConversation', () => {
 	it('renames the built workflow once its build threshold is met', async () => {
 		const { renames } = await runLoop({
 			events: [...runLifecycleEvents(), buildEvent('wf-first')],
-			externalEdits: [{ afterBuildCount: 1, rename: 'Renamed in another tab' }],
-			followUps: [null],
+			externalEdits: [{ afterWorkflowCount: 1, rename: 'Renamed in another tab' }],
+			followUps: ['keep going', null],
 		});
 
 		expect(renames).toEqual([{ workflowId: 'wf-first', name: 'Renamed in another tab' }]);
 	});
 
+	it('applies every due edit in the array', async () => {
+		const { renames } = await runLoop({
+			events: [...runLifecycleEvents(), buildEvent('wf-first')],
+			externalEdits: [
+				{ afterWorkflowCount: 1, rename: 'First rename' },
+				{ afterWorkflowCount: 1, rename: 'Second rename' },
+			],
+			followUps: ['keep going', null],
+		});
+
+		expect(renames.map((r) => r.name)).toEqual(['First rename', 'Second rename']);
+	});
+
+	it('does not apply an edit on the boundary that ends the conversation', async () => {
+		const { renames } = await runLoop({
+			events: [...runLifecycleEvents(), buildEvent('wf-first')],
+			externalEdits: [{ afterWorkflowCount: 1, rename: 'Too late to matter' }],
+			// The proxy ends the conversation at the first boundary, so the agent would
+			// never get a turn to react to the edit.
+			followUps: [null],
+		});
+
+		expect(renames).toHaveLength(0);
+	});
+
 	it('applies a due edit exactly once, across several turn boundaries', async () => {
 		const { renames } = await runLoop({
 			events: [...runLifecycleEvents(), buildEvent('wf-first')],
-			externalEdits: [{ afterBuildCount: 1, rename: 'Renamed once' }],
+			externalEdits: [{ afterWorkflowCount: 1, rename: 'Renamed once' }],
 			// Three boundaries, all of which the edit stays "due" for.
 			followUps: ['keep going', 'and again', null],
 		});
@@ -114,7 +140,7 @@ describe('externalEdits in runMultiTurnConversation', () => {
 
 		const { renames } = await runLoop({
 			events,
-			externalEdits: [{ afterBuildCount: 2, rename: 'Second build renamed' }],
+			externalEdits: [{ afterWorkflowCount: 2, rename: 'Second build renamed' }],
 			followUps: [
 				// Not due yet — only one workflow exists at this boundary.
 				'keep going',
@@ -134,7 +160,7 @@ describe('externalEdits in runMultiTurnConversation', () => {
 	it('never fires when the build count is not reached', async () => {
 		const { renames } = await runLoop({
 			events: [...runLifecycleEvents(), buildEvent('wf-first')],
-			externalEdits: [{ afterBuildCount: 2, rename: 'Never applied' }],
+			externalEdits: [{ afterWorkflowCount: 2, rename: 'Never applied' }],
 			followUps: ['keep going', 'and again', null],
 		});
 
@@ -144,7 +170,7 @@ describe('externalEdits in runMultiTurnConversation', () => {
 	it('swallows a failed rename and keeps the conversation going', async () => {
 		const { renames, messagesSent } = await runLoop({
 			events: [...runLifecycleEvents(), buildEvent('wf-first')],
-			externalEdits: [{ afterBuildCount: 1, rename: 'Doomed rename' }],
+			externalEdits: [{ afterWorkflowCount: 1, rename: 'Doomed rename' }],
 			followUps: ['still talking', null],
 			updateShouldThrow: true,
 		});

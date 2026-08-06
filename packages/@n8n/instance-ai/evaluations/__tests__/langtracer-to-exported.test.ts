@@ -111,6 +111,15 @@ describe('unsupportedPushReason', () => {
 		expect(unsupportedPushReason(diskCase())).toBeNull();
 	});
 
+	it('flags externalEdits as unsupported — the write API would drop them silently', () => {
+		const reason = unsupportedPushReason(
+			diskCase({ externalEdits: [{ afterWorkflowCount: 1, rename: 'Renamed elsewhere' }] }),
+		);
+		// Without this the suite copy runs with the edit never firing, and every
+		// assertion that depends on the conflict passes vacuously in CI.
+		expect(reason).toMatch(/externalEdits/);
+	});
+
 	it('flags a replay seed as unsupported — its trace expires, so it has no suite home', () => {
 		const reason = unsupportedPushReason(diskCase({ seed: { mode: 'replay', threadId: 't' } }));
 		expect(reason).toMatch(/replay seed/);

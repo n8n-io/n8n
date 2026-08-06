@@ -50,12 +50,23 @@ export interface ToLangTracerOptions {
 	synthetic: boolean;
 }
 
-/** Seeding modes the case-write API can't take. An INLINE seed is pushable — it's a
+/** Case content the case-write API can't take. An INLINE seed is pushable — it's a
  *  durable fixture, and the API stores it verbatim. A REPLAY seed isn't: it points at
  *  a LangSmith trace that expires, lang-tracer derives it from a source thread it
  *  already holds, and such a case is barred from suites anyway. Returns a
  *  human-readable reason, else null. */
 export function unsupportedPushReason(testCase: EvalTestCaseInput): string | null {
+	// The write API has no field for these, and `diskCaseToLangTracerCreate` doesn't
+	// forward them — so pushing would land the case in the suite silently stripped of
+	// its edits. CI runs suites, so the case would then grade a conflict that never
+	// happened and pass vacuously. Refuse loudly instead.
+	if ((testCase.externalEdits ?? []).length > 0) {
+		return (
+			'declares `externalEdits` — the case-write API has no field for them, so the suite copy ' +
+			'would run without the edit ever firing. Keep this case on disk.'
+		);
+	}
+
 	const seed = testCase.seed;
 	switch (seed?.mode) {
 		case undefined:

@@ -118,6 +118,45 @@ export const CaseSeedSchema = z.discriminatedUnion('mode', [
 
 export type CaseSeed = z.infer<typeof CaseSeedSchema>;
 
+/**
+ * A conversation is multi-turn if it has more than one turn, or if the only turn
+ * is from the assistant. Empty conversations are treated as single-turn.
+ *
+ * Lives here, beside the schema that defines a conversation, so the loader's
+ * validation and the runtime branch in `harness/build-workflow.ts` can't drift:
+ * a field rejected at load for needing multi-turn must be the same "multi-turn"
+ * the runner then tests for.
+ */
+export function isMultiTurnConversation(
+	conversation: Array<{ role: 'user' | 'assistant' }>,
+): boolean {
+	if (conversation.length === 0) return false;
+	if (conversation.length > 1) return true;
+	return conversation[0].role !== 'user';
+}
+
+/**
+ * One edit made to a built workflow from outside the conversation, applied at a
+ * turn boundary — the agent is idle and the simulated user hasn't spoken yet.
+ */
+export const ExternalWorkflowEditSchema = z
+	.object({
+		/** Fire once at least this many DISTINCT workflows exist (1 = after the first
+		 *  one is built). Counts workflows, not build calls: an agent that rebuilds
+		 *  the same workflow repeatedly still has one.
+		 *
+		 *  Anchored on that rather than a turn index because the user-proxy decides
+		 *  how many follow-ups a run takes, so a turn number drifts between runs
+		 *  where "the first workflow exists" does not. */
+		afterWorkflowCount: z.number().int().positive().default(1),
+		/** New workflow name. `name` is one of WORKFLOW_CHECKSUM_FIELDS, so a rename
+		 *  conflicts the agent's next save without touching nodes. */
+		rename: z.string().min(1),
+	})
+	.strict();
+
+export type ExternalWorkflowEdit = z.infer<typeof ExternalWorkflowEditSchema>;
+
 const evalTestCaseObjectSchema = z
 	.object({
 		/** Optional human-readable note on what this case is testing (esp. for behaviour cases). */
@@ -180,22 +219,14 @@ const evalTestCaseObjectSchema = z
 		 * credential work happens to advance the workflow checksum, which is too
 		 * unreliable to assert on.
 		 *
-		 * Anchored on the number of workflows built so far, not on a turn index: the
-		 * user-proxy decides how many follow-ups a run takes, so a turn number drifts
-		 * between runs where "the first build exists" does not.
+		 * Only meaningful on a multi-turn case — a refine below rejects it otherwise,
+		 * since the hook lives in the multi-turn loop and would silently do nothing.
 		 */
 		externalEdits: z
-			.array(
-				z
-					.object({
-						/** Fire once at least this many workflows exist (1 = after the first build). */
-						afterBuildCount: z.number().int().positive().default(1),
-						/** New workflow name. `name` is one of WORKFLOW_CHECKSUM_FIELDS, so a
-						 *  rename conflicts the agent's next save without touching nodes. */
-						rename: z.string().min(1),
-					})
-					.strict(),
-			)
+			.array(ExternalWorkflowEditSchema)
+			// A cap rather than an unbounded list: each edit is a real write against the
+			// instance mid-run, and a case needing more than a handful is describing a
+			// different scenario than "something changed under the agent".
 			.max(5)
 			.optional(),
 		/**
@@ -248,6 +279,16 @@ export const EvalTestCaseSchema = evalTestCaseObjectSchema
 		{
 			message:
 				'`attach.workflow` must be the id of a workflow the inline seed declares — otherwise the attachment points at nothing',
+		},
+	)
+	// The hook that applies these lives in the multi-turn loop, which a single-prompt
+	// case never enters — so on one the edit would silently never fire and every
+	// assertion depending on it would pass vacuously. Rejected at load instead.
+	.refine(
+		(c) => (c.externalEdits ?? []).length === 0 || isMultiTurnConversation(c.conversation ?? []),
+		{
+			message:
+				'`externalEdits` needs a multi-turn conversation — the edit is applied at a turn boundary, so a single-prompt case would never apply it',
 		},
 	)
 	// The chat API refuses a message that is empty with nothing attached, so catch it

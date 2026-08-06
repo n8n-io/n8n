@@ -16,10 +16,11 @@ import { INSTANCE_AI_MEMORY_TASK_WAIT_TIMEOUT_MS } from '@n8n/api-types';
 import { setTimeout as delay } from 'node:timers/promises';
 
 import type { EvalLogger } from './logger';
+import type { ExternalWorkflowEdit } from './schema';
 import type { N8nClient } from '../clients/n8n-client';
 import { consumeSseStream } from '../clients/sse-client';
 import { extractOutcomeFromEvents } from '../outcome/event-parser';
-import type { CapturedEvent, ExternalWorkflowEdit } from '../types';
+import type { CapturedEvent } from '../types';
 import { USER_TURN_EVENT } from '../types';
 import { getEventPayload, tryInfrastructureResponse } from '../utils/confirmation-payload';
 import { getNestedRecord } from '../utils/safe-extract';
@@ -303,13 +304,16 @@ export async function runMultiTurnConversation(config: MultiTurnConfig): Promise
 			return;
 		}
 
-		await applyDueExternalEdits(config, pendingEdits);
-
 		const decision = await config.nextMessageDecider();
 		if (decision.kind === 'done') {
 			config.logger.verbose('[multi-turn] Proxy returned done — exiting loop');
 			return;
 		}
+
+		// After the decision, so an edit never lands on the boundary that ends the
+		// conversation: there the agent would get no turn to react, and the renamed
+		// workflow would still be what the judge and workflow checks read.
+		await applyDueExternalEdits(config, pendingEdits);
 
 		config.logger.verbose(
 			`[multi-turn] Sending follow-up: ${decision.message.slice(0, 80)}${decision.message.length > 80 ? '...' : ''}`,
@@ -337,14 +341,23 @@ async function applyDueExternalEdits(
 ): Promise<void> {
 	if (pending.length === 0) return;
 
+	// Deduped by the parser, so this is DISTINCT workflows — repeated rebuilds of
+	// one workflow stay at a count of 1, which is what `afterWorkflowCount` means.
 	const builtWorkflowIds = extractOutcomeFromEvents(config.events).workflowIds;
 
-	for (let index = pending.length - 1; index >= 0; index--) {
-		const edit = pending[index];
-		if (builtWorkflowIds.length < edit.afterBuildCount) continue;
+	const due = pending.filter((edit) => builtWorkflowIds.length >= edit.afterWorkflowCount);
+	if (due.length === 0) return;
 
-		const workflowId = builtWorkflowIds[edit.afterBuildCount - 1];
-		pending.splice(index, 1);
+	// Drop them from `pending` first, so each fires once per run even if applying
+	// one throws. Applied in declaration order below: two edits naming the same
+	// workflow must leave it named by the LAST one the case lists.
+	for (const edit of due) {
+		const at = pending.indexOf(edit);
+		if (at !== -1) pending.splice(at, 1);
+	}
+
+	for (const edit of due) {
+		const workflowId = builtWorkflowIds[edit.afterWorkflowCount - 1];
 
 		try {
 			await config.client.updateWorkflow(workflowId, { name: edit.rename });

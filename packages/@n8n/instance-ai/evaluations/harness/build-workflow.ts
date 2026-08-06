@@ -29,7 +29,7 @@ import {
 } from './conversation-seed';
 import { reconstructSeedFromThread } from './langsmith-seed';
 import type { EvalLogger } from './logger';
-import type { CaseSeed } from './schema';
+import { isMultiTurnConversation, type CaseSeed, type ExternalWorkflowEdit } from './schema';
 import {
 	buildSeededTablesNote,
 	dedupeScenarioSeedTables,
@@ -53,7 +53,6 @@ import type {
 	ConversationMetrics,
 	ConversationTurn,
 	ExecutionScenario,
-	ExternalWorkflowEdit,
 	TestCaseCredential,
 	TranscriptTurn,
 	WorkflowTestCase,
@@ -306,14 +305,6 @@ export function workflowExpectedForCase(
 		(testCase.executionScenarios?.length ?? 0) > 0 ||
 		(testCase.outcomeExpectations?.length ?? 0) > 0
 	);
-}
-
-/** A conversation is multi-turn if it has more than one turn, or if the only
- *  turn is from the assistant. Empty conversations are treated as single-turn. */
-function isMultiTurnConversation(conversation: ConversationTurn[]): boolean {
-	if (conversation.length === 0) return false;
-	if (conversation.length > 1) return true;
-	return conversation[0].role !== 'user';
 }
 
 /**
