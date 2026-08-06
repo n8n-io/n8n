@@ -56,9 +56,7 @@ describe('AttachableWorkflowsService', () => {
 
 		const result = await service.list(user, 'project-1');
 
-		expect(result).toEqual([
-			{ id: 'a', name: 'Has trigger', active: true, triggerType: 'manual' },
-		]);
+		expect(result).toEqual([{ id: 'a', name: 'Has trigger', active: true, triggerType: 'manual' }]);
 	});
 
 	it('dedupes workflows that surface via multiple share paths', async () => {

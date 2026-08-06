@@ -1337,9 +1337,7 @@ describe('AgentsBuilderToolsService', () => {
 
 			expect(attachableWorkflowsService.list).toHaveBeenCalledWith(user, projectId, 'billing');
 			expect(result).toEqual({
-				workflows: [
-					{ id: 'wf-1', name: 'Billing follow-up', active: true, triggerType: 'manual' },
-				],
+				workflows: [{ id: 'wf-1', name: 'Billing follow-up', active: true, triggerType: 'manual' }],
 			});
 		});
 	});
