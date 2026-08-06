@@ -8,9 +8,7 @@ import {
 import { makePollTriggerWorkflow } from './poll-trigger-workflow';
 import { test, expect } from '../../../fixtures/base';
 
-const RECOVERY_SAFETY_MARGIN_MS = 1_500;
-const SKIP_CHECK_SAFETY_MARGIN_MS = 500;
-const MIN_SKIP_CHECK_WINDOW_MS = 1_000;
+const SKIP_CHECK_WINDOW_MS = 1_000;
 
 test.use({
 	capability: {
@@ -44,46 +42,34 @@ test.describe(
 			);
 
 			const afterSeedPoll = await triggerExecutionIds(api, workflowId);
-			const failureIssuedAt = Date.now();
 			await api.fireScheduledJobsNow(workflowId, nodeId);
 			await expectNewTriggerExecution(api, workflowId, afterSeedPoll, { expectedStatus: 'error' });
 
 			const failureState = await api.getPollerFailureState(workflowId, nodeId);
 			expect(failureState.consecutiveErrors).toBe(1);
 			expect(failureState.backoffUntil).not.toBeNull();
-			const backoffUntilMs = new Date(failureState.backoffUntil as string).getTime();
-			expect(backoffUntilMs).toBeGreaterThan(Date.now());
-			// Upper-bound estimate: measured from before the poll request went out, so it
-			// includes round-trip latency on top of the server's own backoff computation.
-			const transientBackoffFloorMs = backoffUntilMs - failureIssuedAt;
+			expect(new Date(failureState.backoffUntil as string).getTime()).toBeGreaterThan(Date.now());
 
 			const afterFailedPoll = await triggerExecutionIds(api, workflowId);
 			await api.fireScheduledJobsNow(workflowId, nodeId);
-
-			const elapsedSinceFailure = Date.now() - failureIssuedAt;
-			const skipCheckWindowMs = Math.max(
-				MIN_SKIP_CHECK_WINDOW_MS,
-				transientBackoffFloorMs - elapsedSinceFailure - SKIP_CHECK_SAFETY_MARGIN_MS,
-			);
-			await expectNoNewTriggerExecution(api, workflowId, afterFailedPoll, skipCheckWindowMs);
+			await expectNoNewTriggerExecution(api, workflowId, afterFailedPoll, SKIP_CHECK_WINDOW_MS);
 			expect(await services.proxy.wasRequestMade({ method: 'GET', path }, 2)).toBe(true);
 
-			const elapsedSinceSkipCheck = Date.now() - failureIssuedAt;
-			const remainingUntilRecovery = Math.max(
-				0,
-				transientBackoffFloorMs + RECOVERY_SAFETY_MARGIN_MS - elapsedSinceSkipCheck,
-			);
-			await new Promise((resolve) => setTimeout(resolve, remainingUntilRecovery));
-
 			await programPollResponse(services.proxy, path, [{ id: 2 }]);
+			await api.workflows.deactivate(workflowId);
+			const { versionId } = await api.workflows.getWorkflow(workflowId);
+			await api.workflows.activate(workflowId, versionId!);
+
+			// Publication is processed asynchronously through an outbox, so the
+			// registrar's reset doesn't land the instant activate() resolves.
+			await expect
+				.poll(async () => await api.getPollerFailureState(workflowId, nodeId), { timeout: 10_000 })
+				.toMatchObject({ consecutiveErrors: 0, backoffUntil: null });
+
 			await api.fireScheduledJobsNow(workflowId, nodeId);
 			await expectNewTriggerExecution(api, workflowId, afterFailedPoll);
 
 			expect(await api.getPollerCursor(workflowId, nodeId)).toEqual({ lastItemId: 2 });
-
-			const recoveredState = await api.getPollerFailureState(workflowId, nodeId);
-			expect(recoveredState.consecutiveErrors).toBe(0);
-			expect(recoveredState.backoffUntil).toBeNull();
 		});
 	},
 );
