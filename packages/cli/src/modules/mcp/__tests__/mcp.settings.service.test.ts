@@ -952,55 +952,39 @@ describe('McpSettingsService', () => {
 		});
 
 		describe('auto-expose side effect', () => {
-			test('enables auto-expose when scope is allWorkflows and availableInMCP is true', async () => {
-				findByKey.mockResolvedValue(null);
-				workflowFinderService.findAllWorkflowIdsForUser.mockResolvedValue([]);
+			test.each([
+				{ availableInMCP: true, allWorkflows: true, expectEnabled: true },
+				{ availableInMCP: false, allWorkflows: true, expectEnabled: false },
+				{ availableInMCP: true, allWorkflows: false, expectEnabled: false },
+			])(
+				'availableInMCP=$availableInMCP allWorkflows=$allWorkflows -> auto-expose enabled=$expectEnabled',
+				async ({ availableInMCP, allWorkflows, expectEnabled }) => {
+					findByKey.mockResolvedValue(null);
+					workflowFinderService.findAllWorkflowIdsForUser.mockResolvedValue([]);
+					workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(
+						new Set(['wf-1']),
+					);
 
-				const dto = new UpdateWorkflowsAvailabilityDto({
-					availableInMCP: true,
-					allWorkflows: true,
-				});
+					const dto = allWorkflows
+						? new UpdateWorkflowsAvailabilityDto({ availableInMCP, allWorkflows: true })
+						: new UpdateWorkflowsAvailabilityDto({ availableInMCP, workflowIds: ['wf-1'] });
 
-				const result = await service.bulkSetAvailableInMCP(user, dto);
+					const result = await service.bulkSetAvailableInMCP(user, dto);
 
-				expect(upsert).toHaveBeenCalledWith(
-					{ key: 'mcp.autoExposeNewWorkflows', value: 'true', loadOnStartup: true },
-					['key'],
-				);
-				expect(result.autoExposeNewWorkflows).toBe(true);
-			});
-
-			test('does not touch auto-expose for a scoped (non-allWorkflows) update', async () => {
-				workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(new Set(['wf-1']));
-
-				const dto = new UpdateWorkflowsAvailabilityDto({
-					availableInMCP: true,
-					workflowIds: ['wf-1'],
-				});
-
-				await service.bulkSetAvailableInMCP(user, dto);
-
-				expect(upsert).not.toHaveBeenCalledWith(
-					expect.objectContaining({ key: 'mcp.autoExposeNewWorkflows' }),
-					['key'],
-				);
-			});
-
-			test('does not enable auto-expose when allWorkflows is used to turn access OFF', async () => {
-				workflowFinderService.findAllWorkflowIdsForUser.mockResolvedValue([]);
-
-				const dto = new UpdateWorkflowsAvailabilityDto({
-					availableInMCP: false,
-					allWorkflows: true,
-				});
-
-				await service.bulkSetAvailableInMCP(user, dto);
-
-				expect(upsert).not.toHaveBeenCalledWith(
-					expect.objectContaining({ key: 'mcp.autoExposeNewWorkflows' }),
-					['key'],
-				);
-			});
+					if (expectEnabled) {
+						expect(upsert).toHaveBeenCalledWith(
+							{ key: 'mcp.autoExposeNewWorkflows', value: 'true', loadOnStartup: true },
+							['key'],
+						);
+						expect(result.autoExposeNewWorkflows).toBe(true);
+					} else {
+						expect(upsert).not.toHaveBeenCalledWith(
+							expect.objectContaining({ key: 'mcp.autoExposeNewWorkflows' }),
+							['key'],
+						);
+					}
+				},
+			);
 
 			test('does not fail the bulk update if enabling auto-expose throws', async () => {
 				workflowFinderService.findAllWorkflowIdsForUser.mockResolvedValue([]);

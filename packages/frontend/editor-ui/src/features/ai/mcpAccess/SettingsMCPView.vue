@@ -23,8 +23,6 @@ import { useToast } from '@n8n/composables/useToast';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { useExposeAllWorkflowsToMcpOffer } from '@/experiments/exposeAllWorkflowsToMcp/composables/useExposeAllWorkflowsToMcpOffer';
 import { useExposeAllWorkflowsToMcpStore } from '@/experiments/exposeAllWorkflowsToMcp/stores/exposeAllWorkflowsToMcp.store';
-import { getExperimentTelemetryPayload } from '@/experiments/utils';
-import { EXPOSE_ALL_WORKFLOWS_TO_MCP_EXPERIMENT } from '@/app/constants/experiments';
 import MCPEmptyState from '@/features/ai/mcpAccess/components/MCPEmptyState.vue';
 import McpAllowedCallbackUrlsDialog from '@/features/ai/mcpAccess/components/McpAllowedCallbackUrlsDialog.vue';
 import McpConnectClientDialog from '@/features/ai/mcpAccess/components/McpConnectClientDialog.vue';
@@ -80,10 +78,6 @@ const onToggleAutoExpose = async (value: boolean) => {
 		const updated = await mcpStore.setAutoExposeNewWorkflows(value);
 		telemetry.track(TELEMETRY_EVENT.MCP.AUTO_EXPOSE_NEW_WORKFLOWS_TOGGLED, {
 			enabled: updated,
-			...getExperimentTelemetryPayload(
-				EXPOSE_ALL_WORKFLOWS_TO_MCP_EXPERIMENT,
-				exposeAllWorkflowsToMcpStore.currentVariant,
-			),
 		});
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.mcp.autoExpose.error.title'));

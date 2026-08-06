@@ -519,71 +519,58 @@ describe('mcp.store', () => {
 	});
 
 	describe('setMcpAccessEnabled', () => {
-		it('syncs autoExposeNewWorkflows when the backend confirms a reset on disable', async () => {
-			vi.spyOn(mcpApi, 'updateMcpSettings').mockResolvedValue({
-				mcpAccessEnabled: false,
-				autoExposeNewWorkflows: false,
-			});
+		it.each([
+			{
+				desc: 'syncs autoExposeNewWorkflows when the backend confirms a reset on disable',
+				enabled: false,
+				response: { mcpAccessEnabled: false, autoExposeNewWorkflows: false },
+				expectedAutoExpose: false,
+			},
+			{
+				desc: 'leaves autoExposeNewWorkflows unchanged when the response omits it',
+				enabled: true,
+				response: { mcpAccessEnabled: true },
+				expectedAutoExpose: true,
+			},
+		])('$desc', async ({ enabled, response, expectedAutoExpose }) => {
+			vi.spyOn(mcpApi, 'updateMcpSettings').mockResolvedValue(response);
 			const settingsStore = useSettingsStore();
 			settingsStore.moduleSettings.mcp = {
-				mcpAccessEnabled: true,
+				mcpAccessEnabled: !enabled,
 				mcpManagedByEnv: false,
 				autoExposeNewWorkflows: true,
 				serverUrl: 'https://example.com/mcp',
 			};
 
-			const result = await useMCPStore().setMcpAccessEnabled(false);
+			const result = await useMCPStore().setMcpAccessEnabled(enabled);
 
-			expect(result).toBe(false);
+			expect(result).toBe(enabled);
 			expect(settingsStore.moduleSettings.mcp).toEqual({
-				mcpAccessEnabled: false,
+				mcpAccessEnabled: enabled,
 				mcpManagedByEnv: false,
-				autoExposeNewWorkflows: false,
-				serverUrl: 'https://example.com/mcp',
-			});
-		});
-
-		it('leaves autoExposeNewWorkflows unchanged when the response omits it', async () => {
-			vi.spyOn(mcpApi, 'updateMcpSettings').mockResolvedValue({
-				mcpAccessEnabled: true,
-			});
-			const settingsStore = useSettingsStore();
-			settingsStore.moduleSettings.mcp = {
-				mcpAccessEnabled: false,
-				mcpManagedByEnv: false,
-				autoExposeNewWorkflows: true,
-				serverUrl: 'https://example.com/mcp',
-			};
-
-			const result = await useMCPStore().setMcpAccessEnabled(true);
-
-			expect(result).toBe(true);
-			expect(settingsStore.moduleSettings.mcp).toEqual({
-				mcpAccessEnabled: true,
-				mcpManagedByEnv: false,
-				autoExposeNewWorkflows: true,
+				autoExposeNewWorkflows: expectedAutoExpose,
 				serverUrl: 'https://example.com/mcp',
 			});
 		});
 	});
 
 	describe('autoExposeNewWorkflows', () => {
-		it('reads the flag from module settings', () => {
+		it.each([
+			{
+				desc: 'reads the flag from module settings',
+				mcp: { mcpAccessEnabled: true, mcpManagedByEnv: false, autoExposeNewWorkflows: true },
+				expected: true,
+			},
+			{
+				desc: 'defaults to false when module settings are absent',
+				mcp: undefined,
+				expected: false,
+			},
+		])('$desc', ({ mcp, expected }) => {
 			const settingsStore = useSettingsStore();
-			settingsStore.moduleSettings.mcp = {
-				mcpAccessEnabled: true,
-				mcpManagedByEnv: false,
-				autoExposeNewWorkflows: true,
-			};
+			settingsStore.moduleSettings.mcp = mcp;
 
-			expect(useMCPStore().autoExposeNewWorkflows).toBe(true);
-		});
-
-		it('defaults to false when module settings are absent', () => {
-			const settingsStore = useSettingsStore();
-			settingsStore.moduleSettings.mcp = undefined;
-
-			expect(useMCPStore().autoExposeNewWorkflows).toBe(false);
+			expect(useMCPStore().autoExposeNewWorkflows).toBe(expected);
 		});
 
 		it('patches only autoExposeNewWorkflows and updates local state', async () => {

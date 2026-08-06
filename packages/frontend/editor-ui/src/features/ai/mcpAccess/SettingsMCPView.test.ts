@@ -662,7 +662,6 @@ describe('SettingsMCPView', () => {
 		it('persists the new state and tracks the resulting value', async () => {
 			hasPermissionMock.mockReturnValue(true);
 			exposeAllWorkflowsToMcpStore.isEnabled = true;
-			exposeAllWorkflowsToMcpStore.currentVariant = EXPOSE_ALL_WORKFLOWS_TO_MCP_EXPERIMENT.variant;
 			mcpStore.setAutoExposeNewWorkflows.mockResolvedValue(true);
 
 			const { getByTestId } = createComponent({ pinia });
@@ -671,15 +670,9 @@ describe('SettingsMCPView', () => {
 			await userEvent.click(getByTestId('mcp-auto-expose-toggle').querySelector('input')!);
 
 			expect(mcpStore.setAutoExposeNewWorkflows).toHaveBeenCalledWith(true);
-			expect(trackSpy).toHaveBeenCalledWith(
-				TELEMETRY_EVENT.MCP.AUTO_EXPOSE_NEW_WORKFLOWS_TOGGLED,
-				expect.objectContaining({ enabled: true }),
-			);
-			// The event must be splittable by experiment cohort, not just enabled/disabled.
-			const trackedPayload = trackSpy.mock.calls.at(-1)?.[1] as Record<string, unknown>;
-			expect(Object.keys(trackedPayload)).toContain(
-				`$feature/${EXPOSE_ALL_WORKFLOWS_TO_MCP_EXPERIMENT.name}`,
-			);
+			expect(trackSpy).toHaveBeenCalledWith(TELEMETRY_EVENT.MCP.AUTO_EXPOSE_NEW_WORKFLOWS_TOGGLED, {
+				enabled: true,
+			});
 		});
 
 		it('shows a toast error and does not track when persisting fails', async () => {
