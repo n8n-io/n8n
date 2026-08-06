@@ -322,9 +322,36 @@ describe('consumeTopic', () => {
 			await consumer.deliverBatch({ messages: messages('poison') });
 			expect(consumer.payloadSpies.resolveOffset).toHaveBeenCalledWith('0');
 			expect(logger.warn).toHaveBeenCalledWith(
-				expect.stringContaining('Skipping 1 Kafka message(s)'),
+				expect.stringContaining('Dropping 1 Kafka message(s)'),
 				expect.anything(),
 			);
+		});
+
+		it('delivers the readable messages of a chunk and drops only the bad one', async () => {
+			const { consumer } = await start({
+				batchSize: 3,
+				poisonMessagePolicy: 'skipAfterAttempts',
+				poisonMessageAttempts: 1,
+			});
+			// Fails whenever it sees 'poison', on the batch parse and the salvage pass.
+			parseMessage.mockImplementation(async (message, topic) => {
+				if (message.value?.toString() === 'poison') throw new Error('cannot parse, ever');
+				return await echoMessage(message, topic);
+			});
+
+			await consumer.deliverBatch({ topic: 'orders', messages: messages('a', 'poison', 'c') });
+
+			// 'a' and 'c' still reach a workflow; only 'poison' is lost.
+			expect(emit).toHaveBeenCalledTimes(1);
+			expect(emit).toHaveBeenCalledWith([
+				{ json: { message: 'a', topic: 'orders' } },
+				{ json: { message: 'c', topic: 'orders' } },
+			]);
+			expect(logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('Dropping 1 Kafka message(s)'),
+				expect.objectContaining({ delivered: 2 }),
+			);
+			expect(consumer.payloadSpies.resolveOffset).toHaveBeenCalledWith('2');
 		});
 
 		it('keeps processing the rest of the batch after skipping a poison chunk', async () => {
@@ -332,12 +359,16 @@ describe('consumeTopic', () => {
 				poisonMessagePolicy: 'skipAfterAttempts',
 				poisonMessageAttempts: 1,
 			});
-			parseMessage.mockRejectedValueOnce(new Error('cannot parse, ever'));
+			parseMessage.mockImplementation(async (message, topic) => {
+				if (message.value?.toString() === 'poison') throw new Error('cannot parse, ever');
+				return await echoMessage(message, topic);
+			});
 
 			await consumer.deliverBatch({ messages: messages('poison', 'good') });
 
-			// Poison skipped on its first attempt, then 'good' is handed over.
+			// Poison dropped on its first attempt, then 'good' is handed over.
 			expect(emit).toHaveBeenCalledTimes(1);
+			expect(emit).toHaveBeenCalledWith([{ json: { message: 'good', topic: 'test-topic' } }]);
 			expect(consumer.payloadSpies.resolveOffset.mock.calls).toStrictEqual([['0'], ['1']]);
 		});
 

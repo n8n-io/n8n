@@ -1,6 +1,6 @@
 import type { KafkaJS } from '@confluentinc/kafka-javascript';
 import { sleep } from '@n8n/utils/sleep';
-import type { Logger } from 'n8n-workflow';
+import type { INodeExecutionData, Logger } from 'n8n-workflow';
 
 import type { DataEmitter } from './DataEmitter';
 import type { KafkaMessageParser } from './MessageParser';
@@ -34,8 +34,9 @@ export const DEFAULT_PARTITIONS_CONSUMED_CONCURRENTLY = 1;
  *   stops progressing until someone intervenes. This is v1's behaviour.
  * - `pausePartition` stops consuming that partition. Other partitions keep going,
  *   and only a restart resumes it.
- * - `skipAfterAttempts` marks it read after {@link DEFAULT_POISON_MESSAGE_ATTEMPTS}
- *   tries and moves on. Deliberately loses the message, loudly.
+ * - `skipAfterAttempts` gives up after {@link DEFAULT_POISON_MESSAGE_ATTEMPTS}
+ *   tries: it delivers whatever in the chunk does parse, drops only the rest, and
+ *   moves on. Deliberately loses those messages, loudly.
  */
 export type PoisonMessagePolicy = 'retryForever' | 'pausePartition' | 'skipAfterAttempts';
 
@@ -171,10 +172,37 @@ export async function consumeTopic(
 						});
 
 						if (poisonPolicy === 'skipAfterAttempts' && attempts >= poisonAttempts) {
+							// One bad message must not take the rest of its chunk with it, so
+							// re-parse one at a time and drop only what genuinely cannot be read.
+							const salvaged: INodeExecutionData[] = [];
+							let dropped = 0;
+							for (const message of chunk) {
+								try {
+									salvaged.push(await parseMessage(message, batch.topic));
+								} catch {
+									dropped += 1;
+								}
+							}
+
+							if (salvaged.length) {
+								const salvagedResult = await emit(salvaged);
+								if (!salvagedResult.success) {
+									// Keep the attempt count, so this converges on another skip
+									// rather than losing the readable messages too.
+									logger.warn('Kafka chunk was not processed, leaving it unresolved');
+									break;
+								}
+							}
+
 							failedAttempts.delete(chunkKey);
 							logger.warn(
-								`Skipping ${chunk.length} Kafka message(s) that could not be parsed after ${attempts} attempts`,
-								{ topic: batch.topic, partition: batch.partition, offset: chunk[0]?.offset },
+								`Dropping ${dropped} Kafka message(s) that could not be parsed after ${attempts} attempts`,
+								{
+									topic: batch.topic,
+									partition: batch.partition,
+									offset: chunk[0]?.offset,
+									delivered: salvaged.length,
+								},
 							);
 							await advance();
 							continue;
