@@ -194,6 +194,7 @@ export class TrustedKeyService {
 				expectedAudience: data.expectedAudience,
 				allowedRoles: data.allowedRoles,
 				requireVerifiedEmail: data.requireVerifiedEmail ?? true,
+				subjectClaim: data.subjectClaim ?? 'sub',
 			};
 		}
 
@@ -364,7 +365,12 @@ export class TrustedKeyService {
 	 */
 	async registerSsoDerivedSource(issuer: string, jwksUri: string): Promise<void> {
 		const sourceId = createHash('sha256').update(issuer).digest('hex').slice(0, 36);
-		const config: JwksKeySource = { type: 'jwks', url: jwksUri, issuer };
+		const config: JwksKeySource = {
+			type: 'jwks',
+			url: jwksUri,
+			issuer,
+			subjectClaim: this.config.inboundSubjectClaim || undefined,
+		};
 
 		await this.dbLockService.withLock(DbLock.TRUSTED_KEY_REFRESH, async (tx) => {
 			const existingForIssuer = await tx.findOneBy(TrustedKeySourceEntity, { issuer });
@@ -569,6 +575,7 @@ export class TrustedKeyService {
 					expectedAudience: key.expectedAudience,
 					allowedRoles: key.allowedRoles,
 					requireVerifiedEmail: jwksConfig.requireVerifiedEmail ?? true,
+					subjectClaim: jwksConfig.subjectClaim,
 					expiresAt: new Date(Date.now() + result.ttlSeconds * 1000).toISOString(),
 				},
 			})),
@@ -615,6 +622,7 @@ export class TrustedKeyService {
 				expectedAudience,
 				allowedRoles,
 				requireVerifiedEmail,
+				subjectClaim,
 			} = config;
 
 			if (seenKids.has(kid)) {
@@ -633,6 +641,7 @@ export class TrustedKeyService {
 					expectedAudience,
 					allowedRoles,
 					requireVerifiedEmail,
+					subjectClaim,
 				},
 			});
 		}

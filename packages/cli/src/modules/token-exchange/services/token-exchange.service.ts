@@ -53,6 +53,25 @@ export class TokenExchangeService implements ExternalTokenVerifier {
 	}
 
 	/**
+	 * Some IdPs put a mutable identifier (e.g. the user's login) in `sub` on
+	 * access tokens, while an immutable one lives in a differently-named
+	 * claim (e.g. Okta's `uid`). When a trust source configures
+	 * `subjectClaim`, its value substitutes for `sub` so every downstream
+	 * consumer - the SSO bridge, qualified-sub binding, JIT provisioning -
+	 * keys on the stable identifier without needing to know about this.
+	 */
+	private resolveEffectiveSubject(payload: jwt.JwtPayload, subjectClaim: string): string {
+		const configuredSubject: unknown = payload[subjectClaim];
+		if (typeof configuredSubject !== 'string' || !configuredSubject) {
+			throw new TokenExchangeAuthError(
+				TokenExchangeFailureReason.InvalidClaims,
+				`Configured subject claim '${subjectClaim}' is missing or not a string`,
+			);
+		}
+		return configuredSubject;
+	}
+
+	/**
 	 * Verify and validate an external JWT subject token.
 	 *
 	 * Performs the full verification pipeline:
@@ -179,6 +198,10 @@ export class TokenExchangeService implements ExternalTokenVerifier {
 		const claims = requireJti
 			? ExternalTokenClaimsSchema.parse(payload)
 			: ResourceServerTokenClaimsSchema.parse(payload);
+
+		if (resolvedKey.subjectClaim !== 'sub') {
+			claims.sub = this.resolveEffectiveSubject(payload, resolvedKey.subjectClaim);
+		}
 
 		if (maxLifetimeSeconds !== undefined) {
 			const tokenLifetime = claims.exp - claims.iat;
