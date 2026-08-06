@@ -77,6 +77,7 @@ import { BrowserUseServer } from './modules/instance-ai/browser/browser-use-serv
 import { PubSubRegistry } from './scaling/pubsub/pubsub.registry';
 import { ApiKeyAuthStrategy } from './services/api-key-auth.strategy';
 import { AuthStrategyRegistry } from './services/auth-strategy.registry';
+import { SessionCookieAuthStrategy } from './services/session-cookie-auth.strategy';
 
 @Service()
 export class Server extends AbstractServer {
@@ -183,10 +184,14 @@ export class Server extends AbstractServer {
 		// Register auth strategies in priority order. The registry evaluates them
 		// sequentially — the first strategy that returns a non-null result wins.
 		// API key auth is registered first so existing behavior is preserved.
+		// Session cookie auth is registered last: an explicit but wrong API
+		// key/bearer token fails fast rather than silently falling back to an
+		// ambient browser session cookie.
 		// Additional strategies (e.g. scoped JWT from the token-exchange module)
 		// can be appended later during their own module initialization.
 		const registry = Container.get(AuthStrategyRegistry);
 		registry.register(Container.get(ApiKeyAuthStrategy));
+		registry.register(Container.get(SessionCookieAuthStrategy));
 
 		// Parse cookies for easier access
 		this.app.use(cookieParser());

@@ -10,13 +10,13 @@ import path from 'path';
 import type { JsonObject } from 'swagger-ui-express';
 import validator from 'validator';
 
-import { PublicApiAuthenticator } from './public-api-authenticator';
 import { PublicApiControllerRegistry } from './public-api-controller.registry';
 import { sendPublicApiErrorResponse } from './v1/public-api-error-response';
 
 import { EventService } from '@/events/event.service';
 import { License } from '@/license';
 import { createN8nPackageMulterOptions } from '@/modules/n8n-packages/utils/import-package-upload';
+import { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
 import { LastActiveAtService } from '@/services/last-active-at.service';
 import { UrlService } from '@/services/url.service';
 
@@ -249,13 +249,13 @@ function createLazyValidatorMiddleware(
 					'express-openapi-validator'
 				);
 
-				const publicApiAuthenticator = Container.get(PublicApiAuthenticator);
+				const authStrategyRegistry = Container.get(AuthStrategyRegistry);
 				const eventService = Container.get(EventService);
 				const lastActiveAtService = Container.get(LastActiveAtService);
 				const logger = Container.get(Logger);
 
 				const authenticate = async (req: AuthenticatedRequest) => {
-					const authenticated = await publicApiAuthenticator.authenticate(req);
+					const authenticated = await authStrategyRegistry.authenticate(req);
 
 					if (authenticated) {
 						lastActiveAtService.updateLastActiveIfStale(req.user.id).catch((error: unknown) => {

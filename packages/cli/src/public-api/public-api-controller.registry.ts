@@ -8,20 +8,20 @@ import { Router as createRouter } from 'express';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { EventService } from '@/events/event.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
-import { PublicApiAuthenticator } from '@/public-api/public-api-authenticator';
 import {
 	apiKeyScopesSatisfy,
 	resolveRouteArgs,
 	resolveSuccessStatus,
 } from '@/public-api/public-api-route-resolver';
 import { sendPublicApiErrorResponse } from '@/public-api/v1/public-api-error-response';
+import { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
 import { LastActiveAtService } from '@/services/last-active-at.service';
 
 @Service()
 export class PublicApiControllerRegistry {
 	constructor(
 		private readonly metadata: ControllerRegistryMetadata,
-		private readonly publicApiAuthenticator: PublicApiAuthenticator,
+		private readonly authStrategyRegistry: AuthStrategyRegistry,
 		private readonly lastActiveAtService: LastActiveAtService,
 		private readonly eventService: EventService,
 	) {}
@@ -119,7 +119,7 @@ export class PublicApiControllerRegistry {
 
 	private createAuthMiddleware(apiVersion: string): RequestHandler {
 		return async (req, res, next) => {
-			const authenticated = await this.publicApiAuthenticator.authenticate(
+			const authenticated = await this.authStrategyRegistry.authenticate(
 				req as AuthenticatedRequest,
 			);
 
