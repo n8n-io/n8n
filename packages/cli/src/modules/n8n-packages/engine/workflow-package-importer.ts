@@ -13,7 +13,6 @@ import { ProjectService } from '@/services/project.service.ee';
 import type { CredentialBindingRequest } from '../entities/credential/credential.types';
 import type { DataTableImportRequest } from '../entities/data-table/data-table.types';
 import type { TagImportRequest } from '../entities/tag/tag.types';
-import { variableMissingModeUsesPackageValue } from '../entities/variable/variable-missing-mode';
 import type { VariableImportRequest } from '../entities/variable/variable.types';
 import { WorkflowPublisher } from '../entities/workflow/workflow-publisher';
 import type { PackageReader } from '../io/package-reader';
@@ -31,7 +30,7 @@ import {
 } from './import-result';
 import { emitPackageImportedEvent } from './import-telemetry';
 import { N8nPackageParser } from './n8n-package-parser';
-import { placeByPolicy } from './package-layout';
+import { needsBundledVariableValues, placeByPolicy } from './package-layout';
 import type { PackageManifest } from '../spec/manifest.schema';
 
 /**
@@ -92,11 +91,12 @@ export class WorkflowPackageImporter {
 		};
 
 		const variableRequirements = identifyRequirements(manifest.requirements?.variables, workflows);
-		const bundledVariables =
-			(variableRequirements?.length ?? 0) > 0 &&
-			variableMissingModeUsesPackageValue(request.variableMissingMode)
-				? await this.packageParser.getVariables(reader)
-				: undefined;
+		const bundledVariables = needsBundledVariableValues(
+			request,
+			(variableRequirements?.length ?? 0) > 0,
+		)
+			? await this.packageParser.getVariables(reader)
+			: undefined;
 		const variableRequest: VariableImportRequest = {
 			requirements: placeByPolicy({
 				requirements: variableRequirements,
@@ -105,6 +105,7 @@ export class WorkflowPackageImporter {
 				bundledVariables,
 			}),
 			missingMode: request.variableMissingMode,
+			conflictPolicy: request.variableConflictPolicy,
 		};
 
 		const tagRequest: TagImportRequest = {

@@ -288,6 +288,30 @@ describe('N8nClient packages', () => {
 			);
 		});
 
+		describe('variableConflictPolicy', () => {
+			it.each(['keep-existing', 'overwrite', 'fail'])('sends %s when provided', async (policy) => {
+				fetchMock.mockResolvedValue(
+					jsonResponse(200, {
+						workflows: [],
+						bindings: {},
+						credentials: { matched: [], stubbed: [] },
+						variables: { matched: [], missing: [], created: [], stubbed: [], updated: [] },
+					}),
+				);
+
+				await client.importPackage(
+					{ buffer: Buffer.from('package-bytes'), filename: 'export.n8np' },
+					{
+						workflowConflictPolicy: 'fail',
+						variableConflictPolicy: policy,
+					},
+				);
+
+				const form = (fetchMock.mock.calls[0] as [string, RequestInit])[1].body as FormData;
+				expect(form.get('variableConflictPolicy')).toBe(policy);
+			});
+		});
+
 		describe('variableParentPolicy', () => {
 			it.each(['project', 'global'])('sends %s when provided', async (policy) => {
 				fetchMock.mockResolvedValue(
