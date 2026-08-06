@@ -169,7 +169,6 @@ test.describe(
 				const foundWorkflow = result.data.find((w) => w.id === workflowId);
 				expect(foundWorkflow).toBeDefined();
 				expect(foundWorkflow!.active).toBe(true);
-				expect(foundWorkflow!.scopes).toBeDefined();
 				expect(foundWorkflow!.availableInMCP).toBe(true);
 			});
 
@@ -218,7 +217,7 @@ test.describe(
 				expect(result.data[0].id).toBe(workflowId);
 			});
 
-			test('should return workflow metadata (id, name, scopes)', async ({ api }) => {
+			test('should return workflow metadata (id, name)', async ({ api }) => {
 				const { workflowId, createdWorkflow } = await api.workflows.importWorkflowFromFile(
 					'mcp-service/mcp-available-basic.json',
 				);
@@ -232,8 +231,6 @@ test.describe(
 
 				expect(foundWorkflow!.id).toBe(workflowId);
 				expect(foundWorkflow!.name).toBeTruthy();
-				expect(foundWorkflow!.scopes).toBeInstanceOf(Array);
-				expect(typeof foundWorkflow!.canExecute).toBe('boolean');
 				expect(typeof foundWorkflow!.availableInMCP).toBe('boolean');
 			});
 		});

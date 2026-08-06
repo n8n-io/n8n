@@ -27,6 +27,16 @@ describe('validateExecutableGraph', () => {
 		expect(() => validateExecutableGraph(graph)).toThrow('no trigger node');
 	});
 
+	it('rejects a graph with more than one trigger node', () => {
+		const graph: WorkflowGraph = {
+			nodes: [...validGraph.nodes, { id: 'trigger-2', name: 'T2', type: 'trigger' }],
+			edges: validGraph.edges,
+		};
+
+		expect(() => validateExecutableGraph(graph)).toThrow(GraphValidationError);
+		expect(() => validateExecutableGraph(graph)).toThrow('one trigger node');
+	});
+
 	it('rejects a graph with a back-edge as unimplemented', () => {
 		const graph: WorkflowGraph = {
 			nodes: [...validGraph.nodes, { id: 'b', name: 'B', type: 'v1-node' }],
