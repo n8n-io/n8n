@@ -1,7 +1,7 @@
 import { createAbortError, isAbortError } from '@n8n/agents';
 import { getWorkspaceRoot } from '@n8n/agents/sandbox';
 import { isRecord } from '@n8n/utils/is-record';
-import { validateWorkflow, type WorkflowJSON } from '@n8n/workflow-sdk';
+import { lintWorkflowSource, validateWorkflow, type WorkflowJSON } from '@n8n/workflow-sdk';
 import { normalizeNodeShape } from 'n8n-workflow';
 
 import { buildCredentialHostIndex, resolveCredentialByUrl } from './credential-url-resolver';
@@ -372,9 +372,26 @@ export async function compileWorkflowSource(
 
 	const warnings = validateCompiledWorkflow(result.workflow, context, result.warnings);
 	const credentialWarnings = await collectCredentialResolutionWarnings(result.workflow, context);
+	const lintWarnings = isTypeScriptWorkflowSource(filePath)
+		? collectSourceLintWarnings(source)
+		: [];
 
 	return {
 		...result,
-		warnings: [...warnings, ...credentialWarnings],
+		warnings: [...warnings, ...credentialWarnings, ...lintWarnings],
 	};
+}
+
+/**
+ * Run the same source lint the sandbox `workflow-sdk validate` CLI runs, so a
+ * build surfaces lint findings without requiring a separate pre-validate turn.
+ * All lint rules are informational and never block the save.
+ */
+function collectSourceLintWarnings(source: string): ValidationWarning[] {
+	return lintWorkflowSource(source).map((issue) => ({
+		code: issue.code,
+		message: issue.line !== undefined ? `line ${issue.line}: ${issue.message}` : issue.message,
+		nodeName: issue.nodeName,
+		severity: issue.severity,
+	}));
 }
