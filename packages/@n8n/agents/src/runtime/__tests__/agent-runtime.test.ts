@@ -4209,105 +4209,27 @@ describe('AgentRuntime — runtime resume data schema validation', () => {
 		await expect(resumeResultPromise).rejects.toThrow('Invalid resume payload');
 	});
 
-	it('accepts unknown keys the authored Zod resume schema would strip', async () => {
-		const approvalTool = new ToolBuilder('delete')
-			.description('Delete a record')
-			.input(z.object({ id: z.string() }))
-			.requireApproval()
-			.handler(async ({ id }: { id: string }) => await Promise.resolve({ deleted: id }))
-			.build();
-
-		generateText
-			.mockResolvedValueOnce(makeGenerateWithToolCall('tc-1', 'delete', { id: 'rec-1' }))
-			.mockResolvedValueOnce(makeGenerateSuccess('Done'));
-
-		const runtime = new AgentRuntime({
-			name: 'test',
-			model: 'openai/gpt-4o-mini',
-			instructions: 'test',
-			tools: [approvalTool],
-			checkpointStorage: 'memory',
-		});
-
-		const firstResult = await runtime.generate('Delete record rec-1');
-		const { runId, toolCallId } = firstResult.pendingSuspend![0];
-
-		const resumeResult = await runtime.resume(
-			'generate',
-			{ approved: true, userInput: 'go ahead', credentials: { apiKey: 'x' } },
-			{ runId, toolCallId },
-		);
-
-		expect(resumeResult.finishReason).toBe('stop');
-		expect(resumeResult.toolCalls).toEqual(
-			expect.arrayContaining([
-				expect.objectContaining({ tool: 'delete', output: { deleted: 'rec-1' } }),
-			]),
-		);
-	});
-
-	// Each shape is a real Instance AI `toConfirmationData` output.
-	it.each([
-		['approval', { approved: true, userInput: 'go ahead', scope: 'once' }],
-		['planDeny', { approved: false, denied: true }],
-		[
-			'questions',
-			{ approved: true, answers: [{ questionId: 'q1', selectedOptions: ['a'], skipped: false }] },
-		],
-		['credentialSelection', { approved: true, credentials: { apiKey: 'secret' } }],
-		['credentialAutoSetup', { approved: true, autoSetup: { credentialType: 'slackApi' } }],
-		['resourceDecision', { approved: true, resourceDecision: 'allowForSession' }],
-		[
-			'setupWorkflowApply',
-			{
-				approved: true,
-				action: 'apply',
-				nodeCredentials: { Slack: { slackApi: 'cred-1' } },
-				nodeParameters: { Slack: { channel: '#general' } },
-			},
-		],
-	])('accepts a %s confirmation payload on resume', async (kind, confirmationData) => {
-		const approvalTool = new ToolBuilder('delete')
-			.description('Delete a record')
-			.input(z.object({ id: z.string() }))
-			.requireApproval()
-			.handler(async ({ id }: { id: string }) => await Promise.resolve({ deleted: id }))
-			.build();
-
-		generateText
-			.mockResolvedValueOnce(makeGenerateWithToolCall(`tc-${kind}`, 'delete', { id: 'rec-1' }))
-			.mockResolvedValueOnce(makeGenerateSuccess('Done'));
-
-		const runtime = new AgentRuntime({
-			name: 'test',
-			model: 'openai/gpt-4o-mini',
-			instructions: 'test',
-			tools: [approvalTool],
-			checkpointStorage: 'memory',
-		});
-
-		const firstResult = await runtime.generate('Delete record rec-1');
-		const { runId, toolCallId } = firstResult.pendingSuspend![0];
-
-		const resumeResult = await runtime.resume('generate', confirmationData, {
-			runId,
-			toolCallId,
-		});
-
-		expect(resumeResult.finishReason).toBe('stop');
-	});
-
-	it('still rejects unknown keys when the resume schema is declared strict', async () => {
+	it('strips keys the persisted schema does not declare instead of rejecting', async () => {
+		let observedResumeData: unknown;
 		const tool: BuiltTool = {
-			...makeInterruptibleTool(),
-			resumeSchema: z.object({ approved: z.boolean() }).strict(),
+			name: 'approve',
+			description: 'Requires approval',
+			inputSchema: z.object({ question: z.string() }),
+			suspendSchema: z.object({ question: z.string() }),
+			resumeSchema: z.object({ approved: z.boolean() }),
+			handler: async (_input: unknown, ctx: unknown) => {
+				const { suspend, resumeData } = ctx as InterruptibleToolContext;
+				if (!resumeData) return await suspend({ question: 'approve?' });
+				observedResumeData = resumeData;
+				return { approved: true };
+			},
 		};
 
 		generateText.mockResolvedValueOnce(
 			makeGenerateWithToolCall('tc-1', 'approve', { question: 'ok?' }),
 		);
 
-		const runtime = new AgentRuntime({
+		const runtimeWithTool = new AgentRuntime({
 			name: 'test',
 			model: 'openai/gpt-4o-mini',
 			instructions: 'test',
@@ -4315,12 +4237,15 @@ describe('AgentRuntime — runtime resume data schema validation', () => {
 			checkpointStorage: 'memory',
 		});
 
-		const firstResult = await runtime.generate('go');
-		const { runId, toolCallId } = firstResult.pendingSuspend![0];
+		const first = await runtimeWithTool.generate('go');
+		const { runId, toolCallId } = first.pendingSuspend![0];
 
-		await expect(
-			runtime.resume('generate', { approved: true, userInput: 'extra' }, { runId, toolCallId }),
-		).rejects.toThrow('Invalid resume payload');
+		generateText.mockResolvedValueOnce(makeGenerateSuccess('done'));
+		const payload = { approved: true, userInput: 'looks good' };
+		await runtimeWithTool.resume('generate', payload, { runId, toolCallId });
+
+		expect(observedResumeData).toEqual({ approved: true });
+		expect(payload).toEqual({ approved: true, userInput: 'looks good' });
 	});
 });
 

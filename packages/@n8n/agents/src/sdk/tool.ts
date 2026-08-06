@@ -65,7 +65,7 @@ function combineInterruptSchemas(
 	if (innerSchema === undefined) return approvalSchema;
 	if (isZodSchema(innerSchema)) return z.union([innerSchema, approvalSchema]);
 
-	const approvalJsonSchema = toValidationJsonSchema(approvalSchema);
+	const approvalJsonSchema = toModelJsonSchema(approvalSchema);
 	return approvalJsonSchema ? { anyOf: [approvalJsonSchema, innerSchema] } : innerSchema;
 }
 

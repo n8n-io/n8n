@@ -181,7 +181,7 @@ A case can belong to multiple groupings — e.g. PR-tier cases declare `"dataset
 
 **LangTracer is the source of truth for the workflow-eval corpus** — the `baseline` suite holds the cases, and CI pulls it on every run (see `.github/workflows/test-evals-instance-ai.yml`). The two `--source` modes split the work:
 
-- **`disk` (the default) — the preferred mode for local development.** Reads `data/workflows/` and `data/agents/`. Use it while authoring and calibrating a case: drop the JSON in, `--filter` it, iterate. It is also the only home of the seeded carve-out cases (the case-write API can't represent them yet). Everything else — including the agents-team cases (suite `agents`: agent-artifact + intent-resolution) — lives in LangTracer, so disk mode is about the case in front of you, not the full suite.
+- **`disk` (the default) — the preferred mode for local development.** Reads `data/workflows/` and `data/agents/`. Use it while authoring and calibrating a case: drop the JSON in, `--filter` it, iterate. It is also the only home of a `replay`-seeded case — that seed is reconstructed from a LangSmith trace at run time, so no suite can be its durable home. Everything else — including the agents-team cases (suite `agents`: agent-artifact + intent-resolution) — lives in LangTracer, so disk mode is about the case in front of you, not the full suite.
 - **`langtracer` — for bigger runs, already-pushed cases, and CI.** Pulls a suite from [LangTracer](https://github.com/n8n-io/lang-tracer)'s REST API (`GET /api/v1/suites/:id/export`), validated through the same `EvalTestCaseSchema`. Reach for it locally when you want the real corpus (a full or tier run) or to re-run a specific case that already lives in the suite; CI always runs this way.
 
 Set these in `.env.local`:
@@ -414,7 +414,7 @@ dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai \
 
 For runs that need to leave the n8n repo (for example, driving the build from a separate Claude project where you have skills configured), three flags decouple the script from its default assumptions:
 
-- `--workflow-dir <path>` — read test-case JSONs from a different directory (the default `evaluations/data/workflows/` now holds only the seeded carve-out cases; use `--source langtracer --suite <slug>` for the real corpus). When set, the script no longer needs `git rev-parse` to find the repo.
+- `--workflow-dir <path>` — read test-case JSONs from a different directory (the default `evaluations/data/workflows/` is an authoring dir, not the corpus; use `--source langtracer --suite <slug>` for that). When set, the script no longer needs `git rev-parse` to find the repo.
 - `--build-cwd <path>` — set the working directory the `claude` subprocess spawns from. Affects which `~/.claude.json` `projects` entry (and which skills) Claude loads.
 - `--project-id <id>` — instructs the model to pass `projectId` to `create_workflow_from_code` so workflows land in a specific n8n project instead of the user's personal one.
 
@@ -673,7 +673,7 @@ To record an isolated cohort without touching the shared dataset or baseline —
 
 ## Adding test cases
 
-The corpus lives in **LangTracer** — suite `baseline` is what CI runs. Author a case as a local JSON file in `evaluations/data/workflows/` (disk mode picks it up, no registration step), calibrate it against a real build, then push it to the suite with `pnpm eval:langtracer-push --suite baseline <slug>` and delete the local file rather than committing it. Seeded cases (the `seed` slot) are the exception — the case-write API can't represent them yet, so they stay as committed JSON. Every case is validated against `harness/schema.ts`.
+The corpus lives in **LangTracer** — suite `baseline` is what CI runs. Author a case as a local JSON file in `evaluations/data/workflows/` (disk mode picks it up, no registration step), calibrate it against a real build, then push it to the suite with `pnpm eval:langtracer-push --suite baseline <slug>` and delete the local file rather than committing it. An `inline` seed pushes with the case; a `replay`-seeded case is refused (it's reconstructed from a LangSmith trace at run time, so a suite can't be its home). Every case is validated against `harness/schema.ts`.
 
 > The essentials are below. For the full authoring guide — picking a case archetype, sizing assertions so a wrong build fails, multi-turn director scripts, seeding vs synthetic, and calibrating against a real build — follow the [`create-instance-ai-eval` skill](../../../../.agents/skills/create-instance-ai-eval/SKILL.md) (with [`case-shapes.md`](../../../../.agents/skills/create-instance-ai-eval/case-shapes.md) and [`running-evals.md`](../../../../.agents/skills/create-instance-ai-eval/running-evals.md)).
 
@@ -837,15 +837,51 @@ message as `{role, text}` and the schema expands it into a full envelope for you
 The expansion stamps `createdAt` itself — ascending and in the past — so a shorthand
 message can't accidentally order *after* the live turn. Shorthand and full envelopes
 can be mixed in one `messages` array; a full envelope keeps its authored `createdAt`
-— **unless any message in the array is stamped in the FUTURE**, in which case the
-whole sequence is restamped onto the same ascending pre-live slots. A future stamp
-would sort a seeded turn after the live turn, and clamping only the offending entry
-would reorder it relative to the array the transcript is graded from.
+— **unless the authored stamps don't already ascend and sit in the past**, in which
+case the whole sequence is restamped onto the same ascending pre-live slots. A future
+stamp would sort a seeded turn after the live turn, and a non-ascending sequence (a
+shorthand turn appended after later-stamped envelopes, say) would present the history
+in an order the graded transcript never had; restamping only the offending entry would
+reorder it relative to the array the transcript is graded from. The slots are fixed,
+never derived from the current time, so re-pushing an unchanged case is a no-op.
 A near-miss (say `text: 123`) is deliberately **not** expanded: it falls through to
 the envelope rules above and fails at load, rather than becoming a message the
 transcript builder would silently drop.
 
 The seed lives **in the case body** rather than in a sibling file, so it travels with the case whatever the source — a JSON on disk, a suite pulled with `--source langtracer`, or a case body handed to a dispatcher. (There used to be a `seedFile` path pointing at a sibling JSON. Only the disk loader could resolve it, so a case delivered any other way lost its seed; the key is gone and a case still carrying it fails at load.)
+
+#### Handing the agent the workflow (`attach`)
+
+When a real user opens the assistant with a workflow in front of them — "why is this
+failing?" — the editor sends that workflow as a resource reference and the agent
+resolves it by **id**, never by name. Declare it on the opening turn:
+
+```json
+"conversation": [
+  { "role": "user", "text": "why is this failing?", "attach": { "workflow": "wKk3RmT9xQ2bVn7L" } }
+]
+```
+
+The id is the one the seed declares; the harness substitutes the per-run remapped id,
+so the attachment always points at the workflow that actually exists. Only the opening
+turn may carry it, and it must name a workflow the inline seed declares — both are
+refused at case load rather than silently ignored.
+
+Omit it when the user refers to the workflow in words instead ("the batch image
+workflow") — finding it is then part of what the case tests. Getting this backwards
+makes a case harder than reality: the agent has to guess from prose that deliberately
+names nothing, and a clarification the real user never saw scores as a failure.
+
+> **Pushing an `attach` case needs lang-tracer [#119](https://github.com/n8n-io/lang-tracer/pull/119) deployed.**
+> Carrying `attach` through import and case-write is that PR's job; a deployment
+> predating it stores the turn without the key, so the case would come back from
+> the suite as a hand-off with neither text nor attachment — a quietly different
+> test. **You don't have to remember this:** the push re-reads the suite export
+> after every write and fails if the server didn't store what it was sent, naming
+> the fields it dropped. The same check covers a `seed` against a deployment
+> predating [#113](https://github.com/n8n-io/lang-tracer/pull/113). Until the
+> server is upgraded, keep such a case on disk (`--source disk`).
+> Round-trip coverage: `langtracer-to-exported.test.ts`.
 
 #### How restore works (all paths)
 
@@ -963,7 +999,7 @@ evaluations/
 ├── checklist/            # LLM verification with retry
 ├── credentials/          # Test credential seeding
 ├── data/agents/          # authoring dir for intent-resolution cases (the corpus lives in LangTracer suite `agents`)
-├── data/workflows/       # seeded carve-out case JSONs (the corpus lives in LangTracer)
+├── data/workflows/       # authoring dir for case JSONs (the corpus lives in LangTracer)
 ├── data/subagent/        # workflow-build compatibility fixture JSON files
 ├── data/pairwise/        # Local pairwise fixture (small smoke set)
 ├── harness/              # Runners: buildWorkflow + executeScenario (e2e), in-memory event bus (discovery)

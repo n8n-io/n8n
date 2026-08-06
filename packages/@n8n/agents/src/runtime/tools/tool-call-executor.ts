@@ -180,10 +180,8 @@ function serializeToolResumeSchema(
 	const resolvedSchema = getDeclaredResumeSchema(tool, resumeSchemaOverride);
 	if (!resolvedSchema) return { declared: false };
 	let error: unknown;
-	// The checkpointed copy validates the resume payload, so it must stay open to
-	// unknown keys the authored Zod schema would have stripped.
 	const schema =
-		toJsonSchemaOrNull(resolvedSchema, 'validation', (cause) => {
+		toJsonSchemaOrNull(resolvedSchema, 'model', (cause) => {
 			error = cause;
 		}) ?? undefined;
 	return { declared: true, schema, error };

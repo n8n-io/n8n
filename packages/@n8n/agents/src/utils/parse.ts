@@ -9,6 +9,11 @@ export type ParseResult<T = unknown> =
 	| { success: true; data: T }
 	| { success: false; error: string; schemaInvalid?: true };
 
+export interface ParseOptions {
+	/** For schemas converted from Zod, whose `.strip()` `zodToJsonSchema` renders as the stricter `additionalProperties: false`. */
+	stripUnknown?: boolean;
+}
+
 type Dialect = '2020-12' | '2019-09' | 'draft-07';
 
 const DIALECT_MARKERS: Array<[RegExp, Dialect]> = [
@@ -32,8 +37,9 @@ async function loadAjv(dialect: Dialect): Promise<typeof AjvType> {
 async function getAjv(
 	dialect: Dialect,
 	unicodeRegExp: boolean,
+	stripUnknown: boolean,
 ): Promise<InstanceType<typeof AjvType>> {
-	const key = `${dialect}:${unicodeRegExp}`;
+	const key = `${dialect}:${unicodeRegExp}:${stripUnknown}`;
 	const cached = ajvInstances.get(key);
 	if (cached) return await cached;
 
@@ -48,6 +54,7 @@ async function getAjv(
 				// deserialized copy collides with the one already registered
 				addUsedSchema: false,
 				...(unicodeRegExp ? {} : { unicodeRegExp: false }),
+				...(stripUnknown ? { removeAdditional: true } : {}),
 			}),
 	);
 	instance.catch(() => ajvInstances.delete(key));
@@ -69,6 +76,8 @@ type CompileResult =
 	| { success: true; ajv: InstanceType<typeof AjvType>; validate: ValidateFunction }
 	| { success: false; error: string };
 
+/** Compilation only depends on the dialect and the regex flavour, so a resolved
+ *  attempt is reusable no matter how the caller wants unknown keys handled. */
 interface CompileAttempt {
 	dialect: Dialect;
 	unicodeRegExp: boolean;
@@ -76,7 +85,10 @@ interface CompileAttempt {
 
 const resolvedAttempts = new WeakMap<JSONSchema7, CompileAttempt>();
 
-async function compileJsonSchema(schema: JSONSchema7): Promise<CompileResult> {
+async function compileJsonSchema(
+	schema: JSONSchema7,
+	stripUnknown: boolean,
+): Promise<CompileResult> {
 	const ordered: CompileAttempt[] = candidateDialects(schema).flatMap((dialect) => [
 		{ dialect, unicodeRegExp: true },
 		{ dialect, unicodeRegExp: false },
@@ -88,7 +100,7 @@ async function compileJsonSchema(schema: JSONSchema7): Promise<CompileResult> {
 
 	let firstError: unknown;
 	for (const attempt of attempts) {
-		const ajv = await getAjv(attempt.dialect, attempt.unicodeRegExp);
+		const ajv = await getAjv(attempt.dialect, attempt.unicodeRegExp, stripUnknown);
 		try {
 			const validate = ajv.compile(schema);
 			resolvedAttempts.set(schema, attempt);
@@ -114,6 +126,7 @@ function isSameAttempt(a: CompileAttempt, b: CompileAttempt): boolean {
 export async function parseWithSchema(
 	schema: ZodType | JSONSchema7,
 	data: unknown,
+	options: ParseOptions = {},
 ): Promise<ParseResult> {
 	if (isZodSchema(schema)) {
 		const result = await schema.safeParseAsync(data);
@@ -121,7 +134,8 @@ export async function parseWithSchema(
 		return { success: false, error: result.error.message };
 	}
 
-	const compiled = await compileJsonSchema(schema);
+	const { stripUnknown = false } = options;
+	const compiled = await compileJsonSchema(schema, stripUnknown);
 	if (!compiled.success) {
 		return {
 			success: false,
@@ -131,6 +145,8 @@ export async function parseWithSchema(
 	}
 
 	const { ajv, validate } = compiled;
-	if (validate(data)) return { success: true, data };
+	// Ajv strips in place, so clone to leave the caller's object intact as Zod does.
+	const target = stripUnknown ? structuredClone(data) : data;
+	if (validate(target)) return { success: true, data: target };
 	return { success: false, error: ajv.errorsText(validate.errors) };
 }
