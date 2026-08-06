@@ -278,7 +278,7 @@ export class AgentRuntimeReconstructionService {
 			// ref.type === 'workflow'
 			const workflow = await findWorkflowToolWorkflow(
 				this.workflowRepository,
-				ref.workflow,
+				ref,
 				projectId,
 			);
 			if (!workflow) continue;

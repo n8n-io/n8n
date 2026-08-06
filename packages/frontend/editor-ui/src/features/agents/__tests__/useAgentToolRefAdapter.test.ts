@@ -320,18 +320,16 @@ describe('useAgentToolRefAdapter', () => {
 			} as IWorkflowDb;
 		}
 
-		it('persists the workflow name on `ref.workflow` — the backend looks it up by name', () => {
-			// See cli/src/modules/agents/tools/workflow-tool-factory.ts:506 — the
-			// backend queries `workflowRepository.findOne({ where: { name } })`.
+		it('persists the workflow id and display name', () => {
 			const ref = workflowToNewToolRef(makeWorkflow({ name: 'Notify Sales' }));
 			expect(ref).toMatchObject({
 				type: 'workflow',
+				workflowId: 'wf-1',
 				workflow: 'Notify Sales',
 				name: 'Notify Sales',
 				description: 'Ship a daily summary',
 				allOutputs: false,
 			});
-			expect((ref as any).id).toBeUndefined();
 		});
 
 		it('defaults description to empty when the workflow has none', () => {
@@ -344,6 +342,7 @@ describe('useAgentToolRefAdapter', () => {
 		it('merges edited fields into the ref, preserving type', () => {
 			const original: AgentJsonToolRef = {
 				type: 'workflow',
+				workflowId: 'wf-1',
 				workflow: 'Notify Sales',
 				name: 'Notify Sales',
 				description: 'old',
@@ -354,9 +353,11 @@ describe('useAgentToolRefAdapter', () => {
 				description: 'new',
 				allOutputs: true,
 				workflow: 'Notify Sales',
+				workflowId: 'wf-1',
 			});
 			expect(updated).toStrictEqual({
 				type: 'workflow',
+				workflowId: 'wf-1',
 				workflow: 'Notify Sales',
 				name: 'Ping Sales',
 				description: 'new',
@@ -367,6 +368,7 @@ describe('useAgentToolRefAdapter', () => {
 		it('persists a changed workflow target', () => {
 			const original: AgentJsonToolRef = {
 				type: 'workflow',
+				workflowId: 'wf-1',
 				workflow: 'Notify Sales',
 				name: 'Notify Sales',
 				description: 'old',
@@ -377,8 +379,13 @@ describe('useAgentToolRefAdapter', () => {
 				description: 'new',
 				allOutputs: false,
 				workflow: 'Invoice Sender',
+				workflowId: 'wf-2',
 			});
-			expect(updated).toMatchObject({ workflow: 'Invoice Sender', name: 'Invoice Sender' });
+			expect(updated).toMatchObject({
+				workflowId: 'wf-2',
+				workflow: 'Invoice Sender',
+				name: 'Invoice Sender',
+			});
 		});
 
 		it('is a no-op for non-workflow refs', () => {
