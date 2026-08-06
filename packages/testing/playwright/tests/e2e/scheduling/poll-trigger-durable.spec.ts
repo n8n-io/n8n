@@ -1,7 +1,7 @@
 import {
 	expectNewTriggerExecution,
 	expectPollTriggerFires,
-	triggerExecutionIds,
+	fetchTriggerExecutionIds,
 } from './poll-trigger-helpers';
 import { makePollTriggerWorkflow, makeCronPollTriggerWorkflow } from './poll-trigger-workflow';
 import { test, expect } from '../../../fixtures/base';
@@ -60,7 +60,7 @@ test.describe(
 				{ itemsAfterSeedPoll: [{ id: 1 }, { id: 2 }] },
 			);
 
-			const afterSeedPoll = await triggerExecutionIds(api, workflowId);
+			const afterSeedPoll = await fetchTriggerExecutionIds(api, workflowId);
 			await api.fireScheduledJobsNow(workflowId, nodeId);
 
 			await expectNewTriggerExecution(api, workflowId, afterSeedPoll);

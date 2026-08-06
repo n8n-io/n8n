@@ -3,7 +3,7 @@ import {
 	expectNewTriggerExecution,
 	expectPollTriggerFires,
 	readNodeStaticData,
-	triggerExecutionIds,
+	fetchTriggerExecutionIds,
 } from './poll-trigger-helpers';
 import { makePollTriggerWorkflow, POLL_TRIGGER_NODE_NAME } from './poll-trigger-workflow';
 import { test, expect } from '../../../fixtures/base';
@@ -42,7 +42,7 @@ test.describe(
 				.toEqual({ lastItemId: 1 });
 			expect(await api.getPollerCursor(workflowId, nodeId)).toBeNull();
 
-			const afterSeedPoll = await triggerExecutionIds(api, workflowId);
+			const afterSeedPoll = await fetchTriggerExecutionIds(api, workflowId);
 			await api.fireScheduledJobsNow(workflowId, nodeId);
 			await expectNewTriggerExecution(api, workflowId, afterSeedPoll);
 
@@ -64,7 +64,7 @@ test.describe(
 				makePollTriggerWorkflow,
 			);
 
-			const afterSeedPoll = await triggerExecutionIds(api, workflowId);
+			const afterSeedPoll = await fetchTriggerExecutionIds(api, workflowId);
 			await clearStaticDataAndReactivate(api, workflowId);
 
 			await expectNewTriggerExecution(api, workflowId, afterSeedPoll);
