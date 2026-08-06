@@ -253,10 +253,11 @@ skill; these are illustrative, trimmed of the full calibrated wording):
 }
 ```
 
-All three omit one detail for brevity that the real, calibrated versions
-include: a `processExpectations` entry acknowledging the placeholder-token
-connection-test failure as expected (see the note right below) — a full case
-must include that or it will fail on a correct build for the wrong reason.
+All three are complete as written in one respect that earlier guidance got
+wrong: none of them asserts anything about the credential's connection test.
+Both routes a credential takes into a build now authenticate, so an expectation
+acknowledging a connection-test failure reds every correct build — see
+"Credential validity" below.
 
 The wire shapes (verified live against both tools — `credentials.tool.ts`'s
 `handleSetup` state machine and `workflows.tool.ts`'s setup-wizard equivalent):
@@ -272,26 +273,18 @@ The wire shapes (verified live against both tools — `credentials.tool.ts`'s
 **Every eval credential holds a placeholder token** unless you set the type's
 `EVAL_*_ACCESS_TOKEN` env var (see "Credential cases" above). The parent
 umbrella (TRUST-348) requires "no stored provider credentials in any phase," so
-a real token is the wrong fix. What differs is whether the *connection test*
-against that placeholder is allowed to fail, and that depends on where the
-credential came from:
+a real token is the wrong fix. Instead the harness resolves the *connection
+test* as passing, the same way for both routes a credential can take into a
+build:
 
-- **Declared in `credentials[]`** (pre-seeded, never touched by the user during
-  the build) — the product runs a real connection test and reports a genuine
-  "Invalid access token" failure. Phrase `processExpectations` to assert the
-  agent reports that honestly (doesn't claim success, doesn't go silent), not
-  that the token works:
+- **Declared in `credentials[]`** — models a credential the user already has
+  connected, so it authenticates.
+- **Created by the simulated user on an engaged setup card** — authenticates
+  too, since the product won't apply a card whose credential failed its test.
 
-  ```json
-  "Harness note: a connection-test failure (invalid access token) is expected here since the credential uses a placeholder token. The agent reported that failure honestly — it did not claim the Slack integration was fully working, and did not silently ignore or hide the failure."
-  ```
-
-- **Created by the simulated user on an engaged setup card** — the test resolves
-  as **passing** by default, because the product won't apply a card whose
-  credential failed one. Do **not** assert a connection-test failure for these;
-  such an assertion reds on every correct build. See "Credential validity"
-  below for how to script a card-created credential that deliberately does not
-  authenticate.
+Do **not** assert a connection-test failure for either; such an assertion reds
+on every correct build. See "Credential validity" below for how to script a
+card-created credential that deliberately does not authenticate.
 
 **`auto` is reachable but inert** — the product genuinely rebuilds the agent
 and returns `needsBrowserSetup:true`, but this harness has no Computer Use
@@ -299,24 +292,24 @@ tools attached, so the conversation stalls afterward (expected, not a bug).
 Keep any case scripting `auto` a local smoke test, never part of the gated
 suite — it will time out.
 
-### Credential validity: a set-up credential works by default
+### Credential validity: a credential works by default
 
 The product will not apply a setup card whose credential fails its connection
 test — the frontend's `isCredentialComplete` returns `isCredentialTestedOk`, so
 Apply stays disabled until the test passes. **"The user completed the setup
-card" therefore implies "the credential authenticates."** A seeded credential
-carries a placeholder token and would fail for real, so the harness resolves
-the connection test as successful for credentials it creates on an engaged
-card. Without that, every such case would model a state a real user cannot
-reach.
+card" therefore implies "the credential authenticates."** The same holds for a
+credential declared in `credentials[]`: it stands for one the user connected
+before the conversation started. Both carry a placeholder token that would fail
+for real, so the harness resolves the test as successful for both — otherwise
+every such case models a state a real user cannot reach.
 
-Mechanically: the proxy lists the types it set up in `workingCredentialTypes`,
-the harness registers those credential ids on the thread
-(`bypassCredentialTest` on the eval allowlist endpoint), and the credential
-adapter resolves their test as successful without contacting the provider. The
-token is untouched — only the test result is synthesized, and only for
-credentials that case created. Nothing changes about "no stored provider
-credentials".
+Mechanically: the harness registers the case's seeded credential ids on the
+thread up front, the proxy adds the ones it sets up mid-run (the types it lists
+in `workingCredentialTypes`), both go on the same `bypassCredentialTest` list of
+the eval allowlist endpoint, and the credential adapter resolves their test as
+successful without contacting the provider. The token is untouched — only the
+test result is synthesized, and only for credentials that case created. Nothing
+changes about "no stored provider credentials".
 
 **To script a credential that does NOT authenticate**, say so explicitly in the
 direction, naming which one:
@@ -330,8 +323,8 @@ direction, naming which one:
 The proxy then omits that type, its test runs for real, and it fails. Note what
 this models: not "the card was applied with a broken credential" (unreachable),
 but a credential that stopped authenticating — expired, revoked, scope changed.
-For a credential that was already broken *before* the conversation, declare it
-in `credentials[]` instead of setting it up on a card.
+A card is currently the only way to get a failing credential: declaring one in
+`credentials[]` gives you a working one.
 
 **Non-vacuity for these cases is deterministic, not judged.** A bypassed test is
 deliberately indistinguishable from a real pass in everything the agent sees —

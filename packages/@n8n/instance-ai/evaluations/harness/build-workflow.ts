@@ -109,6 +109,10 @@ interface MultiTurnDriverConfig {
 	 *  when the credential view isn't pinned (see `credentialViewPinned`), since
 	 *  the allowlist endpoint isn't available in that case either. */
 	allowlistedCredentialIds?: string[];
+	/** Of those, the ids whose connection test the backend should resolve as
+	 *  passing — the proxy must carry them because a mid-run creation replaces
+	 *  the whole bypass list too. */
+	bypassCredentialTestIds?: string[];
 	createdCredentialIds?: Set<string>;
 	/** Shared with `createDeclaredCredentials`'s pre-run seeding — see
 	 *  `CredentialCreationConfig.nameCounts`. */
@@ -140,6 +144,7 @@ async function driveMultiTurnConversation(
 						client: config.client,
 						threadId: config.threadId,
 						allowlistedCredentialIds: config.allowlistedCredentialIds,
+						bypassCredentialTestIds: config.bypassCredentialTestIds,
 						createdCredentialIds: config.createdCredentialIds,
 						nameCounts: config.credentialNameCounts,
 					},
@@ -412,11 +417,12 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			logger,
 			nameCounts: credentialNameCounts,
 		});
+		const seededCredentialIds = createdCredentials.map((c) => c.id);
 		try {
-			await client.setThreadCredentialAllowlist(
-				threadId,
-				createdCredentials.map((c) => c.id),
-			);
+			// A seeded credential models one the user already has connected, so its
+			// connection test resolves as passing — same as one set up on a card
+			// during the run. Both carry a placeholder token that would really fail.
+			await client.setThreadCredentialAllowlist(threadId, seededCredentialIds, seededCredentialIds);
 		} catch (error: unknown) {
 			// Only a missing endpoint (older backend) may degrade to the legacy
 			// unpinned view, and only for cases that declared nothing — any other
@@ -576,7 +582,8 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				// otherwise either (see the catch above).
 				...(credentialViewPinned
 					? {
-							allowlistedCredentialIds: createdCredentials.map((c) => c.id),
+							allowlistedCredentialIds: seededCredentialIds,
+							bypassCredentialTestIds: seededCredentialIds,
 							createdCredentialIds: config.createdCredentialIds,
 							credentialNameCounts,
 						}
