@@ -367,6 +367,20 @@ async function renderView({
 	return wrapper;
 }
 
+async function startArtifactPreviewSend(
+	wrapper: Awaited<ReturnType<typeof renderView>>,
+	sessionId: string,
+) {
+	(
+		wrapper.vm as unknown as { openArtifactPreview: (sessionId?: string) => void }
+	).openArtifactPreview(sessionId);
+	await nextTick();
+	const beforeSend = wrapper
+		.findComponent({ name: 'AgentPreviewDock' })
+		.props('beforeSend') as () => Promise<void>;
+	return { pending: beforeSend() };
+}
+
 async function readBlobText(blob: Blob): Promise<string> {
 	return await new Promise<string>((resolve, reject) => {
 		const reader = new FileReader();
@@ -458,6 +472,10 @@ const commonStubs = {
 			'open-build',
 			'send-to-assistant',
 		],
+	},
+	AgentVersionHistoryPanel: {
+		name: 'AgentVersionHistoryPanel',
+		template: '<aside />',
 	},
 	// Stub each panel that the editor column dispatches to. These panels pull
 	// in stores / composables (users, credentials, sessions list)
@@ -760,6 +778,26 @@ describe('AgentBuilderView — preview routing', () => {
 			params: { projectId: 'p1', agentId: 'a1', threadId: 'thread-1' },
 		});
 		expect(routerReplace).not.toHaveBeenCalled();
+	});
+
+	it('keeps version history mounted between the editor and Preview dock', async () => {
+		routeName = 'AgentPreviewView';
+		const wrapper = await renderView();
+
+		wrapper.findComponent({ name: 'AgentBuilderHeader' }).vm.$emit('toggle-version-history');
+		await nextTick();
+
+		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+		const history = wrapper.findComponent({ name: 'AgentVersionHistoryPanel' });
+		const dock = wrapper.findComponent({ name: 'AgentPreviewDock' });
+		const follows = (first: Element, second: Element) =>
+			Boolean(first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING);
+
+		expect([editor.exists(), history.exists(), dock.exists()]).toEqual([true, true, true]);
+		expect([
+			follows(editor.element, history.element),
+			follows(history.element, dock.element),
+		]).toEqual([true, true]);
 	});
 
 	it.each([
@@ -1149,26 +1187,12 @@ describe('AgentBuilderView — preview routing', () => {
 				artifactAgentPending: true,
 			},
 		});
-		(
-			wrapper.vm as unknown as { openArtifactPreview: (sessionId?: string) => void }
-		).openArtifactPreview('ephemeral-a2');
-		await nextTick();
-		const firstBeforeSend = wrapper
-			.findComponent({ name: 'AgentPreviewDock' })
-			.props('beforeSend') as () => Promise<void>;
-		const firstSend = firstBeforeSend();
+		const firstSend = (await startArtifactPreviewSend(wrapper, 'ephemeral-a2')).pending;
 		await vi.waitFor(() => expect(createAgentMock).toHaveBeenCalledTimes(1));
 
 		await wrapper.setProps({ artifactAgentId: 'a3' });
 		await flushPromises();
-		(
-			wrapper.vm as unknown as { openArtifactPreview: (sessionId?: string) => void }
-		).openArtifactPreview('ephemeral-a3');
-		await nextTick();
-		const secondBeforeSend = wrapper
-			.findComponent({ name: 'AgentPreviewDock' })
-			.props('beforeSend') as () => Promise<void>;
-		const secondSend = secondBeforeSend();
+		const secondSend = (await startArtifactPreviewSend(wrapper, 'ephemeral-a3')).pending;
 		await vi.waitFor(() => expect(createAgentMock).toHaveBeenCalledTimes(2));
 		expect(createAgentMock.mock.calls[0]?.[3]).toEqual({ id: 'a2' });
 		expect(createAgentMock.mock.calls[1]?.[3]).toEqual({ id: 'a3' });
@@ -1180,6 +1204,38 @@ describe('AgentBuilderView — preview routing', () => {
 		secondCreate.resolve(makeAgentResponse({ id: 'a3' }));
 		await secondSend;
 		expect(wrapper.emitted('persisted')).toEqual([[expect.objectContaining({ id: 'a3' })]]);
+	});
+
+	it('reuses an unresolved persistence flight when returning to its artifact target', async () => {
+		const firstCreate = Promise.withResolvers<ReturnType<typeof makeAgentResponse>>();
+		const secondCreate = Promise.withResolvers<ReturnType<typeof makeAgentResponse>>();
+		createAgentMock
+			.mockReturnValueOnce(firstCreate.promise)
+			.mockReturnValueOnce(secondCreate.promise);
+		const wrapper = await renderView({
+			props: {
+				artifactMode: true,
+				artifactProjectId: 'p2',
+				artifactAgentId: 'a2',
+				artifactAgentPending: true,
+			},
+		});
+
+		const firstSend = (await startArtifactPreviewSend(wrapper, 'ephemeral-a2')).pending;
+		await vi.waitFor(() => expect(createAgentMock).toHaveBeenCalledTimes(1));
+		await wrapper.setProps({ artifactAgentId: 'a3' });
+		await flushPromises();
+		const secondSend = (await startArtifactPreviewSend(wrapper, 'ephemeral-a3')).pending;
+		await vi.waitFor(() => expect(createAgentMock).toHaveBeenCalledTimes(2));
+		await wrapper.setProps({ artifactAgentId: 'a2' });
+		await flushPromises();
+		const returnedSend = (await startArtifactPreviewSend(wrapper, 'ephemeral-a2-return')).pending;
+
+		expect(createAgentMock).toHaveBeenCalledTimes(2);
+		firstCreate.resolve(makeAgentResponse({ id: 'a2' }));
+		secondCreate.resolve(makeAgentResponse({ id: 'a3' }));
+		await Promise.all([firstSend, secondSend, returnedSend]);
+		expect(wrapper.emitted('persisted')).toEqual([[expect.objectContaining({ id: 'a2' })]]);
 	});
 
 	it('restarts an in-flight draft initialization when the host reports external persistence', async () => {
