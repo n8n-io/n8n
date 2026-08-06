@@ -180,8 +180,8 @@ These only run if specific files changed:
 | `packages/@n8n/ai-workflow-builder.ee/evaluations/programmatic/python/**` | `test-evals-python.yml`  | any        |
 | `packages/@n8n/benchmark/**`                                           | `build-benchmark-image.yml` | master     |
 | `packages/cli/src/public-api/**/*.yml`, `packages/cli/src/public-api/**/*.yaml`, `packages/cli/src/public-api/**/*.css`, `packages/cli/src/public-api/v1/openapi-gen/**/*.ts`, `packages/cli/scripts/build.mjs`, `packages/cli/package.json` | `util-publish-api-schema.yml` | master   |
-| `packages/@n8n/instance-ai/src/**`, `packages/@n8n/instance-ai/skills/**`, `packages/@n8n/instance-ai/knowledge-base/**`, `packages/@n8n/instance-ai/evaluations/**`, `packages/cli/src/modules/instance-ai/**`, `packages/core/src/execution-engine/eval-mock-helpers.ts` | `ci-instance-ai-evals.yml` | on PR `opened` / `reopened` / `ready_for_review` |
-| `docker/get-n8n.sh`, `docker/test-get-n8n.sh`                          | `test-get-n8n.yml`          | any        |
+| `packages/@n8n/instance-ai/src/**`, `packages/@n8n/instance-ai/skills/**`, `packages/@n8n/instance-ai/knowledge-base/**`, `packages/@n8n/instance-ai/evaluations/**`, `packages/cli/src/modules/instance-ai/**`, `packages/core/src/execution-engine/eval-mock-helpers.ts`, `packages/@n8n/agents/src/**` | `ci-instance-ai-evals.yml` | on PR `opened` / `reopened` / `ready_for_review` |
+| `docker/get-n8n.sh`, `docker/get-n8n-compose.yml`, `docker/test-get-n8n.sh` | `test-get-n8n.yml`          | any        |
 
 ### On PR Review
 
@@ -405,6 +405,7 @@ Push to master/1.x
 
 | Schedule (UTC)            | Workflow                          | Purpose                  |
 |---------------------------|-----------------------------------|--------------------------|
+| Hourly :00                | `sec-sync-public-to-private.yml`  | Mirror public → private, refresh bundle branches |
 | Daily 00:00               | `docker-build-push.yml`           | Nightly Docker images    |
 | Daily 00:00               | `test-db.yml`                     | Database compatibility   |
 | Daily 00:00               | `test-e2e-performance-reusable.yml`| Performance E2E         |
@@ -701,6 +702,27 @@ cosign verify-attestation --type openvex \
   ]
 }
 ```
+
+### Public ↔ private sync (bundle branches)
+
+Embargoed security work happens in `n8n-io/n8n-private`. `sec-sync-public-to-private.yml`
+runs hourly there (and on `workflow_dispatch` with `force` for conflict recovery),
+mirroring public `master` and `1.x` into private with `reset --hard` +
+`--force-with-lease` — skipping a branch when private is ahead, ignoring `chore: Bundle`
+commits when judging "ahead". Fixes are never committed to private `master`/`1.x`
+directly: `ci-restrict-private-merges.yml` requires PRs into them to come from the
+long-lived integration branches `bundle/2.x` and `bundle/1.x` (a `bundle/2.x` merge is
+backported to `bundle/1.x` by `util-backport-bundle.yml`). The sync creates those
+branches if missing and then **merges `master` into `bundle/2.x` and `1.x` into
+`bundle/1.x`** so they don't drift; on a conflict it aborts the merge, leaves the branch
+untouched, and emits a warning annotation while **keeping the run green** — the other
+bundle branch still syncs, and a human resolves the conflict by hand. Once a bundle
+branch is merged into private `master`/`1.x` as a `chore: Bundle/*` PR,
+`sec-publish-fix.yml` / `sec-publish-fix-1x.yml` cherry-pick that merge commit onto a
+fresh branch in the public repo and open the PR there.
+
+See **[`../AGENTS.md`](../AGENTS.md)** ("Security Fix Hygiene") for the naming rules that
+keep the vulnerability out of public branch names, commits, and test descriptions.
 
 ---
 

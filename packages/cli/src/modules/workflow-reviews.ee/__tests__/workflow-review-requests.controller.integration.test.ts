@@ -132,21 +132,30 @@ async function createOpenReview(
 	versionId: string,
 	decision: 'pending' | 'changes_requested' = 'pending',
 ) {
-	const request = await requestRepository.createRequest({
-		projectId: ownerProject.id,
-		title: 'Review before publishing',
-		createdById: owner.id,
-		decision,
-	});
-	await workflowRepository.createWorkflowRow({
-		workflowReviewRequestId: request.id,
-		workflowId,
-		workflowVersionId: versionId,
-	});
-	await authorRepository.addAuthor({
-		workflowReviewRequestId: request.id,
-		userId: owner.id,
-	});
+	const request = await requestRepository.createRequest(
+		{
+			projectId: ownerProject.id,
+			title: 'Review before publishing',
+			createdById: owner.id,
+			decision,
+		},
+		{},
+	);
+	await workflowRepository.createWorkflowRow(
+		{
+			workflowReviewRequestId: request.id,
+			workflowId,
+			workflowVersionId: versionId,
+		},
+		{},
+	);
+	await authorRepository.addAuthor(
+		{
+			workflowReviewRequestId: request.id,
+			userId: owner.id,
+		},
+		{},
+	);
 	return request;
 }
 
@@ -490,16 +499,22 @@ describe('POST /workflow-review-requests', () => {
 		const { workflow } = await createReviewableWorkflow('version-1');
 		await createWorkflowHistoryItem(workflow.id, { versionId: 'version-2' });
 
-		const existing = await requestRepository.createRequest({
-			projectId: ownerProject.id,
-			title: 'Existing',
-			createdById: owner.id,
-		});
-		await workflowRepository.createWorkflowRow({
-			workflowReviewRequestId: existing.id,
-			workflowId: workflow.id,
-			workflowVersionId: 'version-1',
-		});
+		const existing = await requestRepository.createRequest(
+			{
+				projectId: ownerProject.id,
+				title: 'Existing',
+				createdById: owner.id,
+			},
+			{},
+		);
+		await workflowRepository.createWorkflowRow(
+			{
+				workflowReviewRequestId: existing.id,
+				workflowId: workflow.id,
+				workflowVersionId: 'version-1',
+			},
+			{},
+		);
 
 		const response = await ownerAgent
 			.post('/workflow-review-requests')
@@ -525,18 +540,24 @@ describe('POST /workflow-review-requests', () => {
 	test('returns 409 when the existing open review is already approved', async () => {
 		const { workflow, versionId } = await createReviewableWorkflow();
 
-		const existing = await requestRepository.createRequest({
-			projectId: ownerProject.id,
-			state: 'open',
-			decision: 'approved',
-			title: 'Existing',
-			createdById: owner.id,
-		});
-		await workflowRepository.createWorkflowRow({
-			workflowReviewRequestId: existing.id,
-			workflowId: workflow.id,
-			workflowVersionId: versionId,
-		});
+		const existing = await requestRepository.createRequest(
+			{
+				projectId: ownerProject.id,
+				state: 'open',
+				decision: 'approved',
+				title: 'Existing',
+				createdById: owner.id,
+			},
+			{},
+		);
+		await workflowRepository.createWorkflowRow(
+			{
+				workflowReviewRequestId: existing.id,
+				workflowId: workflow.id,
+				workflowVersionId: versionId,
+			},
+			{},
+		);
 
 		const response = await ownerAgent
 			.post('/workflow-review-requests')
@@ -558,17 +579,23 @@ describe('POST /workflow-review-requests', () => {
 	test('creates a new review when only a closed review exists', async () => {
 		const { workflow, versionId } = await createReviewableWorkflow();
 
-		const closed = await requestRepository.createRequest({
-			projectId: ownerProject.id,
-			state: 'closed',
-			title: 'Closed',
-			createdById: owner.id,
-		});
-		await workflowRepository.createWorkflowRow({
-			workflowReviewRequestId: closed.id,
-			workflowId: workflow.id,
-			workflowVersionId: versionId,
-		});
+		const closed = await requestRepository.createRequest(
+			{
+				projectId: ownerProject.id,
+				state: 'closed',
+				title: 'Closed',
+				createdById: owner.id,
+			},
+			{},
+		);
+		await workflowRepository.createWorkflowRow(
+			{
+				workflowReviewRequestId: closed.id,
+				workflowId: workflow.id,
+				workflowVersionId: versionId,
+			},
+			{},
+		);
 
 		await ownerAgent
 			.post('/workflow-review-requests')
@@ -711,6 +738,53 @@ describe('POST /workflow-review-requests', () => {
 
 			expect(await requestRepository.find()).toHaveLength(0);
 			expect(await findVersionName(workflow.id, versionId)).toBeNull();
+		});
+
+		test('persists the version description alongside the name', async () => {
+			const { workflow, versionId } = await createReviewableWorkflow();
+
+			await ownerAgent
+				.post('/workflow-review-requests')
+				.send({
+					title: 'Please review my workflow',
+					workflows: [
+						{
+							workflowId: workflow.id,
+							workflowVersionId: versionId,
+							workflowVersionName: 'Release candidate',
+							workflowVersionDescription: '  What changed in this version  ',
+						},
+					],
+				})
+				.expect(201);
+
+			const version = await workflowHistoryRepository.findOneBy({
+				workflowId: workflow.id,
+				versionId,
+			});
+			expect(version?.name).toBe('Release candidate');
+			expect(version?.description).toBe('What changed in this version');
+		});
+
+		test('returns 400 for a description longer than 2048 characters', async () => {
+			const { workflow, versionId } = await createReviewableWorkflow();
+
+			await ownerAgent
+				.post('/workflow-review-requests')
+				.send({
+					title: 'Please review my workflow',
+					workflows: [
+						{
+							workflowId: workflow.id,
+							workflowVersionId: versionId,
+							workflowVersionName: 'Release candidate',
+							workflowVersionDescription: 'a'.repeat(2049),
+						},
+					],
+				})
+				.expect(400);
+
+			expect(await requestRepository.find()).toHaveLength(0);
 		});
 
 		test('rolls the name back when the create conflicts with an open review', async () => {
@@ -910,18 +984,27 @@ describe('POST /workflow-review-requests/:workflowReviewRequestId/update-version
 		projectId = ownerProject.id,
 		overrides: { state?: 'open' | 'closed'; decision?: 'pending' | 'changes_requested' } = {},
 	) {
-		const request = await requestRepository.createRequest({
-			projectId,
-			title: 'Existing review',
-			createdById: author.id,
-			...overrides,
-		});
-		await workflowRepository.createWorkflowRow({
-			workflowReviewRequestId: request.id,
-			workflowId,
-			workflowVersionId: versionId,
-		});
-		await authorRepository.addAuthor({ workflowReviewRequestId: request.id, userId: author.id });
+		const request = await requestRepository.createRequest(
+			{
+				projectId,
+				title: 'Existing review',
+				createdById: author.id,
+				...overrides,
+			},
+			{},
+		);
+		await workflowRepository.createWorkflowRow(
+			{
+				workflowReviewRequestId: request.id,
+				workflowId,
+				workflowVersionId: versionId,
+			},
+			{},
+		);
+		await authorRepository.addAuthor(
+			{ workflowReviewRequestId: request.id, userId: author.id },
+			{},
+		);
 		return request;
 	}
 
@@ -955,7 +1038,7 @@ describe('POST /workflow-review-requests/:workflowReviewRequestId/update-version
 		expect(childRows).toHaveLength(1);
 		expect(childRows[0]).toMatchObject({ workflowVersionId: 'version-2' });
 
-		const updated = await requestRepository.findById(request.id);
+		const updated = await requestRepository.findById(request.id, {});
 		expect(updated).toMatchObject({ decision: 'pending', updatedById: owner.id });
 
 		const authorRows = await authorRepository.find();
@@ -981,7 +1064,7 @@ describe('POST /workflow-review-requests/:workflowReviewRequestId/update-version
 		const authorRows = await authorRepository.find();
 		expect(authorRows.map((row) => row.userId).sort()).toEqual([member.id, owner.id].sort());
 
-		const updated = await requestRepository.findById(request.id);
+		const updated = await requestRepository.findById(request.id, {});
 		expect(updated).toMatchObject({ updatedById: member.id });
 	});
 
@@ -1007,7 +1090,7 @@ describe('POST /workflow-review-requests/:workflowReviewRequestId/update-version
 			workflowVersionId: versionId,
 		});
 
-		const unchanged = await requestRepository.findById(request.id);
+		const unchanged = await requestRepository.findById(request.id, {});
 		expect(unchanged?.updatedAt).toEqual(request.updatedAt);
 		expect(unchanged?.decision).toBe('changes_requested');
 	});
@@ -1176,7 +1259,53 @@ describe('POST /workflow-review-requests/:workflowReviewRequestId/update-version
 
 			expect(await findVersionName(workflow.id, versionId)).toBe('Renamed');
 			// Still a no-op for the review itself.
-			const unchanged = await requestRepository.findById(request.id);
+			const unchanged = await requestRepository.findById(request.id, {});
+			expect(unchanged?.updatedAt).toEqual(request.updatedAt);
+		});
+
+		test('persists the version description on a re-pin', async () => {
+			const { workflow } = await createReviewableWorkflow('version-1');
+			await createWorkflowHistoryItem(workflow.id, { versionId: 'version-2' });
+			const request = await seedOpenRequest(workflow.id, 'version-1', owner);
+
+			await ownerAgent
+				.post(`/workflow-review-requests/${request.id}/update-version`)
+				.send({
+					workflowId: workflow.id,
+					workflowVersionId: 'version-2',
+					workflowVersionName: 'Release candidate',
+					workflowVersionDescription: 'What changed in this version',
+				})
+				.expect(200);
+
+			const version = await workflowHistoryRepository.findOneBy({
+				workflowId: workflow.id,
+				versionId: 'version-2',
+			});
+			expect(version?.description).toBe('What changed in this version');
+		});
+
+		test('updates the description of the version already pinned', async () => {
+			const { workflow, versionId } = await createReviewableWorkflow();
+			const request = await seedOpenRequest(workflow.id, versionId, owner);
+
+			await ownerAgent
+				.post(`/workflow-review-requests/${request.id}/update-version`)
+				.send({
+					workflowId: workflow.id,
+					workflowVersionId: versionId,
+					workflowVersionName: 'Release candidate',
+					workflowVersionDescription: 'Description added later',
+				})
+				.expect(200);
+
+			const version = await workflowHistoryRepository.findOneBy({
+				workflowId: workflow.id,
+				versionId,
+			});
+			expect(version?.description).toBe('Description added later');
+			// Still a no-op for the review itself.
+			const unchanged = await requestRepository.findById(request.id, {});
 			expect(unchanged?.updatedAt).toEqual(request.updatedAt);
 		});
 
@@ -1219,18 +1348,27 @@ describe('POST /workflow-review-requests/:workflowReviewRequestId/decision', () 
 	) {
 		const workflow = await createWorkflow({}, teamProject);
 		await createWorkflowHistoryItem(workflow.id, { versionId: 'version-1' });
-		const request = await requestRepository.createRequest({
-			projectId: teamProject.id,
-			title: 'Review me',
-			createdById: author.id,
-			...overrides,
-		});
-		await workflowRepository.createWorkflowRow({
-			workflowReviewRequestId: request.id,
-			workflowId: workflow.id,
-			workflowVersionId: 'version-1',
-		});
-		await authorRepository.addAuthor({ workflowReviewRequestId: request.id, userId: author.id });
+		const request = await requestRepository.createRequest(
+			{
+				projectId: teamProject.id,
+				title: 'Review me',
+				createdById: author.id,
+				...overrides,
+			},
+			{},
+		);
+		await workflowRepository.createWorkflowRow(
+			{
+				workflowReviewRequestId: request.id,
+				workflowId: workflow.id,
+				workflowVersionId: 'version-1',
+			},
+			{},
+		);
+		await authorRepository.addAuthor(
+			{ workflowReviewRequestId: request.id, userId: author.id },
+			{},
+		);
 		return { request, workflow };
 	}
 
@@ -1257,7 +1395,7 @@ describe('POST /workflow-review-requests/:workflowReviewRequestId/decision', () 
 		// updatedAt — assert the timestamp actually moves.
 		expect(new Date(response.body.data.updatedAt).getTime()).toBeGreaterThan(seededUpdatedAt);
 
-		const updated = await requestRepository.findById(request.id);
+		const updated = await requestRepository.findById(request.id, {});
 		expect(updated).toMatchObject({
 			state: 'closed',
 			decision: 'approved',
@@ -1302,7 +1440,7 @@ describe('POST /workflow-review-requests/:workflowReviewRequestId/decision', () 
 			(await workflowEntityRepository.findOneByOrFail({ id: workflow.id })).activeVersionId,
 		).toBeNull();
 
-		const updated = await requestRepository.findById(request.id);
+		const updated = await requestRepository.findById(request.id, {});
 		expect(updated).toMatchObject({
 			state: 'open',
 			decision: 'changes_requested',
@@ -1320,7 +1458,7 @@ describe('POST /workflow-review-requests/:workflowReviewRequestId/decision', () 
 			.send({ decision: 'approved' })
 			.expect(200);
 
-		expect(await requestRepository.findById(request.id)).toMatchObject({
+		expect(await requestRepository.findById(request.id, {})).toMatchObject({
 			state: 'closed',
 			decision: 'approved',
 		});
@@ -1334,7 +1472,7 @@ describe('POST /workflow-review-requests/:workflowReviewRequestId/decision', () 
 			.send({ decision: 'changes_requested' })
 			.expect(200);
 
-		expect(await requestRepository.findById(request.id)).toMatchObject({
+		expect(await requestRepository.findById(request.id, {})).toMatchObject({
 			state: 'open',
 			decision: 'changes_requested',
 			updatedById: member.id,
@@ -1349,7 +1487,7 @@ describe('POST /workflow-review-requests/:workflowReviewRequestId/decision', () 
 			.send({ decision: 'approved' })
 			.expect(403);
 
-		expect(await requestRepository.findById(request.id)).toMatchObject({
+		expect(await requestRepository.findById(request.id, {})).toMatchObject({
 			state: 'open',
 			decision: 'pending',
 		});
@@ -1492,7 +1630,7 @@ describe('POST /workflow-review-requests/:workflowReviewRequestId/decision', () 
 		]);
 
 		expect([first.status, second.status].sort()).toEqual([200, 409]);
-		expect(await requestRepository.findById(request.id)).toMatchObject({
+		expect(await requestRepository.findById(request.id, {})).toMatchObject({
 			state: 'closed',
 			decision: 'approved',
 		});
@@ -1518,7 +1656,7 @@ describe('POST /workflow-review-requests/:workflowReviewRequestId/decision', () 
 		expect(decide.status).toBe(200);
 		expect([200, 409]).toContain(sync.status);
 
-		const final = await requestRepository.findById(request.id);
+		const final = await requestRepository.findById(request.id, {});
 		expect(final?.state === 'closed' && final?.decision === 'pending').toBe(false);
 		expect(final).toMatchObject({ state: 'closed', decision: 'approved' });
 	});
@@ -1658,11 +1796,14 @@ describe('GET /workflow-review-requests/eligible-reviewers', () => {
 describe('GET /workflow-review-requests', () => {
 	/** Link an existing review request to a workflow. */
 	async function linkRequestToWorkflow(requestId: string, workflowId: string, versionId: string) {
-		await workflowRepository.createWorkflowRow({
-			workflowReviewRequestId: requestId,
-			workflowId,
-			workflowVersionId: versionId,
-		});
+		await workflowRepository.createWorkflowRow(
+			{
+				workflowReviewRequestId: requestId,
+				workflowId,
+				workflowVersionId: versionId,
+			},
+			{},
+		);
 	}
 
 	test('returns 400 without a workflowId', async () => {
@@ -1682,14 +1823,17 @@ describe('GET /workflow-review-requests', () => {
 
 	test('returns the open request as a minimal summary with state=open&take=1', async () => {
 		const { workflow, versionId } = await createReviewableWorkflow();
-		const request = await requestRepository.createRequest({
-			projectId: ownerProject.id,
-			title: 'Confidential title',
-			description: 'Confidential description',
-			createdById: owner.id,
-		});
+		const request = await requestRepository.createRequest(
+			{
+				projectId: ownerProject.id,
+				title: 'Confidential title',
+				description: 'Confidential description',
+				createdById: owner.id,
+			},
+			{},
+		);
 		await linkRequestToWorkflow(request.id, workflow.id, versionId);
-		await authorRepository.addAuthor({ workflowReviewRequestId: request.id, userId: owner.id });
+		await authorRepository.addAuthor({ workflowReviewRequestId: request.id, userId: owner.id }, {});
 
 		const response = await ownerAgent
 			.get('/workflow-review-requests')
@@ -1714,19 +1858,25 @@ describe('GET /workflow-review-requests', () => {
 
 	test('returns the newest review, closed included, with take=1 and no state filter', async () => {
 		const { workflow, versionId } = await createReviewableWorkflow();
-		const older = await requestRepository.createRequest({
-			projectId: ownerProject.id,
-			state: 'closed',
-			title: 'Older',
-			createdById: owner.id,
-		});
+		const older = await requestRepository.createRequest(
+			{
+				projectId: ownerProject.id,
+				state: 'closed',
+				title: 'Older',
+				createdById: owner.id,
+			},
+			{},
+		);
 		await linkRequestToWorkflow(older.id, workflow.id, versionId);
-		const newest = await requestRepository.createRequest({
-			projectId: ownerProject.id,
-			state: 'open',
-			title: 'Newest',
-			createdById: owner.id,
-		});
+		const newest = await requestRepository.createRequest(
+			{
+				projectId: ownerProject.id,
+				state: 'open',
+				title: 'Newest',
+				createdById: owner.id,
+			},
+			{},
+		);
 		await linkRequestToWorkflow(newest.id, workflow.id, versionId);
 		// Both rows are created within the same millisecond, so state the age
 		// explicitly instead of asserting against a timestamp tie.
@@ -1744,13 +1894,16 @@ describe('GET /workflow-review-requests', () => {
 
 	test('resolves the actor of a changes-requested decision', async () => {
 		const { workflow, versionId } = await createReviewableWorkflow();
-		const request = await requestRepository.createRequest({
-			projectId: ownerProject.id,
-			decision: 'changes_requested',
-			title: 'Needs work',
-			createdById: owner.id,
-			updatedById: member.id,
-		});
+		const request = await requestRepository.createRequest(
+			{
+				projectId: ownerProject.id,
+				decision: 'changes_requested',
+				title: 'Needs work',
+				createdById: owner.id,
+				updatedById: member.id,
+			},
+			{},
+		);
 		await linkRequestToWorkflow(request.id, workflow.id, versionId);
 
 		const response = await ownerAgent
@@ -1773,13 +1926,16 @@ describe('GET /workflow-review-requests', () => {
 	test('returns no actor when the deciding user was deleted', async () => {
 		const { workflow, versionId } = await createReviewableWorkflow();
 		const reviewer = await createMember();
-		const request = await requestRepository.createRequest({
-			projectId: ownerProject.id,
-			decision: 'changes_requested',
-			title: 'Needs work',
-			createdById: owner.id,
-			updatedById: reviewer.id,
-		});
+		const request = await requestRepository.createRequest(
+			{
+				projectId: ownerProject.id,
+				decision: 'changes_requested',
+				title: 'Needs work',
+				createdById: owner.id,
+				updatedById: reviewer.id,
+			},
+			{},
+		);
 		await linkRequestToWorkflow(request.id, workflow.id, versionId);
 		await userRepository.delete(reviewer.id);
 
@@ -1796,14 +1952,17 @@ describe('GET /workflow-review-requests', () => {
 
 	test('reports an approved version that was never published', async () => {
 		const { workflow, versionId } = await createReviewableWorkflow();
-		const request = await requestRepository.createRequest({
-			projectId: ownerProject.id,
-			state: 'closed',
-			decision: 'approved',
-			title: 'Approved',
-			createdById: owner.id,
-			updatedById: member.id,
-		});
+		const request = await requestRepository.createRequest(
+			{
+				projectId: ownerProject.id,
+				state: 'closed',
+				decision: 'approved',
+				title: 'Approved',
+				createdById: owner.id,
+				updatedById: member.id,
+			},
+			{},
+		);
 		await linkRequestToWorkflow(request.id, workflow.id, versionId);
 
 		const response = await ownerAgent
@@ -1822,13 +1981,16 @@ describe('GET /workflow-review-requests', () => {
 
 	test('reports an approved version that has been published', async () => {
 		const { workflow, versionId } = await createReviewableWorkflow();
-		const request = await requestRepository.createRequest({
-			projectId: ownerProject.id,
-			state: 'closed',
-			decision: 'approved',
-			title: 'Approved',
-			createdById: owner.id,
-		});
+		const request = await requestRepository.createRequest(
+			{
+				projectId: ownerProject.id,
+				state: 'closed',
+				decision: 'approved',
+				title: 'Approved',
+				createdById: owner.id,
+			},
+			{},
+		);
 		await linkRequestToWorkflow(request.id, workflow.id, versionId);
 		await publishHistoryRepository.addRecord({
 			workflowId: workflow.id,
@@ -1849,12 +2011,15 @@ describe('GET /workflow-review-requests', () => {
 
 	test('excludes closed-only history with state=open, includes it without the filter', async () => {
 		const { workflow, versionId } = await createReviewableWorkflow();
-		const closed = await requestRepository.createRequest({
-			projectId: ownerProject.id,
-			state: 'closed',
-			title: 'Closed',
-			createdById: owner.id,
-		});
+		const closed = await requestRepository.createRequest(
+			{
+				projectId: ownerProject.id,
+				state: 'closed',
+				title: 'Closed',
+				createdById: owner.id,
+			},
+			{},
+		);
 		await linkRequestToWorkflow(closed.id, workflow.id, versionId);
 
 		const openResponse = await ownerAgent
@@ -1874,11 +2039,14 @@ describe('GET /workflow-review-requests', () => {
 	test('does not include requests of other workflows', async () => {
 		const { workflow } = await createReviewableWorkflow();
 		const { workflow: otherWorkflow } = await createReviewableWorkflow('version-other');
-		const request = await requestRepository.createRequest({
-			projectId: ownerProject.id,
-			title: 'For the other workflow',
-			createdById: owner.id,
-		});
+		const request = await requestRepository.createRequest(
+			{
+				projectId: ownerProject.id,
+				title: 'For the other workflow',
+				createdById: owner.id,
+			},
+			{},
+		);
 		await linkRequestToWorkflow(request.id, otherWorkflow.id, 'version-other');
 
 		const response = await ownerAgent
@@ -1903,11 +2071,14 @@ describe('GET /workflow-review-requests', () => {
 		await linkUserToProject(member, project, 'project:viewer');
 		const workflow = await createWorkflow({}, project);
 		await createWorkflowHistoryItem(workflow.id, { versionId: 'version-1' });
-		const request = await requestRepository.createRequest({
-			projectId: project.id,
-			title: 'Open review',
-			createdById: owner.id,
-		});
+		const request = await requestRepository.createRequest(
+			{
+				projectId: project.id,
+				title: 'Open review',
+				createdById: owner.id,
+			},
+			{},
+		);
 		await linkRequestToWorkflow(request.id, workflow.id, 'version-1');
 
 		const response = await memberAgent
@@ -1939,18 +2110,24 @@ describe('GET /workflow-review-requests', () => {
 });
 
 async function seedInboxRequests() {
-	const openRequest = await requestRepository.createRequest({
-		projectId: teamProject.id,
-		title: 'Open review request',
-		createdById: owner.id,
-		state: 'open',
-	});
-	const closedRequest = await requestRepository.createRequest({
-		projectId: teamProject.id,
-		title: 'Closed review request',
-		createdById: owner.id,
-		state: 'closed',
-	});
+	const openRequest = await requestRepository.createRequest(
+		{
+			projectId: teamProject.id,
+			title: 'Open review request',
+			createdById: owner.id,
+			state: 'open',
+		},
+		{},
+	);
+	const closedRequest = await requestRepository.createRequest(
+		{
+			projectId: teamProject.id,
+			title: 'Closed review request',
+			createdById: owner.id,
+			state: 'closed',
+		},
+		{},
+	);
 	return { openRequest, closedRequest };
 }
 
@@ -1980,12 +2157,15 @@ describe('GET /workflow-review-requests/summary', () => {
 	});
 
 	test('counts a requester their own review regardless of project scope', async () => {
-		await requestRepository.createRequest({
-			projectId: teamProject.id,
-			title: 'Review submitted by viewer',
-			createdById: viewer.id,
-			state: 'open',
-		});
+		await requestRepository.createRequest(
+			{
+				projectId: teamProject.id,
+				title: 'Review submitted by viewer',
+				createdById: viewer.id,
+				state: 'open',
+			},
+			{},
+		);
 
 		const response = await viewerAgent.get('/workflow-review-requests/summary').expect(200);
 
@@ -2037,12 +2217,15 @@ describe('GET /workflow-review-requests/inbox', () => {
 
 	test('returns cursor pagination metadata', async () => {
 		await seedInboxRequests();
-		await requestRepository.createRequest({
-			projectId: teamProject.id,
-			title: 'Second open review',
-			createdById: owner.id,
-			state: 'open',
-		});
+		await requestRepository.createRequest(
+			{
+				projectId: teamProject.id,
+				title: 'Second open review',
+				createdById: owner.id,
+				state: 'open',
+			},
+			{},
+		);
 
 		const firstPage = await ownerAgent
 			.get('/workflow-review-requests/inbox')
@@ -2068,17 +2251,23 @@ describe('GET /workflow-review-requests/inbox', () => {
 
 	test('includes workflow name on list items', async () => {
 		const workflow = await createWorkflow({ name: 'Inbox Workflow' }, teamProject);
-		const enrichedRequest = await requestRepository.createRequest({
-			projectId: teamProject.id,
-			title: 'Enriched review request',
-			createdById: owner.id,
-			state: 'open',
-		});
+		const enrichedRequest = await requestRepository.createRequest(
+			{
+				projectId: teamProject.id,
+				title: 'Enriched review request',
+				createdById: owner.id,
+				state: 'open',
+			},
+			{},
+		);
 
-		await workflowRepository.createWorkflowRow({
-			workflowReviewRequestId: enrichedRequest.id,
-			workflowId: workflow.id,
-		});
+		await workflowRepository.createWorkflowRow(
+			{
+				workflowReviewRequestId: enrichedRequest.id,
+				workflowId: workflow.id,
+			},
+			{},
+		);
 
 		const response = await ownerAgent
 			.get('/workflow-review-requests/inbox')
@@ -2099,12 +2288,15 @@ describe('GET /workflow-review-requests/inbox', () => {
 
 	test('hides reviews from projects the member cannot access', async () => {
 		const otherProject = await createTeamProject('Other Reviews Project', owner);
-		await requestRepository.createRequest({
-			projectId: otherProject.id,
-			title: 'Private other-project review',
-			createdById: owner.id,
-			state: 'open',
-		});
+		await requestRepository.createRequest(
+			{
+				projectId: otherProject.id,
+				title: 'Private other-project review',
+				createdById: owner.id,
+				state: 'open',
+			},
+			{},
+		);
 
 		const memberResponse = await memberAgent.get('/workflow-review-requests/inbox').expect(200);
 		expect(memberResponse.body.data.data).toEqual([]);
@@ -2121,12 +2313,15 @@ describe('GET /workflow-review-requests/inbox', () => {
 
 	test('shows requesters their own reviews even without project access', async () => {
 		const otherProject = await createTeamProject('Unrelated Project', owner);
-		const ownRequest = await requestRepository.createRequest({
-			projectId: otherProject.id,
-			title: 'Review I submitted',
-			createdById: member.id,
-			state: 'open',
-		});
+		const ownRequest = await requestRepository.createRequest(
+			{
+				projectId: otherProject.id,
+				title: 'Review I submitted',
+				createdById: member.id,
+				state: 'open',
+			},
+			{},
+		);
 
 		const response = await memberAgent.get('/workflow-review-requests/inbox').expect(200);
 
@@ -2137,12 +2332,15 @@ describe('GET /workflow-review-requests/inbox', () => {
 
 	test('does not truncate pagination when the cursor row is deleted', async () => {
 		await seedInboxRequests();
-		await requestRepository.createRequest({
-			projectId: teamProject.id,
-			title: 'Second open review',
-			createdById: owner.id,
-			state: 'open',
-		});
+		await requestRepository.createRequest(
+			{
+				projectId: teamProject.id,
+				title: 'Second open review',
+				createdById: owner.id,
+				state: 'open',
+			},
+			{},
+		);
 
 		const firstPage = await ownerAgent
 			.get('/workflow-review-requests/inbox')
@@ -2165,16 +2363,22 @@ describe('GET /workflow-review-requests/inbox', () => {
 
 	test('hydrates the requester and requested reviewers on list items', async () => {
 		const reviewer = await createUser();
-		const request = await requestRepository.createRequest({
-			projectId: teamProject.id,
-			title: 'Needs review',
-			createdById: owner.id,
-			state: 'open',
-		});
-		await reviewerRepository.addReviewers({
-			workflowReviewRequestId: request.id,
-			userIds: [reviewer.id],
-		});
+		const request = await requestRepository.createRequest(
+			{
+				projectId: teamProject.id,
+				title: 'Needs review',
+				createdById: owner.id,
+				state: 'open',
+			},
+			{},
+		);
+		await reviewerRepository.addReviewers(
+			{
+				workflowReviewRequestId: request.id,
+				userIds: [reviewer.id],
+			},
+			{},
+		);
 
 		const response = await ownerAgent
 			.get('/workflow-review-requests/inbox')
@@ -2199,12 +2403,15 @@ describe('GET /workflow-review-requests/inbox', () => {
 	});
 
 	test('sets the requester to null when the request has no creator', async () => {
-		const request = await requestRepository.createRequest({
-			projectId: teamProject.id,
-			title: 'Authorless',
-			createdById: null,
-			state: 'open',
-		});
+		const request = await requestRepository.createRequest(
+			{
+				projectId: teamProject.id,
+				title: 'Authorless',
+				createdById: null,
+				state: 'open',
+			},
+			{},
+		);
 
 		const response = await ownerAgent
 			.get('/workflow-review-requests/inbox')
@@ -2221,16 +2428,22 @@ describe('GET /workflow-review-requests/inbox', () => {
 		const departedCreator = await createUser();
 		const survivingReviewer = await createUser();
 		const departedReviewer = await createUser();
-		const request = await requestRepository.createRequest({
-			projectId: teamProject.id,
-			title: 'With departed users',
-			createdById: departedCreator.id,
-			state: 'open',
-		});
-		await reviewerRepository.addReviewers({
-			workflowReviewRequestId: request.id,
-			userIds: [survivingReviewer.id, departedReviewer.id],
-		});
+		const request = await requestRepository.createRequest(
+			{
+				projectId: teamProject.id,
+				title: 'With departed users',
+				createdById: departedCreator.id,
+				state: 'open',
+			},
+			{},
+		);
+		await reviewerRepository.addReviewers(
+			{
+				workflowReviewRequestId: request.id,
+				userIds: [survivingReviewer.id, departedReviewer.id],
+			},
+			{},
+		);
 
 		await userRepository.delete({ id: departedCreator.id });
 		await userRepository.delete({ id: departedReviewer.id });
@@ -2270,18 +2483,27 @@ describe('GET /workflow-review-requests/:workflowReviewRequestId', () => {
 		author: User,
 		projectId = teamProject.id,
 	) {
-		const request = await requestRepository.createRequest({
-			projectId,
-			title: 'Please review',
-			description: 'Some context',
-			createdById: author.id,
-		});
-		await workflowRepository.createWorkflowRow({
-			workflowReviewRequestId: request.id,
-			workflowId,
-			workflowVersionId: versionId,
-		});
-		await authorRepository.addAuthor({ workflowReviewRequestId: request.id, userId: author.id });
+		const request = await requestRepository.createRequest(
+			{
+				projectId,
+				title: 'Please review',
+				description: 'Some context',
+				createdById: author.id,
+			},
+			{},
+		);
+		await workflowRepository.createWorkflowRow(
+			{
+				workflowReviewRequestId: request.id,
+				workflowId,
+				workflowVersionId: versionId,
+			},
+			{},
+		);
+		await authorRepository.addAuthor(
+			{ workflowReviewRequestId: request.id, userId: author.id },
+			{},
+		);
 		return request;
 	}
 
@@ -2297,10 +2519,13 @@ describe('GET /workflow-review-requests/:workflowReviewRequestId', () => {
 		await publishedVersionRepository.setPublishedVersion(workflow.id, baseline.versionId);
 		const reviewer = await createAdmin();
 		const request = await seedRequest(workflow.id, 'version-pinned', owner);
-		await reviewerRepository.addReviewers({
-			workflowReviewRequestId: request.id,
-			userIds: [reviewer.id],
-		});
+		await reviewerRepository.addReviewers(
+			{
+				workflowReviewRequestId: request.id,
+				userIds: [reviewer.id],
+			},
+			{},
+		);
 
 		const response = await ownerAgent.get(`/workflow-review-requests/${request.id}`).expect(200);
 

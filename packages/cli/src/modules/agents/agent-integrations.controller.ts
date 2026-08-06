@@ -231,14 +231,30 @@ export class AgentIntegrationsController {
 		res: Response,
 	) {
 		const { agentId, platform } = req.params;
-		const webhookHandler = this.chatIntegrationService.getWebhookHandler(agentId, platform);
+		const integration = this.chatIntegrationRegistry.get(platform);
+		const resolution = integration?.resolveWebhookRequest?.({
+			headers: req.headers,
+			body: req.body,
+		});
+		if (resolution?.type === 'reject') {
+			res.status(resolution.response.status).json(resolution.response.body);
+			return;
+		}
+
+		const webhookHandler =
+			resolution?.type === 'no_match'
+				? undefined
+				: this.chatIntegrationService.getWebhookHandler(
+						agentId,
+						platform,
+						resolution?.type === 'select' ? resolution.connectionSelector : undefined,
+					);
 
 		if (!webhookHandler) {
 			// Allow platforms to respond to setup-time webhooks (e.g. Slack's
 			// `url_verification` challenge) before credentials are configured,
 			// so the user doesn't have to come back and re-verify URLs after
 			// connecting the credential.
-			const integration = this.chatIntegrationRegistry.get(platform);
 			const earlyResponse = integration?.handleUnauthenticatedWebhook?.(req.body);
 			if (earlyResponse) {
 				res.status(earlyResponse.status).json(earlyResponse.body);
