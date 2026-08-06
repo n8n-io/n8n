@@ -26,8 +26,8 @@ interface CollectedSchedule {
 }
 
 /**
- * One node's collected rules and the misfire policy read alongside them, so both
- * are written and removed as one entry.
+ * One node's collected rules with the misfire policy and grace period read
+ * alongside them, so all three are written and removed as one entry.
  */
 interface PendingNode {
 	misfirePolicy: ScheduledJobMisfirePolicy;
@@ -436,6 +436,12 @@ function resolveMisfirePolicy(node: INode): ScheduledJobMisfirePolicy {
 		: ScheduledJobMisfirePolicy.Skip;
 }
 
+/**
+ * Decides only whether the node states a usable number; the value itself is
+ * left unbounded, since the provisioner is the single place that clamps it.
+ * Absent, `0` and anything that is not a positive number resolve to
+ * `undefined`, leaving the instance setting to apply.
+ */
 function resolveMisfireGraceSeconds(
 	node: INode,
 	workflowId: string,
