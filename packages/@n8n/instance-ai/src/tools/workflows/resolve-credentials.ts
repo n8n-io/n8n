@@ -227,6 +227,25 @@ export async function resolveCredentials(
 				return true;
 			};
 
+			// Try 2: reuse a credential of the same type already bound to another
+			// node (in the in-flight JSON or the saved workflow). The workflow has
+			// already settled on that credential for the service, so a new node of
+			// the same service must not re-prompt setup for it.
+			const reuseSiblingNodeCredential = () => {
+				const sibling = findSiblingBoundCredential(
+					json,
+					existingCredsByNode,
+					node,
+					key,
+					availableCredentials,
+				);
+				if (!sibling) return false;
+				creds[key] = { id: sibling.id, name: sibling.name };
+				recordResolvedCredential(sibling.id, sibling.name);
+				cleanupMockPinData(json, node.name);
+				return true;
+			};
+
 			const mockCredential = () => {
 				const nodeName = node.name ?? '';
 				delete creds[key];
@@ -295,11 +314,18 @@ export async function resolveCredentials(
 				if (restoreExistingCredential()) {
 					continue;
 				}
+				if (reuseSiblingNodeCredential()) {
+					continue;
+				}
 				await mockOrAttachGateway();
 				continue;
 			}
 
 			if (restoreExistingCredential()) {
+				continue;
+			}
+
+			if (reuseSiblingNodeCredential()) {
 				continue;
 			}
 
@@ -369,6 +395,39 @@ export async function resolveCredentials(
 		mockedCredentialsByNode,
 		resolvedCredentialsByNode,
 	};
+}
+
+/**
+ * Find a stored credential of the given type already bound to another node,
+ * looking at the in-flight workflow JSON first and the saved workflow second.
+ * Returns only ids that resolve to a stored credential, so stale references
+ * are never propagated.
+ */
+function findSiblingBoundCredential(
+	json: WorkflowJSON,
+	existingCredsByNode: Map<string, Record<string, unknown>>,
+	currentNode: NodeJSON,
+	credentialType: string,
+	availableCredentials: CredentialMap | undefined,
+): { id: string; name: string } | undefined {
+	const candidates: unknown[] = [];
+	for (const sibling of json.nodes ?? []) {
+		if (sibling === currentNode) continue;
+		const bound = (sibling.credentials as Record<string, unknown> | undefined)?.[credentialType];
+		if (bound !== undefined && bound !== null) candidates.push(bound);
+	}
+	for (const savedCreds of existingCredsByNode.values()) {
+		const bound = savedCreds[credentialType];
+		if (bound !== undefined && bound !== null) candidates.push(bound);
+	}
+
+	for (const candidate of candidates) {
+		const id = getCredentialId(candidate);
+		if (!id) continue;
+		if (!isKnownCredentialForType(candidate, credentialType, availableCredentials)) continue;
+		return { id, name: getCredentialName(candidate) ?? id };
+	}
+	return undefined;
 }
 
 function getCredentialId(value: unknown): string | undefined {
