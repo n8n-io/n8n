@@ -16,6 +16,15 @@ vi.mock('@n8n/instance-ai', () => {
 			children: [],
 			timeline: [],
 		})),
+		// Shape is the instance-ai package's contract (covered by its own tests); the
+		// controller only owns which targets it feeds in and that it persists the result.
+		seedAgentBuilderTargetMetadata: vi.fn((targets: unknown) => ({ boundTargets: targets })),
+		// Real behaviour matters here: `updateThread` merges, so the rollback has to
+		// name the binding keys rather than hand back the prior snapshot.
+		clearedAgentBuilderTargetMetadata: vi.fn((prior: Record<string, unknown> | undefined) => ({
+			...(prior ?? {}),
+			boundTargets: prior?.boundTargets,
+		})),
 	};
 });
 
@@ -46,11 +55,13 @@ import type {
 } from '@n8n/api-types';
 import type { ModuleRegistry } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
+import { seedAgentBuilderTargetMetadata } from '@n8n/instance-ai';
 import type { AuthenticatedRequest, User, UserRepository } from '@n8n/db';
 import { ControllerRegistryMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 import type { Request, Response } from 'express';
+import { UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -708,6 +719,10 @@ describe('InstanceAiController', () => {
 			workflows: [seedWorkflow],
 		} as InstanceAiEvalRestoreThreadRequest;
 
+		beforeEach(() => {
+			evalThreadRestore.restoreAgents.mockResolvedValue([]);
+		});
+
 		it('should require instanceAi:eval scope', () => {
 			expect(scopeOf('restoreEvalThread')).toEqual({ scope: 'instanceAi:eval', globalOnly: true });
 		});
@@ -736,6 +751,7 @@ describe('InstanceAiController', () => {
 				restored: 1,
 				workflowIds: ['wf-1'],
 				dataTableIds: [],
+				agentIds: [],
 			});
 		});
 
@@ -804,6 +820,116 @@ describe('InstanceAiController', () => {
 
 			expect(evalThreadRestore.deleteWorkflows).toHaveBeenCalledWith(['wf-1']);
 			expect(evalThreadRestore.deleteDataTables).toHaveBeenCalledWith(['dt-new'], 'project-1');
+		});
+
+		describe('with seeded agents', () => {
+			const seedAgent = {
+				id: 'agent-seed-1',
+				config: {
+					name: 'Support Triage',
+					model: 'anthropic/claude-sonnet-4-5',
+					instructions: 'Triage inbound tickets.',
+				},
+			};
+			const agentPayload = {
+				...payload,
+				agents: [seedAgent],
+			} as InstanceAiEvalRestoreThreadRequest;
+
+			beforeEach(() => {
+				memoryService.checkThreadOwnership.mockResolvedValue('owned');
+				memoryService.getThreadProjectId.mockResolvedValue('project-1');
+				memoryService.restoreThreadMessages.mockResolvedValue({ restored: 1 });
+				evalThreadRestore.restoreDataTables.mockResolvedValue(new Map());
+				evalThreadRestore.restoreAgents.mockResolvedValue(['agent-seed-1']);
+			});
+
+			it('should recreate the agent and bind the thread to it', async () => {
+				const result = await controller.restoreEvalThread(req, res, agentPayload);
+
+				// The data-table id map goes through too, so an agent node tool's table
+				// references land on the tables this restore just created.
+				expect(evalThreadRestore.restoreAgents).toHaveBeenCalledWith(
+					[seedAgent],
+					'project-1',
+					expect.any(Map),
+				);
+				// Refs and ordering are reconstructed from the seeded history, so the
+				// messages are handed in alongside the agents.
+				expect(seedAgentBuilderTargetMetadata).toHaveBeenCalledWith(
+					[
+						{
+							agentId: 'agent-seed-1',
+							projectId: 'project-1',
+							name: 'Support Triage',
+							// Fallback ref; the helper prefers the model-authored one.
+							ref: 'Support Triage',
+						},
+					],
+					agentPayload.messages,
+				);
+				expect(memoryService.updateThread).toHaveBeenCalledWith(THREAD_ID, {
+					metadata: { boundTargets: expect.any(Array) },
+				});
+				expect(result).toMatchObject({ agentIds: ['agent-seed-1'] });
+			});
+
+			it('should not touch the thread binding for a seed with no agents', async () => {
+				evalThreadRestore.restoreAgents.mockResolvedValue([]);
+
+				await controller.restoreEvalThread(req, res, payload);
+
+				expect(memoryService.updateThread).not.toHaveBeenCalled();
+			});
+
+			it('rejects a bad binding before any message is committed', async () => {
+				// The binding is built (and validated) ahead of the message write, so a
+				// refused one — two seed agents whose refs collide — fails while the
+				// restore is still fully rollback-able. There is no per-message delete,
+				// so committing first would strand them in the thread.
+				vi.mocked(seedAgentBuilderTargetMetadata).mockImplementationOnce(() => {
+					throw new UserError('both address as "support-triage"');
+				});
+
+				await expect(controller.restoreEvalThread(req, res, agentPayload)).rejects.toThrow(
+					/both address as/,
+				);
+
+				expect(memoryService.restoreThreadMessages).not.toHaveBeenCalled();
+				expect(evalThreadRestore.deleteAgents).toHaveBeenCalledWith(['agent-seed-1'], 'project-1');
+			});
+
+			it('should roll the binding back when the message write fails', async () => {
+				// The binding is written BEFORE the messages and undone on failure, so a
+				// message failure can't leave a binding pointing at agents the rollback
+				// just deleted — and the thread's prior metadata is restored exactly,
+				// not blanked.
+				memoryService.getThreadMetadata.mockResolvedValue({ somethingElse: 'keep me' });
+				memoryService.restoreThreadMessages.mockRejectedValue(new Error('boom'));
+
+				await expect(controller.restoreEvalThread(req, res, agentPayload)).rejects.toThrow('boom');
+
+				expect(evalThreadRestore.deleteAgents).toHaveBeenCalledWith(['agent-seed-1'], 'project-1');
+				// The prior metadata survives AND the binding key is cleared — handing
+				// back only the snapshot would leave the thread bound to agents the
+				// rollback just deleted, because updateThread merges.
+				expect(memoryService.updateThread).toHaveBeenLastCalledWith(THREAD_ID, {
+					metadata: { somethingElse: 'keep me', boundTargets: undefined },
+				});
+			});
+
+			it('should not touch the thread when the binding write itself fails', async () => {
+				memoryService.getThreadMetadata.mockResolvedValue({});
+				memoryService.updateThread.mockRejectedValueOnce(new Error('metadata down'));
+
+				await expect(controller.restoreEvalThread(req, res, agentPayload)).rejects.toThrow(
+					'metadata down',
+				);
+
+				// No messages were written, and the artifacts are rolled back.
+				expect(memoryService.restoreThreadMessages).not.toHaveBeenCalled();
+				expect(evalThreadRestore.deleteAgents).toHaveBeenCalledWith(['agent-seed-1'], 'project-1');
+			});
 		});
 
 		it('should reject a thread that does not exist', async () => {
