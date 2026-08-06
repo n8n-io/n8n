@@ -1,5 +1,4 @@
 import type AjvType from 'ajv';
-import type { ValidateFunction } from 'ajv';
 import type { JSONSchema7 } from 'json-schema';
 import type { ZodType } from 'zod';
 
@@ -32,6 +31,17 @@ function getAjv(unicodeRegExp = true, stripUnknown = false): InstanceType<typeof
 	return instance;
 }
 
+function compile(schema: JSONSchema7, stripUnknown: boolean) {
+	let ajv = getAjv(true, stripUnknown);
+	try {
+		return { ajv, validate: ajv.compile(schema) };
+	} catch (error) {
+		if (!(error instanceof SyntaxError)) throw error;
+		ajv = getAjv(false, stripUnknown);
+		return { ajv, validate: ajv.compile(schema) };
+	}
+}
+
 /**
  * Validate `data` against a Zod schema or a raw JSON Schema.
  * Returns a unified success/failure result, with parsed data on success.
@@ -47,19 +57,17 @@ export async function parseWithSchema(
 		return { success: false, error: result.error.message };
 	}
 
-	const { stripUnknown = false } = options;
-	// Ajv strips in place, so clone to leave the caller's object intact as Zod does.
-	const target = stripUnknown ? structuredClone(data) : data;
-
-	let ajv = getAjv(true, stripUnknown);
-	let validate: ValidateFunction;
-	try {
-		validate = ajv.compile(schema);
-	} catch (error) {
-		if (!(error instanceof SyntaxError)) throw error;
-		ajv = getAjv(false, stripUnknown);
-		validate = ajv.compile(schema);
+	// Strict first: Ajv's `removeAdditional` drops properties while trying a failing
+	// `anyOf`/`oneOf` branch, so a payload that already matches a branch must never reach it.
+	const strict = compile(schema, false);
+	if (strict.validate(data)) return { success: true, data };
+	if (!options.stripUnknown) {
+		return { success: false, error: strict.ajv.errorsText(strict.validate.errors) };
 	}
-	if (validate(target)) return { success: true, data: target };
-	return { success: false, error: ajv.errorsText(validate.errors) };
+
+	// Ajv strips in place, so clone to leave the caller's object intact as Zod does.
+	const target = structuredClone(data);
+	const stripping = compile(schema, true);
+	if (stripping.validate(target)) return { success: true, data: target };
+	return { success: false, error: stripping.ajv.errorsText(stripping.validate.errors) };
 }
