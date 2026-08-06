@@ -2,6 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
+import type { INode, Workflow } from 'n8n-workflow';
 
 /**
  * Descriptor for an OAuth 2.1 protected resource served by this instance.
@@ -113,6 +114,19 @@ export interface ProtectedResourceResolver {
 	 * `?method=`. Resolvers keyed on path alone ignore it.
 	 */
 	resolveByPath(pathname: string, search?: string): Promise<ProtectedResource | undefined>;
+
+	/**
+	 * Resolve a resource directly from an already-loaded workflow and trigger
+	 * node, or `undefined` if this resolver owns no such resource. For callers
+	 * that already hold the live objects (e.g. a context-establishment hook
+	 * mid-execution) and would otherwise have to reconstruct a resource URL/path
+	 * from workflow/node internals just to look it back up - a lossy,
+	 * duplicative round-trip. Unlike `resolveByUrl`/`resolveByPath`, this is not
+	 * gated on the node's own `authentication` setting: it answers "is this
+	 * node a protectable resource at all", not "does it use this instance's
+	 * first-party OAuth flow".
+	 */
+	resolveByNode?(workflow: Workflow, node: INode): Promise<ProtectedResource | undefined>;
 }
 
 const trimTrailingSlash = (url: string): string => url.replace(/\/$/, '');
@@ -191,6 +205,25 @@ export class ProtectedResourceRegistry {
 		for (const resolver of this.resolvers) {
 			try {
 				const resource = await resolver.resolveByPath(normalized, search);
+				if (resource) return resource;
+			} catch (error) {
+				this.logResolverFailure(resolver, error);
+			}
+		}
+		return undefined;
+	}
+
+	/**
+	 * Look up a resource directly from an already-loaded workflow and trigger
+	 * node, bypassing URL/path reconstruction entirely. See
+	 * {@link ProtectedResourceResolver.resolveByNode}. Resolvers that don't
+	 * implement it are skipped, not treated as a miss for the whole lookup.
+	 */
+	async getByWorkflowNode(workflow: Workflow, node: INode): Promise<ProtectedResource | undefined> {
+		for (const resolver of this.resolvers) {
+			if (!resolver.resolveByNode) continue;
+			try {
+				const resource = await resolver.resolveByNode(workflow, node);
 				if (resource) return resource;
 			} catch (error) {
 				this.logResolverFailure(resolver, error);

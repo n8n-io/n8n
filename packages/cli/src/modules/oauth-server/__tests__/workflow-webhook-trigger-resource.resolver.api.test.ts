@@ -8,7 +8,7 @@ import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { WebhookRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import type { IHttpRequestMethods, INode } from 'n8n-workflow';
+import type { IHttpRequestMethods, INode, Workflow } from 'n8n-workflow';
 import { WEBHOOK_NODE_TYPE } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
@@ -132,6 +132,64 @@ afterEach(async () => {
 		'WorkflowEntity',
 		'WorkflowHistory',
 	]);
+});
+
+describe('resolveByNode (IAM-1173 - resolve directly from live workflow/node objects)', () => {
+	const asWorkflow = (workflow: { id: string; name: string }): Workflow =>
+		({ id: workflow.id, name: workflow.name }) as Workflow;
+
+	test('resolves a webhook trigger with no n8nOAuth2 authentication set', async () => {
+		const webhookPath = randomUUID();
+		const node = webhookNode({ authentication: 'none' });
+		const workflow = await createPublishedWebhookWorkflow(webhookPath, node);
+
+		const resource = await Container.get(ProtectedResourceRegistry).getByWorkflowNode(
+			asWorkflow(workflow),
+			node,
+		);
+
+		expect(resource).toBeDefined();
+		expect(resource!.getResourceUrl()).toBe(resourceUrlFor(webhookPath));
+	});
+
+	test('unions every configured method into getAudiences(), with no requested method known', async () => {
+		const webhookPath = randomUUID();
+		const node = webhookNode();
+		const workflow = await createPublishedWebhookWorkflow(webhookPath, node, {
+			methods: ['GET', 'POST'],
+		});
+
+		const resource = await Container.get(ProtectedResourceRegistry).getByWorkflowNode(
+			asWorkflow(workflow),
+			node,
+		);
+
+		expect(resource!.getAudiences().sort()).toEqual(
+			[resourceUrlFor(webhookPath, 'GET'), resourceUrlFor(webhookPath, 'POST')].sort(),
+		);
+	});
+
+	test('returns undefined for a disabled node', async () => {
+		const webhookPath = randomUUID();
+		const node = webhookNode({ disabled: true });
+		const workflow = await createPublishedWebhookWorkflow(webhookPath, node);
+
+		expect(
+			await Container.get(ProtectedResourceRegistry).getByWorkflowNode(asWorkflow(workflow), node),
+		).toBeUndefined();
+	});
+
+	test('returns undefined for a node with no registered webhook', async () => {
+		const workflow = await createPublishedWebhookWorkflow(randomUUID(), webhookNode());
+		const otherNode = webhookNode({ name: 'NotRegistered' });
+
+		expect(
+			await Container.get(ProtectedResourceRegistry).getByWorkflowNode(
+				asWorkflow(workflow),
+				otherNode,
+			),
+		).toBeUndefined();
+	});
 });
 
 describe('protected resource metadata for webhook triggers', () => {

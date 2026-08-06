@@ -48,10 +48,12 @@ export class TokenExchangeConfig {
 	rateLimitTokenExchange: number = 20;
 
 	/**
-	 * Audience external tokens must target to be accepted at context
-	 * establishment (see `InboundAudienceService`). Defaults to the instance
-	 * base URL when unset. Instance-wide, not per-surface - see IAM-1175 for
-	 * per-surface `acceptedSources`.
+	 * Audience external tokens must target to be accepted on surfaces with no
+	 * protected resource to resolve a per-surface audience from (e.g. the
+	 * dynamic-credentials connect flow). Defaults to the instance base URL
+	 * when unset. Webhook/MCP triggers don't use this - see
+	 * `ProtectedResourceRegistry` for their per-`(workflow, triggerNode)`
+	 * resolution.
 	 */
 	@Env('N8N_TOKEN_EXCHANGE_INBOUND_AUDIENCE')
 	inboundAudience: string = '';
@@ -60,8 +62,7 @@ export class TokenExchangeConfig {
 	 * Claim to use as the effective subject for SSO-derived trusted key
 	 * sources, instead of the standard `sub` claim - e.g. `uid` for an Okta
 	 * custom authorization server, whose access-token `sub` is often the
-	 * user's login rather than a stable id. Instance-wide, not per-issuer -
-	 * same limitation as `inboundAudience` above.
+	 * user's login rather than a stable id. Instance-wide, not per-issuer.
 	 */
 	@Env('N8N_TOKEN_EXCHANGE_INBOUND_SUBJECT_CLAIM')
 	inboundSubjectClaim: string = '';

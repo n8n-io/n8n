@@ -22,12 +22,23 @@ export type VerifiedClaimResult =
 	| { claim: null; context: ExternalVerificationContext };
 
 export interface ExternalTokenVerifier {
-	verifyExternalToken(token: string, expectedAudience: string): Promise<VerifiedClaimResult>;
+	/**
+	 * `expectedAudience` accepts a single value or a set of acceptable values -
+	 * a resource can have several accepted audiences (e.g. a multi-method
+	 * webhook trigger), and the token is accepted if its `aud` matches any one
+	 * of them.
+	 */
+	verifyExternalToken(
+		token: string,
+		expectedAudience: string | string[],
+	): Promise<VerifiedClaimResult>;
 
 	/**
 	 * Same verification, but against the audience this instance accepts for
-	 * inbound tokens. Keeps that decision inside the module that owns inbound
-	 * identity, so callers don't each have to know what to expect.
+	 * inbound tokens on surfaces with no protected resource to resolve a
+	 * per-surface audience from. Keeps that decision inside the module that
+	 * owns inbound identity, so callers don't each have to know what to
+	 * expect.
 	 */
 	verifyInboundToken(token: string): Promise<VerifiedClaimResult>;
 }
@@ -44,7 +55,10 @@ export class ExternalTokenVerifierProxy implements ExternalTokenVerifier {
 		this.provider = provider;
 	}
 
-	async verifyExternalToken(token: string, expectedAudience: string): Promise<VerifiedClaimResult> {
+	async verifyExternalToken(
+		token: string,
+		expectedAudience: string | string[],
+	): Promise<VerifiedClaimResult> {
 		if (!this.provider) {
 			return this.notRegistered();
 		}

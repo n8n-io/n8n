@@ -73,7 +73,9 @@ describe('InboundClaimVerificationHook integration with establishExecutionContex
 		proxy.registerProvider(provider);
 
 		audienceService = mock<InboundAudienceService>();
-		audienceService.getExpectedAudience.mockReturnValue('https://n8n.example.com');
+		audienceService.getExpectedAudiences.mockResolvedValue({
+			audiences: ['https://n8n.example.com'],
+		});
 
 		const hook = new InboundClaimVerificationHook(mock(), proxy, audienceService);
 
@@ -129,6 +131,29 @@ describe('InboundClaimVerificationHook integration with establishExecutionContex
 		expect(runtimeData.authFailureReason).toBeUndefined();
 	});
 
+	it('IAM-1173: passes every accepted audience for the resolved resource through to the verifier', async () => {
+		audienceService.getExpectedAudiences.mockResolvedValue({
+			audiences: [
+				'https://n8n.example.com/webhook/abc?method=GET',
+				'https://n8n.example.com/webhook/abc?method=POST',
+			],
+		});
+		provider.verifyExternalToken.mockResolvedValue({
+			claim: null,
+			context: { reason: 'invalid_token' },
+		});
+
+		const workflow = buildWorkflow();
+		const runExecutionData = buildRunExecutionData({ authorization: 'Bearer some-token' });
+
+		await establishExecutionContext(workflow, runExecutionData, additionalData, 'webhook');
+
+		expect(provider.verifyExternalToken).toHaveBeenCalledWith('some-token', [
+			'https://n8n.example.com/webhook/abc?method=GET',
+			'https://n8n.example.com/webhook/abc?method=POST',
+		]);
+	});
+
 	it('AC2: an invalid token records authFailureReason and sets no claim', async () => {
 		provider.verifyExternalToken.mockResolvedValue({
 			claim: null,
@@ -178,6 +203,20 @@ describe('InboundClaimVerificationHook integration with establishExecutionContex
 		const runtimeData = runExecutionData.executionData!.runtimeData!;
 		expect(runtimeData.claims).toBeUndefined();
 		expect(runtimeData.authFailureReason).toBe('verifier_not_registered');
+	});
+
+	it('IAM-1173: no resolvable resource for the trigger fails closed without calling the verifier', async () => {
+		audienceService.getExpectedAudiences.mockResolvedValue({ reason: 'resource_not_found' });
+
+		const workflow = buildWorkflow();
+		const runExecutionData = buildRunExecutionData({ authorization: 'Bearer some-token' });
+
+		await establishExecutionContext(workflow, runExecutionData, additionalData, 'webhook');
+
+		const runtimeData = runExecutionData.executionData!.runtimeData!;
+		expect(runtimeData.claims).toBeUndefined();
+		expect(runtimeData.authFailureReason).toBe('resource_not_found');
+		expect(provider.verifyExternalToken).not.toHaveBeenCalled();
 	});
 
 	it('AC5 & AC6: verification happens exactly once, and a second establishExecutionContext call is a no-op', async () => {
