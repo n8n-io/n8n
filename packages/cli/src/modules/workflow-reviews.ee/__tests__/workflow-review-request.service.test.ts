@@ -244,6 +244,31 @@ describe('WorkflowReviewRequestService', () => {
 			expect(authorRepository.addAuthor).not.toHaveBeenCalled();
 		});
 
+		it('rejects a workflow archived between the pre-lock check and the lock', async () => {
+			mockSuccessfulCreatePath();
+			workflowFinderService.findWorkflowForUser
+				.mockResolvedValueOnce(mock<WorkflowEntity>({ isArchived: false }))
+				.mockResolvedValueOnce(mock<WorkflowEntity>({ isArchived: true }));
+
+			await expect(service.create(user, dto)).rejects.toThrow(BadRequestError);
+
+			expect(dbLockService.withLockContext).toHaveBeenCalled();
+			expect(requestRepository.createRequest).not.toHaveBeenCalled();
+			expect(workflowRepository.createWorkflowRow).not.toHaveBeenCalled();
+		});
+
+		it('rejects a workflow moved to another project between the pre-lock check and the lock', async () => {
+			mockSuccessfulCreatePath();
+			sharedWorkflowRepository.getWorkflowOwningProject
+				.mockResolvedValueOnce(mock<Project>({ id: 'project-1' }))
+				.mockResolvedValueOnce(mock<Project>({ id: 'project-2' }));
+
+			await expect(service.create(user, dto)).rejects.toThrow(ConflictError);
+
+			expect(dbLockService.withLockContext).toHaveBeenCalled();
+			expect(requestRepository.createRequest).not.toHaveBeenCalled();
+		});
+
 		describe('reviewer assignment', () => {
 			const mockEligibleReviewers = (...ids: string[]) => {
 				roleService.rolesWithScope.mockResolvedValue(['some-role']);

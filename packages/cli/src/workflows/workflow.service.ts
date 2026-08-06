@@ -31,6 +31,7 @@ import { WorkflowPublicationNotifier } from './publication/workflow-publication-
 import { getErrorDescription, getErrorNodeId, getRequiredRedactionScopes } from './utils';
 import { WorkflowFinderService } from './workflow-finder.service';
 import { WorkflowHistoryService } from './workflow-history/workflow-history.service';
+import { WorkflowMutationHooksProxy } from './workflow-mutation-hooks-proxy.service';
 import { WorkflowPublishGuardProxy } from './workflow-publish-guard-proxy.service';
 import { WorkflowValidationService } from './workflow-validation.service';
 
@@ -97,6 +98,7 @@ export class WorkflowService {
 		private readonly workflowPublishedVersionRepository: WorkflowPublishedVersionRepository,
 		private readonly workflowHookContextService: WorkflowHookContextService,
 		private readonly workflowPublishGuard: WorkflowPublishGuardProxy,
+		private readonly workflowMutationHooks: WorkflowMutationHooksProxy,
 	) {}
 
 	async getMany(
@@ -1180,6 +1182,11 @@ export class WorkflowService {
 			await this.activeWorkflowManager.remove(workflowId);
 		}
 
+		// R2 (P3): ahead of every destructive step, not just the row delete — a hook
+		// that fails here may throw, and nothing irreversible has happened yet.
+		// See LIGO-834_review.md
+		await this.workflowMutationHooks.beforeWorkflowDeleted(workflowId);
+
 		// Delete executions (incl. their binary and blob data) in batches before
 		// the workflow row, so the FK cascade on the workflow row stays too small
 		// to hit a DB statement timeout, however large the execution history.
@@ -1252,6 +1259,8 @@ export class WorkflowService {
 		});
 
 		await this.workflowHistoryService.saveVersion(user, workflow, workflowId);
+
+		await this.workflowMutationHooks.afterWorkflowArchived(workflowId);
 
 		this.eventService.emit('workflow-archived', {
 			user,

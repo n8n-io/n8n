@@ -182,6 +182,45 @@ export class WorkflowReviewRequestRepository extends BaseRepository<WorkflowRevi
 			.getOne();
 	}
 
+	/**
+	 * All open requests linked to any of the given workflows, each with the
+	 * subset of those workflows it is linked to — so a lifecycle cleanup can
+	 * close a request once while still knowing which workflows were affected.
+	 */
+	async findOpenRequestsForWorkflows(
+		workflowIds: string[],
+		ctx: OperationContext,
+	): Promise<Array<{ request: WorkflowReviewRequest; workflowIds: string[] }>> {
+		if (workflowIds.length === 0) return [];
+
+		const state: WorkflowReviewRequestState = 'open';
+
+		const { entities, raw } = await this.managerFor(ctx)
+			.createQueryBuilder(WorkflowReviewRequest, 'request')
+			.innerJoin(
+				WorkflowReviewRequestWorkflow,
+				'requestWorkflow',
+				'requestWorkflow.workflowReviewRequestId = request.id',
+			)
+			.addSelect('requestWorkflow.workflowId', 'linkedWorkflowId')
+			.where('requestWorkflow.workflowId IN (:...workflowIds)', { workflowIds })
+			.andWhere('request.state = :state', { state })
+			.getRawAndEntities<{ request_id: string; linkedWorkflowId: string }>();
+
+		// Raw rows are per (request, workflow) pair; entities are deduplicated.
+		const workflowIdsByRequestId = new Map<string, string[]>();
+		for (const row of raw) {
+			const linked = workflowIdsByRequestId.get(row.request_id) ?? [];
+			linked.push(row.linkedWorkflowId);
+			workflowIdsByRequestId.set(row.request_id, linked);
+		}
+
+		return entities.map((request) => ({
+			request,
+			workflowIds: workflowIdsByRequestId.get(request.id) ?? [],
+		}));
+	}
+
 	async findManyForInbox(options: FindManyForInboxOptions): Promise<WorkflowReviewRequest[]> {
 		const { projectIds, requesterId, state, limit, cursor } = options;
 

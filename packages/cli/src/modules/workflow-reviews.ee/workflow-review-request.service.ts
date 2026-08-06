@@ -273,6 +273,37 @@ export class WorkflowReviewRequestService {
 		}
 	}
 
+	/**
+	 * Re-runs `create`'s pre-lock preconditions. Deliberately the same two lookups
+	 * rather than a cheaper bespoke read, so the two checks cannot drift apart.
+	 */
+	private async assertWorkflowStillReviewable(
+		user: User,
+		workflowId: string,
+		expectedProjectId: string,
+	): Promise<void> {
+		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
+			'workflow:publish',
+		]);
+		if (!workflow) {
+			throw new NotFoundError('Could not find workflow');
+		}
+
+		if (workflow.isArchived) {
+			throw new BadRequestError(
+				`The workflow '${workflowId}' is archived and cannot be submitted for review`,
+			);
+		}
+
+		const project = await this.sharedWorkflowRepository.getWorkflowOwningProject(workflowId);
+		if (project?.id !== expectedProjectId) {
+			throw new ConflictError(
+				`The workflow '${workflowId}' moved to another project and cannot be submitted for review here`,
+				'Retry from the project that now owns the workflow',
+			);
+		}
+	}
+
 	async create(
 		user: User,
 		dto: CreateWorkflowReviewRequestDto,
@@ -330,6 +361,10 @@ export class WorkflowReviewRequestService {
 		const request = await this.dbLockService.withLockContext(
 			DbLock.WORKFLOW_REVIEW_REQUEST_CREATE,
 			async (ctx) => {
+				// without this, a create that lost the race opens a review on an archived
+				// or moved workflow.
+				await this.assertWorkflowStillReviewable(user, workflowId, project.id);
+
 				const existing = await this.workflowReviewRequestRepository.findOpenRequestForWorkflow(
 					workflowId,
 					ctx,
