@@ -54,9 +54,12 @@ export class ModuleRegistry {
 		'source-control',
 		'dynamic-credentials',
 		'chat-hub',
-		// identity-substrate precedes token-exchange and sso-oidc: it owns the
-		// trusted-key-source registry that sso-oidc registers itself into, and
-		// the verifier that token-exchange's controllers rely on transitively.
+		// identity-substrate precedes both token-exchange and sso-oidc:
+		// - sso-oidc registers itself as a trusted key source with
+		//   identity-substrate's registry on init (previously token-exchange's).
+		// - token-exchange now only consumes identity-substrate's verifier/
+		//   resolver, but keeping it directly after preserves the existing
+		//   relative order for anything else that depends on it.
 		'identity-substrate',
 		'token-exchange',
 		'sso-oidc',

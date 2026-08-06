@@ -3,7 +3,8 @@ import { Container } from '@n8n/di';
 import path from 'path';
 import { mock } from 'vitest-mock-extended';
 
-import type { LicenseState } from '../../license-state';
+import { LicenseState } from '../../license-state';
+import type { LicenseProvider } from '../../types';
 import { ModuleConfusionError } from '../errors/module-confusion.error';
 import { getModuleEntryUrl, ModuleRegistry } from '../module-registry';
 
@@ -363,6 +364,68 @@ describe('initModules', () => {
 		await moduleRegistry.initModules('main');
 
 		expect(ModuleClass.init).not.toHaveBeenCalled();
+	});
+
+	describe('array licenseFlag OR semantics', () => {
+		// Real `LicenseState`, backed by a fake provider, so this exercises the
+		// actual OR-across-array logic `LicenseState.isLicensed` implements -
+		// not a mock standing in for it. Models the identity-substrate /
+		// token-exchange additive-migration story: a licenseFlag array lets a
+		// module init from either of two license features, so an existing
+		// licensee of one gets the other's newly-split-out module for free.
+		function licenseStateLicensedOnlyFor(licensedFeature: string): LicenseState {
+			const licenseState = new LicenseState();
+			licenseState.setLicenseProvider(
+				mock<LicenseProvider>({
+					isLicensed: (feature: string) => feature === licensedFeature,
+				}),
+			);
+			return licenseState;
+		}
+
+		it('inits a module whose licenseFlag array includes the one licensed feature', async () => {
+			const ModuleClass = { init: vi.fn() };
+			const moduleMetadata = mock<ModuleMetadata>({
+				getEntries: vi
+					.fn()
+					.mockReturnValue([
+						[
+							'identity-substrate',
+							{ licenseFlag: ['feat:identitySubstrate', 'feat:tokenExchange'], class: ModuleClass },
+						],
+					]),
+			});
+			Container.get = vi.fn().mockReturnValue(ModuleClass);
+			const licenseState = licenseStateLicensedOnlyFor('feat:tokenExchange');
+
+			const moduleRegistry = new ModuleRegistry(moduleMetadata, licenseState, mock(), mock());
+
+			await moduleRegistry.initModules('main');
+
+			expect(ModuleClass.init).toHaveBeenCalled();
+		});
+
+		it('skips init when the licenseFlag array matches no licensed feature', async () => {
+			const ModuleClass = { init: vi.fn() };
+			const moduleMetadata = mock<ModuleMetadata>({
+				getEntries: vi
+					.fn()
+					.mockReturnValue([
+						[
+							'identity-substrate',
+							{ licenseFlag: ['feat:identitySubstrate', 'feat:tokenExchange'], class: ModuleClass },
+						],
+					]),
+			});
+			Container.get = vi.fn().mockReturnValue(ModuleClass);
+			const licenseState = licenseStateLicensedOnlyFor('feat:someUnrelatedFeature');
+
+			const moduleRegistry = new ModuleRegistry(moduleMetadata, licenseState, mock(), mock());
+
+			await moduleRegistry.initModules('main');
+
+			expect(ModuleClass.init).not.toHaveBeenCalled();
+		});
 	});
 });
 
