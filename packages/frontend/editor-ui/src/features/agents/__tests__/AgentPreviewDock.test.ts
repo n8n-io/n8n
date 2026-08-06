@@ -1,6 +1,7 @@
 /* eslint-disable import-x/no-extraneous-dependencies -- test-only patterns */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { mount, shallowMount } from '@vue/test-utils';
+import { TOOLTIP_DELAY_MS } from '@n8n/design-system';
 
 import AgentPreviewDock from '../components/AgentPreviewDock.vue';
 import AgentPreviewChatPage from '../components/AgentPreviewChatPage.vue';
@@ -20,19 +21,22 @@ vi.mock('@n8n/i18n', () => ({
 vi.mock('@n8n/design-system', () => ({
 	N8nIconButton: {
 		name: 'N8nIconButton',
-		template: '<button v-bind="$attrs" @click="$emit(\'click\')"><i :data-icon="icon" /></button>',
-		props: ['icon'],
+		template:
+			'<button v-bind="$attrs" :data-variant="variant" :data-size="size" :data-icon-size="iconSize" @click="$emit(\'click\')"><i :data-icon="icon" /></button>',
+		props: ['icon', 'iconSize', 'size', 'variant'],
 		emits: ['click'],
 	},
 	N8nKeyboardShortcut: { name: 'N8nKeyboardShortcut', template: '<span />' },
 	N8nHeading: {
 		name: 'N8nHeading',
-		template: '<component :is="tag" v-bind="$attrs"><slot /></component>',
-		props: ['tag'],
+		template: '<component :is="tag" v-bind="$attrs" :data-size="size"><slot /></component>',
+		props: ['size', 'tag'],
 	},
 	N8nTooltip: {
 		name: 'N8nTooltip',
-		template: '<div v-bind="$attrs"><slot /><slot name="content" /></div>',
+		template:
+			'<div v-bind="$attrs" :data-content="content" :data-placement="placement" :data-show-after="showAfter"><slot /><slot name="content" /></div>',
+		props: ['content', 'placement', 'showAfter'],
 	},
 	TOOLTIP_DELAY_MS: 500,
 }));
@@ -83,6 +87,7 @@ describe('AgentPreviewDock', () => {
 
 		expect(title.text()).toBe('Order help');
 		expect(title.element.tagName).toBe('H2');
+		expect(title.attributes('data-size')).toBe('small');
 		expect(
 			wrapper
 				.get('[data-testid="agent-preview-dock-header"]')
@@ -103,30 +108,42 @@ describe('AgentPreviewDock', () => {
 				testId: 'agent-preview-view-session-btn',
 				icon: 'list-tree',
 				label: 'agents.builder.preview.viewSession',
-				event: 'view-trace',
 			},
 			{
 				testId: 'agent-preview-new-chat-btn',
 				icon: 'message-circle-plus',
 				label: 'agents.builder.chat.newChat.label',
-				event: 'new-session',
 			},
 			{
 				testId: 'agent-preview-close-btn',
 				icon: 'x',
 				label: 'agents.builder.preview.close.ariaLabel',
-				event: 'close',
 			},
 		];
+		const traceTooltip = wrapper.get('[data-testid="agent-preview-view-session-tooltip"]');
+
+		expect(traceTooltip.attributes()).toMatchObject({
+			'data-content': 'agents.builder.preview.viewSession',
+			'data-placement': 'bottom',
+			'data-show-after': String(TOOLTIP_DELAY_MS),
+		});
 
 		for (const action of expectedActions) {
 			const button = wrapper.get(`[data-testid="${action.testId}"]`);
-			expect(button.attributes('aria-label')).toBe(action.label);
+			expect(button.attributes()).toMatchObject({
+				'aria-label': action.label,
+				'data-icon-size': 'large',
+				'data-size': 'small',
+				'data-variant': 'ghost',
+			});
 			expect(button.find(`[data-icon="${action.icon}"]`).exists()).toBe(true);
 
 			await button.trigger('click');
-			expect(wrapper.emitted(action.event)).toEqual([[]]);
 		}
+
+		expect(wrapper.emitted('view-trace')).toEqual([[]]);
+		expect(wrapper.emitted('new-session')).toEqual([[]]);
+		expect(wrapper.emitted('close')).toEqual([[]]);
 	});
 
 	it.each([

@@ -258,6 +258,7 @@ describe('AgentBuilderEditorColumn', () => {
 		expect(wrapper.findComponent({ name: 'AgentSessionsListView' }).props()).toMatchObject({
 			embedded: true,
 			manageStoreLifecycle: false,
+			openSessionInNewTab: false,
 		});
 	});
 
