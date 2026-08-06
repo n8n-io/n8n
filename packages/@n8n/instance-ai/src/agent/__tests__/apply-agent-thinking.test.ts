@@ -141,11 +141,11 @@ describe('applyAgentThinking', () => {
 		});
 	});
 
-	it('enables medium reasoning effort for custom OpenAI-compatible endpoints', () => {
+	it('enables high reasoning effort for custom OpenAI-compatible endpoints', () => {
 		const agent = new Agent('test');
 		applyAgentThinking(agent, 'custom/Kimi-K3');
 		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('custom', {
-			reasoningEffort: 'medium',
+			reasoningEffort: 'high',
 		});
 	});
 
