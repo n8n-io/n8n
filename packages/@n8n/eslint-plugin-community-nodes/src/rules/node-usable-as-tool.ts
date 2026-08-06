@@ -2,6 +2,7 @@ import { TSESTree } from '@typescript-eslint/utils';
 
 import {
 	isNodeTypeClass,
+	isTriggerNodeClass,
 	findClassProperty,
 	findObjectProperty,
 	createRule,
@@ -26,6 +27,10 @@ export const NodeUsableAsToolRule = createRule({
 		return {
 			ClassDeclaration(node) {
 				if (!isNodeTypeClass(node)) {
+					return;
+				}
+
+				if (isTriggerNodeClass(node)) {
 					return;
 				}
 

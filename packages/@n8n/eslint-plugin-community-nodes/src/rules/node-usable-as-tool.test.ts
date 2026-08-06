@@ -51,6 +51,29 @@ export class RegularClass {
 }`;
 }
 
+function createTriggerNodeCode(usableAsTool?: boolean): string {
+	const usableAsToolProperty = usableAsTool === true ? ',\n\t\tusableAsTool: true' : '';
+
+	return `
+import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
+
+export class TestTrigger implements INodeType {
+	description: INodeTypeDescription = {
+		displayName: 'Test Trigger',
+		name: 'testTrigger',
+		group: ['trigger'],
+		version: 1,
+		description: 'A test trigger node',
+		defaults: {
+			name: 'Test Trigger',
+		},
+		inputs: [],
+		outputs: ['main'],
+		properties: []${usableAsToolProperty},
+	};
+}`;
+}
+
 function createNodeCodeWithOutputsInputs(
 	outputs: string,
 	inputs: string,
@@ -110,6 +133,14 @@ ruleTester.run('node-usable-as-tool', NodeUsableAsToolRule, {
 		{
 			name: 'AI-only node: non-main string literal output and empty inputs skips usableAsTool check',
 			code: createNodeCodeWithOutputsInputs("['ai_agent']", '[]'),
+		},
+		{
+			name: 'trigger node (class name ends with Trigger) without usableAsTool skips check',
+			code: createTriggerNodeCode(),
+		},
+		{
+			name: 'trigger node (class name ends with Trigger) with usableAsTool set to true',
+			code: createTriggerNodeCode(true),
 		},
 	],
 	invalid: [
