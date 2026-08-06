@@ -178,7 +178,8 @@ function onFilesSelected(event: Event) {
 			:heading="emptyStateHeader"
 			:description="emptyStateDescription"
 			:button-text="uploadButtonLabel"
-			@click="openFilePicker"
+			:button-disabled="isUploadDisabled"
+			@click:button="openFilePicker"
 		/>
 		<div v-else :class="$style.tableContainer">
 			<N8nTableBase :max-displayed-rows="10">

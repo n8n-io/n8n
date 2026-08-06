@@ -71,6 +71,23 @@ describe('AgentFilesPanel', () => {
 		expect(wrapper.text()).toContain('agents.builder.files.empty');
 	});
 
+	it('opens the file picker from the empty-state button', async () => {
+		const clickSpy = vi.spyOn(HTMLInputElement.prototype, 'click');
+		const wrapper = mountPanel({ files: [] });
+
+		wrapper.findComponent({ name: 'N8nEmptyState' }).vm.$emit('click:button');
+		await wrapper.vm.$nextTick();
+
+		expect(clickSpy).toHaveBeenCalledOnce();
+		clickSpy.mockRestore();
+	});
+
+	it('disables the empty-state button when uploads are disabled', () => {
+		const wrapper = mountPanel({ files: [], disabled: true });
+
+		expect(wrapper.findComponent({ name: 'N8nEmptyState' }).props('buttonDisabled')).toBe(true);
+	});
+
 	it('shows the knowledge base title with a tooltip and add action', () => {
 		const wrapper = mountPanel({ files: [file] });
 

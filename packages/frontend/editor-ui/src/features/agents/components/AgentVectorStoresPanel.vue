@@ -4,6 +4,7 @@ import {
 	N8nEmptyState,
 	N8nActionDropdown,
 	N8nIcon,
+	N8nIconButton,
 	N8nTableBase,
 	N8nTooltip,
 	N8nText,
@@ -84,6 +85,21 @@ function onAction(actionId: VectorStoreAction, vectorStore: AgentJsonVectorStore
 					<div :class="$style.titleIcon"><N8nIcon icon="circle-help" size="small" /></div>
 				</N8nTooltip>
 			</N8nText>
+			<N8nTooltip
+				v-if="props.vectorStores.length > 0"
+				:content="i18n.baseText('agents.builder.vectorStores.panel.connectButton')"
+				placement="top"
+			>
+				<N8nIconButton
+					variant="ghost"
+					size="small"
+					icon="plus"
+					:disabled="props.disabled"
+					:aria-label="i18n.baseText('agents.builder.vectorStores.panel.connectButton')"
+					data-testid="agent-vector-stores-connect"
+					@click="emit('connect')"
+				/>
+			</N8nTooltip>
 		</div>
 
 		<div v-if="props.vectorStores.length > 0" :class="$style.tableContainer">
