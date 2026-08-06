@@ -2,7 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { User, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { WEBHOOK_NODE_TYPE } from 'n8n-workflow';
+import { WEBHOOK_NODE_TYPE, type INode, type Workflow } from 'n8n-workflow';
 
 import { isWebhookOAuth2Enabled } from '@/constants/oauth2-triggers';
 import type {
@@ -154,43 +154,102 @@ export class WorkflowWebhookTriggerResourceResolver implements ProtectedResource
 			!node.disabled &&
 			node.parameters.authentication === 'n8nOAuth2'
 		) {
-			const baseUrl = `${trimTrailingSlash(this.urlService.getWebhookBaseUrl())}/${this.config.endpoints.webhook}/${resourcePath}`;
-			const urlFor = (method: string) => `${baseUrl}${methodQueryString(method)}`;
-			const methods = [...new Set(triggerMethods.map((method) => method.toUpperCase()))].sort();
-			const requireExecute = node.parameters.requireExecuteAccess !== false;
-			return {
-				// Identity = the trigger, so the method is deliberately absent: editing the
-				// node's method list must not rotate the id and drop the user's consent.
-				// The path is included because — unlike an MCP trigger — a workflow can hold
-				// several webhook nodes, each its own resource.
-				id: `workflow-webhook:${workflow.id}:${resourcePath}`,
-				// Canonical URL = the method being resolved, so the metadata document served
-				// at `?method=POST` advertises `?method=POST` back (RFC 9728 §3.1).
-				getResourceUrl: () => urlFor(requestedMethod),
-				// A token minted for any of this trigger's methods is accepted at all of
-				// them; cross-trigger replay stays impossible because the list is built
-				// only from rows sharing this (workflowId, node).
-				getAudiences: () => methods.map(urlFor),
-				scopes: WEBHOOK_TRIGGER_SCOPES,
-				displayName: workflow.name,
-				authorize: async (user: User) => {
-					if (requireExecute) {
-						return (
-							await this.workflowFinderService.findWorkflowIdsWithScopeForUser(
-								[workflow.id],
-								user,
-								['workflow:execute'],
-							)
-						).has(workflow.id);
-					}
-					return true;
-				},
-			};
+			return this.buildResource(
+				workflow.id,
+				workflow.name,
+				resourcePath,
+				requestedMethod,
+				triggerMethods,
+				node.parameters.requireExecuteAccess !== false,
+			);
 		}
 
 		this.logger.debug(
 			`Node with name ${nodeName} in active version of workflow with ID: ${workflowId} is not an enabled webhook trigger with n8nOAuth2 authentication`,
 		);
 		return undefined;
+	}
+
+	private buildResource(
+		workflowId: string,
+		workflowName: string | undefined,
+		resourcePath: string,
+		requestedMethod: string,
+		triggerMethods: string[],
+		requireExecute: boolean,
+	): ProtectedResource {
+		const baseUrl = `${trimTrailingSlash(this.urlService.getWebhookBaseUrl())}/${this.config.endpoints.webhook}/${resourcePath}`;
+		const urlFor = (method: string) => `${baseUrl}${methodQueryString(method)}`;
+		const methods = [...new Set(triggerMethods.map((method) => method.toUpperCase()))].sort();
+		return {
+			// Identity = the trigger, so the method is deliberately absent: editing the
+			// node's method list must not rotate the id and drop the user's consent.
+			// The path is included because — unlike an MCP trigger — a workflow can hold
+			// several webhook nodes, each its own resource.
+			id: `workflow-webhook:${workflowId}:${resourcePath}`,
+			// Canonical URL = the method being resolved, so the metadata document served
+			// at `?method=POST` advertises `?method=POST` back (RFC 9728 §3.1).
+			getResourceUrl: () => urlFor(requestedMethod),
+			// A token minted for any of this trigger's methods is accepted at all of
+			// them; cross-trigger replay stays impossible because the list is built
+			// only from rows sharing this (workflowId, node).
+			getAudiences: () => methods.map(urlFor),
+			scopes: WEBHOOK_TRIGGER_SCOPES,
+			displayName: workflowName,
+			authorize: async (user: User) => {
+				if (requireExecute) {
+					return (
+						await this.workflowFinderService.findWorkflowIdsWithScopeForUser([workflowId], user, [
+							'workflow:execute',
+						])
+					).has(workflowId);
+				}
+				return true;
+			},
+		};
+	}
+
+	/**
+	 * Resolve a resource directly from the live workflow/node objects a
+	 * context-establishment hook already holds mid-execution, instead of
+	 * reconstructing a resource URL/path and looking it back up through the
+	 * DB-by-name path above. Deliberately does NOT gate on
+	 * `isWebhookOAuth2Enabled()` or `authentication === 'n8nOAuth2'` (unlike
+	 * `resolveByPath`/`resolveByUrl`): both gates are about this instance's own
+	 * first-party OAuth flow, not about whether the node names a resource at
+	 * all - a node verifying external tokens (e.g. via token-exchange) is by
+	 * definition not using that flow, and must still resolve here.
+	 */
+	async resolveByNode(workflow: Workflow, node: INode): Promise<ProtectedResource | undefined> {
+		if (node.type !== WEBHOOK_NODE_TYPE || node.disabled) {
+			return undefined;
+		}
+
+		const rows = (await this.webhookService.getRegisteredWebhooks(workflow.id)).filter(
+			(row) => row.node === node.name,
+		);
+		if (rows.length === 0) {
+			this.logger.debug(`No registered webhooks for node ${node.name} in workflow ${workflow.id}`);
+			return undefined;
+		}
+
+		const resourcePath = webhookResourcePath(rows[0].webhookPath, rows[0].webhookId);
+		const triggerMethods = rows.map((row) => row.method);
+		const requireExecute = node.parameters.requireExecuteAccess !== false;
+
+		// No live HTTP method to echo back as the canonical URL here (unlike
+		// resolveByPath, which knows the requested method from the query
+		// string) - the lowest sorted method is an arbitrary but stable choice.
+		// Audience membership (getAudiences()) covers every method regardless.
+		const [placeholderMethod] = [...new Set(triggerMethods.map((m) => m.toUpperCase()))].sort();
+
+		return this.buildResource(
+			workflow.id,
+			workflow.name,
+			resourcePath,
+			placeholderMethod,
+			triggerMethods,
+			requireExecute,
+		);
 	}
 }

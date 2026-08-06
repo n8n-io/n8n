@@ -299,6 +299,32 @@ describe('TokenExchangeService', () => {
 			);
 		});
 
+		it('accepts a set of acceptable audiences, passing them through as a tuple to jwt.verify', async () => {
+			mockValidToken();
+
+			await service.verifyToken('token', {
+				expectedAudience: ['aud-a', 'aud-b'],
+				consumeJti: false,
+			});
+
+			expect(jwt.verify).toHaveBeenCalledWith(
+				'token',
+				resolvedKey.key,
+				expect.objectContaining({ audience: ['aud-a', 'aud-b'] }),
+			);
+		});
+
+		it('rejects when consumeJti is false and expectedAudience is an empty array', async () => {
+			const verifyTokenUnsafe = service.verifyToken.bind(service) as (
+				token: string,
+				options?: Record<string, unknown>,
+			) => Promise<unknown>;
+
+			await expect(
+				verifyTokenUnsafe('token', { expectedAudience: [], consumeJti: false }),
+			).rejects.toThrow(TokenExchangeAuthError);
+		});
+
 		it('verifies the same token twice when consumeJti is false', async () => {
 			mockValidToken();
 

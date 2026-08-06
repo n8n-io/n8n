@@ -50,7 +50,7 @@ describe('InboundClaimVerificationHook', () => {
 		} as unknown as Mocked<ExternalTokenVerifierProxy>;
 
 		mockAudienceService = {
-			getExpectedAudience: vi.fn().mockReturnValue('https://n8n.example.com'),
+			getExpectedAudiences: vi.fn().mockResolvedValue({ audiences: ['https://n8n.example.com'] }),
 		} as unknown as Mocked<InboundAudienceService>;
 
 		hook = new InboundClaimVerificationHook(mockLogger, mockProxy, mockAudienceService);
@@ -122,10 +122,42 @@ describe('InboundClaimVerificationHook', () => {
 			await hook.execute(createOptions());
 
 			expect(mockProxy.verifyExternalToken).toHaveBeenCalledTimes(1);
-			expect(mockProxy.verifyExternalToken).toHaveBeenCalledWith(
-				'valid-token',
+			expect(mockProxy.verifyExternalToken).toHaveBeenCalledWith('valid-token', [
 				'https://n8n.example.com',
-			);
+			]);
+		});
+
+		it('passes the full audience set through to the verifier when a resource has several', async () => {
+			mockAudienceService.getExpectedAudiences.mockResolvedValue({
+				audiences: [
+					'https://n8n.example.com/webhook/abc?method=GET',
+					'https://n8n.example.com/webhook/abc?method=POST',
+				],
+			});
+			mockProxy.verifyExternalToken.mockResolvedValue({
+				claim: null,
+				context: { reason: 'invalid_token' },
+			});
+
+			await hook.execute(createOptions());
+
+			expect(mockProxy.verifyExternalToken).toHaveBeenCalledWith('valid-token', [
+				'https://n8n.example.com/webhook/abc?method=GET',
+				'https://n8n.example.com/webhook/abc?method=POST',
+			]);
+		});
+	});
+
+	describe('resource_not_found: no resolvable resource for the trigger -> no claim, no throw', () => {
+		it('records authFailureReason without calling the verifier', async () => {
+			mockAudienceService.getExpectedAudiences.mockResolvedValue({
+				reason: 'resource_not_found',
+			});
+
+			const result = await hook.execute(createOptions());
+
+			expect(result.contextUpdate).toEqual({ authFailureReason: 'resource_not_found' });
+			expect(mockProxy.verifyExternalToken).not.toHaveBeenCalled();
 		});
 	});
 

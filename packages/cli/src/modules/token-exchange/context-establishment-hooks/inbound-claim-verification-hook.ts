@@ -57,10 +57,21 @@ export class InboundClaimVerificationHook implements IContextEstablishmentHook {
 				return {};
 			}
 
-			const expectedAudience = this.inboundAudienceService.getExpectedAudience();
+			const audienceResult = await this.inboundAudienceService.getExpectedAudiences(
+				options.workflow,
+				options.triggerNode,
+			);
+			if (!audienceResult.audiences) {
+				// Audience belongs to the resource being called - with no resource
+				// resolvable, there is nothing to verify against. Fail closed
+				// rather than guess an instance-wide value (D4 still applies: this
+				// only withholds the claim, it never blocks the execution).
+				return { contextUpdate: { authFailureReason: audienceResult.reason } };
+			}
+
 			const result = await this.externalTokenVerifierProxy.verifyExternalToken(
 				token,
-				expectedAudience,
+				audienceResult.audiences,
 			);
 
 			if (!result.claim) {

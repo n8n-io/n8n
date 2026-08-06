@@ -68,11 +68,16 @@ export class TokenExchangeService implements ExternalTokenVerifier {
 	 * `expectedAudience` becomes mandatory instead: `jsonwebtoken` silently skips
 	 * audience validation when `audience` is `undefined`, and a caller that can't
 	 * rely on replay protection must not also silently skip audience checks.
+	 *
+	 * `expectedAudience` accepts a single value or a set of acceptable values -
+	 * a resource can have several accepted audiences (e.g. a multi-method
+	 * webhook trigger unions every method's URL), and the token is accepted if
+	 * its `aud` matches any one of them.
 	 */
 	async verifyToken(
 		subjectToken: string,
 		options?: {
-			expectedAudience?: string;
+			expectedAudience?: string | string[];
 			consumeJti?: true;
 			requireJti?: true;
 			maxLifetimeSeconds?: number;
@@ -81,7 +86,7 @@ export class TokenExchangeService implements ExternalTokenVerifier {
 	async verifyToken(
 		subjectToken: string,
 		options: {
-			expectedAudience: string;
+			expectedAudience: string | string[];
 			consumeJti: false;
 			requireJti?: boolean;
 			maxLifetimeSeconds?: number;
@@ -98,7 +103,7 @@ export class TokenExchangeService implements ExternalTokenVerifier {
 			requireJti = true,
 			maxLifetimeSeconds,
 		}: {
-			expectedAudience?: string;
+			expectedAudience?: string | string[];
 			consumeJti?: boolean;
 			requireJti?: boolean;
 			maxLifetimeSeconds?: number;
@@ -107,7 +112,10 @@ export class TokenExchangeService implements ExternalTokenVerifier {
 		claims: ExternalTokenClaims | ResourceServerTokenClaims;
 		resolvedKey: ResolvedTrustedKey;
 	}> {
-		if (!consumeJti && !expectedAudience) {
+		const hasExpectedAudience =
+			expectedAudience !== undefined &&
+			(!Array.isArray(expectedAudience) || expectedAudience.length > 0);
+		if (!consumeJti && !hasExpectedAudience) {
 			throw new TokenExchangeAuthError(
 				TokenExchangeFailureReason.AudienceRequired,
 				'expectedAudience is required when JTI consumption is disabled',
@@ -153,7 +161,9 @@ export class TokenExchangeService implements ExternalTokenVerifier {
 				// EdDSA is valid at runtime but missing from @types/jsonwebtoken
 				algorithms: resolvedKey.algorithms as jwt.Algorithm[],
 				issuer: resolvedKey.issuer,
-				audience: expectedAudience ?? resolvedKey.expectedAudience,
+				audience: this.toVerifyAudience(
+					hasExpectedAudience ? expectedAudience : resolvedKey.expectedAudience,
+				),
 				ignoreExpiration: false,
 				ignoreNotBefore: false,
 			});
@@ -207,8 +217,24 @@ export class TokenExchangeService implements ExternalTokenVerifier {
 		return { claims, resolvedKey };
 	}
 
+	/**
+	 * `jsonwebtoken`'s `VerifyOptions.audience` wants a non-empty tuple, not a
+	 * general array, so a plain `string[]` doesn't structurally satisfy it even
+	 * though it's runtime-equivalent. `hasExpectedAudience` already guarantees
+	 * a non-empty array reaches here for the call-parameter case; the
+	 * source-level fallback is always a single string or undefined.
+	 */
+	private toVerifyAudience(audience: string | string[] | undefined): jwt.VerifyOptions['audience'] {
+		if (audience === undefined || typeof audience === 'string') return audience;
+		const [first, ...rest] = audience;
+		return [first, ...rest];
+	}
+
 	/** Registered as the `ExternalTokenVerifierProxy` provider on module init. Never throws. */
-	async verifyExternalToken(token: string, expectedAudience: string): Promise<VerifiedClaimResult> {
+	async verifyExternalToken(
+		token: string,
+		expectedAudience: string | string[],
+	): Promise<VerifiedClaimResult> {
 		try {
 			const { claims, resolvedKey } = await this.verifyToken(token, {
 				expectedAudience,

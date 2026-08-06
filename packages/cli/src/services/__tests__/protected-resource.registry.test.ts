@@ -1,4 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
+import type { INode, Workflow } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { ProtectedResource, ProtectedResourceResolver } from '../protected-resource.registry';
@@ -159,6 +160,57 @@ describe('ProtectedResourceRegistry', () => {
 			await resolverRegistry.getByResourcePath('/webhook/orders');
 
 			expect(resolver.resolveByPath).toHaveBeenCalledWith('/webhook/orders', '');
+		});
+	});
+
+	describe('getByWorkflowNode', () => {
+		const workflow = mock<Workflow>({ id: 'wf-1' });
+		const node = mock<INode>({ name: 'Webhook' });
+
+		it('should resolve via a resolver implementing resolveByNode', async () => {
+			const resolverRegistry = new ProtectedResourceRegistry(mock<Logger>());
+			const resolver = mock<ProtectedResourceResolver>({ id: 'webhook', scopes: [] });
+			resolver.resolveByNode!.mockResolvedValue(resourceB);
+			resolverRegistry.registerResolver(resolver);
+
+			expect(await resolverRegistry.getByWorkflowNode(workflow, node)).toBe(resourceB);
+			expect(resolver.resolveByNode).toHaveBeenCalledWith(workflow, node);
+		});
+
+		it('should skip resolvers that do not implement resolveByNode', async () => {
+			const resolverRegistry = new ProtectedResourceRegistry(mock<Logger>());
+			const resolverWithoutMethod: ProtectedResourceResolver = {
+				id: 'no-node-lookup',
+				scopes: [],
+				resolveByUrl: async () => undefined,
+				resolveByPath: async () => undefined,
+			};
+			resolverRegistry.registerResolver(resolverWithoutMethod);
+
+			expect(await resolverRegistry.getByWorkflowNode(workflow, node)).toBeUndefined();
+		});
+
+		it('should return undefined when no resolver matches', async () => {
+			const resolverRegistry = new ProtectedResourceRegistry(mock<Logger>());
+			const resolver = mock<ProtectedResourceResolver>({ id: 'webhook', scopes: [] });
+			resolver.resolveByNode!.mockResolvedValue(undefined);
+			resolverRegistry.registerResolver(resolver);
+
+			expect(await resolverRegistry.getByWorkflowNode(workflow, node)).toBeUndefined();
+		});
+
+		it('should treat a throwing resolver as a non-match and log a warning', async () => {
+			const logger = mock<Logger>();
+			const failingRegistry = new ProtectedResourceRegistry(logger);
+			const resolver = mock<ProtectedResourceResolver>({ id: 'boom', scopes: [] });
+			resolver.resolveByNode!.mockRejectedValue(new Error('backing store unavailable'));
+			failingRegistry.registerResolver(resolver);
+
+			expect(await failingRegistry.getByWorkflowNode(workflow, node)).toBeUndefined();
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Protected resource resolver "boom" failed to resolve',
+				{ error: 'backing store unavailable' },
+			);
 		});
 	});
 
