@@ -1,4 +1,3 @@
-import { sleep } from '@n8n/utils/sleep';
 import type { ProxyServer } from 'n8n-containers/services/proxy';
 import type { IDataObject, IWorkflowBase } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
@@ -83,22 +82,30 @@ async function fetchNewTriggerExecutions(api: ApiHelpers, workflowId: string, kn
 // `waitForExecution`'s recency fallback would otherwise re-match the
 // activation-seed execution. Asserting exactly one new execution (not just
 // that the first one succeeded) catches a cursor-commit race that re-emits
-// an already-seen item alongside the genuinely new one.
+// an already-seen item alongside the genuinely new one. Instead of a fixed
+// grace sleep after the first sighting (flaky under CI jitter), we require
+// the count to repeat on a consecutive poll before treating it as settled,
+// so a slow-landing straggler still gets counted rather than missed.
 export async function expectNewTriggerExecution(
 	api: ApiHelpers,
 	workflowId: string,
 	known: Set<string>,
 	timeoutMs = 20_000,
 ): Promise<void> {
-	await expect
-		.poll(async () => (await fetchNewTriggerExecutions(api, workflowId, known)).length, {
-			timeout: timeoutMs,
-		})
-		.toBeGreaterThan(0);
+	let previousCount = -1;
 
-	// Give a straggler execution (e.g. a duplicate re-emit from a racing
-	// cursor commit) a chance to land before asserting cardinality.
-	await sleep(500);
+	await expect
+		.poll(
+			async () => {
+				const count = (await fetchNewTriggerExecutions(api, workflowId, known)).length;
+				const settled = count > 0 && count === previousCount;
+				previousCount = count;
+				return settled;
+			},
+			{ timeout: timeoutMs },
+		)
+		.toBe(true);
+
 	const fresh = await fetchNewTriggerExecutions(api, workflowId, known);
 
 	expect(fresh).toHaveLength(1);
