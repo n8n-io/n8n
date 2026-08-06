@@ -605,6 +605,72 @@ describe('ScheduleTriggerJobRegistrar', () => {
 			);
 		});
 
+		it('provisions a positive misfire grace parameter as the grace of the node', async () => {
+			const node = makeNode({ parameters: { misfireGraceSeconds: 90 } });
+			const session = makeRegistrar().createSession();
+			session.createCollector(workflow, node).registerCron(dailyAtNine, vi.fn());
+
+			await session.commit(WORKFLOW_ID, NODE_ID);
+
+			expect(jobProvisioner.provision.mock.calls.at(-1)![6]).toBe(90);
+		});
+
+		it('provisions no misfire grace when the node carries no grace parameter, leaving the instance value to apply', async () => {
+			const node = makeNode();
+			const session = makeRegistrar().createSession();
+			session.createCollector(workflow, node).registerCron(dailyAtNine, vi.fn());
+
+			await session.commit(WORKFLOW_ID, NODE_ID);
+
+			expect(jobProvisioner.provision.mock.calls.at(-1)![6]).toBeUndefined();
+		});
+
+		it('provisions no misfire grace for a stored 0, which stands for the instance value', async () => {
+			const node = makeNode({ parameters: { misfireGraceSeconds: 0 } });
+			const session = makeRegistrar().createSession();
+			session.createCollector(workflow, node).registerCron(dailyAtNine, vi.fn());
+
+			await session.commit(WORKFLOW_ID, NODE_ID);
+
+			expect(jobProvisioner.provision.mock.calls.at(-1)![6]).toBeUndefined();
+		});
+
+		it.each<[string, INodeParameters]>([
+			['a negative number', { misfireGraceSeconds: -30 }],
+			['a fractional number', { misfireGraceSeconds: 1.5 }],
+			['NaN', { misfireGraceSeconds: Number.NaN }],
+			['Infinity', { misfireGraceSeconds: Number.POSITIVE_INFINITY }],
+			['a numeric string', { misfireGraceSeconds: '30' }],
+			['a non-numeric string', { misfireGraceSeconds: 'nonsense' }],
+			['a boolean', { misfireGraceSeconds: true }],
+			['null', { misfireGraceSeconds: null } as unknown as INodeParameters],
+		])(
+			'provisions no misfire grace for %s, rather than failing the activation',
+			async (_label, parameters) => {
+				const node = makeNode({ parameters });
+				const session = makeRegistrar().createSession();
+				session.createCollector(workflow, node).registerCron(dailyAtNine, vi.fn());
+
+				await session.commit(WORKFLOW_ID, NODE_ID);
+
+				expect(jobProvisioner.provision.mock.calls.at(-1)![6]).toBeUndefined();
+			},
+		);
+
+		it('provisions no misfire grace for a typeVersion 1.3 node whose raw JSON carries one, because Workflow normalisation strips a parameter gated to 1.4+', async () => {
+			const { workflow: realWorkflow, node: normalizedNode } = buildRealNormalizedNode(1.3, {
+				misfireGraceSeconds: 90,
+			});
+			expect(normalizedNode.parameters.misfireGraceSeconds).toBeUndefined();
+
+			const session = makeRegistrar().createSession();
+			session.createCollector(realWorkflow, normalizedNode).registerCron(dailyAtNine, vi.fn());
+
+			await session.commit(WORKFLOW_ID, NODE_ID);
+
+			expect(jobProvisioner.provision.mock.calls.at(-1)![6]).toBeUndefined();
+		});
+
 		it('consumes the collected rules: a second commit is a no-op', async () => {
 			const session = makeRegistrar().createSession();
 			const collector = session.createCollector(workflow, scheduleNode);
