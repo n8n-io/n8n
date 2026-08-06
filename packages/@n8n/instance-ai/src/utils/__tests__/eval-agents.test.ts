@@ -204,6 +204,69 @@ describe('eval agent model config', () => {
 		});
 	});
 
+	it('supports keyless custom/* OpenAI-compatible routers (URL only, no API key)', () => {
+		process.env.N8N_INSTANCE_AI_MODEL = 'custom/Kimi-K3';
+		process.env.N8N_INSTANCE_AI_MODEL_URL = 'https://router.example.com/v1';
+
+		const config = resolveEvalModelConfig();
+
+		expect(config).toMatchObject({
+			modelId: 'custom/Kimi-K3',
+			provider: 'custom',
+			providerModelId: 'Kimi-K3',
+			apiKey: '',
+			url: 'https://router.example.com/v1',
+		});
+
+		createEvalAgent('test-agent', { instructions: 'Do the task.' });
+
+		expect(mockAgentInstances[0]?.model).toHaveBeenCalledWith({
+			id: 'custom/Kimi-K3',
+			apiKey: '',
+			url: 'https://router.example.com/v1',
+		});
+	});
+
+	it('still requires an API key for custom/* without a model URL', () => {
+		process.env.N8N_INSTANCE_AI_MODEL = 'custom/Kimi-K3';
+
+		expect(() => resolveEvalModelConfig()).toThrow(
+			/Missing API key for eval model "custom\/Kimi-K3"/,
+		);
+	});
+
+	it('keeps Anthropic eval model separate from a custom/* builder (no builder URL/key leak)', () => {
+		process.env.N8N_INSTANCE_AI_MODEL = 'custom/Kimi-K3';
+		process.env.N8N_INSTANCE_AI_MODEL_URL = 'https://router.example.com/v1';
+		process.env.N8N_INSTANCE_AI_MODEL_API_KEY = '';
+		process.env.N8N_INSTANCE_AI_EVAL_MODEL = 'anthropic/claude-sonnet-4-6';
+		process.env.ANTHROPIC_API_KEY = 'anthropic-eval-key';
+
+		const config = resolveEvalModelConfig();
+
+		expect(config).toEqual({
+			modelId: 'anthropic/claude-sonnet-4-6',
+			provider: 'anthropic',
+			providerModelId: 'claude-sonnet-4-6',
+			apiKey: 'anthropic-eval-key',
+			url: undefined,
+			headers: undefined,
+		});
+	});
+
+	it('prefers Anthropic keys over a non-Anthropic builder MODEL_API_KEY for the eval model', () => {
+		process.env.N8N_INSTANCE_AI_MODEL = 'openai/gpt-5.6-sol';
+		process.env.N8N_INSTANCE_AI_MODEL_API_KEY = 'openai-builder-key';
+		process.env.N8N_INSTANCE_AI_EVAL_MODEL = 'anthropic/claude-sonnet-4-6';
+		process.env.ANTHROPIC_API_KEY = 'anthropic-eval-key';
+
+		expect(resolveEvalModelConfig()).toMatchObject({
+			modelId: 'anthropic/claude-sonnet-4-6',
+			apiKey: 'anthropic-eval-key',
+			url: undefined,
+		});
+	});
+
 	it('prefers EVAL_MODAL_LLM_HEADERS over N8N_INSTANCE_AI_MODEL_HEADERS', () => {
 		process.env.N8N_INSTANCE_AI_MODEL = 'custom/moonshotai/Kimi-K3';
 		process.env.N8N_INSTANCE_AI_MODEL_URL = 'https://example.modal.direct/v1';

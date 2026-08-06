@@ -285,6 +285,15 @@ jobs:
             MODEL_ARGS+=(-e N8N_INSTANCE_AI_MODEL_URL="$INSTANCE_AI_MODEL_URL")
           fi
 
+          # EvalMock / pin-data / in-product eval LLMs always use Anthropic Sonnet,
+          # independent of the builder experiment model (custom/Kimi, openai/*, …).
+          # ANTHROPIC_API_KEY is the provider-native key resolveEvalModelConfig prefers
+          # when N8N_INSTANCE_AI_EVAL_MODEL differs from N8N_INSTANCE_AI_MODEL.
+          MODEL_ARGS+=(
+            -e N8N_INSTANCE_AI_EVAL_MODEL=anthropic/claude-sonnet-4-6
+            -e ANTHROPIC_API_KEY="$EVALS_ANTHROPIC_KEY"
+          )
+
           # Lane builds use the provider matching N8N_INSTANCE_AI_MODEL.
           # The eval CLI step keeps EVALS_ANTHROPIC_KEY for Sonnet verifier/mocks.
           # model-url + custom/* → OpenAI-compatible endpoint (dedicated routers; no key).
@@ -539,7 +548,10 @@ jobs:
         continue-on-error: true
         working-directory: packages/@n8n/instance-ai
         env:
+          # Host-side verifier/judges always use Anthropic — never the builder experiment model.
+          N8N_INSTANCE_AI_EVAL_MODEL: anthropic/claude-sonnet-4-6
           N8N_INSTANCE_AI_MODEL_API_KEY: ${{ secrets.EVALS_ANTHROPIC_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.EVALS_ANTHROPIC_KEY }}
           LANGSMITH_TRACING: 'true'
           LANGSMITH_ENDPOINT: ${{ secrets.EVALS_LANGSMITH_ENDPOINT }}
           LANGSMITH_API_KEY: ${{ secrets.EVALS_LANGSMITH_API_KEY }}
