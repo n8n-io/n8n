@@ -39,6 +39,7 @@ import { RequireVersionRule } from './require-version.js';
 import { ResourceOperationPatternRule } from './resource-operation-pattern.js';
 import { TriggerNodeConventionsRule } from './trigger-node-conventions.js';
 import { ValidAuthorRule } from './valid-author.js';
+import { ValidCodexCategoriesRule } from './valid-codex-categories.js';
 import { ValidCredentialReferencesRule } from './valid-credential-references.js';
 import { ValidDescriptionRule } from './valid-description.js';
 import { ValidPeerDependenciesRule } from './valid-peer-dependencies.js';
@@ -84,6 +85,7 @@ export const rules = {
 	'require-node-description-fields': RequireNodeDescriptionFieldsRule,
 	'require-version': RequireVersionRule,
 	'valid-author': ValidAuthorRule,
+	'valid-codex-categories': ValidCodexCategoriesRule,
 	'valid-credential-references': ValidCredentialReferencesRule,
 	'valid-description': ValidDescriptionRule,
 	'valid-peer-dependencies': ValidPeerDependenciesRule,
