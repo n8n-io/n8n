@@ -182,71 +182,67 @@ describe('McpSettingsController', () => {
 			expect(() => new UpdateMcpSettingsDto({ mcpAccessEnabled: 'yes' } as never)).toThrow();
 		});
 
-		test('does not touch MCP access when only autoExposeNewWorkflows is patched', async () => {
-			const user = createUser();
-			const req = createReq({ autoExposeNewWorkflows: true }, { user });
-			const dto = UpdateMcpSettingsDto.parse({ autoExposeNewWorkflows: true });
-			moduleRegistry.refreshModuleSettings.mockResolvedValue(null);
+		test.each([
+			{ patch: { autoExposeNewWorkflows: true }, touchesAccess: false },
+			{ patch: { mcpAccessEnabled: true }, touchesAccess: true },
+		])(
+			'only touches the service for the field patched ($patch)',
+			async ({ patch, touchesAccess }) => {
+				const user = createUser();
+				const req = createReq(patch, { user });
+				const dto = UpdateMcpSettingsDto.parse(patch);
+				mcpSettingsService.setEnabled.mockResolvedValue(undefined);
+				moduleRegistry.refreshModuleSettings.mockResolvedValue(null);
 
-			const res = createRes();
-			const result = await controller.updateSettings(req, res, dto);
+				const res = createRes();
+				const result = await controller.updateSettings(req, res, dto);
 
-			expect(mcpSettingsService.setAutoExposeNewWorkflows).toHaveBeenCalledWith(true);
-			expect(mcpSettingsService.setEnabled).not.toHaveBeenCalled();
-			expect(eventService.emit).not.toHaveBeenCalledWith('mcp-access-updated', expect.anything());
-			expect(result).toEqual({ autoExposeNewWorkflows: true });
-		});
+				if (touchesAccess) {
+					expect(mcpSettingsService.setEnabled).toHaveBeenCalledWith(true);
+					expect(mcpSettingsService.setAutoExposeNewWorkflows).not.toHaveBeenCalled();
+					expect(eventService.emit).toHaveBeenCalledWith('mcp-access-updated', {
+						user: req.user,
+						enabled: true,
+					});
+				} else {
+					expect(mcpSettingsService.setAutoExposeNewWorkflows).toHaveBeenCalledWith(true);
+					expect(mcpSettingsService.setEnabled).not.toHaveBeenCalled();
+					expect(eventService.emit).not.toHaveBeenCalledWith(
+						'mcp-access-updated',
+						expect.anything(),
+					);
+				}
+				expect(result).toEqual(patch);
+			},
+		);
 
-		test('does not touch autoExpose when only mcpAccessEnabled is patched', async () => {
-			const user = createUser();
-			const req = createReq({ mcpAccessEnabled: true }, { user });
-			const dto = UpdateMcpSettingsDto.parse({ mcpAccessEnabled: true });
-			mcpSettingsService.setEnabled.mockResolvedValue(undefined);
-			moduleRegistry.refreshModuleSettings.mockResolvedValue(null);
+		test.each([
+			{ mcpAccessEnabled: false, expectReset: true },
+			{ mcpAccessEnabled: true, expectReset: false },
+		])(
+			'$expectReset resets autoExposeNewWorkflows when access is set to $mcpAccessEnabled',
+			async ({ mcpAccessEnabled, expectReset }) => {
+				const user = createUser();
+				const req = createReq({ mcpAccessEnabled }, { user });
+				const dto = UpdateMcpSettingsDto.parse({ mcpAccessEnabled });
+				mcpSettingsService.setEnabled.mockResolvedValue(undefined);
+				mcpSettingsService.setAutoExposeNewWorkflows.mockResolvedValue(undefined);
+				moduleRegistry.refreshModuleSettings.mockResolvedValue(null);
 
-			const res = createRes();
-			const result = await controller.updateSettings(req, res, dto);
+				const res = createRes();
+				const result = await controller.updateSettings(req, res, dto);
 
-			expect(mcpSettingsService.setEnabled).toHaveBeenCalledWith(true);
-			expect(mcpSettingsService.setAutoExposeNewWorkflows).not.toHaveBeenCalled();
-			expect(eventService.emit).toHaveBeenCalledWith('mcp-access-updated', {
-				user: req.user,
-				enabled: true,
-			});
-			expect(result).toEqual({ mcpAccessEnabled: true });
-		});
-
-		test('resets autoExposeNewWorkflows when access is disabled', async () => {
-			const user = createUser();
-			const req = createReq({ mcpAccessEnabled: false }, { user });
-			const dto = UpdateMcpSettingsDto.parse({ mcpAccessEnabled: false });
-			mcpSettingsService.setEnabled.mockResolvedValue(undefined);
-			mcpSettingsService.setAutoExposeNewWorkflows.mockResolvedValue(undefined);
-			moduleRegistry.refreshModuleSettings.mockResolvedValue(null);
-
-			const res = createRes();
-			const result = await controller.updateSettings(req, res, dto);
-
-			expect(mcpSettingsService.setEnabled).toHaveBeenCalledWith(false);
-			expect(mcpSettingsService.setAutoExposeNewWorkflows).toHaveBeenCalledWith(false);
-			expect(mcpSettingsService.setAutoExposeNewWorkflows).toHaveBeenCalledTimes(1);
-			expect(result).toEqual({ mcpAccessEnabled: false, autoExposeNewWorkflows: false });
-		});
-
-		test('does not reset autoExposeNewWorkflows when access is enabled', async () => {
-			const user = createUser();
-			const req = createReq({ mcpAccessEnabled: true }, { user });
-			const dto = UpdateMcpSettingsDto.parse({ mcpAccessEnabled: true });
-			mcpSettingsService.setEnabled.mockResolvedValue(undefined);
-			moduleRegistry.refreshModuleSettings.mockResolvedValue(null);
-
-			const res = createRes();
-			const result = await controller.updateSettings(req, res, dto);
-
-			expect(mcpSettingsService.setEnabled).toHaveBeenCalledWith(true);
-			expect(mcpSettingsService.setAutoExposeNewWorkflows).not.toHaveBeenCalled();
-			expect(result).toEqual({ mcpAccessEnabled: true });
-		});
+				expect(mcpSettingsService.setEnabled).toHaveBeenCalledWith(mcpAccessEnabled);
+				if (expectReset) {
+					expect(mcpSettingsService.setAutoExposeNewWorkflows).toHaveBeenCalledWith(false);
+					expect(mcpSettingsService.setAutoExposeNewWorkflows).toHaveBeenCalledTimes(1);
+					expect(result).toEqual({ mcpAccessEnabled, autoExposeNewWorkflows: false });
+				} else {
+					expect(mcpSettingsService.setAutoExposeNewWorkflows).not.toHaveBeenCalled();
+					expect(result).toEqual({ mcpAccessEnabled });
+				}
+			},
+		);
 
 		test('updates both fields when both are patched', async () => {
 			const user = createUser();
