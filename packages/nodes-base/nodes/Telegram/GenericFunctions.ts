@@ -89,7 +89,11 @@ export function addAdditionalFields(
 			additionalFields.appendAttribution = true;
 		}
 
-		if (!additionalFields.parse_mode) {
+		// Only force Markdown when attribution needs it. Forcing Markdown while
+		// attribution is off makes Telegram parse the whole message as entities,
+		// so unescaped characters like "_" in {{ $workflow.name }} fail with
+		// "can't parse entities" (see n8n-io/n8n#35386).
+		if (additionalFields.appendAttribution && !additionalFields.parse_mode) {
 			additionalFields.parse_mode = 'Markdown';
 		}
 
@@ -273,20 +277,23 @@ export function createSendAndWaitMessageBody(context: IExecuteFunctions, chatApp
 
 	const config = getSendAndWaitConfig(context);
 	let text = config.message;
+	const appendAttribution = config.appendAttribution !== false;
 
-	if (config.appendAttribution !== false) {
+	if (appendAttribution) {
 		const instanceId = context.getInstanceId();
 		const attributionText = 'This message was sent automatically with ';
 		const link = createUtmCampaignLink('n8n-nodes-base.telegram', instanceId);
 		text = `${text}\n\n_${attributionText}_[n8n](${link})`;
 	}
 
-	const body = {
+	const body: IDataObject = {
 		chat_id,
 		text,
 
 		disable_web_page_preview: true,
-		parse_mode: 'Markdown',
+		// Only set Markdown when attribution formatting requires it; otherwise
+		// plain text so underscores etc. in the message are not treated as entities.
+		...(appendAttribution ? { parse_mode: 'Markdown' } : {}),
 		reply_markup: {
 			inline_keyboard: [
 				config.options.map((option) => {
