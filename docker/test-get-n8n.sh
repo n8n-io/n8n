@@ -13,6 +13,10 @@
 set -u
 
 SCRIPT="$(cd "$(dirname "$0")" && pwd)/get-n8n.sh"
+# Install from the working copy of the stack definition, not the published one
+# on master — the harness must test this branch's compose file.
+COMPOSE_SRC="$(cd "$(dirname "$0")" && pwd)/get-n8n-compose.yml"
+export N8N_COMPOSE_URL="$COMPOSE_SRC"
 E2E=0
 [ "${1:-}" = "--e2e" ] && E2E=1
 
@@ -99,6 +103,19 @@ rerun_out="$(env N8N_DIR="$WORK/a" sh "$SCRIPT" 2>&1)" && pass "re-run on existi
 	fail "re-run leaves files untouched"
 echo "$rerun_out" | grep -q 'http://localhost:5678' && pass "re-run tells the user where n8n runs" ||
 	fail "re-run tells the user where n8n runs"
+
+# stack definition versioning
+[ -n "$(sed -n 's/^# compose-version: *//p' "$WORK/a/compose.yml")" ] &&
+	pass "installed compose keeps the stack version marker" || fail "installed compose keeps the stack version marker"
+echo "$rerun_out" | grep -q 'stack definition is now' && fail "up-to-date install gets no stack notice" ||
+	pass "up-to-date install gets no stack notice"
+sed 's/^# compose-version: .*/# compose-version: 999/' "$COMPOSE_SRC" >"$WORK/newer-compose.yml"
+notice_out="$(env N8N_DIR="$WORK/a" N8N_COMPOSE_URL="$WORK/newer-compose.yml" sh "$SCRIPT" 2>&1)"
+echo "$notice_out" | grep -q 'stack definition is now v999' && pass "re-run notices a newer stack definition" ||
+	fail "re-run notices a newer stack definition"
+check_not "unreachable stack definition fails" \
+	env N8N_DIR="$WORK/nofetch" N8N_COMPOSE_URL="$WORK/does-not-exist.yml" sh "$SCRIPT" --no-start
+check "failed fetch writes no config" test ! -e "$WORK/nofetch/compose.yml"
 
 # version pinning
 env N8N_DIR="$WORK/pin" sh "$SCRIPT" --version 2.31.4 --no-start >/dev/null 2>&1
