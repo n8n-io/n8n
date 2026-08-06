@@ -205,6 +205,13 @@ export class EphemeralNodeExecutor {
 		const verified: Record<string, INodeCredentialsDetails> = {};
 
 		for (const [credType, d] of Object.entries(details)) {
+			// Managed credentials have no stored row — the gateway mints them per
+			// execution (CredentialsHelper.getDecrypted) — so skip the project lookup.
+			if (d.__aiGatewayManaged) {
+				verified[credType] = { id: null, name: d.name, __aiGatewayManaged: true };
+				continue;
+			}
+
 			if (!d.id) {
 				throw new UserError(
 					`Credential reference for "${credType}" is missing an id (required for execution).`,
