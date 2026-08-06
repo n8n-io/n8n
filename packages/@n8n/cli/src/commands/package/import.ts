@@ -50,6 +50,12 @@ export default class PackageImport extends BaseCommand {
 			options: ['fail', 'import-anyway'],
 			aliases: ['missing-node-type-mode'],
 		}),
+		projectConflictPolicy: Flags.string({
+			description:
+				"What to do when a project in the package already exists on the instance (default on the instance: merge). merge keeps the existing project's details and adds the package's contents alongside; overwrite replaces those details with the package's; fail rejects the import. Project packages only",
+			options: ['merge', 'fail', 'overwrite'],
+			aliases: ['project-conflict-policy'],
+		}),
 		folderConflictPolicy: Flags.string({
 			description: 'What to do when a package folder already exists in the target project',
 			options: ['merge', 'fail'],
@@ -140,6 +146,7 @@ export default class PackageImport extends BaseCommand {
 						workflowPublishingPolicy: flags.workflowPublishingPolicy,
 						workflowIdPolicy: flags.workflowIdPolicy,
 						missingNodeTypeMode: flags.missingNodeTypeMode,
+						projectConflictPolicy: flags.projectConflictPolicy,
 						folderConflictPolicy: flags.folderConflictPolicy,
 						credentialMatchingMode: flags.credentialMatchingMode,
 						credentialMissingMode: flags.credentialMissingMode,

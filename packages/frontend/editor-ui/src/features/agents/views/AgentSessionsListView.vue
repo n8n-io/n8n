@@ -90,6 +90,7 @@ function originLabel(thread: AgentExecutionThread): string {
 	if (thread.parentThreadId) return i18n.baseText('agentSessions.origin.subAgent');
 	if (thread.taskId) return i18n.baseText('agentSessions.origin.task');
 	const source = thread.source?.trim();
+	if (source === 'instance-ai') return i18n.baseText('agentSessions.origin.instanceAi');
 	if (
 		source &&
 		source !== 'chat' &&
@@ -117,6 +118,8 @@ function originIcon(thread: AgentExecutionThread): string {
 			return 'telegram';
 		case 'linear':
 			return 'linear';
+		case 'discord':
+			return 'discord';
 		default:
 			return 'zap';
 	}

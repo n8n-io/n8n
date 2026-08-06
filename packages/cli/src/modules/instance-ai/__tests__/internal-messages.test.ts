@@ -8,7 +8,7 @@ import {
 
 type EditorContextAttachment =
 	| { type: 'workflow'; id: string; name?: string; executionId?: string }
-	| { type: 'agent'; id: string; name?: string; projectId: string };
+	| { type: 'agent'; id: string; name?: string; projectId: string; pending?: true };
 
 /** Mirrors the marker the service writes in buildContextResourcesBlock. */
 function editorContextMarker(
@@ -138,13 +138,27 @@ describe('extractEditorContextResourceAttachments', () => {
 		]);
 	});
 
-	it('reconstructs agent attachments from the marker', () => {
+	it('reconstructs pending agent attachments from the marker', () => {
 		const stored = editorContextMarker(
-			[{ type: 'agent', id: 'agent-1', name: 'Support Agent', projectId: 'proj-1' }],
+			[
+				{
+					type: 'agent',
+					id: 'agent-1',
+					name: 'Support Agent',
+					projectId: 'proj-1',
+					pending: true,
+				},
+			],
 			'The user opened this conversation from the agent editor.',
 		);
 		expect(extractEditorContextResourceAttachments(stored)).toEqual([
-			{ type: 'agent', id: 'agent-1', name: 'Support Agent', projectId: 'proj-1' },
+			{
+				type: 'agent',
+				id: 'agent-1',
+				name: 'Support Agent',
+				projectId: 'proj-1',
+				pending: true,
+			},
 		]);
 	});
 
