@@ -80,12 +80,9 @@ async function fetchNewTriggerExecutions(api: ApiHelpers, workflowId: string, kn
 
 // Only an execution whose id is absent from `known` proves a fresh fire;
 // `waitForExecution`'s recency fallback would otherwise re-match the
-// activation-seed execution. Asserting exactly one new execution (not just
-// that the first one succeeded) catches a cursor-commit race that re-emits
-// an already-seen item alongside the genuinely new one. Instead of a fixed
-// grace sleep after the first sighting (flaky under CI jitter), we require
-// the count to repeat on a consecutive poll before treating it as settled,
-// so a slow-landing straggler still gets counted rather than missed.
+// activation-seed execution. Requires the count to repeat across polls,
+// with all executions already 'success', before treating it as settled
+// — catches a duplicate re-emit from a racing cursor commit.
 export async function expectNewTriggerExecution(
 	api: ApiHelpers,
 	workflowId: string,
@@ -97,8 +94,12 @@ export async function expectNewTriggerExecution(
 	await expect
 		.poll(
 			async () => {
-				const count = (await fetchNewTriggerExecutions(api, workflowId, known)).length;
-				const settled = count > 0 && count === previousCount;
+				const fresh = await fetchNewTriggerExecutions(api, workflowId, known);
+				const count = fresh.length;
+				const settled =
+					count > 0 &&
+					count === previousCount &&
+					fresh.every((execution) => execution.status === 'success');
 				previousCount = count;
 				return settled;
 			},
