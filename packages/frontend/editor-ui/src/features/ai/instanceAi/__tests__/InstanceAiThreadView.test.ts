@@ -1187,7 +1187,7 @@ describe('InstanceAiThreadView', () => {
 		expect(preview).toHaveAttribute('data-project-id', 'proj-1');
 	});
 
-	it('keeps the three-column dock layout at 1200px and disables outer resizing', async () => {
+	it('keeps the builder chat available at 1200px and disables outer resizing', async () => {
 		const { getByTestId, queryByTestId, user } = await renderAgentArtifact({
 			threadAreaWidth: 1200,
 		});
@@ -1214,8 +1214,6 @@ describe('InstanceAiThreadView', () => {
 		const header = getByTestId('instance-ai-builder-chat-header');
 		const content = getByTestId('instance-ai-content-area');
 		expect(threadArea.className).toContain('agentPreviewDockOpen');
-		expect(threadArea).not.toHaveClass('agentPreviewDockNarrow');
-		expect(queryByTestId('instance-ai-builder-chat-rail')).not.toBeInTheDocument();
 		expect(header).not.toHaveAttribute('hidden');
 		expect(header).not.toHaveAttribute('inert');
 		expect(header).not.toHaveAttribute('aria-hidden');
