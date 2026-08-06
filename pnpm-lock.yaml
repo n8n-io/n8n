@@ -5502,6 +5502,9 @@ importers:
       '@n8n/constants':
         specifier: workspace:*
         version: link:../../../@n8n/constants
+      '@n8n/frontend-utils':
+        specifier: workspace:*
+        version: link:../frontend-utils
       '@n8n/permissions':
         specifier: workspace:*
         version: link:../../../@n8n/permissions
@@ -5566,6 +5569,9 @@ importers:
       '@n8n/constants':
         specifier: workspace:*
         version: link:../../../@n8n/constants
+      '@n8n/frontend-utils':
+        specifier: workspace:*
+        version: link:../frontend-utils
       '@n8n/permissions':
         specifier: workspace:*
         version: link:../../../@n8n/permissions
@@ -5630,12 +5636,12 @@ importers:
       '@n8n/composables':
         specifier: workspace:*
         version: link:../composables
-      '@n8n/constants':
-        specifier: workspace:*
-        version: link:../../../@n8n/constants
       '@n8n/frontend-constants':
         specifier: workspace:*
         version: link:../frontend-constants
+      '@n8n/frontend-utils':
+        specifier: workspace:*
+        version: link:../frontend-utils
       '@n8n/i18n':
         specifier: workspace:*
         version: link:../i18n
