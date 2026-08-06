@@ -21,6 +21,7 @@ import { LicenseMocker } from '@test-integration/license';
 import { initNodeTypes } from '@test-integration/utils';
 
 import { N8nPackagesService } from '../n8n-packages.service';
+import { importPackageRequest } from './fixtures/import-request';
 import type { ImportPackageRequest } from '../n8n-packages.types';
 import { streamToBuffer } from './utils/tar-support';
 import { buildWorkflowReferencingVariables } from './utils/test-builders';
@@ -63,24 +64,9 @@ type ImportParams = { user: User; projectId?: string; packageBuffer: Buffer } & 
 >;
 
 async function importPackage(params: ImportParams) {
-	return await service.importPackage({
-		credentialMatchingMode: 'id-only',
-		credentialMissingMode: 'must-preexist',
-		workflowConflictPolicy: 'fail',
-		workflowPublishingPolicy: 'preserve-published-state',
-		workflowIdPolicy: 'new',
-		folderConflictPolicy: 'merge',
-		dataTableMatchingMode: 'by-id',
-		dataTableMissingMode: 'create',
-		dataTableSchemaConflictPolicy: 'keep-existing',
-		variableMissingMode: 'do-nothing',
-		variableConflictPolicy: 'keep-existing',
-		variableParentPolicy: 'project',
-		missingNodeTypeMode: 'fail',
-		tagMissingMode: 'create',
-		tagConflictPolicy: 'skip',
-		...params,
-	});
+	return await service.importPackage(
+		importPackageRequest({ variableParentPolicy: 'project', ...params }),
+	);
 }
 
 async function exportWorkflowPackage(
