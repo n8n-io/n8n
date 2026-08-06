@@ -52,6 +52,7 @@ import { useNodeCredentialOptions } from '../composables/useNodeCredentialOption
 import { getAutoSelectedCredential } from '../credentials.utils';
 import { usePrivateCredentials } from '@/features/resolvers/composables/usePrivateCredentials';
 import { AI_GATEWAY_MANAGED_TAG, SYSTEM_RESOLVER_ID } from '@n8n/api-types';
+import CredentialIcon from './CredentialIcon.vue';
 import CredentialPrivateConnectionRow from './CredentialPrivateConnectionRow.vue';
 import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { useAiGateway } from '@/app/composables/useAiGateway';
@@ -173,6 +174,16 @@ watch(
 		}
 	},
 );
+
+// The entry trigger hugs its label like a button; an input cannot size to its
+// placeholder, so approximate with ch (label) + fixed chrome (icon, gaps,
+// caret, padding).
+function entryTriggerStyle(credentialType: string) {
+	const label = i18n.baseText('nodeCredentials.quickConnect.connectTo', {
+		interpolate: { provider: getServiceName(credentialType) },
+	});
+	return { width: `calc(${label.length}ch + 70px)` };
+}
 
 function selectedCredentialIcon(credentialType: string) {
 	if (isAiGatewayManagedCredentials(credentialType)) return 'wallet' as const;
@@ -1102,12 +1113,20 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 					<N8nSelect
 						ref="selectRefs"
 						:class="$style.emptySelect"
+						:style="entryTriggerStyle(type.name)"
 						size="small"
-						:disabled="!canCreateCredentials"
-						:placeholder="i18n.baseText('nodeCredentials.emptyState.noCredentials')"
-						:popper-class="$style.selectPopper"
+						:disabled="!canCreateCredentials && !showN8nCreditsOption(type.name)"
+						:placeholder="
+							i18n.baseText('nodeCredentials.quickConnect.connectTo', {
+								interpolate: { provider: getServiceName(type.name) },
+							})
+						"
+						:popper-class="`${$style.selectPopper} ${$style.entryPopper}`"
 						@update:model-value="(value: string) => onCredentialOptionSelected(type, value)"
 					>
+						<template #prefix>
+							<CredentialIcon :credential-type-name="type.name" :size="18" />
+						</template>
 						<N8nOption
 							v-if="showN8nCreditsOption(type.name)"
 							:key="AI_GATEWAY_MANAGED_TAG"
@@ -1117,14 +1136,20 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 						>
 							<div :class="$style.credentialOption">
 								<N8nIcon icon="wallet" size="large" :class="$style.optionIcon" />
-								<N8nText :class="$style.optionName">
-									{{ i18n.baseText('aiGateway.credentialMode.n8nConnect.title') }}
-								</N8nText>
+								<span :class="$style.entryText">
+									<N8nText :class="$style.optionName">
+										{{ i18n.baseText('aiGateway.picker.useN8nCredits') }}
+									</N8nText>
+									<N8nText :class="$style.entrySubtitle">
+										{{ i18n.baseText('aiGateway.picker.readyToRun') }}
+									</N8nText>
+								</span>
 								<N8nActionPill
 									v-if="balancePill"
 									size="small"
 									:type="balancePill.type"
 									:text="balancePill.text"
+									:class="$style.entryPill"
 								/>
 							</div>
 						</N8nOption>
@@ -1133,24 +1158,22 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 							<button
 								type="button"
 								data-test-id="node-credentials-select-item-new"
-								:class="[$style.newCredential]"
+								:class="[$style.newCredential, $style.entryCreate]"
 								:disabled="!canCreateCredentials"
 								@click="onClickCreateCredential(type)"
 							>
-								<N8nIcon size="large" icon="plus" :class="$style.optionIcon" />
-								{{ NEW_CREDENTIALS_TEXT }}
+								<N8nIcon size="large" icon="key-round" :class="$style.optionIcon" />
+								<span :class="$style.entryText">
+									<N8nText :class="$style.optionName">
+										{{ i18n.baseText('aiGateway.picker.useOwnCredential') }}
+									</N8nText>
+									<N8nText :class="$style.entrySubtitle">
+										{{ i18n.baseText('aiGateway.picker.bringYourOwnKey') }}
+									</N8nText>
+								</span>
 							</button>
 						</template>
 					</N8nSelect>
-					<N8nButton
-						v-if="canCreateCredentials"
-						variant="subtle"
-						size="small"
-						data-test-id="setup-credential-button"
-						@click="createNewCredential(type.name, true, showMixedCredentials(type))"
-					>
-						{{ i18n.baseText('nodeCredentials.emptyState.setupCredential') }}
-					</N8nButton>
 				</div>
 				<div
 					v-else
@@ -1366,6 +1389,13 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 		padding: var(--spacing--4xs) 0;
 	}
 
+	// The create row draws its own divider; element-plus's footer chrome would
+	// double it and pad the row away from the menu edge.
+	:global(.el-select-dropdown__footer) {
+		padding: 0;
+		border-top: none;
+	}
+
 	:global(.el-select-dropdown__item) {
 		display: flex;
 		align-items: center;
@@ -1494,6 +1524,47 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 	white-space: nowrap;
 }
 
+.entryPill {
+	margin-left: auto;
+}
+
+// The entry menu is wider than its content so the pill gets clear air past the
+// row text. el-select pins the popper min-width inline, hence the important.
+.entryPopper {
+	min-width: calc(var(--spacing--5xl) + var(--spacing--xl)) !important;
+
+	// The popper is wider than the compact trigger; keep the arrow centered on
+	// the popup instead of the trigger (popper.js positions it inline).
+	:global(.el-popper__arrow) {
+		left: 50% !important;
+		transform: translateX(-50%);
+	}
+}
+
+.entryText {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	min-width: 0;
+}
+
+.entrySubtitle {
+	font-size: var(--font-size--2xs);
+	color: var(--color--text--tint-1);
+	white-space: nowrap;
+}
+
+// The entry menu is invitational — no divider before its create row, and it
+// hovers like the option rows (inset, rounded).
+.entryCreate {
+	border-top: 0;
+	text-align: left;
+	width: calc(100% - 2 * var(--spacing--4xs));
+	margin: 0 var(--spacing--4xs);
+	padding: var(--spacing--4xs) var(--spacing--2xs);
+	border-radius: var(--radius);
+}
+
 .optionMeta {
 	overflow: hidden;
 	white-space: nowrap;
@@ -1563,7 +1634,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 	&:not([disabled]) {
 		cursor: pointer;
 		&:hover {
-			background-color: var(--color--background--base);
+			background-color: var(--color--background--light-2);
 		}
 	}
 
@@ -1612,6 +1683,22 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 }
 
 .emptySelect {
-	flex: 1;
+	// Compact invitational trigger; the label reads as a button, not a hint.
+	flex: none;
+	max-width: 100%;
+
+	:global(.el-input__inner::placeholder) {
+		color: var(--color--text--shade-1);
+		opacity: 1;
+	}
+}
+
+// element-plus pins the prefix gap at `.el-input__prefix-inner > :last-child`;
+// match its specificity from our scope to widen it.
+.emptySelect,
+.selectContainer {
+	:global(.el-input__prefix-inner > :last-child) {
+		margin-right: var(--spacing--2xs);
+	}
 }
 </style>

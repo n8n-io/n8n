@@ -948,7 +948,7 @@ describe('NodeCredentials', () => {
 			);
 		});
 
-		it('should show "Set up credential" button in standard empty state', () => {
+		it('shows the connect entry state in the standard empty state', () => {
 			setupQuickConnectStores();
 
 			ndvStore.activeNode = openAiNodeNoCreds;
@@ -963,7 +963,9 @@ describe('NodeCredentials', () => {
 				{ merge: true },
 			);
 
-			expect(screen.queryByTestId('setup-credential-button')).toBeInTheDocument();
+			expect(screen.queryByTestId('setup-credential-button')).not.toBeInTheDocument();
+			expect(screen.getByText('Use my own credential')).toBeInTheDocument();
+			expect(screen.getByText('Bring your own API key')).toBeInTheDocument();
 		});
 
 		it('should show quick connect when sibling credential type has managed OAuth', () => {
@@ -1317,6 +1319,7 @@ describe('NodeCredentials', () => {
 		);
 
 		expect(screen.queryByTestId('setup-credential-button')).not.toBeInTheDocument();
+		expect(screen.getByTestId('node-credentials-select-item-new')).toBeDisabled();
 	});
 
 	it('should clear stale AI Gateway managed credentials on mount when gateway is disabled', () => {
