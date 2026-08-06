@@ -46,4 +46,36 @@ describe('CreateWorkflowReviewRequestDto', () => {
 		expect(result.success).toBe(false);
 		expect(result.error?.issues[0].path).toEqual(['workflows', 0, 'workflowVersionName']);
 	});
+
+	test.each([
+		{ name: 'a version description', workflowVersionDescription: 'What changed' },
+		{ name: 'an empty version description', workflowVersionDescription: '' },
+		{ name: 'an omitted version description', workflowVersionDescription: undefined },
+	])('should accept $name on the pinned workflow', ({ workflowVersionDescription }) => {
+		const result = CreateWorkflowReviewRequestDto.safeParse({
+			title: 'Please review',
+			workflows: [
+				{ ...workflow, workflowVersionName: 'Release candidate', workflowVersionDescription },
+			],
+		});
+
+		expect(result.success).toBe(true);
+		expect(result.data?.workflows[0].workflowVersionDescription).toBe(workflowVersionDescription);
+	});
+
+	test('should reject a version description longer than 2048 characters', () => {
+		const result = CreateWorkflowReviewRequestDto.safeParse({
+			title: 'Please review',
+			workflows: [
+				{
+					...workflow,
+					workflowVersionName: 'Release candidate',
+					workflowVersionDescription: 'a'.repeat(2049),
+				},
+			],
+		});
+
+		expect(result.success).toBe(false);
+		expect(result.error?.issues[0].path).toEqual(['workflows', 0, 'workflowVersionDescription']);
+	});
 });

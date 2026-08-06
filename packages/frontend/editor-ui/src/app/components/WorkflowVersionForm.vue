@@ -53,7 +53,7 @@ defineExpose({
 				size="large"
 				:maxlength="WORKFLOW_VERSION_NAME_MAX_LENGTH"
 				:data-test-id="versionNameTestId"
-				@keydown.enter="handleEnterKey"
+				@keydown.enter.prevent="handleEnterKey"
 			/>
 		</N8nInputLabel>
 		<N8nInputLabel

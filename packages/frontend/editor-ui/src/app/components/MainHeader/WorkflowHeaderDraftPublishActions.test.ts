@@ -644,6 +644,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 						workflowId: defaultWorkflowProps.id,
 						workflowVersionId: 'version-1',
 						workflowVersionName: 'Release 3',
+						workflowVersionDescription: undefined,
 					},
 				);
 			});
@@ -667,6 +668,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			const { getByTestId, findByRole, queryByRole } = renderComponent();
 			await userEvent.click(getByTestId('workflow-open-publish-modal-button'));
 			const submitDialog = await findByRole('dialog', { name: 'Submit for review' });
+			await userEvent.click(within(submitDialog).getByTestId('workflow-review-next-button'));
 			await userEvent.type(
 				within(submitDialog).getByTestId('workflow-review-title-input'),
 				'Review payments',
@@ -727,6 +729,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			const { getByTestId, findByRole } = renderComponent();
 			await userEvent.click(getByTestId('workflow-open-publish-modal-button'));
 			const submitDialog = await findByRole('dialog', { name: 'Submit for review' });
+			await userEvent.click(within(submitDialog).getByTestId('workflow-review-next-button'));
 			await userEvent.type(
 				within(submitDialog).getByTestId('workflow-review-title-input'),
 				'Review payments',
@@ -751,6 +754,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			const { getByTestId, findByRole, queryByRole } = renderComponent();
 			await userEvent.click(getByTestId('workflow-open-publish-modal-button'));
 			const submitDialog = await findByRole('dialog', { name: 'Submit for review' });
+			await userEvent.click(within(submitDialog).getByTestId('workflow-review-next-button'));
 			await userEvent.type(
 				within(submitDialog).getByTestId('workflow-review-title-input'),
 				'Review payments',

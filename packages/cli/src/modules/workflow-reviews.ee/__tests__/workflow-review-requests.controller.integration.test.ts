@@ -740,6 +740,53 @@ describe('POST /workflow-review-requests', () => {
 			expect(await findVersionName(workflow.id, versionId)).toBeNull();
 		});
 
+		test('persists the version description alongside the name', async () => {
+			const { workflow, versionId } = await createReviewableWorkflow();
+
+			await ownerAgent
+				.post('/workflow-review-requests')
+				.send({
+					title: 'Please review my workflow',
+					workflows: [
+						{
+							workflowId: workflow.id,
+							workflowVersionId: versionId,
+							workflowVersionName: 'Release candidate',
+							workflowVersionDescription: '  What changed in this version  ',
+						},
+					],
+				})
+				.expect(201);
+
+			const version = await workflowHistoryRepository.findOneBy({
+				workflowId: workflow.id,
+				versionId,
+			});
+			expect(version?.name).toBe('Release candidate');
+			expect(version?.description).toBe('What changed in this version');
+		});
+
+		test('returns 400 for a description longer than 2048 characters', async () => {
+			const { workflow, versionId } = await createReviewableWorkflow();
+
+			await ownerAgent
+				.post('/workflow-review-requests')
+				.send({
+					title: 'Please review my workflow',
+					workflows: [
+						{
+							workflowId: workflow.id,
+							workflowVersionId: versionId,
+							workflowVersionName: 'Release candidate',
+							workflowVersionDescription: 'a'.repeat(2049),
+						},
+					],
+				})
+				.expect(400);
+
+			expect(await requestRepository.find()).toHaveLength(0);
+		});
+
 		test('rolls the name back when the create conflicts with an open review', async () => {
 			const { workflow, versionId } = await createReviewableWorkflow();
 			await createOpenReview(workflow.id, versionId);
@@ -1211,6 +1258,52 @@ describe('POST /workflow-review-requests/:workflowReviewRequestId/update-version
 				.expect(200);
 
 			expect(await findVersionName(workflow.id, versionId)).toBe('Renamed');
+			// Still a no-op for the review itself.
+			const unchanged = await requestRepository.findById(request.id, {});
+			expect(unchanged?.updatedAt).toEqual(request.updatedAt);
+		});
+
+		test('persists the version description on a re-pin', async () => {
+			const { workflow } = await createReviewableWorkflow('version-1');
+			await createWorkflowHistoryItem(workflow.id, { versionId: 'version-2' });
+			const request = await seedOpenRequest(workflow.id, 'version-1', owner);
+
+			await ownerAgent
+				.post(`/workflow-review-requests/${request.id}/update-version`)
+				.send({
+					workflowId: workflow.id,
+					workflowVersionId: 'version-2',
+					workflowVersionName: 'Release candidate',
+					workflowVersionDescription: 'What changed in this version',
+				})
+				.expect(200);
+
+			const version = await workflowHistoryRepository.findOneBy({
+				workflowId: workflow.id,
+				versionId: 'version-2',
+			});
+			expect(version?.description).toBe('What changed in this version');
+		});
+
+		test('updates the description of the version already pinned', async () => {
+			const { workflow, versionId } = await createReviewableWorkflow();
+			const request = await seedOpenRequest(workflow.id, versionId, owner);
+
+			await ownerAgent
+				.post(`/workflow-review-requests/${request.id}/update-version`)
+				.send({
+					workflowId: workflow.id,
+					workflowVersionId: versionId,
+					workflowVersionName: 'Release candidate',
+					workflowVersionDescription: 'Description added later',
+				})
+				.expect(200);
+
+			const version = await workflowHistoryRepository.findOneBy({
+				workflowId: workflow.id,
+				versionId,
+			});
+			expect(version?.description).toBe('Description added later');
 			// Still a no-op for the review itself.
 			const unchanged = await requestRepository.findById(request.id, {});
 			expect(unchanged?.updatedAt).toEqual(request.updatedAt);

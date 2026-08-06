@@ -1,7 +1,10 @@
 import { z } from 'zod';
 
 import { n8nIdSchema } from '../../schemas/id.schema';
-import { requiredWorkflowVersionNameSchema } from '../../schemas/workflow-version.schema';
+import {
+	requiredWorkflowVersionNameSchema,
+	workflowVersionDescriptionSchema,
+} from '../../schemas/workflow-version.schema';
 import { Z } from '../../zod-class';
 
 export class CreateWorkflowReviewRequestDto extends Z.class({
@@ -13,6 +16,8 @@ export class CreateWorkflowReviewRequestDto extends Z.class({
 				workflowId: n8nIdSchema,
 				workflowVersionId: n8nIdSchema,
 				workflowVersionName: requiredWorkflowVersionNameSchema,
+				// When present, an empty/whitespace string clears the version description
+				workflowVersionDescription: workflowVersionDescriptionSchema,
 			}),
 		)
 		.length(1),
