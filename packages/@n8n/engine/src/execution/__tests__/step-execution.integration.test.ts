@@ -17,6 +17,7 @@ import { InMemoryWorkQueue, type OrchestrationMessage, type StepMessage } from '
 import { ExecutionStartHandler } from '../execution-start-handler';
 import { OrchestrationWorker } from '../orchestration-worker';
 import { StartExecutionService } from '../start-execution.service';
+import { StepCompletedHandler } from '../step-completed-handler';
 import { StepReadyHandler } from '../step-ready-handler';
 import { StepWorker } from '../step-worker';
 
@@ -53,25 +54,31 @@ describe('step execution (integration)', () => {
 
 	/**
 	 * Wires both workers over shared queues and runs a workflow through them.
-	 * Resolves once a `step:completed` has been published, which is the point at
-	 * which the step's outcome is durable.
+	 * Resolves once the execution's outcome is recorded, which is after every
+	 * step's own outcome is durable.
 	 */
-	async function runWorkflow(executor: IStepExecutor, triggerPayload: JsonObject) {
+	async function runWorkflow(
+		executor: IStepExecutor,
+		triggerPayload: JsonObject,
+		{ workflowId = 'wf-1', graph: workflowGraph = graph } = {},
+	) {
 		const { executionStore, stepStore } = stores();
 		const orchestrationQueue = new InMemoryWorkQueue<OrchestrationMessage>();
 		const stepQueue = new InMemoryWorkQueue<StepMessage>();
 
-		let stepDone!: () => void;
-		const completed = new Promise<void>((resolve) => (stepDone = resolve));
-		const publish = orchestrationQueue.publish.bind(orchestrationQueue);
-		vi.spyOn(orchestrationQueue, 'publish').mockImplementation(async (message) => {
-			await publish(message);
-			if (message.type === 'step:completed') stepDone();
+		let done!: () => void;
+		const finished = new Promise<void>((resolve) => (done = resolve));
+		const finishExecution = executionStore.finishExecution.bind(executionStore);
+		vi.spyOn(executionStore, 'finishExecution').mockImplementation(async (id, status) => {
+			const recorded = await finishExecution(id, status);
+			done();
+			return recorded;
 		});
 
 		const orchestrationWorker = new OrchestrationWorker(
 			orchestrationQueue,
-			new ExecutionStartHandler(executionStore, stepStore, stepQueue),
+			new ExecutionStartHandler(executionStore, stepStore, orchestrationQueue),
+			new StepCompletedHandler(executionStore, stepStore, stepQueue),
 		);
 		const stepWorker = new StepWorker(
 			stepQueue,
@@ -86,16 +93,19 @@ describe('step execution (integration)', () => {
 			new AllowAllAdmittance(),
 			executionStore,
 			orchestrationQueue,
-		).start({ workflowId: 'wf-1', graph, triggerPayload });
-		await completed;
+		).start({ workflowId, graph: workflowGraph, triggerPayload });
+		await finished;
 
 		await stepWorker.stop();
 		await orchestrationWorker.stop();
 
+		const execution = await dataSource
+			.getRepository(WorkflowExecution)
+			.findOneOrFail({ where: { id: executionId } });
 		const steps = await dataSource
 			.getRepository(WorkflowStepExecution)
 			.find({ where: { executionId } });
-		return { executionId, step: steps.find((candidate) => candidate.nodeId === 'node-a') };
+		return { executionId, execution, steps };
 	}
 
 	it('runs a queued step and persists its outputs', async () => {
@@ -108,8 +118,13 @@ describe('step execution (integration)', () => {
 			},
 		};
 
-		const { executionId, step } = await runWorkflow(executor, { body: { name: 'ada' } });
+		const { executionId, execution, steps } = await runWorkflow(executor, {
+			body: { name: 'ada' },
+		});
+		const step = steps.find(({ nodeId }) => nodeId === 'node-a');
 
+		expect(execution.status).toBe('completed');
+		expect(execution.finishedAt).toBeInstanceOf(Date);
 		expect(step?.status).toBe('completed');
 		expect(step?.outputs).toEqual([[{ json: { greeting: 'hi' } }]]);
 		expect(step?.error).toBeNull();
@@ -134,8 +149,12 @@ describe('step execution (integration)', () => {
 			},
 		};
 
-		const { step } = await runWorkflow(executor, {});
+		const { execution, steps } = await runWorkflow(executor, {});
+		const step = steps.find(({ nodeId }) => nodeId === 'node-a');
 
+		// the failure is terminal for the execution too
+		expect(execution.status).toBe('failed');
+		expect(execution.finishedAt).toBeInstanceOf(Date);
 		expect(step?.status).toBe('failed');
 		expect(step?.error).toEqual({
 			name: 'TypeError',
@@ -144,6 +163,42 @@ describe('step execution (integration)', () => {
 			stack: expect.stringContaining('TypeError: credentials missing') as string,
 		});
 		expect(step?.outputs).toBeNull();
+	});
+
+	it('runs a chain of steps, feeding each output forward, and finishes the execution', async () => {
+		const chainGraph: WorkflowGraph = {
+			nodes: [
+				{ id: 'trigger', name: 'Webhook', type: 'trigger' },
+				{ id: 'node-a', name: 'A', type: 'v1-node' },
+				{ id: 'node-b', name: 'B', type: 'v1-node' },
+			],
+			edges: [
+				{ from: 'trigger', to: 'node-a', outputIndex: 0, inputIndex: 0 },
+				{ from: 'node-a', to: 'node-b', outputIndex: 0, inputIndex: 0 },
+			],
+		};
+		const requests: StepExecutionRequest[] = [];
+		const executor: IStepExecutor = {
+			execute: async (request) => {
+				requests.push(request);
+				await Promise.resolve();
+				return { outputs: [[{ json: { ran: request.node.id } }]] };
+			},
+		};
+
+		const { execution } = await runWorkflow(
+			executor,
+			{ body: { name: 'ada' } },
+			{ workflowId: 'wf-chain', graph: chainGraph },
+		);
+
+		// both nodes ran, in order, each on what came before it
+		expect(requests.map(({ node }) => node.id)).toEqual(['node-a', 'node-b']);
+		expect(requests[0].inputs).toEqual({ body: { name: 'ada' } });
+		expect(requests[1].inputs).toEqual([[{ json: { ran: 'node-a' } }]]);
+
+		expect(execution.status).toBe('completed');
+		expect(execution.finishedAt).toBeInstanceOf(Date);
 	});
 
 	it('is idempotent across duplicate step:ready deliveries', async () => {
@@ -161,10 +216,11 @@ describe('step execution (integration)', () => {
 			graph,
 			triggerPayload: null,
 		});
-		const [, { id: stepId }] = await stepStore.createSteps([
+		const created = await stepStore.createSteps([
 			{ executionId, nodeId: 'trigger', status: 'completed' },
 			{ executionId, nodeId: 'node-a', status: 'queued' },
 		]);
+		const stepId = created.find(({ nodeId }) => nodeId === 'node-a')!.id;
 
 		// Delivered twice, both awaited — the CAS is what makes the second a no-op.
 		const event = { type: 'step:ready', executionId, stepId } as const;

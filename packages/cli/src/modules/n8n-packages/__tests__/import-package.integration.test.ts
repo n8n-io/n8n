@@ -36,12 +36,8 @@ import { initNodeTypes } from '@test-integration/utils';
 
 import { TarPackageWriter } from '../io/tar/tar-package-writer';
 import { N8nPackagesService } from '../n8n-packages.service';
+import { importPackageRequest } from './fixtures/import-request';
 import {
-	FolderConflictPolicy,
-	DataTableMatchingMode,
-	DataTableMissingMode,
-	DataTableSchemaConflictPolicy,
-	MissingNodeTypeMode,
 	WorkflowConflictPolicy,
 	WorkflowIdPolicy,
 	WorkflowPublishingPolicy,
@@ -59,63 +55,13 @@ import {
 import { streamToBuffer } from './utils/tar-support';
 import type { SerializedWorkflow } from '../spec/serialized/workflow.schema';
 
-type ImportPackageParams = Omit<
-	ImportPackageRequest,
-	| 'credentialMatchingMode'
-	| 'credentialMissingMode'
-	| 'bindings'
-	| 'workflowConflictPolicy'
-	| 'workflowPublishingPolicy'
-	| 'workflowIdPolicy'
-	| 'missingNodeTypeMode'
-	| 'folderConflictPolicy'
-	| 'dataTableMatchingMode'
-	| 'dataTableMissingMode'
-	| 'dataTableSchemaConflictPolicy'
-	| 'variableMissingMode'
-	| 'variableParentPolicy'
-	| 'tagMissingMode'
-	| 'tagConflictPolicy'
-> &
-	Partial<
-		Pick<
-			ImportPackageRequest,
-			| 'credentialMatchingMode'
-			| 'credentialMissingMode'
-			| 'bindings'
-			| 'workflowConflictPolicy'
-			| 'workflowPublishingPolicy'
-			| 'workflowIdPolicy'
-			| 'missingNodeTypeMode'
-			| 'folderConflictPolicy'
-			| 'dataTableMatchingMode'
-			| 'dataTableMissingMode'
-			| 'dataTableSchemaConflictPolicy'
-			| 'variableMissingMode'
-			| 'variableParentPolicy'
-			| 'tagMissingMode'
-			| 'tagConflictPolicy'
-		>
-	>;
+type ImportPackageParams = Pick<ImportPackageRequest, 'user' | 'packageBuffer'> &
+	Partial<ImportPackageRequest>;
 
 async function importPackage(params: ImportPackageParams) {
-	return await Container.get(N8nPackagesService).importPackage({
-		credentialMatchingMode: 'id-only',
-		credentialMissingMode: 'must-preexist',
-		workflowConflictPolicy: WorkflowConflictPolicy.Fail,
-		workflowPublishingPolicy: WorkflowPublishingPolicy.PreservePublishedState,
-		workflowIdPolicy: WorkflowIdPolicy.New,
-		missingNodeTypeMode: MissingNodeTypeMode.Fail,
-		folderConflictPolicy: FolderConflictPolicy.Merge,
-		dataTableMatchingMode: DataTableMatchingMode.ById,
-		dataTableMissingMode: DataTableMissingMode.Create,
-		dataTableSchemaConflictPolicy: DataTableSchemaConflictPolicy.KeepExisting,
-		variableMissingMode: 'do-nothing',
-		variableParentPolicy: 'project',
-		tagMissingMode: 'create',
-		tagConflictPolicy: 'skip',
-		...params,
-	});
+	return await Container.get(N8nPackagesService).importPackage(
+		importPackageRequest({ variableParentPolicy: 'project', ...params }),
+	);
 }
 
 /**
@@ -1220,6 +1166,7 @@ describe('Package import event emission', () => {
 					missing: 0,
 					created: 0,
 					stubbed: 0,
+					updated: 0,
 					requirements: 0,
 				},
 				tags: {
@@ -1314,6 +1261,7 @@ describe('Package import event emission', () => {
 					missing: 0,
 					created: 0,
 					stubbed: 0,
+					updated: 0,
 					requirements: 0,
 				},
 				tags: {
@@ -1377,6 +1325,7 @@ describe('Package import event emission', () => {
 					missing: 0,
 					created: 0,
 					stubbed: 0,
+					updated: 0,
 					requirements: 0,
 				},
 				tags: {
@@ -1442,6 +1391,7 @@ describe('Package import event emission', () => {
 					missing: 0,
 					created: 0,
 					stubbed: 0,
+					updated: 0,
 					requirements: 0,
 				},
 				tags: {

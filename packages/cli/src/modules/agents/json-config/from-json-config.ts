@@ -109,6 +109,8 @@ export interface BuildFromJsonOptions {
 	resolveManagedEmbeddingProviderOptions?: ManagedEmbeddingProviderOptionsResolver;
 	/** Proxy-aware `fetch` for the agent's model calls (see `createAiProxyFetch`). */
 	modelFetch?: FetchFn;
+	/** Policy-aware `fetch` for fallback web-search calls (see `createWebSearchFetch`). */
+	webSearchFetch?: FetchFn;
 	/**
 	 * Replaces the live Brave/SearXNG call behind the fallback `web_search`
 	 * tool. When set, the tool is attached without requiring a search provider
@@ -204,6 +206,7 @@ export async function buildFromJson(
 	const fallbackWebSearchTool = buildFallbackWebSearchTool(
 		config,
 		options.credentialProvider,
+		options.webSearchFetch,
 		options.fallbackWebSearch,
 	);
 	if (fallbackWebSearchTool) {
@@ -298,6 +301,7 @@ export function buildProviderToolsForModel(
 function buildFallbackWebSearchTool(
 	config: AgentJsonConfig,
 	credentialProvider: CredentialProvider,
+	webSearchFetch?: FetchFn,
 	fallbackWebSearch?: FallbackWebSearchHandler,
 ): BuiltTool | null {
 	const webSearchConfig = config.config?.webSearch;
@@ -345,11 +349,16 @@ function buildFallbackWebSearchTool(
 			if (typeof credential.apiUrl !== 'string') {
 				throw new Error('SearXNG credential is missing an API URL.');
 			}
-			return await searxngSearch(credential.apiUrl, args.query, {
-				maxResults: args.maxResults,
-				includeDomains: args.includeDomains,
-				excludeDomains: args.excludeDomains,
-			});
+			return await searxngSearch(
+				credential.apiUrl,
+				args.query,
+				{
+					maxResults: args.maxResults,
+					includeDomains: args.includeDomains,
+					excludeDomains: args.excludeDomains,
+				},
+				webSearchFetch,
+			);
 		},
 	};
 }

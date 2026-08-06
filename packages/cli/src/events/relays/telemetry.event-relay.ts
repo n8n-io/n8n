@@ -216,6 +216,7 @@ export class TelemetryEventRelay extends EventRelay {
 			'instance-ai-mcp-registry-connection-deleted': (event) =>
 				this.instanceAiMcpRegistryConnectionDeleted(event),
 			'hitl-response-actioned': (event) => this.hitlResponseActioned(event),
+			'runner-disconnected': (event) => this.runnerDisconnected(event),
 		});
 	}
 
@@ -1065,6 +1066,7 @@ export class TelemetryEventRelay extends EventRelay {
 			data_table_missing_mode: options.dataTableMissingMode,
 			data_table_schema_conflict_policy: options.dataTableSchemaConflictPolicy,
 			variable_missing_mode: options.variableMissingMode,
+			variable_conflict_policy: options.variableConflictPolicy,
 			variable_parent_policy: options.variableParentPolicy,
 			tag_missing_mode: options.tagMissingMode,
 			tag_conflict_policy: options.tagConflictPolicy,
@@ -1081,6 +1083,7 @@ export class TelemetryEventRelay extends EventRelay {
 			variables_missing: counts.variables.missing,
 			variables_with_value_created: counts.variables.created,
 			variables_stubs_created: counts.variables.stubbed,
+			variables_updated: counts.variables.updated,
 			variables_required: counts.variables.requirements,
 			tags_matched: counts.tags.matched,
 			tags_created: counts.tags.created,
@@ -1681,6 +1684,10 @@ export class TelemetryEventRelay extends EventRelay {
 
 	private instanceStopped() {
 		this.telemetry.track('User instance stopped');
+	}
+
+	private runnerDisconnected({ reason, mode }: RelayEventMap['runner-disconnected']) {
+		this.telemetry.track(TELEMETRY_EVENT.PLATFORM.TASK_RUNNER_DISCONNECTED, { reason, mode });
 	}
 
 	private async instanceOwnerSetup({ userId }: RelayEventMap['instance-owner-setup']) {

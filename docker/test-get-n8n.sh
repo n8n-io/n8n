@@ -182,6 +182,7 @@ if [ "$E2E" -eq 1 ]; then
 	echo "$ps_out" | grep -q '^sandbox-runner-1 running' && pass "sandbox-runner running" || fail "sandbox-runner running"
 	echo "$ps_out" | grep -q '^n8n running' && pass "n8n running" || fail "n8n running"
 	echo "$ps_out" | grep -q '^searxng running' && pass "searxng running" || fail "searxng running"
+	echo "$ps_out" | grep -q '^runners running' && pass "task runners running" || fail "task runners running"
 
 	check "n8n reaches sandbox-api" \
 		docker compose -f "$E2E_DIR/compose.yml" exec -T n8n wget -qO- http://sandbox-api:8080/healthz
