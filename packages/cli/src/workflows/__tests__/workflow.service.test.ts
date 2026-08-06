@@ -1816,6 +1816,21 @@ describe('WorkflowService', () => {
 			expect(workflowMutationHooksMock.beforeWorkflowDeleted).not.toHaveBeenCalled();
 		});
 
+		// Deactivation is not rolled back when a later step fails, so an aborted delete
+		// must not have torn the triggers down.
+		test('aborts the deletion, leaving the workflow running, when the hook throws', async () => {
+			globalConfigMock.workflows.useWorkflowPublicationService = false;
+			const workflow = makeWorkflowEntity({ active: true, activeVersionId: 'v1' });
+			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(workflow);
+			workflowMutationHooksMock.beforeWorkflowDeleted.mockRejectedValue(new Error('db down'));
+
+			await expect(workflowService.delete(mock<User>(), WORKFLOW_ID, true)).rejects.toThrow(
+				'db down',
+			);
+
+			expect(activeWorkflowManagerMock.remove).not.toHaveBeenCalled();
+		});
+
 		// The hook may throw to abort the delete, so it has to run before the executions are purged,
 		// not just before the row.
 		test('aborts the deletion, leaving executions and the row intact, when the hook throws', async () => {

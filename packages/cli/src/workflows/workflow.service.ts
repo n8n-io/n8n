@@ -1177,15 +1177,16 @@ export class WorkflowService {
 			throw new BadRequestError('Workflow must be archived before it can be deleted.');
 		}
 
+		// Ahead of every destructive step, including the trigger teardown below: the
+		// hook may throw to abort the delete, and deactivation is not rolled back, so
+		// running it later would strand the workflow as active in the DB but no longer
+		// running.
+		await this.workflowMutationHooks.beforeWorkflowDeleted(workflowId);
+
 		if (workflow.active) {
 			// deactivate before deleting
 			await this.activeWorkflowManager.remove(workflowId);
 		}
-
-		// R2 (P3): ahead of every destructive step, not just the row delete — a hook
-		// that fails here may throw, and nothing irreversible has happened yet.
-		// See LIGO-834_review.md
-		await this.workflowMutationHooks.beforeWorkflowDeleted(workflowId);
 
 		// Delete executions (incl. their binary and blob data) in batches before
 		// the workflow row, so the FK cascade on the workflow row stays too small
