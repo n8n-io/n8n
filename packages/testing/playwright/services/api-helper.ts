@@ -21,6 +21,7 @@ import { DynamicCredentialApiHelper } from './dynamic-credential-api-helper';
 import { ExternalSecretsApiHelper } from './external-secrets-api-helper';
 import { McpApiHelper } from './mcp-api-helper';
 import { McpOAuthApiHelper } from './mcp-oauth-api-helper';
+import { MetricsApiHelper } from './metrics-api-helper';
 import { ProjectApiHelper } from './project-api-helper';
 import { PublicApiHelper } from './public-api-helper';
 import { RoleApiHelper } from './role-api-helper';
@@ -69,6 +70,7 @@ export class ApiHelpers {
 	request: APIRequestContext;
 	workflows: WorkflowApiHelper;
 	webhooks: WebhookApiHelper;
+	metrics: MetricsApiHelper;
 	mcp: McpApiHelper;
 	mcpOauth: McpOAuthApiHelper;
 	projects: ProjectApiHelper;
@@ -89,6 +91,7 @@ export class ApiHelpers {
 		this.request = requestContext;
 		this.workflows = new WorkflowApiHelper(this);
 		this.webhooks = new WebhookApiHelper(this);
+		this.metrics = new MetricsApiHelper(this);
 		this.mcp = new McpApiHelper(this);
 		this.mcpOauth = new McpOAuthApiHelper(this);
 		this.projects = new ProjectApiHelper(this);

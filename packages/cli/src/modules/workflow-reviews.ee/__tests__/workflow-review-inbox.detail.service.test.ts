@@ -239,6 +239,7 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 
 			expect(detail.workflows[0]?.pinnedVersion).toEqual({
 				versionId: 'ver-pinned',
+				name: 'My workflow',
 				nodes: [expect.objectContaining({ name: 'node-ver-pinned' })],
 				connections: {},
 				nodeGroups: [],

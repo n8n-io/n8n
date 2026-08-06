@@ -6,6 +6,7 @@ import type { Iso8601DateTimeString } from '../../datetime';
 /** Immutable content of one workflow-history version, as needed by the diff surface. */
 export interface WorkflowReviewVersionSnapshot {
 	versionId: string;
+	name: string | null;
 	nodes: INode[];
 	connections: IConnections;
 	nodeGroups: IWorkflowGroup[];

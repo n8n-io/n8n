@@ -4,7 +4,7 @@ import { N8nButton, N8nHeading, N8nPopover, N8nText, N8nTooltip } from '@n8n/des
 import { useI18n } from '@n8n/i18n';
 import { computed, ref } from 'vue';
 
-import { reviewerDisplayName } from '../workflowReviews.utils';
+import { formatUserDisplayName } from '../formatUserDisplayName';
 
 type BannerAction = 'submit-changes' | 'retry-publish';
 
@@ -56,7 +56,8 @@ const pinnedVersionLabel = computed(() => props.review?.workflowVersionId?.slice
 
 const actorName = computed(() => {
 	const actor = props.review?.decisionBy;
-	return actor ? reviewerDisplayName(actor) : null;
+	if (!actor) return null;
+	return formatUserDisplayName(actor);
 });
 
 /**

@@ -8,7 +8,7 @@ import { createFormEventBus } from '@n8n/design-system/utils';
 import { createEventBus } from '@n8n/utils/event-bus';
 import type { IFormInputs, IFormInput, FormFieldValueUpdate, FormValues } from '@/Interface';
 import { useI18n } from '@n8n/i18n';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 
 import { N8nButton, N8nFormInputs, createPasswordRules } from '@n8n/design-system';
 const config = ref<IFormInputs | null>(null);

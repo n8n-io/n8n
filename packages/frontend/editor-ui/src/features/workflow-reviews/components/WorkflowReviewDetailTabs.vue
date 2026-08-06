@@ -8,6 +8,7 @@ import type { WorkflowReviewDecisionInput } from '../workflowReviews.api';
 import WorkflowReviewActivityFeed from './WorkflowReviewActivityFeed.vue';
 import WorkflowReviewChangesSection from './WorkflowReviewChangesSection.vue';
 import WorkflowReviewCommentComposer from './WorkflowReviewCommentComposer.vue';
+import WorkflowReviewDetailMetadata from './WorkflowReviewDetailMetadata.vue';
 
 export type WorkflowReviewDetailTab = 'activity' | 'changes';
 
@@ -24,8 +25,6 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 
-// The view falls back to the inbox list item while the full detail payload is
-// missing.
 const detail = computed<WorkflowReviewRequestDetail | null>(() =>
 	'workflows' in props.review ? props.review : null,
 );
@@ -92,63 +91,72 @@ const tabOptions = computed(() => [
 			</div>
 		</div>
 
-		<div
-			v-if="tab === 'activity'"
-			:class="$style.activityPanel"
-			data-test-id="workflow-review-activity-panel"
-		>
-			<div :class="$style.activityHeader">
-				<N8nText
-					v-if="detail?.description"
-					color="text-base"
-					size="medium"
-					:class="$style.description"
-					data-test-id="workflow-review-description"
+		<div :class="$style.detailBody">
+			<div
+				v-if="tab === 'activity'"
+				:class="$style.activityPanel"
+				data-test-id="workflow-review-activity-panel"
+			>
+				<div :class="$style.activityHeader">
+					<N8nText
+						v-if="detail?.description"
+						color="text-base"
+						size="medium"
+						:class="$style.description"
+						data-test-id="workflow-review-description"
+					>
+						{{ detail.description }}
+					</N8nText>
+					<N8nText
+						v-else
+						color="text-light"
+						size="medium"
+						data-test-id="workflow-review-no-description"
+					>
+						{{ i18n.baseText('workflowReviews.detail.activity.noDescription') }}
+					</N8nText>
+				</div>
+
+				<WorkflowReviewActivityFeed :key="review.id" />
+
+				<WorkflowReviewCommentComposer :can-comment="viewerCanComment" />
+			</div>
+
+			<div v-else :class="$style.panel" data-test-id="workflow-review-changes-panel">
+				<N8nCallout
+					v-if="review.state === 'closed'"
+					theme="info"
+					:class="$style.callout"
+					data-test-id="workflow-review-changes-closed"
 				>
-					{{ detail.description }}
-				</N8nText>
+					{{ i18n.baseText('workflowReviews.changes.closed.body') }}
+				</N8nCallout>
+				<N8nCallout
+					v-else-if="!detail"
+					theme="warning"
+					:class="$style.callout"
+					data-test-id="workflow-review-changes-unavailable"
+				>
+					{{ i18n.baseText('workflowReviews.changes.unavailable') }}
+				</N8nCallout>
+				<template v-else-if="detail.workflows.length > 0">
+					<WorkflowReviewChangesSection
+						v-for="workflow in detail.workflows"
+						:key="workflow.workflowId"
+						:workflow="workflow"
+					/>
+				</template>
 				<N8nText
 					v-else
 					color="text-light"
 					size="medium"
-					data-test-id="workflow-review-no-description"
+					data-test-id="workflow-review-changes-empty"
 				>
-					{{ i18n.baseText('workflowReviews.detail.activity.noDescription') }}
+					{{ i18n.baseText('workflowReviews.changes.empty') }}
 				</N8nText>
 			</div>
 
-			<WorkflowReviewActivityFeed :key="review.id" />
-
-			<WorkflowReviewCommentComposer :can-comment="viewerCanComment" />
-		</div>
-
-		<div v-else :class="$style.panel" data-test-id="workflow-review-changes-panel">
-			<N8nCallout
-				v-if="review.state === 'closed'"
-				theme="info"
-				:class="$style.callout"
-				data-test-id="workflow-review-changes-closed"
-			>
-				{{ i18n.baseText('workflowReviews.changes.closed.body') }}
-			</N8nCallout>
-			<N8nCallout
-				v-else-if="!detail"
-				theme="warning"
-				:class="$style.callout"
-				data-test-id="workflow-review-changes-unavailable"
-			>
-				{{ i18n.baseText('workflowReviews.changes.unavailable') }}
-			</N8nCallout>
-			<template v-else-if="detail.workflows.length > 0">
-				<WorkflowReviewChangesSection
-					v-for="workflow in detail.workflows"
-					:key="workflow.workflowId"
-					:workflow="workflow"
-				/>
-			</template>
-			<N8nText v-else color="text-light" size="medium" data-test-id="workflow-review-changes-empty">
-				{{ i18n.baseText('workflowReviews.changes.empty') }}
-			</N8nText>
+			<WorkflowReviewDetailMetadata :review="review" />
 		</div>
 	</div>
 </template>
@@ -168,11 +176,18 @@ const tabOptions = computed(() => [
 	gap: var(--spacing--sm);
 }
 
+.detailBody {
+	display: flex;
+	flex: 1;
+	gap: var(--spacing--sm);
+	min-height: 0;
+	padding-top: var(--review-tab-bar--gap, calc(var(--spacing--sm) + 11px));
+}
+
 .panel {
 	flex: 1;
 	min-height: 0;
 	overflow: auto;
-	padding-top: var(--review-tab-bar--gap, calc(var(--spacing--sm) + 11px));
 }
 
 /* Separate from `.panel`: the feed brings its own scroll container, and the
@@ -183,7 +198,6 @@ const tabOptions = computed(() => [
 	flex: 1;
 	min-height: 0;
 	overflow: hidden;
-	padding-top: var(--review-tab-bar--gap, calc(var(--spacing--sm) + 11px));
 }
 
 /* A long description must not push the composer off screen. */
@@ -207,5 +221,22 @@ const tabOptions = computed(() => [
 	align-items: center;
 	gap: var(--spacing--2xs);
 	flex-shrink: 0;
+}
+
+@media (max-width: 60rem) {
+	.detailBody {
+		flex-direction: column;
+		overflow: auto;
+	}
+
+	.panel {
+		flex: 0 0 auto;
+		overflow: visible;
+	}
+
+	.activityPanel {
+		flex: 0 0 auto;
+		overflow: visible;
+	}
 }
 </style>

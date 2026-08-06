@@ -81,10 +81,10 @@ export class WorkflowReviewEligibilityService {
 
 		const [workflow, isAuthor] = await Promise.all([
 			this.workflowFinderService.findWorkflowForUser(pinnedWorkflowId, user, ['workflow:publish']),
-			this.workflowReviewRequestAuthorRepository.isAuthor({
-				workflowReviewRequestId: request.id,
-				userId: user.id,
-			}),
+			this.workflowReviewRequestAuthorRepository.isAuthor(
+				{ workflowReviewRequestId: request.id, userId: user.id },
+				{},
+			),
 		]);
 
 		// Authorship is history; access is not. An author keeps commenting only while they
@@ -99,6 +99,7 @@ export class WorkflowReviewEligibilityService {
 				canComment,
 			};
 		}
+
 		if (isAuthor && !(await this.hasAdminOverride(user, request.projectId))) {
 			return { canDecide: false, decisionIneligibilityReason: 'author', canComment };
 		}

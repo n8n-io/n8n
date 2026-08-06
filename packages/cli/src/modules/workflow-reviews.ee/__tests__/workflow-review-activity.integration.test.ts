@@ -111,18 +111,27 @@ async function seedRequest(
 	author: User,
 	projectId = teamProject.id,
 ) {
-	const request = await requestRepository.createRequest({
-		projectId,
-		title: 'Please review',
-		description: 'Some context',
-		createdById: author.id,
-	});
-	await workflowRepository.createWorkflowRow({
-		workflowReviewRequestId: request.id,
-		workflowId,
-		workflowVersionId: versionId,
-	});
-	await authorRepository.addAuthor({ workflowReviewRequestId: request.id, userId: author.id });
+	const request = await requestRepository.createRequest(
+		{
+			projectId,
+			title: 'Please review',
+			description: 'Some context',
+			createdById: author.id,
+		},
+		{},
+	);
+	await workflowRepository.createWorkflowRow(
+		{
+			workflowReviewRequestId: request.id,
+			workflowId,
+			workflowVersionId: versionId,
+		},
+		{},
+	);
+	await authorRepository.addAuthor(
+		{ workflowReviewRequestId: request.id, userId: author.id },
+		{},
+	);
 	return request;
 }
 

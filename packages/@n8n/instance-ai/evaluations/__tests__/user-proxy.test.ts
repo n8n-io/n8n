@@ -884,10 +884,11 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		);
 		// The allowlist call must include the pre-existing id, not just the new
 		// one — setThreadCredentialAllowlist replaces the whole list.
-		expect(setThreadCredentialAllowlist).toHaveBeenCalledWith('thread-1', [
-			'cred-old',
-			'cred-fresh',
-		]);
+		expect(setThreadCredentialAllowlist).toHaveBeenCalledWith(
+			'thread-1',
+			['cred-old', 'cred-fresh'],
+			[],
+		);
 		expect(response.kind).toBe('setupWorkflowApply');
 		if (response.kind === 'setupWorkflowApply') {
 			expect(response.nodeCredentials).toEqual({ 'Post To Slack': { slackApi: 'cred-fresh' } });
@@ -1056,10 +1057,52 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 			]),
 		);
 
-		// Two args, not three-with-undefined: the request must stay byte-identical
-		// to before for every case that doesn't opt into the bypass.
-		expect(setThreadCredentialAllowlist).toHaveBeenCalledWith('thread-1', ['cred-fresh']);
+		// An empty bypass list, which the client drops from the request body.
+		expect(setThreadCredentialAllowlist).toHaveBeenCalledWith('thread-1', ['cred-fresh'], []);
 		expect(proxy.getDecisionStats()['credential-test-bypassed']).toBeUndefined();
+	});
+
+	it("workflows(action='setup'): keeps the seeded credentials bypassed when it creates another", async () => {
+		const agent = new FakeAgent();
+		agent.enqueue({
+			action: 'apply_setup_wizard',
+			nodeParametersJson: '{}',
+			nodeCredentialsJson: JSON.stringify({ 'Post To Slack': { slackApi: 'new' } }),
+			workingCredentialTypes: ['slackApi'],
+		});
+		const { client, setThreadCredentialAllowlist } = fakeCredentialClient('cred-fresh');
+		const proxy = new UserProxyLlm({
+			conversation: [
+				{ role: 'user', text: 'Post to Slack every morning.' },
+				{ role: 'user', text: '[Set up the Slack credential now; the token works.]' },
+			],
+			agent,
+			credentialCreation: {
+				client,
+				threadId: 'thread-1',
+				allowlistedCredentialIds: ['cred-seeded'],
+				bypassCredentialTestIds: ['cred-seeded'],
+			},
+		});
+
+		await proxy.respondToConfirmation(
+			setupWizardEvent('req-sw-seeded-bypass', [
+				{
+					nodeId: 'n1',
+					nodeName: 'Post To Slack',
+					credentialType: 'slackApi',
+					existingCredentials: [],
+				},
+			]),
+		);
+
+		// The endpoint replaces both lists, so the seeded id has to be re-sent —
+		// dropping it would silently un-bypass the case's declared credentials.
+		expect(setThreadCredentialAllowlist).toHaveBeenCalledWith(
+			'thread-1',
+			['cred-seeded', 'cred-fresh'],
+			['cred-seeded', 'cred-fresh'],
+		);
 	});
 
 	it("workflows(action='setup'): declines a zero-candidate credential slot when no credentialCreation is configured", async () => {
@@ -1327,7 +1370,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 			'slackApi',
 			expect.any(Object),
 		);
-		expect(setThreadCredentialAllowlist).toHaveBeenCalledWith('thread-1', ['cred-fresh']);
+		expect(setThreadCredentialAllowlist).toHaveBeenCalledWith('thread-1', ['cred-fresh'], []);
 		expect(response.kind).toBe('credentialSelection');
 		if (response.kind === 'credentialSelection') {
 			expect(response.credentials).toEqual({ slackApi: 'cred-fresh' });

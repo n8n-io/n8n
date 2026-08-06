@@ -5,7 +5,7 @@ import { useI18n } from '@n8n/i18n';
 
 import TimeAgo from '@/app/components/TimeAgo.vue';
 
-import { reviewerDisplayName } from '../../workflowReviews.utils';
+import { formatUserDisplayName } from '../../formatUserDisplayName';
 
 defineProps<{
 	entry: Extract<WorkflowReviewActivityEntry, { type: 'comment.created' }>;
@@ -15,7 +15,7 @@ const i18n = useI18n();
 
 function authorName(message: WorkflowReviewActivityMessage): string {
 	return message.createdBy
-		? reviewerDisplayName(message.createdBy)
+		? formatUserDisplayName(message.createdBy)
 		: i18n.baseText('workflowReviews.detail.activity.unknownAuthor');
 }
 </script>
