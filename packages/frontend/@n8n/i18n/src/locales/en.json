@@ -7771,6 +7771,8 @@
 	"agents.builder.agentEvals.empty.generate": "Generate test cases",
 	"agents.builder.agentEvals.generated": "{count} test case generated | {count} test cases generated",
 	"agents.builder.agentEvals.generateError": "Couldn't generate test cases",
+	"agents.builder.agentEvals.run.finished": "{success} of {total} case passed | {success} of {total} cases passed",
+	"agents.builder.agentEvals.run.startError": "Couldn't start the run",
 	"agents.builder.quickActions.memoriesUsed.count": "{count} memory | {count} memories",
 	"agents.builder.quickActions.memoriesUsed.keyMemory": "Memory",
 	"agents.builder.capabilities.title": "Capabilities",
