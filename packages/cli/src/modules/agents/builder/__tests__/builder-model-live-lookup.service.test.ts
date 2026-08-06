@@ -10,15 +10,8 @@ import type { AiGatewayService } from '@/services/ai-gateway.service';
 import { BuilderModelLiveLookupService } from '../builder-model-live-lookup.service';
 
 const listModelsForProvider = vi.fn();
-vi.mock('@n8n/ai-utilities/model-discovery', () => ({
-	isOpenAiCustomEndpoint: (baseURL?: string) => {
-		if (baseURL === undefined) return false;
-		try {
-			return !['api.openai.com', 'ai-assistant.n8n.io'].includes(new URL(baseURL).hostname);
-		} catch {
-			return true;
-		}
-	},
+vi.mock('@n8n/ai-utilities/model-discovery', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/ai-utilities/model-discovery')>()),
 	listModelsForProvider: (...args: unknown[]) => listModelsForProvider(...args) as unknown,
 }));
 
