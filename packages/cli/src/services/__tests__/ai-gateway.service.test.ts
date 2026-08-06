@@ -1,16 +1,17 @@
-import type { Mock, Mocked } from 'vitest';
 import type { LicenseState } from '@n8n/backend-common';
 import type { HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import type { GlobalConfig } from '@n8n/config';
-import { mock } from 'vitest-mock-extended';
+import type { Project, User, UserRepository } from '@n8n/db';
 import type { InstanceSettings } from 'n8n-core';
 import { UserError } from 'n8n-workflow';
+import type { Mock, Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { N8N_VERSION, AI_ASSISTANT_SDK_VERSION } from '@/constants';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import type { License } from '@/license';
 import { AiGatewayService } from '@/services/ai-gateway.service';
-import type { Project, User, UserRepository } from '@n8n/db';
 import type { OwnershipService } from '@/services/ownership.service';
 import type { UrlService } from '@/services/url.service';
 
@@ -49,6 +50,7 @@ let requestMock: Mock;
 
 function makeService({
 	baseUrl = BASE_URL as string | null,
+	aiGatewayEnabled = true,
 	isAiGatewayLicensed = true,
 	ownershipService = mock<OwnershipService>(),
 	userRepository = mock<UserRepository>({ findOneBy: vi.fn().mockResolvedValue(null) }),
@@ -58,6 +60,7 @@ function makeService({
 } = {}) {
 	const globalConfig = {
 		aiAssistant: { baseUrl: baseUrl ?? undefined },
+		aiGateway: { enabled: aiGatewayEnabled },
 	} as unknown as GlobalConfig;
 	const license = mock<License>({
 		loadCertStr: vi.fn().mockResolvedValue(LICENSE_CERT),
@@ -96,6 +99,18 @@ describe('AiGatewayService', () => {
 
 	afterEach(() => {
 		vi.clearAllMocks();
+	});
+
+	describe('assertEnabled()', () => {
+		it('allows licensed instances when the opt-out is not set', () => {
+			expect(() => makeService().assertEnabled()).not.toThrow();
+		});
+
+		it('rejects instances that opt out', () => {
+			expect(() => makeService({ aiGatewayEnabled: false }).assertEnabled()).toThrow(
+				BadRequestError,
+			);
+		});
 	});
 
 	describe('getGatewayConfig()', () => {
@@ -149,6 +164,15 @@ describe('AiGatewayService', () => {
 	});
 
 	describe('isAvailable()', () => {
+		it('returns available:false when n8n Connect is not enabled', async () => {
+			const service = makeService({ aiGatewayEnabled: false });
+
+			const result = await service.isAvailable();
+
+			expect(result).toEqual({ available: false });
+			expect(requestMock).not.toHaveBeenCalled();
+		});
+
 		it('returns available:false when the AI Gateway is not licensed', async () => {
 			const service = makeService({ isAiGatewayLicensed: false });
 
@@ -175,7 +199,7 @@ describe('AiGatewayService', () => {
 			expect(result).toEqual({ available: false });
 		});
 
-		it('returns available:true with config when licensed and gateway responds', async () => {
+		it('returns available:true with config when enabled and gateway responds', async () => {
 			requestMock.mockResolvedValueOnce(ok(MOCK_GATEWAY_CONFIG));
 			const service = makeService();
 
@@ -186,11 +210,18 @@ describe('AiGatewayService', () => {
 	});
 
 	describe('getSyntheticCredential()', () => {
-		it('throws FeatureNotLicensedError when not licensed and dev mode is off', async () => {
+		it('throws FeatureNotLicensedError when the AI Gateway is not licensed', async () => {
 			const service = makeService({ isAiGatewayLicensed: false });
 			await expect(
 				service.getSyntheticCredential({ credentialType: 'googlePalmApi', userId: USER_ID }),
 			).rejects.toThrow(FeatureNotLicensedError);
+		});
+
+		it('throws when n8n Connect is not enabled', async () => {
+			const service = makeService({ aiGatewayEnabled: false });
+			await expect(
+				service.getSyntheticCredential({ credentialType: 'googlePalmApi', userId: USER_ID }),
+			).rejects.toThrow('n8n Connect is not enabled on this instance.');
 		});
 
 		it('throws UserError when baseUrl is not configured', async () => {
@@ -867,6 +898,124 @@ describe('AiGatewayService', () => {
 				(c[0].url as string).includes('/v1/gateway/credentials'),
 			);
 			expect(credentialsCalls).toHaveLength(1);
+		});
+	});
+
+	describe('getCredentialTypeForProvider()', () => {
+		const MULTI_PROVIDER_CONFIG = {
+			nodes: [],
+			credentialTypes: ['openAiApi', 'anthropicApi', 'googlePalmApi'],
+			providerConfig: {
+				openAiApi: { gatewayPath: '/v1/gateway/openai/v1', urlField: 'url', apiKeyField: 'apiKey' },
+				anthropicApi: {
+					gatewayPath: '/v1/gateway/anthropic',
+					urlField: 'url',
+					apiKeyField: 'apiKey',
+				},
+				googlePalmApi: {
+					gatewayPath: '/v1/gateway/google',
+					urlField: 'host',
+					apiKeyField: 'apiKey',
+				},
+			},
+		};
+
+		it.each([
+			['openai', 'openAiApi'],
+			['anthropic', 'anthropicApi'],
+			['google', 'googlePalmApi'],
+		])(
+			'maps model provider prefix "%s" to gateway credential type "%s"',
+			async (provider, credType) => {
+				requestMock.mockResolvedValueOnce(ok(MULTI_PROVIDER_CONFIG));
+				const service = makeService();
+
+				await expect(service.getCredentialTypeForProvider(provider)).resolves.toBe(credType);
+			},
+		);
+
+		it('returns undefined for a provider the gateway does not serve', async () => {
+			requestMock.mockResolvedValueOnce(ok(MULTI_PROVIDER_CONFIG));
+			const service = makeService();
+
+			await expect(service.getCredentialTypeForProvider('xai')).resolves.toBeUndefined();
+		});
+
+		it('maps a provider whose gateway path slug differs from the provider id', async () => {
+			// The gateway's URL slugs are its own naming scheme and need not match n8n's
+			// provider ids (Moonshot serves Kimi under `/moonshot`). Mapping must key on
+			// the providerConfig credential type, not on the path.
+			requestMock.mockResolvedValueOnce(
+				ok({
+					nodes: [],
+					credentialTypes: ['openAiApi'],
+					providerConfig: {
+						openAiApi: {
+							gatewayPath: '/v1/gateway/a-different-slug/v1',
+							urlField: 'url',
+							apiKeyField: 'apiKey',
+						},
+					},
+				}),
+			);
+			const service = makeService();
+
+			await expect(service.getCredentialTypeForProvider('openai')).resolves.toBe('openAiApi');
+		});
+
+		it('returns undefined (without fetching config) when n8n Connect is unlicensed', async () => {
+			const service = makeService({ isAiGatewayLicensed: false });
+
+			await expect(service.getCredentialTypeForProvider('openai')).resolves.toBeUndefined();
+			expect(requestMock).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('getCredentialTypeForProviderCached()', () => {
+		const MULTI_PROVIDER_CONFIG = {
+			nodes: [],
+			credentialTypes: ['openAiApi', 'anthropicApi'],
+			providerConfig: {
+				openAiApi: { gatewayPath: '/v1/gateway/openai/v1', urlField: 'url', apiKeyField: 'apiKey' },
+				anthropicApi: {
+					gatewayPath: '/v1/gateway/anthropic',
+					urlField: 'url',
+					apiKeyField: 'apiKey',
+				},
+			},
+		};
+
+		it('returns undefined (unknown) without fetching when no config is cached', async () => {
+			const service = makeService();
+
+			expect(service.getCredentialTypeForProviderCached('openai')).toBeUndefined();
+			expect(requestMock).not.toHaveBeenCalled();
+		});
+
+		it('returns the credential type from the cached config without fetching', async () => {
+			requestMock.mockResolvedValueOnce(ok(MULTI_PROVIDER_CONFIG));
+			const service = makeService();
+			// Warm the cache once.
+			await service.getGatewayConfig();
+			requestMock.mockClear();
+
+			expect(service.getCredentialTypeForProviderCached('openai')).toBe('openAiApi');
+			expect(requestMock).not.toHaveBeenCalled();
+		});
+
+		it('returns null (definitive no) when the cached config does not serve the provider', async () => {
+			requestMock.mockResolvedValueOnce(ok(MULTI_PROVIDER_CONFIG));
+			const service = makeService();
+			await service.getGatewayConfig();
+
+			expect(service.getCredentialTypeForProviderCached('xai')).toBeNull();
+		});
+
+		it('returns null (definitive no) when n8n Connect is unlicensed', async () => {
+			const service = makeService({ isAiGatewayLicensed: false });
+
+			expect(service.getCredentialTypeForProviderCached('openai')).toBeNull();
+			expect(requestMock).not.toHaveBeenCalled();
 		});
 	});
 });

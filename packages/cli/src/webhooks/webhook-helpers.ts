@@ -65,6 +65,7 @@ import { InternalServerError } from '@/errors/response-errors/internal-server.er
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import { parseBody } from '@/middlewares';
+import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
 import {
 	type AuthFailureReason,
 	OAuthTokenVerifierProxy,
@@ -323,13 +324,27 @@ export function setupResponseNodePromise(
 		.then(async (response: IN8nHttpFullResponse) => {
 			const binaryData = (response.body as IDataObject)?.binaryData as IBinaryData;
 			if (binaryData?.id) {
+				if (response.statusCode) {
+					res.status(response.statusCode);
+				}
 				WebhookResponseHeaders.fromObject(response.headers).applyToResponse(res);
 				applySandboxCSP(res);
-				const stream = await Container.get(BinaryDataService).getAsStream(binaryData.id);
-				stream.pipe(res, { end: false });
-				await finished(stream);
+				try {
+					const stream = await Container.get(BinaryDataService).getAsStream(binaryData.id);
+					res.once('close', () => stream.destroy());
+					stream.pipe(res, { end: false });
+					await finished(stream);
+				} finally {
+					void Container.get(WebhookResponseRelay).deleteOffloadedBody(response, {
+						workflowId: workflow.id,
+						executionId,
+					});
+				}
 				responseCallback(null, { noWebhookResponse: true });
 			} else if (Buffer.isBuffer(response.body)) {
+				if (response.statusCode) {
+					res.status(response.statusCode);
+				}
 				WebhookResponseHeaders.fromObject(response.headers).applyToResponse(res);
 				applySandboxCSP(res);
 				res.end(response.body);
@@ -528,14 +543,7 @@ export async function executeWebhook(
 		responsePropertyName,
 		responseContentType,
 		responseBinaryPropertyName,
-	} = evaluateResponseOptions(
-		workflowStartNode,
-		workflow,
-		req,
-		webhookData,
-		executionMode,
-		additionalKeys,
-	);
+	} = evaluateResponseOptions(context, req);
 
 	if (
 		!['onReceived', 'lastNode', 'responseNode', 'formPage', 'streaming', 'hostedChat'].includes(
@@ -779,6 +787,25 @@ export async function executeWebhook(
 			return;
 		}
 
+		// Reactive credential-status gate. Runs only once we know the workflow will
+		// execute (workflowData is defined), so a falsy "Only Run If" short-circuits
+		// above without surfacing a misleading 428. Once the webhook node has established
+		// the triggering user's identity (n8nOAuth2 mode), block the run if any of that
+		// user's resolvable (private) credentials are still unconnected, responding
+		// 428 Precondition Required with the missing-credential list and a signed
+		// connect link for each.
+		if (!didSendResponse && !res.headersSent && shouldEstablishTriggerIdentity(workflowStartNode)) {
+			const credentialGate = await additionalData.checkTriggerCredentialStatus?.();
+			if (credentialGate && !credentialGate.readyToExecute) {
+				responseCallback(null, {
+					data: credentialGate,
+					responseCode: 428,
+				});
+				didSendResponse = true;
+				return;
+			}
+		}
+
 		// For "onReceived" mode, we need to defer response sending until after the execution
 		// is created, so that `$execution.id` is available in response data expressions.
 		const shouldDeferOnReceivedResponse = responseMode === 'onReceived' && !didSendResponse;
@@ -902,7 +929,8 @@ export async function executeWebhook(
 			runData,
 			true,
 			!didSendResponse && !shouldDeferOnReceivedResponse,
-			executionId,
+			// An execution id here means we are resuming one that is waiting on this webhook
+			executionId ? { executionId, expectedStatus: 'waiting' } : undefined,
 			responsePromise as IDeferredPromise<IExecuteResponsePromiseData> | undefined,
 		);
 
@@ -1102,71 +1130,44 @@ export async function executeWebhook(
 /**
  * Evaluates the response mode, code and data for a webhook node
  */
-function evaluateResponseOptions(
-	workflowStartNode: INode,
-	workflow: Workflow,
-	req: WebhookRequest,
-	webhookData: IWebhookData,
-	executionMode: WorkflowExecuteMode,
-	additionalKeys: IWorkflowDataProxyAdditionalKeys,
-) {
+function evaluateResponseOptions(context: WebhookExecutionContext, req: WebhookRequest) {
+	const { workflow, workflowStartNode } = context;
+
 	//check if response mode should be set automatically, e.g. multipage form
 	const responseMode =
 		autoDetectResponseMode(workflowStartNode, workflow, req.method) ??
-		(workflow.expression.getSimpleParameterValue(
-			workflowStartNode,
-			webhookData.webhookDescription.responseMode,
-			executionMode,
-			additionalKeys,
+		context.evaluateSimpleWebhookDescriptionExpression<WebhookResponseMode>(
+			'responseMode',
 			undefined,
 			'onReceived',
-		) as WebhookResponseMode);
+		)!;
 
-	const responseCode = workflow.expression.getSimpleParameterValue(
-		workflowStartNode,
-		webhookData.webhookDescription.responseCode as string,
-		executionMode,
-		additionalKeys,
+	const responseCode = context.evaluateSimpleWebhookDescriptionExpression<number>(
+		'responseCode',
 		undefined,
 		200,
-	) as number;
+	)!;
 
 	// This parameter is used for two different purposes:
 	// 1. as arbitrary string input defined in the workflow in the "respond immediately" mode,
 	// 2. as well as WebhookResponseData config in all the other modes
-	const responseData = workflow.expression.getComplexParameterValue(
-		workflowStartNode,
-		webhookData.webhookDescription.responseData,
-		executionMode,
-		additionalKeys,
-		undefined,
-		'firstEntryJson',
-	) as WebhookResponseData | string | undefined;
+	const responseData = context.evaluateComplexWebhookDescriptionExpression<
+		WebhookResponseData | string
+	>('responseData', undefined, 'firstEntryJson');
 
 	// This is needed for backward compatibility, where only the first main output was checked for data.
 	// We want to keep existing behavior for webhooks, but change for chat triggers, where checking all main outputs makes more sense.
 	// We can unify the behavior in the next major release and get rid of this flag
 	const checkAllMainOutputs = workflowStartNode.type === CHAT_TRIGGER_NODE_TYPE;
 
-	const responsePropertyName = workflow.expression.getSimpleParameterValue(
-		workflowStartNode,
-		webhookData.webhookDescription.responsePropertyName,
-		executionMode,
-		additionalKeys,
-	) as string | undefined;
+	const responsePropertyName =
+		context.evaluateSimpleWebhookDescriptionExpression<string>('responsePropertyName');
 
-	const responseContentType = workflow.expression.getSimpleParameterValue(
-		workflowStartNode,
-		webhookData.webhookDescription.responseContentType,
-		executionMode,
-		additionalKeys,
-	) as string | undefined;
+	const responseContentType =
+		context.evaluateSimpleWebhookDescriptionExpression<string>('responseContentType');
 
-	const responseBinaryPropertyName = workflow.expression.getSimpleParameterValue(
-		workflowStartNode,
-		webhookData.webhookDescription.responseBinaryPropertyName,
-		executionMode,
-		additionalKeys,
+	const responseBinaryPropertyName = context.evaluateSimpleWebhookDescriptionExpression<string>(
+		'responseBinaryPropertyName',
 		undefined,
 		'data',
 	);

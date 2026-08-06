@@ -15,6 +15,7 @@ export * from './redaction-enforcement-floor';
 export * from './workflow-reviews-policy';
 export type * from './workflow-review-eligible-reviewer';
 export * from './workflow-review-request-summary';
+export * from './workflow-publish-blocked-details';
 export {
 	chatHubConversationModelSchema,
 	type ChatModelDto,
@@ -310,6 +311,7 @@ export {
 	toolErrorPayloadSchema,
 	confirmationRequestPayloadSchema,
 	confirmationInputTypeSchema,
+	instanceAiTargetApprovalSchema,
 	channelConfigSchema,
 	credentialRequestSchema,
 	workflowSetupNodeSchema,
@@ -326,6 +328,8 @@ export {
 	EVAL_VENDOR_SDK_INTERCEPTION_FLAG,
 	CONFIG_EVALUATIONS_FLAG,
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
+	INSTANCE_AI_MCP_CONNECTIONS_FLAG,
+	INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT,
 	domainAccessActionSchema,
 	domainAccessMetaSchema,
 	webSearchMetaSchema,
@@ -367,6 +371,8 @@ export {
 	InstanceAiGatewayCreateCredentialDto,
 	InstanceAiFilesystemResponseDto,
 	instanceAiEvalSeedDataTableSchema,
+	instanceAiEvalSeedAgentSchema,
+	findUnbackedSeedWorkflowTools,
 	applyBranchReadOnlyOverrides,
 	INSTANCE_AI_THREAD_SOURCES,
 	INSTANCE_AI_THREAD_SOURCE_FALLBACK,
@@ -390,6 +396,7 @@ export type {
 	InstanceAiChannelConfig,
 	InstanceAiConfirmationRequestPayload,
 	InstanceAiConfirmationSeverity,
+	InstanceAiTargetApproval,
 	InstanceAiCredentialRequest,
 	InstanceAiAgentStatus,
 	InstanceAiAgentKind,
@@ -483,6 +490,7 @@ export type {
 	InstanceAiEvalAgentExecutionResult,
 	InstanceAiEvalSeedWorkflow,
 	InstanceAiEvalSeedDataTable,
+	InstanceAiEvalSeedAgent,
 } from './schemas/instance-ai.schema';
 
 export type {
@@ -529,6 +537,7 @@ export {
 	MCP_APPS_VARIANT_CONTROL,
 	MCP_APPS_VARIANT_ENABLED,
 	MCP_CANVAS_GROUPS_FLAG,
+	MCP_AGENT_SCOPES,
 	MCP_INSTANCE_SCOPES,
 	MCP_CLIENT_BRAND_MATCHERS,
 	MCP_CLIENT_TYPE_FILTERS,
@@ -583,6 +592,9 @@ export {
 	UpdateAgentEvalDatasetDto,
 	createAgentEvalRunSchema,
 	CreateAgentEvalRunDto,
+	AGENT_EVAL_RESULTS_DEFAULT_TAKE,
+	AgentEvalRunDetailQueryDto,
+	agentEvalCorrectionSchema,
 	createAgentEvalRatingSchema,
 	CreateAgentEvalRatingDto,
 	agentEvalDraftCaseSchema,
@@ -594,15 +606,19 @@ export type {
 	AgentEvalRunStatus,
 	AgentEvalResultStatus,
 	AgentEvalVote,
+	AgentEvalCorrection,
 	CreateAgentEvalDatasetDto,
 	UpdateAgentEvalDatasetPayload,
 	CreateAgentEvalRunPayload,
 	CreateAgentEvalRatingPayload,
+	AgentEvalPage,
 	AgentEvalDatasetRecord,
 	AgentEvalRunRecord,
 	AgentEvalResultRecord,
 	AgentEvalRatingRecord,
+	AgentEvalRunList,
 	AgentEvalRunDetail,
+	AgentEvalRunSummary,
 	AgentEvalDraftCase,
 	GenerateDraftCasesOptions,
 	GenerateDraftCasesResult,

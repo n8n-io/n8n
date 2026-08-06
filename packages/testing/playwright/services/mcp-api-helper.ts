@@ -88,8 +88,6 @@ export interface SearchWorkflowsResult {
 		createdAt: string | null;
 		updatedAt: string | null;
 		triggerCount: number | null;
-		scopes: string[];
-		canExecute: boolean;
 		availableInMCP: boolean;
 		tags: Array<{ id: string; name: string }>;
 	}>;
@@ -127,7 +125,7 @@ export interface ExecuteWorkflowResult {
 	error?: string;
 }
 
-/** Response from get_execution tool */
+/** Response from get_workflow_execution tool */
 export interface GetExecutionResult {
 	execution: {
 		id: string;
@@ -982,7 +980,7 @@ export class McpApiHelper {
 	}
 
 	/**
-	 * Calls get_execution tool on the internal MCP service.
+	 * Calls get_workflow_execution tool on the internal MCP service.
 	 */
 	async internalMcpGetExecution(
 		apiKey: string,
@@ -991,7 +989,7 @@ export class McpApiHelper {
 		options?: { includeData?: boolean; nodeNames?: string[]; truncateData?: number },
 	): Promise<GetExecutionResult> {
 		try {
-			return await this.callInternalMcpTool<GetExecutionResult>(apiKey, 'get_execution', {
+			return await this.callInternalMcpTool<GetExecutionResult>(apiKey, 'get_workflow_execution', {
 				workflowId,
 				executionId,
 				...options,

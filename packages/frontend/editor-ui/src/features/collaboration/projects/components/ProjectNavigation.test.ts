@@ -5,8 +5,8 @@ import { mockedStore } from '@/__tests__/utils';
 import { createProjectListItem, createTestProject } from '../__tests__/utils';
 import ProjectsNavigation from './ProjectNavigation.vue';
 import { useProjectsStore } from '../projects.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 
 vi.mock('vue-router', async () => {
 	const actual = await vi.importActual('vue-router');
@@ -22,7 +22,7 @@ vi.mock('vue-router', async () => {
 	};
 });
 
-vi.mock('@/app/composables/useToast', () => {
+vi.mock('@n8n/composables/useToast', () => {
 	const showMessage = vi.fn();
 	const showError = vi.fn();
 	return {
@@ -41,10 +41,6 @@ vi.mock('@/app/composables/usePageRedirectionHelper', () => {
 		}),
 	};
 });
-
-vi.mock('is-emoji-supported', () => ({
-	isEmojiSupported: () => true,
-}));
 
 const renderComponent = createComponentRenderer(ProjectsNavigation, {
 	global: {

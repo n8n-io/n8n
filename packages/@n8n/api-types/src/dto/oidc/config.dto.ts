@@ -12,6 +12,8 @@ export class OidcConfigDto extends Z.class({
 	prompt: z.enum(OIDC_PROMPT_VALUES).optional().default('select_account'),
 	authenticationContextClassReference: z.array(z.string()).default([]),
 	additionalScopes: z.string().default(''),
+	emailVerifiedRequired: z.boolean().optional(),
+	rpInitiatedLogoutEnabled: z.boolean().optional().default(false),
 }) {}
 
 /**
@@ -24,4 +26,6 @@ export class UpdateOidcConfigurationDto extends OidcConfigDto.extend({
 	prompt: z.enum(OIDC_PROMPT_VALUES),
 	authenticationContextClassReference: z.array(z.string()),
 	additionalScopes: z.string(),
+	emailVerifiedRequired: z.boolean(),
+	rpInitiatedLogoutEnabled: z.boolean(),
 }) {}

@@ -4,15 +4,15 @@ import {
 	COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY,
 	COMMUNITY_PACKAGE_MANAGE_ACTIONS,
 } from '../communityNodes.constants';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useCommunityNodesStore } from '../communityNodes.store';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useI18n } from '@n8n/i18n';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { computed, onMounted, ref } from 'vue';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { CommunityNodeType } from '@n8n/api-types';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import semver from 'semver';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';

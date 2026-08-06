@@ -12,7 +12,7 @@ import { test, expect } from '../../../fixtures/base';
  * - search_workflows: Search for workflows available in MCP
  * - get_workflow_details: Get detailed information about a workflow
  * - execute_workflow: Execute a workflow and get results
- * - get_execution: Get full execution details by ID
+ * - get_workflow_execution: Get full workflow execution details by ID
  * - publish_workflow: Publish (activate) a workflow
  * - unpublish_workflow: Unpublish (deactivate) a workflow
  *
@@ -169,7 +169,6 @@ test.describe(
 				const foundWorkflow = result.data.find((w) => w.id === workflowId);
 				expect(foundWorkflow).toBeDefined();
 				expect(foundWorkflow!.active).toBe(true);
-				expect(foundWorkflow!.scopes).toBeDefined();
 				expect(foundWorkflow!.availableInMCP).toBe(true);
 			});
 
@@ -218,7 +217,7 @@ test.describe(
 				expect(result.data[0].id).toBe(workflowId);
 			});
 
-			test('should return workflow metadata (id, name, scopes)', async ({ api }) => {
+			test('should return workflow metadata (id, name)', async ({ api }) => {
 				const { workflowId, createdWorkflow } = await api.workflows.importWorkflowFromFile(
 					'mcp-service/mcp-available-basic.json',
 				);
@@ -232,8 +231,6 @@ test.describe(
 
 				expect(foundWorkflow!.id).toBe(workflowId);
 				expect(foundWorkflow!.name).toBeTruthy();
-				expect(foundWorkflow!.scopes).toBeInstanceOf(Array);
-				expect(typeof foundWorkflow!.canExecute).toBe('boolean');
 				expect(typeof foundWorkflow!.availableInMCP).toBe('boolean');
 			});
 		});
@@ -352,7 +349,7 @@ test.describe(
 			});
 		});
 
-		test.describe('get_execution', () => {
+		test.describe('get_workflow_execution', () => {
 			test('should return full execution data after workflow execution', async ({ api }) => {
 				const { workflowId, createdWorkflow } = await api.workflows.importWorkflowFromFile(
 					'mcp-service/mcp-available-basic.json',

@@ -136,6 +136,10 @@ url = "${serverUrl}"`;
 					name: 'ChatGPT',
 					category: 'web',
 					icon: OpenAiIcon,
+					// Opens ChatGPT's "create connector" form directly, prefilled to just take the
+					// server URL, rather than dropping the user on the connectors settings page.
+					addUrl:
+						'https://chatgpt.com/plugins#settings/Connectors?create-connector=true&redirectAfter=%2Fplugins',
 				},
 			],
 		},

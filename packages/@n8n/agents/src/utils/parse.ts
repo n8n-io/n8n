@@ -1,4 +1,5 @@
 import type AjvType from 'ajv';
+import type { ValidateFunction } from 'ajv';
 import type { JSONSchema7 } from 'json-schema';
 import type { ZodType } from 'zod';
 
@@ -8,15 +9,27 @@ export type ParseResult<T = unknown> =
 	| { success: true; data: T }
 	| { success: false; error: string };
 
-let ajvInstance: InstanceType<typeof AjvType> | undefined;
+export interface ParseOptions {
+	/** For schemas converted from Zod, whose `.strip()` `zodToJsonSchema` renders as the stricter `additionalProperties: false`. */
+	stripUnknown?: boolean;
+}
 
-function getAjv(): InstanceType<typeof AjvType> {
-	if (!ajvInstance) {
-		// eslint-disable-next-line @typescript-eslint/no-require-imports
-		const { default: Ajv } = require('ajv') as { default: typeof AjvType };
-		ajvInstance = new Ajv({ strict: false });
-	}
-	return ajvInstance;
+const ajvInstances = new Map<string, InstanceType<typeof AjvType>>();
+
+function getAjv(unicodeRegExp = true, stripUnknown = false): InstanceType<typeof AjvType> {
+	const key = `${String(unicodeRegExp)}:${String(stripUnknown)}`;
+	const cached = ajvInstances.get(key);
+	if (cached) return cached;
+
+	// eslint-disable-next-line @typescript-eslint/no-require-imports
+	const { default: Ajv } = require('ajv') as { default: typeof AjvType };
+	const instance = new Ajv({
+		strict: false,
+		...(unicodeRegExp ? {} : { unicodeRegExp: false }),
+		...(stripUnknown ? { removeAdditional: true } : {}),
+	});
+	ajvInstances.set(key, instance);
+	return instance;
 }
 
 /**
@@ -26,6 +39,7 @@ function getAjv(): InstanceType<typeof AjvType> {
 export async function parseWithSchema(
 	schema: ZodType | JSONSchema7,
 	data: unknown,
+	options: ParseOptions = {},
 ): Promise<ParseResult> {
 	if (isZodSchema(schema)) {
 		const result = await schema.safeParseAsync(data);
@@ -33,8 +47,19 @@ export async function parseWithSchema(
 		return { success: false, error: result.error.message };
 	}
 
-	const ajv = getAjv();
-	const validate = ajv.compile(schema);
-	if (validate(data)) return { success: true, data };
+	const { stripUnknown = false } = options;
+	// Ajv strips in place, so clone to leave the caller's object intact as Zod does.
+	const target = stripUnknown ? structuredClone(data) : data;
+
+	let ajv = getAjv(true, stripUnknown);
+	let validate: ValidateFunction;
+	try {
+		validate = ajv.compile(schema);
+	} catch (error) {
+		if (!(error instanceof SyntaxError)) throw error;
+		ajv = getAjv(false, stripUnknown);
+		validate = ajv.compile(schema);
+	}
+	if (validate(target)) return { success: true, data: target };
 	return { success: false, error: ajv.errorsText(validate.errors) };
 }

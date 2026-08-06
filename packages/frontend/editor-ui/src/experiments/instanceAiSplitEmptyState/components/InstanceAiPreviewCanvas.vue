@@ -6,7 +6,7 @@ import type {
 	PreviewWorkflowConnection,
 	PreviewWorkflowNode,
 } from '@/experiments/instanceAiWorkflowPreviewSuggestions/workflows/types';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import WorkflowPreviewNode from '@/experiments/instanceAiWorkflowPreviewSuggestions/components/WorkflowPreviewNode.vue';
 
 const NODE_HALF_WIDTH = 48;
