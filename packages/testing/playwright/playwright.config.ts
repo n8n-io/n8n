@@ -72,9 +72,11 @@ if (BACKEND_URL && !SKIP_WEB_SERVER) {
 	});
 }
 
-if (FRONTEND_URL) {
+// Gate on N8N_EDITOR_URL: FRONTEND_URL alone falls back to N8N_BASE_URL. Invoke vite via
+// pnpm, not turbo — turbo detaches tasks into process groups Playwright's tree-kill misses.
+if (IS_DEV && FRONTEND_URL) {
 	webServer.push({
-		command: 'cd .. && pnpm dev:fe:editor',
+		command: 'pnpm --filter=n8n-editor-ui dev',
 		url: `${FRONTEND_URL}/favicon.ico`,
 		timeout: 30000,
 		reuseExistingServer: IS_DEV ? false : true,
