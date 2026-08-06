@@ -1157,6 +1157,7 @@ describe('InstanceAiThreadView', () => {
 		const header = getByTestId('instance-ai-builder-chat-header');
 		const headerControl = getByTestId('instance-ai-sidebar-toggle');
 		const content = getByTestId('instance-ai-content-area');
+		const composerSubmit = getByTestId('instance-ai-input-submit');
 
 		expect(getByTestId('instance-ai-thread-area')).toHaveClass('agentPreviewDockNarrow');
 		expect(getByTestId('instance-ai-builder-chat-rail')).toBeVisible();
@@ -1168,9 +1169,11 @@ describe('InstanceAiThreadView', () => {
 		expect(header).toHaveAttribute('inert');
 		expect(header).toHaveAttribute('hidden');
 		expect(header).toHaveAttribute('aria-hidden', 'true');
+		expect(headerControl.closest('[inert]')).toBe(header);
 		expect(headerControl).not.toBeVisible();
 		expect(content).toHaveAttribute('inert');
 		expect(content).toHaveAttribute('aria-hidden', 'true');
+		expect(composerSubmit.closest('[inert]')).toBe(content);
 		expect(getByTestId('instance-ai-agent-preview-stub')).toBeVisible();
 
 		await fireEvent.click(getByTestId('instance-ai-builder-chat-rail-toggle'));
@@ -1178,9 +1181,11 @@ describe('InstanceAiThreadView', () => {
 		expect(header).not.toHaveAttribute('inert');
 		expect(header).not.toHaveAttribute('hidden');
 		expect(header).not.toHaveAttribute('aria-hidden');
+		expect(headerControl.closest('[inert]')).toBeNull();
 		expect(headerControl).toBeVisible();
 		expect(content).not.toHaveAttribute('inert');
 		expect(content).not.toHaveAttribute('aria-hidden');
+		expect(composerSubmit.closest('[inert]')).toBeNull();
 	});
 
 	it('temporarily expands the narrow Builder chat for pointer and keyboard users', async () => {
