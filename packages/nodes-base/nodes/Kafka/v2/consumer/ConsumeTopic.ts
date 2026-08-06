@@ -2,8 +2,8 @@ import type { KafkaJS } from '@confluentinc/kafka-javascript';
 import { sleep } from '@n8n/utils/sleep';
 import type { Logger } from 'n8n-workflow';
 
-import type { DataEmitter } from './data-emitter';
-import type { KafkaMessageParser } from './message-parser';
+import type { DataEmitter } from './DataEmitter';
+import type { KafkaMessageParser } from './MessageParser';
 import { DEFAULT_ERROR_RETRY_DELAY_MS, withTimeout } from '../../utils';
 
 /** Bounds teardown so a hung broker request cannot block deactivation, as in v1. */

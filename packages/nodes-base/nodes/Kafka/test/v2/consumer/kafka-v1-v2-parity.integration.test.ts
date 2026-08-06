@@ -22,9 +22,9 @@ import { testTriggerNode } from '@test/nodes/TriggerHelpers';
 
 import type { KafkaCredentials } from '../../../utils';
 import { KafkaTriggerV1 } from '../../../v1/KafkaTriggerV1.node';
-import { consumeTopic, type KafkaConsumerHandle } from '../../../v2/consumer/consume-topic';
+import { consumeTopic, type KafkaConsumerHandle } from '../../../v2/consumer/ConsumeTopic';
 import { createKafkaConsumer } from '../../../v2/transport/consumer';
-import { createMessageParser } from '../../../v2/consumer/message-parser';
+import { createMessageParser } from '../../../v2/consumer/MessageParser';
 
 const execFileAsync = promisify(execFile);
 

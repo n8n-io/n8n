@@ -7,7 +7,7 @@ import {
 	createDataEmitter,
 	type DataEmitterContext,
 	type DataEmitterOptions,
-} from '../../../v2/consumer/data-emitter';
+} from '../../../v2/consumer/DataEmitter';
 
 vi.mock('@n8n/utils/sleep', () => ({ sleep: vi.fn(async () => {}) }));
 

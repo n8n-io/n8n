@@ -18,12 +18,12 @@ import { promisify } from 'node:util';
 import { mock } from 'vitest-mock-extended';
 
 import type { KafkaCredentials } from '../../../utils';
-import { consumeTopic } from '../../../v2/consumer/consume-topic';
+import { consumeTopic } from '../../../v2/consumer/ConsumeTopic';
 import { createKafkaConsumer } from '../../../v2/transport/consumer';
 import {
 	createMessageParser,
 	type KafkaMessageParserOptions,
-} from '../../../v2/consumer/message-parser';
+} from '../../../v2/consumer/MessageParser';
 
 const execFileAsync = promisify(execFile);
 

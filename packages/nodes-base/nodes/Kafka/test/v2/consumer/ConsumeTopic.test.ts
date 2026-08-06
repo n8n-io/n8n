@@ -2,8 +2,8 @@ import type { INodeExecutionData, Logger } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { KafkaCredentials } from '../../../utils';
-import { consumeTopic } from '../../../v2/consumer/consume-topic';
-import type { EmitResult } from '../../../v2/consumer/data-emitter';
+import { consumeTopic } from '../../../v2/consumer/ConsumeTopic';
+import type { EmitResult } from '../../../v2/consumer/DataEmitter';
 import { createKafkaConsumer } from '../../../v2/transport/consumer';
 import {
 	confluentKafkaModuleMock,

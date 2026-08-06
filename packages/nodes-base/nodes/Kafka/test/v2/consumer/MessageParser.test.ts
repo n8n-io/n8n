@@ -6,7 +6,7 @@ import { mock } from 'vitest-mock-extended';
 import {
 	createMessageParser,
 	type KafkaMessageParserOptions,
-} from '../../../v2/consumer/message-parser';
+} from '../../../v2/consumer/MessageParser';
 
 const TOPIC = 'test-topic';
 
