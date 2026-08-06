@@ -7,7 +7,12 @@ import type {
 	IWebhookData,
 	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
-import { Workflow, WebhookPathTakenError } from 'n8n-workflow';
+import {
+	Workflow,
+	WebhookPathTakenError,
+	webhookDescriptionFields,
+	fromParameter,
+} from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
@@ -589,6 +594,45 @@ describe('WebhookService', () => {
 			expect(webhooks).toHaveLength(1);
 			expect(webhooks[0].path).not.toMatch(/\s/);
 			expect(webhooks[0].path).toMatch(/\/path$/);
+		});
+
+		test('should resolve declared fields natively, without the expression engine', async () => {
+			const node = {
+				name: 'Webhook',
+				type: 'n8n-nodes-base.webhook',
+				disabled: false,
+				parameters: { path: 'native-path', httpMethod: 'POST' },
+			} as unknown as INode;
+
+			const fields = webhookDescriptionFields({
+				httpMethod: fromParameter('httpMethod', 'GET'),
+				path: fromParameter('path'),
+			});
+			const nodeType = {
+				description: {
+					webhooks: [
+						{
+							name: 'default',
+							...fields,
+							isFullPath: false,
+							restartWebhook: false,
+						},
+					],
+				},
+			} as INodeType;
+
+			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
+			const engineSpy = vi.spyOn(workflow.expression, 'getSimpleParameterValue');
+
+			const webhooks = webhookService.getNodeWebhooks(workflow, node, additionalData);
+
+			expect(webhooks).toHaveLength(1);
+			expect(webhooks[0]).toMatchObject({ httpMethod: 'POST' });
+			expect(webhooks[0].path).toMatch(/\/native-path$/);
+			// fields with declared resolvers must never engage the expression engine
+			const engineEvaluatedValues = engineSpy.mock.calls.map((call) => call[1]);
+			expect(engineEvaluatedValues).not.toContain(fields.path);
+			expect(engineEvaluatedValues).not.toContain(fields.httpMethod);
 		});
 	});
 
