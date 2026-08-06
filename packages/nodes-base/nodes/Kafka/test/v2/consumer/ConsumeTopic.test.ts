@@ -386,8 +386,11 @@ describe('consumeTopic', () => {
 			parseMessage.mockRejectedValueOnce(new Error('transient again'));
 			await consumer.deliverBatch({ messages: messages('a') });
 
+			// Only the successful delivery advanced. Had the count survived it, this
+			// third failure would have been the second attempt and been dropped.
+			expect(consumer.payloadSpies.resolveOffset).toHaveBeenCalledTimes(1);
 			expect(logger.warn).not.toHaveBeenCalledWith(
-				expect.stringContaining('Skipping'),
+				expect.stringContaining('Dropping'),
 				expect.anything(),
 			);
 		});

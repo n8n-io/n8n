@@ -179,8 +179,17 @@ export async function consumeTopic(
 							for (const message of chunk) {
 								try {
 									salvaged.push(await parseMessage(message, batch.topic));
-								} catch {
+								} catch (dropError) {
 									dropped += 1;
+									// Per message, not just a count: this is the last trace of a
+									// message that is about to be lost, and two in the same chunk
+									// can fail for different reasons.
+									logger.error('Dropping a Kafka message that could not be parsed', {
+										error: dropError,
+										topic: batch.topic,
+										partition: batch.partition,
+										offset: message.offset,
+									});
 								}
 							}
 
