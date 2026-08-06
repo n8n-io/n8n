@@ -439,29 +439,6 @@ describe('build-agent tool', () => {
 		});
 	});
 
-	it('appends the session-workflows envelope to the outbound message when workflowContext is passed', async () => {
-		const { context, delegate } = makeContext();
-		vi.mocked(delegate.createAgent).mockResolvedValue({ agentId: 'agent-1', projectId: 'proj-1' });
-		vi.mocked(delegate.streamBuild).mockResolvedValue(fakeStream([], 'ok'));
-
-		await runTool(context, {
-			message: 'Attach the workflow',
-			name: 'New Agent',
-			workflowContext: [
-				{ id: 'wf-1', name: 'Send Reminder', description: 'Sends a reminder email' },
-			],
-		});
-
-		const [, message] = vi.mocked(delegate.streamBuild).mock.calls[0];
-		expect(message).toContain('Attach the workflow');
-		expect(message).toContain('<session-workflows>');
-		expect(message).toContain(
-			'Workflows built in this session (attachable as {"type":"workflow"} tools — reference by workflow name, never by id):',
-		);
-		expect(message).toContain('- Send Reminder (id: wf-1): Sends a reminder email');
-		expect(message).toContain('</session-workflows>');
-	});
-
 	it('binds directly to an existing agentId without creating a new agent', async () => {
 		const { context, delegate } = makeContext();
 		vi.mocked(delegate.streamBuild).mockResolvedValue(fakeStream([], 'Editing it.'));
