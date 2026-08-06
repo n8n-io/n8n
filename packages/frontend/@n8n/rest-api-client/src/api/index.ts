@@ -25,6 +25,7 @@ export * from './sso';
 export type * from './tags';
 export * from './templates';
 export * from './third-party-licenses';
+export * from './trustedKeySources';
 export * from './ui';
 export * from './usage';
 export * from './users';
