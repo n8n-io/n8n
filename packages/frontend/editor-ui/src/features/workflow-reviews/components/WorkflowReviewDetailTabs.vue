@@ -2,7 +2,7 @@
 import type { WorkflowReviewInboxItem, WorkflowReviewRequestDetail } from '@n8n/api-types';
 import { N8nButton, N8nCallout, N8nTabs, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed, nextTick, ref, watch } from 'vue';
+import { computed } from 'vue';
 
 import type { WorkflowReviewDecisionInput } from '../workflowReviews.api';
 import WorkflowReviewChangesSection from './WorkflowReviewChangesSection.vue';
@@ -22,7 +22,6 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
-const pendingWorkflowId = ref<string | null>(null);
 
 const detail = computed<WorkflowReviewRequestDetail | null>(() =>
 	'workflows' in props.review ? props.review : null,
@@ -49,34 +48,6 @@ const tabOptions = computed(() => [
 		value: 'changes' as const,
 	},
 ]);
-
-function scrollToWorkflow(workflowId: string) {
-	document
-		.getElementById(`workflow-review-changes-${workflowId}`)
-		?.scrollIntoView({ block: 'start' });
-}
-
-function onSelectWorkflow(workflowId: string) {
-	if (props.tab === 'changes') {
-		scrollToWorkflow(workflowId);
-		return;
-	}
-
-	pendingWorkflowId.value = workflowId;
-	emit('update:tab', 'changes');
-}
-
-watch(
-	() => props.tab,
-	async (tab) => {
-		if (tab !== 'changes' || !pendingWorkflowId.value) return;
-		const workflowId = pendingWorkflowId.value;
-		pendingWorkflowId.value = null;
-		await nextTick();
-		scrollToWorkflow(workflowId);
-	},
-	{ flush: 'post' },
-);
 </script>
 
 <template>
@@ -160,14 +131,11 @@ watch(
 					{{ i18n.baseText('workflowReviews.changes.unavailable') }}
 				</N8nCallout>
 				<template v-else-if="detail.workflows.length > 0">
-					<section
+					<WorkflowReviewChangesSection
 						v-for="workflow in detail.workflows"
-						:id="`workflow-review-changes-${workflow.workflowId}`"
 						:key="workflow.workflowId"
-						:class="$style.workflowSection"
-					>
-						<WorkflowReviewChangesSection :workflow="workflow" />
-					</section>
+						:workflow="workflow"
+					/>
 				</template>
 				<N8nText
 					v-else
@@ -179,7 +147,7 @@ watch(
 				</N8nText>
 			</div>
 
-			<WorkflowReviewDetailMetadata :review="review" @select-workflow="onSelectWorkflow" />
+			<WorkflowReviewDetailMetadata :review="review" />
 		</div>
 	</div>
 </template>
@@ -211,12 +179,6 @@ watch(
 	flex: 1;
 	min-height: 0;
 	overflow: auto;
-}
-
-.workflowSection {
-	height: 100%;
-	min-height: 0;
-	scroll-margin-top: var(--spacing--sm);
 }
 
 .callout {

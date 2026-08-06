@@ -19,9 +19,7 @@ vi.mock('./WorkflowReviewChangesSection.vue', () => ({
 vi.mock('./WorkflowReviewDetailMetadata.vue', () => ({
 	default: {
 		name: 'WorkflowReviewDetailMetadata',
-		emits: ['select-workflow'],
-		template:
-			'<button data-test-id="workflow-review-metadata-workflow" @click="$emit(\'select-workflow\', \'wf-1\')" />',
+		template: '<aside data-test-id="workflow-review-detail-metadata" />',
 	},
 }));
 
@@ -110,16 +108,6 @@ describe('WorkflowReviewDetailTabs', () => {
 		});
 
 		getByText('Changes').click();
-
-		expect(emitted('update:tab')).toEqual([['changes']]);
-	});
-
-	it('opens Changes when a workflow is selected from the metadata', () => {
-		const { getByTestId, emitted } = renderComponent({
-			props: { review: makeDetail(), tab: 'activity', deciding: false },
-		});
-
-		getByTestId('workflow-review-metadata-workflow').click();
 
 		expect(emitted('update:tab')).toEqual([['changes']]);
 	});

@@ -3,11 +3,27 @@ import type {
 	WorkflowReviewRequestWorkflowDetail,
 } from '@n8n/api-types';
 import { createTestingPinia } from '@pinia/testing';
+import { createMemoryHistory, createRouter } from 'vue-router';
+
 import { createComponentRenderer } from '@/__tests__/render';
+import { VIEWS } from '@/app/constants';
 
 import WorkflowReviewDetailMetadata from './WorkflowReviewDetailMetadata.vue';
 
-const renderComponent = createComponentRenderer(WorkflowReviewDetailMetadata);
+const router = createRouter({
+	history: createMemoryHistory(),
+	routes: [
+		{
+			path: '/workflow/:workflowId',
+			name: VIEWS.WORKFLOW,
+			component: { template: '<div />' },
+		},
+	],
+});
+
+const renderComponent = createComponentRenderer(WorkflowReviewDetailMetadata, {
+	global: { plugins: [router], stubs: { RouterLink: false } },
+});
 
 function makeWorkflowDetail(
 	overrides: Partial<WorkflowReviewRequestWorkflowDetail> = {},
@@ -63,7 +79,7 @@ describe('WorkflowReviewDetailMetadata', () => {
 		});
 
 		expect(getByTestId('workflow-review-detail-status-card')).toHaveTextContent(
-			'Open · Waiting for review',
+			'Open • Waiting for review',
 		);
 		expect(getByText('Riley Reviewer')).toBeInTheDocument();
 		expect(queryByText('reviewer@example.com')).not.toBeInTheDocument();
@@ -76,17 +92,18 @@ describe('WorkflowReviewDetailMetadata', () => {
 		});
 
 		expect(getByTestId('workflow-review-detail-status-card')).toHaveTextContent('Approved');
-		expect(getByTestId('workflow-review-detail-status-card')).not.toHaveTextContent('Open ·');
+		expect(getByTestId('workflow-review-detail-status-card')).not.toHaveTextContent('Open •');
 	});
 
-	it('emits the selected workflow', () => {
-		const { getByTestId, emitted } = renderComponent({
+	it('links each workflow to the editor', () => {
+		const { getByTestId } = renderComponent({
 			props: { review: makeDetail() },
 		});
 
-		getByTestId('workflow-review-detail-workflow-link').click();
-
-		expect(emitted('select-workflow')).toEqual([['wf-1']]);
+		expect(getByTestId('workflow-review-detail-workflow-link')).toHaveAttribute(
+			'href',
+			'/workflow/wf-1',
+		);
 	});
 
 	it('renders clean fallbacks for missing reviewers and workflows', () => {
@@ -95,7 +112,7 @@ describe('WorkflowReviewDetailMetadata', () => {
 		});
 
 		expect(getByTestId('workflow-review-detail-no-reviewers')).toHaveTextContent(
-			'No reviewers notified.',
+			'No reviewers assigned.',
 		);
 		expect(getByTestId('workflow-review-detail-no-workflows')).toHaveTextContent(
 			'No workflows available.',

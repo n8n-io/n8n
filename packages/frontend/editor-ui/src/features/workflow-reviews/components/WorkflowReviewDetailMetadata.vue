@@ -1,18 +1,16 @@
 <script setup lang="ts">
 import type { WorkflowReviewInboxItem, WorkflowReviewRequestDetail } from '@n8n/api-types';
-import { N8nAvatar, N8nButton, N8nCard, N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nAvatar, N8nCard, N8nIcon, N8nLink, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 
+import { VIEWS } from '@/app/constants';
+import { formatUserDisplayName } from '../formatUserDisplayName';
 import { resolveWorkflowReviewStatus } from '../workflowReviewStatus';
 import WorkflowReviewStatusDot from './WorkflowReviewStatusDot.vue';
 
 const props = defineProps<{
 	review: WorkflowReviewInboxItem | WorkflowReviewRequestDetail;
-}>();
-
-const emit = defineEmits<{
-	'select-workflow': [workflowId: string];
 }>();
 
 const i18n = useI18n();
@@ -25,13 +23,12 @@ const statusSummary = computed(() => {
 	const label = i18n.baseText(
 		resolveWorkflowReviewStatus(props.review.state, props.review.decision).labelKey,
 	);
+	// Closed reviews are already fully described by Approved / Closed — avoid "Closed · Closed".
 	if (props.review.state === 'closed') return label;
-	return `${i18n.baseText('workflowReviews.detail.metadata.state.open')} · ${label}`;
+	return i18n.baseText('workflowReviews.detail.metadata.state.openSummary', {
+		interpolate: { status: label },
+	});
 });
-
-function reviewerName(reviewer: WorkflowReviewInboxItem['reviewers'][number]) {
-	return [reviewer.firstName, reviewer.lastName].filter(Boolean).join(' ') || reviewer.email;
-}
 </script>
 
 <template>
@@ -61,7 +58,7 @@ function reviewerName(reviewer: WorkflowReviewInboxItem['reviewers'][number]) {
 						:last-name="reviewer.lastName"
 						size="xsmall"
 					/>
-					<N8nText size="small">{{ reviewerName(reviewer) }}</N8nText>
+					<N8nText size="small">{{ formatUserDisplayName(reviewer) }}</N8nText>
 				</div>
 			</div>
 			<N8nText
@@ -81,18 +78,18 @@ function reviewerName(reviewer: WorkflowReviewInboxItem['reviewers'][number]) {
 				</N8nText>
 			</template>
 			<div v-if="detail?.workflows.length" :class="$style.workflows">
-				<N8nButton
+				<N8nLink
 					v-for="workflow in detail.workflows"
 					:key="workflow.workflowId"
-					variant="ghost"
+					:to="{ name: VIEWS.WORKFLOW, params: { workflowId: workflow.workflowId } }"
+					theme="text"
 					size="small"
 					:class="$style.workflow"
 					data-test-id="workflow-review-detail-workflow-link"
-					@click="emit('select-workflow', workflow.workflowId)"
 				>
-					<N8nIcon icon="workflow" size="small" />
+					<N8nIcon icon="workflow" size="small" :class="$style.workflowIcon" />
 					<span :class="$style.workflowName">{{ workflow.workflowName }}</span>
-				</N8nButton>
+				</N8nLink>
 			</div>
 			<N8nText
 				v-else
@@ -120,7 +117,7 @@ function reviewerName(reviewer: WorkflowReviewInboxItem['reviewers'][number]) {
 	--n8n--card-body--gap: var(--spacing--2xs);
 
 	align-items: stretch;
-	border-color: var(--border-color--subtle);
+	border-color: var(--border-color);
 	background-color: transparent;
 
 	> div {
@@ -150,14 +147,19 @@ function reviewerName(reviewer: WorkflowReviewInboxItem['reviewers'][number]) {
 }
 
 .workflow {
-	justify-content: flex-start;
+	display: flex;
 	width: 100%;
 	min-width: 0;
 	overflow: hidden;
+	white-space: nowrap;
 
-	> div {
-		justify-content: flex-start;
+	> span,
+	> span > span {
+		display: flex;
+		flex: 1;
+		align-items: center;
 		min-width: 0;
+		overflow: hidden;
 	}
 }
 
@@ -167,6 +169,11 @@ function reviewerName(reviewer: WorkflowReviewInboxItem['reviewers'][number]) {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+
+.workflowIcon {
+	flex-shrink: 0;
+	margin-right: var(--spacing--4xs);
 }
 
 @media (max-width: 75rem) {

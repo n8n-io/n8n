@@ -225,7 +225,7 @@ function onListBackgroundClick() {
 	cursor: pointer;
 	padding: var(--spacing--xs);
 	align-items: stretch;
-	border: var(--border-width) solid var(--color--foreground--tint-1);
+	border: var(--border-width) solid var(--border-color);
 	transition: background-color 0.3s ease;
 
 	&:hover:not(.cardSelected) {
