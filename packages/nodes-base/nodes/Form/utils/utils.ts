@@ -28,6 +28,8 @@ import {
 	BINARY_MODE_COMBINED,
 	tryToParseJsonToFormFields,
 	UnexpectedError,
+	classifyNavigationIntent,
+	N8N_OAUTH2_INTENT_KEY,
 } from 'n8n-workflow';
 import * as a from 'node:assert';
 import sanitize from 'sanitize-html';
@@ -852,10 +854,12 @@ async function authenticateFormUserOrRespond(
 
 			try {
 				// start authentication flow by redirecting to the OAuth2 provider's authorization URL
-				const authorizationUrl = await context.beginN8nOAuth2Flow(
-					resourceUrl,
-					originalQuery ? { query: originalQuery } : undefined,
-				);
+				const authorizationUrl = await context.beginN8nOAuth2Flow(resourceUrl, {
+					...(originalQuery ? { query: originalQuery } : {}),
+					// Recorded server-side against this flow's `state`, so the consent step can
+					// tell a real navigation from a script-driven one before skipping a prompt.
+					[N8N_OAUTH2_INTENT_KEY]: classifyNavigationIntent(req.headers),
+				});
 				res.writeHead(302, {
 					Location: authorizationUrl,
 				});

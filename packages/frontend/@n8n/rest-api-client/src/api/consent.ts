@@ -15,6 +15,12 @@ export interface ConsentDetails {
 	previousScopes?: string[];
 	/** Tool names each scope unlocks, shown per scope group in the picker. */
 	scopeTools?: Record<string, string[]>;
+	/**
+	 * The user already granted this exact consent and a human navigated here, so the
+	 * server considers the screen redundant — approve without rendering it. Only ever
+	 * set for n8n's own triggers (form, webhook), never for registered clients.
+	 */
+	silentApproval?: boolean;
 }
 
 export interface ConsentApprovalResponse {

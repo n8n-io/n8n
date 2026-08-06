@@ -20,6 +20,7 @@ const buildContext = (
 		cookie?: string;
 		query?: Record<string, string>;
 		originalUrl?: string;
+		fetchMetadata?: Record<string, string>;
 	} = {},
 ) => {
 	const response = mock<Response>();
@@ -39,6 +40,12 @@ const buildContext = (
 		headers: {
 			...(req.accept === undefined ? { accept: 'text/html' } : { accept: req.accept }),
 			...(req.cookie ? { cookie: req.cookie } : {}),
+			// A clicked link from another site: navigation with user activation.
+			...(req.fetchMetadata ?? {
+				'sec-fetch-mode': 'navigate',
+				'sec-fetch-site': 'cross-site',
+				'sec-fetch-user': '?1',
+			}),
 		},
 		query: req.query ?? {},
 		originalUrl: req.originalUrl ?? '/webhook/abc?ref=email',
@@ -57,8 +64,55 @@ describe('n8nBrowserOAuth2Flow', () => {
 		expect(outcome).toBe('handled');
 		expect(context.beginN8nOAuth2Flow).toHaveBeenCalledWith(RESOURCE_URL, {
 			returnTo: '/webhook/abc?ref=email',
+			intent: 'user-navigation',
 		});
 		expect(response.writeHead).toHaveBeenCalledWith(302, { Location: AUTHORIZE_URL });
+	});
+
+	// The consent step may only skip re-prompting for a flow a human actually started,
+	// so the classification travels with the flow (server-side, never in the URL).
+	it.each([
+		[
+			'a link clicked on another site',
+			{ 'sec-fetch-mode': 'navigate', 'sec-fetch-site': 'cross-site', 'sec-fetch-user': '?1' },
+			'user-navigation',
+		],
+		[
+			'a typed URL or bookmark',
+			{ 'sec-fetch-mode': 'navigate', 'sec-fetch-site': 'none' },
+			'user-navigation',
+		],
+		[
+			'a link from n8n itself',
+			{ 'sec-fetch-mode': 'navigate', 'sec-fetch-site': 'same-origin' },
+			'user-navigation',
+		],
+		// `location = …` from a cross-site page: a navigation nobody asked for.
+		[
+			'a script-driven navigation',
+			{ 'sec-fetch-mode': 'navigate', 'sec-fetch-site': 'cross-site' },
+			'unknown',
+		],
+		[
+			'a sibling-subdomain script navigation',
+			{ 'sec-fetch-mode': 'navigate', 'sec-fetch-site': 'same-site' },
+			'unknown',
+		],
+		[
+			'an embedded (non-navigation) load',
+			{ 'sec-fetch-mode': 'no-cors', 'sec-fetch-site': 'cross-site', 'sec-fetch-user': '?1' },
+			'unknown',
+		],
+		['a client sending no fetch metadata', {}, 'unknown'],
+	] as const)('records %s as %s', async (_label, fetchMetadata, expected) => {
+		const { context } = buildContext({ fetchMetadata: { ...fetchMetadata } });
+
+		await n8nBrowserOAuth2Flow(context, RESOURCE_URL);
+
+		expect(context.beginN8nOAuth2Flow).toHaveBeenCalledWith(
+			RESOURCE_URL,
+			expect.objectContaining({ intent: expected }),
+		);
 	});
 
 	it.each([
@@ -140,6 +194,7 @@ describe('n8nBrowserOAuth2Flow', () => {
 		expect(await n8nBrowserOAuth2Flow(context, RESOURCE_URL)).toBe('handled');
 		expect(context.beginN8nOAuth2Flow).toHaveBeenCalledWith(RESOURCE_URL, {
 			returnTo: '/webhook/abc?method=GET',
+			intent: 'user-navigation',
 		});
 		expect(response.writeHead).toHaveBeenCalledWith(302, { Location: AUTHORIZE_URL });
 	});

@@ -13,6 +13,47 @@ const BROWSER_OAUTH_COOKIE_NAME = 'n8n-webhook-oauth';
 /** Query params owned by the OAuth callback, stripped before handing the URL back. */
 const CALLBACK_PARAMS = ['code', 'state', 'error', 'error_description', 'iss'];
 
+/**
+ * How the request that started an OAuth flow was initiated.
+ *
+ * - `user-navigation`: a top-level navigation the person actually performed —
+ *   clicking a link (from anywhere), typing the URL, or a bookmark.
+ * - `unknown`: everything else, including script-driven navigation
+ *   (`location = …`, meta refresh, iframes, prefetch) and requests from clients
+ *   that send no fetch metadata at all.
+ *
+ * Only used to decide whether a *previously consented* flow may complete without
+ * re-prompting, so `unknown` degrades to showing the consent screen — never to a
+ * hard failure.
+ */
+export type N8nOAuth2NavigationIntent = 'user-navigation' | 'unknown';
+
+/** Flow-metadata key carrying {@link N8nOAuth2NavigationIntent} to the consent step. */
+export const N8N_OAUTH2_INTENT_KEY = 'intent';
+
+const firstHeaderValue = (header: string | string[] | undefined): string | undefined =>
+	typeof header === 'string' ? header : header?.[0];
+
+/**
+ * Classify how a browser request was initiated, from Fetch Metadata headers.
+ *
+ * `Sec-Fetch-*` are forbidden header names, so page scripts cannot spoof them
+ * (same property `push/origin-validator.ts` relies on). The distinction that
+ * matters here is *user activation*, not origin: a click from an email or a chat
+ * message is cross-site and must qualify, because that is the whole point of a
+ * clickable trigger URL. What must not qualify is a navigation no one asked for —
+ * a page setting `location` to a webhook URL would otherwise run a workflow as
+ * whoever happens to be logged in.
+ */
+export function classifyNavigationIntent(headers: Request['headers']): N8nOAuth2NavigationIntent {
+	if (firstHeaderValue(headers['sec-fetch-mode']) !== 'navigate') return 'unknown';
+
+	// `none` = typed/bookmarked, `same-origin` = from n8n itself, `?1` = user activation.
+	const site = firstHeaderValue(headers['sec-fetch-site']);
+	if (site === 'none' || site === 'same-origin') return 'user-navigation';
+	return firstHeaderValue(headers['sec-fetch-user']) === '?1' ? 'user-navigation' : 'unknown';
+}
+
 export type N8nBrowserOAuth2Outcome =
 	/** Authenticated: the caller should establish the trigger identity and run the workflow. */
 	| { status: 'ok'; token: string }
@@ -148,6 +189,9 @@ export const n8nBrowserOAuth2Flow = async (
 
 	const authorizationUrl = await context.beginN8nOAuth2Flow(resourceUrl, {
 		returnTo: returnToUrl(req),
+		// Recorded server-side against this flow's `state`: the consent step needs to know
+		// a human actually navigated here before it may skip re-prompting.
+		[N8N_OAUTH2_INTENT_KEY]: classifyNavigationIntent(req.headers),
 	});
 	return redirect(res, authorizationUrl);
 };
