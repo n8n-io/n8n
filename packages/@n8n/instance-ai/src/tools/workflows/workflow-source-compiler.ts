@@ -6,6 +6,7 @@ import { normalizeNodeShape } from 'n8n-workflow';
 
 import { buildCredentialHostIndex, resolveCredentialByUrl } from './credential-url-resolver';
 import { detectArrayInputCollapse } from './detect-array-input-collapse';
+import { detectUnknownDataTableColumns } from './detect-data-table-columns';
 import { detectUnparseableOpenAiSchema } from './detect-unparseable-openai-schema';
 import { detectWrongKindLocatorValues } from './detect-wrong-kind-locator';
 import { collectValidationIssues, type ValidationWarning } from './workflow-validation-warnings';
@@ -372,13 +373,14 @@ export async function compileWorkflowSource(
 
 	const warnings = validateCompiledWorkflow(result.workflow, context, result.warnings);
 	const credentialWarnings = await collectCredentialResolutionWarnings(result.workflow, context);
+	const dataTableWarnings = await detectUnknownDataTableColumns(result.workflow, context);
 	const lintWarnings = isTypeScriptWorkflowSource(filePath)
 		? collectSourceLintWarnings(source)
 		: [];
 
 	return {
 		...result,
-		warnings: [...warnings, ...credentialWarnings, ...lintWarnings],
+		warnings: [...warnings, ...credentialWarnings, ...dataTableWarnings, ...lintWarnings],
 	};
 }
 
