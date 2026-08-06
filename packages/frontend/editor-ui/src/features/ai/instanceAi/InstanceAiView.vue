@@ -28,20 +28,37 @@ const uiStore = useUIStore();
 const rootStore = useRootStore();
 const telemetry = useTelemetry();
 const { isCtrlKeyPressed } = useDeviceSupport();
-const setupWasIncomplete = appSettingsStore.moduleSettings['instance-ai']?.setupCompleted === false;
+const setupCompletionState = computed(
+	() => appSettingsStore.moduleSettings['instance-ai']?.setupCompleted,
+);
+const setupWasIncomplete = setupCompletionState.value === false;
 const onboardingCompletionPending = useSessionStorage(
 	'instanceAi.onboarding.completionPending',
 	setupWasIncomplete,
 );
-if (setupWasIncomplete) onboardingCompletionPending.value = true;
-const onboardingActive = ref(setupWasIncomplete || onboardingCompletionPending.value);
+if (setupCompletionState.value === true) onboardingCompletionPending.value = false;
+else if (setupWasIncomplete) onboardingCompletionPending.value = true;
+const onboardingActive = ref(
+	setupCompletionState.value !== true && (setupWasIncomplete || onboardingCompletionPending.value),
+);
 const showOnboarding = computed(
 	() =>
 		settingsStore.canManage &&
 		!settingsStore.isProxyEnabled &&
 		!settingsStore.isCloudManaged &&
+		setupCompletionState.value !== true &&
 		onboardingActive.value,
 );
+
+watch(setupCompletionState, (setupCompleted) => {
+	if (setupCompleted === true) {
+		onboardingCompletionPending.value = false;
+		onboardingActive.value = false;
+	} else if (setupCompleted === false) {
+		onboardingCompletionPending.value = true;
+		onboardingActive.value = true;
+	}
+});
 
 documentTitle.set(i18n.baseText('instanceAi.view.title'));
 

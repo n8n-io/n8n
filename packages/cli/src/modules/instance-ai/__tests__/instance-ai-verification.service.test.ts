@@ -4,7 +4,9 @@ import type { GlobalConfig, InstanceAiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-vi.mock('@n8n/agents', () => ({ createModel: vi.fn() }));
+const raceWithAbortMock = vi.hoisted(() => vi.fn());
+
+vi.mock('@n8n/agents', () => ({ createModel: vi.fn(), raceWithAbort: raceWithAbortMock }));
 vi.mock('ai', () => ({ generateText: vi.fn() }));
 vi.mock('@n8n/instance-ai', () => ({ createSandbox: vi.fn(), createWorkspace: vi.fn() }));
 vi.mock('@n8n/ai-utilities', () => ({ braveSearch: vi.fn(), searxngSearch: vi.fn() }));
@@ -46,6 +48,10 @@ describe('InstanceAiVerificationService', () => {
 
 	beforeEach(() => {
 		vi.resetAllMocks();
+		raceWithAbortMock.mockImplementation(
+			async (work: Promise<unknown> | (() => Promise<unknown>)) =>
+				await (typeof work === 'function' ? work() : work),
+		);
 		Object.assign(globalConfig.instanceAi, {
 			sandboxProvider: 'n8n-sandbox',
 			sandboxImage: 'sandbox-image',
@@ -176,8 +182,40 @@ describe('InstanceAiVerificationService', () => {
 				serviceUrl: 'https://draft.sandbox',
 				apiKey: 'saved-key',
 			});
-			expect(workspace.sandbox.executeCommand).toHaveBeenCalledWith('printf', ['ok']);
+			expect(workspace.sandbox.executeCommand).toHaveBeenCalledWith('printf', ['ok'], {
+				abortSignal: expect.any(AbortSignal),
+			});
 			expect(workspace.destroy).toHaveBeenCalled();
+		});
+
+		it('returns a timeout and starts cleanup when sandbox verification exceeds the deadline', async () => {
+			const timeoutError = Object.assign(new Error('Sandbox verification timed out'), {
+				name: 'TimeoutError',
+			});
+			let raceCount = 0;
+			raceWithAbortMock.mockImplementation(
+				async (work: Promise<unknown> | (() => Promise<unknown>)) => {
+					raceCount++;
+					if (raceCount === 3) throw timeoutError;
+					return await (typeof work === 'function' ? work() : work);
+				},
+			);
+			const workspace = {
+				init: vi.fn(),
+				destroy: vi.fn().mockResolvedValue(undefined),
+				sandbox: { executeCommand: vi.fn() },
+			};
+			createSandboxMock.mockResolvedValue({} as never);
+			createWorkspaceMock.mockReturnValue(workspace as never);
+
+			await expect(service.verifySandbox(user, {})).resolves.toEqual({
+				ok: false,
+				failure: 'timeout',
+			});
+
+			expect(workspace.destroy).toHaveBeenCalledOnce();
+			expect(workspace.init).toHaveBeenCalledOnce();
+			expect(workspace.sandbox.executeCommand).not.toHaveBeenCalled();
 		});
 
 		it('verifies saved Daytona settings', async () => {

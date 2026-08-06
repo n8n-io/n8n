@@ -260,11 +260,13 @@ function permissionOptionsFor(key: keyof InstanceAiPermissions) {
 const activeDialog = ref<InstanceAiConnectionKind | null>(null);
 const setupChain = ref(false);
 const enableAfterSetup = ref(false);
+const searchBackTarget = ref<'model' | 'sandbox' | null>(null);
 
 watch(activeDialog, (dialog) => {
 	if (dialog !== null) return;
 	setupChain.value = false;
 	enableAfterSetup.value = false;
+	searchBackTarget.value = null;
 });
 
 function setDialogOpen(kind: InstanceAiConnectionKind, isOpen: boolean) {
@@ -292,7 +294,18 @@ function openSandboxDialog() {
 
 function openSearchDialog() {
 	if (isSearchEnvManaged.value) return;
+	setupChain.value = false;
+	searchBackTarget.value = null;
 	activeDialog.value = 'search';
+}
+
+function openSearchSetup(backTarget: 'model' | 'sandbox' | null): void {
+	searchBackTarget.value = backTarget;
+	activeDialog.value = 'search';
+}
+
+function handleSearchBack(): void {
+	activeDialog.value = searchBackTarget.value;
 }
 
 /** Returns whether the chain may continue (false only when enabling failed). */
@@ -308,8 +321,11 @@ async function handleModelSaved() {
 	if ((setupChain.value || enableAfterSetup.value) && !(await enableEnvironmentSandboxIfNeeded()))
 		return;
 	if (setupChain.value) {
-		activeDialog.value =
-			isSandboxConfigured.value || isSandboxEnvManaged.value ? 'search' : 'sandbox';
+		if (isSandboxConfigured.value || isSandboxEnvManaged.value) {
+			openSearchSetup('model');
+		} else {
+			activeDialog.value = 'sandbox';
+		}
 		return;
 	}
 	await finishSetup();
@@ -318,7 +334,7 @@ async function handleModelSaved() {
 async function handleSandboxSaved() {
 	const chainSearch = setupChain.value && searchState.value === 'notset';
 	if (chainSearch) {
-		activeDialog.value = 'search';
+		openSearchSetup('sandbox');
 		return;
 	}
 	await finishSetup();
@@ -395,7 +411,7 @@ async function handleEnable() {
 
 	if (showCredentialsRows.value && searchState.value === 'notset') {
 		setupChain.value = true;
-		activeDialog.value = 'search';
+		openSearchSetup(null);
 		return;
 	}
 
@@ -593,8 +609,17 @@ function openAiUsageSettings() {
 							</N8nText>
 						</template>
 						<template v-if="!isOff" #action>
+							<N8nButton
+								v-if="isSandboxEnvManaged && !isSandboxConfigured"
+								variant="solid"
+								size="medium"
+								:label="i18n.baseText('settings.n8nAgent.sandbox.enable')"
+								:disabled="store.isSaving"
+								data-test-id="n8n-agent-sandbox-enable"
+								@click="enableEnvironmentSandboxIfNeeded"
+							/>
 							<N8nText
-								v-if="isSandboxEnvManaged"
+								v-else-if="isSandboxEnvManaged"
 								size="small"
 								color="text-light"
 								data-test-id="n8n-agent-sandbox-env-value"
@@ -821,7 +846,7 @@ function openAiUsageSettings() {
 			:open="activeDialog === 'search'"
 			:setup="setupChain"
 			@update:open="setDialogOpen('search', $event)"
-			@back="activeDialog = 'sandbox'"
+			@back="handleSearchBack"
 			@saved="handleSearchSaved"
 		/>
 	</N8nSettingsLayout>

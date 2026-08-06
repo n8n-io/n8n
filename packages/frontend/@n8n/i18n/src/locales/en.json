@@ -5311,6 +5311,7 @@
 	"settings.n8nAgent.sandbox.env.description": "Managed by environment variables. Remove them and restart n8n to change the sandbox here.",
 	"settings.n8nAgent.sandbox.env.value": "Environment configuration",
 	"settings.n8nAgent.sandbox.add": "Add sandbox",
+	"settings.n8nAgent.sandbox.enable": "Enable sandbox",
 	"settings.n8nAgent.sandboxDialog.title": "Code sandbox",
 	"settings.n8nAgent.sandboxDialog.description": "The AI Assistant runs and tests generated code in the sandbox, isolated from your instance.",
 	"settings.n8nAgent.sandboxCredential.apiKey": "API key",

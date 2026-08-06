@@ -1071,6 +1071,28 @@ describe('SettingsInstanceAiView', () => {
 			await waitFor(() => expect(getByTestId('n8n-agent-sandbox-dialog-step')).toBeVisible());
 		});
 
+		it('returns from search to model when the environment-managed sandbox is skipped', async () => {
+			store.$patch({
+				settings: {
+					...store.settings!,
+					sandboxEnabled: true,
+					sandboxEnvConfigured: true,
+				},
+			});
+			vi.mocked(fetchSettings).mockResolvedValue(store.settings!);
+			const { findByTestId, findByText, getByTestId, queryByTestId } = renderComponent();
+
+			await fireEvent.click(getByTestId('n8n-agent-model-add'));
+			await completeModelStep(findByTestId, getByTestId, findByText);
+			await waitFor(() => expect(getByTestId('n8n-agent-search-dialog-step')).toBeVisible());
+			expect(queryByTestId('n8n-agent-sandbox-dialog-step')).toBeNull();
+
+			await fireEvent.click(getByTestId('n8n-agent-search-dialog-back'));
+
+			await waitFor(() => expect(getByTestId('n8n-agent-model-dialog-step')).toBeVisible());
+			expect(queryByTestId('n8n-agent-sandbox-dialog-step')).toBeNull();
+		});
+
 		it('skips the search step when search is already configured', async () => {
 			store.$patch({
 				settings: { ...store.settings!, searchEnvConfigured: true },
@@ -1295,6 +1317,7 @@ describe('SettingsInstanceAiView', () => {
 				settings: {
 					...store.settings!,
 					modelEnvConfigured: true,
+					sandboxEnabled: true,
 					sandboxEnvConfigured: true,
 					envManaged: {
 						model: { provider: true, apiKey: true, baseUrl: false, model: true },
@@ -1313,6 +1336,25 @@ describe('SettingsInstanceAiView', () => {
 			await fireEvent.click(getByTestId('n8n-agent-model-row'));
 			await fireEvent.click(getByTestId('n8n-agent-sandbox-row'));
 			expect(queryByTestId('n8n-agent-model-dialog')).toBeNull();
+			expect(queryByTestId('n8n-agent-sandbox-dialog')).toBeNull();
+		});
+
+		it('enables an environment-managed sandbox on an active instance', async () => {
+			store.$patch({
+				settings: {
+					...store.settings!,
+					sandboxEnabled: false,
+					sandboxEnvConfigured: true,
+				},
+			});
+			vi.mocked(fetchSettings).mockResolvedValue(store.settings!);
+			const save = vi.spyOn(store, 'save').mockResolvedValue(true);
+			const { getByTestId, queryByTestId } = renderComponent();
+
+			await fireEvent.click(getByTestId('n8n-agent-sandbox-enable'));
+
+			expect(store.draft.sandboxEnabled).toBe(true);
+			expect(save).toHaveBeenCalledOnce();
 			expect(queryByTestId('n8n-agent-sandbox-dialog')).toBeNull();
 		});
 

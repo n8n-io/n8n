@@ -109,20 +109,32 @@ export class InstanceAiVerificationService {
 		request: InstanceAiVerifySandboxRequest,
 	): Promise<InstanceAiVerificationResponse> {
 		const provider = request.provider ?? this.globalConfig.instanceAi.sandboxProvider;
+		const abortSignal = AbortSignal.timeout(VERIFICATION_TIMEOUT_MS);
+		let raceWithAbort: typeof import('@n8n/agents').raceWithAbort | undefined;
 		let workspace:
 			| Awaited<ReturnType<typeof import('@n8n/instance-ai')['createWorkspace']>>
 			| undefined;
 		try {
 			const config = await this.resolveSandboxConfig(user, request);
-			const { createSandbox, createWorkspace } = await import('@n8n/instance-ai');
+			const [instanceAi, agents] = await Promise.all([
+				import('@n8n/instance-ai'),
+				import('@n8n/agents'),
+			]);
+			const { createSandbox, createWorkspace } = instanceAi;
+			raceWithAbort = agents.raceWithAbort;
 			const startedAt = performance.now();
-			const sandbox = await createSandbox(config);
+			const sandbox = await raceWithAbort(async () => await createSandbox(config), abortSignal);
 			if (!sandbox) throw new Error('Sandbox did not start');
-			workspace = createWorkspace(sandbox);
-			if (!workspace) throw new Error('Sandbox workspace did not start');
-			await workspace.init();
+			const activeWorkspace = createWorkspace(sandbox);
+			if (!activeWorkspace) throw new Error('Sandbox workspace did not start');
+			workspace = activeWorkspace;
+			await raceWithAbort(async () => await activeWorkspace.init(), abortSignal);
 			const startupMs = Math.round(performance.now() - startedAt);
-			const result = await workspace.sandbox?.executeCommand?.('printf', ['ok']);
+			const result = await raceWithAbort(
+				async () =>
+					await activeWorkspace.sandbox?.executeCommand?.('printf', ['ok'], { abortSignal }),
+				abortSignal,
+			);
 			if (!result || result.exitCode !== 0) throw new Error('Sandbox command failed');
 			return { ok: true, startupMs };
 		} catch (error) {
@@ -132,7 +144,14 @@ export class InstanceAiVerificationService {
 				failure: provider === 'daytona' && failure === 'forbidden' ? 'quota_exceeded' : failure,
 			};
 		} finally {
-			await workspace?.destroy().catch(() => {});
+			if (workspace) {
+				const cleanup = workspace.destroy().catch(() => {});
+				if (abortSignal.aborted || !raceWithAbort) {
+					void cleanup;
+				} else {
+					await raceWithAbort(cleanup, abortSignal).catch(() => {});
+				}
+			}
 		}
 	}
 

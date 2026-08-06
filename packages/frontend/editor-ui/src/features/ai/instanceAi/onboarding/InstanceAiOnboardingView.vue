@@ -33,7 +33,6 @@ const onboarding = useInstanceAiOnboarding({
 	modelConfigured: configuration.modelConfigured,
 	sandboxConfigured: configuration.sandboxConfigured,
 	searchDecided,
-	sandboxEnvConfigured,
 	searchEnvConfigured,
 });
 
@@ -72,7 +71,9 @@ const searchValue = computed(() => {
 			?.label ?? i18n.baseText('instanceAi.onboarding.search.label')
 	);
 });
-const composeFastPath = computed(() => sandboxEnvConfigured.value && searchEnvConfigured.value);
+const composeFastPath = computed(
+	() => configuration.sandboxConfigured.value && searchEnvConfigured.value,
+);
 const incomplete = computed(() => configuration.hasSetupProgress.value && !composeFastPath.value);
 function startAt(step?: Exclude<InstanceAiOnboardingStep, 'done'>): void {
 	onboarding.start(step ?? onboarding.firstUnmetStep());

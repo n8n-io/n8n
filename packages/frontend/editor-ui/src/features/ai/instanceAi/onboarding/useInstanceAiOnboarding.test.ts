@@ -7,7 +7,6 @@ function createConfiguration() {
 		modelConfigured: ref(false),
 		sandboxConfigured: ref(false),
 		searchDecided: ref(false),
-		sandboxEnvConfigured: ref(false),
 		searchEnvConfigured: ref(false),
 	};
 }
@@ -29,9 +28,9 @@ describe('useInstanceAiOnboarding', () => {
 		expect(onboarding.firstUnmetStep()).toBe('done');
 	});
 
-	it('omits env-configured services from the setup sequence', () => {
+	it('omits configured services from the setup sequence', () => {
 		const configuration = createConfiguration();
-		configuration.sandboxEnvConfigured.value = true;
+		configuration.sandboxConfigured.value = true;
 		configuration.searchEnvConfigured.value = true;
 		configuration.searchDecided.value = true;
 		const onboarding = useInstanceAiOnboarding(configuration);
@@ -42,6 +41,21 @@ describe('useInstanceAiOnboarding', () => {
 		configuration.modelConfigured.value = true;
 		onboarding.advance();
 		expect(onboarding.step.value).toBe('done');
+	});
+
+	it('keeps a disabled sandbox in the sequence until it is enabled', () => {
+		const configuration = createConfiguration();
+		configuration.modelConfigured.value = true;
+		configuration.searchEnvConfigured.value = true;
+		configuration.searchDecided.value = true;
+		const onboarding = useInstanceAiOnboarding(configuration);
+
+		expect(onboarding.sequence.value).toEqual(['model', 'sandbox', 'done']);
+		expect(onboarding.firstUnmetStep()).toBe('sandbox');
+
+		configuration.sandboxConfigured.value = true;
+		expect(onboarding.sequence.value).toEqual(['model', 'done']);
+		expect(onboarding.firstUnmetStep()).toBe('done');
 	});
 
 	it('returns to an earlier unmet prerequisite after completing a later checklist step', () => {

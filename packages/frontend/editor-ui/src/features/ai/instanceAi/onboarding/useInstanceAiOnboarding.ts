@@ -6,7 +6,6 @@ export interface InstanceAiOnboardingConfiguration {
 	modelConfigured: Ref<boolean>;
 	sandboxConfigured: Ref<boolean>;
 	searchDecided: Ref<boolean>;
-	sandboxEnvConfigured: Ref<boolean>;
 	searchEnvConfigured: Ref<boolean>;
 }
 
@@ -17,16 +16,14 @@ export function useInstanceAiOnboarding(configuration: InstanceAiOnboardingConfi
 
 	const sequence = computed<InstanceAiOnboardingStep[]>(() => [
 		'model',
-		...(configuration.sandboxEnvConfigured.value ? [] : (['sandbox'] as const)),
+		...(configuration.sandboxConfigured.value ? [] : (['sandbox'] as const)),
 		...(configuration.searchEnvConfigured.value ? [] : (['search'] as const)),
 		'done',
 	]);
 
 	function firstUnmetStep(): InstanceAiOnboardingStep {
 		if (!configuration.modelConfigured.value) return 'model';
-		if (!configuration.sandboxConfigured.value && !configuration.sandboxEnvConfigured.value) {
-			return 'sandbox';
-		}
+		if (!configuration.sandboxConfigured.value) return 'sandbox';
 		if (!configuration.searchDecided.value && !configuration.searchEnvConfigured.value) {
 			return 'search';
 		}

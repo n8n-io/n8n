@@ -197,6 +197,21 @@ describe('InstanceAiOnboardingView', () => {
 		);
 	});
 
+	it('requires the sandbox step when server configuration is present but disabled', async () => {
+		const { pinia } = setupStore({
+			modelEnvConfigured: true,
+			sandboxEnabled: false,
+			sandboxEnvConfigured: true,
+			searchEnvConfigured: true,
+		});
+		const { getByTestId } = renderView({ pinia });
+
+		expect(getByTestId('intro-stub')).toHaveAttribute('data-connect-model-only', 'false');
+
+		await fireEvent.click(getByTestId('intro-setup'));
+		expect(getByTestId('wizard-stub')).toHaveAttribute('data-step', 'sandbox');
+	});
+
 	it('labels configured Daytona and Brave connections and opens summary edits', async () => {
 		const { pinia, store } = setupStore({
 			modelCredentialId: 'model-credential',

@@ -142,4 +142,29 @@ describe('InstanceAiView', () => {
 		expect(getByTestId('router-view-stub')).toBeVisible();
 		expect(sessionStorage.getItem('instanceAi.onboarding.completionPending')).toBe('false');
 	});
+
+	it('ignores a stale onboarding session after setup completes in Settings', () => {
+		vi.mocked(hasPermission).mockReturnValue(true);
+		sessionStorage.setItem('instanceAi.onboarding.completionPending', 'true');
+		useSettingsStore().moduleSettings = {
+			'instance-ai': {
+				enabled: true,
+				localGatewayDisabled: false,
+				browserUseEnabled: true,
+				proxyEnabled: false,
+				cloudManaged: false,
+				setupCompleted: true,
+				sandboxEnabled: true,
+				workflowBuilderAvailable: true,
+				sandboxUnavailableReason: null,
+				runDebugEnabled: false,
+			},
+		};
+
+		const { getByTestId, queryByTestId } = renderView({ pinia });
+
+		expect(queryByTestId('onboarding-view-stub')).toBeNull();
+		expect(getByTestId('router-view-stub')).toBeVisible();
+		expect(sessionStorage.getItem('instanceAi.onboarding.completionPending')).toBe('false');
+	});
 });
