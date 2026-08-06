@@ -40,6 +40,12 @@ describe('ScheduleTrigger', () => {
 			});
 		});
 
+		it('points the misfirePolicy hint at the grace period field', () => {
+			const misfirePolicy = properties.find((property) => property.name === 'misfirePolicy');
+
+			expect(misfirePolicy?.hint).toMatch(/grace period set below/i);
+		});
+
 		it.each<[number, boolean]>([
 			[1.3, false],
 			[1.4, true],
