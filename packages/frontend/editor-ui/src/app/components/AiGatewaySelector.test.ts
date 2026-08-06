@@ -15,18 +15,11 @@ import { AI_GATEWAY_TOP_UP_MODAL_KEY } from '@/app/constants';
 
 const mockFetchBalance = vi.fn().mockResolvedValue(undefined);
 const mockBalance = ref<number | undefined>(undefined);
-const n8nCreditsCredentialSelectionEnabled = vi.hoisted(() => ({ value: false }));
 
 vi.mock('@/app/composables/useAiGateway', () => ({
 	useAiGateway: vi.fn(() => ({
 		balance: computed(() => mockBalance.value),
 		fetchWallet: mockFetchBalance,
-	})),
-}));
-
-vi.mock('@/experiments/n8nCreditsCredentialSelection', () => ({
-	useN8nCreditsCredentialSelectionExperiment: vi.fn(() => ({
-		isFeatureEnabled: n8nCreditsCredentialSelectionEnabled,
 	})),
 }));
 
@@ -47,7 +40,6 @@ describe('AiGatewaySelector', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mockBalance.value = undefined;
-		n8nCreditsCredentialSelectionEnabled.value = false;
 		const pinia = createTestingPinia({ stubActions: false });
 		setActivePinia(pinia);
 		workflowsStore = mockedStore(useWorkflowsStore);
@@ -73,15 +65,6 @@ describe('AiGatewaySelector', () => {
 			const cards = screen.getAllByRole('radio');
 			expect(cards[0]).toHaveTextContent('n8n credits');
 			expect(cards[1]).toHaveTextContent('My own credential');
-		});
-
-		it('should render own credential first when enabled', () => {
-			n8nCreditsCredentialSelectionEnabled.value = true;
-			renderComponent({ props: { aiGatewayEnabled: false, readonly: false } });
-
-			const cards = screen.getAllByRole('radio');
-			expect(cards[0]).toHaveTextContent('My own credential');
-			expect(cards[1]).toHaveTextContent('n8n credits');
 		});
 
 		it('should show balance badge when aiGatewayEnabled and balance is defined', () => {

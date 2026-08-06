@@ -7,7 +7,6 @@ import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutio
 import { useUIStore } from '@/app/stores/ui.store';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { AI_GATEWAY_TOP_UP_MODAL_KEY } from '@/app/constants';
-import { useN8nCreditsCredentialSelectionExperiment } from '@/experiments/n8nCreditsCredentialSelection';
 
 type CredentialMode = 'gateway' | 'own';
 
@@ -27,13 +26,9 @@ const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
 const telemetry = useTelemetry();
 
 const { balance, fetchWallet } = useAiGateway();
-const { isFeatureEnabled: shouldShowOwnCredentialFirst } =
-	useN8nCreditsCredentialSelectionExperiment();
 
 const isBalanceDepleted = computed(() => balance.value !== undefined && balance.value <= 0);
-const credentialModeOrder = computed<CredentialMode[]>(() =>
-	shouldShowOwnCredentialFirst.value ? ['own', 'gateway'] : ['gateway', 'own'],
-);
+const credentialModeOrder: CredentialMode[] = ['gateway', 'own'];
 
 // Fetch when enabled (on mount if already enabled, or when toggled on)
 watch(

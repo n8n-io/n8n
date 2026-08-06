@@ -59,7 +59,6 @@ import CredentialPrivateConnectionRow from './CredentialPrivateConnectionRow.vue
 import { useAiGateway } from '@/app/composables/useAiGateway';
 import AiGatewaySelector from '@/app/components/AiGatewaySelector.vue';
 import UnifiedCredentialsPicker from './UnifiedCredentialsPicker.vue';
-import { useN8nCreditsCredentialSelectionExperiment } from '@/experiments/n8nCreditsCredentialSelection';
 
 import {
 	N8nButton,
@@ -157,8 +156,6 @@ const { canOAuthCredentialQuickConnect, hasManualCredentialInputFields, authoriz
 	useCredentialOAuth();
 
 const aiGateway = useAiGateway();
-const { isFeatureEnabled: shouldShowOwnCredentialFirst } =
-	useN8nCreditsCredentialSelectionExperiment();
 const hideAskAssistant = computed(() => props.hideAskAssistant || isToolContext);
 
 const credentialPermissions = computed(
@@ -349,8 +346,8 @@ watch(
 
 		// No credentials available to select — auto-enable AI Gateway for supported
 		// types, but only on the initial setup so a later action change doesn't
-		// redirect the user onto n8n credits. The experiment variant leaves it unselected.
-		if (aiGateway.isEnabled.value && isInitialEvaluation && !shouldShowOwnCredentialFirst.value) {
+		// redirect the user onto n8n credits.
+		if (aiGateway.isEnabled.value && isInitialEvaluation) {
 			for (const { type } of types) {
 				// Same rule as showAiGatewaySelector: supported type, or a sibling fallback.
 				const gatewaySupported =
