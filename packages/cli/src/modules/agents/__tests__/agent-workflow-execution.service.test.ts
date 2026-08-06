@@ -77,8 +77,12 @@ function makeRuntime(chunks: StreamChunk[] = [{ type: 'finish', finishReason: 's
 	return {
 		agent: {
 			name: 'Runtime Agent',
-			stream: vi.fn().mockResolvedValue({ stream: makeReadableStream(chunks) }),
-			resume: vi.fn().mockResolvedValue({ stream: makeReadableStream(chunks) }),
+			stream: vi
+				.fn()
+				.mockResolvedValue({ runId: 'runtime-run-1', stream: makeReadableStream(chunks) }),
+			resume: vi
+				.fn()
+				.mockResolvedValue({ runId: 'runtime-run-1', stream: makeReadableStream(chunks) }),
 			structuredOutput: vi.fn(),
 			close: vi.fn(),
 		} as unknown as RuntimeAgent & {
@@ -110,7 +114,8 @@ function makeService() {
 	const executionLevelTracer = mock<ExecutionLevelTracer>();
 	const nodeToolAiGatewayService = mock<NodeToolAiGatewayService>();
 
-	executionService.recordMessage.mockResolvedValue('execution-1');
+	executionService.startExecutionRecording.mockResolvedValue('execution-1');
+	executionService.finalizeExecution.mockResolvedValue('execution-1');
 	agentRunTracingService.build.mockResolvedValue(undefined);
 	executionLevelTracer.getActiveContext.mockReturnValue(undefined);
 	// The inline path lists project credentials to pass owned types into the
@@ -164,6 +169,8 @@ describe('AgentWorkflowExecutionService', () => {
 
 		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
 		reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
+		executionService.startExecutionRecording.mockResolvedValue('agent-execution-1');
+		executionService.finalizeExecution.mockResolvedValue('agent-execution-1');
 
 		const result = await service.executeForWorkflow(
 			agentId,
@@ -201,7 +208,16 @@ describe('AgentWorkflowExecutionService', () => {
 			run_type: 'production',
 			message_count: 1,
 		});
-		expect(executionService.recordMessage).toHaveBeenCalledWith(
+		expect(executionService.recordTimelineSnapshot).toHaveBeenCalledWith(
+			expect.objectContaining({
+				projectId,
+				agentId,
+				threadId: 'thread-1',
+				executionId: 'agent-execution-1',
+			}),
+		);
+		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
+			'agent-execution-1',
 			expect.objectContaining({
 				telemetry: expect.objectContaining({
 					runType: 'production',
@@ -211,6 +227,9 @@ describe('AgentWorkflowExecutionService', () => {
 				}),
 			}),
 		);
+		const startedAt = executionService.startExecutionRecording.mock.calls[0][1];
+		const finalizedRecord = executionService.finalizeExecution.mock.calls[0][1].record;
+		expect(startedAt.getTime()).toBe(finalizedRecord.startTime);
 		expect(agentRunTracingService.build).toHaveBeenCalledWith(
 			expect.objectContaining({
 				agentId,
@@ -219,6 +238,26 @@ describe('AgentWorkflowExecutionService', () => {
 				userId,
 				source: 'workflow',
 				executionId: 'execution-1',
+			}),
+		);
+	});
+
+	it('records workflow stream setup failures', async () => {
+		const { service, agentRepository, reconstructionService, executionService } = makeService();
+		const runtime = makeRuntime();
+		runtime.agent.stream.mockRejectedValue(new Error('stream setup failed'));
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+		reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
+		executionService.startExecutionRecording.mockResolvedValue('fallback-execution-1');
+
+		await expect(
+			service.executeForWorkflow(agentId, 'hello', 'execution-1', 'thread-1', projectId),
+		).rejects.toThrow('stream setup failed');
+
+		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
+			'fallback-execution-1',
+			expect.objectContaining({
+				record: expect.objectContaining({ error: 'stream setup failed', finishReason: 'error' }),
 			}),
 		);
 	});
@@ -604,7 +643,7 @@ describe('AgentWorkflowExecutionService', () => {
 			expect(result.response).toBe('answer');
 			// Inline runs have no persisted session.
 			expect(result.session).toBeNull();
-			expect(executionService.recordMessage).not.toHaveBeenCalled();
+			expect(executionService.startExecutionRecording).not.toHaveBeenCalled();
 
 			// Thread-scoped persistence: stable across executions, so a reused
 			// session id continues the same conversation.
@@ -1045,7 +1084,8 @@ describe('AgentWorkflowExecutionService', () => {
 		await expect(execution).rejects.toThrow(OperationalError);
 		await expect(execution).rejects.toThrow("Couldn't get structured output matching the schema");
 		await expect(execution).rejects.not.toThrow('Check the stream');
-		expect(executionService.recordMessage).toHaveBeenCalledWith(
+		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
+			'execution-1',
 			expect.objectContaining({
 				record: expect.objectContaining({
 					error: expect.stringContaining("Couldn't get structured output matching the schema"),

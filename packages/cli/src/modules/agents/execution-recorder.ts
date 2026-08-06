@@ -14,6 +14,7 @@ import type { ToolRegistry } from './tool-registry';
 /** Cap on child trace characters persisted per delegation. Tighter than the
  *  live forwarding budget because this is written into every parent execution row. */
 const CHILD_TRACE_PERSIST_CHAR_BUDGET = 4_000;
+const TIMELINE_BLOCK_MAX_DURATION_MS = 1_000;
 
 /**
  * Walk a nodeParameters tree and substitute templated values with what the
@@ -258,7 +259,10 @@ export interface MessageRecord {
 export class ExecutionRecorder {
 	private readonly registry: ToolRegistry;
 
-	constructor(registry?: ToolRegistry) {
+	constructor(
+		registry?: ToolRegistry,
+		private readonly onTimelineSnapshot?: (timeline: TimelineEvent[]) => void,
+	) {
 		this.registry = registry ?? new Map();
 	}
 
@@ -286,6 +290,8 @@ export class ExecutionRecorder {
 	/** Wall-clock when the current reasoning segment started. */
 	private reasoningStartTime: number | null = null;
 
+	private timelineSnapshotTimer?: NodeJS.Timeout;
+
 	private _suspended = false;
 
 	private error: string | null = null;
@@ -299,9 +305,12 @@ export class ExecutionRecorder {
 		switch (chunk.type) {
 			case 'text-delta':
 				this.flushReasoningBuffer();
-				if (this.textStartTime === null) this.textStartTime = Date.now();
+				if (this.textStartTime === null) {
+					this.textStartTime = Date.now();
+				}
 				this.textParts.push(chunk.delta);
 				this.textBuffer.push(chunk.delta);
+				this.scheduleTimelineSnapshot();
 				break;
 			case 'reasoning-start':
 				this.flushTextBuffer();
@@ -310,8 +319,11 @@ export class ExecutionRecorder {
 				break;
 			case 'reasoning-delta':
 				this.flushTextBuffer();
-				if (this.reasoningStartTime === null) this.reasoningStartTime = Date.now();
+				if (this.reasoningStartTime === null) {
+					this.reasoningStartTime = Date.now();
+				}
 				this.reasoningBuffer.push(chunk.delta);
+				this.scheduleTimelineSnapshot();
 				break;
 			case 'reasoning-end':
 				this.flushReasoningBuffer();
@@ -370,7 +382,7 @@ export class ExecutionRecorder {
 				this.flushReasoningBuffer();
 				this.flushTextBuffer();
 				this._suspended = true;
-				this.timeline.push({
+				this.appendCompletedEvent({
 					type: 'suspension',
 					toolName: chunk.toolName ?? '',
 					toolCallId: chunk.toolCallId ?? '',
@@ -389,6 +401,10 @@ export class ExecutionRecorder {
 	/** Whether the stream ended with a tool-call suspension (incomplete cycle). */
 	get suspended(): boolean {
 		return this._suspended;
+	}
+
+	get startedAt(): Date {
+		return new Date(this.startTime);
 	}
 
 	/** Build the final message record after the stream has ended. */
@@ -410,11 +426,15 @@ export class ExecutionRecorder {
 
 	/** Flush accumulated text into a timeline event. */
 	private flushTextBuffer(): void {
+		if (this.textStartTime !== null && this.timelineSnapshotTimer) {
+			clearTimeout(this.timelineSnapshotTimer);
+			this.timelineSnapshotTimer = undefined;
+		}
 		if (this.textBuffer.length === 0) return;
 		const content = this.textBuffer.join('');
 		if (content.trim()) {
 			const now = Date.now();
-			this.timeline.push({
+			this.appendCompletedEvent({
 				type: 'text',
 				content,
 				// Generation start (first text-delta) → end (now). Falls back to `now`
@@ -429,6 +449,10 @@ export class ExecutionRecorder {
 
 	/** Flush accumulated reasoning without including it in `assistantResponse`. */
 	private flushReasoningBuffer(): void {
+		if (this.reasoningStartTime !== null && this.timelineSnapshotTimer) {
+			clearTimeout(this.timelineSnapshotTimer);
+			this.timelineSnapshotTimer = undefined;
+		}
 		if (this.reasoningBuffer.length === 0) {
 			this.reasoningStartTime = null;
 			return;
@@ -436,7 +460,7 @@ export class ExecutionRecorder {
 		const content = this.reasoningBuffer.join('');
 		if (content.trim()) {
 			const now = Date.now();
-			this.timeline.push({
+			this.appendCompletedEvent({
 				type: 'reasoning',
 				content,
 				timestamp: this.reasoningStartTime ?? now,
@@ -445,6 +469,30 @@ export class ExecutionRecorder {
 		}
 		this.reasoningBuffer = [];
 		this.reasoningStartTime = null;
+	}
+
+	private scheduleTimelineSnapshot(): void {
+		if (this.timelineSnapshotTimer) return;
+		this.timelineSnapshotTimer = setTimeout(() => {
+			this.timelineSnapshotTimer = undefined;
+			const now = Date.now();
+			if (this.textStartTime !== null && this.textBuffer.length > 0) {
+				this.emitTimelineSnapshot({
+					type: 'text',
+					content: this.textBuffer.join(''),
+					timestamp: this.textStartTime,
+					endTime: now,
+				});
+			} else if (this.reasoningStartTime !== null && this.reasoningBuffer.length > 0) {
+				this.emitTimelineSnapshot({
+					type: 'reasoning',
+					content: this.reasoningBuffer.join(''),
+					timestamp: this.reasoningStartTime,
+					endTime: now,
+				});
+			}
+		}, TIMELINE_BLOCK_MAX_DURATION_MS);
+		this.timelineSnapshotTimer.unref();
 	}
 
 	/**
@@ -498,7 +546,10 @@ export class ExecutionRecorder {
 	private recordToolExecutionStart(toolCallId: string, startTime: number): void {
 		if (!toolCallId) return;
 		const entry = this.findOpenTimelineToolCall(toolCallId);
-		if (entry) entry.startTime = startTime;
+		if (entry) {
+			entry.startTime = startTime;
+			this.emitTimelineSnapshot();
+		}
 	}
 
 	/**
@@ -514,6 +565,7 @@ export class ExecutionRecorder {
 			entry.endTime = endTime;
 			entry.success = !isError;
 			if (entry.childTrace) settleChildTrace(entry.childTrace);
+			this.emitTimelineSnapshot();
 		}
 	}
 
@@ -572,6 +624,7 @@ export class ExecutionRecorder {
 					pendingTimeline.workflowExecutionId = execId;
 				}
 			}
+			this.emitTimelineSnapshot();
 			return;
 		}
 
@@ -606,6 +659,17 @@ export class ExecutionRecorder {
 				synthesized.workflowExecutionId = execId;
 			}
 		}
-		this.timeline.push(synthesized);
+		this.appendCompletedEvent(synthesized);
+	}
+
+	private appendCompletedEvent(event: TimelineEvent): void {
+		this.timeline.push(event);
+		this.emitTimelineSnapshot();
+	}
+
+	private emitTimelineSnapshot(activeEvent?: TimelineEvent): void {
+		if (!this.onTimelineSnapshot) return;
+		const timeline = activeEvent ? [...this.timeline, activeEvent] : this.timeline;
+		this.onTimelineSnapshot(structuredClone(timeline));
 	}
 }

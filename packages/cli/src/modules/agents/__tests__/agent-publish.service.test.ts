@@ -6,6 +6,7 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
+import type { EventService } from '@/events/event.service';
 import type { Telemetry } from '@/telemetry';
 
 import type { AgentCustomToolsService } from '../agent-custom-tools.service';
@@ -113,6 +114,7 @@ function makeService() {
 	const agentValidationService = mock<AgentValidationService>();
 	const credentialsService = mock<CredentialsService>();
 	const telemetry = mock<Telemetry>();
+	const eventService = mock<EventService>();
 	const { trx, taskRepo, transaction } = makeTransaction();
 
 	Object.defineProperty(agentRepository, 'manager', {
@@ -152,6 +154,7 @@ function makeService() {
 		agentValidationService,
 		credentialsService,
 		telemetry,
+		eventService,
 		new AgentSetupCompletionService(agentValidationService, telemetry, agentRepository),
 		new AgentModificationTelemetryService(telemetry),
 	);
@@ -170,6 +173,7 @@ function makeService() {
 		agentValidationService,
 		credentialsService,
 		telemetry,
+		eventService,
 		trx,
 		taskRepo,
 	};
@@ -262,6 +266,7 @@ describe('AgentPublishService', () => {
 			chatIntegrationService,
 			agentValidationService,
 			telemetry,
+			eventService,
 			trx,
 		} = makeService();
 		const configuredTools = { tool: { descriptor: { name: 'tool' } } };
@@ -328,6 +333,7 @@ describe('AgentPublishService', () => {
 		);
 		expect(agent.activeVersionId).toBe(versionId);
 		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
+		expect(eventService.emit).toHaveBeenCalledWith('agent-saved', { agentId });
 		expect(chatIntegrationService.syncToConfig).toHaveBeenCalledWith(agent, [], integrations);
 		expect(telemetry.track).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.AGENTS.BUILDER_PUBLISHED_AGENT,
