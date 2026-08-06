@@ -6,6 +6,7 @@ import { PostHog } from 'posthog-node';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
+import { N8N_VERSION } from '@/constants';
 import { PostHogClient } from '@/posthog';
 
 vi.mock('posthog-node');
@@ -161,6 +162,8 @@ describe('PostHog', () => {
 			expect(PostHog.prototype.evaluateFlags).toHaveBeenCalledWith(`${instanceId}#${userId}`, {
 				personProperties: {
 					created_at_timestamp: createdAt.getTime().toString(),
+					instance_id: instanceId,
+					version_cli: N8N_VERSION,
 				},
 				groups: { company: instanceId },
 			});
@@ -221,6 +224,7 @@ describe('PostHog', () => {
 				globalConfig.evaluation.collectionsEnabled = false;
 				globalConfig.evaluation.configEvalsEnabled = false;
 				globalConfig.evaluation.agentEvalsEnabled = false;
+				globalConfig.instanceAi.mcpConnectionsEnabled = false;
 			});
 
 			it('force-enables the eval-collections flag when N8N_EVAL_COLLECTIONS_ENABLED is set', async () => {
@@ -245,6 +249,18 @@ describe('PostHog', () => {
 				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
 
 				expect(flags).toMatchObject({ '088_config_evaluations': 'variant' });
+			});
+
+			it('force-enables the MCP-connections variant when N8N_INSTANCE_AI_MCP_CONNECTIONS_ENABLED is set', async () => {
+				(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(mockEvaluatedFlags({}));
+				globalConfig.instanceAi.mcpConnectionsEnabled = true;
+
+				const ph = new PostHogClient(instanceSettings, globalConfig);
+				await ph.init();
+
+				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
+
+				expect(flags).toMatchObject({ '089_instance_ai_mcp_connections': 'variant' });
 			});
 
 			it('leaves flags untouched when no override is configured', async () => {

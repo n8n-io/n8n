@@ -23,10 +23,10 @@ describe('@ApiResponse Decorator', () => {
 		Container.set(ControllerRegistryMetadata, controllerRegistryMetadata);
 	});
 
-	it('should store the response DTO on the route', () => {
+	it('should store the response DTO and status code on the route', () => {
 		class TestController {
 			@Get('/')
-			@ApiResponse(ExampleDto)
+			@ApiResponse(200, ExampleDto)
 			async handler() {}
 		}
 
@@ -35,5 +35,33 @@ describe('@ApiResponse Decorator', () => {
 			'handler',
 		);
 		expect(route.responseDto).toBe(ExampleDto);
+		expect(route.successStatus).toBe(200);
+	});
+
+	it('should reject a handler with more than one @ApiResponse', () => {
+		expect(() => {
+			class TestController {
+				@Get('/')
+				@ApiResponse(204)
+				@ApiResponse(200, ExampleDto)
+				async handler() {}
+			}
+			void TestController;
+		}).toThrow('declares more than one @ApiResponse');
+	});
+
+	it('should store a bare success status with no response DTO when none are provided', () => {
+		class TestController {
+			@Get('/')
+			@ApiResponse(204)
+			async handler() {}
+		}
+
+		const route = controllerRegistryMetadata.getRouteMetadata(
+			TestController as Controller,
+			'handler',
+		);
+		expect(route.successStatus).toBe(204);
+		expect(route.responseDto).toBeUndefined();
 	});
 });

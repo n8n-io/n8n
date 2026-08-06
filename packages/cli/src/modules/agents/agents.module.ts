@@ -1,12 +1,14 @@
 import { Logger } from '@n8n/backend-common';
 import { AgentsConfig } from '@n8n/config';
 import type { ModuleInterface } from '@n8n/decorators';
-import { BackendModule } from '@n8n/decorators';
+import { BackendModule, OnShutdown } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 
 @BackendModule({ name: 'agents' })
 export class AgentsModule implements ModuleInterface {
+	private interruptedExecutionSweepTimer?: NodeJS.Timeout;
+
 	async init() {
 		await import('./agents-catalog.controller.js');
 		await import('./agent-threads.controller.js');
@@ -26,6 +28,9 @@ export class AgentsModule implements ModuleInterface {
 
 		const { AgentsService } = await import('./agents.service.js');
 		Container.get(AgentsService);
+
+		const { AgentCredentialIndexListener } = await import('./agent-credential-index.listener.js');
+		Container.get(AgentCredentialIndexListener).init();
 
 		const { AgentsBuilderSettingsService } = await import(
 			'./builder/agents-builder-settings.service.js'
@@ -96,6 +101,24 @@ export class AgentsModule implements ModuleInterface {
 		const taskService = Container.get(AgentTaskService);
 		const logger = Container.get(Logger);
 		const instanceSettings = Container.get(InstanceSettings);
+		if (instanceSettings.instanceType === 'main') {
+			const { AgentInterruptedExecutionSweeper } = await import(
+				'./agent-interrupted-execution-sweeper.js'
+			);
+			const sweep = () => {
+				void Container.get(AgentInterruptedExecutionSweeper)
+					.sweep()
+					.catch((error: unknown) => {
+						logger.error('[Agents] Interrupted execution sweep failed', { error });
+					});
+			};
+			sweep();
+			this.interruptedExecutionSweepTimer = setInterval(
+				sweep,
+				AgentInterruptedExecutionSweeper.LIVENESS_GRACE_MS,
+			);
+			this.interruptedExecutionSweepTimer.unref();
+		}
 		void chatService.reconnectAll().catch((error) => {
 			logger.error('[Agents] Failed to reconnect integrations on startup', {
 				error: error instanceof Error ? error.message : String(error),
@@ -109,6 +132,13 @@ export class AgentsModule implements ModuleInterface {
 			});
 		} else {
 			logger.debug('[Agents] Skipping task reconnect on startup — not leader');
+		}
+	}
+
+	@OnShutdown()
+	async shutdown() {
+		if (this.interruptedExecutionSweepTimer) {
+			clearInterval(this.interruptedExecutionSweepTimer);
 		}
 	}
 
@@ -138,6 +168,9 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentExecutionThread } = await import('./entities/agent-execution-thread.entity.js');
 		const { AgentExecution } = await import('./entities/agent-execution.entity.js');
 		const { AgentHistory } = await import('./entities/agent-history.entity.js');
+		const { AgentCredentialDependency } = await import(
+			'./entities/agent-credential-dependency.entity.js'
+		);
 		const { AgentTask } = await import('./entities/agent-task.entity.js');
 		const { AgentTaskRunLock } = await import('./entities/agent-task-run-lock.entity.js');
 		const { AgentTaskSnapshot } = await import('./entities/agent-task-snapshot.entity.js');
@@ -171,6 +204,7 @@ export class AgentsModule implements ModuleInterface {
 			AgentExecutionThread,
 			AgentExecution,
 			AgentHistory,
+			AgentCredentialDependency,
 			AgentTask,
 			AgentTaskRunLock,
 			AgentTaskSnapshot,

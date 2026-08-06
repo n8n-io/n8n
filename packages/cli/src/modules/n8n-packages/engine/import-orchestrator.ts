@@ -1,3 +1,4 @@
+import { LicenseState } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 
 import { NodeTypes } from '@/node-types';
@@ -25,6 +26,7 @@ import { TagImporter } from '../entities/tag/tag-importer';
 import { contestedReconcileTargetFailures, droppedTagIds } from '../entities/tag/tag.types';
 import type { TagImportPlan, TagImportRequest } from '../entities/tag/tag.types';
 import { VariableImporter } from '../entities/variable/variable-importer';
+import { divergentOverwrites } from '../entities/variable/variable.types';
 import type {
 	VariableApplyResult,
 	VariableImportPlan,
@@ -55,8 +57,9 @@ import type {
 	MissingNodeTypeMode,
 	PackageImportBindings,
 } from '../n8n-packages.types';
-import { toImportBlockedError } from './import-blocked.error';
 import type { PackageWorkflowRequirement } from '../spec/requirements.schema';
+import { toImportBlockedError } from './import-blocked.error';
+import { assertVariableWritesAllowed } from './import-gates';
 
 export interface ImportOrchestrationInput {
 	context: ImportContext;
@@ -116,9 +119,40 @@ export class ImportOrchestrator {
 		private readonly workflowImporter: WorkflowImporter,
 		private readonly workflowPublisher: WorkflowPublisher,
 		private readonly nodeTypes: NodeTypes,
+		private readonly licenseState: LicenseState,
 	) {}
 
-	async assertNotBlocked(plans: ImportPlan[]): Promise<void> {
+	/**
+	 * Licence and scope before quota: an unlicensed instance also reports a zero quota, which would
+	 * otherwise surface as a limit issue instead of the real cause.
+	 */
+	async assertNotBlocked(
+		plans: ImportPlan[],
+		options: { apiKeyScopes: string[] | undefined },
+	): Promise<void> {
+		const creations = plans.flatMap((plan) => plan.variablePlan.creations);
+		const overwrites = plans.flatMap((plan) => plan.variablePlan.overwrites);
+
+		assertVariableWritesAllowed({
+			licenseState: this.licenseState,
+			apiKeyScopes: options.apiKeyScopes,
+			hasCreations: creations.length > 0,
+			hasOverwrites: overwrites.length > 0,
+		});
+
+		for (const { input, variablePlan } of plans) {
+			if (variablePlan.creations.length > 0) {
+				await this.variableImporter.assertCanCreate(
+					input.context,
+					variablePlan.creations,
+					input.projectPendingCreation ?? false,
+				);
+			}
+			if (variablePlan.overwrites.length > 0) {
+				await this.variableImporter.assertCanUpdate(input.context, variablePlan.overwrites);
+			}
+		}
+
 		const issues = plans.flatMap((plan) => plan.blockingIssues);
 
 		issues.push(
@@ -130,9 +164,11 @@ export class ImportOrchestrator {
 			).map((failure): BlockingIssue => ({ type: 'tag-unresolved', ...failure })),
 		);
 
-		const quotaFailure = await this.variableImporter.quotaFailure(
-			plans.flatMap((plan) => plan.variablePlan.creations),
-		);
+		for (const conflict of divergentOverwrites(overwrites)) {
+			issues.push({ type: 'variable-conflict', ...conflict });
+		}
+
+		const quotaFailure = await this.variableImporter.quotaFailure(creations);
 		if (quotaFailure) issues.push({ type: 'variable-limit-exceeded', ...quotaFailure });
 
 		if (issues.length > 0) throw toImportBlockedError(issues);
@@ -159,9 +195,7 @@ export class ImportOrchestrator {
 
 		const credentialPlan = await this.credentialImporter.plan(context, credentialRequest);
 		const dataTablePlan = await this.dataTableImporter.plan(context, dataTableRequest);
-		const variablePlan = await this.variableImporter.plan(context, variableRequest, {
-			projectPendingCreation: input.projectPendingCreation,
-		});
+		const variablePlan = await this.variableImporter.plan(context, variableRequest);
 		const workflowPlan = await this.workflowImporter.plan(context, workflows, options);
 		// Tags plan after workflows: only tags referenced by non-skipped workflows gate or create.
 		const tagPlan = await this.tagImporter.plan(
@@ -226,11 +260,7 @@ export class ImportOrchestrator {
 		} = plan;
 		const { context, credentialRequest } = input;
 
-		// Variables and tags go first: their creations are the apply steps that can still fail
-		// after the blocking-issue gate (a near-quota or unique-index race), and they depend on
-		// nothing below — applying them before any other write keeps a raced import from
-		// persisting anything else.
-		const variableResult = await this.variableImporter.apply(context, variablePlan);
+		// Tags go first because the workflow write attaches them by id.
 		await this.tagImporter.apply(context, tagPlan);
 
 		const folderSummaries = await this.folderImporter.apply(folderContext, folderPlan);
@@ -267,6 +297,11 @@ export class ImportOrchestrator {
 				...(seedWorkflowBindings ? { workflows: seedWorkflowBindings } : {}),
 			}),
 		);
+
+		// Last of the writes: an overwrite is the only step that rewrites pre-existing data, and no
+		// step above reads a variable, since `$vars` resolves by name at runtime. Still ahead of the
+		// publish sweep, which evaluates trigger parameters against variable values.
+		const variableResult = await this.variableImporter.apply(context, variablePlan);
 
 		return {
 			workflowOutcomes: outcomes.map((outcome) =>
@@ -328,6 +363,9 @@ export class ImportOrchestrator {
 			...this.variableImporter
 				.blockingFailures(variableRequest, variablePlan)
 				.map((failure): BlockingIssue => ({ type: 'variable-unresolved', ...failure })),
+			...this.variableImporter
+				.blockingConflicts(variableRequest, variablePlan)
+				.map((conflict): BlockingIssue => ({ type: 'variable-conflict', ...conflict })),
 			...missingNodeTypeBlockingFailures(missingNodeTypeMode, missingNodeTypes).map(
 				({ type, typeVersion, usedByWorkflows }): BlockingIssue => ({
 					type: 'missing-node-type',
