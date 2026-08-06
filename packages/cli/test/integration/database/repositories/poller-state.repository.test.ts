@@ -11,11 +11,11 @@ describe('PollerStateRepository', () => {
 		await testDb.init();
 		repository = Container.get(PollerStateRepository);
 		workflowRepository = Container.get(WorkflowRepository);
+		({ id: workflowId } = await createWorkflow());
 	});
 
 	beforeEach(async () => {
-		await testDb.truncate(['PollerState', 'WorkflowEntity']);
-		({ id: workflowId } = await createWorkflow());
+		await testDb.truncate(['PollerState']);
 	});
 
 	afterAll(async () => {
@@ -86,13 +86,14 @@ describe('PollerStateRepository', () => {
 		});
 
 		it("drops a workflow's cursors when the workflow is deleted", async () => {
-			await seed('node-1', { lastItemId: 'a' });
-			await seed('node-2', { lastItemId: 'b' });
+			const { id: doomedWorkflowId } = await createWorkflow();
+			await seed('node-1', { lastItemId: 'a' }, doomedWorkflowId);
+			await seed('node-2', { lastItemId: 'b' }, doomedWorkflowId);
 
-			await workflowRepository.delete({ id: workflowId });
+			await workflowRepository.delete({ id: doomedWorkflowId });
 
-			expect(await repository.findCursor(workflowId, 'node-1')).toBeNull();
-			expect(await repository.findCursor(workflowId, 'node-2')).toBeNull();
+			expect(await repository.findCursor(doomedWorkflowId, 'node-1')).toBeNull();
+			expect(await repository.findCursor(doomedWorkflowId, 'node-2')).toBeNull();
 		});
 	});
 });
