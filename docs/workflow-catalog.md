@@ -98,29 +98,26 @@ identity comes from.
 
 ```mermaid
 flowchart TD
-    R["Person clicks Run"] --> RS["Session token from the request"]
-    S["Schedule falls due"] --> H["Task handler"]
-    H --> C["Re-check: user enabled?<br/>consent standing?<br/>execute access?"]
+    R["Person clicks Run"] --> RS["Their session"]
+    S["Schedule falls due"] --> C["Still allowed?<br/>enabled · consented · has access"]
     C --> M["Mint a short-lived signed token"]
-    RS --> X["encryptedRunnerIdentity<br/>on the execution"]
+    RS --> X["Identity travels with the execution"]
     M --> X
-    X --> D["Dynamic credentials resolve<br/>to that person's accounts"]
+    X --> D["Credentials resolve to<br/>that person's accounts"]
 ```
 
-A live request carries proof of who is asking. An occurrence firing at 3am does
-not, so one is minted: signing keeps the claim tamper-evident, and a short
-expiry bounds how long a leaked context stays usable.
+A live request proves who is asking. A run at 3am has nobody to ask, so a token
+is minted instead — signed so it can't be forged, short-lived so a leak doesn't
+outlive the run.
 
-Because a minted token only proves who was named **when it was issued**, the
-handler re-establishes everything a live request would have proved: the user
-still exists and is enabled, consent has not been withdrawn, and execute access
-has not been revoked. A failed check is not an error — consent gets withdrawn
-and access gets removed in the ordinary course of things — so the occurrence
-reports no dispatch and is logged.
+But a token only proves who was named *when it was issued*, so the handler
+re-checks what a live request would have proved. A failed check isn't an error:
+consent gets withdrawn and access gets removed all the time. The run is skipped
+and logged.
 
-Refreshing an expired OAuth token needs no new machinery: n8n's existing refresh
-path already routes the write-back to the per-user store whenever the execution
-carries a credential context.
+Refreshing an expired OAuth token needs no new code. n8n's existing refresh
+already writes back to the per-user store whenever the execution carries an
+identity.
 
 ### Storage
 
