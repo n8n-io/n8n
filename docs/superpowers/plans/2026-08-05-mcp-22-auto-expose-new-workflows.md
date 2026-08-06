@@ -1300,17 +1300,56 @@ from the same place a manual toggle fires it would be — except this path has
 no experiment-variant context available in the *backend* service the way the
 frontend toggle handler does. Emit it from the frontend modal's success path
 instead (`ExposeAllWorkflowsToMcpModal.vue`'s `onExposeAll`, after
-`toggleWorkflowsMcpAccess` resolves), reading `mcpStore.autoExposeNewWorkflows`
-to confirm the backend actually turned it on before tracking — if the fetched
-state disagrees (e.g. it was already on, or the backend's fire-and-forget
-write failed), do not fire a stale `enabled: true`.
+`toggleWorkflowsMcpAccess` resolves).
+
+**Correction — do not check `mcpStore.autoExposeNewWorkflows` to decide whether
+to track.** A first pass at this task did exactly that, and it is wrong:
+`autoExposeNewWorkflows` is a computed over `settingsStore.moduleSettings.mcp`,
+and the ONLY two places that ever write to `moduleSettings.mcp` are
+`setMcpAccessEnabled` and `setAutoExposeNewWorkflows` themselves
+([mcp.store.ts:146,160](../../../packages/frontend/editor-ui/src/features/ai/mcpAccess/mcp.store.ts)).
+`toggleWorkflowsMcpAccessApi` — the call this modal actually makes — returns
+`BulkSetAvailableInMCPResult` (counts and changed-workflow IDs), which never
+touches `moduleSettings.mcp`. So reading the computed right after that call
+resolves reads **whatever the value was before the request** — the backend's
+fire-and-forget write is invisible to the frontend. Telemetry would only ever
+fire `enabled: true` in the (rare, already-on) case, and stay silent in the
+actual target case: an admin enabling it for the first time through this
+modal. This is the opposite of what "confirm before tracking" was meant to do.
+
+**The real fix: carry the outcome in the bulk-expose response itself**, rather
+than trying to observe it through unrelated local state.
+
+- `BulkSetAvailableInMCPResult` (in `mcp.settings.service.ts`) gains
+  `autoExposeNewWorkflows?: boolean` — present and `true` only when this call
+  actually enabled the setting; absent when the condition didn't apply
+  (scoped update, or `availableInMCP: false`) or when the write itself threw.
+  Set it from the *outcome* of the try/catch below, not unconditionally inside
+  the `if`.
+- `McpSettingsController.toggleWorkflowsMCPAccess` already returns `...result`
+  (a spread of everything but `changedWorkflows`) — no controller change
+  needed; the new field flows through for free.
+- `ToggleWorkflowsMcpAccessResponse` (frontend, `mcp.api.ts`) gains the
+  matching optional field.
+- `mcpStore.toggleWorkflowsMcpAccess`'s return value now carries it — no store
+  change needed beyond the type, since the store already returns the raw API
+  response.
+- The modal reads `response.autoExposeNewWorkflows` (the destructured result
+  of its own `await mcpStore.toggleWorkflowsMcpAccess(...)` call) instead of
+  the stale store computed.
+
+This keeps the design backend-only (per the original steer): the backend is
+still the single place that decides and performs the enable; the frontend
+only reports what that specific request's response says happened, not a
+guess derived from unrelated cached state.
 
 **Precedence unaffected.** This task only changes *when* the setting turns on;
 Task 4's default-only seeding logic in `createWorkflow()` is untouched, and so
 is every existing per-workflow opt-out.
 
 **Files:**
-- Modify: `packages/cli/src/modules/mcp/mcp.settings.service.ts`
+- Modify: `packages/cli/src/modules/mcp/mcp.settings.service.ts` — the write, plus the `autoExposeNewWorkflows` field on `BulkSetAvailableInMCPResult`
+- Modify: `packages/frontend/editor-ui/src/features/ai/mcpAccess/mcp.api.ts` — matching field on `ToggleWorkflowsMcpAccessResponse`
 - Modify: `packages/frontend/editor-ui/src/experiments/exposeAllWorkflowsToMcp/components/ExposeAllWorkflowsToMcpModal.vue`
 - Test: `packages/cli/src/modules/mcp/__tests__/mcp.settings.service.test.ts`
 - Test: `packages/frontend/editor-ui/src/experiments/exposeAllWorkflowsToMcp/components/ExposeAllWorkflowsToMcpModal.test.ts`
@@ -1387,12 +1426,30 @@ Expected: FAIL — `upsert` is never called with the auto-expose key.
 
 - [ ] **Step 3: Write minimal implementation**
 
+Add `autoExposeNewWorkflows?: boolean` to the `BulkSetAvailableInMCPResult`
+type at the top of the file:
+
+```typescript
+type BulkSetAvailableInMCPResult = {
+	updatedCount: number;
+	unchangedCount: number;
+	skippedCount: number;
+	failedCount: number;
+	changedWorkflows: WorkflowMCPAvailabilityChange[];
+	updatedIds?: string[];
+	unchangedIds?: string[];
+	autoExposeNewWorkflows?: boolean;
+};
+```
+
 In `bulkSetAvailableInMCP`, immediately after the existing scope-count validation (`if (scopeCount !== 1) { throw ... }`) and before `resolveCandidateIds`, add:
 
 ```typescript
+		let autoExposeNewWorkflowsEnabled: boolean | undefined;
 		if (allWorkflows && availableInMCP) {
 			try {
 				await this.setAutoExposeNewWorkflows(true);
+				autoExposeNewWorkflowsEnabled = true;
 			} catch (error) {
 				this.logger.warn('Failed to enable auto-expose after bulk-exposing all workflows', {
 					cause: error instanceof Error ? error.message : String(error),
@@ -1407,6 +1464,31 @@ the method can't prevent it from having already fired. `this.logger` is
 already injected in this service (used elsewhere in the same file) — reuse it,
 don't add a new dependency.
 
+Then include the flag in every return path of the method — the early
+zero-candidates return AND the final return — so the caller can observe the
+outcome regardless of which path was taken:
+
+```typescript
+		if (candidateIds.length === 0) {
+			return {
+				updatedCount: 0,
+				unchangedCount: 0,
+				skippedCount: baselineSize,
+				failedCount: 0,
+				changedWorkflows: [],
+				autoExposeNewWorkflowsEnabled !== undefined && { autoExposeNewWorkflows: autoExposeNewWorkflowsEnabled },
+				...(isWorkflowIdsScope ? { updatedIds: [], unchangedIds: [] } : {}),
+			};
+		}
+```
+
+> The line above is illustrative — a bare boolean isn't valid inside an object
+> literal. Use a spread instead:
+> `...(autoExposeNewWorkflowsEnabled !== undefined ? { autoExposeNewWorkflows: autoExposeNewWorkflowsEnabled } : {})`,
+> matching the file's own existing convention for the other optional fields
+> on this same type (`updatedIds`/`unchangedIds` are spread in conditionally
+> a few lines above). Add that spread to BOTH return statements in the method.
+
 - [ ] **Step 4: Run test to verify it passes**
 
 ```bash
@@ -1419,13 +1501,24 @@ scope resolution — none of which this change should touch).
 
 - [ ] **Step 5: Write the failing frontend test**
 
-In `ExposeAllWorkflowsToMcpModal.test.ts`, add a case asserting the telemetry
-call — read the file's existing render/store-mock setup first and reuse it:
+First, add `autoExposeNewWorkflows?: boolean` to `ToggleWorkflowsMcpAccessResponse`
+in `mcp.api.ts`, matching the backend's new field exactly — the store returns
+this type verbatim, so no store change is needed beyond the type flowing
+through.
+
+Then, in `ExposeAllWorkflowsToMcpModal.test.ts`, add a case asserting the
+telemetry call — read the file's existing render/store-mock setup first and
+reuse it. Note the fix from the mistaken first attempt: assert against the
+**resolved response**, not against `mcpStore.autoExposeNewWorkflows` (that
+computed is never updated by this call and must not appear in this test):
 
 ```typescript
-it('tracks auto-expose enabled after a successful expose-all', async () => {
-	mcpStore.toggleWorkflowsMcpAccess.mockResolvedValue({ updatedCount: 3, unchangedCount: 0 });
-	mcpStore.autoExposeNewWorkflows = true;
+it('tracks auto-expose enabled when the response confirms it', async () => {
+	mcpStore.toggleWorkflowsMcpAccess.mockResolvedValue({
+		updatedCount: 3,
+		unchangedCount: 0,
+		autoExposeNewWorkflows: true,
+	});
 
 	const { getByTestId } = renderComponent();
 	await userEvent.click(getByTestId('expose-all-workflows-mcp-confirm-button'));
@@ -1436,9 +1529,13 @@ it('tracks auto-expose enabled after a successful expose-all', async () => {
 	);
 });
 
-it('does not track auto-expose when the backend never turned it on', async () => {
-	mcpStore.toggleWorkflowsMcpAccess.mockResolvedValue({ updatedCount: 3, unchangedCount: 0 });
-	mcpStore.autoExposeNewWorkflows = false;
+it('does not track auto-expose when the response omits it', async () => {
+	mcpStore.toggleWorkflowsMcpAccess.mockResolvedValue({
+		updatedCount: 3,
+		unchangedCount: 0,
+		// autoExposeNewWorkflows absent — backend condition didn't apply, or its
+		// fire-and-forget write failed
+	});
 
 	const { getByTestId } = renderComponent();
 	await userEvent.click(getByTestId('expose-all-workflows-mcp-confirm-button'));
@@ -1449,12 +1546,6 @@ it('does not track auto-expose when the backend never turned it on', async () =>
 	);
 });
 ```
-
-`mcpStore.autoExposeNewWorkflows` is a computed backed by
-`settingsStore.moduleSettings.mcp` — the test needs to drive it through
-whatever the store mock's existing convention is (a mocked computed, or the
-underlying `moduleSettings.mcp` object), matching how Task 8's tests already
-do this for the same store.
 
 - [ ] **Step 6: Run test to verify it fails**
 
@@ -1475,26 +1566,35 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 const telemetry = useTelemetry();
 ```
 
-In `onExposeAll`, after the `Promise.all([...])` call succeeds and before
-`closedByAction.value = true;`, add:
+In `onExposeAll`, capture the workflows-toggle response by name (it is
+currently destructured directly out of the `Promise.all` array — keep that,
+but read the field off it) and check the response field, not the store:
 
 ```typescript
-		if (mcpStore.autoExposeNewWorkflows) {
+		const [workflowsResponse, agentsResponse] = await Promise.all([
+			mcpStore.toggleWorkflowsMcpAccess({ allWorkflows: true }, true),
+			includesAgents.value
+				? mcpStore.toggleAgentsMcpAccess({ allAgents: true }, true)
+				: Promise.resolve(undefined),
+		]);
+		if (workflowsResponse.autoExposeNewWorkflows) {
 			telemetry.track(TELEMETRY_EVENT.MCP.AUTO_EXPOSE_NEW_WORKFLOWS_TOGGLED, {
 				enabled: true,
 			});
 		}
 ```
 
-Reading the store's own computed (rather than assuming the backend call
-succeeded) is deliberate: it reports what is actually true of instance state,
-not what this request attempted, so a fire-and-forget backend failure doesn't
-produce a telemetry event that doesn't match reality. No experiment-payload
-spread here — unlike Task 8's manual toggle, this path already carries
-`experimentStore.trackConfirmed()` a few lines below for the "did the modal
-convert" question; duplicating the variant payload on the settings event isn't
-required by the spec and would need `currentVariant`, which this component
-doesn't otherwise use.
+Reading the request's own response — rather than `mcpStore.autoExposeNewWorkflows`
+— is the entire point of this fix: that store computed is never written to by
+this call, so it always reflects pre-request state, not this request's
+outcome. Checking the response field means telemetry reports exactly what the
+backend confirms happened for THIS call: fires when the backend really did
+enable it, stays silent when the condition didn't apply or the backend's
+fire-and-forget write failed. No experiment-payload spread here — unlike Task
+8's manual toggle, this path already carries `experimentStore.trackConfirmed()`
+a few lines below for the "did the modal convert" question; duplicating the
+variant payload on the settings event isn't required by the spec and would
+need `currentVariant`, which this component doesn't otherwise use.
 
 - [ ] **Step 8: Run tests to verify they pass**
 
