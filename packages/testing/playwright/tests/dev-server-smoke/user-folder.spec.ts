@@ -4,7 +4,7 @@ import path from 'path';
 import { expect, test } from '../../fixtures/base';
 
 /**
- * Asserts that the backend started by this run respects N8N_USER_FOLDER —
+ * Asserts that the backend started by this run respects N8N_USER_FOLDER:
  * the sqlite database must be created inside the run's generated user folder
  * (see USER_FOLDER in playwright.config.ts), not in the default ~/.n8n.
  * Together with the non-default-port smoke variant this covers the full
@@ -25,16 +25,23 @@ test.describe(
 	},
 	() => {
 		test('sqlite database is created in the configured user folder', async ({ n8n }) => {
+			// The config only exports the folder when it manages the webServer.
+			test.skip(
+				process.env.PLAYWRIGHT_SKIP_WEBSERVER === 'true',
+				'this run does not manage the webServer',
+			);
+
 			// The smoke scripts always manage the webServer, so a missing value
-			// means the env did not propagate to the worker: fail, don't skip.
+			// means the config did not export the user folder: fail, don't skip.
 			const userFolder = process.env.N8N_TEST_USER_FOLDER;
-			expect(userFolder, 'N8N_TEST_USER_FOLDER must propagate to workers').toBeTruthy();
+			expect(userFolder, 'playwright.config.ts must export N8N_TEST_USER_FOLDER').toBeTruthy();
 
 			// Visiting the app guarantees the backend has fully booted.
 			await n8n.start.fromHome();
 
 			// n8n creates `.n8n/` inside N8N_USER_FOLDER (see getN8nFolder in @n8n/config).
-			expect(existsSync(path.join(userFolder!, '.n8n', 'database.sqlite'))).toBe(true);
+			const dbPath = path.join(userFolder!, '.n8n', 'database.sqlite');
+			expect(existsSync(dbPath), `expected sqlite DB at ${dbPath}`).toBe(true);
 		});
 	},
 );
