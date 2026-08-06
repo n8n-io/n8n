@@ -23,6 +23,7 @@ import { isMcpOAuth2Authentication, NodeHelpers, type INodeParameters } from 'n8
 
 import { getMissingSkillIds } from '@/modules/agents/utils/agent-missing-skill-ids';
 import { NodeTypes } from '@/node-types';
+import { checkAiGatewayEligibility } from '@/services/ai-gateway-eligibility';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 
 import { LLM_PROVIDER_DEFAULTS } from './llm-provider-defaults';
@@ -616,6 +617,20 @@ export class AgentValidationService {
 
 			const path = `tools.${index}.node.credentials.${slot.credentialType}`;
 			const credentialRef = tool.node.credentials?.[slot.credentialType];
+
+			if (credentialRef && '__aiGatewayManaged' in credentialRef) {
+				// Only flag a definitive "gateway does not cover this slot". An
+				// indeterminate gateway state must not fail closed, mirroring the
+				// managed main-credential policy in collectMainCredentialIssues.
+				if (
+					(await this.gatewayCoversNodeToolSlot(tool.node, slot.credentialType, nodeParameters)) ===
+					false
+				) {
+					issues.push(issue('invalid_credential', path, capabilityBase));
+				}
+				continue;
+			}
+
 			const credentialId = credentialRef?.id?.trim();
 
 			if (!credentialId) {
@@ -628,6 +643,36 @@ export class AgentValidationService {
 				issues.push(issue('invalid_credential', path, capabilityBase));
 			}
 		}
+	}
+
+	/**
+	 * Whether the gateway covers this node-tool slot:
+	 *  - `false` is a definitive no (feature disabled, or the config does not
+	 *    cover the node/credential/action),
+	 *  - `undefined` means it can't be determined (gateway enabled but its config
+	 *    is unavailable, e.g. a transient fetch failure), so callers must not
+	 *    fail closed on it: a briefly unreachable gateway must not make a
+	 *    working managed slot look broken.
+	 */
+	private async gatewayCoversNodeToolSlot(
+		node: AgentJsonNodeToolConfig['node'],
+		credentialType: string,
+		resolvedParameters: INodeParameters,
+	): Promise<boolean | undefined> {
+		const availability = await this.aiGatewayService.isAvailable();
+		if (!availability.available) {
+			return this.aiGatewayService.isEnabled() ? undefined : false;
+		}
+		return checkAiGatewayEligibility(
+			{
+				type: node.nodeType,
+				typeVersion: node.nodeTypeVersion,
+				parameters: (node.nodeParameters ?? {}) as INodeParameters,
+			},
+			credentialType,
+			availability.config,
+			resolvedParameters,
+		).eligible;
 	}
 
 	private async collectMcpServerIssues(

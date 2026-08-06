@@ -8,14 +8,20 @@ export function confluentKafkaModuleMock(): { readonly KafkaJS: unknown } {
 		get KafkaJS() {
 			accessCount += 1;
 			return {
-				Kafka: vi.fn().mockImplementation((config?: unknown) => ({
-					config,
-					connect: vi.fn(),
-					disconnect: vi.fn(),
-					producer: vi.fn(),
-					consumer: vi.fn(),
-					admin: vi.fn(),
-				})),
+				Kafka: vi.fn().mockImplementation(function (config?: unknown) {
+					return {
+						config,
+						connect: vi.fn(),
+						disconnect: vi.fn(),
+						producer: vi.fn(() => ({
+							connect: vi.fn(),
+							sendBatch: vi.fn(),
+							disconnect: vi.fn(),
+						})),
+						consumer: vi.fn(),
+						admin: vi.fn(),
+					};
+				}),
 				logLevel: { NOTHING: 0, ERROR: 1, WARN: 2, INFO: 3, DEBUG: 4 },
 			};
 		},

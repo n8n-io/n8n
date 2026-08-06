@@ -16,6 +16,7 @@ import { v4 as uuid } from 'uuid';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { EventService } from '@/events/event.service';
 import { getMissingSkillIds } from '@/modules/agents/utils/agent-missing-skill-ids';
 import { Telemetry } from '@/telemetry';
 
@@ -99,6 +100,7 @@ export class AgentPublishService {
 		private readonly agentValidationService: AgentValidationService,
 		private readonly credentialsService: CredentialsService,
 		private readonly telemetry: Telemetry,
+		private readonly eventService: EventService,
 		private readonly setupCompletionService: AgentSetupCompletionService,
 		private readonly modificationTelemetry: AgentModificationTelemetryService,
 	) {}
@@ -174,6 +176,7 @@ export class AgentPublishService {
 
 			await trx.save(agent);
 		});
+		this.eventService.emit('agent-saved', { agentId });
 
 		this.runtimeCacheService.clearRuntimes(agentId);
 
@@ -262,6 +265,7 @@ export class AgentPublishService {
 
 			await trx.save(agent);
 		});
+		this.eventService.emit('agent-saved', { agentId });
 
 		this.runtimeCacheService.clearRuntimes(agentId);
 
@@ -414,6 +418,7 @@ export class AgentPublishService {
 			await trx.save(agent);
 			tasksChanged = await this.restoreTasksFromSnapshot(trx, agentId, activeVersion.versionId);
 		});
+		this.eventService.emit('agent-saved', { agentId });
 
 		this.runtimeCacheService.clearRuntimes(agentId);
 		await this.recordRevert(agent, projectId, user, modifiedBy, previousSchema, {
@@ -465,6 +470,7 @@ export class AgentPublishService {
 			await trx.save(agent);
 			tasksChanged = await this.restoreTasksFromSnapshot(trx, agentId, target.versionId);
 		});
+		this.eventService.emit('agent-saved', { agentId });
 
 		this.runtimeCacheService.clearRuntimes(agentId);
 		await this.recordRevert(agent, projectId, user, modifiedBy, previousSchema, {
