@@ -57,8 +57,7 @@ function makeService() {
 	agentTaskSnapshotRepository.findByVersionId.mockResolvedValue([]);
 	const nodeTypes = mock<NodeTypes>();
 	const workflowRepository = mock<WorkflowRepository>();
-	workflowRepository.findOne.mockResolvedValue(null);
-	workflowRepository.find.mockResolvedValue([]);
+	workflowRepository.findManyByAgentToolReferences.mockResolvedValue([]);
 	agentRepository.findByIdsAndProjectId.mockResolvedValue([]);
 	const chatIntegrationRegistry = mock<ChatIntegrationRegistry>();
 	chatIntegrationRegistry.get.mockReturnValue(undefined);
@@ -953,10 +952,11 @@ describe('AgentValidationService — structured issues', () => {
 					],
 				},
 				tools: [
-					{ type: 'workflow', workflow: 'Workflow A' },
-					{ type: 'workflow', workflow: 'Workflow A' },
+					{ type: 'workflow', workflowId: 'wf-a', workflow: 'Old Workflow A' },
+					{ type: 'workflow', workflowId: 'wf-a', workflow: 'Old Workflow A' },
 					{ type: 'workflow', workflow: 'Workflow B' },
 					{ type: 'workflow', workflow: 'Workflow C' },
+					{ type: 'workflow', workflowId: 'wf-missing', workflow: 'Workflow A' },
 				],
 			}),
 		);
@@ -964,7 +964,7 @@ describe('AgentValidationService — structured issues', () => {
 			{ id: 'sub-1', activeVersionId: 'version-1' },
 			{ id: 'sub-3', activeVersionId: null },
 		] as never);
-		workflowRepository.find.mockResolvedValue([
+		workflowRepository.findManyByAgentToolReferences.mockResolvedValue([
 			{
 				id: 'wf-a',
 				name: 'Workflow A',
@@ -1013,6 +1013,11 @@ describe('AgentValidationService — structured issues', () => {
 				code: 'incompatible_reference',
 				path: 'tools.3.workflow',
 				capability: { kind: 'tool', id: 'Workflow C', index: 3, toolType: 'workflow' },
+			},
+			{
+				code: 'missing_reference',
+				path: 'tools.4.workflowId',
+				capability: { kind: 'tool', id: 'Workflow A', index: 4, toolType: 'workflow' },
 			},
 		]);
 	});

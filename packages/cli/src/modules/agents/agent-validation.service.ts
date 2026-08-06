@@ -266,7 +266,7 @@ export class AgentValidationService {
 			return credentialList.find((credential) => credential.id === credentialId);
 		};
 
-		const { agentsById, workflowsByName } = await this.prefetchReferenceLookups(ctx);
+		const { agentsById, workflowsByReference } = await this.prefetchReferenceLookups(ctx);
 
 		this.collectCoreIssues(config, issues);
 		this.collectVectorStoreIssues(config, issues);
@@ -277,7 +277,7 @@ export class AgentValidationService {
 			this.collectTaskIssues(config, ctx.tasks, issues);
 			await this.collectChannelIssues(ctx.integrations, findCredential, issues);
 		}
-		await this.collectToolIssues(ctx, findCredential, workflowsByName, issues);
+		await this.collectToolIssues(ctx, findCredential, workflowsByReference, issues);
 		await this.collectMcpServerIssues(config, findCredential, issues);
 
 		return this.dedupe(issues);
@@ -285,10 +285,10 @@ export class AgentValidationService {
 
 	private async prefetchReferenceLookups(ctx: ConfigurationValidationContext): Promise<{
 		agentsById: Map<string, Pick<Agent, 'id' | 'activeVersionId'>>;
-		workflowsByName: Map<string, WorkflowEntity>;
+		workflowsByReference: Map<string, WorkflowEntity>;
 	}> {
 		const subAgentIds = new Set<string>();
-		const workflowNames = new Set<string>();
+		const workflowRefs: AgentJsonWorkflowToolConfig[] = [];
 
 		for (const ref of ctx.config.subAgents?.agents ?? []) {
 			if (ref.agentId && ref.agentId !== ctx.agentId) {
@@ -298,18 +298,18 @@ export class AgentValidationService {
 
 		for (const tool of ctx.config.tools ?? []) {
 			if (tool.type === 'workflow' && tool.workflow) {
-				workflowNames.add(tool.workflow);
+				workflowRefs.push(tool);
 			}
 		}
 
-		const [agents, workflowsByName] = await Promise.all([
+		const [agents, workflowsByReference] = await Promise.all([
 			this.agentRepository.findByIdsAndProjectId([...subAgentIds], ctx.projectId),
-			findWorkflowToolWorkflows(this.workflowRepository, [...workflowNames], ctx.projectId),
+			findWorkflowToolWorkflows(this.workflowRepository, workflowRefs, ctx.projectId),
 		]);
 
 		return {
 			agentsById: new Map(agents.map((agent) => [agent.id, agent])),
-			workflowsByName,
+			workflowsByReference,
 		};
 	}
 
@@ -503,7 +503,7 @@ export class AgentValidationService {
 	private async collectToolIssues(
 		ctx: ConfigurationValidationContext,
 		findCredential: FindCredential,
-		workflowsByName: Map<string, WorkflowEntity>,
+		workflowsByReference: Map<string, WorkflowEntity>,
 		issues: AgentConfigValidationIssue[],
 	) {
 		const tools = ctx.config.tools ?? [];
@@ -525,7 +525,7 @@ export class AgentValidationService {
 			}
 
 			if (tool.type === 'workflow') {
-				this.collectWorkflowToolIssues(tool, index, workflowsByName, issues);
+				this.collectWorkflowToolIssues(tool, index, workflowsByReference, issues);
 				continue;
 			}
 
@@ -538,18 +538,18 @@ export class AgentValidationService {
 	private collectWorkflowToolIssues(
 		tool: AgentJsonWorkflowToolConfig,
 		index: number,
-		workflowsByName: Map<string, WorkflowEntity>,
+		workflowsByReference: Map<string, WorkflowEntity>,
 		issues: AgentConfigValidationIssue[],
 	) {
-		const path = `tools.${index}.workflow`;
+		const path = `tools.${index}.${tool.workflowId === undefined ? 'workflow' : 'workflowId'}`;
 		const capability: AgentConfigValidationIssue['capability'] = {
 			kind: 'tool',
-			id: tool.name ?? tool.workflow,
+			id: tool.workflow,
 			index,
 			toolType: 'workflow',
 		};
 
-		const workflow = workflowsByName.get(tool.workflow);
+		const workflow = workflowsByReference.get(tool.workflowId ?? tool.workflow);
 
 		if (!workflow) {
 			issues.push(issue('missing_reference', path, capability));

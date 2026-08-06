@@ -227,6 +227,41 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		return await this.find(options);
 	}
 
+	async findManyByAgentToolReferences(
+		projectId: string,
+		workflowIds: string[],
+		legacyWorkflowNames: string[],
+	) {
+		const where: Array<FindOptionsWhere<WorkflowEntity>> = [];
+		if (workflowIds.length > 0) {
+			where.push({ id: In(workflowIds), shared: { projectId } });
+		}
+		if (legacyWorkflowNames.length > 0) {
+			where.push({ name: In(legacyWorkflowNames), shared: { projectId } });
+		}
+		if (where.length === 0) return [];
+
+		return await this.find({
+			where,
+			select: ['id', 'name', 'nodes'],
+		});
+	}
+
+	async findOneByAgentToolReference(
+		projectId: string,
+		reference: { workflowId?: string; workflowName: string },
+	) {
+		const workflowWhere: FindOptionsWhere<WorkflowEntity> =
+			reference.workflowId !== undefined
+				? { id: reference.workflowId }
+				: { name: reference.workflowName };
+
+		return await this.findOne({
+			where: { ...workflowWhere, shared: { projectId } },
+			relations: ['shared'],
+		});
+	}
+
 	async findPreExistingWorkflows(workflowIds: string[]): Promise<WorkflowEntity[]> {
 		if (workflowIds.length === 0) {
 			return [];

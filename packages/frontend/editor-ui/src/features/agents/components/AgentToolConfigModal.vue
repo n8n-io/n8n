@@ -261,11 +261,13 @@ function handleConfirm() {
 		const toolData = toolModalData.value;
 		if (!toolData) return;
 		if (!wc) return;
+		const workflowId = wc.getWorkflowId();
 		const updatedRef = updateWorkflowToolRef(toolData.toolRef, {
 			name: wc.getName(),
 			description: wc.getDescription(),
 			allOutputs: wc.getAllOutputs(),
 			workflow: wc.getWorkflow(),
+			...(workflowId !== undefined ? { workflowId } : {}),
 		});
 		toolData.onConfirm(withApprovalRequirement(updatedRef));
 		closeDialog();

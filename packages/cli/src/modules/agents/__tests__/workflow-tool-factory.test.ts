@@ -1,5 +1,4 @@
 import type { WorkflowRepository, WorkflowEntity } from '@n8n/db';
-import { In } from '@n8n/typeorm';
 import type { INode } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
@@ -90,7 +89,7 @@ function makeContext(foundWorkflow: WorkflowEntity | null): WorkflowToolContext 
 	const workflowRunner = mock<WorkflowRunner>();
 	const activeExecutions = mock<ActiveExecutions>();
 
-	workflowRepository.findOne.mockResolvedValue(foundWorkflow);
+	workflowRepository.findOneByAgentToolReference.mockResolvedValue(foundWorkflow);
 
 	return {
 		workflowRepository,
@@ -145,7 +144,7 @@ describe('resolveWorkflowTool() — metadata attachment', () => {
 		});
 	});
 
-	it('sets workflowId and workflowName from the resolved workflow (not the descriptor)', async () => {
+	it('resolves a renamed workflow by id', async () => {
 		const workflow = makeWorkflow(
 			{ id: 'wf-id-99', name: 'canonical-name' },
 			makeManualTriggerNode(),
@@ -153,8 +152,12 @@ describe('resolveWorkflowTool() — metadata attachment', () => {
 		const context = makeContext(workflow);
 
 		const tool = await resolveWorkflowTool(
-			// descriptor.workflow is the lookup key; the built tool should reflect the resolved entity's name
-			{ type: 'workflow', workflow: 'old-lookup-name', name: 'custom_tool_name' },
+			{
+				type: 'workflow',
+				workflowId: 'wf-id-99',
+				workflow: 'old-lookup-name',
+				name: 'custom_tool_name',
+			},
 			context,
 		);
 
@@ -164,17 +167,31 @@ describe('resolveWorkflowTool() — metadata attachment', () => {
 		});
 	});
 
-	it('scopes the workflow lookup to the project', async () => {
+	it('passes the project scope to legacy name lookup', async () => {
 		const workflow = makeWorkflow({ id: 'wf-scoped-1', name: 'Scoped Workflow' });
 		const context = makeContext(workflow);
 
 		await resolveWorkflowTool({ type: 'workflow', workflow: 'Scoped Workflow' }, context);
 
-		expect(context.workflowRepository.findOne).toHaveBeenCalledWith(
-			expect.objectContaining({
-				where: { name: 'Scoped Workflow', shared: { projectId: 'project-1' } },
-				relations: ['shared'],
-			}),
+		expect(context.workflowRepository.findOneByAgentToolReference).toHaveBeenCalledWith(
+			'project-1',
+			{ workflowName: 'Scoped Workflow' },
+		);
+	});
+
+	it('does not fall back to the cached name when an id is present', async () => {
+		const context = makeContext(null);
+
+		await expect(
+			resolveWorkflowTool(
+				{ type: 'workflow', workflowId: 'missing-id', workflow: 'Existing Workflow' },
+				context,
+			),
+		).rejects.toThrow('Workflow "Existing Workflow" not found');
+
+		expect(context.workflowRepository.findOneByAgentToolReference).toHaveBeenCalledWith(
+			'project-1',
+			{ workflowId: 'missing-id', workflowName: 'Existing Workflow' },
 		);
 	});
 
@@ -250,29 +267,37 @@ describe('workflow tool compatibility', () => {
 });
 
 describe('findWorkflowToolWorkflows', () => {
-	it('returns an empty map without querying when no names are provided, and dedupes workflow names into a project-scoped map otherwise', async () => {
+	it('maps id-backed and legacy refs without using the stale name as an id fallback', async () => {
 		const workflowRepository = mock<WorkflowRepository>();
 
 		const emptyResult = await findWorkflowToolWorkflows(workflowRepository, [], 'project-1');
 
 		expect(emptyResult).toEqual(new Map());
-		expect(workflowRepository.find).not.toHaveBeenCalled();
+		expect(workflowRepository.findManyByAgentToolReferences).not.toHaveBeenCalled();
 
-		const workflow = makeWorkflow({ id: 'wf-a', name: 'Workflow A' });
-		workflowRepository.find.mockResolvedValue([workflow]);
+		const renamedWorkflow = makeWorkflow({ id: 'wf-a', name: 'Renamed Workflow' });
+		const legacyWorkflow = makeWorkflow({ id: 'wf-b', name: 'Legacy Workflow' });
+		workflowRepository.findManyByAgentToolReferences.mockResolvedValue([
+			renamedWorkflow,
+			legacyWorkflow,
+		]);
 
 		const result = await findWorkflowToolWorkflows(
 			workflowRepository,
-			['Workflow A', 'Workflow A', 'Workflow B'],
+			[
+				{ type: 'workflow', workflowId: 'wf-a', workflow: 'Old Workflow Name' },
+				{ type: 'workflow', workflow: 'Legacy Workflow' },
+			],
 			'project-1',
 		);
 
-		expect(workflowRepository.find).toHaveBeenCalledTimes(1);
-		expect(workflowRepository.find).toHaveBeenCalledWith({
-			where: { name: In(['Workflow A', 'Workflow B']), shared: { projectId: 'project-1' } },
-			select: ['id', 'name', 'nodes'],
-		});
-		expect(result.get('Workflow A')).toBe(workflow);
-		expect(result.has('Workflow B')).toBe(false);
+		expect(workflowRepository.findManyByAgentToolReferences).toHaveBeenCalledWith(
+			'project-1',
+			['wf-a'],
+			['Legacy Workflow'],
+		);
+		expect(result.get('wf-a')).toBe(renamedWorkflow);
+		expect(result.has('Old Workflow Name')).toBe(false);
+		expect(result.get('Legacy Workflow')).toBe(legacyWorkflow);
 	});
 });

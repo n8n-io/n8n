@@ -107,7 +107,7 @@ function formatWorkflowContextEnvelope(workflowContext: SessionWorkflowRef[]): s
 	);
 	return [
 		'<session-workflows>',
-		'Workflows built in this session (attachable as {"type":"workflow"} tools — reference by workflow name, never by id):',
+		'Workflows built in this session (attachable with both workflowId and workflow name):',
 		...lines,
 		'</session-workflows>',
 	].join('\n');

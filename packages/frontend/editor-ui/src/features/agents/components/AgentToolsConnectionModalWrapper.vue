@@ -477,7 +477,7 @@ function connectedToolItem(entry: WorkingToolEntry): ToolConnectionItem | null {
 			id: `tool:${localId}`,
 			kind: 'workflow',
 			category: 'workflows',
-			workflowId: workflowRef.workflow,
+			workflowId: workflowRef.workflowId ?? workflowRef.workflow,
 			title: workflowRef.name ?? workflowRef.workflow,
 			description: workflowRef.description,
 			isConnected: true,
