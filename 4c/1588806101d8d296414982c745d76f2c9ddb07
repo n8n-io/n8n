@@ -1,0 +1,71 @@
+packages/cli/src/concurrency/concurrency-control.service.ts
+  s_592a334806b52a::t_8ef9885a2f58eb 246
+packages/cli/src/public-api/v1/handlers/executions/spec/schemas/execution.yml
+  s_592a334806b52a::t_04996a6fcbe9db 43
+packages/cli/src/concurrency/__tests__/concurrency-control.service.test.ts
+  s_592a334806b52a::t_9633f410c21b0b 364-368,370-378,380-383,385-389,458-462,464-472,474-477,479-483,552-556,558-566,568-571,573-577
+  s_592a334806b52a::t_c88fb0a753a020 356-363,450-457,544-551
+packages/cli/src/modules/agents/tools/__tests__/workflow-tool-factory.test.ts
+  s_592a334806b52a::t_041b0d2a6b0cda 63
+  s_592a334806b52a::t_eecf8f16a15676 114
+  s_592a334806b52a::t_7a0e672a5d41a1 122
+  s_592a334806b52a::t_8795d3bc758831 43
+  s_592a334806b52a::t_5a31249ecba213 74-75,77
+  s_592a334806b52a::t_33e1fa2aa81f9d 123
+  s_592a334806b52a::t_4cc550c28de377 184-203
+  s_592a334806b52a::t_2ad2aced1ced1d 48-62,66-70,72-73,78-81,83-85,204
+  s_592a334806b52a::t_c88fb0a753a020 8,11,64-65,82,86-93,95-113,115-119,121,124-138,181-183
+  s_592a334806b52a::t_34b90eea228da4 71
+  s_592a334806b52a::t_00b142bc43bda1 5,17,120,139-180
+  s_592a334806b52a::t_4ed2c4f2eed758 76
+  s_592a334806b52a::t_6e33641bbf0509 94
+  s_592a334806b52a::t_eedd095b65db4e 205
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_592a334806b52a::t_88a17a3ed9096a 362,514,526
+  s_592a334806b52a::t_aa6d7c7fc934c8 104-108
+packages/cli/src/execution-lifecycle/__tests__/execution-lifecycle-hooks.test.ts
+  s_592a334806b52a::t_aaf34966a5f470 1711-1721
+packages/cli/src/workflow-runner.ts
+  s_592a334806b52a::t_5f47b8f6e79a5e 341-342,345-347
+  s_592a334806b52a::t_0099d7ebda5100 356
+  s_592a334806b52a::t_75260a761ce784 187
+  s_592a334806b52a::t_3a06c02d24e2b6 75-78,336-340,343-344,348-351
+  s_592a334806b52a::t_5187085f879060 247-253
+  s_592a334806b52a::t_8ef9885a2f58eb 74,79-80,199,287,352-355,357-362
+  s_592a334806b52a::t_88762873cae5ca 363
+packages/cli/src/modules/agents/__tests__/workflow-tool-factory.test.ts
+  s_592a334806b52a::t_8795d3bc758831 99
+packages/cli/src/__tests__/workflow-runner.test.ts
+  s_592a334806b52a::t_5adc2fc0d25f6f 176-179,850-857,861,868-875,877-882,884-892
+  s_592a334806b52a::t_7a0e672a5d41a1 241-243
+  s_592a334806b52a::t_97efa118d0e379 169-175,180-199
+  s_592a334806b52a::t_9ec1959f4a1b01 1083,1100-1109
+  s_592a334806b52a::t_c88fb0a753a020 848-849,858-860,862-867,876,883,893-905
+  s_592a334806b52a::t_b895f09c40dd17 200-240,244-245
+  s_592a334806b52a::t_5dd1d43b2551af 1110
+packages/cli/src/modules/agents/tools/workflow-tool-factory.ts
+  s_592a334806b52a::t_62a25e03d061f0 295-296
+  s_592a334806b52a::t_9633f410c21b0b 430,433,437
+  s_592a334806b52a::t_b4535027fa1527 304
+  s_592a334806b52a::t_62163e44541b85 17-19,299,345,352-356,362-369,378,401-403,461-477,496
+  s_592a334806b52a::t_49aeeb45d6496e 36,90
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-tool-filtering.test.ts
+  s_592a334806b52a::t_86014d1e5d9ee3 23,43-53,168-174,180,200-214
+  s_592a334806b52a::t_30cc1b24f3286a 215
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "4c1588806101d8d296414982c745d76f2c9ddb07",
+  "prompts": {},
+  "sessions": {
+    "s_592a334806b52a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fd67c-c5d6-7cc0-9a96-4ed4eac859ee",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}
