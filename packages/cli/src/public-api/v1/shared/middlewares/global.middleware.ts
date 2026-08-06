@@ -92,6 +92,9 @@ export type DeprecationInfo = {
 	/** When the endpoint became deprecated. Emitted as an RFC 9745 `Deprecation` header. */
 	since: Date;
 };
+// Keep this shape in sync with `DeprecationInfo` in `@n8n/decorators`'s `types.ts` — the decorated
+// controller registry passes a decorator-declared `DeprecationInfo` straight into `deprecated()`
+// below, relying on structural typing rather than a shared cross-package import.
 
 /**
  * Signals that an endpoint is deprecated via the RFC 9745 `Deprecation` response header. Callers

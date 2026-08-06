@@ -13,6 +13,7 @@ import {
 	resolveRouteArgs,
 	resolveSuccessStatus,
 } from '@/public-api/public-api-route-resolver';
+import { deprecated } from '@/public-api/v1/shared/middlewares/global.middleware';
 import { sendPublicApiErrorResponse } from '@/public-api/v1/public-api-error-response';
 import { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
 import { LastActiveAtService } from '@/services/last-active-at.service';
@@ -94,6 +95,10 @@ export class PublicApiControllerRegistry {
 
 			if (route.accessScope) {
 				middlewares.push(this.createAccessScopeMiddleware(route.accessScope));
+			}
+
+			if (route.deprecated) {
+				middlewares.push(deprecated(route.deprecated));
 			}
 
 			middlewares.push(...controllerMiddlewares, ...(route.middlewares ?? []));

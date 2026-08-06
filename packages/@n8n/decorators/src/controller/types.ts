@@ -34,6 +34,10 @@ export interface AccessScope {
 	globalOnly: boolean;
 }
 
+// Keep this shape in sync with `DeprecationInfo` in `packages/cli`'s `global.middleware.ts` —
+// `PublicApiControllerRegistry` passes this straight into that package's `deprecated()` middleware,
+// relying on structural typing rather than a shared cross-package import (this package must not
+// depend on `packages/cli`).
 export interface DeprecationInfo {
 	/** When the endpoint became deprecated. Emitted as an RFC 9745 `Deprecation` header. */
 	since: Date;
