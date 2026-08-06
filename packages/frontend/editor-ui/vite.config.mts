@@ -25,7 +25,7 @@ const { NODE_ENV } = process.env;
 // the injected BASE_PATH and the REST base URL, so one var configures a
 // second instance running next to the default one. `||` on purpose: an
 // explicitly empty env var must fall back like an unset one.
-const devBackendPort = process.env.N8N_PORT || '5678';
+const devBackendPort = Number(process.env.N8N_PORT || '5678');
 
 // The editor's own dev port; N8N_PORT above is where the backend lives.
 const editorPort = Number(process.env.N8N_EDITOR_PORT || '8080');
@@ -173,7 +173,7 @@ export default defineConfig(({ command, mode }) => {
 	if (command === 'serve' && mode === 'development') {
 		// Fail fast on a malformed port rather than an obscure vite crash.
 		for (const [name, port] of [
-			['N8N_PORT', Number(devBackendPort)],
+			['N8N_PORT', devBackendPort],
 			['N8N_EDITOR_PORT', editorPort],
 		] as const) {
 			if (!Number.isInteger(port) || port < 1 || port > 65535) {
