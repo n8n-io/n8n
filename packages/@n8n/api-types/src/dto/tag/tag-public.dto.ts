@@ -5,15 +5,15 @@ import { Z } from '../../zod-class';
 export const tagPublicSchema = z.object({
 	id: z.string(),
 	name: z.string(),
-	createdAt: z.coerce.date(),
-	updatedAt: z.coerce.date(),
+	createdAt: z.string().datetime(),
+	updatedAt: z.string().datetime(),
 });
 
 export class TagPublicDto extends Z.class({
 	id: z.string(),
 	name: z.string(),
-	createdAt: z.coerce.date(),
-	updatedAt: z.coerce.date(),
+	createdAt: z.string().datetime(),
+	updatedAt: z.string().datetime(),
 }) {}
 
 export class TagListPublicDto extends Z.class({

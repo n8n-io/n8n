@@ -61,8 +61,9 @@ export class ApiKeysController {
 		};
 	}
 
-	// `apiKey:manage` callers see every key by default; `ownership=mine` narrows to own.
-	@GlobalScope('apiKey:list')
+	// Every authenticated user may list their own keys. The service only
+	// includes other users' keys for `apiKey:manage` callers; `ownership=mine`
+	// narrows back to own.
 	@Get('/', { middlewares: [isApiEnabledMiddleware] })
 	async getApiKeys(req: AuthenticatedRequest, _res: Response, @Query query: ListApiKeysQueryDto) {
 		return await this.publicApiKeyService.getRedactedApiKeys(req.user, {
@@ -75,8 +76,8 @@ export class ApiKeysController {
 		});
 	}
 
-	// Members can delete their own keys; `apiKey:manage` holders can revoke anyone's.
-	@GlobalScope('apiKey:delete')
+	// No role scope required: own keys are always revocable. The service
+	// restricts deleting other users' keys to `apiKey:manage` holders.
 	@Delete('/:id', { middlewares: [isApiEnabledMiddleware] })
 	async deleteApiKey(req: AuthenticatedRequest, _res: Response, @Param('id') apiKeyId: string) {
 		const { isOwn } = await this.publicApiKeyService.deleteApiKey(req.user, apiKeyId);
@@ -124,7 +125,8 @@ export class ApiKeysController {
 		};
 	}
 
-	@GlobalScope('apiKey:list')
+	// No role scope required: returns the scopes the caller's role can assign
+	// to a key — empty-ish for roles without apiKey grants.
 	@Get('/scopes', { middlewares: [isApiEnabledMiddleware] })
 	async getApiKeyScopes(req: AuthenticatedRequest, _res: Response) {
 		const scopes = getApiKeyScopesForRole(req.user);

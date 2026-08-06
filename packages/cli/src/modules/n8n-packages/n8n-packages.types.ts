@@ -2,7 +2,9 @@ import type { User } from '@n8n/db';
 import type { Readable } from 'node:stream';
 
 import type { DataTableResolutionFailure } from './entities/data-table/data-table.types';
+import type { TagResolutionFailure } from './entities/tag/tag.types';
 import type {
+	VariableConflict,
 	VariableLimitFailure,
 	VariableResolutionFailure,
 } from './entities/variable/variable.types';
@@ -42,6 +44,19 @@ export const WorkflowIdPolicy = {
 	Source: 'source',
 } as const;
 
+export const ProjectConflictPolicy = {
+	/** Reuses a matched project (by id) as-is — its name, description, icon and tags stay untouched — and merges the package's contents into it. */
+	Merge: 'merge',
+	/** Fails the import if any package project already exists on this instance. */
+	Fail: 'fail',
+	/**
+	 * Replaces a matched project's own details with the package's, then merges the package's contents
+	 * into it. Only the details the package carries are written — a detail the package omits (an
+	 * unset description or icon, or a field a package predating it never had) is left as it is.
+	 */
+	Overwrite: 'overwrite',
+} as const;
+
 export const FolderConflictPolicy = {
 	/** Reuses an already-imported folder (matched by id) as-is and merges the package's children into it; otherwise creates it. */
 	Merge: 'merge',
@@ -59,9 +74,9 @@ export const MissingNodeTypeMode = {
 export const MissingWorkflowDependencyPolicy = {
 	/** Fails the export when a workflow dependency is not included. */
 	Fail: 'fail',
-	/** Reserved for exporting missing workflow dependencies as requirements only. */
+	/** Keeps missing workflow dependencies out of the package, listing them as requirements only. */
 	ReferenceOnly: 'reference-only',
-	/** Reserved for automatically adding missing workflow dependencies to the package. */
+	/** Automatically adds missing workflow dependencies to the package. */
 	IncludeInPackage: 'include-in-package',
 } as const;
 
@@ -93,11 +108,38 @@ export const VariableMissingMode = {
 	MustPreexist: 'must-preexist',
 	/** Creates each unresolved variable with an empty value at the placement scope; the response lists the created names under `stubbed`. */
 	CreateStub: 'create-stub',
+	/** Creates each unresolved variable with its package value, falling back to an empty stub when the package carries no value for it. */
+	CreateWithValue: 'create-with-value',
+} as const;
+
+export const VariableConflictPolicy = {
+	/** Leaves the target value alone, even when the package bundles a different one. */
+	KeepExisting: 'keep-existing',
+	/** Replaces the target value with the package's, at whichever scope the variable was found. */
+	Overwrite: 'overwrite',
+	/** Rejects the import when the package bundles a value that differs from the target's. */
+	Fail: 'fail',
 } as const;
 
 export const VariableParentPolicy = {
 	Project: 'project',
 	Global: 'global',
+} as const;
+
+export const TagMissingMode = {
+	/** Creates absent tags with their package (source) id and name. */
+	Create: 'create',
+	/** Workflows import without their missing tags; dropped tags are listed under `tags.skipped`. */
+	DoNothing: 'do-nothing',
+} as const;
+
+export const TagConflictPolicy = {
+	/** Drops conflicted tags from the import: not created, not renamed, not attached anywhere; listed under `tags.skipped`. */
+	Skip: 'skip',
+	/** Blocks the import when any referenced tag conflicts. */
+	Fail: 'fail',
+	/** Renames a drifted target tag (same id, different name) to the package name; reconciles a name collision (id absent, name held) by re-keying the holder to the package id. A drifted tag whose package name is held by another tag still fails. */
+	Rename: 'rename',
 } as const;
 /* eslint-enable @typescript-eslint/naming-convention */
 
@@ -105,6 +147,9 @@ export type WorkflowConflictPolicy =
 	(typeof WorkflowConflictPolicy)[keyof typeof WorkflowConflictPolicy];
 
 export type WorkflowIdPolicy = (typeof WorkflowIdPolicy)[keyof typeof WorkflowIdPolicy];
+
+export type ProjectConflictPolicy =
+	(typeof ProjectConflictPolicy)[keyof typeof ProjectConflictPolicy];
 
 export type FolderConflictPolicy = (typeof FolderConflictPolicy)[keyof typeof FolderConflictPolicy];
 
@@ -123,7 +168,14 @@ export type DataTableSchemaConflictPolicy =
 
 export type VariableMissingMode = (typeof VariableMissingMode)[keyof typeof VariableMissingMode];
 
+export type VariableConflictPolicy =
+	(typeof VariableConflictPolicy)[keyof typeof VariableConflictPolicy];
+
 export type VariableParentPolicy = (typeof VariableParentPolicy)[keyof typeof VariableParentPolicy];
+
+export type TagMissingMode = (typeof TagMissingMode)[keyof typeof TagMissingMode];
+
+export type TagConflictPolicy = (typeof TagConflictPolicy)[keyof typeof TagConflictPolicy];
 
 export interface ExportPackageRequest {
 	user: User;
@@ -145,9 +197,11 @@ export type ImportPackageRequest = {
 	apiKeyScopes?: string[];
 } & ImportCredentialProperties &
 	ImportWorkflowProperties &
+	ImportProjectProperties &
 	ImportFolderProperties &
 	ImportDataTableProperties &
-	ImportVariableProperties;
+	ImportVariableProperties &
+	ImportTagProperties;
 
 export type ImportCredentialProperties = {
 	credentialMatchingMode: CredentialMatchingMode;
@@ -159,6 +213,11 @@ export type ImportWorkflowProperties = {
 	workflowPublishingPolicy: WorkflowPublishingPolicy;
 	workflowIdPolicy: WorkflowIdPolicy;
 	missingNodeTypeMode: MissingNodeTypeMode;
+};
+
+/** Only project packages define projects; a workflow package imports into an existing project. */
+export type ImportProjectProperties = {
+	projectConflictPolicy: ProjectConflictPolicy;
 };
 
 export type ImportFolderProperties = {
@@ -173,7 +232,13 @@ export type ImportDataTableProperties = {
 
 export type ImportVariableProperties = {
 	variableMissingMode: VariableMissingMode;
+	variableConflictPolicy: VariableConflictPolicy;
 	variableParentPolicy?: VariableParentPolicy;
+};
+
+export type ImportTagProperties = {
+	tagMissingMode: TagMissingMode;
+	tagConflictPolicy: TagConflictPolicy;
 };
 
 /**
@@ -192,7 +257,8 @@ export interface ImportContext {
 export type ImportPackageEventOptions = ImportCredentialProperties &
 	ImportWorkflowProperties &
 	ImportDataTableProperties &
-	ImportVariableProperties;
+	ImportVariableProperties &
+	ImportTagProperties;
 
 /** Credential ids involved in a package import, shaped for forward-compatible audit events. */
 export type ImportAuditCredentialIds = {
@@ -225,6 +291,16 @@ export type ImportPackageEventCounts = {
 		matched: number;
 		missing: number;
 		created: number;
+		stubbed: number;
+		updated: number;
+		requirements: number;
+	};
+	tags: {
+		matched: number;
+		created: number;
+		renamed: number;
+		reconciled: number;
+		skipped: number;
 		requirements: number;
 	};
 };
@@ -277,8 +353,9 @@ export interface ImportedFolderSummary {
 export interface ImportedProjectSummary {
 	sourceProjectId: string;
 	localId: string;
+	/** The project's name on the target — the package's under `overwrite`, the existing one under `merge`. */
 	name: string;
-	status: 'created' | 'updated';
+	status: 'created' | 'updated' | 'skipped';
 }
 
 /**
@@ -301,9 +378,12 @@ export type BlockingIssue =
 			actualType?: string;
 			usedByWorkflows: string[];
 	  }
+	| ({ type: 'project-conflict' } & ProjectConflict)
 	| ({ type: 'folder-conflict' } & FolderConflict)
 	| ({ type: 'data-table-unresolved' } & DataTableResolutionFailure)
+	| ({ type: 'tag-unresolved' } & TagResolutionFailure)
 	| ({ type: 'variable-unresolved' } & VariableResolutionFailure)
+	| ({ type: 'variable-conflict' } & VariableConflict)
 	| ({ type: 'variable-limit-exceeded' } & VariableLimitFailure)
 	| {
 			type: 'missing-node-type';
@@ -312,6 +392,12 @@ export type BlockingIssue =
 			typeVersion: number;
 			usedByWorkflows: string[];
 	  };
+
+export interface ProjectConflict {
+	kind: 'fail-policy';
+	sourceProjectId: string;
+	name: string;
+}
 
 export interface FolderConflict {
 	kind: 'parent-mismatch' | 'id-in-other-project' | 'fail-policy';
@@ -375,7 +461,19 @@ export interface ImportCredentialSummary {
 export interface ImportVariableSummary {
 	matched: string[];
 	missing: string[];
+	created: string[];
 	stubbed: string[];
+	updated: string[];
+}
+
+/** Tag names (not ids), grouped by how the import resolved them. */
+export interface ImportTagSummary {
+	matched: string[];
+	created: string[];
+	renamed: string[];
+	/** Existing target tags re-keyed to the package (source) id on a name collision. */
+	reconciled: string[];
+	skipped: string[];
 }
 
 export interface ImportResult {
@@ -386,4 +484,5 @@ export interface ImportResult {
 	bindings: SerializedBindings;
 	credentials: ImportCredentialSummary;
 	variables: ImportVariableSummary;
+	tags: ImportTagSummary;
 }

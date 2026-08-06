@@ -74,17 +74,17 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const databaseType = computed(() => settings.value?.databaseType);
 
-	const planName = computed(() => settings.value?.license.planName ?? 'Community');
+	const planName = computed(() => settings.value?.license?.planName ?? 'Community');
 
-	const consumerId = computed(() => settings.value?.license.consumerId);
+	const consumerId = computed(() => settings.value?.license?.consumerId);
 
 	const binaryDataMode = computed(() => settings.value?.binaryDataMode);
 
 	const pruning = computed(() => settings.value?.pruning);
 
 	const security = computed(() => ({
-		blockFileAccessToN8nFiles: settings.value.security.blockFileAccessToN8nFiles,
-		secureCookie: settings.value.authCookie.secure,
+		blockFileAccessToN8nFiles: settings.value?.security?.blockFileAccessToN8nFiles,
+		secureCookie: settings.value?.authCookie?.secure,
 	}));
 
 	const isEnterpriseFeatureEnabled = computed(() => settings.value.enterprise ?? {});
@@ -99,7 +99,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const isPublicApiEnabled = computed(() => api.value.enabled);
 
-	const isSwaggerUIEnabled = computed(() => api.value.swaggerUi.enabled);
+	const isSwaggerUIEnabled = computed(() => api.value.swaggerUi?.enabled ?? false);
 
 	const isPreviewMode = computed(() => settings.value.previewMode);
 

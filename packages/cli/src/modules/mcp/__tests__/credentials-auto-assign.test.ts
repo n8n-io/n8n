@@ -418,6 +418,209 @@ describe('autoPopulateNodeCredentials', () => {
 			]);
 		});
 
+		test('switches auth to a supported sibling type when the default auth type is unsupported', async () => {
+			// Node defaults to an unsupported auth (oAuth2 → serviceOAuth2Api) while a
+			// sibling (apiKey → serviceApiKey) is n8n-credits-eligible.
+			const desc = {
+				...makeNodeTypeDescription({ name: 'n8n-nodes-base.service' }),
+				credentials: [
+					{ name: 'serviceOAuth2Api', displayOptions: { show: { authentication: ['oAuth2'] } } },
+					{ name: 'serviceApiKey', displayOptions: { show: { authentication: ['apiKey'] } } },
+				],
+				properties: [
+					{
+						displayName: 'Authentication',
+						name: 'authentication',
+						type: 'options',
+						options: [
+							{ name: 'OAuth2', value: 'oAuth2' },
+							{ name: 'API Key', value: 'apiKey' },
+						],
+						default: 'oAuth2',
+					},
+				],
+			} as unknown as INodeTypeDescription;
+			const node = makeNode({ type: 'n8n-nodes-base.service', parameters: {} });
+			const workflow = makeWorkflow([node]);
+			const { credentialsService, nodeTypes } = createMocks({
+				usableCredentials: [],
+				nodeTypeDescriptions: new Map([['n8n-nodes-base.service', desc]]),
+			});
+			const aiGatewayService = {
+				isAvailable: vi.fn().mockResolvedValue({
+					available: true,
+					config: {
+						nodes: ['n8n-nodes-base.service'],
+						credentialTypes: ['serviceApiKey'],
+						providerConfig: {
+							serviceApiKey: {
+								gatewayPath: '/v1/gateway/service',
+								urlField: 'url',
+								apiKeyField: 'apiKey',
+							},
+						},
+					},
+				}),
+			} as unknown as import('@/services/ai-gateway.service').AiGatewayService;
+
+			const result = await autoPopulateNodeCredentials(
+				workflow,
+				user,
+				nodeTypes,
+				credentialsService,
+				projectId,
+				aiGatewayService,
+			);
+
+			expect(node.credentials).toEqual({
+				serviceApiKey: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+			});
+			expect(node.parameters.authentication).toBe('apiKey');
+			expect(result.assignments).toEqual([
+				{
+					nodeName: 'Test Node',
+					credentialName: 'n8n credits',
+					credentialType: 'serviceApiKey',
+					source: 'aiGateway',
+				},
+			]);
+		});
+
+		test('switches auth when the controlling param is absent (relying on the type default)', async () => {
+			// Mirrors a real inserted node: `authentication` is NOT stored (defaults are
+			// not persisted), and an unrelated `operation` param IS present.
+			const desc = {
+				...makeNodeTypeDescription({ name: 'n8n-nodes-base.service' }),
+				credentials: [
+					{ name: 'serviceOAuth2Api', displayOptions: { show: { authentication: ['oAuth2'] } } },
+					{ name: 'serviceApiKey', displayOptions: { show: { authentication: ['apiKey'] } } },
+				],
+				properties: [
+					{
+						displayName: 'Operation',
+						name: 'operation',
+						type: 'options',
+						options: [{ name: 'Split PDF', value: 'Split PDF' }],
+						default: 'Split PDF',
+					},
+					{
+						displayName: 'Authentication',
+						name: 'authentication',
+						type: 'options',
+						options: [
+							{ name: 'OAuth2', value: 'oAuth2' },
+							{ name: 'API Key', value: 'apiKey' },
+						],
+						default: 'oAuth2',
+					},
+				],
+			} as unknown as INodeTypeDescription;
+			const node = makeNode({
+				type: 'n8n-nodes-base.service',
+				parameters: { operation: 'Split PDF' },
+			});
+			const workflow = makeWorkflow([node]);
+			const { credentialsService, nodeTypes } = createMocks({
+				usableCredentials: [],
+				nodeTypeDescriptions: new Map([['n8n-nodes-base.service', desc]]),
+			});
+			const aiGatewayService = {
+				isAvailable: vi.fn().mockResolvedValue({
+					available: true,
+					config: {
+						nodes: ['n8n-nodes-base.service'],
+						credentialTypes: ['serviceApiKey'],
+						providerConfig: {
+							serviceApiKey: {
+								gatewayPath: '/v1/gateway/service',
+								urlField: 'url',
+								apiKeyField: 'apiKey',
+							},
+						},
+					},
+				}),
+			} as unknown as import('@/services/ai-gateway.service').AiGatewayService;
+
+			await autoPopulateNodeCredentials(
+				workflow,
+				user,
+				nodeTypes,
+				credentialsService,
+				projectId,
+				aiGatewayService,
+			);
+
+			expect(node.credentials).toEqual({
+				serviceApiKey: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+			});
+			expect(node.parameters.authentication).toBe('apiKey');
+		});
+
+		test('does not rewrite a parameter that already activates the assigned credential type', async () => {
+			// The credential is shown for several auth values; the node already uses
+			// the second one, so assigning n8n credits must not flip it to the first.
+			const desc = {
+				...makeNodeTypeDescription({ name: 'n8n-nodes-base.service' }),
+				credentials: [
+					{
+						name: 'serviceApiKey',
+						displayOptions: { show: { authentication: ['apiKey', 'apiKeyLegacy'] } },
+					},
+				],
+				properties: [
+					{
+						displayName: 'Authentication',
+						name: 'authentication',
+						type: 'options',
+						options: [
+							{ name: 'API Key', value: 'apiKey' },
+							{ name: 'API Key (legacy)', value: 'apiKeyLegacy' },
+						],
+						default: 'apiKey',
+					},
+				],
+			} as unknown as INodeTypeDescription;
+			const node = makeNode({
+				type: 'n8n-nodes-base.service',
+				parameters: { authentication: 'apiKeyLegacy' },
+			});
+			const workflow = makeWorkflow([node]);
+			const { credentialsService, nodeTypes } = createMocks({
+				usableCredentials: [],
+				nodeTypeDescriptions: new Map([['n8n-nodes-base.service', desc]]),
+			});
+			const aiGatewayService = {
+				isAvailable: vi.fn().mockResolvedValue({
+					available: true,
+					config: {
+						nodes: ['n8n-nodes-base.service'],
+						credentialTypes: ['serviceApiKey'],
+						providerConfig: {
+							serviceApiKey: {
+								gatewayPath: '/v1/gateway/service',
+								urlField: 'url',
+								apiKeyField: 'apiKey',
+							},
+						},
+					},
+				}),
+			} as unknown as import('@/services/ai-gateway.service').AiGatewayService;
+
+			await autoPopulateNodeCredentials(
+				workflow,
+				user,
+				nodeTypes,
+				credentialsService,
+				projectId,
+				aiGatewayService,
+			);
+
+			expect(node.credentials).toEqual({
+				serviceApiKey: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+			});
+			expect(node.parameters.authentication).toBe('apiKeyLegacy');
+		});
+
 		test('prefers user credential when both exist', async () => {
 			const node = makeNode();
 			const workflow = makeWorkflow([node]);

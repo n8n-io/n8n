@@ -1,9 +1,9 @@
 import { defineStore } from 'pinia';
 import { ref, computed, reactive, toRaw, watch } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import {
 	fetchSettings,
 	updateSettings,

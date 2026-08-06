@@ -14,8 +14,7 @@ import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useMessage } from '@/app/composables/useMessage';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
-import { useToast } from '@/app/composables/useToast';
-import type { NotificationHandle } from '@n8n/composables/useToast';
+import { useToast, type NotificationHandle } from '@n8n/composables/useToast';
 import { nodeViewEventBus } from '@/app/event-bus';
 import type { IWorkflowDb } from '@/Interface';
 import type { FolderShortInfo } from '@/features/core/folders/folders.types';
@@ -38,7 +37,7 @@ import {
 import { useRoute, useRouter } from 'vue-router';
 
 import { N8nBadge, N8nInlineTextEdit } from '@n8n/design-system';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';

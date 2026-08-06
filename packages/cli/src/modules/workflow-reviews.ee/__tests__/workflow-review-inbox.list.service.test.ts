@@ -15,6 +15,7 @@ import { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.s
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 
+import type { WorkflowReviewDecisionEligibilityService } from '../workflow-review-decision-eligibility.service';
 import { WorkflowReviewFeatureGate } from '../workflow-review-feature-gate.service';
 import { WorkflowReviewInboxService } from '../workflow-review-inbox.service';
 
@@ -54,6 +55,7 @@ describe('WorkflowReviewInboxService', () => {
 			reviewerRepository,
 			userRepository,
 			projectService,
+			mock<WorkflowReviewDecisionEligibilityService>(),
 		);
 	});
 

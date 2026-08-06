@@ -205,12 +205,16 @@ const n8nPackagesHandlers: N8nPackagesHandlers = {
 					workflowPublishingPolicy: payload.data.workflowPublishingPolicy,
 					workflowIdPolicy: payload.data.workflowIdPolicy,
 					missingNodeTypeMode: payload.data.missingNodeTypeMode,
+					projectConflictPolicy: payload.data.projectConflictPolicy,
 					folderConflictPolicy: payload.data.folderConflictPolicy,
 					dataTableMatchingMode: payload.data.dataTableMatchingMode,
 					dataTableMissingMode: payload.data.dataTableMissingMode,
 					dataTableSchemaConflictPolicy: payload.data.dataTableSchemaConflictPolicy,
 					variableMissingMode: payload.data.variableMissingMode,
+					variableConflictPolicy: payload.data.variableConflictPolicy,
 					variableParentPolicy: payload.data.variableParentPolicy,
+					tagMissingMode: payload.data.tagMissingMode,
+					tagConflictPolicy: payload.data.tagConflictPolicy,
 					packageBuffer: packageFile.buffer,
 				});
 				return res.status(200).json(result);
