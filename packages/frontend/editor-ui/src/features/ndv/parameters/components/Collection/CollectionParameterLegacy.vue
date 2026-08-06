@@ -32,6 +32,7 @@ export interface Props {
 	values?: INodeParameters;
 	isReadOnly?: boolean;
 	isNested?: boolean;
+	flattenSingleValueCollections?: boolean;
 }
 const emit = defineEmits<{
 	valueChanged: [value: IUpdateInformation];
@@ -145,6 +146,24 @@ const filteredOptions = computed(() => {
 	});
 });
 
+const shouldFlattenOptions = computed(
+	() =>
+		props.flattenSingleValueCollections === true &&
+		filteredOptions.value.length > 0 &&
+		filteredOptions.value.every(
+			(option) =>
+				isINodeProperties(option) &&
+				option.typeOptions?.multipleValues !== true &&
+				!['collection', 'fixedCollection'].includes(option.type),
+		),
+);
+
+const displayedProperties = computed(() =>
+	shouldFlattenOptions.value
+		? filteredOptions.value.filter(isINodeProperties)
+		: getFlattenedProperties.value,
+);
+
 const parameterOptions = computed(() => {
 	return filteredOptions.value.filter((option) => !propertyNames.value.includes(option.name));
 });
@@ -211,24 +230,32 @@ function valueChanged(parameterData: IUpdateInformation) {
 <template>
 	<div :class="$style.collectionParameter" @keydown.stop>
 		<div :class="$style.collectionParameterWrapper">
-			<div v-if="getProperties.length === 0 && !isNested" :class="$style.noItemsExist">
+			<div
+				v-if="getProperties.length === 0 && !isNested && !shouldFlattenOptions"
+				:class="$style.noItemsExist"
+			>
 				<N8nText size="small">{{ i18n.baseText('collectionParameter.noProperties') }}</N8nText>
 			</div>
 
 			<Suspense v-else>
 				<ParameterInputList
-					:parameters="getFlattenedProperties"
+					:parameters="displayedProperties"
 					:node-values="nodeValues"
 					:path="path"
 					:hide-delete="hideDelete"
 					:indent="true"
 					:is-read-only="isReadOnly"
 					:newly-added-parameters="newlyAddedParameters"
+					:flatten-single-value-collections="flattenSingleValueCollections"
+					:use-parameter-defaults-for-missing-values="shouldFlattenOptions"
 					@value-changed="valueChanged"
 				/>
 			</Suspense>
 
-			<div v-if="parameterOptions.length > 0 && !isReadOnly" :class="$style.paramOptions">
+			<div
+				v-if="parameterOptions.length > 0 && !isReadOnly && !shouldFlattenOptions"
+				:class="$style.paramOptions"
+			>
 				<N8nButton
 					v-if="(parameter.options ?? []).length === 1"
 					style="width: 100%"

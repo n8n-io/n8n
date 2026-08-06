@@ -42,6 +42,7 @@ type OutputType = (typeof OUTPUT_TYPE)[OutputTypeKey];
 
 type Props = {
 	runIndex: number;
+	activeNodeName?: string;
 	isReadOnly?: boolean;
 	linkedRuns?: boolean;
 	canLinkRuns?: boolean;
@@ -82,7 +83,11 @@ const workflowDocumentStore = injectWorkflowDocumentStore();
 const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
 const telemetry = useTelemetry();
 const i18n = useI18n();
-const activeNode = computed(() => ndvStore.value.activeNode);
+const activeNode = computed(() =>
+	props.activeNodeName
+		? (workflowDocumentStore.value.getNodeByName(props.activeNodeName) ?? null)
+		: ndvStore.value.activeNode,
+);
 const { dirtinessByName } = useNodeDirtiness(() => workflowDocumentStore.value.documentId);
 const uiStore = useUIStore();
 
@@ -112,9 +117,7 @@ const workflowObject = computed(() =>
 	workflowDocumentStore.value.getWorkflowObjectAccessorSnapshot(),
 );
 
-const node = computed(() => {
-	return ndvStore.value.activeNode ?? undefined;
-});
+const node = computed(() => activeNode.value ?? undefined);
 const { hasNodeRun, workflowExecution, workflowRunData } = useExecutionData({ node });
 const { canReveal, isDynamicCredentials, revealData } = useExecutionRedaction();
 

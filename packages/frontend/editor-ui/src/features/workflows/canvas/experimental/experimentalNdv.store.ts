@@ -13,6 +13,29 @@ import { CanvasNodeRenderType, type CanvasNodeData } from '../canvas.types';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { CANVAS_ZOOMED_VIEW_EXPERIMENT, NDV_IN_FOCUS_PANEL_EXPERIMENT } from '@/app/constants';
 import type { INodeUi } from '@/Interface';
+import { useStorage } from '@n8n/composables/useStorage';
+
+export type NodePanelTab = 'properties' | 'input' | 'output';
+
+export type NodePanelState = {
+	selectedTab: NodePanelTab;
+	isShowingAllSettings: boolean;
+	settingsFilter: string;
+	scrollTop: number;
+};
+
+const NODE_PANEL_WIDTH_STORAGE_KEY = 'N8N_NODE_PANEL_WIDTH';
+const NODE_PANEL_ALWAYS_SHOW_SETTINGS_STORAGE_KEY = 'N8N_NODE_PANEL_ALWAYS_SHOW_SETTINGS';
+const DEFAULT_NODE_PANEL_WIDTH = 420;
+const MIN_NODE_PANEL_WIDTH = 420;
+const MAX_NODE_PANEL_WIDTH = 1000;
+
+const DEFAULT_NODE_PANEL_STATE: NodePanelState = {
+	selectedTab: 'properties',
+	isShowingAllSettings: false,
+	settingsFilter: '',
+	scrollTop: 0,
+};
 
 export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
 	const postHogStore = usePostHog();
@@ -21,17 +44,32 @@ export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
 			postHogStore.getVariant(CANVAS_ZOOMED_VIEW_EXPERIMENT.name) ===
 			CANVAS_ZOOMED_VIEW_EXPERIMENT.variant,
 	);
-	const isNdvInFocusPanelEnabled = computed(
-		() =>
-			postHogStore.getVariant(NDV_IN_FOCUS_PANEL_EXPERIMENT.name) ===
-			NDV_IN_FOCUS_PANEL_EXPERIMENT.variant,
-	);
+	const isNdvInFocusPanelEnabled = computed(() => {
+		const variant = postHogStore.getVariant(NDV_IN_FOCUS_PANEL_EXPERIMENT.name);
+
+		return (
+			variant === NDV_IN_FOCUS_PANEL_EXPERIMENT.variant ||
+			(import.meta.env.MODE === 'development' && variant === undefined)
+		);
+	});
 	const maxCanvasZoom = computed(() => (isZoomedViewEnabled.value ? 2 : 4));
 
 	const previousViewport = ref<ViewportTransform>();
 	const collapsedNodes = shallowRef<Partial<Record<string, boolean>>>({});
 	const nodeNameToBeFocused = ref<string | undefined>();
-	const isMapperOpen = ref(false);
+	const mapperOpen = ref(false);
+	const isMapperPinned = ref(false);
+	const nodePanelStates = shallowRef<Record<string, NodePanelState>>({});
+	const nodePanelWidthStorage = useStorage(NODE_PANEL_WIDTH_STORAGE_KEY);
+	const alwaysShowSettingsStorage = useStorage(NODE_PANEL_ALWAYS_SHOW_SETTINGS_STORAGE_KEY);
+	const nodePanelWidth = computed(() => {
+		const storedWidth = Number(nodePanelWidthStorage.value);
+		if (!Number.isFinite(storedWidth)) return DEFAULT_NODE_PANEL_WIDTH;
+
+		return Math.min(MAX_NODE_PANEL_WIDTH, Math.max(MIN_NODE_PANEL_WIDTH, storedWidth));
+	});
+	const isMapperOpen = computed(() => mapperOpen.value || isMapperPinned.value);
+	const alwaysShowAllSettings = computed(() => alwaysShowSettingsStorage.value === 'true');
 
 	function setNodeExpanded(nodeId: string, isExpanded?: boolean) {
 		collapsedNodes.value = {
@@ -60,7 +98,35 @@ export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
 	}
 
 	function setMapperOpen(value: boolean) {
-		isMapperOpen.value = value;
+		mapperOpen.value = value;
+	}
+
+	function setMapperPinned(value: boolean) {
+		isMapperPinned.value = value;
+	}
+
+	function updateNodePanelWidth(width: number) {
+		nodePanelWidthStorage.value = String(
+			Math.min(MAX_NODE_PANEL_WIDTH, Math.max(MIN_NODE_PANEL_WIDTH, width)),
+		);
+	}
+
+	function setAlwaysShowAllSettings(value: boolean) {
+		alwaysShowSettingsStorage.value = String(value);
+	}
+
+	function getNodePanelState(nodeId: string): NodePanelState {
+		return nodePanelStates.value[nodeId] ?? DEFAULT_NODE_PANEL_STATE;
+	}
+
+	function updateNodePanelState(nodeId: string, update: Partial<NodePanelState>) {
+		nodePanelStates.value = {
+			...nodePanelStates.value,
+			[nodeId]: {
+				...getNodePanelState(nodeId),
+				...update,
+			},
+		};
 	}
 
 	interface FocusNodeOptions {
@@ -138,7 +204,10 @@ export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
 		previousZoom: computed(() => previousViewport.value),
 		collapsedNodes: computed(() => collapsedNodes.value),
 		nodeNameToBeFocused: computed(() => nodeNameToBeFocused.value),
-		isMapperOpen: computed(() => isMapperOpen.value),
+		isMapperOpen,
+		isMapperPinned: computed(() => isMapperPinned.value),
+		alwaysShowAllSettings,
+		nodePanelWidth,
 		isActive,
 		setNodeExpanded,
 		expandAllNodes,
@@ -147,5 +216,10 @@ export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
 		focusNode,
 		setNodeNameToBeFocused,
 		setMapperOpen,
+		setMapperPinned,
+		updateNodePanelWidth,
+		setAlwaysShowAllSettings,
+		getNodePanelState,
+		updateNodePanelState,
 	};
 });

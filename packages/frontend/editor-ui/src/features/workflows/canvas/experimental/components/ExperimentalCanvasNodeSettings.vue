@@ -9,17 +9,38 @@ import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionSt
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { computed } from 'vue';
 
-const { nodeId, isReadOnly, subTitle, isEmbeddedInCanvas } = defineProps<{
+const {
+	nodeId,
+	isReadOnly,
+	subTitle,
+	isEmbeddedInCanvas,
+	hideHeader,
+	progressiveDisclosure,
+	showAllSettings,
+	settingsFilter,
+	alwaysShowAllSettings,
+	initialScrollTop,
+} = defineProps<{
 	nodeId: string;
 	isReadOnly?: boolean;
 	subTitle?: string;
 	isEmbeddedInCanvas?: boolean;
+	hideHeader?: boolean;
+	progressiveDisclosure?: boolean;
+	showAllSettings?: boolean;
+	settingsFilter?: string;
+	alwaysShowAllSettings?: boolean;
+	initialScrollTop?: number;
 }>();
 
 defineSlots<{ actions?: {} }>();
 
 const emit = defineEmits<{
 	dblclickHeader: [MouseEvent];
+	showAllSettingsChanged: [value: boolean];
+	settingsFilterChanged: [value: string];
+	alwaysShowAllSettingsChanged: [value: boolean];
+	scrollPositionChanged: [value: number];
 }>();
 
 const workflowDocumentStore = injectWorkflowDocumentStore();
@@ -81,6 +102,13 @@ function handleCaptureWheelEvent(event: WheelEvent) {
 		:executable="!isReadOnly"
 		:is-embedded-in-canvas="isEmbeddedInCanvas"
 		:sub-title="subTitle"
+		:hide-header="hideHeader"
+		:progressive-disclosure="progressiveDisclosure"
+		:show-all-settings="showAllSettings"
+		:settings-filter="settingsFilter"
+		:always-show-all-settings="alwaysShowAllSettings"
+		:initial-scroll-top="initialScrollTop"
+		flatten-single-value-collections
 		extra-tabs-class-name="nodrag"
 		extra-parameter-wrapper-class-name="nodrag"
 		hide-execute
@@ -89,6 +117,10 @@ function handleCaptureWheelEvent(event: WheelEvent) {
 		@value-changed="handleValueChanged"
 		@capture-wheel-body="handleCaptureWheelEvent"
 		@dblclick-header="emit('dblclickHeader', $event)"
+		@show-all-settings-changed="emit('showAllSettingsChanged', $event)"
+		@settings-filter-changed="emit('settingsFilterChanged', $event)"
+		@always-show-all-settings-changed="emit('alwaysShowAllSettingsChanged', $event)"
+		@scroll-position-changed="emit('scrollPositionChanged', $event)"
 	>
 		<template #actions>
 			<slot name="actions" />

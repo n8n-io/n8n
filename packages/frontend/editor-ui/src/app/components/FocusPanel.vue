@@ -343,6 +343,9 @@ function closeFocusPanel() {
 		source: 'closeIcon',
 		parameters: focusPanelStore.focusedNodeParametersInTelemetryFormat,
 	});
+	if (experimentalNdvStore.isNdvInFocusPanelEnabled) {
+		vueFlow.removeSelectedNodes(vueFlow.getSelectedNodes.value);
+	}
 
 	focusPanelStore.closeFocusPanel();
 }
@@ -394,6 +397,14 @@ function onRenameNode(value: string) {
 		void renameNode(node.value.name, value);
 	}
 }
+
+function selectNode(nodeId: string) {
+	const graphNode = vueFlow.getNodes.value.find(({ id }) => id === nodeId);
+	if (!graphNode) return;
+
+	vueFlow.removeSelectedNodes(vueFlow.getSelectedNodes.value);
+	vueFlow.addSelectedNodes([graphNode]);
+}
 </script>
 
 <template>
@@ -403,9 +414,27 @@ function onRenameNode(value: string) {
 			$style.content,
 			{ [$style.isNdvInFocusPanelEnabled]: experimentalNdvStore.isNdvInFocusPanelEnabled },
 		]"
+		@keydown.esc.stop.prevent="closeFocusPanel"
 	>
+		<ExperimentalNodeDetailsDrawer
+			v-if="node && experimentalNdvStore.isNdvInFocusPanelEnabled"
+			:class="$style.nodePanel"
+			:node="node"
+			:node-ids="selectedNodeIds"
+			:is-read-only="isReadOnly"
+			:is-parameter-editor-open="!!resolvedParameter"
+			@close="closeFocusPanel"
+			@context-menu-action="(action, nodeIds) => emit('contextMenuAction', action, nodeIds)"
+			@select-node="selectNode"
+		/>
 		<ExperimentalFocusPanelHeader
-			v-if="experimentalNdvStore.isNdvInFocusPanelEnabled && node && !multipleNodesSelected"
+			v-if="
+				experimentalNdvStore.isNdvInFocusPanelEnabled &&
+				node &&
+				resolvedParameter &&
+				!multipleNodesSelected
+			"
+			:class="$style.parameterPopoverHeader"
 			:node="node"
 			:parameter="resolvedParameter?.parameter"
 			:is-executable="isExecutable"
@@ -415,7 +444,16 @@ function onRenameNode(value: string) {
 			@clear-parameter="closeFocusPanel"
 			@rename-node="onRenameNode"
 		/>
-		<div v-if="resolvedParameter" :class="$style.content" data-test-id="focus-parameter">
+		<div
+			v-if="resolvedParameter"
+			:class="[
+				$style.content,
+				{ [$style.parameterPopover]: experimentalNdvStore.isNdvInFocusPanelEnabled },
+			]"
+			data-test-id="focus-parameter"
+			role="dialog"
+			:aria-label="resolvedParameter.parameter.displayName"
+		>
 			<div v-if="!experimentalNdvStore.isNdvInFocusPanelEnabled" :class="$style.tabHeader">
 				<div :class="$style.tabHeaderText">
 					<N8nText color="text-dark" size="small">
@@ -566,15 +604,10 @@ function onRenameNode(value: string) {
 				</div>
 			</div>
 		</div>
-		<ExperimentalNodeDetailsDrawer
-			v-else-if="node && experimentalNdvStore.isNdvInFocusPanelEnabled"
-			:node="node"
-			:node-ids="selectedNodeIds"
-			:is-read-only="isReadOnly"
-			@open-ndv="onOpenNdv"
-			@context-menu-action="(action, nodeIds) => emit('contextMenuAction', action, nodeIds)"
-		/>
-		<div v-else :class="[$style.content, $style.emptyContent]">
+		<div
+			v-else-if="!node || !experimentalNdvStore.isNdvInFocusPanelEnabled"
+			:class="[$style.content, $style.emptyContent]"
+		>
 			<div :class="$style.focusParameterWrapper">
 				<div :class="$style.iconWrapper">
 					<N8nIcon :class="$style.forceHover" icon="panel-right" size="medium" />
@@ -610,6 +643,7 @@ function onRenameNode(value: string) {
 
 <style lang="scss" module>
 .content {
+	position: relative;
 	display: flex;
 	flex-direction: column;
 	height: 100%;
@@ -716,6 +750,35 @@ function onRenameNode(value: string) {
 			}
 		}
 	}
+}
+
+.nodePanel {
+	position: absolute;
+	inset: 0;
+}
+
+.parameterPopoverHeader,
+.parameterPopover {
+	position: absolute;
+	right: calc(100% + var(--spacing--2xs));
+	width: min(720px, calc(100vw - var(--n8n--node-panel-width, 420px) - var(--spacing--lg)));
+	z-index: 2;
+	border: 1px solid var(--border-color);
+	background: var(--background--surface);
+	box-shadow: var(--shadow--lg);
+}
+
+.parameterPopoverHeader {
+	top: var(--spacing--xs);
+	border-radius: var(--radius--lg) var(--radius--lg) 0 0;
+}
+
+.parameterPopover {
+	top: calc(var(--spacing--xs) + var(--height--2xl));
+	bottom: var(--spacing--xs);
+	height: auto;
+	border-top: 0;
+	border-radius: 0 0 var(--radius--lg) var(--radius--lg);
 }
 
 // We have this animation here to hide the short time between no longer

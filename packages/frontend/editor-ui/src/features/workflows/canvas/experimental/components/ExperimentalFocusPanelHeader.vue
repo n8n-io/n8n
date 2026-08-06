@@ -53,9 +53,17 @@ const nodeType = computed(() => nodeTypesStore.getNodeType(node.type, node.typeV
 			v-if="parameter"
 			icon="x"
 			size="small"
+			:aria-label="i18n.baseText('nodePanel.closeWideEditor')"
 			@click="emit('clearParameter')"
 		/>
-		<N8nIconButton variant="ghost" v-else icon="expand" size="small" @click="emit('openNdv')" />
+		<N8nIconButton
+			v-else
+			variant="ghost"
+			icon="expand"
+			size="small"
+			:aria-label="i18n.baseText('nodePanel.openNodeDetails')"
+			@click="emit('openNdv')"
+		/>
 		<NodeExecuteButton
 			v-if="isExecutable"
 			data-test-id="node-execute-button"

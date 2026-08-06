@@ -7,7 +7,7 @@ import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useTelemetryContext } from '@/app/composables/useTelemetryContext';
-import { computed, onMounted, watch, useTemplateRef, onBeforeUnmount } from 'vue';
+import { computed, onMounted, watch, useTemplateRef, onBeforeUnmount, ref } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useVueFlow } from '@vue-flow/core';
 import { useActiveElement, useThrottleFn } from '@vueuse/core';
@@ -44,6 +44,7 @@ const telemetry = useTelemetry();
 const deviceSupport = useDeviceSupport();
 const vueFlow = useVueFlow(workflowId.value);
 const activeElement = useActiveElement();
+const lastTrackedNodeId = ref<string>();
 
 useTelemetryContext({ view_shown: 'focus_panel' });
 
@@ -51,6 +52,11 @@ const { selectedTab } = storeToRefs(focusPanelStore);
 const focusPanelActive = computed(() => focusPanelStore.focusPanelActive);
 const focusPanelWidth = computed(() => focusPanelStore.focusPanelWidth);
 const resolvedParameter = computed(() => focusPanelStore.resolvedParameter);
+const sidebarWidth = computed(() =>
+	experimentalNdvStore.isNdvInFocusPanelEnabled
+		? experimentalNdvStore.nodePanelWidth
+		: focusPanelWidth.value,
+);
 
 const isSetupPanelEnabled = computed(() => setupPanelStore.isFeatureEnabled);
 const { isFeatureEnabled: isEvaluationsWizardSidepanelEnabled } =
@@ -77,13 +83,6 @@ const showEvaluationsPaywall = computed(
 		!isLicensed.value,
 );
 
-// Tab bar visibility used to track only the setup panel; now it also needs to
-// stay shown when the evaluations tab is available, otherwise the user has no
-// way to switch back.
-const showTabs = computed(
-	() => isSetupPanelEnabled.value || isEvaluationsWizardSidepanelEnabled.value,
-);
-
 const node = computed<INodeUi | undefined>(() => {
 	if (!experimentalNdvStore.isNdvInFocusPanelEnabled || resolvedParameter.value) {
 		return resolvedParameter.value?.node;
@@ -96,6 +95,21 @@ const node = computed<INodeUi | undefined>(() => {
 		: undefined;
 });
 
+// The Node Panel owns its own tabs. Keep the shared sidebar tabs for setup and
+// evaluations surfaces when the Node Panel itself is not visible.
+const isNodePanelActive = computed(
+	() =>
+		experimentalNdvStore.isNdvInFocusPanelEnabled &&
+		selectedTab.value === 'focus' &&
+		!!node.value &&
+		!resolvedParameter.value,
+);
+const showTabs = computed(
+	() =>
+		(isSetupPanelEnabled.value || isEvaluationsWizardSidepanelEnabled.value) &&
+		!isNodePanelActive.value,
+);
+
 const labelOverrides = computed(() => {
 	const focusLabel = resolvedParameter.value?.parameter.displayName ?? node.value?.name;
 	return focusLabel ? { focus: focusLabel } : undefined;
@@ -105,6 +119,43 @@ function handleKeydown(event: KeyboardEvent) {
 	if (event.key === 's' && deviceSupport.isCtrlKeyPressed(event)) {
 		event.stopPropagation();
 		event.preventDefault();
+		return;
+	}
+
+	if (
+		experimentalNdvStore.isNdvInFocusPanelEnabled &&
+		event.key === 'Escape' &&
+		selectedTab.value === 'focus' &&
+		node.value &&
+		activeElement.value instanceof HTMLElement &&
+		!wrapperRef.value?.contains(activeElement.value)
+	) {
+		if (activeElement.value.matches('input, textarea, [contenteditable="true"]')) {
+			activeElement.value.blur();
+		} else if (experimentalNdvStore.isMapperPinned) {
+			experimentalNdvStore.setMapperPinned(false);
+		} else {
+			vueFlow.removeSelectedNodes(vueFlow.getSelectedNodes.value);
+			focusPanelStore.closeFocusPanel();
+		}
+		event.stopPropagation();
+		event.preventDefault();
+		return;
+	}
+
+	if (
+		experimentalNdvStore.isNdvInFocusPanelEnabled &&
+		event.key === 'Enter' &&
+		activeElement.value instanceof HTMLElement &&
+		!wrapperRef.value?.contains(activeElement.value)
+	) {
+		const firstField = wrapperRef.value?.querySelector<HTMLElement>(
+			'input:not([disabled]), textarea:not([disabled]), [role="combobox"]:not([aria-disabled="true"])',
+		);
+		if (firstField) {
+			event.preventDefault();
+			firstField.focus();
+		}
 	}
 }
 
@@ -147,6 +198,11 @@ watch(activeElement, (active) => {
 });
 
 function onResize(event: ResizeData) {
+	if (experimentalNdvStore.isNdvInFocusPanelEnabled) {
+		experimentalNdvStore.updateNodePanelWidth(event.width);
+		return;
+	}
+
 	focusPanelStore.updateWidth(event.width);
 }
 
@@ -159,6 +215,45 @@ function onContextMenuAction(action: ContextMenuAction, nodeIds: string[]) {
 onMounted(() => {
 	void ensureLicenseLoaded();
 });
+
+watch(
+	[
+		() => experimentalNdvStore.isNdvInFocusPanelEnabled,
+		() => vueFlow.getSelectedNodes.value.map(({ id }) => id).join('|'),
+	],
+	([isEnabled]) => {
+		if (!isEnabled || resolvedParameter.value) return;
+
+		const selectedNodes = vueFlow.getSelectedNodes.value.filter(
+			(selectedNode) => selectedNode.data.render.type === CanvasNodeRenderType.Default,
+		);
+		if (selectedNodes.length === 1) {
+			if (focusPanelStore.focusPanelActive && focusPanelStore.selectedTab !== 'focus') return;
+			const selectedNode = selectedNodes[0];
+			if (!selectedNode) return;
+			if (lastTrackedNodeId.value !== selectedNode.id) {
+				lastTrackedNodeId.value = selectedNode.id;
+				telemetry.track('User opened focus panel', {
+					source: 'nodeSelection',
+					parameters: [
+						{
+							nodeId: selectedNode.id,
+							nodeType: node.value?.type ?? 'unresolved',
+							parameterPath: '',
+						},
+					],
+				});
+			}
+
+			focusPanelStore.setSelectedTab('focus');
+			focusPanelStore.openFocusPanel();
+		} else if (focusPanelStore.selectedTab === 'focus') {
+			lastTrackedNodeId.value = undefined;
+			focusPanelStore.closeFocusPanel();
+		}
+	},
+	{ immediate: true },
+);
 
 onBeforeUnmount(() => {
 	unregisterKeyboardListener();
@@ -178,12 +273,15 @@ onBeforeUnmount(() => {
 		@keydown.stop
 	>
 		<N8nResizeWrapper
-			:width="focusPanelWidth"
+			:width="sidebarWidth"
 			:supported-directions="['left']"
-			:min-width="isSetupPanelEnabled ? 420 : 300"
-			:max-width="experimentalNdvStore.isNdvInFocusPanelEnabled ? undefined : 1000"
+			:min-width="experimentalNdvStore.isNdvInFocusPanelEnabled || isSetupPanelEnabled ? 420 : 300"
+			:max-width="1000"
 			:grid-size="8"
-			:style="{ width: `${focusPanelWidth}px` }"
+			:style="{
+				width: `${sidebarWidth}px`,
+				'--n8n--node-panel-width': `${sidebarWidth}px`,
+			}"
 			@resize="onResizeThrottle"
 		>
 			<div :class="$style.container">
@@ -223,12 +321,23 @@ onBeforeUnmount(() => {
 	height: 100%;
 	flex-grow: 0;
 	flex-shrink: 0;
+
+	&.isNdvInFocusPanelEnabled {
+		position: absolute;
+		inset: 0 0 0 auto;
+		z-index: 2;
+		border-left-color: var(--border-color);
+		background: var(--background--surface);
+		box-shadow: var(--shadow--md);
+		overflow: visible;
+	}
 }
 
 .container {
 	display: flex;
 	flex-direction: column;
 	height: 100%;
+	width: 100%;
 }
 
 .setup-panel-wrapper {
