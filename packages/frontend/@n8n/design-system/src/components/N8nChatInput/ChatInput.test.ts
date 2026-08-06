@@ -971,47 +971,6 @@ describe('N8nChatInput', () => {
 		});
 	});
 
-	describe('compact layout', () => {
-		const renderCompact = (modelValue = '') =>
-			renderComponent({
-				props: {
-					layout: 'compact',
-					modelValue,
-				},
-				global: {
-					stubs: ['N8nCallout', 'N8nScrollArea', 'N8nSendStopButton'],
-				},
-			});
-
-		it('should arrange actions in a row without pinning the textarea height', () => {
-			const { container } = renderCompact();
-
-			expect(container.querySelector('.rowContainer')).toBeTruthy();
-			expect(container.querySelector('.singleLineTextarea')).toBeFalsy();
-		});
-
-		it('should emit submit on plain Enter', async () => {
-			const render = renderCompact('Test message');
-
-			const textarea = render.container.querySelector('textarea') as HTMLTextAreaElement;
-			await fireEvent.keyDown(textarea, { key: 'Enter' });
-
-			expect(render.emitted('submit')).toBeTruthy();
-			expect(render.emitted('update:modelValue')).toBeFalsy();
-		});
-
-		it('should insert a newline on Shift+Enter', async () => {
-			const render = renderCompact('Test message');
-
-			const textarea = render.container.querySelector('textarea') as HTMLTextAreaElement;
-			textarea.setSelectionRange(4, 4);
-			await fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: true });
-
-			expect(render.emitted('submit')).toBeFalsy();
-			expect(render.emitted('update:modelValue')?.at(-1)).toEqual(['Test\n message']);
-		});
-	});
-
 	describe('autofocus', () => {
 		it('should be focused if enabled', async () => {
 			const { emitted } = renderComponent({

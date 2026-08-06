@@ -30,12 +30,7 @@ export interface N8nChatInputProps {
 	refocusAfterSend?: boolean;
 	autofocus?: boolean;
 	buttonLabel?: string;
-	/**
-	 * `multiline` stacks the actions under an 80px-floored textarea, `single-line` puts them
-	 * inline next to a fixed-height one, and `compact` puts them inline next to a textarea that
-	 * starts one row tall and grows, Slack-style.
-	 */
-	layout?: 'multiline' | 'single-line' | 'compact';
+	layout?: 'multiline' | 'single-line';
 	autosize?: boolean | { minRows: number; maxRows: number };
 	submitDisabled?: boolean;
 	sendButtonTestId?: string;
@@ -110,7 +105,7 @@ const sendDisabled = computed(
 );
 
 const containerStyle = computed(() => {
-	return props.layout === 'multiline' ? { minHeight: '80px' } : undefined;
+	return props.layout === 'single-line' ? undefined : { minHeight: '80px' };
 });
 
 const hasNoCredits = computed(() => {
@@ -278,7 +273,7 @@ defineExpose({
 					{
 						[$style.focused]: isFocused,
 						[$style.disabled]: disabled || hasNoCredits,
-						[$style.rowContainer]: layout === 'single-line' || layout === 'compact',
+						[$style.singleLineContainer]: layout === 'single-line',
 					},
 				]"
 				:style="containerStyle"
@@ -386,7 +381,7 @@ defineExpose({
 	}
 }
 
-.rowContainer {
+.singleLineContainer {
 	flex-direction: row;
 	align-items: center;
 }
