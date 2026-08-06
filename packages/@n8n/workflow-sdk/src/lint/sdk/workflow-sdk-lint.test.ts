@@ -189,6 +189,118 @@ export default workflow('id', 'name').add(start);
 `;
 		expect(lintWorkflowSdkSource(source).map((i) => i.code)).toContain('SDK_FORBIDDEN_CONSTRUCT');
 	});
+
+	describe('mock output envelope lint', () => {
+		it('flags output arrays where every item is a { json: ... } envelope', () => {
+			const source = `
+const fetchData = node({
+  type: 'n8n-nodes-base.httpRequest',
+  version: 4.3,
+  config: { name: 'Fetch' },
+  output: [{ json: { orderId: 'ord_1' } }, { json: { orderId: 'ord_2' } }],
+});
+export default workflow('id', 'name').add(fetchData);
+`;
+			expect(lintWorkflowSdkSource(source).map((i) => i.code)).toContain(
+				'SDK_MOCK_OUTPUT_JSON_ENVELOPE',
+			);
+		});
+
+		it('does not flag raw $json-shaped output mocks', () => {
+			const source = `
+const fetchData = node({
+  type: 'n8n-nodes-base.httpRequest',
+  version: 4.3,
+  config: { name: 'Fetch' },
+  output: [{ orderId: 'ord_1' }, { orderId: 'ord_2' }],
+});
+export default workflow('id', 'name').add(fetchData);
+`;
+			expect(lintWorkflowSdkSource(source).map((i) => i.code)).not.toContain(
+				'SDK_MOCK_OUTPUT_JSON_ENVELOPE',
+			);
+		});
+	});
+
+	describe('raw credential object lint', () => {
+		it('flags raw { id, name } credential objects', () => {
+			const source = `
+const send = node({
+  type: 'n8n-nodes-base.slack',
+  version: 2.3,
+  config: { name: 'Send', credentials: { slackApi: { id: 'abc123', name: 'Team Slack' } } },
+});
+export default workflow('id', 'name').add(send);
+`;
+			expect(lintWorkflowSdkSource(source).map((i) => i.code)).toContain(
+				'SDK_RAW_CREDENTIAL_OBJECT',
+			);
+		});
+
+		it('does not flag newCredential() values', () => {
+			const source = `
+const send = node({
+  type: 'n8n-nodes-base.slack',
+  version: 2.3,
+  config: { name: 'Send', credentials: { slackApi: newCredential('Team Slack', 'abc123') } },
+});
+export default workflow('id', 'name').add(send);
+`;
+			expect(lintWorkflowSdkSource(source).map((i) => i.code)).not.toContain(
+				'SDK_RAW_CREDENTIAL_OBJECT',
+			);
+		});
+	});
+
+	describe('fake value lint', () => {
+		it('flags example.com emails used as parameter values', () => {
+			const source = `
+const send = node({
+  type: 'n8n-nodes-base.gmail',
+  version: 2.1,
+  config: { name: 'Send', parameters: { sendTo: 'user@example.com' } },
+});
+export default workflow('id', 'name').add(send);
+`;
+			expect(lintWorkflowSdkSource(source).map((i) => i.code)).toContain('SDK_FAKE_VALUE');
+		});
+
+		it('flags YOUR_* stand-in values', () => {
+			const source = `
+const call = node({
+  type: 'n8n-nodes-base.httpRequest',
+  version: 4.3,
+  config: { name: 'Call', parameters: { url: 'https://api.acme.dev', apiKey: 'YOUR_API_KEY' } },
+});
+export default workflow('id', 'name').add(call);
+`;
+			expect(lintWorkflowSdkSource(source).map((i) => i.code)).toContain('SDK_FAKE_VALUE');
+		});
+
+		it('does not flag hint text inside placeholder()', () => {
+			const source = `
+const send = node({
+  type: 'n8n-nodes-base.gmail',
+  version: 2.1,
+  config: { name: 'Send', parameters: { sendTo: placeholder('Recipient email, e.g. user@example.com') } },
+});
+export default workflow('id', 'name').add(send);
+`;
+			expect(lintWorkflowSdkSource(source).map((i) => i.code)).not.toContain('SDK_FAKE_VALUE');
+		});
+
+		it('does not flag fake-looking text inside jsCode snippets', () => {
+			const source = `
+const transform = node({
+  type: 'n8n-nodes-base.code',
+  version: 2,
+  config: { name: 'Transform', parameters: { jsCode: \`return [{ json: { email: 'user@example.com' } }];\` } },
+});
+export default workflow('id', 'name').add(transform);
+`;
+			expect(lintWorkflowSdkSource(source).map((i) => i.code)).not.toContain('SDK_FAKE_VALUE');
+		});
+	});
 });
 
 describe('prepareSourceForLint', () => {

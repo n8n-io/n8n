@@ -5,7 +5,7 @@
  * are linted separately by code-node/js and code-node/python.
  */
 
-import type { CallExpression, MemberExpression, Node, Program } from 'estree';
+import type { CallExpression, MemberExpression, Node, Program, Property } from 'estree';
 
 import {
 	FORBIDDEN_NODE_TYPES,
@@ -163,6 +163,114 @@ function rangeContains(range: SourceRange, line: number, column: number): boolea
 	return true;
 }
 
+function propertyName(prop: Property): string | undefined {
+	if (prop.key.type === 'Identifier') return prop.key.name;
+	if (prop.key.type === 'Literal' && typeof prop.key.value === 'string') return prop.key.value;
+	return undefined;
+}
+
+/** Object literal whose only property is `json` — a runtime item envelope. */
+function isJsonEnvelopeObject(node: Node | null): boolean {
+	if (!node || node.type !== 'ObjectExpression') return false;
+	if (node.properties.length !== 1) return false;
+	const prop = node.properties[0];
+	return prop?.type === 'Property' && propertyName(prop) === 'json';
+}
+
+/**
+ * `output: [{ json: {...} }]` — SDK mocks are raw `$json` objects; wrapping
+ * every item in a `json` envelope makes downstream expressions read
+ * `$json.json.*` and expression-path validation fail.
+ */
+function checkMockOutputEnvelope(prop: Property, issues: SourceLintIssue[]): void {
+	if (propertyName(prop) !== 'output') return;
+	if (prop.value.type !== 'ArrayExpression' || prop.value.elements.length === 0) return;
+
+	const allEnveloped = prop.value.elements.every((el) => isJsonEnvelopeObject(el));
+	if (!allEnveloped) return;
+
+	issues.push(
+		lintIssue({
+			code: 'SDK_MOCK_OUTPUT_JSON_ENVELOPE',
+			message:
+				'Mock `output` items are raw $json objects — do not wrap them in `{ json: {...} }` runtime envelopes. ' +
+				'Use `output: [{ field: value }]` unless downstream expressions intentionally read `$json.json.*`.',
+			...locationOf(prop),
+			lintTarget: 'sdk',
+		}),
+	);
+}
+
+/**
+ * `credentials: { slackApi: { id: '...', name: '...' } }` — raw credential
+ * objects in SDK source bypass credential resolution semantics; the build
+ * silently mocks unknown ids. `newCredential()` is the supported form.
+ */
+function checkRawCredentialObjects(prop: Property, issues: SourceLintIssue[]): void {
+	if (propertyName(prop) !== 'credentials') return;
+	if (prop.value.type !== 'ObjectExpression') return;
+
+	for (const entry of prop.value.properties) {
+		if (entry.type !== 'Property' || entry.value.type !== 'ObjectExpression') continue;
+		const keys = entry.value.properties
+			.filter((p): p is Property => p.type === 'Property')
+			.map((p) => propertyName(p));
+		if (!keys.includes('id') && !keys.includes('name')) continue;
+
+		issues.push(
+			lintIssue({
+				code: 'SDK_RAW_CREDENTIAL_OBJECT',
+				message:
+					"Raw credential objects like `{ id: '...', name: '...' }` are not supported in SDK code. " +
+					"Use `newCredential('Name', 'credential-id')` for a stored credential or `newCredential('Suggested Name')` to defer to setup.",
+				...locationOf(entry),
+				lintTarget: 'sdk',
+			}),
+		);
+	}
+}
+
+const FAKE_VALUE_PATTERNS: Array<{ pattern: RegExp; hint: string }> = [
+	{
+		pattern: /@example\.(?:com|org|net)\b/i,
+		hint: 'an example.com email address',
+	},
+	{
+		pattern: /\bYOUR_[A-Z][A-Z0-9_]{2,}\b/,
+		hint: 'a YOUR_* stand-in value',
+	},
+];
+
+/**
+ * Hardcoded fake values (`user@example.com`, `YOUR_API_KEY`) self-verify green
+ * and then fail on the user's first real run. `placeholder('hint')` is the
+ * supported way to defer a user-provided value, so hint text inside a
+ * `placeholder()` call is exempt.
+ */
+function checkFakeLiteralValues(
+	node: Node,
+	parent: Node | undefined,
+	issues: SourceLintIssue[],
+): void {
+	if (node.type !== 'Literal' || typeof node.value !== 'string') return;
+	if (parent?.type === 'CallExpression' && isPlaceholderCall(parent)) return;
+
+	for (const { pattern, hint } of FAKE_VALUE_PATTERNS) {
+		if (!pattern.test(node.value)) continue;
+		issues.push(
+			lintIssue({
+				code: 'SDK_FAKE_VALUE',
+				message:
+					`String looks like ${hint} — a hardcoded fake value. ` +
+					"Use placeholder('descriptive hint') so setup collects the real value from the user.",
+				...locationOf(node),
+				lintTarget: 'sdk',
+			}),
+		);
+		return;
+	}
+}
+
 /** Lint a prepared, parsed SDK AST (imports/TS already stripped). */
 export function lintWorkflowSdkAst(
 	ast: Program,
@@ -244,6 +352,13 @@ export function lintWorkflowSdkAst(
 					);
 				}
 			}
+
+			if (node.type === 'Property') {
+				checkMockOutputEnvelope(node, issues);
+				checkRawCredentialObjects(node, issues);
+			}
+
+			checkFakeLiteralValues(node, parent, issues);
 
 			if (node.type !== 'CallExpression') return;
 			const call = node;

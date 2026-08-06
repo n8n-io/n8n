@@ -49,6 +49,7 @@ export type ValidationErrorCode =
 	| 'SWITCH_NO_OUTPUT_CONNECTIONS'
 	| 'SWITCH_FALLBACK_OUTPUT_DISABLED'
 	| 'IF_MISSING_BRANCH'
+	| 'TOOL_NAME_STYLE'
 	| 'MAX_NODES_EXCEEDED'
 	| 'INVALID_EXPRESSION_PATH'
 	| 'PARTIAL_EXPRESSION_PATH'
@@ -648,6 +649,9 @@ export function validateWorkflow(
 
 	// IF branch wiring completeness
 	validateIfBranchConnections(json, warnings);
+
+	// Agent tool naming conventions
+	validateToolNodeNames(json, warnings);
 
 	// Merge node input-count consistency
 	checkMergeNodeInputCount(json, warnings);
@@ -1261,6 +1265,65 @@ function validateIfBranchConnections(json: WorkflowJSON, warnings: ValidationWar
 					`IF node '${sourceNode.name}' has no connection on its ${unwired} output. Items routed there are dropped. Confirm this is intended, or wire the ${unwired} branch via \`.on${unwired === 'true' ? 'True' : 'False'}(...)\` on the workflow builder.`,
 					sourceNode.name,
 					'connections',
+					undefined,
+					'minor',
+				),
+			);
+		}
+	}
+}
+
+const SNAKE_CASE_TOOL_NAME = /^[a-z][a-z0-9_]*$/;
+
+/** `n8n-nodes-base.gmailTool` -> `gmail`; `httpRequestTool` -> `http_request`. */
+function toolServicePrefix(nodeType: string): string | undefined {
+	const shortType = nodeType.split('.').pop();
+	if (!shortType) return undefined;
+	const withoutSuffix = shortType.endsWith('Tool') ? shortType.slice(0, -4) : shortType;
+	if (!withoutSuffix) return undefined;
+	return withoutSuffix.replace(/([a-z0-9])([A-Z])/g, '$1_$2').toLowerCase();
+}
+
+/**
+ * Tool node names are the action names the agent sees, so they should be
+ * concise snake_case verbs (`get_email`, `add_labels`) without a redundant
+ * service prefix (`gmail_get_email`). Informational: user-requested names win.
+ */
+function validateToolNodeNames(json: WorkflowJSON, warnings: ValidationWarning[]): void {
+	for (const node of json.nodes) {
+		if (!node.name) continue;
+
+		const outgoing = json.connections[node.name];
+		const toolEdges = isRecord(outgoing) ? outgoing.ai_tool : undefined;
+		const isToolNode =
+			Array.isArray(toolEdges) && toolEdges.some((slot) => Array.isArray(slot) && slot.length > 0);
+		if (!isToolNode) continue;
+
+		if (!SNAKE_CASE_TOOL_NAME.test(node.name)) {
+			warnings.push(
+				ValidationWarning.informational(
+					'TOOL_NAME_STYLE',
+					`Tool node '${node.name}' should have an explicit concise snake_case action name (e.g. 'get_email', 'add_labels') set via config.name — it is the tool name the agent sees.`,
+					node.name,
+					'name',
+					undefined,
+					'minor',
+				),
+			);
+			continue;
+		}
+
+		const servicePrefix = toolServicePrefix(node.type);
+		if (
+			servicePrefix &&
+			(node.name === servicePrefix || node.name.startsWith(`${servicePrefix}_`))
+		) {
+			warnings.push(
+				ValidationWarning.informational(
+					'TOOL_NAME_STYLE',
+					`Tool node '${node.name}' repeats its service name. Name tools after the action alone (e.g. '${node.name.slice(servicePrefix.length + 1) || 'get_data'}'), unless the user explicitly asked for this exact name.`,
+					node.name,
+					'name',
 					undefined,
 					'minor',
 				),

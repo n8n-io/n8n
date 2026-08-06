@@ -3433,6 +3433,77 @@ describe('Validation', () => {
 		});
 	});
 
+	describe('TOOL_NAME_STYLE validation', () => {
+		function createAgentWorkflow(toolName: string, toolType = 'n8n-nodes-base.gmailTool') {
+			return {
+				id: 'test',
+				name: 'Test',
+				nodes: [
+					{
+						id: 'trigger-1',
+						name: 'Chat In',
+						type: '@n8n/n8n-nodes-langchain.chatTrigger',
+						typeVersion: 1.1,
+						position: [0, 0] as [number, number],
+						parameters: {},
+					},
+					{
+						id: 'agent-1',
+						name: 'Agent',
+						type: '@n8n/n8n-nodes-langchain.agent',
+						typeVersion: 2.2,
+						position: [200, 0] as [number, number],
+						parameters: { promptType: 'auto' },
+					},
+					{
+						id: 'tool-1',
+						name: toolName,
+						type: toolType,
+						typeVersion: 2.1,
+						position: [200, 200] as [number, number],
+						parameters: {},
+					},
+				],
+				connections: {
+					'Chat In': { main: [[{ node: 'Agent', type: 'main', index: 0 }]] },
+					[toolName]: { ai_tool: [[{ node: 'Agent', type: 'ai_tool', index: 0 }]] },
+				},
+			};
+		}
+
+		function getToolNameWarnings(toolName: string, toolType?: string) {
+			return validateWorkflow(createAgentWorkflow(toolName, toolType)).warnings.filter(
+				(w) => w.code === 'TOOL_NAME_STYLE',
+			);
+		}
+
+		it('reports informational for non-snake_case tool names', () => {
+			const warnings = getToolNameWarnings('Get Email');
+
+			expect(warnings).toHaveLength(1);
+			expect(warnings[0].severity).toBe('informational');
+			expect(warnings[0].message).toContain('snake_case');
+		});
+
+		it('reports informational for service-prefixed tool names', () => {
+			const warnings = getToolNameWarnings('gmail_get_email');
+
+			expect(warnings).toHaveLength(1);
+			expect(warnings[0].severity).toBe('informational');
+			expect(warnings[0].message).toContain("'get_email'");
+		});
+
+		it('handles multi-word service prefixes', () => {
+			const warnings = getToolNameWarnings('http_request_fetch', 'n8n-nodes-base.httpRequestTool');
+
+			expect(warnings).toHaveLength(1);
+		});
+
+		it('does not warn for concise snake_case action names', () => {
+			expect(getToolNameWarnings('get_email')).toHaveLength(0);
+		});
+	});
+
 	describe('validatePlaceholderSlots (builderHint.placeholderSupported=false)', () => {
 		const mockNodeTypesProviderWithPlaceholderOptOut = {
 			getByNameAndVersion: (_type: string, _version?: number) => ({
