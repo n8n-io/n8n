@@ -11,13 +11,13 @@ import path from 'path';
 import type { JsonObject } from 'swagger-ui-express';
 import validator from 'validator';
 
+import { PublicApiAuthenticator } from './public-api-authenticator';
 import { PublicApiControllerRegistry } from './public-api-controller.registry';
 import { sendPublicApiErrorResponse } from './v1/public-api-error-response';
 
 import { EventService } from '@/events/event.service';
 import { License } from '@/license';
 import { createN8nPackageMulterOptions } from '@/modules/n8n-packages/utils/import-package-upload';
-import { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
 import { LastActiveAtService } from '@/services/last-active-at.service';
 import { UrlService } from '@/services/url.service';
 
@@ -250,13 +250,13 @@ function createLazyValidatorMiddleware(
 					'express-openapi-validator'
 				);
 
-				const authStrategyRegistry = Container.get(AuthStrategyRegistry);
+				const publicApiAuthenticator = Container.get(PublicApiAuthenticator);
 				const eventService = Container.get(EventService);
 				const lastActiveAtService = Container.get(LastActiveAtService);
 				const logger = Container.get(Logger);
 
 				const authenticate = async (req: AuthenticatedRequest) => {
-					const authenticated = await authStrategyRegistry.authenticate(req);
+					const authenticated = await publicApiAuthenticator.authenticate(req);
 
 					if (authenticated) {
 						lastActiveAtService.updateLastActiveIfStale(req.user.id).catch((error: unknown) => {
@@ -278,11 +278,11 @@ function createLazyValidatorMiddleware(
 				const router = express.Router();
 				// The global cookie-parser middleware (server.ts) is registered after this
 				// router mounts, so req.cookies would otherwise be empty here — needed for
-				// SessionCookieAuthStrategy to authenticate browser sessions.
+				// PublicApiCookieAuthenticator to authenticate browser sessions.
 				router.use(cookieParser());
 				// The global browser-id-extraction middleware (server.ts) is registered after
 				// this router mounts, so req.browserId would otherwise be undefined here —
-				// needed for SessionCookieAuthStrategy's browser-id binding check.
+				// needed for PublicApiCookieAuthenticator's browser-id binding check.
 				router.use((req: AuthenticatedRequest, _res, next) => {
 					req.browserId = req.headers['browser-id'] as string;
 					next();

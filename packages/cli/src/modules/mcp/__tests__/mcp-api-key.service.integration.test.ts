@@ -4,6 +4,7 @@ import { ApiKey, ApiKeyRepository, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { randomString } from 'n8n-workflow';
 
+import { AuthService } from '@/auth/auth.service';
 import { ScopedJwtStrategy } from '@/modules/token-exchange/services/scoped-jwt.strategy';
 import { TOKEN_EXCHANGE_ISSUER } from '@/modules/token-exchange/token-exchange.types';
 import { ApiKeyAuthStrategy } from '@/services/api-key-auth.strategy';
@@ -139,6 +140,13 @@ describe('McpServerApiKeyService.verifyApiKey (integration)', () => {
 			{
 				name: 'scoped JWT whose subject is not in the database',
 				token: () => makeScopedJwt(jwtService, '00000000-0000-0000-0000-000000000000'),
+			},
+			{
+				name: 'a valid browser session cookie (must not satisfy the mcp-server-api audience)',
+				token: async () => {
+					const owner = await createOwner();
+					return Container.get(AuthService).issueJWT(owner, false);
+				},
 			},
 		])('rejects $name', async ({ token }) => {
 			const result = await service.verifyApiKey(await token());

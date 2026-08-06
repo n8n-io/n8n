@@ -19,7 +19,6 @@ import { PostHogClient } from '@/posthog';
 import { Push } from '@/push';
 import { ApiKeyAuthStrategy } from '@/services/api-key-auth.strategy';
 import { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
-import { SessionCookieAuthStrategy } from '@/services/session-cookie-auth.strategy';
 import { Telemetry } from '@/telemetry';
 import { resolveBackendHealthEndpointPath } from '@/utils/health-endpoint.util';
 import { LicenseMocker } from '@test-integration/license';
@@ -175,7 +174,6 @@ export const setupTestServer = ({
 		// can be appended later during their own module initialization.
 		const registry = Container.get(AuthStrategyRegistry);
 		registry.register(Container.get(ApiKeyAuthStrategy));
-		registry.register(Container.get(SessionCookieAuthStrategy));
 
 		const enablePublicAPI = endpointGroups?.includes('publicApi');
 		if (enablePublicAPI) {

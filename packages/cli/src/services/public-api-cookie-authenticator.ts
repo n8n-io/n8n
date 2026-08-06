@@ -7,23 +7,13 @@ import { AuthService } from '@/auth/auth.service';
 import { AUTH_COOKIE_NAME } from '@/constants';
 import { AuthError } from '@/errors/response-errors/auth.error';
 
-import type { AuthStrategy } from './auth-strategy.types';
-
+/**
+ * Lets the public API accept the browser's `n8n-auth` session cookie as an
+ * alternative to an API key.
+ */
 @Service()
-export class SessionCookieAuthStrategy implements AuthStrategy {
+export class PublicApiCookieAuthenticator {
 	constructor(private readonly authService: AuthService) {}
-
-	async buildTokenGrant(token: string): Promise<TokenGrant | false | null> {
-		if (typeof token !== 'string' || !token) return null;
-
-		try {
-			const user = await this.authService.validateCookieToken(token);
-			return this.toGrant(user);
-		} catch (error) {
-			if (this.isAuthFailure(error)) return false;
-			throw error;
-		}
-	}
 
 	async authenticate(req: AuthenticatedRequest): Promise<boolean | null> {
 		const token = req.cookies[AUTH_COOKIE_NAME];
