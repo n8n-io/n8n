@@ -1261,6 +1261,266 @@ EOF
 
 ---
 
+---
+
+## Task 10 (added post-launch): Auto-enable the setting when a user accepts "expose all workflows"
+
+**Context.** `SettingsMCPView.vue`'s `onToggleMCPAccess` offers a modal
+(`ExposeAllWorkflowsToMcpModal.vue`, behind the same
+`EXPOSE_ALL_WORKFLOWS_TO_MCP_EXPERIMENT` flag) when a user turns MCP access on.
+Accepting it calls `mcpStore.toggleWorkflowsMcpAccess({ allWorkflows: true },
+true)` → `PATCH /mcp/workflows/toggle-access` →
+`McpSettingsController.toggleWorkflowsMCPAccess` →
+`McpSettingsService.bulkSetAvailableInMCP`. The product ask: accepting that
+modal should also turn on `mcp.autoExposeNewWorkflows`, so new workflows stay
+exposed going forward instead of reverting to per-workflow opt-in the moment
+the user creates one.
+
+**Where this lives: the backend, inside `bulkSetAvailableInMCP` — not the
+frontend modal.** `{ allWorkflows: true, availableInMCP: true }` is the DTO's
+own unambiguous encoding of "expose every workflow" (`allWorkflows` is
+`z.literal(true)`, and the modal is the *only* caller in the codebase that ever
+sends it — verified by searching every `allWorkflows: true` call site). Keying
+off that combination server-side means any future caller of this same bulk
+endpoint gets the correct behavior automatically, with no frontend-side
+special-casing to keep in sync. This mirrors why creation-seeding itself lives
+in the backend funnel rather than a UI call site.
+
+**Failure semantics.** The bulk-expose is the primary action and must not fail
+because of this side effect. Enabling the setting is fire-and-forget:
+attempted after the bulk update succeeds, its own failure is caught and
+logged, and never rethrown or surfaced to the response. A partial failure here
+means the instance falls back to its old default (per-workflow opt-in) — not a
+broken state, just a missed convenience — matching how
+`offerToExposeAllWorkflows()`'s own eligibility probe already swallows
+failures the same way.
+
+**Telemetry: reuse the existing toggle-changed event**, `enabled: true`, fired
+from the same place a manual toggle fires it would be — except this path has
+no experiment-variant context available in the *backend* service the way the
+frontend toggle handler does. Emit it from the frontend modal's success path
+instead (`ExposeAllWorkflowsToMcpModal.vue`'s `onExposeAll`, after
+`toggleWorkflowsMcpAccess` resolves), reading `mcpStore.autoExposeNewWorkflows`
+to confirm the backend actually turned it on before tracking — if the fetched
+state disagrees (e.g. it was already on, or the backend's fire-and-forget
+write failed), do not fire a stale `enabled: true`.
+
+**Precedence unaffected.** This task only changes *when* the setting turns on;
+Task 4's default-only seeding logic in `createWorkflow()` is untouched, and so
+is every existing per-workflow opt-out.
+
+**Files:**
+- Modify: `packages/cli/src/modules/mcp/mcp.settings.service.ts`
+- Modify: `packages/frontend/editor-ui/src/experiments/exposeAllWorkflowsToMcp/components/ExposeAllWorkflowsToMcpModal.vue`
+- Test: `packages/cli/src/modules/mcp/__tests__/mcp.settings.service.test.ts`
+- Test: `packages/frontend/editor-ui/src/experiments/exposeAllWorkflowsToMcp/components/ExposeAllWorkflowsToMcpModal.test.ts`
+
+**Interfaces:**
+- Consumes: `getAutoExposeNewWorkflows` / `setAutoExposeNewWorkflows` (Task 1, already on the same service); `TELEMETRY_EVENT.MCP.AUTO_EXPOSE_NEW_WORKFLOWS_TOGGLED` (Task 7); `mcpStore.autoExposeNewWorkflows` (Task 6).
+- Produces: no new exports.
+
+- [ ] **Step 1: Write the failing backend test**
+
+Add to `mcp.settings.service.test.ts`, in the `describe('bulkSetAvailableInMCP', ...)` block (or sibling to it — match the file's existing structure):
+
+```typescript
+describe('bulkSetAvailableInMCP auto-expose side effect', () => {
+	test('enables auto-expose when scope is allWorkflows and availableInMCP is true', async () => {
+		findByKey.mockResolvedValue(null); // no prior autoExposeNewWorkflows row
+		workflowFinderService.findAllWorkflowIdsForUser.mockResolvedValue([]);
+
+		await service.bulkSetAvailableInMCP(user, { availableInMCP: true, allWorkflows: true });
+
+		expect(upsert).toHaveBeenCalledWith(
+			{ key: 'mcp.autoExposeNewWorkflows', value: 'true', loadOnStartup: true },
+			['key'],
+		);
+	});
+
+	test('does not touch auto-expose for a scoped (non-allWorkflows) update', async () => {
+		workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(new Set(['wf1']));
+
+		await service.bulkSetAvailableInMCP(user, {
+			availableInMCP: true,
+			workflowIds: ['wf1'],
+		});
+
+		expect(upsert).not.toHaveBeenCalledWith(
+			expect.objectContaining({ key: 'mcp.autoExposeNewWorkflows' }),
+			['key'],
+		);
+	});
+
+	test('does not enable auto-expose when allWorkflows is used to turn access OFF', async () => {
+		workflowFinderService.findAllWorkflowIdsForUser.mockResolvedValue([]);
+
+		await service.bulkSetAvailableInMCP(user, { availableInMCP: false, allWorkflows: true });
+
+		expect(upsert).not.toHaveBeenCalledWith(
+			expect.objectContaining({ key: 'mcp.autoExposeNewWorkflows' }),
+			['key'],
+		);
+	});
+
+	test('does not fail the bulk update if enabling auto-expose throws', async () => {
+		workflowFinderService.findAllWorkflowIdsForUser.mockResolvedValue([]);
+		upsert.mockImplementationOnce(() => {
+			throw new Error('db unavailable');
+		});
+
+		await expect(
+			service.bulkSetAvailableInMCP(user, { availableInMCP: true, allWorkflows: true }),
+		).resolves.toBeDefined();
+	});
+});
+```
+
+Adapt the mock setup to whatever `resolveCandidateIds`/`findAllWorkflowIdsForUser` shape the file already establishes for its existing `allWorkflows` tests — read those first rather than guessing the fixture.
+
+- [ ] **Step 2: Run test to verify it fails**
+
+```bash
+cd packages/cli && pnpm test src/modules/mcp/__tests__/mcp.settings.service.test.ts
+```
+
+Expected: FAIL — `upsert` is never called with the auto-expose key.
+
+- [ ] **Step 3: Write minimal implementation**
+
+In `bulkSetAvailableInMCP`, immediately after the existing scope-count validation (`if (scopeCount !== 1) { throw ... }`) and before `resolveCandidateIds`, add:
+
+```typescript
+		if (allWorkflows && availableInMCP) {
+			try {
+				await this.setAutoExposeNewWorkflows(true);
+			} catch (error) {
+				this.logger.warn('Failed to enable auto-expose after bulk-exposing all workflows', {
+					cause: error instanceof Error ? error.message : String(error),
+				});
+			}
+		}
+```
+
+Placed before candidate resolution so it doesn't wait on (or get skipped by) the
+bulk write's own chunking loop, and so a candidate-resolution failure later in
+the method can't prevent it from having already fired. `this.logger` is
+already injected in this service (used elsewhere in the same file) — reuse it,
+don't add a new dependency.
+
+- [ ] **Step 4: Run test to verify it passes**
+
+```bash
+cd packages/cli && pnpm test src/modules/mcp/__tests__/mcp.settings.service.test.ts
+```
+
+Expected: PASS, including every pre-existing `bulkSetAvailableInMCP` test in
+the file (this method has substantial existing coverage — chunking, checksums,
+scope resolution — none of which this change should touch).
+
+- [ ] **Step 5: Write the failing frontend test**
+
+In `ExposeAllWorkflowsToMcpModal.test.ts`, add a case asserting the telemetry
+call — read the file's existing render/store-mock setup first and reuse it:
+
+```typescript
+it('tracks auto-expose enabled after a successful expose-all', async () => {
+	mcpStore.toggleWorkflowsMcpAccess.mockResolvedValue({ updatedCount: 3, unchangedCount: 0 });
+	mcpStore.autoExposeNewWorkflows = true;
+
+	const { getByTestId } = renderComponent();
+	await userEvent.click(getByTestId('expose-all-workflows-mcp-confirm-button'));
+
+	expect(telemetry.track).toHaveBeenCalledWith(
+		TELEMETRY_EVENT.MCP.AUTO_EXPOSE_NEW_WORKFLOWS_TOGGLED,
+		expect.objectContaining({ enabled: true }),
+	);
+});
+
+it('does not track auto-expose when the backend never turned it on', async () => {
+	mcpStore.toggleWorkflowsMcpAccess.mockResolvedValue({ updatedCount: 3, unchangedCount: 0 });
+	mcpStore.autoExposeNewWorkflows = false;
+
+	const { getByTestId } = renderComponent();
+	await userEvent.click(getByTestId('expose-all-workflows-mcp-confirm-button'));
+
+	expect(telemetry.track).not.toHaveBeenCalledWith(
+		TELEMETRY_EVENT.MCP.AUTO_EXPOSE_NEW_WORKFLOWS_TOGGLED,
+		expect.anything(),
+	);
+});
+```
+
+`mcpStore.autoExposeNewWorkflows` is a computed backed by
+`settingsStore.moduleSettings.mcp` — the test needs to drive it through
+whatever the store mock's existing convention is (a mocked computed, or the
+underlying `moduleSettings.mcp` object), matching how Task 8's tests already
+do this for the same store.
+
+- [ ] **Step 6: Run test to verify it fails**
+
+```bash
+cd packages/frontend/editor-ui && pnpm test src/experiments/exposeAllWorkflowsToMcp/components/ExposeAllWorkflowsToMcpModal.test.ts
+```
+
+Expected: FAIL — `telemetry` is not imported/called yet.
+
+- [ ] **Step 7: Write minimal implementation**
+
+In `ExposeAllWorkflowsToMcpModal.vue`, add to the script setup:
+
+```typescript
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
+
+const telemetry = useTelemetry();
+```
+
+In `onExposeAll`, after the `Promise.all([...])` call succeeds and before
+`closedByAction.value = true;`, add:
+
+```typescript
+		if (mcpStore.autoExposeNewWorkflows) {
+			telemetry.track(TELEMETRY_EVENT.MCP.AUTO_EXPOSE_NEW_WORKFLOWS_TOGGLED, {
+				enabled: true,
+			});
+		}
+```
+
+Reading the store's own computed (rather than assuming the backend call
+succeeded) is deliberate: it reports what is actually true of instance state,
+not what this request attempted, so a fire-and-forget backend failure doesn't
+produce a telemetry event that doesn't match reality. No experiment-payload
+spread here — unlike Task 8's manual toggle, this path already carries
+`experimentStore.trackConfirmed()` a few lines below for the "did the modal
+convert" question; duplicating the variant payload on the settings event isn't
+required by the spec and would need `currentVariant`, which this component
+doesn't otherwise use.
+
+- [ ] **Step 8: Run tests to verify they pass**
+
+```bash
+cd packages/frontend/editor-ui && pnpm test src/experiments/exposeAllWorkflowsToMcp
+```
+
+Expected: PASS, including every pre-existing test in the modal's suite
+(confirm, decline, dismiss, agents-included copy, error toast).
+
+- [ ] **Step 9: Full verification**
+
+```bash
+cd packages/cli && pnpm test src/modules/mcp && pnpm typecheck
+cd packages/frontend/editor-ui && pnpm test src/experiments/exposeAllWorkflowsToMcp src/features/ai/mcpAccess && pnpm typecheck
+```
+
+- [ ] **Step 10: Commit**
+
+```bash
+git add packages/cli/src/modules/mcp/mcp.settings.service.ts packages/cli/src/modules/mcp/__tests__/mcp.settings.service.test.ts packages/frontend/editor-ui/src/experiments/exposeAllWorkflowsToMcp/components/ExposeAllWorkflowsToMcpModal.vue packages/frontend/editor-ui/src/experiments/exposeAllWorkflowsToMcp/components/ExposeAllWorkflowsToMcpModal.test.ts
+git commit -m "feat(core): Auto-enable new-workflow exposure when a user exposes all workflows"
+```
+
+---
+
 ## Self-Review
 
 **Spec coverage**
