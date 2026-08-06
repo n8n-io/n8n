@@ -155,7 +155,11 @@ export class DurableJobProvisioner {
 		misfirePolicy,
 		misfireGraceSeconds: requestedMisfireGraceSeconds,
 	}: ProvisionScope): RunInProvisionTransaction {
-		const misfireGraceSeconds = this.resolveMisfireGraceSeconds(requestedMisfireGraceSeconds);
+		const misfireGraceSeconds = this.resolveMisfireGraceSeconds(
+			requestedMisfireGraceSeconds,
+			workflowId,
+			nodeId,
+		);
 		return async (work) =>
 			await this.dataSource.transaction(async (manager) => {
 				// Jobs freshly inserted or redefined this pass; their first window is
@@ -236,7 +240,11 @@ export class DurableJobProvisioner {
 			});
 	}
 
-	private resolveMisfireGraceSeconds(requested: number | undefined): number {
+	private resolveMisfireGraceSeconds(
+		requested: unknown,
+		workflowId: string,
+		nodeId: string,
+	): number {
 		const { misfireGraceSeconds, executorIntervalSeconds, materializationWindowSeconds } =
 			this.globalConfig.scheduler;
 
@@ -246,22 +254,34 @@ export class DurableJobProvisioner {
 		const truncated = Math.trunc(numeric);
 		if (truncated < 1) return misfireGraceSeconds;
 
-		const floor = Math.max(executorIntervalSeconds + 1, materializationWindowSeconds);
-		const effective = Math.min(Math.max(truncated, floor), MAX_MISFIRE_GRACE_SECONDS);
+		const floor = Math.min(
+			Math.max(executorIntervalSeconds + 1, materializationWindowSeconds),
+			MAX_MISFIRE_GRACE_SECONDS,
+		);
+		if (!Number.isFinite(floor)) return misfireGraceSeconds;
 
-		if (effective > truncated) {
-			this.logger.warn("Raised a node's misfire grace to the scheduler's minimum", {
-				requestedMisfireGraceSeconds: truncated,
-				misfireGraceSeconds: effective,
-			});
-		} else if (effective < truncated) {
+		if (truncated > MAX_MISFIRE_GRACE_SECONDS) {
 			this.logger.warn("Lowered a node's misfire grace to the scheduler's maximum", {
+				workflowId,
+				nodeId,
 				requestedMisfireGraceSeconds: truncated,
-				misfireGraceSeconds: effective,
+				misfireGraceSeconds: MAX_MISFIRE_GRACE_SECONDS,
+			});
+			return MAX_MISFIRE_GRACE_SECONDS;
+		}
+
+		if (truncated >= floor) return truncated;
+
+		if (floor < MAX_MISFIRE_GRACE_SECONDS) {
+			this.logger.warn("Raised a node's misfire grace to the scheduler's minimum", {
+				workflowId,
+				nodeId,
+				requestedMisfireGraceSeconds: truncated,
+				misfireGraceSeconds: floor,
 			});
 		}
 
-		return effective;
+		return floor;
 	}
 
 	/**

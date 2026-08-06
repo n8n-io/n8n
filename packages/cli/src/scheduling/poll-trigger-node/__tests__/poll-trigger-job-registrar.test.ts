@@ -85,7 +85,6 @@ describe('PollTriggerJobRegistrar', () => {
 				ScheduledJobMisfirePolicy.Skip,
 			);
 			expect(jobProvisioner.provision.mock.calls.at(-1)).toHaveLength(6);
-			expect(jobProvisioner.provision.mock.calls.at(-1)![6]).toBeUndefined();
 		});
 
 		it('seeds a generated cadence deterministically, so re-activation keeps the same job identity', async () => {
@@ -212,7 +211,6 @@ describe('PollTriggerJobRegistrar', () => {
 				ScheduledJobMisfirePolicy.Skip,
 			);
 			expect(jobProvisioner.provision.mock.calls.at(-1)).toHaveLength(6);
-			expect(jobProvisioner.provision.mock.calls.at(-1)![6]).toBeUndefined();
 		});
 
 		it('throws on an invalid cron expression', async () => {
