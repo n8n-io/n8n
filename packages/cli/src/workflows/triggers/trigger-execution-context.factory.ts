@@ -381,8 +381,8 @@ export class TriggerExecutionContextFactory {
 				const staged = stagedCursorStore.getStore();
 				if (staged === undefined) {
 					throw new UnexpectedError(
-						`Poll node "${node.name}" read its static data outside of a poll; __runPoll was not entered`,
-						{ extra: { workflowId: workflowData.id, nodeId: node.id } },
+						'Poll node read its static data outside of a poll; __runPoll was not entered',
+						{ extra: { workflowId: workflowData.id, nodeId: node.id, nodeName: node.name } },
 					);
 				}
 				return staged.migrated ? staged.snapshot : workflow.getStaticData('node', node);

@@ -83,8 +83,6 @@ export class PollerStateRepository extends BaseRepository<PollerState> {
 			updatedAt: new Date(),
 		} as QueryDeepPartialEntity<PollerState>);
 
-		// `affected` is optional and not reported by every driver, so only an exact
-		// single-row match counts as success.
 		if (result.affected !== 1) {
 			throw new UnexpectedError('Poller cursor row disappeared while its poll was running', {
 				extra: { workflowId, nodeId },
