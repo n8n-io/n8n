@@ -117,6 +117,107 @@ describe('buildSetupRequests', () => {
 		(context.credentialService.test as Mock).mockResolvedValue({ success: true });
 	});
 
+	describe('credential-scoped parameter availability', () => {
+		function mockOpenAiNode() {
+			(context.nodeService.getDescription as Mock).mockResolvedValue({
+				group: [],
+				credentials: [{ name: 'openAiApi' }],
+				properties: [{ displayName: 'Model', name: 'model', type: 'resourceLocator' }],
+			});
+			(context.credentialService.list as Mock).mockResolvedValue([
+				{ id: 'cred-free', name: 'n8n free OpenAI API credits' },
+			]);
+		}
+
+		function mockUnavailable() {
+			const findUnavailableLocatorValues = vi
+				.fn()
+				.mockResolvedValue([{ name: 'model', displayName: 'Model', currentValue: 'gpt-6-mini' }]);
+			(context.nodeService as unknown as Record<string, unknown>).findUnavailableLocatorValues =
+				findUnavailableLocatorValues;
+			return findUnavailableLocatorValues;
+		}
+
+		function makeOpenAiNode(modelValue: unknown) {
+			return makeNode({
+				name: 'OpenAI Chat Model',
+				type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+				typeVersion: 1.3,
+				parameters: { model: modelValue },
+				credentials: { openAiApi: { id: 'cred-free', name: 'n8n free OpenAI API credits' } },
+			} as Partial<NodeJSON>);
+		}
+
+		it('raises an issue naming the unusable value and the credential', async () => {
+			mockOpenAiNode();
+			mockUnavailable();
+
+			const node = makeOpenAiNode({ __rl: true, mode: 'id', value: 'gpt-6-mini' });
+			const result = await buildSetupRequests(context, node);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].parameterIssues?.model).toEqual([
+				'"gpt-6-mini" isn\'t available with the connected credential "n8n free OpenAI API credits". ' +
+					'Pick a value the credential offers instead.',
+			]);
+			expect(result[0].needsAction).toBe(true);
+		});
+
+		it("leaves the configured value untouched — repair is the caller's job", async () => {
+			mockOpenAiNode();
+			mockUnavailable();
+
+			const node = makeOpenAiNode({ __rl: true, mode: 'id', value: 'gpt-6-mini' });
+			const result = await buildSetupRequests(context, node);
+
+			expect(result[0].node.parameters.model).toEqual({
+				__rl: true,
+				mode: 'id',
+				value: 'gpt-6-mini',
+			});
+		});
+
+		it('raises nothing when the host reports nothing unavailable', async () => {
+			mockOpenAiNode();
+			(context.nodeService as unknown as Record<string, unknown>).findUnavailableLocatorValues = vi
+				.fn()
+				.mockResolvedValue([]);
+
+			const node = makeOpenAiNode({ __rl: true, mode: 'id', value: 'gpt-5-mini' });
+			const result = await buildSetupRequests(context, node);
+
+			expect(result[0].parameterIssues).toBeUndefined();
+		});
+
+		it('degrades quietly when the availability lookup throws', async () => {
+			mockOpenAiNode();
+			(context.nodeService as unknown as Record<string, unknown>).findUnavailableLocatorValues = vi
+				.fn()
+				.mockRejectedValue(new Error('provider unreachable'));
+
+			const node = makeOpenAiNode({ __rl: true, mode: 'id', value: 'gpt-6-mini' });
+			const result = await buildSetupRequests(context, node);
+
+			expect(result[0].parameterIssues).toBeUndefined();
+		});
+
+		it('does not probe when no credential is resolved for the slot', async () => {
+			mockOpenAiNode();
+			(context.credentialService.list as Mock).mockResolvedValue([]);
+			const probe = mockUnavailable();
+
+			const node = makeNode({
+				name: 'OpenAI Chat Model',
+				type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+				typeVersion: 1.3,
+				parameters: { model: { __rl: true, mode: 'id', value: 'gpt-6-mini' } },
+			} as Partial<NodeJSON>);
+			await buildSetupRequests(context, node);
+
+			expect(probe).not.toHaveBeenCalled();
+		});
+	});
+
 	it('skips disabled nodes', async () => {
 		const node = makeNode({ disabled: true });
 		const result = await buildSetupRequests(context, node);
