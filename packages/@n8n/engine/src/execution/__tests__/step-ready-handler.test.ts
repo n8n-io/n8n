@@ -141,6 +141,28 @@ describe('StepReadyHandler', () => {
 		expect(queue.publish).not.toHaveBeenCalled();
 	});
 
+	it('claims the step but runs nothing when the execution is no longer running', async () => {
+		// the claim already happened, so the step stays `running` for
+		// reconciliation (CAT-2938) to resolve — nothing is recorded or announced
+		const stepStore = makeStepStore();
+		const queue = makeQueue();
+		const executor = makeExecutor();
+		const handler = new StepReadyHandler(
+			makeExecutionStore({ status: 'cancelled' }),
+			stepStore,
+			queue,
+			{ v1StepExecutor: executor },
+		);
+
+		await handler.handle(event);
+
+		expect(stepStore.claimStep).toHaveBeenCalledWith('step-a');
+		expect(executor.execute).not.toHaveBeenCalled();
+		expect(stepStore.completeStep).not.toHaveBeenCalled();
+		expect(stepStore.failStep).not.toHaveBeenCalled();
+		expect(queue.publish).not.toHaveBeenCalled();
+	});
+
 	it('does not report completion when the status update is not recorded', async () => {
 		const stepStore = makeStepStore({}, { completeStep: vi.fn().mockResolvedValue(false) });
 		const queue = makeQueue();

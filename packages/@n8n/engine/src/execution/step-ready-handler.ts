@@ -36,6 +36,13 @@ export class StepReadyHandler {
 		const claimed = await this.stepStore.claimStep(event.stepId);
 		if (!claimed) return;
 
+		if (execution.status !== 'running') {
+			// The execution is no longer running, so we don't run the step.
+			// The step is left `running` for reconciliation (CAT-2938) or
+			// internal consistency checks (CAT-3930) to resolve.
+			return;
+		}
+
 		// NOTE: an unexpected error in gathering inputs will leave the step
 		// running. In the future, this will be handled by either:
 		// - Reconciliation (CAT-2938) taking over the step and retrying it for transient errors
