@@ -2,6 +2,7 @@ import { Container } from '@n8n/di';
 
 import { ControllerRegistryMetadata } from '../controller-registry-metadata';
 import { Deprecated } from '../deprecated';
+import { Get } from '../route';
 import type { Controller } from '../types';
 
 describe('@Deprecated Decorator', () => {
@@ -57,18 +58,6 @@ describe('@Deprecated Decorator', () => {
 
 	it('should work alongside other decorators regardless of order', () => {
 		const since = new Date('2026-07-23T00:00:00Z');
-
-		const Get = (path: string) => {
-			return (target: object, handlerName: string | symbol) => {
-				const routeMetadata = controllerRegistryMetadata.getRouteMetadata(
-					target.constructor as Controller,
-					String(handlerName),
-				);
-				routeMetadata.method = 'get';
-				routeMetadata.path = path;
-				routeMetadata.middlewares = [];
-			};
-		};
 
 		class TestController {
 			@Get('/test')
