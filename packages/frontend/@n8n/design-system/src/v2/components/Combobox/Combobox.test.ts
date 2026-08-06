@@ -2,8 +2,17 @@ import userEvent from '@testing-library/user-event';
 import { render, waitFor, within } from '@testing-library/vue';
 import { ref } from 'vue';
 
-import type { ComboboxItem } from './Combobox.types';
+import type { ComboboxItem, ComboboxSizes } from './Combobox.types';
 import Combobox from './Combobox.vue';
+
+const sizeCases: Array<[ComboboxSizes | undefined, string]> = [
+	[undefined, 'large'],
+	['mini', 'mini'],
+	['small', 'small'],
+	['medium', 'medium'],
+	['large', 'large'],
+	['xlarge', 'xlarge'],
+];
 
 vi.mock('@n8n/design-system/composables/useI18n', () => ({
 	useI18n: () => ({
@@ -82,6 +91,18 @@ describe('v2/components/Combobox', () => {
 				},
 			});
 			expect(wrapper.getByTestId('combobox')).toBeInTheDocument();
+		});
+	});
+
+	describe('sizes', () => {
+		test.each(sizeCases)('size %s should apply %s class', (size, expected) => {
+			const wrapper = render(Combobox, {
+				props: {
+					items: ['Option 1'],
+					size,
+				},
+			});
+			expect(wrapper.getByTestId('combobox').className).toContain(expected);
 		});
 	});
 
@@ -253,6 +274,62 @@ describe('v2/components/Combobox', () => {
 			await waitFor(() => {
 				expect(wrapper.getByRole('status')).toHaveTextContent('No results found.');
 			});
+		});
+
+		it('should render empty state when items is an empty array', async () => {
+			render(Combobox, {
+				props: {
+					items: [],
+					defaultOpen: true,
+					emptyText: 'No options',
+				},
+			});
+
+			const { popover } = await getPopoverContainer();
+			expect(within(popover).getByRole('status')).toHaveTextContent('No options');
+			expect(within(popover).queryAllByRole('option')).toHaveLength(0);
+		});
+	});
+
+	describe('portal', () => {
+		it('should keep the popover in-place when teleported is false', async () => {
+			const wrapper = render(Combobox, {
+				props: {
+					items: ['Option 1', 'Option 2'],
+					defaultOpen: true,
+					teleported: false,
+				},
+			});
+
+			const { popover } = await getPopoverContainer();
+			expect(wrapper.getByTestId('combobox').contains(popover)).toBe(false);
+			expect(wrapper.container.contains(popover)).toBe(true);
+			expect(document.body.contains(popover)).toBe(true);
+			// Not teleported to body as a direct child of body (still under the mount root).
+			expect(popover.parentElement).not.toBe(document.body);
+		});
+
+		it('should teleport the popover to portalTarget when set', async () => {
+			const portalTarget = document.createElement('div');
+			portalTarget.id = 'combobox-portal-target';
+			document.body.appendChild(portalTarget);
+
+			const wrapper = render(Combobox, {
+				props: {
+					items: ['Option 1', 'Option 2'],
+					defaultOpen: true,
+					teleported: false,
+					portalTarget,
+				},
+			});
+
+			try {
+				const { popover } = await getPopoverContainer();
+				expect(portalTarget.contains(popover)).toBe(true);
+			} finally {
+				wrapper.unmount();
+				portalTarget.remove();
+			}
 		});
 	});
 
@@ -500,6 +577,26 @@ describe('v2/components/Combobox', () => {
 			await waitFor(() => {
 				expect(getComboboxInput(wrapper)).toHaveValue('Option 2');
 			});
+		});
+
+		it('should resolve object-valued modelValue by reference', async () => {
+			const betaValue = { id: 2 };
+			const items: ComboboxItem[] = [
+				{ value: { id: 1 }, label: 'Alpha', icon: 'check' },
+				{ value: betaValue, label: 'Beta', icon: 'users' },
+			];
+
+			const wrapper = render(Combobox, {
+				props: {
+					items,
+					modelValue: betaValue,
+				},
+			});
+
+			await waitFor(() => {
+				expect(getComboboxInput(wrapper)).toHaveValue('Beta');
+			});
+			expect(wrapper.getByTestId('combobox').querySelector('[data-icon="users"]')).toBeVisible();
 		});
 
 		describe('multiple', () => {

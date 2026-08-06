@@ -194,13 +194,15 @@ function getDisplayValue(value: unknown): string {
 		return '';
 	}
 
-	if (isRecord(value)) {
-		return String(get(value, props.labelKey) ?? '');
-	}
-
-	const matchedItem = groups.value.find((item) => item.value === value);
+	const matchedItem = groups.value.find(
+		(item) => item.type !== 'label' && item.type !== 'separator' && item.value === value,
+	);
 	if (matchedItem?.label !== undefined) {
 		return matchedItem.label;
+	}
+
+	if (isRecord(value)) {
+		return String(get(value, props.labelKey) ?? '');
 	}
 
 	if (typeof value === 'string') {
