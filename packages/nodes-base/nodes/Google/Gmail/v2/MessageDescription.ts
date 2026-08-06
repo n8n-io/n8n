@@ -67,6 +67,10 @@ export const messageOperations: INodeProperties[] = [
 			},
 		],
 		default: 'send',
+		builderHint: {
+			propertyHint:
+				"There is no archive operation. To archive a message, remove the INBOX label: operation 'removeLabels' with labelIds: ['INBOX']. Do not invent an ARCHIVE label.",
+		},
 	},
 ];
 
