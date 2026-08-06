@@ -19,7 +19,6 @@ import type {
 	Transaction,
 	OperationContext,
 } from '@n8n/db';
-import type { EntityManager } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 
 import type { CollaborationService } from '@/collaboration/collaboration.service';
@@ -65,7 +64,6 @@ describe('WorkflowReviewRequestService.updateVersion', () => {
 	const collaborationService = mock<CollaborationService>();
 	const workflowService = mock<WorkflowService>();
 	const logger = mock<Logger>();
-	const tx = mock<EntityManager>();
 	/** The lock's context. Distinct from the root `{}` so tests can tell the two apart. */
 	const ctx: OperationContext = { trx: mock<Transaction>() };
 
@@ -113,7 +111,7 @@ describe('WorkflowReviewRequestService.updateVersion', () => {
 		);
 		workflowHistoryService.findVersion.mockResolvedValue(mock());
 		workflowHistoryRepository.updateVersionName.mockResolvedValue(1);
-		tx.save.mockImplementation(async (entity) => entity);
+		requestRepository.saveRequest.mockImplementation(async (request) => request);
 	};
 
 	beforeEach(() => {
@@ -122,7 +120,7 @@ describe('WorkflowReviewRequestService.updateVersion', () => {
 		licenseState.isWorkflowReviewsLicensed.mockReturnValue(true);
 		workflowReviewPolicyService.get.mockResolvedValue({ enabled: true });
 		// By default, run the critical section against the mocked transaction.
-		dbLockService.withLock.mockImplementation(async (_id, fn) => await fn(tx, ctx));
+		dbLockService.withLockContext.mockImplementation(async (_id, fn) => await fn(ctx));
 		collaborationService.broadcastWorkflowReviewStateChanged.mockResolvedValue(undefined);
 	});
 
@@ -133,7 +131,7 @@ describe('WorkflowReviewRequestService.updateVersion', () => {
 
 		expect(requestRepository.findById).not.toHaveBeenCalled();
 		expect(workflowFinderService.findWorkflowForUser).not.toHaveBeenCalled();
-		expect(dbLockService.withLock).not.toHaveBeenCalled();
+		expect(dbLockService.withLockContext).not.toHaveBeenCalled();
 	});
 
 	it('throws NotFoundError when the review request does not exist', async () => {
@@ -141,7 +139,7 @@ describe('WorkflowReviewRequestService.updateVersion', () => {
 
 		await expect(service.updateVersion(user, requestId, dto)).rejects.toThrow(NotFoundError);
 
-		expect(dbLockService.withLock).not.toHaveBeenCalled();
+		expect(dbLockService.withLockContext).not.toHaveBeenCalled();
 	});
 
 	it('throws NotFoundError when the request does not cover the given workflow', async () => {
@@ -153,7 +151,7 @@ describe('WorkflowReviewRequestService.updateVersion', () => {
 		await expect(service.updateVersion(user, requestId, dto)).rejects.toThrow(NotFoundError);
 
 		expect(workflowFinderService.findWorkflowForUser).not.toHaveBeenCalled();
-		expect(dbLockService.withLock).not.toHaveBeenCalled();
+		expect(dbLockService.withLockContext).not.toHaveBeenCalled();
 	});
 
 	it('throws NotFoundError when the user lacks publish access to the workflow', async () => {
@@ -165,7 +163,7 @@ describe('WorkflowReviewRequestService.updateVersion', () => {
 		expect(workflowFinderService.findWorkflowForUser).toHaveBeenCalledWith('wf-1', user, [
 			'workflow:publish',
 		]);
-		expect(dbLockService.withLock).not.toHaveBeenCalled();
+		expect(dbLockService.withLockContext).not.toHaveBeenCalled();
 	});
 
 	it('throws BadRequestError and never takes the lock for an archived workflow', async () => {
@@ -176,7 +174,7 @@ describe('WorkflowReviewRequestService.updateVersion', () => {
 
 		await expect(service.updateVersion(user, requestId, dto)).rejects.toThrow(BadRequestError);
 
-		expect(dbLockService.withLock).not.toHaveBeenCalled();
+		expect(dbLockService.withLockContext).not.toHaveBeenCalled();
 	});
 
 	it.each([
@@ -188,7 +186,7 @@ describe('WorkflowReviewRequestService.updateVersion', () => {
 
 		await expect(service.updateVersion(user, requestId, dto)).rejects.toThrow(ConflictError);
 
-		expect(dbLockService.withLock).not.toHaveBeenCalled();
+		expect(dbLockService.withLockContext).not.toHaveBeenCalled();
 	});
 
 	it('throws BadRequestError and never takes the lock when the version does not exist', async () => {
@@ -198,7 +196,7 @@ describe('WorkflowReviewRequestService.updateVersion', () => {
 		await expect(service.updateVersion(user, requestId, dto)).rejects.toThrow(BadRequestError);
 
 		expect(workflowHistoryService.findVersion).toHaveBeenCalledWith('wf-1', 'ver-2');
-		expect(dbLockService.withLock).not.toHaveBeenCalled();
+		expect(dbLockService.withLockContext).not.toHaveBeenCalled();
 	});
 
 	it('returns the current summary without lock, writes, or broadcast when the version is unchanged', async () => {
@@ -221,7 +219,7 @@ describe('WorkflowReviewRequestService.updateVersion', () => {
 			createdAt: '2026-07-20T10:00:00.000Z',
 			updatedAt: '2026-07-20T11:00:00.000Z',
 		});
-		expect(dbLockService.withLock).not.toHaveBeenCalled();
+		expect(dbLockService.withLockContext).not.toHaveBeenCalled();
 		expect(workflowRepository.updateWorkflowVersion).not.toHaveBeenCalled();
 		expect(authorRepository.addAuthorIfMissing).not.toHaveBeenCalled();
 		expect(collaborationService.broadcastWorkflowReviewStateChanged).not.toHaveBeenCalled();
@@ -232,21 +230,23 @@ describe('WorkflowReviewRequestService.updateVersion', () => {
 
 		const result = await service.updateVersion(user, requestId, dto);
 
-		expect(dbLockService.withLock).toHaveBeenCalledWith(
+		expect(dbLockService.withLockContext).toHaveBeenCalledWith(
 			DbLock.WORKFLOW_REVIEW_REQUEST_CREATE,
 			expect.any(Function),
 		);
 		// Re-checked under the lock through the transaction manager.
-		expect(requestRepository.findById).toHaveBeenCalledWith(requestId, tx);
+		expect(requestRepository.findById).toHaveBeenCalledWith(requestId, ctx);
 		expect(workflowRepository.updateWorkflowVersion).toHaveBeenCalledWith(
 			{ workflowReviewRequestId: requestId, workflowId: 'wf-1', workflowVersionId: 'ver-2' },
-			tx,
+			ctx,
 		);
-		const savedEntity = tx.save.mock.calls[0]?.[0] as unknown as WorkflowReviewRequest;
-		expect(savedEntity).toMatchObject({ decision: 'pending', updatedById: 'user-1' });
+		expect(requestRepository.saveRequest).toHaveBeenCalledWith(
+			expect.objectContaining({ decision: 'pending', updatedById: 'user-1' }),
+			ctx,
+		);
 		expect(authorRepository.addAuthorIfMissing).toHaveBeenCalledWith(
 			{ workflowReviewRequestId: requestId, userId: 'user-1' },
-			tx,
+			ctx,
 		);
 		expect(result).toEqual({
 			id: requestId,
@@ -267,7 +267,7 @@ describe('WorkflowReviewRequestService.updateVersion', () => {
 		await expect(service.updateVersion(user, requestId, dto)).rejects.toThrow(ConflictError);
 
 		expect(workflowRepository.updateWorkflowVersion).not.toHaveBeenCalled();
-		expect(tx.save).not.toHaveBeenCalled();
+		expect(requestRepository.saveRequest).not.toHaveBeenCalled();
 		expect(authorRepository.addAuthorIfMissing).not.toHaveBeenCalled();
 	});
 
@@ -292,10 +292,10 @@ describe('WorkflowReviewRequestService.updateVersion', () => {
 
 		const result = await service.updateVersion(user, requestId, dto);
 
-		expect(workflowRepository.findByRequestId).toHaveBeenLastCalledWith(requestId, tx);
+		expect(workflowRepository.findByRequestId).toHaveBeenLastCalledWith(requestId, ctx);
 		expect(result.workflowVersionId).toBe('ver-2');
 		expect(workflowRepository.updateWorkflowVersion).not.toHaveBeenCalled();
-		expect(tx.save).not.toHaveBeenCalled();
+		expect(requestRepository.saveRequest).not.toHaveBeenCalled();
 		expect(authorRepository.addAuthorIfMissing).not.toHaveBeenCalled();
 		expect(collaborationService.broadcastWorkflowReviewStateChanged).not.toHaveBeenCalled();
 	});
@@ -361,7 +361,7 @@ describe('WorkflowReviewRequestService.updateVersion', () => {
 				// Root context, not the lock's — this path deliberately runs untransacted.
 				{},
 			);
-			expect(dbLockService.withLock).not.toHaveBeenCalled();
+			expect(dbLockService.withLockContext).not.toHaveBeenCalled();
 			expect(collaborationService.broadcastWorkflowReviewStateChanged).not.toHaveBeenCalled();
 		});
 
@@ -371,7 +371,7 @@ describe('WorkflowReviewRequestService.updateVersion', () => {
 			await service.updateVersion(user, requestId, { ...dto, workflowVersionName: 'Same name' });
 
 			expect(workflowHistoryRepository.updateVersionName).not.toHaveBeenCalled();
-			expect(dbLockService.withLock).not.toHaveBeenCalled();
+			expect(dbLockService.withLockContext).not.toHaveBeenCalled();
 		});
 
 		it('still names the version when a concurrent sync re-pinned it first', async () => {
@@ -405,7 +405,7 @@ describe('WorkflowReviewRequestService.updateVersion', () => {
 			);
 			// The re-pin itself stays skipped — only the name was outstanding.
 			expect(workflowRepository.updateWorkflowVersion).not.toHaveBeenCalled();
-			expect(tx.save).not.toHaveBeenCalled();
+			expect(requestRepository.saveRequest).not.toHaveBeenCalled();
 		});
 	});
 
@@ -413,8 +413,8 @@ describe('WorkflowReviewRequestService.updateVersion', () => {
 		it('broadcasts exactly once after the lock resolves', async () => {
 			mockSuccessfulUpdatePath();
 			let lockResolved = false;
-			dbLockService.withLock.mockImplementation(async (_id, fn) => {
-				const result = await fn(tx, {});
+			dbLockService.withLockContext.mockImplementation(async (_id, fn) => {
+				const result = await fn(ctx);
 				lockResolved = true;
 				return result;
 			});

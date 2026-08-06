@@ -648,6 +648,7 @@ export type {
 	AiGatewayNodeMeta,
 	ExploreResourcesParams,
 	ExploreResourcesResult,
+	UnavailableLocatorValue,
 	FetchedPage,
 	WebSearchResult,
 	WebSearchResponse,
