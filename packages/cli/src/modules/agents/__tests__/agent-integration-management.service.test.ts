@@ -96,7 +96,11 @@ describe('AgentIntegrationManagementService', () => {
 			integration,
 			{ user, modifiedBy: 'user', broadcast: false },
 		);
-		expect(chatService.validateBeforeConnect).not.toHaveBeenCalled();
+		expect(chatService.validateBeforeConnect).toHaveBeenCalledWith(
+			draftAgent.id,
+			integration,
+			draftAgent.projectId,
+		);
 		expect(chatService.connect).not.toHaveBeenCalled();
 		expect(chatService.broadcastIntegrationChange).not.toHaveBeenCalled();
 	});

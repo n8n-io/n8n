@@ -1,6 +1,7 @@
 import { In, type Repository } from '@n8n/typeorm';
 
 import type { WorkflowStepExecution } from './entities';
+import { generateId } from './generate-id';
 import type { JsonValue } from '../common';
 import type { StepStatus } from '../execution/execution.types';
 import {
@@ -15,11 +16,27 @@ import {
 export class TypeOrmStepStore implements StepStore {
 	constructor(private readonly repo: Repository<WorkflowStepExecution>) {}
 
-	async createSteps(records: NewStepRecord[]): Promise<Array<{ id: string }>> {
-		const steps = records.map((record) => this.repo.create(record));
-		// NOTE: prefer insert to save for performance reasons.
-		await this.repo.insert(steps);
-		return steps.map(({ id }) => ({ id }));
+	async createSteps(records: NewStepRecord[]): Promise<Array<{ id: string; nodeId: string }>> {
+		if (records.length === 0) return [];
+
+		// Ids are assigned here because the entity's insert hook only runs on class
+		// instances, and these are plain values.
+		const rows = records.map((record) => ({ ...record, id: generateId() }));
+
+		// `orIgnore` is the unique key doing its job: a node another planner already
+		// queued is skipped, leaving the rest of the batch to land. RETURNING emits
+		// exactly the rows that were inserted, keyed by database column name.
+		const result = await this.repo
+			.createQueryBuilder()
+			.insert()
+			.values(rows)
+			.orIgnore()
+			.returning(['id', 'nodeId'])
+			.execute();
+
+		return (result.raw as Array<{ id: string; node_id: string }>).map(
+			({ id, node_id: nodeId }) => ({ id, nodeId }),
+		);
 	}
 
 	async loadStep(id: string): Promise<StepRecord> {
@@ -73,5 +90,27 @@ export class TypeOrmStepStore implements StepStore {
 		for (const row of rows) outputsByNodeId[row.nodeId] = row.outputs;
 
 		return outputsByNodeId;
+	}
+
+	async loadCompletedNodeIds(executionId: string, nodeIds: string[]): Promise<Set<string>> {
+		if (nodeIds.length === 0) return new Set();
+
+		const rows = await this.repo.find({
+			where: { executionId, nodeId: In(nodeIds), status: 'completed' },
+			select: ['nodeId'],
+		});
+
+		return new Set(rows.map((row) => row.nodeId));
+	}
+
+	async hasActiveSteps(executionId: string): Promise<boolean> {
+		// `exists({ where })`, not `existsBy`, for the reason given in `loadStep`.
+		return await this.repo.exists({
+			where: { executionId, status: In<StepStatus>(['queued', 'running']) },
+		});
+	}
+
+	async hasFailedSteps(executionId: string): Promise<boolean> {
+		return await this.repo.exists({ where: { executionId, status: 'failed' } });
 	}
 }

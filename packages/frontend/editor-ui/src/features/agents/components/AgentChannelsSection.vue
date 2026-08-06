@@ -126,6 +126,15 @@ onMounted(() => {
 	agentsEventBus.on('agentUpdated', onExternalAgentUpdated);
 });
 
+function onChannelSetup(event: { agentId?: string; source?: string } | undefined) {
+	if (event?.agentId !== props.agentId || event.source !== 'channel-setup-card') return;
+	void loadChannelDetails();
+}
+
+agentsEventBus.on('agentUpdated', onChannelSetup);
+
+onBeforeUnmount(() => agentsEventBus.off('agentUpdated', onChannelSetup));
+
 watch([() => props.projectId, () => props.agentId], () => {
 	void loadChannelDetails();
 });

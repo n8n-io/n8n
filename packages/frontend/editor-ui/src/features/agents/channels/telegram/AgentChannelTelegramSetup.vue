@@ -122,6 +122,22 @@ defineExpose({ credentialId, currentSettings, validationError });
 						>
 							{{ i18n.baseText('agents.builder.addTrigger.connect') }}
 						</N8nButton>
+						<N8nText
+							v-if="errorMessage"
+							:class="$style.errorText"
+							size="small"
+							data-testid="telegram-connect-error"
+						>
+							{{ errorMessage }}
+							<a
+								v-if="credentialId && !errorIsConflict"
+								:class="$style.link"
+								href="#"
+								@click.prevent="emit('edit')"
+							>
+								{{ i18n.baseText('agents.builder.addTrigger.editCredential') }}
+							</a>
+						</N8nText>
 					</div>
 				</div>
 			</template>
@@ -148,7 +164,7 @@ defineExpose({ credentialId, currentSettings, validationError });
 			/>
 		</div>
 
-		<N8nText v-if="errorMessage" :class="$style.errorText" size="small">
+		<N8nText v-if="mode === 'edit' && errorMessage" :class="$style.errorText" size="small">
 			{{ errorMessage }}
 			<a
 				v-if="credentialId && !errorIsConflict"

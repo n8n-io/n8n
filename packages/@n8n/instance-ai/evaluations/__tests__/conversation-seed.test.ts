@@ -2,7 +2,7 @@ import {
 	ConversationSeedSchema,
 	expandSeedMessageShorthand,
 	remapSeedWorkflowIds,
-	SEED_WORKFLOW_NAME_RE,
+	SEED_NAME_RE,
 	transcriptPrefixFromSeed,
 	type ConversationSeed,
 } from '../harness/conversation-seed';
@@ -213,6 +213,32 @@ describe('remapSeedWorkflowIds', () => {
 		expect(serialized).toContain(`/workflow/${newId}`);
 	});
 
+	it('gives each workflow its own fresh id when one id is a prefix of another', () => {
+		// Rewriting the short id first would eat the long one's prefix, leaving it with
+		// a derived id no later pass matches — so both must come back as clean nanoids.
+		const seed = makeSeed();
+		seed.workflows = [
+			{ id: 'abcdefgh', name: 'Short', nodes: [], connections: {} },
+			{ id: 'abcdefgh12', name: 'Long', nodes: [], connections: {} },
+		];
+		seed.messages = [
+			{
+				id: 'm1',
+				type: 'llm',
+				role: 'user',
+				createdAt: '2026-01-01T00:00:00.000Z',
+				content: [{ type: 'text', text: 'compare /workflow/abcdefgh and /workflow/abcdefgh12' }],
+			},
+		];
+
+		const remapped = remapSeedWorkflowIds(seed);
+		const [short, long] = remapped.workflows.map((workflow) => workflow.id);
+
+		expect(short).toMatch(/^[0-9A-Za-z]{16}$/);
+		expect(long).toMatch(/^[0-9A-Za-z]{16}$/);
+		expect(JSON.stringify(remapped.messages)).toContain(`/workflow/${short} and /workflow/${long}`);
+	});
+
 	it('returns the seed untouched when there are no workflows', () => {
 		const seed: ConversationSeed = {
 			messages: [
@@ -248,7 +274,7 @@ describe('remapSeedWorkflowIds', () => {
 		const newName = remapped.workflows[0].name;
 
 		expect(newName).toMatch(/^Digest \[seed [0-9a-f]{8}\]$/);
-		expect(SEED_WORKFLOW_NAME_RE.exec(newName)?.[1]).toBe('Digest');
+		expect(SEED_NAME_RE.exec(newName)?.[1]).toBe('Digest');
 		const mention = remapped.messages.find((m) => m.id === 'm-name');
 		expect(JSON.stringify(mention)).toContain(`workflow ${newName} failed`);
 	});

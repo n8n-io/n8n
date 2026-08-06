@@ -1,6 +1,8 @@
 import { h, readonly, ref } from 'vue';
 import type { AgentIntegrationDisconnectWarning } from '@n8n/api-types';
 
+import AgentChannelDiscordSetup from '../components/AgentChannelDiscordSetup.vue';
+import AgentChannelDiscordEditView from './discord/AgentChannelDiscordEditView.vue';
 import AgentChannelFallbackView from './fallback/AgentChannelFallbackView.vue';
 import AgentChannelLinearEditView from './linear/AgentChannelLinearEditView.vue';
 import AgentChannelLinearSetup from './linear/AgentChannelLinearSetup.vue';
@@ -97,6 +99,12 @@ const platforms = {
 		editComponent: AgentChannelTelegramEditView,
 		getConnectAction: ({ text }) => ({ label: text('generic.connect') }),
 		getConnectedDescription: ({ text }) => text('agents.builder.addTrigger.connectedText.telegram'),
+	},
+	discord: {
+		type: 'discord',
+		setupComponent: AgentChannelDiscordSetup,
+		editComponent: AgentChannelDiscordEditView,
+		getConnectAction: ({ text }) => ({ label: text('generic.connect') }),
 	},
 } satisfies Record<string, AgentChannelPlatform>;
 

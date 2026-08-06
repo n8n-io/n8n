@@ -18,7 +18,7 @@ import { AgentRepository } from '../../repositories/agent.repository';
 import {
 	AgentChatIntegration,
 	type AgentChatIntegrationContext,
-	type ApprovalDecisionMessageParams,
+	type ActionDecisionMessageParams,
 	type BridgeExecutionContext,
 	type BridgeMessageContextParams,
 	type BridgeResumeExecutionContext,
@@ -90,7 +90,6 @@ export class TelegramIntegration extends AgentChatIntegration {
 
 	readonly actionToolGuidance = [
 		'For edit_message, pass the messageId returned by a previous Telegram action or get_current_message_context. The current Telegram conversation is selected automatically.',
-		'After a Telegram callback, edit the source message promptly so stale buttons are removed.',
 	];
 
 	readonly needsShortCallbackData = true;
@@ -99,13 +98,23 @@ export class TelegramIntegration extends AgentChatIntegration {
 
 	readonly disableStreaming = true;
 
-	formatApprovalDecisionMessage({ approved, raw, user }: ApprovalDecisionMessageParams): string {
+	formatActionDecisionMessage({
+		approved,
+		selectedLabel,
+		raw,
+		user,
+	}: ActionDecisionMessageParams): string {
 		const originalText =
 			isRecord(raw) && isRecord(raw.message) && typeof raw.message.text === 'string'
 				? raw.message.text
 				: '';
 		const responder = user.fullName || user.userName || user.userId;
-		const outcome = approved ? `✅ Approved by ${responder}` : `🚫 Declined by ${responder}`;
+		const outcome =
+			approved === undefined
+				? `✅ ${selectedLabel || 'Action'} selected by ${responder}`
+				: approved
+					? `✅ Approved by ${responder}`
+					: `🚫 Declined by ${responder}`;
 		return originalText ? `${originalText}\n\n${outcome}` : outcome;
 	}
 

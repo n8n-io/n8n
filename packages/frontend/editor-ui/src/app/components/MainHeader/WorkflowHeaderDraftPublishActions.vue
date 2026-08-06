@@ -24,7 +24,7 @@ import {
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { getActivatableTriggerNodes } from '@/app/utils/nodeTypesUtils';
 import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
 import { useRouter } from 'vue-router';
@@ -301,6 +301,16 @@ const onReviewUpdated = () => {
 
 /** The submit dialog hit a 409: an open review exists, so offer updating it instead. */
 const onReviewConflict = () => {
+	showUpdateReviewDialog.value = true;
+};
+
+/**
+ * Save before opening. The dialog prefills the version name from the current
+ * `versionId`, but submitting flushes a dirty editor into a *new* version, so
+ * opening dirty would name the new version after the old one.
+ */
+const onSubmitChangesFromBanner = async () => {
+	if (!(await ensureWorkflowSaved())) return;
 	showUpdateReviewDialog.value = true;
 };
 
@@ -782,7 +792,7 @@ defineExpose({
 				:can-open-review="canOpenReview"
 				:is-publishing="isRetryingPublish"
 				@open-review="onOpenReviewFromBanner"
-				@submit-changes="showUpdateReviewDialog = true"
+				@submit-changes="onSubmitChangesFromBanner"
 				@retry-publish="onRetryPublishFromBanner"
 			/>
 		</div>
