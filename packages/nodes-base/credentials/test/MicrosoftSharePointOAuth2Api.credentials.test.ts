@@ -82,10 +82,12 @@ describe('MicrosoftSharePointOAuth2Api Credential', () => {
 			expect(enabledScopesProperty?.displayOptions).toEqual({ show: { customScopes: [true] } });
 		});
 
-		it('should expose a subdomain input', () => {
+		it('should expose a required subdomain input as the first property', () => {
 			const subdomainProperty = credential.properties.find((p) => p.name === 'subdomain');
 			expect(subdomainProperty).toBeDefined();
 			expect(subdomainProperty?.type).toBe('string');
+			expect(subdomainProperty?.required).toBe(true);
+			expect(credential.properties[0]?.name).toBe('subdomain');
 		});
 
 		it('should define a hidden scope expression that substitutes the subdomain placeholder', () => {
