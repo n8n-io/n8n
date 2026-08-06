@@ -51,9 +51,10 @@ function makeStepStore(step: Partial<StepRecord> = {}, overrides: Partial<StepSt
 	return {
 		createSteps: vi.fn(),
 		loadStep: vi.fn().mockResolvedValue(record),
-		claimStep: vi.fn().mockResolvedValue(true),
+		claimStep: vi.fn().mockResolvedValue(record),
 		completeStep: vi.fn().mockResolvedValue(true),
 		failStep: vi.fn().mockResolvedValue(true),
+		cancelQueuedSteps: vi.fn(),
 		loadStepOutputs: vi.fn().mockResolvedValue({}),
 		loadCompletedNodeIds: vi.fn().mockResolvedValue(new Set()),
 		hasActiveSteps: vi.fn().mockResolvedValue(false),
@@ -125,15 +126,41 @@ describe('StepReadyHandler', () => {
 	});
 
 	it('is a no-op when the step cannot be claimed (duplicate delivery)', async () => {
-		const stepStore = makeStepStore({}, { claimStep: vi.fn().mockResolvedValue(false) });
+		const stepStore = makeStepStore({}, { claimStep: vi.fn().mockResolvedValue(null) });
 		const queue = makeQueue();
 		const executor = makeExecutor();
-		const handler = new StepReadyHandler(makeExecutionStore(), stepStore, queue, {
+		const executionStore = makeExecutionStore();
+		const handler = new StepReadyHandler(executionStore, stepStore, queue, {
 			v1StepExecutor: executor,
 		});
 
 		await handler.handle(event);
 
+		// the claim comes first, so a duplicate touches nothing else
+		expect(stepStore.loadStep).not.toHaveBeenCalled();
+		expect(executionStore.loadExecution).not.toHaveBeenCalled();
+		expect(executor.execute).not.toHaveBeenCalled();
+		expect(stepStore.completeStep).not.toHaveBeenCalled();
+		expect(stepStore.failStep).not.toHaveBeenCalled();
+		expect(queue.publish).not.toHaveBeenCalled();
+	});
+
+	it('claims the step but runs nothing when the execution is no longer running', async () => {
+		// the claim already happened, so the step stays `running` for
+		// reconciliation (CAT-2938) to resolve — nothing is recorded or announced
+		const stepStore = makeStepStore();
+		const queue = makeQueue();
+		const executor = makeExecutor();
+		const handler = new StepReadyHandler(
+			makeExecutionStore({ status: 'cancelled' }),
+			stepStore,
+			queue,
+			{ v1StepExecutor: executor },
+		);
+
+		await handler.handle(event);
+
+		expect(stepStore.claimStep).toHaveBeenCalledWith('step-a');
 		expect(executor.execute).not.toHaveBeenCalled();
 		expect(stepStore.completeStep).not.toHaveBeenCalled();
 		expect(stepStore.failStep).not.toHaveBeenCalled();
@@ -153,7 +180,7 @@ describe('StepReadyHandler', () => {
 		expect(queue.publish).not.toHaveBeenCalled();
 	});
 
-	it('throws, recording nothing, when the event names an execution the step is not part of', async () => {
+	it('claims the step but throws, recording nothing, when the event names an execution the step is not part of', async () => {
 		const stepStore = makeStepStore({ executionId: 'exec-other' });
 		const queue = makeQueue();
 		const executor = makeExecutor();
@@ -165,7 +192,7 @@ describe('StepReadyHandler', () => {
 			'step step-a belongs to execution exec-other, but the event claims exec-1',
 		);
 
-		expect(stepStore.claimStep).not.toHaveBeenCalled();
+		expect(stepStore.claimStep).toHaveBeenCalledWith('step-a');
 		expect(executor.execute).not.toHaveBeenCalled();
 		expect(stepStore.completeStep).not.toHaveBeenCalled();
 		expect(stepStore.failStep).not.toHaveBeenCalled();
@@ -241,8 +268,10 @@ describe('StepReadyHandler', () => {
 	});
 
 	/**
-	 * Pre-claim validation failing means the event was rejected untouched: the
-	 * step stays `queued` for a redelivery (or a corrected event) to pick up.
+	 * Context validation runs only after the claim (the execution status has
+	 * to be checked post-claim, and the context load comes with it), so the
+	 * handler throws with the step left `running` for reconciliation
+	 * (CAT-2938) or internal consistency checks (CAT-3930) to resolve.
 	 */
 	it.each([
 		{
@@ -262,7 +291,7 @@ describe('StepReadyHandler', () => {
 			expected: { name: 'UnexpectedError', message: 'ghost' },
 		},
 	])(
-		'throws without claiming the step when $reason',
+		'claims the step but throws, recording nothing, when $reason',
 		async ({ stepId, steps, execution, deps, expected }) => {
 			const stepStore = steps();
 			const queue = makeQueue();
@@ -274,7 +303,7 @@ describe('StepReadyHandler', () => {
 				message: expect.stringContaining(expected.message) as string,
 			});
 
-			expect(stepStore.claimStep).not.toHaveBeenCalled();
+			expect(stepStore.claimStep).toHaveBeenCalledWith(stepId);
 			expect(executor.execute).not.toHaveBeenCalled();
 			expect(stepStore.completeStep).not.toHaveBeenCalled();
 			expect(stepStore.failStep).not.toHaveBeenCalled();
