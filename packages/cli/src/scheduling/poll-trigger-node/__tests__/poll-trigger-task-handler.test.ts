@@ -471,6 +471,40 @@ describe('PollTriggerTaskHandler', () => {
 			});
 		});
 
+		test('does not record a failure for a workflow deactivated during a failing poll, but still hands off the error', async () => {
+			const state: PollerFailureState = { consecutiveErrors: 1, backoffUntil: null };
+			pollBackoffService.peek.mockResolvedValue(state);
+			const error = new Error('poll source unreachable');
+			triggersAndPollers.runPollFunction.mockRejectedValue(error);
+			workflowRepository.isActive.mockResolvedValue(false);
+
+			const decision = await handler.execute(buildTask(), report);
+
+			expect(pollBackoffService.recordFailure).not.toHaveBeenCalled();
+			expect(pollFunctions.__emitError).toHaveBeenCalledWith(error);
+			expect(decision).toBe(report.dispatched());
+		});
+
+		test('records a failure when the active-state read itself fails, rather than let a real failure go unbacked-off', async () => {
+			const state: PollerFailureState = { consecutiveErrors: 1, backoffUntil: null };
+			pollBackoffService.peek.mockResolvedValue(state);
+			const error = new Error('poll source unreachable');
+			triggersAndPollers.runPollFunction.mockRejectedValue(error);
+			workflowRepository.isActive.mockRejectedValue(new Error('database unavailable'));
+
+			const decision = await handler.execute(buildTask(), report);
+
+			expect(pollBackoffService.recordFailure).toHaveBeenCalledWith({
+				workflowId: 'wf-1',
+				nodeId: 'node-1',
+				error,
+				state,
+				now: expect.any(Date),
+			});
+			expect(pollFunctions.__emitError).toHaveBeenCalledWith(error);
+			expect(decision).toBe(report.dispatched());
+		});
+
 		test('does not touch the failure counters when the published workflow is missing', async () => {
 			const error = new UnexpectedError('Published version not found for workflow');
 			triggerExecutionContextFactory.loadPublishedWorkflowData.mockRejectedValue(error);
