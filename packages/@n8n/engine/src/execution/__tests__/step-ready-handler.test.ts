@@ -51,7 +51,7 @@ function makeStepStore(step: Partial<StepRecord> = {}, overrides: Partial<StepSt
 	return {
 		createSteps: vi.fn(),
 		loadStep: vi.fn().mockResolvedValue(record),
-		claimStep: vi.fn().mockResolvedValue(true),
+		claimStep: vi.fn().mockResolvedValue(record),
 		completeStep: vi.fn().mockResolvedValue(true),
 		failStep: vi.fn().mockResolvedValue(true),
 		cancelQueuedSteps: vi.fn(),
@@ -126,7 +126,7 @@ describe('StepReadyHandler', () => {
 	});
 
 	it('is a no-op when the step cannot be claimed (duplicate delivery)', async () => {
-		const stepStore = makeStepStore({}, { claimStep: vi.fn().mockResolvedValue(false) });
+		const stepStore = makeStepStore({}, { claimStep: vi.fn().mockResolvedValue(null) });
 		const queue = makeQueue();
 		const executor = makeExecutor();
 		const executionStore = makeExecutionStore();

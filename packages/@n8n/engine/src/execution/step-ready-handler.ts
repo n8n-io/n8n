@@ -3,8 +3,8 @@ import type { ExternalDependencies, IStepExecutor } from '../dependencies';
 import type { GraphNode, WorkflowGraph } from '../graph';
 import type { OrchestrationMessage, StepReadyEvent, WorkQueue } from '../queue';
 import type { ExecutionRecord, ExecutionStore } from './execution-store';
-import { loadStepContext } from './load-step-context';
 import type { StepError, StepRecord, StepStore } from './step-store';
+import { validateStepContext } from './validate-step-context';
 
 /**
  * Handles the `step:ready` step event: claims the step (`queued → running`),
@@ -25,19 +25,16 @@ export class StepReadyHandler {
 
 	async handle(event: StepReadyEvent): Promise<void> {
 		// Claim via CAS so a duplicate/redelivered event is a no-op.
-		const claimed = await this.stepStore.claimStep(event.stepId);
-		if (!claimed) return;
+		const step = await this.stepStore.claimStep(event.stepId);
+		if (!step) return;
 
 		// NOTE: we would prefer to do this validation before the claim,
 		// but we need to check the execution status AFTER the claim to
 		// avoid executing a step for a failed or cancelled execution.
 		// Reconciliation or a more robust consistency story will improve
 		// this in the future (CAT-2938, CAT-3930).
-		const { step, execution, node } = await loadStepContext(
-			this.executionStore,
-			this.stepStore,
-			event,
-		);
+		const execution = await this.executionStore.loadExecution(event.executionId);
+		const node = validateStepContext(step, execution);
 		const executor = this.executorFor(step, node);
 
 		if (execution.status !== 'running') {

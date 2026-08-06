@@ -1,8 +1,8 @@
 import { getPredecessorNodeIds, getSuccessorNodeIds } from '../graph';
 import type { StepCompletedEvent, StepMessage, WorkQueue } from '../queue';
 import type { ExecutionRecord, ExecutionStore } from './execution-store';
-import { loadStepContext } from './load-step-context';
 import type { StepStore } from './step-store';
+import { validateStepContext } from './validate-step-context';
 
 /**
  * Handles the `step:completed` orchestration event: plans the successors of the
@@ -24,7 +24,11 @@ export class StepCompletedHandler {
 	) {}
 
 	async handle(event: StepCompletedEvent): Promise<void> {
-		const { step, execution } = await loadStepContext(this.executionStore, this.stepStore, event);
+		const [step, execution] = await Promise.all([
+			this.stepStore.loadStep(event.stepId),
+			this.executionStore.loadExecution(event.executionId),
+		]);
+		validateStepContext(step, execution);
 
 		// v1 parity: an error that escapes a node ends the whole execution, not
 		// just its branch.

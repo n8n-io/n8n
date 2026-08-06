@@ -153,9 +153,17 @@ describe('workflow_step_execution table (integration)', () => {
 		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
 		const { id } = await createStep(store, { executionId, nodeId: 'a', status: 'queued' });
 
-		expect(await store.claimStep(id)).toBe(true);
+		// the winning claim gets the step back, already `running`
+		expect(await store.claimStep(id)).toEqual({
+			id,
+			executionId,
+			nodeId: 'a',
+			status: 'running',
+			outputs: null,
+			error: null,
+		});
 		// second claim of the same step loses the race
-		expect(await store.claimStep(id)).toBe(false);
+		expect(await store.claimStep(id)).toBeNull();
 		expect((await store.loadStep(id)).status).toBe('running');
 	});
 
