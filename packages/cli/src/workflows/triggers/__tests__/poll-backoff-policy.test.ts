@@ -22,105 +22,85 @@ const node: INode = {
 describe('classifyPollFailure', () => {
 	const now = new Date('2026-08-05T12:00:00.000Z');
 
-	test.each([
-		['401', 'permanent'],
-		['403', 'permanent'],
-		['429', 'transient'],
-		['408', 'transient'],
-		['500', 'transient'],
-		['503', 'transient'],
-	])('classifies a NodeApiError with httpCode %s as %s', (httpCode, expected) => {
-		const error = new NodeApiError(node, {}, { httpCode });
-
-		expect(classifyPollFailure(error, null)).toBe(expected);
-	});
-
-	test('classifies a network error with no status as transient', () => {
-		const error = Object.assign(new Error('connect ECONNREFUSED'), { code: 'ECONNREFUSED' });
-
-		expect(classifyPollFailure(error, null)).toBe('transient');
-	});
-
-	test.each([
-		['a plain string', 'boom'],
-		['undefined', undefined],
-		['a bare object', {}],
-	])('classifies %s as transient', (_name, thrown) => {
-		expect(classifyPollFailure(thrown, null)).toBe('transient');
-	});
-
-	test.each([
-		[401, 'permanent'],
-		[403, 'permanent'],
-		[500, 'transient'],
-	])(
-		'falls back to an axios-shaped response.status of %s when there is no NodeApiError',
-		(status, expected) => {
-			const error = { response: { status } };
-
-			expect(classifyPollFailure(error, null)).toBe(expected);
-		},
-	);
-
-	test('prefers httpCode over a conflicting response.status', () => {
-		const error = { httpCode: '401', response: { status: 500 } };
-
-		expect(classifyPollFailure(error, null)).toBe('permanent');
-	});
-
-	test('accepts httpCode as a number rather than a string', () => {
-		const error = { httpCode: 401 };
-
-		expect(classifyPollFailure(error, null)).toBe('permanent');
-	});
-
-	test('prefers the direct response over a conflicting error.cause.response', () => {
-		const error = { response: { status: 500 }, cause: { response: { status: 401 } } };
-
-		expect(classifyPollFailure(error, null)).toBe('transient');
-	});
-
-	test('treats a non-integer status as unmatched', () => {
-		const error = { response: { status: 401.5 } };
-
-		expect(classifyPollFailure(error, null)).toBe('transient');
-	});
-
-	test('treats a negative status as unmatched', () => {
-		const error = { response: { status: -401 } };
-
-		expect(classifyPollFailure(error, null)).toBe('transient');
-	});
-
-	test.each([
-		['401', 'permanent'],
-		['429', 'transient'],
-	])(
-		'classifies a NodeOperationError wrapping a causal NodeApiError with httpCode %s as %s',
-		(httpCode, expected) => {
-			const cause = new NodeApiError(node, {}, { httpCode });
-			const error = new NodeOperationError(node, cause as Error);
-
-			expect(classifyPollFailure(error, null)).toBe(expected);
-		},
-	);
-
-	test('reads httpCode off error.errorResponse rather than error.cause', () => {
-		const error = { errorResponse: { httpCode: '403' } };
-
-		expect(classifyPollFailure(error, null)).toBe('permanent');
-	});
-
-	test('prefers an httpCode on a later candidate over a conflicting response.status on an earlier one', () => {
-		const error = { response: { status: 500 }, cause: { httpCode: '401' } };
-
-		expect(classifyPollFailure(error, null)).toBe('permanent');
-	});
-
-	test('prefers an httpCode on an earlier candidate over a conflicting response.status on a later one', () => {
-		const error = { httpCode: '401', cause: { response: { status: 500 } } };
-
-		expect(classifyPollFailure(error, null)).toBe('permanent');
+	test.each<[string, unknown, string]>([
+		[
+			'a NodeApiError with httpCode 401',
+			new NodeApiError(node, {}, { httpCode: '401' }),
+			'permanent',
+		],
+		[
+			'a NodeApiError with httpCode 403',
+			new NodeApiError(node, {}, { httpCode: '403' }),
+			'permanent',
+		],
+		[
+			'a NodeApiError with httpCode 429',
+			new NodeApiError(node, {}, { httpCode: '429' }),
+			'transient',
+		],
+		[
+			'a NodeApiError with httpCode 500',
+			new NodeApiError(node, {}, { httpCode: '500' }),
+			'transient',
+		],
+		[
+			'a NodeOperationError wrapping a causal NodeApiError with httpCode 401',
+			new NodeOperationError(node, new NodeApiError(node, {}, { httpCode: '401' }) as Error),
+			'permanent',
+		],
+		[
+			'a NodeOperationError wrapping a causal NodeApiError with httpCode 429',
+			new NodeOperationError(node, new NodeApiError(node, {}, { httpCode: '429' }) as Error),
+			'transient',
+		],
+		['a plain string', 'boom', 'transient'],
+		['undefined', undefined, 'transient'],
+		['a bare object', {}, 'transient'],
+		[
+			'a network error with no status',
+			Object.assign(new Error('ECONNREFUSED'), { code: 'ECONNREFUSED' }),
+			'transient',
+		],
+		['a non-integer response.status', { response: { status: 401.5 } }, 'transient'],
+		['a negative response.status', { response: { status: -401 } }, 'transient'],
+		[
+			'an axios-shaped response.status of 401 with no NodeApiError',
+			{ response: { status: 401 } },
+			'permanent',
+		],
+		[
+			'an axios-shaped response.status of 500 with no NodeApiError',
+			{ response: { status: 500 } },
+			'transient',
+		],
+		[
+			'httpCode over a conflicting response.status',
+			{ httpCode: '401', response: { status: 500 } },
+			'permanent',
+		],
+		['httpCode as a number rather than a string', { httpCode: 401 }, 'permanent'],
+		[
+			'the direct response over a conflicting error.cause.response',
+			{ response: { status: 500 }, cause: { response: { status: 401 } } },
+			'transient',
+		],
+		[
+			'httpCode off error.errorResponse rather than error.cause',
+			{ errorResponse: { httpCode: '403' } },
+			'permanent',
+		],
+		[
+			'an httpCode on a later candidate over a conflicting response.status on an earlier one',
+			{ response: { status: 500 }, cause: { httpCode: '401' } },
+			'permanent',
+		],
+		[
+			'an httpCode on an earlier candidate over a conflicting response.status on a later one',
+			{ httpCode: '401', cause: { response: { status: 500 } } },
+			'permanent',
+		],
+	])('classifies %s as %s', (_name, thrown, expected) => {
+		expect(classifyPollFailure(thrown, null)).toBe(expected);
 	});
 
 	test.each([401, 403])(
@@ -154,53 +134,43 @@ describe('retryAfterMs', () => {
 		expect(retryAfterMs(error, now)).toBeNull();
 	});
 
-	describe('delay-seconds form, across the header walk', () => {
-		test('reads a raw axios-shaped error.response.headers', () => {
-			const error = { response: { headers: { 'retry-after': '120' } } };
-
-			expect(retryAfterMs(error, now)).toBe(120_000);
-		});
-
-		test('reads error.cause.response.headers on a NodeApiError wrapping an Error', () => {
-			const cause = Object.assign(new Error('rate limited'), {
-				response: { headers: { 'retry-after': '120' } },
-			});
-			const error = new NodeApiError(node, cause as unknown as JsonObject);
-
-			expect(retryAfterMs(error, now)).toBe(120_000);
-		});
-
-		test('reads error.errorResponse.response.headers on a NodeApiError wrapping a plain response', () => {
-			const error = new NodeApiError(node, { response: { headers: { 'retry-after': '120' } } });
-
-			expect(retryAfterMs(error, now)).toBe(120_000);
-		});
-
-		test('reads error.errorResponse.reason.response.headers for the nested-axios shape', () => {
-			const error = new NodeApiError(node, {
+	// Each covers a different hop of the candidate walk: direct response, a
+	// wrapped Error's response, and the two NodeApiError errorResponse shapes.
+	test.each<[string, unknown]>([
+		[
+			'a raw axios-shaped error.response.headers',
+			{ response: { headers: { 'retry-after': '120' } } },
+		],
+		[
+			'error.cause.response.headers on a NodeApiError wrapping an Error',
+			new NodeApiError(
+				node,
+				Object.assign(new Error('rate limited'), {
+					response: { headers: { 'retry-after': '120' } },
+				}) as unknown as JsonObject,
+			),
+		],
+		[
+			'error.errorResponse.response.headers on a NodeApiError wrapping a plain response',
+			new NodeApiError(node, { response: { headers: { 'retry-after': '120' } } }),
+		],
+		[
+			'error.errorResponse.reason.response.headers for the nested-axios shape',
+			new NodeApiError(node, {
 				reason: { isAxiosError: true, response: { headers: { 'retry-after': '120' } } },
-			});
-
-			expect(retryAfterMs(error, now)).toBe(120_000);
-		});
+			}),
+		],
+	])('reads %s', (_name, error) => {
+		expect(retryAfterMs(error, now)).toBe(120_000);
 	});
 
-	describe('HTTP-date form', () => {
-		test('resolves an HTTP-date against the injected now', () => {
-			const error = {
-				response: { headers: { 'retry-after': 'Wed, 05 Aug 2026 12:02:00 GMT' } },
-			};
+	test.each<[string, number | null]>([
+		['Wed, 05 Aug 2026 12:02:00 GMT', 120_000],
+		['Wed, 05 Aug 2026 11:58:00 GMT', null],
+	])('resolves the HTTP-date form %s against the injected now', (httpDate, expected) => {
+		const error = { response: { headers: { 'retry-after': httpDate } } };
 
-			expect(retryAfterMs(error, now)).toBe(120_000);
-		});
-
-		test('returns null for an HTTP-date in the past', () => {
-			const error = {
-				response: { headers: { 'retry-after': 'Wed, 05 Aug 2026 11:58:00 GMT' } },
-			};
-
-			expect(retryAfterMs(error, now)).toBeNull();
-		});
+		expect(retryAfterMs(error, now)).toBe(expected);
 	});
 
 	test.each(['Retry-After', 'retry-after', 'RETRY-AFTER', 'Retry-AFTER'])(
@@ -212,61 +182,52 @@ describe('retryAfterMs', () => {
 		},
 	);
 
-	test.each([
-		['a non-numeric value', 'soon'],
-		['a negative value', '-5'],
-		['a zero value', '0'],
-	])('returns null for %s', (_name, value) => {
+	test.each<[string, unknown, number | null]>([
+		['a non-numeric value', 'soon', null],
+		['a negative value', '-5', null],
+		['a zero value', '0', null],
+		['an array-valued header, reading its first entry', ['120', '60'], 120_000],
+		['a value with surrounding whitespace', '  120  ', 120_000],
+		[
+			'a very large value, uncapped here; capping is left to computeBackoffUntil',
+			'999999999',
+			999_999_999 * 1000,
+		],
+	])('resolves %s to %s', (_name, value, expected) => {
 		const error = { response: { headers: { 'retry-after': value } } };
 
-		expect(retryAfterMs(error, now)).toBeNull();
+		expect(retryAfterMs(error, now)).toBe(expected);
 	});
 
-	test('reads the first entry of an array-valued header', () => {
-		const error = { response: { headers: { 'retry-after': ['120', '60'] } } };
-
-		expect(retryAfterMs(error, now)).toBe(120_000);
-	});
-
-	test('trims surrounding whitespace on a delay-seconds value', () => {
-		const error = { response: { headers: { 'retry-after': '  120  ' } } };
-
-		expect(retryAfterMs(error, now)).toBe(120_000);
-	});
-
-	test('does not cap a very large delay-seconds value itself; capping is left to computeBackoffUntil', () => {
-		const error = { response: { headers: { 'retry-after': '999999999' } } };
-
-		expect(retryAfterMs(error, now)).toBe(999_999_999 * 1000);
-	});
-
-	test('prefers the direct response header over a conflicting error.cause.response one', () => {
-		const error = {
-			response: { headers: { 'retry-after': '60' } },
-			cause: { response: { headers: { 'retry-after': '999' } } },
-		};
-
-		expect(retryAfterMs(error, now)).toBe(60_000);
-	});
-
-	test('finds a Retry-After nested two levels deep, at error.cause.cause.response.headers', () => {
-		const error = { cause: { cause: { response: { headers: { 'retry-after': '120' } } } } };
-
-		expect(retryAfterMs(error, now)).toBe(120_000);
+	test.each<[string, unknown, number]>([
+		[
+			'the direct response header over a conflicting error.cause.response one',
+			{
+				response: { headers: { 'retry-after': '60' } },
+				cause: { response: { headers: { 'retry-after': '999' } } },
+			},
+			60_000,
+		],
+		[
+			'a Retry-After nested two levels deep, at error.cause.cause.response.headers',
+			{ cause: { cause: { response: { headers: { 'retry-after': '120' } } } } },
+			120_000,
+		],
+		[
+			'past an unparseable header on a shallower candidate to a parseable one deeper',
+			{
+				response: { headers: { 'retry-after': 'soon' } },
+				cause: { response: { headers: { 'retry-after': '60' } } },
+			},
+			60_000,
+		],
+	])('prefers %s', (_name, error, expected) => {
+		expect(retryAfterMs(error, now)).toBe(expected);
 	});
 
 	test('terminates instead of hanging on a cyclic error.cause', () => {
 		const error: Record<string, unknown> = { response: { headers: { 'retry-after': '60' } } };
 		error.cause = error;
-
-		expect(retryAfterMs(error, now)).toBe(60_000);
-	});
-
-	test('continues past an unparseable header on a shallower candidate to a parseable one deeper', () => {
-		const error = {
-			response: { headers: { 'retry-after': 'soon' } },
-			cause: { response: { headers: { 'retry-after': '60' } } },
-		};
 
 		expect(retryAfterMs(error, now)).toBe(60_000);
 	});

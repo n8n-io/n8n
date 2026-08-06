@@ -20,10 +20,8 @@ function getResponse(candidate: unknown): Record<string, unknown> | undefined {
 	return isRecord(response) ? response : undefined;
 }
 
-// Breadth-first over cause/errorResponse/reason rather than fixed property
-// paths: a node that wraps its NodeApiError in a NodeOperationError puts the
-// real response at depth 2, which fixed paths missed. The visited set stops a
-// self-referential cause from looping.
+// Breadth-first over cause/errorResponse/reason: a node wrapping a NodeApiError
+// in a NodeOperationError puts the real response at depth 2. Visited set guards self-referential cause.
 function candidateChain(error: unknown): Array<Record<string, unknown>> {
 	if (!isRecord(error)) return [];
 
@@ -63,10 +61,8 @@ function parseNumericStatus(value: unknown): number | null {
 	return null;
 }
 
-// Walks the chain once for both candidates, rather than twice, since
-// classifyPollFailure otherwise re-walks it looking for response.status
-// whenever no httpCode is found. httpCode still wins whenever both are
-// present, wherever each sits in the chain.
+// Walks the chain once for both candidates, so we're not re-walking to look
+// for response.status when no httpCode is found. httpCode wins when both are present.
 function chainStatus(error: unknown): number | null {
 	let httpCodeStatus: number | null = null;
 	let responseStatus: number | null = null;
@@ -118,9 +114,7 @@ function parseRetryAfterValue(raw: string, now: Date): number | null {
 
 /**
  * A 401/403 is permanent unless it carries a Retry-After, which marks it as
- * rate limiting instead: several APIs return those statuses for throttling
- * (Google quota, GitHub secondary limits), and a genuinely dead credential
- * never sends the header.
+ * rate limiting instead: some APIs (Google quota, GitHub secondary limits) throttle with those statuses.
  */
 export function classifyPollFailure(error: unknown, retryAfterMs: number | null): PollFailureClass {
 	const status = chainStatus(error);

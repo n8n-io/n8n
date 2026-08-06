@@ -22,14 +22,9 @@ import {
 } from './poll-trigger-task';
 
 /**
- * Runs a due poll occurrence's `poll()` once and dispatches only when it
- * returns new data.
- *
- * Carries no `deduplicationKey`, so it forgoes the execution-level duplicate
- * backstop: under the scheduler's at-least-once contract, a poll occurrence
- * can run twice, with the later cursor write winning. Accepted: two polls
- * at the same instant can legitimately return different data anyway, so a
- * repeated poll is tolerable.
+ * Runs a due poll occurrence's `poll()` once and dispatches only when it returns new data.
+ * Carries no `deduplicationKey`: under the at-least-once scheduler contract an occurrence
+ * can run twice, later cursor write wins; tolerable since two polls can legitimately differ anyway.
  */
 @Service()
 export class PollTriggerTaskHandler implements TaskHandler {
@@ -93,10 +88,8 @@ export class PollTriggerTaskHandler implements TaskHandler {
 					pollFunctions,
 				);
 
-				// Success means poll() returned, checked once here rather than
-				// separately on the items and empty paths below, so those branches
-				// (and a mid-poll deactivation) can't disagree about whether the
-				// backoff state cleared.
+				// Checked once here rather than separately on the items and empty
+				// paths below, so they can't disagree on whether backoff cleared.
 				await this.pollBackoffService.recordSuccess({ workflowId, nodeId, state });
 
 				if (pollResponse !== null) {
