@@ -45,8 +45,7 @@ const SANDBOX_DOCS_URL =
 	'https://docs.n8n.io/deploy/host-n8n/configure-n8n/set-up-ai-assistant#configure-a-sandbox-provider';
 const SEARCH_DOCS_URL = 'https://docs.n8n.io/deploy/host-n8n/configure-n8n/set-up-ai-assistant';
 const BRAVE_SEARCH_KEYS_URL = 'https://api-dashboard.search.brave.com/app/keys';
-const ENV_DOCS_URL =
-	'https://docs.n8n.io/deploy/host-n8n/configure-n8n/set-up-ai-assistant-preview';
+const ENV_DOCS_URL = 'https://docs.n8n.io/deploy/host-n8n/configure-n8n/set-up-ai-assistant';
 const SUCCESS_PAUSE_MS = TIME.SECOND * 1.5;
 const DEFAULT_MODEL_PROVIDER = INSTANCE_AI_MODEL_PROVIDERS[0]!;
 type VerificationSuccess = Extract<InstanceAiVerificationResponse, { ok: true }>;

@@ -6,6 +6,7 @@ import type {
 	InstanceAiVerifySandboxRequest,
 	InstanceAiVerifySearchRequest,
 } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
@@ -70,6 +71,7 @@ function connectionString(
 @Service()
 export class InstanceAiVerificationService {
 	constructor(
+		private readonly logger: Logger,
 		private readonly globalConfig: GlobalConfig,
 		private readonly settingsService: InstanceAiSettingsService,
 		private readonly modelService: InstanceAiModelService,
@@ -100,7 +102,9 @@ export class InstanceAiVerificationService {
 			});
 			return { ok: true, latencyMs: Math.round(performance.now() - startedAt) };
 		} catch (error) {
-			return { ok: false, failure: classifyFailure(error) };
+			const failure = classifyFailure(error);
+			this.logVerificationFailure('model', failure, error);
+			return { ok: false, failure };
 		}
 	}
 
@@ -109,13 +113,14 @@ export class InstanceAiVerificationService {
 		request: InstanceAiVerifySandboxRequest,
 	): Promise<InstanceAiVerificationResponse> {
 		const provider = request.provider ?? this.globalConfig.instanceAi.sandboxProvider;
-		const abortSignal = AbortSignal.timeout(VERIFICATION_TIMEOUT_MS);
+		let abortSignal: AbortSignal | undefined;
 		let raceWithAbort: typeof import('@n8n/agents').raceWithAbort | undefined;
 		let workspace:
 			| Awaited<ReturnType<typeof import('@n8n/instance-ai')['createWorkspace']>>
 			| undefined;
 		try {
 			const config = await this.resolveSandboxConfig(user, request);
+			abortSignal = AbortSignal.timeout(config.timeout ?? VERIFICATION_TIMEOUT_MS);
 			const [instanceAi, agents] = await Promise.all([
 				import('@n8n/instance-ai'),
 				import('@n8n/agents'),
@@ -138,15 +143,25 @@ export class InstanceAiVerificationService {
 			if (!result || result.exitCode !== 0) throw new Error('Sandbox command failed');
 			return { ok: true, startupMs };
 		} catch (error) {
-			const failure = classifyFailure(error);
+			const classifiedFailure = classifyFailure(error);
+			const failure =
+				provider === 'daytona' && classifiedFailure === 'forbidden'
+					? 'quota_exceeded'
+					: classifiedFailure;
+			this.logVerificationFailure('sandbox', failure, error, { provider });
 			return {
 				ok: false,
-				failure: provider === 'daytona' && failure === 'forbidden' ? 'quota_exceeded' : failure,
+				failure,
 			};
 		} finally {
 			if (workspace) {
-				const cleanup = workspace.destroy().catch(() => {});
-				if (abortSignal.aborted || !raceWithAbort) {
+				const cleanup = workspace.destroy().catch((error: unknown) => {
+					this.logger.warn('Instance AI sandbox verification cleanup failed', {
+						error: ensureError(error).message,
+						provider,
+					});
+				});
+				if (!abortSignal || abortSignal.aborted || !raceWithAbort) {
 					void cleanup;
 				} else {
 					await raceWithAbort(cleanup, abortSignal).catch(() => {});
@@ -178,8 +193,23 @@ export class InstanceAiVerificationService {
 			if (!result) throw new Error('Search provider is not configured');
 			return { ok: true, resultCount: result.results.length };
 		} catch (error) {
-			return { ok: false, failure: classifyFailure(error) };
+			const failure = classifyFailure(error);
+			this.logVerificationFailure('search', failure, error);
+			return { ok: false, failure };
 		}
+	}
+
+	private logVerificationFailure(
+		kind: 'model' | 'sandbox' | 'search',
+		failure: InstanceAiVerificationFailure,
+		error: unknown,
+		context: Record<string, unknown> = {},
+	): void {
+		this.logger.warn(`Instance AI ${kind} verification failed`, {
+			...context,
+			error: ensureError(error).message,
+			failure,
+		});
 	}
 
 	private async resolveSandboxConfig(
@@ -202,6 +232,7 @@ export class InstanceAiVerificationService {
 					connectionString(connection, 'apiKey') ?? saved?.apiKey ?? instanceAi.daytonaApiKey,
 				image: instanceAi.sandboxImage,
 				timeout: instanceAi.sandboxTimeout,
+				ephemeral: true,
 			};
 		}
 
@@ -214,6 +245,7 @@ export class InstanceAiVerificationService {
 				connectionString(connection, 'value') ??
 				saved?.apiKey ??
 				instanceAi.n8nSandboxServiceApiKey,
+			timeout: instanceAi.sandboxTimeout,
 		};
 	}
 }

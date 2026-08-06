@@ -1,4 +1,5 @@
 import type { InstanceAiVerificationFailure } from '@n8n/api-types';
+import type { Logger } from '@n8n/backend-common';
 import type { OutboundHttp } from '@n8n/backend-network';
 import type { GlobalConfig, InstanceAiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
@@ -33,6 +34,7 @@ describe('InstanceAiVerificationService', () => {
 			daytonaApiKey: 'env-daytona-key',
 		} as unknown as InstanceAiConfig,
 	});
+	const logger = mock<Logger>();
 	const settingsService = mock<InstanceAiSettingsService>();
 	const modelService = mock<InstanceAiModelService>();
 	const outboundHttp = mock<OutboundHttp>();
@@ -65,11 +67,16 @@ describe('InstanceAiVerificationService', () => {
 		createModelMock.mockReturnValue({} as never);
 		generateTextMock.mockResolvedValue({} as never);
 		service = new InstanceAiVerificationService(
+			logger,
 			globalConfig,
 			settingsService,
 			modelService,
 			outboundHttp,
 		);
+	});
+
+	afterEach(() => {
+		vi.restoreAllMocks();
 	});
 
 	describe('verifyModel', () => {
@@ -147,11 +154,16 @@ describe('InstanceAiVerificationService', () => {
 			generateTextMock.mockRejectedValueOnce(error);
 
 			await expect(service.verifyModel(user, {})).resolves.toEqual({ ok: false, failure });
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Instance AI model verification failed',
+				expect.objectContaining({ error: expect.any(String), failure }),
+			);
 		});
 	});
 
 	describe('verifySandbox', () => {
 		it('verifies an n8n Sandbox draft and destroys the workspace', async () => {
+			const timeoutSpy = vi.spyOn(AbortSignal, 'timeout');
 			const connection = { type: 'httpHeaderAuth', data: { value: '__redacted__' } };
 			settingsService.resolveSandboxConnectionForVerification.mockResolvedValue({
 				type: 'httpHeaderAuth',
@@ -181,7 +193,9 @@ describe('InstanceAiVerificationService', () => {
 				provider: 'n8n-sandbox',
 				serviceUrl: 'https://draft.sandbox',
 				apiKey: 'saved-key',
+				timeout: 60,
 			});
+			expect(timeoutSpy).toHaveBeenCalledWith(60);
 			expect(workspace.sandbox.executeCommand).toHaveBeenCalledWith('printf', ['ok'], {
 				abortSignal: expect.any(AbortSignal),
 			});
@@ -242,7 +256,12 @@ describe('InstanceAiVerificationService', () => {
 				daytonaApiKey: 'saved-daytona-key',
 				image: 'sandbox-image',
 				timeout: 60,
+				ephemeral: true,
 			});
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Instance AI sandbox verification cleanup failed',
+				expect.objectContaining({ error: expect.any(String), provider: 'daytona' }),
+			);
 		});
 
 		it('uses saved n8n Sandbox settings when no draft is provided', async () => {
@@ -265,6 +284,7 @@ describe('InstanceAiVerificationService', () => {
 				provider: 'n8n-sandbox',
 				serviceUrl: 'https://saved.sandbox',
 				apiKey: 'saved-key',
+				timeout: 60,
 			});
 		});
 
@@ -297,6 +317,14 @@ describe('InstanceAiVerificationService', () => {
 				ok: false,
 				failure: 'quota_exceeded',
 			});
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Instance AI sandbox verification failed',
+				expect.objectContaining({
+					error: expect.any(String),
+					failure: 'quota_exceeded',
+					provider: 'daytona',
+				}),
+			);
 		});
 	});
 
@@ -354,6 +382,10 @@ describe('InstanceAiVerificationService', () => {
 				ok: false,
 				failure: 'unreachable',
 			});
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Instance AI search verification failed',
+				expect.objectContaining({ error: expect.any(String), failure: 'unreachable' }),
+			);
 		});
 	});
 });

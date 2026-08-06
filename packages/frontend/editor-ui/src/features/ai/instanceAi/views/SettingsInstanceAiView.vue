@@ -60,7 +60,7 @@ const { isFeatureEnabled: isMcpConnectionsExperimentEnabled } =
 const { isFeatureEnabled: isBrowserUseEnabled } = useInstanceAiBrowserUseExperiment();
 const { isFeatureEnabled: isComputerUseExperimentEnabled } = useInstanceAiComputerUseExperiment();
 
-const DOCS_URL = 'https://docs.n8n.io/deploy/host-n8n/configure-n8n/set-up-ai-assistant-preview';
+const DOCS_URL = 'https://docs.n8n.io/deploy/host-n8n/configure-n8n/set-up-ai-assistant';
 
 const isAdmin = computed(() => store.canManage);
 const isEnabled = computed(
