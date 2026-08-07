@@ -2,7 +2,6 @@ import { computed } from 'vue';
 import { defineStore } from 'pinia';
 import { useAsyncState } from '@vueuse/core';
 import type { ListInsightsWorkflowQueryDto, InsightsDateFilterDto } from '@n8n/api-types';
-import { fetchInsightsSummaryPublicApi } from '@n8n/public-api-client';
 import * as insightsApi from '@/features/execution/insights/insights.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUsersStore } from '@n8n/stores/users.store';
@@ -29,7 +28,7 @@ export const useInsightsStore = defineStore('insights', () => {
 
 	const weeklySummary = useAsyncState(
 		async () => {
-			const raw = await fetchInsightsSummaryPublicApi(rootStore.publicApiContext);
+			const raw = await insightsApi.fetchInsightsSummary(rootStore.restApiContext);
 			return transformInsightsSummary(raw);
 		},
 		[],
@@ -38,7 +37,7 @@ export const useInsightsStore = defineStore('insights', () => {
 
 	const summary = useAsyncState(
 		async (filter?: InsightsDateFilterDto) => {
-			const raw = await fetchInsightsSummaryPublicApi(rootStore.publicApiContext, filter);
+			const raw = await insightsApi.fetchInsightsSummary(rootStore.restApiContext, filter);
 			return transformInsightsSummary(raw);
 		},
 		[],

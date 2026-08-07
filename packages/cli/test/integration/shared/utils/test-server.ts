@@ -97,10 +97,7 @@ const publicApiAgent = (
 const publicApiAgentWithCookie = (app: express.Application, user: User, version = 1) => {
 	const agent = request.agent(app);
 	void agent.use(prefix(`${PUBLIC_API_REST_PATH_SEGMENT}/v${version}`));
-	// A real browser client sends this on every request (see @n8n/public-api-client's
-	// request()); the public API router re-reads it from the header itself (unlike the
-	// internal REST router, which trusts the test harness's blanket req.browserId), so it
-	// must be set here to match the browserId baked into the JWT below.
+	// browser-id is needed for session cookie auth
 	void agent.use(async (req: superagent.SuperAgentRequest) => {
 		req.set('browser-id', browserId);
 		return await req;

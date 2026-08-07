@@ -38,7 +38,6 @@
   "dependencies": {
     "@n8n/api-types": "workspace:*",
     "@n8n/constants": "workspace:*",
-    "@n8n/frontend-utils": "workspace:*",
     "@n8n/permissions": "workspace:*",
     "@n8n/utils": "workspace:*",
     "js-base64": "catalog:",

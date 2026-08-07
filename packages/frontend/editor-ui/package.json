@@ -53,7 +53,6 @@
     "@n8n/frontend-utils": "workspace:*",
     "@n8n/i18n": "workspace:*",
     "@n8n/permissions": "workspace:*",
-    "@n8n/public-api-client": "workspace:*",
     "@n8n/rest-api-client": "workspace:*",
     "@n8n/stores": "workspace:*",
     "@n8n/telemetry": "workspace:*",
