@@ -290,11 +290,61 @@ export const toolErrorPayloadSchema = z.object({
 	error: z.string(),
 });
 
+/** The generic credential type that agent-supplied setup recipes create. */
+export const TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE = 'httpTemplatedCustomAuth';
+
+/** One user-provided input of a Templated Custom Auth credential. */
+export const credentialPlaceholderDefSchema = z.object({
+	/** Marker name referenced by the template as `{{name}}`. */
+	name: z.string(),
+	/** Input label shown to the user (e.g. "API key"). */
+	title: z.string(),
+	/** One-line clarification of the value itself (format, which token) —
+	 *  never where to obtain it; the AI help thread owns navigation. */
+	info: z.string().optional(),
+	/** Defaults to `password` (masked input). */
+	type: z.enum(['password', 'plain']).optional(),
+	/** When true the input may be left empty; template entries referencing an
+	 *  empty optional placeholder are omitted from the signed request. */
+	optional: z.boolean().optional(),
+});
+export type InstanceAiCredentialPlaceholderDef = z.infer<typeof credentialPlaceholderDefSchema>;
+
+/**
+ * Agent-supplied recipe for creating a Templated Custom Auth credential: the
+ * auth request parts with `{{placeholder}}` markers where user-provided values
+ * go, plus what to ask the user for each marker. Never contains real secrets.
+ */
+export const credentialSetupHintSchema = z.object({
+	template: z.object({
+		headers: z.record(z.string()).optional(),
+		qs: z.record(z.string()).optional(),
+		body: z.record(z.unknown()).optional(),
+	}),
+	placeholders: z.array(credentialPlaceholderDefSchema).min(1),
+	/** The provider page where the user creates/copies the secret. Not rendered
+	 *  in the form — handed to the AI help thread so it can point the user at
+	 *  the exact page the recipe research already verified. */
+	docsUrl: z.string().optional(),
+	suggestedName: z.string().optional(),
+	/** GET endpoint the created credential is auth-probed against. */
+	testUrl: z.string().optional(),
+	/** Status codes the probe must not treat as rejection (only relaxes the
+	 *  401/403 default — codes outside that pair never fail a probe anyway). */
+	acceptedStatusCodes: z.array(z.number().int()).max(10).optional(),
+	/** Host of the API the recipe targets, derived server-side from the node
+	 *  being set up (never model-supplied). Stamped into the created credential
+	 *  so setup surfaces only offer it to nodes calling the same service. */
+	serviceHost: z.string().optional(),
+});
+export type InstanceAiCredentialSetupHint = z.infer<typeof credentialSetupHintSchema>;
+
 export const credentialRequestSchema = z.object({
 	credentialType: z.string(),
 	reason: z.string(),
 	existingCredentials: z.array(z.object({ id: z.string(), name: z.string() })),
 	suggestedName: z.string().optional(),
+	setupHint: credentialSetupHintSchema.optional(),
 });
 
 export type InstanceAiCredentialRequest = z.infer<typeof credentialRequestSchema>;
@@ -324,6 +374,7 @@ export const workflowSetupNodeSchema = z.object({
 	}),
 	credentialType: z.string().optional(),
 	existingCredentials: z.array(z.object({ id: z.string(), name: z.string() })).optional(),
+	setupHint: credentialSetupHintSchema.optional(),
 	isTrigger: z.boolean(),
 	isFirstTrigger: z.boolean().optional(),
 	isTestable: z.boolean().optional(),
@@ -927,6 +978,14 @@ export const instanceAiCredentialHandoffContextSchema = z.object({
 		id: z.string().min(1).max(128).optional(),
 		nodeName: z.string().min(1).max(255).optional(),
 		nodeType: z.string().min(1).max(255).optional(),
+		/** Guided-form input labels of a pre-filled (recipe-created) credential —
+		 *  the user only pastes these values, so the thread gives where-to-find
+		 *  guidance instead of configuration steps. */
+		placeholderTitles: z.array(z.string().min(1).max(255)).max(20).optional(),
+		/** The provider's key page from the recipe (where the user creates/copies
+		 *  the secret) — distinct from documentationUrl, the n8n docs page of the
+		 *  credential type. The thread directs the user there. */
+		docsUrl: z.string().url().max(2048).optional(),
 		documentationUrl: z.string().url().max(2048).optional(),
 		oauthRedirectUrl: z.string().url().max(2048).optional(),
 	}),

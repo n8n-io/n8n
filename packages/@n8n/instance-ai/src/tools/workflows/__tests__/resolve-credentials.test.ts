@@ -1079,6 +1079,74 @@ describe('resolveCredentials', () => {
 			expect(result.resolvedCredentialsByNode).toEqual({});
 		});
 	});
+
+	// Templated Custom Auth ids are service-agnostic at the type level, so the
+	// resolver must never silently wire one the way it does dedicated types: a
+	// supplied id is trusted only when it matches the node's own prior wiring,
+	// and the sole-candidate fallback is skipped. Otherwise a Pexels key could
+	// land on fal.ai nodes.
+	describe('Templated Custom Auth', () => {
+		const templatedNode = (credential: unknown) => ({
+			id: '1',
+			name: 'HTTP Request',
+			type: 'n8n-nodes-base.httpRequest',
+			typeVersion: 4,
+			position: [0, 0] as [number, number],
+			parameters: { url: 'https://fal.run/v1/models' },
+			credentials: { httpTemplatedCustomAuth: credential as { id: string; name: string } },
+		});
+
+		it("keeps a supplied id that matches the node's prior wiring", async () => {
+			const wired = { id: 'cred-fal', name: 'fal.ai API Key' };
+			const json = makeWorkflow({ nodes: [templatedNode(wired)] });
+			// Prior wiring is read from the persisted workflow, so pass its id.
+			const ctx = createMockContext(makeWorkflow({ nodes: [templatedNode(wired)] }));
+
+			await resolveCredentials(json, 'wf-1', ctx, makeCredentialMap([]));
+
+			expect(json.nodes[0].credentials).toEqual({ httpTemplatedCustomAuth: wired });
+		});
+
+		it('routes a fresh supplied id to setup instead of trusting it', async () => {
+			// The model attached a stored templated credential the node was never
+			// wired to — could be another service's key, so mock and let setup ask.
+			const json = makeWorkflow({
+				nodes: [templatedNode({ id: 'cred-pexels', name: 'Pexels API' })],
+			});
+			const ctx = createMockContext();
+
+			const result = await resolveCredentials(
+				json,
+				undefined,
+				ctx,
+				makeCredentialMap([
+					{ id: 'cred-pexels', name: 'Pexels API', type: 'httpTemplatedCustomAuth' },
+				]),
+			);
+
+			expect(json.nodes[0].credentials).toEqual({});
+			expect(result.mockedNodeNames).toContain('HTTP Request');
+		});
+
+		it('skips the sole-candidate fallback', async () => {
+			// One stored templated credential exists, but the node has no prior
+			// wiring — a dedicated type would auto-attach it; the shared type must not.
+			const json = makeWorkflow({ nodes: [templatedNode(null)] });
+			const ctx = createMockContext();
+
+			const result = await resolveCredentials(
+				json,
+				undefined,
+				ctx,
+				makeCredentialMap([
+					{ id: 'cred-1', name: 'Some API Key', type: 'httpTemplatedCustomAuth' },
+				]),
+			);
+
+			expect(json.nodes[0].credentials).toEqual({});
+			expect(result.mockedNodeNames).toContain('HTTP Request');
+		});
+	});
 });
 
 describe('buildCredentialResolutionNote', () => {
