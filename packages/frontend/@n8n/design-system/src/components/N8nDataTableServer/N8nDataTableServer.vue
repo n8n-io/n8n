@@ -46,8 +46,7 @@ import { ElOption, ElSelect, ElSkeletonItem } from 'element-plus';
 import get from 'lodash/get.js';
 import { computed, h, shallowRef, useSlots, watch } from 'vue';
 
-import N8nCheckbox from '@n8n/design-system/v2/components/Checkbox/Checkbox.vue';
-
+import N8nCheckbox from '../../v2/components/Checkbox/Checkbox.vue';
 import N8nPagination from '../N8nPagination';
 
 type VueClass = string | string[] | Record<string, boolean> | undefined;

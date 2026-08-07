@@ -3,7 +3,7 @@ import { useRouter, useRoute } from 'vue-router';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { VIEWS } from '@/app/constants';
-import { type CommandBarItem } from '@n8n/design-system/components/N8nCommandBar/types';
+import { type CommandBarItem } from '@n8n/design-system';
 import { useNodeCommands } from './useNodeCommands';
 import { useWorkflowCommands } from './useWorkflowCommands';
 import { useWorkflowNavigationCommands } from './useWorkflowNavigationCommands';

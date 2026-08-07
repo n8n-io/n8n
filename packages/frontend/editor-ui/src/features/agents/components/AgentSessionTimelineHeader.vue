@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { N8nBreadcrumbs, N8nButton, N8nDropdownMenu, N8nIcon } from '@n8n/design-system';
 import type { DropdownMenuItemProps } from '@n8n/design-system';
-import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
+import type { PathItem } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
 interface SessionDropdownData {

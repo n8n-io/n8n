@@ -1,4 +1,4 @@
-import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
+import type { IconName } from '@n8n/design-system';
 
 import type { ScopeGroupDefinition } from '@/app/components/scopes/scopes.utils';
 

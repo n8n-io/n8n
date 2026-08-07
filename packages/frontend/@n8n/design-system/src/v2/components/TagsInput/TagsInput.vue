@@ -2,8 +2,6 @@
 import { reactivePick } from '@vueuse/core';
 import { computed, useCssModule, useTemplateRef } from 'vue';
 
-import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
-
 import {
 	TagsInputInput,
 	TagsInputItem,
@@ -19,6 +17,7 @@ import type {
 	TagsInputSlots,
 	TagsInputValue,
 } from './TagsInput.types';
+import Icon from '../../../components/N8nIcon/Icon.vue';
 
 defineOptions({ inheritAttrs: false });
 

@@ -20,7 +20,7 @@ import {
 	N8nText,
 	N8nDataTableServer,
 } from '@n8n/design-system';
-import type { TableHeader } from '@n8n/design-system/components/N8nDataTableServer';
+import type { TableHeader } from '@n8n/design-system';
 import { useSecretsProviderConnection } from '@/features/integrations/secretsProviders.ee/composables/useSecretsProviderConnection.ee';
 import { useRBACStore } from '@n8n/stores/rbac.store';
 
