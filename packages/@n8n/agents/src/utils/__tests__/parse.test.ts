@@ -170,3 +170,93 @@ describe('parseWithSchema — JSON Schema', () => {
 		expect(invalid.success).toBe(false);
 	});
 });
+
+// ---------------------------------------------------------------------------
+// parseWithSchema — stripUnknown
+// ---------------------------------------------------------------------------
+
+describe('parseWithSchema — stripUnknown', () => {
+	const strictSchema = {
+		type: 'object' as const,
+		properties: { approved: { type: 'boolean' } },
+		required: ['approved'],
+		additionalProperties: false,
+	} as JSONSchema7;
+
+	it('rejects undeclared properties by default', async () => {
+		const result = await parseWithSchema(strictSchema, { approved: true, userInput: 'hi' });
+
+		expect(result.success).toBe(false);
+		if (!result.success) expect(result.error).toContain('additional properties');
+	});
+
+	it('drops undeclared properties when enabled, leaving the input untouched', async () => {
+		const data = { approved: true, userInput: 'hi' };
+		const result = await parseWithSchema(strictSchema, data, { stripUnknown: true });
+
+		expect(result.success).toBe(true);
+		if (result.success) expect(result.data).toEqual({ approved: true });
+		expect(data).toEqual({ approved: true, userInput: 'hi' });
+	});
+
+	it('drops undeclared properties from nested objects', async () => {
+		const schema = {
+			type: 'object' as const,
+			properties: {
+				answer: {
+					type: 'object',
+					properties: { questionId: { type: 'string' } },
+					required: ['questionId'],
+					additionalProperties: false,
+				},
+			},
+			required: ['answer'],
+			additionalProperties: false,
+		} as JSONSchema7;
+
+		const result = await parseWithSchema(
+			schema,
+			{ answer: { questionId: 'q1', skipped: true } },
+			{ stripUnknown: true },
+		);
+
+		expect(result.success).toBe(true);
+		if (result.success) expect(result.data).toEqual({ answer: { questionId: 'q1' } });
+	});
+
+	it('still fails on a declared property with the wrong type', async () => {
+		const result = await parseWithSchema(
+			strictSchema,
+			{ approved: 'yes', userInput: 'hi' },
+			{ stripUnknown: true },
+		);
+
+		expect(result.success).toBe(false);
+	});
+
+	it('keeps properties a later anyOf branch declares', async () => {
+		const unionSchema = {
+			anyOf: [
+				strictSchema,
+				{
+					type: 'object',
+					properties: {
+						approved: { type: 'boolean' },
+						answers: { type: 'array', items: { type: 'string' } },
+					},
+					required: ['approved'],
+					additionalProperties: false,
+				},
+			],
+		} as JSONSchema7;
+
+		const result = await parseWithSchema(
+			unionSchema,
+			{ approved: true, answers: ['a'] },
+			{ stripUnknown: true },
+		);
+
+		expect(result.success).toBe(true);
+		if (result.success) expect(result.data).toEqual({ approved: true, answers: ['a'] });
+	});
+});
