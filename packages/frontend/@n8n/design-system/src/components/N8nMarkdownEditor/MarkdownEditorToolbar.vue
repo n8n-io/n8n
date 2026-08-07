@@ -1,21 +1,22 @@
 <script setup lang="ts">
 import type { Editor } from '@tiptap/core';
-import { computed, ref } from 'vue';
+import { computed, ref, useId } from 'vue';
 
 import { t } from '@n8n/design-system/locale';
 
 import N8nButton from '../N8nButton';
-import { N8nDialog, N8nDialogFooter } from '../N8nDialog';
 import { N8nDropdownMenu, type DropdownMenuItemProps } from '../N8nDropdownMenu';
 import N8nIcon from '../N8nIcon';
+import type { IconName } from '../N8nIcon';
+import N8nIconButton from '../N8nIconButton';
 import N8nInput from '../N8nInput';
+import N8nPopover from '../N8nPopover';
+import N8nText from '../N8nText';
 import N8nToggle from '../N8nToggle';
 import N8nToggleGroup from '../N8nToggleGroup';
 import N8nTooltip from '../N8nTooltip';
 import type { MarkdownEditorVariant, MarkdownEditorToolbarMode } from './MarkdownEditor.types';
 import { isUrl } from './markdownEditorUtils';
-import type { IconName } from '../N8nIcon';
-import N8nText from '../N8nText';
 
 const translate = (path: string) => t(path, undefined);
 
@@ -38,12 +39,18 @@ const emit = defineEmits<{
 	'update:isRawMode': [value: boolean];
 }>();
 
-const isLinkDialogOpen = ref(false);
+const isLinkPopoverOpen = ref(false);
 const linkUrl = ref('');
 const showLinkValidationError = ref(false);
+const linkUrlInputId = useId();
+const linkValidationErrorId = useId();
+
+const isExistingLink = computed(() => props.editor.isActive('link'));
 
 const linkValidationError = computed(() => {
-	if (!linkUrl.value.trim()) return translate('markdownEditor.linkRequired');
+	if (!linkUrl.value.trim()) {
+		return props.editor.isActive('link') ? null : translate('markdownEditor.linkRequired');
+	}
 	if (!isUrl(linkUrl.value.trim())) return translate('markdownEditor.linkInvalid');
 
 	return null;
@@ -151,24 +158,34 @@ const textStyleOptions = computed<Array<DropdownMenuItemProps<string>>>(() => [
 ]);
 
 const activeMarks = computed(() =>
-	markControls.value
-		.filter((control) => props.editor.isActive(control.id))
-		.map((control) => control.id),
+	props.isRawMode
+		? []
+		: markControls.value
+				.filter((control) => props.editor.isActive(control.id))
+				.map((control) => control.id),
 );
 
 const activeBlocks = computed(() =>
-	blockControls.value
-		.filter((control) => props.editor.isActive(control.id))
-		.map((control) => control.id),
+	props.isRawMode
+		? []
+		: [
+				...blockControls.value
+					.filter((control) => props.editor.isActive(control.id))
+					.map((control) => control.id),
+				...(isExistingLink.value ? ['link'] : []),
+			],
 );
 
 const activeLists = computed(() =>
-	listControls.value
-		.filter((control) => props.editor.isActive(control.id))
-		.map((control) => control.id),
+	props.isRawMode
+		? []
+		: listControls.value
+				.filter((control) => props.editor.isActive(control.id))
+				.map((control) => control.id),
 );
 
 const activeTextStyle = computed(() => {
+	if (props.isRawMode) return 'paragraph';
 	if (props.editor.isActive('heading', { level: 1 })) return 'heading-1';
 	if (props.editor.isActive('heading', { level: 2 })) return 'heading-2';
 	if (props.editor.isActive('heading', { level: 3 })) return 'heading-3';
@@ -196,12 +213,12 @@ const runControl = (control: ToolbarControl) => {
 	control.command({ editor: props.editor });
 };
 
-function openLinkDialog() {
+function openLinkPopover() {
 	if (props.disabled || props.isRawMode) return;
 
 	linkUrl.value = (props.editor.getAttributes('link').href as string) ?? '';
 	showLinkValidationError.value = false;
-	isLinkDialogOpen.value = true;
+	isLinkPopoverOpen.value = true;
 }
 
 function scrollToolbar(event: WheelEvent) {
@@ -219,8 +236,19 @@ function handleLinkInvalid(event: Event) {
 	showLinkValidationError.value = true;
 }
 
+function removeLink() {
+	props.editor.chain().focus().extendMarkRange('link').unsetLink().run();
+	isLinkPopoverOpen.value = false;
+}
+
 function applyLink() {
 	const href = linkUrl.value.trim();
+
+	if (!href && props.editor.isActive('link')) {
+		props.editor.chain().focus().extendMarkRange('link').unsetLink().run();
+		isLinkPopoverOpen.value = false;
+		return;
+	}
 
 	if (!isUrl(href)) {
 		showLinkValidationError.value = true;
@@ -241,7 +269,7 @@ function applyLink() {
 		props.editor.chain().focus().extendMarkRange('link').setLink({ href }).run();
 	}
 
-	isLinkDialogOpen.value = false;
+	isLinkPopoverOpen.value = false;
 }
 
 const setTextStyle = (value: string | number) => {
@@ -265,7 +293,6 @@ const setTextStyle = (value: string | number) => {
 	props.editor.chain().focus().setParagraph().run();
 };
 </script>
-
 <template>
 	<div
 		:class="[$style.toolbar, mode === 'always' ? $style.alwaysVisible : '']"
@@ -338,20 +365,78 @@ const setTextStyle = (value: string | number) => {
 							v-bind="slotProps"
 							@click="runControl(control)"
 						/>
+						<N8nPopover
+							:open="isLinkPopoverOpen"
+							width="320px"
+							side="bottom"
+							:content-class="$style.addLinkPopover"
+							@update:open="isLinkPopoverOpen = $event"
+						>
+							<template #trigger>
+								<N8nToggle
+									value="link"
+									:label="translate('markdownEditor.link')"
+									icon="link"
+									:class="isLinkPopoverOpen ? $style.linkButtonActive : undefined"
+									v-bind="slotProps"
+									@click="openLinkPopover"
+								/>
+							</template>
+							<template #content="{ close }">
+								<form :class="$style.addLinkForm" @submit.prevent="applyLink">
+									<label :for="linkUrlInputId" :class="$style.addLinkFormLabel"
+										><N8nText bold>{{ translate('markdownEditor.linkUrl') }}</N8nText></label
+									>
+									<N8nInput
+										:id="linkUrlInputId"
+										v-model="linkUrl"
+										type="url"
+										:required="!props.editor.isActive('link')"
+										autofocus
+										:placeholder="translate('markdownEditor.linkPlaceholder')"
+										:aria-label="translate('markdownEditor.linkUrl')"
+										:aria-invalid="showLinkValidationError && !!linkValidationError"
+										:aria-describedby="
+											showLinkValidationError && linkValidationError
+												? linkValidationErrorId
+												: undefined
+										"
+										@invalid="handleLinkInvalid"
+									/>
+									<N8nText
+										v-if="showLinkValidationError && linkValidationError"
+										:id="linkValidationErrorId"
+										step="2xs"
+										color="danger"
+										role="alert"
+										>{{ linkValidationError }}</N8nText
+									>
+									<div :class="$style.linkActions">
+										<N8nTooltip
+											v-if="isExistingLink"
+											:content="translate('markdownEditor.removeLink')"
+											><N8nIconButton
+												variant="ghost"
+												size="small"
+												icon="trash-2"
+												:aria-label="translate('markdownEditor.removeLink')"
+												@click="removeLink"
+										/></N8nTooltip>
+										<span :class="$style.footerSpacer" />
+										<N8nButton type="button" variant="outline" @click="close">{{
+											translate('markdownEditor.cancel')
+										}}</N8nButton>
+										<N8nButton type="submit">{{
+											translate(
+												isExistingLink ? 'markdownEditor.updateLink' : 'markdownEditor.addLink',
+											)
+										}}</N8nButton>
+									</div>
+								</form>
+							</template>
+						</N8nPopover>
 					</template>
 				</N8nToggleGroup>
-
-				<N8nTooltip :content="translate('markdownEditor.link')">
-					<N8nButton
-						variant="ghost"
-						size="small"
-						icon="link"
-						:disabled="disabled || isRawMode"
-						:aria-label="translate('markdownEditor.link')"
-						:class="$style.linkButton"
-						@click="openLinkDialog"
-					/>
-				</N8nTooltip>
 			</div>
 
 			<N8nToggleGroup
@@ -412,47 +497,6 @@ const setTextStyle = (value: string | number) => {
 				/>
 			</div>
 		</div>
-
-		<N8nDialog
-			:open="isLinkDialogOpen"
-			:header="translate('markdownEditor.linkDialogTitle')"
-			size="small"
-			@update:open="isLinkDialogOpen = $event"
-		>
-			<form @submit.prevent="applyLink">
-				<N8nInput
-					v-model="linkUrl"
-					type="url"
-					required
-					autofocus
-					:class="showLinkValidationError && linkValidationError ? $style.invalidInput : undefined"
-					:placeholder="translate('markdownEditor.linkPlaceholder')"
-					:aria-label="translate('markdownEditor.linkUrl')"
-					:aria-invalid="showLinkValidationError && !!linkValidationError"
-					:aria-describedby="
-						showLinkValidationError && linkValidationError
-							? 'markdown-editor-link-error'
-							: undefined
-					"
-					@invalid="handleLinkInvalid"
-				/>
-				<N8nText
-					step="xs"
-					v-if="showLinkValidationError && linkValidationError"
-					id="markdown-editor-link-error"
-					:class="$style.validationError"
-					role="alert"
-				>
-					{{ linkValidationError }}
-				</N8nText>
-				<N8nDialogFooter>
-					<N8nButton variant="outline" @click="isLinkDialogOpen = false">
-						{{ translate('markdownEditor.cancel') }}
-					</N8nButton>
-					<N8nButton type="submit">{{ translate('markdownEditor.addLink') }}</N8nButton>
-				</N8nDialogFooter>
-			</form>
-		</N8nDialog>
 	</div>
 </template>
 
@@ -517,8 +561,23 @@ const setTextStyle = (value: string | number) => {
 	flex: 0 0 auto;
 }
 
+.linkButtonActive {
+	--button--color--background: var(--background--active);
+}
+
 .invalidInput {
 	--input--border-color: var(--color--danger);
+}
+
+.linkActions {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	margin-top: var(--spacing--sm);
+}
+
+.footerSpacer {
+	flex: 1;
 }
 
 .validationError {
@@ -544,5 +603,13 @@ const setTextStyle = (value: string | number) => {
 .rawToggleGroup {
 	display: inline-flex;
 	align-items: center;
+}
+
+.addLinkFormLabel {
+	display: inline-block;
+	margin-bottom: var(--spacing--xs);
+}
+.addLinkForm {
+	padding: var(--spacing--sm);
 }
 </style>

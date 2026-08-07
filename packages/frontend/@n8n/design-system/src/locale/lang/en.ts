@@ -218,6 +218,8 @@ export default {
 	'markdownEditor.linkRequired': 'Enter a URL to add the link',
 	'markdownEditor.linkInvalid': 'Enter a valid URL, such as https://example.com',
 	'markdownEditor.addLink': 'Add link',
+	'markdownEditor.updateLink': 'Update link',
+	'markdownEditor.removeLink': 'Remove link',
 	'markdownEditor.cancel': 'Cancel',
 	'markdownEditor.slashCommandMenuLabel': 'Markdown commands',
 	'aiAssistant.textMessage.restoreVersion': 'Restore version',

@@ -162,7 +162,7 @@ const pressed = computed({
 	}
 
 	&:active,
-	&[data-state='on'] {
+	&[aria-pressed='true'] {
 		background-color: var(--button--color--background-active);
 		box-shadow:
 			inset var(--button--border--shadow--active),

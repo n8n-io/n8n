@@ -1,5 +1,6 @@
-export type InputType = 'text' | 'textarea' | 'password' | 'number' | 'email' | 'url';
-export type InputSize = 'xlarge' | 'large' | 'medium' | 'small' | 'mini';
+import type { InputSize, InputType } from '../../types/input';
+
+export type { InputSize, InputType };
 export type InputAutocomplete =
 	| 'off'
 	| 'on'
