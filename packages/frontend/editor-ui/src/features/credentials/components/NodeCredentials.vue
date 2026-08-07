@@ -1387,6 +1387,8 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/common/var';
+
 .container {
 	margin-top: var(--spacing--xs);
 
@@ -1400,11 +1402,11 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 		padding: var(--spacing--4xs) 0;
 	}
 
-	// The create row draws its own divider; element-plus's footer chrome would
-	// double it and pad the row away from the menu edge.
+	// Keep the footer divider full-width while the create row keeps the same
+	// inset hover shape as the options above it.
 	:global(.el-select-dropdown__footer) {
-		padding: 0;
-		border-top: none;
+		padding: var(--spacing--4xs) 0;
+		border-top: var(--border);
 	}
 
 	:global(.el-select-dropdown__item) {
@@ -1426,10 +1428,14 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 		background-color: transparent;
 	}
 
-	&:not(:has(li)) .newCredential {
-		border-top: none;
-		box-shadow: none;
-		border-radius: var(--radius);
+	&:not(:has(li)) {
+		:global(.el-select-dropdown__footer) {
+			border-top: none;
+		}
+
+		.newCredential {
+			border-radius: var(--radius);
+		}
 	}
 }
 
@@ -1546,10 +1552,10 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 .entryPopper {
 	min-width: calc(var(--spacing--5xl) + var(--spacing--3xl)) !important;
 
-	// The footer sits outside the list's padding; restore the bottom air so the
-	// create row is inset from the popper edge like the option rows above it.
+	// The entry menu is invitational, so it keeps the footer spacing but skips
+	// the divider used by the regular credential menu.
 	:global(.el-select-dropdown__footer) {
-		padding-bottom: var(--spacing--4xs);
+		border-top: none;
 	}
 
 	// The popper is wider than the compact trigger; keep the arrow centered on
@@ -1575,9 +1581,8 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 
 // The entry menu is invitational — no divider before its create row, and it
 // hovers like the option rows (inset, rounded). Compounded with .newCredential
-// so these win over its base border-top/hover regardless of source order.
+// so this hover color wins regardless of source order.
 .entryCreate.newCredential {
-	border-top: 0;
 	text-align: left;
 	width: calc(100% - 2 * var(--spacing--4xs));
 	margin: 0 var(--spacing--4xs);
@@ -1638,18 +1643,22 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 
 .newCredential {
 	display: flex;
-	width: 100%;
+	box-sizing: border-box;
+	width: calc(100% - 2 * var(--spacing--4xs));
+	min-height: var.$select-option-height;
+	margin: 0 var(--spacing--4xs);
 	// Matches .credentialOption so the plus icon and label align with the rows.
 	gap: var(--spacing--2xs);
 	align-items: center;
 	font-weight: var(--font-weight--medium);
 	font-size: var(--font-size--2xs);
-	padding: var(--spacing--2xs) var(--spacing--xs);
+	line-height: var(--line-height--md);
+	padding: var(--spacing--4xs) var(--spacing--2xs);
 	background-color: transparent;
 	color: var(--color--text--shade-1);
+	border-radius: var(--radius);
 
 	border: 0;
-	border-top: var(--border);
 
 	&:not([disabled]) {
 		cursor: pointer;
