@@ -3,6 +3,7 @@ import type {
 	ClusterInfoResponse,
 	InstanceAiEnsureThreadResponse,
 	InstanceAiPermissions,
+	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiThreadInfo,
 } from '@n8n/api-types';
 import { request, type APIRequestContext } from '@playwright/test';
@@ -469,6 +470,15 @@ export class ApiHelpers {
 		const response = await this.request.put('/rest/instance-ai/settings', {
 			data: { permissions },
 		});
+		if (!response.ok()) {
+			throw new TestError(
+				`PUT /rest/instance-ai/settings failed (${response.status()}): ${await response.text()}`,
+			);
+		}
+	}
+
+	async updateInstanceAiSettings(settings: InstanceAiAdminSettingsUpdateRequest): Promise<void> {
+		const response = await this.request.put('/rest/instance-ai/settings', { data: settings });
 		if (!response.ok()) {
 			throw new TestError(
 				`PUT /rest/instance-ai/settings failed (${response.status()}): ${await response.text()}`,

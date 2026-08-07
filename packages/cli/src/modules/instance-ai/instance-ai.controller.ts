@@ -12,6 +12,9 @@ import {
 	InstanceAiEnsureThreadRequest,
 	InstanceAiThreadMessagesQuery,
 	InstanceAiAdminSettingsUpdateRequest,
+	InstanceAiVerifyModelRequest,
+	InstanceAiVerifySandboxRequest,
+	InstanceAiVerifySearchRequest,
 	InstanceAiUserPreferencesUpdateRequest,
 	InstanceAiEvalExecutionRequest,
 	InstanceAiEvalAgentExecutionRequest,
@@ -28,6 +31,7 @@ import type {
 import { ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { AuthenticatedRequest, User, UserRepository } from '@n8n/db';
+import { Container } from '@n8n/di';
 import {
 	RestController,
 	GlobalScope,
@@ -63,6 +67,7 @@ import { InstanceAiErrorReporterService } from './instance-ai-error-reporter.ser
 import { InstanceAiGatewayService } from './instance-ai-gateway.service';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
+import { InstanceAiVerificationService } from './instance-ai-verification.service';
 import { InstanceAiService } from './instance-ai.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 
@@ -697,6 +702,36 @@ export class InstanceAiController {
 		}
 
 		return result;
+	}
+
+	@Post('/settings/verify/model')
+	@GlobalScope('instanceAi:manage')
+	async verifyModel(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body payload: InstanceAiVerifyModelRequest,
+	) {
+		return await Container.get(InstanceAiVerificationService).verifyModel(req.user, payload);
+	}
+
+	@Post('/settings/verify/sandbox')
+	@GlobalScope('instanceAi:manage')
+	async verifySandbox(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body payload: InstanceAiVerifySandboxRequest,
+	) {
+		return await Container.get(InstanceAiVerificationService).verifySandbox(req.user, payload);
+	}
+
+	@Post('/settings/verify/search')
+	@GlobalScope('instanceAi:manage')
+	async verifySearch(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Body payload: InstanceAiVerifySearchRequest,
+	) {
+		return await Container.get(InstanceAiVerificationService).verifySearch(payload);
 	}
 
 	@OnPubSubEvent('reload-instance-ai-settings', { instanceType: 'main' })

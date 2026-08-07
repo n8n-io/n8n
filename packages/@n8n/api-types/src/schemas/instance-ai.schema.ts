@@ -1446,6 +1446,25 @@ export const INSTANCE_AI_MODEL_CREDENTIAL_TYPES = [
 
 export const INSTANCE_AI_SEARCH_CREDENTIAL_TYPES = ['braveSearchApi', 'searXngApi'] as const;
 
+export interface InstanceAiEnvManagedFields {
+	model: {
+		provider: boolean;
+		apiKey: boolean;
+		baseUrl: boolean;
+		model: boolean;
+	};
+	sandbox: {
+		provider: boolean;
+		serviceUrl: boolean;
+		apiKey: boolean;
+	};
+	search: {
+		provider: boolean;
+		apiKey: boolean;
+		url: boolean;
+	};
+}
+
 export interface InstanceAiAdminSettingsResponse {
 	enabled: boolean;
 	permissions: InstanceAiPermissions;
@@ -1460,6 +1479,9 @@ export interface InstanceAiAdminSettingsResponse {
 	modelEnvConfigured: boolean;
 	sandboxEnvConfigured: boolean;
 	searchEnvConfigured: boolean;
+	searchDisabled: boolean;
+	n8nSandboxServiceUrl: string | null;
+	envManaged: InstanceAiEnvManagedFields;
 	localGatewayDisabled: boolean;
 	browserUseEnabled: boolean;
 }
@@ -1491,9 +1513,47 @@ export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
 	sandboxConnection: instanceAiConnectionSchema.nullable().optional(),
 	searchConnection: instanceAiConnectionSchema.nullable().optional(),
 	modelName: z.string().trim().min(1).nullable().optional(),
+	searchDisabled: z.boolean().optional(),
+	n8nSandboxServiceUrl: z.string().url().nullable().optional(),
 	localGatewayDisabled: z.boolean().optional(),
 	browserUseEnabled: z.boolean().optional(),
 }) {}
+
+export const instanceAiVerificationFailureSchema = z.enum([
+	'unauthorized',
+	'forbidden',
+	'timeout',
+	'rate_limited',
+	'quota_exceeded',
+	'unreachable',
+	'invalid_response',
+	'provider_error',
+]);
+export type InstanceAiVerificationFailure = z.infer<typeof instanceAiVerificationFailureSchema>;
+
+export class InstanceAiVerifyModelRequest extends Z.class({
+	connection: instanceAiConnectionSchema.optional(),
+	modelName: z.string().trim().min(1).optional(),
+}) {}
+
+export class InstanceAiVerifySandboxRequest extends Z.class({
+	provider: instanceAiSandboxProviderSchema.optional(),
+	connection: instanceAiConnectionSchema.optional(),
+	serviceUrl: z.string().url().optional(),
+}) {}
+
+export class InstanceAiVerifySearchRequest extends Z.class({
+	connection: instanceAiConnectionSchema.optional(),
+}) {}
+
+export type InstanceAiVerificationResponse =
+	| {
+			ok: true;
+			latencyMs?: number;
+			startupMs?: number;
+			resultCount?: number;
+	  }
+	| { ok: false; failure: InstanceAiVerificationFailure };
 
 // ---------------------------------------------------------------------------
 // User preferences — per-user, self-service

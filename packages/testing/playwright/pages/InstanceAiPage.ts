@@ -37,6 +37,55 @@ export class InstanceAiPage extends BasePage {
 		await expect(this.getSendButton()).toBeVisible({ timeout: 30_000 });
 	}
 
+	async gotoOnboarding(): Promise<void> {
+		await this.page.goto('/assistant');
+		await expect(
+			this.container
+				.getByTestId('assistant-setup-intro')
+				.or(this.container.getByTestId('assistant-setup-incomplete')),
+		).toBeVisible({ timeout: 30_000 });
+	}
+
+	getSetupButton(): Locator {
+		return this.container
+			.getByTestId('assistant-setup-cta')
+			.or(this.container.getByTestId('assistant-finish-setup-cta'));
+	}
+
+	getOnboardingWizard(): Locator {
+		return this.page.getByRole('dialog', { name: 'Set up AI Assistant' });
+	}
+
+	getWizardPrimaryButton(): Locator {
+		return this.getOnboardingWizard().getByTestId('wizard-primary');
+	}
+
+	getSearchProvider(provider: 'searxng' | 'brave' | 'disabled'): Locator {
+		return this.getOnboardingWizard().getByTestId(`assistant-search-${provider}`);
+	}
+
+	getSearchValueInput(): Locator {
+		return this.getOnboardingWizard().getByTestId('assistant-search-value');
+	}
+
+	getVerificationError(): Locator {
+		return this.getOnboardingWizard().getByTestId('assistant-verification-error');
+	}
+
+	getOnboardingDoneHeading(): Locator {
+		return this.getOnboardingWizard().getByRole('heading', {
+			name: 'AI Assistant is on for everyone on this instance',
+		});
+	}
+
+	async mockSearchVerification(
+		response: { ok: true; resultCount: number } | { ok: false; failure: string },
+	): Promise<void> {
+		await this.page.route('**/rest/instance-ai/settings/verify/search', async (route) => {
+			await route.fulfill({ json: { data: response } });
+		});
+	}
+
 	async enableInstanceAiIfPrompted(): Promise<void> {
 		const dialog = this.page.getByRole('dialog').filter({ hasText: 'Try AI Assistant' });
 		try {

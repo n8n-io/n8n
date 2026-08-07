@@ -11,6 +11,9 @@ import {
 	updatePreferences,
 	fetchServiceCredentials,
 	fetchInstanceModelCredentials,
+	verifyModel as verifyModelRequest,
+	verifySandbox as verifySandboxRequest,
+	verifySearch as verifySearchRequest,
 } from './instanceAi.settings.api';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import {
@@ -30,6 +33,10 @@ import type {
 	InstanceAiPermissions,
 	InstanceAiPermissionMode,
 	ToolCategory,
+	InstanceAiVerifyModelRequest,
+	InstanceAiVerifySandboxRequest,
+	InstanceAiVerifySearchRequest,
+	InstanceAiVerificationResponse,
 } from '@n8n/api-types';
 import { i18n } from '@n8n/i18n';
 import {
@@ -38,6 +45,7 @@ import {
 	type BrowserUseConnectionType,
 	type ComputerUseConnectionType,
 } from './constants';
+import { deriveInstanceAiConfiguration } from './instanceAiConfiguration';
 
 export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () => {
 	const rootStore = useRootStore();
@@ -126,12 +134,18 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	): void {
 		const ms = settingsStore.moduleSettings;
 		const prev = ms['instance-ai'];
+		const configuration = deriveInstanceAiConfiguration(
+			adminRes,
+			instanceModelCredentials.value,
+			serviceCredentials.value,
+		);
 		const merged: NonNullable<FrontendModuleSettings['instance-ai']> = {
 			enabled: adminRes.enabled,
 			localGatewayDisabled: adminRes.localGatewayDisabled ?? prev?.localGatewayDisabled ?? false,
 			browserUseEnabled: adminRes.browserUseEnabled ?? prev?.browserUseEnabled ?? true,
 			proxyEnabled: prev?.proxyEnabled ?? false,
 			cloudManaged: prev?.cloudManaged ?? false,
+			setupCompleted: configuration.setupCompleted,
 			sandboxEnabled: adminRes.sandboxEnabled,
 			workflowBuilderAvailable: adminRes.sandboxEnabled
 				? (prev?.workflowBuilderAvailable ?? true)
@@ -194,7 +208,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	 * Persists the staged admin draft. Returns whether the save succeeded; on
 	 * failure the draft is discarded so a later unrelated save can't flush it.
 	 */
-	async function save(): Promise<boolean> {
+	async function save(showToast = true): Promise<boolean> {
 		if (Object.keys(draft).length === 0) return true;
 		isSaving.value = true;
 		try {
@@ -203,10 +217,12 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 			} as InstanceAiAdminSettingsUpdateRequest);
 			settings.value = result;
 			clearDraft();
-			toast.showMessage({
-				title: i18n.baseText('settings.n8nAgent.toast.saved'),
-				type: 'success',
-			});
+			if (showToast) {
+				toast.showMessage({
+					title: i18n.baseText('settings.n8nAgent.toast.saved'),
+					type: 'success',
+				});
+			}
 			syncInstanceAiFlagIntoGlobalModuleSettings(result);
 			await settingsStore.getModuleSettings().catch(() => {});
 			return true;
@@ -220,7 +236,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	}
 
 	/** Persists only the Instance AI on/off flag (does not send other admin draft fields). */
-	async function persistEnabled(value: boolean): Promise<boolean> {
+	async function persistEnabled(value: boolean, showToast = true): Promise<boolean> {
 		isSaving.value = true;
 		try {
 			const result = await updateSettings(rootStore.restApiContext, { enabled: value });
@@ -228,10 +244,12 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 			delete draft.enabled;
 			syncInstanceAiFlagIntoGlobalModuleSettings(result);
 			await settingsStore.getModuleSettings().catch(() => {});
-			toast.showMessage({
-				title: i18n.baseText('settings.n8nAgent.toast.saved'),
-				type: 'success',
-			});
+			if (showToast) {
+				toast.showMessage({
+					title: i18n.baseText('settings.n8nAgent.toast.saved'),
+					type: 'success',
+				});
+			}
 			return true;
 		} catch {
 			toast.showError(
@@ -598,6 +616,24 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		await Promise.all(promises);
 	}
 
+	async function verifyModel(
+		payload: InstanceAiVerifyModelRequest,
+	): Promise<InstanceAiVerificationResponse> {
+		return await verifyModelRequest(rootStore.restApiContext, payload);
+	}
+
+	async function verifySandbox(
+		payload: InstanceAiVerifySandboxRequest,
+	): Promise<InstanceAiVerificationResponse> {
+		return await verifySandboxRequest(rootStore.restApiContext, payload);
+	}
+
+	async function verifySearch(
+		payload: InstanceAiVerifySearchRequest,
+	): Promise<InstanceAiVerificationResponse> {
+		return await verifySearchRequest(rootStore.restApiContext, payload);
+	}
+
 	return {
 		canManage,
 		canManageAiUsage,
@@ -646,6 +682,9 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		refreshCredentials,
 		refreshInstanceModelCredentials,
 		refreshModuleSettings,
+		verifyModel,
+		verifySandbox,
+		verifySearch,
 		// Browser Use (direct channel)
 		browserConnected,
 		browserConnectedAt,

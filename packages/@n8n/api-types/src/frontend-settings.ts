@@ -345,6 +345,8 @@ export type FrontendModuleSettings = {
 		browserUseEnabled: boolean;
 		proxyEnabled: boolean;
 		cloudManaged: boolean;
+		/** Whether model, sandbox, and the explicit web-search decision are configured. */
+		setupCompleted?: boolean;
 		sandboxEnabled: boolean;
 		workflowBuilderAvailable: boolean;
 		sandboxUnavailableReason: string | null;

@@ -26,7 +26,10 @@ import { RESOURCE_CENTER_EXPERIMENT, TEMPLATE_SETUP_EXPERIENCE } from '@/app/con
 import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
 import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
-import { canMessageInstanceAi } from '@/features/ai/instanceAi/instanceAiPermissions';
+import {
+	canManageInstanceAi,
+	canMessageInstanceAi,
+} from '@/features/ai/instanceAi/instanceAiPermissions';
 
 const ChangePasswordView = async () =>
 	await import('@/features/core/auth/views/ChangePasswordView.vue');
@@ -175,9 +178,11 @@ export const routes: RouteRecordRaw[] = [
 		component: { render: () => null },
 		beforeEnter: (_to, _from, next) => {
 			const settingsStore = useSettingsStore();
+			const instanceAiSettings = settingsStore.moduleSettings['instance-ai'];
 			if (
 				settingsStore.isModuleActive('instance-ai') &&
-				settingsStore.moduleSettings['instance-ai']?.enabled !== false &&
+				instanceAiSettings?.enabled !== false &&
+				(instanceAiSettings?.setupCompleted === true || canManageInstanceAi()) &&
 				canMessageInstanceAi()
 			) {
 				return next({ name: INSTANCE_AI_VIEW });
