@@ -150,9 +150,10 @@ Error workflows are per-target-workflow (`settings.errorWorkflow` must be the
 real workflow ID of a separate **published** workflow with an active Error
 Trigger — never a name, placeholder, `activeVersionId`, or local SDK id).
 n8n has no global error workflow setting; mention that only if the user asks
-about global behavior. Before building or attaching an error workflow, load
-this skill's `references/error-workflows.md` linked file and follow its
-build → publish → assign steps. Do not create one before the user opts in.
+about global behavior. Do not offer or build an error workflow before the
+primary workflow is published. Before building or attaching an error
+workflow, load this skill's `references/error-workflows.md` linked file and
+follow its build → publish → assign steps.
 
 ## Mandatory Process
 
@@ -445,7 +446,7 @@ unsolicited `sticky()`, forbidden builder constructs (e.g. `.map()`), and
 repeated `.onTrue()` / `.onFalse()` overwrites on the same IF variable. Fix
 every reported error and warning before calling `build-workflow`.
 
-- Code nodes need not always be necessary. You can use other n8n nodes to do the same thing. 
+- Code nodes need not always be necessary. You can use other n8n nodes to do the same thing.
 - SDK builder code is a restricted subset of TypeScript that builds a static
   graph; it is not a Code node and does not run. Build strings with template
   literals; do runtime joining, aggregation, or transforms in a Code node or
