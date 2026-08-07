@@ -721,7 +721,14 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 	isSaving.value = false;
 	if (credential) {
 		credentialId.value = credential.id;
-		currentCredential.value = credential;
+		currentCredential.value = {
+			...credential,
+			// The save response omits the encrypted `data` (see credentials.controller.ts),
+			// but we know it now matches what we just persisted. Keep it as the baseline so
+			// the next shared-field diff doesn't compare against an empty object and
+			// false-trigger the "will disconnect everyone" prompt.
+			data: data as unknown as ICredentialsResponse['data'],
+		};
 		// Resync in case the save cleared this user's connection server-side.
 		connectedByMe.value = credential.connectedByMe === true;
 
