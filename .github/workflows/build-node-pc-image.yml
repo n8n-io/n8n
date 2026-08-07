@@ -36,10 +36,10 @@ jobs:
       matrix:
         include:
           - platform: linux/amd64
-            runner: blacksmith-4vcpu-ubuntu-2204
+            runner: blacksmith-32vcpu-ubuntu-2204
             arch: amd64
           - platform: linux/arm64
-            runner: blacksmith-8vcpu-ubuntu-2204-arm
+            runner: blacksmith-32vcpu-ubuntu-2204-arm
             arch: arm64
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
