@@ -74,6 +74,36 @@ $E: null;
 	}
 }
 
+@mixin scroll-mask($edge, $size: var(--spacing--sm)) {
+	@if $edge == top {
+		mask-image: linear-gradient(to bottom, transparent 0, black $size, black 100%);
+	} @else if $edge == bottom {
+		mask-image: linear-gradient(to bottom, black 0, black calc(100% - $size), transparent 100%);
+	} @else if $edge == left {
+		mask-image: linear-gradient(to right, transparent 0, black $size, black 100%);
+	} @else if $edge == right {
+		mask-image: linear-gradient(to right, black 0, black calc(100% - $size), transparent 100%);
+	} @else if $edge == y {
+		mask-image: linear-gradient(
+			to bottom,
+			transparent 0,
+			black $size,
+			black calc(100% - $size),
+			transparent 100%
+		);
+	} @else if $edge == x {
+		mask-image: linear-gradient(
+			to right,
+			transparent 0,
+			black $size,
+			black calc(100% - $size),
+			transparent 100%
+		);
+	} @else {
+		@error "Unsupported scroll mask edge: #{$edge}";
+	}
+}
+
 /* Placeholder
  -------------------------- */
 @mixin placeholder {
