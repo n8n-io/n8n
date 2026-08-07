@@ -33,6 +33,7 @@ import {
 import { validateWorkflowConfig } from './workflows/validate-workflow.service';
 import { refreshWorkflowSourceFileBindingFromWorkflow } from './workflows/workflow-file-bindings';
 import { getReferencedWorkflowIds } from './workflows/workflow-json-utils';
+import { GET_JSON_EDITING_GUIDANCE } from '../workspace/guard-workflow-json-write';
 
 // ── Action schemas ──────────────────────────────────────────────────────────
 
@@ -74,7 +75,7 @@ const getJsonAction = z.object({
 	action: z
 		.literal('get-json')
 		.describe(
-			'Get full WorkflowJSON for workspace-file workflow edits. Write it to a .workflow.json file, edit the file, then save with build-workflow. Pass versionId for a past version instead of the current draft.',
+			'Inspect full WorkflowJSON (read-only). Do not use this for edits — rewriting the JSON with workspace_write_file hangs on large workflows. Prefer get-as-code for edits. Pass versionId for a past version instead of the current draft.',
 		),
 	workflowId: z.string().describe('ID of the workflow'),
 	versionId: z.string().optional().describe('Version ID'),
@@ -84,7 +85,7 @@ const getAsCodeAction = z.object({
 	action: z
 		.literal('get-as-code')
 		.describe(
-			'Convert an existing workflow to TypeScript SDK code. Call before precise patches when you need the current code. Pass versionId for a past version instead of the current draft.',
+			'Preferred path for existing-workflow edits: convert the workflow to TypeScript SDK code, apply the smallest change, write or patch a .workflow.ts file (prefer workspace_str_replace_file), then call build-workflow. Pass versionId for a past version instead of the current draft.',
 		),
 	workflowId: z.string().describe('ID of the workflow'),
 	versionId: z.string().optional().describe('Version ID'),
@@ -293,8 +294,8 @@ const WORKFLOW_ACTION_ORDER = [
 const WORKFLOW_ACTION_LABELS = {
 	list: 'list',
 	get: 'inspect',
-	'get-json': 'inspect full WorkflowJSON',
-	'get-as-code': 'convert existing workflows to TypeScript SDK code',
+	'get-json': 'inspect full WorkflowJSON (read-only)',
+	'get-as-code': 'edit existing workflows via TypeScript SDK code',
 	delete: 'archive',
 	unarchive: 'restore archived workflows',
 	setup: 'set up credentials and parameters',
@@ -456,7 +457,14 @@ async function handleGetJson(
 	input: Extract<Input, { action: 'get-json' }>,
 ) {
 	try {
-		return await context.workflowService.getAsWorkflowJSON(input.workflowId, input.versionId);
+		const workflow = await context.workflowService.getAsWorkflowJSON(
+			input.workflowId,
+			input.versionId,
+		);
+		return {
+			...workflow,
+			editingGuidance: GET_JSON_EDITING_GUIDANCE,
+		};
 	} catch (error) {
 		return {
 			workflowId: input.workflowId,

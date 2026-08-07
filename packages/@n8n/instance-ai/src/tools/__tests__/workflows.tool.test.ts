@@ -623,7 +623,30 @@ describe('workflows tool', () => {
 			);
 
 			expect(context.workflowService.getAsWorkflowJSON).toHaveBeenCalledWith('wf1', undefined);
-			expect(result).toEqual(workflow);
+			expect(result).toEqual({
+				...workflow,
+				editingGuidance: expect.stringContaining('get-as-code'),
+			});
+		});
+
+		it('should steer edits away from full JSON rewrites', async () => {
+			const context = createMockContext();
+			(context.workflowService.getAsWorkflowJSON as Mock).mockResolvedValue({
+				id: 'wf1',
+				name: 'Test WF',
+				nodes: [],
+				connections: {},
+			});
+
+			const tool = createWorkflowsTool(context, 'full');
+			const result = (await executeTool(
+				tool,
+				{ action: 'get-json', workflowId: 'wf1' },
+				{} as never,
+			)) as { editingGuidance: string };
+
+			expect(result.editingGuidance).toContain('workspace_write_file');
+			expect(result.editingGuidance).toContain('get-as-code');
 		});
 
 		it('should forward versionId to the full fetches', async () => {
