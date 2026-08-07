@@ -1007,6 +1007,13 @@ function showStandardEmptySlot(
 	);
 }
 
+function showUseOwnCredentialFooter(
+	type: INodeCredentialDescription,
+	options: CredentialDropdownOption[],
+): boolean {
+	return isAiGatewayManagedCredentials(type.name) && options.length === 0;
+}
+
 function canManuallySetUpCredential(credentialTypeName: string): boolean {
 	const credentialType = credentialsStore.getCredentialTypeByName(credentialTypeName);
 	if (!credentialType) {
@@ -1209,12 +1216,15 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 							:model-value="getSelectedId(type)"
 							:placeholder="getSelectPlaceholder(type.name, getIssues(type.name))"
 							size="small"
-							filterable
+							:filterable="!showUseOwnCredentialFooter(type, options)"
 							:filter-method="setFilter"
-							:popper-class="$style.selectPopper"
+							:popper-class="`${$style.selectPopper} ${
+								showUseOwnCredentialFooter(type, options) ? $style.ownCredentialPopper : ''
+							}`"
 							:class="{
 								[$style.selectWithDynamic]: isCredentialResolvable(type.name),
 								[$style.selectWithBalance]: isAiGatewayManagedCredentials(type.name) && balancePill,
+								[$style.selectWithoutSearch]: showUseOwnCredentialFooter(type, options),
 							}"
 							@update:model-value="(value: string) => onCredentialOptionSelected(type, value)"
 							@blur="emit('blur', 'credentials')"
@@ -1302,6 +1312,25 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 							<template #empty> </template>
 							<template #footer>
 								<button
+									v-if="showUseOwnCredentialFooter(type, options)"
+									type="button"
+									data-test-id="node-credentials-select-item-new"
+									:class="[$style.newCredential, $style.entryCreate]"
+									:disabled="!canCreateCredentials"
+									@click="onClickCreateCredential(type)"
+								>
+									<N8nIcon size="large" icon="key-round" :class="$style.optionIcon" />
+									<span :class="$style.entryText">
+										<N8nText :class="$style.optionName">
+											{{ i18n.baseText('aiGateway.picker.useOwnCredential') }}
+										</N8nText>
+										<N8nText :class="$style.entrySubtitle">
+											{{ i18n.baseText('aiGateway.picker.bringYourOwnKey') }}
+										</N8nText>
+									</span>
+								</button>
+								<button
+									v-else
 									type="button"
 									data-test-id="node-credentials-select-item-new"
 									:class="[$style.newCredential]"
@@ -1593,6 +1622,12 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 	}
 }
 
+.ownCredentialPopper {
+	:global(.el-select-dropdown__footer) {
+		border-top: none;
+	}
+}
+
 .entryText {
 	display: flex;
 	flex-direction: column;
@@ -1643,6 +1678,12 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 .selectWithBalance {
 	:global(.el-input__inner) {
 		padding-right: 35px;
+	}
+}
+
+.selectWithoutSearch {
+	:global(.el-input__inner) {
+		caret-color: transparent;
 	}
 }
 
@@ -1806,6 +1847,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 		line-height: var(--empty-select-height);
 		padding-left: var(--empty-select-label-padding);
 		padding-right: var(--empty-select-label-padding);
+		caret-color: transparent;
 		font-weight: var(--font-weight--medium);
 
 		&::placeholder {
