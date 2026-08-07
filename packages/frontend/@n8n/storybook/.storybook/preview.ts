@@ -57,7 +57,33 @@ export const parameters = {
 	},
 	chromatic: {
 		disableSnapshot: false,
+		// Keep both themes in Chromatic snapshots regardless of the toolbar default.
+		modes: {
+			themes: {
+				globals: { themePreview: 'side-by-side' },
+			},
+		},
 	},
+};
+
+export const globalTypes = {
+	themePreview: {
+		description: 'Color theme preview',
+		toolbar: {
+			title: 'Theme',
+			icon: 'mirror',
+			items: [
+				{ value: 'light', title: 'Light', icon: 'sun' },
+				{ value: 'dark', title: 'Dark', icon: 'moon' },
+				{ value: 'side-by-side', title: 'Light & dark', icon: 'mirror' },
+			],
+			dynamicTitle: true,
+		},
+	},
+};
+
+export const initialGlobals = {
+	themePreview: 'light',
 };
 
 export const decorators = [withThemePreview];

@@ -33,9 +33,7 @@ export const Items = {
 			return { args, value };
 		},
 		template: `
-		<div style="padding: 40px;">
 			<Select :items="args.items" v-model="value"/>
-		</div>
 		`,
 	}),
 	args: {

@@ -1,17 +1,18 @@
-import type { StoryFn } from '@storybook/vue3-vite';
+import type { Meta, StoryObj } from '@storybook/vue3-vite';
 
 import N8nAvatar from './Avatar.vue';
 
-export default {
+const meta = {
 	title: 'Core/Avatar',
 	component: N8nAvatar,
 	argTypes: {
 		size: {
-			type: 'select',
-			options: ['small', 'medium', 'large'],
+			control: 'select',
+			options: ['xxsmall', 'xsmall', 'small', 'medium', 'large'],
 		},
+		firstName: { control: 'text' },
+		lastName: { control: 'text' },
 	},
-
 	parameters: {
 		docs: {
 			description: {
@@ -20,19 +21,22 @@ export default {
 			},
 		},
 	},
-};
+} satisfies Meta<typeof N8nAvatar>;
 
-const Template: StoryFn = (args, { argTypes }) => ({
-	setup: () => ({ args }),
-	props: Object.keys(argTypes),
-	components: {
-		N8nAvatar,
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+export const Default: Story = {
+	render: (args) => ({
+		components: { N8nAvatar },
+		setup() {
+			return { args };
+		},
+		template: '<N8nAvatar v-bind="args" />',
+	}),
+	args: {
+		firstName: 'Sunny',
+		lastName: 'Side',
+		size: 'medium',
 	},
-	template: '<n8n-avatar v-bind="args" />',
-});
-
-export const Avatar = Template.bind({});
-Avatar.args = {
-	firstName: 'Sunny',
-	lastName: 'Side',
 };

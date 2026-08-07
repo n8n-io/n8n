@@ -13,6 +13,9 @@ const meta = {
 		},
 	},
 	argTypes: {
+		modelValue: { control: 'boolean' },
+		disabled: { control: 'boolean' },
+		label: { control: 'text' },
 		size: {
 			control: 'select',
 			options: ['small', 'large'],
@@ -27,40 +30,25 @@ export const Default = {
 	render: (args) => ({
 		components: { Switch },
 		setup() {
-			const value = ref(args.modelValue);
-
-			return {
-				args,
-				value,
-			};
+			return { args };
 		},
 		template: `
 		<div style="padding: 40px;">
-			<template v-for="isDisabled in [false, true]" :key="isDisabled">
-				<h2 :style="{ margin: '20px 0' }">Disabled: {{ isDisabled }}</h2>
-				<div :style="{ display: 'flex', flexDirection: 'column', gap: '12px' }">
-					<Switch v-model="value" :disabled="isDisabled"/>
-					<Switch :model-value="true" label="Checked" :disabled="isDisabled"/>
-					<Switch :model-value="false" label="Unchecked" :disabled="isDisabled"/>
-				</div>
-			</template>
-
-			<h2 :style="{ margin: '20px 0' }">Size Comparison</h2>
-			<div :style="{ display: 'flex', flexDirection: 'column', gap: '12px' }">
-				<Switch :model-value="true" label="Small size (default)" size="small"/>
-				<Switch :model-value="true" label="Large size" size="large"/>
-			</div>
-
-			<h2 :style="{ margin: '20px 0' }">Long Labels</h2>
-			<div :style="{ display: 'flex', flexDirection: 'column', gap: '12px', maxWidth: '300px' }">
-				<Switch :model-value="true" label="Automatically Passthrough Binary Images"/>
-				<Switch :model-value="false" label="Enable Advanced Security Features for This Workflow"/>
-			</div>
+			<Switch
+				:model-value="args.modelValue"
+				:label="args.label"
+				:disabled="args.disabled"
+				:size="args.size"
+				@update:model-value="args.modelValue = $event"
+			/>
 		</div>
 		`,
 	}),
 	args: {
 		modelValue: false,
+		label: 'Label',
+		disabled: false,
+		size: 'small',
 	},
 } satisfies Story;
 

@@ -1,36 +1,46 @@
-import type { StoryFn } from '@storybook/vue3-vite';
+import type { Meta, StoryObj } from '@storybook/vue3-vite';
 
 import N8nBadge from './Badge.vue';
 
-export default {
+const meta = {
 	title: 'Core/Badge',
 	component: N8nBadge,
 	argTypes: {
 		theme: {
-			type: 'text',
-			options: ['default', 'primary', 'secondary', 'tertiary'],
+			control: 'select',
+			options: ['default', 'success', 'warning', 'danger', 'primary', 'secondary', 'tertiary'],
 		},
 		size: {
-			type: 'select',
-			options: ['small', 'medium', 'large'],
+			control: 'select',
+			options: ['xsmall', 'small', 'mini', 'medium', 'large', 'xlarge'],
 		},
+		bold: { control: 'boolean' },
+		showBorder: { control: 'boolean' },
+		default: { control: 'text' },
 	},
-
 	parameters: {
 		docs: {
 			description: { component: 'A compact status label for highlighting state or metadata.' },
 		},
 	},
-};
+} satisfies Meta<typeof N8nBadge>;
 
-const Template: StoryFn = (args, { argTypes }) => ({
-	setup: () => ({ args }),
-	props: Object.keys(argTypes),
-	components: {
-		N8nBadge,
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+export const Default: Story = {
+	render: (args) => ({
+		components: { N8nBadge },
+		setup() {
+			return { args };
+		},
+		template: '<N8nBadge v-bind="args">{{ args.default }}</N8nBadge>',
+	}),
+	args: {
+		theme: 'default',
+		size: 'small',
+		bold: false,
+		showBorder: true,
+		default: 'Badge',
 	},
-	template: '<n8n-badge v-bind="args">Badge</n8n-badge>',
-});
-
-export const Badge = Template.bind({});
-Badge.args = {};
+};
