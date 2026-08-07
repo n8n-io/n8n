@@ -99,7 +99,7 @@ The dropdown content defaults to a max height of **500px** with vertical scrolli
 
 ### Item shapes
 
-Selectable items must include a non-empty `label` and `value`. Map source data at the call site; the component does not support `valueKey` / `labelKey` or primitive string items.
+Selectable items must include a non-empty `label` and `value`. Map source data at the call site; the component does not support `valueKey` / `labelKey` or primitive string items. In development, missing/empty `value` or `label` are skipped with a console warning; in production builds they are dropped silently.
 
 ```typescript
 type ComboboxValue = string;
@@ -127,7 +127,7 @@ interface CustomOption extends ComboboxOptionBase<string> {
 }
 ```
 
-- **Object items** (e.g. `{ label: 'Option 1', value: 'option1' }`) — `modelValue` stores `value`; the input displays `label`. Missing/empty `value` or `label` are skipped with a console warning — empty string values are never passed to reka (they would kill the dropdown).
+- **Object items** (e.g. `{ label: 'Option 1', value: 'option1' }`) — `modelValue` stores `value`; the input displays `label`. Missing/empty `value` or `label` are skipped (with a console warning in development) — empty string values are never passed to reka (they would kill the dropdown).
 - **Labels** — `{ type: 'label', label: 'Fruits' }` — non-interactive section heading.
 - **Separators** — `{ type: 'separator' }` — non-interactive divider between groups.
 

@@ -85,7 +85,7 @@ function hasResolvableValue(value: ComboboxValue): boolean {
 	return value !== '';
 }
 
-function warnInvalidItem(message: string, item: unknown) {
+function warnInvalidItem(message: string, item: ComboboxItem) {
 	if (!import.meta.env.DEV) {
 		return;
 	}
