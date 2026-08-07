@@ -1,4 +1,4 @@
-import type { Agent, ModelConfig } from '@n8n/agents';
+import type { Agent, ModelConfig, OpenAIReasoningEffort } from '@n8n/agents';
 import { PROVIDER_CAPABILITIES } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 
@@ -63,20 +63,14 @@ function isKimiK3Model(modelId: ModelConfig): boolean {
 }
 
 /**
- * Fireworks model ids — string form (`fireworks/accounts/fireworks/models/...`) or
- * Anthropic LanguageModel objects whose `modelId` is a Fireworks resource name
- * (AI service proxy always mounts `@ai-sdk/anthropic`).
+ * Fireworks model ids — string form (`fireworks/...`) or Anthropic LanguageModel
+ * objects whose `modelId` contains a Fireworks resource path (AI service proxy
+ * mounts `@ai-sdk/anthropic`).
  */
 function isFireworksModel(modelId: ModelConfig): boolean {
 	const id = resolveModelIdString(modelId)?.toLowerCase() ?? '';
 	const bare = resolveBareModelName(modelId)?.toLowerCase() ?? '';
-	return (
-		id.startsWith('fireworks/') ||
-		id.includes('accounts/fireworks/') ||
-		id.includes('/fireworks/') ||
-		bare.startsWith('accounts/fireworks/') ||
-		bare.includes('/fireworks/')
-	);
+	return id.startsWith('fireworks/') || id.includes('/fireworks/') || bare.includes('/fireworks/');
 }
 
 /** Grok 4.5 via xAI (`xai/grok-4.5`) or OpenRouter (`openrouter/x-ai/grok-4.5`). */
@@ -85,16 +79,26 @@ function isGrok45Model(modelId: ModelConfig): boolean {
 	return id.includes('grok-4.5');
 }
 
-/** GLM 5.2 on Baseten (`openai/zai-org/GLM-5.2`, `openai/zai-org/GLM-5.2-Fast`, etc.). */
-function isGlm52Model(modelId: ModelConfig): boolean {
-	const id = resolveModelIdString(modelId)?.toLowerCase() ?? '';
-	return id.includes('glm-5.2');
-}
-
 /** GPT-5.6 family via OpenAI (`openai/gpt-5.6-sol`, `openai/gpt-5.6-terra`, `openai/gpt-5.6-luna`). */
 function isGpt56Model(modelId: ModelConfig): boolean {
 	const id = resolveModelIdString(modelId)?.toLowerCase() ?? '';
 	return id.includes('gpt-5.6');
+}
+
+/** Providers that pin a fixed OpenAI-style reasoning effort for every model. */
+const PROVIDER_EFFORT_PINS = {
+	baseten: 'none',
+	wafer: 'medium',
+	morph: 'medium',
+	togetherai: 'low',
+	custom: 'low',
+	fireworks: 'medium',
+} as const satisfies Record<string, OpenAIReasoningEffort>;
+
+type PinnedEffortProvider = keyof typeof PROVIDER_EFFORT_PINS;
+
+function isPinnedEffortProvider(provider: string): provider is PinnedEffortProvider {
+	return Object.hasOwn(PROVIDER_EFFORT_PINS, provider);
 }
 
 export function applyAgentThinking(agent: Agent, modelId: ModelConfig): void {
@@ -102,44 +106,15 @@ export function applyAgentThinking(agent: Agent, modelId: ModelConfig): void {
 
 	if (!provider || !PROVIDER_CAPABILITIES[provider]?.thinking) return;
 
-	if (provider === 'baseten') {
-		agent.thinking('baseten', { reasoningEffort: 'none' });
-		return;
-	}
-
-	if (provider === 'wafer') {
-		agent.thinking('wafer', { reasoningEffort: 'medium' });
-		return;
-	}
-
-	if (provider === 'morph') {
-		agent.thinking('morph', { reasoningEffort: 'medium' });
-		return;
-	}
-
-	if (provider === 'togetherai') {
-		agent.thinking('togetherai', { reasoningEffort: 'low' });
-		return;
-	}
-
-	if (provider === 'custom') {
-		// OpenAI-compatible custom endpoints (e.g. dedicated Kimi-K3 routers).
-		agent.thinking('custom', { reasoningEffort: 'low' });
+	if (isPinnedEffortProvider(provider)) {
+		agent.thinking(provider, { reasoningEffort: PROVIDER_EFFORT_PINS[provider] });
 		return;
 	}
 
 	if (provider === 'openai') {
-		if (isGlm52Model(modelId)) {
-			// Legacy OpenAI-compatible Baseten routing — same GLM effort mapping.
-			agent.thinking('openai', { reasoningEffort: 'high' });
-			return;
-		}
-		if (isGpt56Model(modelId)) {
-			// Pin medium for GPT-5.6 family (sol/terra/luna) via AI SDK `reasoningEffort`.
-			agent.thinking('openai', { reasoningEffort: 'medium' });
-			return;
-		}
-		agent.thinking('openai', { reasoningEffort: 'high' });
+		agent.thinking('openai', {
+			reasoningEffort: isGpt56Model(modelId) ? 'medium' : 'high',
+		});
 		return;
 	}
 
@@ -160,15 +135,10 @@ export function applyAgentThinking(agent: Agent, modelId: ModelConfig): void {
 		return;
 	}
 
-	if (provider === 'fireworks') {
-		agent.thinking('fireworks', { reasoningEffort: 'medium' });
-		return;
-	}
-
 	if (provider === 'openrouter') {
-		// Pin medium effort for models that default to heavy/max thinking.
+		// Pin medium for models that default to heavy/max thinking.
 		if (isKimiK3Model(modelId) || isGrok45Model(modelId)) {
-			agent.thinking('openrouter', { reasoningEffort: 'high' });
+			agent.thinking('openrouter', { reasoningEffort: 'medium' });
 		}
 		return;
 	}

@@ -38,8 +38,8 @@ export const VERIFY_ATTEMPT_TIMEOUTS_MS = [60_000, 120_000, 240_000];
 export const VERIFY_INACTIVITY_TIMEOUT_MS = 45_000;
 /**
  * Completion budget for checklist JSON. Some OpenAI-compatible defaults (~250)
- * truncate mid-result (~298 tokens observed); floor is ≥600, with headroom for
- * thinking + multi-item checklists.
+ * truncate mid-result (~298 tokens observed); 4096 leaves headroom for thinking
+ * tokens plus multi-item checklists.
  */
 export const VERIFIER_MAX_OUTPUT_TOKENS = 4_096;
 const VERIFIER_DEBUG = process.env.N8N_EVAL_VERIFIER_DEBUG === '1';

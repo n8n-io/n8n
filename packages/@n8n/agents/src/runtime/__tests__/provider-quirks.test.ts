@@ -2,8 +2,7 @@ import { describe, it, expect } from 'vitest';
 
 import type { ReasoningLevel } from '../../types';
 import {
-	GLM_52_DEFAULT_MAX_OUTPUT_TOKENS,
-	KIMI_K3_DEFAULT_MAX_OUTPUT_TOKENS,
+	HIGH_REASONING_DEFAULT_MAX_OUTPUT_TOKENS,
 	applyToolProviderOptionDefaults,
 	buildCallProviderOptionDefaults,
 	getProviderQuirks,
@@ -61,7 +60,9 @@ describe('thinkingToProviderOptions', () => {
 	});
 
 	it('vertex: adaptive thinking maps to anthropic providerOptions namespace', () => {
-		expect(getProviderQuirks('vertex').thinkingToProviderOptions?.({ mode: 'adaptive' })).toEqual({
+		expect(
+			getProviderQuirks('vertex').thinkingToProviderOptions?.({ mode: 'adaptive' }, ''),
+		).toEqual({
 			anthropic: {
 				thinking: { type: 'adaptive', display: 'summarized' },
 				effort: 'medium',
@@ -118,16 +119,22 @@ describe('thinkingToProviderOptions', () => {
 
 	it('openai: forwards GPT-5.6 Sol compatible reasoningEffort values', () => {
 		expect(
-			getProviderQuirks('openai').thinkingToProviderOptions?.({
-				reasoningEffort: 'medium',
-			}),
+			getProviderQuirks('openai').thinkingToProviderOptions?.(
+				{
+					reasoningEffort: 'medium',
+				},
+				'',
+			),
 		).toEqual({
 			openai: { reasoningEffort: 'medium', reasoningSummary: null },
 		});
 		expect(
-			getProviderQuirks('openai').thinkingToProviderOptions?.({
-				reasoningEffort: 'xhigh',
-			}),
+			getProviderQuirks('openai').thinkingToProviderOptions?.(
+				{
+					reasoningEffort: 'xhigh',
+				},
+				'',
+			),
 		).toEqual({
 			openai: { reasoningEffort: 'xhigh', reasoningSummary: null },
 		});
@@ -152,32 +159,38 @@ describe('thinkingToProviderOptions', () => {
 
 	it('openrouter: maps reasoningEffort to reasoning.effort', () => {
 		expect(
-			getProviderQuirks('openrouter').thinkingToProviderOptions?.({
-				reasoningEffort: 'low',
-			}),
+			getProviderQuirks('openrouter').thinkingToProviderOptions?.(
+				{
+					reasoningEffort: 'low',
+				},
+				'',
+			),
 		).toEqual({
 			openrouter: { reasoning: { effort: 'low' } },
 		});
 	});
 
 	it('openrouter: defaults reasoning effort to medium', () => {
-		expect(getProviderQuirks('openrouter').thinkingToProviderOptions?.({})).toEqual({
+		expect(getProviderQuirks('openrouter').thinkingToProviderOptions?.({}, '')).toEqual({
 			openrouter: { reasoning: { effort: 'medium' } },
 		});
 	});
 
 	it('baseten: maps reasoningEffort to providerOptions.baseten', () => {
 		expect(
-			getProviderQuirks('baseten').thinkingToProviderOptions?.({
-				reasoningEffort: 'high',
-			}),
+			getProviderQuirks('baseten').thinkingToProviderOptions?.(
+				{
+					reasoningEffort: 'high',
+				},
+				'',
+			),
 		).toEqual({
 			baseten: { reasoningEffort: 'high' },
 		});
 	});
 
 	it('baseten: defaults reasoning effort to none', () => {
-		expect(getProviderQuirks('baseten').thinkingToProviderOptions?.({})).toEqual({
+		expect(getProviderQuirks('baseten').thinkingToProviderOptions?.({}, '')).toEqual({
 			baseten: { reasoningEffort: 'none' },
 		});
 	});
@@ -189,16 +202,19 @@ describe('thinkingToProviderOptions', () => {
 	});
 
 	it('fireworks: defaults reasoning effort to medium', () => {
-		expect(getProviderQuirks('fireworks').thinkingToProviderOptions?.({})).toEqual({
+		expect(getProviderQuirks('fireworks').thinkingToProviderOptions?.({}, '')).toEqual({
 			fireworks: { reasoningEffort: 'medium' },
 		});
 	});
 
 	it('fireworks: maps reasoningEffort to providerOptions.fireworks', () => {
 		expect(
-			getProviderQuirks('fireworks').thinkingToProviderOptions?.({
-				reasoningEffort: 'high',
-			}),
+			getProviderQuirks('fireworks').thinkingToProviderOptions?.(
+				{
+					reasoningEffort: 'high',
+				},
+				'',
+			),
 		).toEqual({
 			fireworks: { reasoningEffort: 'high' },
 		});
@@ -206,64 +222,76 @@ describe('thinkingToProviderOptions', () => {
 
 	it('wafer: maps reasoningEffort to providerOptions.wafer', () => {
 		expect(
-			getProviderQuirks('wafer').thinkingToProviderOptions?.({
-				reasoningEffort: 'high',
-			}),
+			getProviderQuirks('wafer').thinkingToProviderOptions?.(
+				{
+					reasoningEffort: 'high',
+				},
+				'',
+			),
 		).toEqual({
 			wafer: { reasoningEffort: 'high' },
 		});
 	});
 
 	it('wafer: defaults reasoning effort to medium', () => {
-		expect(getProviderQuirks('wafer').thinkingToProviderOptions?.({})).toEqual({
+		expect(getProviderQuirks('wafer').thinkingToProviderOptions?.({}, '')).toEqual({
 			wafer: { reasoningEffort: 'medium' },
 		});
 	});
 
 	it('morph: maps reasoningEffort to reasoning.effort', () => {
 		expect(
-			getProviderQuirks('morph').thinkingToProviderOptions?.({
-				reasoningEffort: 'high',
-			}),
+			getProviderQuirks('morph').thinkingToProviderOptions?.(
+				{
+					reasoningEffort: 'high',
+				},
+				'',
+			),
 		).toEqual({
 			morph: { reasoning: { effort: 'high' } },
 		});
 	});
 
 	it('morph: defaults reasoning effort to medium', () => {
-		expect(getProviderQuirks('morph').thinkingToProviderOptions?.({})).toEqual({
+		expect(getProviderQuirks('morph').thinkingToProviderOptions?.({}, '')).toEqual({
 			morph: { reasoning: { effort: 'medium' } },
 		});
 	});
 
 	it('togetherai: maps reasoningEffort to providerOptions.togetherai', () => {
 		expect(
-			getProviderQuirks('togetherai').thinkingToProviderOptions?.({
-				reasoningEffort: 'high',
-			}),
+			getProviderQuirks('togetherai').thinkingToProviderOptions?.(
+				{
+					reasoningEffort: 'high',
+				},
+				'',
+			),
 		).toEqual({
 			togetherai: { reasoningEffort: 'high' },
 		});
 	});
 
 	it('togetherai: defaults reasoning effort to medium', () => {
-		expect(getProviderQuirks('togetherai').thinkingToProviderOptions?.({})).toEqual({
+		expect(getProviderQuirks('togetherai').thinkingToProviderOptions?.({}, '')).toEqual({
 			togetherai: { reasoningEffort: 'medium' },
 		});
 	});
 
 	it('custom: maps reasoningEffort to providerOptions.custom', () => {
 		expect(
-			getProviderQuirks('custom').thinkingToProviderOptions?.({
-				reasoningEffort: 'high',
-			}),
+			getProviderQuirks('custom').thinkingToProviderOptions?.(
+				{
+					reasoningEffort: 'high',
+				},
+				'',
+			),
 		).toEqual({
 			custom: { reasoningEffort: 'high' },
 		});
 	});
 
 	it('custom: defaults reasoning effort to medium', () => {
-		expect(getProviderQuirks('custom').thinkingToProviderOptions?.({})).toEqual({
+		expect(getProviderQuirks('custom').thinkingToProviderOptions?.({}, '')).toEqual({
 			custom: { reasoningEffort: 'medium' },
 		});
 	});
@@ -289,7 +317,7 @@ describe('resolveDefaultMaxOutputTokens', () => {
 		'openai/zai-org/GLM-5.2-Fast',
 		'morph/morph-glm52-744b',
 	] as const)('raises the output cap for GLM 5.2 models (%s)', (modelId) => {
-		expect(resolveDefaultMaxOutputTokens(modelId)).toBe(GLM_52_DEFAULT_MAX_OUTPUT_TOKENS);
+		expect(resolveDefaultMaxOutputTokens(modelId)).toBe(HIGH_REASONING_DEFAULT_MAX_OUTPUT_TOKENS);
 	});
 
 	it.each([
@@ -301,7 +329,7 @@ describe('resolveDefaultMaxOutputTokens', () => {
 		'morph/morph-kimik3',
 		'morph/morph-kimik3-fast',
 	] as const)('raises the output cap to the Kimi K3 default for %s', (modelId) => {
-		expect(resolveDefaultMaxOutputTokens(modelId)).toBe(KIMI_K3_DEFAULT_MAX_OUTPUT_TOKENS);
+		expect(resolveDefaultMaxOutputTokens(modelId)).toBe(HIGH_REASONING_DEFAULT_MAX_OUTPUT_TOKENS);
 	});
 
 	it('leaves unrelated models unset', () => {
