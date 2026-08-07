@@ -13,6 +13,7 @@ import {
 	resolveRouteArgs,
 	resolveSuccessStatus,
 } from '@/public-api/public-api-route-resolver';
+import { deprecated } from '@/public-api/v1/shared/middlewares/global.middleware';
 import { sendPublicApiErrorResponse } from '@/public-api/v1/public-api-error-response';
 import { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
 import { LastActiveAtService } from '@/services/last-active-at.service';
@@ -86,7 +87,13 @@ export class PublicApiControllerRegistry {
 				res.status(successStatus).json(result);
 			};
 
-			const middlewares: RequestHandler[] = [this.createAuthMiddleware(apiVersion)];
+			const middlewares: RequestHandler[] = [];
+
+			if (route.deprecated) {
+				middlewares.push(deprecated(route.deprecated));
+			}
+
+			middlewares.push(this.createAuthMiddleware(apiVersion));
 
 			if (route.apiKeyScope) {
 				middlewares.push(this.createApiKeyScopeMiddleware(route.apiKeyScope));

@@ -32,7 +32,11 @@ import Banner from '@/app/components/Banner.vue';
 import CopyInput from '@/app/components/CopyInput.vue';
 import CredentialInputs from './CredentialInputs.vue';
 import TemplatedAuthSimpleView from './TemplatedAuthSimpleView.vue';
-import { TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE } from '@/features/credentials/templatedAuth.utils';
+import {
+	listPlaceholderTitles,
+	parseHttpUrl,
+	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
+} from '@/features/credentials/templatedAuth.utils';
 import GoogleAuthButton from './GoogleAuthButton.vue';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
@@ -361,12 +365,24 @@ function onAuthTypeChange(value: CredentialModeOption): void {
 // list) keeps them open so the user can finish the form; an in-thread append
 // (artifact) closes them so the conversation comes into view.
 async function onInstanceAiCredentialHelpClick() {
+	// A recipe-created credential arrives pre-filled: the guided-form labels
+	// steer the help thread to where-to-find guidance instead of setup steps,
+	// and the recipe's key page lets it link the exact URL the recipe research
+	// already verified.
+	const placeholderTitles = isTemplatedAuthType.value
+		? listPlaceholderTitles(props.credentialData)
+		: [];
+	const recipeDocsUrl = isTemplatedAuthType.value
+		? parseHttpUrl(props.credentialData.docsUrl)
+		: undefined;
 	const shouldCloseModal = await props.instanceAiCredentialHelp?.({
 		credentialType: props.credentialType.name,
 		displayName: props.credentialType.displayName,
 		nodeName: activeNode.value?.name,
 		nodeType: activeNode.value?.type,
 		id: props.credentialId || undefined,
+		...(placeholderTitles.length ? { placeholderTitles } : {}),
+		...(recipeDocsUrl ? { docsUrl: recipeDocsUrl } : {}),
 		documentationUrl: documentationUrl.value || undefined,
 		oauthRedirectUrl: props.isOAuthType ? oAuthCallbackUrl.value : undefined,
 	});

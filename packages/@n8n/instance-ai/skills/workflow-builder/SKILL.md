@@ -147,10 +147,11 @@ Error workflows are per-target-workflow;
 n8n has no global error workflow setting (mention that only if the user asks
 about global behavior).
 `build-workflow` verifies that `settings.errorWorkflow` references a published
-workflow with an active Error Trigger and rejects anything else. Before
+workflow with an active Error Trigger and rejects anything else. Do not offer
+or build an error workflow before the primary workflow is published. Before
 building or attaching an error workflow, load this skill's
 `references/error-workflows.md` linked file and follow its
-build → publish → assign steps. Do not create one before the user opts in.
+build → publish → assign steps.
 
 ## Mandatory Process
 
@@ -278,14 +279,36 @@ decision after testing.
   already connected (stored credentials or n8n credits) — follow the
   `credentialResolutionNote` in the same output; do not route them to setup.
 - If a required credential type is not listed, call
-  `credentials(action="search-types")` with the service name. Prefer dedicated
-  credential types over generic auth; when generic auth is truly needed,
-  prefer `httpBearerAuth` over `httpHeaderAuth`.
+  `credentials(action="search-types")` with the service name. Pick in this
+  order:
+  1. A **dedicated credential type** whenever search finds one.
+  2. **Simplified Custom Auth** (`httpTemplatedCustomAuth`) for any service
+     without a dedicated type whose auth is expressible as header/query/body
+     values — this covers API keys and bearer tokens. When the provider
+     documents `Authorization: Bearer <token>`, do NOT reach for
+     `httpBearerAuth`: template it as
+     `{"headers":{"Authorization":"Bearer {{api_key}}"}}`. Set the HTTP
+     Request node's `genericAuthType` to `httpTemplatedCustomAuth`, and note
+     the provider's documented auth scheme (header format, key page, a cheap
+     authenticated GET endpoint) while you have the docs open: the setup call
+     needs them for the `credentialHints` recipe (see the post-build-flow
+     skill). Before that setup call, load the `credential-recipe-research`
+     skill and execute its lookup procedure — the recipe's template, docsUrl
+     and testUrl must come from pages fetched there, never from memory. Setup
+     rejects new plain generic credentials on HTTP Request nodes, so picking
+     Bearer/Header/Query/Custom Auth here means rebuilding — unless the user
+     explicitly asked for that plain type: an explicit user choice wins (setup
+     accepts it with `allowPlainGenericAuth: true`), don't argue with it.
+  3. Plain generic types (`httpBasicAuth`, `httpDigestAuth`, `oAuth2Api`, …)
+     only for what a template cannot express: basic auth's base64-encoded
+     pair, digest's challenge-response, OAuth flows — or when the user
+     explicitly asks for a specific plain type.
 - `credentials(action="list", type=...)` may include a synthetic
-  `{ id: null, name: "n8n credits", __aiGatewayManaged: true }` entry when the
-  type is covered by n8n credits. It is not a stored credential: never pass it
-  to `newCredential(...)` — it only signals that setup can apply n8n credits
-  automatically.
+  `{ id: null, name: "n8n credits", type, __aiGatewayManaged: true }` entry
+  when the type is covered by n8n credits (see n8n credits Preference). It is
+  not a stored credential: never pass it to `newCredential(...)` — it only
+  signals that setup can apply n8n credits automatically when the user has no
+  stored credential of that type.
 - These rules apply to outbound service calls. Inbound trigger nodes (Webhook,
   Form, Chat, MCP Trigger) keep authentication at its default `none` unless
   the user explicitly asks to authenticate inbound traffic.

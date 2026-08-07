@@ -252,6 +252,20 @@ describe('NodeCredentials', () => {
 		expect(screen.queryByText('OpenAi account')).toBeInTheDocument();
 	});
 
+	it('replaces the type-derived field label when credentialsFieldLabel is set', () => {
+		ndvStore.activeNode = httpNode;
+		credentialsStore.state.credentials = {
+			c8vqdPpPClh4TgIO: createCredential(),
+		};
+
+		renderComponent(
+			{ props: { credentialsFieldLabel: 'fal.ai API Key credentials' } },
+			{ merge: true },
+		);
+
+		expect(screen.getByTestId('credentials-label')).toHaveTextContent('fal.ai API Key credentials');
+	});
+
 	it('renders standalone when no active workflow document store is provided', () => {
 		// Instance AI credential card: rendered standalone, outside a loaded
 		// workflow document. The strict injectNDVStore() used to throw here on the
