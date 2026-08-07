@@ -48,7 +48,9 @@ describe('OdooV2 — contact:create', () => {
 
 	it('creates a contact using defineBelow mapping and returns its id', async () => {
 		setupParams();
-		(transport.odooApiRequest as Mock).mockResolvedValue([MOCK_CONTACT_ID]);
+		(transport.odooApiRequest as Mock)
+			.mockResolvedValueOnce({})
+			.mockResolvedValue([MOCK_CONTACT_ID]);
 
 		const result = await node.execute.call(exec);
 
@@ -61,7 +63,9 @@ describe('OdooV2 — contact:create', () => {
 	it('uses item json directly when mappingMode is autoMapInputData', async () => {
 		setupParams({ 'fieldsToSend.mappingMode': 'autoMapInputData' });
 		exec.getInputData.mockReturnValue([{ json: { name: 'Jane Doe', email: 'jane@example.com' } }]);
-		(transport.odooApiRequest as Mock).mockResolvedValue([MOCK_CONTACT_ID]);
+		(transport.odooApiRequest as Mock)
+			.mockResolvedValueOnce({})
+			.mockResolvedValue([MOCK_CONTACT_ID]);
 
 		await node.execute.call(exec);
 
@@ -72,7 +76,7 @@ describe('OdooV2 — contact:create', () => {
 
 	it('extracts scalar id when Odoo returns a plain number', async () => {
 		setupParams();
-		(transport.odooApiRequest as Mock).mockResolvedValue(MOCK_CONTACT_ID);
+		(transport.odooApiRequest as Mock).mockResolvedValueOnce({}).mockResolvedValue(MOCK_CONTACT_ID);
 
 		const result = await node.execute.call(exec);
 
@@ -89,18 +93,24 @@ describe('OdooV2 — contact:create', () => {
 			if (key === 'fieldsToSend.value') return i === 0 ? { name: 'Alice' } : { name: 'Bob' };
 			return undefined;
 		});
-		(transport.odooApiRequest as Mock).mockResolvedValueOnce([1]).mockResolvedValueOnce([2]);
+		// 1 schema fetch + 2 create calls
+		(transport.odooApiRequest as Mock)
+			.mockResolvedValueOnce({})
+			.mockResolvedValueOnce([1])
+			.mockResolvedValueOnce([2]);
 
 		const result = await node.execute.call(exec);
 
-		expect(transport.odooApiRequest).toHaveBeenCalledTimes(2);
+		expect(transport.odooApiRequest).toHaveBeenCalledTimes(3);
 		expect(result[0]).toHaveLength(2);
 	});
 
 	it('returns error item and continues when continueOnFail is true', async () => {
 		setupParams();
 		exec.continueOnFail.mockReturnValue(true);
-		(transport.odooApiRequest as Mock).mockRejectedValue(new Error('Odoo error'));
+		(transport.odooApiRequest as Mock)
+			.mockResolvedValueOnce({})
+			.mockRejectedValue(new Error('Odoo error'));
 
 		const result = await node.execute.call(exec);
 
@@ -110,7 +120,9 @@ describe('OdooV2 — contact:create', () => {
 	it('rethrows the error when continueOnFail is false', async () => {
 		setupParams();
 		exec.continueOnFail.mockReturnValue(false);
-		(transport.odooApiRequest as Mock).mockRejectedValue(new Error('Odoo error'));
+		(transport.odooApiRequest as Mock)
+			.mockResolvedValueOnce({})
+			.mockRejectedValue(new Error('Odoo error'));
 
 		await expect(node.execute.call(exec)).rejects.toThrow('Odoo error');
 	});
