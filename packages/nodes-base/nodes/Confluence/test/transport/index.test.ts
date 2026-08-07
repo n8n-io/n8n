@@ -38,7 +38,7 @@ describe('Confluence Transport', () => {
 			parameters: {},
 		};
 		ctx.getNode.mockReturnValue(mockNode);
-		ctx.getCredentials.mockResolvedValue({ siteUrl: 'https://example.atlassian.net/wiki' });
+		ctx.getCredentials.mockResolvedValue({ domain: 'https://example.atlassian.net/wiki' });
 	});
 
 	describe('normalizeSiteUrl', () => {

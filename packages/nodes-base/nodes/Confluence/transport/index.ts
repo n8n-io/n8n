@@ -128,8 +128,9 @@ export async function confluenceApiRequest(
 	qs: IDataObject = {},
 ): Promise<IDataObject> {
 	const credentials = await this.getCredentials(CONFLUENCE_CREDENTIAL_NAME);
-	// ENT-128 pins the label "Site URL" but not the key; this is the ONE place to touch if it lands under another name
-	const siteUrl = credentials.siteUrl;
+	// The key is `domain` (kept from Jira credentials for backwards compatibility)
+	// while the user-facing label is "Site URL"; see AtlassianOAuth2Api (ENT-128)
+	const siteUrl = credentials.domain;
 	if (typeof siteUrl !== 'string' || siteUrl === '') {
 		throw new NodeOperationError(
 			this.getNode(),
