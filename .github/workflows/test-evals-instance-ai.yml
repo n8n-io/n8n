@@ -228,6 +228,7 @@ jobs:
           EVALS_MORPH_KEY: ${{ secrets.EVALS_MORPH_KEY }}
           EVALS_TOGETHER_KEY: ${{ secrets.EVALS_TOGETHER_KEY }}
           EVALS_DATABRICKS_KEY: ${{ secrets.EVALS_DATABRICKS_KEY }}
+          EVALS_MODAL_KEY: ${{ secrets.EVALS_MODAL_KEY }}
           EVALS_AZURE_FOUNDRY_KEY: ${{ secrets.EVALS_AZURE_FOUNDRY_KEY }}
           EVALS_VERTEX_SA_JSON: ${{ secrets.EVALS_VERTEX_SA_JSON }}
           EVALS_VERTEX_PROJECT: ${{ secrets.EVALS_VERTEX_PROJECT }}
@@ -307,11 +308,14 @@ jobs:
               echo "::error::model custom/* requires model-url (OpenAI-compatible base URL ending in /v1)"
               exit 1
             fi
-            # Dedicated OpenAI-compatible routers often need no auth. Databricks AI
-            # Gateway (and similar mlflow gateways) authenticate with a Bearer PAT.
+            # Keyless routers leave MODEL_API_KEY empty. Databricks uses a PAT;
+            # Modal uses EVALS_MODAL_KEY as Bearer (prejoined proxy id.secret).
             if [[ "$INSTANCE_AI_MODEL_URL" == *databricks.com* ]] || [[ "$INSTANCE_AI_MODEL_URL" == *ai-gateway/mlflow* ]]; then
               require_secret EVALS_DATABRICKS_KEY "$EVALS_DATABRICKS_KEY"
               MODEL_API_KEY="$EVALS_DATABRICKS_KEY"
+            elif [[ "$INSTANCE_AI_MODEL_URL" == *.modal.direct* ]]; then
+              require_secret EVALS_MODAL_KEY "$EVALS_MODAL_KEY"
+              MODEL_API_KEY="$EVALS_MODAL_KEY"
             else
               MODEL_API_KEY=""
             fi
@@ -578,6 +582,7 @@ jobs:
           EVALS_MORPH_KEY: ${{ secrets.EVALS_MORPH_KEY }}
           EVALS_TOGETHER_KEY: ${{ secrets.EVALS_TOGETHER_KEY }}
           EVALS_DATABRICKS_KEY: ${{ secrets.EVALS_DATABRICKS_KEY }}
+          EVALS_MODAL_KEY: ${{ secrets.EVALS_MODAL_KEY }}
           EVALS_AZURE_FOUNDRY_KEY: ${{ secrets.EVALS_AZURE_FOUNDRY_KEY }}
           EVALS_VERTEX_SA_JSON: ${{ secrets.EVALS_VERTEX_SA_JSON }}
           DAYTONA_API_KEY: ${{ secrets.DAYTONA_API_KEY }}
@@ -593,7 +598,7 @@ jobs:
           for v in "$EVALS_ANTHROPIC_KEY" "$EVALS_OPENAI_KEY" "$EVALS_OPENROUTER_KEY" \
                    "$EVALS_XAI_KEY" "$EVALS_BASETEN_KEY" "$EVALS_FIREWORKS_KEY" \
                    "$EVALS_WAFER_KEY" "$EVALS_MORPH_KEY" "$EVALS_TOGETHER_KEY" \
-                   "$EVALS_DATABRICKS_KEY" \
+                   "$EVALS_DATABRICKS_KEY" "$EVALS_MODAL_KEY" \
                    "$EVALS_AZURE_FOUNDRY_KEY" "$EVALS_VERTEX_SA_JSON" "$DAYTONA_API_KEY" \
                    "$N8N_LICENSE_ACTIVATION_KEY" "$N8N_LICENSE_CERT" "$N8N_ENCRYPTION_KEY" \
                    "$EVALS_LANGSMITH_API_KEY"; do
