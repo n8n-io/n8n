@@ -43,8 +43,6 @@ responses:
                     type: string
                     enum:
                       - global
-                  licensed:
-                    type: boolean
                   scopes:
                     type: array
                     items:
@@ -65,7 +63,6 @@ responses:
                   - description
                   - systemRole
                   - roleType
-                  - licensed
                   - scopes
                   - createdAt
                   - updatedAt
@@ -87,8 +84,6 @@ responses:
                     type: string
                     enum:
                       - project
-                  licensed:
-                    type: boolean
                   scopes:
                     type: array
                     items:
@@ -109,7 +104,6 @@ responses:
                   - description
                   - systemRole
                   - roleType
-                  - licensed
                   - scopes
                   - createdAt
                   - updatedAt
@@ -131,8 +125,6 @@ responses:
                     type: string
                     enum:
                       - credential
-                  licensed:
-                    type: boolean
                   scopes:
                     type: array
                     items:
@@ -153,7 +145,6 @@ responses:
                   - description
                   - systemRole
                   - roleType
-                  - licensed
                   - scopes
                   - createdAt
                   - updatedAt
@@ -175,8 +166,6 @@ responses:
                     type: string
                     enum:
                       - workflow
-                  licensed:
-                    type: boolean
                   scopes:
                     type: array
                     items:
@@ -197,7 +186,6 @@ responses:
                   - description
                   - systemRole
                   - roleType
-                  - licensed
                   - scopes
                   - createdAt
                   - updatedAt
