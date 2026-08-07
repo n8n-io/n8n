@@ -574,6 +574,8 @@ function onTagsUpdate(value: TagsInputValue[]) {
 	border: none;
 	background: transparent;
 	outline: none;
+	font-size: inherit;
+	color: inherit;
 
 	&::placeholder {
 		color: var(--input--placeholder--color);
