@@ -224,6 +224,47 @@ describe('AgentEvalResultsPanel', () => {
 			expect(store.saveReview).toHaveBeenCalledWith('project-1', 'agent-1', 'run-1', 'c1');
 		});
 
+		// Agreement carries neither a note nor a rewrite, so switching to it drops
+		// both. Doing that silently on one click is not a change anyone can review.
+		it('does not auto-save a thumbs-up that would discard a saved note', async () => {
+			const pinia = createTestingPinia({ stubActions: true });
+			const store = useAgentEvalsStore();
+			vi.mocked(store.getReview).mockReturnValue({
+				run: null,
+				results: [result('c1')],
+				resultsCount: 1,
+				ratingsByResultId: {
+					c1: {
+						id: 'r1',
+						resultId: 'c1',
+						vote: 'down',
+						comment: 'answered off-task',
+						correction: null,
+						ratedById: 'u1',
+						createdAt: '2026-01-01T00:00:00.000Z',
+						updatedAt: '2026-01-01T00:00:00.000Z',
+					},
+				},
+				pendingByResultId: {},
+				draftsByResultId: {},
+				counts: null,
+				loading: false,
+				loadingMore: false,
+			});
+			vi.mocked(store.reviewedCount).mockReturnValue(1);
+			vi.mocked(store.getDraft).mockReturnValue(undefined);
+			vi.mocked(store.isStartingRun).mockReturnValue(false);
+			vi.mocked(store.isRunInFlight).mockReturnValue(false);
+
+			const { getAllByTestId } = renderComponent({ pinia });
+			await userEvent.click(getAllByTestId('stub-vote-up')[0]);
+			await flushPromises();
+
+			expect(store.beginVote).toHaveBeenCalledWith('run-1', 'c1', 'up');
+			// Falls through to the panel so the reviewer confirms the loss.
+			expect(store.saveReview).not.toHaveBeenCalled();
+		});
+
 		it('leaves a thumbs-down unsaved, waiting on its reason', async () => {
 			const { getAllByTestId, store } = render({ results: [result('c1')], resultsCount: 1 });
 

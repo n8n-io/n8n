@@ -103,11 +103,24 @@ const onSave = async (resultId: string) => {
 };
 
 const onVote = async (resultId: string, vote: AgentEvalVote) => {
+	// Read before the draft is written: whether this vote discards anything depends
+	// on what was already persisted.
+	const before = viewFor(resultId);
+	const discardsWork =
+		before.kind === 'settled' && (before.comment !== null || before.correction !== null);
+
 	store.beginVote(props.runId, resultId, vote);
-	// Agreement is a one-click action: there is nothing further to ask, so it
-	// persists straight away rather than leaving the row unsaved behind a Save
-	// button. Disagreement stops here — its reason is what the Save is waiting on.
-	if (vote === 'up') await onSave(resultId);
+
+	// Agreement is a one-click action — there is nothing further to ask, so it
+	// persists straight away rather than parking the row behind a Save button.
+	//
+	// Unless it would throw away a note or a rewrite the reviewer already saved.
+	// Agreement carries neither, so switching to it drops both, and doing that
+	// silently on one click is not a change anyone can review. That case falls
+	// through to the panel, where the row reads Unsaved until they confirm.
+	//
+	// Disagreement always stops here: its reason is what the Save is waiting on.
+	if (vote === 'up' && !discardsWork) await onSave(resultId);
 };
 
 onMounted(load);

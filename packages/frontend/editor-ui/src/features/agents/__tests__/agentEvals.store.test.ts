@@ -320,6 +320,64 @@ describe('useAgentEvalsStore', () => {
 			expect(store.reviewedCount(RUN_ID)).toBe(1);
 		});
 
+		// The ratings route returns the latest rating as of *its own* read, which can
+		// predate a re-vote saved while it was in flight. Letting it win would revert
+		// the row to the vote the reviewer just replaced.
+		it('keeps a newer local rating when the fetched one is the row it replaced', async () => {
+			const older = rating('c1', {
+				id: 'r-old',
+				vote: 'down',
+				comment: 'was wrong',
+				createdAt: '2026-01-01T00:00:00.000Z',
+			});
+			mockRun({ results: [result('c1')], count: 1, ratings: [older] });
+			const store = useAgentEvalsStore();
+			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
+
+			// Reviewer changes their mind; the save lands first.
+			store.beginVote(RUN_ID, 'c1', 'up');
+			rateResult.mockResolvedValue(
+				rating('c1', { id: 'r-new', vote: 'up', createdAt: '2026-01-01T00:05:00.000Z' }),
+			);
+			await store.saveReview(PROJECT_ID, AGENT_ID, RUN_ID, 'c1');
+
+			// A re-read still carrying the superseded rating must not undo that.
+			mockRun({ results: [result('c1')], count: 1, ratings: [older] });
+			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
+
+			expect(store.getReview(RUN_ID).ratingsByResultId.c1).toMatchObject({
+				id: 'r-new',
+				vote: 'up',
+			});
+		});
+
+		it('accepts a fetched rating that is newer than the one held', async () => {
+			mockRun({
+				results: [result('c1')],
+				count: 1,
+				ratings: [rating('c1', { id: 'r-old', vote: 'up', createdAt: '2026-01-01T00:00:00.000Z' })],
+			});
+			const store = useAgentEvalsStore();
+			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
+
+			// Someone else re-rated the case in the meantime.
+			mockRun({
+				results: [result('c1')],
+				count: 1,
+				ratings: [
+					rating('c1', {
+						id: 'r-newer',
+						vote: 'down',
+						comment: 'no',
+						createdAt: '2026-01-01T01:00:00.000Z',
+					}),
+				],
+			});
+			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
+
+			expect(store.getReview(RUN_ID).ratingsByResultId.c1).toMatchObject({ id: 'r-newer' });
+		});
+
 		// Settling a run the reviewer had paged through must not drop them back to
 		// the first page.
 		it('re-reads over the window already paged in, not just the first page', async () => {
@@ -661,6 +719,31 @@ describe('useAgentEvalsStore', () => {
 			await vi.advanceTimersByTimeAsync(0);
 
 			expect(getRunDetail.mock.calls.length).toBe(readsBeforePolling);
+			store.stopPollingRun();
+		});
+
+		// `take` is clamped server-side rather than rejected, so a re-read past the cap
+		// returns fewer rows than are already on screen. Skipping beats truncating.
+		it('skips the refresh once more rows are loaded than one read can carry', async () => {
+			getRunDetail.mockResolvedValue(
+				runDetail(
+					Array.from({ length: 251 }, (_, i) => result(`c${i}`)),
+					400,
+				),
+			);
+			listLatestRatingsForRun.mockResolvedValue([]);
+			const store = useAgentEvalsStore();
+			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID, 251);
+			expect(store.getReview(RUN_ID).results).toHaveLength(251);
+
+			getRunSummary.mockResolvedValue(summary('running'));
+			store.startPollingRun(PROJECT_ID, AGENT_ID, RUN_ID);
+			await vi.advanceTimersByTimeAsync(0);
+			const reads = getRunDetail.mock.calls.length;
+			await vi.advanceTimersByTimeAsync(5_000);
+
+			expect(getRunDetail.mock.calls.length).toBe(reads);
+			expect(store.getReview(RUN_ID).results).toHaveLength(251);
 			store.stopPollingRun();
 		});
 

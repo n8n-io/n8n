@@ -17,7 +17,7 @@ import type {
 	AgentEvalVote,
 	GenerateDraftCasesOptions,
 } from './agentEvals.types';
-import { AGENT_EVAL_RESULTS_DEFAULT_TAKE } from './agentEvals.types';
+import { AGENT_EVAL_RESULTS_DEFAULT_TAKE, MAX_ITEMS_PER_PAGE } from './agentEvals.types';
 import type { PendingReview, ReviewDraft } from './utils/agent-eval-review';
 import { canSaveDraft, readCorrectionText } from './utils/agent-eval-review';
 
@@ -230,9 +230,20 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 		return runId;
 	};
 
-	/** The window a re-read must cover to avoid collapsing what the reviewer has paged in. */
+	/**
+	 * The window a re-read must cover so it doesn't collapse what the reviewer has
+	 * paged in — capped at what the route will actually serve.
+	 *
+	 * `take` is clamped server-side, not rejected, so asking for more than the cap
+	 * quietly returns fewer rows than are already on screen. A run may hold more
+	 * cases than one request can carry, so past the cap a re-read is skipped
+	 * entirely rather than allowed to truncate the list.
+	 */
 	const loadedWindow = (runId: string) =>
 		Math.max(getReview(runId).results.length, AGENT_EVAL_RESULTS_DEFAULT_TAKE);
+
+	const canRefreshWholeWindow = (runId: string) =>
+		getReview(runId).results.length <= MAX_ITEMS_PER_PAGE;
 
 	/**
 	 * Loads a run's cases together with every latest rating in the run. Ratings are
@@ -275,10 +286,10 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 				run,
 				results: results.data,
 				resultsCount: results.count,
-				// Merged, not replaced: a vote saved while this read was in flight is
-				// absent from the response it returns, and overwriting would make a
-				// rating the server already holds vanish from the list.
-				ratingsByResultId: { ...current.ratingsByResultId, ...indexRatings(ratings) },
+				// Newest per case wins — see `mergeRatings`. Neither side can be trusted
+				// to be current: a save that landed during this read is missing from it,
+				// and a re-vote is represented by the row it replaced.
+				ratingsByResultId: mergeRatings(current.ratingsByResultId, ratings),
 				loading: false,
 			});
 		} finally {
@@ -336,14 +347,11 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 	const beginVote = (runId: string, resultId: string, vote: AgentEvalVote) => {
 		const draft = startingDraft(runId, resultId);
 		if (vote === 'up') {
-			// Agreement never carries a reason, so the field is cleared rather than
-			// left to travel with a vote that must not send it.
-			setDraft(runId, resultId, {
-				...draft,
-				vote,
-				comment: '',
-				panel: draft.correction ? 'answer' : 'reason',
-			});
+			// Agreement carries neither a reason nor a rewrite: both exist only because
+			// the answer was judged wrong. Clearing them keeps what the row shows equal
+			// to what a save would send — a draft holding a note it must not send would
+			// mislead on both counts.
+			setDraft(runId, resultId, { ...draft, vote, comment: '', correction: '', panel: 'reason' });
 			return;
 		}
 		setDraft(runId, resultId, {
@@ -514,9 +522,13 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 			});
 
 			if (!isPendingStatus(summary.status)) {
-				// Settled: re-read in full so answers and ratings land together, over the
-				// window the reviewer has open rather than just the first page.
-				await openRun(projectId, agentId, runId, loadedWindow(runId));
+				// Settled: re-read so answers and ratings land together, over the window
+				// the reviewer has open rather than just the first page. Past the route's
+				// cap the read would return fewer rows than are on screen, so the list is
+				// left as it is — every row in it is already final by definition.
+				if (canRefreshWholeWindow(runId)) {
+					await openRun(projectId, agentId, runId, loadedWindow(runId));
+				}
 				return true;
 			}
 
@@ -530,7 +542,9 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 			// The cost is a full run-detail read per tick, and each row carries its
 			// input/output JSON. That is fine for the handful of cases generation
 			// produces; a statuses-only route is what would make it cheap at scale.
-			if (current.counts !== null) await refreshResults(projectId, agentId, runId);
+			if (current.counts !== null && canRefreshWholeWindow(runId)) {
+				await refreshResults(projectId, agentId, runId);
+			}
 		} catch {
 			// A dropped poll is not worth surfacing — the next tick retries, and the
 			// run is unaffected either way.
@@ -625,8 +639,30 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 	};
 });
 
-const indexRatings = (ratings: AgentEvalRatingRecord[]) =>
-	ratings.reduce<Record<string, AgentEvalRatingRecord>>((acc, rating) => {
-		acc[rating.resultId] = rating;
-		return acc;
-	}, {});
+/**
+ * Folds a fetched ratings list over what is already held, newest per case wins.
+ *
+ * A plain spread in either direction is wrong. `listLatestRatingsForRun` returns
+ * the latest rating *as of its own read*, so a vote saved while that read was in
+ * flight is either missing from it (letting the fetch win would drop a rating the
+ * server holds) or represented by the row it replaced (letting the fetch win would
+ * revert the row to the vote the reviewer just changed). Recency is the only
+ * ordering that is right in both directions.
+ */
+const mergeRatings = (
+	held: Record<string, AgentEvalRatingRecord>,
+	fetched: AgentEvalRatingRecord[],
+) => {
+	const merged = { ...held };
+	for (const rating of fetched) {
+		const mine = merged[rating.resultId];
+		if (!mine || ratedAt(rating) >= ratedAt(mine)) merged[rating.resultId] = rating;
+	}
+	return merged;
+};
+
+/** Unparseable timestamps sort oldest, so a readable record is always preferred. */
+const ratedAt = (rating: AgentEvalRatingRecord) => {
+	const ms = Date.parse(rating.createdAt);
+	return Number.isNaN(ms) ? -Infinity : ms;
+};
