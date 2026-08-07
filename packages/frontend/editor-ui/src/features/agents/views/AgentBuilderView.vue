@@ -24,7 +24,7 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@n8n/composables/useToast';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
@@ -53,6 +53,7 @@ import { useAgentConfig } from '../composables/useAgentConfig';
 import { useAgentConfigValidation } from '../composables/useAgentConfigValidation';
 import { useAgentPermissions } from '../composables/useAgentPermissions';
 import { useAgentSessionsStore } from '../agentSessions.store';
+import { useAgentEvalsStore } from '../agentEvals.store';
 import { useAgentBuilderSession } from '../composables/useAgentBuilderSession';
 import { useAgentConfigAutosave } from '../composables/useAgentConfigAutosave';
 import { useAgentBuilderMainTabs } from '../composables/useAgentBuilderMainTabs';
@@ -107,6 +108,8 @@ const props = withDefaults(
 const emit = defineEmits<{
 	/** The agent behind an unsaved artifact now exists. */
 	persisted: [agent: AgentResource];
+	/** The agent name was successfully saved. */
+	'name-saved': [name: string];
 }>();
 
 const route = useRoute();
@@ -120,6 +123,7 @@ const instanceAiAvailable = useInstanceAiAvailable();
 const { canSendPreviewToInstanceAi, sendPreviewSessionToInstanceAi } =
 	useInstanceAiAgentPreviewHandoff();
 const sessionsStore = useAgentSessionsStore();
+const agentEvalsStore = useAgentEvalsStore();
 const credentialsStore = useCredentialsStore();
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
@@ -233,7 +237,7 @@ const sessionOptions = computed<Array<DropdownMenuItemProps<string>>>(() =>
 );
 
 // Config
-const { config, fetchConfig, updateConfig } = useAgentConfig();
+const { config, fetchConfig, updateConfig, repoint: repointConfig } = useAgentConfig();
 const {
 	validation: configValidation,
 	repoint: repointConfigValidation,
@@ -338,6 +342,30 @@ const previewBreadcrumbItems = computed<PathItem[]>(() => [
 // Callers use this guard to drop such stale results.
 function isStaleAgentTarget(targetProjectId: string, targetAgentId: string): boolean {
 	return projectId.value !== targetProjectId || agentId.value !== targetAgentId;
+}
+
+// Drafts cases from the agent's own config. The generated dataset isn't
+// rendered yet, so the toast is the only confirmation the user gets that the
+// work landed.
+async function onGenerateEvalCases() {
+	const targetProjectId = projectId.value;
+	const targetAgentId = agentId.value;
+	if (!targetProjectId || !targetAgentId) return;
+
+	try {
+		const { cases } = await agentEvalsStore.generateDraftCases(targetProjectId, targetAgentId);
+		if (isStaleAgentTarget(targetProjectId, targetAgentId)) return;
+		showMessage({
+			title: locale.baseText('agents.builder.agentEvals.generated', {
+				adjustToNumber: cases.length,
+				interpolate: { count: String(cases.length) },
+			}),
+			type: 'success',
+		});
+	} catch (error) {
+		if (isStaleAgentTarget(targetProjectId, targetAgentId)) return;
+		showError(error, locale.baseText('agents.builder.agentEvals.generateError'));
+	}
 }
 
 async function fetchAgent(
@@ -688,6 +716,7 @@ async function saveConfig(snapshot: ConfigAutosaveSnapshot): Promise<'skipped' |
 	// `agent.versionId` would otherwise be polluted with values for the
 	// previous agent.
 	if (result.stale) return undefined;
+	emit('name-saved', snapshot.config.name);
 	if (agent.value && agent.value.id === snapshot.agentId && result.versionId !== undefined) {
 		agent.value = { ...agent.value, versionId: result.versionId };
 	}
@@ -1247,6 +1276,7 @@ async function initialize({ preserveState = false }: { preserveState?: boolean }
 			agentFilesLoading.value = false;
 			agentFilesUploading.value = false;
 			deletingAgentFileId.value = null;
+			repointConfig(projectId.value, agentId.value);
 			repointConfigValidation(projectId.value, agentId.value);
 		}
 
@@ -1593,6 +1623,7 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 					:agent-unsaved="isUnsaved"
 					:ensure-agent-persisted="ensureAgentPersisted"
 					:executions-description="executionsDescription"
+					:generating-eval-cases="agentEvalsStore.isGeneratingCases(agentId)"
 					:artifact-mode="isArtifactMode"
 					:config-validation-issues="configValidation?.issues ?? []"
 					@update:config="onConfigFieldUpdate"
@@ -1613,6 +1644,7 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 					@toggle-mcp-access="onToggleMcpAccess"
 					@tasks-changed="() => onConfigUpdated()"
 					@agent-changed="refreshAgentAfterIntegrationChange"
+					@generate-eval-cases="onGenerateEvalCases"
 				/>
 
 				<AgentVersionHistoryPanel

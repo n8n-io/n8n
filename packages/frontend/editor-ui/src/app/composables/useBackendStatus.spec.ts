@@ -5,7 +5,7 @@ import { mount } from '@vue/test-utils';
 import merge from 'lodash/merge';
 import { useBackendStatus } from './useBackendStatus';
 import { useBackendConnectionStore } from '@/app/stores/backendConnection.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { defaultSettings } from '@/__tests__/defaults';
 

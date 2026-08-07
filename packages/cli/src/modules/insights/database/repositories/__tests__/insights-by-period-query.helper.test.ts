@@ -526,5 +526,119 @@ describe('getDateRangesCommonTableExpressionQuery', () => {
 				expect(result).toBe(expected);
 			});
 		});
+
+		describe('timezone-aware date ranges (LIGO-808)', () => {
+			test('floors a past custom range to the caller timezone day boundaries (Europe/Berlin, UTC+2)', () => {
+				// Frontend sends the exact UTC instants for local start-/end-of-day in Berlin.
+				// Local Jun 24 00:00 Berlin === 2026-06-23T22:00:00.000Z
+				// Local Jun 26 23:59:59.999 Berlin === 2026-06-26T21:59:59.999Z
+				const startDate = new Date('2026-06-23T22:00:00.000Z');
+				const endDate = new Date('2026-06-26T21:59:59.999Z');
+
+				const result = getDateRangesCommonTableExpressionQuery({
+					startDate,
+					endDate,
+					dbType,
+					timeZone: 'Europe/Berlin',
+					now: DateTime.utc(2026, 6, 27, 10, 0, 0),
+				});
+
+				// Boundaries must be the Berlin-local day edges, not the UTC-floored
+				// 2026-06-23T00:00:00.000Z start that would sum in Jun 23's executions.
+				const expected = getDateRangesSelectQuery({
+					dbType,
+					prevStartDateTime: DateTime.utc(2026, 6, 20, 22, 0, 0),
+					startDateTime: DateTime.utc(2026, 6, 23, 22, 0, 0),
+					endDateTime: DateTime.utc(2026, 6, 26, 22, 0, 0),
+				});
+				expect(result).toBe(expected);
+			});
+
+			test('floors a past custom range to the caller timezone day boundaries (America/Los_Angeles, UTC-7)', () => {
+				// Local Jun 24 00:00 LA === 2026-06-24T07:00:00.000Z
+				// Local Jun 26 23:59:59.999 LA === 2026-06-27T06:59:59.999Z
+				const startDate = new Date('2026-06-24T07:00:00.000Z');
+				const endDate = new Date('2026-06-27T06:59:59.999Z');
+
+				const result = getDateRangesCommonTableExpressionQuery({
+					startDate,
+					endDate,
+					dbType,
+					timeZone: 'America/Los_Angeles',
+					now: DateTime.utc(2026, 6, 27, 10, 0, 0),
+				});
+
+				const expected = getDateRangesSelectQuery({
+					dbType,
+					prevStartDateTime: DateTime.utc(2026, 6, 21, 7, 0, 0),
+					startDateTime: DateTime.utc(2026, 6, 24, 7, 0, 0),
+					endDateTime: DateTime.utc(2026, 6, 27, 7, 0, 0),
+				});
+				expect(result).toBe(expected);
+			});
+
+			test('treats a range ending yesterday in the caller timezone as a past range near UTC midnight', () => {
+				// now is 23:30 UTC Jun 27, which is already 01:30 Jun 28 in Berlin.
+				// The user asks for a range ending end-of-day Jun 27 Berlin (their "yesterday").
+				// Local Jun 25 00:00 Berlin === 2026-06-24T22:00:00.000Z
+				// Local Jun 27 23:59:59.999 Berlin === 2026-06-27T21:59:59.999Z
+				const startDate = new Date('2026-06-24T22:00:00.000Z');
+				const endDate = new Date('2026-06-27T21:59:59.999Z');
+
+				const result = getDateRangesCommonTableExpressionQuery({
+					startDate,
+					endDate,
+					dbType,
+					timeZone: 'Europe/Berlin',
+					now: DateTime.utc(2026, 6, 27, 23, 30, 0),
+				});
+
+				// Past-range branch: the end boundary extends to the start of the next
+				// Berlin day (2026-06-27T22:00:00.000Z), covering all of Jun 27 local.
+				const expected = getDateRangesSelectQuery({
+					dbType,
+					prevStartDateTime: DateTime.utc(2026, 6, 21, 22, 0, 0),
+					startDateTime: DateTime.utc(2026, 6, 24, 22, 0, 0),
+					endDateTime: DateTime.utc(2026, 6, 27, 22, 0, 0),
+				});
+				expect(result).toBe(expected);
+
+				// A UTC-based isEndDateToday check would wrongly treat this as "today"
+				// (both 21:59:59.999Z and 23:30:00Z are Jun 27 in UTC) and leave the end
+				// boundary truncated at 21:59:59.999 instead of extending it.
+				expect(result).not.toContain('2026-06-27 21:59:59.999');
+			});
+
+			test('defaults to UTC and matches the pre-timezone behavior when no timeZone is passed', () => {
+				const now = DateTime.utc(2025, 10, 8, 8, 51, 27);
+				const startDate = now.minus({ days: 2 }).startOf('day').toJSDate();
+				const endDate = now.minus({ days: 1 }).startOf('day').toJSDate();
+
+				const withoutTimeZone = getDateRangesCommonTableExpressionQuery({
+					startDate,
+					endDate,
+					dbType,
+					now,
+				});
+				const withUtcTimeZone = getDateRangesCommonTableExpressionQuery({
+					startDate,
+					endDate,
+					dbType,
+					timeZone: 'utc',
+					now,
+				});
+
+				const expected = getDateRangesSelectQuery({
+					dbType,
+					prevStartDateTime: now.minus({ days: 4 }).startOf('day'),
+					startDateTime: now.minus({ days: 2 }).startOf('day'),
+					endDateTime: now.startOf('day'),
+				});
+
+				expect(withoutTimeZone).toBe(expected);
+				expect(withUtcTimeZone).toBe(expected);
+				expect(withoutTimeZone).toBe(withUtcTimeZone);
+			});
+		});
 	});
 });

@@ -40,6 +40,7 @@ export {
 	ExecutionNotFoundError,
 	ExecutionStartHandler,
 	OrchestrationWorker,
+	StepCompletedHandler,
 	StepNotFoundError,
 	StepReadyHandler,
 	StepWorker,
@@ -53,6 +54,7 @@ export type {
 	NewStepRecord,
 	StepError,
 	StepRecord,
+	StepSlots,
 	StepStatus,
 	StepStore,
 } from './execution';

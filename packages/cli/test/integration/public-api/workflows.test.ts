@@ -708,9 +708,9 @@ describe('GET /workflows', () => {
 	});
 
 	test('should return workflows ordered by id', async () => {
-		const first = await createWorkflowWithHistory({ name: 'First' }, member);
-		const second = await createWorkflowWithHistory({ name: 'Second' }, member);
-		const third = await createWorkflowWithHistory({ name: 'Third' }, member);
+		const first = await createWorkflowWithHistory({ id: 'sortid01', name: 'First' }, member);
+		const second = await createWorkflowWithHistory({ id: 'sortid02', name: 'Second' }, member);
+		const third = await createWorkflowWithHistory({ id: 'sortid03', name: 'Third' }, member);
 
 		// Editing must not change id order (would move the row under updatedAt sort).
 		const editResponse = await authMemberAgent.put(`/workflows/${second.id}`).send({
@@ -724,9 +724,11 @@ describe('GET /workflows', () => {
 		const response = await authMemberAgent.get('/workflows');
 
 		expect(response.statusCode).toBe(200);
-		expect(response.body.data.map((w: { id: string }) => w.id)).toEqual(
-			[first.id, second.id, third.id].sort(),
-		);
+		expect(response.body.data.map((w: { id: string }) => w.id)).toEqual([
+			first.id,
+			second.id,
+			third.id,
+		]);
 	});
 
 	test('should return share rows without the owning project', async () => {
@@ -2570,6 +2572,65 @@ describe('PUT /workflows/:id', () => {
 		expect(versionInTheDb).not.toBeNull();
 		expect(updateResponse.body.activeVersionId).toBe(versionInTheDb!.versionId);
 		expect(versionInTheDb!.nodes).toEqual(updatedPayload.nodes);
+	});
+
+	test('should save as draft without republishing when publishIfActive=false', async () => {
+		const workflow = await createActiveWorkflow({}, member);
+
+		const updatedPayload = {
+			name: 'Updated active workflow',
+			nodes: [
+				{
+					id: 'uuid-updated',
+					parameters: { triggerTimes: { item: [{ mode: 'everyMinute' }] } },
+					name: 'Updated Cron',
+					type: 'n8n-nodes-base.cron',
+					typeVersion: 1,
+					position: [300, 400],
+				},
+			],
+			connections: {},
+			staticData: workflow.staticData,
+			settings: workflow.settings,
+		};
+
+		const updateResponse = await authMemberAgent
+			.put(`/workflows/${workflow.id}?publishIfActive=false`)
+			.send(updatedPayload);
+
+		expect(updateResponse.statusCode).toBe(200);
+		expect(updateResponse.body.active).toBe(true);
+		expect(updateResponse.body.activeVersionId).toBe(workflow.versionId);
+		expect(updateResponse.body.nodes).toEqual(updatedPayload.nodes);
+
+		const versionInTheDb = await Container.get(WorkflowHistoryRepository).findOne({
+			where: {
+				workflowId: workflow.id,
+				versionId: Not(workflow.versionId),
+			},
+		});
+
+		expect(versionInTheDb).not.toBeNull();
+		expect(versionInTheDb!.nodes).toEqual(updatedPayload.nodes);
+
+		const sharedWorkflow = await Container.get(SharedWorkflowRepository).findOne({
+			where: {
+				projectId: memberPersonalProject.id,
+				workflowId: workflow.id,
+			},
+			relations: ['workflow'],
+		});
+
+		// The published version itself is untouched: its history record still has the old content.
+		expect(sharedWorkflow?.workflow.activeVersionId).toBe(workflow.versionId);
+		const activeVersionInTheDb = await Container.get(WorkflowHistoryRepository).findOne({
+			where: {
+				workflowId: workflow.id,
+				versionId: workflow.versionId,
+			},
+		});
+		expect(activeVersionInTheDb!.nodes).toEqual(workflow.nodes);
+		expect(activeVersionInTheDb!.nodes).not.toEqual(updatedPayload.nodes);
 	});
 
 	test('should not allow updating active field', async () => {

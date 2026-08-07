@@ -12,16 +12,16 @@ import type {
 } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
+import type { WorkflowReviewDecisionEligibilityService } from '../workflow-review-decision-eligibility.service';
+import { WorkflowReviewFeatureGate } from '../workflow-review-feature-gate.service';
+import { WorkflowReviewInboxService } from '../workflow-review-inbox.service';
+
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { ProjectService } from '@/services/project.service.ee';
 import type { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
-
-import type { WorkflowReviewDecisionEligibilityService } from '../workflow-review-decision-eligibility.service';
-import { WorkflowReviewFeatureGate } from '../workflow-review-feature-gate.service';
-import { WorkflowReviewInboxService } from '../workflow-review-inbox.service';
 
 const requestId = 'req-1';
 const workflowId = 'wf-1';
@@ -295,6 +295,7 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 
 			expect(detail.workflows[0]?.pinnedVersion).toEqual({
 				versionId: 'ver-pinned',
+				name: 'My workflow',
 				nodes: [expect.objectContaining({ name: 'node-ver-pinned' })],
 				connections: {},
 				nodeGroups: [],

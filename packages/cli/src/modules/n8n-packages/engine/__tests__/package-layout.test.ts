@@ -73,7 +73,7 @@ describe('package-layout', () => {
 		const scopeOf = (manifestVariables: ManifestEntry[], scopePrefix: string) =>
 			placedIn(manifestVariables, scopePrefix).globalPlacement ? 'global' : 'project';
 
-		// A requirement names a variable, never a path, so both files answer to it — this test is for hand-made packages only.
+		// A requirement names a variable, never a path, so both files answer to it. Hand-made only.
 		it('rejects two files claiming one name in the same directory', () => {
 			const entries = [
 				named('API_URL', 'variables/api_url'),

@@ -12,6 +12,7 @@ import { useToast } from '@n8n/composables/useToast';
 import WorkflowReviewDetailTabs from '../components/WorkflowReviewDetailTabs.vue';
 import type { WorkflowReviewDetailTab } from '../components/WorkflowReviewDetailTabs.vue';
 import WorkflowReviewRequestsSidebar from '../components/WorkflowReviewRequestsSidebar.vue';
+import WorkflowReviewStatusDot from '../components/WorkflowReviewStatusDot.vue';
 import { REVIEW_INBOX_QUERY_PARAM, WORKFLOW_REVIEW_REQUESTS_VIEW } from '../constants';
 import { useReviewInboxStore } from '../reviewInbox.store';
 import type { WorkflowReviewDecisionInput } from '../workflowReviews.api';
@@ -226,15 +227,19 @@ onUnmounted(() => {
 
 			<div :class="$style.main">
 				<div :class="$style.columnTitle">
-					<N8nHeading
+					<div
 						v-if="showSidebar && selectedItem"
-						bold
-						tag="h2"
-						size="xlarge"
-						data-test-id="workflow-review-request-title"
+						:class="$style.reviewTitle"
+						data-test-id="workflow-review-request-title-row"
 					>
-						{{ selectedItem.title }}
-					</N8nHeading>
+						<WorkflowReviewStatusDot
+							:state="selectedItem.state"
+							:decision="selectedItem.decision"
+						/>
+						<N8nHeading bold tag="h2" size="xlarge" data-test-id="workflow-review-request-title">
+							{{ selectedItem.title }}
+						</N8nHeading>
+					</div>
 					<N8nHeading
 						v-else-if="!showSidebar"
 						bold
@@ -330,6 +335,13 @@ onUnmounted(() => {
 	align-items: center;
 	min-height: var(--spacing--2xl);
 	padding-bottom: var(--spacing--sm);
+}
+
+.reviewTitle {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	min-width: 0;
 }
 
 .mainBody {
