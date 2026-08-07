@@ -2,8 +2,8 @@ import { ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 
 import { useEvaluationsWizardSidepanelStore } from '../../wizardSidepanel.store';
-import { useToast } from '@/app/composables/useToast';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useToast } from '@n8n/composables/useToast';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import {

@@ -138,13 +138,6 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 	}
 
 	getNodeWebhookUrl(name: WebhookType): string | undefined {
-		// MCP and form webhooks are served under dedicated /mcp(+/mcp-test) and
-		// /form(+/form-test) endpoints; the OAuth resource URL must match the endpoint the
-		// request actually arrived on. Other webhook types keep their existing behaviour
-		// (production base) here.
-		const { nodeType } = this.webhookData.webhookDescription;
-		const isTest = nodeType === 'mcp' || nodeType === 'form' ? this.webhookData.isTest : undefined;
-
 		return getNodeWebhookUrl(
 			name,
 			this.workflow,
@@ -152,7 +145,20 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 			this.additionalData,
 			this.mode,
 			this.additionalKeys,
-			isTest,
+		);
+	}
+
+	getWebhookResourceUrl(name: WebhookType): string | undefined {
+		// Unlike `getNodeWebhookUrl`, names the endpoint actually being served, since token
+		// minting and verification must agree on it (see `IWebhookFunctions`).
+		return getNodeWebhookUrl(
+			name,
+			this.workflow,
+			this.node,
+			this.additionalData,
+			this.mode,
+			this.additionalKeys,
+			this.webhookData.isTest,
 		);
 	}
 

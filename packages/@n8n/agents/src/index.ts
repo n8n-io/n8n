@@ -16,8 +16,10 @@ export type {
 	EvalRunResult,
 	EvalResults,
 	ToolContext,
+	ToolCancellationContext,
 	ToolExecutionContext,
 	InterruptibleToolContext,
+	ToolSuspendOptions,
 	CheckpointStore,
 	StreamChunk,
 	Provider,
@@ -27,6 +29,7 @@ export type {
 	OpenAIThinkingConfig,
 	GoogleThinkingConfig,
 	XaiThinkingConfig,
+	ReasoningLevel,
 	SerializableAgentState,
 	AgentRunState,
 	MemoryConfig,
@@ -114,7 +117,14 @@ export {
 	raceWithAbort,
 	throwIfAborted,
 } from './sdk/abort';
-export { Tool, wrapToolForApproval, sanitizeToolName } from './sdk/tool';
+export {
+	APPROVAL_RESUME_SCHEMA,
+	APPROVAL_SUSPEND_SCHEMA,
+	Tool,
+	wrapToolForApproval,
+	sanitizeToolName,
+} from './sdk/tool';
+export type { ApprovalResumePayload, ApprovalSuspendPayload } from './sdk/tool';
 export { Memory } from './sdk/memory';
 export { VectorStore } from './sdk/vector-store';
 export {
@@ -209,6 +219,7 @@ export type {
 	ContentCitation,
 	ContentCustom,
 	ContentFile,
+	ContentFileRef,
 	ContentMetadata,
 	ContentReasoning,
 	ContentReasoningFile,
@@ -221,6 +232,8 @@ export type {
 	CustomAgentMessages,
 	AgentDbMessage,
 } from './types/sdk/message';
+export { stripHydratedFileData } from './types/sdk/message';
+export type { BuiltFileStore } from './types/sdk/file-store';
 export type { HandlerExecutor } from './types/sdk/handler-executor';
 export {
 	filterLlmMessages,
@@ -269,13 +282,19 @@ export {
 	generateResultToDelegateSubAgentOutput,
 	getInlineDelegateSubAgentToolOptions,
 	isDelegateSubAgentTool,
+	parseDelegateSubAgentContinuation,
 	renderDelegateSubAgentPrompt,
 } from './runtime/tools/delegate-sub-agent-tool';
 export type {
 	CreateDelegateSubAgentToolOptions,
+	DelegateSubAgentCancelRequest,
+	DelegateSubAgentCancelRunner,
+	DelegateSubAgentContinuation,
 	DelegateSubAgentInput,
 	DelegateSubAgentPolicy,
 	DelegateSubAgentRequest,
+	DelegateSubAgentResumeRequest,
+	DelegateSubAgentResumeRunner,
 	DelegateSubAgentRunner,
 	DelegateSubAgentRunnerHelpers,
 	DelegateSubAgentToolOutput,

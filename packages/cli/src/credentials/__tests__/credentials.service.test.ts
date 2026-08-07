@@ -670,6 +670,19 @@ describe('CredentialsService', () => {
 				expect(result.json).toEqual(JSON.stringify({ port: '***', timeout: '***' }, null, 2));
 			});
 
+			it('should keep expression leaf values visible', () => {
+				credentialTypes.getByName.calledWith('httpCustomAuth').mockReturnValueOnce(makeCredType());
+
+				const result = service.redact(
+					{ json: '{"token": "={{ $secrets.vault.replicate }}", "key": "abc"}' },
+					makeHttpCustomAuthCredential(),
+				);
+
+				expect(result.json).toEqual(
+					JSON.stringify({ token: '={{ $secrets.vault.replicate }}', key: '***' }, null, 2),
+				);
+			});
+
 			it('should redact boolean leaf values', () => {
 				credentialTypes.getByName.calledWith('httpCustomAuth').mockReturnValueOnce(makeCredType());
 
@@ -1121,6 +1134,42 @@ describe('CredentialsService', () => {
 				credential.id,
 				encrypted,
 			);
+		});
+
+		it('enriches the returned credential with connectedByMe when a user is passed', async () => {
+			const credential = mock<CredentialsEntity>({
+				id: 'private-credential',
+				isResolvable: true,
+			});
+			const transactionManager = mock<EntityManager>();
+			transactionManager.findOneBy.mockResolvedValue(credential);
+			setRepositoryTransaction(transactionManager);
+			const encrypted = mock<ICredentialsDb>({ id: credential.id });
+			connectionStatusProxy.findConnectedCredentialIds.mockResolvedValue(new Set([credential.id]));
+
+			const result = await service.update(credential.id, encrypted, undefined, {
+				user: ownerUser,
+			});
+
+			expect(connectionStatusProxy.findConnectedCredentialIds).toHaveBeenCalledWith(ownerUser.id, [
+				credential.id,
+			]);
+			expect(result).toMatchObject({ connectedByMe: true });
+		});
+
+		it('does not enrich the returned credential when no user is passed', async () => {
+			const credential = mock<CredentialsEntity>({
+				id: 'private-credential',
+				isResolvable: true,
+			});
+			const transactionManager = mock<EntityManager>();
+			transactionManager.findOneBy.mockResolvedValue(credential);
+			setRepositoryTransaction(transactionManager);
+			const encrypted = mock<ICredentialsDb>({ id: credential.id });
+
+			await service.update(credential.id, encrypted);
+
+			expect(connectionStatusProxy.findConnectedCredentialIds).not.toHaveBeenCalled();
 		});
 	});
 
@@ -3465,6 +3514,34 @@ describe('CredentialsService', () => {
 		});
 	});
 
+	describe('unredact (field-level sentinel restore)', () => {
+		const saved = {
+			privateKey: '-----BEGIN RSA PRIVATE KEY-----\nabc\n-----END RSA PRIVATE KEY-----',
+		};
+
+		it('should restore the saved value for an exact blanking sentinel', () => {
+			const result = service.unredact({ privateKey: CREDENTIAL_BLANKING_VALUE }, saved);
+			expect(result.privateKey).toBe(saved.privateKey);
+		});
+
+		it('should restore the saved value when the sentinel was switched to expression mode', () => {
+			// Toggling a redacted field to expression mode prepends `=`; the saved
+			// key must still be restored instead of persisting the sentinel.
+			const result = service.unredact({ privateKey: `=${CREDENTIAL_BLANKING_VALUE}` }, saved);
+			expect(result.privateKey).toBe(saved.privateKey);
+		});
+
+		it('should restore the saved value for an expression-prefixed empty sentinel', () => {
+			const result = service.unredact({ privateKey: `=${CREDENTIAL_EMPTY_VALUE}` }, saved);
+			expect(result.privateKey).toBe(saved.privateKey);
+		});
+
+		it('should keep a genuine new value that is not a sentinel', () => {
+			const result = service.unredact({ privateKey: '={{ $secrets.key }}' }, saved);
+			expect(result.privateKey).toBe('={{ $secrets.key }}');
+		});
+	});
+
 	describe('checkCredentialData', () => {
 		const testProjectId = 'test-project-id';
 
@@ -3755,6 +3832,88 @@ describe('CredentialsService', () => {
 			await expect(
 				service.checkCredentialData('myOAuth1Cred', data, ownerUser, testProjectId),
 			).resolves.toBeUndefined();
+		});
+	});
+
+	describe('probeById', () => {
+		const storedCredential = mock<CredentialsEntity>({
+			id: 'cred-id',
+			name: 'Templated cred',
+			type: 'httpTemplatedCustomAuth',
+		});
+
+		const mockDecryptedData = (data: ICredentialDataDecryptedObject) =>
+			vi.spyOn(service, 'decrypt').mockResolvedValue(data);
+
+		it('should throw when the credential is not accessible to the user', async () => {
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(null);
+
+			await expect(service.probeById(memberUser, 'cred-id')).rejects.toThrow(
+				CredentialNotFoundError,
+			);
+			expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith(
+				'cred-id',
+				memberUser,
+				['credential:read'],
+			);
+		});
+
+		it('should throw when the credential has no test URL', async () => {
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(storedCredential);
+			mockDecryptedData({ template: '{}' });
+
+			await expect(service.probeById(ownerUser, 'cred-id')).rejects.toThrow(
+				'The credential has no test URL to probe',
+			);
+			expect(credentialsTester.probeCredentialAuth).not.toHaveBeenCalled();
+		});
+
+		it('should refuse an expression test URL instead of resolving it', async () => {
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(storedCredential);
+			mockDecryptedData({ testUrl: '={{ $vars.url }}' });
+
+			await expect(service.probeById(ownerUser, 'cred-id')).rejects.toThrow(
+				'The credential has no test URL to probe',
+			);
+			expect(credentialsTester.probeCredentialAuth).not.toHaveBeenCalled();
+		});
+
+		it('should probe the persisted test URL with parsed accepted status codes', async () => {
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(storedCredential);
+			const data: ICredentialDataDecryptedObject = {
+				testUrl: 'https://api.example.com/me',
+				acceptedStatusCodes: '[401]',
+			};
+			mockDecryptedData(data);
+			const verdict = { status: 'OK' as const, message: 'Connection successful!' };
+			credentialsTester.probeCredentialAuth.mockResolvedValue(verdict);
+
+			await expect(service.probeById(ownerUser, 'cred-id')).resolves.toEqual(verdict);
+			expect(credentialsTester.probeCredentialAuth).toHaveBeenCalledWith(
+				ownerUser.id,
+				'httpTemplatedCustomAuth',
+				{ id: 'cred-id', name: 'Templated cred', type: 'httpTemplatedCustomAuth', data },
+				'https://api.example.com/me',
+				{ acceptedStatusCodes: [401] },
+			);
+		});
+
+		it('should ignore malformed accepted status codes', async () => {
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(storedCredential);
+			mockDecryptedData({ testUrl: 'https://api.example.com/me', acceptedStatusCodes: 'nope' });
+			credentialsTester.probeCredentialAuth.mockResolvedValue({
+				status: 'OK',
+				message: 'Connection successful!',
+			});
+
+			await service.probeById(ownerUser, 'cred-id');
+			expect(credentialsTester.probeCredentialAuth).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.anything(),
+				expect.anything(),
+				expect.anything(),
+				{ acceptedStatusCodes: undefined },
+			);
 		});
 	});
 

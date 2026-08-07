@@ -1,8 +1,10 @@
 import type { JsonObject, JsonValue, StepExecutionRequest, WorkflowGraph } from '@n8n/engine';
 import type { ExecuteContext } from 'n8n-core';
+import { UnrecognizedNodeTypeError } from 'n8n-core';
 import { NoOp } from 'n8n-nodes-base/nodes/NoOp/NoOp.node';
 import type {
 	CloseFunction,
+	IConnections,
 	IDataObject,
 	IExecuteFunctions,
 	INodeExecutionData,
@@ -14,6 +16,8 @@ import type {
 	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
 import { Node, NodeConnectionTypes } from 'n8n-workflow';
+
+import { V1StepExecutor } from '../v1-step-executor';
 
 class EchoParam implements INodeType {
 	description = {
@@ -86,6 +90,28 @@ class NewStyleEcho extends Node {
 	async execute(context: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		return await Promise.resolve([
 			context.getInputData().map((item) => ({ json: { ...item.json, newStyle: true } })),
+		]);
+	}
+}
+
+class TwoOutputs implements INodeType {
+	description = {
+		displayName: 'Two Outputs',
+		name: 'twoOutputs',
+		group: ['transform'],
+		version: 1,
+		description: 'Emits on two output slots',
+		defaults: { name: 'Two Outputs' },
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main, NodeConnectionTypes.Main],
+		properties: [],
+	} as unknown as INodeType['description'];
+
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const items = this.getInputData();
+		return await Promise.resolve([
+			items,
+			items.map((item) => ({ json: { ...item.json, second: true } })),
 		]);
 	}
 }
@@ -163,14 +189,23 @@ const registry = new Map<string, INodeType>([
 	['test.alwaysFails', new AlwaysFails()],
 	['test.noExecute', new NoExecute()],
 	['test.newStyleEcho', new NewStyleEcho() as unknown as INodeType],
+	['test.twoOutputs', new TwoOutputs()],
 	['test.succeedsWithFailingCleanup', new SucceedsWithFailingCleanup()],
 	['test.failsWithFailingCleanup', new FailsWithFailingCleanup()],
 	['test.returnsEngineRequest', new ReturnsEngineRequest() as unknown as INodeType],
 ]);
 
 export const testNodeTypes: INodeTypes = {
-	getByName: (type: string): INodeType | IVersionedNodeType => registry.get(type)!,
-	getByNameAndVersion: (type: string): INodeType => registry.get(type)!,
+	getByName: (type: string): INodeType | IVersionedNodeType => {
+		const nodeType = registry.get(type);
+		if (!nodeType) throw new UnrecognizedNodeTypeError('test', type);
+		return nodeType;
+	},
+	getByNameAndVersion: (type: string): INodeType => {
+		const nodeType = registry.get(type);
+		if (!nodeType) throw new UnrecognizedNodeTypeError('test', type);
+		return nodeType;
+	},
 	getKnownTypes: (): IDataObject => ({}),
 };
 
@@ -191,14 +226,21 @@ export const testAdditionalDataFactory = async (
 	} as unknown as IWorkflowExecuteAdditionalData);
 
 export const v1Workflow = (
-	nodes: Array<{ id: string; name: string; type: string; parameters?: IDataObject }>,
+	nodes: Array<{
+		id: string;
+		name: string;
+		type: string;
+		typeVersion?: number;
+		parameters?: IDataObject;
+	}>,
+	connections: IConnections = {},
 ): IWorkflowBase =>
 	({
 		id: 'wf-1',
 		name: 'fixture',
 		active: false,
 		nodes: nodes.map((n) => ({ typeVersion: 1, position: [0, 0], parameters: {}, ...n })),
-		connections: {},
+		connections,
 	}) as unknown as IWorkflowBase;
 
 export const stepRequest = (
@@ -208,7 +250,17 @@ export const stepRequest = (
 ): StepExecutionRequest => ({
 	node: graph.nodes.find((n) => n.id === nodeId)!,
 	inputs,
-	context: { executionId: 'exec-1', stepId: 'step-1', workflowId: 'wf-1', mode: 'manual' },
+	context: { executionId: 'exec-1', stepId: nodeId, workflowId: 'wf-1', mode: 'manual' },
 });
+
+export const testStepExecutor = (
+	graph: WorkflowGraph,
+	outputsByStepId: Record<string, JsonValue> = {},
+): V1StepExecutor =>
+	new V1StepExecutor({
+		nodeTypes: testNodeTypes,
+		additionalDataFactory: testAdditionalDataFactory,
+		loadStepData: async () => await Promise.resolve({ graph, outputsByStepId }),
+	});
 
 export const items = (...objects: JsonObject[]): JsonValue => [objects.map((json) => ({ json }))];

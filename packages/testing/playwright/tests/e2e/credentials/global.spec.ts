@@ -66,7 +66,7 @@ test.describe(
 
 		test('member should execute workflow with HTTP node using global credential', async ({
 			n8n,
-			baseURL,
+			internalUrl,
 		}) => {
 			await n8n.api.signin('member', 0);
 
@@ -78,7 +78,9 @@ test.describe(
 			await n8n.canvas.addNode('Manual Trigger');
 			await n8n.canvas.addNode('HTTP Request');
 
-			await n8n.ndv.fillParameterInput('URL', `${baseURL}/rest/settings`);
+			// n8n calls this URL, not the browser, so it must resolve from inside the
+			// stack - under container projects the request leaves a worker container.
+			await n8n.ndv.fillParameterInput('URL', `${internalUrl}/rest/settings`);
 			await n8n.ndv.selectOptionInParameterDropdown('authentication', 'Generic Credential Type');
 			await n8n.ndv.selectOptionInParameterDropdown('genericAuthType', 'Header Auth');
 

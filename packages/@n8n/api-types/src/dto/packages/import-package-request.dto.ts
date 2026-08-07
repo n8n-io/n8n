@@ -13,12 +13,16 @@ export const IMPORT_PACKAGE_REQUEST_FORM_FIELDS = [
 	'workflowPublishingPolicy',
 	'workflowIdPolicy',
 	'missingNodeTypeMode',
+	'projectConflictPolicy',
 	'folderConflictPolicy',
 	'dataTableMatchingMode',
 	'dataTableMissingMode',
 	'dataTableSchemaConflictPolicy',
 	'variableMissingMode',
+	'variableConflictPolicy',
 	'variableParentPolicy',
+	'tagMissingMode',
+	'tagConflictPolicy',
 ] as const;
 
 /** Multipart text fields: empty / whitespace-only values become `undefined`. */
@@ -98,10 +102,17 @@ export class ImportPackageRequestDto extends Z.class({
 	),
 	workflowIdPolicy: optionalEnum(['new', 'source'], 'source'),
 	missingNodeTypeMode: optionalEnum(['fail', 'import-anyway'], 'fail'),
+	projectConflictPolicy: optionalEnum(['merge', 'fail', 'overwrite'], 'merge'),
 	folderConflictPolicy: optionalEnum(['merge', 'fail'], 'merge'),
 	dataTableMatchingMode: optionalEnum(['by-id'], 'by-id'),
 	dataTableMissingMode: optionalEnum(['create', 'must-preexist', 'do-nothing'], 'create'),
 	dataTableSchemaConflictPolicy: optionalEnum(['keep-existing', 'fail'], 'keep-existing'),
-	variableMissingMode: optionalEnum(['do-nothing', 'must-preexist', 'create-stub'], 'do-nothing'),
+	variableMissingMode: optionalEnum(
+		['do-nothing', 'must-preexist', 'create-stub', 'create-with-value'],
+		'create-with-value',
+	),
+	variableConflictPolicy: optionalEnum(['keep-existing', 'overwrite', 'fail'], 'keep-existing'),
 	variableParentPolicy: optionalEnumNoDefault(['project', 'global']),
+	tagMissingMode: optionalEnum(['create', 'do-nothing'], 'create'),
+	tagConflictPolicy: optionalEnum(['skip', 'fail', 'rename'], 'skip'),
 }) {}

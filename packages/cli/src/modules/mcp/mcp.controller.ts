@@ -2,6 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { AuthenticatedRequest } from '@n8n/db';
 import { createIpRateLimit, Get, Head, Post, RootLevelController } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import { lazyImport } from '@n8n/utils/lazy-import';
 import type { Request, Response } from 'express';
 import { ErrorReporter } from 'n8n-core';
 
@@ -74,8 +75,12 @@ export class McpController {
 	}
 
 	/**
-	 * GET endpoint for SSE stream (MCP Streamable HTTP spec)
-	 * Allows clients like Gemini CLI to establish an SSE stream for server-to-client notifications.
+	 * GET endpoint (MCP Streamable HTTP spec). The server runs in stateless mode
+	 * (a fresh transport per request), so it can never deliver server-initiated
+	 * messages on a GET listen stream: routing the request into the transport
+	 * leaves the SSE stream open and silent forever, stalling clients during
+	 * connection setup. The spec requires servers that don't offer the stream
+	 * to respond with 405.
 	 */
 	@Get('/http', {
 		ipRateLimit: createIpRateLimit(mcpConfig.rateLimitServer),
@@ -83,7 +88,7 @@ export class McpController {
 		skipAuth: true,
 		usesTemplates: true,
 	})
-	async handleGet(req: AuthenticatedRequest, res: FlushableResponse) {
+	async handleGet(_req: AuthenticatedRequest, res: Response) {
 		this.setCorsHeaders(res);
 
 		const enabled = await this.mcpSettingsService.getEnabled();
@@ -92,22 +97,15 @@ export class McpController {
 			return;
 		}
 
-		try {
-			const featureFlags = await this.mcpService.resolveFeatureFlags(req.user);
-			await this.handleTransportRequest(req, res, featureFlags);
-		} catch (error) {
-			this.errorReporter.error(error);
-			if (!res.headersSent) {
-				res.status(500).json({
-					jsonrpc: '2.0',
-					error: {
-						code: -32603,
-						message: INTERNAL_SERVER_ERROR_MESSAGE,
-					},
-					id: null,
-				});
-			}
-		}
+		res.header('Allow', 'POST');
+		res.status(405).json({
+			jsonrpc: '2.0',
+			error: {
+				code: -32000,
+				message: 'Method not allowed.',
+			},
+			id: null,
+		});
 	}
 
 	@Post('/http', {
@@ -199,27 +197,29 @@ export class McpController {
 		req: AuthenticatedRequest,
 		res: FlushableResponse,
 		featureFlags: McpFeatureFlags,
-		body?: unknown,
+		body: unknown,
 	) {
-		const { StreamableHTTPServerTransport } = await import(
-			'@modelcontextprotocol/sdk/server/streamableHttp.js'
+		const { createMcpHandler } = await lazyImport<typeof import('@modelcontextprotocol/server')>(
+			async () => await import('@modelcontextprotocol/server'),
+		);
+		const { toNodeHandler } = await lazyImport<typeof import('@modelcontextprotocol/node')>(
+			async () => await import('@modelcontextprotocol/node'),
 		);
 		const grantedScopes = (req as AuthenticatedRequest & { mcpScopes?: string[] }).mcpScopes;
-		const server = await this.mcpService.getServer(
-			req.user,
-			featureFlags,
-			getClientInfo(req),
-			grantedScopes,
+
+		// The handler builds a fresh server per request (complete isolation, no
+		// request-ID collisions across concurrent clients) and serves both the
+		// 2026-07-28 protocol and, via the stateless legacy fallback, 2025-era
+		// clients on this same endpoint.
+		const handler = createMcpHandler(
+			async () =>
+				await this.mcpService.getServer(req.user, featureFlags, getClientInfo(req), grantedScopes),
+			{
+				legacy: 'stateless',
+				onerror: (error) => this.errorReporter.error(error),
+			},
 		);
-		const transport = new StreamableHTTPServerTransport({
-			sessionIdGenerator: undefined,
-		});
-		res.on('close', () => {
-			void transport.close();
-			void server.close();
-		});
-		await server.connect(transport);
-		await transport.handleRequest(req, res, body);
+		await toNodeHandler(handler)(req, res, body);
 	}
 
 	private trackConnectionEvent(payload: UserConnectedToMCPEventPayload) {

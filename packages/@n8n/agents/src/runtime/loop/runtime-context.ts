@@ -49,13 +49,14 @@ export function getModelIdString(model: ModelConfig): string {
 export interface StaticLoopContext {
 	model: LanguageModel;
 	aiProviderTools: ReturnType<typeof toAiSdkProviderTools>;
+	reasoning: AgentRuntimeConfig['reasoning'];
 	providerOptions?: Record<string, JSONObject>;
 	outputSpec?: ReturnType<typeof Output.object>;
 }
 
 /**
  * Builds the per-run and per-iteration dependencies the agentic loop hands to
- * the LLM call: the model instance, provider/thinking options, structured
+ * the LLM call: the model instance, reasoning, provider options, structured
  * output spec, and the effective tool surface (base + deferred + recall tools,
  * mapped to AI SDK shapes). Keeps tool/model assembly out of the loop body.
  */
@@ -97,6 +98,7 @@ export class RuntimeContextBuilder {
 		return {
 			model,
 			aiProviderTools,
+			reasoning: this.config.reasoning,
 			providerOptions: providerOptions as Record<string, JSONObject> | undefined,
 			outputSpec,
 		};
@@ -211,7 +213,13 @@ export class RuntimeContextBuilder {
 				`Tool name "${RECALL_MEMORY_TOOL_NAME}" is reserved while episodic memory is enabled.`,
 			);
 		}
-		return createRecallMemoryTool({ memory, config: episodicMemory, scope, executionCounter });
+		return createRecallMemoryTool({
+			memory,
+			config: episodicMemory,
+			scope,
+			executionCounter,
+			agentName: this.config.name,
+		});
 	}
 
 	/**
@@ -263,12 +271,12 @@ export class RuntimeContextBuilder {
 		};
 	}
 
-	/** Build the providerOptions object for thinking/reasoning config. */
+	/** Build the providerOptions object for provider-specific thinking config. */
 	private buildThinkingProviderOptions(): Record<string, Record<string, unknown>> | undefined {
 		if (!this.config.thinking) return undefined;
 
-		const provider = providerIdFromModelId(this.modelId);
-		return getProviderQuirks(provider).thinkingToProviderOptions?.(this.config.thinking);
+		const quirks = getProviderQuirks(providerIdFromModelId(this.modelId));
+		return quirks.thinkingToProviderOptions?.(this.config.thinking, this.modelId);
 	}
 
 	/**

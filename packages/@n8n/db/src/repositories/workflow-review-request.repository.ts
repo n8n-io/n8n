@@ -1,13 +1,15 @@
 import { Service } from '@n8n/di';
-import type { EntityManager, SelectQueryBuilder } from '@n8n/typeorm';
-import { DataSource, Repository } from '@n8n/typeorm';
+import type { SelectQueryBuilder } from '@n8n/typeorm';
+import { DataSource } from '@n8n/typeorm';
 
+import { BaseRepository } from './base-repository';
 import { WorkflowReviewRequestWorkflow } from '../entities/workflow-review-request-workflow.ee';
 import {
 	WorkflowReviewRequest,
 	type WorkflowReviewRequestDecision,
 	type WorkflowReviewRequestState,
 } from '../entities/workflow-review-request.ee';
+import type { OperationContext } from '../services/transaction';
 
 /**
  * Keyset pagination boundary. The caller carries `createdAt`/`id` in the cursor
@@ -32,9 +34,9 @@ export type FindManyForInboxOptions = {
  * Projection for the workflow-scoped list: the request fields the use case
  * needs plus the version pinned for the workflow the query was scoped to.
  */
-export type WorkflowReviewRequestForWorkflow = Pick<
+export type WorkflowReviewRequestForWorkflowRow = Pick<
 	WorkflowReviewRequest,
-	'id' | 'state' | 'decision' | 'createdAt' | 'updatedAt'
+	'id' | 'state' | 'decision' | 'updatedById' | 'createdAt' | 'updatedAt'
 > & {
 	workflowVersionId: string | null;
 };
@@ -60,7 +62,7 @@ export type InboxStateCounts = {
 };
 
 @Service()
-export class WorkflowReviewRequestRepository extends Repository<WorkflowReviewRequest> {
+export class WorkflowReviewRequestRepository extends BaseRepository<WorkflowReviewRequest> {
 	constructor(dataSource: DataSource) {
 		super(WorkflowReviewRequest, dataSource.manager);
 	}
@@ -76,9 +78,8 @@ export class WorkflowReviewRequestRepository extends Repository<WorkflowReviewRe
 			createdById: string | null;
 			updatedById?: string | null;
 		},
-		trx?: EntityManager,
+		ctx: OperationContext,
 	): Promise<WorkflowReviewRequest> {
-		const manager = trx ?? this.manager;
 		const entity = this.create({
 			id: input.id,
 			projectId: input.projectId,
@@ -92,18 +93,28 @@ export class WorkflowReviewRequestRepository extends Repository<WorkflowReviewRe
 			approvedAt: null,
 		});
 
-		return await manager.save(WorkflowReviewRequest, entity);
+		return await this.managerFor(ctx).save(WorkflowReviewRequest, entity);
 	}
 
-	async findById(id: string, trx?: EntityManager): Promise<WorkflowReviewRequest | null> {
-		const manager = trx ?? this.manager;
-		return await manager.findOne(WorkflowReviewRequest, { where: { id } });
+	/**
+	 * Persists an already-loaded request. Deliberately `save` and not `update`, so the
+	 * entity's `@BeforeUpdate` hook bumps `updatedAt`.
+	 */
+	async saveRequest(
+		request: WorkflowReviewRequest,
+		ctx: OperationContext,
+	): Promise<WorkflowReviewRequest> {
+		return await this.managerFor(ctx).save(WorkflowReviewRequest, request);
+	}
+
+	async findById(id: string, ctx: OperationContext): Promise<WorkflowReviewRequest | null> {
+		return await this.managerFor(ctx).findOne(WorkflowReviewRequest, { where: { id } });
 	}
 
 	async findRequestsForWorkflow(
 		workflowId: string,
 		options: { state?: WorkflowReviewRequestState; skip?: number; take?: number } = {},
-	): Promise<[WorkflowReviewRequestForWorkflow[], number]> {
+	): Promise<[WorkflowReviewRequestForWorkflowRow[], number]> {
 		const qb = this.manager
 			.createQueryBuilder(WorkflowReviewRequest, 'request')
 			.innerJoin(
@@ -113,7 +124,11 @@ export class WorkflowReviewRequestRepository extends Repository<WorkflowReviewRe
 			)
 			.addSelect('requestWorkflow.workflowVersionId', 'pinnedWorkflowVersionId')
 			.where('requestWorkflow.workflowId = :workflowId', { workflowId })
-			.orderBy('request.createdAt', 'DESC');
+			.orderBy('request.createdAt', 'DESC')
+			// Ids are random, so this only breaks ties deterministically: callers ask
+			// for the newest review to decide the publish gate, and that answer must
+			// not flip between requests when two reviews share a timestamp.
+			.addOrderBy('request.id', 'DESC');
 
 		if (options.state) {
 			qb.andWhere('request.state = :state', { state: options.state });
@@ -139,6 +154,7 @@ export class WorkflowReviewRequestRepository extends Repository<WorkflowReviewRe
 			id: entity.id,
 			state: entity.state,
 			decision: entity.decision,
+			updatedById: entity.updatedById,
 			createdAt: entity.createdAt,
 			updatedAt: entity.updatedAt,
 			workflowVersionId: versionIdByRequestId.get(entity.id) ?? null,
@@ -149,12 +165,11 @@ export class WorkflowReviewRequestRepository extends Repository<WorkflowReviewRe
 
 	async findOpenRequestForWorkflow(
 		workflowId: string,
-		trx?: EntityManager,
+		ctx: OperationContext,
 	): Promise<WorkflowReviewRequest | null> {
-		const manager = trx ?? this.manager;
 		const state: WorkflowReviewRequestState = 'open';
 
-		return await manager
+		return await this.managerFor(ctx)
 			.createQueryBuilder(WorkflowReviewRequest, 'request')
 			.innerJoin(
 				WorkflowReviewRequestWorkflow,

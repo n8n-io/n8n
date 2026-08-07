@@ -1,4 +1,9 @@
-import { createWorkflowWithHistory, setActiveVersion, testDb } from '@n8n/backend-test-utils';
+import {
+	createWorkflowWithHistory,
+	setActiveVersion,
+	shareWorkflowWithUsers,
+	testDb,
+} from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { WebhookRepository } from '@n8n/db';
@@ -7,7 +12,7 @@ import type { INode, IWebhookData, IWorkflowBase } from 'n8n-workflow';
 import { FORM_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
-import { createOwner } from '@test-integration/db/users';
+import { createMember, createOwner } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 
 import { OAuthClientRepository } from '../database/repositories/oauth-client.repository';
@@ -20,6 +25,7 @@ import { TestWebhookRegistrationsService } from '@/webhooks/test-webhook-registr
 const testServer = setupTestServer({ modules: ['oauth-server', 'mcp'], endpointGroups: ['mcp'] });
 
 let owner: User;
+let member: User;
 let formEndpoint: string;
 let formTestEndpoint: string;
 let registrations: TestWebhookRegistrationsService;
@@ -36,14 +42,25 @@ const formTriggerNode = ({
 	name = 'On form submission',
 	authentication = 'n8nUserAuth',
 	disabled = false,
-}: { name?: string; authentication?: string; disabled?: boolean } = {}): INode => ({
+	requireExecuteAccess,
+}: {
+	name?: string;
+	authentication?: string;
+	disabled?: boolean;
+	requireExecuteAccess?: boolean;
+} = {}): INode => ({
 	id: randomUUID(),
 	name,
 	type: FORM_TRIGGER_NODE_TYPE,
 	typeVersion: 2,
 	position: [0, 0],
 	disabled,
-	parameters: { path: 'unused', authentication },
+	parameters: {
+		path: 'unused',
+		authentication,
+		// Omitted when undefined so the "absent param ⇒ secure default" path is exercised too.
+		...(requireExecuteAccess === undefined ? {} : { requireExecuteAccess }),
+	},
 });
 
 /** Mirrors what `TestWebhooks.needsWebhook` registers when the user tests a form trigger. */
@@ -82,6 +99,7 @@ const resolveResource = async (webhookPath: string) =>
 beforeAll(async () => {
 	process.env.N8N_ENV_FEAT_FORM_TRIGGER_OAUTH2 = 'true'; // gates the form-trigger resolver
 	owner = await createOwner();
+	member = await createMember();
 	const { endpoints } = Container.get(GlobalConfig);
 	formEndpoint = endpoints.form;
 	formTestEndpoint = endpoints.formTest;
@@ -194,6 +212,64 @@ describe('protected resource metadata for test form triggers', () => {
 		await registrations.deregister(registrations.toKey({ httpMethod: 'POST', path: webhookPath }));
 
 		expect((await testServer.restlessAgent.get(prmPathFor(webhookPath))).statusCode).toBe(404);
+	});
+});
+
+describe('authorize gate (workflow:execute)', () => {
+	/**
+	 * The gate resolves the registration's workflow id against the DB, so the
+	 * workflow must exist there even though the registration itself is enough to
+	 * resolve the resource.
+	 */
+	const registerTestWebhookForSavedWorkflow = async (node: INode) => {
+		const webhookPath = randomUUID();
+		const workflow = await createWorkflowWithHistory({ active: false, nodes: [node] }, owner);
+		await registerTestWebhook(webhookPath, node, { workflowId: workflow.id });
+		return { webhookPath, workflow };
+	};
+
+	test('authorizes the owner but denies a user without execute access', async () => {
+		const { webhookPath } = await registerTestWebhookForSavedWorkflow(
+			formTriggerNode({ requireExecuteAccess: true }),
+		);
+
+		const resource = await resolveResource(webhookPath);
+
+		await expect(resource?.authorize(owner)).resolves.toBe(true);
+		await expect(resource?.authorize(member)).resolves.toBe(false);
+	});
+
+	test('authorizes a user granted execute via a project role', async () => {
+		const { webhookPath, workflow } = await registerTestWebhookForSavedWorkflow(
+			formTriggerNode({ requireExecuteAccess: true }),
+		);
+		await shareWorkflowWithUsers(workflow, [member]);
+
+		const resource = await resolveResource(webhookPath);
+
+		await expect(resource?.authorize(member)).resolves.toBe(true);
+	});
+
+	test('authorizes any authenticated user when require-execute is turned off', async () => {
+		const { webhookPath } = await registerTestWebhookForSavedWorkflow(
+			formTriggerNode({ requireExecuteAccess: false }),
+		);
+
+		const resource = await resolveResource(webhookPath);
+
+		await expect(resource?.authorize(member)).resolves.toBe(true);
+	});
+
+	test('authorizes any authenticated user when the parameter is absent', async () => {
+		// `requireExecuteAccess` is opt-in, so an unset parameter means any authenticated
+		// user may submit — a workflow saved before the parameter existed stays open.
+		const node = formTriggerNode();
+		expect(node.parameters.requireExecuteAccess).toBeUndefined();
+		const { webhookPath } = await registerTestWebhookForSavedWorkflow(node);
+
+		const resource = await resolveResource(webhookPath);
+
+		await expect(resource?.authorize(member)).resolves.toBe(true);
 	});
 });
 

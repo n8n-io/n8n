@@ -222,6 +222,20 @@ describe('createModel', () => {
 		expect(model.api).toBe('chat-completions');
 	});
 
+	it('uses the Responses API when a baseURL explicitly serves it', () => {
+		// The n8n Connect gateway proxies real OpenAI, so it sets a baseURL but does
+		// serve /responses. /chat/completions rejects reasoning effort once tools
+		// are attached, so the heuristic has to be overridable.
+		const model = createModel({
+			id: 'openai/gpt-5-mini',
+			apiKey: 'gateway-jwt',
+			baseURL: 'https://gw.example/v1/gateway/openai/v1',
+			apiStyle: 'responses',
+		}) as unknown as Record<string, unknown>;
+		expect(model.baseURL).toBe('https://gw.example/v1/gateway/openai/v1');
+		expect(model.api).toBeUndefined();
+	});
+
 	it('accepts `url` as an alias for baseURL (host configs like Instance AI)', () => {
 		const model = createModel({
 			id: 'openai/mock-model',

@@ -14,7 +14,7 @@ import {
 	type UserStackGroups,
 } from '@n8n/design-system';
 import { useIntersectionObserver } from '@/app/composables/useIntersectionObserver';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import TimeAgo from '@/app/components/TimeAgo.vue';
 import WorkflowReviewStatusDot from './WorkflowReviewStatusDot.vue';
 
@@ -103,6 +103,7 @@ function onListBackgroundClick() {
 			<N8nTabs
 				:model-value="activeTab"
 				:options="tabOptions"
+				variant="modern"
 				data-test-id="workflow-reviews-tabs"
 				@update:model-value="onTabChange"
 			/>
@@ -191,8 +192,7 @@ function onListBackgroundClick() {
 .sidebar {
 	display: flex;
 	flex-direction: column;
-	flex: 0 0 35%;
-	min-width: 12rem;
+	flex: 0 0 22rem;
 	height: 100%;
 	border-right: var(--border-width) solid var(--color--foreground--tint-1);
 }
@@ -206,9 +206,10 @@ function onListBackgroundClick() {
 
 .header {
 	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--sm);
-	padding: 0 var(--spacing--md) var(--spacing--md) 0;
+	align-items: center;
+	height: var(--review-tab-bar--height, var(--height--sm));
+	padding-right: var(--spacing--md);
+	margin-bottom: var(--review-tab-bar--gap, calc(var(--spacing--sm) + 11px));
 }
 
 .list {
@@ -224,7 +225,7 @@ function onListBackgroundClick() {
 	cursor: pointer;
 	padding: var(--spacing--xs);
 	align-items: stretch;
-	border: var(--border-width) solid var(--color--foreground--tint-1);
+	border: var(--border-width) solid var(--border-color);
 	transition: background-color 0.3s ease;
 
 	&:hover:not(.cardSelected) {

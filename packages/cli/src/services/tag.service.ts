@@ -1,7 +1,7 @@
 import type { TagEntity, ITagWithCountDb } from '@n8n/db';
-import { TagRepository } from '@n8n/db';
+import { TagRepository, TransactionRunner } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { In, QueryFailedError } from '@n8n/typeorm';
+import { QueryFailedError } from '@n8n/typeorm';
 
 import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
@@ -9,24 +9,6 @@ import { validateEntity } from '@/generic-helpers';
 type GetAllResult<T> = T extends { withUsageCount: true } ? ITagWithCountDb[] : TagEntity[];
 
 type Action = 'Create' | 'Update';
-
-// Trim and dedupe input names case-insensitively, keeping the first-seen case.
-// Inputs are matched against the DB exactly, so this only collapses obvious
-// duplicates like ['Prod','prod','PROD'] within a single batch — it does NOT
-// change the case-sensitive contract that the REST tag API exposes.
-function dedupeNamesPreservingCase(names: string[]): string[] {
-	const seen = new Set<string>();
-	const result: string[] = [];
-	for (const raw of names) {
-		const trimmed = raw.trim();
-		if (trimmed.length === 0) continue;
-		const key = trimmed.toLowerCase();
-		if (seen.has(key)) continue;
-		seen.add(key);
-		result.push(trimmed);
-	}
-	return result;
-}
 
 // n8n supports postgres (SQLSTATE 23505) and sqlite (SQLITE_CONSTRAINT_UNIQUE,
 // or the older SQLITE_CONSTRAINT with a "UNIQUE constraint" message).
@@ -43,6 +25,7 @@ export class TagService {
 	constructor(
 		private externalHooks: ExternalHooks,
 		private tagRepository: TagRepository,
+		private txRunner: TransactionRunner,
 	) {}
 
 	toEntity(attrs: { name: string; id?: string }) {
@@ -63,6 +46,19 @@ export class TagService {
 		await this.externalHooks.run(`tag.after${action}`, [tag]);
 
 		return await savedTag;
+	}
+
+	/**
+	 * Re-keys an existing tag to a new id, moving its workflow and folder
+	 * mappings along. Does not run the `tag.beforeUpdate`/`afterUpdate`
+	 * external hooks: those model name edits, and no id-change hook contract
+	 * exists.
+	 */
+	async reconcileTagId(oldId: string, newId: string) {
+		await this.txRunner.run(
+			{},
+			async (ctx) => await this.tagRepository.reconcileTagId(oldId, newId, ctx),
+		);
 	}
 
 	async delete(id: string) {
@@ -120,6 +116,20 @@ export class TagService {
 		});
 	}
 
+	async getByIds(ids: string[]): Promise<TagEntity[]> {
+		if (ids.length === 0) return [];
+		return await this.tagRepository.findMany(ids);
+	}
+
+	async getByNames(names: string[]): Promise<TagEntity[]> {
+		if (names.length === 0) return [];
+		return await this.tagRepository.findManyByName(names);
+	}
+
+	async getAllByWorkflowId(workflowId: string): Promise<TagEntity[]> {
+		return await this.tagRepository.findBy({ workflows: { id: workflowId } });
+	}
+
 	/**
 	 * Paginated tags with non-archived usage counts plus the total count, both
 	 * via DB-level queries. Runs the data query and `count` in parallel.
@@ -148,34 +158,18 @@ export class TagService {
 	}
 
 	/**
-	 * Look up tags by name; never creates. Input is deduped case-insensitively
-	 * but matched against the DB exactly (REST tag API contract).
-	 */
-	async findByNames(names: string[]): Promise<TagEntity[]> {
-		const uniqueNames = dedupeNamesPreservingCase(names);
-		if (uniqueNames.length === 0) return [];
-
-		const existing = await this.tagRepository.find({ where: { name: In(uniqueNames) } });
-		const existingByName = new Map(existing.map((t) => [t.name, t]));
-
-		const result: TagEntity[] = [];
-		for (const name of uniqueNames) {
-			const hit = existingByName.get(name);
-			if (hit) result.push(hit);
-		}
-		return result;
-	}
-
-	/**
-	 * Resolve names to tag entities, creating any missing. Input is deduped
-	 * case-insensitively (first-seen case wins) but matched against the DB
-	 * exactly. Race-safe against concurrent same-name creates.
+	 * Resolve names to tag entities, creating any missing. Names are trimmed
+	 * and exact duplicates collapsed, matching how tags are stored; case-variant
+	 * names resolve as distinct tags. Race-safe against concurrent same-name
+	 * creates.
 	 */
 	async findOrCreateByNames(names: string[]): Promise<TagEntity[]> {
-		const uniqueNames = dedupeNamesPreservingCase(names);
+		const uniqueNames = [
+			...new Set(names.map((name) => name.trim()).filter((name) => name.length > 0)),
+		];
 		if (uniqueNames.length === 0) return [];
 
-		const existing = await this.tagRepository.find({ where: { name: In(uniqueNames) } });
+		const existing = await this.tagRepository.findManyByName(uniqueNames);
 		const existingByName = new Map(existing.map((t) => [t.name, t]));
 
 		const result: TagEntity[] = [];

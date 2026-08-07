@@ -1,4 +1,3 @@
-import { MCP_INSTANCE_SCOPES } from '@n8n/api-types';
 import { testDb } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -18,6 +17,7 @@ const testServer = setupTestServer({ endpointGroups: ['mcp'], modules: ['oauth-s
 let owner: User;
 let member: User;
 let jwtService: JwtService;
+let supportedScopes: string[];
 
 const createSessionToken = (payload: OAuthSessionPayload): string => {
 	return jwtService.sign(payload, { expiresIn: '10m' });
@@ -29,6 +29,7 @@ beforeAll(async () => {
 	member = await createMember();
 	jwtService = Container.get(JwtService);
 	oauthClientRepository = Container.get(OAuthClientRepository);
+	supportedScopes = Container.get(ProtectedResourceRegistry).getDefaultResource()?.scopes ?? [];
 });
 
 afterEach(async () => {
@@ -64,7 +65,7 @@ describe('GET /rest/consent/details', () => {
 			clientName: 'Test OAuth Client',
 			clientId: 'test-client-id',
 			redirectUri: 'https://example.com/callback',
-			scopes: [...MCP_INSTANCE_SCOPES],
+			scopes: supportedScopes,
 			scopeTools: expect.objectContaining({
 				'workflow:read': expect.arrayContaining(['search_workflows']),
 			}),
