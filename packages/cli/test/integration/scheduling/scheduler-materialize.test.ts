@@ -7,14 +7,11 @@ import {
 	WorkflowPublishedVersionRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { createScheduler } from '@n8n/scheduler';
-import type { MisfireCount, SchedulerDeps } from '@n8n/scheduler';
+import { createScheduler, totalDiscarded } from '@n8n/scheduler';
+import type { SchedulerDeps } from '@n8n/scheduler';
 import { v4 as uuid } from 'uuid';
 
 import { buildMaterializerTransaction } from '@/scheduling/durable-scheduler';
-
-const totalDiscarded = (misfires: MisfireCount[]) =>
-	misfires.reduce((total, { discarded }) => total + discarded, 0);
 
 describe('scheduler materialization', () => {
 	let jobRepo: ScheduledJobRepository;
