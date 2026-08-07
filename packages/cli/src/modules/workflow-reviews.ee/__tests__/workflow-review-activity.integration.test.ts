@@ -128,10 +128,7 @@ async function seedRequest(
 		},
 		{},
 	);
-	await authorRepository.addAuthor(
-		{ workflowReviewRequestId: request.id, userId: author.id },
-		{},
-	);
+	await authorRepository.addAuthor({ workflowReviewRequestId: request.id, userId: author.id }, {});
 	return request;
 }
 
