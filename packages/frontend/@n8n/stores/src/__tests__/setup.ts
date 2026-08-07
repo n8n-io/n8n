@@ -1,1 +1,1 @@
-import '@n8n/vitest-config/frontend-setup';
+import '@n8n/vitest-config/setup/frontend';

@@ -1,11 +1,19 @@
-import { frontendSourceAliases } from '@n8n/vitest-config/frontend-aliases';
 import { resolve } from 'path';
 import type { Alias } from 'vite';
 
+// The source-package table and its regex expansion live in `@n8n/vitest-config` because editor-ui
+// stopped being their only consumer: every module under `packages/frontend/modules/` needs the same
+// mapping for its own vitest run, and a module cannot import from the shell it plugs into. Still
+// hand-maintained, still guarded by `aliases.test.ts` — only the file it sits in changed.
+import {
+	frontendModuleAliases,
+	frontendSourceAliases,
+} from '@n8n/vitest-config/frontend-source-packages';
+
 /**
  * Aliases that belong to editor-ui itself: its own `@/` root and the fixes for transitive
- * dependencies that misbehave in a browser graph. Not part of the generated source mapping —
- * these packages are reached through `n8n-workflow`, not imported by editor-ui directly.
+ * dependencies that misbehave in a browser graph. These packages are reached through
+ * `n8n-workflow`, not imported by editor-ui directly.
  */
 export const appAliases = (editorUiDir: string, packagesDir: string): Alias[] => [
 	{ find: '@', replacement: resolve(editorUiDir, 'src') },
@@ -41,9 +49,7 @@ export const vendorAliases = (editorUiDir: string): Alias[] => [
 
 export const editorUiAliases = (editorUiDir: string, packagesDir: string): Alias[] => [
 	...appAliases(editorUiDir, packagesDir),
-	// Workspace packages resolve to source, not dist, so a dev-server edit in one of them
-	// hot-reloads the editor. Derived from the filesystem by `@n8n/vitest-config` so this list and
-	// the tsconfig `paths` block cannot drift apart again — `pnpm check:frontend-aliases` gates it.
-	...frontendSourceAliases({ repoRoot: resolve(packagesDir, '..'), consumerDir: editorUiDir }),
+	...frontendSourceAliases(packagesDir),
+	...frontendModuleAliases(packagesDir),
 	...vendorAliases(editorUiDir),
 ];

@@ -26,7 +26,7 @@ export const GLOBAL_TRIGGER_FILES = new Set(['pnpm-lock.yaml', 'package.json']);
  *     visible to a downstream import-graph walk (typecheck only catches the
  *     contract). DEVP-195.
  *   - `packages/@n8n/vitest-config/` — the shared vitest config and the shared
- *     jsdom harness (`frontend-setup/`) that every frontend package's
+ *     jsdom harness (`setup/frontend.ts`) that every frontend package's
  *     `src/__tests__/setup.ts` imports. A per-package setup file is already a
  *     bail-to-full-run trigger below; once the harness body lives here, editing
  *     it must trigger the same full run, or a change to 350 lines of global DOM

@@ -7,15 +7,15 @@
  *
  * Unlike `scripts/backend-module/setup.mjs` (which copies seven files under a hardcoded
  * `my-feature` name), a frontend module is not usable until the shell can see it. That takes
- * three edits outside the new package, all of which this script makes:
+ * four edits outside the new package, all of which this script makes:
  *
- *   1. `editor-ui/package.json`  — the dependency. The Vite alias is selected *by declared
- *      dependency*, so without this the manifest's bare import does not resolve at all.
- *   2. `editor-ui/tsconfig.json` — the `paths` entries, so vue-tsc resolves the same source
- *      Vite does. `pnpm check:frontend-aliases` fails when the two disagree.
- *   3. `editor-ui/src/app/modules.manifest.ts` — the descriptor registration.
- *
- * The Vite alias itself needs no edit: it is derived from the filesystem at config load.
+ *   1. `@n8n/vitest-config/frontend-source-packages.ts` — the Vite alias, so the shell resolves
+ *      the module to its `src`. The mapping is hand-maintained, so it does not appear on its own.
+ *   2. `editor-ui/package.json`  — the dependency, so pnpm links the package and a bare import
+ *      resolves outside Vite too (vue-tsc, node).
+ *   3. `editor-ui/tsconfig.json` — the `paths` entries, so vue-tsc resolves the same source Vite
+ *      does. `editor-ui/vite/aliases.test.ts` fails when 1 and 3 disagree.
+ *   4. `editor-ui/src/app/modules.manifest.ts` — the descriptor registration.
  *
  * Every edit is idempotent, so re-running after a partial failure is safe.
  */
@@ -31,6 +31,13 @@ const repoRoot = resolve(scriptDir, '..', '..');
 const EDITOR_UI = join(repoRoot, 'packages', 'frontend', 'editor-ui');
 const MANIFEST = join(EDITOR_UI, 'src', 'app', 'modules.manifest.ts');
 const MODULES_ROOT = join(repoRoot, 'packages', 'frontend', 'modules');
+const SOURCE_PACKAGES = join(
+	repoRoot,
+	'packages',
+	'@n8n',
+	'vitest-config',
+	'frontend-source-packages.ts',
+);
 
 const fail = (message) => {
 	console.error(`\n${message}\n`);
@@ -118,8 +125,25 @@ const lineIndex = (lines, pattern, file) => {
 
 const edits = [];
 
-// 1. The dependency — what makes the alias exist. Inserted in sort order because the manifests
-//    are alphabetical and `pnpm install` will otherwise reorder it out from under the diff.
+// 1. The Vite alias. The mapping is a hand-maintained table, so nothing adds the module for us.
+if (
+	editLines(SOURCE_PACKAGES, (lines) => {
+		if (lines.some((line) => line.includes(`'${packageName}'`))) return undefined;
+
+		const at = lineIndex(lines, /^export const modulePackages/, 'frontend-source-packages.ts');
+		lines.splice(
+			at + 1,
+			0,
+			`\t{ name: '${packageName}', dir: 'frontend/modules/${name}' },`,
+		);
+		return lines;
+	})
+) {
+	edits.push('@n8n/vitest-config/frontend-source-packages.ts (Vite alias)');
+}
+
+// 2. The dependency, so the package resolves outside Vite too. Inserted in sort order because the
+//    manifests are alphabetical and `pnpm install` will otherwise reorder it out from under the diff.
 if (
 	editLines(join(EDITOR_UI, 'package.json'), (lines) => {
 		if (lines.some((line) => line.includes(`"${packageName}"`))) return undefined;
@@ -140,8 +164,8 @@ if (
 	edits.push('editor-ui/package.json (dependency)');
 }
 
-// 2. The tsconfig paths — vue-tsc has to resolve what Vite resolves, or `check:frontend-aliases`
-//    fails. Grouped next to the SDK, which every manifest consumer already depends on.
+// 3. The tsconfig paths — vue-tsc has to resolve what Vite resolves, or `aliases.test.ts` fails.
+//    Grouped next to the SDK, which every manifest consumer already depends on.
 if (
 	editLines(join(EDITOR_UI, 'tsconfig.json'), (lines) => {
 		if (lines.some((line) => line.includes(`"${packageName}"`))) return undefined;
@@ -163,7 +187,7 @@ if (
 	edits.push('editor-ui/tsconfig.json (paths)');
 }
 
-// 3. The manifest — the descriptor registration itself.
+// 4. The manifest — the descriptor registration itself.
 if (
 	editLines(MANIFEST, (lines) => {
 		if (lines.some((line) => line.includes(`'${packageName}'`))) return undefined;
