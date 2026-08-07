@@ -6,6 +6,7 @@ import {
 } from 'n8n-workflow';
 
 import * as file from './file';
+import * as item from './item';
 import * as list from './list';
 import type { MicrosoftSharePointType } from './node.type';
 
@@ -53,6 +54,19 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 					// declare the wider Promise<IDataObject | IDataObject[]> return type so
 					// TS can resolve .execute.call across either one without a local wrapper.
 					responseData = await list[sharePointTypeData.operation].execute.call(
+						this,
+						i,
+						siteIdCache,
+					);
+					break;
+				case 'item':
+					if (!(sharePointTypeData.operation in item)) {
+						throw new NodeOperationError(
+							this.getNode(),
+							`The operation "${operation}" is not supported!`,
+						);
+					}
+					responseData = await item[sharePointTypeData.operation].execute.call(
 						this,
 						i,
 						siteIdCache,

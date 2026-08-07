@@ -12,6 +12,7 @@ export const TokenExchangeFailureReason = {
 	InvalidClaims: 'invalid_claims',
 	InternalError: 'internal_error',
 	RoleNotAllowed: 'role_not_allowed',
+	EmailNotVerified: 'email_not_verified',
 	Other: 'other',
 } as const;
 

@@ -18,7 +18,9 @@ import {
 	dropDevDepOnlyDeps,
 	filterImpactfulChanges,
 	forcesBroad,
+	isTsconfig,
 	stripDependencyFiles,
+	tsconfigForcesBroad,
 } from './changes.js';
 import type { WorkspaceImporters } from './dep-graph.js';
 import {
@@ -44,11 +46,18 @@ export interface SelectTestsInput {
 	 *  the lockfile + manifests from selection — a devDep can't reach the runtime
 	 *  bundle the E2E suite exercises. */
 	manifests?: Record<string, { before: string; after: string }>;
+	/** before/after content of each changed tsconfig (caller reads from git).
+	 *  Fed to {@link tsconfigForcesBroad}; omitted (local dev) → conservative broad. */
+	tsconfigs?: Record<string, { before: string; after: string }>;
 	/** Workspace package dir → runtime dependency names it declares (parsed from
 	 *  pnpm-lock.yaml's `importers`). With `manifests`, a changed runtime dep is
 	 *  walked to its declaring packages and scoped via the map instead
 	 *  of forcing broad. */
 	lockfileImporters?: WorkspaceImporters;
+	/** Package names reachable from the deployed packages' runtime deps (see
+	 *  `runtimeClosure` in dep-graph). Classifies `pnpm.overrides` changes;
+	 *  omitted → an override change stays broad. */
+	runtimeClosure?: ReadonlySet<string>;
 }
 
 export interface SelectTestsResult extends ResolveResult {
@@ -110,8 +119,23 @@ export function selectTests(input: SelectTestsInput): SelectTestsResult {
 	const forcing = impactful.filter(forcesBroad);
 	if (forcing.length > 0) return broad(forcing);
 
-	// devDependency-only change can't reach the runtime bundle → dropped.
-	if (input.manifests) impactful = dropDevDepOnlyDeps(impactful, input.manifests);
+	// A resolution-changing tsconfig edit forces broad; a resolution-neutral one
+	// is dropped (see tsconfigForcesBroad). No diff metadata → conservative broad.
+	const tsconfigChanges = impactful.filter(isTsconfig);
+	if (tsconfigChanges.length > 0) {
+		const forcingTsconfig = tsconfigChanges.filter((f) => {
+			const diff = input.tsconfigs?.[f];
+			return !diff || tsconfigForcesBroad(diff.before, diff.after);
+		});
+		if (forcingTsconfig.length > 0) return broad(forcingTsconfig);
+		impactful = impactful.filter((f) => !isTsconfig(f));
+	}
+
+	// devDependency-only change can't reach the runtime bundle → dropped. Same for
+	// a `pnpm.overrides` pin whose target is outside the runtime closure.
+	if (input.manifests) {
+		impactful = dropDevDepOnlyDeps(impactful, input.manifests, input.runtimeClosure);
+	}
 
 	// Runtime-dep change: walk it to the packages that declare it and drop
 	// the dep files from the coverage path.
@@ -143,7 +167,10 @@ export function selectTests(input: SelectTestsInput): SelectTestsResult {
 		if (!/(^|\/)package\.json$/.test(f)) return false;
 		const manifest = input.manifests?.[f];
 		if (!manifest) return true;
-		return classifyManifestChange(manifest.before, manifest.after) === 'runtime';
+		// An `override` still present here failed the closure check → unproven,
+		// treat like runtime.
+		const kind = classifyManifestChange(manifest.before, manifest.after);
+		return kind === 'runtime' || kind === 'override';
 	});
 	if (lockfileRemains || unscopedRuntimeManifest) return broad(impactful);
 

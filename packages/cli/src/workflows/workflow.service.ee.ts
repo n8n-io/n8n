@@ -21,17 +21,24 @@ import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import { In, type EntityManager } from '@n8n/typeorm';
 import omit from 'lodash/omit';
-import type { IWorkflowBase, WorkflowId } from 'n8n-workflow';
-import { NodeOperationError, PROJECT_ROOT, UserError, WorkflowActivationError } from 'n8n-workflow';
+import type { INode, IWorkflowBase, WorkflowId } from 'n8n-workflow';
+import {
+	isNodeWithWorkflowSelector,
+	jsonParse,
+	NodeOperationError,
+	PROJECT_ROOT,
+	UserError,
+	WorkflowActivationError,
+} from 'n8n-workflow';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
+import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { TransferWorkflowError } from '@/errors/response-errors/transfer-workflow.error';
-import { FolderService } from '@/services/folder.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
 
@@ -51,7 +58,6 @@ export class EnterpriseWorkflowService {
 		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly enterpriseCredentialsService: EnterpriseCredentialsService,
 		private readonly workflowFinderService: WorkflowFinderService,
-		private readonly folderService: FolderService,
 		private readonly folderRepository: FolderRepository,
 		private readonly workflowPublishHistoryRepository: WorkflowPublishHistoryRepository,
 	) {}
@@ -262,15 +268,65 @@ export class EnterpriseWorkflowService {
 			return [];
 		}
 		return workflow.nodes.filter((node) => {
-			if (!node.credentials) return false;
-
-			const allUsedCredentials = Object.values(node.credentials);
-
-			const allUsedCredentialIds = allUsedCredentials.map((nodeCred) => nodeCred.id?.toString());
-			return allUsedCredentialIds.some(
-				(nodeCredId) => nodeCredId && !userCredIds.includes(nodeCredId),
-			);
+			const usedCredentialIds = this.getCredentialIdsUsedByNode(node);
+			return usedCredentialIds.some((credId) => !userCredIds.includes(credId));
 		});
+	}
+
+	/**
+	 * Collect every credential id a node references. Besides the node's own
+	 * `credentials`, a node with an inline workflow selector (Execute
+	 * Sub-workflow, Workflow Tool, Workflow Retriever) embeds a whole workflow —
+	 * including its nodes' credentials — inside its `workflowJson` string
+	 * parameter, so those references are parsed out and returned as well.
+	 *
+	 * An inline sub-workflow may itself contain inline sub-workflows, so the walk
+	 * is iterative over an explicit stack: every referenced credential is
+	 * inspected regardless of nesting depth, with no silent cut-off that could let
+	 * a deeply nested reference escape validation. Nesting is inherently bounded by
+	 * the request size (each level embeds its child as literal escaped JSON) and
+	 * cannot cycle, so the stack cannot grow unbounded.
+	 */
+	private getCredentialIdsUsedByNode(node: INode): string[] {
+		const credentialIds: string[] = [];
+		const stack: INode[] = [node];
+
+		while (stack.length > 0) {
+			const current = stack.pop()!;
+
+			if (current.credentials) {
+				for (const nodeCred of Object.values(current.credentials)) {
+					const id = nodeCred.id?.toString();
+					if (id) credentialIds.push(id);
+				}
+			}
+
+			if (isNodeWithWorkflowSelector(current)) {
+				stack.push(...this.getInlineWorkflowNodes(current.parameters?.workflowJson));
+			}
+		}
+
+		return credentialIds;
+	}
+
+	/**
+	 * Parse the nodes of an inline sub-workflow passed as the `workflowJson`
+	 * parameter of a workflow-selector node. Non-string or unparseable values
+	 * reference no resolvable credentials and yield no nodes (the node would fail
+	 * at run time).
+	 */
+	private getInlineWorkflowNodes(workflowJson: unknown): INode[] {
+		if (typeof workflowJson !== 'string') return [];
+
+		let parsed: Partial<IWorkflowBase>;
+		try {
+			parsed = jsonParse<Partial<IWorkflowBase>>(workflowJson);
+		} catch {
+			return [];
+		}
+		if (!parsed || !Array.isArray(parsed.nodes)) return [];
+
+		return parsed.nodes.filter((subNode): subNode is INode => Boolean(subNode));
 	}
 
 	/**
@@ -313,6 +369,7 @@ export class EnterpriseWorkflowService {
 			where: {
 				id: In(Array.from(credentialIdToWorkflowIds.keys())),
 				isResolvable: true,
+				usageScope: 'project',
 			},
 			select: ['id'],
 		});
@@ -387,7 +444,7 @@ export class EnterpriseWorkflowService {
 
 		if (destinationParentFolderId) {
 			try {
-				parentFolder = await this.folderService.findFolderInProjectOrFail(
+				parentFolder = await this.folderRepository.findOneOrFailFolderInProject(
 					destinationParentFolderId,
 					destinationProjectId,
 				);
@@ -423,19 +480,22 @@ export class EnterpriseWorkflowService {
 	}
 
 	async getFolderUsedCredentials(user: User, folderId: string, projectId: string) {
-		await this.folderService.findFolderInProjectOrFail(folderId, projectId);
+		try {
+			await this.folderRepository.findOneOrFailFolderInProject(folderId, projectId);
+		} catch {
+			throw new FolderNotFoundError(folderId);
+		}
 
-		const workflows = await this.workflowFinderService.findAllWorkflowsForUser(
+		const { workflows } = await this.workflowFinderService.findWorkflowsForUser(
 			user,
 			['workflow:read'],
-			folderId,
-			projectId,
+			{ filters: { folderId, projectId }, includeProjects: true },
 		);
 
 		const usedCredentials = new Map<string, CredentialUsedByWorkflow>();
 
 		for (const workflow of workflows) {
-			const workflowWithMetaData = this.addOwnerAndSharings(workflow as unknown as WorkflowEntity);
+			const workflowWithMetaData = this.addOwnerAndSharings(workflow);
 			await this.addCredentialsToWorkflow(workflowWithMetaData, user);
 			for (const credential of workflowWithMetaData?.usedCredentials ?? []) {
 				usedCredentials.set(credential.id, credential);

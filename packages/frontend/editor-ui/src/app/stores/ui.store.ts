@@ -45,6 +45,8 @@ import {
 	AI_GATEWAY_TOP_UP_MODAL_KEY,
 	AGENT_CONFIRMATION_MODAL_KEY,
 	ADD_EXECUTION_TO_DATASET_MODAL_KEY,
+	TRIAL_INTRO_MODAL_KEY,
+	MIGRATE_WORKFLOW_MODAL_KEY,
 } from '@/app/constants';
 import {
 	ANNOTATION_TAGS_MANAGER_MODAL_KEY,
@@ -85,7 +87,6 @@ import type {
 	Modals,
 	NewCredentialsModal,
 	ThemeOption,
-	NotificationOptions,
 	ModalState,
 	ModalKey,
 	AppliedThemeOption,
@@ -94,7 +95,7 @@ import type {
 	NodeCreatorOpenSource,
 } from '@/Interface';
 import { defineStore } from 'pinia';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { applyThemeToBody, getThemeOverride, isValidTheme } from './ui.utils';
 import { computed, ref } from 'vue';
 import type { IMenuItem } from '@n8n/design-system';
@@ -104,7 +105,7 @@ import type { EventBus } from '@n8n/utils/event-bus';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import identity from 'lodash/identity';
 import { modalRegistry } from '@n8n/frontend-module-sdk';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 
 let savedTheme: ThemeOption = 'system';
 
@@ -117,6 +118,22 @@ try {
 } catch (e) {}
 
 type UiStore = ReturnType<typeof useUIStore>;
+
+/** State a modal key resolves to while it is not registered. */
+const CLOSED_MODAL_STATE: ModalState = Object.freeze({ open: false });
+
+/**
+ * Read-only view of `source` in which an unknown key reads as `fallback` instead
+ * of `undefined`. Modals register at different points in the boot sequence (shell
+ * keys eagerly, module keys post-login), so a reader can legitimately run before
+ * its key exists — it should see a closed modal, not throw.
+ */
+function withFallback<T>(source: Record<string, T>, fallback: T): Record<string, T> {
+	return new Proxy(source, {
+		get: (target, key) =>
+			typeof key === 'string' ? (target[key] ?? fallback) : Reflect.get(target, key),
+	});
+}
 
 export const useUIStore = defineStore(STORES.UI, () => {
 	const telemetry = useTelemetry();
@@ -178,6 +195,8 @@ export const useUIStore = defineStore(STORES.UI, () => {
 				INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY,
 				AI_GATEWAY_TOP_UP_MODAL_KEY,
 				AGENT_CONFIRMATION_MODAL_KEY,
+				TRIAL_INTRO_MODAL_KEY,
+				MIGRATE_WORKFLOW_MODAL_KEY,
 			].map((modalKey) => [modalKey, { open: false }]),
 		),
 		[DELETE_USER_MODAL_KEY]: {
@@ -307,9 +326,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	// Optional source for the auto-opened node creator (e.g. opened from Instance
 	// AI), so the 'User opened nodes panel' event is attributed to its origin.
 	const addFirstStepOnLoadSource = ref<NodeCreatorOpenSource>();
-	const pendingNotificationsForViews = ref<{ [key in VIEWS]?: NotificationOptions[] }>({});
-	const areNotificationsSuppressed = ref(false);
-	const allowErrorNotificationsWhenSuppressed = ref(false);
 	const processingExecutionResults = ref<boolean>(false);
 	const isBlankRedirect = ref<boolean>(false);
 
@@ -421,11 +437,21 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		} as const;
 	});
 
+	/**
+	 * Modal state by key, for reading. `modalsById` remains the writable state;
+	 * this is the accessor components should read through, because it tolerates a
+	 * key that is not registered.
+	 */
+	const modalStateById = computed(() => withFallback(modalsById.value, CLOSED_MODAL_STATE));
+
 	const isModalActiveById = computed(() =>
-		Object.keys(modalsById.value).reduce((acc: { [key: string]: boolean }, name) => {
-			acc[name] = name === modalStack.value[0];
-			return acc;
-		}, {}),
+		withFallback(
+			Object.keys(modalsById.value).reduce((acc: { [key: string]: boolean }, name) => {
+				acc[name] = name === modalStack.value[0];
+				return acc;
+			}, {}),
+			false,
+		),
 	);
 
 	const activeModals = computed(() => modalStack.value.map((modalName) => modalName));
@@ -566,6 +592,8 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			appendToBody?: boolean;
 			closeOnSave?: boolean;
 			instanceAiCredentialHelp?: NewCredentialsModal['instanceAiCredentialHelp'];
+			usageScope?: NewCredentialsModal['usageScope'];
+			credentialSetupHint?: NewCredentialsModal['credentialSetupHint'];
 		} = {},
 	) => {
 		setActiveId(CREDENTIAL_EDIT_MODAL_KEY, type);
@@ -581,6 +609,8 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			hideAskAssistant: options.hideAskAssistant,
 			appendToBody: options.appendToBody,
 			instanceAiCredentialHelp: options.instanceAiCredentialHelp,
+			usageScope: options.usageScope,
+			credentialSetupHint: options.credentialSetupHint,
 		} as NewCredentialsModal;
 		setMode(CREDENTIAL_EDIT_MODAL_KEY, 'new');
 		openModal(CREDENTIAL_EDIT_MODAL_KEY);
@@ -646,15 +676,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		telemetry.track('User toggled sidebar', {
 			expanded: !sidebarMenuCollapsed.value,
 		});
-	};
-
-	const setNotificationsForView = (view: VIEWS, notifications: NotificationOptions[]) => {
-		pendingNotificationsForViews.value[view] = notifications;
-	};
-
-	const setNotificationsSuppressed = (suppressed: boolean, options?: { allowErrors?: boolean }) => {
-		areNotificationsSuppressed.value = suppressed;
-		allowErrorNotificationsWhenSuppressed.value = suppressed && options?.allowErrors === true;
 	};
 
 	function resetLastInteractedWith() {
@@ -776,11 +797,9 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		sidebarWidth,
 		theme: computed(() => theme.value),
 		modalsById,
+		modalStateById,
 		currentView,
 		isAnyModalOpen,
-		pendingNotificationsForViews,
-		areNotificationsSuppressed,
-		allowErrorNotificationsWhenSuppressed,
 		activeModals,
 		isProcessingExecutionResults,
 		setTheme,
@@ -796,8 +815,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		addActiveAction,
 		removeActiveAction,
 		toggleSidebarMenuCollapse,
-		setNotificationsForView,
-		setNotificationsSuppressed,
 		resetLastInteractedWith,
 		setProcessingExecutionResults,
 		markStateDirty,

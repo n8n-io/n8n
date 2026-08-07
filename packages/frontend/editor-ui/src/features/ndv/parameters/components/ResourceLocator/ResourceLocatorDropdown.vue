@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useDebounce } from '@/app/composables/useDebounce';
+import { useDebounce } from '@n8n/composables/useDebounce';
 import type { IResourceLocatorResultExpanded } from '@/Interface';
 import { N8nBadge, N8nIcon, N8nInput, N8nLoading, N8nPopover, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';

@@ -74,7 +74,7 @@ function onAction(actionId: VectorStoreAction, vectorStore: AgentJsonVectorStore
 
 <template>
 	<div :class="$style.panel" data-testid="agent-vector-stores-panel">
-		<div :class="$style.toolbar">
+		<div v-if="props.vectorStores.length > 0" :class="$style.toolbar">
 			<span :class="$style.title" data-testid="agent-vector-stores-title">
 				{{ i18n.baseText('agents.builder.vectorStores.panel.title') }}
 				<N8nTooltip

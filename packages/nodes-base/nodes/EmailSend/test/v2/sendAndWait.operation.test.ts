@@ -29,7 +29,7 @@ describe('Test EmailSendV2, email => sendAndWait', () => {
 		vi.clearAllMocks();
 	});
 
-	it('should send message and put execution to wait', async () => {
+	it('should use the shared transport configuration and put execution to wait', async () => {
 		const items = [{ json: { data: 'test' } }];
 		//node
 		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce(SEND_AND_WAIT_OPERATION);
@@ -58,7 +58,7 @@ describe('Test EmailSendV2, email => sendAndWait', () => {
 		const result = await emailSendV2.execute.call(mockExecuteFunctions);
 
 		expect(result).toEqual([items]);
-		expect(utils.configureTransport).toHaveBeenCalledTimes(1);
+		expect(utils.configureTransport).toHaveBeenCalledWith({}, {});
 		expect(mockExecuteFunctions.putExecutionToWait).toHaveBeenCalledTimes(1);
 
 		expect(transporter.sendMail).toHaveBeenCalledWith({

@@ -64,6 +64,21 @@ describe('CredentialsRepository', () => {
 		});
 	});
 
+	describe('findStartingWith', () => {
+		it('only searches project credential names', async () => {
+			entityManager.find.mockResolvedValueOnce([]);
+
+			await repository.findStartingWith('API key');
+
+			expect(entityManager.find).toHaveBeenCalledWith(
+				CredentialsEntity,
+				expect.objectContaining({
+					where: expect.objectContaining({ usageScope: 'project' }),
+				}),
+			);
+		});
+	});
+
 	describe('findAllGlobalCredentials', () => {
 		test('should find all global credentials without data by default', async () => {
 			// ARRANGE
@@ -240,6 +255,7 @@ describe('CredentialsRepository', () => {
 
 			// ASSERT
 			expect(entityManager.findBy).toHaveBeenCalledWith(CredentialsEntity, {
+				usageScope: 'project',
 				shared: { project: { type: 'personal' } },
 			});
 			expect(credentials).toHaveLength(2);
@@ -271,6 +287,7 @@ describe('CredentialsRepository', () => {
 
 			// ASSERT
 			expect(entityManager.findBy).toHaveBeenCalledWith(CredentialsEntity, {
+				usageScope: 'project',
 				shared: { project: { sharedWorkflows: { workflowId } } },
 			});
 			expect(credentials).toHaveLength(2);
@@ -303,6 +320,7 @@ describe('CredentialsRepository', () => {
 
 			// ASSERT
 			expect(entityManager.findBy).toHaveBeenCalledWith(CredentialsEntity, {
+				usageScope: 'project',
 				shared: { projectId },
 			});
 			expect(credentials).toHaveLength(2);

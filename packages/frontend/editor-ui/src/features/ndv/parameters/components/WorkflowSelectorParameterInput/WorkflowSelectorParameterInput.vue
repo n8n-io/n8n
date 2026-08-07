@@ -22,7 +22,7 @@ import { useResourceLocatorDropdown } from '../../composables/useResourceLocator
 import { useResourceLocatorModes } from '../../composables/useResourceLocatorModes';
 import { useWorkflowResourcesLocator } from '../../composables/useWorkflowResourcesLocator';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { VIEWS } from '@/app/constants';
 import {
 	SAMPLE_SUBWORKFLOW_TRIGGER_ID,
@@ -30,7 +30,7 @@ import {
 } from '@/app/constants/samples';
 import type { WorkflowDataCreate } from '@n8n/rest-api-client/api/workflows';
 import { useDocumentVisibility } from '@/app/composables/useDocumentVisibility';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 
 import {
 	N8nIcon,

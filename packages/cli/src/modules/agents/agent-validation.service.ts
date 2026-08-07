@@ -3,7 +3,11 @@ import { getProviderPrefix } from '@n8n/ai-utilities/agent-config';
 import { getRequiredNodeCredentialSlots } from '@n8n/ai-utilities/node-catalog';
 import {
 	AgentModelSchema,
+	AI_GATEWAY_MANAGED_TAG,
 	agentTaskSchema,
+	findVectorStoreToolNameCollisions,
+	isDraftAgentConfig,
+	isDraftIntegration,
 	type AgentConfigValidationIssue,
 	type AgentConfigValidationIssueCode,
 	type AgentConfigValidationResponse,
@@ -19,8 +23,10 @@ import { isMcpOAuth2Authentication, NodeHelpers, type INodeParameters } from 'n8
 
 import { getMissingSkillIds } from '@/modules/agents/utils/agent-missing-skill-ids';
 import { NodeTypes } from '@/node-types';
+import { checkAiGatewayEligibility } from '@/services/ai-gateway-eligibility';
+import { AiGatewayService } from '@/services/ai-gateway.service';
 
-import { LLM_PROVIDER_DEFAULTS } from './builder/interactive/llm-provider-defaults';
+import { LLM_PROVIDER_DEFAULTS } from './llm-provider-defaults';
 import type { AgentHistory } from './entities/agent-history.entity';
 import type { Agent } from './entities/agent.entity';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
@@ -75,7 +81,22 @@ export class AgentValidationService {
 		private readonly nodeTypes: NodeTypes,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly chatIntegrationRegistry: ChatIntegrationRegistry,
+		private readonly aiGatewayService: AiGatewayService,
 	) {}
+
+	/**
+	 * Whether n8n Connect (AI Gateway) can serve the model's provider, using only
+	 * the cached gateway config — this static validator must not perform a network
+	 * fetch. Returns `undefined` when support can't be determined (no cached
+	 * config), so the caller can tell "gateway says no" from "could not ask".
+	 */
+	private isAiGatewayModelSupported(model: string): boolean | undefined {
+		const provider = getProviderPrefix(model);
+		if (!provider) return false;
+		const credentialType = this.aiGatewayService.getCredentialTypeForProviderCached(provider);
+		if (credentialType === undefined) return undefined;
+		return credentialType !== null;
+	}
 
 	/**
 	 * Backward-compatible wrapper over {@link validateAgentConfiguration}.
@@ -245,9 +266,10 @@ export class AgentValidationService {
 			return credentialList.find((credential) => credential.id === credentialId);
 		};
 
-		const { agentsById, workflowsByName } = await this.prefetchReferenceLookups(ctx);
+		const { agentsById, workflowsByReference } = await this.prefetchReferenceLookups(ctx);
 
 		this.collectCoreIssues(config, issues);
+		this.collectVectorStoreIssues(config, issues);
 		await this.collectMainCredentialIssues(config, findCredential, issues);
 		this.collectSubAgentRefIssues(ctx, agentsById, issues);
 		this.collectSkillIssues(config, ctx.skills, issues);
@@ -255,7 +277,7 @@ export class AgentValidationService {
 			this.collectTaskIssues(config, ctx.tasks, issues);
 			await this.collectChannelIssues(ctx.integrations, findCredential, issues);
 		}
-		await this.collectToolIssues(ctx, findCredential, workflowsByName, issues);
+		await this.collectToolIssues(ctx, findCredential, workflowsByReference, issues);
 		await this.collectMcpServerIssues(config, findCredential, issues);
 
 		return this.dedupe(issues);
@@ -263,10 +285,10 @@ export class AgentValidationService {
 
 	private async prefetchReferenceLookups(ctx: ConfigurationValidationContext): Promise<{
 		agentsById: Map<string, Pick<Agent, 'id' | 'activeVersionId'>>;
-		workflowsByName: Map<string, WorkflowEntity>;
+		workflowsByReference: Map<string, WorkflowEntity>;
 	}> {
 		const subAgentIds = new Set<string>();
-		const workflowNames = new Set<string>();
+		const workflowRefs: AgentJsonWorkflowToolConfig[] = [];
 
 		for (const ref of ctx.config.subAgents?.agents ?? []) {
 			if (ref.agentId && ref.agentId !== ctx.agentId) {
@@ -276,18 +298,18 @@ export class AgentValidationService {
 
 		for (const tool of ctx.config.tools ?? []) {
 			if (tool.type === 'workflow' && tool.workflow) {
-				workflowNames.add(tool.workflow);
+				workflowRefs.push(tool);
 			}
 		}
 
-		const [agents, workflowsByName] = await Promise.all([
+		const [agents, workflowsByReference] = await Promise.all([
 			this.agentRepository.findByIdsAndProjectId([...subAgentIds], ctx.projectId),
-			findWorkflowToolWorkflows(this.workflowRepository, [...workflowNames], ctx.projectId),
+			findWorkflowToolWorkflows(this.workflowRepository, workflowRefs, ctx.projectId),
 		]);
 
 		return {
 			agentsById: new Map(agents.map((agent) => [agent.id, agent])),
-			workflowsByName,
+			workflowsByReference,
 		};
 	}
 
@@ -308,7 +330,7 @@ export class AgentValidationService {
 			issues.push(agentIssue('missing_required', 'instructions'));
 		}
 
-		if (!config.model?.trim()) {
+		if (isDraftAgentConfig(config)) {
 			issues.push(agentIssue('missing_required', 'model'));
 		} else if (!AgentModelSchema.safeParse(config.model).success) {
 			issues.push(agentIssue('invalid_value', 'model'));
@@ -326,6 +348,23 @@ export class AgentValidationService {
 		}
 
 		const credentialId = config.credential.trim();
+
+		// n8n Connect managed credential: no stored credential to resolve — it is
+		// valid as long as the gateway can serve the selected model's provider.
+		if (credentialId === AI_GATEWAY_MANAGED_TAG) {
+			const model = config.model?.trim();
+			// Only flag a definitive "gateway does not serve this provider". When
+			// support can't be determined (no cached gateway config), don't fail
+			// closed — a transient/cold config must not make a working managed agent
+			// look broken and block Publish / chat runs. A missing model is already
+			// reported against `model` by `collectCoreIssues`, so it is not the
+			// credential's problem.
+			if (model && this.isAiGatewayModelSupported(model) === false) {
+				issues.push(agentIssue('incompatible_credential', 'credential'));
+			}
+			return;
+		}
+
 		const credential = await this.findCredentialSafe(findCredential, credentialId);
 		if (!credential) {
 			issues.push(agentIssue('invalid_credential', 'credential'));
@@ -406,6 +445,29 @@ export class AgentValidationService {
 		}
 	}
 
+	/**
+	 * A vector store registers a `search_<sanitized-name>` tool at runtime; a
+	 * collision with a configured tool name only fails once the agent is built.
+	 * The write gate (AgentConfigService.validateConfig) checks this too — this
+	 * re-check covers configs that reached the entity through other paths
+	 * (e.g. history restore).
+	 */
+	private collectVectorStoreIssues(config: AgentJsonConfig, issues: AgentConfigValidationIssue[]) {
+		const collisions = new Set(findVectorStoreToolNameCollisions(config));
+		const stores = config.vectorStores ?? [];
+		for (let index = 0; index < stores.length; index++) {
+			const store = stores[index];
+			if (!collisions.has(`search_${store.name.replace(/-/g, '_')}`)) continue;
+			issues.push(
+				issue('invalid_value', `vectorStores.${index}.name`, {
+					kind: 'vectorStore',
+					id: store.name,
+					index,
+				}),
+			);
+		}
+	}
+
 	private async collectChannelIssues(
 		integrations: AgentIntegrationConfig[],
 		findCredential: FindCredential,
@@ -419,12 +481,11 @@ export class AgentValidationService {
 				id: integration.type,
 				index,
 			};
-			const credentialId = integration.credentialId?.trim();
-
-			if (!credentialId) {
+			if (isDraftIntegration(integration)) {
 				issues.push(issue('missing_credential', path, capability));
 				continue;
 			}
+			const credentialId = integration.credentialId.trim();
 
 			const credential = await this.findCredentialSafe(findCredential, credentialId);
 			if (!credential) {
@@ -442,7 +503,7 @@ export class AgentValidationService {
 	private async collectToolIssues(
 		ctx: ConfigurationValidationContext,
 		findCredential: FindCredential,
-		workflowsByName: Map<string, WorkflowEntity>,
+		workflowsByReference: Map<string, WorkflowEntity>,
 		issues: AgentConfigValidationIssue[],
 	) {
 		const tools = ctx.config.tools ?? [];
@@ -464,7 +525,7 @@ export class AgentValidationService {
 			}
 
 			if (tool.type === 'workflow') {
-				this.collectWorkflowToolIssues(tool, index, workflowsByName, issues);
+				this.collectWorkflowToolIssues(tool, index, workflowsByReference, issues);
 				continue;
 			}
 
@@ -477,18 +538,18 @@ export class AgentValidationService {
 	private collectWorkflowToolIssues(
 		tool: AgentJsonWorkflowToolConfig,
 		index: number,
-		workflowsByName: Map<string, WorkflowEntity>,
+		workflowsByReference: Map<string, WorkflowEntity>,
 		issues: AgentConfigValidationIssue[],
 	) {
-		const path = `tools.${index}.workflow`;
+		const path = `tools.${index}.${tool.workflowId === undefined ? 'workflow' : 'workflowId'}`;
 		const capability: AgentConfigValidationIssue['capability'] = {
 			kind: 'tool',
-			id: tool.name ?? tool.workflow,
+			id: tool.workflow,
 			index,
 			toolType: 'workflow',
 		};
 
-		const workflow = workflowsByName.get(tool.workflow);
+		const workflow = workflowsByReference.get(tool.workflowId ?? tool.workflow);
 
 		if (!workflow) {
 			issues.push(issue('missing_reference', path, capability));
@@ -556,6 +617,20 @@ export class AgentValidationService {
 
 			const path = `tools.${index}.node.credentials.${slot.credentialType}`;
 			const credentialRef = tool.node.credentials?.[slot.credentialType];
+
+			if (credentialRef && '__aiGatewayManaged' in credentialRef) {
+				// Only flag a definitive "gateway does not cover this slot". An
+				// indeterminate gateway state must not fail closed, mirroring the
+				// managed main-credential policy in collectMainCredentialIssues.
+				if (
+					(await this.gatewayCoversNodeToolSlot(tool.node, slot.credentialType, nodeParameters)) ===
+					false
+				) {
+					issues.push(issue('invalid_credential', path, capabilityBase));
+				}
+				continue;
+			}
+
 			const credentialId = credentialRef?.id?.trim();
 
 			if (!credentialId) {
@@ -568,6 +643,36 @@ export class AgentValidationService {
 				issues.push(issue('invalid_credential', path, capabilityBase));
 			}
 		}
+	}
+
+	/**
+	 * Whether the gateway covers this node-tool slot:
+	 *  - `false` is a definitive no (feature disabled, or the config does not
+	 *    cover the node/credential/action),
+	 *  - `undefined` means it can't be determined (gateway enabled but its config
+	 *    is unavailable, e.g. a transient fetch failure), so callers must not
+	 *    fail closed on it: a briefly unreachable gateway must not make a
+	 *    working managed slot look broken.
+	 */
+	private async gatewayCoversNodeToolSlot(
+		node: AgentJsonNodeToolConfig['node'],
+		credentialType: string,
+		resolvedParameters: INodeParameters,
+	): Promise<boolean | undefined> {
+		const availability = await this.aiGatewayService.isAvailable();
+		if (!availability.available) {
+			return this.aiGatewayService.isEnabled() ? undefined : false;
+		}
+		return checkAiGatewayEligibility(
+			{
+				type: node.nodeType,
+				typeVersion: node.nodeTypeVersion,
+				parameters: (node.nodeParameters ?? {}) as INodeParameters,
+			},
+			credentialType,
+			availability.config,
+			resolvedParameters,
+		).eligible;
 	}
 
 	private async collectMcpServerIssues(

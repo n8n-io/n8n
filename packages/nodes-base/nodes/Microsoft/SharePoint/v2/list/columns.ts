@@ -5,8 +5,8 @@ import type {
 	ResourceMapperField,
 	ResourceMapperFields,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
 
+import { assertPathSegment } from '../helpers/utils';
 import { resolveSiteId } from '../site';
 import { microsoftApiRequest } from '../transport';
 import { untilListSelected, untilSiteSelected } from './index';
@@ -29,8 +29,6 @@ const UNSUPPORTED_COLUMN_TYPES = new Set(['location', 'geolocation', 'term', 'mu
 
 const FIELD_TYPE_BY_COLUMN_TYPE: Record<string, FieldType> = {
 	text: 'string',
-	user: 'string',
-	lookup: 'string',
 	number: 'number',
 	currency: 'number',
 	// Rating columns report unknownFutureValue
@@ -77,6 +75,21 @@ function toMapperFields(column: SharePointListColumn): ResourceMapperField[] {
 		];
 	}
 
+	// Graph only accepts person/lookup writes through the `{name}LookupId`
+	// field (a numeric ID), and reads return the same key — so the mapper
+	// exposes that field directly and auto-map round-trips.
+	if (columnType === 'user' || columnType === 'lookup') {
+		return [
+			{
+				...base,
+				id: `${column.name}LookupId`,
+				displayName: `${column.displayName} (Lookup ID)`,
+				canBeUsedToMatch: Boolean(column.enforceUniqueValues && column.required),
+				type: 'number',
+			},
+		];
+	}
+
 	const field: ResourceMapperField = {
 		...base,
 		id: column.name,
@@ -97,14 +110,11 @@ export async function getMappingColumns(
 	this: ILoadOptionsFunctions,
 ): Promise<ResourceMapperFields> {
 	const siteId = await resolveSiteId.call(this, 0);
-	const listIdOrTitle = (
-		this.getNodeParameter('list', '', { extractValue: true }) as string
-	).trim();
-	if (listIdOrTitle === '') {
-		throw new NodeOperationError(this.getNode(), "The 'List' parameter is empty", {
-			description: 'Set the list ID or title and try again.',
-		});
-	}
+	const listIdOrTitle = assertPathSegment(
+		this.getNode(),
+		String(this.getNodeParameter('list', '', { extractValue: true })),
+		'List',
+	);
 
 	// Only the contentTypes columns reply carries the `type` discriminator
 	// https://learn.microsoft.com/en-us/graph/api/resources/columndefinition

@@ -1,17 +1,33 @@
 import type { Mock } from 'vitest';
 
-import { InstanceAiErrorReporterService } from '../instance-ai-error-reporter.service';
+import {
+	getAgentErrorSeverity,
+	InstanceAiErrorReporterService,
+} from '../instance-ai-error-reporter.service';
+
+describe('getAgentErrorSeverity', () => {
+	it.each([
+		['observer', 'warning'],
+		['reflector', 'warning'],
+		['episodic-memory', 'warning'],
+		['input-persistence', undefined],
+		['turn-delta-persistence', undefined],
+	] as const)('classifies %s as %s', (source, expected) => {
+		expect(getAgentErrorSeverity(source)).toBe(expected);
+	});
+});
 
 describe('InstanceAiErrorReporterService', () => {
 	function createService(): {
 		service: InstanceAiErrorReporterService;
 		errorReporter: { error: Mock };
-		logger: { error: Mock; info: Mock };
+		logger: { error: Mock; info: Mock; warn: Mock };
 	} {
 		const errorReporter = { error: vi.fn() };
-		const logger: { error: Mock; info: Mock; scoped: Mock } = {
+		const logger: { error: Mock; info: Mock; warn: Mock; scoped: Mock } = {
 			error: vi.fn(),
 			info: vi.fn(),
+			warn: vi.fn(),
 			scoped: vi.fn(),
 		};
 		logger.scoped.mockReturnValue(logger);
@@ -104,6 +120,44 @@ describe('InstanceAiErrorReporterService', () => {
 		);
 	});
 
+	it('reports at warning level when the context declares warning severity', () => {
+		const { service, errorReporter, logger } = createService();
+		const error = new Error('Observer failed');
+
+		service.report(error, {
+			component: 'instance-ai-observer',
+			severity: 'warning',
+			threadId: 't',
+			runId: 'r',
+		});
+
+		expect(logger.error).not.toHaveBeenCalled();
+		expect(logger.warn).toHaveBeenCalled();
+		expect(errorReporter.error).toHaveBeenCalledWith(
+			error,
+			expect.objectContaining({ level: 'warning' }),
+		);
+	});
+
+	it('reports unresolved masked stream failures at error level by default', () => {
+		const { service, errorReporter, logger } = createService();
+		const error = Object.assign(new Error('No output generated. Check the stream for errors.'), {
+			name: 'AI_NoOutputGeneratedError',
+		});
+
+		service.report(error, {
+			component: 'instance-ai-stream',
+			threadId: 't',
+			runId: 'r',
+		});
+
+		expect(logger.error).toHaveBeenCalled();
+		expect(errorReporter.error).toHaveBeenCalledWith(
+			error,
+			expect.not.objectContaining({ level: 'warning' }),
+		);
+	});
+
 	it('withBoundary rethrows quota-exhausted errors without reporting to Sentry', async () => {
 		const { service, errorReporter } = createService();
 		const error = Object.assign(new Error('Have reached end of quota'), {
@@ -119,9 +173,11 @@ describe('InstanceAiErrorReporterService', () => {
 		expect(errorReporter.error).not.toHaveBeenCalled();
 	});
 
-	it('drops per-run dedup state after endRun', () => {
-		const { service, errorReporter } = createService();
-		const error = new Error('boom');
+	it('logs at warn level instead of reporting for errors that self-declare a warning level', () => {
+		const { service, errorReporter, logger } = createService();
+		const error = Object.assign(new Error('ThrottlerException: Too Many Requests'), {
+			level: 'warning',
+		});
 
 		service.beginRun('r');
 		service.report(error, {
@@ -129,7 +185,39 @@ describe('InstanceAiErrorReporterService', () => {
 			threadId: 't',
 			runId: 'r',
 		});
-		service.endRun('r');
+
+		expect(errorReporter.error).not.toHaveBeenCalled();
+		expect(logger.error).not.toHaveBeenCalled();
+		expect(logger.warn).toHaveBeenCalledWith(
+			'Instance AI warning-level error in instance-ai-run',
+			expect.objectContaining({ error, threadId: 't', runId: 'r' }),
+		);
+	});
+
+	it('still reports errors that declare an error level', () => {
+		const { service, errorReporter } = createService();
+		const error = Object.assign(new Error('Internal Server Error'), { level: 'error' });
+
+		service.report(error, {
+			component: 'instance-ai-run',
+			threadId: 't',
+			runId: 'r',
+		});
+
+		expect(errorReporter.error).toHaveBeenCalledTimes(1);
+	});
+
+	it('drops per-run dedup state after endRun', () => {
+		const { service, errorReporter } = createService();
+		const error = new Error('boom');
+
+		const executionToken = service.beginRun('r');
+		service.report(error, {
+			component: 'instance-ai-run',
+			threadId: 't',
+			runId: 'r',
+		});
+		service.endRun('r', executionToken);
 		service.beginRun('r');
 		service.report(error, {
 			component: 'instance-ai-run',
@@ -138,6 +226,19 @@ describe('InstanceAiErrorReporterService', () => {
 		});
 
 		expect(errorReporter.error).toHaveBeenCalledTimes(2);
+	});
+
+	it('does not let an older segment end a newer run scope with the same run ID', () => {
+		const { service, errorReporter } = createService();
+		const firstExecution = service.beginRun('r');
+		service.beginRun('r');
+		service.endRun('r', firstExecution);
+		const error = new Error('boom');
+
+		service.report(error, { component: 'instance-ai-run', threadId: 't', runId: 'r' });
+		service.report(error, { component: 'instance-ai-stream', threadId: 't', runId: 'r' });
+
+		expect(errorReporter.error).toHaveBeenCalledTimes(1);
 	});
 
 	it('does not dedup run-scoped errors when beginRun was not called', () => {

@@ -11,8 +11,9 @@ import { useSurfaceMcpEmptyState } from '@/experiments/surfaceMcpToNewCloudUsers
 import { useCredentialsAppSelectionStore } from '@/experiments/credentialsAppSelection/stores/credentialsAppSelection.store';
 import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/readyToRun.store';
 import AppSelectionPage from '@/experiments/credentialsAppSelection/components/AppSelectionPage.vue';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { instanceAiCreateAgentRoute } from '@/features/ai/instanceAi/createAgentRoute';
+import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { useAgentTelemetry } from '@/features/agents/composables/useAgentTelemetry';
 import { useAgentPermissions } from '@/features/agents/composables/useAgentPermissions';
 import SurfaceMcpEmptyStateReminder from '@/experiments/surfaceMcpToNewCloudUsers/components/SurfaceMcpEmptyStateReminder.vue';
@@ -74,9 +75,13 @@ const handleReadyToRunClick = async () => {
 };
 
 const handleBuildAgentClick = () => {
-	agentTelemetry.trackClickedNewAgent('card');
+	const agentId = generateNanoId();
+	agentTelemetry.trackClickedNewAgent('card', agentId);
 	void router.push(
-		instanceAiCreateAgentRoute(builderProjectId.value ?? projectsStore.personalProject?.id ?? ''),
+		instanceAiCreateAgentRoute(
+			builderProjectId.value ?? projectsStore.personalProject?.id ?? '',
+			agentId,
+		),
 	);
 };
 
@@ -96,7 +101,6 @@ const handleAppSelectionContinue = () => {
 		:class="[
 			$style.emptyStateLayout,
 			{
-				[$style.noTemplatesContent]: !showAppSelection,
 				[$style.builderLayout]: showAppSelection,
 			},
 		]"
@@ -219,22 +223,17 @@ const handleAppSelectionContinue = () => {
 	justify-content: center;
 	align-content: center;
 	height: 100%;
-	padding: var(--spacing--4xl) var(--spacing--2xl) 0;
+	// Vertical padding must stay symmetric so justify-content centers the content
+	padding: 0 var(--spacing--2xl);
 	max-width: var(--content-container--width);
 	width: 100%;
 
 	@media (max-width: vars.$breakpoint-lg) {
-		padding: var(--spacing--xl) var(--spacing--xs) 0;
-	}
-
-	&.noTemplatesContent {
-		padding-top: var(--spacing--3xl);
+		padding: 0 var(--spacing--xs);
 	}
 
 	&.builderLayout {
 		align-items: center;
-		justify-content: center;
-		width: 100%;
 		max-width: none;
 		padding: var(--spacing--lg);
 	}

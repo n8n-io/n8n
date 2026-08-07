@@ -1,0 +1,27 @@
+{
+	"extends": "@n8n/typescript-config/tsconfig.frontend.json",
+	"compilerOptions": {
+		"noEmit": false,
+		"declaration": true,
+		"emitDeclarationOnly": true,
+		"outDir": "dist",
+		"rootDir": "src",
+		"moduleResolution": "bundler",
+		"noUnusedLocals": false,
+		"noUnusedParameters": false,
+		"types": ["vite/client", "unplugin-icons/types/vue", "vue-router"],
+		"paths": {
+			"@n8n/design-system*": ["./src*"]
+		}
+	},
+	"include": ["src/**/*.ts", "src/**/*.vue"],
+	"exclude": [
+		"src/**/*.test.ts",
+		"src/**/*.spec.ts",
+		"src/**/*.stories.*",
+		"src/**/__tests__/**",
+		"src/styleguide/**",
+		"src/icons/lucide/vite.ts",
+		"src/components/N8nBreadcrumbs/AsyncLoadingCacheDemo.vue"
+	]
+}

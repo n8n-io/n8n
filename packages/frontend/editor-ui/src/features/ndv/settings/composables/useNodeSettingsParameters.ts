@@ -10,7 +10,7 @@ import {
 	NodeHelpers,
 	deepCopy,
 } from 'n8n-workflow';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
@@ -32,7 +32,8 @@ import {
 	isAuthRelatedParameter,
 } from '@/app/utils/nodeTypesUtils';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 import { reconcileNodeFromAIKeys } from '@/features/ndv/parameters/utils/fromAIOverride.utils';
 
 const hasPublicDisplayCondition = (parameter: INodeProperties, value: boolean) =>
@@ -60,6 +61,7 @@ export function useNodeSettingsParameters() {
 	const ndvStore = computed(() => useNDVStore(workflowDocumentStore.value.documentId));
 	const nodeTypesStore = useNodeTypesStore();
 	const settingsStore = useSettingsStore();
+	const { check: envFeatureFlag } = useEnvFeatureFlag();
 	const telemetry = useTelemetry();
 	const nodeHelpers = useNodeHelpers();
 	const workflowHelpers = useWorkflowHelpers();
@@ -198,6 +200,14 @@ export function useNodeSettingsParameters() {
 	): Promise<boolean> {
 		// Fast path: hidden parameters are never displayed
 		if (parameter.type === 'hidden') {
+			return false;
+		}
+
+		if (
+			displayKey === 'displayOptions' &&
+			typeof parameter.envFeatureFlag === 'string' &&
+			!envFeatureFlag.value(parameter.envFeatureFlag)
+		) {
 			return false;
 		}
 

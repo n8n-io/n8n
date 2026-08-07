@@ -14,6 +14,7 @@ import {
 	searchSchema,
 	searchTables,
 	prepareNames,
+	validatePostgresIdentifier,
 } from './PostgresTrigger.functions';
 
 export class PostgresTrigger implements INodeType {
@@ -252,6 +253,18 @@ export class PostgresTrigger implements INodeType {
 		const triggerMode = this.getNodeParameter('triggerMode', 0) as string;
 		const additionalFields = this.getNodeParameter('additionalFields', 0) as IDataObject;
 
+		// Resolve and validate identifiers before opening a connection, so an
+		// invalid name fails fast without leaking a direct connection.
+		const pgNames = prepareNames(this.getNode().id, this.getMode(), additionalFields);
+		if (triggerMode === 'listenTrigger') {
+			pgNames.channelName = this.getNodeParameter('channelName', '') as string;
+			validatePostgresIdentifier(pgNames.channelName, 'Channel name');
+			// Postgres folds unquoted LISTEN identifiers to lower case; since :name
+			// quotes the channel, lower-case it so an existing channel notified as
+			// e.g. `NOTIFY MyChannel` is still matched.
+			pgNames.channelName = pgNames.channelName.toLowerCase();
+		}
+
 		// initialize and connect to database
 		const { db } = await initDB.call(this);
 		const connection = await db.connect({ direct: true });
@@ -266,23 +279,27 @@ export class PostgresTrigger implements INodeType {
 			this.emit([this.helpers.returnJsonArray([data])]);
 		};
 
-		// create trigger, function and channel or use existing channel
-		const pgNames = prepareNames(this.getNode().id, this.getMode(), additionalFields);
-		if (triggerMode === 'createTrigger') {
-			await pgTriggerFunction.call(
-				this,
-				db,
-				additionalFields,
-				pgNames.functionName,
-				pgNames.triggerName,
-				pgNames.channelName,
-			);
-		} else {
-			pgNames.channelName = this.getNodeParameter('channelName', '') as string;
-		}
+		// Release the direct connection if setup fails, so an error while creating
+		// the trigger or issuing LISTEN doesn't leak it.
+		try {
+			// create trigger and function, or use the existing channel
+			if (triggerMode === 'createTrigger') {
+				await pgTriggerFunction.call(
+					this,
+					db,
+					additionalFields,
+					pgNames.functionName,
+					pgNames.triggerName,
+					pgNames.channelName,
+				);
+			}
 
-		// listen to channel
-		await connection.none(`LISTEN ${pgNames.channelName}`);
+			// listen to channel
+			await connection.none('LISTEN $1:name', [pgNames.channelName]);
+		} catch (error) {
+			await connection.done();
+			throw error;
+		}
 
 		const cleanUpDb = async () => {
 			try {
@@ -298,10 +315,7 @@ export class PostgresTrigger implements INodeType {
 				try {
 					await connection.none('UNLISTEN $1:name', [pgNames.channelName]);
 					if (triggerMode === 'createTrigger') {
-						const functionName = pgNames.functionName.includes('(')
-							? pgNames.functionName.split('(')[0]
-							: pgNames.functionName;
-						await connection.any('DROP FUNCTION IF EXISTS $1:name CASCADE', [functionName]);
+						await connection.any('DROP FUNCTION IF EXISTS $1:name CASCADE', [pgNames.functionName]);
 
 						const schema = this.getNodeParameter('schema', undefined, {
 							extractValue: true,

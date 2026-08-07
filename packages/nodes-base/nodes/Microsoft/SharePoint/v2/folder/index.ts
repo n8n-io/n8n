@@ -1,6 +1,6 @@
 import type { ILoadOptionsFunctions, INodeListSearchResult, INodeProperties } from 'n8n-workflow';
 
-import { searchDriveItems } from '../helpers/driveItemSearch';
+import { searchDriveItems } from '../helpers/graphSearch';
 import { resolveSiteId } from '../site';
 
 /** Hide gate: file fields stay hidden until a folder is chosen. */

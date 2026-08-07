@@ -1,8 +1,8 @@
 import { vi } from 'vitest';
 
 import type { N8nClient } from '../clients/n8n-client';
+import { buildWorkflow } from '../harness/build-workflow';
 import type { EvalLogger } from '../harness/logger';
-import { buildWorkflow } from '../harness/runner';
 import { buildAgentOutcome } from '../outcome/workflow-discovery';
 import type { ExecutionScenario } from '../types';
 
@@ -127,5 +127,30 @@ describe('buildWorkflow scenario-seed data table lifecycle', () => {
 		);
 		// The name→real-id map lets each scenario reseed rows into the bound table.
 		expect(build.seededScenarioTableIdsByName).toEqual({ 'Job Applications': 'scenario-dt-1' });
+	});
+});
+
+describe('buildWorkflow declared credentials', () => {
+	it('registers the seeded credentials as passing their connection test', async () => {
+		const setThreadCredentialAllowlist = vi.fn().mockResolvedValue(undefined);
+		const client = makeClient({
+			setThreadCredentialAllowlist,
+			createCredential: vi.fn().mockResolvedValue({ id: 'cred-seeded' }),
+		});
+
+		const build = await buildWorkflow({
+			client,
+			...baseConfig,
+			credentials: [{ type: 'slackApi' }],
+		});
+
+		expect(build.success).toBe(true);
+		// A declared credential stands for one the user already connected, so its
+		// placeholder token must not make the build see a failing connection test.
+		expect(setThreadCredentialAllowlist).toHaveBeenCalledWith(
+			expect.any(String),
+			['cred-seeded'],
+			['cred-seeded'],
+		);
 	});
 });

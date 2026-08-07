@@ -19,6 +19,7 @@ import type {
 	WebhookType,
 	Workflow,
 	WorkflowExecuteMode,
+	N8nOAuth2FlowResult,
 } from 'n8n-workflow';
 import { UnexpectedError, createEmptyRunExecutionData } from 'n8n-workflow';
 
@@ -136,12 +137,6 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 	}
 
 	getNodeWebhookUrl(name: WebhookType): string | undefined {
-		// MCP webhooks are served under dedicated /mcp and /mcp-test endpoints; the OAuth
-		// resource URL must match the endpoint the request actually arrived on. Other webhook
-		// types keep their existing behaviour (production base) here.
-		const isTest =
-			this.webhookData.webhookDescription.nodeType === 'mcp' ? this.webhookData.isTest : undefined;
-
 		return getNodeWebhookUrl(
 			name,
 			this.workflow,
@@ -149,7 +144,20 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 			this.additionalData,
 			this.mode,
 			this.additionalKeys,
-			isTest,
+		);
+	}
+
+	getWebhookResourceUrl(name: WebhookType): string | undefined {
+		// Unlike `getNodeWebhookUrl`, names the endpoint actually being served, since token
+		// minting and verification must agree on it (see `IWebhookFunctions`).
+		return getNodeWebhookUrl(
+			name,
+			this.workflow,
+			this.node,
+			this.additionalData,
+			this.mode,
+			this.additionalKeys,
+			this.webhookData.isTest,
 		);
 	}
 
@@ -171,6 +179,23 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 			throw new UnexpectedError('Cookie auth validation is not available');
 		}
 		return await this.additionalData.validateCookieAuth(cookieValue);
+	}
+
+	async beginN8nOAuth2Flow(
+		resourceUrl: string,
+		metadata?: Record<string, string>,
+	): Promise<string> {
+		if (!this.additionalData.beginN8nOAuth2Flow) {
+			throw new UnexpectedError('OAuth2 flow is not available');
+		}
+		return await this.additionalData.beginN8nOAuth2Flow(resourceUrl, metadata);
+	}
+
+	async completeN8nOAuth2Flow(code: string, state: string): Promise<N8nOAuth2FlowResult> {
+		if (!this.additionalData.completeN8nOAuth2Flow) {
+			throw new UnexpectedError('OAuth2 flow is not available');
+		}
+		return await this.additionalData.completeN8nOAuth2Flow(code, state);
 	}
 
 	async validateN8nOAuth2Token(

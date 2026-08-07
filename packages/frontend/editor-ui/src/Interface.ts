@@ -1,7 +1,7 @@
-import type { NotificationOptions as ElementNotificationOptions } from 'element-plus';
 import type {
 	AgentJsonConfig,
 	FrontendSettings,
+	InstanceAiCredentialSetupHint,
 	IUserManagementSettings,
 	IVersionNotificationSettings,
 	Role,
@@ -78,8 +78,10 @@ declare global {
 				key: string,
 				options?: {
 					api_host?: string;
+					tracing_headers?: string[];
 					autocapture?: boolean;
 					disable_session_recording?: boolean;
+					advanced_disable_feature_flags?: boolean;
 					debug?: boolean;
 					bootstrap?: {
 						distinctID?: string;
@@ -391,13 +393,6 @@ export interface IShareWorkflowsPayload {
 	shareWithIds: string[];
 }
 
-export const enum UserManagementAuthenticationMethod {
-	Email = 'email',
-	Ldap = 'ldap',
-	Saml = 'saml',
-	Oidc = 'oidc',
-}
-
 export interface IPermissionGroup {
 	loginStatus?: ILogInStatus[];
 	role?: Role[];
@@ -671,10 +666,14 @@ export interface NewCredentialsModal extends ModalState {
 	closeOnSave?: boolean;
 	projectId?: string;
 	suggestedName?: string;
+	/** Agent-supplied Templated Custom Auth recipe — pre-fills the credential's
+	 * template fields so the modal opens on the guided simple view. */
+	credentialSetupHint?: InstanceAiCredentialSetupHint;
 	nodeName?: string;
 	contextNode?: INodeUi;
 	hideAskAssistant?: boolean;
 	appendToBody?: boolean;
+	usageScope?: 'project' | 'instance';
 	/** Behavior for the Instance AI credential setup-help button, supplied by the
 	 * surface that opened the modal (an editor capability, or the credentials list).
 	 * Resolves to whether the credential modal should close (false keeps it open for
@@ -685,6 +684,8 @@ export interface NewCredentialsModal extends ModalState {
 		nodeName?: string;
 		nodeType?: string;
 		id?: string;
+		placeholderTitles?: string[];
+		docsUrl?: string;
 		documentationUrl?: string;
 		oauthRedirectUrl?: string;
 	}) => Promise<boolean>;
@@ -703,10 +704,6 @@ export type TargetNodeParameterContext = {
 	nodeName: string;
 	parameterPath: string;
 };
-
-export interface NotificationOptions extends Partial<ElementNotificationOptions> {
-	message: string | ElementNotificationOptions['message'];
-}
 
 export type NodeFilterType =
 	| typeof REGULAR_NODE_CREATOR_VIEW
@@ -880,80 +877,7 @@ export type NodeAuthenticationOption = {
 	displayOptions?: IDisplayOptions;
 };
 
-export interface CloudPlanState {
-	initialized: boolean;
-	data: Cloud.PlanData | null;
-	usage: InstanceUsage | null;
-	loadingPlan: boolean;
-}
-
 export type CloudPlanAndUsageData = Cloud.PlanData & { usage: InstanceUsage };
-
-export type CloudUpdateLinkSourceType =
-	| 'advanced-permissions'
-	| 'canvas-nav'
-	| 'concurrency'
-	| 'custom-data-filter'
-	| 'workflow_sharing'
-	| 'credential_sharing'
-	| 'settings-n8n-api'
-	| 'audit-logs'
-	| 'ldap'
-	| 'log-streaming'
-	| 'source-control'
-	| 'sso'
-	| 'usage_page'
-	| 'settings-users'
-	| 'variables'
-	| 'community-nodes'
-	| 'workflow-history'
-	| 'worker-view'
-	| 'external-secrets'
-	| 'rbac'
-	| 'debug'
-	| 'insights'
-	| 'evaluations'
-	| 'ai-builder-sidebar'
-	| 'ai-builder-canvas'
-	| 'custom-roles'
-	| 'custom-roles-selector'
-	| 'custom-roles-list'
-	| 'main-sidebar'
-	| 'chat-hub'
-	| 'empty-state-builder-prompt'
-	| 'instance-ai'
-	| 'data-redaction'
-	| 'workflow-settings';
-
-export type UTMCampaign =
-	| 'upgrade-custom-data-filter'
-	| 'upgrade-concurrency'
-	| 'upgrade-workflow-sharing'
-	| 'upgrade-credentials-sharing'
-	| 'upgrade-api'
-	| 'upgrade-audit-logs'
-	| 'upgrade-ldap'
-	| 'upgrade-log-streaming'
-	| 'upgrade-source-control'
-	| 'upgrade-sso'
-	| 'open'
-	| 'upgrade-users'
-	| 'upgrade-variables'
-	| 'upgrade-community-nodes'
-	| 'upgrade-workflow-history'
-	| 'upgrade-advanced-permissions'
-	| 'upgrade-worker-view'
-	| 'upgrade-external-secrets'
-	| 'upgrade-rbac'
-	| 'upgrade-debug'
-	| 'upgrade-insights'
-	| 'upgrade-evaluations'
-	| 'upgrade-builder'
-	| 'upgrade-custom-roles'
-	| 'upgrade-canvas-nav'
-	| 'upgrade-main-sidebar'
-	| 'upgrade-instance-ai'
-	| 'upgrade-data-redaction';
 
 export type AddedNode = {
 	type: string;

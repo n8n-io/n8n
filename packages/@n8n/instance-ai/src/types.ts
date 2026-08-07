@@ -13,6 +13,9 @@ import type {
 	Workspace,
 } from '@n8n/agents';
 import type {
+	AgentJsonConfig,
+	AgentSkill,
+	EvaluationMetric,
 	TaskList,
 	InstanceAiFileAttachment,
 	InstanceAiPermissions,
@@ -386,6 +389,19 @@ export interface InstanceAiExecutionService {
 			verificationPinData?: Record<string, unknown[]>;
 			/** When set, execute this specific trigger node instead of auto-detecting. */
 			triggerNodeName?: string;
+			/**
+			 * Marks the run as a build verification rather than a run the user asked
+			 * for. Verification uses a production execution mode so triggers behave
+			 * realistically, which would otherwise make a failed attempt dispatch the
+			 * workflow's error workflow as if production had broken.
+			 */
+			isVerificationRun?: boolean;
+			/**
+			 * Connections removed from this run's ephemeral workflow copy (the saved
+			 * workflow is untouched). Used to sever a loop edge so scripted wait-gate
+			 * verification passes are acyclic.
+			 */
+			omitConnections?: Array<{ source: string; target: string }>;
 			abortSignal?: AbortSignal;
 		},
 	): Promise<ExecutionResult>;
@@ -457,6 +473,11 @@ export interface InstanceAiCredentialService {
 	 *  derived from credential metadata. Powers steering generic HTTP-node auth toward
 	 *  a predefined credential when one already exists for the target service. */
 	listHttpCredentialHosts?(): Promise<CredentialHostInfo[]>;
+	/** For Templated Custom Auth credentials only: the service host each credential
+	 *  was created for (its recipe's `serviceHost`), by credential id — `null` for
+	 *  untagged/legacy ones. Non-secret metadata; never exposes credential data.
+	 *  Powers same-service filtering of setup candidates for the shared type. */
+	getTemplatedCredentialHosts?(credentialIds: string[]): Promise<Record<string, string | null>>;
 	getAccountContext?(credentialId: string): Promise<{ accountIdentifier?: string }>;
 	/** Whether the given credential type is supported by AI Gateway. */
 	isAiGatewayCredentialType?(credType: string): Promise<boolean>;
@@ -470,6 +491,17 @@ export interface CredentialFieldInfo {
 	type: string;
 	required: boolean;
 	description?: string;
+}
+
+export interface McpRegistryServerSummary {
+	slug: string;
+	title: string;
+	description: string;
+	tools: string[];
+}
+
+export interface InstanceAiMcpService {
+	search(queries: string[]): Promise<McpRegistryServerSummary[]>;
 }
 
 export interface ExploreResourcesParams {
@@ -498,6 +530,19 @@ export interface ExploreResourcesResult {
 	builderHint?: string;
 }
 
+/**
+ * A resource-locator value the connected credential can't reach. Identifies the
+ * parameter and the offending value only — list the values it *can* reach with
+ * `exploreResources`, which runs the same lookup.
+ */
+export interface UnavailableLocatorValue {
+	/** Parameter name, as declared by the node. */
+	name: string;
+	displayName: string;
+	/** The configured value the credential can't reach. Left in place; repair is the caller's. */
+	currentValue: string;
+}
+
 export interface InstanceAiNodeService {
 	listAvailable(options?: { query?: string; n8nConnectOnly?: boolean }): Promise<NodeSummary[]>;
 	getDescription(nodeType: string, version?: number): Promise<NodeDescription>;
@@ -519,6 +564,20 @@ export interface InstanceAiNodeService {
 	): Promise<{ resources: Array<{ name: string; operations: string[] }> } | null>;
 	/** Query real resources via a node's listSearch or loadOptions methods (e.g. list spreadsheets, models). */
 	exploreResources?(params: ExploreResourcesParams): Promise<ExploreResourcesResult>;
+	/**
+	 * Report resource-locator parameters whose current value the given credential can't
+	 * reach. A credential can narrow a parameter's value space after the value was chosen —
+	 * the managed free-OpenAI-credits credential only proxies an allowlisted subset of
+	 * models — which is otherwise invisible until the workflow runs and fails. Reports the
+	 * unusable value only; list the usable ones with `exploreResources` if needed.
+	 */
+	findUnavailableLocatorValues?(params: {
+		nodeType: string;
+		version: number;
+		credentialType: string;
+		credentialId: string;
+		parameters: Record<string, unknown>;
+	}): Promise<UnavailableLocatorValue[]>;
 	/** Compute parameter issues for a node (mirrors builder's NodeHelpers.getNodeParametersIssues). */
 	getParameterIssues?(
 		nodeType: string,
@@ -695,7 +754,9 @@ export interface UpsertEvaluationConfigInput {
 	metrics: EvaluationConfigMetricInput[];
 }
 
-/** A config-based eval as surfaced to the agent. */
+/** A config-based eval as surfaced to the agent. Metrics are reduced to
+ *  identity only — use {@link EvaluationConfigDetail} when the metric bodies
+ *  (expressions, judge model, prompt) are needed. */
 export interface EvaluationConfigSummary {
 	id: string;
 	workflowId: string;
@@ -709,11 +770,20 @@ export interface EvaluationConfigSummary {
 	dataTableId?: string;
 }
 
+/** A config-based eval with its full metric bodies (expressions, judge model,
+ *  prompt) — what the summary omits. Returned by `describe` so the agent can
+ *  read a config before an `update` replaces it wholesale. */
+export interface EvaluationConfigDetail extends Omit<EvaluationConfigSummary, 'metrics'> {
+	metrics: EvaluationMetric[];
+}
+
 /** Create/read/update config-based evaluations attached to a workflow via the
  *  evaluation-config API (distinct from on-canvas eval nodes). */
 export interface InstanceAiEvaluationConfigService {
 	list(workflowId: string): Promise<EvaluationConfigSummary[]>;
 	get(workflowId: string, configId: string): Promise<EvaluationConfigSummary | null>;
+	/** Full-detail read: metric bodies included. */
+	describe(workflowId: string, configId: string): Promise<EvaluationConfigDetail | null>;
 	create(workflowId: string, input: UpsertEvaluationConfigInput): Promise<EvaluationConfigSummary>;
 	update(
 		workflowId: string,
@@ -881,6 +951,8 @@ export interface BuilderDelegateSession {
 	 * can outlive the parent trace's root finalization.
 	 */
 	memoryTaskObserver?: (event: ScopedMemoryTaskEvent) => void;
+	/** Host run's abort signal, so a user stop ends the builder's own loop rather than only our consumption of it. */
+	abortSignal: AbortSignal;
 }
 
 /** A builder turn stream: consumable by normalizeStreamSource, plus final text. */
@@ -903,7 +975,9 @@ export interface BuilderOpenSuspension {
  * builder's questions survive a process restart.
  */
 export interface InstanceAiBuilderDelegate {
-	createAgent(name: string): Promise<{ agentId: string; projectId: string }>;
+	/** `id` creates the agent under an id the frontend already minted for its
+	 *  unsaved artifact, so the chat and the editor converge on one agent. */
+	createAgent(name: string, id?: string): Promise<{ agentId: string; projectId: string }>;
 	streamBuild(
 		agentId: string,
 		message: string,
@@ -927,6 +1001,15 @@ export interface InstanceAiBuilderDelegate {
 	>;
 	/** Current display name of the agent, or undefined when not found. */
 	resolveAgentName(agentId: string): Promise<string | undefined>;
+	/** Config + skills for the `agent-snapshot` trace event; `null` when the agent
+	 *  has no config yet. Optional: the host supplies this delegate across a
+	 *  package boundary, so an unwired host emits no snapshots instead of
+	 *  breaking agent building. */
+	readAgentArtifact?(agentId: string): Promise<{
+		config: AgentJsonConfig;
+		skills: Record<string, AgentSkill>;
+		configHash: string | null;
+	} | null>;
 }
 
 // ── Local gateway status ─────────────────────────────────────────────────────
@@ -951,6 +1034,13 @@ export interface InstanceAiContext {
 	 */
 	tracing?: InstanceAiTraceContext;
 	projectId?: string;
+	/**
+	 * Host-resolved model for the current run (proxy-managed on cloud). Domain
+	 * tools pass it as the fallback for utility LLM calls (simulation fixtures,
+	 * destructiveness classification), which otherwise resolve an eval model
+	 * from environment API keys that proxy-managed deployments don't have.
+	 */
+	modelId?: ModelConfig;
 	workflowService: InstanceAiWorkflowService;
 	executionService: InstanceAiExecutionService;
 	credentialService: InstanceAiCredentialService;
@@ -958,8 +1048,11 @@ export interface InstanceAiContext {
 	dataTableService: InstanceAiDataTableService;
 	/** Optional — present when the host wires config-based eval support. */
 	evaluationConfigService?: InstanceAiEvaluationConfigService;
+	/** Optional — present when the host allows MCP registry discovery for this
+	 *  user. Presence gates the `mcp-servers` tool. */
+	mcpService?: InstanceAiMcpService;
 	/** The target n8n Agent being built/edited via the build-agent sub-agent tool. */
-	agentBuilderTarget?: { agentId: string; projectId: string };
+	agentBuilderTarget?: { agentId: string; projectId: string; name?: string; ref?: string };
 	/** Narrow builder delegate for the build-agent sub-agent tool (agents module active only). */
 	builderDelegate?: InstanceAiBuilderDelegate;
 	/**

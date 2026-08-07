@@ -1,7 +1,7 @@
 import type { ILoadOptionsFunctions, INodeListSearchResult, INodeProperties } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { searchDriveItems } from '../helpers/driveItemSearch';
+import { searchDriveItems } from '../helpers/graphSearch';
 import { resolveSiteId } from '../site';
 
 // The whole file-selection piece lives here — the field and the search behind
@@ -65,9 +65,6 @@ export async function getFiles(
 		endpoint,
 		qs: {
 			$select: 'id,name,file',
-			// `file` isn't a documented filterable property, so the reply is
-			// re-checked by `keep`; when honored this just trims the payload
-			$filter: 'file ne null',
 		},
 		keep: (item) => Boolean(item.file),
 		filter,

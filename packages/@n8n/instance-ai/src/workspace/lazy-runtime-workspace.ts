@@ -214,7 +214,8 @@ class LazyRuntimeFilesystem extends BaseFilesystem {
 		// prefix stays byte-stable across rebuilds/resumes. Branching on the
 		// resolved (scoped) filesystem would otherwise flip the prompt text once
 		// the workspace resolves and bust prompt caching (see LazyRuntimeSandbox).
-		if (this.staticInstructions) return this.staticInstructions;
+		// Empty string is intentional (e.g. guidance lives in the system prompt).
+		if (this.staticInstructions !== undefined) return this.staticInstructions;
 
 		const instructions = this.resolver.current?.filesystem?.getInstructions?.();
 		if (instructions) return instructions;
@@ -350,7 +351,8 @@ class LazyRuntimeSandbox extends BaseSandbox {
 		// across rebuilds/resumes. Branching on the live sandbox (which is only
 		// resolved once a workspace tool runs in this rebuilt instance) would
 		// otherwise flip the prompt text between resumes and bust prompt caching.
-		if (this.staticInstructions) return this.staticInstructions;
+		// Empty string is intentional (e.g. guidance lives in the system prompt).
+		if (this.staticInstructions !== undefined) return this.staticInstructions;
 
 		const instructions = this.resolver.current?.sandbox?.getInstructions?.();
 		if (instructions) return instructions;

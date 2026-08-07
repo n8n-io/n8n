@@ -56,7 +56,19 @@ export function dataTableConfig(workflowId: string, dataTableId: string): Evalua
 		startNodeName: 'Start',
 		endNodeName: 'End',
 		metrics: [
-			{ id: 'metric-1', name: 'Correctness', type: 'llm_judge', config: { preset: 'correctness' } },
+			{
+				id: 'metric-1',
+				name: 'Correctness',
+				type: 'llm_judge',
+				config: {
+					preset: 'correctness',
+					provider: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+					credentialId: 'cred-judge',
+					model: 'gpt-4.1',
+					outputType: 'numeric',
+					inputs: { actualAnswer: '={{ $json.actual }}', expectedAnswer: '={{ $json.expected }}' },
+				},
+			},
 		],
 		datasetSource: 'data_table',
 		datasetRef: { dataTableId },

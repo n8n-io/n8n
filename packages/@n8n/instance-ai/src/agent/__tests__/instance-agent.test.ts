@@ -12,6 +12,7 @@ const mockAgentInstances: Array<{
 	telemetry: Mock;
 	workspace: Mock;
 	thinking: Mock;
+	mcpConnectionFailures: Mock;
 }> = [];
 
 const mockMemoryBuilder = {
@@ -34,6 +35,7 @@ vi.mock('@n8n/agents', () => ({
 		this.telemetry = vi.fn().mockReturnThis();
 		this.workspace = vi.fn().mockReturnThis();
 		this.thinking = vi.fn().mockReturnThis();
+		this.mcpConnectionFailures = vi.fn().mockReturnThis();
 		mockAgentInstances.push(this);
 	}),
 	Memory: vi.fn().mockImplementation(function Memory() {
@@ -107,9 +109,10 @@ const getSystemPrompt = getSystemPromptImport as unknown as Mock;
 
 function createMcpManagerStub(
 	regularTools: Map<string, ReturnType<typeof mockBuiltTool>> = new Map(),
+	connectionFailures: Array<{ server: { name: string }; error: string }> = [],
 ) {
 	return {
-		getRegularTools: vi.fn().mockResolvedValue(regularTools),
+		getRegularTools: vi.fn().mockResolvedValue({ tools: regularTools, connectionFailures }),
 		disconnect: vi.fn().mockResolvedValue(undefined),
 	};
 }
@@ -462,6 +465,34 @@ describe('createInstanceAgent', () => {
 		);
 	});
 
+	it('enables the MCP registry prompt section only when the host wired mcpService', async () => {
+		const baseOptions = {
+			modelId: 'test-model',
+			orchestrationContext: { runId: 'mcp-registry-prompt' },
+			memoryConfig: {},
+			mcpManager: createMcpManagerStub(new Map()),
+		};
+		const baseContext = {
+			runLabel: 'mcp-registry-prompt',
+			localGatewayStatus: undefined,
+			licenseHints: undefined,
+			localMcpServer: undefined,
+		};
+
+		await createInstanceAgent({ ...baseOptions, context: baseContext } as never);
+		expect(getSystemPrompt).toHaveBeenLastCalledWith(
+			expect.objectContaining({ mcpRegistrySearchEnabled: false }),
+		);
+
+		await createInstanceAgent({
+			...baseOptions,
+			context: { ...baseContext, mcpService: { search: vi.fn() } },
+		} as never);
+		expect(getSystemPrompt).toHaveBeenLastCalledWith(
+			expect.objectContaining({ mcpRegistrySearchEnabled: true }),
+		);
+	});
+
 	it('does not enable MCP-specific tool search guidance when deferred search is disabled', async () => {
 		await createInstanceAgent({
 			modelId: 'test-model',
@@ -637,6 +668,7 @@ describe('createInstanceAgent', () => {
 
 		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('anthropic', {
 			mode: 'adaptive',
+			effort: 'medium',
 		});
 	});
 
@@ -658,5 +690,47 @@ describe('createInstanceAgent', () => {
 		} as never);
 
 		expect(mockAgentInstances[0]?.thinking).not.toHaveBeenCalled();
+	});
+
+	it('reports MCP connection failures to the SDK agent so the runtime can inject a model note', async () => {
+		const failures = [
+			{ server: { name: 'dead' }, error: 'fetch failed' },
+			{ server: { name: 'also_dead' }, error: 'boom' },
+		];
+
+		await createInstanceAgent({
+			modelId: 'test-model',
+			context: {
+				runLabel: 'mcp-failure-run',
+				localGatewayStatus: undefined,
+				licenseHints: undefined,
+				localMcpServer: undefined,
+			},
+			orchestrationContext: { runId: 'mcp-failure-run' },
+			memoryConfig: {},
+			mcpManager: createMcpManagerStub(new Map(), failures),
+		} as never);
+
+		expect(mockAgentInstances[0]?.mcpConnectionFailures).toHaveBeenCalledWith([
+			{ server: 'dead', error: 'fetch failed' },
+			{ server: 'also_dead', error: 'boom' },
+		]);
+	});
+
+	it('does not report MCP connection failures when the manager has none', async () => {
+		await createInstanceAgent({
+			modelId: 'test-model',
+			context: {
+				runLabel: 'no-mcp-failure-run',
+				localGatewayStatus: undefined,
+				licenseHints: undefined,
+				localMcpServer: undefined,
+			},
+			orchestrationContext: { runId: 'no-mcp-failure-run' },
+			memoryConfig: {},
+			mcpManager: createMcpManagerStub(),
+		} as never);
+
+		expect(mockAgentInstances[0]?.mcpConnectionFailures).not.toHaveBeenCalled();
 	});
 });

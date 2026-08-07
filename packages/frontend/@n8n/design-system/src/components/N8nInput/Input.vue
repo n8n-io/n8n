@@ -20,6 +20,7 @@ const props = withDefaults(defineProps<InputProps>(), {
 	readonly: false,
 	clearable: false,
 	rows: 2,
+	masked: false,
 	maxlength: undefined,
 	autosize: false,
 	autofocus: false,
@@ -90,7 +91,7 @@ const containerClasses = computed(() => [
 		[$style.hasPrepend]: !!slots.prepend,
 		[$style.hasAppend]: !!slots.append,
 		[$style.isTextarea]: isTextarea.value,
-		'ph-no-capture': props.type === 'password',
+		'ph-no-capture': props.type === 'password' || props.masked,
 	},
 ]);
 
@@ -226,7 +227,7 @@ defineExpose({ focus, blur, select });
 				v-else
 				ref="inputRef"
 				:value="modelValue ?? ''"
-				:class="[$style.input, $style.textarea]"
+				:class="[$style.input, $style.textarea, { [$style.masked]: masked }]"
 				:placeholder="placeholder"
 				:disabled="disabled"
 				:readonly="readonly"
@@ -427,6 +428,14 @@ defineExpose({ focus, blur, select });
 	&::placeholder {
 		color: var(--input--placeholder--color--disabled);
 	}
+}
+
+/* Masks a multiline secret (e.g. a PEM private key) as dots via
+   -webkit-text-security (supported in Chromium, Safari, and Firefox 114+).
+   Display-only: the real value is never re-sent to the client (backend
+   redaction), and this masks rendering, not copy/paste. */
+.masked {
+	-webkit-text-security: disc;
 }
 
 .prefix,

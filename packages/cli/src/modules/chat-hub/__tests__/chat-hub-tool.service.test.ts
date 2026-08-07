@@ -34,7 +34,10 @@ function makeTool(overrides: Partial<ChatHubTool> = {}): ChatHubTool {
 	const id = overrides.id ?? uuid();
 	const name = overrides.name ?? mockDefinition.name;
 
-	return mock<ChatHubTool>({
+	// Assign onto an empty mock instead of passing overrides to mock():
+	// mock(overrides) deep-wraps nested objects in proxies and mutates the
+	// shared mockDefinition in place, stacking a proxy layer per call.
+	return Object.assign(mock<ChatHubTool>(), {
 		id,
 		name,
 		type: mockDefinition.type,

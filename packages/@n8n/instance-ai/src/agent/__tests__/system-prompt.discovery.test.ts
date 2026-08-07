@@ -1,5 +1,7 @@
 /**
- * Browser/computer-use *discoverability* asserts on the assembled system prompt.
+ * Browser/computer-use *discoverability* asserts on the assembled system prompt
+ * and the credentials tool description (which carries the needsBrowserSetup
+ * routing that used to live in the orchestrator routing index).
  *
  * These tests pin the orchestrator-level wiring that connects discovery
  * signals (OAuth setup, local files, screenshots, platform migration, shell
@@ -8,6 +10,7 @@
  * not churn them but intent-shifting edits fail loudly.
  */
 
+import { createCredentialsTool } from '../../tools/credentials.tool';
 import type { LocalGatewayStatus } from '../../types';
 import { getSystemPrompt } from '../system-prompt';
 
@@ -20,19 +23,19 @@ const browserCapableOptions: {
 };
 
 describe('getSystemPrompt — browser/computer-use discoverability', () => {
-	describe('orchestrator → Computer Use credential setup skill', () => {
+	describe('credentials tool → Computer Use credential setup skill', () => {
 		it('routes needsBrowserSetup=true credential responses to the Computer Use skill', () => {
-			const prompt = getSystemPrompt({});
+			const tool = createCredentialsTool({} as never);
 
-			expect(prompt).toContain('needsBrowserSetup=true');
-			expect(prompt).toContain('credential-setup-with-computer-use');
-			expect(prompt).toMatch(/use Computer Use `browser_\*` tools directly/);
+			expect(tool.description).toContain('needsBrowserSetup=true');
+			expect(tool.description).toContain('credential-setup-with-computer-use');
+			expect(tool.description).toMatch(/use Computer Use `browser_\*` tools directly/);
 		});
 
 		it('routes browser credential setup through Computer Use tools', () => {
-			const prompt = getSystemPrompt({});
+			const tool = createCredentialsTool({} as never);
 
-			expect(prompt).toMatch(/use Computer Use `browser_\*` tools directly/);
+			expect(tool.description).toMatch(/use Computer Use `browser_\*` tools directly/);
 		});
 	});
 
@@ -139,6 +142,28 @@ describe('getSystemPrompt — browser/computer-use discoverability', () => {
 
 			expect(prompt).not.toMatch(/only suggest Computer Use when the user asks/i);
 			expect(prompt).not.toMatch(/wait for the user to request browser/i);
+		});
+	});
+
+	describe('MCP registry discovery is gated on the tool being registered', () => {
+		it('nudges the orchestrator to search the registry when the tool is available', () => {
+			const prompt = getSystemPrompt({ mcpRegistrySearchEnabled: true });
+
+			expect(prompt).toContain('## Connecting Services');
+			expect(prompt).toContain('mcp-servers');
+		});
+
+		it('keeps the nudge away from workflow building', () => {
+			const prompt = getSystemPrompt({ mcpRegistrySearchEnabled: true });
+
+			expect(prompt).toContain('never call `mcp-servers` for a build request');
+		});
+
+		it('omits the section when the tool is not registered', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).not.toContain('## Connecting Services');
+			expect(prompt).not.toContain('mcp-servers');
 		});
 	});
 
