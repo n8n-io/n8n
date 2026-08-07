@@ -209,6 +209,191 @@ describe('resolveCredentials', () => {
 			expect(result.gatewayConstraintNotes).toEqual([]);
 		});
 
+		it('treats an omitted operation without a resolvable default as uncovered and mocks', async () => {
+			const json = makeWorkflow({
+				nodes: [
+					{
+						...makeSlackNode(),
+						typeVersion: 2.3,
+						parameters: { resource: 'message' },
+					},
+				],
+			});
+			const ctx = createMockContext();
+			(ctx.credentialService.list as Mock).mockResolvedValue([]);
+			(
+				ctx.credentialService as unknown as { isAiGatewayCredentialType: Mock }
+			).isAiGatewayCredentialType = vi.fn().mockResolvedValue(true);
+			(ctx.nodeService as unknown as { getDescription: Mock }).getDescription = vi
+				.fn()
+				.mockResolvedValue({
+					aiGateway: {
+						supported: true,
+						operations: { message: ['post', 'postEphemeral'] },
+					},
+				});
+
+			const result = await resolveCredentials(json, undefined, ctx);
+
+			expect(json.nodes[0].credentials).toEqual({});
+			expect(result.mockedCredentialsByNode).toEqual({ Slack: ['slackApi'] });
+			expect(result.gatewayConstraintNotes).toHaveLength(1);
+			expect(result.gatewayConstraintNotes[0]).toContain('no concrete operation is set');
+		});
+
+		it('attaches n8n credits when the omitted operation falls back to a covered node-type default', async () => {
+			// Matches checkAiGatewayEligibility, which judges coverage on
+			// defaults-resolved parameters: a node relying on its default action
+			// stays eligible.
+			const json = makeWorkflow({ nodes: [{ ...makeSlackNode(), typeVersion: 2.3 }] });
+			const ctx = createMockContext();
+			(ctx.credentialService.list as Mock).mockResolvedValue([]);
+			(
+				ctx.credentialService as unknown as { isAiGatewayCredentialType: Mock }
+			).isAiGatewayCredentialType = vi.fn().mockResolvedValue(true);
+			(ctx.nodeService as unknown as { getDescription: Mock }).getDescription = vi
+				.fn()
+				.mockResolvedValue({
+					properties: [
+						{ displayName: 'Resource', name: 'resource', type: 'options', default: 'message' },
+						{ displayName: 'Operation', name: 'operation', type: 'options', default: 'post' },
+					],
+					aiGateway: {
+						supported: true,
+						operations: { message: ['post', 'postEphemeral'] },
+					},
+				});
+
+			const result = await resolveCredentials(json, undefined, ctx);
+
+			expect(json.nodes[0].credentials).toEqual({
+				slackApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+			});
+			expect(result.gatewayConstraintNotes).toEqual([]);
+		});
+
+		it('treats an omitted operation as uncovered when several operation variants make the default ambiguous', async () => {
+			// Resource-keyed nodes carry one `operation` property per resource; the
+			// projected description has no displayOptions, so the applicable default
+			// cannot be established — no managed credential for an unverifiable action.
+			const json = makeWorkflow({ nodes: [{ ...makeSlackNode(), typeVersion: 2.3 }] });
+			const ctx = createMockContext();
+			(ctx.credentialService.list as Mock).mockResolvedValue([]);
+			(
+				ctx.credentialService as unknown as { isAiGatewayCredentialType: Mock }
+			).isAiGatewayCredentialType = vi.fn().mockResolvedValue(true);
+			(ctx.nodeService as unknown as { getDescription: Mock }).getDescription = vi
+				.fn()
+				.mockResolvedValue({
+					properties: [
+						{ displayName: 'Resource', name: 'resource', type: 'options', default: 'message' },
+						{ displayName: 'Operation', name: 'operation', type: 'options', default: 'post' },
+						{ displayName: 'Operation', name: 'operation', type: 'options', default: 'get' },
+					],
+					aiGateway: {
+						supported: true,
+						operations: { message: ['post'], channel: ['get'] },
+					},
+				});
+
+			const result = await resolveCredentials(json, undefined, ctx);
+
+			expect(json.nodes[0].credentials).toEqual({});
+			expect(result.mockedCredentialsByNode).toEqual({ Slack: ['slackApi'] });
+			expect(result.gatewayConstraintNotes).toHaveLength(1);
+			expect(result.gatewayConstraintNotes[0]).toContain('no concrete operation is set');
+		});
+
+		it('treats a missing resource as uncovered for a resource-keyed action map', async () => {
+			const json = makeWorkflow({ nodes: [{ ...makeSlackNode(), typeVersion: 2.3 }] });
+			const ctx = createMockContext();
+			(ctx.credentialService.list as Mock).mockResolvedValue([]);
+			(
+				ctx.credentialService as unknown as { isAiGatewayCredentialType: Mock }
+			).isAiGatewayCredentialType = vi.fn().mockResolvedValue(true);
+			(ctx.nodeService as unknown as { getDescription: Mock }).getDescription = vi
+				.fn()
+				.mockResolvedValue({
+					aiGateway: {
+						supported: true,
+						operations: { message: ['post', 'postEphemeral'] },
+					},
+				});
+
+			const result = await resolveCredentials(json, undefined, ctx);
+
+			expect(json.nodes[0].credentials).toEqual({});
+			expect(result.mockedCredentialsByNode).toEqual({ Slack: ['slackApi'] });
+			expect(result.gatewayConstraintNotes).toHaveLength(1);
+			expect(result.gatewayConstraintNotes[0]).toContain('no concrete resource is set');
+		});
+
+		it('ignores hidden gateway-managed parameters set to null or empty string', async () => {
+			// Matches computeAiGatewayIssues in validate-workflow.service.ts: only
+			// user-set values clash with the gateway.
+			const json = makeWorkflow({
+				nodes: [
+					{
+						...makeSlackNode(),
+						typeVersion: 2.3,
+						parameters: { model: null, options: '' },
+					},
+				],
+			});
+			const ctx = createMockContext();
+			(ctx.credentialService.list as Mock).mockResolvedValue([]);
+			(
+				ctx.credentialService as unknown as { isAiGatewayCredentialType: Mock }
+			).isAiGatewayCredentialType = vi.fn().mockResolvedValue(true);
+			(ctx.nodeService as unknown as { getDescription: Mock }).getDescription = vi
+				.fn()
+				.mockResolvedValue({
+					aiGateway: {
+						supported: true,
+						hiddenProperties: ['model', 'options'],
+					},
+				});
+
+			const result = await resolveCredentials(json, undefined, ctx);
+
+			expect(json.nodes[0].credentials).toEqual({
+				slackApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+			});
+			expect(result.gatewayConstraintNotes).toEqual([]);
+		});
+
+		it('mocks when a hidden gateway-managed parameter carries a real value', async () => {
+			const json = makeWorkflow({
+				nodes: [
+					{
+						...makeSlackNode(),
+						typeVersion: 2.3,
+						parameters: { model: 'gpt-4' },
+					},
+				],
+			});
+			const ctx = createMockContext();
+			(ctx.credentialService.list as Mock).mockResolvedValue([]);
+			(
+				ctx.credentialService as unknown as { isAiGatewayCredentialType: Mock }
+			).isAiGatewayCredentialType = vi.fn().mockResolvedValue(true);
+			(ctx.nodeService as unknown as { getDescription: Mock }).getDescription = vi
+				.fn()
+				.mockResolvedValue({
+					aiGateway: {
+						supported: true,
+						hiddenProperties: ['model'],
+					},
+				});
+
+			const result = await resolveCredentials(json, undefined, ctx);
+
+			expect(json.nodes[0].credentials).toEqual({});
+			expect(result.mockedCredentialsByNode).toEqual({ Slack: ['slackApi'] });
+			expect(result.gatewayConstraintNotes).toHaveLength(1);
+			expect(result.gatewayConstraintNotes[0]).toContain('model');
+		});
+
 		it('switches the node auth to the attached n8n credits credential type', async () => {
 			// The LLM wrote the API-key credential slot but left auth at the OAuth2
 			// default; attaching n8n credits must switch auth so the slot is active.
@@ -578,6 +763,94 @@ describe('resolveCredentials', () => {
 			expect(json.nodes[0].credentials).toEqual({
 				slackApi: { id: 'existing-id', name: 'Existing Slack' },
 			});
+		});
+
+		function makeUpdateFixture(credentials: Record<string, unknown>, typeVersion = 2) {
+			const node = {
+				id: '1',
+				name: 'Slack',
+				type: 'n8n-nodes-base.slack',
+				typeVersion,
+				position: [0, 0] as [number, number],
+			};
+			const json = makeWorkflow({
+				nodes: [
+					{
+						...node,
+						credentials: { slackApi: undefined as unknown as { id: string; name: string } },
+					},
+				],
+			});
+			const existingWorkflow = makeWorkflow({
+				nodes: [{ ...node, credentials: credentials as never }],
+			});
+			return { json, existingWorkflow };
+		}
+
+		it('does not restore an n8n credits marker when the node now violates gateway constraints', async () => {
+			const { json, existingWorkflow } = makeUpdateFixture({
+				slackApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+			});
+			const ctx = createMockContext(existingWorkflow);
+			(
+				ctx.credentialService as unknown as { isAiGatewayCredentialType: Mock }
+			).isAiGatewayCredentialType = vi.fn().mockResolvedValue(true);
+			(ctx.nodeService as unknown as { getDescription: Mock }).getDescription = vi
+				.fn()
+				.mockResolvedValue({
+					aiGateway: { supported: true, minVersion: 2.3 },
+				});
+
+			const result = await resolveCredentials(json, 'wf-123', ctx);
+
+			// The marker is not restored — the slot falls through to the mock+setup path.
+			expect(json.nodes[0].credentials).toEqual({});
+			expect(result.mockedCredentialsByNode).toEqual({ Slack: ['slackApi'] });
+			expect(result.resolvedCredentialsByNode).toEqual({});
+			expect(result.gatewayConstraintNotes).toHaveLength(1);
+			expect(result.gatewayConstraintNotes[0]).toContain('typeVersion 2 is below');
+		});
+
+		it('restores an n8n credits marker when the node still satisfies gateway constraints', async () => {
+			const { json, existingWorkflow } = makeUpdateFixture(
+				{ slackApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true } },
+				2.3,
+			);
+			const ctx = createMockContext(existingWorkflow);
+			(ctx.nodeService as unknown as { getDescription: Mock }).getDescription = vi
+				.fn()
+				.mockResolvedValue({
+					aiGateway: { supported: true, minVersion: 2.3 },
+				});
+
+			const result = await resolveCredentials(json, 'wf-123', ctx);
+
+			expect(json.nodes[0].credentials).toEqual({
+				slackApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+			});
+			expect(result.mockedNodeNames).toEqual([]);
+			expect(result.gatewayConstraintNotes).toEqual([]);
+		});
+
+		it('restores stored user credentials even when the node violates gateway constraints', async () => {
+			const { json, existingWorkflow } = makeUpdateFixture({
+				slackApi: { id: 'existing-id', name: 'Existing Slack' },
+			});
+			const ctx = createMockContext(existingWorkflow);
+			(ctx.nodeService as unknown as { getDescription: Mock }).getDescription = vi
+				.fn()
+				.mockResolvedValue({
+					aiGateway: { supported: true, minVersion: 2.3 },
+				});
+
+			const result = await resolveCredentials(json, 'wf-123', ctx);
+
+			expect(json.nodes[0].credentials).toEqual({
+				slackApi: { id: 'existing-id', name: 'Existing Slack' },
+			});
+			expect(result.mockedNodeNames).toEqual([]);
+			// Gateway constraints only bind managed credentials — no note for user credentials.
+			expect(result.gatewayConstraintNotes).toEqual([]);
 		});
 	});
 

@@ -64,6 +64,49 @@ describe('detectUnknownDataTableColumns', () => {
 		expect(warnings[0].message).toContain('"weekTotal"');
 	});
 
+	it('checks the orderByColumn of a Get node when orderBy is enabled', async () => {
+		const warnings = await detectUnknownDataTableColumns(
+			dataTableWorkflow({
+				operation: 'get',
+				orderBy: true,
+				orderByColumn: 'dayName',
+				orderByDirection: 'DESC',
+			}),
+			makeContext(vi.fn().mockResolvedValue(SCHEMA)),
+		);
+
+		expect(warnings).toHaveLength(1);
+		expect(warnings[0].message).toContain('"dayName" -> "day_name"');
+	});
+
+	it('ignores orderByColumn when orderBy is not enabled', async () => {
+		const getSchema = vi.fn().mockResolvedValue(SCHEMA);
+		const warnings = await detectUnknownDataTableColumns(
+			dataTableWorkflow({
+				operation: 'get',
+				orderBy: false,
+				orderByColumn: 'dayName',
+			}),
+			makeContext(getSchema),
+		);
+
+		expect(warnings).toEqual([]);
+		expect(getSchema).not.toHaveBeenCalled();
+	});
+
+	it('accepts a system column as orderByColumn', async () => {
+		const warnings = await detectUnknownDataTableColumns(
+			dataTableWorkflow({
+				operation: 'get',
+				orderBy: true,
+				orderByColumn: 'createdAt',
+			}),
+			makeContext(vi.fn().mockResolvedValue(SCHEMA)),
+		);
+
+		expect(warnings).toEqual([]);
+	});
+
 	it('accepts existing and system columns', async () => {
 		const warnings = await detectUnknownDataTableColumns(
 			dataTableWorkflow({

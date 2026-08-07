@@ -40,6 +40,20 @@ describe('validateErrorWorkflowReference', () => {
 		expect(errors).toEqual([]);
 	});
 
+	it.each([
+		['the DEFAULT sentinel', 'DEFAULT'],
+		['an empty string', ''],
+	])('treats %s as no error workflow, without a lookup', async (_label, value) => {
+		const get = vi.fn();
+		const errors = await validateErrorWorkflowReference(
+			workflowWithErrorWorkflow(value),
+			makeContext({ get }),
+		);
+
+		expect(errors).toEqual([]);
+		expect(get).not.toHaveBeenCalled();
+	});
+
 	it('rejects placeholder and expression values without a lookup', async () => {
 		const get = vi.fn();
 		const errors = await validateErrorWorkflowReference(
@@ -106,7 +120,35 @@ describe('validateErrorWorkflowReference', () => {
 		expect(getAsWorkflowJSON).toHaveBeenCalledWith('err-1', 'v-published');
 	});
 
-	it('does not block the save when the published-version read fails', async () => {
+	// The error-workflow launcher selects the Error Trigger without checking
+	// `disabled` (WorkflowExecutionService.executeErrorWorkflow) and the engine
+	// passes input data through disabled nodes, so a disabled Error Trigger still
+	// fires the error workflow and must not fail the build.
+	it('accepts a published error workflow whose Error Trigger is disabled', async () => {
+		const errors = await validateErrorWorkflowReference(
+			workflowWithErrorWorkflow('err-1'),
+			makeContext({
+				get: vi.fn().mockResolvedValue(publishedDetail),
+				getAsWorkflowJSON: vi.fn().mockResolvedValue({
+					name: 'Error Handler',
+					nodes: [
+						{
+							id: '1',
+							name: 'On Error',
+							type: 'n8n-nodes-base.errorTrigger',
+							typeVersion: 1,
+							disabled: true,
+						},
+					],
+					connections: {},
+				}),
+			}),
+		);
+
+		expect(errors).toEqual([]);
+	});
+
+	it('fails closed when the published-version read fails', async () => {
 		const errors = await validateErrorWorkflowReference(
 			workflowWithErrorWorkflow('err-1'),
 			makeContext({
@@ -115,6 +157,10 @@ describe('validateErrorWorkflowReference', () => {
 			}),
 		);
 
-		expect(errors).toEqual([]);
+		expect(errors).toHaveLength(1);
+		expect(errors[0]).toContain('published version could not be read');
+		expect(errors[0]).toContain('Retry the build');
+		// Distinct from the workflow-not-found error.
+		expect(errors[0]).not.toContain('could not be resolved');
 	});
 });

@@ -18,7 +18,7 @@ function concreteTableReference(parameters: Record<string, unknown>): string | u
 	return isConcreteValue(locator.value) ? locator.value : undefined;
 }
 
-/** Column names the node statically references: filter keys + mapped columns. */
+/** Column names the node statically references: filter keys + mapped columns + sort column. */
 function referencedColumnNames(parameters: Record<string, unknown>): string[] {
 	const names = new Set<string>();
 
@@ -35,6 +35,16 @@ function referencedColumnNames(parameters: Record<string, unknown>): string[] {
 		for (const key of Object.keys(columns.value)) {
 			if (isConcreteValue(key)) names.add(key);
 		}
+	}
+
+	// The Get operation only reads `orderByColumn` when `orderBy` is enabled; a
+	// typo'd column there fails at runtime with "Specified column does not exist".
+	if (
+		parameters.orderBy === true &&
+		typeof parameters.orderByColumn === 'string' &&
+		isConcreteValue(parameters.orderByColumn)
+	) {
+		names.add(parameters.orderByColumn);
 	}
 
 	return [...names];

@@ -19,7 +19,12 @@ export async function validateErrorWorkflowReference(
 	context: InstanceAiContext,
 ): Promise<string[]> {
 	const errorWorkflowId = json.settings?.errorWorkflow;
-	if (errorWorkflowId === undefined) return [];
+	// 'DEFAULT' is n8n's "no error workflow" sentinel (the save path strips it, see
+	// removeDefaultValues in packages/cli), and an empty string is falsy at execution
+	// time; both behave exactly like an absent setting.
+	if (errorWorkflowId === undefined || errorWorkflowId === 'DEFAULT' || errorWorkflowId === '') {
+		return [];
+	}
 
 	if (
 		typeof errorWorkflowId !== 'string' ||
@@ -47,25 +52,28 @@ export async function validateErrorWorkflowReference(
 		];
 	}
 
+	let published;
 	try {
-		const published = await context.workflowService.getAsWorkflowJSON(
+		published = await context.workflowService.getAsWorkflowJSON(
 			errorWorkflowId,
 			detail.activeVersionId,
 		);
-		const hasErrorTrigger = (published.nodes ?? []).some(
-			(node) => node.type === ERROR_TRIGGER_TYPE,
-		);
-		if (!hasErrorTrigger) {
-			return [
-				`Error workflow "${detail.name}" (${errorWorkflowId}) has no Error Trigger node in its published version, so it will never fire. ${RECIPE}`,
-			];
-		}
 	} catch {
-		// Published-version fetch failed after the workflow itself resolved:
-		// don't block the save on a read hiccup for a secondary check.
-		context.logger.debug(
-			`[build-workflow] could not inspect published version of error workflow ${errorWorkflowId}; skipping Error Trigger check`,
+		// Fail closed: accepting the reference here would ship error handling that
+		// was never proven to contain an Error Trigger.
+		context.logger.warn(
+			`[build-workflow] could not inspect published version of error workflow ${errorWorkflowId}`,
 		);
+		return [
+			`Error workflow "${detail.name}" (${errorWorkflowId}) exists and is published, but its published version could not be read to confirm it contains an Error Trigger. Retry the build; if this keeps failing, republish the error workflow and try again.`,
+		];
+	}
+
+	const hasErrorTrigger = (published.nodes ?? []).some((node) => node.type === ERROR_TRIGGER_TYPE);
+	if (!hasErrorTrigger) {
+		return [
+			`Error workflow "${detail.name}" (${errorWorkflowId}) has no Error Trigger node in its published version, so it will never fire. ${RECIPE}`,
+		];
 	}
 
 	return [];
