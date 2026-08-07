@@ -25,7 +25,8 @@ const ETAG_CACHE_MAX_TOTAL_BYTES = 8 * 1024 * 1024; // 8 MiB
 interface GithubEtagEntry {
 	etag: string;
 	body: unknown;
-	bytes: number;
+	// Optional: entries persisted by a revision predating the byte budget lack it.
+	bytes?: number;
 }
 
 // Approximate serialized size of a cache entry. The body is measured as UTF-8
@@ -42,13 +43,23 @@ function etagEntryBytes(etag: string, body: unknown): number {
 	return bodyBytes + Buffer.byteLength(etag, 'utf8');
 }
 
+// Size of a cache entry, tolerating entries persisted by an earlier revision
+// that predates the `bytes` field. Such legacy entries have `bytes` undefined,
+// which would turn the running total into NaN and silently disable the byte
+// budget; recompute their size from etag+body so the budget applies immediately.
+function entryBytes(entry: GithubEtagEntry): number {
+	return typeof entry.bytes === 'number' && Number.isFinite(entry.bytes)
+		? entry.bytes
+		: etagEntryBytes(entry.etag, entry.body);
+}
+
 // Evict oldest (insertion-ordered) entries until the cache is within both the
 // entry-count and total-byte budgets.
 function evictEtagCache(cache: Record<string, GithubEtagEntry>): void {
 	const keys = Object.keys(cache);
 	let total = 0;
 	for (const key of keys) {
-		total += cache[key].bytes;
+		total += entryBytes(cache[key]);
 	}
 	let index = 0;
 	while (
@@ -56,7 +67,7 @@ function evictEtagCache(cache: Record<string, GithubEtagEntry>): void {
 		(keys.length - index > ETAG_CACHE_LIMIT || total > ETAG_CACHE_MAX_TOTAL_BYTES)
 	) {
 		const oldest = keys[index];
-		total -= cache[oldest].bytes;
+		total -= entryBytes(cache[oldest]);
 		delete cache[oldest];
 		index++;
 	}

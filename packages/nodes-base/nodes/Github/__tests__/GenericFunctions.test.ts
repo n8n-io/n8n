@@ -227,6 +227,47 @@ describe('GenericFunctions', () => {
 			);
 		});
 
+		it('should enforce the byte budget over entries persisted without a byte count', async () => {
+			const method = 'GET';
+			const body = {};
+
+			// Simulate a cache persisted by an earlier revision that predates the
+			// per-entry `bytes` field: ten large legacy entries with `bytes` absent,
+			// keyed the same way githubApiRequest keys them.
+			const chunk = 'z'.repeat(1000 * 1024);
+			const cache: Record<string, unknown> = {};
+			for (let i = 0; i < 10; i++) {
+				const uri = `https://api.github.com/repos/test-owner/test-repo/pulls/legacy-${i}`;
+				cache[`githubApi ${uri} {}`] = { etag: `"legacy-${i}"`, body: chunk };
+			}
+			const oldestLegacyKey = Object.keys(cache)[0];
+			const staticData: Record<string, unknown> = { githubEtagCache: cache };
+			(mockExecuteHookFunctions.getWorkflowStaticData as Mock).mockReturnValue(staticData);
+
+			(mockExecuteHookFunctions.helpers.requestWithAuthentication as Mock).mockResolvedValue({
+				statusCode: 200,
+				headers: { etag: '"fresh"' },
+				body: { number: 1 },
+			});
+
+			// Writing one fresh entry runs eviction. If the legacy entries' missing
+			// `bytes` poisoned the running total to NaN, the byte budget would be
+			// silently skipped and every entry would survive.
+			await githubApiRequest.call(
+				mockExecuteHookFunctions,
+				method,
+				'/repos/test-owner/test-repo/pulls/fresh',
+				body,
+				undefined,
+				{ conditionalRequest: true },
+			);
+
+			// The byte budget must still apply: the oldest legacy entries are evicted
+			// down to within the 8 MiB total, rather than all eleven surviving.
+			expect(Object.keys(cache).length).toBeLessThanOrEqual(9);
+			expect(cache[oldestLegacyKey]).toBeUndefined();
+		});
+
 		it('should throw a NodeApiError on a non-success conditional response', async () => {
 			const method = 'GET';
 			const endpoint = '/repos/test-owner/test-repo/pulls/1';
