@@ -1527,7 +1527,8 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 	getInputConnectionData(
 		connectionType: AINodeConnectionType,
 		itemIndex: number,
-		options?: { inputData?: IDataObject },
+		/** A `number` is the never-implemented `inputIndex`, still accepted and ignored so existing nodes keep compiling. */
+		options?: number | { inputData?: IDataObject },
 	): Promise<unknown>;
 	getNodeParameter(
 		parameterName: string,

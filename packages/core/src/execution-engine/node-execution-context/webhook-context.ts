@@ -226,14 +226,15 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 	async getInputConnectionData(
 		connectionType: AINodeConnectionType,
 		itemIndex: number,
-		options?: { inputData?: IDataObject },
+		options?: number | { inputData?: IDataObject },
 	): Promise<unknown> {
+		const inputData = typeof options === 'object' ? options.inputData : undefined;
 		// To be able to use expressions like "$json.sessionId" set the
 		// body data the webhook received to what is normally used for
 		// incoming node data, unless the trigger supplied its own shape.
 		const connectionInputData: INodeExecutionData[] = [
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-			{ json: options?.inputData ?? (this.additionalData.httpRequest?.body || {}) },
+			{ json: inputData ?? (this.additionalData.httpRequest?.body || {}) },
 		];
 		const runExecutionData = this.runExecutionData ?? createEmptyRunExecutionData();
 		const executeData: IExecuteData = {

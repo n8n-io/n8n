@@ -287,6 +287,12 @@ describe('WebhookContext', () => {
 			expect(inputPassedToSubNodes()).toEqual([{ json: { test: 'body' } }]);
 		});
 
+		it('should ignore a legacy numeric third argument', async () => {
+			await webhookContext.getInputConnectionData(NodeConnectionTypes.AiTool, 0, 1);
+
+			expect(inputPassedToSubNodes()).toEqual([{ json: { test: 'body' } }]);
+		});
+
 		it('should not fail when there is no HTTP request', async () => {
 			const contextAdditionalData = mock<IWorkflowExecuteAdditionalData>({ credentialsHelper });
 			contextAdditionalData.httpRequest = undefined;
