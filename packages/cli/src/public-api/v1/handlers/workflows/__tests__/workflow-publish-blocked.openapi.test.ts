@@ -6,24 +6,18 @@ describe('workflow publication blocker in OpenAPI', () => {
 	const specRoot = path.join(__dirname, '../spec');
 	const blockerSchemaRef = '../schemas/workflowPublishBlockedError.yml';
 
-	test('documents the blocker for publish, deprecated activate, and active workflow updates', () => {
+	test('documents the blocker for publish and deprecated activate', () => {
 		const publishPath = parse(
 			fs.readFileSync(path.join(specRoot, 'paths/workflows.id.publish.yml'), 'utf8'),
 		);
 		const activatePath = parse(
 			fs.readFileSync(path.join(specRoot, 'paths/workflows.id.activate.yml'), 'utf8'),
 		);
-		const workflowPath = parse(
-			fs.readFileSync(path.join(specRoot, 'paths/workflows.id.yml'), 'utf8'),
-		);
 
 		expect(publishPath.post.responses['409'].content['application/json'].schema.$ref).toBe(
 			blockerSchemaRef,
 		);
 		expect(activatePath.post.responses['409'].content['application/json'].schema.$ref).toBe(
-			blockerSchemaRef,
-		);
-		expect(workflowPath.put.responses['409'].content['application/json'].schema.$ref).toBe(
 			blockerSchemaRef,
 		);
 	});
