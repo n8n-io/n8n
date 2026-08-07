@@ -49,6 +49,10 @@ export class SchedulerConfig {
 	 * A larger window commits more runs to the database in advance (more resilient
 	 * to downtime, slightly more storage churn); a smaller one keeps less ahead.
 	 * Must be greater than 0.
+	 *
+	 * Together with {@link executorIntervalSeconds} this also sets a lower bound on
+	 * the misfire grace a Schedule Trigger node may ask for, so raising it raises
+	 * the effective grace of any node configured below the new value.
 	 */
 	@Env('N8N_SCHEDULER_MATERIALIZATION_WINDOW', positiveIntSchema)
 	materializationWindowSeconds: number = Time.minutes.toSeconds;
@@ -78,6 +82,10 @@ export class SchedulerConfig {
 	 * This sets the worst-case delay between a run's scheduled time and when it
 	 * actually starts. Lower it for tighter timing at the cost of more frequent
 	 * polling. Must be greater than 0.
+	 *
+	 * Together with {@link materializationWindowSeconds} this also sets a lower bound
+	 * on the misfire grace a Schedule Trigger node may ask for, so raising it raises
+	 * the effective grace of any node configured below the new value.
 	 */
 	@Env('N8N_SCHEDULER_EXECUTOR_INTERVAL', positiveIntSchema)
 	executorIntervalSeconds: number = 5;
@@ -292,6 +300,11 @@ export class SchedulerConfig {
 	 * How late, in seconds, a scheduled run may start and still count as on time. A
 	 * run later than this counts as missed, and the schedule's misfire policy decides
 	 * whether it still runs at all. Must be greater than 0, and capped at 30 days.
+	 *
+	 * This is the default a schedule inherits. A Schedule Trigger node may set its own
+	 * grace instead, which is raised to the lower bound described on
+	 * {@link executorIntervalSeconds} and {@link materializationWindowSeconds} if it
+	 * falls below it.
 	 *
 	 * Should exceed {@link executorIntervalSeconds} and {@link materializationWindowSeconds}:
 	 * a run has to survive until the next executor tick to be offered at all. The

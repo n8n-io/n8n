@@ -438,9 +438,11 @@ function resolveMisfirePolicy(node: INode): ScheduledJobMisfirePolicy {
 
 /**
  * Decides only whether the node states a usable number; the value itself is
- * left unbounded, since the provisioner is the single place that clamps it.
- * Absent, `0` and anything that is not a positive number resolve to
- * `undefined`, leaving the instance setting to apply.
+ * left unbounded above one second, since the provisioner is the single place
+ * that clamps it. Absent, `0` and anything that is not a number of at least a
+ * second resolve to `undefined`, leaving the instance setting to apply. The
+ * one-second floor is where the provisioner stops reading a value as stated, so
+ * anything below it warns here rather than being dropped there in silence.
  */
 function resolveMisfireGraceSeconds(
 	node: INode,
@@ -448,10 +450,19 @@ function resolveMisfireGraceSeconds(
 	logger: Logger,
 ): number | undefined {
 	const requested = node.parameters?.misfireGraceSeconds;
-	const numeric = Number(requested);
-	const stated = Number.isFinite(numeric) && numeric > 0 ? numeric : undefined;
+	// Only numbers and numeric strings are read as a value; coercing anything
+	// else would turn `true` into a grace of one second.
+	const isNumberLike = typeof requested === 'number' || typeof requested === 'string';
+	const numeric = isNumberLike ? Number(requested) : Number.NaN;
+	const stated = Number.isFinite(numeric) && numeric >= 1 ? numeric : undefined;
 
-	if (stated === undefined && requested !== undefined && requested !== 0) {
+	// A blank string coerces to zero but states nothing, so it is unusable
+	// rather than the sentinel. Everything else is judged on the coerced value,
+	// so a stored `"0"` inherits as quietly as a stored `0`.
+	const isBlank = typeof requested === 'string' && requested.trim() === '';
+	const inherits = requested === undefined || (numeric === 0 && !isBlank);
+
+	if (stated === undefined && !inherits) {
 		logger.warn(
 			'Schedule trigger node has an unusable misfire grace period; the instance setting applies',
 			{ workflowId, nodeId: node.id },

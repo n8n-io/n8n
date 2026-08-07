@@ -55,6 +55,12 @@ const everyThreeWeeksMonday: Cron = {
 describe('ScheduleTriggerJobRegistrar', () => {
 	const jobProvisioner = mock<DurableJobProvisioner>();
 
+	/**
+	 * The grace period the last provisioning call carried, named so the tests
+	 * below do not depend on its position in the argument list.
+	 */
+	const lastProvisionedGrace = () => jobProvisioner.provision.mock.calls.at(-1)?.[6];
+
 	const makeRegistrar = ({
 		schedulerEnabled = true,
 		publicationEnabled = true,
@@ -624,7 +630,7 @@ describe('ScheduleTriggerJobRegistrar', () => {
 
 			await session.commit(WORKFLOW_ID, NODE_ID);
 
-			expect(jobProvisioner.provision.mock.calls.at(-1)![6]).toBe(90);
+			expect(lastProvisionedGrace()).toBe(90);
 		});
 
 		it('provisions no misfire grace when the node carries no grace parameter, leaving the instance value to apply', async () => {
@@ -634,18 +640,24 @@ describe('ScheduleTriggerJobRegistrar', () => {
 
 			await session.commit(WORKFLOW_ID, NODE_ID);
 
-			expect(jobProvisioner.provision.mock.calls.at(-1)![6]).toBeUndefined();
+			expect(lastProvisionedGrace()).toBeUndefined();
 		});
 
-		it('provisions no misfire grace for a stored 0, which stands for the instance value', async () => {
-			const node = makeNode({ parameters: { misfireGraceSeconds: 0 } });
-			const session = makeRegistrar().createSession();
-			session.createCollector(workflow, node).registerCron(dailyAtNine, vi.fn());
+		it.each<[string, INodeParameters]>([
+			['a stored 0', { misfireGraceSeconds: 0 }],
+			['a stored "0" string', { misfireGraceSeconds: '0' }],
+		])(
+			'provisions no misfire grace for %s, which stands for the instance value',
+			async (_label, parameters) => {
+				const node = makeNode({ parameters });
+				const session = makeRegistrar().createSession();
+				session.createCollector(workflow, node).registerCron(dailyAtNine, vi.fn());
 
-			await session.commit(WORKFLOW_ID, NODE_ID);
+				await session.commit(WORKFLOW_ID, NODE_ID);
 
-			expect(jobProvisioner.provision.mock.calls.at(-1)![6]).toBeUndefined();
-		});
+				expect(lastProvisionedGrace()).toBeUndefined();
+			},
+		);
 
 		it.each<[string, INodeParameters]>([
 			['a negative number', { misfireGraceSeconds: -30 }],
@@ -654,6 +666,13 @@ describe('ScheduleTriggerJobRegistrar', () => {
 			['a non-numeric string', { misfireGraceSeconds: 'nonsense' }],
 			['an empty string', { misfireGraceSeconds: '' }],
 			['null', { misfireGraceSeconds: null } as unknown as INodeParameters],
+			[
+				'a boolean true, which is not a number the author could have typed',
+				{
+					misfireGraceSeconds: true,
+				},
+			],
+			['a value below the second the provisioner would read', { misfireGraceSeconds: 0.5 }],
 		])(
 			'provisions no misfire grace for %s, rather than failing the activation',
 			async (_label, parameters) => {
@@ -663,14 +682,14 @@ describe('ScheduleTriggerJobRegistrar', () => {
 
 				await session.commit(WORKFLOW_ID, NODE_ID);
 
-				expect(jobProvisioner.provision.mock.calls.at(-1)![6]).toBeUndefined();
+				expect(lastProvisionedGrace()).toBeUndefined();
 			},
 		);
 
 		it.each<[string, INodeParameters, number]>([
 			['a numeric string', { misfireGraceSeconds: '90' }, 90],
 			['a fractional number', { misfireGraceSeconds: 90.5 }, 90.5],
-			['a boolean true', { misfireGraceSeconds: true }, 1],
+			['exactly the one second the provisioner reads as stated', { misfireGraceSeconds: 1 }, 1],
 		])(
 			'provisions %s as a stated grace of %s, leaving truncation and clamping to the provisioner',
 			async (_label, parameters, expected) => {
@@ -680,7 +699,7 @@ describe('ScheduleTriggerJobRegistrar', () => {
 
 				await session.commit(WORKFLOW_ID, NODE_ID);
 
-				expect(jobProvisioner.provision.mock.calls.at(-1)![6]).toBe(expected);
+				expect(lastProvisionedGrace()).toBe(expected);
 			},
 		);
 
@@ -708,9 +727,14 @@ describe('ScheduleTriggerJobRegistrar', () => {
 				parameters,
 			});
 
-			it('warns naming the workflow and node when a stated misfire grace is unusable', async () => {
+			it.each<[string, INodeParameters]>([
+				['a non-numeric string', { misfireGraceSeconds: 'nonsense' }],
+				['a blank string, which coerces to zero but states nothing', { misfireGraceSeconds: ' ' }],
+				['a boolean', { misfireGraceSeconds: true }],
+				['a value the provisioner would drop as below a second', { misfireGraceSeconds: 0.5 }],
+			])('warns naming the workflow and node for %s', (_label, parameters) => {
 				const { registrar, scopedLogger } = makeRegistrarWatchingWarnings();
-				const node = plainNode({ misfireGraceSeconds: 'nonsense' });
+				const node = plainNode(parameters);
 
 				registrar.createSession().createCollector(workflow, node);
 
@@ -723,8 +747,9 @@ describe('ScheduleTriggerJobRegistrar', () => {
 			it.each<[string, INodeParameters]>([
 				['no misfire grace parameter', {}],
 				['a stored 0, which stands for the instance value', { misfireGraceSeconds: 0 }],
+				['a stored "0" string, which stands for it just as well', { misfireGraceSeconds: '0' }],
 				['a usable misfire grace', { misfireGraceSeconds: 90 }],
-			])('does not warn for a node with %s', async (_label, parameters) => {
+			])('does not warn for a node with %s', (_label, parameters) => {
 				const { registrar, scopedLogger } = makeRegistrarWatchingWarnings();
 
 				registrar.createSession().createCollector(workflow, plainNode(parameters));
@@ -744,7 +769,7 @@ describe('ScheduleTriggerJobRegistrar', () => {
 
 			await session.commit(WORKFLOW_ID, NODE_ID);
 
-			expect(jobProvisioner.provision.mock.calls.at(-1)![6]).toBeUndefined();
+			expect(lastProvisionedGrace()).toBeUndefined();
 		});
 
 		it("keeps a typeVersion 1.4 node's misfire grace parameter through Workflow normalisation, since the version gate is satisfied", async () => {
@@ -758,7 +783,7 @@ describe('ScheduleTriggerJobRegistrar', () => {
 
 			await session.commit(WORKFLOW_ID, NODE_ID);
 
-			expect(jobProvisioner.provision.mock.calls.at(-1)![6]).toBe(90);
+			expect(lastProvisionedGrace()).toBe(90);
 		});
 
 		it('consumes the collected rules: a second commit is a no-op', async () => {
