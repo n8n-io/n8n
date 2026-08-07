@@ -1,14 +1,13 @@
 <script setup lang="ts">
-import { computed, ref, shallowRef } from 'vue';
+import { computed, shallowRef } from 'vue';
 import { N8nButton, N8nIconButton, N8nInput, N8nStepper, N8nText } from '@n8n/design-system';
 import type { ChatIntegrationDescriptor, AgentIntegrationSettings } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type { PermissionsRecord } from '@n8n/permissions';
 import { TIME } from '@/app/constants';
-import AgentIntegrationCredentialConnection from './AgentIntegrationCredentialConnection.vue';
-import AgentIntegrationSettingsForm from './AgentIntegrationSettingsForm.vue';
-import type { AgentCredentialOption } from './AgentCredentialSelect.vue';
+import AgentIntegrationCredentialConnection from '../../components/AgentIntegrationCredentialConnection.vue';
+import type { AgentCredentialOption } from '../../components/AgentCredentialSelect.vue';
 
 const credentialId = defineModel<string>({ default: '' });
 
@@ -51,7 +50,6 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const rootStore = useRootStore();
 const copiedField = shallowRef<'oauthCallback' | 'webhook' | null>(null);
-const settingsFormRef = ref<InstanceType<typeof AgentIntegrationSettingsForm>>();
 
 const LINEAR_APP_SETUP_URL = 'https://linear.app/settings/api/applications/new';
 
@@ -86,8 +84,8 @@ const oauthCallbackUrl = computed(
 	() => (rootStore.OAuthCallbackUrls as { oauth2?: string } | undefined)?.oauth2 ?? '',
 );
 
-const currentSettings = computed(() => settingsFormRef.value?.currentSettings);
-const validationError = computed(() => settingsFormRef.value?.validationError ?? null);
+const currentSettings = computed(() => undefined);
+const validationError = computed(() => null);
 
 function urlFor(field: 'oauthCallback' | 'webhook'): string {
 	return field === 'oauthCallback' ? oauthCallbackUrl.value : webhookUrl.value;
@@ -210,9 +208,9 @@ defineExpose({ credentialId, currentSettings, validationError });
 							:credentials-loading="credentialsLoading"
 							:disabled="loading"
 							:force-new-credential="forceNewCredential"
+							:class="$style.cred"
 							@create="emit('create')"
 							@edit="emit('edit')"
-							:class="$style.cred"
 						/>
 						<N8nButton
 							variant="subtle"
@@ -323,16 +321,6 @@ defineExpose({ credentialId, currentSettings, validationError });
 			<N8nText v-else-if="connectedDescription" size="small">{{ connectedDescription }}</N8nText>
 		</div>
 
-		<AgentIntegrationSettingsForm
-			ref="settingsFormRef"
-			:type="integration.type"
-			:disabled="connected || loading"
-			:connected="connected"
-			:saved-settings="savedSettings"
-			:agent-name="agentName"
-			:project-id="projectId"
-			:agent-id="agentId"
-		/>
 		<N8nText v-if="errorMessage" :class="$style.errorText" size="small">
 			{{ errorMessage }}
 			<a

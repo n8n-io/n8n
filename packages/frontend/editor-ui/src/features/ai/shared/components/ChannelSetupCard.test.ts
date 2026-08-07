@@ -86,6 +86,9 @@ vi.mock('@/features/agents/composables/useAgentIntegrationStatus', () => ({
 
 vi.mock('@/features/agents/composables/useAgentApi', () => ({
 	getAgent: mocks.getAgent,
+}));
+
+vi.mock('@/features/agents/channels/slack/api', () => ({
 	createSlackAgentApp: mocks.createSlackAgentApp,
 }));
 
@@ -129,7 +132,7 @@ vi.mock('@/features/agents/components/AgentChannelSlackSetup.vue', () => ({
 	},
 }));
 
-vi.mock('@/features/agents/components/AgentChannelLinearSetup.vue', () => ({
+vi.mock('@/features/agents/channels/linear/AgentChannelLinearSetup.vue', () => ({
 	default: {
 		props: ['connectedDescription'],
 		template:
@@ -305,6 +308,14 @@ describe('ChannelSetupCard', () => {
 		await flushPromises();
 
 		expect(wrapper.emitted('resolve')).toBeUndefined();
+	});
+
+	it('renders the safe fallback for an unknown catalog integration', async () => {
+		const wrapper = mountCard({ integrationType: 'unknown-channel' });
+		await flushPromises();
+
+		expect(wrapper.find('[data-testid="channel-setup-catalog-loading"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="channel-setup-catalog-error"]').exists()).toBe(false);
 	});
 
 	it('shows a loading state until the integration catalog arrives', async () => {
