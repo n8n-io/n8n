@@ -118,13 +118,13 @@ export function applyAgentThinking(agent: Agent, modelId: ModelConfig): void {
 	}
 
 	if (provider === 'togetherai') {
-		agent.thinking('togetherai', { reasoningEffort: 'low' });
+		agent.thinking('togetherai', { reasoningEffort: 'high' });
 		return;
 	}
 
 	if (provider === 'custom') {
 		// OpenAI-compatible custom endpoints (e.g. dedicated Kimi-K3 routers).
-		agent.thinking('custom', { reasoningEffort: 'low' });
+		agent.thinking('custom', { reasoningEffort: 'high' });
 		return;
 	}
 
