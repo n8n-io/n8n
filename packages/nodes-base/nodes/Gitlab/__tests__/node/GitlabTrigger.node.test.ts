@@ -42,8 +42,7 @@ describe('GitlabTrigger Node', () => {
 				url: 'https://example.com/webhook',
 			};
 
-			jest
-				.spyOn(GenericFunctions, 'gitlabApiRequest')
+			vi.spyOn(GenericFunctions, 'gitlabApiRequest')
 				.mockRejectedValueOnce({ cause: { httpCode: '404' } })
 				.mockResolvedValueOnce([existingWebhook]);
 
@@ -56,8 +55,7 @@ describe('GitlabTrigger Node', () => {
 		});
 
 		it('should return false when stored ID is 404 and no URL match is found', async () => {
-			jest
-				.spyOn(GenericFunctions, 'gitlabApiRequest')
+			vi.spyOn(GenericFunctions, 'gitlabApiRequest')
 				.mockRejectedValueOnce({ cause: { httpCode: '404' } })
 				.mockResolvedValueOnce([]);
 
@@ -73,9 +71,9 @@ describe('GitlabTrigger Node', () => {
 			webhookData = {};
 			mockThis.getWorkflowStaticData = () => webhookData;
 
-			jest
-				.spyOn(GenericFunctions, 'gitlabApiRequest')
-				.mockResolvedValueOnce([{ id: '789', url: 'https://example.com/webhook' }]);
+			vi.spyOn(GenericFunctions, 'gitlabApiRequest').mockResolvedValueOnce([
+				{ id: '789', url: 'https://example.com/webhook' },
+			]);
 
 			const trigger = new GitlabTrigger();
 			const result = await trigger.webhookMethods.default.checkExists.call(mockThis);
