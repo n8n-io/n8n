@@ -92,6 +92,12 @@ export class DeprecationService {
 			checkValue: (value?: string) => value === undefined,
 		},
 		{
+			envVar: 'N8N_EXPRESSION_ENGINE',
+			message:
+				'The `legacy` expression engine runs expressions without isolation, is no longer considered secure, and will be removed in a future version. Remove this environment variable to use the default `vm` engine.',
+			checkValue: (value?: string) => value === 'legacy',
+		},
+		{
 			envVar: 'N8N_DEFAULT_BINARY_DATA_MODE',
 			message:
 				'In-memory binary data storage (`default` mode) will be removed in a future version. Switch to `filesystem`, `s3`, or `database`.',
