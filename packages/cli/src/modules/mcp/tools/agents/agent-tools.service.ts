@@ -37,6 +37,13 @@ import { AgentModelCatalogService } from '@/modules/agents/agent-model-catalog.s
 import { AgentPublishService } from '@/modules/agents/agent-publish.service';
 import { AgentSkillsService } from '@/modules/agents/agent-skills.service';
 import { AgentTaskService } from '@/modules/agents/agent-task.service';
+import {
+	AgentTestRunService,
+	agentTestRunContinuationSchema,
+	collectStandardApprovals,
+	InvalidAgentTestRunCheckpointError,
+	type AgentTestRunResult,
+} from '@/modules/agents/agent-test-run.service';
 import { AgentValidationService } from '@/modules/agents/agent-validation.service';
 import { AgentsService } from '@/modules/agents/agents.service';
 import { AttachableWorkflowsService } from '@/modules/agents/attachable-workflows.service';
@@ -65,7 +72,11 @@ import {
 	AGENT_BUILDER_REFERENCE_URI,
 	AGENT_CONFIG_JSON_SCHEMA,
 } from './agent-reference';
-import { MCP_CREATE_AGENT_TOOL_NAME, USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
+import {
+	MCP_CALL_AGENT_TOOL_NAME,
+	MCP_CREATE_AGENT_TOOL_NAME,
+	USER_CALLED_MCP_TOOL_EVENT,
+} from '../../mcp.constants';
 import type {
 	RegisterResourceFn,
 	RegisterToolFn,
@@ -320,6 +331,28 @@ const updateIntegrationInput = {
 		.describe('Integration settings; required for Telegram connect operations'),
 } satisfies z.ZodRawShape;
 
+const callAgentRequestSchema = z.discriminatedUnion('type', [
+	z
+		.object({
+			type: z.literal('message'),
+			message: z.string().trim().min(1),
+			sessionId: z.string().trim().min(1).optional(),
+		})
+		.strict(),
+	z
+		.object({
+			type: z.literal('approval'),
+			approved: z.boolean(),
+			continuation: agentTestRunContinuationSchema,
+		})
+		.strict(),
+]);
+
+const callAgentInput = {
+	...agentIdentityShape,
+	request: callAgentRequestSchema,
+} satisfies z.ZodRawShape;
+
 const emptyInput = {} satisfies z.ZodRawShape;
 
 type SearchAgentsInput = z.infer<z.ZodObject<typeof searchAgentsInput>>;
@@ -328,6 +361,7 @@ type MutateAgentInput = z.infer<z.ZodObject<typeof mutateAgentInput>>;
 type DiscoverAssetsInput = z.infer<z.ZodObject<typeof discoverAssetsInput>>;
 type VerifyMcpServerInput = z.infer<z.ZodObject<typeof verifyMcpServerInput>>;
 type UpdateIntegrationInput = z.infer<z.ZodObject<typeof updateIntegrationInput>>;
+type CallAgentInput = z.infer<z.ZodObject<typeof callAgentInput>>;
 
 type MutationResource = {
 	type: 'skill' | 'task' | 'customTool';
@@ -353,6 +387,7 @@ export class McpAgentToolsService {
 		private readonly agentPublishService: AgentPublishService,
 		private readonly agentSkillsService: AgentSkillsService,
 		private readonly agentTaskService: AgentTaskService,
+		private readonly agentTestRunService: AgentTestRunService,
 		private readonly agentCustomToolsService: AgentCustomToolsService,
 		private readonly agentSecureRuntime: AgentSecureRuntime,
 		private readonly integrationPersistenceService: AgentIntegrationPersistenceService,
@@ -384,6 +419,7 @@ export class McpAgentToolsService {
 		user: User,
 		allowedToolNames?: Set<string>,
 	): void {
+		const isCallAgentAvailable = allowedToolNames?.has(MCP_CALL_AGENT_TOOL_NAME) ?? true;
 		const registerIfAllowed = <Input extends z.ZodRawShape>(tool: ToolDefinition<Input>): void => {
 			if (allowedToolNames && !allowedToolNames.has(tool.name)) return;
 			registerTool(tool);
@@ -393,7 +429,8 @@ export class McpAgentToolsService {
 		registerIfAllowed(this.getAgentTool(user));
 		registerIfAllowed(this.createAgentTool(user));
 		registerIfAllowed(this.mutateAgentTool(user));
-		registerIfAllowed(this.validateAgentTool(user));
+		registerIfAllowed(this.validateAgentTool(user, isCallAgentAvailable));
+		registerIfAllowed(this.callAgentTool(user));
 		registerIfAllowed(this.publishAgentTool(user));
 		registerIfAllowed(this.unpublishAgentTool(user));
 		registerIfAllowed(this.revertAgentTool(user));
@@ -624,7 +661,10 @@ export class McpAgentToolsService {
 		};
 	}
 
-	private validateAgentTool(user: User): ToolDefinition<typeof agentIdentityShape> {
+	private validateAgentTool(
+		user: User,
+		isCallAgentAvailable: boolean,
+	): ToolDefinition<typeof agentIdentityShape> {
 		return {
 			name: 'validate_agent',
 			config: {
@@ -643,12 +683,58 @@ export class McpAgentToolsService {
 				await this.run(user, 'validate_agent', { agentId }, async () => {
 					const agent = await this.resolveAgent(user, agentId);
 					await this.assertScope(user, agent.projectId, 'agent:read');
+					const validation = await this.validateAgent(user, agent);
+					const shouldSuggestCallAgent =
+						validation.valid &&
+						isCallAgentAvailable &&
+						(await userHasScopes(user, ['agent:execute'], false, { projectId: agent.projectId }));
 					return {
 						ok: true,
-						...(await this.validateAgent(user, agent)),
+						...validation,
 						url: this.getAgentUrl(agent.projectId, agentId),
+						...(shouldSuggestCallAgent
+							? {
+									nextStep: {
+										tool: MCP_CALL_AGENT_TOOL_NAME,
+										reason: 'Test the runnable draft before reporting it ready',
+									},
+								}
+							: {}),
 					};
 				}),
+		};
+	}
+
+	private callAgentTool(user: User): ToolDefinition<typeof callAgentInput> {
+		return {
+			name: MCP_CALL_AGENT_TOOL_NAME,
+			config: {
+				description:
+					'Test an Agent draft through built-in Preview chat. Start or continue a conversation with a message request, or resume one returned approval after the human decides. This uses real tools and credentials, so external side effects are possible.',
+				inputSchema: callAgentInput,
+				annotations: {
+					title: 'Call Agent',
+					readOnlyHint: false,
+					destructiveHint: true,
+					idempotentHint: false,
+					openWorldHint: true,
+				},
+			},
+			handler: async (input: CallAgentInput, extra) => {
+				const abortSignal =
+					isRecord(extra) && extra.signal instanceof AbortSignal ? extra.signal : undefined;
+
+				return await this.run(
+					user,
+					MCP_CALL_AGENT_TOOL_NAME,
+					{ agentId: input.agentId },
+					async () => {
+						const agent = await this.resolveAgent(user, input.agentId);
+						await this.assertScope(user, agent.projectId, 'agent:execute');
+						return await this.callAgent(user, agent, input.request, abortSignal);
+					},
+				);
+			},
 		};
 	}
 
@@ -1058,6 +1144,128 @@ export class McpAgentToolsService {
 
 	private getAgentUrl(projectId: string, agentId: string) {
 		return `${this.urlService.getInstanceBaseUrl()}/projects/${encodeURIComponent(projectId)}/agents/${encodeURIComponent(agentId)}`;
+	}
+
+	private async callAgent(
+		user: User,
+		agent: Agent,
+		request: CallAgentInput['request'],
+		abortSignal?: AbortSignal,
+	): Promise<Record<string, unknown>> {
+		const { id: agentId, projectId } = agent;
+		const previewUrl = `${this.getAgentUrl(projectId, agentId)}/preview`;
+
+		try {
+			let result: AgentTestRunResult;
+			if (request.type === 'message') {
+				result = await this.agentTestRunService.executeDraftRun({
+					agentId,
+					projectId,
+					message: request.message,
+					sessionId: request.sessionId,
+					credentialProvider: this.credentialProvider(user, projectId),
+					user,
+					source: 'mcp',
+					abortSignal,
+				});
+			} else {
+				result = await this.agentTestRunService.resumeDraftApproval({
+					agentId,
+					projectId,
+					continuation: request.continuation,
+					approved: request.approved,
+					user,
+					source: 'mcp',
+					abortSignal,
+				});
+			}
+
+			if (result.status === 'session_not_found') {
+				return {
+					ok: false,
+					status: 'error',
+					code: 'session_not_found',
+					message: 'Session not found.',
+				};
+			}
+			if (result.status === 'agent_misconfigured') {
+				return {
+					ok: false,
+					status: 'error',
+					code: 'agent_misconfigured',
+					message: "This agent isn't ready to run yet. Finish configuring it and try again.",
+					missing: result.missing,
+				};
+			}
+			if (result.status === 'completed') return { ok: true, ...result };
+
+			const approvals = collectStandardApprovals(result);
+			if (approvals) {
+				// TODO: Return approvals via MCP input_required: https://linear.app/n8n/issue/ADO-5754
+				return {
+					ok: true,
+					status: 'suspended',
+					response: result.response,
+					sessionId: result.sessionId,
+					...(result.executionId ? { executionId: result.executionId } : {}),
+					approvals,
+				};
+			}
+
+			const canOpenPreview = await userHasScopes(user, ['project:read', 'agent:read'], false, {
+				projectId,
+			});
+			const previewAccessNote = canOpenPreview
+				? undefined
+				: 'Your access permits running this agent but not opening Preview. Share the Preview URL with a project member who has project and agent read access.';
+			const cancelled = await this.agentTestRunService.cancelSuspendedRuns({
+				agentId,
+				suspensions: result.suspensions,
+				userId: user.id,
+			});
+			if (!cancelled) {
+				return {
+					ok: false,
+					status: 'error',
+					code: 'cancellation_failed',
+					message:
+						'This test needs approval, but its suspended run could not be cancelled. Open Preview before continuing this session.',
+					sessionId: result.sessionId,
+					previewUrl,
+					...(previewAccessNote ? { previewAccessNote } : {}),
+				};
+			}
+
+			return {
+				ok: true,
+				status: 'approval_required',
+				response: result.response,
+				sessionId: result.sessionId,
+				...(result.executionId ? { executionId: result.executionId } : {}),
+				suspensions: result.suspensions.map(({ runId, toolCallId, toolName }) => ({
+					runId,
+					toolCallId,
+					toolName,
+				})),
+				previewUrl,
+				...(previewAccessNote ? { previewAccessNote } : {}),
+			};
+		} catch (error) {
+			if (error instanceof InvalidAgentTestRunCheckpointError) {
+				return {
+					ok: false,
+					status: 'error',
+					code: error.code,
+					message: error.message,
+				};
+			}
+			return {
+				ok: false,
+				status: 'error',
+				code: 'execution_failed',
+				message: error instanceof Error ? error.message : 'Agent test run failed.',
+			};
+		}
 	}
 
 	/**

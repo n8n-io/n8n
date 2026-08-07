@@ -1,7 +1,5 @@
-import { isDeepStrictEqual } from 'node:util';
 import {
 	isAbortError,
-	zodToJsonSchema,
 	type BuiltTool,
 	type CredentialProvider,
 	type InterruptibleToolContext,
@@ -62,8 +60,9 @@ import { AgentSkillsService } from '../agent-skills.service';
 import { AgentTaskService } from '../agent-task.service';
 import {
 	AgentTestRunService,
+	collectStandardApprovals,
+	InvalidAgentTestRunCheckpointError,
 	type AgentTestRunResult,
-	type AgentTestRunSuspension,
 } from '../agent-test-run.service';
 import { AgentsToolsService } from '../agents-tools.service';
 import { AgentsService } from '../agents.service';
@@ -97,30 +96,6 @@ const STALE_CONFIG_ERROR: ConfigValidationError = {
 	message:
 		'Agent config changed since you last read it. Call read_config, then retry using the config and configHash it returns.',
 };
-
-const callAgentContinuationSchema = z
-	.object({
-		runId: z.string(),
-		toolCallId: z.string(),
-		sessionId: z.string(),
-		response: z.string(),
-	})
-	.strict();
-
-const expectedApprovalResumeJsonSchema = zodToJsonSchema(APPROVAL_RESUME_SCHEMA);
-
-function parseStandardApprovalSuspension(
-	suspension: AgentTestRunSuspension,
-): ApprovalSuspendPayload | undefined {
-	const payload = APPROVAL_SUSPEND_SCHEMA.safeParse(suspension.suspendPayload);
-	if (
-		!payload.success ||
-		!isDeepStrictEqual(suspension.resumeSchema, expectedApprovalResumeJsonSchema)
-	) {
-		return undefined;
-	}
-	return payload.data;
-}
 
 /** LLM-facing follow-up guidance for this builder surface (CLI skill-based tools). */
 const CLI_AGENT_CONFIG_MESSAGES: AgentConfigValidationMessages = {
@@ -704,27 +679,13 @@ export class AgentsBuilderToolsService {
 								...(ctx.abortSignal ? { abortSignal: ctx.abortSignal } : {}),
 							});
 						} else {
-							const continuation = callAgentContinuationSchema.safeParse(ctx.continuation);
-							if (
-								!continuation.success ||
-								!APPROVAL_SUSPEND_SCHEMA.safeParse(ctx.suspendPayload).success
-							) {
-								return {
-									status: 'error',
-									code: 'invalid_checkpoint',
-									message: 'This test run can no longer be resumed.',
-								};
-							}
-							result = await this.agentTestRunService.resumeDraftRun({
+							result = await this.agentTestRunService.resumeDraftApproval({
 								agentId,
 								projectId,
-								sessionId: continuation.data.sessionId,
-								runId: continuation.data.runId,
-								toolCallId: continuation.data.toolCallId,
-								resumeData: { approved: ctx.resumeData.approved },
+								continuation: ctx.continuation,
+								approved: ctx.resumeData.approved,
 								user,
 								source: 'instance-ai',
-								response: continuation.data.response,
 								...(ctx.abortSignal ? { abortSignal: ctx.abortSignal } : {}),
 							});
 						}
@@ -746,37 +707,19 @@ export class AgentsBuilderToolsService {
 						}
 						if (result.status === 'completed') return result;
 
-						const approvals = result.suspensions.map(parseStandardApprovalSuspension);
-						if (approvals.every((approval) => approval !== undefined)) {
-							const firstSuspension = result.suspensions[0];
-							const firstApproval = approvals[0];
-							if (firstSuspension && firstApproval) {
-								return await ctx.suspend(firstApproval, {
-									continuation: {
-										runId: firstSuspension.runId,
-										toolCallId: firstSuspension.toolCallId,
-										sessionId: result.sessionId,
-										response: result.response,
-									},
-								});
-							}
+						const approvals = collectStandardApprovals(result);
+						const firstApproval = approvals?.[0];
+						if (firstApproval) {
+							const { continuation, ...approval } = firstApproval;
+							return await ctx.suspend(approval, { continuation });
 						}
 
-						const runIds = [...new Set(result.suspensions.map(({ runId }) => runId))];
-						const cancellations = await Promise.all(
-							runIds.map(
-								async (runId) =>
-									await this.agentTestRunService.cancelSuspendedRun({
-										agentId,
-										runId,
-										userId: user.id,
-									}),
-							),
-						).catch(() => []);
-						if (
-							cancellations.length !== runIds.length ||
-							cancellations.some((cancelled) => !cancelled)
-						) {
+						const cancelled = await this.agentTestRunService.cancelSuspendedRuns({
+							agentId,
+							suspensions: result.suspensions,
+							userId: user.id,
+						});
+						if (!cancelled) {
 							return {
 								status: 'error',
 								code: 'cancellation_failed',
@@ -801,6 +744,13 @@ export class AgentsBuilderToolsService {
 						};
 					} catch (error) {
 						if (ctx.abortSignal ? ctx.abortSignal.aborted : isAbortError(error)) throw error;
+						if (error instanceof InvalidAgentTestRunCheckpointError) {
+							return {
+								status: 'error',
+								code: error.code,
+								message: error.message,
+							};
+						}
 						return {
 							status: 'error',
 							code: 'execution_failed',
