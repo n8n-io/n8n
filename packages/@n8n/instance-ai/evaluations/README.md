@@ -1017,6 +1017,8 @@ For model A/B experiments, dispatch **Instance AI Evals: Experiments** (`test-ev
 
 For a **dedicated OpenAI-compatible router** (no API key), set `model` to `custom/<model-name>` (e.g. `custom/Kimi-K3`) and `model-url` to the `/v1` base (e.g. `https://host/v1`). Lanes leave `N8N_INSTANCE_AI_MODEL_API_KEY` empty; verifier/mocks still use `EVALS_ANTHROPIC_KEY`.
 
+For **Databricks AI Gateway** Kimi-K3, set `model` to `custom/workspace.default.kimi-k3` and `model-url` to `https://<workspace>.cloud.databricks.com/ai-gateway/mlflow/v1`. Lanes authenticate with `EVALS_DATABRICKS_KEY` (Databricks PAT). Custom endpoints use low reasoning effort.
+
 For **Azure Foundry Claude** (Anthropic-compatible), also set `model-url` to the Foundry base (e.g. `https://<resource>.services.ai.azure.com/anthropic`) and use `anthropic/<deployment-name>` as `model`. Lanes authenticate with `EVALS_AZURE_FOUNDRY_KEY`; the eval CLI verifier/mocks keep `EVALS_ANTHROPIC_KEY`.
 
 For **Google Vertex Claude**, set `model` to `vertex/claude-opus-4-8` (or another Vertex Claude id). Lanes authenticate with `EVALS_VERTEX_SA_JSON` (service-account JSON) and resolve the GCP project from the `vertex-project` input, `EVALS_VERTEX_PROJECT`, or `project_id` inside the SA JSON. Optional `vertex-location` defaults to `global`. Verifier/mocks still use `EVALS_ANTHROPIC_KEY`.

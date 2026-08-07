@@ -133,19 +133,27 @@ describe('applyAgentThinking', () => {
 		},
 	);
 
-	it('enables medium reasoning effort for Together AI', () => {
+	it('enables low reasoning effort for Together AI', () => {
 		const agent = new Agent('test');
 		applyAgentThinking(agent, 'togetherai/riqwanthahamir-d900/deepseek-v4-flash');
 		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('togetherai', {
-			reasoningEffort: 'medium',
+			reasoningEffort: 'low',
 		});
 	});
 
-	it('enables high reasoning effort for custom OpenAI-compatible endpoints', () => {
+	it('enables low reasoning effort for custom OpenAI-compatible endpoints', () => {
 		const agent = new Agent('test');
 		applyAgentThinking(agent, 'custom/Kimi-K3');
 		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('custom', {
-			reasoningEffort: 'high',
+			reasoningEffort: 'low',
+		});
+	});
+
+	it('enables low reasoning effort for Databricks AI Gateway Kimi-K3', () => {
+		const agent = new Agent('test');
+		applyAgentThinking(agent, 'custom/workspace.default.kimi-k3');
+		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('custom', {
+			reasoningEffort: 'low',
 		});
 	});
 

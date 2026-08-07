@@ -60,12 +60,12 @@ on:
         type: string
         default: ''
       model:
-        description: 'Model override for all Instance AI agents in the lane backends, provider/model format. Empty = backend default (anthropic/claude-opus-4-8). Examples: anthropic/claude-opus-5, anthropic/claude-sonnet-4-6. openai/* → EVALS_OPENAI_KEY; openrouter/* → EVALS_OPENROUTER_KEY; xai/* → EVALS_XAI_KEY; baseten/* → EVALS_BASETEN_KEY; fireworks/* → EVALS_FIREWORKS_KEY; wafer/* → EVALS_WAFER_KEY; morph/* → EVALS_MORPH_KEY; togetherai/* → EVALS_TOGETHER_KEY; vertex/* → EVALS_VERTEX_SA_JSON (+ vertex-project/location). custom/* + model-url → OpenAI-compatible endpoint (no key required). anthropic/* + model-url → EVALS_AZURE_FOUNDRY_KEY.'
+        description: 'Model override for all Instance AI agents in the lane backends, provider/model format. Empty = backend default (anthropic/claude-opus-4-8). Examples: anthropic/claude-opus-5, anthropic/claude-sonnet-4-6. openai/* → EVALS_OPENAI_KEY; openrouter/* → EVALS_OPENROUTER_KEY; xai/* → EVALS_XAI_KEY; baseten/* → EVALS_BASETEN_KEY; fireworks/* → EVALS_FIREWORKS_KEY; wafer/* → EVALS_WAFER_KEY; morph/* → EVALS_MORPH_KEY; togetherai/* → EVALS_TOGETHER_KEY; vertex/* → EVALS_VERTEX_SA_JSON (+ vertex-project/location). custom/* + model-url → OpenAI-compatible endpoint (keyless routers, or Databricks AI Gateway via EVALS_DATABRICKS_KEY). anthropic/* + model-url → EVALS_AZURE_FOUNDRY_KEY.'
         required: false
         type: string
         default: ''
       model-url:
-        description: 'Optional base URL for lane backends (N8N_INSTANCE_AI_MODEL_URL). With custom/*: OpenAI-compatible endpoint (e.g. https://host/v1), no API key. With anthropic/*: Anthropic-compatible base (e.g. Azure Foundry https://<resource>.services.ai.azure.com/anthropic) using EVALS_AZURE_FOUNDRY_KEY. Eval CLI verifier/mocks keep EVALS_ANTHROPIC_KEY.'
+        description: 'Optional base URL for lane backends (N8N_INSTANCE_AI_MODEL_URL). With custom/*: OpenAI-compatible /v1 base (e.g. https://host/v1, or Databricks https://<workspace>.cloud.databricks.com/ai-gateway/mlflow/v1 → EVALS_DATABRICKS_KEY). With anthropic/*: Anthropic-compatible base (e.g. Azure Foundry https://<resource>.services.ai.azure.com/anthropic) using EVALS_AZURE_FOUNDRY_KEY. Eval CLI verifier/mocks keep EVALS_ANTHROPIC_KEY.'
         required: false
         type: string
         default: ''
@@ -120,11 +120,11 @@ on:
         required: false
         default: ''
       model:
-        description: 'Model for all Instance AI agents (provider/model). Empty = backend default (anthropic/claude-opus-4-8). Experiments: anthropic/claude-opus-5, anthropic/claude-sonnet-4-6, anthropic/claude-opus-4-8 (+ model-url for Azure Foundry), custom/Kimi-K3 (+ model-url for OpenAI-compatible routers), vertex/claude-opus-4-8, openai/gpt-5.6-sol, openai/gpt-5.6-terra, openai/gpt-5.6-luna, openrouter/moonshotai/kimi-k3, wafer/Kimi-K3, morph/morph-kimik3, morph/morph-kimik3-fast, morph/morph-glm52-744b, xai/grok-4.5, baseten/zai-org/GLM-5.2, baseten/zai-org/GLM-5.2-Fast, fireworks/accounts/fireworks/models/llama-v3p1-70b-instruct, togetherai/moonshotai/Kimi-K3, togetherai/meta-llama/Llama-3.3-70B-Instruct-Turbo.'
+        description: 'Model for all Instance AI agents (provider/model). Empty = backend default (anthropic/claude-opus-4-8). Experiments: anthropic/claude-opus-5, anthropic/claude-sonnet-4-6, anthropic/claude-opus-4-8 (+ model-url for Azure Foundry), custom/Kimi-K3 (+ model-url for OpenAI-compatible routers), custom/workspace.default.kimi-k3 (+ Databricks AI Gateway model-url), vertex/claude-opus-4-8, openai/gpt-5.6-sol, openai/gpt-5.6-terra, openai/gpt-5.6-luna, openrouter/moonshotai/kimi-k3, wafer/Kimi-K3, morph/morph-kimik3, morph/morph-kimik3-fast, morph/morph-glm52-744b, xai/grok-4.5, baseten/zai-org/GLM-5.2, baseten/zai-org/GLM-5.2-Fast, fireworks/accounts/fireworks/models/llama-v3p1-70b-instruct, togetherai/moonshotai/Kimi-K3, togetherai/meta-llama/Llama-3.3-70B-Instruct-Turbo.'
         required: false
         default: ''
       model-url:
-        description: 'Optional base URL (N8N_INSTANCE_AI_MODEL_URL). custom/* → OpenAI-compatible /v1 endpoint, no key. anthropic/* → Anthropic-compatible base (e.g. Azure Foundry) with EVALS_AZURE_FOUNDRY_KEY. Leave empty for provider defaults.'
+        description: 'Optional base URL (N8N_INSTANCE_AI_MODEL_URL). custom/* → OpenAI-compatible /v1 endpoint (keyless routers, or Databricks https://<workspace>.cloud.databricks.com/ai-gateway/mlflow/v1 with EVALS_DATABRICKS_KEY). anthropic/* → Anthropic-compatible base (e.g. Azure Foundry) with EVALS_AZURE_FOUNDRY_KEY. Leave empty for provider defaults.'
         required: false
         default: ''
       vertex-project:
@@ -231,6 +231,7 @@ jobs:
           EVALS_WAFER_KEY: ${{ secrets.EVALS_WAFER_KEY }}
           EVALS_MORPH_KEY: ${{ secrets.EVALS_MORPH_KEY }}
           EVALS_TOGETHER_KEY: ${{ secrets.EVALS_TOGETHER_KEY }}
+          EVALS_DATABRICKS_KEY: ${{ secrets.EVALS_DATABRICKS_KEY }}
           EVALS_AZURE_FOUNDRY_KEY: ${{ secrets.EVALS_AZURE_FOUNDRY_KEY }}
           EVALS_VERTEX_SA_JSON: ${{ secrets.EVALS_VERTEX_SA_JSON }}
           EVALS_VERTEX_PROJECT: ${{ secrets.EVALS_VERTEX_PROJECT }}
@@ -296,7 +297,8 @@ jobs:
 
           # Lane builds use the provider matching N8N_INSTANCE_AI_MODEL.
           # The eval CLI step keeps EVALS_ANTHROPIC_KEY for Sonnet verifier/mocks.
-          # model-url + custom/* → OpenAI-compatible endpoint (dedicated routers; no key).
+          # model-url + custom/* → OpenAI-compatible endpoint (keyless routers, or
+          # Databricks AI Gateway with EVALS_DATABRICKS_KEY).
           # model-url + anthropic/* (etc.) → Azure Foundry / Anthropic-compatible key.
           MODEL_API_KEY="$EVALS_ANTHROPIC_KEY"
           if [[ "$INSTANCE_AI_MODEL" == custom/* ]]; then
@@ -304,8 +306,17 @@ jobs:
               echo "::error::model custom/* requires model-url (OpenAI-compatible base URL ending in /v1)"
               exit 1
             fi
-            # Dedicated OpenAI-compatible routers often need no auth.
-            MODEL_API_KEY=""
+            # Dedicated OpenAI-compatible routers often need no auth. Databricks AI
+            # Gateway (and similar mlflow gateways) authenticate with a Bearer PAT.
+            if [[ "$INSTANCE_AI_MODEL_URL" == *databricks.com* ]] || [[ "$INSTANCE_AI_MODEL_URL" == *ai-gateway/mlflow* ]]; then
+              if [ -z "$EVALS_DATABRICKS_KEY" ]; then
+                echo "::error::Databricks model-url requires EVALS_DATABRICKS_KEY secret"
+                exit 1
+              fi
+              MODEL_API_KEY="$EVALS_DATABRICKS_KEY"
+            else
+              MODEL_API_KEY=""
+            fi
           elif [ -n "$INSTANCE_AI_MODEL_URL" ]; then
             if [ -z "$EVALS_AZURE_FOUNDRY_KEY" ]; then
               echo "::error::model-url is set but EVALS_AZURE_FOUNDRY_KEY secret is empty (use custom/* for keyless OpenAI-compatible endpoints)"
@@ -619,6 +630,7 @@ jobs:
           EVALS_WAFER_KEY: ${{ secrets.EVALS_WAFER_KEY }}
           EVALS_MORPH_KEY: ${{ secrets.EVALS_MORPH_KEY }}
           EVALS_TOGETHER_KEY: ${{ secrets.EVALS_TOGETHER_KEY }}
+          EVALS_DATABRICKS_KEY: ${{ secrets.EVALS_DATABRICKS_KEY }}
           EVALS_AZURE_FOUNDRY_KEY: ${{ secrets.EVALS_AZURE_FOUNDRY_KEY }}
           EVALS_VERTEX_SA_JSON: ${{ secrets.EVALS_VERTEX_SA_JSON }}
           DAYTONA_API_KEY: ${{ secrets.DAYTONA_API_KEY }}
@@ -634,6 +646,7 @@ jobs:
           for v in "$EVALS_ANTHROPIC_KEY" "$EVALS_OPENAI_KEY" "$EVALS_OPENROUTER_KEY" \
                    "$EVALS_XAI_KEY" "$EVALS_BASETEN_KEY" "$EVALS_FIREWORKS_KEY" \
                    "$EVALS_WAFER_KEY" "$EVALS_MORPH_KEY" "$EVALS_TOGETHER_KEY" \
+                   "$EVALS_DATABRICKS_KEY" \
                    "$EVALS_AZURE_FOUNDRY_KEY" "$EVALS_VERTEX_SA_JSON" "$DAYTONA_API_KEY" \
                    "$N8N_LICENSE_ACTIVATION_KEY" "$N8N_LICENSE_CERT" "$N8N_ENCRYPTION_KEY" \
                    "$EVALS_LANGSMITH_API_KEY"; do
