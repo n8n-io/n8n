@@ -118,7 +118,7 @@ describe('position roundtrip with omitPositions', () => {
 		expect(positionsByName(withoutPositions)).toEqual(positionsByName(withPositions));
 	});
 
-	it('auto-layout still spreads a fresh build (no saved workflow) instead of stacking at [0,0]', async () => {
+	it('auto-layout still spreads a fresh build (no saved workflow) instead of stacking at [0,0]', () => {
 		const code = generateWorkflowCode({ workflow: SAVED, omitPositions: true });
 		const json = parseWorkflowCodeToBuilder(code).toJSON({ tidyUp: true });
 
