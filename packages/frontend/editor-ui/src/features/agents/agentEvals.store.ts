@@ -24,6 +24,44 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 	const loadingDatasets = ref<Record<string, boolean>>({});
 	const generatingCases = ref<Record<string, boolean>>({});
 
+	/**
+	 * A request from another surface to focus an agent's eval tab, optionally
+	 * generating on arrival — raised by the assistant's post-setup suggestion.
+	 *
+	 * Held here rather than emitted on the event bus because the builder that
+	 * serves the request may not be mounted yet when it's raised (the assistant
+	 * has to reveal the agent artifact first). A watcher can consume a request
+	 * that predates it; a fire-and-forget event would be dropped.
+	 */
+	const pendingEvalsFocus = ref<{ agentId: string; generate: boolean } | null>(null);
+
+	const requestEvalsFocus = (agentId: string, generate = false) => {
+		pendingEvalsFocus.value = { agentId, generate };
+	};
+
+	/** Claims the request when it names this agent, so only one builder acts on it. */
+	const consumeEvalsFocus = (agentId: string) => {
+		const request = pendingEvalsFocus.value;
+		if (request?.agentId !== agentId) return null;
+		pendingEvalsFocus.value = null;
+		return request;
+	};
+
+	/**
+	 * Drops an unclaimed request for this agent. Called by the surface that raised
+	 * it when it goes away: without this, a request no builder ever picked up
+	 * would sit here for the rest of the session and then fire in an unrelated
+	 * context, jumping to Evals and generating cases the user didn't ask for at
+	 * that moment.
+	 *
+	 * Scoped by agent for the same reason `consumeEvalsFocus` is — a surface
+	 * tearing down must not discard a request some other surface just raised.
+	 */
+	const clearEvalsFocus = (agentId: string) => {
+		if (pendingEvalsFocus.value?.agentId !== agentId) return;
+		pendingEvalsFocus.value = null;
+	};
+
 	const getDatasets = (agentId: string) => datasetsByAgentId.value[agentId] ?? [];
 
 	// Absence of a cache entry is "not loaded yet", not "none" — callers that
@@ -85,5 +123,9 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 		isGeneratingCases,
 		fetchDatasets,
 		generateDraftCases,
+		pendingEvalsFocus,
+		requestEvalsFocus,
+		consumeEvalsFocus,
+		clearEvalsFocus,
 	};
 });
