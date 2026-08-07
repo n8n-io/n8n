@@ -5,7 +5,7 @@
  * `@n8n/vitest-config/frontend` points `setupFiles` at):
  *
  * ```ts
- * import '@n8n/vitest-config/frontend-setup';
+ * import '@n8n/vitest-config/setup/frontend';
  * ```
  *
  * Everything here is framework-agnostic jsdom patching: it must not import
