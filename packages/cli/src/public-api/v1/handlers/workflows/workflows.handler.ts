@@ -2,7 +2,6 @@ import { GlobalConfig } from '@n8n/config';
 import { WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { PROJECT_ROOT } from 'n8n-workflow';
-import { z } from 'zod';
 
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 import { ResponseError } from '@/errors/response-errors/abstract/response.error';
@@ -16,7 +15,6 @@ import { createWorkflowEntityFromPayload } from '@/workflows/workflow-entity-map
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowService } from '@/workflows/workflow.service';
-import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
 import type { WorkflowRequest } from '../../../types';
 import type { PublicAPIEndpoint } from '../../shared/handler.types';
@@ -51,7 +49,6 @@ function areWorkflowTagsEnabled(): boolean {
 
 type WorkflowHandlers = {
 	createWorkflow: PublicAPIEndpoint<WorkflowRequest.Create>;
-	transferWorkflow: PublicAPIEndpoint<WorkflowRequest.Transfer>;
 	deleteWorkflow: PublicAPIEndpoint<WorkflowRequest.Get>;
 	getWorkflowVersion: PublicAPIEndpoint<WorkflowRequest.GetVersion>;
 	getWorkflows: PublicAPIEndpoint<WorkflowRequest.GetAll>;
@@ -62,8 +59,6 @@ type WorkflowHandlers = {
 	deactivateWorkflow: PublicAPIEndpoint<WorkflowRequest.Activate>;
 	getWorkflowTags: PublicAPIEndpoint<WorkflowRequest.GetTags>;
 	updateWorkflowTags: PublicAPIEndpoint<WorkflowRequest.UpdateTags>;
-	archiveWorkflow: PublicAPIEndpoint<WorkflowRequest.Get>;
-	unarchiveWorkflow: PublicAPIEndpoint<WorkflowRequest.Get>;
 };
 
 const publishWorkflow: PublicAPIEndpoint<WorkflowRequest.Activate> = [
@@ -136,23 +131,6 @@ const workflowHandlers: WorkflowHandlers = {
 				},
 			);
 			return res.json(createdWorkflow);
-		},
-	],
-	transferWorkflow: [
-		publicApiScope('workflow:move'),
-		projectScope('workflow:move', 'workflow'),
-		async (req, res) => {
-			const { id: workflowId } = req.params;
-
-			const body = z.object({ destinationProjectId: z.string() }).parse(req.body);
-
-			await Container.get(EnterpriseWorkflowService).transferWorkflow(
-				req.user,
-				workflowId,
-				body.destinationProjectId,
-			);
-
-			return res.status(204).send();
 		},
 	],
 	deleteWorkflow: [
@@ -337,38 +315,6 @@ const workflowHandlers: WorkflowHandlers = {
 			try {
 				const tags = await Container.get(WorkflowService).updateWorkflowTags(req.user, id, newTags);
 				return res.json(tags);
-			} catch (error) {
-				return handleError(error);
-			}
-		},
-	],
-	archiveWorkflow: [
-		publicApiScope('workflow:delete'),
-		projectScope('workflow:delete', 'workflow'),
-		async (req, res) => {
-			const { id } = req.params;
-			try {
-				const workflow = await Container.get(WorkflowService).archiveForPublicApi(req.user, id);
-				if (!workflow) {
-					throw new NotFoundError('Workflow not found');
-				}
-				return res.json(workflow);
-			} catch (error) {
-				return handleError(error);
-			}
-		},
-	],
-	unarchiveWorkflow: [
-		publicApiScope('workflow:delete'),
-		projectScope('workflow:delete', 'workflow'),
-		async (req, res) => {
-			const { id } = req.params;
-			try {
-				const workflow = await Container.get(WorkflowService).unarchiveForPublicApi(req.user, id);
-				if (!workflow) {
-					throw new NotFoundError('Workflow not found');
-				}
-				return res.json(workflow);
 			} catch (error) {
 				return handleError(error);
 			}
