@@ -26,7 +26,7 @@ import type {
 import { defineStore } from 'pinia';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { applyThemeToBody, getThemeOverride, isValidTheme } from './ui.utils';
-import { SHELL_MODAL_INITIAL_STATE } from './ui.store.modals';
+import { SHELL_MODAL_INITIAL_STATE } from './defaults/modals';
 import { computed, ref, watch } from 'vue';
 import type { IMenuItem } from '@n8n/design-system';
 import type { Connection } from '@vue-flow/core';

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 
 // eslint-disable-next-line import-x/extensions
-import shellModalsContent from './ui.store.modals.ts?raw';
+import shellModalsContent from './defaults/modals.ts?raw';
 
 /**
  * A modal key with nothing defining it resolves to a closed state rather than
@@ -10,7 +10,7 @@ import shellModalsContent from './ui.store.modals.ts?raw';
  *
  * So this holds the two halves together: every `<ModalRoot :name="SOME_KEY">` in
  * the tree must have a definition backing it, either the shell catalogue in
- * `ui.store.modals.ts` or — for module-owned modals, which register a component
+ * `defaults/modals.ts` or — for module-owned modals, which register a component
  * alongside their key and render through `DynamicModalLoader` — `modalRegistry`.
  * A hand-written root is by definition the shell's, so the catalogue is where its
  * key has to be.
@@ -67,7 +67,7 @@ describe('shell modal definitions', () => {
 		expect(rendered.size, 'no <ModalRoot :name="SOME_KEY"> found in any .vue file').toBeGreaterThan(
 			0,
 		);
-		expect(defined.size, 'no [SOME_KEY]: entries found in ui.store.modals.ts').toBeGreaterThan(0);
+		expect(defined.size, 'no [SOME_KEY]: entries found in defaults/modals.ts').toBeGreaterThan(0);
 	});
 
 	it('defines every modal key a <ModalRoot> renders', () => {
