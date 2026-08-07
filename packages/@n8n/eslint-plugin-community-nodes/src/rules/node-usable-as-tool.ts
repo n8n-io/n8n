@@ -28,6 +28,8 @@ export const NodeUsableAsToolRule = createRule({
 		messages: {
 			missingUsableAsTool:
 				'Node class should have usableAsTool property. When in doubt, set it to true.',
+			triggerUsableAsTool:
+				'Trigger nodes must not set usableAsTool: true. Trigger nodes cannot be invoked as AI tools and doing so pollutes the tool picker. Remove this property.',
 		},
 		fixable: 'code',
 		schema: [],
@@ -50,13 +52,23 @@ export const NodeUsableAsToolRule = createRule({
 					return;
 				}
 
+				const usableAsToolProperty = findObjectProperty(descriptionValue, 'usableAsTool');
+
 				// `group` is the authoritative signal (also catches e.g. Cron, Webhook, versioned
 				// `*TriggerV1` classes); the name suffix is kept as a fallback for dynamic `group` values.
 				if (hasTriggerGroup(descriptionValue) || isTriggerNodeClass(node)) {
+					if (
+						usableAsToolProperty?.value.type === TSESTree.AST_NODE_TYPES.Literal &&
+						usableAsToolProperty.value.value === true
+					) {
+						context.report({
+							node: usableAsToolProperty,
+							messageId: 'triggerUsableAsTool',
+						});
+					}
 					return;
 				}
 
-				const usableAsToolProperty = findObjectProperty(descriptionValue, 'usableAsTool');
 				const outputsProperty = findObjectProperty(descriptionValue, 'outputs');
 				const inputsProperty = findObjectProperty(descriptionValue, 'inputs');
 				if (

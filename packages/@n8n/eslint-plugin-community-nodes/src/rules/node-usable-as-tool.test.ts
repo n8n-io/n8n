@@ -147,15 +147,21 @@ ruleTester.run('node-usable-as-tool', NodeUsableAsToolRule, {
 			code: createTriggerNodeCode(),
 		},
 		{
-			name: 'trigger node (class name ends with Trigger) with usableAsTool set to true',
-			code: createTriggerNodeCode({ usableAsTool: true }),
-		},
-		{
 			name: "trigger node identified by group: ['trigger'] (class name does not end with Trigger) skips check",
 			code: createTriggerNodeCode({ className: 'TestCron' }),
 		},
 	],
 	invalid: [
+		{
+			name: 'trigger node (class name ends with Trigger) with usableAsTool set to true is forbidden',
+			code: createTriggerNodeCode({ usableAsTool: true }),
+			errors: [{ messageId: 'triggerUsableAsTool' }],
+		},
+		{
+			name: "trigger node identified by group: ['trigger'] with usableAsTool set to true is forbidden",
+			code: createTriggerNodeCode({ className: 'TestCron', usableAsTool: true }),
+			errors: [{ messageId: 'triggerUsableAsTool' }],
+		},
 		{
 			name: 'node missing usableAsTool property',
 			code: createNodeCode('missing'),
