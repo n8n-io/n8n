@@ -319,7 +319,15 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 				activeVersion: workflow.activeVersion ?? null,
 			});
 			workflowDocumentIsArchived.setIsArchived(workflow.isArchived ?? false);
-			workflowDocumentHomeProject.setHomeProject(workflow.homeProject ?? null);
+			// `GET /workflows/:id` only assembles `homeProject` when the sharing
+			// license is active; otherwise it returns the raw `shared` relation.
+			// Derive the owning project from `shared` so features that depend on it
+			// (e.g. the evaluations wizard) work regardless of the sharing license.
+			const homeProject =
+				workflow.homeProject ??
+				workflow.shared?.find((share) => share.role === 'workflow:owner')?.project ??
+				null;
+			workflowDocumentHomeProject.setHomeProject(homeProject);
 			workflowDocumentSharedWithProjects.setSharedWithProjects(workflow.sharedWithProjects ?? []);
 			workflowDocumentScopes.setScopes(workflow.scopes ?? []);
 			workflowDocumentTags.setTags(workflow.tags ?? []);

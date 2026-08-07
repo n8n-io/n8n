@@ -9,7 +9,7 @@ import type {
 import type { ILogInStatus } from '@/features/settings/users/users.types';
 import type { NodeViewItemSection } from '@/features/shared/nodeCreator/views/viewsData';
 import type { IUsedCredential } from '@/features/credentials/credentials.types';
-import type { Scope } from '@n8n/permissions';
+import type { Scope, WorkflowSharingRole } from '@n8n/permissions';
 import type { NodeCreatorTag, IconName, BinaryMetadata } from '@n8n/design-system';
 import type { ModalState } from '@n8n/frontend-module-sdk';
 import type {
@@ -284,6 +284,11 @@ export interface IWorkflowDb {
 	pinData?: IPinData;
 	sharedWithProjects?: ProjectSharingData[];
 	homeProject?: ProjectSharingData;
+	// Raw ownership relation returned by `GET /workflows/:id` only when the
+	// sharing license is inactive (the licensed path assembles `homeProject`
+	// instead). Kept so the client can derive `homeProject` from it — see the
+	// workflowDocument store hydration.
+	shared?: Array<{ role: WorkflowSharingRole; project: ProjectSharingData }>;
 	scopes?: Scope[];
 	versionId: string;
 	activeVersionId: string | null;
