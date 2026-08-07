@@ -19,7 +19,7 @@ export async function mondayComApiRequest(
 
 	let options: IRequestOptions = {
 		headers: {
-			'API-Version': '2023-10',
+			'API-Version': '2026-01',
 			'Content-Type': 'application/json',
 		},
 		method: 'POST',
