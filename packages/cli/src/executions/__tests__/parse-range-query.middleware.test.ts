@@ -141,6 +141,27 @@ describe('`parseRangeQuery` middleware', () => {
 			expect('test' in req.rangeQuery).toBe(false);
 			expect(nextFn).toBeCalledTimes(1);
 		});
+
+		// Workflow `tags` are not an executions filter — only `annotationTags` are.
+		// Pinned because the editor once mapped `tags` into this filter and it was
+		// silently dropped here; adding `tags` to the schema would revive a
+		// user-facing filter with no UI behind it.
+		test('should delete workflow `tags` while keeping `annotationTags`', () => {
+			const req = mock<ExecutionRequest.GetMany>({
+				query: {
+					filter: '{ "tags": ["t1"], "annotationTags": ["a1"] }',
+					limit: undefined,
+					firstId: undefined,
+					lastId: undefined,
+				},
+			});
+
+			parseRangeQuery(req, res, nextFn);
+
+			expect('tags' in req.rangeQuery).toBe(false);
+			expect(req.rangeQuery.annotationTags).toEqual(['a1']);
+			expect(nextFn).toBeCalledTimes(1);
+		});
 	});
 
 	describe('range', () => {
