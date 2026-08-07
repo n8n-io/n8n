@@ -8,7 +8,7 @@
  *   src/v2/components/Combobox/ → ../../node_modules/reka-ui/dist/index.js
  *   (resolves to src/v2/node_modules/…, which does not exist)
  *
- * Values and types are re-exported here so .vue files in this folder never
+ * Values and types are re-exported here so files in this folder never
  * import 'reka-ui' directly.
  */
 export {
@@ -26,4 +26,11 @@ export {
 	ComboboxTrigger,
 	ComboboxViewport,
 	useForwardPropsEmits,
+} from 'reka-ui';
+
+export type {
+	ComboboxContentProps,
+	ComboboxItemProps,
+	ComboboxRootEmits,
+	ComboboxRootProps,
 } from 'reka-ui';

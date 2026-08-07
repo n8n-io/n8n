@@ -1,24 +1,46 @@
+import type { ComboboxContentProps, ComboboxRootEmits, ComboboxRootProps } from './reka-ui';
 import type { IconName } from '../../../components/N8nIcon/icons';
 import type { InputSize } from '../../../components/N8nInput/Input.types';
-import type {
-	ComboboxContentProps,
-	ComboboxItemProps,
-	ComboboxRootEmits,
-	ComboboxRootProps,
-} from '../../utils/reka-ui';
 
-export type AcceptableValue = string | Record<string, unknown>;
+export type ComboboxValue = string;
 
-export type ComboboxProps = Omit<ComboboxRootProps<AcceptableValue>, 'dir' | 'openOnFocus'> &
+export type ComboboxOptionBase<TValue extends ComboboxValue = ComboboxValue> = {
+	type?: 'item';
+	value: TValue;
+	label: string;
+	icon?: IconName;
+	disabled?: boolean;
+	/**
+	 * String used for typeahead filtering. Defaults to `label`.
+	 * Set this when the filter text should differ from the displayed label
+	 * (e.g. include synonyms or a slot-rendered label).
+	 */
+	textValue?: string;
+};
+
+export type ComboboxLabelItem = {
+	type: 'label';
+	label: string;
+};
+
+export type ComboboxSeparatorItem = {
+	type: 'separator';
+};
+
+export type ComboboxStructuralItem = ComboboxLabelItem | ComboboxSeparatorItem;
+
+export type ComboboxItem<TValue extends ComboboxValue = ComboboxValue> =
+	| ComboboxOptionBase<TValue>
+	| ComboboxStructuralItem;
+
+export type ComboboxProps = Omit<ComboboxRootProps<ComboboxValue>, 'dir' | 'openOnFocus'> &
 	Pick<ComboboxContentProps, 'side' | 'sideOffset' | 'align'> & {
 		size?: ComboboxSizes;
 		icon?: IconName;
 		placeholder?: string;
 		autoFocus?: boolean;
 		emptyText?: string;
-		valueKey?: string;
-		labelKey?: string;
-		items?: Array<ComboboxItem | Record<string, unknown>>;
+		items?: ComboboxItem[];
 		contentClass?: string;
 		id?: string;
 		clearable?: boolean;
@@ -26,50 +48,25 @@ export type ComboboxProps = Omit<ComboboxRootProps<AcceptableValue>, 'dir' | 'op
 		portalTarget?: string | HTMLElement;
 	};
 
-export type ComboboxEmits = ComboboxRootEmits<AcceptableValue | AcceptableValue[] | undefined>;
-
-type ComboboxListItemBase = Omit<ComboboxItemProps, 'value'> & {
-	label?: string;
-	icon?: IconName;
-};
-
-export type ComboboxLabelItem = ComboboxListItemBase & {
-	type: 'label';
-	label: string;
-	value?: AcceptableValue;
-};
-
-export type ComboboxSeparatorItem = ComboboxListItemBase & {
-	type: 'separator';
-	value?: AcceptableValue;
-};
-
-export type ComboboxOptionItem = ComboboxListItemBase & {
-	type?: 'item';
-	value: AcceptableValue;
-};
-
-export type ComboboxListItem = ComboboxLabelItem | ComboboxSeparatorItem | ComboboxOptionItem;
-
-export type ComboboxItem = string | ComboboxListItem;
+export type ComboboxEmits = ComboboxRootEmits<ComboboxValue | ComboboxValue[] | undefined>;
 
 export type ComboboxSizes = InputSize;
 
 type ComboboxItemUi = { class: string };
 
-type SlotProps = (props: { item: ComboboxListItem; ui: ComboboxItemUi }) => unknown;
+type SlotProps = (props: { item: ComboboxOptionBase; ui: ComboboxItemUi }) => unknown;
 
 export type ComboboxItemSlots = {
 	['item-leading']?: SlotProps;
-	['item-label']?: (props: { item: ComboboxListItem }) => unknown;
+	['item-label']?: (props: { item: ComboboxOptionBase }) => unknown;
 	['item-trailing']?: SlotProps;
 };
 
 export type ComboboxSlots = {
-	item?: (props: { item: ComboboxListItem }) => unknown;
-	label?: (props: { item: ComboboxListItem }) => unknown;
+	item?: (props: { item: ComboboxOptionBase }) => unknown;
+	label?: (props: { item: ComboboxLabelItem }) => unknown;
 	['item-leading']?: SlotProps;
-	['item-label']?: (props: { item: ComboboxListItem }) => unknown;
+	['item-label']?: (props: { item: ComboboxOptionBase }) => unknown;
 	['item-trailing']?: SlotProps;
 	header?: () => unknown;
 	footer?: () => unknown;

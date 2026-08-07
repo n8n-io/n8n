@@ -39,10 +39,8 @@ Items with `type: 'label'` start a new `ComboboxGroup`. That keeps each heading�
 - `emptyText?: string` — Shown when filtering returns no matches | `default: t('combobox.emptyText')`
 - `autoFocus?: boolean` — Focus the input on mount
 - `items?: ComboboxItem[]` — Array of options to render (see [Item shapes](#item-shapes) below)
-- `valueKey?: string` — When `items` is an array of objects, field to use as the value | `default: 'value'`
-- `labelKey?: string` — When `items` is an array of objects, field to use as the label | `default: 'label'`
-- `defaultValue?: AcceptableValue | AcceptableValue[]` — Initial value when uncontrolled
-- `modelValue?: AcceptableValue | AcceptableValue[]` — Controlled value. Bind with `v-model`
+- `defaultValue?: ComboboxValue | ComboboxValue[]` — Initial value when uncontrolled
+- `modelValue?: ComboboxValue | ComboboxValue[]` — Controlled value. Bind with `v-model`
 - `multiple?: boolean` — Allow selecting multiple options. Selected values render as removable tags via embedded `N8nTagsInput2` (search input stays empty; filtering still works while typing)
 - `open?: boolean` — Controlled open state. Bind with `v-model:open`
 - `defaultOpen?: boolean` — Initial open state when uncontrolled
@@ -76,9 +74,9 @@ The dropdown content defaults to a max height of **500px** with vertical scrolli
 
 **Events**
 
-- `update:modelValue(value: AcceptableValue | AcceptableValue[])` — For single selection, clearing emits `undefined`. For multiple selection, clearing emits `[]`.
+- `update:modelValue(value: ComboboxValue | ComboboxValue[])` — For single selection, clearing emits `undefined`. For multiple selection, clearing emits `[]`.
 - `update:open(value: boolean)`
-- `highlight(payload: { ref: HTMLElement; value: AcceptableValue } | undefined)` — reka-ui root
+- `highlight(payload: { ref: HTMLElement; value: ComboboxValue } | undefined)` — reka-ui root
 
 **Exposed**
 
@@ -90,54 +88,66 @@ Non-prop attributes (e.g. `aria-label`, `data-test-id`) fall through to `Combobo
 
 **Slots**
 
-- `item`: `{ item: ComboboxListItem }` — Replace the default item renderer
-- `item-leading`: `{ item: ComboboxListItem; ui: { class: string } }`
-- `item-label`: `{ item: ComboboxListItem }`
-- `item-trailing`: `{ item: ComboboxListItem; ui: { class: string } }`
-- `label`: `{ item: ComboboxListItem }` — Section heading for `type: 'label'` items
+- `item`: `{ item: ComboboxOptionBase }` — Replace the default item renderer
+- `item-leading`: `{ item: ComboboxOptionBase; ui: { class: string } }`
+- `item-label`: `{ item: ComboboxOptionBase }`
+- `item-trailing`: `{ item: ComboboxOptionBase; ui: { class: string } }`
+- `label`: `{ item: ComboboxLabelItem }` — Section heading for `type: 'label'` items
 - `header`: `()` — Content above the scrollable list
 - `footer`: `()` — Content below the scrollable list
 
 ### Item shapes
 
-`ComboboxItem` is either a primitive value or an object:
+Selectable items must include a non-empty `label` and `value`. Map source data at the call site; the component does not support `valueKey` / `labelKey` or primitive string items.
 
 ```typescript
-type AcceptableValue = string | Record<string, unknown>;
+type ComboboxValue = string;
 
-type ComboboxListItem =
+type ComboboxOptionBase<TValue extends ComboboxValue = ComboboxValue> = {
+  type?: 'item';
+  value: TValue; // required — must not be ''
+  label: string; // required
+  icon?: IconName;
+  disabled?: boolean;
+  textValue?: string;
+};
+
+type ComboboxItem =
+  | ComboboxOptionBase
   | { type: 'label'; label: string }
-  | { type: 'separator' }
-  | {
-      type?: 'item'; // omit for selectable items
-      value: AcceptableValue; // required — must not be ''
-      label?: string;
-      icon?: IconName;
-      disabled?: boolean;
-    };
-
-type ComboboxItem = string | ComboboxListItem;
+  | { type: 'separator' };
 ```
 
-- **Primitive items** (e.g. `'Todo'`) — value and label are the same string; `modelValue` is the primitive.
-- **Object items** (e.g. `{ label: 'Option 1', value: 'option1' }`) — `modelValue` stores the value field; the input displays the label. Selectable objects must resolve a non-empty `value` (or the field named by `valueKey`). Missing/empty values are skipped with a console warning — they are never coerced to `''` (reka forbids that and would kill the dropdown).
+Consumers that need extra fields can extend the base type:
+
+```typescript
+interface CustomOption extends ComboboxOptionBase<string> {
+  description: string;
+}
+```
+
+- **Object items** (e.g. `{ label: 'Option 1', value: 'option1' }`) — `modelValue` stores `value`; the input displays `label`. Missing/empty `value` or `label` are skipped with a console warning — empty string values are never passed to reka (they would kill the dropdown).
 - **Labels** — `{ type: 'label', label: 'Fruits' }` — non-interactive section heading.
 - **Separators** — `{ type: 'separator' }` — non-interactive divider between groups.
-- **Custom keys** — `{ id: '1', name: 'Alpha' }` with `value-key="id"` and `label-key="name"` is supported on the `items` prop without a `value` field.
 
 Object items may also include an `icon` property. When no custom `#item-leading` slot is provided, icons on items are rendered automatically. The same `#item-leading` slot (or default icon) is also used for the selected value in the trigger.
 
 ### Template usage examples
 
-**String items**
+**Object items**
 
 ```vue
 <script setup lang="ts">
 import { ref } from 'vue';
 import { N8nCombobox2 } from '@n8n/design-system';
 
-const items = ref(['Backlog', 'Todo', 'In Progress', 'Done']);
-const value = ref('Backlog');
+const items = ref([
+  { label: 'Backlog', value: 'backlog' },
+  { label: 'Todo', value: 'todo' },
+  { label: 'In Progress', value: 'in_progress' },
+  { label: 'Done', value: 'done' },
+]);
+const value = ref('backlog');
 </script>
 
 <template>
@@ -223,8 +233,12 @@ const open = ref(false);
 import { ref } from 'vue';
 import { N8nCombobox2 } from '@n8n/design-system';
 
-const items = ['Option 1', 'Option 2', 'Option 3'];
-const value = ref<string | undefined>('Option 1');
+const items = [
+  { label: 'Option 1', value: 'option1' },
+  { label: 'Option 2', value: 'option2' },
+  { label: 'Option 3', value: 'option3' },
+];
+const value = ref<string | undefined>('option1');
 </script>
 
 <template>

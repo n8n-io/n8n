@@ -3,20 +3,20 @@ import { useCssModule } from 'vue';
 
 import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
 
-import type { ComboboxItemSlots, ComboboxListItem } from './Combobox.types';
+import type { ComboboxItemSlots, ComboboxOptionBase } from './Combobox.types';
 import { ComboboxItem, ComboboxItemIndicator } from './reka-ui';
 
 defineOptions({ inheritAttrs: false });
 
 defineSlots<ComboboxItemSlots>();
 
-const props = defineProps<ComboboxListItem>();
+const props = defineProps<ComboboxOptionBase>();
 const $style = useCssModule();
 </script>
 
 <template>
 	<ComboboxItem
-		v-if="props.value !== undefined && props.value !== null && props.value !== ''"
+		v-if="props.value !== ''"
 		:class="$style.root"
 		:disabled="props.disabled"
 		:value="props.value"

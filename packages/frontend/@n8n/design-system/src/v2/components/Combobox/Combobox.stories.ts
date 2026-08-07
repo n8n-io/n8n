@@ -3,14 +3,19 @@ import { ref } from 'vue';
 
 import N8nIcon from '@n8n/design-system/components/N8nIcon/Icon.vue';
 
-import type { ComboboxItem as ComboboxItemType, ComboboxListItem } from './Combobox.types';
+import type { ComboboxItem as ComboboxItemType } from './Combobox.types';
 import Combobox from './Combobox.vue';
 
 type GenericMeta<C> = Omit<Meta<C>, 'component'> & {
 	component: Record<keyof C, unknown>;
 };
 
-const statusItems = ['Backlog', 'Todo', 'In Progress', 'Done'];
+const statusItems = [
+	{ label: 'Backlog', value: 'Backlog' },
+	{ label: 'Todo', value: 'Todo' },
+	{ label: 'In Progress', value: 'In Progress' },
+	{ label: 'Done', value: 'Done' },
+];
 
 const objectItems: ComboboxItemType[] = [
 	{ label: 'Option 1', value: 'option1' },
@@ -61,9 +66,7 @@ const fruitItems: ComboboxItemType[] = [
 	{ label: 'Tangerine', value: 'tangerine' },
 ];
 
-type ObjectComboboxItem = ComboboxListItem;
-
-const iconItems: ObjectComboboxItem[] = [
+const iconItems: ComboboxItemType[] = [
 	{
 		value: 'system',
 		label: 'System Default',
@@ -130,7 +133,7 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Items = {
-	name: 'String items',
+	name: 'Items',
 	render: (args) => ({
 		components: { Combobox },
 		setup() {
@@ -145,34 +148,6 @@ export const Items = {
 	}),
 	args: {
 		items: statusItems,
-		modelValue: undefined,
-	},
-	parameters: {
-		docs: {
-			description: {
-				story:
-					'Items as a plain string array. Each string is used as both the label and the value.',
-			},
-		},
-	},
-} satisfies Story;
-
-export const ObjectItems = {
-	name: 'Object items',
-	render: (args) => ({
-		components: { Combobox },
-		setup() {
-			const value = ref(args.modelValue);
-			return { args, value };
-		},
-		template: `
-		<div style="${storyContainerStyle}">
-			<Combobox v-bind="args" v-model="value" />
-		</div>
-		`,
-	}),
-	args: {
-		items: objectItems,
 		modelValue: undefined,
 	},
 	parameters: {

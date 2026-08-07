@@ -1,20 +1,21 @@
 <script setup lang="ts">
-import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
-import { useI18n } from '@n8n/design-system/composables/useI18n';
-import { get } from '@n8n/design-system/v2/utils';
-import { isRecord } from '@n8n/utils/is-record';
 import { reactivePick } from '@vueuse/core';
 import { computed, nextTick, useCssModule, useTemplateRef } from 'vue';
 
+import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
+import { useI18n } from '@n8n/design-system/composables/useI18n';
+
 import { N8nTagsInput2, TagsInputInput, type TagsInputValue } from '../TagsInput';
 import type {
-	AcceptableValue,
 	ComboboxEmits,
 	ComboboxItem,
-	ComboboxListItem,
+	ComboboxLabelItem,
+	ComboboxOptionBase,
 	ComboboxProps,
+	ComboboxSeparatorItem,
 	ComboboxSizes,
 	ComboboxSlots,
+	ComboboxValue,
 } from './Combobox.types';
 import N8nComboboxItem from './ComboboxItem.vue';
 import {
@@ -41,8 +42,6 @@ const props = withDefaults(defineProps<ComboboxProps>(), {
 	side: 'bottom',
 	sideOffset: 4,
 	align: 'start',
-	valueKey: 'value',
-	labelKey: 'label',
 	clearable: false,
 	teleported: true,
 });
@@ -70,18 +69,25 @@ const rootProps = useForwardPropsEmits(
 	emit,
 );
 
-function isPrimitiveComboboxValue(item: ComboboxItem | Record<string, unknown>): item is string {
-	return typeof item === 'string';
+function isStructuralItem(item: ComboboxItem): item is ComboboxLabelItem | ComboboxSeparatorItem {
+	return item.type === 'label' || item.type === 'separator';
 }
 
-function isStructuralItem(
-	item: ComboboxItem | Record<string, unknown>,
-): item is ComboboxListItem & { type: 'label' | 'separator' } {
-	return isRecord(item) && (item.type === 'label' || item.type === 'separator');
+function isOptionItem(item: ComboboxItem): item is ComboboxOptionBase {
+	return !isStructuralItem(item);
 }
 
-function hasResolvableValue(value: AcceptableValue | undefined | null): value is AcceptableValue {
-	return value !== undefined && value !== null && value !== '';
+function hasResolvableValue(value: ComboboxValue): boolean {
+	return value !== '';
+}
+
+function warnInvalidItem(message: string, item: unknown) {
+	if (!import.meta.env.DEV) {
+		return;
+	}
+
+	// eslint-disable-next-line no-console
+	console.warn(`[N8nCombobox2] ${message}`, item);
 }
 
 const anchorRef = useTemplateRef<InstanceType<typeof ComboboxAnchor>>('anchor');
@@ -103,45 +109,37 @@ const sizes: Record<ComboboxSizes, string> = {
 
 const sizeClass = computed(() => sizes[props.size]);
 
-const groups = computed<ComboboxListItem[]>(() => {
+const groups = computed<ComboboxItem[]>(() => {
 	if (!props.items?.length) return [];
 
-	const result: ComboboxListItem[] = [];
+	const result: ComboboxItem[] = [];
 
 	for (const item of props.items) {
-		if (isPrimitiveComboboxValue(item)) {
-			result.push({
-				value: item,
-				label: item,
-				textValue: item,
-			});
-			continue;
-		}
-
-		if (isStructuralItem(item)) {
-			if (item.type === 'label') {
-				const label = get<string>(item, props.labelKey) ?? item.label;
-				if (!label) {
-					console.warn(
-						'[N8nCombobox2] Skipping label item: "' + props.labelKey + '" is missing.',
-						item,
-					);
-					continue;
-				}
-				result.push({ ...item, type: 'label', label });
+		if (item.type === 'label') {
+			if (!item.label) {
+				warnInvalidItem('Skipping label item: "label" is missing or empty.', item);
 				continue;
 			}
-
-			result.push({ ...item, type: 'separator' });
+			result.push(item);
 			continue;
 		}
 
-		const value = get<AcceptableValue>(item, props.valueKey);
-		if (!hasResolvableValue(value)) {
-			console.warn(
-				'[N8nCombobox2] Skipping item: "' +
-					props.valueKey +
-					'" is missing or empty. Every selectable item needs a non-empty value (check valueKey / item shape).',
+		if (item.type === 'separator') {
+			result.push(item);
+			continue;
+		}
+
+		if (!hasResolvableValue(item.value)) {
+			warnInvalidItem(
+				'Skipping item: "value" is missing or empty. Every selectable item needs a non-empty value.',
+				item,
+			);
+			continue;
+		}
+
+		if (!item.label) {
+			warnInvalidItem(
+				'Skipping item: "label" is missing or empty. Every selectable item needs a label.',
 				item,
 			);
 			continue;
@@ -149,9 +147,7 @@ const groups = computed<ComboboxListItem[]>(() => {
 
 		result.push({
 			...item,
-			value,
-			label: get<string>(item, props.labelKey),
-			textValue: get<string>(item, props.labelKey),
+			textValue: item.textValue ?? item.label,
 		});
 	}
 
@@ -159,8 +155,8 @@ const groups = computed<ComboboxListItem[]>(() => {
 });
 
 type ComboboxSection = {
-	label?: ComboboxListItem;
-	items: ComboboxListItem[];
+	label?: ComboboxLabelItem;
+	items: Array<ComboboxOptionBase | ComboboxSeparatorItem>;
 };
 
 const sections = computed<ComboboxSection[]>(() => {
@@ -196,14 +192,10 @@ function getDisplayValue(value: unknown): string {
 	}
 
 	const matchedItem = groups.value.find(
-		(item) => item.type !== 'label' && item.type !== 'separator' && item.value === value,
+		(item): item is ComboboxOptionBase => isOptionItem(item) && item.value === value,
 	);
-	if (matchedItem?.label !== undefined) {
+	if (matchedItem) {
 		return matchedItem.label;
-	}
-
-	if (isRecord(value)) {
-		return String(get(value, props.labelKey) ?? '');
 	}
 
 	if (typeof value === 'string') {
@@ -217,7 +209,7 @@ function getTagLabel(value: TagsInputValue): string {
 	return getDisplayValue(value);
 }
 
-const selectedTags = computed<TagsInputValue[]>(() => {
+const selectedTags = computed(() => {
 	if (!props.multiple || !Array.isArray(props.modelValue)) {
 		return [];
 	}
@@ -248,7 +240,7 @@ const selectedItem = computed(() => {
 	}
 
 	return groups.value.find(
-		(item) => item.type !== 'label' && item.type !== 'separator' && item.value === modelValue,
+		(item): item is ComboboxOptionBase => isOptionItem(item) && item.value === modelValue,
 	);
 });
 
@@ -270,7 +262,13 @@ function onClear() {
 }
 
 function onTagsUpdate(value: TagsInputValue[]) {
-	emit('update:modelValue', value);
+	const nextValue: ComboboxValue[] = [];
+	for (const tag of value) {
+		if (typeof tag === 'string') {
+			nextValue.push(tag);
+		}
+	}
+	emit('update:modelValue', nextValue);
 }
 </script>
 
@@ -404,6 +402,7 @@ function onTagsUpdate(value: TagsInputValue[]) {
 							<ComboboxSeparator
 								v-if="item.type === 'separator'"
 								:class="$style.comboboxSeparator"
+								aria-hidden="true"
 							/>
 
 							<slot v-else name="item" :item="item">

@@ -30,16 +30,19 @@ export { default as N8nTree2 } from './v2/components/Tree/Tree.vue';
 export type * from './v2/components/Tree/Tree.types';
 export { default as N8nCombobox2 } from './v2/components/Combobox/Combobox.vue';
 export { default as N8nCombobox2Item } from './v2/components/Combobox/ComboboxItem.vue';
-export type { AcceptableValue } from './v2/components/Combobox/Combobox.types';
 export type { ComboboxItemProps } from 'reka-ui';
 export type {
 	ComboboxEmits,
 	ComboboxItem,
 	ComboboxItemSlots,
-	ComboboxListItem,
+	ComboboxLabelItem,
+	ComboboxOptionBase,
 	ComboboxProps,
+	ComboboxSeparatorItem,
 	ComboboxSizes,
 	ComboboxSlots,
+	ComboboxStructuralItem,
+	ComboboxValue,
 } from './v2/components/Combobox/Combobox.types';
 export { default as N8nTagsInput2 } from './v2/components/TagsInput/TagsInput.vue';
 export {

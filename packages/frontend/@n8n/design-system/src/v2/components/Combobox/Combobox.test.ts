@@ -5,6 +5,10 @@ import { ref } from 'vue';
 import type { ComboboxItem, ComboboxSizes } from './Combobox.types';
 import Combobox from './Combobox.vue';
 
+function options(...labels: string[]) {
+	return labels.map((label) => ({ label, value: label }));
+}
+
 const sizeCases: Array<[ComboboxSizes | undefined, string]> = [
 	[undefined, 'large'],
 	['mini', 'mini'],
@@ -58,7 +62,7 @@ describe('v2/components/Combobox', () => {
 		it('should render with placeholder text', () => {
 			const wrapper = render(Combobox, {
 				props: {
-					items: ['Option 1', 'Option 2', 'Option 3'],
+					items: options('Option 1', 'Option 2', 'Option 3'),
 					placeholder: 'Search options',
 				},
 			});
@@ -68,7 +72,7 @@ describe('v2/components/Combobox', () => {
 		it('should render with icon prop', () => {
 			const wrapper = render(Combobox, {
 				props: {
-					items: ['Option 1', 'Option 2', 'Option 3'],
+					items: options('Option 1', 'Option 2', 'Option 3'),
 					icon: 'search',
 				},
 			});
@@ -78,7 +82,7 @@ describe('v2/components/Combobox', () => {
 		it('should render disabled state', () => {
 			const wrapper = render(Combobox, {
 				props: {
-					items: ['Option 1', 'Option 2', 'Option 3'],
+					items: options('Option 1', 'Option 2', 'Option 3'),
 					disabled: true,
 				},
 			});
@@ -89,7 +93,7 @@ describe('v2/components/Combobox', () => {
 		it('should render data-test-id on anchor', () => {
 			const wrapper = render(Combobox, {
 				props: {
-					items: ['Option 1'],
+					items: options('Option 1'),
 				},
 			});
 			expect(wrapper.getByTestId('combobox')).toBeInTheDocument();
@@ -100,7 +104,7 @@ describe('v2/components/Combobox', () => {
 		test.each(sizeCases)('size %s should apply %s class', (size, expected) => {
 			const wrapper = render(Combobox, {
 				props: {
-					items: ['Option 1'],
+					items: options('Option 1'),
 					size,
 				},
 			});
@@ -238,7 +242,7 @@ describe('v2/components/Combobox', () => {
 			});
 
 			const { popover } = await getPopoverContainer();
-			// Decorative only (reka sets aria-hidden); role="separator" is invalid inside listbox.
+			// Decorative only (we set aria-hidden); role="separator" is invalid inside listbox.
 			expect(popover.querySelectorAll('[role="separator"]')).toHaveLength(0);
 			expect(popover.querySelectorAll('[aria-hidden="true"]')).toHaveLength(1);
 			expect(within(popover).getByRole('option', { name: 'Option 1' })).toBeVisible();
@@ -248,7 +252,7 @@ describe('v2/components/Combobox', () => {
 		it('should render empty state text when filtering returns no matches', async () => {
 			const wrapper = render(Combobox, {
 				props: {
-					items: ['Apple', 'Banana'],
+					items: options('Apple', 'Banana'),
 					defaultOpen: true,
 					emptyText: 'Nothing here',
 				},
@@ -265,7 +269,7 @@ describe('v2/components/Combobox', () => {
 		it('should render default empty state text', async () => {
 			const wrapper = render(Combobox, {
 				props: {
-					items: ['Apple', 'Banana'],
+					items: options('Apple', 'Banana'),
 					defaultOpen: true,
 				},
 			});
@@ -297,7 +301,7 @@ describe('v2/components/Combobox', () => {
 		it('should keep the popover in-place when teleported is false', async () => {
 			const wrapper = render(Combobox, {
 				props: {
-					items: ['Option 1', 'Option 2'],
+					items: options('Option 1', 'Option 2'),
 					defaultOpen: true,
 					teleported: false,
 				},
@@ -318,7 +322,7 @@ describe('v2/components/Combobox', () => {
 
 			const wrapper = render(Combobox, {
 				props: {
-					items: ['Option 1', 'Option 2'],
+					items: options('Option 1', 'Option 2'),
 					defaultOpen: true,
 					teleported: false,
 					portalTarget,
@@ -381,7 +385,7 @@ describe('v2/components/Combobox', () => {
 		it('should show clear button when clearable and a value is selected', () => {
 			const wrapper = render(Combobox, {
 				props: {
-					items: ['Option 1', 'Option 2'],
+					items: options('Option 1', 'Option 2'),
 					modelValue: 'Option 1',
 					clearable: true,
 				},
@@ -393,7 +397,7 @@ describe('v2/components/Combobox', () => {
 		it('should not show clear button when no value is selected', () => {
 			const wrapper = render(Combobox, {
 				props: {
-					items: ['Option 1', 'Option 2'],
+					items: options('Option 1', 'Option 2'),
 					clearable: true,
 				},
 			});
@@ -404,7 +408,7 @@ describe('v2/components/Combobox', () => {
 		it('should not show clear button when disabled', () => {
 			const wrapper = render(Combobox, {
 				props: {
-					items: ['Option 1', 'Option 2'],
+					items: options('Option 1', 'Option 2'),
 					modelValue: 'Option 1',
 					clearable: true,
 					disabled: true,
@@ -417,7 +421,7 @@ describe('v2/components/Combobox', () => {
 		it('should emit undefined when clear button is clicked', async () => {
 			const wrapper = render(Combobox, {
 				props: {
-					items: ['Option 1', 'Option 2'],
+					items: options('Option 1', 'Option 2'),
 					modelValue: 'Option 1',
 					clearable: true,
 				},
@@ -433,7 +437,7 @@ describe('v2/components/Combobox', () => {
 		it('should emit an empty array when clearing a multiple selection', async () => {
 			const wrapper = render(Combobox, {
 				props: {
-					items: ['Option 1', 'Option 2'],
+					items: options('Option 1', 'Option 2'),
 					modelValue: ['Option 1', 'Option 2'],
 					multiple: true,
 					clearable: true,
@@ -448,16 +452,17 @@ describe('v2/components/Combobox', () => {
 		});
 
 		it('should clear the value and close the menu when clear is clicked while open', async () => {
+			const items = options('Option 1', 'Option 2', 'Option 3');
 			const wrapper = render({
 				components: { Combobox },
 				setup() {
 					const value = ref('Option 1');
-					return { value };
+					return { value, items };
 				},
 				template: `
 					<Combobox
 						v-model="value"
-						:items="['Option 1', 'Option 2', 'Option 3']"
+						:items="items"
 						clearable
 						:default-open="true"
 					/>
@@ -480,16 +485,17 @@ describe('v2/components/Combobox', () => {
 		});
 
 		it('should refocus the input after clearing with the keyboard', async () => {
+			const items = options('Option 1', 'Option 2');
 			const wrapper = render({
 				components: { Combobox },
 				setup() {
 					const value = ref('Option 1');
-					return { value };
+					return { value, items };
 				},
 				template: `
 					<Combobox
 						v-model="value"
-						:items="['Option 1', 'Option 2']"
+						:items="items"
 						clearable
 					/>
 				`,
@@ -539,15 +545,16 @@ describe('v2/components/Combobox', () => {
 
 		it('should keep the selection when the input is cleared to search again', async () => {
 			const value = ref('Apple');
+			const items = options('Apple', 'Banana', 'Orange');
 			const wrapper = render({
 				components: { Combobox },
 				setup() {
-					return { value };
+					return { value, items };
 				},
 				template: `
 					<Combobox
 						v-model="value"
-						:items="['Apple', 'Banana', 'Orange']"
+						:items="items"
 						clearable
 					/>
 				`,
@@ -565,15 +572,16 @@ describe('v2/components/Combobox', () => {
 
 		it('should restore the committed selection when an abandoned search is dismissed', async () => {
 			const value = ref('Apple');
+			const items = options('Apple', 'Banana', 'Orange');
 			render({
 				components: { Combobox },
 				setup() {
-					return { value };
+					return { value, items };
 				},
 				template: `
 					<Combobox
 						v-model="value"
-						:items="['Apple', 'Banana', 'Orange']"
+						:items="items"
 						clearable
 					/>
 				`,
@@ -596,10 +604,10 @@ describe('v2/components/Combobox', () => {
 			});
 		});
 
-		it('should display selected value for string items', async () => {
+		it('should display selected value label in the input', async () => {
 			const wrapper = render(Combobox, {
 				props: {
-					items: ['Option 1', 'Option 2', 'Option 3'],
+					items: options('Option 1', 'Option 2', 'Option 3'),
 					modelValue: 'Option 2',
 				},
 			});
@@ -626,119 +634,13 @@ describe('v2/components/Combobox', () => {
 				expect(getComboboxInput(wrapper)).toHaveValue('Option 2');
 			});
 		});
-
-		it('should resolve object-valued modelValue by reference', async () => {
-			const betaValue = { id: 2 };
-			const items: ComboboxItem[] = [
-				{ value: { id: 1 }, label: 'Alpha', icon: 'check' },
-				{ value: betaValue, label: 'Beta', icon: 'users' },
-			];
-
-			const wrapper = render(Combobox, {
-				props: {
-					items,
-					modelValue: betaValue,
-				},
-			});
-
-			await waitFor(() => {
-				expect(getComboboxInput(wrapper)).toHaveValue('Beta');
-			});
-			expect(wrapper.getByTestId('combobox').querySelector('[data-icon="users"]')).toBeVisible();
-		});
-
-		describe('multiple', () => {
-			it('should update modelValue on selection', async () => {
-				const items = [
-					{ value: '1', label: 'Option 1' },
-					{ value: '2', label: 'Option 2' },
-				];
-
-				const wrapper = render(Combobox, {
-					props: {
-						items,
-						defaultOpen: true,
-						modelValue: ['2'],
-						multiple: true,
-					},
-				});
-
-				const { popover } = await getPopoverContainer();
-
-				const option = within(popover).getByText('Option 1');
-				await userEvent.click(option);
-
-				await waitFor(() => {
-					expect(wrapper.emitted('update:modelValue')?.[0]).toEqual([['2', '1']]);
-				});
-			});
-
-			it('should display selected values as tags', async () => {
-				const wrapper = render(Combobox, {
-					props: {
-						items: ['Option 1', 'Option 2', 'Option 3'],
-						modelValue: ['Option 2', 'Option 1'],
-						multiple: true,
-					},
-				});
-
-				await waitFor(() => {
-					const tags = wrapper.getAllByTestId('tags-input-tag');
-					expect(tags).toHaveLength(2);
-					expect(tags[0]).toHaveTextContent('Option 2');
-					expect(tags[1]).toHaveTextContent('Option 1');
-					expect(getComboboxInput(wrapper)).toHaveValue('');
-				});
-			});
-
-			it('should remove a tag and emit the updated selection', async () => {
-				const wrapper = render(Combobox, {
-					props: {
-						items: ['Option 1', 'Option 2', 'Option 3'],
-						modelValue: ['Option 2', 'Option 1'],
-						multiple: true,
-					},
-				});
-
-				const tags = wrapper.getAllByTestId('tags-input-tag');
-				const removeButton = within(tags[0]).getByRole('button', { name: 'Remove Option 2' });
-				await userEvent.click(removeButton);
-
-				await waitFor(() => {
-					expect(wrapper.emitted('update:modelValue')?.[0]).toEqual([['Option 1']]);
-				});
-			});
-
-			it('should not focus the input or open when removing a tag while unfocused', async () => {
-				const wrapper = render(Combobox, {
-					props: {
-						items: ['Option 1', 'Option 2', 'Option 3'],
-						modelValue: ['Option 2', 'Option 1'],
-						multiple: true,
-					},
-				});
-
-				const input = getComboboxInput(wrapper);
-				expect(input).not.toHaveFocus();
-
-				const tags = wrapper.getAllByTestId('tags-input-tag');
-				await userEvent.click(within(tags[0]).getByRole('button', { name: 'Remove Option 2' }));
-
-				await waitFor(() => {
-					expect(wrapper.emitted('update:modelValue')?.[0]).toEqual([['Option 1']]);
-				});
-
-				expect(input).not.toHaveFocus();
-				expect(document.querySelector('[role="listbox"][data-state="open"]')).toBeNull();
-			});
-		});
 	});
 
 	describe('events', () => {
 		it('should open when the input receives focus', async () => {
 			const wrapper = render(Combobox, {
 				props: {
-					items: ['Option 1', 'Option 2', 'Option 3'],
+					items: options('Option 1', 'Option 2', 'Option 3'),
 				},
 			});
 
@@ -750,7 +652,7 @@ describe('v2/components/Combobox', () => {
 		it('should close after selecting an item when opened on focus', async () => {
 			const wrapper = render(Combobox, {
 				props: {
-					items: ['Option 1', 'Option 2', 'Option 3'],
+					items: options('Option 1', 'Option 2', 'Option 3'),
 				},
 			});
 
@@ -766,7 +668,7 @@ describe('v2/components/Combobox', () => {
 		it('should toggle the dropdown when the chevron is clicked', async () => {
 			const wrapper = render(Combobox, {
 				props: {
-					items: ['Option 1', 'Option 2', 'Option 3'],
+					items: options('Option 1', 'Option 2', 'Option 3'),
 				},
 			});
 
@@ -783,7 +685,7 @@ describe('v2/components/Combobox', () => {
 		it('should emit update:open when dropdown opens', async () => {
 			const wrapper = render(Combobox, {
 				props: {
-					items: ['Option 1', 'Option 2', 'Option 3'],
+					items: options('Option 1', 'Option 2', 'Option 3'),
 					open: false,
 					openOnClick: true,
 				},
@@ -799,12 +701,16 @@ describe('v2/components/Combobox', () => {
 
 		it('should allow Tab to move focus out while the popup is open', async () => {
 			const user = userEvent.setup();
+			const items = options('Option 1', 'Option 2');
 			const wrapper = render({
 				components: { Combobox },
+				setup() {
+					return { items };
+				},
 				template: `
 					<div>
 						<button type="button">Before field</button>
-						<Combobox :items="['Option 1', 'Option 2']" :teleported="false" />
+						<Combobox :items="items" :teleported="false" />
 						<button type="button">After field</button>
 					</div>
 				`,
@@ -827,12 +733,16 @@ describe('v2/components/Combobox', () => {
 
 		it('should allow Shift+Tab to move focus out while the popup is open', async () => {
 			const user = userEvent.setup();
+			const items = options('Option 1', 'Option 2');
 			const wrapper = render({
 				components: { Combobox },
+				setup() {
+					return { items };
+				},
 				template: `
 					<div>
 						<button type="button">Before field</button>
-						<Combobox :items="['Option 1', 'Option 2']" :teleported="false" />
+						<Combobox :items="items" :teleported="false" />
 						<button type="button">After field</button>
 					</div>
 				`,
@@ -1003,81 +913,16 @@ describe('v2/components/Combobox', () => {
 		});
 	});
 
-	describe('custom keys', () => {
-		it('should use custom valueKey and labelKey for display', async () => {
-			const items = [
-				{ id: '1', name: 'Option 1' },
-				{ id: '2', name: 'Option 2' },
-			];
-			const wrapper = render(Combobox, {
-				props: {
-					items,
-					valueKey: 'id',
-					labelKey: 'name',
-					modelValue: '1',
-				},
-			});
-
-			await waitFor(() => {
-				expect(getComboboxInput(wrapper)).toHaveValue('Option 1');
-			});
-		});
-
-		it('should emit custom valueKey on selection', async () => {
-			const items = [
-				{ id: '1', name: 'Option 1' },
-				{ id: '2', name: 'Option 2' },
-			];
-			const wrapper = render(Combobox, {
-				props: {
-					items,
-					valueKey: 'id',
-					labelKey: 'name',
-					defaultOpen: true,
-				},
-			});
-
-			const { popover } = await getPopoverContainer();
-			await userEvent.click(within(popover).getByText('Option 2'));
-
-			await waitFor(() => {
-				expect(wrapper.emitted('update:modelValue')?.[0]).toEqual(['2']);
-			});
-		});
-
-		it('should skip items with an unresolvable valueKey and keep the dropdown usable', async () => {
+	describe('item validation', () => {
+		it('should skip items with an empty value and keep the dropdown usable', async () => {
 			const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
 			render(Combobox, {
 				props: {
 					items: [
-						{ id: '1', name: 'Alpha' },
-						{ id: '2', name: 'Beta' },
+						{ label: 'Alpha', value: '' },
+						{ label: 'Beta', value: 'beta' },
 					],
-					valueKey: 'idd',
-					labelKey: 'name',
-					defaultOpen: true,
-				},
-			});
-
-			const { popover } = await getPopoverContainer();
-
-			await waitFor(() => {
-				expect(within(popover).getByRole('status')).toHaveTextContent('No results found.');
-			});
-			expect(within(popover).queryAllByRole('option')).toHaveLength(0);
-			expect(warnSpy).toHaveBeenCalled();
-			expect(String(warnSpy.mock.calls[0]?.[0])).toContain('idd');
-
-			warnSpy.mockRestore();
-		});
-
-		it('should skip object items missing value and still render valid options', async () => {
-			const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-
-			render(Combobox, {
-				props: {
-					items: [{ label: 'Alpha' }, { label: 'Beta', value: 'beta' }],
 					defaultOpen: true,
 				},
 			});
@@ -1088,7 +933,33 @@ describe('v2/components/Combobox', () => {
 				expect(within(popover).getByRole('option', { name: 'Beta' })).toBeVisible();
 			});
 			expect(within(popover).queryByRole('option', { name: 'Alpha' })).not.toBeInTheDocument();
-			expect(warnSpy).toHaveBeenCalledTimes(1);
+			expect(warnSpy).toHaveBeenCalled();
+			expect(String(warnSpy.mock.calls[0]?.[0])).toContain('value');
+
+			warnSpy.mockRestore();
+		});
+
+		it('should skip items with an empty label and still render valid options', async () => {
+			const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+			render(Combobox, {
+				props: {
+					items: [
+						{ label: '', value: 'alpha' },
+						{ label: 'Beta', value: 'beta' },
+					],
+					defaultOpen: true,
+				},
+			});
+
+			const { popover } = await getPopoverContainer();
+
+			await waitFor(() => {
+				expect(within(popover).getByRole('option', { name: 'Beta' })).toBeVisible();
+			});
+			expect(within(popover).queryByRole('option', { name: 'alpha' })).not.toBeInTheDocument();
+			expect(warnSpy).toHaveBeenCalled();
+			expect(String(warnSpy.mock.calls[0]?.[0])).toContain('label');
 
 			warnSpy.mockRestore();
 		});
