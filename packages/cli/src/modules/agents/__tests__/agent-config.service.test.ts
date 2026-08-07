@@ -75,7 +75,7 @@ function makeService() {
 	credentialsService.findAllGlobalCredentialIds.mockResolvedValue([]);
 	credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([]);
 	agentTaskRepository.findByAgentId.mockResolvedValue([]);
-	workflowRepository.find.mockResolvedValue([]);
+	workflowRepository.findManyByAgentToolReferences.mockResolvedValue([]);
 	agentSkillsService.removeUnreferencedSkills.mockImplementation((agent, config) => {
 		const ids = new Set((config.skills ?? []).map((skill) => skill.id));
 		agent.skills = Object.fromEntries(
@@ -378,11 +378,11 @@ describe('AgentConfigService', () => {
 			expect((saved.schema as AgentJsonConfig).credential).toBe('user-cred');
 		});
 
-		it('rewrites an id-valued workflow tool ref to the workflow name on save', async () => {
+		it('rewrites an id-valued legacy ref without touching stable workflow refs', async () => {
 			const { service, agentRepository, workflowRepository } = makeService();
 			const agent = makeAgent();
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
-			workflowRepository.find.mockResolvedValue([
+			workflowRepository.findManyByAgentToolReferences.mockResolvedValue([
 				{ id: 'wf-id-1', name: 'Dice Roller' },
 				{ id: 'wf-2', name: 'Existing Name' },
 			] as never);
@@ -401,6 +401,11 @@ describe('AgentConfigService', () => {
 						},
 						{ type: 'workflow', workflow: 'Existing Name' },
 						{ type: 'workflow', workflow: 'ghost' },
+						{
+							type: 'workflow',
+							workflowId: 'wf-stable',
+							workflow: 'Old Stable Name',
+						},
 					],
 				},
 				user,
@@ -417,6 +422,11 @@ describe('AgentConfigService', () => {
 				},
 				{ type: 'workflow', workflow: 'Existing Name' },
 				{ type: 'workflow', workflow: 'ghost' },
+				{
+					type: 'workflow',
+					workflowId: 'wf-stable',
+					workflow: 'Old Stable Name',
+				},
 			]);
 		});
 

@@ -108,6 +108,8 @@ const props = withDefaults(
 const emit = defineEmits<{
 	/** The agent behind an unsaved artifact now exists. */
 	persisted: [agent: AgentResource];
+	/** The agent name was successfully saved. */
+	'name-saved': [name: string];
 }>();
 
 const route = useRoute();
@@ -235,7 +237,7 @@ const sessionOptions = computed<Array<DropdownMenuItemProps<string>>>(() =>
 );
 
 // Config
-const { config, fetchConfig, updateConfig } = useAgentConfig();
+const { config, fetchConfig, updateConfig, repoint: repointConfig } = useAgentConfig();
 const {
 	validation: configValidation,
 	repoint: repointConfigValidation,
@@ -714,6 +716,7 @@ async function saveConfig(snapshot: ConfigAutosaveSnapshot): Promise<'skipped' |
 	// `agent.versionId` would otherwise be polluted with values for the
 	// previous agent.
 	if (result.stale) return undefined;
+	emit('name-saved', snapshot.config.name);
 	if (agent.value && agent.value.id === snapshot.agentId && result.versionId !== undefined) {
 		agent.value = { ...agent.value, versionId: result.versionId };
 	}
@@ -1273,6 +1276,7 @@ async function initialize({ preserveState = false }: { preserveState?: boolean }
 			agentFilesLoading.value = false;
 			agentFilesUploading.value = false;
 			deletingAgentFileId.value = null;
+			repointConfig(projectId.value, agentId.value);
 			repointConfigValidation(projectId.value, agentId.value);
 		}
 

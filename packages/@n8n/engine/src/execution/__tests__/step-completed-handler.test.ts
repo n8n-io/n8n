@@ -27,7 +27,10 @@ const graph: WorkflowGraph = {
 	],
 };
 
-function makeExecutionStore(overrides: Partial<ExecutionRecord> = {}): ExecutionStore {
+function makeExecutionStore(
+	overrides: Partial<ExecutionRecord> = {},
+	storeOverrides: Partial<ExecutionStore> = {},
+): ExecutionStore {
 	const execution: ExecutionRecord = {
 		id: 'exec-1',
 		workflowId: 'wf-1',
@@ -42,6 +45,7 @@ function makeExecutionStore(overrides: Partial<ExecutionRecord> = {}): Execution
 		loadExecution: vi.fn().mockResolvedValue(execution),
 		transitionStatus: vi.fn().mockResolvedValue(true),
 		finishExecution: vi.fn().mockResolvedValue(true),
+		...storeOverrides,
 	};
 }
 
@@ -65,6 +69,7 @@ function makeStepStore(step: Partial<StepRecord> = {}, overrides: Partial<StepSt
 		claimStep: vi.fn(),
 		completeStep: vi.fn(),
 		failStep: vi.fn(),
+		cancelQueuedSteps: vi.fn(),
 		loadStepOutputs: vi.fn(),
 		// every node completed, so a case has to opt out to be unready
 		loadCompletedNodeIds: vi.fn().mockResolvedValue(new Set(graph.nodes.map(({ id }) => id))),
@@ -191,12 +196,6 @@ describe('StepCompletedHandler', () => {
 		overrides: Partial<StepStore>;
 	}> = [
 		{
-			reason: 'the step did not complete',
-			stepId: 'step-a',
-			step: { status: 'failed' },
-			overrides: {},
-		},
-		{
 			reason: 'a successor still has an incomplete predecessor',
 			stepId: 'step-b',
 			step: { id: 'step-b', nodeId: 'b' },
@@ -268,16 +267,62 @@ describe('StepCompletedHandler', () => {
 	});
 
 	it('leaves the execution running while another step is still outstanding', async () => {
-		// 'b' failed, so nothing downstream is planned, but 'c' is still going
+		// 'b' completed but 'm' still waits on 'c', which is still going
 		const stepStore = makeStepStore(
-			{ id: 'step-b', nodeId: 'b', status: 'failed' },
-			{ hasActiveSteps: vi.fn().mockResolvedValue(true) },
+			{ id: 'step-b', nodeId: 'b' },
+			{
+				loadCompletedNodeIds: vi.fn().mockResolvedValue(new Set()),
+				hasActiveSteps: vi.fn().mockResolvedValue(true),
+			},
 		);
 		const executionStore = makeExecutionStore();
 		const handler = new StepCompletedHandler(executionStore, stepStore, makeQueue());
 
 		await handler.handle({ ...event, stepId: 'step-b' });
 
+		expect(executionStore.finishExecution).not.toHaveBeenCalled();
+	});
+
+	it('fails the execution and cancels queued steps the moment a step fails', async () => {
+		const stepStore = makeStepStore({ status: 'failed' });
+		const executionStore = makeExecutionStore();
+		const queue = makeQueue();
+		const handler = new StepCompletedHandler(executionStore, stepStore, queue);
+
+		await handler.handle(event);
+
+		expect(executionStore.finishExecution).toHaveBeenCalledExactlyOnceWith('exec-1', 'failed');
+		expect(stepStore.cancelQueuedSteps).toHaveBeenCalledExactlyOnceWith('exec-1');
+		expect(stepStore.createSteps).not.toHaveBeenCalled();
+		expect(queue.publish).not.toHaveBeenCalled();
+		expect(stepStore.hasActiveSteps).not.toHaveBeenCalled();
+		expect(stepStore.hasFailedSteps).not.toHaveBeenCalled();
+	});
+
+	it('cancels queued steps again on a redelivered failure event', async () => {
+		// finishExecution false = the execution was already marked failed
+		const stepStore = makeStepStore({ status: 'failed' });
+		const executionStore = makeExecutionStore(
+			{},
+			{ finishExecution: vi.fn().mockResolvedValue(false) },
+		);
+		const handler = new StepCompletedHandler(executionStore, stepStore, makeQueue());
+
+		await handler.handle(event);
+
+		expect(stepStore.cancelQueuedSteps).toHaveBeenCalledExactlyOnceWith('exec-1');
+	});
+
+	it('plans nothing more once the execution is finished', async () => {
+		const stepStore = makeStepStore();
+		const executionStore = makeExecutionStore({ status: 'failed' });
+		const queue = makeQueue();
+		const handler = new StepCompletedHandler(executionStore, stepStore, queue);
+
+		await handler.handle(event);
+
+		expect(stepStore.createSteps).not.toHaveBeenCalled();
+		expect(queue.publish).not.toHaveBeenCalled();
 		expect(executionStore.finishExecution).not.toHaveBeenCalled();
 	});
 

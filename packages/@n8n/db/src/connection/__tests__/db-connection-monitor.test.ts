@@ -310,6 +310,33 @@ describe('DbConnectionMonitor', () => {
 			expect(pool.connect).not.toHaveBeenCalled();
 		});
 
+		it('should still schedule the next ping if data source is not initialized', async () => {
+			// @ts-expect-error readonly property
+			dataSource.isInitialized = false;
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			const scheduleNextPingSpy = vi.spyOn(monitor as any, 'scheduleNextPing');
+
+			// @ts-expect-error private property
+			await monitor.ping();
+
+			expect(pool.connect).not.toHaveBeenCalled();
+			expect(scheduleNextPingSpy).toHaveBeenCalled();
+		});
+
+		it('should still schedule the next ping while recovery is in progress', async () => {
+			// @ts-expect-error readonly property
+			dataSource.isInitialized = true;
+			// @ts-expect-error private property
+			monitor.recovering = true;
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			const scheduleNextPingSpy = vi.spyOn(monitor as any, 'scheduleNextPing');
+
+			// @ts-expect-error private property
+			await monitor.ping();
+
+			expect(scheduleNextPingSpy).toHaveBeenCalled();
+		});
+
 		it('should not query if monitor is stopped', async () => {
 			// @ts-expect-error readonly property
 			dataSource.isInitialized = true;
@@ -473,6 +500,40 @@ describe('DbConnectionMonitor', () => {
 				vi.advanceTimersByTime(1000);
 
 				expect(pingSpy).toHaveBeenCalled();
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
+		it('should resume pinging after a tick lands while the data source is uninitialized', async () => {
+			vi.useFakeTimers();
+			try {
+				const scheduledMonitor = new DbConnectionMonitor(
+					dataSource,
+					onConnectedChange,
+					mock<DatabaseConfig>({ pingIntervalSeconds: 1, pingTimeoutMs: 5_000 }),
+					logger,
+					errorReporter,
+					dbConnectionMetrics,
+				);
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				const pingSpy = vi.spyOn(scheduledMonitor as any, 'ping');
+
+				// @ts-expect-error readonly property
+				dataSource.isInitialized = false;
+				// @ts-expect-error private property
+				scheduledMonitor.scheduleNextPing();
+				await vi.advanceTimersByTimeAsync(1000);
+
+				expect(pingSpy).toHaveBeenCalledTimes(1);
+
+				// Recovery finished: the loop must still be ticking.
+				// @ts-expect-error readonly property
+				dataSource.isInitialized = true;
+				await vi.advanceTimersByTimeAsync(1000);
+
+				expect(pingSpy).toHaveBeenCalledTimes(2);
+				expect(pool.connect).toHaveBeenCalled();
 			} finally {
 				vi.useRealTimers();
 			}
