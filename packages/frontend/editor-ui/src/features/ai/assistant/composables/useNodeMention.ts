@@ -1,7 +1,7 @@
 import { ref, computed, watch, type Ref } from 'vue';
 import type { INodeUi } from '@/Interface';
 import { useFocusedNodesStore } from '../focusedNodes.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 export interface UseNodeMentionOptions {
 	maxResults?: number;
@@ -33,7 +33,7 @@ export function useNodeMention(options: UseNodeMentionOptions = {}): UseNodeMent
 	const { maxResults = 50 } = options;
 
 	const focusedNodesStore = useFocusedNodesStore();
-	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 
 	const showDropdown = ref(false);
 	const searchQuery = ref('');
@@ -45,7 +45,7 @@ export function useNodeMention(options: UseNodeMentionOptions = {}): UseNodeMent
 
 	const filteredNodes = computed(() => {
 		const query = searchQuery.value.toLowerCase();
-		const allNodes = workflowsStore.allNodes;
+		const allNodes = workflowDocumentStore.value.allNodes;
 		const confirmedIds = new Set(focusedNodesStore.confirmedNodeIds);
 
 		let result = allNodes.filter((node) => !confirmedIds.has(node.id));
@@ -59,7 +59,7 @@ export function useNodeMention(options: UseNodeMentionOptions = {}): UseNodeMent
 
 	// Close dropdown when workflow nodes change (e.g. paste, import) to ensure fresh data
 	watch(
-		() => workflowsStore.allNodes.length,
+		() => workflowDocumentStore.value.allNodes.length,
 		() => {
 			if (showDropdown.value) {
 				closeDropdown();
@@ -130,8 +130,11 @@ export function useNodeMention(options: UseNodeMentionOptions = {}): UseNodeMent
 		if (!showDropdown.value) {
 			const charBeforeCursor = value.charAt(cursorPosition - 1);
 			if (charBeforeCursor === '@') {
-				openDropdown(inputElement);
-				mentionStartIndex.value = cursorPosition - 1;
+				const charBeforeAt = cursorPosition >= 2 ? value.charAt(cursorPosition - 2) : '';
+				if (!charBeforeAt || /\s/.test(charBeforeAt)) {
+					openDropdown(inputElement);
+					mentionStartIndex.value = cursorPosition - 1;
+				}
 				return;
 			}
 		} else {
@@ -177,7 +180,7 @@ export function useNodeMention(options: UseNodeMentionOptions = {}): UseNodeMent
 
 			case 'Escape':
 				event.preventDefault();
-				closeDropdown(filteredNodes.value.length === 0);
+				closeDropdown();
 				return true;
 
 			case 'Tab':

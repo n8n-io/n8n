@@ -1,8 +1,8 @@
 // Re-export from expression module
 export {
-	serializeExpression,
 	parseExpression,
 	isExpression,
 	expr,
+	nodeJson,
 	createFromAIExpression,
 } from './expression/index';

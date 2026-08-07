@@ -60,11 +60,26 @@
                                     "source": {
                                         "type": "string"
                                     },
+                                    "sourceId": {
+                                        "type": "string"
+                                    },
                                     "sourceUpstreamDeployable": {
                                         "type": "string"
                                     },
+                                    "sourceVid": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "integer"
+                                        }
+                                    },
                                     "timestamp": {
                                         "type": "integer"
+                                    },
+                                    "updatedByUserId": {
+                                        "type": "integer"
+                                    },
+                                    "useTimestampAsPersistenceTimestamp": {
+                                        "type": "boolean"
                                     },
                                     "value": {
                                         "type": "string"
@@ -77,5 +92,5 @@
             }
         }
     },
-    "version": 1
+    "version": 3
 }

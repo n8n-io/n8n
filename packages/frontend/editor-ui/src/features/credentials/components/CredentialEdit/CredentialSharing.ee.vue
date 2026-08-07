@@ -6,22 +6,25 @@ import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHe
 import { EnterpriseEditionFeature } from '@/app/constants';
 import type { ICredentialsDecryptedResponse, ICredentialsResponse } from '../../credentials.types';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { useRolesStore } from '@/app/stores/roles.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useRolesStore } from '@n8n/stores/roles.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import type {
 	ProjectListItem,
 	ProjectSharingData,
 } from '@/features/collaboration/projects/projects.types';
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
-import { splitName } from '@/features/collaboration/projects/projects.utils';
+import {
+	splitName,
+	useRemoteProjectSearch,
+} from '@/features/collaboration/projects/projects.utils';
 import type { EventBus } from '@n8n/utils/event-bus';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { getResourcePermissions } from '@n8n/permissions';
 
-import { N8nActionBox, N8nInfoTip } from '@n8n/design-system';
+import { N8nEmptyState, N8nInfoTip } from '@n8n/design-system';
 type Props = {
 	credentialId: string;
 	credentialData: ICredentialDataDecryptedObject;
@@ -31,7 +34,10 @@ type Props = {
 	isSharedGlobally?: boolean;
 };
 
-const props = withDefaults(defineProps<Props>(), { credential: null, isSharedGlobally: false });
+const props = withDefaults(defineProps<Props>(), {
+	credential: null,
+	isSharedGlobally: false,
+});
 
 const emit = defineEmits<{
 	'update:modelValue': [value: ProjectSharingData[]];
@@ -70,13 +76,10 @@ const credentialDataHomeProject = computed<ProjectSharingData | undefined>(() =>
 		: undefined;
 });
 
-const projects = computed<ProjectListItem[]>(() => {
-	return projectsStore.projects.filter(
-		(project) =>
-			project.id !== props.credential?.homeProject?.id &&
-			project.id !== credentialDataHomeProject.value?.id,
-	);
-});
+const searchFn = useRemoteProjectSearch();
+const filterFn = (project: ProjectListItem) =>
+	project.id !== props.credential?.homeProject?.id &&
+	project.id !== credentialDataHomeProject.value?.id;
 
 const homeProject = computed<ProjectSharingData | undefined>(
 	() => props.credential?.homeProject ?? credentialDataHomeProject.value,
@@ -84,7 +87,8 @@ const homeProject = computed<ProjectSharingData | undefined>(
 const isHomeTeamProject = computed(() => homeProject.value?.type === ProjectTypes.Team);
 const isPersonalSpaceRestricted = computed(
 	() =>
-		projectsStore.currentProject?.type === ProjectTypes.Personal &&
+		homeProject.value?.type === ProjectTypes.Personal &&
+		homeProject.value?.id === projectsStore.personalProject?.id &&
 		!props.credentialPermissions.share,
 );
 const credentialRoleTranslations = computed<Record<string, string>>(() => {
@@ -126,9 +130,7 @@ watch(
 	{ deep: true },
 );
 
-onMounted(async () => {
-	await projectsStore.getAllProjects();
-});
+// Projects are now fetched on demand via searchFn in ProjectSharing
 
 function goToUpgrade() {
 	void pageRedirectionHelper.goToUpgrade('credential_sharing', 'upgrade-credentials-sharing');
@@ -138,7 +140,7 @@ function goToUpgrade() {
 <template>
 	<div :class="$style.container">
 		<div v-if="!isSharingEnabled">
-			<N8nActionBox
+			<N8nEmptyState
 				:heading="
 					i18n.baseText(uiStore.contextBasedTranslationKeys.credentials.sharing.unavailable.title)
 				"
@@ -154,31 +156,36 @@ function goToUpgrade() {
 			/>
 		</div>
 		<div v-else>
-			<N8nInfoTip v-if="credentialPermissions.share" :bold="false" class="mb-s">
+			<N8nInfoTip
+				v-if="credentialPermissions.share || isPersonalSpaceRestricted"
+				:bold="false"
+				class="mb-s"
+			>
 				{{ i18n.baseText('credentialEdit.credentialSharing.info.owner') }}
 			</N8nInfoTip>
 			<N8nInfoTip v-else-if="isHomeTeamProject" :bold="false" class="mb-s">
 				{{ i18n.baseText('credentialEdit.credentialSharing.info.sharee.team') }}
 			</N8nInfoTip>
 			<N8nInfoTip v-else :bold="false" class="mb-s">
-				<template v-if="isPersonalSpaceRestricted">
-					{{ i18n.baseText('credentialEdit.credentialSharing.info.personalSpaceRestricted') }}
-				</template>
-				<template v-else>
-					{{
-						i18n.baseText('credentialEdit.credentialSharing.info.sharee.personal', {
-							interpolate: { credentialOwnerName },
-						})
-					}}
-				</template>
+				{{
+					i18n.baseText('credentialEdit.credentialSharing.info.sharee.personal', {
+						interpolate: { credentialOwnerName },
+					})
+				}}
 			</N8nInfoTip>
 			<ProjectSharing
 				v-model="sharedWithProjects"
-				:projects="projects"
+				:search-fn="searchFn"
+				:filter-fn="filterFn"
 				:roles="credentialRoles"
 				:home-project="homeProject"
 				:readonly="!credentialPermissions.share"
 				:static="!credentialPermissions.share"
+				:disabled-tooltip="
+					isPersonalSpaceRestricted
+						? i18n.baseText('credentialEdit.credentialSharing.info.personalSpaceRestricted')
+						: undefined
+				"
 				:placeholder="sharingSelectPlaceholder"
 				:can-share-globally="canShareGlobally"
 				:is-shared-globally="isSharedGlobally"

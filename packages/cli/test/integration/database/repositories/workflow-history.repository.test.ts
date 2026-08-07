@@ -4,7 +4,7 @@ import {
 	createWorkflowWithHistory,
 	testDb,
 } from '@n8n/backend-test-utils';
-import { WorkflowHistoryRepository } from '@n8n/db';
+import { WorkflowHistoryRepository, WorkflowPublishedVersionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { RULES, type INode } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
@@ -26,7 +26,13 @@ describe('WorkflowHistoryRepository', () => {
 	});
 
 	beforeEach(async () => {
-		await testDb.truncate(['WorkflowPublishHistory', 'WorkflowHistory', 'WorkflowEntity', 'User']);
+		await testDb.truncate([
+			'WorkflowPublishedVersion',
+			'WorkflowPublishHistory',
+			'WorkflowHistory',
+			'WorkflowEntity',
+			'User',
+		]);
 	});
 
 	afterAll(async () => {
@@ -237,6 +243,103 @@ describe('WorkflowHistoryRepository', () => {
 			expect(redo.seen).toBe(3);
 		});
 	});
+	describe('deleteEarlierThanExceptCurrentAndActive', () => {
+		// Happy path: proves the setup deletes old, unreferenced versions while
+		// keeping the current version.
+		it('should delete old versions but keep the current version', async () => {
+			const vCurrent = uuid();
+			const vOld = uuid();
+
+			const tenDaysAgo = new Date();
+			tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
+
+			const oneDayAgo = new Date();
+			oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+
+			const workflow = await createWorkflow({
+				versionId: vCurrent,
+				nodes: [{ ...testNode1, parameters: { a: 'current' } }],
+			});
+			// Old, unreferenced version (should be pruned)
+			await createWorkflowHistory(
+				{ ...workflow, versionId: vOld, nodes: [{ ...testNode1, parameters: { a: 'old' } }] },
+				undefined,
+				undefined,
+				{ createdAt: tenDaysAgo },
+			);
+			// Current version history, also old — so it is a prune candidate by date
+			// and survives only via the current-version (workflow_entity.versionId)
+			// exclusion, not because it is too recent to delete.
+			await createWorkflowHistory(workflow, undefined, undefined, { createdAt: tenDaysAgo });
+
+			const repository = Container.get(WorkflowHistoryRepository);
+			await repository.deleteEarlierThanExceptCurrentAndActive(oneDayAgo);
+
+			const remainingIds = (await repository.find()).map((r) => r.versionId);
+			expect(remainingIds).toContain(vCurrent);
+			expect(remainingIds).not.toContain(vOld);
+		});
+
+		// A workflow_history row referenced by
+		// workflow_published_version.publishedVersionId carries an ON DELETE
+		// RESTRICT FK, so deleting it aborts the whole prune DELETE with
+		// "SQLITE_CONSTRAINT: FOREIGN KEY constraint failed". The prune must
+		// exclude published versions, mirroring the sibling pruneHistory().
+		it('should preserve versions referenced by a published version', async () => {
+			const vCurrent = uuid();
+			const vPublished = uuid();
+			const vOther = uuid();
+
+			const tenDaysAgo = new Date();
+			tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
+
+			const oneDayAgo = new Date();
+			oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+
+			const workflow = await createWorkflow({
+				versionId: vCurrent,
+				nodes: [{ ...testNode1, parameters: { a: 'current' } }],
+			});
+
+			// Old version that is still the published version (RESTRICT FK)
+			await createWorkflowHistory(
+				{
+					...workflow,
+					versionId: vPublished,
+					nodes: [{ ...testNode1, parameters: { a: 'published' } }],
+				},
+				undefined,
+				undefined,
+				{ createdAt: tenDaysAgo },
+			);
+			// Old version that is NOT referenced anywhere (should be pruned)
+			await createWorkflowHistory(
+				{ ...workflow, versionId: vOther, nodes: [{ ...testNode1, parameters: { a: 'other' } }] },
+				undefined,
+				undefined,
+				{ createdAt: tenDaysAgo },
+			);
+			// Current version history (recent)
+			await createWorkflowHistory(workflow);
+
+			// The published version has advanced away from current/active
+			await Container.get(WorkflowPublishedVersionRepository).setPublishedVersion(
+				workflow.id,
+				vPublished,
+			);
+
+			const repository = Container.get(WorkflowHistoryRepository);
+
+			// Must not throw SQLITE_CONSTRAINT: FOREIGN KEY constraint failed
+			await repository.deleteEarlierThanExceptCurrentAndActive(oneDayAgo);
+
+			const remainingIds = (await repository.find()).map((r) => r.versionId);
+			expect(remainingIds).toContain(vPublished); // preserved: referenced as published
+			expect(remainingIds).toContain(vCurrent); // preserved: current version
+			expect(remainingIds).not.toContain(vOther); // pruned: old and unreferenced
+		});
+	});
+
 	describe('getWorkflowIdsInRange', () => {
 		it('should return versions in range', async () => {
 			const now = Date.now();

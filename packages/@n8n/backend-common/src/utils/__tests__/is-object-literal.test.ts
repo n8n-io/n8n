@@ -13,7 +13,7 @@ describe('isObjectLiteral', () => {
 		['string', 'string', false],
 		['boolean', true, false],
 		['undefined', undefined, false],
-		['Date object', new Date(), false],
+		['Date object', new Date('2020-01-01'), false],
 		['RegExp object', new RegExp(''), false],
 		['Map object', new Map(), false],
 		['Set object', new Set(), false],
@@ -25,7 +25,7 @@ describe('isObjectLiteral', () => {
 		['Buffer', Buffer.from('test'), false],
 		['Serialized Buffer', Buffer.from('test').toJSON(), true],
 		['Promise', new Promise(() => {}), false],
-	])('should return %s for %s', (_, input, expected) => {
+	])('isObjectLiteral(%s)', (_, input, expected) => {
 		expect(isObjectLiteral(input)).toBe(expected);
 	});
 

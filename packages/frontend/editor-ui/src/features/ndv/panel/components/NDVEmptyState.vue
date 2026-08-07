@@ -7,6 +7,7 @@ const { icon } = defineProps<{ title?: string; wide?: boolean; icon?: IconName }
 defineSlots<{
 	icon(): unknown;
 	default(): unknown;
+	actions(): unknown;
 }>();
 </script>
 
@@ -17,6 +18,9 @@ defineSlots<{
 		</slot>
 		<h1 v-if="title" :class="$style.title">{{ title }}</h1>
 		<p :class="$style.description"><slot /></p>
+		<div v-if="$slots.actions" :class="$style.actions">
+			<slot name="actions" />
+		</div>
 	</article>
 </template>
 
@@ -26,7 +30,7 @@ defineSlots<{
 	flex-flow: column;
 	align-items: center;
 	justify-content: center;
-	gap: var(--spacing--2xs);
+	gap: var(--spacing--sm);
 
 	line-height: 2;
 	color: var(--color--text);
@@ -38,6 +42,10 @@ defineSlots<{
 	line-height: 145%;
 	color: var(--color--text);
 	margin: 0;
+}
+
+.actions {
+	margin-top: var(--spacing--xs);
 }
 
 .description {

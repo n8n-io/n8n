@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { screen } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createTestingPinia } from '@pinia/testing';
@@ -8,10 +8,6 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { useCredentialsStore } from '../../credentials.store';
 import { mockedStore } from '@/__tests__/utils';
 import type { ICredentialType } from 'n8n-workflow';
-
-vi.mock('@/app/composables/useWorkflowState', () => ({
-	injectWorkflowState: vi.fn(),
-}));
 
 const googleSheetsOAuth2Api: ICredentialType = {
 	name: 'googleSheetsOAuth2Api',
@@ -50,7 +46,7 @@ describe('QuickConnectButton', () => {
 		renderComponent();
 
 		expect(screen.getByRole('button')).toBeInTheDocument();
-		expect(screen.queryByTitle('Sign in with Google')).not.toBeInTheDocument();
+		expect(screen.queryByRole('button', { name: 'Sign in with Google' })).not.toBeInTheDocument();
 	});
 
 	it('should render GoogleAuthButton for Google OAuth types', () => {
@@ -58,7 +54,7 @@ describe('QuickConnectButton', () => {
 			props: { credentialTypeName: 'googleSheetsOAuth2Api', serviceName: 'Google Sheets' },
 		});
 
-		expect(screen.getByTitle('Sign in with Google')).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: 'Sign in with Google' })).toBeInTheDocument();
 	});
 
 	it('should emit click event when clicked', async () => {

@@ -90,9 +90,9 @@ const focusInput = async () => {
 	visibility: hidden;
 }
 .footer {
-	> * {
-		margin-left: var(--spacing--3xs);
-	}
+	display: flex;
+	justify-content: flex-end;
+	gap: var(--spacing--2xs);
 }
 .noScrollbar {
 	overflow: hidden;

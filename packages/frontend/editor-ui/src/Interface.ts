@@ -1,14 +1,17 @@
-import type { NotificationOptions as ElementNotificationOptions } from 'element-plus';
 import type {
+	AgentJsonConfig,
 	FrontendSettings,
+	InstanceAiCredentialSetupHint,
 	IUserManagementSettings,
 	IVersionNotificationSettings,
 	Role,
 } from '@n8n/api-types';
 import type { ILogInStatus } from '@/features/settings/users/users.types';
+import type { NodeViewItemSection } from '@/features/shared/nodeCreator/views/viewsData';
 import type { IUsedCredential } from '@/features/credentials/credentials.types';
 import type { Scope } from '@n8n/permissions';
 import type { NodeCreatorTag, IconName, BinaryMetadata } from '@n8n/design-system';
+import type { ModalState } from '@n8n/frontend-module-sdk';
 import type {
 	GenericValue,
 	IConnections,
@@ -35,12 +38,12 @@ import type {
 	PublicInstalledPackage,
 	IDestinationNode,
 	AgentRequestQuery,
+	IWorkflowGroup,
 } from 'n8n-workflow';
 import type { Version } from '@n8n/rest-api-client/api/versions';
 import type { Cloud, InstanceUsage } from '@n8n/rest-api-client/api/cloudPlans';
 import type {
 	WorkflowMetadata,
-	WorkflowData,
 	WorkflowDataCreate,
 	WorkflowDataUpdate,
 } from '@n8n/rest-api-client/api/workflows';
@@ -75,11 +78,13 @@ declare global {
 				key: string,
 				options?: {
 					api_host?: string;
+					tracing_headers?: string[];
 					autocapture?: boolean;
 					disable_session_recording?: boolean;
+					advanced_disable_feature_flags?: boolean;
 					debug?: boolean;
 					bootstrap?: {
-						distinctId?: string;
+						distinctID?: string;
 						isIdentifiedID?: boolean;
 						featureFlags: FeatureFlags;
 					};
@@ -87,6 +92,7 @@ declare global {
 						maskAllInputs?: boolean;
 						maskInputFn?: ((text: string, element?: HTMLElement) => string) | null;
 					};
+					loaded?: () => void;
 				},
 			): void;
 			isFeatureEnabled?(flagName: string): boolean;
@@ -97,6 +103,7 @@ declare global {
 				userPropertiesOnce?: Record<string, string>,
 			): void;
 			reset?(resetDeviceId?: boolean): void;
+			group?(groupType: string, groupKey: string, groupPropertiesToSet?: IDataObject): void;
 			onFeatureFlags?(callback: (keys: string[], map: FeatureFlags) => void): void;
 			reloadFeatureFlags?(): void;
 			capture?(event: string, properties: IDataObject): void;
@@ -159,6 +166,7 @@ export interface INodeUi extends INode {
 	name: string;
 	pinData?: IDataObject;
 	draggable?: boolean;
+	placeholder?: boolean;
 }
 
 export interface INodeTypesMaxCount {
@@ -185,7 +193,7 @@ export interface IAiDataContent {
 }
 
 export interface IStartRunData {
-	workflowData: WorkflowData;
+	workflowId: string;
 	startNodes?: StartNodeData[];
 	destinationNode?: IDestinationNode;
 	runData?: IRunData;
@@ -194,6 +202,7 @@ export interface IStartRunData {
 		name: string;
 		data?: ITaskData;
 	};
+	chatSessionId?: string;
 	agentRequest?: {
 		query: AgentRequestQuery;
 		tool: {
@@ -256,15 +265,13 @@ export interface IWorkflowDb {
 	activeVersionId: string | null;
 	usedCredentials?: IUsedCredential[];
 	meta?: WorkflowMetadata;
-	parentFolder?: {
-		id: string;
-		name: string;
-		parentFolderId: string | null;
+	parentFolder?: ResourceParentFolder & {
 		createdAt?: string;
 		updatedAt?: string;
 	};
 	activeVersion?: WorkflowHistory | null;
 	checksum?: string;
+	nodeGroups?: IWorkflowGroup[];
 }
 
 // For workflow list we don't need the full workflow data
@@ -314,6 +321,7 @@ export type CredentialsResource = BaseResource & {
 	needsSetup: boolean;
 	isGlobal?: boolean;
 	isResolvable?: boolean;
+	connectedByMe?: boolean;
 };
 
 // Base resource types that are always available
@@ -346,7 +354,7 @@ export type WorkflowListItem = Omit<
 	IWorkflowDb,
 	'nodes' | 'connections' | 'pinData' | 'usedCredentials' | 'meta'
 > & {
-	resource: 'workflow';
+	resource?: 'workflow'; // only included if list may contain folders
 	description?: string;
 	hasResolvableCredentials?: boolean;
 };
@@ -383,13 +391,6 @@ export interface IActivationError {
 
 export interface IShareWorkflowsPayload {
 	shareWithIds: string[];
-}
-
-export const enum UserManagementAuthenticationMethod {
-	Email = 'email',
-	Ldap = 'ldap',
-	Saml = 'saml',
-	Oidc = 'oidc',
 }
 
 export interface IPermissionGroup {
@@ -457,6 +458,7 @@ export type SimplifiedNodeType = Pick<
 	| 'outputs'
 > & {
 	tag?: NodeCreatorTag;
+	isNew?: boolean;
 };
 export interface SubcategoryItemProps {
 	description?: string;
@@ -466,11 +468,12 @@ export interface SubcategoryItemProps {
 		color?: string;
 	};
 	panelClass?: string;
+	connectionType?: NodeConnectionType;
 	title?: string;
 	subcategory?: string;
 	defaults?: INodeParameters;
 	forceIncludeNodes?: string[];
-	sections?: string[];
+	sections?: string[] | NodeViewItemSection[];
 	items?: INodeCreateElement[];
 	new?: boolean;
 	hideActions?: boolean;
@@ -504,6 +507,14 @@ export interface OpenTemplateItemProps {
 	icon?: string;
 	tag?: NodeCreatorTag;
 	compact?: boolean;
+}
+
+export interface AgentItemProps {
+	name: string;
+	description?: string;
+	variant: 'create' | 'existing';
+	agentId?: string;
+	personalisation?: AgentJsonConfig['personalisation'] | null;
 }
 
 export interface ActionTypeDescription extends SimplifiedNodeType {
@@ -554,6 +565,15 @@ export interface SectionCreateElement extends CreateElementBase {
 	 * Whether to show a separator at the bottom of the expanded section
 	 */
 	showSeparator?: boolean;
+	/**
+	 * Whether to render the section without its category header
+	 */
+	hideHeader?: boolean;
+	/**
+	 * Extra element rendered at the trailing edge of the section header.
+	 * Identifies what to render; the renderer maps it to a component.
+	 */
+	trailing?: 'creditsBalance';
 }
 
 export interface ViewCreateElement extends CreateElementBase {
@@ -583,6 +603,11 @@ export interface ActionCreateElement extends CreateElementBase {
 	properties: ActionTypeDescription;
 }
 
+export interface AgentCreateElement extends CreateElementBase {
+	type: 'agent';
+	properties: AgentItemProps;
+}
+
 export type INodeCreateElement =
 	| NodeCreateElement
 	| CategoryCreateElement
@@ -591,6 +616,7 @@ export type INodeCreateElement =
 	| ViewCreateElement
 	| LabelCreateElement
 	| ActionCreateElement
+	| AgentCreateElement
 	| LinkCreateElement
 	| OpenTemplateElement;
 
@@ -630,17 +656,39 @@ export type Modals = {
 
 export type ModalKey = keyof Modals;
 
-export type ModalState = {
-	open: boolean;
-	mode?: string | null;
-	data?: Record<string, unknown>;
-	activeId?: string | null;
-	curlCommand?: string;
-	httpNodeParameters?: string;
-};
+// `ModalState` is owned by `@n8n/frontend-module-sdk`; re-exported here so existing
+// `@/Interface` importers stay unchanged.
+export type { ModalState };
 
 export interface NewCredentialsModal extends ModalState {
 	showAuthSelector?: boolean;
+	forceManualMode?: boolean;
+	closeOnSave?: boolean;
+	projectId?: string;
+	suggestedName?: string;
+	/** Agent-supplied Templated Custom Auth recipe — pre-fills the credential's
+	 * template fields so the modal opens on the guided simple view. */
+	credentialSetupHint?: InstanceAiCredentialSetupHint;
+	nodeName?: string;
+	contextNode?: INodeUi;
+	hideAskAssistant?: boolean;
+	appendToBody?: boolean;
+	usageScope?: 'project' | 'instance';
+	/** Behavior for the Instance AI credential setup-help button, supplied by the
+	 * surface that opened the modal (an editor capability, or the credentials list).
+	 * Resolves to whether the credential modal should close (false keeps it open for
+	 * a new-tab hand-off; true closes it for an in-thread append). */
+	instanceAiCredentialHelp?: (credential: {
+		credentialType: string;
+		displayName: string;
+		nodeName?: string;
+		nodeType?: string;
+		id?: string;
+		placeholderTitles?: string[];
+		docsUrl?: string;
+		documentationUrl?: string;
+		oauthRedirectUrl?: string;
+	}) => Promise<boolean>;
 }
 
 export type IRunDataDisplayMode = 'table' | 'json' | 'binary' | 'schema' | 'html' | 'ai';
@@ -656,10 +704,6 @@ export type TargetNodeParameterContext = {
 	nodeName: string;
 	parameterPath: string;
 };
-
-export interface NotificationOptions extends Partial<ElementNotificationOptions> {
-	message: string | ElementNotificationOptions['message'];
-}
 
 export type NodeFilterType =
 	| typeof REGULAR_NODE_CREATOR_VIEW
@@ -677,19 +721,18 @@ export type NodeCreatorOpenSource =
 	| 'plus_endpoint'
 	| 'add_input_endpoint'
 	| 'trigger_placeholder_button'
-	| 'tab'
+	| 'node_shortcut'
 	| 'replace_node_action'
 	| 'node_connection_action'
 	| 'node_connection_drop'
 	| 'notice_error_message'
 	| 'add_node_button'
-	| 'add_evaluation_trigger_button'
 	| 'add_evaluation_node_button'
-	| 'templates_callout';
+	| 'templates_callout'
+	| 'instance_ai';
 
 export interface INodeCreatorState {
 	itemsFilter: string;
-	showScrim: boolean;
 	rootViewHistory: NodeFilterType[];
 	selectedView: NodeFilterType;
 	openSource: NodeCreatorOpenSource;
@@ -834,73 +877,7 @@ export type NodeAuthenticationOption = {
 	displayOptions?: IDisplayOptions;
 };
 
-export interface CloudPlanState {
-	initialized: boolean;
-	data: Cloud.PlanData | null;
-	usage: InstanceUsage | null;
-	loadingPlan: boolean;
-}
-
 export type CloudPlanAndUsageData = Cloud.PlanData & { usage: InstanceUsage };
-
-export type CloudUpdateLinkSourceType =
-	| 'advanced-permissions'
-	| 'canvas-nav'
-	| 'concurrency'
-	| 'custom-data-filter'
-	| 'workflow_sharing'
-	| 'credential_sharing'
-	| 'settings-n8n-api'
-	| 'audit-logs'
-	| 'ldap'
-	| 'log-streaming'
-	| 'source-control'
-	| 'sso'
-	| 'usage_page'
-	| 'settings-users'
-	| 'variables'
-	| 'community-nodes'
-	| 'workflow-history'
-	| 'worker-view'
-	| 'external-secrets'
-	| 'rbac'
-	| 'debug'
-	| 'insights'
-	| 'evaluations'
-	| 'ai-builder-sidebar'
-	| 'ai-builder-canvas'
-	| 'custom-roles'
-	| 'main-sidebar'
-	| 'chat-hub'
-	| 'empty-state-builder-prompt';
-
-export type UTMCampaign =
-	| 'upgrade-custom-data-filter'
-	| 'upgrade-concurrency'
-	| 'upgrade-workflow-sharing'
-	| 'upgrade-credentials-sharing'
-	| 'upgrade-api'
-	| 'upgrade-audit-logs'
-	| 'upgrade-ldap'
-	| 'upgrade-log-streaming'
-	| 'upgrade-source-control'
-	| 'upgrade-sso'
-	| 'open'
-	| 'upgrade-users'
-	| 'upgrade-variables'
-	| 'upgrade-community-nodes'
-	| 'upgrade-workflow-history'
-	| 'upgrade-advanced-permissions'
-	| 'upgrade-worker-view'
-	| 'upgrade-external-secrets'
-	| 'upgrade-rbac'
-	| 'upgrade-debug'
-	| 'upgrade-insights'
-	| 'upgrade-evaluations'
-	| 'upgrade-builder'
-	| 'upgrade-custom-roles'
-	| 'upgrade-canvas-nav'
-	| 'upgrade-main-sidebar';
 
 export type AddedNode = {
 	type: string;
@@ -945,12 +922,13 @@ export type EnterpriseEditionFeatureKey =
 	| 'DebugInEditor'
 	| 'WorkerView'
 	| 'AdvancedPermissions'
-	| 'ApiKeyScopes'
 	| 'EnforceMFA'
 	| 'NamedVersions'
 	| 'Provisioning'
 	| 'PersonalSpacePolicy'
-	| 'CustomRoles';
+	| 'CustomRoles'
+	| 'DataRedaction'
+	| 'WorkflowReviews';
 
 export type EnterpriseEditionFeatureValue = keyof Omit<FrontendSettings['enterprise'], 'projects'>;
 

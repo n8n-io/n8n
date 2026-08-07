@@ -85,6 +85,29 @@ describe('useKeybindings', () => {
 		document.body.removeChild(input);
 	});
 
+	it('should not call handler when focus is inside a dialog', async () => {
+		const handler = vi.fn();
+		const keymap = ref({ enter: handler });
+
+		useKeybindings(keymap);
+
+		// A modal dialog (e.g. N8nDialog) portals its content to the body and owns
+		// keyboard input while open, so a focused button inside it must not fire
+		// canvas shortcuts that also listen on `document`.
+		const dialog = document.createElement('div');
+		dialog.setAttribute('role', 'dialog');
+		const button = document.createElement('button');
+		dialog.appendChild(button);
+		document.body.appendChild(dialog);
+		button.focus();
+
+		const event = new KeyboardEvent('keydown', { key: 'Enter' });
+		document.dispatchEvent(event);
+
+		expect(handler).not.toHaveBeenCalled();
+		document.body.removeChild(dialog);
+	});
+
 	it('should not call handler if disabled', async () => {
 		const handler = vi.fn();
 		const keymap = ref({ a: handler });
@@ -153,7 +176,7 @@ describe('useKeybindings', () => {
 		expect(iHandler).not.toHaveBeenCalled();
 	});
 
-	it("should fallback to 'code' for non-ansi layouts", () => {
+	it("should fallback to 'code' for non-Latin layouts with Ctrl/Cmd shortcuts", () => {
 		const handler = vi.fn();
 		const keymap = ref({ 'ctrl+c': handler });
 
@@ -162,6 +185,23 @@ describe('useKeybindings', () => {
 		const event = new KeyboardEvent('keydown', { key: 'ב', code: 'KeyC', ctrlKey: true });
 		document.dispatchEvent(event);
 		expect(handler).toHaveBeenCalled();
+	});
+
+	it('should NOT fallback to code for non-Latin letters without Ctrl/Cmd', () => {
+		const cHandler = vi.fn();
+		const hebrewHandler = vi.fn();
+		const keymap = ref({
+			c: cHandler,
+			ב: hebrewHandler,
+		});
+
+		useKeybindings(keymap);
+
+		const event = new KeyboardEvent('keydown', { key: 'ב', code: 'KeyC' });
+		document.dispatchEvent(event);
+
+		expect(hebrewHandler).toHaveBeenCalled();
+		expect(cHandler).not.toHaveBeenCalled();
 	});
 
 	it('should resolve alt shortcuts via keyboard layout map for Colemak', async () => {
@@ -204,5 +244,32 @@ describe('useKeybindings', () => {
 			configurable: true,
 			writable: true,
 		});
+	});
+
+	it('should NOT trigger ctrl+s when pressing ctrl+r on Colemak (letter key should not fallback to byCode)', () => {
+		const rHandler = vi.fn();
+		const sHandler = vi.fn();
+		const keymap = ref({ 'ctrl+s': sHandler, 'ctrl+r': rHandler });
+
+		useKeybindings(keymap);
+
+		// On Colemak: to type 'r', user presses the physical 'S' key (KeyS)
+		const event = new KeyboardEvent('keydown', { key: 'r', code: 'KeyS', ctrlKey: true });
+		document.dispatchEvent(event);
+
+		expect(rHandler).toHaveBeenCalled();
+		expect(sHandler).not.toHaveBeenCalled();
+	});
+
+	it('should fallback to byCode for non-letter keys (arrows, function keys)', () => {
+		const handler = vi.fn();
+		const keymap = ref({ ArrowUp: handler });
+
+		useKeybindings(keymap);
+
+		const event = new KeyboardEvent('keydown', { key: 'ArrowUp', code: 'ArrowUp' });
+		document.dispatchEvent(event);
+
+		expect(handler).toHaveBeenCalled();
 	});
 });

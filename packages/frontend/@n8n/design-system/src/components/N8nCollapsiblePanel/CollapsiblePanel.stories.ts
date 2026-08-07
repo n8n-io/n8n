@@ -9,7 +9,7 @@ import N8nOption from '../N8nOption';
 import N8nSelect from '../N8nSelect';
 
 export default {
-	title: 'Atoms/CollapsiblePanel',
+	title: 'Core/CollapsiblePanel',
 	component: N8nCollapsiblePanel,
 	argTypes: {
 		modelValue: {
@@ -23,6 +23,9 @@ export default {
 		},
 	},
 	parameters: {
+		docs: {
+			description: { component: 'An expandable panel that reveals or hides grouped content.' },
+		},
 		backgrounds: { default: 'white' },
 	},
 	decorators: [

@@ -6,11 +6,11 @@ import { useUsageStore } from '../usage.store';
 import { telemetry } from '@/app/plugins/telemetry';
 import { i18n as locale } from '@n8n/i18n';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import { COMMUNITY_PLUS_ENROLLMENT_MODAL } from '../usage.constants';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { getResourcePermissions } from '@n8n/permissions';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { I18nT } from 'vue-i18n';
@@ -181,7 +181,7 @@ onMounted(async () => {
 		if (!error.name) {
 			error.name = locale.baseText('settings.usageAndPlan.error');
 		}
-		toast.showError(error, error.name, error.message);
+		toast.showError(error, error.name, { message: error.message });
 	}
 });
 
@@ -332,12 +332,14 @@ const openCommunityRegisterModal = () => {
 					/>
 				</template>
 				<template #footer>
-					<N8nButton variant="subtle" @click="onActivationCancel">
-						{{ locale.baseText('settings.usageAndPlan.dialog.activation.cancel') }}
-					</N8nButton>
-					<N8nButton :disabled="!activationKey" @click="() => onLicenseActivation()">
-						{{ locale.baseText('settings.usageAndPlan.dialog.activation.activate') }}
-					</N8nButton>
+					<div :class="$style.dialogButtonsContainer">
+						<N8nButton variant="subtle" @click="onActivationCancel">
+							{{ locale.baseText('settings.usageAndPlan.dialog.activation.cancel') }}
+						</N8nButton>
+						<N8nButton :disabled="!activationKey" @click="() => onLicenseActivation()">
+							{{ locale.baseText('settings.usageAndPlan.dialog.activation.activate') }}
+						</N8nButton>
+					</div>
 				</template>
 			</ElDialog>
 
@@ -445,6 +447,11 @@ div[class*='info'] > span > span:last-child {
 	display: flex;
 	align-items: center;
 	margin: 0 0 0 var(--spacing--2xs);
+}
+
+.dialogButtonsContainer {
+	display: flex;
+	justify-content: flex-end;
 }
 </style>
 

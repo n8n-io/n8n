@@ -63,6 +63,8 @@ Tests → Flows/Composables → Page Objects → Components → Playwright API
 | `dead-code` | Unused public methods in page objects |
 | `deduplication` | Same selector defined in multiple files |
 | `duplicate-logic` | Copy-pasted code across tests/pages (AST fingerprinting) |
+| `no-raw-editor-navigation` | Raw `page.goto()` to a `/workflow/` editor route in tests (use `n8n.start.*` so the canvas loader is awaited) |
+| `valid-owner-annotation` | A spec with no team owner, or an owner not in the canonical list (`CANONICAL_OWNERS` in the rule, mirroring Notion "Ownership v2") |
 
 ### Commands
 
@@ -85,8 +87,11 @@ pnpm janitor --list
 # Show detailed rule info (for AI agents)
 pnpm janitor rules --json
 
-# JSON output
-pnpm janitor --json
+# Discover test specs (for orchestration)
+pnpm janitor discover
+
+# Distribute specs across shards
+pnpm janitor orchestrate --shards=14
 ```
 
 ### Baseline (Incremental Cleanup)
@@ -378,7 +383,7 @@ test('API-only test', async ({ api }) => {
 To test features behind feature flags (experiments), use `TestRequirements` with storage overrides:
 
 ```typescript
-import type { TestRequirements } from '../config/TestRequirements';
+import type { TestRequirements } from '../../../Types';
 
 const requirements: TestRequirements = {
   storage: {
@@ -416,38 +421,9 @@ const requirements: TestRequirements = {
 };
 ```
 
-**Reference:** `config/TestRequirements.ts` for full interface definition.
-
-## Code Style
-
-- Use specialized locators: `page.getByRole('button')` over `page.locator('[role=button]')`
-- Use `nanoid()` for unique identifiers (parallel-safe)
-- API setup over UI setup when possible (faster, more reliable)
-
-## Architecture
-
-```
-Tests (*.spec.ts)
-    ↓ uses
-Composables (*Composer.ts) - Multi-step business workflows
-    ↓ orchestrates
-Page Objects (*Page.ts) - UI interactions
-    ↓ extends
-BasePage - Common utilities
-```
-
-See `CONTRIBUTING.md` for detailed patterns and conventions.
-
-## Reference Files
-
-| Purpose | File |
-|---------|------|
-| Multi-user testing | `tests/e2e/building-blocks/user-service.spec.ts` |
-| Entry points | `composables/TestEntryComposer.ts` |
-| Page object example | `pages/CanvasPage.ts` |
-| Composable example | `composables/WorkflowComposer.ts` |
-| API helpers | `services/api-helper.ts` |
-| Capabilities | `fixtures/capabilities.ts` |
+**Reference:** `Types.ts` for the full interface definition. Import depth follows
+the spec's own nesting. The example above assumes `tests/e2e/<area>/`; add one
+`../` per extra level down.
 
 ## Shard Rebalancing
 

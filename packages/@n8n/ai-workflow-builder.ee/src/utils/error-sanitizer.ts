@@ -7,11 +7,7 @@ export function sanitizeLlmErrorMessage(error: unknown): string {
 	const statusCode = extractStatusCode(error);
 	const rawMessage = error instanceof Error ? error.message : String(error);
 
-	if (containsHtml(rawMessage)) {
-		return buildUserFriendlyMessage(statusCode);
-	}
-
-	if (rawMessage.length > 500) {
+	if (statusCode === 429 || containsHtml(rawMessage) || rawMessage.length > 500) {
 		return buildUserFriendlyMessage(statusCode);
 	}
 

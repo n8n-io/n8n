@@ -33,6 +33,7 @@ import { toolsAgentExecute } from '../agents/ToolsAgent/V1/execute';
 
 // Function used in the inputs expression to figure out which inputs to
 // display based on the agent type
+/* istanbul ignore next */
 function getInputs(
 	agent:
 		| 'toolsAgent'
@@ -102,6 +103,8 @@ function getInputs(
 						'@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
 						'@n8n/n8n-nodes-langchain.lmChatGoogleVertex',
 						'@n8n/n8n-nodes-langchain.lmChatMistralCloud',
+						'@n8n/n8n-nodes-langchain.lmChatMinimax',
+						'@n8n/n8n-nodes-langchain.lmChatMoonshot',
 						'@n8n/n8n-nodes-langchain.lmChatAzureOpenAi',
 						'@n8n/n8n-nodes-langchain.lmChatDeepSeek',
 						'@n8n/n8n-nodes-langchain.lmChatOpenRouter',
@@ -132,6 +135,8 @@ function getInputs(
 						'@n8n/n8n-nodes-langchain.lmChatAwsBedrock',
 						'@n8n/n8n-nodes-langchain.lmChatLemonade',
 						'@n8n/n8n-nodes-langchain.lmChatMistralCloud',
+						'@n8n/n8n-nodes-langchain.lmChatMinimax',
+						'@n8n/n8n-nodes-langchain.lmChatMoonshot',
 						'@n8n/n8n-nodes-langchain.lmChatOllama',
 						'@n8n/n8n-nodes-langchain.lmChatOpenAi',
 						'@n8n/n8n-nodes-langchain.lmChatGroq',

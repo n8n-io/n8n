@@ -1,0 +1,9 @@
+name: offset
+in: query
+description: The number of items to skip before starting to collect the result set.
+required: false
+schema:
+  type: number
+  example: 0
+  default: 0
+  minimum: 0

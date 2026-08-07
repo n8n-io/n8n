@@ -1,9 +1,12 @@
 import type { CommunityNodeType } from '@n8n/api-types';
 import { inProduction, Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import { ensureError, isToolType, NodeConnectionTypes } from 'n8n-workflow';
-
 import cloneDeep from 'lodash/cloneDeep';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { isToolType, NodeConnectionTypes } from 'n8n-workflow';
+
+import { buildStrapiUpdateQuery } from '@/utils/strapi-utils';
+
 import {
 	getCommunityNodeTypes,
 	getCommunityNodesMetadata,
@@ -12,10 +15,12 @@ import {
 } from './community-node-types-utils';
 import { CommunityPackagesConfig } from './community-packages.config';
 import { CommunityPackagesService } from './community-packages.service';
-import { buildStrapiUpdateQuery } from './strapi-utils';
 
 const UPDATE_INTERVAL = 8 * 60 * 60 * 1000;
 const RETRY_INTERVAL = 5 * 60 * 1000;
+
+// Strapi's qs parser has an arrayLimit of 100, so we batch IDs
+const STRAPI_ARRAY_LIMIT = 100;
 
 @Service()
 export class CommunityNodeTypesService {
@@ -34,7 +39,10 @@ export class CommunityNodeTypesService {
 	): Promise<{ typesToUpdate?: number[]; scheduleRetry?: boolean }> {
 		let communityNodesMetadata: CommunityNodesMetadata[] = [];
 		try {
-			communityNodesMetadata = await getCommunityNodesMetadata(environment);
+			communityNodesMetadata = await getCommunityNodesMetadata(
+				environment,
+				this.config.aiNodeSdkVersion,
+			);
 		} catch (error) {
 			this.logger.error('Failed to fetch community nodes metadata', {
 				error: ensureError(error),
@@ -82,7 +90,7 @@ export class CommunityNodeTypesService {
 			let data: StrapiCommunityNodeType[] = [];
 			if (this.config.enabled && this.config.verifiedEnabled) {
 				if (this.communityNodeTypes.size === 0) {
-					data = await getCommunityNodeTypes(environment);
+					data = await getCommunityNodeTypes(environment, {}, this.config.aiNodeSdkVersion);
 					this.updateCommunityNodeTypes(data);
 					return;
 				}
@@ -98,8 +106,16 @@ export class CommunityNodeTypesService {
 					return;
 				}
 
-				const qs = buildStrapiUpdateQuery(typesToUpdate);
-				data = await getCommunityNodeTypes(environment, qs);
+				for (let i = 0; i < typesToUpdate.length; i += STRAPI_ARRAY_LIMIT) {
+					const batch = typesToUpdate.slice(i, i + STRAPI_ARRAY_LIMIT);
+					const qs = buildStrapiUpdateQuery(batch);
+					const batchData = await getCommunityNodeTypes(
+						environment,
+						qs,
+						this.config.aiNodeSdkVersion,
+					);
+					data.push(...batchData);
+				}
 			}
 
 			this.updateCommunityNodeTypes(data);
@@ -134,7 +150,10 @@ export class CommunityNodeTypesService {
 
 	private createAiTools() {
 		const usableAsTools = Array.from(this.communityNodeTypes.values()).filter(
-			(nodeType) => nodeType.nodeDescription.usableAsTool && !isToolType(nodeType.name),
+			(nodeType) =>
+				nodeType.nodeDescription.usableAsTool &&
+				!isToolType(nodeType.name) &&
+				!nodeType.nodeDescription.group?.includes('trigger'),
 		);
 		const forbiddenCategories = ['Recommended Tools'];
 		for (const nodeType of usableAsTools) {
@@ -209,7 +228,10 @@ export class CommunityNodeTypesService {
 		return { ...nodeType, isInstalled: isInstalled(nodeType.name) };
 	}
 
-	findVetted(packageName: string) {
+	async findVetted(packageName: string) {
+		if (this.updateRequired()) {
+			await this.fetchNodeTypes();
+		}
 		const vettedTypes = Array.from(this.communityNodeTypes.values());
 		return vettedTypes.find((nodeType) => nodeType.packageName === packageName);
 	}

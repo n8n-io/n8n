@@ -1,19 +1,10 @@
 <script setup lang="ts">
-import { useResizeObserver } from '@vueuse/core';
-import {
-	ref,
-	computed,
-	useCssModule,
-	watch,
-	nextTick,
-	onMounted,
-	onBeforeUnmount,
-	useAttrs,
-} from 'vue';
+import { ref, computed, useCssModule, watch, nextTick, onMounted, useAttrs } from 'vue';
 
 import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
 
 import type { InputProps, InputEmits, InputSlots, InputSize } from './Input.types';
+import { useAutosizeTextarea } from '../../composables/useAutosizeTextarea';
 
 defineOptions({ name: 'N8nInput', inheritAttrs: false });
 
@@ -29,6 +20,7 @@ const props = withDefaults(defineProps<InputProps>(), {
 	readonly: false,
 	clearable: false,
 	rows: 2,
+	masked: false,
 	maxlength: undefined,
 	autosize: false,
 	autofocus: false,
@@ -87,6 +79,8 @@ const sizes: Record<InputSize, string> = {
 const sizeClass = computed(() => sizes[props.size]);
 
 // Classes for password type (PostHog privacy)
+const isTextarea = computed(() => props.type === 'textarea');
+
 const containerClasses = computed(() => [
 	'n8n-input', // Global class for backwards compatibility
 	$style.inputContainer,
@@ -96,15 +90,18 @@ const containerClasses = computed(() => [
 		[$style.readonly]: props.readonly,
 		[$style.hasPrepend]: !!slots.prepend,
 		[$style.hasAppend]: !!slots.append,
-		'ph-no-capture': props.type === 'password',
+		[$style.isTextarea]: isTextarea.value,
+		'ph-no-capture': props.type === 'password' || props.masked,
 	},
 ]);
 
 const inputWrapperClasses = computed(() => [
+	'n8n-input__wrapper',
 	$style.inputWrapper,
 	{
 		[$style.disabled]: props.disabled,
 		[$style.readonly]: props.readonly,
+		[$style.isTextarea]: isTextarea.value,
 	},
 ]);
 
@@ -151,116 +148,15 @@ const showClearButton = computed(() => {
 	return props.clearable && !props.disabled && props.modelValue !== '' && props.modelValue !== null;
 });
 
-// Autosize textarea functionality using hidden textarea measurement (Element+ approach)
-const textareaStyles = ref<{ height?: string; minHeight?: string }>({});
-let hiddenTextarea: HTMLTextAreaElement | undefined;
-
-const CONTEXT_STYLE_PROPS = [
-	'letter-spacing',
-	'line-height',
-	'padding-top',
-	'padding-bottom',
-	'font-family',
-	'font-weight',
-	'font-size',
-	'text-rendering',
-	'text-transform',
-	'width',
-	'text-indent',
-	'padding-left',
-	'padding-right',
-	'border-width',
-	'box-sizing',
-];
-
-function calcTextareaHeight(
-	targetElement: HTMLTextAreaElement,
-	minRows?: number,
-	maxRows?: number,
-): { height: string; minHeight?: string } {
-	if (!hiddenTextarea) {
-		hiddenTextarea = document.createElement('textarea');
-		document.body.appendChild(hiddenTextarea);
-	}
-
-	const style = window.getComputedStyle(targetElement);
-	const boxSizing = style.getPropertyValue('box-sizing');
-	const paddingSize =
-		parseFloat(style.getPropertyValue('padding-bottom')) +
-		parseFloat(style.getPropertyValue('padding-top'));
-	const borderSize =
-		parseFloat(style.getPropertyValue('border-bottom-width')) +
-		parseFloat(style.getPropertyValue('border-top-width'));
-	const contextStyle = CONTEXT_STYLE_PROPS.map(
-		(name) => `${name}:${style.getPropertyValue(name)}`,
-	).join(';');
-
-	hiddenTextarea.className = $style.hiddenTextarea;
-	hiddenTextarea.setAttribute('style', contextStyle);
-	hiddenTextarea.value = targetElement.value || targetElement.placeholder || '';
-
-	let height = hiddenTextarea.scrollHeight;
-	const result: { height: string; minHeight?: string } = { height: '' };
-
-	if (boxSizing === 'border-box') {
-		height = height + borderSize;
-	} else if (boxSizing === 'content-box') {
-		height = height - paddingSize;
-	}
-
-	// Calculate single row height
-	hiddenTextarea.value = '';
-	const singleRowHeight = hiddenTextarea.scrollHeight - paddingSize;
-
-	if (minRows !== undefined) {
-		let minHeight = singleRowHeight * minRows;
-		if (boxSizing === 'border-box') {
-			minHeight = minHeight + paddingSize + borderSize;
-		}
-		height = Math.max(minHeight, height);
-		result.minHeight = `${minHeight}px`;
-	}
-
-	if (maxRows !== undefined) {
-		let maxHeight = singleRowHeight * maxRows;
-		if (boxSizing === 'border-box') {
-			maxHeight = maxHeight + paddingSize + borderSize;
-		}
-		height = Math.min(maxHeight, height);
-	}
-
-	result.height = `${height}px`;
-	return result;
-}
-
-function cleanupHiddenTextarea() {
-	if (hiddenTextarea?.parentNode) {
-		hiddenTextarea.parentNode.removeChild(hiddenTextarea);
-		hiddenTextarea = undefined;
-	}
-}
-
-const calculateTextareaHeight = () => {
-	if (props.type !== 'textarea' || !props.autosize || !inputRef.value) return;
-
-	const textarea = inputRef.value as HTMLTextAreaElement;
-	const minRows = typeof props.autosize === 'object' ? props.autosize.minRows : undefined;
-	const maxRows = typeof props.autosize === 'object' ? props.autosize.maxRows : undefined;
-
-	textareaStyles.value = calcTextareaHeight(textarea, minRows, maxRows);
-	cleanupHiddenTextarea();
-};
-
-// Use ResizeObserver for responsive behavior
-useResizeObserver(
-	computed(() => (props.type === 'textarea' && props.autosize ? inputRef.value : null)),
-	() => {
-		calculateTextareaHeight();
-	},
+const autosizeRows = computed(() =>
+	typeof props.autosize === 'object'
+		? { minRows: props.autosize.minRows, maxRows: props.autosize.maxRows }
+		: undefined,
 );
-
-onBeforeUnmount(() => {
-	cleanupHiddenTextarea();
+const { textareaStyles, calculateTextareaHeight } = useAutosizeTextarea({
+	textarea: computed(() => (inputRef.value instanceof HTMLTextAreaElement ? inputRef.value : null)),
+	enabled: computed(() => props.type === 'textarea' && Boolean(props.autosize)),
+	rows: autosizeRows,
 });
 
 // Watch for value changes to recalculate height
@@ -331,7 +227,7 @@ defineExpose({ focus, blur, select });
 				v-else
 				ref="inputRef"
 				:value="modelValue ?? ''"
-				:class="[$style.input, $style.textarea]"
+				:class="[$style.input, $style.textarea, { [$style.masked]: masked }]"
 				:placeholder="placeholder"
 				:disabled="disabled"
 				:readonly="readonly"
@@ -339,7 +235,7 @@ defineExpose({ focus, blur, select });
 				:maxlength="maxlength"
 				:autocomplete="autocomplete"
 				:name="name"
-				:style="autosize ? { ...textareaStyles, resize: 'none', overflow: 'hidden' } : undefined"
+				:style="autosize ? { ...textareaStyles, resize: 'none', overflow: 'auto' } : undefined"
 				v-bind="inputAttrs"
 				@input="onInput"
 				@blur="onBlur"
@@ -373,11 +269,61 @@ defineExpose({ focus, blur, select });
 </template>
 
 <style module lang="scss">
+@use '../../css/mixins/focus';
+
 .inputContainer {
 	display: inline-flex;
 	align-items: center;
 	width: 100%;
 	gap: var(--spacing--3xs);
+
+	--input--height: var(--height--lg);
+	--input--radius: var(--radius--2xs);
+	--input--font-size: var(--font-size--sm);
+	--input--padding: var(--spacing--xs);
+
+	--input--color--background: light-dark(var(--color--neutral-white), var(--color--neutral-950));
+	--input--shadow: 0 0 0 0 transparent;
+	--input--shadow--hover: 0 0 0 0 transparent;
+	--input--shadow--focus: 0 0 0 0 transparent;
+	--input--border-color: var(--border-color);
+	--input--border-color--hover: var(--border-color--strong);
+	--input--border-color--focus: var(--focus--border-color);
+	--input--border--shadow: 0 0 0 1px var(--input--border-color);
+	--input--border--shadow--hover: 0 0 0 1px var(--input--border-color--hover);
+	--input--border--shadow--focus: 0 0 0 1px var(--input--border-color--focus);
+
+	&.xlarge {
+		--input--height: var(--height--xl);
+		--input--radius: var(--radius--2xs);
+		--input--font-size: var(--font-size--md);
+	}
+
+	&.large {
+		--input--height: var(--height--lg);
+		--input--radius: var(--radius--2xs);
+		--input--font-size: var(--font-size--sm);
+	}
+
+	&.medium {
+		--input--height: var(--height--md);
+		--input--radius: var(--radius--3xs);
+		--input--font-size: var(--font-size--sm);
+	}
+
+	&.small {
+		--input--height: var(--height--sm);
+		--input--radius: var(--radius--3xs);
+		--input--font-size: var(--font-size--xs);
+		--input--padding: var(--spacing--2xs);
+	}
+
+	&.mini {
+		--input--height: var(--height--xs);
+		--input--radius: var(--radius--3xs);
+		--input--font-size: var(--font-size--2xs);
+		--input--padding: var(--spacing--2xs);
+	}
 }
 
 .inputWrapper {
@@ -385,32 +331,48 @@ defineExpose({ focus, blur, select });
 	align-items: center;
 	flex: 1;
 	min-width: 0;
-	gap: var(--spacing--3xs);
-	border-radius: var(--input--radius--top-left, var(--input--radius, var(--radius)))
-		var(--input--radius--top-right, var(--input--radius, var(--radius)))
-		var(--input--radius--bottom-right, var(--input--radius, var(--radius)))
-		var(--input--radius--bottom-left, var(--input--radius, var(--radius)));
-	border: var(--input--border-width, var(--border-width))
-		var(--input--border-style, var(--border-style)) var(--input--border-color, var(--border-color));
-	background-color: var(--input--color--background, var(--color--background--light-2));
+	gap: var(--input--padding);
+	padding: 0 var(--input--padding);
+	min-height: var(--input--height);
+	border-radius: var(--input--radius--top-left, var(--input--radius))
+		var(--input--radius--top-right, var(--input--radius))
+		var(--input--radius--bottom-right, var(--input--radius))
+		var(--input--radius--bottom-left, var(--input--radius));
+	background-color: var(--input--color--background);
+	box-shadow:
+		var(--input--shadow),
+		inset var(--input--border--shadow);
+
+	/** NOTE (@heymynameisrob): Handles autofill colouring as padding from above isn't included **/
+	> input {
+		padding: 0 var(--input--padding);
+		margin-inline: calc(var(--input--padding) * -1);
+		border-radius: inherit;
+	}
+
+	@include focus.focus-within-ring;
 
 	&:hover:not(.disabled):not(:focus-within) {
-		border-color: var(--input--border-color--hover, var(--color--foreground--shade-1));
+		box-shadow:
+			var(--input--shadow--hover),
+			inset var(--input--border--shadow--hover);
 	}
 
 	&:focus-within {
-		border-color: var(--input--border-color--focus, var(--color--secondary));
+		box-shadow:
+			var(--input--shadow--focus),
+			inset var(--input--border--shadow--focus);
 	}
 
 	&.disabled {
-		background-color: var(--color--background--light-3);
 		cursor: not-allowed;
 		opacity: 0.6;
 	}
+}
 
-	&.readonly {
-		background-color: var(--color--background--light-3);
-	}
+.isTextarea {
+	align-items: flex-start;
+	padding-inline: 0;
 }
 
 .disabled {
@@ -431,85 +393,16 @@ defineExpose({ focus, blur, select });
 	border-bottom-right-radius: 0;
 }
 
-/* Size variants - padding on wrapper, height on input */
-.xlarge .inputWrapper {
-	padding: 0 var(--spacing--xs);
-}
-
-.xlarge .input {
-	min-height: 48px;
-	font-size: var(--input--font-size, var(--font-size--md));
-}
-
-.xlarge .textarea {
-	padding: var(--spacing--2xs) 0;
-	font-size: var(--input--font-size, var(--font-size--md));
-}
-
-.large .inputWrapper {
-	padding: 0 var(--spacing--xs);
-}
-
-.large .input {
-	min-height: 40px;
-	font-size: var(--input--font-size, var(--font-size--sm));
-}
-
-.large .textarea {
-	padding: var(--spacing--2xs) 0;
-	font-size: var(--input--font-size, var(--font-size--sm));
-}
-
-.medium .inputWrapper {
-	padding: 0 var(--spacing--2xs);
-}
-
-.medium .input {
-	min-height: 36px;
-	font-size: var(--input--font-size, var(--font-size--sm));
-}
-
-.medium .textarea {
-	padding: var(--spacing--2xs) 0;
-	font-size: var(--input--font-size, var(--font-size--sm));
-}
-
-.small .inputWrapper {
-	padding: 0 var(--spacing--2xs);
-}
-
-.small .input {
-	min-height: 28px;
-	font-size: var(--input--font-size, var(--font-size--2xs));
-}
-
-.small .textarea {
-	padding: var(--spacing--2xs) 0;
-	font-size: var(--input--font-size, var(--font-size--2xs));
-}
-
-.mini .inputWrapper {
-	padding: 0 var(--spacing--3xs);
-}
-
-.mini .input {
-	min-height: 22px;
-	font-size: var(--input--font-size, var(--font-size--3xs));
-}
-
-.mini .textarea {
-	padding: var(--spacing--3xs) 0;
-	font-size: var(--input--font-size, var(--font-size--3xs));
-}
-
 .input {
 	flex: 1;
 	min-width: 0;
+	min-height: var(--input--height);
 	padding: 0;
 	border: none;
 	background: transparent;
 	outline: none;
 	font-family: inherit;
+	font-size: var(--input--font-size, var(--font-size--md));
 	color: var(--color--text--shade-1);
 }
 
@@ -530,12 +423,13 @@ defineExpose({ focus, blur, select });
 	flex: 1;
 	min-width: 0;
 	resize: vertical;
+	padding: var(--input--padding);
 	line-height: var(--line-height--md);
 	border: none;
 	background: transparent;
 	outline: none;
 	font-family: inherit;
-	color: var(--color--text--shade-1);
+	font-size: var(--input--font-size, var(--font-size--base));
 }
 
 .textarea::placeholder {
@@ -551,12 +445,26 @@ defineExpose({ focus, blur, select });
 	color: var(--color--text--tint-1);
 }
 
+/* Masks a multiline secret (e.g. a PEM private key) as dots via
+   -webkit-text-security (supported in Chromium, Safari, and Firefox 114+).
+   Display-only: the real value is never re-sent to the client (backend
+   redaction), and this masks rendering, not copy/paste. */
+.masked {
+	-webkit-text-security: disc;
+}
+
 .prefix,
 .suffix {
 	display: flex;
 	align-items: center;
 	flex-shrink: 0;
-	color: var(--color--text--tint-1);
+	color: var(--color--text--shade-1);
+	opacity: 0.7;
+
+	svg {
+		width: var(--spacing--sm);
+		height: var(--spacing--sm);
+	}
 }
 
 .clearButton {
@@ -586,8 +494,7 @@ defineExpose({ focus, blur, select });
 	display: flex;
 	align-items: center;
 	flex-shrink: 0;
-	color: var(--color--text--tint-1);
-	background-color: var(--color--background--light-3);
+	background-color: light-dark(var(--color--neutral-150), var(--color--neutral-800));
 	padding: 0 var(--spacing--xs);
 }
 
@@ -599,15 +506,5 @@ defineExpose({ focus, blur, select });
 .append {
 	border-left: var(--border);
 	margin-right: calc(-1 * var(--spacing--xs));
-}
-
-.hiddenTextarea {
-	height: 0 !important;
-	visibility: hidden !important;
-	overflow: hidden !important;
-	position: absolute !important;
-	z-index: -1000 !important;
-	top: 0 !important;
-	right: 0 !important;
 }
 </style>

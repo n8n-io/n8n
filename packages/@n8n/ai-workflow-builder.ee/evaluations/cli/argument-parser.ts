@@ -13,7 +13,8 @@ export type EvaluationSuite =
 	| 'pairwise'
 	| 'programmatic'
 	| 'similarity'
-	| 'introspection';
+	| 'introspection'
+	| 'binary-checks';
 export type EvaluationBackend = 'local' | 'langsmith';
 export type AgentType = 'multi-agent' | 'code-builder';
 
@@ -51,6 +52,9 @@ export interface EvaluationArgs {
 	/** CSV file path for evaluation results */
 	outputCsv?: string;
 
+	/** Comma-separated list of binary check names to run */
+	checks?: string[];
+
 	// Model configuration
 	/** Default model for all stages */
 	model: ModelId;
@@ -69,15 +73,7 @@ export interface EvaluationArgs {
 }
 
 type CliValueKind = 'boolean' | 'string';
-type FlagGroup =
-	| 'input'
-	| 'eval'
-	| 'pairwise'
-	| 'langsmith'
-	| 'output'
-	| 'feature'
-	| 'model'
-	| 'advanced';
+type FlagGroup = 'input' | 'eval' | 'pairwise' | 'langsmith' | 'output' | 'model' | 'advanced';
 
 // Model ID validation schema
 const modelIdSchema = z.enum(AVAILABLE_MODELS as [ModelId, ...ModelId[]]);
@@ -85,7 +81,14 @@ const modelIdSchema = z.enum(AVAILABLE_MODELS as [ModelId, ...ModelId[]]);
 const cliSchema = z
 	.object({
 		suite: z
-			.enum(['llm-judge', 'pairwise', 'programmatic', 'similarity', 'introspection'])
+			.enum([
+				'llm-judge',
+				'pairwise',
+				'programmatic',
+				'similarity',
+				'introspection',
+				'binary-checks',
+			])
 			.default('llm-judge'),
 		backend: z.enum(['local', 'langsmith']).default('local'),
 		agent: z.enum(['code-builder', 'multi-agent']).default('code-builder'),
@@ -112,8 +115,8 @@ const cliSchema = z
 
 		numJudges: z.coerce.number().int().positive().default(DEFAULTS.NUM_JUDGES),
 
+		checks: z.string().min(1).optional(),
 		langsmith: z.boolean().optional(),
-		templateExamples: z.boolean().default(false),
 		webhookUrl: z.string().url().optional(),
 		webhookSecret: z.string().min(16).optional(),
 
@@ -159,7 +162,13 @@ const FLAG_DEFS: Record<string, FlagDef> = {
 		key: 'suite',
 		kind: 'string',
 		group: 'eval',
-		desc: 'Evaluation suite (llm-judge|pairwise|programmatic|similarity|introspection)',
+		desc: 'Evaluation suite (llm-judge|pairwise|programmatic|similarity|introspection|binary-checks)',
+	},
+	'--checks': {
+		key: 'checks',
+		kind: 'string',
+		group: 'eval',
+		desc: 'Comma-separated binary check names to run (binary-checks suite only)',
 	},
 	'--backend': { key: 'backend', kind: 'string', group: 'eval', desc: 'Backend (local|langsmith)' },
 	'--agent': {
@@ -261,14 +270,6 @@ const FLAG_DEFS: Record<string, FlagDef> = {
 		desc: 'Secret for HMAC-SHA256 signature (min 16 chars)',
 	},
 
-	// Feature flags
-	'--template-examples': {
-		key: 'templateExamples',
-		kind: 'boolean',
-		group: 'feature',
-		desc: 'Enable template examples phase',
-	},
-
 	// Model configuration
 	'--model': {
 		key: 'model',
@@ -344,7 +345,6 @@ const GROUP_TITLES: Record<FlagGroup, string> = {
 	pairwise: 'Pairwise Options',
 	langsmith: 'LangSmith Options',
 	output: 'Output',
-	feature: 'Feature Flags',
 	model: 'Model Configuration',
 	advanced: 'Advanced',
 };
@@ -363,7 +363,6 @@ function formatHelp(): string {
 		'pairwise',
 		'langsmith',
 		'output',
-		'feature',
 		'model',
 		'advanced',
 	];
@@ -451,20 +450,13 @@ function parseCli(argv: string[]): {
 	return { values, seenKeys };
 }
 
-function parseFeatureFlags(args: {
-	templateExamples: boolean;
-	suite: EvaluationSuite;
-}): BuilderFeatureFlags | undefined {
-	const templateExamplesFromEnv = process.env.EVAL_FEATURE_TEMPLATE_EXAMPLES === 'true';
-	const templateExamples = templateExamplesFromEnv || args.templateExamples;
-
+function parseFeatureFlags(args: { suite: EvaluationSuite }): BuilderFeatureFlags | undefined {
 	// Auto-enable introspection for introspection suite
 	const enableIntrospection = args.suite === 'introspection';
 
-	if (!templateExamples && !enableIntrospection) return undefined;
+	if (!enableIntrospection) return undefined;
 
 	return {
-		templateExamples: templateExamples || undefined,
 		enableIntrospection: enableIntrospection || undefined,
 	};
 }
@@ -532,7 +524,6 @@ export function parseEvaluationArgs(argv: string[] = process.argv.slice(2)): Eva
 	const parsed = cliSchema.parse(values);
 
 	const featureFlags = parseFeatureFlags({
-		templateExamples: parsed.templateExamples,
 		suite: parsed.suite,
 	});
 
@@ -546,6 +537,10 @@ export function parseEvaluationArgs(argv: string[] = process.argv.slice(2)): Eva
 		throw new Error(
 			'`--filter do:` and `--filter dont:` are only supported for `--suite pairwise`',
 		);
+	}
+
+	if (parsed.checks && parsed.suite !== 'binary-checks') {
+		throw new Error('`--checks` is only supported for `--suite binary-checks`');
 	}
 
 	return {
@@ -571,6 +566,7 @@ export function parseEvaluationArgs(argv: string[] = process.argv.slice(2)): Eva
 		featureFlags,
 		webhookUrl: parsed.webhookUrl,
 		webhookSecret: parsed.webhookSecret,
+		checks: parsed.checks?.split(',').map((s) => s.trim()),
 		// Model configuration
 		model: parsed.model,
 		judgeModel: parsed.judgeModel,

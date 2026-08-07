@@ -1,9 +1,8 @@
-import { ApplicationError } from '@n8n/errors';
-
 import {
 	AGENT_LANGCHAIN_NODE_TYPE,
 	AGENT_TOOL_LANGCHAIN_NODE_TYPE,
 	AI_TRANSFORM_NODE_TYPE,
+	AI_VENDOR_NODE_TYPES,
 	CHAIN_LLM_LANGCHAIN_NODE_TYPE,
 	CHAIN_SUMMARIZATION_LANGCHAIN_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
@@ -18,6 +17,7 @@ import {
 	HTTP_REQUEST_NODE_TYPE,
 	HTTP_REQUEST_TOOL_LANGCHAIN_NODE_TYPE,
 	LANGCHAIN_CUSTOM_TOOLS,
+	LANGCHAIN_LM_NODE_TYPE_PREFIX,
 	MCP_CLIENT_NODE_TYPE,
 	MCP_CLIENT_TOOL_NODE_TYPE,
 	MERGE_NODE_TYPE,
@@ -28,8 +28,10 @@ import {
 	WEBHOOK_NODE_TYPE,
 	WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
 } from './constants';
+import { UnexpectedError } from './errors';
 import type { NodeApiError } from './errors/node-api.error';
 import { DEFAULT_EVALUATION_METRIC } from './evaluation-helpers';
+import { isExpression } from './expressions/expression-helpers';
 import type {
 	IConnection,
 	IConnections,
@@ -44,7 +46,6 @@ import type {
 	IRunData,
 	ITaskData,
 	IRun,
-	INodeParameterResourceLocator,
 } from './interfaces';
 import { NodeConnectionTypes } from './interfaces';
 import { getNodeParameters, isSubNodeType } from './node-helpers';
@@ -59,6 +60,55 @@ export function getNodeTypeForName(workflow: IWorkflowBase, nodeName: string): I
 
 export function isNumber(value: unknown): value is number {
 	return typeof value === 'number';
+}
+
+function isTokenUsage(value: unknown): value is { promptTokens: number; completionTokens: number } {
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		'promptTokens' in value &&
+		typeof value.promptTokens === 'number' &&
+		'completionTokens' in value &&
+		typeof value.completionTokens === 'number'
+	);
+}
+
+function resolveParameterValue(value: unknown): string | undefined {
+	if (typeof value === 'string') {
+		return value;
+	}
+
+	if (typeof value === 'object' && value && 'value' in value && typeof value.value === 'string') {
+		return value.value;
+	}
+
+	return undefined;
+}
+
+function extractNodeTokenUsage(
+	nodeRunData: ITaskData[],
+): { input: number; output: number } | undefined {
+	let input = 0;
+	let output = 0;
+	for (const task of nodeRunData) {
+		const lmOutputs = task.data?.[NodeConnectionTypes.AiLanguageModel];
+		if (lmOutputs) {
+			// LM sub-nodes (connected to Agent/Chain) — token data from N8nLlmTracing
+			for (const branch of lmOutputs) {
+				for (const item of branch ?? []) {
+					const usage = item?.json?.tokenUsage ?? item?.json?.tokenUsageEstimate;
+					if (!isTokenUsage(usage)) continue;
+					input += usage.promptTokens;
+					output += usage.completionTokens;
+				}
+			}
+		} else if (task.metadata?.tokenUsage) {
+			// Standalone vendor nodes — token data captured via setMetadata before simplify
+			input += task.metadata.tokenUsage.inputTokens ?? 0;
+			output += task.metadata.tokenUsage.outputTokens ?? 0;
+		}
+	}
+	return input > 0 || output > 0 ? { input, output } : undefined;
 }
 
 const countPlaceholders = (text: string) => {
@@ -227,7 +277,7 @@ export function getDomainPath(raw: string, urlParts = URL_PARTS_REGEX): string {
 	try {
 		const url = new URL(raw);
 
-		if (!url.hostname) throw new ApplicationError('Malformed URL');
+		if (!url.hostname) throw new UnexpectedError('Malformed URL');
 
 		return sanitizeRoute(url.pathname);
 	} catch {
@@ -541,6 +591,16 @@ export function generateNodesGraph(
 				enabledDefault) as boolean;
 		} else if (node.type === MCP_CLIENT_TOOL_NODE_TYPE || node.type === MCP_CLIENT_NODE_TYPE) {
 			nodeItem.mcp_client_auth_method = (node.parameters?.authentication ?? 'none') as string;
+
+			const mcpServerUrl = (node.parameters?.endpointUrl ??
+				node.parameters?.sseEndpoint ??
+				'') as string;
+			if (!isExpression(mcpServerUrl)) {
+				const mcpServerDomainBase = getDomainBase(mcpServerUrl);
+				if (mcpServerDomainBase) {
+					nodeItem.mcp_server_domain_base = mcpServerDomainBase;
+				}
+			}
 		} else {
 			try {
 				const nodeType = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
@@ -578,6 +638,38 @@ export function generateNodesGraph(
 					throw e;
 				}
 			}
+		}
+
+		// Capture ai_model for Language Model nodes
+		if (node.type.startsWith(LANGCHAIN_LM_NODE_TYPE_PREFIX)) {
+			const modelNameKeys = ['model', 'modelName'] as const;
+			for (const key of modelNameKeys) {
+				const resolved = resolveParameterValue(node.parameters?.[key]);
+				if (resolved) {
+					nodeItem.ai_model = resolved;
+					break;
+				}
+			}
+		}
+
+		// Capture ai_model for vendor/standalone AI nodes
+		if (AI_VENDOR_NODE_TYPES.includes(node.type)) {
+			const resolved = resolveParameterValue(node.parameters?.modelId);
+			if (resolved) {
+				nodeItem.ai_model = resolved;
+			}
+		}
+
+		if (nodeItem.ai_model && runData?.[node.name]) {
+			const tokenUsage = extractNodeTokenUsage(runData[node.name]);
+			if (tokenUsage) {
+				nodeItem.ai_input_tokens = tokenUsage.input;
+				nodeItem.ai_output_tokens = tokenUsage.output;
+			}
+		}
+
+		if (Object.values(node.credentials ?? {}).some((cred) => cred.__aiGatewayManaged === true)) {
+			nodeItem.ai_gateway_credentials = true;
 		}
 
 		if (options?.isCloudDeployment === true) {
@@ -875,15 +967,10 @@ export function extractLastExecutedNodeStructuredOutputErrorInfo(
 
 								const modelNameKeys = ['model', 'modelName'] as const;
 								for (const key of modelNameKeys) {
-									if (nodeParameters?.[key]) {
-										info.model_name =
-											typeof nodeParameters[key] === 'string'
-												? nodeParameters[key]
-												: ((nodeParameters[key] as INodeParameterResourceLocator).value as string);
-
-										if (info.model_name) {
-											break;
-										}
+									const resolved = resolveParameterValue(nodeParameters?.[key]);
+									if (resolved) {
+										info.model_name = resolved;
+										break;
 									}
 								}
 							}

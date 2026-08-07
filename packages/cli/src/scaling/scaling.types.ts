@@ -22,6 +22,11 @@ export type JobData = {
 	pushRef?: string;
 	streamingEnabled?: boolean;
 	restartExecutionId?: string;
+	projectId?: string;
+	projectName?: string;
+
+	/** Manual-execution identity, so offloaded manual runs resolve private credentials on the worker. */
+	encryptedRunnerIdentity?: string;
 
 	// MCP-specific fields for queue mode support
 	/** Whether this execution was triggered by an MCP tool call. */
@@ -78,6 +83,7 @@ export type JobFinishedProps = {
 	lastNodeExecuted?: string;
 	usedDynamicCredentials?: boolean;
 	metadata?: Record<string, string>;
+	waitTill?: Date | null;
 	startedAt: Date;
 	stoppedAt: Date;
 };

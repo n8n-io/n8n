@@ -4,7 +4,7 @@ import axios from 'axios';
 export class N8nApiClient {
 	constructor(
 		readonly apiBaseUrl: string,
-		private readonly healthEndpoint: string = 'healthz',
+		private readonly healthEndpoint: string = '/healthz',
 	) {}
 
 	async waitForInstanceToBecomeOnline(): Promise<void> {
@@ -15,7 +15,7 @@ export class N8nApiClient {
 		while (Date.now() - START_TIME < TIMEOUT_MS) {
 			try {
 				const response = await axios.request<{ status: 'ok' }>({
-					url: `${this.apiBaseUrl}/${this.healthEndpoint}`,
+					url: `${this.apiBaseUrl}${this.healthEndpoint}`,
 					method: 'GET',
 				});
 

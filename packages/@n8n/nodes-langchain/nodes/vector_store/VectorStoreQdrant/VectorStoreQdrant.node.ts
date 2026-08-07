@@ -6,8 +6,8 @@ import { type Schemas as QdrantSchemas } from '@qdrant/js-client-rest';
 import { assertParamIsString, type IDataObject, type INodeProperties } from 'n8n-workflow';
 
 import { createQdrantClient, type QdrantCredential } from './Qdrant.utils';
-import { createVectorStoreNode } from '../shared/createVectorStoreNode/createVectorStoreNode';
-import { qdrantCollectionsSearch } from '../shared/createVectorStoreNode/methods/listSearch';
+import { createVectorStoreNode } from '@n8n/ai-utilities';
+import { qdrantCollectionsSearch } from '../shared/methods/listSearch';
 import { qdrantCollectionRLC } from '../shared/descriptions';
 
 class ExtendedQdrantVectorStore extends QdrantVectorStore {

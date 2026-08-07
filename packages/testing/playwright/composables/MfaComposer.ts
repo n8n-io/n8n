@@ -14,11 +14,11 @@ export class MfaComposer {
 	 */
 	async enableMfa(email: string, password: string, mfaSecret: string): Promise<void> {
 		await this.n8n.signIn.loginWithEmailAndPassword(email, password, true);
-		await this.n8n.settingsPersonal.goToPersonalSettings();
+		await this.n8n.settingsPersonal.goto();
 
 		await this.n8n.settingsPersonal.clickEnableMfa();
 
-		await this.n8n.mfaSetupModal.getModalContainer().waitFor({ state: 'visible' });
+		await this.n8n.mfaSetupModal.container.waitFor({ state: 'visible' });
 
 		await this.n8n.mfaSetupModal.clickCopySecretToClipboard();
 

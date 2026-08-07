@@ -54,6 +54,19 @@ describe('sanitizeLlmErrorMessage', () => {
 			expect(result).toContain('Rate limit');
 		});
 
+		it('should return user-friendly message for 429 with short non-HTML message', () => {
+			const error = Object.assign(
+				new Error('You exceeded your current quota, please check your plan and billing details.'),
+				{ status: 429 },
+			);
+
+			const result = sanitizeLlmErrorMessage(error);
+
+			expect(result).toContain('Rate limit');
+			expect(result).not.toContain('quota');
+			expect(result).not.toContain('billing');
+		});
+
 		it('should return service unavailable message for 502', () => {
 			const error = Object.assign(new Error('<html>Bad Gateway</html>'), { status: 502 });
 

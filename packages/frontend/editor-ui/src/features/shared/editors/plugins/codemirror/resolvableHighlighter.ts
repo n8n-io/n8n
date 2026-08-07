@@ -64,7 +64,10 @@ const coloringStateField = StateField.define<DecorationSet>({
 	},
 	update(colorings, transaction) {
 		try {
-			colorings = colorings.map(transaction.changes); // recalculate positions for new doc
+			if (!transaction.changes.empty) {
+				colorings = Decoration.none;
+			}
+			colorings = colorings.map(transaction.changes);
 
 			for (const txEffect of transaction.effects) {
 				if (txEffect.is(coloringStateEffects.removeColorEffect)) {

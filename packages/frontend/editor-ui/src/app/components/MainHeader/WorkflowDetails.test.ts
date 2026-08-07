@@ -2,38 +2,43 @@ import WorkflowDetails from '@/app/components/MainHeader/WorkflowDetails.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import { createTestWorkflow } from '@/__tests__/mocks';
-import type { IWorkflowDb } from '@/Interface';
 import {
 	EnterpriseEditionFeature,
 	MODAL_CONFIRM,
 	VIEWS,
 	WORKFLOW_SHARE_MODAL_KEY,
 } from '@/app/constants';
-import { PROJECT_MOVE_RESOURCE_MODAL } from '@/features/collaboration/projects/projects.constants';
 import { STORES } from '@n8n/stores';
+import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useRoute, useRouter } from 'vue-router';
 import { useMessage } from '@/app/composables/useMessage';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import type { SourceControlPreferences } from '@/features/integrations/sourceControl.ee/sourceControl.types';
-import type { Project } from '@/features/collaboration/projects/projects.types';
+import type { Project, ProjectSharingData } from '@/features/collaboration/projects/projects.types';
+import { shallowRef, computed } from 'vue';
+import { WorkflowDocumentStoreKey, WorkflowIdKey } from '@/app/constants/injectionKeys';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 
+// No workflow route meta on purpose: the menu renders both on workflow-layout
+// routes and in host-embedded editors without a workflow route (e.g. the AI
+// artifact view), so nothing here may depend on route meta.
 vi.mock('vue-router', async (importOriginal) => ({
-	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
-	...(await importOriginal<typeof import('vue-router')>()),
+	...(await importOriginal()),
 	useRoute: vi.fn().mockReturnValue({
-		params: { name: 'test' },
+		params: { workflowId: 'test' },
 		query: { parentFolderId: '1' },
-		meta: {
-			nodeView: true,
-		},
+		meta: {},
 	}),
 	useRouter: vi.fn().mockReturnValue({
 		replace: vi.fn(),
@@ -41,7 +46,7 @@ vi.mock('vue-router', async (importOriginal) => ({
 		currentRoute: {
 			value: {
 				params: {
-					name: 'test',
+					workflowId: 'test',
 				},
 				query: { parentFolderId: '1' },
 			},
@@ -52,16 +57,19 @@ vi.mock('vue-router', async (importOriginal) => ({
 vi.mock('@/app/stores/pushConnection.store', () => ({
 	usePushConnectionStore: vi.fn().mockReturnValue({
 		isConnected: true,
+		addEventListener: vi.fn().mockReturnValue(vi.fn()),
 	}),
 }));
 
-vi.mock('@/app/composables/useToast', () => {
+vi.mock('@n8n/composables/useToast', () => {
 	const showError = vi.fn();
 	const showMessage = vi.fn();
+	const showToast = vi.fn(() => ({ close: vi.fn() }));
 	return {
 		useToast: () => ({
 			showError,
 			showMessage,
+			showToast,
 		}),
 	};
 });
@@ -111,9 +119,18 @@ const initialState = {
 	},
 };
 
+const pinia = createTestingPinia({ initialState });
+const workflowDocumentStoreRef = shallowRef<ReturnType<typeof useWorkflowDocumentStore> | null>(
+	null,
+);
+
 const renderComponent = createComponentRenderer(WorkflowDetails, {
-	pinia: createTestingPinia({ initialState }),
+	pinia,
 	global: {
+		provide: {
+			[WorkflowDocumentStoreKey as symbol]: workflowDocumentStoreRef,
+			[WorkflowIdKey as unknown as string]: computed(() => '1'),
+		},
 		stubs: {
 			RouterLink: true,
 			FolderBreadcrumbs: {
@@ -155,15 +172,20 @@ const defaultProps = {
 	id: workflow.id,
 	tags: ['1', '2'] as readonly string[],
 	name: workflow.name,
-	meta: workflow.meta,
-	scopes: workflow.scopes,
-	active: workflow.active,
 	isArchived: workflow.isArchived,
 	description: workflow.description,
 };
 
 describe('WorkflowDetails', () => {
 	beforeEach(() => {
+		const docPinia = createTestingPinia({ stubActions: false });
+		setActivePinia(docPinia);
+		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id));
+		workflowDocumentStore.setActiveState({ activeVersionId: null, activeVersion: null });
+		workflowDocumentStore.setScopes(workflow.scopes ?? []);
+		workflowDocumentStoreRef.value = workflowDocumentStore;
+		setActivePinia(pinia);
+
 		uiStore = useUIStore();
 		workflowsStore = mockedStore(useWorkflowsStore);
 		workflowsListStore = mockedStore(useWorkflowsListStore);
@@ -171,7 +193,6 @@ describe('WorkflowDetails', () => {
 		collaborationStore = mockedStore(useCollaborationStore);
 		sourceControlStore = mockedStore(useSourceControlStore);
 
-		// Set up default mocks
 		mockSaveCurrentWorkflow.mockClear();
 		mockSaveCurrentWorkflow.mockResolvedValue(true);
 		workflowsListStore.workflowsById = {
@@ -179,8 +200,8 @@ describe('WorkflowDetails', () => {
 			'123': workflow,
 		};
 		workflowsStore.isWorkflowSaved = { '1': true, '123': true };
-		workflowsStore.workflowId = workflow.id;
-		workflowsStore.workflowChecksum = 'test-checksum';
+		workflowsStore.setWorkflowId(workflow.id);
+		workflowDocumentStoreRef.value?.setChecksum('test-checksum');
 		projectsStore.currentProject = null;
 		projectsStore.personalProject = { id: 'personal', name: 'Personal' } as Project;
 		collaborationStore.shouldBeReadOnly = false;
@@ -195,11 +216,11 @@ describe('WorkflowDetails', () => {
 		vi.clearAllMocks();
 	});
 
-	it('renders workflow name and tags', async () => {
+	it('renders workflow name', async () => {
 		vi.mocked(useRoute).mockReturnValueOnce({
 			query: { parentFolderId: '1' },
 		} as unknown as ReturnType<typeof useRoute>);
-		const { getByTestId, getByText } = renderComponent({
+		const { getByTestId } = renderComponent({
 			props: {
 				...defaultProps,
 			},
@@ -208,13 +229,12 @@ describe('WorkflowDetails', () => {
 		const workflowNameInput = getByTestId('inline-edit-input');
 
 		expect(workflowNameInput).toHaveValue('Test Workflow');
-		expect(getByText('tag1')).toBeInTheDocument();
-		expect(getByText('tag2')).toBeInTheDocument();
 	});
 
 	it('opens share modal on share button click', async () => {
 		const openModalSpy = vi.spyOn(uiStore, 'openModalWithData');
 
+		workflowDocumentStoreRef.value?.setScopes(['workflow:share']);
 		const { getByTestId } = renderComponent({
 			props: {
 				...defaultProps,
@@ -230,67 +250,55 @@ describe('WorkflowDetails', () => {
 	});
 
 	describe('Workflow menu', () => {
-		beforeEach(() => {
-			vi.mocked(useRoute).mockReturnValueOnce({
-				meta: {
-					nodeView: true,
-				},
-				query: { parentFolderId: '1' },
-				params: { name: 'test' },
-			} as unknown as ReturnType<typeof useRoute>);
-		});
-
 		it('should not have workflow duplicate and import when branch is read-only', async () => {
 			sourceControlStore.preferences.branchReadOnly = true;
 
+			workflowDocumentStoreRef.value?.setScopes(['workflow:read']);
 			const { getByTestId, queryByTestId } = renderComponent({
 				props: {
 					...defaultProps,
 					isArchived: false,
-					scopes: ['workflow:read'],
 				},
 			});
 
 			await userEvent.click(getByTestId('workflow-menu'));
 
 			expect(queryByTestId('workflow-menu-item-duplicate')).not.toBeInTheDocument();
-			expect(queryByTestId('workflow-menu-item-import-from-url')).not.toBeInTheDocument();
-			expect(queryByTestId('workflow-menu-item-import-from-file')).not.toBeInTheDocument();
+			expect(queryByTestId('workflow-menu-item-import')).not.toBeInTheDocument();
 		});
 
 		it('should not have workflow duplicate and import when collaboration is read-only', async () => {
 			collaborationStore.shouldBeReadOnly = true;
 
+			workflowDocumentStoreRef.value?.setScopes(['workflow:read']);
 			const { getByTestId, queryByTestId } = renderComponent({
 				props: {
 					...defaultProps,
 					isArchived: false,
-					scopes: ['workflow:read'],
 				},
 			});
 
 			await userEvent.click(getByTestId('workflow-menu'));
 
 			expect(queryByTestId('workflow-menu-item-duplicate')).not.toBeInTheDocument();
-			expect(queryByTestId('workflow-menu-item-import-from-url')).not.toBeInTheDocument();
-			expect(queryByTestId('workflow-menu-item-import-from-file')).not.toBeInTheDocument();
+			expect(queryByTestId('workflow-menu-item-import')).not.toBeInTheDocument();
 		});
 
 		it('should have workflow duplicate and import options if permission update is true', async () => {
+			workflowDocumentStoreRef.value?.setScopes(['workflow:update', 'workflow:share']);
 			const { getByTestId, queryByTestId } = renderComponent({
 				props: {
 					...defaultProps,
 					isArchived: false,
-					scopes: ['workflow:update'],
 				},
 			});
 
 			await userEvent.click(getByTestId('workflow-menu'));
 
-			expect(getByTestId('workflow-menu-item-duplicate')).toBeInTheDocument();
-			expect(getByTestId('workflow-menu-item-import-from-url')).toBeInTheDocument();
-			expect(getByTestId('workflow-menu-item-import-from-file')).toBeInTheDocument();
-			expect(queryByTestId('workflow-menu-item-share')).toBeInTheDocument();
+			expect(getByTestId('workflow-menu-item-duplicate')).not.toHaveClass('disabled');
+			// Import options live in a sub-menu; its trigger stands in for them here
+			expect(getByTestId('workflow-menu-item-import')).not.toHaveClass('disabled');
+			expect(queryByTestId('workflow-menu-item-share')).not.toHaveClass('disabled');
 			expect(queryByTestId('workflow-menu-item-delete')).not.toBeInTheDocument();
 			expect(queryByTestId('workflow-menu-item-archive')).not.toBeInTheDocument();
 			expect(queryByTestId('workflow-menu-item-unarchive')).not.toBeInTheDocument();
@@ -300,19 +308,17 @@ describe('WorkflowDetails', () => {
 			vi.mocked(useRoute)
 				.mockReset()
 				.mockReturnValue({
-					meta: {
-						nodeView: true,
-					},
+					meta: {},
 					query: { parentFolderId: '1', new: 'true' },
-					params: { name: 'test' },
+					params: { workflowId: 'test' },
 				} as unknown as ReturnType<typeof useRoute>);
 
+			workflowDocumentStoreRef.value?.setScopes(['workflow:delete']);
 			const { getByTestId, queryByTestId } = renderComponent({
 				props: {
 					...defaultProps,
 					id: 'new',
 					isArchived: false,
-					scopes: ['workflow:delete'],
 				},
 			});
 
@@ -324,11 +330,11 @@ describe('WorkflowDetails', () => {
 		});
 
 		it("should have 'Archive' option on non archived workflow", async () => {
+			workflowDocumentStoreRef.value?.setScopes(['workflow:delete']);
 			const { getByTestId, queryByTestId } = renderComponent({
 				props: {
 					...defaultProps,
 					isArchived: false,
-					scopes: ['workflow:delete'],
 				},
 			});
 
@@ -342,11 +348,11 @@ describe('WorkflowDetails', () => {
 		it("should not have 'Archive' option on non archived workflow when branch is read-only", async () => {
 			sourceControlStore.preferences.branchReadOnly = true;
 
+			workflowDocumentStoreRef.value?.setScopes(['workflow:delete']);
 			const { getByTestId, queryByTestId } = renderComponent({
 				props: {
 					...defaultProps,
 					isArchived: false,
-					scopes: ['workflow:delete'],
 				},
 			});
 
@@ -359,11 +365,11 @@ describe('WorkflowDetails', () => {
 		it("should not have 'Archive' option on non archived workflow when collaboration is read-only", async () => {
 			collaborationStore.shouldBeReadOnly = true;
 
+			workflowDocumentStoreRef.value?.setScopes(['workflow:delete']);
 			const { getByTestId, queryByTestId } = renderComponent({
 				props: {
 					...defaultProps,
 					isArchived: false,
-					scopes: ['workflow:delete'],
 				},
 			});
 
@@ -374,11 +380,11 @@ describe('WorkflowDetails', () => {
 		});
 
 		it("should not have 'Archive' option on non archived workflow without permission", async () => {
+			workflowDocumentStoreRef.value?.setScopes(['workflow:update']);
 			const { getByTestId, queryByTestId } = renderComponent({
 				props: {
 					...defaultProps,
 					isArchived: false,
-					scopes: ['workflow:update'],
 				},
 			});
 
@@ -389,11 +395,11 @@ describe('WorkflowDetails', () => {
 		});
 
 		it("should have 'Unarchive' and 'Delete' options on archived workflow", async () => {
+			workflowDocumentStoreRef.value?.setScopes(['workflow:delete']);
 			const { getByTestId, queryByTestId } = renderComponent({
 				props: {
 					...defaultProps,
 					isArchived: true,
-					scopes: ['workflow:delete'],
 				},
 			});
 
@@ -408,11 +414,11 @@ describe('WorkflowDetails', () => {
 		it("should not have 'Unarchive' or 'Delete' options on archived workflow when branch is read-only", async () => {
 			sourceControlStore.preferences.branchReadOnly = true;
 
+			workflowDocumentStoreRef.value?.setScopes(['workflow:delete']);
 			const { getByTestId, queryByTestId } = renderComponent({
 				props: {
 					...defaultProps,
 					isArchived: true,
-					scopes: ['workflow:delete'],
 				},
 			});
 
@@ -425,11 +431,11 @@ describe('WorkflowDetails', () => {
 		it("should not have 'Unarchive' or 'Delete' options on archived workflow when collaboration is read-only", async () => {
 			collaborationStore.shouldBeReadOnly = true;
 
+			workflowDocumentStoreRef.value?.setScopes(['workflow:delete']);
 			const { getByTestId, queryByTestId } = renderComponent({
 				props: {
 					...defaultProps,
 					isArchived: true,
-					scopes: ['workflow:delete'],
 				},
 			});
 
@@ -440,11 +446,11 @@ describe('WorkflowDetails', () => {
 		});
 
 		it("should not have 'Unarchive' or 'Delete' options on archived workflow without permission", async () => {
+			workflowDocumentStoreRef.value?.setScopes(['workflow:update']);
 			const { getByTestId, queryByTestId } = renderComponent({
 				props: {
 					...defaultProps,
 					isArchived: true,
-					scopes: ['workflow:update'],
 				},
 			});
 
@@ -455,11 +461,11 @@ describe('WorkflowDetails', () => {
 		});
 
 		it('should not have edit actions on archived workflow even with update permission', async () => {
+			workflowDocumentStoreRef.value?.setScopes(['workflow:update', 'workflow:delete']);
 			const { getByTestId, queryByTestId } = renderComponent({
 				props: {
 					...defaultProps,
 					isArchived: true,
-					scopes: ['workflow:update', 'workflow:delete'],
 				},
 			});
 
@@ -470,12 +476,11 @@ describe('WorkflowDetails', () => {
 		});
 
 		it("should call onWorkflowMenuSelect on 'Archive' option click on nonactive workflow", async () => {
+			workflowDocumentStoreRef.value?.setScopes(['workflow:delete']);
 			const { getByTestId } = renderComponent({
 				props: {
 					...defaultProps,
-					active: false,
 					isArchived: false,
-					scopes: ['workflow:delete'],
 				},
 			});
 
@@ -486,7 +491,7 @@ describe('WorkflowDetails', () => {
 
 			expect(message.confirm).toHaveBeenCalledTimes(0);
 			expect(toast.showError).toHaveBeenCalledTimes(0);
-			expect(toast.showMessage).toHaveBeenCalledTimes(1);
+			expect(toast.showToast).toHaveBeenCalledTimes(1);
 			expect(workflowsStore.archiveWorkflow).toHaveBeenCalledTimes(1);
 			expect(workflowsStore.archiveWorkflow).toHaveBeenCalledWith(workflow.id, 'test-checksum');
 			expect(router.push).toHaveBeenCalledTimes(1);
@@ -497,78 +502,68 @@ describe('WorkflowDetails', () => {
 
 		it("should navigate to team project workflows page on 'Archive' for team project workflow", async () => {
 			const teamProjectId = 'team-project-123';
-			const teamWorkflow = {
-				...workflow,
-				homeProject: {
-					id: teamProjectId,
-					name: 'Team Project',
-					type: 'team',
-				},
-			};
-
-			workflowsListStore.getWorkflowById.mockReturnValue(teamWorkflow as IWorkflowDb);
+			workflowDocumentStoreRef.value?.setHomeProject({
+				id: teamProjectId,
+				name: 'Team Project',
+				type: 'team',
+			} as ProjectSharingData);
 			workflowsStore.archiveWorkflow.mockResolvedValue(undefined);
 
+			workflowDocumentStoreRef.value?.setScopes(['workflow:delete']);
 			const { getByTestId } = renderComponent({
 				props: {
 					...defaultProps,
-					active: false,
 					isArchived: false,
-					scopes: ['workflow:delete'],
 				},
 			});
 
 			await userEvent.click(getByTestId('workflow-menu'));
 			await userEvent.click(getByTestId('workflow-menu-item-archive'));
 
-			expect(workflowsStore.archiveWorkflow).toHaveBeenCalledWith(teamWorkflow.id, 'test-checksum');
+			expect(workflowsStore.archiveWorkflow).toHaveBeenCalledWith(workflow.id, 'test-checksum');
 			expect(router.push).toHaveBeenCalledWith({
 				name: VIEWS.PROJECTS_WORKFLOWS,
 				params: { projectId: teamProjectId },
 			});
 		});
 
-		it("should navigate to personal workflows page on 'Archive' for personal project workflow", async () => {
-			const personalWorkflow = {
-				...workflow,
-				homeProject: {
-					id: 'personal-project-123',
-					name: 'Personal Project',
-					type: 'personal',
-				},
-			};
-
-			workflowsListStore.getWorkflowById.mockReturnValue(personalWorkflow as IWorkflowDb);
+		it("should navigate to personal project workflows page on 'Archive' for personal project workflow", async () => {
+			const personalProjectId = 'personal-project-123';
+			workflowDocumentStoreRef.value?.setHomeProject({
+				id: personalProjectId,
+				name: 'Personal Project',
+				type: 'personal',
+			} as ProjectSharingData);
 			workflowsStore.archiveWorkflow.mockResolvedValue(undefined);
 
+			workflowDocumentStoreRef.value?.setScopes(['workflow:delete']);
 			const { getByTestId } = renderComponent({
 				props: {
 					...defaultProps,
-					active: false,
 					isArchived: false,
-					scopes: ['workflow:delete'],
 				},
 			});
 
 			await userEvent.click(getByTestId('workflow-menu'));
 			await userEvent.click(getByTestId('workflow-menu-item-archive'));
 
-			expect(workflowsStore.archiveWorkflow).toHaveBeenCalledWith(
-				personalWorkflow.id,
-				'test-checksum',
-			);
+			expect(workflowsStore.archiveWorkflow).toHaveBeenCalledWith(workflow.id, 'test-checksum');
 			expect(router.push).toHaveBeenCalledWith({
-				name: VIEWS.WORKFLOWS,
+				name: VIEWS.PROJECTS_WORKFLOWS,
+				params: { projectId: personalProjectId },
 			});
 		});
 
 		it("should confirm onWorkflowMenuSelect on 'Archive' option click on active workflow", async () => {
+			workflowDocumentStoreRef.value?.setActiveState({
+				activeVersionId: 'v1',
+				activeVersion: null,
+			});
+			workflowDocumentStoreRef.value?.setScopes(['workflow:delete']);
 			const { getByTestId } = renderComponent({
 				props: {
 					...defaultProps,
-					active: true,
 					isArchived: false,
-					scopes: ['workflow:delete'],
 				},
 			});
 
@@ -579,21 +574,50 @@ describe('WorkflowDetails', () => {
 
 			expect(message.confirm).toHaveBeenCalledTimes(1);
 			expect(toast.showError).toHaveBeenCalledTimes(0);
-			expect(toast.showMessage).toHaveBeenCalledTimes(1);
+			expect(toast.showToast).toHaveBeenCalledTimes(1);
 			expect(workflowsStore.archiveWorkflow).toHaveBeenCalledTimes(1);
 			expect(workflowsStore.archiveWorkflow).toHaveBeenCalledWith(workflow.id, 'test-checksum');
 			expect(router.push).toHaveBeenCalledTimes(1);
 			expect(router.push).toHaveBeenCalledWith({
 				name: VIEWS.WORKFLOWS,
 			});
+			expect(workflowDocumentStoreRef.value?.active).toBe(false);
+		});
+
+		it('should show a "Delete permanently" link in the archive toast that deletes the archived workflow', async () => {
+			workflowDocumentStoreRef.value?.setScopes(['workflow:delete']);
+			const { getByTestId } = renderComponent({
+				props: { ...defaultProps, isArchived: false },
+			});
+
+			workflowsStore.archiveWorkflow.mockResolvedValue(undefined);
+
+			await userEvent.click(getByTestId('workflow-menu'));
+			await userEvent.click(getByTestId('workflow-menu-item-archive'));
+
+			expect(toast.showToast).toHaveBeenCalledTimes(1);
+			const archiveToast = vi.mocked(toast.showToast).mock.results[0].value;
+			const toastConfig = vi.mocked(toast.showToast).mock.calls[0][0];
+			expect(toastConfig.message).toContain('archive-toast-delete-permanently-link');
+			expect(toastConfig.onClick).toBeDefined();
+
+			const anchor = document.createElement('a');
+			toastConfig.onClick?.({ target: anchor, preventDefault: vi.fn() } as unknown as MouseEvent);
+
+			await vi.waitFor(() => {
+				expect(workflowsListStore.deleteWorkflow).toHaveBeenCalledTimes(1);
+			});
+			expect(workflowsListStore.deleteWorkflow).toHaveBeenCalledWith(workflow.id);
+			// Archive toast is dismissed immediately so its stale CTA doesn't linger.
+			expect(archiveToast.close).toHaveBeenCalledTimes(1);
 		});
 
 		it("should call onWorkflowMenuSelect on 'Unarchive' option click", async () => {
+			workflowDocumentStoreRef.value?.setScopes(['workflow:delete']);
 			const { getByTestId } = renderComponent({
 				props: {
 					...defaultProps,
 					isArchived: true,
-					scopes: ['workflow:delete'],
 				},
 			});
 
@@ -607,11 +631,11 @@ describe('WorkflowDetails', () => {
 		});
 
 		it("should call onWorkflowMenuSelect on 'Delete' option click", async () => {
+			workflowDocumentStoreRef.value?.setScopes(['workflow:delete']);
 			const { getByTestId } = renderComponent({
 				props: {
 					...defaultProps,
 					isArchived: true,
-					scopes: ['workflow:delete'],
 				},
 			});
 
@@ -631,97 +655,88 @@ describe('WorkflowDetails', () => {
 
 		it("should navigate to team project workflows page on 'Delete' for team project workflow", async () => {
 			const teamProjectId = 'team-project-456';
-			const teamWorkflow = {
-				...workflow,
-				isArchived: true,
-				homeProject: {
-					id: teamProjectId,
-					name: 'Team Project',
-					type: 'team',
-				},
-			};
-
-			workflowsListStore.getWorkflowById.mockReturnValue(teamWorkflow as IWorkflowDb);
+			workflowDocumentStoreRef.value?.setHomeProject({
+				id: teamProjectId,
+				name: 'Team Project',
+				type: 'team',
+			} as ProjectSharingData);
 			workflowsListStore.deleteWorkflow.mockResolvedValue(undefined);
 
+			workflowDocumentStoreRef.value?.setScopes(['workflow:delete']);
 			const { getByTestId } = renderComponent({
 				props: {
 					...defaultProps,
 					isArchived: true,
-					scopes: ['workflow:delete'],
 				},
 			});
 
 			await userEvent.click(getByTestId('workflow-menu'));
 			await userEvent.click(getByTestId('workflow-menu-item-delete'));
 
-			expect(workflowsListStore.deleteWorkflow).toHaveBeenCalledWith(teamWorkflow.id);
+			expect(workflowsListStore.deleteWorkflow).toHaveBeenCalledWith(workflow.id);
 			expect(router.push).toHaveBeenCalledWith({
 				name: VIEWS.PROJECTS_WORKFLOWS,
 				params: { projectId: teamProjectId },
 			});
 		});
 
-		it("should navigate to personal workflows page on 'Delete' for personal project workflow", async () => {
-			const personalWorkflow = {
-				...workflow,
-				isArchived: true,
-				homeProject: {
-					id: 'personal-project-456',
-					name: 'Personal Project',
-					type: 'personal',
-				},
-			};
-
-			workflowsListStore.getWorkflowById.mockReturnValue(personalWorkflow as IWorkflowDb);
+		it("should navigate to personal project workflows page on 'Delete' for personal project workflow", async () => {
+			const personalProjectId = 'personal-project-456';
+			workflowDocumentStoreRef.value?.setHomeProject({
+				id: personalProjectId,
+				name: 'Personal Project',
+				type: 'personal',
+			} as ProjectSharingData);
 			workflowsListStore.deleteWorkflow.mockResolvedValue(undefined);
 
+			workflowDocumentStoreRef.value?.setScopes(['workflow:delete']);
 			const { getByTestId } = renderComponent({
 				props: {
 					...defaultProps,
 					isArchived: true,
-					scopes: ['workflow:delete'],
 				},
 			});
 
 			await userEvent.click(getByTestId('workflow-menu'));
 			await userEvent.click(getByTestId('workflow-menu-item-delete'));
 
-			expect(workflowsListStore.deleteWorkflow).toHaveBeenCalledWith(personalWorkflow.id);
+			expect(workflowsListStore.deleteWorkflow).toHaveBeenCalledWith(workflow.id);
 			expect(router.push).toHaveBeenCalledWith({
-				name: VIEWS.WORKFLOWS,
+				name: VIEWS.PROJECTS_WORKFLOWS,
+				params: { projectId: personalProjectId },
 			});
 		});
 
 		it("should call onWorkflowMenuSelect on 'Change owner' option click", async () => {
-			const openModalSpy = vi.spyOn(uiStore, 'openModalWithData');
+			const openMoveToFolderModalSpy = vi.spyOn(uiStore, 'openMoveToFolderModal');
 
 			workflowsListStore.workflowsById = { [workflow.id]: workflow };
 
+			workflowDocumentStoreRef.value?.setScopes(['workflow:move']);
 			const { getByTestId } = renderComponent({
 				props: {
 					...defaultProps,
-					scopes: ['workflow:move'],
 				},
 			});
 
 			await userEvent.click(getByTestId('workflow-menu'));
 			await userEvent.click(getByTestId('workflow-menu-item-change-owner'));
 
-			expect(openModalSpy).toHaveBeenCalledWith({
-				name: PROJECT_MOVE_RESOURCE_MODAL,
-				data: expect.objectContaining({ resource: expect.objectContaining({ id: workflow.id }) }),
-			});
+			expect(openMoveToFolderModalSpy).toHaveBeenCalledWith(
+				'workflow',
+				expect.objectContaining({ id: workflow.id }),
+				expect.anything(),
+			);
 		});
 	});
 
 	describe('Archived badge', () => {
 		it('should show badge on archived workflow', async () => {
+			workflowDocumentStoreRef.value?.setScopes(['workflow:delete']);
 			const { getByTestId } = renderComponent({
 				props: {
 					...defaultProps,
 					isArchived: true,
-					scopes: ['workflow:delete'],
 				},
 			});
 
@@ -729,11 +744,11 @@ describe('WorkflowDetails', () => {
 		});
 
 		it('should not show badge on non archived workflow', async () => {
+			workflowDocumentStoreRef.value?.setScopes(['workflow:delete']);
 			const { queryByTestId } = renderComponent({
 				props: {
 					...defaultProps,
 					isArchived: false,
-					scopes: ['workflow:delete'],
 				},
 			});
 

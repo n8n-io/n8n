@@ -1,15 +1,17 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
 
 import N8nButton from './Button.vue';
+import IconTextButton from '../IconTextButton/IconTextButton.vue';
 import N8nIcon from '../N8nIcon/Icon.vue';
+import N8nIconButton from '../N8nIconButton/IconButton.vue';
 
 const meta = {
-	title: 'Atoms/Button',
+	title: 'Core/Button',
 	component: N8nButton,
 	argTypes: {
 		variant: {
 			control: 'select',
-			options: ['solid', 'subtle', 'ghost', 'outline', 'destructive'],
+			options: ['solid', 'subtle', 'ghost', 'outline', 'destructive', 'success'],
 		},
 		size: {
 			control: 'select',
@@ -36,6 +38,9 @@ const meta = {
 	},
 	parameters: {
 		docs: {
+			description: {
+				component: 'A clickable element that triggers an action in multiple variants and sizes.',
+			},
 			source: { type: 'dynamic' },
 		},
 	},
@@ -75,6 +80,7 @@ export const Variant: Story = {
 				<N8nButton variant="outline" size="medium">Outline</N8nButton>
 				<N8nButton variant="ghost" size="medium">Ghost</N8nButton>
 				<N8nButton variant="destructive" size="medium">Destructive</N8nButton>
+				<N8nButton variant="success" size="medium">Success</N8nButton>
 			</div>
 		</div>
 		`,
@@ -137,6 +143,7 @@ export const Loading: Story = {
 				<N8nButton variant="outline" size="medium" loading>Outline</N8nButton>
 				<N8nButton variant="ghost" size="medium" loading>Ghost</N8nButton>
 				<N8nButton variant="destructive" size="medium" loading>Destructive</N8nButton>
+				<N8nButton variant="success" size="medium" loading>Success</N8nButton>
 			</div>
 		</div>
 		`,
@@ -155,6 +162,7 @@ export const Link: Story = {
 				<N8nButton variant="outline" size="medium" href="https://n8n.io">Link</N8nButton>
 				<N8nButton variant="ghost" size="medium" href="https://n8n.io">Link</N8nButton>
 				<N8nButton variant="destructive" size="medium" href="https://n8n.io">Link</N8nButton>
+				<N8nButton variant="success" size="medium" href="https://n8n.io">Link</N8nButton>
 			</div>
 		</div>
 		`,
@@ -168,13 +176,10 @@ export const IconOnly: Story = {
 		template: `
 		<div style="display: grid; place-items: center;">
 			<div style="display: flex; gap: 12px; align-items: center;">
-				<N8nButton variant="solid" size="xsmall" icon-only aria-label="Add">
-					<N8nIcon icon="plus" size="xsmall" />
-				</N8nButton>
-				<N8nButton variant="solid" size="small" icon-only aria-label="Add">
-					<N8nIcon icon="plus" size="small" />
-				</N8nButton>
-				<N8nButton variant="solid" size="medium" icon-only aria-label="Add">
+				<N8nButton variant="solid" size="xsmall" icon="plus" icon-only aria-label="Add" />
+				<N8nButton variant="solid" size="small" icon="plus" icon-only aria-label="Add" />
+				<N8nButton variant="solid" size="medium" icon="plus" icon-only aria-label="Add" />
+				<N8nButton loading variant="solid" size="medium" icon-only aria-label="Add">
 					<N8nIcon icon="plus" size="medium" />
 				</N8nButton>
 			</div>
@@ -195,6 +200,7 @@ export const Disabled: Story = {
 				<N8nButton variant="outline" size="medium" disabled>Outline</N8nButton>
 				<N8nButton variant="ghost" size="medium" disabled>Ghost</N8nButton>
 				<N8nButton variant="destructive" size="medium" disabled>Destructive</N8nButton>
+				<N8nButton variant="success" size="medium" disabled>Success</N8nButton>
 			</div>
 		</div>
 		`,
@@ -213,6 +219,7 @@ export const Disabled: Story = {
  * | `secondary`   | `subtle`          |
  * | `tertiary`    | `ghost`           |
  * | `danger`      | `destructive`     |
+ * | `success`     | `success`         |
  *
  * Additionally:
  * - `outline` prop → `variant="outline"`
@@ -244,6 +251,10 @@ export const TypeToVariantMapping: Story = {
 				<code>variant="destructive"</code>
 				<N8nButton variant="destructive">Destructive</N8nButton>
 
+				<code>type="success"</code>
+				<code>variant="success"</code>
+				<N8nButton variant="success">Success</N8nButton>
+
 				<code>outline</code>
 				<code>variant="outline"</code>
 				<N8nButton variant="outline">Outline</N8nButton>
@@ -252,6 +263,40 @@ export const TypeToVariantMapping: Story = {
 				<code>variant="ghost"</code>
 				<N8nButton variant="ghost">Ghost</N8nButton>
 			</div>
+		</div>
+		`,
+	}),
+	args: {},
+};
+
+export const IconButtonPatterns: Story = {
+	render: () => ({
+		components: { N8nIconButton },
+		template: `
+		<div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+			<N8nIconButton icon="plus" title="Create" variant="solid" size="xlarge" />
+			<N8nIconButton icon="plus" title="Create" variant="solid" size="large" />
+			<N8nIconButton icon="plus" title="Create" variant="solid" size="medium" />
+			<N8nIconButton icon="plus" title="Create" variant="subtle" size="medium" />
+			<N8nIconButton icon="plus" title="Create" variant="ghost" size="medium" />
+			<N8nIconButton icon="plus" title="Create" variant="outline" size="medium" />
+			<N8nIconButton icon="plus" title="Create" variant="solid" :loading="true" size="medium" />
+			<N8nIconButton icon="plus" title="Create" variant="solid" :disabled="true" size="medium" />
+		</div>
+		`,
+	}),
+	args: {},
+};
+
+export const IconTextPatterns: Story = {
+	render: () => ({
+		components: { IconTextButton },
+		template: `
+		<div style="display: flex; flex-direction: column; gap: 16px;">
+			<IconTextButton icon="undo-2">Restore version</IconTextButton>
+			<IconTextButton icon="arrow-up-right" icon-position="right">Show version</IconTextButton>
+			<IconTextButton icon="undo-2" :active="true">Restore version</IconTextButton>
+			<IconTextButton icon="undo-2" :disabled="true">Restore version</IconTextButton>
 		</div>
 		`,
 	}),

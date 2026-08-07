@@ -9,7 +9,7 @@ import { DATA_TABLE_COLUMN_TYPES } from '@/features/core/dataTable/dataTable.typ
 import { useI18n } from '@n8n/i18n';
 import { useDataTableTypes } from '@/features/core/dataTable/composables/useDataTableTypes';
 import { COLUMN_NAME_REGEX, MAX_COLUMN_NAME_LENGTH } from '@/features/core/dataTable/constants';
-import { useDebounce } from '@/app/composables/useDebounce';
+import { useDebounce } from '@n8n/composables/useDebounce';
 
 import {
 	N8nButton,
@@ -166,6 +166,7 @@ const onInput = debounce(validateName, { debounceTime: 100 });
 							variant="ghost"
 							data-test-id="data-table-add-column-trigger-button"
 							icon="plus"
+							:aria-label="i18n.baseText('dataTable.addColumn.label')"
 							:disabled="isDisabled"
 						/>
 					</template>

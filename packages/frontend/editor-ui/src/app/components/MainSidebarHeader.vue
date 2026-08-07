@@ -16,13 +16,10 @@ import { useI18n } from '@n8n/i18n';
 import { VIEWS } from '@/app/constants';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useGlobalEntityCreation } from '@/app/composables/useGlobalEntityCreation';
-import BetaTag from '@n8n/design-system/components/BetaTag/BetaTag.vue';
-
 defineProps<{
 	isCollapsed: boolean;
-	isBeta?: boolean;
 	hideCreate?: boolean;
 }>();
 
@@ -74,7 +71,6 @@ const {
 				:collapsed="isCollapsed"
 				:release-channel="settingsStore.settings.releaseChannel"
 			>
-				<BetaTag v-if="isBeta" :class="$style.beta" data-test-id="beta-icon" />
 				<N8nTooltip
 					v-if="sourceControlStore.preferences.branchReadOnly && !isCollapsed"
 					placement="bottom"
@@ -104,6 +100,7 @@ const {
 			ref="createBtn"
 			data-test-id="universal-add"
 			:menu="menu"
+			:teleport="true"
 			@select="handleMenuSelect"
 		>
 			<N8nIconButton
@@ -164,6 +161,7 @@ const {
 			</template>
 		</N8nNavigationDropdown>
 		<KeyboardShortcutTooltip
+			v-if="!settingsStore.isCanvasOnly"
 			:placement="isCollapsed ? 'right' : 'bottom'"
 			:show-after="500"
 			:label="i18n.baseText('nodeView.openCommandBar')"
@@ -226,11 +224,6 @@ const {
 
 .logo {
 	margin-right: auto;
-}
-
-.beta {
-	margin-top: var(--spacing--3xs);
-	margin-left: var(--spacing--3xs);
 }
 
 .readOnlyEnvironmentIcon {

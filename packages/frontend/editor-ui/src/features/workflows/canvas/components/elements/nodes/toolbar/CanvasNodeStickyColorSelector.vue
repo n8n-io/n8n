@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { useThrottleFn } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
 import { useCanvasNode } from '../../../../composables/useCanvasNode';
 import type { CanvasNodeStickyNoteRender } from '../../../../canvas.types';
@@ -40,9 +41,12 @@ function openNativeColorPicker() {
 	colorInputRef.value?.click();
 }
 
-function onNativeColorChange(event: Event) {
+const onNativeColorInput = useThrottleFn((event: Event) => {
 	const input = event.target as HTMLInputElement;
 	emit('update', input.value.toUpperCase());
+}, 16);
+
+function onNativeColorChange() {
 	hidePopover();
 }
 
@@ -73,7 +77,7 @@ onBeforeUnmount(() => {
 		<N8nPopover
 			v-model:open="isPopoverVisible"
 			side="top"
-			width="240px"
+			width="auto"
 			:content-class="$style.popover"
 			:enable-scrolling="false"
 			@before-enter="onMouseEnter"
@@ -128,6 +132,7 @@ onBeforeUnmount(() => {
 			type="color"
 			:class="$style.hiddenColorInput"
 			data-test-id="native-color-input"
+			@input="onNativeColorInput"
 			@change="onNativeColorChange"
 		/>
 	</div>
@@ -135,7 +140,6 @@ onBeforeUnmount(() => {
 
 <style lang="scss" module>
 .popover {
-	min-width: 240px;
 	margin-bottom: calc(-1 * var(--spacing--2xs));
 	margin-left: calc(-1 * var(--spacing--5xs));
 }

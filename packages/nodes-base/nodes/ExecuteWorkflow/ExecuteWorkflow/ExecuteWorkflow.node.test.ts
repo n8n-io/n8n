@@ -1,26 +1,27 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { IExecuteFunctions, IWorkflowDataProxyData, INode } from 'n8n-workflow';
 
 import { ExecuteWorkflow } from './ExecuteWorkflow.node';
 import { getWorkflowInfo } from './GenericFunctions';
+import type { Mock } from 'vitest';
 
-jest.mock('./GenericFunctions');
-jest.mock('../../../utils/utilities');
+vi.mock('./GenericFunctions');
+vi.mock('../../../utils/utilities');
 
 describe('ExecuteWorkflow', () => {
 	const executeWorkflow = new ExecuteWorkflow();
 	const executeFunctions = mock<IExecuteFunctions>({
-		getNodeParameter: jest.fn(),
-		getInputData: jest.fn(),
-		getWorkflowDataProxy: jest.fn(),
-		executeWorkflow: jest.fn(),
-		continueOnFail: jest.fn(),
-		setMetadata: jest.fn(),
-		getNode: jest.fn(),
+		getNodeParameter: vi.fn(),
+		getInputData: vi.fn(),
+		getWorkflowDataProxy: vi.fn(),
+		executeWorkflow: vi.fn(),
+		continueOnFail: vi.fn(),
+		setMetadata: vi.fn(),
+		getNode: vi.fn(),
 	});
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		executeFunctions.getInputData.mockReturnValue([{ json: { key: 'value' } }]);
 		executeFunctions.getWorkflowDataProxy.mockReturnValue({
 			$workflow: { id: 'workflowId' },
@@ -41,8 +42,8 @@ describe('ExecuteWorkflow', () => {
 			$workflow: { id: 'workflowId' },
 			$execution: { id: 'executionId' },
 		} as unknown as IWorkflowDataProxyData);
-		(getWorkflowInfo as jest.Mock).mockResolvedValue({ id: 'subWorkflowId' });
-		(executeFunctions.executeWorkflow as jest.Mock).mockResolvedValue({
+		(getWorkflowInfo as Mock).mockResolvedValue({ id: 'subWorkflowId' });
+		(executeFunctions.executeWorkflow as Mock).mockResolvedValue({
 			executionId: 'subExecutionId',
 			data: [[{ json: { key: 'subValue' } }]],
 		});
@@ -85,7 +86,7 @@ describe('ExecuteWorkflow', () => {
 			.mockReturnValueOnce(false); // waitForSubWorkflow
 
 		executeFunctions.getInputData.mockReturnValue([{ json: { key: 'value' } }]);
-		(getWorkflowInfo as jest.Mock).mockResolvedValue({ id: 'subWorkflowId' });
+		(getWorkflowInfo as Mock).mockResolvedValue({ id: 'subWorkflowId' });
 
 		executeFunctions.executeWorkflow.mockResolvedValue({
 			executionId: 'subExecutionId',
@@ -124,8 +125,8 @@ describe('ExecuteWorkflow', () => {
 
 		executeFunctions.getNode.mockReturnValue({ typeVersion: 1.2 } as INode);
 
-		(getWorkflowInfo as jest.Mock).mockRejectedValue(new Error('Test error'));
-		(executeFunctions.continueOnFail as jest.Mock).mockReturnValue(true);
+		(getWorkflowInfo as Mock).mockRejectedValue(new Error('Test error'));
+		(executeFunctions.continueOnFail as Mock).mockReturnValue(true);
 
 		const result = await executeWorkflow.execute.call(executeFunctions);
 
@@ -151,8 +152,8 @@ describe('ExecuteWorkflow', () => {
 			{ json: { key: '3' } },
 		]);
 
-		(getWorkflowInfo as jest.Mock).mockRejectedValue(new Error('Test error'));
-		(executeFunctions.continueOnFail as jest.Mock).mockReturnValue(true);
+		(getWorkflowInfo as Mock).mockRejectedValue(new Error('Test error'));
+		(executeFunctions.continueOnFail as Mock).mockReturnValue(true);
 
 		const result = await executeWorkflow.execute.call(executeFunctions);
 
@@ -173,8 +174,8 @@ describe('ExecuteWorkflow', () => {
 
 		executeFunctions.getNode.mockReturnValue({ typeVersion: 1.3 } as INode);
 
-		(getWorkflowInfo as jest.Mock).mockRejectedValue(new Error('Test error'));
-		(executeFunctions.continueOnFail as jest.Mock).mockReturnValue(true);
+		(getWorkflowInfo as Mock).mockRejectedValue(new Error('Test error'));
+		(executeFunctions.continueOnFail as Mock).mockReturnValue(true);
 
 		const result = await executeWorkflow.execute.call(executeFunctions);
 
@@ -200,8 +201,8 @@ describe('ExecuteWorkflow', () => {
 			{ json: { key: '3' } },
 		]);
 
-		(getWorkflowInfo as jest.Mock).mockRejectedValue(new Error('Test error'));
-		(executeFunctions.continueOnFail as jest.Mock).mockReturnValue(true);
+		(getWorkflowInfo as Mock).mockRejectedValue(new Error('Test error'));
+		(executeFunctions.continueOnFail as Mock).mockReturnValue(true);
 
 		const result = await executeWorkflow.execute.call(executeFunctions);
 
@@ -222,8 +223,8 @@ describe('ExecuteWorkflow', () => {
 			.mockReturnValueOnce([]) // workflowInputs.schema
 			.mockReturnValueOnce(true); // waitForSubWorkflow
 
-		(getWorkflowInfo as jest.Mock).mockRejectedValue(new Error('Test error'));
-		(executeFunctions.continueOnFail as jest.Mock).mockReturnValue(false);
+		(getWorkflowInfo as Mock).mockRejectedValue(new Error('Test error'));
+		(executeFunctions.continueOnFail as Mock).mockReturnValue(false);
 
 		await expect(executeWorkflow.execute.call(executeFunctions)).rejects.toThrow(
 			'Error executing workflow with item at index 0',

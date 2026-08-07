@@ -13,13 +13,12 @@ import { Container } from '@n8n/di';
 import { DateTime } from 'luxon';
 import type { DataTableRow } from 'n8n-workflow';
 
+import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
+import type { SourceControlPreferences } from '@/modules/source-control.ee/types/source-control-preferences';
 import { createDataTable } from '@test-integration/db/data-tables';
 import { createOwner, createMember, createAdmin } from '@test-integration/db/users';
 import type { SuperAgentTest } from '@test-integration/types';
 import * as utils from '@test-integration/utils';
-
-import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
-import type { SourceControlPreferences } from '@/modules/source-control.ee/types/source-control-preferences';
 
 import { DataTableColumnRepository } from '../data-table-column.repository';
 import { DataTableRowsRepository } from '../data-table-rows.repository';
@@ -99,6 +98,24 @@ describe('POST /projects/:projectId/data-tables', () => {
 		};
 
 		await authOwnerAgent.post(`/projects/${project.id}/data-tables`).send(payload).expect(400);
+	});
+
+	test('should return 409 when column name conflicts with system columns', async () => {
+		const project = await createTeamProject(undefined, owner);
+
+		for (const systemColumnName of ['id', 'ID', 'createdAt', 'updatedAt']) {
+			const payload = {
+				name: `Table with ${systemColumnName}`,
+				columns: [{ name: systemColumnName, type: 'string' }],
+			};
+
+			const response = await authOwnerAgent
+				.post(`/projects/${project.id}/data-tables`)
+				.send(payload)
+				.expect(409);
+
+			expect(response.body.message).toContain('reserved');
+		}
 	});
 
 	test('should not create data table if user has project:viewer role in team project', async () => {
@@ -4189,6 +4206,158 @@ describe('POST /projects/:projectId/data-tables - CSV Import', () => {
 				}),
 			]),
 		);
+	});
+
+	test('should import only included columns when csvColumnName is provided', async () => {
+		// Upload CSV with 3 columns
+		const csvContent = 'name,age,email\nAlice,30,alice@example.com\nBob,25,bob@example.com';
+		const uploadResponse = await authOwnerAgent
+			.post('/data-tables/uploads')
+			.attach('file', Buffer.from(csvContent), { filename: 'discard.csv', contentType: 'text/csv' })
+			.expect(200);
+
+		const fileId = uploadResponse.body.data.id;
+
+		// Create table with only 2 columns, discarding 'age'
+		const payload = {
+			name: 'Discarded Column Import',
+			columns: [
+				{ name: 'name', type: 'string', csvColumnName: 'name' },
+				{ name: 'email', type: 'string', csvColumnName: 'email' },
+			],
+			fileId,
+		};
+
+		const createResponse = await authOwnerAgent
+			.post(`/projects/${ownerProject.id}/data-tables`)
+			.send(payload)
+			.expect(200);
+
+		const dataTableId = createResponse.body.data.id;
+
+		const rowsResponse = await authOwnerAgent
+			.get(`/projects/${ownerProject.id}/data-tables/${dataTableId}/rows`)
+			.expect(200);
+
+		expect(rowsResponse.body.data.count).toBe(2);
+		// 'age' column should not exist in the imported data
+		expect(rowsResponse.body.data.data).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ name: 'Alice', email: 'alice@example.com' }),
+				expect.objectContaining({ name: 'Bob', email: 'bob@example.com' }),
+			]),
+		);
+		// Verify no 'age' key exists in the rows
+		for (const row of rowsResponse.body.data.data) {
+			expect(row).not.toHaveProperty('age');
+		}
+	});
+
+	test('should correctly map renamed columns using csvColumnName', async () => {
+		// Upload CSV with original column names
+		const csvContent = 'First Name,Last Name,Age\nAlice,Smith,30\nBob,Jones,25';
+		const uploadResponse = await authOwnerAgent
+			.post('/data-tables/uploads')
+			.attach('file', Buffer.from(csvContent), { filename: 'rename.csv', contentType: 'text/csv' })
+			.expect(200);
+
+		const fileId = uploadResponse.body.data.id;
+
+		// Create table with renamed columns, mapping via csvColumnName
+		const payload = {
+			name: 'Renamed Columns Import',
+			columns: [
+				{ name: 'firstName', type: 'string', csvColumnName: 'First Name' },
+				{ name: 'lastName', type: 'string', csvColumnName: 'Last Name' },
+				{ name: 'userAge', type: 'number', csvColumnName: 'Age' },
+			],
+			fileId,
+		};
+
+		const createResponse = await authOwnerAgent
+			.post(`/projects/${ownerProject.id}/data-tables`)
+			.send(payload)
+			.expect(200);
+
+		const dataTableId = createResponse.body.data.id;
+
+		const rowsResponse = await authOwnerAgent
+			.get(`/projects/${ownerProject.id}/data-tables/${dataTableId}/rows`)
+			.expect(200);
+
+		expect(rowsResponse.body.data.count).toBe(2);
+		expect(rowsResponse.body.data.data).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ firstName: 'Alice', lastName: 'Smith', userAge: 30 }),
+				expect.objectContaining({ firstName: 'Bob', lastName: 'Jones', userAge: 25 }),
+			]),
+		);
+	});
+
+	test('should correctly handle renamed and discarded columns together', async () => {
+		// Upload CSV with 4 columns
+		const csvContent =
+			'id,name,status,notes\n1,Alice,active,some notes\n2,Bob,inactive,other notes';
+		const uploadResponse = await authOwnerAgent
+			.post('/data-tables/uploads')
+			.attach('file', Buffer.from(csvContent), {
+				filename: 'rename-discard.csv',
+				contentType: 'text/csv',
+			})
+			.expect(200);
+
+		const fileId = uploadResponse.body.data.id;
+
+		// Discard 'id' and 'notes', rename 'status' to 'userStatus'
+		const payload = {
+			name: 'Rename And Discard Import',
+			columns: [
+				{ name: 'userName', type: 'string', csvColumnName: 'name' },
+				{ name: 'userStatus', type: 'string', csvColumnName: 'status' },
+			],
+			fileId,
+		};
+
+		const createResponse = await authOwnerAgent
+			.post(`/projects/${ownerProject.id}/data-tables`)
+			.send(payload)
+			.expect(200);
+
+		const dataTableId = createResponse.body.data.id;
+
+		const rowsResponse = await authOwnerAgent
+			.get(`/projects/${ownerProject.id}/data-tables/${dataTableId}/rows`)
+			.expect(200);
+
+		expect(rowsResponse.body.data.count).toBe(2);
+		expect(rowsResponse.body.data.data).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ userName: 'Alice', userStatus: 'active' }),
+				expect.objectContaining({ userName: 'Bob', userStatus: 'inactive' }),
+			]),
+		);
+		// Verify discarded columns are not present
+		for (const row of rowsResponse.body.data.data) {
+			expect(row).not.toHaveProperty('notes');
+		}
+	});
+
+	test('should reject CSV import when all columns are discarded (empty columns array)', async () => {
+		const csvContent = 'name,age\nAlice,30\nBob,25';
+		const uploadResponse = await authOwnerAgent
+			.post('/data-tables/uploads')
+			.attach('file', Buffer.from(csvContent), { filename: 'test.csv', contentType: 'text/csv' })
+			.expect(200);
+
+		const fileId = uploadResponse.body.data.id;
+
+		const payload = {
+			name: 'Empty Columns Import',
+			columns: [] as DataTableCreateColumnSchema[],
+			fileId,
+		};
+
+		await authOwnerAgent.post(`/projects/${ownerProject.id}/data-tables`).send(payload).expect(400);
 	});
 });
 

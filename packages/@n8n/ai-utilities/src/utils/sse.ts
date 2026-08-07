@@ -22,15 +22,16 @@ export interface ServerSentEventMessage {
  * - Supports CR, LF, and CRLF line endings
  * - Properly buffers incomplete lines
  *
- * @param body - ReadableStream from a fetch response
+ * The method does not handle the iterator closing, so the caller is responsible for closing the iterator.
+ *
+ * @param body - AsyncIterableIterator
  * @returns AsyncIterable of parsed SSE messages
  *
  * @see https://html.spec.whatwg.org/multipage/server-sent-events.html
  */
 export async function* parseSSEStream(
-	body: ReadableStream<Uint8Array>,
+	body: AsyncIterableIterator<Buffer | Uint8Array>,
 ): AsyncIterable<ServerSentEventMessage> {
-	const reader = body.getReader();
 	const decoder = new TextDecoder();
 	let buffer = '';
 
@@ -38,46 +39,36 @@ export async function* parseSSEStream(
 	let currentEvent: ServerSentEventMessage = {};
 	let dataLines: string[] = [];
 
-	try {
-		while (true) {
-			const { done, value } = await reader.read();
+	for await (const chunk of body) {
+		buffer += decoder.decode(chunk, { stream: true });
 
-			if (done) {
-				// Flush the decoder to get any trailing partial UTF-8 sequence
-				buffer += decoder.decode();
+		// Process complete lines
+		// SSE spec supports CR, LF, and CRLF as line terminators
+		const lines = buffer.split(/\r\n|\r|\n/);
+		// Keep the last incomplete line in the buffer
+		buffer = lines.pop() ?? '';
 
-				// Process any remaining buffered content
-				if (buffer !== '') {
-					const event = processLine(buffer);
-					if (event) {
-						yield event;
-					}
-				}
-				// Yield final event if it has content
-				if (hasEventContent()) {
-					yield finalizeEvent();
-				}
-				break;
-			}
-
-			// Decode the chunk and add to buffer (stream: true preserves partial UTF-8 sequences)
-			buffer += decoder.decode(value, { stream: true });
-
-			// Process complete lines
-			// SSE spec supports CR, LF, and CRLF as line terminators
-			const lines = buffer.split(/\r\n|\r|\n/);
-			// Keep the last incomplete line in the buffer
-			buffer = lines.pop() ?? '';
-
-			for (const line of lines) {
-				const event = processLine(line);
-				if (event) {
-					yield event;
-				}
+		for (const line of lines) {
+			const event = processLine(line);
+			if (event) {
+				yield event;
 			}
 		}
-	} finally {
-		reader.releaseLock();
+	}
+
+	// Stream ended - flush the decoder to get any trailing partial UTF-8 sequence
+	buffer += decoder.decode();
+
+	// Process any remaining buffered content
+	if (buffer !== '') {
+		const event = processLine(buffer);
+		if (event) {
+			yield event;
+		}
+	}
+	// Yield final event if it has content
+	if (hasEventContent()) {
+		yield finalizeEvent();
 	}
 
 	function processLine(line: string): ServerSentEventMessage | null {

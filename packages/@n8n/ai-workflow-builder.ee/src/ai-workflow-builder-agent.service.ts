@@ -2,7 +2,9 @@ import { ChatAnthropic } from '@langchain/anthropic';
 import { AIMessage, ToolMessage } from '@langchain/core/messages';
 import type { BaseMessage } from '@langchain/core/messages';
 import { LangChainTracer } from '@langchain/core/tracers/tracer_langchain';
+import { buildProxyHeaders } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { CustomFetch } from '@n8n/backend-network/transport';
 import { Service } from '@n8n/di';
 import { AiAssistantClient, AiAssistantSDK } from '@n8n_io/ai-assistant-sdk';
 import assert from 'assert';
@@ -10,11 +12,14 @@ import { Client as TracingClient } from 'langsmith';
 import type { IUser, INodeTypeDescription, ITelemetryTrackProperties } from 'n8n-workflow';
 import { z } from 'zod';
 
+import { AssistantHandler } from '@/assistant';
 import { LLMServiceError } from '@/errors';
 import { anthropicClaudeSonnet45 } from '@/llm-config';
 import { SessionManagerService } from '@/session-manager.service';
+import { SsrfGuard } from '@/tools/utils/ssrf-guard';
 import { ResourceLocatorCallbackFactory } from '@/types/callbacks';
 import type { HITLInterruptValue } from '@/types/planning';
+import { ISessionStorage } from '@/types/session-storage';
 import {
 	BuilderFeatureFlags,
 	WorkflowBuilderAgent,
@@ -33,6 +38,7 @@ export class AiWorkflowBuilderService {
 
 	constructor(
 		parsedNodeTypes: INodeTypeDescription[],
+		sessionStorage?: ISessionStorage,
 		private readonly client?: AiAssistantClient,
 		private readonly logger?: Logger,
 		private readonly instanceId?: string,
@@ -42,9 +48,12 @@ export class AiWorkflowBuilderService {
 		private readonly onTelemetryEvent?: OnTelemetryEvent,
 		private readonly nodeDefinitionDirs?: string[],
 		private readonly resourceLocatorCallbackFactory?: ResourceLocatorCallbackFactory,
+		private readonly ssrf?: SsrfGuard,
+		/** Proxy-aware `fetch` for AI provider calls (see `createAiProxyFetch` in cli). */
+		private readonly modelFetch?: CustomFetch,
 	) {
 		this.nodeTypes = this.filterNodeTypes(parsedNodeTypes);
-		this.sessionManager = new SessionManagerService(this.nodeTypes, logger);
+		this.sessionManager = new SessionManagerService(this.nodeTypes, sessionStorage, logger);
 	}
 
 	/**
@@ -57,7 +66,7 @@ export class AiWorkflowBuilderService {
 		this.sessionManager.updateNodeTypes(this.nodeTypes);
 	}
 
-	private static async getAnthropicClaudeModel({
+	private async getAnthropicClaudeModel({
 		baseUrl,
 		authHeaders = {},
 		apiKey = '-',
@@ -74,6 +83,7 @@ export class AiWorkflowBuilderService {
 				// eslint-disable-next-line @typescript-eslint/naming-convention
 				'anthropic-beta': 'prompt-caching-2024-07-31',
 			},
+			fetch: this.modelFetch,
 		});
 	}
 
@@ -84,6 +94,10 @@ export class AiWorkflowBuilderService {
 		const authHeaders = {
 			// eslint-disable-next-line @typescript-eslint/naming-convention
 			Authorization: `${authResponse.tokenType} ${authResponse.accessToken}`,
+			...buildProxyHeaders({
+				feature: 'workflow-builder',
+				n8nVersion: this.n8nVersion ?? 'unknown',
+			}),
 		};
 
 		return authHeaders;
@@ -111,7 +125,7 @@ export class AiWorkflowBuilderService {
 					authHeaders,
 				};
 
-				const anthropicClaude = await AiWorkflowBuilderService.getAnthropicClaudeModel(modelConfig);
+				const anthropicClaude = await this.getAnthropicClaudeModel(modelConfig);
 
 				const tracingClient = new TracingClient({
 					apiKey: '-',
@@ -130,7 +144,7 @@ export class AiWorkflowBuilderService {
 
 			// If base URL is not set, use environment variables
 			const envConfig = { apiKey: process.env.N8N_AI_ANTHROPIC_KEY ?? '' };
-			const anthropicClaude = await AiWorkflowBuilderService.getAnthropicClaudeModel(envConfig);
+			const anthropicClaude = await this.getAnthropicClaudeModel(envConfig);
 
 			return { anthropicClaude };
 		} catch (error) {
@@ -192,6 +206,10 @@ export class AiWorkflowBuilderService {
 		// Create resource locator callback scoped to this user if factory is provided
 		const resourceLocatorCallback = this.resourceLocatorCallbackFactory?.(user.id);
 
+		const assistantHandler = this.client
+			? new AssistantHandler(this.client, this.logger)
+			: undefined;
+
 		const agent = new WorkflowBuilderAgent({
 			parsedNodeTypes: this.nodeTypes,
 			// Use the same model for all stages
@@ -208,9 +226,7 @@ export class AiWorkflowBuilderService {
 			tracer: tracingClient
 				? new LangChainTracer({
 						client: tracingClient,
-						projectName: featureFlags?.codeBuilder
-							? 'code-workflow-builder'
-							: 'n8n-workflow-builder',
+						projectName: 'code-workflow-builder',
 					})
 				: undefined,
 			instanceUrl: this.instanceUrl,
@@ -222,6 +238,8 @@ export class AiWorkflowBuilderService {
 			nodeDefinitionDirs: this.nodeDefinitionDirs,
 			resourceLocatorCallback,
 			onTelemetryEvent: this.onTelemetryEvent,
+			assistantHandler,
+			ssrf: this.ssrf,
 		});
 
 		return { agent };
@@ -254,9 +272,11 @@ export class AiWorkflowBuilderService {
 		const { agent } = await this.getAgent(user, payload.id, payload.featureFlags);
 		const userId = user?.id?.toString();
 		const workflowId = payload.workflowContext?.currentWorkflow?.id;
-		const isCodeBuilder = payload.featureFlags?.codeBuilder ?? false;
-
 		const threadId = SessionManagerService.generateThreadId(workflowId, userId);
+
+		// Load historical messages from persistent storage to include in initial state.
+		// Degrades gracefully if storage is temporarily unavailable.
+		const historicalMessages = await this.loadSessionMessagesSafe(threadId);
 
 		const pendingHitl = payload.resumeData
 			? this.sessionManager.getAndClearPendingHitl(threadId)
@@ -271,7 +291,13 @@ export class AiWorkflowBuilderService {
 		const resumeInterrupt = pendingHitl?.value;
 		const agentPayload = resumeInterrupt ? { ...payload, resumeInterrupt } : payload;
 
-		for await (const output of agent.chat(agentPayload, userId, abortSignal)) {
+		for await (const output of agent.chat(
+			agentPayload,
+			userId,
+			abortSignal,
+			undefined,
+			historicalMessages,
+		)) {
 			const streamHitl = this.extractHitlFromStreamOutput(output);
 			if (streamHitl) {
 				this.sessionManager.setPendingHitl(threadId, streamHitl, payload.id);
@@ -280,10 +306,21 @@ export class AiWorkflowBuilderService {
 			yield output;
 		}
 
+		// Save session to persistent storage after chat completes.
+		// Non-critical: if storage is unavailable, the in-memory checkpointer still has the state.
+		await this.saveSessionSafe(agent, workflowId, userId, threadId);
+
 		// Track telemetry after stream completes (onGenerationSuccess is called by the agent)
 		if (this.onTelemetryEvent && userId) {
 			try {
-				await this.trackBuilderReplyTelemetry(agent, workflowId, userId, payload.id, isCodeBuilder);
+				await this.trackBuilderReplyTelemetry(
+					agent,
+					workflowId,
+					userId,
+					payload.id,
+					threadId,
+					true,
+				);
 			} catch (error) {
 				this.logger?.error('Failed to track builder reply telemetry', { error });
 			}
@@ -314,6 +351,16 @@ export class AiWorkflowBuilderService {
 					feedback: decision.feedback,
 				});
 			}
+		} else if (pendingHitl.value.type === 'web_fetch_approval') {
+			const decision = resumeData as { action?: string };
+			this.sessionManager.addHitlEntry(threadId, {
+				type: 'web_fetch_decided',
+				afterMessageId: pendingHitl.triggeringMessageId,
+				url: pendingHitl.value.url,
+				domain: pendingHitl.value.domain,
+				decision:
+					(decision.action as 'allow_once' | 'allow_domain' | 'allow_all' | 'deny') ?? 'deny',
+			});
 		}
 	}
 
@@ -344,13 +391,18 @@ export class AiWorkflowBuilderService {
 		workflowId: string | undefined,
 		userId: string,
 		userMessageId: string,
+		threadId: string,
 		isCodeBuilder: boolean,
 	): Promise<void> {
 		if (!this.onTelemetryEvent) return;
 
 		const state = await agent.getState(workflowId, userId);
-		const threadId = SessionManagerService.generateThreadId(workflowId, userId);
 		const messages = state?.values?.messages ?? [];
+
+		// Count web_fetch tool calls
+		const webFetchToolNames = messages.filter(
+			(m: BaseMessage): m is ToolMessage => m instanceof ToolMessage && m.name === 'web_fetch',
+		);
 
 		const properties: ITelemetryTrackProperties = {
 			user_id: userId,
@@ -366,14 +418,15 @@ export class AiWorkflowBuilderService {
 			}),
 			user_message_id: userMessageId,
 			code_builder: isCodeBuilder,
+			web_fetch_count: webFetchToolNames.length,
 		};
 
 		this.onTelemetryEvent('Builder replied to user message', properties);
 	}
 
-	async getSessions(workflowId: string | undefined, user?: IUser, codeBuilder?: boolean) {
+	async getSessions(workflowId: string | undefined, user?: IUser, isCodeBuilder?: boolean) {
 		const userId = user?.id?.toString();
-		const agentType = codeBuilder ? 'code-builder' : undefined;
+		const agentType = isCodeBuilder ? 'code-builder' : undefined;
 		return await this.sessionManager.getSessions(workflowId, userId, agentType);
 	}
 
@@ -399,15 +452,58 @@ export class AiWorkflowBuilderService {
 		workflowId: string,
 		user: IUser,
 		messageId: string,
-		codeBuilder?: boolean,
+		versionCardId?: string,
 	): Promise<boolean> {
-		const agentType = codeBuilder ? 'code-builder' : undefined;
 		return await this.sessionManager.truncateMessagesAfter(
 			workflowId,
 			user.id,
 			messageId,
-			agentType,
+			'code-builder',
+			versionCardId,
 		);
+	}
+
+	/**
+	 * Load session messages, degrading gracefully if storage is unavailable.
+	 * Chat still works via the in-memory checkpointer, just without cross-restart persistence.
+	 */
+	private async loadSessionMessagesSafe(threadId: string) {
+		try {
+			return await this.sessionManager.loadSessionMessages(threadId);
+		} catch (error) {
+			this.logger?.error(
+				'Failed to load session messages from storage, continuing without history',
+				{ threadId, error },
+			);
+			return [];
+		}
+	}
+
+	/**
+	 * Save session to persistent storage, logging errors without propagating.
+	 * Non-critical: the in-memory checkpointer still has the state.
+	 */
+	private async saveSessionSafe(
+		agent: WorkflowBuilderAgent,
+		workflowId: string | undefined,
+		userId: string | undefined,
+		threadId: string,
+	) {
+		try {
+			const state = await agent.getState(workflowId, userId);
+			const previousSummary = state?.values?.previousSummary;
+			await this.sessionManager.saveSessionFromCheckpointer(threadId, previousSummary);
+		} catch (error) {
+			this.logger?.error('Failed to save session to persistent storage', { threadId, error });
+		}
+	}
+
+	/**
+	 * Clear all sessions for a given workflow and user.
+	 * Used when user explicitly clears the chat.
+	 */
+	async clearSession(workflowId: string, user: IUser): Promise<void> {
+		await this.sessionManager.clearAllSessions(workflowId, user.id);
 	}
 
 	private static readonly questionsInterruptSchema = z.object({
@@ -421,6 +517,13 @@ export class AiWorkflowBuilderService {
 				options: z.array(z.string()).optional(),
 			}),
 		),
+	});
+
+	private static readonly webFetchApprovalInterruptSchema = z.object({
+		type: z.literal('web_fetch_approval'),
+		requestId: z.string(),
+		url: z.string(),
+		domain: z.string(),
 	});
 
 	private static readonly planInterruptSchema = z.object({
@@ -463,6 +566,15 @@ export class AiWorkflowBuilderService {
 				const parsed = AiWorkflowBuilderService.planInterruptSchema.safeParse(m);
 				if (parsed.success) return parsed.data;
 				this.logger?.warn('[HITL] Invalid plan interrupt data', {
+					errors: parsed.error.errors,
+				});
+				continue;
+			}
+
+			if (m.type === 'web_fetch_approval') {
+				const parsed = AiWorkflowBuilderService.webFetchApprovalInterruptSchema.safeParse(m);
+				if (parsed.success) return parsed.data;
+				this.logger?.warn('[HITL] Invalid web_fetch_approval interrupt data', {
 					errors: parsed.error.errors,
 				});
 				continue;

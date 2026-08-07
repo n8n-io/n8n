@@ -12,6 +12,7 @@ import type { CallbackManagerForChainRun } from '@langchain/core/callbacks/manag
 import { CallbackManager } from '@langchain/core/callbacks/manager';
 import type { AIMessage, BaseMessage } from '@langchain/core/messages';
 import type { StructuredToolInterface } from '@langchain/core/tools';
+import { NodeTypeParser } from '@n8n/ai-utilities/node-catalog';
 import type { Logger } from '@n8n/backend-common';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { setSchemaBaseDirs } from '@n8n/workflow-sdk';
@@ -48,9 +49,9 @@ import { createGetSuggestedNodesTool } from './tools/get-suggested-nodes.tool';
 import type { CodeBuilderAgentConfig, TokenUsage } from './types';
 export type { CodeBuilderAgentConfig } from './types';
 import { sanitizeLlmErrorMessage } from '../utils/error-sanitizer';
+import { entryToString } from './utils/code-builder-session';
 import { pushValidationFeedback } from './utils/content-extractors';
 import { calculateNodeChanges } from './utils/node-diff';
-import { NodeTypeParser } from './utils/node-type-parser';
 
 /**
  * Code Builder Agent
@@ -295,7 +296,7 @@ export class CodeBuilderAgent {
 				textEditorToolHandler,
 				abortSignal,
 				payload,
-				previousMessages: historyContext?.userMessages ?? [],
+				previousMessages: historyContext?.conversationEntries.map(entryToString) ?? [],
 			});
 
 			const { workflow } = loopResult;

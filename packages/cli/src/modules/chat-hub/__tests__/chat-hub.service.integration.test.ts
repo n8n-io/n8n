@@ -4,17 +4,19 @@ import { mockInstance, testDb, testModules, createActiveWorkflow } from '@n8n/ba
 import type { User, CredentialsEntity } from '@n8n/db';
 import { ExecutionRepository, SettingsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
 import { InstanceSettings, BinaryDataService, Cipher } from 'n8n-core';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	CHAT_NODE_TYPE,
+	MEMORY_MANAGER_NODE_TYPE,
 	createRunExecutionData,
 	NodeOperationError,
 	type INode,
 	type IRun,
 	type IWorkflowBase,
 } from 'n8n-workflow';
+import type { MockInstance } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { saveCredential } from '@test-integration/db/credentials';
 import { createAdmin, createMember } from '@test-integration/db/users';
@@ -36,7 +38,7 @@ mockInstance(WorkflowExecutionService);
 const mockPush = mockInstance(Push);
 mockPush.sendToUsers.mockReturnValue(undefined);
 const mockCipher = mockInstance(Cipher);
-mockCipher.encrypt.mockReturnValue('encrypted-metadata');
+mockCipher.encryptV2.mockResolvedValue('encrypted-metadata');
 
 beforeAll(async () => {
 	await testModules.loadModules(['chat-hub']);
@@ -48,6 +50,7 @@ beforeEach(async () => {
 		'ChatHubMessage',
 		'ChatHubSession',
 		'ChatHubAgent',
+		'ChatHubTool',
 		'ExecutionEntity',
 		'WorkflowEntity',
 		'SharedCredentials',
@@ -105,28 +108,24 @@ describe('chatHub', () => {
 				ownerId: member.id,
 				title: 'session 1',
 				lastMessageAt: new Date('2025-01-03T00:00:00Z'),
-				tools: [],
 			});
 			const session2 = await sessionsRepository.createChatSession({
 				id: crypto.randomUUID(),
 				ownerId: member.id,
 				title: 'session 2',
 				lastMessageAt: new Date('2025-01-02T00:00:00Z'),
-				tools: [],
 			});
 			const session3 = await sessionsRepository.createChatSession({
 				id: crypto.randomUUID(),
 				ownerId: member.id,
 				title: 'session 3',
 				lastMessageAt: new Date('2025-01-01T00:00:00Z'),
-				tools: [],
 			});
 			await sessionsRepository.createChatSession({
 				id: crypto.randomUUID(),
 				ownerId: admin.id,
 				title: 'admin session',
 				lastMessageAt: new Date('2025-01-01T00:00:00Z'),
-				tools: [],
 			});
 
 			const conversations = await chatHubService.getConversations(member.id, 20);
@@ -147,7 +146,6 @@ describe('chatHub', () => {
 				provider: 'openai',
 				model: 'gpt-4',
 				credentialId: null,
-				tools: [],
 			});
 
 			await sessionsRepository.createChatSession({
@@ -157,7 +155,6 @@ describe('chatHub', () => {
 				lastMessageAt: new Date('2025-01-01T00:00:00Z'),
 				provider: 'custom-agent',
 				agentId: agent.id,
-				tools: [],
 			});
 
 			const conversations = await chatHubService.getConversations(member.id, 20);
@@ -198,7 +195,6 @@ describe('chatHub', () => {
 				lastMessageAt: new Date('2025-01-01T00:00:00Z'),
 				provider: 'n8n',
 				workflowId: workflow.id,
-				tools: [],
 			});
 
 			const conversations = await chatHubService.getConversations(member.id, 20);
@@ -213,7 +209,6 @@ describe('chatHub', () => {
 					ownerId: member.id,
 					title: 'session 1',
 					lastMessageAt: new Date('2025-01-01T00:00:00Z'),
-					tools: [],
 				});
 
 				const conversations = await chatHubService.getConversations(member.id, 10);
@@ -229,7 +224,6 @@ describe('chatHub', () => {
 					ownerId: member.id,
 					title: 'session 1',
 					lastMessageAt: new Date('2025-01-05T00:00:00Z'),
-					tools: [],
 				});
 
 				const session2 = await sessionsRepository.createChatSession({
@@ -237,7 +231,6 @@ describe('chatHub', () => {
 					ownerId: member.id,
 					title: 'session 2',
 					lastMessageAt: new Date('2025-01-04T00:00:00Z'),
-					tools: [],
 				});
 
 				const session3 = await sessionsRepository.createChatSession({
@@ -245,7 +238,6 @@ describe('chatHub', () => {
 					ownerId: member.id,
 					title: 'session 3',
 					lastMessageAt: new Date('2025-01-03T00:00:00Z'),
-					tools: [],
 				});
 
 				const session4 = await sessionsRepository.createChatSession({
@@ -253,7 +245,6 @@ describe('chatHub', () => {
 					ownerId: member.id,
 					title: 'session 4',
 					lastMessageAt: new Date('2025-01-02T00:00:00Z'),
-					tools: [],
 				});
 
 				// First page
@@ -281,7 +272,6 @@ describe('chatHub', () => {
 					ownerId: member.id,
 					title: 'Session 1',
 					lastMessageAt: sameDate,
-					tools: [],
 				});
 
 				const session2 = await sessionsRepository.createChatSession({
@@ -289,7 +279,6 @@ describe('chatHub', () => {
 					ownerId: member.id,
 					title: 'Session 2',
 					lastMessageAt: sameDate,
-					tools: [],
 				});
 
 				const session3 = await sessionsRepository.createChatSession({
@@ -297,7 +286,6 @@ describe('chatHub', () => {
 					ownerId: member.id,
 					title: 'Session 3',
 					lastMessageAt: sameDate,
-					tools: [],
 				});
 
 				// Fetch first page
@@ -320,7 +308,6 @@ describe('chatHub', () => {
 					ownerId: member.id,
 					title: 'session 1',
 					lastMessageAt: new Date('2025-01-01T00:00:00Z'),
-					tools: [],
 				});
 
 				const nonExistentCursor = '00000000-0000-0000-0000-000000000000';
@@ -336,7 +323,6 @@ describe('chatHub', () => {
 					ownerId: member.id,
 					title: 'Member Session',
 					lastMessageAt: new Date('2025-01-02T00:00:00Z'),
-					tools: [],
 				});
 
 				const adminSession = await sessionsRepository.createChatSession({
@@ -344,7 +330,6 @@ describe('chatHub', () => {
 					ownerId: admin.id,
 					title: 'Admin Session',
 					lastMessageAt: new Date('2025-01-01T00:00:00Z'),
-					tools: [],
 				});
 
 				await expect(
@@ -358,7 +343,6 @@ describe('chatHub', () => {
 						id: crypto.randomUUID(),
 						ownerId: member.id,
 						title: 'Session with date',
-						tools: [],
 					}),
 				).rejects.toThrow();
 			});
@@ -378,7 +362,6 @@ describe('chatHub', () => {
 				ownerId: admin.id,
 				title: 'admin session',
 				lastMessageAt: new Date('2025-01-01T00:00:00Z'),
-				tools: [],
 			});
 			await expect(chatHubService.getConversation(member.id, session.id)).rejects.toThrow(
 				'Chat session not found',
@@ -391,7 +374,6 @@ describe('chatHub', () => {
 				ownerId: member.id,
 				title: 'session 1',
 				lastMessageAt: new Date('2025-01-03T00:00:00Z'),
-				tools: [],
 			});
 			const conversation = await chatHubService.getConversation(member.id, session.id);
 			expect(conversation).toBeDefined();
@@ -410,7 +392,6 @@ describe('chatHub', () => {
 				provider: 'openai',
 				model: 'gpt-4',
 				credentialId: null,
-				tools: [],
 			});
 
 			const session = await sessionsRepository.createChatSession({
@@ -420,7 +401,6 @@ describe('chatHub', () => {
 				lastMessageAt: new Date('2025-01-01T00:00:00Z'),
 				provider: 'custom-agent',
 				agentId: agent.id,
-				tools: [],
 			});
 
 			const conversation = await chatHubService.getConversation(member.id, session.id);
@@ -461,7 +441,6 @@ describe('chatHub', () => {
 				lastMessageAt: new Date('2025-01-01T00:00:00Z'),
 				provider: 'n8n',
 				workflowId: workflow.id,
-				tools: [],
 			});
 
 			const conversation = await chatHubService.getConversation(member.id, session.id);
@@ -475,7 +454,6 @@ describe('chatHub', () => {
 				ownerId: member.id,
 				title: 'session 1',
 				lastMessageAt: new Date('2025-01-03T00:00:00Z'),
-				tools: [],
 			});
 			const ids = [
 				crypto.randomUUID(),
@@ -554,7 +532,6 @@ describe('chatHub', () => {
 				ownerId: member.id,
 				title: 'session 1',
 				lastMessageAt: new Date('2025-01-03T00:00:00Z'),
-				tools: [],
 			});
 			await messagesRepository.createChatMessage({
 				id: ids[0],
@@ -642,7 +619,6 @@ describe('chatHub', () => {
 				ownerId: member.id,
 				title: 'session 1',
 				lastMessageAt: new Date('2025-01-03T00:00:00Z'),
-				tools: [],
 			});
 
 			await messagesRepository.createChatMessage({
@@ -708,7 +684,6 @@ describe('chatHub', () => {
 				ownerId: member.id,
 				title: 'session 1',
 				lastMessageAt: new Date('2025-01-03T00:00:00Z'),
-				tools: [],
 			});
 			await messagesRepository.createChatMessage({
 				id: ids[0],
@@ -791,7 +766,6 @@ describe('chatHub', () => {
 				ownerId: member.id,
 				title: 'session 1',
 				lastMessageAt: new Date('2025-01-03T00:00:00Z'),
-				tools: [],
 			});
 			await messagesRepository.createChatMessage({
 				id: ids[0],
@@ -907,22 +881,18 @@ describe('chatHub', () => {
 			let sessionId: string;
 			let messageId: string;
 
-			let spyExecute: jest.SpyInstance<
-				ReturnType<WorkflowExecutionService['executeChatWorkflow']>,
-				Parameters<WorkflowExecutionService['executeChatWorkflow']>
-			>;
+			let spyExecute: MockInstance<WorkflowExecutionService['executeChatWorkflow']>;
 			let finishRun = (_: IRun) => {};
 
 			beforeEach(async () => {
-				jest.spyOn(instanceSettings, 'isMultiMain', 'get').mockReturnValue(false);
+				vi.spyOn(instanceSettings, 'isMultiMain', 'get').mockReturnValue(false);
 
 				// Mock settings repository to allow anthropic provider
-				jest.spyOn(settingsRepository, 'findByKey').mockResolvedValue(null);
+				vi.spyOn(settingsRepository, 'findByKey').mockResolvedValue(null);
 
-				spyExecute = jest.spyOn(Container.get(WorkflowExecutionService), 'executeChatWorkflow');
+				spyExecute = vi.mocked(Container.get(WorkflowExecutionService).executeChatWorkflow);
 
-				jest
-					.spyOn(Container.get(ActiveExecutions), 'getPostExecutePromise')
+				vi.spyOn(Container.get(ActiveExecutions), 'getPostExecutePromise')
 					// eslint-disable-next-line @typescript-eslint/promise-function-async
 					.mockImplementation(() => {
 						return new Promise((r) => {
@@ -985,7 +955,6 @@ describe('chatHub', () => {
 							anthropicApi: { id: anthropicCredential.id, name: anthropicCredential.name },
 						},
 						previousMessageId: null,
-						tools: [],
 						attachments: [],
 					},
 					{
@@ -1053,7 +1022,6 @@ describe('chatHub', () => {
 							anthropicApi: { id: anthropicCredential.id, name: anthropicCredential.name },
 						},
 						previousMessageId: null,
-						tools: [],
 						attachments: [],
 					},
 					{
@@ -1133,7 +1101,6 @@ describe('chatHub', () => {
 							anthropicApi: { id: anthropicCredential.id, name: anthropicCredential.name },
 						},
 						previousMessageId: null,
-						tools: [],
 						attachments: [],
 					},
 					{
@@ -1182,7 +1149,6 @@ describe('chatHub', () => {
 							anthropicApi: { id: anthropicCredential.id, name: anthropicCredential.name },
 						},
 						previousMessageId: null,
-						tools: [],
 						attachments: [],
 					},
 					{
@@ -1235,23 +1201,186 @@ describe('chatHub', () => {
 			});
 		});
 
+		describe('regenerateAIMessage', () => {
+			let anthropicCredential: CredentialsEntity;
+			let sessionId: string;
+			let messageId: string;
+
+			let spyExecute: MockInstance<WorkflowExecutionService['executeChatWorkflow']>;
+			let finishRun = (_: IRun) => {};
+
+			beforeEach(async () => {
+				vi.spyOn(instanceSettings, 'isMultiMain', 'get').mockReturnValue(false);
+				vi.spyOn(settingsRepository, 'findByKey').mockResolvedValue(null);
+
+				spyExecute = vi.mocked(Container.get(WorkflowExecutionService).executeChatWorkflow);
+
+				vi.spyOn(Container.get(ActiveExecutions), 'getPostExecutePromise')
+					// eslint-disable-next-line @typescript-eslint/promise-function-async
+					.mockImplementation(() => {
+						return new Promise((r) => {
+							finishRun = r;
+						});
+					});
+
+				anthropicCredential = await saveCredential(
+					{
+						name: 'Test Anthropic Credential',
+						type: 'anthropicApi',
+						data: { apiKey: 'test-api-key' },
+					},
+					{ user: member, role: 'credential:owner' },
+				);
+
+				sessionId = crypto.randomUUID();
+				messageId = crypto.randomUUID();
+			});
+
+			it('should not include the last human message in restored memory history', async () => {
+				// Step 1: Send a human message and get an AI response
+				spyExecute.mockImplementationOnce(async (_user, workflowData, executionData, stream) => {
+					const executionId = await executionPersistence.create({
+						finished: false,
+						mode: 'chat',
+						status: 'running',
+						workflowId: workflowData.id,
+						data: executionData,
+						workflowData,
+					});
+
+					setTimeout(() => stream!.write('{"type":"begin","metadata":{}}\n'));
+					setTimeout(() =>
+						stream!.write('{"type":"item","content":"AI response","metadata":{}}\n'),
+					);
+					setTimeout(() => stream!.write('{"type":"end","metadata":{}}\n'));
+					setTimeout(() => stream!.end());
+					setTimeout(async () => {
+						await executionRepository.updateExistingExecution(executionId, { status: 'success' });
+					});
+					setTimeout(() => finishRun({} as IRun));
+
+					return { executionId };
+				});
+
+				// Title generation mock — needed because sendHumanMessage triggers it for new sessions
+				spyExecute.mockRejectedValueOnce(Error());
+
+				await chatHubService.sendHumanMessage(
+					member,
+					{
+						userId: member.id,
+						sessionId,
+						messageId,
+						message: 'Hello',
+						model: { provider: 'anthropic', model: 'claude-3-5-sonnet-20241022' },
+						credentials: {
+							anthropicApi: { id: anthropicCredential.id, name: anthropicCredential.name },
+						},
+						previousMessageId: null,
+						attachments: [],
+					},
+					{
+						authToken: 'authtoken',
+						method: 'POST',
+						endpoint: '/api/chat/message',
+					},
+				);
+
+				// Wait for the AI response to be persisted
+				const messages = await retryUntil(async () => {
+					const messages = await messagesRepository.getManyBySessionId(sessionId);
+					expect(messages.length).toBeGreaterThanOrEqual(2);
+					expect(messages[1]?.status).toBe('success');
+					return messages;
+				});
+
+				const aiMessageId = messages[1].id;
+
+				// Step 2: Regenerate the AI message — capture the workflow
+				let capturedWorkflowData: IWorkflowBase | undefined;
+				spyExecute.mockImplementationOnce(async (_user, workflowData, executionData, stream) => {
+					capturedWorkflowData = workflowData;
+
+					const executionId = await executionPersistence.create({
+						finished: false,
+						mode: 'chat',
+						status: 'running',
+						workflowId: workflowData.id,
+						data: executionData,
+						workflowData,
+					});
+
+					setTimeout(() => stream!.write('{"type":"begin","metadata":{}}\n'));
+					setTimeout(() =>
+						stream!.write('{"type":"item","content":"Regenerated","metadata":{}}\n'),
+					);
+					setTimeout(() => stream!.write('{"type":"end","metadata":{}}\n'));
+					setTimeout(() => stream!.end());
+					setTimeout(async () => {
+						await executionRepository.updateExistingExecution(executionId, { status: 'success' });
+					});
+					setTimeout(() => finishRun({} as IRun));
+
+					return { executionId };
+				});
+
+				await chatHubService.regenerateAIMessage(
+					member,
+					{
+						userId: member.id,
+						sessionId,
+						retryId: aiMessageId,
+						model: { provider: 'anthropic', model: 'claude-3-5-sonnet-20241022' },
+						credentials: {
+							anthropicApi: { id: anthropicCredential.id, name: anthropicCredential.name },
+						},
+					},
+					{
+						authToken: 'authtoken',
+						method: 'POST',
+						endpoint: '/api/chat/message',
+					},
+				);
+
+				await retryUntil(async () => {
+					expect(capturedWorkflowData).toBeDefined();
+				});
+
+				// Verify the "Restore Chat Memory" node does NOT contain the human message
+				// The human message is already replayed via the chat trigger input,
+				// so including it in memory would cause the agent to see it twice
+				const restoreMemoryNode = capturedWorkflowData!.nodes.find(
+					(n) => n.type === MEMORY_MANAGER_NODE_TYPE && n.name === 'Restore Chat Memory',
+				);
+				expect(restoreMemoryNode).toBeDefined();
+
+				const messageValues = (
+					restoreMemoryNode!.parameters as {
+						messages: { messageValues: Array<{ type: string; message: string }> };
+					}
+				).messages.messageValues;
+
+				// Memory should be empty — the human message "Hello" should NOT be in the history
+				// because it's sent as the current chat input, not as part of memory restoration
+				const userMessages = messageValues.filter((m) => m.type === 'user');
+				expect(userMessages).toHaveLength(0);
+			});
+		});
+
 		describe('n8n workflow agents', () => {
 			let sessionId: string;
 			let messageId: string;
 			let watcherService: ChatHubExecutionWatcherService;
 
-			let spyExecute: jest.SpyInstance<
-				ReturnType<WorkflowExecutionService['executeChatWorkflow']>,
-				Parameters<WorkflowExecutionService['executeChatWorkflow']>
-			>;
+			let spyExecute: MockInstance<WorkflowExecutionService['executeChatWorkflow']>;
 
 			beforeEach(() => {
-				jest.spyOn(instanceSettings, 'isMultiMain', 'get').mockReturnValue(false);
+				vi.spyOn(instanceSettings, 'isMultiMain', 'get').mockReturnValue(false);
 
 				// Mock settings repository
-				jest.spyOn(settingsRepository, 'findByKey').mockResolvedValue(null);
+				vi.spyOn(settingsRepository, 'findByKey').mockResolvedValue(null);
 
-				spyExecute = jest.spyOn(Container.get(WorkflowExecutionService), 'executeChatWorkflow');
+				spyExecute = vi.mocked(Container.get(WorkflowExecutionService).executeChatWorkflow);
 				watcherService = Container.get(ChatHubExecutionWatcherService);
 
 				sessionId = crypto.randomUUID();
@@ -1349,6 +1478,7 @@ describe('chatHub', () => {
 							});
 							await watcherService.handleWorkflowExecuteAfter({
 								type: 'workflowExecuteAfter',
+								mode: runData.mode,
 								workflow: workflowData,
 								runData,
 								newStaticData: {},
@@ -1369,7 +1499,6 @@ describe('chatHub', () => {
 							model: { provider: 'n8n', workflowId: workflow.id },
 							credentials: {},
 							previousMessageId: null,
-							tools: [],
 							attachments: [],
 						},
 						{
@@ -1467,6 +1596,7 @@ describe('chatHub', () => {
 							});
 							await watcherService.handleWorkflowExecuteAfter({
 								type: 'workflowExecuteAfter',
+								mode: runData.mode,
 								workflow: workflowData,
 								runData,
 								newStaticData: {},
@@ -1487,7 +1617,6 @@ describe('chatHub', () => {
 							model: { provider: 'n8n', workflowId: workflow.id },
 							credentials: {},
 							previousMessageId: null,
-							tools: [],
 							attachments: [],
 						},
 						{
@@ -1599,6 +1728,7 @@ describe('chatHub', () => {
 							});
 							await watcherService.handleWorkflowExecuteAfter({
 								type: 'workflowExecuteAfter',
+								mode: runData.mode,
 								workflow: workflowData,
 								runData,
 								newStaticData: {},
@@ -1619,7 +1749,6 @@ describe('chatHub', () => {
 							model: { provider: 'n8n', workflowId: workflow.id },
 							credentials: {},
 							previousMessageId: null,
-							tools: [],
 							attachments: [],
 						},
 						{
@@ -1740,6 +1869,7 @@ describe('chatHub', () => {
 							});
 							await watcherService.handleWorkflowExecuteAfter({
 								type: 'workflowExecuteAfter',
+								mode: runData.mode,
 								workflow: workflowData,
 								runData,
 								newStaticData: {},
@@ -1752,7 +1882,7 @@ describe('chatHub', () => {
 
 					// Mock ChatExecutionManager.runWorkflow for the resume - updates to success
 					const executionManager = Container.get(ChatExecutionManager);
-					jest.spyOn(executionManager, 'runWorkflow').mockImplementationOnce(async () => {
+					vi.spyOn(executionManager, 'runWorkflow').mockImplementationOnce(async () => {
 						const runData: IRun = {
 							finished: true,
 							status: 'success',
@@ -1795,6 +1925,7 @@ describe('chatHub', () => {
 							});
 							await watcherService.handleWorkflowExecuteAfter({
 								type: 'workflowExecuteAfter',
+								mode: runData.mode,
 								workflow: capturedWorkflowData,
 								runData,
 								newStaticData: {},
@@ -1813,7 +1944,6 @@ describe('chatHub', () => {
 							model: { provider: 'n8n', workflowId: workflow.id },
 							credentials: {},
 							previousMessageId: null,
-							tools: [],
 							attachments: [],
 						},
 						{
@@ -1929,6 +2059,7 @@ describe('chatHub', () => {
 							});
 							await watcherService.handleWorkflowExecuteAfter({
 								type: 'workflowExecuteAfter',
+								mode: runData.mode,
 								workflow: workflowData,
 								runData,
 								newStaticData: {},
@@ -1949,7 +2080,6 @@ describe('chatHub', () => {
 							model: { provider: 'n8n', workflowId: workflow.id },
 							credentials: {},
 							previousMessageId: null,
-							tools: [],
 							attachments: [],
 						},
 						{
@@ -2070,6 +2200,7 @@ describe('chatHub', () => {
 							});
 							await watcherService.handleWorkflowExecuteAfter({
 								type: 'workflowExecuteAfter',
+								mode: runData.mode,
 								workflow: workflowData,
 								runData,
 								newStaticData: {},
@@ -2091,7 +2222,6 @@ describe('chatHub', () => {
 							model: { provider: 'n8n', workflowId: workflow.id },
 							credentials: {},
 							previousMessageId: null,
-							tools: [],
 							attachments: [],
 						},
 						{
@@ -2113,7 +2243,7 @@ describe('chatHub', () => {
 
 					// Mock ChatExecutionManager.runWorkflow for the resume
 					const executionManager = Container.get(ChatExecutionManager);
-					const runWorkflowSpy = jest
+					const runWorkflowSpy = vi
 						.spyOn(executionManager, 'runWorkflow')
 						.mockImplementationOnce(async () => {
 							const runData: IRun = {
@@ -2158,6 +2288,7 @@ describe('chatHub', () => {
 								});
 								await watcherService.handleWorkflowExecuteAfter({
 									type: 'workflowExecuteAfter',
+									mode: runData.mode,
 									workflow: capturedWorkflowData,
 									runData,
 									newStaticData: {},
@@ -2178,7 +2309,6 @@ describe('chatHub', () => {
 							model: { provider: 'n8n', workflowId: workflow.id },
 							credentials: {},
 							previousMessageId: waitingMessageId, // Reference the waiting message
-							tools: [],
 							attachments: [],
 						},
 						{
@@ -2265,7 +2395,6 @@ describe('chatHub', () => {
 								model: { provider: 'n8n', workflowId: workflow.id },
 								credentials: {},
 								previousMessageId: null,
-								tools: [],
 								attachments: [],
 							},
 							{
@@ -2280,7 +2409,7 @@ describe('chatHub', () => {
 
 			describe('multi-main mode execution handling', () => {
 				it('should complete when execution finishes with "waiting" status', async () => {
-					jest.spyOn(instanceSettings, 'isMultiMain', 'get').mockReturnValue(true);
+					vi.spyOn(instanceSettings, 'isMultiMain', 'get').mockReturnValue(true);
 
 					const workflow = await createActiveWorkflow(
 						{
@@ -2373,6 +2502,7 @@ describe('chatHub', () => {
 							});
 							await watcherService.handleWorkflowExecuteAfter({
 								type: 'workflowExecuteAfter',
+								mode: runData.mode,
 								workflow: workflowData,
 								runData,
 								newStaticData: {},
@@ -2393,7 +2523,6 @@ describe('chatHub', () => {
 							model: { provider: 'n8n', workflowId: workflow.id },
 							credentials: {},
 							previousMessageId: null,
-							tools: [],
 							attachments: [],
 						},
 						{
@@ -2419,7 +2548,7 @@ describe('chatHub', () => {
 				});
 
 				it('should complete when execution finishes with "success" status', async () => {
-					jest.spyOn(instanceSettings, 'isMultiMain', 'get').mockReturnValue(true);
+					vi.spyOn(instanceSettings, 'isMultiMain', 'get').mockReturnValue(true);
 
 					const workflow = await createActiveWorkflow(
 						{
@@ -2508,6 +2637,7 @@ describe('chatHub', () => {
 							});
 							await watcherService.handleWorkflowExecuteAfter({
 								type: 'workflowExecuteAfter',
+								mode: runData.mode,
 								workflow: workflowData,
 								runData,
 								newStaticData: {},
@@ -2528,7 +2658,6 @@ describe('chatHub', () => {
 							model: { provider: 'n8n', workflowId: workflow.id },
 							credentials: {},
 							previousMessageId: null,
-							tools: [],
 							attachments: [],
 						},
 						{
@@ -2554,7 +2683,7 @@ describe('chatHub', () => {
 				});
 
 				it('should complete when execution finishes with "error" status', async () => {
-					jest.spyOn(instanceSettings, 'isMultiMain', 'get').mockReturnValue(true);
+					vi.spyOn(instanceSettings, 'isMultiMain', 'get').mockReturnValue(true);
 
 					const workflow = await createActiveWorkflow(
 						{
@@ -2624,6 +2753,7 @@ describe('chatHub', () => {
 							});
 							await watcherService.handleWorkflowExecuteAfter({
 								type: 'workflowExecuteAfter',
+								mode: runData.mode,
 								workflow: workflowData,
 								runData,
 								newStaticData: {},
@@ -2644,7 +2774,6 @@ describe('chatHub', () => {
 							model: { provider: 'n8n', workflowId: workflow.id },
 							credentials: {},
 							previousMessageId: null,
-							tools: [],
 							attachments: [],
 						},
 						{
@@ -2670,7 +2799,7 @@ describe('chatHub', () => {
 				});
 
 				it('should handle execution error by saving error to message', async () => {
-					jest.spyOn(instanceSettings, 'isMultiMain', 'get').mockReturnValue(true);
+					vi.spyOn(instanceSettings, 'isMultiMain', 'get').mockReturnValue(true);
 
 					const workflow = await createActiveWorkflow(
 						{
@@ -2740,6 +2869,7 @@ describe('chatHub', () => {
 							});
 							await watcherService.handleWorkflowExecuteAfter({
 								type: 'workflowExecuteAfter',
+								mode: runData.mode,
 								workflow: workflowData,
 								runData,
 								newStaticData: {},
@@ -2760,7 +2890,6 @@ describe('chatHub', () => {
 							model: { provider: 'n8n', workflowId: workflow.id },
 							credentials: {},
 							previousMessageId: null,
-							tools: [],
 							attachments: [],
 						},
 						{

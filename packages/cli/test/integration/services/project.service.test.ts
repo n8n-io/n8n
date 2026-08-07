@@ -7,9 +7,9 @@ import { PROJECT_OWNER_ROLE_SLUG, type ProjectRole, type Scope } from '@n8n/perm
 import { License } from '@/license';
 import { ProjectService } from '@/services/project.service.ee';
 import { createRole } from '@test-integration/db/roles';
+import { LicenseMocker } from '@test-integration/license';
 
 import { createMember } from '../shared/db/users';
-import { LicenseMocker } from '@test-integration/license';
 
 let projectRepository: ProjectRepository;
 let projectService: ProjectService;
@@ -172,7 +172,7 @@ describe('ProjectService', () => {
 				// ASSERT
 				//
 				if (projectFromService === null) {
-					fail('Expected projectFromService not to be null');
+					expect.fail('Expected projectFromService not to be null');
 				}
 				expect(project.id).toBe(projectFromService.id);
 			},

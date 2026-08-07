@@ -264,4 +264,208 @@ describe('parseWorkflowJSON', () => {
 
 		expect(result.lastNode).toBeNull();
 	});
+
+	it('handles duplicate node names with unique keys', () => {
+		const json: WorkflowJSON = {
+			id: 'test-id',
+			name: 'Test Workflow',
+			nodes: [
+				{
+					id: 'node-1',
+					name: 'HTTP',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 4,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: 'node-2',
+					name: 'HTTP',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 4,
+					position: [200, 0],
+					parameters: {},
+				},
+			],
+			connections: {},
+		};
+
+		const result = parseWorkflowJSON(json);
+
+		expect(result.nodes.size).toBe(2);
+		expect(result.nodes.has('HTTP')).toBe(true);
+		expect(result.nodes.has('HTTP 2')).toBe(true);
+	});
+
+	it('normalizes string typeVersion to number', () => {
+		const json: WorkflowJSON = {
+			id: 'test-id',
+			name: 'Test Workflow',
+			nodes: [
+				{
+					id: 'node-1',
+					name: 'Set',
+					type: 'n8n-nodes-base.set',
+					typeVersion: '3' as unknown as number,
+					position: [0, 0],
+					parameters: {},
+				},
+			],
+			connections: {},
+		};
+
+		const result = parseWorkflowJSON(json);
+		const node = result.nodes.get('Set');
+
+		expect(node?.instance.version).toBe('v3');
+	});
+
+	it('normalizes flat tuple connections to object format', () => {
+		const json: WorkflowJSON = {
+			id: 'test-id',
+			name: 'Test Workflow',
+			nodes: [
+				{
+					id: 'node-1',
+					name: 'Trigger',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: 'node-2',
+					name: 'Set',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3,
+					position: [200, 0],
+					parameters: {},
+				},
+			],
+			connections: {
+				Trigger: {
+					main: [['Set', 'main', 0] as unknown as null],
+				},
+			},
+		};
+
+		const result = parseWorkflowJSON(json);
+		const triggerNode = result.nodes.get('Trigger');
+		const mainConns = triggerNode?.connections.get('main');
+
+		expect(mainConns?.get(0)).toContainEqual({
+			node: 'Set',
+			type: 'main',
+			index: 0,
+		});
+	});
+
+	it('does not mutate the input WorkflowJSON', () => {
+		const json: WorkflowJSON = {
+			id: 'test',
+			name: 'Test',
+			nodes: [
+				{
+					id: '1',
+					name: 'Node',
+					type: 'n8n-nodes-base.set',
+					typeVersion: '3' as unknown as number,
+					position: [0, 0],
+					parameters: {},
+				},
+			],
+			connections: {
+				Node: {
+					main: [['Target', 'main', 0] as unknown as null],
+				},
+			},
+		};
+		const originalConnections = JSON.stringify(json.connections);
+		const originalTypeVersion = json.nodes[0].typeVersion;
+
+		parseWorkflowJSON(json);
+
+		expect(json.nodes[0].typeVersion).toBe(originalTypeVersion);
+		expect(JSON.stringify(json.connections)).toBe(originalConnections);
+	});
+
+	it('rebuilds node groups, mapping member ids to their node instances', () => {
+		const json: WorkflowJSON = {
+			id: 'wf',
+			name: 'Grouped',
+			nodes: [
+				{
+					id: 'id-a',
+					name: 'A',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: 'id-b',
+					name: 'B',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3,
+					position: [10, 0],
+					parameters: {},
+				},
+			],
+			connections: {},
+			// The incoming group id is irrelevant here — parse carries members as instances.
+			nodeGroups: [{ id: 'group-1', name: 'G', nodeIds: ['id-a', 'id-b'] }],
+		};
+
+		const result = parseWorkflowJSON(json);
+
+		expect(result.nodeGroups).toHaveLength(1);
+		expect(result.nodeGroups![0].name).toBe('G');
+		expect(result.nodeGroups![0].members.map((m) => m.id)).toEqual(['id-a', 'id-b']);
+		expect(result.nodeGroups![0].members.map((m) => m.name)).toEqual(['A', 'B']);
+	});
+
+	it('drops group members whose ids do not match a node', () => {
+		const json: WorkflowJSON = {
+			id: 'wf',
+			name: 'Grouped',
+			nodes: [
+				{
+					id: 'id-a',
+					name: 'A',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3,
+					position: [0, 0],
+					parameters: {},
+				},
+			],
+			connections: {},
+			nodeGroups: [{ id: 'group-1', name: 'G', nodeIds: ['id-a', 'ghost'] }],
+		};
+
+		const result = parseWorkflowJSON(json);
+
+		expect(result.nodeGroups![0].members.map((m) => m.id)).toEqual(['id-a']);
+	});
+
+	it('returns undefined nodeGroups when none are declared', () => {
+		const json: WorkflowJSON = {
+			id: 'wf',
+			name: 'No groups',
+			nodes: [
+				{
+					id: 'id-a',
+					name: 'A',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3,
+					position: [0, 0],
+					parameters: {},
+				},
+			],
+			connections: {},
+		};
+
+		const result = parseWorkflowJSON(json);
+
+		expect(result.nodeGroups).toBeUndefined();
+	});
 });

@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import type {
 	AddColumnResponse,
 	DataTable,
 	DataTableColumnCreatePayload,
 } from '@/features/core/dataTable/dataTable.types';
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { useRouter } from 'vue-router';
 import { DATA_TABLE_VIEW } from '@/features/core/dataTable/constants';
@@ -14,7 +14,7 @@ import { LOADING_ANIMATION_MIN_DURATION } from '@/app/constants/durations';
 import DataTableBreadcrumbs from '@/features/core/dataTable/components/DataTableBreadcrumbs.vue';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import DataTableTable from './components/dataGrid/DataTableTable.vue';
-import { useDebounce } from '@/app/composables/useDebounce';
+import { useDebounce } from '@n8n/composables/useDebounce';
 import AddColumnButton from './components/dataGrid/AddColumnButton.vue';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { sourceControlEventBus } from '@/features/integrations/sourceControl.ee/sourceControl.eventBus';
@@ -27,6 +27,8 @@ import {
 	N8nIcon,
 	N8nTooltip,
 } from '@n8n/design-system';
+import DependencyPill from '@/app/components/DependencyPill.vue';
+import { useDependencies } from '@/app/composables/useDependencies';
 
 type Props = {
 	id: string;
@@ -42,8 +44,11 @@ const documentTitle = useDocumentTitle();
 
 const dataTableStore = useDataTableStore();
 const sourceControlStore = useSourceControlStore();
+const { fetchDependencyCounts, hasDependencies } = useDependencies();
 
 const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
+
+const dataTableHasDependents = computed(() => hasDependencies(props.id));
 
 const loading = ref(false);
 const saving = ref(false);
@@ -75,6 +80,7 @@ const initialize = async () => {
 		await showErrorAndGoBackToList(error);
 	} finally {
 		loading.value = false;
+		void fetchDependencyCounts([props.id], 'dataTable');
 	}
 };
 
@@ -112,6 +118,10 @@ const onAddColumn = async (column: DataTableColumnCreatePayload): Promise<AddCol
 	return await dataTableTableRef.value.addColumn(column);
 };
 
+const onCsvImported = async () => {
+	await dataTableTableRef.value?.fetchDataTableRows();
+};
+
 const handleSourceControlPull = async () => {
 	// Bypass cache and fetch fresh data from API after pull
 	loading.value = true;
@@ -129,6 +139,13 @@ const handleSourceControlPull = async () => {
 		loading.value = false;
 	}
 };
+
+watch(
+	() => props.id,
+	async () => {
+		await initialize();
+	},
+);
 
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('dataTable.dataTables'));
@@ -156,12 +173,23 @@ onBeforeUnmount(() => {
 		</div>
 		<div v-else-if="dataTable">
 			<div :class="$style.header">
-				<DataTableBreadcrumbs :data-table="dataTable" :read-only="readOnlyEnv" />
+				<DataTableBreadcrumbs
+					:data-table="dataTable"
+					:read-only="readOnlyEnv"
+					@imported="onCsvImported"
+				/>
 				<div v-if="saving" :class="$style.saving">
 					<N8nSpinner />
 					<N8nText>{{ i18n.baseText('generic.saving') }}...</N8nText>
 				</div>
 				<div :class="$style.actions">
+					<DependencyPill
+						v-if="dataTableHasDependents"
+						resource-type="dataTable"
+						:resource-id="id"
+						source="data_table_card"
+						data-test-id="data-table-details-dependents"
+					/>
 					<N8nInput
 						v-model="searchQuery"
 						data-test-id="data-table-search-input"
@@ -246,6 +274,7 @@ onBeforeUnmount(() => {
 
 .actions {
 	display: flex;
+	align-items: center;
 	gap: var(--spacing--3xs);
 	margin-left: auto;
 }

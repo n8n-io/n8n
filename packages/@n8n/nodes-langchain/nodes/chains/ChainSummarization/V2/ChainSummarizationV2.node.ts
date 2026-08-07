@@ -7,13 +7,15 @@ import type {
 	IDataObject,
 	INodeInputConfiguration,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, sleep } from 'n8n-workflow';
+import { sleep } from '@n8n/utils/sleep';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
-import { getBatchingOptionFields, getTemplateNoticeField } from '@utils/sharedFields';
+import { getBatchingOptionFields, getTemplateNoticeField } from '@n8n/ai-utilities';
 
 import { processItem } from './processItem';
 import { REFINE_PROMPT_TEMPLATE, DEFAULT_PROMPT_TEMPLATE } from '../prompt';
 
+/* istanbul ignore next */
 function getInputs(parameters: IDataObject) {
 	const chunkingMode = parameters?.chunkingMode;
 	const operationMode = parameters?.operationMode;

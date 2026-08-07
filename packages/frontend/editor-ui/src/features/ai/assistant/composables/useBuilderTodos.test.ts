@@ -8,6 +8,11 @@ import {
 	useBuilderTodos,
 } from './useBuilderTodos';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
+import type { IPinData } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 
 vi.mock('@n8n/i18n', async (importActual) => ({
@@ -323,13 +328,22 @@ describe('useBuilderTodos', () => {
 				...overrides,
 			}) as INodeUi;
 
+		function getWorkflowDocumentStore() {
+			const workflowsStore = useWorkflowsStore();
+			return useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId));
+		}
+
+		function setPinData(pinData: IPinData) {
+			getWorkflowDocumentStore().setPinData(pinData);
+		}
+
 		beforeEach(() => {
 			setActivePinia(createPinia());
+			const workflowsStore = useWorkflowsStore();
+			workflowsStore.setWorkflowId('test-workflow');
 		});
 
 		it('excludes placeholder issues from pinned nodes', () => {
-			const workflowsStore = useWorkflowsStore();
-
 			// Setup a node with placeholder in parameters
 			const nodeWithPlaceholder = createMockNode({
 				name: 'HTTP Request',
@@ -339,10 +353,10 @@ describe('useBuilderTodos', () => {
 			});
 
 			// Set the workflow with the node and pin data for it
-			workflowsStore.workflow.nodes = [nodeWithPlaceholder];
-			workflowsStore.workflow.pinData = {
+			getWorkflowDocumentStore().setNodes([nodeWithPlaceholder]);
+			setPinData({
 				'HTTP Request': [{ json: { data: 'pinned result' } }],
-			};
+			});
 
 			const { workflowTodos } = useBuilderTodos();
 
@@ -351,8 +365,6 @@ describe('useBuilderTodos', () => {
 		});
 
 		it('includes placeholder issues from non-pinned nodes', () => {
-			const workflowsStore = useWorkflowsStore();
-
 			// Setup a node with placeholder in parameters
 			const nodeWithPlaceholder = createMockNode({
 				name: 'HTTP Request',
@@ -362,8 +374,8 @@ describe('useBuilderTodos', () => {
 			});
 
 			// Set the workflow with the node but NO pin data
-			workflowsStore.workflow.nodes = [nodeWithPlaceholder];
-			workflowsStore.workflow.pinData = {};
+			getWorkflowDocumentStore().setNodes([nodeWithPlaceholder]);
+			setPinData({});
 
 			const { workflowTodos } = useBuilderTodos();
 
@@ -373,8 +385,6 @@ describe('useBuilderTodos', () => {
 		});
 
 		it('excludes validation issues from pinned nodes', () => {
-			const workflowsStore = useWorkflowsStore();
-
 			// Setup a connected node with credential issues
 			const nodeWithIssues = createMockNode({
 				name: 'HTTP Request',
@@ -386,15 +396,15 @@ describe('useBuilderTodos', () => {
 			});
 
 			// Set the workflow with connections (node must be connected for issues to count)
-			workflowsStore.workflow.nodes = [nodeWithIssues];
-			workflowsStore.workflow.connections = {
+			getWorkflowDocumentStore().setNodes([nodeWithIssues]);
+			getWorkflowDocumentStore().setConnections({
 				'HTTP Request': {
 					main: [[{ node: 'Other Node', type: 'main' as const, index: 0 }]],
 				},
-			};
-			workflowsStore.workflow.pinData = {
+			});
+			setPinData({
 				'HTTP Request': [{ json: { data: 'pinned result' } }],
-			};
+			});
 
 			const { workflowTodos } = useBuilderTodos();
 
@@ -424,20 +434,23 @@ describe('useBuilderTodos', () => {
 
 			// Connections are stored by SOURCE node. AI Agent connects TO the model node.
 			// This gives the model node an INCOMING connection.
-			workflowsStore.workflow.nodes = [aiModelNode, agentNode];
-			workflowsStore.workflow.connections = {
+			getWorkflowDocumentStore().setNodes([aiModelNode, agentNode]);
+			getWorkflowDocumentStore().setConnections({
 				'AI Agent': {
 					ai_languageModel: [
 						[{ node: 'OpenAI GPT-4o-mini', type: 'ai_languageModel' as const, index: 0 }],
 					],
 				},
-			};
-			workflowsStore.workflow.pinData = {
+			});
+			setPinData({
 				'OpenAI GPT-4o-mini': [{ json: { response: 'pinned AI response' } }],
-			};
+			});
 
-			// Verify the issue exists in workflowValidationIssues before filtering
-			const validationIssues = workflowsStore.workflowValidationIssues;
+			// Verify the issue exists in nodeValidationIssues before filtering
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			);
+			const validationIssues = workflowDocumentStore.nodeValidationIssues;
 			expect(validationIssues.some((i) => i.node === 'OpenAI GPT-4o-mini')).toBe(true);
 
 			const { workflowTodos } = useBuilderTodos();
@@ -467,24 +480,27 @@ describe('useBuilderTodos', () => {
 				type: '@n8n/n8n-nodes-langchain.agent',
 			});
 
-			workflowsStore.workflow.nodes = [aiModelSubNode, parentNode];
+			getWorkflowDocumentStore().setNodes([aiModelSubNode, parentNode]);
 
 			// Sub-node outputs TO the parent node (stored by source node)
-			workflowsStore.workflow.connections = {
+			getWorkflowDocumentStore().setConnections({
 				'OpenAI GPT-4.1-mini': {
 					ai_languageModel: [
 						[{ node: 'Analyze Emails', type: 'ai_languageModel' as const, index: 0 }],
 					],
 				},
-			};
+			});
 
 			// Parent node has pinned data, but sub-node does NOT
-			workflowsStore.workflow.pinData = {
+			setPinData({
 				'Analyze Emails': [{ json: { response: 'pinned response' } }],
-			};
+			});
 
 			// Verify validation issue exists for the sub-node
-			const validationIssues = workflowsStore.workflowValidationIssues;
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			);
+			const validationIssues = workflowDocumentStore.nodeValidationIssues;
 			expect(validationIssues.some((i) => i.node === 'OpenAI GPT-4.1-mini')).toBe(true);
 
 			const { workflowTodos } = useBuilderTodos();
@@ -494,8 +510,6 @@ describe('useBuilderTodos', () => {
 		});
 
 		it('excludes credential issues from nested sub-nodes when ancestor has pinned data', () => {
-			const workflowsStore = useWorkflowsStore();
-
 			// Setup: Nested sub-node structure
 			// grandparentNode (has pinned data) <- parentSubNode <- childSubNode (has credential issues)
 			const childSubNode = createMockNode({
@@ -520,22 +534,22 @@ describe('useBuilderTodos', () => {
 				type: '@n8n/n8n-nodes-langchain.agent',
 			});
 
-			workflowsStore.workflow.nodes = [childSubNode, parentSubNode, grandparentNode];
+			getWorkflowDocumentStore().setNodes([childSubNode, parentSubNode, grandparentNode]);
 
 			// Child outputs to parent, parent outputs to grandparent
-			workflowsStore.workflow.connections = {
+			getWorkflowDocumentStore().setConnections({
 				'Child Tool': {
 					ai_tool: [[{ node: 'AI Model', type: 'ai_tool' as const, index: 0 }]],
 				},
 				'AI Model': {
 					ai_languageModel: [[{ node: 'AI Agent', type: 'ai_languageModel' as const, index: 0 }]],
 				},
-			};
+			});
 
 			// Only grandparent has pinned data
-			workflowsStore.workflow.pinData = {
+			setPinData({
 				'AI Agent': [{ json: { response: 'pinned response' } }],
-			};
+			});
 
 			const { workflowTodos } = useBuilderTodos();
 
@@ -544,8 +558,6 @@ describe('useBuilderTodos', () => {
 		});
 
 		it('verifies pinData structure is correct for filtering', () => {
-			const workflowsStore = useWorkflowsStore();
-
 			// Setup pinData with various structures to verify filtering works
 			const nodeWithIssues = createMockNode({
 				name: 'Test Node',
@@ -556,32 +568,30 @@ describe('useBuilderTodos', () => {
 				},
 			});
 
-			workflowsStore.workflow.nodes = [nodeWithIssues];
-			workflowsStore.workflow.connections = {
+			getWorkflowDocumentStore().setNodes([nodeWithIssues]);
+			getWorkflowDocumentStore().setConnections({
 				'Test Node': {
 					main: [[{ node: 'Other', type: 'main' as const, index: 0 }]],
 				},
-			};
+			});
 
 			// Verify pinData must have array with length > 0 to be considered pinned
 			const { workflowTodos } = useBuilderTodos();
 
 			// No pinData - should show issue
-			workflowsStore.workflow.pinData = {};
+			setPinData({});
 			expect(workflowTodos.value).toHaveLength(1);
 
 			// Empty array - should still show issue
-			workflowsStore.workflow.pinData = { 'Test Node': [] };
+			setPinData({ 'Test Node': [] });
 			expect(workflowTodos.value).toHaveLength(1);
 
 			// Non-empty array - should hide issue
-			workflowsStore.workflow.pinData = { 'Test Node': [{ json: { data: 'test' } }] };
+			setPinData({ 'Test Node': [{ json: { data: 'test' } }] });
 			expect(workflowTodos.value).toHaveLength(0);
 		});
 
 		it('includes validation issues from non-pinned nodes', () => {
-			const workflowsStore = useWorkflowsStore();
-
 			// Setup a connected node with credential issues
 			const nodeWithIssues = createMockNode({
 				name: 'HTTP Request',
@@ -593,13 +603,13 @@ describe('useBuilderTodos', () => {
 			});
 
 			// Set the workflow with connections (node must be connected for issues to count)
-			workflowsStore.workflow.nodes = [nodeWithIssues];
-			workflowsStore.workflow.connections = {
+			getWorkflowDocumentStore().setNodes([nodeWithIssues]);
+			getWorkflowDocumentStore().setConnections({
 				'HTTP Request': {
 					main: [[{ node: 'Other Node', type: 'main' as const, index: 0 }]],
 				},
-			};
-			workflowsStore.workflow.pinData = {};
+			});
+			setPinData({});
 
 			const { workflowTodos } = useBuilderTodos();
 
@@ -609,8 +619,6 @@ describe('useBuilderTodos', () => {
 		});
 
 		it('handles mixed pinned and non-pinned nodes correctly', () => {
-			const workflowsStore = useWorkflowsStore();
-
 			// Setup two nodes: one pinned with issues, one not pinned with issues
 			const pinnedNode = createMockNode({
 				name: 'Pinned Node',
@@ -626,11 +634,11 @@ describe('useBuilderTodos', () => {
 				},
 			});
 
-			workflowsStore.workflow.nodes = [pinnedNode, unpinnedNode];
-			workflowsStore.workflow.pinData = {
+			getWorkflowDocumentStore().setNodes([pinnedNode, unpinnedNode]);
+			setPinData({
 				'Pinned Node': [{ json: { data: 'pinned result' } }],
 				// 'Unpinned Node' has no pinned data
-			};
+			});
 
 			const { workflowTodos } = useBuilderTodos();
 
@@ -640,8 +648,6 @@ describe('useBuilderTodos', () => {
 		});
 
 		it('excludes placeholder issues from disabled nodes', () => {
-			const workflowsStore = useWorkflowsStore();
-
 			// Setup a disabled node with placeholder in parameters
 			const disabledNode = createMockNode({
 				name: 'HTTP Request',
@@ -651,8 +657,8 @@ describe('useBuilderTodos', () => {
 				},
 			});
 
-			workflowsStore.workflow.nodes = [disabledNode];
-			workflowsStore.workflow.pinData = {};
+			getWorkflowDocumentStore().setNodes([disabledNode]);
+			setPinData({});
 
 			const { workflowTodos } = useBuilderTodos();
 
@@ -661,8 +667,6 @@ describe('useBuilderTodos', () => {
 		});
 
 		it('excludes validation issues from disabled nodes', () => {
-			const workflowsStore = useWorkflowsStore();
-
 			// Setup a disabled node with credential issues
 			const disabledNode = createMockNode({
 				name: 'HTTP Request',
@@ -674,13 +678,13 @@ describe('useBuilderTodos', () => {
 				},
 			});
 
-			workflowsStore.workflow.nodes = [disabledNode];
-			workflowsStore.workflow.connections = {
+			getWorkflowDocumentStore().setNodes([disabledNode]);
+			getWorkflowDocumentStore().setConnections({
 				'HTTP Request': {
 					main: [[{ node: 'Other Node', type: 'main' as const, index: 0 }]],
 				},
-			};
-			workflowsStore.workflow.pinData = {};
+			});
+			setPinData({});
 
 			const { workflowTodos } = useBuilderTodos();
 
@@ -710,18 +714,21 @@ describe('useBuilderTodos', () => {
 				disabled: true,
 			});
 
-			workflowsStore.workflow.nodes = [aiModelSubNode, parentNode];
+			getWorkflowDocumentStore().setNodes([aiModelSubNode, parentNode]);
 
 			// Sub-node outputs TO the parent node (stored by source node)
-			workflowsStore.workflow.connections = {
+			getWorkflowDocumentStore().setConnections({
 				'OpenAI GPT-4.1-mini': {
 					ai_languageModel: [[{ node: 'AI Agent', type: 'ai_languageModel' as const, index: 0 }]],
 				},
-			};
-			workflowsStore.workflow.pinData = {};
+			});
+			setPinData({});
 
 			// Verify validation issue exists for the sub-node
-			const validationIssues = workflowsStore.workflowValidationIssues;
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			);
+			const validationIssues = workflowDocumentStore.nodeValidationIssues;
 			expect(validationIssues.some((i) => i.node === 'OpenAI GPT-4.1-mini')).toBe(true);
 
 			const { workflowTodos } = useBuilderTodos();
@@ -731,8 +738,6 @@ describe('useBuilderTodos', () => {
 		});
 
 		it('includes issues from enabled nodes', () => {
-			const workflowsStore = useWorkflowsStore();
-
 			// Setup an enabled node with placeholder in parameters
 			const enabledNode = createMockNode({
 				name: 'HTTP Request',
@@ -742,8 +747,8 @@ describe('useBuilderTodos', () => {
 				},
 			});
 
-			workflowsStore.workflow.nodes = [enabledNode];
-			workflowsStore.workflow.pinData = {};
+			getWorkflowDocumentStore().setNodes([enabledNode]);
+			setPinData({});
 
 			const { workflowTodos } = useBuilderTodos();
 
@@ -753,8 +758,6 @@ describe('useBuilderTodos', () => {
 		});
 
 		it('handles mixed disabled and enabled nodes correctly', () => {
-			const workflowsStore = useWorkflowsStore();
-
 			// Setup two nodes: one disabled with issues, one enabled with issues
 			const disabledNode = createMockNode({
 				name: 'Disabled Node',
@@ -772,8 +775,8 @@ describe('useBuilderTodos', () => {
 				},
 			});
 
-			workflowsStore.workflow.nodes = [disabledNode, enabledNode];
-			workflowsStore.workflow.pinData = {};
+			getWorkflowDocumentStore().setNodes([disabledNode, enabledNode]);
+			setPinData({});
 
 			const { workflowTodos } = useBuilderTodos();
 
@@ -784,8 +787,6 @@ describe('useBuilderTodos', () => {
 
 		describe('hasTodosHiddenByPinnedData', () => {
 			it('returns false when there are visible todos', () => {
-				const workflowsStore = useWorkflowsStore();
-
 				// Setup a node with placeholder in parameters (no pinned data)
 				const nodeWithPlaceholder = createMockNode({
 					name: 'HTTP Request',
@@ -794,8 +795,8 @@ describe('useBuilderTodos', () => {
 					},
 				});
 
-				workflowsStore.workflow.nodes = [nodeWithPlaceholder];
-				workflowsStore.workflow.pinData = {};
+				getWorkflowDocumentStore().setNodes([nodeWithPlaceholder]);
+				setPinData({});
 
 				const { workflowTodos, hasTodosHiddenByPinnedData } = useBuilderTodos();
 
@@ -805,8 +806,6 @@ describe('useBuilderTodos', () => {
 			});
 
 			it('returns false when there are no todos and no pinned data', () => {
-				const workflowsStore = useWorkflowsStore();
-
 				// Setup a node without any issues
 				const cleanNode = createMockNode({
 					name: 'HTTP Request',
@@ -815,8 +814,8 @@ describe('useBuilderTodos', () => {
 					},
 				});
 
-				workflowsStore.workflow.nodes = [cleanNode];
-				workflowsStore.workflow.pinData = {};
+				getWorkflowDocumentStore().setNodes([cleanNode]);
+				setPinData({});
 
 				const { workflowTodos, hasTodosHiddenByPinnedData } = useBuilderTodos();
 
@@ -825,8 +824,6 @@ describe('useBuilderTodos', () => {
 			});
 
 			it('returns true when placeholder todos are hidden by pinned data', () => {
-				const workflowsStore = useWorkflowsStore();
-
 				// Setup a node with placeholder that would show as todo
 				const nodeWithPlaceholder = createMockNode({
 					name: 'HTTP Request',
@@ -835,11 +832,11 @@ describe('useBuilderTodos', () => {
 					},
 				});
 
-				workflowsStore.workflow.nodes = [nodeWithPlaceholder];
+				getWorkflowDocumentStore().setNodes([nodeWithPlaceholder]);
 				// Pin data hides the todo
-				workflowsStore.workflow.pinData = {
+				setPinData({
 					'HTTP Request': [{ json: { data: 'pinned result' } }],
-				};
+				});
 
 				const { workflowTodos, hasTodosHiddenByPinnedData } = useBuilderTodos();
 
@@ -849,8 +846,6 @@ describe('useBuilderTodos', () => {
 			});
 
 			it('returns true when credential todos are hidden by pinned data', () => {
-				const workflowsStore = useWorkflowsStore();
-
 				// Setup a connected node with credential issues
 				const nodeWithIssues = createMockNode({
 					name: 'HTTP Request',
@@ -861,16 +856,16 @@ describe('useBuilderTodos', () => {
 					},
 				});
 
-				workflowsStore.workflow.nodes = [nodeWithIssues];
-				workflowsStore.workflow.connections = {
+				getWorkflowDocumentStore().setNodes([nodeWithIssues]);
+				getWorkflowDocumentStore().setConnections({
 					'HTTP Request': {
 						main: [[{ node: 'Other Node', type: 'main' as const, index: 0 }]],
 					},
-				};
+				});
 				// Pin data hides the credential issue
-				workflowsStore.workflow.pinData = {
+				setPinData({
 					'HTTP Request': [{ json: { data: 'pinned result' } }],
-				};
+				});
 
 				const { workflowTodos, hasTodosHiddenByPinnedData } = useBuilderTodos();
 
@@ -880,8 +875,6 @@ describe('useBuilderTodos', () => {
 			});
 
 			it('returns false when todos are hidden by disabled nodes (not pinned)', () => {
-				const workflowsStore = useWorkflowsStore();
-
 				// Setup a disabled node with placeholder
 				const disabledNode = createMockNode({
 					name: 'HTTP Request',
@@ -891,8 +884,8 @@ describe('useBuilderTodos', () => {
 					},
 				});
 
-				workflowsStore.workflow.nodes = [disabledNode];
-				workflowsStore.workflow.pinData = {};
+				getWorkflowDocumentStore().setNodes([disabledNode]);
+				setPinData({});
 
 				const { workflowTodos, hasTodosHiddenByPinnedData } = useBuilderTodos();
 
@@ -902,8 +895,6 @@ describe('useBuilderTodos', () => {
 			});
 
 			it('returns true when sub-node todos are hidden by parent pinned data', () => {
-				const workflowsStore = useWorkflowsStore();
-
 				// Setup: AI model sub-node with placeholder
 				const aiModelSubNode = createMockNode({
 					name: 'OpenAI GPT-4.1-mini',
@@ -919,16 +910,16 @@ describe('useBuilderTodos', () => {
 					type: '@n8n/n8n-nodes-langchain.agent',
 				});
 
-				workflowsStore.workflow.nodes = [aiModelSubNode, parentNode];
-				workflowsStore.workflow.connections = {
+				getWorkflowDocumentStore().setNodes([aiModelSubNode, parentNode]);
+				getWorkflowDocumentStore().setConnections({
 					'OpenAI GPT-4.1-mini': {
 						ai_languageModel: [[{ node: 'AI Agent', type: 'ai_languageModel' as const, index: 0 }]],
 					},
-				};
+				});
 				// Parent node has pinned data
-				workflowsStore.workflow.pinData = {
+				setPinData({
 					'AI Agent': [{ json: { response: 'pinned response' } }],
-				};
+				});
 
 				const { workflowTodos, hasTodosHiddenByPinnedData } = useBuilderTodos();
 
@@ -938,8 +929,6 @@ describe('useBuilderTodos', () => {
 			});
 
 			it('returns false when node is both pinned AND disabled', () => {
-				const workflowsStore = useWorkflowsStore();
-
 				// Setup a node that is both pinned and disabled
 				const pinnedDisabledNode = createMockNode({
 					name: 'HTTP Request',
@@ -949,10 +938,10 @@ describe('useBuilderTodos', () => {
 					},
 				});
 
-				workflowsStore.workflow.nodes = [pinnedDisabledNode];
-				workflowsStore.workflow.pinData = {
+				getWorkflowDocumentStore().setNodes([pinnedDisabledNode]);
+				setPinData({
 					'HTTP Request': [{ json: { data: 'pinned result' } }],
-				};
+				});
 
 				const { workflowTodos, hasTodosHiddenByPinnedData } = useBuilderTodos();
 
@@ -962,8 +951,6 @@ describe('useBuilderTodos', () => {
 			});
 
 			it('handles mixed scenarios: some todos visible, some hidden by pin', () => {
-				const workflowsStore = useWorkflowsStore();
-
 				// One node pinned (hiding its todo), another unpinned (showing its todo)
 				const pinnedNode = createMockNode({
 					name: 'Pinned Node',
@@ -979,10 +966,10 @@ describe('useBuilderTodos', () => {
 					},
 				});
 
-				workflowsStore.workflow.nodes = [pinnedNode, unpinnedNode];
-				workflowsStore.workflow.pinData = {
+				getWorkflowDocumentStore().setNodes([pinnedNode, unpinnedNode]);
+				setPinData({
 					'Pinned Node': [{ json: { data: 'pinned result' } }],
-				};
+				});
 
 				const { workflowTodos, hasTodosHiddenByPinnedData } = useBuilderTodos();
 
@@ -996,8 +983,6 @@ describe('useBuilderTodos', () => {
 
 		describe('reactivity for subnode todos', () => {
 			it('shows subnode todos when parent node is unpinned', async () => {
-				const workflowsStore = useWorkflowsStore();
-
 				const subnodeWithPlaceholder = createMockNode({
 					name: 'OpenAI Model',
 					type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
@@ -1012,23 +997,23 @@ describe('useBuilderTodos', () => {
 					type: '@n8n/n8n-nodes-langchain.agent',
 				});
 
-				workflowsStore.workflow.nodes = [subnodeWithPlaceholder, parentNode];
-				workflowsStore.workflow.connections = {
+				getWorkflowDocumentStore().setNodes([subnodeWithPlaceholder, parentNode]);
+				getWorkflowDocumentStore().setConnections({
 					'OpenAI Model': {
 						ai_languageModel: [[{ node: 'AI Agent', type: 'ai_languageModel' as const, index: 0 }]],
 					},
-				};
+				});
 
 				// Initially parent is pinned - no todos expected
-				workflowsStore.workflow.pinData = {
+				setPinData({
 					'AI Agent': [{ json: { response: 'pinned' } }],
-				};
+				});
 
 				const { workflowTodos } = useBuilderTodos();
 				expect(workflowTodos.value).toHaveLength(0);
 
 				// Unpin the parent
-				workflowsStore.workflow.pinData = {};
+				setPinData({});
 
 				// Should now show the subnode's placeholder todo
 				expect(workflowTodos.value).toHaveLength(1);
@@ -1036,8 +1021,6 @@ describe('useBuilderTodos', () => {
 			});
 
 			it('shows subnode todos when parent node is enabled', () => {
-				const workflowsStore = useWorkflowsStore();
-
 				const subnodeWithPlaceholder = createMockNode({
 					name: 'OpenAI Model',
 					type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
@@ -1053,13 +1036,13 @@ describe('useBuilderTodos', () => {
 					disabled: true,
 				});
 
-				workflowsStore.workflow.nodes = [subnodeWithPlaceholder, parentNode];
-				workflowsStore.workflow.connections = {
+				getWorkflowDocumentStore().setNodes([subnodeWithPlaceholder, parentNode]);
+				getWorkflowDocumentStore().setConnections({
 					'OpenAI Model': {
 						ai_languageModel: [[{ node: 'AI Agent', type: 'ai_languageModel' as const, index: 0 }]],
 					},
-				};
-				workflowsStore.workflow.pinData = {};
+				});
+				setPinData({});
 
 				const { workflowTodos } = useBuilderTodos();
 
@@ -1067,11 +1050,10 @@ describe('useBuilderTodos', () => {
 				expect(workflowTodos.value).toHaveLength(0);
 
 				// Enable the parent by updating the node
-				const parentIndex = workflowsStore.workflow.nodes.findIndex((n) => n.name === 'AI Agent');
-				workflowsStore.workflow.nodes[parentIndex] = {
-					...workflowsStore.workflow.nodes[parentIndex],
-					disabled: false,
-				};
+				getWorkflowDocumentStore().updateNodeProperties({
+					name: 'AI Agent',
+					properties: { disabled: false },
+				});
 
 				// Should now show the subnode's placeholder todo
 				expect(workflowTodos.value).toHaveLength(1);

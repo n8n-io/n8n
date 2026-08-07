@@ -7,7 +7,7 @@ import { useSourceControlStore } from '../sourceControl.store';
 import { mockedStore } from '@/__tests__/utils';
 import { waitFor } from '@testing-library/dom';
 import { reactive } from 'vue';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { defaultSettings } from '@/__tests__/defaults';
 import type { SourceControlledFile } from '@n8n/api-types';
 
@@ -44,7 +44,7 @@ vi.mock('@/app/composables/useLoadingService', () => ({
 }));
 
 // Mock the toast composable to prevent Element Plus DOM errors
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({
 		showMessage: vi.fn(),
 		showError: vi.fn(),
@@ -378,6 +378,69 @@ describe('SourceControlPullModal', () => {
 		});
 
 		expect(getByText(/Projects \(2\)/)).toBeInTheDocument();
+	});
+
+	it('should collapse and expand nested workflow folders', async () => {
+		const status: SourceControlledFile[] = [
+			{
+				id: 'wf-root',
+				name: 'Root workflow',
+				type: 'workflow',
+				status: 'created',
+				location: 'remote',
+				conflict: false,
+				file: '/workflows/wf-root.json',
+				updatedAt: '2025-01-19T10:00:00.000Z',
+			},
+			{
+				id: 'wf-child-1',
+				name: 'Child workflow 1',
+				type: 'workflow',
+				status: 'created',
+				location: 'remote',
+				conflict: false,
+				file: '/workflows/wf-child-1.json',
+				updatedAt: '2025-01-19T10:00:00.000Z',
+				folderPath: ['Prod'],
+			},
+			{
+				id: 'wf-child-2',
+				name: 'Child workflow 2',
+				type: 'workflow',
+				status: 'created',
+				location: 'remote',
+				conflict: false,
+				file: '/workflows/wf-child-2.json',
+				updatedAt: '2025-01-19T10:00:00.000Z',
+				folderPath: ['Prod'],
+			},
+		];
+
+		const { getAllByTestId, getByTestId } = renderModal({
+			pinia,
+			props: {
+				data: {
+					eventBus,
+					status,
+				},
+			},
+		});
+
+		await waitFor(() => {
+			expect(getAllByTestId('pull-modal-item')).toHaveLength(3);
+		});
+
+		await userEvent.click(getByTestId('source-control-pull-modal-folder-toggle'));
+
+		await waitFor(() => {
+			expect(getAllByTestId('pull-modal-item')).toHaveLength(1);
+		});
+
+		await userEvent.click(getByTestId('source-control-pull-modal-folder-toggle'));
+
+		await waitFor(() => {
+			expect(getAllByTestId('pull-modal-item')).toHaveLength(3);
+		});
 	});
 
 	describe('Data Tables tab', () => {

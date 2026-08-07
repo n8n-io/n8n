@@ -11,7 +11,8 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 import {
-	ApplicationError,
+	assertCredentialAllowsUrl,
+	BaseError,
 	NodeConnectionTypes,
 	NodeOperationError,
 	updateDisplayOptions,
@@ -19,7 +20,7 @@ import {
 import { OpenAI as OpenAIClient } from 'openai';
 
 import { promptTypeOptionsDeprecated } from '@utils/descriptions';
-import { getConnectedTools, getPromptInputByType } from '@utils/helpers';
+import { getConnectedTools, getPromptInputByType, mergeCustomHeaders } from '@utils/helpers';
 import { getTracingConfig } from '@utils/tracing';
 
 import { formatToOpenAIAssistantTool, getChatMessages } from '../../../helpers/utils';
@@ -27,7 +28,6 @@ import { assistantRLC } from '../descriptions';
 import { getProxyAgent } from '@n8n/ai-utilities';
 import { Container } from '@n8n/di';
 import { AiConfig } from '@n8n/config';
-import { checkDomainRestrictions } from '@utils/checkDomainRestrictions';
 
 const properties: INodeProperties[] = [
 	assistantRLC,
@@ -182,11 +182,18 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	};
 
 	if (options.baseURL) {
-		checkDomainRestrictions(this, credentials, options.baseURL);
+		assertCredentialAllowsUrl({
+			node: this.getNode(),
+			credentialData: credentials,
+			url: options.baseURL,
+			pinnedUrl: typeof credentials.url === 'string' ? credentials.url : undefined,
+			surface: 'OpenAI',
+		});
 	}
 
 	const baseURL = (options.baseURL ?? credentials.url) as string;
-	const { openAiDefaultHeaders: defaultHeaders } = Container.get(AiConfig);
+	const { openAiDefaultHeaders } = Container.get(AiConfig);
+	const defaultHeaders = mergeCustomHeaders(credentials, openAiDefaultHeaders ?? {});
 	const timeout = options.timeout;
 
 	const client = new OpenAIClient({
@@ -308,7 +315,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		// Remove configuration properties and runId added by Langchain that are not relevant to the user
 		filteredResponse = omit(response, ['signal', 'timeout', 'content', 'runId']) as IDataObject;
 	} catch (error) {
-		if (!(error instanceof ApplicationError)) {
+		if (!(error instanceof BaseError)) {
 			throw new NodeOperationError(this.getNode(), error.message, { itemIndex: i });
 		}
 	}

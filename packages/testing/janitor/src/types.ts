@@ -1,7 +1,3 @@
-/**
- * Core Types for @n8n/playwright-janitor
- */
-
 export type {
 	Project,
 	SourceFile,
@@ -13,7 +9,14 @@ export type {
 } from 'ts-morph';
 export { SyntaxKind } from 'ts-morph';
 
-export type Severity = 'error' | 'warning' | 'info';
+export type {
+	Severity,
+	Violation,
+	RuleResult,
+	ReportSummary,
+	FixData,
+} from '@n8n/rules-engine';
+export type { Report as JanitorReport } from '@n8n/rules-engine';
 
 export type BuiltInRuleId =
 	| 'boundary-protection'
@@ -25,17 +28,17 @@ export type BuiltInRuleId =
 	| 'deduplication'
 	| 'test-data-hygiene'
 	| 'duplicate-logic'
-	| 'no-direct-page-instantiation';
+	| 'no-direct-page-instantiation'
+	| 'no-raw-editor-navigation'
+	| 'valid-owner-annotation';
 
-// Allow any string for custom rules, while BuiltInRuleId provides type-safe hints for built-in rules
 export type RuleId = string;
 
 export interface RuleSettings {
 	enabled?: boolean;
-	severity?: Severity | 'off';
+	severity?: 'error' | 'warning' | 'info' | 'off';
 	allowPatterns?: RegExp[];
 	allowInExpect?: boolean;
-	/** Method names that indicate a standalone/top-level page (for scope-lockdown rule) */
 	navigationMethods?: string[];
 }
 
@@ -51,114 +54,52 @@ export type RuleSettingsMap = {
 export interface RunOptions {
 	files?: string[];
 	ruleConfig?: Record<string, RuleConfig>;
-	fix?: boolean;
-	write?: boolean;
 }
 
-export interface Violation {
-	file: string;
-	line: number;
-	column: number;
-	rule: string;
-	message: string;
-	severity: Severity;
-	suggestion?: string;
-	fixable?: boolean;
-	fixData?: FixData;
-}
+// Janitor-specific fix data narrowing
 
 export interface MethodFixData {
 	type: 'method';
 	className: string;
 	memberName: string;
+	[key: string]: unknown;
 }
 
 export interface PropertyFixData {
 	type: 'property';
 	className: string;
 	memberName: string;
+	[key: string]: unknown;
 }
 
 export interface ClassFixData {
 	type: 'class';
 	className: string;
+	[key: string]: unknown;
 }
 
 export interface EditFixData {
 	type: 'edit';
 	replacement: string;
+	[key: string]: unknown;
 }
 
-export type FixData = MethodFixData | PropertyFixData | ClassFixData | EditFixData;
+export type JanitorFixData = MethodFixData | PropertyFixData | ClassFixData | EditFixData;
 
-export function isMethodFix(data: FixData): data is MethodFixData {
+export function isMethodFix(data: { type: string }): data is MethodFixData {
 	return data.type === 'method';
 }
 
-export function isPropertyFix(data: FixData): data is PropertyFixData {
+export function isPropertyFix(data: { type: string }): data is PropertyFixData {
 	return data.type === 'property';
 }
 
-export function isClassFix(data: FixData): data is ClassFixData {
+export function isClassFix(data: { type: string }): data is ClassFixData {
 	return data.type === 'class';
 }
 
-export function isEditFix(data: FixData): data is EditFixData {
+export function isEditFix(data: { type: string }): data is EditFixData {
 	return data.type === 'edit';
-}
-
-export type FixAction = 'remove-method' | 'remove-property' | 'remove-file' | 'edit';
-
-export interface FixResult {
-	file: string;
-	action: FixAction;
-	target?: string;
-	applied: boolean;
-}
-
-export interface RuleResult {
-	rule: string;
-	violations: Violation[];
-	filesAnalyzed: number;
-	executionTimeMs: number;
-	fixable?: boolean;
-	fixes?: FixResult[];
-}
-
-export interface ReportSummary {
-	totalViolations: number;
-	byRule: Record<string, number>;
-	bySeverity: Record<Severity, number>;
-	filesAnalyzed: number;
-}
-
-export interface JanitorReport {
-	timestamp: string;
-	projectRoot: string;
-	rules: {
-		enabled: string[];
-		disabled: string[];
-	};
-	results: RuleResult[];
-	summary: ReportSummary;
-}
-
-import type { Project, SourceFile } from 'ts-morph';
-
-export interface Rule {
-	readonly id: string;
-	readonly name: string;
-	readonly description: string;
-	readonly severity: Severity;
-	readonly fixable: boolean;
-
-	getTargetGlobs(): string[];
-	analyze(project: Project, files: SourceFile[]): Violation[];
-	fix?(project: Project, violations: Violation[], write: boolean): FixResult[];
-	isEnabled(): boolean;
-	getEffectiveSeverity(): Severity;
-	configure(config: RuleConfig): void;
-	execute(project: Project, files: SourceFile[]): RuleResult;
 }
 
 export interface FilePatterns {
@@ -183,7 +124,7 @@ export interface RuleInfo {
 	id: string;
 	name: string;
 	description: string;
-	severity: Severity;
+	severity: 'error' | 'warning' | 'info';
 	fixable: boolean;
 	enabled: boolean;
 	targetGlobs: string[];

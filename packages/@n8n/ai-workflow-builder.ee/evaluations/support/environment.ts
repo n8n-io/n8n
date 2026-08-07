@@ -3,10 +3,11 @@ import { LangChainTracer } from '@langchain/core/tracers/tracer_langchain';
 import { MemorySaver } from '@langchain/langgraph';
 import fs from 'fs';
 import { Client } from 'langsmith/client';
-import type { INodeTypeDescription } from 'n8n-workflow';
+import { type INodeTypeDescription } from 'n8n-workflow';
 import path from 'path';
 
 import { DEFAULT_MODEL, getApiKeyEnvVar, MODEL_FACTORIES, type ModelId } from '@/llm-config';
+import { createPassthroughSsrfGuard } from '@/tools/utils/ssrf-guard';
 import type { BuilderFeatureFlags } from '@/workflow-builder-agent';
 import { WorkflowBuilderAgent } from '@/workflow-builder-agent';
 
@@ -207,7 +208,7 @@ export function resolveBuiltinNodeDefinitionDirs(): string[] {
 }
 
 /** Walk up from startDir to find the monorepo root (contains pnpm-workspace.yaml). */
-function findRepoRoot(startDir: string): string | undefined {
+export function findRepoRoot(startDir: string): string | undefined {
 	let dir = startDir;
 	while (dir !== path.dirname(dir)) {
 		if (fs.existsSync(path.join(dir, 'pnpm-workspace.yaml'))) {
@@ -284,6 +285,7 @@ export function createAgent(options: CreateAgentOptions): WorkflowBuilderAgent {
 			featureFlags: featureFlags ?? {},
 			experimentName,
 		},
+		ssrf: createPassthroughSsrfGuard(),
 	});
 }
 

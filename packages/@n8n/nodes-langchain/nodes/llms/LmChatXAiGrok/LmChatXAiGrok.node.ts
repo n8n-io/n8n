@@ -1,5 +1,10 @@
 import { ChatOpenAI, type ClientOptions } from '@langchain/openai';
-import { getProxyAgent, makeN8nLlmFailedAttemptHandler, N8nLlmTracing } from '@n8n/ai-utilities';
+import {
+	getProxyAgent,
+	makeN8nLlmFailedAttemptHandler,
+	N8nLlmTracing,
+	getConnectionHintNoticeField,
+} from '@n8n/ai-utilities';
 import {
 	NodeConnectionTypes,
 	type INodeType,
@@ -7,8 +12,6 @@ import {
 	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
-
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 import type { OpenAICompatibleCredential } from '../../../types/types';
 import { openAiFailedAttemptHandler } from '../../vendors/OpenAi/helpers/error-handling';
@@ -114,6 +117,10 @@ export class LmChatXAiGrok implements INodeType {
 					},
 				},
 				default: 'grok-2-vision-1212',
+				builderHint: {
+					propertyHint:
+						'Default to the latest flagship Grok (grok-4.20-0309-reasoning, or grok-4.20-multi-agent-0309 for agent workloads). Avoid grok-4, grok-2, and grok-1 variants.',
+				},
 			},
 			{
 				displayName: 'Options',
@@ -203,6 +210,44 @@ export class LmChatXAiGrok implements INodeType {
 							'Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered. We generally recommend altering this or temperature but not both.',
 						type: 'number',
 					},
+					{
+						displayName: 'Enable Priority',
+						name: 'priority',
+						default: false,
+						description:
+							'Whether to give your xAI API requests higher scheduling priority (Priority Processing)',
+						type: 'boolean',
+					},
+					{
+						displayName: 'Reasoning Effort',
+						name: 'reasoning',
+						type: 'options',
+						default: 'low',
+						description: 'Effort the model spends thinking before responding',
+						// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
+						options: [
+							{
+								name: 'None',
+								value: 'none',
+								description: 'Disables reasoning entirely; no thinking tokens are used',
+							},
+							{
+								name: 'Low',
+								value: 'low',
+								description: 'Uses some reasoning tokens, but still fast',
+							},
+							{
+								name: 'Medium',
+								value: 'medium',
+								description: 'More thinking for less-latency sensitive applications',
+							},
+							{
+								name: 'High',
+								value: 'high',
+								description: 'Uses more reasoning tokens for deeper thinking',
+							},
+						],
+					},
 				],
 			},
 		],
@@ -222,6 +267,8 @@ export class LmChatXAiGrok implements INodeType {
 			temperature?: number;
 			topP?: number;
 			responseFormat?: 'text' | 'json_object';
+			reasoning?: 'none' | 'low' | 'medium' | 'high';
+			priority?: boolean;
 		};
 
 		const timeout = options.timeout;
@@ -235,10 +282,14 @@ export class LmChatXAiGrok implements INodeType {
 			},
 		};
 
+		// `reasoning` (xAI reasoning effort) and `priority` are xAI-specific and passed via
+		// modelKwargs, so keep them out of the spread into the ChatOpenAI constructor.
+		const { reasoning, priority, ...restOptions } = options;
+
 		const model = new ChatOpenAI({
 			apiKey: credentials.apiKey,
 			model: modelName,
-			...options,
+			...restOptions,
 			timeout,
 			maxRetries: options.maxRetries ?? 2,
 			configuration,
@@ -250,6 +301,8 @@ export class LmChatXAiGrok implements INodeType {
 							response_format: { type: options.responseFormat },
 						}
 					: undefined),
+				reasoning_effort: reasoning,
+				service_tier: priority ? 'priority' : undefined,
 			},
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this, openAiFailedAttemptHandler),
 		});

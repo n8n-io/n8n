@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { useSSOStore } from '../sso.store';
 import { useI18n } from '@n8n/i18n';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useRoute } from 'vue-router';
 
 import { N8nButton } from '@n8n/design-system';
@@ -19,7 +19,7 @@ const onSSOLogin = async () => {
 			: ssoStore.oidc.loginUrl;
 		window.location.href = redirectUrl ?? '';
 	} catch (error) {
-		toast.showError(error, 'Error', error.message);
+		toast.showError(error, 'Error', { message: error.message });
 	}
 };
 </script>
@@ -40,10 +40,15 @@ const onSSOLogin = async () => {
 
 <style lang="scss" module>
 .ssoLogin {
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
 	text-align: center;
 }
 
 .divider {
+	width: 100%;
 	position: relative;
 	text-transform: uppercase;
 

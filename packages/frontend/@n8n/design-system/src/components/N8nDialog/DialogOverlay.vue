@@ -39,7 +39,7 @@ defineProps<DialogOverlayProps>();
 	inset: 0;
 	background-color: light-dark(var(--color--black-alpha-300), var(--color--black-alpha-600));
 	backdrop-filter: blur(8px);
-	z-index: 999998;
+	z-index: 1949; // See APP_Z_INDEXES in useStyles.ts
 }
 
 .overlay[data-state='open'] {

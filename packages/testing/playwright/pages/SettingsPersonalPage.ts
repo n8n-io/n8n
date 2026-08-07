@@ -1,16 +1,19 @@
 import type { Locator } from '@playwright/test';
 
 import { BasePage } from './BasePage';
+import { SettingsSidebar } from './components/SettingsSidebar';
 
 /**
  * Page object for Settings including Personal Settings where users can update their profile and manage MFA.
  */
 export class SettingsPersonalPage extends BasePage {
+	readonly settingsSidebar = new SettingsSidebar(this.page);
+
 	getMenuItems() {
-		return this.page.getByTestId('menu-item');
+		return this.settingsSidebar.getMenuItems();
 	}
 
-	async goToSettings() {
+	async gotoSettings() {
 		await this.page.goto('/settings');
 	}
 
@@ -18,7 +21,7 @@ export class SettingsPersonalPage extends BasePage {
 		return this.page.getByTestId('current-user-role');
 	}
 
-	async goToPersonalSettings(): Promise<void> {
+	async goto(): Promise<void> {
 		await this.page.goto('/settings/personal');
 	}
 
@@ -65,7 +68,7 @@ export class SettingsPersonalPage extends BasePage {
 	 * @param lastName - The new last name
 	 */
 	async updateFirstAndLastName(firstName: string, lastName: string): Promise<void> {
-		await this.goToPersonalSettings();
+		await this.goto();
 		await this.fillPersonalData(firstName, lastName);
 		await this.saveSettings();
 	}
@@ -98,7 +101,7 @@ export class SettingsPersonalPage extends BasePage {
 	 * Navigate to personal settings and initiate MFA disable workflow
 	 */
 	async triggerDisableMfa(): Promise<void> {
-		await this.goToPersonalSettings();
+		await this.goto();
 		await this.clickDisableMfa();
 	}
 

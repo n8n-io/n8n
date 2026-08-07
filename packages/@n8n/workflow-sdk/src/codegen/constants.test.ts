@@ -1,5 +1,3 @@
-import { describe, it, expect } from '@jest/globals';
-
 import {
 	AI_CONNECTION_TO_CONFIG_KEY,
 	AI_CONNECTION_TO_BUILDER,
@@ -109,6 +107,18 @@ describe('constants', () => {
 	describe('AI_OPTIONAL_ARRAY_TYPES', () => {
 		it('includes ai_languageModel', () => {
 			expect(AI_OPTIONAL_ARRAY_TYPES.has('ai_languageModel')).toBe(true);
+		});
+
+		it('includes ai_document', () => {
+			expect(AI_OPTIONAL_ARRAY_TYPES.has('ai_document')).toBe(true);
+		});
+
+		it('includes ai_embedding', () => {
+			expect(AI_OPTIONAL_ARRAY_TYPES.has('ai_embedding')).toBe(true);
+		});
+
+		it('includes ai_reranker', () => {
+			expect(AI_OPTIONAL_ARRAY_TYPES.has('ai_reranker')).toBe(true);
 		});
 
 		it('does not include ai_tool', () => {

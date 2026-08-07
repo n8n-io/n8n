@@ -10,7 +10,12 @@ import type {
 
 type VueCssClass = undefined | string | Record<string, boolean> | Array<string | VueCssClass>;
 
-export type SelectItemProps = {
+/**
+ * The props `N8nSelect2Item` declares. Kept free of the index signature below
+ * so the emitted declarations name them — a component typed with an index
+ * signature publishes no prop names at all.
+ */
+export type SelectItemBaseProps = {
 	label?: string;
 	/**
 	 * The item type.
@@ -23,6 +28,13 @@ export type SelectItemProps = {
 	icon?: IconName;
 	class?: VueCssClass;
 	strokeWidth?: number;
+};
+
+/**
+ * An entry in `N8nSelect2`'s `items`. Open by design: callers attach their own
+ * payload and read it back in the item slots.
+ */
+export type SelectItemProps = SelectItemBaseProps & {
 	[key: string]: unknown;
 };
 
@@ -66,6 +78,23 @@ export type SelectProps<
 
 	/** Icon to be displayed in the trigger */
 	icon?: IconName;
+
+	/**
+	 * The positioning mode for the dropdown content.
+	 * `item-aligned` aligns to the selected item (default).
+	 * `popper` uses floating UI for viewport-aware positioning.
+	 * @defaultValue 'item-aligned'
+	 */
+	position?: 'item-aligned' | 'popper';
+
+	/** The preferred side when position is 'popper'. @defaultValue 'bottom' */
+	side?: 'top' | 'right' | 'bottom' | 'left';
+
+	/** The distance in pixels from the trigger when position is 'popper'. @defaultValue 4 */
+	sideOffset?: number;
+
+	/** Additional CSS class(es) applied to the dropdown content container (portaled). */
+	contentClass?: string;
 };
 
 export type SelectEmits<
@@ -74,6 +103,21 @@ export type SelectEmits<
 	M extends boolean,
 > = Omit<SelectRootEmits, 'update:modelValue'> & GetModelValueEmits<A, VK, M>;
 
+/**
+ * The payload `N8nSelect2Item`'s own item slots receive: `item` is that
+ * component's declared props, not a caller-supplied entry.
+ *
+ * Exported so the SFC can declare its slots with a named type rather than
+ * letting them be inferred — inference wraps slot props in `LooseRequired` from
+ * `@vue/shared`, a transitive dependency the compiler cannot name portably, and
+ * the component's declaration is then silently skipped (TS2883).
+ */
+export type SelectItemSlotProps = (props: {
+	item: SelectItemBaseProps;
+	ui: Record<string, unknown>;
+}) => unknown;
+
+/** `N8nSelect2`'s item slots, which forward a caller-supplied entry instead. */
 type SlotProps = (props: { item: SelectItemProps; ui: Record<string, unknown> }) => unknown;
 
 export type SelectSlots<

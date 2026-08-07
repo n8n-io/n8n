@@ -13,6 +13,7 @@ export declare namespace Cloud {
 		metadata: PlanMetadata;
 		userIsTrialing?: boolean;
 		bannerConfig?: BannerConfig;
+		licenseFeatures?: Record<string, number>;
 	}
 
 	export interface PlanMetadata {
@@ -43,7 +44,9 @@ export declare namespace Cloud {
 			text?: string;
 			icon?: string;
 			size?: 'small' | 'medium';
-			style?: 'primary' | 'success' | 'warning' | 'danger'; // button color, defaults to 'success'
+			/** @deprecated Use variant instead */
+			style?: 'primary' | 'success' | 'warning' | 'danger';
+			variant?: 'solid' | 'subtle' | 'ghost' | 'outline' | 'destructive' | 'success';
 			href?: string; // If provided, navigate to this URL; otherwise use upgrade flow
 		};
 
@@ -52,6 +55,17 @@ export declare namespace Cloud {
 
 		dismissible?: boolean;
 		forceShow?: boolean; // Override localStorage dismissal
+	}
+
+	export interface UpgradeOffer {
+		slug: string;
+		quotas: { monthlyExecutionsLimit: number; instanceAiCredits: number };
+		currency?: { code: string; symbol: string; position: 'prefix' | 'suffix' };
+		prices?: {
+			monthly: number;
+			yearlyPerMonth: number;
+			discountPct: number;
+		};
 	}
 
 	export type UserAccount = {
@@ -83,6 +97,12 @@ export async function getCurrentUsage(context: IRestApiContext): Promise<Instanc
 
 export async function getCloudUserInfo(context: IRestApiContext): Promise<Cloud.UserAccount> {
 	return await get(context.baseUrl, '/cloud/proxy/user/me');
+}
+
+export async function getUpgradeOffer(
+	context: IRestApiContext,
+): Promise<Cloud.UpgradeOffer | Record<string, never>> {
+	return await post(context.baseUrl, '/cloud/proxy/upgrade-offer');
 }
 
 export async function sendConfirmationEmail(context: IRestApiContext): Promise<Cloud.UserAccount> {

@@ -94,7 +94,7 @@ export const pageFields: INodeProperties[] = [
 				displayName: 'Link',
 				name: 'url',
 				type: 'string',
-				placeholder: 'https://www.notion.so/My-Page-b4eeb113e118403aa450af65ac25f0b9',
+				placeholder: 'https://www.notion.com/My-Page-b4eeb113e118403aa450af65ac25f0b9',
 				validation: [
 					{
 						type: 'regex',
@@ -127,7 +127,7 @@ export const pageFields: INodeProperties[] = [
 					type: 'regex',
 					regex: idExtractionRegexp,
 				},
-				url: '=https://www.notion.so/{{$value.replace(/-/g, "")}}',
+				url: '=https://www.notion.com/{{$value.replace(/-/g, "")}}',
 			},
 		],
 		displayOptions: {
@@ -171,7 +171,7 @@ export const pageFields: INodeProperties[] = [
 				displayName: 'Link',
 				name: 'url',
 				type: 'string',
-				placeholder: 'https://www.notion.so/My-Page-b4eeb113e118403aa450af65ac25f0b9',
+				placeholder: 'https://www.notion.com/My-Page-b4eeb113e118403aa450af65ac25f0b9',
 				validation: [
 					{
 						type: 'regex',
@@ -204,7 +204,7 @@ export const pageFields: INodeProperties[] = [
 					type: 'regex',
 					regex: idExtractionRegexp,
 				},
-				url: '=https://www.notion.so/{{$value.replace(/-/g, "")}}',
+				url: '=https://www.notion.com/{{$value.replace(/-/g, "")}}',
 			},
 		],
 		displayOptions: {

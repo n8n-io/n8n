@@ -1,0 +1,82 @@
+{
+	"name": "Databricks Model Serving Test Workflow",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "trigger-001",
+			"name": "When clicking 'Execute workflow'"
+		},
+		{
+			"parameters": {
+				"resource": "modelServing",
+				"operation": "queryEndpoint",
+				"endpointName": {
+					"mode": "name",
+					"value": "my-llm-endpoint"
+				},
+				"requestBody": "{\"messages\":[{\"role\":\"user\",\"content\":\"Hello!\"}]}"
+			},
+			"type": "n8n-nodes-base.databricks",
+			"typeVersion": 1,
+			"position": [220, 0],
+			"id": "model-query-001",
+			"name": "Query Chat Endpoint",
+			"credentials": {
+				"databricksApi": {
+					"id": "cred-001",
+					"name": "Databricks account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Query Chat Endpoint": [
+			{
+				"json": {
+					"id": "chatcmpl-123",
+					"choices": [
+						{
+							"message": {
+								"role": "assistant",
+								"content": "Hello! How can I help you today?"
+							},
+							"finish_reason": "stop",
+							"index": 0
+						}
+					],
+					"model": "my-llm-endpoint",
+					"usage": {
+						"prompt_tokens": 5,
+						"completion_tokens": 10,
+						"total_tokens": 15
+					},
+					"_metadata": {
+						"endpoint": "my-llm-endpoint",
+						"detectedFormat": "generic",
+						"invocationUrl": "https://adb-1234567890.1.azuredatabricks.net/serving-endpoints/my-llm-endpoint/invocations"
+					}
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute workflow'": {
+			"main": [
+				[
+					{
+						"node": "Query Chat Endpoint",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

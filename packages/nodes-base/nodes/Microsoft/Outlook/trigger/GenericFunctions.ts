@@ -16,7 +16,8 @@ export async function getPollResponse(
 	let responseData;
 	const qs = {} as IDataObject;
 	try {
-		const filters = this.getNodeParameter('filters', {}) as IDataObject;
+		const filters: IDataObject =
+			(this.getNodeParameter('filters', {}) as IDataObject | undefined) ?? {};
 		const options = this.getNodeParameter('options', {}) as IDataObject;
 		const output = this.getNodeParameter('output') as string;
 		if (output === 'fields') {
@@ -34,31 +35,48 @@ export async function getPollResponse(
 				'id,conversationId,subject,bodyPreview,from,toRecipients,categories,hasAttachments';
 		}
 
-		const filterString = prepareFilterString({ filters });
+		// parentFolderId is not a filterable property on GET /me/messages (see message
+		// resource: https://learn.microsoft.com/en-us/graph/api/resources/message), so
+		// folder scoping must use GET /me/mailFolders/{id}/messages per folder instead:
+		// https://learn.microsoft.com/en-us/graph/api/mailfolder-list-messages
+		const { foldersToInclude: rawFolderIds, ...otherFilters } = filters;
+		const folderIds = ((rawFolderIds as string[] | undefined) ?? []).filter((id) => id !== '');
 
+		const filterString = prepareFilterString({ filters: otherFilters });
 		if (filterString) {
 			qs.$filter = filterString;
 		}
 
-		const endpoint = '/messages';
 		if (this.getMode() !== 'manual') {
-			if (qs.$filter) {
-				qs.$filter = `${qs.$filter} and receivedDateTime ge ${pollStartDate} and receivedDateTime lt ${pollEndDate}`;
-			} else {
-				qs.$filter = `receivedDateTime ge ${pollStartDate} and receivedDateTime lt ${pollEndDate}`;
-			}
-			responseData = await microsoftApiRequestAllItems.call(
-				this,
-				'value',
-				'GET',
-				endpoint,
-				undefined,
-				qs,
+			const dateFilter = `receivedDateTime ge ${pollStartDate} and receivedDateTime lt ${pollEndDate}`;
+			qs.$filter = qs.$filter ? `${qs.$filter} and ${dateFilter}` : dateFilter;
+
+			const endpoints =
+				folderIds.length > 0 ? folderIds.map((id) => `/mailFolders/${id}/messages`) : ['/messages'];
+
+			const results = await Promise.all(
+				endpoints.map(
+					async (endpoint) =>
+						// Poll context: 0 is the transport's fallback read, not an item index.
+						await microsoftApiRequestAllItems.call(this, 'value', 'GET', endpoint, 0, undefined, {
+							...qs,
+						}),
+				),
 			);
+			responseData = results.flat();
 		} else {
 			qs.$top = 1;
-			responseData = await microsoftApiRequest.call(this, 'GET', endpoint, undefined, qs);
-			responseData = responseData.value;
+			const endpoints =
+				folderIds.length > 0 ? folderIds.map((id) => `/mailFolders/${id}/messages`) : ['/messages'];
+
+			const results = await Promise.all(
+				endpoints.map(
+					async (endpoint) =>
+						// Poll context: 0 is the transport's fallback read, not an item index.
+						await microsoftApiRequest.call(this, 'GET', endpoint, 0, undefined, { ...qs }),
+				),
+			);
+			responseData = results.flatMap((result) => (result.value as IDataObject[]) ?? []).slice(0, 1);
 		}
 
 		if (output === 'simple') {
@@ -69,7 +87,13 @@ export async function getPollResponse(
 
 		if (options.downloadAttachments) {
 			const prefix = (options.attachmentsPrefix as string) || 'attachment_';
-			executionData = await downloadAttachments.call(this, responseData as IDataObject[], prefix);
+			// Poll context: 0 is the transport's fallback read, not an item index.
+			executionData = await downloadAttachments.call(
+				this,
+				responseData as IDataObject[],
+				prefix,
+				0,
+			);
 		} else {
 			executionData = this.helpers.returnJsonArray(responseData as IDataObject[]);
 		}

@@ -4,22 +4,22 @@ import { BasePage } from './BasePage';
 
 export class SignInPage extends BasePage {
 	getEmailField(): Locator {
-		return this.page.getByTestId('emailOrLdapLoginId').locator('input');
+		return this.page.getByRole('textbox', { name: 'Email' });
 	}
 
 	getPasswordField(): Locator {
-		return this.page.getByTestId('password').locator('input');
+		return this.page.getByRole('textbox', { name: 'Password' });
 	}
 
 	getSubmitButton(): Locator {
-		return this.page.getByTestId('form-submit-button');
+		return this.page.getByRole('button', { name: 'Sign in' });
 	}
 
 	getSsoButton(): Locator {
 		return this.page.getByRole('button', { name: /continue with sso/i });
 	}
 
-	async goToSignIn(): Promise<void> {
+	async goto(): Promise<void> {
 		await this.page.goto('/signin');
 	}
 
@@ -46,7 +46,7 @@ export class SignInPage extends BasePage {
 		password: string,
 		waitForWorkflow = false,
 	): Promise<void> {
-		await this.goToSignIn();
+		await this.goto();
 		await this.fillEmail(email);
 		await this.fillPassword(password);
 		await this.clickSubmit();

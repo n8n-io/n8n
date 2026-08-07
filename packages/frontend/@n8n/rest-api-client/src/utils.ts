@@ -2,7 +2,7 @@ import { BROWSER_ID_STORAGE_KEY } from '@n8n/constants';
 import { assert } from '@n8n/utils/assert';
 import type { AxiosRequestConfig, Method, RawAxiosRequestHeaders } from 'axios';
 import axios from 'axios';
-import { ApplicationError, jsonParse } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
 import type { GenericValue, IDataObject } from 'n8n-workflow';
 
 import type { IRestApiContext } from './types';
@@ -19,14 +19,14 @@ const getBrowserId = () => {
 export const NO_NETWORK_ERROR_CODE = 999;
 export const STREAM_SEPARATOR = '⧉⇋⇋➽⌑⧉§§\n';
 
-export class MfaRequiredError extends ApplicationError {
+export class MfaRequiredError extends Error {
 	constructor() {
 		super('MFA is required to access this resource. Please set up MFA in your user settings.');
 		this.name = 'MfaRequiredError';
 	}
 }
 
-export class ResponseError extends ApplicationError {
+export class ResponseError extends Error {
 	// The HTTP status code of response
 	httpStatusCode?: number;
 
@@ -271,14 +271,22 @@ export async function streamRequest<T extends object>(
 			async function readStream() {
 				const { done, value } = await reader.read();
 				if (done) {
-					if (response.ok) {
-						onDone?.();
-					} else {
+					if (!response.ok) {
 						onErrorOnce?.(
 							new ResponseError(response.statusText, {
 								httpStatusCode: response.status,
 							}),
 						);
+					} else if (buffer.trim()) {
+						// The stream ended with leftover content that never parsed as JSON.
+						// A JSON-like fragment means the stream was cut off mid-chunk;
+						// anything else is a plain-text error body from an upstream
+						// service — surface its content instead of silently dropping it.
+						const leftover = buffer.trim();
+						const message = /^[[{]/.test(leftover) ? 'Connection lost' : leftover.slice(0, 256);
+						onErrorOnce?.(new Error(message));
+					} else {
+						onDone?.();
 					}
 					return;
 				}

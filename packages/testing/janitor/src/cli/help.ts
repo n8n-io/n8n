@@ -19,6 +19,8 @@ Commands:
   impact             Analyze impact of file changes (which tests to run)
   method-impact      Find tests that use a specific method (e.g., CanvasPage.addNode)
   tcr                Run TCR (Test && Commit || Revert) workflow
+  discover           Discover test specs and capabilities (for orchestration)
+  distribute        Distribute specs across shards using capability-aware bin-packing
 
 Analysis Options:
   --config=<path>    Path to janitor.config.js (default: ./janitor.config.js)
@@ -27,8 +29,6 @@ Analysis Options:
   --files=<p1,p2>    Analyze multiple files (comma-separated)
   --json             Output as JSON
   --verbose, -v      Detailed output with suggestions
-  --fix              Preview fixes (dry run)
-  --fix --write      Apply fixes to disk
   --list, -l         List available rules
   --allow-in-expect  Skip selector-purity violations inside expect()
   --ignore-baseline  Show all violations, ignoring .janitor-baseline.json
@@ -39,7 +39,6 @@ Examples:
   playwright-janitor --rule=dead-code        # Run specific rule
   playwright-janitor inventory               # Show codebase structure
   playwright-janitor impact --file=pages/X   # Show what tests are affected
-  playwright-janitor --fix --write           # Apply auto-fixes
 
 For command-specific help:
   playwright-janitor rules --help
@@ -48,6 +47,8 @@ For command-specific help:
   playwright-janitor impact --help
   playwright-janitor method-impact --help
   playwright-janitor tcr --help
+  playwright-janitor discover --help
+  playwright-janitor distribute --help
 `);
 }
 
@@ -81,8 +82,22 @@ export function showImpactHelp(): void {
 	console.log(`
 Impact - Find affected tests for changed files
 
-Options: --file=<path>, --files=<p1,p2>, --json, --test-list, --verbose
-Example: playwright-janitor impact --test-list | xargs npx playwright test
+Uses AST diffing to detect which methods were added, modified, or removed.
+Files with only added methods are skipped (can't break existing tests).
+Files with modified/removed methods use method-level resolution for precision.
+
+Options:
+  --file=<path>        Analyze a specific file
+  --files=<p1,p2>      Analyze multiple files (comma-separated)
+  --base=<ref>         Git ref to diff against (default: HEAD — compares working tree to HEAD)
+  --json               Output as JSON (includes resolution strategies)
+  --test-list          Output affected test paths only (for piping to playwright)
+  --verbose, -v        Show dependency graph and resolution strategies
+
+Examples:
+  playwright-janitor impact                                    # Auto-detect from git status
+  playwright-janitor impact --files=pages/X.ts --base=main     # Diff against main branch
+  playwright-janitor impact --test-list | xargs npx playwright test
 `);
 }
 
@@ -130,6 +145,129 @@ Workflow:
 
 Example:
   playwright-janitor baseline && git add .janitor-baseline.json
+`);
+}
+
+export function showDiscoverHelp(): void {
+	console.log(`
+Discover - Find test specs and their capabilities via AST analysis
+
+Statically discovers spec files and extracts capability tags.
+Outputs JSON to stdout. Pipe to jq for human-readable output.
+
+Usage:
+  playwright-janitor discover
+
+Output:
+  { specs: [{ path, capabilities }], skipTags }
+
+Config:
+  skipTags: string[]       Tags that exclude specs (default: [])
+  capabilityPrefix: string Prefix for capability extraction (default: '@capability:')
+
+Skip detection:
+  - test.fixme() and test.skip() are always detected via AST
+  - Specs with ALL tests skipped are excluded from output
+  - skipTags provides additional tag-based filtering
+
+Example:
+  playwright-janitor discover | jq '.specs | length'
+`);
+}
+
+export function showOrchestrateHelp(): void {
+	console.log(`
+Orchestrate - Distribute specs across shards using capability-aware bin-packing
+
+Groups tests by capability to minimize fixture overhead, then uses greedy
+bin-packing to balance test time across shards. Outputs JSON to stdout.
+
+Usage:
+  playwright-janitor distribute --shards=<N>                    # Full result as JSON
+  playwright-janitor distribute --shards=<N> --shard-index=<I>  # Specs for one shard
+
+Options:
+  --shards=<N>         Number of shards (required)
+  --shard-index=<I>    Output specs for a single shard (0-indexed)
+  --impact             Only include specs affected by changed files (git diff)
+  --file=<path>        With --impact: specify changed files explicitly
+
+Config:
+  orchestration.metricsPath      Path to metrics JSON (relative to rootDir)
+  orchestration.defaultDuration  Duration for specs without metrics (default: 60s)
+  orchestration.maxGroupDuration Max group size before splitting (default: 5min)
+
+Output:
+  { shards: [{ shard, specs, testTime, capabilities, fixtureCount }], totalTestTime }
+
+Examples:
+  playwright-janitor distribute --shards=14 | jq '.shards[0].specs'
+  playwright-janitor distribute --shards=8 --impact
+  playwright-janitor distribute --shards=4 --impact --file=pages/CanvasPage.ts
+`);
+}
+
+// --changed-files accepts repo-root-relative paths, newline-separated OR
+// comma-separated. Same format as ci-filter's `changed-files` output.
+// Example: --changed-files="packages/cli/src/x.ts
+// packages/workflow/src/y.ts"
+
+export function showAffectedPackagesHelp(): void {
+	console.log(`
+Affected Packages - List workspace packages affected by changed files
+
+Walks the pnpm workspace dependency graph: directly-affected packages plus
+everything transitively downstream. Outputs one package name per line.
+
+Usage:
+  janitor affected-packages [--changed-files=<list>]
+
+  --changed-files: newline- OR comma-separated repo-root-relative paths.
+                   Defaults to $CHANGED_FILES env var.
+
+When neither --changed-files nor $CHANGED_FILES is set, returns ALL packages
+(safe default for local dev).
+
+Bailout triggers (return ALL packages): pnpm-lock.yaml, root package.json,
+anything under packages/@n8n/db/ (entities and migrations resolved at
+runtime via the DI container by every consuming package's integration tests).
+`);
+}
+
+export function showScopeHelp(): void {
+	console.log(`
+Scope - Per-package vitest scope from changed files
+
+Usage:
+  janitor scope [--package-dir=<dir>] [--changed-files=<list>]
+
+  --package-dir:      defaults to cwd (matches how pnpm/turbo invoke test scripts).
+  --changed-files:    newline- OR comma-separated repo-root-relative paths.
+                      Defaults to $CHANGED_FILES env var.
+
+Output (single line on stdout):
+  SKIP        No in-package files changed and package not affected upstream
+  RUN_FULL    Config/global trigger changed, package affected by an upstream
+              change, OR no CHANGED_FILES signal (local dev)
+  <files>     Pass to vitest related
+`);
+}
+
+export function showTestScopedHelp(): void {
+	console.log(`
+Test-Scoped - Compute scope and spawn vitest with the right flags
+
+Usage:
+  janitor test-scoped [--package-dir=<dir>] [--changed-files=<list>] [extra runner args]
+
+  --package-dir:      defaults to cwd (matches how pnpm/turbo invoke test scripts).
+  --changed-files:    newline- OR comma-separated repo-root-relative paths.
+                      Defaults to $CHANGED_FILES env var.
+
+Local dev (no $CHANGED_FILES set): runs the full suite.
+CI: scopes via vitest related --run; runs the full suite when the package is
+affected by an upstream change; skips if the package wasn't touched.
+Unrecognised flags are forwarded to the runner.
 `);
 }
 

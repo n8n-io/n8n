@@ -1,30 +1,35 @@
+import { ListProjectsQueryDto } from '@n8n/api-types';
 import type { AuthenticatedRequest, ProjectRepository } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
-
-import type { EventService } from '@/events/event.service';
 import type { Response } from 'express';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
+
 import { ProjectController } from '@/controllers/project.controller';
+import type { EventService } from '@/events/event.service';
+import type { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import type { ProjectService } from '@/services/project.service.ee';
 import type { UserManagementMailer } from '@/user-management/email';
 
-describe('ProjectController (members endpoints)', () => {
+describe('ProjectController', () => {
 	const eventService = mock<EventService>();
 	const projectsService = mock<ProjectService>();
 	const projectRepository = mock<ProjectRepository>();
 	const userManagementMailer = mock<UserManagementMailer>();
+	const provisioningService = mock<ProvisioningService>();
 
 	const controller = new ProjectController(
 		projectsService as unknown as ProjectService,
 		projectRepository as unknown as ProjectRepository,
 		eventService as unknown as EventService,
 		userManagementMailer as unknown as UserManagementMailer,
+		provisioningService as unknown as ProvisioningService,
 	);
 
 	const makeRes = () => {
 		const res = {
-			status: jest.fn().mockReturnThis(),
-			json: jest.fn().mockReturnThis(),
-			send: jest.fn().mockReturnThis(),
+			status: vi.fn().mockReturnThis(),
+			json: vi.fn().mockReturnThis(),
+			send: vi.fn().mockReturnThis(),
 		} as unknown as Response;
 		return res;
 	};
@@ -34,7 +39,124 @@ describe('ProjectController (members endpoints)', () => {
 	} as AuthenticatedRequest;
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
+	});
+
+	describe('getAllProjects', () => {
+		it('calls service with query options and returns { count, data }', async () => {
+			const projects = [
+				{ id: 'p1', name: 'Project 1' },
+				{ id: 'p2', name: 'Project 2' },
+			];
+			(projectsService.getAccessibleProjectsAndCount as Mock).mockResolvedValue([projects, 2]);
+			(projectsService.addUserScopes as Mock).mockResolvedValue(projects);
+
+			const res = makeRes();
+			const query = { skip: 0, take: 10, search: 'test', type: 'team' as const };
+
+			await controller.getAllProjects(req, res, query as any);
+
+			expect(projectsService.getAccessibleProjectsAndCount).toHaveBeenCalledWith(req.user, query);
+			expect(projectsService.addUserScopes).toHaveBeenCalledWith(req.user, projects);
+			expect(res.json).toHaveBeenCalledWith({ count: 2, data: projects });
+		});
+
+		it('returns bare array when no pagination params given', async () => {
+			const projects = [{ id: 'p1', name: 'Project 1' }];
+			(projectsService.getAccessibleProjectsAndCount as Mock).mockResolvedValue([projects, 1]);
+
+			const res = makeRes();
+			// Simulate DTO-parsed output: when no query params are provided,
+			// both skip and take must default to undefined for backward compat.
+			const parsed = ListProjectsQueryDto.safeParse({});
+			expect(parsed.success).toBe(true);
+			const query = parsed.data!;
+
+			const result = await controller.getAllProjects(req, res, query);
+
+			expect(res.json).not.toHaveBeenCalled();
+			expect(result).toEqual(projects);
+		});
+	});
+
+	describe('getSharingCandidates', () => {
+		it('calls service with query options and returns enriched { count, data }', async () => {
+			const projects = [
+				{ id: 'p1', name: 'Project 1' },
+				{ id: 'p2', name: 'Peer personal project' },
+			];
+			const enriched = projects.map((p) => ({
+				...p,
+				role: 'global:member',
+				scopes: ['user:list'],
+			}));
+			(projectsService.getShareableProjectsAndCount as Mock).mockResolvedValue([projects, 2]);
+			(projectsService.addUserScopes as Mock).mockResolvedValue(enriched);
+
+			const res = makeRes();
+			const query = { skip: 0, take: 50, search: '' };
+
+			await controller.getSharingCandidates(req, res, query as any);
+
+			expect(projectsService.getShareableProjectsAndCount).toHaveBeenCalledWith(req.user, query);
+			expect(projectsService.addUserScopes).toHaveBeenCalledWith(req.user, projects);
+			expect(res.json).toHaveBeenCalledWith({ count: 2, data: enriched });
+		});
+
+		it('always returns the { count, data } envelope (no bare-array path)', async () => {
+			(projectsService.getShareableProjectsAndCount as Mock).mockResolvedValue([[], 0]);
+			(projectsService.addUserScopes as Mock).mockResolvedValue([]);
+
+			const res = makeRes();
+			const parsed = ListProjectsQueryDto.safeParse({});
+			expect(parsed.success).toBe(true);
+			const query = parsed.data!;
+
+			await controller.getSharingCandidates(req, res, query);
+
+			expect(res.json).toHaveBeenCalledWith({ count: 0, data: [] });
+		});
+	});
+
+	it('emits team-project-updated with custom telemetry tag count on updateProject', async () => {
+		const projectId = 'p1';
+		const payload = {
+			name: 'Updated Project',
+			customTelemetryTags: [
+				{ key: 'env', value: 'production' },
+				{ key: 'team', value: 'engineering' },
+			],
+		};
+
+		const res = makeRes();
+
+		await controller.updateProject(req, res, payload as any, projectId);
+
+		expect(projectsService.updateProject).toHaveBeenCalledWith(projectId, payload);
+		expect(projectsService.getProjectRelations).not.toHaveBeenCalled();
+		expect(eventService.emit).toHaveBeenCalledWith('team-project-updated', {
+			userId: 'actor-user',
+			role: 'global:owner',
+			projectId,
+			otelProjectCustomTagsCount: 2,
+		});
+	});
+
+	it('emits team-project-updated without custom telemetry tag count on updateProject without tags', async () => {
+		const projectId = 'p1';
+		const payload = { name: 'Updated Project' };
+
+		const res = makeRes();
+
+		await controller.updateProject(req, res, payload as any, projectId);
+
+		expect(projectsService.updateProject).toHaveBeenCalledWith(projectId, payload);
+		expect(projectsService.getProjectRelations).not.toHaveBeenCalled();
+		expect(eventService.emit).toHaveBeenCalledWith('team-project-updated', {
+			userId: 'actor-user',
+			role: 'global:owner',
+			projectId,
+		});
 	});
 
 	it('emits team-project-updated with full members list on addProjectUsers', async () => {
@@ -42,13 +164,14 @@ describe('ProjectController (members endpoints)', () => {
 		const projectId = 'p1';
 		const payload = { relations: [{ userId: 'u2', role: 'project:viewer' as const }] };
 
-		(projectsService.addUsersWithConflictSemantics as jest.Mock).mockResolvedValue({
+		provisioningService.isProjectRoleManaged.mockResolvedValue(false);
+		(projectsService.addUsersWithConflictSemantics as Mock).mockResolvedValue({
 			project: { id: projectId, name: 'Project' },
 			added: payload.relations,
 			conflicts: [],
 		});
 
-		(projectsService.getProjectRelations as jest.Mock).mockResolvedValue([
+		(projectsService.getProjectRelations as Mock).mockResolvedValue([
 			{ userId: 'u1', role: { slug: 'project:admin' } },
 			{ userId: 'u2', role: { slug: 'project:viewer' } },
 		]);
@@ -59,6 +182,10 @@ describe('ProjectController (members endpoints)', () => {
 		await controller.addProjectUsers(req, res, projectId, payload as any);
 
 		// Assert
+		expect(projectsService.addUsersWithConflictSemantics).toHaveBeenCalledWith(
+			projectId,
+			payload.relations,
+		);
 		expect(eventService.emit).toHaveBeenCalledWith('team-project-updated', {
 			userId: 'actor-user',
 			role: 'global:owner',
@@ -80,7 +207,8 @@ describe('ProjectController (members endpoints)', () => {
 	it('emits team-project-updated on changeProjectUserRole and returns 204', async () => {
 		// Arrange
 		const projectId = 'p2';
-		(projectsService.getProjectRelations as jest.Mock).mockResolvedValue([
+		provisioningService.isProjectRoleManaged.mockResolvedValue(false);
+		(projectsService.getProjectRelations as Mock).mockResolvedValue([
 			{ userId: 'u1', role: { slug: 'project:admin' } },
 			{ userId: 'u2', role: { slug: 'project:editor' } },
 		]);
@@ -108,7 +236,8 @@ describe('ProjectController (members endpoints)', () => {
 	it('emits team-project-updated on deleteProjectUser and returns 204', async () => {
 		// Arrange
 		const projectId = 'p3';
-		(projectsService.getProjectRelations as jest.Mock).mockResolvedValue([
+		provisioningService.isProjectRoleManaged.mockResolvedValue(false);
+		(projectsService.getProjectRelations as Mock).mockResolvedValue([
 			{ userId: 'u1', role: { slug: 'project:admin' } },
 			{ userId: 'u3', role: { slug: 'project:viewer' } },
 		]);
@@ -119,6 +248,7 @@ describe('ProjectController (members endpoints)', () => {
 		await controller.deleteProjectUser(req, res, projectId, 'u2');
 
 		// Assert
+		expect(projectsService.deleteUserFromProject).toHaveBeenCalledWith(projectId, 'u2');
 		expect(eventService.emit).toHaveBeenCalledWith('team-project-updated', {
 			userId: 'actor-user',
 			role: 'global:owner',
@@ -143,13 +273,13 @@ describe('ProjectController (members endpoints)', () => {
 			},
 		];
 
-		(projectsService.addUsersWithConflictSemantics as jest.Mock).mockResolvedValue({
+		(projectsService.addUsersWithConflictSemantics as Mock).mockResolvedValue({
 			project: { id: projectId, name: 'Project' },
 			added,
 			conflicts,
 		});
 
-		(projectsService.getProjectRelations as jest.Mock).mockResolvedValue([
+		(projectsService.getProjectRelations as Mock).mockResolvedValue([
 			{ userId: 'u1', role: { slug: 'project:admin' } },
 			{ userId: 'u4', role: { slug: 'project:viewer' } },
 			{ userId: 'u5', role: { slug: 'project:viewer' } },
@@ -183,6 +313,73 @@ describe('ProjectController (members endpoints)', () => {
 				{ userId: 'u5', role: 'project:viewer' },
 			],
 			projectId,
+		});
+	});
+
+	describe('managed project roles', () => {
+		it('blocks addProjectUsers when project roles are managed', async () => {
+			provisioningService.isProjectRoleManaged.mockResolvedValue(true);
+
+			const res = makeRes();
+
+			await expect(
+				controller.addProjectUsers(req, res, 'p1', {
+					relations: [{ userId: 'u2', role: 'project:viewer' }],
+				} as any),
+			).rejects.toThrow('Project roles are managed automatically');
+
+			expect(projectsService.addUsersWithConflictSemantics).not.toHaveBeenCalled();
+			expect(userManagementMailer.notifyProjectShared).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+
+		it('blocks changeProjectUserRole when project roles are managed', async () => {
+			provisioningService.isProjectRoleManaged.mockResolvedValue(true);
+
+			const res = makeRes();
+
+			await expect(
+				controller.changeProjectUserRole(req, res, 'p2', 'u2', {
+					role: 'project:editor',
+				} as any),
+			).rejects.toThrow('Project roles are managed automatically');
+
+			expect(projectsService.changeUserRoleInProject).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+
+		it('blocks deleteProjectUser when project roles are managed', async () => {
+			provisioningService.isProjectRoleManaged.mockResolvedValue(true);
+
+			const res = makeRes();
+
+			await expect(controller.deleteProjectUser(req, res, 'p3', 'u2')).rejects.toThrow(
+				'Project roles are managed automatically',
+			);
+
+			expect(projectsService.deleteUserFromProject).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+
+		it.each([true, false])('exposes rolesManaged=%s on getProject', async (managed) => {
+			provisioningService.isProjectRoleManaged.mockResolvedValue(managed);
+			(projectsService.getProject as Mock).mockResolvedValue({
+				id: 'p1',
+				name: 'Project',
+				icon: null,
+				type: 'team',
+				description: null,
+				customTelemetryTags: [],
+			});
+			(projectsService.getProjectRelations as Mock).mockResolvedValue([]);
+
+			const scopedReq = {
+				user: { id: 'actor-user', role: { slug: 'global:owner', scopes: [] } },
+			} as unknown as AuthenticatedRequest;
+
+			const result = await controller.getProject(scopedReq, makeRes(), 'p1');
+
+			expect(result.rolesManaged).toBe(managed);
 		});
 	});
 });

@@ -1,11 +1,19 @@
 import type { BaseMessage } from '@langchain/core/messages';
-import { isAIMessage, ToolMessage, HumanMessage } from '@langchain/core/messages';
+import { HumanMessage, AIMessage, ToolMessage } from '@langchain/core/messages';
 import type { StructuredTool } from '@langchain/core/tools';
-import { isCommand, isGraphInterrupt, END } from '@langchain/langgraph';
+import { END, isCommand, isGraphInterrupt } from '@langchain/langgraph';
 
+import { stripAllCacheControlMarkers } from './cache-control';
 import { isBaseMessage } from '../types/langchain';
 import type { WorkflowMetadata } from '../types/tools';
 import type { WorkflowOperation } from '../types/workflow';
+
+export interface FetchedUrlContentItem {
+	url: string;
+	status: 'success' | 'error';
+	title: string;
+	content: string;
+}
 
 interface CommandUpdate {
 	messages?: BaseMessage[];
@@ -13,6 +21,31 @@ interface CommandUpdate {
 	templateIds?: number[];
 	cachedTemplates?: WorkflowMetadata[];
 	bestPractices?: string;
+	approvedDomains?: string[];
+	webFetchCount?: number;
+	allDomainsApproved?: boolean;
+	fetchedUrlContent?: FetchedUrlContentItem[];
+}
+
+/**
+ * Check that an optional field, if present, has the expected type.
+ */
+function hasValidOptionalField(
+	obj: Record<string, unknown>,
+	key: string,
+	check: 'array' | 'string' | 'number' | 'boolean',
+): boolean {
+	if (!(key in obj) || obj[key] === undefined) return true;
+	switch (check) {
+		case 'array':
+			return Array.isArray(obj[key]);
+		case 'string':
+			return typeof obj[key] === 'string';
+		case 'number':
+			return typeof obj[key] === 'number';
+		case 'boolean':
+			return typeof obj[key] === 'boolean';
+	}
 }
 
 /**
@@ -23,39 +56,90 @@ function isCommandUpdate(value: unknown): value is CommandUpdate {
 		return false;
 	}
 	const obj = value as Record<string, unknown>;
-	// messages is optional, but if present must be an array
-	if ('messages' in obj && obj.messages !== undefined && !Array.isArray(obj.messages)) {
-		return false;
+	return (
+		hasValidOptionalField(obj, 'messages', 'array') &&
+		hasValidOptionalField(obj, 'workflowOperations', 'array') &&
+		hasValidOptionalField(obj, 'templateIds', 'array') &&
+		hasValidOptionalField(obj, 'cachedTemplates', 'array') &&
+		hasValidOptionalField(obj, 'bestPractices', 'string') &&
+		hasValidOptionalField(obj, 'approvedDomains', 'array') &&
+		hasValidOptionalField(obj, 'webFetchCount', 'number') &&
+		hasValidOptionalField(obj, 'allDomainsApproved', 'boolean') &&
+		hasValidOptionalField(obj, 'fetchedUrlContent', 'array')
+	);
+}
+
+interface CollectedToolResults {
+	messages: BaseMessage[];
+	operations: WorkflowOperation[];
+	templateIds: number[];
+	cachedTemplates: WorkflowMetadata[];
+	bestPractices?: string;
+	approvedDomains: string[];
+	webFetchCount?: number;
+	allDomainsApproved?: boolean;
+	fetchedUrlContent: FetchedUrlContentItem[];
+}
+
+function collectToolResults(toolResults: unknown[]): CollectedToolResults {
+	const collected: CollectedToolResults = {
+		messages: [],
+		operations: [],
+		templateIds: [],
+		cachedTemplates: [],
+		approvedDomains: [],
+		fetchedUrlContent: [],
+	};
+
+	for (const result of toolResults) {
+		if (isCommand(result) && isCommandUpdate(result.update)) {
+			mergeCommandUpdate(collected, result.update);
+		} else if (isBaseMessage(result)) {
+			collected.messages.push(result);
+		}
 	}
-	// workflowOperations is optional, but if present must be an array
-	if (
-		'workflowOperations' in obj &&
-		obj.workflowOperations !== undefined &&
-		!Array.isArray(obj.workflowOperations)
-	) {
-		return false;
-	}
-	// templateIds is optional, but if present must be an array
-	if ('templateIds' in obj && obj.templateIds !== undefined && !Array.isArray(obj.templateIds)) {
-		return false;
-	}
-	// cachedTemplates is optional, but if present must be an array
-	if (
-		'cachedTemplates' in obj &&
-		obj.cachedTemplates !== undefined &&
-		!Array.isArray(obj.cachedTemplates)
-	) {
-		return false;
-	}
-	// bestPractices is optional, but if present must be a string
-	if (
-		'bestPractices' in obj &&
-		obj.bestPractices !== undefined &&
-		typeof obj.bestPractices !== 'string'
-	) {
-		return false;
-	}
-	return true;
+	return collected;
+}
+
+function mergeCommandUpdate(target: CollectedToolResults, update: CommandUpdate): void {
+	if (update.messages) target.messages.push(...update.messages);
+	if (update.workflowOperations) target.operations.push(...update.workflowOperations);
+	if (update.templateIds) target.templateIds.push(...update.templateIds);
+	if (update.cachedTemplates) target.cachedTemplates.push(...update.cachedTemplates);
+	if (update.bestPractices) target.bestPractices = update.bestPractices;
+	if (update.approvedDomains) target.approvedDomains.push(...update.approvedDomains);
+	if (update.webFetchCount !== undefined) target.webFetchCount = update.webFetchCount;
+	if (update.allDomainsApproved !== undefined)
+		target.allDomainsApproved = update.allDomainsApproved;
+	if (update.fetchedUrlContent) target.fetchedUrlContent.push(...update.fetchedUrlContent);
+}
+
+type SubgraphToolStateUpdate = {
+	messages?: BaseMessage[];
+	workflowOperations?: WorkflowOperation[] | null;
+	templateIds?: number[];
+	cachedTemplates?: WorkflowMetadata[];
+	bestPractices?: string;
+	approvedDomains?: string[];
+	webFetchCount?: number;
+	allDomainsApproved?: boolean;
+	fetchedUrlContent?: FetchedUrlContentItem[];
+};
+
+function buildStateUpdate(collected: CollectedToolResults): SubgraphToolStateUpdate {
+	const stateUpdate: SubgraphToolStateUpdate = {};
+	if (collected.messages.length > 0) stateUpdate.messages = collected.messages;
+	if (collected.operations.length > 0) stateUpdate.workflowOperations = collected.operations;
+	if (collected.templateIds.length > 0) stateUpdate.templateIds = collected.templateIds;
+	if (collected.cachedTemplates.length > 0) stateUpdate.cachedTemplates = collected.cachedTemplates;
+	if (collected.bestPractices) stateUpdate.bestPractices = collected.bestPractices;
+	if (collected.approvedDomains.length > 0) stateUpdate.approvedDomains = collected.approvedDomains;
+	if (collected.webFetchCount !== undefined) stateUpdate.webFetchCount = collected.webFetchCount;
+	if (collected.allDomainsApproved !== undefined)
+		stateUpdate.allDomainsApproved = collected.allDomainsApproved;
+	if (collected.fetchedUrlContent.length > 0)
+		stateUpdate.fetchedUrlContent = collected.fetchedUrlContent;
+	return stateUpdate;
 }
 
 /**
@@ -75,16 +159,10 @@ function isCommandUpdate(value: unknown): value is CommandUpdate {
 export async function executeSubgraphTools(
 	state: { messages: BaseMessage[] },
 	toolMap: Map<string, StructuredTool>,
-): Promise<{
-	messages?: BaseMessage[];
-	workflowOperations?: WorkflowOperation[] | null;
-	templateIds?: number[];
-	cachedTemplates?: WorkflowMetadata[];
-	bestPractices?: string;
-}> {
+): Promise<SubgraphToolStateUpdate> {
 	const lastMessage = state.messages[state.messages.length - 1];
 
-	if (!lastMessage || !isAIMessage(lastMessage) || !lastMessage.tool_calls?.length) {
+	if (!lastMessage || !AIMessage.isInstance(lastMessage) || !lastMessage.tool_calls?.length) {
 		return {};
 	}
 
@@ -123,68 +201,9 @@ export async function executeSubgraphTools(
 		}),
 	);
 
-	// Unwrap Command objects and collect messages/operations/templateIds/cachedTemplates/bestPractices
-	const messages: BaseMessage[] = [];
-	const operations: WorkflowOperation[] = [];
-	const templateIds: number[] = [];
-	const cachedTemplates: WorkflowMetadata[] = [];
-	let bestPractices: string | undefined;
-
-	for (const result of toolResults) {
-		if (isCommand(result)) {
-			// Tool returned Command - extract update using type guard
-			if (isCommandUpdate(result.update)) {
-				if (result.update.messages) {
-					messages.push(...result.update.messages);
-				}
-				if (result.update.workflowOperations) {
-					operations.push(...result.update.workflowOperations);
-				}
-				if (result.update.templateIds) {
-					templateIds.push(...result.update.templateIds);
-				}
-				if (result.update.cachedTemplates) {
-					cachedTemplates.push(...result.update.cachedTemplates);
-				}
-				if (result.update.bestPractices) {
-					bestPractices = result.update.bestPractices;
-				}
-			}
-		} else if (isBaseMessage(result)) {
-			// Direct message (ToolMessage, AIMessage, etc.)
-			messages.push(result);
-		}
-	}
-
-	const stateUpdate: {
-		messages?: BaseMessage[];
-		workflowOperations?: WorkflowOperation[] | null;
-		templateIds?: number[];
-		cachedTemplates?: WorkflowMetadata[];
-		bestPractices?: string;
-	} = {};
-
-	if (messages.length > 0) {
-		stateUpdate.messages = messages;
-	}
-
-	if (operations.length > 0) {
-		stateUpdate.workflowOperations = operations;
-	}
-
-	if (templateIds.length > 0) {
-		stateUpdate.templateIds = templateIds;
-	}
-
-	if (cachedTemplates.length > 0) {
-		stateUpdate.cachedTemplates = cachedTemplates;
-	}
-
-	if (bestPractices) {
-		stateUpdate.bestPractices = bestPractices;
-	}
-
-	return stateUpdate;
+	// Unwrap Command objects and collect state updates from tool results
+	const collected = collectToolResults(toolResults);
+	return buildStateUpdate(collected);
 }
 
 /**
@@ -217,4 +236,71 @@ export function createStandardShouldContinue() {
 
 		return hasToolCalls ? 'tools' : END;
 	};
+}
+
+/**
+ * Extract tool-related messages for persistence in parent state.
+ * Filters messages to only include complete tool call/result pairs:
+ * - AIMessages with tool_calls (to show which tools were called)
+ * - ToolMessages (to show tool results)
+ *
+ * IMPORTANT: Only includes AIMessages with tool_calls if ALL of their
+ * tool_calls have corresponding ToolMessages. This prevents orphaned
+ * tool_use blocks that would cause Anthropic API errors.
+ *
+ * Excludes AIMessages with only text content (internal reasoning/summaries)
+ * as user-facing output is handled by the responder subgraph.
+ *
+ * @param messages - Subgraph messages array
+ * @returns Filtered array of tool-related messages for persistence
+ */
+export function extractToolMessagesForPersistence(messages: BaseMessage[]): BaseMessage[] {
+	// Build a set of all tool_call_ids that have corresponding ToolMessages
+	const completedToolCallIds = new Set<string>();
+	for (const msg of messages) {
+		if (ToolMessage.isInstance(msg) && msg.tool_call_id) {
+			completedToolCallIds.add(msg.tool_call_id);
+		}
+	}
+
+	const filtered = messages.filter((msg) => {
+		if (ToolMessage.isInstance(msg)) {
+			return true;
+		}
+		if (AIMessage.isInstance(msg) && msg.tool_calls && msg.tool_calls.length > 0) {
+			// Only include AIMessage if ALL its tool_calls have completed ToolMessages
+			return msg.tool_calls.every((tc) => tc.id && completedToolCallIds.has(tc.id));
+		}
+		return false;
+	});
+
+	// Strip cache_control markers from persisted messages to avoid exceeding
+	// Anthropic's cache marker limit when these are loaded in subsequent requests
+	stripAllCacheControlMarkers(filtered);
+
+	return filtered;
+}
+
+/**
+ * Filter out internal subgraph tool messages from the conversation.
+ *
+ * Subgraph tool messages (ToolMessages and AIMessages with tool_calls) are
+ * persisted in parent state for frontend UI restoration, but they are not
+ * relevant for agents like the supervisor or responder. Including them
+ * wastes tokens and risks exceeding Anthropic's cache_control marker limit
+ * if stale markers remain on those messages.
+ *
+ * @param messages - Parent graph messages array
+ * @returns Messages with internal tool messages removed
+ */
+export function filterOutSubgraphToolMessages(messages: BaseMessage[]): BaseMessage[] {
+	return messages.filter((msg) => {
+		if (ToolMessage.isInstance(msg)) {
+			return false;
+		}
+		if (AIMessage.isInstance(msg) && msg.tool_calls && msg.tool_calls.length > 0) {
+			return false;
+		}
+		return true;
+	});
 }

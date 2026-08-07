@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /* eslint-disable vue/no-multiple-template-root */
-import { defineAsyncComponent, nextTick } from 'vue';
+import { computed, defineAsyncComponent, nextTick } from 'vue';
 import { getMidCanvasPosition } from '@/app/utils/nodeViewUtils';
 import {
 	DEFAULT_STICKY_HEIGHT,
@@ -9,6 +9,8 @@ import {
 	STICKY_NODE_TYPE,
 } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useEditorContext } from '@/app/composables/useEditorContext';
+import { useInstanceAiEditorCapability } from '@/app/composables/useInstanceAiEditorCapability';
 import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
 import type {
 	AddedNodesAndConnections,
@@ -17,13 +19,23 @@ import type {
 } from '@/Interface';
 import { useActions } from '../composables/useActions';
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
+import NodeCreatorShortcutCoachmark from '../components/NodeCreatorShortcutCoachmark.vue';
+import { useNodeCreatorShortcutCoachmark } from '../composables/useNodeCreatorShortcutCoachmark';
 import { useI18n } from '@n8n/i18n';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
-import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 
-import { N8nAssistantIcon, N8nButton, N8nIconButton, N8nTooltip } from '@n8n/design-system';
+import {
+	N8nAssistantIcon,
+	N8nButton,
+	N8nButtonList,
+	N8nIconButton,
+	N8nTooltip,
+} from '@n8n/design-system';
+import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 
 type Props = {
 	nodeViewScale: number;
@@ -48,13 +60,23 @@ const emit = defineEmits<{
 
 const uiStore = useUIStore();
 const focusPanelStore = useFocusPanelStore();
+const setupPanelStore = useSetupPanelStore();
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const assistantStore = useAssistantStore();
-const builderStore = useBuilderStore();
 const chatPanelStore = useChatPanelStore();
+const workflowId = useWorkflowId();
+const settingsStore = useSettingsStore();
 
 const { getAddedNodesAndConnections } = useActions();
+const { shouldShowCoachmark, onDismissCoachmark } = useNodeCreatorShortcutCoachmark();
+
+const sidePanelTooltip = computed(() => {
+	if (setupPanelStore.isFeatureEnabled) {
+		return i18n.baseText('nodeView.openSidePanel');
+	}
+	return i18n.baseText('nodeView.openFocusPanel');
+});
 
 function openNodeCreator() {
 	emit('toggleNodeCreator', {
@@ -101,9 +123,19 @@ function toggleFocusPanel() {
 	);
 }
 
+const { aiAssistant, aiBuilder, instanceAi } = useEditorContext();
+const instanceAiCapability = useInstanceAiEditorCapability();
+
+// Instance AI supersedes the in-editor builder: when its feature is on, the new
+// button hands the current workflow off to a thread. The behavior is the host's
+// (WorkflowLayout vs the artifact); this component never branches on context.
+async function onInstanceAiCanvasActionClick() {
+	await instanceAiCapability.openWorkflow?.('canvas_action_button');
+}
+
 async function onAskAssistantButtonClick() {
-	// Start builder mode if enabled; privacy setting is respected at payload creation level
-	if (builderStore.isAIBuilderEnabled) {
+	// Open builder when available in this editor, otherwise the assistant.
+	if (aiBuilder.value) {
 		await chatPanelStore.toggle({ mode: 'builder' });
 	} else {
 		await chatPanelStore.toggle({ mode: 'assistant' });
@@ -113,6 +145,7 @@ async function onAskAssistantButtonClick() {
 			source: 'canvas',
 			task: 'placeholder',
 			has_existing_session: !assistantStore.isSessionEnded,
+			workflowId: workflowId.value,
 		});
 	}
 }
@@ -134,21 +167,25 @@ function openCommandBar(event: MouseEvent) {
 </script>
 
 <template>
-	<div v-if="!createNodeActive" :class="$style.nodeButtonsWrapper">
+	<N8nButtonList v-if="!createNodeActive" orientation="vertical" :class="$style.nodeButtonsWrapper">
+		<NodeCreatorShortcutCoachmark :visible="shouldShowCoachmark" @dismiss="onDismissCoachmark">
+			<KeyboardShortcutTooltip
+				:label="i18n.baseText('nodeView.openNodesPanel')"
+				:shortcut="{ keys: ['N'] }"
+				placement="left"
+			>
+				<N8nIconButton
+					variant="subtle"
+					size="large"
+					icon="plus"
+					:aria-label="i18n.baseText('nodeView.openNodesPanel')"
+					data-test-id="node-creator-plus-button"
+					@click="openNodeCreator"
+				/>
+			</KeyboardShortcutTooltip>
+		</NodeCreatorShortcutCoachmark>
 		<KeyboardShortcutTooltip
-			:label="i18n.baseText('nodeView.openNodesPanel')"
-			:shortcut="{ keys: ['Tab'] }"
-			placement="left"
-		>
-			<N8nIconButton
-				variant="subtle"
-				size="large"
-				icon="plus"
-				data-test-id="node-creator-plus-button"
-				@click="openNodeCreator"
-			/>
-		</KeyboardShortcutTooltip>
-		<KeyboardShortcutTooltip
+			v-if="!settingsStore.isCanvasOnly"
 			:label="i18n.baseText('nodeView.openCommandBar')"
 			:shortcut="{ keys: ['k'], metaKey: true }"
 			placement="left"
@@ -157,6 +194,7 @@ function openCommandBar(event: MouseEvent) {
 				variant="subtle"
 				size="large"
 				icon="search"
+				:aria-label="i18n.baseText('nodeView.openCommandBar')"
 				data-test-id="command-bar-button"
 				@click="openCommandBar"
 			/>
@@ -170,12 +208,13 @@ function openCommandBar(event: MouseEvent) {
 				variant="subtle"
 				size="large"
 				icon="sticky-note"
+				:aria-label="i18n.baseText('nodeView.addStickyHint')"
 				data-test-id="add-sticky-button"
 				@click="addStickyNote"
 			/>
 		</KeyboardShortcutTooltip>
 		<KeyboardShortcutTooltip
-			:label="i18n.baseText('nodeView.openFocusPanel')"
+			:label="sidePanelTooltip"
 			:shortcut="{ keys: ['f'], shiftKey: true }"
 			placement="left"
 		>
@@ -183,18 +222,44 @@ function openCommandBar(event: MouseEvent) {
 				variant="subtle"
 				size="large"
 				icon="panel-right"
-				:class="focusPanelActive ? $style.activeButton : ''"
+				:aria-label="sidePanelTooltip"
 				:active="focusPanelActive"
 				data-test-id="toggle-focus-panel-button"
 				@click="toggleFocusPanel"
 			/>
 		</KeyboardShortcutTooltip>
-		<N8nTooltip v-if="chatPanelStore.canShowAiButtonOnCanvas" placement="left">
+		<!-- Instance AI hand-off (mimics the assistant button) — shown when the
+		Instance AI feature is on and the host provides the workflow action.
+		Clicking hands the current workflow off to a new Instance AI thread. -->
+		<N8nButton
+			v-if="
+				chatPanelStore.isEditableCanvasView && instanceAi && !!instanceAiCapability.openWorkflow
+			"
+			variant="subtle"
+			icon-only
+			size="large"
+			:aria-label="i18n.baseText('aiAssistant.tooltip')"
+			:class="{ [$style.icon]: true }"
+			data-test-id="instance-ai-canvas-action-button"
+			@click="onInstanceAiCanvasActionClick"
+		>
+			<template #default>
+				<div>
+					<N8nAssistantIcon size="large" />
+				</div>
+			</template>
+		</N8nButton>
+		<!-- Legacy assistant/builder button — only while Instance AI is off. -->
+		<N8nTooltip
+			v-if="chatPanelStore.isEditableCanvasView && (aiAssistant || aiBuilder) && !instanceAi"
+			placement="left"
+		>
 			<template #content> {{ i18n.baseText('aiAssistant.tooltip') }}</template>
 			<N8nButton
 				variant="subtle"
 				iconOnly
 				size="large"
+				:aria-label="i18n.baseText('aiAssistant.tooltip')"
 				:class="$style.icon"
 				data-test-id="ask-assistant-canvas-action-button"
 				@click="onAskAssistantButtonClick"
@@ -206,7 +271,7 @@ function openCommandBar(event: MouseEvent) {
 				</template>
 			</N8nButton>
 		</N8nTooltip>
-	</div>
+	</N8nButtonList>
 	<Suspense>
 		<LazyNodeCreator
 			:active="createNodeActive"
@@ -221,9 +286,6 @@ function openCommandBar(event: MouseEvent) {
 	position: absolute;
 	top: 0;
 	right: 0;
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--2xs);
 	padding: var(--spacing--sm);
 	pointer-events: all !important;
 }
@@ -236,9 +298,5 @@ function openCommandBar(event: MouseEvent) {
 	svg {
 		display: block;
 	}
-}
-
-.activeButton {
-	background-color: var(--button--color--background--hover) !important;
 }
 </style>

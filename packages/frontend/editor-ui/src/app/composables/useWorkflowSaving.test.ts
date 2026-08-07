@@ -1,7 +1,6 @@
 import { useUIStore } from '@/app/stores/ui.store';
 import { AutoSaveState, MODAL_CANCEL, MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import { useWorkflowSaving } from './useWorkflowSaving';
-import type { WorkflowState } from './useWorkflowState';
 import router from '@/app/router';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
@@ -10,11 +9,31 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useWorkflowSaveStore } from '@/app/stores/workflowSave.store';
 import { useBackendConnectionStore } from '@/app/stores/backendConnection.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import { mockedStore } from '@/__tests__/utils';
 import { createTestNode, createTestWorkflow, mockNodeTypeDescription } from '@/__tests__/mocks';
-import { CHAT_TRIGGER_NODE_TYPE } from 'n8n-workflow';
+import { CHAT_TRIGGER_NODE_TYPE, NodeConnectionTypes } from 'n8n-workflow';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
+
+function setDocumentStoreActive(workflowId: string) {
+	useWorkflowDocumentStore(createWorkflowDocumentId(workflowId)).setActiveState({
+		activeVersionId: 'v1',
+		activeVersion: {
+			versionId: 'v1',
+			authors: '',
+			createdAt: '',
+			updatedAt: '',
+			workflowPublishHistory: [],
+			name: null,
+			description: null,
+		},
+	});
+}
 
 const modalConfirmSpy = vi.fn();
 
@@ -26,23 +45,28 @@ vi.mock('@/app/composables/useMessage', () => {
 	};
 });
 
+const showMessageSpy = vi.hoisted(() => vi.fn());
+
+vi.mock('@n8n/composables/useToast', () => ({
+	useToast: () => ({
+		showMessage: showMessageSpy,
+		showToast: vi.fn(() => ({ close: vi.fn() })),
+		showError: vi.fn(),
+		clearAllStickyNotifications: vi.fn(),
+	}),
+}));
+
 vi.mock('@n8n/permissions', () => ({
 	getResourcePermissions: () => ({
 		workflow: { update: true },
 	}),
 }));
 
-const mockWorkflowState = {
-	setWorkflowProperty: vi.fn(),
-	setWorkflowName: vi.fn(),
-	setActive: vi.fn(),
-	setWorkflowId: vi.fn(),
-	setWorkflowSettings: vi.fn(),
-	setNodeValue: vi.fn(),
-};
+const mockRoute = { name: 'NodeViewExisting', params: {} as Record<string, string>, query: {} };
 
-vi.mock('@/app/composables/useWorkflowState', () => ({
-	injectWorkflowState: () => mockWorkflowState,
+vi.mock('vue-router', async (importOriginal) => ({
+	...(await importOriginal<typeof import('vue-router')>()),
+	useRoute: () => mockRoute,
 }));
 
 const getDuplicateTestWorkflow = (): WorkflowDataUpdate => ({
@@ -99,6 +123,7 @@ describe('useWorkflowSaving', () => {
 
 	afterEach(() => {
 		vi.clearAllMocks();
+		mockRoute.params = {};
 	});
 
 	beforeEach(() => {
@@ -134,10 +159,12 @@ describe('useWorkflowSaving', () => {
 				checksum: 'test-checksum',
 			});
 
-			workflowsStore.setWorkflow(workflow);
+			workflowsStore.setWorkflowId(workflow.id);
+			useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id)).hydrate(workflow);
 			// Populate workflowsById to mark workflow as existing (not new)
 			workflowsListStore.workflowsById = { [workflow.id]: workflow };
-			workflowsStore.workflowId = workflow.id;
+			workflowsStore.setWorkflowId(workflow.id);
+			mockRoute.params = { workflowId: workflow.id };
 
 			const next = vi.fn();
 			const confirm = vi.fn().mockResolvedValue(true);
@@ -153,22 +180,18 @@ describe('useWorkflowSaving', () => {
 			// Mock message.confirm
 			modalConfirmSpy.mockResolvedValue(MODAL_CONFIRM);
 
-			const mockWorkflowState: Partial<WorkflowState> = {
-				setWorkflowName: vi.fn(),
-				setWorkflowProperty: vi.fn(),
-			};
-
 			const resolveSpy = vi.fn();
 			const resolveMarker = Symbol();
 			resolveSpy.mockReturnValue(resolveMarker);
 			const mockRouter = {
 				resolve: resolveSpy,
-				currentRoute: { value: { params: { name: workflow.id }, query: { parentFolderId: '' } } },
+				currentRoute: {
+					value: { params: { workflowId: workflow.id }, query: { parentFolderId: '' } },
+				},
 			};
 
 			const { promptSaveUnsavedWorkflowChanges } = useWorkflowSaving({
 				router: mockRouter as never,
-				workflowState: mockWorkflowState as WorkflowState,
 			});
 
 			await promptSaveUnsavedWorkflowChanges(next, { confirm, cancel });
@@ -221,7 +244,8 @@ describe('useWorkflowSaving', () => {
 			const workflowListStore = useWorkflowsListStore();
 			const MOCK_ID = 'existing-workflow-id';
 			const existingWorkflow = createTestWorkflow({ id: MOCK_ID });
-			workflowStore.workflow.id = MOCK_ID;
+			workflowStore.setWorkflowId(MOCK_ID);
+			mockRoute.params = { workflowId: MOCK_ID };
 			// Populate workflowsById to mark workflow as existing (not new)
 			workflowListStore.workflowsById = { [MOCK_ID]: existingWorkflow };
 
@@ -241,7 +265,7 @@ describe('useWorkflowSaving', () => {
 			expect(next).toHaveBeenCalledWith(
 				router.resolve({
 					name: VIEWS.WORKFLOW,
-					params: { name: MOCK_ID },
+					params: { workflowId: MOCK_ID },
 				}),
 			);
 		});
@@ -256,7 +280,7 @@ describe('useWorkflowSaving', () => {
 			uiStore.markStateDirty();
 
 			const workflowStore = useWorkflowsStore();
-			workflowStore.workflow.id = '';
+			workflowStore.setWorkflowId('');
 
 			// Mock message.confirm
 			modalConfirmSpy.mockResolvedValue('close');
@@ -306,9 +330,11 @@ describe('useWorkflowSaving', () => {
 			vi.spyOn(workflowsListStore, 'fetchWorkflow').mockResolvedValue(workflow);
 			vi.spyOn(workflowsStore, 'updateWorkflow').mockResolvedValue(workflow);
 
-			workflowsStore.setWorkflow(workflow);
+			workflowsStore.setWorkflowId(workflow.id);
+			useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id)).hydrate(workflow);
 			// Populate workflowsById to mark workflow as existing (not new)
 			workflowsListStore.workflowsById = { [workflow.id]: workflow };
+			mockRoute.params = { workflowId: workflow.id };
 
 			const updateWorkflowSpy = vi.spyOn(workflowsStore, 'updateWorkflow');
 			updateWorkflowSpy.mockImplementation(() => {
@@ -331,7 +357,9 @@ describe('useWorkflowSaving', () => {
 			resolveSpy.mockReturnValue(resolveMarker);
 			const mockRouter = {
 				resolve: resolveSpy,
-				currentRoute: { value: { params: { name: workflow.id }, query: { parentFolderId: '' } } },
+				currentRoute: {
+					value: { params: { workflowId: workflow.id }, query: { parentFolderId: '' } },
+				},
 			};
 
 			const workflowSaving = useWorkflowSaving({ router: mockRouter as never });
@@ -441,6 +469,54 @@ describe('useWorkflowSaving', () => {
 			expect(workflow.nodes![1].parameters.path).not.toBe(staticPath);
 			expect(workflow.nodes![1].parameters.path).toBe(workflow.nodes![1].webhookId);
 		});
+
+		it('should remap nodeGroups nodeIds when resetNodeIds is true', async () => {
+			const oldId1 = 'old-id-1';
+			const oldId2 = 'old-id-2';
+			const workflow: WorkflowDataUpdate = {
+				name: 'Grouped workflow',
+				active: false,
+				nodes: [
+					{
+						parameters: {},
+						id: oldId1,
+						name: 'Node 1',
+						type: 'n8n-nodes-base.noOp',
+						typeVersion: 1,
+						position: [0, 0],
+					},
+					{
+						parameters: {},
+						id: oldId2,
+						name: 'Node 2',
+						type: 'n8n-nodes-base.noOp',
+						typeVersion: 1,
+						position: [200, 0],
+					},
+				],
+				connections: {},
+				nodeGroups: [{ id: 'group-1', name: 'My Group', nodeIds: [oldId1, oldId2] }],
+			};
+
+			const { saveAsNewWorkflow } = useWorkflowSaving({ router });
+
+			await saveAsNewWorkflow({
+				name: workflow.name,
+				resetNodeIds: true,
+				data: workflow,
+			});
+
+			// Node IDs should have been reassigned
+			const newId1 = workflow.nodes![0].id;
+			const newId2 = workflow.nodes![1].id;
+			expect(newId1).not.toBe(oldId1);
+			expect(newId2).not.toBe(oldId2);
+
+			// nodeGroups should reference the new IDs
+			expect(workflow.nodeGroups).toEqual([
+				{ id: 'group-1', name: 'My Group', nodeIds: [newId1, newId2] },
+			]);
+		});
 	});
 
 	describe('saveCurrentWorkflow', () => {
@@ -454,9 +530,10 @@ describe('useWorkflowSaving', () => {
 			vi.spyOn(workflowsListStore, 'fetchWorkflow').mockResolvedValue(workflow);
 			vi.spyOn(workflowsStore, 'updateWorkflow').mockResolvedValue(workflow);
 
-			workflowsStore.setWorkflow(workflow);
-			// Populate workflowsById to mark workflow as existing (not new)
+			workflowsStore.setWorkflowId(workflow.id);
+			useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id)).hydrate(workflow);
 			workflowsListStore.workflowsById = { [workflow.id]: workflow };
+			setDocumentStoreActive(workflow.id);
 
 			const { saveCurrentWorkflow } = useWorkflowSaving({ router });
 			await saveCurrentWorkflow({ id: 'w0' });
@@ -477,7 +554,8 @@ describe('useWorkflowSaving', () => {
 			vi.spyOn(workflowsListStore, 'fetchWorkflow').mockResolvedValue(workflow);
 			vi.spyOn(workflowsStore, 'updateWorkflow').mockResolvedValue(workflow);
 
-			workflowsStore.setWorkflow(workflow);
+			workflowsStore.setWorkflowId(workflow.id);
+			useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id)).hydrate(workflow);
 			// Populate workflowsById to mark workflow as existing (not new)
 			workflowsListStore.workflowsById = { [workflow.id]: workflow };
 
@@ -500,9 +578,11 @@ describe('useWorkflowSaving', () => {
 			vi.spyOn(workflowsListStore, 'fetchWorkflow').mockResolvedValue(workflow);
 			vi.spyOn(workflowsStore, 'updateWorkflow').mockResolvedValue(workflow);
 
-			workflowsStore.setWorkflow(workflow);
+			workflowsStore.setWorkflowId(workflow.id);
+			useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id)).hydrate(workflow);
 			workflowsListStore.workflowsById = { w2: workflow };
 			workflowsStore.isWorkflowSaved = { w2: true };
+			setDocumentStoreActive(workflow.id);
 
 			const { saveCurrentWorkflow } = useWorkflowSaving({ router });
 			await saveCurrentWorkflow({ id: 'w2' }, true, false, true);
@@ -523,9 +603,11 @@ describe('useWorkflowSaving', () => {
 			vi.spyOn(workflowsListStore, 'fetchWorkflow').mockResolvedValue(workflow);
 			vi.spyOn(workflowsStore, 'updateWorkflow').mockResolvedValue(workflow);
 
-			workflowsStore.setWorkflow(workflow);
+			workflowsStore.setWorkflowId(workflow.id);
+			useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id)).hydrate(workflow);
 			workflowsListStore.workflowsById = { w3: workflow };
 			workflowsStore.isWorkflowSaved = { w3: true };
+			setDocumentStoreActive(workflow.id);
 
 			const { saveCurrentWorkflow } = useWorkflowSaving({ router });
 			await saveCurrentWorkflow({ id: 'w3' }, true, false, false);
@@ -536,9 +618,12 @@ describe('useWorkflowSaving', () => {
 			);
 		});
 
-		it('should include tags from store when saving workflow', async () => {
+		it('should include tags when saving workflow', async () => {
+			const workflowId = 'w5';
+			const tagIds = ['tag1', 'tag2'];
+
 			const workflow = createTestWorkflow({
-				id: 'w5',
+				id: workflowId,
 				nodes: [createTestNode({ type: CHAT_TRIGGER_NODE_TYPE, disabled: false })],
 				active: true,
 				tags: ['tag1', 'tag2'],
@@ -556,28 +641,114 @@ describe('useWorkflowSaving', () => {
 			vi.spyOn(workflowsListStore, 'fetchWorkflow').mockResolvedValue(workflow);
 			vi.spyOn(workflowsStore, 'updateWorkflow').mockResolvedValue(workflowResponse);
 
-			workflowsStore.setWorkflow(workflow);
+			workflowsStore.setWorkflowId(workflow.id);
+			useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id)).hydrate(workflow);
 			workflowsListStore.workflowsById = { [workflow.id]: workflow };
-			workflowsStore.workflowId = workflow.id;
+			workflowsStore.setWorkflowId(workflow.id);
 
-			const mockWorkflowState: Partial<WorkflowState> = {
-				setWorkflowName: vi.fn(),
-				setWorkflowProperty: vi.fn(),
-			};
+			// Tags are now managed by workflowDocumentStore, not workflowState
+			const documentId = createWorkflowDocumentId(workflowId);
+			const workflowDocumentStore = useWorkflowDocumentStore(documentId);
+			workflowDocumentStore.setTags(tagIds);
 
 			const { saveCurrentWorkflow } = useWorkflowSaving({
 				router,
-				workflowState: mockWorkflowState as WorkflowState,
 			});
 
-			await saveCurrentWorkflow({ id: 'w5' }, true, false, false);
+			await saveCurrentWorkflow({ id: workflowId }, true, false, false);
 
-			// Tags are now managed by workflowDocumentStore, not workflowState
 			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
-				'w5',
-				expect.objectContaining({ tags: ['tag1', 'tag2'] }),
+				workflowId,
+				expect.objectContaining({ tags: tagIds }),
 				false,
 			);
+		});
+
+		it('should remove invalid node groups before saving and warn the user', async () => {
+			const workflow = createTestWorkflow({
+				id: 'w6',
+				nodes: [
+					createTestNode({ id: 'node-a', name: 'Node A' }),
+					createTestNode({ id: 'node-b', name: 'Node B' }),
+					createTestNode({ id: 'node-c', name: 'Node C' }),
+				],
+				connections: {
+					'Node A': {
+						[NodeConnectionTypes.Main]: [
+							[{ node: 'Node B', type: NodeConnectionTypes.Main, index: 0 }],
+						],
+					},
+				},
+				// Node C is not connected to the rest of the group, so the members
+				// do not form a connected subgraph and the grouping rules reject it
+				nodeGroups: [{ id: 'group-1', name: 'Group 1', nodeIds: ['node-a', 'node-b', 'node-c'] }],
+			});
+
+			vi.spyOn(workflowsListStore, 'fetchWorkflow').mockResolvedValue(workflow);
+			vi.spyOn(workflowsStore, 'updateWorkflow').mockResolvedValue(workflow);
+
+			workflowsStore.setWorkflowId(workflow.id);
+			const documentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id));
+			documentStore.hydrate(workflow);
+			workflowsListStore.workflowsById = { [workflow.id]: workflow };
+
+			const { saveCurrentWorkflow } = useWorkflowSaving({ router });
+			const saved = await saveCurrentWorkflow({ id: 'w6' });
+
+			expect(saved).toBe(true);
+			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
+				'w6',
+				expect.objectContaining({ nodeGroups: [] }),
+				false,
+			);
+			expect(documentStore.allGroups).toHaveLength(0);
+			expect(showMessageSpy).toHaveBeenCalledWith(
+				expect.objectContaining({
+					type: 'warning',
+					title: 'Groups removed',
+					message: expect.stringContaining('<li>Group 1</li>'),
+				}),
+			);
+		});
+
+		it('should keep valid node groups in the save payload', async () => {
+			const workflow = createTestWorkflow({
+				id: 'w7',
+				nodes: [
+					createTestNode({ id: 'node-a', name: 'Node A' }),
+					createTestNode({ id: 'node-b', name: 'Node B' }),
+				],
+				connections: {
+					'Node A': {
+						[NodeConnectionTypes.Main]: [
+							[{ node: 'Node B', type: NodeConnectionTypes.Main, index: 0 }],
+						],
+					},
+				},
+				nodeGroups: [{ id: 'group-1', name: 'Group 1', nodeIds: ['node-a', 'node-b'] }],
+			});
+
+			vi.spyOn(workflowsListStore, 'fetchWorkflow').mockResolvedValue(workflow);
+			vi.spyOn(workflowsStore, 'updateWorkflow').mockResolvedValue(workflow);
+
+			workflowsStore.setWorkflowId(workflow.id);
+			const documentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id));
+			documentStore.hydrate(workflow);
+			workflowsListStore.workflowsById = { [workflow.id]: workflow };
+
+			const { saveCurrentWorkflow } = useWorkflowSaving({ router });
+			const saved = await saveCurrentWorkflow({ id: 'w7' });
+
+			expect(saved).toBe(true);
+			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
+				'w7',
+				expect.objectContaining({
+					nodeGroups: [{ id: 'group-1', name: 'Group 1', nodeIds: ['node-a', 'node-b'] }],
+				}),
+				false,
+			);
+			expect(documentStore.allGroups).toHaveLength(1);
+			expect(showMessageSpy).not.toHaveBeenCalled();
 		});
 	});
 
@@ -627,9 +798,10 @@ describe('useWorkflowSaving', () => {
 				checksum: 'test-checksum',
 			});
 
-			workflowsStore.setWorkflow(workflow);
+			workflowsStore.setWorkflowId(workflow.id);
+			useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id)).hydrate(workflow);
 			workflowsListStore.workflowsById = { [workflow.id]: workflow };
-			workflowsStore.workflowId = workflow.id;
+			workflowsStore.setWorkflowId(workflow.id);
 
 			const uiStore = useUIStore();
 			const saveStore = useWorkflowSaveStore();
@@ -637,14 +809,8 @@ describe('useWorkflowSaving', () => {
 			uiStore.markStateDirty();
 			const initialDirtyCount = uiStore.dirtyStateSetCount;
 
-			const mockWorkflowState: Partial<WorkflowState> = {
-				setWorkflowName: vi.fn(),
-				setWorkflowProperty: vi.fn(),
-			};
-
 			const { saveCurrentWorkflow } = useWorkflowSaving({
 				router,
-				workflowState: mockWorkflowState as WorkflowState,
 			});
 
 			saveStore.setAutoSaveState(AutoSaveState.InProgress);
@@ -674,23 +840,18 @@ describe('useWorkflowSaving', () => {
 				checksum: 'test-checksum',
 			});
 
-			workflowsStore.setWorkflow(workflow);
+			workflowsStore.setWorkflowId(workflow.id);
+			useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id)).hydrate(workflow);
 			workflowsListStore.workflowsById = { [workflow.id]: workflow };
-			workflowsStore.workflowId = workflow.id;
+			workflowsStore.setWorkflowId(workflow.id);
 
 			const uiStore = useUIStore();
 
 			// Mark state as dirty
 			uiStore.markStateDirty();
 
-			const mockWorkflowState: Partial<WorkflowState> = {
-				setWorkflowName: vi.fn(),
-				setWorkflowProperty: vi.fn(),
-			};
-
 			const { saveCurrentWorkflow } = useWorkflowSaving({
 				router,
-				workflowState: mockWorkflowState as WorkflowState,
 			});
 
 			// Save without making any changes during save
@@ -698,6 +859,43 @@ describe('useWorkflowSaving', () => {
 
 			// After save, state should be clean
 			expect(uiStore.stateIsDirty).toBe(false);
+		});
+
+		it('should disarm a scheduled autosave when a manual save completes clean', async () => {
+			const workflow = createTestWorkflow({
+				id: 'w-autosave-disarm',
+				nodes: [createTestNode({ type: CHAT_TRIGGER_NODE_TYPE, disabled: false })],
+				active: true,
+			});
+
+			vi.spyOn(workflowsListStore, 'fetchWorkflow').mockResolvedValue(workflow);
+			vi.spyOn(workflowsStore, 'updateWorkflow').mockResolvedValue({
+				...workflow,
+				checksum: 'test-checksum',
+			});
+
+			workflowsStore.setWorkflowId(workflow.id);
+			useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id)).hydrate(workflow);
+			workflowsListStore.workflowsById = { [workflow.id]: workflow };
+
+			const uiStore = useUIStore();
+			const saveStore = useWorkflowSaveStore();
+			saveStore.reset();
+
+			const { saveCurrentWorkflow, autoSaveWorkflow } = useWorkflowSaving({ router });
+
+			// Dirty workflow with an armed autosave timer, then a manual save
+			// (e.g. save-then-navigate flows). Without the disarm, the timer
+			// fires after navigation with no workflow context and attempts to
+			// create an empty workflow.
+			uiStore.markStateDirty();
+			autoSaveWorkflow();
+			expect(saveStore.autoSaveState).toBe(AutoSaveState.Scheduled);
+
+			await saveCurrentWorkflow({ id: workflow.id }, false);
+
+			expect(uiStore.stateIsDirty).toBe(false);
+			expect(saveStore.autoSaveState).toBe(AutoSaveState.Idle);
 		});
 
 		it('should skip autosave when another save is already in progress', async () => {
@@ -713,20 +911,15 @@ describe('useWorkflowSaving', () => {
 				checksum: 'test-checksum',
 			});
 
-			workflowsStore.setWorkflow(workflow);
+			workflowsStore.setWorkflowId(workflow.id);
+			useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id)).hydrate(workflow);
 			workflowsListStore.workflowsById = { [workflow.id]: workflow };
-			workflowsStore.workflowId = workflow.id;
+			workflowsStore.setWorkflowId(workflow.id);
 
 			const saveStore = useWorkflowSaveStore();
 
-			const mockWorkflowState: Partial<WorkflowState> = {
-				setWorkflowName: vi.fn(),
-				setWorkflowProperty: vi.fn(),
-			};
-
 			const { saveCurrentWorkflow } = useWorkflowSaving({
 				router,
-				workflowState: mockWorkflowState as WorkflowState,
 			});
 
 			// Simulate a save already in progress
@@ -780,18 +973,13 @@ describe('useWorkflowSaving', () => {
 					versionId: 'v2',
 				});
 
-			workflowsStore.setWorkflow(workflow);
+			workflowsStore.setWorkflowId(workflow.id);
+			useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id)).hydrate(workflow);
 			workflowsListStore.workflowsById = { [workflow.id]: workflow };
-			workflowsStore.workflowId = workflow.id;
-
-			const testWorkflowState: Partial<WorkflowState> = {
-				setWorkflowName: vi.fn(),
-				setWorkflowProperty: vi.fn(),
-			};
+			workflowsStore.setWorkflowId(workflow.id);
 
 			const { saveCurrentWorkflow } = useWorkflowSaving({
 				router,
-				workflowState: testWorkflowState as WorkflowState,
 			});
 
 			// Start autosave
@@ -838,20 +1026,15 @@ describe('useWorkflowSaving', () => {
 				versionId: 'v1',
 			});
 
-			workflowsStore.setWorkflow(workflow);
+			workflowsStore.setWorkflowId(workflow.id);
+			useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id)).hydrate(workflow);
 			workflowsListStore.workflowsById = { [workflow.id]: workflow };
-			workflowsStore.workflowId = workflow.id;
+			workflowsStore.setWorkflowId(workflow.id);
 
 			const saveStore = useWorkflowSaveStore();
 
-			const testWorkflowState: Partial<WorkflowState> = {
-				setWorkflowName: vi.fn(),
-				setWorkflowProperty: vi.fn(),
-			};
-
 			const { saveCurrentWorkflow } = useWorkflowSaving({
 				router,
-				workflowState: testWorkflowState as WorkflowState,
 			});
 
 			// Simulate a save already in progress
@@ -901,20 +1084,15 @@ describe('useWorkflowSaving', () => {
 				async () => await blockedPromise,
 			);
 
-			workflowsStore.setWorkflow(workflow);
+			workflowsStore.setWorkflowId(workflow.id);
+			useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id)).hydrate(workflow);
 			workflowsListStore.workflowsById = { [workflow.id]: workflow };
-			workflowsStore.workflowId = workflow.id;
+			workflowsStore.setWorkflowId(workflow.id);
 
 			const saveStore = useWorkflowSaveStore();
 
-			const testWorkflowState: Partial<WorkflowState> = {
-				setWorkflowName: vi.fn(),
-				setWorkflowProperty: vi.fn(),
-			};
-
 			const { saveCurrentWorkflow } = useWorkflowSaving({
 				router,
-				workflowState: testWorkflowState as WorkflowState,
 			});
 
 			// Before save starts
@@ -980,20 +1158,15 @@ describe('useWorkflowSaving', () => {
 					};
 				});
 
-			workflowsStore.setWorkflow(workflow);
+			workflowsStore.setWorkflowId(workflow.id);
+			useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id)).hydrate(workflow);
 			workflowsListStore.workflowsById = { [workflow.id]: workflow };
-			workflowsStore.workflowId = workflow.id;
+			workflowsStore.setWorkflowId(workflow.id);
 
 			const saveStore = useWorkflowSaveStore();
 
-			const testWorkflowState: Partial<WorkflowState> = {
-				setWorkflowName: vi.fn(),
-				setWorkflowProperty: vi.fn(),
-			};
-
 			const { saveCurrentWorkflow } = useWorkflowSaving({
 				router,
-				workflowState: testWorkflowState as WorkflowState,
 			});
 
 			// Start first autosave
@@ -1045,20 +1218,15 @@ describe('useWorkflowSaving', () => {
 			vi.spyOn(workflowsListStore, 'fetchWorkflow').mockResolvedValue(workflow);
 			vi.spyOn(workflowsStore, 'updateWorkflow').mockRejectedValue(new Error('Network error'));
 
-			workflowsStore.setWorkflow(workflow);
+			workflowsStore.setWorkflowId(workflow.id);
+			useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id)).hydrate(workflow);
 			workflowsListStore.workflowsById = { [workflow.id]: workflow };
-			workflowsStore.workflowId = workflow.id;
+			workflowsStore.setWorkflowId(workflow.id);
 
 			const saveStore = useWorkflowSaveStore();
 
-			const testWorkflowState: Partial<WorkflowState> = {
-				setWorkflowName: vi.fn(),
-				setWorkflowProperty: vi.fn(),
-			};
-
 			const { saveCurrentWorkflow } = useWorkflowSaving({
 				router,
-				workflowState: testWorkflowState as WorkflowState,
 			});
 
 			const result = await saveCurrentWorkflow({ id: workflow.id }, true, false, false);
@@ -1081,21 +1249,16 @@ describe('useWorkflowSaving', () => {
 				const errorMessage = 'Network timeout';
 				vi.spyOn(workflowsStore, 'updateWorkflow').mockRejectedValue(new Error(errorMessage));
 
-				workflowsStore.setWorkflow(workflow);
+				workflowsStore.setWorkflowId(workflow.id);
+				useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id)).hydrate(workflow);
 				workflowsListStore.workflowsById = { [workflow.id]: workflow };
-				workflowsStore.workflowId = workflow.id;
+				workflowsStore.setWorkflowId(workflow.id);
 
 				const saveStore = useWorkflowSaveStore();
 				const initialRetryCount = saveStore.retryCount;
 
-				const testWorkflowState: Partial<WorkflowState> = {
-					setWorkflowName: vi.fn(),
-					setWorkflowProperty: vi.fn(),
-				};
-
 				const { saveCurrentWorkflow } = useWorkflowSaving({
 					router,
-					workflowState: testWorkflowState as WorkflowState,
 				});
 
 				const result = await saveCurrentWorkflow({ id: workflow.id }, true, false, true);
@@ -1122,6 +1285,44 @@ describe('useWorkflowSaving', () => {
 			autoSaveWorkflow();
 
 			expect(saveStore.autoSaveState).toBe(AutoSaveState.Idle);
+		});
+
+		it('should not schedule autosave when autosave is disabled via environment variable', () => {
+			const autosaveStore = useWorkflowSaveStore();
+			const settingsStore = mockedStore(useSettingsStore);
+
+			// Mock isAutosaveEnabled to return false (simulating N8N_WORKFLOWS_AUTOSAVE_DISABLED=true)
+			settingsStore.isAutosaveEnabled = false;
+
+			autosaveStore.reset();
+			expect(autosaveStore.autoSaveState).toBe(AutoSaveState.Idle);
+
+			const { autoSaveWorkflow } = useWorkflowSaving({ router });
+
+			// Try to schedule autosave while disabled
+			autoSaveWorkflow();
+
+			// State should remain Idle, not Scheduled
+			expect(autosaveStore.autoSaveState).toBe(AutoSaveState.Idle);
+		});
+
+		it('should schedule autosave when autosave is enabled via environment variable', () => {
+			const autosaveStore = useWorkflowSaveStore();
+			const settingsStore = mockedStore(useSettingsStore);
+
+			// Mock isAutosaveEnabled to return true (default behavior)
+			settingsStore.isAutosaveEnabled = true;
+
+			autosaveStore.reset();
+			expect(autosaveStore.autoSaveState).toBe(AutoSaveState.Idle);
+
+			const { autoSaveWorkflow } = useWorkflowSaving({ router });
+
+			// Schedule autosave
+			autoSaveWorkflow();
+
+			// State should be Scheduled
+			expect(autosaveStore.autoSaveState).toBe(AutoSaveState.Scheduled);
 		});
 	});
 });

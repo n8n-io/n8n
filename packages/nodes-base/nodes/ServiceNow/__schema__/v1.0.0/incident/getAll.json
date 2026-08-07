@@ -19,6 +19,14 @@
         "approval_set": {
             "type": "string"
         },
+        "assigned_to": {
+            "type": "object",
+            "properties": {
+                "link": {
+                    "type": "string"
+                }
+            }
+        },
         "business_duration": {
             "type": "string"
         },
@@ -51,6 +59,9 @@
         "caused_by": {
             "type": "string"
         },
+        "child_incidents": {
+            "type": "string"
+        },
         "close_notes": {
             "type": "string"
         },
@@ -63,10 +74,19 @@
         "comments_and_work_notes": {
             "type": "string"
         },
+        "contract": {
+            "type": "string"
+        },
         "correlation_display": {
             "type": "string"
         },
         "correlation_id": {
+            "type": "string"
+        },
+        "delivery_plan": {
+            "type": "string"
+        },
+        "delivery_task": {
             "type": "string"
         },
         "description": {
@@ -93,6 +113,9 @@
         "impact": {
             "type": "string"
         },
+        "incident_state": {
+            "type": "string"
+        },
         "knowledge": {
             "type": "string"
         },
@@ -116,10 +139,16 @@
         "order": {
             "type": "string"
         },
+        "origin_id": {
+            "type": "string"
+        },
         "origin_table": {
             "type": "string"
         },
         "parent": {
+            "type": "string"
+        },
+        "parent_incident": {
             "type": "string"
         },
         "reassignment_count": {
@@ -145,7 +174,13 @@
                 }
             }
         },
+        "rfc": {
+            "type": "string"
+        },
         "route_reason": {
+            "type": "string"
+        },
+        "service_offering": {
             "type": "string"
         },
         "severity": {
@@ -178,6 +213,9 @@
             }
         },
         "sys_domain_path": {
+            "type": "string"
+        },
+        "sys_id": {
             "type": "string"
         },
         "sys_mod_count": {
@@ -226,5 +264,5 @@
             "type": "string"
         }
     },
-    "version": 2
+    "version": 3
 }

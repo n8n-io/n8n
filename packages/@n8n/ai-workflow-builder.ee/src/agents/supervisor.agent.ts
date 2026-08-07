@@ -14,35 +14,26 @@ import {
 	buildSimplifiedExecutionContext,
 	buildWorkflowSummary,
 } from '../utils/context-builders';
-import { summarizeCoordinationLog } from '../utils/coordination-log';
+import { getCurrentTurnEntries, summarizeCoordinationLog } from '../utils/coordination-log';
 import type { ChatPayload } from '../workflow-builder-agent';
 
-const systemPrompt = ChatPromptTemplate.fromMessages([
-	[
-		'system',
-		[
-			{
-				type: 'text',
-				text: buildSupervisorPrompt(),
-				cache_control: { type: 'ephemeral' },
-			},
-		],
-	],
-	['placeholder', '{messages}'],
-]);
+const ROUTING_OPTIONS_WITH_ASSISTANT = ['responder', 'discovery', 'builder', 'assistant'] as const;
+const ROUTING_OPTIONS_WITHOUT_ASSISTANT = ['responder', 'discovery', 'builder'] as const;
 
-/**
- * Schema for supervisor routing decision
- */
-export const supervisorRoutingSchema = z.object({
-	reasoning: z.string().describe('One sentence explaining why this agent should act next'),
-	next: z.enum(['responder', 'discovery', 'builder']).describe('The next agent to call'),
-});
+function createSupervisorRoutingSchema(mergeAskBuild: boolean) {
+	return z.object({
+		reasoning: z.string().describe('One sentence explaining why this agent should act next'),
+		next: z
+			.enum(mergeAskBuild ? ROUTING_OPTIONS_WITH_ASSISTANT : ROUTING_OPTIONS_WITHOUT_ASSISTANT)
+			.describe('The next agent to call'),
+	});
+}
 
-export type SupervisorRouting = z.infer<typeof supervisorRoutingSchema>;
+export type SupervisorRouting = z.infer<ReturnType<typeof createSupervisorRoutingSchema>>;
 
 export interface SupervisorAgentConfig {
 	llm: BaseChatModel;
+	mergeAskBuild?: boolean;
 }
 
 /**
@@ -70,8 +61,11 @@ export interface SupervisorContext {
 export class SupervisorAgent {
 	private llm: BaseChatModel;
 
+	private mergeAskBuild: boolean;
+
 	constructor(config: SupervisorAgentConfig) {
 		this.llm = config.llm;
+		this.mergeAskBuild = config.mergeAskBuild ?? false;
 	}
 
 	/**
@@ -100,9 +94,10 @@ export class SupervisorAgent {
 			contextParts.push('</workflow_summary>');
 		}
 
-		if (context.coordinationLog.length > 0) {
+		const currentTurnLog = getCurrentTurnEntries(context.coordinationLog);
+		if (currentTurnLog.length > 0) {
 			contextParts.push('<completed_phases>');
-			contextParts.push(summarizeCoordinationLog(context.coordinationLog));
+			contextParts.push(summarizeCoordinationLog(currentTurnLog));
 			contextParts.push('</completed_phases>');
 		}
 
@@ -125,8 +120,23 @@ export class SupervisorAgent {
 	 * @param config - Optional RunnableConfig for tracing callbacks
 	 */
 	async invoke(context: SupervisorContext, config?: RunnableConfig): Promise<SupervisorRouting> {
-		const agent = systemPrompt.pipe<SupervisorRouting>(
-			this.llm.withStructuredOutput(supervisorRoutingSchema, {
+		const promptTemplate = ChatPromptTemplate.fromMessages([
+			[
+				'system',
+				[
+					{
+						type: 'text',
+						text: buildSupervisorPrompt({ mergeAskBuild: this.mergeAskBuild }),
+						cache_control: { type: 'ephemeral' },
+					},
+				],
+			],
+			['placeholder', '{messages}'],
+		]);
+
+		const routingSchema = createSupervisorRoutingSchema(this.mergeAskBuild);
+		const agent = promptTemplate.pipe<SupervisorRouting>(
+			this.llm.withStructuredOutput(routingSchema, {
 				name: 'routing_decision',
 			}),
 		);

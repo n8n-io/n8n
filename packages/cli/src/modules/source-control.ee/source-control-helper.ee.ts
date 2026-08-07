@@ -4,6 +4,7 @@ import type { TagEntity, WorkflowTagMapping } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { generateKeyPairSync } from 'crypto';
 import { accessSync, constants as fsConstants, mkdirSync } from 'fs';
+import chunk from 'lodash/chunk';
 import isEqual from 'lodash/isEqual';
 import {
 	deepCopy,
@@ -18,6 +19,7 @@ import { readFile as fsReadFile } from 'node:fs/promises';
 import path from 'path';
 
 import { License } from '@/license';
+import { containsExpression } from '@/utils';
 
 import {
 	SOURCE_CONTROL_FOLDERS_EXPORT_FILE,
@@ -37,10 +39,6 @@ import type { KeyPairType } from './types/key-pair-type';
 import type { RemoteResourceOwner, StatusResourceOwner } from './types/resource-owner';
 import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
 
-function stringContainsExpression(testString: string): boolean {
-	return /^=.*\{\{.+\}\}/.test(testString);
-}
-
 export function sanitizeCredentialData(
 	data: ICredentialDataDecryptedObject,
 ): ICredentialDataDecryptedObject {
@@ -53,7 +51,7 @@ export function sanitizeCredentialData(
 		} else if (typeof value === 'object') {
 			result[key] = sanitizeCredentialData(value as ICredentialDataDecryptedObject);
 		} else if (typeof value === 'string') {
-			result[key] = stringContainsExpression(value) ? value : '';
+			result[key] = containsExpression(value) ? value : '';
 		}
 
 		// NOTE: number and boolean values are synchable for backward compatibility
@@ -75,14 +73,17 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
  */
 function mergeSingleValue(sanitizedRemoteValue: unknown, localValue: unknown): unknown {
 	if (typeof sanitizedRemoteValue === 'string') {
-		if (stringContainsExpression(sanitizedRemoteValue)) {
+		if (containsExpression(sanitizedRemoteValue)) {
 			return sanitizedRemoteValue;
 		} else if (localValue !== undefined && localValue !== null) {
 			// Local value is preserved if it exists (secret handling)
 			return localValue;
 		}
 
-		return undefined;
+		// The remote field exists as an empty string (key is part of the schema)
+		// but local has no value for it. Preserve the empty string so the field
+		// is not silently dropped from the merged credential.
+		return '';
 	}
 
 	if (typeof sanitizedRemoteValue === 'number' || typeof sanitizedRemoteValue === 'boolean') {
@@ -129,8 +130,6 @@ export function mergeRemoteCrendetialDataIntoLocalCredentialData({
 }): ICredentialDataDecryptedObject {
 	const merged: ICredentialDataDecryptedObject = {};
 
-	// This is a safe guard, in principle remote data should already be sanitized
-	// This prevents importing invalid data that should have not been synched in the first place
 	const sanitizedRemote = sanitizeCredentialData(remote);
 
 	for (const [key, sanitizedRemoteValue] of Object.entries(sanitizedRemote)) {
@@ -139,6 +138,17 @@ export function mergeRemoteCrendetialDataIntoLocalCredentialData({
 
 		if (mergedValue !== undefined) {
 			merged[key] = mergedValue as CredentialInformation;
+		}
+	}
+
+	// Keep local fields the remote stub does not carry. A field left at its default value
+	// is not persisted, so it never reaches the stub; an absent field carries the same
+	// "no value to give" meaning as a present-but-blank one, which is already preserved
+	// above. Without this it would be dropped on pull and reset to its default. This also
+	// covers oauthTokenData, which sanitization always strips from the remote.
+	for (const [key, localValue] of Object.entries(local)) {
+		if (!(key in sanitizedRemote)) {
+			merged[key] = localValue;
 		}
 	}
 
@@ -231,6 +241,23 @@ export async function readDataTablesFromSourceControlFile(
 	}
 }
 
+/**
+ * Maps items in fixed-size batches (concurrency within a batch, batches sequential)
+ * to bound the peak memory of per-item work. Preserves input order; rejects on the
+ * first failing item, like `Promise.all`.
+ */
+export async function mapInBatches<T, R>(
+	items: T[],
+	batchSize: number,
+	fn: (item: T) => Promise<R>,
+): Promise<R[]> {
+	const results: R[] = [];
+	for (const batch of chunk(items, batchSize)) {
+		results.push(...(await Promise.all(batch.map(fn))));
+	}
+	return results;
+}
+
 export function sourceControlFoldersExistCheck(
 	folders: string[],
 	createIfNotExists = true,
@@ -260,7 +287,10 @@ export function isSourceControlLicensed() {
 }
 
 export async function generateSshKeyPair(keyType: KeyPairType) {
-	const sshpk = await import('sshpk');
+	// sshpk is CommonJS (`export =`): under nodenext, a native dynamic import only
+	// hoists some named exports onto the namespace (parsePrivateKey is missed), so
+	// read the real module.exports off `.default`.
+	const { default: sshpk } = await import('sshpk');
 	const keyPair: KeyPair = {
 		publicKey: '',
 		privateKey: '',
@@ -490,6 +520,16 @@ export function isDataTableModified(
 }
 
 /**
+ * Identity of a data table column across instances for identity adoption:
+ * columns matching by `(name, type)` adopt the incoming column id.
+ */
+export function getDataTableColumnKey(
+	column: Pick<ExportableDataTableColumn, 'name' | 'type'>,
+): string {
+	return `${column.name}:${column.type}`;
+}
+
+/**
  * Type guard to check if a string is a valid DataTableColumnType.
  */
 export function isValidDataTableColumnType(type: string): type is DataTableColumnType {
@@ -505,6 +545,8 @@ export function areSameCredentials(
 		credA.type === credB.type &&
 		!hasOwnerChanged(credA.ownedBy, credB.ownedBy) &&
 		Boolean(credA.isGlobal) === Boolean(credB.isGlobal) &&
+		Boolean(credA.isResolvable) === Boolean(credB.isResolvable) &&
+		Boolean(credA.resolvableAllowFallback) === Boolean(credB.resolvableAllowFallback) &&
 		!hasSynchableCredentialDataChanged(credA.data, credB.data)
 	);
 }

@@ -12,7 +12,7 @@ type GenericMeta<C> = Omit<Meta<C>, 'component'> & {
 };
 
 const meta = {
-	title: 'Components v2/Select',
+	title: 'Experimental/Select',
 	component: Select,
 	parameters: {
 		docs: {

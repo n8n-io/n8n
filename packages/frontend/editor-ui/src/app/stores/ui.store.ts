@@ -24,6 +24,7 @@ import {
 	IMPORT_WORKFLOW_URL_MODAL_KEY,
 	WORKFLOW_EXTRACTION_NAME_MODAL_KEY,
 	LOCAL_STORAGE_THEME,
+	LOCAL_STORAGE_SIDEBAR_WIDTH,
 	WHATS_NEW_MODAL_KEY,
 	WORKFLOW_DIFF_MODAL_KEY,
 	EXPERIMENT_TEMPLATE_RECO_V2_KEY,
@@ -34,9 +35,18 @@ import {
 	STOP_MANY_EXECUTIONS_MODAL_KEY,
 	WORKFLOW_DESCRIPTION_MODAL_KEY,
 	WORKFLOW_HISTORY_PUBLISH_MODAL_KEY,
+	WORKFLOW_HISTORY_DIFF_MODAL_KEY,
 	WORKFLOW_HISTORY_VERSION_UNPUBLISH,
 	WORKFLOW_HISTORY_NAME_VERSION_MODAL_KEY,
 	CREDENTIAL_RESOLVER_EDIT_MODAL_KEY,
+	AI_BUILDER_DIFF_MODAL_KEY,
+	INSTANCE_AI_CREDENTIAL_SETUP_MODAL_KEY,
+	INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY,
+	AI_GATEWAY_TOP_UP_MODAL_KEY,
+	AGENT_CONFIRMATION_MODAL_KEY,
+	ADD_EXECUTION_TO_DATASET_MODAL_KEY,
+	TRIAL_INTRO_MODAL_KEY,
+	MIGRATE_WORKFLOW_MODAL_KEY,
 } from '@/app/constants';
 import {
 	ANNOTATION_TAGS_MANAGER_MODAL_KEY,
@@ -58,6 +68,7 @@ import {
 	DELETE_FOLDER_MODAL_KEY,
 	MOVE_FOLDER_MODAL_KEY,
 } from '@/features/core/folders/folders.constants';
+import type { WorkflowListEventMap } from '@/features/core/folders/folders.types';
 import {
 	SOURCE_CONTROL_PUSH_MODAL_KEY,
 	SOURCE_CONTROL_PULL_MODAL_KEY,
@@ -76,15 +87,15 @@ import type {
 	Modals,
 	NewCredentialsModal,
 	ThemeOption,
-	NotificationOptions,
 	ModalState,
 	ModalKey,
 	AppliedThemeOption,
 	TabOptions,
+	INodeUi,
+	NodeCreatorOpenSource,
 } from '@/Interface';
 import { defineStore } from 'pinia';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { applyThemeToBody, getThemeOverride, isValidTheme } from './ui.utils';
 import { computed, ref } from 'vue';
 import type { IMenuItem } from '@n8n/design-system';
@@ -93,8 +104,8 @@ import { useLocalStorage, useMediaQuery } from '@vueuse/core';
 import type { EventBus } from '@n8n/utils/event-bus';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import identity from 'lodash/identity';
-import * as modalRegistry from '@/app/moduleInitializer/modalRegistry';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { modalRegistry } from '@n8n/frontend-module-sdk';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 
 let savedTheme: ThemeOption = 'system';
 
@@ -107,6 +118,22 @@ try {
 } catch (e) {}
 
 type UiStore = ReturnType<typeof useUIStore>;
+
+/** State a modal key resolves to while it is not registered. */
+const CLOSED_MODAL_STATE: ModalState = Object.freeze({ open: false });
+
+/**
+ * Read-only view of `source` in which an unknown key reads as `fallback` instead
+ * of `undefined`. Modals register at different points in the boot sequence (shell
+ * keys eagerly, module keys post-login), so a reader can legitimately run before
+ * its key exists — it should see a closed modal, not throw.
+ */
+function withFallback<T>(source: Record<string, T>, fallback: T): Record<string, T> {
+	return new Proxy(source, {
+		get: (target, key) =>
+			typeof key === 'string' ? (target[key] ?? fallback) : Reflect.get(target, key),
+	});
+}
 
 export const useUIStore = defineStore(STORES.UI, () => {
 	const telemetry = useTelemetry();
@@ -159,9 +186,17 @@ export const useUIStore = defineStore(STORES.UI, () => {
 				WORKFLOW_DESCRIPTION_MODAL_KEY,
 				WORKFLOW_PUBLISH_MODAL_KEY,
 				WORKFLOW_HISTORY_PUBLISH_MODAL_KEY,
+				WORKFLOW_HISTORY_DIFF_MODAL_KEY,
 				WORKFLOW_HISTORY_VERSION_UNPUBLISH,
 				WORKFLOW_HISTORY_NAME_VERSION_MODAL_KEY,
 				CREDENTIAL_RESOLVER_EDIT_MODAL_KEY,
+				AI_BUILDER_DIFF_MODAL_KEY,
+				INSTANCE_AI_CREDENTIAL_SETUP_MODAL_KEY,
+				INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY,
+				AI_GATEWAY_TOP_UP_MODAL_KEY,
+				AGENT_CONFIRMATION_MODAL_KEY,
+				TRIAL_INTRO_MODAL_KEY,
+				MIGRATE_WORKFLOW_MODAL_KEY,
 			].map((modalKey) => [modalKey, { open: false }]),
 		),
 		[DELETE_USER_MODAL_KEY]: {
@@ -195,6 +230,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			mode: '',
 			activeId: null,
 			showAuthSelector: false,
+			closeOnSave: false,
 		} as ModalState,
 		[DELETE_FOLDER_MODAL_KEY]: {
 			open: false,
@@ -240,6 +276,10 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			open: false,
 			data: {},
 		},
+		[ADD_EXECUTION_TO_DATASET_MODAL_KEY]: {
+			open: false,
+			data: {},
+		},
 		[IMPORT_WORKFLOW_URL_MODAL_KEY]: {
 			open: false,
 			data: {
@@ -273,14 +313,19 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			write: (v) => String(v),
 		},
 	});
+	const sidebarWidth = useLocalStorage(LOCAL_STORAGE_SIDEBAR_WIDTH, 200);
 	const currentView = ref<string>('');
 	const stateIsDirty = ref<boolean>(false);
+	// This tracks only structural changes without metadata (name or tags)
+	const hasUnsavedWorkflowChanges = ref<boolean>(false);
 	const dirtyStateSetCount = ref<number>(0);
 	const lastSelectedNode = ref<string | null>(null);
 	const nodeViewOffsetPosition = ref<[number, number]>([0, 0]);
 	const nodeViewInitialized = ref<boolean>(false);
 	const addFirstStepOnLoad = ref<boolean>(false);
-	const pendingNotificationsForViews = ref<{ [key in VIEWS]?: NotificationOptions[] }>({});
+	// Optional source for the auto-opened node creator (e.g. opened from Instance
+	// AI), so the 'User opened nodes panel' event is attributed to its origin.
+	const addFirstStepOnLoadSource = ref<NodeCreatorOpenSource>();
 	const processingExecutionResults = ref<boolean>(false);
 	const isBlankRedirect = ref<boolean>(false);
 
@@ -324,7 +369,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const lastCancelledConnectionPosition = ref<XYPosition | undefined>();
 
 	const settingsStore = useSettingsStore();
-	const workflowsStore = useWorkflowsStore();
 
 	const isDarkThemePreferred = useMediaQuery('(prefers-color-scheme: dark)');
 	const preferredSystemTheme = computed<AppliedThemeOption>(() =>
@@ -393,19 +437,21 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		} as const;
 	});
 
-	const lastInteractedWithNode = computed(() => {
-		if (lastInteractedWithNodeId.value) {
-			return workflowsStore.getNodeById(lastInteractedWithNodeId.value);
-		}
-
-		return null;
-	});
+	/**
+	 * Modal state by key, for reading. `modalsById` remains the writable state;
+	 * this is the accessor components should read through, because it tolerates a
+	 * key that is not registered.
+	 */
+	const modalStateById = computed(() => withFallback(modalsById.value, CLOSED_MODAL_STATE));
 
 	const isModalActiveById = computed(() =>
-		Object.keys(modalsById.value).reduce((acc: { [key: string]: boolean }, name) => {
-			acc[name] = name === modalStack.value[0];
-			return acc;
-		}, {}),
+		withFallback(
+			Object.keys(modalsById.value).reduce((acc: { [key: string]: boolean }, name) => {
+				acc[name] = name === modalStack.value[0];
+				return acc;
+			}, {}),
+			false,
+		),
 	);
 
 	const activeModals = computed(() => modalStack.value.map((modalName) => modalName));
@@ -511,15 +557,61 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		openModal(DELETE_USER_MODAL_KEY);
 	};
 
-	const openExistingCredential = (id: string) => {
+	const openExistingCredential = (
+		id: string,
+		options: {
+			hideAskAssistant?: boolean;
+			appendToBody?: boolean;
+			instanceAiCredentialHelp?: NewCredentialsModal['instanceAiCredentialHelp'];
+		} = {},
+	) => {
 		setActiveId(CREDENTIAL_EDIT_MODAL_KEY, id);
 		setMode(CREDENTIAL_EDIT_MODAL_KEY, 'edit');
+		modalsById.value[CREDENTIAL_EDIT_MODAL_KEY] = {
+			...modalsById.value[CREDENTIAL_EDIT_MODAL_KEY],
+			projectId: undefined,
+			contextNode: undefined,
+			closeOnSave: false,
+			hideAskAssistant: options.hideAskAssistant,
+			appendToBody: options.appendToBody,
+			instanceAiCredentialHelp: options.instanceAiCredentialHelp,
+		} as NewCredentialsModal;
 		openModal(CREDENTIAL_EDIT_MODAL_KEY);
 	};
 
-	const openNewCredential = (type: string, showAuthOptions = false) => {
+	const openNewCredential = (
+		type: string,
+		showAuthOptions = false,
+		forceManualMode = false,
+		projectId?: string,
+		suggestedName?: string,
+		nodeName?: string,
+		contextNode?: INodeUi,
+		options: {
+			hideAskAssistant?: boolean;
+			appendToBody?: boolean;
+			closeOnSave?: boolean;
+			instanceAiCredentialHelp?: NewCredentialsModal['instanceAiCredentialHelp'];
+			usageScope?: NewCredentialsModal['usageScope'];
+			credentialSetupHint?: NewCredentialsModal['credentialSetupHint'];
+		} = {},
+	) => {
 		setActiveId(CREDENTIAL_EDIT_MODAL_KEY, type);
 		setShowAuthSelector(CREDENTIAL_EDIT_MODAL_KEY, showAuthOptions);
+		modalsById.value[CREDENTIAL_EDIT_MODAL_KEY] = {
+			...modalsById.value[CREDENTIAL_EDIT_MODAL_KEY],
+			forceManualMode,
+			closeOnSave: options.closeOnSave ?? false,
+			projectId,
+			suggestedName,
+			nodeName,
+			contextNode,
+			hideAskAssistant: options.hideAskAssistant,
+			appendToBody: options.appendToBody,
+			instanceAiCredentialHelp: options.instanceAiCredentialHelp,
+			usageScope: options.usageScope,
+			credentialSetupHint: options.credentialSetupHint,
+		} as NewCredentialsModal;
 		setMode(CREDENTIAL_EDIT_MODAL_KEY, 'new');
 		openModal(CREDENTIAL_EDIT_MODAL_KEY);
 	};
@@ -542,7 +634,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 
 	const openDeleteFolderModal = (
 		id: string,
-		workflowListEventBus: EventBus,
+		workflowListEventBus: EventBus<WorkflowListEventMap>,
 		content: { workflowCount: number; subFolderCount: number },
 	) => {
 		setActiveId(DELETE_FOLDER_MODAL_KEY, id);
@@ -558,7 +650,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			sharedWithProjects?: ProjectSharingData[];
 			homeProjectId?: string;
 		},
-		workflowListEventBus: EventBus,
+		workflowListEventBus: EventBus<WorkflowListEventMap>,
 	) => {
 		openModalWithData({
 			name: MOVE_FOLDER_MODAL_KEY,
@@ -581,10 +673,9 @@ export const useUIStore = defineStore(STORES.UI, () => {
 
 	const toggleSidebarMenuCollapse = () => {
 		sidebarMenuCollapsed.value = !sidebarMenuCollapsed.value;
-	};
-
-	const setNotificationsForView = (view: VIEWS, notifications: NotificationOptions[]) => {
-		pendingNotificationsForViews.value[view] = notifications;
+		telemetry.track('User toggled sidebar', {
+			expanded: !sidebarMenuCollapsed.value,
+		});
 	};
 
 	function resetLastInteractedWith() {
@@ -617,13 +708,17 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		processingExecutionResults.value = value;
 	};
 
-	const markStateDirty = () => {
+	const markStateDirty = (type: 'workflow' | 'metadata' = 'workflow') => {
 		dirtyStateSetCount.value++;
 		stateIsDirty.value = true;
+		if (type === 'workflow') {
+			hasUnsavedWorkflowChanges.value = true;
+		}
 	};
 
 	const markStateClean = () => {
 		stateIsDirty.value = false;
+		hasUnsavedWorkflowChanges.value = false;
 	};
 
 	/**
@@ -686,23 +781,25 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		headerHeight,
 		dirtyStateSetCount: computed(() => dirtyStateSetCount.value),
 		stateIsDirty: computed(() => stateIsDirty.value),
+		hasUnsavedWorkflowChanges: computed(() => hasUnsavedWorkflowChanges.value),
 		isBlankRedirect,
 		activeCredentialType,
 		lastSelectedNode,
 		lastInteractedWithNodeConnection,
 		lastInteractedWithNodeHandle,
 		lastInteractedWithNodeId,
-		lastInteractedWithNode,
 		lastCancelledConnectionPosition,
 		nodeViewOffsetPosition,
 		nodeViewInitialized,
 		addFirstStepOnLoad,
+		addFirstStepOnLoadSource,
 		sidebarMenuCollapsed,
+		sidebarWidth,
 		theme: computed(() => theme.value),
 		modalsById,
+		modalStateById,
 		currentView,
 		isAnyModalOpen,
-		pendingNotificationsForViews,
 		activeModals,
 		isProcessingExecutionResults,
 		setTheme,
@@ -718,7 +815,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		addActiveAction,
 		removeActiveAction,
 		toggleSidebarMenuCollapse,
-		setNotificationsForView,
 		resetLastInteractedWith,
 		setProcessingExecutionResults,
 		markStateDirty,

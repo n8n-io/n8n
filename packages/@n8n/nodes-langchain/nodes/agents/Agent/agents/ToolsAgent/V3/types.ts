@@ -16,11 +16,26 @@ export type IntermediateStep = {
 	observation?: string;
 };
 
+export type TracingMetadataEntry = {
+	key: string;
+	type?: 'stringValue' | 'numberValue' | 'booleanValue' | 'arrayValue' | 'objectValue';
+	stringValue?: string;
+	numberValue?: string;
+	booleanValue?: string;
+	arrayValue?: string;
+	objectValue?: string;
+	value?: unknown; // For backwards compatibility
+};
+
 export type AgentOptions = {
 	systemMessage?: string;
 	maxIterations?: number;
 	returnIntermediateSteps?: boolean;
 	passthroughBinaryImages?: boolean;
+	passthroughBinaryPdfs?: boolean;
 	enableStreaming?: boolean;
 	maxTokensFromMemory?: number;
+	tracingMetadata?: {
+		values?: TracingMetadataEntry[];
+	};
 };

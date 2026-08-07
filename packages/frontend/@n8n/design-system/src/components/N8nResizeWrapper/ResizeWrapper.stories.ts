@@ -11,8 +11,14 @@ interface ResizeData extends ActionOptions {
 }
 
 export default {
-	title: 'Atoms/ResizeWrapper',
+	title: 'Core/ResizeWrapper',
 	component: N8nResizeWrapper,
+
+	parameters: {
+		docs: {
+			description: { component: 'A wrapper that adds drag-resize handles to enclosed content.' },
+		},
+	},
 };
 
 const methods = {
