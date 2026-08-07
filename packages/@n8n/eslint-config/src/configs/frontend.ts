@@ -2,6 +2,7 @@ import { globalIgnores } from 'eslint/config';
 import tseslint from 'typescript-eslint';
 import VuePlugin from 'eslint-plugin-vue';
 import eslintConfigPrettier from 'eslint-config-prettier/flat';
+import { configs as designSystemConfigs } from '@n8n/eslint-plugin-design-system';
 import globals from 'globals';
 import { baseConfig } from './base.js';
 
@@ -13,6 +14,7 @@ export const frontendConfig = tseslint.config(
 	globalIgnores(['**/*.js', '**/*.d.ts', 'vite.config.ts', '**/*.ts.snap']),
 	baseConfig,
 	VuePlugin.configs['flat/recommended'],
+	designSystemConfigs.recommended,
 	{
 		rules: {
 			'no-console': 'warn',
