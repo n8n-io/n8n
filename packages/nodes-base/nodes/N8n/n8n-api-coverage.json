@@ -5,12 +5,9 @@
 			"status": "covered",
 			"nodeOperation": "audit:generate"
 		},
-<<<<<<< HEAD
 		"GET /roles": {
 			"status": "gap"
 		},
-=======
->>>>>>> master
 		"POST /roles": {
 			"status": "gap"
 		},
