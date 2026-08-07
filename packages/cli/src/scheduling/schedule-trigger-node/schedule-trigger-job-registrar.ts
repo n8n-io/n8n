@@ -26,11 +26,12 @@ interface CollectedSchedule {
 }
 
 /**
- * One node's collected rules and the misfire policy read alongside them, so both
- * are written and removed as one entry.
+ * One node's collected rules with the misfire policy and grace period read
+ * alongside them, so all three are written and removed as one entry.
  */
 interface PendingNode {
 	misfirePolicy: ScheduledJobMisfirePolicy;
+	misfireGraceSeconds: number | undefined;
 	rules: CollectedSchedule[];
 }
 
@@ -170,6 +171,7 @@ export class ScheduleTriggerJobRegistrar {
 				const collected: CollectedSchedule[] = [];
 				pending.set(pendingKey(workflow.id, node.id), {
 					misfirePolicy: resolveMisfirePolicy(node),
+					misfireGraceSeconds: resolveMisfireGraceSeconds(node, workflow.id, this.logger),
 					rules: collected,
 				});
 
@@ -218,7 +220,13 @@ export class ScheduleTriggerJobRegistrar {
 				const entry = pending.get(key);
 				if (entry !== undefined) {
 					pending.delete(key);
-					await this.provisionCollected(workflowId, nodeId, entry.rules, entry.misfirePolicy);
+					await this.provisionCollected(
+						workflowId,
+						nodeId,
+						entry.rules,
+						entry.misfirePolicy,
+						entry.misfireGraceSeconds,
+					);
 				}
 			},
 
@@ -301,6 +309,7 @@ export class ScheduleTriggerJobRegistrar {
 		nodeId: string,
 		collected: CollectedSchedule[],
 		misfirePolicy: ScheduledJobMisfirePolicy,
+		misfireGraceSeconds: number | undefined,
 	): Promise<void> {
 		const seen = new Map<string, number>();
 		const desired = collected.map(({ schedule, firstRunAt }) => {
@@ -322,6 +331,7 @@ export class ScheduleTriggerJobRegistrar {
 			{ ...payload },
 			desired,
 			misfirePolicy,
+			misfireGraceSeconds,
 		);
 
 		this.logger.debug('Provisioned durable schedules for trigger node', {
@@ -424,4 +434,40 @@ function resolveMisfirePolicy(node: INode): ScheduledJobMisfirePolicy {
 	return node.parameters?.misfirePolicy === ScheduledJobMisfirePolicy.Coalesce
 		? ScheduledJobMisfirePolicy.Coalesce
 		: ScheduledJobMisfirePolicy.Skip;
+}
+
+/**
+ * Decides only whether the node states a usable number; the value itself is
+ * left unbounded above one second, since the provisioner is the single place
+ * that clamps it. Absent, `0` and anything that is not a number of at least a
+ * second resolve to `undefined`, leaving the instance setting to apply. The
+ * one-second floor is where the provisioner stops reading a value as stated, so
+ * anything below it warns here rather than being dropped there in silence.
+ */
+function resolveMisfireGraceSeconds(
+	node: INode,
+	workflowId: string,
+	logger: Logger,
+): number | undefined {
+	const requested = node.parameters?.misfireGraceSeconds;
+	// Only numbers and numeric strings are read as a value; coercing anything
+	// else would turn `true` into a grace of one second.
+	const isNumberLike = typeof requested === 'number' || typeof requested === 'string';
+	const numeric = isNumberLike ? Number(requested) : Number.NaN;
+	const stated = Number.isFinite(numeric) && numeric >= 1 ? numeric : undefined;
+
+	// A blank string coerces to zero but states nothing, so it is unusable
+	// rather than the sentinel. Everything else is judged on the coerced value,
+	// so a stored `"0"` inherits as quietly as a stored `0`.
+	const isBlank = typeof requested === 'string' && requested.trim() === '';
+	const inherits = requested === undefined || (numeric === 0 && !isBlank);
+
+	if (stated === undefined && !inherits) {
+		logger.warn(
+			'Schedule trigger node has an unusable misfire grace period; the instance setting applies',
+			{ workflowId, nodeId: node.id },
+		);
+	}
+
+	return stated;
 }
