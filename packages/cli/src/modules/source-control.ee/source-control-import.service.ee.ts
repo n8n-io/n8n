@@ -55,6 +55,7 @@ import { TagService } from '@/services/tag.service';
 import { assertNever } from '@/utils';
 import { validateWorkflowNodeGroups, sanitizeNodeGroupDescriptions } from '@/workflow-helpers';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
+import { WorkflowMutationHooksProxy } from '@/workflows/workflow-mutation-hooks-proxy.service';
 import { WorkflowPublishGuardProxy } from '@/workflows/workflow-publish-guard-proxy.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
@@ -153,6 +154,7 @@ export class SourceControlImportService {
 		private readonly activeWorkflowManager: ActiveWorkflowManager,
 		private readonly executionPersistence: ExecutionPersistence,
 		private readonly workflowPublishGuard: WorkflowPublishGuardProxy,
+		private readonly workflowMutationHooks: WorkflowMutationHooksProxy,
 	) {
 		this.gitFolder = path.join(instanceSettings.n8nFolder, SOURCE_CONTROL_GIT_FOLDER);
 		this.workflowExportFolder = path.join(this.gitFolder, SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER);
@@ -848,6 +850,12 @@ export class SourceControlImportService {
 
 		this.logger.debug(`Updating workflow id ${id ?? 'new'}`);
 
+		// The upsert below writes `isArchived` directly instead of going through
+		// `WorkflowService.archive()`, so detect the transition to run its
+		// side effects (e.g. closing open review requests) ourselves.
+		const archivedByPull =
+			!!existingWorkflow && !existingWorkflow.isArchived && !!importedWorkflow.isArchived;
+
 		const upsertResult = await this.workflowRepository.upsert(
 			{
 				...importedWorkflow,
@@ -859,6 +867,10 @@ export class SourceControlImportService {
 			throw new UnexpectedError('Failed to upsert workflow', {
 				extra: { workflowId: id ?? 'new' },
 			});
+		}
+
+		if (archivedByPull) {
+			await this.workflowMutationHooks.afterWorkflowArchived(id);
 		}
 
 		try {
@@ -1839,15 +1851,18 @@ export class SourceControlImportService {
 	 * pulling user holds `workflow:delete` on, and the pull already ran it for
 	 * those (see `deleteWorkflowsNotInWorkfolder`). Any workflow still standing
 	 * was skipped by that permission check, yet the FK cascade below deletes it
-	 * regardless — so we do the physical cleanup directly beforehand. Deletion
+	 * regardless — so we do the physical cleanup directly beforehand. The
+	 * `beforeWorkflowDeleted` mutation hook fires here so modules can run their
+	 * pre-delete side effects (e.g. closing open review requests), but external
 	 * hooks (`workflow.delete`/`workflow.afterDelete`) and the `workflow-deleted`
-	 * event don't fire for these workflows — a pre-existing gap for any
-	 * cascade-deleted workflow.
+	 * event still don't fire — a pre-existing gap for any cascade-deleted
+	 * workflow.
 	 *
 	 * REVIEW(question): should we instead extract the permission-free part of
 	 * `WorkflowService.delete` (deactivate + drain + delete row + hooks/events)
-	 * into an internal method and call it here? That would restore hook/event
-	 * parity, at the cost of refactoring a hot service for this edge path.
+	 * into an internal method and call it here? That would restore full
+	 * hook/event parity, at the cost of refactoring a hot service for this
+	 * edge path.
 	 */
 	private async deactivateWorkflowsAndHardDeleteExecutions(workflowIds: string[]) {
 		for (const workflowId of workflowIds) {
@@ -1856,6 +1871,9 @@ export class SourceControlImportService {
 				where: { id: workflowId },
 			});
 			if (!workflow) continue;
+
+			// Before trigger teardown, so an abort leaves the workflow untouched.
+			await this.workflowMutationHooks.beforeWorkflowDeleted(workflow.id);
 
 			if (workflow.active) {
 				await this.activeWorkflowManager.remove(workflow.id);
