@@ -2,8 +2,7 @@
 import type { Editor } from '@tiptap/core';
 import { computed } from 'vue';
 
-import { t } from '@n8n/design-system/locale';
-
+import { t } from '../../locale';
 import N8nButton from '../N8nButton';
 import { N8nDropdownMenu, type DropdownMenuItemProps } from '../N8nDropdownMenu';
 import N8nIcon from '../N8nIcon';

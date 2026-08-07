@@ -8,7 +8,7 @@ import { VIEWS } from '@/app/constants';
 import type { PermissionsRecord } from '@n8n/permissions';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { checkExhaustive } from '@/app/utils/typeGuards';
-import type { IconColor } from '@n8n/design-system/types/icon';
+import type { IconColor } from '@n8n/design-system';
 import type { ExecutionStatus, ExecutionSummary } from 'n8n-workflow';
 import { WAIT_INDEFINITELY } from 'n8n-workflow';
 import { computed, ref, useCssModule } from 'vue';

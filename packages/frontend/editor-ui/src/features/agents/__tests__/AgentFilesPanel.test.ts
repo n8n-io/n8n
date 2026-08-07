@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
-import { n8nHtml } from '@n8n/design-system/directives';
+import { n8nHtml } from '@n8n/design-system';
 import type { AgentFileDto } from '@n8n/api-types';
 
 import AgentFilesPanel from '../components/AgentFilesPanel.vue';

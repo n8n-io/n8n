@@ -69,7 +69,31 @@ import type {
 } from '@/features/core/folders/folders.types';
 import type { WorkflowHistory } from '@n8n/rest-api-client/api/workflowHistory';
 
-export * from '@n8n/design-system/types';
+// Enumerated rather than `export *` from the package root: the root also exports
+// every component, so a wildcard here would pull the whole library into the module
+// graph of every file that imports from `@/Interface`. These are the design-system
+// types actually consumed through this module.
+export type {
+	ActionDropdownItem,
+	BinaryMetadata,
+	ButtonSize,
+	DatatableColumn,
+	Direction,
+	FormFieldValueUpdate,
+	FormValues,
+	IFormBoxConfig,
+	IFormInput,
+	IFormInputs,
+	IMenuItem,
+	InputAutocompletePropType,
+	InputSize,
+	KeyboardShortcut,
+	ResizeData,
+	Rule,
+	RuleGroup,
+	TabOptions,
+	UserAction,
+} from '@n8n/design-system';
 
 declare global {
 	interface Window {

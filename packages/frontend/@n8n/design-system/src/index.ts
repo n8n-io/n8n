@@ -11,6 +11,7 @@ export { IconBodyLoaderKey, useInjectIconBodyLoader } from './composables/useIco
 export type { IconBodyLoader } from './composables/useIconBodyLoader';
 export { useMessage } from './composables/useMessage';
 export type { MessageBoxConfirmResult } from './composables/useMessage';
+export { useProvideTooltipAppendTo } from './composables/useTooltipAppendTo';
 export { default as N8nSelect2 } from './v2/components/Select/Select.vue';
 export { default as N8nSelect2Item } from './v2/components/Select/SelectItem.vue';
 export type * from './v2/components/Select/Select.types';
