@@ -8,7 +8,6 @@ import type {
 } from '@n8n/agents/sandbox';
 import type { Logger } from '@n8n/backend-common';
 import type { AgentsConfig } from '@n8n/config';
-import type { DbLockService, OperationContext } from '@n8n/db';
 import type { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
 import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
@@ -19,14 +18,12 @@ import type { SandboxSettingsService } from '../../../services/sandbox-settings.
 import type { AgentKnowledgeFileStore } from '../agent-knowledge-file-store';
 import type { Agent } from '../entities/agent.entity';
 import type { AgentFile } from '../entities/agent-file.entity';
-import type { AgentKnowledgeSandbox } from '../entities/agent-knowledge-sandbox.entity';
 import { getAgentKnowledgePaths } from '../agent-knowledge-storage';
 import {
 	AGENT_KNOWLEDGE_SANDBOX_NAME_PREFIX,
 	AgentKnowledgeSandboxService,
 } from '../agent-knowledge-sandbox.service';
 import type { AgentFileRepository } from '../repositories/agent-file.repository';
-import type { AgentKnowledgeSandboxRepository } from '../repositories/agent-knowledge-sandbox.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
 
 const { createSandboxMock, createFilesystemMock } = vi.hoisted(() => ({
@@ -105,64 +102,6 @@ function makeSandboxSettingsService(
 	return service;
 }
 
-function makeDbLockService(): Mocked<DbLockService> {
-	const service = mock<DbLockService>();
-	service.withLockContext.mockImplementation(
-		async (_lockId, fn) => await fn({} as OperationContext),
-	);
-	return service;
-}
-
-function makeSerialDbLockService(): Mocked<DbLockService> {
-	const service = mock<DbLockService>();
-	let tail = Promise.resolve();
-	service.withLockContext.mockImplementation(async (_lockId, fn) => {
-		const previous = tail;
-		let release!: () => void;
-		tail = new Promise<void>((resolve) => {
-			release = resolve;
-		});
-		await previous;
-		try {
-			return await fn({} as OperationContext);
-		} finally {
-			release();
-		}
-	});
-	return service;
-}
-
-function makeSandboxRepository(
-	initial: Array<Pick<AgentKnowledgeSandbox, 'agentId' | 'provider' | 'sandboxId'>> = [],
-): Mocked<AgentKnowledgeSandboxRepository> {
-	const repository = mock<AgentKnowledgeSandboxRepository>();
-	const rows = new Map(initial.map((row) => [`${row.agentId}:${row.provider}`, row]));
-	repository.findByAgentAndProvider.mockImplementation(
-		async (requestedAgentId, provider) =>
-			(rows.get(`${requestedAgentId}:${provider}`) as AgentKnowledgeSandbox | undefined) ?? null,
-	);
-	repository.findAllByAgent.mockImplementation(
-		async (requestedAgentId) =>
-			[...rows.values()].filter(
-				(row) => row.agentId === requestedAgentId,
-			) as AgentKnowledgeSandbox[],
-	);
-	repository.upsertSandboxId.mockImplementation(async (requestedAgentId, provider, sandboxId) => {
-		rows.set(`${requestedAgentId}:${provider}`, {
-			agentId: requestedAgentId,
-			provider,
-			sandboxId,
-		});
-	});
-	repository.deleteByAgentProviderAndSandboxId.mockImplementation(
-		async (requestedAgentId, provider, sandboxId) => {
-			const key = `${requestedAgentId}:${provider}`;
-			if (rows.get(key)?.sandboxId === sandboxId) rows.delete(key);
-		},
-	);
-	return repository;
-}
-
 function makeService({
 	configOverrides = {},
 	logger = mock<Logger>(),
@@ -172,8 +111,6 @@ function makeService({
 	agentRepository = makeAgentRepository(),
 	agentKnowledgeFileStore = makeKnowledgeFileStore(),
 	sandboxSettingsService = makeSandboxSettingsService(),
-	dbLockService = makeDbLockService(),
-	agentKnowledgeSandboxRepository = makeSandboxRepository(),
 }: {
 	configOverrides?: Partial<AgentsConfig>;
 	logger?: Logger;
@@ -183,8 +120,6 @@ function makeService({
 	agentRepository?: AgentRepository;
 	agentKnowledgeFileStore?: AgentKnowledgeFileStore;
 	sandboxSettingsService?: SandboxSettingsService;
-	dbLockService?: DbLockService;
-	agentKnowledgeSandboxRepository?: AgentKnowledgeSandboxRepository;
 } = {}): AgentKnowledgeSandboxService {
 	return new AgentKnowledgeSandboxService(
 		{
@@ -202,8 +137,6 @@ function makeService({
 		agentRepository,
 		agentKnowledgeFileStore,
 		sandboxSettingsService,
-		dbLockService,
-		agentKnowledgeSandboxRepository,
 	);
 }
 
@@ -272,10 +205,9 @@ describe('AgentKnowledgeSandboxService', () => {
 		createFilesystemMock.mockReturnValue(filesystem);
 	});
 
-	it('creates, starts, and persists a deterministic direct-mode sandbox', async () => {
+	it('creates and starts a deterministic direct-mode Daytona sandbox', async () => {
 		const aiService = makeAiService();
 		const sandboxSettingsService = makeSandboxSettingsService();
-		const repository = makeSandboxRepository();
 		const service = makeService({
 			configOverrides: {
 				sandboxSnapshot: 'n8n/agent-knowledge:1.2.3',
@@ -283,7 +215,6 @@ describe('AgentKnowledgeSandboxService', () => {
 			},
 			aiService,
 			sandboxSettingsService,
-			agentKnowledgeSandboxRepository: repository,
 		});
 		const expectedName = buildExpectedSandboxName();
 
@@ -315,9 +246,6 @@ describe('AgentKnowledgeSandboxService', () => {
 		);
 		expect(sandbox._start).toHaveBeenCalled();
 		expect(createFilesystemMock).toHaveBeenCalledWith(sandbox);
-		await expect(repository.findByAgentAndProvider(agentId, 'daytona', {})).resolves.toMatchObject({
-			sandboxId: 'sandbox-id',
-		});
 	});
 
 	it('single-flights concurrent acquisition for the same project and agent', async () => {
@@ -336,40 +264,24 @@ describe('AgentKnowledgeSandboxService', () => {
 		await Promise.all([first, second]);
 	});
 
-	it.each([
-		{
-			name: 'new sandbox',
-			persistedSandboxId: undefined,
-			startedSandboxId: 'new-sandbox',
-			expectedDestroyCalls: 1,
-		},
-		{
-			name: 'reconnected sandbox',
-			persistedSandboxId: 'persisted-sandbox',
-			startedSandboxId: 'persisted-sandbox',
-			expectedDestroyCalls: 0,
-		},
-	])(
-		'preserves the persistence error and cleans up only an unpersisted $name',
-		async ({ persistedSandboxId, startedSandboxId, expectedDestroyCalls }) => {
-			const repository = makeSandboxRepository(
-				persistedSandboxId
-					? [{ agentId, provider: 'n8n-sandbox', sandboxId: persistedSandboxId }]
-					: [],
-			);
-			const persistenceError = new Error('sandbox persistence failed');
-			repository.upsertSandboxId.mockRejectedValueOnce(persistenceError);
-			const startedSandbox = makeSandbox('n8n-sandbox', startedSandboxId);
-			createSandboxMock.mockResolvedValue(startedSandbox);
-			const service = makeService({
-				sandboxSettingsService: makeSandboxSettingsService('n8n-sandbox'),
-				agentKnowledgeSandboxRepository: repository,
-			});
+	it('uses a stable UUID for the n8n sandbox', async () => {
+		const expectedId = 'eaa9416e-fd18-5dd5-bb92-5e8fc51eb5d0';
+		const service = makeService({
+			sandboxSettingsService: makeSandboxSettingsService('n8n-sandbox'),
+		});
 
-			await expect(service.warmSandbox(projectId, agentId)).rejects.toBe(persistenceError);
-			expect(startedSandbox.destroy).toHaveBeenCalledTimes(expectedDestroyCalls);
-		},
-	);
+		await service.warmSandbox(projectId, agentId);
+
+		expect(createSandboxMock).toHaveBeenCalledWith(
+			expect.objectContaining({
+				provider: 'n8n-sandbox',
+				id: expectedId,
+				serviceUrl: 'https://sandbox.example',
+				apiKey: 'sandbox-key',
+			}),
+			expect.anything(),
+		);
+	});
 
 	it('reports how to configure a missing n8n sandbox service URL', async () => {
 		const settingsService = makeSandboxSettingsService('n8n-sandbox');
@@ -380,47 +292,6 @@ describe('AgentKnowledgeSandboxService', () => {
 			/N8N_SANDBOX_SERVICE_URL/,
 		);
 		expect(createSandboxMock).not.toHaveBeenCalled();
-	});
-
-	it('serializes first n8n sandbox acquisition across service instances', async () => {
-		const repository = makeSandboxRepository();
-		const lockService = makeSerialDbLockService();
-		const settingsService = makeSandboxSettingsService('n8n-sandbox');
-		const firstSandbox = makeSandbox('n8n-sandbox', 'shared-sandbox');
-		let releaseStart!: () => void;
-		firstSandbox._start.mockImplementation(
-			async () =>
-				await new Promise<void>((resolve) => {
-					releaseStart = resolve;
-				}),
-		);
-		createSandboxMock.mockImplementation(async (config) => {
-			const persistedId = 'id' in config ? config.id : undefined;
-			return persistedId ? makeSandbox('n8n-sandbox', persistedId) : firstSandbox;
-		});
-		const makeProcessService = () =>
-			makeService({
-				sandboxSettingsService: settingsService,
-				dbLockService: lockService,
-				agentKnowledgeSandboxRepository: repository,
-			});
-
-		const first = makeProcessService().warmSandbox(projectId, agentId);
-		await vi.waitFor(() => expect(firstSandbox._start).toHaveBeenCalled());
-		const second = makeProcessService().warmSandbox(projectId, agentId);
-		await Promise.resolve();
-		expect(createSandboxMock).toHaveBeenCalledTimes(1);
-
-		releaseStart();
-		await Promise.all([first, second]);
-
-		expect(createSandboxMock).toHaveBeenCalledTimes(2);
-		expect(createSandboxMock.mock.calls[1][0]).toEqual(
-			expect.objectContaining({ provider: 'n8n-sandbox', id: 'shared-sandbox' }),
-		);
-		await expect(
-			repository.findByAgentAndProvider(agentId, 'n8n-sandbox', {}),
-		).resolves.toMatchObject({ sandboxId: 'shared-sandbox' });
 	});
 
 	it('mints refreshable proxy tokens on demand with project scope', async () => {
@@ -551,62 +422,36 @@ describe('AgentKnowledgeSandboxService', () => {
 	});
 
 	describe('destroySandbox', () => {
-		it('cleans up a persisted Daytona sandbox when the feature is disabled', async () => {
-			const repository = makeSandboxRepository([
-				{ agentId, provider: 'daytona', sandboxId: buildExpectedSandboxName() },
-			]);
-			const service = makeService({
-				configOverrides: { sandboxEnabled: false },
-				agentKnowledgeSandboxRepository: repository,
-			});
+		it('best-effort destroys both provider sandboxes by their deterministic identities', async () => {
+			const daytonaSandbox = makeSandbox('daytona', buildExpectedSandboxName());
+			daytonaSandbox.destroy.mockRejectedValue(new Error('remote unavailable'));
+			const n8nSandbox = makeSandbox('n8n-sandbox', 'eaa9416e-fd18-5dd5-bb92-5e8fc51eb5d0');
+			createSandboxMock.mockImplementation(async (config) =>
+				config.provider === 'daytona' ? daytonaSandbox : n8nSandbox,
+			);
+			const service = makeService({ configOverrides: { sandboxEnabled: false } });
 
 			await service.destroySandbox(projectId, agentId);
 
-			expect(createSandboxMock).toHaveBeenCalledTimes(1);
-			expect(createSandboxMock).toHaveBeenCalledWith(
+			expect(createSandboxMock).toHaveBeenNthCalledWith(
+				1,
 				expect.objectContaining({
+					provider: 'daytona',
 					id: buildExpectedSandboxName(),
 					name: buildExpectedSandboxName(),
 				}),
 				expect.anything(),
 			);
-			expect(sandbox.destroy).toHaveBeenCalled();
-			expect(sandbox._destroy).not.toHaveBeenCalled();
-			await expect(repository.findByAgentAndProvider(agentId, 'daytona', {})).resolves.toBeNull();
-		});
-
-		it('keeps a persisted sandbox row when remote deletion fails', async () => {
-			const repository = makeSandboxRepository([
-				{ agentId, provider: 'n8n-sandbox', sandboxId: 'persisted-sandbox' },
-			]);
-			const persistedSandbox = makeSandbox('n8n-sandbox', 'persisted-sandbox');
-			persistedSandbox.destroy.mockRejectedValue(new Error('remote unavailable'));
-			createSandboxMock.mockResolvedValueOnce(persistedSandbox);
-			const service = makeService({ agentKnowledgeSandboxRepository: repository });
-
-			await service.destroySandbox(projectId, agentId);
-
-			await expect(
-				repository.findByAgentAndProvider(agentId, 'n8n-sandbox', {}),
-			).resolves.toMatchObject({ sandboxId: 'persisted-sandbox' });
-		});
-
-		it('keeps a replacement sandbox row created during remote deletion', async () => {
-			const repository = makeSandboxRepository([
-				{ agentId, provider: 'n8n-sandbox', sandboxId: 'sandbox-a' },
-			]);
-			const persistedSandbox = makeSandbox('n8n-sandbox', 'sandbox-a');
-			persistedSandbox.destroy.mockImplementation(async () => {
-				await repository.upsertSandboxId(agentId, 'n8n-sandbox', 'sandbox-b', {});
-			});
-			createSandboxMock.mockResolvedValueOnce(persistedSandbox);
-			const service = makeService({ agentKnowledgeSandboxRepository: repository });
-
-			await service.destroySandbox(projectId, agentId);
-
-			await expect(
-				repository.findByAgentAndProvider(agentId, 'n8n-sandbox', {}),
-			).resolves.toMatchObject({ sandboxId: 'sandbox-b' });
+			expect(createSandboxMock).toHaveBeenNthCalledWith(
+				2,
+				expect.objectContaining({
+					provider: 'n8n-sandbox',
+					id: 'eaa9416e-fd18-5dd5-bb92-5e8fc51eb5d0',
+				}),
+				expect.anything(),
+			);
+			expect(daytonaSandbox.destroy).toHaveBeenCalled();
+			expect(n8nSandbox.destroy).toHaveBeenCalled();
 		});
 	});
 
@@ -711,12 +556,10 @@ describe('AgentKnowledgeSandboxService', () => {
 			expect(searchCall?.[0]).toContain(`cd '\\''${n8nKnowledgePaths.filesDir}'\\''`);
 		});
 
-		it('resyncs the mirror when a stale n8n sandbox is replaced', async () => {
-			const repository = makeSandboxRepository([
-				{ agentId, provider: 'n8n-sandbox', sandboxId: 'stale-sandbox' },
-			]);
-			const staleSandbox = makeSandbox('n8n-sandbox', 'stale-sandbox');
-			const replacementSandbox = makeSandbox('n8n-sandbox', 'replacement-sandbox');
+		it('resyncs the mirror when an n8n sandbox is recreated under the same ID', async () => {
+			const deterministicId = 'eaa9416e-fd18-5dd5-bb92-5e8fc51eb5d0';
+			const staleSandbox = makeSandbox('n8n-sandbox', deterministicId);
+			const replacementSandbox = makeSandbox('n8n-sandbox', deterministicId);
 			const staleFilesystem = makeFilesystem();
 			const replacementFilesystem = makeFilesystem();
 			createSandboxMock
@@ -733,7 +576,6 @@ describe('AgentKnowledgeSandboxService', () => {
 				agentFileRepository,
 				agentRepository,
 				sandboxSettingsService: makeSandboxSettingsService('n8n-sandbox'),
-				agentKnowledgeSandboxRepository: repository,
 			});
 
 			await service.searchKnowledge(projectId, agentId, { pattern: 'first' });
@@ -741,9 +583,6 @@ describe('AgentKnowledgeSandboxService', () => {
 
 			expect(staleFilesystem.writeFile).toHaveBeenCalledOnce();
 			expect(replacementFilesystem.writeFile).toHaveBeenCalledOnce();
-			await expect(
-				repository.findByAgentAndProvider(agentId, 'n8n-sandbox', {}),
-			).resolves.toMatchObject({ sandboxId: 'replacement-sandbox' });
 		});
 
 		it('redacts command stderr before reporting a failed knowledge operation', async () => {

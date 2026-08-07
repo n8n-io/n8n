@@ -60,7 +60,7 @@ export class N8nSandboxServiceSandbox extends BaseSandbox {
 	}
 
 	override async start(): Promise<void> {
-		if (this.sandboxId) {
+		if (!this.options.id && this.sandboxId) {
 			const existing = await this.tryGetExistingSandbox(this.sandboxId);
 			if (existing) {
 				this.createdAt = new Date(existing.createdAt * 1000);
@@ -70,7 +70,7 @@ export class N8nSandboxServiceSandbox extends BaseSandbox {
 
 		const sandbox = await this.createSandbox();
 		this.sandboxId = sandbox.id;
-		this.createdAt = new Date();
+		this.createdAt = new Date(sandbox.createdAt * 1000);
 	}
 
 	override async destroy(): Promise<void> {
@@ -157,11 +157,15 @@ export class N8nSandboxServiceSandbox extends BaseSandbox {
 	}
 
 	private async createSandbox(): Promise<SandboxRecord> {
-		const creation = this.client.createSandbox();
+		const creation = this.options.id
+			? this.client.createSandbox({ id: this.options.id })
+			: this.client.createSandbox();
 		try {
 			return await this.withLifecycleTimeout(creation);
 		} catch (error) {
-			void creation.then(async ({ id }) => await this.client.deleteSandbox(id)).catch(() => {});
+			if (!this.options.id) {
+				void creation.then(async ({ id }) => await this.client.deleteSandbox(id)).catch(() => {});
+			}
 			throw error;
 		}
 	}

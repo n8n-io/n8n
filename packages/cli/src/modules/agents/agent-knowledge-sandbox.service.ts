@@ -12,12 +12,12 @@ import {
 import { Logger } from '@n8n/backend-common';
 import { AgentsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import { DbLock, DbLockService, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import { OperationalError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { createHash } from 'node:crypto';
+import { v5 as uuidv5 } from 'uuid';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -61,13 +61,12 @@ import {
 	type AgentKnowledgePaths,
 	storageFileNameForOriginalFileName,
 } from './agent-knowledge-storage';
-import type { AgentKnowledgeSandbox as AgentKnowledgeSandboxEntity } from './entities/agent-knowledge-sandbox.entity';
 import { AgentFileRepository } from './repositories/agent-file.repository';
-import { AgentKnowledgeSandboxRepository } from './repositories/agent-knowledge-sandbox.repository';
 import { AgentRepository } from './repositories/agent.repository';
 
 export const AGENT_KNOWLEDGE_SANDBOX_NAME_PREFIX = 'agent-';
 
+const AGENT_KNOWLEDGE_SANDBOX_NAMESPACE = '5b5fd8cd-59c1-5914-aabc-cf7257fb46bc';
 const MAX_SANDBOX_ERROR_DETAIL_CHARS = 2_000;
 
 const LABEL_KNOWLEDGE_BASE = 'n8n-agents-knowledgebase';
@@ -116,6 +115,10 @@ function buildSandboxName(scope: {
 	return `${AGENT_KNOWLEDGE_SANDBOX_NAME_PREFIX}${scope.instanceId}-${scope.projectId}-${scope.agentId}`.toLowerCase();
 }
 
+function buildN8nSandboxId(sandboxName: string): string {
+	return uuidv5(sandboxName, AGENT_KNOWLEDGE_SANDBOX_NAMESPACE);
+}
+
 function parseMirrorManifest(output: string): Map<string, string> {
 	const manifest = new Map<string, string>();
 	for (const entry of output.split(/\r?\n/)) {
@@ -135,10 +138,6 @@ function hashMirrorManifest(files: AgentKnowledgeFileReference[]): string {
 	return createHash('sha256')
 		.update(JSON.stringify(files.map(({ file, fileId }) => [fileId, file]).sort()))
 		.digest('hex');
-}
-
-function sandboxLockSubKey(agentId: string, provider: SandboxProvider): number {
-	return createHash('sha256').update(`${agentId}:${provider}`).digest().readInt32BE(0);
 }
 
 function buildScopeLabels(projectId: string, agentId: string): Record<string, string> {
@@ -200,8 +199,6 @@ export class AgentKnowledgeSandboxService {
 		private readonly agentRepository: AgentRepository,
 		private readonly agentKnowledgeFileStore: AgentKnowledgeFileStore,
 		private readonly sandboxSettingsService: SandboxSettingsService,
-		private readonly dbLockService: DbLockService,
-		private readonly agentKnowledgeSandboxRepository: AgentKnowledgeSandboxRepository,
 	) {}
 
 	async warmSandbox(projectId: string, agentId: string): Promise<void> {
@@ -214,43 +211,18 @@ export class AgentKnowledgeSandboxService {
 	 * callers must not have cleanup failures block the parent delete operation.
 	 */
 	async destroySandbox(projectId: string, agentId: string): Promise<void> {
-		let persistedSandboxes: AgentKnowledgeSandboxEntity[];
-		try {
-			persistedSandboxes = await this.agentKnowledgeSandboxRepository.findAllByAgent(agentId, {});
-		} catch (error) {
-			this.logger.warn('Failed to load persisted agent knowledge sandboxes for cleanup', {
-				projectId,
-				agentId,
-				error: sanitizeSandboxErrorDetail(error instanceof Error ? error.message : String(error)),
-			});
-			return;
-		}
+		const sandboxName = buildSandboxName({
+			instanceId: this.instanceSettings.instanceId,
+			projectId,
+			agentId,
+		});
+		const sandboxes = [
+			['daytona', sandboxName],
+			['n8n-sandbox', buildN8nSandboxId(sandboxName)],
+		] as const;
 
-		for (const persisted of persistedSandboxes) {
-			const deleted = await this.tryDestroySandbox(
-				projectId,
-				agentId,
-				persisted.provider,
-				persisted.sandboxId,
-			);
-
-			if (!deleted) continue;
-
-			try {
-				await this.agentKnowledgeSandboxRepository.deleteByAgentProviderAndSandboxId(
-					agentId,
-					persisted.provider,
-					persisted.sandboxId,
-					{},
-				);
-			} catch (error) {
-				this.logger.warn('Failed to remove persisted agent knowledge sandbox after cleanup', {
-					projectId,
-					agentId,
-					provider: persisted.provider,
-					error: sanitizeSandboxErrorDetail(error instanceof Error ? error.message : String(error)),
-				});
-			}
+		for (const [provider, sandboxId] of sandboxes) {
+			await this.tryDestroySandbox(projectId, agentId, provider, sandboxId);
 		}
 	}
 
@@ -259,18 +231,17 @@ export class AgentKnowledgeSandboxService {
 		agentId: string,
 		provider: SandboxProvider,
 		sandboxId: string,
-	): Promise<boolean> {
+	): Promise<void> {
 		try {
 			const config =
 				provider === 'daytona'
 					? await this.resolveDaytonaSandboxConfig(projectId, agentId, sandboxId)
-					: await this.resolveN8nSandboxConfig(sandboxId, {});
+					: await this.resolveN8nSandboxConfig(sandboxId);
 			const sandbox = await createSandbox(config, { logger: this.logger });
 			if (!sandbox?.destroy) {
 				throw new OperationalError('Agent knowledge sandbox does not support provider destroy');
 			}
 			await sandbox.destroy();
-			return true;
 		} catch (error) {
 			this.logger.warn('Failed to destroy agent knowledge sandbox', {
 				projectId,
@@ -279,7 +250,6 @@ export class AgentKnowledgeSandboxService {
 				sandboxId,
 				error: sanitizeSandboxErrorDetail(error instanceof Error ? error.message : String(error)),
 			});
-			return false;
 		}
 	}
 
@@ -438,22 +408,24 @@ export class AgentKnowledgeSandboxService {
 
 	/**
 	 * Keeps the sandbox-local knowledge mirror in sync with the DB-derived
-	 * file list before a read/search command runs against it. Short-circuits
-	 * via an in-memory manifest hash so repeated operations with an unchanged
-	 * file set issue no sandbox commands at all.
+	 * file list before a read/search command runs against it. Daytona can
+	 * short-circuit via an in-memory hash because recreated sandboxes receive
+	 * a new ID; n8n sandboxes reuse their deterministic ID and re-read the
+	 * remote manifest to detect recreation.
 	 */
 	private async ensureMirrorSynced(
 		runtime: AgentKnowledgeSandboxRuntime,
 		files: AgentKnowledgeFileReference[],
 	): Promise<void> {
 		const expectedHash = hashMirrorManifest(files);
-		if (this.mirrorManifestHashes.get(runtime.cacheKey) === expectedHash) {
+		const useMemoryCache = runtime.sandbox.provider !== 'n8n-sandbox';
+		if (useMemoryCache && this.mirrorManifestHashes.get(runtime.cacheKey) === expectedHash) {
 			return;
 		}
 
 		let pending = this.pendingMirrorSyncs.get(runtime.cacheKey);
 		if (!pending) {
-			pending = this.syncMirror(runtime, files, expectedHash).finally(() => {
+			pending = this.syncMirror(runtime, files, expectedHash, useMemoryCache).finally(() => {
 				this.pendingMirrorSyncs.delete(runtime.cacheKey);
 			});
 			this.pendingMirrorSyncs.set(runtime.cacheKey, pending);
@@ -465,10 +437,11 @@ export class AgentKnowledgeSandboxService {
 		runtime: AgentKnowledgeSandboxRuntime,
 		files: AgentKnowledgeFileReference[],
 		expectedHash: string,
+		useMemoryCache: boolean,
 	): Promise<void> {
 		// Re-check now that we hold the per-sandbox lock — a concurrent call may
 		// have just finished syncing to the same expected set.
-		if (this.mirrorManifestHashes.get(runtime.cacheKey) === expectedHash) return;
+		if (useMemoryCache && this.mirrorManifestHashes.get(runtime.cacheKey) === expectedHash) return;
 
 		const manifestResult = await this.executeSandboxCommand(
 			runtime.sandbox,
@@ -483,7 +456,7 @@ export class AgentKnowledgeSandboxService {
 		const toDelete = [...present.keys()].filter((name) => !expectedSet.has(name));
 
 		if (toCopy.length === 0 && toDelete.length === 0) {
-			this.mirrorManifestHashes.set(runtime.cacheKey, expectedHash);
+			if (useMemoryCache) this.mirrorManifestHashes.set(runtime.cacheKey, expectedHash);
 			return;
 		}
 
@@ -521,7 +494,9 @@ export class AgentKnowledgeSandboxService {
 		// Cache the hash of what's actually on disk, not `expectedHash`: if a
 		// file failed to load, this mismatches the next `expectedHash` and
 		// forces a retry instead of silently caching a partial mirror as done.
-		this.mirrorManifestHashes.set(runtime.cacheKey, hashMirrorManifest(finalManifestFiles));
+		if (useMemoryCache) {
+			this.mirrorManifestHashes.set(runtime.cacheKey, hashMirrorManifest(finalManifestFiles));
+		}
 	}
 
 	/**
@@ -725,64 +700,11 @@ export class AgentKnowledgeSandboxService {
 			throw new NotFoundError(`Agent "${agentId}" not found`);
 		}
 
-		if (provider === 'daytona') {
-			const config = await this.resolveDaytonaSandboxConfig(projectId, agentId, sandboxName);
-			const runtime = await this.startSandbox(config, projectId, agentId, cacheKey);
-			await this.agentKnowledgeSandboxRepository.upsertSandboxId(
-				agentId,
-				provider,
-				runtime.sandbox.id,
-				{},
-			);
-			return runtime;
-		}
-
-		let unpersistedSandbox: WorkspaceSandbox | undefined;
-		try {
-			return await this.dbLockService.withLockContext(
-				DbLock.AGENT_KNOWLEDGE_SANDBOX,
-				async (ctx) => {
-					const persisted = await this.agentKnowledgeSandboxRepository.findByAgentAndProvider(
-						agentId,
-						provider,
-						ctx,
-					);
-					const config = await this.resolveN8nSandboxConfig(persisted?.sandboxId, ctx);
-					const runtime = await this.startSandbox(config, projectId, agentId, cacheKey);
-					if (runtime.sandbox.id !== persisted?.sandboxId) {
-						unpersistedSandbox = runtime.sandbox;
-					}
-					await this.agentKnowledgeSandboxRepository.upsertSandboxId(
-						agentId,
-						provider,
-						runtime.sandbox.id,
-						ctx,
-					);
-					return runtime;
-				},
-				{ subKey: sandboxLockSubKey(agentId, provider) },
-			);
-		} catch (error) {
-			if (unpersistedSandbox) {
-				try {
-					if (!unpersistedSandbox.destroy) {
-						throw new OperationalError('Agent knowledge sandbox does not support provider destroy');
-					}
-					await unpersistedSandbox.destroy();
-				} catch (cleanupError) {
-					this.logger.warn('Failed to destroy unpersisted agent knowledge sandbox', {
-						projectId,
-						agentId,
-						provider,
-						sandboxId: unpersistedSandbox.id,
-						error: sanitizeSandboxErrorDetail(
-							cleanupError instanceof Error ? cleanupError.message : String(cleanupError),
-						),
-					});
-				}
-			}
-			throw error;
-		}
+		const config =
+			provider === 'daytona'
+				? await this.resolveDaytonaSandboxConfig(projectId, agentId, sandboxName)
+				: await this.resolveN8nSandboxConfig(buildN8nSandboxId(sandboxName));
+		return await this.startSandbox(config, projectId, agentId, cacheKey);
 	}
 
 	private async startSandbox(
@@ -862,11 +784,8 @@ export class AgentKnowledgeSandboxService {
 		};
 	}
 
-	private async resolveN8nSandboxConfig(
-		sandboxId: string | undefined,
-		ctx: OperationContext,
-	): Promise<N8nSandboxConfig> {
-		const { serviceUrl, apiKey } = await this.sandboxSettingsService.resolveN8nSandboxConfig(ctx);
+	private async resolveN8nSandboxConfig(sandboxId: string): Promise<N8nSandboxConfig> {
+		const { serviceUrl, apiKey } = await this.sandboxSettingsService.resolveN8nSandboxConfig();
 		const normalizedServiceUrl = serviceUrl?.trim();
 		if (!normalizedServiceUrl) {
 			throw new OperationalError(
