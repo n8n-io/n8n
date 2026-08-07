@@ -6,6 +6,37 @@ import type { DataEmitter } from './DataEmitter';
 import type { KafkaMessageParser } from './MessageParser';
 import { DEFAULT_ERROR_RETRY_DELAY_MS, withTimeout } from '../../utils';
 
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+export interface ConsumeTopicOptions {
+	topic: string;
+	parseMessage: KafkaMessageParser;
+	/** Starts an execution and reports whether its offsets may advance. */
+	emit: DataEmitter;
+	logger: Logger;
+	/** Messages per execution. Defaults to {@link DEFAULT_BATCH_SIZE}. */
+	batchSize?: number;
+	/** Defaults to {@link DEFAULT_PARTITIONS_CONSUMED_CONCURRENTLY}. */
+	partitionsConsumedConcurrently?: number;
+	/**
+	 * How long to wait before letting a failed chunk be re-delivered. The node
+	 * maps v1's existing "Retry Delay on Error" option onto this; v1 applies it
+	 * only to failed offset resolution, so the parse path was unpaced.
+	 */
+	errorRetryDelay?: number;
+}
+
+export interface KafkaConsumerHandle {
+	/** Disconnects the consumer. ENT-226 verifies this against a real broker. */
+	close: () => Promise<void>;
+}
+
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
 /** Bounds teardown so a hung broker request cannot block deactivation, as in v1. */
 const CLOSE_TIMEOUT_MS = 30_000;
 
@@ -26,39 +57,9 @@ export const DEFAULT_BATCH_SIZE = 1;
  */
 export const DEFAULT_PARTITIONS_CONSUMED_CONCURRENTLY = 1;
 
-export interface ConsumeTopicOptions {
-	topic: string;
-	parseMessage: KafkaMessageParser;
-	/** Starts an execution and reports whether its offsets may advance. */
-	emit: DataEmitter;
-	logger: Logger;
-	/** Messages per execution. Defaults to {@link DEFAULT_BATCH_SIZE}. */
-	batchSize?: number;
-	/** Defaults to {@link DEFAULT_PARTITIONS_CONSUMED_CONCURRENTLY}. */
-	partitionsConsumedConcurrently?: number;
-	/**
-	 * How long to wait before letting a failed chunk be re-delivered. The node
-	 * maps v1's existing "Retry Delay on Error" option onto this; v1 applies it
-	 * only to failed offset resolution, so the parse path was unpaced.
-	 */
-	errorRetryDelay?: number;
-}
-
-/**
- * Resolves a caller-supplied count to a number the loop can rely on. Both uses
- * below feed either a loop increment or a library config key, where `NaN` is
- * worse than a wrong value: it slips past a `Math.max` clamp and past `??`, then
- * silently produces empty chunks or a broken worker count. A node option can
- * reach here as `NaN` from an expression that did not evaluate to a number.
- */
-function countOr(value: number | undefined, fallback: number): number {
-	return Number.isFinite(value) ? Math.max(1, Math.trunc(value as number)) : fallback;
-}
-
-export interface KafkaConsumerHandle {
-	/** Disconnects the consumer. ENT-226 verifies this against a real broker. */
-	close: () => Promise<void>;
-}
+// ---------------------------------------------------------------------------
+// Entry point
+// ---------------------------------------------------------------------------
 
 /**
  * Connects, subscribes, and runs the consume loop.
@@ -177,4 +178,19 @@ export async function consumeTopic(
 			);
 		},
 	};
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Resolves a caller-supplied count to a number the loop can rely on. Both uses
+ * above feed either a loop increment or a library config key, where `NaN` is
+ * worse than a wrong value: it slips past a `Math.max` clamp and past `??`, then
+ * silently produces empty chunks or a broken worker count. A node option can
+ * reach here as `NaN` from an expression that did not evaluate to a number.
+ */
+function countOr(value: number | undefined, fallback: number): number {
+	return Number.isFinite(value) ? Math.max(1, Math.trunc(value as number)) : fallback;
 }
