@@ -1,0 +1,119 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentEvalsSection.test.ts
+  s_9c25df37a9054c::t_0d03ce512667e2 23-25
+  s_9c25df37a9054c::t_99dc1e82041c28 1,3,7-8,19-22,26-67,70-98,101-116,118-123,125-128,131-145,148-151
+  s_9c25df37a9054c::t_7afeb34b3acf4a 146-147,153,155
+packages/frontend/editor-ui/src/features/agents/components/AgentEvalToolCalls.vue
+  s_9c25df37a9054c::t_af190d92d501c0 1-9,11-13,16-20,23-32
+  s_9c25df37a9054c::t_18cee6cea69fbb 10,14-15,21-22
+packages/frontend/editor-ui/src/features/agents/components/AgentEvalResultRow.vue
+  s_9c25df37a9054c::t_aedde7730e162b 174
+  ai_agent 94,240-244
+  s_9c25df37a9054c::t_dd70add26224f7 260-265,267
+  s_9c25df37a9054c::t_d9db102821e614 11
+  s_9c25df37a9054c::t_c69db3cf92a0a0 1-10,12-21,23-81,91-93,95-173,175-239,245-259,266,268-326,328-374,376-389
+  s_9c25df37a9054c::t_51747831dc3557 82-90
+  s_9c25df37a9054c::t_a21123346d698e 22
+  s_9c25df37a9054c::t_86c9e008f94559 327,375
+packages/frontend/editor-ui/src/features/agents/components/AgentEvalResultsPanel.vue
+  s_9c25df37a9054c::t_9af6e40f9077ae 212
+  s_9c25df37a9054c::t_6eff5aabe176d9 95-96,98
+  s_9c25df37a9054c::t_0d318c56e15ec9 12,26,29-34,38
+  s_9c25df37a9054c::t_4bd8eace12e002 1-9,11,13-25,27-28,35-37,39-46,52-62,68-94,97,99-111,114,116-211,213-264
+  s_9c25df37a9054c::t_fe59164795bf8b 112-113,115
+  s_9c25df37a9054c::t_364ac15caa2b09 10
+  s_9c25df37a9054c::t_f1159f078b8976 63-67
+  s_9c25df37a9054c::t_fc22857e3ec5b7 47-51
+packages/frontend/editor-ui/src/features/agents/components/AgentEvalsSection.vue
+  s_9c25df37a9054c::t_fb457636627d3d 3-7,9-11,14-19,22-23,31-63
+  s_9c25df37a9054c::t_e2c01b452be5de 68-94
+packages/@n8n/api-types/src/schemas/agent-evals.schema.ts
+  s_9c25df37a9054c::t_bb62810bf44443 134-140
+packages/cli/src/modules/agent-evals/agent-eval-rating.service.ts
+  s_9c25df37a9054c::t_db3a756a06ee15 156-159
+  s_9c25df37a9054c::t_921397b39f77eb 20-22
+  s_9c25df37a9054c::t_82fd8de6496a58 171,173
+  s_9c25df37a9054c::t_71e6ba51833c4b 2
+packages/frontend/editor-ui/src/features/agents/agentEvals.store.ts
+  s_9c25df37a9054c::t_ecc38cfa8a186a 10-14,16-21,24-25,27-44,56-68
+  s_9c25df37a9054c::t_6f75a0aee31073 7-8
+  s_9c25df37a9054c::t_14778d564c4879 153-245,248-404,463-479,487-501,505,508-513
+  s_9c25df37a9054c::t_6ba5cb84d18920 502-504
+  s_9c25df37a9054c::t_ed56044e20e734 246-247
+  s_9c25df37a9054c::t_3f5e397ef90b4d 94-98
+  s_9c25df37a9054c::t_4c41f14a579fa7 405-462
+  s_9c25df37a9054c::t_93252b722adcb0 45-55
+  s_9c25df37a9054c::t_6e099d372c68af 80-93
+  s_9c25df37a9054c::t_4c9c9fa4416656 15
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_9c25df37a9054c::t_dfe3f699621928 7774-7787
+  s_9c25df37a9054c::t_39de6b207d18bd 7788-7808
+packages/frontend/editor-ui/src/features/agents/utils/agent-eval-review.ts
+  s_9c25df37a9054c::t_248b5fbf03662e 1-142
+packages/frontend/editor-ui/src/features/agents/__tests__/agentEvals.store.test.ts
+  s_9c25df37a9054c::t_739f2e8cb3eddf 68-71,74-130
+  s_9c25df37a9054c::t_0887c65678d07b 72-73
+  s_9c25df37a9054c::t_9ffa3017feb9e0 51-53
+  s_9c25df37a9054c::t_32b55c83e15c7e 2,17,26,37
+  s_9c25df37a9054c::t_396fe072a2bd48 210-304,309-510,615-634
+  s_9c25df37a9054c::t_4c357d0b6673c2 305-308
+  s_9c25df37a9054c::t_f6b09978f7e70c 12-16,18-21,24-25,27-29,35-36,38-40
+  s_9c25df37a9054c::t_188dffd3490b6f 511-614
+  s_9c25df37a9054c::t_d1de6b18be1e97 9
+  s_9c25df37a9054c::t_daa963fce2d46e 5-8,10
+packages/frontend/editor-ui/src/features/agents/utils/__tests__/agent-eval-review.test.ts
+  s_9c25df37a9054c::t_a98e7f6a1f58b2 1-174
+packages/@n8n/api-types/src/index.ts
+  s_9c25df37a9054c::t_253c87a81c3cb7 591-592
+packages/frontend/editor-ui/src/features/agents/agentEvals.types.ts
+  s_9c25df37a9054c::t_880dbc610327d0 5,8-18,21-32
+packages/frontend/editor-ui/src/features/agents/components/AgentEvalVoteButtons.vue
+  s_9c25df37a9054c::t_e47c8de9074a69 69-79
+  s_9c25df37a9054c::t_815c68718a66f0 1-39,42-52,55-68,80-81
+  s_9c25df37a9054c::t_8277f6155989f2 40-41,53-54
+packages/frontend/editor-ui/src/features/agents/utils/agent-eval-tool-calls.ts
+  s_9c25df37a9054c::t_d66501e8dc942e 32
+  s_9c25df37a9054c::t_ce4cd6fdf693c0 54
+  s_9c25df37a9054c::t_7b8eb9569a2ac3 40,49-53
+  s_9c25df37a9054c::t_b61a65ea0c4a04 41-48
+  s_9c25df37a9054c::t_19bdad9a56a170 2-22,28-31,33-39,55-70
+  s_9c25df37a9054c::t_dfa77409879601 1
+  s_9c25df37a9054c::t_131213da34b270 23-27
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentEvalResultsPanel.test.ts
+  s_9c25df37a9054c::t_416db2216b6221 5
+  s_9c25df37a9054c::t_2016db72446f09 160-185
+  s_9c25df37a9054c::t_3eddb4b136507f 1-4,6-48,50-64,67,69-159,186-203
+  s_9c25df37a9054c::t_94e3466f4e5974 65
+  s_9c25df37a9054c::t_a2961cb66b2345 49,68
+  s_9c25df37a9054c::t_675d01d16704b1 66
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderEditorColumn.spec.ts
+  s_9c25df37a9054c::t_2f84e3ed16f029 277-280,283-284
+  s_9c25df37a9054c::t_46a801d2b2eaa8 275-276,281-282
+packages/frontend/editor-ui/src/features/agents/agentEvals.api.ts
+  s_9c25df37a9054c::t_259bcd02f8b1da 50-148
+  s_9c25df37a9054c::t_16b5dfd20697a3 3-8,20,24-25
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentEvalResultRow.test.ts
+  s_9c25df37a9054c::t_36e78235e9df52 108-130
+  s_9c25df37a9054c::t_c6c8a94bf66937 1-107,131-148,150-280
+  s_9c25df37a9054c::t_c666b040344d41 149
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  s_9c25df37a9054c::t_41997f0669e860 267-269
+packages/frontend/editor-ui/src/features/agents/utils/__tests__/agent-eval-tool-calls.test.ts
+  s_9c25df37a9054c::t_55cc5ee64ac8ce 15,21,34,45,57,67,76,86
+  s_9c25df37a9054c::t_23017c2d97f86b 1-14,16-20,22-33,35-44,46-56,58-66,68-75,77-85,87-94
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5474b1fabf53d964f6b285679cf466d3c8fb2802",
+  "prompts": {},
+  "sessions": {
+    "s_9c25df37a9054c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6f128968-9989-4751-bf80-3aa4ad58d755",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}
