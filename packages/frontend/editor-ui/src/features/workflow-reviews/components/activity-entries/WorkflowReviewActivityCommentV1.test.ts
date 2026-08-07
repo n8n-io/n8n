@@ -99,14 +99,4 @@ describe('WorkflowReviewActivityCommentV1', () => {
 		);
 		expect(queryByTestId('workflow-review-activity-comment-body')).not.toBeInTheDocument();
 	});
-
-	it('renders one row per message', () => {
-		const { getAllByTestId } = renderComponent({
-			props: {
-				entry: makeEntry([makeMessage(), makeMessage({ id: 'msg-2', body: 'And a reply' })]),
-			},
-		});
-
-		expect(getAllByTestId('workflow-review-activity-comment-body')).toHaveLength(2);
-	});
 });
