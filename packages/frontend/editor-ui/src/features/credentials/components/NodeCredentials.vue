@@ -1465,6 +1465,14 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 }
 
 .selectContainer {
+	--credential-select-side-padding: var(--spacing--2xs);
+	--credential-select-icon-size: var(--spacing--sm);
+	--credential-select-icon-gap: var(--spacing--3xs);
+	--credential-select-label-padding: calc(
+		var(--credential-select-side-padding) + var(--credential-select-icon-size) +
+			var(--credential-select-icon-gap)
+	);
+
 	position: relative;
 	flex: 1;
 	display: grid;
@@ -1477,6 +1485,14 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 
 	:global(.el-input__prefix-inner > :last-child) {
 		margin-right: var(--spacing--3xs);
+	}
+
+	:global(.el-select .el-input__prefix) {
+		left: var(--credential-select-side-padding);
+	}
+
+	:global(.el-select .el-input.el-input--prefix .el-input__inner) {
+		padding-left: var(--credential-select-label-padding);
 	}
 }
 
@@ -1632,7 +1648,9 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 
 // Non-interactive status pill rendered over the select, like .dynamicIndicator.
 .balanceIndicator {
-	--balance-indicator-offset: calc(26px + 7ch + var(--spacing--2xs));
+	--balance-indicator-offset: calc(
+		var(--credential-select-label-padding) + 7ch + var(--spacing--2xs)
+	);
 
 	display: flex;
 	align-items: center;
@@ -1756,7 +1774,6 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 	--empty-select-label-padding: calc(
 		var(--empty-select-side-padding) + var(--empty-select-icon-size) + var(--empty-select-gap)
 	);
-	--empty-select-label-padding-left: calc(var(--empty-select-label-padding) + var(--spacing--3xs));
 
 	width: fit-content;
 	min-width: 0;
@@ -1768,11 +1785,11 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 		max-width: 100%;
 	}
 
-	:global(.el-input__prefix) {
+	:global(.el-select .el-input__prefix) {
 		left: var(--empty-select-side-padding);
 	}
 
-	:global(.el-input__suffix) {
+	:global(.el-select .el-input__suffix) {
 		right: var(--empty-select-side-padding);
 	}
 
@@ -1780,14 +1797,14 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 		margin-right: var(--empty-select-gap);
 	}
 
-	:global(.el-input__inner) {
+	:global(.el-select .el-input.el-input--prefix .el-input__inner) {
 		field-sizing: content;
 		width: auto;
 		min-width: 0;
 		height: var(--empty-select-height);
 		min-height: var(--empty-select-height);
 		line-height: var(--empty-select-height);
-		padding-left: var(--empty-select-label-padding-left);
+		padding-left: var(--empty-select-label-padding);
 		padding-right: var(--empty-select-label-padding);
 		font-weight: var(--font-weight--medium);
 
