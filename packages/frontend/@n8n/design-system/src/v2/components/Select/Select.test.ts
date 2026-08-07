@@ -216,6 +216,7 @@ describe('v2/components/Select', () => {
 			await userEvent.click(option);
 
 			await waitFor(() => {
+				expect(wrapper.emitted('update:modelValue')).toHaveLength(1);
 				expect(wrapper.emitted('update:modelValue')?.[0]).toEqual(['1']);
 			});
 		});
@@ -269,6 +270,7 @@ describe('v2/components/Select', () => {
 				await userEvent.click(option);
 
 				await waitFor(() => {
+					expect(wrapper.emitted('update:modelValue')).toHaveLength(1);
 					expect(wrapper.emitted('update:modelValue')?.[0]).toEqual([['2', '1']]);
 				});
 			});
@@ -302,7 +304,26 @@ describe('v2/components/Select', () => {
 			await userEvent.click(trigger);
 
 			await waitFor(() => {
-				expect(wrapper.emitted('update:open')).toBeTruthy();
+				expect(wrapper.emitted('update:open')).toHaveLength(1);
+				expect(wrapper.emitted('update:open')?.[0]).toEqual([true]);
+			});
+		});
+
+		it('should emit update:open once when dropdown closes', async () => {
+			const wrapper = render(Select, {
+				props: {
+					items: ['Option 1', 'Option 2', 'Option 3'],
+					open: true,
+				},
+			});
+
+			const trigger = wrapper.getByTestId('select-trigger');
+			await getPopoverContainer(trigger);
+			await userEvent.keyboard('{Escape}');
+
+			await waitFor(() => {
+				expect(wrapper.emitted('update:open')).toHaveLength(1);
+				expect(wrapper.emitted('update:open')?.[0]).toEqual([false]);
 			});
 		});
 

@@ -20,7 +20,7 @@ import {
 	SelectSeparator,
 	SelectTrigger,
 	SelectViewport,
-	useForwardPropsEmits,
+	useForwardProps,
 } from 'reka-ui';
 import type { AcceptableValue } from 'reka-ui';
 import { computed, nextTick, ref, useAttrs, useCssModule, useTemplateRef, watch } from 'vue';
@@ -65,9 +65,8 @@ const props = withDefaults(defineProps<SelectProps<T, VK, M>>(), {
 const emit = defineEmits<SelectEmits<T, VK, M>>();
 defineSlots<SelectSlots<T, VK, M>>();
 
-const rootProps = useForwardPropsEmits(
+const rootProps = useForwardProps(
 	reactivePick(props, 'open', 'defaultOpen', 'disabled', 'required', 'multiple'),
-	emit,
 );
 
 const triggerRef = useTemplateRef<InstanceType<typeof SelectTrigger>>('trigger');
