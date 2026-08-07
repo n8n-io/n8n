@@ -1,10 +1,12 @@
 import { execFile } from 'node:child_process';
-import { mkdtemp, writeFile } from 'node:fs/promises';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
 
 const execFileAsync = promisify(execFile);
+const CHILD_PROCESS_TIMEOUT_MS = 20_000;
+const TEST_TIMEOUT_MS = 25_000;
 
 const HARDENING_MODULE = path.resolve(__dirname, '../prototype-hardening.ts');
 const HEALTH_CHECK_MODULE = path.resolve(__dirname, '../../health-check-server.ts');
@@ -30,11 +32,17 @@ const runInChildProcess = async (body: string, harden: boolean) => {
 
 	const dir = await mkdtemp(path.join(tmpdir(), 'n8n-hardening-'));
 	const scriptPath = path.join(dir, 'hardening-probe.mts');
-	await writeFile(scriptPath, script);
+	try {
+		await writeFile(scriptPath, script);
 
-	const { stdout } = await execFileAsync(process.execPath, ['--no-warnings', scriptPath]);
+		const { stdout } = await execFileAsync(process.execPath, ['--no-warnings', scriptPath], {
+			timeout: CHILD_PROCESS_TIMEOUT_MS,
+		});
 
-	return stdout;
+		return stdout;
+	} finally {
+		await rm(dir, { recursive: true, force: true });
+	}
 };
 
 /** Serve a single request through the runner's real health check server. */
@@ -91,7 +99,7 @@ const PROBES = `
 	});
 `;
 
-describe('freezeGlobals', () => {
+describe('freezeGlobals', { timeout: TEST_TIMEOUT_MS }, () => {
 	it('serves an HTTP request in a process that has not been hardened', async () => {
 		const stdout = await runInChildProcess(SERVE_ONE_REQUEST, false);
 
