@@ -153,9 +153,17 @@ describe('workflow_step_execution table (integration)', () => {
 		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
 		const { id } = await createStep(store, { executionId, nodeId: 'a', status: 'queued' });
 
-		expect(await store.claimStep(id)).toBe(true);
+		// the winning claim gets the step back, already `running`
+		expect(await store.claimStep(id)).toEqual({
+			id,
+			executionId,
+			nodeId: 'a',
+			status: 'running',
+			outputs: null,
+			error: null,
+		});
 		// second claim of the same step loses the race
-		expect(await store.claimStep(id)).toBe(false);
+		expect(await store.claimStep(id)).toBeNull();
 		expect((await store.loadStep(id)).status).toBe('running');
 	});
 
@@ -186,6 +194,40 @@ describe('workflow_step_execution table (integration)', () => {
 		expect(found.status).toBe('queued');
 		expect(found.outputs).toBeNull();
 		expect(found.error).toBeNull();
+	});
+
+	it('TypeOrmStepStore.cancelQueuedSteps cancels queued steps and nothing else', async () => {
+		const executionId = await createExecution();
+		const otherExecutionId = await createExecution();
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const { id: queuedId } = await createStep(store, {
+			executionId,
+			nodeId: 'a',
+			status: 'queued',
+		});
+		const { id: runningId } = await createStep(store, {
+			executionId,
+			nodeId: 'b',
+			status: 'running',
+		});
+		const { id: completedId } = await createStep(store, {
+			executionId,
+			nodeId: 'c',
+			status: 'completed',
+		});
+		// scoped to the execution: a sibling execution's queued work is untouched
+		const { id: otherId } = await createStep(store, {
+			executionId: otherExecutionId,
+			nodeId: 'a',
+			status: 'queued',
+		});
+
+		await store.cancelQueuedSteps(executionId);
+
+		expect((await store.loadStep(queuedId)).status).toBe('cancelled');
+		expect((await store.loadStep(runningId)).status).toBe('running');
+		expect((await store.loadStep(completedId)).status).toBe('completed');
+		expect((await store.loadStep(otherId)).status).toBe('queued');
 	});
 
 	it('TypeOrmStepStore.failStep persists the error and marks the step failed', async () => {

@@ -21,7 +21,8 @@ import {
 } from './chat-loop';
 import { runWorkflowChecks, summarizeMissingWorkflowError } from './cleanup';
 import {
-	remapSeedWorkflowIds,
+	activeSeedAgentId,
+	remapSeedArtifactIds,
 	SEED_NAME_RE,
 	seedNameBase,
 	transcriptPrefixFromSeed,
@@ -109,6 +110,10 @@ interface MultiTurnDriverConfig {
 	 *  when the credential view isn't pinned (see `credentialViewPinned`), since
 	 *  the allowlist endpoint isn't available in that case either. */
 	allowlistedCredentialIds?: string[];
+	/** Of those, the ids whose connection test the backend should resolve as
+	 *  passing — the proxy must carry them because a mid-run creation replaces
+	 *  the whole bypass list too. */
+	bypassCredentialTestIds?: string[];
 	createdCredentialIds?: Set<string>;
 	/** Shared with `createDeclaredCredentials`'s pre-run seeding — see
 	 *  `CredentialCreationConfig.nameCounts`. */
@@ -140,6 +145,7 @@ async function driveMultiTurnConversation(
 						client: config.client,
 						threadId: config.threadId,
 						allowlistedCredentialIds: config.allowlistedCredentialIds,
+						bypassCredentialTestIds: config.bypassCredentialTestIds,
 						createdCredentialIds: config.createdCredentialIds,
 						nameCounts: config.credentialNameCounts,
 					},
@@ -194,6 +200,9 @@ export interface BuildResult {
 	/** IDs to pass to cleanupBuild() */
 	createdWorkflowIds: string[];
 	createdDataTableIds: string[];
+	/** Agents restored by a seed — tracked here, not just in `artifactRefs`, so one
+	 *  the live turn never touched still gets cleaned up. */
+	createdAgentIds?: string[];
 	/** Maps each scenario seed table's declared NAME to the real id it was created
 	 *  under (empty) before the build turn, so each scenario can reset+seed its
 	 *  rows into the table the built workflow actually bound (TRUST-311 follow-up).
@@ -321,6 +330,9 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 	let credentialViewPinned = true;
 	let restoredWorkflowIds: string[] = [];
 	let restoredDataTableIds: string[] = [];
+	let restoredAgentIds: string[] = [];
+	/** The agent the seeded history last targeted — graded and executed first. */
+	let seedActiveAgentId: string | undefined;
 	// TRUST-311 follow-up: scenario seed tables are created empty before the build
 	// turn (so the agent binds their real id); this maps declared name → real id
 	// for the per-scenario row seeding, and the note tells the agent they exist.
@@ -412,11 +424,12 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			logger,
 			nameCounts: credentialNameCounts,
 		});
+		const seededCredentialIds = createdCredentials.map((c) => c.id);
 		try {
-			await client.setThreadCredentialAllowlist(
-				threadId,
-				createdCredentials.map((c) => c.id),
-			);
+			// A seeded credential models one the user already has connected, so its
+			// connection test resolves as passing — same as one set up on a card
+			// during the run. Both carry a placeholder token that would really fail.
+			await client.setThreadCredentialAllowlist(threadId, seededCredentialIds, seededCredentialIds);
 		} catch (error: unknown) {
 			// Only a missing endpoint (older backend) may degrade to the legacy
 			// unpinned view, and only for cases that declared nothing — any other
@@ -434,7 +447,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 		// seeded case can't run unseeded, so any restore failure fails the build.
 		if (seed) {
 			try {
-				const remapped = remapSeedWorkflowIds(seed);
+				const remapped = remapSeedArtifactIds(seed);
 				// The remap preserves order, so index-align the authored ids with the per-run
 				// ones. An author writes the id the seed declares; an attachment has to carry
 				// the id that actually exists on the instance.
@@ -453,16 +466,24 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 					remapped.messages,
 					remapped.workflows,
 					remapped.dataTables,
+					remapped.agents,
 				);
 				restoredWorkflowIds = restoreResult.workflowIds;
 				restoredDataTableIds = restoreResult.dataTableIds;
+				restoredAgentIds = restoreResult.agentIds;
+				// The server binds the thread to the agent the history LAST targeted, so
+				// the harness has to grade that same one — array order is an authoring
+				// artifact and `findAgentArtifactRef` takes the first ref it sees.
+				seedActiveAgentId = activeSeedAgentId(remapped);
 				seededTranscript = transcriptPrefixFromSeed(remapped.messages);
 				const dtSuffix =
 					restoredDataTableIds.length > 0
 						? `, ${String(restoredDataTableIds.length)} data table(s)`
 						: '';
+				const agentSuffix =
+					restoredAgentIds.length > 0 ? `, ${String(restoredAgentIds.length)} agent(s)` : '';
 				logger.info(
-					`  Seeded ${String(restoreResult.restored)} prior message(s), ${String(restoredWorkflowIds.length)} workflow(s)${dtSuffix}${config.laneTag ?? ''}`,
+					`  Seeded ${String(restoreResult.restored)} prior message(s), ${String(restoredWorkflowIds.length)} workflow(s)${dtSuffix}${agentSuffix}${config.laneTag ?? ''}`,
 				);
 			} catch (error: unknown) {
 				seedingFailed = true;
@@ -497,7 +518,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 					...table,
 					rows: undefined,
 				}));
-				const { dataTableIds } = await client.restoreThread(threadId, [], [], schemasOnly, {
+				const { dataTableIds } = await client.restoreThread(threadId, [], [], schemasOnly, [], {
 					uniquifyNames: false,
 				});
 				// restoreThread returns ids in input order; a length mismatch means we
@@ -576,7 +597,8 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				// otherwise either (see the catch above).
 				...(credentialViewPinned
 					? {
-							allowlistedCredentialIds: createdCredentials.map((c) => c.id),
+							allowlistedCredentialIds: seededCredentialIds,
+							bypassCredentialTestIds: seededCredentialIds,
 							createdCredentialIds: config.createdCredentialIds,
 							credentialNameCounts,
 						}
@@ -637,6 +659,24 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 		const threadWorkflowIds = [
 			...new Set([...eventOutcome.workflowIds, ...messageWorkflowIds, ...restoredWorkflowIds]),
 		];
+		// Same for a restored agent, without which a live turn that never calls
+		// `build-agent` would grade against no agent at all — so a seeded agent alone
+		// marks the case agent-anchored.
+		const seenAgentIds = new Set(
+			eventOutcome.artifactRefs.filter((ref) => ref.type === 'agent').map((ref) => ref.id),
+		);
+		// Active agent first, so `findAgentArtifactRef` picks the one the restored
+		// thread actually continues rather than whichever the seed happened to list first.
+		const restoredAgentOrder =
+			seedActiveAgentId && restoredAgentIds.includes(seedActiveAgentId)
+				? [seedActiveAgentId, ...restoredAgentIds.filter((id) => id !== seedActiveAgentId)]
+				: restoredAgentIds;
+		const artifactRefs: ArtifactRef[] = [
+			...eventOutcome.artifactRefs,
+			...restoredAgentOrder
+				.filter((id) => !seenAgentIds.has(id))
+				.map((id) => ({ type: 'agent' as const, id })),
+		];
 		const buildTrace: BuildTrace = {
 			finalText:
 				eventOutcome.finalText.length > 0 ? eventOutcome.finalText : lastAgentText(transcript),
@@ -665,9 +705,10 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 					success: true,
 					workflowJsons: [],
 					buildTrace,
-					artifactRefs: eventOutcome.artifactRefs,
+					artifactRefs,
 					createdWorkflowIds: restoredWorkflowIds,
 					createdDataTableIds: [...outcome.dataTablesCreated, ...restoredDataTableIds],
+					createdAgentIds: restoredAgentIds,
 					conversationMetrics,
 					events,
 					threadId,
@@ -684,7 +725,8 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				buildTrace,
 				createdWorkflowIds: restoredWorkflowIds,
 				createdDataTableIds: [...outcome.dataTablesCreated, ...restoredDataTableIds],
-				artifactRefs: eventOutcome.artifactRefs,
+				createdAgentIds: restoredAgentIds,
+				artifactRefs,
 				conversationMetrics,
 				events,
 				threadId,
@@ -721,8 +763,9 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			buildTrace,
 			createdWorkflowIds: outcome.workflowsCreated.map((wf) => wf.id),
 			createdDataTableIds: [...outcome.dataTablesCreated, ...restoredDataTableIds],
+			createdAgentIds: restoredAgentIds,
 			seededScenarioTableIdsByName: scenarioTableIdsByName,
-			artifactRefs: eventOutcome.artifactRefs,
+			artifactRefs,
 			conversationMetrics,
 			events,
 			threadId,
@@ -741,6 +784,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			workflowJsons: [],
 			createdWorkflowIds: [...restoredWorkflowIds, ...builtWorkflowIds],
 			createdDataTableIds: [...restoredDataTableIds, ...builtDataTableIds],
+			createdAgentIds: restoredAgentIds,
 			conversationMetrics,
 			events,
 			threadId,
