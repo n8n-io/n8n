@@ -2,11 +2,18 @@ import { WebhookAuthorizationError } from 'n8n-nodes-base/dist/nodes/Webhook/err
 import { validateWebhookAuthentication } from 'n8n-nodes-base/dist/nodes/Webhook/utils';
 import type {
 	CredentialCheckResult,
+	IDataObject,
 	INodeTypeDescription,
 	IWebhookFunctions,
 	IWebhookResponseData,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, Node, nodeNameToToolName, n8nOAuth2Auth } from 'n8n-workflow';
+import {
+	NodeConnectionTypes,
+	Node,
+	nodeNameToToolName,
+	n8nOAuth2Auth,
+	redactedHeaders,
+} from 'n8n-workflow';
 
 import { getConnectedTools } from '@utils/helpers';
 
@@ -26,7 +33,7 @@ export class McpTrigger extends Node {
 			dark: 'file:../mcp.dark.svg',
 		},
 		group: ['trigger'],
-		version: [1, 1.1, 2],
+		version: [1, 1.1, 2, 2.1],
 		description: 'Expose n8n tools as an MCP Server endpoint',
 		activationMessage:
 			'You can now connect your MCP Clients to the URL, using SSE or Streamable HTTP transports.',
@@ -196,6 +203,13 @@ export class McpTrigger extends Node {
 		}
 
 		const node = context.getNode();
+
+		// The credential n8n authenticated with is its own, so the tools never see its value —
+		// neither here nor on the worker, which rebuilds their input from `toolInput`.
+		const headers = redactedHeaders(req);
+		const toolInput: IDataObject | undefined =
+			node.typeVersion >= 2.1 ? { body: context.getBodyData(), headers } : undefined;
+
 		const serverName = node.typeVersion > 1 ? nodeNameToToolName(node) : 'n8n-mcp-server';
 		const mcpServer = McpServer.instance(context.logger);
 
@@ -205,7 +219,9 @@ export class McpTrigger extends Node {
 					? req.path.replace(new RegExp(`/${MCP_SSE_SETUP_PATH}$`), `/${MCP_SSE_MESSAGES_PATH}`)
 					: req.path;
 
-			const connectedTools = await getConnectedTools(context, true);
+			const connectedTools = await getConnectedTools(context, true, undefined, undefined, {
+				inputData: toolInput,
+			});
 			await mcpServer.handleSetupRequest(req, resp, serverName, postUrl, connectedTools);
 
 			return { noWebhookResponse: true };
@@ -218,7 +234,9 @@ export class McpTrigger extends Node {
 				context.logger.debug('MCP POST request received for existing session');
 
 				if (sessionId) {
-					const connectedTools = await getConnectedTools(context, true);
+					const connectedTools = await getConnectedTools(context, true, undefined, undefined, {
+						inputData: toolInput,
+					});
 
 					// For a tool call, check the triggering user's private-credential status
 					// before executing. Returns undefined (no gate) unless an OAuth2 identity
@@ -235,11 +253,12 @@ export class McpTrigger extends Node {
 						const workflowData = {
 							...(toolCallInfo && { mcpToolCall: toolCallInfo }),
 							...(messageId && { mcpMessageId: messageId }),
-							headers: context.getHeaderData(),
+							...(node.typeVersion >= 2.1 && { headers }),
 						};
 						return {
 							noWebhookResponse: true,
 							workflowData: [[{ json: workflowData }]],
+							toolInput,
 						};
 					}
 
@@ -257,7 +276,9 @@ export class McpTrigger extends Node {
 						};
 					}
 				} else {
-					const connectedTools = await getConnectedTools(context, true);
+					const connectedTools = await getConnectedTools(context, true, undefined, undefined, {
+						inputData: toolInput,
+					});
 					await mcpServer.handleStreamableHttpSetup(req, resp, serverName, connectedTools);
 				}
 			}
