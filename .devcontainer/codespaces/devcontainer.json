@@ -4,9 +4,8 @@
 	"service": "n8n",
 	"workspaceFolder": "/workspaces",
 	"hostRequirements": {
-		"cpus": 8,
-		"memory": "32gb",
-		"storage": "64gb"
+		"cpus": 4,
+		"memory": "16gb"
 	},
 	"features": {
 		"ghcr.io/devcontainers/features/github-cli:1": {}
