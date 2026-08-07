@@ -63,8 +63,9 @@ export class StreamSink implements RunOutputSink<void> {
 
 	/**
 	 * Cost-applied usage + model to stamp on the terminal finish chunk of an
-	 * aborted run, so a cancelled run still bills the tokens consumed before the
-	 * stop. Mirrors the shape `finishComplete` writes on the success path.
+	 * aborted or failed run, so a run cut short still bills the tokens consumed
+	 * before the stop. Mirrors the shape `finishComplete` writes on the success
+	 * path.
 	 *
 	 * Adds the in-flight turn's usage (recovered from the raw provider stream when
 	 * the stop landed mid-turn — the only case where the SDK surfaces nothing) on
@@ -72,7 +73,7 @@ export class StreamSink implements RunOutputSink<void> {
 	 * the raw capture once its turn is folded, so a completed turn is never counted
 	 * twice.
 	 */
-	getAbortFinish(): { usage?: TokenUsage; model: string } {
+	getTerminalFinish(): { usage?: TokenUsage; model: string } {
 		const usage = this.services.applyCost(
 			mergeUsage(this.lastUsage, this.rawUsageReader?.getUsage()),
 		);
@@ -135,7 +136,7 @@ export class StreamSink implements RunOutputSink<void> {
 		// propagates to the StreamSession which closes the consumer stream.
 		for await (const chunk of result.stream) {
 			// Track usage from raw provider events so an aborted turn (which never
-			// reaches the post-loop awaits) can still be billed via getAbortFinish.
+			// reaches the post-loop awaits) can still be billed via getTerminalFinish.
 			if (chunk.type === 'raw') {
 				this.rawUsageReader?.capture(chunk.rawValue);
 				this.rawErrorReader?.capture(chunk.rawValue);

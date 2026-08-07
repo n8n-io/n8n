@@ -1133,6 +1133,10 @@ export interface InstanceAiContext {
 	trackTelemetry?: (eventName: string, properties: Record<string, GenericValue>) => void;
 	/** Shared runtime workspace for workflow source files and other sandbox-backed artifacts. */
 	workspace?: Workspace;
+	/** Absolute sandbox workspace root (e.g. /home/user/workspace). Lets tools
+	 *  accept absolute file paths under the root by normalizing them to
+	 *  workspace-relative. */
+	workspaceRoot?: string;
 	/** Current thread identity, used by workflow source file bindings and other thread-local state. */
 	threadId?: string;
 	/** Thread memory adapter used for thread-local metadata. */

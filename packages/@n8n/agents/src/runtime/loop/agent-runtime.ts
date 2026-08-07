@@ -11,6 +11,7 @@ import { RuntimeContextBuilder } from './runtime-context';
 import {
 	extractSettledToolCalls,
 	formatMcpConnectionNote,
+	isEmptyModelTurn,
 	makeErrorStream,
 	mergeUsage,
 	normalizeInput,
@@ -137,6 +138,9 @@ export interface AgentRuntimeConfig {
 }
 
 const MAX_LOOP_ITERATIONS = 30;
+
+/** Retries for a `stop` turn that produced no output at all (see isEmptyModelTurn). */
+const MAX_EMPTY_TURN_RETRIES = 2;
 
 const EMPTY_MESSAGE_LIST: SerializedMessageList = {
 	messages: [],
@@ -866,7 +870,7 @@ export class AgentRuntime {
 				staticToolCacheName,
 			});
 
-			const turn = await sink.callModel({
+			const modelCallContext = {
 				model: staticLoopContext.model,
 				system,
 				messages: cached.messages,
@@ -877,7 +881,26 @@ export class AgentRuntime {
 				providerOptions: staticLoopContext.providerOptions,
 				outputSpec: staticLoopContext.outputSpec,
 				aiSdkOptions: this.buildAiSdkOptions(toolMap, options),
-			});
+			};
+			let turn = await sink.callModel(modelCallContext);
+
+			// Some providers occasionally return a `stop` turn with no output at
+			// all mid-task, which would silently end the run with work half-done.
+			// Retry the call a bounded number of times before accepting the empty
+			// turn; each discarded attempt still bills its usage.
+			for (
+				let emptyRetry = 0;
+				emptyRetry < MAX_EMPTY_TURN_RETRIES && isEmptyModelTurn(turn);
+				emptyRetry++
+			) {
+				totalUsage = mergeUsage(totalUsage, turn.usage);
+				incrementTokenCountFromUsage(options?.executionCounter, turn.usage);
+				// Publish before the abort check so a cancel between the empty attempt
+				// and the retry still bills those tokens via getTerminalFinish().
+				sink.reportUsage(totalUsage);
+				this.assertNotAborted(abortScope);
+				turn = await sink.callModel(modelCallContext);
+			}
 
 			// Fold the just-finished turn's usage in before the abort check so a
 			// stop that lands right after the model call still bills its tokens.
@@ -994,7 +1017,7 @@ export class AgentRuntime {
 					sink,
 				);
 			},
-			getAbortFinish: () => sink?.getAbortFinish() ?? {},
+			getTerminalFinish: () => sink?.getTerminalFinish() ?? {},
 			// Durably save the turn-so-far when a streaming run is aborted, so a cancelled
 			// run still leaves its assistant work in memory. Fold in the text streamed for
 			// the in-flight turn first — its `newMessages` are only built once the stream

@@ -98,6 +98,9 @@ describe('buildKnowledgeBaseWorkspaceBundle', () => {
 			bundle.files.get(`${ROOT}/${SANDBOX_KNOWLEDGE_BASE_DIR}/reference/open-ai-output-shape.md`),
 		).toContain('# OpenAI node output shape');
 		expect(
+			bundle.files.get(`${ROOT}/${SANDBOX_KNOWLEDGE_BASE_DIR}/reference/anthropic-output-shape.md`),
+		).toContain('# Anthropic node output shape');
+		expect(
 			bundle.files.get(
 				`${ROOT}/${SANDBOX_KNOWLEDGE_BASE_DIR}/reference/workflow-builder-guardrails.md`,
 			),
@@ -126,6 +129,10 @@ describe('buildKnowledgeBaseWorkspaceBundle', () => {
 			expect.objectContaining({
 				id: 'open-ai-output-shape',
 				file: 'reference/open-ai-output-shape.md',
+			}),
+			expect.objectContaining({
+				id: 'anthropic-output-shape',
+				file: 'reference/anthropic-output-shape.md',
 			}),
 			expect.objectContaining({
 				id: 'workflow-builder-guardrails',

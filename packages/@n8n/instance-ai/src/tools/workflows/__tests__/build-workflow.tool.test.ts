@@ -902,16 +902,62 @@ describe('createBuildWorkflowTool', () => {
 		).toBe(false);
 	});
 
-	it('rejects source paths outside the runtime workspace', () => {
+	it('rejects structurally invalid source paths at the schema layer', () => {
 		expect(buildWorkflowInputSchema.safeParse({ filePath: '../main.workflow.ts' }).success).toBe(
-			false,
-		);
-		expect(buildWorkflowInputSchema.safeParse({ filePath: '/tmp/main.workflow.ts' }).success).toBe(
 			false,
 		);
 		expect(buildWorkflowInputSchema.safeParse({ filePath: '~/main.workflow.ts' }).success).toBe(
 			false,
 		);
+		expect(
+			buildWorkflowInputSchema.safeParse({ filePath: '/src/../../../etc/passwd' }).success,
+		).toBe(false);
+		expect(buildWorkflowInputSchema.safeParse({ filePath: 'src\\main.workflow.ts' }).success).toBe(
+			false,
+		);
+	});
+
+	it('accepts absolute paths at the schema layer so the handler can resolve them', () => {
+		// Root membership is only checkable at handler time; a schema rejection
+		// would surface as a hard AI_InvalidToolInputError instead of a
+		// recoverable tool result.
+		expect(buildWorkflowInputSchema.safeParse({ filePath: '/tmp/main.workflow.ts' }).success).toBe(
+			true,
+		);
+	});
+
+	it('builds from an absolute path under the workspace root', async () => {
+		const source = 'workflow source from workspace';
+		const { context, filePath } = makeContext({
+			source,
+			overrides: { workspaceRoot: '/home/user/workspace' },
+		});
+
+		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+			filePath: `/home/user/workspace/${filePath}`,
+			name: 'Daily Weather to Slack',
+		});
+
+		// Normalized to the workspace-relative path throughout (binding + output).
+		expect(result).toMatchObject({ success: true, filePath, workflowId: 'wf-1' });
+		expect(compileWorkflowSource).toHaveBeenCalledWith(context, filePath, source, undefined);
+	});
+
+	it('returns a recoverable error for absolute paths outside the workspace root', async () => {
+		const { context } = makeContext({
+			overrides: { workspaceRoot: '/home/user/workspace' },
+		});
+
+		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+			filePath: '/tmp/main.workflow.ts',
+		});
+
+		expect(result).toMatchObject({
+			success: false,
+			filePath: '/tmp/main.workflow.ts',
+			remediation: { category: 'code_fixable', reason: 'invalid_file_path' },
+		});
+		expect((result.errors ?? []).join('\n')).toContain('workspace-relative path');
 	});
 
 	it('returns blocked remediation when the bound workflow no longer exists', async () => {

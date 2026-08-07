@@ -26,8 +26,14 @@ export function hashWorkflowSource(source: string): string {
 	return createHash('sha256').update(source).digest('hex');
 }
 
-export function normalizeWorkflowSourceFilePath(filePath: string): string {
-	return normalizeWorkspaceRelativePath(filePath, { resourceLabel: 'Workflow source file' });
+export function normalizeWorkflowSourceFilePath(
+	filePath: string,
+	options: { workspaceRoot?: string } = {},
+): string {
+	return normalizeWorkspaceRelativePath(filePath, {
+		resourceLabel: 'Workflow source file',
+		workspaceRoot: options.workspaceRoot,
+	});
 }
 
 function parseBindings(raw: unknown): Record<string, WorkflowSourceFileBinding> {

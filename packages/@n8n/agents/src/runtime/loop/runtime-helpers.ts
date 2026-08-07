@@ -80,6 +80,34 @@ export function classifyModelTurnError(turn: {
 	};
 }
 
+/**
+ * True when a turn finished with `stop` but produced no usable output — no
+ * non-whitespace text, no tool call, no file. Some providers (observed with
+ * Kimi via Together) occasionally emit such a turn mid-task, which would
+ * silently end the run with work half-done; callers retry a bounded number
+ * of times before accepting it. Reasoning-only turns count as empty: they
+ * carry no user-visible output and no action.
+ */
+export function isEmptyModelTurn(turn: {
+	aiFinishReason: string;
+	newMessages: AgentMessage[];
+	structuredOutput?: unknown;
+}): boolean {
+	if (turn.aiFinishReason !== 'stop') return false;
+	if (turn.structuredOutput !== undefined) return false;
+	return !turn.newMessages.some(
+		(m) =>
+			'content' in m &&
+			Array.isArray(m.content) &&
+			m.content.some(
+				(c) =>
+					(c.type === 'text' && c.text.trim().length > 0) ||
+					c.type === 'tool-call' ||
+					c.type === 'file',
+			),
+	);
+}
+
 /** Extract all settled (resolved or rejected) tool-call blocks from a flat list of agent messages. */
 export function extractSettledToolCalls(messages: AgentMessage[]): ContentToolCall[] {
 	return messages
