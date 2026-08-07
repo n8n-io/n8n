@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { isEmojiSupported } from 'is-emoji-supported';
-import { ref, computed, watch, nextTick } from 'vue';
+import { ref, computed, watch, nextTick, onBeforeUnmount } from 'vue';
 
 import { useI18n } from '../../composables/useI18n';
 import N8nButton from '../N8nButton';
@@ -9,12 +9,20 @@ import type { IconName } from '../N8nIcon/icons';
 import N8nIconButton from '../N8nIconButton';
 import N8nInput from '../N8nInput';
 import N8nPopover from '../N8nPopover';
-import N8nRecycleScroller from '../N8nRecycleScroller';
 import N8nTabs from '../N8nTabs';
 import N8nText from '../N8nText';
 import N8nTooltip from '../N8nTooltip';
 import type { EmojiSection } from './emojiData';
 import IconColorPicker from './IconColorPicker.vue';
+import {
+	getAdjacentPickerCoordinate,
+	getPickerCoordinates,
+	getPickerDirection,
+	getPickerOptionId,
+	humanizeIconName,
+	isSamePickerCoordinate,
+	type PickerCoordinate,
+} from './IconPicker.utils';
 import { ICON_PICKER_BLOCKLIST } from './iconPickerBlocklist';
 import type { LucideIconMeta } from './lucideIconData';
 import SkinTonePicker from './SkinTonePicker.vue';
@@ -40,8 +48,10 @@ import IconShuffle from '~icons/lucide/shuffle';
 defineOptions({ name: 'N8nIconPicker' });
 
 const SKIN_TONE_STORAGE_KEY = 'n8n-emoji-skin-tone';
-const VIRTUAL_ROW_SIZE = 32;
-const VIRTUAL_ROW_STYLE = { minHeight: 'var(--height--md)' };
+const INITIAL_ROW_COUNT = 10;
+const ROW_BATCH_SIZE = 10;
+
+type TabType = 'icons' | 'emojis';
 
 type Props = {
 	buttonTooltip: string;
@@ -55,6 +65,8 @@ type Props = {
 	containerClass?: string | Record<string, boolean> | Array<string | Record<string, boolean>>;
 	/** Additional CSS class(es) for the trigger button */
 	buttonClass?: string | Record<string, boolean> | Array<string | Record<string, boolean>>;
+	/** The default tab to show when the picker is opened */
+	defaultTab?: TabType;
 };
 
 const { t } = useI18n();
@@ -65,14 +77,20 @@ const props = withDefaults(defineProps<Props>(), {
 	showColorPicker: false,
 	containerClass: undefined,
 	buttonClass: undefined,
+	defaultTab: 'icons',
 });
 
 const model = defineModel<IconOrEmoji>({ default: { type: 'icon', value: 'smile' } });
 
 const lucideData = ref<Record<string, LucideIconMeta> | null>(null);
 const rawEmojiSections = ref<EmojiSection[]>([]);
-const dataLoaded = ref(false);
-const dataLoading = ref(false);
+const iconsLoaded = ref(false);
+const iconsLoading = ref(false);
+const emojisLoaded = ref(false);
+const emojisLoading = ref(false);
+const popupVisible = ref(false);
+const selectedTab = ref<TabType>(props.defaultTab);
+const searchQuery = ref('');
 
 const supportedEmojiSections = computed<EmojiSection[]>(() => {
 	return rawEmojiSections.value
@@ -90,29 +108,37 @@ const availableLucideData = computed<Record<string, LucideIconMeta> | null>(() =
 	);
 });
 
-async function loadData() {
-	if (dataLoaded.value || dataLoading.value) return;
-	dataLoading.value = true;
+/** Load Icons/Emojis seperately so we don't block the thread. Both load on hover so render is instant. */
+async function loadIconData() {
+	if (iconsLoaded.value || iconsLoading.value) return;
+	iconsLoading.value = true;
 	try {
-		const [metaMod, emojiMod] = await Promise.all([
-			import('./lucideIconData'),
-			import('./emojiData'),
-		]);
-		lucideData.value = metaMod.lucideIcons;
-		rawEmojiSections.value = emojiMod.emojiSections;
-		dataLoaded.value = true;
+		const module = await import('./lucideIconData');
+		lucideData.value = module.lucideIcons;
+		iconsLoaded.value = true;
 	} finally {
-		dataLoading.value = false;
+		iconsLoading.value = false;
 	}
 }
 
-const popupVisible = ref(false);
+async function loadEmojiData() {
+	if (props.iconsOnly) return;
+	if (emojisLoaded.value || emojisLoading.value) return;
+	emojisLoading.value = true;
+	try {
+		const module = await import('./emojiData');
+		rawEmojiSections.value = module.emojiSections;
+		emojisLoaded.value = true;
+	} finally {
+		emojisLoading.value = false;
+	}
+}
+
 const tabs = computed<Array<{ value: string; label: string }>>(() => [
 	{ value: 'icons', label: t('iconPicker.tabs.icons') },
 	...(props.iconsOnly ? [] : [{ value: 'emojis', label: t('iconPicker.tabs.emojis') }]),
 ]);
-const selectedTab = ref<string>('icons');
-const searchQuery = ref('');
+
 const selectedCategory = ref<string | null>(null);
 const selectedColor = ref<string | undefined>(
 	props.showColorPicker && model.value.type === 'icon' ? model.value.color : undefined,
@@ -125,6 +151,7 @@ const selectedSkinTone = ref<number>(
 );
 
 const searchInputRef = ref<InstanceType<typeof N8nInput>>();
+const popupRef = ref<HTMLElement>();
 const colorPickerRef = ref<InstanceType<typeof IconColorPicker>>();
 const skinTonePickerRef = ref<InstanceType<typeof SkinTonePicker>>();
 const itemTooltip = ref<{ label: string; left: number; top: number } | null>(null);
@@ -147,19 +174,80 @@ const emojiRows = computed<IconPickerVirtualRow[]>(() =>
 	buildEmojiRows(filteredEmojiSections.value),
 );
 
-// --- Actions ---
+/** Progressively render first set of rows for instant view. Alternative to virtualisation which breaks key navigation and adds overhead/deps. */
+const activeRows = computed(function getActiveRows() {
+	return selectedTab.value === 'icons' ? iconRows.value : emojiRows.value;
+});
+const activeDataLoaded = computed(function getActiveDataLoaded() {
+	return selectedTab.value === 'icons' ? iconsLoaded.value : emojisLoaded.value;
+});
+const activeDataLoading = computed(function getActiveDataLoading() {
+	return selectedTab.value === 'icons' ? iconsLoading.value : emojisLoading.value;
+});
+const renderedRowCount = ref(INITIAL_ROW_COUNT);
+const activeCoordinate = ref<PickerCoordinate | null>(null);
+const activeDescendantId = computed(function getActiveDescendantId() {
+	if (!activeCoordinate.value) return undefined;
+	return getPickerOptionId(activeCoordinate.value);
+});
+const visibleRows = computed(function getVisibleRows() {
+	return activeRows.value.slice(0, renderedRowCount.value);
+});
+let renderFrame: number | undefined;
+
+function renderNextBatch() {
+	if (!popupVisible.value) return;
+
+	renderedRowCount.value = Math.min(
+		renderedRowCount.value + ROW_BATCH_SIZE,
+		activeRows.value.length,
+	);
+
+	if (renderedRowCount.value < activeRows.value.length) {
+		renderFrame = requestAnimationFrame(renderNextBatch);
+	}
+}
+
+function startProgressiveRender() {
+	if (renderFrame !== undefined) cancelAnimationFrame(renderFrame);
+	renderedRowCount.value = INITIAL_ROW_COUNT;
+
+	if (renderedRowCount.value < activeRows.value.length) {
+		renderFrame = requestAnimationFrame(renderNextBatch);
+	}
+}
+
+function loadActiveTabData() {
+	if (selectedTab.value === 'icons') {
+		void loadIconData();
+	} else {
+		void loadEmojiData();
+	}
+}
+
+function handleTabsPointerOver(event: PointerEvent) {
+	const target = event.target;
+	if (target instanceof Element && target.closest('[data-test-id="tab-emojis"]')) {
+		void loadEmojiData();
+	} else {
+		void loadIconData();
+	}
+}
+
 const selectIcon = (value: IconOrEmoji) => {
 	model.value = value;
 	popupVisible.value = false;
 };
 
 async function handlePopupOpen() {
+	activeCoordinate.value = null;
 	selectedTab.value = !props.iconsOnly && model.value.type === 'emoji' ? 'emojis' : 'icons';
 	searchQuery.value = '';
 	selectedCategory.value = null;
 	selectedColor.value =
 		props.showColorPicker && model.value.type === 'icon' ? model.value.color : undefined;
-	await loadData();
+	loadActiveTabData();
+	startProgressiveRender();
 	await nextTick();
 	focusSearchInput();
 }
@@ -168,10 +256,14 @@ function focusSearchInput() {
 	searchInputRef.value?.focus();
 }
 
+/** Custom tooltip is needed so we don't render 1,000+ N8nToolips. Instead we render a custom element and position it over the focused element. */
 function showItemTooltip(event: MouseEvent | FocusEvent, label: string) {
 	const target = event.currentTarget;
 	if (!(target instanceof HTMLElement)) return;
+	showItemTooltipForElement(target, label);
+}
 
+function showItemTooltipForElement(target: HTMLElement, label: string) {
 	const rect = target.getBoundingClientRect();
 	itemTooltip.value = {
 		label,
@@ -188,18 +280,26 @@ watch(popupVisible, (isOpen) => {
 	if (isOpen) void handlePopupOpen();
 });
 
-// Persist skin tone preference
 watch(selectedSkinTone, (tone) => {
 	localStorage.setItem(SKIN_TONE_STORAGE_KEY, String(tone));
 });
 
-// Re-focus search input on tab switch
 watch(selectedTab, async () => {
+	loadActiveTabData();
 	await nextTick();
 	focusSearchInput();
 });
 
-// --- Random selection ---
+watch(activeRows, function handleActiveRowsChange() {
+	activeCoordinate.value = null;
+	hideItemTooltip();
+	if (popupVisible.value) startProgressiveRender();
+});
+
+onBeforeUnmount(function cancelProgressiveRender() {
+	if (renderFrame !== undefined) cancelAnimationFrame(renderFrame);
+});
+
 const selectRandomIcon = () => {
 	if (!availableLucideData.value) return;
 	const entries = Object.keys(availableLucideData.value);
@@ -217,9 +317,81 @@ const selectRandomEmoji = () => {
 	selectIcon({ type: 'emoji', value: display });
 };
 
-// Humanize icon name for display
-function humanizeIconName(name: string): string {
-	return name.replace(/-/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
+/** Finds the correct item from key events */
+async function activatePickerItem(coordinate: PickerCoordinate) {
+	activeCoordinate.value = coordinate;
+	renderedRowCount.value = Math.max(renderedRowCount.value, coordinate.row + 1);
+	await nextTick();
+
+	const item = popupRef.value?.querySelector<HTMLElement>(`#${getPickerOptionId(coordinate)}`);
+	const scrollArea = item?.closest<HTMLElement>('[data-icon-picker-scroll-area]');
+	if (!item || !scrollArea) return;
+
+	const itemRect = item.getBoundingClientRect();
+	const scrollAreaRect = scrollArea.getBoundingClientRect();
+	if (itemRect.top < scrollAreaRect.top || itemRect.bottom > scrollAreaRect.bottom) {
+		item.scrollIntoView({ block: 'nearest' });
+	}
+}
+
+function selectActiveItem() {
+	if (!activeCoordinate.value) return;
+
+	const row = activeRows.value[activeCoordinate.value.row];
+	if (row?.type === 'icon-row') {
+		const name = row.iconNames[activeCoordinate.value.column];
+		if (name) selectIcon({ type: 'icon', value: name, color: selectedColor.value });
+	} else if (row?.type === 'emoji-row') {
+		const emoji = row.emojis[activeCoordinate.value.column];
+		if (emoji) selectIcon({ type: 'emoji', value: emoji.display });
+	}
+}
+
+function handlePickerKeydown(event: KeyboardEvent) {
+	const target = event.target;
+	if (!(target instanceof HTMLElement)) return;
+	if (!target.closest('[data-test-id="icon-picker-search"]')) return;
+
+	if (event.key === 'Enter' && activeCoordinate.value) {
+		event.preventDefault();
+		selectActiveItem();
+		return;
+	}
+
+	if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.key)) return;
+
+	hideItemTooltip();
+	const coordinates = getPickerCoordinates(activeRows.value);
+	if (coordinates.length === 0) return;
+
+	event.preventDefault();
+	if (!activeCoordinate.value) {
+		const coordinate =
+			event.key === 'ArrowUp' || event.key === 'ArrowLeft' ? coordinates.at(-1) : coordinates[0];
+		if (coordinate) void activatePickerItem(coordinate);
+		return;
+	}
+
+	const direction = getPickerDirection(event.key);
+	if (!direction) return;
+
+	const nextCoordinate = getAdjacentPickerCoordinate(
+		activeRows.value,
+		activeCoordinate.value,
+		direction,
+	);
+	if (nextCoordinate) void activatePickerItem(nextCoordinate);
+}
+
+async function handlePickerKeyup(event: KeyboardEvent) {
+	if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.key)) return;
+	if (!activeCoordinate.value) return;
+
+	await nextTick();
+	const item = popupRef.value?.querySelector<HTMLElement>(
+		`#${getPickerOptionId(activeCoordinate.value)}`,
+	);
+	if (item) showItemTooltipForElement(item, item.getAttribute('aria-label') ?? '');
 }
 </script>
 
@@ -241,7 +413,7 @@ function humanizeIconName(name: string): string {
 					},
 					containerClass,
 				]"
-				@pointerenter="loadData"
+				@pointerenter="loadIconData"
 			>
 				<N8nTooltip placement="top" data-test-id="icon-picker-tooltip" :disabled="isReadOnly">
 					<template #content>
@@ -285,8 +457,11 @@ function humanizeIconName(name: string): string {
 		<template #content>
 			<div
 				v-if="popupVisible"
+				ref="popupRef"
 				:class="{ [$style.iconsOnly]: props.iconsOnly }"
 				data-test-id="icon-picker-popup"
+				@keydown="handlePickerKeydown"
+				@keyup="handlePickerKeyup"
 			>
 				<Teleport to="body">
 					<div
@@ -298,7 +473,7 @@ function humanizeIconName(name: string): string {
 						{{ itemTooltip.label }}
 					</div>
 				</Teleport>
-				<div v-if="!props.iconsOnly" :class="$style.tabs">
+				<div v-if="!props.iconsOnly" :class="$style.tabs" @pointerover="handleTabsPointerOver">
 					<N8nTabs v-model="selectedTab" :options="tabs" data-test-id="icon-picker-tabs" />
 				</div>
 
@@ -310,6 +485,11 @@ function humanizeIconName(name: string): string {
 						:placeholder="t('iconPicker.search.placeholder')"
 						clearable
 						size="medium"
+						role="combobox"
+						aria-autocomplete="list"
+						aria-controls="icon-picker-options"
+						:aria-expanded="popupVisible"
+						:aria-activedescendant="activeDescendantId"
 						data-test-id="icon-picker-search"
 					>
 						<template #prefix>
@@ -363,37 +543,49 @@ function humanizeIconName(name: string): string {
 				</div>
 
 				<!-- Loading state -->
-				<div v-if="dataLoading" :class="$style.loadingState" data-test-id="icon-picker-loading">
+				<div
+					v-if="activeDataLoading"
+					:class="$style.loadingState"
+					data-test-id="icon-picker-loading"
+				>
 					{{ t('iconPicker.loading') }}
 				</div>
 
 				<!-- Icons tab -->
-				<div v-else-if="selectedTab === 'icons' && dataLoaded" :class="$style.content">
-					<N8nRecycleScroller
-						v-if="iconRows.length > 0"
-						:items="iconRows"
-						item-key="id"
-						:item-size="VIRTUAL_ROW_SIZE"
+				<div v-else-if="selectedTab === 'icons' && activeDataLoaded" :class="$style.content">
+					<div
+						v-if="visibleRows.length > 0"
+						id="icon-picker-options"
+						role="grid"
+						:class="$style.scrollArea"
+						data-icon-picker-scroll-area
 					>
-						<template #default="{ item }">
+						<template v-for="(item, rowIndex) in visibleRows" :key="item.id">
 							<div v-if="item.type === 'header'" :class="$style.sectionHeaderRow">
 								<N8nText step="xs" bold color="text-light">
 									{{ t(item.labelKey) }}
 								</N8nText>
 							</div>
-							<div
-								v-else-if="item.type === 'icon-row'"
-								:class="$style.iconGridRow"
-								:style="VIRTUAL_ROW_STYLE"
-							>
+							<div v-else-if="item.type === 'icon-row'" role="row" :class="$style.iconGridRow">
 								<N8nButton
-									v-for="name in item.iconNames"
+									v-for="(name, columnIndex) in item.iconNames"
 									:key="name"
 									variant="ghost"
-									size="small"
+									size="medium"
 									icon-only
 									:style="selectedColor ? { color: `var(${selectedColor})` } : undefined"
+									:id="getPickerOptionId({ row: rowIndex, column: columnIndex })"
+									role="gridcell"
+									tabindex="-1"
 									data-test-id="icon-picker-icon"
+									:data-active="
+										isSamePickerCoordinate(activeCoordinate, {
+											row: rowIndex,
+											column: columnIndex,
+										}) || undefined
+									"
+									:data-picker-row="rowIndex"
+									:data-picker-column="columnIndex"
 									:aria-label="humanizeIconName(name)"
 									@mouseenter="showItemTooltip($event, humanizeIconName(name))"
 									@mouseleave="hideItemTooltip"
@@ -405,7 +597,7 @@ function humanizeIconName(name: string): string {
 								</N8nButton>
 							</div>
 						</template>
-					</N8nRecycleScroller>
+					</div>
 					<div v-else :class="$style.emptyState" data-test-id="icon-picker-no-results">
 						{{ t('iconPicker.search.noResults') }}
 					</div>
@@ -413,33 +605,41 @@ function humanizeIconName(name: string): string {
 
 				<!-- Emojis tab -->
 				<div
-					v-else-if="!props.iconsOnly && selectedTab === 'emojis' && dataLoaded"
+					v-else-if="!props.iconsOnly && selectedTab === 'emojis' && activeDataLoaded"
 					:class="$style.content"
 				>
-					<N8nRecycleScroller
-						v-if="emojiRows.length > 0"
-						:items="emojiRows"
-						item-key="id"
-						:item-size="VIRTUAL_ROW_SIZE"
+					<div
+						v-if="visibleRows.length > 0"
+						id="icon-picker-options"
+						role="grid"
+						:class="$style.scrollArea"
+						data-icon-picker-scroll-area
 					>
-						<template #default="{ item }">
+						<template v-for="(item, rowIndex) in visibleRows" :key="item.id">
 							<div v-if="item.type === 'header'" :class="$style.sectionHeaderRow">
-								<div :class="$style.sectionHeader">
+								<N8nText step="xs" bold color="text-light">
 									{{ t(item.labelKey) }}
-								</div>
+								</N8nText>
 							</div>
-							<div
-								v-else-if="item.type === 'emoji-row'"
-								:class="$style.emojiGridRow"
-								:style="VIRTUAL_ROW_STYLE"
-							>
+							<div v-else-if="item.type === 'emoji-row'" role="row" :class="$style.emojiGridRow">
 								<N8nButton
-									v-for="emoji in item.emojis"
+									v-for="(emoji, columnIndex) in item.emojis"
 									:key="emoji.u"
 									variant="ghost"
-									size="small"
+									size="medium"
 									icon-only
+									:id="getPickerOptionId({ row: rowIndex, column: columnIndex })"
+									role="gridcell"
+									tabindex="-1"
 									data-test-id="icon-picker-emoji"
+									:data-active="
+										isSamePickerCoordinate(activeCoordinate, {
+											row: rowIndex,
+											column: columnIndex,
+										}) || undefined
+									"
+									:data-picker-row="rowIndex"
+									:data-picker-column="columnIndex"
 									:aria-label="emoji.l"
 									@mouseenter="showItemTooltip($event, emoji.l)"
 									@mouseleave="hideItemTooltip"
@@ -451,7 +651,7 @@ function humanizeIconName(name: string): string {
 								</N8nButton>
 							</div>
 						</template>
-					</N8nRecycleScroller>
+					</div>
 					<div v-else :class="$style.emptyState" data-test-id="icon-picker-no-results">
 						{{ t('iconPicker.search.noResults') }}
 					</div>
@@ -463,6 +663,7 @@ function humanizeIconName(name: string): string {
 
 <style module lang="scss">
 @use '../../css/common/var';
+@use '../../css/mixins/focus';
 @use '../../css/mixins/mixins' as scrollbar-mixins;
 
 .container {
@@ -471,6 +672,10 @@ function humanizeIconName(name: string): string {
 }
 
 .itemTooltip {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	text-align: center;
 	position: fixed;
 	z-index: var.$index-tooltip;
 	transform: translate(-50%, calc(-100% - var(--spacing--2xs)));
@@ -561,21 +766,15 @@ function humanizeIconName(name: string): string {
 	.content {
 		height: 400px;
 		overflow: hidden;
+	}
 
-		:global(.recycle-scroller-wrapper) {
-			padding: 0 var(--spacing--2xs);
-			width: 100%;
-			overflow-x: hidden;
-			/** AGENT: Check if we have mixin for this. If not, create one for top, left, right, bottom, y, and x. Make this one just bottom **/
-			mask-image: linear-gradient(
-				to bottom,
-				transparent 0,
-				black var(--spacing--sm),
-				black calc(100% - var(--spacing--sm)),
-				transparent 100%
-			);
-			@include scrollbar-mixins.hoverable-scroll-bar;
-		}
+	.scrollArea {
+		height: 100%;
+		padding: 0 var(--spacing--2xs);
+		overflow-x: hidden;
+		overflow-y: auto;
+		@include scrollbar-mixins.scroll-mask(bottom);
+		@include scrollbar-mixins.hoverable-scroll-bar;
 	}
 
 	.sectionHeaderRow {
@@ -586,6 +785,15 @@ function humanizeIconName(name: string): string {
 	.emojiGridRow {
 		display: grid;
 		grid-template-columns: repeat(14, minmax(0, 1fr));
+	}
+
+	[data-active='true'] {
+		@include focus.focus-ring;
+		--button--border-color: var(--focus--border-color) !important;
+		background-color: var(--button--color--background-hover);
+		box-shadow:
+			inset var(--button--border--shadow--hover),
+			var(--button--shadow--hover);
 	}
 
 	.emoji {

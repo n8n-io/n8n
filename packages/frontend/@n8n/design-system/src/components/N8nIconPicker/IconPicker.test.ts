@@ -106,13 +106,6 @@ function getTabElement(tabContainer: Element): Element | null {
 describe('IconPicker', () => {
 	beforeEach(() => {
 		localStorage.clear();
-		vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockImplementation(function (
-			this: HTMLElement,
-		) {
-			if (this.classList?.contains('recycle-scroller-wrapper')) return 280;
-			if (this.classList?.contains('recycle-scroller-item')) return 32;
-			return 32;
-		});
 	});
 
 	it('opens popup and shows icons tab by default', async () => {
@@ -293,6 +286,45 @@ describe('IconPicker', () => {
 		expect((emitted()['update:modelValue'] as unknown[][])[0][0]).toEqual({
 			type: 'emoji',
 			value: '😀',
+		});
+	});
+
+	it('supports keyboard navigation and selection from the search input', async function () {
+		const { emitted, findAllByTestId, getByTestId, queryByTestId } = render(IconPicker, {
+			props: {
+				modelValue: { type: 'icon', value: 'smile' },
+				buttonTooltip: 'Select an icon',
+			},
+			global: {
+				plugins: [router],
+				components,
+				stubs: ['N8nIcon'],
+			},
+		});
+
+		await fireEvent.click(getByTestId('icon-picker-button'));
+		await findAllByTestId('icon-picker-icon');
+
+		const searchInput = getByTestId('icon-picker-search');
+		expect(getByTestId('icon-picker-popup').querySelector('[role="grid"]')).not.toBeNull();
+
+		await fireEvent.keyDown(searchInput, { key: 'ArrowDown' });
+
+		const firstOption = document.getElementById('icon-picker-option-1-0');
+		expect(firstOption).toHaveAttribute('data-active', 'true');
+
+		await fireEvent.keyDown(searchInput, { key: 'ArrowRight' });
+		const nextOption = document.querySelector('[data-active="true"]');
+		expect(nextOption).not.toBe(firstOption);
+		expect(nextOption).toHaveAttribute('aria-label', 'Smile');
+
+		await fireEvent.keyDown(searchInput, { key: 'Enter' });
+
+		expect(queryByTestId('icon-picker-popup')).toBeNull();
+		expect((emitted()['update:modelValue'] as unknown[][])[0][0]).toEqual({
+			type: 'icon',
+			value: 'smile',
+			color: undefined,
 		});
 	});
 
@@ -477,7 +509,7 @@ describe('IconPicker', () => {
 			global: {
 				plugins: [router],
 				components,
-				stubs: ['N8nIcon', 'N8nButton'],
+				stubs: ['N8nIcon'],
 			},
 		});
 
