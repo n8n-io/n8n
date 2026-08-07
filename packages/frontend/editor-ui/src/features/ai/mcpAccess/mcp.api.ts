@@ -43,10 +43,6 @@ export type ToggleAgentsMcpAccessResponse = {
 	unchangedIds?: string[];
 };
 
-export async function getMcpSettings(context: IRestApiContext): Promise<McpSettingsResponse> {
-	return await makeRestApiRequest(context, 'GET', '/mcp/settings');
-}
-
 export async function updateMcpSettings(
 	context: IRestApiContext,
 	settings: { mcpAccessEnabled?: boolean; autoExposeNewWorkflows?: boolean },

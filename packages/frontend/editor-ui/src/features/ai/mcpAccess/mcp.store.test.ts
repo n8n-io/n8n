@@ -552,6 +552,21 @@ describe('mcp.store', () => {
 				serverUrl: 'https://example.com/mcp',
 			});
 		});
+
+		it('falls back to the requested value and defaults when no settings or response value exist', async () => {
+			vi.spyOn(mcpApi, 'updateMcpSettings').mockResolvedValue({});
+			const settingsStore = useSettingsStore();
+			settingsStore.moduleSettings.mcp = undefined;
+
+			const result = await useMCPStore().setMcpAccessEnabled(true);
+
+			expect(result).toBe(true);
+			expect(settingsStore.moduleSettings.mcp).toEqual({
+				mcpAccessEnabled: true,
+				mcpManagedByEnv: false,
+				autoExposeNewWorkflows: false,
+			});
+		});
 	});
 
 	describe('autoExposeNewWorkflows', () => {
@@ -575,6 +590,21 @@ describe('mcp.store', () => {
 			expect(settingsStore.moduleSettings.mcp?.autoExposeNewWorkflows).toBe(true);
 			expect(settingsStore.moduleSettings.mcp?.mcpAccessEnabled).toBe(true);
 		});
+
+		it('falls back to the requested value when the response omits it', async () => {
+			vi.spyOn(mcpApi, 'updateMcpSettings').mockResolvedValue({});
+			const settingsStore = useSettingsStore();
+			settingsStore.moduleSettings.mcp = undefined;
+
+			const result = await useMCPStore().setAutoExposeNewWorkflows(true);
+
+			expect(result).toBe(true);
+			expect(settingsStore.moduleSettings.mcp).toEqual({
+				mcpAccessEnabled: false,
+				mcpManagedByEnv: false,
+				autoExposeNewWorkflows: true,
+			});
+		});
 	});
 
 	describe('applyAutoExposeNewWorkflowsLocally', () => {
@@ -592,6 +622,19 @@ describe('mcp.store', () => {
 			expect(settingsStore.moduleSettings.mcp?.autoExposeNewWorkflows).toBe(true);
 			expect(settingsStore.moduleSettings.mcp?.mcpAccessEnabled).toBe(true);
 			expect(updateSpy).not.toHaveBeenCalled();
+		});
+
+		it('defaults sibling fields when no settings exist yet', () => {
+			const settingsStore = useSettingsStore();
+			settingsStore.moduleSettings.mcp = undefined;
+
+			useMCPStore().applyAutoExposeNewWorkflowsLocally(true);
+
+			expect(settingsStore.moduleSettings.mcp).toEqual({
+				mcpAccessEnabled: false,
+				mcpManagedByEnv: false,
+				autoExposeNewWorkflows: true,
+			});
 		});
 	});
 });
