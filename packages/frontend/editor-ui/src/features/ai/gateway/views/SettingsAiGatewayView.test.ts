@@ -99,7 +99,7 @@ describe('SettingsAiGatewayView', () => {
 
 			expect(uiStore.openModalWithData).toHaveBeenCalledWith({
 				name: AI_GATEWAY_TOP_UP_MODAL_KEY,
-				data: {},
+				data: { credentialType: undefined, source: 'settings_page' },
 			});
 		});
 	});

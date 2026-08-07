@@ -3,10 +3,8 @@ import { watch, computed } from 'vue';
 import { N8nActionPill } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useAiGateway } from '@/app/composables/useAiGateway';
+import { useAiGatewayTopUp } from '@/app/composables/useAiGatewayTopUp';
 import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
-import { useUIStore } from '@/app/stores/ui.store';
-import { useTelemetry } from '@n8n/composables/useTelemetry';
-import { AI_GATEWAY_TOP_UP_MODAL_KEY } from '@/app/constants';
 import { useN8nCreditsCredentialSelectionExperiment } from '@/experiments/n8nCreditsCredentialSelection';
 
 type CredentialMode = 'gateway' | 'own';
@@ -22,11 +20,10 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
-const uiStore = useUIStore();
 const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
-const telemetry = useTelemetry();
 
 const { balance, fetchWallet } = useAiGateway();
+const { openTopUp } = useAiGatewayTopUp();
 const { isFeatureEnabled: shouldShowOwnCredentialFirst } =
 	useN8nCreditsCredentialSelectionExperiment();
 
@@ -70,13 +67,9 @@ function selectOwnCredential(): void {
 function onBadgeClick(event: MouseEvent): void {
 	event.stopPropagation();
 	if (props.readonly) return;
-	telemetry.track('User clicked ai gateway top up', {
+	void openTopUp({
 		source: 'credential_selector',
-		credential_type: props.credentialType,
-	});
-	uiStore.openModalWithData({
-		name: AI_GATEWAY_TOP_UP_MODAL_KEY,
-		data: { credentialType: props.credentialType },
+		credentialType: props.credentialType,
 	});
 }
 </script>
