@@ -114,10 +114,6 @@ function isOptionItem(item: ComboboxItem): item is ComboboxOptionBase {
 	return !isStructuralItem(item);
 }
 
-function hasResolvableValue(value: ComboboxValue): boolean {
-	return value !== '';
-}
-
 function warnInvalidItem(message: string, item: ComboboxItem) {
 	if (!import.meta.env.DEV) {
 		return;
@@ -166,7 +162,7 @@ const normalisedItems = computed<ComboboxItem[]>(() => {
 			continue;
 		}
 
-		if (!hasResolvableValue(item.value)) {
+		if (item.value === '') {
 			warnInvalidItem(
 				'Skipping item: "value" is missing or empty. Every selectable item needs a non-empty value.',
 				item,
@@ -242,18 +238,6 @@ function getDisplayValue(value: unknown): string {
 	return '';
 }
 
-function getTagLabel(value: TagsInputValue): string {
-	return getDisplayValue(value);
-}
-
-const selectedTags = computed(() => {
-	if (!props.multiple || !Array.isArray(selectedValue.value)) {
-		return [];
-	}
-
-	return selectedValue.value;
-});
-
 const hasValue = computed(() => {
 	const value = selectedValue.value;
 
@@ -281,8 +265,6 @@ const selectedItem = computed(() => {
 	);
 });
 
-const leadingIcon = computed(() => selectedItem.value?.icon ?? props.icon);
-
 function onClear() {
 	onModelValueUpdate(props.multiple ? [] : undefined);
 
@@ -299,13 +281,7 @@ function onClear() {
 }
 
 function onTagsUpdate(value: TagsInputValue[]) {
-	const nextValue: ComboboxValue[] = [];
-	for (const tag of value) {
-		if (typeof tag === 'string') {
-			nextValue.push(tag);
-		}
-	}
-	onModelValueUpdate(nextValue);
+	onModelValueUpdate(value.filter((tag): tag is string => typeof tag === 'string'));
 }
 </script>
 
@@ -313,7 +289,6 @@ function onTagsUpdate(value: TagsInputValue[]) {
 	<ComboboxRoot
 		:name="props.name"
 		v-bind="rootProps"
-		:disabled="props.disabled"
 		:model-value="selectedValue"
 		:open-on-focus="true"
 		@update:model-value="onModelValueUpdate"
@@ -329,26 +304,23 @@ function onTagsUpdate(value: TagsInputValue[]) {
 			:data-multiple="props.multiple || undefined"
 			:data-empty="hasValue ? undefined : true"
 		>
-			<span v-if="!props.multiple && leadingIcon" :class="$style.leadingIcon">
-				<slot
-					v-if="selectedItem?.icon"
-					name="item-leading"
-					:item="selectedItem"
-					:ui="{ class: $style.leadingIconGlyph }"
-				>
+			<span v-if="!props.multiple && selectedItem?.icon" :class="$style.leadingIcon">
+				<slot name="item-leading" :item="selectedItem" :ui="{ class: $style.leadingIconGlyph }">
 					<Icon :icon="selectedItem.icon" :class="$style.leadingIconGlyph" size="large" />
 				</slot>
-				<Icon v-else :icon="leadingIcon" :class="$style.leadingIconGlyph" size="large" />
+			</span>
+			<span v-else-if="!props.multiple && props.icon" :class="$style.leadingIcon">
+				<Icon :icon="props.icon" :class="$style.leadingIconGlyph" size="large" />
 			</span>
 
 			<N8nTagsInput2
 				v-if="props.multiple"
 				:id="inputId"
 				:embedded="true"
-				:model-value="selectedTags"
+				:model-value="Array.isArray(selectedValue) ? selectedValue : []"
 				:size="props.size"
 				:disabled="props.disabled"
-				:display-value="getTagLabel"
+				:display-value="getDisplayValue"
 				:placeholder="placeholder"
 				:auto-focus="props.autoFocus"
 				@update:model-value="onTagsUpdate"
