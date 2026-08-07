@@ -2,7 +2,7 @@ import { resolve } from 'path';
 import type { Alias } from 'vite';
 
 // The source-package table and its regex expansion live in `@n8n/vitest-config` because editor-ui
-// stopped being their only consumer: every module under `packages/modules/*/frontend` needs the same
+// stopped being their only consumer: every `packages/modules/<name>/frontend` needs the same
 // mapping for its own vitest run, and a module cannot import from the shell it plugs into. Still
 // hand-maintained, still guarded by `aliases.test.ts` — only the file it sits in changed.
 import {

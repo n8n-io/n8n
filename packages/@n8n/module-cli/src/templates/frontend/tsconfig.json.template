@@ -4,7 +4,7 @@
 		// `rootDirs`, `types` and `include` cannot be inherited from the base: relative entries in
 		// them resolve against this file, so a copy in the base would point at the base's directory.
 		// (`paths` is the exception and does come from the base.)
-		"rootDirs": [".", "../../@n8n/design-system/src"],
+		"rootDirs": [".", "../../../frontend/@n8n/design-system/src"],
 		// The two `.d.ts` entries are ambient declarations this package never imports, so nothing
 		// pulls them into the program: `~icons/*` and `markdown-it-task-lists` for design-system's
 		// source, `window.BASE_PATH` for `@n8n/stores`'s. Consuming those packages from source is
@@ -13,8 +13,8 @@
 			"vite/client",
 			"vitest/globals",
 			"unplugin-icons/types/vue",
-			"../../@n8n/design-system/src/shims-modules.d.ts",
-			"../../@n8n/stores/src/shims.d.ts"
+			"../../../frontend/@n8n/design-system/src/shims-modules.d.ts",
+			"../../../frontend/@n8n/stores/src/shims.d.ts"
 		]
 	},
 	"include": ["src/**/*.ts", "src/**/*.vue", "vite.config.ts"]

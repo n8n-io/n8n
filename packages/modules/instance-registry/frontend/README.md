@@ -4,10 +4,14 @@ Frontend feature module. Consumed from source by the editor-ui shell through
 `src/app/modules.manifest.ts`; there is no build step and no `dist`.
 
 ```bash
-pnpm --filter @n8n/frontend-module-instance-registry typecheck
-pnpm --filter @n8n/frontend-module-instance-registry lint
-pnpm --filter @n8n/frontend-module-instance-registry test
+pnpm turbo typecheck --filter=@n8n/frontend-module-instance-registry
+pnpm turbo lint --filter=@n8n/frontend-module-instance-registry
+pnpm turbo test --filter=@n8n/frontend-module-instance-registry
 ```
+
+Go through turbo, not `pnpm --filter <pkg> typecheck`: this package is consumed
+from source, and on a cold tree its platform dependencies have not been built
+yet. Turbo builds them first; the bare pnpm form does not.
 
 ## Import rules
 

@@ -12,8 +12,8 @@ import type { Alias } from 'vite';
  * what else to update. `dir` is relative to `packages/`.
  *
  * It lives in this package rather than in `editor-ui/vite/aliases.mts` because editor-ui is not its
- * only consumer any more: every module under `packages/modules/*/frontend` needs the same mapping
- * for its own vitest run, and a module cannot import from the shell it plugs into. Every frontend
+ * only consumer any more: every `packages/modules/<name>/frontend` needs the same mapping for its
+ * own vitest run, and a module cannot import from the shell it plugs into. Every frontend
  * package — modules included — already depends on `@n8n/vitest-config` and already imports
  * `@n8n/vitest-config/frontend` from its vite config, so this adds no dependency edge.
  *
