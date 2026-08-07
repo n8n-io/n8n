@@ -533,12 +533,9 @@ function gatewayConstraintViolations(
 		}
 	}
 
-	const setHiddenProperties = (meta.hiddenProperties ?? []).filter((property) => {
-		const value = (node.parameters as Record<string, unknown> | undefined)?.[property];
-		// Match computeAiGatewayIssues (validate-workflow.service.ts): only
-		// user-set values clash with the gateway — unset/empty (null, '') don't.
-		return value !== undefined && value !== null && value !== '';
-	});
+	const setHiddenProperties = (meta.hiddenProperties ?? []).filter((property) =>
+		hasNestedSetProperty(node.parameters, property),
+	);
 	if (setHiddenProperties.length > 0) {
 		violations.push(
 			`parameter(s) ${setHiddenProperties.join(', ')} are managed by n8n credits and must not be set (remove them)`,
@@ -546,6 +543,28 @@ function gatewayConstraintViolations(
 	}
 
 	return violations;
+}
+
+/**
+ * Whether `key` is set to a non-empty value at any depth. Gateway-hidden
+ * properties often live inside collections (mirrors the runtime eligibility
+ * check's nested lookup, checkAiGatewayEligibility in packages/cli), while
+ * unset/empty values (undefined, null, '') don't clash with the gateway —
+ * matching computeAiGatewayIssues in validate-workflow.service.ts.
+ */
+function hasNestedSetProperty(value: unknown, key: string): boolean {
+	if (Array.isArray(value)) {
+		return value.some((item) => hasNestedSetProperty(item, key));
+	}
+	if (value !== null && typeof value === 'object') {
+		const record = value as Record<string, unknown>;
+		if (Object.prototype.hasOwnProperty.call(record, key)) {
+			const set = record[key];
+			if (set !== undefined && set !== null && set !== '') return true;
+		}
+		return Object.values(record).some((nested) => hasNestedSetProperty(nested, key));
+	}
+	return false;
 }
 
 function getCredentialId(value: unknown): string | undefined {

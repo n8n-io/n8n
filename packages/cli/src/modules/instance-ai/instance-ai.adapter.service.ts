@@ -347,6 +347,7 @@ export class InstanceAiAdapterService {
 			modelId,
 			webhookBaseUrl,
 			formBaseUrl,
+			errorTriggerType: this.globalConfig.nodes.errorTriggerType,
 			workflowService: this.createWorkflowAdapter(user, threadId, projectId),
 			executionService: this.createExecutionAdapter(user, pushRef, threadId),
 			credentialService: this.createCredentialAdapter(

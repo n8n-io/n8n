@@ -1,10 +1,11 @@
 import { isRecord } from '@n8n/utils/is-record';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
-import { FORM_TRIGGER_PATH_IDENTIFIER } from 'n8n-workflow';
-
-const WEBHOOK_TRIGGER_TYPE = 'n8n-nodes-base.webhook';
-const FORM_TRIGGER_TYPE = 'n8n-nodes-base.formTrigger';
-const CHAT_TRIGGER_TYPE = '@n8n/n8n-nodes-langchain.chatTrigger';
+import {
+	CHAT_TRIGGER_NODE_TYPE,
+	FORM_TRIGGER_NODE_TYPE,
+	FORM_TRIGGER_PATH_IDENTIFIER,
+	WEBHOOK_NODE_TYPE,
+} from 'n8n-workflow';
 
 export interface TriggerEndpoint {
 	nodeName: string;
@@ -74,9 +75,17 @@ export function computeTriggerEndpoints(
 		const parameters = node.parameters as Record<string, unknown> | undefined;
 		const webhookId = typeof node.webhookId === 'string' ? node.webhookId : '';
 
-		if (node.type === WEBHOOK_TRIGGER_TYPE && baseUrls.webhookBaseUrl) {
+		if (node.type === WEBHOOK_NODE_TYPE && baseUrls.webhookBaseUrl) {
 			const path = stringParam(parameters, 'path');
-			if (!isConcretePathSegment(path)) {
+			if (path === '' && webhookId) {
+				// An empty static path serves at the node's webhookId
+				// (NodeHelpers.getNodeWebhookPath: `path || node.webhookId`).
+				endpoints.push({
+					nodeName: node.name,
+					kind: 'webhook',
+					url: joinUrl(baseUrls.webhookBaseUrl, webhookId),
+				});
+			} else if (!isConcretePathSegment(path)) {
 				endpoints.push({
 					nodeName: node.name,
 					kind: 'webhook',
@@ -110,7 +119,7 @@ export function computeTriggerEndpoints(
 			}
 		}
 
-		if (node.type === FORM_TRIGGER_TYPE) {
+		if (node.type === FORM_TRIGGER_NODE_TYPE) {
 			if (node.typeVersion === 1) {
 				// Form Trigger v1 registers `{path}/n8n-form` without `nodeType: 'form'`, so it
 				// serves under the webhook base and never falls back to the webhookId.
@@ -146,7 +155,7 @@ export function computeTriggerEndpoints(
 			}
 		}
 
-		if (node.type === CHAT_TRIGGER_TYPE) {
+		if (node.type === CHAT_TRIGGER_NODE_TYPE) {
 			const isPublic = parameters?.public === true;
 			if (!isPublic) {
 				endpoints.push({

@@ -69,7 +69,10 @@ export async function validateErrorWorkflowReference(
 		];
 	}
 
-	const hasErrorTrigger = (published.nodes ?? []).some((node) => node.type === ERROR_TRIGGER_TYPE);
+	// The instance may run error workflows with a custom trigger type
+	// (GlobalConfig nodes.errorTriggerType), so honor it when provided.
+	const errorTriggerType = context.errorTriggerType ?? ERROR_TRIGGER_TYPE;
+	const hasErrorTrigger = (published.nodes ?? []).some((node) => node.type === errorTriggerType);
 	if (!hasErrorTrigger) {
 		return [
 			`Error workflow "${detail.name}" (${errorWorkflowId}) has no Error Trigger node in its published version, so it will never fire. ${RECIPE}`,

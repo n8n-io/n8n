@@ -394,6 +394,69 @@ describe('resolveCredentials', () => {
 			expect(result.gatewayConstraintNotes[0]).toContain('model');
 		});
 
+		it('mocks when a hidden gateway-managed parameter is nested inside a collection', async () => {
+			const json = makeWorkflow({
+				nodes: [
+					{
+						...makeSlackNode(),
+						typeVersion: 2.3,
+						parameters: { options: { advanced: [{ model: 'gpt-4' }] } },
+					},
+				],
+			});
+			const ctx = createMockContext();
+			(ctx.credentialService.list as Mock).mockResolvedValue([]);
+			(
+				ctx.credentialService as unknown as { isAiGatewayCredentialType: Mock }
+			).isAiGatewayCredentialType = vi.fn().mockResolvedValue(true);
+			(ctx.nodeService as unknown as { getDescription: Mock }).getDescription = vi
+				.fn()
+				.mockResolvedValue({
+					aiGateway: {
+						supported: true,
+						hiddenProperties: ['model'],
+					},
+				});
+
+			const result = await resolveCredentials(json, undefined, ctx);
+
+			expect(json.nodes[0].credentials).toEqual({});
+			expect(result.gatewayConstraintNotes).toHaveLength(1);
+			expect(result.gatewayConstraintNotes[0]).toContain('model');
+		});
+
+		it('ignores nested hidden parameters that are null or empty', async () => {
+			const json = makeWorkflow({
+				nodes: [
+					{
+						...makeSlackNode(),
+						typeVersion: 2.3,
+						parameters: { options: { advanced: [{ model: null, other: 'x' }] } },
+					},
+				],
+			});
+			const ctx = createMockContext();
+			(ctx.credentialService.list as Mock).mockResolvedValue([]);
+			(
+				ctx.credentialService as unknown as { isAiGatewayCredentialType: Mock }
+			).isAiGatewayCredentialType = vi.fn().mockResolvedValue(true);
+			(ctx.nodeService as unknown as { getDescription: Mock }).getDescription = vi
+				.fn()
+				.mockResolvedValue({
+					aiGateway: {
+						supported: true,
+						hiddenProperties: ['model'],
+					},
+				});
+
+			const result = await resolveCredentials(json, undefined, ctx);
+
+			expect(json.nodes[0].credentials).toEqual({
+				slackApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+			});
+			expect(result.gatewayConstraintNotes).toEqual([]);
+		});
+
 		it('switches the node auth to the attached n8n credits credential type', async () => {
 			// The LLM wrote the API-key credential slot but left auth at the OAuth2
 			// default; attaching n8n credits must switch auth so the slot is active.

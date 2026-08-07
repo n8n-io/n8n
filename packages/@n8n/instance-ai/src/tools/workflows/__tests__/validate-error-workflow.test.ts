@@ -148,6 +148,25 @@ describe('validateErrorWorkflowReference', () => {
 		expect(errors).toEqual([]);
 	});
 
+	it('honors a configured custom error trigger type', async () => {
+		const context = makeContext({
+			get: vi.fn().mockResolvedValue(publishedDetail),
+			getAsWorkflowJSON: vi.fn().mockResolvedValue({
+				name: 'Error Handler',
+				nodes: [{ id: '1', name: 'On Error', type: 'custom.errorTrigger', typeVersion: 1 }],
+				connections: {},
+			}),
+		});
+		(context as { errorTriggerType?: string }).errorTriggerType = 'custom.errorTrigger';
+
+		const errors = await validateErrorWorkflowReference(
+			workflowWithErrorWorkflow('err-1'),
+			context,
+		);
+
+		expect(errors).toEqual([]);
+	});
+
 	it('fails closed when the published-version read fails', async () => {
 		const errors = await validateErrorWorkflowReference(
 			workflowWithErrorWorkflow('err-1'),

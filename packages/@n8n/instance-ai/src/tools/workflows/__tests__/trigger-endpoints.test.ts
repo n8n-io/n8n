@@ -32,6 +32,31 @@ describe('computeTriggerEndpoints', () => {
 		]);
 	});
 
+	it('serves an empty webhook path at the webhookId', () => {
+		const endpoints = computeTriggerEndpoints(
+			workflowWith([
+				{
+					id: '1',
+					name: 'Incoming',
+					type: 'n8n-nodes-base.webhook',
+					typeVersion: 2.1,
+					position: [0, 0],
+					parameters: { path: '' },
+					webhookId: 'wh-default',
+				},
+			]),
+			BASES,
+		);
+
+		expect(endpoints).toEqual([
+			{
+				nodeName: 'Incoming',
+				kind: 'webhook',
+				url: 'https://acme.app.n8n.cloud/webhook/wh-default',
+			},
+		]);
+	});
+
 	it('prefixes dynamic webhook paths with the webhookId', () => {
 		const endpoints = computeTriggerEndpoints(
 			workflowWith([

@@ -1045,6 +1045,8 @@ export interface InstanceAiContext {
 	webhookBaseUrl?: string;
 	/** Form base URL — Form Triggers serve at /form/, not /webhook/. */
 	formBaseUrl?: string;
+	/** Error Trigger node type the instance runs error workflows with (GlobalConfig `nodes.errorTriggerType`). */
+	errorTriggerType?: string;
 	workflowService: InstanceAiWorkflowService;
 	executionService: InstanceAiExecutionService;
 	credentialService: InstanceAiCredentialService;
