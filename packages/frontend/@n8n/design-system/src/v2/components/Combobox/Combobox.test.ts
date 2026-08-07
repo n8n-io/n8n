@@ -130,6 +130,29 @@ describe('v2/components/Combobox', () => {
 			expect(wrapper.getByTestId('combobox')).not.toHaveAttribute('aria-label');
 			expect(wrapper.getByRole('combobox', { name: 'Status' })).toBeInTheDocument();
 		});
+
+		it('should forward validation ARIA attributes to the input, not the anchor', () => {
+			const wrapper = render(Combobox, {
+				props: {
+					items: options('Option 1'),
+				},
+				attrs: {
+					'aria-describedby': 'status-help',
+					'aria-errormessage': 'status-error',
+					'aria-invalid': 'true',
+				},
+			});
+
+			const input = getComboboxInput(wrapper);
+			const anchor = wrapper.getByTestId('combobox');
+
+			expect(input).toHaveAttribute('aria-describedby', 'status-help');
+			expect(input).toHaveAttribute('aria-errormessage', 'status-error');
+			expect(input).toHaveAttribute('aria-invalid', 'true');
+			expect(anchor).not.toHaveAttribute('aria-describedby');
+			expect(anchor).not.toHaveAttribute('aria-errormessage');
+			expect(anchor).not.toHaveAttribute('aria-invalid');
+		});
 	});
 
 	describe('sizes', () => {

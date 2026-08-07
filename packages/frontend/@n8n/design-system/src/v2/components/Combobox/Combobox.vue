@@ -53,8 +53,22 @@ const { t } = useI18n();
 const placeholder = computed(() => props.placeholder ?? t('combobox.placeholder'));
 const emptyText = computed(() => props.emptyText ?? t('combobox.emptyText'));
 
-const inputNameAttrs = reactivePick(attrs, 'aria-label', 'aria-labelledby');
-const anchorAttrs = reactiveOmit(attrs, 'aria-label', 'aria-labelledby');
+const inputNameAttrs = reactivePick(
+	attrs,
+	'aria-label',
+	'aria-labelledby',
+	'aria-describedby',
+	'aria-errormessage',
+	'aria-invalid',
+);
+const anchorAttrs = reactiveOmit(
+	attrs,
+	'aria-label',
+	'aria-labelledby',
+	'aria-describedby',
+	'aria-errormessage',
+	'aria-invalid',
+);
 
 const rootProps = useForwardPropsEmits(
 	reactivePick(
