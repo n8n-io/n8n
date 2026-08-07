@@ -49,6 +49,17 @@ const { OAUTH2_CREDENTIAL_TEST_SUCCEEDED, OAUTH2_CREDENTIAL_TEST_FAILED } = RESP
  *  key was verified — some services answer 2xx regardless of the credential. */
 export const AUTH_PROBE_ACCEPTED_MESSAGE = 'The service accepted the credential.';
 
+/**
+ * The three-state auth-probe verdict: 'accepted' (the service took the
+ * credential), 'rejected' (explicit 401/403 auth rejection), 'unverified'
+ * (anything else proves nothing about the credential).
+ */
+export type CredentialAuthProbeOutcome = 'accepted' | 'rejected' | 'unverified';
+
+export type CredentialAuthProbeResult = INodeCredentialTestResult & {
+	outcome: CredentialAuthProbeOutcome;
+};
+
 const mockNodesData: INodeTypeData = {
 	mock: {
 		sourcePath: '',
@@ -238,7 +249,7 @@ export class CredentialsTester {
 		credentialsDecrypted: ICredentialsDecrypted,
 		targetUrl: string,
 		options: { acceptedStatusCodes?: number[] } = {},
-	): Promise<INodeCredentialTestResult> {
+	): Promise<CredentialAuthProbeResult> {
 		try {
 			await this.prepareCredentialsForTest(userId, credentialType, credentialsDecrypted);
 		} catch (error) {
@@ -246,6 +257,7 @@ export class CredentialsTester {
 			return {
 				status: 'Error',
 				message: error.message.toString(),
+				outcome: 'unverified',
 			};
 		}
 
@@ -338,7 +350,7 @@ export class CredentialsTester {
 			cause?: { response?: { status?: unknown }; code?: unknown };
 		},
 		acceptedStatusCodes?: number[],
-	): INodeCredentialTestResult {
+	): CredentialAuthProbeResult {
 		const statusCode =
 			Number(error.httpCode) ||
 			Number(error.context?.data?.status) ||
@@ -350,28 +362,31 @@ export class CredentialsTester {
 				return {
 					status: 'Error',
 					message: `The service rejected the credential (HTTP ${statusCode}). Check the key and try again.`,
+					outcome: 'rejected',
 				};
 			}
 			// The service is documented to answer this code to a valid GET — the
 			// probe can't tell valid from invalid here, so don't overclaim.
-			return { status: 'OK', message: AUTH_PROBE_ACCEPTED_MESSAGE };
+			return { status: 'OK', message: AUTH_PROBE_ACCEPTED_MESSAGE, outcome: 'accepted' };
 		}
 
 		if (statusCode) {
 			return {
 				status: 'Error',
 				message: `The test URL answered HTTP ${statusCode}, so the credential could not be verified. The test URL may be wrong — it must be a read-only endpoint that answers an authenticated GET.`,
+				outcome: 'unverified',
 			};
 		}
 
 		if (typeof error.message === 'string' && !error.cause?.code) {
-			return { status: 'Error', message: error.message };
+			return { status: 'Error', message: error.message, outcome: 'unverified' };
 		}
 
 		this.logger.debug('Credential auth probe inconclusive', error);
 		return {
 			status: 'Error',
 			message: 'Could not reach the test URL to verify the credential.',
+			outcome: 'unverified',
 		};
 	}
 
@@ -380,8 +395,25 @@ export class CredentialsTester {
 	 * engine. The `authProbe` verdict treats 401/403 as rejection, 2xx as
 	 * success, and everything else (wrong test URL, unreachable service) as
 	 * unverifiable — used for ad-hoc probes of generic credentials against a
-	 * known endpoint.
+	 * known endpoint. Probe requests carry no test rules, so every `authProbe`
+	 * return path stamps a probe outcome — which is what lets the first
+	 * overload narrow the result.
 	 */
+	private async runRequestTest(
+		userId: User['id'],
+		credentialType: string,
+		credentialsDecrypted: ICredentialsDecrypted,
+		credentialTestFunction: ICredentialTestRequestData,
+		verdict: 'authProbe',
+		acceptedStatusCodes?: number[],
+	): Promise<CredentialAuthProbeResult>;
+	private async runRequestTest(
+		userId: User['id'],
+		credentialType: string,
+		credentialsDecrypted: ICredentialsDecrypted,
+		credentialTestFunction: ICredentialTestRequestData,
+		verdict: 'default',
+	): Promise<INodeCredentialTestResult>;
 	// eslint-disable-next-line complexity
 	private async runRequestTest(
 		userId: User['id'],
@@ -567,10 +599,12 @@ export class CredentialsTester {
 			// answer 2xx regardless (no auth required, or errors signalled in the
 			// body) it is not — the probe can't tell them apart, so the copy states
 			// what happened instead of claiming the key was verified.
-			return {
+			const result: CredentialAuthProbeResult = {
 				status: 'OK',
 				message: AUTH_PROBE_ACCEPTED_MESSAGE,
+				outcome: 'accepted',
 			};
+			return result;
 		}
 
 		return {
