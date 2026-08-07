@@ -96,7 +96,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	async addFixedCollectionItem() {
-		await this.clickByTestId('fixed-collection-add');
+		await this.clickByTestId('fixed-collection-add-header');
 	}
 
 	async execute() {
@@ -280,12 +280,12 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	async clickParameterOptions(): Promise<void> {
-		await this.container.getByTestId('collection-parameter-add').click();
+		await this.container.getByTestId('collection-parameter-add-header').click();
 	}
 
 	async addParameterOptionByName(optionName: string): Promise<void> {
 		await this.clickParameterOptions();
-		await this.selectFromVisibleDropdown(optionName);
+		await this.getVisiblePopoverMenuItem(optionName, { exact: true }).click();
 	}
 
 	async clickFloatingNode(nodeName: string) {
@@ -381,7 +381,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	async setParameterSwitch(parameterName: string, enabled: boolean): Promise<void> {
-		const switchElement = this.getParameterInput(parameterName).locator('.el-switch');
+		const switchElement = this.getParameterInput(parameterName).getByRole('switch');
 		const isCurrentlyEnabled = (await switchElement.getAttribute('aria-checked')) === 'true';
 		if (isCurrentlyEnabled !== enabled) {
 			await switchElement.click();
@@ -761,7 +761,6 @@ export class NodeDetailsViewPage extends BasePage {
 					'[data-test-id="fixed-collection-add-top-level-dropdown"]',
 					'[data-test-id="fixed-collection-add-header"]',
 					'[data-test-id="fixed-collection-add-header-nested"]',
-					'[data-test-id="fixed-collection-add"]',
 				].join(', '),
 			)
 			.first();
@@ -771,18 +770,13 @@ export class NodeDetailsViewPage extends BasePage {
 			return;
 		}
 
-		const addButtonByName = collection.getByRole('button', { name: /^Add / }).first();
-		if ((await addButtonByName.count()) > 0 && (await addButtonByName.isVisible())) {
-			await addButtonByName.click();
-			return;
-		}
-
-		// Fallback for legacy behavior where clicking the wrapper would add an item.
-		await collection.click();
+		await collection.getByRole('button', { name: /^Add / }).first().click();
 	}
 
 	getNodeParameterButton(buttonName: string) {
-		return this.getNodeParameters().getByRole('button', { name: buttonName });
+		// Collections expose the same add action twice — as a header action and as a
+		// button below the items — so scope to the first match.
+		return this.getNodeParameters().getByRole('button', { name: buttonName }).first();
 	}
 
 	async clickNodeParameterButton(buttonName: string) {
@@ -796,8 +790,8 @@ export class NodeDetailsViewPage extends BasePage {
 
 	async addFixedCollectionProperty(propertyName: string, index?: number) {
 		const picker = this.getFixedCollectionPropertyPicker(index);
-		await picker.locator('input').click();
-		await this.getVisiblePopoverOption(propertyName, { exact: true }).click();
+		await picker.getByRole('button').first().click();
+		await this.getVisiblePopoverMenuItem(propertyName, { exact: true }).click();
 	}
 
 	getParameterItemWithText(text: string) {

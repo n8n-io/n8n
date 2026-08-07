@@ -8,12 +8,7 @@ import type {
 	INodePropertyOptions,
 	NodeParameterValueType,
 } from 'n8n-workflow';
-import {
-	ADD_FORM_NOTICE,
-	getParameterValueByPath,
-	NodeHelpers,
-	resolveRelativePath,
-} from 'n8n-workflow';
+import { ADD_FORM_NOTICE, getParameterValueByPath, resolveRelativePath } from 'n8n-workflow';
 import { computed, defineAsyncComponent, nextTick, onErrorCaptured, ref, watch } from 'vue';
 
 import type { INodeUi, IUpdateInformation } from '@/Interface';
@@ -44,7 +39,6 @@ import ResourceMapper from './ResourceMapper/ResourceMapper.vue';
 
 import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
 import { useAiGateway } from '@/app/composables/useAiGateway';
-import { useCollectionOverhaul } from '@/app/composables/useCollectionOverhaul';
 import {
 	filterTelegramHitlParameters,
 	useEnhancedHitlTelegramExperiment,
@@ -65,13 +59,10 @@ import get from 'lodash/get';
 import {
 	N8nCallout,
 	N8nIcon,
-	N8nIconButton,
-	N8nInputLabel,
 	N8nLink,
 	N8nNotice,
 	N8nSectionHeader,
 	N8nText,
-	N8nTooltip,
 } from '@n8n/design-system';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 const LazyFixedCollectionParameter = defineAsyncComponent(
@@ -80,9 +71,6 @@ const LazyFixedCollectionParameter = defineAsyncComponent(
 const LazyCollectionParameter = defineAsyncComponent(
 	async () => await import('./Collection/CollectionParameter.vue'),
 );
-
-// Parameter issues are displayed within the inputs themselves, but some parameters need to show them in the label UI
-const showIssuesInLabelFor = ['fixedCollection'];
 
 type Props = {
 	node?: INodeUi;
@@ -123,7 +111,6 @@ const nodeSettingsParameters = useNodeSettingsParameters();
 const asyncLoadingError = ref(false);
 const workflowHelpers = useWorkflowHelpers();
 const i18n = useI18n();
-const { isEnabled: isCollectionOverhaulEnabled } = useCollectionOverhaul();
 const { isFeatureEnabled: isEnhancedHitlTelegramEnabled } = useEnhancedHitlTelegramExperiment();
 const { isFeatureEnabled: isEnhancedHitlSlackEnabled } = useEnhancedHitlSlackExperiment();
 const {
@@ -187,7 +174,6 @@ interface ParameterComputedData {
 	isDisabled: boolean;
 	showOptions: boolean;
 	dependentParametersValues: string | null;
-	issues: string[];
 	isCalloutVisible: boolean;
 	indentedUnderSection: boolean;
 }
@@ -273,7 +259,6 @@ throttledWatch(
 				const isDisabled = disabledMap[parameterPath] ?? false;
 				const showOptions = shouldShowOptions(parameter);
 				const dependentParametersValues = await getDependentParametersValues(parameter);
-				const issues = getParameterIssues(parameter);
 				const calloutVisible = parameter.type === 'callout' ? isCalloutVisible(parameter) : false;
 
 				return {
@@ -283,7 +268,6 @@ throttledWatch(
 					isDisabled,
 					showOptions,
 					dependentParametersValues,
-					issues,
 					isCalloutVisible: calloutVisible,
 					indentedUnderSection: false,
 				};
@@ -597,21 +581,6 @@ function onNoticeAction(action: string) {
 	}
 }
 
-function getParameterIssues(parameter: INodeProperties): string[] {
-	if (!node.value || !showIssuesInLabelFor.includes(parameter.type)) {
-		return [];
-	}
-	const issues = NodeHelpers.getParameterIssues(
-		parameter,
-		node.value.parameters,
-		'',
-		node.value,
-		nodeType.value,
-	);
-
-	return issues.parameters?.[parameter.name] ?? [];
-}
-
 function shouldShowOptions(parameter: INodeProperties): boolean {
 	return parameter.type !== 'resourceMapper';
 }
@@ -902,61 +871,7 @@ watch(
 				v-else-if="['collection', 'fixedCollection'].includes(item.parameter.type)"
 				class="multi-parameter"
 			>
-				<N8nInputLabel
-					v-if="!isCollectionOverhaulEnabled"
-					:label="i18n.nodeText(activeNode?.type).inputLabelDisplayName(item.parameter, path)"
-					:tooltip-text="
-						i18n.nodeText(activeNode?.type).inputLabelDescription(item.parameter, path)
-					"
-					size="small"
-					:underline="true"
-					:input-name="item.parameter.name"
-					color="text-dark"
-				>
-					<template
-						v-if="showIssuesInLabelFor.includes(item.parameter.type) && item.issues.length > 0"
-						#issues
-					>
-						<N8nTooltip>
-							<template #content>
-								<span v-for="(issue, i) in item.issues" :key="i">{{ issue }}</span>
-							</template>
-							<N8nIcon icon="triangle-alert" size="small" color="danger" />
-						</N8nTooltip>
-					</template>
-				</N8nInputLabel>
-				<Suspense v-if="!asyncLoadingError && !isCollectionOverhaulEnabled">
-					<template #default>
-						<LazyCollectionParameter
-							v-if="item.parameter.type === 'collection'"
-							:parameter="item.parameter"
-							:values="getParameterValue<INodeParameters>(item.parameter.name)"
-							:node-values="nodeValues"
-							:path="item.path"
-							:is-read-only="isReadOnly"
-							:is-nested="isNested"
-							@value-changed="valueChanged"
-						/>
-						<LazyFixedCollectionParameter
-							v-else-if="item.parameter.type === 'fixedCollection'"
-							:parameter="item.parameter"
-							:values="getParameterValue<Record<string, INodeParameters[]>>(item.parameter.name)"
-							:node-values="nodeValues"
-							:path="item.path"
-							:is-read-only="isReadOnly"
-							:is-nested="isNested"
-							:is-newly-added="newlyAddedParameters.has(item.parameter.name)"
-							@value-changed="valueChanged"
-						/>
-					</template>
-					<template #fallback>
-						<N8nText size="small" class="async-notice">
-							<N8nIcon icon="refresh-cw" size="xsmall" :spin="true" />
-							{{ i18n.baseText('parameterInputList.loadingFields') }}
-						</N8nText>
-					</template>
-				</Suspense>
-				<template v-else-if="!asyncLoadingError && isCollectionOverhaulEnabled">
+				<template v-if="!asyncLoadingError">
 					<LazyCollectionParameter
 						v-if="item.parameter.type === 'collection'"
 						:parameter="item.parameter"
@@ -987,20 +902,6 @@ watch(
 					<N8nIcon icon="triangle-alert" size="xsmall" />
 					{{ i18n.baseText('parameterInputList.loadingError') }}
 				</N8nText>
-				<N8nIconButton
-					variant="ghost"
-					v-if="
-						hideDelete !== true &&
-						!isReadOnly &&
-						!item.parameter.isNodeSetting &&
-						!isCollectionOverhaulEnabled
-					"
-					size="small"
-					icon="trash-2"
-					class="icon-button"
-					:title="i18n.baseText('parameterInputList.delete')"
-					@click="deleteOption(item.parameter.name)"
-				></N8nIconButton>
 			</div>
 			<ResourceMapper
 				v-else-if="item.parameter.type === 'resourceMapper'"
@@ -1040,21 +941,6 @@ watch(
 				@value-changed="valueChanged"
 			/>
 			<div v-else-if="credentialsParameterIndex !== index" class="parameter-item">
-				<N8nIconButton
-					variant="ghost"
-					v-if="
-						hideDelete !== true &&
-						!isReadOnly &&
-						!item.parameter.isNodeSetting &&
-						!isCollectionOverhaulEnabled
-					"
-					size="small"
-					icon="trash-2"
-					class="icon-button"
-					:title="i18n.baseText('parameterInputList.delete')"
-					@click="deleteOption(item.parameter.name)"
-				></N8nIconButton>
-
 				<ParameterInputFull
 					:key="node?.name"
 					:parameter="item.parameter"
@@ -1066,12 +952,7 @@ watch(
 					:is-read-only="isReadOnly || item.isDisabled"
 					:hide-label="layout === 'inline'"
 					:node-values="nodeValues"
-					:show-delete="
-						!isReadOnly &&
-						!item.parameter.isNodeSetting &&
-						!hideDelete &&
-						isCollectionOverhaulEnabled
-					"
+					:show-delete="!isReadOnly && !item.parameter.isNodeSetting && !hideDelete"
 					:on-delete="() => deleteOption(item.parameter.name)"
 					@update="valueChanged"
 					@blur="onParameterBlur(item.parameter.name)"
@@ -1100,19 +981,6 @@ watch(
 <style lang="scss">
 .parameter-input-list-wrapper {
 	--input--color--background--disabled: var(--color--background);
-	.icon-button {
-		position: absolute;
-		opacity: 0;
-		top: -3px;
-		left: calc(-0.5 * var(--spacing--xs));
-		transition: opacity 100ms ease-in;
-		Button {
-			color: var(--icon--color);
-		}
-	}
-	.icon-button > Button:hover {
-		color: var(--icon--color--hover);
-	}
 
 	.indent > div {
 		padding-left: var(--spacing--sm);
@@ -1132,11 +1000,6 @@ watch(
 		margin: var(--spacing--xs) 0;
 		scroll-margin: var(--spacing--lg);
 	}
-	.parameter-item:hover > .icon-button,
-	.multi-parameter:hover > .icon-button {
-		opacity: 1;
-	}
-
 	.parameter-notice {
 		background-color: var(--color--warning--tint-2);
 		color: $custom-font-black;

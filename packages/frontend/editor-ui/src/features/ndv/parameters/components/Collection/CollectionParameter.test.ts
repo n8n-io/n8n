@@ -1,9 +1,13 @@
 import { createComponentRenderer } from '@/__tests__/render';
-import { createTestingPinia } from '@pinia/testing';
-import CollectionParameter from './CollectionParameter.vue';
-import { createTestNodeProperties } from '@/__tests__/mocks';
-import { STORES } from '@n8n/stores';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
+import CollectionParameter, { type Props } from './CollectionParameter.vue';
+import { STORES } from '@n8n/stores';
+import { createTestingPinia } from '@pinia/testing';
+import userEvent from '@testing-library/user-event';
+import { screen } from '@testing-library/vue';
+import { setActivePinia } from 'pinia';
+import { nextTick } from 'vue';
+import { flushPromises } from '@vue/test-utils';
 
 // Instantiates a store that derives the workflow id from the route. These tests run
 // without a router, so resolve the id directly.
@@ -15,122 +19,554 @@ vi.mock('@/app/composables/useWorkflowId', async () => {
 	};
 });
 
-const renderComponent = createComponentRenderer(CollectionParameter, {
-	pinia: createTestingPinia({
+// Controllable active node + gateway lookups so the AI Gateway hiding path can be
+// exercised. Defaults match the no-active-node behaviour the other tests rely on.
+let mockActiveNode: unknown = null;
+const mockIsNodePropertyHidden = vi.fn((_node: unknown, _param: string) => false);
+
+vi.mock('@/features/ndv/shared/ndv.store', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@/features/ndv/shared/ndv.store')>();
+	return {
+		...actual,
+		injectNDVStore: () => ({
+			value: {
+				get activeNode() {
+					return mockActiveNode;
+				},
+			},
+		}),
+	};
+});
+
+vi.mock('@/app/stores/aiGateway.store', () => ({
+	useAiGatewayStore: () => ({ isNodePropertyHidden: mockIsNodePropertyHidden }),
+}));
+
+describe('CollectionParameter.vue', () => {
+	const pinia = createTestingPinia({
 		initialState: {
 			[STORES.SETTINGS]: {
 				settings: SETTINGS_STORE_DEFAULT_STATE.settings,
 			},
 		},
-	}),
-});
+	});
+	setActivePinia(pinia);
 
-describe('CollectionParameter', () => {
-	afterEach(() => {
-		vi.clearAllMocks();
+	afterEach(async () => {
+		await flushPromises();
 	});
 
-	it('should render collection component', async () => {
-		const { container } = renderComponent({
-			props: {
-				path: 'parameters.additionalFields',
-				parameter: createTestNodeProperties({
-					displayName: 'Additional Fields',
-					name: 'additionalFields',
-					type: 'collection',
-					options: [
+	const baseProps: Props = {
+		parameter: {
+			displayName: 'Additional Fields',
+			name: 'additionalFields',
+			placeholder: 'Add Field',
+			type: 'collection',
+			default: {},
+			options: [
+				{
+					name: 'field1',
+					displayName: 'Field 1',
+					values: [
 						{
-							displayName: 'Currency',
-							name: 'currency',
+							displayName: 'Value 1',
+							name: 'value1',
 							type: 'string',
-							default: 'USD',
+							default: 'Default Value',
 						},
+					],
+				},
+				{
+					name: 'field2',
+					displayName: 'Field 2',
+					values: [
 						{
-							displayName: 'Value',
-							name: 'value',
+							displayName: 'Value 2',
+							name: 'value2',
 							type: 'number',
 							default: 0,
 						},
 					],
-				}),
-				nodeValues: {
-					parameters: {
-						additionalFields: {},
-					},
 				},
-				values: {},
+			],
+		},
+		path: 'parameters.additionalFields',
+		nodeValues: {
+			parameters: {
+				additionalFields: {},
 			},
+		},
+		values: {},
+		isReadOnly: false,
+		isNested: false,
+	};
+
+	const renderComponent = createComponentRenderer(CollectionParameter, {
+		props: baseProps,
+	});
+
+	describe('Rendering', () => {
+		it('renders the component with section header when not nested', () => {
+			const { getByText } = renderComponent();
+			expect(getByText('Additional Fields')).toBeInTheDocument();
 		});
 
-		expect(container).toBeInTheDocument();
+		it('renders add button in header when not nested', () => {
+			const { getByTestId } = renderComponent();
+			expect(getByTestId('collection-parameter-add-header')).toBeInTheDocument();
+		});
+
+		it('renders add button in collapsible panel when nested', () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					...baseProps,
+					isNested: true,
+				},
+			});
+			// When nested, uses collapsible panel instead of section header
+			// Both have the add button with this test ID
+			expect(getByTestId('collection-parameter-add-header')).toBeInTheDocument();
+		});
+
+		it('renders dropdown for adding new items', () => {
+			const { getByTestId } = renderComponent();
+			expect(getByTestId('collection-parameter-add-dropdown')).toBeInTheDocument();
+		});
 	});
 
-	it('should render with existing values', async () => {
-		const { container } = renderComponent({
-			props: {
-				path: 'parameters.additionalFields',
-				parameter: createTestNodeProperties({
-					displayName: 'Additional Fields',
-					name: 'additionalFields',
-					type: 'collection',
+	describe('Collections with values', () => {
+		it('renders parameters from collection items', async () => {
+			const { findByText } = renderComponent({
+				props: {
+					...baseProps,
+					values: {
+						field1: { value1: 'Test Value' },
+					},
+					nodeValues: {
+						parameters: {
+							additionalFields: {
+								field1: { value1: 'Test Value' },
+							},
+						},
+					},
+				},
+			});
+
+			expect(await findByText('Value 1')).toBeInTheDocument();
+		});
+
+		it('renders parameters from multiple collections correctly', async () => {
+			const { findByText } = renderComponent({
+				props: {
+					...baseProps,
+					values: {
+						field1: { value1: 'Test 1' },
+						field2: { value2: 42 },
+					},
+					nodeValues: {
+						parameters: {
+							additionalFields: {
+								field1: { value1: 'Test 1' },
+								field2: { value2: 42 },
+							},
+						},
+					},
+				},
+			});
+
+			expect(await findByText('Value 1')).toBeInTheDocument();
+			expect(await findByText('Value 2')).toBeInTheDocument();
+		});
+	});
+
+	describe('Adding items', () => {
+		it('renders dropdown for adding collection items', async () => {
+			const { getByTestId } = renderComponent();
+
+			// Click the dropdown trigger
+			const dropdown = getByTestId('collection-parameter-add-dropdown');
+			await userEvent.click(dropdown);
+
+			await nextTick();
+
+			expect(dropdown).toBeInTheDocument();
+		});
+
+		it('opens the options menu when the header add button is clicked', async () => {
+			const { getByTestId, emitted } = renderComponent();
+
+			const addButton = getByTestId('collection-parameter-add-header');
+			await userEvent.click(addButton);
+			await nextTick();
+
+			// The menu should open and expose the available options
+			const option = await screen.findByText('Field 1');
+			expect(option).toBeVisible();
+
+			// Selecting an option adds the field
+			await userEvent.click(option);
+			expect(emitted('valueChanged')).toBeTruthy();
+		});
+	});
+
+	describe('Deleting items', () => {
+		it('renders collection parameters correctly', async () => {
+			const { findByText, getAllByRole } = renderComponent({
+				props: {
+					...baseProps,
+					values: {
+						field1: { value1: 'Test Value' },
+					},
+					nodeValues: {
+						parameters: {
+							additionalFields: {
+								field1: { value1: 'Test Value' },
+							},
+						},
+					},
+				},
+			});
+
+			expect(await findByText('Value 1')).toBeInTheDocument();
+			const buttons = getAllByRole('button');
+			expect(buttons.length).toBeGreaterThan(0);
+		});
+	});
+
+	describe('Read-only mode', () => {
+		it('does not render add buttons when isReadOnly is true', () => {
+			const { queryByTestId } = renderComponent({
+				props: {
+					...baseProps,
+					isReadOnly: true,
+				},
+			});
+
+			expect(queryByTestId('collection-parameter-add-header')).not.toBeInTheDocument();
+			expect(queryByTestId('collection-parameter-add-dropdown')).not.toBeInTheDocument();
+		});
+
+		it('renders parameters in read-only mode', async () => {
+			const { findByText } = renderComponent({
+				props: {
+					...baseProps,
+					isReadOnly: true,
+					values: {
+						field1: { value1: 'Test Value' },
+					},
+					nodeValues: {
+						parameters: {
+							additionalFields: {
+								field1: { value1: 'Test Value' },
+							},
+						},
+					},
+				},
+			});
+
+			// Verify the parameter is rendered
+			expect(await findByText('Value 1')).toBeInTheDocument();
+		});
+	});
+
+	describe('Sortable collections', () => {
+		it('renders parameters when sortable and multiple items exist', async () => {
+			const { findByText } = renderComponent({
+				props: {
+					...baseProps,
+					parameter: {
+						...baseProps.parameter,
+						typeOptions: {
+							sortable: true,
+						},
+					},
+					values: {
+						field1: { value1: 'Test 1' },
+						field2: { value2: 42 },
+					},
+					nodeValues: {
+						parameters: {
+							additionalFields: {
+								field1: { value1: 'Test 1' },
+								field2: { value2: 42 },
+							},
+						},
+					},
+				},
+			});
+
+			// Verify parameters from collections are rendered
+			expect(await findByText('Value 1')).toBeInTheDocument();
+			expect(await findByText('Value 2')).toBeInTheDocument();
+		});
+
+		it('respects sortable: false option', async () => {
+			const { findByText } = renderComponent({
+				props: {
+					...baseProps,
+					parameter: {
+						...baseProps.parameter,
+						typeOptions: {
+							sortable: false,
+						},
+					},
+					values: {
+						field1: { value1: 'Test 1' },
+					},
+					nodeValues: {
+						parameters: {
+							additionalFields: {
+								field1: { value1: 'Test 1' },
+							},
+						},
+					},
+				},
+			});
+
+			expect(await findByText('Value 1')).toBeInTheDocument();
+		});
+	});
+
+	describe('Expanded state', () => {
+		it('renders collection parameters', async () => {
+			const { findByText } = renderComponent({
+				props: {
+					...baseProps,
+					values: {
+						field1: { value1: 'Test' },
+					},
+					nodeValues: {
+						parameters: {
+							additionalFields: {
+								field1: { value1: 'Test' },
+							},
+						},
+					},
+				},
+			});
+
+			// Verify parameter is rendered
+			expect(await findByText('Value 1')).toBeInTheDocument();
+		});
+	});
+
+	describe('Disabled state', () => {
+		it('renders add dropdown when all options are added', () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					...baseProps,
+					values: {
+						field1: { value1: 'Test 1' },
+						field2: { value2: 42 },
+					},
+					nodeValues: {
+						parameters: {
+							additionalFields: {
+								field1: { value1: 'Test 1' },
+								field2: { value2: 42 },
+							},
+						},
+					},
+				},
+			});
+
+			// When all options are added, the dropdown is still rendered but disabled
+			const addButtonContainer = getByTestId('collection-parameter-add-header');
+			expect(addButtonContainer).toBeInTheDocument();
+		});
+
+		it('does not show bottom add button when all options are added', () => {
+			const { queryByTestId } = renderComponent({
+				props: {
+					...baseProps,
+					values: {
+						field1: { value1: 'Test 1' },
+						field2: { value2: 42 },
+					},
+					nodeValues: {
+						parameters: {
+							additionalFields: {
+								field1: { value1: 'Test 1' },
+								field2: { value2: 42 },
+							},
+						},
+					},
+				},
+			});
+
+			// When all options are added (isAddDisabled = true), the bottom add button should not render
+			const bottomAddButton = queryByTestId('collection-parameter-add-dropdown');
+			expect(bottomAddButton).not.toBeInTheDocument();
+		});
+	});
+
+	describe('Properties rendering', () => {
+		it('renders flattened properties for non-collection options', () => {
+			const propsWithMixedOptions: Props = {
+				...baseProps,
+				parameter: {
+					...baseProps.parameter,
 					options: [
 						{
-							displayName: 'Currency',
-							name: 'currency',
+							displayName: 'Simple Field',
+							name: 'simpleField',
 							type: 'string',
-							default: 'USD',
+							default: '',
 						},
 						{
-							displayName: 'Value',
-							name: 'value',
-							type: 'number',
-							default: 0,
+							name: 'collection1',
+							displayName: 'Collection 1',
+							values: [
+								{
+									displayName: 'Value',
+									name: 'value',
+									type: 'string',
+									default: '',
+								},
+							],
 						},
 					],
-				}),
+				},
+				values: {
+					simpleField: 'test',
+				},
 				nodeValues: {
 					parameters: {
 						additionalFields: {
-							currency: 'EUR',
+							simpleField: 'test',
 						},
 					},
 				},
-				values: {
-					currency: 'EUR',
-				},
-			},
-		});
+			};
 
-		expect(container).toBeInTheDocument();
+			const { container } = renderComponent({
+				props: propsWithMixedOptions,
+			});
+
+			// Component should render
+			expect(container).toBeInTheDocument();
+		});
 	});
 
-	it('should handle read-only mode', async () => {
-		const { container } = renderComponent({
-			props: {
-				path: 'parameters.additionalFields',
-				parameter: createTestNodeProperties({
-					displayName: 'Additional Fields',
-					name: 'additionalFields',
-					type: 'collection',
-					options: [
-						{
-							displayName: 'Currency',
-							name: 'currency',
-							type: 'string',
-							default: 'USD',
-						},
-					],
-				}),
-				nodeValues: {
-					parameters: {
-						additionalFields: {},
-					},
+	describe('Header divider', () => {
+		it('shows header divider when no properties exist', () => {
+			const { getByText } = renderComponent({
+				props: {
+					...baseProps,
+					values: {},
 				},
-				values: {},
-				isReadOnly: true,
-			},
+			});
+
+			// Verify header is present
+			expect(getByText('Additional Fields')).toBeInTheDocument();
 		});
 
-		expect(container).toBeInTheDocument();
+		it('shows header divider when first property is not a collection/fixedCollection', () => {
+			const propsWithSimpleField: Props = {
+				...baseProps,
+				parameter: {
+					...baseProps.parameter,
+					options: [
+						{
+							displayName: 'Simple Field',
+							name: 'simpleField',
+							type: 'string',
+							default: '',
+						},
+					],
+				},
+				values: {
+					simpleField: 'test',
+				},
+				nodeValues: {
+					parameters: {
+						additionalFields: {
+							simpleField: 'test',
+						},
+					},
+				},
+			};
+
+			const { getByText } = renderComponent({
+				props: propsWithSimpleField,
+			});
+
+			expect(getByText('Additional Fields')).toBeInTheDocument();
+		});
+	});
+
+	describe('AI Gateway hidden properties', () => {
+		// Single, unselected property option so that hiding it empties the add menu,
+		// which removes the bottom add dropdown (isAddDisabled).
+		const singleOptionProps: Props = {
+			...baseProps,
+			parameter: {
+				...baseProps.parameter,
+				options: [
+					{
+						displayName: 'Simple Field',
+						name: 'simpleField',
+						type: 'string',
+						default: '',
+					},
+				],
+			},
+			values: {},
+		};
+
+		afterEach(() => {
+			mockActiveNode = null;
+			mockIsNodePropertyHidden.mockReset();
+			mockIsNodePropertyHidden.mockReturnValue(false);
+		});
+
+		it('removes properties the store reports as hidden', async () => {
+			mockIsNodePropertyHidden.mockImplementation((_node, param) => param === 'simpleField');
+
+			const { queryByTestId } = renderComponent({ props: singleOptionProps });
+			await flushPromises();
+
+			expect(queryByTestId('collection-parameter-add-dropdown')).not.toBeInTheDocument();
+		});
+
+		it('keeps properties the store does not hide', async () => {
+			mockIsNodePropertyHidden.mockReturnValue(false);
+
+			const { getByTestId } = renderComponent({ props: singleOptionProps });
+			await flushPromises();
+
+			expect(getByTestId('collection-parameter-add-dropdown')).toBeInTheDocument();
+		});
+
+		it('removes hidden collection-type options', async () => {
+			mockIsNodePropertyHidden.mockImplementation((_node, param) => param === 'nestedCollection');
+
+			const singleCollectionProps: Props = {
+				...baseProps,
+				parameter: {
+					...baseProps.parameter,
+					options: [
+						{
+							name: 'nestedCollection',
+							displayName: 'Nested Collection',
+							values: [
+								{
+									displayName: 'Field 1',
+									name: 'field1',
+									type: 'string',
+									default: '',
+								},
+							],
+						},
+					],
+				},
+				values: {},
+			};
+
+			const { queryByTestId } = renderComponent({ props: singleCollectionProps });
+			await flushPromises();
+
+			expect(queryByTestId('collection-parameter-add-dropdown')).not.toBeInTheDocument();
+		});
 	});
 });

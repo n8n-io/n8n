@@ -37,8 +37,6 @@ export const READY_TO_RUN_V2_P3_EXPERIMENT = createExperiment('059_ready-to-run-
 
 export const PERSONALIZED_TEMPLATES_V3 = createExperiment('044_template_reco_v3');
 
-export const COLLECTION_OVERHAUL_EXPERIMENT = createExperiment('048_collection_overhaul');
-
 export const TEMPLATE_SETUP_EXPERIENCE = createExperiment('055_template_setup_experience');
 
 export const AI_BUILDER_REVIEW_CHANGES_EXPERIMENT = createExperiment(
@@ -148,7 +146,6 @@ export const EXPERIMENTS_TO_TRACK = [
 	TEMPLATE_SETUP_EXPERIENCE.name,
 	RESOURCE_CENTER_EXPERIMENT.name,
 	EXECUTION_LOGIC_V2_EXPERIMENT.name,
-	COLLECTION_OVERHAUL_EXPERIMENT.name,
 	CREDENTIALS_APP_SELECTION_EXPERIMENT.name,
 	SIDEBAR_EXPANDED_EXPERIMENT.name,
 	SETUP_PANEL.name,

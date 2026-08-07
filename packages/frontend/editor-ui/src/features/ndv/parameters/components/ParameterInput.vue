@@ -100,7 +100,7 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { getParameterDisplayableOptions } from '@/app/utils/nodes/nodeTransforms';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 
-import { ElColorPicker, ElDatePicker, ElDialog, ElSwitch } from 'element-plus';
+import { ElColorPicker, ElDatePicker, ElDialog } from 'element-plus';
 import {
 	N8nIcon,
 	N8nIconPicker,
@@ -110,7 +110,6 @@ import {
 	N8nSelect,
 	N8nSwitch,
 } from '@n8n/design-system';
-import { useCollectionOverhaul } from '@/app/composables/useCollectionOverhaul';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import {
 	isPlaceholderValue,
@@ -191,7 +190,6 @@ const focusPanelStore = useFocusPanelStore();
 const experimentalNdvStore = useExperimentalNdvStore();
 const projectsStore = useProjectsStore();
 const builderStore = useBuilderStore();
-const { isEnabled: isCollectionOverhaulEnabled } = useCollectionOverhaul();
 
 const expressionLocalResolveCtx = inject(ExpressionLocalResolveContextSymbol, undefined);
 
@@ -704,9 +702,7 @@ const parameterInputClasses = computed(() => {
 
 	if (isSwitch.value) {
 		classes['parameter-switch'] = true;
-		if (isCollectionOverhaulEnabled.value) {
-			classes['inline-switch-mode'] = true;
-		}
+		classes['inline-switch-mode'] = true;
 	} else {
 		classes['parameter-value-container'] = true;
 	}
@@ -2067,7 +2063,7 @@ onUpdated(async () => {
 			</N8nSelect>
 
 			<N8nInput
-				v-else-if="parameter.type === 'boolean' && isCollectionOverhaulEnabled && droppable"
+				v-else-if="parameter.type === 'boolean' && droppable"
 				:size="parameterInputSize"
 				:disabled="isReadOnly"
 				:title="displayTitle"
@@ -2083,31 +2079,13 @@ onUpdated(async () => {
 				</template>
 			</N8nInput>
 
-			<N8nInput
-				v-else-if="parameter.type === 'boolean' && droppable"
-				:size="parameterInputSize"
-				:model-value="JSON.stringify(displayValue)"
-				:disabled="isReadOnly"
-				:title="displayTitle"
-			/>
-
 			<N8nSwitch
-				v-else-if="parameter.type === 'boolean' && isCollectionOverhaulEnabled"
+				v-else-if="parameter.type === 'boolean'"
 				ref="inputField"
 				:class="{ 'ph-no-capture': shouldRedactValue }"
 				:model-value="Boolean(displayValue)"
 				:disabled="isReadOnly"
 				size="small"
-				@update:model-value="valueChanged"
-			/>
-
-			<ElSwitch
-				v-else-if="parameter.type === 'boolean'"
-				ref="inputField"
-				:class="{ 'switch-input': true, 'ph-no-capture': shouldRedactValue }"
-				active-color="#13ce66"
-				:model-value="displayValue"
-				:disabled="isReadOnly"
 				@update:model-value="valueChanged"
 			/>
 			<div v-if="!isReadOnly && showDragnDropTip" :class="$style.tip">
@@ -2133,10 +2111,6 @@ onUpdated(async () => {
 <style scoped lang="scss">
 .readonly-code {
 	font-size: var(--font-size--xs);
-}
-
-.switch-input {
-	margin: var(--spacing--5xs) 0 var(--spacing--2xs) 0;
 }
 
 .parameter-value-container {
