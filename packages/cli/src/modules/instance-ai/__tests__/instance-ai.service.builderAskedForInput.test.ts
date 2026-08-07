@@ -206,11 +206,17 @@ describe('InstanceAiService — "Builder asked for input" telemetry', () => {
 				accepted_status_codes: undefined,
 			},
 		);
+		const speccedCalls = service.telemetry.track.mock.calls.filter(
+			([event]) => event === TELEMETRY_EVENT.INSTANCE_AI.BUILDER_SPECCED_TEMPLATED_CRED,
+		);
+		expect(speccedCalls).toHaveLength(1);
+		// The emitted payload must satisfy the registry schema — the transport
+		// only logs a warning on mismatch in production.
 		expect(
-			service.telemetry.track.mock.calls.filter(
-				([event]) => event === TELEMETRY_EVENT.INSTANCE_AI.BUILDER_SPECCED_TEMPLATED_CRED,
+			TELEMETRY_EVENT.INSTANCE_AI.BUILDER_SPECCED_TEMPLATED_CRED.getValidationError(
+				speccedCalls[0][1],
 			),
-		).toHaveLength(1);
+		).toBeNull();
 	});
 
 	it('does not emit the specced event for requests without a parseable recipe', () => {
