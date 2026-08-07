@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import { computed, ref } from 'vue';
 
+import N8nButton from '@n8n/design-system/components/N8nButton/Button.vue';
 import N8nIcon from '@n8n/design-system/components/N8nIcon/Icon.vue';
 import N8nInput from '@n8n/design-system/components/N8nInput';
 
@@ -567,10 +568,10 @@ export const WithHeaderAndFooterActions = {
 	}),
 } satisfies Story;
 
-export const InForm = {
-	name: 'In Form',
+export const WithForm = {
+	name: 'With Form',
 	render: () => ({
-		components: { Combobox, N8nInput },
+		components: { Combobox, N8nButton, N8nInput },
 		setup() {
 			const name = ref('');
 			const status = ref<string | undefined>();
@@ -610,22 +611,7 @@ export const InForm = {
 				Notes
 				<N8nInput v-model="notes" placeholder="Enter notes..." />
 			</label>
-			<button
-				type="submit"
-				style="
-					align-self: flex-start;
-					padding: var(--spacing--2xs) var(--spacing--sm);
-					border: var(--border);
-					border-radius: var(--radius--2xs);
-					background: var(--background--surface);
-					color: var(--text-color);
-					cursor: pointer;
-					font: inherit;
-					font-size: var(--font-size--sm);
-				"
-			>
-				Submit
-			</button>
+			<N8nButton type="submit" variant="solid" label="Submit" style="width: 100%;" />
 		</form>
 		`,
 	}),
