@@ -50,7 +50,7 @@ export default workflow('id', 'name')
 		properties: [
 			{
 				displayName:
-					'You may not need this node — n8n nodes automatically run once for each input item. <a href="https://docs.n8n.io/getting-started/key-concepts/looping.html#using-loops-in-n8n" target="_blank">More info</a>',
+					'You may not need this node — n8n nodes automatically run once for each input item. <a href="https://docs.n8n.io/flow-logic/looping/#using-loops-in-n8n" target="_blank">More info</a>',
 				name: 'splitInBatchesNotice',
 				type: 'notice',
 				default: '',
