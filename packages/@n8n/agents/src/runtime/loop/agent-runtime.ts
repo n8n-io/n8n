@@ -7,7 +7,7 @@ import { incrementMessageCount, incrementTokenCountFromUsage } from './execution
 import { GenerateSink } from './generate-sink';
 import { hydrateFileParts } from './hydrate-file-parts';
 import type { RunOutputSink, RunServices } from './run-output-sink';
-import { RuntimeContextBuilder, getModelIdString } from './runtime-context';
+import { RuntimeContextBuilder } from './runtime-context';
 import {
 	extractSettledToolCalls,
 	formatMcpConnectionNote,
@@ -57,7 +57,7 @@ import type { ScopedMemoryTaskEvent } from '../memory/scoped-memory-task-runner'
 import { generateThreadTitle } from '../memory/title-generation';
 import { AgentMessageList, type SerializedMessageList } from '../model/message-list';
 import type { FetchFn } from '../model/model-factory';
-import { createModelTokenCounter } from '../model/model-token-counter';
+import { createModelTokenCounter, getModelIdString } from '../model/model-token-counter';
 import {
 	applyRuntimeCacheBreakpoints,
 	buildInstructionPromptCacheOptions,
@@ -194,7 +194,7 @@ export class AgentRuntime {
 
 	constructor(config: AgentRuntimeConfig) {
 		this.config = config;
-		const tokenCounter = createModelTokenCounter(getModelIdString(config.model));
+		const tokenCounter = createModelTokenCounter(config.model);
 		this.telemetry = new RuntimeTelemetry(config);
 		this.runId = config.runId ?? generateRunId();
 		if (config.deferredTools && config.deferredTools.length > 0) {

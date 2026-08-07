@@ -9,9 +9,9 @@ import type {
 import type { ModelConfig } from '../../types/sdk/agent';
 import type { MemoryTaskUsageReport } from '../../types/sdk/observation-log';
 import { incrementTokenCountFromUsage } from '../loop/execution-counter';
-import { getModelIdString } from '../loop/runtime-context';
 import { loadAi } from '../model/lazy-ai';
 import { createModel } from '../model/model-factory';
+import { getModelIdString } from '../model/model-token-counter';
 import { toTokenUsage } from '../streaming/stream';
 import { buildAiSdkTelemetry } from '../telemetry/telemetry-options';
 
