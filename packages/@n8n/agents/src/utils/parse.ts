@@ -94,6 +94,10 @@ async function compileJsonSchema(
 	};
 }
 
+function schemaCompileError(error: string): ParseResult {
+	return { success: false, error: `Schema could not be compiled: ${error}`, schemaInvalid: true };
+}
+
 /**
  * Validate `data` against a Zod schema or a raw JSON Schema.
  * Returns a unified success/failure result, with parsed data on success.
@@ -109,19 +113,19 @@ export async function parseWithSchema(
 		return { success: false, error: result.error.message };
 	}
 
-	const { stripUnknown = false } = options;
-	const compiled = await compileJsonSchema(schema, stripUnknown);
-	if (!compiled.success) {
-		return {
-			success: false,
-			error: `Schema could not be compiled: ${compiled.error}`,
-			schemaInvalid: true,
-		};
+	// Strict first: Ajv's `removeAdditional` drops properties while trying a failing
+	// `anyOf`/`oneOf` branch, so a payload that already matches a branch must never reach it.
+	const strict = await compileJsonSchema(schema, false);
+	if (!strict.success) return schemaCompileError(strict.error);
+	if (strict.validate(data)) return { success: true, data };
+	if (!options.stripUnknown) {
+		return { success: false, error: strict.ajv.errorsText(strict.validate.errors) };
 	}
 
-	const { ajv, validate } = compiled;
+	const stripping = await compileJsonSchema(schema, true);
+	if (!stripping.success) return schemaCompileError(stripping.error);
 	// Ajv strips in place, so clone to leave the caller's object intact as Zod does.
-	const target = stripUnknown ? structuredClone(data) : data;
-	if (validate(target)) return { success: true, data: target };
-	return { success: false, error: ajv.errorsText(validate.errors) };
+	const target = structuredClone(data);
+	if (stripping.validate(target)) return { success: true, data: target };
+	return { success: false, error: stripping.ajv.errorsText(stripping.validate.errors) };
 }
