@@ -198,6 +198,29 @@ export async function resolveCredentials(
 		}
 	}
 
+	// First stored-credential binding per type, across the in-flight JSON and the
+	// saved workflow, so per-slot sibling reuse below is a map lookup instead of a
+	// rescan of every node. Bindings created during resolution register themselves
+	// so they stay visible to later slots of the same type.
+	const siblingBindingsByType = new Map<string, { id: string; name: string }>();
+	const registerSiblingBinding = (credentialType: string, value: unknown) => {
+		if (siblingBindingsByType.has(credentialType)) return;
+		const id = getCredentialId(value);
+		if (!id) return;
+		if (!isKnownCredentialForType(value, credentialType, availableCredentials)) return;
+		siblingBindingsByType.set(credentialType, { id, name: getCredentialName(value) ?? id });
+	};
+	for (const node of json.nodes ?? []) {
+		for (const [credentialType, value] of Object.entries(node.credentials ?? {})) {
+			registerSiblingBinding(credentialType, value);
+		}
+	}
+	for (const savedCreds of existingCredsByNode.values()) {
+		for (const [credentialType, value] of Object.entries(savedCreds)) {
+			registerSiblingBinding(credentialType, value);
+		}
+	}
+
 	for (const node of json.nodes ?? []) {
 		if (!node.credentials) continue;
 		const creds = node.credentials as Record<string, unknown>;
@@ -223,6 +246,19 @@ export async function resolveCredentials(
 				if (restoredId) {
 					recordResolvedCredential(restoredId, getCredentialName(restored) ?? restoredId);
 				}
+				cleanupMockPinData(json, node.name);
+				return true;
+			};
+
+			// Try 2: reuse a credential of the same type already bound to another
+			// node (in the in-flight JSON or the saved workflow). The workflow has
+			// already settled on that credential for the service, so a new node of
+			// the same service must not re-prompt setup for it.
+			const reuseSiblingNodeCredential = () => {
+				const sibling = siblingBindingsByType.get(key);
+				if (!sibling) return false;
+				creds[key] = { id: sibling.id, name: sibling.name };
+				recordResolvedCredential(sibling.id, sibling.name);
 				cleanupMockPinData(json, node.name);
 				return true;
 			};
@@ -295,6 +331,9 @@ export async function resolveCredentials(
 				if (restoreExistingCredential()) {
 					continue;
 				}
+				if (reuseSiblingNodeCredential()) {
+					continue;
+				}
 				await mockOrAttachGateway();
 				continue;
 			}
@@ -303,10 +342,15 @@ export async function resolveCredentials(
 				continue;
 			}
 
+			if (reuseSiblingNodeCredential()) {
+				continue;
+			}
+
 			const credentialsForType = availableCredentials?.get(key);
 			if (credentialsForType?.length === 1) {
 				const [credential] = credentialsForType;
 				creds[key] = { id: credential.id, name: credential.name };
+				registerSiblingBinding(key, creds[key]);
 				recordResolvedCredential(credential.id, credential.name);
 				cleanupMockPinData(json, node.name);
 				continue;
