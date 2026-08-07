@@ -347,21 +347,41 @@ describe('Anthropic Node', () => {
 
 		it('should keep the cache breakpoint on follow-up requests in the tool call loop', async () => {
 			mockNodeParameters({ enablePromptCaching: true });
-			apiRequestMock
-				.mockResolvedValueOnce({
+
+			// Every call receives the same mutable body object, so the recorded arguments
+			// all point at its final state. Snapshot each payload as it is sent, otherwise
+			// the first request would be asserted against the grown conversation.
+			const responses = [
+				{
 					content: [{ type: 'tool_use', id: 'toolu_1', name: 'my_tool', input: {} }],
 					stop_reason: 'tool_use',
-				})
-				.mockResolvedValueOnce({
-					content: [{ type: 'text', text: 'Done.' }],
-					stop_reason: 'end_turn',
-				});
+				},
+				{ content: [{ type: 'text', text: 'Done.' }], stop_reason: 'end_turn' },
+			];
+			const sentBodies: IDataObject[] = [];
+			apiRequestMock.mockImplementation(
+				async (_method: string, _endpoint: string, parameters: { body: IDataObject }) => {
+					sentBodies.push(structuredClone(parameters.body));
+					return responses[sentBodies.length - 1];
+				},
+			);
 
 			await text.message.execute.call(executeFunctionsMock, 0);
 
-			// The loop re-sends the request after running the tool, and that second call is
-			// where caching actually pays off, so the breakpoint has to survive it.
-			const expectedBody = {
+			expect(sentBodies).toHaveLength(2);
+
+			// First request: only the original prompt, breakpoint already in place.
+			expect(sentBodies[0]).toEqual({
+				model: 'claude-sonnet-4-20250514',
+				max_tokens: 1024,
+				messages: [{ role: 'user', content: 'Hello, world!' }],
+				tools: [],
+				cache_control: { type: 'ephemeral' },
+			});
+
+			// Follow-up request: the conversation has grown by the tool exchange, and the
+			// breakpoint has to survive it -- this is where caching actually pays off.
+			expect(sentBodies[1]).toEqual({
 				model: 'claude-sonnet-4-20250514',
 				max_tokens: 1024,
 				messages: [
@@ -374,16 +394,6 @@ describe('Anthropic Node', () => {
 				],
 				tools: [],
 				cache_control: { type: 'ephemeral' },
-			};
-
-			expect(apiRequestMock).toHaveBeenCalledTimes(2);
-			expect(apiRequestMock).toHaveBeenNthCalledWith(1, 'POST', '/v1/messages', {
-				body: expectedBody,
-				enableAnthropicBetas: {},
-			});
-			expect(apiRequestMock).toHaveBeenNthCalledWith(2, 'POST', '/v1/messages', {
-				body: expectedBody,
-				enableAnthropicBetas: {},
 			});
 		});
 
