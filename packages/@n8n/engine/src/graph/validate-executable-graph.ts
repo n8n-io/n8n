@@ -32,6 +32,18 @@ export function validateExecutableGraph(graph: WorkflowGraph): void {
 		throw new UnimplementedError('Graphs with back-edges (loops) are not supported yet');
 	}
 
+	// Slot indices are structural, so they're enforced here rather than left to
+	// the transport boundary. TODO(CAT-3042): enforce an upper bound too.
+	for (const edge of graph.edges) {
+		for (const index of [edge.outputIndex, edge.inputIndex]) {
+			if (!Number.isInteger(index) || index < 0) {
+				throw new GraphValidationError(
+					`Edge ${edge.from} → ${edge.to} has slot index ${index}; slot indices are non-negative integers`,
+				);
+			}
+		}
+	}
+
 	// TODO(CAT-2874): multi-slot outputs arrive with branching; until then only
 	// output slot 0 fires, and the runtime can assume single-slot outputs.
 	for (const edge of graph.edges) {

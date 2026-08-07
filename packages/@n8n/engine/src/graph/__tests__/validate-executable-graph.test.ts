@@ -46,6 +46,18 @@ describe('validateExecutableGraph', () => {
 		expect(() => validateExecutableGraph(graph)).not.toThrow();
 	});
 
+	it.each([
+		{ slot: 'input', edge: { from: 'trigger', to: 'a', outputIndex: 0, inputIndex: -1 } },
+		{ slot: 'input', edge: { from: 'trigger', to: 'a', outputIndex: 0, inputIndex: 1.5 } },
+		{ slot: 'input', edge: { from: 'trigger', to: 'a', outputIndex: 0, inputIndex: NaN } },
+		{ slot: 'output', edge: { from: 'trigger', to: 'a', outputIndex: NaN, inputIndex: 0 } },
+	])('rejects an edge whose $slot slot index is $edge', ({ edge }) => {
+		const graph: WorkflowGraph = { nodes: validGraph.nodes, edges: [edge] };
+
+		expect(() => validateExecutableGraph(graph)).toThrow(GraphValidationError);
+		expect(() => validateExecutableGraph(graph)).toThrow('non-negative integer');
+	});
+
 	it('rejects an edge leaving an output slot other than 0 as unimplemented', () => {
 		const graph: WorkflowGraph = {
 			nodes: [...validGraph.nodes, { id: 'b', name: 'B', type: 'v1-node' }],
