@@ -44,10 +44,40 @@ export const useWebSocketClient = <T>(options: UseWebSocketClientOptions<T>) => 
 		reconnectTimer.resetConnectionAttempts();
 	};
 
+	/**
+	 * Close codes that indicate a transient/proxy-level disconnect rather than
+	 * a fatal error.  For these we skip the full teardown (which removes all
+	 * listeners and explicitly closes the socket) and just schedule a
+	 * reconnect so the next attempt can succeed without UI flicker.
+	 *
+	 * - 1001: Going Away — server/proxy shutting down gracefully
+	 * - 1005: No Status Received — common with reverse-proxy session resets
+	 * - 1006: Abnormal Closure — TCP drop, no close frame
+	 */
+	const TRANSIENT_CLOSE_CODES = new Set([1001, 1005, 1006]);
+
 	const onConnectionLost = (event: CloseEvent) => {
-		console.warn(`[WebSocketClient] Connection lost, code=${event.code ?? 'unknown'}`);
-		disconnect();
-		reconnectTimer.scheduleReconnect();
+		const code = event.code ?? 0;
+		if (TRANSIENT_CLOSE_CODES.has(code)) {
+			console.info(
+				`[WebSocketClient] Transient close (code=${code}), scheduling reconnect`,
+			);
+			// Clean up the dead socket without a full disconnect cycle so the
+			// reconnect timer can immediately open a fresh connection.
+			stopHeartbeat();
+			if (socket.value) {
+				socket.value.removeEventListener('message', onMessage);
+				socket.value.removeEventListener('error', onError);
+				socket.value.removeEventListener('close', onConnectionLost);
+				socket.value = null;
+			}
+			isConnected.value = false;
+			reconnectTimer.scheduleReconnect();
+		} else {
+			console.warn(`[WebSocketClient] Connection lost, code=${code}`);
+			disconnect();
+			reconnectTimer.scheduleReconnect();
+		}
 	};
 
 	const onMessage = (event: MessageEvent) => {
