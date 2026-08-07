@@ -53,7 +53,7 @@ export class CreateWorkflowReviewActivityTablesAndBaseline1785843640527
 				column('type')
 					.varchar(64)
 					.notNull.withEnumCheck(ACTIVITY_TYPES)
-					.comment('Feed entry kind; see WorkflowReviewActivityType in @n8n/db'),
+					.comment('Feed entry kind; see WorkflowReviewActivityType in @n8n/api-types'),
 				column('typeVersion')
 					.int.notNull.default(1)
 					.comment('Schema version of the `data` payload for this `type`'),

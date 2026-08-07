@@ -8,7 +8,7 @@
 | createdById | uuid |  | true |  | [public.user](public.user.md) |  |
 | data | json |  | true |  |  | Detail per activity type |
 | id | integer |  | false | [public.workflow_review_activity_comment](public.workflow_review_activity_comment.md) |  |  |
-| type | varchar(64) |  | false |  |  | Feed entry kind; see WorkflowReviewActivityType in @n8n/db |
+| type | varchar(64) |  | false |  |  | Feed entry kind; see WorkflowReviewActivityType in @n8n/api-types |
 | typeVersion | integer | 1 | false |  |  | Schema version of the `data` payload for this `type` |
 | workflowReviewRequestId | varchar(36) |  | false |  | [public.workflow_review_request](public.workflow_review_request.md) |  |
 

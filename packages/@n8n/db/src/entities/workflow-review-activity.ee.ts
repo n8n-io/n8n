@@ -1,22 +1,8 @@
+import type { WorkflowReviewActivityType } from '@n8n/api-types';
 import { Column, Entity, Index, PrimaryGeneratedColumn } from '@n8n/typeorm';
 import type { IDataObject } from 'n8n-workflow';
 
 import { JsonColumn, WithCreatedAt } from './abstract-entity';
-
-/**
- * Feed entry kinds, named `<model>.<event>`: a dot separates model from event, snake_case within a
- * multi-word event. Constrained by a CHECK on the column, so a new kind needs a migration.
- */
-export type WorkflowReviewActivityType =
-	| 'review.opened'
-	| 'comment.created'
-	| 'review.changes_requested'
-	| 'review.version_updated'
-	| 'review.approved'
-	| 'workflow.published'
-	/** Closed without an approval: workflow archived or deleted, or the review abandoned. An
-	 * approval writes `review.approved` instead, never both. */
-	| 'review.closed';
 
 /**
  * Altering this table on SQLite recreates it, and `workflow_review_activity_comment` references it
