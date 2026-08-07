@@ -1,4 +1,3 @@
-import type { IMenuItem } from '@n8n/design-system';
 import type { RouteRecordRaw } from 'vue-router';
 
 import type { ModuleBanner } from './banner';
@@ -7,6 +6,7 @@ import type { ModuleLocaleMessages } from './locale';
 import type { ModalDefinition } from './modal';
 import type { ModulePushHandlers } from './push';
 import type { ResourceMetadata } from './resource';
+import type { ModuleSettingsPage } from './settingsPage';
 import type { ModuleSetupContext } from './setup';
 import type { ModuleShortcut } from './shortcut';
 import type { DynamicTabOptions } from './tabs';
@@ -31,7 +31,7 @@ export type FrontendModuleDescription = {
 	};
 	resources?: ResourceMetadata[];
 	modals?: ModalDefinition[];
-	settingsPages?: IMenuItem[];
+	settingsPages?: ModuleSettingsPage[];
 
 	// --- descriptor v2 (all optional, additive) ---
 
