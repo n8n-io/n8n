@@ -90,6 +90,7 @@ export interface DaytonaSandboxConfig extends SandboxConfigBase {
 export interface N8nSandboxConfig extends SandboxConfigBase {
 	enabled: true;
 	provider: 'n8n-sandbox';
+	id?: string;
 	serviceUrl: string;
 	apiKey?: string;
 }

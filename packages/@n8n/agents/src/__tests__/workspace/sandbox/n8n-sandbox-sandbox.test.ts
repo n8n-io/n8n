@@ -120,35 +120,56 @@ describe('start()', () => {
 			expect(mockCreateSandbox).toHaveBeenCalledTimes(1);
 			expect(sandbox.id).toBe('sb-123');
 		});
+
+		it('times out stalled creation and removes a sandbox created after the timeout', async () => {
+			let resolveCreation!: (record: ReturnType<typeof makeSandboxRecord>) => void;
+			mockCreateSandbox.mockReturnValue(
+				new Promise((resolve) => {
+					resolveCreation = resolve;
+				}),
+			);
+			const sandbox = new N8nSandboxServiceSandbox({
+				...makeDefaultOptions(),
+				timeout: 10,
+			});
+
+			await expect(sandbox.start()).rejects.toThrow(/abort|timeout/i);
+			resolveCreation(makeSandboxRecord({ id: 'late-sandbox' }));
+
+			await vi.waitFor(() => expect(mockDeleteSandbox).toHaveBeenCalledWith('late-sandbox'));
+		});
 	});
 
 	describe('reconnect to existing ID', () => {
 		it('reconnects when sandbox exists', async () => {
+			const existingId = '11111111-1111-4111-8111-111111111111';
 			const sandbox = new N8nSandboxServiceSandbox({
 				...makeDefaultOptions(),
-				id: 'existing-sb',
+				id: existingId,
 			});
-			mockGetSandbox.mockResolvedValue(makeSandboxRecord({ id: 'existing-sb' }));
+			mockGetSandbox.mockResolvedValue(makeSandboxRecord({ id: existingId }));
 
 			await sandbox.start();
-
-			expect(mockGetSandbox).toHaveBeenCalledWith('existing-sb');
+			expect(mockGetSandbox).toHaveBeenCalledWith(existingId);
 			expect(mockCreateSandbox).not.toHaveBeenCalled();
-			expect(sandbox.id).toBe('existing-sb');
+			expect(sandbox.id).toBe(existingId);
 		});
 
 		it('creates new when getSandbox returns 404', async () => {
+			const staleId = '22222222-2222-4222-8222-222222222222';
+			const replacementId = '33333333-3333-4333-8333-333333333333';
 			mockGetSandbox.mockRejectedValue(new SandboxServiceError('not found', 404));
-			mockCreateSandbox.mockResolvedValue(makeSandboxRecord({ id: 'new-sb' }));
+			mockCreateSandbox.mockResolvedValue(makeSandboxRecord({ id: replacementId }));
 
 			const sandbox = new N8nSandboxServiceSandbox({
 				...makeDefaultOptions(),
-				id: 'gone-sb',
+				id: staleId,
 			});
-			await sandbox.start();
 
+			await sandbox.start();
+			expect(mockGetSandbox).toHaveBeenCalledWith(staleId);
 			expect(mockCreateSandbox).toHaveBeenCalledTimes(1);
-			expect(sandbox.id).toBe('new-sb');
+			expect(sandbox.id).toBe(replacementId);
 		});
 
 		it('re-throws non-404 errors from getSandbox', async () => {

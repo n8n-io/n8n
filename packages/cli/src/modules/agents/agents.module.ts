@@ -10,6 +10,9 @@ export class AgentsModule implements ModuleInterface {
 	private interruptedExecutionSweepTimer?: NodeJS.Timeout;
 
 	async init() {
+		const { SandboxSettingsService } = await import('@/services/sandbox-settings.service.js');
+		Container.get(SandboxSettingsService).registerCredentialUses();
+
 		await import('./agents-catalog.controller.js');
 		await import('./agent-threads.controller.js');
 		await import('./agents.controller.js');
@@ -146,14 +149,13 @@ export class AgentsModule implements ModuleInterface {
 
 	async settings() {
 		const config = Container.get(AgentsConfig);
-		const { isAgentKnowledgeBaseEnabled } = await import('./agent-knowledge-gate.js');
 		const { AiService } = await import('@/services/ai.service.js');
 		const aiService = Container.get(AiService);
 		const proxyEnabled = aiService.isProxyEnabled();
 		return {
 			enabled: true,
 			modules: [...config.modules],
-			knowledgeBaseEnabled: isAgentKnowledgeBaseEnabled(config, proxyEnabled),
+			knowledgeBaseEnabled: config.sandboxEnabled,
 			proxyEnabled,
 		};
 	}
@@ -193,6 +195,7 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentMemoryEntryCursorEntity } = await import(
 			'./entities/agent-memory-entry-cursor.entity.js'
 		);
+		const { AgentKnowledgeSandbox } = await import('./entities/agent-knowledge-sandbox.entity.js');
 
 		return [
 			Agent,
@@ -217,6 +220,7 @@ export class AgentsModule implements ModuleInterface {
 			AgentMemoryEntryLockEntity,
 			AgentMemoryEntrySourceEntity,
 			AgentMemoryEntryCursorEntity,
+			AgentKnowledgeSandbox,
 		];
 	}
 
