@@ -100,7 +100,7 @@ packages/cli/src/evaluation.ee/                         @n8n-io/ai
 packages/cli/src/chat/                                  @n8n-io/ai
 packages/cli/src/tool-generation/                       @n8n-io/ai
 packages/cli/src/modules/workflow-builder/              @n8n-io/ai
-packages/cli/src/modules/mcp/                           @n8n-io/ai
+packages/cli/src/modules/mcp/                           @n8n-io/adore
 packages/cli/src/modules/quick-connect/                 @n8n-io/ai
 packages/cli/src/modules/chat-hub/                      @n8n-io/ai
 packages/cli/src/modules/instance-ai/                   @n8n-io/instance-ai
