@@ -1,13 +1,11 @@
 import { mockInstance, testDb, testModules } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
-import type { KeyObject } from 'node:crypto';
 
 import type { TrustedKeySourceEntity } from '@/modules/identity-substrate/database/entities/trusted-key-source.entity';
-import { TrustedKeyEntity } from '@/modules/identity-substrate/database/entities/trusted-key.entity';
 import { TrustedKeySourceRepository } from '@/modules/identity-substrate/database/repositories/trusted-key-source.repository';
 import { TrustedKeyRepository } from '@/modules/identity-substrate/database/repositories/trusted-key.repository';
-import { TrustedKeyService } from '@/modules/token-exchange/services/trusted-key.service';
+import { TrustedKeySyncService } from '@/modules/identity-substrate/services/trusted-key-sync.service';
 import { TokenExchangeConfig } from '@/modules/token-exchange/token-exchange.config';
 import type { TrustedKeyData } from '@/modules/token-exchange/token-exchange.schemas';
 
@@ -58,15 +56,6 @@ function staticKeyEntry(
 	};
 }
 
-function makeTrustedKeyData(overrides: Partial<TrustedKeyData> = {}): TrustedKeyData {
-	return {
-		algorithms: ['RS256'],
-		keyMaterial: RSA_PUBLIC_KEY,
-		issuer: 'https://issuer.example.com',
-		...overrides,
-	};
-}
-
 async function insertSource(
 	overrides: Partial<TrustedKeySourceEntity> = {},
 ): Promise<TrustedKeySourceEntity> {
@@ -82,18 +71,6 @@ async function insertSource(
 	});
 }
 
-async function insertKey(
-	overrides: Partial<{ sourceId: string; kid: string; data: TrustedKeyData }> = {},
-): Promise<TrustedKeyEntity> {
-	const keyRepo = Container.get(TrustedKeyRepository);
-	const entity = new TrustedKeyEntity();
-	entity.sourceId = overrides.sourceId ?? 'static';
-	entity.kid = overrides.kid ?? 'test-kid';
-	entity.data = JSON.stringify(overrides.data ?? makeTrustedKeyData());
-	entity.createdAt = new Date();
-	return await keyRepo.save(entity);
-}
-
 // ──────────────────────────────────────────────────────────────────────
 // Setup / Teardown
 // ──────────────────────────────────────────────────────────────────────
@@ -103,17 +80,17 @@ const config = mockInstance(TokenExchangeConfig, {
 	keyRefreshIntervalSeconds: 300,
 });
 
-let service: TrustedKeyService;
+let service: TrustedKeySyncService;
 let sourceRepo: TrustedKeySourceRepository;
 let keyRepo: TrustedKeyRepository;
 let instanceSettings: InstanceSettings;
 
 beforeAll(async () => {
-	await testModules.loadModules(['identity-substrate', 'token-exchange']);
+	await testModules.loadModules(['identity-substrate']);
 	await testDb.init();
 
 	instanceSettings = Container.get(InstanceSettings);
-	service = Container.get(TrustedKeyService);
+	service = Container.get(TrustedKeySyncService);
 	sourceRepo = Container.get(TrustedKeySourceRepository);
 	keyRepo = Container.get(TrustedKeyRepository);
 });
@@ -139,7 +116,7 @@ afterAll(async () => {
 // Tests
 // ──────────────────────────────────────────────────────────────────────
 
-describe('TrustedKeyService (integration)', () => {
+describe('TrustedKeySyncService (integration)', () => {
 	describe('initialize', () => {
 		it('should sync sources to DB, refresh keys to healthy, and persist key data', async () => {
 			config.trustedKeys = JSON.stringify([
@@ -269,83 +246,6 @@ describe('TrustedKeyService (integration)', () => {
 		});
 	});
 
-	describe('getByKidAndIss', () => {
-		it('should find matching key, return undefined for wrong issuer and unknown kid', async () => {
-			await insertSource();
-			await insertKey();
-
-			// Matching kid + issuer
-			const result = await service.getByKidAndIss('test-kid', 'https://issuer.example.com');
-			expect(result).toBeDefined();
-			expect(result!.kid).toBe('test-kid');
-			expect(result!.algorithms).toEqual(['RS256']);
-			expect(result!.issuer).toBe('https://issuer.example.com');
-			expect(result!.key).toBeDefined();
-			expect((result!.key as KeyObject).type).toBe('public');
-
-			// Wrong issuer
-			expect(
-				await service.getByKidAndIss('test-kid', 'https://other-issuer.example.com'),
-			).toBeUndefined();
-
-			// Unknown kid
-			expect(
-				await service.getByKidAndIss('unknown-kid', 'https://issuer.example.com'),
-			).toBeUndefined();
-		});
-
-		it('should skip corrupted entities and still resolve valid ones', async () => {
-			await insertSource();
-
-			// Corrupted JSON
-			const corruptedJson = new TrustedKeyEntity();
-			corruptedJson.sourceId = 'static';
-			corruptedJson.kid = 'bad-json-kid';
-			corruptedJson.data = 'not-valid-json';
-			corruptedJson.createdAt = new Date();
-			await keyRepo.save(corruptedJson);
-
-			// Invalid PEM
-			await insertKey({
-				kid: 'bad-pem-kid',
-				data: makeTrustedKeyData({ keyMaterial: 'not-a-pem' }),
-			});
-
-			// Valid key
-			await insertKey({ kid: 'good-kid' });
-
-			expect(
-				await service.getByKidAndIss('bad-json-kid', 'https://issuer.example.com'),
-			).toBeUndefined();
-			expect(
-				await service.getByKidAndIss('bad-pem-kid', 'https://issuer.example.com'),
-			).toBeUndefined();
-
-			const valid = await service.getByKidAndIss('good-kid', 'https://issuer.example.com');
-			expect(valid).toBeDefined();
-			expect(valid!.kid).toBe('good-kid');
-		});
-
-		it('should select the entity matching the requested issuer', async () => {
-			await insertSource({ id: 'source-a' });
-			await insertSource({ id: 'source-b' });
-			await insertKey({
-				sourceId: 'source-a',
-				kid: 'shared-kid',
-				data: makeTrustedKeyData({ issuer: 'https://issuer-a.com' }),
-			});
-			await insertKey({
-				sourceId: 'source-b',
-				kid: 'shared-kid',
-				data: makeTrustedKeyData({ issuer: 'https://issuer-b.com' }),
-			});
-
-			const result = await service.getByKidAndIss('shared-kid', 'https://issuer-b.com');
-			expect(result).toBeDefined();
-			expect(result!.issuer).toBe('https://issuer-b.com');
-		});
-	});
-
 	describe('refreshSource', () => {
 		it('should refresh keys and replace them on subsequent refresh', async () => {
 			const initialConfig = [staticKeyEntry({ kid: 'key-v1' }), staticKeyEntry({ kid: 'key-v2' })];
@@ -447,70 +347,6 @@ describe('TrustedKeyService (integration)', () => {
 			expect(source!.status).toBe('error');
 			expect(source!.lastError).toBeDefined();
 			expect(await keyRepo.find()).toHaveLength(0);
-		});
-	});
-
-	describe('listAll and listSources', () => {
-		it('should return all entities from the database', async () => {
-			await insertSource({ id: 'source-1' });
-			await insertSource({ id: 'source-2' });
-			await insertKey({ sourceId: 'source-1', kid: 'kid-1' });
-			await insertKey({ sourceId: 'source-1', kid: 'kid-2' });
-			await insertKey({ sourceId: 'source-2', kid: 'kid-3' });
-
-			expect(await service.listSources()).toHaveLength(2);
-			expect(await service.listAll()).toHaveLength(3);
-		});
-	});
-
-	describe('hasSingleTrustedIssuer', () => {
-		it('should return false when no keys are configured', async () => {
-			expect(await service.hasSingleTrustedIssuer()).toBe(false);
-		});
-
-		it('should return true when every key shares one issuer', async () => {
-			await insertSource();
-			await insertKey({
-				kid: 'kid-1',
-				data: makeTrustedKeyData({ issuer: 'https://only.example.com' }),
-			});
-			await insertKey({
-				kid: 'kid-2',
-				data: makeTrustedKeyData({ issuer: 'https://only.example.com' }),
-			});
-
-			expect(await service.hasSingleTrustedIssuer()).toBe(true);
-		});
-
-		it('should return false when keys span multiple issuers', async () => {
-			await insertSource();
-			await insertKey({
-				kid: 'kid-1',
-				data: makeTrustedKeyData({ issuer: 'https://a.example.com' }),
-			});
-			await insertKey({
-				kid: 'kid-2',
-				data: makeTrustedKeyData({ issuer: 'https://b.example.com' }),
-			});
-
-			expect(await service.hasSingleTrustedIssuer()).toBe(false);
-		});
-
-		it('should skip corrupted key rows when counting issuers', async () => {
-			await insertSource();
-			await insertKey({
-				kid: 'kid-1',
-				data: makeTrustedKeyData({ issuer: 'https://only.example.com' }),
-			});
-
-			const corrupted = new TrustedKeyEntity();
-			corrupted.sourceId = 'static';
-			corrupted.kid = 'kid-corrupt';
-			corrupted.data = 'not-json';
-			corrupted.createdAt = new Date();
-			await keyRepo.save(corrupted);
-
-			expect(await service.hasSingleTrustedIssuer()).toBe(true);
 		});
 	});
 });
