@@ -1,0 +1,79 @@
+{
+	"name": "Gitlab User getRepositories does not read repository parameter Test",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "trigger-id",
+			"name": "When clicking 'Execute Workflow'"
+		},
+		{
+			"parameters": {
+				"resource": "user",
+				"operation": "getRepositories",
+				"owner": "test-owner",
+				"returnAll": true
+			},
+			"type": "n8n-nodes-base.gitlab",
+			"typeVersion": 1,
+			"position": [200, 0],
+			"id": "gitlab-node-id",
+			"name": "Get User Repositories",
+			"credentials": {
+				"gitlabApi": {
+					"id": "credential-id",
+					"name": "Test Credentials"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [400, 0],
+			"id": "noop-id",
+			"name": "Repositories Response"
+		}
+	],
+	"pinData": {
+		"Repositories Response": [
+			{
+				"json": {
+					"id": 1,
+					"name": "r1",
+					"path_with_namespace": "test-owner/r1"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute Workflow'": {
+			"main": [
+				[
+					{
+						"node": "Get User Repositories",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get User Repositories": {
+			"main": [
+				[
+					{
+						"node": "Repositories Response",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

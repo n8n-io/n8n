@@ -1,0 +1,77 @@
+{
+	"name": "issue lock too heated",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "trigger-id",
+			"name": "When clicking 'Execute Workflow'"
+		},
+		{
+			"parameters": {
+				"resource": "issue",
+				"operation": "lock",
+				"owner": "test-owner",
+				"repository": "test-repo",
+				"issueNumber": 3,
+				"lockReason": "too heated"
+			},
+			"type": "n8n-nodes-base.gitlab",
+			"typeVersion": 1,
+			"position": [200, 0],
+			"id": "gitlab-node-id",
+			"name": "GitLab",
+			"credentials": {
+				"gitlabApi": {
+					"id": "credential-id",
+					"name": "Test Credentials"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [400, 0],
+			"id": "noop-id",
+			"name": "Response"
+		}
+	],
+	"pinData": {
+		"Response": [
+			{
+				"json": {}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute Workflow'": {
+			"main": [
+				[
+					{
+						"node": "GitLab",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"GitLab": {
+			"main": [
+				[
+					{
+						"node": "Response",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

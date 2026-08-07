@@ -1,0 +1,55 @@
+{
+	"name": "file list empty",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "trigger-id",
+			"name": "When clicking 'Execute Workflow'"
+		},
+		{
+			"parameters": {
+				"resource": "file",
+				"owner": "test-owner",
+				"repository": "test-repo",
+				"operation": "list",
+				"returnAll": true,
+				"filePath": "",
+				"additionalParameters": {}
+			},
+			"type": "n8n-nodes-base.gitlab",
+			"typeVersion": 1,
+			"position": [200, 0],
+			"id": "gitlab-node-id",
+			"name": "GitLab",
+			"credentials": {
+				"gitlabApi": {
+					"id": "credential-id",
+					"name": "Test Credentials"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"GitLab": []
+	},
+	"connections": {
+		"When clicking 'Execute Workflow'": {
+			"main": [
+				[
+					{
+						"node": "GitLab",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}
