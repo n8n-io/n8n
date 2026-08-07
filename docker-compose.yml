@@ -1,0 +1,53 @@
+services:
+  minio:
+    image: minio/minio:latest
+    container_name: turbo-minio
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"  # MinIO API
+      - "9001:9001"  # MinIO Console
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin123
+    volumes:
+      - ./minio-data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  minio-init:
+    image: minio/mc:latest
+    container_name: minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set myminio http://minio:9000 minioadmin minioadmin123;
+      mc mb myminio/turborepo-cache --ignore-existing;
+      exit 0;
+      "
+
+  turbo-cache-server:
+    image: ghcr.io/brunojppb/turbo-cache-server:latest
+    container_name: turbo-cache-server
+    ports:
+      - "8585:8585"
+    environment:
+      PORT: "8585"
+      TURBO_TOKEN: "secret-turbo-token"
+      S3_BUCKET_NAME: "turborepo-cache"
+      S3_REGION: "us-east-1"
+      S3_ACCESS_KEY: "minioadmin"
+      S3_SECRET_KEY: "minioadmin123"
+      S3_ENDPOINT: "http://minio:9000"
+      S3_USE_PATH_STYLE: "true"
+      MAX_PAYLOAD_SIZE_IN_MB: "100"
+    depends_on:
+      minio:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+    restart: unless-stopped
