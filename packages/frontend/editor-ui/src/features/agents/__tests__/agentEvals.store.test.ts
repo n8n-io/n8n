@@ -532,6 +532,59 @@ describe('useAgentEvalsStore', () => {
 		});
 	});
 
+	describe('wouldDiscardOnAgreement', () => {
+		const openWithRating = async (overrides: Partial<AgentEvalRatingRecord>) => {
+			mockRun({ results: [result('c1')], count: 1, ratings: [rating('c1', overrides)] });
+			const store = useAgentEvalsStore();
+			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
+			return store;
+		};
+
+		it('is false for a bare vote with nothing attached', async () => {
+			const store = await openWithRating({ vote: 'up' });
+
+			expect(store.wouldDiscardOnAgreement(RUN_ID, 'c1')).toBe(false);
+		});
+
+		it('is true when a note would be lost', async () => {
+			const store = await openWithRating({ vote: 'down', comment: 'off-task' });
+
+			expect(store.wouldDiscardOnAgreement(RUN_ID, 'c1')).toBe(true);
+		});
+
+		it('is true when a rewrite would be lost', async () => {
+			const store = await openWithRating({ vote: 'down', correction: { finalText: 'better' } });
+
+			expect(store.wouldDiscardOnAgreement(RUN_ID, 'c1')).toBe(true);
+		});
+
+		// The API accepts `comment: ''`, and chaining the two checks with `??` treated
+		// that as a present value — skipping the correction and discarding the rewrite.
+		it('still protects a rewrite when the stored note is an empty string', async () => {
+			const store = await openWithRating({
+				vote: 'down',
+				comment: '',
+				correction: { finalText: 'better' },
+			});
+
+			expect(store.wouldDiscardOnAgreement(RUN_ID, 'c1')).toBe(true);
+		});
+
+		it('ignores whitespace-only stored text', async () => {
+			const store = await openWithRating({ vote: 'down', comment: '   ' });
+
+			expect(store.wouldDiscardOnAgreement(RUN_ID, 'c1')).toBe(false);
+		});
+
+		it('protects text the reviewer has typed but not saved', async () => {
+			const store = await openWithRating({ vote: 'up' });
+			store.beginVote(RUN_ID, 'c1', 'down');
+			store.setDraftComment(RUN_ID, 'c1', 'half a thought');
+
+			expect(store.wouldDiscardOnAgreement(RUN_ID, 'c1')).toBe(true);
+		});
+	});
+
 	describe('saveReview', () => {
 		const openAndDraft = async () => {
 			mockRun({ results: [result('c1')], count: 1, ratings: [] });
@@ -744,6 +797,43 @@ describe('useAgentEvalsStore', () => {
 
 			expect(getRunDetail.mock.calls.length).toBe(reads);
 			expect(store.getReview(RUN_ID).results).toHaveLength(251);
+			store.stopPollingRun();
+		});
+
+		// A re-read covers the window it captured before starting, so rows the reviewer
+		// pages in meanwhile sit beyond it — replacing the list would jump them back.
+		it('keeps cases paged in while the settle read was walking pages', async () => {
+			const all = Array.from({ length: 120 }, (_, i) => result(`c${i}`));
+			getRunDetail.mockImplementation(
+				async (
+					_ctx: unknown,
+					_p: string,
+					_a: string,
+					_r: string,
+					q: { take: number; skip: number },
+				) => ({
+					...run(RUN_ID),
+					results: { count: all.length, data: all.slice(q.skip, q.skip + q.take) },
+				}),
+			);
+			listLatestRatingsForRun.mockResolvedValue([]);
+			const store = useAgentEvalsStore();
+			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
+			expect(store.getReview(RUN_ID).results).toHaveLength(50);
+
+			getRunSummary.mockResolvedValue({
+				runId: RUN_ID,
+				status: 'completed',
+				counts: { total: 120, success: 120, error: 0, cancelled: 0, pending: 0 },
+			});
+
+			// Settle and a page-in race each other; both must be reflected.
+			const settling = store.startPollingRun(PROJECT_ID, AGENT_ID, RUN_ID);
+			await store.loadMoreResults(PROJECT_ID, AGENT_ID, RUN_ID);
+			await vi.advanceTimersByTimeAsync(0);
+			void settling;
+
+			expect(store.getReview(RUN_ID).results).toHaveLength(100);
 			store.stopPollingRun();
 		});
 

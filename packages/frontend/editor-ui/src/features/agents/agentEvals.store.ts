@@ -246,6 +246,20 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 		getReview(runId).results.length <= MAX_ITEMS_PER_PAGE;
 
 	/**
+	 * Refreshed rows, keeping any the reviewer paged in while the read was running.
+	 *
+	 * Every re-read covers a window captured before it started, so replacing the list
+	 * wholesale would silently drop rows appended since — jumping the view back a
+	 * page. Splicing by index is sound because a run's cases are seeded once and
+	 * always ordered by `runIndex`, so position i is the same case in both lists.
+	 */
+	const spliceRefreshed = (
+		held: AgentEvalResultRecord[],
+		refreshed: AgentEvalResultRecord[],
+	): AgentEvalResultRecord[] =>
+		held.length > refreshed.length ? [...refreshed, ...held.slice(refreshed.length)] : refreshed;
+
+	/**
 	 * Reads back a window wider than one request by walking pages.
 	 *
 	 * `take` is clamped server-side, so a window past the cap cannot be fetched in
@@ -303,7 +317,7 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 		const current = getReview(runId);
 		patchReview(runId, {
 			...(window.run ? { run: window.run } : {}),
-			results: window.results,
+			results: spliceRefreshed(current.results, window.results),
 			resultsCount: window.total,
 			ratingsByResultId: mergeRatings(current.ratingsByResultId, ratings),
 		});
@@ -418,7 +432,12 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 	const wouldDiscardOnAgreement = (runId: string, resultId: string) => {
 		const state = getReview(runId);
 		const saved = state.ratingsByResultId[resultId];
-		if (saved && (saved.comment ?? readCorrectionText(saved.correction))) return true;
+		// Checked independently, not chained: `??` treats an empty-string comment as a
+		// present value and stops, skipping the correction — so a saved rewrite would
+		// be discarded whenever its rating carried `comment: ''`, which the API allows.
+		if (saved?.comment?.trim() || readCorrectionText(saved?.correction ?? null)?.trim()) {
+			return true;
+		}
 
 		const draft = state.draftsByResultId[resultId];
 		return Boolean(draft && (draft.comment.trim() || draft.correction.trim()));
@@ -583,7 +602,11 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 			{ take: loadedWindow(runId), skip: 0 },
 		);
 		const { results, ...run } = detail;
-		patchReview(runId, { run, results: results.data, resultsCount: results.count });
+		patchReview(runId, {
+			run,
+			results: spliceRefreshed(getReview(runId).results, results.data),
+			resultsCount: results.count,
+		});
 	};
 
 	/** One check of an in-flight run. Resolves true once the run has settled. */
