@@ -94,18 +94,20 @@ describe('get-workflow-details MCP tool', () => {
 			);
 
 			expect('pinData' in payload.workflow).toBe(false);
-			expect(payload.workflow.nodes.map((n) => n.credentials)).toEqual([
+			expect(payload.workflow.nodes?.map((n) => n.credentials)).toEqual([
 				{ httpHeaderAuth: { id: 'cred-1', name: 'HeaderAuth' } },
 				{ httpHeaderAuth: { id: 'cred-2', name: 'HeaderAuth2' } },
 			]);
 			expect(payload.triggerInfo).toContain('MOCK_TRIGGER_DETAILS');
 			expect(payload.workflow.versionId).toBe(workflow.versionId);
 			expect(payload.workflow.activeVersionId).toBe(workflow.activeVersionId);
-			expect(payload.workflow.activeVersion).not.toBeNull();
-			expect(payload.workflow.activeVersion?.nodes.map((n) => n.credentials)).toEqual([
-				{ httpHeaderAuth: { id: 'cred-1', name: 'HeaderAuth' } },
-				{ httpHeaderAuth: { id: 'cred-2', name: 'HeaderAuth2' } },
-			]);
+			expect(payload.workflow.activeVersion).toMatchObject({
+				sameAsDraft: false,
+				nodes: [
+					{ credentials: { httpHeaderAuth: { id: 'cred-1', name: 'HeaderAuth' } } },
+					{ credentials: { httpHeaderAuth: { id: 'cred-2', name: 'HeaderAuth2' } } },
+				],
+			});
 			expect(payload.workflow.scopes).toEqual(['workflow:read', 'workflow:execute']);
 			expect(payload.workflow.canExecute).toBe(true);
 		});
@@ -158,11 +160,229 @@ describe('get-workflow-details MCP tool', () => {
 			);
 
 			// Null-id managed slot is dropped entirely (nothing to reference)
-			expect(payload.workflow.nodes[0]).not.toHaveProperty('credentials');
+			expect(payload.workflow.nodes?.[0]).not.toHaveProperty('credentials');
 			// Real credential is reduced to id and name, internal fields removed
-			expect(payload.workflow.nodes[1].credentials).toEqual({
+			expect(payload.workflow.nodes?.[1].credentials).toEqual({
 				httpHeaderAuth: { id: 'cred-1', name: 'HeaderAuth' },
 			});
+		});
+
+		test("omits graph fields when detailLevel is 'execution'", async () => {
+			const workflow = createWorkflow({ activeVersionId: uuid() });
+			const findWorkflowForUser = vi.fn().mockResolvedValue(workflow);
+			const workflowFinderService = mockInstance(WorkflowFinderService, {
+				findWorkflowForUser,
+			});
+			const credentialsService = mockInstance(CredentialsService, {});
+			const endpoints = { webhook: 'webhook', webhookTest: 'webhook-test' };
+
+			const payload = await getWorkflowDetails(
+				user,
+				baseWebhookUrl,
+				workflowFinderService,
+				credentialsService,
+				nodeTypes,
+				endpoints,
+				roleService,
+				projectService,
+				{ workflowId: 'wf-1', detailLevel: 'execution' },
+			);
+
+			// The published version stays loaded: its graph is omitted, but its
+			// triggers still feed activeVersionTriggerInfo
+			expect(findWorkflowForUser).toHaveBeenCalledWith(
+				'wf-1',
+				user,
+				['workflow:read'],
+				expect.objectContaining({ includeActiveVersion: true }),
+			);
+
+			expect(payload.workflow.nodes).toBeUndefined();
+			expect(payload.workflow.connections).toBeUndefined();
+			expect(payload.workflow.nodeGroups).toBeUndefined();
+			expect(payload.workflow.activeVersion).toBeUndefined();
+			expect(payload.workflow.meta).toBeUndefined();
+
+			// Everything needed to execute is still present
+			expect(payload.triggerInfo).toContain('MOCK_TRIGGER_DETAILS');
+			expect(payload.workflow.id).toBe('wf-1');
+			expect(payload.workflow.active).toBe(true);
+			expect(payload.workflow.scopes).toEqual(['workflow:read', 'workflow:execute']);
+			expect(payload.workflow.canExecute).toBe(true);
+			expect(payload.workflow.description).toBeUndefined();
+			// settings carries timezone and errorWorkflow, which shape how a run behaves
+			expect(payload.workflow.settings).toEqual({ availableInMCP: true });
+			// The workflow size stays reportable despite the trimmed payload
+			expect(payload.workflow.nodeCount).toBe(2);
+		});
+
+		test("returns all graph fields when detailLevel is 'full'", async () => {
+			const workflow = createWorkflow({ activeVersionId: uuid() });
+			const workflowFinderService = mockInstance(WorkflowFinderService, {
+				findWorkflowForUser: vi.fn().mockResolvedValue(workflow),
+			});
+			const credentialsService = mockInstance(CredentialsService, {});
+			const endpoints = { webhook: 'webhook', webhookTest: 'webhook-test' };
+
+			const payload = await getWorkflowDetails(
+				user,
+				baseWebhookUrl,
+				workflowFinderService,
+				credentialsService,
+				nodeTypes,
+				endpoints,
+				roleService,
+				projectService,
+				{ workflowId: 'wf-1', detailLevel: 'full' },
+			);
+
+			// Guards the full-mode contract: every conditional field must be present,
+			// since the output schema marks them optional and cannot enforce this.
+			expect(payload.workflow.nodes).toBeDefined();
+			expect(payload.workflow.connections).toBeDefined();
+			expect(payload.workflow.nodeGroups).toBeDefined();
+			expect(payload.workflow.activeVersion).toBeDefined();
+			expect(payload.workflow.meta).toBeDefined();
+		});
+
+		test('includes activeVersionTriggerInfo only when published triggers diverge from the draft', async () => {
+			getTriggerDetailsMock.mockClear();
+			const credentialsService = mockInstance(CredentialsService, {});
+			const endpoints = { webhook: 'webhook', webhookTest: 'webhook-test' };
+
+			// Published version has the same triggers as the draft: single notice.
+			const inSync = createWorkflow({ activeVersionId: uuid() });
+			const inSyncFinder = mockInstance(WorkflowFinderService, {
+				findWorkflowForUser: vi.fn().mockResolvedValue(inSync),
+			});
+			const inSyncPayload = await getWorkflowDetails(
+				user,
+				baseWebhookUrl,
+				inSyncFinder,
+				credentialsService,
+				nodeTypes,
+				endpoints,
+				roleService,
+				projectService,
+				{ workflowId: 'wf-1', detailLevel: 'execution' },
+			);
+			expect(inSyncPayload.activeVersionTriggerInfo).toBeUndefined();
+			expect(getTriggerDetailsMock).toHaveBeenCalledTimes(1);
+
+			// Draft trigger was removed after publishing: both notices returned.
+			getTriggerDetailsMock.mockClear();
+			getTriggerDetailsMock
+				.mockResolvedValueOnce('DRAFT_TRIGGER_INFO')
+				.mockResolvedValueOnce('PUBLISHED_TRIGGER_INFO');
+			const diverged = createWorkflow({
+				activeVersionId: uuid(),
+				nodes: [],
+				activeVersion: { nodes: createWorkflow({}).nodes },
+			} as unknown as Partial<WorkflowEntity>);
+			const divergedFinder = mockInstance(WorkflowFinderService, {
+				findWorkflowForUser: vi.fn().mockResolvedValue(diverged),
+			});
+			const divergedPayload = await getWorkflowDetails(
+				user,
+				baseWebhookUrl,
+				divergedFinder,
+				credentialsService,
+				nodeTypes,
+				endpoints,
+				roleService,
+				projectService,
+				{ workflowId: 'wf-1', detailLevel: 'execution' },
+			);
+			expect(divergedPayload.triggerInfo).toBe('DRAFT_TRIGGER_INFO');
+			expect(divergedPayload.activeVersionTriggerInfo).toBe('PUBLISHED_TRIGGER_INFO');
+			expect(getTriggerDetailsMock).toHaveBeenCalledTimes(2);
+			// Second call receives the published version's triggers.
+			const [, publishedSupported] = getTriggerDetailsMock.mock.calls[1];
+			expect(publishedSupported.map((t) => t.name)).toEqual(['Webhook', 'Start']);
+		});
+
+		test('suppresses activeVersionTriggerInfo when node differences do not change the trigger info', async () => {
+			// Position-only difference: both notices come out identical, nothing extra emitted.
+			getTriggerDetailsMock.mockClear();
+			const credentialsService = mockInstance(CredentialsService, {});
+			const endpoints = { webhook: 'webhook', webhookTest: 'webhook-test' };
+			const draftNodes = createWorkflow({}).nodes;
+			const movedNodes = draftNodes.map((node) => ({ ...node, position: [500, 500] }));
+			const moved = createWorkflow({
+				activeVersionId: uuid(),
+				nodes: draftNodes,
+				activeVersion: { nodes: movedNodes },
+			} as unknown as Partial<WorkflowEntity>);
+			const movedFinder = mockInstance(WorkflowFinderService, {
+				findWorkflowForUser: vi.fn().mockResolvedValue(moved),
+			});
+			const payload = await getWorkflowDetails(
+				user,
+				baseWebhookUrl,
+				movedFinder,
+				credentialsService,
+				nodeTypes,
+				endpoints,
+				roleService,
+				projectService,
+				{ workflowId: 'wf-1', detailLevel: 'execution' },
+			);
+			expect(payload.activeVersionTriggerInfo).toBeUndefined();
+			// The node-level guard let this through, so the notice compare is what suppressed it
+			expect(getTriggerDetailsMock).toHaveBeenCalledTimes(2);
+		});
+
+		test('never emits activeVersionTriggerInfo when the published version is the draft', async () => {
+			// activeVersionId === versionId, so there is no divergence to report and
+			// the published triggers are never looked up.
+			getTriggerDetailsMock.mockClear();
+			const credentialsService = mockInstance(CredentialsService, {});
+			const endpoints = { webhook: 'webhook', webhookTest: 'webhook-test' };
+			const workflow = createWorkflow({ activeVersionId: 'some-version-id' });
+			const workflowFinderService = mockInstance(WorkflowFinderService, {
+				findWorkflowForUser: vi.fn().mockResolvedValue(workflow),
+			});
+
+			const payload = await getWorkflowDetails(
+				user,
+				baseWebhookUrl,
+				workflowFinderService,
+				credentialsService,
+				nodeTypes,
+				endpoints,
+				roleService,
+				projectService,
+				{ workflowId: 'wf-1', detailLevel: 'execution' },
+			);
+
+			expect(payload.activeVersionTriggerInfo).toBeUndefined();
+			expect(getTriggerDetailsMock).toHaveBeenCalledTimes(1);
+		});
+
+		test('omits activeVersion graph when the published version matches the current draft', async () => {
+			// createWorkflow uses versionId 'some-version-id'; publishing that draft
+			// sets activeVersionId to the same value.
+			const workflow = createWorkflow({ activeVersionId: 'some-version-id' });
+			const workflowFinderService = mockInstance(WorkflowFinderService, {
+				findWorkflowForUser: vi.fn().mockResolvedValue(workflow),
+			});
+			const credentialsService = mockInstance(CredentialsService, {});
+			const endpoints = { webhook: 'webhook', webhookTest: 'webhook-test' };
+
+			const payload = await getWorkflowDetails(
+				user,
+				baseWebhookUrl,
+				workflowFinderService,
+				credentialsService,
+				nodeTypes,
+				endpoints,
+				roleService,
+				projectService,
+				{ workflowId: 'wf-1' },
+			);
+
+			expect(payload.workflow.activeVersion).toEqual({ sameAsDraft: true });
+			expect(payload.workflow.nodes?.length).toBeGreaterThan(0);
 		});
 
 		test('presents node groups by member node names, dropping stale ids', async () => {
