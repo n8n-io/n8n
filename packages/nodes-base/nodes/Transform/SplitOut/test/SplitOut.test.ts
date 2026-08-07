@@ -5,7 +5,13 @@ import { mock } from 'vitest-mock-extended';
 import { SplitOut } from '../SplitOut.node';
 
 describe('Test Split Out Node', () => {
-	new NodeTestHarness().setupTests();
+	new NodeTestHarness().setupTests({
+		workflowFiles: [
+			'workflow.splitOut.json',
+			'workflow.splitOutObject.json',
+			'workflow.destinationFieldDotNotation.json',
+		],
+	});
 });
 
 describe('SplitOut', () => {
