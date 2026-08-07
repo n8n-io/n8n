@@ -34,7 +34,7 @@ Built-in search (`searchable`) filters the dropdown by item label. For larger da
 
 **UI Props**
 
-- `size?`: `'mini' | 'default' | 'medium' | 'large' | 'xlarge'` | `default: 'default'` (shared input size tokens; `default` → small)
+- `size?`: `'mini' | 'small' | 'medium' | 'large' | 'xlarge'` | `default: 'small'` (matches `N8nInput`)
 - `variant?`: `'default' | 'ghost' | 'flush'` | `default: 'default'` (`flush` strips padding for dense layouts like table cells)
 
 **Events**

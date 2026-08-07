@@ -23,8 +23,8 @@ const meta = {
 	argTypes: {
 		size: {
 			control: 'select',
-			options: ['mini', 'default', 'medium', 'large', 'xlarge'],
-			description: 'Size of the select trigger (default maps to small input tokens)',
+			options: ['mini', 'small', 'medium', 'large', 'xlarge'],
+			description: 'Size of the select trigger (matches N8nInput)',
 		},
 		variant: {
 			control: 'select',
@@ -258,7 +258,7 @@ export const Sizes = {
 	render: (args) => ({
 		components: { Select },
 		setup() {
-			const sizes = ['mini', 'default', 'medium', 'large', 'xlarge'] as const;
+			const sizes = ['mini', 'small', 'medium', 'large', 'xlarge'] as const;
 			const plainValues = Object.fromEntries(sizes.map((size) => [size, ref(args.modelValue)]));
 			const iconValues = Object.fromEntries(sizes.map((size) => [size, ref(iconItems[0]?.value)]));
 

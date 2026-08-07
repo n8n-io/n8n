@@ -158,7 +158,7 @@ const isUnavailableRoleItem = (item: SelectItemProps) => item.requiresUpgrade ==
 			v-model:open="dropdownOpen"
 			:items="roleItems"
 			:model-value="currentRole"
-			size="default"
+			size="small"
 			variant="flush"
 			position="popper"
 			searchable

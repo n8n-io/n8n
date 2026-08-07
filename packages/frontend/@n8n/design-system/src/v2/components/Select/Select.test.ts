@@ -5,9 +5,9 @@ import type { SelectItem, SelectSizes, SelectVariants } from './Select.types';
 import Select from './Select.vue';
 
 const sizeCases: Array<[SelectSizes | undefined, string]> = [
-	[undefined, 'defaultSize'],
+	[undefined, 'small'],
 	['mini', 'mini'],
-	['default', 'defaultSize'],
+	['small', 'small'],
 	['medium', 'medium'],
 	['large', 'large'],
 	['xlarge', 'xlarge'],

@@ -29,8 +29,8 @@ export type SelectValue = AcceptableValue;
 export type SelectItem = SelectValue | SelectItemProps;
 
 export type SelectVariants = 'default' | 'ghost' | 'flush';
-/** Matches `N8nInput` / shared input size tokens. Default size is `'default'` (small input tokens). */
-export type SelectSizes = 'mini' | 'default' | 'medium' | 'large' | 'xlarge';
+/** Matches `N8nInput` / shared input size tokens. */
+export type SelectSizes = 'mini' | 'small' | 'medium' | 'large' | 'xlarge';
 
 export type SelectProps<
 	T extends SelectItem[] = SelectItem[],
@@ -41,7 +41,7 @@ export type SelectProps<
 	/** The placeholder text when the select is empty. */
 	placeholder?: string;
 	/**
-	 * @defaultValue 'default'
+	 * @defaultValue 'small'
 	 */
 	size?: SelectSizes;
 	/**

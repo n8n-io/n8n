@@ -219,7 +219,7 @@ const handleJumperSubmit = () => {
 				v-else-if="part === 'sizes'"
 				:model-value="String(internalPageSize)"
 				:items="pageSizeItems"
-				:size="props.size === 'small' ? 'mini' : 'default'"
+				:size="props.size === 'small' ? 'mini' : 'small'"
 				:variant="props.variant === 'ghost' ? 'ghost' : 'default'"
 				:disabled="disabled"
 				:class="$style.pageSizeSelect"

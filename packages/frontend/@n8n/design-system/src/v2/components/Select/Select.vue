@@ -55,7 +55,7 @@ const { t } = useI18n();
 
 const props = withDefaults(defineProps<SelectProps<T, VK, M>>(), {
 	variant: 'default',
-	size: 'default',
+	size: 'small',
 	position: 'popper',
 	side: 'bottom',
 	sideOffset: 5,
@@ -127,7 +127,7 @@ defineExpose({
 
 const sizeClasses: Record<SelectSizes, string> = {
 	mini: $style.mini,
-	default: $style.defaultSize,
+	small: $style.small,
 	medium: $style.medium,
 	large: $style.large,
 	xlarge: $style.xlarge,
@@ -144,7 +144,7 @@ function resolvedPlaceholder() {
 }
 
 function iconStrokeWidth() {
-	return props.size === 'mini' || props.size === 'default' ? 1 : 1.5;
+	return props.size === 'mini' || props.size === 'small' ? 1 : 1.5;
 }
 
 function hasValue() {
@@ -592,7 +592,7 @@ function resolveDisplayValue(value: unknown): string | undefined {
 	@include input-mixin.size-variables('mini');
 }
 
-.defaultSize {
+.small {
 	@include input-mixin.size-variables('small');
 }
 
