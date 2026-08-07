@@ -1,0 +1,33 @@
+packages/frontend/@n8n/stores/src/users.store.ts
+  h_c63dce324dfc7b 11
+packages/frontend/@n8n/rest-api-client/src/utils.ts
+  h_c63dce324dfc7b 1
+packages/@n8n/constants/src/index.ts
+  h_c63dce324dfc7b 2
+packages/frontend/editor-ui/src/features/execution/insights/insights.store.ts
+  h_c63dce324dfc7b 31,40
+packages/@n8n/constants/src/browser.ts
+  h_c63dce324dfc7b 1-18
+packages/frontend/editor-ui/src/features/execution/insights/insights.api.ts
+  h_c63dce324dfc7b 4,39-43
+  h_c63dce324dfc7b 44
+packages/frontend/@n8n/stores/package.json
+  h_c63dce324dfc7b 41
+packages/frontend/editor-ui/src/features/execution/insights/insights.api.test.ts
+  h_c63dce324dfc7b 3,10,128-180
+packages/cli/test/integration/shared/utils/test-server.ts
+  h_c63dce324dfc7b 100
+pnpm-lock.yaml
+  h_c63dce324dfc7b 5588-5590
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "11ddfc75874a71e5f21041a8e602bd61cf5d62f3",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}
