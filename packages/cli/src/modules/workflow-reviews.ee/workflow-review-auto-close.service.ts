@@ -61,7 +61,7 @@ export class WorkflowReviewAutoCloseService implements WorkflowMutationHooks {
 			});
 		} catch (error) {
 			// The delete has already committed; failing it now would be worse than a
-			// request that stays open, which the inbox hides until the next sweep.
+			// request that stays open until the next sweep closes it.
 			this.logger.error('Failed to close workflow review request(s) left without a workflow', {
 				workflowId,
 				error,

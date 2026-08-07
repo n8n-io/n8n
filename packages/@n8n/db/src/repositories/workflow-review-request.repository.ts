@@ -262,7 +262,6 @@ export class WorkflowReviewRequestRepository extends BaseRepository<WorkflowRevi
 			.addOrderBy('review.id', 'ASC');
 
 		this.applyInboxVisibility(queryBuilder, projectIds, requesterId);
-		this.excludeOpenOrphans(queryBuilder);
 
 		if (state !== undefined) {
 			queryBuilder.andWhere('review.state = :state', { state });
@@ -289,7 +288,6 @@ export class WorkflowReviewRequestRepository extends BaseRepository<WorkflowRevi
 			.groupBy('review.state');
 
 		this.applyInboxVisibility(queryBuilder, projectIds, requesterId);
-		this.excludeOpenOrphans(queryBuilder);
 
 		const rows = await queryBuilder.getRawMany<{
 			state: WorkflowReviewRequestState;
@@ -325,31 +323,6 @@ export class WorkflowReviewRequestRepository extends BaseRepository<WorkflowRevi
 		queryBuilder.andWhere(
 			'(review.projectId IN (:...projectIds) OR review.createdById = :requesterId)',
 			{ projectIds, requesterId },
-		);
-	}
-
-	/**
-	 * Hide open requests with no remaining link rows. A workflow hard delete
-	 * cascades the link rows away; when the auto-close hook is bypassed (folder
-	 * cascade, create/delete race) the parent is left open with nothing to act
-	 * on — decide and update-version 404 — so the inbox must not offer it.
-	 * Closed requests legitimately keep zero link rows: a hard delete closes
-	 * the request and preserves it as history.
-	 */
-	private excludeOpenOrphans(queryBuilder: SelectQueryBuilder<WorkflowReviewRequest>): void {
-		const openState: WorkflowReviewRequestState = 'open';
-
-		queryBuilder.andWhere(
-			(qb) => {
-				const linkedWorkflowExists = qb
-					.subQuery()
-					.select('1')
-					.from(WorkflowReviewRequestWorkflow, 'requestWorkflow')
-					.where('requestWorkflow.workflowReviewRequestId = review.id')
-					.getQuery();
-				return `(review.state != :openState OR EXISTS ${linkedWorkflowExists})`;
-			},
-			{ openState },
 		);
 	}
 }

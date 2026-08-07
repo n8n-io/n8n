@@ -55,6 +55,7 @@ import { TagService } from '@/services/tag.service';
 import { assertNever } from '@/utils';
 import { validateWorkflowNodeGroups, sanitizeNodeGroupDescriptions } from '@/workflow-helpers';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
+import { WorkflowMutationHooksProxy } from '@/workflows/workflow-mutation-hooks-proxy.service';
 import { WorkflowPublishGuardProxy } from '@/workflows/workflow-publish-guard-proxy.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
@@ -153,6 +154,7 @@ export class SourceControlImportService {
 		private readonly activeWorkflowManager: ActiveWorkflowManager,
 		private readonly executionPersistence: ExecutionPersistence,
 		private readonly workflowPublishGuard: WorkflowPublishGuardProxy,
+		private readonly workflowMutationHooks: WorkflowMutationHooksProxy,
 	) {
 		this.gitFolder = path.join(instanceSettings.n8nFolder, SOURCE_CONTROL_GIT_FOLDER);
 		this.workflowExportFolder = path.join(this.gitFolder, SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER);
@@ -848,6 +850,12 @@ export class SourceControlImportService {
 
 		this.logger.debug(`Updating workflow id ${id ?? 'new'}`);
 
+		// The upsert below writes `isArchived` directly instead of going through
+		// `WorkflowService.archive()`, so detect the transition to run its
+		// side effects (e.g. closing open review requests) ourselves.
+		const archivedByPull =
+			!!existingWorkflow && !existingWorkflow.isArchived && !!importedWorkflow.isArchived;
+
 		const upsertResult = await this.workflowRepository.upsert(
 			{
 				...importedWorkflow,
@@ -859,6 +867,10 @@ export class SourceControlImportService {
 			throw new UnexpectedError('Failed to upsert workflow', {
 				extra: { workflowId: id ?? 'new' },
 			});
+		}
+
+		if (archivedByPull) {
+			await this.workflowMutationHooks.afterWorkflowArchived(id);
 		}
 
 		try {
@@ -1789,13 +1801,15 @@ export class SourceControlImportService {
 				select: ['id'],
 				where: { parentFolder: { id: In(folderIds) } },
 			});
-			await this.deactivateWorkflowsAndHardDeleteExecutions(
+			const cascadedWorkflowIds = await this.deactivateWorkflowsAndHardDeleteExecutions(
 				workflows.map((workflow) => workflow.id),
 			);
 
 			await this.folderRepository.delete({
 				id: In(candidateIds),
 			});
+
+			await this.sweepAfterWorkflowCascade(cascadedWorkflowIds);
 		} catch (error) {
 			throw this.deletionError('folder', candidates, error);
 		}
@@ -1816,13 +1830,15 @@ export class SourceControlImportService {
 				select: ['workflowId'],
 				where: { projectId: In(candidateIds), role: 'workflow:owner' },
 			});
-			await this.deactivateWorkflowsAndHardDeleteExecutions(
+			const cascadedWorkflowIds = await this.deactivateWorkflowsAndHardDeleteExecutions(
 				ownedWorkflows.map((sw) => sw.workflowId),
 			);
 
 			await this.projectRepository.delete({
 				id: In(candidateIds),
 			});
+
+			await this.sweepAfterWorkflowCascade(cascadedWorkflowIds);
 		} catch (error) {
 			throw this.deletionError('project', candidates, error);
 		}
@@ -1839,29 +1855,58 @@ export class SourceControlImportService {
 	 * pulling user holds `workflow:delete` on, and the pull already ran it for
 	 * those (see `deleteWorkflowsNotInWorkfolder`). Any workflow still standing
 	 * was skipped by that permission check, yet the FK cascade below deletes it
-	 * regardless — so we do the physical cleanup directly beforehand. Deletion
-	 * hooks (`workflow.delete`/`workflow.afterDelete`) and the `workflow-deleted`
-	 * event don't fire for these workflows — a pre-existing gap for any
-	 * cascade-deleted workflow.
+	 * regardless — so we do the physical cleanup directly beforehand. The
+	 * `beforeWorkflowDeleted` mutation hook fires here so modules can run their
+	 * pre-delete side effects (e.g. closing open review requests), and the
+	 * caller fires `afterWorkflowDeleted` once the cascade has run (see
+	 * {@link sweepAfterWorkflowCascade}) — but external hooks
+	 * (`workflow.delete`/`workflow.afterDelete`) and the `workflow-deleted`
+	 * event still don't fire, a pre-existing gap for any cascade-deleted
+	 * workflow.
 	 *
 	 * REVIEW(question): should we instead extract the permission-free part of
 	 * `WorkflowService.delete` (deactivate + drain + delete row + hooks/events)
-	 * into an internal method and call it here? That would restore hook/event
-	 * parity, at the cost of refactoring a hot service for this edge path.
+	 * into an internal method and call it here? That would restore full
+	 * hook/event parity, at the cost of refactoring a hot service for this
+	 * edge path.
 	 */
 	private async deactivateWorkflowsAndHardDeleteExecutions(workflowIds: string[]) {
+		const workflows: WorkflowEntity[] = [];
 		for (const workflowId of workflowIds) {
 			const workflow = await this.workflowRepository.findOne({
 				select: ['id', 'active'],
 				where: { id: workflowId },
 			});
-			if (!workflow) continue;
+			if (workflow) workflows.push(workflow);
+		}
 
+		// The hook may throw to abort the deletion, so it runs for every workflow
+		// before any destructive teardown — a rejection halfway through the batch
+		// must not leave earlier workflows deactivated with their executions gone.
+		for (const workflow of workflows) {
+			await this.workflowMutationHooks.beforeWorkflowDeleted(workflow.id);
+		}
+
+		for (const workflow of workflows) {
 			if (workflow.active) {
 				await this.activeWorkflowManager.remove(workflow.id);
 			}
 			await this.executionPersistence.hardDeleteByWorkflowId(workflow.id);
 		}
+
+		return workflows.map((workflow) => workflow.id);
+	}
+
+	/**
+	 * Fire `afterWorkflowDeleted` once the folder/project row delete has
+	 * cascaded the given workflows away, mirroring `WorkflowService.delete`:
+	 * the sweep behind the hook closes review requests opened after the
+	 * pre-delete hooks ran and now left without a workflow. It searches
+	 * globally for such orphans, so one call covers the whole batch.
+	 */
+	private async sweepAfterWorkflowCascade(cascadedWorkflowIds: string[]) {
+		if (cascadedWorkflowIds.length === 0) return;
+		await this.workflowMutationHooks.afterWorkflowDeleted(cascadedWorkflowIds[0]);
 	}
 
 	/** Contextual error for a failed deletion during pull, so the operator learns which resource to look at. */

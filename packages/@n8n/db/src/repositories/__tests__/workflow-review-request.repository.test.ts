@@ -361,17 +361,6 @@ describe('WorkflowReviewRequestRepository', () => {
 			expect(queryBuilder.take).toHaveBeenCalledWith(15);
 		});
 
-		it('excludes open requests whose link rows are gone, even at global scope', async () => {
-			queryBuilder.getMany.mockResolvedValueOnce([]);
-
-			await repo.findManyForInbox({ projectIds: null, requesterId: 'user-1', limit: 15 });
-
-			// SQL shape (state != open OR EXISTS) is asserted by the inbox integration tests
-			expect(queryBuilder.andWhere).toHaveBeenCalledWith(expect.any(Function), {
-				openState: 'open',
-			});
-		});
-
 		it('applies the keyset boundary carried in the cursor without an anchor lookup', async () => {
 			const findOneSpy = vi.spyOn(repo, 'findOne');
 			queryBuilder.getMany.mockResolvedValueOnce([]);
@@ -440,16 +429,6 @@ describe('WorkflowReviewRequestRepository', () => {
 				'(review.projectId IN (:...projectIds) OR review.createdById = :requesterId)',
 				{ projectIds: ['proj-1', 'proj-2'], requesterId: 'user-1' },
 			);
-		});
-
-		it('excludes open requests whose link rows are gone, even at global scope', async () => {
-			queryBuilder.getRawMany.mockResolvedValueOnce([]);
-
-			await repo.countByStateForInbox({ projectIds: null, requesterId: 'user-1' });
-
-			expect(queryBuilder.andWhere).toHaveBeenCalledWith(expect.any(Function), {
-				openState: 'open',
-			});
 		});
 
 		it('defaults absent states to zero', async () => {

@@ -136,15 +136,6 @@ export class WorkflowReviewInboxService {
 			this.workflowReviewRequestReviewerRepository.findByRequestIds([request.id]),
 		]);
 
-		// An open request whose link rows all cascaded away with a workflow hard
-		// delete is a dead leftover: nothing can act on it and the inbox hides it,
-		// so hide it here too — for the requester as well, matching their inbox.
-		// A closed request keeps zero link rows legitimately (history of a deleted
-		// workflow) and stays readable.
-		if (request.state === 'open' && workflowRows.length === 0) {
-			throw new NotFoundError('Could not find review request');
-		}
-
 		const readableRows = await this.filterReadableWorkflowRows(user, workflowRows);
 		// Someone who reaches this review through its project has no reason to learn it
 		// exists once they can read none of the workflows it covers. The requester already
