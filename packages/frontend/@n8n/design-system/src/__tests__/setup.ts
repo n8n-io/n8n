@@ -1,4 +1,4 @@
-import '@n8n/vitest-config/frontend-setup';
+import '@n8n/vitest-config/setup/frontend';
 import { config } from '@vue/test-utils';
 import { afterEach, beforeAll, beforeEach, vi } from 'vitest';
 

@@ -1,4 +1,4 @@
-import '@n8n/vitest-config/frontend-setup';
+import '@n8n/vitest-config/setup/frontend';
 import 'fake-indexeddb/auto';
 import 'core-js/proposals/set-methods-v2';
 import englishBaseText from '@n8n/i18n/locales/en.json';
@@ -13,7 +13,7 @@ import { APP_MODALS_ELEMENT_ID } from '@/app/constants';
 // - Controlled mode (open prop provided): respects open state
 // - Uncontrolled mode (no open prop): clicking trigger toggles visibility
 //
-// Stays here rather than in `@n8n/vitest-config/frontend-setup`: `reka-ui` is a
+// Stays here rather than in `@n8n/vitest-config/setup/frontend`: `reka-ui` is a
 // dependency of editor-ui alone, and `vi.mock`'s specifier resolves relative to
 // the file that calls it — a shared config package cannot mock a module it
 // cannot resolve.
