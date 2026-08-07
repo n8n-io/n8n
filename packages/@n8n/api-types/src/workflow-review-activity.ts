@@ -7,6 +7,9 @@ import type { WorkflowReviewEligibleReviewer } from './workflow-review-eligible-
  * Feed entry kinds, named `<model>.<event>`: a dot separates model from event, snake_case within a
  * multi-word event. Mirrored by a CHECK constraint on `workflow_review_activity.type`, so a new
  * kind needs a migration.
+ *
+ * Here rather than on the entity because it is a wire type: the stacked activity feed PR serves
+ * these values to the frontend, which switches on them to pick a renderer.
  */
 export type WorkflowReviewActivityType =
 	| 'review.opened'
