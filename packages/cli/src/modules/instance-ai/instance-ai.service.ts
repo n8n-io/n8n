@@ -322,6 +322,9 @@ const WORKFLOW_SETUP_ROUTING_CLAIM_TTL_MS = 15 * 60 * 1000;
 const CONFIRMATION_EXPIRED_MESSAGE =
 	'This confirmation has expired. Send a new message to continue.';
 
+const RESUME_REJECTED_MESSAGE =
+	'I could not apply that confirmation. Send a new message to continue.';
+
 /**
  * Upper bound on how long `shutdown()` will wait for in-flight executeRun /
  * processResumedStream promises to drain after their abortControllers fire.
@@ -4778,6 +4781,17 @@ export class InstanceAiService {
 		} = suspended;
 		if (user.id !== requestingUserId) return null;
 
+		const activeRun = this.runState.getActiveRun(threadId);
+		if (activeRun) {
+			this.logger.warn('Rejecting suspended-run confirmation: thread already has an active run', {
+				requestId,
+				threadId,
+				suspendedRunId: runId,
+				activeRunId: activeRun.runId,
+			});
+			return null;
+		}
+
 		const activeUser = await this.revalidateActiveUser(user.id);
 		if (!activeUser) {
 			this.logger.warn('Cancelling suspended run: user no longer authorized for AI Assistant', {
@@ -5327,6 +5341,19 @@ export class InstanceAiService {
 						error: getErrorMessage(error),
 						metadata: { completion_source: 'resume_claim' },
 					},
+				);
+				await this.terminalOutcome.evaluateTerminalResponse(opts.threadId, opts.runId, 'errored', {
+					messageGroupId: this.tracing.getMessageGroupId(opts.runId),
+					errorMessage: RESUME_REJECTED_MESSAGE,
+				});
+				this.publishRunFinish(
+					opts.threadId,
+					opts.runId,
+					'errored',
+					RESUME_REJECTED_MESSAGE,
+					undefined,
+					opts.user.id,
+					{ errorMessage: getErrorMessage(error), errorSource: 'exception' },
 				);
 				return;
 			}
