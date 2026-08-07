@@ -33,6 +33,7 @@ import {
 	CUSTOM_ROLE_SCOPE_WHITELIST,
 	getAuthPrincipalScopes,
 	getRoleScopes,
+	hasGlobalScope,
 	isBuiltInRole,
 	PROJECT_ADMIN_ROLE_SLUG,
 	PROJECT_EDITOR_ROLE_SLUG,
@@ -40,7 +41,9 @@ import {
 } from '@n8n/permissions';
 import { UnexpectedError, UserError } from 'n8n-workflow';
 
+import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { isUniqueConstraintError } from '@/response-helper';
 
@@ -66,6 +69,12 @@ export class RoleService {
 			usedByUsers,
 			usedByProjects,
 		};
+	}
+
+	assertCanManageRoleType(user: User, roleType: RoleNamespace): void {
+		if (hasGlobalScope(user, 'role:manage')) return;
+		if (roleType === 'project' && hasGlobalScope(user, 'role:manageProject')) return;
+		throw new ForbiddenError(RESPONSE_ERROR_MESSAGES.MISSING_SCOPE);
 	}
 
 	async getRoleMembers(slug: string): Promise<RoleMembersResponse> {
