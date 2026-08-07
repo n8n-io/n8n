@@ -5,10 +5,10 @@ import {
 	N8nAssistantIcon,
 	N8nButton,
 	N8nIcon,
+	type ActionDropdownItem,
 	type DropdownMenuItemProps,
+	type PathItem,
 } from '@n8n/design-system';
-import type { ActionDropdownItem } from '@n8n/design-system/types/action-dropdown';
-import type { PathItem } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import {
 	MAX_AGENT_FILE_SIZE_BYTES,
