@@ -63,6 +63,16 @@ describe('components', () => {
 				expect(wrapper.getByRole('button')).toHaveAttribute('type', 'button');
 			});
 
+			it('should use the provided native button type', () => {
+				const wrapper = render(N8nButton, {
+					props: { type: 'submit' },
+					slots: { default: 'Submit' },
+					global: { stubs },
+				});
+
+				expect(wrapper.getByRole('button')).toHaveAttribute('type', 'submit');
+			});
+
 			it('should not have type attribute when rendered as link', () => {
 				const wrapper = render(N8nButton, {
 					props: {

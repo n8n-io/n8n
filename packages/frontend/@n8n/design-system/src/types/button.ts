@@ -18,6 +18,8 @@ export interface ButtonProps {
 	variant?: ButtonVariant | LegacyButtonVariant;
 	/** Determines the size of the button */
 	size?: ButtonSize;
+	/** Determines the type of the button (e.g. 'submit', 'reset', 'button') */
+	type?: NonNullable<HTMLButtonElement['type']>;
 	/** If passed, the button will be rendered as a link */
 	href?: string;
 	/** If true, the button will show a loading spinner */

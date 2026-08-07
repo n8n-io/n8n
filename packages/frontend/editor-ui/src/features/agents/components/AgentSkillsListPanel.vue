@@ -49,7 +49,7 @@ const totalCount = computed(() => props.skills.length);
 		>
 			<template #actions>
 				<N8nButton
-					type="primary"
+					variant="solid"
 					size="small"
 					:disabled="props.disabled"
 					data-testid="agent-skills-add"

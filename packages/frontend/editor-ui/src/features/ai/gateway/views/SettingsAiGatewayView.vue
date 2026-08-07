@@ -265,7 +265,7 @@ onMounted(async () => {
 				<div v-if="hasMore && entries.length > 0" :class="$style.loadMore">
 					<N8nButton
 						:label="i18n.baseText('settings.n8nConnect.usage.loadMore')"
-						type="secondary"
+						variant="subtle"
 						:loading="isLoading && isAppending"
 						@click="loadMore"
 					/>

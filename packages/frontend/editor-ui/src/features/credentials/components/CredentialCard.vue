@@ -290,7 +290,7 @@ function moveResource() {
 						{{ locale.baseText('credentials.item.connect.tooltip') }}
 					</template>
 					<N8nButton
-						type="primary"
+						variant="solid"
 						size="mini"
 						:loading="isConnecting"
 						data-test-id="credential-card-connect"

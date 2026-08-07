@@ -229,7 +229,7 @@ watch(isActive, (active, wasActive) => {
 				<N8nButton
 					v-if="showContinue"
 					data-test-id="builder-setup-card-continue"
-					type="primary"
+					variant="solid"
 					size="small"
 					:class="$style.actionButton"
 					:disabled="isContinueDisabled"
