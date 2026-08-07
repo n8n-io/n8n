@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { WorkflowGraph } from '../../graph';
 import type { StepMessage, WorkQueue } from '../../queue';
 import type { ExecutionRecord, ExecutionStore } from '../execution-store';
-import { StepCompletedHandler } from '../step-completed-handler';
+import { StepSettledHandler } from '../step-settled-handler';
 import type { NewStepRecord, StepRecord, StepStore } from '../step-store';
 
 /**
@@ -83,13 +83,13 @@ function makeQueue(): WorkQueue<StepMessage> {
 	return { publish: vi.fn(), start: vi.fn(), stop: vi.fn() };
 }
 
-const event = { type: 'step:completed', executionId: 'exec-1', stepId: 'step-a' } as const;
+const event = { type: 'step:settled', executionId: 'exec-1', stepId: 'step-a' } as const;
 
-describe('StepCompletedHandler', () => {
+describe('StepSettledHandler', () => {
 	it('plans every ready successor in one batch and publishes step:ready for each', async () => {
 		const stepStore = makeStepStore();
 		const queue = makeQueue();
-		const handler = new StepCompletedHandler(makeExecutionStore(), stepStore, queue);
+		const handler = new StepSettledHandler(makeExecutionStore(), stepStore, queue);
 
 		await handler.handle(event);
 
@@ -115,7 +115,7 @@ describe('StepCompletedHandler', () => {
 		// steps are planned here, through the same readiness rule as the rest
 		const stepStore = makeStepStore({ id: 'step-trigger', nodeId: 'trigger' });
 		const queue = makeQueue();
-		const handler = new StepCompletedHandler(makeExecutionStore(), stepStore, queue);
+		const handler = new StepSettledHandler(makeExecutionStore(), stepStore, queue);
 
 		await handler.handle({ ...event, stepId: 'step-trigger' });
 
@@ -131,7 +131,7 @@ describe('StepCompletedHandler', () => {
 
 	it("asks readiness in one query, for the successors' other predecessors", async () => {
 		const stepStore = makeStepStore({ id: 'step-b', nodeId: 'b' });
-		const handler = new StepCompletedHandler(makeExecutionStore(), stepStore, makeQueue());
+		const handler = new StepSettledHandler(makeExecutionStore(), stepStore, makeQueue());
 
 		await handler.handle({ ...event, stepId: 'step-b' });
 
@@ -143,7 +143,7 @@ describe('StepCompletedHandler', () => {
 	it('skips the readiness query when the completed node is every predecessor', async () => {
 		// a is the sole predecessor of both b and c, and a just completed
 		const stepStore = makeStepStore();
-		const handler = new StepCompletedHandler(makeExecutionStore(), stepStore, makeQueue());
+		const handler = new StepSettledHandler(makeExecutionStore(), stepStore, makeQueue());
 
 		await handler.handle(event);
 
@@ -158,7 +158,7 @@ describe('StepCompletedHandler', () => {
 		const stepStore = makeStepStore({ executionId: 'exec-2' });
 		const executionStore = makeExecutionStore();
 		const queue = makeQueue();
-		const handler = new StepCompletedHandler(executionStore, stepStore, queue);
+		const handler = new StepSettledHandler(executionStore, stepStore, queue);
 
 		await expect(handler.handle(event)).rejects.toMatchObject({
 			name: 'UnexpectedError',
@@ -176,7 +176,7 @@ describe('StepCompletedHandler', () => {
 		const stepStore = makeStepStore({ nodeId: 'ghost' });
 		const executionStore = makeExecutionStore();
 		const queue = makeQueue();
-		const handler = new StepCompletedHandler(executionStore, stepStore, queue);
+		const handler = new StepSettledHandler(executionStore, stepStore, queue);
 
 		await expect(handler.handle(event)).rejects.toMatchObject({
 			name: 'UnexpectedError',
@@ -213,7 +213,7 @@ describe('StepCompletedHandler', () => {
 	it.each(notPlanned)('plans nothing when $reason', async ({ stepId, step, overrides }) => {
 		const stepStore = makeStepStore(step, overrides);
 		const queue = makeQueue();
-		const handler = new StepCompletedHandler(makeExecutionStore(), stepStore, queue);
+		const handler = new StepSettledHandler(makeExecutionStore(), stepStore, queue);
 
 		await handler.handle({ ...event, stepId });
 
@@ -234,7 +234,7 @@ describe('StepCompletedHandler', () => {
 		);
 		const executionStore = makeExecutionStore();
 		const queue = makeQueue();
-		const handler = new StepCompletedHandler(executionStore, stepStore, queue);
+		const handler = new StepSettledHandler(executionStore, stepStore, queue);
 
 		await handler.handle(event);
 
@@ -246,7 +246,7 @@ describe('StepCompletedHandler', () => {
 		// 'm' is terminal, and nothing else is left running
 		const stepStore = makeStepStore({ id: 'step-m', nodeId: 'm' });
 		const executionStore = makeExecutionStore();
-		const handler = new StepCompletedHandler(executionStore, stepStore, makeQueue());
+		const handler = new StepSettledHandler(executionStore, stepStore, makeQueue());
 
 		await handler.handle({ ...event, stepId: 'step-m' });
 
@@ -259,7 +259,7 @@ describe('StepCompletedHandler', () => {
 			{ hasFailedSteps: vi.fn().mockResolvedValue(true) },
 		);
 		const executionStore = makeExecutionStore();
-		const handler = new StepCompletedHandler(executionStore, stepStore, makeQueue());
+		const handler = new StepSettledHandler(executionStore, stepStore, makeQueue());
 
 		await handler.handle({ ...event, stepId: 'step-m' });
 
@@ -276,7 +276,7 @@ describe('StepCompletedHandler', () => {
 			},
 		);
 		const executionStore = makeExecutionStore();
-		const handler = new StepCompletedHandler(executionStore, stepStore, makeQueue());
+		const handler = new StepSettledHandler(executionStore, stepStore, makeQueue());
 
 		await handler.handle({ ...event, stepId: 'step-b' });
 
@@ -287,7 +287,7 @@ describe('StepCompletedHandler', () => {
 		const stepStore = makeStepStore({ status: 'failed' });
 		const executionStore = makeExecutionStore();
 		const queue = makeQueue();
-		const handler = new StepCompletedHandler(executionStore, stepStore, queue);
+		const handler = new StepSettledHandler(executionStore, stepStore, queue);
 
 		await handler.handle(event);
 
@@ -306,7 +306,7 @@ describe('StepCompletedHandler', () => {
 			{},
 			{ finishExecution: vi.fn().mockResolvedValue(false) },
 		);
-		const handler = new StepCompletedHandler(executionStore, stepStore, makeQueue());
+		const handler = new StepSettledHandler(executionStore, stepStore, makeQueue());
 
 		await handler.handle(event);
 
@@ -317,7 +317,7 @@ describe('StepCompletedHandler', () => {
 		const stepStore = makeStepStore();
 		const executionStore = makeExecutionStore({ status: 'failed' });
 		const queue = makeQueue();
-		const handler = new StepCompletedHandler(executionStore, stepStore, queue);
+		const handler = new StepSettledHandler(executionStore, stepStore, queue);
 
 		await handler.handle(event);
 
@@ -329,7 +329,7 @@ describe('StepCompletedHandler', () => {
 	it('does not test for completion when it just queued work', async () => {
 		const stepStore = makeStepStore();
 		const executionStore = makeExecutionStore();
-		const handler = new StepCompletedHandler(executionStore, stepStore, makeQueue());
+		const handler = new StepSettledHandler(executionStore, stepStore, makeQueue());
 
 		await handler.handle(event);
 

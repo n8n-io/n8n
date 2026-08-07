@@ -59,7 +59,7 @@ export class ExecutionStartHandler {
 
 		// Published only after the row exists, so the consumer can always load it.
 		await this.orchestrationQueue.publish({
-			type: 'step:completed',
+			type: 'step:settled',
 			executionId: event.executionId,
 			stepId: triggerStep.id,
 		});

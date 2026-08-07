@@ -18,7 +18,7 @@ import { InMemoryWorkQueue, type OrchestrationMessage, type StepMessage } from '
 import { ExecutionStartHandler } from '../execution-start-handler';
 import { OrchestrationWorker } from '../orchestration-worker';
 import { StartExecutionService } from '../start-execution.service';
-import { StepCompletedHandler } from '../step-completed-handler';
+import { StepSettledHandler } from '../step-settled-handler';
 import { StepReadyHandler } from '../step-ready-handler';
 import { StepWorker } from '../step-worker';
 
@@ -79,7 +79,7 @@ describe('step execution (integration)', () => {
 		const orchestrationWorker = new OrchestrationWorker(
 			orchestrationQueue,
 			new ExecutionStartHandler(executionStore, stepStore, orchestrationQueue),
-			new StepCompletedHandler(executionStore, stepStore, stepQueue),
+			new StepSettledHandler(executionStore, stepStore, stepQueue),
 		);
 		const stepWorker = new StepWorker(
 			stepQueue,

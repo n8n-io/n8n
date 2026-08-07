@@ -10,7 +10,7 @@ import { validateStepContext } from './validate-step-context';
 /**
  * Handles the `step:ready` step event: claims the step (`queued → running`),
  * runs it through the executor for its step type, records the outcome, and
- * reports back to the orchestration worker with `step:completed`.
+ * reports back to the orchestration worker with `step:settled`.
  *
  * A step that cannot run — no executor, an input shape we don't support yet —
  * makes the handler throw, leaving the step `running` for reconciliation
@@ -74,7 +74,7 @@ export class StepReadyHandler {
 		if (!recorded) return;
 
 		await this.orchestrationQueue.publish({
-			type: 'step:completed',
+			type: 'step:settled',
 			executionId: event.executionId,
 			stepId: event.stepId,
 		});

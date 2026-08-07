@@ -108,7 +108,7 @@ describe('StepReadyHandler', () => {
 		expect(stepStore.completeStep).toHaveBeenCalledWith('step-a', [[{ json: { ok: true } }]]);
 		expect(stepStore.failStep).not.toHaveBeenCalled();
 		expect(queue.publish).toHaveBeenCalledWith({
-			type: 'step:completed',
+			type: 'step:settled',
 			executionId: 'exec-1',
 			stepId: 'step-a',
 		});
@@ -260,7 +260,7 @@ describe('StepReadyHandler', () => {
 			stack: expect.any(String) as string,
 		});
 		expect(queue.publish).toHaveBeenCalledWith({
-			type: 'step:completed',
+			type: 'step:settled',
 			executionId: 'exec-1',
 			stepId: 'step-a',
 		});
@@ -463,7 +463,7 @@ describe('StepReadyHandler', () => {
 		expect(stepStore.completeStep).not.toHaveBeenCalled();
 		// the orchestrator still has to hear about it
 		expect(queue.publish).toHaveBeenCalledWith({
-			type: 'step:completed',
+			type: 'step:settled',
 			executionId: 'exec-1',
 			stepId: 'step-a',
 		});
@@ -487,7 +487,7 @@ describe('StepReadyHandler', () => {
 		});
 		expect(stepStore.completeStep).not.toHaveBeenCalled();
 		expect(queue.publish).toHaveBeenCalledWith({
-			type: 'step:completed',
+			type: 'step:settled',
 			executionId: 'exec-1',
 			stepId: 'step-a',
 		});

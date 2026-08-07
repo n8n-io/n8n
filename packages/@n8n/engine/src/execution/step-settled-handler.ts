@@ -1,11 +1,11 @@
 import { getPredecessorNodeIds, getSuccessorNodeIds } from '../graph';
-import type { StepCompletedEvent, StepMessage, WorkQueue } from '../queue';
+import type { StepSettledEvent, StepMessage, WorkQueue } from '../queue';
 import type { ExecutionRecord, ExecutionStore } from './execution-store';
 import type { StepStore } from './step-store';
 import { validateStepContext } from './validate-step-context';
 
 /**
- * Handles the `step:completed` orchestration event: plans the successors of the
+ * Handles the `step:settled` orchestration event: plans the successors of the
  * finished step and publishes `step:ready` for each, or records the execution's
  * outcome when there is nothing left to run.
  *
@@ -16,14 +16,14 @@ import { validateStepContext } from './validate-step-context';
  * An event whose step and execution disagree is rejected before anything is
  * planned, leaving both executions untouched.
  */
-export class StepCompletedHandler {
+export class StepSettledHandler {
 	constructor(
 		private readonly executionStore: ExecutionStore,
 		private readonly stepStore: StepStore,
 		private readonly stepQueue: WorkQueue<StepMessage>,
 	) {}
 
-	async handle(event: StepCompletedEvent): Promise<void> {
+	async handle(event: StepSettledEvent): Promise<void> {
 		const [step, execution] = await Promise.all([
 			this.stepStore.loadStep(event.stepId),
 			this.executionStore.loadExecution(event.executionId),

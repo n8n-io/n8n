@@ -70,7 +70,7 @@ describe('ExecutionStartHandler', () => {
 		await handler.handle({ type: 'execution:enqueued', executionId: 'exec-1' });
 
 		expect(executionStore.transitionStatus).toHaveBeenCalledWith('exec-1', 'queued', 'running');
-		// only the trigger's row — planning is the step:completed handler's job.
+		// only the trigger's row — planning is the step:settled handler's job.
 		// Its payload rides along as output slot 0, read downstream like any
 		// other predecessor's outputs.
 		expect(createSteps).toHaveBeenCalledExactlyOnceWith([
@@ -82,7 +82,7 @@ describe('ExecutionStartHandler', () => {
 			},
 		]);
 		expect(queue.publish).toHaveBeenCalledExactlyOnceWith({
-			type: 'step:completed',
+			type: 'step:settled',
 			executionId: 'exec-1',
 			stepId: 'step-trigger',
 		});
