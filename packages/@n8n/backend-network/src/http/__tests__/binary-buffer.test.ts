@@ -106,4 +106,27 @@ describe('streamToBuffer inactivity timeout', () => {
 			Container.set(HttpRequestConfig, new HttpRequestConfig());
 		}
 	});
+
+	it(
+		'returns buffered bytes immediately when the stream is already destroyed',
+		{ timeout: 1000 },
+		async () => {
+			// Axios + https-proxy-agent on a failed CONNECT (e.g. Squid 403 with an
+			// unsatisfied Content-Length) hands back an IncomingMessage that is
+			// already destroyed/closed, with the partial body still in its buffer.
+			// Attaching 'end'/'close' listeners then never settles — see #35519.
+			const stream = new Readable({ read() {} });
+			stream.push(Buffer.from('Access Denied'));
+			stream.destroy();
+
+			await expect(streamToBuffer(stream, 60_000)).resolves.toEqual(Buffer.from('Access Denied'));
+		},
+	);
+
+	it('returns immediately when the stream has already ended', { timeout: 1000 }, async () => {
+		const stream = Readable.from(Buffer.from('done'));
+		await binaryToBuffer(stream);
+
+		await expect(streamToBuffer(stream, 60_000)).resolves.toEqual(Buffer.from(''));
+	});
 });
