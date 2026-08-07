@@ -65,7 +65,7 @@ const workflowRuns = computed<TestRunRecord[]>(() => {
 
 // The run this card renders: the pinned one in the detail view, else the newest.
 const targetRun = computed<TestRunRecord | undefined>(() =>
-	props.runId != null
+	props.runId !== null
 		? workflowRuns.value.find((r) => r.id === props.runId)
 		: workflowRuns.value[workflowRuns.value.length - 1],
 );
