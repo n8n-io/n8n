@@ -122,9 +122,14 @@ not templates.
   separate from the path's own `$ref` in `openapi.yml` and are easy to miss;
   left dangling, the next bundle fails on a broken `$ref`.
 - If the legacy handler gated on a license (`isLicensed('feat:x')` middleware),
-  `@Licensed` does not replicate that for a controller route (see the decorator
-  table in [SKILL.md](SKILL.md#declaring-a-controller)) — replicate the check
-  manually in the controller, don't drop it.
+  `@Licensed('feat:x')` now replicates that for a controller route (see the
+  decorator table in [SKILL.md](SKILL.md#declaring-a-controller)) — but only for
+  a single feature. If the legacy check was an any-of/all-of over several flags
+  (e.g. `LicenseState.isProvisioningLicensed()`), `@Licensed` can't express
+  that; replicate it manually in the controller instead, don't drop it - this
+  is exactly what the internal `provisioning.controller.ee.ts` and
+  `role-mapping-rule.controller.ee.ts` already do, since neither uses
+  `@Licensed` for that reason.
 - As a legacy file drops repository access / the `export =` tuple, remove its
   entry from the `off` allowlists for `no-repository-in-public-api-handler` and
   `require-public-api-controller` in `packages/cli/eslint.config.mjs` (shrink-only
