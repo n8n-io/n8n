@@ -8,11 +8,23 @@ import type {
 	ISupplyDataFunctions,
 	IWebhookFunctions,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { jsonParse, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import { ZodType } from 'zod';
 
 import { N8nTool } from './N8nTool';
 import { convertJsonSchemaToZod } from './schemaParsing';
+
+/**
+ * Parses a `json`-typed node parameter. The editor stores these as strings,
+ * but programmatic producers (AI workflow builder, public API) may store real
+ * objects or arrays — accept both.
+ */
+export function parseJsonParameter<T>(value: unknown, errorMessage: string): T {
+	if (typeof value === 'object' && value !== null) {
+		return value as T;
+	}
+	return jsonParse<T>(typeof value === 'string' ? value : String(value), { errorMessage });
+}
 
 export function getPromptInputByType(options: {
 	ctx: IExecuteFunctions | ISupplyDataFunctions;

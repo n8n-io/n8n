@@ -152,6 +152,13 @@ describe('prepareAdditionalResponsesParams', () => {
 		expect(body).toEqual({ metadata: { a: 1 } });
 	});
 
+	it('accepts metadata already stored as an object', () => {
+		const body = prepareAdditionalResponsesParams({
+			metadata: { a: 1 },
+		} as unknown as IDataObject);
+		expect(body).toEqual({ metadata: { a: 1 } });
+	});
+
 	it('builds prompt config with variables JSON', () => {
 		const body = prepareAdditionalResponsesParams({
 			promptConfig: {
@@ -191,6 +198,31 @@ describe('prepareAdditionalResponsesParams', () => {
 					type: 'json_schema',
 					name: 'MySchema',
 					schema: { type: 'object', properties: { a: { type: 'number' } } },
+				},
+			},
+		});
+	});
+
+	it('accepts a json_schema format schema already stored as an object', () => {
+		const schema = { type: 'object', properties: { a: { type: 'number' } } };
+		const body = prepareAdditionalResponsesParams({
+			textFormat: {
+				textOptions: {
+					type: 'json_schema',
+					name: 'MySchema',
+					schema,
+					verbosity: 'low',
+				},
+			},
+		} as unknown as IDataObject);
+
+		expect(body).toEqual({
+			text: {
+				verbosity: 'low',
+				format: {
+					type: 'json_schema',
+					name: 'MySchema',
+					schema,
 				},
 			},
 		});
