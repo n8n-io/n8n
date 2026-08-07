@@ -115,15 +115,19 @@ setup steps or node semantics from memory when those sources can answer.
 1. **Knowledge base** — consult before
    building. Read the relevant `.md` guides and templates for each technique
    the request involves. Skip only for trivial mechanical edits you have
-   already reviewed in this thread.
-   - `knowledge-base/index.json` — catalog of technique guides
-     (`knowledge-base/best-practices/index.json`; read the linked `.md` files)
-     and orchestration reference docs (`knowledge-base/reference/index.json`)
-   - `knowledge-base/templates/` — curated SDK workflow examples: use
-     `workspace_execute_command` with `rg` or `find` to locate matches, then
-     read only the relevant `.ts` files — never load `templates/index.json`
-     wholesale
-   - `node-types/index.txt` — searchable catalog of available n8n nodes
+   already reviewed in this thread. The knowledge base lives at the workspace
+   root (NOT inside this skill's directory) — all paths below are
+   workspace-root-relative:
+   - `${N8N_WORKSPACE_DIR}/knowledge-base/index.json` — catalog of technique
+     guides (`${N8N_WORKSPACE_DIR}/knowledge-base/best-practices/index.json`;
+     read the linked `.md` files) and orchestration reference docs
+     (`${N8N_WORKSPACE_DIR}/knowledge-base/reference/index.json`)
+   - `${N8N_WORKSPACE_DIR}/knowledge-base/templates/` — curated SDK workflow
+     examples: use `workspace_execute_command` with `rg` or `find` to locate
+     matches, then read only the relevant `.ts` files —
+     never load `templates/index.json` wholesale
+   - `${N8N_WORKSPACE_DIR}/node-types/index.txt` — searchable catalog of
+     available n8n nodes
 2. **Runtime skills** — when another skill matches (e.g. `data-table-manager`,
    `debugging-executions`, `post-build-flow`), `load_skill` and follow it
    instead of improvising.
@@ -135,14 +139,19 @@ setup steps or node semantics from memory when those sources can answer.
 
 For workflows with multiple external systems, multiple requested effects,
 digests or reports, non-trivial branching, or Code nodes, read
-`knowledge-base/reference/workflow-builder-guardrails.md` before writing code.
-Use it as the build checklist for source preservation, fan-out/fan-in,
-effect-specific gating, and list itemization.
+`${N8N_WORKSPACE_DIR}/knowledge-base/reference/workflow-builder-guardrails.md`
+before writing code. Use it as the build checklist for source preservation,
+fan-out/fan-in, effect-specific gating, and list itemization.
 
 When mapping downstream fields from an OpenAI node, read
-`knowledge-base/reference/open-ai-output-shape.md` (v2+ text/response uses
-`$json.output[0].content[0].text`; v1 text/message uses `$json.message.content`
-— not `$json.text`).
+`${N8N_WORKSPACE_DIR}/knowledge-base/reference/open-ai-output-shape.md`
+(v2+ text/response uses `$json.output[0].content[0].text`; v1 text/message
+uses `$json.message.content` — not `$json.text`; `json_object`/`json_schema`
+output is already a parsed object, never `JSON.parse` it). When mapping fields
+from an Anthropic node, read
+`${N8N_WORKSPACE_DIR}/knowledge-base/reference/anthropic-output-shape.md`
+(`$json.content` is an array of blocks — read text with
+`$json.content[0].text`, never treat `$json.content` as a string).
 
 ## Workflow-Level Error Workflows
 
@@ -472,7 +481,7 @@ every reported error and warning before calling `build-workflow`.
   graph; it is not a Code node and does not run. Build strings with template
   literals; do runtime joining, aggregation, or transforms in a Code node or
   `expr()`. Full allowed/forbidden list:
-  `knowledge-base/reference/workflow-sdk-language.md`.
+  `${N8N_WORKSPACE_DIR}/knowledge-base/reference/workflow-sdk-language.md`.
 - Use `@n8n/workflow-sdk`.
 - Do not specify node positions. They are auto-calculated by the layout engine.
 - Use `expr('{{ $json.field }}')` for n8n expressions. Variables must be inside

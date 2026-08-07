@@ -691,6 +691,77 @@ describe('AgentRuntime — execution counters', () => {
 });
 
 // ---------------------------------------------------------------------------
+// empty stop turn retry
+// ---------------------------------------------------------------------------
+
+describe('AgentRuntime — empty stop turn retry', () => {
+	beforeEach(() => {
+		generateText.mockReset();
+		streamText.mockReset();
+	});
+
+	/** A `stop` turn with no output at all — the provider stall the loop retries. */
+	function makeGenerateEmpty() {
+		return {
+			finishReason: 'stop',
+			usage: { inputTokens: 10, outputTokens: 0, totalTokens: 10 },
+			response: { messages: [] },
+			toolCalls: [],
+		};
+	}
+
+	it('retries an empty stop turn and keeps the retry output', async () => {
+		generateText
+			.mockResolvedValueOnce(makeGenerateEmpty())
+			.mockResolvedValueOnce(makeGenerateSuccess('Recovered'));
+
+		const { runtime } = createRuntime();
+		const result = await runtime.generate('hi');
+
+		expect(generateText).toHaveBeenCalledTimes(2);
+		expect(result.finishReason).toBe('stop');
+		const assistantText = result.messages
+			.flatMap((m) => ('content' in m && Array.isArray(m.content) ? m.content : []))
+			.find((c) => c.type === 'text');
+		expect(assistantText).toMatchObject({ text: 'Recovered' });
+	});
+
+	it('bills usage from discarded empty attempts', async () => {
+		generateText
+			.mockResolvedValueOnce(makeGenerateEmpty())
+			.mockResolvedValueOnce(makeGenerateSuccess('Recovered'));
+		const counter = makeExecutionCounter();
+
+		const { runtime } = createRuntime();
+		await runtime.generate('hi', { executionCounter: counter });
+
+		expect(counter.incrementTokenCount).toHaveBeenCalledWith(10);
+		expect(counter.incrementTokenCount).toHaveBeenCalledWith(15);
+	});
+
+	it('accepts the empty turn once the retry budget is exhausted', async () => {
+		generateText.mockResolvedValue(makeGenerateEmpty());
+
+		const { runtime } = createRuntime();
+		const result = await runtime.generate('hi');
+
+		// 1 initial call + 2 retries
+		expect(generateText).toHaveBeenCalledTimes(3);
+		expect(result.finishReason).toBe('stop');
+		expect(result.error).toBeUndefined();
+	});
+
+	it('does not retry a whitespace-free stop turn with text', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess('Done'));
+
+		const { runtime } = createRuntime();
+		await runtime.generate('hi');
+
+		expect(generateText).toHaveBeenCalledTimes(1);
+	});
+});
+
+// ---------------------------------------------------------------------------
 // generate() — graceful error contract
 // ---------------------------------------------------------------------------
 

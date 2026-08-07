@@ -147,6 +147,12 @@ const KNOWLEDGE_BASE_REFERENCE_ENTRIES: Array<
 		fileName: 'open-ai-output-shape.md',
 	},
 	{
+		id: 'anthropic-output-shape',
+		description:
+			'Anthropic node (@n8n/n8n-nodes-langchain.anthropic) output shape for downstream expressions and Code-node parsing',
+		fileName: 'anthropic-output-shape.md',
+	},
+	{
 		id: 'workflow-builder-guardrails',
 		description:
 			'Workflow builder guardrails for source preservation, fan-out/fan-in, effects, and Code nodes',

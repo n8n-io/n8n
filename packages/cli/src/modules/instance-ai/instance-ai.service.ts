@@ -2334,6 +2334,7 @@ export class InstanceAiService {
 		}
 
 		context.workspace = runtimeWorkspace;
+		context.workspaceRoot = workspaceRoot;
 		context.threadId = threadId;
 		context.threadMemory = memory;
 		context.trackTelemetry = (eventName, properties) => {
