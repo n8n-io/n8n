@@ -30,7 +30,6 @@ import type {
 } from '../../types';
 import type { AgentDbMessage } from '../../types/sdk/message';
 import type { ObservationCursor } from '../../types/sdk/observation';
-import { estimateObservationTokens } from '../../types/sdk/observation-log';
 import type {
 	BuiltObservationLogStore,
 	BuiltObservationLogTaskLockStore,
@@ -43,6 +42,7 @@ import type {
 	ObservationLogTaskKind,
 	ObservationLogTaskLockHandle,
 } from '../../types/sdk/observation-log';
+import { estimateObservationTokens } from '../model/model-token-counter';
 
 interface StoredMessage {
 	message: AgentDbMessage;

@@ -1,8 +1,8 @@
 import { toJsonValue } from '@n8n/utils/json/to-json-value';
 
 import type { AgentMessage, MessageContent } from '../../types/sdk/message';
-import { estimateObservationTokens, type TokenCounter } from '../../types/sdk/observation-log';
 import type { JSONObject, JSONValue } from '../../types/utils/json';
+import { estimateObservationTokens, type TokenCounter } from '../model/model-token-counter';
 
 export const MAX_MODEL_TOOL_RESULT_TOKENS = 50_000;
 // BPE tokens cannot exceed UTF-8 bytes; reserve room for provider message framing.

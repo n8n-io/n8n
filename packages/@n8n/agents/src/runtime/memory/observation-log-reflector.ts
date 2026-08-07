@@ -12,13 +12,10 @@ import type {
 	ObservationLogMerge,
 	ObservationLogReflection,
 	ObservationLogReflectionResult,
-	TokenCounter,
 } from '../../types/sdk/observation-log';
-import {
-	estimateObservationTokens,
-	getStoredObservationTokenCount,
-} from '../../types/sdk/observation-log';
+import { getStoredObservationTokenCount } from '../../types/sdk/observation-log';
 import type { BuiltTelemetry } from '../../types/telemetry';
+import { estimateObservationTokens, type TokenCounter } from '../model/model-token-counter';
 
 export type { ObservationLogReflectFn, ObservationLogReflectorInput };
 
