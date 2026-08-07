@@ -1,0 +1,298 @@
+{
+	"name": "Aggregate Group By Test",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "6c90bf81-0c0e-4c5f-9f0c-297f06d9668a",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-440, 260]
+		},
+		{
+			"parameters": {
+				"jsCode": "return [\n  {\n    json: {\n      email: \"Grant.Goyette@hotmail.com\",\n      confirmed: true,\n      domain: 'hotmail.com'\n    }\n  },\n  {\n    json: {\n      email: \"Ian_Schroeder@yahoo.com\",\n      confirmed: false,\n      domain: 'yahoo.com'\n    }\n  },\n  {\n    json: {\n      email: \"Jerome83@yahoo.com\",\n      confirmed: false,\n      domain: 'yahoo.com'\n    }\n  },\n  {\n    json: {\n      email: \"Marie55@gmail.com\",\n      confirmed: false,\n      domain: 'gmail.com'\n    }\n  },\n  {\n    json: {\n      email: \"Rene78@yahoo.com\",\n      confirmed: true,\n      domain: 'yahoo.com'\n    }\n  }\n]"
+			},
+			"id": "2e0011d5-c6a0-4a40-ab8c-9d011cde40d5",
+			"name": "Code",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [-180, 260]
+		},
+		{
+			"parameters": {
+				"aggregate": "aggregateAllItemData",
+				"options": {
+					"groupByFields": "domain"
+				}
+			},
+			"id": "29086978-669e-49de-a153-8ab5cf423f3a",
+			"name": "Group By - Aggregate All",
+			"type": "n8n-nodes-base.aggregate",
+			"typeVersion": 1,
+			"position": [80, 0]
+		},
+		{
+			"parameters": {
+				"fieldsToAggregate": {
+					"fieldToAggregate": [
+						{
+							"fieldToAggregate": "email"
+						},
+						{
+							"fieldToAggregate": "confirmed",
+							"renameField": true,
+							"outputFieldName": "confirmStatus"
+						}
+					]
+				},
+				"options": {
+					"groupByFields": "domain"
+				}
+			},
+			"id": "68650cbd-3885-4e68-9398-57ac13b75d55",
+			"name": "Group By - Individual Fields",
+			"type": "n8n-nodes-base.aggregate",
+			"typeVersion": 1,
+			"position": [80, 200]
+		},
+		{
+			"parameters": {
+				"aggregate": "aggregateAllItemData",
+				"destinationFieldName": "emails",
+				"include": "specifiedFields",
+				"fieldsToInclude": "email, confirmed",
+				"options": {
+					"groupByFields": "domain"
+				}
+			},
+			"id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+			"name": "Group By - Selected Fields",
+			"type": "n8n-nodes-base.aggregate",
+			"typeVersion": 1,
+			"position": [80, 400]
+		},
+		{
+			"parameters": {
+				"aggregate": "aggregateAllItemData",
+				"destinationFieldName": "items",
+				"include": "allFieldsExcept",
+				"fieldsToExclude": "domain",
+				"options": {
+					"groupByFields": "domain"
+				}
+			},
+			"id": "b2c3d4e5-f6g7-8901-bcde-fg2345678901",
+			"name": "Group By - Exclude Fields",
+			"type": "n8n-nodes-base.aggregate",
+			"typeVersion": 1,
+			"position": [80, 600]
+		}
+	],
+	"pinData": {
+		"Group By - Aggregate All": [
+			{
+				"json": {
+					"domain": "hotmail.com",
+					"data": [
+						{
+							"email": "Grant.Goyette@hotmail.com",
+							"confirmed": true,
+							"domain": "hotmail.com"
+						}
+					]
+				}
+			},
+			{
+				"json": {
+					"domain": "yahoo.com",
+					"data": [
+						{
+							"email": "Ian_Schroeder@yahoo.com",
+							"confirmed": false,
+							"domain": "yahoo.com"
+						},
+						{
+							"email": "Jerome83@yahoo.com",
+							"confirmed": false,
+							"domain": "yahoo.com"
+						},
+						{
+							"email": "Rene78@yahoo.com",
+							"confirmed": true,
+							"domain": "yahoo.com"
+						}
+					]
+				}
+			},
+			{
+				"json": {
+					"domain": "gmail.com",
+					"data": [
+						{
+							"email": "Marie55@gmail.com",
+							"confirmed": false,
+							"domain": "gmail.com"
+						}
+					]
+				}
+			}
+		],
+		"Group By - Individual Fields": [
+			{
+				"json": {
+					"domain": "hotmail.com",
+					"email": ["Grant.Goyette@hotmail.com"],
+					"confirmStatus": [true]
+				}
+			},
+			{
+				"json": {
+					"domain": "yahoo.com",
+					"email": ["Ian_Schroeder@yahoo.com", "Jerome83@yahoo.com", "Rene78@yahoo.com"],
+					"confirmStatus": [false, false, true]
+				}
+			},
+			{
+				"json": {
+					"domain": "gmail.com",
+					"email": ["Marie55@gmail.com"],
+					"confirmStatus": [false]
+				}
+			}
+		],
+		"Group By - Selected Fields": [
+			{
+				"json": {
+					"domain": "hotmail.com",
+					"emails": [
+						{
+							"email": "Grant.Goyette@hotmail.com",
+							"confirmed": true
+						}
+					]
+				}
+			},
+			{
+				"json": {
+					"domain": "yahoo.com",
+					"emails": [
+						{
+							"email": "Ian_Schroeder@yahoo.com",
+							"confirmed": false
+						},
+						{
+							"email": "Jerome83@yahoo.com",
+							"confirmed": false
+						},
+						{
+							"email": "Rene78@yahoo.com",
+							"confirmed": true
+						}
+					]
+				}
+			},
+			{
+				"json": {
+					"domain": "gmail.com",
+					"emails": [
+						{
+							"email": "Marie55@gmail.com",
+							"confirmed": false
+						}
+					]
+				}
+			}
+		],
+		"Group By - Exclude Fields": [
+			{
+				"json": {
+					"domain": "hotmail.com",
+					"items": [
+						{
+							"email": "Grant.Goyette@hotmail.com",
+							"confirmed": true
+						}
+					]
+				}
+			},
+			{
+				"json": {
+					"domain": "yahoo.com",
+					"items": [
+						{
+							"email": "Ian_Schroeder@yahoo.com",
+							"confirmed": false
+						},
+						{
+							"email": "Jerome83@yahoo.com",
+							"confirmed": false
+						},
+						{
+							"email": "Rene78@yahoo.com",
+							"confirmed": true
+						}
+					]
+				}
+			},
+			{
+				"json": {
+					"domain": "gmail.com",
+					"items": [
+						{
+							"email": "Marie55@gmail.com",
+							"confirmed": false
+						}
+					]
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Code",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code": {
+			"main": [
+				[
+					{
+						"node": "Group By - Aggregate All",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Group By - Individual Fields",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Group By - Selected Fields",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Group By - Exclude Fields",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"versionId": "test-groupby-v1",
+	"id": "groupby-test",
+	"meta": {
+		"instanceId": "test"
+	},
+	"tags": []
+}
