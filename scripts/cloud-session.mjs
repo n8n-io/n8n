@@ -1,9 +1,10 @@
 #!/usr/bin/env node
-// Manage cloud agent sessions: one Codespace per developer, one tmux session
-// per agent. Requires `gh` with the codespace scope (gh auth refresh -s codespace).
+// Manage cloud agent sessions: one Codespace per developer, one tmux session +
+// git worktree per agent, so parallel sessions never trample each other's tree.
+// Requires `gh` with the codespace scope (gh auth refresh -s codespace).
 //
-//   pnpm session            attach the default session (creates codespace/session as needed)
-//   pnpm session <name>     attach a named session — parallel agents on the same box
+//   pnpm session            attach the default session (main checkout, /workspaces/n8n)
+//   pnpm session <name>     attach a named session in its own worktree (/workspaces/wt-<name>)
 //   pnpm session ls         list codespaces and the tmux sessions inside
 //   pnpm session stop       stop the codespace (compute billing stops; disk survives)
 //   pnpm session rm         delete the codespace
@@ -11,7 +12,8 @@ import { execFileSync, spawnSync } from 'node:child_process';
 
 const REPO = 'n8n-io/n8n';
 const DEVCONTAINER = '.devcontainer/codespaces/devcontainer.json';
-const MACHINE = process.env.CODESPACE_MACHINE ?? 'standardLinux32gb';
+const MACHINE = process.env.CODESPACE_MACHINE ?? 'premiumLinux'; // 8-core/32GB
+const FALLBACK_MACHINE = 'standardLinux32gb'; // 4-core/16GB, until org policy allows bigger
 
 const gh = (...args) => execFileSync('gh', args, { encoding: 'utf8' }).trim();
 const ghTty = (...args) => spawnSync('gh', args, { stdio: 'inherit' });
@@ -25,13 +27,37 @@ function ensureCodespace() {
 	let cs = findCodespace();
 	if (!cs) {
 		console.log(`No codespace on ${REPO} — creating one (first build takes a while)…`);
-		const name = gh(
-			'codespace', 'create', '-R', REPO,
-			'--devcontainer-path', DEVCONTAINER, '-m', MACHINE,
-		);
-		cs = { name, state: 'Provisioning' };
+		const create = (machine) =>
+			gh('codespace', 'create', '-R', REPO, '--devcontainer-path', DEVCONTAINER, '-m', machine);
+		let name;
+		try {
+			name = create(MACHINE);
+		} catch {
+			console.log(`Machine type ${MACHINE} unavailable — falling back to ${FALLBACK_MACHINE}`);
+			name = create(FALLBACK_MACHINE);
+		}
+		cs = { name };
 	}
 	return cs.name;
+}
+
+// Worktrees share the pnpm store but not the turbo cache; a shared TURBO_CACHE_DIR
+// (seeded from the main checkout) keeps new-worktree builds at cache-hit speed.
+// No single quotes allowed here: the whole prelude rides inside tmux's '…' arg.
+const CACHE = 'export TURBO_CACHE_DIR=/workspaces/.turbo-cache; [ -d "$TURBO_CACHE_DIR" ] || cp -r /workspaces/n8n/.turbo/cache "$TURBO_CACHE_DIR" 2>/dev/null || mkdir -p "$TURBO_CACHE_DIR"';
+
+function remoteCommand(session, extraArgs) {
+	const claude = `claude ${extraArgs}`.trim();
+	if (session === 'agent') return `${CACHE}; cd /workspaces/n8n && ${claude}`;
+	const wt = `/workspaces/wt-${session}`;
+	const branch = `session/${session}`;
+	return [
+		CACHE,
+		`if [ ! -d "${wt}" ]; then echo "Setting up worktree ${wt}…"`,
+		`git -C /workspaces/n8n worktree add "${wt}" -b "${branch}" 2>/dev/null || git -C /workspaces/n8n worktree add "${wt}" "${branch}"`,
+		`(cd "${wt}" && pnpm install); fi`,
+		`cd "${wt}" && ${claude}`,
+	].join('; ');
 }
 
 const [cmd = 'agent', ...rest] = process.argv.slice(2);
@@ -59,13 +85,16 @@ switch (cmd) {
 		break;
 	}
 	default: {
-		// treat cmd as the session name; each name = an independent agent session
-		const session = cmd;
+		// treat cmd as the session name; each name = an independent agent in its own worktree
+		if (!/^[\w-]+$/.test(cmd)) {
+			console.error(`Invalid session name '${cmd}' — use letters, digits, - or _`);
+			process.exit(1);
+		}
 		const name = ensureCodespace();
-		console.log(`Attaching to session '${session}' on ${name} (detach: Ctrl-b d)…`);
+		console.log(`Attaching to session '${cmd}' on ${name} (detach: Ctrl-b d)…`);
 		ghTty(
 			'codespace', 'ssh', '-c', name, '--', '-t',
-			`tmux new -As ${session} 'cd /workspaces/n8n && claude ${rest.join(' ')}'`,
+			`tmux new -As ${cmd} '${remoteCommand(cmd, rest.join(' '))}'`,
 		);
 	}
 }
