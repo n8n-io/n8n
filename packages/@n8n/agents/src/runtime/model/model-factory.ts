@@ -96,6 +96,7 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 				headers: creds.headers,
 				fetch,
 				// Without this the SDK drops JSON schemas and sends json_object only.
+				includeUsage: true,
 				supportsStructuredOutputs: true,
 			})(model);
 		},

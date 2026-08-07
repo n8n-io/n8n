@@ -145,9 +145,7 @@ export function applyAgentThinking(agent: Agent, modelId: ModelConfig): void {
 
 	if (provider === 'anthropic') {
 		// Fireworks Anthropic-compat rejects `adaptive` and `output_config.effort`
-		// (proxy: "Extra inputs are not permitted"). Control depth via budget_tokens.
-		// Budget must match FIREWORKS_ANTHROPIC_THINKING_BUDGET_TOKENS in @n8n/agents
-		// provider-quirks (AI SDK adds it into max_tokens; proxy caps at 64k).
+		// ("Extra inputs are not permitted"). Control depth via budget_tokens.
 		if (isFireworksModel(modelId)) {
 			agent.thinking('anthropic', { mode: 'enabled', budgetTokens: 8192 });
 			return;
