@@ -20,7 +20,6 @@ const props = withDefaults(
 );
 
 const emit = defineEmits<{
-	'reset-zoom': [];
 	'zoom-in': [];
 	'zoom-out': [];
 	'zoom-to-fit': [];

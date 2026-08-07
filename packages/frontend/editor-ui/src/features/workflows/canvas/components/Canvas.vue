@@ -1918,7 +1918,6 @@ defineExpose({
 			@zoom-to-fit="onFitView"
 			@zoom-in="onZoomIn"
 			@zoom-out="onZoomOut"
-			@reset-zoom="onResetZoom"
 			@tidy-up="onTidyUp({ source: 'canvas-button' })"
 			@toggle-zoom-mode="onToggleZoomMode"
 		/>
