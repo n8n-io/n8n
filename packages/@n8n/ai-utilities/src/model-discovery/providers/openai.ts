@@ -14,9 +14,15 @@ export function shouldIncludeOpenAiModel(modelId: string, isCustomApi: boolean):
 		modelId.startsWith('davinci') ||
 		modelId.startsWith('computer-use') ||
 		modelId.startsWith('dall-e') ||
-		// Covers gpt-image-* and chatgpt-image-*, which replaced dall-e and
-		// support neither chat/completions nor responses
+		/*
+			Newer non-chat families are named gpt-*, so they pass the gpt- prefix and
+			have to be excluded by suffix. Only families OpenAI marks unsupported on
+			both chat/completions and responses belong here — gpt-audio-* is
+			deliberately absent, it does support chat/completions.
+		*/
 		modelId.includes('-image') ||
+		modelId.includes('-transcribe') ||
+		modelId.includes('-diarize') ||
 		modelId.startsWith('text-embedding') ||
 		modelId.startsWith('tts') ||
 		modelId.includes('-tts') ||

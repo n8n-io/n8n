@@ -30,10 +30,12 @@ describe('modelSearch', () => {
 					{ id: 'babbage-002' },
 					{ id: 'whisper-1' },
 					{ id: 'dall-e-3' },
-					// Image models are named gpt-image-* / chatgpt-image-* since dall-e
-					// was retired, so they pass the gpt- prefix and need excluding too
+					// Non-chat families named gpt-* pass the gpt- prefix, so they are
+					// excluded by suffix instead
 					{ id: 'gpt-image-2' },
 					{ id: 'chatgpt-image-latest' },
+					{ id: 'gpt-4o-transcribe' },
+					{ id: 'gpt-4o-transcribe-diarize' },
 					{ id: 'gpt-4o-realtime-preview' },
 				],
 			});
@@ -43,6 +45,25 @@ describe('modelSearch', () => {
 			expect(result.results).toEqual([
 				{ name: 'GPT-3.5-TURBO', value: 'gpt-3.5-turbo' },
 				{ name: 'GPT-4', value: 'gpt-4' },
+			]);
+		});
+
+		// gpt-audio-* is unsupported on responses but supported on chat/completions,
+		// which v1 Message a Model uses, so it must stay selectable.
+		it('should keep audio chat models that support chat completions', async () => {
+			mockContext.getCredentials.mockResolvedValue({
+				url: 'https://api.openai.com/v1',
+			});
+
+			(transport.apiRequest as Mock).mockResolvedValue({
+				data: [{ id: 'gpt-audio' }, { id: 'gpt-audio-mini' }, { id: 'gpt-4o-transcribe' }],
+			});
+
+			const result = await modelSearch.call(mockContext);
+
+			expect(result.results).toEqual([
+				{ name: 'GPT-AUDIO', value: 'gpt-audio' },
+				{ name: 'GPT-AUDIO-MINI', value: 'gpt-audio-mini' },
 			]);
 		});
 
