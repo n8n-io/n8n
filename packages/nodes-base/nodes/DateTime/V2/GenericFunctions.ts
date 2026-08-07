@@ -47,8 +47,10 @@ export function parseDate(
 				parsedDate = DateTime.fromISO(moment(date).toISOString());
 			}
 		}
-
-		parsedDate = parsedDate.setZone(timezone || 'Etc/UTC');
+		// When parsing user-provided formats (e.g. AM/PM), preserve wall-clock time
+		parsedDate = options.fromFormat
+			? parsedDate.setZone(timezone || 'Etc/UTC', { keepLocalTime: true })
+			: parsedDate.setZone(timezone || 'Etc/UTC');
 
 		if (parsedDate.invalidReason === 'unparsable') {
 			throw new NodeOperationError(this.getNode(), 'Invalid date format');
