@@ -168,6 +168,9 @@ export {
 	type CollectedValidationIssue,
 } from './validation';
 
+// Source lint (same rules the validate CLI runs)
+export { lintWorkflowSource, type SourceLintIssue } from './lint';
+
 // Code generation
 export { generateWorkflowCode } from './codegen/index';
 export {

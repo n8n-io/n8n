@@ -1,5 +1,5 @@
 import { getWorkspaceRoot } from '@n8n/agents/sandbox';
-import { validateWorkflow } from '@n8n/workflow-sdk';
+import { lintWorkflowSource, validateWorkflow } from '@n8n/workflow-sdk';
 
 import type { InstanceAiContext } from '../../../types';
 import { runInSandbox } from '../../../workspace/sandbox-fs';
@@ -11,6 +11,7 @@ vi.mock('@n8n/agents/sandbox', () => ({
 
 vi.mock('@n8n/workflow-sdk', () => ({
 	validateWorkflow: vi.fn(() => ({ errors: [], warnings: [] })),
+	lintWorkflowSource: vi.fn(() => []),
 }));
 
 vi.mock('../../../workspace/sandbox-fs', () => ({
@@ -224,6 +225,52 @@ describe('compileWorkflowSource', () => {
 				},
 			],
 		});
+	});
+
+	it('appends source-lint findings for TypeScript sources as informational warnings', async () => {
+		vi.mocked(runInSandbox).mockResolvedValue({
+			exitCode: 0,
+			stdout: JSON.stringify({
+				success: true,
+				workflow: { name: 'TS workflow', nodes: [], connections: {} },
+				warnings: [],
+			}),
+			stderr: '',
+		});
+		vi.mocked(lintWorkflowSource).mockReturnValue([
+			{
+				code: 'SDK_UNSOLICITED_STICKY',
+				message: 'Do not add sticky() nodes.',
+				severity: 'informational',
+				line: 7,
+				lintTarget: 'sdk',
+			},
+		]);
+
+		const result = await compileWorkflowSource(
+			makeContext(),
+			'src/workflows/main.workflow.ts',
+			'workflow source',
+		);
+
+		expect(lintWorkflowSource).toHaveBeenCalledWith('workflow source');
+		if (!result.success) throw new Error('expected a successful compile');
+		expect(result.warnings).toContainEqual({
+			code: 'SDK_UNSOLICITED_STICKY',
+			message: 'line 7: Do not add sticky() nodes.',
+			nodeName: undefined,
+			severity: 'informational',
+		});
+	});
+
+	it('does not run source lint for WorkflowJSON sources', async () => {
+		await compileWorkflowSource(
+			makeContext(),
+			'src/workflows/main.workflow.json',
+			JSON.stringify({ name: 'JSON workflow', nodes: [], connections: {} }),
+		);
+
+		expect(lintWorkflowSource).not.toHaveBeenCalled();
 	});
 
 	it('returns a code-fixable failure when sandbox output cannot be parsed', async () => {

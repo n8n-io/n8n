@@ -5,7 +5,7 @@
  * are linted separately by code-node/js and code-node/python.
  */
 
-import type { CallExpression, MemberExpression, Node, Program } from 'estree';
+import type { CallExpression, MemberExpression, Node, Program, Property } from 'estree';
 
 import {
 	FORBIDDEN_NODE_TYPES,
@@ -163,6 +163,155 @@ function rangeContains(range: SourceRange, line: number, column: number): boolea
 	return true;
 }
 
+function propertyName(prop: Property): string | undefined {
+	// `[someVar]: ...` is a runtime key, not the literal name of the identifier.
+	if (prop.key.type === 'Identifier') return prop.computed ? undefined : prop.key.name;
+	if (prop.key.type === 'Literal' && typeof prop.key.value === 'string') return prop.key.value;
+	return undefined;
+}
+
+/** Object literal whose only property is `json` — a runtime item envelope. */
+function isJsonEnvelopeObject(node: Node | null): boolean {
+	if (!node || node.type !== 'ObjectExpression') return false;
+	if (node.properties.length !== 1) return false;
+	const prop = node.properties[0];
+	return prop?.type === 'Property' && propertyName(prop) === 'json';
+}
+
+/** Factories whose config object carries the mock `output` field. */
+const NODE_FACTORY_NAMES = new Set([
+	'node',
+	'trigger',
+	'ifElse',
+	'merge',
+	'switchCase',
+	'splitInBatches',
+	'languageModel',
+	'memory',
+	'tool',
+	'outputParser',
+	'embedding',
+	'embeddings',
+	'vectorStore',
+	'retriever',
+	'reranker',
+	'documentLoader',
+	'textSplitter',
+]);
+
+/**
+ * `output: [{ json: {...} }]` — SDK mocks are raw `$json` objects; wrapping
+ * every item in a `json` envelope makes downstream expressions read
+ * `$json.json.*` and expression-path validation fail. Only the top-level
+ * `output` key of a node-factory config counts: a nested parameter that
+ * happens to be named `output` is legitimate payload, not a mock.
+ */
+function checkMockOutputEnvelope(call: CallExpression, issues: SourceLintIssue[]): void {
+	if (call.callee.type !== 'Identifier' || !NODE_FACTORY_NAMES.has(call.callee.name)) return;
+	const config = call.arguments[0];
+	if (!config || config.type !== 'ObjectExpression') return;
+
+	const prop = config.properties.find(
+		(entry): entry is Property => entry.type === 'Property' && propertyName(entry) === 'output',
+	);
+	if (!prop) return;
+	if (prop.value.type !== 'ArrayExpression' || prop.value.elements.length === 0) return;
+
+	const allEnveloped = prop.value.elements.every((el) => isJsonEnvelopeObject(el));
+	if (!allEnveloped) return;
+
+	issues.push(
+		lintIssue({
+			code: 'SDK_MOCK_OUTPUT_JSON_ENVELOPE',
+			message:
+				'Mock `output` items are raw $json objects — do not wrap them in `{ json: {...} }` runtime envelopes. ' +
+				'Use `output: [{ field: value }]` unless downstream expressions intentionally read `$json.json.*`.',
+			...locationOf(prop),
+			lintTarget: 'sdk',
+		}),
+	);
+}
+
+/**
+ * `credentials: { slackApi: { id: '...', name: '...' } }` — raw credential
+ * objects in SDK source bypass credential resolution semantics; the build
+ * silently mocks unknown ids. `newCredential()` is the supported form.
+ */
+function checkRawCredentialObjects(prop: Property, issues: SourceLintIssue[]): void {
+	if (propertyName(prop) !== 'credentials') return;
+	if (prop.value.type !== 'ObjectExpression') return;
+
+	for (const entry of prop.value.properties) {
+		if (entry.type !== 'Property' || entry.value.type !== 'ObjectExpression') continue;
+		const keys = entry.value.properties
+			.filter((p): p is Property => p.type === 'Property')
+			.map((p) => propertyName(p));
+		if (!keys.includes('id') && !keys.includes('name')) continue;
+
+		issues.push(
+			lintIssue({
+				code: 'SDK_RAW_CREDENTIAL_OBJECT',
+				message:
+					"Raw credential objects like `{ id: '...', name: '...' }` are not supported in SDK code. " +
+					"Use `newCredential('Name', 'credential-id')` for a stored credential or `newCredential('Suggested Name')` to defer to setup.",
+				...locationOf(entry),
+				lintTarget: 'sdk',
+			}),
+		);
+	}
+}
+
+const FAKE_VALUE_PATTERNS: Array<{ pattern: RegExp; hint: string }> = [
+	{
+		pattern: /@example\.(?:com|org|net)\b/i,
+		hint: 'an example.com email address',
+	},
+	{
+		pattern: /\bYOUR_[A-Z][A-Z0-9_]{2,}\b/,
+		hint: 'a YOUR_* stand-in value',
+	},
+];
+
+/**
+ * Hardcoded fake values (`user@example.com`, `YOUR_API_KEY`) self-verify green
+ * and then fail on the user's first real run. `placeholder('hint')` is the
+ * supported way to defer a user-provided value, so hint text inside a
+ * `placeholder()` call is exempt.
+ */
+function checkFakeLiteralValues(
+	node: Node,
+	parent: Node | undefined,
+	issues: SourceLintIssue[],
+): void {
+	// Embedded jsCode/pythonCode strings are linted by the code-node rules.
+	if (isEmbeddedCodePropertyValue(node, parent)) return;
+
+	let value: string | undefined;
+	if (node.type === 'Literal' && typeof node.value === 'string') {
+		value = node.value;
+	} else if (node.type === 'TemplateLiteral' && node.expressions.length === 0) {
+		// Backticks without interpolation are just another string quote style.
+		value = node.quasis[0]?.value.cooked ?? undefined;
+	}
+	if (value === undefined) return;
+	if (parent?.type === 'CallExpression' && isPlaceholderCall(parent)) return;
+
+	for (const { pattern, hint } of FAKE_VALUE_PATTERNS) {
+		if (!pattern.test(value)) continue;
+		issues.push(
+			lintIssue({
+				code: 'SDK_FAKE_VALUE',
+				message:
+					`String looks like ${hint} — a hardcoded fake value. ` +
+					"Use placeholder('descriptive hint') so setup collects the real value from the user.",
+				...locationOf(node),
+				lintTarget: 'sdk',
+			}),
+		);
+		return;
+	}
+}
+
 /** Lint a prepared, parsed SDK AST (imports/TS already stripped). */
 export function lintWorkflowSdkAst(
 	ast: Program,
@@ -245,8 +394,16 @@ export function lintWorkflowSdkAst(
 				}
 			}
 
+			if (node.type === 'Property') {
+				checkRawCredentialObjects(node, issues);
+			}
+
+			checkFakeLiteralValues(node, parent, issues);
+
 			if (node.type !== 'CallExpression') return;
 			const call = node;
+
+			checkMockOutputEnvelope(call, issues);
 
 			if (call.callee.type === 'Identifier' && call.callee.name === 'sticky') {
 				issues.push(

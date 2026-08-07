@@ -314,6 +314,10 @@ export class InstanceAiAdapterService {
 			/** Host-resolved model for the run — fallback for utility LLM calls
 			 *  (simulation fixtures, destructiveness classification). */
 			modelId?: ModelConfig;
+			/** Webhook base URL — used to compute trigger endpoints on build results. */
+			webhookBaseUrl?: string;
+			/** Form base URL — Form Triggers serve at /form/, not /webhook/. */
+			formBaseUrl?: string;
 		},
 	): InstanceAiContext {
 		const {
@@ -327,6 +331,8 @@ export class InstanceAiAdapterService {
 			configEvalsEnabled,
 			mcpConnectionsEnabled,
 			modelId,
+			webhookBaseUrl,
+			formBaseUrl,
 		} = options ?? {};
 
 		// Record gateway availability once per context. Fire-and-forget: the
@@ -339,6 +345,9 @@ export class InstanceAiAdapterService {
 			userId: user.id,
 			projectId,
 			modelId,
+			webhookBaseUrl,
+			formBaseUrl,
+			errorTriggerType: this.globalConfig.nodes.errorTriggerType,
 			workflowService: this.createWorkflowAdapter(user, threadId, projectId),
 			executionService: this.createExecutionAdapter(user, pushRef, threadId),
 			credentialService: this.createCredentialAdapter(

@@ -16,6 +16,8 @@ import {
 } from './resolve-credentials';
 import { resolvedCredentialSchema } from './resolved-credential.schema';
 import { analyzeWorkflow, stripStaleCredentialsFromWorkflow } from './setup-workflow.service';
+import { computeTriggerEndpoints, TRIGGER_ENDPOINTS_NOTE } from './trigger-endpoints';
+import { validateErrorWorkflowReference } from './validate-error-workflow';
 import {
 	combineWarnings,
 	formatWarning,
@@ -113,7 +115,7 @@ export const buildWorkflowInputSchema = z
 			.string()
 			.optional()
 			.describe(
-				'Full source to write to filePath before building — use this instead of a separate workspace_write_file call when creating or fully rewriting the source. Omit to build the existing file content (preferred for targeted edits made with file tools, and required before `workflow-sdk validate`).',
+				'Full source to write to filePath before building — use this instead of a separate workspace_write_file call when creating or fully rewriting the source. Omit to build the existing file content (preferred for targeted edits made with file tools).',
 			),
 		workflowId: z
 			.string()
@@ -143,6 +145,13 @@ export const buildWorkflowInputSchema = z
 const triggerNodeOutputSchema = z.object({
 	nodeName: z.string(),
 	nodeType: z.string(),
+});
+
+const triggerEndpointOutputSchema = z.object({
+	nodeName: z.string(),
+	kind: z.enum(['webhook', 'form', 'chat']),
+	url: z.string().optional(),
+	guidance: z.string().optional(),
 });
 
 const verificationReadinessOutputSchema = z.discriminatedUnion('status', [
@@ -287,7 +296,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				'Load `workflow-builder` via `load_skill` before calling this tool. ' +
 				'When the workflow creates or writes Data Tables, also load `data-table-manager` first. ' +
 				'Use TypeScript SDK source for new workflows, or WorkflowJSON .json source for existing workflow edits. ' +
-				'Prefer writing the file with `workspace_write_file` / `workspace_str_replace_file` so `workflow-sdk validate` can run on it, then call this tool with filePath. ' +
+				'Prefer writing the file with `workspace_write_file` / `workspace_str_replace_file`, then call this tool with filePath — the build validates and lints the source. ' +
 				'For a one-shot create/rewrite you may pass `sourceCode` instead (the tool writes filePath and builds).',
 		)
 		.input(buildWorkflowInputSchema)
@@ -300,6 +309,8 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				workflowName: z.string().optional(),
 				workItemId: z.string().optional(),
 				triggerNodes: z.array(triggerNodeOutputSchema).optional(),
+				triggerEndpoints: z.array(triggerEndpointOutputSchema).optional(),
+				triggerEndpointsNote: z.string().optional(),
 				verificationReadiness: verificationReadinessOutputSchema.optional(),
 				setupRequirement: setupRequirementOutputSchema.optional(),
 				postBuildFlow: postBuildFlowOutputSchema.optional(),
@@ -740,8 +751,55 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				};
 			}
 
+			const errorWorkflowErrors = await validateErrorWorkflowReference(json, context);
+			if (errorWorkflowErrors.length > 0) {
+				const remediation = createCodeFixableRemediation({
+					reason: 'error_workflow_invalid',
+					guidance:
+						'Fix settings.errorWorkflow in the workspace source file (or remove it), then call build-workflow again with the same filePath.',
+				});
+				binding = await markSourceBuildFailed(context, binding, sourceHash);
+				await reportFailedWorkflowBuildOutcome(context, {
+					targetWorkflowId,
+					sourceFilePath: filePath,
+					workItemId: resolvedWorkItemId,
+					taskId: resolvedTaskId,
+					plannedTaskId,
+					owner,
+					remediation,
+					errors: errorWorkflowErrors,
+					summary: 'settings.errorWorkflow does not reference a usable error workflow.',
+					storeOnRunContext: !isAuxiliarySupportingWorkflow,
+				});
+				trackWorkflowSourceBuild(context, {
+					result: 'failure',
+					stage: 'validation',
+					binding,
+					targetWorkflowId,
+					isSupportingWorkflow,
+					isAuxiliarySupportingWorkflow,
+					remediation,
+					errorCount: errorWorkflowErrors.length,
+				});
+				return {
+					success: false,
+					...sourceResponseBase(binding),
+					workflowId: targetWorkflowId,
+					workItemId: resolvedWorkItemId,
+					errors: errorWorkflowErrors,
+					remediation,
+				};
+			}
+
 			const credentialMap = await buildCredentialMap(context.credentialService);
 			const mockResult = await resolveCredentials(json, targetWorkflowId, context, credentialMap);
+			for (const note of mockResult.gatewayConstraintNotes) {
+				informational.push({
+					code: 'AI_GATEWAY_CONSTRAINT',
+					message: note,
+					severity: 'informational',
+				});
+			}
 
 			await stripStaleCredentialsFromWorkflow(context, json);
 
@@ -786,6 +844,10 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					});
 					const runId = buildContext?.runId ?? context.runId;
 					const workflowName = json.name || 'workflow';
+					const triggerEndpoints = computeTriggerEndpoints(json, {
+						webhookBaseUrl: context.webhookBaseUrl,
+						formBaseUrl: context.formBaseUrl,
+					});
 					const summary = `${operation === 'update' ? 'Updated' : 'Created'} ${isSupportingWorkflow ? 'supporting ' : ''}workflow "${workflowName}" (${saved.id}).`;
 					binding = await saveWorkflowSourceFileBinding(context, {
 						...binding,
@@ -885,6 +947,9 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						workItemId: resolvedWorkItemId,
 						isSupportingWorkflow: isSupportingWorkflow || undefined,
 						triggerNodes,
+						...(triggerEndpoints.length > 0
+							? { triggerEndpoints, triggerEndpointsNote: TRIGGER_ENDPOINTS_NOTE }
+							: {}),
 						verificationReadiness: outcome.verificationReadiness,
 						setupRequirement: outcome.setupRequirement,
 						...(postBuildFlow ? { postBuildFlow } : {}),

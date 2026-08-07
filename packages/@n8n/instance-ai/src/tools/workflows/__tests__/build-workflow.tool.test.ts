@@ -59,6 +59,7 @@ vi.mock('../resolve-credentials', () => ({
 				mockedCredentialTypes: [],
 				mockedCredentialsByNode: {},
 				resolvedCredentialsByNode: {},
+				gatewayConstraintNotes: [],
 			}),
 	),
 }));

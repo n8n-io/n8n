@@ -1270,9 +1270,10 @@ function createNodeAdapterServiceForTests(
 		{ error: vi.fn(), scoped: vi.fn().mockReturnThis() } as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
 		>[0],
-		{ ai: { allowSendingParameterValues: false } } as unknown as ConstructorParameters<
-			typeof InstanceAiAdapterService
-		>[1],
+		{
+			ai: { allowSendingParameterValues: false },
+			nodes: { errorTriggerType: 'n8n-nodes-base.errorTrigger' },
+		} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[1],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[2],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[3],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[4],
@@ -1634,9 +1635,10 @@ function createDataTableAdapterForTests(overrides?: {
 		{ error: vi.fn(), scoped: vi.fn().mockReturnThis() } as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
 		>[0],
-		{ ai: { allowSendingParameterValues: false } } as unknown as ConstructorParameters<
-			typeof InstanceAiAdapterService
-		>[1],
+		{
+			ai: { allowSendingParameterValues: false },
+			nodes: { errorTriggerType: 'n8n-nodes-base.errorTrigger' },
+		} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[1],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[2],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[3],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[4],
@@ -1945,9 +1947,10 @@ function createWorkflowAdapterForTests(overrides?: {
 
 	const service = new InstanceAiAdapterService(
 		mockLogger as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[0],
-		{ ai: { allowSendingParameterValues: false } } as unknown as ConstructorParameters<
-			typeof InstanceAiAdapterService
-		>[1],
+		{
+			ai: { allowSendingParameterValues: false },
+			nodes: { errorTriggerType: 'n8n-nodes-base.errorTrigger' },
+		} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[1],
 		mockWorkflowService as unknown as WorkflowService,
 		mockWorkflowFinderService as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
@@ -2768,9 +2771,10 @@ function createExecutionAdapterForTests(overrides?: { sharingEnabled?: boolean }
 		{ error: vi.fn(), scoped: vi.fn().mockReturnThis() } as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
 		>[0],
-		{ ai: { allowSendingParameterValues: false } } as unknown as ConstructorParameters<
-			typeof InstanceAiAdapterService
-		>[1],
+		{
+			ai: { allowSendingParameterValues: false },
+			nodes: { errorTriggerType: 'n8n-nodes-base.errorTrigger' },
+		} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[1],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[2],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[3],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[4],
@@ -3032,6 +3036,7 @@ function createRunAdapterForTests(
 		{
 			ai: { allowSendingParameterValues: false },
 			executions: { mode: options?.queueMode ? 'queue' : 'regular' },
+			nodes: { errorTriggerType: 'n8n-nodes-base.errorTrigger' },
 		} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[1],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[2],
 		mockWorkflowFinderService as unknown as ConstructorParameters<
@@ -3547,9 +3552,10 @@ function createAdapterWithGatewayMock(
 		warn: vi.fn(),
 		scoped: vi.fn().mockReturnThis(),
 	} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[0];
-	args[1] = { ai: { allowSendingParameterValues: false } } as unknown as ConstructorParameters<
-		typeof InstanceAiAdapterService
-	>[1];
+	args[1] = {
+		ai: { allowSendingParameterValues: false },
+		nodes: { errorTriggerType: 'n8n-nodes-base.errorTrigger' },
+	} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[1];
 	if (overrides?.credentialsService) {
 		args[8] = overrides.credentialsService as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService

@@ -10,7 +10,11 @@
 import { TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE } from '@n8n/api-types';
 import type { NodeJSON, WorkflowJSON } from '@n8n/workflow-sdk';
 
-import { AI_GATEWAY_CREDENTIAL, N8N_CONNECT_DISPLAY_NAME } from './credential-utils';
+import {
+	AI_GATEWAY_CREDENTIAL,
+	isAiGatewayManagedCredential,
+	N8N_CONNECT_DISPLAY_NAME,
+} from './credential-utils';
 import type { ResolvedCredential } from './resolved-credential.schema';
 import {
 	getCredentialActivationParameters,
@@ -18,7 +22,7 @@ import {
 	getValidCredentialTypes,
 	resolveSupportedSiblingCredentialType,
 } from './setup-workflow.service';
-import type { InstanceAiContext } from '../../types';
+import type { AiGatewayNodeMeta, InstanceAiContext, NodeDescription } from '../../types';
 
 export type { ResolvedCredential };
 
@@ -71,6 +75,14 @@ export interface CredentialResolutionResult {
 	 * the user to connect or create them.
 	 */
 	resolvedCredentialsByNode: Record<string, ResolvedCredential[]>;
+	/**
+	 * Per-node notes explaining why an n8n credits attachment was skipped
+	 * because the node violates the gateway's constraints (minVersion,
+	 * covered operations, managed parameters). Surfaced as informational
+	 * build warnings so the agent can adjust the node instead of shipping a
+	 * managed credential that fails at runtime.
+	 */
+	gatewayConstraintNotes: string[];
 }
 
 /**
@@ -132,6 +144,32 @@ export async function resolveCredentials(
 	const mockedCredentialTypesSet = new Set<string>();
 	const mockedCredentialsByNode: Record<string, string[]> = {};
 	const resolvedCredentialsByNode: Record<string, ResolvedCredential[]> = {};
+	const gatewayConstraintNotes: string[] = [];
+	const gatewayCheckedNodes = new Set<string>();
+
+	// Gateway coverage is node-level, not just credential-type-level: a covered
+	// type on a node below minVersion / outside the covered operations would get
+	// a managed credential that fails at runtime. When the node description
+	// carries aiGateway constraints the node violates, skip the attach (the slot
+	// falls back to mock + setup) and note what to change.
+	const gatewayViolationsFor = async (node: NodeJSON): Promise<string[]> => {
+		let description: NodeDescription | undefined;
+		try {
+			description = await ctx.nodeService.getDescription(node.type, node.typeVersion ?? 1);
+		} catch {
+			return [];
+		}
+		const meta = description?.aiGateway;
+		if (!meta) return [];
+		const violations = gatewayConstraintViolations(node, meta, description?.properties);
+		if (violations.length > 0 && node.name && !gatewayCheckedNodes.has(node.name)) {
+			gatewayCheckedNodes.add(node.name);
+			gatewayConstraintNotes.push(
+				`n8n credits skipped for "${node.name}" (${node.type}): ${violations.join('; ')}. Fix this to run the node on n8n credits, or a credential will be collected in setup.`,
+			);
+		}
+		return violations;
+	};
 
 	// n8n credits support is process-global config; memoize per type for this call.
 	const gatewaySupportCache = new Map<string, boolean>();
@@ -216,9 +254,20 @@ export async function resolveCredentials(
 				resolvedCredentialsByNode[node.name].push({ type: key, id, name });
 			};
 
-			const restoreExistingCredential = () => {
+			const restoreExistingCredential = async () => {
 				const restored = existingCreds?.[key];
 				if (!restored) return false;
+				// A saved n8n credits marker is only restored while the node still
+				// satisfies the gateway constraints — the edit may have moved it to an
+				// unsupported version/operation/parameter. Refusing the restore lets
+				// resolution fall through to mockOrAttachGateway, which re-checks and
+				// mocks. Stored user credentials (real ids) are always restored.
+				if (
+					isAiGatewayManagedCredential(restored) &&
+					(await gatewayViolationsFor(node)).length > 0
+				) {
+					return false;
+				}
 				creds[key] = restored;
 				const restoredId = getCredentialId(restored);
 				if (restoredId) {
@@ -274,15 +323,18 @@ export async function resolveCredentials(
 			// a supported sibling (switching auth to it) and drop the unusable slot.
 			const mockOrAttachGateway = async () => {
 				if (!hasStoredCredential(key)) {
-					if (await isGatewayCredentialType(key)) {
-						await attachGatewayCredential();
-						return;
-					}
-					const siblingType = await resolveSupportedSiblingType(node, key);
-					if (siblingType) {
-						delete creds[key];
-						await attachGatewayCredential(siblingType);
-						return;
+					const violations = await gatewayViolationsFor(node);
+					if (violations.length === 0) {
+						if (await isGatewayCredentialType(key)) {
+							await attachGatewayCredential();
+							return;
+						}
+						const siblingType = await resolveSupportedSiblingType(node, key);
+						if (siblingType) {
+							delete creds[key];
+							await attachGatewayCredential(siblingType);
+							return;
+						}
 					}
 				}
 				mockCredential();
@@ -301,7 +353,7 @@ export async function resolveCredentials(
 						cleanupMockPinData(json, node.name);
 						continue;
 					}
-					if (restoreExistingCredential()) {
+					if (await restoreExistingCredential()) {
 						continue;
 					}
 					await mockOrAttachGateway();
@@ -311,14 +363,14 @@ export async function resolveCredentials(
 					cleanupMockPinData(json, node.name);
 					continue;
 				}
-				if (restoreExistingCredential()) {
+				if (await restoreExistingCredential()) {
 					continue;
 				}
 				await mockOrAttachGateway();
 				continue;
 			}
 
-			if (restoreExistingCredential()) {
+			if (await restoreExistingCredential()) {
 				continue;
 			}
 
@@ -360,6 +412,8 @@ export async function resolveCredentials(
 			if (existing !== undefined && existing !== null) continue;
 			if (hasStoredCredential(credType)) continue;
 
+			if ((await gatewayViolationsFor(node)).length > 0) continue;
+
 			let managedType = credType;
 			if (!(await isGatewayCredentialType(credType))) {
 				const siblingType = await resolveSupportedSiblingType(node, credType);
@@ -390,7 +444,127 @@ export async function resolveCredentials(
 		mockedCredentialTypes: [...mockedCredentialTypesSet],
 		mockedCredentialsByNode,
 		resolvedCredentialsByNode,
+		gatewayConstraintNotes,
 	};
+}
+
+const OPERATION_ONLY_KEY = '__operation_only__';
+
+/**
+ * Default value of the description property named `name`, when it can be
+ * established unambiguously. The projected description carries no
+ * displayOptions, so when several variants share the name (e.g. one
+ * `operation` list per resource) the applicable variant — and with it the
+ * default — cannot be determined.
+ */
+function unambiguousPropertyDefault(
+	properties: NodeDescription['properties'] | undefined,
+	name: string,
+): string | undefined {
+	const candidates = (properties ?? []).filter((property) => property.name === name);
+	if (candidates.length !== 1) return undefined;
+	const value = candidates[0].default;
+	return typeof value === 'string' && value !== '' ? value : undefined;
+}
+
+/**
+ * Value the node will run the action parameter `name` with, when it can be
+ * established statically: an explicit concrete value wins, and an omitted
+ * parameter falls back to the node-type default — mirroring how
+ * checkAiGatewayEligibility (cli) is fed defaults-resolved parameters so a
+ * node relying on its default action stays eligible. Expressions and
+ * placeholders are dynamic; they resolve to undefined without consulting the
+ * default, because the runtime value is not the default.
+ */
+function resolveActionParam(
+	node: NodeJSON,
+	properties: NodeDescription['properties'] | undefined,
+	name: string,
+): string | undefined {
+	const raw = (node.parameters as Record<string, unknown> | undefined)?.[name];
+	if (raw === undefined) return unambiguousPropertyDefault(properties, name);
+	if (typeof raw !== 'string') return undefined;
+	if (raw.includes('{{') || raw.includes('__PLACEHOLDER')) return undefined;
+	return raw;
+}
+
+function gatewayConstraintViolations(
+	node: NodeJSON,
+	meta: AiGatewayNodeMeta,
+	properties: NodeDescription['properties'] | undefined,
+): string[] {
+	const violations: string[] = [];
+
+	const version =
+		typeof node.typeVersion === 'string' ? parseFloat(node.typeVersion) : (node.typeVersion ?? 1);
+	if (meta.minVersion !== undefined && version < meta.minVersion) {
+		violations.push(
+			`typeVersion ${version} is below the n8n credits minimum ${meta.minVersion} (set typeVersion >= ${meta.minVersion})`,
+		);
+	}
+
+	// Mirrors checkAiGatewayEligibility (cli/src/services/ai-gateway-eligibility.ts):
+	// coverage is judged on defaults-resolved resource/operation, missing
+	// resources fall back to the operation-only key, and an action that cannot
+	// be established gets no managed credential.
+	if (meta.operations) {
+		const resource = resolveActionParam(node, properties, 'resource');
+		const operation = resolveActionParam(node, properties, 'operation');
+		const allowed = meta.operations[resource ?? OPERATION_ONLY_KEY];
+		if (!allowed) {
+			const covered = Object.keys(meta.operations)
+				.filter((key) => key !== OPERATION_ONLY_KEY)
+				.join(', ');
+			violations.push(
+				resource !== undefined
+					? `resource "${resource}" is not covered by n8n credits (covered: ${covered})`
+					: `no concrete resource is set, so n8n credits coverage cannot be verified (covered resources: ${covered})`,
+			);
+		} else if (operation === undefined) {
+			violations.push(
+				`no concrete operation is set, so n8n credits coverage cannot be verified (set one of: ${allowed.join(', ')})`,
+			);
+		} else if (!allowed.includes(operation)) {
+			violations.push(
+				resource !== undefined
+					? `operation "${resource}.${operation}" is not covered by n8n credits (covered: ${allowed.join(', ')})`
+					: `operation "${operation}" is not covered by n8n credits (covered: ${allowed.join(', ')})`,
+			);
+		}
+	}
+
+	const setHiddenProperties = (meta.hiddenProperties ?? []).filter((property) =>
+		hasNestedSetProperty(node.parameters, property),
+	);
+	if (setHiddenProperties.length > 0) {
+		violations.push(
+			`parameter(s) ${setHiddenProperties.join(', ')} are managed by n8n credits and must not be set (remove them)`,
+		);
+	}
+
+	return violations;
+}
+
+/**
+ * Whether `key` is set to a non-empty value at any depth. Gateway-hidden
+ * properties often live inside collections (mirrors the runtime eligibility
+ * check's nested lookup, checkAiGatewayEligibility in packages/cli), while
+ * unset/empty values (undefined, null, '') don't clash with the gateway —
+ * matching computeAiGatewayIssues in validate-workflow.service.ts.
+ */
+function hasNestedSetProperty(value: unknown, key: string): boolean {
+	if (Array.isArray(value)) {
+		return value.some((item) => hasNestedSetProperty(item, key));
+	}
+	if (value !== null && typeof value === 'object') {
+		const record = value as Record<string, unknown>;
+		if (Object.prototype.hasOwnProperty.call(record, key)) {
+			const set = record[key];
+			if (set !== undefined && set !== null && set !== '') return true;
+		}
+		return Object.values(record).some((nested) => hasNestedSetProperty(nested, key));
+	}
+	return false;
 }
 
 function getCredentialId(value: unknown): string | undefined {

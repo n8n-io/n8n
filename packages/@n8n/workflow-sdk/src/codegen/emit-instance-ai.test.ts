@@ -252,6 +252,7 @@ describe('emit-instance-ai', () => {
 			// Validation
 			'validateNodeConfig',
 			'validateWorkflow',
+			'lintWorkflowSource',
 			'getSchemaBaseDirs',
 			'setSchemaBaseDirs',
 			'isInformationalIssue',

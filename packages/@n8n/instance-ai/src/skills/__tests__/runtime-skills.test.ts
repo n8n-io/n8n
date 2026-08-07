@@ -25,13 +25,12 @@ describe('Instance AI runtime skills', () => {
 		expect(skill).toContain('knowledge-base/reference/workflow-sdk-language.md');
 	});
 
-	it('defers sticky and other SDK defects to workflow-sdk validate', () => {
+	it('defers sticky and other SDK defects to the build-time lint', () => {
 		const skill = readFileSync(
 			join(INSTANCE_AI_SKILLS_DIR, 'workflow-builder', 'SKILL.md'),
 			'utf-8',
 		);
-		expect(skill).toContain('unsolicited `sticky()`');
-		expect(skill).toContain('workflow-sdk validate');
+		expect(skill).toContain('lints the source');
 		expect(skill).not.toMatch(/import \{\n(?:[^\n]*\n)*?\s*sticky,/);
 	});
 
@@ -258,7 +257,7 @@ describe('Instance AI runtime skills', () => {
 		]);
 		expect(skill?.description).toContain('Load before calling build-workflow');
 		expect(skill?.description).toContain('Default path for all single-workflow work');
-		expect(skill?.description).toContain('workflow-sdk validate');
+		expect(skill?.description).toContain('validates and lints the source');
 		expect(skill?.description).toContain('load data-table-manager first');
 		expect(skill?.description).toContain('Do not load planning or create-tasks first');
 
@@ -267,9 +266,6 @@ describe('Instance AI runtime skills', () => {
 		expect(loaded?.instructions).toContain('build-workflow');
 		expect(loaded?.instructions).toContain('filePath');
 		expect(loaded?.instructions).toContain('workspace_write_file');
-		expect(loaded?.instructions).toContain(
-			'node --import tsx node_modules/@n8n/workflow-sdk/dist/cli/index.js validate',
-		);
 		expect(loaded?.instructions).toContain('workspace source file');
 		expect(loaded?.instructions).toContain('nodes(action="suggested")');
 		expect(loaded?.instructions).toContain('nodes(action="search")');
@@ -292,25 +288,23 @@ describe('Instance AI runtime skills', () => {
 		expect(loaded?.instructions).toContain('never load `templates/index.json`');
 		expect(loaded?.instructions).toContain('node-types/index.txt');
 		expect(loaded?.instructions).toContain('## Trigger URL Sharing');
-		expect(loaded?.instructions).toContain('{formBaseUrl}/{path}');
+		expect(loaded?.instructions).toContain('triggerEndpoints');
 		expect(loaded?.instructions).toContain('**Open chat** button');
 		expect(loaded?.instructions).toContain('batch\n`nodes(action="type-definition")`');
 		expect(loaded?.instructions).toContain('together with the `load_skill` call');
 		expect(loaded?.instructions).toContain('Do not create a plan\njust for verification');
 		expect(loaded?.instructions).toContain('never stop before the first\n`build-workflow` call');
 		expect(loaded?.instructions).toContain('inspect it first via `debugging-executions`');
-		expect(loaded?.instructions).toContain('SDK node `output` mocks are raw `$json` objects');
+		expect(loaded?.instructions).toContain('Mock items are raw `$json` objects');
 		expect(loaded?.instructions).toMatch(/inline setup card in the AI\s+Assistant panel/);
 		expect(loaded?.instructions).toContain(
-			'never ask for\nsetup values before the first successful build',
+			'never ask for setup values before the first successful build',
 		);
 		expect(loaded?.instructions).toContain('`planning` or call `create-tasks` first');
 		expect(loaded?.instructions).toContain('.to(isImportant)');
 		expect(loaded?.instructions).toContain('.onTrue(handleImportant)');
-		expect(loaded?.instructions).toContain(
-			'Do NOT wire branches as standalone statements after `export default`',
-		);
-		expect(loaded?.instructions).toContain('never reaches the builder');
+		expect(loaded?.instructions).toContain('not as standalone calls on the IF node variable');
+		expect(loaded?.instructions).toContain('never reach the builder');
 	});
 
 	it('loads the bundled planning skill', async () => {

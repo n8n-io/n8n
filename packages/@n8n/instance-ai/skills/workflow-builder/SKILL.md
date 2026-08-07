@@ -3,9 +3,9 @@ name: workflow-builder
 description: >-
   Load before calling build-workflow. Default path for all single-workflow
   work: new one-off workflows, existing-workflow edits, verification repairs,
-  and workflow-local data tables. Write or edit a workspace source file, run
-  workflow-sdk validate via workspace_execute_command, then call build-workflow
-  with filePath. When the workflow creates or writes Data Tables, load
+  and workflow-local data tables. Write or edit a workspace source file, then
+  call build-workflow with filePath — it validates and lints the source as
+  part of the build. When the workflow creates or writes Data Tables, load
   data-table-manager first, then this skill. Do not load planning or
   create-tasks first. Load planning only when multiple coordinated workflows
   or shared cross-task data tables require a dependency-aware task graph.
@@ -63,12 +63,10 @@ workspace source file if one is available in the conversation or tool output. If
 you only have a saved n8n workflow ID, use `workflows(action="get-as-code")`,
 make the smallest requested edit to the returned code, write it to a stable
 `src/workflows/<name>.workflow.ts` path, then call `build-workflow` once with
-`filePath` and `workflowId`. Later repairs should reuse the same `filePath`;
-`build-workflow` remembers the bound workflow ID.
-
-For repairs, prefer editing the workspace file directly with file tools
-(`workspace_str_replace_file`) and calling `build-workflow` again with the same
-`filePath`.
+`filePath` and `workflowId`. Later repairs should edit the same workspace file
+directly with file tools (`workspace_str_replace_file`) and call
+`build-workflow` again with the same `filePath`; it remembers the bound
+workflow ID.
 
 ## Escalation
 
@@ -77,7 +75,10 @@ If the service or workflow shape is clear, never stop before the first
 resources, credentials, channel IDs, or timezone; use placeholders or unresolved
 `newCredential()` calls. Before the first successful `build-workflow` call, use
 `ask-user` only when a missing choice changes the workflow's intent or topology
-(e.g. which destination service). But when that choice is which service to use
+(e.g. which destination service). When the workflow branches on a field of the
+incoming payload (a webhook body key, a form field), the exact field name and
+its values are topology — confirm them with the user before building instead of
+assuming a name; a wrong assumed field silently routes everything one way. But when that choice is which service to use
 for a capability the user did not name,
 discover coverage first and use an n8n credits–covered node instead of asking
 when the user has no credential for a comparable tool (see n8n credits
@@ -96,10 +97,9 @@ Use `placeholder('descriptive hint')` for values that cannot be safely picked
 without the user: undiscoverable user-provided values (email recipients, phone
 numbers, custom URLs, notification targets, chat IDs) and resource IDs where
 `nodes(action="explore-resources")` returns multiple candidates and the user
-named none. Never hardcode fake values (`user@example.com`, `YOUR_API_KEY`,
-bearer tokens, sample channel/chat IDs or recipient lists) and never ask for
-setup values before the first successful build — placeholders cover them, and
-`workflows(action="setup")` opens an inline setup card in the AI
+named none. Never hardcode stand-in values — the build lints for them — and
+never ask for setup values before the first successful build; placeholders
+cover them, and `workflows(action="setup")` opens an inline setup card in the AI
 Assistant panel afterwards for the user to fill in.
 Do not replace concrete user-provided or discoverable values with
 placeholders: if the prompt gives a real URL, channel name, table name, label,
@@ -146,23 +146,21 @@ When mapping downstream fields from an OpenAI node, read
 
 ## Workflow-Level Error Workflows
 
-Error workflows are per-target-workflow (`settings.errorWorkflow` must be the
-real workflow ID of a separate **published** workflow with an active Error
-Trigger — never a name, placeholder, `activeVersionId`, or local SDK id).
-n8n has no global error workflow setting; mention that only if the user asks
-about global behavior. Do not offer or build an error workflow before the
-primary workflow is published. Before building or attaching an error
-workflow, load this skill's `references/error-workflows.md` linked file and
-follow its build → publish → assign steps.
+Error workflows are per-target-workflow;
+n8n has no global error workflow setting (mention that only if the user asks
+about global behavior).
+`build-workflow` verifies that `settings.errorWorkflow` references a published
+workflow with an active Error Trigger and rejects anything else. Do not offer
+or build an error workflow before the primary workflow is published. Before
+building or attaching an error workflow, load this skill's
+`references/error-workflows.md` linked file and follow its
+build → publish → assign steps.
 
 ## Mandatory Process
 
 1. Research only what the request actually needs. If the workflow fits a
    known category and you are unsure which nodes to use, call
-   `nodes(action="suggested")` (categories: `notification`,
-   `data_persistence`, `chatbot`, `scheduling`, `data_transformation`,
-   `data_extraction`, `document_processing`, `form_input`,
-   `content_generation`, `triage`, `scraping_and_research`); use
+   `nodes(action="suggested")` (the category list is in the tool schema); use
    `nodes(action="search")` for service-specific nodes you cannot name exactly
    (short service names like "Gmail", not task phrases — results include
    resource/operation/mode discriminators).
@@ -183,7 +181,8 @@ follow its build → publish → assign steps.
    existing workflow with no source file in context, call
    `workflows(action="get-as-code", workflowId)`, apply your edit to the
    returned code, and pass the n8n `workflowId` only on the first
-   `build-workflow` call.
+   `build-workflow` call. Never pass local SDK workflow IDs as n8n workflow
+   IDs.
 6. Produce complete TypeScript SDK code and write it with
    `workspace_write_file` (new/full rewrite) or `workspace_str_replace_file`
    (targeted edit). Do not put secrets in the source file.
@@ -195,39 +194,26 @@ follow its build → publish → assign steps.
    and later `fixtureOverrides` can exercise those scenarios. Do not simulate
    every external read by default; use this when branch coverage or deterministic
    proof depends on controlling the upstream data.
-7. Before the first `build-workflow` (and again after substantive edits), run
-   SDK validation on the workspace source file via
-   `workspace_execute_command`:
-   `node --import tsx node_modules/@n8n/workflow-sdk/dist/cli/index.js validate <filePath>`
-   Output is lint-style (`line  severity  code  message`); fix every `error`
-   row. Warnings do not block the save and the command may still exit 0, but
-   they flag defects that surface at run time — resolve or consciously dismiss
-   each one. A clean validate run does not guarantee `build-workflow` will
-   succeed (no full node-type registry in the sandbox CLI), so still call
-   `build-workflow`.
-8. Call `build-workflow` with the `filePath` you wrote.
-   For planned build follow-ups where `buildTask.isSupportingWorkflow === true`,
-   pass `isSupportingWorkflow: true`; that saved supporting workflow is the
-   task's final deliverable.
-9. Trace wiring before declaring done. For IF, Switch, Merge, AI-agent, loop, or
-   multi-workflow wiring, trace each branch from source to target. Confirm IF
-   branches are wired on the workflow builder (`.to(ifNode).onTrue(...).onFalse(...)`
-   or `.to(ifNode.onTrue(...).onFalse(...))`), not as standalone calls on the IF
-   node variable after `export default`. Confirm branch action nodes appear in the
-   saved graph — not just trigger → middle nodes → IF. Confirm the IF node has
-   connections on both outputs (true and false). For escalation flows, confirm
-   every requested side effect is on a wired branch. Switch outputs use zero-based
-   `.onCase(index, target)`, Merge modes match the data shape, and sub-nodes are
-   attached to the correct parent.
-10. Fix errors by editing the same workspace source file, re-running
-    `workflow-sdk validate` on that file, then calling `build-workflow` again
-    with the same `filePath`. Save again before any verification step.
-11. Modify existing workflows by editing the workspace `.workflow.ts` source
+7. Call `build-workflow` with the `filePath` you wrote. It compiles the
+   source, runs full validation plus source lint, and rejects on any blocking
+   finding. Fix every error it returns; warnings do not block the save but
+   flag defects that surface at run time — resolve or consciously dismiss each
+   one. For planned build follow-ups where
+   `buildTask.isSupportingWorkflow === true`, pass `isSupportingWorkflow:
+   true`; that saved supporting workflow is the task's final deliverable.
+8. Confirm intent where validation cannot: graph checks flag unwired IF/Switch
+   outputs, single-input Merges and disconnected nodes, but only you know
+   which side effects the user asked for. For escalation flows, confirm every
+   requested side effect is on a wired branch, Merge modes match the data
+   shape, and sub-nodes are attached to the correct parent.
+9. Fix errors by editing the same workspace source file and calling
+   `build-workflow` again with the same `filePath`. Save again before any
+   verification step.
+10. Modify existing workflows by editing the workspace `.workflow.ts` source
     file. If the file was created from `workflows(action="get-as-code")`, pass
     the real n8n `workflowId` on the first `build-workflow` call so the file is
-    bound to the saved workflow. Never pass local SDK workflow IDs as n8n
-    workflow IDs.
-12. After a successful direct `build-workflow` result, if the tool output
+    bound to the saved workflow.
+11. After a successful direct `build-workflow` result, if the tool output
     contains `postBuildFlow.required: true`, follow the inlined
     `postBuildFlow.instructions` from that output (do not load `post-build-flow`
     separately) before verification, setup, error-workflow follow-up,
@@ -256,23 +242,13 @@ Build/save success is not workflow-quality evidence. When this turn is
 responsible for verification or repair, inspect the persisted workflow
 (`workflows(action="get-as-code", workflowId)` or the bound workspace source
 file) before reporting a verdict, judging the saved graph against the user's
-requested outcome — not a hidden service-specific checklist. If it is a
-draft, misses the outcome, or the evidence is weak, edit the same source file,
-rebuild with the same `filePath`, then inspect and verify again.
-
-Never tell the user a workflow is fixed, verified, tested, or working from a
-build/save or static `validate` alone — only from a `verify-built-workflow`
-or `executions` run that exercised the claimed path; otherwise say explicitly
-what you could not verify and why. Never dismiss a live execution error as a
-harness or stale-state artifact without re-running.
-
-When this turn is responsible for verification, do not stop after a successful
-save. The job is done when one of these is true:
-
-- The workflow is verified by structured tool evidence.
-- Setup is required and `workflows(action="setup")` has been routed or deferred.
-- A remediation guard says `shouldEdit: false`.
-- You are blocked after one repair attempt per unique failure signature.
+requested outcome — not a hidden service-specific checklist. Never tell the
+user a workflow is fixed, verified, tested, or working from a build/save
+alone — only from a `verify-built-workflow` or `executions` run that exercised
+the claimed path; otherwise say explicitly what you could not verify and why.
+Never dismiss a live execution error as a harness or stale-state artifact
+without re-running. Do not stop after a successful save when this turn owns
+verification.
 
 Prefer `verify-built-workflow` for workflows saved by `build-workflow`; it can
 be called again with `workflowId` if the original `workItemId` is no longer in
@@ -281,19 +257,13 @@ nodes already classified as simulated. Use raw `executions(action="run")` only
 for ad hoc non-build verification or when the user explicitly wants a live run.
 If live connectivity also matters for a branch-controlled workflow, verify the
 fixture-backed branch coverage first and run a separate live smoke check, or
-state exactly which branch remains unverified.
+state exactly which branch remains unverified. Shape trigger `inputData` per
+the guidance on the `verify-built-workflow` tool's `inputData` field.
 
-Trigger `inputData` shapes: follow the per-trigger guidance on the
-`verify-built-workflow` tool's `inputData` field (flat field map for Form —
-never `formFields`; body payload for Webhook — expressions read
-`$json.body.<field>`; `{ "chatInput": ... }` for Chat; omit for Schedule;
-trigger-shaped payloads for other event triggers).
-
-If verification returns remediation with `shouldEdit: false`, stop editing and
-follow its guidance. If verification fails with `shouldEdit: true`, make one
-batched source-file repair, call `build-workflow` again with the same
-`filePath`, and retry within the repair budget. If a failure repeats, stop and
-explain the blocker.
+Follow the remediation verdicts the tools return: `shouldEdit: false` means
+stop editing and follow the guidance; `shouldEdit: true` means make one batched
+source-file repair, rebuild with the same `filePath`, and retry within the
+repair budget. If a failure repeats, stop and explain the blocker.
 
 Do not publish the main workflow automatically. Publishing is the user's
 decision after testing.
@@ -307,15 +277,10 @@ decision after testing.
   selected a specific credential, exactly one unambiguous match exists, or the
   workflow already had it. Otherwise use `newCredential('Suggested Credential
   Name')` — build tools mock unresolved credentials for verification and setup
-  collects real ones later.
-- When `build-workflow` returns `resolvedCredentialsByNode`, the build already
-  attached a credential to those nodes — either an existing stored credential or
-  an n8n credits–managed one (entries with `id: null` and `__aiGatewayManaged:
-  true`). Treat them all as connected: do not ask the user to connect or create
-  those credentials, do not route them to credential setup, and mention at most
-  that the credential (or n8n credits) is being used.
-- Never use raw credential objects like `{ id: '...', name: '...' }` in SDK
-  code; replace them with `newCredential()` when editing roundtripped code.
+  collects real ones later. Never invent credential IDs.
+- When `build-workflow` returns `resolvedCredentialsByNode`, those nodes are
+  already connected (stored credentials or n8n credits) — follow the
+  `credentialResolutionNote` in the same output; do not route them to setup.
 - If a required credential type is not listed, call
   `credentials(action="search-types")` with the service name. Pick in this
   order:
@@ -341,12 +306,12 @@ decision after testing.
      only for what a template cannot express: basic auth's base64-encoded
      pair, digest's challenge-response, OAuth flows — or when the user
      explicitly asks for a specific plain type.
-- `credentials(action="list", type=...)` may include a synthetic n8n credits
-  entry `{ id: null, name: "n8n credits", type, __aiGatewayManaged: true }`
+- `credentials(action="list", type=...)` may include a synthetic
+  `{ id: null, name: "n8n credits", type, __aiGatewayManaged: true }` entry
   when the type is covered by n8n credits (see n8n credits Preference). It is
-  not a stored credential: never pass it to `newCredential(...)` and never
-  emit `id: null` or the `__aiGatewayManaged` marker in SDK output. Setup
-  applies it automatically when the user has no stored credential of that type.
+  not a stored credential: never pass it to `newCredential(...)` — it only
+  signals that setup can apply n8n credits automatically when the user has no
+  stored credential of that type.
 - These rules apply to outbound service calls. Inbound trigger nodes (Webhook,
   Form, Chat, MCP Trigger) keep authentication at its default `none` unless
   the user explicitly asks to authenticate inbound traffic.
@@ -371,39 +336,27 @@ The `suggested` list and search *rank* don't prioritize n8n credits coverage
 (individual search results still flag it). When the user asks for a capability
 they have no usable credential for, search that
 capability — or run `nodes(action="list", n8nConnectOnly=true)` — before
-committing, and prefer a covered result.
+committing, and prefer a covered result. The same `n8nConnectOnly` flag on
+`credentials(action="search-types")` enumerates covered credential types.
 
-Respect the constraints it reports:
-  - Set `typeVersion >= aiGateway.minVersion` when present.
-  - Constrain `resource` / `operation` to entries in `aiGateway.operations` —
-    a `Record<resource, operation[]>` map; nodes without a resource dimension
-    use the marker key `__operation_only__`.
-  - Do not set parameters listed in `aiGateway.hiddenProperties`.
-
-**Enumeration (answering "what does n8n credits support?"):**
-  - All supported nodes: `nodes(action="list", n8nConnectOnly=true)` — each
-    result carries the full `aiGateway` field (minVersion, operations,
-    hiddenProperties).
-  - All supported credential types:
-    `credentials(action="search-types", n8nConnectOnly=true)`.
-  - Operations for a specific supported node: `nodes(action="describe", …)`
-    → `aiGateway.operations`.
+The build enforces the coverage constraints in the `aiGateway` field
+(minimum version, covered operations, managed parameters): a violating node is
+not attached to n8n credits and the build result carries an
+`AI_GATEWAY_CONSTRAINT` warning naming what to change.
 
 **Preference rule:** When adding a new node that has no credential assigned
 yet, prefer n8n credits over stored credentials if the credential type is
 supported — it works with no API key required and avoids spending the user's
-API quota. The synthetic entry in `credentials(action="list", type=...)` (see
-Credential Rules) is your signal that a type is covered. Do not change
-credentials on nodes that already have one assigned (editing an existing
-workflow, or after the user has made a credential choice).
+API quota. Do not change credentials on nodes that already have one assigned
+(editing an existing workflow, or after the user has made a credential
+choice). If the user explicitly specified their own credential (by name or by
+choosing one from a list), use that credential and do not substitute
+n8n credits.
 
-- If the user explicitly specified their own credential (by name or by
-  choosing one from a list), use that credential and do not substitute
-  n8n credits.
-- When speaking to the user in chat, always refer to this feature as
-  "n8n credits" — never "n8n Connect", "AI Gateway", or "gateway". Those are
-  internal names only, including the `aiGateway` field on node/credential
-  results: read it to make decisions, but never surface that name to the user.
+When speaking to the user in chat, always refer to this feature as
+"n8n credits" — never "n8n Connect", "AI Gateway", or "gateway". Those are
+internal names only, including the `aiGateway` field on node/credential
+results: read it to make decisions, but never surface that name to the user.
 
 ## Missing Resources
 
@@ -440,9 +393,10 @@ steps and SDK examples.
 
 ## Data Tables
 
-n8n normalizes Data Table column names to snake_case, for example `dayName`
-becomes `day_name`. Always call `data-tables(action="schema")` before using a
-Data Table in workflow code so you use real column names.
+Always call `data-tables(action="schema")` before using a Data Table in
+workflow code: n8n normalizes column names to snake_case (`dayName` becomes
+`day_name`), and the build warns when a node references columns the selected
+table does not have.
 
 When building workflows that create or use tables, load `data-table-manager`
 via `load_skill` first (if not already loaded this turn), then follow that
@@ -459,13 +413,10 @@ never from `$now.weekday == N`, which silently no-ops on other days.
 
 ## SDK Code Rules
 
-`workflow-sdk validate` (step 7 in the build loop) enforces common SDK and
-Code-node defects: network calls / forbidden imports in Code nodes, nested
-template literals in `jsCode`, TypeScript-only syntax such as `as const`,
-statements after `export default`, `placeholder()` wrapped in `expr()`,
-unsolicited `sticky()`, forbidden builder constructs (e.g. `.map()`), and
-repeated `.onTrue()` / `.onFalse()` overwrites on the same IF variable. Fix
-every reported error and warning before calling `build-workflow`.
+`build-workflow` validates the workflow graph and lints the source (Code-node
+network calls, forbidden constructs, placeholder misuse, and similar defects
+are all flagged in its output). Fix every error; resolve or consciously
+dismiss each warning.
 
 - Code nodes need not always be necessary. You can use other n8n nodes to do the same thing.
 - SDK builder code is a restricted subset of TypeScript that builds a static
@@ -473,16 +424,14 @@ every reported error and warning before calling `build-workflow`.
   literals; do runtime joining, aggregation, or transforms in a Code node or
   `expr()`. Full allowed/forbidden list:
   `knowledge-base/reference/workflow-sdk-language.md`.
-- Use `@n8n/workflow-sdk`.
-- Do not specify node positions. They are auto-calculated by the layout engine.
+- Import from `@n8n/workflow-sdk`; a missing SDK-function import is auto-fixed
+  at build time.
 - Use `expr('{{ $json.field }}')` for n8n expressions. Variables must be inside
   `{{ }}`. `$json` is only the current item from the immediate predecessor.
 - Use string values directly for discriminator fields like `resource` and
   `operation`, for example `resource: 'message'`.
-- When editing a pre-loaded workflow, remove every `position` array — from node
-  configs and from `sticky()` options alike. Positions are auto-calculated, and
-  the saved workflow's own layout is restored on save, so nothing you drop here
-  is lost. Leaving some in place is worse than dropping all of them.
+- Do not specify node positions; layout is computed on build and the saved
+  workflow's own layout is preserved on edits.
 - Use `placeholder('hint')` directly as the parameter value. Do not wrap
   placeholders in `expr()`, objects, or arrays unless the node definition
   explicitly expects an object and the placeholder is the direct value of one
@@ -498,12 +447,11 @@ every reported error and warning before calling `build-workflow`.
   an opaque picked ID; never put a human-readable name there. Without a `list`
   mode, use `name`/`url` with the known value, or `id` only with a concrete ID
   (never empty or placeholder).
-- For single-execution nodes that receive many items but should run once, set
-  `executeOnce: true`.
 - Whenever a node declares mock `output` for verification, include every field
   later referenced by `$json` expressions, including optional trigger fields
   used in filters (for example Slack `subtype`, `bot_id`, `text`, `user`, `ts`,
   `channel`). Missing optional fields make expression-path validation fail.
+  Mock items are raw `$json` objects — never `{ json: {...} }` envelopes.
 - Match real cardinality in mock `output`. When a node's real response is a
   collection (HTTP list endpoints, search results, a top-level array such as
   Binance klines or a bare array of IDs), declare at least two items so
@@ -518,43 +466,6 @@ every reported error and warning before calling `build-workflow`.
   (`body.message.toolCalls[0].function.arguments`), not at the body root and
   not under `call.arguments`. Coding against an invented flat mock
   self-verifies green, then every field parses empty on the first real call.
-- SDK node `output` mocks are raw `$json` objects. Do not wrap mock items in
-  n8n runtime item envelopes like `{ json: { ... } }` unless downstream
-  expressions intentionally read `$json.json.*`. Correct:
-  `output: [{ orderId: 'ord_123', total: 42 }]`; wrong:
-  `output: [{ json: { orderId: 'ord_123', total: 42 } }]`.
-  Code node `jsCode` may still return runtime items like `[{ json: { ... } }]`;
-  this rule applies to SDK `node({ output: [...] })` mocks.
-
-Use this import shape unless the task needs fewer symbols:
-
-```ts
-import {
-  workflow,
-  node,
-  trigger,
-  placeholder,
-  newCredential,
-  ifElse,
-  switchCase,
-  merge,
-  splitInBatches,
-  nextBatch,
-  languageModel,
-  memory,
-  tool,
-  outputParser,
-  embedding,
-  embeddings,
-  vectorStore,
-  retriever,
-  documentLoader,
-  textSplitter,
-  fromAi,
-  nodeJson,
-  expr,
-} from '@n8n/workflow-sdk';
-```
 
 ## Workflow Rules
 
@@ -605,10 +516,9 @@ Follow these rules strictly when generating workflows:
 ## Tool Naming Rules
 
 Always set an explicit `config.name` on every `tool(...)` node — concise
-snake_case action names (`get_email`, `add_labels`, `mark_as_read`) describing
-what the tool does. Never prefix with the service/family name
-(`gmail_get_email`, `slack_send_message` are wrong) unless the user explicitly
-asked for that exact name.
+snake_case action names describing what the tool does, without a service
+prefix (validation flags violations); honor an exact name only when the user
+asked for it.
 
 ## Node Configuration Safety Rules
 
@@ -620,9 +530,6 @@ asked for that exact name.
   clarification or use placeholders. Do not guess.
 - Pay attention to `@builderHint` annotations in search results and type
   definitions. They contain node-specific configuration rules and examples.
-- Gmail archive: the message resource has no `archive` operation. To archive a
-  Gmail message, remove the `INBOX` label with `operation: 'removeLabels'` and
-  `labelIds: ['INBOX']`; do not add an invented `ARCHIVE` label.
 
 ## Expression Reference
 
@@ -701,8 +608,9 @@ export default workflow('id', 'name')
 ```
 
 For IF, each branch is a complete processing path. Wire branches on the workflow
-builder, not as standalone calls on the IF node variable. Chain steps inside a
-branch with `.to()`, or pass an array for parallel fan-out.
+builder, not as standalone calls on the IF node variable — statements after
+`export default` never reach the builder (validation flags both). Chain steps
+inside a branch with `.to()`, or pass an array for parallel fan-out.
 
 ```ts
 const isImportant = ifElse({
@@ -730,16 +638,6 @@ export default workflow('id', 'name')
 // Parallel fan-out on a branch: .onFalse([a, b, c])
 ```
 
-Do NOT wire branches as standalone statements after `export default` — those
-calls never reach the builder (`workflow-sdk validate` flags this).
-
-```ts
-// WRONG
-export default workflow('id', 'name').add(startTrigger).to(isImportant);
-isImportant.onTrue(handleImportant); // never reaches the builder
-isImportant.onFalse(sendHolding);
-```
-
 For Switch, wire cases the same way — `.to(switchNode).onCase(0, a).onCase(1, b)`
 or inline — using zero-based `.onCase(index, target)` for each rule output.
 
@@ -758,7 +656,7 @@ For AI Agent workflows:
 ## Additional SDK Functions
 
 - `placeholder('hint')`: marks a parameter value for user input (use directly as
-  the parameter value; `workflow-sdk validate` flags wrapping it in `expr()`).
+  the parameter value, never wrapped in `expr()`).
 - `.output(n)`: selects a zero-based output index.
 - `.onError(handler)`: connects a node's error output to a handler. Requires
   `onError: 'continueErrorOutput'` in the node config.
@@ -770,37 +668,14 @@ For AI Agent workflows:
 
 ## Trigger URL Sharing
 
-After building a workflow that uses a trigger with an HTTP endpoint, share the
-full production URL with the user. Use the Webhook base URL and Form base URL
-from Instance Info in the system prompt. Each trigger type has a distinct
-pattern:
-
-- **Webhook Trigger**: `{webhookBaseUrl}/{path}` (where `{path}` is the node's
-  webhook path parameter).
-- **Form Trigger**: `{formBaseUrl}/{path}` (or `{formBaseUrl}/{webhookId}` if
-  no custom path is set). Form Trigger lives under `/form/`, NOT `/webhook/` —
-  they are separate URL prefixes. Do NOT use the Webhook base URL for Form
-  Triggers.
-- **Chat Trigger**: how the end user reaches this workflow depends on the
-  node's `public` parameter — pick the right guidance for the current value,
-  do not default to sharing a URL.
-  - **`public: false` (the default)**: there is NO end-user HTTP URL. Tell the
-    user to open the workflow in the editor and click the **Open chat** button
-    on the workflow canvas — that opens the built-in test chat. Do NOT share a
-    webhook URL, and do NOT suggest flipping `public: true` just to enable
-    testing — the in-editor chat is the intended testing path for private chat
-    workflows.
-  - **`public: true`**: the public chat URL is
-    `{webhookBaseUrl}/{webhookId}/chat` — share it after the workflow is
-    published. `{webhookId}` is the node's unique webhook ID; read it from the
-    workflow JSON, never guess. End users can open this URL in a browser.
-  The `/chat` suffix is unique to Chat Trigger — do NOT append it to Form
-  Trigger or Webhook URLs. (Your own testing via `executions(action="run")` and
-  `verify-built-workflow` works regardless of `public` or publish state.)
-
-**These URLs are for sharing with the user only.** Do NOT hardcode them into
-workflow code or build specs unless the workflow actually needs to send or
-store its own public endpoint.
+When a workflow exposes a Webhook, Form, or Chat Trigger, `build-workflow`
+returns `triggerEndpoints`: the computed end-user URL per trigger, or in-editor
+guidance when none applies (private Chat Triggers are tested via the canvas
+**Open chat** button, not a URL). Relay those URLs or guidance to the user in
+the completion message. Do NOT hardcode them into workflow code or build specs
+unless the workflow actually needs to send or store its own public endpoint.
+(Your own testing via `executions(action="run")` and `verify-built-workflow`
+works regardless of publish state.)
 
 ## Completion
 
@@ -808,6 +683,5 @@ For a successful build, finish with one concise sentence naming the workflow and
 what changed. Include the workflow ID when it is available. If setup is
 required, say plainly that setup is needed; do not tell the user to open a setup
 wizard or navigate away from the AI Assistant panel. When the workflow exposes
-a Webhook, Form, or Chat Trigger, follow [Trigger URL Sharing](#trigger-url-sharing)
-and include the correct end-user URL (or in-editor chat guidance) in that
-summary.
+a Webhook, Form, or Chat Trigger, include the `triggerEndpoints` URL (or
+in-editor chat guidance) from the build output in that summary.

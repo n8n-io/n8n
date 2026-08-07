@@ -3357,6 +3357,165 @@ describe('Validation', () => {
 		});
 	});
 
+	describe('IF_MISSING_BRANCH validation', () => {
+		function createIfWorkflow(wiredOutputs: number[]): WorkflowJSON {
+			const branches: Array<Array<{ node: string; type: string; index: number }>> = [[], []];
+			for (const outputIndex of wiredOutputs) {
+				branches[outputIndex] = [{ node: `Handle ${outputIndex}`, type: 'main', index: 0 }];
+			}
+			return {
+				id: 'test',
+				name: 'Test',
+				nodes: [
+					{
+						id: 'trigger-1',
+						name: 'Start',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+					{
+						id: 'if-1',
+						name: 'Is Important',
+						type: 'n8n-nodes-base.if',
+						typeVersion: 2.2,
+						position: [200, 0],
+						parameters: {},
+					},
+					...wiredOutputs.map((outputIndex) => ({
+						id: `action-${outputIndex}`,
+						name: `Handle ${outputIndex}`,
+						type: 'n8n-nodes-base.noOp',
+						typeVersion: 1,
+						position: [400, outputIndex * 100] as [number, number],
+						parameters: {},
+					})),
+				],
+				connections: {
+					Start: { main: [[{ node: 'Is Important', type: 'main', index: 0 }]] },
+					...(wiredOutputs.length > 0 ? { 'Is Important': { main: branches } } : {}),
+				},
+			};
+		}
+
+		function getIfWarnings(workflowJson: WorkflowJSON) {
+			return validateWorkflow(workflowJson).warnings.filter((w) => w.code === 'IF_MISSING_BRANCH');
+		}
+
+		it('warns (blocking) when an IF node has no outgoing connections', () => {
+			const warnings = getIfWarnings(createIfWorkflow([]));
+
+			expect(warnings).toHaveLength(1);
+			expect(warnings[0].nodeName).toBe('Is Important');
+			expect(warnings[0].severity).toBe('warning');
+			expect(warnings[0].message).toContain('no outgoing connections');
+		});
+
+		it('reports informational when only the true branch is wired', () => {
+			const warnings = getIfWarnings(createIfWorkflow([0]));
+
+			expect(warnings).toHaveLength(1);
+			expect(warnings[0].severity).toBe('informational');
+			expect(warnings[0].message).toContain('false output');
+		});
+
+		it('reports informational when only the false branch is wired', () => {
+			const warnings = getIfWarnings(createIfWorkflow([1]));
+
+			expect(warnings).toHaveLength(1);
+			expect(warnings[0].severity).toBe('informational');
+			expect(warnings[0].message).toContain('true output');
+		});
+
+		it('does not warn when both branches are wired', () => {
+			expect(getIfWarnings(createIfWorkflow([0, 1]))).toHaveLength(0);
+		});
+	});
+
+	describe('TOOL_NAME_STYLE validation', () => {
+		function createAgentWorkflow(
+			toolName: string,
+			toolType = 'n8n-nodes-base.gmailTool',
+		): WorkflowJSON {
+			return {
+				id: 'test',
+				name: 'Test',
+				nodes: [
+					{
+						id: 'trigger-1',
+						name: 'Chat In',
+						type: '@n8n/n8n-nodes-langchain.chatTrigger',
+						typeVersion: 1.1,
+						position: [0, 0] as [number, number],
+						parameters: {},
+					},
+					{
+						id: 'agent-1',
+						name: 'Agent',
+						type: '@n8n/n8n-nodes-langchain.agent',
+						typeVersion: 2.2,
+						position: [200, 0] as [number, number],
+						parameters: { promptType: 'auto' },
+					},
+					{
+						id: 'tool-1',
+						name: toolName,
+						type: toolType,
+						typeVersion: 2.1,
+						position: [200, 200] as [number, number],
+						parameters: {},
+					},
+				],
+				connections: {
+					'Chat In': { main: [[{ node: 'Agent', type: 'main', index: 0 }]] },
+					[toolName]: { ai_tool: [[{ node: 'Agent', type: 'ai_tool', index: 0 }]] },
+				},
+			};
+		}
+
+		function getToolNameWarnings(toolName: string, toolType?: string) {
+			return validateWorkflow(createAgentWorkflow(toolName, toolType)).warnings.filter(
+				(w) => w.code === 'TOOL_NAME_STYLE',
+			);
+		}
+
+		it('reports informational for non-snake_case tool names', () => {
+			const warnings = getToolNameWarnings('Get Email');
+
+			expect(warnings).toHaveLength(1);
+			expect(warnings[0].severity).toBe('informational');
+			expect(warnings[0].message).toContain('snake_case');
+		});
+
+		it('reports informational for service-prefixed tool names', () => {
+			const warnings = getToolNameWarnings('gmail_get_email');
+
+			expect(warnings).toHaveLength(1);
+			expect(warnings[0].severity).toBe('informational');
+			expect(warnings[0].message).toContain("'get_email'");
+		});
+
+		it('handles multi-word service prefixes', () => {
+			const warnings = getToolNameWarnings('http_request_fetch', 'n8n-nodes-base.httpRequestTool');
+
+			expect(warnings).toHaveLength(1);
+		});
+
+		it('handles langchain tool-prefixed node types', () => {
+			const warnings = getToolNameWarnings(
+				'http_request_fetch',
+				'@n8n/n8n-nodes-langchain.toolHttpRequest',
+			);
+
+			expect(warnings).toHaveLength(1);
+		});
+
+		it('does not warn for concise snake_case action names', () => {
+			expect(getToolNameWarnings('get_email')).toHaveLength(0);
+		});
+	});
+
 	describe('validatePlaceholderSlots (builderHint.placeholderSupported=false)', () => {
 		const mockNodeTypesProviderWithPlaceholderOptOut = {
 			getByNameAndVersion: (_type: string, _version?: number) => ({

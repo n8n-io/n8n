@@ -2158,6 +2158,8 @@ export class InstanceAiService {
 			configEvalsEnabled,
 			mcpConnectionsEnabled,
 			modelId,
+			webhookBaseUrl: this.webhookBaseUrl,
+			formBaseUrl: this.formBaseUrl,
 		});
 
 		// Merge both local gateway and direct browser-use into a single

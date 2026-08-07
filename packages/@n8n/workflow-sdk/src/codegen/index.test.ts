@@ -36,6 +36,37 @@ describe('codegen index', () => {
 			expect(code).not.toContain('.toJSON();');
 		});
 
+		it('keeps positions by default and omits them with omitPositions', () => {
+			const json: WorkflowJSON = {
+				id: 'test-workflow-id',
+				name: 'Test Workflow',
+				nodes: [
+					{
+						id: '1',
+						name: 'Trigger',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [40, 80],
+					},
+					{
+						id: '2',
+						name: 'Process',
+						type: 'n8n-nodes-base.noOp',
+						typeVersion: 1,
+						position: [240, 80],
+					},
+				],
+				connections: {
+					Trigger: { main: [[{ node: 'Process', type: 'main', index: 0 }]] },
+				},
+			};
+
+			expect(generateWorkflowCode(json)).toContain('position: [40, 80]');
+			expect(generateWorkflowCode({ workflow: json, omitPositions: true })).not.toContain(
+				'position:',
+			);
+		});
+
 		it('generates code with IF branch', () => {
 			const json: WorkflowJSON = {
 				name: 'IF Test',
