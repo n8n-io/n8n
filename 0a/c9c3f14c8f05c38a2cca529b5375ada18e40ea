@@ -1,0 +1,39 @@
+packages/cli/src/workflows/__tests__/workflow.service.test.ts
+  s_da9c576ab02e31::t_5b4601f2db14ea 1849-1875
+packages/cli/src/workflows/workflow-mutation-hooks-proxy.service.ts
+  s_da9c576ab02e31::t_778a2cc9b0ef34 26-32
+  s_da9c576ab02e31::t_80283cd2bc4e8c 54-57
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-auto-close.service.test.ts
+  s_da9c576ab02e31::t_c454d3c2831a50 135-165
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-auto-close.integration.test.ts
+  s_da9c576ab02e31::t_570cbeb769dab2 188-217
+  s_da9c576ab02e31::t_bef31753739987 12
+packages/cli/src/workflows/workflow.service.ts
+  s_da9c576ab02e31::t_c8c7512baf030a 1198-1201
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-auto-close.service.ts
+  s_da9c576ab02e31::t_6649da6797a789 44,48-70
+  s_da9c576ab02e31::t_5402dc6e9d6cce 45-47
+  s_da9c576ab02e31::t_9ef5ef29af5923 71
+packages/cli/src/workflows/__tests__/workflow-mutation-hooks-proxy.service.test.ts
+  s_da9c576ab02e31::t_a81e0d06e81e99 15
+  s_da9c576ab02e31::t_349983267edd93 26
+  s_da9c576ab02e31::t_22ea1fef084676 34
+packages/@n8n/db/src/repositories/workflow-review-request.repository.ts
+  s_da9c576ab02e31::t_53a24db3eaf221 102-142
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "0ac9c3f14c8f05c38a2cca529b5375ada18e40ea",
+  "prompts": {},
+  "sessions": {
+    "s_da9c576ab02e31": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "61fb0afd-696a-408b-a6e4-73e55205620f",
+        "model": "claude-opus-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}
