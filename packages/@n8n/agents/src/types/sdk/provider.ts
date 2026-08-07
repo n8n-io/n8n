@@ -5,17 +5,23 @@
  */
 export type Provider =
 	| 'anthropic'
+	| 'baseten'
 	| 'cerebras'
+	| 'custom'
 	| 'deepinfra'
 	| 'deepseek'
+	| 'fireworks'
 	| 'google'
 	| 'groq'
 	| 'mistral'
+	| 'morph'
 	| 'openai'
 	| 'openrouter'
 	| 'perplexity'
 	| 'togetherai'
 	| 'vercel'
+	| 'vertex'
+	| 'wafer'
 	| 'xai'
 	| (string & {});
 
@@ -26,6 +32,8 @@ export type Provider =
  * - `'adaptive'`: the model decides how much to think per request.
  * - `'enabled'` (default): a fixed token budget controlled by `budgetTokens`.
  */
+export type AnthropicThinkingEffort = 'low' | 'medium' | 'high' | 'xhigh' | 'max';
+
 export type AnthropicThinkingConfig =
 	| {
 			mode: 'adaptive';
@@ -35,18 +43,40 @@ export type AnthropicThinkingConfig =
 			 * reasoning streams and replay metadata are available.
 			 */
 			display?: 'omitted' | 'summarized';
-			/** Reasoning effort for adaptive thinking. Defaults to 'medium'. */
-			effort?: 'low' | 'medium' | 'high' | 'xhigh' | 'max';
+			/**
+			 * Adaptive-thinking effort (`output_config.effort` on the Anthropic API).
+			 * When omitted, Anthropic/SDK defaults apply.
+			 */
+			effort?: AnthropicThinkingEffort;
 	  }
 	| {
 			mode?: 'enabled';
-			/** Token budget for extended thinking. Defaults to 10000. */
+			/** Token budget for extended thinking. Defaults to 10000 when `effort` is omitted. */
 			budgetTokens?: number;
+			/**
+			 * Maps to Anthropic `output_config.effort`. Used with `type: 'enabled'` for
+			 * Anthropic-compatible gateways (e.g. Fireworks) that reject `adaptive`.
+			 */
+			effort?: AnthropicThinkingEffort;
 	  };
 
+/**
+ * OpenAI / AI SDK reasoning effort.
+ * GPT-5.6 Sol supports none|low|medium|high|xhigh|max (no `minimal`).
+ * Older reasoning models may also accept `minimal`.
+ */
+export type OpenAIReasoningEffort =
+	| 'none'
+	| 'minimal'
+	| 'low'
+	| 'medium'
+	| 'high'
+	| 'xhigh'
+	| 'max';
+
 export interface OpenAIThinkingConfig {
-	/** Reasoning effort level. Defaults to 'medium'. */
-	reasoningEffort?: 'low' | 'medium' | 'high';
+	/** Reasoning effort level. Defaults to 'medium'. Mapped to AI SDK `providerOptions.openai.reasoningEffort`. */
+	reasoningEffort?: OpenAIReasoningEffort;
 }
 
 export interface GoogleThinkingConfig {
@@ -58,7 +88,7 @@ export interface GoogleThinkingConfig {
 
 export interface XaiThinkingConfig {
 	/** Reasoning effort level. */
-	reasoningEffort?: 'low' | 'high';
+	reasoningEffort?: 'low' | 'medium' | 'high';
 }
 
 /**
@@ -66,7 +96,7 @@ export interface XaiThinkingConfig {
  * Known providers get their specific config; unknown providers default
  * to OpenAI-style (reasoningEffort) since most providers follow that API.
  */
-export type ThinkingConfigFor<P> = P extends 'anthropic'
+export type ThinkingConfigFor<P> = P extends 'anthropic' | 'vertex'
 	? AnthropicThinkingConfig
 	: P extends 'google'
 		? GoogleThinkingConfig

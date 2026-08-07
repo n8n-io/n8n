@@ -56,6 +56,18 @@ export const LLM_PROVIDER_DEFAULTS: Record<string, LlmProviderDefault> = {
 		provider: 'openrouter',
 		defaultModel: 'anthropic/claude-sonnet-4.6',
 	},
+	basetenApi: {
+		provider: 'baseten',
+		defaultModel: 'zai-org/GLM-5.2-Fast',
+	},
+	fireworksApi: {
+		provider: 'fireworks',
+		defaultModel: 'accounts/fireworks/models/llama-v3p1-70b-instruct',
+	},
+	togetherAiApi: {
+		provider: 'togetherai',
+		defaultModel: 'meta-llama/Llama-3.3-70B-Instruct-Turbo',
+	},
 	nvidiaApi: {
 		provider: 'nvidia',
 		defaultModel: 'nvidia/llama-3.3-nemotron-super-49b-v1',
@@ -77,6 +89,9 @@ export const LLM_PROVIDER_PRIORITY: string[] = [
 	'deepseek',
 	'cohere',
 	'openrouter',
+	'baseten',
+	'fireworks',
+	'togetherai',
 	'nvidia',
 	'vercel',
 ];

@@ -3,6 +3,7 @@ import type {
 	AnthropicThinkingConfig,
 	GoogleThinkingConfig,
 	JSONObject,
+	OpenAIReasoningEffort,
 	OpenAIThinkingConfig,
 	ThinkingConfig,
 	XaiThinkingConfig,
@@ -13,6 +14,8 @@ export interface ProviderQuirks {
 	reasoningReplayKeys?: string[];
 	/** Defaults merged under this provider's namespace into every tool's providerOptions (explicit tool values win). */
 	toolProviderOptionDefaults?: JSONObject;
+	/** Defaults merged under this provider's namespace into every model call (explicit call values win). */
+	callProviderOptionDefaults?: JSONObject;
 	/** Provider defaults to strict JSON Schema validation for structured output; relax for raw user schemas. */
 	relaxStrictJsonSchemaForRawOutput?: boolean;
 	/** Translate the agent's thinking config into this provider's providerOptions namespace. */
@@ -37,6 +40,36 @@ function anthropicUsesAdaptiveThinking(modelId: string): boolean {
 	if (ANTHROPIC_ADAPTIVE_THINKING.test(modelId)) return true;
 	if (ANTHROPIC_BUDGET_THINKING.test(modelId)) return false;
 	return modelId.includes('claude-');
+}
+
+/** OpenAI-compatible providers that map effort to top-level `reasoning_effort`. */
+function reasoningEffortQuirk(
+	provider: ProviderId,
+	defaultEffort: OpenAIReasoningEffort,
+): ProviderQuirks {
+	return {
+		thinkingToProviderOptions: (thinking) => {
+			const cfg = thinking as OpenAIThinkingConfig;
+			return { [provider]: { reasoningEffort: cfg.reasoningEffort ?? defaultEffort } };
+		},
+	};
+}
+
+/** Providers that map effort to nested `reasoning: { effort }` (OpenRouter, Morph). */
+function nestedReasoningEffortQuirk(
+	provider: ProviderId,
+	defaultEffort: OpenAIReasoningEffort,
+): ProviderQuirks {
+	return {
+		thinkingToProviderOptions: (thinking) => {
+			const cfg = thinking as OpenAIThinkingConfig;
+			return {
+				[provider]: {
+					reasoning: { effort: cfg.reasoningEffort ?? defaultEffort },
+				},
+			};
+		},
+	};
 }
 
 /**
@@ -76,6 +109,27 @@ export const PROVIDER_QUIRKS: Partial<Record<ProviderId, ProviderQuirks>> = {
 			return {
 				anthropic: {
 					thinking: { type: 'enabled', budgetTokens: budgetTokens ?? 10000 },
+				},
+			};
+		},
+	},
+	// Claude on Vertex: same Messages thinking shape; options stay under `anthropic`
+	// (see @ai-sdk/google-vertex/anthropic). Replay/tool defaults reuse anthropic's.
+	vertex: {
+		thinkingToProviderOptions: (thinking) => {
+			const cfg = thinking as AnthropicThinkingConfig;
+			if (cfg.mode === 'adaptive') {
+				return {
+					anthropic: {
+						thinking: { type: 'adaptive', display: cfg.display ?? 'summarized' },
+						effort: cfg.effort ?? 'medium',
+					},
+				};
+			}
+			return {
+				anthropic: {
+					thinking: { type: 'enabled', budgetTokens: cfg.budgetTokens ?? 10000 },
+					...(cfg.effort !== undefined ? { effort: cfg.effort } : {}),
 				},
 			};
 		},
@@ -129,14 +183,78 @@ export const PROVIDER_QUIRKS: Partial<Record<ProviderId, ProviderQuirks>> = {
 			return { xai: { reasoningEffort: cfg.reasoningEffort ?? 'high' } };
 		},
 	},
+	openrouter: nestedReasoningEffortQuirk('openrouter', 'medium'),
+	// Baseten Model APIs use the OpenAI-compatible chat schema; reasoning maps to
+	// the top-level `reasoning_effort` body field via providerOptions.baseten.
+	baseten: reasoningEffortQuirk('baseten', 'none'),
+	fireworks: {
+		// Fireworks Serverless priority tier: stronger admission during congestion.
+		callProviderOptionDefaults: { service_tier: 'priority' },
+		...reasoningEffortQuirk('fireworks', 'medium'),
+	},
+	wafer: reasoningEffortQuirk('wafer', 'medium'),
+	// Morph OpenAI chat accepts `reasoning: { effort }` (not `reasoning_effort`).
+	// See https://docs.morphllm.com/sdk/components/fast-models
+	morph: nestedReasoningEffortQuirk('morph', 'medium'),
+	togetherai: reasoningEffortQuirk('togetherai', 'medium'),
+	custom: reasoningEffortQuirk('custom', 'medium'),
 };
 
 export function getProviderQuirks(providerId: string): ProviderQuirks {
 	return PROVIDER_QUIRKS[providerId as ProviderId] ?? {};
 }
 
+/** Provider/model call defaults keyed for merge into AI SDK `providerOptions`. */
+export function buildCallProviderOptionDefaults(
+	modelId: string,
+): Record<string, Record<string, unknown>> | undefined {
+	const provider = providerIdFromModelId(modelId);
+	const defaults = getProviderQuirks(provider).callProviderOptionDefaults;
+	if (!defaults) return undefined;
+	return { [provider]: defaults };
+}
+
 export function providerIdFromModelId(modelId: string): string {
 	return modelId.split('/')[0];
+}
+
+/**
+ * Default completion-token cap for reasoning-heavy models (GLM 5.2, Kimi K3).
+ * Context windows are often 131072 shared input+output; requesting the full
+ * window as max_tokens overflows once any prompt tokens are present.
+ */
+export const HIGH_REASONING_DEFAULT_MAX_OUTPUT_TOKENS = 65_536;
+
+/** @deprecated Prefer {@link HIGH_REASONING_DEFAULT_MAX_OUTPUT_TOKENS}. */
+export const GLM_52_DEFAULT_MAX_OUTPUT_TOKENS = HIGH_REASONING_DEFAULT_MAX_OUTPUT_TOKENS;
+
+/** @deprecated Prefer {@link HIGH_REASONING_DEFAULT_MAX_OUTPUT_TOKENS}. */
+export const KIMI_K3_DEFAULT_MAX_OUTPUT_TOKENS = HIGH_REASONING_DEFAULT_MAX_OUTPUT_TOKENS;
+
+function isGlm52Model(modelId: string): boolean {
+	const modelName = (
+		modelId.includes('/') ? modelId.split('/').slice(1).join('/') : modelId
+	).toLowerCase();
+	// Baseten/Z.AI: `zai-org/GLM-5.2`; Morph: `morph-glm52-744b`.
+	return modelName.includes('glm-5.2') || modelName.includes('glm52');
+}
+
+function isKimiK3Model(modelId: string): boolean {
+	const id = modelId.toLowerCase();
+	// OpenRouter/Fireworks/Wafer: `kimi-k3`; Morph: `morph-kimik3` / `morph-kimik3-fast`.
+	return id.includes('kimi-k3') || id.includes('kimik3');
+}
+
+/**
+ * Provider/model-specific default for AI SDK `maxOutputTokens`. Unknown models
+ * otherwise fall back to a 4096 cap that reasoning-heavy agent turns can exhaust
+ * before emitting text or tool calls.
+ */
+export function resolveDefaultMaxOutputTokens(modelId: string): number | undefined {
+	if (isGlm52Model(modelId) || isKimiK3Model(modelId)) {
+		return HIGH_REASONING_DEFAULT_MAX_OUTPUT_TOKENS;
+	}
+	return undefined;
 }
 
 /** Merge every registered tool providerOptions default under its provider namespace; explicit tool values win. */

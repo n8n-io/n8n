@@ -1,12 +1,15 @@
 import { listAnthropicModels } from './providers/anthropic';
+import { listBasetenModels } from './providers/baseten';
 import { listCohereModels } from './providers/cohere';
 import { listDeepSeekModels } from './providers/deepseek';
+import { listFireworksModels } from './providers/fireworks';
 import { listGoogleModels } from './providers/google';
 import { listGroqModels } from './providers/groq';
 import { listMistralModels } from './providers/mistral';
 import { listNvidiaModels } from './providers/nvidia';
 import { listOpenAiModels } from './providers/openai';
 import { listOpenRouterModels } from './providers/openrouter';
+import { listTogetherAiModels } from './providers/togetherai';
 import { listVercelModels } from './providers/vercel';
 import { listXaiModels } from './providers/xai';
 import type { ListModelsFn, ListModelsOptions, ProviderModel } from './types';
@@ -24,14 +27,17 @@ import type { ListModelsFn, ListModelsOptions, ProviderModel } from './types';
  */
 export const MODEL_DISCOVERY_PROVIDERS: Record<string, ListModelsFn> = {
 	anthropic: listAnthropicModels,
+	baseten: listBasetenModels,
 	cohere: listCohereModels,
 	deepseek: listDeepSeekModels,
+	fireworks: listFireworksModels,
 	google: listGoogleModels,
 	groq: listGroqModels,
 	mistral: listMistralModels,
 	nvidia: listNvidiaModels,
 	openai: listOpenAiModels,
 	openrouter: listOpenRouterModels,
+	togetherai: listTogetherAiModels,
 	vercel: listVercelModels,
 	xai: listXaiModels,
 };
@@ -52,14 +58,17 @@ export async function listModelsForProvider(
 }
 
 export { listAnthropicModels } from './providers/anthropic';
+export { listBasetenModels } from './providers/baseten';
 export { listCohereModels } from './providers/cohere';
 export { listDeepSeekModels } from './providers/deepseek';
+export { listFireworksModels } from './providers/fireworks';
 export { listGoogleModels } from './providers/google';
 export { listGroqModels } from './providers/groq';
 export { listMistralModels } from './providers/mistral';
 export { listNvidiaModels } from './providers/nvidia';
 export { listOpenAiModels, shouldIncludeOpenAiModel } from './providers/openai';
 export { listOpenRouterModels } from './providers/openrouter';
+export { listTogetherAiModels } from './providers/togetherai';
 export { listVercelModels } from './providers/vercel';
 export { listXaiModels } from './providers/xai';
 export type { ListModelsFn, ListModelsOptions, ProviderModel } from './types';

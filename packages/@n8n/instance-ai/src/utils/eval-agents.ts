@@ -3,6 +3,7 @@
 import { Agent, Tool, type GenerateResult, type ModelConfig } from '@n8n/agents';
 
 import { applyAgentThinking } from '../agent/apply-agent-thinking';
+import { parseModelHeadersJson } from './parse-model-headers';
 
 export { Tool };
 
@@ -21,6 +22,11 @@ const PROVIDER_API_KEY_ENV: Record<string, string> = {
 	anthropic: 'ANTHROPIC_API_KEY',
 	google: 'GOOGLE_GENERATIVE_AI_API_KEY',
 	openai: 'OPENAI_API_KEY',
+	baseten: 'BASETEN_API_KEY',
+	fireworks: 'FIREWORKS_API_KEY',
+	wafer: 'WAFER_API_KEY',
+	morph: 'MORPH_API_KEY',
+	togetherai: 'TOGETHER_API_KEY',
 	xai: 'XAI_API_KEY',
 };
 
@@ -30,6 +36,10 @@ export interface EvalModelConfig {
 	providerModelId: string;
 	apiKey: string;
 	url?: string;
+	headers?: Record<string, string>;
+	project?: string;
+	location?: string;
+	googleCredentialsJson?: string;
 }
 
 function getModelId(model?: string): string {
@@ -41,16 +51,38 @@ function getModelId(model?: string): string {
 	return modelId;
 }
 
+/**
+ * True when the resolved model is the Instance AI builder model (or there is
+ * no separate builder model). False when resolving a dedicated eval model
+ * (N8N_INSTANCE_AI_EVAL_MODEL / explicit arg) that differs from the builder —
+ * in that case we must not reuse the builder's API key or custom base URL.
+ */
+function isResolvingBuilderModel(modelId: string): boolean {
+	const builderModel = process.env.N8N_INSTANCE_AI_MODEL?.trim();
+	if (!builderModel) return true;
+	return modelId === builderModel;
+}
+
 function getApiKey(modelId: string): string {
 	const [provider] = modelId.split('/');
+	// Vertex uses GCP ADC / service-account JSON, not an API key.
+	if (provider === 'vertex') return '';
 	const providerKeyEnv = PROVIDER_API_KEY_ENV[provider];
 	const providerKey = providerKeyEnv ? process.env[providerKeyEnv] : undefined;
-	const key =
-		process.env.N8N_INSTANCE_AI_MODEL_API_KEY ??
-		(provider === 'anthropic' ? process.env.N8N_AI_ANTHROPIC_KEY : undefined) ??
-		providerKey;
+	const anthropicLegacy = provider === 'anthropic' ? process.env.N8N_AI_ANTHROPIC_KEY : undefined;
+	const genericKey = process.env.N8N_INSTANCE_AI_MODEL_API_KEY;
+
+	// Builder model: prefer the lane's N8N_INSTANCE_AI_MODEL_API_KEY.
+	// Separate eval model (e.g. Anthropic mocks while builder is custom/openai):
+	// prefer provider-native keys so an OpenAI/empty builder key is not sent to Anthropic.
+	const key = isResolvingBuilderModel(modelId)
+		? (genericKey ?? anthropicLegacy ?? providerKey)
+		: (anthropicLegacy ?? providerKey ?? genericKey);
 
 	if (!key) {
+		// custom/* OpenAI-compatible routers may be keyless (URL only) or
+		// header-auth (URL + headers). Both are valid without an API key.
+		if (isResolvingBuilderModel(modelId) && allowsKeylessCustomEndpoint(provider)) return '';
 		throw new Error(
 			`Missing API key for eval model "${modelId}". Set N8N_INSTANCE_AI_MODEL_API_KEY${
 				provider === 'anthropic'
@@ -70,6 +102,43 @@ function getModelUrl(): string | undefined {
 	return url;
 }
 
+function getModelHeaders(): Record<string, string> | undefined {
+	return (
+		parseModelHeadersJson(process.env.EVAL_MODAL_LLM_HEADERS) ??
+		parseModelHeadersJson(process.env.N8N_INSTANCE_AI_MODEL_HEADERS)
+	);
+}
+
+function allowsKeylessCustomEndpoint(provider: string): boolean {
+	if (!getModelUrl()) return false;
+	// Header-auth custom endpoints (e.g. Modal) — any provider id with URL+headers.
+	if (getModelHeaders()) return true;
+	// Dedicated OpenAI-compatible routers (e.g. custom/Kimi-K3) need no auth.
+	return provider === 'custom';
+}
+
+function trimmedEnvVar(name: string): string | undefined {
+	const value = process.env[name]?.trim();
+	if (!value) return undefined;
+	return value;
+}
+
+function getVertexProject(): string | undefined {
+	return trimmedEnvVar('N8N_INSTANCE_AI_VERTEX_PROJECT') ?? trimmedEnvVar('GOOGLE_VERTEX_PROJECT');
+}
+
+function getVertexLocation(): string {
+	return (
+		trimmedEnvVar('N8N_INSTANCE_AI_VERTEX_LOCATION') ??
+		trimmedEnvVar('GOOGLE_VERTEX_LOCATION') ??
+		'global'
+	);
+}
+
+function getVertexCredentialsJson(): string | undefined {
+	return trimmedEnvVar('N8N_INSTANCE_AI_VERTEX_CREDENTIALS');
+}
+
 export function resolveEvalModelConfig(model?: string): EvalModelConfig {
 	const modelId = getModelId(model);
 	const [provider, ...rest] = modelId.split('/');
@@ -78,12 +147,27 @@ export function resolveEvalModelConfig(model?: string): EvalModelConfig {
 	if (joinedProviderModelId.length > 0) {
 		providerModelId = joinedProviderModelId;
 	}
+	if (provider === 'vertex') {
+		return {
+			modelId,
+			provider,
+			providerModelId,
+			apiKey: '',
+			project: getVertexProject(),
+			location: getVertexLocation(),
+			googleCredentialsJson: getVertexCredentialsJson(),
+		};
+	}
+	// Builder endpoint (URL/headers) only applies when resolving that builder model.
+	// A dedicated Anthropic eval model must hit Anthropic, not the custom/Foundry base.
+	const attachBuilderEndpoint = isResolvingBuilderModel(modelId);
 	return {
 		modelId,
 		provider,
 		providerModelId,
 		apiKey: getApiKey(modelId),
-		url: getModelUrl(),
+		url: attachBuilderEndpoint ? getModelUrl() : undefined,
+		headers: attachBuilderEndpoint ? getModelHeaders() : undefined,
 	};
 }
 
@@ -108,8 +192,22 @@ const CACHE_PROVIDER_OPTS = {
  */
 function resolveAgentModel(model?: string, fallbackModelConfig?: ModelConfig): ModelConfig {
 	try {
-		const { modelId, apiKey, url } = resolveEvalModelConfig(model);
-		return { id: modelId, apiKey, url };
+		const { modelId, apiKey, url, headers, project, location, googleCredentialsJson } =
+			resolveEvalModelConfig(model);
+		if (modelId.startsWith('vertex/')) {
+			return {
+				id: modelId,
+				...(project ? { project } : {}),
+				...(location ? { location } : {}),
+				...(googleCredentialsJson ? { googleCredentialsJson } : {}),
+			};
+		}
+		return {
+			id: modelId,
+			apiKey,
+			url,
+			...(headers ? { headers } : {}),
+		};
 	} catch (error) {
 		if (fallbackModelConfig) return fallbackModelConfig;
 		throw error;

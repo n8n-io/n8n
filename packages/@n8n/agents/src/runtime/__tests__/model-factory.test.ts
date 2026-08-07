@@ -7,6 +7,8 @@ type ProviderOpts = {
 	baseURL?: string;
 	fetch?: typeof globalThis.fetch;
 	headers?: Record<string, string>;
+	includeUsage?: boolean;
+	supportsStructuredOutputs?: boolean;
 };
 
 // All providers are mocked via vi.mock so require() inside the registry entries
@@ -65,6 +67,27 @@ vi.mock('@ai-sdk/google', () => ({
 		fetch: opts?.fetch,
 		specificationVersion: 'v3',
 	}),
+}));
+
+vi.mock('@ai-sdk/google-vertex/anthropic', () => ({
+	createVertexAnthropic:
+		(opts?: {
+			project?: string;
+			location?: string;
+			googleAuthOptions?: { credentials?: Record<string, unknown> };
+			fetch?: typeof globalThis.fetch;
+			headers?: Record<string, string>;
+		}) =>
+		(model: string) => ({
+			provider: 'vertex',
+			modelId: model,
+			project: opts?.project,
+			location: opts?.location,
+			googleAuthOptions: opts?.googleAuthOptions,
+			fetch: opts?.fetch,
+			headers: opts?.headers,
+			specificationVersion: 'v3',
+		}),
 }));
 
 vi.mock('@ai-sdk/xai', () => ({
@@ -162,6 +185,8 @@ vi.mock('@ai-sdk/openai-compatible', () => ({
 		baseURL: opts.baseURL,
 		headers: opts.headers,
 		fetch: opts.fetch,
+		includeUsage: opts.includeUsage,
+		supportsStructuredOutputs: opts.supportsStructuredOutputs,
 		specificationVersion: 'v3',
 	}),
 }));
@@ -204,9 +229,9 @@ describe('createModel', () => {
 	});
 
 	it('should accept a string config', () => {
-		const model = createModel('anthropic/claude-sonnet-4-5') as unknown as Record<string, unknown>;
+		const model = createModel('anthropic/claude-opus-5') as unknown as Record<string, unknown>;
 		expect(model.provider).toBe('anthropic');
-		expect(model.modelId).toBe('claude-sonnet-4-5');
+		expect(model.modelId).toBe('claude-opus-5');
 	});
 
 	it('should accept an object config with baseURL', () => {
@@ -360,6 +385,112 @@ describe('createModel', () => {
 			expect(model.apiKey).toBe('or-test');
 		});
 
+		it('should create model for baseten via openai-compatible', () => {
+			const model = createModel({
+				id: 'baseten/zai-org/GLM-5.2-Fast',
+				apiKey: 'bt-test',
+			}) as unknown as Record<string, unknown>;
+			expect(model.provider).toBe('baseten');
+			expect(model.modelId).toBe('zai-org/GLM-5.2-Fast');
+			expect(model.apiKey).toBe('bt-test');
+			expect(model.baseURL).toBe('https://inference.baseten.co/v1');
+			expect(model.includeUsage).toBe(true);
+			expect(model.supportsStructuredOutputs).toBe(true);
+		});
+
+		it('should create model for fireworks via openai-compatible', () => {
+			const model = createModel({
+				id: 'fireworks/accounts/fireworks/models/llama-v3p1-70b-instruct',
+				apiKey: 'fw-test',
+			}) as unknown as Record<string, unknown>;
+			expect(model.provider).toBe('fireworks');
+			expect(model.modelId).toBe('accounts/fireworks/models/llama-v3p1-70b-instruct');
+			expect(model.apiKey).toBe('fw-test');
+			expect(model.baseURL).toBe('https://api.fireworks.ai/inference/v1');
+			expect(model.includeUsage).toBe(true);
+			expect(model.supportsStructuredOutputs).toBe(true);
+		});
+
+		it('should create model for wafer via openai-compatible', () => {
+			const model = createModel({
+				id: 'wafer/Kimi-K3',
+				apiKey: 'wafer-test',
+			}) as unknown as Record<string, unknown>;
+			expect(model.provider).toBe('wafer');
+			expect(model.modelId).toBe('Kimi-K3');
+			expect(model.apiKey).toBe('wafer-test');
+			expect(model.baseURL).toBe('https://pass.wafer.ai/v1');
+			expect(model.includeUsage).toBe(true);
+			expect(model.supportsStructuredOutputs).toBe(true);
+		});
+
+		it('should create model for morph via openai-compatible', () => {
+			const model = createModel({
+				id: 'morph/morph-kimik3',
+				apiKey: 'morph-test',
+			}) as unknown as Record<string, unknown>;
+			expect(model.provider).toBe('morph');
+			expect(model.modelId).toBe('morph-kimik3');
+			expect(model.apiKey).toBe('morph-test');
+			expect(model.baseURL).toBe('https://api.morphllm.com/v1');
+			expect(model.includeUsage).toBe(true);
+			expect(model.supportsStructuredOutputs).toBe(true);
+		});
+
+		it('should create model for togetherai via openai-compatible', () => {
+			const model = createModel({
+				id: 'togetherai/riqwanthahamir-d900/deepseek-v4-flash',
+				apiKey: 'tgp-test',
+			}) as unknown as Record<string, unknown>;
+			expect(model.provider).toBe('togetherai');
+			expect(model.modelId).toBe('riqwanthahamir-d900/deepseek-v4-flash');
+			expect(model.apiKey).toBe('tgp-test');
+			expect(model.baseURL).toBe('https://api.together.ai/v1');
+			expect(model.includeUsage).toBe(true);
+			expect(model.supportsStructuredOutputs).toBe(true);
+		});
+
+		it('should create model for vertex Anthropic with project/location/credentials', () => {
+			const credentials = {
+				type: 'service_account',
+				project_id: 'my-gcp',
+				client_email: 'bot@my-gcp.iam.gserviceaccount.com',
+				private_key: '-----BEGIN PRIVATE KEY-----\nTEST\n-----END PRIVATE KEY-----\n',
+			};
+			const sa = JSON.stringify(credentials);
+			const model = createModel({
+				id: 'vertex/claude-opus-4-8',
+				project: 'my-gcp',
+				location: 'us-east5',
+				googleCredentialsJson: sa,
+			}) as unknown as Record<string, unknown>;
+			expect(model.provider).toBe('vertex');
+			expect(model.modelId).toBe('claude-opus-4-8');
+			expect(model.project).toBe('my-gcp');
+			expect(model.location).toBe('us-east5');
+			expect(model.googleAuthOptions).toEqual({
+				credentials,
+			});
+		});
+
+		it('defaults vertex location to global when omitted', () => {
+			const model = createModel({
+				id: 'vertex/claude-opus-4-8',
+				project: 'my-gcp',
+			}) as unknown as Record<string, unknown>;
+			expect(model.location).toBe('global');
+		});
+
+		it('rejects invalid vertex googleCredentialsJson', () => {
+			expect(() =>
+				createModel({
+					id: 'vertex/claude-opus-4-8',
+					project: 'my-gcp',
+					googleCredentialsJson: 'not-json',
+				}),
+			).toThrow(/Invalid googleCredentialsJson/);
+		});
+
 		it('should create model for nvidia', () => {
 			const model = createModel({
 				id: 'nvidia/nvidia/llama-3.3-nemotron-super-49b-v1',
@@ -370,6 +501,7 @@ describe('createModel', () => {
 			expect(model.modelId).toBe('nvidia/llama-3.3-nemotron-super-49b-v1');
 			expect(model.apiKey).toBe('nv-test');
 			expect(model.baseURL).toBe('https://integrate.api.nvidia.com/v1');
+			expect(model.supportsStructuredOutputs).toBe(true);
 		});
 	});
 
