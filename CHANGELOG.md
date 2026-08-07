@@ -1,3 +1,13 @@
+## [2.34.3](https://github.com/n8n-io/n8n/compare/n8n@2.34.2...n8n@2.34.3) (2026-08-07)
+
+
+### Bug Fixes
+
+* **core:** Ignore undeclared fields in agent resume payloads ([#35705](https://github.com/n8n-io/n8n/issues/35705)) ([a944f62](https://github.com/n8n-io/n8n/commit/a944f62402b0f7ad502dc71e91c2dc10fcbc4e6e))
+* **editor:** Make DropdownMenus more obviously scrollable ([#35742](https://github.com/n8n-io/n8n/issues/35742)) ([fdfdbcc](https://github.com/n8n-io/n8n/commit/fdfdbcc866528a68604b467bdb8546139fe1cceb))
+* Send n8n version on backend posthog flag retrieval ([#35712](https://github.com/n8n-io/n8n/issues/35712)) ([6d65c4e](https://github.com/n8n-io/n8n/commit/6d65c4e27f82167f2a20fc574fc3b4e8aff814bc))
+
+
 ## [2.34.2](https://github.com/n8n-io/n8n/compare/n8n@2.34.1...n8n@2.34.2) (2026-08-06)
 
 
