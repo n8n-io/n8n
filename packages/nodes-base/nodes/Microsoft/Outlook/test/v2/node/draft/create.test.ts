@@ -200,6 +200,7 @@ describe('Test MicrosoftOutlookV2, draft => create', () => {
 						{
 							'@odata.type': '#microsoft.graph.fileAttachment',
 							name: 'test-file.txt',
+							contentType: 'text/plain',
 							contentBytes: Buffer.from('Hello World').toString('base64'),
 						},
 					],
@@ -257,6 +258,7 @@ describe('Test MicrosoftOutlookV2, draft => create', () => {
 						{
 							'@odata.type': '#microsoft.graph.fileAttachment',
 							name: 'direct-file.txt',
+							contentType: 'text/plain',
 							contentBytes: mockBinaryData.data,
 						},
 					],
@@ -282,10 +284,12 @@ describe('Test MicrosoftOutlookV2, draft => create', () => {
 			(mockExecuteFunctions.helpers.assertBinaryData as Mock)
 				.mockReturnValueOnce({
 					id: 'id1',
+					mimeType: 'text/plain',
 					fileName: 'file1.txt',
 				})
 				.mockReturnValueOnce({
 					data: 'ZmlsZTI=',
+					mimeType: 'text/plain',
 					fileName: 'file2.txt',
 				});
 
@@ -305,10 +309,12 @@ describe('Test MicrosoftOutlookV2, draft => create', () => {
 					attachments: expect.arrayContaining([
 						expect.objectContaining({
 							name: 'file1.txt',
+							contentType: expect.any(String),
 							contentBytes: Buffer.from('file1').toString('base64'),
 						}),
 						expect.objectContaining({
 							name: 'file2.txt',
+							contentType: expect.any(String),
 							contentBytes: 'ZmlsZTI=',
 						}),
 					]),

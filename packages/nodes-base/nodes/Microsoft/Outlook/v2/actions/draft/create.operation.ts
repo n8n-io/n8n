@@ -238,6 +238,7 @@ export async function execute(this: IExecuteFunctions, index: number, _: INodeEx
 				return {
 					'@odata.type': '#microsoft.graph.fileAttachment',
 					name: binaryData.fileName,
+					contentType: binaryData.mimeType || 'application/octet-stream',
 					contentBytes: fileBase64,
 				};
 			}),

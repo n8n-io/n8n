@@ -94,6 +94,7 @@ describe('Microsoft Outlook V2 - MessageAttachment:add', () => {
 				{
 					'@odata.type': '#microsoft.graph.fileAttachment',
 					name: 'test-file.txt',
+					contentType: 'text/plain',
 					contentBytes: 'SGVsbG8gV29ybGQ=',
 				},
 				{},
@@ -144,6 +145,7 @@ describe('Microsoft Outlook V2 - MessageAttachment:add', () => {
 				{
 					'@odata.type': '#microsoft.graph.fileAttachment',
 					name: 'custom-name.pdf',
+					contentType: 'application/pdf',
 					contentBytes: 'JVBERi0xLjQK',
 				},
 				{},
