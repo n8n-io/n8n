@@ -97,6 +97,9 @@ describe('createLazyRuntimeWorkspace', () => {
 		expect(tools.some((tool) => tool.name === 'workspace_list_files')).toBe(false);
 		expect(tools.some((tool) => tool.name === 'workspace_append_file')).toBe(false);
 
+		const writeFile = tools.find((tool) => tool.name === 'workspace_write_file');
+		expect(writeFile?.systemInstruction).toContain('get-as-code');
+
 		const readFile = tools.find((tool) => tool.name === 'workspace_read_file');
 		await readFile?.handler?.({ path: '/workspace/report.md' }, {});
 

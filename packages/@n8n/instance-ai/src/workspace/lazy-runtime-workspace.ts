@@ -21,6 +21,8 @@ import {
 	type WriteOptions,
 } from '@n8n/agents';
 
+import { guardWorkspaceWriteFileTool } from './guard-workflow-json-write';
+
 export type RuntimeWorkspaceResolver = () => Promise<Workspace | undefined>;
 
 /** Workspace tools exposed to Instance AI agents — read/write/replace/execute only. */
@@ -69,7 +71,9 @@ export function createLazyRuntimeWorkspace({
 
 	const baseGetTools = workspace.getTools.bind(workspace);
 	workspace.getTools = () =>
-		baseGetTools().filter((tool) => INSTANCE_AI_WORKSPACE_TOOL_ALLOWLIST.has(tool.name));
+		baseGetTools()
+			.filter((tool) => INSTANCE_AI_WORKSPACE_TOOL_ALLOWLIST.has(tool.name))
+			.map(guardWorkspaceWriteFileTool);
 
 	return workspace;
 }
