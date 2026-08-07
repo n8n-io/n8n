@@ -1,3 +1,12 @@
+## [2.34.4](https://github.com/n8n-io/n8n/compare/n8n@2.34.3...n8n@2.34.4) (2026-08-07)
+
+
+### Bug Fixes
+
+* **core:** Fix task runner health check failing ([#35816](https://github.com/n8n-io/n8n/issues/35816)) ([badd50e](https://github.com/n8n-io/n8n/commit/badd50ee79022c2137152ebe36141037a737c2d4))
+* **core:** Handle out-of-scope display option dependencies ([#35863](https://github.com/n8n-io/n8n/issues/35863)) ([1e9734d](https://github.com/n8n-io/n8n/commit/1e9734d51ed3b9d7204d34d2579f5bda08907ba1))
+
+
 ## [2.34.3](https://github.com/n8n-io/n8n/compare/n8n@2.34.2...n8n@2.34.3) (2026-08-07)
 
 
