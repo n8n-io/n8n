@@ -1,4 +1,4 @@
-import type { JsonObject, JsonValue, StepExecutionRequest, WorkflowGraph } from '@n8n/engine';
+import type { JsonObject, StepExecutionRequest, StepSlots, WorkflowGraph } from '@n8n/engine';
 import type { ExecuteContext } from 'n8n-core';
 import { UnrecognizedNodeTypeError } from 'n8n-core';
 import { NoOp } from 'n8n-nodes-base/nodes/NoOp/NoOp.node';
@@ -246,7 +246,7 @@ export const v1Workflow = (
 export const stepRequest = (
 	graph: WorkflowGraph,
 	nodeId: string,
-	inputs: JsonValue,
+	inputs: StepSlots,
 ): StepExecutionRequest => ({
 	node: graph.nodes.find((n) => n.id === nodeId)!,
 	inputs,
@@ -255,7 +255,7 @@ export const stepRequest = (
 
 export const testStepExecutor = (
 	graph: WorkflowGraph,
-	outputsByStepId: Record<string, JsonValue> = {},
+	outputsByStepId: Record<string, StepSlots> = {},
 ): V1StepExecutor =>
 	new V1StepExecutor({
 		nodeTypes: testNodeTypes,
@@ -263,4 +263,4 @@ export const testStepExecutor = (
 		loadStepData: async () => await Promise.resolve({ graph, outputsByStepId }),
 	});
 
-export const items = (...objects: JsonObject[]): JsonValue => [objects.map((json) => ({ json }))];
+export const items = (...objects: JsonObject[]): StepSlots => [objects.map((json) => ({ json }))];

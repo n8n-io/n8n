@@ -1,4 +1,4 @@
-import type { JsonValue, StepExecutionContext, WorkflowGraph } from '@n8n/engine';
+import type { StepExecutionContext, StepSlots, WorkflowGraph } from '@n8n/engine';
 import type { ExecuteContext } from 'n8n-core';
 import type {
 	INode,
@@ -26,7 +26,7 @@ export interface V1Execution extends Pick<IWorkflowBase, 'nodes' | 'connections'
 
 export interface StepData {
 	graph: WorkflowGraph;
-	outputsByStepId: Record<string, JsonValue>;
+	outputsByStepId: Record<string, StepSlots>;
 }
 
 export type StepDataLoader = (context: StepExecutionContext) => Promise<StepData>;

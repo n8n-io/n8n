@@ -129,9 +129,9 @@ describe('step execution (integration)', () => {
 		expect(step?.outputs).toEqual([[{ json: { greeting: 'hi' } }]]);
 		expect(step?.error).toBeNull();
 
-		// the trigger payload reaches the executor as the step's inputs
+		// the trigger payload reaches the executor as the step's input slot 0
 		expect(requests).toHaveLength(1);
-		expect(requests[0].inputs).toEqual({ body: { name: 'ada' } });
+		expect(requests[0].inputs).toEqual([{ body: { name: 'ada' } }]);
 		expect(requests[0].node.id).toBe('node-a');
 		expect(requests[0].context).toEqual({
 			executionId,
@@ -192,9 +192,10 @@ describe('step execution (integration)', () => {
 			{ workflowId: 'wf-chain', graph: chainGraph },
 		);
 
-		// both nodes ran, in order, each on what came before it
+		// both nodes ran, in order, each on what came before it: node-a on the
+		// trigger's payload slot, node-b on node-a's output slot 0
 		expect(requests.map(({ node }) => node.id)).toEqual(['node-a', 'node-b']);
-		expect(requests[0].inputs).toEqual({ body: { name: 'ada' } });
+		expect(requests[0].inputs).toEqual([{ body: { name: 'ada' } }]);
 		expect(requests[1].inputs).toEqual([[{ json: { ran: 'node-a' } }]]);
 
 		expect(execution.status).toBe('completed');
@@ -217,7 +218,8 @@ describe('step execution (integration)', () => {
 			triggerPayload: null,
 		});
 		const created = await stepStore.createSteps([
-			{ executionId, nodeId: 'trigger', status: 'completed' },
+			// completed steps always carry outputs, as the start handler writes them
+			{ executionId, nodeId: 'trigger', status: 'completed', outputs: [{}] },
 			{ executionId, nodeId: 'node-a', status: 'queued' },
 		]);
 		const stepId = created.find(({ nodeId }) => nodeId === 'node-a')!.id;

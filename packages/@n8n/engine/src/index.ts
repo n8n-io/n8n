@@ -54,6 +54,7 @@ export type {
 	NewStepRecord,
 	StepError,
 	StepRecord,
+	StepSlots,
 	StepStatus,
 	StepStore,
 } from './execution';

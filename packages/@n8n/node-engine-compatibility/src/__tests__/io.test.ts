@@ -31,12 +31,13 @@ describe('fromStepInputs', () => {
 		expect(fromStepInputs([[{ json }]])).toEqual([[{ json: { json } }]]);
 	});
 
-	it('yields a single empty item list for non-array payloads', () => {
-		expect(fromStepInputs({})).toEqual([[]]);
-		expect(fromStepInputs(null)).toEqual([[]]);
+	it('yields an empty item list for a null (unfilled) slot', () => {
+		// v1 coerces inputs that never received data to [] — same rule here
+		expect(fromStepInputs([null])).toEqual([[]]);
 	});
 
-	it('yields an empty item list for non-array elements', () => {
+	it('yields an empty item list for a slot not carrying items', () => {
+		// e.g. the trigger's raw payload rides in slot 0 as a bare object
 		expect(fromStepInputs(['nope'])).toEqual([[]]);
 	});
 });
