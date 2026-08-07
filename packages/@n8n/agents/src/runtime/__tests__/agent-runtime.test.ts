@@ -24,6 +24,7 @@ import {
 	type DelegateSubAgentRunner,
 } from '../tools/delegate-sub-agent-tool';
 import { toAiSdkTools } from '../tools/tool-adapter';
+import { MAX_MODEL_TOOL_RESULT_CHARS } from '../tools/tool-result-guard';
 
 // ---------------------------------------------------------------------------
 // Module mocks
@@ -7358,5 +7359,204 @@ describe('AgentRuntime — MCP connection failure warnings', () => {
 			: String((system as { content: string }).content);
 
 		expect(systemText).not.toContain('<mcp-connection-status>');
+	});
+});
+
+describe('AgentRuntime — oversized tool results', () => {
+	type TruncationEnvelope = {
+		_truncated: true;
+		originalCharCount: number;
+		estimatedTokenCount: number;
+		head: string;
+		tail: string;
+	};
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	function parseEnvelope(value: string): TruncationEnvelope {
+		try {
+			return JSON.parse(value) as TruncationEnvelope;
+		} catch {
+			throw new Error('Expected a valid truncation envelope');
+		}
+	}
+
+	function getModelToolResult(callIndex = 1): unknown {
+		const call = generateText.mock.calls[callIndex][0] as {
+			messages: Array<{
+				role: string;
+				content: Array<{ type: string; output?: { type: string; value: unknown } }>;
+			}>;
+		};
+		const toolMessage = call.messages.find((message) => message.role === 'tool');
+		return toolMessage?.content.find((part) => part.type === 'tool-result')?.output?.value;
+	}
+
+	it('leaves a small transformed result unchanged', async () => {
+		const tool: BuiltTool = {
+			name: 'small_result',
+			description: 'Return a small result',
+			inputSchema: z.object({}),
+			handler: async () => await Promise.resolve({ raw: 'value' }),
+			toModelOutput: () => ({ summary: 'small' }),
+		};
+		const { runtime } = createRuntimeWithTools([tool], 1);
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCalls([{ toolCallId: 'tc-small', toolName: tool.name, args: {} }]),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess());
+
+		await runtime.generate('run');
+
+		expect(getModelToolResult()).toEqual({ summary: 'small' });
+	});
+
+	it('bounds an oversized transformed result while preserving raw output', async () => {
+		const rawOutput = {
+			value: `RAW_HEAD${'r'.repeat(MAX_MODEL_TOOL_RESULT_CHARS)}RAW_TAIL`,
+		};
+		const transformedOutput = `TRANSFORM_HEAD${'t'.repeat(MAX_MODEL_TOOL_RESULT_CHARS)}TRANSFORM_TAIL`;
+		const tool: BuiltTool = {
+			name: 'large_result',
+			description: 'Return a large result',
+			inputSchema: z.object({}),
+			handler: async () => await Promise.resolve(rawOutput),
+			toModelOutput: () => transformedOutput,
+		};
+		const { runtime } = createRuntimeWithTools([tool], 1);
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCalls([{ toolCallId: 'tc-large', toolName: tool.name, args: {} }]),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess());
+
+		const result = await runtime.generate('run');
+		const envelope = getModelToolResult() as TruncationEnvelope;
+
+		expect(JSON.stringify(envelope).length).toBeLessThanOrEqual(MAX_MODEL_TOOL_RESULT_CHARS);
+		expect(envelope).toMatchObject({
+			_truncated: true,
+			originalCharCount: JSON.stringify(transformedOutput).length,
+		});
+		expect(envelope.head).toContain('TRANSFORM_HEAD');
+		expect(envelope.tail).toContain('TRANSFORM_TAIL');
+		expect(result.toolCalls?.[0]?.output).toEqual(rawOutput);
+
+		const { runtime: streamRuntime } = createRuntimeWithTools([tool], 1);
+		streamText
+			.mockReturnValueOnce({
+				stream: makeChunkStream([]),
+				finishReason: Promise.resolve('tool-calls'),
+				usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
+				response: Promise.resolve({
+					messages: [
+						{
+							role: 'assistant',
+							content: [
+								{
+									type: 'tool-call',
+									toolCallId: 'tc-large-stream',
+									toolName: tool.name,
+									args: {},
+								},
+							],
+						},
+					],
+				}),
+				toolCalls: Promise.resolve([
+					{ toolCallId: 'tc-large-stream', toolName: tool.name, input: {} },
+				]),
+			})
+			.mockReturnValueOnce(makeStreamSuccess());
+
+		const { stream } = await streamRuntime.stream('run');
+		const chunks = await collectChunks(stream);
+		const streamResult = chunks.find(
+			(chunk) => chunk.type === 'tool-result' && chunk.toolCallId === 'tc-large-stream',
+		) as (StreamChunk & { type: 'tool-result' }) | undefined;
+
+		expect(streamResult?.output).toEqual(envelope);
+	});
+
+	it('bounds an oversized error without changing its rejected state', async () => {
+		const tool: BuiltTool = {
+			name: 'large_error',
+			description: 'Throw a large error',
+			inputSchema: z.object({}),
+			handler: () => {
+				throw new Error(`ERROR_HEAD${'e'.repeat(MAX_MODEL_TOOL_RESULT_CHARS)}ERROR_TAIL`);
+			},
+		};
+		const { runtime } = createRuntimeWithTools([tool], 1);
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCalls([{ toolCallId: 'tc-error', toolName: tool.name, args: {} }]),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess('recovered'));
+
+		const result = await runtime.generate('run');
+		const toolCall = result.messages
+			.flatMap((message) => ('content' in message ? message.content : []))
+			.find(
+				(content): content is ContentToolCall =>
+					content.type === 'tool-call' && content.toolCallId === 'tc-error',
+			);
+		const envelope = parseEnvelope(toolCall?.state === 'rejected' ? toolCall.error : '');
+
+		expect(result.finishReason).toBe('stop');
+		expect(toolCall?.state).toBe('rejected');
+		expect(JSON.stringify(envelope).length).toBeLessThanOrEqual(MAX_MODEL_TOOL_RESULT_CHARS);
+		expect(envelope.head).toContain('ERROR_HEAD');
+		expect(envelope.tail).toContain('ERROR_TAIL');
+	});
+
+	it('bounds aggregate toMessage text while preserving file content', async () => {
+		const fileData = Buffer.from('file').toString('base64');
+		const textBlockLength = Math.floor(MAX_MODEL_TOOL_RESULT_CHARS / 2);
+		const tool: BuiltTool = {
+			name: 'large_message',
+			description: 'Return a large message',
+			inputSchema: z.object({}),
+			handler: async () => await Promise.resolve({ ok: true }),
+			toMessage: () => ({
+				role: 'assistant',
+				content: [
+					{ type: 'text', text: `MESSAGE_HEAD${'m'.repeat(textBlockLength)}` },
+					{ type: 'file', mediaType: 'text/plain', data: fileData },
+					{ type: 'text', text: `${'n'.repeat(textBlockLength)}MESSAGE_TAIL` },
+				],
+			}),
+		};
+		const { runtime } = createRuntimeWithTools([tool], 1);
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCalls([{ toolCallId: 'tc-message', toolName: tool.name, args: {} }]),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess());
+
+		const result = await runtime.generate('run');
+		const message = result.messages.find(
+			(candidate) =>
+				'content' in candidate &&
+				candidate.content.some((content) => content.type === 'file' && content.data === fileData),
+		);
+		const textBlocks =
+			message && 'content' in message
+				? message.content.filter((content) => content.type === 'text')
+				: [];
+		const fileBlock =
+			message && 'content' in message
+				? message.content.find((content) => content.type === 'file')
+				: undefined;
+		const envelope = parseEnvelope(textBlocks[0]?.text ?? '');
+
+		expect(textBlocks).toHaveLength(1);
+		expect(JSON.stringify(envelope).length).toBeLessThanOrEqual(MAX_MODEL_TOOL_RESULT_CHARS);
+		expect(envelope.head).toContain('MESSAGE_HEAD');
+		expect(envelope.tail).toContain('MESSAGE_TAIL');
+		expect(fileBlock).toMatchObject({ type: 'file', mediaType: 'text/plain', data: fileData });
 	});
 });
