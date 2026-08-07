@@ -136,7 +136,9 @@ function buildDefaultNodes(): INodeTypeData {
 			sourcePath: '',
 		},
 		'n8n-nodes-base.webhook': {
-			type: mock<INodeType>({ description: new WebhookNode().description } as never) as INodeType,
+			// The real node: publishing resolves a webhook node's parameters against its
+			// description, which a mock-wrapped description does not survive.
+			type: new WebhookNode() as unknown as INodeType,
 			sourcePath: '',
 		},
 		// Minimal mocks for node types the package-import fixtures reference at typeVersion 1.
