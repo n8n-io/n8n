@@ -17,6 +17,8 @@ import { useFavoriteNavItems } from '../composables/useFavoriteNavItems';
 import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
 import { WORKFLOW_REVIEW_REQUESTS_VIEW } from '@/features/workflow-reviews/constants';
 import { useWorkflowReviewsFeature } from '@/features/workflow-reviews/composables/useWorkflowReviewsFeature';
+import { BRANCH_SYNC_VIEW } from '@/features/branch-sync/constants';
+import { useBranchSyncFeature } from '@/features/branch-sync/composables/useBranchSyncFeature';
 
 import { hasPermission } from '@/app/utils/rbac/permissions';
 
@@ -134,6 +136,16 @@ const workflowReviews = computed<IMenuItem>(() => ({
 	route: { to: { name: WORKFLOW_REVIEW_REQUESTS_VIEW } },
 	preview: true,
 }));
+
+const { isBranchSyncEnabled: isBranchSyncNavVisible } = useBranchSyncFeature();
+
+const branchSync = computed<IMenuItem>(() => ({
+	id: 'branch-sync',
+	icon: 'git-branch',
+	label: locale.baseText('branchSync.menu.title'),
+	route: { to: { name: BRANCH_SYNC_VIEW } },
+	preview: true,
+}));
 const chat = computed<IMenuItem>(() => ({
 	id: 'chat',
 	icon: 'message-circle',
@@ -197,6 +209,13 @@ onBeforeUnmount(() => {
 				:compact="props.collapsed"
 				:active="activeTabId === 'workflow-reviews'"
 				data-test-id="project-workflow-reviews-menu-item"
+			/>
+			<N8nMenuItem
+				v-if="isBranchSyncNavVisible"
+				:item="branchSync"
+				:compact="props.collapsed"
+				:active="activeTabId === 'branch-sync'"
+				data-test-id="project-branch-sync-menu-item"
 			/>
 			<N8nMenuItem
 				v-if="isChatLinkAvailable"
