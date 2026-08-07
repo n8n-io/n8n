@@ -2,8 +2,8 @@ import { In, type Repository } from '@n8n/typeorm';
 
 import type { WorkflowStepExecution } from './entities';
 import { generateId } from './generate-id';
-import type { JsonValue } from '../common';
-import type { StepStatus } from '../execution/execution.types';
+import { UnexpectedError } from '../common';
+import type { StepSlots, StepStatus } from '../execution/execution.types';
 import {
 	StepNotFoundError,
 	type NewStepRecord,
@@ -18,6 +18,14 @@ export class TypeOrmStepStore implements StepStore {
 
 	async createSteps(records: NewStepRecord[]): Promise<Array<{ id: string; nodeId: string }>> {
 		if (records.length === 0) return [];
+
+		for (const record of records) {
+			if (record.outputs && record.status !== 'completed') {
+				throw new UnexpectedError(
+					`step for node ${record.nodeId} carries outputs but is created ${record.status}; only a step created completed may carry outputs`,
+				);
+			}
+		}
 
 		// Ids are assigned here because the entity's insert hook only runs on class
 		// instances, and these are plain values.
@@ -73,7 +81,7 @@ export class TypeOrmStepStore implements StepStore {
 		};
 	}
 
-	async completeStep(id: string, outputs: JsonValue): Promise<boolean> {
+	async completeStep(id: string, outputs: StepSlots): Promise<boolean> {
 		return await this.transition(id, 'running', 'completed', { outputs });
 	}
 
@@ -93,7 +101,7 @@ export class TypeOrmStepStore implements StepStore {
 		id: string,
 		from: StepStatus,
 		to: StepStatus,
-		fields: { outputs?: JsonValue; error?: StepError } = {},
+		fields: { outputs?: StepSlots; error?: StepError } = {},
 	): Promise<boolean> {
 		const result = await this.repo.update({ id, status: from }, { ...fields, status: to });
 		return result.affected === 1;
@@ -102,8 +110,8 @@ export class TypeOrmStepStore implements StepStore {
 	async loadStepOutputs(
 		executionId: string,
 		nodeIds: string[],
-	): Promise<Record<string, JsonValue | null>> {
-		const outputsByNodeId: Record<string, JsonValue | null> = {};
+	): Promise<Record<string, StepSlots | null>> {
+		const outputsByNodeId: Record<string, StepSlots | null> = {};
 		for (const nodeId of nodeIds) outputsByNodeId[nodeId] = null;
 		if (nodeIds.length === 0) return outputsByNodeId;
 
