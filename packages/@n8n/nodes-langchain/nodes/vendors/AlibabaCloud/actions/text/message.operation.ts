@@ -1,82 +1,16 @@
 import type { Tool } from '@langchain/core/tools';
-import type {
-	IDataObject,
-	INodeProperties,
-	IExecuteFunctions,
-	INodeExecutionData,
-} from 'n8n-workflow';
+import type { INodeProperties, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { accumulateTokenUsage, NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
 import zodToJsonSchema from 'zod-to-json-schema';
 
 import { getConnectedTools } from '@utils/helpers';
 
-import { apiRequest } from '../../transport';
 import type { IMessage, IModelStudioRequestBody } from '../../helpers/interfaces';
+import { fetchModelCatalog, toModalitySet } from '../../helpers/modelCatalog';
+import { apiRequest } from '../../transport';
 import { modelRLC } from '../descriptions';
 
 const properties: INodeProperties[] = [
-	{
-		displayName: 'Model',
-		name: 'modelId',
-		type: 'options',
-		options: [
-			{
-				name: 'Qwen3 Max',
-				value: 'qwen3-max',
-				description: 'Most capable model with best performance',
-			},
-			{
-				name: 'Qwen3 Max (2026-01-23)',
-				value: 'qwen3-max-2026-01-23',
-				description: 'Qwen Max snapshot from 2026-01-23',
-			},
-			{
-				name: 'Qwen3.5 122B-A10B',
-				value: 'qwen3.5-122b-a10b',
-				description: 'MoE model with 122B total / 10B active parameters',
-			},
-			{
-				name: 'Qwen3.5 27B',
-				value: 'qwen3.5-27b',
-				description: 'Dense 27B parameter model',
-			},
-			{
-				name: 'Qwen3.5 35B-A3B',
-				value: 'qwen3.5-35b-a3b',
-				description: 'Small MoE model with 35B total / 3B active parameters',
-			},
-			{
-				name: 'Qwen3.5 397B-A17B',
-				value: 'qwen3.5-397b-a17b',
-				description: 'Large MoE model with 397B total / 17B active parameters',
-			},
-			{
-				name: 'Qwen3.5 Flash',
-				value: 'qwen3.5-flash',
-				description: 'Faster, more cost-effective model',
-			},
-			{
-				name: 'Qwen3.5 Flash (2026-02-23)',
-				value: 'qwen3.5-flash-2026-02-23',
-				description: 'Qwen Flash snapshot from 2026-02-23',
-			},
-			{
-				name: 'Qwen3.5 Plus',
-				value: 'qwen3.5-plus',
-				description: 'Balanced model with good performance and cost',
-			},
-			{
-				name: 'Qwen3.5 Plus (2026-02-15)',
-				value: 'qwen3.5-plus-2026-02-15',
-				description: 'Qwen Plus snapshot from 2026-02-15',
-			},
-		],
-		default: 'qwen3.5-flash',
-		description: 'The model to use for generation',
-		displayOptions: {
-			show: { '@version': [1] },
-		},
-	},
 	{
 		...modelRLC('textModelSearch'),
 		displayOptions: {
@@ -258,7 +192,18 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 const TEXT_ONLY_PATTERNS = ['coder', 'math'];
 
-function isMultimodalModel(model: string): boolean {
+async function isMultimodalModel(this: IExecuteFunctions, model: string): Promise<boolean> {
+	try {
+		const catalog = await fetchModelCatalog.call(this);
+		const entry = catalog.find((m) => m.model === model);
+		if (entry?.inference_metadata) {
+			const input = toModalitySet(entry.inference_metadata.request_modality);
+			return [...input].some((modality) => modality !== 'text');
+		}
+	} catch {
+		// Catalogue unavailable — fall back to the legacy heuristic below.
+	}
+
 	const lower = model.toLowerCase();
 	return !TEXT_ONLY_PATTERNS.some((pattern) => lower.includes(pattern));
 }
@@ -285,10 +230,10 @@ export async function execute(
 		messageValues: IMessage[];
 	};
 	const messages = messagesParam.messageValues || [];
-	const options = this.getNodeParameter('options', itemIndex, {}) as IDataObject;
+	const options = this.getNodeParameter('options', itemIndex, {});
 	const simplify = this.getNodeParameter('simplify', itemIndex, true) as boolean;
 
-	const isMultimodal = isMultimodalModel(model);
+	const isMultimodal = await isMultimodalModel.call(this, model);
 
 	const { tools, connectedTools } = await getTools.call(this);
 
