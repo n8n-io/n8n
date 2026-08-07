@@ -188,11 +188,14 @@ watch(
 			canScrollUp && $style.canScrollUp,
 			canScrollDown && $style.canScrollDown,
 		]"
+		role="grid"
+		:aria-label="i18n.baseText('agentSessions.timeline.events')"
 	>
 		<div
 			v-if="rows.length > 0 && !shouldVirtualizeRows"
 			:class="$style.directRows"
 			data-timeline-scroll-container
+			role="rowgroup"
 		>
 			<template v-for="row in rows" :key="row.id">
 				<div
@@ -200,7 +203,12 @@ watch(
 					data-test-id="timeline-row"
 					:data-timeline-row-id="row.id"
 					:class="$style.rowWrapper"
+					role="row"
+					tabindex="0"
+					:aria-selected="props.selectedIndex === row.index"
 					@click="emit('select', row.index)"
+					@keydown.enter.self.prevent="emit('select', row.index)"
+					@keydown.space.self.prevent="emit('select', row.index)"
 				>
 					<SessionTimelineRow :item="row.item" :selected="props.selectedIndex === row.index" />
 				</div>
@@ -209,8 +217,9 @@ watch(
 					data-test-id="timeline-idle-row"
 					:data-timeline-row-id="row.id"
 					:class="$style.idleRow"
+					role="row"
 				>
-					<span :class="$style.idlePill">
+					<span :class="$style.idlePill" role="gridcell">
 						{{ i18n.baseText('agentSessions.timeline.idle') }} ·
 						{{ formatDuration(row.range.end - row.range.start) }}
 					</span>
@@ -222,6 +231,7 @@ watch(
 			:items="rows"
 			:item-size="ROW_HEIGHT"
 			item-key="id"
+			role="rowgroup"
 		>
 			<template #default="{ item: row }">
 				<div
@@ -229,7 +239,12 @@ watch(
 					data-test-id="timeline-row"
 					:data-timeline-row-id="row.id"
 					:class="$style.rowWrapper"
+					role="row"
+					tabindex="0"
+					:aria-selected="props.selectedIndex === row.index"
 					@click="emit('select', row.index)"
+					@keydown.enter.self.prevent="emit('select', row.index)"
+					@keydown.space.self.prevent="emit('select', row.index)"
 				>
 					<SessionTimelineRow :item="row.item" :selected="props.selectedIndex === row.index" />
 				</div>
@@ -238,8 +253,9 @@ watch(
 					data-test-id="timeline-idle-row"
 					:data-timeline-row-id="row.id"
 					:class="$style.idleRow"
+					role="row"
 				>
-					<span :class="$style.idlePill">
+					<span :class="$style.idlePill" role="gridcell">
 						{{ i18n.baseText('agentSessions.timeline.idle') }} ·
 						{{ formatDuration(row.range.end - row.range.start) }}
 					</span>

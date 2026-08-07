@@ -119,7 +119,7 @@ vi.mock('../components/AgentSubAgentsPanel.vue', () => ({
 vi.mock('../views/AgentSessionsListView.vue', () => ({
 	default: {
 		name: 'AgentSessionsListView',
-		props: ['embedded', 'projectId', 'agentId', 'openSessionInNewTab'],
+		props: ['embedded', 'projectId', 'agentId', 'openSessionInNewTab', 'manageStoreLifecycle'],
 		template: '<div />',
 	},
 }));
@@ -275,7 +275,11 @@ describe('AgentBuilderEditorColumn', () => {
 	it('uses embedded session list spacing inside the Sessions tab panel', async () => {
 		const wrapper = await mountColumn({ activeMainTab: 'sessions' });
 
-		expect(wrapper.findComponent({ name: 'AgentSessionsListView' }).props('embedded')).toBe(true);
+		expect(wrapper.findComponent({ name: 'AgentSessionsListView' }).props()).toMatchObject({
+			embedded: true,
+			manageStoreLifecycle: false,
+			openSessionInNewTab: false,
+		});
 	});
 
 	it('renders the knowledge files panel only on the Knowledge tab', async () => {
