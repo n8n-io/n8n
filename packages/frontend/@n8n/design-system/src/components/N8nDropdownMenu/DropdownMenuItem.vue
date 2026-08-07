@@ -424,6 +424,7 @@ onBeforeUnmount(() => {
 
 <style module lang="scss">
 @use '../../css/common/var';
+@use '../../css/mixins/mixins' as scrollbar-mixins;
 
 .wrapper {
 	display: contents;
@@ -433,17 +434,13 @@ onBeforeUnmount(() => {
 	padding: var(--spacing--4xs);
 	max-height: inherit;
 	overflow-y: auto;
-	scrollbar-width: none;
+	@include scrollbar-mixins.hoverable-scroll-bar;
 	mask-image: linear-gradient(
 		to bottom,
 		black 0,
 		black calc(100% - var(--spacing--sm)),
 		transparent 100%
 	);
-
-	&::-webkit-scrollbar {
-		display: none;
-	}
 }
 
 .section-header {
@@ -521,7 +518,7 @@ onBeforeUnmount(() => {
 	max-width: var(--n8n--dropdown-menu-width);
 	max-height: min(
 		var(--reka-dropdown-menu-content-available-height),
-		var(--n8n-dropdown-sub-max-height, var(--spacing--5xl))
+		var(--n8n-dropdown-sub-max-height, 75vh)
 	);
 	transform-origin: var(--n8n--dropdown--offset--origin-x) var(--n8n--dropdown--offset--origin-y);
 	overflow: hidden;

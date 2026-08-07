@@ -134,6 +134,7 @@ const onUpdateDescription = (workflow: WorkflowListItem) => {
 		name: WORKFLOW_DESCRIPTION_MODAL_KEY,
 		data: {
 			workflowId: workflow.id,
+			workflowName: workflow.name,
 			workflowDescription: workflow.description ?? '',
 			onSave: (updatedDescription: string | null) => {
 				const index = availableWorkflows.value.findIndex((w) => w.id === workflow.id);

@@ -61,6 +61,7 @@ interface ContextEntry {
 }
 
 function handleArtifactClick(artifact: ResourceEntry, e: MouseEvent) {
+	if (artifact.type === 'agent' && artifact.pending) e.preventDefault();
 	if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
 
 	if (artifact.type === 'workflow' && artifact.id) {
@@ -119,6 +120,7 @@ function artifactHref(artifact: ResourceEntry) {
 			: '/data-tables';
 	}
 	if (artifact.type === 'agent') {
+		if (artifact.pending) return '#';
 		return artifact.projectId
 			? `/projects/${artifact.projectId}/agents/${artifact.id}`
 			: '/home/agents';

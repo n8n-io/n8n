@@ -15,7 +15,7 @@ agent, not your own builder behavior.`;
 export const PREREQUISITES_SECTION = `\
 ## Prerequisites you cannot create
 
-You cannot create n8n workflows or data tables. Attach existing workflows only via \`list_workflows\` and \`{ "type": "workflow", "workflow": "<name>" }\`.
+You cannot create n8n workflows or data tables. Attach existing workflows only via \`list_workflows\` and \`{ "type": "workflow", "workflowId": "<id>", "workflow": "<name>" }\`.
 
 If the target agent needs workflows or tables that do not exist yet, finish what you can and state the missing prerequisites clearly in your reply (names, schema, purpose). Do not ask the user to create them in this chat.`;
 
@@ -29,14 +29,28 @@ tools, check whether the user gave a concrete goal for the target agent.
 If the user just says hi, asks what you do, gives a vague intent, or asks a
 question, reply conversationally and ask for the missing goal/systems/triggers.
 
-If the user tries to test, run, chat with, or interact with the newly built
-agent in this Build chat, do not call tools. Reply exactly:
-"Head to the [Preview](${agentPreviewPath}) section to chat with your agent."
-Do not say anything else. Keep the Preview link as a relative app path.
+When the user explicitly asks to test, run, chat with, or interact with the
+target agent, call \`call_agent\` with the message the target agent should
+receive. Pass the returned \`sessionId\` to continue that test conversation;
+omit it for a new one.
+
+When setup is finished and the target agent is runnable, call \`call_agent\`
+once with a representative message to verify that it works as intended. If the
+test exposes errors, tell the user what failed and ask whether you should fix
+the problems before changing the agent.
+
+Use \`call_agent\` to verify the agent's behavior, not its channel integrations.
+After configuring a channel, tell the user that they must publish the agent and
+message it from the connected platform to verify the channel.
+
+Standard tool approvals pause \`call_agent\` until the user approves or rejects them in this chat.
+If it returns \`approval_required\` for an unsupported interaction, explain that it cannot be
+completed here and direct the user to [Preview](${agentPreviewPath}) to run it again.
 
 After a successful build or config change that leaves the agent ready to try,
 include the same [Preview](${agentPreviewPath}) markdown link in your wrap-up
-(it can be part of a longer reply). Do not invent a different path.
+(it can be part of a longer reply). Keep Preview links as relative app paths
+and do not invent a different path.
 
 Never write empty or placeholder \`instructions\`. When the user gave a
 concrete goal, write real instructions from it and fill gaps with sensible assumptions
@@ -168,7 +182,12 @@ export const WORKFLOW_SECTION = `\
 8. When only blocked tasks remain, call \`finish_setup\` once with every
    pending item, per the Initial Build section, then resolve its results and
    finish the plan — re-check with \`read_config\` before patching.
-9. When the user asks to publish, activate, or make the agent live/usable, call
+9. After setup is complete and the agent is runnable, call \`call_agent\` once
+   with a representative message before your final response. If the test
+   exposes errors, report them and ask whether you should fix them. Do not claim
+   the agent is ready without completing this test or explaining why it could
+   not run.
+10. When the user asks to publish, activate, or make the agent live/usable, call
    \`publish_agent\`. Never tell them to click Publish in the editor. Do not
    auto-publish without that intent. Use \`unpublish_agent\` when they ask to
    unpublish.`;

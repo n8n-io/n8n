@@ -8,7 +8,7 @@ import N8nAiActivityStepResultSection from '../N8nAiActivityStepResultSection';
 import N8nAiActivityStepGroup from './AiActivityStepGroup.vue';
 
 export default {
-	title: 'Assistant/AiActivityStep',
+	title: 'Areas/Assistant/AiActivityStep',
 	component: N8nAiActivityStepGroup,
 	parameters: {
 		docs: {
