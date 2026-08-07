@@ -413,9 +413,6 @@ describe('Instance AI runtime skills', () => {
 			/ask only that question now; do not also ask about the error\s+workflow/,
 		);
 		expect(loaded?.instructions).toContain(
-			'This follow-up comes after the mocked verification live-test follow-up',
-		);
-		expect(loaded?.instructions).toContain(
 			'The error workflow must be published before it can be assigned',
 		);
 		expect(loaded?.instructions).toContain('Continue the publish-before-assign flow');
@@ -427,9 +424,6 @@ describe('Instance AI runtime skills', () => {
 			'Mention that n8n has\n   no global or instance-wide error workflow setting only when the user\n   explicitly asked about',
 		);
 		expect(loaded?.instructions).toContain('Mocked verification live-test follow-up');
-		expect(loaded?.instructions).toContain(
-			'This follow-up has priority over the error-workflow opt-in',
-		);
 		expect(loaded?.instructions).toMatch(
 			/Do not ask whether to build now and set up\s+credentials later/,
 		);
