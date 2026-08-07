@@ -38,6 +38,7 @@ let member: User;
 let viewer: User;
 let teamProject: Project;
 let ownerAgent: SuperAgentTest;
+let memberAgent: SuperAgentTest;
 let viewerAgent: SuperAgentTest;
 
 let requestRepository: WorkflowReviewRequestRepository;
@@ -90,6 +91,7 @@ beforeEach(async () => {
 	await linkUserToProject(viewer, teamProject, 'project:viewer');
 
 	ownerAgent = testServer.authAgentFor(owner);
+	memberAgent = testServer.authAgentFor(member);
 	viewerAgent = testServer.authAgentFor(viewer);
 });
 
@@ -227,6 +229,17 @@ describe('Reading the activity feed', () => {
 
 		// 404 rather than 403, matching getDetail's don't-confirm-existence policy
 		await viewerAgent.get(`/workflow-review-requests/${request.id}/activity`).expect(404);
+	});
+
+	// The owner reaches every review through global `workflow:publish`, which short-circuits the
+	// project lookup. Only a project member exercises the project-scoped path.
+	test('shows the feed to a project member who can publish there', async () => {
+		const { request } = await seedReviewInTeamProject(owner);
+		const [id] = await seedEntries(request.id, 1);
+
+		const feed = await getActivity(memberAgent, request.id);
+
+		expect(feed.data.map((entry) => entry.id)).toEqual([id]);
 	});
 
 	test('shows a non-comment activity entry with its details intact and no messages', async () => {

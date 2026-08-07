@@ -106,6 +106,13 @@ describe('useReviewActivityStore', () => {
 		);
 		await store.loadMore();
 
+		// Asserted explicitly: the mock answers the same page whatever it is asked for, so
+		// without this a `loadMore` that dropped the cursor would still look correct here.
+		expect(workflowReviewsApi.fetchWorkflowReviewActivity).toHaveBeenLastCalledWith(
+			expect.anything(),
+			'req-1',
+			{ limit: 25, cursor: 'cursor-1' },
+		);
 		expect(store.entries.map((entry) => entry.id)).toEqual(['1', '2', '3', '4']);
 		expect(store.hasMore).toBe(false);
 		expect(store.nextCursor).toBeNull();
