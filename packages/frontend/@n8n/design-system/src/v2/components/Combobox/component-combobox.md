@@ -89,10 +89,10 @@ The dropdown content defaults to a max height of **500px** with vertical scrolli
 
 **Slots**
 
-- `item`: `{ item: ComboboxOptionBase }` — Replace the default item renderer
-- `item-leading`: `{ item: ComboboxOptionBase; ui: { class: string } }`
-- `item-label`: `{ item: ComboboxOptionBase }`
-- `item-trailing`: `{ item: ComboboxOptionBase; ui: { class: string } }`
+- `item`: `{ item: ComboboxOptionBase }` — Custom item rendering (replaces default `N8nCombobox2Item`). Prefer `#item-leading` / `#item-label` / `#item-trailing` for content customization. If you use `#item`, you must re-render `N8nCombobox2Item` (or an equivalent Reka `ComboboxItem`) yourself — otherwise the option loses selection, highlighting, filtering, and accessibility semantics.
+- `item-leading`: `{ item: ComboboxOptionBase; ui: { class: string } }` — Pass-through to `N8nCombobox2Item`
+- `item-label`: `{ item: ComboboxOptionBase }` — Pass-through to `N8nCombobox2Item`
+- `item-trailing`: `{ item: ComboboxOptionBase; ui: { class: string } }` — Pass-through to `N8nCombobox2Item`
 - `label`: `{ item: ComboboxLabelItem }` — Section heading for `type: 'label'` items
 - `header`: `()` — Content above the scrollable list
 - `footer`: `()` — Content below the scrollable list
@@ -174,6 +174,35 @@ const value = ref('light');
   <N8nCombobox2 v-model="value" :items="items">
     <template #item-leading="{ item, ui }">
       <N8nIcon :icon="item.icon" color="primary" v-bind="ui" />
+    </template>
+  </N8nCombobox2>
+</template>
+```
+
+**Using N8nCombobox2Item for full control**
+
+`#item` replaces the default item renderer entirely (same escape hatch as `N8nSelect2` / `N8nDropdownMenu`). Re-render `N8nCombobox2Item` so the option keeps Reka semantics — use this when you need to compose around the item (e.g. wrap it in a popover), not for ordinary content customization.
+
+```vue
+<script setup lang="ts">
+import { ref } from 'vue';
+import { N8nCombobox2, N8nCombobox2Item, N8nBadge } from '@n8n/design-system';
+
+const items = ref([
+  { label: 'Option 1', value: 'option1' },
+  { label: 'Option 2', value: 'option2' },
+]);
+const value = ref<string | undefined>();
+</script>
+
+<template>
+  <N8nCombobox2 v-model="value" :items="items">
+    <template #item="{ item }">
+      <N8nCombobox2Item v-bind="item">
+        <template #item-trailing="{ ui }">
+          <N8nBadge :class="ui.class">Custom</N8nBadge>
+        </template>
+      </N8nCombobox2Item>
     </template>
   </N8nCombobox2>
 </template>
