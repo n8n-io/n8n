@@ -6,8 +6,6 @@ import type { Router } from 'vue-router';
 import { VIEWS } from '@/app/constants';
 import {
 	handleSessionExpired,
-	resetPriorSuppressionForTests,
-	resetSessionExpiredHandledFlag,
 	restoreNotificationSuppression,
 } from '@/app/utils/handleSessionExpired';
 import { useUsersStore } from '@n8n/stores/users.store';
@@ -21,8 +19,6 @@ describe('handleSessionExpired', () => {
 
 	beforeEach(() => {
 		setActivePinia(createPinia());
-		resetSessionExpiredHandledFlag();
-		resetPriorSuppressionForTests();
 		ownBackendURL = useRootStore().restApiContext.baseUrl;
 	});
 

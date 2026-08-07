@@ -4,25 +4,18 @@ import { useUsersStore } from '@n8n/stores/users.store';
 import type { Router } from 'vue-router';
 
 import { VIEWS } from '@/app/constants';
+import { useSessionExpiryStore } from '@/app/stores/sessionExpiry.store';
 import { getSanitizedCurrentPath } from '@/app/utils/urlUtils';
 
-let handled = false;
-
-// Captured pre-suppress so restoreNotificationSuppression() can restore it, not hardcode false.
-let priorSuppression: { suppressed: boolean; allowErrors: boolean } | undefined;
-
-// Called on successful login so a future expiry is handled again; also used by tests.
+// Called on successful login so a future expiry is handled again.
 export function resetSessionExpiredHandledFlag(): void {
-	handled = false;
-}
-
-export function resetPriorSuppressionForTests(): void {
-	priorSuppression = undefined;
+	useSessionExpiryStore().resetHandled();
 }
 
 // Called from SigninView.vue on a login attempt or on unmount; safe to call more than once.
 export function restoreNotificationSuppression(): void {
 	const notificationsStore = useNotificationsStore();
+	const { priorSuppression } = useSessionExpiryStore();
 	if (priorSuppression) {
 		notificationsStore.setNotificationsSuppressed(priorSuppression.suppressed, {
 			allowErrors: priorSuppression.allowErrors,
@@ -35,18 +28,23 @@ export function restoreNotificationSuppression(): void {
 // currentUser excludes failed-login 401s; handled dedupes concurrent ones; baseURL excludes non-n8n hosts.
 export async function handleSessionExpired(router: Router, baseURL: string): Promise<void> {
 	const usersStore = useUsersStore();
+	const sessionExpiryStore = useSessionExpiryStore();
 
-	if (handled || !usersStore.currentUser || baseURL !== useRootStore().restApiContext.baseUrl) {
+	if (
+		sessionExpiryStore.handled ||
+		!usersStore.currentUser ||
+		baseURL !== useRootStore().restApiContext.baseUrl
+	) {
 		return;
 	}
-	handled = true;
+	sessionExpiryStore.markHandled();
 
 	// Set before any `await` so the triggering request's own toast is suppressed too.
 	const notificationsStore = useNotificationsStore();
-	priorSuppression = {
+	sessionExpiryStore.setPriorSuppression({
 		suppressed: notificationsStore.areNotificationsSuppressed,
 		allowErrors: notificationsStore.allowErrorNotificationsWhenSuppressed,
-	};
+	});
 	notificationsStore.setNotificationsSuppressed(true);
 
 	const redirectPath = getSanitizedCurrentPath();

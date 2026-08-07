@@ -372,9 +372,9 @@ describe('router', () => {
 	});
 
 	// Kept last and self-contained: it logs the shared `currentUser` out for real
-	// and flips module-level state in handleSessionExpired.ts that every other
-	// test in this file implicitly relies on staying logged in, so it restores
-	// both in its own `afterEach` rather than depending on file/test order.
+	// and flips session-expiry store state that every other test in this file
+	// implicitly relies on staying logged in, so it restores both in its own
+	// `afterEach` rather than depending on file/test order.
 	describe('session-expiry redirect (registered on rest-api-client, see router.ts)', () => {
 		afterEach(async () => {
 			resetSessionExpiredHandledFlag();
