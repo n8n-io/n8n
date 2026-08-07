@@ -61,20 +61,20 @@ export function removeDuplicateInputItems(context: IExecuteFunctions, items: INo
 		false,
 	) as boolean;
 
-	let keys = disableDotNotation
-		? Object.keys(items[0].json)
-		: Object.keys(flattenKeys(items[0].json));
+	const keySet = new Set(
+		disableDotNotation ? Object.keys(items[0].json) : Object.keys(flattenKeys(items[0].json)),
+	);
 
 	for (const item of items) {
 		const itemKeys = disableDotNotation
 			? Object.keys(item.json)
 			: Object.keys(flattenKeys(item.json));
 		for (const key of itemKeys) {
-			if (!keys.includes(key)) {
-				keys.push(key);
-			}
+			keySet.add(key);
 		}
 	}
+
+	let keys = [...keySet];
 
 	if (compare === 'allFieldsExcept') {
 		const fieldsToExclude = prepareFieldsArray(
@@ -156,9 +156,8 @@ export function removeDuplicateInputItems(context: IExecuteFunctions, items: INo
 			temp = newItems[index];
 		}
 	}
-	let updatedItems: INodeExecutionData[] = items.filter(
-		(_, index) => !removedIndexes.includes(index),
-	);
+	const removedIndexSet = new Set(removedIndexes);
+	let updatedItems: INodeExecutionData[] = items.filter((_, index) => !removedIndexSet.has(index));
 
 	if (removeOtherFields) {
 		updatedItems = updatedItems.map((item, index) => ({
