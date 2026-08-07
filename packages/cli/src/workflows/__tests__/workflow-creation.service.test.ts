@@ -786,5 +786,20 @@ describe('WorkflowCreationService', () => {
 				{ cause: 'cache down' },
 			);
 		});
+
+		it('still creates the workflow when the auto-expose setting lookup rejects with a non-Error', async () => {
+			mcpSettingsService.getAutoExposeNewWorkflows.mockRejectedValue('cache down');
+			const workflow = makeWorkflow({ settings: {} });
+
+			await expect(
+				workflowCreationService.createWorkflow(user, workflow, { projectId: 'project-1' }),
+			).resolves.not.toThrow();
+
+			expect(workflow.settings?.availableInMCP).toBeUndefined();
+			expect(loggerMock.warn).toHaveBeenCalledWith(
+				'Failed to resolve auto-expose setting for new workflow',
+				{ cause: 'cache down' },
+			);
+		});
 	});
 });
