@@ -233,4 +233,30 @@ describe('parseWithSchema — stripUnknown', () => {
 
 		expect(result.success).toBe(false);
 	});
+
+	it('keeps properties a later anyOf branch declares', async () => {
+		const unionSchema = {
+			anyOf: [
+				strictSchema,
+				{
+					type: 'object',
+					properties: {
+						approved: { type: 'boolean' },
+						answers: { type: 'array', items: { type: 'string' } },
+					},
+					required: ['approved'],
+					additionalProperties: false,
+				},
+			],
+		} as JSONSchema7;
+
+		const result = await parseWithSchema(
+			unionSchema,
+			{ approved: true, answers: ['a'] },
+			{ stripUnknown: true },
+		);
+
+		expect(result.success).toBe(true);
+		if (result.success) expect(result.data).toEqual({ approved: true, answers: ['a'] });
+	});
 });
