@@ -165,6 +165,21 @@ describe('McpSettingsController', () => {
 			expect(result).toEqual({ mcpAccessEnabled: true });
 		});
 
+		test('handles a non-Error rejection from the module registry refresh', async () => {
+			const req = createReq({ mcpAccessEnabled: true }, { user: createUser() });
+			const dto = new UpdateMcpSettingsDto({ mcpAccessEnabled: true });
+
+			mcpSettingsService.setEnabled.mockResolvedValue(undefined);
+			moduleRegistry.refreshModuleSettings.mockRejectedValue('registry unavailable');
+
+			const res = createRes();
+			await controller.updateSettings(req, res, dto);
+
+			expect(logger.warn).toHaveBeenCalledWith('Failed to sync MCP settings to module registry', {
+				cause: 'registry unavailable',
+			});
+		});
+
 		test('rejects updates when MCP settings are managed by env', async () => {
 			instanceSettingsLoaderConfig.mcpManagedByEnv = true;
 			const req = createReq({ mcpAccessEnabled: true });
@@ -226,6 +241,22 @@ describe('McpSettingsController', () => {
 			expect(mcpSettingsService.setEnabled).toHaveBeenCalledWith(true);
 			expect(mcpSettingsService.setAutoExposeNewWorkflows).toHaveBeenCalledWith(false);
 			expect(result).toEqual({ mcpAccessEnabled: true, autoExposeNewWorkflows: false });
+		});
+
+		test('touches only autoExposeNewWorkflows when mcpAccessEnabled is not patched', async () => {
+			const user = createUser();
+			const req = createReq({ autoExposeNewWorkflows: true }, { user });
+			const dto = UpdateMcpSettingsDto.parse({ autoExposeNewWorkflows: true });
+			mcpSettingsService.setAutoExposeNewWorkflows.mockResolvedValue(undefined);
+			moduleRegistry.refreshModuleSettings.mockResolvedValue(null);
+
+			const res = createRes();
+			const result = await controller.updateSettings(req, res, dto);
+
+			expect(mcpSettingsService.setEnabled).not.toHaveBeenCalled();
+			expect(mcpSettingsService.setAutoExposeNewWorkflows).toHaveBeenCalledWith(true);
+			expect(eventService.emit).not.toHaveBeenCalled();
+			expect(result).toEqual({ autoExposeNewWorkflows: true });
 		});
 
 		test('rejects any patch when MCP settings are managed by env', async () => {
