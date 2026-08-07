@@ -132,6 +132,20 @@ export async function executeBatch(
 				};
 			} else {
 				request.actions.push.apply(request.actions, batchResult.actions);
+				// Preserve this item's own previousRequests instead of discarding them.
+				// Without this, buildSteps() only ever sees the first item's tool-call
+				// history in the next round, and (once itemIndex-tagged) every other
+				// item's history would be seen as empty rather than merely stale.
+				const otherPreviousRequests = batchResult.metadata?.previousRequests;
+				if (otherPreviousRequests?.length) {
+					request.metadata = {
+						...request.metadata,
+						previousRequests: [
+							...(request.metadata?.previousRequests ?? []),
+							...otherPreviousRequests,
+						],
+					};
+				}
 			}
 			return;
 		}

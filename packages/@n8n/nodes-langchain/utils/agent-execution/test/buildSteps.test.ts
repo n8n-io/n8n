@@ -276,6 +276,7 @@ describe('buildSteps', () => {
 							type: 'tool_call',
 						},
 						observation: 'previous result',
+						itemIndex: 0,
 					},
 				];
 
@@ -329,6 +330,7 @@ describe('buildSteps', () => {
 							type: 'tool_call',
 						},
 						observation: '4',
+						itemIndex: 0,
 					},
 				];
 
@@ -368,6 +370,46 @@ describe('buildSteps', () => {
 
 				expect(result).toHaveLength(1);
 				expect(result[0]).toEqual(previousRequests[0]);
+			});
+
+			it("should not leak another item's previous requests into this item's steps", () => {
+				// Regression test: when executeBatch merges multiple batch items into one
+				// EngineRequest, previousRequests from every contributing item can end up
+				// in the same metadata array. buildSteps() must only rebuild steps for the
+				// item it was asked to build steps for.
+				const otherItemStep = {
+					action: {
+						tool: 'other_item_tool',
+						toolInput: { input: 'belongs to item 0' },
+						log: 'Other item log',
+						toolCallId: 'call_other_item',
+						type: 'tool_call',
+					},
+					observation: 'other item result',
+					itemIndex: 0,
+				};
+				const thisItemStep = {
+					action: {
+						tool: 'this_item_tool',
+						toolInput: { input: 'belongs to item 1' },
+						log: 'This item log',
+						toolCallId: 'call_this_item',
+						type: 'tool_call',
+					},
+					observation: 'this item result',
+					itemIndex: 1,
+				};
+
+				const response: EngineResponse<RequestResponseMetadata> = {
+					actionResponses: [],
+					metadata: {
+						previousRequests: [otherItemStep, thisItemStep],
+					},
+				};
+
+				const result = buildSteps(response, 1);
+
+				expect(result).toEqual([thisItemStep]);
 			});
 		});
 
