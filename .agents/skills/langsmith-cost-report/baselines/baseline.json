@@ -1,0 +1,2145 @@
+{
+  "experiment": "iai-opus-cache-cost-10-f3e390c4",
+  "sessionId": "f7972d9f-2fc2-4370-9024-afa786a327e4",
+  "datasetId": "12148a6c-f625-4df6-b004-6aa36c6c1213",
+  "traceProject": "instance-ai-evals",
+  "githubRunId": "28646318294",
+  "branch": "master",
+  "iterations": 10,
+  "targetRuns": 120,
+  "uniqueThreads": 60,
+  "evals": [
+    {
+      "testCase": "airtable-split-to-slack",
+      "threads": [
+        {
+          "iteration": 0,
+          "threadId": "9903c6bd-092d-4c57-9292-50862fac6241",
+          "scenarios": [
+            "empty-records",
+            "happy-path"
+          ],
+          "llmSpans": 16,
+          "inputTokens": 1142849,
+          "outputTokens": 5751,
+          "totalTokens": 1148600,
+          "cacheReadTokens": 1080471,
+          "cacheWriteTokens": 62346,
+          "uncachedInputTokens": 32,
+          "cacheHitRate": 0.9454,
+          "costUsd": 1.0738
+        },
+        {
+          "iteration": 1,
+          "threadId": "697e9e7c-b39c-47c1-a8d4-eebeca58b846",
+          "scenarios": [
+            "empty-records",
+            "happy-path"
+          ],
+          "llmSpans": 16,
+          "inputTokens": 1142928,
+          "outputTokens": 5445,
+          "totalTokens": 1148373,
+          "cacheReadTokens": 1080364,
+          "cacheWriteTokens": 62532,
+          "uncachedInputTokens": 32,
+          "cacheHitRate": 0.9453,
+          "costUsd": 1.0673
+        },
+        {
+          "iteration": 2,
+          "threadId": "991effe2-4f4b-4e6e-8887-7bccb92068fc",
+          "scenarios": [
+            "empty-records",
+            "happy-path"
+          ],
+          "llmSpans": 17,
+          "inputTokens": 1268563,
+          "outputTokens": 6576,
+          "totalTokens": 1275139,
+          "cacheReadTokens": 1200264,
+          "cacheWriteTokens": 68265,
+          "uncachedInputTokens": 34,
+          "cacheHitRate": 0.9462,
+          "costUsd": 1.1914
+        },
+        {
+          "iteration": 3,
+          "threadId": "0ae5bd21-eb4c-4dff-8e80-455d5faa1a3b",
+          "scenarios": [
+            "empty-records",
+            "happy-path"
+          ],
+          "llmSpans": 16,
+          "inputTokens": 1142295,
+          "outputTokens": 5828,
+          "totalTokens": 1148123,
+          "cacheReadTokens": 1079872,
+          "cacheWriteTokens": 62391,
+          "uncachedInputTokens": 32,
+          "cacheHitRate": 0.9454,
+          "costUsd": 1.0757
+        },
+        {
+          "iteration": 4,
+          "threadId": "c4605078-15f5-4a78-9e20-d2539d1a4c08",
+          "scenarios": [
+            "empty-records",
+            "happy-path"
+          ],
+          "llmSpans": 17,
+          "inputTokens": 1326310,
+          "outputTokens": 5921,
+          "totalTokens": 1332231,
+          "cacheReadTokens": 1255107,
+          "cacheWriteTokens": 71169,
+          "uncachedInputTokens": 34,
+          "cacheHitRate": 0.9463,
+          "costUsd": 1.2206
+        },
+        {
+          "iteration": 5,
+          "threadId": "b18c82a3-7aff-485e-a388-21e6c4162a6b",
+          "scenarios": [
+            "empty-records",
+            "happy-path"
+          ],
+          "llmSpans": 19,
+          "inputTokens": 1373150,
+          "outputTokens": 6261,
+          "totalTokens": 1379411,
+          "cacheReadTokens": 1309129,
+          "cacheWriteTokens": 63983,
+          "uncachedInputTokens": 38,
+          "cacheHitRate": 0.9534,
+          "costUsd": 1.2112
+        },
+        {
+          "iteration": 6,
+          "threadId": "00894ac0-24cd-4ffd-beb5-d69aab040b69",
+          "scenarios": [
+            "empty-records",
+            "happy-path"
+          ],
+          "llmSpans": 17,
+          "inputTokens": 1268003,
+          "outputTokens": 6698,
+          "totalTokens": 1274701,
+          "cacheReadTokens": 1199721,
+          "cacheWriteTokens": 68248,
+          "uncachedInputTokens": 34,
+          "cacheHitRate": 0.9461,
+          "costUsd": 1.194
+        },
+        {
+          "iteration": 7,
+          "threadId": "d57bf0d3-eb30-4e85-aa95-3ee902fee37b",
+          "scenarios": [
+            "empty-records",
+            "happy-path"
+          ],
+          "llmSpans": 16,
+          "inputTokens": 1143090,
+          "outputTokens": 5764,
+          "totalTokens": 1148854,
+          "cacheReadTokens": 1109615,
+          "cacheWriteTokens": 33443,
+          "uncachedInputTokens": 32,
+          "cacheHitRate": 0.9707,
+          "costUsd": 0.9081
+        },
+        {
+          "iteration": 8,
+          "threadId": "c3d1aa87-b4bb-4188-83f0-0666c1168f43",
+          "scenarios": [
+            "empty-records",
+            "happy-path"
+          ],
+          "llmSpans": 17,
+          "inputTokens": 1290325,
+          "outputTokens": 6295,
+          "totalTokens": 1296620,
+          "cacheReadTokens": 1221570,
+          "cacheWriteTokens": 68721,
+          "uncachedInputTokens": 34,
+          "cacheHitRate": 0.9467,
+          "costUsd": 1.1978
+        },
+        {
+          "iteration": 9,
+          "threadId": "7c8b0dee-5ae8-4f1f-ab21-94f0e27ed16b",
+          "scenarios": [
+            "empty-records",
+            "happy-path"
+          ],
+          "llmSpans": 17,
+          "inputTokens": 1271142,
+          "outputTokens": 5975,
+          "totalTokens": 1277117,
+          "cacheReadTokens": 1203447,
+          "cacheWriteTokens": 67661,
+          "uncachedInputTokens": 34,
+          "cacheHitRate": 0.9467,
+          "costUsd": 1.1741
+        }
+      ]
+    },
+    {
+      "testCase": "notification-router",
+      "threads": [
+        {
+          "iteration": 0,
+          "threadId": "50e15795-1005-4458-9f75-4df3e65f403a",
+          "scenarios": [
+            "high-priority",
+            "low-priority",
+            "medium-priority"
+          ],
+          "llmSpans": 14,
+          "inputTokens": 948815,
+          "outputTokens": 7401,
+          "totalTokens": 956216,
+          "cacheReadTokens": 883088,
+          "cacheWriteTokens": 65699,
+          "uncachedInputTokens": 28,
+          "cacheHitRate": 0.9307,
+          "costUsd": 1.0373
+        },
+        {
+          "iteration": 1,
+          "threadId": "9d025093-285f-4cb2-8bba-8abcfa3e3b16",
+          "scenarios": [
+            "high-priority",
+            "low-priority",
+            "medium-priority"
+          ],
+          "llmSpans": 11,
+          "inputTokens": 712731,
+          "outputTokens": 5071,
+          "totalTokens": 717802,
+          "cacheReadTokens": 649502,
+          "cacheWriteTokens": 63207,
+          "uncachedInputTokens": 22,
+          "cacheHitRate": 0.9113,
+          "costUsd": 0.8467
+        },
+        {
+          "iteration": 2,
+          "threadId": "9b5833a5-b33e-470f-a825-e07ad182fc40",
+          "scenarios": [
+            "high-priority",
+            "low-priority",
+            "medium-priority"
+          ],
+          "llmSpans": 12,
+          "inputTokens": 778890,
+          "outputTokens": 5737,
+          "totalTokens": 784627,
+          "cacheReadTokens": 714693,
+          "cacheWriteTokens": 64173,
+          "uncachedInputTokens": 24,
+          "cacheHitRate": 0.9176,
+          "costUsd": 0.902
+        },
+        {
+          "iteration": 3,
+          "threadId": "662bbc9d-f5d7-4a5e-97b2-8f81b04a1bee",
+          "scenarios": [
+            "high-priority",
+            "low-priority",
+            "medium-priority"
+          ],
+          "llmSpans": 12,
+          "inputTokens": 830451,
+          "outputTokens": 5265,
+          "totalTokens": 835716,
+          "cacheReadTokens": 760422,
+          "cacheWriteTokens": 70005,
+          "uncachedInputTokens": 24,
+          "cacheHitRate": 0.9157,
+          "costUsd": 0.9495
+        },
+        {
+          "iteration": 4,
+          "threadId": "67771025-1f74-425e-8047-8326b0c054b6",
+          "scenarios": [
+            "high-priority",
+            "low-priority",
+            "medium-priority"
+          ],
+          "llmSpans": 12,
+          "inputTokens": 779676,
+          "outputTokens": 5406,
+          "totalTokens": 785082,
+          "cacheReadTokens": 715399,
+          "cacheWriteTokens": 64253,
+          "uncachedInputTokens": 24,
+          "cacheHitRate": 0.9176,
+          "costUsd": 0.8946
+        },
+        {
+          "iteration": 5,
+          "threadId": "f8d75b7b-bfaf-4372-9be8-9537444214b5",
+          "scenarios": [
+            "high-priority",
+            "low-priority",
+            "medium-priority"
+          ],
+          "llmSpans": 13,
+          "inputTokens": 850908,
+          "outputTokens": 4976,
+          "totalTokens": 855884,
+          "cacheReadTokens": 786316,
+          "cacheWriteTokens": 64566,
+          "uncachedInputTokens": 26,
+          "cacheHitRate": 0.9241,
+          "costUsd": 0.9212
+        },
+        {
+          "iteration": 6,
+          "threadId": "4c7017bd-ead9-4b8c-8fd0-ed0fc653e6f5",
+          "scenarios": [
+            "high-priority",
+            "low-priority",
+            "medium-priority"
+          ],
+          "llmSpans": 16,
+          "inputTokens": 1149848,
+          "outputTokens": 6849,
+          "totalTokens": 1156697,
+          "cacheReadTokens": 1085106,
+          "cacheWriteTokens": 64710,
+          "uncachedInputTokens": 32,
+          "cacheHitRate": 0.9437,
+          "costUsd": 1.1184
+        },
+        {
+          "iteration": 7,
+          "threadId": "74fd9ede-e848-448b-bf7c-c7893f502020",
+          "scenarios": [
+            "high-priority",
+            "low-priority",
+            "medium-priority"
+          ],
+          "llmSpans": 10,
+          "inputTokens": 622670,
+          "outputTokens": 5052,
+          "totalTokens": 627722,
+          "cacheReadTokens": 563300,
+          "cacheWriteTokens": 59350,
+          "uncachedInputTokens": 20,
+          "cacheHitRate": 0.9047,
+          "costUsd": 0.779
+        },
+        {
+          "iteration": 8,
+          "threadId": "1e8d93be-99fe-424e-8eec-29cbe94c1cf2",
+          "scenarios": [
+            "high-priority",
+            "low-priority",
+            "medium-priority"
+          ],
+          "llmSpans": 12,
+          "inputTokens": 793288,
+          "outputTokens": 6211,
+          "totalTokens": 799499,
+          "cacheReadTokens": 701951,
+          "cacheWriteTokens": 91313,
+          "uncachedInputTokens": 24,
+          "cacheHitRate": 0.8849,
+          "costUsd": 1.0771
+        },
+        {
+          "iteration": 9,
+          "threadId": "09c3c48b-7ab5-4ea6-8e6a-da26bdaecfba",
+          "scenarios": [
+            "high-priority",
+            "low-priority",
+            "medium-priority"
+          ],
+          "llmSpans": 17,
+          "inputTokens": 1353921,
+          "outputTokens": 12151,
+          "totalTokens": 1366072,
+          "cacheReadTokens": 1272647,
+          "cacheWriteTokens": 81240,
+          "uncachedInputTokens": 34,
+          "cacheHitRate": 0.94,
+          "costUsd": 1.448
+        }
+      ]
+    },
+    {
+      "testCase": "rest-api-data-pipeline",
+      "threads": [
+        {
+          "iteration": 0,
+          "threadId": "a0e3e3d2-a3b4-46bb-842c-b1f6e6d6da45",
+          "scenarios": [
+            "all-filtered",
+            "empty-response",
+            "happy-path"
+          ],
+          "llmSpans": 19,
+          "inputTokens": 1559778,
+          "outputTokens": 11980,
+          "totalTokens": 1571758,
+          "cacheReadTokens": 1487429,
+          "cacheWriteTokens": 72311,
+          "uncachedInputTokens": 38,
+          "cacheHitRate": 0.9536,
+          "costUsd": 1.4953
+        },
+        {
+          "iteration": 1,
+          "threadId": "0599f642-161c-4c65-850e-c5c65bf9e6da",
+          "scenarios": [
+            "all-filtered",
+            "empty-response",
+            "happy-path"
+          ],
+          "llmSpans": 16,
+          "inputTokens": 1240879,
+          "outputTokens": 13985,
+          "totalTokens": 1254864,
+          "cacheReadTokens": 1173736,
+          "cacheWriteTokens": 67111,
+          "uncachedInputTokens": 32,
+          "cacheHitRate": 0.9459,
+          "costUsd": 1.3561
+        },
+        {
+          "iteration": 2,
+          "threadId": "2a05365d-f1d6-43f3-b770-4f45197c2950",
+          "scenarios": [
+            "all-filtered",
+            "empty-response",
+            "happy-path"
+          ],
+          "llmSpans": 21,
+          "inputTokens": 1734464,
+          "outputTokens": 9823,
+          "totalTokens": 1744287,
+          "cacheReadTokens": 1662200,
+          "cacheWriteTokens": 72222,
+          "uncachedInputTokens": 42,
+          "cacheHitRate": 0.9583,
+          "costUsd": 1.5283
+        },
+        {
+          "iteration": 3,
+          "threadId": "b5cb2ba7-711c-42a9-8192-0b037debe3f6",
+          "scenarios": [
+            "all-filtered",
+            "empty-response",
+            "happy-path"
+          ],
+          "llmSpans": 22,
+          "inputTokens": 1797537,
+          "outputTokens": 13361,
+          "totalTokens": 1810898,
+          "cacheReadTokens": 1725706,
+          "cacheWriteTokens": 71787,
+          "uncachedInputTokens": 44,
+          "cacheHitRate": 0.96,
+          "costUsd": 1.6458
+        },
+        {
+          "iteration": 4,
+          "threadId": "9375d62a-cab2-4f07-a54b-7f4fb9d83648",
+          "scenarios": [
+            "all-filtered",
+            "empty-response",
+            "happy-path"
+          ],
+          "llmSpans": 19,
+          "inputTokens": 1525382,
+          "outputTokens": 12350,
+          "totalTokens": 1537732,
+          "cacheReadTokens": 1453829,
+          "cacheWriteTokens": 71515,
+          "uncachedInputTokens": 38,
+          "cacheHitRate": 0.9531,
+          "costUsd": 1.4828
+        },
+        {
+          "iteration": 5,
+          "threadId": "3acf1951-c3d8-4fa8-9131-da00c0df9485",
+          "scenarios": [
+            "all-filtered",
+            "empty-response",
+            "happy-path"
+          ],
+          "llmSpans": 26,
+          "inputTokens": 2122290,
+          "outputTokens": 14370,
+          "totalTokens": 2136660,
+          "cacheReadTokens": 2050024,
+          "cacheWriteTokens": 72214,
+          "uncachedInputTokens": 52,
+          "cacheHitRate": 0.9659,
+          "costUsd": 1.8359
+        },
+        {
+          "iteration": 6,
+          "threadId": "ad18bb56-1f1c-48bf-9c6f-39919b0670be",
+          "scenarios": [
+            "all-filtered",
+            "empty-response",
+            "happy-path"
+          ],
+          "llmSpans": 24,
+          "inputTokens": 2036307,
+          "outputTokens": 18067,
+          "totalTokens": 2054374,
+          "cacheReadTokens": 1960269,
+          "cacheWriteTokens": 75990,
+          "uncachedInputTokens": 48,
+          "cacheHitRate": 0.9627,
+          "costUsd": 1.907
+        },
+        {
+          "iteration": 7,
+          "threadId": "62190a1c-38dc-458d-8c68-923eb660abeb",
+          "scenarios": [
+            "all-filtered",
+            "empty-response",
+            "happy-path"
+          ],
+          "llmSpans": 24,
+          "inputTokens": 2019410,
+          "outputTokens": 10759,
+          "totalTokens": 2030169,
+          "cacheReadTokens": 1974390,
+          "cacheWriteTokens": 44972,
+          "uncachedInputTokens": 48,
+          "cacheHitRate": 0.9777,
+          "costUsd": 1.5375
+        },
+        {
+          "iteration": 8,
+          "threadId": "022a0a0d-4262-43ba-8a26-edead9e26dc6",
+          "scenarios": [
+            "all-filtered",
+            "empty-response",
+            "happy-path"
+          ],
+          "llmSpans": 24,
+          "inputTokens": 2004797,
+          "outputTokens": 12226,
+          "totalTokens": 2017023,
+          "cacheReadTokens": 1929914,
+          "cacheWriteTokens": 74835,
+          "uncachedInputTokens": 48,
+          "cacheHitRate": 0.9626,
+          "costUsd": 1.7386
+        },
+        {
+          "iteration": 9,
+          "threadId": "ffd21c70-78be-4e34-8efd-3e26baf9b2a8",
+          "scenarios": [
+            "all-filtered",
+            "empty-response",
+            "happy-path"
+          ],
+          "llmSpans": 20,
+          "inputTokens": 1648390,
+          "outputTokens": 10846,
+          "totalTokens": 1659236,
+          "cacheReadTokens": 1575437,
+          "cacheWriteTokens": 72913,
+          "uncachedInputTokens": 40,
+          "cacheHitRate": 0.9557,
+          "costUsd": 1.5148
+        }
+      ]
+    },
+    {
+      "testCase": "telegram-chatbot-memory-session",
+      "threads": [
+        {
+          "iteration": 0,
+          "threadId": "69611e22-d8e9-46e7-8663-4a7b0b4c323e",
+          "scenarios": [
+            "distinct-telegram-chat"
+          ],
+          "llmSpans": 9,
+          "inputTokens": 580016,
+          "outputTokens": 2878,
+          "totalTokens": 582894,
+          "cacheReadTokens": 521298,
+          "cacheWriteTokens": 58700,
+          "uncachedInputTokens": 18,
+          "cacheHitRate": 0.8988,
+          "costUsd": 0.6996
+        },
+        {
+          "iteration": 1,
+          "threadId": "3e733efa-a238-4d5d-9350-fdab17f58c07",
+          "scenarios": [
+            "distinct-telegram-chat"
+          ],
+          "llmSpans": 15,
+          "inputTokens": 1091934,
+          "outputTokens": 4223,
+          "totalTokens": 1096157,
+          "cacheReadTokens": 1023938,
+          "cacheWriteTokens": 67966,
+          "uncachedInputTokens": 30,
+          "cacheHitRate": 0.9377,
+          "costUsd": 1.0425
+        },
+        {
+          "iteration": 2,
+          "threadId": "347d06cf-3800-4dcd-a4bd-26c63df0a6b4",
+          "scenarios": [
+            "distinct-telegram-chat"
+          ],
+          "llmSpans": 12,
+          "inputTokens": 797628,
+          "outputTokens": 3749,
+          "totalTokens": 801377,
+          "cacheReadTokens": 737286,
+          "cacheWriteTokens": 60318,
+          "uncachedInputTokens": 24,
+          "cacheHitRate": 0.9243,
+          "costUsd": 0.8395
+        },
+        {
+          "iteration": 3,
+          "threadId": "10be12ac-d1b6-4ae3-bf43-8e56383df345",
+          "scenarios": [
+            "distinct-telegram-chat"
+          ],
+          "llmSpans": 9,
+          "inputTokens": 580117,
+          "outputTokens": 3047,
+          "totalTokens": 583164,
+          "cacheReadTokens": 521572,
+          "cacheWriteTokens": 58527,
+          "uncachedInputTokens": 18,
+          "cacheHitRate": 0.8991,
+          "costUsd": 0.7028
+        },
+        {
+          "iteration": 4,
+          "threadId": "4fbb41f7-68bc-4c06-9172-11fcd8e6df55",
+          "scenarios": [
+            "distinct-telegram-chat"
+          ],
+          "llmSpans": 8,
+          "inputTokens": 511097,
+          "outputTokens": 2775,
+          "totalTokens": 513872,
+          "cacheReadTokens": 452428,
+          "cacheWriteTokens": 58653,
+          "uncachedInputTokens": 16,
+          "cacheHitRate": 0.8852,
+          "costUsd": 0.6623
+        },
+        {
+          "iteration": 5,
+          "threadId": "a753be2a-c560-450d-b10d-0f74719825ba",
+          "scenarios": [
+            "distinct-telegram-chat"
+          ],
+          "llmSpans": 8,
+          "inputTokens": 511383,
+          "outputTokens": 2956,
+          "totalTokens": 514339,
+          "cacheReadTokens": 452824,
+          "cacheWriteTokens": 58543,
+          "uncachedInputTokens": 16,
+          "cacheHitRate": 0.8855,
+          "costUsd": 0.6663
+        },
+        {
+          "iteration": 6,
+          "threadId": "8d3193c9-d17a-4c86-9d05-f06145682495",
+          "scenarios": [
+            "distinct-telegram-chat"
+          ],
+          "llmSpans": 8,
+          "inputTokens": 511354,
+          "outputTokens": 2941,
+          "totalTokens": 514295,
+          "cacheReadTokens": 452802,
+          "cacheWriteTokens": 58536,
+          "uncachedInputTokens": 16,
+          "cacheHitRate": 0.8855,
+          "costUsd": 0.6659
+        },
+        {
+          "iteration": 7,
+          "threadId": "18ee662f-22c2-4851-95e7-49eace0cca6b",
+          "scenarios": [
+            "distinct-telegram-chat"
+          ],
+          "llmSpans": 9,
+          "inputTokens": 601043,
+          "outputTokens": 3044,
+          "totalTokens": 604087,
+          "cacheReadTokens": 538453,
+          "cacheWriteTokens": 62572,
+          "uncachedInputTokens": 18,
+          "cacheHitRate": 0.8959,
+          "costUsd": 0.7365
+        },
+        {
+          "iteration": 8,
+          "threadId": "1f572303-2165-45f7-ad82-5788ada5a07f",
+          "scenarios": [
+            "distinct-telegram-chat"
+          ],
+          "llmSpans": 12,
+          "inputTokens": 857292,
+          "outputTokens": 3701,
+          "totalTokens": 860993,
+          "cacheReadTokens": 789885,
+          "cacheWriteTokens": 67383,
+          "uncachedInputTokens": 24,
+          "cacheHitRate": 0.9214,
+          "costUsd": 0.9087
+        },
+        {
+          "iteration": 9,
+          "threadId": "1634dcc1-8089-4f2a-8269-d13935f2c571",
+          "scenarios": [
+            "distinct-telegram-chat"
+          ],
+          "llmSpans": 9,
+          "inputTokens": 575940,
+          "outputTokens": 2963,
+          "totalTokens": 578903,
+          "cacheReadTokens": 517913,
+          "cacheWriteTokens": 58009,
+          "uncachedInputTokens": 18,
+          "cacheHitRate": 0.8992,
+          "costUsd": 0.6957
+        }
+      ]
+    },
+    {
+      "testCase": "weather-alert",
+      "threads": [
+        {
+          "iteration": 0,
+          "threadId": "1d9fd501-3d52-404b-810e-04cb408c848d",
+          "scenarios": [
+            "happy-path",
+            "rain-not-expected"
+          ],
+          "llmSpans": 14,
+          "inputTokens": 971637,
+          "outputTokens": 4850,
+          "totalTokens": 976487,
+          "cacheReadTokens": 907410,
+          "cacheWriteTokens": 64199,
+          "uncachedInputTokens": 28,
+          "cacheHitRate": 0.9339,
+          "costUsd": 0.9763
+        },
+        {
+          "iteration": 1,
+          "threadId": "a14e3abe-f9dc-4a52-9c03-00b3da90c328",
+          "scenarios": [
+            "happy-path",
+            "rain-not-expected"
+          ],
+          "llmSpans": 16,
+          "inputTokens": 1107883,
+          "outputTokens": 7364,
+          "totalTokens": 1115247,
+          "cacheReadTokens": 1049690,
+          "cacheWriteTokens": 58161,
+          "uncachedInputTokens": 32,
+          "cacheHitRate": 0.9475,
+          "costUsd": 1.0726
+        },
+        {
+          "iteration": 2,
+          "threadId": "1782401a-280e-400e-9654-85daa450dd79",
+          "scenarios": [
+            "happy-path",
+            "rain-not-expected"
+          ],
+          "llmSpans": 16,
+          "inputTokens": 1200064,
+          "outputTokens": 6866,
+          "totalTokens": 1206930,
+          "cacheReadTokens": 1135026,
+          "cacheWriteTokens": 65006,
+          "uncachedInputTokens": 32,
+          "cacheHitRate": 0.9458,
+          "costUsd": 1.1456
+        },
+        {
+          "iteration": 3,
+          "threadId": "26354d23-c02d-4535-8cce-a9ead0fd2ad4",
+          "scenarios": [
+            "happy-path",
+            "rain-not-expected"
+          ],
+          "llmSpans": 21,
+          "inputTokens": 1787264,
+          "outputTokens": 7781,
+          "totalTokens": 1795045,
+          "cacheReadTokens": 1711539,
+          "cacheWriteTokens": 75683,
+          "uncachedInputTokens": 42,
+          "cacheHitRate": 0.9576,
+          "costUsd": 1.5235
+        },
+        {
+          "iteration": 4,
+          "threadId": "b381acd3-6967-45a9-b459-4808c1e14cea",
+          "scenarios": [
+            "happy-path",
+            "rain-not-expected"
+          ],
+          "llmSpans": 13,
+          "inputTokens": 935178,
+          "outputTokens": 5229,
+          "totalTokens": 940407,
+          "cacheReadTokens": 872949,
+          "cacheWriteTokens": 62203,
+          "uncachedInputTokens": 26,
+          "cacheHitRate": 0.9335,
+          "costUsd": 0.9561
+        },
+        {
+          "iteration": 5,
+          "threadId": "06f8af01-d739-461c-9f05-e33dce7bca85",
+          "scenarios": [
+            "happy-path",
+            "rain-not-expected"
+          ],
+          "llmSpans": 11,
+          "inputTokens": 725697,
+          "outputTokens": 7480,
+          "totalTokens": 733177,
+          "cacheReadTokens": 668389,
+          "cacheWriteTokens": 57286,
+          "uncachedInputTokens": 22,
+          "cacheHitRate": 0.921,
+          "costUsd": 0.8793
+        },
+        {
+          "iteration": 6,
+          "threadId": "b2dd849b-c9f9-46c2-ba37-dfd0dd7fade0",
+          "scenarios": [
+            "happy-path",
+            "rain-not-expected"
+          ],
+          "llmSpans": 12,
+          "inputTokens": 814094,
+          "outputTokens": 5130,
+          "totalTokens": 819224,
+          "cacheReadTokens": 753810,
+          "cacheWriteTokens": 60260,
+          "uncachedInputTokens": 24,
+          "cacheHitRate": 0.9259,
+          "costUsd": 0.8819
+        },
+        {
+          "iteration": 7,
+          "threadId": "71bca48c-ddb4-45d9-a6b5-ff9a782c2dbe",
+          "scenarios": [
+            "happy-path",
+            "rain-not-expected"
+          ],
+          "llmSpans": 20,
+          "inputTokens": 1580964,
+          "outputTokens": 8483,
+          "totalTokens": 1589447,
+          "cacheReadTokens": 1513251,
+          "cacheWriteTokens": 67673,
+          "uncachedInputTokens": 40,
+          "cacheHitRate": 0.9572,
+          "costUsd": 1.3919
+        },
+        {
+          "iteration": 8,
+          "threadId": "a80ad478-50f4-4aca-97bd-f3b97aadf9c5",
+          "scenarios": [
+            "happy-path",
+            "rain-not-expected"
+          ],
+          "llmSpans": 12,
+          "inputTokens": 826232,
+          "outputTokens": 5464,
+          "totalTokens": 831696,
+          "cacheReadTokens": 763461,
+          "cacheWriteTokens": 62747,
+          "uncachedInputTokens": 24,
+          "cacheHitRate": 0.924,
+          "costUsd": 0.9106
+        },
+        {
+          "iteration": 9,
+          "threadId": "b14c8fad-07d2-4d16-bde3-fd4e55fe04f5",
+          "scenarios": [
+            "happy-path",
+            "rain-not-expected"
+          ],
+          "llmSpans": 13,
+          "inputTokens": 883265,
+          "outputTokens": 4659,
+          "totalTokens": 887924,
+          "cacheReadTokens": 826300,
+          "cacheWriteTokens": 56939,
+          "uncachedInputTokens": 26,
+          "cacheHitRate": 0.9355,
+          "costUsd": 0.8856
+        }
+      ]
+    },
+    {
+      "testCase": "workflow-data-table",
+      "threads": [
+        {
+          "iteration": 0,
+          "threadId": "29c82d2d-0911-4b36-85e1-afae36eed2a1",
+          "scenarios": [
+            "happy-path"
+          ],
+          "llmSpans": 11,
+          "inputTokens": 695941,
+          "outputTokens": 6216,
+          "totalTokens": 702157,
+          "cacheReadTokens": 641384,
+          "cacheWriteTokens": 54535,
+          "uncachedInputTokens": 22,
+          "cacheHitRate": 0.9216,
+          "costUsd": 0.817
+        },
+        {
+          "iteration": 1,
+          "threadId": "f313fadf-02a3-4649-a548-5e515b90b600",
+          "scenarios": [
+            "happy-path"
+          ],
+          "llmSpans": 13,
+          "inputTokens": 824438,
+          "outputTokens": 7924,
+          "totalTokens": 832362,
+          "cacheReadTokens": 765727,
+          "cacheWriteTokens": 58685,
+          "uncachedInputTokens": 26,
+          "cacheHitRate": 0.9288,
+          "costUsd": 0.9479
+        },
+        {
+          "iteration": 2,
+          "threadId": "dd6510de-5134-4766-bedc-56e5959c3ac0",
+          "scenarios": [
+            "happy-path"
+          ],
+          "llmSpans": 17,
+          "inputTokens": 1189625,
+          "outputTokens": 11096,
+          "totalTokens": 1200721,
+          "cacheReadTokens": 1125754,
+          "cacheWriteTokens": 63837,
+          "uncachedInputTokens": 34,
+          "cacheHitRate": 0.9463,
+          "costUsd": 1.2394
+        },
+        {
+          "iteration": 3,
+          "threadId": "3f3274ee-0982-497e-989e-31fd465cb066",
+          "scenarios": [
+            "happy-path"
+          ],
+          "llmSpans": 17,
+          "inputTokens": 1124722,
+          "outputTokens": 8085,
+          "totalTokens": 1132807,
+          "cacheReadTokens": 1066059,
+          "cacheWriteTokens": 58629,
+          "uncachedInputTokens": 34,
+          "cacheHitRate": 0.9478,
+          "costUsd": 1.1018
+        },
+        {
+          "iteration": 4,
+          "threadId": "2bed7cee-0b2c-41ef-9f66-3670a55a4c59",
+          "scenarios": [
+            "happy-path"
+          ],
+          "llmSpans": 22,
+          "inputTokens": 1454431,
+          "outputTokens": 12126,
+          "totalTokens": 1466557,
+          "cacheReadTokens": 1385501,
+          "cacheWriteTokens": 68886,
+          "uncachedInputTokens": 44,
+          "cacheHitRate": 0.9526,
+          "costUsd": 1.4267
+        },
+        {
+          "iteration": 5,
+          "threadId": "5e1667cf-9995-4775-91b2-6618d5076440",
+          "scenarios": [
+            "happy-path"
+          ],
+          "llmSpans": 14,
+          "inputTokens": 898264,
+          "outputTokens": 8036,
+          "totalTokens": 906300,
+          "cacheReadTokens": 840054,
+          "cacheWriteTokens": 58182,
+          "uncachedInputTokens": 28,
+          "cacheHitRate": 0.9352,
+          "costUsd": 0.9847
+        },
+        {
+          "iteration": 6,
+          "threadId": "6127aff9-3668-456d-a54a-0b6a33e6d322",
+          "scenarios": [
+            "happy-path"
+          ],
+          "llmSpans": 19,
+          "inputTokens": 1339970,
+          "outputTokens": 9538,
+          "totalTokens": 1349508,
+          "cacheReadTokens": 1278023,
+          "cacheWriteTokens": 61909,
+          "uncachedInputTokens": 38,
+          "cacheHitRate": 0.9538,
+          "costUsd": 1.2646
+        },
+        {
+          "iteration": 7,
+          "threadId": "9f306d22-73d7-4884-8819-3ebfd2098e9f",
+          "scenarios": [
+            "happy-path"
+          ],
+          "llmSpans": 21,
+          "inputTokens": 1532244,
+          "outputTokens": 9595,
+          "totalTokens": 1541839,
+          "cacheReadTokens": 1468962,
+          "cacheWriteTokens": 63240,
+          "uncachedInputTokens": 42,
+          "cacheHitRate": 0.9587,
+          "costUsd": 1.3698
+        },
+        {
+          "iteration": 8,
+          "threadId": "2e4dabbe-2019-4256-988e-0b4a55c80d5c",
+          "scenarios": [
+            "happy-path"
+          ],
+          "llmSpans": 16,
+          "inputTokens": 1043258,
+          "outputTokens": 10689,
+          "totalTokens": 1053947,
+          "cacheReadTokens": 984655,
+          "cacheWriteTokens": 58571,
+          "uncachedInputTokens": 32,
+          "cacheHitRate": 0.9438,
+          "costUsd": 1.1258
+        },
+        {
+          "iteration": 9,
+          "threadId": "74fbd448-36bd-46d3-ba38-e80b972ca9f8",
+          "scenarios": [
+            "happy-path"
+          ],
+          "llmSpans": 18,
+          "inputTokens": 1080150,
+          "outputTokens": 9949,
+          "totalTokens": 1090099,
+          "cacheReadTokens": 1016671,
+          "cacheWriteTokens": 63443,
+          "uncachedInputTokens": 36,
+          "cacheHitRate": 0.9412,
+          "costUsd": 1.1538
+        }
+      ]
+    }
+  ],
+  "rows": [
+    {
+      "testCase": "airtable-split-to-slack",
+      "iteration": 0,
+      "threadId": "9903c6bd-092d-4c57-9292-50862fac6241",
+      "scenarios": [
+        "airtable-split-to-slack/empty-records",
+        "airtable-split-to-slack/happy-path"
+      ],
+      "llmSpans": 16,
+      "inputTokens": 1142849,
+      "outputTokens": 5751,
+      "totalTokens": 1148600,
+      "cacheReadTokens": 1080471,
+      "cacheWriteTokens": 62346,
+      "uncachedInputTokens": 32,
+      "cacheHitRate": 0.9454,
+      "costUsd": 1.0738
+    },
+    {
+      "testCase": "airtable-split-to-slack",
+      "iteration": 1,
+      "threadId": "697e9e7c-b39c-47c1-a8d4-eebeca58b846",
+      "scenarios": [
+        "airtable-split-to-slack/empty-records",
+        "airtable-split-to-slack/happy-path"
+      ],
+      "llmSpans": 16,
+      "inputTokens": 1142928,
+      "outputTokens": 5445,
+      "totalTokens": 1148373,
+      "cacheReadTokens": 1080364,
+      "cacheWriteTokens": 62532,
+      "uncachedInputTokens": 32,
+      "cacheHitRate": 0.9453,
+      "costUsd": 1.0673
+    },
+    {
+      "testCase": "airtable-split-to-slack",
+      "iteration": 2,
+      "threadId": "991effe2-4f4b-4e6e-8887-7bccb92068fc",
+      "scenarios": [
+        "airtable-split-to-slack/empty-records",
+        "airtable-split-to-slack/happy-path"
+      ],
+      "llmSpans": 17,
+      "inputTokens": 1268563,
+      "outputTokens": 6576,
+      "totalTokens": 1275139,
+      "cacheReadTokens": 1200264,
+      "cacheWriteTokens": 68265,
+      "uncachedInputTokens": 34,
+      "cacheHitRate": 0.9462,
+      "costUsd": 1.1914
+    },
+    {
+      "testCase": "airtable-split-to-slack",
+      "iteration": 3,
+      "threadId": "0ae5bd21-eb4c-4dff-8e80-455d5faa1a3b",
+      "scenarios": [
+        "airtable-split-to-slack/empty-records",
+        "airtable-split-to-slack/happy-path"
+      ],
+      "llmSpans": 16,
+      "inputTokens": 1142295,
+      "outputTokens": 5828,
+      "totalTokens": 1148123,
+      "cacheReadTokens": 1079872,
+      "cacheWriteTokens": 62391,
+      "uncachedInputTokens": 32,
+      "cacheHitRate": 0.9454,
+      "costUsd": 1.0757
+    },
+    {
+      "testCase": "airtable-split-to-slack",
+      "iteration": 4,
+      "threadId": "c4605078-15f5-4a78-9e20-d2539d1a4c08",
+      "scenarios": [
+        "airtable-split-to-slack/empty-records",
+        "airtable-split-to-slack/happy-path"
+      ],
+      "llmSpans": 17,
+      "inputTokens": 1326310,
+      "outputTokens": 5921,
+      "totalTokens": 1332231,
+      "cacheReadTokens": 1255107,
+      "cacheWriteTokens": 71169,
+      "uncachedInputTokens": 34,
+      "cacheHitRate": 0.9463,
+      "costUsd": 1.2206
+    },
+    {
+      "testCase": "airtable-split-to-slack",
+      "iteration": 5,
+      "threadId": "b18c82a3-7aff-485e-a388-21e6c4162a6b",
+      "scenarios": [
+        "airtable-split-to-slack/empty-records",
+        "airtable-split-to-slack/happy-path"
+      ],
+      "llmSpans": 19,
+      "inputTokens": 1373150,
+      "outputTokens": 6261,
+      "totalTokens": 1379411,
+      "cacheReadTokens": 1309129,
+      "cacheWriteTokens": 63983,
+      "uncachedInputTokens": 38,
+      "cacheHitRate": 0.9534,
+      "costUsd": 1.2112
+    },
+    {
+      "testCase": "airtable-split-to-slack",
+      "iteration": 6,
+      "threadId": "00894ac0-24cd-4ffd-beb5-d69aab040b69",
+      "scenarios": [
+        "airtable-split-to-slack/empty-records",
+        "airtable-split-to-slack/happy-path"
+      ],
+      "llmSpans": 17,
+      "inputTokens": 1268003,
+      "outputTokens": 6698,
+      "totalTokens": 1274701,
+      "cacheReadTokens": 1199721,
+      "cacheWriteTokens": 68248,
+      "uncachedInputTokens": 34,
+      "cacheHitRate": 0.9461,
+      "costUsd": 1.194
+    },
+    {
+      "testCase": "airtable-split-to-slack",
+      "iteration": 7,
+      "threadId": "d57bf0d3-eb30-4e85-aa95-3ee902fee37b",
+      "scenarios": [
+        "airtable-split-to-slack/empty-records",
+        "airtable-split-to-slack/happy-path"
+      ],
+      "llmSpans": 16,
+      "inputTokens": 1143090,
+      "outputTokens": 5764,
+      "totalTokens": 1148854,
+      "cacheReadTokens": 1109615,
+      "cacheWriteTokens": 33443,
+      "uncachedInputTokens": 32,
+      "cacheHitRate": 0.9707,
+      "costUsd": 0.9081
+    },
+    {
+      "testCase": "airtable-split-to-slack",
+      "iteration": 8,
+      "threadId": "c3d1aa87-b4bb-4188-83f0-0666c1168f43",
+      "scenarios": [
+        "airtable-split-to-slack/empty-records",
+        "airtable-split-to-slack/happy-path"
+      ],
+      "llmSpans": 17,
+      "inputTokens": 1290325,
+      "outputTokens": 6295,
+      "totalTokens": 1296620,
+      "cacheReadTokens": 1221570,
+      "cacheWriteTokens": 68721,
+      "uncachedInputTokens": 34,
+      "cacheHitRate": 0.9467,
+      "costUsd": 1.1978
+    },
+    {
+      "testCase": "airtable-split-to-slack",
+      "iteration": 9,
+      "threadId": "7c8b0dee-5ae8-4f1f-ab21-94f0e27ed16b",
+      "scenarios": [
+        "airtable-split-to-slack/empty-records",
+        "airtable-split-to-slack/happy-path"
+      ],
+      "llmSpans": 17,
+      "inputTokens": 1271142,
+      "outputTokens": 5975,
+      "totalTokens": 1277117,
+      "cacheReadTokens": 1203447,
+      "cacheWriteTokens": 67661,
+      "uncachedInputTokens": 34,
+      "cacheHitRate": 0.9467,
+      "costUsd": 1.1741
+    },
+    {
+      "testCase": "notification-router",
+      "iteration": 0,
+      "threadId": "50e15795-1005-4458-9f75-4df3e65f403a",
+      "scenarios": [
+        "notification-router/high-priority",
+        "notification-router/low-priority",
+        "notification-router/medium-priority"
+      ],
+      "llmSpans": 14,
+      "inputTokens": 948815,
+      "outputTokens": 7401,
+      "totalTokens": 956216,
+      "cacheReadTokens": 883088,
+      "cacheWriteTokens": 65699,
+      "uncachedInputTokens": 28,
+      "cacheHitRate": 0.9307,
+      "costUsd": 1.0373
+    },
+    {
+      "testCase": "notification-router",
+      "iteration": 1,
+      "threadId": "9d025093-285f-4cb2-8bba-8abcfa3e3b16",
+      "scenarios": [
+        "notification-router/high-priority",
+        "notification-router/low-priority",
+        "notification-router/medium-priority"
+      ],
+      "llmSpans": 11,
+      "inputTokens": 712731,
+      "outputTokens": 5071,
+      "totalTokens": 717802,
+      "cacheReadTokens": 649502,
+      "cacheWriteTokens": 63207,
+      "uncachedInputTokens": 22,
+      "cacheHitRate": 0.9113,
+      "costUsd": 0.8467
+    },
+    {
+      "testCase": "notification-router",
+      "iteration": 2,
+      "threadId": "9b5833a5-b33e-470f-a825-e07ad182fc40",
+      "scenarios": [
+        "notification-router/high-priority",
+        "notification-router/low-priority",
+        "notification-router/medium-priority"
+      ],
+      "llmSpans": 12,
+      "inputTokens": 778890,
+      "outputTokens": 5737,
+      "totalTokens": 784627,
+      "cacheReadTokens": 714693,
+      "cacheWriteTokens": 64173,
+      "uncachedInputTokens": 24,
+      "cacheHitRate": 0.9176,
+      "costUsd": 0.902
+    },
+    {
+      "testCase": "notification-router",
+      "iteration": 3,
+      "threadId": "662bbc9d-f5d7-4a5e-97b2-8f81b04a1bee",
+      "scenarios": [
+        "notification-router/high-priority",
+        "notification-router/low-priority",
+        "notification-router/medium-priority"
+      ],
+      "llmSpans": 12,
+      "inputTokens": 830451,
+      "outputTokens": 5265,
+      "totalTokens": 835716,
+      "cacheReadTokens": 760422,
+      "cacheWriteTokens": 70005,
+      "uncachedInputTokens": 24,
+      "cacheHitRate": 0.9157,
+      "costUsd": 0.9495
+    },
+    {
+      "testCase": "notification-router",
+      "iteration": 4,
+      "threadId": "67771025-1f74-425e-8047-8326b0c054b6",
+      "scenarios": [
+        "notification-router/high-priority",
+        "notification-router/low-priority",
+        "notification-router/medium-priority"
+      ],
+      "llmSpans": 12,
+      "inputTokens": 779676,
+      "outputTokens": 5406,
+      "totalTokens": 785082,
+      "cacheReadTokens": 715399,
+      "cacheWriteTokens": 64253,
+      "uncachedInputTokens": 24,
+      "cacheHitRate": 0.9176,
+      "costUsd": 0.8946
+    },
+    {
+      "testCase": "notification-router",
+      "iteration": 5,
+      "threadId": "f8d75b7b-bfaf-4372-9be8-9537444214b5",
+      "scenarios": [
+        "notification-router/high-priority",
+        "notification-router/low-priority",
+        "notification-router/medium-priority"
+      ],
+      "llmSpans": 13,
+      "inputTokens": 850908,
+      "outputTokens": 4976,
+      "totalTokens": 855884,
+      "cacheReadTokens": 786316,
+      "cacheWriteTokens": 64566,
+      "uncachedInputTokens": 26,
+      "cacheHitRate": 0.9241,
+      "costUsd": 0.9212
+    },
+    {
+      "testCase": "notification-router",
+      "iteration": 6,
+      "threadId": "4c7017bd-ead9-4b8c-8fd0-ed0fc653e6f5",
+      "scenarios": [
+        "notification-router/high-priority",
+        "notification-router/low-priority",
+        "notification-router/medium-priority"
+      ],
+      "llmSpans": 16,
+      "inputTokens": 1149848,
+      "outputTokens": 6849,
+      "totalTokens": 1156697,
+      "cacheReadTokens": 1085106,
+      "cacheWriteTokens": 64710,
+      "uncachedInputTokens": 32,
+      "cacheHitRate": 0.9437,
+      "costUsd": 1.1184
+    },
+    {
+      "testCase": "notification-router",
+      "iteration": 7,
+      "threadId": "74fd9ede-e848-448b-bf7c-c7893f502020",
+      "scenarios": [
+        "notification-router/high-priority",
+        "notification-router/low-priority",
+        "notification-router/medium-priority"
+      ],
+      "llmSpans": 10,
+      "inputTokens": 622670,
+      "outputTokens": 5052,
+      "totalTokens": 627722,
+      "cacheReadTokens": 563300,
+      "cacheWriteTokens": 59350,
+      "uncachedInputTokens": 20,
+      "cacheHitRate": 0.9047,
+      "costUsd": 0.779
+    },
+    {
+      "testCase": "notification-router",
+      "iteration": 8,
+      "threadId": "1e8d93be-99fe-424e-8eec-29cbe94c1cf2",
+      "scenarios": [
+        "notification-router/high-priority",
+        "notification-router/low-priority",
+        "notification-router/medium-priority"
+      ],
+      "llmSpans": 12,
+      "inputTokens": 793288,
+      "outputTokens": 6211,
+      "totalTokens": 799499,
+      "cacheReadTokens": 701951,
+      "cacheWriteTokens": 91313,
+      "uncachedInputTokens": 24,
+      "cacheHitRate": 0.8849,
+      "costUsd": 1.0771
+    },
+    {
+      "testCase": "notification-router",
+      "iteration": 9,
+      "threadId": "09c3c48b-7ab5-4ea6-8e6a-da26bdaecfba",
+      "scenarios": [
+        "notification-router/high-priority",
+        "notification-router/low-priority",
+        "notification-router/medium-priority"
+      ],
+      "llmSpans": 17,
+      "inputTokens": 1353921,
+      "outputTokens": 12151,
+      "totalTokens": 1366072,
+      "cacheReadTokens": 1272647,
+      "cacheWriteTokens": 81240,
+      "uncachedInputTokens": 34,
+      "cacheHitRate": 0.94,
+      "costUsd": 1.448
+    },
+    {
+      "testCase": "rest-api-data-pipeline",
+      "iteration": 0,
+      "threadId": "a0e3e3d2-a3b4-46bb-842c-b1f6e6d6da45",
+      "scenarios": [
+        "rest-api-data-pipeline/all-filtered",
+        "rest-api-data-pipeline/empty-response",
+        "rest-api-data-pipeline/happy-path"
+      ],
+      "llmSpans": 19,
+      "inputTokens": 1559778,
+      "outputTokens": 11980,
+      "totalTokens": 1571758,
+      "cacheReadTokens": 1487429,
+      "cacheWriteTokens": 72311,
+      "uncachedInputTokens": 38,
+      "cacheHitRate": 0.9536,
+      "costUsd": 1.4953
+    },
+    {
+      "testCase": "rest-api-data-pipeline",
+      "iteration": 1,
+      "threadId": "0599f642-161c-4c65-850e-c5c65bf9e6da",
+      "scenarios": [
+        "rest-api-data-pipeline/all-filtered",
+        "rest-api-data-pipeline/empty-response",
+        "rest-api-data-pipeline/happy-path"
+      ],
+      "llmSpans": 16,
+      "inputTokens": 1240879,
+      "outputTokens": 13985,
+      "totalTokens": 1254864,
+      "cacheReadTokens": 1173736,
+      "cacheWriteTokens": 67111,
+      "uncachedInputTokens": 32,
+      "cacheHitRate": 0.9459,
+      "costUsd": 1.3561
+    },
+    {
+      "testCase": "rest-api-data-pipeline",
+      "iteration": 2,
+      "threadId": "2a05365d-f1d6-43f3-b770-4f45197c2950",
+      "scenarios": [
+        "rest-api-data-pipeline/all-filtered",
+        "rest-api-data-pipeline/empty-response",
+        "rest-api-data-pipeline/happy-path"
+      ],
+      "llmSpans": 21,
+      "inputTokens": 1734464,
+      "outputTokens": 9823,
+      "totalTokens": 1744287,
+      "cacheReadTokens": 1662200,
+      "cacheWriteTokens": 72222,
+      "uncachedInputTokens": 42,
+      "cacheHitRate": 0.9583,
+      "costUsd": 1.5283
+    },
+    {
+      "testCase": "rest-api-data-pipeline",
+      "iteration": 3,
+      "threadId": "b5cb2ba7-711c-42a9-8192-0b037debe3f6",
+      "scenarios": [
+        "rest-api-data-pipeline/all-filtered",
+        "rest-api-data-pipeline/empty-response",
+        "rest-api-data-pipeline/happy-path"
+      ],
+      "llmSpans": 22,
+      "inputTokens": 1797537,
+      "outputTokens": 13361,
+      "totalTokens": 1810898,
+      "cacheReadTokens": 1725706,
+      "cacheWriteTokens": 71787,
+      "uncachedInputTokens": 44,
+      "cacheHitRate": 0.96,
+      "costUsd": 1.6458
+    },
+    {
+      "testCase": "rest-api-data-pipeline",
+      "iteration": 4,
+      "threadId": "9375d62a-cab2-4f07-a54b-7f4fb9d83648",
+      "scenarios": [
+        "rest-api-data-pipeline/all-filtered",
+        "rest-api-data-pipeline/empty-response",
+        "rest-api-data-pipeline/happy-path"
+      ],
+      "llmSpans": 19,
+      "inputTokens": 1525382,
+      "outputTokens": 12350,
+      "totalTokens": 1537732,
+      "cacheReadTokens": 1453829,
+      "cacheWriteTokens": 71515,
+      "uncachedInputTokens": 38,
+      "cacheHitRate": 0.9531,
+      "costUsd": 1.4828
+    },
+    {
+      "testCase": "rest-api-data-pipeline",
+      "iteration": 5,
+      "threadId": "3acf1951-c3d8-4fa8-9131-da00c0df9485",
+      "scenarios": [
+        "rest-api-data-pipeline/all-filtered",
+        "rest-api-data-pipeline/empty-response",
+        "rest-api-data-pipeline/happy-path"
+      ],
+      "llmSpans": 26,
+      "inputTokens": 2122290,
+      "outputTokens": 14370,
+      "totalTokens": 2136660,
+      "cacheReadTokens": 2050024,
+      "cacheWriteTokens": 72214,
+      "uncachedInputTokens": 52,
+      "cacheHitRate": 0.9659,
+      "costUsd": 1.8359
+    },
+    {
+      "testCase": "rest-api-data-pipeline",
+      "iteration": 6,
+      "threadId": "ad18bb56-1f1c-48bf-9c6f-39919b0670be",
+      "scenarios": [
+        "rest-api-data-pipeline/all-filtered",
+        "rest-api-data-pipeline/empty-response",
+        "rest-api-data-pipeline/happy-path"
+      ],
+      "llmSpans": 24,
+      "inputTokens": 2036307,
+      "outputTokens": 18067,
+      "totalTokens": 2054374,
+      "cacheReadTokens": 1960269,
+      "cacheWriteTokens": 75990,
+      "uncachedInputTokens": 48,
+      "cacheHitRate": 0.9627,
+      "costUsd": 1.907
+    },
+    {
+      "testCase": "rest-api-data-pipeline",
+      "iteration": 7,
+      "threadId": "62190a1c-38dc-458d-8c68-923eb660abeb",
+      "scenarios": [
+        "rest-api-data-pipeline/all-filtered",
+        "rest-api-data-pipeline/empty-response",
+        "rest-api-data-pipeline/happy-path"
+      ],
+      "llmSpans": 24,
+      "inputTokens": 2019410,
+      "outputTokens": 10759,
+      "totalTokens": 2030169,
+      "cacheReadTokens": 1974390,
+      "cacheWriteTokens": 44972,
+      "uncachedInputTokens": 48,
+      "cacheHitRate": 0.9777,
+      "costUsd": 1.5375
+    },
+    {
+      "testCase": "rest-api-data-pipeline",
+      "iteration": 8,
+      "threadId": "022a0a0d-4262-43ba-8a26-edead9e26dc6",
+      "scenarios": [
+        "rest-api-data-pipeline/all-filtered",
+        "rest-api-data-pipeline/empty-response",
+        "rest-api-data-pipeline/happy-path"
+      ],
+      "llmSpans": 24,
+      "inputTokens": 2004797,
+      "outputTokens": 12226,
+      "totalTokens": 2017023,
+      "cacheReadTokens": 1929914,
+      "cacheWriteTokens": 74835,
+      "uncachedInputTokens": 48,
+      "cacheHitRate": 0.9626,
+      "costUsd": 1.7386
+    },
+    {
+      "testCase": "rest-api-data-pipeline",
+      "iteration": 9,
+      "threadId": "ffd21c70-78be-4e34-8efd-3e26baf9b2a8",
+      "scenarios": [
+        "rest-api-data-pipeline/all-filtered",
+        "rest-api-data-pipeline/empty-response",
+        "rest-api-data-pipeline/happy-path"
+      ],
+      "llmSpans": 20,
+      "inputTokens": 1648390,
+      "outputTokens": 10846,
+      "totalTokens": 1659236,
+      "cacheReadTokens": 1575437,
+      "cacheWriteTokens": 72913,
+      "uncachedInputTokens": 40,
+      "cacheHitRate": 0.9557,
+      "costUsd": 1.5148
+    },
+    {
+      "testCase": "telegram-chatbot-memory-session",
+      "iteration": 0,
+      "threadId": "69611e22-d8e9-46e7-8663-4a7b0b4c323e",
+      "scenarios": [
+        "telegram-chatbot-memory-session/distinct-telegram-chat"
+      ],
+      "llmSpans": 9,
+      "inputTokens": 580016,
+      "outputTokens": 2878,
+      "totalTokens": 582894,
+      "cacheReadTokens": 521298,
+      "cacheWriteTokens": 58700,
+      "uncachedInputTokens": 18,
+      "cacheHitRate": 0.8988,
+      "costUsd": 0.6996
+    },
+    {
+      "testCase": "telegram-chatbot-memory-session",
+      "iteration": 1,
+      "threadId": "3e733efa-a238-4d5d-9350-fdab17f58c07",
+      "scenarios": [
+        "telegram-chatbot-memory-session/distinct-telegram-chat"
+      ],
+      "llmSpans": 15,
+      "inputTokens": 1091934,
+      "outputTokens": 4223,
+      "totalTokens": 1096157,
+      "cacheReadTokens": 1023938,
+      "cacheWriteTokens": 67966,
+      "uncachedInputTokens": 30,
+      "cacheHitRate": 0.9377,
+      "costUsd": 1.0425
+    },
+    {
+      "testCase": "telegram-chatbot-memory-session",
+      "iteration": 2,
+      "threadId": "347d06cf-3800-4dcd-a4bd-26c63df0a6b4",
+      "scenarios": [
+        "telegram-chatbot-memory-session/distinct-telegram-chat"
+      ],
+      "llmSpans": 12,
+      "inputTokens": 797628,
+      "outputTokens": 3749,
+      "totalTokens": 801377,
+      "cacheReadTokens": 737286,
+      "cacheWriteTokens": 60318,
+      "uncachedInputTokens": 24,
+      "cacheHitRate": 0.9243,
+      "costUsd": 0.8395
+    },
+    {
+      "testCase": "telegram-chatbot-memory-session",
+      "iteration": 3,
+      "threadId": "10be12ac-d1b6-4ae3-bf43-8e56383df345",
+      "scenarios": [
+        "telegram-chatbot-memory-session/distinct-telegram-chat"
+      ],
+      "llmSpans": 9,
+      "inputTokens": 580117,
+      "outputTokens": 3047,
+      "totalTokens": 583164,
+      "cacheReadTokens": 521572,
+      "cacheWriteTokens": 58527,
+      "uncachedInputTokens": 18,
+      "cacheHitRate": 0.8991,
+      "costUsd": 0.7028
+    },
+    {
+      "testCase": "telegram-chatbot-memory-session",
+      "iteration": 4,
+      "threadId": "4fbb41f7-68bc-4c06-9172-11fcd8e6df55",
+      "scenarios": [
+        "telegram-chatbot-memory-session/distinct-telegram-chat"
+      ],
+      "llmSpans": 8,
+      "inputTokens": 511097,
+      "outputTokens": 2775,
+      "totalTokens": 513872,
+      "cacheReadTokens": 452428,
+      "cacheWriteTokens": 58653,
+      "uncachedInputTokens": 16,
+      "cacheHitRate": 0.8852,
+      "costUsd": 0.6623
+    },
+    {
+      "testCase": "telegram-chatbot-memory-session",
+      "iteration": 5,
+      "threadId": "a753be2a-c560-450d-b10d-0f74719825ba",
+      "scenarios": [
+        "telegram-chatbot-memory-session/distinct-telegram-chat"
+      ],
+      "llmSpans": 8,
+      "inputTokens": 511383,
+      "outputTokens": 2956,
+      "totalTokens": 514339,
+      "cacheReadTokens": 452824,
+      "cacheWriteTokens": 58543,
+      "uncachedInputTokens": 16,
+      "cacheHitRate": 0.8855,
+      "costUsd": 0.6663
+    },
+    {
+      "testCase": "telegram-chatbot-memory-session",
+      "iteration": 6,
+      "threadId": "8d3193c9-d17a-4c86-9d05-f06145682495",
+      "scenarios": [
+        "telegram-chatbot-memory-session/distinct-telegram-chat"
+      ],
+      "llmSpans": 8,
+      "inputTokens": 511354,
+      "outputTokens": 2941,
+      "totalTokens": 514295,
+      "cacheReadTokens": 452802,
+      "cacheWriteTokens": 58536,
+      "uncachedInputTokens": 16,
+      "cacheHitRate": 0.8855,
+      "costUsd": 0.6659
+    },
+    {
+      "testCase": "telegram-chatbot-memory-session",
+      "iteration": 7,
+      "threadId": "18ee662f-22c2-4851-95e7-49eace0cca6b",
+      "scenarios": [
+        "telegram-chatbot-memory-session/distinct-telegram-chat"
+      ],
+      "llmSpans": 9,
+      "inputTokens": 601043,
+      "outputTokens": 3044,
+      "totalTokens": 604087,
+      "cacheReadTokens": 538453,
+      "cacheWriteTokens": 62572,
+      "uncachedInputTokens": 18,
+      "cacheHitRate": 0.8959,
+      "costUsd": 0.7365
+    },
+    {
+      "testCase": "telegram-chatbot-memory-session",
+      "iteration": 8,
+      "threadId": "1f572303-2165-45f7-ad82-5788ada5a07f",
+      "scenarios": [
+        "telegram-chatbot-memory-session/distinct-telegram-chat"
+      ],
+      "llmSpans": 12,
+      "inputTokens": 857292,
+      "outputTokens": 3701,
+      "totalTokens": 860993,
+      "cacheReadTokens": 789885,
+      "cacheWriteTokens": 67383,
+      "uncachedInputTokens": 24,
+      "cacheHitRate": 0.9214,
+      "costUsd": 0.9087
+    },
+    {
+      "testCase": "telegram-chatbot-memory-session",
+      "iteration": 9,
+      "threadId": "1634dcc1-8089-4f2a-8269-d13935f2c571",
+      "scenarios": [
+        "telegram-chatbot-memory-session/distinct-telegram-chat"
+      ],
+      "llmSpans": 9,
+      "inputTokens": 575940,
+      "outputTokens": 2963,
+      "totalTokens": 578903,
+      "cacheReadTokens": 517913,
+      "cacheWriteTokens": 58009,
+      "uncachedInputTokens": 18,
+      "cacheHitRate": 0.8992,
+      "costUsd": 0.6957
+    },
+    {
+      "testCase": "weather-alert",
+      "iteration": 0,
+      "threadId": "1d9fd501-3d52-404b-810e-04cb408c848d",
+      "scenarios": [
+        "weather-alert/happy-path",
+        "weather-alert/rain-not-expected"
+      ],
+      "llmSpans": 14,
+      "inputTokens": 971637,
+      "outputTokens": 4850,
+      "totalTokens": 976487,
+      "cacheReadTokens": 907410,
+      "cacheWriteTokens": 64199,
+      "uncachedInputTokens": 28,
+      "cacheHitRate": 0.9339,
+      "costUsd": 0.9763
+    },
+    {
+      "testCase": "weather-alert",
+      "iteration": 1,
+      "threadId": "a14e3abe-f9dc-4a52-9c03-00b3da90c328",
+      "scenarios": [
+        "weather-alert/happy-path",
+        "weather-alert/rain-not-expected"
+      ],
+      "llmSpans": 16,
+      "inputTokens": 1107883,
+      "outputTokens": 7364,
+      "totalTokens": 1115247,
+      "cacheReadTokens": 1049690,
+      "cacheWriteTokens": 58161,
+      "uncachedInputTokens": 32,
+      "cacheHitRate": 0.9475,
+      "costUsd": 1.0726
+    },
+    {
+      "testCase": "weather-alert",
+      "iteration": 2,
+      "threadId": "1782401a-280e-400e-9654-85daa450dd79",
+      "scenarios": [
+        "weather-alert/happy-path",
+        "weather-alert/rain-not-expected"
+      ],
+      "llmSpans": 16,
+      "inputTokens": 1200064,
+      "outputTokens": 6866,
+      "totalTokens": 1206930,
+      "cacheReadTokens": 1135026,
+      "cacheWriteTokens": 65006,
+      "uncachedInputTokens": 32,
+      "cacheHitRate": 0.9458,
+      "costUsd": 1.1456
+    },
+    {
+      "testCase": "weather-alert",
+      "iteration": 3,
+      "threadId": "26354d23-c02d-4535-8cce-a9ead0fd2ad4",
+      "scenarios": [
+        "weather-alert/happy-path",
+        "weather-alert/rain-not-expected"
+      ],
+      "llmSpans": 21,
+      "inputTokens": 1787264,
+      "outputTokens": 7781,
+      "totalTokens": 1795045,
+      "cacheReadTokens": 1711539,
+      "cacheWriteTokens": 75683,
+      "uncachedInputTokens": 42,
+      "cacheHitRate": 0.9576,
+      "costUsd": 1.5235
+    },
+    {
+      "testCase": "weather-alert",
+      "iteration": 4,
+      "threadId": "b381acd3-6967-45a9-b459-4808c1e14cea",
+      "scenarios": [
+        "weather-alert/happy-path",
+        "weather-alert/rain-not-expected"
+      ],
+      "llmSpans": 13,
+      "inputTokens": 935178,
+      "outputTokens": 5229,
+      "totalTokens": 940407,
+      "cacheReadTokens": 872949,
+      "cacheWriteTokens": 62203,
+      "uncachedInputTokens": 26,
+      "cacheHitRate": 0.9335,
+      "costUsd": 0.9561
+    },
+    {
+      "testCase": "weather-alert",
+      "iteration": 5,
+      "threadId": "06f8af01-d739-461c-9f05-e33dce7bca85",
+      "scenarios": [
+        "weather-alert/happy-path",
+        "weather-alert/rain-not-expected"
+      ],
+      "llmSpans": 11,
+      "inputTokens": 725697,
+      "outputTokens": 7480,
+      "totalTokens": 733177,
+      "cacheReadTokens": 668389,
+      "cacheWriteTokens": 57286,
+      "uncachedInputTokens": 22,
+      "cacheHitRate": 0.921,
+      "costUsd": 0.8793
+    },
+    {
+      "testCase": "weather-alert",
+      "iteration": 6,
+      "threadId": "b2dd849b-c9f9-46c2-ba37-dfd0dd7fade0",
+      "scenarios": [
+        "weather-alert/happy-path",
+        "weather-alert/rain-not-expected"
+      ],
+      "llmSpans": 12,
+      "inputTokens": 814094,
+      "outputTokens": 5130,
+      "totalTokens": 819224,
+      "cacheReadTokens": 753810,
+      "cacheWriteTokens": 60260,
+      "uncachedInputTokens": 24,
+      "cacheHitRate": 0.9259,
+      "costUsd": 0.8819
+    },
+    {
+      "testCase": "weather-alert",
+      "iteration": 7,
+      "threadId": "71bca48c-ddb4-45d9-a6b5-ff9a782c2dbe",
+      "scenarios": [
+        "weather-alert/happy-path",
+        "weather-alert/rain-not-expected"
+      ],
+      "llmSpans": 20,
+      "inputTokens": 1580964,
+      "outputTokens": 8483,
+      "totalTokens": 1589447,
+      "cacheReadTokens": 1513251,
+      "cacheWriteTokens": 67673,
+      "uncachedInputTokens": 40,
+      "cacheHitRate": 0.9572,
+      "costUsd": 1.3919
+    },
+    {
+      "testCase": "weather-alert",
+      "iteration": 8,
+      "threadId": "a80ad478-50f4-4aca-97bd-f3b97aadf9c5",
+      "scenarios": [
+        "weather-alert/happy-path",
+        "weather-alert/rain-not-expected"
+      ],
+      "llmSpans": 12,
+      "inputTokens": 826232,
+      "outputTokens": 5464,
+      "totalTokens": 831696,
+      "cacheReadTokens": 763461,
+      "cacheWriteTokens": 62747,
+      "uncachedInputTokens": 24,
+      "cacheHitRate": 0.924,
+      "costUsd": 0.9106
+    },
+    {
+      "testCase": "weather-alert",
+      "iteration": 9,
+      "threadId": "b14c8fad-07d2-4d16-bde3-fd4e55fe04f5",
+      "scenarios": [
+        "weather-alert/happy-path",
+        "weather-alert/rain-not-expected"
+      ],
+      "llmSpans": 13,
+      "inputTokens": 883265,
+      "outputTokens": 4659,
+      "totalTokens": 887924,
+      "cacheReadTokens": 826300,
+      "cacheWriteTokens": 56939,
+      "uncachedInputTokens": 26,
+      "cacheHitRate": 0.9355,
+      "costUsd": 0.8856
+    },
+    {
+      "testCase": "workflow-data-table",
+      "iteration": 0,
+      "threadId": "29c82d2d-0911-4b36-85e1-afae36eed2a1",
+      "scenarios": [
+        "workflow-data-table/happy-path"
+      ],
+      "llmSpans": 11,
+      "inputTokens": 695941,
+      "outputTokens": 6216,
+      "totalTokens": 702157,
+      "cacheReadTokens": 641384,
+      "cacheWriteTokens": 54535,
+      "uncachedInputTokens": 22,
+      "cacheHitRate": 0.9216,
+      "costUsd": 0.817
+    },
+    {
+      "testCase": "workflow-data-table",
+      "iteration": 1,
+      "threadId": "f313fadf-02a3-4649-a548-5e515b90b600",
+      "scenarios": [
+        "workflow-data-table/happy-path"
+      ],
+      "llmSpans": 13,
+      "inputTokens": 824438,
+      "outputTokens": 7924,
+      "totalTokens": 832362,
+      "cacheReadTokens": 765727,
+      "cacheWriteTokens": 58685,
+      "uncachedInputTokens": 26,
+      "cacheHitRate": 0.9288,
+      "costUsd": 0.9479
+    },
+    {
+      "testCase": "workflow-data-table",
+      "iteration": 2,
+      "threadId": "dd6510de-5134-4766-bedc-56e5959c3ac0",
+      "scenarios": [
+        "workflow-data-table/happy-path"
+      ],
+      "llmSpans": 17,
+      "inputTokens": 1189625,
+      "outputTokens": 11096,
+      "totalTokens": 1200721,
+      "cacheReadTokens": 1125754,
+      "cacheWriteTokens": 63837,
+      "uncachedInputTokens": 34,
+      "cacheHitRate": 0.9463,
+      "costUsd": 1.2394
+    },
+    {
+      "testCase": "workflow-data-table",
+      "iteration": 3,
+      "threadId": "3f3274ee-0982-497e-989e-31fd465cb066",
+      "scenarios": [
+        "workflow-data-table/happy-path"
+      ],
+      "llmSpans": 17,
+      "inputTokens": 1124722,
+      "outputTokens": 8085,
+      "totalTokens": 1132807,
+      "cacheReadTokens": 1066059,
+      "cacheWriteTokens": 58629,
+      "uncachedInputTokens": 34,
+      "cacheHitRate": 0.9478,
+      "costUsd": 1.1018
+    },
+    {
+      "testCase": "workflow-data-table",
+      "iteration": 4,
+      "threadId": "2bed7cee-0b2c-41ef-9f66-3670a55a4c59",
+      "scenarios": [
+        "workflow-data-table/happy-path"
+      ],
+      "llmSpans": 22,
+      "inputTokens": 1454431,
+      "outputTokens": 12126,
+      "totalTokens": 1466557,
+      "cacheReadTokens": 1385501,
+      "cacheWriteTokens": 68886,
+      "uncachedInputTokens": 44,
+      "cacheHitRate": 0.9526,
+      "costUsd": 1.4267
+    },
+    {
+      "testCase": "workflow-data-table",
+      "iteration": 5,
+      "threadId": "5e1667cf-9995-4775-91b2-6618d5076440",
+      "scenarios": [
+        "workflow-data-table/happy-path"
+      ],
+      "llmSpans": 14,
+      "inputTokens": 898264,
+      "outputTokens": 8036,
+      "totalTokens": 906300,
+      "cacheReadTokens": 840054,
+      "cacheWriteTokens": 58182,
+      "uncachedInputTokens": 28,
+      "cacheHitRate": 0.9352,
+      "costUsd": 0.9847
+    },
+    {
+      "testCase": "workflow-data-table",
+      "iteration": 6,
+      "threadId": "6127aff9-3668-456d-a54a-0b6a33e6d322",
+      "scenarios": [
+        "workflow-data-table/happy-path"
+      ],
+      "llmSpans": 19,
+      "inputTokens": 1339970,
+      "outputTokens": 9538,
+      "totalTokens": 1349508,
+      "cacheReadTokens": 1278023,
+      "cacheWriteTokens": 61909,
+      "uncachedInputTokens": 38,
+      "cacheHitRate": 0.9538,
+      "costUsd": 1.2646
+    },
+    {
+      "testCase": "workflow-data-table",
+      "iteration": 7,
+      "threadId": "9f306d22-73d7-4884-8819-3ebfd2098e9f",
+      "scenarios": [
+        "workflow-data-table/happy-path"
+      ],
+      "llmSpans": 21,
+      "inputTokens": 1532244,
+      "outputTokens": 9595,
+      "totalTokens": 1541839,
+      "cacheReadTokens": 1468962,
+      "cacheWriteTokens": 63240,
+      "uncachedInputTokens": 42,
+      "cacheHitRate": 0.9587,
+      "costUsd": 1.3698
+    },
+    {
+      "testCase": "workflow-data-table",
+      "iteration": 8,
+      "threadId": "2e4dabbe-2019-4256-988e-0b4a55c80d5c",
+      "scenarios": [
+        "workflow-data-table/happy-path"
+      ],
+      "llmSpans": 16,
+      "inputTokens": 1043258,
+      "outputTokens": 10689,
+      "totalTokens": 1053947,
+      "cacheReadTokens": 984655,
+      "cacheWriteTokens": 58571,
+      "uncachedInputTokens": 32,
+      "cacheHitRate": 0.9438,
+      "costUsd": 1.1258
+    },
+    {
+      "testCase": "workflow-data-table",
+      "iteration": 9,
+      "threadId": "74fbd448-36bd-46d3-ba38-e80b972ca9f8",
+      "scenarios": [
+        "workflow-data-table/happy-path"
+      ],
+      "llmSpans": 18,
+      "inputTokens": 1080150,
+      "outputTokens": 9949,
+      "totalTokens": 1090099,
+      "cacheReadTokens": 1016671,
+      "cacheWriteTokens": 63443,
+      "uncachedInputTokens": 36,
+      "cacheHitRate": 0.9412,
+      "costUsd": 1.1538
+    }
+  ]
+}
