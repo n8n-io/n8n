@@ -192,6 +192,40 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 			expect(firstProcessed).toBe(1);
 			expect(secondProcessed).toBe(1);
 		});
+
+		test('runs a follow-up pass when a drain is requested while one is in flight', async () => {
+			const lateRecord = makeRecord({ id: 2 });
+			let releaseClaim!: () => void;
+			const claimGate = new Promise<void>((resolve) => {
+				releaseClaim = resolve;
+			});
+			// First pass: the only worker is already past claiming — it hangs on a
+			// claim that resolves to null, mirroring a record inserted just after
+			// the workers exhausted the queue. Plain mockImplementation (not *Once)
+			// so no unconsumed once-stubs leak into later tests.
+			const laterClaims = [lateRecord];
+			let isFirstClaim = true;
+			outboxRepository.claimNextPendingRecord.mockImplementation(async () => {
+				if (isFirstClaim) {
+					isFirstClaim = false;
+					await claimGate;
+					return null;
+				}
+				return laterClaims.shift() ?? null;
+			});
+			consumer.startPolling();
+
+			const first = consumer.drainPending();
+			// A wake-up landing mid-pass must not be swallowed by coalescing: its
+			// record would otherwise sit pending until the poll fallback.
+			const wake = consumer.wakeUp();
+
+			releaseClaim();
+			await Promise.all([first, wake]);
+
+			expect(applier.apply).toHaveBeenCalledTimes(1);
+			expect(applier.apply).toHaveBeenCalledWith(lateRecord);
+		});
 	});
 
 	describe('parallel drains', () => {
