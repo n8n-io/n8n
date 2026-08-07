@@ -15,6 +15,7 @@ import {
 import type { Response } from 'express';
 
 import { EventService } from '@/events/event.service';
+import { assertCanManageRoleType } from '@/services/role-authorization';
 import { RoleService } from '@/services/role.service';
 
 @PublicApiController('/roles')
@@ -38,7 +39,7 @@ export class RolesPublicController {
 		_res: Response,
 		@Body createRole: CreateRoleDto,
 	): Promise<RolePublicDto> {
-		this.roleService.assertCanManageRoleType(req.user, createRole.roleType);
+		assertCanManageRoleType(req.user, createRole.roleType);
 
 		const role = await this.roleService.createCustomRole(createRole);
 

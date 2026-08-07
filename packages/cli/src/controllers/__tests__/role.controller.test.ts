@@ -12,8 +12,6 @@ describe('RoleController', () => {
 	const roleService = mock<RoleService>();
 	const controller = new RoleController(roleService, eventService);
 
-	// The authorization guard lives on the (mocked) role service, so it never
-	// throws here and these tests can focus on events.
 	const managerRequest = () =>
 		mock<AuthenticatedRequest>({
 			user: { id: '123', role: { scopes: [{ slug: 'role:manage' }] } },
