@@ -3502,6 +3502,15 @@ describe('Validation', () => {
 			expect(warnings).toHaveLength(1);
 		});
 
+		it('handles langchain tool-prefixed node types', () => {
+			const warnings = getToolNameWarnings(
+				'http_request_fetch',
+				'@n8n/n8n-nodes-langchain.toolHttpRequest',
+			);
+
+			expect(warnings).toHaveLength(1);
+		});
+
 		it('does not warn for concise snake_case action names', () => {
 			expect(getToolNameWarnings('get_email')).toHaveLength(0);
 		});

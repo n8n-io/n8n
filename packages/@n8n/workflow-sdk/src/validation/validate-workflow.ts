@@ -1275,13 +1275,14 @@ function validateIfBranchConnections(json: WorkflowJSON, warnings: ValidationWar
 
 const SNAKE_CASE_TOOL_NAME = /^[a-z][a-z0-9_]*$/;
 
-/** `n8n-nodes-base.gmailTool` -> `gmail`; `httpRequestTool` -> `http_request`. */
+/** `gmailTool` -> `gmail`; `httpRequestTool` and langchain `toolHttpRequest` -> `http_request`. */
 function toolServicePrefix(nodeType: string): string | undefined {
 	const shortType = nodeType.split('.').pop();
 	if (!shortType) return undefined;
 	const withoutSuffix = shortType.endsWith('Tool') ? shortType.slice(0, -4) : shortType;
-	if (!withoutSuffix) return undefined;
-	return withoutSuffix.replace(/([a-z0-9])([A-Z])/g, '$1_$2').toLowerCase();
+	const withoutAffixes = withoutSuffix.replace(/^tool(?=[A-Z])/, '');
+	if (!withoutAffixes) return undefined;
+	return withoutAffixes.replace(/([a-z0-9])([A-Z])/g, '$1_$2').toLowerCase();
 }
 
 /**

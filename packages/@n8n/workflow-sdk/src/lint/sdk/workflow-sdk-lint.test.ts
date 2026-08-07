@@ -220,6 +220,21 @@ export default workflow('id', 'name').add(fetchData);
 				'SDK_MOCK_OUTPUT_JSON_ENVELOPE',
 			);
 		});
+
+		it('does not treat computed keys as the literal property name', () => {
+			const source = `
+const key = 'output';
+const fetchData = node({
+  type: 'n8n-nodes-base.httpRequest',
+  version: 4.3,
+  config: { name: 'Fetch', parameters: { mapping: { [key]: [{ json: { a: 1 } }] } } },
+});
+export default workflow('id', 'name').add(fetchData);
+`;
+			expect(lintWorkflowSdkSource(source).map((i) => i.code)).not.toContain(
+				'SDK_MOCK_OUTPUT_JSON_ENVELOPE',
+			);
+		});
 	});
 
 	describe('raw credential object lint', () => {
@@ -287,6 +302,18 @@ const send = node({
 export default workflow('id', 'name').add(send);
 `;
 			expect(lintWorkflowSdkSource(source).map((i) => i.code)).not.toContain('SDK_FAKE_VALUE');
+		});
+
+		it('flags fake values written as template literals', () => {
+			const source = `
+const send = node({
+  type: 'n8n-nodes-base.gmail',
+  version: 2.1,
+  config: { name: 'Send', parameters: { sendTo: \`user@example.com\` } },
+});
+export default workflow('id', 'name').add(send);
+`;
+			expect(lintWorkflowSdkSource(source).map((i) => i.code)).toContain('SDK_FAKE_VALUE');
 		});
 
 		it('does not flag fake-looking text inside jsCode snippets', () => {

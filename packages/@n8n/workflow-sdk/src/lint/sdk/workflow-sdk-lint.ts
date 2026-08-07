@@ -164,7 +164,8 @@ function rangeContains(range: SourceRange, line: number, column: number): boolea
 }
 
 function propertyName(prop: Property): string | undefined {
-	if (prop.key.type === 'Identifier') return prop.key.name;
+	// `[someVar]: ...` is a runtime key, not the literal name of the identifier.
+	if (prop.key.type === 'Identifier') return prop.computed ? undefined : prop.key.name;
 	if (prop.key.type === 'Literal' && typeof prop.key.value === 'string') return prop.key.value;
 	return undefined;
 }
@@ -252,11 +253,21 @@ function checkFakeLiteralValues(
 	parent: Node | undefined,
 	issues: SourceLintIssue[],
 ): void {
-	if (node.type !== 'Literal' || typeof node.value !== 'string') return;
+	// Embedded jsCode/pythonCode strings are linted by the code-node rules.
+	if (isEmbeddedCodePropertyValue(node, parent)) return;
+
+	let value: string | undefined;
+	if (node.type === 'Literal' && typeof node.value === 'string') {
+		value = node.value;
+	} else if (node.type === 'TemplateLiteral' && node.expressions.length === 0) {
+		// Backticks without interpolation are just another string quote style.
+		value = node.quasis[0]?.value.cooked ?? undefined;
+	}
+	if (value === undefined) return;
 	if (parent?.type === 'CallExpression' && isPlaceholderCall(parent)) return;
 
 	for (const { pattern, hint } of FAKE_VALUE_PATTERNS) {
-		if (!pattern.test(node.value)) continue;
+		if (!pattern.test(value)) continue;
 		issues.push(
 			lintIssue({
 				code: 'SDK_FAKE_VALUE',
