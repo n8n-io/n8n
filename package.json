@@ -81,6 +81,7 @@
     "@biomejs/biome": "^1.9.0",
     "@dotenvx/dotenvx": "^1.40.0",
     "@n8n/eslint-config": "workspace:*",
+    "@n8n/module-cli": "workspace:*",
     "@types/node": "*",
     "@types/supertest": "^6.0.3",
     "babel-plugin-transform-import-meta": "^2.3.2",

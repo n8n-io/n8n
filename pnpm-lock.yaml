@@ -880,6 +880,9 @@ importers:
       '@n8n/eslint-config':
         specifier: workspace:*
         version: link:packages/@n8n/eslint-config
+      '@n8n/module-cli':
+        specifier: workspace:*
+        version: link:packages/@n8n/module-cli
       '@types/node':
         specifier: ^20.17.50
         version: 20.19.41
