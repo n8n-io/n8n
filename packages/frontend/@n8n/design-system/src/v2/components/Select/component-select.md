@@ -22,14 +22,22 @@ Built-in search (`searchable`) filters the dropdown by item label. For larger da
 - `defaultValue?: GetModelValue<T, VK, M>` The value of the Select when initially rendered. Use when you do not need to control the state of the Select.
 - `modelValue?: GetModelValue<T, VK, M>` The controlled value of the Select. Can be bind as `v-model`.
 - `multiple?: boolean` Whether multiple options can be selected or not.
-- `open?: boolean`  The controlled open state of the Select. Can be bind as `v-model:open`.
+- `open?: boolean` The controlled open state of the Select. Can be bind as `v-model:open`.
 - `defaultOpen?: boolean` The open state of the select when it is initially rendered. Use when you do not need to control its open state.
 - `disabled?: boolean` When `true`, prevents the user from interacting with Select.
+- `required?: boolean` When `true`, indicates that an option must be selected.
+- `name?: string` The name of the native select field used in form submission.
+- `autocomplete?: string` Native HTML `autocomplete` attribute.
+- `dir?: 'ltr' | 'rtl'` Reading direction. When omitted, inherits from `ConfigProvider` or defaults to LTR.
 - `icon?: IconName` Icon to be displayed in the trigger.
 - `clearable?: boolean` When `true`, shows a clear button when a value is selected.
 - `searchable?: boolean` When `true`, shows a search field in the dropdown and filters items by label.
 - `searchPlaceholder?: string` Placeholder for the search field.
 - `searchQuery?: string` Controlled search query (`v-model:searchQuery`).
+- `position?: 'item-aligned' | 'popper'` Positioning mode for the dropdown. Default: `'popper'`.
+- `side?: 'top' | 'right' | 'bottom' | 'left'` Preferred side when `position` is `'popper'`. Default: `'bottom'`.
+- `sideOffset?: number` Distance in pixels from the trigger when `position` is `'popper'`. Default: `5`.
+- `contentClass?: string` Additional CSS class(es) applied to the dropdown content container (portaled).
 
 
 **UI Props**
@@ -48,6 +56,7 @@ Built-in search (`searchable`) filters the dropdown by item label. For larger da
 
 - `default`: `{ modelValue?: GetModelValue<T, VK, M>; open: boolean }`
 - `item`: `{ item: T; }`
+- `label`: `{ item: T; }` — group label rows (`type: 'label'`)
 - `item-leading`: `{ item: T; ui: object }`
 - `item-label`: `{ item: T; }`
 - `item-trailing`: `{ item: T; ui: object }`

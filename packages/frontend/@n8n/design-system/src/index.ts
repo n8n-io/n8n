@@ -11,9 +11,8 @@ export { IconBodyLoaderKey, useInjectIconBodyLoader } from './composables/useIco
 export type { IconBodyLoader } from './composables/useIconBodyLoader';
 export { useMessage } from './composables/useMessage';
 export type { MessageBoxConfirmResult } from './composables/useMessage';
-export { default as N8nSelect2 } from './v2/components/Select/Select.vue';
-export { default as N8nSelect2Item } from './v2/components/Select/SelectItem.vue';
-export type * from './v2/components/Select/Select.types';
+export { N8nSelect2, N8nSelect2Item } from './v2/components/Select';
+export type * from './v2/components/Select';
 export { default as N8nCheckbox } from './v2/components/Checkbox/Checkbox.vue';
 export type * from './v2/components/Checkbox/Checkbox.types';
 export { default as N8nPagination2 } from './v2/components/Pagination/Pagination.vue';

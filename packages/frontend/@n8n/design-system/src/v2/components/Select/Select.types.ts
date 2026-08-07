@@ -36,7 +36,7 @@ export type SelectProps<
 	T extends SelectItem[] = SelectItem[],
 	VK extends GetItemKeys<T> = 'value',
 	M extends boolean = false,
-> = Omit<SelectRootProps, 'dir' | 'multiple' | 'modelValue' | 'defaultValue' | 'by'> & {
+> = Omit<SelectRootProps, 'multiple' | 'modelValue' | 'defaultValue' | 'by'> & {
 	id?: string;
 	/** The placeholder text when the select is empty. */
 	placeholder?: string;

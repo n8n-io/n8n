@@ -361,7 +361,7 @@ describe('v2/components/Select', () => {
 				},
 				slots: {
 					default:
-						'<template #default="{ modelValue, open }">Selected: {{ modelValue }}</template>',
+						'<template #default="{ modelValue, open }">Selected: {{ modelValue }} ({{ open }})</template>',
 				},
 			});
 			expect(wrapper.getByText(/Selected:/)).toBeInTheDocument();

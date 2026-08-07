@@ -47,8 +47,8 @@ import N8nSelectItem from './SelectItem.vue';
 defineOptions({ inheritAttrs: false });
 
 const attrs = useAttrs();
-const triggerClass = () => attrs.class;
-const triggerAttrs = () => reactiveOmit(attrs, ['class']);
+const triggerClass = computed(() => attrs.class);
+const triggerAttrs = computed(() => reactiveOmit(attrs, ['class']));
 
 const $style = useCssModule();
 const { t } = useI18n();
@@ -65,15 +65,27 @@ const props = withDefaults(defineProps<SelectProps<T, VK, M>>(), {
 const emit = defineEmits<SelectEmits<T, VK, M>>();
 defineSlots<SelectSlots<T, VK, M>>();
 
-const rootProps = useForwardProps(
+const forwardedRootProps = useForwardProps(
 	reactivePick(props, 'open', 'defaultOpen', 'disabled', 'required', 'multiple'),
 );
+
+/** Merge forwarded Reka props with form/dir fields that widen under generics in reactivePick. */
+function rootBind() {
+	return {
+		...forwardedRootProps.value,
+		name: props.name,
+		autocomplete: props.autocomplete,
+		dir: props.dir,
+	};
+}
 
 const triggerRef = useTemplateRef<InstanceType<typeof SelectTrigger>>('trigger');
 const searchInputRef = useTemplateRef<InstanceType<typeof N8nInput>>('searchInput');
 const internalSearchQuery = ref('');
 
-const resolvedSearchQuery = computed(() => props.searchQuery ?? internalSearchQuery.value);
+function resolvedSearchQuery() {
+	return props.searchQuery ?? internalSearchQuery.value;
+}
 
 function setSearchQuery(value: string | number) {
 	const next = String(value);
@@ -286,7 +298,7 @@ function visibleItems(): SelectItem[] {
 		return items;
 	}
 
-	return filterGroupedItems(items, resolvedSearchQuery.value);
+	return filterGroupedItems(items, resolvedSearchQuery());
 }
 
 function resolvedSearchPlaceholder() {
@@ -353,9 +365,7 @@ function resolveDisplayValue(value: unknown): string | undefined {
 <template>
 	<SelectRoot
 		v-slot="{ open, modelValue: selectedValue }"
-		v-bind="rootProps"
-		:name="name"
-		:autocomplete="autocomplete"
+		v-bind="rootBind()"
 		:default-value="toRootValue(defaultValue)"
 		:model-value="toRootValue(modelValue)"
 		@update:model-value="handleModelValueUpdate"
@@ -365,8 +375,8 @@ function resolveDisplayValue(value: unknown): string | undefined {
 			:id="id"
 			ref="trigger"
 			data-test-id="select-trigger"
-			v-bind="triggerAttrs()"
-			:class="[$style.selectTrigger, variantClasses[variant], sizeClasses[size], triggerClass()]"
+			v-bind="triggerAttrs"
+			:class="[$style.selectTrigger, variantClasses[variant], sizeClasses[size], triggerClass]"
 			:aria-label="attrs['aria-label'] ?? resolvedPlaceholder()"
 		>
 			<Icon
@@ -412,7 +422,7 @@ function resolveDisplayValue(value: unknown): string | undefined {
 				<div v-if="searchable" :class="$style.searchHeader" data-test-id="select-search">
 					<N8nInput
 						ref="searchInput"
-						:model-value="resolvedSearchQuery"
+						:model-value="resolvedSearchQuery()"
 						:placeholder="resolvedSearchPlaceholder()"
 						size="medium"
 						clearable
