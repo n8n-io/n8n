@@ -7,6 +7,7 @@ import {
 	ApiTags,
 	Body,
 	ControllerRegistryMetadata,
+	Deprecated,
 	Get,
 	Param,
 	Post,
@@ -281,6 +282,8 @@ describe('public-api-route-resolver', () => {
 		});
 
 		it('resolves openapi spec decorator metadata', () => {
+			const since = new Date('2026-07-23T00:00:00Z');
+
 			class WidgetsPublicController {
 				@Post('/')
 				@ApiKeyScope({ anyOf: ['tag:create', 'tag:update'] })
@@ -289,6 +292,7 @@ describe('public-api-route-resolver', () => {
 				@ApiTags(['Widgets'])
 				@ApiResponse(201, WidgetResponseDto)
 				@ApiErrorResponse(409)
+				@Deprecated({ since })
 				method(@Body _body: WidgetBodyDto, @Query _query: WidgetQueryDto) {}
 			}
 			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
@@ -305,6 +309,20 @@ describe('public-api-route-resolver', () => {
 			expect(route.description).toBe('Create a widget.');
 			expect(route.errorResponses).toEqual([409]);
 			expect(route.successStatus).toBe(201);
+			expect(route.deprecated).toEqual({ since });
+		});
+
+		it('resolves no deprecation info when @Deprecated is absent', () => {
+			class WidgetsPublicController {
+				@Get('/')
+				@ApiResponse(200)
+				method() {}
+			}
+			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+			const [route] = resolvePublicApiRoutes();
+
+			expect(route.deprecated).toBeUndefined();
 		});
 
 		it('throws for a route whose @ApiResponse is missing', () => {
