@@ -598,12 +598,15 @@ describe('InstanceAiCredentialSetup', () => {
 				attemptId: expect.any(String),
 			});
 			expect(resolveSpy).toHaveBeenCalledWith('req-1', 'approved');
+			const confirmedAttemptId = (
+				confirmSpy.mock.calls[0][1] as { kind: string; attemptId: string }
+			).attemptId;
 			expect(mockTelemetryTrack).toHaveBeenCalledWith(
 				'Instance AI Browser Use User clicked credential setup option',
 				expect.objectContaining({
 					credential_type: 'type1',
 					choice: 'ai',
-					credential_setup_attempt_id: expect.any(String),
+					credential_setup_attempt_id: confirmedAttemptId,
 				}),
 			);
 		});

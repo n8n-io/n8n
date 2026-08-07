@@ -534,6 +534,38 @@ describe('createToolsFromLocalMcpServer', () => {
 			});
 		});
 
+		it('reports user_denied when the user denies the resource confirmation', async () => {
+			const server = makeMockServer([CREATE_CREDENTIAL_TOOL]);
+			const { execute, onCredentialCreateResult } = getExecuteWithCallback(
+				server,
+				'browser_create_credential',
+			);
+
+			await execute(CREATE_CREDENTIAL_ARGS, makeCtx({ resumeData: { approved: false } }));
+
+			expect(onCredentialCreateResult).toHaveBeenCalledExactlyOnceWith('slackApi', {
+				ok: false,
+				errorCode: 'user_denied',
+			});
+			expect(server.callTool).not.toHaveBeenCalled();
+		});
+
+		it('reports failure and rethrows when the call rejects', async () => {
+			const server = makeMockServer([CREATE_CREDENTIAL_TOOL]);
+			server.callTool.mockRejectedValue(new Error('connection lost'));
+			const { execute, onCredentialCreateResult } = getExecuteWithCallback(
+				server,
+				'browser_create_credential',
+			);
+
+			await expect(execute(CREATE_CREDENTIAL_ARGS, makeCtx({}))).rejects.toThrow('connection lost');
+
+			expect(onCredentialCreateResult).toHaveBeenCalledExactlyOnceWith('slackApi', {
+				ok: false,
+				errorCode: 'credential_create_failed',
+			});
+		});
+
 		it('does not notify for other tools', async () => {
 			const server = makeMockServer();
 			server.callTool.mockResolvedValue(SUCCESS_RESULT);

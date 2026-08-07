@@ -392,9 +392,9 @@ const GENERATION_STAGE_ERROR_CODES = new Set([
 function failureStageForErrorCode(
 	errorCode: string | undefined,
 ): 'generation' | 'persistence' | 'unknown' {
-	if (!errorCode) return 'unknown';
-	if (GENERATION_STAGE_ERROR_CODES.has(errorCode)) return 'generation';
-	return 'persistence';
+	if (errorCode && GENERATION_STAGE_ERROR_CODES.has(errorCode)) return 'generation';
+	if (errorCode === 'credential_create_failed') return 'persistence';
+	return 'unknown';
 }
 
 /**

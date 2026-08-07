@@ -156,6 +156,15 @@ describe('InstanceAiConfirmRequestDto', () => {
 			expect(result.success).toBe(false);
 		});
 
+		test('credentialAutoSetup with empty attemptId', () => {
+			const result = InstanceAiConfirmRequestDto.safeParse({
+				kind: 'credentialAutoSetup',
+				credentialType: 'slackApi',
+				attemptId: '  ',
+			});
+			expect(result.success).toBe(false);
+		});
+
 		test('resourceDecision without decision', () => {
 			const result = InstanceAiConfirmRequestDto.safeParse({ kind: 'resourceDecision' });
 			expect(result.success).toBe(false);

@@ -222,6 +222,7 @@ function classifyCredentialCreateError(result: McpToolCallResult): string {
 		return 'missing_captured_fields';
 	}
 	if (text.includes('gateway context')) return 'gateway_context_missing';
+	if (text.includes('Access denied by user')) return 'user_denied';
 	return 'credential_create_failed';
 }
 
@@ -364,35 +365,47 @@ export function createToolsFromLocalMcpServer(
 					}
 					return result;
 				};
+				// A rejected call must reach the observer too — otherwise a thrown
+				// credential-create leaves no failure outcome. Skip on abort: the run's
+				// terminal status reports user cancellation more accurately.
+				const callServer = async (callArgs: Record<string, unknown>) => {
+					try {
+						return await server.callTool(
+							{ name: toolName, arguments: callArgs },
+							{ abortSignal: ctx.abortSignal },
+						);
+					} catch (error) {
+						if (!ctx.abortSignal?.aborted) {
+							observeResult({
+								content: [
+									{ type: 'text', text: error instanceof Error ? error.message : String(error) },
+								],
+								isError: true,
+							});
+						}
+						throw error;
+					}
+				};
 
 				// Resume path: user has made a resource-access decision
 				if (resumeData !== undefined && resumeData !== null) {
 					if (!resumeData.resourceDecision) {
 						// User denied — no decision provided
-						return {
+						return observeResult({
 							content: [{ type: 'text', text: JSON.stringify({ error: 'Access denied by user' }) }],
 							isError: true,
-						};
+						});
 					}
 					// Re-call the daemon with the user's decision
 					return observeResult(
-						await server.callTool(
-							{
-								name: toolName,
-								arguments: { ...args, _confirmation: resumeData.resourceDecision },
-							},
-							{ abortSignal: ctx.abortSignal },
-						),
+						await callServer({ ...args, _confirmation: resumeData.resourceDecision }),
 					);
 				}
 
 				// First-call path: strip any LLM-provided _confirmation key so the agent
 				// cannot bypass the human confirmation flow by supplying its own token.
 				const { _confirmation: _stripped, ...safeArgs } = args;
-				const result = await server.callTool(
-					{ name: toolName, arguments: safeArgs },
-					{ abortSignal: ctx.abortSignal },
-				);
+				const result = await callServer(safeArgs);
 
 				// If the daemon requires a resource-access confirmation, suspend the agent
 				if (result.isError) {
