@@ -486,8 +486,9 @@ runs in PR CI, and the job is green.
 This is not hypothetical: `@n8n/frontend-module-sdk`, `@n8n/frontend-constants` and
 `@n8n/frontend-utils` are in exactly that hole today. Do not add a fourth.
 
-**`passWithNoTests: true`.** Inherited from `@n8n/vitest-config/frontend` (`frontend.ts:33`), so
-you get it for free — but do not override it. CI shards the frontend two ways
+**`passWithNoTests: true`.** Inherited from `@n8n/vitest-config/frontend`
+(`packages/@n8n/vitest-config/frontend.ts:33` — the config factory, not the `setup/frontend.ts`
+harness above), so you get it for free — but do not override it. CI shards the frontend two ways
 (`--shard=N/2`), and vitest exits non-zero when a shard is handed no test files. A sparse module
 would fail on shard 2 for no reason.
 
