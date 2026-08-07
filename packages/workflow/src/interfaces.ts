@@ -1243,6 +1243,8 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 		getRuntimeCredential(alias: string): Promise<IDataObject[string] | undefined>;
 		putExecutionToWait(waitTill: Date): Promise<void>;
 		sendMessageToUI(message: any): void;
+		/** Whether the run's resolved redaction policy redacts console output for this execution's mode */
+		isConsoleOutputRedacted(): boolean;
 		sendResponse(response: IExecuteResponsePromiseData): Promise<void>;
 		sendChunk(type: ChunkType, itemIndex: number, content?: IDataObject | string): void;
 		isStreaming(): boolean;
@@ -1329,6 +1331,7 @@ export type ISupplyDataFunctions = ExecuteFunctions.GetNodeParameterFn &
 		| 'getNodeOutputs'
 		| 'executeWorkflow'
 		| 'sendMessageToUI'
+		| 'isConsoleOutputRedacted'
 		| 'startJob'
 		| 'helpers'
 		| 'isToolExecution'
@@ -1531,7 +1534,14 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 		fallbackValue?: any,
 		options?: IGetNodeParameterOptions,
 	): NodeParameterValueType | object;
+	/** Always the production endpoint, whichever endpoint the request arrived on. */
 	getNodeWebhookUrl: (name: WebhookType) => string | undefined;
+	/**
+	 * The endpoint actually being served (`/webhook-test/…` on a test run), which
+	 * identifies the webhook as an OAuth protected resource. Minting and verifying a
+	 * token both derive the resource from it, so it must track the endpoint served.
+	 */
+	getWebhookResourceUrl: (name: WebhookType) => string | undefined;
 	evaluateExpression(expression: string, itemIndex?: number): NodeParameterValueType;
 	getParamsData(): object;
 	getQueryData(): object;
@@ -2994,8 +3004,31 @@ export interface IWebhookData {
 
 export type WebhookType = 'default' | 'setup';
 
+/**
+ * Key under which an {@link IWebhookDescription} holds native (engine-free)
+ * resolvers for its expression-template fields, keyed by field name. Populated
+ * by `webhookDescriptionFields()` and read via `resolveWebhookDescriptionField()`.
+ * Backend-only: not serialized with the description.
+ */
+export const WEBHOOK_RESOLVERS: unique symbol = Symbol.for('n8n.webhookDescriptionResolvers');
+
+/**
+ * Native resolvers for a webhook description's fields, keyed by field name.
+ * Each entry pairs the expression template a field carries with a function
+ * computing the same value from the node's parameters, without the expression
+ * engine. Stored under {@link WEBHOOK_RESOLVERS}.
+ */
+export type NativeParameterResolvers = Record<
+	string,
+	{
+		template: string;
+		resolve: (parameters: INodeParameters) => NodeParameterValueType | undefined;
+	}
+>;
+
 export interface IWebhookDescription {
 	[key: string]: IHttpRequestMethods | WebhookResponseMode | boolean | string | undefined;
+	[WEBHOOK_RESOLVERS]?: NativeParameterResolvers;
 	httpMethod: IHttpRequestMethods | string;
 	isFullPath?: boolean;
 	name: WebhookType;

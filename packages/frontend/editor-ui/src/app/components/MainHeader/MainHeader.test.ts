@@ -82,7 +82,6 @@ const renderComponent = createComponentRenderer(MainHeader, {
 				props: ['id', 'tags', 'name', 'currentFolder', 'isArchived', 'description'],
 				template: '<div data-test-id="workflow-details-stub"></div>',
 			},
-			GithubButton: { template: '<div></div>' },
 			TabBar: { template: '<div></div>' },
 		},
 		provide: {

@@ -24,7 +24,7 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@n8n/composables/useToast';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
@@ -48,12 +48,12 @@ import type {
 	AgentSkill,
 } from '../types';
 import { useAgentBuilderTelemetry } from '../composables/useAgentBuilderTelemetry';
-import { useAgentToolTelemetry } from '../composables/useAgentToolTelemetry';
 import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
 import { useAgentConfig } from '../composables/useAgentConfig';
 import { useAgentConfigValidation } from '../composables/useAgentConfigValidation';
 import { useAgentPermissions } from '../composables/useAgentPermissions';
 import { useAgentSessionsStore } from '../agentSessions.store';
+import { useAgentEvalsStore } from '../agentEvals.store';
 import { useAgentBuilderSession } from '../composables/useAgentBuilderSession';
 import { useAgentConfigAutosave } from '../composables/useAgentConfigAutosave';
 import { useAgentBuilderMainTabs } from '../composables/useAgentBuilderMainTabs';
@@ -108,6 +108,8 @@ const props = withDefaults(
 const emit = defineEmits<{
 	/** The agent behind an unsaved artifact now exists. */
 	persisted: [agent: AgentResource];
+	/** The agent name was successfully saved. */
+	'name-saved': [name: string];
 }>();
 
 const route = useRoute();
@@ -121,6 +123,7 @@ const instanceAiAvailable = useInstanceAiAvailable();
 const { canSendPreviewToInstanceAi, sendPreviewSessionToInstanceAi } =
 	useInstanceAiAgentPreviewHandoff();
 const sessionsStore = useAgentSessionsStore();
+const agentEvalsStore = useAgentEvalsStore();
 const credentialsStore = useCredentialsStore();
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
@@ -234,7 +237,7 @@ const sessionOptions = computed<Array<DropdownMenuItemProps<string>>>(() =>
 );
 
 // Config
-const { config, fetchConfig, updateConfig } = useAgentConfig();
+const { config, fetchConfig, updateConfig, repoint: repointConfig } = useAgentConfig();
 const {
 	validation: configValidation,
 	repoint: repointConfigValidation,
@@ -268,10 +271,8 @@ const builderTelemetry = useAgentBuilderTelemetry({
 	projectId,
 	agent,
 	localConfig,
-	savedConfig: config,
 	connectedTriggers,
 });
-const toolTelemetry = useAgentToolTelemetry(agentId);
 
 /**
  * The backend owns runnable validation so the chat entry point either opens
@@ -341,6 +342,30 @@ const previewBreadcrumbItems = computed<PathItem[]>(() => [
 // Callers use this guard to drop such stale results.
 function isStaleAgentTarget(targetProjectId: string, targetAgentId: string): boolean {
 	return projectId.value !== targetProjectId || agentId.value !== targetAgentId;
+}
+
+// Drafts cases from the agent's own config. The generated dataset isn't
+// rendered yet, so the toast is the only confirmation the user gets that the
+// work landed.
+async function onGenerateEvalCases() {
+	const targetProjectId = projectId.value;
+	const targetAgentId = agentId.value;
+	if (!targetProjectId || !targetAgentId) return;
+
+	try {
+		const { cases } = await agentEvalsStore.generateDraftCases(targetProjectId, targetAgentId);
+		if (isStaleAgentTarget(targetProjectId, targetAgentId)) return;
+		showMessage({
+			title: locale.baseText('agents.builder.agentEvals.generated', {
+				adjustToNumber: cases.length,
+				interpolate: { count: String(cases.length) },
+			}),
+			type: 'success',
+		});
+	} catch (error) {
+		if (isStaleAgentTarget(targetProjectId, targetAgentId)) return;
+		showError(error, locale.baseText('agents.builder.agentEvals.generateError'));
+	}
 }
 
 async function fetchAgent(
@@ -574,9 +599,6 @@ async function onReverted(updated: AgentResource) {
 		refreshConfigValidation(projectId.value, agentId.value),
 	]);
 	tasksReloadKey.value += 1;
-	builderTelemetry.captureToolsBaseline();
-	builderTelemetry.captureSkillsBaseline();
-	builderTelemetry.captureTasksBaseline();
 }
 
 /**
@@ -648,7 +670,8 @@ interface McpAvailabilitySnapshot {
  *
  * The agent is created under the already-minted `agentId`, so an agent-building
  * chat request on the same thread converges on this agent rather than a second
- * one (the backend adopts the existing row on an id collision).
+ * one (the builder path adopts a same-project still-unconfigured row on an id
+ * collision; REST create stays strict).
  */
 let persistPromise: Promise<void> | null = null;
 async function ensureAgentPersisted(): Promise<void> {
@@ -693,6 +716,7 @@ async function saveConfig(snapshot: ConfigAutosaveSnapshot): Promise<'skipped' |
 	// `agent.versionId` would otherwise be polluted with values for the
 	// previous agent.
 	if (result.stale) return undefined;
+	emit('name-saved', snapshot.config.name);
 	if (agent.value && agent.value.id === snapshot.agentId && result.versionId !== undefined) {
 		agent.value = { ...agent.value, versionId: result.versionId };
 	}
@@ -732,20 +756,11 @@ async function saveSkill(snapshot: SkillAutosaveSnapshot): Promise<'skipped' | u
 // UI feel laggy right after an edit.
 const configAutosave = useAgentConfigAutosave<ConfigAutosaveSnapshot>({
 	save: saveConfig,
-	onSaved: () => {
-		builderTelemetry.flushConfigEdits();
-		// Diff the saved capability lists against the last baseline. No-op when
-		// nothing new landed since the last check.
-		builderTelemetry.trackToolsAdded();
-		builderTelemetry.trackSkillsAdded();
-		builderTelemetry.trackTasksChanged();
-	},
 	onError: (error: unknown) => {
-		// Intentionally keep pending parts: `localConfig` still holds the
-		// failed edit, so the next successful autosave will persist it.
 		// Surface backend validation errors (e.g. incompatible workflow-tool
 		// triggers or body nodes) so the user isn't left wondering why their
-		// edit didn't stick.
+		// edit didn't stick. `localConfig` still holds the failed edit, so the
+		// next successful autosave will persist it.
 		showError(error, locale.baseText('agents.builder.saveError'));
 	},
 });
@@ -915,8 +930,6 @@ function normalizeAgentMemoryConfig(config: AgentJsonConfig): AgentJsonConfig {
 
 function onConfigFieldUpdate(updates: Partial<AgentJsonConfig>) {
 	if (!localConfig.value) return;
-	// Record BEFORE assigning so the composable can diff against the pre-update state.
-	builderTelemetry.recordConfigEdit(updates);
 	// The persisted validation result no longer reflects the working copy —
 	// Publish must not stay enabled against a result that predates this edit.
 	invalidateConfigValidation();
@@ -964,18 +977,14 @@ const caps = useAgentCapabilitiesActions({
 		trackOpenedToolFromList: builderTelemetry.trackOpenedToolFromList,
 		trackOpenedSkillFromList: builderTelemetry.trackOpenedSkillFromList,
 		trackOpenedAddSkillModal: builderTelemetry.trackOpenedAddSkillModal,
-		trackTriggerListChanged: builderTelemetry.trackTriggerListChanged,
 		trackTriggerAdded: builderTelemetry.trackTriggerAdded,
-		trackRemovedTool: toolTelemetry.trackRemoved,
-		trackRemovedMcpServer: toolTelemetry.trackRemovedMcpServer,
 	},
 });
 // Top-level alias so the template auto-unwraps the ref (nested `caps.appliedSkills`
 // access is not unwrapped by the template compiler).
 const appliedSkills = caps.appliedSkills;
 
-function replaceConfigAndScheduleSave(nextConfig: AgentJsonConfig, recordEdit = true) {
-	if (recordEdit) builderTelemetry.recordConfigEdit(nextConfig);
+function replaceConfigAndScheduleSave(nextConfig: AgentJsonConfig) {
 	invalidateConfigValidation();
 	localConfig.value = deepCopy(nextConfig);
 	syncAgentIdentityFromConfig(localConfig.value);
@@ -994,10 +1003,10 @@ function persistMissingPersonalisationGradient() {
 	const nextConfig = addMissingAgentPersonalisation(localConfig.value);
 	if (!nextConfig) return;
 
-	replaceConfigAndScheduleSave(nextConfig, false);
+	replaceConfigAndScheduleSave(nextConfig);
 }
 
-async function onConfigUpdated(options?: { rebaselineOnly?: boolean }) {
+async function onConfigUpdated() {
 	// Modal flows (e.g. skill creation) write through their own API calls, not
 	// `saveConfig` — notify other surfaces (canvas agent cards) here too.
 	agentsEventBus.emit('agentUpdated', { agentId: agentId.value, source: 'agent-builder' });
@@ -1013,23 +1022,11 @@ async function onConfigUpdated(options?: { rebaselineOnly?: boolean }) {
 	const connected = await builderTelemetry.fetchInitialTriggersBaseline(triggerTypes);
 	if (connected) connectedTriggers.value = connected;
 	tasksReloadKey.value += 1;
-	if (options?.rebaselineOnly) {
-		// External (e.g. Instance AI builder) writes are tracked by the backend's
-		// "Builder added ..." twins — re-baseline so frontend diffs don't
-		// double-count them, and only frontend-initiated saves emit "User added ...".
-		builderTelemetry.captureToolsBaseline();
-		builderTelemetry.captureSkillsBaseline();
-		builderTelemetry.captureTasksBaseline();
-	} else {
-		builderTelemetry.trackToolsAdded();
-		builderTelemetry.trackSkillsAdded();
-		builderTelemetry.trackTasksChanged();
-	}
 }
 
 async function refreshArtifactShell() {
 	await settleAutosave();
-	await onConfigUpdated({ rebaselineOnly: true });
+	await onConfigUpdated();
 }
 
 function handleArtifactRefreshError(error: unknown) {
@@ -1242,40 +1239,46 @@ function draftAgentResource(personalisation: AgentJsonConfig['personalisation'])
 	};
 }
 
-async function initialize() {
+async function initialize({ preserveState = false }: { preserveState?: boolean } = {}) {
 	clearTimeout(externalRefreshTimer);
 	// A refresh queued for the previous agent must not fire against this one.
-	initialized.value = false;
+	if (!preserveState) initialized.value = false;
 	// A refresh queued before this (re)initialize is obsolete: it targeted the
 	// agent that was current when the event fired, and the fetches below return
 	// fresh data anyway. Only events arriving during this init need replaying.
 	pendingExternalRefresh.value = false;
 	try {
-		// Persist a pending MCP toggle before the new agent can replace its
-		// snapshot. Other pending edits remain governed by their existing
-		// switch/revert behavior.
-		await Promise.all([
-			configAutosave.settleAutosave(),
-			skillAutosave.settleAutosave(),
-			mcpAutosave.flushAutosave(),
-		]);
-		// Drop any per-agent telemetry state from the previous agent — an in-flight
-		// save for the previous agent would've already flushed pending edits before
-		// we got here, and a scheduled-but-not-fired save wouldn't flush correctly
-		// against the new agent's id anyway.
-		builderTelemetry.resetForAgentSwitch();
-
-		agent.value = null;
-		agentName.value = '';
-		mcpAvailabilityOverride.value = null;
-		activeChatSessionId.value = null;
-		localConfig.value = null;
-		connectedTriggers.value = [];
-		agentFiles.value = [];
-		agentFilesLoading.value = false;
-		agentFilesUploading.value = false;
-		deletingAgentFileId.value = null;
-		repointConfigValidation(projectId.value, agentId.value);
+		if (preserveState) {
+			// Same-agent hydration (pending → persisted): flush queued
+			// config/skill/MCP snapshots before fetching so settle doesn't
+			// drop a pending debounce. When AI-locked, flush cancels stale
+			// queues and settle waits for in-flight writes.
+			await flushAutosave();
+			await settleAutosave();
+		} else {
+			// Persist a pending MCP toggle before the new agent can replace its
+			// snapshot. Other pending edits remain governed by their existing
+			// switch/revert behavior.
+			await Promise.all([
+				configAutosave.settleAutosave(),
+				skillAutosave.settleAutosave(),
+				mcpAutosave.flushAutosave(),
+			]);
+		}
+		if (!preserveState) {
+			agent.value = null;
+			agentName.value = '';
+			mcpAvailabilityOverride.value = null;
+			activeChatSessionId.value = null;
+			localConfig.value = null;
+			connectedTriggers.value = [];
+			agentFiles.value = [];
+			agentFilesLoading.value = false;
+			agentFilesUploading.value = false;
+			deletingAgentFileId.value = null;
+			repointConfig(projectId.value, agentId.value);
+			repointConfigValidation(projectId.value, agentId.value);
+		}
 
 		// An agent that does not exist yet has nothing to fetch: stand up the same
 		// blank config the backend would have written, and let the first edit
@@ -1306,9 +1309,6 @@ async function initialize() {
 			]);
 			persistMissingPersonalisationGradient();
 		}
-		builderTelemetry.captureToolsBaseline();
-		builderTelemetry.captureSkillsBaseline();
-		builderTelemetry.captureTasksBaseline();
 		// Keep agent credential pickers aligned with the workflow editor: load only
 		// credentials the current user can use in this project context.
 		credentialsStore.setCredentials([]);
@@ -1324,13 +1324,15 @@ async function initialize() {
 				sessionsStore.startAutoRefresh();
 			});
 		}
+		const connectedTriggersAtBaselineStart = connectedTriggers.value;
 		void (async () => {
-			// Non-fatal — on failure, leave connectedTriggers empty; the sidebar emit
-			// will correct it once the user expands the Triggers section.
+			// Non-fatal — on failure, leave connectedTriggers unchanged.
 			const integrations = await ensureIntegrationsCatalog(projectId.value).catch(() => []);
 			const triggerTypes = integrations.map((i) => i.type);
 			const connected = await builderTelemetry.fetchInitialTriggersBaseline(triggerTypes);
-			if (connected) connectedTriggers.value = connected;
+			if (connected && connectedTriggers.value === connectedTriggersAtBaselineStart) {
+				connectedTriggers.value = connected;
+			}
 		})();
 
 		if (isPreviewMode.value) bindPreviewSession();
@@ -1349,11 +1351,15 @@ async function initialize() {
 	}
 }
 
-// Also re-initialize when the artifact stops being pending: the chat path
-// creates the agent under this same id, so the id never changes, but the view
-// must leave draft mode — otherwise it keeps skipping the agent-scoped fetches
-// and hiding the tabs for an agent that now exists.
-watch([agentId, () => props.artifactAgentPending], initialize, { immediate: true });
+// When a pending artifact becomes persisted under the same id, hydrate its
+// agent-scoped state without unmounting the editor or any in-flight setup UI.
+watch(
+	[agentId, () => props.artifactAgentPending],
+	([nextAgentId, pending], [previousAgentId]) => {
+		void initialize({ preserveState: nextAgentId === previousAgentId && !pending });
+	},
+	{ immediate: true },
+);
 
 onBeforeUnmount(() => {
 	agentsEventBus.off('agentUpdated', onExternalAgentUpdated);
@@ -1615,7 +1621,9 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 					:tasks-reload-key="tasksReloadKey"
 					:main-tab-options="visibleMainTabOptions"
 					:agent-unsaved="isUnsaved"
+					:ensure-agent-persisted="ensureAgentPersisted"
 					:executions-description="executionsDescription"
+					:generating-eval-cases="agentEvalsStore.isGeneratingCases(agentId)"
 					:artifact-mode="isArtifactMode"
 					:config-validation-issues="configValidation?.issues ?? []"
 					@update:config="onConfigFieldUpdate"
@@ -1636,6 +1644,7 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 					@toggle-mcp-access="onToggleMcpAccess"
 					@tasks-changed="() => onConfigUpdated()"
 					@agent-changed="refreshAgentAfterIntegrationChange"
+					@generate-eval-cases="onGenerateEvalCases"
 				/>
 
 				<AgentVersionHistoryPanel

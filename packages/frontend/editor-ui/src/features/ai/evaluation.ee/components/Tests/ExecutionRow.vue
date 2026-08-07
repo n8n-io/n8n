@@ -115,7 +115,6 @@ const outputEntries = computed(() => toEntries(items.value.output));
 
 			<N8nButton
 				size="mini"
-				type="primary"
 				:class="[$style.createButton, expanded ? $style.createButtonVisible : null]"
 				:data-test-id="`tests-execution-create-${execution.id}`"
 				@click="emit('create')"

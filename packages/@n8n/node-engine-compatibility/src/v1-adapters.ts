@@ -3,7 +3,7 @@
  * back into engine v1 artifacts (`INode`, `Workflow`, run data, node execute context).
  */
 
-import type { GraphNode, JsonValue, WorkflowGraph } from '@n8n/engine';
+import type { GraphNode, StepSlots, WorkflowGraph } from '@n8n/engine';
 import { ExecuteContext, UnrecognizedNodeTypeError } from 'n8n-core';
 import type {
 	IConnections,
@@ -25,7 +25,7 @@ import type { CreateExecuteContextParams, V1Execution, V1NodeStepConfig } from '
 
 export function toV1Execution(
 	graph: WorkflowGraph,
-	outputsByStepId: Record<string, JsonValue>,
+	outputsByStepId: Record<string, StepSlots>,
 ): V1Execution {
 	return {
 		nodes: toV1Nodes(graph),
@@ -79,7 +79,7 @@ function toV1Connections(graph: WorkflowGraph): IConnections {
 	return connections;
 }
 
-function toV1RunData(graph: WorkflowGraph, outputsByStepId: Record<string, JsonValue>): IRunData {
+function toV1RunData(graph: WorkflowGraph, outputsByStepId: Record<string, StepSlots>): IRunData {
 	const namesById = new Map(graph.nodes.map((node) => [node.id, node.name]));
 	const sourcesByStepId = toV1Sources(graph);
 

@@ -54,7 +54,7 @@ function createChannelSetup() {
 		currentIntegration: null,
 		connectedCredentials: {},
 		fetchStatus: vi.fn().mockResolvedValue(undefined),
-		isIntegrationConnected: () => false,
+		isIntegrationConfigured: () => false,
 	});
 }
 
@@ -102,7 +102,7 @@ describe('useAgentChannelSetup', () => {
 		expect(credentialPermissions.value.create).toBe(true);
 	});
 
-	it('resolves setupSlackApp successfully when the popup closes while an in-flight poll is about to confirm the connection', async () => {
+	it('resolves setupSlackApp successfully when the popup closes while an in-flight poll confirms the configuration', async () => {
 		vi.useFakeTimers();
 
 		class FakeBroadcastChannel {
@@ -119,7 +119,7 @@ describe('useAgentChannelSetup', () => {
 		const firstPoll = new Promise<void>((resolve) => {
 			resolveFirstPoll = resolve;
 		});
-		let isConnected = false;
+		let isConfigured = false;
 		const fetchStatus = vi.fn().mockImplementation(async () => {
 			if (fetchStatus.mock.calls.length === 1) {
 				await firstPoll;
@@ -133,7 +133,7 @@ describe('useAgentChannelSetup', () => {
 			currentIntegration: null,
 			connectedCredentials: {},
 			fetchStatus,
-			isIntegrationConnected: () => isConnected,
+			isIntegrationConfigured: () => isConfigured,
 		});
 
 		const setupPromise = setupSlackApp('token', onConnected);
@@ -142,7 +142,7 @@ describe('useAgentChannelSetup', () => {
 		fakePopup.closed = true;
 		await vi.advanceTimersByTimeAsync(2000);
 
-		isConnected = true;
+		isConfigured = true;
 		resolveFirstPoll();
 
 		await expect(setupPromise).resolves.toBe(true);

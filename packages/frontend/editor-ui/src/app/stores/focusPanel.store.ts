@@ -15,7 +15,7 @@ import {
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 import { LOCAL_STORAGE_FOCUS_PANEL } from '@/app/constants';
-import { useStorage } from '@/app/composables/useStorage';
+import { useStorage } from '@n8n/composables/useStorage';
 import { watchOnce } from '@vueuse/core';
 import { isFromAIOverrideValue } from '@/features/ndv/parameters/utils/fromAIOverride.utils';
 import type { FocusSidebarTabs } from '@/features/setupPanel/types';

@@ -12,15 +12,16 @@ import type {
 } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
+import type { WorkflowReviewDecisionEligibilityService } from '../workflow-review-decision-eligibility.service';
+import { WorkflowReviewFeatureGate } from '../workflow-review-feature-gate.service';
+import { WorkflowReviewInboxService } from '../workflow-review-inbox.service';
+
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { ProjectService } from '@/services/project.service.ee';
 import type { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
-
-import { WorkflowReviewFeatureGate } from '../workflow-review-feature-gate.service';
-import { WorkflowReviewInboxService } from '../workflow-review-inbox.service';
 
 const requestId = 'req-1';
 const workflowId = 'wf-1';
@@ -73,6 +74,7 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 	const reviewerRepository = mock<WorkflowReviewRequestReviewerRepository>();
 	const userRepository = mock<UserRepository>();
 	const projectService = mock<ProjectService>();
+	const decisionEligibilityService = mock<WorkflowReviewDecisionEligibilityService>();
 	const licenseState = mock<LicenseState>();
 
 	const service = new WorkflowReviewInboxService(
@@ -85,6 +87,7 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 		reviewerRepository,
 		userRepository,
 		projectService,
+		decisionEligibilityService,
 	);
 
 	beforeEach(() => {
@@ -100,6 +103,10 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 		userRepository.findManyByIds.mockResolvedValue([]);
 		publishedVersionRepository.getPublishedVersionId.mockResolvedValue(null);
 		workflowHistoryService.findVersion.mockResolvedValue(null);
+		decisionEligibilityService.resolveViewerEligibility.mockResolvedValue({
+			canDecide: true,
+			reason: null,
+		});
 	});
 
 	/** One child row pinned to `pinnedVersionId`. */
@@ -223,6 +230,59 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 		});
 	});
 
+	describe('viewer decision eligibility', () => {
+		it('carries the resolved capability on the detail', async () => {
+			const detail = await service.getDetail(requester, requestId);
+
+			expect(detail.viewerCanDecide).toBe(true);
+			expect(detail.viewerDecisionIneligibilityReason).toBeNull();
+		});
+
+		it('surfaces the ineligibility reason for an author', async () => {
+			decisionEligibilityService.resolveViewerEligibility.mockResolvedValue({
+				canDecide: false,
+				reason: 'author',
+			});
+
+			const detail = await service.getDetail(requester, requestId);
+
+			expect(detail.viewerCanDecide).toBe(false);
+			expect(detail.viewerDecisionIneligibilityReason).toBe('author');
+		});
+
+		it('resolves eligibility against the pinned workflow, even one the caller cannot read', async () => {
+			// The requester keeps their record after losing read access to the covered
+			// workflow — eligibility must still be checked against that pinned row.
+			mockChildRow('ver-pinned');
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(null);
+			decisionEligibilityService.resolveViewerEligibility.mockResolvedValue({
+				canDecide: false,
+				reason: 'missing_publish_permission',
+			});
+
+			const detail = await service.getDetail(requester, requestId);
+
+			expect(decisionEligibilityService.resolveViewerEligibility).toHaveBeenCalledWith(
+				requester,
+				expect.objectContaining({ id: requestId }),
+				workflowId,
+			);
+			expect(detail.workflows).toEqual([]);
+			expect(detail.viewerCanDecide).toBe(false);
+			expect(detail.viewerDecisionIneligibilityReason).toBe('missing_publish_permission');
+		});
+
+		it('passes no workflow id when the review no longer covers any workflow', async () => {
+			await service.getDetail(requester, requestId);
+
+			expect(decisionEligibilityService.resolveViewerEligibility).toHaveBeenCalledWith(
+				requester,
+				expect.objectContaining({ id: requestId }),
+				null,
+			);
+		});
+	});
+
 	describe('the two versions to compare', () => {
 		it('returns the version under review and the published version to compare it against', async () => {
 			mockChildRow('ver-pinned');
@@ -235,6 +295,7 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 
 			expect(detail.workflows[0]?.pinnedVersion).toEqual({
 				versionId: 'ver-pinned',
+				name: 'My workflow',
 				nodes: [expect.objectContaining({ name: 'node-ver-pinned' })],
 				connections: {},
 				nodeGroups: [],

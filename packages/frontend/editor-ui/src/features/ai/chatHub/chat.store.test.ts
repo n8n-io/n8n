@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import { useChatStore } from './chat.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import * as chatApi from './chat.api';
 import type { ChatHubToolDto, ChatHubAgentDto, ChatHubSessionDto } from '@n8n/api-types';
 import type { INode } from 'n8n-workflow';

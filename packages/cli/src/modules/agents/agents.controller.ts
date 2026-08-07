@@ -33,7 +33,9 @@ export class AgentsController {
 	) {
 		const { projectId } = req.params;
 
-		const agent = await this.agentsService.create(projectId, payload.name, { id: payload.id });
+		const agent = await this.agentsService.create(projectId, payload.name, {
+			id: payload.id,
+		});
 		return await this.agentRunnableStateService.addRunnableState(agent, projectId, req.user);
 	}
 
