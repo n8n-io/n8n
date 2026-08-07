@@ -454,7 +454,7 @@ export class ScheduleTrigger implements INodeType {
 				default: 0,
 				typeOptions: { minValue: 0, numberPrecision: 0 },
 				description:
-					"How late an execution may start before it counts as missed. Set to 0 to use the instance setting. Very small values are raised to the scheduler's minimum.",
+					'How late an execution may start before it counts as missed. Set to 0 to use the instance setting.',
 				isNodeSetting: true,
 				noDataExpression: true,
 				displayOptions: {
