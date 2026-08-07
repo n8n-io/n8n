@@ -3,6 +3,7 @@ import { createTeamProject, createWorkflow, testDb } from '@n8n/backend-test-uti
 import { type User } from '@n8n/db';
 import { DateTime } from 'luxon';
 
+import { AUTH_COOKIE_NAME } from '@/constants';
 import { createCompactedInsightsEvent } from '@/modules/insights/database/entities/__tests__/db-utils';
 
 import { createOwnerWithApiKey } from '../shared/db/users';
@@ -103,6 +104,13 @@ describe('GET /insights/summary', () => {
 
 		expect(response.body.total.value).toBe(4);
 		expect(response.body.failed.value).toBe(1);
+	});
+
+	test('returns 401 with an invalid session cookie', async () => {
+		const agent = testServer.publicApiAgentWithoutApiKey();
+		agent.jar.setCookie(`${AUTH_COOKIE_NAME}=invalid`);
+
+		await agent.get('/insights/summary').expect(401);
 	});
 
 	test('returns 403 without insights:read scope', async () => {
