@@ -86,7 +86,7 @@ describe('webhook-form-data', () => {
 		});
 
 		it('should parse fields from the multipart form data', async () => {
-			const parseFn = createMultiFormDataParser(1);
+			const parseFn = createMultiFormDataParser(1, 1000);
 
 			await testServer
 				.sendRequestToHandler(async (req) => {
@@ -106,7 +106,7 @@ describe('webhook-form-data', () => {
 		});
 
 		it('should parse text/plain file from the multipart form data', async () => {
-			const parseFn = createMultiFormDataParser(1);
+			const parseFn = createMultiFormDataParser(1, 1000);
 
 			await testServer
 				.sendRequestToHandler(async (req) => {
@@ -132,7 +132,7 @@ describe('webhook-form-data', () => {
 		});
 
 		it('should parse multiple files and fields from the multipart form data', async () => {
-			const parseFn = createMultiFormDataParser(1);
+			const parseFn = createMultiFormDataParser(1, 1000);
 
 			await testServer
 				.sendRequestToHandler(async (req) => {
@@ -167,7 +167,7 @@ describe('webhook-form-data', () => {
 
 		it('should reject with a 413 error when a single file exceeds the limit', async () => {
 			const oneByteInMb = 1 / 1024 / 1024;
-			const parseFn = createMultiFormDataParser(oneByteInMb);
+			const parseFn = createMultiFormDataParser(oneByteInMb, 1000);
 
 			await testServer
 				.sendRequestToHandler(async (req) => {
@@ -183,7 +183,7 @@ describe('webhook-form-data', () => {
 		it('should reject with a 413 error when the total upload size exceeds the limit', async () => {
 			const twoKbData = Buffer.alloc(2 * 1024, 'x');
 			const oneKbInMb = 1 / 1024;
-			const parseFn = createMultiFormDataParser(oneKbInMb);
+			const parseFn = createMultiFormDataParser(oneKbInMb, 1000);
 
 			await testServer
 				.sendRequestToHandler(async (req) => {
@@ -192,6 +192,22 @@ describe('webhook-form-data', () => {
 					await expect(rejection).rejects.toMatchObject({ httpStatusCode: 413 });
 				})
 				.attach('file', twoKbData, 'large-upload.bin');
+
+			testServer.assertHasBeenCalled();
+		});
+
+		it('should reject when the number of files exceeds maxFiles', async () => {
+			// Each part opens a temp file before any size check, so the count must be
+			// bounded explicitly — formidable's default maxFiles is Infinity.
+			const parseFn = createMultiFormDataParser(1, 2);
+
+			await testServer
+				.sendRequestToHandler(async (req) => {
+					await expect(parseFn(req)).rejects.toThrow(/maxFiles/);
+				})
+				.attach('file1', oneKbData, 'a.txt')
+				.attach('file2', oneKbData, 'b.txt')
+				.attach('file3', oneKbData, 'c.txt');
 
 			testServer.assertHasBeenCalled();
 		});
