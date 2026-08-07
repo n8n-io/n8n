@@ -1,4 +1,3 @@
-import { toJsonValue } from '@n8n/utils/json/to-json-value';
 import { zodToJsonSchema, type JsonSchema7Type } from 'zod-to-json-schema';
 
 import {
@@ -7,6 +6,11 @@ import {
 } from './delegate-sub-agent-tool';
 import { DEFAULT_SUB_AGENT_MAX_CHILDREN } from './sub-agent-task-path';
 import { executeTool, isSuspendedToolResult, type SuspendedToolResult } from './tool-adapter';
+import {
+	guardToolErrorForModel,
+	guardToolMessageForModel,
+	guardToolResultForModel,
+} from './tool-result-guard';
 import { isAbortError, raceWithAbort } from '../../sdk/abort';
 import { isCancellation } from '../../sdk/cancellation';
 import { isLlmMessage } from '../../sdk/message';
@@ -24,6 +28,7 @@ import type { JSONObject, JSONValue } from '../../types/utils/json';
 import { parseWithSchema } from '../../utils/parse';
 import { isZodSchema } from '../../utils/zod';
 import { incrementToolCallCount } from '../loop/execution-counter';
+import { stringifyError } from '../loop/runtime-helpers';
 import type { AgentMessageList } from '../model/message-list';
 import { normalizeToolInputForModel } from '../model/messages';
 import type { AgentEventBus } from '../state/event-bus';
@@ -850,7 +855,7 @@ export class ToolCallExecutor {
 			result: error,
 			isError: true,
 		});
-		params.list.setToolCallError(params.toolCallId, error);
+		params.list.setToolCallError(params.toolCallId, guardToolErrorForModel(stringifyError(error)));
 		return { outcome: 'error', error };
 	}
 
@@ -1012,6 +1017,7 @@ export class ToolCallExecutor {
 		} catch (error) {
 			return this.toolError(params, error);
 		}
+		const guardedResult = guardToolResultForModel(modelResult);
 
 		this.eventBus.emit({
 			type: AgentEvent.ToolExecutionEnd,
@@ -1021,11 +1027,14 @@ export class ToolCallExecutor {
 			isError: false,
 		});
 
-		list.setToolCallResult(toolCallId, toJsonValue(modelResult));
+		list.setToolCallResult(toolCallId, guardedResult.historyOutput);
 
 		const customMessage = builtTool.toMessage?.(toolResult);
-		if (customMessage) {
-			list.addResponse([customMessage]);
+		const guardedCustomMessage = customMessage
+			? guardToolMessageForModel(customMessage)
+			: undefined;
+		if (guardedCustomMessage) {
+			list.addResponse([guardedCustomMessage]);
 		}
 
 		return {
@@ -1036,8 +1045,8 @@ export class ToolCallExecutor {
 				output: toolResult,
 				transformed: !!builtTool.toModelOutput,
 			},
-			modelOutput: modelResult,
-			customMessage,
+			modelOutput: guardedResult.wireOutput,
+			customMessage: guardedCustomMessage,
 		};
 	}
 }
