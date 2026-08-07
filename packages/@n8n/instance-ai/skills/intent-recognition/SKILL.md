@@ -5,24 +5,25 @@ description: >-
   owns the top-level control flow — workflow-anchored, agent-anchored,
   needs-clarification, or out-of-scope) and embeds_other (whether the other
   primitive appears embedded inside — an agent step inside a workflow, or a
-  workflow invoked as an agent tool). Must be used before deciding the intent
-  of any automation request, including compound requests with multiple
-  independent automations, mid-build extensions to an existing workflow or
-  agent, one-off questions or reports that need external systems you cannot
-  query directly, and requests that need clarification before an anchor can
-  be chosen, before choosing workflow-builder, planning, or an agent-oriented
-  design.
+  workflow invoked as an agent tool). Must be used whenever the current turn
+  requires choosing or reconsidering the intent of an automation request,
+  including compound requests, independent automations introduced mid-build,
+  one-off questions or reports that need external systems you cannot query
+  directly, and requests that need clarification before an anchor can be
+  chosen. Do not load for routine edits or extensions when the conversation
+  already targets a workflow or Agent.
 ---
 
 # Intent recognition
 
 ## Purpose
 
-Use this skill to classify an automation request before designing or building
-it. This skill must be used before deciding whether a request is
-workflow-anchored, agent-anchored, needs clarification, or out of scope, and
-before deciding whether the other primitive is embedded inside it. The
-deciding question is not a single "workflow or agent" label — it is two
+Use this skill when an automation request still needs to be classified before
+designing or building it, or when a new turn may require reconsidering the
+current artifact. Do not load it again for a routine edit or extension when the
+conversation already targets a workflow or Agent, unless the user introduces
+an independent automation or the new request carries its own anchor signal.
+The deciding question is not a single "workflow or agent" label — it is two
 questions: who owns the top-level control flow, and does the other primitive
 show up inside that flow.
 
@@ -76,8 +77,8 @@ Two orthogonal decisions per request, or per part for compound requests:
 
 - workflow-anchored + `true`: an agent embedded as a workflow step (e.g. a
   scheduled pipeline whose middle step is open-ended investigation).
-- agent-anchored + `true`: workflows invoked as tools of the agent; see Adding
-  tools to an agent to distinguish them from direct tools.
+- agent-anchored + `true`: workflows invoked as tools of the agent; see Agent
+  tool shape to distinguish them from direct tools.
 - `n/a` for needs-clarification and out-of-scope.
 
 **Migration from the old taxonomy**: old **hybrid** → workflow-anchored,
@@ -87,36 +88,28 @@ only when the user wants a persistent, triggerable automation. Old
 **ambiguous** → needs-clarification. Old **workflow** and **agent** map
 directly onto the matching anchor value.
 
-## Adding tools to an agent
+## Agent tool shape
 
 After choosing an agent-anchored design, decide whether each capability should
 be a direct agent tool or a workflow tool:
 
-- **Direct agent tools are the default.** Forward requests to add capabilities
-  to `build-agent` near-verbatim so the delegated builder can choose MCP,
-  node-backed, provider, or custom tools. One node-backed capability or
-  multiple independent node tools stay on the agent build path with
+- **Direct agent tools are the default.** One node-backed capability or multiple
+  independent node tools stay on the Agent build path with
   `embeds_other: false`.
 - Use a **workflow tool** only when one agent tool call must run an ordered
   multi-node procedure, or when the user explicitly needs that workflow
   reusable, manually callable, or usable outside the agent. Build the workflow
   first, pass it to `build-agent` via `workflowContext`, and set
   `embeds_other: true`.
-- Create required **data tables** via `data-table-manager` → `data-tables`
-  before `build-agent` when the agent will store or query tabular data — the
-  builder cannot create tables.
-- Before the first `build-agent` call, create every prerequisite the builder
-  cannot: required data tables and any workflow tools the agent will invoke.
-  Pass built workflows in `workflowContext` and list every prerequisite
-  name/schema in `message`. Then let the builder gather remaining agent-specific
-  requirements (model, credentials, integrations).
-- If a `builderReply` lists missing workflows or tables, create them and call
-  `build-agent` again — never ask the user to create them manually.
 
 Count the nodes required inside one tool invocation, not the total number of
 tools on the agent. For example, looking up and inserting Data Table rows are
 two direct node tools; an atomic lookup-transform-write procedure is one
 workflow tool.
+
+After choosing an agent-anchored design, load `agent-builder` before calling
+`build-agent`. It owns prerequisite creation and the handoff to the delegated
+builder.
 
 ## Decision Steps
 
@@ -224,7 +217,7 @@ that agent, never a spawned workflow.
   that drafts a tailored renewal pitch for each account from its usage
   history embeds an agent; a nightly job that condenses each ticket into a
   two-sentence summary does not.
-- For an agent with workflow tools, apply Adding tools to an agent.
+- For an agent with workflow tools, apply Agent tool shape.
 
 **Context continuity** (step 0): inside a workflow build, a request to insert
 a scoring step stays a bounded LLM step, not a new agent. Inside an agent
