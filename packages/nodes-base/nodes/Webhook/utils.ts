@@ -2,7 +2,7 @@ import { formatPemBlock } from '@n8n/utils/format-pem-block';
 import basicAuth from 'basic-auth';
 import { rm } from 'fs/promises';
 import jwt from 'jsonwebtoken';
-import { WorkflowConfigurationError } from 'n8n-workflow';
+import { recordConsumedAuth, WorkflowConfigurationError } from 'n8n-workflow';
 import type {
 	IWebhookFunctions,
 	INodeExecutionData,
@@ -294,12 +294,17 @@ export async function validateWebhookAuthentication(
 			) {
 				throw new WebhookAuthorizationError(403);
 			}
+
+			// `x-auth-token` carries the token derived from the same credential
+			recordConsumedAuth(req, { headers: ['x-auth-token'] });
 		} else if (
 			providedAuth.name !== expectedAuth.user ||
 			providedAuth.pass !== expectedAuth.password
 		) {
 			// Provided authentication data is wrong
 			throw new WebhookAuthorizationError(401, 'Authentication data is wrong!');
+		} else {
+			recordConsumedAuth(req, { headers: ['authorization'] });
 		}
 	} else if (authentication === 'bearerAuth') {
 		let expectedAuth: ICredentialDataDecryptedObject | undefined;
@@ -315,6 +320,8 @@ export async function validateWebhookAuthentication(
 		if (headers.authorization !== `Bearer ${expectedToken}`) {
 			throw new WebhookAuthorizationError(403);
 		}
+
+		recordConsumedAuth(req, { headers: ['authorization'] });
 	} else if (authentication === 'headerAuth') {
 		// Special header with value is needed to call webhook
 		let expectedAuth: ICredentialDataDecryptedObject | undefined;
@@ -336,6 +343,8 @@ export async function validateWebhookAuthentication(
 			// Provided authentication data is wrong
 			throw new WebhookAuthorizationError(403);
 		}
+
+		recordConsumedAuth(req, { headers: [headerName] });
 	} else if (authentication === 'jwtAuth') {
 		let expectedAuth;
 
@@ -369,9 +378,14 @@ export async function validateWebhookAuthentication(
 		}
 
 		try {
-			return jwt.verify(token, secretOrPublicKey, {
+			const payload = jwt.verify(token, secretOrPublicKey, {
 				algorithms: [expectedAuth.algorithm],
 			}) as IDataObject;
+
+			// The verified claims are surfaced as `jwtPayload`, so the raw token isn't needed
+			recordConsumedAuth(req, { headers: ['authorization'] });
+
+			return payload;
 		} catch (error) {
 			throw new WebhookAuthorizationError(403, error.message);
 		}

@@ -3,6 +3,7 @@ import type { Request, Response } from 'express';
 import fs from 'fs/promises';
 import { mock } from 'vitest-mock-extended';
 import type { IWebhookFunctions } from 'n8n-workflow';
+import { REDACTED, redactedHeaders } from 'n8n-workflow';
 
 import { Webhook } from '../Webhook.node';
 
@@ -293,6 +294,94 @@ describe('Test Webhook Node', () => {
 			);
 			expect(result.workflowData).toBeDefined();
 			expect(result.workflowData?.[0][0].json.body).toEqual({ hello: 'world' });
+		});
+	});
+
+	// The node's `json.headers` has always included the header n8n authenticated with, so it
+	// still does. It only records what it consumed, leaving the request untouched.
+	describe('auth headers in the node output', () => {
+		const node = new Webhook();
+		let context: ReturnType<typeof mock<IWebhookFunctions>>;
+		let req: ReturnType<typeof mock<Request>>;
+
+		const setup = (authentication: string, headers: Record<string, string>) => {
+			context = mock<IWebhookFunctions>({ nodeHelpers: mock(), logger: mock() });
+			req = mock<Request>();
+			const res = mock<Response>();
+
+			context.getRequestObject.mockReturnValue(req);
+			context.getResponseObject.mockReturnValue(res);
+			context.getChildNodes.mockReturnValue([]);
+			context.getNode.mockReturnValue({
+				type: 'n8n-nodes-base.webhook',
+				typeVersion: 2.1,
+				name: 'Webhook',
+			} as any);
+			context.getNodeWebhookUrl
+				.calledWith('default')
+				.mockReturnValue('https://n8n.test/webhook/abc');
+			context.getNodeParameter.mockImplementation((paramName: string) => {
+				if (paramName === 'options') return {};
+				if (paramName === 'responseMode') return 'onReceived';
+				if (paramName === 'authentication') return authentication;
+				return undefined;
+			});
+			context.getHeaderData.mockImplementation(() => req.headers);
+
+			req.headers = { ...headers };
+			req.params = {};
+			req.query = {};
+			req.method = 'POST';
+			req.body = { hello: 'world' };
+			Object.defineProperty(req, 'ips', { value: [], configurable: true });
+			Object.defineProperty(req, 'ip', { value: '127.0.0.1', configurable: true });
+
+			return context;
+		};
+
+		it('still exposes the custom header a headerAuth credential names', async () => {
+			const ctx = setup('headerAuth', { test: 'secret-value', 'x-tenant-id': 'acme' });
+			ctx.getCredentials.mockResolvedValue({ name: 'test', value: 'secret-value' });
+
+			const result = await node.webhook(ctx);
+
+			expect(result.workflowData?.[0][0].json.headers).toEqual({
+				test: 'secret-value',
+				'x-tenant-id': 'acme',
+			});
+		});
+
+		it('records the credential-named header so it can be redacted later', async () => {
+			const ctx = setup('headerAuth', { test: 'secret-value', 'x-tenant-id': 'acme' });
+			ctx.getCredentials.mockResolvedValue({ name: 'test', value: 'secret-value' });
+
+			await node.webhook(ctx);
+
+			expect(redactedHeaders(req)).toEqual({ test: REDACTED, 'x-tenant-id': 'acme' });
+			expect(req.headers).toEqual({ test: 'secret-value', 'x-tenant-id': 'acme' });
+		});
+
+		it('still exposes the basic auth header', async () => {
+			const authorization = `Basic ${Buffer.from('admin:password').toString('base64')}`;
+			const ctx = setup('basicAuth', { authorization, 'x-tenant-id': 'acme' });
+			ctx.getCredentials.mockResolvedValue({ user: 'admin', password: 'password' });
+
+			const result = await node.webhook(ctx);
+
+			expect(result.workflowData?.[0][0].json.headers).toEqual({
+				authorization,
+				'x-tenant-id': 'acme',
+			});
+		});
+
+		it('exposes a caller-sent authorization header when authentication is off', async () => {
+			const ctx = setup('none', { authorization: 'Bearer caller-token' });
+
+			const result = await node.webhook(ctx);
+
+			expect(result.workflowData?.[0][0].json.headers).toEqual({
+				authorization: 'Bearer caller-token',
+			});
 		});
 	});
 
