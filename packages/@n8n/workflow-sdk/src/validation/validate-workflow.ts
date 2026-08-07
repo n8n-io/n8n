@@ -1293,12 +1293,7 @@ function toolServicePrefix(nodeType: string): string | undefined {
 function validateToolNodeNames(json: WorkflowJSON, warnings: ValidationWarning[]): void {
 	for (const node of json.nodes) {
 		if (!node.name) continue;
-
-		const outgoing = json.connections[node.name];
-		const toolEdges = isRecord(outgoing) ? outgoing.ai_tool : undefined;
-		const isToolNode =
-			Array.isArray(toolEdges) && toolEdges.some((slot) => Array.isArray(slot) && slot.length > 0);
-		if (!isToolNode) continue;
+		if (!isToolSubnode(node.name, json)) continue;
 
 		if (!SNAKE_CASE_TOOL_NAME.test(node.name)) {
 			warnings.push(

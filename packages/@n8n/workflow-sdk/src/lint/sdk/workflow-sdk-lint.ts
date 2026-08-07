@@ -178,13 +178,42 @@ function isJsonEnvelopeObject(node: Node | null): boolean {
 	return prop?.type === 'Property' && propertyName(prop) === 'json';
 }
 
+/** Factories whose config object carries the mock `output` field. */
+const NODE_FACTORY_NAMES = new Set([
+	'node',
+	'trigger',
+	'ifElse',
+	'merge',
+	'switchCase',
+	'splitInBatches',
+	'languageModel',
+	'memory',
+	'tool',
+	'outputParser',
+	'embedding',
+	'embeddings',
+	'vectorStore',
+	'retriever',
+	'documentLoader',
+	'textSplitter',
+]);
+
 /**
  * `output: [{ json: {...} }]` — SDK mocks are raw `$json` objects; wrapping
  * every item in a `json` envelope makes downstream expressions read
- * `$json.json.*` and expression-path validation fail.
+ * `$json.json.*` and expression-path validation fail. Only the top-level
+ * `output` key of a node-factory config counts: a nested parameter that
+ * happens to be named `output` is legitimate payload, not a mock.
  */
-function checkMockOutputEnvelope(prop: Property, issues: SourceLintIssue[]): void {
-	if (propertyName(prop) !== 'output') return;
+function checkMockOutputEnvelope(call: CallExpression, issues: SourceLintIssue[]): void {
+	if (call.callee.type !== 'Identifier' || !NODE_FACTORY_NAMES.has(call.callee.name)) return;
+	const config = call.arguments[0];
+	if (!config || config.type !== 'ObjectExpression') return;
+
+	const prop = config.properties.find(
+		(entry): entry is Property => entry.type === 'Property' && propertyName(entry) === 'output',
+	);
+	if (!prop) return;
 	if (prop.value.type !== 'ArrayExpression' || prop.value.elements.length === 0) return;
 
 	const allEnveloped = prop.value.elements.every((el) => isJsonEnvelopeObject(el));
@@ -365,7 +394,6 @@ export function lintWorkflowSdkAst(
 			}
 
 			if (node.type === 'Property') {
-				checkMockOutputEnvelope(node, issues);
 				checkRawCredentialObjects(node, issues);
 			}
 
@@ -373,6 +401,8 @@ export function lintWorkflowSdkAst(
 
 			if (node.type !== 'CallExpression') return;
 			const call = node;
+
+			checkMockOutputEnvelope(call, issues);
 
 			if (call.callee.type === 'Identifier' && call.callee.name === 'sticky') {
 				issues.push(

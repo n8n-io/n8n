@@ -221,15 +221,30 @@ export default workflow('id', 'name').add(fetchData);
 			);
 		});
 
-		it('does not treat computed keys as the literal property name', () => {
+		it('does not treat a computed json key as a literal envelope', () => {
 			const source = `
-const key = 'output';
+const jsonKey = 'json';
 const fetchData = node({
   type: 'n8n-nodes-base.httpRequest',
   version: 4.3,
-  config: { name: 'Fetch', parameters: { mapping: { [key]: [{ json: { a: 1 } }] } } },
+  config: { name: 'Fetch' },
+  output: [{ [jsonKey]: { a: 1 } }],
 });
 export default workflow('id', 'name').add(fetchData);
+`;
+			expect(lintWorkflowSdkSource(source).map((i) => i.code)).not.toContain(
+				'SDK_MOCK_OUTPUT_JSON_ENVELOPE',
+			);
+		});
+
+		it('ignores nested parameters that happen to be named output', () => {
+			const source = `
+const setFields = node({
+  type: 'n8n-nodes-base.set',
+  version: 3.4,
+  config: { name: 'Map', parameters: { output: [{ json: { a: 1 } }] } },
+});
+export default workflow('id', 'name').add(setFields);
 `;
 			expect(lintWorkflowSdkSource(source).map((i) => i.code)).not.toContain(
 				'SDK_MOCK_OUTPUT_JSON_ENVELOPE',
