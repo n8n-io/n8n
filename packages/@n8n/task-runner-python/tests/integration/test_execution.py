@@ -57,6 +57,8 @@ async def test_all_items_with_error(broker, manager):
 
     assert error_msg["taskId"] == task_id
     assert "Intentional error" in str(error_msg["error"]["message"])
+    assert "stack" in error_msg["error"]
+    assert "ValueError" in error_msg["error"]["stack"]
 
 
 @pytest.mark.asyncio
