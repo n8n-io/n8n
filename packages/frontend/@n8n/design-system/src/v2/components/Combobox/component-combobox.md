@@ -84,7 +84,8 @@ The dropdown content defaults to a max height of **500px** with vertical scrolli
 
 **Attributes**
 
-Non-prop attributes (e.g. `aria-label`, `data-test-id`) fall through to `ComboboxAnchor`, not the root.
+- Accessible-name attributes (`aria-label`, `aria-labelledby`) are forwarded to the combobox input. The placeholder is never used as an accessible name — associate a `<label>` via `id`, or pass one of these attributes.
+- Other non-prop attributes (e.g. `data-test-id`) fall through to `ComboboxAnchor`, not the root.
 
 **Slots**
 

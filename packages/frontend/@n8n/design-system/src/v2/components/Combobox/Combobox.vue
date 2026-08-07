@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { reactivePick } from '@vueuse/core';
-import { computed, nextTick, useCssModule, useTemplateRef } from 'vue';
+import { reactiveOmit, reactivePick } from '@vueuse/core';
+import { computed, nextTick, useAttrs, useCssModule, useTemplateRef } from 'vue';
 
 import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
 import { useI18n } from '@n8n/design-system/composables/useI18n';
@@ -36,6 +36,7 @@ import {
 defineOptions({ inheritAttrs: false });
 
 const $style = useCssModule();
+const attrs = useAttrs();
 
 const props = withDefaults(defineProps<ComboboxProps>(), {
 	size: 'large',
@@ -51,6 +52,9 @@ const { t } = useI18n();
 
 const placeholder = computed(() => props.placeholder ?? t('combobox.placeholder'));
 const emptyText = computed(() => props.emptyText ?? t('combobox.emptyText'));
+
+const inputNameAttrs = reactivePick(attrs, 'aria-label', 'aria-labelledby');
+const anchorAttrs = reactiveOmit(attrs, 'aria-label', 'aria-labelledby');
 
 const rootProps = useForwardPropsEmits(
 	reactivePick(
@@ -284,7 +288,7 @@ function onTagsUpdate(value: TagsInputValue[]) {
 		<ComboboxAnchor
 			ref="anchor"
 			data-test-id="combobox"
-			v-bind="$attrs"
+			v-bind="anchorAttrs"
 			:class="[$style.comboboxAnchor, sizeClass, props.multiple && $style.multiple]"
 			:data-disabled="props.disabled || undefined"
 			:data-multiple="props.multiple || undefined"
@@ -318,7 +322,7 @@ function onTagsUpdate(value: TagsInputValue[]) {
 						:id="props.id"
 						as-child
 						:display-value="getDisplayValue"
-						:aria-label="$attrs['aria-label'] ?? placeholder"
+						v-bind="inputNameAttrs"
 					>
 						<TagsInputInput
 							:id="inputProps.id"
@@ -341,7 +345,7 @@ function onTagsUpdate(value: TagsInputValue[]) {
 				:placeholder="placeholder"
 				:auto-focus="props.autoFocus"
 				:display-value="getDisplayValue"
-				:aria-label="$attrs['aria-label'] ?? placeholder"
+				v-bind="inputNameAttrs"
 			/>
 
 			<button

@@ -100,6 +100,38 @@ describe('v2/components/Combobox', () => {
 		});
 	});
 
+	describe('accessible name', () => {
+		it('should not use the placeholder as the input accessible name', () => {
+			const wrapper = render(Combobox, {
+				props: {
+					items: options('Option 1'),
+					placeholder: 'Search options',
+				},
+			});
+
+			const input = getComboboxInput(wrapper);
+			expect(input).toHaveAttribute('placeholder', 'Search options');
+			expect(input).not.toHaveAttribute('aria-label');
+			expect(wrapper.queryByRole('combobox', { name: 'Search options' })).not.toBeInTheDocument();
+		});
+
+		it('should forward aria-label to the input, not the anchor', () => {
+			const wrapper = render(Combobox, {
+				props: {
+					items: options('Option 1'),
+					placeholder: 'Search options',
+				},
+				attrs: {
+					'aria-label': 'Status',
+				},
+			});
+
+			expect(getComboboxInput(wrapper)).toHaveAttribute('aria-label', 'Status');
+			expect(wrapper.getByTestId('combobox')).not.toHaveAttribute('aria-label');
+			expect(wrapper.getByRole('combobox', { name: 'Status' })).toBeInTheDocument();
+		});
+	});
+
 	describe('sizes', () => {
 		test.each(sizeCases)('size %s should apply %s class', (size, expected) => {
 			const wrapper = render(Combobox, {
