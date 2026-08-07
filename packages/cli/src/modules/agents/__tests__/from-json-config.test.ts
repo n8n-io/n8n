@@ -845,6 +845,42 @@ describe('buildFromJson()', () => {
 		expect(getLocalToolNames(agent)).toContain('web_search');
 	});
 
+	it('routes fallback SearXNG search through the injected webSearchFetch', async () => {
+		const webSearchFetch = vi.fn().mockResolvedValue({
+			ok: true,
+			json: async () => ({ results: [] }),
+		});
+		const credentialProvider = {
+			resolve: vi.fn().mockResolvedValue({ apiUrl: 'http://searxng.internal:8080' }),
+			list: vi.fn().mockResolvedValue([]),
+		};
+
+		const agent = await buildFromJson(
+			makeConfig({
+				model: 'deepseek/deepseek-chat',
+				config: { webSearch: { enabled: true, provider: 'searxng', credential: 'searxng-url' } },
+			}),
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider,
+				memoryFactory: makeMockMemoryFactory(),
+				webSearchFetch: webSearchFetch as unknown as typeof fetch,
+			},
+		);
+
+		const webSearchTool = (agent as unknown as { tools?: BuiltTool[] }).tools?.find(
+			(tool) => tool.name === 'web_search',
+		);
+		expect(webSearchTool).toBeDefined();
+
+		await webSearchTool!.handler!({ query: 'test' }, {} as never);
+
+		expect(webSearchFetch).toHaveBeenCalledTimes(1);
+		const [requestUrl] = webSearchFetch.mock.calls[0] as [string];
+		expect(requestUrl).toContain('http://searxng.internal:8080/search');
+	});
+
 	it('uses native web search when native provider is explicitly configured', async () => {
 		const agent = await buildFromJson(
 			makeConfig({

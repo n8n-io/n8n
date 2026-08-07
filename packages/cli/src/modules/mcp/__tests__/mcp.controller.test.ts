@@ -30,15 +30,22 @@ import { Telemetry } from '@/telemetry';
 import type { UserConnectedToMCPEventPayload } from '../mcp.types';
 
 const mockHandleRequest = vi.fn().mockResolvedValue(undefined);
-vi.mock('@modelcontextprotocol/sdk/server/streamableHttp.js', () => {
-	const StreamableHTTPServerTransport = vi.fn().mockImplementation(function (_opts) {
-		return {
-			handleRequest: mockHandleRequest,
-			close: vi.fn().mockResolvedValue(undefined),
-		};
-	});
-	return { StreamableHTTPServerTransport };
-});
+// The controller wires createMcpHandler (per-request server factory) through
+// toNodeHandler. The mocks run the factory when the node handler is invoked,
+// mirroring the real flow: getServer is only called for requests that reach
+// the transport, and factory errors propagate to the controller's catch.
+vi.mock('@modelcontextprotocol/server', () => ({
+	createMcpHandler: vi.fn((factory: () => Promise<unknown>) => ({ factory })),
+}));
+vi.mock('@modelcontextprotocol/node', () => ({
+	toNodeHandler: vi.fn(
+		(handler: { factory: () => Promise<unknown> }) =>
+			async (req: unknown, res: unknown, body?: unknown) => {
+				await handler.factory();
+				await mockHandleRequest(req, res, body);
+			},
+	),
+}));
 
 type AuthenticatedMcpRequest = AuthenticatedRequest & {
 	mcpAuthType?: UserConnectedToMCPEventPayload['auth_type'];

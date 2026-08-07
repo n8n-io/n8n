@@ -16,7 +16,7 @@ import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import * as workflowsApi from '@/app/api/workflows';
 
 const HEARTBEAT_INTERVAL = 5 * TIME.MINUTE;

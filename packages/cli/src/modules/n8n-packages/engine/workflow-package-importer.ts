@@ -18,11 +18,7 @@ import { WorkflowPublisher } from '../entities/workflow/workflow-publisher';
 import type { PackageReader } from '../io/package-reader';
 import { VariableParentPolicy } from '../n8n-packages.types';
 import type { ImportContext, ImportPackageRequest, ImportResult } from '../n8n-packages.types';
-import {
-	assertPackageImportApiKeyScopes,
-	assertTagWritesAllowed,
-	assertVariableCreationAllowed,
-} from './import-gates';
+import { assertPackageImportApiKeyScopes, assertTagWritesAllowed } from './import-gates';
 import { ImportOrchestrator } from './import-orchestrator';
 import {
 	buildImportResult,
@@ -34,6 +30,7 @@ import {
 } from './import-result';
 import { emitPackageImportedEvent } from './import-telemetry';
 import { N8nPackageParser } from './n8n-package-parser';
+import { needsBundledVariableValues, placeByPolicy } from './package-layout';
 import type { PackageManifest } from '../spec/manifest.schema';
 
 /**
@@ -94,19 +91,21 @@ export class WorkflowPackageImporter {
 		};
 
 		const variableRequirements = identifyRequirements(manifest.requirements?.variables, workflows);
-		assertVariableCreationAllowed({
-			licenseState: this.licenseState,
-			apiKeyScopes: request.apiKeyScopes,
-			missingMode: request.variableMissingMode,
-			hasRequirements: (variableRequirements?.length ?? 0) > 0,
-		});
-		const globalPlacement = request.variableParentPolicy === VariableParentPolicy.Global;
+		const bundledVariables = needsBundledVariableValues(
+			request,
+			(variableRequirements?.length ?? 0) > 0,
+		)
+			? await this.packageParser.getVariables(reader)
+			: undefined;
 		const variableRequest: VariableImportRequest = {
-			requirements: variableRequirements?.map((requirement) => ({
-				...requirement,
-				globalPlacement,
-			})),
+			requirements: placeByPolicy({
+				requirements: variableRequirements,
+				manifestVariables: manifest.variables,
+				policy: request.variableParentPolicy ?? VariableParentPolicy.Project,
+				bundledVariables,
+			}),
 			missingMode: request.variableMissingMode,
+			conflictPolicy: request.variableConflictPolicy,
 		};
 
 		const tagRequest: TagImportRequest = {
@@ -128,7 +127,7 @@ export class WorkflowPackageImporter {
 		});
 
 		assertTagWritesAllowed(request.apiKeyScopes, [plan.tagPlan]);
-		await this.importOrchestrator.assertNotBlocked([plan]);
+		await this.importOrchestrator.assertNotBlocked([plan], { apiKeyScopes: request.apiKeyScopes });
 
 		const content = await this.importOrchestrator.apply(plan);
 

@@ -1,4 +1,4 @@
-import { type ToolCallback } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { CallToolResult } from '@modelcontextprotocol/server';
 import type { WorkflowPublishBlockedReason } from '@n8n/api-types';
 import type { INode } from 'n8n-workflow';
 import type z from 'zod';
@@ -7,6 +7,17 @@ import type { Mcpauth_type } from '@/services/oauth-token-verifier-proxy.service
 
 import type { SUPPORTED_PRODUCTION_MCP_TRIGGERS } from './mcp.constants';
 import type { WorkflowDetailsOutputSchema } from './tools/get-workflow-details.tool';
+
+/**
+ * Handler signature for MCP tools defined with classic-zod raw shapes. Tools
+ * declare schemas as raw shapes; the registration layer bridges them to the
+ * Standard Schema interface the v2 SDK expects (see tool-schema.util.ts), so
+ * handlers keep receiving the zod-parsed args object.
+ */
+export type ToolHandler<InputArgs extends z.ZodRawShape = z.ZodRawShape> = (
+	args: z.objectOutputType<InputArgs, z.ZodTypeAny>,
+	extra?: unknown,
+) => CallToolResult | Promise<CallToolResult>;
 
 export type ToolDefinition<InputArgs extends z.ZodRawShape = z.ZodRawShape> = {
 	name: string;
@@ -21,14 +32,47 @@ export type ToolDefinition<InputArgs extends z.ZodRawShape = z.ZodRawShape> = {
 			idempotentHint?: boolean;
 			openWorldHint?: boolean;
 		};
+		/** Arbitrary tool metadata, e.g. the MCP App resource marker. */
+		_meta?: Record<string, unknown>;
 	};
-	handler: ToolCallback<InputArgs>;
+	handler: ToolHandler<InputArgs>;
 };
 
 /** Registers a tool on the per-request server if the granted scopes cover it. */
 export type RegisterToolFn = <InputArgs extends z.ZodRawShape>(
 	tool: ToolDefinition<InputArgs>,
 ) => void;
+
+/** Read result for a static MCP resource (a single text document). */
+type ResourceReadResult = {
+	contents: Array<{
+		uri: string;
+		mimeType: string;
+		text: string;
+		_meta?: Record<string, unknown>;
+	}>;
+};
+
+/**
+ * A static MCP resource (no URI template). Resources register through the same
+ * chokepoint as tools (see McpService.createResourceRegistrar), so no caller
+ * touches the raw McpServer.
+ */
+export type ResourceDefinition = {
+	name: string;
+	uri: string;
+	config: {
+		description?: string;
+		mimeType?: string;
+		/** SEP-2549 client cache hint for this resource's reads. */
+		cacheHint?: { ttlMs: number; cacheScope: 'private' | 'public' };
+		_meta?: Record<string, unknown>;
+	};
+	read: () => ResourceReadResult | Promise<ResourceReadResult>;
+};
+
+/** Registers a static resource on the per-request server. */
+export type RegisterResourceFn = (resource: ResourceDefinition) => void;
 
 // Shared MCP tool types
 export const SEARCH_WORKFLOWS_SORT_BY_VALUES = [
@@ -58,8 +102,6 @@ export type SearchWorkflowsItem = {
 	createdAt: string | null;
 	updatedAt: string | null;
 	triggerCount: number | null;
-	scopes: string[];
-	canExecute: boolean;
 	availableInMCP: boolean;
 	tags: Array<{ id: string; name: string }>;
 };

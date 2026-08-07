@@ -1,7 +1,7 @@
 import { render, fireEvent } from '@testing-library/vue';
 import { vi } from 'vitest';
 
-import type { ColumnHeader } from './TableHeaderControlsButton.vue';
+import type { ColumnHeader } from './TableHeaderControlsButton.types';
 import TableHeaderControlsButton from './TableHeaderControlsButton.vue';
 
 // Mock the useI18n composable

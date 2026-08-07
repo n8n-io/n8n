@@ -267,14 +267,23 @@ describe('WorkflowToolConfigContent', () => {
 		});
 	});
 
-	it('opens the resolved target in a new tab', async () => {
+	it('keeps an id-backed target resolved after its workflow is renamed', async () => {
 		const open = vi.spyOn(window, 'open').mockImplementation(() => null);
-		setProjectWorkflows([workflow('Notify Sales', { id: 'wf-1' })]);
+		setProjectWorkflows([workflow('Renamed Sales', { id: 'wf-1' })]);
 
-		const { findByTestId } = renderComponent({ props: { initialRef: createRef() } });
+		const { findByTestId, queryByTestId } = renderComponent({
+			props: {
+				initialRef: createRef({
+					workflowId: 'wf-1',
+					workflow: 'Notify Sales',
+				}),
+			},
+		});
 		await fireEvent.click(await findByTestId('agent-workflow-tool-target-open'));
 
 		expect(open).toHaveBeenCalledWith('/workflow/wf-1', '_blank');
+		expect(queryByTestId('agent-workflow-tool-target-missing')).toBeNull();
+		expect(queryByTestId('agent-workflow-tool-target-duplicate')).toBeNull();
 	});
 
 	it('offers no open link when the target does not resolve', async () => {

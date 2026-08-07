@@ -74,7 +74,7 @@ vi.mock('../../communityNodes.store', () => ({
 	})),
 }));
 
-vi.mock('@/features/settings/users/users.store', () => ({
+vi.mock('@n8n/stores/users.store', () => ({
 	useUsersStore: vi.fn(() => usersStore),
 }));
 

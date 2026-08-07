@@ -42,4 +42,10 @@ export interface ExecutionStore {
 	 * the transition, so duplicate/redelivered events are handled idempotently.
 	 */
 	transitionStatus(id: string, from: ExecutionStatus, to: ExecutionStatus): Promise<boolean>;
+
+	/**
+	 * Record an execution's outcome: writes the final status and the finish time
+	 * together, as a compare-and-set on `running`, so they can't be observed apart.
+	 */
+	finishExecution(id: string, status: 'completed' | 'failed'): Promise<boolean>;
 }
