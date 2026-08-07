@@ -33,6 +33,29 @@ export interface KafkaConsumerHandle {
 	close: () => Promise<void>;
 }
 
+/**
+ * `ConsumeTopicOptions` with every optional resolved, so the loop never has to
+ * reason about a missing or unusable value. Defaulting stays in this module
+ * rather than moving to the node: the counts guard a loop increment and a
+ * library config key, so every caller has to be covered, not just the node.
+ */
+interface ConsumeSettings {
+	batchSize: number;
+	partitionsConsumedConcurrently: number;
+	errorRetryDelay: number;
+}
+
+/** What the batch loop needs, separated from how the consumer was started. */
+interface BatchContext extends ConsumeSettings {
+	parseMessage: KafkaMessageParser;
+	emit: DataEmitter;
+	logger: Logger;
+	/** Aborted on teardown. */
+	signal: AbortSignal;
+	/** Paces a re-delivery, unless teardown is already waiting. */
+	pauseBeforeRetry: () => Promise<void>;
+}
+
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
@@ -75,8 +98,7 @@ export async function consumeTopic(
 	options: ConsumeTopicOptions,
 ): Promise<KafkaConsumerHandle> {
 	const { topic, parseMessage, emit, logger } = options;
-	const batchSize = positiveCount(options.batchSize, DEFAULT_BATCH_SIZE);
-	const errorRetryDelay = options.errorRetryDelay ?? DEFAULT_ERROR_RETRY_DELAY_MS;
+	const settings = resolveSettings(options);
 
 	const closeController = new AbortController();
 	const { signal } = closeController;
@@ -93,7 +115,16 @@ export async function consumeTopic(
 	/** Paces a re-delivery, unless teardown is already waiting. */
 	const pauseBeforeRetry = async () => {
 		if (signal.aborted) return;
-		await Promise.race([sleep(errorRetryDelay), closed]);
+		await Promise.race([sleep(settings.errorRetryDelay), closed]);
+	};
+
+	const context: BatchContext = {
+		...settings,
+		parseMessage,
+		emit,
+		logger,
+		signal,
+		pauseBeforeRetry,
 	};
 
 	try {
@@ -101,59 +132,12 @@ export async function consumeTopic(
 		await consumer.subscribe({ topics: [topic] });
 
 		await consumer.run({
-			partitionsConsumedConcurrently: positiveCount(
-				options.partitionsConsumedConcurrently,
-				DEFAULT_PARTITIONS_CONSUMED_CONCURRENTLY,
-			),
-			// Off, as in v1: the loop below decides what counts as read. Leaving it on
+			partitionsConsumedConcurrently: settings.partitionsConsumedConcurrently,
+			// Off, as in v1: processBatch decides what counts as read. Leaving it on
 			// would mark a whole batch done the moment the callback returns, including
 			// messages no execution ever saw.
 			eachBatchAutoResolve: false,
-			eachBatch: async ({ batch, resolveOffset, commitOffsetsIfNecessary, isRunning, isStale }) => {
-				const { messages } = batch;
-
-				for (let i = 0; i < messages.length; i += batchSize) {
-					// Stop if the trigger is closing, the consumer stopped, or the partition
-					// was revoked. Unresolved offsets are re-delivered, so stopping here
-					// loses nothing.
-					if (signal.aborted || !isRunning() || isStale()) {
-						logger.debug('Kafka batch interrupted by close, rebalance or consumer stop');
-						break;
-					}
-
-					const chunk = messages.slice(i, Math.min(i + batchSize, messages.length));
-
-					let items;
-					try {
-						items = await Promise.all(
-							chunk.map(async (message) => await parseMessage(message, batch.topic)),
-						);
-					} catch (error) {
-						// Coordinates included: this message is now re-read indefinitely, and
-						// the log is the only way to find which one it is.
-						logger.error('Kafka chunk could not be parsed, leaving it unresolved', {
-							error,
-							topic: batch.topic,
-							partition: batch.partition,
-							offset: chunk[0]?.offset,
-						});
-						await pauseBeforeRetry();
-						break;
-					}
-
-					const result = await emit(items);
-					if (!result.mayAdvance) {
-						logger.warn('Kafka chunk was not processed, leaving it unresolved');
-						break;
-					}
-
-					const lastMessage = chunk[chunk.length - 1];
-					if (lastMessage) {
-						resolveOffset(lastMessage.offset);
-						await commitOffsetsIfNecessary();
-					}
-				}
-			},
+			eachBatch: async (payload) => await processBatch(payload, context),
 		});
 	} catch (error) {
 		// Nothing else holds this consumer yet, so a failed start must not leave the
@@ -183,8 +167,81 @@ export async function consumeTopic(
 }
 
 // ---------------------------------------------------------------------------
+// The batch loop
+// ---------------------------------------------------------------------------
+
+/**
+ * Walks one library batch in chunks, handing each to a workflow and advancing
+ * the read position only once that workflow permits it.
+ *
+ * Stopping early is always safe: whatever is left unresolved is re-delivered.
+ * That is how a close, a rebalance and a failure all end up doing the right
+ * thing without any of them needing to undo work.
+ */
+async function processBatch(
+	{ batch, resolveOffset, commitOffsetsIfNecessary, isRunning, isStale }: KafkaJS.EachBatchPayload,
+	context: BatchContext,
+): Promise<void> {
+	const { batchSize, parseMessage, emit, logger, signal, pauseBeforeRetry } = context;
+	const { messages } = batch;
+
+	for (let i = 0; i < messages.length; i += batchSize) {
+		// Stop if the trigger is closing, the consumer stopped, or the partition
+		// was revoked. Unresolved offsets are re-delivered, so stopping here
+		// loses nothing.
+		if (signal.aborted || !isRunning() || isStale()) {
+			logger.debug('Kafka batch interrupted by close, rebalance or consumer stop');
+			return;
+		}
+
+		const chunk = messages.slice(i, Math.min(i + batchSize, messages.length));
+
+		let items;
+		try {
+			items = await Promise.all(
+				chunk.map(async (message) => await parseMessage(message, batch.topic)),
+			);
+		} catch (error) {
+			// Coordinates included: this message is now re-read indefinitely, and
+			// the log is the only way to find which one it is.
+			logger.error('Kafka chunk could not be parsed, leaving it unresolved', {
+				error,
+				topic: batch.topic,
+				partition: batch.partition,
+				offset: chunk[0]?.offset,
+			});
+			await pauseBeforeRetry();
+			return;
+		}
+
+		if (!(await emit(items)).mayAdvance) {
+			logger.warn('Kafka chunk was not processed, leaving it unresolved');
+			return;
+		}
+
+		const lastMessage = chunk[chunk.length - 1];
+		if (lastMessage) {
+			resolveOffset(lastMessage.offset);
+			await commitOffsetsIfNecessary();
+		}
+	}
+}
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+/** Fills in every optional, so the loop only ever sees usable values. */
+function resolveSettings(options: ConsumeTopicOptions): ConsumeSettings {
+	return {
+		batchSize: positiveCount(options.batchSize, DEFAULT_BATCH_SIZE),
+		partitionsConsumedConcurrently: positiveCount(
+			options.partitionsConsumedConcurrently,
+			DEFAULT_PARTITIONS_CONSUMED_CONCURRENTLY,
+		),
+		errorRetryDelay: options.errorRetryDelay ?? DEFAULT_ERROR_RETRY_DELAY_MS,
+	};
+}
 
 /**
  * A whole number of at least one, or the fallback when the value cannot be used
