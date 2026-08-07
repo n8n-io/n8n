@@ -108,7 +108,7 @@ async function startConsumer(topic: string, groupSuffix = 'group') {
 		parseMessage: createMessageParser({}, logger, undefined, prepareBinaryData),
 		emit: async (items) => {
 			if (items[0]) deliver(items[0]);
-			return { success: true };
+			return { mayAdvance: true };
 		},
 	});
 
@@ -201,7 +201,7 @@ describe('version 1 and version 2 item parity', () => {
 				parseMessage: createMessageParser(PARSER_OPTIONS, logger, undefined, prepareBinaryData),
 				emit: async (items) => {
 					v2Item ??= items[0];
-					return { success: true };
+					return { mayAdvance: true };
 				},
 			});
 

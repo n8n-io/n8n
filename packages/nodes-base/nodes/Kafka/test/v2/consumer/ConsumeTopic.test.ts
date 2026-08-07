@@ -3,7 +3,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { KafkaCredentials } from '../../../utils';
 import { consumeTopic } from '../../../v2/consumer/ConsumeTopic';
-import type { EmitResult } from '../../../v2/consumer/DataEmitter';
+import type { OffsetVerdict } from '../../../v2/consumer/DataEmitter';
 import { createKafkaConsumer } from '../../../v2/transport/consumer';
 import {
 	confluentKafkaModuleMock,
@@ -29,7 +29,7 @@ const echoMessage = async (
 
 const parseMessage = vi.fn(echoMessage);
 const emit = vi.fn(
-	async (_items: INodeExecutionData[]): Promise<EmitResult> => ({ success: true }),
+	async (_items: INodeExecutionData[]): Promise<OffsetVerdict> => ({ mayAdvance: true }),
 );
 
 let logger: Logger;
@@ -41,7 +41,7 @@ beforeEach(() => {
 	parseMessage.mockReset();
 	parseMessage.mockImplementation(echoMessage);
 	emit.mockReset();
-	emit.mockImplementation(async () => ({ success: true }));
+	emit.mockImplementation(async () => ({ mayAdvance: true }));
 	logger = mock<Logger>();
 });
 
@@ -191,8 +191,8 @@ describe('consumeTopic', () => {
 
 		it('stops without resolving when an execution does not permit it', async () => {
 			const { consumer } = await start();
-			emit.mockResolvedValueOnce({ success: true });
-			emit.mockResolvedValueOnce({ success: false });
+			emit.mockResolvedValueOnce({ mayAdvance: true });
+			emit.mockResolvedValueOnce({ mayAdvance: false });
 
 			await consumer.deliverBatch({ messages: messages('a', 'b', 'c') });
 

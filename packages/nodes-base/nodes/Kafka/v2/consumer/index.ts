@@ -9,7 +9,7 @@ export type {
 	DataEmitter,
 	DataEmitterContext,
 	DataEmitterOptions,
-	EmitResult,
+	OffsetVerdict,
 	ResolveOffsetMode,
 } from './DataEmitter';
 export { createMessageParser } from './MessageParser';

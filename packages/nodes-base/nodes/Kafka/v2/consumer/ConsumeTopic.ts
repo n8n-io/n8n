@@ -140,7 +140,7 @@ export async function consumeTopic(
 					}
 
 					const result = await emit(items);
-					if (!result.success) {
+					if (!result.mayAdvance) {
 						logger.warn('Kafka chunk was not processed, leaving it unresolved');
 						break;
 					}

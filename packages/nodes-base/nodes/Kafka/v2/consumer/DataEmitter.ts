@@ -13,11 +13,11 @@ import { DEFAULT_ERROR_RETRY_DELAY_MS } from '../../utils';
 export type ResolveOffsetMode = 'immediately' | 'onCompletion' | 'onSuccess' | 'onStatus';
 
 /** Whether the caller may advance past the chunk it just handed over. */
-export interface EmitResult {
-	success: boolean;
+export interface OffsetVerdict {
+	mayAdvance: boolean;
 }
 
-export type DataEmitter = (items: INodeExecutionData[]) => Promise<EmitResult>;
+export type DataEmitter = (items: INodeExecutionData[]) => Promise<OffsetVerdict>;
 
 /**
  * The slice of the trigger context the emitter needs, so it can be exercised
@@ -42,8 +42,8 @@ export interface DataEmitterOptions {
 
 const DEFAULT_EXECUTION_TIMEOUT_SECONDS = 3600;
 
-const ADVANCE: EmitResult = { success: true };
-const HOLD_BACK: EmitResult = { success: false };
+const ADVANCE: OffsetVerdict = { mayAdvance: true };
+const HOLD_BACK: OffsetVerdict = { mayAdvance: false };
 
 // ---------------------------------------------------------------------------
 // Entry point
@@ -51,7 +51,7 @@ const HOLD_BACK: EmitResult = { success: false };
 
 /**
  * Builds the function that starts an execution for a chunk of items and decides
- * whether its offsets may advance. `success: false` means the caller must not
+ * whether its offsets may advance. `mayAdvance: false` means the caller must not
  * record the chunk as done, so Kafka delivers it again.
  *
  * `immediately` never waits, which is at-most-once. The other three wait for the

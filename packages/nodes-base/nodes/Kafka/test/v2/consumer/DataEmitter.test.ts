@@ -48,7 +48,7 @@ describe('createDataEmitter', () => {
 		it('emits without waiting for the execution', async () => {
 			const result = await build({ resolveOffsetMode: 'immediately' })(ITEMS);
 
-			expect(result).toStrictEqual({ success: true });
+			expect(result).toStrictEqual({ mayAdvance: true });
 			expect(emitSpy).toHaveBeenCalledWith([ITEMS]);
 			// No deferred promise: nothing is waiting on the run.
 			expect(emitSpy.mock.calls[0]).toHaveLength(1);
@@ -60,7 +60,7 @@ describe('createDataEmitter', () => {
 
 			const result = await build({ resolveOffsetMode: 'immediately' }, controller.signal)(ITEMS);
 
-			expect(result).toStrictEqual({ success: false });
+			expect(result).toStrictEqual({ mayAdvance: false });
 			expect(emitSpy).not.toHaveBeenCalled();
 		});
 	});
@@ -68,7 +68,7 @@ describe('createDataEmitter', () => {
 	describe('onCompletion', () => {
 		it.each(['success', 'error', 'crashed'])('allows the offset after a %s run', async (status) => {
 			expect(await emitAndFinish({ resolveOffsetMode: 'onCompletion' }, status)).toStrictEqual({
-				success: true,
+				mayAdvance: true,
 			});
 		});
 	});
@@ -76,13 +76,13 @@ describe('createDataEmitter', () => {
 	describe('onSuccess', () => {
 		it('allows the offset only after a successful run', async () => {
 			expect(await emitAndFinish({ resolveOffsetMode: 'onSuccess' }, 'success')).toStrictEqual({
-				success: true,
+				mayAdvance: true,
 			});
 		});
 
 		it.each(['error', 'crashed', 'canceled'])('refuses after a %s run', async (status) => {
 			expect(await emitAndFinish({ resolveOffsetMode: 'onSuccess' }, status)).toStrictEqual({
-				success: false,
+				mayAdvance: false,
 			});
 		});
 	});
@@ -96,12 +96,12 @@ describe('createDataEmitter', () => {
 		it.each(['success', 'canceled'])(
 			'allows the offset after an allowed %s run',
 			async (status) => {
-				expect(await emitAndFinish(options, status)).toStrictEqual({ success: true });
+				expect(await emitAndFinish(options, status)).toStrictEqual({ mayAdvance: true });
 			},
 		);
 
 		it('refuses after a status outside the list', async () => {
-			expect(await emitAndFinish(options, 'error')).toStrictEqual({ success: false });
+			expect(await emitAndFinish(options, 'error')).toStrictEqual({ mayAdvance: false });
 		});
 
 		it.each([undefined, []])('fails fast when the status list is %s', (allowedStatuses) => {
@@ -120,7 +120,7 @@ describe('createDataEmitter', () => {
 
 				await vi.advanceTimersByTimeAsync(10_000);
 
-				expect(await pending).toStrictEqual({ success: false });
+				expect(await pending).toStrictEqual({ mayAdvance: false });
 				expect(logger.error).toHaveBeenCalledWith(
 					expect.stringContaining('longer than the configured workflow timeout of 10 seconds'),
 					expect.anything(),
@@ -148,7 +148,7 @@ describe('createDataEmitter', () => {
 
 					const deferred = emitSpy.mock.calls[0][2] as { resolve: (value: IRun) => void };
 					deferred.resolve(run('success'));
-					expect(await pending).toStrictEqual({ success: true });
+					expect(await pending).toStrictEqual({ mayAdvance: true });
 				} finally {
 					vi.useRealTimers();
 				}
@@ -176,7 +176,7 @@ describe('createDataEmitter', () => {
 			await vi.waitFor(() => expect(emitSpy).toHaveBeenCalled());
 			controller.abort();
 
-			expect(await pending).toStrictEqual({ success: false });
+			expect(await pending).toStrictEqual({ mayAdvance: false });
 		});
 	});
 });
