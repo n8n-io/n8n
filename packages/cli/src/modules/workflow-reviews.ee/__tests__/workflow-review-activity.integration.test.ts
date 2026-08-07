@@ -490,6 +490,17 @@ describe('Reading the activity feed', () => {
 		]);
 	});
 
+	// The owner reaches every review through global `workflow:publish`, which short-circuits the
+	// project lookup. Only a project member exercises the project-scoped path.
+	test('shows the feed to a project member who can publish there', async () => {
+		const { request } = await seedReviewInTeamProject(owner);
+		const [id] = await seedEntries(request.id, 1);
+
+		const feed = await getActivity(memberAgent, request.id);
+
+		expect(feed.data.map((entry) => entry.id)).toEqual([id]);
+	});
+
 	test('shows a non-comment activity entry with its details intact and no messages', async () => {
 		const { request } = await seedReviewInTeamProject(owner);
 		const data = { workflowVersionIds: ['version-pinned'], note: 'needs work' };

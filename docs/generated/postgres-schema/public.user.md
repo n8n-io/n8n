@@ -339,6 +339,7 @@ erDiagram
   integer id
   varchar_64_ type
   integer typeVersion
+  varchar_36_ workflowId FK
   varchar_36_ workflowReviewRequestId FK
 }
 "public.workflow_review_activity_comment" {

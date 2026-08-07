@@ -40,4 +40,13 @@ export class WorkflowReviewActivity extends WithCreatedAt {
 	/** Who produced this entry. For a comment thread, whoever opened it. */
 	@Column({ type: 'uuid', nullable: true })
 	createdById: string | null;
+
+	/**
+	 * Workflow this entry is about; `null` for review-level entries such as comments. A column
+	 * rather than a key in `data` because the feed must filter unreadable workflows in the WHERE
+	 * clause: the keyset paging derives `hasMore` and the next cursor from the rows the page
+	 * returned, so filtering afterwards breaks both. Nothing writes it until LIGO-935.
+	 */
+	@Column({ type: 'varchar', length: 36, nullable: true })
+	workflowId: string | null;
 }

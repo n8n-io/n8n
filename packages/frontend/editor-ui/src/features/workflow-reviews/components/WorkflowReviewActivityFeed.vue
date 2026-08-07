@@ -159,6 +159,17 @@ onMounted(() => {
 	padding-block: var(--spacing--2xs) var(--spacing--sm);
 }
 
+/*
+ * Below this width the detail body stacks and takes over scrolling, so the panel around the feed
+ * stops bounding it. Without a height of its own the feed never scrolls, which leaves the
+ * load-older sentinel permanently on screen and drains every page in one go.
+ */
+@media (max-width: 60rem) {
+	.feed {
+		max-height: 60vh;
+	}
+}
+
 .list {
 	display: flex;
 	flex-direction: column;
