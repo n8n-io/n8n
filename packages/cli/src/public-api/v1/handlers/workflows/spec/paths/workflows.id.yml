@@ -54,9 +54,22 @@ put:
   tags:
     - Workflow
   summary: Update a workflow
-  description: Update a workflow. If the workflow is published, the updated version will be automatically re-published.
+  description: >-
+    Update a workflow. If the workflow is published, the updated version will
+    be automatically re-published unless `publishIfActive` is set to `false`.
   parameters:
     - $ref: '../schemas/parameters/workflowId.yml'
+    - name: publishIfActive
+      in: query
+      required: false
+      description: >-
+        Whether to publish the update if the workflow is currently published.
+        Set to `false` to save the change as a draft on the existing published
+        version instead of releasing it. Has no effect on a workflow that
+        isn't currently published.
+      schema:
+        type: boolean
+        default: true
   requestBody:
     description: Updated workflow object.
     content:

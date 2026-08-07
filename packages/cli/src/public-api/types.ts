@@ -148,7 +148,7 @@ export declare namespace WorkflowRequest {
 		{ id: string },
 		{},
 		WorkflowEntity & { parentFolderId?: string | null },
-		{}
+		{ publishIfActive?: boolean }
 	>;
 	type Activate = AuthenticatedRequest<
 		{ id: string },
