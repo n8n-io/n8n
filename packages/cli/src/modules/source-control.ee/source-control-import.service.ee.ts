@@ -1801,13 +1801,15 @@ export class SourceControlImportService {
 				select: ['id'],
 				where: { parentFolder: { id: In(folderIds) } },
 			});
-			await this.deactivateWorkflowsAndHardDeleteExecutions(
+			const cascadedWorkflowIds = await this.deactivateWorkflowsAndHardDeleteExecutions(
 				workflows.map((workflow) => workflow.id),
 			);
 
 			await this.folderRepository.delete({
 				id: In(candidateIds),
 			});
+
+			await this.sweepAfterWorkflowCascade(cascadedWorkflowIds);
 		} catch (error) {
 			throw this.deletionError('folder', candidates, error);
 		}
@@ -1828,13 +1830,15 @@ export class SourceControlImportService {
 				select: ['workflowId'],
 				where: { projectId: In(candidateIds), role: 'workflow:owner' },
 			});
-			await this.deactivateWorkflowsAndHardDeleteExecutions(
+			const cascadedWorkflowIds = await this.deactivateWorkflowsAndHardDeleteExecutions(
 				ownedWorkflows.map((sw) => sw.workflowId),
 			);
 
 			await this.projectRepository.delete({
 				id: In(candidateIds),
 			});
+
+			await this.sweepAfterWorkflowCascade(cascadedWorkflowIds);
 		} catch (error) {
 			throw this.deletionError('project', candidates, error);
 		}
@@ -1853,9 +1857,11 @@ export class SourceControlImportService {
 	 * was skipped by that permission check, yet the FK cascade below deletes it
 	 * regardless — so we do the physical cleanup directly beforehand. The
 	 * `beforeWorkflowDeleted` mutation hook fires here so modules can run their
-	 * pre-delete side effects (e.g. closing open review requests), but external
-	 * hooks (`workflow.delete`/`workflow.afterDelete`) and the `workflow-deleted`
-	 * event still don't fire — a pre-existing gap for any cascade-deleted
+	 * pre-delete side effects (e.g. closing open review requests), and the
+	 * caller fires `afterWorkflowDeleted` once the cascade has run (see
+	 * {@link sweepAfterWorkflowCascade}) — but external hooks
+	 * (`workflow.delete`/`workflow.afterDelete`) and the `workflow-deleted`
+	 * event still don't fire, a pre-existing gap for any cascade-deleted
 	 * workflow.
 	 *
 	 * REVIEW(question): should we instead extract the permission-free part of
@@ -1887,6 +1893,20 @@ export class SourceControlImportService {
 			}
 			await this.executionPersistence.hardDeleteByWorkflowId(workflow.id);
 		}
+
+		return workflows.map((workflow) => workflow.id);
+	}
+
+	/**
+	 * Fire `afterWorkflowDeleted` once the folder/project row delete has
+	 * cascaded the given workflows away, mirroring `WorkflowService.delete`:
+	 * the sweep behind the hook closes review requests opened after the
+	 * pre-delete hooks ran and now left without a workflow. It searches
+	 * globally for such orphans, so one call covers the whole batch.
+	 */
+	private async sweepAfterWorkflowCascade(cascadedWorkflowIds: string[]) {
+		if (cascadedWorkflowIds.length === 0) return;
+		await this.workflowMutationHooks.afterWorkflowDeleted(cascadedWorkflowIds[0]);
 	}
 
 	/** Contextual error for a failed deletion during pull, so the operator learns which resource to look at. */

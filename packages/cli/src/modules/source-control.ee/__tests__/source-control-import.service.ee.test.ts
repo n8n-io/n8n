@@ -2979,6 +2979,33 @@ describe('SourceControlImportService', () => {
 				expect(activeWorkflowManager.remove).not.toHaveBeenCalled();
 				expect(folderRepository.delete).not.toHaveBeenCalled();
 			});
+
+			it('should fire the afterWorkflowDeleted sweep once, after the folder row delete', async () => {
+				const candidates = [mock<SourceControlledFile>({ id: 'folder1' })];
+				const straggler = Object.assign(new WorkflowEntity(), { id: 'wf-1', active: false });
+				folderRepository.getAllFolderIdsInHierarchy.mockResolvedValueOnce([]);
+				workflowRepository.find.mockResolvedValueOnce([straggler]);
+				workflowRepository.findOne.mockResolvedValueOnce(straggler);
+
+				await service.deleteFoldersNotInWorkfolder(candidates as any);
+
+				expect(workflowMutationHooks.afterWorkflowDeleted).toHaveBeenCalledTimes(1);
+				expect(workflowMutationHooks.afterWorkflowDeleted).toHaveBeenCalledWith('wf-1');
+				// Only the row delete cascades the workflows away, so the sweep must run after it
+				expect(
+					workflowMutationHooks.afterWorkflowDeleted.mock.invocationCallOrder[0],
+				).toBeGreaterThan(folderRepository.delete.mock.invocationCallOrder[0]);
+			});
+
+			it('should not fire the sweep when the deleted folders contained no workflows', async () => {
+				const candidates = [mock<SourceControlledFile>({ id: 'folder1' })];
+				folderRepository.getAllFolderIdsInHierarchy.mockResolvedValueOnce([]);
+				workflowRepository.find.mockResolvedValueOnce([]);
+
+				await service.deleteFoldersNotInWorkfolder(candidates as any);
+
+				expect(workflowMutationHooks.afterWorkflowDeleted).not.toHaveBeenCalled();
+			});
 		});
 	});
 
@@ -3611,6 +3638,39 @@ describe('SourceControlImportService', () => {
 				expect(activeWorkflowManager.remove).not.toHaveBeenCalled();
 				expect(executionPersistence.hardDeleteByWorkflowId).not.toHaveBeenCalled();
 				expect(projectRepository.delete).not.toHaveBeenCalled();
+			});
+
+			it('should fire the afterWorkflowDeleted sweep once, after the project row delete', async () => {
+				const candidates = [mock<SourceControlledFile>({ id: 'project-1' })];
+				sharedWorkflowRepository.find.mockResolvedValueOnce([
+					{ workflowId: 'wf-active' },
+					{ workflowId: 'wf-inactive' },
+				] as SharedWorkflow[]);
+				workflowRepository.findOne
+					.mockResolvedValueOnce(
+						Object.assign(new WorkflowEntity(), { id: 'wf-active', active: true }),
+					)
+					.mockResolvedValueOnce(
+						Object.assign(new WorkflowEntity(), { id: 'wf-inactive', active: false }),
+					);
+
+				await service.deleteTeamProjectsNotInWorkfolder(candidates);
+
+				// The sweep searches globally for orphaned requests, so one call covers the batch
+				expect(workflowMutationHooks.afterWorkflowDeleted).toHaveBeenCalledTimes(1);
+				expect(workflowMutationHooks.afterWorkflowDeleted).toHaveBeenCalledWith('wf-active');
+				expect(
+					workflowMutationHooks.afterWorkflowDeleted.mock.invocationCallOrder[0],
+				).toBeGreaterThan(projectRepository.delete.mock.invocationCallOrder[0]);
+			});
+
+			it('should not fire the sweep when the deleted projects contained no workflows', async () => {
+				const candidates = [mock<SourceControlledFile>({ id: 'project-1' })];
+				sharedWorkflowRepository.find.mockResolvedValueOnce([]);
+
+				await service.deleteTeamProjectsNotInWorkfolder(candidates);
+
+				expect(workflowMutationHooks.afterWorkflowDeleted).not.toHaveBeenCalled();
 			});
 		});
 	});
