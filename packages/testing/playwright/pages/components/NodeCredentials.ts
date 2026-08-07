@@ -33,6 +33,15 @@ export class NodeCredentials {
 		return this.root.getByTestId('node-credentials-select');
 	}
 
+	/**
+	 * Wrapper around a single credential slot. `.nth(eq)` indexes slots in
+	 * document order, so `eq` selects the eq-th credential field regardless of
+	 * which empty-state kind each slot happens to render.
+	 */
+	getSlot(eq: number = 0): Locator {
+		return this.root.getByTestId('node-credentials-slot').nth(eq);
+	}
+
 	/** Empty state shown when no credential is set */
 	getEmptyState(): Locator {
 		return this.root.getByTestId('node-credentials-empty-state');
@@ -40,7 +49,7 @@ export class NodeCredentials {
 
 	/** Direct create button shown for standard empty states with no alternate credential choice */
 	getEmptyStateCreateButton(eq: number = 0): Locator {
-		return this.getEmptyState().nth(eq).getByRole('button');
+		return this.getSlot(eq).getByTestId('node-credentials-empty-state').getByRole('button');
 	}
 
 	/** Quick-connect empty state (MCP / OAuth quick connect flows) */
@@ -50,7 +59,7 @@ export class NodeCredentials {
 
 	/** Primary quick-connect action shown in the quick-connect empty state */
 	getQuickConnectButton(eq: number = 0): Locator {
-		return this.getQuickConnectEmptyState().nth(eq).getByRole('button').first();
+		return this.getSlot(eq).getByTestId('quick-connect-empty-state').getByRole('button').first();
 	}
 
 	/** Combobox input that holds the selected credential name */
@@ -106,7 +115,7 @@ export class NodeCredentials {
 	}
 
 	getSetupManuallyLink(eq: number = 0): Locator {
-		return this.root.getByTestId('setup-manually-link').nth(eq);
+		return this.getSlot(eq).getByTestId('setup-manually-link');
 	}
 
 	/**
@@ -122,13 +131,18 @@ export class NodeCredentials {
 	 *
 	 * The dropdown states share the same create row (`node-credentials-select-item-new`);
 	 * they differ only in which trigger opens the dropdown.
+	 *
+	 * `eq` indexes credential slots in document order (via {@link getSlot}), so
+	 * it resolves the right field even when slots render different empty-state
+	 * kinds (e.g. slot 0 quick-connect, slot 1 standard empty).
 	 */
 	async clickCreateNew(eq: number = 0): Promise<void> {
+		const slot = this.getSlot(eq);
 		const setupManually = this.getSetupManuallyLink(eq);
-		const emptyState = this.getEmptyState().nth(eq);
+		const emptyState = slot.getByTestId('node-credentials-empty-state');
 		const emptyStateCreateButton = this.getEmptyStateCreateButton(eq);
-		const quickConnectEmptyState = this.getQuickConnectEmptyState().nth(eq);
-		const credentialSelect = this.getSelect().nth(eq);
+		const quickConnectEmptyState = slot.getByTestId('quick-connect-empty-state');
+		const credentialSelect = slot.getByTestId('node-credentials-select');
 
 		await Promise.race([
 			quickConnectEmptyState.waitFor({ state: 'visible', timeout: 10_000 }),

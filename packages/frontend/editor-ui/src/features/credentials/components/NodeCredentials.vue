@@ -1062,7 +1062,11 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 		v-if="credentialTypesNodeDescriptionDisplayed.length"
 		:class="['node-credentials', $style.container]"
 	>
-		<div v-for="{ type, options } in credentialTypesNodeDescriptionDisplayed" :key="type.name">
+		<div
+			v-for="{ type, options } in credentialTypesNodeDescriptionDisplayed"
+			:key="type.name"
+			data-test-id="node-credentials-slot"
+		>
 			<N8nInputLabel
 				:label="getCredentialsFieldLabel(type)"
 				:bold="false"
