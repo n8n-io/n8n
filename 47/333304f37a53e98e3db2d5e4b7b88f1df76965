@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/app/stores/ui.store.ts
+  s_c746ba131f7008::t_3f17ffef045af0 29
+packages/frontend/editor-ui/src/app/stores/ui.store.registration.spec.ts
+  s_c746ba131f7008::t_3f17ffef045af0 4,13,70
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "47333304f37a53e98e3db2d5e4b7b88f1df76965",
+  "prompts": {},
+  "sessions": {
+    "s_c746ba131f7008": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc000276-43ad-4d37-a88f-088abe341c47",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}
