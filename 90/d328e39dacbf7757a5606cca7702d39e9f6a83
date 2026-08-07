@@ -1,0 +1,21 @@
+packages/workflow/src/safe-regex.ts
+  s_99b1921501ccf0::t_c923c006f02aca 1-196
+packages/workflow/src/index.ts
+  s_99b1921501ccf0::t_ec89426162f9e5 15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "90d328e39dacbf7757a5606cca7702d39e9f6a83",
+  "prompts": {},
+  "sessions": {
+    "s_99b1921501ccf0": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "ef34c674-7064-43c5-a841-768b313f4717",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
