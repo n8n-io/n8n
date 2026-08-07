@@ -1,0 +1,30 @@
+packages/@n8n/api-types/src/dto/instance-ai/__tests__/instance-ai-confirm-request.dto.test.ts
+  s_8521b223be2102::t_93ee3e8a7f17f8 159-167
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_8521b223be2102::t_a0025e78932727 395-397
+packages/@n8n/api-types/src/dto/instance-ai/instance-ai-confirm-request.dto.ts
+  s_8521b223be2102::t_9dfcb9c556a53f 49
+packages/@n8n/instance-ai/src/tools/filesystem/create-tools-from-mcp-server.ts
+  s_8521b223be2102::t_1896cb8cf2cedd 225
+  s_8521b223be2102::t_1fd6fca0e1dbc8 368-388,394,397,401,408
+packages/@n8n/instance-ai/src/tools/filesystem/__tests__/create-tools-from-mcp-server.test.ts
+  s_8521b223be2102::t_0eab347599e7ec 537-568
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiCredentialSetup.test.ts
+  s_8521b223be2102::t_c4ea7a2a43e339 601-603,609
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "0b8cd535a442b0d9cdc3ea64ba13a553ccfec326",
+  "prompts": {},
+  "sessions": {
+    "s_8521b223be2102": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ab3d933a-19c0-4279-b0cf-7b0be38aeac8",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

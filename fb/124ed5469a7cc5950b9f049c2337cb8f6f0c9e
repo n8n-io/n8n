@@ -1,0 +1,47 @@
+packages/cli/src/services/credentials-tester.service.ts
+  s_579507d3eceab8::t_b666f8917bb2dd 365,370,377,382,389
+  s_579507d3eceab8::t_b4eaffac5aad9d 353
+  s_579507d3eceab8::t_b72ad20d0bc8bf 52-62
+  s_579507d3eceab8::t_4afc772a0e7807 398-400,402-416
+  s_579507d3eceab8::t_5f29cbc6918412 602,605,607
+  s_579507d3eceab8::t_9de7a015e8c87d 252,260
+packages/@n8n/telemetry/src/telemetry-events.ts
+  s_579507d3eceab8::t_b9463ded85b73f 3,11
+packages/cli/src/events/maps/relay.event-map.ts
+  s_579507d3eceab8::t_57d1c6b0f4387c 16
+  s_579507d3eceab8::t_7d0f2726694270 492-497
+packages/cli/src/services/__tests__/credentials-tester.service.test.ts
+  s_579507d3eceab8::t_7f6a391b9fb124 330
+  s_579507d3eceab8::t_42d6e7469f65ab 397,412,427
+  s_579507d3eceab8::t_ec1123ea9abb66 462
+  s_579507d3eceab8::t_4768470ed645d5 444
+  s_579507d3eceab8::t_c86dd5692228e6 310
+  s_579507d3eceab8::t_aca9c3d786b122 346
+  s_579507d3eceab8::t_bad6854e921863 361
+packages/cli/src/credentials/credentials.controller.ts
+  s_579507d3eceab8::t_9d4a2e1c43e8f2 173-181
+packages/@n8n/telemetry/src/events/credentials.ts
+  s_579507d3eceab8::t_f10c1a10c99523 1-20
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_579507d3eceab8::t_81ab0d706d61e9 150
+  s_579507d3eceab8::t_65eeb1b8b5deba 741-748
+packages/cli/src/credentials/__tests__/credentials.service.test.ts
+  s_579507d3eceab8::t_3bf69581298722 3911
+  s_579507d3eceab8::t_45677cadf5ca9f 3888-3892
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "fb124ed5469a7cc5950b9f049c2337cb8f6f0c9e",
+  "prompts": {},
+  "sessions": {
+    "s_579507d3eceab8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2cc35308-2bbd-4c82-997e-85152e8c7687",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}
