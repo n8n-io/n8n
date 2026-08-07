@@ -36,6 +36,10 @@ export interface CredentialCreationConfig {
 	 *  `setThreadCredentialAllowlist` REPLACES the whole list, so a mid-run
 	 *  creation must include these or it clobbers the case's declared set. */
 	allowlistedCredentialIds: string[];
+	/** Of those, the ids the backend already resolves as passing their connection
+	 *  test — carried for the same reason: a mid-run creation replaces the whole
+	 *  bypass list, so leaving them out un-bypasses the case's declared set. */
+	bypassCredentialTestIds?: string[];
 	/** Run-level registry newly-created ids are added to for end-of-run cleanup. */
 	createdCredentialIds?: Set<string>;
 	/** Shared with the same `Map` passed to `createDeclaredCredentials` for this
@@ -124,9 +128,10 @@ export class UserProxyLlm {
 	 *  grows as `createCredential` mints new ones, since the allowlist endpoint
 	 *  replaces the whole list rather than appending. */
 	private allowlistedCredentialIds: string[];
-	/** Ids the backend should resolve as passing their connection test — grows as
-	 *  the proxy creates credentials a stage direction described as working. */
-	private bypassCredentialTestIds: string[] = [];
+	/** Ids the backend should resolve as passing their connection test — starts
+	 *  with the case's seeded credentials and grows as the proxy creates ones a
+	 *  stage direction described as working. */
+	private bypassCredentialTestIds: string[];
 	/** Defaults to a fresh Map when the caller doesn't share one from pre-run
 	 *  seeding — see `CredentialCreationConfig.nameCounts`. */
 	private readonly createdCredentialNameCounts: Map<string, number>;
@@ -139,6 +144,7 @@ export class UserProxyLlm {
 			config.agent ?? createUserProxyAgent({ modelId: config.modelId, logger: config.logger });
 		this.credentialCreation = config.credentialCreation;
 		this.allowlistedCredentialIds = config.credentialCreation?.allowlistedCredentialIds ?? [];
+		this.bypassCredentialTestIds = config.credentialCreation?.bypassCredentialTestIds ?? [];
 		this.createdCredentialNameCounts =
 			config.credentialCreation?.nameCounts ?? new Map<string, number>();
 		// Seed with the opener — the harness has already sent it.
@@ -266,17 +272,11 @@ export class UserProxyLlm {
 			this.bypassCredentialTestIds = [...this.bypassCredentialTestIds, created.id];
 			this.bumpStat('credential-test-bypassed');
 		}
-		// Call with two args in the default case so the request stays byte-identical
-		// to before for every case that doesn't opt into the bypass.
-		if (this.bypassCredentialTestIds.length > 0) {
-			await client.setThreadCredentialAllowlist(
-				threadId,
-				this.allowlistedCredentialIds,
-				this.bypassCredentialTestIds,
-			);
-		} else {
-			await client.setThreadCredentialAllowlist(threadId, this.allowlistedCredentialIds);
-		}
+		await client.setThreadCredentialAllowlist(
+			threadId,
+			this.allowlistedCredentialIds,
+			this.bypassCredentialTestIds,
+		);
 		return created;
 	};
 

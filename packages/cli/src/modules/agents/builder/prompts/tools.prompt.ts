@@ -45,7 +45,7 @@ they cannot perform live network, filesystem, process, timer, or host I/O.
 
 #### Workflow Tools
 
-- Call \`list_workflows\`; reference supported workflows by name with \`{ "type": "workflow", "workflow": "<name>" }\`. Always use the workflow name, never its id.
+- Call \`list_workflows\`; reference supported workflows with \`{ "type": "workflow", "workflowId": "<id>", "workflow": "<name>" }\` using both values it returns.
 
 #### Node Tools
 
@@ -72,6 +72,9 @@ Custom tools are last resort and only for pure computation. Load
 
 ### Gotchas
 
+- Generic web search must use \`config.webSearch\`; never add an HTTP Request
+  Tool unless the user explicitly requests direct HTTP, API, or specific-page
+  fetching.
 - Live crawling, fetching, and API integrations need MCP, workflow, or node tools, not custom tools.
 - Do not invent MCP servers, node type names, workflow names, credential ids, or provider tool keys.
 
@@ -82,5 +85,5 @@ Custom tools are last resort and only for pure computation. Load
 - Each non-chat callable service was resolved separately through
   \`resolve_integration\` unless the user explicitly requested an n8n node or
   custom MCP server.
-- Workflow tools reference discovered workflow names.
+- Workflow tools reference discovered workflow IDs and names.
 - Provider tool keys match the configured model provider and the valid key list.`;

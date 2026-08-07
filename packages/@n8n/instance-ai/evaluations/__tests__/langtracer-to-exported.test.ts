@@ -132,6 +132,7 @@ describe('unsupportedPushReason', () => {
 					],
 					workflows: [],
 					dataTables: [],
+					agents: [],
 				},
 			}),
 		);
@@ -152,6 +153,7 @@ describe('unsupportedPushReason', () => {
 			],
 			workflows: [{ id: 'wKk3RmT9xQ2bVn7L', name: 'Batch loop', nodes: [], connections: {} }],
 			dataTables: [],
+			agents: [],
 		};
 		const body = diskCaseToLangTracerCreate(diskCase({ seed }), 'repair-it', {
 			suiteId: 1,
@@ -195,6 +197,7 @@ describe('attach round-trip: write → export → reparse', () => {
 				],
 				workflows: [{ id: WORKFLOW_ID, name: 'Batch loop', nodes: [], connections: {} }],
 				dataTables: [],
+				agents: [],
 			},
 		} as Partial<EvalTestCaseInput>);
 	}

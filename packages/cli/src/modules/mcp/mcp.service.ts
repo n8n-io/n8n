@@ -1,5 +1,4 @@
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
+import type { CallToolResult, McpServer } from '@modelcontextprotocol/server';
 import {
 	MCP_APPS_FLAG,
 	MCP_APPS_VARIANT_CONTROL,
@@ -17,7 +16,7 @@ import {
 } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import {
-	registerMcpAppTool,
+	mcpAppToolMeta,
 	registerWorkflowPreviewApp,
 	WORKFLOW_PREVIEW_APP_URI,
 	type McpAppTelemetryConfig,
@@ -55,7 +54,14 @@ import { WorkflowService } from '@/workflows/workflow.service';
 import { MCP_CREATE_AGENT_TOOL_NAME, MCP_PREVIEW_RENDER_REQUESTED_EVENT } from './mcp.constants';
 import { getAllowedToolNames } from './mcp-scopes';
 import { areAgentToolsAvailable } from './mcp-tool-availability';
-import type { McpAppsTelemetryVariant, McpClientInfo, RegisterToolFn } from './mcp.types';
+import type {
+	McpAppsTelemetryVariant,
+	McpClientInfo,
+	RegisterResourceFn,
+	RegisterToolFn,
+	ToolDefinition,
+} from './mcp.types';
+import { shapeToStandardSchema } from './tool-schema.util';
 import {
 	createAddDataTableColumnTool,
 	createAddDataTableRowsTool,
@@ -138,7 +144,12 @@ function getToolCallOutcome(result: CallToolResult | undefined): {
 } {
 	if (!result) return { status: 'success' };
 
-	const structured = result.structuredContent;
+	// v2 types structuredContent as an arbitrary JSON value; narrow to an
+	// object before reading the failure markers off it.
+	const structured =
+		typeof result.structuredContent === 'object' && result.structuredContent !== null
+			? (result.structuredContent as Record<string, unknown>)
+			: undefined;
 	const errorMessage = typeof structured?.error === 'string' ? structured.error : undefined;
 	if (result.isError !== true && structured?.status !== 'error' && errorMessage === undefined) {
 		return { status: 'success' };
@@ -286,17 +297,19 @@ export class McpService {
 	}
 
 	/**
-	 * Wraps `server.registerTool` so each tool invocation emits an `mcp-tool-called`
-	 * event (forwarded to log streaming). Applied once, before any tool is
-	 * registered, so it covers every tool including builder and data-table tools.
+	 * Builds the single registration chokepoint for MCP tools. It bridges the
+	 * classic-zod raw shapes in each ToolDefinition to the Standard Schema
+	 * interface the v2 SDK expects (see tool-schema.util.ts), and wraps every
+	 * handler so each invocation emits an `mcp-tool-called` event (forwarded to
+	 * log streaming). All registration paths, including builder, data-table and
+	 * agent tools, go through the function this returns. Returns the SDK's
+	 * RegisteredTool so callers (and tests) can reach the stored handler.
 	 */
-	private instrumentToolUsage(server: McpServer, user: User, clientInfo?: McpClientInfo) {
-		const originalRegisterTool: typeof server.registerTool = server.registerTool.bind(server);
-
-		server.registerTool = (name, config, handler) => {
-			// `ToolCallback` is a union of 1- and 2-arity signatures, so we invoke it
+	createToolRegistrar(server: McpServer, user: User, clientInfo?: McpClientInfo) {
+		return (tool: ToolDefinition) => {
+			// `ToolHandler` is a union of 1- and 2-arity signatures, so we invoke it
 			// through a generic callable and narrow the result back to a tool result.
-			const invoke = handler as (...handlerArgs: unknown[]) => Promise<CallToolResult>;
+			const invoke = tool.handler as (...handlerArgs: unknown[]) => Promise<CallToolResult>;
 
 			const instrumentedHandler = async (...handlerArgs: unknown[]) => {
 				const workflowId = getWorkflowId(handlerArgs[0]);
@@ -306,7 +319,7 @@ export class McpService {
 					const { status, errorMessage } = getToolCallOutcome(result);
 					this.eventService.emit('mcp-tool-called', {
 						user,
-						toolName: name,
+						toolName: tool.name,
 						workflowId: workflowId ?? getWorkflowId(result?.structuredContent),
 						status,
 						errorMessage,
@@ -316,7 +329,7 @@ export class McpService {
 				} catch (error) {
 					this.eventService.emit('mcp-tool-called', {
 						user,
-						toolName: name,
+						toolName: tool.name,
 						workflowId,
 						status: 'error',
 						errorMessage: error instanceof Error ? error.message : String(error),
@@ -326,8 +339,29 @@ export class McpService {
 				}
 			};
 
-			return originalRegisterTool(name, config, instrumentedHandler as typeof handler);
+			const { inputSchema, outputSchema, ...config } = tool.config;
+			return server.registerTool(
+				tool.name,
+				{
+					...config,
+					...(inputSchema ? { inputSchema: shapeToStandardSchema(inputSchema) } : {}),
+					...(outputSchema ? { outputSchema: shapeToStandardSchema(outputSchema) } : {}),
+				},
+				instrumentedHandler,
+			);
 		};
+	}
+
+	/**
+	 * Resource counterpart to createToolRegistrar: the single chokepoint every
+	 * static resource registers through, so callers (builder and agent tools)
+	 * never reach for the raw McpServer. Resources carry no input schema to
+	 * bridge and aren't instrumented like tool calls, so this only forwards to
+	 * the SDK today; keeping the seam means resource-wide concerns have one home.
+	 */
+	createResourceRegistrar(server: McpServer): RegisterResourceFn {
+		return (resource) =>
+			server.registerResource(resource.name, resource.uri, resource.config, resource.read);
 	}
 
 	/**
@@ -346,9 +380,9 @@ export class McpService {
 		clientInfo?: McpClientInfo,
 		grantedScopes?: string[],
 	) {
-		const { McpServer } = await lazyImport<
-			typeof import('@modelcontextprotocol/sdk/server/mcp.js')
-		>(async () => await import('@modelcontextprotocol/sdk/server/mcp.js'));
+		const { McpServer } = await lazyImport<typeof import('@modelcontextprotocol/server')>(
+			async () => await import('@modelcontextprotocol/server'),
+		);
 
 		const builderEnabled = this.globalConfig.endpoints.mcpBuilderEnabled;
 		const n8nConnectAvailable = builderEnabled
@@ -381,13 +415,12 @@ export class McpService {
 			},
 		);
 
-		// Instrument every registered tool so MCP usage flows to log streaming:
-		// which tool was called, against which workflow, and whether it succeeded.
-		this.instrumentToolUsage(server, user, clientInfo);
+		const registerTool = this.createToolRegistrar(server, user, clientInfo);
+		const registerResource = this.createResourceRegistrar(server);
 
 		const registerIfAllowed: RegisterToolFn = (tool) => {
 			if (allowedToolNames && !allowedToolNames.has(tool.name)) return;
-			server.registerTool(tool.name, tool.config, tool.handler);
+			registerTool(tool);
 		};
 
 		// Existing tools
@@ -557,6 +590,7 @@ export class McpService {
 				dataTableOps,
 				featureFlags,
 				registerIfAllowed,
+				registerResource,
 				allowedToolNames,
 				clientInfo,
 			);
@@ -564,18 +598,24 @@ export class McpService {
 
 		if (agentsEnabled) {
 			const { McpAgentToolsService } = await import('./tools/agents/agent-tools.service.js');
-			Container.get(McpAgentToolsService).registerTools(server, user, allowedToolNames);
+			Container.get(McpAgentToolsService).registerTools(
+				registerIfAllowed,
+				registerResource,
+				user,
+				allowedToolNames,
+			);
 		}
 
 		return server;
 	}
 
 	private async registerBuilderTools(
-		server: InstanceType<typeof McpServer>,
+		server: McpServer,
 		user: User,
 		dataTableOps: ReturnType<DataTableProxyService['makeDataTableOperationsForUser']>,
 		featureFlags: McpFeatureFlags,
 		registerIfAllowed: RegisterToolFn,
+		registerResource: RegisterResourceFn,
 		allowedToolNames: Set<string> | undefined,
 		clientInfo?: McpClientInfo,
 	) {
@@ -632,7 +672,9 @@ export class McpService {
 		);
 
 		// The preview app only accompanies the create tool, so both are gated
-		// together by the granted scopes.
+		// together by the granted scopes. The app tool goes through the same
+		// registrar as every other tool (schema bridging + instrumentation);
+		// only its _meta marks it as backed by the preview app resource.
 		const createToolAllowed = !allowedToolNames || allowedToolNames.has(createTool.name);
 		if (featureFlags.mcpApps.enabled && createToolAllowed) {
 			const appTelemetry = this.buildMcpAppTelemetryConfig();
@@ -647,19 +689,13 @@ export class McpService {
 					});
 				},
 			});
-			registerMcpAppTool(
-				server,
-				createTool.name,
-				{
+			registerIfAllowed({
+				...createTool,
+				config: {
 					...createTool.config,
-					_meta: {
-						ui: {
-							resourceUri: WORKFLOW_PREVIEW_APP_URI,
-						},
-					},
+					_meta: mcpAppToolMeta(WORKFLOW_PREVIEW_APP_URI),
 				},
-				createTool.handler,
-			);
+			});
 		} else {
 			registerIfAllowed(createTool);
 		}
@@ -720,14 +756,14 @@ export class McpService {
 		registerIfAllowed(restoreVersionTool);
 
 		// SDK reference as MCP resource — for clients that support resources.
-		server.registerResource(
-			'workflow-sdk-reference',
-			'n8n://workflow-sdk/reference',
-			{
+		registerResource({
+			name: 'workflow-sdk-reference',
+			uri: 'n8n://workflow-sdk/reference',
+			config: {
 				description:
 					'Required n8n Workflow SDK reference for building workflows from code. Read this before writing workflow code.',
 			},
-			() => ({
+			read: () => ({
 				contents: [
 					{
 						uri: 'n8n://workflow-sdk/reference',
@@ -738,7 +774,7 @@ export class McpService {
 					},
 				],
 			}),
-		);
+		});
 
 		// SDK reference tool — always registered alongside the MCP resource above,
 		// so all clients can access the SDK reference regardless of resource support.

@@ -127,7 +127,7 @@ describe('WorkflowReviewRequestService', () => {
 					updatedAt: new Date('2024-01-01T00:00:00.000Z'),
 				}),
 			);
-			workflowHistoryRepository.updateVersionName.mockResolvedValue(1);
+			workflowHistoryRepository.updateVersionMetadata.mockResolvedValue(1);
 		};
 
 		it('throws when the instance policy is disabled, before any lookup or lock', async () => {
@@ -328,8 +328,41 @@ describe('WorkflowReviewRequestService', () => {
 
 				await service.create(user, namedDto('  Release candidate  '));
 
-				expect(workflowHistoryRepository.updateVersionName).toHaveBeenCalledWith(
-					{ workflowId: 'wf-1', versionId: 'ver-1', name: 'Release candidate' },
+				expect(workflowHistoryRepository.updateVersionMetadata).toHaveBeenCalledWith(
+					{
+						workflowId: 'wf-1',
+						versionId: 'ver-1',
+						name: 'Release candidate',
+						description: undefined,
+					},
+					ctx,
+				);
+			});
+
+			it('writes a trimmed version description alongside the name', async () => {
+				mockSuccessfulCreatePath();
+
+				await service.create(user, {
+					...dto,
+					workflows: [{ ...dto.workflows[0], workflowVersionDescription: '  What changed  ' }],
+				});
+
+				expect(workflowHistoryRepository.updateVersionMetadata).toHaveBeenCalledWith(
+					expect.objectContaining({ description: 'What changed' }),
+					ctx,
+				);
+			});
+
+			it('clears the version description when an empty string is sent', async () => {
+				mockSuccessfulCreatePath();
+
+				await service.create(user, {
+					...dto,
+					workflows: [{ ...dto.workflows[0], workflowVersionDescription: '   ' }],
+				});
+
+				expect(workflowHistoryRepository.updateVersionMetadata).toHaveBeenCalledWith(
+					expect.objectContaining({ description: null }),
 					ctx,
 				);
 			});
@@ -344,12 +377,12 @@ describe('WorkflowReviewRequestService', () => {
 					ConflictError,
 				);
 
-				expect(workflowHistoryRepository.updateVersionName).not.toHaveBeenCalled();
+				expect(workflowHistoryRepository.updateVersionMetadata).not.toHaveBeenCalled();
 			});
 
 			it('throws BadRequestError when the version was pruned before the naming write', async () => {
 				mockSuccessfulCreatePath();
-				workflowHistoryRepository.updateVersionName.mockResolvedValue(0);
+				workflowHistoryRepository.updateVersionMetadata.mockResolvedValue(0);
 
 				await expect(service.create(user, namedDto('Release candidate'))).rejects.toThrow(
 					BadRequestError,

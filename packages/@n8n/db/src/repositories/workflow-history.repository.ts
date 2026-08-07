@@ -21,18 +21,24 @@ export class WorkflowHistoryRepository extends BaseRepository<WorkflowHistory> {
 	}
 
 	/**
-	 * Name a single version. Scoped by `workflowId` too so a version of another
-	 * workflow can never be renamed, and returns the affected row count so
-	 * callers running inside a transaction can treat `0` as "already pruned".
+	 * Name and optionally describe a single version. Scoped by `workflowId` too
+	 * so a version of another workflow can never be touched, and returns the
+	 * affected row count so callers running inside a transaction can treat `0`
+	 * as "already pruned". An omitted description leaves the column untouched.
 	 */
-	async updateVersionName(
-		{ workflowId, versionId, name }: { workflowId: string; versionId: string; name: string },
+	async updateVersionMetadata(
+		{
+			workflowId,
+			versionId,
+			name,
+			description,
+		}: { workflowId: string; versionId: string; name: string; description?: string | null },
 		ctx: OperationContext,
 	): Promise<number | undefined> {
 		const result = await this.managerFor(ctx).update(
 			WorkflowHistory,
 			{ workflowId, versionId },
-			{ name },
+			{ name, ...(description !== undefined ? { description } : {}) },
 		);
 		return result.affected ?? undefined;
 	}
