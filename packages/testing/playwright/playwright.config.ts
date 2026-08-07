@@ -63,7 +63,8 @@ if (BACKEND_URL && !SKIP_WEB_SERVER) {
 	// N8N_TEST_ENV may override N8N_USER_FOLDER (spread below wins), so export
 	// the folder the backend will actually use.
 	const envUserFolder: unknown = getTestEnv().N8N_USER_FOLDER;
-	process.env.N8N_TEST_USER_FOLDER = typeof envUserFolder === 'string' ? envUserFolder : USER_FOLDER;
+	process.env.N8N_TEST_USER_FOLDER =
+		typeof envUserFolder === 'string' ? envUserFolder : USER_FOLDER;
 	webServer.push({
 		command: 'cd .. && pnpm start',
 		url: `${BACKEND_URL}/favicon.ico`,
