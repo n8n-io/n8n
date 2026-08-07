@@ -123,7 +123,10 @@ export class WorkflowReviewInboxService {
 	): Promise<WorkflowReviewRequestDetail> {
 		await this.featureGate.assertAvailable();
 
-		const request = await this.workflowReviewRequestRepository.findById(workflowReviewRequestId);
+		const request = await this.workflowReviewRequestRepository.findById(
+			workflowReviewRequestId,
+			{},
+		);
 		if (!request || !(await this.canAccessRequest(user, request))) {
 			throw new NotFoundError('Could not find review request');
 		}
@@ -132,6 +135,15 @@ export class WorkflowReviewInboxService {
 			this.workflowReviewRequestWorkflowRepository.findLinkedWorkflowDetailsByRequestId(request.id),
 			this.workflowReviewRequestReviewerRepository.findByRequestIds([request.id]),
 		]);
+
+		// An open request whose link rows all cascaded away with a workflow hard
+		// delete is a dead leftover: nothing can act on it and the inbox hides it,
+		// so hide it here too — for the requester as well, matching their inbox.
+		// A closed request keeps zero link rows legitimately (history of a deleted
+		// workflow) and stays readable.
+		if (request.state === 'open' && workflowRows.length === 0) {
+			throw new NotFoundError('Could not find review request');
+		}
 
 		const readableRows = await this.filterReadableWorkflowRows(user, workflowRows);
 		// Someone who reaches this review through its project has no reason to learn it

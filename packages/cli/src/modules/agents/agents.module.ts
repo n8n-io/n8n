@@ -29,6 +29,9 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentsService } = await import('./agents.service.js');
 		Container.get(AgentsService);
 
+		const { AgentCredentialIndexListener } = await import('./agent-credential-index.listener.js');
+		Container.get(AgentCredentialIndexListener).init();
+
 		const { AgentsBuilderSettingsService } = await import(
 			'./builder/agents-builder-settings.service.js'
 		);
@@ -74,11 +77,13 @@ export class AgentsModule implements ModuleInterface {
 			'./integrations/platforms/telegram-integration.js'
 		);
 		const { LinearIntegration } = await import('./integrations/platforms/linear-integration.js');
+		const { DiscordIntegration } = await import('./integrations/platforms/discord-integration.js');
 		const { N8nChatIntegration } = await import('./integrations/platforms/n8n-chat-integration.js');
 		const registry = Container.get(ChatIntegrationRegistry);
 		registry.register(Container.get(SlackIntegration));
 		registry.register(Container.get(TelegramIntegration));
 		registry.register(Container.get(LinearIntegration));
+		registry.register(Container.get(DiscordIntegration));
 		registry.register(Container.get(N8nChatIntegration));
 
 		// Reconnect Chat and Task services on startup so this main resumes its
@@ -165,6 +170,9 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentExecutionThread } = await import('./entities/agent-execution-thread.entity.js');
 		const { AgentExecution } = await import('./entities/agent-execution.entity.js');
 		const { AgentHistory } = await import('./entities/agent-history.entity.js');
+		const { AgentCredentialDependency } = await import(
+			'./entities/agent-credential-dependency.entity.js'
+		);
 		const { AgentTask } = await import('./entities/agent-task.entity.js');
 		const { AgentTaskRunLock } = await import('./entities/agent-task-run-lock.entity.js');
 		const { AgentTaskSnapshot } = await import('./entities/agent-task-snapshot.entity.js');
@@ -198,6 +206,7 @@ export class AgentsModule implements ModuleInterface {
 			AgentExecutionThread,
 			AgentExecution,
 			AgentHistory,
+			AgentCredentialDependency,
 			AgentTask,
 			AgentTaskRunLock,
 			AgentTaskSnapshot,

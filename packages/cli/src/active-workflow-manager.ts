@@ -148,7 +148,6 @@ export class ActiveWorkflowManager {
 		nodeIds?: Set<string>,
 	) {
 		let webhooks = WebhookHelpers.getWorkflowWebhooks(workflow, additionalData, undefined, true);
-		let path = '';
 
 		if (nodeIds) {
 			webhooks = webhooks.filter((webhookData) =>
@@ -162,26 +161,15 @@ export class ActiveWorkflowManager {
 			const node = workflow.getNode(webhookData.node) as INode;
 			node.name = webhookData.node;
 
-			path = webhookData.path;
-
-			const webhook = this.webhookService.createWebhook({
-				workflowId: webhookData.workflowId,
-				webhookPath: path,
-				node: node.name,
-				method: webhookData.httpMethod,
-			});
-
-			if (webhook.webhookPath.startsWith('/')) {
-				webhook.webhookPath = webhook.webhookPath.slice(1);
-			}
-			if (webhook.webhookPath.endsWith('/')) {
-				webhook.webhookPath = webhook.webhookPath.slice(0, -1);
-			}
-
-			if ((path.startsWith(':') || path.includes('/:')) && node.webhookId) {
-				webhook.webhookId = node.webhookId;
-				webhook.pathLength = webhook.webhookPath.split('/').length;
-			}
+			const webhook = this.webhookService.createWebhook(
+				{
+					workflowId: webhookData.workflowId,
+					webhookPath: webhookData.path,
+					node: node.name,
+					method: webhookData.httpMethod,
+				},
+				node.webhookId,
+			);
 
 			try {
 				// `storeWebhook` registers the webhook atomically on the
