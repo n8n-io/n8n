@@ -11,7 +11,7 @@ import type {
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import { documentFields, documentOperations } from './DocumentDescription';
-import { erpNextApiRequest, erpNextApiRequestAllItems } from './GenericFunctions';
+import { erpNextApiRequest, erpNextApiRequestAllItems, getDocTypeFields } from './GenericFunctions';
 import type { DocumentProperties } from './utils';
 import { processNames, toSQL } from './utils';
 
@@ -21,7 +21,7 @@ export class ERPNext implements INodeType {
 		name: 'erpNext',
 		icon: 'file:erpnext.svg',
 		group: ['output'],
-		version: 1,
+		version: [1, 1.1],
 		subtitle: '={{$parameter["resource"] + ": " + $parameter["operation"]}}',
 		description: 'Consume ERPNext API',
 		defaults: {
@@ -73,18 +73,7 @@ export class ERPNext implements INodeType {
 			},
 			async getDocFilters(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const docType = this.getCurrentNodeParameter('docType') as string;
-				const { data } = await erpNextApiRequest.call(
-					this,
-					'GET',
-					`/api/resource/DocType/${docType}`,
-					{},
-				);
-
-				const docFields = data.fields.map(
-					({ label, fieldname }: { label: string; fieldname: string }) => {
-						return { name: label, value: fieldname };
-					},
-				);
+				const docFields = await getDocTypeFields.call(this, docType);
 
 				docFields.unshift({ name: '*', value: '*' });
 
@@ -92,18 +81,7 @@ export class ERPNext implements INodeType {
 			},
 			async getDocFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const docType = this.getCurrentNodeParameter('docType') as string;
-				const { data } = await erpNextApiRequest.call(
-					this,
-					'GET',
-					`/api/resource/DocType/${docType}`,
-					{},
-				);
-
-				const docFields = data.fields.map(
-					({ label, fieldname }: { label: string; fieldname: string }) => {
-						return { name: label, value: fieldname };
-					},
-				);
+				const docFields = await getDocTypeFields.call(this, docType);
 
 				return processNames(docFields);
 			},

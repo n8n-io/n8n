@@ -9,6 +9,8 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
+import { extractDocTypeFields } from './utils';
+
 /**
  * Return the base API URL based on the user's environment.
  */
@@ -63,6 +65,46 @@ export async function erpNextApiRequest(
 		}
 		throw error;
 	}
+}
+
+/**
+ * Fetch the field definitions of a DocType.
+ *
+ * Version 1 reads them from `/api/resource/DocType/{docType}`, which requires read
+ * access to the DocType doctype itself — in practice the System Manager role — so for
+ * an ordinary user the request 403s and the field dropdowns stay empty. From version
+ * 1.1 we call the endpoint the Frappe desk UI itself uses, which authorises against the
+ * user's access to the doctype being loaded.
+ *
+ * `docType` arrives URI-encoded from `getDocTypes`, so it is interpolated rather than
+ * passed as a query object, which would encode it a second time.
+ */
+export async function getDocTypeFields(
+	this: ILoadOptionsFunctions,
+	docType: string,
+): Promise<Array<{ name: string; value: string }>> {
+	if (this.getNode().typeVersion < 1.1) {
+		const { data } = await erpNextApiRequest.call(
+			this,
+			'GET',
+			`/api/resource/DocType/${docType}`,
+			{},
+		);
+
+		return data.fields.map(({ label, fieldname }: { label: string; fieldname: string }) => ({
+			name: label,
+			value: fieldname,
+		}));
+	}
+
+	const response = await erpNextApiRequest.call(
+		this,
+		'GET',
+		`/api/method/frappe.desk.form.load.getdoctype?doctype=${docType}`,
+		{},
+	);
+
+	return extractDocTypeFields(response, docType);
 }
 
 export async function erpNextApiRequestAllItems(
