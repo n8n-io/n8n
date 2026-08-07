@@ -26,15 +26,6 @@ import {
 import { toAiSdkTools } from '../tools/tool-adapter';
 import { MAX_MODEL_TOOL_RESULT_TOKENS } from '../tools/tool-result-guard';
 
-const providerMocks = vi.hoisted(() => ({
-	openAiCountTokens: vi.fn(
-		async (
-			{ input }: { input: string },
-			_options?: { signal?: AbortSignal },
-		): Promise<{ input_tokens: number }> => await Promise.resolve({ input_tokens: input.length }),
-	),
-}));
-
 // ---------------------------------------------------------------------------
 // Module mocks
 // ---------------------------------------------------------------------------
@@ -45,16 +36,6 @@ vi.mock('@ai-sdk/openai', () => ({
 		Object.assign(() => ({ provider: 'openai', modelId: 'mock', specificationVersion: 'v3' }), {
 			embeddingModel: () => ({ provider: 'openai', modelId: 'mock', specificationVersion: 'v2' }),
 		}),
-}));
-
-vi.mock('openai', () => ({
-	default: class {
-		responses = {
-			inputTokens: {
-				count: providerMocks.openAiCountTokens,
-			},
-		};
-	},
 }));
 
 vi.mock('@ai-sdk/anthropic', () => ({
@@ -7402,6 +7383,14 @@ describe('AgentRuntime — oversized tool results', () => {
 		}
 	}
 
+	async function expectWithinTokenLimit(value: unknown): Promise<void> {
+		const { getEncoding } = await import('@n8n/ai-utilities/tokenizer');
+		const encoder = await getEncoding('o200k_base');
+		expect(encoder.encode(JSON.stringify(value)).length).toBeLessThanOrEqual(
+			MAX_MODEL_TOOL_RESULT_TOKENS,
+		);
+	}
+
 	function getModelToolResult(callIndex = 1): unknown {
 		const call = generateText.mock.calls[callIndex][0] as {
 			messages: Array<{
@@ -7411,14 +7400,6 @@ describe('AgentRuntime — oversized tool results', () => {
 		};
 		const toolMessage = call.messages.find((message) => message.role === 'tool');
 		return toolMessage?.content.find((part) => part.type === 'tool-result')?.output?.value;
-	}
-
-	function expectTokenCountsUseRunSignal(): void {
-		const runSignal = (generateText.mock.calls[0][0] as { abortSignal: AbortSignal }).abortSignal;
-		expect(providerMocks.openAiCountTokens).toHaveBeenCalled();
-		for (const [, options] of providerMocks.openAiCountTokens.mock.calls) {
-			expect(options).toEqual({ signal: runSignal });
-		}
 	}
 
 	it('leaves a small transformed result unchanged', async () => {
@@ -7443,9 +7424,9 @@ describe('AgentRuntime — oversized tool results', () => {
 
 	it('bounds an oversized transformed result while preserving raw output', async () => {
 		const rawOutput = {
-			value: `RAW_HEAD${'r'.repeat(MAX_MODEL_TOOL_RESULT_TOKENS + 10_000)}RAW_TAIL`,
+			value: `RAW_HEAD${'r '.repeat(MAX_MODEL_TOOL_RESULT_TOKENS + 10_000)}RAW_TAIL`,
 		};
-		const transformedOutput = `TRANSFORM_HEAD${'t'.repeat(MAX_MODEL_TOOL_RESULT_TOKENS + 10_000)}TRANSFORM_TAIL`;
+		const transformedOutput = `TRANSFORM_HEAD${'t '.repeat(MAX_MODEL_TOOL_RESULT_TOKENS + 10_000)}TRANSFORM_TAIL`;
 		const tool: BuiltTool = {
 			name: 'large_result',
 			description: 'Return a large result',
@@ -7463,7 +7444,7 @@ describe('AgentRuntime — oversized tool results', () => {
 		const result = await runtime.generate('run');
 		const envelope = getModelToolResult() as TruncationEnvelope;
 
-		expect(JSON.stringify(envelope).length).toBeLessThanOrEqual(MAX_MODEL_TOOL_RESULT_TOKENS);
+		await expectWithinTokenLimit(envelope);
 		expect(envelope).toMatchObject({
 			_truncated: true,
 			originalCharCount: JSON.stringify(transformedOutput).length,
@@ -7471,7 +7452,6 @@ describe('AgentRuntime — oversized tool results', () => {
 		expect(envelope.head).toContain('TRANSFORM_HEAD');
 		expect(envelope.tail).toContain('TRANSFORM_TAIL');
 		expect(result.toolCalls?.[0]?.output).toEqual(rawOutput);
-		expectTokenCountsUseRunSignal();
 
 		const { runtime: streamRuntime } = createRuntimeWithTools([tool], 1);
 		streamText
@@ -7515,7 +7495,9 @@ describe('AgentRuntime — oversized tool results', () => {
 			description: 'Throw a large error',
 			inputSchema: z.object({}),
 			handler: () => {
-				throw new Error(`ERROR_HEAD${'e'.repeat(MAX_MODEL_TOOL_RESULT_TOKENS + 10_000)}ERROR_TAIL`);
+				throw new Error(
+					`ERROR_HEAD${'e '.repeat(MAX_MODEL_TOOL_RESULT_TOKENS + 10_000)}ERROR_TAIL`,
+				);
 			},
 		};
 		const { runtime } = createRuntimeWithTools([tool], 1);
@@ -7536,61 +7518,14 @@ describe('AgentRuntime — oversized tool results', () => {
 
 		expect(result.finishReason).toBe('stop');
 		expect(toolCall?.state).toBe('rejected');
-		expect(JSON.stringify(envelope).length).toBeLessThanOrEqual(MAX_MODEL_TOOL_RESULT_TOKENS);
+		await expectWithinTokenLimit(envelope);
 		expect(envelope.head).toContain('ERROR_HEAD');
 		expect(envelope.tail).toContain('ERROR_TAIL');
-		expectTokenCountsUseRunSignal();
-	});
-
-	it('aborts a pending oversized error count and keeps the tool call rejected', async () => {
-		let countAborted = false;
-		const tool: BuiltTool = {
-			name: 'large_error',
-			description: 'Throw a large error',
-			inputSchema: z.object({}),
-			handler: () => {
-				throw new Error(`ERROR_HEAD${'e'.repeat(MAX_MODEL_TOOL_RESULT_TOKENS + 10_000)}`);
-			},
-		};
-		const { runtime } = createRuntimeWithTools([tool], 1);
-		providerMocks.openAiCountTokens.mockImplementationOnce(async (_payload, options) => {
-			const signal = options?.signal;
-			if (!signal) throw new Error('Expected token count signal');
-
-			return await new Promise<{ input_tokens: number }>((resolve) => {
-				signal.addEventListener(
-					'abort',
-					() => {
-						countAborted = true;
-						resolve({ input_tokens: MAX_MODEL_TOOL_RESULT_TOKENS + 10_000 });
-					},
-					{ once: true },
-				);
-				runtime.abort();
-			});
-		});
-		generateText.mockResolvedValueOnce(
-			makeGenerateWithToolCalls([{ toolCallId: 'tc-error', toolName: tool.name, args: {} }]),
-		);
-
-		const result = await runtime.generate('run');
-		const toolCall = result.messages
-			.flatMap((message) => ('content' in message ? message.content : []))
-			.find(
-				(content): content is ContentToolCall =>
-					content.type === 'tool-call' && content.toolCallId === 'tc-error',
-			);
-
-		expect(countAborted).toBe(true);
-		expect(result.finishReason).toBe('error');
-		expect(runtime.getState().status).toBe('cancelled');
-		expect(toolCall?.state).toBe('rejected');
-		expect(toolCall?.state === 'rejected' && toolCall.error).toContain('ERROR_HEAD');
 	});
 
 	it('bounds aggregate toMessage text while preserving file content', async () => {
 		const fileData = Buffer.from('file').toString('base64');
-		const textBlockLength = Math.floor(MAX_MODEL_TOOL_RESULT_TOKENS * 0.6);
+		const textBlockTokenCount = Math.floor(MAX_MODEL_TOOL_RESULT_TOKENS * 0.6);
 		const tool: BuiltTool = {
 			name: 'large_message',
 			description: 'Return a large message',
@@ -7599,9 +7534,9 @@ describe('AgentRuntime — oversized tool results', () => {
 			toMessage: () => ({
 				role: 'assistant',
 				content: [
-					{ type: 'text', text: `MESSAGE_HEAD${'m'.repeat(textBlockLength)}` },
+					{ type: 'text', text: `MESSAGE_HEAD${'m '.repeat(textBlockTokenCount)}` },
 					{ type: 'file', mediaType: 'text/plain', data: fileData },
-					{ type: 'text', text: `${'n'.repeat(textBlockLength)}MESSAGE_TAIL` },
+					{ type: 'text', text: `${'n '.repeat(textBlockTokenCount)}MESSAGE_TAIL` },
 				],
 			}),
 		};
@@ -7629,10 +7564,9 @@ describe('AgentRuntime — oversized tool results', () => {
 		const envelope = parseEnvelope(textBlocks[0]?.text ?? '');
 
 		expect(textBlocks).toHaveLength(1);
-		expect(JSON.stringify(envelope).length).toBeLessThanOrEqual(MAX_MODEL_TOOL_RESULT_TOKENS);
+		await expectWithinTokenLimit(envelope);
 		expect(envelope.head).toContain('MESSAGE_HEAD');
 		expect(envelope.tail).toContain('MESSAGE_TAIL');
 		expect(fileBlock).toMatchObject({ type: 'file', mediaType: 'text/plain', data: fileData });
-		expectTokenCountsUseRunSignal();
 	});
 });

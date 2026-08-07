@@ -1,4 +1,8 @@
-import type { ObservationLogEntry, ObservationLogMarker } from '../../types/sdk/observation-log';
+import {
+	getStoredObservationTokenCount,
+	type ObservationLogEntry,
+	type ObservationLogMarker,
+} from '../../types/sdk/observation-log';
 
 const MARKER_LABELS: Record<ObservationLogMarker, string> = {
 	critical: 'CRITICAL',
@@ -42,9 +46,10 @@ export function renderObservationLog(
 
 	const included = new Set<string>();
 	for (const entry of activeEntries) {
-		if (entry.tokenCount > remainingTokens) continue;
+		const tokenCount = getStoredObservationTokenCount(entry);
+		if (tokenCount > remainingTokens) continue;
 		included.add(entry.id);
-		remainingTokens -= entry.tokenCount;
+		remainingTokens -= tokenCount;
 	}
 
 	if (included.size === 0) return null;

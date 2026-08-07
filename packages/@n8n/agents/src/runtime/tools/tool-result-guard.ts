@@ -25,7 +25,6 @@ export interface GuardedToolResult {
 export async function guardToolResultForModel(
 	output: unknown,
 	tokenCounter: TokenCounter = estimateObservationTokens,
-	abortSignal?: AbortSignal,
 ): Promise<GuardedToolResult> {
 	const historyOutput = toJsonValue(output);
 	const serialized = JSON.stringify(historyOutput);
@@ -34,33 +33,26 @@ export async function guardToolResultForModel(
 		return { historyOutput, wireOutput: output, truncated: false };
 	}
 
-	const tokenCount = await tokenCounter(serialized, abortSignal);
+	const tokenCount = await tokenCounter(serialized);
 	if (tokenCount <= MAX_MODEL_TOOL_RESULT_TOKENS) {
 		return { historyOutput, wireOutput: output, truncated: false };
 	}
 
-	const truncated = await buildTruncationEnvelope(
-		serialized,
-		tokenCount,
-		tokenCounter,
-		abortSignal,
-	);
+	const truncated = await buildTruncationEnvelope(serialized, tokenCount, tokenCounter);
 	return { historyOutput: truncated, wireOutput: truncated, truncated: true };
 }
 
 export async function guardToolErrorForModel(
 	errorText: string,
 	tokenCounter: TokenCounter = estimateObservationTokens,
-	abortSignal?: AbortSignal,
 ): Promise<string> {
-	const guarded = await guardToolResultForModel(errorText, tokenCounter, abortSignal);
+	const guarded = await guardToolResultForModel(errorText, tokenCounter);
 	return guarded.truncated ? JSON.stringify(guarded.historyOutput) : errorText;
 }
 
 export async function guardToolMessageForModel(
 	message: AgentMessage,
 	tokenCounter: TokenCounter = estimateObservationTokens,
-	abortSignal?: AbortSignal,
 ): Promise<AgentMessage> {
 	if (!('content' in message)) return message;
 
@@ -70,11 +62,11 @@ export async function guardToolMessageForModel(
 	const serialized = JSON.stringify(textBlocks.map(({ text }) => text));
 	if (isClearlyWithinTokenLimit(serialized)) return message;
 
-	const tokenCount = await tokenCounter(serialized, abortSignal);
+	const tokenCount = await tokenCounter(serialized);
 	if (tokenCount <= MAX_MODEL_TOOL_RESULT_TOKENS) return message;
 
 	const replacement = JSON.stringify(
-		await buildTruncationEnvelope(serialized, tokenCount, tokenCounter, abortSignal),
+		await buildTruncationEnvelope(serialized, tokenCount, tokenCounter),
 	);
 	let replacedText = false;
 	const content = message.content.flatMap((block): MessageContent[] => {
@@ -99,7 +91,6 @@ async function buildTruncationEnvelope(
 	serialized: string,
 	originalTokenCount: number,
 	tokenCounter: TokenCounter,
-	abortSignal?: AbortSignal,
 ): Promise<TruncatedToolResult> {
 	const base = {
 		_truncated: true,
@@ -113,7 +104,7 @@ async function buildTruncationEnvelope(
 	while (true) {
 		const { head, tail } = splitHeadAndTail(serialized, excerptLength);
 		const candidate: TruncatedToolResult = { ...base, head, tail };
-		const candidateTokenCount = await tokenCounter(JSON.stringify(candidate), abortSignal);
+		const candidateTokenCount = await tokenCounter(JSON.stringify(candidate));
 		if (candidateTokenCount <= MAX_MODEL_TOOL_RESULT_TOKENS || excerptLength === 0) {
 			return candidate;
 		}

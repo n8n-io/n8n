@@ -1,4 +1,4 @@
-import type { AgentExecutionCounter, TokenUsage } from './agent';
+import type { AgentExecutionCounter, ModelConfig, TokenUsage } from './agent';
 import type { AgentDbMessage } from './message';
 import type { BuiltTelemetry } from '../telemetry';
 
@@ -68,14 +68,38 @@ export interface ObservationLogReflectionResult {
 	inserted: ObservationLogEntry[];
 }
 
-export type TokenCounter = (text: string, signal?: AbortSignal) => number | Promise<number>;
+export type TokenCounter = (text: string) => number | Promise<number>;
 
-export const estimateObservationTokens: TokenCounter = async (text) => {
-	if (text.length === 0) return 0;
-	const { getEncoding } = await import('@n8n/ai-utilities');
-	const encoder = await getEncoding('cl100k_base');
-	return encoder.encode(text).length;
-};
+export function getStoredObservationTokenCount(
+	entry: Pick<ObservationLogEntry, 'text' | 'tokenCount'>,
+): number {
+	if (Number.isFinite(entry.tokenCount) && entry.tokenCount > 0) return entry.tokenCount;
+	return Buffer.byteLength(entry.text, 'utf8');
+}
+
+function createTokenCounter(encoding: 'cl100k_base' | 'o200k_base'): TokenCounter {
+	return async (text) => {
+		if (text.length === 0) return 0;
+		const { getEncoding } = await import('@n8n/ai-utilities/tokenizer');
+		const encoder = await getEncoding(encoding);
+		return encoder.encode(text, [], []).length;
+	};
+}
+
+export const estimateObservationTokens = createTokenCounter('cl100k_base');
+
+const estimateOpenAiTokens = createTokenCounter('o200k_base');
+
+export function createModelTokenCounter(model: ModelConfig): TokenCounter {
+	let modelId: string | undefined;
+	if (typeof model === 'string') {
+		modelId = model;
+	} else if (typeof model === 'object' && model !== null && 'id' in model) {
+		modelId = typeof model.id === 'string' ? model.id : undefined;
+	}
+
+	return modelId?.startsWith('openai/') ? estimateOpenAiTokens : estimateObservationTokens;
+}
 
 export interface ObservationLogObserverInput {
 	observationScopeId: string;

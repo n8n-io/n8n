@@ -50,6 +50,7 @@ import type {
 	ResumeOptions,
 } from '../../types/sdk/agent';
 import type { AgentMessage, ContentToolCall } from '../../types/sdk/message';
+import { createModelTokenCounter } from '../../types/sdk/observation-log';
 import type { JSONValue } from '../../types/utils/json';
 import { parseWithSchema } from '../../utils/parse';
 import { MemoryOrchestrator } from '../memory/memory-orchestrator';
@@ -57,7 +58,6 @@ import type { ScopedMemoryTaskEvent } from '../memory/scoped-memory-task-runner'
 import { generateThreadTitle } from '../memory/title-generation';
 import { AgentMessageList, type SerializedMessageList } from '../model/message-list';
 import type { FetchFn } from '../model/model-factory';
-import { createModelTokenCounter } from '../model/model-token-counter';
 import {
 	applyRuntimeCacheBreakpoints,
 	buildInstructionPromptCacheOptions,
@@ -194,7 +194,7 @@ export class AgentRuntime {
 
 	constructor(config: AgentRuntimeConfig) {
 		this.config = config;
-		const tokenCounter = createModelTokenCounter(config.model, config.modelFetch);
+		const tokenCounter = createModelTokenCounter(config.model);
 		this.telemetry = new RuntimeTelemetry(config);
 		this.runId = config.runId ?? generateRunId();
 		if (config.deferredTools && config.deferredTools.length > 0) {

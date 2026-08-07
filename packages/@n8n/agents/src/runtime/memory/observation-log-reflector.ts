@@ -14,7 +14,10 @@ import type {
 	ObservationLogReflectionResult,
 	TokenCounter,
 } from '../../types/sdk/observation-log';
-import { estimateObservationTokens } from '../../types/sdk/observation-log';
+import {
+	estimateObservationTokens,
+	getStoredObservationTokenCount,
+} from '../../types/sdk/observation-log';
 import type { BuiltTelemetry } from '../../types/telemetry';
 
 export type { ObservationLogReflectFn, ObservationLogReflectorInput };
@@ -354,7 +357,7 @@ function withCreatedAt(reflection: ObservationLogReflection, now: Date): Observa
 }
 
 function countObservationTokens(entries: ObservationLogEntry[]): number {
-	return entries.reduce((total, entry) => total + entry.tokenCount, 0);
+	return entries.reduce((total, entry) => total + getStoredObservationTokenCount(entry), 0);
 }
 
 function compareEntries(a: ObservationLogEntry, b: ObservationLogEntry): number {

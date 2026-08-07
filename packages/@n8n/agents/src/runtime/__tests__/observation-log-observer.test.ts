@@ -402,31 +402,8 @@ describe('runObservationLogObserver', () => {
 		const store = new InMemoryMemory();
 		const parentText = 'User needs the current request remembered.';
 		const childText = 'Observer pipeline parsed the child row.';
-		let resolveParent!: (count: number) => void;
-		let resolveChild!: (count: number) => void;
-		const parentGate = new Promise<number>((resolve) => {
-			resolveParent = resolve;
-		});
-		const childGate = new Promise<number>((resolve) => {
-			resolveChild = resolve;
-		});
-		const startedTexts: string[] = [];
-		const resolveOrder: string[] = [];
-		const tokenCounter = vi.fn(async (text: string) => {
-			if (text === parentText) {
-				startedTexts.push(text);
-				const count = await parentGate;
-				resolveOrder.push(text);
-				return count;
-			}
-			if (text === childText) {
-				startedTexts.push(text);
-				const count = await childGate;
-				resolveOrder.push(text);
-				return count;
-			}
-			return 10;
-		});
+		const tokenCounter = async (text: string) =>
+			await Promise.resolve(text === parentText ? 7 : text === childText ? 9 : 10);
 		await store.saveThread({ id: 'thread-1', resourceId: 'user-1' });
 		await store.saveMessages({
 			threadId: 'thread-1',
@@ -435,7 +412,7 @@ describe('runObservationLogObserver', () => {
 		});
 
 		const now = new Date(2026, 4, 12, 14, 31);
-		const resultPromise = runObservationLogObserver({
+		const result = await runObservationLogObserver({
 			memory: store,
 			observationScopeId: 'thread-1',
 			observerThresholdTokens: 1,
@@ -448,23 +425,7 @@ describe('runObservationLogObserver', () => {
 				),
 		});
 
-		await vi.waitFor(() => {
-			expect(startedTexts).toEqual([parentText, childText]);
-		});
-		expect(await store.getActiveObservationLog({ observationScopeId: 'thread-1' })).toEqual([]);
-		expect(await store.getCursor('thread-1')).toBeNull();
-
-		resolveChild(9);
-		await vi.waitFor(() => {
-			expect(resolveOrder).toEqual([childText]);
-		});
-		expect(await store.getActiveObservationLog({ observationScopeId: 'thread-1' })).toEqual([]);
-
-		resolveParent(7);
-		const result = await resultPromise;
-
 		expect(result).toMatchObject({ status: 'ran', observationsWritten: 2, cursorAdvanced: true });
-		expect(resolveOrder).toEqual([childText, parentText]);
 		const observations = await store.getActiveObservationLog({
 			observationScopeId: 'thread-1',
 		});

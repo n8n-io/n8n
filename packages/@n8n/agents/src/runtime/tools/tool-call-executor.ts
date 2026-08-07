@@ -859,11 +859,7 @@ export class ToolCallExecutor {
 		});
 		params.list.setToolCallError(
 			params.toolCallId,
-			await guardToolErrorForModel(
-				stringifyError(error),
-				this.deps.tokenCounter,
-				params.abortSignal,
-			),
+			await guardToolErrorForModel(stringifyError(error), this.deps.tokenCounter),
 		);
 		return { outcome: 'error', error };
 	}
@@ -1032,11 +1028,7 @@ export class ToolCallExecutor {
 		} catch (error) {
 			return await this.toolError(params, error);
 		}
-		const guardedResult = await guardToolResultForModel(
-			modelResult,
-			this.deps.tokenCounter,
-			params.abortSignal,
-		);
+		const guardedResult = await guardToolResultForModel(modelResult, this.deps.tokenCounter);
 
 		this.eventBus.emit({
 			type: AgentEvent.ToolExecutionEnd,
@@ -1050,7 +1042,7 @@ export class ToolCallExecutor {
 
 		const customMessage = builtTool.toMessage?.(toolResult);
 		const guardedCustomMessage = customMessage
-			? await guardToolMessageForModel(customMessage, this.deps.tokenCounter, params.abortSignal)
+			? await guardToolMessageForModel(customMessage, this.deps.tokenCounter)
 			: undefined;
 		if (guardedCustomMessage) {
 			list.addResponse([guardedCustomMessage]);
