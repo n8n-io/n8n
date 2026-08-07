@@ -1304,6 +1304,7 @@ describe('AgentRuntime.stream() — usage billing on abort', () => {
 			.mockReturnValueOnce({
 				stream: (function* () {
 					controller.abort();
+					yield* makeChunkStream([]);
 				})(),
 				finishReason: silentReject(abortError),
 				usage: silentReject(abortError),
