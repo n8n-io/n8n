@@ -23,6 +23,7 @@ import {
 	WorkflowPublishHistoryRepository,
 	WorkflowReviewRequestAuthorRepository,
 	WorkflowReviewRequestRepository,
+	WorkflowRepository,
 	WorkflowReviewRequestReviewerRepository,
 	WorkflowReviewRequestWorkflowRepository,
 	type OperationContext,
@@ -67,6 +68,7 @@ export class WorkflowReviewRequestService {
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly workflowHistoryService: WorkflowHistoryService,
 		private readonly workflowHistoryRepository: WorkflowHistoryRepository,
+		private readonly workflowRepository: WorkflowRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly workflowPublishHistoryRepository: WorkflowPublishHistoryRepository,
 		private readonly workflowReviewRequestRepository: WorkflowReviewRequestRepository,
@@ -274,17 +276,21 @@ export class WorkflowReviewRequestService {
 	}
 
 	/**
-	 * Re-runs `create`'s pre-lock preconditions. Deliberately the same two lookups
-	 * rather than a cheaper bespoke read, so the two checks cannot drift apart.
+	 * Re-asserts under the lock what `create`'s pre-lock checks established: the
+	 * workflow still exists, is unarchived, and still belongs to the same project.
+	 * Access is not re-checked — the races this guards against are archive and
+	 * transfer, both of which these two reads cover.
+	 *
+	 * Every read is threaded with `ctx` so it runs on the lock transaction's own
+	 * connection. A read that checks out a second connection here deadlocks against
+	 * the transaction holding the first one (see the same note in `decide`).
 	 */
 	private async assertWorkflowStillReviewable(
-		user: User,
 		workflowId: string,
 		expectedProjectId: string,
+		ctx: OperationContext,
 	): Promise<void> {
-		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
-			'workflow:publish',
-		]);
+		const workflow = await this.workflowRepository.findArchivedState(workflowId, ctx);
 		if (!workflow) {
 			throw new NotFoundError('Could not find workflow');
 		}
@@ -295,7 +301,7 @@ export class WorkflowReviewRequestService {
 			);
 		}
 
-		const project = await this.sharedWorkflowRepository.getWorkflowOwningProject(workflowId);
+		const project = await this.sharedWorkflowRepository.getWorkflowOwningProject(workflowId, ctx);
 		if (project?.id !== expectedProjectId) {
 			throw new ConflictError(
 				`The workflow '${workflowId}' moved to another project and cannot be submitted for review here`,
@@ -363,7 +369,7 @@ export class WorkflowReviewRequestService {
 			async (ctx) => {
 				// without this, a create that lost the race opens a review on an archived
 				// or moved workflow.
-				await this.assertWorkflowStillReviewable(user, workflowId, project.id);
+				await this.assertWorkflowStillReviewable(workflowId, project.id, ctx);
 
 				const existing = await this.workflowReviewRequestRepository.findOpenRequestForWorkflow(
 					workflowId,
