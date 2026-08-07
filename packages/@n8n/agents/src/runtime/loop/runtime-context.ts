@@ -5,6 +5,7 @@ import type { AgentRuntimeConfig } from './agent-runtime';
 import type { AgentExecutionCounter, BuiltTool, JSONObject } from '../../types';
 import type { AgentPersistenceOptions, ExecutionOptions } from '../../types/sdk/agent';
 import { lockAdditionalProperties } from '../../utils/json-schema';
+import { getModelIdString } from '../../utils/model';
 import { isZodSchema } from '../../utils/zod';
 import {
 	createRecallMemoryTool,
@@ -16,7 +17,6 @@ import {
 import { loadAi } from '../model/lazy-ai';
 import type { AgentMessageList } from '../model/message-list';
 import { createModel } from '../model/model-factory';
-import { getModelIdString } from '../model/model-token-counter';
 import { buildCallPromptCacheOptions, mergeProviderOptions } from '../model/prompt-cache';
 import {
 	getProviderQuirks,

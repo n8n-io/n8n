@@ -51,13 +51,14 @@ import type {
 } from '../../types/sdk/agent';
 import type { AgentMessage, ContentToolCall } from '../../types/sdk/message';
 import type { JSONValue } from '../../types/utils/json';
+import { getModelIdString } from '../../utils/model';
 import { parseWithSchema } from '../../utils/parse';
 import { MemoryOrchestrator } from '../memory/memory-orchestrator';
 import type { ScopedMemoryTaskEvent } from '../memory/scoped-memory-task-runner';
 import { generateThreadTitle } from '../memory/title-generation';
 import { AgentMessageList, type SerializedMessageList } from '../model/message-list';
 import type { FetchFn } from '../model/model-factory';
-import { createModelTokenCounter, getModelIdString } from '../model/model-token-counter';
+import { createModelTokenCounter } from '../model/model-token-counter';
 import {
 	applyRuntimeCacheBreakpoints,
 	buildInstructionPromptCacheOptions,
