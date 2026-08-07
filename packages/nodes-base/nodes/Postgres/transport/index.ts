@@ -143,6 +143,22 @@ export async function configurePostgres(
 		if (!credentials.sshTunnel) {
 			const db = pgp(dbConfig);
 
+			// Register an abort listener so that when ConnectionPoolManager evicts this
+			// pool after the idle TTL, the underlying pg-promise Database object is
+			// properly ended and removed from pg-promise's process-global registry.
+			// Without this, evicted pools accumulate indefinitely, each retaining
+			// memory proportional to the last execution's payload (fixes #32724).
+			abortController.signal.addEventListener('abort', async () => {
+				this.logger.debug('configurePostgres: Got abort signal, closing pg connection.');
+				try {
+					if (!db.$pool.ended) await db.$pool.end();
+				} catch (error) {
+					this.logger.error('configurePostgres: Encountered error while closing the pool.', {
+						error,
+					});
+				}
+			});
+
 			return { db, pgp };
 		} else {
 			if (credentials.sshAuthenticateWith === 'privateKey' && credentials.privateKey) {
