@@ -141,16 +141,12 @@ export class StepReadyHandler {
 			);
 		}
 
-		// All the filled input slots.
-		const filledSlots = new Set<number>();
-		for (const edge of incomingEdges) {
-			validateIncomingEdge(edge, step, filledSlots);
-			filledSlots.add(edge.inputIndex);
-		}
+		validateIncomingEdges(incomingEdges, step);
 
 		const incomingOutputsByNodeId = await this.loadIncomingOutputs(execution.id, incomingEdges);
 
 		// Array of length equal to the highest input slot. All empty for now.
+		// TODO(CAT-3042): enforce data size limits.
 		const inputs: StepSlots = Array.from(
 			{ length: Math.max(...incomingEdges.map((edge) => edge.inputIndex)) + 1 },
 			() => null,
@@ -184,8 +180,8 @@ export class StepReadyHandler {
 	/**
 	 * Loads the outputs of all the source steps of `incomingEdges`, keyed by the source node ID.
 	 * The source steps must have completed.
-	 * @param executionId
-	 * @param incomingEdges
+	 * @param executionId to gather the predecessor outputs
+	 * @param incomingEdges to know which predecessor nodes to gather outputs from
 	 * @returns
 	 */
 	private async loadIncomingOutputs(
@@ -199,19 +195,23 @@ export class StepReadyHandler {
 
 // Validate that the incoming edge meets our constraints. filledSlots tracks the filled
 // input slots so we can detect multiple edges into the same slot.
-function validateIncomingEdge(edge: GraphEdge, step: StepRecord, filledSlots: Set<number>): void {
-	// TODO(CAT-2874): route from non-zero output slots. We should have
-	// rejected this graph at validation time.
-	if (edge.outputIndex !== 0) {
-		throw new UnexpectedError(
-			`step ${step.id} runs node ${step.nodeId}, fed from output slot ${edge.outputIndex} of node ${edge.from}; validated graphs only use output slot 0`,
-		);
-	}
-	if (filledSlots.has(edge.inputIndex)) {
-		// We should have rejected this graph at validation time.
-		throw new UnexpectedError(
-			`step ${step.id} runs node ${step.nodeId}, which has more than one edge into input slot ${edge.inputIndex}; validated graphs have at most one edge per input slot`,
-		);
+function validateIncomingEdges(incomingEdges: GraphEdge[], step: StepRecord): void {
+	const filledSlots: Set<number> = new Set();
+	for (const edge of incomingEdges) {
+		// TODO(CAT-2874): route from non-zero output slots. We should have
+		// rejected this graph at validation time.
+		if (edge.outputIndex !== 0) {
+			throw new UnexpectedError(
+				`step ${step.id} runs node ${step.nodeId}, fed from output slot ${edge.outputIndex} of node ${edge.from}; validated graphs only use output slot 0`,
+			);
+		}
+		if (filledSlots.has(edge.inputIndex)) {
+			// We should have rejected this graph at validation time.
+			throw new UnexpectedError(
+				`step ${step.id} runs node ${step.nodeId}, which has more than one edge into input slot ${edge.inputIndex}; validated graphs have at most one edge per input slot`,
+			);
+		}
+		filledSlots.add(edge.inputIndex);
 	}
 }
 
