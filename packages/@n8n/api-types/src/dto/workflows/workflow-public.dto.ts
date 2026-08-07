@@ -4,11 +4,10 @@ import { z } from 'zod';
 import { Z } from '../../zod-class';
 import { tagPublicSchema } from '../tag/tag-public.dto';
 
-// Nodes, connections, settings, static data, meta, and pin data all carry
-// arbitrary, already-stored shapes. This DTO only needs to confirm the
-// top-level shape (array vs. object) it is exposing under each field name --
-// re-validating their internals here would risk rejecting legitimately
-// stored data that predates a stricter input schema.
+// These fields can look different for every workflow, so we only check
+// whether each one is the right basic type (a list or an object), not what's
+// inside it. Checking more than that could reject real, already-saved
+// workflows that were created before this check existed.
 const nodesPublicSchema = z.custom<INode[]>((value) => Array.isArray(value), {
 	message: 'Nodes must be an array',
 });
