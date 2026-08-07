@@ -128,18 +128,18 @@ ruleTester.run('node-usable-as-tool', NodeUsableAsToolRule, {
 			code: createNodeCode(undefined, false),
 		},
 		{
-			name: 'AI-only node: NodeConnectionTypes non-Main output and empty inputs skips usableAsTool check',
+			name: 'AI-only node: NodeConnectionTypes non-Main output and empty inputs does not require usableAsTool',
 			code: createNodeCodeWithOutputsInputs('[NodeConnectionTypes.AiAgent]', '[]'),
 		},
 		{
-			name: 'AI-only node: multiple non-Main NodeConnectionTypes outputs and empty inputs skips usableAsTool check',
+			name: 'AI-only node: multiple non-Main NodeConnectionTypes outputs and empty inputs does not require usableAsTool',
 			code: createNodeCodeWithOutputsInputs(
 				'[NodeConnectionTypes.AiAgent, NodeConnectionTypes.AiTool]',
 				'[]',
 			),
 		},
 		{
-			name: 'AI-only node: non-main string literal output and empty inputs skips usableAsTool check',
+			name: 'AI-only node: non-main string literal output and empty inputs does not require usableAsTool',
 			code: createNodeCodeWithOutputsInputs("['ai_agent']", '[]'),
 		},
 		{
@@ -161,6 +161,16 @@ ruleTester.run('node-usable-as-tool', NodeUsableAsToolRule, {
 			name: "trigger node identified by group: ['trigger'] with usableAsTool set to true is forbidden",
 			code: createTriggerNodeCode({ className: 'TestCron', usableAsTool: true }),
 			errors: [{ messageId: 'triggerUsableAsTool' }],
+		},
+		{
+			name: 'AI-only node: non-Main output and empty inputs with usableAsTool set to true is forbidden',
+			code: createNodeCodeWithOutputsInputs('[NodeConnectionTypes.AiAgent]', '[]', true),
+			errors: [{ messageId: 'aiOnlyUsableAsTool' }],
+		},
+		{
+			name: 'AI-only node: non-main string literal output and empty inputs with usableAsTool set to true is forbidden',
+			code: createNodeCodeWithOutputsInputs("['ai_agent']", '[]', true),
+			errors: [{ messageId: 'aiOnlyUsableAsTool' }],
 		},
 		{
 			name: 'node missing usableAsTool property',

@@ -18,6 +18,10 @@ function hasTriggerGroup(descriptionValue: TSESTree.ObjectExpression): boolean {
 	);
 }
 
+function isSetToTrue(property: TSESTree.Property | null): property is TSESTree.Property {
+	return property?.value.type === TSESTree.AST_NODE_TYPES.Literal && property.value.value === true;
+}
+
 export const NodeUsableAsToolRule = createRule({
 	name: 'node-usable-as-tool',
 	meta: {
@@ -30,6 +34,8 @@ export const NodeUsableAsToolRule = createRule({
 				'Node class should have usableAsTool property. When in doubt, set it to true.',
 			triggerUsableAsTool:
 				'Trigger nodes must not set usableAsTool: true. Trigger nodes cannot be invoked as AI tools and doing so pollutes the tool picker. Remove this property.',
+			aiOnlyUsableAsTool:
+				'AI-only nodes (non-main output, no inputs) must not set usableAsTool: true. These nodes are only usable through their AI connection type, not as a generic tool, and doing so pollutes the tool picker. Remove this property.',
 		},
 		fixable: 'code',
 		schema: [],
@@ -57,10 +63,7 @@ export const NodeUsableAsToolRule = createRule({
 				// `group` is the authoritative signal (also catches e.g. Cron, Webhook, versioned
 				// `*TriggerV1` classes); the name suffix is kept as a fallback for dynamic `group` values.
 				if (hasTriggerGroup(descriptionValue) || isTriggerNodeClass(node)) {
-					if (
-						usableAsToolProperty?.value.type === TSESTree.AST_NODE_TYPES.Literal &&
-						usableAsToolProperty.value.value === true
-					) {
+					if (isSetToTrue(usableAsToolProperty)) {
 						context.report({
 							node: usableAsToolProperty,
 							messageId: 'triggerUsableAsTool',
@@ -88,6 +91,14 @@ export const NodeUsableAsToolRule = createRule({
 					});
 					const isEmptyInputs = inputsProperty?.value?.elements?.length === 0;
 					if (isAiOutput && isEmptyInputs) {
+						// These nodes are only ever consumed via their AI connection type (e.g. as an
+						// Agent's memory/language model), never invoked directly like a regular tool.
+						if (isSetToTrue(usableAsToolProperty)) {
+							context.report({
+								node: usableAsToolProperty,
+								messageId: 'aiOnlyUsableAsTool',
+							});
+						}
 						return;
 					}
 				}
