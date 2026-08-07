@@ -992,6 +992,26 @@ describe('McpSettingsService', () => {
 
 				expect(result.autoExposeNewWorkflows).toBeUndefined();
 			});
+
+			test('handles a non-Error rejection when enabling auto-expose throws', async () => {
+				workflowFinderService.findAllWorkflowIdsForUser.mockResolvedValue([]);
+				upsert.mockImplementationOnce(() => {
+					throw 'db unavailable';
+				});
+
+				const dto = new UpdateWorkflowsAvailabilityDto({
+					availableInMCP: true,
+					allWorkflows: true,
+				});
+
+				const result = await service.bulkSetAvailableInMCP(user, dto);
+
+				expect(result.autoExposeNewWorkflows).toBeUndefined();
+				expect(logger.warn).toHaveBeenCalledWith(
+					'Failed to enable auto-expose after bulk-exposing all workflows',
+					{ cause: 'db unavailable' },
+				);
+			});
 		});
 	});
 
