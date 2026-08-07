@@ -31,4 +31,32 @@ export function validateExecutableGraph(graph: WorkflowGraph): void {
 	if (graph.edges.some((edge) => edge.isBackEdge)) {
 		throw new UnimplementedError('Graphs with back-edges (loops) are not supported yet');
 	}
+
+	// TODO(CAT-2874): multi-slot routing arrives with branching; until then only
+	// slot 0 → slot 0 edges run, and the runtime can assume single-slot IO.
+	for (const edge of graph.edges) {
+		if (edge.outputIndex !== 0) {
+			throw new UnimplementedError(
+				`Edge ${edge.from} → ${edge.to} leaves output slot ${edge.outputIndex}; only output slot 0 is supported yet`,
+			);
+		}
+		if (edge.inputIndex !== 0) {
+			throw new UnimplementedError(
+				`Edge ${edge.from} → ${edge.to} arrives at input slot ${edge.inputIndex}; only input slot 0 is supported yet`,
+			);
+		}
+	}
+
+	// TODO(CAT-3982): same-slot convergence gets a defined meaning (concatenation);
+	// until then it is rejected rather than given accidental semantics.
+	const seenInputSlots = new Set<string>();
+	for (const edge of graph.edges) {
+		const slot = `${edge.to}#${edge.inputIndex}`;
+		if (seenInputSlots.has(slot)) {
+			throw new UnimplementedError(
+				`Node ${edge.to} has more than one edge into input slot ${edge.inputIndex}; converging branches on one slot is not supported yet`,
+			);
+		}
+		seenInputSlots.add(slot);
+	}
 }

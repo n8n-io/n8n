@@ -175,7 +175,7 @@ catalog:
   moment-timezone: 0.5.48
   mqtt-packet: 9.0.0
   ms: 2.1.3
-  mysql2: 3.17.0
+  mysql2: 3.23.1
   nanoid: 3.3.8
   nock: 14.0.14
   nodemailer: 8.0.10
