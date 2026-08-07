@@ -80,7 +80,11 @@ async function parseEndpointsFromSpec(): Promise<EndpointInfo[]> {
 }
 
 async function buildAllEndpoints(): Promise<EndpointInfo[]> {
-	return [...(await buildEovEndpoints()), ...buildDecoratorEndpoints()];
+	const [eovEndpoints, decoratorEndpoints] = await Promise.all([
+		buildEovEndpoints(),
+		buildDecoratorEndpoints(),
+	]);
+	return [...eovEndpoints, ...decoratorEndpoints];
 }
 
 async function buildEovEndpoints(): Promise<EndpointInfo[]> {
@@ -144,14 +148,45 @@ async function buildEovEndpoints(): Promise<EndpointInfo[]> {
 	return endpoints;
 }
 
-function buildDecoratorEndpoints(): EndpointInfo[] {
-	return resolvePublicApiRoutes().map((route) => ({
-		method: route.method.toUpperCase(),
-		path: `/api/v1${toOpenApiPathTemplate(route.path)}`,
-		operationId: route.handlerName,
-		tag: route.tags?.[0] ?? 'Other',
-		scope: route.apiKeyScope ?? null,
-	}));
+/**
+ * Reads a decorator route's own committed, generated path fragment (the same file
+ * `openapi-gen/generate.ts` writes) to pull its request body schema — mirrors what
+ * `buildEovEndpoints` gets for free from the hand-written spec. Convention matches
+ * `getDecoratorGeneratedOperations`'s `outputPath`: `handlers/<resource>/spec/paths/<handlerName>.generated.yml`.
+ */
+async function readDecoratorRequestSchema(
+	route: ReturnType<typeof resolvePublicApiRoutes>[number],
+): Promise<Record<string, unknown> | undefined> {
+	const resource = route.path.split('/').find(Boolean) ?? 'root';
+	const fragmentPath = path.join(
+		__dirname,
+		'..',
+		resource,
+		'spec',
+		'paths',
+		`${route.handlerName}.generated.yml`,
+	);
+
+	try {
+		const operation = await RefParser.dereference(fragmentPath);
+		return isRecord(operation) ? extractRequestSchema(operation) : undefined;
+	} catch {
+		// Fragment missing/unreadable (e.g. not yet generated) - discovery still works, just without a schema.
+		return undefined;
+	}
+}
+
+async function buildDecoratorEndpoints(): Promise<EndpointInfo[]> {
+	return await Promise.all(
+		resolvePublicApiRoutes().map(async (route) => ({
+			method: route.method.toUpperCase(),
+			path: `/api/v1${toOpenApiPathTemplate(route.path)}`,
+			operationId: route.handlerName,
+			tag: route.tags?.[0] ?? 'Other',
+			scope: route.apiKeyScope ?? null,
+			requestSchema: await readDecoratorRequestSchema(route),
+		})),
+	);
 }
 
 export async function buildDiscoverResponse(
