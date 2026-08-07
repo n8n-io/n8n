@@ -91,6 +91,7 @@ export class DurableScheduler implements Scheduler {
 		if (enabled) {
 			warnOnMisfireGrace(logger, config);
 			warnOnDrainRate(logger, config);
+			warnOnPollTimeout(logger, config);
 		}
 		this.registerTaskHandler(scheduleTriggerTaskHandler.taskType, scheduleTriggerTaskHandler);
 		this.registerTaskHandler(pollTriggerTaskHandler.taskType, pollTriggerTaskHandler);
@@ -157,6 +158,21 @@ function warnOnDrainRate(logger: Logger, config: GlobalConfig['scheduler']): voi
 		logger.warn(
 			'Scheduler materialization interval is long enough that a pass may never fully drain the busiest possible schedule; under the coalesce misfire policy such a schedule could stop producing catch-up runs entirely',
 			{ materializationIntervalSeconds, fastestIntervalSeconds },
+		);
+	}
+}
+
+/**
+ * Warn when a poll may still be in flight after the lease on its occurrence has
+ * expired: the reaper can then reclaim the occurrence and another instance can
+ * start the same poll while the first one is still running.
+ */
+function warnOnPollTimeout(logger: Logger, config: GlobalConfig['scheduler']): void {
+	const { enabledForPollTriggers, pollTimeoutSeconds, leaseDurationSeconds } = config;
+	if (enabledForPollTriggers && pollTimeoutSeconds > leaseDurationSeconds) {
+		logger.warn(
+			'Scheduler poll timeout is above the lease duration; a poll can still be running when its lease expires and another instance takes the run over',
+			{ pollTimeoutSeconds, leaseDurationSeconds },
 		);
 	}
 }

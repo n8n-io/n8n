@@ -43,6 +43,7 @@ describe('SchedulerConfig', () => {
 			expect(scheduler.allowSkipDurableScheduler).toBe(false);
 			expect(scheduler.maxAttempts).toBe(5);
 			expect(scheduler.enabledForPollTriggers).toBe(false);
+			expect(scheduler.pollTimeoutSeconds).toBe(60);
 		});
 	});
 
@@ -73,6 +74,7 @@ describe('SchedulerConfig', () => {
 			vi.stubEnv('N8N_SCHEDULER_MAX_CONCURRENT_PASSES', '4');
 			vi.stubEnv('N8N_SCHEDULER_MAX_ATTEMPTS', '3');
 			vi.stubEnv('N8N_SCHEDULER_POLL_TRIGGERS_ENABLED', 'true');
+			vi.stubEnv('N8N_SCHEDULER_POLL_TIMEOUT', '30');
 
 			const { scheduler } = Container.get(GlobalConfig);
 
@@ -93,6 +95,7 @@ describe('SchedulerConfig', () => {
 			expect(scheduler.maxConcurrentPasses).toBe(4);
 			expect(scheduler.maxAttempts).toBe(3);
 			expect(scheduler.enabledForPollTriggers).toBe(true);
+			expect(scheduler.pollTimeoutSeconds).toBe(30);
 		});
 
 		it('should expose the durable-scheduler skip escape hatch via env', () => {

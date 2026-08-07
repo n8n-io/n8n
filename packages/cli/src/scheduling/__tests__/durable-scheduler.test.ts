@@ -31,6 +31,9 @@ describe('DurableScheduler', () => {
 		executorIntervalSeconds = 5,
 		materializationWindowSeconds = 60,
 		misfireGraceSeconds = 60,
+		enabledForPollTriggers = false,
+		pollTimeoutSeconds = 60,
+		leaseDurationSeconds = 60,
 	} = {}) {
 		const inner = mock<Scheduler & SchedulerPasses>();
 		vi.mocked(createScheduler).mockReturnValue(inner);
@@ -61,6 +64,9 @@ describe('DurableScheduler', () => {
 					minIntervalSeconds,
 					materializationWindowSeconds,
 					misfireGraceSeconds,
+					enabledForPollTriggers,
+					pollTimeoutSeconds,
+					leaseDurationSeconds,
 				},
 			}),
 			tracing,
@@ -160,6 +166,47 @@ describe('DurableScheduler', () => {
 
 			expect(logger.warn).not.toHaveBeenCalledWith(
 				expect.stringContaining('misfire grace'),
+				expect.anything(),
+			);
+		});
+	});
+
+	describe('poll timeout warning', () => {
+		it('warns when a poll may outlive the lease on its occurrence', () => {
+			const { logger } = makeScheduler({
+				enabledForPollTriggers: true,
+				pollTimeoutSeconds: 120,
+				leaseDurationSeconds: 60,
+			});
+
+			expect(logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('poll timeout'),
+				expect.objectContaining({ pollTimeoutSeconds: 120, leaseDurationSeconds: 60 }),
+			);
+		});
+
+		it('does not warn when the timeout fits inside the lease', () => {
+			const { logger } = makeScheduler({
+				enabledForPollTriggers: true,
+				pollTimeoutSeconds: 60,
+				leaseDurationSeconds: 60,
+			});
+
+			expect(logger.warn).not.toHaveBeenCalledWith(
+				expect.stringContaining('poll timeout'),
+				expect.anything(),
+			);
+		});
+
+		it('does not warn when poll triggers do not use the durable scheduler', () => {
+			const { logger } = makeScheduler({
+				enabledForPollTriggers: false,
+				pollTimeoutSeconds: 120,
+				leaseDurationSeconds: 60,
+			});
+
+			expect(logger.warn).not.toHaveBeenCalledWith(
+				expect.stringContaining('poll timeout'),
 				expect.anything(),
 			);
 		});
