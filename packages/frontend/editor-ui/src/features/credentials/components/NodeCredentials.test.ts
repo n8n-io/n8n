@@ -19,7 +19,7 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import type { Project } from '@/features/collaboration/projects/projects.types';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useAiGateway } from '@/app/composables/useAiGateway';
@@ -367,7 +367,7 @@ describe('NodeCredentials', () => {
 		);
 	});
 
-	it('should hide the assistant when opening credentials from a tool context', async () => {
+	it('should configure the new credential modal for a tool context', async () => {
 		ndvStore.activeNode = httpNode;
 		credentialsStore.state.credentials = {
 			c8vqdPpPClh4TgIO: createCredential(),
@@ -394,7 +394,7 @@ describe('NodeCredentials', () => {
 			undefined,
 			httpNode.name,
 			httpNode,
-			{ hideAskAssistant: true, closeOnSave: true },
+			{ hideAskAssistant: true, closeOnSave: true, appendToBody: true },
 		);
 	});
 
@@ -1281,6 +1281,32 @@ describe('NodeCredentials', () => {
 			renderComponent();
 
 			expect(screen.queryByTestId('credential-edit-button')).toBeInTheDocument();
+		});
+
+		it('should configure the edit credential modal for a tool context', async () => {
+			ndvStore.activeNode = httpNode;
+			credentialsStore.state.credentials = {
+				c8vqdPpPClh4TgIO: createCredential(),
+			};
+
+			renderComponent({
+				global: {
+					provide: {
+						[ChatHubToolContextKey as symbol]: true,
+					},
+				},
+			});
+
+			const editIcon = screen
+				.getByTestId('credential-edit-button')
+				.querySelector('[data-icon="pen"]');
+			expect(editIcon).not.toBeNull();
+			await userEvent.click(editIcon!);
+
+			expect(uiStore.openExistingCredential).toHaveBeenCalledWith('c8vqdPpPClh4TgIO', {
+				hideAskAssistant: true,
+				appendToBody: true,
+			});
 		});
 	});
 

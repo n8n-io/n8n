@@ -679,9 +679,16 @@ async function handleSetupApply(
 		const mergedFailedNodes = allFailedNodes.length > 0 ? allFailedNodes : undefined;
 
 		if (pendingRequests.length > 0) {
+			// Carry the parameter issues, not just the node name: a value the connected
+			// credential can't reach (e.g. a model outside the free-credits allowlist) is
+			// only actionable if the caller learns which value was wrong, so it can replace
+			// it and say what it changed.
 			const skippedNodes = pendingRequests.map((r) => ({
 				nodeName: r.node.name,
 				credentialType: r.credentialType,
+				...(r.parameterIssues && Object.keys(r.parameterIssues).length > 0
+					? { parameterIssues: r.parameterIssues }
+					: {}),
 			}));
 			return {
 				success: true,

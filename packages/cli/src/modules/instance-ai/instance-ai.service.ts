@@ -39,6 +39,7 @@ import {
 	disabledInstanceAiSkillIds,
 	createInstanceAiTraceContext,
 	createInternalOperationTraceContext,
+	emitAgentSnapshotTraceEvent,
 	createInstanceAiLivenessPolicyConfig,
 	InstanceAiLivenessPolicy,
 	McpClientManager,
@@ -77,6 +78,7 @@ import {
 	type ManagedBackgroundTask,
 	type McpServerConfig,
 	type ModelConfig,
+	type AgentSnapshotArtifact,
 	type OrchestrationContext,
 	type InstanceAiTraceContext,
 	type PlannedTaskGraph,
@@ -200,6 +202,14 @@ function getErrorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);
 }
 
+/** A resource attachment as the trace records it: the reference, not its contents. */
+type TracedResourceAttachment = {
+	type: InstanceAiResourceAttachment['type'];
+	id: string;
+	projectId?: string;
+	executionId?: string;
+};
+
 /** Root-run outputs for a suspended segment — keep the LangSmith turn readable (AGENT-371). */
 function buildSuspensionTraceOutputs(runId: string, suspension: SuspensionInfo | undefined) {
 	const rawMessage = suspension?.suspendPayload.message;
@@ -227,6 +237,9 @@ function buildContextResourcesBlock(contextAttachments: InstanceAiResourceAttach
 	const lines = contextAttachments.map((attachment) => {
 		const name = attachment.name ? ` "${attachment.name}"` : '';
 		if (attachment.type === 'agent') {
+			if (attachment.pending) {
+				return `- New unsaved Agent artifact${name} (pending id: \`${attachment.id}\`, in project \`${attachment.projectId}\`).`;
+			}
 			return `- Agent${name} (id: \`${attachment.id}\`, in project \`${attachment.projectId}\`).`;
 		}
 		// Only mention the execution when one was actually handed off.
@@ -238,11 +251,19 @@ function buildContextResourcesBlock(contextAttachments: InstanceAiResourceAttach
 	const header = contextAttachments.some((attachment) => attachment.type === 'agent')
 		? 'The user opened this conversation from the agent editor, where they are looking at:'
 		: 'The user opened this conversation from the workflow editor, where they are looking at:';
+	const pendingAgentGuidance = contextAttachments.some(
+		(attachment) => attachment.type === 'agent' && attachment.pending,
+	)
+		? "Treat references such as “the agent” as this pending artifact. It has no persisted agent row yet. When the user asks to build or change it, use `build-agent`'s new-agent path with a name; do not pass its pending id as an existing `agentId`. The thread's pending target will make creation reuse that id."
+		: '';
 	const prose = [
 		header,
 		...lines,
+		pendingAgentGuidance,
 		"Treat this purely as context. Until the user tells you what they need, don't read, inspect, run, or otherwise call tools on these resources, and don't make claims about their contents — just briefly acknowledge what they're working on and ask how you can help.",
-	].join('\n');
+	]
+		.filter(Boolean)
+		.join('\n');
 	// Wrap in EDITOR_CONTEXT_BLOCK so the UI strips it from the visible message
 	// (cleanStoredUserMessage) and the parser can reconstruct the attachments on
 	// reload from the leading JSON line — keeping the resource durable without
@@ -2107,6 +2128,7 @@ export class InstanceAiService {
 				: await this.modelService.resolveAgentModelConfig(user);
 
 		const configEvalsEnabled = await this.adapterService.isConfigEvalsEnabled(user);
+		const mcpConnectionsEnabled = await this.adapterService.isMcpConnectionsEnabled(user);
 		const context = this.adapterService.createContext(user, {
 			searchProxyConfig,
 			pushRef,
@@ -2116,6 +2138,7 @@ export class InstanceAiService {
 			shouldBypassCredentialTest: (credentialId: string) =>
 				this.evalCredentialAllowlists.shouldBypassTest(threadId, credentialId),
 			configEvalsEnabled,
+			mcpConnectionsEnabled,
 			modelId,
 		});
 
@@ -3295,18 +3318,33 @@ export class InstanceAiService {
 			errorReporterExecutionToken = this.instanceAiErrorReporter.beginRun(runId);
 
 			messageId = nanoid();
-			const traceInput: Record<string, unknown> = {
-				message,
-				...(fileAttachments.length
-					? {
-							attachments: fileAttachments.map((attachment) => ({
-								mimeType: attachment.mimeType,
-								size: attachment.data.length,
-							})),
-						}
-					: {}),
-				...(messageGroupId ? { messageGroupId } : {}),
-			};
+			const traceInput: Record<string, unknown> = { message };
+			if (fileAttachments.length) {
+				traceInput.attachments = fileAttachments.map((attachment) => ({
+					mimeType: attachment.mimeType,
+					size: attachment.data.length,
+				}));
+			}
+			// `message` is the user's raw text, so without this the trace has no
+			// record that the editor handed the agent a resource.
+			if (contextAttachments.length) {
+				traceInput.resourceAttachments = contextAttachments.map((attachment) => {
+					const resource: TracedResourceAttachment = {
+						type: attachment.type,
+						id: attachment.id,
+					};
+					if (attachment.type === 'agent') {
+						resource.projectId = attachment.projectId;
+					}
+					if (attachment.type === 'workflow' && attachment.executionId) {
+						resource.executionId = attachment.executionId;
+					}
+					return resource;
+				});
+			}
+			if (messageGroupId) {
+				traceInput.messageGroupId = messageGroupId;
+			}
 
 			// Shared with createExecutionEnvironment so one ProxyTokenManager backs tracing + the run.
 			const proxyRunConfig = await this.createProxyRunConfig(user);
@@ -3473,6 +3511,10 @@ export class InstanceAiService {
 					this.tracing.storeTraceContext(runId, threadId, tracing, messageGroupId);
 				}
 			}
+
+			// The builder never sees an attach-only turn, so nothing else records what
+			// the attached agent looked like when the conversation opened.
+			await this.snapshotAttachedAgents(contextAttachments, orchestrationContext, tracing);
 
 			const enrichedMessage = await this.buildMessageWithRunningTasks(threadId, message);
 			const contextResourcesBlock = buildContextResourcesBlock(contextAttachments);
@@ -5699,6 +5741,37 @@ export class InstanceAiService {
 			};
 		}
 		return { status: 'limit-reached' };
+	}
+
+	/** Snapshot every Agent the editor attached, as it stands before this turn
+	 *  acts on it. Best-effort: it only feeds eval-seed authoring. */
+	private async snapshotAttachedAgents(
+		attachments: InstanceAiResourceAttachment[],
+		orchestrationContext: OrchestrationContext,
+		tracing: InstanceAiTraceContext | undefined,
+	): Promise<void> {
+		const delegate = orchestrationContext.domainContext?.builderDelegate;
+		if (!delegate || !tracing) return;
+		for (const attachment of attachments) {
+			if (attachment.type !== 'agent') continue;
+			let artifact: AgentSnapshotArtifact | null = null;
+			try {
+				artifact = (await delegate.readAgentArtifact?.(attachment.id)) ?? null;
+			} catch (error) {
+				this.logger.debug(
+					`[agent-snapshot] attached read for ${attachment.id} failed: ${error instanceof Error ? error.message : String(error)}`,
+				);
+				continue;
+			}
+			if (!artifact) continue;
+			await emitAgentSnapshotTraceEvent(tracing, {
+				agentId: attachment.id,
+				projectId: attachment.projectId,
+				reason: 'attached',
+				artifact,
+				logger: this.logger,
+			});
+		}
 	}
 
 	private async buildMessageWithRunningTasks(threadId: string, message: string): Promise<string> {
