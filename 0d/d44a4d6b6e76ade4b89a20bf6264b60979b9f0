@@ -1,0 +1,55 @@
+packages/cli/src/modules/agents/__tests__/workflow-tool-factory.test.ts
+  s_592a334806b52a::t_d5728a7a19ae5e 18,93,95,98,330-338,349
+  s_592a334806b52a::t_05d0acbad26d1e 230,260-263
+  s_592a334806b52a::t_286e83b638d642 2,7,102,111-114,212-229,231-259,264-287
+  s_592a334806b52a::t_48f6f51d094e18 184-186,199-202
+packages/cli/src/modules/agents/tools/__tests__/workflow-tool-factory.test.ts
+  s_592a334806b52a::t_286e83b638d642 7,10,47-62,71,73,81-88,93-133,139-145,196
+  s_592a334806b52a::t_a6073bf8a047fc 63-70,72,74-80,89-92,134-138
+  s_592a334806b52a::t_d5728a7a19ae5e 38,42
+  s_592a334806b52a::t_48f6f51d094e18 183-192
+  s_592a334806b52a::t_6784f247c5ec0f 146-182,193-195
+  s_592a334806b52a::t_fbe0afe656d0e8 197
+packages/cli/src/modules/agents/tools/workflow-tool-workflow-loader.service.ts
+  s_592a334806b52a::t_05d0acbad26d1e 1-2,5,8
+  s_592a334806b52a::t_b8235064773b4c 3-4,6-7,9-20,23,50-51
+  s_592a334806b52a::t_06bb6940a52022 21-22,24-49
+packages/cli/src/modules/agents/tools/workflow-tool-factory.ts
+  s_592a334806b52a::t_4996136d11287c 298-303,309-310,312,315,361,371-374,430,434,458-474,493
+  s_592a334806b52a::t_20407ea3350256 17-19,41-44,87-88,90,94,150,180
+  s_592a334806b52a::t_cdb0b17a8f977f 628-631,643-649,651,655-658,663-664,666-674,702-703,705-708,727-753,755-764
+  s_592a334806b52a::t_05d0acbad26d1e 604-608,610,612
+  s_592a334806b52a::t_4db6ce3c1608b6 754
+  s_592a334806b52a::t_48f6f51d094e18 397-400
+  s_592a334806b52a::t_9aea0939a6e942 8
+  s_592a334806b52a::t_a6073bf8a047fc 304-305,427,665
+  s_592a334806b52a::t_44d701faf07d54 765
+packages/cli/src/modules/agents/tools/__tests__/workflow-tool-workflow-loader.service.test.ts
+  s_592a334806b52a::t_a6073bf8a047fc 2-6,57-59,86-88
+  s_592a334806b52a::t_286e83b638d642 1,7-56,60-79,81-85,89-109
+  s_592a334806b52a::t_4db6ce3c1608b6 80
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_592a334806b52a::t_05d0acbad26d1e 535
+  s_592a334806b52a::t_cf6269cc21ddc0 80,82,114-115,189,230,343,361,371-375,527,539
+packages/cli/src/modules/agents/__tests__/agent-runtime-cache.service.test.ts
+  s_592a334806b52a::t_65887b0d50cc5c 128-129,161-162,171-172,297
+  s_592a334806b52a::t_286e83b638d642 95-96,298
+packages/cli/src/modules/agents/agent-runtime-cache.service.ts
+  s_592a334806b52a::t_d9e82880ac2f7d 238-239
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "0dd44a4d6b6e76ade4b89a20bf6264b60979b9f0",
+  "prompts": {},
+  "sessions": {
+    "s_592a334806b52a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fd67c-c5d6-7cc0-9a96-4ed4eac859ee",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

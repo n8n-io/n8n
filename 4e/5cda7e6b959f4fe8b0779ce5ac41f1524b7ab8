@@ -1,0 +1,35 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSessionsListView.spec.ts
+  s_4bc79cf80826f6::t_b6bd5cbdc9989e 288,309,332
+  s_4bc79cf80826f6::t_5d1e6d91ef1a51 58,181-182,206-207,220-221,237-241,246-247,252-255,260-261,286-287,289-308,310-331,333-366,368-381,383-387
+  s_4bc79cf80826f6::t_0ed3c0ab7f82fd 367,382
+  s_4bc79cf80826f6::t_37aa13540d9388 388
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_4bc79cf80826f6::t_9fd638e3dcef2e 70,525-539,1655-1657
+packages/frontend/editor-ui/src/features/agents/views/AgentSessionsListView.vue
+  s_4bc79cf80826f6::t_9fd638e3dcef2e 31,53,63-64,81-82,87,90,97-98,210-230,234-236
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderEditorColumn.spec.ts
+  s_4bc79cf80826f6::t_b92bb391b26fc6 134,302-309
+  s_4bc79cf80826f6::t_4ffb7f17d7b46f 310-311
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_4bc79cf80826f6::t_c9379aded77e78 488-489,917-920,924-967,1473,1492-1493
+  s_4bc79cf80826f6::t_b6bd5cbdc9989e 921-923
+  s_4bc79cf80826f6::t_1e5265e7378348 968-1010
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  s_4bc79cf80826f6::t_9fd638e3dcef2e 84,232
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "4e5cda7e6b959f4fe8b0779ce5ac41f1524b7ab8",
+  "prompts": {},
+  "sessions": {
+    "s_4bc79cf80826f6": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fc821-4348-7fc2-93b6-13c4143d0153",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

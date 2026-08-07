@@ -1,0 +1,37 @@
+packages/frontend/@n8n/rest-api-client/package.json
+  s_d95415d7df07c5::t_e79b193d78c048 41
+packages/frontend/@n8n/public-api-client/package.json
+  s_d95415d7df07c5::t_4d5d681b23ca61 41
+packages/frontend/@n8n/rest-api-client/src/utils.ts
+  s_d95415d7df07c5::t_d019d17e3df00b 1
+packages/frontend/@n8n/public-api-client/src/utils.ts
+  s_d95415d7df07c5::t_358c5ac5e8b0ff 1
+packages/frontend/@n8n/stores/src/users.store.ts
+  s_d95415d7df07c5::t_516c51d4b16d28 11
+packages/frontend/@n8n/stores/package.json
+  s_d95415d7df07c5::t_00bc67dd19c0f4 42
+packages/frontend/@n8n/frontend-utils/src/getBrowserId.ts
+  s_d95415d7df07c5::t_4ec3d080f1720b 3-18
+  s_d95415d7df07c5::t_c0a92166dec471 1-2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "fedccca3f177b400cdae18cc56d67bd1a8fbf2b2",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_d95415d7df07c5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4c70a323-1259-4fcc-9438-8d8d0297088b",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

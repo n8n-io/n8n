@@ -1,0 +1,70 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiAgentPreview.vue
+  s_4bc79cf80826f6::t_3ceecb2acd30e7 16-19,64
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiPreviewTabBar.vue
+  s_4bc79cf80826f6::t_87873b56233ecc 172
+  s_4bc79cf80826f6::t_7f097bf8f824ba 24,29,170
+  s_4bc79cf80826f6::t_97c2bb4d627541 49-53,174
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiAgentPreview.test.ts
+  s_4bc79cf80826f6::t_df93a5c0b8ad14 1-38
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_4bc79cf80826f6::t_e3b62d4b20ec4f 6749-6750
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiThreadView.vue
+  s_4bc79cf80826f6::t_4d971e82a09554 456-457
+  s_4bc79cf80826f6::t_ea0ee721b4c98e 840-843,846,1128-1131,1134-1136,1208-1209,1231,1233-1239
+  s_4bc79cf80826f6::t_e3b62d4b20ec4f 315-332,400-404,419,829-832,853-858,860-862,870,873-874,881,1232,1240-1252,1259,1265-1278
+  s_4bc79cf80826f6::t_f1041e4fa70c91 345,360-367,864,869
+  s_4bc79cf80826f6::t_b99a88dd4db9e6 333,336,342-344,346-353,356-357,406,837-839,844-845,847-849,852,859,868,1253-1257
+  s_4bc79cf80826f6::t_87873b56233ecc 875-876,880,882-921,923-941,943-959,1258,1261-1264
+  s_4bc79cf80826f6::t_3090559002df86 334,337-338,354,358,370-386,850-851
+  s_4bc79cf80826f6::t_68511a43bcf5b4 499
+  s_4bc79cf80826f6::t_7f097bf8f824ba 409-410,414-418,1161,1197
+  s_4bc79cf80826f6::t_c930f98c9c7473 335,339-341,355,359,368-369,871
+  s_4bc79cf80826f6::t_19c186eb43ece2 387-393
+  s_4bc79cf80826f6::t_02ed83b015dff4 878,922,942,970
+  s_4bc79cf80826f6::t_2cf20873e45c07 877
+  s_4bc79cf80826f6::t_da945f6228f60b 1132-1133
+  s_4bc79cf80826f6::t_c22ad32bc37dec 314,398-399,405,825-828,833-835,1145,1217,1228-1230,1260
+  s_4bc79cf80826f6::t_a742f2ab0a1f62 420
+  s_4bc79cf80826f6::t_f6e7bc1936ab9a 879
+  s_4bc79cf80826f6::t_be569d7c8f37c7 971
+  s_4bc79cf80826f6::t_53d071a481515e 1279
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiPreviewTabBar.test.ts
+  s_4bc79cf80826f6::t_2822bc5293e35b 147
+  s_4bc79cf80826f6::t_9a57119deeabe0 41,52,140-146,148-149
+  s_4bc79cf80826f6::t_df44baf7ea0b75 150-151
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiThreadView.test.ts
+  s_4bc79cf80826f6::t_dfed526ccafbca 429-430,457-464,1115-1138
+  s_4bc79cf80826f6::t_2822bc5293e35b 107,264,422,1217,1219-1220,1230,1232-1234,1239-1242,1244-1246
+  s_4bc79cf80826f6::t_6a36dd93468978 1287-1291,1299-1309,1312-1316
+  s_4bc79cf80826f6::t_42e175c34d6059 4,431-456,465-466,1218,1250-1264
+  s_4bc79cf80826f6::t_2cf20873e45c07 1231,1243
+  s_4bc79cf80826f6::t_7eadd44522ddc9 1141-1179
+  s_4bc79cf80826f6::t_f516a1acdf7237 1292-1298,1310-1311
+  s_4bc79cf80826f6::t_2010a52cfb48a7 1093-1096,1098-1107,1112
+  s_4bc79cf80826f6::t_191e133bfb3bb0 1267-1286
+  s_4bc79cf80826f6::t_b9df95c4baf832 30-33,39,89,103,201-202,204-229,410,418,1064-1092,1097,1108-1111,1113-1114
+  s_4bc79cf80826f6::t_9ec8c4dabcffb7 1216,1223-1225,1227-1229,1238,1265-1266
+  s_4bc79cf80826f6::t_72c8fc5c792f5e 1180-1215
+  s_4bc79cf80826f6::t_80aeb5977e1551 1221-1222,1235-1237,1247-1249
+  s_4bc79cf80826f6::t_02ed83b015dff4 1226
+  s_4bc79cf80826f6::t_295c228429cf1c 1449-1450,1458
+  s_4bc79cf80826f6::t_0d8aa291ba8c8a 362,1139,1317-1333
+  s_4bc79cf80826f6::t_f3696e45865b7c 1140
+  s_4bc79cf80826f6::t_801b6f227067af 1334
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "ccc7ca294c868c5f5112f881380fcbf831158f46",
+  "prompts": {},
+  "sessions": {
+    "s_4bc79cf80826f6": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fc821-4348-7fc2-93b6-13c4143d0153",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}
