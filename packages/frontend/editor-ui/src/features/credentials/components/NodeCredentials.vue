@@ -48,7 +48,10 @@ import { useUsersStore } from '@n8n/stores/users.store';
 import { assert } from '@n8n/utils/assert';
 import { isEmpty } from '@/app/utils/typesUtils';
 import { getResourcePermissions } from '@n8n/permissions';
-import { useNodeCredentialOptions } from '../composables/useNodeCredentialOptions';
+import {
+	useNodeCredentialOptions,
+	type CredentialDropdownOption,
+} from '../composables/useNodeCredentialOptions';
 import { getAutoSelectedCredential } from '../credentials.utils';
 import { usePrivateCredentials } from '@/features/resolvers/composables/usePrivateCredentials';
 import { AI_GATEWAY_MANAGED_TAG, SYSTEM_RESOLVER_ID } from '@n8n/api-types';
@@ -113,6 +116,7 @@ const emit = defineEmits<{
 const telemetry = useTelemetry();
 const i18n = useI18n();
 const NEW_CREDENTIALS_TEXT = i18n.baseText('nodeCredentials.createNew');
+const N8N_CREDITS_LABEL = i18n.baseText('aiGateway.credentialMode.n8nConnect.title');
 
 const instanceAiCapability = useInstanceAiEditorCapability();
 const { instanceAi } = useEditorContext();
@@ -515,7 +519,7 @@ function getSelectedId(type: INodeCredentialDescription) {
 
 function getSelectedName(type: string) {
 	if (isAiGatewayManagedCredentials(type)) {
-		return i18n.baseText('aiGateway.credentialMode.n8nConnect.title');
+		return N8N_CREDITS_LABEL;
 	}
 	return selected.value?.[type]?.name;
 }
@@ -921,10 +925,7 @@ function matches(needle: string, haystack: string) {
 // to the managed-slot path, which owns the persisted
 // `{ id: null, name: '', __aiGatewayManaged: true }` shape.
 function showN8nCreditsOption(credentialType: string): boolean {
-	return (
-		showAiGatewaySelector(credentialType) &&
-		matches(filter.value, i18n.baseText('aiGateway.credentialMode.n8nConnect.title'))
-	);
+	return showAiGatewaySelector(credentialType) && matches(filter.value, N8N_CREDITS_LABEL);
 }
 
 /** @param credentialIdOrTag a credential id, or `AI_GATEWAY_MANAGED_TAG` from the n8n credits option */
@@ -980,6 +981,30 @@ function showQuickConnectEmptyState(type: INodeCredentialDescription): boolean {
 
 function showStandardEmptyState(type: INodeCredentialDescription): boolean {
 	return !isCredentialExisting(type) && !getQuickConnectCredentialType(type);
+}
+
+// Empty-slot layouts, only when the type has no stored credentials and isn't on
+// n8n credits: the quick-connect invitation, else the standard picker.
+function showQuickConnectSlot(
+	type: INodeCredentialDescription,
+	options: CredentialDropdownOption[],
+): boolean {
+	return (
+		options.length === 0 &&
+		showQuickConnectEmptyState(type) &&
+		!isAiGatewayManagedCredentials(type.name)
+	);
+}
+
+function showStandardEmptySlot(
+	type: INodeCredentialDescription,
+	options: CredentialDropdownOption[],
+): boolean {
+	return (
+		options.length === 0 &&
+		showStandardEmptyState(type) &&
+		!isAiGatewayManagedCredentials(type.name)
+	);
 }
 
 function canManuallySetUpCredential(credentialTypeName: string): boolean {
@@ -1063,12 +1088,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 					</div>
 				</div>
 				<div
-					v-else-if="
-						options.length === 0 &&
-						showQuickConnectEmptyState(type) &&
-						getQuickConnectCredentialType(type) &&
-						!isAiGatewayManagedCredentials(type.name)
-					"
+					v-else-if="showQuickConnectSlot(type, options)"
 					:class="[$style.quickConnectContainer]"
 					data-test-id="quick-connect-empty-state"
 				>
@@ -1097,11 +1117,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 				</div>
 
 				<div
-					v-else-if="
-						showStandardEmptyState(type) &&
-						options.length === 0 &&
-						!isAiGatewayManagedCredentials(type.name)
-					"
+					v-else-if="showStandardEmptySlot(type, options)"
 					:class="$style.standardEmptyContainer"
 					data-test-id="node-credentials-empty-state"
 				>
@@ -1121,7 +1137,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 							v-if="showN8nCreditsOption(type.name)"
 							:key="AI_GATEWAY_MANAGED_TAG"
 							data-test-id="node-credentials-select-item-n8n-credits"
-							:label="i18n.baseText('aiGateway.credentialMode.n8nConnect.title')"
+							:label="N8N_CREDITS_LABEL"
 							:value="AI_GATEWAY_MANAGED_TAG"
 						>
 							<div :class="$style.credentialOption">
@@ -1215,13 +1231,13 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 								v-if="showN8nCreditsOption(type.name)"
 								:key="AI_GATEWAY_MANAGED_TAG"
 								data-test-id="node-credentials-select-item-n8n-credits"
-								:label="i18n.baseText('aiGateway.credentialMode.n8nConnect.title')"
+								:label="N8N_CREDITS_LABEL"
 								:value="AI_GATEWAY_MANAGED_TAG"
 							>
 								<div :class="$style.credentialOption">
 									<N8nIcon icon="wallet" size="large" :class="$style.optionIcon" />
 									<N8nText :class="$style.optionName">
-										{{ i18n.baseText('aiGateway.credentialMode.n8nConnect.title') }}
+										{{ N8N_CREDITS_LABEL }}
 									</N8nText>
 									<N8nActionPill
 										v-if="balancePill"
@@ -1584,10 +1600,6 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--3xs);
-}
-
-.dynamicIcon {
-	color: var(--color--text--tint-1);
 }
 
 .selectWithDynamic {
