@@ -3,7 +3,7 @@ import { sleep } from '@n8n/utils/sleep';
 import type { INodeExecutionData, IRun, ITriggerFunctions } from 'n8n-workflow';
 import { NodeOperationError, OperationalError } from 'n8n-workflow';
 
-import { resolveRetryDelay } from '../../utils';
+import { MAX_TIMER_DELAY_MS, resolveRetryDelay } from '../../utils';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -98,7 +98,7 @@ function createAwaitingEmitter(
 ): DataEmitter {
 	const allowedStatuses = resolveAllowedStatuses(ctx, options);
 	const deadlineSeconds = options.executionTimeoutSeconds ?? DEFAULT_EXECUTION_TIMEOUT_SECONDS;
-	const errorRetryDelay = resolveRetryDelay(options.errorRetryDelay);
+	const errorRetryDelay = resolveRetryDelay(options.errorRetryDelay, ctx.logger);
 
 	// Two views of closing, because the two waits below want different things.
 	// The rejecting one ends the wait for an execution with a reason, which is
@@ -176,7 +176,8 @@ async function rejectOnClose(closeSignal: AbortSignal): Promise<never> {
  * by close.
  * @param deadlineSeconds - Zero or less means unbounded. n8n treats a workflow
  * timeout of <= 0 that way (workflow-execute-additional-data.ts:255), and handing
- * it to setTimeout would fire on the next tick and fail every hand-off.
+ * it to setTimeout would fire on the next tick and fail every hand-off. A
+ * deadline too large for a timer is treated the same way, for the same reason.
  */
 async function awaitExecution(
 	ctx: DataEmitterContext,
@@ -189,6 +190,12 @@ async function awaitExecution(
 
 	const finished = Promise.race([response.promise, closedWithReason]);
 	if (deadlineSeconds <= 0) return await finished;
+
+	// Past the 32-bit timer limit setTimeout fires after 1ms instead of waiting,
+	// which would fail every hand-off rather than time out a slow one. A deadline
+	// of 24 days or more is unbounded in practice, so treat it as such.
+	const deadlineMs = deadlineSeconds * 1000;
+	if (deadlineMs > MAX_TIMER_DELAY_MS) return await finished;
 
 	let timer: NodeJS.Timeout | undefined;
 	try {
@@ -203,7 +210,7 @@ async function awaitExecution(
 								`Execution took longer than the configured workflow timeout of ${deadlineSeconds} seconds to complete, offsets not resolved.`,
 							),
 						),
-					deadlineSeconds * 1000,
+					deadlineMs,
 				);
 			}),
 		]);

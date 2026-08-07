@@ -233,20 +233,23 @@ async function processBatch(
 
 /** Fills in every optional, so the loop only ever sees usable values. */
 function resolveSettings(options: ConsumeTopicOptions): ConsumeSettings {
+	const { logger } = options;
 	return {
-		batchSize: positiveCount(options.batchSize, DEFAULT_BATCH_SIZE),
+		batchSize: positiveCount(options.batchSize, DEFAULT_BATCH_SIZE, 'Batch Size', logger),
 		partitionsConsumedConcurrently: positiveCount(
 			options.partitionsConsumedConcurrently,
 			DEFAULT_PARTITIONS_CONSUMED_CONCURRENTLY,
+			'Parallel Processing',
+			logger,
 		),
-		errorRetryDelay: resolveRetryDelay(options.errorRetryDelay),
+		errorRetryDelay: resolveRetryDelay(options.errorRetryDelay, logger),
 	};
 }
 
 /**
  * A whole number of at least one, or the fallback when the value cannot be used
- * as a count. Anything unusable takes the same path: missing, not a number, not
- * finite, or below one.
+ * as a count. Anything unusable takes the same path: not a number, not finite,
+ * or below one.
  *
  * Both callers feed either a loop increment or a library config key, where `NaN`
  * does more damage than a merely wrong number. It slips past `??` because it is
@@ -254,10 +257,23 @@ function resolveSettings(options: ConsumeTopicOptions): ConsumeSettings {
  * false, and then quietly produces empty chunks or a broken worker count. A node
  * option can arrive as `NaN` from an expression that did not evaluate to a
  * number.
+ * @param name - The option's user-facing name, for the warning
+ * @param logger - Warns when a supplied value had to be replaced. A missing
+ * value is not a misconfiguration, so it falls back quietly. A fractional one
+ * is truncated rather than replaced, which needs no warning either.
  */
-function positiveCount(value: number | undefined, fallback: number): number {
-	if (typeof value !== 'number' || !Number.isFinite(value)) return fallback;
+function positiveCount(
+	value: number | undefined,
+	fallback: number,
+	name: string,
+	logger: Logger,
+): number {
+	if (value === undefined) return fallback;
 
-	const whole = Math.trunc(value);
-	return whole >= 1 ? whole : fallback;
+	const whole = typeof value === 'number' ? Math.trunc(value) : Number.NaN;
+	if (!Number.isFinite(whole) || whole < 1) {
+		logger.warn(`Kafka "${name}" of ${String(value)} cannot be used, falling back to ${fallback}`);
+		return fallback;
+	}
+	return whole;
 }

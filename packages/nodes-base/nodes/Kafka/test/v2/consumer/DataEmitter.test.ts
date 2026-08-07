@@ -159,6 +159,31 @@ describe('createDataEmitter', () => {
 			},
 		);
 
+		it('never times out when the deadline is too large for a timer', async () => {
+			vi.useFakeTimers();
+			try {
+				// 25 days in seconds, past setTimeout's 32-bit limit once in ms. Handing
+				// that over would fire after 1ms and fail every single hand-off.
+				const emitter = build({
+					resolveOffsetMode: 'onCompletion',
+					executionTimeoutSeconds: 2_160_000,
+				});
+				const pending = emitter(ITEMS);
+				await vi.waitFor(() => expect(emitSpy).toHaveBeenCalled());
+
+				let settled = false;
+				void pending.then(() => (settled = true));
+				await vi.advanceTimersByTimeAsync(60_000);
+				expect(settled).toBe(false);
+
+				const deferred = emitSpy.mock.calls[0][2] as { resolve: (value: IRun) => void };
+				deferred.resolve(run('success'));
+				expect(await pending).toStrictEqual({ mayAdvance: true });
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
 		it('logs a close-cancelled execution as debug, not error', async () => {
 			const controller = new AbortController();
 			const emitter = build({ resolveOffsetMode: 'onCompletion' }, controller.signal);
@@ -197,9 +222,10 @@ describe('createDataEmitter', () => {
 			expect(mockedSleep).toHaveBeenCalledWith(0);
 		});
 
-		// setTimeout treats these as zero, so without a guard the pacing quietly
-		// disappears and the failed chunk is re-read as fast as the broker allows.
-		it.each([undefined, NaN, -1, Infinity])(
+		// setTimeout turns each of these into no wait at all, so without a guard the
+		// pacing quietly disappears and the failed chunk is re-read as fast as the
+		// broker allows.
+		it.each([undefined, NaN, -1, Infinity, 2_147_483_648])(
 			'falls back to the default delay when the delay is %s',
 			async (errorRetryDelay) => {
 				await emitAndFinish({ resolveOffsetMode: 'onSuccess', errorRetryDelay }, 'error');
@@ -207,5 +233,11 @@ describe('createDataEmitter', () => {
 				expect(mockedSleep).toHaveBeenCalledWith(5000);
 			},
 		);
+
+		it('warns that an unusable delay was replaced', async () => {
+			await emitAndFinish({ resolveOffsetMode: 'onSuccess', errorRetryDelay: NaN }, 'error');
+
+			expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('Retry Delay on Error'));
+		});
 	});
 });

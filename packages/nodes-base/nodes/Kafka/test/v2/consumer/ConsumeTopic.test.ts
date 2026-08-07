@@ -271,6 +271,30 @@ describe('consumeTopic', () => {
 			},
 		);
 
+		it.each([
+			['Batch Size', { batchSize: NaN }],
+			['Parallel Processing', { partitionsConsumedConcurrently: 0 }],
+		])('warns that an unusable %s was replaced', async (name, overrides) => {
+			await start(overrides);
+
+			expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining(name));
+		});
+
+		it('stays quiet about the settings a workflow did not set', async () => {
+			await start();
+
+			expect(logger.warn).not.toHaveBeenCalled();
+		});
+
+		it('truncates a fractional batch size without calling it a misconfiguration', async () => {
+			const { consumer } = await start({ batchSize: 2.7 });
+
+			await consumer.deliverBatch({ messages: messages('a', 'b', 'c') });
+
+			expect(emit.mock.calls[0][0]).toHaveLength(2);
+			expect(logger.warn).not.toHaveBeenCalled();
+		});
+
 		it('waits the retry delay before a failed chunk is re-delivered', async () => {
 			vi.useFakeTimers();
 			try {

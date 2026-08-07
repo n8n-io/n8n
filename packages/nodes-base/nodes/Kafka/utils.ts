@@ -32,17 +32,37 @@ import type { ConnectionOptions } from 'node:tls';
 export const DEFAULT_ERROR_RETRY_DELAY_MS = 5000;
 
 /**
+ * Node keeps a timer's delay in a 32-bit signed integer. Anything larger
+ * overflows to a 1ms delay and only prints a process warning, so a value past
+ * this is not a long wait, it is no wait at all.
+ */
+export const MAX_TIMER_DELAY_MS = 2_147_483_647;
+
+/** True for a delay `setTimeout` would honour as written. Zero is fine. */
+function isUsableDelay(value: number): boolean {
+	return Number.isFinite(value) && value >= 0 && value <= MAX_TIMER_DELAY_MS;
+}
+
+/**
  * A usable retry delay in milliseconds, or the default when the value is not one.
  *
- * Unlike a count, zero is legitimate here and means "do not wait". Only a
- * missing, non-numeric, non-finite or negative value falls back, because
- * `setTimeout` treats `NaN` and negatives as zero: the pacing this delay exists
- * to provide would disappear without anything failing. `??` alone does not
- * catch that, since `NaN` is not `undefined`, and a node option can arrive as
- * `NaN` from an expression that did not evaluate to a number.
+ * Unlike a count, zero is legitimate here and means "do not wait". Everything
+ * `setTimeout` would quietly turn into no wait at all falls back instead:
+ * `NaN`, `Infinity`, a negative, and anything past the 32-bit timer limit. The
+ * pacing would otherwise disappear without anything failing. `??` alone does
+ * not catch these, since none of them is `undefined`, and a node option can
+ * arrive as any of them from an expression.
+ * @param logger - Warns when a value was supplied and had to be replaced, so
+ * the misconfiguration is visible rather than silently corrected. An absent
+ * value is not a misconfiguration and is never warned about.
  */
-export function resolveRetryDelay(value: number | undefined): number {
-	if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
+export function resolveRetryDelay(value: number | undefined, logger?: Logger): number {
+	if (value === undefined) return DEFAULT_ERROR_RETRY_DELAY_MS;
+
+	if (typeof value !== 'number' || !isUsableDelay(value)) {
+		logger?.warn(
+			`Kafka "Retry Delay on Error" of ${String(value)} cannot be used as a delay, falling back to ${DEFAULT_ERROR_RETRY_DELAY_MS}ms`,
+		);
 		return DEFAULT_ERROR_RETRY_DELAY_MS;
 	}
 	return value;

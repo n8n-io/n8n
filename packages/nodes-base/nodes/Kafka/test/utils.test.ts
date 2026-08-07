@@ -219,15 +219,39 @@ describe('Kafka Utils', () => {
 			expect(resolveRetryDelay(0)).toBe(0);
 		});
 
+		it('keeps the largest delay a timer can hold', () => {
+			expect(resolveRetryDelay(2_147_483_647)).toBe(2_147_483_647);
+		});
+
 		it.each([
 			['missing', undefined],
 			['NaN, e.g. from an expression that did not produce a number', Number.NaN],
 			['Infinity', Number.POSITIVE_INFINITY],
 			['negative', -1],
+			['past the 32-bit timer limit', 2_147_483_648],
 		])('falls back to the default when the delay is %s', (_case, value) => {
-			// setTimeout treats NaN and negatives as zero, so without this the
-			// pacing would silently disappear rather than fail.
+			// setTimeout turns every one of these into no wait at all, so without
+			// this the pacing would silently disappear rather than fail.
 			expect(resolveRetryDelay(value)).toBe(5000);
+		});
+
+		it.each([Number.NaN, -1, 2_147_483_648])(
+			'warns that a delay of %s was replaced, so the misconfiguration is visible',
+			(value) => {
+				const logger = mock<Logger>();
+
+				resolveRetryDelay(value, logger);
+
+				expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('Retry Delay on Error'));
+			},
+		);
+
+		it('stays quiet when no delay was set, which is not a misconfiguration', () => {
+			const logger = mock<Logger>();
+
+			resolveRetryDelay(undefined, logger);
+
+			expect(logger.warn).not.toHaveBeenCalled();
 		});
 	});
 
