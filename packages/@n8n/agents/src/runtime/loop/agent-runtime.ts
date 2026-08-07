@@ -891,7 +891,7 @@ export class AgentRuntime {
 				totalUsage = mergeUsage(totalUsage, turn.usage);
 				incrementTokenCountFromUsage(options?.executionCounter, turn.usage);
 				// Publish before the abort check so a cancel between the empty attempt
-				// and the retry still bills those tokens via getAbortFinish().
+				// and the retry still bills those tokens via getTerminalFinish().
 				sink.reportUsage(totalUsage);
 				this.assertNotAborted(abortScope);
 				turn = await sink.callModel(modelCallContext);
@@ -1012,7 +1012,7 @@ export class AgentRuntime {
 					sink,
 				);
 			},
-			getAbortFinish: () => sink?.getAbortFinish() ?? {},
+			getTerminalFinish: () => sink?.getTerminalFinish() ?? {},
 			// Durably save the turn-so-far when a streaming run is aborted, so a cancelled
 			// run still leaves its assistant work in memory. Fold in the text streamed for
 			// the in-flight turn first — its `newMessages` are only built once the stream
