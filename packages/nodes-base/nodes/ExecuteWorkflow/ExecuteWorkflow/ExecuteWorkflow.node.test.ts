@@ -29,18 +29,30 @@ describe('ExecuteWorkflow', () => {
 		} as unknown as IWorkflowDataProxyData);
 	});
 
-	test('should document valid workflow input mappings for the builder', () => {
+	test('should document pass-through and declared workflow input mappings for the builder', () => {
 		const workflowInputs = executeWorkflow.description.properties.find(
 			(property) => property.name === 'workflowInputs',
 		);
 		const propertyHint = workflowInputs?.builderHint?.propertyHint;
+		const mappingPatterns = executeWorkflow.description.builderHint?.extraTypeDefContent
+			?.map(({ content }) => content)
+			.join('\n');
 
 		expect(propertyHint).toContain('temporary UI initialization state');
 		expect(propertyHint).toContain('must never be emitted');
-		expect(propertyHint).toContain('keys exactly match');
-		expect(propertyHint).toContain(
-			"{ mappingMode: 'defineBelow', value: { order: expr('{{ $json }}') } }",
-		);
+		expect(propertyHint).toContain("trigger is set to 'Accept all data'");
+		expect(propertyHint).toContain('Omit workflowInputs');
+		expect(propertyHint).toContain('value and schema fields exactly match');
+		expect(mappingPatterns).toContain('Omit workflowInputs from parameters');
+		expect(mappingPatterns).toContain("orderId: expr('{{ $json.id }}')");
+		expect(mappingPatterns).toContain("amount: expr('{{ $json.total }}')");
+		expect(mappingPatterns).toContain("id: 'orderId'");
+		expect(mappingPatterns).toContain("type: 'string'");
+		expect(mappingPatterns).toContain("id: 'amount'");
+		expect(mappingPatterns).toContain("type: 'number'");
+		expect(mappingPatterns).toContain('matchingColumns: []');
+		expect(mappingPatterns).toContain('attemptToConvertTypes: false');
+		expect(mappingPatterns).toContain('convertFieldsToString: true');
 	});
 
 	test('should execute workflow in "each" mode and wait for sub-workflow completion', async () => {

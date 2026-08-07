@@ -44,7 +44,6 @@ describe('executeWorkflowValidator', () => {
 	describe('defineBelow mappings', () => {
 		it.each([
 			['null', null],
-			['missing', undefined],
 			['an array', []],
 			['a string', 'order'],
 			['a number', 1],
@@ -68,17 +67,29 @@ describe('executeWorkflowValidator', () => {
 		});
 
 		it.each([
-			['missing', undefined],
 			['null', null],
 			['an array', []],
 			['a string', 'inputs'],
-			['a number', 1],
-			['a boolean', false],
 		])('rejects workflowInputs when it is %s', (_description, workflowInputs) => {
 			const issues = validate({ source: 'database', workflowInputs });
 
 			expect(issues).toHaveLength(1);
 			expect(issues[0]?.code).toBe('EXECUTE_WORKFLOW_INVALID_INPUT_MAPPING');
+		});
+
+		it('allows workflowInputs to be omitted for sub-workflows that accept all data', () => {
+			const issues = validate({ source: 'database' });
+
+			expect(issues).toHaveLength(0);
+		});
+
+		it.each([
+			['workflowInputs.value', { mappingMode: 'defineBelow' }],
+			['mappingMode and value', {}],
+		])('allows workflowInputs with omitted %s', (_description, workflowInputs) => {
+			const issues = validate({ source: 'database', workflowInputs });
+
+			expect(issues).toHaveLength(0);
 		});
 
 		it('treats an omitted mappingMode as defineBelow', () => {
@@ -98,12 +109,15 @@ describe('executeWorkflowValidator', () => {
 			});
 
 			expect(issues[0]?.message).toContain('parameters.workflowInputs.value');
-			expect(issues[0]?.message).toContain(
-				"{ mappingMode: 'defineBelow', value: { order: expr('{{ $json }}') } }",
-			);
-			expect(issues[0]?.message).toContain(
-				"keys match the selected sub-workflow's declared inputs",
-			);
+			expect(issues[0]?.message).toContain('accepts all data');
+			expect(issues[0]?.message).toContain('omit parameters.workflowInputs');
+			expect(issues[0]?.message).toContain("orderId: expr('{{ $json.id }}')");
+			expect(issues[0]?.message).toContain("amount: expr('{{ $json.total }}')");
+			expect(issues[0]?.message).toContain("id: 'orderId'");
+			expect(issues[0]?.message).toContain("type: 'string'");
+			expect(issues[0]?.message).toContain("id: 'amount'");
+			expect(issues[0]?.message).toContain("type: 'number'");
+			expect(issues[0]?.message).toContain('matchingColumns: []');
 		});
 
 		it('allows a populated value object', () => {
@@ -111,7 +125,33 @@ describe('executeWorkflowValidator', () => {
 				source: 'database',
 				workflowInputs: {
 					mappingMode: 'defineBelow',
-					value: { order: '={{ $json }}' },
+					value: {
+						orderId: '={{ $json.id }}',
+						amount: '={{ $json.total }}',
+					},
+					matchingColumns: [],
+					schema: [
+						{
+							id: 'orderId',
+							displayName: 'orderId',
+							required: false,
+							defaultMatch: false,
+							display: true,
+							canBeUsedToMatch: true,
+							type: 'string',
+						},
+						{
+							id: 'amount',
+							displayName: 'amount',
+							required: false,
+							defaultMatch: false,
+							display: true,
+							canBeUsedToMatch: true,
+							type: 'number',
+						},
+					],
+					attemptToConvertTypes: false,
+					convertFieldsToString: true,
 				},
 			});
 

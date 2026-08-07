@@ -55,7 +55,7 @@ describe('WorkflowBuilder plugin integration', () => {
 		it('blocks invalid Execute Workflow input mappings through the default registry', () => {
 			registerDefaultPlugins(testRegistry);
 
-			const createWorkflow = (value: null | Record<string, unknown>) => {
+			const createWorkflow = (workflowInputs?: unknown) => {
 				const executeWorkflow = node({
 					type: 'n8n-nodes-base.executeWorkflow',
 					version: 1.3,
@@ -65,7 +65,7 @@ describe('WorkflowBuilder plugin integration', () => {
 							source: 'database',
 							workflowId: { __rl: true, mode: 'id', value: 'process-order' },
 							mode: 'each',
-							workflowInputs: { mappingMode: 'defineBelow', value },
+							...(workflowInputs === undefined ? {} : { workflowInputs }),
 						},
 					},
 				});
@@ -79,15 +79,53 @@ describe('WorkflowBuilder plugin integration', () => {
 				);
 			};
 
-			const invalidResult = createWorkflow(null).validate();
+			const invalidResult = createWorkflow({
+				mappingMode: 'defineBelow',
+				value: null,
+			}).validate();
 			expect(invalidResult.valid).toBe(false);
 			expect(invalidResult.errors).toContainEqual(
 				expect.objectContaining({ code: 'EXECUTE_WORKFLOW_INVALID_INPUT_MAPPING' }),
 			);
 
-			const validResult = createWorkflow({ order: expr('{{ $json }}') }).validate();
-			expect(validResult.valid).toBe(true);
-			expect(validResult.errors).not.toContainEqual(
+			const passThroughResult = createWorkflow().validate();
+			expect(passThroughResult.valid).toBe(true);
+			expect(passThroughResult.errors).not.toContainEqual(
+				expect.objectContaining({ code: 'EXECUTE_WORKFLOW_INVALID_INPUT_MAPPING' }),
+			);
+
+			const mappedResult = createWorkflow({
+				mappingMode: 'defineBelow',
+				value: {
+					orderId: expr('{{ $json.id }}'),
+					amount: expr('{{ $json.total }}'),
+				},
+				matchingColumns: [],
+				schema: [
+					{
+						id: 'orderId',
+						displayName: 'orderId',
+						required: false,
+						defaultMatch: false,
+						display: true,
+						canBeUsedToMatch: true,
+						type: 'string',
+					},
+					{
+						id: 'amount',
+						displayName: 'amount',
+						required: false,
+						defaultMatch: false,
+						display: true,
+						canBeUsedToMatch: true,
+						type: 'number',
+					},
+				],
+				attemptToConvertTypes: false,
+				convertFieldsToString: true,
+			}).validate();
+			expect(mappedResult.valid).toBe(true);
+			expect(mappedResult.errors).not.toContainEqual(
 				expect.objectContaining({ code: 'EXECUTE_WORKFLOW_INVALID_INPUT_MAPPING' }),
 			);
 		});

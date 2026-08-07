@@ -23,7 +23,7 @@ const DATABASE_SOURCE = 'database';
 const DEFINE_BELOW_MODE = 'defineBelow';
 const WORKFLOW_INPUTS_VALUE_PATH = 'parameters.workflowInputs.value';
 const VALID_MAPPING_EXAMPLE =
-	"{ mappingMode: 'defineBelow', value: { order: expr('{{ $json }}') } }";
+	"{ mappingMode: 'defineBelow', value: { orderId: expr('{{ $json.id }}'), amount: expr('{{ $json.total }}') }, matchingColumns: [], schema: [{ id: 'orderId', displayName: 'orderId', required: false, defaultMatch: false, display: true, canBeUsedToMatch: true, type: 'string' }, { id: 'amount', displayName: 'amount', required: false, defaultMatch: false, display: true, canBeUsedToMatch: true, type: 'number' }], attemptToConvertTypes: false, convertFieldsToString: true }";
 
 export const executeWorkflowValidator: ValidatorPlugin = {
 	id: 'core:execute-workflow',
@@ -48,11 +48,14 @@ export const executeWorkflowValidator: ValidatorPlugin = {
 		}
 
 		const workflowInputs = parameters.workflowInputs;
+		if (workflowInputs === undefined) {
+			return [];
+		}
+
 		if (isRecord(workflowInputs)) {
 			const mappingMode = workflowInputs.mappingMode ?? DEFINE_BELOW_MODE;
-			if (mappingMode !== DEFINE_BELOW_MODE || isRecord(workflowInputs.value)) {
-				return [];
-			}
+			const value = workflowInputs.value;
+			if (mappingMode !== DEFINE_BELOW_MODE || value === undefined || isRecord(value)) return [];
 		}
 
 		const mapKey = findMapKey(graphNode, ctx);
@@ -67,8 +70,8 @@ export const executeWorkflowValidator: ValidatorPlugin = {
 				code: 'EXECUTE_WORKFLOW_INVALID_INPUT_MAPPING',
 				message:
 					`${nodeRef} has an invalid ${WORKFLOW_INPUTS_VALUE_PATH}. ` +
-					`When parameters.workflowInputs.mappingMode is '${DEFINE_BELOW_MODE}', ${WORKFLOW_INPUTS_VALUE_PATH} must be an object whose keys match the selected sub-workflow's declared inputs. ` +
-					`Set parameters.workflowInputs to ${VALID_MAPPING_EXAMPLE}.`,
+					`When parameters.workflowInputs.mappingMode is '${DEFINE_BELOW_MODE}', an explicitly provided ${WORKFLOW_INPUTS_VALUE_PATH} must be an object. ` +
+					`If the selected sub-workflow accepts all data, omit parameters.workflowInputs. Otherwise set parameters.workflowInputs to a full Resource Mapper mapping whose value and schema match the declared inputs, such as ${VALID_MAPPING_EXAMPLE}.`,
 				severity: 'error',
 				violationLevel: 'major',
 				nodeName: displayName,
