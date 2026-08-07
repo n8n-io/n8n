@@ -25,7 +25,7 @@ import type { ICredentialsOverwrite } from '@/interfaces';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { handleMfaDisable, isMfaFeatureEnabled } from '@/mfa/helpers';
 import { PostHogClient } from '@/posthog';
-import { isApiEnabled, loadPublicApiVersions } from '@/public-api';
+import { loadPublicApiVersions } from '@/public-api';
 import { Push } from '@/push';
 import * as ResponseHelper from '@/response-helper';
 import type { FrontendService } from '@/services/frontend.service';
@@ -207,12 +207,10 @@ export class Server extends AbstractServer {
 		// Public API
 		// ----------------------------------------
 
-		if (isApiEnabled()) {
-			const { apiRouters, apiLatestVersion } = await loadPublicApiVersions(publicApiEndpoint);
-			this.app.use(...apiRouters);
-			if (frontendService) {
-				(await frontendService.getSettings()).publicApi.latestVersion = apiLatestVersion;
-			}
+		const { apiRouters, apiLatestVersion } = await loadPublicApiVersions(publicApiEndpoint);
+		this.app.use(...apiRouters);
+		if (frontendService) {
+			(await frontendService.getSettings()).publicApi.latestVersion = apiLatestVersion;
 		}
 
 		const { restEndpoint, app } = this;
@@ -442,7 +440,6 @@ export class Server extends AbstractServer {
 				'e2e',
 				this.restEndpoint,
 				this.endpointPresetCredentials,
-				isApiEnabled() ? '' : publicApiEndpoint,
 				...this.globalConfig.endpoints.additionalNonUIRoutes.split(':'),
 			].filter((u) => !!u);
 			const nonUIRoutesRegex = new RegExp(`^/(${nonUIRoutes.join('|')})/?.*$`);

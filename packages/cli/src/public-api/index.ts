@@ -411,6 +411,12 @@ export const loadPublicApiVersions = async (
 	};
 };
 
-export function isApiEnabled(): boolean {
+/**
+ * Whether API-key (token) based authentication is accepted on the public API.
+ * Public API routes are always registered regardless of this flag — the UI
+ * authenticates against them with the user's session cookie instead, which
+ * must keep working even when token-based access is disabled.
+ */
+export function isApiKeyAuthEnabled(): boolean {
 	return !Container.get(GlobalConfig).publicApi.disabled && !Container.get(License).isAPIDisabled();
 }
