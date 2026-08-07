@@ -16,6 +16,7 @@ describe('GithubTrigger Node', () => {
 
 			mockThis = {
 				getWorkflowStaticData: () => webhookData,
+				getNodeWebhookUrl: () => 'https://example.com/webhook',
 				getNodeParameter: vi.fn().mockImplementation((name: string) => {
 					if (name === 'owner') return 'some-owner';
 					if (name === 'repository') return 'some-repo';
@@ -23,8 +24,39 @@ describe('GithubTrigger Node', () => {
 			};
 		});
 
-		it('should delete webhook data and return false when webhook is not found (404)', async () => {
-			vi.spyOn(GenericFunctions, 'githubApiRequest').mockRejectedValue({ httpCode: '404' });
+		it('should return true when stored webhook ID exists', async () => {
+			vi.spyOn(GenericFunctions, 'githubApiRequest').mockResolvedValueOnce({ id: '123456' });
+
+			const trigger = new GithubTrigger();
+			const result = await trigger.webhookMethods.default.checkExists.call(mockThis);
+
+			expect(result).toBe(true);
+			expect(webhookData.webhookId).toBe('123456');
+		});
+
+		it('should fall back to URL matching when stored ID returns 404', async () => {
+			const existingWebhook = {
+				id: '789',
+				events: ['push'],
+				config: { url: 'https://example.com/webhook' },
+			};
+
+			vi.spyOn(GenericFunctions, 'githubApiRequest')
+				.mockRejectedValueOnce({ httpCode: '404' }) // GET by ID fails
+				.mockResolvedValueOnce([existingWebhook]); // GET all returns match
+
+			const trigger = new GithubTrigger();
+			const result = await trigger.webhookMethods.default.checkExists.call(mockThis);
+
+			expect(result).toBe(true);
+			expect(webhookData.webhookId).toBe('789');
+			expect(webhookData.webhookEvents).toEqual(['push']);
+		});
+
+		it('should return false when stored ID is 404 and no URL match found', async () => {
+			vi.spyOn(GenericFunctions, 'githubApiRequest')
+				.mockRejectedValueOnce({ httpCode: '404' }) // GET by ID fails
+				.mockResolvedValueOnce([]); // GET all returns empty
 
 			const trigger = new GithubTrigger();
 			const result = await trigger.webhookMethods.default.checkExists.call(mockThis);
@@ -32,6 +64,37 @@ describe('GithubTrigger Node', () => {
 			expect(result).toBe(false);
 			expect(webhookData.webhookId).toBeUndefined();
 			expect(webhookData.webhookEvents).toBeUndefined();
+		});
+
+		it('should find webhook by URL when no stored ID exists', async () => {
+			webhookData = {};
+			mockThis.getWorkflowStaticData = () => webhookData;
+
+			const existingWebhook = {
+				id: '789',
+				events: ['push'],
+				config: { url: 'https://example.com/webhook' },
+			};
+
+			vi.spyOn(GenericFunctions, 'githubApiRequest').mockResolvedValueOnce([existingWebhook]);
+
+			const trigger = new GithubTrigger();
+			const result = await trigger.webhookMethods.default.checkExists.call(mockThis);
+
+			expect(result).toBe(true);
+			expect(webhookData.webhookId).toBe('789');
+		});
+
+		it('should return false when no stored ID and no URL match', async () => {
+			webhookData = {};
+			mockThis.getWorkflowStaticData = () => webhookData;
+
+			vi.spyOn(GenericFunctions, 'githubApiRequest').mockResolvedValueOnce([]);
+
+			const trigger = new GithubTrigger();
+			const result = await trigger.webhookMethods.default.checkExists.call(mockThis);
+
+			expect(result).toBe(false);
 		});
 	});
 
