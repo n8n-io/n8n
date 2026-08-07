@@ -159,8 +159,8 @@ onMounted(() => {
 	padding-block: var(--spacing--2xs) var(--spacing--sm);
 }
 
-/* The detail body stacks and takes over scrolling here, so the feed has to bound itself or
-   its load-older sentinel never leaves the screen and drains every page. */
+/* The detail body stacks and takes over scrolling here, so the feed must bound itself or its
+	load-older sentinel never leaves the screen and drains every page. */
 @media (max-width: 60rem) {
 	.feed {
 		max-height: 60vh;

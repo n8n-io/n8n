@@ -70,9 +70,9 @@ export class WorkflowReviewAccessService {
 				request.id,
 			);
 		const readableWorkflowRows = await this.filterReadableWorkflowRows(user, workflowRows);
-		// You reached this review through its project but can read none of the workflows it
-		// covers, so there is nothing here for you. 404 rather than 403, so its existence stays
-		// hidden too. Whoever opened it always keeps access, narrowed to what they can read.
+		// Someone who reached this review through its project has nothing to see once they can
+		// read none of the workflows it covers. The requester is exempt: they created it and
+		// their inbox lists it, so keeping the record leaks nothing.
 		if (
 			request.createdById !== user.id &&
 			workflowRows.length > 0 &&

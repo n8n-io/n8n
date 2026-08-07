@@ -77,6 +77,7 @@ describe('WorkflowReviewAccessService', () => {
 			await expect(service.findReadableRequestOrFail(member, requestId)).rejects.toThrow(
 				'Could not find review request',
 			);
+			// The gate short-circuits before any workflow row is loaded
 			expect(workflowRepository.findLinkedWorkflowDetailsByRequestId).not.toHaveBeenCalled();
 		});
 
