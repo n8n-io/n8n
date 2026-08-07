@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue';
+import { computed, onMounted, onUnmounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import AuthView from './AuthView.vue';
@@ -8,10 +8,15 @@ import MfaView from './MfaView.vue';
 import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { useNotificationsStore } from '@n8n/stores/notifications.store';
 
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
+import {
+	resetSessionExpiredHandledFlag,
+	restoreNotificationSuppression,
+} from '@/app/utils/handleSessionExpired';
 
 import type { IFormBoxConfig } from '@/Interface';
 import { MFA_AUTHENTICATION_REQUIRED_ERROR_CODE, VIEWS, MFA_FORM } from '@/app/constants';
@@ -40,6 +45,26 @@ const showMfaView = ref(false);
 const emailOrLdapLoginId = ref('');
 const password = ref('');
 const reportError = ref(false);
+
+onMounted(() => {
+	if (route.query.sessionExpired !== 'true') {
+		return;
+	}
+
+	const notificationsStore = useNotificationsStore();
+	notificationsStore.setNotificationsSuppressed(false);
+	toast.showMessage({
+		title: locale.baseText('auth.signin.sessionExpired.title'),
+		message: locale.baseText('auth.signin.sessionExpired'),
+		type: 'info',
+	});
+	notificationsStore.setNotificationsSuppressed(true);
+});
+
+// Covers leaving via e.g. "Forgot password", which login() below never sees.
+onUnmounted(() => {
+	restoreNotificationSuppression();
+});
 
 const ldapLoginLabel = computed(() => ssoStore.ldapLoginLabel);
 const isLdapLoginEnabled = computed(() => ssoStore.isLdapLoginEnabled);
@@ -125,6 +150,7 @@ const getRedirectQueryParameter = () => {
 };
 
 const login = async (form: LoginRequestDto) => {
+	restoreNotificationSuppression();
 	try {
 		loading.value = true;
 		await usersStore.loginWithCreds({
@@ -134,6 +160,8 @@ const login = async (form: LoginRequestDto) => {
 			mfaRecoveryCode: form.mfaRecoveryCode,
 		});
 		loading.value = false;
+		// Before getSettings(), which can independently fail with correct credentials.
+		resetSessionExpiredHandledFlag();
 		await settingsStore.getSettings();
 
 		toast.clearAllStickyNotifications();
