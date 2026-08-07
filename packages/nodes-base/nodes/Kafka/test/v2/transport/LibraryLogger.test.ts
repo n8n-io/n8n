@@ -5,6 +5,13 @@ import { mock } from 'vitest-mock-extended';
 
 import { createLibraryLogger, type FatalErrorHandler } from '../../../v2/transport/LibraryLogger';
 
+// The library's logLevel values. Repeated rather than imported because test
+// files may not load the Kafka library at runtime either.
+const NOTHING = 0;
+const ERROR = 1;
+const WARN = 2;
+const DEBUG = 4;
+
 let logger: Logger;
 let onFatalError: MockedFunction<FatalErrorHandler>;
 
@@ -74,7 +81,73 @@ describe('createLibraryLogger', () => {
 		expect(libraryLogger.namespace('consumer')).toBe(libraryLogger);
 	});
 
-	it('ignores the library setting a level, since the node logger owns that', () => {
-		expect(() => build().setLogLevel(0)).not.toThrow();
+	describe('log level', () => {
+		it('forwards every level until the library asks for one', () => {
+			const libraryLogger = build();
+
+			libraryLogger.debug('chatter');
+			libraryLogger.info('chatter');
+
+			expect(logger.debug).toHaveBeenCalledWith('chatter', expect.anything());
+			expect(logger.info).toHaveBeenCalledWith('chatter', expect.anything());
+		});
+
+		it('drops anything below the level the library asked for', () => {
+			// What the client pins, so this is the level the consumer runs at.
+			const libraryLogger = build();
+			libraryLogger.setLogLevel(ERROR);
+
+			libraryLogger.debug('chatter');
+			libraryLogger.info('chatter');
+			libraryLogger.warn('chatter');
+			libraryLogger.error('a real problem');
+
+			expect(logger.debug).not.toHaveBeenCalled();
+			expect(logger.info).not.toHaveBeenCalled();
+			expect(logger.warn).not.toHaveBeenCalled();
+			expect(logger.error).toHaveBeenCalledWith('a real problem', expect.anything());
+		});
+
+		it('keeps the levels at or above the one asked for', () => {
+			const libraryLogger = build();
+			libraryLogger.setLogLevel(WARN);
+
+			libraryLogger.info('chatter');
+			libraryLogger.warn('worth knowing');
+
+			expect(logger.info).not.toHaveBeenCalled();
+			expect(logger.warn).toHaveBeenCalledWith('worth knowing', expect.anything());
+		});
+
+		it('widens again when the library raises the level', () => {
+			const libraryLogger = build();
+			libraryLogger.setLogLevel(ERROR);
+			libraryLogger.setLogLevel(DEBUG);
+
+			libraryLogger.debug('chatter');
+
+			expect(logger.debug).toHaveBeenCalledWith('chatter', expect.anything());
+		});
+
+		it('still escalates a fatal error when logging is silenced', () => {
+			const libraryLogger = build();
+			libraryLogger.setLogLevel(NOTHING);
+
+			libraryLogger.error('Broker: Group authorization failed');
+
+			// The log is suppressed, but stopping a trigger that can never recover
+			// must not depend on how verbose the library was asked to be.
+			expect(logger.error).not.toHaveBeenCalled();
+			expect(onFatalError).toHaveBeenCalledTimes(1);
+		});
+
+		it('applies the level to a namespaced logger too', () => {
+			const libraryLogger = build();
+			libraryLogger.setLogLevel(ERROR);
+
+			libraryLogger.namespace('consumer').info('chatter');
+
+			expect(logger.info).not.toHaveBeenCalled();
+		});
 	});
 });

@@ -32,7 +32,9 @@ import type { KafkaCredentials } from '../../utils';
 import { KafkaTriggerV1 } from '../../v1/KafkaTriggerV1.node';
 import { consumeTopic, type KafkaConsumerHandle } from '../../v2/consumer/ConsumeTopic';
 import { createMessageParser } from '../../v2/consumer/MessageParser';
+import { createKafkaClient } from '../../v2/transport/client';
 import { createKafkaConsumer } from '../../v2/transport/consumer';
+import { createLibraryLogger } from '../../v2/transport/LibraryLogger';
 
 const logger = mock<Logger>();
 const prepareBinaryData = (async () =>
@@ -86,6 +88,14 @@ async function produce(topic: string, message: string, codec?: string) {
 	await inBroker(
 		`echo '${message}' | kafka-console-producer --bootstrap-server localhost:9092 ` +
 			`--topic ${topic}${codec ? ` --compression-codec ${codec}` : ''}`,
+	);
+}
+
+/** Writes several messages in one producer run, one per line. */
+async function produceMany(topic: string, messages: string[]) {
+	await inBroker(
+		`printf '${messages.join('\\n')}\\n' | kafka-console-producer ` +
+			`--bootstrap-server localhost:9092 --topic ${topic}`,
 	);
 }
 
@@ -167,6 +177,161 @@ describe('v2 consumer against a real broker', () => {
 			await handle.close();
 		}
 	});
+});
+
+describe('delivery guarantees against a real broker', () => {
+	it('chunks a real batch by batch size, so each chunk is one execution', async () => {
+		const topic = uniqueTopic('batching');
+		await createTopic(topic);
+		await produceMany(topic, ['1', '2', '3', '4', '5', '6', '7']);
+
+		const consumer = await createKafkaConsumer(credentials, {
+			groupId: `${topic}-group`,
+			fromBeginning: true,
+		});
+
+		const chunks: string[][] = [];
+		const seen = () => chunks.flat().length;
+
+		const handle = await consumeTopic(consumer, {
+			topic,
+			logger,
+			batchSize: 3,
+			parseMessage: createMessageParser({}, logger, undefined, prepareBinaryData),
+			emit: async (items) => {
+				chunks.push(items.map((item) => String(item.json.message)));
+				return { mayAdvance: true };
+			},
+		});
+
+		try {
+			const deadline = Date.now() + 60_000;
+			while (seen() < 7 && Date.now() < deadline) await sleep(250);
+
+			// Every message reaches a workflow exactly once, in order.
+			expect(chunks.flat()).toEqual(['1', '2', '3', '4', '5', '6', '7']);
+
+			// Batch Size is an upper bound, not a target. Even with all seven already
+			// on the topic before the consumer joins, the broker answers the first
+			// fetches with less than a full batch: this run produced chunks of
+			// [1, 1, 3, 2]. So the only guarantee worth asserting is the ceiling.
+			// Exact chunking is covered deterministically by the unit tests.
+			expect(Math.max(...chunks.map((chunk) => chunk.length))).toBeLessThanOrEqual(3);
+		} finally {
+			await handle.close();
+		}
+	});
+
+	it('re-delivers a message the workflow refused, rather than committing it', async () => {
+		const topic = uniqueTopic('atleastonce');
+		const groupId = `${topic}-group`;
+		await createTopic(topic);
+		await produce(topic, 'must not be lost');
+
+		/** Runs one consumer in the same group until it has seen a message. */
+		const consumeOnce = async (mayAdvance: boolean) => {
+			const consumer = await createKafkaConsumer(credentials, { groupId, fromBeginning: true });
+			const received: string[] = [];
+			const handle = await consumeTopic(consumer, {
+				topic,
+				logger,
+				parseMessage: createMessageParser({}, logger, undefined, prepareBinaryData),
+				emit: async (items) => {
+					received.push(String(items[0]?.json.message));
+					return { mayAdvance };
+				},
+			});
+
+			try {
+				const deadline = Date.now() + 60_000;
+				while (received.length === 0 && Date.now() < deadline) await sleep(250);
+				return received;
+			} finally {
+				await handle.close();
+			}
+		};
+
+		// The workflow fails, so nothing may be recorded as read.
+		expect(await consumeOnce(false)).toContain('must not be lost');
+		// A fresh consumer in the same group still gets it: at-least-once holds.
+		expect(await consumeOnce(true)).toContain('must not be lost');
+	}, 180_000);
+});
+
+describe('library logging against a real broker', () => {
+	/** A library logger that records the levels the library asks it to apply. */
+	const recordingLogger = (nodeLogger: Logger, onFatalError?: (error: Error) => void) => {
+		const libraryLogger = createLibraryLogger(nodeLogger, onFatalError);
+		const levels: number[] = [];
+		const original = libraryLogger.setLogLevel.bind(libraryLogger);
+		libraryLogger.setLogLevel = (level) => {
+			levels.push(level);
+			original(level);
+		};
+		return { libraryLogger, levels };
+	};
+
+	it("applies the level the real library asks for, so the client's ERROR pin takes effect", async () => {
+		const nodeLogger = mock<Logger>();
+		const { libraryLogger, levels } = recordingLogger(nodeLogger);
+
+		const kafka = await createKafkaClient(credentials);
+		const consumer = kafka.consumer({
+			kafkaJS: { groupId: uniqueTopic('loglevel'), logger: libraryLogger },
+		});
+		await consumer.connect();
+
+		try {
+			// The client pins logLevel.ERROR, the library turns that into librdkafka's
+			// log_level and hands the resolved level back to the logger. 1 is ERROR.
+			expect(levels).toContain(1);
+
+			// Whatever the real connect logged is not what this test is about.
+			vi.mocked(nodeLogger.info).mockClear();
+			vi.mocked(nodeLogger.warn).mockClear();
+			vi.mocked(nodeLogger.debug).mockClear();
+			vi.mocked(nodeLogger.error).mockClear();
+
+			libraryLogger.debug('chatter');
+			libraryLogger.info('chatter');
+			libraryLogger.warn('chatter');
+			libraryLogger.error('a real problem');
+
+			expect(nodeLogger.debug).not.toHaveBeenCalled();
+			expect(nodeLogger.info).not.toHaveBeenCalled();
+			expect(nodeLogger.warn).not.toHaveBeenCalled();
+			expect(nodeLogger.error).toHaveBeenCalledWith('a real problem', expect.anything());
+		} finally {
+			await consumer.disconnect();
+		}
+	});
+
+	it('does not treat a real unreachable broker as fatal, so the library keeps retrying', async () => {
+		const nodeLogger = mock<Logger>();
+		const onFatalError = vi.fn();
+		const { libraryLogger } = recordingLogger(nodeLogger, onFatalError);
+
+		const kafka = await createKafkaClient({ ...credentials, brokers: 'localhost:1' });
+		const consumer = kafka.consumer({
+			kafkaJS: { groupId: uniqueTopic('deadbroker'), logger: libraryLogger },
+		});
+
+		try {
+			// Bounded here rather than by a config key: connecting to a broker that is
+			// not there is exactly the case the library keeps retrying instead of failing.
+			await withDeadline(consumer.connect(), 8000, 'connect').catch(() => undefined);
+			// Give librdkafka time to report the connection failures it retries through.
+			await sleep(3000);
+
+			// A broker that is down comes back. Escalating it would restart a healthy
+			// trigger, which is the false positive the allowlist exists to avoid.
+			expect(onFatalError).not.toHaveBeenCalled();
+		} finally {
+			// Measured at ~19s against a broker that never answered, which is why the
+			// production close path bounds disconnect rather than awaiting it plain.
+			await withDeadline(consumer.disconnect(), 5000, 'disconnect').catch(() => undefined);
+		}
+	}, 60_000);
 });
 
 describe('version 1 and version 2 item parity', () => {

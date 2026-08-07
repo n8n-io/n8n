@@ -292,6 +292,34 @@ describe('consumeTopic', () => {
 				vi.useRealTimers();
 			}
 		});
+
+		// setTimeout treats both of these as zero, so a plain `??` default leaves
+		// the retry unpaced and the failing chunk is re-read as fast as the broker
+		// can serve it.
+		it.each([NaN, -1])(
+			'falls back to the default delay when the retry delay is %s',
+			async (errorRetryDelay) => {
+				vi.useFakeTimers();
+				try {
+					const { consumer } = await start({ errorRetryDelay });
+					parseMessage.mockRejectedValueOnce(new Error('parse failed'));
+
+					let settled = false;
+					const delivery = consumer
+						.deliverBatch({ messages: messages('a') })
+						.then(() => (settled = true));
+
+					await vi.advanceTimersByTimeAsync(4999);
+					expect(settled).toBe(false);
+
+					await vi.advanceTimersByTimeAsync(1);
+					await delivery;
+					expect(settled).toBe(true);
+				} finally {
+					vi.useRealTimers();
+				}
+			},
+		);
 	});
 
 	describe('close', () => {

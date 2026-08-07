@@ -27,6 +27,7 @@ import {
 	type KafkaCredentials,
 	getSchemaRegistryOptions,
 	resolveKafkaSsl,
+	resolveRetryDelay,
 	sanitizeRegistryError,
 	setSchemaRegistry,
 	stopAndDisconnectConsumer,
@@ -206,6 +207,27 @@ describe('Kafka Utils', () => {
 			expect(() => resolveKafkaSsl(creds({ cert: truncated, key: KEY_PEM }))).toThrow(
 				'not a valid PEM block',
 			);
+		});
+	});
+
+	describe('resolveRetryDelay', () => {
+		it('keeps a usable delay', () => {
+			expect(resolveRetryDelay(10_000)).toBe(10_000);
+		});
+
+		it('keeps zero, which means do not wait', () => {
+			expect(resolveRetryDelay(0)).toBe(0);
+		});
+
+		it.each([
+			['missing', undefined],
+			['NaN, e.g. from an expression that did not produce a number', Number.NaN],
+			['Infinity', Number.POSITIVE_INFINITY],
+			['negative', -1],
+		])('falls back to the default when the delay is %s', (_case, value) => {
+			// setTimeout treats NaN and negatives as zero, so without this the
+			// pacing would silently disappear rather than fail.
+			expect(resolveRetryDelay(value)).toBe(5000);
 		});
 	});
 

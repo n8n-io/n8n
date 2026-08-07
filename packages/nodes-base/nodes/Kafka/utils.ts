@@ -31,6 +31,23 @@ import type { ConnectionOptions } from 'node:tls';
 // This prevents rapid retry loops that could overwhelm the Kafka broker
 export const DEFAULT_ERROR_RETRY_DELAY_MS = 5000;
 
+/**
+ * A usable retry delay in milliseconds, or the default when the value is not one.
+ *
+ * Unlike a count, zero is legitimate here and means "do not wait". Only a
+ * missing, non-numeric, non-finite or negative value falls back, because
+ * `setTimeout` treats `NaN` and negatives as zero: the pacing this delay exists
+ * to provide would disappear without anything failing. `??` alone does not
+ * catch that, since `NaN` is not `undefined`, and a node option can arrive as
+ * `NaN` from an expression that did not evaluate to a number.
+ */
+export function resolveRetryDelay(value: number | undefined): number {
+	if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
+		return DEFAULT_ERROR_RETRY_DELAY_MS;
+	}
+	return value;
+}
+
 export interface KafkaTriggerOptions {
 	allowAutoTopicCreation?: boolean;
 	autoCommitThreshold?: number;

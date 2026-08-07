@@ -42,7 +42,10 @@ export interface KafkaConsumerOptions {
 
 /** Wiring for the library's own log output, kept apart from its config keys. */
 export interface KafkaConsumerLogging {
-	/** Receives everything the library logs. Without it the library writes to stdout. */
+	/**
+	 * Receives what the library logs, down to the level the library itself asks
+	 * for. Without it the library writes to stdout.
+	 */
 	logger: Logger;
 	/**
 	 * Called when the library reports something it will not recover from, so the

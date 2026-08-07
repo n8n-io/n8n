@@ -4,7 +4,7 @@ import type { Logger } from 'n8n-workflow';
 
 import type { DataEmitter } from './DataEmitter';
 import type { KafkaMessageParser } from './MessageParser';
-import { DEFAULT_ERROR_RETRY_DELAY_MS, withTimeout } from '../../utils';
+import { resolveRetryDelay, withTimeout } from '../../utils';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -239,7 +239,7 @@ function resolveSettings(options: ConsumeTopicOptions): ConsumeSettings {
 			options.partitionsConsumedConcurrently,
 			DEFAULT_PARTITIONS_CONSUMED_CONCURRENTLY,
 		),
-		errorRetryDelay: options.errorRetryDelay ?? DEFAULT_ERROR_RETRY_DELAY_MS,
+		errorRetryDelay: resolveRetryDelay(options.errorRetryDelay),
 	};
 }
 

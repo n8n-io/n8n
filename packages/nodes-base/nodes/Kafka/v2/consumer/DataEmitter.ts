@@ -3,7 +3,7 @@ import { sleep } from '@n8n/utils/sleep';
 import type { INodeExecutionData, IRun, ITriggerFunctions } from 'n8n-workflow';
 import { NodeOperationError, OperationalError } from 'n8n-workflow';
 
-import { DEFAULT_ERROR_RETRY_DELAY_MS } from '../../utils';
+import { resolveRetryDelay } from '../../utils';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -14,7 +14,7 @@ export type ResolveOffsetMode = 'immediately' | 'onCompletion' | 'onSuccess' | '
 
 /** Whether the caller may advance past the chunk it just handed over. */
 export interface OffsetVerdict {
-	mayAdvance: boolean;
+	readonly mayAdvance: boolean;
 }
 
 export type DataEmitter = (items: INodeExecutionData[]) => Promise<OffsetVerdict>;
@@ -42,8 +42,12 @@ export interface DataEmitterOptions {
 
 const DEFAULT_EXECUTION_TIMEOUT_SECONDS = 3600;
 
-const ADVANCE: OffsetVerdict = { mayAdvance: true };
-const HOLD_BACK: OffsetVerdict = { mayAdvance: false };
+// Every hand-off returns one of these two, so they are shared rather than
+// rebuilt. Frozen because a caller mutating the one it was handed would change
+// the verdict every later hand-off gets. `readonly` on the field catches that
+// at compile time; the freeze covers callers outside this package's types.
+const ADVANCE: OffsetVerdict = Object.freeze({ mayAdvance: true });
+const HOLD_BACK: OffsetVerdict = Object.freeze({ mayAdvance: false });
 
 // ---------------------------------------------------------------------------
 // Entry point
@@ -94,7 +98,7 @@ function createAwaitingEmitter(
 ): DataEmitter {
 	const allowedStatuses = resolveAllowedStatuses(ctx, options);
 	const deadlineSeconds = options.executionTimeoutSeconds ?? DEFAULT_EXECUTION_TIMEOUT_SECONDS;
-	const errorRetryDelay = options.errorRetryDelay ?? DEFAULT_ERROR_RETRY_DELAY_MS;
+	const errorRetryDelay = resolveRetryDelay(options.errorRetryDelay);
 
 	// Two views of closing, because the two waits below want different things.
 	// The rejecting one ends the wait for an execution with a reason, which is

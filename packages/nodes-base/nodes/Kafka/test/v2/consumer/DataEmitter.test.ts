@@ -1,4 +1,5 @@
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import { sleep } from '@n8n/utils/sleep';
 import type { INode, INodeExecutionData, IRun, Logger } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
@@ -13,6 +14,8 @@ vi.mock('@n8n/utils/sleep', () => ({ sleep: vi.fn(async () => {}) }));
 
 const ITEMS: INodeExecutionData[] = [{ json: { message: 'hello' } }];
 
+const mockedSleep = vi.mocked(sleep);
+
 const run = (status: string) => mock<IRun>({ status: status as IRun['status'] });
 
 let ctx: DataEmitterContext;
@@ -20,6 +23,7 @@ let emitSpy: ReturnType<typeof vi.fn>;
 let logger: Logger;
 
 beforeEach(() => {
+	mockedSleep.mockClear();
 	emitSpy = vi.fn();
 	logger = mock<Logger>();
 	ctx = {
@@ -178,5 +182,30 @@ describe('createDataEmitter', () => {
 
 			expect(await pending).toStrictEqual({ mayAdvance: false });
 		});
+	});
+
+	describe('retry delay', () => {
+		it('paces a failed hand-off by the configured delay', async () => {
+			await emitAndFinish({ resolveOffsetMode: 'onSuccess', errorRetryDelay: 10_000 }, 'error');
+
+			expect(mockedSleep).toHaveBeenCalledWith(10_000);
+		});
+
+		it('waits not at all when the delay is zero', async () => {
+			await emitAndFinish({ resolveOffsetMode: 'onSuccess', errorRetryDelay: 0 }, 'error');
+
+			expect(mockedSleep).toHaveBeenCalledWith(0);
+		});
+
+		// setTimeout treats these as zero, so without a guard the pacing quietly
+		// disappears and the failed chunk is re-read as fast as the broker allows.
+		it.each([undefined, NaN, -1, Infinity])(
+			'falls back to the default delay when the delay is %s',
+			async (errorRetryDelay) => {
+				await emitAndFinish({ resolveOffsetMode: 'onSuccess', errorRetryDelay }, 'error');
+
+				expect(mockedSleep).toHaveBeenCalledWith(5000);
+			},
+		);
 	});
 });
