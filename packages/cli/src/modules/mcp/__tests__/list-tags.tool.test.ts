@@ -32,13 +32,13 @@ describe('list-tags MCP tool', () => {
 	) => {
 		const listWithUsageCount =
 			tagsOrError instanceof Error
-				? jest.fn().mockRejectedValue(tagsOrError)
-				: jest.fn().mockResolvedValue({
+				? vi.fn().mockRejectedValue(tagsOrError)
+				: vi.fn().mockResolvedValue({
 						data: tagsOrError,
 						totalCount: opts.totalCount ?? tagsOrError.length,
 					});
 		const tagService = mockInstance(TagService, { listWithUsageCount });
-		const telemetry = mockInstance(Telemetry, { track: jest.fn() });
+		const telemetry = mockInstance(Telemetry, { track: vi.fn() });
 		return { tagService, telemetry };
 	};
 
@@ -48,7 +48,7 @@ describe('list-tags MCP tool', () => {
 
 			const tool = createListTagsTool(user, tagService, telemetry);
 
-			expect(tool.name).toBe('list_tags');
+			expect(tool.name).toBe('list_workflow_tags');
 			expect(tool.config.description).toEqual(expect.any(String));
 			expect(tool.config.inputSchema).toBeDefined();
 			expect(tool.config.outputSchema).toBeDefined();
@@ -120,7 +120,7 @@ describe('list-tags MCP tool', () => {
 			expect(telemetry.track).toHaveBeenCalledWith(
 				expect.any(String),
 				expect.objectContaining({
-					tool_name: 'list_tags',
+					tool_name: 'list_workflow_tags',
 					user_id: 'user-1',
 					results: { success: true, data: { count: 1 } },
 				}),
@@ -138,7 +138,7 @@ describe('list-tags MCP tool', () => {
 			expect(telemetry.track).toHaveBeenCalledWith(
 				expect.any(String),
 				expect.objectContaining({
-					tool_name: 'list_tags',
+					tool_name: 'list_workflow_tags',
 					results: { success: false, error: 'boom' },
 				}),
 			);

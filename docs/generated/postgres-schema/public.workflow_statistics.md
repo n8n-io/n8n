@@ -5,11 +5,11 @@
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | count | bigint | 0 | true |  |  |  |
+| id | integer | nextval('workflow_statistics_id_seq'::regclass) | false |  |  |  |
 | latestEvent | timestamp(3) with time zone |  | true |  |  |  |
 | name | varchar(128) |  | false |  |  |  |
-| workflowId | varchar(36) |  | false |  |  |  |
 | rootCount | bigint | 0 | true |  |  |  |
-| id | integer | nextval('workflow_statistics_id_seq'::regclass) | false |  |  |  |
+| workflowId | varchar(36) |  | false |  |  |  |
 | workflowName | varchar(128) |  | true |  |  |  |
 
 ## Constraints
@@ -18,15 +18,15 @@
 | ---- | ---- | ---------- |
 | workflow_statistics_id_not_null | n | NOT NULL id |
 | workflow_statistics_name_not_null | n | NOT NULL name |
-| workflow_statistics_workflowId_not_null1 | n | NOT NULL "workflowId" |
 | workflow_statistics_pkey | PRIMARY KEY | PRIMARY KEY (id) |
+| workflow_statistics_workflowId_not_null1 | n | NOT NULL "workflowId" |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
-| workflow_statistics_pkey | CREATE UNIQUE INDEX workflow_statistics_pkey ON public.workflow_statistics USING btree (id) |
 | IDX_workflow_statistics_workflow_name | CREATE UNIQUE INDEX "IDX_workflow_statistics_workflow_name" ON public.workflow_statistics USING btree ("workflowId", name) |
+| workflow_statistics_pkey | CREATE UNIQUE INDEX workflow_statistics_pkey ON public.workflow_statistics USING btree (id) |
 
 ## Relations
 
@@ -36,11 +36,11 @@ erDiagram
 
 "public.workflow_statistics" {
   bigint count
+  integer id
   timestamp_3__with_time_zone latestEvent
   varchar_128_ name
-  varchar_36_ workflowId
   bigint rootCount
-  integer id
+  varchar_36_ workflowId
   varchar_128_ workflowName
 }
 ```

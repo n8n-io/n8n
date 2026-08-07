@@ -1,14 +1,16 @@
-import type { User, WorkflowEntity } from '@n8n/db';
+import type { WorkflowEntity } from '@n8n/db';
 
 import type { WorkflowIdConflict } from './workflow-import-match.service';
-import type { WorkflowPublishingPolicy } from './workflow-publishing-policy.types';
+import type {
+	WorkflowPublishingBlockedReason,
+	WorkflowPublishingOutcome,
+} from './workflow-publishing-policy.types';
+import type { ImportContext } from '../../n8n-packages.types';
 
-/** The actor and destination a batch of workflows is imported into. */
-export interface WorkflowImportContext {
-	user: User;
-	projectId: string;
-	folderId: string | null;
-	publishingPolicy: WorkflowPublishingPolicy;
+/** Apply-time context for the workflow importer: the resolved import target plus apply-only inputs. */
+export interface WorkflowImportContext extends ImportContext {
+	/** Tag ids the tag plan dropped; stripped from every workflow's `tagIds` before attaching. */
+	droppedTagIds: ReadonlySet<string>;
 }
 
 export interface PreparedWorkflow {
@@ -16,6 +18,17 @@ export interface PreparedWorkflow {
 	sourceWorkflowId: string;
 	/** Whether the workflow was published (active) in the source instance. */
 	sourcePublished: boolean;
+	/**
+	 * Source id of the package folder this workflow is nested under or null for a scope-root workflow that lands in the request's
+	 * target folder.
+	 */
+	parentFolderId: string | null;
+	/**
+	 * Source tag ids from the package's `workflow.json`. When present (even
+	 * empty) an update overwrites the target workflow's taggings to exactly
+	 * this set; when absent, taggings are left untouched.
+	 */
+	tagIds?: string[];
 }
 
 export type WorkflowPlannedAction = 'create' | 'update' | 'skip';
@@ -50,6 +63,14 @@ export interface WorkflowConflict {
 	name: string;
 }
 
+export interface WorkflowFolderConflict {
+	sourceWorkflowId: string;
+	existingWorkflowId: string;
+	existingParentFolderId: string | null;
+	targetFolderId: string;
+	name: string;
+}
+
 /**
  * The planned actions for a batch of workflows, plus any conflicts that abort
  * the import before anything is written.
@@ -58,10 +79,31 @@ export interface WorkflowImportPlan {
 	items: WorkflowPlanItem[];
 	conflicts: WorkflowConflict[];
 	idConflicts: WorkflowIdConflict[];
+	folderConflicts: WorkflowFolderConflict[];
 }
 
 export interface WorkflowImportOutcome {
 	status: 'created' | 'updated' | 'skipped';
 	workflow: WorkflowEntity;
 	sourceWorkflowId: string;
+	publishing: WorkflowPublishingOutcome;
 }
+
+/**
+ * A workflow written to the database, awaiting the package-wide publish sweep. Discriminated so
+ * only the written actions carry what the sweep needs; a skipped workflow is never published and
+ * keeps whatever state it already had.
+ */
+export type PersistedWorkflowOutcome =
+	| { status: 'skipped'; workflow: WorkflowEntity; sourceWorkflowId: string }
+	| {
+			status: 'created' | 'updated';
+			workflow: WorkflowEntity;
+			sourceWorkflowId: string;
+			item: PersistedWorkflowPlanItem;
+			/**
+			 * Why this workflow must stay inactive even if the policy wants it published — it depends on
+			 * a credential that was stubbed, or a node type this instance does not have.
+			 */
+			blockedFromPublish?: WorkflowPublishingBlockedReason;
+	  };

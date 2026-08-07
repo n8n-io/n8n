@@ -39,6 +39,7 @@ import {
 	type ObservationLogTaskLockHandle,
 	type RetrievedEpisodicMemoryEntry,
 	type Thread,
+	stripHydratedFileData,
 } from '@n8n/agents';
 import { Service } from '@n8n/di';
 import type { EntityManager, FindOperator, FindOptionsWhere } from '@n8n/typeorm';
@@ -48,19 +49,19 @@ import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPar
 import { isUniqueConstraintError } from '@/response-helper';
 
 import { AgentMemoryEntryCursorEntity } from '../entities/agent-memory-entry-cursor.entity';
-import { AgentMemoryEntryEntity } from '../entities/agent-memory-entry.entity';
 import { AgentMemoryEntryLockEntity } from '../entities/agent-memory-entry-lock.entity';
 import { AgentMemoryEntrySourceEntity } from '../entities/agent-memory-entry-source.entity';
+import { AgentMemoryEntryEntity } from '../entities/agent-memory-entry.entity';
 import type { AgentMessageEntity } from '../entities/agent-message.entity';
 import { AgentObservationCursorEntity } from '../entities/agent-observation-cursor.entity';
 import { AgentObservationLockEntity } from '../entities/agent-observation-lock.entity';
 import { AgentObservationEntity } from '../entities/agent-observation.entity';
 import { AgentThreadEntity } from '../entities/agent-thread.entity';
-import { AgentMessageRepository } from '../repositories/agent-message.repository';
 import { AgentMemoryEntryCursorRepository } from '../repositories/agent-memory-entry-cursor.repository';
 import { AgentMemoryEntryLockRepository } from '../repositories/agent-memory-entry-lock.repository';
 import { AgentMemoryEntrySourceRepository } from '../repositories/agent-memory-entry-source.repository';
 import { AgentMemoryEntryRepository } from '../repositories/agent-memory-entry.repository';
+import { AgentMessageRepository } from '../repositories/agent-message.repository';
 import { AgentObservationCursorRepository } from '../repositories/agent-observation-cursor.repository';
 import { AgentObservationLockRepository } from '../repositories/agent-observation-lock.repository';
 import { AgentObservationRepository } from '../repositories/agent-observation.repository';
@@ -283,7 +284,8 @@ export class N8nMemoryImpl
 		// the column is preserved on conflict; updatedAt is set manually because
 		// the @BeforeUpdate hook does not fire during upsert.
 		const now = new Date();
-		const entities = args.messages.map((dbMsg) => {
+		const entities = args.messages.map((message) => {
+			const dbMsg = stripHydratedFileData(message);
 			const role = 'role' in dbMsg ? (dbMsg.role as string) : 'custom';
 			const type = 'type' in dbMsg ? (dbMsg.type as string) : null;
 			return {
@@ -372,7 +374,7 @@ export class N8nMemoryImpl
 		const baseWhere: FindOptionsWhere<AgentMessageEntity> = {
 			threadId: observationScopeId,
 		};
-		const where: FindOptionsWhere<AgentMessageEntity>[] = opts?.since
+		const where: Array<FindOptionsWhere<AgentMessageEntity>> = opts?.since
 			? [
 					{ ...baseWhere, createdAt: MoreThan(opts.since.sinceCreatedAt) },
 					{

@@ -95,7 +95,7 @@ export class EditFieldsNode extends BasePage {
 	private async setBooleanValue(valueContainer: Locator, value: boolean): Promise<void> {
 		await valueContainer.click();
 		const booleanValue = value ? 'True' : 'False';
-		const option = this.page.getByRole('option', { name: booleanValue });
+		const option = this.getVisiblePopoverOption(booleanValue);
 		await option.waitFor({ state: 'visible' });
 		await option.click();
 	}

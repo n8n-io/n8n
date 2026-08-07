@@ -1,9 +1,16 @@
 import type { Locator } from '@playwright/test';
 import { request } from '@playwright/test';
 import type { IWorkflowBase } from 'n8n-workflow';
+import { CONSOLE_OUTPUT_REDACTED_MESSAGE } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
-import { DATA_NODE, manualWorkflow, uniqueSecret, webhookWorkflow } from './redaction-helpers';
+import {
+	consoleLogWorkflow,
+	DATA_NODE,
+	manualWorkflow,
+	uniqueSecret,
+	webhookWorkflow,
+} from './redaction-helpers';
 import { expect, test } from '../../../fixtures/base';
 import type { n8nPage } from '../../../pages/n8nPage';
 import { ApiHelpers } from '../../../services/api-helper';
@@ -57,12 +64,12 @@ async function openExecutionOutput(
 ): Promise<Locator> {
 	await n8n.navigate.toExecution(workflowId, executionId);
 	await n8n.executions.openNodeExecutionDetails(DATA_NODE);
-	return n8n.executions.outputPanel.getDataContainer();
+	return n8n.ndv.outputPanel.getDataContainer();
 }
 
 test.describe(
 	'Redaction enforcement',
-	{ annotation: [{ type: 'owner', description: 'Enterprise Node & Partnerships' }] },
+	{ annotation: [{ type: 'owner', description: 'Enterprise Nodes & Partnerships' }] },
 	() => {
 		// The redaction floor is a single instance-global value, so these tests cannot
 		// run in parallel against the shared instance without racing on it. Force serial
@@ -419,6 +426,28 @@ test.describe(
 
 			const executionData = await api.workflows.getExecution(execution.executionId);
 			expect(executionData.data).toContain(execution.secret);
+		});
+
+		test('should redact Code node console output in the editor logs when the policy redacts manual runs', async ({
+			n8n,
+			api,
+		}) => {
+			await api.securitySettings.setRedactionFloor('all');
+			const secret = uniqueSecret();
+			const workflow = await api.workflows.createWorkflow(consoleLogWorkflow({ secret }));
+
+			const consoleMessages: string[] = [];
+			n8n.page.on('console', (msg) => consoleMessages.push(msg.text()));
+
+			await n8n.navigate.toWorkflow(workflow.id);
+			await n8n.workflowComposer.executeWorkflowAndWaitForNotification(
+				'Workflow executed successfully',
+			);
+
+			await expect
+				.poll(() => consoleMessages.some((m) => m.includes(CONSOLE_OUTPUT_REDACTED_MESSAGE)))
+				.toBe(true);
+			expect(consoleMessages.some((m) => m.includes(secret))).toBe(false);
 		});
 	},
 );

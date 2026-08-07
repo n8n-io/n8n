@@ -12,7 +12,7 @@ import {
 	DropdownMenuTrigger,
 } from 'reka-ui';
 import type { ChatHubSessionDto, ChatSessionId } from '@n8n/api-types';
-import { PopOutWindowKey } from '@/app/constants';
+import { PopOutWindowKey } from '@n8n/composables/injectionKeys';
 import { useChatStore } from '../chat.store';
 import { groupConversationsByDate } from '../chat.utils';
 

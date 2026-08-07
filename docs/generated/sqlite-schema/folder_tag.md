@@ -22,11 +22,11 @@ CREATE TABLE "folder_tag" ("folderId" varchar(36) NOT NULL, "tagId" varchar(36) 
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| folderId | PRIMARY KEY | PRIMARY KEY (folderId) |
-| tagId | PRIMARY KEY | PRIMARY KEY (tagId) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (tagId) REFERENCES tag_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (folderId) REFERENCES folder (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| folderId | PRIMARY KEY | PRIMARY KEY (folderId) |
 | sqlite_autoindex_folder_tag_1 | PRIMARY KEY | PRIMARY KEY (folderId, tagId) |
+| tagId | PRIMARY KEY | PRIMARY KEY (tagId) |
 
 ## Indexes
 
@@ -47,17 +47,17 @@ erDiagram
   varchar_36_ tagId PK
 }
 "folder" {
+  datetime_3_ createdAt
   varchar_36_ id PK
   varchar_128_ name
   varchar_36_ parentFolderId FK
   varchar_36_ projectId FK
-  datetime_3_ createdAt
   datetime_3_ updatedAt
 }
 "tag_entity" {
+  datetime_3_ createdAt
   varchar_36_ id PK
   varchar_24_ name
-  datetime_3_ createdAt
   datetime_3_ updatedAt
 }
 ```

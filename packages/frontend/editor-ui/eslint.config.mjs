@@ -127,6 +127,64 @@ export default defineConfig(
 					message:
 						'Do not call workflowsStore.setWorkflowId() — the current workflow id is derived from the route (useWorkflowId())',
 				},
+				// Guard: the legacy execution bridge on workflowsStore resolves by the
+				// global workflow id, which silently reads the wrong instance inside
+				// scoped hosts (execution preview, embedded editors). Read through
+				// injectWorkflowExecutionStateStore() (or the documentId-keyed
+				// useWorkflowExecutionStateStore) instead.
+				{
+					selector:
+						"MemberExpression[property.name='getWorkflowExecution'][object.name='workflowsStore']",
+					message:
+						'Use injectWorkflowExecutionStateStore().value.activeExecution instead of workflowsStore.getWorkflowExecution — the bridge resolves by global workflow id and reads the wrong instance inside scoped hosts',
+				},
+				{
+					selector:
+						"MemberExpression[property.name='workflowExecutionData'][object.name='workflowsStore']",
+					message:
+						'Use injectWorkflowExecutionStateStore().value.activeExecution instead of workflowsStore.workflowExecutionData — the bridge resolves by global workflow id and reads the wrong instance inside scoped hosts',
+				},
+				{
+					selector:
+						"MemberExpression[property.name='getWorkflowRunData'][object.name='workflowsStore']",
+					message:
+						'Use injectWorkflowExecutionStateStore().value.activeExecutionRunData instead of workflowsStore.getWorkflowRunData',
+				},
+				{
+					selector: "MemberExpression[property.name='executedNode'][object.name='workflowsStore']",
+					message:
+						'Use injectWorkflowExecutionStateStore().value.activeExecutionExecutedNode instead of workflowsStore.executedNode',
+				},
+				{
+					selector:
+						"MemberExpression[property.name='workflowExecutionStartedData'][object.name='workflowsStore']",
+					message:
+						'Use injectWorkflowExecutionStateStore().value.activeExecutionStartedData instead of workflowsStore.workflowExecutionStartedData',
+				},
+				{
+					selector:
+						"MemberExpression[property.name='workflowExecutionResultDataLastUpdate'][object.name='workflowsStore']",
+					message:
+						'Use injectWorkflowExecutionStateStore().value.activeExecutionResultDataLastUpdate instead of workflowsStore.workflowExecutionResultDataLastUpdate',
+				},
+				{
+					selector:
+						"MemberExpression[property.name='workflowExecutionPairedItemMappings'][object.name='workflowsStore']",
+					message:
+						'Use injectWorkflowExecutionStateStore().value.activeExecutionPairedItemMappings instead of workflowsStore.workflowExecutionPairedItemMappings',
+				},
+				{
+					selector:
+						"MemberExpression[property.name='lastSuccessfulExecution'][object.name='workflowsStore']",
+					message:
+						'Use injectWorkflowExecutionStateStore().value.lastSuccessfulExecution instead of workflowsStore.lastSuccessfulExecution',
+				},
+				{
+					selector:
+						"MemberExpression[property.name='getWorkflowResultDataByNodeName'][object.name='workflowsStore']",
+					message:
+						'Use injectWorkflowExecutionStateStore().value.getActiveExecutionRunDataByNodeName() instead of workflowsStore.getWorkflowResultDataByNodeName()',
+				},
 			],
 			// TODO: Remove these
 			'n8n-local-rules/no-internal-package-import': 'warn',
@@ -192,9 +250,34 @@ export default defineConfig(
 		},
 	},
 	{
+		files: [
+			'src/**/*.test.ts',
+			'src/**/test/**/*.ts',
+			'src/**/__test__/**/*.ts',
+			'src/**/__tests__/**/*.ts',
+		],
+		rules: {
+			'n8n-local-rules/no-dynamic-regexp': 'off',
+		},
+	},
+	{
 		// Mirrors the `*.stories.ts` exclusion in tsconfig.json — typescript-eslint
 		// can't parse files outside the TS project.
 		ignores: ['src/**/*.stories.ts'],
+	},
+	{
+		// CodeMirror/expression-editor autocomplete builders construct short
+		// prefix-matching regexes from the user's current cursor token. The
+		// patterns are dev-controlled templates wrapped around short keystroke
+		// fragments and run only in the browser against trivially small input.
+		files: [
+			'src/features/shared/editors/components/CodeNodeEditor/**',
+			'src/features/shared/editors/plugins/codemirror/completions/**',
+			'src/features/settings/environments.ee/completions/**',
+		],
+		rules: {
+			'n8n-local-rules/no-dynamic-regexp': 'off',
+		},
 	},
 	...oxlint.buildFromOxlintConfigFile('./.oxlintrc.json'),
 );

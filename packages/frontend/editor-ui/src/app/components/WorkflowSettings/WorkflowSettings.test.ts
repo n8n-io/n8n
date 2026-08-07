@@ -9,11 +9,11 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { createTestWorkflow } from '@/__tests__/mocks';
 import { getDropdownItems, mockedStore, type MockedStore } from '@/__tests__/utils';
 import { EnterpriseEditionFeature } from '@/app/constants';
-import { useRBACStore } from '@/app/stores/rbac.store';
+import { useRBACStore } from '@n8n/stores/rbac.store';
 import WorkflowSettingsVue from '@/app/components/WorkflowSettings/WorkflowSettings.vue';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { Project } from '@/features/collaboration/projects/projects.types';
@@ -30,17 +30,18 @@ const toast = {
 	showError: vi.fn(),
 };
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => toast,
 }));
 
+// The modal is mounted globally, so it can be opened from views whose route has no
+// `workflowId` param (e.g. the AI artifact view). The whole suite runs under that
+// condition: the workflow id must always come from the document store, never the route.
 vi.mock('vue-router', async () => ({
 	useRouter: vi.fn(),
 	useRoute: () =>
 		reactive({
-			params: {
-				workflowId: '1',
-			},
+			params: {},
 			query: {},
 		}),
 	RouterLink: {
@@ -284,7 +285,7 @@ describe('WorkflowSettingsVue', () => {
 			await userEvent.click(getByRole('button', { name: 'Save' }));
 
 			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
-				expect.any(String),
+				'1',
 				expect.objectContaining({
 					settings: expect.objectContaining({
 						customTelemetryTags: [{ key: 'env', value: 'production' }],

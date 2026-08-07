@@ -1,4 +1,8 @@
 name: 'Util: Claude Task Runner'
+# The `task` input is deliberately not in the run name: dispatchers pass large
+# multiline payloads (e.g. a full Linear issue as JSON) that must not appear in
+# the publicly visible run list.
+run-name: 'Util: Claude Task Runner (model=${{ inputs.model }}, ref=${{ inputs.ref }})'
 
 on:
   workflow_dispatch:
@@ -134,8 +138,8 @@ jobs:
           prompt: ${{ env.CLAUDE_PROMPT }}
           show_full_output: ${{ inputs.suppress_output != true }}
           display_report: false
-          plugin_marketplaces: "./.claude/plugins/n8n"
-          plugins: "n8n@n8n"
+          plugin_marketplaces: './.claude/plugins/n8n'
+          plugins: 'n8n@n8n'
           settings: |
             {
               "permissions": {

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/app/constants';

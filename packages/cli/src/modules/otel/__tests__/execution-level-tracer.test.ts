@@ -1,6 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
-import { SpanStatusCode } from '@opentelemetry/api';
-import { mock } from 'jest-mock-extended';
+import { SpanStatusCode, trace } from '@opentelemetry/api';
+import { mock } from 'vitest-mock-extended';
 
 import { ExecutionLevelTracer } from '../execution-level-tracer';
 import type { OtelSettingsService } from '../otel-settings.service';
@@ -157,6 +157,31 @@ describe('ExecutionLevelTracer', () => {
 			expect(spans).toHaveLength(1);
 			expect(spans[0].status.code).toBe(SpanStatusCode.ERROR);
 			expect(spans[0].attributes['n8n.execution.error_type']).toBe('Error');
+		});
+
+		it('should recover execution error type from serialized task runner errors', () => {
+			tracer.startWorkflow({
+				executionId: 'exec-serialized-error',
+				tracingContext: inboundTracingContext,
+				workflow: defaultWorkflow,
+			});
+
+			tracer.endWorkflow({
+				executionId: 'exec-serialized-error',
+				status: 'error',
+				mode: 'manual',
+				error: {
+					message: 'unknown is not defined [line 1]',
+					description: 'ReferenceError',
+					constructor: { name: 'Object' },
+					stack: 'ReferenceError: unknown is not defined',
+				},
+				isRetry: false,
+			});
+
+			const span = otel.getFinishedSpans()[0];
+			expect(span.attributes['n8n.execution.error_type']).toBe('ReferenceError');
+			expect(span.events[0].attributes?.['exception.type']).toBe('ReferenceError');
 		});
 
 		it('should set retry attributes', () => {
@@ -371,6 +396,80 @@ describe('ExecutionLevelTracer', () => {
 			// `recordException` receives the `Error` from `toRecordableException` (not `getErrorType`).
 			expect(nodeSpan.events[0].attributes?.['exception.message']).toBe('connection refused');
 			expect(nodeSpan.events[0].attributes?.['exception.type']).toBe('TypeError');
+		});
+
+		it('should recover exception type from serialized JavaScript task runner errors', () => {
+			tracer.startWorkflow({
+				executionId: 'exec-js-error',
+				tracingContext: inboundTracingContext,
+				workflow: defaultWorkflow,
+			});
+			const codeNode = { id: 'n1', name: 'Code', type: 'n8n-nodes-base.code', typeVersion: 2 };
+			tracer.startNode({
+				executionId: 'exec-js-error',
+				node: codeNode,
+			});
+
+			tracer.endNode({
+				executionId: 'exec-js-error',
+				node: codeNode,
+				inputItemCount: 1,
+				outputItemCount: 0,
+				error: {
+					message: 'unknown is not defined [line 1]',
+					description: 'ReferenceError',
+					constructor: { name: 'Object' },
+					stack: 'ReferenceError: unknown is not defined',
+				},
+			});
+			tracer.endWorkflow({
+				executionId: 'exec-js-error',
+				status: 'error',
+				mode: 'manual',
+				isRetry: false,
+			});
+
+			const nodeSpan = otel.getFinishedSpans().find((s) => s.name === 'node.execute')!;
+			expect(nodeSpan.events[0].attributes?.['exception.message']).toBe(
+				'unknown is not defined [line 1]',
+			);
+			expect(nodeSpan.events[0].attributes?.['exception.type']).toBe('ReferenceError');
+		});
+
+		it('should not record Object as the exception type for serialized Python task runner errors', () => {
+			tracer.startWorkflow({
+				executionId: 'exec-python-error',
+				tracingContext: inboundTracingContext,
+				workflow: defaultWorkflow,
+			});
+			const codeNode = { id: 'n1', name: 'Code', type: 'n8n-nodes-base.code', typeVersion: 2 };
+			tracer.startNode({
+				executionId: 'exec-python-error',
+				node: codeNode,
+			});
+
+			tracer.endNode({
+				executionId: 'exec-python-error',
+				node: codeNode,
+				inputItemCount: 1,
+				outputItemCount: 0,
+				error: {
+					message: 'Intentional error',
+					description: '',
+					constructor: { name: 'Object' },
+					stack: 'Traceback (most recent call last):\nValueError: Intentional error',
+				},
+			});
+			tracer.endWorkflow({
+				executionId: 'exec-python-error',
+				status: 'error',
+				mode: 'manual',
+				isRetry: false,
+			});
+
+			const nodeSpan = otel.getFinishedSpans().find((s) => s.name === 'node.execute')!;
+			expect(nodeSpan.events[0].attributes?.['exception.message']).toBe('Intentional error');
+			expect(nodeSpan.events[0].attributes?.['exception.type']).toBe('UnknownError');
 		});
 
 		it('should warn and not create a span when startNode has no parent workflow span', () => {
@@ -727,6 +826,57 @@ describe('ExecutionLevelTracer', () => {
 				mode: 'webhook',
 				isRetry: false,
 			});
+		});
+	});
+
+	describe('getActiveContext', () => {
+		it('returns a context carrying the node span when one is active', () => {
+			tracer.startWorkflow({ executionId: 'exec-ctx-node', workflow: defaultWorkflow });
+			const node = { id: 'n1', name: 'HTTP', type: 'test', typeVersion: 1 };
+			tracer.startNode({ executionId: 'exec-ctx-node', node });
+
+			const activeContext = tracer.getActiveContext('exec-ctx-node', 'HTTP');
+			expect(activeContext).toBeDefined();
+			const nodeSpanId = trace.getSpan(activeContext!)?.spanContext().spanId;
+
+			tracer.endNode({ executionId: 'exec-ctx-node', node, inputItemCount: 1, outputItemCount: 1 });
+			tracer.endWorkflow({
+				executionId: 'exec-ctx-node',
+				status: 'success',
+				mode: 'manual',
+				isRetry: false,
+			});
+
+			const finishedNodeSpan = otel.getFinishedSpans().find((s) => s.name === 'node.execute')!;
+			expect(nodeSpanId).toBe(finishedNodeSpan.spanContext().spanId);
+		});
+
+		it('falls back to the workflow span when no node name is given, or when the given node name is not found', () => {
+			tracer.startWorkflow({ executionId: 'exec-ctx-wf', workflow: defaultWorkflow });
+
+			const activeContext = tracer.getActiveContext('exec-ctx-wf');
+			expect(activeContext).toBeDefined();
+			const spanId = trace.getSpan(activeContext!)?.spanContext().spanId;
+
+			const fallbackContext = tracer.getActiveContext('exec-ctx-wf', 'UnknownNode');
+			expect(trace.getSpan(fallbackContext!)?.spanContext().spanId).toBe(spanId);
+
+			tracer.endWorkflow({
+				executionId: 'exec-ctx-wf',
+				status: 'success',
+				mode: 'manual',
+				isRetry: false,
+			});
+
+			const finishedWorkflowSpan = otel
+				.getFinishedSpans()
+				.find((s) => s.name === 'workflow.execute')!;
+			expect(spanId).toBe(finishedWorkflowSpan.spanContext().spanId);
+		});
+
+		it('returns undefined when no spans are tracked for the execution', () => {
+			expect(tracer.getActiveContext('non-existent')).toBeUndefined();
+			expect(tracer.getActiveContext('non-existent', 'SomeNode')).toBeUndefined();
 		});
 	});
 });

@@ -16,8 +16,8 @@ CREATE TABLE "settings" ("key"	TEXT NOT NULL,"value"	TEXT NOT NULL DEFAULT '',"l
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | key | TEXT |  | false |  |  |  |
-| value | TEXT | '' | false |  |  |  |
 | loadOnStartup | boolean | false | false |  |  |  |
+| value | TEXT | '' | false |  |  |  |
 
 ## Constraints
 
@@ -40,8 +40,8 @@ erDiagram
 
 "settings" {
   TEXT key PK
-  TEXT value
   boolean loadOnStartup
+  TEXT value
 }
 ```
 

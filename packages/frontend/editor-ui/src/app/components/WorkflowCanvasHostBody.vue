@@ -1,6 +1,8 @@
 <script lang="ts" setup>
 import { computed, onBeforeUnmount, onMounted, watch } from 'vue';
 import { N8nIcon } from '@n8n/design-system';
+import type { IWorkflowDb } from '@/Interface';
+import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import { injectStrict } from '@/app/utils/injectStrict';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import { useWorkflowInitialization } from '@/app/composables/useWorkflowInitialization';
@@ -11,10 +13,17 @@ import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 import { useCanvasStore } from '@/app/stores/canvas.store';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { useWorkflowSaveStore } from '@/app/stores/workflowSave.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
+import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
+import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 
 const props = defineProps<{
 	workflowId: string;
 	refreshKey: number;
+	/** Workflow data to open without a fetch (e.g. an editor hand-off snapshot). Falls back to fetching by id. */
+	initialWorkflow?: IWorkflowDb;
+	/** Execution to display once on open, seeded directly (e.g. an editor hand-off snapshot). */
+	initialExecution?: IExecutionResponse;
 }>();
 
 const emit = defineEmits<{
@@ -30,7 +39,25 @@ const canvasStore = useCanvasStore();
 const nodeCreatorStore = useNodeCreatorStore();
 const workflowSaveStore = useWorkflowSaveStore();
 
-const { isLoading, initializeData, initializeWorkflow, cleanup } = useWorkflowInitialization();
+const { isLoading, initializeData, initializeWorkflow, openWorkflow, cleanup } =
+	useWorkflowInitialization();
+
+/**
+ * Display-only counterpart of the editor's debug-mode execution loading: shows
+ * the hand-off execution snapshot on the canvas. Seeds its per-execution store
+ * and marks it the displayed execution — no fetch, since the editor already had
+ * the run data and handed it over. A live or pending run always wins — it owns
+ * `activeExecutionId`, which we never touch here. Unlike the editor's
+ * `applyExecutionData` it has no debug side effects (node matching, pin-data).
+ */
+function showInitialExecution() {
+	if (!props.initialExecution) return;
+	const executionState = useWorkflowExecutionStateStore(createWorkflowDocumentId(props.workflowId));
+	if (executionState.activeExecutionId !== undefined) return;
+	const { id } = props.initialExecution;
+	useExecutionDataStore(createExecutionDataId(id)).setExecution(props.initialExecution);
+	executionState.setDisplayedExecutionId(id);
+}
 
 // NOTE: push-connection handlers (executionStarted, nodeExecuteAfter, etc.) are
 // initialized today via MainHeader's onBeforeMount calling
@@ -42,7 +69,18 @@ const { isLoading, initializeData, initializeWorkflow, cleanup } = useWorkflowIn
 // Decoupling push init from MainHeader is a follow-up.
 
 async function loadWorkflow(force: boolean) {
-	await initializeWorkflow(force);
+	// One-shot: open the editor hand-off snapshot on the initial mount instead
+	// of fetching. Later refresh-key bumps (e.g. an agent edit) go through the
+	// fetch path so the canvas reflects the saved workflow, not the stale snapshot.
+	if (!force && props.initialWorkflow) {
+		await openWorkflow(props.initialWorkflow);
+		// `openWorkflow` loads the document but doesn't own the loading flag —
+		// `initializeWorkflow` normally clears it — so clear it here or the host
+		// stays in its loading state forever.
+		isLoading.value = false;
+	} else {
+		await initializeWorkflow(force);
+	}
 	if (currentWorkflowDocumentStore.value) {
 		emit('workflow-loaded', props.workflowId);
 	}
@@ -51,6 +89,10 @@ async function loadWorkflow(force: boolean) {
 onMounted(async () => {
 	await initializeData();
 	await loadWorkflow(false);
+	// One-shot: show the hand-off execution only on this initial mount, after the
+	// workflow loads so its run data maps to nodes. Later refresh-key bumps (e.g.
+	// an agent edit) re-load the workflow but must not re-pin this execution.
+	showInitialExecution();
 	emit('ready');
 });
 

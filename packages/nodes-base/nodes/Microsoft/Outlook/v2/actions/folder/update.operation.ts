@@ -35,9 +35,13 @@ export async function execute(this: IExecuteFunctions, index: number) {
 	);
 	const displayName = this.getNodeParameter('displayName', index, undefined) as string;
 
-	const responseData = await microsoftApiRequest.call(this, 'PATCH', `/mailFolders/${folderId}`, {
-		displayName,
-	});
+	const responseData = await microsoftApiRequest.call(
+		this,
+		'PATCH',
+		`/mailFolders/${folderId}`,
+		index,
+		{ displayName },
+	);
 
 	const executionData = this.helpers.constructExecutionMetaData(
 		this.helpers.returnJsonArray(responseData as IDataObject),

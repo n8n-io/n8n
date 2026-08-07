@@ -1,4 +1,4 @@
-import { mock, mockDeep } from 'jest-mock-extended';
+import { mock, mockDeep } from 'vitest-mock-extended';
 import type {
 	ICredentialDataDecryptedObject,
 	IDataObject,
@@ -37,9 +37,9 @@ describe('JiraTrigger', () => {
 
 			return mockDeep<IHookFunctions>({
 				getWorkflowStaticData: () => staticData,
-				getNode: jest.fn(() => mock<INode>({ typeVersion: 1 })),
-				getNodeWebhookUrl: jest.fn(() => 'https://n8n.local/webhook/id'),
-				getNodeParameter: jest.fn((param: string) => {
+				getNode: vi.fn(() => mock<INode>({ typeVersion: 1 })),
+				getNodeWebhookUrl: vi.fn(() => 'https://n8n.local/webhook/id'),
+				getNodeParameter: vi.fn((param: string) => {
 					if (param === 'events') return ['jira:issue_created'];
 					return {};
 				}),
@@ -54,7 +54,7 @@ describe('JiraTrigger', () => {
 		test('should register a webhook subscription on Jira 10', async () => {
 			const trigger = new JiraTrigger();
 
-			const mockExistsRequest = jest
+			const mockExistsRequest = vi
 				.fn()
 				.mockResolvedValueOnce({ versionNumbers: [10, 0, 1] })
 				.mockResolvedValueOnce([]);
@@ -75,7 +75,7 @@ describe('JiraTrigger', () => {
 			expect(staticData.endpoint).toBe('/jira-webhook/1.0/webhooks');
 			expect(exists).toBe(false);
 
-			const mockCreateRequest = jest.fn().mockResolvedValueOnce({ id: 1 });
+			const mockCreateRequest = vi.fn().mockResolvedValueOnce({ id: 1 });
 
 			const created = await trigger.webhookMethods.default?.create.call(
 				mockHookFunctions(mockCreateRequest),
@@ -98,7 +98,7 @@ describe('JiraTrigger', () => {
 			);
 			expect(created).toBe(true);
 
-			const mockDeleteRequest = jest.fn().mockResolvedValueOnce({});
+			const mockDeleteRequest = vi.fn().mockResolvedValueOnce({});
 			const deleted = await trigger.webhookMethods.default?.delete.call(
 				mockHookFunctions(mockDeleteRequest),
 			);
@@ -117,7 +117,7 @@ describe('JiraTrigger', () => {
 		test('should register a webhook subscription on Jira 9', async () => {
 			const trigger = new JiraTrigger();
 
-			const mockExistsRequest = jest
+			const mockExistsRequest = vi
 				.fn()
 				.mockResolvedValueOnce({ versionNumbers: [9, 0, 1] })
 				.mockResolvedValueOnce([]);
@@ -138,7 +138,7 @@ describe('JiraTrigger', () => {
 			expect(staticData.endpoint).toBe('/webhooks/1.0/webhook');
 			expect(exists).toBe(false);
 
-			const mockCreateRequest = jest.fn().mockResolvedValueOnce({ id: 1 });
+			const mockCreateRequest = vi.fn().mockResolvedValueOnce({ id: 1 });
 
 			const created = await trigger.webhookMethods.default?.create.call(
 				mockHookFunctions(mockCreateRequest),
@@ -161,7 +161,7 @@ describe('JiraTrigger', () => {
 			);
 			expect(created).toBe(true);
 
-			const mockDeleteRequest = jest.fn().mockResolvedValueOnce({});
+			const mockDeleteRequest = vi.fn().mockResolvedValueOnce({});
 			const deleted = await trigger.webhookMethods.default?.delete.call(
 				mockHookFunctions(mockDeleteRequest),
 			);
@@ -188,9 +188,9 @@ describe('JiraTrigger', () => {
 			) {
 				return mockDeep<IHookFunctions>({
 					getWorkflowStaticData: () => staticData,
-					getNode: jest.fn(() => mock<INode>({ typeVersion: 1 })),
-					getNodeWebhookUrl: jest.fn(() => 'https://n8n.local/webhook/id'),
-					getNodeParameter: jest.fn((param: string) => {
+					getNode: vi.fn(() => mock<INode>({ typeVersion: 1 })),
+					getNodeWebhookUrl: vi.fn(() => 'https://n8n.local/webhook/id'),
+					getNodeParameter: vi.fn((param: string) => {
 						if (param === 'events') return ['comment_created'];
 						if (param === 'jiraVersion') return 'cloudOAuth2';
 						if (param === 'additionalFields') return { filter: 'project = TEST' };
@@ -205,7 +205,7 @@ describe('JiraTrigger', () => {
 			const baseApiUrl = `https://api.atlassian.com/ex/jira/${cloudId}/rest/api/3/webhook`;
 
 			// checkExists — GET /api/3/webhook
-			const mockExistsRequest = jest
+			const mockExistsRequest = vi
 				.fn()
 				.mockResolvedValueOnce(accessibleResources) // getCloudId call
 				.mockResolvedValueOnce({ isLast: true, maxResults: 50, startAt: 0, total: 0, values: [] });
@@ -230,7 +230,7 @@ describe('JiraTrigger', () => {
 
 			// create — POST /api/3/webhook with Dynamic Webhooks body
 			// cloudId is now cached so no accessible-resources call
-			const mockCreateRequest = jest.fn().mockResolvedValueOnce({
+			const mockCreateRequest = vi.fn().mockResolvedValueOnce({
 				webhookRegistrationResult: [{ createdWebhookId: 1000 }],
 			});
 
@@ -254,7 +254,7 @@ describe('JiraTrigger', () => {
 			expect(staticData.webhookId).toBe('1000');
 
 			// delete — DELETE /api/3/webhook with body {webhookIds: [id]}
-			const mockDeleteRequest = jest.fn().mockResolvedValueOnce({});
+			const mockDeleteRequest = vi.fn().mockResolvedValueOnce({});
 
 			const deleted = await trigger.webhookMethods.default?.delete.call(
 				mockOAuth2HookFunctions(mockDeleteRequest),
@@ -280,7 +280,7 @@ describe('JiraTrigger', () => {
 
 			const expiresAt = new Date(Date.now() + OAUTH2_WEBHOOK_EXPIRY_BUFFER_MS / 2).toISOString();
 
-			const mockRequest = jest
+			const mockRequest = vi
 				.fn()
 				// GET /api/3/webhook — returns a matching webhook near expiry
 				.mockResolvedValueOnce({
@@ -302,9 +302,9 @@ describe('JiraTrigger', () => {
 
 			const hookFns = mockDeep<IHookFunctions>({
 				getWorkflowStaticData: () => staticData,
-				getNode: jest.fn(() => mock<INode>({ typeVersion: 1 })),
-				getNodeWebhookUrl: jest.fn(() => 'https://n8n.local/webhook/id'),
-				getNodeParameter: jest.fn((param: string) => {
+				getNode: vi.fn(() => mock<INode>({ typeVersion: 1 })),
+				getNodeWebhookUrl: vi.fn(() => 'https://n8n.local/webhook/id'),
+				getNodeParameter: vi.fn((param: string) => {
 					if (param === 'events') return ['comment_created'];
 					if (param === 'jiraVersion') return 'cloudOAuth2';
 					return {};
@@ -335,7 +335,7 @@ describe('JiraTrigger', () => {
 
 			const expiresAt = new Date(Date.now() + OAUTH2_WEBHOOK_EXPIRY_BUFFER_MS * 3).toISOString();
 
-			const mockRequest = jest.fn().mockResolvedValueOnce({
+			const mockRequest = vi.fn().mockResolvedValueOnce({
 				isLast: true,
 				maxResults: 50,
 				startAt: 0,
@@ -352,9 +352,9 @@ describe('JiraTrigger', () => {
 
 			const hookFns = mockDeep<IHookFunctions>({
 				getWorkflowStaticData: () => staticData,
-				getNode: jest.fn(() => mock<INode>({ typeVersion: 1 })),
-				getNodeWebhookUrl: jest.fn(() => 'https://n8n.local/webhook/id'),
-				getNodeParameter: jest.fn((param: string) => {
+				getNode: vi.fn(() => mock<INode>({ typeVersion: 1 })),
+				getNodeWebhookUrl: vi.fn(() => 'https://n8n.local/webhook/id'),
+				getNodeParameter: vi.fn((param: string) => {
 					if (param === 'events') return ['comment_created'];
 					if (param === 'jiraVersion') return 'cloudOAuth2';
 					return {};
@@ -459,15 +459,15 @@ describe('JiraTrigger', () => {
 
 			staticData.endpoint = '/api/3/webhook';
 
-			const mockRequest = jest.fn().mockResolvedValueOnce({
+			const mockRequest = vi.fn().mockResolvedValueOnce({
 				webhookRegistrationResult: [{ createdWebhookId: 5000 }],
 			});
 
 			const hookFns = mockDeep<IHookFunctions>({
 				getWorkflowStaticData: () => staticData,
-				getNode: jest.fn(() => mock<INode>({ typeVersion: 1 })),
-				getNodeWebhookUrl: jest.fn(() => 'https://n8n.local/webhook/id'),
-				getNodeParameter: jest.fn((param: string) => {
+				getNode: vi.fn(() => mock<INode>({ typeVersion: 1 })),
+				getNodeWebhookUrl: vi.fn(() => 'https://n8n.local/webhook/id'),
+				getNodeParameter: vi.fn((param: string) => {
 					if (param === 'events') return selectedEvents;
 					if (param === 'jiraVersion') return 'cloudOAuth2';
 					if (param === 'additionalFields') return { filter: 'project = TEST' };
@@ -499,15 +499,15 @@ describe('JiraTrigger', () => {
 
 			staticData.endpoint = '/api/3/webhook';
 
-			const mockRequest = jest.fn().mockResolvedValueOnce({
+			const mockRequest = vi.fn().mockResolvedValueOnce({
 				webhookRegistrationResult: [{ createdWebhookId: 5001 }],
 			});
 
 			const hookFns = mockDeep<IHookFunctions>({
 				getWorkflowStaticData: () => staticData,
-				getNode: jest.fn(() => mock<INode>({ typeVersion: 1 })),
-				getNodeWebhookUrl: jest.fn(() => 'https://n8n.local/webhook/id'),
-				getNodeParameter: jest.fn((param: string) => {
+				getNode: vi.fn(() => mock<INode>({ typeVersion: 1 })),
+				getNodeWebhookUrl: vi.fn(() => 'https://n8n.local/webhook/id'),
+				getNodeParameter: vi.fn((param: string) => {
 					if (param === 'events') return ['*'];
 					if (param === 'jiraVersion') return 'cloudOAuth2';
 					if (param === 'additionalFields') return { filter: 'project = TEST' };
@@ -532,7 +532,7 @@ describe('JiraTrigger', () => {
 
 			staticData.endpoint = '/api/3/webhook';
 
-			const mockRequest = jest
+			const mockRequest = vi
 				.fn()
 				// GET /api/2/project/search — paginated response
 				.mockResolvedValueOnce({
@@ -548,9 +548,9 @@ describe('JiraTrigger', () => {
 
 			const hookFns = mockDeep<IHookFunctions>({
 				getWorkflowStaticData: () => staticData,
-				getNode: jest.fn(() => mock<INode>({ typeVersion: 1 })),
-				getNodeWebhookUrl: jest.fn(() => 'https://n8n.local/webhook/id'),
-				getNodeParameter: jest.fn((param: string) => {
+				getNode: vi.fn(() => mock<INode>({ typeVersion: 1 })),
+				getNodeWebhookUrl: vi.fn(() => 'https://n8n.local/webhook/id'),
+				getNodeParameter: vi.fn((param: string) => {
 					if (param === 'events') return ['jira:issue_created'];
 					if (param === 'jiraVersion') return 'cloudOAuth2';
 					if (param === 'additionalFields') return {};
@@ -576,9 +576,9 @@ describe('JiraTrigger', () => {
 
 			const hookFns = mockDeep<IHookFunctions>({
 				getWorkflowStaticData: () => staticData,
-				getNode: jest.fn(() => mock<INode>({ typeVersion: 1 })),
-				getNodeWebhookUrl: jest.fn(() => 'https://n8n.local/webhook/id'),
-				getNodeParameter: jest.fn((param: string) => {
+				getNode: vi.fn(() => mock<INode>({ typeVersion: 1 })),
+				getNodeWebhookUrl: vi.fn(() => 'https://n8n.local/webhook/id'),
+				getNodeParameter: vi.fn((param: string) => {
 					if (param === 'events') return ['jira:issue_created'];
 					if (param === 'jiraVersion') return 'cloudOAuth2';
 					if (param === 'additionalFields') return {};
@@ -587,7 +587,7 @@ describe('JiraTrigger', () => {
 				}),
 				getCredentials: async <T extends object = ICredentialDataDecryptedObject>() =>
 					({ domain }) as T,
-				helpers: { requestWithAuthentication: jest.fn().mockResolvedValueOnce([]) },
+				helpers: { requestWithAuthentication: vi.fn().mockResolvedValueOnce([]) },
 			});
 
 			await expect(trigger.webhookMethods.default?.create.call(hookFns)).rejects.toThrow(
@@ -601,15 +601,15 @@ describe('JiraTrigger', () => {
 
 			staticData.endpoint = '/api/3/webhook';
 
-			const mockRequest = jest.fn().mockResolvedValueOnce({
+			const mockRequest = vi.fn().mockResolvedValueOnce({
 				webhookRegistrationResult: [{ createdWebhookId: 5003 }],
 			});
 
 			const hookFns = mockDeep<IHookFunctions>({
 				getWorkflowStaticData: () => staticData,
-				getNode: jest.fn(() => mock<INode>({ typeVersion: 1 })),
-				getNodeWebhookUrl: jest.fn(() => 'https://n8n.local/webhook/id'),
-				getNodeParameter: jest.fn((param: string) => {
+				getNode: vi.fn(() => mock<INode>({ typeVersion: 1 })),
+				getNodeWebhookUrl: vi.fn(() => 'https://n8n.local/webhook/id'),
+				getNodeParameter: vi.fn((param: string) => {
 					if (param === 'events') return ['jira:issue_created'];
 					if (param === 'jiraVersion') return 'cloudOAuth2';
 					if (param === 'additionalFields') return { filter: 'project = MYPROJ' };
@@ -635,9 +635,9 @@ describe('JiraTrigger', () => {
 
 			const hookFns = mockDeep<IHookFunctions>({
 				getWorkflowStaticData: () => staticData,
-				getNode: jest.fn(() => mock<INode>({ typeVersion: 1 })),
-				getNodeWebhookUrl: jest.fn(() => 'https://n8n.local/webhook/id'),
-				getNodeParameter: jest.fn((param: string) => {
+				getNode: vi.fn(() => mock<INode>({ typeVersion: 1 })),
+				getNodeWebhookUrl: vi.fn(() => 'https://n8n.local/webhook/id'),
+				getNodeParameter: vi.fn((param: string) => {
 					if (param === 'events') return ['board_created', 'user_deleted'];
 					if (param === 'jiraVersion') return 'cloudOAuth2';
 					if (param === 'additionalFields') return {};
@@ -646,7 +646,7 @@ describe('JiraTrigger', () => {
 				}),
 				getCredentials: async <T extends object = ICredentialDataDecryptedObject>() =>
 					({ domain }) as T,
-				helpers: { requestWithAuthentication: jest.fn() },
+				helpers: { requestWithAuthentication: vi.fn() },
 			});
 
 			await expect(trigger.webhookMethods.default?.create.call(hookFns)).rejects.toThrow(
@@ -665,16 +665,16 @@ describe('JiraTrigger', () => {
 				active: true,
 			};
 
-			const mockExistsRequest = jest
+			const mockExistsRequest = vi
 				.fn()
 				.mockResolvedValueOnce({ versionNumbers: [10, 0, 1] }) // serverInfo
 				.mockResolvedValueOnce([existingWebhook]); // GET webhooks
 
 			const hookFns = mockDeep<IHookFunctions>({
 				getWorkflowStaticData: () => staticData,
-				getNode: jest.fn(() => mock<INode>({ typeVersion: 1 })),
-				getNodeWebhookUrl: jest.fn(() => 'https://n8n.local/webhook/id'),
-				getNodeParameter: jest.fn((param: string) => {
+				getNode: vi.fn(() => mock<INode>({ typeVersion: 1 })),
+				getNodeWebhookUrl: vi.fn(() => 'https://n8n.local/webhook/id'),
+				getNodeParameter: vi.fn((param: string) => {
 					if (param === 'events') return ['*'];
 					return {};
 				}),
@@ -692,7 +692,7 @@ describe('JiraTrigger', () => {
 		test('should register a webhook subscription on Jira Cloud', async () => {
 			const trigger = new JiraTrigger();
 
-			const mockExistsRequest = jest
+			const mockExistsRequest = vi
 				.fn()
 				.mockResolvedValueOnce({ deploymentType: 'Cloud', versionNumbers: [1000, 0, 1] })
 				.mockResolvedValueOnce([]);
@@ -713,7 +713,7 @@ describe('JiraTrigger', () => {
 			expect(staticData.endpoint).toBe('/webhooks/1.0/webhook');
 			expect(exists).toBe(false);
 
-			const mockCreateRequest = jest.fn().mockResolvedValueOnce({ id: 1 });
+			const mockCreateRequest = vi.fn().mockResolvedValueOnce({ id: 1 });
 
 			const created = await trigger.webhookMethods.default?.create.call(
 				mockHookFunctions(mockCreateRequest),
@@ -736,7 +736,7 @@ describe('JiraTrigger', () => {
 			);
 			expect(created).toBe(true);
 
-			const mockDeleteRequest = jest.fn().mockResolvedValueOnce({});
+			const mockDeleteRequest = vi.fn().mockResolvedValueOnce({});
 			const deleted = await trigger.webhookMethods.default?.delete.call(
 				mockHookFunctions(mockDeleteRequest),
 			);

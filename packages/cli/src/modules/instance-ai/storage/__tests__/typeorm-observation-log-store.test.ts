@@ -1,4 +1,4 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { InstanceAiMessage } from '../../entities/instance-ai-message.entity';
 import type { InstanceAiObservation } from '../../entities/instance-ai-observation.entity';

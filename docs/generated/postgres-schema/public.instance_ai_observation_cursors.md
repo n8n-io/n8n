@@ -4,23 +4,23 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| observationScopeId | uuid |  | false |  | [public.instance_ai_threads](public.instance_ai_threads.md) | instance_ai_threads.id source stream checkpointed by this cursor |
-| lastObservedMessageId | varchar(36) |  | false |  |  |  |
-| lastObservedAt | timestamp(3) with time zone |  | false |  |  |  |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
+| lastObservedAt | timestamp(3) with time zone |  | false |  |  |  |
+| lastObservedMessageId | varchar(36) |  | false |  |  |  |
+| observationScopeId | uuid |  | false |  | [public.instance_ai_threads](public.instance_ai_threads.md) | instance_ai_threads.id source stream checkpointed by this cursor |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| FK_5b6319b2e9a37c1064a72428f9a | FOREIGN KEY | FOREIGN KEY ("observationScopeId") REFERENCES instance_ai_threads(id) ON DELETE CASCADE |
+| PK_5b6319b2e9a37c1064a72428f9a | PRIMARY KEY | PRIMARY KEY ("observationScopeId") |
 | instance_ai_observation_cursors_createdAt_not_null | n | NOT NULL "createdAt" |
 | instance_ai_observation_cursors_lastObservedAt_not_null | n | NOT NULL "lastObservedAt" |
 | instance_ai_observation_cursors_lastObservedMessageId_not_null | n | NOT NULL "lastObservedMessageId" |
 | instance_ai_observation_cursors_observationScopeId_not_null | n | NOT NULL "observationScopeId" |
 | instance_ai_observation_cursors_updatedAt_not_null | n | NOT NULL "updatedAt" |
-| FK_5b6319b2e9a37c1064a72428f9a | FOREIGN KEY | FOREIGN KEY ("observationScopeId") REFERENCES instance_ai_threads(id) ON DELETE CASCADE |
-| PK_5b6319b2e9a37c1064a72428f9a | PRIMARY KEY | PRIMARY KEY ("observationScopeId") |
 
 ## Indexes
 
@@ -36,20 +36,20 @@ erDiagram
 "public.instance_ai_observation_cursors" |o--|| "public.instance_ai_threads" : "FOREIGN KEY (#quot;observationScopeId#quot;) REFERENCES instance_ai_threads(id) ON DELETE CASCADE"
 
 "public.instance_ai_observation_cursors" {
-  uuid observationScopeId FK
-  varchar_36_ lastObservedMessageId
-  timestamp_3__with_time_zone lastObservedAt
   timestamp_3__with_time_zone createdAt
+  timestamp_3__with_time_zone lastObservedAt
+  varchar_36_ lastObservedMessageId
+  uuid observationScopeId FK
   timestamp_3__with_time_zone updatedAt
 }
 "public.instance_ai_threads" {
+  timestamp_3__with_time_zone createdAt
   uuid id
+  json metadata
+  varchar_36_ projectId FK
   varchar_255_ resourceId
   text title
-  json metadata
-  timestamp_3__with_time_zone createdAt
   timestamp_3__with_time_zone updatedAt
-  varchar_36_ projectId FK
 }
 ```
 

@@ -22,11 +22,11 @@ CREATE TABLE "chat_hub_agent_tools" ("agentId" varchar NOT NULL, "toolId" varcha
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| agentId | PRIMARY KEY | PRIMARY KEY (agentId) |
-| toolId | PRIMARY KEY | PRIMARY KEY (toolId) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (toolId) REFERENCES chat_hub_tools (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (agentId) REFERENCES chat_hub_agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| agentId | PRIMARY KEY | PRIMARY KEY (agentId) |
 | sqlite_autoindex_chat_hub_agent_tools_1 | PRIMARY KEY | PRIMARY KEY (agentId, toolId) |
+| toolId | PRIMARY KEY | PRIMARY KEY (toolId) |
 
 ## Indexes
 
@@ -47,29 +47,29 @@ erDiagram
   varchar toolId PK
 }
 "chat_hub_agents" {
-  varchar id PK
-  varchar_256_ name
-  varchar_512_ description
-  TEXT systemPrompt
-  varchar ownerId FK
-  varchar_36_ credentialId FK
-  varchar_16_ provider
-  varchar_64_ model
   datetime_3_ createdAt
-  datetime_3_ updatedAt
-  TEXT icon
+  varchar_36_ credentialId FK
+  varchar_512_ description
   TEXT files
+  TEXT icon
+  varchar id PK
+  varchar_64_ model
+  varchar_256_ name
+  varchar ownerId FK
+  varchar_16_ provider
   TEXT suggestedPrompts
+  TEXT systemPrompt
+  datetime_3_ updatedAt
 }
 "chat_hub_tools" {
-  varchar id PK
-  varchar_255_ name
-  varchar_255_ type
-  REAL typeVersion
-  varchar ownerId FK
+  datetime_3_ createdAt
   TEXT definition
   boolean enabled
-  datetime_3_ createdAt
+  varchar id PK
+  varchar_255_ name
+  varchar ownerId FK
+  varchar_255_ type
+  REAL typeVersion
   datetime_3_ updatedAt
 }
 ```

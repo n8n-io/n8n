@@ -2,13 +2,17 @@ import type { IExecuteFunctions } from 'n8n-workflow';
 
 import { execute } from '../../../../v2/actions/rows/update.operation';
 import { apiRequest, apiRequestAllItems } from '../../../../v2/transport';
+import type { Mock } from 'vitest';
+import type * as _importType0 from '../../../../v2/transport/index';
 
-jest.mock('../../../../v2/transport/index', () => {
-	const originalModule = jest.requireActual('../../../../v2/transport/index');
+vi.mock('../../../../v2/transport/index', async () => {
+	const originalModule = await vi.importActual<typeof _importType0>(
+		'../../../../v2/transport/index',
+	);
 	return {
 		...originalModule,
-		apiRequest: { call: jest.fn() },
-		apiRequestAllItems: { call: jest.fn() },
+		apiRequest: { call: vi.fn() },
+		apiRequestAllItems: { call: vi.fn() },
 	};
 });
 
@@ -17,17 +21,17 @@ describe('NocoDB Rows Update Action', () => {
 
 	beforeEach(() => {
 		mockExecuteFunctions = {
-			getNodeParameter: jest.fn(),
-			getInputData: jest.fn(() => [{ json: {} }]),
-			continueOnFail: jest.fn(() => false),
+			getNodeParameter: vi.fn(),
+			getInputData: vi.fn(() => [{ json: {} }]),
+			continueOnFail: vi.fn(() => false),
 			helpers: {
-				returnJsonArray: jest.fn((data) => (Array.isArray(data) ? data : [data])),
-				constructExecutionMetaData: jest.fn((items) => items),
+				returnJsonArray: vi.fn((data) => (Array.isArray(data) ? data : [data])),
+				constructExecutionMetaData: vi.fn((items) => items),
 			},
-			getNode: jest.fn(() => {}),
+			getNode: vi.fn(() => {}),
 		} as unknown as IExecuteFunctions;
-		(apiRequest.call as jest.Mock).mockClear();
-		(apiRequestAllItems.call as jest.Mock).mockClear();
+		(apiRequest.call as Mock).mockClear();
+		(apiRequestAllItems.call as Mock).mockClear();
 	});
 
 	it('should create a row with autoMapInputData', async () => {
@@ -42,7 +46,7 @@ describe('NocoDB Rows Update Action', () => {
 			fields: mockColumnsToInsert,
 		};
 
-		(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation((paramName: string) => {
+		(mockExecuteFunctions.getNodeParameter as Mock).mockImplementation((paramName: string) => {
 			if (paramName === 'projectId') return mockBase;
 			if (paramName === 'table') return mockTable;
 			if (paramName === 'dataToSend') return 'autoMapInputData';
@@ -50,14 +54,14 @@ describe('NocoDB Rows Update Action', () => {
 			if (paramName === 'inputsToIgnore') return '';
 			return undefined;
 		});
-		(mockExecuteFunctions.getInputData as jest.Mock).mockReturnValue([
+		(mockExecuteFunctions.getInputData as Mock).mockReturnValue([
 			{
 				json: {
 					fields: mockColumnsToInsert,
 				},
 			},
 		]);
-		(apiRequest.call as jest.Mock).mockResolvedValue({ records: [mockResponseData] });
+		(apiRequest.call as Mock).mockResolvedValue({ records: [mockResponseData] });
 
 		const result = await execute.call(mockExecuteFunctions);
 
@@ -112,7 +116,7 @@ describe('NocoDB Rows Update Action', () => {
 			fields: mockColumnsToInsert,
 		};
 
-		(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation((paramName: string) => {
+		(mockExecuteFunctions.getNodeParameter as Mock).mockImplementation((paramName: string) => {
 			if (paramName === 'projectId') return mockBase;
 			if (paramName === 'table') return mockTable;
 			if (paramName === 'dataToSend') return 'defineBelow';
@@ -120,13 +124,13 @@ describe('NocoDB Rows Update Action', () => {
 			if (paramName === 'id') return '1';
 			return undefined;
 		});
-		(mockExecuteFunctions.getInputData as jest.Mock).mockReturnValue([
+		(mockExecuteFunctions.getInputData as Mock).mockReturnValue([
 			{
 				json: {},
 			},
 		]);
-		(mockExecuteFunctions.helpers.returnJsonArray as jest.Mock).mockImplementation((data) => data);
-		(apiRequest.call as jest.Mock).mockResolvedValue({ records: [mockResponseData] });
+		(mockExecuteFunctions.helpers.returnJsonArray as Mock).mockImplementation((data) => data);
+		(apiRequest.call as Mock).mockResolvedValue({ records: [mockResponseData] });
 
 		const result = await execute.call(mockExecuteFunctions);
 

@@ -4,6 +4,14 @@ export interface WorkflowLoopGuidanceOptions {
 	workItemId?: string;
 }
 
+function formatSourceFileInstruction(sourceFilePath: string | undefined): string {
+	if (!sourceFilePath) {
+		return 'edit the workspace source file, then call `build-workflow` with that filePath';
+	}
+
+	return `edit workspace source file "${sourceFilePath}", then call \`build-workflow\` with filePath "${sourceFilePath}"`;
+}
+
 export function formatWorkflowLoopGuidance(
 	action: WorkflowLoopAction,
 	options: WorkflowLoopGuidanceOptions = {},
@@ -12,7 +20,7 @@ export function formatWorkflowLoopGuidance(
 		case 'ignored':
 			return `STALE REPORT IGNORED: ${action.reason}`;
 		case 'continue_building':
-			return `SUBMIT FAILED: ${action.reason}. Fix the workflow code and call \`submit-workflow\` again.`;
+			return `BUILD FAILED: ${action.reason}. Fix the workflow source file: ${formatSourceFileInstruction(action.sourceFilePath)}.`;
 		case 'done': {
 			if (action.mockedCredentialTypes?.length || action.hasUnresolvedPlaceholders) {
 				return (
@@ -27,12 +35,14 @@ export function formatWorkflowLoopGuidance(
 		}
 		case 'verify':
 			return (
-				`VERIFY: Inspect the persisted workflow ${action.workflowId} with \`workflows(action="get-json")\` and compare it to the requested outcome. ` +
+				`VERIFY: Inspect the persisted workflow ${action.workflowId} with \`workflows(action="get-as-code", workflowId)\` or read the bound workspace source file, then compare it to the requested outcome. ` +
 				'Build/save success only means a workflow was saved. ' +
-				`If the build had mocked credentials, use \`verify-built-workflow\` with workItemId "${options.workItemId ?? 'unknown'}". ` +
-				'Otherwise use `executions(action="run")`. ' +
+				`Use \`verify-built-workflow\` with workflowId "${action.workflowId ?? 'unknown'}"` +
+				(options.workItemId ? ` and workItemId "${options.workItemId}"` : '') +
+				'; it reuses the build outcome simulation plan and is safe to call multiple times. ' +
+				'For alternate deterministic scenarios, pass `fixtureOverrides` for nodes already classified as simulated. ' +
 				'If it fails, use `executions(action="debug")` to diagnose. ' +
-				'If the saved graph or run evidence is not good enough, report `needs_patch` or `needs_rebuild` and keep patching the same workflow. ' +
+				'If the saved graph or run evidence is not good enough, report `needs_patch` or `needs_rebuild` and keep repairing the same workflow source file. ' +
 				`Then call \`report-verification-verdict\` with workItemId "${options.workItemId ?? 'unknown'}", \`workflowInspection\`, and your findings.`
 			);
 		case 'blocked':
@@ -40,24 +50,17 @@ export function formatWorkflowLoopGuidance(
 		case 'rebuild':
 			return (
 				`REBUILD NEEDED: Workflow "${action.workflowId}" needs structural repair. ` +
-				'Load the `workflow-builder` skill, then call `build-workflow` directly ' +
-				`with \`workflowId: "${action.workflowId}"\` ` +
-				`and \`workItemId: "${options.workItemId ?? 'unknown'}"\` ` +
-				'(no plan — this is a single-task rebuild; `workflowId` and `workItemId` are required ' +
-				'so the builder updates the existing workflow instead of creating a duplicate). ' +
-				`Use SDK code or a targeted patch to apply this structural repair: ${action.failureDetails}`
+				`Load the \`workflow-builder\` skill, ${formatSourceFileInstruction(action.sourceFilePath)}. ` +
+				`Use workflowId "${action.workflowId}" on the first build-workflow call if the file is not already bound, and workItemId "${options.workItemId ?? 'unknown'}" for this repair. ` +
+				`Apply this structural repair in the source file: ${action.failureDetails}`
 			);
 		case 'patch':
 			return (
 				`PATCH NEEDED: Node "${action.failedNodeName}" in workflow ${action.workflowId} needs a targeted fix. ` +
 				`Diagnosis: ${action.diagnosis}. ` +
 				(action.patch ? `Suggested fix: ${JSON.stringify(action.patch)}. ` : '') +
-				'Load the `workflow-builder` skill, then call `build-workflow` directly ' +
-				`with \`workflowId: "${action.workflowId}"\` ` +
-				`and \`workItemId: "${options.workItemId ?? 'unknown'}"\` ` +
-				'(no plan — this is a single-task patch; `workflowId` and `workItemId` are required ' +
-				'so the builder updates the existing workflow instead of creating a duplicate). ' +
-				'Use patch mode when the edit is small.'
+				`Load the \`workflow-builder\` skill, ${formatSourceFileInstruction(action.sourceFilePath)}. ` +
+				`Use workflowId "${action.workflowId}" on the first build-workflow call if the file is not already bound, and workItemId "${options.workItemId ?? 'unknown'}" for this repair.`
 			);
 	}
 }

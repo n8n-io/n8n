@@ -6,18 +6,24 @@ import promClient from 'prom-client';
 import { PrometheusActiveWorkflowMetricsService } from './active-workflow-metrics.service';
 import type { PrometheusMetricsCollector } from './base';
 import { PrometheusCacheMetricsService } from './cache-metrics.service';
+import { PrometheusDbPoolMetricsService } from './db-pool-metrics.service';
 import { PrometheusDefaultMetricsService } from './default-metrics.service';
 import { PrometheusDnsCacheMetricsService } from './dns-cache-metrics.service';
 import { PrometheusEventBusMetricsService } from './event-bus-metrics.service';
 import { PrometheusExecutionDataMetricsService } from './execution-data-metrics.service';
+import { PrometheusInstanceAiMetricsService } from './instance-ai-metrics.service';
 import { PrometheusInstanceRoleMetricsService } from './instance-role-metrics.service';
 import { PrometheusPssMetricsService } from './pss-metrics.service';
 import { PrometheusQueueMetricsService } from './queue-metrics.service';
 import { PrometheusRouteMetricsService } from './route-metrics.service';
+import { PrometheusSchedulerMetricsService } from './scheduler-metrics.service';
 import { PrometheusSsrfMetricsService } from './ssrf-metrics.service';
 import { PrometheusTokenExchangeMetricsService } from './token-exchange-metrics.service';
 import { PrometheusVersionMetricsService } from './version-metrics.service';
+import { PrometheusWebhookAndFormMetricsService } from './webhook-and-form-metrics.service';
 import { PrometheusWorkflowExecutionDurationMetricsService } from './workflow-execution-duration-metrics.service';
+import { PrometheusWorkflowInfoMetricsService } from './workflow-info-metrics.service';
+import { PrometheusWorkflowPublicationMetricsService } from './workflow-publication-metrics.service';
 import { PrometheusWorkflowStatisticsMetricsService } from './workflow-statistics-metrics.service';
 
 @Service()
@@ -43,6 +49,12 @@ export class PrometheusMetricsService {
 		tokenExchange: PrometheusTokenExchangeMetricsService,
 		ssrf: PrometheusSsrfMetricsService,
 		dnsCache: PrometheusDnsCacheMetricsService,
+		webhook: PrometheusWebhookAndFormMetricsService,
+		workflowInfo: PrometheusWorkflowInfoMetricsService,
+		instanceAi: PrometheusInstanceAiMetricsService,
+		dbPool: PrometheusDbPoolMetricsService,
+		workflowPublication: PrometheusWorkflowPublicationMetricsService,
+		scheduler: PrometheusSchedulerMetricsService,
 	) {
 		this.logger = logger.scoped('metrics');
 		this.collectors = [
@@ -61,6 +73,12 @@ export class PrometheusMetricsService {
 			tokenExchange,
 			ssrf,
 			dnsCache,
+			webhook,
+			workflowInfo,
+			instanceAi,
+			dbPool,
+			workflowPublication,
+			scheduler,
 		];
 	}
 

@@ -22,6 +22,8 @@ type EndpointGroup =
 	| 'community-packages'
 	| 'ldap'
 	| 'saml'
+	| 'oidc'
+	| 'otel'
 	| 'sourceControl'
 	| 'eventBus'
 	| 'license'
@@ -39,6 +41,7 @@ type EndpointGroup =
 	| 'project'
 	| 'role'
 	| 'roleMappingRule'
+	| 'provisioning'
 	| 'dynamic-node-parameters'
 	| 'apiKeys'
 	| 'evaluation'
@@ -51,7 +54,9 @@ type EndpointGroup =
 	| 'third-party-licenses'
 	| 'mcp'
 	| 'workflowDependencies'
-	| 'encryption-keys';
+	| 'encryption-keys'
+	| 'workflow-reviews'
+	| 'test-webhooks';
 
 type ModuleName =
 	| 'insights'
@@ -65,13 +70,16 @@ type ModuleName =
 	| 'ldap'
 	| 'redaction'
 	| 'source-control'
-	| 'token-exchange';
+	| 'token-exchange'
+	| 'workflow-reviews';
 
 export interface SetupProps {
 	endpointGroups?: EndpointGroup[];
 	enabledFeatures?: BooleanLicenseFeature[];
 	quotas?: Partial<{ [K in NumericLicenseFeature]: number }>;
 	modules?: ModuleName[];
+	/** Override the default test timeout (ms) for the shared `beforeAll` setup hook. */
+	setupTimeout?: number;
 }
 
 export type SuperAgentTest = TestAgent;

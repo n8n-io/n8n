@@ -1,13 +1,14 @@
 import { generateKeyPairSync } from 'crypto';
-import { mockDeep } from 'jest-mock-extended';
+import { mockDeep } from 'vitest-mock-extended';
 import type { IExecuteFunctions, INodeTypeBaseDescription } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
 import { CryptoV2 } from '../CryptoV2.node';
+import type { Mock, Mocked } from 'vitest';
 
 describe('CryptoV2 Node', () => {
 	let cryptoNode: CryptoV2;
-	let mockExecuteFunctions: jest.Mocked<IExecuteFunctions>;
+	let mockExecuteFunctions: Mocked<IExecuteFunctions>;
 
 	const baseDescription: INodeTypeBaseDescription = {
 		displayName: 'Crypto',
@@ -23,7 +24,7 @@ describe('CryptoV2 Node', () => {
 	beforeEach(() => {
 		cryptoNode = new CryptoV2(baseDescription);
 		mockExecuteFunctions = mockDeep<IExecuteFunctions>();
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		mockExecuteFunctions.getNode.mockReturnValue({
 			id: 'crypto-node',
@@ -129,7 +130,7 @@ describe('CryptoV2 Node', () => {
 					hmacSecret: 'key',
 					signPrivateKey: '',
 				});
-				(mockExecuteFunctions.helpers.assertBinaryData as jest.Mock).mockReturnValue({
+				(mockExecuteFunctions.helpers.assertBinaryData as Mock).mockReturnValue({
 					data: 'dGVzdA==',
 					mimeType: 'text/plain',
 				});

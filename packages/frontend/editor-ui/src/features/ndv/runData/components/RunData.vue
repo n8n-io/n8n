@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useStorage } from '@/app/composables/useStorage';
+import { useStorage } from '@n8n/composables/useStorage';
 import { saveAs } from 'file-saver';
 import NodeSettingsHint from '@/features/ndv/settings/components/NodeSettingsHint.vue';
 import type {
@@ -54,8 +54,8 @@ import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useNodeType } from '@/app/composables/useNodeType';
 import type { PinDataSource, UnpinDataSource } from '@/app/composables/usePinnedData';
 import { usePinnedData } from '@/app/composables/usePinnedData';
-import { useTelemetry } from '@/app/composables/useTelemetry';
-import { useToast } from '@/app/composables/useToast';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { useToast } from '@n8n/composables/useToast';
 import { dataPinningEventBus } from '@/app/event-bus';
 import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
@@ -63,7 +63,7 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { executionDataToJson } from '@/app/utils/nodeTypesUtils';
 import { getGenericHints } from '@/app/utils/nodeViewUtils';
 import { searchInObject } from '@/app/utils/objectUtils';
@@ -232,7 +232,11 @@ const dataContainerRef = ref<HTMLDivElement>();
 const workflowId = useInjectWorkflowId();
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = injectNDVStore();
-const workflowsStore = useWorkflowsStore();
+const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
+const currentExecution = computed(() => workflowExecutionStateStore.value.activeExecution);
+const lastSuccessfulExecution = computed(
+	() => workflowExecutionStateStore.value.lastSuccessfulExecution,
+);
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const sourceControlStore = useSourceControlStore();
 const collaborationStore = useCollaborationStore();
@@ -295,7 +299,7 @@ const hasAnyDataAvailable = computed(() => {
 		node.value?.disabled ||
 		hasPreviewSchema.value ||
 		hasAnyUpstreamExecuted.value ||
-		!!workflowsStore.lastSuccessfulExecution
+		!!lastSuccessfulExecution.value
 	);
 });
 const isSingleNodeView = computed(() => !displaysMultipleNodes.value);
@@ -314,7 +318,7 @@ const shouldShowSchemaView = computed(() => {
 	return (
 		hasNodeRun.value ||
 		hasPreviewSchema.value ||
-		(!hasNodeRun.value && (hasAnyUpstreamExecuted.value || workflowsStore.lastSuccessfulExecution))
+		(!hasNodeRun.value && (hasAnyUpstreamExecuted.value || lastSuccessfulExecution.value))
 	);
 });
 
@@ -420,7 +424,7 @@ const executionHints = computed(() => {
 });
 
 const workflowExecution = computed(
-	() => props.workflowExecution ?? workflowsStore.getWorkflowExecution?.data ?? undefined,
+	() => props.workflowExecution ?? currentExecution.value?.data ?? undefined,
 );
 const workflowRunData = computed(() => {
 	if (workflowExecution.value === undefined) {
@@ -441,7 +445,7 @@ const isTrimmedManualExecutionDataItem = computed(() =>
 );
 
 const isExecutionInTerminalState = computed(() =>
-	isTerminalExecutionStatus(workflowsStore.getWorkflowExecution?.status ?? undefined),
+	isTerminalExecutionStatus(currentExecution.value?.status ?? undefined),
 );
 
 const isExecutionRedacted = computed(
@@ -665,8 +669,6 @@ const isSchemaPreviewEnabled = computed(
 		!(nodeType.value?.codex?.categories ?? []).some((category) => category === CORE_NODES_CATEGORY),
 );
 
-const isNDVV2 = computed(() => true);
-
 const hasPreviewSchema = asyncComputed(async () => {
 	if (!isSchemaPreviewEnabled.value || props.nodes.length === 0) return false;
 	const nodes = props.nodes
@@ -835,24 +837,27 @@ function getResolvedNodeOutputs() {
 function shouldHintBeDisplayed(hint: NodeHint): boolean {
 	const { location, whenToDisplay } = hint;
 
-	if (location) {
-		if (location === 'ndv' && !['input', 'output'].includes(props.paneType)) {
-			return false;
-		}
-		if (location === 'inputPane' && props.paneType !== 'input') {
-			return false;
-		}
+	// 'ndv' hints are node-level, so render them in a single pane only
+	// (the output pane, since trigger nodes have no input pane)
+	if (location === 'ndv' && props.paneType !== 'output') {
+		return false;
+	}
 
-		if (location === 'outputPane' && props.paneType !== 'output') {
-			return false;
-		}
+	if (location === 'inputPane' && props.paneType !== 'input') {
+		return false;
+	}
+
+	if (location === 'outputPane' && props.paneType !== 'output') {
+		return false;
 	}
 
 	if (whenToDisplay === 'afterExecution' && !hasNodeRun.value) {
 		return false;
 	}
 
-	if (whenToDisplay === 'beforeExecution' && hasNodeRun.value) {
+	// 'ndv' hints are configuration-time warnings, so a (possibly stale)
+	// previous run must not hide them permanently
+	if (whenToDisplay === 'beforeExecution' && hasNodeRun.value && location !== 'ndv') {
 		return false;
 	}
 
@@ -967,7 +972,7 @@ function enterEditMode({ origin }: EnterEditModeArgs) {
 		: Object.keys(inputData ?? {}).length;
 
 	const lastSuccessfulExecutionItems = getOutputtedNodeItems(
-		workflowsStore.lastSuccessfulExecution,
+		lastSuccessfulExecution.value,
 		node.value,
 	);
 	previousExecutionDataUsedInEditMode.value =
@@ -1030,7 +1035,7 @@ function onClickSaveEdit() {
 		const clearedValue = clearJsonKey(value) as INodeExecutionData[];
 		try {
 			pinnedData.setData(clearedValue, 'save-edit');
-		} catch (error) {
+		} catch {
 			// setData function already shows toasts on error, so just return here
 			return;
 		}
@@ -1338,9 +1343,7 @@ function init() {
 		emit('displayModeChange', 'schema');
 	}
 
-	if (isNDVV2.value) {
-		pageSize.value = RUN_DATA_DEFAULT_PAGE_SIZE;
-	}
+	pageSize.value = RUN_DATA_DEFAULT_PAGE_SIZE;
 
 	if (props.paneType === 'output') {
 		setDisplayMode();
@@ -1462,7 +1465,6 @@ defineExpose({ enterEditMode });
 			'run-data',
 			$style.container,
 			{
-				[$style['ndv-v2']]: isNDVV2,
 				[$style.compact]: compact,
 				[$style.showActionsOnHover]: showActionsOnHover && !search,
 			},
@@ -1780,7 +1782,6 @@ defineExpose({ enterEditMode });
 				<N8nButton
 					v-if="pinnedData.hasData.value"
 					class="mt-s"
-					type="secondary"
 					size="small"
 					data-test-id="ndv-trimmed-corrupted-unpin"
 					@click="onTogglePinData({ source: 'context-menu' })"
@@ -2182,7 +2183,7 @@ defineExpose({ enterEditMode });
 					:class="$style.schema"
 					:compact="props.compact"
 					:truncate-limit="props.truncateLimit"
-					:preview-execution="workflowsStore.lastSuccessfulExecution"
+					:preview-execution="lastSuccessfulExecution"
 					@clear:search="onSearchClear"
 					@execute="executeNode"
 				/>
@@ -2215,13 +2216,7 @@ defineExpose({ enterEditMode });
 			@update:current-page="onCurrentPageChange"
 			@update:page-size="onPageSizeChange"
 		/>
-		<N8nBlockUi
-			:show="blockUI"
-			:class="{
-				[$style.uiBlocker]: true,
-				[$style.uiBlockerNdvV2]: isNDVV2,
-			}"
-		/>
+		<N8nBlockUi :show="blockUI" :class="$style.uiBlocker" />
 	</div>
 </template>
 
@@ -2246,7 +2241,7 @@ defineExpose({ enterEditMode });
 }
 
 .container {
-	--ndv--spacing: var(--spacing--sm);
+	--ndv--spacing: var(--spacing--2xs);
 	position: relative;
 	width: 100%;
 	height: 100%;
@@ -2269,6 +2264,10 @@ defineExpose({ enterEditMode });
 	margin-bottom: var(--ndv--spacing);
 	padding: var(--ndv--spacing) var(--spacing--3xs) 0 var(--ndv--spacing);
 	position: relative;
+	/* Scroll overflowing header controls within the header itself, so they stay
+	   reachable on narrow panels without dragging the whole panel's background along */
+	overflow-x: auto;
+	overflow-y: hidden;
 	min-height: calc(30px + var(--ndv--spacing));
 	scrollbar-width: thin;
 	container-type: inline-size;
@@ -2345,14 +2344,10 @@ defineExpose({ enterEditMode });
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
-	padding-left: var(--ndv--spacing);
+	padding-left: var(--spacing--xs);
 	padding-right: var(--ndv--spacing);
 	padding-bottom: var(--ndv--spacing);
 	flex-flow: wrap;
-}
-
-.ndv-v2 .itemsCount {
-	padding-left: var(--spacing--xs);
 }
 
 .inputSelect {
@@ -2476,11 +2471,6 @@ defineExpose({ enterEditMode });
 }
 
 .uiBlocker {
-	border-top-left-radius: 0;
-	border-bottom-left-radius: 0;
-}
-
-.uiBlockerNdvV2 {
 	border-radius: 0;
 }
 
@@ -2550,11 +2540,6 @@ defineExpose({ enterEditMode });
 		visibility: hidden;
 		width: 0;
 	}
-}
-
-.ndv-v2,
-.compact {
-	--ndv--spacing: var(--spacing--2xs);
 }
 
 .dataSizeWarning {

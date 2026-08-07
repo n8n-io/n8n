@@ -2,38 +2,39 @@ import type { IDataObject, IWebhookFunctions } from 'n8n-workflow';
 
 import { FigmaTrigger } from '../FigmaTrigger.node';
 import { verifySignature } from '../FigmaTriggerHelpers';
+import type { Mock } from 'vitest';
 
-jest.mock('../FigmaTriggerHelpers', () => ({
-	verifySignature: jest.fn(),
+vi.mock('../FigmaTriggerHelpers', () => ({
+	verifySignature: vi.fn(),
 }));
 
 describe('FigmaTrigger', () => {
 	let trigger: FigmaTrigger;
 	let mockWebhookFunctions: Partial<IWebhookFunctions>;
-	let mockResponse: { status: jest.Mock; send: jest.Mock; end: jest.Mock };
+	let mockResponse: { status: Mock; send: Mock; end: Mock };
 
 	beforeEach(() => {
 		trigger = new FigmaTrigger();
 		mockResponse = {
-			status: jest.fn().mockReturnThis(),
-			send: jest.fn().mockReturnThis(),
-			end: jest.fn().mockReturnThis(),
+			status: vi.fn().mockReturnThis(),
+			send: vi.fn().mockReturnThis(),
+			end: vi.fn().mockReturnThis(),
 		};
 
 		mockWebhookFunctions = {
-			getBodyData: jest.fn(),
-			getResponseObject: jest.fn().mockReturnValue(mockResponse),
+			getBodyData: vi.fn(),
+			getResponseObject: vi.fn().mockReturnValue(mockResponse),
 			helpers: {
-				returnJsonArray: jest.fn((data) => data),
+				returnJsonArray: vi.fn((data) => data),
 			} as unknown as IWebhookFunctions['helpers'],
 		};
 
-		(verifySignature as jest.Mock).mockReturnValue(true);
+		(verifySignature as Mock).mockReturnValue(true);
 	});
 
 	describe('webhook', () => {
 		it('should return 401 when verification fails', async () => {
-			(verifySignature as jest.Mock).mockReturnValue(false);
+			(verifySignature as Mock).mockReturnValue(false);
 
 			const result = await trigger.webhook.call(mockWebhookFunctions as IWebhookFunctions);
 
@@ -50,7 +51,7 @@ describe('FigmaTrigger', () => {
 				webhook_id: '22',
 			};
 
-			(mockWebhookFunctions.getBodyData as jest.Mock).mockReturnValue(bodyData);
+			(mockWebhookFunctions.getBodyData as Mock).mockReturnValue(bodyData);
 
 			const result = await trigger.webhook.call(mockWebhookFunctions as IWebhookFunctions);
 
@@ -68,7 +69,7 @@ describe('FigmaTrigger', () => {
 				webhook_id: '22',
 			};
 
-			(mockWebhookFunctions.getBodyData as jest.Mock).mockReturnValue(bodyData);
+			(mockWebhookFunctions.getBodyData as Mock).mockReturnValue(bodyData);
 
 			const result = await trigger.webhook.call(mockWebhookFunctions as IWebhookFunctions);
 
@@ -77,7 +78,7 @@ describe('FigmaTrigger', () => {
 		});
 
 		it('should trigger workflow when no secret is configured (backward compatibility)', async () => {
-			(verifySignature as jest.Mock).mockReturnValue(true);
+			(verifySignature as Mock).mockReturnValue(true);
 
 			const bodyData: IDataObject = {
 				event_type: 'FILE_COMMENT',
@@ -86,7 +87,7 @@ describe('FigmaTrigger', () => {
 				webhook_id: '22',
 			};
 
-			(mockWebhookFunctions.getBodyData as jest.Mock).mockReturnValue(bodyData);
+			(mockWebhookFunctions.getBodyData as Mock).mockReturnValue(bodyData);
 
 			const result = await trigger.webhook.call(mockWebhookFunctions as IWebhookFunctions);
 

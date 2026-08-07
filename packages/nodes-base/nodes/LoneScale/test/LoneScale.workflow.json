@@ -1,0 +1,136 @@
+{
+	"name": "LoneScale Node Unit Test",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "5e3a0f7c-0000-4000-8000-000000000001",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "contact",
+				"operation": "enrich",
+				"enrichmentType": ["email"],
+				"firstName": "Tim",
+				"lastName": "Cook",
+				"enrichCompanyDomain": "apple.com"
+			},
+			"id": "5e3a0f7c-0000-4000-8000-000000000002",
+			"name": "LoneScale Enrich",
+			"type": "n8n-nodes-base.loneScale",
+			"typeVersion": 1,
+			"position": [240, -200],
+			"credentials": {
+				"loneScaleApi": {
+					"id": "1",
+					"name": "LoneScale account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "contact",
+				"operation": "source",
+				"sourceCompanyDomain": "stripe.com",
+				"personas": {
+					"persona": [
+						{
+							"name": "Sales",
+							"jobTitles": "Head of Sales"
+						}
+					]
+				}
+			},
+			"id": "5e3a0f7c-0000-4000-8000-000000000003",
+			"name": "LoneScale Source",
+			"type": "n8n-nodes-base.loneScale",
+			"typeVersion": 1,
+			"position": [240, 0],
+			"credentials": {
+				"loneScaleApi": {
+					"id": "1",
+					"name": "LoneScale account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "company",
+				"operation": "search",
+				"searchDomain": "stripe.com"
+			},
+			"id": "5e3a0f7c-0000-4000-8000-000000000004",
+			"name": "LoneScale Search",
+			"type": "n8n-nodes-base.loneScale",
+			"typeVersion": 1,
+			"position": [240, 200],
+			"credentials": {
+				"loneScaleApi": {
+					"id": "1",
+					"name": "LoneScale account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"LoneScale Enrich": [
+			{
+				"json": {
+					"firstName": "Tim",
+					"lastName": "Cook",
+					"email": "tim@apple.com"
+				}
+			}
+		],
+		"LoneScale Source": [
+			{
+				"json": {
+					"lonescale_full_name": "Jane Doe",
+					"lonescale_job_title": "Head of Sales"
+				}
+			}
+		],
+		"LoneScale Search": [
+			{
+				"json": {
+					"name": "Stripe",
+					"domain": "stripe.com"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "LoneScale Enrich",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "LoneScale Source",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "LoneScale Search",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "00000000-0000-4000-8000-000000000000",
+	"id": "LoneScaleUnitTest",
+	"meta": {},
+	"tags": []
+}

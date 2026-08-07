@@ -61,8 +61,9 @@ export class ApiKeysController {
 		};
 	}
 
-	// `apiKey:manage` callers see every key by default; `ownership=mine` narrows to own.
-	@GlobalScope('apiKey:list')
+	// Every authenticated user may list their own keys. The service only
+	// includes other users' keys for `apiKey:manage` callers; `ownership=mine`
+	// narrows back to own.
 	@Get('/', { middlewares: [isApiEnabledMiddleware] })
 	async getApiKeys(req: AuthenticatedRequest, _res: Response, @Query query: ListApiKeysQueryDto) {
 		return await this.publicApiKeyService.getRedactedApiKeys(req.user, {
@@ -70,12 +71,13 @@ export class ApiKeysController {
 			skip: query.skip,
 			ownership: query.ownership,
 			label: query.label,
+			ownerIds: query.ownerIds,
 			sortBy: query.sortBy,
 		});
 	}
 
-	// Members can delete their own keys; `apiKey:manage` holders can revoke anyone's.
-	@GlobalScope('apiKey:delete')
+	// No role scope required: own keys are always revocable. The service
+	// restricts deleting other users' keys to `apiKey:manage` holders.
 	@Delete('/:id', { middlewares: [isApiEnabledMiddleware] })
 	async deleteApiKey(req: AuthenticatedRequest, _res: Response, @Param('id') apiKeyId: string) {
 		const { isOwn } = await this.publicApiKeyService.deleteApiKey(req.user, apiKeyId);
@@ -107,7 +109,24 @@ export class ApiKeysController {
 		return { success: true };
 	}
 
-	@GlobalScope('apiKey:list')
+	// Owner-only — re-issues the secret in place, keeping label, scopes and expiry.
+	@GlobalScope('apiKey:update')
+	@Post('/:id/rotate', { middlewares: [isApiEnabledMiddleware] })
+	async rotateApiKey(req: AuthenticatedRequest, _res: Response, @Param('id') apiKeyId: string) {
+		const rotatedApiKey = await this.publicApiKeyService.rotateApiKey(req.user, apiKeyId);
+
+		this.eventService.emit('public-api-key-rotated', { user: req.user, publicApi: false });
+
+		return {
+			...rotatedApiKey,
+			apiKey: this.publicApiKeyService.redactApiKey(rotatedApiKey.apiKey),
+			rawApiKey: rotatedApiKey.apiKey,
+			expiresAt: this.publicApiKeyService.getApiKeyExpiration(rotatedApiKey.apiKey),
+		};
+	}
+
+	// No role scope required: returns the scopes the caller's role can assign
+	// to a key — empty-ish for roles without apiKey grants.
 	@Get('/scopes', { middlewares: [isApiEnabledMiddleware] })
 	async getApiKeyScopes(req: AuthenticatedRequest, _res: Response) {
 		const scopes = getApiKeyScopesForRole(req.user);

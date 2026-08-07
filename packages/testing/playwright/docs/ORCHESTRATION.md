@@ -130,10 +130,10 @@ echo "$MATRIX_SPECS" | janitor filter-shard
 ## Refreshing Metrics
 
 ```bash
-CURRENTS_API_KEY=<key> node packages/testing/playwright/scripts/fetch-currents-metrics.mjs --project=<id>
+CURRENTS_API_KEY=<key> node packages/testing/playwright/scripts/fetch-currents-metrics.mjs --project=nHHLA5
 ```
 
-This fetches the last 30 days of test durations from Currents, aggregates by spec, and writes to `.github/test-metrics/playwright.json`.
+This fetches the last 30 days of test durations from Currents, aggregates by spec, and writes to `.github/test-metrics/playwright.json`. The PR-CI project is `nHHLA5` (n8n-ci); the legacy `LRxcNt` project still backs the nightly e2e workflows.
 
 **When to refresh:**
 - Weekly (recommended)

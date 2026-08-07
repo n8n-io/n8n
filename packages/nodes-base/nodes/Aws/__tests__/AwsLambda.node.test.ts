@@ -1,22 +1,23 @@
-import { mockDeep } from 'jest-mock-extended';
+import { mockDeep } from 'vitest-mock-extended';
 import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 import { AwsLambda } from '../AwsLambda.node';
 import * as GenericFunctions from '../GenericFunctions';
+import type { Mock, Mocked, MockInstance } from 'vitest';
 
 describe('AwsLambda', () => {
 	let node: AwsLambda;
-	let mockExecuteFunctions: jest.Mocked<IExecuteFunctions>;
-	let mockLoadOptionsFunctions: jest.Mocked<ILoadOptionsFunctions>;
-	let awsApiRequestRESTSpy: jest.SpyInstance;
+	let mockExecuteFunctions: Mocked<IExecuteFunctions>;
+	let mockLoadOptionsFunctions: Mocked<ILoadOptionsFunctions>;
+	let awsApiRequestRESTSpy: MockInstance;
 
 	beforeEach(() => {
 		node = new AwsLambda();
 		mockExecuteFunctions = mockDeep<IExecuteFunctions>();
 		mockLoadOptionsFunctions = mockDeep<ILoadOptionsFunctions>();
-		jest.clearAllMocks();
-		awsApiRequestRESTSpy = jest.spyOn(GenericFunctions, 'awsApiRequestREST');
+		vi.clearAllMocks();
+		awsApiRequestRESTSpy = vi.spyOn(GenericFunctions, 'awsApiRequestREST');
 
 		mockExecuteFunctions.getInputData.mockReturnValue([{ json: {} }]);
 		mockExecuteFunctions.getNode.mockReturnValue({
@@ -27,7 +28,7 @@ describe('AwsLambda', () => {
 			position: [0, 0],
 			parameters: {},
 		});
-		(mockExecuteFunctions.helpers.constructExecutionMetaData as jest.Mock).mockImplementation(
+		(mockExecuteFunctions.helpers.constructExecutionMetaData as Mock).mockImplementation(
 			(data: any, meta: any) => {
 				return [
 					{
@@ -37,13 +38,13 @@ describe('AwsLambda', () => {
 				];
 			},
 		);
-		(mockExecuteFunctions.helpers.returnJsonArray as jest.Mock).mockImplementation((data: any) => [
+		(mockExecuteFunctions.helpers.returnJsonArray as Mock).mockImplementation((data: any) => [
 			{ json: data },
 		]);
 	});
 
 	afterEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	describe('Load Options Methods', () => {

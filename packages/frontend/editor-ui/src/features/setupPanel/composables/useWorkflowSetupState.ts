@@ -6,6 +6,7 @@ import type { SetupCardItem, NodeSetupState } from '@/features/setupPanel/setupP
 import { isCardComplete } from '@/features/setupPanel/setupPanel.utils';
 
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import {
 	useCredentialsStore,
 	listenForCredentialChanges,
@@ -13,7 +14,10 @@ import {
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useEnvironmentsStore } from '@/features/settings/environments.ee/environments.store';
-import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import {
+	injectWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 
 import {
 	getNodeCredentialTypes,
@@ -229,8 +233,10 @@ export const useWorkflowSetupState = (
 	};
 
 	const hasTriggerExecutedSuccessfully = (nodeName: string): boolean => {
-		const runData = workflowsStore.getWorkflowResultDataByNodeName(nodeName);
-		return runData !== null && runData.length > 0;
+		const runData = useWorkflowExecutionStateStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		).getActiveExecutionRunDataByNodeName(nodeName);
+		return Array.isArray(runData) && runData.length > 0;
 	};
 
 	/**

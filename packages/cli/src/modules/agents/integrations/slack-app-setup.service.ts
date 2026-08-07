@@ -6,9 +6,11 @@ import type {
 	SlackAgentAppManifest,
 	SlackAgentAppManifestResponse,
 } from '@n8n/api-types';
+import { OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { isRecord } from '@n8n/utils/is-record';
 import { Cipher } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
 
@@ -18,7 +20,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { CacheService } from '@/services/cache/cache.service';
 import { UrlService } from '@/services/url.service';
 
-import { AgentsService } from '../agents.service';
+import { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
 import type { Agent } from '../entities/agent.entity';
 import { AgentRepository } from '../repositories/agent.repository';
 import { ChatIntegrationService } from './chat-integration.service';
@@ -57,6 +59,7 @@ const REQUIRED_BOT_SCOPES = [
 	'mpim:history',
 	'mpim:read',
 	'mpim:write',
+	'reactions:write',
 	'search:read.public',
 	'users:read',
 	'users:read.email',
@@ -90,10 +93,6 @@ interface SlackAppSetupSession {
 	clientSecret: string;
 	signingSecret: string;
 	redirectUrl: string;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
 function childRecord(
@@ -134,9 +133,10 @@ export class SlackAppSetupService {
 		private readonly credentialsService: CredentialsService,
 		private readonly userRepository: UserRepository,
 		private readonly agentRepository: AgentRepository,
-		private readonly agentsService: AgentsService,
+		private readonly agentIntegrationPersistenceService: AgentIntegrationPersistenceService,
 		private readonly chatIntegrationService: ChatIntegrationService,
 		private readonly urlService: UrlService,
+		private readonly outboundHttp: OutboundHttp,
 	) {}
 
 	async createApp(options: CreateSlackAppOptions): Promise<CreateSlackAgentAppResponse> {
@@ -255,16 +255,18 @@ export class SlackAppSetupService {
 			credentialId: credential.id,
 		} satisfies AgentIntegrationConfig;
 
-		await this.agentsService.saveCredentialIntegration(agent, integration, { broadcast: false });
-		await this.agentsService.publishAgent(session.agentId, session.projectId, user, undefined, {
-			syncIntegrations: false,
-		});
-		await this.chatIntegrationService.connect(
-			session.agentId,
+		const savedAgent = await this.agentIntegrationPersistenceService.saveCredentialIntegration(
+			agent,
 			integration,
-			session.userId,
-			session.projectId,
+			{
+				user,
+				modifiedBy: 'user',
+				broadcast: false,
+			},
 		);
+		if (savedAgent.activeVersionId === null) return;
+
+		await this.chatIntegrationService.connect(session.agentId, integration, session.projectId);
 		await this.chatIntegrationService.broadcastIntegrationChange(
 			session.agentId,
 			integration,
@@ -292,7 +294,7 @@ export class SlackAppSetupService {
 			},
 			features: {
 				app_home: {
-					home_tab_enabled: true,
+					home_tab_enabled: false,
 					messages_tab_enabled: true,
 					messages_tab_read_only_enabled: false,
 				},
@@ -384,15 +386,22 @@ export class SlackAppSetupService {
 		headers: Record<string, string> = {},
 	): Promise<Record<string, unknown>> {
 		try {
-			const response = await fetch(`https://slack.com/api/${method}`, {
-				method: 'POST',
-				headers: {
-					...headers,
-					'Content-Type': 'application/x-www-form-urlencoded',
-				},
-				body: new URLSearchParams(params).toString(),
-			});
-			const data: unknown = await response.json();
+			const response = await this.outboundHttp
+				.requests({
+					ssrf: 'disabled', // the Slack API host is fixed and public
+				})
+				.request({
+					method: 'POST',
+					url: `https://slack.com/api/${method}`,
+					headers: {
+						...headers,
+						'Content-Type': 'application/x-www-form-urlencoded',
+					},
+					body: params,
+					returnFullResponse: true,
+					ignoreHttpStatusErrors: true, // Status errors are ignored because Slack signals failures in the JSON body
+				});
+			const data: unknown = response.body;
 			if (!isRecord(data)) {
 				return { ok: false, error: 'invalid_response' };
 			}

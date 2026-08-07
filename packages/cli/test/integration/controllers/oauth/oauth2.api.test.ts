@@ -1,4 +1,6 @@
 import { createTeamProject, linkUserToProject, testDb } from '@n8n/backend-test-utils';
+import { SsrfProtectionService } from '@n8n/backend-network';
+import { SsrfProtectionConfig } from '@n8n/config';
 import type { CredentialsEntity, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { response as Response } from 'express';
@@ -7,7 +9,9 @@ import { parse as parseQs } from 'querystring';
 
 import { CredentialsHelper } from '@/credentials-helper';
 import { ExternalHooks } from '@/external-hooks';
-import { OauthService } from '@/oauth/oauth.service';
+import { OauthService, type OauthFlowState } from '@/oauth/oauth.service';
+import { MAX_CSRF_AGE } from '@/oauth/types';
+import { CacheService } from '@/services/cache/cache.service';
 import {
 	decryptCredentialData,
 	getCredentialById,
@@ -58,7 +62,7 @@ describe('OAuth2 API', () => {
 	});
 
 	afterEach(() => {
-		jest.restoreAllMocks();
+		vi.restoreAllMocks();
 	});
 
 	it('should return a valid auth URL when the auth flow is initiated', async () => {
@@ -79,22 +83,23 @@ describe('OAuth2 API', () => {
 			scope: 'openid',
 		});
 
-		// Verify state is base64-encoded and contains expected structure
+		// Verify state is base64-encoded and contains expected structure. The CSRF
+		// payload now lives server-side in the per-flow cache, so the URL state carries
+		// only the signed token and timestamp.
 		expect(queryParams.state).toBeDefined();
 		const decodedState = JSON.parse(Buffer.from(queryParams.state as string, 'base64').toString());
 		expect(decodedState).toMatchObject({
 			token: expect.any(String),
 			createdAt: expect.any(Number),
-			data: expect.any(String), // Encrypted CSRF data
 		});
+		expect(decodedState.data).toBeUndefined();
 	});
 
 	it('should allow external hook to modify oAuthOptions and state', async () => {
 		const externalHooks = Container.get(ExternalHooks);
-		const oauthService = Container.get(OauthService);
 
 		// Mock the external hook to modify both redirectUri and state
-		const hookSpy = jest.fn(async function (oAuthOptions) {
+		const hookSpy = vi.fn(async function (oAuthOptions) {
 			// Modify redirectUri directly in oAuthOptions
 			oAuthOptions.redirectUri = 'https://custom.domain/callback';
 
@@ -129,18 +134,21 @@ describe('OAuth2 API', () => {
 		expect(decodedState.host).toBe('custom.host.com');
 		expect(decodedState.token).toBeDefined();
 		expect(decodedState.createdAt).toBeDefined();
-		expect(decodedState.data).toBeDefined();
+		// The CSRF payload is no longer carried in the URL.
+		expect(decodedState.data).toBeUndefined();
 
-		// Decrypt the data field and verify original CSRF data is preserved
-		const decryptedData = JSON.parse(oauthService['cipher'].decrypt(decodedState.data));
-		expect(decryptedData.cid).toBe(credential.id);
-		expect(decryptedData.userId).toBe(owner.id);
+		// The original CSRF data is preserved server-side in the per-flow cache.
+		const flowState = await Container.get(CacheService).get<OauthFlowState>(
+			`oauth:flow:${decodedState.token}`,
+		);
+		expect(flowState?.stateData?.cid).toBe(credential.id);
+		expect(flowState?.stateData?.userId).toBe(owner.id);
 	});
 
 	it('should fail on auth when callback is called as another user', async () => {
 		const oauthService = Container.get(OauthService);
-		const csrfSpy = jest.spyOn(oauthService, 'createCsrfState').mockClear();
-		const renderSpy = jest.spyOn(Response, 'render').mockImplementation(function (this: any) {
+		const csrfSpy = vi.spyOn(oauthService, 'createCsrfState').mockClear();
+		const renderSpy = vi.spyOn(Response, 'render').mockImplementation(function (this: any) {
 			this.end();
 			return this;
 		});
@@ -165,7 +173,7 @@ describe('OAuth2 API', () => {
 		// an n8n session (so external/dynamic-credential OAuth flows complete) while the handler
 		// still enforces session-bound validation for static credentials.
 		it('should reach the handler when called without authentication', async () => {
-			const renderSpy = jest.spyOn(Response, 'render').mockImplementation(function (this: any) {
+			const renderSpy = vi.spyOn(Response, 'render').mockImplementation(function (this: any) {
 				this.end();
 				return this;
 			});
@@ -185,8 +193,8 @@ describe('OAuth2 API', () => {
 
 		it('should reject an unauthenticated callback for a static credential', async () => {
 			const oauthService = Container.get(OauthService);
-			const csrfSpy = jest.spyOn(oauthService, 'createCsrfState').mockClear();
-			const renderSpy = jest.spyOn(Response, 'render').mockImplementation(function (this: any) {
+			const csrfSpy = vi.spyOn(oauthService, 'createCsrfState').mockClear();
+			const renderSpy = vi.spyOn(Response, 'render').mockImplementation(function (this: any) {
 				this.end();
 				return this;
 			});
@@ -208,8 +216,8 @@ describe('OAuth2 API', () => {
 
 	it('should handle a valid callback without auth', async () => {
 		const oauthService = Container.get(OauthService);
-		const csrfSpy = jest.spyOn(oauthService, 'createCsrfState').mockClear();
-		const renderSpy = jest.spyOn(Response, 'render').mockImplementation(function (this: any) {
+		const csrfSpy = vi.spyOn(oauthService, 'createCsrfState').mockClear();
+		const renderSpy = vi.spyOn(Response, 'render').mockImplementation(function (this: any) {
 			this.end();
 			return this;
 		});
@@ -242,7 +250,7 @@ describe('OAuth2 API', () => {
 
 	describe('per-flow state isolation', () => {
 		const renderCallback = () =>
-			jest.spyOn(Response, 'render').mockImplementation(function (this: any) {
+			vi.spyOn(Response, 'render').mockImplementation(function (this: any) {
 				this.end();
 				return this;
 			});
@@ -266,7 +274,7 @@ describe('OAuth2 API', () => {
 			const editorBAgent = testServer.authAgentFor(editorB);
 
 			const oauthService = Container.get(OauthService);
-			const csrfSpy = jest.spyOn(oauthService, 'createCsrfState').mockClear();
+			const csrfSpy = vi.spyOn(oauthService, 'createCsrfState').mockClear();
 			renderCallback();
 
 			// Both users initiate /auth back-to-back. Under the old behavior the second
@@ -302,7 +310,7 @@ describe('OAuth2 API', () => {
 
 		it('rejects a replayed callback (state token already consumed)', async () => {
 			const oauthService = Container.get(OauthService);
-			const csrfSpy = jest.spyOn(oauthService, 'createCsrfState').mockClear();
+			const csrfSpy = vi.spyOn(oauthService, 'createCsrfState').mockClear();
 			const renderSpy = renderCallback();
 
 			await ownerAgent.get('/oauth2-credential/auth').query({ id: credential.id }).expect(200);
@@ -434,18 +442,17 @@ describe('OAuth2 API', () => {
 			await shareCredentialWithUsers(credential, [sharee]);
 
 			const oauthService = Container.get(OauthService);
-			const renderSpy = jest.spyOn(Response, 'render').mockImplementation(function (this: any) {
+			const renderSpy = vi.spyOn(Response, 'render').mockImplementation(function (this: any) {
 				this.end();
 				return this;
 			});
 
-			// Build a callback state whose decrypted userId equals the requesting member,
-			// so the userId equality check inside decodeCsrfState passes and the credential
-			// scope check is the only remaining gate. The owner-initiated /auth call below
-			// produces a valid encrypted state; we then re-encrypt its contents with the
-			// member's userId before driving the callback as the member.
+			// Make the flow's stored userId equal the requesting member, so the userId
+			// equality check inside decodeCsrfState passes and the credential scope check
+			// is the only remaining gate. The CSRF payload lives server-side in the
+			// per-flow cache now, so we rewrite the cached stateData (rather than the URL).
 			const ownerAgentForSetup = testServer.authAgentFor(owner);
-			const csrfSpy = jest.spyOn(oauthService, 'createCsrfState').mockClear();
+			const csrfSpy = vi.spyOn(oauthService, 'createCsrfState').mockClear();
 			await ownerAgentForSetup
 				.get('/oauth2-credential/auth')
 				.query({ id: credential.id })
@@ -453,13 +460,12 @@ describe('OAuth2 API', () => {
 			const [, ownerState] = await csrfSpy.mock.results[0].value;
 
 			const decoded = JSON.parse(Buffer.from(ownerState, 'base64').toString());
-			const decryptedData = JSON.parse(oauthService['cipher'].decrypt(decoded.data)) as Record<
-				string,
-				unknown
-			>;
-			decryptedData.userId = sharee.id;
-			decoded.data = oauthService['cipher'].encrypt(JSON.stringify(decryptedData));
-			const reencodedState = Buffer.from(JSON.stringify(decoded)).toString('base64');
+			const cacheService = Container.get(CacheService);
+			const cacheKey = `oauth:flow:${decoded.token}`;
+			const flowState = await cacheService.get<OauthFlowState>(cacheKey);
+			flowState!.stateData!.userId = sharee.id;
+			await cacheService.set(cacheKey, flowState, MAX_CSRF_AGE);
+			const reencodedState = ownerState;
 
 			nock('https://test.domain')
 				.post('/oauth2/token')
@@ -481,6 +487,181 @@ describe('OAuth2 API', () => {
 			);
 			const credentials = await updatedCredential.getData();
 			expect(credentials.oauthTokenData).toBeUndefined();
+		});
+	});
+
+	describe('access token exchange network restrictions', () => {
+		let ssrfProtectionConfig: SsrfProtectionConfig;
+		let originalEnabled: boolean;
+
+		beforeAll(() => {
+			ssrfProtectionConfig = Container.get(SsrfProtectionConfig);
+			originalEnabled = ssrfProtectionConfig.enabled;
+		});
+
+		beforeEach(() => {
+			nock.cleanAll();
+			ssrfProtectionConfig.enabled = true;
+		});
+
+		afterAll(() => {
+			ssrfProtectionConfig.enabled = originalEnabled;
+		});
+
+		it('should apply the same network access restrictions as other outbound OAuth requests', async () => {
+			const restrictedAccessTokenUrl = 'http://169.254.169.254/latest/meta-data/token';
+			const restrictedCredential = await saveCredential(
+				{
+					name: 'Restricted target',
+					type: 'testOAuth2Api',
+					data: { ...credentialData, accessTokenUrl: restrictedAccessTokenUrl },
+				},
+				{ user: owner, role: 'credential:owner' },
+			);
+
+			const oauthService = Container.get(OauthService);
+			const csrfSpy = vi.spyOn(oauthService, 'createCsrfState').mockClear();
+			const renderSpy = vi.spyOn(Response, 'render').mockImplementation(function (this: any) {
+				this.end();
+				return this;
+			});
+
+			await ownerAgent
+				.get('/oauth2-credential/auth')
+				.query({ id: restrictedCredential.id })
+				.expect(200);
+			const [, state] = await csrfSpy.mock.results[0].value;
+
+			const validateUrlSpy = vi.spyOn(Container.get(SsrfProtectionService), 'validateUrl');
+
+			const tokenScope = nock('http://169.254.169.254')
+				.post('/latest/meta-data/token')
+				.reply(400, { error: 'invalid_client', error_description: 'internal-response-marker' });
+
+			await ownerAgent
+				.get('/oauth2-credential/callback')
+				.query({ code: 'auth_code', state })
+				.expect(200);
+
+			expect(validateUrlSpy).toHaveBeenCalledWith(
+				expect.objectContaining({ href: restrictedAccessTokenUrl }),
+			);
+			expect(tokenScope.isDone()).toBe(false);
+			expect(renderSpy).not.toHaveBeenCalledWith(
+				'oauth-error-callback',
+				expect.objectContaining({
+					error: expect.objectContaining({
+						reason: expect.stringContaining('internal-response-marker'),
+					}),
+				}),
+			);
+		});
+
+		it('should complete the exchange against any reachable endpoint when restrictions are off', async () => {
+			// An instance that leaves the guard off must keep working against endpoints the
+			// enabled configuration would reject, e.g. a self-hosted OAuth server on the LAN.
+			ssrfProtectionConfig.enabled = false;
+
+			const localAccessTokenUrl = 'http://10.20.30.40/oauth2/token';
+			const localCredential = await saveCredential(
+				{
+					name: 'Self-hosted target',
+					type: 'testOAuth2Api',
+					data: { ...credentialData, accessTokenUrl: localAccessTokenUrl },
+				},
+				{ user: owner, role: 'credential:owner' },
+			);
+
+			const oauthService = Container.get(OauthService);
+			const csrfSpy = vi.spyOn(oauthService, 'createCsrfState').mockClear();
+			const renderSpy = vi.spyOn(Response, 'render').mockImplementation(function (this: any) {
+				this.end();
+				return this;
+			});
+
+			await ownerAgent.get('/oauth2-credential/auth').query({ id: localCredential.id }).expect(200);
+			const [, state] = await csrfSpy.mock.results[0].value;
+
+			const validateUrlSpy = vi.spyOn(Container.get(SsrfProtectionService), 'validateUrl');
+
+			const tokenScope = nock('http://10.20.30.40')
+				.post('/oauth2/token')
+				.reply(200, { access_token: 'self_hosted_token' });
+
+			await ownerAgent
+				.get('/oauth2-credential/callback')
+				.query({ code: 'auth_code', state })
+				.expect(200);
+
+			expect(tokenScope.isDone()).toBe(true);
+			expect(validateUrlSpy).not.toHaveBeenCalled();
+			expect(renderSpy).toHaveBeenCalledWith('oauth-callback');
+
+			const stored = await getCredentialById(localCredential.id);
+			const decrypted = (await decryptCredentialData(stored!)) as Record<string, unknown>;
+			expect(decrypted.oauthTokenData).toEqual(
+				expect.objectContaining({ access_token: 'self_hosted_token' }),
+			);
+		});
+	});
+
+	describe('callback error detail', () => {
+		// Earlier tests leave unconsumed token-endpoint interceptors behind, which would
+		// otherwise answer these requests with a success response.
+		beforeEach(() => {
+			nock.cleanAll();
+		});
+
+		const startFlowAndSpyOnRender = async () => {
+			const oauthService = Container.get(OauthService);
+			const csrfSpy = vi.spyOn(oauthService, 'createCsrfState').mockClear();
+			const renderSpy = vi.spyOn(Response, 'render').mockImplementation(function (this: any) {
+				this.end();
+				return this;
+			});
+
+			await ownerAgent.get('/oauth2-credential/auth').query({ id: credential.id }).expect(200);
+			const [, state] = await csrfSpy.mock.results[0].value;
+
+			return { renderSpy, state };
+		};
+
+		it('should render the OAuth2 error code without the accompanying description', async () => {
+			const { renderSpy, state } = await startFlowAndSpyOnRender();
+
+			nock('https://test.domain')
+				.post('/oauth2/token')
+				.reply(400, { error: 'invalid_client', error_description: 'upstream-response-marker' });
+
+			await ownerAgent
+				.get('/oauth2-credential/callback')
+				.query({ code: 'auth_code', state })
+				.expect(200);
+
+			expect(renderSpy).toHaveBeenCalledWith(
+				'oauth-error-callback',
+				expect.objectContaining({
+					error: expect.objectContaining({ reason: 'invalid_client' }),
+				}),
+			);
+			expect(JSON.stringify(renderSpy.mock.calls)).not.toContain('upstream-response-marker');
+		});
+
+		it('should not render the token endpoint response body when it is not an OAuth2 error', async () => {
+			const { renderSpy, state } = await startFlowAndSpyOnRender();
+
+			nock('https://test.domain')
+				.post('/oauth2/token')
+				.reply(400, { internalField: 'upstream-response-marker' });
+
+			await ownerAgent
+				.get('/oauth2-credential/callback')
+				.query({ code: 'auth_code', state })
+				.expect(200);
+
+			expect(renderSpy).toHaveBeenCalledWith('oauth-error-callback', {
+				error: { message: 'HTTP status 400', reason: undefined },
+			});
 		});
 	});
 });

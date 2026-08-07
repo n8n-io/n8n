@@ -11,17 +11,15 @@ import type { DropdownMenuItemProps } from '@n8n/design-system';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { computed } from 'vue';
-import { useRouter, type RouteLocationRaw } from 'vue-router';
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import { useKeybindings } from '@/app/composables/useKeybindings';
-import { AGENT_SESSION_DETAIL_VIEW } from '@/features/agents/constants';
 
 const props = defineProps<{
 	breadcrumbItems: PathItem[];
 	sessionTitle: string;
-	sessionId?: string;
 	hasSession: boolean;
 	sessionOptions: Array<DropdownMenuItemProps<string>>;
+	traceOpen: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -29,28 +27,24 @@ const emit = defineEmits<{
 	'session-select': [sessionId: string];
 	'new-chat': [];
 	'close-preview': [];
+	'toggle-trace': [];
 }>();
 
 const i18n = useI18n();
-const router = useRouter();
 
-const agentBreadcrumb = computed(() => props.breadcrumbItems[1]);
-const projectBreadcrumb = computed(() => props.breadcrumbItems[0]);
-const sessionRoute = computed<RouteLocationRaw | undefined>(() => {
-	if (!props.sessionId || !projectBreadcrumb.value || !agentBreadcrumb.value) return undefined;
-	return {
-		name: AGENT_SESSION_DETAIL_VIEW,
-		params: {
-			projectId: projectBreadcrumb.value.id,
-			agentId: agentBreadcrumb.value.id,
-			threadId: props.sessionId,
-		},
-	};
-});
+// The same button toggles the embedded session trace on/off, swapping its
+// label/icon between "view the trace" and "return to chat".
+const toggleTraceLabel = computed(() =>
+	i18n.baseText(
+		(props.traceOpen
+			? 'agents.builder.preview.backToChat'
+			: 'agents.builder.preview.viewSession') as BaseTextKey,
+	),
+);
+const toggleTraceIcon = computed(() => (props.traceOpen ? 'message-circle' : 'list-tree'));
 
-function openSession() {
-	if (!sessionRoute.value) return;
-	void router.push(sessionRoute.value);
+function toggleTrace() {
+	emit('toggle-trace');
 }
 
 function createNewChat() {
@@ -104,16 +98,16 @@ useKeybindings({
 		<div :class="$style.right">
 			<N8nTooltip v-if="props.hasSession" placement="bottom" :show-after="500">
 				<template #content>
-					{{ i18n.baseText('agents.builder.preview.viewSession' as BaseTextKey) }}
+					{{ toggleTraceLabel }}
 				</template>
 				<N8nButton
 					variant="ghost"
 					size="medium"
 					icon-size="large"
-					icon="list-tree"
-					:label="i18n.baseText('agents.builder.preview.viewSession' as BaseTextKey)"
+					:icon="toggleTraceIcon"
+					:label="toggleTraceLabel"
 					data-testid="agent-preview-view-session-btn"
-					@click="openSession"
+					@click="toggleTrace"
 				/>
 			</N8nTooltip>
 			<KeyboardShortcutTooltip
@@ -161,24 +155,32 @@ useKeybindings({
 	border-bottom: var(--border);
 	flex-shrink: 0;
 	height: var(--height--4xl);
+	overflow-x: auto;
+	overflow-y: hidden;
+	scrollbar-width: thin;
+	scrollbar-color: var(--border-color) transparent;
 }
 
 .left {
 	display: flex;
 	align-items: center;
-	flex: 1 1 auto;
-	min-width: 0;
+	flex: 0 0 auto;
+	min-width: max-content;
 }
 
 .left :global(.n8n-breadcrumbs) {
-	min-width: 0;
+	min-width: max-content;
 }
 
 .left :global(.n8n-breadcrumbs [data-test-id='breadcrumbs-item']) {
 	display: flex;
 	align-items: center;
-	height: var(--height--md);
+	min-height: var(--height--md);
 	padding: var(--spacing--2xs) var(--spacing--xs);
+}
+
+.left :global(.n8n-breadcrumbs [data-test-id='breadcrumbs-item'] *) {
+	line-height: var(--line-height--sm);
 }
 
 .crumbSeparator {
@@ -191,6 +193,7 @@ useKeybindings({
 .switcherButton {
 	font-size: var(--font-size--sm);
 	gap: var(--spacing--4xs);
+	flex-shrink: 0;
 }
 
 .switcherLabel {
@@ -198,6 +201,7 @@ useKeybindings({
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+	line-height: var(--line-height--sm);
 }
 
 .previewSessionLabel {
@@ -210,6 +214,7 @@ useKeybindings({
 	align-items: center;
 	gap: var(--spacing--5xs);
 	flex-shrink: 0;
+	white-space: nowrap;
 }
 
 .sessionMenu {

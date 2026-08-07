@@ -14,6 +14,26 @@ describe('AnthropicApi Credential', () => {
 		expect(anthropicApi.test.request.url).toBe('/v1/models');
 	});
 
+	it('should allow custom header expressions to be omitted during design-time resolution', () => {
+		expect(anthropicApi.properties).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					name: 'headerName',
+					typeOptions: expect.objectContaining({
+						ignoreCredentialExpressionResolveError: true,
+					}),
+				}),
+				expect.objectContaining({
+					name: 'headerValue',
+					typeOptions: expect.objectContaining({
+						ignoreCredentialExpressionResolveError: true,
+						password: true,
+					}),
+				}),
+			]),
+		);
+	});
+
 	describe('authenticate', () => {
 		it('should add x-api-key header with API key only', async () => {
 			const credentials: ICredentialDataDecryptedObject = {

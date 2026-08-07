@@ -190,6 +190,16 @@ if (excludeTestController) {
 	echo(chalk.gray('  - Excluded test controller from packages/cli/package.json'));
 }
 
+// The release SBOM is built by cdxgen inventorying the top-level node_modules of this
+// deployed closure. Since #32569 dropped shamefully-hoist, only direct deps surface at
+// top level, so cdxgen would miss the transitive tree (the manifest would be incomplete).
+// Re-enable hoisting for the licenses build only — shipped images keep the non-hoisted
+// layout, since regular builds leave N8N_GENERATE_LICENSES unset.
+const generateLicenses = process.env.N8N_GENERATE_LICENSES === 'true';
+if (generateLicenses) {
+	process.env.npm_config_shamefully_hoist = 'true';
+}
+
 await $`cd ${config.rootDir} && NODE_ENV=production DOCKER_BUILD=true pnpm --filter=n8n --prod --legacy deploy --no-optional ./compiled`;
 
 // Strip test/example/benchmark dirs shipped inside production deps that lack a
@@ -207,6 +217,44 @@ for (const pattern of phantomDirs) {
 	await $`find ${config.compiledAppDir}/node_modules/.pnpm -type d -path "*/${pattern}" -exec rm -rf {} + 2>/dev/null || true`;
 }
 echo(chalk.green('✅ Phantom dirs stripped'));
+
+// @confluentinc/kafka-javascript vendors librdkafka's full C source tree for its
+// build-from-source fallback (~11MB), but the prebuilt binary - librdkafka statically
+// linked in, no .so/.a shipped - is what actually loads at runtime on Alpine. The
+// source is dead weight in the shipped image.
+echo(chalk.yellow('INFO: Stripping unused librdkafka source tree...'));
+await $`find ${config.compiledAppDir}/node_modules/.pnpm -type d -path "*/@confluentinc/kafka-javascript/deps" -exec rm -rf {} + 2>/dev/null || true`;
+echo(chalk.green('✅ librdkafka source tree stripped'));
+
+// Strip TypeScript declaration artifacts to cut the image's file count, which
+// dominates layer extraction time on constrained hosts. Only these two explicit
+// patterns are safe to remove by extension: several features read other
+// "source-looking" files off disk at request time (dist/node-definitions/**/*.ts
+// for AI node lookups, instance-ai skills/knowledge-base *.md), so broader globs
+// like '*.ts' or '*.md' must not come back here. .js.map is also kept —
+// source-map-support needs it for production stack traces.
+echo(chalk.yellow('INFO: Stripping TypeScript declaration files from production closure...'));
+await $`find ${config.compiledAppDir} -type f \\( -name '*.d.ts' -o -name '*.d.ts.map' \\) -delete 2>/dev/null || true`;
+echo(chalk.green('✅ Declaration files stripped'));
+
+// A build that loses these runtime-data trees (a strip regression, a package.json
+// `files` change, a pnpm deploy change) still boots, so the damage only surfaces
+// on the first AI request. Fail the build here instead.
+// `.nothrow()` because zx runs with `pipefail`: one unreadable path would
+// otherwise turn a healthy build into an unhandled rejection.
+const runtimeAssetGlobs = [
+	'*/@n8n/instance-ai/skills/*',
+	'*/@n8n/instance-ai/knowledge-base/*',
+	'*/dist/node-definitions/*',
+];
+for (const glob of runtimeAssetGlobs) {
+	const found = await $`find ${config.compiledAppDir} -type f -path ${glob}`.nothrow();
+	if (found.stdout.split('\n').filter(Boolean).length === 0) {
+		echo(chalk.red(`ERROR: no files left under ${glob} — runtime assets were stripped`));
+		process.exit(1);
+	}
+}
+echo(chalk.green('✅ Runtime assets intact'));
 
 await fs.ensureDir(config.compiledTaskRunnerDir);
 
@@ -229,7 +277,7 @@ const packageDeployTime = getElapsedTime('package_deploy');
 // Default: skip. cdxgen + license rendering adds ~minutes to every build:deploy and
 // is only needed for the release SBOM job. The release-publish workflow opts in by
 // setting N8N_GENERATE_LICENSES=true; regular CI Docker prepare runs skip it.
-if (process.env.N8N_GENERATE_LICENSES === 'true') {
+if (generateLicenses) {
 	echo(chalk.yellow('INFO: Generating SBOM and rendering THIRD_PARTY_LICENSES.md...'));
 	try {
 		const toolingDir = path.join(config.rootDir, '.github', 'scripts');

@@ -1,5 +1,5 @@
 import type { IExecuteFunctions } from 'n8n-workflow';
-import type { Mock } from 'vitest';
+import type { Mock, MockInstance } from 'vitest';
 import { mockDeep } from 'vitest-mock-extended';
 
 import * as audio from './audio';
@@ -13,55 +13,69 @@ import * as video from './video';
 
 describe('Google Gemini router', () => {
 	const mockExecuteFunctions = mockDeep<IExecuteFunctions>();
-	const mockAudio = vi.spyOn(audio.analyze, 'execute');
-	const mockDocument = vi.spyOn(document.analyze, 'execute');
-	const mockFile = vi.spyOn(file.upload, 'execute');
-	const mockFileSearchCreateStore = vi.spyOn(fileSearch.createStore, 'execute');
-	const mockFileSearchDeleteStore = vi.spyOn(fileSearch.deleteStore, 'execute');
-	const mockFileSearchListStores = vi.spyOn(fileSearch.listStores, 'execute');
-	const mockFileSearchUploadToStore = vi.spyOn(fileSearch.uploadToStore, 'execute');
-	const mockImage = vi.spyOn(image.analyze, 'execute');
-	const mockText = vi.spyOn(text.message, 'execute');
-	const mockVideo = vi.spyOn(video.analyze, 'execute');
-	const operationMocks = [
-		[mockAudio, 'audio', 'analyze'],
-		[mockDocument, 'document', 'analyze'],
-		[mockFile, 'file', 'upload'],
-		[mockFileSearchCreateStore, 'fileSearch', 'createStore'],
-		[mockFileSearchDeleteStore, 'fileSearch', 'deleteStore'],
-		[mockFileSearchListStores, 'fileSearch', 'listStores'],
-		[mockFileSearchUploadToStore, 'fileSearch', 'uploadToStore'],
-		[mockImage, 'image', 'analyze'],
-		[mockText, 'text', 'message'],
-		[mockVideo, 'video', 'analyze'],
+	let mockAudio: MockInstance;
+	let mockDocument: MockInstance;
+	let mockFile: MockInstance;
+	let mockFileSearchCreateStore: MockInstance;
+	let mockFileSearchDeleteStore: MockInstance;
+	let mockFileSearchListStores: MockInstance;
+	let mockFileSearchUploadToStore: MockInstance;
+	let mockImage: MockInstance;
+	let mockText: MockInstance;
+	let mockVideo: MockInstance;
+	const operationMocks: Array<[() => MockInstance, string, string]> = [
+		[() => mockAudio, 'audio', 'analyze'],
+		[() => mockDocument, 'document', 'analyze'],
+		[() => mockFile, 'file', 'upload'],
+		[() => mockFileSearchCreateStore, 'fileSearch', 'createStore'],
+		[() => mockFileSearchDeleteStore, 'fileSearch', 'deleteStore'],
+		[() => mockFileSearchListStores, 'fileSearch', 'listStores'],
+		[() => mockFileSearchUploadToStore, 'fileSearch', 'uploadToStore'],
+		[() => mockImage, 'image', 'analyze'],
+		[() => mockText, 'text', 'message'],
+		[() => mockVideo, 'video', 'analyze'],
 	];
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		mockAudio = vi.spyOn(audio.analyze, 'execute');
+		mockDocument = vi.spyOn(document.analyze, 'execute');
+		mockFile = vi.spyOn(file.upload, 'execute');
+		mockFileSearchCreateStore = vi.spyOn(fileSearch.createStore, 'execute');
+		mockFileSearchDeleteStore = vi.spyOn(fileSearch.deleteStore, 'execute');
+		mockFileSearchListStores = vi.spyOn(fileSearch.listStores, 'execute');
+		mockFileSearchUploadToStore = vi.spyOn(fileSearch.uploadToStore, 'execute');
+		mockImage = vi.spyOn(image.analyze, 'execute');
+		mockText = vi.spyOn(text.message, 'execute');
+		mockVideo = vi.spyOn(video.analyze, 'execute');
 	});
 
-	it.each(operationMocks)('should call the correct method', async (mock, resource, operation) => {
-		mockExecuteFunctions.getNodeParameter.mockImplementation((parameter) =>
-			parameter === 'resource' ? resource : operation,
-		);
-		mockExecuteFunctions.getInputData.mockReturnValue([
-			{
-				json: {},
-			},
-		]);
-		(mock as Mock).mockResolvedValue([
-			{
-				json: {
-					foo: 'bar',
+	it.each(operationMocks)(
+		'should call the correct method',
+		async (getMock, resource, operation) => {
+			const mock = getMock();
+			mockExecuteFunctions.getNodeParameter.mockImplementation((parameter) =>
+				parameter === 'resource' ? resource : operation,
+			);
+			mockExecuteFunctions.getInputData.mockReturnValue([
+				{
+					json: {},
 				},
-			},
-		]);
+			]);
+			(mock as Mock).mockResolvedValue([
+				{
+					json: {
+						foo: 'bar',
+					},
+				},
+			]);
 
-		const result = await router.call(mockExecuteFunctions);
+			const result = await router.call(mockExecuteFunctions);
 
-		expect(mock).toHaveBeenCalledWith(0);
-		expect(result).toEqual([[{ json: { foo: 'bar' } }]]);
-	});
+			expect(mock).toHaveBeenCalledWith(0);
+			expect(result).toEqual([[{ json: { foo: 'bar' } }]]);
+		},
+	);
 
 	it('should return an error if the operation is not supported', async () => {
 		mockExecuteFunctions.getNodeParameter.mockImplementation((parameter) =>

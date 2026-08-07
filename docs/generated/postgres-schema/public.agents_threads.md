@@ -4,22 +4,22 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | varchar(128) |  | false | [public.agents_messages](public.agents_messages.md) [public.agents_observations](public.agents_observations.md) [public.agents_observation_cursors](public.agents_observation_cursors.md) [public.agents_observation_locks](public.agents_observation_locks.md) [public.agents_memory_entry_sources](public.agents_memory_entry_sources.md) [public.agents_memory_entry_cursors](public.agents_memory_entry_cursors.md) |  |  |
+| createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
+| id | varchar(128) |  | false | [public.agents_memory_entry_cursors](public.agents_memory_entry_cursors.md) [public.agents_memory_entry_sources](public.agents_memory_entry_sources.md) [public.agents_messages](public.agents_messages.md) [public.agents_observation_cursors](public.agents_observation_cursors.md) [public.agents_observation_locks](public.agents_observation_locks.md) [public.agents_observations](public.agents_observations.md) |  |  |
+| metadata | text |  | true |  |  |  |
 | resourceId | varchar(255) |  | false |  |  |  |
 | title | varchar(255) |  | true |  |  |  |
-| metadata | text |  | true |  |  |  |
-| createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| PK_4a3feb0a13ffe315c009cce64e5 | PRIMARY KEY | PRIMARY KEY (id) |
 | agents_threads_createdAt_not_null | n | NOT NULL "createdAt" |
 | agents_threads_id_not_null | n | NOT NULL id |
 | agents_threads_resourceId_not_null | n | NOT NULL "resourceId" |
 | agents_threads_updatedAt_not_null | n | NOT NULL "updatedAt" |
-| PK_4a3feb0a13ffe315c009cce64e5 | PRIMARY KEY | PRIMARY KEY (id) |
 
 ## Indexes
 
@@ -33,78 +33,78 @@
 ```mermaid
 erDiagram
 
+"public.agents_memory_entry_cursors" }o--|| "public.agents_threads" : "FOREIGN KEY (#quot;observationScopeId#quot;) REFERENCES agents_threads(id) ON DELETE CASCADE"
+"public.agents_memory_entry_sources" }o--|| "public.agents_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES agents_threads(id) ON DELETE CASCADE"
 "public.agents_messages" }o--|| "public.agents_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES agents_threads(id) ON DELETE CASCADE"
-"public.agents_observations" }o--|| "public.agents_threads" : "FOREIGN KEY (#quot;observationScopeId#quot;) REFERENCES agents_threads(id) ON DELETE CASCADE"
 "public.agents_observation_cursors" }o--|| "public.agents_threads" : "FOREIGN KEY (#quot;observationScopeId#quot;) REFERENCES agents_threads(id) ON DELETE CASCADE"
 "public.agents_observation_locks" }o--|| "public.agents_threads" : "FOREIGN KEY (#quot;observationScopeId#quot;) REFERENCES agents_threads(id) ON DELETE CASCADE"
-"public.agents_memory_entry_sources" }o--|| "public.agents_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES agents_threads(id) ON DELETE CASCADE"
-"public.agents_memory_entry_cursors" }o--|| "public.agents_threads" : "FOREIGN KEY (#quot;observationScopeId#quot;) REFERENCES agents_threads(id) ON DELETE CASCADE"
+"public.agents_observations" }o--|| "public.agents_threads" : "FOREIGN KEY (#quot;observationScopeId#quot;) REFERENCES agents_threads(id) ON DELETE CASCADE"
 
 "public.agents_threads" {
+  timestamp_3__with_time_zone createdAt
   varchar_128_ id
+  text metadata
   varchar_255_ resourceId
   varchar_255_ title
-  text metadata
-  timestamp_3__with_time_zone createdAt
-  timestamp_3__with_time_zone updatedAt
-}
-"public.agents_messages" {
-  varchar_36_ id
-  varchar_255_ threadId FK
-  varchar_255_ resourceId
-  varchar_36_ role
-  varchar_36_ type
-  json content
-  timestamp_3__with_time_zone createdAt
-  timestamp_3__with_time_zone updatedAt
-}
-"public.agents_observations" {
-  varchar_36_ id
-  varchar_36_ agentId FK
-  varchar_255_ observationScopeId FK
-  varchar_16_ marker
-  text text
-  varchar_36_ parentId FK
-  integer tokenCount
-  varchar_16_ status
-  varchar_36_ supersededBy FK
-  timestamp_3__with_time_zone createdAt
-  timestamp_3__with_time_zone updatedAt
-}
-"public.agents_observation_cursors" {
-  varchar_36_ agentId FK
-  varchar_255_ observationScopeId FK
-  varchar_36_ lastObservedMessageId
-  timestamp_3__with_time_zone lastObservedAt
-  timestamp_3__with_time_zone createdAt
-  timestamp_3__with_time_zone updatedAt
-}
-"public.agents_observation_locks" {
-  varchar_36_ agentId FK
-  varchar_255_ observationScopeId FK
-  varchar_20_ taskKind
-  varchar_64_ holderId
-  timestamp_3__with_time_zone heldUntil
-  timestamp_3__with_time_zone createdAt
-  timestamp_3__with_time_zone updatedAt
-}
-"public.agents_memory_entry_sources" {
-  varchar_36_ id
-  varchar_36_ agentId FK
-  varchar_36_ memoryEntryId FK
-  varchar_36_ observationId FK
-  varchar_255_ threadId FK
-  varchar_64_ evidenceHash
-  text evidenceText
-  timestamp_3__with_time_zone createdAt
   timestamp_3__with_time_zone updatedAt
 }
 "public.agents_memory_entry_cursors" {
   varchar_36_ agentId FK
-  varchar_255_ observationScopeId FK
-  varchar_36_ lastIndexedObservationId
-  timestamp_3__with_time_zone lastIndexedObservationCreatedAt
   timestamp_3__with_time_zone createdAt
+  timestamp_3__with_time_zone lastIndexedObservationCreatedAt
+  varchar_36_ lastIndexedObservationId
+  varchar_255_ observationScopeId FK
+  timestamp_3__with_time_zone updatedAt
+}
+"public.agents_memory_entry_sources" {
+  varchar_36_ agentId FK
+  timestamp_3__with_time_zone createdAt
+  varchar_64_ evidenceHash
+  text evidenceText
+  varchar_36_ id
+  varchar_36_ memoryEntryId FK
+  varchar_36_ observationId FK
+  varchar_255_ threadId FK
+  timestamp_3__with_time_zone updatedAt
+}
+"public.agents_messages" {
+  json content
+  timestamp_3__with_time_zone createdAt
+  varchar_36_ id
+  varchar_255_ resourceId
+  varchar_36_ role
+  varchar_255_ threadId FK
+  varchar_36_ type
+  timestamp_3__with_time_zone updatedAt
+}
+"public.agents_observation_cursors" {
+  varchar_36_ agentId FK
+  timestamp_3__with_time_zone createdAt
+  timestamp_3__with_time_zone lastObservedAt
+  varchar_36_ lastObservedMessageId
+  varchar_255_ observationScopeId FK
+  timestamp_3__with_time_zone updatedAt
+}
+"public.agents_observation_locks" {
+  varchar_36_ agentId FK
+  timestamp_3__with_time_zone createdAt
+  timestamp_3__with_time_zone heldUntil
+  varchar_64_ holderId
+  varchar_255_ observationScopeId FK
+  varchar_20_ taskKind
+  timestamp_3__with_time_zone updatedAt
+}
+"public.agents_observations" {
+  varchar_36_ agentId FK
+  timestamp_3__with_time_zone createdAt
+  varchar_36_ id
+  varchar_16_ marker
+  varchar_255_ observationScopeId FK
+  varchar_36_ parentId FK
+  varchar_16_ status
+  varchar_36_ supersededBy FK
+  text text
+  integer tokenCount
   timestamp_3__with_time_zone updatedAt
 }
 ```

@@ -15,30 +15,30 @@ CREATE TABLE "role_mapping_rule" ("id" varchar(16) PRIMARY KEY NOT NULL, "expres
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | varchar(16) |  | false | [role_mapping_rule_project](role_mapping_rule_project.md) |  |  |
+| createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | expression | TEXT |  | false |  |  |  |
+| id | varchar(16) |  | false | [role_mapping_rule_project](role_mapping_rule_project.md) |  |  |
+| order | INTEGER |  | false |  |  |  |
 | role | varchar(128) |  | false |  | [role](role.md) |  |
 | type | varchar(64) |  | false |  |  |  |
-| order | INTEGER |  | false |  |  |  |
-| createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| id | PRIMARY KEY | PRIMARY KEY (id) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (role) REFERENCES role (slug) ON UPDATE CASCADE ON DELETE CASCADE MATCH NONE |
-| sqlite_autoindex_role_mapping_rule_2 | UNIQUE | UNIQUE (type, order) |
+| id | PRIMARY KEY | PRIMARY KEY (id) |
 | sqlite_autoindex_role_mapping_rule_1 | PRIMARY KEY | PRIMARY KEY (id) |
+| sqlite_autoindex_role_mapping_rule_2 | UNIQUE | UNIQUE (type, order) |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
 | IDX_bb66e404c35996b0d694617750 | CREATE INDEX "IDX_bb66e404c35996b0d694617750" ON "role_mapping_rule" ("role")  |
-| sqlite_autoindex_role_mapping_rule_2 | UNIQUE (type, order) |
 | sqlite_autoindex_role_mapping_rule_1 | PRIMARY KEY (id) |
+| sqlite_autoindex_role_mapping_rule_2 | UNIQUE (type, order) |
 
 ## Relations
 
@@ -49,25 +49,25 @@ erDiagram
 "role_mapping_rule" }o--|| "role" : "FOREIGN KEY (role) REFERENCES role (slug) ON UPDATE CASCADE ON DELETE CASCADE MATCH NONE"
 
 "role_mapping_rule" {
-  varchar_16_ id PK
+  datetime_3_ createdAt
   TEXT expression
+  varchar_16_ id PK
+  INTEGER order
   varchar_128_ role FK
   varchar_64_ type
-  INTEGER order
-  datetime_3_ createdAt
   datetime_3_ updatedAt
 }
 "role_mapping_rule_project" {
-  varchar_16_ roleMappingRuleId PK
   varchar_36_ projectId PK
+  varchar_16_ roleMappingRuleId PK
 }
 "role" {
-  varchar_128_ slug PK
-  TEXT displayName
-  TEXT description
-  TEXT roleType
-  boolean systemRole
   datetime_3_ createdAt
+  TEXT description
+  TEXT displayName
+  TEXT roleType
+  varchar_128_ slug PK
+  boolean systemRole
   datetime_3_ updatedAt
 }
 ```

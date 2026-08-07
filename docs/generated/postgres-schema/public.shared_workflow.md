@@ -4,79 +4,79 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| workflowId | varchar(36) |  | false |  | [public.workflow_entity](public.workflow_entity.md) |  |
+| createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | projectId | varchar(36) |  | false |  | [public.project](public.project.md) |  |
 | role | text |  | false |  |  |  |
-| createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
+| workflowId | varchar(36) |  | false |  | [public.workflow_entity](public.workflow_entity.md) |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| FK_a45ea5f27bcfdc21af9b4188560 | FOREIGN KEY | FOREIGN KEY ("projectId") REFERENCES project(id) ON DELETE CASCADE |
+| FK_daa206a04983d47d0a9c34649ce | FOREIGN KEY | FOREIGN KEY ("workflowId") REFERENCES workflow_entity(id) ON DELETE CASCADE |
+| PK_5ba87620386b847201c9531c58f | PRIMARY KEY | PRIMARY KEY ("workflowId", "projectId") |
 | shared_workflow_2_createdAt_not_null | n | NOT NULL "createdAt" |
 | shared_workflow_2_projectId_not_null | n | NOT NULL "projectId" |
 | shared_workflow_2_role_not_null | n | NOT NULL role |
 | shared_workflow_2_updatedAt_not_null | n | NOT NULL "updatedAt" |
 | shared_workflow_2_workflowId_not_null | n | NOT NULL "workflowId" |
-| FK_daa206a04983d47d0a9c34649ce | FOREIGN KEY | FOREIGN KEY ("workflowId") REFERENCES workflow_entity(id) ON DELETE CASCADE |
-| FK_a45ea5f27bcfdc21af9b4188560 | FOREIGN KEY | FOREIGN KEY ("projectId") REFERENCES project(id) ON DELETE CASCADE |
-| PK_5ba87620386b847201c9531c58f | PRIMARY KEY | PRIMARY KEY ("workflowId", "projectId") |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
-| PK_5ba87620386b847201c9531c58f | CREATE UNIQUE INDEX "PK_5ba87620386b847201c9531c58f" ON public.shared_workflow USING btree ("workflowId", "projectId") |
 | IDX_shared_workflow_projectId | CREATE INDEX "IDX_shared_workflow_projectId" ON public.shared_workflow USING btree ("projectId") |
+| PK_5ba87620386b847201c9531c58f | CREATE UNIQUE INDEX "PK_5ba87620386b847201c9531c58f" ON public.shared_workflow USING btree ("workflowId", "projectId") |
 
 ## Relations
 
 ```mermaid
 erDiagram
 
-"public.shared_workflow" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 "public.shared_workflow" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
+"public.shared_workflow" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 
 "public.shared_workflow" {
-  varchar_36_ workflowId FK
+  timestamp_3__with_time_zone createdAt
   varchar_36_ projectId FK
   text role
-  timestamp_3__with_time_zone createdAt
   timestamp_3__with_time_zone updatedAt
-}
-"public.workflow_entity" {
-  varchar_128_ name
-  boolean active
-  json nodes
-  json connections
-  timestamp_3__with_time_zone createdAt
-  timestamp_3__with_time_zone updatedAt
-  json settings
-  json staticData
-  json pinData
-  character_36_ versionId
-  integer triggerCount
-  varchar_36_ id
-  json meta
-  varchar_36_ parentFolderId FK
-  boolean isArchived
-  integer versionCounter
-  text description
-  varchar_36_ activeVersionId FK
-  json nodeGroups
-  varchar sourceWorkflowId
+  varchar_36_ workflowId FK
 }
 "public.project" {
+  timestamp_3__with_time_zone createdAt
+  uuid creatorId FK
+  json customTelemetryTags
+  varchar_512_ description
+  json icon
   varchar_36_ id
   varchar_255_ name
   varchar_36_ type
-  timestamp_3__with_time_zone createdAt
   timestamp_3__with_time_zone updatedAt
-  json icon
-  varchar_512_ description
-  uuid creatorId FK
-  json customTelemetryTags
+}
+"public.workflow_entity" {
+  boolean active
+  varchar_36_ activeVersionId FK
+  json connections
+  timestamp_3__with_time_zone createdAt
+  text description
+  varchar_36_ id
+  boolean isArchived
+  json meta
+  varchar_128_ name
+  json nodeGroups
+  json nodes
+  varchar_36_ parentFolderId FK
+  json pinData
+  json settings
+  varchar sourceWorkflowId
+  json staticData
+  integer triggerCount
+  timestamp_3__with_time_zone updatedAt
+  integer versionCounter
+  character_36_ versionId
 }
 ```
 

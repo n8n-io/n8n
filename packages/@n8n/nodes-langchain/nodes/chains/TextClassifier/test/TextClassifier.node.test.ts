@@ -1,4 +1,5 @@
 import { FakeChatModel } from '@langchain/core/utils/testing';
+import * as n8nUtilsSleep from '@n8n/utils/sleep';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
 import type { Mock, Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -8,6 +9,10 @@ import { TextClassifier } from '../TextClassifier.node';
 
 vi.mock('../processItem', () => ({
 	processItem: vi.fn(),
+}));
+
+vi.mock('@n8n/utils/sleep', () => ({
+	sleep: vi.fn().mockResolvedValue(undefined),
 }));
 
 describe('TextClassifier Node', () => {
@@ -146,11 +151,11 @@ describe('TextClassifier Node', () => {
 
 			(processItem as Mock).mockResolvedValue({ test: true });
 
-			const startTime = Date.now();
 			await node.execute.call(mockExecuteFunction);
-			const endTime = Date.now();
 
-			expect(endTime - startTime).toBeGreaterThanOrEqual(200);
+			// 6 items with batchSize 2 => 3 batches => a delay after every batch but the last
+			expect(n8nUtilsSleep.sleep).toHaveBeenCalledTimes(2);
+			expect(n8nUtilsSleep.sleep).toHaveBeenCalledWith(100);
 		});
 
 		it('should handle errors in batch processing', async () => {

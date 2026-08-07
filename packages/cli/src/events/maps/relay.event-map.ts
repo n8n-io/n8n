@@ -2,6 +2,7 @@ import type { AuthenticationMethod, ProjectRelation, RedactionFloor } from '@n8n
 import type { AuthProviderType, User, IWorkflowDb } from '@n8n/db';
 import type {
 	CancellationReason,
+	HitlResponseTelemetryPayload,
 	IPersonalizationSurveyAnswersV4,
 	IRun,
 	IWorkflowBase,
@@ -12,11 +13,24 @@ import type {
 } from 'n8n-workflow';
 
 import type { ConcurrencyQueueType } from '@/concurrency/concurrency-control.service';
+import type {
+	ExportPackageEventCounts,
+	ImportAuditCredentialIds,
+	ImportPackageEventCounts,
+	ImportPackageEventOptions,
+	PackageFailureReason,
+} from '@/modules/n8n-packages/n8n-packages.types';
 import type { TokenExchangeFailureReason } from '@/modules/token-exchange/token-exchange.types';
 
 import type { AiEventMap } from './ai.event-map';
 
-export type WorkflowActionSource = 'ui' | 'api' | 'n8n-mcp' | 'n8n-ai' | 'import';
+export type WorkflowActionSource =
+	| 'ui'
+	| 'api'
+	| 'n8n-mcp'
+	| 'n8n-ai'
+	| 'import'
+	| 'review-approval';
 
 export type UserLike = {
 	id: string;
@@ -84,13 +98,39 @@ export type RelayEventMap = {
 		source?: WorkflowActionSource;
 	};
 
-	'workflows-imported': {
+	'n8n-package-imported': {
 		user: UserLike;
-		projectId: string;
+		projectIds: string[];
+		folderId: string | null;
 		workflowIds: string[];
+		options: ImportPackageEventOptions;
 		packageSourceId: string;
 		packageVersion: string;
-		matchedCredentialIds: string[];
+		credentialIds: ImportAuditCredentialIds;
+		counts: ImportPackageEventCounts;
+	};
+
+	'n8n-package-exported': {
+		user: UserLike;
+		workflowIds?: string[];
+		folderIds?: string[];
+		projectIds?: string[];
+		counts: ExportPackageEventCounts;
+	};
+
+	'n8n-package-export-failed': {
+		user: UserLike;
+		reason: PackageFailureReason;
+		workflowIds?: string[];
+		folderIds?: string[];
+		projectIds?: string[];
+	};
+
+	'n8n-package-import-failed': {
+		user: UserLike;
+		reason: PackageFailureReason;
+		projectId?: string;
+		folderId?: string;
 	};
 
 	'workflow-deleted': {
@@ -168,6 +208,8 @@ export type RelayEventMap = {
 		workflowId: string;
 		workflowName: string;
 		executionId: string;
+		projectId: string;
+		projectName: string;
 		source:
 			| 'user-manual'
 			| 'user-retry'
@@ -208,6 +250,8 @@ export type RelayEventMap = {
 		nodeName: string;
 		nodeType?: string;
 	};
+
+	'hitl-response-actioned': HitlResponseTelemetryPayload;
 
 	// #endregion
 
@@ -363,6 +407,11 @@ export type RelayEventMap = {
 		isOwn: boolean;
 	};
 
+	'public-api-key-rotated': {
+		user: UserLike;
+		publicApi: boolean;
+	};
+
 	'public-api-invoked': {
 		userId: string;
 		path: string;
@@ -403,6 +452,8 @@ export type RelayEventMap = {
 		isDynamic?: boolean;
 		usesExternalSecrets?: boolean;
 		jweEnabled?: boolean;
+		supportsManagedAuth?: boolean;
+		usesManagedAuth?: boolean;
 	};
 
 	'credentials-shared': {
@@ -421,6 +472,8 @@ export type RelayEventMap = {
 		isDynamic?: boolean;
 		usesExternalSecrets?: boolean;
 		jweEnabled?: boolean;
+		supportsManagedAuth?: boolean;
+		usesManagedAuth?: boolean;
 	};
 
 	'credentials-deleted': {
@@ -439,6 +492,11 @@ export type RelayEventMap = {
 		reason: 'cookie-missing' | 'hash-mismatch';
 		credentialId?: string;
 		origin?: 'static-credential' | 'dynamic-credential';
+	};
+
+	'dynamic-credential-authorize-rejected': {
+		reason: 'unauthenticated' | 'user-mismatch';
+		credentialId?: string;
 	};
 
 	'private-credential-created': {
@@ -461,6 +519,12 @@ export type RelayEventMap = {
 		credentialId: string;
 	};
 
+	'private-credential-connections-cleared': {
+		user: UserLike;
+		credentialType: string;
+		credentialId: string;
+	};
+
 	'private-credential-deleted': {
 		user: UserLike;
 		credentialType: string;
@@ -471,6 +535,8 @@ export type RelayEventMap = {
 		user: UserLike;
 		credentialType: string;
 		credentialId: string;
+		supportsManagedAuth?: boolean;
+		usesManagedAuth?: boolean;
 	};
 
 	// #endregion
@@ -885,6 +951,13 @@ export type RelayEventMap = {
 		issuer: string;
 	};
 
+	'token-exchange-identity-rebound': {
+		userId: string;
+		sub: string;
+		kid: string;
+		issuer: string;
+	};
+
 	'token-exchange-user-provisioned': {
 		userId: string;
 		sub: string;
@@ -918,6 +991,11 @@ export type RelayEventMap = {
 		nodeId: string;
 		workflowId: string;
 		executionId: string;
+	};
+
+	'runner-disconnected': {
+		reason: 'failed-heartbeat-check' | 'runner-unresponsive';
+		mode: 'internal' | 'external';
 	};
 
 	// #endregion
@@ -978,11 +1056,25 @@ export type RelayEventMap = {
 
 	// #endregion
 
+	// region Agents
+	'agent-saved': {
+		agentId: string;
+	};
+
+	'agent-deleted': {
+		agentId: string;
+		projectId: string;
+	};
+
 	// #region Instance Policies
 
 	'instance-policies-updated': { user: UserLike } & (
 		| {
-				settingName: '2fa_enforcement' | 'workflow_publishing' | 'workflow_sharing';
+				settingName:
+					| '2fa_enforcement'
+					| 'workflow_publishing'
+					| 'workflow_sharing'
+					| 'workflow_reviews';
 				value: boolean;
 		  }
 		| {
@@ -1034,6 +1126,48 @@ export type RelayEventMap = {
 	'instance-ai-mcp-registry-connection-deleted': {
 		userId: string;
 		serverSlug: string;
+	};
+
+	// #endregion
+
+	// #region Server CLI
+
+	'server-cli-import': {
+		activeState: 'false' | 'fromJson';
+		workflowCount: number;
+		separate: boolean;
+	};
+
+	'server-cli-export': {
+		selector: 'all' | 'id' | 'projectId';
+		published: boolean;
+		separate: boolean;
+		backup: boolean;
+		workflowCount: number;
+	};
+
+	// #endregion
+
+	// #region MCP server
+
+	'mcp-oauth-completed': {
+		userId: string;
+		clientId: string;
+		clientName?: string;
+	};
+
+	'mcp-tool-called': {
+		user: UserLike;
+		toolName: string;
+		workflowId?: string;
+		status: 'success' | 'error';
+		errorMessage?: string;
+		clientName?: string;
+	};
+
+	'mcp-access-updated': {
+		user: UserLike;
+		enabled: boolean;
 	};
 
 	// #endregion

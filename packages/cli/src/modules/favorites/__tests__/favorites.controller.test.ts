@@ -1,7 +1,8 @@
 import type { AuthenticatedRequest } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+
 import type { UserFavorite } from '../database/entities/user-favorite.entity';
 import { FavoritesController } from '../favorites.controller';
 import type { FavoritesService } from '../favorites.service';
@@ -12,7 +13,7 @@ describe('FavoritesController', () => {
 
 	const req = mock<AuthenticatedRequest>({ user: { id: 'user1' } });
 
-	afterEach(() => jest.clearAllMocks());
+	afterEach(() => vi.clearAllMocks());
 
 	describe('getFavorites', () => {
 		it('should return enriched favorites for the authenticated user', async () => {

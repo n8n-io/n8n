@@ -1,5 +1,7 @@
 import { watch, nextTick, type WatchStopHandle } from 'vue';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
+import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 
 const RUNNING_STATES = ['running', 'waiting'];
 
@@ -9,9 +11,12 @@ const RUNNING_STATES = ['running', 'waiting'];
  */
 export function watchExecutionCompletion(onComplete: () => void | Promise<void>): WatchStopHandle {
 	const workflowsStore = useWorkflowsStore();
+	const executionStateStore = useWorkflowExecutionStateStore(
+		createWorkflowDocumentId(workflowsStore.workflowId),
+	);
 
 	const stop = watch(
-		() => workflowsStore.workflowExecutionData?.status,
+		() => executionStateStore.activeExecution?.status,
 		async (status) => {
 			await nextTick();
 			if (!status || RUNNING_STATES.includes(status)) return;

@@ -11,7 +11,6 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 import {
-	ApplicationError,
 	assertCredentialAllowsUrl,
 	BaseError,
 	NodeConnectionTypes,
@@ -316,7 +315,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		// Remove configuration properties and runId added by Langchain that are not relevant to the user
 		filteredResponse = omit(response, ['signal', 'timeout', 'content', 'runId']) as IDataObject;
 	} catch (error) {
-		if (!(error instanceof ApplicationError) && !(error instanceof BaseError)) {
+		if (!(error instanceof BaseError)) {
 			throw new NodeOperationError(this.getNode(), error.message, { itemIndex: i });
 		}
 	}

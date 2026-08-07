@@ -17,10 +17,12 @@ import { NotificationsPage } from './components/NotificationsPage';
 import { ProjectTabsComponent } from './components/ProjectTabsComponent';
 import { ResourceMoveModal } from './components/ResourceMoveModal';
 import { SecretsProviderConnectionModal } from './components/SecretsProviderConnectionModal';
+import { WorkflowMenu } from './components/WorkflowMenu';
 import { CredentialsPage } from './CredentialsPage';
 import { DataTableDetails } from './DataTableDetails';
 import { DataTableView } from './DataTableView';
 import { DemoPage } from './DemoPage';
+import { EvaluationComparePage } from './EvaluationComparePage';
 import { ExecutionsPage } from './ExecutionsPage';
 import { InstanceAiPage } from './InstanceAiPage';
 import { KeycloakLoginPage } from './KeycloakLoginPage';
@@ -101,6 +103,7 @@ export class n8nPage {
 	readonly workflows: WorkflowsPage;
 	readonly notifications: NotificationsPage;
 	readonly credentials: CredentialsPage;
+	readonly evaluationCompare: EvaluationComparePage;
 	readonly executions: ExecutionsPage;
 	readonly sideBar: SidebarPage;
 	readonly dataTable: DataTableView;
@@ -113,6 +116,7 @@ export class n8nPage {
 	// Components
 	readonly projectTabs: ProjectTabsComponent;
 	readonly commandBar: CommandBar;
+	readonly workflowMenu: WorkflowMenu;
 
 	readonly settingsEnvironment: SettingsEnvironmentPage;
 	readonly secretsProviderSettings: SecretsProviderSettingsPage;
@@ -183,6 +187,7 @@ export class n8nPage {
 		this.workflows = new WorkflowsPage(page);
 		this.notifications = new NotificationsPage(page);
 		this.credentials = new CredentialsPage(page);
+		this.evaluationCompare = new EvaluationComparePage(page);
 		this.executions = new ExecutionsPage(page);
 		this.sideBar = new SidebarPage(page);
 		this.signIn = new SignInPage(page);
@@ -199,6 +204,7 @@ export class n8nPage {
 		// Components
 		this.projectTabs = new ProjectTabsComponent(page);
 		this.commandBar = new CommandBar(page);
+		this.workflowMenu = new WorkflowMenu(page);
 
 		// Modals
 		this.workflowActivationModal = new WorkflowActivationModal(page);

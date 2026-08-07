@@ -21,7 +21,15 @@ const sh = (cmd, args, env = {}) =>
 	spawnSync(cmd, args, { stdio: 'inherit', env: { ...process.env, ...env } });
 
 // 1. Run the coverage project (forward workers/specs from the reusable).
-const test = sh('pnpm', ['test:container:coverage', ...forwarded]);
+// The coverage build serves editor-ui bundles with INLINE sourcemaps
+// (vite.config.mts: BUILD_WITH_COVERAGE), so page.coverage's captured `source`
+// is several times larger than a normal minified bundle. Across a
+// navigation-heavy spec that overflows the Playwright worker's default ~4GB
+// heap (NODE_OPTIONS is unset for this job). Playwright forks workers with the
+// parent env, so setting it here reaches them.
+const test = sh('pnpm', ['test:container:coverage', ...forwarded], {
+	NODE_OPTIONS: '--max-old-space-size=8192',
+});
 
 // 2. Resolve coverage — best-effort, even when tests failed (we still want the data).
 try {

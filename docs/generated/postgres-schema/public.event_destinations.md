@@ -4,9 +4,9 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | uuid |  | false |  |  |  |
-| destination | jsonb |  | false |  |  |  |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
+| destination | jsonb |  | false |  |  |  |
+| id | uuid |  | false |  |  |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 
 ## Constraints
@@ -16,8 +16,8 @@
 | event_destinations_createdAt_not_null | n | NOT NULL "createdAt" |
 | event_destinations_destination_not_null | n | NOT NULL destination |
 | event_destinations_id_not_null | n | NOT NULL id |
-| event_destinations_updatedAt_not_null | n | NOT NULL "updatedAt" |
 | event_destinations_pkey | PRIMARY KEY | PRIMARY KEY (id) |
+| event_destinations_updatedAt_not_null | n | NOT NULL "updatedAt" |
 
 ## Indexes
 
@@ -32,9 +32,9 @@ erDiagram
 
 
 "public.event_destinations" {
-  uuid id
-  jsonb destination
   timestamp_3__with_time_zone createdAt
+  jsonb destination
+  uuid id
   timestamp_3__with_time_zone updatedAt
 }
 ```

@@ -4,23 +4,23 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| webhookPath | varchar |  | false |  |  |  |
 | method | varchar |  | false |  |  |  |
 | node | varchar |  | false |  |  |  |
-| webhookId | varchar |  | true |  |  |  |
 | pathLength | integer |  | true |  |  |  |
+| webhookId | varchar |  | true |  |  |  |
+| webhookPath | varchar |  | false |  |  |  |
 | workflowId | varchar(36) |  | false |  | [public.workflow_entity](public.workflow_entity.md) |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| PK_b21ace2e13596ccd87dc9bf4ea6 | PRIMARY KEY | PRIMARY KEY ("webhookPath", method) |
+| fk_webhook_entity_workflow_id | FOREIGN KEY | FOREIGN KEY ("workflowId") REFERENCES workflow_entity(id) ON DELETE CASCADE |
 | webhook_entity_method_not_null | n | NOT NULL method |
 | webhook_entity_node_not_null | n | NOT NULL node |
 | webhook_entity_webhookPath_not_null | n | NOT NULL "webhookPath" |
 | webhook_entity_workflowId_not_null1 | n | NOT NULL "workflowId" |
-| PK_b21ace2e13596ccd87dc9bf4ea6 | PRIMARY KEY | PRIMARY KEY ("webhookPath", method) |
-| fk_webhook_entity_workflow_id | FOREIGN KEY | FOREIGN KEY ("workflowId") REFERENCES workflow_entity(id) ON DELETE CASCADE |
 
 ## Indexes
 
@@ -37,34 +37,34 @@ erDiagram
 "public.webhook_entity" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 
 "public.webhook_entity" {
-  varchar webhookPath
   varchar method
   varchar node
-  varchar webhookId
   integer pathLength
+  varchar webhookId
+  varchar webhookPath
   varchar_36_ workflowId FK
 }
 "public.workflow_entity" {
-  varchar_128_ name
   boolean active
-  json nodes
+  varchar_36_ activeVersionId FK
   json connections
   timestamp_3__with_time_zone createdAt
-  timestamp_3__with_time_zone updatedAt
-  json settings
-  json staticData
-  json pinData
-  character_36_ versionId
-  integer triggerCount
-  varchar_36_ id
-  json meta
-  varchar_36_ parentFolderId FK
-  boolean isArchived
-  integer versionCounter
   text description
-  varchar_36_ activeVersionId FK
+  varchar_36_ id
+  boolean isArchived
+  json meta
+  varchar_128_ name
   json nodeGroups
+  json nodes
+  varchar_36_ parentFolderId FK
+  json pinData
+  json settings
   varchar sourceWorkflowId
+  json staticData
+  integer triggerCount
+  timestamp_3__with_time_zone updatedAt
+  integer versionCounter
+  character_36_ versionId
 }
 ```
 

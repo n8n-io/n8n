@@ -1,8 +1,9 @@
 import { Time } from '@n8n/constants';
-import { Delete, Options, Param, Post, RestController } from '@n8n/decorators';
 import { CredentialsEntity, AuthenticatedRequest, isAuthenticatedRequest, User } from '@n8n/db';
-import type { Scope } from '@n8n/permissions';
+import { Delete, Get, Options, Param, Post, RestController } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import type { Scope } from '@n8n/permissions';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { Request, Response } from 'express';
 import { Cipher } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
@@ -13,10 +14,16 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import { CreateCsrfStateData, OauthService } from '@/oauth/oauth.service';
+import { UrlService } from '@/services/url.service';
 
 import { DynamicCredentialResolverRepository } from './database/repositories/credential-resolver.repository';
 import { DynamicCredentialsConfig } from './dynamic-credentials.config';
-import { CredentialConnectionStatusService, DynamicCredentialResolverRegistry } from './services';
+import {
+	AuthorizeIntentService,
+	CredentialConnectionStatusService,
+	DynamicCredentialResolverRegistry,
+	DynamicCredentialService,
+} from './services';
 import { DynamicCredentialCorsService } from './services/dynamic-credential-cors.service';
 import { DynamicCredentialWebService } from './services/dynamic-credential-web.service';
 import { getDynamicCredentialMiddlewares } from './utils';
@@ -36,6 +43,9 @@ export class DynamicCredentialsController {
 		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly credentialConnectionStatusService: CredentialConnectionStatusService,
 		private readonly eventService: EventService,
+		private readonly authorizeIntentService: AuthorizeIntentService,
+		private readonly dynamicCredentialService: DynamicCredentialService,
+		private readonly urlService: UrlService,
 	) {}
 
 	private async findCredentialToUse(
@@ -167,12 +177,21 @@ export class DynamicCredentialsController {
 			});
 		}
 
+		// Best-effort: bind the callback to the intended n8n user when the resolver
+		// names one, so `decodeCsrfState` rejects a mismatched session. External
+		// machine callers legitimately have no n8n user, so this never fails the POST.
+		const ownership = await this.dynamicCredentialService.resolveOwningUserIdForAuthorization(
+			credentialContext,
+			resolverEntity.id,
+		);
+
 		const csrfData: CreateCsrfStateData = {
 			cid: credential.id,
 			origin: 'dynamic-credential',
 			authorizationHeader: req.headers.authorization ?? `Bearer ${credentialContext.identity}`,
 			authMetadata: credentialContext.metadata,
 			credentialResolverId: req.query.resolverId,
+			userId: ownership.status === 'bound' ? ownership.userId : undefined,
 		};
 
 		if (credential.type.toLowerCase().includes('oauth2')) {
@@ -184,6 +203,93 @@ export class DynamicCredentialsController {
 		}
 
 		throw new BadRequestError('Credential type not supported');
+	}
+
+	/**
+	 * GET /credentials/:id/authorize?token=...
+	 *
+	 * Browser-clickable counterpart to the POST authorize flow. A credential gate hands
+	 * back this short link instead of a large provider authorization URL; opening it
+	 * materializes the OAuth flow (deferred discovery / client registration happens here)
+	 * and redirects to the provider. The unguessable, short-lived `token` is the
+	 * authorization — like the OAuth callback, no session or endpoint auth token is
+	 * required, since the caller identity was captured server-side when the link was
+	 * issued.
+	 */
+	@Get('/:id/authorize', {
+		allowUnauthenticated: true,
+		usesTemplates: true,
+		ipRateLimit: {
+			limit: dynamicCredentialsConfig.rateLimitAuthorizePerMinute,
+			windowMs: 1 * Time.minutes.toMilliseconds,
+		},
+	})
+	async authorizeCredentialRedirect(req: Request, res: Response): Promise<void> {
+		const token = typeof req.query.token === 'string' ? req.query.token : undefined;
+		if (!token) {
+			this.oauthService.renderCallbackError(res, 'Missing authorization token.');
+			return;
+		}
+
+		const intent = await this.authorizeIntentService.get(token);
+		if (!intent || intent.credentialId !== req.params.id) {
+			this.oauthService.renderCallbackError(
+				res,
+				'This authorization link is invalid or has expired. Please request a new one.',
+			);
+			return;
+		}
+
+		// When the link is bound to an n8n user, the clicker must be that user.
+		if (intent.userId) {
+			const user = isAuthenticatedRequest(req) ? req.user : undefined;
+
+			if (!user) {
+				this.eventService.emit('dynamic-credential-authorize-rejected', {
+					reason: 'unauthenticated',
+					credentialId: intent.credentialId,
+				});
+				// Absolute, same-origin http(s) URL so SigninView returns here after login.
+				const returnUrl = `${this.urlService.getInstanceBaseUrl()}${req.originalUrl}`;
+				res.redirect(
+					`${this.urlService.getInstanceBaseUrl()}/signin?redirect=${encodeURIComponent(returnUrl)}`,
+				);
+				return;
+			}
+
+			if (user.id !== intent.userId) {
+				this.eventService.emit('dynamic-credential-authorize-rejected', {
+					reason: 'user-mismatch',
+					credentialId: intent.credentialId,
+				});
+				this.oauthService.renderCallbackError(
+					res,
+					'This authorization link was issued for a different account. Sign in as the intended user and open the link again.',
+				);
+				return;
+			}
+		}
+
+		try {
+			const credential = await this.findCredentialToUse(intent.credentialId);
+
+			const csrfData: CreateCsrfStateData = {
+				cid: credential.id,
+				origin: 'dynamic-credential',
+				authorizationHeader: intent.identity ? `Bearer ${intent.identity}` : '',
+				authMetadata: intent.metadata,
+				credentialResolverId: intent.resolverId,
+				userId: intent.userId,
+			};
+
+			const authorizationUrl = credential.type.toLowerCase().includes('oauth2')
+				? await this.oauthService.generateAOauth2AuthUri(credential, csrfData, req, res)
+				: await this.oauthService.generateAOauth1AuthUri(credential, csrfData, req, res);
+
+			res.redirect(authorizationUrl);
+		} catch (e) {
+			this.oauthService.renderCallbackError(res, ensureError(e).message);
+		}
 	}
 
 	/**

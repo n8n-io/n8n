@@ -585,6 +585,7 @@ describe('code-generator', () => {
 					connections: {},
 					settings: {
 						timezone: 'America/New_York',
+						errorWorkflow: 'error-handler-123',
 						executionOrder: 'v1',
 					},
 				};
@@ -593,6 +594,7 @@ describe('code-generator', () => {
 
 				expect(code).toContain("const wf = workflow('settings-test', 'Settings Test',");
 				expect(code).toContain("timezone: 'America/New_York'");
+				expect(code).toContain("errorWorkflow: 'error-handler-123'");
 				expect(code).toContain("executionOrder: 'v1'");
 				expect(code).toContain('export default wf');
 			});
@@ -1879,10 +1881,13 @@ describe('code-generator', () => {
 		});
 
 		describe('composite node parameters roundtrip', () => {
-			// Ensure fixtures are extracted for tests that use real workflow files
+			// Ensure fixtures are extracted for tests that use real workflow files.
+			// Unpacking ~2000 workflow files is IO-bound and can take well over the
+			// default 10s hook timeout on a contended CI runner, so give it a
+			// generous budget to avoid flaky "Hook timed out" failures.
 			beforeAll(() => {
 				ensureFixtures();
-			});
+			}, 60_000);
 
 			it('preserves switchCase parameters through roundtrip', () => {
 				const json: WorkflowJSON = {

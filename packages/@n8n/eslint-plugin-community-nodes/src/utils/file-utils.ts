@@ -73,17 +73,38 @@ function isValidPackageJson(obj: unknown): obj is { n8n?: PackageJsonN8n } {
 	return typeof obj === 'object' && obj !== null;
 }
 
-function readPackageJsonN8n(packageJsonPath: string): PackageJsonN8n {
+function readPackageJsonRaw(packageJsonPath: string): Record<string, unknown> | null {
 	try {
 		const content = readFileSync(packageJsonPath, 'utf8');
 		const parsed: unknown = JSON.parse(content);
-		if (isValidPackageJson(parsed)) {
-			return parsed.n8n ?? {};
-		}
-		return {};
+		return isValidPackageJson(parsed) ? (parsed as Record<string, unknown>) : null;
 	} catch {
-		return {};
+		return null;
 	}
+}
+
+function readPackageJsonN8n(packageJsonPath: string): PackageJsonN8n {
+	const parsed = readPackageJsonRaw(packageJsonPath);
+	if (parsed) {
+		const n8n = parsed.n8n;
+		return typeof n8n === 'object' && n8n !== null ? (n8n as PackageJsonN8n) : {};
+	}
+	return {};
+}
+
+/**
+ * Returns the set of package names listed under `devDependencies` in the given
+ * package.json. Dev dependencies are never installed at runtime on n8n Cloud
+ * (only the built `dist/` is shipped), so importing them is not a runtime
+ * dependency concern and is permitted by `no-restricted-imports`.
+ */
+export function readPackageJsonDevDependencies(packageJsonPath: string | null): Set<string> {
+	if (!packageJsonPath) return new Set();
+	const parsed = readPackageJsonRaw(packageJsonPath);
+	if (!parsed) return new Set();
+	const devDeps = parsed.devDependencies;
+	if (typeof devDeps !== 'object' || devDeps === null) return new Set();
+	return new Set(Object.keys(devDeps as Record<string, unknown>));
 }
 
 function resolveN8nFilePaths(packageJsonPath: string, filePaths: string[]): string[] {
@@ -177,6 +198,67 @@ export function readPackageJsonNodes(packageJsonPath: string): string[] {
 	const n8nConfig = readPackageJsonN8n(packageJsonPath);
 	const nodePaths = n8nConfig.nodes ?? [];
 	return resolveN8nFilePaths(packageJsonPath, nodePaths);
+}
+
+function findFilesRecursively(dir: string, matches: (fileName: string) => boolean): string[] {
+	const results: string[] = [];
+
+	let entries;
+	try {
+		entries = readdirSync(dir, { withFileTypes: true });
+	} catch {
+		return results;
+	}
+
+	for (const entry of entries) {
+		const fullPath = path.join(dir, entry.name);
+		if (entry.isDirectory()) {
+			results.push(...findFilesRecursively(fullPath, matches));
+		} else if (entry.isFile() && matches(entry.name)) {
+			results.push(fullPath);
+		}
+	}
+
+	return results;
+}
+
+/**
+ * Finds all `*.node.ts` source files in the package's `nodes/` directory,
+ * returning their absolute paths. Returns an empty array if there is no
+ * `nodes/` directory.
+ */
+export function findNodeSourceFilesOnDisk(packageJsonPath: string): string[] {
+	const packageDir = dirname(packageJsonPath);
+	const nodesDir = safeJoinPath(packageDir, 'nodes');
+
+	if (!existsSync(nodesDir)) {
+		return [];
+	}
+
+	return findFilesRecursively(nodesDir, (fileName) => fileName.endsWith('.node.ts'));
+}
+
+/**
+ * Recursively finds files matching `matches` within the given subdirectories of
+ * the package (relative to its `package.json`). Missing subdirectories are
+ * skipped. Returns absolute paths.
+ */
+export function findFilesInPackageDirs(
+	packageJsonPath: string,
+	dirs: string[],
+	matches: (fileName: string) => boolean,
+): string[] {
+	const packageDir = dirname(packageJsonPath);
+	const results: string[] = [];
+
+	for (const dir of dirs) {
+		const fullPath = safeJoinPath(packageDir, dir);
+		if (existsSync(fullPath)) {
+			results.push(...findFilesRecursively(fullPath, matches));
+		}
+	}
+
+	return results;
 }
 
 export function areAllCredentialUsagesTestedByNodes(

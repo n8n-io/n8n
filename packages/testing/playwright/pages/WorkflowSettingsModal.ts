@@ -1,22 +1,22 @@
-import type { Locator } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 
 import { BasePage } from './BasePage';
+import { WorkflowMenu } from './components/WorkflowMenu';
 
 export class WorkflowSettingsModal extends BasePage {
+	private readonly workflowMenu: WorkflowMenu;
+
+	constructor(page: Page) {
+		super(page);
+		this.workflowMenu = new WorkflowMenu(page);
+	}
+
 	get container() {
 		return this.page.getByTestId('workflow-settings-dialog');
 	}
 
 	getModal(): Locator {
 		return this.container;
-	}
-
-	getWorkflowMenu(): Locator {
-		return this.page.getByTestId('workflow-menu');
-	}
-
-	getSettingsMenuItem(): Locator {
-		return this.page.getByTestId('workflow-menu-item-settings');
 	}
 
 	getErrorWorkflowField(): Locator {
@@ -51,46 +51,6 @@ export class WorkflowSettingsModal extends BasePage {
 		return this.container.getByTestId('workflow-settings-timeout-form').locator('input').first();
 	}
 
-	getDuplicateMenuItem(): Locator {
-		return this.page.getByTestId('workflow-menu-item-duplicate');
-	}
-
-	getDeleteMenuItem(): Locator {
-		return this.page.getByTestId('workflow-menu-item-delete');
-	}
-
-	getArchiveMenuItem(): Locator {
-		return this.page.getByTestId('workflow-menu-item-archive');
-	}
-
-	getArchiveMenuItemWrapper(): Locator {
-		return this.getArchiveMenuItem();
-	}
-
-	getUnarchiveMenuItem(): Locator {
-		return this.page.getByTestId('workflow-menu-item-unarchive');
-	}
-
-	getPushToGitMenuItem(): Locator {
-		return this.page.getByTestId('workflow-menu-item-push');
-	}
-
-	getUnpublishMenuItem(): Locator {
-		return this.page.getByTestId('workflow-menu-item-unpublish');
-	}
-
-	getUnpublishModal(): Locator {
-		return this.page.getByTestId('workflow-history-version-unpublish-modal');
-	}
-
-	async clickUnpublishMenuItem(): Promise<void> {
-		await this.getUnpublishMenuItem().click();
-	}
-
-	async confirmUnpublishModal(): Promise<void> {
-		await this.getUnpublishModal().getByRole('button', { name: 'Unpublish' }).click();
-	}
-
 	getRedactProductionSelect(): Locator {
 		return this.container.getByTestId('workflow-settings-redact-production-select');
 	}
@@ -117,7 +77,7 @@ export class WorkflowSettingsModal extends BasePage {
 
 	async selectManualRedactMode(mode: string): Promise<void> {
 		await this.getRedactManualSelect().click();
-		await this.page.getByRole('option', { name: mode, exact: true }).click();
+		await this.getVisiblePopoverOption(mode, { exact: true }).click();
 	}
 
 	getTooltip(): Locator {
@@ -125,28 +85,15 @@ export class WorkflowSettingsModal extends BasePage {
 	}
 
 	getSaveButton(): Locator {
+		// Not scoped to `this.container`: the container test-id lives on the
+		// modal's content slot, while the save button renders in the modal's
+		// footer slot — a sibling of the content, so a container-scoped lookup
+		// never matches.
 		return this.page.getByTestId('workflow-settings-save-button').getByRole('button');
 	}
 
-	getDuplicateModal(): Locator {
-		return this.page.getByTestId('duplicate-modal');
-	}
-
-	getDuplicateNameInput(): Locator {
-		return this.getDuplicateModal().locator('input').first();
-	}
-
-	getDuplicateTagsInput(): Locator {
-		return this.getDuplicateModal().locator('.el-select__tags input');
-	}
-
-	getDuplicateSaveButton(): Locator {
-		return this.getDuplicateModal().getByRole('button', { name: /duplicate|save/i });
-	}
-
 	async open(): Promise<void> {
-		await this.getWorkflowMenu().click();
-		await this.getSettingsMenuItem().click();
+		await this.workflowMenu.openSettings();
 		await this.waitUntilLoaded();
 	}
 
@@ -161,26 +108,6 @@ export class WorkflowSettingsModal extends BasePage {
 
 	async selectErrorWorkflow(workflowName: string): Promise<void> {
 		await this.getErrorWorkflowField().click();
-		await this.page.getByRole('option', { name: workflowName }).first().click();
-	}
-
-	async clickArchiveMenuItem(): Promise<void> {
-		await this.getArchiveMenuItem().click();
-	}
-
-	async clickUnarchiveMenuItem(): Promise<void> {
-		await this.getUnarchiveMenuItem().click();
-	}
-
-	async clickDeleteMenuItem(): Promise<void> {
-		await this.getDeleteMenuItem().click();
-	}
-
-	async confirmDeleteModal(): Promise<void> {
-		await this.page.getByRole('button', { name: 'delete' }).click();
-	}
-
-	async confirmArchiveModal(): Promise<void> {
-		await this.page.locator('.btn--confirm').click();
+		await this.getVisiblePopoverOption(workflowName).first().click();
 	}
 }

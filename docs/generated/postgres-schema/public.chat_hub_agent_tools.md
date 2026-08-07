@@ -11,11 +11,11 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| chat_hub_agent_tools_agentId_not_null | n | NOT NULL "agentId" |
-| chat_hub_agent_tools_toolId_not_null | n | NOT NULL "toolId" |
 | FK_2b53d796b3dbae91b1a9553c048 | FOREIGN KEY | FOREIGN KEY ("agentId") REFERENCES chat_hub_agents(id) ON DELETE CASCADE |
 | FK_43e70f04c53344f82483d0570f6 | FOREIGN KEY | FOREIGN KEY ("toolId") REFERENCES chat_hub_tools(id) ON DELETE CASCADE |
 | PK_cc8806fdea48297a7d497035d72 | PRIMARY KEY | PRIMARY KEY ("agentId", "toolId") |
+| chat_hub_agent_tools_agentId_not_null | n | NOT NULL "agentId" |
+| chat_hub_agent_tools_toolId_not_null | n | NOT NULL "toolId" |
 
 ## Indexes
 
@@ -36,29 +36,29 @@ erDiagram
   uuid toolId FK
 }
 "public.chat_hub_agents" {
-  uuid id
-  varchar_256_ name
-  varchar_512_ description
-  text systemPrompt
-  uuid ownerId FK
-  varchar_36_ credentialId FK
-  varchar_16_ provider
-  varchar_64_ model
   timestamp_3__with_time_zone createdAt
-  timestamp_3__with_time_zone updatedAt
-  json icon
+  varchar_36_ credentialId FK
+  varchar_512_ description
   json files
+  json icon
+  uuid id
+  varchar_64_ model
+  varchar_256_ name
+  uuid ownerId FK
+  varchar_16_ provider
   json suggestedPrompts
+  text systemPrompt
+  timestamp_3__with_time_zone updatedAt
 }
 "public.chat_hub_tools" {
-  uuid id
-  varchar_255_ name
-  varchar_255_ type
-  double_precision typeVersion
-  uuid ownerId FK
+  timestamp_3__with_time_zone createdAt
   json definition
   boolean enabled
-  timestamp_3__with_time_zone createdAt
+  uuid id
+  varchar_255_ name
+  uuid ownerId FK
+  varchar_255_ type
+  double_precision typeVersion
   timestamp_3__with_time_zone updatedAt
 }
 ```

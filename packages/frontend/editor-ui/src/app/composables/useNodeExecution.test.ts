@@ -70,6 +70,7 @@ const {
 		confirm: vi.fn(),
 	},
 	mockWorkflowDocumentStore: {
+		workflowId: '123',
 		updateNodeProperties: vi.fn(),
 		getNodeByName: vi.fn(),
 		getStartNode: vi.fn(),
@@ -102,6 +103,18 @@ vi.mock('@/app/stores/workflows.store', () => ({
 
 vi.mock('@/app/stores/workflowExecutionState.store', () => ({
 	useWorkflowExecutionStateStore: vi.fn().mockReturnValue(mockWorkflowExecutionStateStore),
+	injectWorkflowExecutionStateStore: vi.fn(() => ({
+		// Plain accessor so per-test reassignment of the mock fields is always
+		// picked up.
+		get value() {
+			return {
+				...mockWorkflowExecutionStateStore,
+				get activeExecutionExecutedNode() {
+					return mockWorkflowsStore.executedNode;
+				},
+			};
+		},
+	})),
 }));
 
 vi.mock('@/app/stores/nodeTypes.store', () => ({
@@ -135,7 +148,7 @@ vi.mock('@/app/composables/useMessage', () => ({
 	useMessage: vi.fn().mockReturnValue(mockMessage),
 }));
 
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: vi.fn().mockReturnValue({
 		track: vi.fn(),
 		trackAiTransform: vi.fn(),
@@ -149,7 +162,7 @@ vi.mock('@n8n/i18n', () => ({
 	}),
 }));
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: vi.fn().mockReturnValue({
 		showMessage: vi.fn(),
 		showError: vi.fn(),

@@ -15,21 +15,21 @@ CREATE TABLE "shared_workflow" ("workflowId" varchar(36) NOT NULL, "projectId" v
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| workflowId | varchar(36) |  | false |  | [workflow_entity](workflow_entity.md) |  |
+| createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | projectId | varchar(36) |  | false |  | [project](project.md) |  |
 | role | TEXT |  | false |  |  |  |
-| createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| workflowId | varchar(36) |  | false |  | [workflow_entity](workflow_entity.md) |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| workflowId | PRIMARY KEY | PRIMARY KEY (workflowId) |
-| projectId | PRIMARY KEY | PRIMARY KEY (projectId) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| projectId | PRIMARY KEY | PRIMARY KEY (projectId) |
 | sqlite_autoindex_shared_workflow_1 | PRIMARY KEY | PRIMARY KEY (workflowId, projectId) |
+| workflowId | PRIMARY KEY | PRIMARY KEY (workflowId) |
 
 ## Indexes
 
@@ -43,48 +43,48 @@ CREATE TABLE "shared_workflow" ("workflowId" varchar(36) NOT NULL, "projectId" v
 ```mermaid
 erDiagram
 
-"shared_workflow" |o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "shared_workflow" |o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"shared_workflow" |o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "shared_workflow" {
-  varchar_36_ workflowId PK
+  datetime_3_ createdAt
   varchar_36_ projectId PK
   TEXT role
-  datetime_3_ createdAt
   datetime_3_ updatedAt
-}
-"workflow_entity" {
-  varchar_36_ id PK
-  varchar_128_ name
-  boolean active
-  TEXT nodes
-  TEXT connections
-  TEXT settings
-  TEXT staticData
-  TEXT pinData
-  varchar_36_ versionId
-  INTEGER triggerCount
-  TEXT meta
-  varchar_36_ parentFolderId FK
-  datetime_3_ createdAt
-  datetime_3_ updatedAt
-  boolean isArchived
-  INTEGER versionCounter
-  TEXT description
-  varchar_36_ activeVersionId FK
-  TEXT nodeGroups
-  varchar sourceWorkflowId
+  varchar_36_ workflowId PK
 }
 "project" {
+  datetime_3_ createdAt
+  varchar creatorId FK
+  TEXT customTelemetryTags
+  varchar_512_ description
+  TEXT icon
   varchar_36_ id PK
   varchar_255_ name
   varchar_36_ type
-  datetime_3_ createdAt
   datetime_3_ updatedAt
-  TEXT icon
-  varchar_512_ description
-  varchar creatorId FK
-  TEXT customTelemetryTags
+}
+"workflow_entity" {
+  boolean active
+  varchar_36_ activeVersionId FK
+  TEXT connections
+  datetime_3_ createdAt
+  TEXT description
+  varchar_36_ id PK
+  boolean isArchived
+  TEXT meta
+  varchar_128_ name
+  TEXT nodeGroups
+  TEXT nodes
+  varchar_36_ parentFolderId FK
+  TEXT pinData
+  TEXT settings
+  varchar sourceWorkflowId
+  TEXT staticData
+  INTEGER triggerCount
+  datetime_3_ updatedAt
+  INTEGER versionCounter
+  varchar_36_ versionId
 }
 ```
 

@@ -1,3 +1,4 @@
+import { computed } from 'vue';
 import type { RouteLocationNormalized } from 'vue-router';
 import { useFoldersStore } from '@/features/core/folders/folders.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
@@ -16,6 +17,19 @@ export function useEmptyStateDetection() {
 	const dataTableStore = useDataTableStore();
 	const projectPages = useProjectPages();
 	const route = useRoute();
+
+	/**
+	 * Any store already showing content is enough to keep instant chrome.
+	 * Readiness-agnostic by design: counts that haven't loaded yet read as
+	 * "no known content", which callers use to defer chrome until resolved.
+	 */
+	const hasKnownInstanceContent = computed(
+		() =>
+			foldersStore.totalWorkflowCount > 0 ||
+			credentialsStore.allCredentials.length > 0 ||
+			environmentsStore.variables.length > 0 ||
+			dataTableStore.totalCount > 0,
+	);
 
 	/**
 	 * Checks if the current state qualifies as "truly empty"
@@ -60,5 +74,6 @@ export function useEmptyStateDetection() {
 
 	return {
 		isTrulyEmpty,
+		hasKnownInstanceContent,
 	};
 }

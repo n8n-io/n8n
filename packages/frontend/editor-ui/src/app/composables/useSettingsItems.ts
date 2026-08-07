@@ -6,7 +6,7 @@ import type { IMenuItem } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { VIEWS } from '../constants';
 import { useUIStore } from '../stores/ui.store';
-import { useSettingsStore } from '../stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { hasPermission } from '../utils/rbac/permissions';
 import { MIGRATION_REPORT_TARGET_VERSION } from '@n8n/api-types';
 import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
@@ -71,12 +71,12 @@ export function useSettingsItems() {
 						: undefined,
 			},
 			{
-				id: 'settings-project-roles',
+				id: 'settings-roles',
 				icon: 'user-round',
-				label: i18n.baseText('settings.projectRoles'),
+				label: i18n.baseText('settings.roles'),
 				position: 'top',
-				available: canUserAccessRouteByName(VIEWS.PROJECT_ROLES_SETTINGS),
-				route: { to: { name: VIEWS.PROJECT_ROLES_SETTINGS } },
+				available: canUserAccessRouteByName(VIEWS.ROLES_SETTINGS),
+				route: { to: { name: VIEWS.ROLES_SETTINGS } },
 				new: true,
 			},
 			{

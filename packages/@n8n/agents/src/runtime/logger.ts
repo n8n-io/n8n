@@ -8,6 +8,9 @@ const SUPPRESSED_PATTERNS = [
 ];
 
 function isSuppressed(message: string): boolean {
+	// The runtime occasionally logs non-string / missing messages; treating
+	// them as not-suppressed keeps this shim from throwing inside a log call.
+	if (typeof message !== 'string') return false;
 	return SUPPRESSED_PATTERNS.some((pattern) => message.includes(pattern));
 }
 

@@ -22,8 +22,25 @@ function textDelta(text: string): InstanceAiEvent {
 	return { type: 'text-delta', runId: 'run-1', agentId: 'agent-1', payload: { text } };
 }
 
+function reasoningDelta(text: string, responseId?: string): InstanceAiEvent {
+	return {
+		type: 'reasoning-delta',
+		runId: 'run-1',
+		agentId: 'agent-1',
+		...(responseId ? { responseId } : {}),
+		payload: { text },
+	};
+}
+
 function collectText(events: InstanceAiEvent[]): string {
 	return events.map((e) => ('payload' in e && 'text' in e.payload ? e.payload.text : '')).join('');
+}
+
+function collectTextOfType(
+	events: InstanceAiEvent[],
+	type: 'text-delta' | 'reasoning-delta',
+): string {
+	return collectText(events.filter((e) => e.type === type));
 }
 
 describe('OutputRedactor', () => {
@@ -63,6 +80,59 @@ describe('OutputRedactor', () => {
 		const text = 'The workflow completed and produced three items successfully.';
 		const emitted = [...redactor.processEvent(textDelta(text)), ...redactor.flush()];
 		expect(collectText(emitted)).toBe(text);
+	});
+
+	describe('channel switches', () => {
+		const reasoning =
+			'I should check the FAQ sheet first and then decide whether a ticket is needed.';
+		const text = 'Let me start by loading the builder guidance and reviewing the knowledge base.';
+
+		it('releases the reasoning tail before text that follows it', () => {
+			const redactor = createRedactor();
+			const emitted = [
+				...redactor.processEvent(reasoningDelta(reasoning)),
+				...redactor.processEvent(textDelta(text)),
+				...redactor.flush(),
+			];
+
+			// All reasoning must be published before the first text delta —
+			// otherwise the held-back reasoning tail renders as a stray
+			// mid-sentence reasoning block in the UI.
+			const types = emitted.map((e) => e.type);
+			expect(types.lastIndexOf('reasoning-delta')).toBeLessThan(types.indexOf('text-delta'));
+			// No content is lost or reordered within a channel.
+			expect(collectTextOfType(emitted, 'reasoning-delta')).toBe(reasoning);
+			expect(collectTextOfType(emitted, 'text-delta')).toBe(text);
+		});
+
+		it('releases the text tail before reasoning that follows it', () => {
+			const redactor = createRedactor();
+			const emitted = [
+				...redactor.processEvent(textDelta(text)),
+				...redactor.processEvent(reasoningDelta(reasoning)),
+				...redactor.flush(),
+			];
+
+			const types = emitted.map((e) => e.type);
+			expect(types.lastIndexOf('text-delta')).toBeLessThan(types.indexOf('reasoning-delta'));
+			expect(collectTextOfType(emitted, 'text-delta')).toBe(text);
+			expect(collectTextOfType(emitted, 'reasoning-delta')).toBe(reasoning);
+		});
+
+		it('drains the tail under its original responseId', () => {
+			const redactor = createRedactor();
+			const emitted = [
+				...redactor.processEvent(reasoningDelta(reasoning, 'run-1:step:1')),
+				...redactor.processEvent(textDelta(text)),
+				...redactor.flush(),
+			];
+
+			const reasoningEvents = emitted.filter((e) => e.type === 'reasoning-delta');
+			expect(reasoningEvents.length).toBeGreaterThan(1);
+			for (const event of reasoningEvents) {
+				expect(event).toMatchObject({ responseId: 'run-1:step:1' });
+			}
+		});
 	});
 
 	it('preserves responseId on flushed delta text', () => {
@@ -116,6 +186,26 @@ describe('OutputRedactor', () => {
 		expect(JSON.stringify(out)).not.toContain('abcdef1234567890');
 	});
 
+	it('leaves upstream browser redaction markers intact in a tool-result', () => {
+		const redactor = createRedactor();
+		const event: InstanceAiEvent = {
+			type: 'tool-result',
+			runId: 'run-1',
+			agentId: 'agent-1',
+			payload: {
+				toolCallId: 'tc-1',
+				result: {
+					snapshot: 'Client Secret [REDACTED:secret:1] Signing Secret [REDACTED:secret:2]',
+				},
+			},
+		};
+		const [out] = redactor.processEvent(event);
+		const serialized = JSON.stringify(out);
+		expect(serialized).not.toContain('[REDACTED:[REDACTED');
+		expect(serialized).toContain('[REDACTED:secret:1]');
+		expect(serialized).toContain('[REDACTED:secret:2]');
+	});
+
 	it('redacts confirmation card display text', () => {
 		const redactor = createRedactor(createLogger(), { detect: ['email'] });
 		const event: InstanceAiEvent = {
@@ -129,6 +219,11 @@ describe('OutputRedactor', () => {
 				args: {},
 				severity: 'warning',
 				message: 'What to do with jane@example.com?',
+				targetApproval: {
+					toolName: 'send_jane@example.com',
+					displayName: 'Email jane@example.com',
+					args: { recipient: 'jane@example.com' },
+				},
 				introMessage: 'I noticed jane@example.com in your request.',
 				questions: [
 					{
@@ -156,7 +251,49 @@ describe('OutputRedactor', () => {
 		expect(serialized).not.toContain('jane@example.com');
 		expect(serialized).toContain('[REDACTED]');
 		// Control/identifier fields are preserved so suspend/resume keeps working.
-		expect(out).toMatchObject({ payload: { requestId: 'req-1', toolCallId: 'tc-1' } });
+		expect(out).toMatchObject({
+			payload: {
+				requestId: 'req-1',
+				toolCallId: 'tc-1',
+				targetApproval: {
+					toolName: '[REDACTED]',
+					displayName: 'Email [REDACTED]',
+					args: { recipient: '[REDACTED]' },
+				},
+			},
+		});
+		expect(event.payload.targetApproval?.args).toEqual({ recipient: 'jane@example.com' });
+	});
+
+	it('withholds target approval args nested beyond the redaction depth limit', () => {
+		const redactor = createRedactor();
+		const secret = 'Bearer abcdef1234567890';
+		let nested: unknown = { secret };
+		for (let depth = 0; depth < 9; depth++) nested = { nested };
+		const event: InstanceAiEvent = {
+			type: 'confirmation-request',
+			runId: 'run-1',
+			agentId: 'agent-1',
+			payload: {
+				requestId: 'req-1',
+				toolCallId: 'tc-1',
+				toolName: 'call_agent',
+				args: {},
+				severity: 'warning',
+				message: 'Confirm action',
+				targetApproval: {
+					toolName: 'deep_action',
+					args: { visible: 'ordinary value', nested },
+				},
+			},
+		};
+
+		const [out] = redactor.processEvent(event);
+		if (out.type !== 'confirmation-request') throw new Error('Expected confirmation request');
+		const serializedArgs = JSON.stringify(out.payload.targetApproval?.args);
+		expect(serializedArgs).not.toContain(secret);
+		expect(serializedArgs).toContain('[REDACTED]');
+		expect(out.payload.targetApproval?.args).toMatchObject({ visible: 'ordinary value' });
 	});
 
 	it('logs a filtering summary with category counts and no values', () => {

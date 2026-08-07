@@ -26,7 +26,7 @@
  *   node packages/@n8n/instance-ai/scripts/build-snapshot.cjs --version 1.123.0
  */
 
-const { Daytona } = require('@daytonaio/sdk');
+const { Daytona } = require('@daytona/sdk');
 const { SnapshotManager } = require('@n8n/instance-ai');
 
 function parseVersion(argv) {

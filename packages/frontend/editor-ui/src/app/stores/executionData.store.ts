@@ -12,6 +12,7 @@ import {
 	WAIT_INDEFINITELY,
 	type ExecutionStatus,
 	type INode,
+	type IPinData,
 	type IRunData,
 	type IRunExecutionData,
 	type ITaskData,
@@ -67,6 +68,15 @@ export function getExecutionDataStoreId(id: ExecutionDataId) {
 }
 
 /**
+ * Reports whether an execution data store currently exists for this id without
+ * instantiating one. Use this to peek before calling `useExecutionDataStore`,
+ * which would otherwise register an empty store as a side effect.
+ */
+export function hasExecutionDataStore(id: ExecutionDataId): boolean {
+	return getActivePinia()?.state.value[getExecutionDataStoreId(id)] !== undefined;
+}
+
+/**
  * Creates an execution data store keyed by execution id.
  *
  * Multiple instances live concurrently (active execution, displayed execution,
@@ -87,6 +97,10 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 		);
 
 		const executedNode = computed(() => execution.value?.executedNode);
+
+		const executionPinDataByNodeName = computed<IPinData>(
+			() => execution.value?.data?.resultData?.pinData ?? {},
+		);
 
 		// Per-node-name execution-issues map with atomic per-name updates.
 		// Each entry is a structuralComputed in its own effectScope, so only
@@ -703,6 +717,7 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 			executionResultDataLastUpdate: readonly(executionResultDataLastUpdate),
 			executionRunData,
 			executedNode,
+			executionPinDataByNodeName,
 			executionIssuesByNodeName,
 			executionStatusByNodeId,
 			executionRunDataByNodeId,

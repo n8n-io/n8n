@@ -2,7 +2,7 @@
 import { computed } from 'vue';
 import { N8nButton, N8nCard, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import type { ApprovalInput, ApprovalResume } from '../../composables/agentChatMessages';
+import type { ApprovalInput, ApprovalResume } from '@/features/ai/shared/agentsChat/types';
 
 const props = defineProps<{
 	input: ApprovalInput;
@@ -70,7 +70,6 @@ function submit(approved: boolean) {
 			<div v-else :class="$style.actions">
 				<N8nButton
 					size="medium"
-					type="primary"
 					:disabled="disabled"
 					data-testid="agent-approval-approve"
 					@click="submit(true)"

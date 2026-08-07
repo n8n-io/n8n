@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import type { Settings, SettingsRepository } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { OTEL_SETTINGS_KEY, OtelSettingsService } from '../otel-settings.service';
 import { OtelConfig } from '../otel.config';
@@ -13,7 +13,7 @@ describe('OtelSettingsService', () => {
 	const originalEnv = process.env;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		process.env = { ...originalEnv };
 		// Strip any OTel env vars inherited from the test runner so each test
 		// starts from a known state.
@@ -183,6 +183,35 @@ describe('OtelSettingsService', () => {
 			) as OtelConfig;
 			expect(saved.exporterEndpoint).toBe('https://from-env');
 			expect(saved.enabled).toBe(settings.enabled);
+		});
+	});
+
+	describe('resolveTestConnection', () => {
+		const incoming = {
+			exporterEndpoint: 'https://collector.example.com',
+			exporterTracingPath: '/v1/traces',
+			exporterServiceName: 'n8n-prod',
+			exporterHeaders: 'auth=token',
+			startupConnectivityTimeoutMs: 5_000,
+		};
+
+		it('returns the incoming connection params when no env vars are set', () => {
+			expect(service.resolveTestConnection(incoming)).toEqual(incoming);
+		});
+
+		it('overrides env-managed fields with the canonical env-var value', () => {
+			process.env.N8N_OTEL_EXPORTER_OTLP_ENDPOINT = 'https://from-env';
+			const configWithEnv = new OtelConfig();
+			configWithEnv.exporterEndpoint = 'https://from-env';
+			const serviceWithEnv = new OtelSettingsService(configWithEnv, settingsRepository);
+
+			const result = serviceWithEnv.resolveTestConnection({
+				...incoming,
+				exporterEndpoint: 'https://tampered-by-client',
+			});
+
+			expect(result.exporterEndpoint).toBe('https://from-env');
+			expect(result.exporterServiceName).toBe('n8n-prod');
 		});
 	});
 });

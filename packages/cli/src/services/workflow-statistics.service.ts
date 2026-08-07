@@ -1,4 +1,5 @@
 import { Logger, TypedEmitter } from '@n8n/backend-common';
+import { DatabaseConfig } from '@n8n/config';
 import {
 	SettingsRepository,
 	StatisticsNames,
@@ -6,12 +7,15 @@ import {
 	WorkflowStatisticsRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import type {
-	ExecutionStatus,
-	INode,
-	IRun,
-	IWorkflowBase,
-	WorkflowExecuteMode,
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import {
+	isCompletedExecutionStatus,
+	type ExecutionStatus,
+	type INode,
+	type IRun,
+	type IWorkflowBase,
+	type WorkflowExecuteMode,
+	type WorkflowExecutionSource,
 } from 'n8n-workflow';
 
 import { EventService } from '@/events/event.service';
@@ -33,7 +37,6 @@ const isStatusRootExecution = {
 
 const isModeRootExecution = {
 	cli: true,
-	error: true,
 	retry: true,
 	trigger: true,
 	webhook: true,
@@ -43,6 +46,8 @@ const isModeRootExecution = {
 	integrated: false,
 
 	// error workflows
+	error: false,
+
 	internal: false,
 
 	manual: false,
@@ -54,20 +59,40 @@ const isModeRootExecution = {
 	agent: false,
 } satisfies Record<WorkflowExecuteMode, boolean>;
 
+function getStatisticsNameForCompletedRun(
+	runData: IRun,
+	source?: WorkflowExecutionSource,
+): StatisticsNames | null {
+	const isChatExecution = runData.mode === 'chat';
+	if (isChatExecution || !isCompletedExecutionStatus(runData.status)) {
+		return null;
+	}
+
+	// Instance AI verification runs mimic the trigger's execution mode, but they
+	// are test runs on the user's behalf — count them as manual so they never
+	// land in production stats or fire first-production milestones.
+	const isManualExecution = runData.mode === 'manual' || source === 'instance_ai';
+	if (isManualExecution) {
+		return runData.status === 'success'
+			? StatisticsNames.manualSuccess
+			: StatisticsNames.manualError;
+	}
+
+	return runData.status === 'success'
+		? StatisticsNames.productionSuccess
+		: StatisticsNames.productionError;
+}
+
+function isRootExecutionForRun(runData: IRun): boolean {
+	return isModeRootExecution[runData.mode] && isStatusRootExecution[runData.status];
+}
+
 type WorkflowStatisticsEvents = {
-	nodeFetchedData: { workflowId: string; node: INode };
-	workflowExecutionCompleted: { workflowData: IWorkflowBase; fullRunData: IRun };
-	'telemetry.onFirstProductionWorkflowSuccess': {
-		project_id: string;
-		workflow_id: string;
-		user_id: string;
-	};
-	'telemetry.onFirstWorkflowDataLoad': {
-		user_id: string;
-		project_id: string;
-		workflow_id: string;
-		node_type: string;
-		node_id: string;
+	nodeFetchedData: { workflowId: string; node: INode; source?: WorkflowExecutionSource };
+	workflowExecutionCompleted: {
+		workflowData: IWorkflowBase;
+		fullRunData: IRun;
+		source?: WorkflowExecutionSource;
 	};
 };
 
@@ -81,132 +106,183 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 		private readonly eventService: EventService,
 		private readonly settingsRepository: SettingsRepository,
 		private readonly workflowRepository: WorkflowRepository,
+		private readonly databaseConfig: DatabaseConfig,
 	) {
 		super({ captureRejections: true });
 		if ('SKIP_STATISTICS_EVENTS' in process.env) return;
 
 		this.on(
 			'nodeFetchedData',
-			async ({ workflowId, node }) => await this.nodeFetchedData(workflowId, node),
+			async ({ workflowId, node, source }) => await this.nodeFetchedData(workflowId, node, source),
 		);
 		this.on(
 			'workflowExecutionCompleted',
-			async ({ workflowData, fullRunData }) =>
-				await this.workflowExecutionCompleted(workflowData, fullRunData),
+			async ({ workflowData, fullRunData, source }) =>
+				await this.workflowExecutionCompleted(workflowData, fullRunData, source),
 		);
 	}
 
-	async workflowExecutionCompleted(workflowData: IWorkflowBase, runData: IRun): Promise<void> {
-		// Determine the name of the statistic
-		const isSuccess = runData.status === 'success';
-		const isError = runData.status === 'error' || runData.status === 'crashed';
-		const manualExecution = runData.mode === 'manual';
-		const chatExecution = runData.mode === 'chat';
+	async workflowExecutionCompleted(
+		workflowData: IWorkflowBase,
+		runData: IRun,
+		source?: WorkflowExecutionSource,
+	): Promise<void> {
+		const statisticsName = getStatisticsNameForCompletedRun(runData, source);
 
-		if (chatExecution) {
-			// Chat workflows are short lived and not counted towards execution limits.
-			return;
-		}
+		// Instance AI runs mimic trigger modes but are not root production runs.
+		const isRoot = source !== 'instance_ai' && isRootExecutionForRun(runData);
 
-		let name: StatisticsNames;
-		const isRootExecution =
-			isModeRootExecution[runData.mode] && isStatusRootExecution[runData.status];
+		if (!statisticsName) return;
 
-		// Only record statistics for terminal statuses (success, error, crashed)
-		// Skip non-terminal statuses like waiting, running, new, etc.
-		if (isSuccess) {
-			name = manualExecution ? StatisticsNames.manualSuccess : StatisticsNames.productionSuccess;
-		} else if (isError) {
-			name = manualExecution ? StatisticsNames.manualError : StatisticsNames.productionError;
-		} else {
-			return;
-		}
-
-		// Get the workflow id
 		const workflowId = workflowData.id;
 		if (!workflowId) return;
 
+		let upsertResult: Awaited<ReturnType<WorkflowStatisticsRepository['upsertWorkflowStatistics']>>;
+
 		try {
-			const upsertResult = await this.repository.upsertWorkflowStatistics(
-				name,
+			/**
+			 * For performance reasons, in Postgres we append and fold out of band,
+			 * whereas in SQLite we upsert directly.
+			 */
+			if (this.databaseConfig.type === 'postgresdb') {
+				await this.repository.appendIncrement(
+					statisticsName,
+					workflowId,
+					isRoot,
+					workflowData.name,
+				);
+				return;
+			}
+
+			upsertResult = await this.repository.upsertWorkflowStatistics(
+				statisticsName,
 				workflowId,
-				isRootExecution,
+				isRoot,
 				workflowData.name,
 			);
-
-			if (name === StatisticsNames.productionSuccess && upsertResult === 'insert') {
-				const project = await this.ownershipService.getWorkflowProjectCached(workflowId);
-				let userId: string | null = null;
-
-				if (project.type === 'personal') {
-					const owner = await this.ownershipService.getPersonalProjectOwnerCached(project.id);
-					userId = owner?.id ?? null;
-
-					if (owner && !owner.settings?.userActivated) {
-						await this.userService.updateSettings(owner.id, {
-							firstSuccessfulWorkflowId: workflowId,
-							userActivated: true,
-							userActivatedAt: runData.startedAt.getTime(),
-						});
-					}
-				}
-
-				this.eventService.emit('first-production-workflow-succeeded', {
-					projectId: project.id,
-					workflowId,
-					userId,
-				});
-			}
-
-			if (name === StatisticsNames.productionError && upsertResult === 'insert') {
-				// Check if this is the first production failure and if error workflows are configured
-				const instanceHadProductionFailure = await this.settingsRepository.findByKey(
-					'instance.firstProductionFailure',
-				);
-
-				if (
-					!instanceHadProductionFailure &&
-					!(await this.workflowRepository.hasAnyWorkflowsWithErrorWorkflow())
-				) {
-					// This is the first production failure ever on this instance
-					const project = await this.ownershipService.getWorkflowProjectCached(workflowId);
-
-					// Get owner: personal project owner if available, otherwise instance owner
-					let owner =
-						project.type === 'personal'
-							? await this.ownershipService.getPersonalProjectOwnerCached(project.id)
-							: null;
-
-					owner ??= await this.ownershipService.getInstanceOwner();
-
-					// Store the flag to prevent future emissions
-					await this.settingsRepository.save({
-						key: 'instance.firstProductionFailure',
-						value: JSON.stringify({
-							workflowId,
-							projectId: project.id,
-							userId: owner.id,
-							timestamp: runData.startedAt.getTime(),
-						}),
-						loadOnStartup: false,
-					});
-
-					// Emit the event
-					this.eventService.emit('instance-first-production-workflow-failed', {
-						projectId: project.id,
-						workflowId,
-						workflowName: workflowData.name,
-						userId: owner.id,
-					});
-				}
-			}
 		} catch (error) {
-			this.logger.debug('Unable to fire first workflow telemetry event');
+			this.logger.error('Failed to record workflow statistic', { error: ensureError(error) });
+			return;
+		}
+
+		if (upsertResult !== 'insert') return;
+
+		try {
+			await this.emitFirstOccurrenceEvent(
+				statisticsName,
+				workflowId,
+				workflowData.name ?? null,
+				runData.startedAt.getTime(),
+			);
+		} catch (error) {
+			this.logger.debug('Failed to emit workflow statistics milestone', {
+				error: ensureError(error),
+			});
 		}
 	}
 
-	async nodeFetchedData(workflowId: string | undefined | null, node: INode): Promise<void> {
+	/** Emit an event on first production success or first production failure. */
+	async emitFirstOccurrenceEvent(
+		statisticsName: StatisticsNames,
+		workflowId: string,
+		workflowName: string | null,
+		firstEventMs: number,
+	): Promise<void> {
+		if (statisticsName === StatisticsNames.productionSuccess) {
+			await this.emitFirstProductionWorkflowSucceeded(workflowId, firstEventMs);
+			return;
+		}
+
+		if (statisticsName === StatisticsNames.productionError) {
+			await this.emitInstanceFirstProductionWorkflowFailed(
+				workflowId,
+				workflowName ?? '',
+				firstEventMs,
+			);
+		}
+	}
+
+	private async emitFirstProductionWorkflowSucceeded(
+		workflowId: string,
+		userActivatedAtMs: number,
+	): Promise<void> {
+		const project = await this.ownershipService.getWorkflowProjectCached(workflowId);
+		let userId: string | null = null;
+
+		if (project.type === 'personal') {
+			const owner = await this.ownershipService.getPersonalProjectOwnerCached(project.id);
+			userId = owner?.id ?? null;
+
+			if (owner && !owner.settings?.userActivated) {
+				await this.userService.updateSettings(owner.id, {
+					firstSuccessfulWorkflowId: workflowId,
+					userActivated: true,
+					userActivatedAt: userActivatedAtMs,
+				});
+			}
+		}
+
+		this.eventService.emit('first-production-workflow-succeeded', {
+			projectId: project.id,
+			workflowId,
+			userId,
+		});
+	}
+
+	private async emitInstanceFirstProductionWorkflowFailed(
+		workflowId: string,
+		workflowName: string,
+		timestampMs: number,
+	): Promise<void> {
+		const instanceHadProductionFailure = await this.settingsRepository.findByKey(
+			'instance.firstProductionFailure',
+		);
+
+		if (
+			instanceHadProductionFailure ||
+			(await this.workflowRepository.hasAnyWorkflowsWithErrorWorkflow())
+		) {
+			return;
+		}
+
+		const project = await this.ownershipService.getWorkflowProjectCached(workflowId);
+
+		let owner =
+			project.type === 'personal'
+				? await this.ownershipService.getPersonalProjectOwnerCached(project.id)
+				: null;
+
+		owner ??= await this.ownershipService.getInstanceOwner();
+
+		await this.settingsRepository.save({
+			key: 'instance.firstProductionFailure',
+			value: JSON.stringify({
+				workflowId,
+				projectId: project.id,
+				userId: owner.id,
+				timestamp: timestampMs,
+			}),
+			loadOnStartup: false,
+		});
+
+		this.eventService.emit('instance-first-production-workflow-failed', {
+			projectId: project.id,
+			workflowId,
+			workflowName,
+			userId: owner.id,
+		});
+	}
+
+	async nodeFetchedData(
+		workflowId: string | undefined | null,
+		node: INode,
+		source?: WorkflowExecutionSource,
+	): Promise<void> {
 		if (!workflowId) return;
+
+		// Instance AI verification runs must not claim a workflow's
+		// first-data-loaded milestone on the user's behalf.
+		if (source === 'instance_ai') return;
 
 		const insertResult = await this.repository.insertWorkflowStatistics(
 			StatisticsNames.dataLoaded,

@@ -4,20 +4,21 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { mockedStore } from '@/__tests__/utils';
 import type router from 'vue-router';
 import { flushPromises } from '@vue/test-utils';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
-import { useSettingsStore } from '@/app/stores/settings.store';
-import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
-import type { CloudPlanState } from '@/Interface';
+import type { CloudPlanState } from '@n8n/stores/cloudPlan.store';
 
 import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
-import { NEW_AGENT_VIEW, AGENTS_MODULE_NAME } from '@/features/agents/constants';
+import { AGENTS_MODULE_NAME } from '@/features/agents/constants';
+import { instanceAiCreateAgentRoute } from '@/features/ai/instanceAi/createAgentRoute';
 import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
 import { VARIABLE_MODAL_KEY } from '@/features/settings/environments.ee/environments.constants';
 import { PROJECT_DATA_TABLES } from '@/features/core/dataTable/constants';
 import { hasPermission } from '@/app/utils/rbac/permissions';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import type { Project, ProjectListItem } from '@/features/collaboration/projects/projects.types';
 
@@ -36,7 +37,7 @@ vi.mock('@/app/composables/usePageRedirectionHelper', () => {
 	};
 });
 
-vi.mock('@/app/composables/useToast', () => {
+vi.mock('@n8n/composables/useToast', () => {
 	const showMessage = vi.fn();
 	const showError = vi.fn();
 	return {
@@ -62,7 +63,7 @@ vi.mock('vue-router', async (importOriginal) => {
 });
 
 const trackMock = vi.fn();
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: trackMock }),
 }));
 
@@ -294,7 +295,7 @@ describe('useGlobalEntityCreation', () => {
 			expect(ids).toEqual(['workflow', 'credential', 'agent', 'create-project']);
 			expect(menu.value.find((item) => item.id === 'agent')).toStrictEqual(
 				expect.objectContaining({
-					route: { name: NEW_AGENT_VIEW, query: { projectId: personalProjectId } },
+					route: instanceAiCreateAgentRoute(personalProjectId),
 				}),
 			);
 		});
@@ -317,7 +318,7 @@ describe('useGlobalEntityCreation', () => {
 			expect(menu.value.find((item) => item.id === 'agent')).toStrictEqual(
 				expect.objectContaining({
 					disabled: false,
-					route: { name: NEW_AGENT_VIEW, query: { projectId: personalProjectId } },
+					route: instanceAiCreateAgentRoute(personalProjectId),
 				}),
 			);
 		});
@@ -368,16 +369,13 @@ describe('useGlobalEntityCreation', () => {
 			expect(personal).toStrictEqual(
 				expect.objectContaining({
 					disabled: false,
-					route: { name: NEW_AGENT_VIEW, query: { projectId: personalProjectId } },
+					route: instanceAiCreateAgentRoute(personalProjectId),
 				}),
 			);
 
 			const teamWithScope = agentEntry?.submenu?.find((s) => s.id === 'agent-1');
 			expect(teamWithScope?.disabled).toBe(false);
-			expect(teamWithScope?.route).toEqual({
-				name: NEW_AGENT_VIEW,
-				query: { projectId: '1' },
-			});
+			expect(teamWithScope?.route).toEqual(instanceAiCreateAgentRoute('1'));
 
 			const teamWithoutScope = agentEntry?.submenu?.find((s) => s.id === 'agent-3');
 			expect(teamWithoutScope?.disabled).toBe(true);
@@ -621,12 +619,15 @@ describe('useGlobalEntityCreation', () => {
 	describe('instance-ai module', () => {
 		const INSTANCE_AI_SETTINGS = {
 			enabled: true,
+			setupCompleted: true,
 			localGatewayDisabled: false,
+			browserUseEnabled: true,
 			proxyEnabled: false,
 			cloudManaged: false,
 			sandboxEnabled: true,
 			workflowBuilderAvailable: true,
 			sandboxUnavailableReason: null,
+			runDebugEnabled: false,
 		};
 
 		const enableInstanceAi = () => {

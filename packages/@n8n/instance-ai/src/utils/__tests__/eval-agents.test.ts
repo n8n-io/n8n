@@ -1,4 +1,3 @@
-/* eslint-disable import-x/order */
 import type { Mock } from 'vitest';
 
 type MockAgentInstance = {
@@ -70,24 +69,12 @@ describe('eval agent model config', () => {
 		expect(config.apiKey).toBe('generic-key');
 	});
 
-	it('does not enable OpenAI reasoning when thinking is omitted', () => {
+	it('enables thinking for supported eval models', () => {
 		process.env.OPENAI_API_KEY = 'openai-key';
 
 		createEvalAgent('test-agent', {
 			model: 'openai/gpt-5.5',
 			instructions: 'Do the task.',
-		});
-
-		expect(mockAgentInstances[0]?.thinking).not.toHaveBeenCalled();
-	});
-
-	it('enables OpenAI reasoning only when thinking is requested', () => {
-		process.env.OPENAI_API_KEY = 'openai-key';
-
-		createEvalAgent('test-agent', {
-			model: 'openai/gpt-5.5',
-			instructions: 'Do the task.',
-			thinking: 'adaptive',
 		});
 
 		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('openai', {
@@ -95,18 +82,43 @@ describe('eval agent model config', () => {
 		});
 	});
 
-	it('keeps Anthropic budgeted thinking provider-specific', () => {
-		process.env.N8N_AI_ANTHROPIC_KEY = 'anthropic-key';
+	it('throws without env keys or a fallback model config', () => {
+		expect(() => createEvalAgent('test-agent', { instructions: 'Do the task.' })).toThrow(
+			/Missing API key/,
+		);
+	});
+
+	it('uses the fallback model config when no env API key is configured', () => {
+		const fallbackModelConfig = {
+			id: 'anthropic/claude-opus-4-8' as const,
+			url: 'https://proxy.example.com/anthropic/v1',
+			apiKey: 'proxy-token',
+		};
 
 		createEvalAgent('test-agent', {
-			model: 'anthropic/claude-sonnet-4-6',
 			instructions: 'Do the task.',
-			thinking: { budgetTokens: 2048 },
+			fallbackModelConfig,
 		});
 
+		expect(mockAgentInstances[0]?.model).toHaveBeenCalledWith(fallbackModelConfig);
 		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('anthropic', {
-			mode: 'enabled',
-			budgetTokens: 2048,
+			mode: 'adaptive',
+			effort: 'medium',
+		});
+	});
+
+	it('prefers env-based model resolution over the fallback', () => {
+		process.env.N8N_AI_ANTHROPIC_KEY = 'env-key';
+
+		createEvalAgent('test-agent', {
+			instructions: 'Do the task.',
+			fallbackModelConfig: { id: 'anthropic/claude-opus-4-8' as const, url: '', apiKey: 'jwt' },
+		});
+
+		expect(mockAgentInstances[0]?.model).toHaveBeenCalledWith({
+			id: 'anthropic/claude-sonnet-4-6',
+			apiKey: 'env-key',
+			url: undefined,
 		});
 	});
 });

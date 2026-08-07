@@ -10,6 +10,7 @@
  */
 
 import { Tool } from '@n8n/agents';
+import { isRecord } from '@n8n/utils/is-record';
 import { z } from 'zod';
 
 import type { OrchestrationContext } from '../../types';
@@ -35,10 +36,6 @@ const outputSchema = z.object({
 	result: z.string(),
 	ok: z.boolean(),
 });
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 function requiresWorkflowSetup(outcome: Record<string, unknown> | undefined): boolean {
 	const setupRequirement = outcome?.setupRequirement;
@@ -113,7 +110,7 @@ async function rejectIfSetupStillRequired(
 export function createCompleteCheckpointTool(context: OrchestrationContext) {
 	return new Tool('complete-checkpoint')
 		.description(
-			'Report the outcome of a planned-task checkpoint you just executed. ' +
+			'Report the outcome of a planned-task checkpoint you just executed. Only call in checkpoint follow-up turns. ' +
 				'Call this exactly once per <planned-task-follow-up type="checkpoint"> block. ' +
 				'Only valid for tasks of kind "checkpoint" that are currently running; ' +
 				'calling with any other taskId returns an error and does not modify the graph.',

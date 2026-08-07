@@ -80,7 +80,7 @@ export async function executeBatch(
 
 		checkMaxIterations(response, maxIterations, ctx.getNode());
 
-		const itemContext = await prepareItemContext(ctx, itemIndex, processedResponse);
+		const itemContext = await prepareItemContext(ctx, itemIndex, processedResponse, model);
 
 		const { tools, prompt, options, outputParser } = itemContext;
 

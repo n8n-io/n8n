@@ -14,6 +14,10 @@ vi.mock('../components/ToolIoView.vue', () => ({
 vi.mock('vue-markdown-render', () => ({
 	default: { template: '<div data-test-id="markdown"><slot /></div>' },
 }));
+// Reads useRootStore for download URLs — irrelevant to panel behavior.
+vi.mock('../components/AgentChatMessageAttachments.vue', () => ({
+	default: { template: '<div data-test-id="user-attachments"></div>' },
+}));
 
 function makeRouter(): Router {
 	return createRouter({
@@ -28,12 +32,93 @@ function makeRouter(): Router {
 	});
 }
 
-function mountIt(item: TimelineItem | null) {
+function mountIt(
+	item: TimelineItem | null,
+	extraProps: { projectId?: string; agentId?: string } = {},
+) {
 	return mount(SessionDetailPanel, {
-		props: { item },
+		props: { item, ...extraProps },
 		global: { plugins: [makeRouter()] },
 	});
 }
+
+describe('SessionDetailPanel — user attachments', () => {
+	const userItem: TimelineItem = {
+		kind: 'user',
+		executionId: 'e1',
+		timestamp: 0,
+		content: 'look at this',
+		attachments: [{ id: 'att-1', fileName: 'photo.png', mimeType: 'image/png', sizeBytes: 33 }],
+	};
+
+	it('renders the attachments block for a user item with files', () => {
+		const w = mountIt(userItem, { projectId: 'p1', agentId: 'a1' });
+		expect(w.find('[data-test-id="user-attachments"]').exists()).toBe(true);
+	});
+
+	it('skips the attachments block without the project/agent scope for download URLs', () => {
+		const w = mountIt(userItem);
+		expect(w.find('[data-test-id="user-attachments"]').exists()).toBe(false);
+	});
+
+	it('skips the attachments block for user items without files', () => {
+		const w = mountIt({ ...userItem, attachments: undefined }, { projectId: 'p1', agentId: 'a1' });
+		expect(w.find('[data-test-id="user-attachments"]').exists()).toBe(false);
+	});
+});
+
+describe('SessionDetailPanel — integration action cards', () => {
+	const cardInput = {
+		action: 'respond',
+		input: {
+			message: {
+				card: {
+					title: 'Renewal Risk',
+					components: [{ type: 'button', label: 'Approve', value: 'approve' }],
+				},
+			},
+		},
+	};
+
+	it('renders the interaction card for any <platform>_action tool call', () => {
+		const w = mountIt({
+			kind: 'tool',
+			executionId: 'e1',
+			timestamp: 0,
+			toolName: 'slack_action',
+			toolInput: cardInput,
+			toolOutput: { type: 'button', value: 'approve' },
+		});
+		expect(w.text()).toContain('Renewal Risk');
+		expect(w.text()).toContain('Approve');
+	});
+
+	it('renders the interaction card for chat_action with JSON-string input', () => {
+		const w = mountIt({
+			kind: 'tool',
+			executionId: 'e1',
+			timestamp: 0,
+			toolName: 'chat_action',
+			toolInput: JSON.stringify(cardInput),
+			toolOutput: { ok: true },
+		});
+		expect(w.text()).toContain('Renewal Risk');
+	});
+
+	it('falls back to JSON for tool calls without a card', () => {
+		const w = mountIt({
+			kind: 'tool',
+			executionId: 'e1',
+			timestamp: 0,
+			toolName: 'slack_action',
+			toolInput: { action: 'add_reaction', input: { emoji: 'tada' } },
+			toolOutput: { ok: true },
+		});
+		expect(w.text()).not.toContain('Renewal Risk');
+		// Raw JSON view is shown instead of a card.
+		expect(w.text()).toContain('"add_reaction"');
+	});
+});
 
 describe('SessionDetailPanel — workflow branches', () => {
 	it('renders the WorkflowExecutionLogViewer when workflowExecutionId is set', () => {

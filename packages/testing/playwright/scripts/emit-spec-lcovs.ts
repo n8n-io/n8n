@@ -11,15 +11,24 @@
  * Frontend only: backend coverage is a shared worker-scoped process with no
  * per-test boundary, so it stays at report granularity. See DEVP-205.
  */
-import { readFileSync } from 'node:fs';
+import { createReadStream } from 'node:fs';
 import { join } from 'node:path';
+import { createInterface } from 'node:readline';
 
 import { emitPerSpecLcovs } from '@n8n/test-impact';
 import type { CoverageReport } from 'monocart-coverage-reports';
 
-import { BY_SPEC_DIR, coverageOptions } from '../coverage-options';
+import { addV8CoverageInBatches, BY_SPEC_DIR, coverageOptions } from '../coverage-options';
 
 const OUT_DIR = join(coverageOptions.outputDir ?? './coverage', 'by-spec');
+
+/** Stream a JSONL raw (one V8 entry per line) without materialising a >512MB string. */
+async function* readJsonlEntries(path: string): AsyncGenerator<unknown> {
+	const lines = createInterface({ input: createReadStream(path), crlfDelay: Infinity });
+	for await (const line of lines) {
+		if (line) yield JSON.parse(line);
+	}
+}
 
 async function main() {
 	const stats = await emitPerSpecLcovs({
@@ -29,7 +38,7 @@ async function main() {
 		feedRaws: async (report: CoverageReport, rawFiles, dir) => {
 			for (const rf of rawFiles) {
 				try {
-					await report.add(JSON.parse(readFileSync(join(dir, rf), 'utf8')));
+					await addV8CoverageInBatches(report, readJsonlEntries(join(dir, rf)));
 				} catch (error) {
 					console.warn(`  ⚠ ${rf}: ${String(error)}`);
 				}

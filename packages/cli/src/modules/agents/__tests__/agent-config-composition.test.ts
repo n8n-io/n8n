@@ -1,6 +1,7 @@
+import type { AgentJsonConfig } from '@n8n/api-types';
+
 import type { Agent } from '../entities/agent.entity';
 import { composeJsonConfig, decomposeJsonConfig } from '../json-config/agent-config-composition';
-import type { AgentJsonConfig } from '@n8n/api-types';
 
 describe('composeJsonConfig', () => {
 	it('returns the schema with empty integrations when none are stored', () => {

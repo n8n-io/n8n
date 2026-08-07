@@ -4,13 +4,14 @@ import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import type { InstanceAiConfirmation } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, ref } from 'vue';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useThread, type PendingConfirmationItem } from '../instanceAi.store';
 import { isPendingItemFloating } from '../confirmationKinds';
 import { useToolLabel } from '../toolLabels';
 import ApprovalOptionList, { type ApprovalOption } from './ApprovalOptionList.vue';
 import DomainAccessApproval from './DomainAccessApproval.vue';
 import GatewayResourceDecision from './GatewayResourceDecision.vue';
+import InstanceAiChannelSetup from './InstanceAiChannelSetup.vue';
 import InstanceAiCredentialSetup from './InstanceAiCredentialSetup.vue';
 import type { QuestionAnswer } from './InstanceAiQuestions.vue';
 import InstanceAiQuestions from './InstanceAiQuestions.vue';
@@ -44,6 +45,7 @@ function getConfirmationType(conf: InstanceAiConfirmation): string {
 	if (conf.inputType) return conf.inputType;
 	if (conf.setupRequests?.length) return 'setup';
 	if (conf.credentialRequests?.length) return 'credential-setup';
+	if (conf.channelConfig) return 'channel-config';
 	return 'approval';
 }
 
@@ -130,6 +132,9 @@ function isDestructive(item: PendingConfirmationItem): boolean {
  * English strings over the wire.
  */
 function buildApprovalTitle(item: PendingConfirmationItem): string {
+	if (item.toolCall.confirmation.targetApproval) {
+		return i18n.baseText('agents.chat.approval.title');
+	}
 	const { toolName, args } = item.toolCall;
 	const action = typeof args?.action === 'string' ? args.action : undefined;
 	const imperativeKey = (
@@ -152,6 +157,12 @@ function buildApprovalTitle(item: PendingConfirmationItem): string {
  * message includes a trailing explanation doesn't bloat the card.
  */
 function buildApprovalSubtitle(item: PendingConfirmationItem): string {
+	const targetApproval = item.toolCall.confirmation.targetApproval;
+	if (targetApproval) {
+		return i18n.baseText('agents.chat.approval.description', {
+			interpolate: { toolName: targetApproval.displayName ?? targetApproval.toolName },
+		});
+	}
 	const message = item.toolCall.confirmation.message ?? '';
 	const idx = message.indexOf('?');
 	return idx === -1 ? message : message.slice(0, idx + 1);
@@ -165,7 +176,7 @@ function buildApprovalSubtitle(item: PendingConfirmationItem): string {
 function buildApprovalOptions(item: PendingConfirmationItem): ApprovalOption[] {
 	const destructive = isDestructive(item);
 	const options: ApprovalOption[] = [];
-	if (!destructive) {
+	if (!destructive && !item.toolCall.confirmation.targetApproval) {
 		options.push({
 			key: 'always-allow',
 			icon: 'check-check',
@@ -188,6 +199,16 @@ function buildApprovalOptions(item: PendingConfirmationItem): ApprovalOption[] {
 		testId: 'instance-ai-panel-confirm-deny',
 	});
 	return options;
+}
+
+function formatTargetApprovalArgs(conf: InstanceAiConfirmation): string {
+	const args = conf.targetApproval?.args;
+	if (args === undefined) return '';
+	try {
+		return JSON.stringify(args, null, 2) ?? String(args);
+	} catch {
+		return String(args);
+	}
 }
 
 function handleApprovalSelect(item: PendingConfirmationItem, key: string) {
@@ -226,7 +247,7 @@ async function handleConfirm(item: PendingConfirmationItem, approved: boolean) {
 		// "Always allow" is offered alongside Approve/Deny for non-destructive
 		// generic approvals; include it in the option set so telemetry reflects
 		// what the user actually chose between.
-		const alwaysAllowAvailable = !isDestructive(item);
+		const alwaysAllowAvailable = !isDestructive(item) && !conf.targetApproval;
 		trackInputCompleted(
 			conf,
 			[
@@ -256,7 +277,11 @@ async function handleAlwaysAllow(item: PendingConfirmationItem) {
 		// failed POST would otherwise hide the card while the backend keeps
 		// waiting, AND seed an auto-approve key the watcher would use to
 		// silently approve later matching confirmations.
-		const ok = await thread.confirmAction(conf.requestId, { kind: 'approval', approved: true });
+		const ok = await thread.confirmAction(conf.requestId, {
+			kind: 'approval',
+			approved: true,
+			scope: 'session',
+		});
 		if (!ok) return;
 		thread.addAlwaysAllowKey(item.toolCall.toolName, item.toolCall.args ?? {});
 		trackInputCompleted(
@@ -401,7 +426,6 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 				<InstanceAiWorkflowSetup
 					v-if="chunk.item.toolCall.confirmation.setupRequests?.length"
 					:key="'setup-' + chunk.item.toolCall.confirmation.requestId"
-					:class="$style.confirmation"
 					:request-id="chunk.item.toolCall.confirmation.requestId"
 					:setup-requests="chunk.item.toolCall.confirmation.setupRequests!"
 					:project-id="chunk.item.toolCall.confirmation.projectId"
@@ -413,7 +437,6 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 				<InstanceAiCredentialSetup
 					v-else-if="chunk.item.toolCall.confirmation.credentialRequests?.length"
 					:key="'cred-' + chunk.item.toolCall.confirmation.requestId"
-					:class="$style.confirmation"
 					:request-id="chunk.item.toolCall.confirmation.requestId"
 					:credential-requests="chunk.item.toolCall.confirmation.credentialRequests!"
 					:message="chunk.item.toolCall.confirmation.message"
@@ -428,7 +451,6 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 						chunk.item.toolCall.confirmation.questions
 					"
 					:key="'q-' + chunk.item.toolCall.confirmation.requestId"
-					:class="$style.confirmation"
 					:questions="chunk.item.toolCall.confirmation.questions!"
 					:intro-message="chunk.item.toolCall.confirmation.introMessage"
 					@submit="(answers) => handleQuestionsSubmit(chunk.item.toolCall.confirmation, answers)"
@@ -438,7 +460,6 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 				<PlanReviewPanel
 					v-else-if="chunk.item.toolCall.confirmation.inputType === 'plan-review'"
 					:key="'plan-' + chunk.item.toolCall.confirmation.requestId"
-					:class="$style.confirmation"
 					:planned-tasks="
 						chunk.item.toolCall.confirmation?.planItems ??
 						(chunk.item.toolCall.args?.tasks as PlannedTaskArg[] | undefined) ??
@@ -469,7 +490,6 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 				<div
 					v-else-if="chunk.item.toolCall.confirmation.inputType === 'text'"
 					:key="'text-' + chunk.item.toolCall.confirmation.requestId"
-					:class="$style.confirmation"
 				>
 					<N8nCard :class="$style.textCard">
 						<N8nText tag="div">{{ chunk.item.toolCall.confirmation!.message }}</N8nText>
@@ -506,7 +526,6 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 				<div
 					v-else-if="chunk.item.toolCall.confirmation.inputType === 'continue'"
 					:key="'continue-' + chunk.item.toolCall.confirmation.requestId"
-					:class="$style.confirmation"
 				>
 					<N8nCard :class="$style.textCard">
 						<N8nText tag="div">{{ chunk.item.toolCall.confirmation!.message }}</N8nText>
@@ -529,12 +548,21 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 						chunk.item.toolCall.confirmation.resourceDecision
 					"
 					:key="'rd-' + chunk.item.toolCall.confirmation.requestId"
-					:class="$style.confirmation"
 					data-test-id="instance-ai-gateway-confirmation-panel"
 					:request-id="chunk.item.toolCall.confirmation.requestId"
 					:resource="chunk.item.toolCall.confirmation.resourceDecision.resource"
 					:description="chunk.item.toolCall.confirmation.resourceDecision.description"
 					:options="chunk.item.toolCall.confirmation.resourceDecision.options"
+				/>
+
+				<!-- Chat-channel setup (agent-builder configure_channel) — presence-based -->
+				<InstanceAiChannelSetup
+					v-else-if="chunk.item.toolCall.confirmation.channelConfig"
+					:key="'channel-' + chunk.item.toolCall.confirmation.requestId"
+					:request-id="chunk.item.toolCall.confirmation.requestId"
+					:integration-type="chunk.item.toolCall.confirmation.channelConfig.integrationType"
+					:agent-id="chunk.item.toolCall.confirmation.channelConfig.agentId"
+					:project-id="chunk.item.toolCall.confirmation.projectId ?? ''"
 				/>
 			</template>
 
@@ -572,6 +600,13 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 										{{ buildApprovalTitle(chunk.item) }}
 									</N8nText>
 									<ConfirmationPreview>{{ buildApprovalSubtitle(chunk.item) }}</ConfirmationPreview>
+									<ConfirmationPreview
+										v-if="formatTargetApprovalArgs(chunk.item.toolCall.confirmation)"
+										:class="$style.targetApprovalArgs"
+										data-test-id="instance-ai-target-approval-args"
+									>
+										{{ formatTargetApprovalArgs(chunk.item.toolCall.confirmation) }}
+									</ConfirmationPreview>
 								</div>
 
 								<ApprovalOptionList
@@ -588,17 +623,10 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 </template>
 
 <style lang="scss" module>
-.confirmation {
-	max-width: 90%;
-	width: 90%;
-}
-
 .root {
-	border: none;
-	border-radius: var(--radius--xl);
-	box-shadow:
-		var(--shadow--sm),
-		inset 0 0 0 1px light-dark(var(--color--black-alpha-100), var(--color--white-alpha-100));
+	border: 2px solid var(--color--primary);
+	border-radius: var(--radius--lg);
+	box-shadow: var(--shadow--sm);
 	background-color: var(--background--surface);
 }
 
@@ -620,11 +648,14 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 	}
 }
 
+.targetApprovalArgs {
+	white-space: pre-wrap;
+	word-break: break-word;
+}
+
 .approvalRow {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--2xs);
-	padding: var(--spacing--sm);
 	font-size: var(--font-size--2xs);
 }
 
@@ -632,6 +663,7 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--2xs);
+	padding: var(--spacing--sm) var(--spacing--sm) 0;
 }
 
 .textInputRow {
@@ -648,6 +680,7 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 }
 
 .textCard {
+	border: 2px solid var(--color--primary);
 	background-color: var(--color--background--light-3);
 }
 </style>

@@ -2,6 +2,7 @@ import { Time } from '@n8n/constants';
 import { z } from 'zod';
 
 import { Config, Env } from '../decorators';
+import { positiveIntSchema } from '../schemas';
 
 const callerPolicySchema = z.enum(['any', 'none', 'workflowsFromAList', 'workflowsFromSameOwner']);
 type CallerPolicy = z.infer<typeof callerPolicySchema>;
@@ -31,6 +32,36 @@ export class WorkflowsConfig {
 	/** Interval in milliseconds between polls of the workflow publication outbox on the leader. */
 	@Env('N8N_WORKFLOW_PUBLICATION_OUTBOX_POLL_INTERVAL_MS')
 	publicationOutboxPollIntervalMs: number = 15 * Time.seconds.toMilliseconds;
+
+	/** Seconds after which an `in_progress` workflow publication outbox record
+	 *  is considered stale (its leader likely died) and may be reclaimed by a poll cycle. */
+	@Env('N8N_WORKFLOW_PUBLICATION_OUTBOX_LEASE_SECONDS')
+	publicationOutboxLeaseSeconds: number = 2 * Time.minutes.toSeconds;
+
+	/** Number of workflow publication outbox records the leader processes in parallel per drain. */
+	@Env('N8N_WORKFLOW_PUBLICATION_CONCURRENCY', positiveIntSchema)
+	workflowPublicationConcurrency: number = 5;
+
+	/** Hours to keep `completed` workflow publication outbox records before the cleanup deletes them. */
+	@Env('N8N_WORKFLOW_PUBLICATION_OUTBOX_COMPLETED_RETENTION_HOURS')
+	publicationOutboxCompletedRetentionHours: number = 1;
+
+	/** Hours to keep `failed`/`partial_success` workflow publication outbox records (kept longer for diagnostics). */
+	@Env('N8N_WORKFLOW_PUBLICATION_OUTBOX_FAILED_RETENTION_HOURS')
+	publicationOutboxFailedRetentionHours: number = 7 * 24;
+
+	/** Interval in seconds between cleanup runs that delete terminal workflow publication outbox records on the leader. */
+	@Env('N8N_WORKFLOW_PUBLICATION_OUTBOX_CLEANUP_INTERVAL_SECONDS', positiveIntSchema)
+	publicationOutboxCleanupIntervalSeconds: number = 20 * Time.minutes.toSeconds;
+
+	/** Maximum number of terminal workflow publication outbox records deleted per batch during cleanup. */
+	@Env('N8N_WORKFLOW_PUBLICATION_OUTBOX_CLEANUP_BATCH_SIZE', positiveIntSchema)
+	publicationOutboxCleanupBatchSize: number = 1000;
+
+	/** Interval in seconds between trigger reconciliation runs on the leader, which
+	 *  re-publish workflows whose in-memory triggers went missing (e.g. after a leader transition). */
+	@Env('N8N_WORKFLOW_PUBLICATION_RECONCILE_INTERVAL_SECONDS', positiveIntSchema)
+	publicationReconcileIntervalSeconds: number = 10;
 
 	/** Whether to disable automatic workflow saving in the editor */
 	@Env('N8N_WORKFLOWS_AUTOSAVE_DISABLED')

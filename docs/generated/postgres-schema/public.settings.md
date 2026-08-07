@@ -5,17 +5,17 @@
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | key | varchar(255) |  | false |  |  |  |
-| value | text |  | false |  |  |  |
 | loadOnStartup | boolean | false | false |  |  |  |
+| value | text |  | false |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| PK_dc0fe14e6d9943f268e7b119f69ab8bd | PRIMARY KEY | PRIMARY KEY (key) |
 | settings_key_not_null | n | NOT NULL key |
 | settings_loadOnStartup_not_null | n | NOT NULL "loadOnStartup" |
 | settings_value_not_null | n | NOT NULL value |
-| PK_dc0fe14e6d9943f268e7b119f69ab8bd | PRIMARY KEY | PRIMARY KEY (key) |
 
 ## Indexes
 
@@ -31,8 +31,8 @@ erDiagram
 
 "public.settings" {
   varchar_255_ key
-  text value
   boolean loadOnStartup
+  text value
 }
 ```
 

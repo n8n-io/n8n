@@ -4,18 +4,18 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| jti | varchar(255) |  | false |  |  |  |
-| expiresAt | timestamp(3) with time zone |  | false |  |  |  |
 | createdAt | timestamp(3) with time zone |  | false |  |  |  |
+| expiresAt | timestamp(3) with time zone |  | false |  |  |  |
+| jti | varchar(255) |  | false |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| PK_d8e8a6f737d530fdd2dd716e89c | PRIMARY KEY | PRIMARY KEY (jti) |
 | token_exchange_jti_createdAt_not_null | n | NOT NULL "createdAt" |
 | token_exchange_jti_expiresAt_not_null | n | NOT NULL "expiresAt" |
 | token_exchange_jti_jti_not_null | n | NOT NULL jti |
-| PK_d8e8a6f737d530fdd2dd716e89c | PRIMARY KEY | PRIMARY KEY (jti) |
 
 ## Indexes
 
@@ -30,9 +30,9 @@ erDiagram
 
 
 "public.token_exchange_jti" {
-  varchar_255_ jti
-  timestamp_3__with_time_zone expiresAt
   timestamp_3__with_time_zone createdAt
+  timestamp_3__with_time_zone expiresAt
+  varchar_255_ jti
 }
 ```
 

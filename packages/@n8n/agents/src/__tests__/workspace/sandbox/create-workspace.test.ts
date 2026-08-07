@@ -1,4 +1,4 @@
-vi.mock('@n8n/utils', () => ({
+vi.mock('@n8n/utils/get-jwt-expiry', () => ({
 	getJwtExpiry: vi.fn(() => undefined),
 }));
 

@@ -4,16 +4,16 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| token | varchar(512) |  | false |  |  |  |
 | expiresAt | timestamp(3) with time zone |  | false |  |  |  |
+| token | varchar(512) |  | false |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| PK_5779069b7235b256d91f7af1a15 | PRIMARY KEY | PRIMARY KEY (token) |
 | invalid_auth_token_expiresAt_not_null | n | NOT NULL "expiresAt" |
 | invalid_auth_token_token_not_null | n | NOT NULL token |
-| PK_5779069b7235b256d91f7af1a15 | PRIMARY KEY | PRIMARY KEY (token) |
 
 ## Indexes
 
@@ -28,8 +28,8 @@ erDiagram
 
 
 "public.invalid_auth_token" {
-  varchar_512_ token
   timestamp_3__with_time_zone expiresAt
+  varchar_512_ token
 }
 ```
 

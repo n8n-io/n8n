@@ -4,21 +4,21 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| sourceId | varchar(36) |  | false |  | [public.trusted_key_source](public.trusted_key_source.md) |  |
-| kid | varchar(255) |  | false |  |  |  |
-| data | text |  | false |  |  |  |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
+| data | text |  | false |  |  |  |
+| kid | varchar(255) |  | false |  |  |  |
+| sourceId | varchar(36) |  | false |  | [public.trusted_key_source](public.trusted_key_source.md) |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| FK_8c2938d746943dd8f608d23c891 | FOREIGN KEY | FOREIGN KEY ("sourceId") REFERENCES trusted_key_source(id) ON DELETE CASCADE |
+| PK_dc7d93798f3dbb6959f974c97e1 | PRIMARY KEY | PRIMARY KEY ("sourceId", kid) |
 | trusted_key_createdAt_not_null | n | NOT NULL "createdAt" |
 | trusted_key_data_not_null | n | NOT NULL data |
 | trusted_key_kid_not_null | n | NOT NULL kid |
 | trusted_key_sourceId_not_null | n | NOT NULL "sourceId" |
-| FK_8c2938d746943dd8f608d23c891 | FOREIGN KEY | FOREIGN KEY ("sourceId") REFERENCES trusted_key_source(id) ON DELETE CASCADE |
-| PK_dc7d93798f3dbb6959f974c97e1 | PRIMARY KEY | PRIMARY KEY ("sourceId", kid) |
 
 ## Indexes
 
@@ -34,19 +34,19 @@ erDiagram
 "public.trusted_key" }o--|| "public.trusted_key_source" : "FOREIGN KEY (#quot;sourceId#quot;) REFERENCES trusted_key_source(id) ON DELETE CASCADE"
 
 "public.trusted_key" {
-  varchar_36_ sourceId FK
-  varchar_255_ kid
-  text data
   timestamp_3__with_time_zone createdAt
+  text data
+  varchar_255_ kid
+  varchar_36_ sourceId FK
 }
 "public.trusted_key_source" {
-  varchar_36_ id
-  varchar_32_ type
   text config
-  varchar_32_ status
+  timestamp_3__with_time_zone createdAt
+  varchar_36_ id
   text lastError
   timestamp_3__with_time_zone lastRefreshedAt
-  timestamp_3__with_time_zone createdAt
+  varchar_32_ status
+  varchar_32_ type
   timestamp_3__with_time_zone updatedAt
 }
 ```

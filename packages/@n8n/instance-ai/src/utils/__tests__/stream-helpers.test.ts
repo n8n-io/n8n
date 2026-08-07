@@ -1,4 +1,6 @@
-import { isRecord, parseSuspension, asResumable, resumeAgentStream } from '../stream-helpers';
+import { isRecord } from '@n8n/utils/is-record';
+
+import { parseSuspension, asResumable, resumeAgentStream } from '../stream-helpers';
 
 describe('isRecord', () => {
 	it('returns true for plain objects', () => {
@@ -99,6 +101,18 @@ describe('parseSuspension', () => {
 		};
 
 		expect(parseSuspension(chunk)).toBeNull();
+	});
+
+	it('surfaces runId from the chunk when present', () => {
+		const chunk = {
+			type: 'tool-call-suspended',
+			runId: 'run-1',
+			toolCallId: 'tc-1',
+			toolName: 'ask_questions',
+			suspendPayload: { requestId: 'req-1' },
+		};
+
+		expect(parseSuspension(chunk)?.runId).toBe('run-1');
 	});
 
 	it('handles missing payload gracefully', () => {

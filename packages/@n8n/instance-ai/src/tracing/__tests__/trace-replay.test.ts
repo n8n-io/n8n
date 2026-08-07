@@ -354,7 +354,12 @@ describe('TraceWriter', () => {
 	it('should record tool-call events with incrementing stepIds', () => {
 		const writer = new TraceWriter('test');
 		writer.recordToolCall('orchestrator', 'search-nodes', { q: 'http' }, { results: [] });
-		writer.recordToolCall('builder', 'build-workflow', { nodes: [] }, { workflowId: '5' });
+		writer.recordToolCall(
+			'builder',
+			'build-workflow',
+			{ filePath: 'src/workflows/wi-1.workflow.ts' },
+			{ workflowId: '5', filePath: 'src/workflows/wi-1.workflow.ts' },
+		);
 
 		const events = writer.getEvents();
 		expect(events).toHaveLength(3); // header + 2 tool-calls
@@ -371,6 +376,7 @@ describe('TraceWriter', () => {
 		expect(call2.stepId).toBe(2);
 		expect(call2.agentRole).toBe('builder');
 		expect(call2.toolName).toBe('build-workflow');
+		expect(call2.input).toEqual({ filePath: 'src/workflows/wi-1.workflow.ts' });
 	});
 
 	it('should record tool-suspend events', () => {
@@ -469,7 +475,12 @@ describe('parseTraceJsonl', () => {
 
 	it('should roundtrip with TraceWriter', () => {
 		const writer = new TraceWriter('roundtrip-test');
-		writer.recordToolCall('orch', 'build-workflow', { nodes: [] }, { workflowId: '5' });
+		writer.recordToolCall(
+			'orch',
+			'build-workflow',
+			{ filePath: 'src/workflows/wi-1.workflow.ts' },
+			{ workflowId: '5', filePath: 'src/workflows/wi-1.workflow.ts' },
+		);
 		writer.recordToolSuspend('orch', 'run-workflow', { workflowId: '5' }, {}, { ask: true });
 
 		const parsed = parseTraceJsonl(writer.toJsonl());
@@ -477,7 +488,13 @@ describe('parseTraceJsonl', () => {
 		expect(parsed[0].kind).toBe('header');
 		expect(parsed[1].kind).toBe('tool-call');
 		expect(parsed[2].kind).toBe('tool-suspend');
-		expect((parsed[1] as TraceToolCall).output).toEqual({ workflowId: '5' });
+		expect((parsed[1] as TraceToolCall).input).toEqual({
+			filePath: 'src/workflows/wi-1.workflow.ts',
+		});
+		expect((parsed[1] as TraceToolCall).output).toEqual({
+			workflowId: '5',
+			filePath: 'src/workflows/wi-1.workflow.ts',
+		});
 	});
 
 	it('should throw when a line is not an object', () => {

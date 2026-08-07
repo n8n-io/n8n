@@ -5,6 +5,7 @@ import type {
 	IExecutionContext,
 	IWorkflowSettings,
 } from 'n8n-workflow';
+import type { Mocked } from 'vitest';
 
 import type {
 	CredentialResolutionResult,
@@ -19,25 +20,25 @@ import { DynamicCredentialsProxy } from '../dynamic-credentials-proxy';
 
 describe('DynamicCredentialsProxy', () => {
 	let proxy: DynamicCredentialsProxy;
-	let mockLogger: jest.Mocked<Logger>;
-	let mockResolverProvider: jest.Mocked<ICredentialResolutionProvider>;
-	let mockStorageProvider: jest.Mocked<IDynamicCredentialStorageProvider>;
+	let mockLogger: Mocked<Logger>;
+	let mockResolverProvider: Mocked<ICredentialResolutionProvider>;
+	let mockStorageProvider: Mocked<IDynamicCredentialStorageProvider>;
 
 	beforeEach(() => {
 		mockLogger = {
-			warn: jest.fn(),
-			debug: jest.fn(),
-			error: jest.fn(),
-			info: jest.fn(),
-		} as unknown as jest.Mocked<Logger>;
+			warn: vi.fn(),
+			debug: vi.fn(),
+			error: vi.fn(),
+			info: vi.fn(),
+		} as unknown as Mocked<Logger>;
 
 		mockResolverProvider = {
-			resolveIfNeeded: jest.fn(),
-			getSystemResolverId: jest.fn(),
+			resolveIfNeeded: vi.fn(),
+			getSystemResolverId: vi.fn(),
 		};
 
 		mockStorageProvider = {
-			storeIfNeeded: jest.fn(),
+			storeIfNeeded: vi.fn(),
 		};
 
 		proxy = new DynamicCredentialsProxy(mockLogger);

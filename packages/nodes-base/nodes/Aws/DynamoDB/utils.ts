@@ -1,5 +1,5 @@
 import type { IDataObject } from 'n8n-workflow';
-import { ApplicationError, assert } from 'n8n-workflow';
+import { assert, UserError } from 'n8n-workflow';
 
 import type {
 	AdjustedPutItem,
@@ -98,7 +98,7 @@ export function validateJSON(input: any): object {
 	try {
 		return JSON.parse(input as string);
 	} catch (error) {
-		throw new ApplicationError('Items must be a valid JSON', { level: 'warning' });
+		throw new UserError('Items must be a valid JSON', { level: 'warning' });
 	}
 }
 

@@ -47,7 +47,10 @@ describe(useNodeDirtiness, () => {
 				nodeTypeStore = useNodeTypesStore();
 				workflowsStore = useWorkflowsStore();
 				workflowsStore.setWorkflowId(TEST_WORKFLOW_ID);
-				historyHelper = useHistoryHelper({} as RouteLocationNormalizedLoaded);
+				historyHelper = useHistoryHelper(
+					{} as RouteLocationNormalizedLoaded,
+					shallowRef(null) as Parameters<typeof useHistoryHelper>[1],
+				);
 
 				workflowDocumentStore = useWorkflowDocumentStore(TEST_DOCUMENT_ID);
 				provide(WorkflowDocumentStoreKey, shallowRef(workflowDocumentStore));
@@ -384,28 +387,6 @@ describe(useNodeDirtiness, () => {
 
 			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({
 				c: CanvasNodeDirtiness.PARAMETERS_UPDATED,
-			});
-		});
-	});
-
-	describe('renaming a node', () => {
-		it.todo('should preserve the dirtiness', async () => {
-			useNodeTypesStore().setNodeTypes(defaultNodeDescriptions);
-
-			setupTestWorkflow('a🚨✅ -> b✅ -> c✅');
-
-			canvasOperations.deleteNodes([workflowDocumentStore.nodesByName.b.id], {
-				trackHistory: true,
-			}); // 'a' becomes new parent of 'c'
-
-			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({
-				c: CanvasNodeDirtiness.INCOMING_CONNECTIONS_UPDATED,
-			});
-
-			await canvasOperations.renameNode('c', 'd', { trackHistory: true });
-
-			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({
-				d: CanvasNodeDirtiness.INCOMING_CONNECTIONS_UPDATED,
 			});
 		});
 	});

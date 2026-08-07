@@ -1,5 +1,5 @@
-import type { MockProxy } from 'jest-mock-extended';
-import { mock } from 'jest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
 
 import { execute } from '../../../v2/actions/sheet/append.operation';

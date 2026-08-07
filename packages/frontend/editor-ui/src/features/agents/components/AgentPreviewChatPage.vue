@@ -14,12 +14,13 @@ defineProps<{
 	connectedTriggers: string[];
 	effectiveSessionId?: string;
 	initialPrompt?: string;
+	canSendToAssistant?: boolean;
 }>();
 
 const emit = defineEmits<{
-	'config-updated': [];
 	'continue-loaded': [count: number];
 	'open-build': [];
+	'send-to-assistant': [executionId?: string];
 }>();
 
 const inputDraft = ref('');
@@ -35,15 +36,14 @@ const inputDraft = ref('');
 				:project-id="projectId"
 				:agent-id="agentId"
 				mode="inline"
-				endpoint="chat"
-				:initial-message="initialPrompt"
 				:continue-session-id="effectiveSessionId"
 				:agent-config="localConfig"
 				:agent-status="deriveAgentStatus(agent)"
 				:connected-triggers="connectedTriggers"
-				@config-updated="emit('config-updated')"
+				:can-send-to-assistant="canSendToAssistant"
 				@continue-loaded="emit('continue-loaded', $event)"
 				@open-build="emit('open-build')"
+				@send-to-assistant="emit('send-to-assistant', $event)"
 			/>
 		</div>
 	</main>

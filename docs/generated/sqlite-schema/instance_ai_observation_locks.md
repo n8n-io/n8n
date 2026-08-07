@@ -15,22 +15,22 @@ CREATE TABLE "instance_ai_observation_locks" ("observationScopeId" varchar NOT N
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
+| createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| heldUntil | datetime(3) |  | false |  |  |  |
+| holderId | varchar(64) |  | false |  |  |  |
 | observationScopeId | varchar |  | false |  | [instance_ai_threads](instance_ai_threads.md) |  |
 | taskKind | varchar(20) |  | false |  |  |  |
-| holderId | varchar(64) |  | false |  |  |  |
-| heldUntil | datetime(3) |  | false |  |  |  |
-| createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| observationScopeId | PRIMARY KEY | PRIMARY KEY (observationScopeId) |
-| taskKind | PRIMARY KEY | PRIMARY KEY (taskKind) |
-| - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (observationScopeId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
-| sqlite_autoindex_instance_ai_observation_locks_1 | PRIMARY KEY | PRIMARY KEY (observationScopeId, taskKind) |
 | - | CHECK | CHECK ("taskKind" IN ('observer', 'reflector')) |
+| - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (observationScopeId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| observationScopeId | PRIMARY KEY | PRIMARY KEY (observationScopeId) |
+| sqlite_autoindex_instance_ai_observation_locks_1 | PRIMARY KEY | PRIMARY KEY (observationScopeId, taskKind) |
+| taskKind | PRIMARY KEY | PRIMARY KEY (taskKind) |
 
 ## Indexes
 
@@ -46,20 +46,20 @@ erDiagram
 "instance_ai_observation_locks" |o--|| "instance_ai_threads" : "FOREIGN KEY (observationScopeId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "instance_ai_observation_locks" {
+  datetime_3_ createdAt
+  datetime_3_ heldUntil
+  varchar_64_ holderId
   varchar observationScopeId PK
   varchar_20_ taskKind PK
-  varchar_64_ holderId
-  datetime_3_ heldUntil
-  datetime_3_ createdAt
   datetime_3_ updatedAt
 }
 "instance_ai_threads" {
-  varchar id PK
-  varchar_255_ resourceId
-  varchar_36_ projectId FK
-  TEXT title
-  TEXT metadata
   datetime_3_ createdAt
+  varchar id PK
+  TEXT metadata
+  varchar_36_ projectId FK
+  varchar_255_ resourceId
+  TEXT title
   datetime_3_ updatedAt
 }
 ```

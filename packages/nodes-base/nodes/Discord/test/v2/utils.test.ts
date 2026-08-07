@@ -167,7 +167,7 @@ describe('Test Discord > checkAccessToGuild', () => {
 
 describe('Test Discord > setupChannelGetter & checkAccessToChannel', () => {
 	beforeEach(() => {
-		jest.spyOn(transport, 'discordApiRequest').mockImplementation(async (method: string) => {
+		vi.spyOn(transport, 'discordApiRequest').mockImplementation(async (method: string) => {
 			if (method === 'GET') {
 				return {
 					guild_id: '123456',

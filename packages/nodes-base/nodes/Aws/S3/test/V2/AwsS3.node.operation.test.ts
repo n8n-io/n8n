@@ -1,9 +1,10 @@
-import { mockDeep } from 'jest-mock-extended';
+import { mockDeep } from 'vitest-mock-extended';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
 import { AwsS3V2 } from '../../V2/AwsS3V2.node';
 import * as GenericFunctions from '../../V2/GenericFunctions';
+import type { MockInstance } from 'vitest';
 
 const mockLocationResponse = {
 	LocationConstraint: {
@@ -20,12 +21,12 @@ const mockFileResponse = {
 
 describe('AWS S3 V2 Node - File Download', () => {
 	const executeFunctionsMock = mockDeep<IExecuteFunctions>();
-	let awsApiRequestRESTSpy: jest.SpyInstance;
+	let awsApiRequestRESTSpy: MockInstance;
 	let node: AwsS3V2;
 
 	beforeEach(() => {
-		jest.resetAllMocks();
-		awsApiRequestRESTSpy = jest.spyOn(GenericFunctions, 'awsApiRequestREST');
+		vi.resetAllMocks();
+		awsApiRequestRESTSpy = vi.spyOn(GenericFunctions, 'awsApiRequestREST');
 		node = new AwsS3V2({
 			displayName: 'AWS S3',
 			name: 'awsS3',
@@ -164,7 +165,7 @@ describe('AWS S3 V2 Node - File Download', () => {
 			];
 
 			for (const testCase of testCases) {
-				jest.clearAllMocks();
+				vi.clearAllMocks();
 				awsApiRequestRESTSpy
 					.mockResolvedValueOnce(mockLocationResponse)
 					.mockResolvedValueOnce(mockFileResponse);
@@ -356,8 +357,8 @@ describe('AWS S3 V2 Node - File Download', () => {
 
 describe('AWS S3 V2 Node - Bucket Search', () => {
 	const executeFunctionsMock = mockDeep<IExecuteFunctions>();
-	let awsApiRequestRESTSpy: jest.SpyInstance;
-	let awsApiRequestRESTAllItemsSpy: jest.SpyInstance;
+	let awsApiRequestRESTSpy: MockInstance;
+	let awsApiRequestRESTAllItemsSpy: MockInstance;
 	let node: AwsS3V2;
 
 	const mockContents = [
@@ -373,9 +374,9 @@ describe('AWS S3 V2 Node - Bucket Search', () => {
 	};
 
 	beforeEach(() => {
-		jest.resetAllMocks();
-		awsApiRequestRESTSpy = jest.spyOn(GenericFunctions, 'awsApiRequestREST');
-		awsApiRequestRESTAllItemsSpy = jest.spyOn(GenericFunctions, 'awsApiRequestRESTAllItems');
+		vi.resetAllMocks();
+		awsApiRequestRESTSpy = vi.spyOn(GenericFunctions, 'awsApiRequestREST');
+		awsApiRequestRESTAllItemsSpy = vi.spyOn(GenericFunctions, 'awsApiRequestRESTAllItems');
 		node = new AwsS3V2({
 			displayName: 'AWS S3',
 			name: 'awsS3',

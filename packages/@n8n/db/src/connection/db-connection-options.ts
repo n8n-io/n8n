@@ -124,6 +124,12 @@ export class DbConnectionOptions {
 							),
 						}
 					: {}),
+				// Bound how long acquiring a connection from the pool can wait (waiting for a free
+				// slot, or for a new connection to be established). Without it, pg-pool waits
+				// indefinitely. Reuse the existing connect-timeout knob rather than adding a new env var.
+				...(postgresConfig.connectionTimeoutMs > 0
+					? { connectionTimeoutMillis: postgresConfig.connectionTimeoutMs }
+					: {}),
 			},
 		};
 	}

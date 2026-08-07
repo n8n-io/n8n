@@ -1,6 +1,6 @@
 import type { Connection } from '@vue-flow/core';
 import uniq from 'lodash/uniq';
-import type { IConnection, IConnections, NodeConnectionType } from 'n8n-workflow';
+import type { IConnection, NodeConnectionType } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
 import type { INodeUi } from '@/Interface';
@@ -13,7 +13,6 @@ import {
 } from '@/features/workflows/canvas/canvas.utils';
 
 type WorkflowDocumentConnectionAccess = {
-	connectionsBySourceNode: IConnections;
 	getNodeById: (id: string) => INodeUi | undefined;
 };
 
@@ -59,11 +58,11 @@ type CanvasConnectionReplacementDependencies = {
 		sourceConnection: IConnection,
 		targetConnection: IConnection,
 	) => boolean;
-	isConnectionReplacementAllowedForNodeGroups: (replacement: {
+	enforceNodeGroupConnectionPolicy: (params: {
 		nodeIds: string[];
-		connectionsToRemove: Array<[IConnection, IConnection]>;
-		connectionsToAdd: Array<[IConnection, IConnection]>;
-		connectionsBySourceNode: IConnections;
+		connectionsToRemove?: Array<[IConnection, IConnection]>;
+		connectionsToAdd?: Array<[IConnection, IConnection]>;
+		trackHistory?: boolean;
 	}) => boolean;
 };
 
@@ -194,7 +193,7 @@ export function replaceCanvasConnection({
 	createConnection,
 	deleteConnection,
 	isConnectionAllowed,
-	isConnectionReplacementAllowedForNodeGroups,
+	enforceNodeGroupConnectionPolicy,
 	connectionToRemove,
 	addBeforeRemoval,
 	addAfterRemoval,
@@ -221,13 +220,16 @@ export function replaceCanvasConnection({
 		...additions.flatMap(({ sourceNode, targetNode }) => [sourceNode.id, targetNode.id]),
 	]);
 
-	const isReplacementAllowed = isConnectionReplacementAllowedForNodeGroups({
-		nodeIds,
-		connectionsToRemove: [removal.mappedConnection],
-		connectionsToAdd: additions.map(({ mappedConnection }) => mappedConnection),
-		connectionsBySourceNode: workflowDocumentStore.connectionsBySourceNode,
-	});
-	if (!isReplacementAllowed) return false;
+	if (
+		!enforceNodeGroupConnectionPolicy({
+			nodeIds,
+			connectionsToRemove: [removal.mappedConnection],
+			connectionsToAdd: additions.map(({ mappedConnection }) => mappedConnection),
+			trackHistory,
+		})
+	) {
+		return false;
+	}
 
 	for (const connection of addBeforeRemoval) {
 		createConnection(connection, { trackHistory, validateNodeGroups: false });

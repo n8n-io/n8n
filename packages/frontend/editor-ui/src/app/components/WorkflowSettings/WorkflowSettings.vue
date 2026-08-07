@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick, h } from 'vue';
-import { useRoute } from 'vue-router';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { usePostHog } from '@/app/stores/posthog.store';
 import type { ITimeoutHMS, IWorkflowSettings, IWorkflowShortResponse } from '@/Interface';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
@@ -40,7 +39,7 @@ import {
 	policyToChannels,
 } from 'n8n-workflow';
 import { SYSTEM_RESOLVER_ID } from '@n8n/api-types';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useWorkflowsEEStore } from '@/app/stores/workflows.ee.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -53,8 +52,8 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useI18n } from '@n8n/i18n';
-import { useTelemetry } from '@/app/composables/useTelemetry';
-import { useDebounce } from '@/app/composables/useDebounce';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { useDebounce } from '@n8n/composables/useDebounce';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 import RedactionMembersModal from '@/app/components/RedactionMembersModal.vue';
@@ -70,7 +69,6 @@ import WorkflowCustomTelemetryTags from '@/app/components/WorkflowSettings/Workf
 
 import { ElCol, ElRow, ElSwitch } from 'element-plus';
 
-const route = useRoute();
 const i18n = useI18n();
 const externalHooks = useExternalHooks();
 const toast = useToast();
@@ -659,7 +657,7 @@ const convertToHMS = (num: number): ITimeoutHMS => {
 
 const saveCustomTelemetryTags = async (customTelemetryTags: ICustomTelemetryTag[]) => {
 	try {
-		await workflowsStore.updateWorkflow(String(route.params.workflowId), {
+		await workflowsStore.updateWorkflow(workflowId.value, {
 			settings: { customTelemetryTags },
 			expectedChecksum: workflowDocumentStore.value.checksum,
 		});
@@ -747,7 +745,7 @@ const saveSettings = async () => {
 	data.expectedChecksum = workflowDocumentStore.value.checksum;
 
 	try {
-		await workflowsStore.updateWorkflow(String(route.params.workflowId), data);
+		await workflowsStore.updateWorkflow(workflowId.value, data);
 	} catch (error) {
 		toast.showError(error, i18n.baseText('workflowSettings.showError.saveSettings3.title'));
 		isLoading.value = false;

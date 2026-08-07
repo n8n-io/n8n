@@ -1,6 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
-import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
+import { mock } from 'vitest-mock-extended';
 
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { Push } from '@/push';
@@ -26,7 +26,7 @@ type CreateServiceOptions = {
 };
 
 function createService(options: CreateServiceOptions = {}) {
-	const logger = mock<Logger>({ scoped: jest.fn().mockReturnThis() });
+	const logger = mock<Logger>({ scoped: vi.fn().mockReturnThis() });
 	const repository = mock<McpRegistryServerRepository>();
 	const apiClient = mock<McpRegistryApiClient>();
 	const instanceSettings = mock<InstanceSettings>({
@@ -34,8 +34,8 @@ function createService(options: CreateServiceOptions = {}) {
 		instanceType: options.instanceType ?? 'main',
 	});
 	const loadNodesAndCredentials = mock<LoadNodesAndCredentials>({ loaders: {} });
-	const push = mock<Push>({ broadcast: jest.fn() });
-	const publisher = mock<Publisher>({ publishCommand: jest.fn().mockResolvedValue(undefined) });
+	const push = mock<Push>({ broadcast: vi.fn() });
+	const publisher = mock<Publisher>({ publishCommand: vi.fn().mockResolvedValue(undefined) });
 
 	if (options.storedServers === null) {
 		repository.find.mockResolvedValue([]);
@@ -84,8 +84,8 @@ function createService(options: CreateServiceOptions = {}) {
 
 describe('McpRegistryService', () => {
 	afterEach(() => {
-		jest.useRealTimers();
-		jest.restoreAllMocks();
+		vi.useRealTimers();
+		vi.restoreAllMocks();
 	});
 
 	describe('getAll / get', () => {
@@ -153,8 +153,8 @@ describe('McpRegistryService', () => {
 
 	describe('refresh flow', () => {
 		it('init does not start periodic refresh on followers', async () => {
-			jest.useFakeTimers();
-			const setIntervalSpy = jest.spyOn(global, 'setInterval');
+			vi.useFakeTimers();
+			const setIntervalSpy = vi.spyOn(global, 'setInterval');
 			const { service, apiClient } = createService({ isLeader: false });
 
 			await service.init();
@@ -164,8 +164,8 @@ describe('McpRegistryService', () => {
 		});
 
 		it('init starts periodic refresh and kicks off startup refresh on leaders', async () => {
-			jest.useFakeTimers();
-			const setIntervalSpy = jest.spyOn(global, 'setInterval');
+			vi.useFakeTimers();
+			const setIntervalSpy = vi.spyOn(global, 'setInterval');
 			const { service, apiClient } = createService({ isLeader: true });
 
 			await service.init();
@@ -178,8 +178,8 @@ describe('McpRegistryService', () => {
 		});
 
 		it('onLeaderTakeover skips write + notifications when metadata is unchanged', async () => {
-			jest.useFakeTimers();
-			const setIntervalSpy = jest.spyOn(global, 'setInterval');
+			vi.useFakeTimers();
+			const setIntervalSpy = vi.spyOn(global, 'setInterval');
 			const metadata: McpRegistryServerMetadata[] = [
 				{
 					slug: notionMockServer.slug,

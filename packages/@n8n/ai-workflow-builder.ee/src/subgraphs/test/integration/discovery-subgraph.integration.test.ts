@@ -185,7 +185,7 @@ describe('Discovery Subgraph - Integration Tests', () => {
 	vi.setConfig({ testTimeout: 1800000 }); // 30 minutes
 
 	beforeAll(async () => {
-		// Override console.log to use process.stdout directly, bypassing Jest's
+		// Override console.log to use process.stdout directly, bypassing Vitest's
 		// verbose wrapper that adds stack traces to every log line
 		vi.spyOn(console, 'log').mockImplementation((...args: unknown[]) => {
 			process.stdout.write(args.map(String).join(' ') + '\n');

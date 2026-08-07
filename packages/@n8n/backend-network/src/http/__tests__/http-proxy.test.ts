@@ -4,7 +4,9 @@ import type { AddressInfo } from 'net';
 import nock from 'nock';
 import { promisify } from 'util';
 
-import { installGlobalProxyAgent, resolveProxyUrl, uninstallGlobalProxyAgent } from '../http-proxy';
+import { EnvProxyHttpAgent } from '../env-proxy-http-agent';
+import { EnvProxyHttpsAgent } from '../env-proxy-https-agent';
+import { installGlobalProxyAgent, uninstallGlobalProxyAgent } from '../http-proxy';
 
 interface TestResponse {
 	message: string;
@@ -67,7 +69,7 @@ async function makeRequest(url: string): Promise<TestResponse> {
 			res.on('data', (chunk) => (data += chunk));
 			res.on('end', () => {
 				try {
-					resolve(JSON.parse(data));
+					resolve(JSON.parse(data) as TestResponse);
 				} catch (error) {
 					reject(error instanceof Error ? error : new Error(String(error)));
 				}
@@ -233,28 +235,32 @@ describe('HTTP Proxy Tests', () => {
 		}
 	});
 
-	describe('resolveProxyUrl', () => {
-		test('returns the configured proxy for a matching target', () => {
+	describe('global agent lifecycle', () => {
+		test('installs env-proxy agents when a proxy env var is set', () => {
 			process.env.HTTP_PROXY = proxyServer.url;
 
-			expect(resolveProxyUrl('http://api.example.com:8080/test')).toBe(proxyServer.url);
+			installGlobalProxyAgent();
+
+			expect(http.globalAgent).toBeInstanceOf(EnvProxyHttpAgent);
+			expect(https.globalAgent).toBeInstanceOf(EnvProxyHttpsAgent);
 		});
 
-		test('returns undefined when no proxy is configured', () => {
-			expect(resolveProxyUrl('http://api.example.com:8080/test')).toBeUndefined();
+		test('is a no-op when no proxy env var is set', () => {
+			installGlobalProxyAgent();
+
+			expect(http.globalAgent).not.toBeInstanceOf(EnvProxyHttpAgent);
+			expect(https.globalAgent).not.toBeInstanceOf(EnvProxyHttpsAgent);
 		});
 
-		test('returns undefined when the target is excluded by NO_PROXY', () => {
+		test('uninstall restores plain agents', () => {
 			process.env.HTTP_PROXY = proxyServer.url;
-			process.env.NO_PROXY = 'api.example.com';
+			installGlobalProxyAgent();
 
-			expect(resolveProxyUrl('http://api.example.com:8080/test')).toBeUndefined();
-		});
+			uninstallGlobalProxyAgent();
 
-		test('resolves ALL_PROXY when no scheme-specific proxy is set', () => {
-			process.env.ALL_PROXY = proxyServer.url;
-
-			expect(resolveProxyUrl('http://api.example.com:8080/test')).toBe(proxyServer.url);
+			expect(http.globalAgent).toBeInstanceOf(http.Agent);
+			expect(http.globalAgent).not.toBeInstanceOf(EnvProxyHttpAgent);
+			expect(https.globalAgent).not.toBeInstanceOf(EnvProxyHttpsAgent);
 		});
 	});
 

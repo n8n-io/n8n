@@ -19,6 +19,7 @@ export { generateCodeBuilderThreadId } from './utils/code-builder-session';
 
 // Core utilities for MCP integration
 export { ParseValidateHandler, WorkflowCodeParseError } from './handlers/parse-validate-handler';
+export { getWarningKey } from './state/warning-tracker';
 export { createCodeBuilderSearchTool } from './tools/code-builder-search.tool';
 export { createCodeBuilderGetTool } from './tools/code-builder-get.tool';
 export { createGetSuggestedNodesTool } from './tools/get-suggested-nodes.tool';
@@ -43,5 +44,6 @@ export {
 	MCP_CREATE_WORKFLOW_FROM_CODE_TOOL,
 	MCP_ARCHIVE_WORKFLOW_TOOL,
 	MCP_UPDATE_WORKFLOW_TOOL,
+	MCP_EXPLORE_NODE_RESOURCES_TOOL,
 	MCP_GET_WORKFLOW_BEST_PRACTICES_TOOL,
 } from './constants';

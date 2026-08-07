@@ -10,6 +10,7 @@
  * - Only one dedicated worker accesses OPFS at a time (prevents corruption)
  */
 
+import type { INodeTypeDescription } from 'n8n-workflow';
 import { coordinator, registerTab } from './coordinator';
 import type { SQLiteParam } from './data/types';
 
@@ -71,6 +72,25 @@ export async function isInitialized(): Promise<boolean> {
 export async function loadNodeTypes(baseUrl: string): Promise<void> {
 	await ensureRegistered();
 	await coordinator.loadNodeTypes(baseUrl);
+}
+
+/**
+ * Get all node types from the local database
+ */
+export async function getAllNodeTypes(): Promise<INodeTypeDescription[]> {
+	await ensureRegistered();
+	return await coordinator.getAllNodeTypes();
+}
+
+/**
+ * Get a single node type from the local database
+ */
+export async function getNodeType(
+	name: string,
+	version: number,
+): Promise<INodeTypeDescription | null> {
+	await ensureRegistered();
+	return await coordinator.getNodeType(name, version);
 }
 
 /**

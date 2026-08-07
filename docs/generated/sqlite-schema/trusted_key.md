@@ -15,18 +15,18 @@ CREATE TABLE "trusted_key" ("sourceId" varchar(36) NOT NULL, "kid" varchar(255) 
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| sourceId | varchar(36) |  | false |  | [trusted_key_source](trusted_key_source.md) |  |
-| kid | varchar(255) |  | false |  |  |  |
-| data | TEXT |  | false |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| data | TEXT |  | false |  |  |  |
+| kid | varchar(255) |  | false |  |  |  |
+| sourceId | varchar(36) |  | false |  | [trusted_key_source](trusted_key_source.md) |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| sourceId | PRIMARY KEY | PRIMARY KEY (sourceId) |
-| kid | PRIMARY KEY | PRIMARY KEY (kid) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (sourceId) REFERENCES trusted_key_source (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| kid | PRIMARY KEY | PRIMARY KEY (kid) |
+| sourceId | PRIMARY KEY | PRIMARY KEY (sourceId) |
 | sqlite_autoindex_trusted_key_1 | PRIMARY KEY | PRIMARY KEY (sourceId, kid) |
 
 ## Indexes
@@ -43,19 +43,19 @@ erDiagram
 "trusted_key" |o--|| "trusted_key_source" : "FOREIGN KEY (sourceId) REFERENCES trusted_key_source (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "trusted_key" {
-  varchar_36_ sourceId PK
-  varchar_255_ kid PK
-  TEXT data
   datetime_3_ createdAt
+  TEXT data
+  varchar_255_ kid PK
+  varchar_36_ sourceId PK
 }
 "trusted_key_source" {
-  varchar_36_ id PK
-  varchar_32_ type
   TEXT config
-  varchar_32_ status
+  datetime_3_ createdAt
+  varchar_36_ id PK
   TEXT lastError
   datetime_3_ lastRefreshedAt
-  datetime_3_ createdAt
+  varchar_32_ status
+  varchar_32_ type
   datetime_3_ updatedAt
 }
 ```

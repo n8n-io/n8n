@@ -1,16 +1,20 @@
 import { ref, computed } from 'vue';
-import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import { useWorkflowsListStore, type WorkflowListFilters } from '@/app/stores/workflowsList.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { Router } from 'vue-router';
 import { VIEWS } from '@/app/constants';
 
 import type { IWorkflowDb, WorkflowListResource } from '@/Interface';
 import type { NodeParameterValue } from 'n8n-workflow';
-import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 
 export function useWorkflowResourcesLocator(router: Router) {
 	const workflowsListStore = useWorkflowsListStore();
-	const ndvStore = injectNDVStore();
+	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentStore = injectWorkflowDocumentStore();
+	const ndvStore = computed(() => useNDVStore(workflowDocumentStore.value.documentId));
 	const { renameNode } = useCanvasOperations();
 
 	const workflowsResources = ref<
@@ -70,15 +74,26 @@ export function useWorkflowResourcesLocator(router: Router) {
 		}
 
 		currentPage.value++;
+
+		const parentWorkflowId = workflowsStore.workflowId;
+
+		const filters: WorkflowListFilters = {
+			triggerNodeTypes: ['n8n-nodes-base.executeWorkflowTrigger'],
+		};
+		if (searchFilter.value) {
+			filters.query = searchFilter.value;
+		}
+		if (parentWorkflowId) {
+			filters.includeCallableSubworkflows = true;
+			filters.parentWorkflowId = parentWorkflowId;
+		}
+
 		const workflows = await workflowsListStore.fetchWorkflowsPage(
 			undefined,
 			currentPage.value,
 			PAGE_SIZE,
 			'updatedAt:desc',
-			{
-				...(searchFilter.value ? { query: searchFilter.value } : {}),
-				triggerNodeTypes: ['n8n-nodes-base.executeWorkflowTrigger'],
-			},
+			filters,
 		);
 		totalCount.value = workflowsListStore.totalWorkflowCount;
 

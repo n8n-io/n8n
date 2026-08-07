@@ -15,11 +15,11 @@ CREATE TABLE "instance_ai_resources" ("id" varchar(255) PRIMARY KEY NOT NULL, "w
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | varchar(255) |  | false |  |  |  |
-| workingMemory | TEXT |  | true |  |  |  |
-| metadata | TEXT |  | true |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| id | varchar(255) |  | false |  |  |  |
+| metadata | TEXT |  | true |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| workingMemory | TEXT |  | true |  |  |  |
 
 ## Constraints
 
@@ -41,11 +41,11 @@ erDiagram
 
 
 "instance_ai_resources" {
-  varchar_255_ id PK
-  TEXT workingMemory
-  TEXT metadata
   datetime_3_ createdAt
+  varchar_255_ id PK
+  TEXT metadata
   datetime_3_ updatedAt
+  TEXT workingMemory
 }
 ```
 

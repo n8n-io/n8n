@@ -1,6 +1,7 @@
 """Sandbox hardening regression tests."""
 
 import importlib
+import sys
 
 import pytest
 
@@ -10,6 +11,8 @@ from src.task_executor import (
     _PRISTINE_IMPORT_MODULE,
 )
 from src.task_analyzer import TaskAnalyzer
+from src._sandbox_callables import _GuardedImport
+from src.import_validation import validate_module_import
 from src.errors import SecurityViolationError
 from src.config.security_config import SecurityConfig
 from src.constants import (
@@ -206,6 +209,193 @@ class TestImportAllowlistCoverage:
         )
         result = _run(code, config)
         assert result == '{"k": 1}'
+
+    def test_importlib_resolves_package_relative_import_of_allowed_package(
+        self, tmp_path, monkeypatch
+    ):
+        # Mirrors how an allowlisted external package (e.g. pydantic) lazily
+        # loads its own submodules via ``import_module('.sub', pkg)``. The
+        # leading-dot name must resolve against the anchor package before the
+        # allowlist check, so the import succeeds when the package is allowed.
+        pkg = tmp_path / "synthpkg"
+        pkg.mkdir()
+        (pkg / "__init__.py").write_text("")
+        (pkg / "sub.py").write_text("VALUE = 42\n")
+        monkeypatch.syspath_prepend(str(tmp_path))
+
+        config = SecurityConfig(
+            stdlib_allow={"importlib"},
+            external_allow={"synthpkg"},
+            builtins_deny=set(),
+            runner_env_deny=True,
+        )
+        code = (
+            "import importlib\nreturn importlib.import_module('.sub', 'synthpkg').VALUE"
+        )
+        try:
+            result = _run(code, config)
+        finally:
+            for name in ("synthpkg.sub", "synthpkg"):
+                sys.modules.pop(name, None)
+        assert result == 42
+
+    def test_importlib_relative_import_anchored_on_blocked_package_is_rejected(
+        self,
+    ):
+        # A leading-dot name anchored on a non-allowlisted package stays
+        # blocked after resolution.
+        config = SecurityConfig(
+            stdlib_allow={"importlib"},
+            external_allow=set(),
+            builtins_deny=set(),
+            runner_env_deny=True,
+        )
+        code = "import importlib\nreturn importlib.import_module('.sub', 'requests')"
+        with pytest.raises(SecurityViolationError):
+            _run(code, config)
+
+    def test_importlib_resolves_package_relative_import_via_package_keyword(
+        self, tmp_path, monkeypatch
+    ):
+        # The anchor package may be passed as the ``package`` keyword argument
+        # rather than positionally; resolution must work the same way.
+        pkg = tmp_path / "synthpkgkw"
+        pkg.mkdir()
+        (pkg / "__init__.py").write_text("")
+        (pkg / "sub.py").write_text("VALUE = 7\n")
+        monkeypatch.syspath_prepend(str(tmp_path))
+
+        config = SecurityConfig(
+            stdlib_allow={"importlib"},
+            external_allow={"synthpkgkw"},
+            builtins_deny=set(),
+            runner_env_deny=True,
+        )
+        code = (
+            "import importlib\n"
+            "return importlib.import_module('.sub', package='synthpkgkw').VALUE"
+        )
+        try:
+            result = _run(code, config)
+        finally:
+            for name in ("synthpkgkw.sub", "synthpkgkw"):
+                sys.modules.pop(name, None)
+        assert result == 7
+
+    def test_importlib_relative_import_with_non_str_anchor_is_rejected(self):
+        # A non-str anchor cannot resolve the relative name; it is ignored and
+        # the name is rejected cleanly rather than raising an unexpected error.
+        config = SecurityConfig(
+            stdlib_allow={"importlib"},
+            external_allow={"pydantic"},
+            builtins_deny=set(),
+            runner_env_deny=True,
+        )
+        code = "import importlib\nreturn importlib.import_module('.x', package=123)"
+        with pytest.raises(SecurityViolationError):
+            _run(code, config)
+
+    def test_importlib_dunder_import_resolves_package_relative_submodule(
+        self, tmp_path, monkeypatch
+    ):
+        # An allowlisted package lazy-loads its own submodule through the real
+        # guard via importlib.__import__("sub", globals(), .., level=1). The
+        # level-relative name resolves against the package and is allowed.
+        pkg = tmp_path / "synthpkgdunder"
+        pkg.mkdir()
+        (pkg / "__init__.py").write_text(
+            "import importlib\n"
+            "def load():\n"
+            "    return importlib.__import__('sub', globals(), None, ('VALUE',), 1)\n"
+        )
+        (pkg / "sub.py").write_text("VALUE = 11\n")
+        monkeypatch.syspath_prepend(str(tmp_path))
+
+        config = SecurityConfig(
+            stdlib_allow={"importlib"},
+            external_allow={"synthpkgdunder"},
+            builtins_deny=set(),
+            runner_env_deny=True,
+        )
+        code = (
+            "import importlib\n"
+            "return importlib.import_module('synthpkgdunder').load().VALUE"
+        )
+        try:
+            result = _run(code, config)
+        finally:
+            for name in ("synthpkgdunder.sub", "synthpkgdunder"):
+                sys.modules.pop(name, None)
+        assert result == 11
+
+    def _guard(self, external: set[str]):
+        # A guard with a stub in place of the real import, so these tests
+        # exercise the allow/deny decision without performing an import.
+        config = SecurityConfig(
+            stdlib_allow=set(),
+            external_allow=external,
+            builtins_deny=set(),
+            runner_env_deny=True,
+        )
+        return _GuardedImport(
+            config, validate_module_import, lambda *a, **k: "imported"
+        )
+
+    def test_safe_import_resolves_level_relative_against_globals_package(self):
+        # `__import__`-style relative import: a bare name with level > 0, whose
+        # anchor lives in globals["__package__"] (e.g. `from .type_adapter
+        # import X` inside pydantic). It resolves to the anchor's top-level
+        # package and is allowed when that package is allowlisted.
+        guard = self._guard({"pydantic"})
+        assert (
+            guard("type_adapter", {"__package__": "pydantic"}, None, ("X",), 1)
+            == "imported"
+        )
+
+    def test_safe_import_bare_relative_package_import_is_allowed(self):
+        # `from . import x` compiles to __import__("", globals, locals, ("x",), 1)
+        # and resolves to the anchor package itself.
+        guard = self._guard({"pydantic"})
+        assert guard("", {"__package__": "pydantic"}, None, ("x",), 1) == "imported"
+
+    def test_safe_import_level_relative_with_non_allowlisted_anchor_is_rejected(self):
+        guard = self._guard({"pydantic"})
+        with pytest.raises(SecurityViolationError):
+            guard("sub", {"__package__": "requests"}, None, ("X",), 1)
+
+    def test_safe_import_level_relative_without_package_in_globals_is_rejected(self):
+        # No anchor available, so the bare name is checked as-is and rejected.
+        guard = self._guard({"pydantic"})
+        with pytest.raises(SecurityViolationError):
+            guard("type_adapter", {}, None, ("X",), 1)
+
+    def test_safe_import_absolute_import_is_not_anchored_by_globals(self):
+        # An absolute import is checked on its own name; globals["__package__"]
+        # is not consulted, so a non-allowlisted module stays blocked.
+        guard = self._guard({"pydantic"})
+        with pytest.raises(SecurityViolationError):
+            guard("requests", {"__package__": "pydantic"}, None, None, 0)
+
+    def test_safe_import_passes_original_name_to_the_real_import(self):
+        # The validator checks a reconstructed dotted name, but the underlying
+        # import must receive the original bare name and args unchanged.
+        config = SecurityConfig(
+            stdlib_allow=set(),
+            external_allow={"pydantic"},
+            builtins_deny=set(),
+            runner_env_deny=True,
+        )
+        received = {}
+
+        def record(name, *args, **kwargs):
+            received["name"] = name
+            received["args"] = args
+            return "imported"
+
+        guard = _GuardedImport(config, validate_module_import, record)
+        guard("type_adapter", {"__package__": "pydantic"}, None, ("X",), 1)
+        assert received["name"] == "type_adapter"
+        assert received["args"] == ({"__package__": "pydantic"}, None, ("X",), 1)
 
 
 class TestIntrospectionDeniedOnHardenedCallables:
