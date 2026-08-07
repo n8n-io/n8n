@@ -477,7 +477,7 @@ export class AwsS3V1 implements INodeType {
 						const destinationPath = this.getNodeParameter('destinationPath', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
-						headers['x-amz-copy-source'] = sourcePath;
+						headers['x-amz-copy-source'] = encodeURI(sourcePath);
 
 						if (additionalFields.requesterPays) {
 							headers['x-amz-request-payer'] = 'requester';
