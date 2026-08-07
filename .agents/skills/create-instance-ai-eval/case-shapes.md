@@ -347,7 +347,7 @@ Pick the lightest mode that fits:
 
 | Situation | Mode | Pairs with |
 |---|---|---|
-| Prior work already exists (a workflow to repair) | `seed.mode: "inline"` — prior messages + the workflows they reference, in the case body | a normal `conversation` for the live turn |
+| Prior work already exists (a workflow to repair, an agent to change) | `seed.mode: "inline"` — prior messages + the workflows/agents they reference, in the case body | a normal `conversation` for the live turn |
 | Prelude is just "what was discussed" (no tool calls, no workflows) | `seed.mode: "inline"` with `{role, text}` shorthand messages | a normal `conversation` for the live turn |
 | Shallow 2–3 turn prelude where the agent's live replies matter | none — a plain multi-turn `conversation` re-drives it live | — |
 | Confirming a real failure locally, before authoring the case | `seed.mode: "replay"` — rebuilds a thread from its LangSmith trace at run time; nothing committed, expires with the trace | supplies its own live turn (omit `conversation`) |
@@ -360,10 +360,15 @@ lang-tracer's `metadata.seed` verbatim, so nothing translates between the repos.
 
 **The seeded portion is replayed, not re-run.** The prior messages are written into
 the thread as they stand (marked `seeded: true` so the judge and checks can tell
-them apart), and the workflows and data tables they reference are **created on the
-instance** — so when the live turn runs, the agent sees the workspace the case says
-it should. Data tables are created **schema-only, no rows**: row values are the most
-sensitive thing a table holds, and they stay off the eval instance.
+them apart), and the workflows, data tables and agents they reference are **created
+on the instance** — so when the live turn runs, the agent sees the workspace the case
+says it should. Data tables are created **schema-only, no rows**: row values are the
+most sensitive thing a table holds, and they stay off the eval instance.
+
+One thing the restore can't reproduce: the **sandbox is empty**. The agent re-reads
+state from the database rather than editing source it "wrote", so a seeded case is
+harder than the real turn was — never grade one on cost, turn count or
+`messageBudget`.
 
 The consequence to internalise: **nothing you assert can change what already
 happened in the seeded turns** — the agent didn't produce them, it's only
@@ -446,16 +451,17 @@ which user turn goes live.
 ### `mode: "inline"` — durable synthetic fixture
 
 For a **synthetic, sanitised** seed pinned in git (never a real user's
-conversation): author the prior messages, plus the workflows they reference, in
+conversation): author the prior messages, plus the artifacts they reference, in
 the case body (schema in
 [`harness/conversation-seed.ts`](../../../packages/@n8n/instance-ai/evaluations/harness/conversation-seed.ts)
-— `messages` + optional `workflows` + `dataTables`). Real conversations belong in
-`replay`, which keeps their content out of the repo.
+— `messages` + optional `workflows`, `dataTables` and `agents`). Real
+conversations belong in `replay`, which keeps their content out of the repo.
 
-Two constraints that bite: a workflow `id` must be ≥8 characters (the id remap
+Two constraints that bite: an artifact `id` must be ≥8 characters (the id remap
 refuses shorter ones), and a seeded `build-workflow` tool call's
 `output.workflowId` must match the seeded workflow's `id` — otherwise the remap
-separates them and the agent can't find the workflow it should act on.
+separates them and the agent can't find the workflow it should act on. The same
+applies to a seeded `build-agent` result's `output.agentId`.
 
 The seed sits in the case body, not a sibling file, so it travels with the case
 whether it comes off disk, out of a LangTracer suite, or from a dispatched case
@@ -489,6 +495,78 @@ the array the transcript is graded from. A near-miss (say
 `text: 123`) is deliberately **not** expanded — it fails at load instead of
 becoming a message the transcript builder would silently drop.
 
+#### `agents` — "here's an agent you already built, now change it"
+
+An n8n **Agent** is not a workflow, so it has its own slot: a project-scoped
+resource with a config *plus authored skill bodies*. Declare it and the restore
+creates it at its pinned id in the thread's project, with its skills, before the
+live turn:
+
+```json
+"seed": {
+  "mode": "inline",
+  "messages": [ /* … the turn that built it … */ ],
+  "agents": [
+    {
+      "id": "AgEnT12345678901",
+      "config": {
+        "name": "Support Triage",
+        "model": "anthropic/claude-sonnet-4-5",
+        "instructions": "Triage inbound support tickets.",
+        "skills": [{ "type": "skill", "id": "skill_1" }]
+      },
+      "skills": {
+        "skill_1": {
+          "name": "Triage rules",
+          "description": "How tickets are sorted",
+          "instructions": "Label each ticket by severity…"
+        }
+      }
+    }
+  ]
+}
+```
+
+`config` and `skills` are the exact shapes `GET …/agents/v2/:id/config` and
+`…/skills` return, so you can author a seed from an agent you built by hand: build
+it on a dev instance, fetch both, scrub, paste. Things worth knowing:
+
+- **The thread is bound to the seeded agent**, exactly as the conversation that
+  built it would have left it, so the live turn's `build-agent` call continues
+  that agent directly. Without the binding the call is rejected (`Unknown
+  agentRef`) and the model recovers from the agent id in its seeded history —
+  measured at 3/3 runs recovering correctly, but it burns a turn, and the
+  rejection message offers "create a new agent" as its first option.
+- **Names are not uniquified and leftovers are not evicted**, unlike seeded
+  workflows. An agent is addressed by id, so a same-named copy can't misdirect the
+  live turn; the name is also woven through skill prose, where a rename would
+  rewrite instructions the case grades.
+- **Grade the agent, not a workflow.** The agent's config + skills render into the
+  judge context, so `outcomeExpectations` cover them. Assert on the *change* the
+  live turn makes — and assert the untouched parts survive, which is how you catch
+  a rebuild-from-scratch masquerading as an edit.
+- **Skill bodies are prose — scrub them like conversation content, not like
+  config.** A skill carries far more free text than a workflow does: instructions
+  and `references[]` are whole markdown documents, and they routinely name real
+  teams, customers, internal tools, ticket queues, Slack channels and escalation
+  contacts. Rewrite them into neutral equivalents (`Acme Corp`, `#support`) rather
+  than trimming, and reread the full body — a workflow-shaped scan of names and
+  ids will miss a paragraph.
+- **Skill ids must match**: every `config.skills[].id` needs an entry in the
+  `skills` map, or the agent renders with a dangling reference.
+- **Two agents can't share an addressing key.** Names are slugified to address the
+  agent (`Support Bot` and `support-bot` both become `support-bot`), so a seed
+  whose agent names differ only by case, spacing or punctuation is refused rather
+  than silently dropping one from the registry.
+- **Credential ids are blanked on restore**, the agent counterpart of stripping a
+  seed workflow's node credentials. An id from the instance you authored on
+  addresses nothing here, so you can paste a fetched config as-is and the restore
+  empties them. The seeded agent therefore arrives unconfigured for credentials —
+  fine for grading its config and skills, but it is not runnable as seeded.
+  Declare what the live turn should see in the case's own `credentials[]`.
+- **Requires the agents module.** A seeded agent restore fails loudly (as a
+  framework issue) on an instance where agents are disabled, rather than running
+  the case unseeded.
 #### Which opening shape — the agent is handed the workflow, or it has to find it
 
 Two real conversations look the same in a case file but test different things, and
