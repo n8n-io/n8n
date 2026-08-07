@@ -251,14 +251,17 @@ export class InMemoryMemory
 		rows: NewObservationLogEntry[],
 	): Promise<ObservationLogEntry[]> {
 		const prepared = await Promise.all(
-			rows.map(async (row) => ({
-				observationScopeId: row.observationScopeId,
-				marker: row.marker,
-				text: row.text,
-				parentId: row.parentId ?? null,
-				tokenCount: row.tokenCount ?? (await estimateObservationTokens(row.text)),
-				createdAt: row.createdAt ?? new Date(),
-			})),
+			rows.map(async (row) => {
+				const createdAt = row.createdAt ?? new Date();
+				return {
+					observationScopeId: row.observationScopeId,
+					marker: row.marker,
+					text: row.text,
+					parentId: row.parentId ?? null,
+					tokenCount: row.tokenCount ?? (await estimateObservationTokens(row.text)),
+					createdAt,
+				};
+			}),
 		);
 
 		const persisted: ObservationLogEntry[] = [];
