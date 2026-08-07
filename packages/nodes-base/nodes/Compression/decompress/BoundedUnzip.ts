@@ -118,10 +118,14 @@ export async function boundedUnzip(
 	maxOutputSize: number,
 	maxEntries: number,
 ): Promise<Record<string, Buffer>> {
-	// ZIP spec mandates '/' as path separator; a trailing slash marks a directory
-	const entries = readCentralDirectory(data).filter((entry) => !entry.name.endsWith('/'));
-	if (entries.length > maxEntries) {
-		throw new UserError(`The archive contains more than ${maxEntries} entries`);
+	const entries: ZipEntry[] = [];
+	for (const entry of readCentralDirectory(data)) {
+		// ZIP spec mandates '/' as path separator; a trailing slash marks a directory
+		if (entry.name.endsWith('/')) continue;
+		if (entries.length === maxEntries) {
+			throw new UserError(`The archive contains more than ${maxEntries} entries`);
+		}
+		entries.push(entry);
 	}
 
 	// Entry names come from the archive, so the result must not carry a prototype

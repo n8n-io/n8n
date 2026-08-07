@@ -47,7 +47,14 @@ function readUInt64(data: Buffer, offset: number): number {
 function findEndOfCentralDirectory(data: Buffer): number {
 	const lowest = Math.max(0, data.length - EOCD_SIZE - MAX_COMMENT_SIZE);
 	for (let offset = data.length - EOCD_SIZE; offset >= lowest; offset--) {
-		if (data.readUInt32LE(offset) === EOCD_SIGNATURE) return offset;
+		// The signature can also occur inside the archive comment, so require the
+		// record's own comment length to reach exactly the end of the archive.
+		if (
+			data.readUInt32LE(offset) === EOCD_SIGNATURE &&
+			offset + EOCD_SIZE + data.readUInt16LE(offset + 20) === data.length
+		) {
+			return offset;
+		}
 	}
 	invalidZip();
 }
@@ -137,12 +144,14 @@ function findDataOffset(data: Buffer, localHeaderOffset: number): number {
  * file headers — is what keeps entries nested inside a member (office documents
  * such as xlsx/docx are themselves zip archives) from being surfaced as members
  * of the outer archive.
+ *
+ * Yields entries one at a time so a caller enforcing an entry-count limit can
+ * stop before the whole directory has been read.
  */
-export function readCentralDirectory(data: Buffer): ZipEntry[] {
+export function* readCentralDirectory(data: Buffer): Generator<ZipEntry> {
 	const eocdOffset = findEndOfCentralDirectory(data);
 	const { offset: centralDirectoryOffset, entryCount } = locateCentralDirectory(data, eocdOffset);
 
-	const entries: ZipEntry[] = [];
 	let offset = centralDirectoryOffset;
 
 	for (let index = 0; index < entryCount; index++) {
@@ -190,16 +199,14 @@ export function readCentralDirectory(data: Buffer): ZipEntry[] {
 
 		const isUtf8 = (data.readUInt16LE(offset + 8) & UTF8_NAME_FLAG) !== 0;
 
-		entries.push({
+		yield {
 			name: data.toString(isUtf8 ? 'utf8' : 'latin1', nameStart, extraStart),
 			compression: data.readUInt16LE(offset + 10),
 			compressedSize,
 			declaredSize: resolved?.[0],
 			dataOffset,
-		});
+		};
 
 		offset = nextOffset;
 	}
-
-	return entries;
 }
