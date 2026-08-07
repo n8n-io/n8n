@@ -38,4 +38,12 @@ export class TypeOrmExecutionStore implements ExecutionStore {
 		const result = await this.repo.update({ id, status: from }, { status: to });
 		return result.affected === 1;
 	}
+
+	async finishExecution(id: string, status: 'completed' | 'failed'): Promise<boolean> {
+		const result = await this.repo.update(
+			{ id, status: 'running' },
+			{ status, finishedAt: new Date() },
+		);
+		return result.affected === 1;
+	}
 }

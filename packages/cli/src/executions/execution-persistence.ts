@@ -521,43 +521,37 @@ export class ExecutionPersistence {
 		});
 	}
 
-	/** Find an execution scoped to shared workflows, with unflattened data and annotation (a display read). */
-	async findIfSharedUnflatten(
+	/**
+	 * Find one execution scoped to the given workflow IDs (display read).
+	 * Defaults: include data + annotation, unflattened.
+	 */
+	async findOneInWorkflows(
 		executionId: string,
-		sharedWorkflowIds: string[],
-		maxDataSizeBytes?: number,
-	) {
-		return await this.findSingleExecution(executionId, {
-			where: { workflowId: In(sharedWorkflowIds) },
-			includeData: true,
-			unflattenData: true,
-			includeAnnotation: true,
-			maxDataSizeBytes,
-		});
-	}
-
-	/** Find an execution scoped to the given workflows for the public API (a display read). */
-	async getExecutionInWorkflowsForPublicApi(
-		id: string,
 		workflowIds: string[],
-		includeData?: boolean,
-		maxDataSizeBytes?: number,
-	): Promise<IExecutionBase | undefined> {
-		return await this.findSingleExecution(id, {
+		options: {
+			includeData?: boolean;
+			includeAnnotation?: boolean;
+			maxDataSizeBytes?: number;
+		} = {},
+	): Promise<IExecutionResponse | IExecutionBase | undefined> {
+		const { includeData = true, includeAnnotation = true, maxDataSizeBytes } = options;
+
+		return await this.findSingleExecution(executionId, {
 			where: { workflowId: In(workflowIds) },
 			includeData,
 			unflattenData: true,
+			includeAnnotation,
 			maxDataSizeBytes,
 		});
 	}
 
-	/** Find executions scoped to the given workflows for the public API, with data per `storedAt`. */
-	async getExecutionsForPublicApi(
-		params: {
+	/** Find executions scoped to the given workflows, with data per `storedAt`. */
+	async findManyInWorkflows(
+		workflowIds: string[],
+		options: {
 			limit: number;
 			includeData?: boolean;
 			lastId?: string;
-			workflowIds?: string[];
 			status?: ExecutionStatus;
 			excludedExecutionsIds?: string[];
 		},
@@ -577,11 +571,11 @@ export class ExecutionPersistence {
 					'finished',
 					'status',
 				],
-				where: this.executionRepository.getFindExecutionsForPublicApiCondition(params),
+				where: this.executionRepository.getFindManyInWorkflowsCondition(workflowIds, options),
 				order: { id: 'DESC' },
-				take: params.limit,
+				take: options.limit,
 			},
-			{ includeData: params.includeData, unflattenData: true, maxDataSizeBytes },
+			{ includeData: options.includeData, unflattenData: true, maxDataSizeBytes },
 		);
 	}
 

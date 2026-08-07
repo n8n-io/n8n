@@ -66,6 +66,7 @@ vi.mock('../../tools', () => ({
 				['workflows', mockBuiltTool(`workflows-${context.runLabel ?? 'unknown'}`)],
 				['evals', mockBuiltTool(`evals-${context.runLabel ?? 'unknown'}`)],
 				['research', mockBuiltTool(`research-${context.runLabel ?? 'unknown'}`)],
+				['n8n-docs', mockBuiltTool(`n8n-docs-${context.runLabel ?? 'unknown'}`)],
 				['nodes', mockBuiltTool(`nodes-${context.runLabel ?? 'unknown'}`)],
 				['executions', mockBuiltTool(`executions-${context.runLabel ?? 'unknown'}`)],
 				['build-workflow', mockBuiltTool(`build-workflow-${context.runLabel ?? 'unknown'}`)],
@@ -290,6 +291,39 @@ describe('createInstanceAgent', () => {
 		}
 	});
 
+	// INS-749: `research` (web-search) is always loaded while `n8n-docs` used to be
+	// deferred, so answering an n8n question from n8n's own docs cost a search_tools +
+	// load_tool round trip that web search did not. That price gap pushed the agent to
+	// web-search things the docs already answer.
+	it('keeps n8n-docs always loaded so it is no costlier to reach than web search', async () => {
+		await createInstanceAgent({
+			modelId: 'test-model',
+			context: {
+				runLabel: 'docs-parity-run',
+				localGatewayStatus: undefined,
+				licenseHints: undefined,
+				localMcpServer: undefined,
+			},
+			orchestrationContext: {
+				runId: 'docs-parity-run',
+			},
+			memoryConfig: {},
+			mcpManager: createMcpManagerStub(),
+		} as never);
+
+		const attachedTools = getAttachedTools();
+		const deferredTools = getDeferredTools();
+
+		expect(attachedTools['n8n-docs-docs-parity-run']).toMatchObject({
+			name: 'n8n-docs-docs-parity-run',
+		});
+		expect(deferredTools['n8n-docs-docs-parity-run']).toBeUndefined();
+		// Parity is the point: both routes must be one call away.
+		expect(attachedTools['research-docs-parity-run']).toMatchObject({
+			name: 'research-docs-parity-run',
+		});
+	});
+
 	it('attaches the orchestration workspace when provided', async () => {
 		const memoryConfig = {} as never;
 		const fakeWorkspace = { id: 'thread-runtime-workspace' } as never;
@@ -462,6 +496,34 @@ describe('createInstanceAgent', () => {
 				toolSearchEnabled: true,
 				mcpToolSearchEnabled: true,
 			}),
+		);
+	});
+
+	it('enables the MCP registry prompt section only when the host wired mcpService', async () => {
+		const baseOptions = {
+			modelId: 'test-model',
+			orchestrationContext: { runId: 'mcp-registry-prompt' },
+			memoryConfig: {},
+			mcpManager: createMcpManagerStub(new Map()),
+		};
+		const baseContext = {
+			runLabel: 'mcp-registry-prompt',
+			localGatewayStatus: undefined,
+			licenseHints: undefined,
+			localMcpServer: undefined,
+		};
+
+		await createInstanceAgent({ ...baseOptions, context: baseContext } as never);
+		expect(getSystemPrompt).toHaveBeenLastCalledWith(
+			expect.objectContaining({ mcpRegistrySearchEnabled: false }),
+		);
+
+		await createInstanceAgent({
+			...baseOptions,
+			context: { ...baseContext, mcpService: { search: vi.fn() } },
+		} as never);
+		expect(getSystemPrompt).toHaveBeenLastCalledWith(
+			expect.objectContaining({ mcpRegistrySearchEnabled: true }),
 		);
 	});
 

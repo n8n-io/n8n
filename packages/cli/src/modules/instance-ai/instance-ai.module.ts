@@ -71,12 +71,14 @@ export class InstanceAiModule implements ModuleInterface {
 		const localGatewayDisabled = settingsService.isLocalGatewayDisabled();
 		const browserUseEnabled = settingsService.isBrowserUseEnabled();
 		const sandboxStatus = settingsService.getSandboxStatus();
+		const setupCompleted = await settingsService.isSetupCompleted();
 		return {
 			enabled,
 			localGatewayDisabled,
 			browserUseEnabled,
 			proxyEnabled: service.isProxyEnabled(),
 			cloudManaged: globalConfig.deployment.type === 'cloud',
+			setupCompleted,
 			sandboxEnabled: sandboxStatus.enabled,
 			workflowBuilderAvailable: enabled && sandboxStatus.workflowBuilderAvailable,
 			sandboxUnavailableReason: sandboxStatus.unavailableReason,

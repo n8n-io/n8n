@@ -150,9 +150,10 @@ Error workflows are per-target-workflow (`settings.errorWorkflow` must be the
 real workflow ID of a separate **published** workflow with an active Error
 Trigger — never a name, placeholder, `activeVersionId`, or local SDK id).
 n8n has no global error workflow setting; mention that only if the user asks
-about global behavior. Before building or attaching an error workflow, load
-this skill's `references/error-workflows.md` linked file and follow its
-build → publish → assign steps. Do not create one before the user opts in.
+about global behavior. Do not offer or build an error workflow before the
+primary workflow is published. Before building or attaching an error
+workflow, load this skill's `references/error-workflows.md` linked file and
+follow its build → publish → assign steps.
 
 ## Mandatory Process
 
@@ -316,9 +317,30 @@ decision after testing.
 - Never use raw credential objects like `{ id: '...', name: '...' }` in SDK
   code; replace them with `newCredential()` when editing roundtripped code.
 - If a required credential type is not listed, call
-  `credentials(action="search-types")` with the service name. Prefer dedicated
-  credential types over generic auth; when generic auth is truly needed,
-  prefer `httpBearerAuth` over `httpHeaderAuth`.
+  `credentials(action="search-types")` with the service name. Pick in this
+  order:
+  1. A **dedicated credential type** whenever search finds one.
+  2. **Simplified Custom Auth** (`httpTemplatedCustomAuth`) for any service
+     without a dedicated type whose auth is expressible as header/query/body
+     values — this covers API keys and bearer tokens. When the provider
+     documents `Authorization: Bearer <token>`, do NOT reach for
+     `httpBearerAuth`: template it as
+     `{"headers":{"Authorization":"Bearer {{api_key}}"}}`. Set the HTTP
+     Request node's `genericAuthType` to `httpTemplatedCustomAuth`, and note
+     the provider's documented auth scheme (header format, key page, a cheap
+     authenticated GET endpoint) while you have the docs open: the setup call
+     needs them for the `credentialHints` recipe (see the post-build-flow
+     skill). Before that setup call, load the `credential-recipe-research`
+     skill and execute its lookup procedure — the recipe's template, docsUrl
+     and testUrl must come from pages fetched there, never from memory. Setup
+     rejects new plain generic credentials on HTTP Request nodes, so picking
+     Bearer/Header/Query/Custom Auth here means rebuilding — unless the user
+     explicitly asked for that plain type: an explicit user choice wins (setup
+     accepts it with `allowPlainGenericAuth: true`), don't argue with it.
+  3. Plain generic types (`httpBasicAuth`, `httpDigestAuth`, `oAuth2Api`, …)
+     only for what a template cannot express: basic auth's base64-encoded
+     pair, digest's challenge-response, OAuth flows — or when the user
+     explicitly asks for a specific plain type.
 - `credentials(action="list", type=...)` may include a synthetic n8n credits
   entry `{ id: null, name: "n8n credits", type, __aiGatewayManaged: true }`
   when the type is covered by n8n credits (see n8n credits Preference). It is
@@ -445,7 +467,7 @@ unsolicited `sticky()`, forbidden builder constructs (e.g. `.map()`), and
 repeated `.onTrue()` / `.onFalse()` overwrites on the same IF variable. Fix
 every reported error and warning before calling `build-workflow`.
 
-- Code nodes need not always be necessary. You can use other n8n nodes to do the same thing. 
+- Code nodes need not always be necessary. You can use other n8n nodes to do the same thing.
 - SDK builder code is a restricted subset of TypeScript that builds a static
   graph; it is not a Code node and does not run. Build strings with template
   literals; do runtime joining, aggregation, or transforms in a Code node or
