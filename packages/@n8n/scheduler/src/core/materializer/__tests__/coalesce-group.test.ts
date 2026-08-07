@@ -202,7 +202,7 @@ describe('coalesceSiblingCatchUps', () => {
 		expect(byId(result, 5).plan.catchUpAt).toBeNull();
 	});
 
-	it('never drops the catch-up run of a member whose schedule is exhausted', () => {
+	it('drops the catch-up run of an exhausted member the same as any other loser', () => {
 		const exhaustedCatchUp = secondsBefore(NOW, 30);
 		const laterCatchUp = secondsBefore(NOW, 10);
 		const planned = [
@@ -213,32 +213,17 @@ describe('coalesceSiblingCatchUps', () => {
 		const result = coalesceSiblingCatchUps(planned);
 
 		const exhausted = byId(result, 1);
-		expect(exhausted.plan.catchUpAt).toEqual(exhaustedCatchUp);
-		expect(exhausted.plan.occurrences).toEqual([exhaustedCatchUp]);
-		expect(exhausted.plan.nextRunAt).toBeNull();
-		expect(byId(result, 2).plan.catchUpAt).toEqual(laterCatchUp);
-	});
-
-	it('drops the catch-up run of an exhausted member whose instant is the winner instant', () => {
-		const shared = secondsBefore(NOW, 10);
-		const planned = [
-			makeMember({ id: 2 }, shared),
-			makeMember({ id: 5 }, shared, { nextRunAt: null }),
-		];
-
-		const result = coalesceSiblingCatchUps(planned);
-
-		expect(byId(result, 2).plan.catchUpAt).toEqual(shared);
-		const exhausted = byId(result, 5);
 		expect(exhausted.plan.catchUpAt).toBeNull();
 		expect(exhausted.plan.occurrences).toEqual([]);
+		expect(exhausted.plan.nextRunAt).toBeNull();
+		expect(byId(result, 2).plan.catchUpAt).toEqual(laterCatchUp);
 	});
 
 	it.each([
 		['taskType', { taskType: 'trigger' }, { taskType: 'poll' }],
 		['misfireGraceSeconds', { misfireGraceSeconds: 60 }, { misfireGraceSeconds: 120 }],
 		['payload', { payload: { rule: 'one' } }, { payload: { rule: 'two' } }],
-	])('keeps both catch-up runs when siblings differ in %s', (_label, first, second) => {
+	])('still groups siblings whose %s differs', (_label, first, second) => {
 		const planned = [
 			makeMember({ id: 1, ...first }, secondsBefore(NOW, 30)),
 			makeMember({ id: 2, ...second }, secondsBefore(NOW, 20)),
@@ -246,7 +231,7 @@ describe('coalesceSiblingCatchUps', () => {
 
 		const result = coalesceSiblingCatchUps(planned);
 
-		expect(byId(result, 1).plan.catchUpAt).toEqual(secondsBefore(NOW, 30));
+		expect(byId(result, 1).plan.catchUpAt).toBeNull();
 		expect(byId(result, 2).plan.catchUpAt).toEqual(secondsBefore(NOW, 20));
 	});
 
@@ -260,22 +245,6 @@ describe('coalesceSiblingCatchUps', () => {
 
 		expect(byId(result, 1).plan.catchUpAt).toBeNull();
 		expect(byId(result, 2).plan.catchUpAt).toEqual(secondsBefore(NOW, 20));
-	});
-
-	it('keeps the catch-up run of a sibling whose payload cannot be serialised', () => {
-		const cyclic: Record<string, unknown> = { rule: 'one' };
-		cyclic.self = cyclic;
-		const planned = [
-			makeMember({ id: 1, payload: cyclic }, secondsBefore(NOW, 30)),
-			makeMember({ id: 2 }, secondsBefore(NOW, 20)),
-			makeMember({ id: 3 }, secondsBefore(NOW, 10)),
-		];
-
-		const result = coalesceSiblingCatchUps(planned);
-
-		expect(byId(result, 1).plan.catchUpAt).toEqual(secondsBefore(NOW, 30));
-		expect(byId(result, 2).plan.catchUpAt).toBeNull();
-		expect(byId(result, 3).plan.catchUpAt).toEqual(secondsBefore(NOW, 10));
 	});
 
 	it('leaves a member without a catch-up run alone and still groups the rest', () => {
@@ -300,7 +269,7 @@ describe('coalesceSiblingCatchUps', () => {
 		expect(byId(result, 3).plan.catchUpAt).toEqual(secondsBefore(NOW, 10));
 	});
 
-	it('keeps every catch-up run when no member of the owner has a further run', () => {
+	it('collapses to one catch-up run even when every member of the owner is exhausted', () => {
 		const planned = [
 			makeMember({ id: 1 }, secondsBefore(NOW, 30), { nextRunAt: null }),
 			makeMember({ id: 2 }, secondsBefore(NOW, 20), { nextRunAt: null }),
@@ -309,11 +278,9 @@ describe('coalesceSiblingCatchUps', () => {
 
 		const result = coalesceSiblingCatchUps(planned);
 
-		expect(result.filter(({ plan }) => plan.catchUpAt !== null)).toHaveLength(3);
-		for (const id of [1, 2, 3]) {
-			const member = byId(result, id);
-			expect(member.plan.occurrences).toHaveLength(1);
-		}
+		const withCatchUp = result.filter(({ plan }) => plan.catchUpAt !== null);
+		expect(withCatchUp).toHaveLength(1);
+		expect(withCatchUp[0].job.id).toBe(3);
 	});
 
 	it('lets an exhausted member hold the group catch-up run when its instant is the latest', () => {

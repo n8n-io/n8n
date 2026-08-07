@@ -457,38 +457,6 @@ describe('materialize', () => {
 			}
 		});
 
-		it('completes the pass and records a catch-up run for a sibling whose payload cannot be serialised', async () => {
-			const tx = makeTx();
-			const cyclic: Record<string, unknown> = { rule: 'one' };
-			cyclic.self = cyclic;
-			tx.claimDueJobs.mockResolvedValue({
-				now: NOW,
-				jobs: [{ ...makeSibling(1), payload: cyclic }, makeSibling(2), makeSibling(3)],
-			});
-			tx.recordOccurrences.mockResolvedValue({ recorded: 2, created: [] });
-
-			await materialize(runnerWith(tx), options);
-
-			const rows = tx.recordOccurrences.mock.calls[0][0];
-			expect(rows.map(({ jobId }) => jobId)).toEqual([1, 2]);
-			expect(tx.advanceJobs.mock.calls[0][0]).toHaveLength(3);
-		});
-
-		it('keeps a sibling catch-up run when its payload differs from the others', async () => {
-			const tx = makeTx();
-			tx.claimDueJobs.mockResolvedValue({
-				now: NOW,
-				jobs: [makeSibling(1), makeSibling(2), { ...makeSibling(3), payload: { rule: 'other' } }],
-			});
-			tx.recordOccurrences.mockResolvedValue({ recorded: 2, created: [] });
-
-			await materialize(runnerWith(tx), options);
-
-			const rows = tx.recordOccurrences.mock.calls[0][0];
-			expect(rows).toHaveLength(2);
-			expect(rows.map(({ payload }) => payload)).toEqual([{}, { rule: 'other' }]);
-		});
-
 		it('records the surviving occurrences of a superseded sibling at their own instants', async () => {
 			const tx = makeTx();
 			tx.claimDueJobs.mockResolvedValue({
@@ -571,7 +539,7 @@ describe('materialize', () => {
 			]);
 		});
 
-		it('records a catch-up run for every sibling when none of their schedules has a further run', async () => {
+		it('records a single catch-up run for the owner when none of their schedules has a further run', async () => {
 			const tx = makeTx();
 			const oneOff = (id: number, fireAt: string): ScheduledJob => ({
 				...makeSibling(id),
@@ -588,15 +556,13 @@ describe('materialize', () => {
 					oneOff(3, '2025-12-31T23:58:20.000Z'),
 				],
 			});
-			tx.recordOccurrences.mockResolvedValue({ recorded: 3, created: [] });
+			tx.recordOccurrences.mockResolvedValue({ recorded: 1, created: [] });
 
 			await materialize(runnerWith(tx), options);
 
 			const rows = tx.recordOccurrences.mock.calls[0][0];
-			expect(rows.map((row) => row.jobId)).toEqual([1, 2, 3]);
-			for (const row of rows) {
-				expect(row.runAt).toEqual(NOW);
-			}
+			expect(rows.map((row) => row.jobId)).toEqual([3]);
+			expect(rows[0].runAt).toEqual(NOW);
 			expect(tx.retireSuperseded).toHaveBeenCalledWith([
 				{ jobId: 1, before: new Date('2025-12-31T23:58:00.000Z') },
 				{ jobId: 2, before: new Date('2025-12-31T23:58:10.000Z') },

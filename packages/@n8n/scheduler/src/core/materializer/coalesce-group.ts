@@ -1,6 +1,5 @@
 import { ScheduledJobMisfirePolicy } from '@n8n/constants';
 
-import type { ScheduledJob } from '../types';
 import type { PlannedJob } from './transaction';
 
 interface GroupMember {
@@ -16,11 +15,6 @@ export function coalesceSiblingCatchUps(planned: PlannedJob[]): PlannedJob[] {
 		const winner = members.reduce(latestThenLowestId);
 		for (const member of members) {
 			if (member === winner) continue;
-			// Exempt only when its own miss predates the winner's: a schedule with no
-			// next run has nothing left to retry, but an equal `catchUpAt` means the
-			// winner's occurrence already covers this exact instant, so dropping it
-			// here loses nothing.
-			if (member.entry.plan.nextRunAt === null && member.catchUpAt < winner.catchUpAt) continue;
 			losers.add(member.entry);
 		}
 	}
@@ -36,6 +30,13 @@ function ownerCatchUpAt({ job, plan }: PlannedJob): Date | null {
 	return plan.catchUpAt;
 }
 
+/**
+ * Grouped by `ownerKey` alone: `coalesce_owner` collapses catch-up runs across
+ * an owner's rules unconditionally, so the whole trigger fires once, however
+ * many rules missed occurrences. Per-rule deduplication isn't this policy's
+ * job: plain `coalesce` already collapses backlog within a single job, and
+ * distinguishing rules is a workflow-definition concern, not a misfire one.
+ */
 function groupOwnerCatchUps(planned: PlannedJob[]): Map<string, GroupMember[]> {
 	const groups = new Map<string, GroupMember[]>();
 
@@ -43,7 +44,7 @@ function groupOwnerCatchUps(planned: PlannedJob[]): Map<string, GroupMember[]> {
 		const catchUpAt = ownerCatchUpAt(entry);
 		if (catchUpAt === null) continue;
 
-		const key = groupKey(entry.job);
+		const key = entry.job.ownerKey;
 		if (key === null) continue;
 
 		const member: GroupMember = { entry, catchUpAt: catchUpAt.getTime() };
@@ -53,23 +54,6 @@ function groupOwnerCatchUps(planned: PlannedJob[]): Map<string, GroupMember[]> {
 	}
 
 	return groups;
-}
-
-/**
- * Owner, task type, payload and grace: the surviving occurrence carries the
- * winner's values for all of them, so members must agree on each one.
- * `maxAttempts` is deliberately excluded: provisioning only sets it on insert,
- * so a later-raised limit would otherwise leave a node's rules permanently
- * unable to coalesce.
- */
-function groupKey(job: ScheduledJob): string | null {
-	try {
-		return JSON.stringify([job.ownerKey, job.taskType, job.misfireGraceSeconds, job.payload]);
-	} catch {
-		// An unserializable payload opts this job out of grouping rather than
-		// failing the whole pass.
-		return null;
-	}
 }
 
 function latestThenLowestId(current: GroupMember, candidate: GroupMember): GroupMember {

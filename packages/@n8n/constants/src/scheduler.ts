@@ -57,8 +57,10 @@ export const RecurringCronUnitList = Object.values(RecurringCronUnit);
  *
  * Either way the schedule's clock advances past the backlog, so it never replays.
  *
- * A one-off schedule has no next occurrence to resume from, so `coalesce` (and
- * `coalesce_owner`) still runs it, late, while `skip` discards it for good.
+ * A one-off schedule has no next occurrence to resume from, so `coalesce` still
+ * runs it, late, while `skip` discards it for good. Under `coalesce_owner` it
+ * runs late only if it's the owner's winning member; a sibling's later catch-up
+ * can still cost it its one and only run.
  */
 export const ScheduledJobMisfirePolicy = {
 	Coalesce: 'coalesce',

@@ -205,8 +205,8 @@ no two servers can disagree about what a backlog produced.
 still produces one catch-up run per rule after downtime, N fires in a row.
 `coalesce_owner` closes that gap: jobs that share an **owner** (`ownerKey`, an opaque
 per-job key the scheduler only compares for equality; in n8n, the trigger node) group
-when they also agree on task type, payload and grace window, and only the one with
-the latest missed instant survives a planning pass (ties break on the lowest job id).
+unconditionally, and only the one with the latest missed instant survives a planning
+pass (ties break on the lowest job id).
 
 Grouping only sees jobs claimed together in one pass, so it is best-effort, not a
 guarantee of one fire per owner: a sibling not yet due, or one whose backlog exceeds
