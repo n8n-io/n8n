@@ -429,7 +429,7 @@ test.describe(
 			test('should handle malformed JSON-RPC messages', async ({ api }) => {
 				const { apiKey } = await api.rotateMcpApiKey();
 
-				// Missing required 'jsonrpc: "2.0"' field
+				// Valid JSON but not a valid JSON-RPC request (missing `jsonrpc: "2.0"`)
 				const malformedMessage = {
 					id: nanoid(),
 					method: 'tools/list',
@@ -437,12 +437,14 @@ test.describe(
 
 				const response = await api.mcp.internalMcpSendMessage(apiKey, malformedMessage);
 
-				// Server returns 400 Bad Request for malformed JSON-RPC
+				// Server returns 400 Bad Request for an invalid JSON-RPC request
 				expect(response.status()).toBe(400);
 
 				const body = await response.json();
 				expect(body.error).toBeDefined();
-				expect(body.error.code).toBe(-32700); // Parse error
+				// Well-formed JSON that isn't a valid request object is Invalid Request
+				// (-32600), not Parse error (-32700, which is for unparseable JSON).
+				expect(body.error.code).toBe(-32600); // Invalid Request
 				expect(body.error.message).toBeTruthy();
 			});
 

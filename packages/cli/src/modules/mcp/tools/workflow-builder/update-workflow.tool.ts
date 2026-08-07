@@ -325,7 +325,7 @@ const countOperationsWithNoEffect = (
 
 // The concrete return type (not a widened z.ZodRawShape) keeps the tool's
 // generic coupled to the real schema shape, so the handler's argument
-// annotation is compile-checked against it via ToolCallback's parameter types.
+// annotation is compile-checked against it via ToolHandler's parameter types.
 const NON_FATAL_OPERATION_TYPES_LIST = [...NON_FATAL_OPERATION_TYPES].join(', ');
 
 const buildToolDescription = (canvasGroupsEnabled: boolean) => {
