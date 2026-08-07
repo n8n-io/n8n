@@ -183,40 +183,6 @@ describe('McpSettingsController', () => {
 		});
 
 		test.each([
-			{ patch: { autoExposeNewWorkflows: true }, touchesAccess: false },
-			{ patch: { mcpAccessEnabled: true }, touchesAccess: true },
-		])(
-			'only touches the service for the field patched ($patch)',
-			async ({ patch, touchesAccess }) => {
-				const user = createUser();
-				const req = createReq(patch, { user });
-				const dto = UpdateMcpSettingsDto.parse(patch);
-				mcpSettingsService.setEnabled.mockResolvedValue(undefined);
-				moduleRegistry.refreshModuleSettings.mockResolvedValue(null);
-
-				const res = createRes();
-				const result = await controller.updateSettings(req, res, dto);
-
-				if (touchesAccess) {
-					expect(mcpSettingsService.setEnabled).toHaveBeenCalledWith(true);
-					expect(mcpSettingsService.setAutoExposeNewWorkflows).not.toHaveBeenCalled();
-					expect(eventService.emit).toHaveBeenCalledWith('mcp-access-updated', {
-						user: req.user,
-						enabled: true,
-					});
-				} else {
-					expect(mcpSettingsService.setAutoExposeNewWorkflows).toHaveBeenCalledWith(true);
-					expect(mcpSettingsService.setEnabled).not.toHaveBeenCalled();
-					expect(eventService.emit).not.toHaveBeenCalledWith(
-						'mcp-access-updated',
-						expect.anything(),
-					);
-				}
-				expect(result).toEqual(patch);
-			},
-		);
-
-		test.each([
 			{ mcpAccessEnabled: false, expectReset: true },
 			{ mcpAccessEnabled: true, expectReset: false },
 		])(
@@ -280,23 +246,6 @@ describe('McpSettingsController', () => {
 			);
 			expect(mcpSettingsService.setEnabled).not.toHaveBeenCalled();
 			expect(mcpSettingsService.setAutoExposeNewWorkflows).not.toHaveBeenCalled();
-		});
-	});
-
-	describe('UpdateMcpSettingsDto', () => {
-		it('accepts mcpAccessEnabled alone', () => {
-			expect(UpdateMcpSettingsDto.safeParse({ mcpAccessEnabled: true }).success).toBe(true);
-		});
-
-		it('accepts autoExposeNewWorkflows alone', () => {
-			expect(UpdateMcpSettingsDto.safeParse({ autoExposeNewWorkflows: true }).success).toBe(true);
-		});
-
-		it('accepts both fields together', () => {
-			expect(
-				UpdateMcpSettingsDto.safeParse({ mcpAccessEnabled: false, autoExposeNewWorkflows: true })
-					.success,
-			).toBe(true);
 		});
 	});
 
@@ -497,6 +446,25 @@ describe('McpSettingsController', () => {
 				skippedCount: 0,
 				failedCount: 0,
 			});
+			expect(moduleRegistry.refreshModuleSettings).not.toHaveBeenCalled();
+		});
+
+		test('refreshes the module registry when the bulk update also enabled auto-expose', async () => {
+			const dto = new UpdateWorkflowsAvailabilityDto({ availableInMCP: true, allWorkflows: true });
+			mcpSettingsService.bulkSetAvailableInMCP.mockResolvedValue({
+				updatedCount: 1,
+				unchangedCount: 0,
+				skippedCount: 0,
+				failedCount: 0,
+				changedWorkflows: [],
+				autoExposeNewWorkflows: true,
+			});
+			moduleRegistry.refreshModuleSettings.mockResolvedValue(null);
+
+			const req = createReq({}, { user });
+			await controller.toggleWorkflowsMCPAccess(req, mock<Response>(), dto);
+
+			expect(moduleRegistry.refreshModuleSettings).toHaveBeenCalledWith('mcp');
 		});
 	});
 

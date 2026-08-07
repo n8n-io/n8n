@@ -64,13 +64,7 @@ export class McpSettingsController {
 			response.autoExposeNewWorkflows = dto.autoExposeNewWorkflows;
 		}
 
-		try {
-			await this.moduleRegistry.refreshModuleSettings('mcp');
-		} catch (error) {
-			this.logger.warn('Failed to sync MCP settings to module registry', {
-				cause: error instanceof Error ? error.message : String(error),
-			});
-		}
+		await this.refreshMcpModuleSettings();
 
 		return response;
 	}
@@ -142,6 +136,20 @@ export class McpSettingsController {
 
 		void this.mcpSettingsService.broadcastWorkflowMCPAvailabilityChanged(changedWorkflows);
 
+		if (result.autoExposeNewWorkflows !== undefined) {
+			await this.refreshMcpModuleSettings();
+		}
+
 		return result;
+	}
+
+	private async refreshMcpModuleSettings() {
+		try {
+			await this.moduleRegistry.refreshModuleSettings('mcp');
+		} catch (error) {
+			this.logger.warn('Failed to sync MCP settings to module registry', {
+				cause: error instanceof Error ? error.message : String(error),
+			});
+		}
 	}
 }
