@@ -23,6 +23,7 @@ import { isMcpOAuth2Authentication, NodeHelpers, type INodeParameters } from 'n8
 
 import { getMissingSkillIds } from '@/modules/agents/utils/agent-missing-skill-ids';
 import { NodeTypes } from '@/node-types';
+import { checkAiGatewayEligibility } from '@/services/ai-gateway-eligibility';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 
 import { LLM_PROVIDER_DEFAULTS } from './llm-provider-defaults';
@@ -265,7 +266,7 @@ export class AgentValidationService {
 			return credentialList.find((credential) => credential.id === credentialId);
 		};
 
-		const { agentsById, workflowsByName } = await this.prefetchReferenceLookups(ctx);
+		const { agentsById, workflowsByReference } = await this.prefetchReferenceLookups(ctx);
 
 		this.collectCoreIssues(config, issues);
 		this.collectVectorStoreIssues(config, issues);
@@ -276,7 +277,7 @@ export class AgentValidationService {
 			this.collectTaskIssues(config, ctx.tasks, issues);
 			await this.collectChannelIssues(ctx.integrations, findCredential, issues);
 		}
-		await this.collectToolIssues(ctx, findCredential, workflowsByName, issues);
+		await this.collectToolIssues(ctx, findCredential, workflowsByReference, issues);
 		await this.collectMcpServerIssues(config, findCredential, issues);
 
 		return this.dedupe(issues);
@@ -284,10 +285,10 @@ export class AgentValidationService {
 
 	private async prefetchReferenceLookups(ctx: ConfigurationValidationContext): Promise<{
 		agentsById: Map<string, Pick<Agent, 'id' | 'activeVersionId'>>;
-		workflowsByName: Map<string, WorkflowEntity>;
+		workflowsByReference: Map<string, WorkflowEntity>;
 	}> {
 		const subAgentIds = new Set<string>();
-		const workflowNames = new Set<string>();
+		const workflowRefs: AgentJsonWorkflowToolConfig[] = [];
 
 		for (const ref of ctx.config.subAgents?.agents ?? []) {
 			if (ref.agentId && ref.agentId !== ctx.agentId) {
@@ -297,18 +298,18 @@ export class AgentValidationService {
 
 		for (const tool of ctx.config.tools ?? []) {
 			if (tool.type === 'workflow' && tool.workflow) {
-				workflowNames.add(tool.workflow);
+				workflowRefs.push(tool);
 			}
 		}
 
-		const [agents, workflowsByName] = await Promise.all([
+		const [agents, workflowsByReference] = await Promise.all([
 			this.agentRepository.findByIdsAndProjectId([...subAgentIds], ctx.projectId),
-			findWorkflowToolWorkflows(this.workflowRepository, [...workflowNames], ctx.projectId),
+			findWorkflowToolWorkflows(this.workflowRepository, workflowRefs, ctx.projectId),
 		]);
 
 		return {
 			agentsById: new Map(agents.map((agent) => [agent.id, agent])),
-			workflowsByName,
+			workflowsByReference,
 		};
 	}
 
@@ -502,7 +503,7 @@ export class AgentValidationService {
 	private async collectToolIssues(
 		ctx: ConfigurationValidationContext,
 		findCredential: FindCredential,
-		workflowsByName: Map<string, WorkflowEntity>,
+		workflowsByReference: Map<string, WorkflowEntity>,
 		issues: AgentConfigValidationIssue[],
 	) {
 		const tools = ctx.config.tools ?? [];
@@ -524,7 +525,7 @@ export class AgentValidationService {
 			}
 
 			if (tool.type === 'workflow') {
-				this.collectWorkflowToolIssues(tool, index, workflowsByName, issues);
+				this.collectWorkflowToolIssues(tool, index, workflowsByReference, issues);
 				continue;
 			}
 
@@ -537,18 +538,18 @@ export class AgentValidationService {
 	private collectWorkflowToolIssues(
 		tool: AgentJsonWorkflowToolConfig,
 		index: number,
-		workflowsByName: Map<string, WorkflowEntity>,
+		workflowsByReference: Map<string, WorkflowEntity>,
 		issues: AgentConfigValidationIssue[],
 	) {
-		const path = `tools.${index}.workflow`;
+		const path = `tools.${index}.${tool.workflowId === undefined ? 'workflow' : 'workflowId'}`;
 		const capability: AgentConfigValidationIssue['capability'] = {
 			kind: 'tool',
-			id: tool.name ?? tool.workflow,
+			id: tool.workflow,
 			index,
 			toolType: 'workflow',
 		};
 
-		const workflow = workflowsByName.get(tool.workflow);
+		const workflow = workflowsByReference.get(tool.workflowId ?? tool.workflow);
 
 		if (!workflow) {
 			issues.push(issue('missing_reference', path, capability));
@@ -616,6 +617,20 @@ export class AgentValidationService {
 
 			const path = `tools.${index}.node.credentials.${slot.credentialType}`;
 			const credentialRef = tool.node.credentials?.[slot.credentialType];
+
+			if (credentialRef && '__aiGatewayManaged' in credentialRef) {
+				// Only flag a definitive "gateway does not cover this slot". An
+				// indeterminate gateway state must not fail closed, mirroring the
+				// managed main-credential policy in collectMainCredentialIssues.
+				if (
+					(await this.gatewayCoversNodeToolSlot(tool.node, slot.credentialType, nodeParameters)) ===
+					false
+				) {
+					issues.push(issue('invalid_credential', path, capabilityBase));
+				}
+				continue;
+			}
+
 			const credentialId = credentialRef?.id?.trim();
 
 			if (!credentialId) {
@@ -628,6 +643,36 @@ export class AgentValidationService {
 				issues.push(issue('invalid_credential', path, capabilityBase));
 			}
 		}
+	}
+
+	/**
+	 * Whether the gateway covers this node-tool slot:
+	 *  - `false` is a definitive no (feature disabled, or the config does not
+	 *    cover the node/credential/action),
+	 *  - `undefined` means it can't be determined (gateway enabled but its config
+	 *    is unavailable, e.g. a transient fetch failure), so callers must not
+	 *    fail closed on it: a briefly unreachable gateway must not make a
+	 *    working managed slot look broken.
+	 */
+	private async gatewayCoversNodeToolSlot(
+		node: AgentJsonNodeToolConfig['node'],
+		credentialType: string,
+		resolvedParameters: INodeParameters,
+	): Promise<boolean | undefined> {
+		const availability = await this.aiGatewayService.isAvailable();
+		if (!availability.available) {
+			return this.aiGatewayService.isEnabled() ? undefined : false;
+		}
+		return checkAiGatewayEligibility(
+			{
+				type: node.nodeType,
+				typeVersion: node.nodeTypeVersion,
+				parameters: (node.nodeParameters ?? {}) as INodeParameters,
+			},
+			credentialType,
+			availability.config,
+			resolvedParameters,
+		).eligible;
 	}
 
 	private async collectMcpServerIssues(

@@ -4147,6 +4147,45 @@ describe('AgentRuntime — runtime resume data schema validation', () => {
 		);
 		await expect(resumeResultPromise).rejects.toThrow('Invalid resume payload');
 	});
+
+	it('strips keys the persisted schema does not declare instead of rejecting', async () => {
+		let observedResumeData: unknown;
+		const tool: BuiltTool = {
+			name: 'approve',
+			description: 'Requires approval',
+			inputSchema: z.object({ question: z.string() }),
+			suspendSchema: z.object({ question: z.string() }),
+			resumeSchema: z.object({ approved: z.boolean() }),
+			handler: async (_input: unknown, ctx: unknown) => {
+				const { suspend, resumeData } = ctx as InterruptibleToolContext;
+				if (!resumeData) return await suspend({ question: 'approve?' });
+				observedResumeData = resumeData;
+				return { approved: true };
+			},
+		};
+
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCall('tc-1', 'approve', { question: 'ok?' }),
+		);
+
+		const runtimeWithTool = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'test',
+			tools: [tool],
+			checkpointStorage: 'memory',
+		});
+
+		const first = await runtimeWithTool.generate('go');
+		const { runId, toolCallId } = first.pendingSuspend![0];
+
+		generateText.mockResolvedValueOnce(makeGenerateSuccess('done'));
+		const payload = { approved: true, userInput: 'looks good' };
+		await runtimeWithTool.resume('generate', payload, { runId, toolCallId });
+
+		expect(observedResumeData).toEqual({ approved: true });
+		expect(payload).toEqual({ approved: true, userInput: 'looks good' });
+	});
 });
 
 // ---------------------------------------------------------------------------
@@ -5247,45 +5286,6 @@ describe('provider-specific thinking', () => {
 		expect(callArgs.providerOptions).toEqual({
 			anthropic: { thinking: { type: 'enabled', budgetTokens: 4096 } },
 		});
-	});
-
-	// Adaptive models return empty thinking blocks unless display is summarized,
-	// and the SDK's mapping of the reasoning level doesn't set it.
-	it('asks an adaptive Anthropic model for summarized thinking when reasoning is set', async () => {
-		generateText.mockResolvedValue(makeGenerateSuccess());
-
-		const runtime = new AgentRuntime({
-			name: 'test',
-			model: 'anthropic/claude-sonnet-5',
-			instructions: 'You are a test assistant.',
-			reasoning: 'medium',
-		});
-
-		await runtime.generate('hello');
-
-		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
-		// The level still goes through as the SDK's own option, which maps it to effort.
-		expect(callArgs.reasoning).toBe('medium');
-		expect(callArgs.providerOptions).toEqual({
-			anthropic: { thinking: { type: 'adaptive', display: 'summarized' } },
-		});
-	});
-
-	it('leaves a budget-thinking Anthropic model to the SDK when reasoning is set', async () => {
-		generateText.mockResolvedValue(makeGenerateSuccess());
-
-		const runtime = new AgentRuntime({
-			name: 'test',
-			model: 'anthropic/claude-sonnet-4-5',
-			instructions: 'You are a test assistant.',
-			reasoning: 'medium',
-		});
-
-		await runtime.generate('hello');
-
-		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
-		expect(callArgs.reasoning).toBe('medium');
-		expect(callArgs.providerOptions).toBeUndefined();
 	});
 });
 

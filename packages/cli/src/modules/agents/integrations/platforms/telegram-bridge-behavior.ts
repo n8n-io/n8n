@@ -6,16 +6,10 @@ import type {
 	BridgeResumeExecutionContext,
 	BridgeStatusHandle,
 } from '../agent-chat-integration';
+import { startTypingIndicator } from './typing-indicator';
 
 /** Telegram's typing action expires after ~5s, so keep it alive on an interval. */
 const TELEGRAM_TYPING_REFRESH_MS = 4000;
-
-/**
- * Backstop against an interval leak: `clearBeforeResponse` runs on every
- * stream-consumer path, but an error between context creation and stream
- * consumption would leave the interval running with nothing to stop it.
- */
-const TELEGRAM_TYPING_MAX_LIFETIME_MS = 10 * 60 * 1000;
 
 export function createTelegramBridgeExecutionContext(
 	params: BridgeMessageContextParams,
@@ -56,46 +50,9 @@ export function startTelegramTypingIndicator(
 		agentId: string;
 	},
 ): BridgeStatusHandle {
-	let failedStreak = false;
-	let inFlight: Promise<void> | null = null;
-
-	const sendTyping = () => {
-		// A slow send outliving the refresh interval must not pile up requests.
-		if (inFlight) return;
-		inFlight = thread
-			.startTyping()
-			.then(() => {
-				failedStreak = false;
-			})
-			.catch((error) => {
-				// Warn once per failure streak; a send failing every 4s must not
-				// spam the logs.
-				const log = failedStreak ? options.logger.debug : options.logger.warn;
-				failedStreak = true;
-				log.call(options.logger, '[AgentChatBridge] Failed to send Telegram typing indicator', {
-					agentId: options.agentId,
-					threadId: thread.id,
-					error: error instanceof Error ? error.message : String(error),
-				});
-			})
-			.finally(() => {
-				inFlight = null;
-			});
-	};
-
-	sendTyping();
-	const interval = setInterval(sendTyping, TELEGRAM_TYPING_REFRESH_MS);
-	interval.unref();
-	const maxLifetime = setTimeout(() => clearInterval(interval), TELEGRAM_TYPING_MAX_LIFETIME_MS);
-	maxLifetime.unref();
-
-	return {
-		clearBeforeResponse: async () => {
-			clearInterval(interval);
-			clearTimeout(maxLifetime);
-			// Let an in-flight typing send land before the reply posts, so the
-			// send can't arrive after the message and re-show a stale indicator.
-			await inFlight;
-		},
-	};
+	return startTypingIndicator(thread, {
+		...options,
+		platform: 'Telegram',
+		refreshMs: TELEGRAM_TYPING_REFRESH_MS,
+	});
 }

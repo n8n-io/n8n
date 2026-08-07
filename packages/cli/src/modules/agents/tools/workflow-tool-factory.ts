@@ -589,11 +589,11 @@ async function buildWorkflowTool(
 ): Promise<BuiltTool> {
 	const workflowName = descriptor.workflow;
 
-	// Find the workflow by name. Access control is project sharing: the
+	// Access control is project sharing: the
 	// workflow must be shared with the agent's project.
 	const candidateWorkflow = await findWorkflowToolWorkflow(
 		context.workflowRepository,
-		workflowName,
+		descriptor,
 		context.projectId,
 	);
 

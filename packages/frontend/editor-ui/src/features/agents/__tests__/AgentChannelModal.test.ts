@@ -121,6 +121,7 @@ function mountModal(props: Record<string, unknown>) {
 			open: true,
 			agentId: 'agent-1',
 			projectId: 'project-1',
+			isPublished: false,
 			view: 'linear_setup',
 			...props,
 		},
