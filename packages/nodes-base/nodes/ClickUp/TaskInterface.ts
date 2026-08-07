@@ -4,6 +4,7 @@ export interface ITask {
 	name?: string;
 	content?: string;
 	assignees?: string[] | IDataObject;
+	group_assignees?: string[] | IDataObject;
 	tags?: string[];
 	status?: string;
 	priority?: number;

@@ -297,10 +297,31 @@ export class ClickUp implements INodeType {
 				const { members } = await clickupApiRequest.call(this, 'GET', url);
 				for (const member of members) {
 					const memberName = member.username;
-					const menberId = member.id;
+					const memberId = member.id;
 					returnData.push({
 						name: memberName,
-						value: menberId,
+						value: memberId,
+					});
+				}
+				return returnData;
+			},
+			async getGroups(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const teamId = this.getCurrentNodeParameter('team') as string;
+				const returnData: INodePropertyOptions[] = [];
+				let url: string;
+				if (teamId) {
+					url = `/group?team_id=${teamId}`;
+				} else {
+					return returnData;
+				}
+
+				const { groups } = await clickupApiRequest.call(this, 'GET', url);
+				for (const g of groups) {
+					const groupName = g.name;
+					const groupId = g.id;
+					returnData.push({
+						name: groupName,
+						value: groupId,
 					});
 				}
 				return returnData;
@@ -894,6 +915,9 @@ export class ClickUp implements INodeType {
 						if (additionalFields.assignees) {
 							body.assignees = additionalFields.assignees as string[];
 						}
+						if (additionalFields.group_assignees) {
+							body.group_assignees = additionalFields.group_assignees as string[];
+						}
 						if (additionalFields.tags) {
 							body.tags = additionalFields.tags as string[];
 						}
@@ -935,6 +959,10 @@ export class ClickUp implements INodeType {
 						const updateFields = this.getNodeParameter('updateFields', i);
 						const body: ITask = {
 							assignees: {
+								add: [],
+								rem: [],
+							},
+							group_assignees: {
 								add: [],
 								rem: [],
 							},
@@ -980,6 +1008,14 @@ export class ClickUp implements INodeType {
 							body.assignees.rem = (updateFields.removeAssignees as string)
 								.split(',')
 								.map((e: string) => parseInt(e, 10));
+						}
+						if (updateFields.addGroupAssignees) {
+							//@ts-ignore
+							body.group_assignees.add = (updateFields.addGroupAssignees as string).split(',');
+						}
+						if (updateFields.removeGroupAssignees) {
+							//@ts-ignore
+							body.group_assignees.rem = (updateFields.removeGroupAssignees as string).split(',');
 						}
 						if (updateFields.status) {
 							body.status = updateFields.status as string;
