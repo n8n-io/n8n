@@ -3,7 +3,9 @@ import type {
 	SlackManagedAppSettingsErrorCode,
 	SlackManagedSetupState,
 } from '@n8n/api-types';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { computed, ref, watch, type Ref } from 'vue';
 
 import { useUIStore } from '@/app/stores/ui.store';
@@ -68,6 +70,7 @@ export function useSlackChannelRuntime(context: AgentChannelRuntimeContext): Sla
 	const uiStore = useUIStore();
 	const credentialsStore = useCredentialsStore();
 	const credentialOAuth = useCredentialOAuth();
+	const telemetry = useTelemetry();
 
 	const setup = ref<SlackManagedSetupState>({
 		managedSetupAvailable: false,
@@ -80,6 +83,20 @@ export function useSlackChannelRuntime(context: AgentChannelRuntimeContext): Sla
 	const settingsError = ref(false);
 	const settingsSaveError = ref<SlackManagedAppSettingsErrorCode | null>(null);
 	let settingsRequestId = 0;
+
+	function trackSetupProgress(
+		setupType: SlackSetupKind,
+		step: 'manager_connection' | 'channel_connection',
+		status: 'started' | 'completed',
+	) {
+		telemetry.track(TELEMETRY_EVENT.AGENTS.USER_PROGRESSED_THROUGH_SLACK_CHANNEL_SETUP, {
+			agent_id: context.agentId.value,
+			setup_type: setupType,
+			step,
+			status,
+			managed_setup_available: setup.value.managedSetupAvailable,
+		});
+	}
 
 	function isManagedCredential(credentialId: string): boolean {
 		return setup.value.managerCredentials.some((manager) =>
@@ -174,6 +191,7 @@ export function useSlackChannelRuntime(context: AgentChannelRuntimeContext): Sla
 		if (!connected) throw new Error('Slack app installation was not completed');
 		await context.fetchStatus(['slack']);
 		await onConnected();
+		trackSetupProgress('manual', 'channel_connection', 'completed');
 		return true;
 	}
 
@@ -193,6 +211,7 @@ export function useSlackChannelRuntime(context: AgentChannelRuntimeContext): Sla
 	}
 
 	async function connectManagerCredential(credentialId?: string): Promise<boolean> {
+		trackSetupProgress('managed', 'manager_connection', 'started');
 		await context.ensureAgentPersisted?.();
 		let id = credentialId;
 		let createdCredentialId: string | undefined;
@@ -219,10 +238,14 @@ export function useSlackChannelRuntime(context: AgentChannelRuntimeContext): Sla
 			if (createdCredentialId) {
 				authorizationStarted = true;
 				const connected = await credentialOAuth.authorizeNewCredential(credential);
-				return await finalizeConnectedManagerCredential(id, connected);
+				const finalized = await finalizeConnectedManagerCredential(id, connected);
+				if (finalized) trackSetupProgress('managed', 'manager_connection', 'completed');
+				return finalized;
 			}
 			const connected = await credentialOAuth.authorize(credential);
-			return await finalizeConnectedManagerCredential(id, connected);
+			const finalized = await finalizeConnectedManagerCredential(id, connected);
+			if (finalized) trackSetupProgress('managed', 'manager_connection', 'completed');
+			return finalized;
 		} finally {
 			if (createdCredentialId && !authorizationStarted) {
 				await credentialsStore.deleteCredential({ id: createdCredentialId });
@@ -231,6 +254,9 @@ export function useSlackChannelRuntime(context: AgentChannelRuntimeContext): Sla
 	}
 
 	function editManagerCredential(credentialId: string) {
+		telemetry.track(TELEMETRY_EVENT.AGENTS.USER_CLICKED_EDIT_SLACK_MANAGER_CREDENTIAL, {
+			agent_id: context.agentId.value,
+		});
 		uiStore.openExistingCredential(credentialId, {
 			hideAskAssistant: true,
 			appendToBody: true,
@@ -257,6 +283,7 @@ export function useSlackChannelRuntime(context: AgentChannelRuntimeContext): Sla
 		await context.fetchStatus(['slack']);
 		await load();
 		await onConnected();
+		trackSetupProgress('managed', 'channel_connection', 'completed');
 		return true;
 	}
 

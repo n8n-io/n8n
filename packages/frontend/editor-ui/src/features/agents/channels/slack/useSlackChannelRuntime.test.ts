@@ -1,5 +1,6 @@
 import { flushPromises } from '@vue/test-utils';
 import { ResponseError } from '@n8n/rest-api-client';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { ref } from 'vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -15,6 +16,10 @@ const mocks = vi.hoisted(() => ({
 	finalizeManager: vi.fn(),
 	authorize: vi.fn(),
 	authorizeNewCredential: vi.fn(),
+	createApp: vi.fn(),
+	waitForOAuthCallback: vi.fn(),
+	track: vi.fn(),
+	openExistingCredential: vi.fn(),
 }));
 
 vi.mock('@n8n/stores/useRootStore', () => ({
@@ -22,7 +27,11 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 }));
 
 vi.mock('@/app/stores/ui.store', () => ({
-	useUIStore: () => ({ openExistingCredential: vi.fn() }),
+	useUIStore: () => ({ openExistingCredential: mocks.openExistingCredential }),
+}));
+
+vi.mock('@n8n/composables/useTelemetry', () => ({
+	useTelemetry: () => ({ track: mocks.track }),
 }));
 
 vi.mock('@/features/credentials/credentials.store', () => ({
@@ -40,9 +49,14 @@ vi.mock('@/features/credentials/composables/useCredentialOAuth', () => ({
 	}),
 }));
 
+vi.mock('@/features/credentials/composables/oauthCallback', () => ({
+	getTrustedOAuthOrigins: () => ['https://n8n.test'],
+	waitForOAuthCallback: mocks.waitForOAuthCallback,
+}));
+
 vi.mock('./api', async (importOriginal) => ({
 	...(await importOriginal<typeof import('./api')>()),
-	createSlackAgentApp: vi.fn(),
+	createSlackAgentApp: mocks.createApp,
 	createSlackManagerCredential: mocks.createManager,
 	finalizeSlackManagerCredential: mocks.finalizeManager,
 	getSlackManagedSetup: mocks.getSetup,
@@ -120,6 +134,9 @@ describe('useSlackChannelRuntime', () => {
 		mocks.authorize.mockResolvedValue(true);
 		mocks.authorizeNewCredential.mockResolvedValue(true);
 		mocks.finalizeManager.mockResolvedValue(undefined);
+		mocks.createApp.mockResolvedValue({ installUrl: 'https://slack.com/install' });
+		mocks.waitForOAuthCallback.mockResolvedValue('success');
+		vi.spyOn(window, 'open').mockReturnValue({ close: vi.fn() } as unknown as Window);
 	});
 
 	it('loads managed setup and settings for the selected managed credential', async () => {
@@ -139,13 +156,69 @@ describe('useSlackChannelRuntime', () => {
 		'finalizes a %s manager credential after OAuth',
 		async (_scenario, credentialId, authorize) => {
 			const runtime = createRuntime();
+			await runtime.load();
 
 			await expect(runtime.connectManagerCredential(credentialId)).resolves.toBe(true);
 
 			expect(authorize).toHaveBeenCalled();
 			expect(mocks.finalizeManager).toHaveBeenCalledWith({}, 'project-1', 'agent-1', 'manager');
+			expect(mocks.track).toHaveBeenNthCalledWith(
+				1,
+				TELEMETRY_EVENT.AGENTS.USER_PROGRESSED_THROUGH_SLACK_CHANNEL_SETUP,
+				{
+					agent_id: 'agent-1',
+					setup_type: 'managed',
+					step: 'manager_connection',
+					status: 'started',
+					managed_setup_available: true,
+				},
+			);
+			expect(mocks.track).toHaveBeenNthCalledWith(
+				2,
+				TELEMETRY_EVENT.AGENTS.USER_PROGRESSED_THROUGH_SLACK_CHANNEL_SETUP,
+				{
+					agent_id: 'agent-1',
+					setup_type: 'managed',
+					step: 'manager_connection',
+					status: 'completed',
+					managed_setup_available: true,
+				},
+			);
 		},
 	);
+
+	it('tracks successful manual setup when managed setup is available', async () => {
+		const runtime = createRuntime();
+		await runtime.load();
+
+		await runtime.setupApp('configuration-token', vi.fn());
+
+		expect(mocks.track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.AGENTS.USER_PROGRESSED_THROUGH_SLACK_CHANNEL_SETUP,
+			{
+				agent_id: 'agent-1',
+				setup_type: 'manual',
+				step: 'channel_connection',
+				status: 'completed',
+				managed_setup_available: true,
+			},
+		);
+	});
+
+	it('tracks clicks to edit a manager credential', () => {
+		const runtime = createRuntime();
+
+		runtime.editManagerCredential('manager');
+
+		expect(mocks.track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.AGENTS.USER_CLICKED_EDIT_SLACK_MANAGER_CREDENTIAL,
+			{ agent_id: 'agent-1' },
+		);
+		expect(mocks.openExistingCredential).toHaveBeenCalledWith('manager', {
+			hideAskAssistant: true,
+			appendToBody: true,
+		});
+	});
 
 	it('saves managed app settings locally through the Slack API', async () => {
 		const runtime = createRuntime('bot');
@@ -217,6 +290,16 @@ describe('useSlackChannelRuntime', () => {
 		);
 		expect(mocks.getSetup).toHaveBeenCalled();
 		expect(onConnected).toHaveBeenCalledOnce();
+		expect(mocks.track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.AGENTS.USER_PROGRESSED_THROUGH_SLACK_CHANNEL_SETUP,
+			{
+				agent_id: 'agent-1',
+				setup_type: 'managed',
+				step: 'channel_connection',
+				status: 'completed',
+				managed_setup_available: true,
+			},
+		);
 	});
 
 	it('refreshes managed setup after the credential modal closes', async () => {

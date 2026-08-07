@@ -474,6 +474,28 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			session_id: sessionId,
 		}),
 	},
+	USER_PROGRESSED_THROUGH_SLACK_CHANNEL_SETUP: {
+		name: 'User progressed through Slack channel setup',
+		description:
+			'The user started or completed a significant step in Slack channel setup. Manager connection records both the initial attempt and successful OAuth completion; channel connection records successful managed or manual setup.',
+		properties: z.object({
+			agent_id: z.string(),
+			setup_type: z.enum(['managed', 'manual']),
+			step: z.enum(['manager_connection', 'channel_connection']),
+			status: z.enum(['started', 'completed']),
+			managed_setup_available: z
+				.boolean()
+				.describe('Whether the recommended managed setup option was available'),
+		}),
+	},
+	USER_CLICKED_EDIT_SLACK_MANAGER_CREDENTIAL: {
+		name: 'User clicked edit Slack manager credential',
+		description:
+			'The user clicked Edit for the selected Slack manager credential during managed channel setup.',
+		properties: z.object({
+			agent_id: z.string(),
+		}),
+	},
 	USER_ADDED_AGENT_NODE: {
 		name: 'User added agent node',
 		description:
