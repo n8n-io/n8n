@@ -247,12 +247,22 @@ export class InMemoryMemory
 
 	// ── Observational memory ─────────────────────────────────────────────
 
-	// eslint-disable-next-line @typescript-eslint/require-await
 	async appendObservationLogEntries(
 		rows: NewObservationLogEntry[],
 	): Promise<ObservationLogEntry[]> {
+		const prepared = await Promise.all(
+			rows.map(async (row) => ({
+				observationScopeId: row.observationScopeId,
+				marker: row.marker,
+				text: row.text,
+				parentId: row.parentId ?? null,
+				tokenCount: row.tokenCount ?? (await estimateObservationTokens(row.text)),
+				createdAt: row.createdAt ?? new Date(),
+			})),
+		);
+
 		const persisted: ObservationLogEntry[] = [];
-		for (const row of rows) {
+		for (const row of prepared) {
 			const key = row.observationScopeId;
 			const bucket = this.observationLogByScope.get(key) ?? [];
 			const entry: ObservationLogEntry = {
@@ -260,10 +270,10 @@ export class InMemoryMemory
 				observationScopeId: row.observationScopeId,
 				marker: row.marker,
 				text: row.text,
-				parentId: row.parentId ?? null,
-				tokenCount: row.tokenCount ?? estimateObservationTokens(row.text),
+				parentId: row.parentId,
+				tokenCount: row.tokenCount,
 				...activeLifecycleState(),
-				createdAt: row.createdAt ?? new Date(),
+				createdAt: row.createdAt,
 			};
 			bucket.push(entry);
 			this.observationLogByScope.set(key, bucket);

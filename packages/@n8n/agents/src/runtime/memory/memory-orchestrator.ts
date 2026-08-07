@@ -25,7 +25,12 @@ import type {
 import { AgentEvent } from '../../types/runtime/event';
 import type { AgentPersistenceOptions, ExecutionOptions, RunOptions } from '../../types/sdk/agent';
 import type { AgentDbMessage } from '../../types/sdk/message';
-import type { ObservationLogScope, ObservationLogTaskKind } from '../../types/sdk/observation-log';
+import {
+	estimateObservationTokens,
+	type ObservationLogScope,
+	type ObservationLogTaskKind,
+	type TokenCounter,
+} from '../../types/sdk/observation-log';
 import type { AgentRuntimeConfig } from '../loop/agent-runtime';
 import type { AgentMessageList } from '../model/message-list';
 import type { BackgroundTaskTracker } from '../state/background-task-tracker';
@@ -75,6 +80,7 @@ export class MemoryOrchestrator {
 		private readonly backgroundTasks: BackgroundTaskTracker,
 		private readonly eventBus: AgentEventBus,
 		private readonly runtimeTelemetry: RuntimeTelemetry,
+		private readonly tokenCounter: TokenCounter = estimateObservationTokens,
 	) {}
 
 	async loadHistoryMessages(
@@ -361,6 +367,7 @@ export class MemoryOrchestrator {
 							observerThresholdTokens,
 							observationLogTailLimit: observationalMemory.observationLogTailLimit ?? 0,
 							observe,
+							tokenCounter: this.tokenCounter,
 							executionCounter,
 							telemetry,
 						}),
@@ -382,6 +389,7 @@ export class MemoryOrchestrator {
 							...scope,
 							reflectorThresholdTokens,
 							reflect,
+							tokenCounter: this.tokenCounter,
 							executionCounter,
 							telemetry,
 						}),

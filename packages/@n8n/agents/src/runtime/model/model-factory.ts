@@ -24,7 +24,7 @@ type CreateEmbeddingProviderFn = (opts?: EmbeddingProviderOptions) => {
 	embeddingModel(model: string): EmbeddingModel;
 };
 
-function isLanguageModel(config: unknown): config is LanguageModel {
+export function isLanguageModel(config: unknown): config is LanguageModel {
 	return typeof config === 'object' && config !== null && 'doGenerate' in config;
 }
 
@@ -51,6 +51,10 @@ function getProxyFetch(): FetchFn | undefined {
 		})) as FetchFn;
 }
 
+export function resolveModelFetch(fetch?: FetchFn): FetchFn | undefined {
+	return fetch ?? getProxyFetch();
+}
+
 type EntryBuilder<P extends ProviderId> = (
 	creds: ProviderCredentials<P>,
 	modelName: string,
@@ -64,6 +68,14 @@ type RegistryEntry<P extends ProviderId = ProviderId> = {
 type ProviderRegistry = {
 	[P in ProviderId]: RegistryEntry<P>;
 };
+
+export type ResolvedModelProviderConfig = {
+	[P in ProviderId]: {
+		provider: P;
+		modelName: string;
+		credentials: ProviderCredentials<P>;
+	};
+}[ProviderId];
 
 /**
  * Registry of language model providers.
@@ -214,12 +226,11 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 const SUPPORTED_PROVIDERS = Object.keys(LANGUAGE_PROVIDERS).join(', ');
 
 /**
- * Provider packages are loaded dynamically via require() so only the
- * provider needed at runtime must be installed.
+ * Resolve and validate provider credentials without instantiating a model.
  */
-export function createModel(config: ModelConfig, fetch?: FetchFn): LanguageModel {
+export function resolveModelProviderConfig(config: ModelConfig): ResolvedModelProviderConfig {
 	if (isLanguageModel(config)) {
-		return config;
+		throw new Error('Prebuilt language models do not have provider credentials');
 	}
 
 	const rawId = typeof config === 'string' ? config : config.id;
@@ -266,12 +277,28 @@ export function createModel(config: ModelConfig, fetch?: FetchFn): LanguageModel
 		throw new Error(`Invalid credentials for provider "${provider}":\n${issues}`);
 	}
 
-	// Caller-injected transport wins; fall back to the ambient env-proxy resolver.
-	const resolvedFetch = fetch ?? getProxyFetch();
-	// Type cast: the registry guarantees the schema and builder are aligned per provider.
-	return (entry.build as EntryBuilder<typeof provider>)(
-		parsed.data as never,
+	return {
+		provider,
 		modelName,
+		credentials: parsed.data,
+	} as ResolvedModelProviderConfig;
+}
+
+/**
+ * Provider packages are loaded dynamically via require() so only the
+ * provider needed at runtime must be installed.
+ */
+export function createModel(config: ModelConfig, fetch?: FetchFn): LanguageModel {
+	if (isLanguageModel(config)) return config;
+
+	const resolved = resolveModelProviderConfig(config);
+
+	// Caller-injected transport wins; fall back to the ambient env-proxy resolver.
+	const resolvedFetch = resolveModelFetch(fetch);
+	// Type cast: the registry guarantees the schema and builder are aligned per provider.
+	return (LANGUAGE_PROVIDERS[resolved.provider].build as EntryBuilder<typeof resolved.provider>)(
+		resolved.credentials as never,
+		resolved.modelName,
 		resolvedFetch,
 	);
 }

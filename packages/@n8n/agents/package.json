@@ -105,6 +105,7 @@
     "@ai-sdk/otel": "catalog:",
     "@ai-sdk/provider-utils": "catalog:",
     "@ai-sdk/xai": "catalog:",
+    "@anthropic-ai/sdk": "0.91.1",
     "@daytona/sdk": "catalog:",
     "@modelcontextprotocol/sdk": "catalog:",
     "@n8n/ai-utilities": "workspace:*",
@@ -117,6 +118,7 @@
     "ai": "catalog:",
     "ajv": "^8.18.0",
     "langsmith": "catalog:",
+    "openai": "catalog:",
     "undici": "catalog:undici-v7",
     "yaml": "catalog:",
     "zod-to-json-schema": "catalog:"

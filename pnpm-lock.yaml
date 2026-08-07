@@ -982,6 +982,9 @@ importers:
       '@ai-sdk/xai':
         specifier: 'catalog:'
         version: 4.0.18(zod@3.25.76)
+      '@anthropic-ai/sdk':
+        specifier: 0.91.1
+        version: 0.91.1(zod@3.25.76)
       '@daytona/sdk':
         specifier: 'catalog:'
         version: 0.187.0(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))
@@ -1018,6 +1021,9 @@ importers:
       langsmith:
         specifier: 0.6.0
         version: 0.6.0(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.217.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.1))(openai@6.46.0(@smithy/signature-v4@5.3.5)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))
+      openai:
+        specifier: 'catalog:'
+        version: 6.46.0(@smithy/signature-v4@5.3.5)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76)
       undici:
         specifier: catalog:undici-v7
         version: 7.29.0

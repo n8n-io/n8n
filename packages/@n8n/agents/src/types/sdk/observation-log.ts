@@ -68,9 +68,14 @@ export interface ObservationLogReflectionResult {
 	inserted: ObservationLogEntry[];
 }
 
-export type TokenCounter = (text: string) => number;
+export type TokenCounter = (text: string, signal?: AbortSignal) => number | Promise<number>;
 
-export const estimateObservationTokens: TokenCounter = (text) => Math.ceil(text.length / 4);
+export const estimateObservationTokens: TokenCounter = async (text) => {
+	if (text.length === 0) return 0;
+	const { getEncoding } = await import('@n8n/ai-utilities');
+	const encoder = await getEncoding('cl100k_base');
+	return encoder.encode(text).length;
+};
 
 export interface ObservationLogObserverInput {
 	observationScopeId: string;

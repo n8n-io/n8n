@@ -57,6 +57,7 @@ import type { ScopedMemoryTaskEvent } from '../memory/scoped-memory-task-runner'
 import { generateThreadTitle } from '../memory/title-generation';
 import { AgentMessageList, type SerializedMessageList } from '../model/message-list';
 import type { FetchFn } from '../model/model-factory';
+import { createModelTokenCounter } from '../model/model-token-counter';
 import {
 	applyRuntimeCacheBreakpoints,
 	buildInstructionPromptCacheOptions,
@@ -193,6 +194,7 @@ export class AgentRuntime {
 
 	constructor(config: AgentRuntimeConfig) {
 		this.config = config;
+		const tokenCounter = createModelTokenCounter(config.model, config.modelFetch);
 		this.telemetry = new RuntimeTelemetry(config);
 		this.runId = config.runId ?? generateRunId();
 		if (config.deferredTools && config.deferredTools.length > 0) {
@@ -206,12 +208,14 @@ export class AgentRuntime {
 			this.backgroundTasks,
 			this.eventBus,
 			this.telemetry,
+			tokenCounter,
 		);
 		this.toolExecutor = new ToolCallExecutor({
 			telemetry: this.telemetry,
 			eventBus: this.eventBus,
 			concurrency: config.toolCallConcurrency ?? 1,
 			onCancelled: () => this.updateState({ status: 'cancelled' }),
+			tokenCounter,
 		});
 		this.modelCost = config.modelCost;
 		this.currentState = {
