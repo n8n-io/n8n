@@ -2,6 +2,7 @@
 import { useDebounceFn } from '@vueuse/core';
 import { computed, nextTick, ref, useId, watch } from 'vue';
 
+import { useCloseSubMenuOnScroll } from './composables/useCloseSubMenuOnScroll';
 import type { DropdownMenuItemProps, DropdownMenuSlots } from './DropdownMenu.types';
 import {
 	getItemDomId as getSearchableItemDomId,
@@ -57,6 +58,35 @@ const instanceId = useId();
 let searchSequence = 0;
 
 const highlightedIndex = ref(-1);
+
+/**
+ * Gets a searchable menu item by its index in the items collection.
+ */
+function getMenuItem(index: number) {
+	const itemsContainer = itemsContainerRef.value?.querySelector<HTMLElement>('[data-menu-items]');
+	const itemWrapper = itemsContainer?.children.item(index);
+	return itemWrapper?.querySelector<HTMLElement>('[role="menuitem"]') ?? null;
+}
+
+/**
+ * Closes a submenu whose parent item is no longer visible without changing the highlight.
+ */
+function closeHiddenSubMenu(index: number) {
+	if (openSubMenuIndex.value !== index) return;
+
+	const item = props.items[index];
+	openSubMenuIndex.value = -1;
+	if (item) emit('submenu:toggle', item.id, false);
+}
+
+const { observe: observeOpenSubMenuTrigger, stopObserving: stopObservingOpenSubMenuTrigger } =
+	useCloseSubMenuOnScroll({
+		getScrollContainer: function getScrollContainer() {
+			return itemsContainerRef.value;
+		},
+		getItem: getMenuItem,
+		onItemHidden: closeHiddenSubMenu,
+	});
 
 const refocusSearchInput = () => {
 	searchRef.value?.focus({ preventScroll: true });
@@ -131,6 +161,7 @@ const resetSearch = () => {
 };
 
 const resetNavigation = () => {
+	stopObservingOpenSubMenuTrigger();
 	resetHighlightedItem();
 	openSubMenuIndex.value = -1;
 };
@@ -144,7 +175,9 @@ const handleSubMenuOpenChange = (index: number, open: boolean) => {
 	if (open) {
 		openSubMenuIndex.value = index;
 		resetHighlightedItem();
+		void observeOpenSubMenuTrigger(index);
 	} else if (openSubMenuIndex.value === index) {
+		stopObservingOpenSubMenuTrigger();
 		openSubMenuIndex.value = -1;
 		void nextTick(() => {
 			highlightedIndex.value = index;

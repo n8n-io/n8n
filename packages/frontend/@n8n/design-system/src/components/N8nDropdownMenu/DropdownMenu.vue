@@ -10,6 +10,7 @@ import { computed, nextTick, onBeforeUnmount, provide, ref, useCssModule, watch 
 import N8nButton from '@n8n/design-system/components/N8nButton/Button.vue';
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 
+import { useCloseSubMenuOnScroll } from './composables/useCloseSubMenuOnScroll';
 import { isAlign, isSide } from './DropdownMenu.typeguards';
 import {
 	DropdownMenuPortalTargetKey,
@@ -76,6 +77,41 @@ let hoverCloseTimer: ReturnType<typeof setTimeout> | undefined;
 // DropdownMenuSearchableContent because they use virtual keyboard focus.
 const openSubMenuIndex = ref(-1);
 
+/**
+ * Gets the element that scrolls the root menu items.
+ */
+function getMenuScrollContainer() {
+	const contentEl: unknown = contentRef.value?.$el;
+	return contentEl instanceof HTMLElement ? contentEl : null;
+}
+
+/**
+ * Gets a root menu item by its index in the items collection.
+ */
+function getMenuItem(index: number) {
+	const itemsContainer = getMenuScrollContainer()?.querySelector<HTMLElement>('[data-menu-items]');
+	const itemWrapper = itemsContainer?.children.item(index);
+	return itemWrapper?.querySelector<HTMLElement>('[role="menuitem"]') ?? null;
+}
+
+/**
+ * Closes a submenu whose parent item is no longer visible without moving focus.
+ */
+function closeHiddenSubMenu(index: number) {
+	if (openSubMenuIndex.value !== index) return;
+
+	const item = props.items[index];
+	openSubMenuIndex.value = -1;
+	if (item) emit('submenu:toggle', item.id, false);
+}
+
+const { observe: observeOpenSubMenuTrigger, stopObserving: stopObservingOpenSubMenuTrigger } =
+	useCloseSubMenuOnScroll({
+		getScrollContainer: getMenuScrollContainer,
+		getItem: getMenuItem,
+		onItemHidden: closeHiddenSubMenu,
+	});
+
 const placementParts = computed(() => {
 	const [sideValue, alignValue] = props.placement.split('-');
 	return {
@@ -103,6 +139,7 @@ const handleOpenChange = (open: boolean) => {
 	emit('update:modelValue', open);
 
 	if (!open) {
+		stopObservingOpenSubMenuTrigger();
 		openSubMenuIndex.value = -1;
 	}
 };
@@ -115,13 +152,15 @@ const handleSubMenuOpenChange = (index: number, open: boolean) => {
 
 	if (open) {
 		openSubMenuIndex.value = index;
+		void observeOpenSubMenuTrigger(index);
 	} else if (openSubMenuIndex.value === index) {
+		stopObservingOpenSubMenuTrigger();
 		openSubMenuIndex.value = -1;
 		void nextTick(() => {
 			const contentEl = contentRef.value?.$el as HTMLElement | undefined;
 			const menuItems = contentEl?.querySelectorAll('[role="menuitem"]');
 			const targetItem = menuItems?.[index] as HTMLElement | undefined;
-			targetItem?.focus();
+			targetItem?.focus({ preventScroll: true });
 		});
 	}
 };
@@ -184,6 +223,7 @@ const open = () => {
 const close = () => {
 	internalOpen.value = false;
 	emit('update:modelValue', false);
+	stopObservingOpenSubMenuTrigger();
 	openSubMenuIndex.value = -1;
 };
 
@@ -193,6 +233,7 @@ watch(
 		if (newValue !== undefined) {
 			internalOpen.value = newValue;
 			if (!newValue) {
+				stopObservingOpenSubMenuTrigger();
 				openSubMenuIndex.value = -1;
 			}
 		}
