@@ -1131,7 +1131,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 						@update:model-value="(value: string) => onCredentialOptionSelected(type, value)"
 					>
 						<template #prefix>
-							<CredentialIcon :credential-type-name="type.name" :size="18" />
+							<CredentialIcon :credential-type-name="type.name" :size="16" />
 						</template>
 						<N8nOption
 							v-if="showN8nCreditsOption(type.name)"
@@ -1474,6 +1474,10 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 	.balanceIndicator {
 		grid-area: control;
 	}
+
+	:global(.el-input__prefix-inner > :last-child) {
+		margin-right: var(--spacing--3xs);
+	}
 }
 
 /* Merge the select visually with the private connection row below it.
@@ -1641,7 +1645,8 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 }
 
 .balanceIndicator > span,
-.credentialOption > .optionName + span {
+.credentialOption > .optionName + span,
+.entryPill {
 	padding: var(--spacing--5xs) var(--spacing--3xs);
 	border-radius: var(--radius);
 	background-color: light-dark(var(--color--neutral-200), var(--color--neutral-700));
@@ -1730,49 +1735,38 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 }
 
 .standardEmptyContainer {
-	// Stack the invisible sizer and the select in one grid cell: the sizer's
-	// intrinsic width sizes the column and the select fills it, so the trigger
-	// hugs its placeholder text — a cross-browser stand-in for `field-sizing`.
-	display: inline-grid;
+	display: inline-flex;
 	align-items: center;
 	// The parent N8nInputLabel is a flex column, which would stretch this to full
-	// width; opt out so the grid can shrink-wrap the sizer.
+	// width; opt out so the trigger can shrink-wrap its content.
 	align-self: flex-start;
 	max-width: 100%;
 	margin-top: var(--spacing--4xs);
 }
 
-// Off-screen twin of the placeholder. Same type and icon/caret padding as the
-// input, so the grid column ends up exactly as wide as the rendered trigger.
 .emptySizer {
-	--empty-select-label-padding: calc(
-		var(--spacing--2xs) + var(--spacing--5xs) + var(--spacing--sm) + var(--spacing--3xs)
-	);
-
-	grid-area: 1 / 1;
-	height: 0;
-	overflow: hidden;
-	visibility: hidden;
-	pointer-events: none;
-	white-space: nowrap;
-	font-size: var(--font-size--2xs);
-	padding-left: var(--empty-select-label-padding);
-	padding-right: var(--empty-select-label-padding);
+	display: none;
 }
 
 .emptySelect {
 	--empty-select-height: calc(var(--spacing--lg) + var(--spacing--4xs));
 	--empty-select-side-padding: calc(var(--spacing--2xs) + var(--spacing--5xs));
+	--empty-select-icon-size: var(--spacing--sm);
+	--empty-select-gap: var(--spacing--3xs);
 	--empty-select-label-padding: calc(
-		var(--empty-select-side-padding) + var(--spacing--sm) + var(--spacing--3xs)
+		var(--empty-select-side-padding) + var(--empty-select-icon-size) + var(--empty-select-gap)
 	);
+	--empty-select-label-padding-left: calc(var(--empty-select-label-padding) + var(--spacing--3xs));
 
-	// Compact invitational trigger; the label reads as a button, not a hint.
-	// `width: auto` (not 100%) so this item doesn't blow the grid track out to
-	// full width; grid's default stretch still fills the cell the sizer defines.
-	grid-area: 1 / 1;
-	width: auto;
+	width: fit-content;
 	min-width: 0;
+	max-width: 100%;
+
+	:global(.el-select),
+	:global(.el-input) {
+		width: fit-content;
+		max-width: 100%;
+	}
 
 	:global(.el-input__prefix) {
 		left: var(--empty-select-side-padding);
@@ -1782,28 +1776,25 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 		right: var(--empty-select-side-padding);
 	}
 
+	:global(.el-input__prefix-inner > :last-child) {
+		margin-right: var(--empty-select-gap);
+	}
+
 	:global(.el-input__inner) {
-		// Room for the absolutely-positioned prefix icon and caret; mirrors the
-		// sizer's padding so the placeholder lines up with the column.
+		field-sizing: content;
+		width: auto;
+		min-width: 0;
 		height: var(--empty-select-height);
 		min-height: var(--empty-select-height);
 		line-height: var(--empty-select-height);
-		padding-left: var(--empty-select-label-padding);
+		padding-left: var(--empty-select-label-padding-left);
 		padding-right: var(--empty-select-label-padding);
+		font-weight: var(--font-weight--medium);
 
 		&::placeholder {
 			color: var(--color--text--shade-1);
 			opacity: 1;
 		}
-	}
-}
-
-// element-plus pins the prefix gap at `.el-input__prefix-inner > :last-child`;
-// match its specificity from our scope to widen it.
-.emptySelect,
-.selectContainer {
-	:global(.el-input__prefix-inner > :last-child) {
-		margin-right: var(--spacing--3xs);
 	}
 }
 </style>
