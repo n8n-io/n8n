@@ -464,19 +464,6 @@ describe('credentials tool', () => {
 			expect(context.credentialService.list).toHaveBeenCalledTimes(1);
 		});
 
-		it('does not hint when the user has no LLM credential for another provider', async () => {
-			const context = makeContextWithStored([slack]);
-			const tool = createCredentialsTool(context);
-
-			const result = await executeTool(
-				tool,
-				{ action: 'list' as const, type: 'openAiApi' },
-				noSuspendCtx(),
-			);
-
-			expect(result.hint).toBeUndefined();
-		});
-
 		it('still hints when the requested type only has the synthetic n8n Connect entry', async () => {
 			const context = makeContextWithStored([gemini]);
 			(

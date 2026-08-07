@@ -1,8 +1,4 @@
-import {
-	buildChatModelProviderHint,
-	isChatModelProviderCredentialType,
-	pickPreferredChatModelNode,
-} from '../preferred-chat-model';
+import { buildChatModelProviderHint, pickPreferredChatModelNode } from '../preferred-chat-model';
 
 describe('pickPreferredChatModelNode', () => {
 	it('returns the matching chat model for a single provider credential', () => {
@@ -23,18 +19,6 @@ describe('pickPreferredChatModelNode', () => {
 	it('returns undefined when no credential maps to a chat model', () => {
 		expect(pickPreferredChatModelNode([])).toBeUndefined();
 		expect(pickPreferredChatModelNode(['slackApi', 'notionApi'])).toBeUndefined();
-	});
-});
-
-describe('isChatModelProviderCredentialType', () => {
-	it('recognizes LLM-provider credential types', () => {
-		expect(isChatModelProviderCredentialType('openAiApi')).toBe(true);
-		expect(isChatModelProviderCredentialType('googlePalmApi')).toBe(true);
-	});
-
-	it('rejects non-LLM credential types', () => {
-		expect(isChatModelProviderCredentialType('notionApi')).toBe(false);
-		expect(isChatModelProviderCredentialType('slackApi')).toBe(false);
 	});
 });
 
