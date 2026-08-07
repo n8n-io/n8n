@@ -11,7 +11,9 @@ export interface IAvatar {
 
 export interface IUser {
 	user_id?: string;
+	external_id?: string;
 	id?: string;
+	role?: string;
 	email?: string;
 	phone?: string;
 	name?: string;
@@ -23,7 +25,7 @@ export interface IUser {
 	update_last_request_at?: boolean;
 	last_seen_user_agent?: boolean;
 	session_count?: number;
-	avatar?: IAvatar;
+	avatar?: IAvatar | string;
 	utm_source?: string;
 	utm_medium?: string;
 	utm_campaign?: string;
