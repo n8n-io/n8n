@@ -78,22 +78,15 @@ const resolve = (props: INodeProperties[], values: INodeParameters) =>
 	getNodeParameters(props, values, true, false, null, null);
 
 describe('getNodeParameters dependency resolution', () => {
+	// Each of these names nothing at the `timezone` parameter's own level, so it
+	// is unsatisfiable there: `timezone` is hidden rather than throwing.
 	test.each([
 		['a relative-path reference', '../operator'],
 		['a dot-notation reference', 'filters.fields.operator'],
 		['a name only present at an enclosing level', 'operation'],
 		['a name that exists nowhere', 'nonExistentParameter'],
-	])('does not throw on %s', (_label, dep) => {
-		expect(() => resolve(withChildDependency(dep), populated)).not.toThrow();
-	});
-
-	test('hides a parameter whose dependency cannot be resolved at its level', () => {
-		// The dependency is unsatisfiable, so `timezone` is not displayed and its
-		// default is not applied — previously this threw instead.
-		expect(resolve(withChildDependency('../operator'), populated)).toEqual({
-			operation: 'getAll',
-			additionalOptions: { filters: { fields: [{ field: '9882393', operator: 'date_is' }] } },
-		});
+	])('hides the parameter instead of throwing for %s', (_label, dep) => {
+		expect(resolve(withChildDependency(dep), populated)).toEqual(populated);
 	});
 
 	test('resolves a sibling reference and applies the default when displayed', () => {
@@ -111,19 +104,11 @@ describe('getNodeParameters dependency resolution', () => {
 			additionalOptions: { filters: { fields: [{ field: '9882393', operator: 'equal' }] } },
 		};
 
-		expect(resolve(withChildDependency('operator'), values)).toEqual({
-			operation: 'getAll',
-			additionalOptions: { filters: { fields: [{ field: '9882393', operator: 'equal' }] } },
-		});
+		expect(resolve(withChildDependency('operator'), values)).toEqual(values);
 	});
 
 	test('resolves a root-level reference from inside a fixedCollection', () => {
-		expect(resolve(withChildDependency('/operation'), populated)).toEqual({
-			operation: 'getAll',
-			additionalOptions: {
-				filters: { fields: [{ field: '9882393', operator: 'date_is' }] },
-			},
-		});
+		expect(resolve(withChildDependency('/operation'), populated)).toEqual(populated);
 	});
 
 	test('leaves an empty fixedCollection untouched', () => {

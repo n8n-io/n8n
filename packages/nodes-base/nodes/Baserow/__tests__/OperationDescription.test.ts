@@ -10,92 +10,53 @@ import { MULTI_STEP_DATE_OPERATORS } from '../GenericFunctions';
 
 const properties = new Baserow().description.properties;
 
-const resolve = (values: INodeParameters) =>
-	getNodeParameters(properties, values, true, false, null, null);
-
-/** Stored parameters as reported, with a single populated filter. */
-const withFilter = (operator: string, value: string): INodeParameters => ({
+/** Stored parameters for a Get Many with a single populated filter. */
+const withFilter = (filter: INodeParameters): INodeParameters => ({
 	resource: 'row',
 	operation: 'getAll',
-	authentication: 'databaseToken',
 	tableId: '1110755',
-	returnAll: false,
-	limit: 1,
-	additionalOptions: {
-		filters: { fields: [{ field: '9882393', operator, value }] },
-	},
+	additionalOptions: { filters: { fields: [{ field: '9882393', ...filter }] } },
 });
+
+const firstFilter = (values: INodeParameters, returnDefaults = true) => {
+	const resolved = getNodeParameters(properties, values, returnDefaults, false, null, null);
+
+	return (resolved?.additionalOptions as { filters: { fields: INodeParameters[] } }).filters
+		.fields[0];
+};
 
 describe('Baserow filter description', () => {
 	it('resolves a workflow with a populated filters collection', () => {
-		expect(() =>
-			resolve(
-				withFilter('equal', "={{ $('Webhook Trigger').item.json.body.author_id || 'fallback' }}"),
-			),
-		).not.toThrow();
+		const values = withFilter({
+			operator: 'equal',
+			value: "={{ $('Webhook Trigger').item.json.body.author_id || 'fallback' }}",
+		});
+
+		expect(() => firstFilter(values)).not.toThrow();
 	});
 
-	it('shows Timezone for a date operator', () => {
-		const resolved = resolve(withFilter('date_is', '2026-06-17')) as INodeParameters;
-		const [filter] = (resolved.additionalOptions as { filters: { fields: INodeParameters[] } })
-			.filters.fields;
-
-		expect(filter).toEqual({
+	it.each([...MULTI_STEP_DATE_OPERATORS])('shows Timezone for operator %s', (operator) => {
+		expect(firstFilter(withFilter({ operator, value: '2026-06-17' }))).toEqual({
 			field: '9882393',
-			operator: 'date_is',
+			operator,
 			timezone: 'UTC',
 			value: '2026-06-17',
 		});
 	});
 
 	it('hides Timezone for a non-date operator', () => {
-		const resolved = resolve(withFilter('equal', 'abc')) as INodeParameters;
-		const [filter] = (resolved.additionalOptions as { filters: { fields: INodeParameters[] } })
-			.filters.fields;
-
-		expect(filter).not.toHaveProperty('timezone');
-	});
-
-	it('shows Timezone for every multi-step date operator', () => {
-		for (const operator of MULTI_STEP_DATE_OPERATORS) {
-			const resolved = resolve(withFilter(operator, '2026-06-17')) as INodeParameters;
-			const [filter] = (resolved.additionalOptions as { filters: { fields: INodeParameters[] } })
-				.filters.fields;
-
-			expect(filter).toHaveProperty('timezone', 'UTC');
-		}
+		expect(firstFilter(withFilter({ operator: 'equal', value: 'abc' }))).not.toHaveProperty(
+			'timezone',
+		);
 	});
 
 	it('preserves a stored non-default Timezone', () => {
-		const stored: INodeParameters = {
-			resource: 'row',
-			operation: 'getAll',
-			tableId: '1110755',
-			additionalOptions: {
-				filters: {
-					fields: [
-						{
-							field: '9882393',
-							operator: 'date_is',
-							timezone: 'Europe/Berlin',
-							value: '2026-06-17',
-						},
-					],
-				},
-			},
-		};
+		const stored = withFilter({
+			operator: 'date_is',
+			timezone: 'Europe/Berlin',
+			value: '2026-06-17',
+		});
 
-		const resolved = getNodeParameters(
-			properties,
-			stored,
-			false,
-			false,
-			null,
-			null,
-		) as INodeParameters;
-		const [filter] = (resolved.additionalOptions as { filters: { fields: INodeParameters[] } })
-			.filters.fields;
-
-		expect(filter).toHaveProperty('timezone', 'Europe/Berlin');
+		expect(firstFilter(stored, false)).toHaveProperty('timezone', 'Europe/Berlin');
 	});
 });
