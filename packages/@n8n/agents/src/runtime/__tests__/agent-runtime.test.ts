@@ -24,6 +24,7 @@ import {
 	type DelegateSubAgentRunner,
 } from '../tools/delegate-sub-agent-tool';
 import { toAiSdkTools } from '../tools/tool-adapter';
+import { MAX_MODEL_TOOL_RESULT_TOKENS } from '../tools/tool-result-guard';
 
 // ---------------------------------------------------------------------------
 // Module mocks
@@ -1651,6 +1652,16 @@ describe('AgentRuntime — state transitions on error', () => {
 		await runtime.generate('hi');
 
 		expect(runtime.getState().status).toBe('success');
+	});
+
+	it("reflects running→success on stream()'s own result.getState(), not just runtime.getState()", async () => {
+		streamText.mockReturnValue(makeStreamSuccess());
+
+		const { runtime } = createRuntime();
+		const { stream, getState } = await runtime.stream('hi');
+		await collectChunks(stream);
+
+		expect(getState().status).toBe('success');
 	});
 });
 
@@ -4137,6 +4148,45 @@ describe('AgentRuntime — runtime resume data schema validation', () => {
 		);
 		await expect(resumeResultPromise).rejects.toThrow('Invalid resume payload');
 	});
+
+	it('strips keys the persisted schema does not declare instead of rejecting', async () => {
+		let observedResumeData: unknown;
+		const tool: BuiltTool = {
+			name: 'approve',
+			description: 'Requires approval',
+			inputSchema: z.object({ question: z.string() }),
+			suspendSchema: z.object({ question: z.string() }),
+			resumeSchema: z.object({ approved: z.boolean() }),
+			handler: async (_input: unknown, ctx: unknown) => {
+				const { suspend, resumeData } = ctx as InterruptibleToolContext;
+				if (!resumeData) return await suspend({ question: 'approve?' });
+				observedResumeData = resumeData;
+				return { approved: true };
+			},
+		};
+
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCall('tc-1', 'approve', { question: 'ok?' }),
+		);
+
+		const runtimeWithTool = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'test',
+			tools: [tool],
+			checkpointStorage: 'memory',
+		});
+
+		const first = await runtimeWithTool.generate('go');
+		const { runId, toolCallId } = first.pendingSuspend![0];
+
+		generateText.mockResolvedValueOnce(makeGenerateSuccess('done'));
+		const payload = { approved: true, userInput: 'looks good' };
+		await runtimeWithTool.resume('generate', payload, { runId, toolCallId });
+
+		expect(observedResumeData).toEqual({ approved: true });
+		expect(payload).toEqual({ approved: true, userInput: 'looks good' });
+	});
 });
 
 // ---------------------------------------------------------------------------
@@ -5237,45 +5287,6 @@ describe('provider-specific thinking', () => {
 		expect(callArgs.providerOptions).toEqual({
 			anthropic: { thinking: { type: 'enabled', budgetTokens: 4096 } },
 		});
-	});
-
-	// Adaptive models return empty thinking blocks unless display is summarized,
-	// and the SDK's mapping of the reasoning level doesn't set it.
-	it('asks an adaptive Anthropic model for summarized thinking when reasoning is set', async () => {
-		generateText.mockResolvedValue(makeGenerateSuccess());
-
-		const runtime = new AgentRuntime({
-			name: 'test',
-			model: 'anthropic/claude-sonnet-5',
-			instructions: 'You are a test assistant.',
-			reasoning: 'medium',
-		});
-
-		await runtime.generate('hello');
-
-		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
-		// The level still goes through as the SDK's own option, which maps it to effort.
-		expect(callArgs.reasoning).toBe('medium');
-		expect(callArgs.providerOptions).toEqual({
-			anthropic: { thinking: { type: 'adaptive', display: 'summarized' } },
-		});
-	});
-
-	it('leaves a budget-thinking Anthropic model to the SDK when reasoning is set', async () => {
-		generateText.mockResolvedValue(makeGenerateSuccess());
-
-		const runtime = new AgentRuntime({
-			name: 'test',
-			model: 'anthropic/claude-sonnet-4-5',
-			instructions: 'You are a test assistant.',
-			reasoning: 'medium',
-		});
-
-		await runtime.generate('hello');
-
-		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
-		expect(callArgs.reasoning).toBe('medium');
-		expect(callArgs.providerOptions).toBeUndefined();
 	});
 });
 
@@ -6453,6 +6464,11 @@ describe('AgentRuntime — telemetry propagation', () => {
 		expect(telemetry.functionId).toBe('test-agent');
 	});
 
+	// Real parent/child span nesting (via a genuine OTel context manager, not
+	// mock-call-order heuristics) is covered by
+	// agent-runtime-memory.otel.test.ts's "memory span nesting under the root
+	// span" suite, for both generate() and stream().
+
 	it('enables smoothStream by default on streamText', async () => {
 		streamText.mockReturnValue(makeStreamSuccess());
 		const smoothStreamSpy = vi.spyOn(aiModule, 'smoothStream');
@@ -7343,5 +7359,214 @@ describe('AgentRuntime — MCP connection failure warnings', () => {
 			: String((system as { content: string }).content);
 
 		expect(systemText).not.toContain('<mcp-connection-status>');
+	});
+});
+
+describe('AgentRuntime — oversized tool results', () => {
+	type TruncationEnvelope = {
+		_truncated: true;
+		originalCharCount: number;
+		estimatedTokenCount: number;
+		head: string;
+		tail: string;
+	};
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	function parseEnvelope(value: string): TruncationEnvelope {
+		try {
+			return JSON.parse(value) as TruncationEnvelope;
+		} catch {
+			throw new Error('Expected a valid truncation envelope');
+		}
+	}
+
+	async function expectWithinTokenLimit(value: unknown): Promise<void> {
+		const { getEncoding } = await import('@n8n/ai-utilities/tokenizer');
+		const encoder = await getEncoding('o200k_base');
+		expect(encoder.encode(JSON.stringify(value)).length).toBeLessThanOrEqual(
+			MAX_MODEL_TOOL_RESULT_TOKENS,
+		);
+	}
+
+	function getModelToolResult(callIndex = 1): unknown {
+		const call = generateText.mock.calls[callIndex][0] as {
+			messages: Array<{
+				role: string;
+				content: Array<{ type: string; output?: { type: string; value: unknown } }>;
+			}>;
+		};
+		const toolMessage = call.messages.find((message) => message.role === 'tool');
+		return toolMessage?.content.find((part) => part.type === 'tool-result')?.output?.value;
+	}
+
+	it('leaves a small transformed result unchanged', async () => {
+		const tool: BuiltTool = {
+			name: 'small_result',
+			description: 'Return a small result',
+			inputSchema: z.object({}),
+			handler: async () => await Promise.resolve({ raw: 'value' }),
+			toModelOutput: () => ({ summary: 'small' }),
+		};
+		const { runtime } = createRuntimeWithTools([tool], 1);
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCalls([{ toolCallId: 'tc-small', toolName: tool.name, args: {} }]),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess());
+
+		await runtime.generate('run');
+
+		expect(getModelToolResult()).toEqual({ summary: 'small' });
+	});
+
+	it('bounds an oversized transformed result while preserving raw output', async () => {
+		const rawOutput = {
+			value: `RAW_HEAD${'r '.repeat(MAX_MODEL_TOOL_RESULT_TOKENS + 10_000)}RAW_TAIL`,
+		};
+		const transformedOutput = `TRANSFORM_HEAD${'t '.repeat(MAX_MODEL_TOOL_RESULT_TOKENS + 10_000)}TRANSFORM_TAIL`;
+		const tool: BuiltTool = {
+			name: 'large_result',
+			description: 'Return a large result',
+			inputSchema: z.object({}),
+			handler: async () => await Promise.resolve(rawOutput),
+			toModelOutput: () => transformedOutput,
+		};
+		const { runtime } = createRuntimeWithTools([tool], 1);
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCalls([{ toolCallId: 'tc-large', toolName: tool.name, args: {} }]),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess());
+
+		const result = await runtime.generate('run');
+		const envelope = getModelToolResult() as TruncationEnvelope;
+
+		await expectWithinTokenLimit(envelope);
+		expect(envelope).toMatchObject({
+			_truncated: true,
+			originalCharCount: JSON.stringify(transformedOutput).length,
+		});
+		expect(envelope.head).toContain('TRANSFORM_HEAD');
+		expect(envelope.tail).toContain('TRANSFORM_TAIL');
+		expect(result.toolCalls?.[0]?.output).toEqual(rawOutput);
+
+		const { runtime: streamRuntime } = createRuntimeWithTools([tool], 1);
+		streamText
+			.mockReturnValueOnce({
+				stream: makeChunkStream([]),
+				finishReason: Promise.resolve('tool-calls'),
+				usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
+				response: Promise.resolve({
+					messages: [
+						{
+							role: 'assistant',
+							content: [
+								{
+									type: 'tool-call',
+									toolCallId: 'tc-large-stream',
+									toolName: tool.name,
+									args: {},
+								},
+							],
+						},
+					],
+				}),
+				toolCalls: Promise.resolve([
+					{ toolCallId: 'tc-large-stream', toolName: tool.name, input: {} },
+				]),
+			})
+			.mockReturnValueOnce(makeStreamSuccess());
+
+		const { stream } = await streamRuntime.stream('run');
+		const chunks = await collectChunks(stream);
+		const streamResult = chunks.find(
+			(chunk) => chunk.type === 'tool-result' && chunk.toolCallId === 'tc-large-stream',
+		) as (StreamChunk & { type: 'tool-result' }) | undefined;
+
+		expect(streamResult?.output).toEqual(envelope);
+	});
+
+	it('bounds an oversized error without changing its rejected state', async () => {
+		const tool: BuiltTool = {
+			name: 'large_error',
+			description: 'Throw a large error',
+			inputSchema: z.object({}),
+			handler: () => {
+				throw new Error(
+					`ERROR_HEAD${'e '.repeat(MAX_MODEL_TOOL_RESULT_TOKENS + 10_000)}ERROR_TAIL`,
+				);
+			},
+		};
+		const { runtime } = createRuntimeWithTools([tool], 1);
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCalls([{ toolCallId: 'tc-error', toolName: tool.name, args: {} }]),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess('recovered'));
+
+		const result = await runtime.generate('run');
+		const toolCall = result.messages
+			.flatMap((message) => ('content' in message ? message.content : []))
+			.find(
+				(content): content is ContentToolCall =>
+					content.type === 'tool-call' && content.toolCallId === 'tc-error',
+			);
+		const envelope = parseEnvelope(toolCall?.state === 'rejected' ? toolCall.error : '');
+
+		expect(result.finishReason).toBe('stop');
+		expect(toolCall?.state).toBe('rejected');
+		await expectWithinTokenLimit(envelope);
+		expect(envelope.head).toContain('ERROR_HEAD');
+		expect(envelope.tail).toContain('ERROR_TAIL');
+	});
+
+	it('bounds aggregate toMessage text while preserving file content', async () => {
+		const fileData = Buffer.from('file').toString('base64');
+		const textBlockTokenCount = Math.floor(MAX_MODEL_TOOL_RESULT_TOKENS * 0.6);
+		const tool: BuiltTool = {
+			name: 'large_message',
+			description: 'Return a large message',
+			inputSchema: z.object({}),
+			handler: async () => await Promise.resolve({ ok: true }),
+			toMessage: () => ({
+				role: 'assistant',
+				content: [
+					{ type: 'text', text: `MESSAGE_HEAD${'m '.repeat(textBlockTokenCount)}` },
+					{ type: 'file', mediaType: 'text/plain', data: fileData },
+					{ type: 'text', text: `${'n '.repeat(textBlockTokenCount)}MESSAGE_TAIL` },
+				],
+			}),
+		};
+		const { runtime } = createRuntimeWithTools([tool], 1);
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCalls([{ toolCallId: 'tc-message', toolName: tool.name, args: {} }]),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess());
+
+		const result = await runtime.generate('run');
+		const message = result.messages.find(
+			(candidate) =>
+				'content' in candidate &&
+				candidate.content.some((content) => content.type === 'file' && content.data === fileData),
+		);
+		const textBlocks =
+			message && 'content' in message
+				? message.content.filter((content) => content.type === 'text')
+				: [];
+		const fileBlock =
+			message && 'content' in message
+				? message.content.find((content) => content.type === 'file')
+				: undefined;
+		const envelope = parseEnvelope(textBlocks[0]?.text ?? '');
+
+		expect(textBlocks).toHaveLength(1);
+		await expectWithinTokenLimit(envelope);
+		expect(envelope.head).toContain('MESSAGE_HEAD');
+		expect(envelope.tail).toContain('MESSAGE_TAIL');
+		expect(fileBlock).toMatchObject({ type: 'file', mediaType: 'text/plain', data: fileData });
 	});
 });

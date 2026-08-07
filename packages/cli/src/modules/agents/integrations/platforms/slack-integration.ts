@@ -8,7 +8,6 @@ import {
 	type BridgeMessageContextParams,
 	type BridgeResumeExecutionContext,
 	type PlatformAgentContext,
-	type PlatformActionParams,
 	type PlatformContextQueryParams,
 	type UnauthenticatedWebhookResponse,
 } from '../agent-chat-integration';
@@ -19,7 +18,7 @@ import {
 	resolveIntegrationContextQueryDefinitions,
 } from '../integration-tool-definitions';
 import { connectionUnavailable } from '../integration-helpers';
-import type { IntegrationActionResult, ReplyExpectation } from '../integration-tools';
+import type { ReplyExpectation } from '../integration-tools';
 import {
 	createSlackBridgeExecutionContext,
 	createSlackResumeExecutionContext,
@@ -27,8 +26,7 @@ import {
 	getSlackReplyExpectation,
 	prepareSlackInboundText,
 } from './slack-bridge-behavior';
-import { executeSlackAction, executeSlackContextQuery } from './slack-operations';
-import { SLACK_ACTION_TOOL_DEFINITIONS } from './slack-tool-definitions';
+import { executeSlackContextQuery } from './slack-operations';
 
 /**
  * Slack platform integration.
@@ -84,10 +82,13 @@ export class SlackIntegration extends AgentChatIntegration {
 		'search_channels',
 	]);
 
-	readonly actionToolDefinitions = [
-		...resolveIntegrationActionDefinitions(['respond', 'send_dm', 'send_channel_message']),
-		...SLACK_ACTION_TOOL_DEFINITIONS,
-	];
+	readonly actionToolDefinitions = resolveIntegrationActionDefinitions([
+		'respond',
+		'send_dm',
+		'send_channel_message',
+		'add_reaction',
+		'do_not_respond',
+	]);
 
 	getPlatformAgentContext(chat: ChatInstance): PlatformAgentContext {
 		return getSlackPlatformAgentContext(chat);
@@ -126,17 +127,6 @@ export class SlackIntegration extends AgentChatIntegration {
 			chat: params.chat,
 			query: params.query,
 			input: params.input,
-		});
-	}
-
-	async executeAction(params: PlatformActionParams): Promise<IntegrationActionResult | undefined> {
-		if (!params.chat) return connectionUnavailable();
-		return await executeSlackAction({
-			chat: params.chat,
-			descriptor: params.descriptor,
-			action: params.action,
-			input: params.input,
-			currentMessageContext: params.currentMessageContext,
 		});
 	}
 

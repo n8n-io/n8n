@@ -3,15 +3,18 @@ import type { GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import type {
 	Project,
 	Role,
+	TagEntity,
 	User,
 	WorkflowRepository,
 	WorkflowPublishHistoryRepository,
 	WorkflowPublicationOutboxRepository,
 	WorkflowPublishedVersionRepository,
+	WorkflowTagMappingRepository,
 } from '@n8n/db';
 import { WorkflowEntity, WorkflowHistory } from '@n8n/db';
 import type { Scope } from '@n8n/permissions';
 import type { EntityManager } from '@n8n/typeorm';
+import { QueryFailedError } from '@n8n/typeorm';
 import type { IConnections, INode } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -20,6 +23,7 @@ import type { MockProxy } from 'vitest-mock-extended';
 import type { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 import { WorkflowActivationBadRequestError } from '@/errors/response-errors/workflow-activation-bad-request.error';
 import { WorkflowDeactivationBadRequestError } from '@/errors/response-errors/workflow-deactivation-bad-request.error';
@@ -33,11 +37,13 @@ import type { PollTriggerJobRegistrar } from '@/scheduling/poll-trigger-node/pol
 import type { ScheduleTriggerJobRegistrar } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
 import type { OwnershipService } from '@/services/ownership.service';
 import type { RoleService } from '@/services/role.service';
+import type { TagService } from '@/services/tag.service';
 import type { WebhookService } from '@/webhooks/webhook.service';
 import * as WorkflowHelpers from '@/workflow-helpers';
 import type { WorkflowHookContextService } from '@/workflow-hook-context.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
+import type { WorkflowMutationHooksProxy } from '@/workflows/workflow-mutation-hooks-proxy.service';
 import type { WorkflowPublishGuardProxy } from '@/workflows/workflow-publish-guard-proxy.service';
 import type { WorkflowValidationService } from '@/workflows/workflow-validation.service';
 import { WorkflowService } from '@/workflows/workflow.service';
@@ -105,6 +111,7 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublishedVersionRepository
 				mock(), // workflowHookContextService
 				mock(), // workflowPublishGuard
+				mock(), // workflowMutationHooks
 			);
 		});
 
@@ -374,6 +381,7 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublishedVersionRepository
 				workflowHookContextServiceMock, // workflowHookContextService
 				mock(), // workflowPublishGuard
+				mock(), // workflowMutationHooks
 			);
 
 			vi.clearAllMocks();
@@ -1114,6 +1122,7 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublishedVersionRepository
 				workflowHookContextServiceMock, // workflowHookContextService
 				workflowPublishGuardMock, // workflowPublishGuard
+				mock(), // workflowMutationHooks
 			);
 
 			// Bypass validation internals
@@ -1616,6 +1625,7 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublishedVersionRepository
 				mock(), // workflowHookContextService
 				mock(), // workflowPublishGuard
+				mock(), // workflowMutationHooks
 			);
 		});
 
@@ -1674,6 +1684,7 @@ describe('WorkflowService', () => {
 		let activeWorkflowManagerMock: MockProxy<ActiveWorkflowManager>;
 		let externalHooksMock: MockProxy<ExternalHooks>;
 		let workflowPublishedVersionRepositoryMock: MockProxy<WorkflowPublishedVersionRepository>;
+		let workflowMutationHooksMock: MockProxy<WorkflowMutationHooksProxy>;
 
 		const WORKFLOW_ID = 'workflow-1';
 
@@ -1694,6 +1705,7 @@ describe('WorkflowService', () => {
 			executionPersistenceMock = mock();
 			activeWorkflowManagerMock = mock();
 			externalHooksMock = mock<ExternalHooks>();
+			workflowMutationHooksMock = mock<WorkflowMutationHooksProxy>();
 			workflowPublishedVersionRepositoryMock = mock<WorkflowPublishedVersionRepository>();
 			workflowPublishedVersionRepositoryMock.getPublishedVersionId.mockResolvedValue(null);
 			globalConfigMock = mock<GlobalConfig>({
@@ -1731,6 +1743,7 @@ describe('WorkflowService', () => {
 				workflowPublishedVersionRepositoryMock, // workflowPublishedVersionRepository
 				mock(), // workflowHookContextService
 				mock(), // workflowPublishGuard
+				workflowMutationHooksMock, // workflowMutationHooks
 			);
 		});
 
@@ -1776,6 +1789,88 @@ describe('WorkflowService', () => {
 			await workflowService.delete(mock<User>(), WORKFLOW_ID, true);
 
 			expect(workflowRepositoryMock.delete).toHaveBeenCalledWith(WORKFLOW_ID);
+		});
+
+		test('runs the beforeWorkflowDeleted lifecycle hook before the row delete', async () => {
+			const workflow = makeWorkflowEntity({ isArchived: true, activeVersionId: null });
+			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(workflow);
+
+			await workflowService.delete(mock<User>(), WORKFLOW_ID, true);
+
+			expect(workflowMutationHooksMock.beforeWorkflowDeleted).toHaveBeenCalledExactlyOnceWith(
+				WORKFLOW_ID,
+			);
+			expect(
+				workflowMutationHooksMock.beforeWorkflowDeleted.mock.invocationCallOrder[0],
+			).toBeLessThan(workflowRepositoryMock.delete.mock.invocationCallOrder[0]);
+		});
+
+		test('does not run the beforeWorkflowDeleted lifecycle hook when deletion is rejected', async () => {
+			const workflow = makeWorkflowEntity({ activeVersionId: 'v1' });
+			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(workflow);
+
+			await expect(workflowService.delete(mock<User>(), WORKFLOW_ID, true)).rejects.toBeInstanceOf(
+				ConflictError,
+			);
+
+			expect(workflowMutationHooksMock.beforeWorkflowDeleted).not.toHaveBeenCalled();
+		});
+
+		// Deactivation is not rolled back when a later step fails, so an aborted delete
+		// must not have torn the triggers down.
+		test('aborts the deletion, leaving the workflow running, when the hook throws', async () => {
+			globalConfigMock.workflows.useWorkflowPublicationService = false;
+			const workflow = makeWorkflowEntity({ active: true, activeVersionId: 'v1' });
+			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(workflow);
+			workflowMutationHooksMock.beforeWorkflowDeleted.mockRejectedValue(new Error('db down'));
+
+			await expect(workflowService.delete(mock<User>(), WORKFLOW_ID, true)).rejects.toThrow(
+				'db down',
+			);
+
+			expect(activeWorkflowManagerMock.remove).not.toHaveBeenCalled();
+		});
+
+		// The hook may throw to abort the delete, so it has to run before the executions are purged,
+		// not just before the row.
+		test('aborts the deletion, leaving executions and the row intact, when the hook throws', async () => {
+			const workflow = makeWorkflowEntity({ isArchived: true, activeVersionId: null });
+			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(workflow);
+			workflowMutationHooksMock.beforeWorkflowDeleted.mockRejectedValue(new Error('db down'));
+
+			await expect(workflowService.delete(mock<User>(), WORKFLOW_ID, true)).rejects.toThrow(
+				'db down',
+			);
+
+			expect(executionPersistenceMock.hardDeleteByWorkflowId).not.toHaveBeenCalled();
+			expect(workflowRepositoryMock.delete).not.toHaveBeenCalled();
+		});
+
+		// It cleans up rows the cascade orphaned, which cannot be found until the row is gone.
+		test('runs the afterWorkflowDeleted lifecycle hook once the row is deleted', async () => {
+			const workflow = makeWorkflowEntity({ isArchived: true, activeVersionId: null });
+			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(workflow);
+
+			await workflowService.delete(mock<User>(), WORKFLOW_ID, true);
+
+			expect(workflowMutationHooksMock.afterWorkflowDeleted).toHaveBeenCalledExactlyOnceWith(
+				WORKFLOW_ID,
+			);
+			expect(
+				workflowMutationHooksMock.afterWorkflowDeleted.mock.invocationCallOrder[0],
+			).toBeGreaterThan(workflowRepositoryMock.delete.mock.invocationCallOrder[0]);
+		});
+
+		test('does not run the afterWorkflowDeleted lifecycle hook when the deletion is aborted', async () => {
+			const workflow = makeWorkflowEntity({ isArchived: true, activeVersionId: null });
+			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(workflow);
+			workflowMutationHooksMock.beforeWorkflowDeleted.mockRejectedValue(new Error('db down'));
+
+			await expect(workflowService.delete(mock<User>(), WORKFLOW_ID, true)).rejects.toThrow(
+				'db down',
+			);
+
+			expect(workflowMutationHooksMock.afterWorkflowDeleted).not.toHaveBeenCalled();
 		});
 
 		test('deletes the workflow executions before the workflow itself', async () => {
@@ -1876,6 +1971,7 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublishedVersionRepository
 				mock(), // workflowHookContextService
 				mock(), // workflowPublishGuard
+				mock(), // workflowMutationHooks
 			);
 		});
 
@@ -1928,6 +2024,7 @@ describe('WorkflowService', () => {
 		let workflowFinderServiceMock: MockProxy<WorkflowFinderService>;
 		let workflowRepositoryMock: MockProxy<WorkflowRepository>;
 		let externalHooksMock: MockProxy<ExternalHooks>;
+		let workflowMutationHooksMock: MockProxy<WorkflowMutationHooksProxy>;
 
 		const WORKFLOW_ID = 'workflow-1';
 
@@ -1964,6 +2061,7 @@ describe('WorkflowService', () => {
 			workflowFinderServiceMock = mock<WorkflowFinderService>();
 			workflowRepositoryMock = mock();
 			externalHooksMock = mock<ExternalHooks>();
+			workflowMutationHooksMock = mock<WorkflowMutationHooksProxy>();
 
 			workflowService = new WorkflowService(
 				mock(), // logger
@@ -1996,6 +2094,7 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublishedVersionRepository
 				mock(), // workflowHookContextService
 				mock(), // workflowPublishGuard
+				workflowMutationHooksMock, // workflowMutationHooks
 			);
 		});
 
@@ -2021,6 +2120,119 @@ describe('WorkflowService', () => {
 				WORKFLOW_ID,
 				expectedActor,
 			]);
+		});
+
+		test('runs the afterWorkflowArchived lifecycle hook on archive', async () => {
+			const workflow = makeWorkflowEntity({ isArchived: false, activeVersionId: null });
+			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(workflow);
+
+			await workflowService.archive(makeActingUser(), WORKFLOW_ID);
+
+			expect(workflowMutationHooksMock.afterWorkflowArchived).toHaveBeenCalledExactlyOnceWith(
+				WORKFLOW_ID,
+			);
+		});
+
+		test('runs no lifecycle hook when archiving is skipped or on unarchive', async () => {
+			const archived = makeWorkflowEntity({ isArchived: true });
+			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(archived);
+
+			await workflowService.archive(makeActingUser(), WORKFLOW_ID, { skipArchived: true });
+			await workflowService.unarchive(makeActingUser(), WORKFLOW_ID);
+
+			expect(workflowMutationHooksMock.afterWorkflowArchived).not.toHaveBeenCalled();
+			expect(workflowMutationHooksMock.beforeWorkflowDeleted).not.toHaveBeenCalled();
+			expect(workflowMutationHooksMock.afterWorkflowsTransferred).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('updateWorkflowTags()', () => {
+		let workflowService: WorkflowService;
+		let workflowFinderServiceMock: MockProxy<WorkflowFinderService>;
+		let workflowTagMappingRepositoryMock: MockProxy<WorkflowTagMappingRepository>;
+		let tagServiceMock: MockProxy<TagService>;
+
+		const WORKFLOW_ID = 'workflow-1';
+		const user = mock<User>({ id: 'user-1' });
+
+		beforeEach(() => {
+			workflowFinderServiceMock = mock<WorkflowFinderService>();
+			workflowTagMappingRepositoryMock = mock<WorkflowTagMappingRepository>();
+			tagServiceMock = mock<TagService>();
+
+			workflowService = new WorkflowService(
+				mock(), // logger
+				mock(), // sharedWorkflowRepository
+				mock(), // workflowRepository
+				workflowTagMappingRepositoryMock, // workflowTagMappingRepository
+				mock(), // ownershipService
+				tagServiceMock, // tagService
+				mock(), // workflowHistoryService
+				mock(), // externalHooks
+				mock(), // activeWorkflowManager
+				mock(), // roleService
+				mock(), // projectService
+				mock(), // executionPersistence
+				mock(), // eventService
+				mock(), // globalConfig
+				mock(), // folderRepository
+				workflowFinderServiceMock, // workflowFinderService
+				mock(), // workflowPublishHistoryRepository
+				mock(), // outboxRepository
+				mock(), // workflowValidationService
+				mock(), // nodeTypes
+				mock(), // webhookService
+				mock(), // licenseState
+				mock(), // projectRepository
+				mock(), // redactionEnforcementService
+				mock(), // workflowPublicationNotifier
+				mock(), // scheduleTriggerJobRegistrar
+				mock(), // pollTriggerJobRegistrar
+				mock(), // workflowPublishedVersionRepository
+				mock(), // workflowHookContextService
+				mock(), // workflowPublishGuard
+				mock(), // workflowMutationHooks
+			);
+		});
+
+		test('checks workflow:update and does not overwrite tags when the user cannot access the workflow', async () => {
+			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(null);
+
+			await expect(
+				workflowService.updateWorkflowTags(user, WORKFLOW_ID, ['tag-1']),
+			).rejects.toThrow(NotFoundError);
+
+			expect(workflowFinderServiceMock.findWorkflowForUser).toHaveBeenCalledWith(
+				WORKFLOW_ID,
+				user,
+				['workflow:update'],
+			);
+			expect(workflowTagMappingRepositoryMock.overwriteTaggings).not.toHaveBeenCalled();
+			expect(tagServiceMock.getAllByWorkflowId).not.toHaveBeenCalled();
+		});
+
+		test('overwrites tag mappings when the user can update the workflow', async () => {
+			const tags = [mock<TagEntity>({ id: 'tag-1' })];
+			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(mock<WorkflowEntity>());
+			tagServiceMock.getAllByWorkflowId.mockResolvedValue(tags);
+
+			const result = await workflowService.updateWorkflowTags(user, WORKFLOW_ID, ['tag-1']);
+
+			expect(workflowTagMappingRepositoryMock.overwriteTaggings).toHaveBeenCalledWith(WORKFLOW_ID, [
+				'tag-1',
+			]);
+			expect(result).toBe(tags);
+		});
+
+		test('maps missing tag constraint failures to NotFoundError', async () => {
+			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(mock<WorkflowEntity>());
+			workflowTagMappingRepositoryMock.overwriteTaggings.mockRejectedValue(
+				new QueryFailedError('INSERT', [], new Error('FK')),
+			);
+
+			await expect(
+				workflowService.updateWorkflowTags(user, WORKFLOW_ID, ['missing-tag']),
+			).rejects.toThrow('Some tags not found');
 		});
 	});
 });

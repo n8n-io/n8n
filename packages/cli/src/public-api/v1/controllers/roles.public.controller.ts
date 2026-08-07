@@ -5,10 +5,9 @@ import {
 	RolePublicDto,
 } from '@n8n/api-types';
 import { LICENSE_FEATURES } from '@n8n/constants';
-import { AuthenticatedRequest, User } from '@n8n/db';
+import { AuthenticatedRequest } from '@n8n/db';
 import {
 	ApiDescription,
-	ApiErrorResponse,
 	ApiKeyScope,
 	ApiResponse,
 	ApiSummary,
@@ -20,12 +19,11 @@ import {
 	PublicApiController,
 	Query,
 } from '@n8n/decorators';
-import { hasGlobalScope, type Role as RoleDTO, RoleNamespace } from '@n8n/permissions';
+import { type Role as RoleDTO } from '@n8n/permissions';
 import type { Response } from 'express';
 
-import { RESPONSE_ERROR_MESSAGES } from '@/constants';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
+import { assertCanManageRoleType } from '@/services/role-authorization';
 import { RoleService } from '@/services/role.service';
 
 type PublicRoleType = 'global' | 'project' | 'credential' | 'workflow';
@@ -41,12 +39,6 @@ export class RolesPublicController {
 		private readonly roleService: RoleService,
 		private readonly eventService: EventService,
 	) {}
-
-	private assertCanManageRoleType(user: User, roleType: RoleNamespace): void {
-		if (hasGlobalScope(user, 'role:manage')) return;
-		if (roleType === 'project' && hasGlobalScope(user, 'role:manageProject')) return;
-		throw new ForbiddenError(RESPONSE_ERROR_MESSAGES.MISSING_SCOPE);
-	}
 
 	@Get('/')
 	@ApiKeyScope('role:list')
@@ -100,14 +92,12 @@ export class RolesPublicController {
 	)
 	@ApiTags(['Role'])
 	@ApiResponse(201, RolePublicDto)
-	@ApiErrorResponse(400)
-	@ApiErrorResponse(403)
 	async createRole(
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Body createRole: CreateRoleDto,
 	): Promise<RolePublicDto> {
-		this.assertCanManageRoleType(req.user, createRole.roleType);
+		assertCanManageRoleType(req.user, createRole.roleType);
 
 		const role = await this.roleService.createCustomRole(createRole);
 
@@ -123,7 +113,6 @@ export class RolesPublicController {
 			description: role.description,
 			systemRole: role.systemRole,
 			roleType: createRole.roleType,
-			licensed: role.licensed,
 			scopes: role.scopes,
 			createdAt: role.createdAt!.toISOString(),
 			updatedAt: role.updatedAt!.toISOString(),

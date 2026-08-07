@@ -29,6 +29,7 @@ describe('Roles in Public API', () => {
 	});
 
 	beforeEach(async () => {
+		// Truncate users first so the cleanup below can delete custom roles they referenced.
 		await testDb.truncate(['User']);
 		await Container.get(RoleRepository).delete({ systemRole: false });
 		owner = await createOwnerWithApiKey();
@@ -157,7 +158,6 @@ describe('Roles in Public API', () => {
 				description: null,
 				systemRole: false,
 				roleType: 'global',
-				licensed: expect.any(Boolean),
 				scopes: expect.arrayContaining(['user:read', 'user:list']),
 				createdAt: expect.any(String),
 				updatedAt: expect.any(String),

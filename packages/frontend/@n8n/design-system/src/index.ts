@@ -11,6 +11,7 @@ export { IconBodyLoaderKey, useInjectIconBodyLoader } from './composables/useIco
 export type { IconBodyLoader } from './composables/useIconBodyLoader';
 export { useMessage } from './composables/useMessage';
 export type { MessageBoxConfirmResult } from './composables/useMessage';
+export { useProvideTooltipAppendTo } from './composables/useTooltipAppendTo';
 export { default as N8nSelect2 } from './v2/components/Select/Select.vue';
 export { default as N8nSelect2Item } from './v2/components/Select/SelectItem.vue';
 export type * from './v2/components/Select/Select.types';
@@ -40,4 +41,6 @@ export type * from './components/N8nSwitch/Switch.types';
 export { createPasswordRules } from './components/N8nFormInput/validators';
 export { default as N8nMarkdownEditor } from './components/N8nMarkdownEditor/MarkdownEditor.vue';
 export type * from './components/N8nMarkdownEditor/MarkdownEditor.types';
+export { default as N8nCodeBlock } from './components/N8nCodeBlock';
+export type * from './components/N8nCodeBlock';
 export { locale };

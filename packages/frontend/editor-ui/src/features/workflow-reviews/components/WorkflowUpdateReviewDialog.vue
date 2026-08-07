@@ -8,10 +8,12 @@ import {
 	N8nLink,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { I18nT } from 'vue-i18n';
 
 import { useToast } from '@n8n/composables/useToast';
+import WorkflowVersionForm from '@/app/components/WorkflowVersionForm.vue';
+import { useReviewVersionName } from '@/features/workflow-reviews/composables/useReviewVersionName';
 import { WORKFLOW_REVIEW_REQUESTS_VIEW } from '@/features/workflow-reviews/constants';
 import { useWorkflowReviewStatusStore } from '@/features/workflow-reviews/reviewStatus.store';
 import { updateWorkflowReviewRequestVersion } from '@/features/workflow-reviews/workflowReviews.api';
@@ -31,10 +33,28 @@ const i18n = useI18n();
 const rootStore = useRootStore();
 const toast = useToast();
 const reviewStatusStore = useWorkflowReviewStatusStore();
+const {
+	versionName,
+	versionDescription,
+	prefillVersionName,
+	submittedVersionDescription,
+	applyVersionMetadata,
+} = useReviewVersionName();
 
 const isSubmitting = ref(false);
 const workflowReviewRequestId = computed(
 	() => reviewStatusStore.openReviewRequest(props.workflowId)?.id,
+);
+
+const isSubmitDisabled = computed(
+	() => isSubmitting.value || versionName.value.trim().length === 0,
+);
+
+watch(
+	() => props.open,
+	(isOpen) => {
+		if (isOpen) prefillVersionName();
+	},
 );
 
 const close = () => {
@@ -53,9 +73,13 @@ const resolveOpenReviewRequestId = async (workflowId: string): Promise<string | 
 };
 
 const submit = async () => {
-	if (isSubmitting.value) return;
+	if (isSubmitDisabled.value) return;
 
 	const workflowId = props.workflowId;
+	// `flushSave()` awaits a full workflow save, so reading the fields afterwards
+	// could send values the guard never validated.
+	const trimmedVersionName = versionName.value.trim();
+	const trimmedVersionDescription = submittedVersionDescription();
 
 	isSubmitting.value = true;
 	try {
@@ -86,7 +110,11 @@ const submit = async () => {
 		await updateWorkflowReviewRequestVersion(rootStore.restApiContext, workflowReviewRequestId, {
 			workflowId,
 			workflowVersionId,
+			workflowVersionName: trimmedVersionName,
+			workflowVersionDescription: trimmedVersionDescription,
 		});
+
+		applyVersionMetadata(workflowVersionId, trimmedVersionName, trimmedVersionDescription);
 
 		void reviewStatusStore.fetchStatus(workflowId);
 		emit('update:open', false);
@@ -128,6 +156,15 @@ const submit = async () => {
 				</template>
 			</I18nT>
 		</N8nDialogDescription>
+		<WorkflowVersionForm
+			v-model:version-name="versionName"
+			v-model:description="versionDescription"
+			:class="$style.versionForm"
+			:disabled="isSubmitting"
+			version-name-test-id="workflow-update-review-version-name-input"
+			description-test-id="workflow-update-review-version-description-input"
+			@submit="submit"
+		/>
 		<N8nDialogFooter data-test-id="workflow-update-review-dialog">
 			<N8nButton
 				type="button"
@@ -141,7 +178,7 @@ const submit = async () => {
 			<N8nButton
 				type="button"
 				:loading="isSubmitting"
-				:disabled="isSubmitting"
+				:disabled="isSubmitDisabled"
 				data-test-id="workflow-update-review-submit-button"
 				@click="submit"
 			>
@@ -155,5 +192,9 @@ const submit = async () => {
 .description {
 	display: block;
 	margin-top: var(--spacing--xs);
+}
+
+.versionForm {
+	margin-top: var(--spacing--sm);
 }
 </style>

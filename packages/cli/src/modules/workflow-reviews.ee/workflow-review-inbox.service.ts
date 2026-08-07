@@ -31,6 +31,7 @@ import { ProjectService } from '@/services/project.service.ee';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 
+import { WorkflowReviewDecisionEligibilityService } from './workflow-review-decision-eligibility.service';
 import { WorkflowReviewFeatureGate } from './workflow-review-feature-gate.service';
 import { toEligibleReviewer } from './workflow-review.mapper';
 
@@ -52,6 +53,7 @@ export class WorkflowReviewInboxService {
 		private readonly workflowReviewRequestReviewerRepository: WorkflowReviewRequestReviewerRepository,
 		private readonly userRepository: UserRepository,
 		private readonly projectService: ProjectService,
+		private readonly decisionEligibilityService: WorkflowReviewDecisionEligibilityService,
 	) {}
 
 	async listForInbox(
@@ -121,7 +123,10 @@ export class WorkflowReviewInboxService {
 	): Promise<WorkflowReviewRequestDetail> {
 		await this.featureGate.assertAvailable();
 
-		const request = await this.workflowReviewRequestRepository.findById(workflowReviewRequestId);
+		const request = await this.workflowReviewRequestRepository.findById(
+			workflowReviewRequestId,
+			{},
+		);
 		if (!request || !(await this.canAccessRequest(user, request))) {
 			throw new NotFoundError('Could not find review request');
 		}
@@ -130,6 +135,15 @@ export class WorkflowReviewInboxService {
 			this.workflowReviewRequestWorkflowRepository.findLinkedWorkflowDetailsByRequestId(request.id),
 			this.workflowReviewRequestReviewerRepository.findByRequestIds([request.id]),
 		]);
+
+		// An open request whose link rows all cascaded away with a workflow hard
+		// delete is a dead leftover: nothing can act on it and the inbox hides it,
+		// so hide it here too — for the requester as well, matching their inbox.
+		// A closed request keeps zero link rows legitimately (history of a deleted
+		// workflow) and stays readable.
+		if (request.state === 'open' && workflowRows.length === 0) {
+			throw new NotFoundError('Could not find review request');
+		}
 
 		const readableRows = await this.filterReadableWorkflowRows(user, workflowRows);
 		// Someone who reaches this review through its project has no reason to learn it
@@ -140,9 +154,16 @@ export class WorkflowReviewInboxService {
 			throw new NotFoundError('Could not find review request');
 		}
 
-		const [workflows, participantsByRequestId] = await Promise.all([
+		const [workflows, participantsByRequestId, eligibility] = await Promise.all([
 			Promise.all(readableRows.map(async (row) => await this.toWorkflowDetail(row))),
 			this.hydrateParticipants([request], reviewerRows),
+			// Resolved against the pinned (pre-read-filter) row, matching the row
+			// decide() authorizes against — not against what the caller can read.
+			this.decisionEligibilityService.resolveViewerEligibility(
+				user,
+				request,
+				workflowRows.at(0)?.workflowId ?? null,
+			),
 		]);
 
 		const { requester, reviewers } = participantsByRequestId.get(request.id) ?? {
@@ -154,6 +175,8 @@ export class WorkflowReviewInboxService {
 			...this.toInboxItem(request, workflows.at(0) ?? null, requester, reviewers),
 			description: request.description,
 			workflows,
+			viewerCanDecide: eligibility.canDecide,
+			viewerDecisionIneligibilityReason: eligibility.reason,
 		};
 	}
 
@@ -250,6 +273,7 @@ export class WorkflowReviewInboxService {
 	private toVersionSnapshot(version: WorkflowHistory): WorkflowReviewVersionSnapshot {
 		return {
 			versionId: version.versionId,
+			name: version.name,
 			nodes: version.nodes,
 			connections: version.connections,
 			nodeGroups: version.nodeGroups,

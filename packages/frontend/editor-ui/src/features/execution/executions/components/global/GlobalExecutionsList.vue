@@ -5,7 +5,7 @@ import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHe
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@n8n/composables/useToast';
 import { EnterpriseEditionFeature, MODAL_CONFIRM } from '@/app/constants';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import type { IWorkflowDb } from '@/Interface';
 import { useI18n } from '@n8n/i18n';

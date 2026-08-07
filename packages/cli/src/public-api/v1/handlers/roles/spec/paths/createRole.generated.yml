@@ -55,8 +55,6 @@ responses:
               enum:
                 - project
                 - global
-            licensed:
-              type: boolean
             scopes:
               type: array
               items:
@@ -73,7 +71,6 @@ responses:
             - description
             - systemRole
             - roleType
-            - licensed
             - scopes
             - createdAt
             - updatedAt
