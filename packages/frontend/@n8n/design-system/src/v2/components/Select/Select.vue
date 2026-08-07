@@ -623,10 +623,10 @@ function resolveDisplayValue(value: unknown): string | undefined {
 	background: transparent;
 	cursor: pointer;
 	border-radius: var(--radius--sm);
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtler);
 
 	&:hover {
-		color: var(--color--text--shade-1);
+		color: var(--text-color);
 	}
 }
 
@@ -671,7 +671,7 @@ function resolveDisplayValue(value: unknown): string | undefined {
 
 .empty {
 	padding: var(--spacing--2xs);
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtler);
 	font-size: var(--font-size--xs);
 	line-height: var(--line-height--md);
 	text-align: center;
@@ -753,7 +753,7 @@ function resolveDisplayValue(value: unknown): string | undefined {
 
 .selectLabel {
 	padding: var(--spacing--3xs) var(--spacing--2xs) var(--spacing--4xs);
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtler);
 	font-size: var(--font-size--2xs);
 	font-weight: var(--font-weight--bold);
 	line-height: var(--line-height--md);
@@ -775,10 +775,10 @@ function resolveDisplayValue(value: unknown): string | undefined {
 	justify-content: center;
 	height: var(--spacing--xl);
 	cursor: pointer;
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtler);
 
 	&:hover {
-		color: var(--color--text--shade-1);
+		color: var(--text-color);
 	}
 
 	&::before {
