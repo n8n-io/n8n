@@ -17,6 +17,7 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { Telemetry } from '@/telemetry';
 
+import { runMetricScales } from '../metric-scales';
 import { InsightsContextBuilder } from './insights-context-builder';
 import type { InsightsContext, InsightsContextVersion } from './insights-context-builder';
 import { InsightsModelResolver } from './insights-model-resolver';
@@ -67,6 +68,10 @@ type RunSummary = {
 	// Per-metric scores normalized to [0, 1] (operational metrics excluded), so
 	// winner/regression comparisons reflect quality rather than token totals.
 	scores: Record<string, number>;
+	// This run's own metric scales (its frozen snapshot), so per-case scores in the
+	// LLM context normalize on the same scales as the aggregate — not the current
+	// config, which may have changed since the run.
+	metricScales: Record<string, MetricScale>;
 };
 
 /**
@@ -126,7 +131,9 @@ export class EvalInsightsService {
 			detail.collection.evaluationConfigId,
 			workflowId,
 		);
-		// Scores normalize by scale, not metric name; name-based heuristic when gone.
+		// Default scales from the current config (name-based heuristic when gone).
+		// Each run overrides these with its own frozen snapshot below, so a later
+		// config edit can't misnormalize an already-completed run's values.
 		const scaleByMetric = config ? metricScalesFromConfig(config.metrics) : {};
 
 		// Labels (A/B/C) map to each run's index in the *full* collection
@@ -136,7 +143,7 @@ export class EvalInsightsService {
 		const summaries: RunSummary[] = [];
 		detail.runs.forEach((run, originalIndex) => {
 			if (run.status === 'completed' && run.metrics) {
-				summaries.push(this.summariseRun(run, originalIndex, scaleByMetric));
+				summaries.push(this.summariseRun(run, originalIndex, runMetricScales(run, scaleByMetric)));
 			}
 		});
 		if (summaries.length < 2) {
@@ -158,7 +165,6 @@ export class EvalInsightsService {
 				config,
 				summaries,
 				winner,
-				scaleByMetric,
 			});
 			response = {
 				generatedAt: new Date().toISOString(),
@@ -214,6 +220,7 @@ export class EvalInsightsService {
 			workflowVersionId: run.workflowVersionId,
 			avgScore: averageNormalizedScore(run.metrics, scaleByMetric),
 			scores: normalizedScores(run.metrics, scaleByMetric),
+			metricScales: scaleByMetric,
 		};
 	}
 
@@ -240,18 +247,9 @@ export class EvalInsightsService {
 		config: EvaluationConfig | null;
 		summaries: RunSummary[];
 		winner: RunSummary;
-		scaleByMetric: Record<string, MetricScale>;
 	}): Promise<{ payload: AiInsightsPayload; modelId: string }> {
-		const {
-			user,
-			workflowId,
-			collectionName,
-			evaluationConfigId,
-			config,
-			summaries,
-			winner,
-			scaleByMetric,
-		} = params;
+		const { user, workflowId, collectionName, evaluationConfigId, config, summaries, winner } =
+			params;
 
 		const resolved = await this.modelResolver.resolve(user, workflowId, evaluationConfigId, config);
 		if (!resolved) {
@@ -261,7 +259,6 @@ export class EvalInsightsService {
 		const context = await this.contextBuilder.build(workflowId, {
 			collectionName,
 			winnerLabel: winner.versionLabel,
-			scaleByMetric,
 			versions: summaries.map(
 				(summary): InsightsContextVersion => ({
 					testRunId: summary.testRunId,
@@ -269,6 +266,7 @@ export class EvalInsightsService {
 					versionLabel: summary.versionLabel,
 					avgScore: summary.avgScore,
 					scores: summary.scores,
+					metricScales: summary.metricScales,
 				}),
 			),
 		});
@@ -314,7 +312,7 @@ export class EvalInsightsService {
 			const baseScore = base?.metricScores[regression.metric];
 			if (typeof versionScore !== 'number' || typeof baseScore !== 'number') continue;
 			if (versionScore >= baseScore) continue;
-			const key = `${regression.versionLabel} ${regression.metric}`;
+			const key = `${regression.versionLabel} ${regression.metric}`;
 			if (seen.has(key)) continue;
 			seen.add(key);
 			regressions.push({ ...regression, delta: versionScore - baseScore });

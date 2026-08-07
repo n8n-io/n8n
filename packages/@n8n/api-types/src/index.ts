@@ -15,6 +15,7 @@ export * from './redaction-enforcement-floor';
 export * from './workflow-reviews-policy';
 export type * from './workflow-review-eligible-reviewer';
 export * from './workflow-review-request-summary';
+export * from './workflow-publish-blocked-details';
 export {
 	chatHubConversationModelSchema,
 	type ChatModelDto,
@@ -247,6 +248,7 @@ export type {
 	BreakingChangeReportResult,
 	BreakingChangeLightReportResult,
 	BreakingChangeVersion,
+	WorkflowMigrationResult,
 } from './schemas/breaking-changes.schema';
 
 export { MIGRATION_REPORT_TARGET_VERSION } from './schemas/breaking-changes.schema';
@@ -309,8 +311,12 @@ export {
 	toolErrorPayloadSchema,
 	confirmationRequestPayloadSchema,
 	confirmationInputTypeSchema,
+	instanceAiTargetApprovalSchema,
 	channelConfigSchema,
+	credentialPlaceholderDefSchema,
 	credentialRequestSchema,
+	credentialSetupHintSchema,
+	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
 	workflowSetupNodeSchema,
 	errorPayloadSchema,
 	filesystemRequestPayloadSchema,
@@ -325,6 +331,8 @@ export {
 	EVAL_VENDOR_SDK_INTERCEPTION_FLAG,
 	CONFIG_EVALUATIONS_FLAG,
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
+	INSTANCE_AI_MCP_CONNECTIONS_FLAG,
+	INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT,
 	domainAccessActionSchema,
 	domainAccessMetaSchema,
 	webSearchMetaSchema,
@@ -336,7 +344,10 @@ export {
 	gatewayConfirmationRequiredPayloadSchema,
 	instanceGatewayResourceDecisionSchema,
 	instanceAiSandboxProviderSchema,
+	instanceAiConnectionSchema,
 	isInstanceAiSandboxProvider,
+	INSTANCE_AI_MODEL_CREDENTIAL_TYPES,
+	INSTANCE_AI_SEARCH_CREDENTIAL_TYPES,
 	GATEWAY_CONFIRMATION_REQUIRED_PREFIX,
 	InstanceAiSendMessageRequest,
 	InstanceAiEvalExecutionRequest,
@@ -358,11 +369,16 @@ export {
 	instanceAiWorkflowAttachmentSchema,
 	InstanceAiThreadMessagesQuery,
 	InstanceAiAdminSettingsUpdateRequest,
+	InstanceAiVerifyModelRequest,
+	InstanceAiVerifySandboxRequest,
+	InstanceAiVerifySearchRequest,
 	InstanceAiUserPreferencesUpdateRequest,
 	InstanceAiGatewayCapabilitiesDto,
 	InstanceAiGatewayCreateCredentialDto,
 	InstanceAiFilesystemResponseDto,
 	instanceAiEvalSeedDataTableSchema,
+	instanceAiEvalSeedAgentSchema,
+	findUnbackedSeedWorkflowTools,
 	applyBranchReadOnlyOverrides,
 	INSTANCE_AI_THREAD_SOURCES,
 	INSTANCE_AI_THREAD_SOURCE_FALLBACK,
@@ -386,7 +402,10 @@ export type {
 	InstanceAiChannelConfig,
 	InstanceAiConfirmationRequestPayload,
 	InstanceAiConfirmationSeverity,
+	InstanceAiCredentialPlaceholderDef,
+	InstanceAiTargetApproval,
 	InstanceAiCredentialRequest,
+	InstanceAiCredentialSetupHint,
 	InstanceAiAgentStatus,
 	InstanceAiAgentKind,
 	TaskItem,
@@ -436,9 +455,13 @@ export type {
 	InstanceAiThreadStatusResponse,
 	InstanceAiConfirmResponse,
 	InstanceAiAdminSettingsResponse,
+	InstanceAiEnvManagedFields,
+	InstanceAiVerificationFailure,
+	InstanceAiVerificationResponse,
 	InstanceAiUserPreferencesResponse,
-	InstanceAiModelCredential,
+	InstanceAiProviderConnection,
 	InstanceAiSandboxProvider,
+	InstanceAiConnectionUpdate,
 	InstanceAiMcpConnectionResponse,
 	InstanceAiMcpConnectionToolFilterResponse,
 	InstanceAiMcpConnectionToolResponse,
@@ -478,6 +501,7 @@ export type {
 	InstanceAiEvalAgentExecutionResult,
 	InstanceAiEvalSeedWorkflow,
 	InstanceAiEvalSeedDataTable,
+	InstanceAiEvalSeedAgent,
 } from './schemas/instance-ai.schema';
 
 export type {
@@ -523,6 +547,8 @@ export {
 	MCP_APPS_FLAG,
 	MCP_APPS_VARIANT_CONTROL,
 	MCP_APPS_VARIANT_ENABLED,
+	MCP_CANVAS_GROUPS_FLAG,
+	MCP_AGENT_SCOPES,
 	MCP_INSTANCE_SCOPES,
 	MCP_CLIENT_BRAND_MATCHERS,
 	MCP_CLIENT_TYPE_FILTERS,
@@ -545,6 +571,7 @@ export {
 	averageNormalizedScore,
 	metricScaleFromConfig,
 	metricScalesFromConfig,
+	metricScalesFromSnapshot,
 	type MetricScale,
 	evalCollectionVersionEntrySchema,
 	createEvaluationCollectionSchema,
@@ -565,7 +592,48 @@ export {
 	type EvalVersionsResponse,
 } from './schemas/eval-collections.schema';
 
-export { AGENT_EVALS_FLAG } from './schemas/agent-evals.schema';
+export {
+	AGENT_EVALS_FLAG,
+	agentEvalColumnMappingSchema,
+	agentEvalRunStatusSchema,
+	agentEvalResultStatusSchema,
+	agentEvalVoteSchema,
+	createAgentEvalDatasetSchema,
+	updateAgentEvalDatasetSchema,
+	UpdateAgentEvalDatasetDto,
+	createAgentEvalRunSchema,
+	CreateAgentEvalRunDto,
+	AGENT_EVAL_RESULTS_DEFAULT_TAKE,
+	AgentEvalRunDetailQueryDto,
+	agentEvalCorrectionSchema,
+	createAgentEvalRatingSchema,
+	CreateAgentEvalRatingDto,
+	agentEvalDraftCaseSchema,
+	generateDraftCasesOptionsSchema,
+	GenerateDraftCasesOptionsDto,
+} from './schemas/agent-evals.schema';
+export type {
+	AgentEvalColumnMapping,
+	AgentEvalRunStatus,
+	AgentEvalResultStatus,
+	AgentEvalVote,
+	AgentEvalCorrection,
+	CreateAgentEvalDatasetDto,
+	UpdateAgentEvalDatasetPayload,
+	CreateAgentEvalRunPayload,
+	CreateAgentEvalRatingPayload,
+	AgentEvalPage,
+	AgentEvalDatasetRecord,
+	AgentEvalRunRecord,
+	AgentEvalResultRecord,
+	AgentEvalRatingRecord,
+	AgentEvalRunList,
+	AgentEvalRunDetail,
+	AgentEvalRunSummary,
+	AgentEvalDraftCase,
+	GenerateDraftCasesOptions,
+	GenerateDraftCasesResult,
+} from './schemas/agent-evals.schema';
 
 export {
 	aiInsightsStatusSchema,
@@ -593,3 +661,4 @@ export {
 	type N8nProxyFeature,
 	type ProxyHeaderInput,
 } from './constants/proxy-feature';
+export { BLOCK_ACCESS_ASSIGNMENT } from './constants/role-mapping';

@@ -1,11 +1,12 @@
 import { Service } from '@n8n/di';
-import type { EntityManager } from '@n8n/typeorm';
-import { DataSource, In, Repository } from '@n8n/typeorm';
+import { DataSource, In } from '@n8n/typeorm';
 
+import { BaseRepository } from './base-repository';
 import { WorkflowReviewRequestAuthor } from '../entities/workflow-review-request-author.ee';
+import type { OperationContext } from '../services/transaction';
 
 @Service()
-export class WorkflowReviewRequestAuthorRepository extends Repository<WorkflowReviewRequestAuthor> {
+export class WorkflowReviewRequestAuthorRepository extends BaseRepository<WorkflowReviewRequestAuthor> {
 	constructor(dataSource: DataSource) {
 		super(WorkflowReviewRequestAuthor, dataSource.manager);
 	}
@@ -15,15 +16,40 @@ export class WorkflowReviewRequestAuthorRepository extends Repository<WorkflowRe
 			workflowReviewRequestId: string;
 			userId: string;
 		},
-		trx?: EntityManager,
+		ctx: OperationContext,
 	): Promise<WorkflowReviewRequestAuthor> {
-		const manager = trx ?? this.manager;
 		const entity = this.create({
 			workflowReviewRequestId: input.workflowReviewRequestId,
 			userId: input.userId,
 		});
 
-		return await manager.save(WorkflowReviewRequestAuthor, entity);
+		return await this.managerFor(ctx).save(WorkflowReviewRequestAuthor, entity);
+	}
+
+	/** Idempotent: checks the composite PK explicitly instead of relying on `save` upsert semantics. */
+	async addAuthorIfMissing(
+		input: {
+			workflowReviewRequestId: string;
+			userId: string;
+		},
+		ctx: OperationContext,
+	): Promise<void> {
+		if (await this.isAuthor(input, ctx)) return;
+
+		await this.addAuthor(input, ctx);
+	}
+
+	async isAuthor(
+		input: {
+			workflowReviewRequestId: string;
+			userId: string;
+		},
+		ctx: OperationContext,
+	): Promise<boolean> {
+		return await this.managerFor(ctx).existsBy(WorkflowReviewRequestAuthor, {
+			workflowReviewRequestId: input.workflowReviewRequestId,
+			userId: input.userId,
+		});
 	}
 
 	async findByRequestId(requestId: string): Promise<WorkflowReviewRequestAuthor[]> {

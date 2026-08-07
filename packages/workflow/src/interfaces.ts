@@ -154,6 +154,10 @@ export type N8nOAuth2ValidationResult =
 	| { valid: true; user: IUser }
 	| { valid: false; reason: OAuth2FailureReason };
 
+export type N8nOAuth2FlowResult =
+	| { valid: true; token: string; user: IUser; metadata?: Record<string, string> }
+	| { valid: false; reason: string };
+
 export type ProjectSharingData = {
 	id: string;
 	name: string | null;
@@ -172,6 +176,7 @@ export interface ICredentialsDecrypted<T extends object = ICredentialDataDecrypt
 	sharedWithProjects?: ProjectSharingData[];
 	isGlobal?: boolean;
 	isResolvable?: boolean;
+	usageScope?: 'project' | 'instance';
 }
 
 export interface ICredentialsEncrypted {
@@ -235,8 +240,8 @@ export abstract class ICredentialsHelper {
 		credentials: ICredentialDataDecryptedObject,
 		typeName: string,
 		requestOptions: IHttpRequestOptions | IRequestOptionsSimplified,
-		workflow: Workflow,
-		node: INode,
+		workflow?: Workflow,
+		node?: INode,
 	): Promise<IHttpRequestOptions>;
 
 	abstract preAuthentication(
@@ -1027,7 +1032,7 @@ type CronRecurrenceRule =
 			activated: true;
 			index: number;
 			intervalSize: number;
-			typeInterval: 'hours' | 'days' | 'weeks' | 'months';
+			typeInterval: 'minutes' | 'hours' | 'days' | 'weeks' | 'months';
 	  };
 
 /**
@@ -1165,7 +1170,9 @@ export type CredentialCheckResult = {
 export type DynamicCredentialCheckProxyProvider = {
 	checkCredentialStatus(
 		workflowId: string,
-		executionContext: IExecutionContext,
+		executionContext: {
+			credentials?: string;
+		},
 	): Promise<CredentialCheckResult>;
 };
 
@@ -1173,7 +1180,9 @@ export type CredentialCheckProxyFunctions = {
 	// Optional to account for situations where the dynamic-credentials module is disabled
 	checkCredentialStatus?(
 		workflowId: string,
-		executionContext: IExecutionContext,
+		executionContext: {
+			credentials?: string;
+		},
 	): Promise<CredentialCheckResult>;
 };
 
@@ -1234,7 +1243,9 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 		getRuntimeCredential(alias: string): Promise<IDataObject[string] | undefined>;
 		putExecutionToWait(waitTill: Date): Promise<void>;
 		sendMessageToUI(message: any): void;
-		sendResponse(response: IExecuteResponsePromiseData): void;
+		/** Whether the run's resolved redaction policy redacts console output for this execution's mode */
+		isConsoleOutputRedacted(): boolean;
+		sendResponse(response: IExecuteResponsePromiseData): Promise<void>;
 		sendChunk(type: ChunkType, itemIndex: number, content?: IDataObject | string): void;
 		isStreaming(): boolean;
 		/** Returns true if the node is being executed as an AI Agent tool */
@@ -1320,6 +1331,7 @@ export type ISupplyDataFunctions = ExecuteFunctions.GetNodeParameterFn &
 		| 'getNodeOutputs'
 		| 'executeWorkflow'
 		| 'sendMessageToUI'
+		| 'isConsoleOutputRedacted'
 		| 'startJob'
 		| 'helpers'
 		| 'isToolExecution'
@@ -1451,7 +1463,58 @@ export interface IHookFunctions
 export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMode'> {
 	getBodyData(): IDataObject;
 	getHeaderData(): IncomingHttpHeaders;
+	/**
+	 * Identity pipeline for identity-bearing triggers (Form, MCP).
+	 *
+	 * These let a trigger run a workflow as the *caller* — resolving that user's own
+	 * private (per-user) credentials instead of a shared/static credential — by
+	 * proving the caller's n8n identity against the internal Authorization Server (AS)
+	 * and binding it to the execution. The shape is acquire → verify → bind:
+	 *
+	 * - Browser-facing triggers (Form) acquire a token interactively:
+	 *   `beginN8nOAuth2Flow` → (AS redirect) → `completeN8nOAuth2Flow`.
+	 * - Resource-server triggers (MCP) receive a bearer token directly and only
+	 *   `validateN8nOAuth2Token` it.
+	 * - Either way, `establishTriggerIdentity` binds the verified token to the run.
+	 */
+
+	/**
+	 * Starts the interactive authorization-code + PKCE flow against n8n's internal AS
+	 * for `resourceUrl` (the trigger's own protected-resource URL). Returns the
+	 * `/oauth/authorize` URL to redirect the browser to; the AS identifies the
+	 * already-logged-in user from their n8n session (no login prompt for the
+	 * first-party trigger client) and redirects back to the trigger URL with a code.
+	 * Used on the initial GET of a browser-facing trigger. Pair with
+	 * `completeN8nOAuth2Flow`.
+	 *
+	 * Optional `metadata` is stashed server-side against this flow's one-time `state`
+	 * (never sent to the browser) and returned by `completeN8nOAuth2Flow` on success —
+	 * a per-flow slot for carrying data (e.g. the original request query) across the bounce.
+	 */
+	beginN8nOAuth2Flow(resourceUrl: string, metadata?: Record<string, string>): Promise<string>;
+	/**
+	 * Completes the flow started by `beginN8nOAuth2Flow` once the AS redirects back to
+	 * the trigger URL with `?code&state`. Consumes the one-time `state`, verifies PKCE,
+	 * exchanges the code for an access token **server-side** (the code never reaches the
+	 * sandboxed form page), and validates it. Returns the token and resolved user on
+	 * success, or a failure reason.
+	 */
+	completeN8nOAuth2Flow(code: string, state: string): Promise<N8nOAuth2FlowResult>;
+	/**
+	 * Verifies an AS access token against `resourceUrl` (the expected audience) without
+	 * running a redirect flow. Used by resource-server triggers (MCP) that receive a
+	 * bearer token directly, and by browser triggers on the POST leg to re-check the
+	 * token the page presents. Returns validity + resolved user, or a failure reason
+	 * (`invalid_token`, `insufficient_scope`, …).
+	 */
 	validateN8nOAuth2Token(token: string, resourceUrl: string): Promise<N8nOAuth2ValidationResult>;
+	/**
+	 * Binds the verified submitter to the current execution: builds an encrypted
+	 * credential context from `token`/`resource` and threads it into the execution's
+	 * runtime context, so downstream nodes resolve *that user's* per-user credentials.
+	 * Call only after the token is validated. The identity persists for the whole
+	 * execution (including across a Wait), within the token's validity window.
+	 */
 	establishTriggerIdentity(token: string, resource: string): Promise<void>;
 	/**
 	 * Checks the status of the triggering identity's resolvable (private) credentials
@@ -1471,7 +1534,14 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 		fallbackValue?: any,
 		options?: IGetNodeParameterOptions,
 	): NodeParameterValueType | object;
+	/** Always the production endpoint, whichever endpoint the request arrived on. */
 	getNodeWebhookUrl: (name: WebhookType) => string | undefined;
+	/**
+	 * The endpoint actually being served (`/webhook-test/…` on a test run), which
+	 * identifies the webhook as an OAuth protected resource. Minting and verifying a
+	 * token both derive the resource from it, so it must track the endpoint served.
+	 */
+	getWebhookResourceUrl: (name: WebhookType) => string | undefined;
 	evaluateExpression(expression: string, itemIndex?: number): NodeParameterValueType;
 	getParamsData(): object;
 	getQueryData(): object;
@@ -1480,12 +1550,7 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 	getWebhookName(): string;
 	validateCookieAuth(cookieValue: string): Promise<IUser>;
 	/** Emits telemetry for an advanced HITL response actioned via this webhook. */
-	logHitlResponse(
-		payload: Pick<
-			HitlResponseTelemetryPayload,
-			'approved' | 'authorized' | 'response_mode' | 'advanced_email'
-		>,
-	): void;
+	logHitlResponse(payload: { approved: boolean; authorized: boolean }): void;
 	nodeHelpers: NodeHelperFunctions;
 	helpers: RequestHelperFunctions & BaseHelperFunctions & BinaryHelperFunctions;
 }
@@ -1784,6 +1849,7 @@ export interface INodePropertyTypeOptions {
 		inputFieldMaxLength?: number; // Supported if hasInputField is true
 	};
 	containerClass?: string; // Supported by: notice
+	sectionHeader?: boolean; // Supported by: notice — renders as a section-header divider instead of a notice box
 	alwaysOpenEditWindow?: boolean; // Supported by: json
 	codeAutocomplete?: CodeAutocompleteTypes; // Supported by: string
 	editor?: EditorType; // Supported by: string
@@ -1804,6 +1870,7 @@ export interface INodePropertyTypeOptions {
 	password?: boolean; // Supported by: string
 	copyButton?: boolean; // Supported by: string — renders a readonly value with a click-to-copy affordance
 	redactJsonLeaves?: boolean; // Supported by: json (credential fields only) — redacts leaf values instead of the whole field
+	resolveCredentialJsonLeaves?: boolean; // Supported by: json (credential fields only) — resolves expressions in JSON leaf values
 	ignoreCredentialExpressionResolveError?: boolean; // Supported by credentials fields outside execution contexts
 	rows?: number; // Supported by: string
 	showAlpha?: boolean; // Supported by: color
@@ -1847,6 +1914,9 @@ export interface ResourceMapperTypeOptionsBase {
 	// reconciled against the source on node open. A complete-but-drifted schema
 	// still shows the stale-data warning, leaving the refresh up to the user.
 	refreshIncompleteSchemaOnOpen?: boolean;
+	// When true, a complete-but-drifted cached schema is reconciled against the
+	// live source on node open / tab focus (e.g. subworkflow trigger inputs).
+	refreshStaleSchemaOnOpen?: boolean;
 }
 
 // Enforce at least one of resourceMapperMethod or localResourceMapperMethod
@@ -2056,6 +2126,9 @@ export interface INodePropertyOptions {
 	// disabledOptions added for compatibility with INodeProperties and INodeCredentialDescription types
 	// it needs to be implemented, if needed
 	disabledOptions?: undefined;
+	// When set, the option is hidden in the editor unless the matching
+	// `N8N_ENV_FEAT_<envFeatureFlag>` flag is enabled.
+	envFeatureFlag?: Uppercase<string>;
 }
 
 export interface INodeListSearchItems extends INodePropertyOptions {
@@ -2931,8 +3004,31 @@ export interface IWebhookData {
 
 export type WebhookType = 'default' | 'setup';
 
+/**
+ * Key under which an {@link IWebhookDescription} holds native (engine-free)
+ * resolvers for its expression-template fields, keyed by field name. Populated
+ * by `webhookDescriptionFields()` and read via `resolveWebhookDescriptionField()`.
+ * Backend-only: not serialized with the description.
+ */
+export const WEBHOOK_RESOLVERS: unique symbol = Symbol.for('n8n.webhookDescriptionResolvers');
+
+/**
+ * Native resolvers for a webhook description's fields, keyed by field name.
+ * Each entry pairs the expression template a field carries with a function
+ * computing the same value from the node's parameters, without the expression
+ * engine. Stored under {@link WEBHOOK_RESOLVERS}.
+ */
+export type NativeParameterResolvers = Record<
+	string,
+	{
+		template: string;
+		resolve: (parameters: INodeParameters) => NodeParameterValueType | undefined;
+	}
+>;
+
 export interface IWebhookDescription {
 	[key: string]: IHttpRequestMethods | WebhookResponseMode | boolean | string | undefined;
+	[WEBHOOK_RESOLVERS]?: NativeParameterResolvers;
 	httpMethod: IHttpRequestMethods | string;
 	isFullPath?: boolean;
 	name: WebhookType;
@@ -3422,6 +3518,13 @@ export interface IWorkflowExecutionDataProcess {
 	 * apart) and by telemetry.
 	 */
 	source?: WorkflowExecutionSource;
+	/**
+	 * When true, a failure in this run must not dispatch the workflow's error
+	 * workflow (or its own Error Trigger). Set for runs that are a test of the
+	 * workflow rather than a real one, but that still need a production
+	 * execution mode for realistic trigger semantics
+	 */
+	suppressErrorWorkflow?: boolean;
 	telemetryMetadata?: IWorkflowExecutionTelemetryMetadata;
 	dirtyNodeNames?: string[];
 	triggerToStartFrom?: {
@@ -3452,7 +3555,7 @@ export interface IWorkflowExecutionDataProcess {
 	deduplicationKey?: string;
 	/** W3C trace context extracted from inbound webhook headers. */
 	tracingContext?: { traceparent: string; tracestate?: string };
-	/** Encrypted credential context for a manual editor-triggered execution. */
+	/** Encrypted credential context for a triggered execution. */
 	encryptedRunnerIdentity?: string;
 	/** Parent evaluation TestRun.id, exposed to expressions as `$evaluation.runId`. */
 	evaluationRunId?: string;
@@ -3503,19 +3606,8 @@ export type HitlResponseTelemetryPayload = {
 	nodeType: string;
 	/** The decision the responder made. */
 	approved: boolean;
-	/**
-	 * Whether the responder was on the node's approver allow-list (empty list = anyone).
-	 * Only chat nodes set this; email/confirmation-page nodes cannot identify the
-	 * responder and omit it.
-	 */
-	authorized?: boolean;
-	/**
-	 * How an email responder actioned the request: `confirmation_page` (the
-	 * double-confirm POST) or `direct_link` (a one-click email button GET). Only
-	 * email nodes set this; chat nodes omit it.
-	 */
-	response_mode?: 'confirmation_page' | 'direct_link';
-	advanced_email?: boolean;
+	/** Whether the responder was on the node's approver allow-list (empty list = anyone). */
+	authorized: boolean;
 	executionId?: string;
 	workflowId?: string;
 };
@@ -3554,6 +3646,14 @@ export interface IWorkflowExecuteAdditionalData {
 		runExecutionData: IRunExecutionData,
 		alias: string,
 	): Promise<IDataObject[string] | undefined>;
+	/**
+	 * Backing implementations for the trigger identity pipeline exposed to nodes on
+	 * `IWebhookFunctions` (see the docs there). Optional here because they are only
+	 * wired in by the CLI webhook layer when the OAuth server is available; the
+	 * context methods throw if a node reaches them while unset.
+	 */
+	beginN8nOAuth2Flow?: (resourceUrl: string, metadata?: Record<string, string>) => Promise<string>;
+	completeN8nOAuth2Flow?: (code: string, state: string) => Promise<N8nOAuth2FlowResult>;
 	validateN8nOAuth2Token?: (
 		token: string,
 		resourceUrl: string,
@@ -3568,7 +3668,9 @@ export interface IWorkflowExecuteAdditionalData {
 	instanceBaseUrl: string;
 	setExecutionStatus?: (status: ExecutionStatus) => void;
 	sendDataToUI?: (type: string, data: IDataObject | IDataObject[]) => void;
+	formBaseUrl: string;
 	formWaitingBaseUrl: string;
+	formTestBaseUrl: string;
 	webhookBaseUrl: string;
 	webhookWaitingBaseUrl: string;
 	webhookTestBaseUrl: string;

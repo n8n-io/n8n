@@ -14,8 +14,10 @@ import type {
 	InstanceAiRunDebugResponse,
 	InstanceAiThreadDebugRunsResponse,
 	InstanceAiThreadStatusResponse,
+	InstanceAiEvalSeedAgent,
 	InstanceAiEvalSeedDataTable,
 	InstanceAiEvalSeedWorkflow,
+	InstanceAiWorkflowAttachment,
 	AgentJsonConfig,
 	AgentSkill,
 	EvaluationConfigDto,
@@ -28,6 +30,23 @@ import { z } from 'zod';
 // eval CLI harness — never import into the n8n server or shared runtime code.
 setGlobalDispatcher(new Agent({ headersTimeout: 0, bodyTimeout: 0 }));
 
+/** Floor for calls that pass no budget: the dispatcher above leaves those
+ *  unbounded, so a silent lane would hang rather than fail. Sized for a plain
+ *  REST call — slower callers pass their own. */
+const DEFAULT_REQUEST_TIMEOUT_MS = 120_000;
+
+/** Bulk creation of seed workflows + data tables; slower than a plain REST call. */
+const RESTORE_THREAD_TIMEOUT_MS = 300_000;
+
+/** How much longer the client waits than the server budget it hands over. */
+const CLIENT_ABORT_MARGIN_MS = 5_000;
+
+/** Server gives up just before the client, so the caller gets an in-band error
+ *  rather than a bare abort. Uncapped: 15 min truncated `complex` budgets. */
+function serverBudgetFor(timeoutMs: number): number {
+	return Math.max(timeoutMs - CLIENT_ABORT_MARGIN_MS, 30_000);
+}
+
 // -- Conversation seeding response shapes -------------------------------------
 
 const RestoreThreadEnvelope = z.object({
@@ -37,6 +56,7 @@ const RestoreThreadEnvelope = z.object({
 		restored: z.number(),
 		workflowIds: z.array(z.string()),
 		dataTableIds: z.array(z.string()).default([]),
+		agentIds: z.array(z.string()).default([]),
 	}),
 });
 
@@ -78,6 +98,10 @@ export interface WorkflowNodeResponse {
 	position?: [number, number];
 	parameters?: Record<string, unknown>;
 	executeOnce?: boolean;
+	alwaysOutputData?: boolean;
+	retryOnFail?: boolean;
+	maxTries?: number;
+	waitBetweenTries?: number;
 	onError?: 'stopWorkflow' | 'continueRegularOutput' | 'continueErrorOutput';
 	disabled?: boolean;
 	credentials?: Record<string, unknown>;
@@ -208,12 +232,20 @@ export class N8nClient {
 
 	/**
 	 * Send a chat message to the instance-ai agent.
-	 * POST /rest/instance-ai/chat/:threadId  body: { message }
+	 * POST /rest/instance-ai/chat/:threadId  body: { message, attachments? }
+	 *
+	 * `attachments` are resource references the agent resolves with its tools — the
+	 *  same channel the editor uses when a user opens the assistant with a workflow
+	 * in front of them, so the agent is handed it by id instead of hunting by name.
 	 */
-	async sendMessage(threadId: string, message: string): Promise<{ runId: string }> {
+	async sendMessage(
+		threadId: string,
+		message: string,
+		attachments?: InstanceAiWorkflowAttachment[],
+	): Promise<{ runId: string }> {
 		const result = await this.fetch(`/rest/instance-ai/chat/${threadId}`, {
 			method: 'POST',
-			body: { message },
+			body: attachments && attachments.length > 0 ? { message, attachments } : { message },
 		});
 		return result as { runId: string };
 	}
@@ -558,7 +590,9 @@ export class N8nClient {
 	/**
 	 * Seed the MCP registry with the test fixture (Notion + Linear mock servers)
 	 * and trigger a synthetic node-type reload. Requires the server to be running
-	 * with `E2E_TESTS=true` so the test controller is mounted.
+	 * with `E2E_TESTS=true` so the test controller is mounted, and an
+	 * authenticated session (`login()` first) — the endpoint rejects
+	 * unauthenticated calls.
 	 * POST /rest/mcp-registry/test/seed  body: none
 	 */
 	async seedMcpRegistry(): Promise<{ count: number }> {
@@ -631,18 +665,29 @@ export class N8nClient {
 	 * the thread sees no credentials).
 	 * POST /rest/instance-ai/eval/thread-credential-allowlist
 	 */
-	async setThreadCredentialAllowlist(threadId: string, credentialIds: string[]): Promise<void> {
+	async setThreadCredentialAllowlist(
+		threadId: string,
+		credentialIds: string[],
+		bypassCredentialTest?: string[],
+	): Promise<void> {
 		await this.fetch('/rest/instance-ai/eval/thread-credential-allowlist', {
 			method: 'POST',
-			body: { threadId, credentialIds },
+			// Omit an empty list so the request stays byte-identical to before for
+			// threads with no credentials at all.
+			body: {
+				threadId,
+				credentialIds,
+				...(bypassCredentialTest?.length ? { bypassCredentialTest } : {}),
+			},
 		});
 	}
 
 	/**
 	 * Seed an existing thread with a previously exported conversation: the
-	 * referenced workflows are recreated (node credentials stripped server-side)
-	 * and the native message log is written verbatim, so the thread continues
-	 * as if the conversation really happened.
+	 * referenced workflows are recreated (node credentials stripped server-side),
+	 * any agents it built are recreated at their pinned ids and bound to the
+	 * thread, and the native message log is written verbatim, so the thread
+	 * continues as if the conversation really happened.
 	 *
 	 * `uniquifyNames` (default true) appends a unique suffix to each seed data
 	 * table's name to dodge the per-project unique-name constraint — safe when the
@@ -657,15 +702,31 @@ export class N8nClient {
 		messages: Array<Record<string, unknown>>,
 		workflows: InstanceAiEvalSeedWorkflow[],
 		dataTables: InstanceAiEvalSeedDataTable[] = [],
+		agents: InstanceAiEvalSeedAgent[] = [],
 		options: { uniquifyNames?: boolean } = {},
-	): Promise<{ restored: number; workflowIds: string[]; dataTableIds: string[] }> {
-		const body: Record<string, unknown> = { threadId, messages, workflows, dataTables };
+	): Promise<{
+		restored: number;
+		workflowIds: string[];
+		dataTableIds: string[];
+		agentIds: string[];
+	}> {
+		const body: Record<string, unknown> = { threadId, messages, workflows, dataTables, agents };
 		if (options.uniquifyNames !== undefined) body.uniquifyNames = options.uniquifyNames;
 		const result = await this.fetch('/rest/instance-ai/eval/restore-thread', {
 			method: 'POST',
 			body,
+			timeoutMs: RESTORE_THREAD_TIMEOUT_MS,
 		});
-		return RestoreThreadEnvelope.parse(result).data;
+		const restored = RestoreThreadEnvelope.parse(result).data;
+		// `agentIds` defaults to [] for backends that predate agent seeding, which
+		// would read as "restored fine, zero agents" on a backend that just ignored
+		// the field. If we asked for agents, insist they came back.
+		if (agents.length > 0 && restored.agentIds.length !== agents.length) {
+			throw new Error(
+				`Restore was asked to seed ${String(agents.length)} agent(s) but the response carried ${String(restored.agentIds.length)} — the backend likely predates agent seeding.`,
+			);
+		}
+		return restored;
 	}
 
 	/**
@@ -709,10 +770,21 @@ export class N8nClient {
 	 * GET /rest/projects/:projectId/data-tables
 	 */
 	async listDataTables(projectId: string): Promise<Array<{ id: string; name: string }>> {
-		const result = (await this.fetch(`/rest/projects/${projectId}/data-tables`)) as {
-			data: Array<{ id: string; name: string }>;
+		// The list endpoint paginates: `{ data: { count, data: [...] } }`. Reading
+		// `result.data` as the array made this return [] for every project, silently —
+		// it has no error path, so every caller just saw "no tables".
+		//
+		// `take` is explicit because the default page is 10, and every caller here
+		// enumerates the WHOLE set (seed eviction, CU cleanup, discovery's pre-existing
+		// set) — a short page silently leaves leftovers behind. 250 is the server's
+		// per-page cap; a case declares at most 20 tables and eviction runs before
+		// every build, so the backlog drains rather than outgrowing one page.
+		const result = (await this.fetch(`/rest/projects/${projectId}/data-tables?take=250`)) as {
+			data?: { data?: Array<{ id: string; name: string }> } | Array<{ id: string; name: string }>;
 		};
-		return Array.isArray(result.data) ? result.data : [];
+		const payload = result.data;
+		if (Array.isArray(payload)) return payload;
+		return payload?.data ?? [];
 	}
 
 	/** List data table IDs for a project. */
@@ -783,14 +855,17 @@ export class N8nClient {
 		timeoutMs: number = 120_000,
 		pinNodes?: string[],
 	): Promise<InstanceAiEvalExecutionResult> {
-		const body: { scenarioHints?: string; pinNodes?: string[] } = {};
+		const body: { scenarioHints?: string; pinNodes?: string[]; timeoutMs?: number } = {};
 		if (scenarioHints) body.scenarioHints = scenarioHints;
 		if (pinNodes && pinNodes.length > 0) body.pinNodes = pinNodes;
+		// Forwarded so the server stops the run rather than leaving it burning CPU.
+		const serverBudgetMs = serverBudgetFor(timeoutMs);
+		body.timeoutMs = serverBudgetMs;
 
 		const result = (await this.fetch(`/rest/instance-ai/eval/execute-with-llm-mock/${workflowId}`, {
 			method: 'POST',
 			body,
-			timeoutMs,
+			timeoutMs: serverBudgetMs + CLIENT_ABORT_MARGIN_MS,
 		})) as { data: InstanceAiEvalExecutionResult };
 		return result.data;
 	}
@@ -808,11 +883,7 @@ export class N8nClient {
 	): Promise<InstanceAiEvalAgentExecutionResult> {
 		const body: { projectId: string; scenarioHints?: string; timeoutMs?: number } = { projectId };
 		if (scenarioHints) body.scenarioHints = scenarioHints;
-		// Forward the budget server-side so the run is aborted rather than
-		// orphaned when the client gives up. The server floor is the schema min
-		// (30s), so the client abort is floored to 5s above it — a smaller
-		// caller value would leave the server running long after the client quit.
-		const serverBudgetMs = Math.min(Math.max(timeoutMs - 5_000, 30_000), 900_000);
+		const serverBudgetMs = serverBudgetFor(timeoutMs);
 		body.timeoutMs = serverBudgetMs;
 
 		const result = (await this.fetch(
@@ -820,7 +891,7 @@ export class N8nClient {
 			{
 				method: 'POST',
 				body,
-				timeoutMs: serverBudgetMs + 5_000,
+				timeoutMs: serverBudgetMs + CLIENT_ABORT_MARGIN_MS,
 			},
 		)) as { data: InstanceAiEvalAgentExecutionResult };
 		return result.data;
@@ -873,11 +944,20 @@ export class N8nClient {
 
 		const method = options.method ?? 'GET';
 
+		// A bare `?? DEFAULT` would turn `timeoutMs: 0` into `AbortSignal.timeout(0)` —
+		// an instant abort, where the old truthiness check meant "unbounded". No caller
+		// passes one, and unbounded is what this path exists to remove, so a
+		// non-positive value falls back to the default: bounded either way.
+		const timeoutMs =
+			options.timeoutMs !== undefined && options.timeoutMs > 0
+				? options.timeoutMs
+				: DEFAULT_REQUEST_TIMEOUT_MS;
+
 		const res = await fetch(`${this.baseUrl}${path}`, {
 			method,
 			headers,
 			body: options.body ? JSON.stringify(options.body) : undefined,
-			...(options.timeoutMs ? { signal: AbortSignal.timeout(options.timeoutMs) } : {}),
+			signal: AbortSignal.timeout(timeoutMs),
 		});
 
 		if (!res.ok) {

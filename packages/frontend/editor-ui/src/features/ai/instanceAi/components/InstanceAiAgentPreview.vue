@@ -1,21 +1,34 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { N8nCanvasThinkingPill } from '@n8n/design-system';
 import AgentBuilderView from '@/features/agents/views/AgentBuilderView.vue';
+import type { AgentResource } from '@/features/agents/types';
 import { isAgentEditingAgent } from '../canvasPreview.utils';
-import { useThread } from '../instanceAi.store';
+import {
+	getAgentBuilderTargetFromThreadMetadata,
+	getPendingAgentTargetFromThreadMetadata,
+} from '../instanceAi.threadRuntime';
+import { useThread, useInstanceAiStore } from '../instanceAi.store';
+import {
+	INSTANCE_AI_AGENT_BUILDER_TARGET_METADATA_KEY,
+	INSTANCE_AI_PENDING_AGENT_METADATA_KEY,
+} from '../constants';
 
 const props = defineProps<{
 	projectId: string;
 	agentId: string;
-	refreshKey: number;
+	/** No agent row exists yet — the builder renders a local draft and persists on first edit. */
+	pending?: boolean;
 }>();
 
 // === Editing lock ===
-// Lock the artifact's editor while the AI is actively building/mutating THIS
-// agent, so the user can't edit into a mid-stream conflict. `isAgentEditingAgent`
-// defines the signals that trigger the lock.
+// Lock the artifact's editing (not its visibility) while the AI is actively
+// building/mutating THIS agent, so the user can't edit into a mid-stream
+// conflict. `isAgentEditingAgent` defines the signals that trigger the lock.
+// Parity with the workflow artifact: content stays fully visible and
+// inspectable — only editing/publishing is disabled, via
+// `artifact-editing-locked` on `AgentBuilderView`.
 const thread = useThread();
+const instanceAiStore = useInstanceAiStore();
 
 const isAgentBuilding = computed(() => {
 	for (const message of thread.messages) {
@@ -24,25 +37,46 @@ const isAgentBuilding = computed(() => {
 	}
 	return false;
 });
+
+async function syncAgentTarget(name: string) {
+	const metadata = instanceAiStore.getThreadMetadata(thread.id);
+	const target = getAgentBuilderTargetFromThreadMetadata(metadata);
+	const pendingTarget = getPendingAgentTargetFromThreadMetadata(metadata);
+	if (
+		target?.agentId === props.agentId &&
+		target.projectId === props.projectId &&
+		target.name === name &&
+		!pendingTarget
+	) {
+		return;
+	}
+
+	await instanceAiStore.updateThreadMetadata(thread.id, {
+		[INSTANCE_AI_PENDING_AGENT_METADATA_KEY]: null,
+		[INSTANCE_AI_AGENT_BUILDER_TARGET_METADATA_KEY]: {
+			agentId: props.agentId,
+			projectId: props.projectId,
+			name,
+		},
+	});
+}
+
+async function onAgentPersisted(agent: AgentResource) {
+	await syncAgentTarget(agent.name);
+}
 </script>
 
 <template>
 	<div :class="$style.root">
-		<div :class="$style.builder" :inert="isAgentBuilding">
-			<AgentBuilderView
-				artifact-mode
-				:artifact-project-id="props.projectId"
-				:artifact-agent-id="props.agentId"
-				:artifact-refresh-key="props.refreshKey"
-			/>
-		</div>
-		<div
-			v-if="isAgentBuilding"
-			:class="$style.buildingOverlay"
-			data-testid="agent-preview-building-overlay"
-		>
-			<N8nCanvasThinkingPill />
-		</div>
+		<AgentBuilderView
+			artifact-mode
+			:artifact-project-id="props.projectId"
+			:artifact-agent-id="props.agentId"
+			:artifact-agent-pending="props.pending"
+			:artifact-editing-locked="isAgentBuilding"
+			@persisted="onAgentPersisted"
+			@name-saved="syncAgentTarget"
+		/>
 	</div>
 </template>
 
@@ -51,23 +85,5 @@ const isAgentBuilding = computed(() => {
 	position: relative;
 	height: 100%;
 	min-height: 0;
-}
-
-.builder {
-	height: 100%;
-	min-height: 0;
-
-	&[inert] {
-		opacity: 0.6;
-	}
-}
-
-.buildingOverlay {
-	position: absolute;
-	inset: 0;
-	z-index: 10;
-	display: flex;
-	align-items: center;
-	justify-content: center;
 }
 </style>

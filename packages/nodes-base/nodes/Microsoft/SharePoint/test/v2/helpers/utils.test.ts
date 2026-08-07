@@ -2,6 +2,7 @@ import type { INode } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import {
+	odataFieldEqualsClause,
 	SHAREPOINT_ILLEGAL_FILE_NAME_CHARS,
 	validateSharePointFileName,
 } from '../../../v2/helpers/utils';
@@ -45,5 +46,35 @@ describe('Microsoft SharePoint v2 — validateSharePointFileName', () => {
 		} catch (error) {
 			expect((error as { description?: string }).description).not.toContain('colon-free format');
 		}
+	});
+});
+
+describe('Microsoft SharePoint v2 — odataFieldEqualsClause', () => {
+	it('quotes the value as a string literal', () => {
+		expect(odataFieldEqualsClause('Title', 'Report')).toBe("fields/Title eq 'Report'");
+	});
+
+	it('doubles single quotes inside the value', () => {
+		expect(odataFieldEqualsClause('Author', "O'Brien")).toBe("fields/Author eq 'O''Brien'");
+		expect(odataFieldEqualsClause('Note', "a'b'c")).toBe("fields/Note eq 'a''b''c'");
+	});
+
+	it('keeps a value that is only quotes intact', () => {
+		expect(odataFieldEqualsClause('Note', "''")).toBe("fields/Note eq ''''''");
+	});
+
+	it.each([null, undefined])('compares %s against the empty string, like v1', (value) => {
+		expect(odataFieldEqualsClause('Title', value)).toBe("fields/Title eq ''");
+	});
+
+	it('stringifies non-string values', () => {
+		expect(odataFieldEqualsClause('Count', 3)).toBe("fields/Count eq '3'");
+		expect(odataFieldEqualsClause('Done', false)).toBe("fields/Done eq 'false'");
+	});
+
+	it('leaves characters the URL layer owns untouched', () => {
+		expect(odataFieldEqualsClause('Title', 'a & b % c + d')).toBe(
+			"fields/Title eq 'a & b % c + d'",
+		);
 	});
 });

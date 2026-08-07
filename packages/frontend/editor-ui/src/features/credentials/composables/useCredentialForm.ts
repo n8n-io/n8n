@@ -9,16 +9,20 @@ import type {
 	ICredentialsDecrypted,
 	ICredentialType,
 	INode,
+	INodeCredentialTestResult,
 	INodeParameters,
 	INodeProperties,
 } from 'n8n-workflow';
 import { CREDENTIAL_EMPTY_VALUE, deepCopy, NodeHelpers } from 'n8n-workflow';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useI18n } from '@n8n/i18n';
+import { useRootStore } from '@n8n/stores/useRootStore';
+
+import type { InstanceAiCredentialSetupHint } from '@n8n/api-types';
 
 import type { IUpdateInformation } from '@/Interface';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { setParameterValue } from '@/app/utils/parameterUtils';
 import { isExpression, isTestableExpression } from '@/app/utils/expressions';
 import {
@@ -27,9 +31,20 @@ import {
 } from '@/app/utils/nodeTypesUtils';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 
+import { probeCredential } from '../credentials.api';
 import { useCredentialsStore } from '../credentials.store';
 import type { ICredentialsDecryptedResponse, ICredentialsResponse } from '../credentials.types';
+import {
+	composeCredentialNameWithUser,
+	extractTemplateMarkers,
+	isValidTemplateShape,
+	parsePlaceholderDefs,
+	parsePlaceholderValues,
+	parseTemplatedAuthField,
+	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
+} from '../templatedAuth.utils';
 
 const MANAGED_CREDENTIAL_HIDDEN_PROPERTIES = new Set([
 	'scope',
@@ -50,6 +65,9 @@ export interface UseCredentialFormOptions {
 	showAuthSelector?: MaybeRefOrGetter<boolean>;
 	/** Preferred name for a new credential; falls back to a generated default. */
 	suggestedName?: MaybeRefOrGetter<string | undefined>;
+	/** Agent-supplied Templated Custom Auth recipe — seeds the template fields of
+	 * a new credential so the form opens on the guided simple view. */
+	setupHint?: MaybeRefOrGetter<InstanceAiCredentialSetupHint | undefined>;
 	/** Ran after a connection test completes — host hook (e.g. scroll the result banner into view). */
 	onTestComplete?: () => void;
 }
@@ -67,6 +85,8 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 	const projectsStore = useProjectsStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const settingsStore = useSettingsStore();
+	const usersStore = useUsersStore();
+	const rootStore = useRootStore();
 	const nodeHelpers = useNodeHelpers();
 	const i18n = useI18n();
 
@@ -109,14 +129,16 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 			return credentialsStore.getCredentialTypeByName(selectedCredential.value) ?? null;
 		}
 		if (toValue(options.showAuthSelector)) {
-			const nodeAuthOptions = getNodeAuthOptions(activeNodeType.value);
-			if (nodeAuthOptions.length > 0 && activeNodeType.value?.credentials) {
-				return getNodeCredentialForSelectedAuthType(activeNodeType.value, nodeAuthOptions[0].value);
-			}
+			// The caller-requested type (the auth row clicked in the node's credential
+			// dropdown) wins over the recommended/first auth option.
 			const activeId = toValue(options.activeId);
 			if (activeId) {
 				const nodeCredential = activeNodeType.value?.credentials?.find((c) => c.name === activeId);
 				if (nodeCredential) return nodeCredential;
+			}
+			const nodeAuthOptions = getNodeAuthOptions(activeNodeType.value);
+			if (nodeAuthOptions.length > 0 && activeNodeType.value?.credentials) {
+				return getNodeCredentialForSelectedAuthType(activeNodeType.value, nodeAuthOptions[0].value);
 			}
 			return activeNodeType.value?.credentials?.[0] ?? null;
 		}
@@ -229,6 +251,24 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 	});
 
 	const requiredPropertiesFilled = computed(() => {
+		// Templated Custom Auth: the real inputs are the template's {{markers}},
+		// not the type's raw JSON fields — a required marker without a stored
+		// value gates save/test exactly like an empty required field would.
+		if (credentialTypeName.value === TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE) {
+			const template = parseTemplatedAuthField<unknown>(credentialData.value.template, {});
+			// A parseable but wrong-shaped template (e.g. an array, or a string
+			// headers part) passes the JSON check below yet can never resolve.
+			if (!isValidTemplateShape(template)) return false;
+			const markers = extractTemplateMarkers(template);
+			const values = parsePlaceholderValues(credentialData.value.placeholderValues);
+			const optionalMarkers = new Set(
+				parsePlaceholderDefs(credentialData.value.placeholderDefs)
+					.filter((def) => def.optional === true)
+					.map((def) => def.name),
+			);
+			if (markers.some((marker) => !optionalMarkers.has(marker) && !values[marker])) return false;
+		}
+
 		for (const property of credentialProperties.value) {
 			if (property.required !== true) continue;
 			const value = credentialData.value[property.name];
@@ -254,8 +294,19 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 		return true;
 	});
 
+	// Templated Custom Auth has no static test definition — a persisted http(s)
+	// test URL makes it probeable server-side instead (only 401/403 reject).
+	const isTemplatedAuthProbeable = computed(
+		() =>
+			credentialTypeName.value === TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE &&
+			typeof credentialData.value.testUrl === 'string' &&
+			/^https?:\/\//i.test(credentialData.value.testUrl),
+	);
+
 	const isCredentialTestable = computed(() => {
 		if (isOAuthType.value || !requiredPropertiesFilled.value) return false;
+
+		if (isTemplatedAuthProbeable.value) return true;
 
 		const hasUntestableExpressions = credentialProperties.value.some((prop) => {
 			const value = credentialData.value[prop.name];
@@ -443,6 +494,22 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 		}
 	}
 
+	/** Seed a new Templated Custom Auth credential's fields from an agent recipe,
+	 *  so the form opens on the guided simple view with the template pre-filled. */
+	function seedFromSetupHint(setupHint: InstanceAiCredentialSetupHint) {
+		credentialData.value = {
+			...credentialData.value,
+			template: JSON.stringify(setupHint.template, null, 2),
+			placeholderDefs: JSON.stringify(setupHint.placeholders, null, 2),
+			...(setupHint.testUrl ? { testUrl: setupHint.testUrl } : {}),
+			...(setupHint.docsUrl ? { docsUrl: setupHint.docsUrl } : {}),
+			...(setupHint.acceptedStatusCodes?.length
+				? { acceptedStatusCodes: JSON.stringify(setupHint.acceptedStatusCodes) }
+				: {}),
+			...(setupHint.serviceHost ? { serviceHost: setupHint.serviceHost } : {}),
+		};
+	}
+
 	/**
 	 * One-call setup for a fresh form: loads the credential (edit) or seeds a
 	 * default name (new), then fills property defaults. Hosts with extra concerns
@@ -456,14 +523,28 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 			detectCustomOAuth();
 			return;
 		}
-		credentialName.value =
-			toValue(options.suggestedName) ||
-			(credentialTypeName.value
+		const setupHint =
+			credentialTypeName.value === TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE
+				? toValue(options.setupHint)
+				: undefined;
+		// Recipe-created credentials carry the creator's name ("fal.ai API Key
+		// (Jan D)") so same-recipe credentials stay tellable-apart in shared
+		// projects. A host-suggested name still needs the numbering dedup —
+		// several users setting up the same service would otherwise collide.
+		let suggestedName = toValue(options.suggestedName);
+		if (setupHint) {
+			const base = setupHint.suggestedName || suggestedName;
+			if (base) suggestedName = composeCredentialNameWithUser(base, usersStore.currentUser);
+		}
+		credentialName.value = suggestedName
+			? await credentialsStore.getDedupedCredentialName(suggestedName)
+			: credentialTypeName.value
 				? await credentialsStore.getNewCredentialName({
 						credentialTypeName: credentialTypeName.value,
 					})
-				: (credentialType.value?.displayName ?? ''));
+				: (credentialType.value?.displayName ?? '');
 		setCredentialPropertyDefaults();
+		if (setupHint) seedFromSetupHint(setupHint);
 		if (homeProject.value) {
 			credentialData.value = { ...credentialData.value, homeProject: homeProject.value };
 		}
@@ -499,7 +580,24 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 	}
 
 	async function testCredential(details: ICredentialsDecrypted) {
-		const result = await credentialsStore.testCredential(details);
+		// The probe runs against the SAVED credential (the server reads its
+		// persisted test URL), so it only applies once an id exists — which the
+		// modal guarantees by testing after save.
+		let result: INodeCredentialTestResult;
+		try {
+			result =
+				isTemplatedAuthProbeable.value && details.id
+					? await probeCredential(rootStore.restApiContext, details.id)
+					: await credentialsStore.testCredential(details);
+		} catch (error) {
+			// A transport failure or non-2xx (e.g. the persisted credential lost
+			// its test URL) lands in the banner instead of wedging the testing
+			// flags of the callers into a stuck spinner.
+			result = {
+				status: 'Error',
+				message: error instanceof Error ? error.message : String(error),
+			};
+		}
 		if (result.status === 'Error') {
 			authError.value = result.message;
 			testedSuccessfully.value = false;

@@ -8,6 +8,7 @@ import { mock } from 'vitest-mock-extended';
 import type { CacheService } from '@/services/cache/cache.service';
 
 import { N8N_VERSION } from '../../../constants';
+import { MigrationRegistry } from '../breaking-changes.migration-registry.service';
 import { RuleRegistry } from '../breaking-changes.rule-registry.service';
 import { BreakingChangeService } from '../breaking-changes.service';
 import { createNode, createWorkflow } from './test-helpers';
@@ -46,6 +47,7 @@ describe('BreakingChangeService', () => {
 
 		service = new BreakingChangeService(
 			ruleRegistry,
+			new MigrationRegistry(logger),
 			workflowRepository,
 			workflowStatisticsRepository,
 			cacheService,

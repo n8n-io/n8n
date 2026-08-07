@@ -11,8 +11,8 @@ import {
 } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { MANAGED_CREDENTIAL_TOKEN } from '@n8n/api-types';
-import { useSettingsStore } from '@/app/stores/settings.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import CredentialPicker from '@/features/credentials/components/CredentialPicker/CredentialPicker.vue';
 import { AGENT_EPISODIC_MEMORY_CREDENTIAL_TYPE } from '../constants';
 import { useAgentModelCredentials } from '../composables/useAgentModelCredentials';
@@ -76,6 +76,24 @@ const configuredMemoryModel = computed(() => {
 	);
 });
 const selectedMemoryModel = ref<string | null>(configuredMemoryModel.value);
+
+// Follows the same precedence as `configuredMemoryModel`, down to falling back
+// to the agent's own credential when no memory-specific model is configured.
+const configuredMemoryCredential = computed(() => {
+	const episodicCredential =
+		episodicMemory.value?.enabled === true
+			? (episodicMemory.value.reflectorModel?.credential ??
+				episodicMemory.value.extractorModel?.credential)
+			: null;
+
+	return (
+		episodicCredential ??
+		props.config?.memory?.observationalMemory?.reflectorModel?.credential ??
+		props.config?.memory?.observationalMemory?.observerModel?.credential ??
+		props.config?.credential ??
+		null
+	);
+});
 
 watch(
 	projectId,
@@ -203,7 +221,7 @@ function onEpisodicMemoryToggle(enabled: boolean) {
 </script>
 
 <template>
-	<div :class="[$style.container, props.disabled && $style.disabled]">
+	<div :class="$style.container">
 		<div :class="$style.header">
 			<div :class="$style.titleGroup">
 				<N8nText step="sm" bold :class="shared.dataEntryLabel">
@@ -269,6 +287,7 @@ function onEpisodicMemoryToggle(enabled: boolean) {
 							:is-loading="isLoading"
 							:project-id="projectId"
 							:warn-missing-credentials="true"
+							:bound-credential-id="configuredMemoryCredential"
 							credential-modal-append-to-body
 							data-testid="agent-memory-recall-model-selector"
 							@change="onMemoryRecallModelChange"
@@ -402,10 +421,6 @@ function onEpisodicMemoryToggle(enabled: boolean) {
 .modelSelector > *,
 .credentialPicker > * {
 	width: 100%;
-}
-
-.container.disabled {
-	opacity: 0.6;
 }
 
 .inlineInput {

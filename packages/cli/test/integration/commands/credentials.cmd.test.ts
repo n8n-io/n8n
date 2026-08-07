@@ -1,15 +1,25 @@
 import { getPersonalProject, mockInstance, testDb } from '@n8n/backend-test-utils';
+import { CredentialsEntity, DbLock, DbLockService, InstanceCredentialAssignment } from '@n8n/db';
+import { Container } from '@n8n/di';
 import * as fs from 'fs';
 import { jsonParse } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
+import * as os from 'os';
 import * as path from 'path';
 
 import '@/zod-alias-support';
 import { ImportCredentialsCommand } from '@/commands/import/credentials';
+import { InstanceCredentialBroker } from '@/credentials/instance-credential-broker';
+import type { InstanceCredentialUse } from '@/credentials/instance-credential-use.registry';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { setupTestCommand } from '@test-integration/utils/test-command';
 
-import { getAllCredentials, getAllSharedCredentials } from '../shared/db/credentials';
+import {
+	createCredentials,
+	encryptCredentialData,
+	getAllCredentials,
+	getAllSharedCredentials,
+} from '../shared/db/credentials';
 import { createMember, createOwner } from '../shared/db/users';
 
 type CredentialFixture = {
@@ -24,9 +34,25 @@ const [credentialsFixture] = jsonParse<CredentialFixture[]>(
 
 mockInstance(LoadNodesAndCredentials);
 const command = setupTestCommand(ImportCredentialsCommand);
+const IMPORT_CREDENTIAL_USE = {
+	id: 'test:credential-import',
+	credentialTypes: ['aws'],
+	validate: ({ data }) => {
+		if (data.region !== 'us-east-1') throw new Error('Invalid imported provider connection');
+	},
+} satisfies InstanceCredentialUse;
+
+beforeAll(() => {
+	Container.get(InstanceCredentialBroker).registerUse(IMPORT_CREDENTIAL_USE);
+});
 
 beforeEach(async () => {
-	await testDb.truncate(['CredentialsEntity', 'SharedCredentials', 'User']);
+	await testDb.truncate([
+		'InstanceCredentialAssignment',
+		'CredentialsEntity',
+		'SharedCredentials',
+		'User',
+	]);
 });
 
 test('import:credentials should import a credential', async () => {
@@ -423,6 +449,140 @@ test('`import:credential --projectId ...` should fail if the credential already 
 			}),
 		],
 	});
+});
+
+test('import:credentials should preserve the usage scope of existing instance credentials', async () => {
+	await createOwner();
+	await createCredentials({
+		id: '123',
+		name: 'instance-model-cred',
+		type: 'aws',
+		data: 'encrypted',
+		usageScope: 'instance',
+	});
+	await command.run(['--input=./test/integration/commands/import-credentials/credentials.json']);
+
+	const after = {
+		credentials: await getAllCredentials(),
+		sharings: await getAllSharedCredentials(),
+	};
+	expect(after.credentials).toEqual([
+		expect.objectContaining({ id: '123', usageScope: 'instance' }),
+	]);
+	expect(after.sharings).toEqual([]);
+});
+
+test('import:credentials should reject changing an existing provider connection type', async () => {
+	await createOwner();
+	await createCredentials({
+		id: '123',
+		name: 'instance-model-cred',
+		type: 'apiKey',
+		data: 'encrypted',
+		usageScope: 'instance',
+	});
+
+	await expect(
+		command.run(['--input=./test/integration/commands/import-credentials/credentials.json']),
+	).rejects.toThrow('Provider connection type cannot be changed');
+});
+
+test('import:credentials should validate an assigned provider connection', async () => {
+	await createOwner();
+	const entity = new CredentialsEntity();
+	Object.assign(entity, {
+		id: '123',
+		name: 'instance-model-cred',
+		type: 'aws',
+		data: { region: 'us-east-1' },
+		usageScope: 'instance',
+	});
+	await encryptCredentialData(entity);
+	entity.id = '123';
+	const credential = await createCredentials(entity);
+	const dbLockService = Container.get(DbLockService);
+	await dbLockService.withLock(DbLock.INSTANCE_AI_SETTINGS, async (transactionManager) => {
+		await transactionManager.insert(InstanceCredentialAssignment, {
+			credentialUseId: IMPORT_CREDENTIAL_USE.id,
+			credentialId: credential.id,
+		});
+	});
+
+	let importSettled = false;
+	let importPromise: ReturnType<typeof command.run> | undefined;
+	const withLockSpy = vi.spyOn(dbLockService, 'withLock');
+	try {
+		await dbLockService.withLock(DbLock.INSTANCE_AI_SETTINGS, async () => {
+			importPromise = command.run([
+				'--input=./test/integration/commands/import-credentials/credentials.json',
+			]);
+			void importPromise.then(
+				() => {
+					importSettled = true;
+				},
+				() => {
+					importSettled = true;
+				},
+			);
+			await vi.waitFor(() => expect(withLockSpy).toHaveBeenCalledTimes(2));
+			expect(importSettled).toBe(false);
+		});
+	} finally {
+		withLockSpy.mockRestore();
+	}
+
+	if (!importPromise) throw new Error('Expected credential import to start');
+	const importError: unknown = await importPromise.then(
+		() => undefined,
+		(error: unknown) => error,
+	);
+	expect(importError).toBeInstanceOf(Error);
+	if (!(importError instanceof Error)) throw new Error('Expected credential import to fail');
+	expect(importError.message).toContain('Invalid imported provider connection');
+	await expect(getAllCredentials()).resolves.toEqual([
+		expect.objectContaining({
+			id: credential.id,
+			name: 'instance-model-cred',
+			data: credential.data,
+		}),
+	]);
+});
+
+test.each([
+	['null', null],
+	['empty', ''],
+	['invalid', 'not-encrypted'],
+])('import:credentials should reject %s provider connection data', async (_label, data) => {
+	await createOwner();
+	const entity = new CredentialsEntity();
+	Object.assign(entity, {
+		id: '123',
+		name: 'instance-model-cred',
+		type: 'aws',
+		data: { region: 'us-east-1' },
+		usageScope: 'instance',
+	});
+	await encryptCredentialData(entity);
+	const credential = await createCredentials(entity);
+	const temporaryDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'n8n-credential-import-'));
+	const inputPath = path.join(temporaryDirectory, 'credentials.json');
+	fs.writeFileSync(
+		inputPath,
+		JSON.stringify([{ id: credential.id, name: 'changed', type: credential.type, data }]),
+	);
+
+	try {
+		await expect(command.run([`--input=${inputPath}`])).rejects.toThrow();
+	} finally {
+		fs.rmSync(temporaryDirectory, { recursive: true, force: true });
+	}
+	await expect(getAllCredentials()).resolves.toEqual([
+		expect.objectContaining({
+			id: credential.id,
+			name: 'instance-model-cred',
+			data: credential.data,
+		}),
+	]);
 });
 
 test('`import:credential --projectId ... --userId ...` fails explaining that only one of the options can be used at a time', async () => {

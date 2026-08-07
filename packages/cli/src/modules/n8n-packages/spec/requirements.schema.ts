@@ -13,7 +13,16 @@ export const packageDataTableRequirementSchema = z.object({
 	usedByWorkflows: z.array(z.string().min(1)).min(1),
 });
 
+// `name` is best-effort: a `reference-only` export lists workflows that are
+// not in the package, and their name may not be resolvable by the exporting
+// user — the id alone identifies the requirement.
 export const packageWorkflowRequirementSchema = z.object({
+	id: z.string().min(1),
+	name: z.string().min(1).optional(),
+	usedByWorkflows: z.array(z.string().min(1)).min(1),
+});
+
+export const packageTagRequirementSchema = z.object({
 	id: z.string().min(1),
 	name: z.string().min(1),
 	usedByWorkflows: z.array(z.string().min(1)).min(1),
@@ -32,10 +41,10 @@ export const packageNodeTypeRequirementSchema = z.object({
 // Variables are keyed by name, not id: a `$vars.<name>` reference resolves
 // project-scope-first then global at runtime, so one requirement may be
 // satisfied by different rows on different instances — no single portable id
-// can travel with it.
+// can travel with it. The requirement states only that the name must exist;
+// any value the package carries travels in the bundled variable file.
 export const packageVariableRequirementSchema = z.object({
 	name: z.string().min(1),
-	value: z.string().optional(),
 	usedByWorkflows: z.array(z.string().min(1)).min(1),
 });
 
@@ -84,6 +93,10 @@ export const packageRequirementsSchema = z.object({
 		.superRefine((variables, ctx) =>
 			assertNoDuplicateKey(variables, ({ name }) => name, 'variable name', ctx),
 		),
+	tags: z
+		.array(packageTagRequirementSchema)
+		.optional()
+		.superRefine((tags, ctx) => assertNoDuplicateKey(tags, ({ id }) => id, 'tag id', ctx)),
 	nodeTypes: z
 		.array(packageNodeTypeRequirementSchema)
 		.optional()
@@ -100,6 +113,7 @@ export const packageRequirementsSchema = z.object({
 export type PackageCredentialRequirement = z.infer<typeof packageCredentialRequirementSchema>;
 export type PackageDataTableRequirement = z.infer<typeof packageDataTableRequirementSchema>;
 export type PackageWorkflowRequirement = z.infer<typeof packageWorkflowRequirementSchema>;
+export type PackageTagRequirement = z.infer<typeof packageTagRequirementSchema>;
 export type PackageVariableRequirement = z.infer<typeof packageVariableRequirementSchema>;
 export type PackageNodeTypeRequirement = z.infer<typeof packageNodeTypeRequirementSchema>;
 export type PackageRequirements = z.infer<typeof packageRequirementsSchema>;

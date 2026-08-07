@@ -3459,12 +3459,12 @@ describe('TestRunnerService', () => {
 			testCaseExecutionRepository.markAllPendingAsCancelled.mockResolvedValue(undefined as never);
 
 			const capturedRunIndices: number[][] = [];
-			testCaseExecutionRepository.createPendingBatch.mockImplementation(
-				async (_runId, runIndices) => {
-					capturedRunIndices.push([...runIndices]);
-					return runIndices.map((_, i) => ({ id: `seeded-case-${i}` }) as never);
-				},
-			);
+			const capturedInputs: unknown[][] = [];
+			testCaseExecutionRepository.createPendingBatch.mockImplementation(async (_runId, cases) => {
+				capturedRunIndices.push(cases.map((c) => c.runIndex));
+				capturedInputs.push(cases.map((c) => c.inputs));
+				return cases.map((_, i) => ({ id: `seeded-case-${i}` }) as never);
+			});
 			testCaseExecutionRepository.tryMarkCaseAsRunning.mockResolvedValue(true);
 			testCaseExecutionRepository.update.mockResolvedValue({ affected: 1 } as never);
 			Object.assign(testRunRepository, {
@@ -3486,11 +3486,11 @@ describe('TestRunnerService', () => {
 				return buildCaseExecution(1);
 			});
 
-			return { capturedRunIndices };
+			return { capturedRunIndices, capturedInputs };
 		};
 
 		test('with no rowIndices, all rows run and createPendingBatch receives sequential indices', async () => {
-			const { capturedRunIndices } = setupRowIndicesMocks(5);
+			const { capturedRunIndices, capturedInputs } = setupRowIndicesMocks(5);
 
 			await testRunnerService.runTest(USER as never, WORKFLOW_ID, 1);
 
@@ -3498,12 +3498,21 @@ describe('TestRunnerService', () => {
 			expect(workflowRunner.run).toHaveBeenCalledTimes(6);
 			// createPendingBatch should have been called with [0, 1, 2, 3, 4].
 			expect(capturedRunIndices[0]).toEqual([0, 1, 2, 3, 4]);
+			// Each pending row is seeded with its dataset-row input up front, so the
+			// compare view can show it while the case is still pending.
+			expect(capturedInputs[0]).toEqual([
+				{ caseId: 0 },
+				{ caseId: 1 },
+				{ caseId: 2 },
+				{ caseId: 3 },
+				{ caseId: 4 },
+			]);
 			expect(testRunRepository.markAsCompleted).toHaveBeenCalledTimes(1);
 		});
 
 		test('with rowIndices: [7], only dataset row 7 runs and its runIndex equals 7', async () => {
 			// Dataset has 10 rows (indices 0–9). We only want row 7.
-			const { capturedRunIndices } = setupRowIndicesMocks(10);
+			const { capturedRunIndices, capturedInputs } = setupRowIndicesMocks(10);
 			testRunRepository.createTestRun.mockResolvedValue(mock<TestRun>({ id: 'tr-subset' }));
 
 			await testRunnerService
@@ -3516,6 +3525,9 @@ describe('TestRunnerService', () => {
 			expect(workflowRunner.run).toHaveBeenCalledTimes(2);
 			// The pending batch must be seeded with exactly index 7 — not 0.
 			expect(capturedRunIndices[0]).toEqual([7]);
+			// ...and its seeded input must be dataset row 7, not row 0 — proving the
+			// position→dataset-index mapping carries through to the seeded input.
+			expect(capturedInputs[0]).toEqual([{ caseId: 7 }]);
 			expect(testRunRepository.markAsCompleted).toHaveBeenCalledTimes(1);
 		});
 

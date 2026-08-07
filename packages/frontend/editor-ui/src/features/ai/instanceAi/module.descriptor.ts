@@ -36,6 +36,7 @@ export const InstanceAiModule: FrontendModuleDescription = {
 		{
 			path: '/assistant',
 			component: InstanceAiView,
+			beforeEnter: () => (useInstanceAiAvailable().value ? true : { name: VIEWS.HOMEPAGE }),
 			meta: {
 				layout: 'instanceAi',
 				middleware: ['authenticated', 'custom'],
@@ -132,6 +133,16 @@ export const InstanceAiModule: FrontendModuleDescription = {
 		// Permanent redirect from the legacy `/settings/instance-ai` path.
 		{
 			path: 'instance-ai',
+			redirect: (to) => ({ name: INSTANCE_AI_SETTINGS_VIEW, query: to.query, hash: to.hash }),
+			meta: {
+				telemetry: {
+					pageCategory: 'settings',
+				},
+			},
+		},
+		// Permanent redirect from the removed `/settings/assistant/credentials` page.
+		{
+			path: 'assistant/credentials',
 			redirect: (to) => ({ name: INSTANCE_AI_SETTINGS_VIEW, query: to.query, hash: to.hash }),
 			meta: {
 				telemetry: {

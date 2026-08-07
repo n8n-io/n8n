@@ -21,13 +21,14 @@ import { AgentsBuilderService } from '../agents-builder.service';
 const agentsSdkMocks = vi.hoisted(() => {
 	const streamCalls: Array<{
 		message: string;
-		options: { persistence: { threadId: string; resourceId: string } };
+		options: { persistence: { threadId: string; resourceId: string }; abortSignal?: AbortSignal };
 	}> = [];
+	const resumeCalls: Array<{ options: Record<string, unknown> }> = [];
 	const instructionsCalls: string[] = [];
 	const registeredToolNames: string[] = [];
 	const modelCalls: unknown[] = [];
 	const promptCachingCalls: unknown[] = [];
-	const thinkingCalls: Array<{ provider: string; config: unknown }> = [];
+	const reasoningCalls: string[] = [];
 	const skillsCalls: unknown[] = [];
 	const telemetryCalls: unknown[] = [];
 	const memoryTaskObserverCalls: unknown[] = [];
@@ -54,8 +55,8 @@ const agentsSdkMocks = vi.hoisted(() => {
 			promptCachingCalls.push(config);
 			return this;
 		}
-		thinking(provider: string, config?: unknown) {
-			thinkingCalls.push({ provider, config });
+		reasoning(effort: string) {
+			reasoningCalls.push(effort);
 			return this;
 		}
 		instructions(text: string) {
@@ -94,7 +95,8 @@ const agentsSdkMocks = vi.hoisted(() => {
 			streamCalls.push({ message, options });
 			return { stream: emptyStream() };
 		}
-		async resume() {
+		async resume(_mode: string, _resumeData: unknown, options: Record<string, unknown>) {
+			resumeCalls.push({ options });
 			return { stream: emptyStream() };
 		}
 	}
@@ -116,13 +118,18 @@ const agentsSdkMocks = vi.hoisted(() => {
 		return { model, options, kind: 'reflect' };
 	}
 
+	function createPlannerTodosTool(): BuiltTool {
+		return { name: 'write_todos', description: 'planner todos tool' } as BuiltTool;
+	}
+
 	return {
 		streamCalls,
+		resumeCalls,
 		instructionsCalls,
 		registeredToolNames,
 		modelCalls,
 		promptCachingCalls,
-		thinkingCalls,
+		reasoningCalls,
 		skillsCalls,
 		telemetryCalls,
 		memoryTaskObserverCalls,
@@ -131,14 +138,17 @@ const agentsSdkMocks = vi.hoisted(() => {
 		MockMemory,
 		createObservationLogObserveFn,
 		createObservationLogReflectFn,
+		createPlannerTodosTool,
 	};
 });
 
-vi.mock('@n8n/agents', () => ({
+vi.mock('@n8n/agents', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/agents')>()),
 	Agent: agentsSdkMocks.MockAgent,
 	Memory: agentsSdkMocks.MockMemory,
 	createObservationLogObserveFn: agentsSdkMocks.createObservationLogObserveFn,
 	createObservationLogReflectFn: agentsSdkMocks.createObservationLogReflectFn,
+	createPlannerTodosTool: agentsSdkMocks.createPlannerTodosTool,
 }));
 
 // Avoid a real `models.dev` catalog fetch — irrelevant to thread isolation and
@@ -217,16 +227,18 @@ const baseSession = {
 	hostThreadId: 'instance-thread-1',
 	runId: 'run-1',
 	modelConfig: 'anthropic/claude-sonnet-host-resolved',
+	abortSignal: new AbortController().signal,
 };
 
 describe('AgentsBuilderService session isolation', () => {
 	beforeEach(() => {
 		agentsSdkMocks.streamCalls.length = 0;
+		agentsSdkMocks.resumeCalls.length = 0;
 		agentsSdkMocks.instructionsCalls.length = 0;
 		agentsSdkMocks.registeredToolNames.length = 0;
 		agentsSdkMocks.modelCalls.length = 0;
 		agentsSdkMocks.promptCachingCalls.length = 0;
-		agentsSdkMocks.thinkingCalls.length = 0;
+		agentsSdkMocks.reasoningCalls.length = 0;
 		agentsSdkMocks.skillsCalls.length = 0;
 		agentsSdkMocks.telemetryCalls.length = 0;
 		agentsSdkMocks.memoryTaskObserverCalls.length = 0;
@@ -244,6 +256,34 @@ describe('AgentsBuilderService session isolation', () => {
 		expect(agentsSdkMocks.streamCalls[0]?.options.persistence.threadId).toBe(
 			'ia-builder:t:agent-1',
 		);
+	});
+
+	it('forwards session.abortSignal to the SDK stream and resume calls', async () => {
+		const { service, user, credentialProvider, n8nCheckpointStorage } = setup();
+		n8nCheckpointStorage.getStatus.mockResolvedValue({ status: 'active', checkpoint: {} as never });
+		const abortSignal = new AbortController().signal;
+
+		await drain(
+			service.buildAgent('agent-1', 'project-1', 'hi', credentialProvider, user, {
+				...baseSession,
+				abortSignal,
+			}),
+		);
+		await drain(
+			service.resumeBuild(
+				'agent-1',
+				'project-1',
+				'builder-run-1',
+				'tool-call-1',
+				{},
+				credentialProvider,
+				user,
+				{ ...baseSession, abortSignal },
+			),
+		);
+		expect(agentsSdkMocks.streamCalls[0]?.options.abortSignal).toBe(abortSignal);
+		expect(agentsSdkMocks.resumeCalls[0]?.options.abortSignal).toBe(abortSignal);
+		expect(n8nCheckpointStorage.getStatus).toHaveBeenCalledWith('builder-run-1', 'agent-1');
 	});
 
 	it('appends the session instructionsAddendum to the built prompt when provided', async () => {
@@ -295,7 +335,7 @@ describe('AgentsBuilderService session isolation', () => {
 		expect(n8nCheckpointStorage.delete).toHaveBeenCalledWith('run-1', 'agent-1');
 	});
 
-	it('includes the integrations skill', async () => {
+	it('includes the external services skill', async () => {
 		const { service, user, credentialProvider } = setup();
 
 		await drain(
@@ -303,7 +343,7 @@ describe('AgentsBuilderService session isolation', () => {
 		);
 
 		const skills = agentsSdkMocks.skillsCalls[0] as Array<{ id: string }>;
-		expect(skills.some((skill) => skill.id === 'agent-builder-integrations')).toBe(true);
+		expect(skills.some((skill) => skill.id === 'agent-builder-external-services')).toBe(true);
 	});
 
 	it('uses session.modelConfig directly for the builder model', async () => {
@@ -326,44 +366,21 @@ describe('AgentsBuilderService session isolation', () => {
 		expect(agentsSdkMocks.promptCachingCalls).toEqual([{ anthropic: { ttl: '5m' } }]);
 	});
 
-	it('enables adaptive thinking for an Anthropic builder model', async () => {
-		const { service, user, credentialProvider } = setup();
-
-		await drain(
-			service.buildAgent('agent-1', 'project-1', 'hi', credentialProvider, user, baseSession),
-		);
-
-		expect(agentsSdkMocks.thinkingCalls).toEqual([
-			{ provider: 'anthropic', config: { mode: 'adaptive' } },
-		]);
-	});
-
-	it('enables high-effort reasoning for an OpenAI builder model', async () => {
+	it.each([
+		['Anthropic', 'anthropic/claude-sonnet-host-resolved'],
+		['OpenAI', 'openai/gpt-5.5'],
+		['Google', 'google/gemini-2.5-pro'],
+	])('enables generic reasoning for a %s builder model', async (_provider, modelConfig) => {
 		const { service, user, credentialProvider } = setup();
 
 		await drain(
 			service.buildAgent('agent-1', 'project-1', 'hi', credentialProvider, user, {
 				...baseSession,
-				modelConfig: 'openai/gpt-5.5',
+				modelConfig,
 			}),
 		);
 
-		expect(agentsSdkMocks.thinkingCalls).toEqual([
-			{ provider: 'openai', config: { reasoningEffort: 'high' } },
-		]);
-	});
-
-	it('does not configure thinking for a provider without reasoning support', async () => {
-		const { service, user, credentialProvider } = setup();
-
-		await drain(
-			service.buildAgent('agent-1', 'project-1', 'hi', credentialProvider, user, {
-				...baseSession,
-				modelConfig: 'google/gemini-2.5-pro',
-			}),
-		);
-
-		expect(agentsSdkMocks.thinkingCalls).toEqual([]);
+		expect(agentsSdkMocks.reasoningCalls).toEqual(['medium']);
 	});
 
 	it('attaches session.telemetry when provided, and omits it otherwise', async () => {

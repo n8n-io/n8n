@@ -117,12 +117,18 @@ function telegramMethodFromUrl(url: string): string {
  * `getMe` returns the bot fixture (so the adapter learns its identity), and
  * `sendMessage` returns a minimal message; every call is recorded for assertions.
  */
-function installTelegramApiStub(bot: TelegramUserFixture) {
+function installTelegramApiStub(bot: TelegramUserFixture, failedMethods: string[] = []) {
 	let nextMessageId = 1000;
 	return installFetchStub({
 		match: /api\.telegram\.org/,
 		onRequest: ({ url, body }) => {
 			const method = telegramMethodFromUrl(url);
+			if (failedMethods.includes(method)) {
+				return {
+					apiCall: { method, body },
+					responseBody: { ok: false, error_code: 500, description: 'Test failure' },
+				};
+			}
 			let result: unknown = true;
 			if (method === 'getMe') {
 				result = bot;
@@ -158,6 +164,7 @@ export function callbackPayloadWithData(
 	payload: TelegramUpdateFixture,
 	data: string,
 	messageId: number,
+	messageText?: string,
 ): TelegramUpdateFixture {
 	return {
 		...payload,
@@ -166,7 +173,11 @@ export function callbackPayloadWithData(
 					...payload.callback_query,
 					data,
 					message: payload.callback_query.message
-						? { ...payload.callback_query.message, message_id: messageId }
+						? {
+								...payload.callback_query.message,
+								message_id: messageId,
+								...(messageText !== undefined ? { text: messageText } : {}),
+							}
 						: undefined,
 				}
 			: undefined,
@@ -178,9 +189,10 @@ export async function createTelegramReplayContext(
 	options: {
 		stream?: StreamChunk[];
 		integration?: AgentIntegrationConfig;
+		failedApiMethods?: string[];
 	} = {},
 ): Promise<TelegramReplayContext> {
-	const stub = installTelegramApiStub(fixtures.bot);
+	const stub = installTelegramApiStub(fixtures.bot, options.failedApiMethods);
 
 	// Dynamic imports — the chat packages are ESM-only. Unlike production (which
 	// must route through esm-loader to dodge the CJS transform), vitest loads ESM
@@ -251,6 +263,7 @@ export async function createTelegramReplayContext(
 
 export function getTelegramInlineCallbackData(
 	call: TelegramApiCall | undefined,
+	buttonIndex = 0,
 ): string | undefined {
 	// The real adapter sends `reply_markup` as a JSON object in the request body
 	// (Telegram accepts it inline in JSON mode); tolerate a stringified form too.
@@ -266,5 +279,5 @@ export function getTelegramInlineCallbackData(
 	if (!markup || typeof markup !== 'object') return undefined;
 	const inlineKeyboard = (markup as { inline_keyboard?: Array<Array<{ callback_data?: string }>> })
 		.inline_keyboard;
-	return inlineKeyboard?.[0]?.[0]?.callback_data;
+	return inlineKeyboard?.flat()[buttonIndex]?.callback_data;
 }

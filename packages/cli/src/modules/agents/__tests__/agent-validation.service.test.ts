@@ -1,9 +1,10 @@
 import type { CredentialProvider } from '@n8n/agents';
-import type { AgentJsonConfig } from '@n8n/api-types';
+import { AI_GATEWAY_MANAGED_TAG, type AgentJsonConfig } from '@n8n/api-types';
 import type { WorkflowRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import type { NodeTypes } from '@/node-types';
+import type { AiGatewayService } from '@/services/ai-gateway.service';
 
 import type { AgentSkillsService } from '../agent-skills.service';
 import { AgentValidationService } from '../agent-validation.service';
@@ -56,12 +57,11 @@ function makeService() {
 	agentTaskSnapshotRepository.findByVersionId.mockResolvedValue([]);
 	const nodeTypes = mock<NodeTypes>();
 	const workflowRepository = mock<WorkflowRepository>();
-	workflowRepository.findOne.mockResolvedValue(null);
-	workflowRepository.find.mockResolvedValue([]);
+	workflowRepository.findManyByAgentToolReferences.mockResolvedValue([]);
 	agentRepository.findByIdsAndProjectId.mockResolvedValue([]);
 	const chatIntegrationRegistry = mock<ChatIntegrationRegistry>();
 	chatIntegrationRegistry.get.mockReturnValue(undefined);
-
+	const aiGatewayService = mock<AiGatewayService>();
 	return {
 		service: new AgentValidationService(
 			agentRepository,
@@ -70,6 +70,7 @@ function makeService() {
 			nodeTypes,
 			workflowRepository,
 			chatIntegrationRegistry,
+			aiGatewayService,
 		),
 		agentRepository,
 		agentSkillsService,
@@ -78,6 +79,7 @@ function makeService() {
 		nodeTypes,
 		workflowRepository,
 		chatIntegrationRegistry,
+		aiGatewayService,
 	};
 }
 
@@ -164,6 +166,57 @@ describe('AgentValidationService — structured issues', () => {
 		);
 	});
 
+	it('accepts the n8n Connect managed tag on the main model when the gateway serves the provider, else flags it', async () => {
+		const { service, agentRepository, aiGatewayService } = makeService();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({ ...runnableConfig, credential: AI_GATEWAY_MANAGED_TAG }),
+		);
+
+		// Gateway serves the model's provider → the managed credential is valid.
+		aiGatewayService.getCredentialTypeForProviderCached.mockReturnValue('openAiApi');
+		const served = await service.validateAgentConfiguration(
+			agentId,
+			projectId,
+			makeCredentialProvider([]),
+		);
+		expect(served.issues).not.toEqual(
+			expect.arrayContaining([expect.objectContaining({ path: 'credential' })]),
+		);
+
+		// Cached config present but does not serve the provider → incompatible_credential.
+		aiGatewayService.getCredentialTypeForProviderCached.mockReturnValue(null);
+		const unserved = await service.validateAgentConfiguration(
+			agentId,
+			projectId,
+			makeCredentialProvider([]),
+		);
+		expect(unserved.issues).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ code: 'incompatible_credential', path: 'credential' }),
+			]),
+		);
+	});
+
+	it('does not flag the managed tag when gateway support cannot be determined (no cached config)', async () => {
+		const { service, agentRepository, aiGatewayService } = makeService();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({ ...runnableConfig, credential: AI_GATEWAY_MANAGED_TAG }),
+		);
+		// No cached config (e.g. cold start or a throttled/failed fetch) → support is
+		// unknown. The static validator must fail open rather than block a working agent.
+		aiGatewayService.getCredentialTypeForProviderCached.mockReturnValue(undefined);
+
+		const result = await service.validateAgentConfiguration(
+			agentId,
+			projectId,
+			makeCredentialProvider([]),
+		);
+
+		expect(result.issues).not.toEqual(
+			expect.arrayContaining([expect.objectContaining({ path: 'credential' })]),
+		);
+	});
+
 	it('flags a node tool missing a required credential slot but accepts one with the slot configured and accessible', async () => {
 		const { service, agentRepository, nodeTypes } = makeService();
 		nodeTypes.getByNameAndVersion.mockReturnValue({
@@ -243,6 +296,176 @@ describe('AgentValidationService — structured issues', () => {
 							nodeType: 'n8n-nodes-base.httpRequest',
 							nodeTypeVersion: 1,
 							nodeParameters: { provideSslCertificates: false },
+						},
+					},
+				],
+			}),
+		);
+
+		const result = await service.validateAgentConfiguration(
+			agentId,
+			projectId,
+			makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
+		);
+
+		expect(result).toEqual({ status: 'valid', issues: [] });
+	});
+
+	it('treats an n8n Connect managed node-tool credential as satisfied when the gateway covers it', async () => {
+		const { service, agentRepository, nodeTypes, aiGatewayService } = makeService();
+		nodeTypes.getByNameAndVersion.mockReturnValue({
+			description: { credentials: [{ name: 'slackApi', required: true }], properties: [] },
+		} as never);
+		aiGatewayService.isAvailable.mockResolvedValue({
+			available: true,
+			config: {
+				nodes: ['n8n-nodes-base.slack'],
+				credentialTypes: ['slackApi'],
+				providerConfig: {},
+			},
+		} as never);
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({
+				...runnableConfig,
+				tools: [
+					{
+						type: 'node',
+						name: 'send_message',
+						node: {
+							nodeType: 'n8n-nodes-base.slackTool',
+							nodeTypeVersion: 1,
+							nodeParameters: {},
+							credentials: {
+								slackApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+							},
+						},
+					},
+				],
+			}),
+		);
+
+		const result = await service.validateAgentConfiguration(
+			agentId,
+			projectId,
+			makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
+		);
+
+		expect(result).toEqual({ status: 'valid', issues: [] });
+	});
+
+	it('flags an n8n Connect managed node-tool credential when the config no longer covers the node', async () => {
+		const { service, agentRepository, nodeTypes, aiGatewayService } = makeService();
+		nodeTypes.getByNameAndVersion.mockReturnValue({
+			description: { credentials: [{ name: 'slackApi', required: true }], properties: [] },
+		} as never);
+		aiGatewayService.isAvailable.mockResolvedValue({
+			available: true,
+			config: {
+				nodes: ['n8n-nodes-base.notion'],
+				credentialTypes: ['notionApi'],
+				providerConfig: {},
+			},
+		} as never);
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({
+				...runnableConfig,
+				tools: [
+					{
+						type: 'node',
+						name: 'send_message',
+						node: {
+							nodeType: 'n8n-nodes-base.slackTool',
+							nodeTypeVersion: 1,
+							nodeParameters: {},
+							credentials: {
+								slackApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+							},
+						},
+					},
+				],
+			}),
+		);
+
+		const result = await service.validateAgentConfiguration(
+			agentId,
+			projectId,
+			makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
+		);
+
+		expect(result.status).toBe('invalid');
+		expect(result.issues).toContainEqual(
+			expect.objectContaining({
+				code: 'invalid_credential',
+				path: 'tools.0.node.credentials.slackApi',
+			}),
+		);
+	});
+
+	it('flags an n8n Connect managed node-tool credential when the feature is disabled', async () => {
+		const { service, agentRepository, nodeTypes, aiGatewayService } = makeService();
+		nodeTypes.getByNameAndVersion.mockReturnValue({
+			description: { credentials: [{ name: 'slackApi', required: true }], properties: [] },
+		} as never);
+		aiGatewayService.isAvailable.mockResolvedValue({ available: false } as never);
+		aiGatewayService.isEnabled.mockReturnValue(false);
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({
+				...runnableConfig,
+				tools: [
+					{
+						type: 'node',
+						name: 'send_message',
+						node: {
+							nodeType: 'n8n-nodes-base.slackTool',
+							nodeTypeVersion: 1,
+							nodeParameters: {},
+							credentials: {
+								slackApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+							},
+						},
+					},
+				],
+			}),
+		);
+
+		const result = await service.validateAgentConfiguration(
+			agentId,
+			projectId,
+			makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
+		);
+
+		expect(result.status).toBe('invalid');
+		expect(result.issues).toContainEqual(
+			expect.objectContaining({
+				code: 'invalid_credential',
+				path: 'tools.0.node.credentials.slackApi',
+			}),
+		);
+	});
+
+	it('does not flag a managed node-tool credential when the gateway is enabled but its config is unavailable', async () => {
+		// Indeterminate gateway state (e.g. transient config fetch failure) must
+		// not fail closed, mirroring the managed main-credential policy.
+		const { service, agentRepository, nodeTypes, aiGatewayService } = makeService();
+		nodeTypes.getByNameAndVersion.mockReturnValue({
+			description: { credentials: [{ name: 'slackApi', required: true }], properties: [] },
+		} as never);
+		aiGatewayService.isAvailable.mockResolvedValue({ available: false } as never);
+		aiGatewayService.isEnabled.mockReturnValue(true);
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({
+				...runnableConfig,
+				tools: [
+					{
+						type: 'node',
+						name: 'send_message',
+						node: {
+							nodeType: 'n8n-nodes-base.slackTool',
+							nodeTypeVersion: 1,
+							nodeParameters: {},
+							credentials: {
+								slackApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+							},
 						},
 					},
 				],
@@ -548,6 +771,57 @@ describe('AgentValidationService — structured issues', () => {
 		);
 	});
 
+	it('flags a vector store whose derived tool name collides with a configured tool', async () => {
+		const { service, agentRepository } = makeService();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent(
+				{
+					...runnableConfig,
+					tools: [{ type: 'custom', id: 'search_product_docs' }],
+					vectorStores: [
+						{
+							provider: 'qdrant',
+							name: 'product-docs',
+							credential: 'qdrant-cred',
+							useWhen: 'Search product docs',
+							embedding: {
+								model: 'openai/text-embedding-3-small',
+								credential: 'embed-cred',
+							},
+							collectionName: 'product-docs',
+						},
+					],
+				},
+				{},
+				{
+					tools: {
+						search_product_docs: {
+							code: '',
+							descriptor: { name: 'search_product_docs' },
+						},
+					} as unknown as Agent['tools'],
+				},
+			),
+		);
+
+		const result = await service.validateAgentConfiguration(
+			agentId,
+			projectId,
+			makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
+		);
+
+		expect(result.status).toBe('invalid');
+		expect(result.issues).toEqual(
+			expect.arrayContaining([
+				{
+					code: 'invalid_value',
+					path: 'vectorStores.0.name',
+					capability: { kind: 'vectorStore', id: 'product-docs', index: 0 },
+				},
+			]),
+		);
+	});
+
 	it('flags an enabled task with an invalid schedule while keeping its body available, but ignores the same invalid body on a disabled task', async () => {
 		const { service, agentRepository, agentTaskRepository } = makeService();
 		agentTaskRepository.findByAgentId.mockResolvedValue([
@@ -678,10 +952,11 @@ describe('AgentValidationService — structured issues', () => {
 					],
 				},
 				tools: [
-					{ type: 'workflow', workflow: 'Workflow A' },
-					{ type: 'workflow', workflow: 'Workflow A' },
+					{ type: 'workflow', workflowId: 'wf-a', workflow: 'Old Workflow A' },
+					{ type: 'workflow', workflowId: 'wf-a', workflow: 'Old Workflow A' },
 					{ type: 'workflow', workflow: 'Workflow B' },
 					{ type: 'workflow', workflow: 'Workflow C' },
+					{ type: 'workflow', workflowId: 'wf-missing', workflow: 'Workflow A' },
 				],
 			}),
 		);
@@ -689,7 +964,7 @@ describe('AgentValidationService — structured issues', () => {
 			{ id: 'sub-1', activeVersionId: 'version-1' },
 			{ id: 'sub-3', activeVersionId: null },
 		] as never);
-		workflowRepository.find.mockResolvedValue([
+		workflowRepository.findManyByAgentToolReferences.mockResolvedValue([
 			{
 				id: 'wf-a',
 				name: 'Workflow A',
@@ -738,6 +1013,11 @@ describe('AgentValidationService — structured issues', () => {
 				code: 'incompatible_reference',
 				path: 'tools.3.workflow',
 				capability: { kind: 'tool', id: 'Workflow C', index: 3, toolType: 'workflow' },
+			},
+			{
+				code: 'missing_reference',
+				path: 'tools.4.workflowId',
+				capability: { kind: 'tool', id: 'Workflow A', index: 4, toolType: 'workflow' },
 			},
 		]);
 	});

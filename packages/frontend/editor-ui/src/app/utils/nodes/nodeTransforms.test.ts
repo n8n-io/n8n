@@ -7,6 +7,14 @@ import type { INodePropertyOptions, INodeTypeDescription } from 'n8n-workflow';
 import { getParameterDisplayableOptions, serializeNode } from './nodeTransforms';
 import type { INodeUi } from '@/Interface';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
+
+vi.mock('@/features/shared/envFeatureFlag/useEnvFeatureFlag', () => ({
+	useEnvFeatureFlag: vi.fn(),
+}));
+
+// Controls which env feature flags the mocked composable reports as enabled.
+const enabledEnvFeatureFlags = new Set<string>();
 
 vi.mock('n8n-workflow', async (importOriginal) => ({
 	...(await importOriginal()),
@@ -32,6 +40,12 @@ describe('getParameterDisplayableOptions', () => {
 		setActivePinia(pinia);
 
 		vi.clearAllMocks();
+		enabledEnvFeatureFlags.clear();
+		vi.mocked(useEnvFeatureFlag).mockReturnValue({
+			check: {
+				value: (flag: string) => enabledEnvFeatureFlags.has(flag),
+			},
+		} as unknown as ReturnType<typeof useEnvFeatureFlag>);
 
 		mockNodeType = {
 			name: 'testNode',
@@ -226,6 +240,33 @@ describe('getParameterDisplayableOptions', () => {
 			expect(option1Index).toBeLessThan(option2Index);
 			expect(option2Index).toBeLessThan(option3Index);
 			expect(option3Index).toBeLessThan(option4Index);
+		});
+	});
+
+	describe('envFeatureFlag gating', () => {
+		const flaggedOption: INodePropertyOptions = {
+			name: 'Flagged Option',
+			value: 'flagged',
+			envFeatureFlag: 'SOME_FLAG',
+		};
+
+		beforeEach(() => {
+			vi.mocked(NodeHelpers.displayParameter).mockReturnValue(true);
+		});
+
+		it('hides an option whose env feature flag is disabled', () => {
+			const result = getParameterDisplayableOptions([testOptions[0], flaggedOption], mockNode);
+
+			expect(result).toContainEqual(testOptions[0]);
+			expect(result).not.toContainEqual(flaggedOption);
+		});
+
+		it('shows an option whose env feature flag is enabled', () => {
+			enabledEnvFeatureFlags.add('SOME_FLAG');
+
+			const result = getParameterDisplayableOptions([testOptions[0], flaggedOption], mockNode);
+
+			expect(result).toContainEqual(flaggedOption);
 		});
 	});
 

@@ -9,6 +9,7 @@
 // ---------------------------------------------------------------------------
 
 import type { InstanceAiRunDebugResponse } from '@n8n/api-types';
+import { sleep } from '@n8n/utils/sleep';
 
 import type { LaneAllocator } from './lane-allocator';
 import { selectAuthorExpectations } from '../build-expectations/select';
@@ -16,23 +17,31 @@ import { allFailVerdicts, verifyBuildExpectations } from '../build-expectations/
 import type { CliArgs } from '../cli/args';
 import { buildWorkflowViaMcp, type McpBuildSettings } from '../cli/mcp-builder';
 import type { N8nClient } from '../clients/n8n-client';
+import {
+	fetchAgentScenarioContext,
+	findAgentArtifactRef,
+	type executeAgentScenario,
+} from '../harness/agent-execution';
+import { resolveArtifactContext } from '../harness/artifacts/artifact-context';
+import { attributionForExpectation } from '../harness/attribution';
+import { buildFailedOnInfra, type BuildResult } from '../harness/build-workflow';
 import { captureThreadRunDebug } from '../harness/capture-run-debug';
+import { effectiveTimeoutMs, runWorkflowChecks } from '../harness/cleanup';
 import type { EvalLogger } from '../harness/logger';
 import {
 	fetchPrebuiltBuild,
 	pickPrebuiltWorkflowId,
 	type PrebuiltManifest,
 } from '../harness/prebuilt-workflows';
+import type { executeScenario } from '../harness/scenario-execution';
+import type { ScenarioSeedContext } from '../harness/seed-tables';
 import {
-	effectiveTimeoutMs,
-	fetchAgentScenarioContext,
-	findAgentArtifactRef,
-	runWorkflowChecks,
-	type BuildResult,
-	type executeAgentScenario,
-	type executeScenario,
-} from '../harness/runner';
-import { isTransientNetworkError } from '../harness/transient-error';
+	findProviderOutage,
+	isRequestAbort,
+	isTransientNetworkError,
+	MAX_PROVIDER_BUILD_ATTEMPTS,
+	providerRetryBackoffMs,
+} from '../harness/transient-error';
 import type {
 	BuildExpectationResult,
 	ExecutionScenario,
@@ -49,6 +58,9 @@ export interface Lane {
 	/** Base URL the client was constructed with, forwarded for the HTML report. */
 	baseUrl: string;
 	preRunWorkflowIds: Set<string>;
+	/** Data tables present before any build here — the scenario-table eviction's
+	 *  allowlist, so it can't delete a concurrent iteration's live table. */
+	preRunDataTableIds: Set<string>;
 	claimedWorkflowIds: Set<string>;
 	/** Credentials created for test cases on this lane; cleaned up after the run. */
 	createdCredentialIds: Set<string>;
@@ -62,8 +74,8 @@ export interface Lane {
 }
 
 /** One `claude` build's Anthropic spend (`--build-via-mcp` only). Mirrors
- *  McpBuildResult: the numbers cover the LAST attempt, so totals are a lower
- *  bound when retries happened (same semantics as the manifest flow's stats). */
+ *  McpBuildResult: cost and turns are summed across every attempt of the
+ *  build, so totals are the run's true spend (failed attempts cost money too). */
 export interface McpBuildSpend {
 	costUsd: number;
 	turns: number;
@@ -74,9 +86,7 @@ export type BuildArgs = Pick<
 	| 'conversation'
 	| 'messageBudget'
 	| 'credentials'
-	| 'seedFile'
-	| 'priorConversation'
-	| 'seedThread'
+	| 'seed'
 	| 'executionScenarios'
 	| 'outcomeExpectations'
 > & { timeoutMs: number };
@@ -96,6 +106,7 @@ export interface LaneState {
 		workflowJsons: BuildResult['workflowJsons'];
 		buildTrace?: BuildResult['buildTrace'];
 		timeoutMs: number;
+		seedContext?: ScenarioSeedContext;
 	}) => Promise<Awaited<ReturnType<typeof executeScenario>>>;
 	tracedExecuteAgent: (execArgs: {
 		agentId: string;
@@ -200,6 +211,9 @@ export interface CachedBuild {
 	build: BuildResult;
 	lane: LaneState;
 	buildDurationMs: number;
+	/** `claude` spend for this case's build (`--build-via-mcp` only) — feeds the
+	 *  per-row build_cost_usd/build_turns feedback and eval-results.json. */
+	buildSpend?: McpBuildSpend;
 }
 
 export interface BuildOrchestratorDeps {
@@ -218,6 +232,8 @@ export interface BuildOrchestratorDeps {
 	buildExpectationsByKey: Map<string, Promise<BuildExpectationResult[]>>;
 	runDebugByThreadId: Map<string, Promise<InstanceAiRunDebugResponse[]>>;
 	agentContextByKey: Map<string, Promise<string>>;
+	/** Injectable delay for the provider-outage retry backoff — tests pass a no-op. */
+	sleep?: (ms: number) => Promise<void>;
 }
 
 export interface BuildOrchestrator {
@@ -245,13 +261,45 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 		runDebugByThreadId,
 		agentContextByKey,
 	} = deps;
+	const delay = deps.sleep ?? sleep;
 
 	// A build that sat out its timeout against a dead lane reports "Run timed
 	// out", not "fetch failed" — so any failed build also health-probes its lane.
+	// A request abort counts too; the chat loop's own overrun ("Run timed out after
+	// Nms") does not — that is the agent being slow on a healthy lane.
 	async function isTransportFailure(build: BuildResult, lane: LaneState): Promise<boolean> {
 		if (build.success) return false;
-		if (build.error !== undefined && isTransientNetworkError(build.error)) return true;
+		if (
+			build.error !== undefined &&
+			(isTransientNetworkError(build.error) || isRequestAbort(build.error))
+		) {
+			return true;
+		}
 		return !(await laneHealthy(lane));
+	}
+
+	/**
+	 * Classify a finished build and stamp the failure fields the row layer reads.
+	 * A provider outage is transient even though the lane is perfectly healthy —
+	 * the failure is upstream of it — so it has to be detected before the health
+	 * probe gets a vote (TRUST-374).
+	 */
+	async function classifyBuildFailure(
+		build: BuildResult,
+		lane: LaneState,
+		since: number,
+	): Promise<{ transient: boolean; providerOutage?: string }> {
+		if (build.success) return { transient: false };
+		const providerOutage = findProviderOutage(build);
+		if (providerOutage !== undefined) {
+			build.providerOutage = providerOutage;
+			build.transportFailure = true;
+			return { transient: true, providerOutage };
+		}
+		const transient =
+			(await isTransportFailure(build, lane)) || allocator.wasQuarantinedSince(lane, since);
+		build.transportFailure = transient;
+		return { transient };
 	}
 
 	const buildCache = new Map<string, Promise<CachedBuild>>();
@@ -290,31 +338,57 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 	function stashBuildExpectations(
 		key: string,
 		fileSlug: string,
+		client: N8nClient,
 		build: BuildResult,
 		isPrebuilt: boolean,
 	): void {
 		const testCase = testCaseByFileSlug.get(fileSlug);
 		if (!testCase) return;
-		const { expectations, transcript } = selectAuthorExpectations({
+		const { expectations, transcript, unjudged } = selectAuthorExpectations({
 			testCase,
 			transcript: build.transcript,
 			buildSucceeded: build.success,
 			isPrebuilt,
 			logger,
 		});
+		// Attributed here, where we still know WHY the build ended: a build that
+		// died on infra produced nothing to judge, so its expectations are unowned
+		// rather than the agent's miss. Both readers of this map (the row outputs
+		// and reshape's side band) then carry the same verdict (TRUST-375).
+		const infraFailed = buildFailedOnInfra(build);
+		const attribute = (verdicts: BuildExpectationResult[]): BuildExpectationResult[] =>
+			verdicts.map((v) => ({ ...v, attribution: attributionForExpectation(v, infraFailed) }));
+		// Recorded as incomplete rather than dropped, so the case keeps its unit
+		// count and the report says why they weren't graded.
+		if (unjudged.length > 0) {
+			buildExpectationsByKey.set(key, Promise.resolve(attribute(unjudged)));
+			return;
+		}
 		if (expectations.length === 0) return;
 		buildExpectationsByKey.set(
 			key,
-			verifyBuildExpectations(expectations, {
-				transcript,
-				workflowJson: build.workflowJsons[0],
-				metrics: build.conversationMetrics,
-			}).catch((error: unknown) =>
-				allFailVerdicts(
-					expectations,
-					`judge error: ${error instanceof Error ? error.message : String(error)}`,
-				),
-			),
+			(async () =>
+				await verifyBuildExpectations(expectations, {
+					transcript,
+					workflowJson: build.workflowJsons[0],
+					metrics: build.conversationMetrics,
+					// Rendered non-workflow artifacts (agent AND config-eval), sectioned
+					// with "(no <type> produced)" fallbacks, so outcome expectations can
+					// judge artifact existence, absence and content — parity with the
+					// retired direct loop, which always threaded resolveArtifactContext.
+					artifactContext: await resolveArtifactContext({
+						artifactRefs: build.artifactRefs ?? [],
+						client,
+						logger,
+					}),
+				}))()
+				.catch((error: unknown) =>
+					allFailVerdicts(
+						expectations,
+						`judge error: ${error instanceof Error ? error.message : String(error)}`,
+					),
+				)
+				.then(attribute),
 		);
 	}
 
@@ -335,6 +409,9 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 				const lane = await allocator.acquire(fileSlug);
 				const start = Date.now();
 				let build: BuildResult;
+				// Local collector so this case's spend stays attributable to its own
+				// rows; drained into the run-wide record right after the build.
+				const caseSpend: McpBuildSpend[] = [];
 				try {
 					build = await buildWorkflowViaMcpOnLane({
 						lane: lane.runner,
@@ -344,7 +421,7 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 						args,
 						logDir: mcpBuildLogDir ?? process.cwd(),
 						logger,
-						buildSpend: mcpBuildSpend,
+						buildSpend: caseSpend,
 					});
 				} finally {
 					// Release as soon as the build (incl. fetch-back) is done — the
@@ -352,9 +429,9 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 					// holding the slot through it would idle the lane's build capacity.
 					allocator.release(lane, fileSlug);
 				}
+				mcpBuildSpend.push(...caseSpend);
 				{
-					const transient = await isTransportFailure(build, lane);
-					if (!build.success) build.transportFailure = transient;
+					const { transient } = await classifyBuildFailure(build, lane, start);
 					allocator.reportBuildOutcome(lane, transient ? 'transient-failure' : 'ok');
 				}
 				const buildDurationMs = Date.now() - start;
@@ -364,17 +441,19 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 				stashTranscript(build);
 				// isPrebuilt=true: MCP builds have no build transcript, so only
 				// outcome expectations are judged (against the workflow), like prebuilt.
-				stashBuildExpectations(key, fileSlug, build, true);
+				stashBuildExpectations(key, fileSlug, lane.runner.client, build, true);
 				stashRunDebug(lane.runner.client, build);
 				if (build.success && !build.workflowChecks) {
 					build.workflowChecks = await runWorkflowChecks({
 						workflow: build.workflowJsons[0],
-						prompt: conversationUserTurnsAsText(entry.conversation ?? []),
+						prompt: conversationUserTurnsAsText(entry.conversation ?? [], entry.seed),
 						agentText: undefined,
 						logger,
 					});
 				}
-				return { build, lane, buildDurationMs };
+				// One collector entry per buildWorkflowViaMcpOnLane call (attempts are
+				// summed inside buildWorkflowViaMcp), so [0] is this build's whole spend.
+				return { build, lane, buildDurationMs, buildSpend: caseSpend[0] };
 			}
 			const prebuiltId = pickPrebuiltWorkflowId(prebuiltManifest, fileSlug, iteration);
 			if (prebuiltId !== undefined) {
@@ -390,16 +469,19 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 				const buildDurationMs = Date.now() - start;
 				buildDurations.set(key, buildDurationMs);
 				stashTranscript(build);
-				stashBuildExpectations(key, fileSlug, build, true);
+				stashBuildExpectations(key, fileSlug, lane.runner.client, build, true);
 				stashRunDebug(lane.runner.client, build);
 				if (build.success && !build.workflowChecks) {
 					// No transcript in prebuilt mode, but the authored conversation still
 					// carries the user's request — feed it so prompt-aware checks (e.g.
 					// fulfills_user_request) grade against real intent instead of "".
-					const conversation = testCaseByFileSlug.get(fileSlug)?.conversation ?? [];
+					const prebuiltCase = testCaseByFileSlug.get(fileSlug);
 					build.workflowChecks = await runWorkflowChecks({
 						workflow: build.workflowJsons[0],
-						prompt: conversationUserTurnsAsText(conversation),
+						prompt: conversationUserTurnsAsText(
+							prebuiltCase?.conversation ?? [],
+							prebuiltCase?.seed,
+						),
 						agentText: undefined,
 						logger,
 					});
@@ -428,9 +510,7 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 						conversation: entry.conversation,
 						messageBudget: entry.messageBudget,
 						credentials: entry.credentials,
-						seedFile: entry.seedFile,
-						priorConversation: entry.priorConversation,
-						seedThread: entry.seedThread,
+						seed: entry.seed,
 						executionScenarios: entry.executionScenarios,
 						outcomeExpectations: entry.outcomeExpectations,
 						timeoutMs,
@@ -439,21 +519,25 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 					allocator.release(lane, fileSlug);
 				}
 				buildDurationMs = Date.now() - start;
-				const transient =
-					(await isTransportFailure(build, lane)) ||
-					(!build.success && allocator.wasQuarantinedSince(lane, start));
-				if (!build.success) build.transportFailure = transient;
+				const { transient, providerOutage } = await classifyBuildFailure(build, lane, start);
 				allocator.reportBuildOutcome(lane, transient ? 'transient-failure' : 'ok');
-				if (!transient || attempt >= MAX_BUILD_ATTEMPTS) break;
+				const maxAttempts = providerOutage ? MAX_PROVIDER_BUILD_ATTEMPTS : MAX_BUILD_ATTEMPTS;
+				if (!transient || attempt >= maxAttempts) break;
+				// A provider outage is upstream of every lane, so an instant retry just
+				// re-hits it — and the queue then drains at the speed of the failures.
+				const backoffMs = providerOutage ? providerRetryBackoffMs(attempt) : 0;
 				logger.warn(
-					`Build ${fileSlug} attempt ${String(attempt)}/${String(MAX_BUILD_ATTEMPTS)} failed transiently on lane ${String(lane.laneNum)} (${build.error ?? 'unknown'}); retrying on another lane`,
+					providerOutage
+						? `Build ${fileSlug} attempt ${String(attempt)}/${String(maxAttempts)} hit a provider outage (${providerOutage}); waiting ${String(Math.round(backoffMs / 1000))}s before retrying`
+						: `Build ${fileSlug} attempt ${String(attempt)}/${String(maxAttempts)} failed transiently on lane ${String(lane.laneNum)} (${build.error ?? 'unknown'}); retrying on another lane`,
 				);
+				if (backoffMs > 0) await delay(backoffMs);
 				lane = await allocator.acquire(fileSlug, { not: lane });
 			}
 			buildDurations.set(key, buildDurationMs);
 			stashTranscript(build);
-			stashBuildExpectations(key, fileSlug, build, false);
 			stashAgentContext(key, lane.runner.client, build);
+			stashBuildExpectations(key, fileSlug, lane.runner.client, build, false);
 			stashRunDebug(lane.runner.client, build);
 			logger.info(
 				`[lane ${String(lane.laneNum)}] built ${fileSlug} (iteration ${String(iteration)}) thread=${build.threadId ?? 'none'} success=${String(build.success)}`,
@@ -466,9 +550,12 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 		buildCache.set(key, promise);
 		// Evict transport-failed builds so a later scenario rebuilds. Agent build
 		// failures stay cached — they are the verdict; rebuilding just multiplies cost.
+		// Provider outages also stay cached: the retry budget (with its backoff) is
+		// already spent, every scenario of the case would hit the same upstream, and
+		// recovery is the run dispatcher's job, not another local rebuild.
 		void promise.then(
 			({ build, lane }) => {
-				if (build.transportFailure) {
+				if (build.transportFailure && !build.providerOutage) {
 					orphanedBuilds.push({ build, client: lane.runner.client });
 					buildCache.delete(key);
 				}

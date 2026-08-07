@@ -28,9 +28,11 @@ import {
 	isUsableAsAgentTool,
 } from '../ephemeral-node-executor';
 
-// vitest-mock-extended's recursive DeepPartial narrows nested objects (e.g. `defaults`),
-// so a full INodeTypeDescription isn't assignable to the partial. Cast through this helper.
-const mockNodeType = (overrides: object = {}) => mock<INodeType>(overrides as never);
+// Assign overrides onto an empty mock instead of passing them to mock():
+// mock(overrides) deep-wraps nested objects in proxies and mutates shared
+// fixtures (e.g. `toolDescription`) in place, stacking a proxy layer per call.
+// Assigning also sidesteps DeepPartial narrowing of nested objects like `defaults`.
+const mockNodeType = (overrides: object = {}) => Object.assign(mock<INodeType>(), overrides);
 
 const mockGetBase = vi.fn();
 
@@ -397,6 +399,26 @@ describe('EphemeralNodeExecutor', () => {
 					projectId: 'p-1',
 				}),
 			).rejects.toThrow(/has type .* but the node expects credential slot/);
+		});
+
+		it('passes an n8n Connect managed credential through without a project lookup', async () => {
+			mockToolNodeWithSupplyData();
+
+			const result = await executor.executeInline({
+				nodeType: 'n8n-nodes-base.slack',
+				nodeTypeVersion: 1,
+				nodeParameters: {},
+				credentialDetails: {
+					slackApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+				},
+				inputData: [],
+				projectId: 'p-1',
+			});
+
+			expect(result.status).toBe('success');
+			// Managed credentials are minted per execution (CredentialsHelper.getDecrypted),
+			// so there is no stored row to resolve — the project lookup must be skipped.
+			expect(sharedCredentialsRepository.findOne).not.toHaveBeenCalled();
 		});
 	});
 

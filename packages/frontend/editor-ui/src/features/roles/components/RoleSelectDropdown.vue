@@ -8,15 +8,12 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
-import type {
-	SelectItemProps,
-	SelectValue,
-} from '@n8n/design-system/v2/components/Select/Select.types';
+import type { SelectItemProps, SelectValue, SelectVariants } from '@n8n/design-system';
 import type { Role } from '@n8n/permissions';
 import { computed, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import RoleHoverPopover from './RoleHoverPopover.vue';
 import RoleContactAdminModal from './RoleContactAdminModal.vue';
 import CustomRolesUpgradeModal from './CustomRolesUpgradeModal.vue';
@@ -35,7 +32,14 @@ const props = withDefaults(
 		canManageRoles: boolean;
 		addCustomRoleRouteName: string;
 		loading?: boolean;
+		disabled?: boolean;
 		testId?: string;
+		variant?: SelectVariants;
+		// Shown in the trigger when no role is selected (e.g. an unset mapping rule).
+		placeholder?: string;
+		// Optional terminal (non-role) option rendered after a separator at the
+		// bottom of the list, e.g. "Block access". Selecting it emits its value.
+		terminalOption?: { value: string; label: string };
 		// Optional RoleHoverPopover overrides — defaults to project-scoped values when omitted.
 		permissionCountFn?: (role: Role) => number;
 		totalPermissions?: number;
@@ -45,7 +49,11 @@ const props = withDefaults(
 	}>(),
 	{
 		loading: false,
+		disabled: false,
 		testId: 'role-dropdown',
+		variant: 'ghost',
+		placeholder: undefined,
+		terminalOption: undefined,
 		permissionCountFn: undefined,
 		totalPermissions: undefined,
 		editRouteName: undefined,
@@ -88,6 +96,15 @@ const closeDropdown = () => {
 const selectedRole = computed(() =>
 	[...props.systemRoles, ...props.customRoles].find((role) => role.slug === props.currentRole),
 );
+
+// Trigger label: a real role's name, or the terminal option's label when selected.
+const selectedLabel = computed(() => {
+	if (selectedRole.value) return selectedRole.value.displayName;
+	if (props.terminalOption && props.currentRole === props.terminalOption.value) {
+		return props.terminalOption.label;
+	}
+	return undefined;
+});
 
 const filteredSystemRoles = computed(() => {
 	const query = searchQuery.value.toLowerCase().trim();
@@ -137,6 +154,13 @@ const roleItems = computed<RoleSelectItem[]>(() => {
 		});
 	}
 
+	if (props.terminalOption) {
+		if (items.length > 0) {
+			items.push({ type: 'separator' });
+		}
+		items.push({ value: props.terminalOption.value, label: props.terminalOption.label });
+	}
+
 	return items;
 });
 
@@ -177,23 +201,28 @@ const isUnavailableRoleItem = (item: SelectItemProps) => item.requiresUpgrade ==
 			:items="roleItems"
 			:model-value="currentRole"
 			size="small"
-			variant="ghost"
+			:variant="variant"
+			:placeholder="placeholder"
 			position="popper"
-			:disabled="loading"
+			:disabled="loading || disabled"
 			:content-class="$style.roleSelectContent"
-			:class="$style.roleSelect"
+			:class="[$style.roleSelect, { [$style.roleSelectGhost]: variant === 'ghost' }]"
 			:data-test-id="testId"
 			@update:model-value="onRoleSelect"
 		>
 			<template #default>
 				<N8nTooltip
-					:content="selectedRole?.displayName"
-					:disabled="!selectedRole || dropdownOpen"
+					:content="selectedLabel"
+					:disabled="!selectedLabel || dropdownOpen"
 					placement="top"
 					as-child
 				>
-					<span :class="$style.triggerContent">
-						<span :class="$style.triggerLabel">{{ selectedRole?.displayName }}</span>
+					<span
+						:class="[$style.triggerContent, { [$style.triggerContentGhost]: variant === 'ghost' }]"
+					>
+						<span :class="[$style.triggerLabel, { [$style.placeholder]: !selectedLabel }]">{{
+							selectedLabel ?? placeholder
+						}}</span>
 						<N8nIcon v-if="loading" icon="spinner" spin size="small" />
 					</span>
 				</N8nTooltip>
@@ -247,6 +276,7 @@ const isUnavailableRoleItem = (item: SelectItemProps) => item.requiresUpgrade ==
 						</N8nSelect2Item>
 					</RoleHoverPopover>
 				</template>
+				<N8nSelect2Item v-else v-bind="item" :class="$style.selectItem" />
 			</template>
 
 			<template #label="{ item }">
@@ -312,11 +342,18 @@ const isUnavailableRoleItem = (item: SelectItemProps) => item.requiresUpgrade ==
 }
 
 .roleSelect {
+	max-width: 200px;
+	overflow: hidden;
+}
+
+// The `ghost` variant is used inline in table cells (Users settings, Project
+// members) where the trigger should look like plain text, not a boxed
+// control — so its own padding/height are stripped. The bordered `default`
+// variant (SSO provisioning) keeps the design system's normal sizing.
+.roleSelectGhost {
 	padding: 0;
 	background-color: transparent;
 	min-height: auto;
-	max-width: 200px;
-	overflow: hidden;
 
 	&:not([data-disabled]):hover {
 		background-color: transparent;
@@ -327,9 +364,16 @@ const isUnavailableRoleItem = (item: SelectItemProps) => item.requiresUpgrade ==
 	display: inline-flex;
 	align-items: center;
 	gap: var(--spacing--3xs);
-	font-size: var(--font-size--sm);
 	min-width: 0;
 	overflow: hidden;
+}
+
+// The `ghost` trigger sits inline as plain row text (Users settings, Project
+// members), so its font size matches the surrounding row text rather than the
+// button's own `size` — the bordered `default` variant inherits the trigger
+// button's font size instead, matching sibling form controls.
+.triggerContentGhost {
+	font-size: var(--font-size--sm);
 }
 
 .triggerLabel {
@@ -337,6 +381,10 @@ const isUnavailableRoleItem = (item: SelectItemProps) => item.requiresUpgrade ==
 	text-overflow: ellipsis;
 	white-space: nowrap;
 	min-width: 0;
+}
+
+.placeholder {
+	color: var(--color--text--tint-1);
 }
 
 .itemLabel {

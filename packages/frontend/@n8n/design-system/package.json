@@ -1,9 +1,8 @@
 {
   "type": "module",
   "name": "@n8n/design-system",
-  "version": "2.31.0",
+  "version": "2.33.0",
   "main": "src/index.ts",
-  "import": "src/index.ts",
   "scripts": {
     "dev": "pnpm run --dir=../storybook dev",
     "clean": "rimraf dist .turbo",
@@ -23,7 +22,7 @@
     "lint:styles:fix": "stylelint \"src/**/*.{scss,sass,vue}\" --fix --cache"
   },
   "devDependencies": {
-    "@iconify/json": "^2.2.488",
+    "@iconify/json": "catalog:",
     "@n8n/eslint-config": "workspace:*",
     "@n8n/playwright-janitor": "workspace:*",
     "@n8n/stylelint-config": "workspace:*",
@@ -46,6 +45,7 @@
     "autoprefixer": "^10.4.19",
     "emojibase-data": "^17.0.0",
     "eslint-plugin-storybook": "catalog:storybook",
+    "pinia": "catalog:frontend",
     "postcss": "^8.4.38",
     "sass": "^1.71.1",
     "storybook": "catalog:storybook",
@@ -55,9 +55,12 @@
     "typescript": "catalog:",
     "unplugin-icons": "catalog:frontend",
     "vite": "catalog:",
+    "vite-plugin-dts": "catalog:",
     "vite-svg-loader": "catalog:frontend",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:",
+    "vue": "catalog:frontend",
+    "vue-router": "catalog:frontend",
     "vue-tsc": "catalog:frontend"
   },
   "dependencies": {
@@ -90,13 +93,14 @@
     "markdown-it-link-attributes": "catalog:",
     "markdown-it-task-lists": "^2.1.1",
     "parse-diff": "^0.11.1",
-    "pinia": "catalog:frontend",
     "reka-ui": "^2.5.0",
     "sanitize-html": "catalog:",
-    "vue": "catalog:frontend",
     "vue-boring-avatars": "^1.3.0",
-    "vue-router": "catalog:frontend",
     "xss": "catalog:"
+  },
+  "peerDependencies": {
+    "vue": "catalog:frontend",
+    "vue-router": "catalog:frontend"
   },
   "license": "LicenseRef-n8n-sustainable-use"
 }

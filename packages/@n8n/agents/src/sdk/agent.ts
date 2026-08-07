@@ -10,12 +10,15 @@ import { Telemetry } from './telemetry';
 import { wrapToolForApproval } from './tool';
 import type { VectorStore } from './vector-store';
 import { AgentRuntime, type AgentRuntimeConfig } from '../runtime/loop/agent-runtime';
+import { ensureUniqueMcpToolNames } from '../runtime/mcp/mcp-tool-resolver';
 import { RECALL_MEMORY_TOOL_NAME } from '../runtime/memory/episodic-memory';
 import type { ScopedMemoryTaskEvent } from '../runtime/memory/scoped-memory-task-runner';
+import { AgentMessageList } from '../runtime/model/message-list';
 import type { FetchFn } from '../runtime/model/model-factory';
 import { mergeProviderOptions } from '../runtime/model/prompt-cache';
 import { AgentEventBus } from '../runtime/state/event-bus';
 import { RunStateManager } from '../runtime/state/run-state';
+import { deriveSubAgentTelemetry } from '../runtime/telemetry/sub-agent-telemetry';
 import {
 	LOAD_TOOL_TOOL_NAME,
 	SEARCH_TOOLS_TOOL_NAME,
@@ -24,12 +27,14 @@ import {
 	DELEGATE_SUB_AGENT_TOOL_NAME,
 	INLINE_SUB_AGENT_ID,
 	createDelegateSubAgentTool,
-	failedDelegatedChildSuspendOutput,
 	generateResultToDelegateSubAgentOutput,
 	getInlineDelegateSubAgentToolOptions,
 	isDelegateSubAgentTool,
 	renderDelegateSubAgentPrompt,
+	type DelegateSubAgentCancelRequest,
 	type DelegateSubAgentRequest,
+	type DelegateSubAgentResumeRequest,
+	type DelegateSubAgentRunnerHelpers,
 	type DelegateSubAgentToolOutput,
 	type InlineSubAgentProviderToolsResolver,
 	type SubAgentTaskDifficulty,
@@ -48,6 +53,7 @@ import type {
 	AgentMiddleware,
 	BuiltAgent,
 	BuiltEval,
+	BuiltFileStore,
 	BuiltGuardrail,
 	BuiltMemory,
 	BuiltProviderTool,
@@ -55,16 +61,20 @@ import type {
 	BuiltTelemetry,
 	CheckpointStore,
 	ExecutionOptions,
+	FinishReason,
 	GenerateResult,
 	MemoryConfig,
 	ModelConfig,
 	Provider,
 	PromptCachingConfig,
+	ReasoningLevel,
 	RunOptions,
 	StreamResult,
 	ThinkingConfig,
 	ThinkingConfigFor,
+	TokenUsage,
 	ResumeOptions,
+	McpConnectionFailedEvent,
 } from '../types';
 import type { AgentEvent } from '../types/runtime/event';
 import type { StreamChunk } from '../types/sdk/agent';
@@ -84,6 +94,15 @@ const SDK_RESERVED_BUILTIN_TOOL_NAMES = new Set([
 	DELEGATE_SUB_AGENT_TOOL_NAME,
 	WRITE_TODOS_TOOL_NAME,
 ]);
+
+function configuredSubAgentNotFound(request: DelegateSubAgentRequest): DelegateSubAgentToolOutput {
+	return {
+		status: 'failed',
+		taskPath: request.taskPath,
+		answer: '',
+		error: `No configured subagent matched "${request.subAgentId}". Use "inline" for an inline sub-agent, or pass one of the configured subagent IDs.`,
+	};
+}
 
 interface DeferredToolOptions {
 	search?: {
@@ -115,8 +134,10 @@ export interface AgentSnapshot {
 	hasObservationalMemory: boolean;
 	/** True when episodic memory has been configured on the memory builder. */
 	hasEpisodicMemory: boolean;
-	/** The thinking config if set, otherwise null. */
+	/** The provider-specific thinking config if set, otherwise null. */
 	thinking: ThinkingConfig | null;
+	/** The provider-agnostic reasoning level if set, otherwise null. */
+	reasoning: ReasoningLevel | null;
 	/** The prompt caching config if set via `.promptCaching()`, otherwise null. */
 	promptCaching: PromptCachingConfig | null;
 	/** Tool-call concurrency limit if set, otherwise null. */
@@ -162,6 +183,8 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 	private memoryConfig?: MemoryConfig;
 
+	private fileStoreValue?: BuiltFileStore;
+
 	private onMemoryTaskEvent?: (event: ScopedMemoryTaskEvent) => void;
 
 	// TODO: Guardrails are accepted by the builder API for forward
@@ -178,6 +201,8 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 	private thinkingConfig?: ThinkingConfig;
 
+	private reasoningLevel?: ReasoningLevel;
+
 	private promptCachingConfig?: PromptCachingConfig;
 
 	private concurrencyValue?: number;
@@ -189,6 +214,13 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	private middlewares: AgentMiddleware[] = [];
 
 	private mcpClients: McpClient[] = [];
+
+	/**
+	 * MCP connection failures reported by a host that loads MCP tools outside
+	 * an attached `McpClient` (e.g. Instance AI's `McpClientManager`).
+	 * Merged with `mcpClients`-sourced failures by `getMcpConnectionFailures()`.
+	 */
+	private externalMcpConnectionFailures: McpConnectionFailedEvent[] = [];
 
 	private defaultExecutionOptions?: ExecutionOptions;
 
@@ -349,6 +381,12 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		return this;
 	}
 
+	/** Inject the host store that hydrates file-reference content parts before LLM calls. */
+	fileStore(store: BuiltFileStore): this {
+		this.fileStoreValue = store;
+		return this;
+	}
+
 	/** Add a middleware. */
 	middleware(m: AgentMiddleware): this {
 		this.middlewares.push(m);
@@ -446,6 +484,21 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	}
 
 	/**
+	 * Enable provider-agnostic reasoning for the agent.
+	 *
+	 * @example
+	 * ```typescript
+	 * new Agent('thinker')
+	 *   .model('anthropic', 'claude-sonnet-4-5')
+	 *   .reasoning('high')
+	 * ```
+	 */
+	reasoning(level: ReasoningLevel = 'medium'): this {
+		this.reasoningLevel = level;
+		return this;
+	}
+
+	/**
 	 * Enable prompt caching with defaults tuned for agent workloads. Anthropic
 	 * models get a `1h` instruction-level cache breakpoint; OpenAI models get
 	 * `24h` retention plus an auto-generated, per-agent-version `promptCacheKey`.
@@ -528,6 +581,38 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	mcp(client: McpClient): this {
 		this.mcpClients.push(client);
 		return this;
+	}
+
+	/**
+	 * Report MCP connection failures for servers whose tools were loaded
+	 * outside an attached `McpClient` (e.g. by a host-side MCP manager that
+	 * caches and approval-wraps tools itself). The runtime surfaces these as
+	 * non-fatal `warning` stream chunks and injects a short note into the
+	 * model's context so the agent can tell the user a server was unavailable.
+	 *
+	 * Servers attached via `.mcp(client)` report their own failures; do not
+	 * double-report them here.
+	 */
+	mcpConnectionFailures(events: McpConnectionFailedEvent[]): this {
+		this.externalMcpConnectionFailures = events;
+		return this;
+	}
+
+	/**
+	 * Per-server MCP connection failures recorded during the last build's
+	 * `listTools()` calls. Tools from these servers were skipped; the run
+	 * continued with the remaining servers' tools. Empty when every server
+	 * connected (or no MCP clients are attached).
+	 *
+	 * The agent runtime surfaces these as non-fatal `warning` stream chunks so
+	 * hosts can show the user that an MCP server was unavailable without
+	 * aborting inference.
+	 */
+	getMcpConnectionFailures(): McpConnectionFailedEvent[] {
+		return [
+			...this.mcpClients.flatMap((c) => [...c.getConnectionFailures()]),
+			...this.externalMcpConnectionFailures,
+		];
 	}
 
 	/**
@@ -627,6 +712,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			hasObservationalMemory: this.memoryConfig?.observationalMemory !== undefined,
 			hasEpisodicMemory: this.memoryConfig?.episodicMemory !== undefined,
 			thinking: this.thinkingConfig ?? null,
+			reasoning: this.reasoningLevel ?? null,
 			promptCaching: this.promptCachingConfig ?? null,
 			toolCallConcurrency: this.concurrencyValue ?? null,
 		};
@@ -906,7 +992,8 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 		// Resolve tools from all MCP clients.
 		const mcpToolLists = await Promise.all(this.mcpClients.map(async (c) => await c.listTools()));
-		const mcpTools = mcpToolLists.flat();
+		const mcpTools = ensureUniqueMcpToolNames(mcpToolLists.flat());
+		const mcpConnectionFailures = this.getMcpConnectionFailures();
 
 		// Detect collisions between direct, deferred, and MCP tools.
 		const staticCollisions = findDuplicateToolNames(finalStaticTools);
@@ -984,10 +1071,12 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			finalDeferredTools.length > 0 && this.deferredToolSearchTopK !== undefined
 				? { topK: this.deferredToolSearchTopK }
 				: undefined;
+		const runState = new RunStateManager(this.checkpointStore);
 
 		allTools = this.completeInlineDelegateTools(allTools, {
 			deferredTools: finalDeferredTools,
 			modelConfig,
+			runState,
 			...(telemetry !== undefined ? { telemetry } : {}),
 			...(this.concurrencyValue !== undefined
 				? { toolCallConcurrency: this.concurrencyValue }
@@ -1008,8 +1097,6 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			modelCost = undefined;
 		}
 
-		const runState = new RunStateManager(this.checkpointStore);
-
 		return {
 			name: this.name,
 			model: modelConfig,
@@ -1021,12 +1108,14 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			instructionProviderOptions: this.instructionProviderOpts,
 			providerTools: this.providerTools.length > 0 ? this.providerTools : undefined,
 			memory: memoryConfig?.memory,
+			...(this.fileStoreValue !== undefined ? { fileStore: this.fileStoreValue } : {}),
 			observationLog: memoryConfig?.observationLog,
 			observationalMemory: memoryConfig?.observationalMemory,
 			episodicMemory: memoryConfig?.episodicMemory,
 			structuredOutput: this.outputSchema,
 			checkpointStorage: this.checkpointStore,
 			thinking: this.thinkingConfig,
+			reasoning: this.reasoningLevel,
 			promptCaching: this.promptCachingConfig,
 			toolCallConcurrency: this.concurrencyValue,
 			titleGeneration: memoryConfig?.titleGeneration,
@@ -1034,6 +1123,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			modelCost,
 			runState,
 			...(this.onMemoryTaskEvent ? { onMemoryTaskEvent: this.onMemoryTaskEvent } : {}),
+			...(mcpConnectionFailures.length > 0 ? { mcpConnectionFailures } : {}),
 		};
 	}
 
@@ -1042,6 +1132,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		options: {
 			deferredTools: BuiltTool[];
 			modelConfig: ModelConfig;
+			runState: RunStateManager;
 			telemetry?: BuiltTelemetry;
 			toolCallConcurrency?: number;
 			toolSearch?: { topK?: number };
@@ -1059,23 +1150,60 @@ export class Agent implements BuiltAgent, AgentBuilder {
 				resolveInlineSubAgentProviderTools: delegateOptions.resolveInlineSubAgentProviderTools,
 			});
 			const hostRunner = delegateOptions.runSubAgent;
+			const hostResumeRunner = delegateOptions.resumeSubAgent;
+			const hostCancelRunner = delegateOptions.cancelSubAgent;
+			const inlineChildCanSuspend = [...tools, ...options.deferredTools].some(
+				(candidate) => !isDelegateSubAgentTool(candidate) && candidate.suspendSchema !== undefined,
+			);
+			const childCanSuspend = hostResumeRunner !== undefined || inlineChildCanSuspend;
 			const completedTool = createDelegateSubAgentTool({
 				...delegateOptions,
-				runSubAgent: async (request, _helpersFromHandler) => {
-					const helpers = { runInlineSubAgent };
+				runSubAgent: async (request, helpersFromHandler) => {
+					const helpers = {
+						runInlineSubAgent: async (req: DelegateSubAgentRequest) =>
+							await runInlineSubAgent(req, helpersFromHandler.emitChunk),
+						emitChunk: helpersFromHandler.emitChunk,
+					};
 					if (hostRunner) {
 						return await hostRunner(request, helpers);
 					}
 					if (request.subAgentId === INLINE_SUB_AGENT_ID) {
-						return await runInlineSubAgent(request);
+						return await runInlineSubAgent(request, helpersFromHandler.emitChunk);
 					}
-					return {
-						status: 'failed',
-						taskPath: request.taskPath,
-						answer: '',
-						error: `No configured subagent matched "${request.subAgentId}". Use "inline" for an inline sub-agent, or pass one of the configured subagent IDs.`,
-					};
+					return configuredSubAgentNotFound(request);
 				},
+				...(childCanSuspend
+					? {
+							resumeSubAgent: async (
+								request: DelegateSubAgentResumeRequest,
+								helpersFromHandler: DelegateSubAgentRunnerHelpers,
+							) => {
+								if (request.subAgentId === INLINE_SUB_AGENT_ID) {
+									return await runInlineSubAgent(request, helpersFromHandler.emitChunk, request);
+								}
+								if (hostResumeRunner !== undefined) {
+									return await hostResumeRunner(request, helpersFromHandler);
+								}
+								return configuredSubAgentNotFound(request);
+							},
+							cancelSubAgent: async (
+								request: DelegateSubAgentCancelRequest,
+								helpersFromHandler: DelegateSubAgentRunnerHelpers,
+							) => {
+								if (request.subAgentId === INLINE_SUB_AGENT_ID) {
+									await options.runState.cancel(request.childRunId);
+									return;
+								}
+								if (hostCancelRunner !== undefined) {
+									await hostCancelRunner(request, helpersFromHandler);
+									return;
+								}
+								throw new Error(
+									`No cancellation handler is available for "${request.subAgentId}".`,
+								);
+							},
+						}
+					: {}),
 			});
 
 			if (tool.approval?.required === true) {
@@ -1088,6 +1216,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	private createInlineSubAgentRunner(options: {
 		deferredTools: BuiltTool[];
 		modelConfig: ModelConfig;
+		runState: RunStateManager;
 		telemetry?: BuiltTelemetry;
 		toolCallConcurrency?: number;
 		toolSearch?: { topK?: number };
@@ -1095,8 +1224,12 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		inlineSubAgentBlockedTools?: string[];
 		inlineSubAgentModelsByDifficulty?: Partial<Record<SubAgentTaskDifficulty, ModelConfig>>;
 		resolveInlineSubAgentProviderTools?: InlineSubAgentProviderToolsResolver;
-	}): (request: DelegateSubAgentRequest) => Promise<DelegateSubAgentToolOutput> {
-		return async (request) => {
+	}): (
+		request: DelegateSubAgentRequest,
+		onChunk?: (chunk: StreamChunk) => void,
+		resume?: Pick<DelegateSubAgentResumeRequest, 'childRunId' | 'childToolCallId' | 'resumeData'>,
+	) => Promise<DelegateSubAgentToolOutput> {
+		return async (request, onChunk, resume) => {
 			const tools = filterInlineSubAgentTools(options.tools, options.inlineSubAgentBlockedTools);
 			const deferredTools = filterInlineSubAgentTools(
 				options.deferredTools,
@@ -1113,6 +1246,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			const childThinkingConfig = shouldInheritThinking(options.modelConfig, childModelConfig)
 				? this.thinkingConfig
 				: undefined;
+			const telemetry = deriveSubAgentTelemetry(request.parentTelemetry) ?? options.telemetry;
 			const childRuntime = new AgentRuntime({
 				name: `${this.name}:${request.taskName}`,
 				model: childModelConfig,
@@ -1127,32 +1261,105 @@ export class Agent implements BuiltAgent, AgentBuilder {
 				providerTools: providerTools.length > 0 ? providerTools : undefined,
 				instructionProviderOptions: this.instructionProviderOpts,
 				promptCaching: this.promptCachingConfig,
-				checkpointStorage: this.checkpointStore,
+				runState: options.runState,
 				...(childThinkingConfig !== undefined ? { thinking: childThinkingConfig } : {}),
-				...(options.telemetry !== undefined ? { telemetry: options.telemetry } : {}),
+				...(this.reasoningLevel !== undefined ? { reasoning: this.reasoningLevel } : {}),
+				...(telemetry !== undefined ? { telemetry } : {}),
 				...(options.toolCallConcurrency !== undefined
 					? { toolCallConcurrency: options.toolCallConcurrency }
 					: {}),
 			});
 
 			try {
-				const result = await childRuntime.generate(renderDelegateSubAgentPrompt(request), {
+				const executionOptions: ExecutionOptions = {
 					...(request.parentAbortSignal !== undefined
 						? { abortSignal: request.parentAbortSignal }
 						: {}),
-					...(options.telemetry !== undefined ? { telemetry: options.telemetry } : {}),
+					...(telemetry !== undefined ? { telemetry } : {}),
 					...(request.parentExecutionCounter !== undefined
 						? { executionCounter: request.parentExecutionCounter }
 						: {}),
-				});
-				if (result.pendingSuspend !== undefined && result.pendingSuspend.length > 0) {
-					return failedDelegatedChildSuspendOutput(request.taskPath, result.model ?? childModelId);
+				};
+				const resultStream = resume
+					? await childRuntime.resume('stream', resume.resumeData, {
+							...executionOptions,
+							runId: resume.childRunId,
+							toolCallId: resume.childToolCallId,
+						})
+					: await childRuntime.stream(renderDelegateSubAgentPrompt(request), executionOptions);
+
+				let text = '';
+				let model: string | undefined;
+				let usage: TokenUsage | undefined;
+				let finishReason: FinishReason | undefined;
+				let structuredOutput: unknown;
+				let error: unknown;
+				const pendingSuspend: NonNullable<GenerateResult['pendingSuspend']> = [];
+
+				const reader = resultStream.stream.getReader();
+				try {
+					while (true) {
+						const { done, value } = await reader.read();
+						if (done) break;
+						const chunk = value;
+						onChunk?.(chunk);
+						switch (chunk.type) {
+							case 'text-delta':
+								text += chunk.delta;
+								break;
+							case 'tool-call-suspended':
+								pendingSuspend.push({
+									runId: chunk.runId,
+									toolCallId: chunk.toolCallId,
+									toolName: chunk.toolName,
+									input: chunk.input,
+									suspendPayload: chunk.suspendPayload,
+									...(chunk.resumeSchema !== undefined ? { resumeSchema: chunk.resumeSchema } : {}),
+								});
+								break;
+							case 'error':
+								error = chunk.error;
+								break;
+							case 'finish':
+								finishReason = chunk.finishReason;
+								if (chunk.usage !== undefined) usage = chunk.usage;
+								if (chunk.model !== undefined) model = chunk.model;
+								if (chunk.structuredOutput !== undefined) {
+									structuredOutput = chunk.structuredOutput;
+								}
+								break;
+							default:
+								break;
+						}
+					}
+				} finally {
+					reader.releaseLock();
 				}
-				const resultWithModel =
-					result.model === undefined && childModelId !== undefined
-						? { ...result, model: childModelId }
-						: result;
-				return generateResultToDelegateSubAgentOutput(request.taskPath, resultWithModel);
+
+				// The runtime only serializes its message list into state on success
+				// and on suspend, so an errored child falls back to the streamed text.
+				const responseMessages = AgentMessageList.deserialize(
+					resultStream.getState().messageList,
+				).responseDelta();
+				const messages: AgentMessage[] =
+					responseMessages.length > 0
+						? responseMessages
+						: text.trim()
+							? [{ role: 'assistant', content: [{ type: 'text', text }] }]
+							: [];
+
+				const result: GenerateResult = {
+					runId: resultStream.runId,
+					messages,
+					...((model ?? childModelId) ? { model: model ?? childModelId } : {}),
+					...(finishReason !== undefined ? { finishReason } : {}),
+					...(usage !== undefined ? { usage } : {}),
+					...(structuredOutput !== undefined ? { structuredOutput } : {}),
+					...(error !== undefined ? { error } : {}),
+					...(pendingSuspend.length > 0 ? { pendingSuspend } : {}),
+					getState: () => resultStream.getState(),
+				};
+				return generateResultToDelegateSubAgentOutput(request.taskPath, result);
 			} finally {
 				await childRuntime.dispose();
 			}

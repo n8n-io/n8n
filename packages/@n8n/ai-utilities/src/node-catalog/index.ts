@@ -26,6 +26,7 @@ export {
 	validatePathWithinBase,
 	parseNodeId,
 	toSnakeCase,
+	versionDirToNumber,
 } from './get';
 export type { NodeRequest, CodeBuilderGetToolOptions } from './get';
 

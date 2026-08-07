@@ -20,10 +20,13 @@ especially when the build result contains `postBuildFlow.required: true`, or whe
 the current message contains `<workflow-verification-follow-up>` or
 `<workflow-setup-required>`.
 
+These instructions are in English, but user-visible text you write while
+following them stays in the user's conversation language.
+
 For trigger `inputData` shapes, read
-`knowledge-base/reference/trigger-input-data-shapes.md` in the sandbox workspace
-when available, or load this skill's `references/trigger-input-data-shapes.md`
-linked file.
+`${N8N_WORKSPACE_DIR}/knowledge-base/reference/trigger-input-data-shapes.md` in
+the sandbox workspace when available, or load this skill's
+`references/trigger-input-data-shapes.md` linked file.
 
 ## Verification follow-up
 
@@ -47,6 +50,103 @@ After setup completes or is applied, follow
 if the payload or prior verification evidence says mocked credentials,
 simulated node output, fixture overrides, temporary pin data, or another mocked
 input was used.
+
+### Choosing the credential type for a service
+
+Pick in this order:
+
+1. **A dedicated credential type** (`slackApi`, `notionApi`, …) whenever one
+   exists — search with `credentials(action="search-types")`.
+2. **Simplified Custom Auth** (`httpTemplatedCustomAuth`) for any service
+   without a dedicated type whose auth is expressible as header/query/body
+   values — which covers API keys and bearer tokens (`Authorization: Bearer
+   <token>` becomes `{"headers":{"Authorization":"Bearer {{api_key}}"}}`, not
+   `httpBearerAuth`). Always provide a recipe (below) so the user only pastes
+   their secret.
+3. **Plain generic types** (`httpBasicAuth`, `httpDigestAuth`, `oAuth2Api`, …)
+   only for what a template cannot express: basic auth's base64-encoded pair,
+   digest's challenge-response, OAuth flows — or when the user explicitly asks
+   for a specific plain type: an explicit user choice wins (setup accepts it
+   with `allowPlainGenericAuth: true`).
+
+### Credential recipes for Simplified Custom Auth
+
+When the workflow authenticates a service through Simplified Custom Auth,
+include `credentialHints` in the same `workflows(action="setup")` call so the
+setup card pre-fills the credential and the user only pastes their secret —
+instead of facing an empty JSON template they'd have to decode from the
+provider's docs. Before composing the hints, load the
+`credential-recipe-research` skill and execute its lookup procedure — the
+template, `docsUrl` and `testUrl` must come from the provider documentation
+it has you fetch, never from memory:
+
+- `template` — the auth request parts (headers/qs/body) exactly as documented,
+  with `{{placeholder}}` markers where the user's values go.
+- `placeholders` — one entry per marker: `name`, user-facing `title`, an
+  optional `info` clarifying the value itself — its format or which of the
+  provider's tokens it is (e.g. "Starts with tvly-"). Never where to obtain
+  it, and never a URL or domain: the user asks the AI Assistant for that from
+  the credential form. `type` is `password` unless clearly non-secret (at
+  least one placeholder must stay `password`). Add `optional: true` only when
+  the provider documents the value as optional (e.g. an org/region
+  qualifier) — template entries referencing an empty optional placeholder are
+  omitted from the request.
+- `docsUrl` — the provider page where a logged-in user CREATES/COPIES the
+  secret (e.g. `https://replicate.com/account/api-tokens`) — never the API
+  reference. Not shown in the form: the AI Assistant help thread uses it to
+  send the user to the exact page. Found via the `credential-recipe-research`
+  procedure; omit when it finds nothing conclusive.
+- `testUrl` — a documented side-effect-free GET that rejects a bad key with
+  401/403, used to verify the credential on save and later retests; never one
+  of the workflow's own endpoints, never anything billable. Found via the
+  `credential-recipe-research` procedure; omit when nothing qualifies — a
+  credential without a testUrl saves fine and honestly shows "could not be
+  verified", which beats a false green.
+- `acceptedStatusCodes` — almost always omit; the user can adjust it later on
+  the credential if a service's auth answers 401/403 to valid GETs.
+- `suggestedName` — display name for the created credential.
+
+Example — fal.ai's docs say requests use `Authorization: Key <FAL_KEY>` and
+`GET https://api.fal.ai/v1/models/usage` is a documented side-effect-free
+endpoint that rejects a bad key (the model-serving host `fal.run` is not a
+key-check endpoint):
+
+```json
+{
+  "action": "setup",
+  "workflowId": "...",
+  "credentialHints": [
+    {
+      "suggestedName": "fal.ai API Key",
+      "template": {
+        "headers": { "Authorization": "Key {{api_key}}" }
+      },
+      "placeholders": [
+        {
+          "name": "api_key",
+          "title": "fal.ai API key",
+          "info": "Key ID and secret, separated by a colon",
+          "type": "password"
+        }
+      ],
+      "docsUrl": "https://fal.ai/dashboard/keys",
+      "testUrl": "https://api.fal.ai/v1/models/usage"
+    }
+  ]
+}
+```
+
+Never put a real secret in a recipe — the user pastes it in the setup card and
+it is stored redacted in the credential. Add `nodeName` when several nodes use
+Simplified Custom Auth for different services. You cannot see the secret, but
+once setup reports the credential applied, treat it as fully configured — the
+`{{placeholder}}` markers live only in the template; the stored values replace
+them at request time. If a live test later fails with an auth error, that is
+the moment to have the user re-open the credential and re-paste the value.
+
+If the user defers setup instead, don't hand them manual field-by-field
+credential instructions for the n8n editor — tell them to reopen setup when
+they're ready: the card pre-fills everything except their key.
 
 ## Publishing and testing
 
@@ -144,27 +244,19 @@ again.
    when the latest verification evidence used mocks or simulations. If this
    follow-up is due, ask only that question now; do not also ask about the error
    workflow in the same response.
-7. For a direct new primary workflow, follow
-   [Error workflow follow-up](#error-workflow-follow-up) after the mocked
-   live-test follow-up is no longer pending for this workflow. If no mocked
-   live-test follow-up is due, ask about the error workflow before any generic
-   testing prompt. Do not replace this explicit opt-in with a generic "add
-   anything else?", publish, or test question.
-8. Ask the user if they want to test the workflow (skip this if
-   `verify-built-workflow` already proved it works end-to-end with full
-   coverage). If you need to ask about both generic testing and an error
-   workflow, ask the error-workflow opt-in first and leave generic testing as a
-   later follow-up unless the user already requested testing.
-9. Only call `workflows(action="publish")` when the user explicitly asks to
+7. If testing has not already been offered or completed, ask whether the user
+   wants to test the workflow. Skip this if `verify-built-workflow` already
+   proved it works end-to-end with full coverage.
+8. Only call `workflows(action="publish")` when the user explicitly asks to
    publish. Never publish automatically.
+9. After a direct new primary workflow is successfully published, follow
+   [Error workflow follow-up](#error-workflow-follow-up).
+   Do not replace this explicit opt-in with a generic "add
+   anything else?", publish, or test question.
 
 ## Error workflow follow-up
 
-This follow-up comes after the mocked verification live-test follow-up when that
-follow-up is due, and before generic "want to test it?" prompts. For a direct
-new primary workflow, ask about the error workflow after the user answers,
-declines, or defers any pending live/no-mock testing question. If no mocked
-live-test follow-up is due, ask about the error workflow first.
+This follow-up comes only after a direct new primary workflow is successfully published.
 
 If you just built an Error Trigger workflow because the user opted into adding
 one for a known target workflow, do not ask whether to build another error
@@ -172,7 +264,7 @@ workflow. Continue the publish-before-assign flow for the target workflow:
 ask whether to publish the error workflow and set it on that target workflow,
 then publish and assign only after the user approves.
 
-After saving and handling verification/setup for a direct new primary workflow,
+After successfully publishing a direct new primary workflow,
 ask once whether the user wants to build an error workflow for that workflow.
 Use `ask-user` with a yes/no choice or a concise visible question. Do **not**
 create an error workflow before the user opts in.
@@ -224,15 +316,9 @@ that workflow used mocked credentials, simulated node output, fixture overrides,
 temporary pin data, or another mocked input, ask whether the user wants a live
 test without mocks. Do not run the live test automatically.
 
-This follow-up has priority over the error-workflow opt-in for a direct new
-primary workflow. If both follow-ups are due, ask about the live/no-mock test
-first and ask the error-workflow question only after the user has answered,
-declined, or deferred the live/no-mock test follow-up.
-
 If the user agrees, use the explicit live execution path (`executions(action="run")`
 for a direct live run) and report the result separately from the earlier mocked
-verification. If the user declines or defers, state what remains untested and do
-not claim live end-to-end verification.
+verification. If the user declines or defers, state what remains untested and do not claim live end-to-end verification.
 
 ## Claiming success
 
