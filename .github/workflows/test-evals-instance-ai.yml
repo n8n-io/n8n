@@ -120,19 +120,15 @@ on:
         required: false
         default: ''
       model:
-        description: 'Model for all Instance AI agents (provider/model). Empty = backend default (anthropic/claude-opus-4-8). Experiments: anthropic/claude-opus-5, anthropic/claude-sonnet-4-6, anthropic/claude-opus-4-8 (+ model-url for Azure Foundry), custom/Kimi-K3 (+ model-url for OpenAI-compatible routers), custom/workspace.default.kimi-k3 (+ Databricks AI Gateway model-url), vertex/claude-opus-4-8, openai/gpt-5.6-sol, openai/gpt-5.6-terra, openai/gpt-5.6-luna, openrouter/moonshotai/kimi-k3, wafer/Kimi-K3, morph/morph-kimik3, morph/morph-kimik3-fast, morph/morph-glm52-744b, xai/grok-4.5, baseten/zai-org/GLM-5.2, baseten/zai-org/GLM-5.2-Fast, fireworks/accounts/fireworks/models/llama-v3p1-70b-instruct, togetherai/moonshotai/Kimi-K3, togetherai/meta-llama/Llama-3.3-70B-Instruct-Turbo.'
+        description: 'Model for all Instance AI agents (provider/model). Empty = backend default (anthropic/claude-opus-4-8). Experiments: anthropic/claude-opus-5, custom/Kimi-K3, togetherai/moonshotai/Kimi-K3, fireworks/accounts/fireworks/models/*'
         required: false
         default: ''
       model-url:
-        description: 'Optional base URL (N8N_INSTANCE_AI_MODEL_URL). custom/* → OpenAI-compatible /v1 endpoint (keyless routers, or Databricks https://<workspace>.cloud.databricks.com/ai-gateway/mlflow/v1 with EVALS_DATABRICKS_KEY). anthropic/* → Anthropic-compatible base (e.g. Azure Foundry) with EVALS_AZURE_FOUNDRY_KEY. Leave empty for provider defaults.'
+        description: 'Optional base URL (N8N_INSTANCE_AI_MODEL_URL). Leave empty for provider defaults.'
         required: false
         default: ''
       vertex-project:
-        description: 'GCP project for vertex/* (e.g. vertex/claude-opus-4-8). Empty = EVALS_VERTEX_PROJECT secret or project_id in EVALS_VERTEX_SA_JSON.'
-        required: false
-        default: ''
-      vertex-location:
-        description: 'Vertex location for vertex/* models. Empty = global.'
+        description: 'GCP project for vertex/*. Empty = EVALS_VERTEX_PROJECT secret or project_id in EVALS_VERTEX_SA_JSON.'
         required: false
         default: ''
       lanes:
