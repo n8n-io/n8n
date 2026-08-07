@@ -1,6 +1,14 @@
 import type { Mocked } from 'vitest';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
-import type { CredentialProvider } from '@n8n/agents';
+import {
+	Agent as SdkAgent,
+	type CheckpointStore,
+	type CredentialProvider,
+	type SerializableAgentState,
+	type StreamChunk,
+	zodToJsonSchema,
+} from '@n8n/agents';
+import { APPROVAL_RESUME_SCHEMA } from '@n8n/agents/tool';
 import {
 	AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
 	type AgentJsonConfig,
@@ -14,6 +22,7 @@ import type {
 } from '@n8n/backend-network';
 import type { SsrfProtectionConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
+import { convertArrayToReadableStream, MockLanguageModelV3 } from 'ai/test';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
@@ -49,6 +58,8 @@ const ctx = {
 	suspend: vi.fn().mockResolvedValue(undefined as never),
 	parentTelemetry: undefined,
 };
+
+const standardApprovalResumeSchema = zodToJsonSchema(APPROVAL_RESUME_SCHEMA)!;
 
 type BuilderPurposeServices = Pick<AgentsService, 'findById' | 'findByProjectId'> &
 	Pick<AgentConfigService, 'updateConfig'> &
@@ -1770,40 +1781,248 @@ describe('AgentsBuilderToolsService', () => {
 			expect(agentTestRunService.executeDraftRun).not.toHaveBeenCalled();
 		});
 
-		it('cancels a suspended run and directs the user to Preview without approval data', async () => {
+		it('suspends for a target approval and resumes the same test run with the human decision', async () => {
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+
+			type MockStreamResult = Awaited<ReturnType<MockLanguageModelV3['doStream']>>;
+			type MockStreamPart = MockStreamResult['stream'] extends ReadableStream<infer Part>
+				? Part
+				: never;
+
+			const usage: Extract<MockStreamPart, { type: 'finish' }>['usage'] = {
+				inputTokens: { total: 10, noCache: 10, cacheRead: 0, cacheWrite: 0 },
+				outputTokens: { total: 5, text: 5, reasoning: 0 },
+			};
+			const toolCallTurn = (
+				toolCallId: string,
+				toolName: string,
+				input: Record<string, unknown>,
+			): MockStreamResult => ({
+				stream: convertArrayToReadableStream<MockStreamPart>([
+					{ type: 'stream-start', warnings: [] },
+					{ type: 'tool-call', toolCallId, toolName, input: JSON.stringify(input) },
+					{
+						type: 'finish',
+						finishReason: { unified: 'tool-calls', raw: 'tool_calls' },
+						usage,
+					},
+				]),
+			});
+			const textTurn = (text: string): MockStreamResult => ({
+				stream: convertArrayToReadableStream<MockStreamPart>([
+					{ type: 'stream-start', warnings: [] },
+					{ type: 'text-start', id: 'text-1' },
+					{ type: 'text-delta', id: 'text-1', delta: text },
+					{ type: 'text-end', id: 'text-1' },
+					{ type: 'finish', finishReason: { unified: 'stop', raw: 'stop' }, usage },
+				]),
+			});
+			const scriptedModel = (turns: MockStreamResult[]) => {
+				let nextTurn = 0;
+				return new MockLanguageModelV3({
+					provider: 'mock',
+					modelId: 'scripted',
+					doStream: async () => await Promise.resolve(turns[nextTurn++]),
+				});
+			};
+			const collectChunks = async (stream: ReadableStream<StreamChunk>) => {
+				const chunks: StreamChunk[] = [];
+				const reader = stream.getReader();
+				while (true) {
+					const { done, value } = await reader.read();
+					if (done) return chunks;
+					chunks.push(value);
+				}
+			};
+			const suspendedChunks = (chunks: StreamChunk[]) =>
+				chunks.filter(
+					(chunk): chunk is Extract<StreamChunk, { type: 'tool-call-suspended' }> =>
+						chunk.type === 'tool-call-suspended',
+				);
+
+			class InMemoryCheckpointStore implements CheckpointStore {
+				private states = new Map<string, SerializableAgentState>();
+
+				async save(key: string, state: SerializableAgentState) {
+					await Promise.resolve(this.states.set(key, structuredClone(state)));
+				}
+
+				async load(key: string) {
+					const state = this.states.get(key);
+					return await Promise.resolve(state ? structuredClone(state) : undefined);
+				}
+
+				async delete(key: string) {
+					await Promise.resolve(this.states.delete(key));
+				}
+			}
+
+			const checkpointStore = new InMemoryCheckpointStore();
+			const firstApproval = {
+				type: 'approval' as const,
+				toolName: 'delete_record',
+				displayName: 'Delete record',
+				args: { id: 'record-1' },
+			};
+			const firstContinuation = {
+				runId: 'target-run-1',
+				toolCallId: 'target-tool-call-1',
+				sessionId: 'session-1',
+				response: 'I need approval before deleting the record.',
+			};
+			let outerRunId = '';
+			let outerToolCallId = '';
+
+			{
+				const { service, agentTestRunService } = makeService();
+				agentTestRunService.executeDraftRun.mockResolvedValue({
+					status: 'suspended',
+					response: firstContinuation.response,
+					sessionId: firstContinuation.sessionId,
+					executionId: 'execution-1',
+					suspensions: [
+						{
+							runId: firstContinuation.runId,
+							toolCallId: firstContinuation.toolCallId,
+							toolName: firstApproval.toolName,
+							input: firstApproval.args,
+							suspendPayload: firstApproval,
+							resumeSchema: standardApprovalResumeSchema,
+						},
+					],
+				});
+
+				const phase1Agent = new SdkAgent('agent-builder')
+					.model(
+						scriptedModel([
+							toolCallTurn('outer-tool-call-1', BUILDER_TOOLS.CALL_AGENT, {
+								message: 'Delete the record',
+								sessionId: 'session-1',
+							}),
+						]),
+					)
+					.instructions('Test the target agent.')
+					.tool(getCallAgentTool(service))
+					.checkpoint(checkpointStore);
+
+				const firstRun = await phase1Agent.stream('Test deleting a record');
+				const firstSuspensions = suspendedChunks(await collectChunks(firstRun.stream));
+
+				expect(firstSuspensions).toHaveLength(1);
+				const firstOuterSuspension = firstSuspensions[0];
+				outerRunId = firstOuterSuspension.runId;
+				outerToolCallId = firstOuterSuspension.toolCallId;
+				expect(firstOuterSuspension).toMatchObject({
+					toolName: BUILDER_TOOLS.CALL_AGENT,
+					suspendPayload: firstApproval,
+				});
+				expect(
+					(await checkpointStore.load(outerRunId))?.pendingToolCalls[outerToolCallId],
+				).toMatchObject({
+					suspended: true,
+					continuation: firstContinuation,
+				});
+			}
+
+			const secondApproval = {
+				type: 'approval' as const,
+				toolName: 'notify_owner',
+				displayName: 'Notify owner',
+				args: { ownerId: 'owner-1' },
+			};
+			const secondContinuation = {
+				runId: 'target-run-2',
+				toolCallId: 'target-tool-call-2',
+				sessionId: 'session-2',
+				response: 'Deletion approved. I need approval to notify the owner.',
+			};
+			const { service, agentTestRunService } = makeService();
+			agentTestRunService.resumeDraftRun.mockResolvedValue({
+				status: 'suspended',
+				response: secondContinuation.response,
+				sessionId: secondContinuation.sessionId,
+				executionId: 'execution-2',
+				suspensions: [
+					{
+						runId: secondContinuation.runId,
+						toolCallId: secondContinuation.toolCallId,
+						toolName: secondApproval.toolName,
+						input: secondApproval.args,
+						suspendPayload: secondApproval,
+						resumeSchema: standardApprovalResumeSchema,
+					},
+				],
+			});
+			const phase2Agent = new SdkAgent('agent-builder')
+				.model(scriptedModel([textTurn('This run should remain suspended.')]))
+				.instructions('Test the target agent.')
+				.tool(getCallAgentTool(service))
+				.checkpoint(checkpointStore);
+
+			const resumedRun = await phase2Agent.resume(
+				'stream',
+				{ approved: true },
+				{ runId: outerRunId, toolCallId: outerToolCallId },
+			);
+			const secondSuspensions = suspendedChunks(await collectChunks(resumedRun.stream));
+
+			expect(agentTestRunService.resumeDraftRun).toHaveBeenCalledWith({
+				agentId,
+				projectId,
+				sessionId: firstContinuation.sessionId,
+				runId: firstContinuation.runId,
+				toolCallId: firstContinuation.toolCallId,
+				resumeData: { approved: true },
+				user,
+				source: 'instance-ai',
+				response: firstContinuation.response,
+				abortSignal: expect.any(AbortSignal),
+			});
+			expect(secondSuspensions).toHaveLength(1);
+			const secondOuterSuspension = secondSuspensions[0];
+			expect(secondOuterSuspension).toMatchObject({
+				toolName: BUILDER_TOOLS.CALL_AGENT,
+				suspendPayload: secondApproval,
+			});
+			expect(
+				(await checkpointStore.load(secondOuterSuspension.runId))?.pendingToolCalls[
+					secondOuterSuspension.toolCallId
+				],
+			).toMatchObject({
+				suspended: true,
+				continuation: secondContinuation,
+			});
+		});
+
+		it('cancels approval-shaped custom suspensions and directs the user to Preview', async () => {
 			const { service, agentTestRunService } = makeService();
 			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
 			agentTestRunService.executeDraftRun.mockResolvedValue({
 				status: 'suspended',
-				response: 'I need approval.',
+				response: 'Choose a date.',
 				sessionId: 'session-1',
 				executionId: 'execution-1',
 				suspensions: [
 					{
 						runId: 'run-1',
 						toolCallId: 'tool-call-1',
-						toolName: 'delete_record',
-						input: { id: 'record-1' },
-						suspendPayload: { type: 'approval' },
+						toolName: 'schedule_record',
+						suspendPayload: {
+							type: 'approval',
+							toolName: 'schedule_record',
+							args: { date: 'tomorrow' },
+						},
+						resumeSchema: {
+							...standardApprovalResumeSchema,
+							allOf: [{ properties: { approved: { const: true } } }],
+						},
 					},
 				],
 			});
 			agentTestRunService.cancelSuspendedRun.mockResolvedValue(true);
 
-			const result = await getCallAgentTool(service).handler!(
-				{ message: 'Delete it', sessionId: 'session-1' },
-				ctx,
-			);
+			const result = await getCallAgentTool(service).handler!({ message: 'Schedule it' }, ctx);
 
-			expect(agentTestRunService.executeDraftRun).toHaveBeenCalledWith({
-				agentId,
-				projectId,
-				message: 'Delete it',
-				sessionId: 'session-1',
-				credentialProvider,
-				user,
-				source: 'instance-ai',
-			});
 			expect(agentTestRunService.cancelSuspendedRun).toHaveBeenCalledWith({
 				agentId,
 				runId: 'run-1',
@@ -1811,10 +2030,10 @@ describe('AgentsBuilderToolsService', () => {
 			});
 			expect(result).toEqual({
 				status: 'approval_required',
-				response: 'I need approval.',
+				response: 'Choose a date.',
 				sessionId: 'session-1',
 				executionId: 'execution-1',
-				suspensions: [{ runId: 'run-1', toolCallId: 'tool-call-1', toolName: 'delete_record' }],
+				suspensions: [{ runId: 'run-1', toolCallId: 'tool-call-1', toolName: 'schedule_record' }],
 				previewPath: '/projects/project-1/agents/agent-1/preview',
 			});
 		});
