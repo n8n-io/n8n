@@ -9,7 +9,7 @@
  * run, and nothing here grades an answer automatically.
  */
 import { computed } from 'vue';
-import { N8nBadge, N8nButton, N8nIcon, N8nInput, N8nText } from '@n8n/design-system';
+import { N8nBadge, N8nButton, N8nIcon, N8nInput, N8nSpinner, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
 import type { AgentEvalResultRecord, AgentEvalVote } from '../agentEvals.types';
@@ -63,7 +63,13 @@ const isPending = computed(
 );
 const votesDisabled = computed(() => props.disabled === true || isPending.value);
 
-/** Execution outcomes only — there is no pass/fail grade in this view. */
+/**
+ * Execution outcomes only — there is no pass/fail grade in this view.
+ *
+ * `new` and `running` are told apart deliberately: the runner marks each case
+ * running as it picks it up, so this is the only place a waiting reviewer can see
+ * which case is actually executing rather than queued behind the concurrency cap.
+ */
 const statusLabel = computed(() => {
 	switch (props.result.status) {
 		case 'error':
@@ -71,6 +77,7 @@ const statusLabel = computed(() => {
 		case 'cancelled':
 			return i18n.baseText('agents.builder.agentEvals.review.row.status.cancelled');
 		case 'new':
+			return i18n.baseText('agents.builder.agentEvals.review.row.status.queued');
 		case 'running':
 			return i18n.baseText('agents.builder.agentEvals.review.row.status.running');
 		default:
@@ -135,6 +142,14 @@ const showFooter = computed(() => toolCalls.value.length > 0 || showFooterEdit.v
 		</N8nText>
 		<div :class="[$style.answer, { [$style.answerMuted]: Boolean(settledCorrection) }]">
 			<N8nText v-if="agentAnswer" size="small" color="text-base">{{ agentAnswer }}</N8nText>
+			<!-- A case that hasn't finished has no answer *yet*; saying it returned none
+			     would report a failure that hasn't happened. -->
+			<span v-else-if="isPending" :class="$style.awaiting">
+				<N8nSpinner size="small" />
+				<N8nText size="small" color="text-light">
+					{{ i18n.baseText('agents.builder.agentEvals.review.row.awaitingAnswer') }}
+				</N8nText>
+			</span>
 			<N8nText v-else size="small" color="text-light" :class="$style.noAnswer">
 				{{ i18n.baseText('agents.builder.agentEvals.review.row.noAnswer') }}
 			</N8nText>
@@ -334,6 +349,12 @@ const showFooter = computed(() => toolCalls.value.length > 0 || showFooterEdit.v
 
 .noAnswer {
 	font-style: italic;
+}
+
+.awaiting {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
 }
 
 .correction {

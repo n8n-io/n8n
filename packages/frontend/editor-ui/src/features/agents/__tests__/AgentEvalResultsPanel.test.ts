@@ -44,6 +44,7 @@ const render = (
 		results?: AgentEvalResultRecord[];
 		resultsCount?: number;
 		loadingMore?: boolean;
+		counts?: { total: number; success: number; error: number; cancelled: number; pending: number };
 	} = {},
 	reviewedCount = 0,
 	inFlight = false,
@@ -58,6 +59,7 @@ const render = (
 		ratingsByResultId: {},
 		pendingByResultId: {},
 		draftsByResultId: {},
+		counts: review.counts ?? null,
 		loading: false,
 		loadingMore: review.loadingMore ?? false,
 	});
@@ -99,6 +101,51 @@ describe('AgentEvalResultsPanel', () => {
 			const { getByTestId } = render({ results: [result('c1')], resultsCount: 1 });
 
 			expect(getByTestId('agent-eval-cases-run-chip')).toHaveTextContent('1 case run');
+		});
+
+		// "cases run" is past tense; a run still working has to say what it's doing.
+		it('reports live progress instead of a past-tense count while running', () => {
+			const { getByTestId, queryByTestId } = render(
+				{
+					results: [result('c1')],
+					resultsCount: 6,
+					counts: { total: 6, success: 2, error: 0, cancelled: 0, pending: 4 },
+				},
+				0,
+				true,
+			);
+
+			expect(getByTestId('agent-eval-progress-chip')).toHaveTextContent('Running 2 of 6');
+			expect(queryByTestId('agent-eval-cases-run-chip')).not.toBeInTheDocument();
+		});
+
+		it('counts errored and cancelled cases as done, not still pending', () => {
+			const { getByTestId } = render(
+				{
+					results: [result('c1')],
+					resultsCount: 6,
+					counts: { total: 6, success: 1, error: 2, cancelled: 1, pending: 2 },
+				},
+				0,
+				true,
+			);
+
+			expect(getByTestId('agent-eval-progress-chip')).toHaveTextContent('Running 4 of 6');
+		});
+
+		it('returns to the past-tense count once the run settles', () => {
+			const { getByTestId, queryByTestId } = render(
+				{
+					results: [result('c1')],
+					resultsCount: 6,
+					counts: { total: 6, success: 6, error: 0, cancelled: 0, pending: 0 },
+				},
+				0,
+				false,
+			);
+
+			expect(getByTestId('agent-eval-cases-run-chip')).toHaveTextContent('6 cases run');
+			expect(queryByTestId('agent-eval-progress-chip')).not.toBeInTheDocument();
 		});
 	});
 

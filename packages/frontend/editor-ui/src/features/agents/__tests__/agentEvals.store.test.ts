@@ -563,6 +563,62 @@ describe('useAgentEvalsStore', () => {
 			expect(store.isRunInFlight(RUN_ID)).toBe(false);
 		});
 
+		// Progress has to appear immediately; waiting a full interval on a run the
+		// user just started reads as nothing happening.
+		it('reads the tallies straight away rather than after an interval', async () => {
+			const store = await openInFlight();
+			getRunSummary.mockResolvedValue(summary('running'));
+
+			store.startPollingRun(PROJECT_ID, AGENT_ID, RUN_ID);
+			await vi.advanceTimersByTimeAsync(0);
+
+			expect(getRunSummary).toHaveBeenCalledTimes(1);
+			expect(store.getReview(RUN_ID).counts).toEqual({
+				total: 1,
+				success: 0,
+				error: 0,
+				cancelled: 0,
+				pending: 1,
+			});
+			store.stopPollingRun();
+		});
+
+		// Cases land one at a time, so the rows have to be re-read as they do —
+		// otherwise they stay frozen as they were when the run started.
+		it('re-reads the cases when a case finishes mid-run', async () => {
+			const store = await openInFlight();
+			const pendingCounts = (pending: number) => ({
+				runId: RUN_ID,
+				status: 'running',
+				counts: { total: 3, success: 3 - pending, error: 0, cancelled: 0, pending },
+			});
+			getRunSummary.mockResolvedValue(pendingCounts(3));
+
+			store.startPollingRun(PROJECT_ID, AGENT_ID, RUN_ID);
+			await vi.advanceTimersByTimeAsync(0);
+			const readsAfterFirstTick = getRunDetail.mock.calls.length;
+
+			// Second tick: one fewer case pending than the tick before it.
+			getRunSummary.mockResolvedValue(pendingCounts(2));
+			await vi.advanceTimersByTimeAsync(5_000);
+
+			expect(getRunDetail.mock.calls.length).toBe(readsAfterFirstTick + 1);
+			store.stopPollingRun();
+		});
+
+		it('does not re-read the cases when nothing has progressed', async () => {
+			const store = await openInFlight();
+			getRunSummary.mockResolvedValue(summary('running'));
+
+			store.startPollingRun(PROJECT_ID, AGENT_ID, RUN_ID);
+			await vi.advanceTimersByTimeAsync(0);
+			const readsAfterFirstTick = getRunDetail.mock.calls.length;
+			await vi.advanceTimersByTimeAsync(5_000);
+
+			expect(getRunDetail.mock.calls.length).toBe(readsAfterFirstTick);
+			store.stopPollingRun();
+		});
+
 		it('keeps checking while the run is still running', async () => {
 			const store = await openInFlight();
 			getRunSummary.mockResolvedValue(summary('running'));
@@ -571,7 +627,8 @@ describe('useAgentEvalsStore', () => {
 			await vi.advanceTimersByTimeAsync(5_000);
 			await vi.advanceTimersByTimeAsync(5_000);
 
-			expect(getRunSummary).toHaveBeenCalledTimes(2);
+			// The immediate read plus one per interval.
+			expect(getRunSummary).toHaveBeenCalledTimes(3);
 			store.stopPollingRun();
 		});
 
@@ -591,15 +648,20 @@ describe('useAgentEvalsStore', () => {
 			expect(store.getReview(RUN_ID).run?.status).toBe('completed');
 		});
 
-		it('stops on request without another check', async () => {
+		// Stopping cannot un-send the read already in flight, but it must prevent
+		// every one after it.
+		it('makes no further checks once stopped', async () => {
 			const store = await openInFlight();
 			getRunSummary.mockResolvedValue(summary('running'));
 
 			store.startPollingRun(PROJECT_ID, AGENT_ID, RUN_ID);
+			await vi.advanceTimersByTimeAsync(0);
+			const afterImmediate = getRunSummary.mock.calls.length;
+
 			store.stopPollingRun();
 			await vi.advanceTimersByTimeAsync(15_000);
 
-			expect(getRunSummary).not.toHaveBeenCalled();
+			expect(getRunSummary).toHaveBeenCalledTimes(afterImmediate);
 		});
 
 		// A dropped poll must not end the watch — the run is still going.
@@ -612,7 +674,8 @@ describe('useAgentEvalsStore', () => {
 			await vi.advanceTimersByTimeAsync(5_000);
 			await vi.advanceTimersByTimeAsync(5_000);
 
-			expect(getRunSummary).toHaveBeenCalledTimes(2);
+			// The immediate read plus one per interval.
+			expect(getRunSummary).toHaveBeenCalledTimes(3);
 			store.stopPollingRun();
 		});
 
@@ -624,8 +687,11 @@ describe('useAgentEvalsStore', () => {
 			store.startPollingRun(PROJECT_ID, AGENT_ID, 'run-2');
 			await vi.advanceTimersByTimeAsync(5_000);
 
-			expect(getRunSummary).toHaveBeenCalledTimes(1);
-			expect(getRunSummary).toHaveBeenCalledWith(REST_CONTEXT, PROJECT_ID, AGENT_ID, 'run-2');
+			// Only the surviving watcher keeps polling: the replaced one contributes
+			// its immediate read and nothing after it.
+			const runIds = getRunSummary.mock.calls.map((c) => c[3]);
+			expect(runIds.filter((id) => id === RUN_ID)).toHaveLength(1);
+			expect(runIds.filter((id) => id === 'run-2').length).toBeGreaterThan(1);
 			store.stopPollingRun();
 		});
 	});

@@ -115,7 +115,6 @@ describe('AgentEvalsSection', () => {
 			expect(getByTestId('agent-eval-results-panel')).toHaveTextContent('run-7');
 		});
 
-		// Starting a run belongs to the case list, so this state offers no CTA.
 		it('explains itself when a dataset exists but has never run', () => {
 			const { getByTestId, queryByTestId } = render({
 				datasets: [dataset('d1')],
@@ -125,6 +124,25 @@ describe('AgentEvalsSection', () => {
 			expect(getByTestId('agent-eval-no-runs')).toBeInTheDocument();
 			expect(queryByTestId('agent-evals-generate-button')).not.toBeInTheDocument();
 			expect(queryByTestId('agent-eval-results-panel')).not.toBeInTheDocument();
+		});
+
+		// Without this the view is unreachable: `Re-run all` lives inside the results
+		// card, which only exists once a run does.
+		it('offers to run the cases when none has ever run', async () => {
+			const { getByTestId, store } = render({ datasets: [dataset('d1')], latestRunId: null });
+
+			await userEvent.click(getByTestId('agent-eval-run-cases-button'));
+
+			expect(store.startRun).toHaveBeenCalledWith(PROJECT_ID, AGENT_ID, 'd1');
+		});
+
+		it('does not offer to run for a user who cannot edit the agent', () => {
+			const { getByTestId } = render(
+				{ datasets: [dataset('d1')], latestRunId: null },
+				{ disabled: true },
+			);
+
+			expect(getByTestId('agent-eval-run-cases-button')).toBeDisabled();
 		});
 	});
 

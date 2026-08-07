@@ -8,7 +8,7 @@
  * loaded page, so paging can't change what the header claims.
  */
 import { computed, onBeforeUnmount, onMounted, watch } from 'vue';
-import { N8nBadge, N8nButton, N8nText, N8nTooltip } from '@n8n/design-system';
+import { N8nBadge, N8nButton, N8nSpinner, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 
@@ -44,6 +44,16 @@ const remaining = computed(() => Math.max(0, review.value.resultsCount - reviewe
 const hasMore = computed(() => results.value.length < review.value.resultsCount);
 
 // A run reports when it finished; a run still going has only a start.
+const counts = computed(() => review.value.counts);
+
+// A run in flight reports how far it has got, so a multi-minute wait doesn't look
+// like nothing happening. Falls back to the settled phrasing once it's done.
+const inFlight = computed(() => store.isRunInFlight(props.runId));
+const settledCases = computed(() => {
+	const c = counts.value;
+	return c ? c.total - c.pending : 0;
+});
+
 const relativeRunTime = computed(() => {
 	const run = review.value.run;
 	const timestamp = run?.completedAt ?? run?.runAt ?? run?.createdAt;
@@ -120,7 +130,18 @@ onBeforeUnmount(store.stopPollingRun);
 				</N8nButton>
 			</div>
 			<div :class="$style.meta">
-				<N8nBadge data-testid="agent-eval-cases-run-chip">
+				<!-- "cases run" is past tense, so a run still working says so instead. -->
+				<N8nBadge v-if="inFlight && counts" data-testid="agent-eval-progress-chip">
+					<span :class="$style.progressChip">
+						<N8nSpinner size="small" />
+						{{
+							i18n.baseText('agents.builder.agentEvals.review.progress', {
+								interpolate: { done: settledCases, total: counts.total },
+							})
+						}}
+					</span>
+				</N8nBadge>
+				<N8nBadge v-else data-testid="agent-eval-cases-run-chip">
 					{{
 						i18n.baseText('agents.builder.agentEvals.review.casesRun', {
 							adjustToNumber: review.resultsCount,
@@ -232,6 +253,12 @@ onBeforeUnmount(store.stopPollingRun);
 
 .title {
 	margin: 0;
+}
+
+.progressChip {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--5xs);
 }
 
 .meta {

@@ -90,6 +90,24 @@ describe('AgentEvalResultRow', () => {
 		expect(getByText("The agent didn't return an answer.")).toBeInTheDocument();
 	});
 
+	// A case that hasn't finished has no answer *yet* — reporting one as missing
+	// announces a failure that hasn't happened.
+	it.each([['new'], ['running']])('says it is waiting, not empty, while %s', (status) => {
+		const { getByText, queryByText } = render(
+			{ kind: 'unrated' },
+			{ status: status as 'new' | 'running', output: null },
+		);
+
+		expect(getByText('Waiting for the agent…')).toBeInTheDocument();
+		expect(queryByText("The agent didn't return an answer.")).not.toBeInTheDocument();
+	});
+
+	it('still reports a genuinely empty answer on a settled case', () => {
+		const { getByText } = render({ kind: 'unrated' }, { status: 'success', output: null });
+
+		expect(getByText("The agent didn't return an answer.")).toBeInTheDocument();
+	});
+
 	describe('voting', () => {
 		it('emits the vote when thumbs-down is pressed', async () => {
 			const { getByTestId, emitted } = render({ kind: 'unrated' });
@@ -244,6 +262,17 @@ describe('AgentEvalResultRow', () => {
 			const { getByTestId } = render({ kind: 'unrated' }, { status: 'cancelled' });
 
 			expect(getByTestId('agent-eval-status-chip')).toHaveTextContent('Cancelled');
+		});
+
+		// Queued and running are told apart so a waiting reviewer can see which case
+		// is actually executing rather than sitting behind the concurrency cap.
+		it.each([
+			['new', 'Queued'],
+			['running', 'Running'],
+		])('reports a %s case as %s', (status, label) => {
+			const { getByTestId } = render({ kind: 'unrated' }, { status: status as 'new' | 'running' });
+
+			expect(getByTestId('agent-eval-status-chip')).toHaveTextContent(label);
 		});
 
 		it('is absent on a case that ran successfully', () => {

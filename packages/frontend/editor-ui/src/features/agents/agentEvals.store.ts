@@ -13,6 +13,7 @@ import type {
 	AgentEvalResultRecord,
 	AgentEvalRunRecord,
 	AgentEvalRunStatus,
+	AgentEvalRunSummary,
 	AgentEvalVote,
 	GenerateDraftCasesOptions,
 } from './agentEvals.types';
@@ -38,6 +39,12 @@ type RunReviewState = {
 	ratingsByResultId: Record<string, AgentEvalRatingRecord>;
 	pendingByResultId: Record<string, PendingReview>;
 	draftsByResultId: Record<string, ReviewDraft>;
+	/**
+	 * Per-status tallies from the summary route, so a run in flight can report how
+	 * far it has got. Null until the first poll — the run-detail route doesn't
+	 * carry them.
+	 */
+	counts: AgentEvalRunSummary['counts'] | null;
 	loading: boolean;
 	loadingMore: boolean;
 };
@@ -60,6 +67,7 @@ const emptyRunReview = (): RunReviewState => ({
 	ratingsByResultId: {},
 	pendingByResultId: {},
 	draftsByResultId: {},
+	counts: null,
 	loading: false,
 	loadingMore: false,
 });
@@ -93,8 +101,12 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 
 	// One watcher at a time: only one run is on screen, and a stale timer writing
 	// into a run nobody is looking at is pure waste.
+	//
+	// A generation counter rather than an on/off flag: a watcher's first read is
+	// already in flight when it gets replaced, and a boolean would let that read
+	// reschedule itself under the *new* watcher's flag — leaving two timers running.
 	let pollTimer: ReturnType<typeof setTimeout> | null = null;
-	let pollingActive = false;
+	let pollGeneration = 0;
 
 	const getDatasets = (agentId: string) => datasetsByAgentId.value[agentId] ?? [];
 
@@ -408,58 +420,102 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 	const isRunInFlight = (runId: string) => isPendingStatus(getReview(runId).run?.status);
 
 	const stopPollingRun = () => {
-		pollingActive = false;
+		pollGeneration += 1;
 		if (pollTimer !== null) {
 			clearTimeout(pollTimer);
 			pollTimer = null;
 		}
 	};
 
+	/**
+	 * Re-reads the cases without disturbing the review on top of them. Keeps the
+	 * window the reviewer has already paged open, so a refresh mid-run can't
+	 * collapse it back to the first page.
+	 */
+	const refreshResults = async (projectId: string, agentId: string, runId: string) => {
+		const loaded = getReview(runId).results.length;
+		const detail = await agentEvalsApi.getRunDetail(
+			rootStore.restApiContext,
+			projectId,
+			agentId,
+			runId,
+			{ take: Math.max(loaded, AGENT_EVAL_RESULTS_DEFAULT_TAKE), skip: 0 },
+		);
+		const { results, ...run } = detail;
+		patchReview(runId, { run, results: results.data, resultsCount: results.count });
+	};
+
+	/** One check of an in-flight run. Resolves true once the run has settled. */
+	const pollRunOnce = async (projectId: string, agentId: string, runId: string) => {
+		try {
+			const summary = await agentEvalsApi.getRunSummary(
+				rootStore.restApiContext,
+				projectId,
+				agentId,
+				runId,
+			);
+			const current = getReview(runId);
+			// Only meaningful once a previous tick recorded counts; on the first tick
+			// `openRun` has just read the cases, so there is nothing to refresh.
+			const progressed =
+				current.counts !== null && current.counts.pending !== summary.counts.pending;
+
+			patchReview(runId, {
+				counts: summary.counts,
+				...(current.run ? { run: { ...current.run, status: summary.status } } : {}),
+			});
+
+			if (!isPendingStatus(summary.status)) {
+				// Settled: re-read in full so answers and ratings land together.
+				await openRun(projectId, agentId, runId);
+				return true;
+			}
+
+			// Cases finish one at a time. Without this the rows stay frozen as they
+			// were when the run started, which reads as nothing happening.
+			if (progressed) await refreshResults(projectId, agentId, runId);
+		} catch {
+			// A dropped poll is not worth surfacing — the next tick retries, and the
+			// run is unaffected either way.
+		}
+		return false;
+	};
+
 	// Self-rescheduling rather than an interval, so a slow response can't stack up
 	// overlapping requests.
-	const schedulePoll = (projectId: string, agentId: string, runId: string) => {
-		if (!pollingActive) return;
+	const schedulePoll = (projectId: string, agentId: string, runId: string, generation: number) => {
+		if (generation !== pollGeneration) return;
 
 		pollTimer = setTimeout(async () => {
 			pollTimer = null;
-			if (!pollingActive) return;
+			if (generation !== pollGeneration) return;
 
 			// A backgrounded tab doesn't need progress; it re-reads when it comes back.
-			if (!document.hidden) {
-				try {
-					const summary = await agentEvalsApi.getRunSummary(
-						rootStore.restApiContext,
-						projectId,
-						agentId,
-						runId,
-					);
-					const current = getReview(runId);
-					if (current.run) {
-						patchReview(runId, { run: { ...current.run, status: summary.status } });
-					}
-
-					if (!isPendingStatus(summary.status)) {
-						stopPollingRun();
-						// Settled: re-read so the cases and their answers replace the
-						// placeholder rows the run started with.
-						await openRun(projectId, agentId, runId);
-						return;
-					}
-				} catch {
-					// A dropped poll is not worth surfacing — the next tick retries, and
-					// the run is unaffected either way.
-				}
+			if (!document.hidden && (await pollRunOnce(projectId, agentId, runId))) {
+				stopPollingRun();
+				return;
 			}
 
-			schedulePoll(projectId, agentId, runId);
+			schedulePoll(projectId, agentId, runId, generation);
 		}, RUN_POLL_INTERVAL_MS);
 	};
 
-	/** Watches an in-flight run until it settles, then reloads it once. */
+	/**
+	 * Watches an in-flight run until it settles, reporting progress as it goes.
+	 * Reads once straight away so a freshly started run shows its tallies
+	 * immediately rather than after a blank interval.
+	 */
 	const startPollingRun = (projectId: string, agentId: string, runId: string) => {
 		stopPollingRun();
-		pollingActive = true;
-		schedulePoll(projectId, agentId, runId);
+		const generation = pollGeneration;
+
+		void (async () => {
+			const settled = await pollRunOnce(projectId, agentId, runId);
+			// Replaced while that read was in flight: the newer watcher owns the timer.
+			if (generation !== pollGeneration) return;
+			if (settled) stopPollingRun();
+			else schedulePoll(projectId, agentId, runId, generation);
+		})();
 	};
 
 	/** Runs the dataset's cases again against the agent's current config. */

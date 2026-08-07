@@ -79,8 +79,9 @@ watch(() => props.agentId, load);
 			@rerun="onRerun"
 		/>
 
-		<!-- A dataset exists but has never run: nothing to review, and starting a run
-		     belongs to the case list, so this state only explains itself. -->
+		<!-- A dataset exists but has never run. The case list owns running a set the
+		     user has just edited; this offers the same action for the plain case of
+		     cases that exist and have never been tried. -->
 		<div v-else-if="dataset" :class="$style.emptyState" data-testid="agent-eval-no-runs">
 			<div :class="$style.iconBadge">
 				<N8nIcon icon="sparkles" size="xlarge" />
@@ -91,6 +92,18 @@ watch(() => props.agentId, load);
 			<N8nText size="medium" color="text-base" :class="$style.description">
 				{{ i18n.baseText('agents.builder.agentEvals.review.noRuns.description') }}
 			</N8nText>
+			<N8nButton
+				variant="solid"
+				size="large"
+				type="button"
+				icon="play"
+				:disabled="disabled"
+				:loading="store.isStartingRun(dataset.id)"
+				data-testid="agent-eval-run-cases-button"
+				@click="onRerun"
+			>
+				{{ i18n.baseText('agents.builder.agentEvals.review.noRuns.run') }}
+			</N8nButton>
 		</div>
 
 		<div v-else :class="$style.emptyState" data-testid="agent-evals-empty-state">
