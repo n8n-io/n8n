@@ -43,6 +43,7 @@ import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
 
 import { WorkflowFinderService } from './workflow-finder.service';
+import { WorkflowMutationHooksProxy } from './workflow-mutation-hooks-proxy.service';
 
 @Service()
 export class EnterpriseWorkflowService {
@@ -60,6 +61,7 @@ export class EnterpriseWorkflowService {
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly folderRepository: FolderRepository,
 		private readonly workflowPublishHistoryRepository: WorkflowPublishHistoryRepository,
+		private readonly workflowMutationHooks: WorkflowMutationHooksProxy,
 	) {}
 
 	async shareWithProjects(
@@ -648,6 +650,16 @@ export class EnterpriseWorkflowService {
 		workflows: WorkflowEntity[],
 		destinationProject: Project,
 	) {
+		// Resolved before the transaction rewrites the sharings. Workflows already
+		// owned by the destination are folder moves, not project transfers.
+		const movedWorkflowIds = workflows
+			.filter(
+				(workflow) =>
+					workflow.shared.find((s) => s.role === 'workflow:owner')?.project.id !==
+					destinationProject.id,
+			)
+			.map((workflow) => workflow.id);
+
 		await this.workflowRepository.manager.transaction(async (trx) => {
 			for (const workflow of workflows) {
 				// Remove all sharings
@@ -667,6 +679,10 @@ export class EnterpriseWorkflowService {
 		// Update workflow project cache entries
 		for (const workflow of workflows) {
 			await this.ownershipService.setWorkflowProjectCacheEntry(workflow.id, destinationProject);
+		}
+
+		if (movedWorkflowIds.length > 0) {
+			await this.workflowMutationHooks.afterWorkflowsTransferred(movedWorkflowIds);
 		}
 	}
 

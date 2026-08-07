@@ -99,6 +99,7 @@ beforeAll(async () => {
 		workflowPublishedVersionRepository,
 		Container.get(WorkflowHookContextService), // workflowHookContextService
 		workflowPublishGuard,
+		mock(), // workflowMutationHooks
 	);
 });
 

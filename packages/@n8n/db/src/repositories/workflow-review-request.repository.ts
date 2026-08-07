@@ -41,14 +41,6 @@ export type WorkflowReviewRequestForWorkflowRow = Pick<
 	workflowVersionId: string | null;
 };
 
-export type ExistsAnyForInboxOptions = {
-	/** `null` means all projects (no filter); `[]` means no publish-scoped projects. */
-	projectIds: string[] | null;
-	/** Requesters always see the reviews they created, regardless of project scope. */
-	requesterId: string;
-	state?: WorkflowReviewRequestState;
-};
-
 export type CountByStateForInboxOptions = {
 	/** `null` means all projects (no filter); `[]` means no publish-scoped projects. */
 	projectIds: string[] | null;
@@ -105,6 +97,47 @@ export class WorkflowReviewRequestRepository extends BaseRepository<WorkflowRevi
 		ctx: OperationContext,
 	): Promise<WorkflowReviewRequest> {
 		return await this.managerFor(ctx).save(WorkflowReviewRequest, request);
+	}
+
+	/**
+	 * Closes every open request left with no linked workflow, returning the ids closed.
+	 *
+	 * A workflow hard delete cascades the link rows away, so an open request that has
+	 * lost its last one covers nothing and can never be acted on again. `create` writes
+	 * the request and its link row in one transaction, so a request is only ever visible
+	 * without links once the workflow behind it is gone — the two steps here cannot see
+	 * a half-written create and so need no lock.
+	 */
+	async closeOrphanedOpenRequests(ctx: OperationContext): Promise<string[]> {
+		const openState: WorkflowReviewRequestState = 'open';
+		const closedState: WorkflowReviewRequestState = 'closed';
+		const manager = this.managerFor(ctx);
+
+		const orphans = await manager
+			.createQueryBuilder(WorkflowReviewRequest, 'review')
+			.select('review.id', 'id')
+			.where('review.state = :openState', { openState })
+			.andWhere((qb) => {
+				const linkedWorkflowExists = qb
+					.subQuery()
+					.select('1')
+					.from(WorkflowReviewRequestWorkflow, 'requestWorkflow')
+					.where('requestWorkflow.workflowReviewRequestId = review.id')
+					.getQuery();
+				return `NOT EXISTS ${linkedWorkflowExists}`;
+			})
+			.getRawMany<{ id: string }>();
+
+		if (orphans.length === 0) return [];
+
+		const ids = orphans.map(({ id }) => id);
+		// A system close has no closing user; the decision stays as-is.
+		await manager.update(WorkflowReviewRequest, ids, {
+			state: closedState,
+			closedById: null,
+		});
+
+		return ids;
 	}
 
 	async findById(id: string, ctx: OperationContext): Promise<WorkflowReviewRequest | null> {
@@ -182,6 +215,45 @@ export class WorkflowReviewRequestRepository extends BaseRepository<WorkflowRevi
 			.getOne();
 	}
 
+	/**
+	 * All open requests linked to any of the given workflows, each with the
+	 * subset of those workflows it is linked to — so a lifecycle cleanup can
+	 * close a request once while still knowing which workflows were affected.
+	 */
+	async findOpenRequestsForWorkflows(
+		workflowIds: string[],
+		ctx: OperationContext,
+	): Promise<Array<{ request: WorkflowReviewRequest; workflowIds: string[] }>> {
+		if (workflowIds.length === 0) return [];
+
+		const state: WorkflowReviewRequestState = 'open';
+
+		const { entities, raw } = await this.managerFor(ctx)
+			.createQueryBuilder(WorkflowReviewRequest, 'request')
+			.innerJoin(
+				WorkflowReviewRequestWorkflow,
+				'requestWorkflow',
+				'requestWorkflow.workflowReviewRequestId = request.id',
+			)
+			.addSelect('requestWorkflow.workflowId', 'linkedWorkflowId')
+			.where('requestWorkflow.workflowId IN (:...workflowIds)', { workflowIds })
+			.andWhere('request.state = :state', { state })
+			.getRawAndEntities<{ request_id: string; linkedWorkflowId: string }>();
+
+		// Raw rows are per (request, workflow) pair; entities are deduplicated.
+		const workflowIdsByRequestId = new Map<string, string[]>();
+		for (const row of raw) {
+			const linked = workflowIdsByRequestId.get(row.request_id) ?? [];
+			linked.push(row.linkedWorkflowId);
+			workflowIdsByRequestId.set(row.request_id, linked);
+		}
+
+		return entities.map((request) => ({
+			request,
+			workflowIds: workflowIdsByRequestId.get(request.id) ?? [],
+		}));
+	}
+
 	async findManyForInbox(options: FindManyForInboxOptions): Promise<WorkflowReviewRequest[]> {
 		const { projectIds, requesterId, state, limit, cursor } = options;
 
@@ -190,6 +262,7 @@ export class WorkflowReviewRequestRepository extends BaseRepository<WorkflowRevi
 			.addOrderBy('review.id', 'ASC');
 
 		this.applyInboxVisibility(queryBuilder, projectIds, requesterId);
+		this.excludeOpenOrphans(queryBuilder);
 
 		if (state !== undefined) {
 			queryBuilder.andWhere('review.state = :state', { state });
@@ -216,6 +289,7 @@ export class WorkflowReviewRequestRepository extends BaseRepository<WorkflowRevi
 			.groupBy('review.state');
 
 		this.applyInboxVisibility(queryBuilder, projectIds, requesterId);
+		this.excludeOpenOrphans(queryBuilder);
 
 		const rows = await queryBuilder.getRawMany<{
 			state: WorkflowReviewRequestState;
@@ -244,13 +318,38 @@ export class WorkflowReviewRequestRepository extends BaseRepository<WorkflowRevi
 		}
 
 		if (projectIds.length === 0) {
-			queryBuilder.where('review.createdById = :requesterId', { requesterId });
+			queryBuilder.andWhere('review.createdById = :requesterId', { requesterId });
 			return;
 		}
 
-		queryBuilder.where(
+		queryBuilder.andWhere(
 			'(review.projectId IN (:...projectIds) OR review.createdById = :requesterId)',
 			{ projectIds, requesterId },
+		);
+	}
+
+	/**
+	 * Hide open requests with no remaining link rows. A workflow hard delete
+	 * cascades the link rows away; when the auto-close hook is bypassed (folder
+	 * cascade, create/delete race) the parent is left open with nothing to act
+	 * on — decide and update-version 404 — so the inbox must not offer it.
+	 * Closed requests legitimately keep zero link rows: a hard delete closes
+	 * the request and preserves it as history.
+	 */
+	private excludeOpenOrphans(queryBuilder: SelectQueryBuilder<WorkflowReviewRequest>): void {
+		const openState: WorkflowReviewRequestState = 'open';
+
+		queryBuilder.andWhere(
+			(qb) => {
+				const linkedWorkflowExists = qb
+					.subQuery()
+					.select('1')
+					.from(WorkflowReviewRequestWorkflow, 'requestWorkflow')
+					.where('requestWorkflow.workflowReviewRequestId = review.id')
+					.getQuery();
+				return `(review.state != :openState OR EXISTS ${linkedWorkflowExists})`;
+			},
+			{ openState },
 		);
 	}
 }

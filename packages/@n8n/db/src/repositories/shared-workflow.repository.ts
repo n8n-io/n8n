@@ -5,7 +5,7 @@ import {
 	type Scope,
 	type WorkflowSharingRole,
 } from '@n8n/permissions';
-import { DataSource, Repository, In, Not } from '@n8n/typeorm';
+import { DataSource, In, Not } from '@n8n/typeorm';
 import type {
 	EntityManager,
 	FindManyOptions,
@@ -13,11 +13,13 @@ import type {
 	SelectQueryBuilder,
 } from '@n8n/typeorm';
 
+import { BaseRepository } from './base-repository';
 import type { User } from '../entities';
 import { Project, ProjectRelation, SharedWorkflow } from '../entities';
+import type { OperationContext } from '../services/transaction';
 
 @Service()
-export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
+export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
 	constructor(dataSource: DataSource) {
 		super(SharedWorkflow, dataSource.manager);
 	}
@@ -136,9 +138,14 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 		return [...new Set(projectIds)];
 	}
 
-	async getWorkflowOwningProject(workflowId: string) {
+	/**
+	 * Pass `ctx` when calling from inside a transaction — the read then runs on that
+	 * transaction's connection instead of checking out a second one, which would
+	 * deadlock a single-connection pool.
+	 */
+	async getWorkflowOwningProject(workflowId: string, ctx: OperationContext = {}) {
 		return (
-			await this.findOne({
+			await this.managerFor(ctx).findOne(SharedWorkflow, {
 				where: { workflowId, role: 'workflow:owner' },
 				relations: { project: true },
 			})
