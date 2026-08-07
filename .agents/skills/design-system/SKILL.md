@@ -20,6 +20,7 @@ Reference these guidelines when:
 - ALWAYS use CSS variables for styles from `packages/frontend/@n8n/design-system/src/css/_tokens.scss` or `packages/frontend/@n8n/design-system/src/css/_primtivies.scss`. Use hard-coded values only when no suitable tokens.
 - ALWAYS prefer using existing components from `packages/frontend/@n8n/design-system/src/components`. Prefer components that aren't marked `@deprecated`.
 - Use `light-dark()` when alternating colors for ligh/dark mode
+- If you need to add hover/active alpha behavior to solid components, prefer `color-mix()` with explicit percentages.
 - When working with animations or transitions, ALWAYS prefer using mixins from `packages/frontend/@n8n/design-system/src/css/mixins/motion.scss`
 - When reviewing animations, follow the guides in `rules/web-animation-guidelines.md`
 - When reviewing UI changes or adding new components, follow `rules/web-interface-guidelines.md`
