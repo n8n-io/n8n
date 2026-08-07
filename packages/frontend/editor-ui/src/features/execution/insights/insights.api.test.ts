@@ -1,6 +1,6 @@
 import {
-	fetchInsightsByTime,
 	fetchInsightsSummary,
+	fetchInsightsByTime,
 	fetchInsightsTimeSaved,
 	fetchInsightsByWorkflow,
 	serializeInsightsFilter,
@@ -172,7 +172,7 @@ describe('insights.api', () => {
 			expect(makeRestApiRequest).toHaveBeenCalledWith(mockContext, 'GET', '/insights/summary', {
 				startDate: '2025-01-01T00:00:00.000Z',
 				endDate: '2025-01-31T23:59:59.999Z',
-				timezone,
+				timeZone,
 			});
 			expect(result).toEqual(mockSummary);
 		});
