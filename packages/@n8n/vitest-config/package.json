@@ -28,11 +28,6 @@
       "require": "./dist/frontend.js",
       "types": "./dist/frontend.d.ts"
     },
-    "./frontend-aliases": {
-      "import": "./dist/frontend-aliases.js",
-      "require": "./dist/frontend-aliases.js",
-      "types": "./dist/frontend-aliases.d.ts"
-    },
     "./node": {
       "import": "./dist/node.js",
       "require": "./dist/node.js",
@@ -50,7 +45,6 @@
     "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json",
     "build:unchecked": "tsc -p tsconfig.build.json --noCheck",
-    "sync-frontend-aliases": "node bin/sync-frontend-aliases.mjs",
     "format": "biome format --write .",
     "format:check": "biome ci .",
     "watch": "tsc -p tsconfig.build.json --watch"
