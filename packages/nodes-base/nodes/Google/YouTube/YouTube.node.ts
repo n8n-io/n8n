@@ -847,7 +847,7 @@ export class YouTube implements INodeType {
 							fileContent = await this.helpers.getBinaryStream(binaryData.id, UPLOAD_CHUNK_SIZE);
 							const metadata = await this.helpers.getBinaryMetadata(binaryData.id);
 							contentLength = metadata.fileSize;
-							mimeType = metadata.mimeType ?? binaryData.mimeType;
+							mimeType = binaryData.mimeType ?? metadata.mimeType;
 						} else {
 							const buffer = Buffer.from(binaryData.data, BINARY_ENCODING);
 							fileContent = Readable.from(buffer);
