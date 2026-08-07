@@ -455,11 +455,6 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 				runId,
 			);
 			const current = getReview(runId);
-			// Only meaningful once a previous tick recorded counts; on the first tick
-			// `openRun` has just read the cases, so there is nothing to refresh.
-			const progressed =
-				current.counts !== null && current.counts.pending !== summary.counts.pending;
-
 			patchReview(runId, {
 				counts: summary.counts,
 				...(current.run ? { run: { ...current.run, status: summary.status } } : {}),
@@ -471,9 +466,17 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 				return true;
 			}
 
-			// Cases finish one at a time. Without this the rows stay frozen as they
-			// were when the run started, which reads as nothing happening.
-			if (progressed) await refreshResults(projectId, agentId, runId);
+			// Re-read on every tick, not only when a tally moves. The summary folds
+			// `new` and `running` into a single `pending`, so a case *starting* changes
+			// no count — keying the refresh off the counts would leave every row frozen
+			// on whatever status it had when the run began.
+			//
+			// Skipped on the first tick only, because `openRun` has just read the cases.
+			//
+			// The cost is a full run-detail read per tick, and each row carries its
+			// input/output JSON. That is fine for the handful of cases generation
+			// produces; a statuses-only route is what would make it cheap at scale.
+			if (current.counts !== null) await refreshResults(projectId, agentId, runId);
 		} catch {
 			// A dropped poll is not worth surfacing — the next tick retries, and the
 			// run is unaffected either way.

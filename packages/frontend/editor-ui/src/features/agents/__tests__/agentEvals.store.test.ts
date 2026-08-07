@@ -585,37 +585,34 @@ describe('useAgentEvalsStore', () => {
 
 		// Cases land one at a time, so the rows have to be re-read as they do —
 		// otherwise they stay frozen as they were when the run started.
-		it('re-reads the cases when a case finishes mid-run', async () => {
-			const store = await openInFlight();
-			const pendingCounts = (pending: number) => ({
-				runId: RUN_ID,
-				status: 'running',
-				counts: { total: 3, success: 3 - pending, error: 0, cancelled: 0, pending },
-			});
-			getRunSummary.mockResolvedValue(pendingCounts(3));
-
-			store.startPollingRun(PROJECT_ID, AGENT_ID, RUN_ID);
-			await vi.advanceTimersByTimeAsync(0);
-			const readsAfterFirstTick = getRunDetail.mock.calls.length;
-
-			// Second tick: one fewer case pending than the tick before it.
-			getRunSummary.mockResolvedValue(pendingCounts(2));
-			await vi.advanceTimersByTimeAsync(5_000);
-
-			expect(getRunDetail.mock.calls.length).toBe(readsAfterFirstTick + 1);
-			store.stopPollingRun();
-		});
-
-		it('does not re-read the cases when nothing has progressed', async () => {
+		// A case going queued -> running moves no tally, because the summary folds
+		// both into `pending`. Refreshing only on a count change would leave every
+		// row frozen on the status it had when the run started.
+		it('re-reads the cases every tick, even when no tally has moved', async () => {
 			const store = await openInFlight();
 			getRunSummary.mockResolvedValue(summary('running'));
 
 			store.startPollingRun(PROJECT_ID, AGENT_ID, RUN_ID);
 			await vi.advanceTimersByTimeAsync(0);
 			const readsAfterFirstTick = getRunDetail.mock.calls.length;
+
+			await vi.advanceTimersByTimeAsync(5_000);
 			await vi.advanceTimersByTimeAsync(5_000);
 
-			expect(getRunDetail.mock.calls.length).toBe(readsAfterFirstTick);
+			expect(getRunDetail.mock.calls.length).toBe(readsAfterFirstTick + 2);
+			store.stopPollingRun();
+		});
+
+		// `openRun` has just read them, so the first tick has nothing to refresh.
+		it('does not re-read the cases on the very first tick', async () => {
+			const store = await openInFlight();
+			getRunSummary.mockResolvedValue(summary('running'));
+			const readsBeforePolling = getRunDetail.mock.calls.length;
+
+			store.startPollingRun(PROJECT_ID, AGENT_ID, RUN_ID);
+			await vi.advanceTimersByTimeAsync(0);
+
+			expect(getRunDetail.mock.calls.length).toBe(readsBeforePolling);
 			store.stopPollingRun();
 		});
 

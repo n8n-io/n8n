@@ -115,7 +115,7 @@ describe('AgentEvalResultsPanel', () => {
 				true,
 			);
 
-			expect(getByTestId('agent-eval-progress-chip')).toHaveTextContent('Running 2 of 6');
+			expect(getByTestId('agent-eval-progress-chip')).toHaveTextContent('2 of 6 cases done');
 			expect(queryByTestId('agent-eval-cases-run-chip')).not.toBeInTheDocument();
 		});
 
@@ -130,7 +130,7 @@ describe('AgentEvalResultsPanel', () => {
 				true,
 			);
 
-			expect(getByTestId('agent-eval-progress-chip')).toHaveTextContent('Running 4 of 6');
+			expect(getByTestId('agent-eval-progress-chip')).toHaveTextContent('4 of 6 cases done');
 		});
 
 		it('returns to the past-tense count once the run settles', () => {

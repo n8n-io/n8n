@@ -7779,7 +7779,7 @@
 	"agents.builder.agentEvals.review.loadError": "Couldn't load results",
 	"agents.builder.agentEvals.review.saveError": "Couldn't save your feedback",
 	"agents.builder.agentEvals.review.rerunError": "Couldn't start a new run",
-	"agents.builder.agentEvals.review.progress": "Running {done} of {total}",
+	"agents.builder.agentEvals.review.progress": "{done} of {total} cases done",
 	"agents.builder.agentEvals.review.noRuns.title": "Nothing has run yet",
 	"agents.builder.agentEvals.review.noRuns.description": "Run your cases through the agent, then tell us which answers are wrong.",
 	"agents.builder.agentEvals.review.noRuns.run": "Run cases",
