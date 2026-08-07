@@ -20,6 +20,7 @@ import type {
 	RequestHelperFunctions,
 } from 'n8n-workflow';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import { sleep } from '@n8n/utils/sleep';
 import { jsonParse, NodeOperationError, OperationalError, UserError } from 'n8n-workflow';
 import http from 'node:http';
@@ -424,11 +425,24 @@ const MAX_REGISTRY_ERROR_MESSAGE_LENGTH = 500;
 
 export function sanitizeRegistryError(error: unknown) {
 	const ensured = ensureError(error);
-	const redacted = ensured.message.replace(/\/\/[^/\s]+@/g, '//***@');
+
+	// URL userinfo first, and deliberately not the shared scrubber's rule for it.
+	// Ours is greedy to the last `@`, so a password containing an unencoded `@`
+	// is removed whole. The shared pattern stops at the first `@` and would leave
+	// the tail of such a password in the log.
+	const withoutUserinfo = ensured.message.replace(/\/\/[^/\s]+@/g, '//***@');
+
+	// Then the shared scrubber, for anything the registry echoes back from a
+	// response body that our URL rule cannot see: JWTs, Authorization headers,
+	// provider API keys, `password=` style assignments.
+	const scrubbed = scrubSecretsInText(withoutUserinfo);
+
+	// Length capped last, so the cap applies to the redacted text.
 	const message =
-		redacted.length > MAX_REGISTRY_ERROR_MESSAGE_LENGTH
-			? `${redacted.slice(0, MAX_REGISTRY_ERROR_MESSAGE_LENGTH)}...`
-			: redacted;
+		scrubbed.length > MAX_REGISTRY_ERROR_MESSAGE_LENGTH
+			? `${scrubbed.slice(0, MAX_REGISTRY_ERROR_MESSAGE_LENGTH)}...`
+			: scrubbed;
+
 	return {
 		message,
 		...('status' in ensured ? { status: ensured.status } : {}),

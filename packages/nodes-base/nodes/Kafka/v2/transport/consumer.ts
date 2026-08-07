@@ -56,6 +56,8 @@ export interface KafkaConsumerLogging {
  * Drops keys whose value is `undefined`. librdkafka does not treat a key that is
  * present but undefined as absent: it skips the library's own default and then
  * fails on the value, so an unset node option must never reach the config.
+ * NOTE: this should probably be a shared utility across the codebase. I found
+ * a couple for duplicate implementations so it probably make sense to go DRY
  */
 function definedOnly<T extends object>(values: T): Partial<T> {
 	return Object.fromEntries(
