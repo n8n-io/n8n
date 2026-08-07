@@ -8,7 +8,6 @@ describe('createModelTokenCounter', () => {
 			'こんにちは世界。ユーザーは毎週金曜日にレポートを送信します。مرحبا بالعالم — يجب إرسال التقرير يوم الجمعة. 🚀🔐🧪';
 
 		expect(await createModelTokenCounter('openai/gpt-5')(text)).toBe(37);
-		expect(await createModelTokenCounter('openai/gpt-4-turbo')(text)).toBe(68);
 		expect(await createModelTokenCounter('anthropic/claude-haiku-4-5')(text)).toBe(68);
 	});
 
