@@ -2,6 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { AuthenticatedRequest } from '@n8n/db';
 import { createIpRateLimit, Get, Head, Post, RootLevelController } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import { lazyImport } from '@n8n/utils/lazy-import';
 import type { Request, Response } from 'express';
 import { ErrorReporter } from 'n8n-core';
 
@@ -198,25 +199,27 @@ export class McpController {
 		featureFlags: McpFeatureFlags,
 		body: unknown,
 	) {
-		const { StreamableHTTPServerTransport } = await import(
-			'@modelcontextprotocol/sdk/server/streamableHttp.js'
+		const { createMcpHandler } = await lazyImport<typeof import('@modelcontextprotocol/server')>(
+			async () => await import('@modelcontextprotocol/server'),
+		);
+		const { toNodeHandler } = await lazyImport<typeof import('@modelcontextprotocol/node')>(
+			async () => await import('@modelcontextprotocol/node'),
 		);
 		const grantedScopes = (req as AuthenticatedRequest & { mcpScopes?: string[] }).mcpScopes;
-		const server = await this.mcpService.getServer(
-			req.user,
-			featureFlags,
-			getClientInfo(req),
-			grantedScopes,
+
+		// The handler builds a fresh server per request (complete isolation, no
+		// request-ID collisions across concurrent clients) and serves both the
+		// 2026-07-28 protocol and, via the stateless legacy fallback, 2025-era
+		// clients on this same endpoint.
+		const handler = createMcpHandler(
+			async () =>
+				await this.mcpService.getServer(req.user, featureFlags, getClientInfo(req), grantedScopes),
+			{
+				legacy: 'stateless',
+				onerror: (error) => this.errorReporter.error(error),
+			},
 		);
-		const transport = new StreamableHTTPServerTransport({
-			sessionIdGenerator: undefined,
-		});
-		res.on('close', () => {
-			void transport.close();
-			void server.close();
-		});
-		await server.connect(transport);
-		await transport.handleRequest(req, res, body);
+		await toNodeHandler(handler)(req, res, body);
 	}
 
 	private trackConnectionEvent(payload: UserConnectedToMCPEventPayload) {

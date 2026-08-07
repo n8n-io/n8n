@@ -15,6 +15,16 @@ export * from './dynamic-credentials-helpers';
 export * from './safe-regex';
 export * from './global-state';
 export * from './interfaces';
+export {
+	fromFunction,
+	fromParameter,
+	nodeParametersAreStatic,
+	resolveWebhookDescriptionField,
+	webhookDescriptionFields,
+	webhookDescriptionIsNativelyResolvable,
+	type NativeResolution,
+	type WebhookDescriptionField,
+} from './webhook-description-fields';
 export * from './sub-workflow-output';
 export * from './run-execution-data-factory';
 export * from './message-event-bus';

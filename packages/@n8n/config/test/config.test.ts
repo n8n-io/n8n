@@ -637,6 +637,7 @@ describe('GlobalConfig', () => {
 			tracesEnabled: true,
 			slowEvaluationThresholdMs: 50,
 			tracesSampleRate: 0.0,
+			allowWebhookIsolateSkip: true,
 		},
 		instanceSettingsLoader: {
 			ownerManagedByEnv: false,

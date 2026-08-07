@@ -135,7 +135,7 @@
       "vue-tsc": "catalog:frontend",
       "gaxios": ">=7.1.1",
       "google-gax": "^4.3.7",
-      "ws": ">=8.20.1",
+      "ws": ">=8.21.1",
       "date-fns": "2.30.0",
       "date-fns-tz": "2.0.0",
       "form-data": "4.0.6",
@@ -209,7 +209,8 @@
       "undici@7": "catalog:undici-v7",
       "node-gyp>undici": "catalog:undici-v7",
       "@babel/traverse": "^7.23.2",
-      "@vitest/browser@<4.1.10": "4.1.10"
+      "@vitest/browser@<4.1.10": "4.1.10",
+      "immutable": "5.1.8"
     },
     "patchedDependencies": {
       "axios": "patches/axios.patch",

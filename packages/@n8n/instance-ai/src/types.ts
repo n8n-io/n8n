@@ -13,6 +13,8 @@ import type {
 	Workspace,
 } from '@n8n/agents';
 import type {
+	AgentJsonConfig,
+	AgentSkill,
 	EvaluationMetric,
 	TaskList,
 	InstanceAiFileAttachment,
@@ -523,6 +525,19 @@ export interface ExploreResourcesResult {
 	builderHint?: string;
 }
 
+/**
+ * A resource-locator value the connected credential can't reach. Identifies the
+ * parameter and the offending value only — list the values it *can* reach with
+ * `exploreResources`, which runs the same lookup.
+ */
+export interface UnavailableLocatorValue {
+	/** Parameter name, as declared by the node. */
+	name: string;
+	displayName: string;
+	/** The configured value the credential can't reach. Left in place; repair is the caller's. */
+	currentValue: string;
+}
+
 export interface InstanceAiNodeService {
 	listAvailable(options?: { query?: string; n8nConnectOnly?: boolean }): Promise<NodeSummary[]>;
 	getDescription(nodeType: string, version?: number): Promise<NodeDescription>;
@@ -544,6 +559,20 @@ export interface InstanceAiNodeService {
 	): Promise<{ resources: Array<{ name: string; operations: string[] }> } | null>;
 	/** Query real resources via a node's listSearch or loadOptions methods (e.g. list spreadsheets, models). */
 	exploreResources?(params: ExploreResourcesParams): Promise<ExploreResourcesResult>;
+	/**
+	 * Report resource-locator parameters whose current value the given credential can't
+	 * reach. A credential can narrow a parameter's value space after the value was chosen —
+	 * the managed free-OpenAI-credits credential only proxies an allowlisted subset of
+	 * models — which is otherwise invisible until the workflow runs and fails. Reports the
+	 * unusable value only; list the usable ones with `exploreResources` if needed.
+	 */
+	findUnavailableLocatorValues?(params: {
+		nodeType: string;
+		version: number;
+		credentialType: string;
+		credentialId: string;
+		parameters: Record<string, unknown>;
+	}): Promise<UnavailableLocatorValue[]>;
 	/** Compute parameter issues for a node (mirrors builder's NodeHelpers.getNodeParametersIssues). */
 	getParameterIssues?(
 		nodeType: string,
@@ -967,6 +996,15 @@ export interface InstanceAiBuilderDelegate {
 	>;
 	/** Current display name of the agent, or undefined when not found. */
 	resolveAgentName(agentId: string): Promise<string | undefined>;
+	/** Config + skills for the `agent-snapshot` trace event; `null` when the agent
+	 *  has no config yet. Optional: the host supplies this delegate across a
+	 *  package boundary, so an unwired host emits no snapshots instead of
+	 *  breaking agent building. */
+	readAgentArtifact?(agentId: string): Promise<{
+		config: AgentJsonConfig;
+		skills: Record<string, AgentSkill>;
+		configHash: string | null;
+	} | null>;
 }
 
 // ── Local gateway status ─────────────────────────────────────────────────────
