@@ -10,16 +10,16 @@
 
 import type { InstanceAiRunDebugResponse } from '@n8n/api-types';
 import { sleep } from '@n8n/utils/sleep';
-import { unlinkSync } from 'fs';
 
 import type { LaneAllocator } from './lane-allocator';
-import { provisionCaseBuildUser, type CaseBuildAuth, type LaneUserPool } from './lane-users';
+import { provisionCaseBuildUser, type LaneUserPool } from './lane-users';
 import { selectAuthorExpectations } from '../build-expectations/select';
 import { allFailVerdicts, verifyBuildExpectations } from '../build-expectations/verifier';
 import type { CliArgs } from '../cli/args';
 import {
 	buildWorkflowViaMcp,
 	stageLaneMcpConfig,
+	unlinkStagedMcpConfig,
 	type McpBuildResult,
 	type McpBuildSettings,
 } from '../cli/mcp-builder';
@@ -43,6 +43,7 @@ import {
 import type { executeScenario } from '../harness/scenario-execution';
 import type { ScenarioSeedContext } from '../harness/seed-tables';
 import {
+	extractErrorMessage,
 	findProviderOutage,
 	isTransientNetworkError,
 	MAX_PROVIDER_BUILD_ATTEMPTS,
@@ -78,8 +79,6 @@ export interface Lane {
 	/** Pool of invited member users for `--build-via-mcp` — each build claims one
 	 *  so its MCP credential/workflow view is isolated to that user. */
 	mcpUserPool?: LaneUserPool;
-	/** Registers a per-build staged `claude` MCP config for exit cleanup. */
-	registerStagedMcpConfig?: (path: string) => void;
 }
 
 /** One `claude` build's Anthropic spend (`--build-via-mcp` only). Mirrors
@@ -175,9 +174,9 @@ async function buildWorkflowViaMcpOnLane(config: {
 		return failure(`Lane ${lane.baseUrl} has no MCP build user pool — cannot build via MCP`);
 	}
 
-	let auth: CaseBuildAuth;
+	let mcpApiKey: string;
 	try {
-		auth = await provisionCaseBuildUser({
+		mcpApiKey = await provisionCaseBuildUser({
 			pool: lane.mcpUserPool,
 			baseUrl: lane.baseUrl,
 			credentials,
@@ -185,17 +184,14 @@ async function buildWorkflowViaMcpOnLane(config: {
 			logger,
 		});
 	} catch (error) {
-		return failure(
-			`MCP build user/credential setup failed: ${error instanceof Error ? error.message : String(error)}`,
-		);
+		return failure(`MCP build user/credential setup failed: ${extractErrorMessage(error)}`);
 	}
 
 	const mcpConfigPath = stageLaneMcpConfig({
 		serverName: args.mcpServerName,
 		url: `${lane.baseUrl}/mcp-server/http`,
-		apiKey: auth.mcpApiKey,
+		apiKey: mcpApiKey,
 	});
-	lane.registerStagedMcpConfig?.(mcpConfigPath);
 
 	let result: McpBuildResult;
 	try {
@@ -209,11 +205,7 @@ async function buildWorkflowViaMcpOnLane(config: {
 			log: (message) => logger.info(message),
 		});
 	} finally {
-		try {
-			unlinkSync(mcpConfigPath);
-		} catch {
-			// best-effort
-		}
+		unlinkStagedMcpConfig(mcpConfigPath);
 	}
 
 	// Record spend whether or not the build produced a workflow — failed builds
@@ -230,13 +222,7 @@ async function buildWorkflowViaMcpOnLane(config: {
 	}
 
 	if (!result.workflowId) {
-		return {
-			success: false,
-			error: `MCP build produced no workflow (${result.failureReason ?? 'unknown'})`,
-			workflowJsons: [],
-			createdWorkflowIds: [],
-			createdDataTableIds: [],
-		};
+		return failure(`MCP build produced no workflow (${result.failureReason ?? 'unknown'})`);
 	}
 
 	return await fetchPrebuiltBuild(lane.client, result.workflowId, logger);

@@ -68,16 +68,11 @@ export class LaneUserPool {
 	}
 }
 
-export interface CaseBuildAuth {
-	mcpApiKey: string;
-	userEmail: string;
-}
-
 /**
  * Accept a pooled invitation (which logs the fresh client in as the member),
- * mint the member's MCP API key, and create the case's declared credentials
- * in their personal project. Throws on any step so a partial setup fails the
- * build instead of skewing it.
+ * mint and return the member's MCP API key, and create the case's declared
+ * credentials in their personal project. Throws on any step so a partial setup
+ * fails the build instead of skewing it.
  */
 export async function provisionCaseBuildUser(opts: {
 	pool: LaneUserPool;
@@ -85,11 +80,11 @@ export async function provisionCaseBuildUser(opts: {
 	credentials?: TestCaseCredential[];
 	onCredentialCreated: (id: string) => void;
 	logger?: EvalLogger;
-	/** Test seam — constructs the member's client. */
-	createClient?: (baseUrl: string) => N8nClient;
-}): Promise<CaseBuildAuth> {
+	/** Test seam — the member's client. */
+	memberClient?: N8nClient;
+}): Promise<string> {
 	const user = await opts.pool.claim();
-	const memberClient = (opts.createClient ?? ((url: string) => new N8nClient(url)))(opts.baseUrl);
+	const memberClient = opts.memberClient ?? new N8nClient(opts.baseUrl);
 	await memberClient.acceptInvitation({
 		token: user.acceptToken,
 		firstName: 'Eval',
@@ -97,13 +92,11 @@ export async function provisionCaseBuildUser(opts: {
 		password: opts.pool.password,
 	});
 	const mcpApiKey = await memberClient.rotateMcpApiKey();
-	if (opts.credentials && opts.credentials.length > 0) {
-		await createDeclaredCredentials(memberClient, opts.credentials, {
-			onCreated: opts.onCredentialCreated,
-			logger: opts.logger,
-		});
-	}
-	return { mcpApiKey, userEmail: user.email };
+	await createDeclaredCredentials(memberClient, opts.credentials ?? [], {
+		onCreated: opts.onCredentialCreated,
+		logger: opts.logger,
+	});
+	return mcpApiKey;
 }
 
 /** Best-effort deletion of the pool's users. Deleting a user also deletes
@@ -114,18 +107,22 @@ export async function cleanupLaneUsers(
 	pool: LaneUserPool,
 	logger: EvalLogger,
 ): Promise<void> {
+	const ids = pool.createdUserIds;
+	if (ids.length === 0) return;
 	let deleted = 0;
-	for (const id of pool.createdUserIds) {
-		try {
-			await ownerClient.deleteUser(id);
-			deleted++;
-		} catch {
-			// best-effort
-		}
-	}
-	if (pool.createdUserIds.length > 0) {
-		logger.verbose(
-			`Deleted ${String(deleted)}/${String(pool.createdUserIds.length)} MCP build user(s)`,
+	// Each delete cascades server-side, so bound the concurrency to one invite
+	// chunk's worth instead of firing every delete at once.
+	for (let i = 0; i < ids.length; i += INVITE_CHUNK_SIZE) {
+		await Promise.all(
+			ids.slice(i, i + INVITE_CHUNK_SIZE).map(async (id) => {
+				try {
+					await ownerClient.deleteUser(id);
+					deleted++;
+				} catch {
+					// best-effort
+				}
+			}),
 		);
 	}
+	logger.verbose(`Deleted ${String(deleted)}/${String(ids.length)} MCP build user(s)`);
 }

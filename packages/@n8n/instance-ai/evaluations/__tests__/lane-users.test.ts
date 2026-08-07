@@ -1,16 +1,7 @@
+import { silentLogger } from './fixtures';
 import type { N8nClient } from '../clients/n8n-client';
-import type { EvalLogger } from '../harness/logger';
 import { cleanupLaneUsers, LaneUserPool, provisionCaseBuildUser } from '../run/lane-users';
 import type { TestCaseCredential } from '../types';
-
-const silentLogger: EvalLogger = {
-	info: () => {},
-	verbose: () => {},
-	success: () => {},
-	warn: () => {},
-	error: () => {},
-	isVerbose: false,
-};
 
 type InvitedUser = { id: string; email: string; acceptToken: string };
 
@@ -105,11 +96,11 @@ describe('provisionCaseBuildUser', () => {
 		const pool = new LaneUserPool(ownerClient, 1);
 		const { member, client } = fakeMemberClient();
 
-		const auth = await provisionCaseBuildUser({
+		const mcpApiKey = await provisionCaseBuildUser({
 			pool,
 			baseUrl: 'http://lane-1',
 			onCredentialCreated: () => {},
-			createClient: () => client,
+			memberClient: client,
 		});
 
 		expect(member.acceptInvitation).toHaveBeenCalledTimes(1);
@@ -119,7 +110,7 @@ describe('provisionCaseBuildUser', () => {
 		};
 		expect(acceptArgs.password).toBe(pool.password);
 		expect(acceptArgs.token).toContain('token-');
-		expect(auth.mcpApiKey).toBe('mcp-key-1');
+		expect(mcpApiKey).toBe('mcp-key-1');
 		expect(member.createCredential).not.toHaveBeenCalled();
 	});
 
@@ -135,7 +126,7 @@ describe('provisionCaseBuildUser', () => {
 			baseUrl: 'http://lane-1',
 			credentials,
 			onCredentialCreated: (id) => reported.push(id),
-			createClient: () => client,
+			memberClient: client,
 		});
 
 		expect(created.map((c) => c.type)).toEqual(['slackApi', 'notionApi']);
@@ -154,7 +145,7 @@ describe('provisionCaseBuildUser', () => {
 				baseUrl: 'http://lane-1',
 				credentials: [{ type: 'slackApi' }],
 				onCredentialCreated: () => {},
-				createClient: () => client,
+				memberClient: client,
 			}),
 		).rejects.toThrow('credential POST failed');
 	});

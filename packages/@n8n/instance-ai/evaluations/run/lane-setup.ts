@@ -4,8 +4,6 @@
 // workflow snapshot. Plus the end-of-run per-lane artifact cleanup.
 // ---------------------------------------------------------------------------
 
-import { unlinkSync } from 'fs';
-
 import type { Lane } from './build-orchestrator';
 import { cleanupLaneUsers, LaneUserPool } from './lane-users';
 import type { CliArgs } from '../cli/args';
@@ -16,28 +14,7 @@ import { cleanupPrebuiltWorkflows } from '../harness/prebuilt-workflows';
 import { seedMcpRegistry } from '../mcp-registry/seeder';
 import { snapshotDataTableIds, snapshotWorkflowIds } from '../outcome/workflow-discovery';
 
-export interface LaneSetup {
-	lanes: Lane[];
-	/** Removes staged `claude` MCP configs (they embed the build users' bearer
-	 *  tokens). Also registered on process exit; calling it twice is safe. */
-	cleanupStagedMcpConfigs: () => void;
-}
-
-export async function setupLanes(args: CliArgs, logger: EvalLogger): Promise<LaneSetup> {
-	// Remove staged MCP configs (they embed bearer tokens) on exit,
-	// belt-and-suspenders alongside each build's own unlink.
-	const stagedMcpConfigPaths: string[] = [];
-	const cleanupStagedMcpConfigs = () => {
-		for (const path of stagedMcpConfigPaths) {
-			try {
-				unlinkSync(path);
-			} catch {
-				// best-effort
-			}
-		}
-	};
-	if (args.buildViaMcp) process.on('exit', cleanupStagedMcpConfigs);
-
+export async function setupLanes(args: CliArgs, logger: EvalLogger): Promise<Lane[]> {
 	// One lane per base URL. The LangSmith path then uses a work-stealing
 	// allocator (lane-allocator.ts) to dispatch builds across lanes; the direct
 	// path partitions test cases statically per lane.
@@ -83,12 +60,11 @@ export async function setupLanes(args: CliArgs, logger: EvalLogger): Promise<Lan
 				createdCredentialIds,
 				workflowIdsToDelete,
 				mcpUserPool,
-				registerStagedMcpConfig: (path: string) => stagedMcpConfigPaths.push(path),
 			};
 		}),
 	);
 
-	return { lanes, cleanupStagedMcpConfigs };
+	return lanes;
 }
 
 /** Per-lane cleanup: each lane only holds the workflows built/fetched on it,

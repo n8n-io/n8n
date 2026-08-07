@@ -15,7 +15,7 @@
 // ---------------------------------------------------------------------------
 
 import { spawn } from 'child_process';
-import { existsSync, readFileSync, writeFileSync } from 'fs';
+import { existsSync, readFileSync, unlinkSync, writeFileSync } from 'fs';
 import { setTimeout as delay } from 'node:timers/promises';
 import { homedir, tmpdir } from 'os';
 import { join } from 'path';
@@ -61,6 +61,38 @@ export function uniqueProjectScopes(scopes: Array<string | undefined>): string[]
 	return uniqueDefined(scopes);
 }
 
+// Every staged config embeds a bearer token, so exit cleanup is intrinsic to
+// staging: each written path is registered with a single process-exit unlinker.
+// Callers that finish normally unlink eagerly via unlinkStagedMcpConfig.
+const stagedConfigPaths = new Set<string>();
+let exitCleanupInstalled = false;
+
+function registerStagedConfigForExitCleanup(path: string): void {
+	if (!exitCleanupInstalled) {
+		exitCleanupInstalled = true;
+		process.on('exit', () => {
+			for (const staged of stagedConfigPaths) {
+				try {
+					unlinkSync(staged);
+				} catch {
+					// best-effort
+				}
+			}
+		});
+	}
+	stagedConfigPaths.add(path);
+}
+
+/** Eagerly remove a staged MCP config (and drop it from exit cleanup). */
+export function unlinkStagedMcpConfig(path: string): void {
+	stagedConfigPaths.delete(path);
+	try {
+		unlinkSync(path);
+	} catch {
+		// best-effort
+	}
+}
+
 function writeMcpConfig(serverName: string, block: unknown, filePrefix: string): string {
 	// A random suffix (not just pid+time) keeps concurrent lane stages from
 	// colliding when several are written in the same millisecond.
@@ -69,6 +101,7 @@ function writeMcpConfig(serverName: string, block: unknown, filePrefix: string):
 		`${filePrefix}-${String(process.pid)}-${String(Date.now())}-${Math.random().toString(36).slice(2, 8)}.json`,
 	);
 	writeFileSync(tmpPath, JSON.stringify({ mcpServers: { [serverName]: block } }), { mode: 0o600 });
+	registerStagedConfigForExitCleanup(tmpPath);
 	return tmpPath;
 }
 
@@ -102,10 +135,11 @@ export function stageMcpConfigFromClaudeJson(
 }
 
 /**
- * Stage an MCP config for one eval lane directly from its URL + API key, with no
+ * Stage an MCP config for one build directly from a lane URL + API key, with no
  * dependency on `~/.claude.json`. Used by the fused `--build-via-mcp` path where
- * the eval CLI mints an MCP key per lane and points `claude` at that lane's MCP
- * server. Returns the temp config path; the caller owns cleanup.
+ * the eval CLI mints an MCP key per build user and points `claude` at that
+ * lane's MCP server. Returns the temp config path; removed on process exit, or
+ * earlier via unlinkStagedMcpConfig.
  */
 export function stageLaneMcpConfig(opts: {
 	serverName: string;
@@ -134,8 +168,9 @@ export function buildAllowedTools(serverName: string): readonly string[] {
 type McpBuildKeySupport = 'supported' | 'orchestrator-only';
 
 /**
- * Classification of EVERY test-case schema key for the `claude -p` MCP build
- * path. `orchestrator-only` keys are build-side setup the orchestrator seeds
+ * Classification of EVERY test-case schema key for the fused `--build-via-mcp`
+ * build path (the standalone manifest builder does not consult this filter).
+ * `orchestrator-only` keys are build-side setup the orchestrator seeds
  * before driving the in-product agent (conversation/thread seeding), while
  * `claude` receives only the flattened conversation prompt — a case relying on
  * them would build without its prerequisites and fail misleadingly, so callers
