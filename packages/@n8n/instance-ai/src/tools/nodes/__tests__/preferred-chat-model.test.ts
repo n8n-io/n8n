@@ -1,4 +1,8 @@
-import { buildChatModelProviderHint, pickPreferredChatModelNode } from '../preferred-chat-model';
+import {
+	buildChatModelProviderHint,
+	buildChatModelProviderMismatchWarnings,
+	pickPreferredChatModelNode,
+} from '../preferred-chat-model';
 
 describe('pickPreferredChatModelNode', () => {
 	it('returns the matching chat model for a single provider credential', () => {
@@ -54,5 +58,50 @@ describe('buildChatModelProviderHint', () => {
 	it('returns undefined when the user has no LLM credential for another provider', () => {
 		expect(buildChatModelProviderHint('openAiApi', [slack])).toBeUndefined();
 		expect(buildChatModelProviderHint('openAiApi', [])).toBeUndefined();
+	});
+});
+
+describe('buildChatModelProviderMismatchWarnings', () => {
+	const gemini = { id: 'g1', name: 'Google Gemini account', type: 'googlePalmApi' };
+	const anthropic = { id: 'a1', name: 'Anthropic key', type: 'anthropicApi' };
+	const openAiNode = { name: 'OpenAI Chat Model', type: '@n8n/n8n-nodes-langchain.lmChatOpenAi' };
+	const webhookNode = { name: 'Webhook', type: 'n8n-nodes-base.webhook' };
+
+	it('warns for a chat-model node whose provider has no stored credential', () => {
+		const warnings = buildChatModelProviderMismatchWarnings([webhookNode, openAiNode], [gemini]);
+
+		expect(warnings).toHaveLength(1);
+		expect(warnings[0]).toContain('"OpenAI Chat Model"');
+		expect(warnings[0]).toContain('openAiApi');
+		expect(warnings[0]).toContain('"Google Gemini account" (googlePalmApi, id: g1)');
+	});
+
+	it('lists alternatives in provider recommendation precedence order', () => {
+		const warnings = buildChatModelProviderMismatchWarnings([openAiNode], [gemini, anthropic]);
+
+		expect(warnings).toHaveLength(1);
+		expect(warnings[0].indexOf('anthropicApi')).toBeLessThan(warnings[0].indexOf('googlePalmApi'));
+	});
+
+	it('does not warn when the provider credential is stored', () => {
+		const openAi = { id: 'o1', name: 'My OpenAI', type: 'openAiApi' };
+		expect(buildChatModelProviderMismatchWarnings([openAiNode], [openAi, gemini])).toEqual([]);
+	});
+
+	it('does not warn when the user has no LLM credential for another provider', () => {
+		const slack = { id: 's1', name: 'Slack token', type: 'slackApi' };
+		expect(buildChatModelProviderMismatchWarnings([openAiNode], [slack])).toEqual([]);
+		expect(buildChatModelProviderMismatchWarnings([openAiNode], [])).toEqual([]);
+	});
+
+	it('only warns for the mismatched nodes in a multi-model workflow', () => {
+		const anthropicNode = { name: 'Claude', type: '@n8n/n8n-nodes-langchain.lmChatAnthropic' };
+		const warnings = buildChatModelProviderMismatchWarnings(
+			[openAiNode, anthropicNode],
+			[anthropic],
+		);
+
+		expect(warnings).toHaveLength(1);
+		expect(warnings[0]).toContain('"OpenAI Chat Model"');
 	});
 });

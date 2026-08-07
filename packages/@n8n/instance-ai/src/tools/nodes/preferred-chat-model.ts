@@ -31,6 +31,30 @@ export function isChatModelProviderCredentialType(credentialType: string): boole
 	return CHAT_MODEL_BY_CREDENTIAL_TYPE.some(([type]) => type === credentialType);
 }
 
+interface StoredCredentialRef {
+	id: string;
+	name: string;
+	type: string;
+}
+
+/**
+ * Stored credentials of chat-model providers other than `excludedType`,
+ * rendered `"name" (type, id: ...)` in recommendation precedence order.
+ * Undefined when there is none.
+ */
+function listStoredChatModelAlternatives(
+	excludedType: string,
+	storedCredentials: readonly StoredCredentialRef[],
+): string | undefined {
+	const alternatives = CHAT_MODEL_BY_CREDENTIAL_TYPE.flatMap(([credentialType]) =>
+		credentialType === excludedType
+			? []
+			: storedCredentials.filter((cred) => cred.type === credentialType),
+	);
+	if (alternatives.length === 0) return undefined;
+	return alternatives.map((cred) => `"${cred.name}" (${cred.type}, id: ${cred.id})`).join(', ');
+}
+
 /**
  * Hint for a credential listing filtered to an LLM-provider type that found no
  * stored credential: names the LLM-provider credentials the user does have, so
@@ -40,23 +64,44 @@ export function isChatModelProviderCredentialType(credentialType: string): boole
  */
 export function buildChatModelProviderHint(
 	requestedType: string,
-	storedCredentials: ReadonlyArray<{ id: string; name: string; type: string }>,
+	storedCredentials: readonly StoredCredentialRef[],
 ): string | undefined {
 	if (!isChatModelProviderCredentialType(requestedType)) return undefined;
 	if (storedCredentials.some((cred) => cred.type === requestedType)) return undefined;
 
-	const alternatives = CHAT_MODEL_BY_CREDENTIAL_TYPE.flatMap(([credentialType]) =>
-		credentialType === requestedType
-			? []
-			: storedCredentials.filter((cred) => cred.type === credentialType),
-	);
-	if (alternatives.length === 0) return undefined;
-
-	const listed = alternatives
-		.map((cred) => `"${cred.name}" (${cred.type}, id: ${cred.id})`)
-		.join(', ');
+	const listed = listStoredChatModelAlternatives(requestedType, storedCredentials);
+	if (!listed) return undefined;
 	return (
 		`No stored ${requestedType} credential exists, but the user already has LLM-provider credential(s): ${listed}. ` +
 		`Unless the user explicitly asked for ${requestedType}, use a chat model from a provider they already have a credential for — or ask which provider to use.`
 	);
+}
+
+/**
+ * Deterministic post-build counterpart of `buildChatModelProviderHint` for
+ * builders that never consult the credential list: one warning per chat-model
+ * node whose provider has no stored credential while the user has one for
+ * another provider. The decision to switch (or keep an explicitly requested
+ * provider and ask) stays with the agent — only it can see the user's intent.
+ */
+export function buildChatModelProviderMismatchWarnings(
+	nodes: ReadonlyArray<{ name?: string; type?: string }>,
+	storedCredentials: readonly StoredCredentialRef[],
+): string[] {
+	const storedTypes = new Set(storedCredentials.map((cred) => cred.type));
+	const warnings: string[] = [];
+	for (const node of nodes) {
+		const entry = CHAT_MODEL_BY_CREDENTIAL_TYPE.find(([, nodeType]) => nodeType === node.type);
+		if (!entry) continue;
+		const [credentialType] = entry;
+		if (storedTypes.has(credentialType)) continue;
+		const listed = listStoredChatModelAlternatives(credentialType, storedCredentials);
+		if (!listed) continue;
+		warnings.push(
+			`Node "${node.name ?? node.type}" uses ${node.type}, but no stored ${credentialType} credential exists. ` +
+				`The user already has LLM-provider credential(s): ${listed}. ` +
+				`Unless the user explicitly asked for ${credentialType}, rebuild with a chat model for a provider they already have a credential for — or ask which provider to use.`,
+		);
+	}
+	return warnings;
 }
