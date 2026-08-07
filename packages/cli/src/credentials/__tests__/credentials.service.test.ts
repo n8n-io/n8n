@@ -3885,7 +3885,11 @@ describe('CredentialsService', () => {
 				acceptedStatusCodes: '[401]',
 			};
 			mockDecryptedData(data);
-			const verdict = { status: 'OK' as const, message: 'Connection successful!' };
+			const verdict = {
+				status: 'OK' as const,
+				message: 'Connection successful!',
+				outcome: 'accepted' as const,
+			};
 			credentialsTester.probeCredentialAuth.mockResolvedValue(verdict);
 
 			await expect(service.probeById(ownerUser, 'cred-id')).resolves.toEqual(verdict);
@@ -3904,6 +3908,7 @@ describe('CredentialsService', () => {
 			credentialsTester.probeCredentialAuth.mockResolvedValue({
 				status: 'OK',
 				message: 'Connection successful!',
+				outcome: 'accepted',
 			});
 
 			await service.probeById(ownerUser, 'cred-id');

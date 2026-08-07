@@ -1085,6 +1085,35 @@ describe('TelemetryEventRelay', () => {
 			});
 		});
 
+		it('should track on `credentials-probed` event', () => {
+			const event: RelayEventMap['credentials-probed'] = {
+				user: {
+					id: 'user123',
+					email: 'user@example.com',
+					firstName: 'John',
+					lastName: 'Doe',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
+				},
+				credentialId: 'cred123',
+				outcome: 'rejected',
+			};
+
+			eventService.emit('credentials-probed', event);
+
+			const payload = {
+				user_id: 'user123',
+				credential_id: 'cred123',
+				outcome: 'rejected',
+			};
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.CREDENTIALS.USER_PROBED_CREDENTIAL,
+				payload,
+			);
+			expect(
+				TELEMETRY_EVENT.CREDENTIALS.USER_PROBED_CREDENTIAL.getValidationError(payload),
+			).toBeNull();
+		});
+
 		it('should track on `private-credential-created` event', () => {
 			const event: RelayEventMap['private-credential-created'] = {
 				user: {
