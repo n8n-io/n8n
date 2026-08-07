@@ -20,6 +20,7 @@ on:
       - 'packages/@n8n/instance-ai/evaluations/**'
       - 'packages/cli/src/modules/instance-ai/**'
       - 'packages/core/src/execution-engine/eval-mock-helpers.ts'
+      - 'packages/@n8n/agents/src/**'
   workflow_dispatch:
     inputs:
       pr:

@@ -122,6 +122,7 @@
       "@n8n/typeorm>@sentry/node": "catalog:sentry",
       "@opentelemetry/api": "catalog:",
       "@opentelemetry/core": "2.8.0",
+      "@opentelemetry/propagator-jaeger": "2.9.0",
       "@types/node": "^20.17.50",
       "chokidar": "4.0.3",
       "esbuild": "catalog:",
@@ -135,7 +136,7 @@
       "vue-tsc": "catalog:frontend",
       "gaxios": ">=7.1.1",
       "google-gax": "^4.3.7",
-      "ws": ">=8.20.1",
+      "ws": ">=8.21.1",
       "date-fns": "2.30.0",
       "date-fns-tz": "2.0.0",
       "form-data": "4.0.6",
@@ -189,7 +190,7 @@
       "shell-quote": "1.9.0",
       "adm-zip": "0.6.0",
       "ip-address@10": "10.1.1",
-      "brace-expansion@5": "5.0.7",
+      "brace-expansion@5": "5.0.9",
       "@tootallnate/once@2": "2.0.1",
       "@opentelemetry/exporter-prometheus@<=0.217.0": "0.217.0",
       "@opentelemetry/sdk-node@<=0.217.0": "0.217.0",
@@ -209,7 +210,8 @@
       "undici@7": "catalog:undici-v7",
       "node-gyp>undici": "catalog:undici-v7",
       "@babel/traverse": "^7.23.2",
-      "@vitest/browser@<4.1.10": "4.1.10"
+      "@vitest/browser@<4.1.10": "4.1.10",
+      "immutable": "5.1.8"
     },
     "patchedDependencies": {
       "axios": "patches/axios.patch",

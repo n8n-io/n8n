@@ -1,5 +1,5 @@
 import vue from '@vitejs/plugin-vue';
-import { cpSync } from 'node:fs';
+import { cpSync, readFileSync } from 'node:fs';
 import { resolve } from 'path';
 import { build, defineConfig, mergeConfig, type InlineConfig, type Plugin } from 'vite';
 import icons from 'unplugin-icons/vite';
@@ -8,9 +8,33 @@ import { vitestConfig } from '@n8n/vitest-config/frontend';
 import svgLoader from 'vite-svg-loader';
 import { lucideIconsPlugin } from './src/icons/lucide/vite';
 
-const packagesDir = resolve(__dirname, '..', '..', '..');
 const srcDir = resolve(__dirname, 'src');
 const distDir = resolve(__dirname, 'dist');
+
+const manifest = JSON.parse(readFileSync(resolve(__dirname, 'package.json'), 'utf-8')) as {
+	dependencies?: Record<string, string>;
+	peerDependencies?: Record<string, string>;
+};
+
+/**
+ * Everything the manifest declares stays out of the bundle — inlining a
+ * dependency ships a second copy the consumer cannot dedupe (two element-plus
+ * instances, two Vue reactivity contexts).
+ *
+ * Read from the manifest rather than hand-listed: the previous `['vue']`
+ * silently inlined every dependency added to the package after it was written.
+ *
+ * Sub-path imports (`@n8n/utils/event-bus`) belong to the package owning the
+ * prefix, so match `name` and `name/…` but not `name-something-else`. Nothing
+ * declares the build-time virtuals (`virtual:lucide-icons`, `~icons/…`), so
+ * they stay inlined — which is what makes `dist` work without our Vite plugin.
+ */
+const externalPackages = [
+	...Object.keys(manifest.dependencies ?? {}),
+	...Object.keys(manifest.peerDependencies ?? {}),
+];
+const isExternal = (id: string) =>
+	externalPackages.some((name) => id === name || id.startsWith(`${name}/`));
 
 /** Emit stylesheets at the dist root, everything else under `assets/`. */
 const assetFileNames = (name: string) => (asset: { names?: string[] }) =>
@@ -122,34 +146,37 @@ export default mergeConfig(
 			alias: {
 				'@': resolve(__dirname, 'src'),
 				'@n8n/design-system': resolve(__dirname, 'src'),
-				'@n8n/composables(.*)': resolve(packagesDir, 'frontend', '@n8n', 'composables', 'src$1'),
-				'@n8n/frontend-utils(.*)': resolve(
-					packagesDir,
-					'frontend',
-					'@n8n',
-					'frontend-utils',
-					'src$1',
-				),
-				'@n8n/utils(.*)': resolve(packagesDir, '@n8n', 'utils', 'src$1'),
+				// No entries for the sibling `@n8n/composables`, `@n8n/frontend-utils` and
+				// `@n8n/utils`: they publish their own `dist` + `exports`, so they resolve
+				// through node and externalise with everything else.
 			},
 		},
 		build: {
 			lib: {
-				entry: resolve(__dirname, 'src', 'index.ts'),
-				name: 'N8nDesignSystem',
-				fileName: (format) => `n8n-design-system.${format}.js`,
+				entry: {
+					index: resolve(srcDir, 'index.ts'),
+					// Second entry so the icon bodies are compiled into `dist` here, once,
+					// instead of every consumer having to register `lucideIconsPlugin()` to
+					// resolve `virtual:lucide-icons`.
+					//
+					// It stays a separate entry — never re-exported from `src/index.ts` —
+					// because a barrel export would make this opt-in capability mandatory
+					// for everyone who imports the barrel, including consumers that alias
+					// this package to source and register no plugin.
+					'icons/lucide/index': resolve(srcDir, 'icons', 'lucide', 'index.ts'),
+				},
+				// ES only. UMD supports neither multiple entries nor code splitting, and
+				// both are requirements here — the icon buckets have to stay lazy chunks.
+				// Nothing consumed the UMD output.
+				formats: ['es'],
+				// Sits the emitted JS next to the declarations `dts` writes for the same
+				// module, so each entry is one `dist/<path>/index.{js,d.ts}` pair.
+				fileName: (_format, entryName) => `${entryName}.js`,
 			},
 			rollupOptions: {
-				// make sure to externalize deps that shouldn't be bundled
-				// into your library
-				external: ['vue'],
+				external: isExternal,
 				output: {
 					exports: 'named',
-					// Provide global variables to use in the UMD build
-					// for externalized deps
-					globals: {
-						vue: 'Vue',
-					},
 					assetFileNames: assetFileNames('style.css'),
 				},
 			},
