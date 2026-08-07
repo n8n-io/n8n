@@ -3586,6 +3586,32 @@ describe('SourceControlImportService', () => {
 				expect(executionPersistence.hardDeleteByWorkflowId).not.toHaveBeenCalled();
 				expect(projectRepository.delete).not.toHaveBeenCalled();
 			});
+
+			it('should run all hooks before any teardown, so a late rejection leaves earlier workflows untouched', async () => {
+				const candidates = [mock<SourceControlledFile>({ id: 'project-1', name: 'My project' })];
+				sharedWorkflowRepository.find.mockResolvedValueOnce([
+					{ workflowId: 'wf-1' },
+					{ workflowId: 'wf-2' },
+				] as SharedWorkflow[]);
+				workflowRepository.findOne
+					.mockResolvedValueOnce(Object.assign(new WorkflowEntity(), { id: 'wf-1', active: true }))
+					.mockResolvedValueOnce(
+						Object.assign(new WorkflowEntity(), { id: 'wf-2', active: false }),
+					);
+				workflowMutationHooks.beforeWorkflowDeleted
+					.mockResolvedValueOnce(undefined)
+					.mockRejectedValueOnce(new Error('hook failed'));
+
+				await expect(service.deleteTeamProjectsNotInWorkfolder(candidates)).rejects.toThrow(
+					'Failed to delete project(s) "My project" (project-1) while pulling from source control: hook failed',
+				);
+
+				// wf-1's hook already passed, but wf-2's rejection must abort before
+				// ANY teardown — wf-1 keeps its triggers and execution history
+				expect(activeWorkflowManager.remove).not.toHaveBeenCalled();
+				expect(executionPersistence.hardDeleteByWorkflowId).not.toHaveBeenCalled();
+				expect(projectRepository.delete).not.toHaveBeenCalled();
+			});
 		});
 	});
 

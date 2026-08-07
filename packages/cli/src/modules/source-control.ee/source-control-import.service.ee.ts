@@ -1865,16 +1865,23 @@ export class SourceControlImportService {
 	 * edge path.
 	 */
 	private async deactivateWorkflowsAndHardDeleteExecutions(workflowIds: string[]) {
+		const workflows: WorkflowEntity[] = [];
 		for (const workflowId of workflowIds) {
 			const workflow = await this.workflowRepository.findOne({
 				select: ['id', 'active'],
 				where: { id: workflowId },
 			});
-			if (!workflow) continue;
+			if (workflow) workflows.push(workflow);
+		}
 
-			// Before trigger teardown, so an abort leaves the workflow untouched.
+		// The hook may throw to abort the deletion, so it runs for every workflow
+		// before any destructive teardown — a rejection halfway through the batch
+		// must not leave earlier workflows deactivated with their executions gone.
+		for (const workflow of workflows) {
 			await this.workflowMutationHooks.beforeWorkflowDeleted(workflow.id);
+		}
 
+		for (const workflow of workflows) {
 			if (workflow.active) {
 				await this.activeWorkflowManager.remove(workflow.id);
 			}
