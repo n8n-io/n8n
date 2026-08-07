@@ -601,6 +601,10 @@ function getParameterResolveOrder(
 	const executionOrder: number[] = [];
 	const indexToResolve = Array.from({ length: nodePropertiesArray.length }, (_, k) => k);
 	const resolvedParameters: string[] = [];
+	// Only these names can ever be resolved here. A dependency on anything else
+	// (e.g. a parameter of an enclosing level) is out of scope at this level, so
+	// waiting for it would loop until the iteration guard below trips.
+	const namesAtThisLevel = new Set(nodePropertiesArray.map((property) => property.name));
 
 	let index: number;
 	let property: INodeProperties;
@@ -626,8 +630,10 @@ function getParameterResolveOrder(
 		// Parameter has dependencies
 		for (const dependency of parameterDependencies[property.name]) {
 			if (!resolvedParameters.includes(dependency)) {
-				if (dependency.charAt(0) === '/') {
-					// Assume that root level dependencies are resolved
+				if (dependency.charAt(0) === '/' || !namesAtThisLevel.has(dependency)) {
+					// Assume that root level and out-of-scope dependencies are resolved.
+					// `displayParameter` resolves the value later and hides the parameter
+					// if it cannot, which beats aborting the whole node's resolution.
 					continue;
 				}
 				// Dependencies for that parameter are still missing so
