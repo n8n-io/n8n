@@ -5,7 +5,6 @@ import type {
 	JSONObject,
 	OpenAIReasoningEffort,
 	OpenAIThinkingConfig,
-	ReasoningLevel,
 	ThinkingConfig,
 	XaiThinkingConfig,
 } from '../../types';
@@ -24,14 +23,6 @@ export interface ProviderQuirks {
 		thinking: ThinkingConfig,
 		modelId: string,
 	) => Record<string, Record<string, unknown>>;
-	/**
-	 * Provider options the generic reasoning level alone doesn't produce. The AI
-	 * SDK maps the level itself, so this only fills gaps it leaves open.
-	 */
-	reasoningToProviderOptions?: (
-		reasoning: ReasoningLevel,
-		modelId: string,
-	) => Record<string, Record<string, unknown>> | undefined;
 }
 
 /** Anthropic model families that take the adaptive thinking API. */
@@ -120,15 +111,6 @@ export const PROVIDER_QUIRKS: Partial<Record<ProviderId, ProviderQuirks>> = {
 					thinking: { type: 'enabled', budgetTokens: budgetTokens ?? 10000 },
 				},
 			};
-		},
-		// QUIRK(anthropic): adaptive models default `display` to "omitted", so the
-		// generic reasoning level on its own buys thinking whose text never comes
-		// back — signed, billed, and invisible. Ask for the text; the SDK still
-		// derives the effort from the level.
-		reasoningToProviderOptions: (reasoning, modelId) => {
-			if (reasoning === 'none' || reasoning === 'provider-default') return undefined;
-			if (!anthropicUsesAdaptiveThinking(modelId)) return undefined;
-			return { anthropic: { thinking: { type: 'adaptive', display: 'summarized' } } };
 		},
 	},
 	// Claude on Vertex: same Messages thinking shape; options stay under `anthropic`

@@ -36,6 +36,9 @@ const mockFetchPreferences = vi.fn();
 const mockUpdatePreferences = vi.fn();
 const mockFetchServiceCredentials = vi.fn().mockResolvedValue([]);
 const mockFetchInstanceModelCredentials = vi.fn().mockResolvedValue([]);
+const mockVerifyModel = vi.fn();
+const mockVerifySandbox = vi.fn();
+const mockVerifySearch = vi.fn();
 const mockCreateGatewayLink = vi.fn();
 const mockDisconnectGatewaySession = vi.fn();
 
@@ -46,6 +49,9 @@ vi.mock('../instanceAi.settings.api', () => ({
 	updatePreferences: (...args: unknown[]) => mockUpdatePreferences(...args),
 	fetchServiceCredentials: (...args: unknown[]) => mockFetchServiceCredentials(...args),
 	fetchInstanceModelCredentials: (...args: unknown[]) => mockFetchInstanceModelCredentials(...args),
+	verifyModel: (...args: unknown[]) => mockVerifyModel(...args),
+	verifySandbox: (...args: unknown[]) => mockVerifySandbox(...args),
+	verifySearch: (...args: unknown[]) => mockVerifySearch(...args),
 }));
 
 const mockGetGatewayStatus = vi.fn();
@@ -372,6 +378,42 @@ describe('useInstanceAiSettingsStore', () => {
 			await store.refreshModuleSettings();
 
 			expect(mockFetchPreferences).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('onboarding verification', () => {
+		it('delegates model, sandbox, and search checks to the settings API', async () => {
+			mockVerifyModel.mockResolvedValue({ ok: true, latencyMs: 10 });
+			mockVerifySandbox.mockResolvedValue({ ok: true, startupMs: 20 });
+			mockVerifySearch.mockResolvedValue({ ok: true, resultCount: 10 });
+			const modelPayload = { modelName: 'gpt-5.6-sol' };
+			const sandboxPayload = { provider: 'n8n-sandbox' as const };
+			const searchPayload = {
+				connection: { type: 'braveSearchApi', data: { apiKey: 'key' } },
+			};
+
+			await expect(store.verifyModel(modelPayload)).resolves.toEqual({ ok: true, latencyMs: 10 });
+			await expect(store.verifySandbox(sandboxPayload)).resolves.toEqual({
+				ok: true,
+				startupMs: 20,
+			});
+			await expect(store.verifySearch(searchPayload)).resolves.toEqual({
+				ok: true,
+				resultCount: 10,
+			});
+
+			expect(mockVerifyModel).toHaveBeenCalledWith(
+				{ baseUrl: 'http://localhost:5678/rest' },
+				modelPayload,
+			);
+			expect(mockVerifySandbox).toHaveBeenCalledWith(
+				{ baseUrl: 'http://localhost:5678/rest' },
+				sandboxPayload,
+			);
+			expect(mockVerifySearch).toHaveBeenCalledWith(
+				{ baseUrl: 'http://localhost:5678/rest' },
+				searchPayload,
+			);
 		});
 	});
 

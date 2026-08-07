@@ -19,7 +19,7 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import { defaultSettings } from '@/__tests__/defaults';
 import type { ICredentialType } from 'n8n-workflow';
 import type { ChatRequest } from '@/features/ai/assistant/assistant.types';
-import type { ChatUI } from '@n8n/design-system/types/assistant';
+import type { ChatUI } from '@n8n/design-system';
 import merge from 'lodash-es/merge';
 
 // Mock vue-router

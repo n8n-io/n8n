@@ -2,8 +2,8 @@ import { In, type Repository } from '@n8n/typeorm';
 
 import type { WorkflowStepExecution } from './entities';
 import { generateId } from './generate-id';
-import type { JsonValue } from '../common';
-import type { StepStatus } from '../execution/execution.types';
+import { UnexpectedError } from '../common';
+import type { StepSlots, StepStatus } from '../execution/execution.types';
 import {
 	StepNotFoundError,
 	type NewStepRecord,
@@ -18,6 +18,14 @@ export class TypeOrmStepStore implements StepStore {
 
 	async createSteps(records: NewStepRecord[]): Promise<Array<{ id: string; nodeId: string }>> {
 		if (records.length === 0) return [];
+
+		for (const record of records) {
+			if (record.outputs && record.status !== 'completed') {
+				throw new UnexpectedError(
+					`step for node ${record.nodeId} carries outputs but is created ${record.status}; only a step created completed may carry outputs`,
+				);
+			}
+		}
 
 		// Ids are assigned here because the entity's insert hook only runs on class
 		// instances, and these are plain values.
@@ -47,12 +55,38 @@ export class TypeOrmStepStore implements StepStore {
 		return row;
 	}
 
-	async claimStep(id: string): Promise<boolean> {
-		return await this.transition(id, 'queued', 'running');
+	async claimStep(id: string): Promise<StepRecord | null> {
+		// The one transition that hands the row back, so the claimant doesn't
+		// need a second query to learn which node it now runs. RETURNING covers
+		// only the identity columns: a step claimed out of `queued` can't have
+		// an outcome yet, so `outputs`/`error` are `null` by the lifecycle.
+		const result = await this.repo
+			.createQueryBuilder()
+			.update()
+			.set({ status: 'running' })
+			.where({ id, status: 'queued' })
+			.returning(['id', 'executionId', 'nodeId'])
+			.execute();
+
+		const [row] = result.raw as Array<{ id: string; execution_id: string; node_id: string }>;
+		if (!row) return null;
+
+		return {
+			id: row.id,
+			executionId: row.execution_id,
+			nodeId: row.node_id,
+			status: 'running',
+			outputs: null,
+			error: null,
+		};
 	}
 
-	async completeStep(id: string, outputs: JsonValue): Promise<boolean> {
+	async completeStep(id: string, outputs: StepSlots): Promise<boolean> {
 		return await this.transition(id, 'running', 'completed', { outputs });
+	}
+
+	async cancelQueuedSteps(executionId: string): Promise<void> {
+		await this.repo.update({ executionId, status: 'queued' }, { status: 'cancelled' });
 	}
 
 	async failStep(id: string, error: StepError): Promise<boolean> {
@@ -67,7 +101,7 @@ export class TypeOrmStepStore implements StepStore {
 		id: string,
 		from: StepStatus,
 		to: StepStatus,
-		fields: { outputs?: JsonValue; error?: StepError } = {},
+		fields: { outputs?: StepSlots; error?: StepError } = {},
 	): Promise<boolean> {
 		const result = await this.repo.update({ id, status: from }, { ...fields, status: to });
 		return result.affected === 1;
@@ -76,8 +110,8 @@ export class TypeOrmStepStore implements StepStore {
 	async loadStepOutputs(
 		executionId: string,
 		nodeIds: string[],
-	): Promise<Record<string, JsonValue | null>> {
-		const outputsByNodeId: Record<string, JsonValue | null> = {};
+	): Promise<Record<string, StepSlots | null>> {
+		const outputsByNodeId: Record<string, StepSlots | null> = {};
 		for (const nodeId of nodeIds) outputsByNodeId[nodeId] = null;
 		if (nodeIds.length === 0) return outputsByNodeId;
 

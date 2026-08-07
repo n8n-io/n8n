@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
 
-import type { ReasoningLevel } from '../../types';
 import {
 	HIGH_REASONING_DEFAULT_MAX_OUTPUT_TOKENS,
 	applyToolProviderOptionDefaults,
@@ -335,37 +334,5 @@ describe('resolveDefaultMaxOutputTokens', () => {
 	it('leaves unrelated models unset', () => {
 		expect(resolveDefaultMaxOutputTokens('baseten/deepseek-ai/DeepSeek-V4-Pro')).toBeUndefined();
 		expect(resolveDefaultMaxOutputTokens('anthropic/claude-sonnet-4-5')).toBeUndefined();
-	});
-});
-
-describe('reasoningToProviderOptions', () => {
-	const anthropicReasoning = (modelId: string, level: ReasoningLevel = 'medium') =>
-		getProviderQuirks('anthropic').reasoningToProviderOptions?.(level, modelId);
-
-	// Adaptive models withhold the thinking text unless display is summarized, so
-	// the reasoning level on its own produces empty thinking blocks.
-	it.each([
-		'anthropic/claude-sonnet-5',
-		'anthropic/claude-opus-5',
-		'anthropic/claude-opus-4-8',
-		'anthropic/claude-sonnet-4-6',
-		// Unknown Claude models follow the AI SDK's own adaptive fallback.
-		'anthropic/claude-sonnet-7',
-	])('asks %s for summarized thinking', (modelId) => {
-		expect(anthropicReasoning(modelId)).toEqual({
-			anthropic: { thinking: { type: 'adaptive', display: 'summarized' } },
-		});
-	});
-
-	it.each([
-		'anthropic/claude-sonnet-4-5',
-		'anthropic/claude-haiku-4-5',
-		'anthropic/claude-opus-4-1',
-	])('leaves %s to the SDK, which maps the level to a token budget', (modelId) => {
-		expect(anthropicReasoning(modelId)).toBeUndefined();
-	});
-
-	it.each(['none', 'provider-default'] as const)('adds nothing for reasoning %s', (level) => {
-		expect(anthropicReasoning('anthropic/claude-sonnet-5', level)).toBeUndefined();
 	});
 });
