@@ -19,22 +19,32 @@ With **Simplify Output** enabled (default), the node emits:
 }
 ```
 
-**`$json.content` is an ARRAY of content blocks, not a string.** Read the
-assistant text with **`$json.content[0].text`** — never treat `$json.content`
-itself as the reply string.
+**`$json.content` is an ARRAY of content blocks, not a string.** Never treat
+`$json.content` itself as the reply string.
 
-`merged_response` is only present when the node option **Include Merged
-Response** is enabled; when it is, `$json.merged_response` is all `text`
-blocks joined into one string and is the simplest field to consume downstream.
+**`content[0]` is not guaranteed to be a text block.** The array is passed
+through from the Messages API unfiltered: with **Web Search** or **Code
+Execution** enabled it also contains `server_tool_use` and
+`*_tool_result` blocks, and citations can split the answer across multiple
+`text` blocks. Read the assistant text with one of:
+
+- **`$json.merged_response`** — all `text` blocks joined into one string; the
+  simplest field to consume downstream. Only present when the node option
+  **Include Merged Response** is enabled, so prefer enabling it.
+- **`$json.content.find(c => c.type === 'text').text`** — the first text
+  block, safe regardless of node options.
+- `$json.content[0].text` — only safe in the plain default configuration
+  (no web search / code execution).
 
 ### Parsing model-generated JSON in a Code node
 
-When you ask the model to reply with JSON, the JSON string lives inside the
-text block. Parse `content[0].text`, not `content`:
+When you ask the model to reply with JSON, the JSON string lives inside a
+text block. Parse the text block's `text`, not `content`:
 
 ```javascript
 // Correct
-const parsed = JSON.parse($json.content[0].text);
+const text = $json.content.find((c) => c.type === 'text').text;
+const parsed = JSON.parse(text);
 
 // Wrong — content is an array of blocks, JSON.parse will throw
 const parsed = JSON.parse($json.content);
@@ -44,19 +54,16 @@ Models often wrap JSON in markdown fences even when told not to; strip them
 defensively before parsing:
 
 ```javascript
-const raw = $json.content[0].text.trim().replace(/^```(?:json)?\s*/, '').replace(/\s*```$/, '');
+const text = $json.content.find((c) => c.type === 'text').text;
+const raw = text.trim().replace(/^```(?:json)?\s*/, '').replace(/\s*```$/, '');
 const parsed = JSON.parse(raw);
 ```
 
 ### Caveats
 
-- **`[0]` is a convenience, not universal.** `content` can contain multiple
-  blocks (e.g. after tool use, or `thinking` blocks when extended thinking is
-  enabled). Pick the block with `type: "text"` that matches what you need, or
-  enable Include Merged Response and read `merged_response`.
 - **`simplify: false`**: `$json` is the full Messages API response (`id`,
-  `role`, `model`, `content`, `stop_reason`, `usage`, …). Assistant text is
-  still at `$json.content[0].text`.
+  `role`, `model`, `content`, `stop_reason`, `usage`, …). The `content` array
+  has the same shape and the same non-text-block caveats as above.
 - **No response-format option.** Unlike the OpenAI node, the Anthropic node
   has no `json_object`/`json_schema` output mode — JSON replies always arrive
   as a string inside a text block and must be parsed by you.
