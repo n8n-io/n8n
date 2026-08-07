@@ -1,0 +1,155 @@
+type: object
+properties:
+  id:
+    type: string
+  name:
+    type: string
+  description:
+    type: string
+    nullable: true
+  active:
+    type: boolean
+  activeVersionId:
+    type: string
+    nullable: true
+  createdAt:
+    type: string
+    format: date-time
+  updatedAt:
+    type: string
+    format: date-time
+  isArchived:
+    type: boolean
+  versionId:
+    type: string
+  triggerCount:
+    type: number
+  nodes: {}
+  connections: {}
+  nodeGroups: {}
+  settings:
+    nullable: true
+  staticData:
+    nullable: true
+  pinData:
+    nullable: true
+  meta:
+    nullable: true
+  tags:
+    type: array
+    items:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - createdAt
+        - updatedAt
+  shared:
+    type: array
+    items:
+      type: object
+      properties:
+        role:
+          type: string
+        workflowId:
+          type: string
+        projectId:
+          type: string
+        project:
+          type: object
+          properties:
+            id:
+              type: string
+            name:
+              type: string
+            type:
+              type: string
+              enum:
+                - personal
+                - team
+          required:
+            - id
+            - name
+            - type
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - role
+        - workflowId
+        - projectId
+        - project
+        - createdAt
+        - updatedAt
+  activeVersion:
+    type: object
+    nullable: true
+    properties:
+      versionId:
+        type: string
+      workflowId:
+        type: string
+      nodes: {}
+      connections: {}
+      nodeGroups: {}
+      authors:
+        type: string
+      name:
+        type: string
+        nullable: true
+      description:
+        type: string
+        nullable: true
+      autosaved:
+        type: boolean
+      createdAt:
+        type: string
+        format: date-time
+      updatedAt:
+        type: string
+        format: date-time
+    required:
+      - versionId
+      - workflowId
+      - nodes
+      - connections
+      - nodeGroups
+      - authors
+      - name
+      - description
+      - autosaved
+      - createdAt
+      - updatedAt
+required:
+  - id
+  - name
+  - description
+  - active
+  - activeVersionId
+  - createdAt
+  - updatedAt
+  - isArchived
+  - versionId
+  - triggerCount
+  - nodes
+  - connections
+  - nodeGroups
+  - settings
+  - staticData
+  - meta
+  - shared
+  - activeVersion

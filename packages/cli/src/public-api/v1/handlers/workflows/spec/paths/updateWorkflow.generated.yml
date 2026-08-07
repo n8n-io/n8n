@@ -1,0 +1,81 @@
+operationId: updateWorkflow
+tags:
+  - Workflow
+summary: Update a workflow
+description: Update a workflow. If the workflow is published, the updated version will be automatically re-published.
+x-required-scope: workflow:update
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+parameters:
+  - schema:
+      type: string
+    required: true
+    name: workflowId
+    in: path
+requestBody:
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          name:
+            type: string
+          description:
+            type: string
+            nullable: true
+          nodes: {}
+          connections: {}
+          nodeGroups: {}
+          settings:
+            type: object
+            additionalProperties:
+              nullable: true
+          staticData:
+            anyOf:
+              - type: string
+              - type: object
+                additionalProperties:
+                  nullable: true
+              - nullable: true
+          pinData:
+            type: object
+            nullable: true
+            additionalProperties:
+              nullable: true
+          parentFolderId:
+            type: string
+            nullable: true
+          id: {}
+          active: {}
+          createdAt: {}
+          updatedAt: {}
+          isArchived: {}
+          versionId: {}
+          triggerCount: {}
+          meta: {}
+          tags: {}
+          shared: {}
+          activeVersion: {}
+        required:
+          - name
+          - nodes
+          - connections
+          - settings
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          $ref: ../../../../shared/spec/schemas/workflowPublicDto.generated.yml
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
+  '409':
+    $ref: ../../../../shared/spec/responses/conflict.yml
