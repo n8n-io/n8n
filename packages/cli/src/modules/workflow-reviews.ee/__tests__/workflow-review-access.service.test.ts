@@ -16,7 +16,6 @@ import { WorkflowReviewAccessService } from '../workflow-review-access.service';
 const requestId = 'req-1';
 const workflowId = 'wf-1';
 
-/** Plain member: no global scopes, so visibility falls through to project scopes. */
 const member = mock<User>({ id: 'user-1', role: { slug: 'global:member', scopes: [] } });
 const requester = mock<User>({ id: 'requester-1', role: { slug: 'global:member', scopes: [] } });
 const globalPublisher = mock<User>({
@@ -49,12 +48,10 @@ describe('WorkflowReviewAccessService', () => {
 	beforeEach(() => {
 		vi.resetAllMocks();
 		requestRepository.findById.mockResolvedValue(reviewRequest());
-		// By default the caller can still read every workflow the review covers
 		workflowFinderService.findWorkflowForUser.mockResolvedValue(mock<WorkflowEntity>());
 		workflowRepository.findLinkedWorkflowDetailsByRequestId.mockResolvedValue([]);
 	});
 
-	/** One child row pinned to `pinnedVersionId`. */
 	function mockChildRow(pinnedVersionId: string | null = 'ver-pinned') {
 		workflowRepository.findLinkedWorkflowDetailsByRequestId.mockResolvedValue([
 			{ workflowId, workflowName: 'My workflow', workflowVersionId: pinnedVersionId },
@@ -80,7 +77,6 @@ describe('WorkflowReviewAccessService', () => {
 			await expect(service.findReadableRequestOrFail(member, requestId)).rejects.toThrow(
 				'Could not find review request',
 			);
-			// Nothing beyond the record itself is loaded for someone who cannot see it
 			expect(workflowRepository.findLinkedWorkflowDetailsByRequestId).not.toHaveBeenCalled();
 		});
 
@@ -112,7 +108,6 @@ describe('WorkflowReviewAccessService', () => {
 
 			const result = await service.findReadableRequestOrFail(requester, requestId);
 
-			// They keep their own review, but none of the workflow content
 			expect(result.request.id).toBe(requestId);
 			expect(result.readableWorkflowRows).toEqual([]);
 			// Eligibility still resolves against the pinned row, which they cannot read

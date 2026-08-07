@@ -6,7 +6,6 @@ import WorkflowReviewActivityFallback from './activity-entries/WorkflowReviewAct
 
 type ActivityEntryRegistry = Partial<Record<WorkflowReviewActivityType, Record<number, Component>>>;
 
-// Partial until LIGO-935 registers the remaining six types.
 const registry: ActivityEntryRegistry = {
 	'comment.created': { 1: WorkflowReviewActivityCommentV1 },
 };

@@ -200,7 +200,7 @@ const tabOptions = computed(() => [
 	overflow: hidden;
 }
 
-/* A long description must not push the composer off screen. */
+/* Capped so a long description cannot push the composer off screen. */
 .activityHeader {
 	flex-shrink: 0;
 	max-height: 30%;

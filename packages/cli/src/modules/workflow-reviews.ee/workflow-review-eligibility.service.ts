@@ -70,7 +70,6 @@ export class WorkflowReviewEligibilityService {
 	): Promise<WorkflowReviewViewerEligibility> {
 		const { request, pinnedWorkflowId, canReadPinnedWorkflow } = access;
 
-		// No pinned workflow, so nothing to check either capability against.
 		if (!pinnedWorkflowId) {
 			return {
 				canDecide: false,

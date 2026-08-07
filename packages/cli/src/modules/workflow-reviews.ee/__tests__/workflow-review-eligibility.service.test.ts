@@ -30,7 +30,6 @@ describe('WorkflowReviewEligibilityService', () => {
 
 	const request = () => mock<WorkflowReviewRequest>({ id: requestId, projectId });
 
-	/** The read gate's verdict: a readable review pinned to `workflowId`. */
 	const readable = (
 		overrides: Partial<Parameters<typeof service.resolveViewerEligibility>[1]> = {},
 	) => ({
