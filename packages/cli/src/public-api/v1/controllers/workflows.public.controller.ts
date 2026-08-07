@@ -1,4 +1,10 @@
-import { ListWorkflowHistoryQueryDto, WorkflowVersionHistoryListPublicDto } from '@n8n/api-types';
+import {
+	GetWorkflowQueryDto,
+	ListWorkflowHistoryQueryDto,
+	WorkflowPublicDto,
+	WorkflowVersionHistoryListPublicDto,
+} from '@n8n/api-types';
+import { GlobalConfig } from '@n8n/config';
 import type { AuthenticatedRequest } from '@n8n/db';
 import {
 	ApiDescription,
@@ -18,12 +24,116 @@ import type { Response } from 'express';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error';
+import { EventService } from '@/events/event.service';
 import { decodeCursor, encodeNextCursor } from '@/public-api/v1/shared/services/pagination.service';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
+
+function toPublicJson(value: unknown): Record<string, unknown> | null {
+	return value !== null && typeof value === 'object' && !Array.isArray(value)
+		? (value as Record<string, unknown>)
+		: null;
+}
 
 @PublicApiController('/workflows')
 export class WorkflowsPublicController {
-	constructor(private readonly workflowHistoryService: WorkflowHistoryService) {}
+	constructor(
+		private readonly workflowHistoryService: WorkflowHistoryService,
+		private readonly workflowFinderService: WorkflowFinderService,
+		private readonly eventService: EventService,
+		private readonly globalConfig: GlobalConfig,
+	) {}
+
+	@Get('/:workflowId')
+	@ApiKeyScope('workflow:read')
+	@ProjectScope('workflow:read')
+	@ApiSummary('Retrieve a workflow')
+	@ApiDescription('Retrieve a workflow.')
+	@ApiTags(['Workflow'])
+	@ApiResponse(200, WorkflowPublicDto)
+	@ApiErrorResponse(404)
+	async getWorkflow(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('workflowId') workflowId: string,
+		@Query query: GetWorkflowQueryDto,
+	): Promise<WorkflowPublicDto> {
+		const workflow = await this.workflowFinderService.findWorkflowForUser(
+			workflowId,
+			req.user,
+			['workflow:read'],
+			{
+				includeTags: !this.globalConfig.tags.disabled,
+				includeActiveVersion: true,
+			},
+		);
+
+		if (!workflow) {
+			throw new NotFoundError('Not Found');
+		}
+
+		this.eventService.emit('user-retrieved-workflow', {
+			userId: req.user.id,
+			publicApi: true,
+		});
+
+		return {
+			id: workflow.id,
+			name: workflow.name,
+			description: workflow.description,
+			active: workflow.active,
+			activeVersionId: workflow.activeVersionId,
+			createdAt: workflow.createdAt.toISOString(),
+			updatedAt: workflow.updatedAt.toISOString(),
+			isArchived: workflow.isArchived,
+			versionId: workflow.versionId,
+			triggerCount: workflow.triggerCount,
+			nodes: workflow.nodes,
+			connections: workflow.connections,
+			nodeGroups: workflow.nodeGroups,
+			settings: toPublicJson(workflow.settings),
+			staticData: toPublicJson(workflow.staticData),
+			meta: toPublicJson(workflow.meta),
+			...(query.excludePinnedData ? {} : { pinData: toPublicJson(workflow.pinData) }),
+			...(workflow.tags
+				? {
+						tags: workflow.tags.map((tag) => ({
+							id: tag.id,
+							name: tag.name,
+							createdAt: tag.createdAt.toISOString(),
+							updatedAt: tag.updatedAt.toISOString(),
+						})),
+					}
+				: {}),
+			shared: workflow.shared.map((sharedWorkflow) => ({
+				role: sharedWorkflow.role,
+				workflowId: sharedWorkflow.workflowId,
+				projectId: sharedWorkflow.projectId,
+				project: {
+					id: sharedWorkflow.project.id,
+					name: sharedWorkflow.project.name,
+					type: sharedWorkflow.project.type,
+				},
+				createdAt: sharedWorkflow.createdAt.toISOString(),
+				updatedAt: sharedWorkflow.updatedAt.toISOString(),
+			})),
+			activeVersion: workflow.activeVersion
+				? {
+						versionId: workflow.activeVersion.versionId,
+						workflowId: workflow.activeVersion.workflowId,
+						nodes: workflow.activeVersion.nodes,
+						connections: workflow.activeVersion.connections,
+						nodeGroups: workflow.activeVersion.nodeGroups,
+						authors: workflow.activeVersion.authors,
+						name: workflow.activeVersion.name,
+						description: workflow.activeVersion.description,
+						autosaved: workflow.activeVersion.autosaved,
+						createdAt: workflow.activeVersion.createdAt.toISOString(),
+						updatedAt: workflow.activeVersion.updatedAt.toISOString(),
+					}
+				: null,
+		};
+	}
 
 	@Get('/:workflowId/history')
 	@ApiKeyScope('workflow:read')
