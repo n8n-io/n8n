@@ -23,7 +23,7 @@ import {
 	type McpBuildResult,
 	type McpBuildSettings,
 } from '../cli/mcp-builder';
-import type { N8nClient } from '../clients/n8n-client';
+import { N8nClient } from '../clients/n8n-client';
 import {
 	fetchAgentScenarioContext,
 	findAgentArtifactRef,
@@ -179,7 +179,7 @@ async function buildWorkflowViaMcpOnLane(config: {
 	try {
 		mcpApiKey = await provisionCaseBuildUser({
 			pool: lane.mcpUserPool,
-			baseUrl: lane.baseUrl,
+			memberClient: new N8nClient(lane.baseUrl),
 			credentials,
 			onCredentialCreated: (id) => lane.createdCredentialIds.add(id),
 			logger,

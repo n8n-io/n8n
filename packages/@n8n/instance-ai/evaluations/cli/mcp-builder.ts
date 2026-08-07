@@ -62,26 +62,12 @@ export function uniqueProjectScopes(scopes: Array<string | undefined>): string[]
 }
 
 // Every staged config embeds a bearer token, so exit cleanup is intrinsic to
-// staging: each written path is registered with a single process-exit unlinker.
-// Callers that finish normally unlink eagerly via unlinkStagedMcpConfig.
+// staging: writeMcpConfig tracks each path and the exit hook unlinks whatever
+// is left. Callers that finish normally unlink eagerly via unlinkStagedMcpConfig.
 const stagedConfigPaths = new Set<string>();
-let exitCleanupInstalled = false;
-
-function registerStagedConfigForExitCleanup(path: string): void {
-	if (!exitCleanupInstalled) {
-		exitCleanupInstalled = true;
-		process.on('exit', () => {
-			for (const staged of stagedConfigPaths) {
-				try {
-					unlinkSync(staged);
-				} catch {
-					// best-effort
-				}
-			}
-		});
-	}
-	stagedConfigPaths.add(path);
-}
+process.on('exit', () => {
+	for (const staged of stagedConfigPaths) unlinkStagedMcpConfig(staged);
+});
 
 /** Eagerly remove a staged MCP config (and drop it from exit cleanup). */
 export function unlinkStagedMcpConfig(path: string): void {
@@ -101,7 +87,7 @@ function writeMcpConfig(serverName: string, block: unknown, filePrefix: string):
 		`${filePrefix}-${String(process.pid)}-${String(Date.now())}-${Math.random().toString(36).slice(2, 8)}.json`,
 	);
 	writeFileSync(tmpPath, JSON.stringify({ mcpServers: { [serverName]: block } }), { mode: 0o600 });
-	registerStagedConfigForExitCleanup(tmpPath);
+	stagedConfigPaths.add(tmpPath);
 	return tmpPath;
 }
 

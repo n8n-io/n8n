@@ -9,7 +9,7 @@
 
 import { randomBytes } from 'crypto';
 
-import { N8nClient } from '../clients/n8n-client';
+import type { N8nClient } from '../clients/n8n-client';
 import { createDeclaredCredentials } from '../credentials/seeder';
 import type { EvalLogger } from '../harness/logger';
 import type { TestCaseCredential } from '../types';
@@ -61,9 +61,19 @@ export class LaneUserPool {
 			return `eval-mcp-${this.nonce}-${String(this.seq)}@n8n-evals.invalid`;
 		});
 		const invited = await this.ownerClient.inviteMembers(emails);
-		for (const user of invited) {
-			this.createdUserIds.push(user.id);
-			this.available.push(user);
+		// Record every shell before judging usability: n8n creates them all up
+		// front, so even an unusable batch has to be deleted after the run.
+		for (const user of invited) this.createdUserIds.push(user.id);
+
+		const usable = invited.filter(
+			(user): user is InvitedCaseUser => user.acceptToken !== undefined,
+		);
+		this.available.push(...usable);
+		if (usable.length === 0) {
+			const reason = invited.map((user) => user.error).find(Boolean);
+			throw new Error(
+				`Invited ${String(invited.length)} user(s) but none returned an accept token${reason ? ` (${reason})` : ''} — the lane must run without SMTP and without N8N_INVITE_LINKS_EMAIL_ONLY for the eval build-user flow`,
+			);
 		}
 	}
 }
@@ -76,20 +86,19 @@ export class LaneUserPool {
  */
 export async function provisionCaseBuildUser(opts: {
 	pool: LaneUserPool;
-	baseUrl: string;
+	/** A fresh, logged-out client for the lane — accepting the invite logs it in. */
+	memberClient: N8nClient;
 	credentials?: TestCaseCredential[];
 	onCredentialCreated: (id: string) => void;
 	logger?: EvalLogger;
-	/** Test seam — the member's client. */
-	memberClient?: N8nClient;
 }): Promise<string> {
-	const user = await opts.pool.claim();
-	const memberClient = opts.memberClient ?? new N8nClient(opts.baseUrl);
+	const { pool, memberClient } = opts;
+	const user = await pool.claim();
 	await memberClient.acceptInvitation({
 		token: user.acceptToken,
 		firstName: 'Eval',
 		lastName: 'Builder',
-		password: opts.pool.password,
+		password: pool.password,
 	});
 	const mcpApiKey = await memberClient.rotateMcpApiKey();
 	await createDeclaredCredentials(memberClient, opts.credentials ?? [], {
@@ -110,19 +119,15 @@ export async function cleanupLaneUsers(
 	const ids = pool.createdUserIds;
 	if (ids.length === 0) return;
 	let deleted = 0;
-	// Each delete cascades server-side, so bound the concurrency to one invite
-	// chunk's worth instead of firing every delete at once.
-	for (let i = 0; i < ids.length; i += INVITE_CHUNK_SIZE) {
-		await Promise.all(
-			ids.slice(i, i + INVITE_CHUNK_SIZE).map(async (id) => {
-				try {
-					await ownerClient.deleteUser(id);
-					deleted++;
-				} catch {
-					// best-effort
-				}
-			}),
-		);
+	// Sequential, like cleanupCredentials: each delete cascades server-side and
+	// this runs after the last verdict, so nothing waits on it.
+	for (const id of ids) {
+		try {
+			await ownerClient.deleteUser(id);
+			deleted++;
+		} catch {
+			// best-effort
+		}
 	}
 	logger.verbose(`Deleted ${String(deleted)}/${String(ids.length)} MCP build user(s)`);
 }
