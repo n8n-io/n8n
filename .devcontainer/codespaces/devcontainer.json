@@ -8,7 +8,8 @@
 		"memory": "16gb"
 	},
 	"features": {
-		"ghcr.io/devcontainers/features/github-cli:1": {}
+		"ghcr.io/devcontainers/features/github-cli:1": {},
+		"ghcr.io/devcontainers/features/sshd:1": {}
 	},
 	"forwardPorts": [8080, 5678],
 	// Runs in prebuilds, so a fresh codespace starts with deps installed and the build warm
