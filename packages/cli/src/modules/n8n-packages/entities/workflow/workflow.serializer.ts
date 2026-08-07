@@ -54,6 +54,14 @@ type WorkflowPackageContentKey = {
 
 type WorkflowPackageContent = Pick<WorkflowEntity, WorkflowPackageContentKey>;
 
+// Copy fields must exist in both the serialized schema and the payload, even when optional.
+// The record allows package-only keys such as `parentFolderId`.
+type SerializePayload = {
+	[K in WorkflowPackageContentKey]-?: K extends keyof SerializedWorkflow
+		? WorkflowEntity[K]
+		: never;
+} & Record<string, unknown>;
+
 @Service()
 export class WorkflowSerializer {
 	serialize(workflow: WorkflowEntity, options: { includeTags: boolean }): SerializedWorkflow {
@@ -74,7 +82,7 @@ export class WorkflowSerializer {
 			isPublished: workflow.activeVersionId === workflow.versionId,
 			isArchived: workflow.isArchived,
 			...(tags ? { tagIds: tags.map((tag) => tag.id) } : {}),
-		});
+		} satisfies SerializePayload);
 	}
 
 	/**
