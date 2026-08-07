@@ -151,6 +151,15 @@ vi.mock('../agentEvals.api', () => ({
 	generateDraftCases: (...args: unknown[]) => generateDraftCasesMock(...args),
 }));
 
+const agentEvalsFlagMock = vi.hoisted(() => ({ enabled: false }));
+vi.mock('@/features/ai/evaluation.ee/composables/useAgentEvalsFlag', () => ({
+	useAgentEvalsFlag: () => ({
+		get value() {
+			return agentEvalsFlagMock.enabled;
+		},
+	}),
+}));
+
 const builderTelemetryMock = vi.hoisted(() => ({
 	fetchInitialTriggersBaseline: vi.fn().mockResolvedValue(null),
 	trackTriggerAdded: vi.fn(),
@@ -323,10 +332,13 @@ async function renderView({
 	knowledgeBaseEnabled = false,
 	waitForAsyncSetup = true,
 	props,
+	seedStores,
 }: {
 	knowledgeBaseEnabled?: boolean;
 	waitForAsyncSetup?: boolean;
 	props?: Record<string, unknown>;
+	/** Runs against the fresh pinia before mount, for state the view reads on setup. */
+	seedStores?: () => void;
 } = {}) {
 	const { default: AgentBuilderView } = await import('../views/AgentBuilderView.vue');
 	const pinia = createPinia();
@@ -341,6 +353,7 @@ async function renderView({
 			proxyEnabled: false,
 		},
 	};
+	seedStores?.();
 	const wrapper = mount(AgentBuilderView, {
 		props,
 		global: {
@@ -516,6 +529,9 @@ function resetViewMocks() {
 	openModalWithDataMock.mockReset();
 	closeModalMock.mockReset();
 	routeName = 'AgentBuilderView';
+	agentEvalsFlagMock.enabled = false;
+	generateDraftCasesMock.mockReset();
+	generateDraftCasesMock.mockResolvedValue({ cases: [] });
 	for (const key of Object.keys(routeQuery)) delete routeQuery[key];
 	sessionThreads.length = 0;
 	sessionStorage.removeItem('N8N_DEBOUNCE_MULTIPLIER');
@@ -2274,4 +2290,107 @@ describe('AgentBuilderView — three-column shell', () => {
 		// The catch block must have surfaced the error to the user.
 		expect(showErrorMock).toHaveBeenCalledWith(expect.any(Error), expect.any(String));
 	});
+});
+
+// Generous timeout for the same reason as the preview-routing block: mounting
+// this SFC plus its design-system deps is slow enough under parallel-suite
+// pressure to trip default timeouts.
+describe('AgentBuilderView — evals focus request', { timeout: 60_000 }, () => {
+	beforeEach(() => {
+		resetViewMocks();
+		agentEvalsFlagMock.enabled = true;
+	});
+
+	async function seedFocusRequest(
+		agentId: string,
+		generate: boolean,
+		props?: Record<string, unknown>,
+	) {
+		const { useAgentEvalsStore } = await import('../agentEvals.store');
+		return await renderView({
+			props,
+			seedStores: () => {
+				useAgentEvalsStore().requestEvalsFocus(agentId, generate);
+			},
+		});
+	}
+
+	/**
+	 * Settle by pumping ticks rather than wall-clock polling: earlier blocks in
+	 * this file install fake timers, under which `vi.waitFor` stalls.
+	 *
+	 * Condition-based rather than a fixed tick budget because the watcher holds
+	 * the request until `initialize()` resolves, and how many ticks that takes
+	 * varies with how the mocked fetches interleave. Stops early once `settled`
+	 * holds; on a negative assertion it runs the full budget, which is what makes
+	 * "still not shown" mean quiesced rather than merely not-yet-processed.
+	 */
+	async function settle(settled: () => boolean) {
+		// Budget is generous because pumping microtasks is cheap and this file's
+		// mocked fetch chains settle over a variable number of ticks under load.
+		for (let i = 0; i < 200; i++) {
+			if (settled()) return;
+			await flushPromises();
+			await nextTick();
+		}
+	}
+
+	function evalsTabShown(wrapper: Awaited<ReturnType<typeof renderView>>) {
+		return () => wrapper.find('[data-testid="agent-evals-tab-content"]').exists();
+	}
+
+	it('selects the evals tab for a request raised before it mounted', async () => {
+		const wrapper = await seedFocusRequest('a1', false);
+		await settle(evalsTabShown(wrapper));
+
+		expect(evalsTabShown(wrapper)()).toBe(true);
+		expect(generateDraftCasesMock).not.toHaveBeenCalled();
+	});
+
+	it('starts generation when the request asks for it', async () => {
+		await seedFocusRequest('a1', true);
+		await settle(() => generateDraftCasesMock.mock.calls.length > 0);
+
+		expect(generateDraftCasesMock).toHaveBeenCalledOnce();
+	});
+
+	it('ignores a request naming a different agent', async () => {
+		const wrapper = await seedFocusRequest('some-other-agent', true);
+		await settle(evalsTabShown(wrapper));
+
+		expect(evalsTabShown(wrapper)()).toBe(false);
+		expect(generateDraftCasesMock).not.toHaveBeenCalled();
+	});
+
+	it('ignores the request while the evals tab is absent from the row', async () => {
+		agentEvalsFlagMock.enabled = false;
+
+		const wrapper = await seedFocusRequest('a1', true);
+		await settle(evalsTabShown(wrapper));
+
+		expect(evalsTabShown(wrapper)()).toBe(false);
+		expect(generateDraftCasesMock).not.toHaveBeenCalled();
+	});
+
+	it('ignores the request while the agent is still unsaved', async () => {
+		// Unsaved narrows the row to Agent only, so honouring the request here
+		// would render evals content with no Evals tab visible to match it.
+		const wrapper = await seedFocusRequest('aBcDeFgHiJkLmNoP', true, {
+			artifactMode: true,
+			artifactProjectId: 'p1',
+			artifactAgentId: 'aBcDeFgHiJkLmNoP',
+			artifactAgentPending: true,
+		});
+		await settle(evalsTabShown(wrapper));
+
+		expect(evalsTabShown(wrapper)()).toBe(false);
+		expect(generateDraftCasesMock).not.toHaveBeenCalled();
+	});
+
+	// Not covered here: a request raised *after* this view mounted. It is the same
+	// watcher on a different trigger, and a view-level test for it proved
+	// irreducibly flaky in CI — this file's mounted views leave async work in
+	// flight, so whether the request is served or still legitimately held within a
+	// bounded settle is not deterministic. The store tests pin the hold/consume
+	// semantics instead; see `agentEvals.store.test.ts`.
 });

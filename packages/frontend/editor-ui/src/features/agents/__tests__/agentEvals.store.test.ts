@@ -115,4 +115,68 @@ describe('useAgentEvalsStore', () => {
 			expect(store.isGeneratingCases(AGENT_ID)).toBe(false);
 		});
 	});
+
+	describe('evals focus request', () => {
+		it('has no request pending by default', () => {
+			const store = useAgentEvalsStore();
+
+			expect(store.pendingEvalsFocus).toBeNull();
+			expect(store.consumeEvalsFocus(AGENT_ID)).toBeNull();
+		});
+
+		it('survives until consumed, so a builder mounting later still sees it', () => {
+			const store = useAgentEvalsStore();
+
+			store.requestEvalsFocus(AGENT_ID, true);
+
+			expect(store.pendingEvalsFocus).toEqual({ agentId: AGENT_ID, generate: true });
+			expect(store.consumeEvalsFocus(AGENT_ID)).toEqual({ agentId: AGENT_ID, generate: true });
+		});
+
+		it('is claimed once, so a second builder cannot re-run generation', () => {
+			const store = useAgentEvalsStore();
+
+			store.requestEvalsFocus(AGENT_ID, true);
+
+			expect(store.consumeEvalsFocus(AGENT_ID)).not.toBeNull();
+			expect(store.consumeEvalsFocus(AGENT_ID)).toBeNull();
+			expect(store.pendingEvalsFocus).toBeNull();
+		});
+
+		it('is left alone by a builder rendering a different agent', () => {
+			const store = useAgentEvalsStore();
+
+			store.requestEvalsFocus(AGENT_ID, true);
+
+			expect(store.consumeEvalsFocus('other-agent')).toBeNull();
+			expect(store.pendingEvalsFocus).toEqual({ agentId: AGENT_ID, generate: true });
+		});
+
+		it('defaults to focusing without generating', () => {
+			const store = useAgentEvalsStore();
+
+			store.requestEvalsFocus(AGENT_ID);
+
+			expect(store.consumeEvalsFocus(AGENT_ID)).toEqual({ agentId: AGENT_ID, generate: false });
+		});
+
+		it('drops an abandoned request so it cannot fire in an unrelated context later', () => {
+			const store = useAgentEvalsStore();
+			store.requestEvalsFocus(AGENT_ID, true);
+
+			store.clearEvalsFocus(AGENT_ID);
+
+			expect(store.pendingEvalsFocus).toBeNull();
+			expect(store.consumeEvalsFocus(AGENT_ID)).toBeNull();
+		});
+
+		it('leaves a request another surface raised for a different agent', () => {
+			const store = useAgentEvalsStore();
+			store.requestEvalsFocus(AGENT_ID, true);
+
+			store.clearEvalsFocus('other-agent');
+
+			expect(store.pendingEvalsFocus).toEqual({ agentId: AGENT_ID, generate: true });
+		});
+	});
 });
