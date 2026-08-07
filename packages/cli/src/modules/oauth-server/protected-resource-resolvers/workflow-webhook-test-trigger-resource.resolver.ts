@@ -4,7 +4,10 @@ import { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { WEBHOOK_NODE_TYPE } from 'n8n-workflow';
 
-import { isWebhookOAuth2Enabled } from '@/constants/oauth2-triggers';
+import {
+	isWebhookOAuth2BrowserFlowEnabled,
+	isWebhookOAuth2Enabled,
+} from '@/constants/oauth2-triggers';
 import type {
 	ProtectedResource,
 	ProtectedResourceResolver,
@@ -149,6 +152,11 @@ export class WorkflowWebhookTestTriggerResourceResolver implements ProtectedReso
 				getAudiences: () => methods.map(urlFor),
 				scopes: WEBHOOK_TRIGGER_SCOPES,
 				displayName: workflowEntity.name,
+				// Same as the production resolver: first-party lets the trigger URL act as
+				// its own virtual client so a browser can be redirected through
+				// `/oauth/authorize` with no client registration. Spread conditionally so the
+				// resource keeps its previous shape when the browser flow is off.
+				...(isWebhookOAuth2BrowserFlowEnabled() && { isFirstParty: true }),
 				authorize: async (user: User) => {
 					if (requireExecute) {
 						return (

@@ -1,5 +1,6 @@
 import { UnexpectedError } from './errors';
 import type { IWebhookFunctions } from './interfaces';
+import { n8nBrowserOAuth2Flow } from './n8n-browser-oauth2-flow';
 
 function trimTrailingSlash(url: string): string {
 	return url.endsWith('/') ? url.slice(0, -1) : url;
@@ -44,10 +45,15 @@ function sendUnauthorizedResponse(
  * header (e.g. `n8n Webhook` vs `n8n MCP Server`); everything else — token
  * parsing, protected-resource-metadata URL, error-code mapping — is identical and
  * kept here so the two auth modes can't drift.
+ *
+ * With `browserFlow`, a tokenless *browser* GET is redirected through this
+ * instance's own authorization server instead of being 401'd, so a human can just
+ * click a webhook link (see {@link n8nBrowserOAuth2Flow}). Machine callers are
+ * unaffected: anything that isn't a browser navigation still gets the 401.
  */
 export const n8nOAuth2Auth = async (
 	context: IWebhookFunctions,
-	options: { realm: string; method?: string },
+	options: { realm: string; method?: string; browserFlow?: boolean },
 ): Promise<
 	| {
 			status: 'ok';
@@ -78,6 +84,13 @@ export const n8nOAuth2Auth = async (
 
 	const token = getBearerToken(req.headers.authorization);
 	if (!token) {
+		if (options.browserFlow) {
+			const outcome = await n8nBrowserOAuth2Flow(context, resourceUrl);
+			if (outcome === 'handled') return 'handled';
+			if (outcome !== 'not-applicable') {
+				return { status: 'ok', token: outcome.token, resource: resourceUrl };
+			}
+		}
 		sendUnauthorizedResponse(resp, 401, prmUrl, options.realm);
 		return 'handled';
 	}

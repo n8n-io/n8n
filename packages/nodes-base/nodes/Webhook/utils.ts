@@ -35,6 +35,18 @@ export type WebhookParameters = {
 	};
 };
 
+/**
+ * Browser-driven authorization for the `n8nOAuth2` webhook auth mode is opt-in, on
+ * top of `N8N_ENV_FEAT_WEBHOOK_PRIVATE_CREDENTIALS` (which gates the mode itself).
+ * Mirrors `isWebhookOAuth2BrowserFlowEnabled` in packages/cli.
+ */
+export function isWebhookOAuth2BrowserFlowEnabled(): boolean {
+	return (
+		process.env.N8N_ENV_FEAT_WEBHOOK_PRIVATE_CREDENTIALS === 'true' &&
+		process.env.N8N_ENV_FEAT_WEBHOOK_OAUTH2_BROWSER_FLOW === 'true'
+	);
+}
+
 export const getResponseCode = (parameters: WebhookParameters) => {
 	if (parameters.responseCode) {
 		return parameters.responseCode;
