@@ -3981,6 +3981,12 @@ importers:
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
+      '@testing-library/jest-dom':
+        specifier: catalog:frontend
+        version: 6.6.3
+      '@testing-library/vue':
+        specifier: catalog:frontend
+        version: 8.1.0(@vue/compiler-sfc@3.5.26)(vue@3.5.26(typescript@7.0.2))
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
@@ -29990,6 +29996,15 @@ snapshots:
     optionalDependencies:
       '@vue/compiler-sfc': 3.5.26
 
+  '@testing-library/vue@8.1.0(@vue/compiler-sfc@3.5.26)(vue@3.5.26(typescript@7.0.2))':
+    dependencies:
+      '@babel/runtime': 7.29.7
+      '@testing-library/dom': 9.3.4
+      '@vue/test-utils': 2.4.6
+      vue: 3.5.26(typescript@7.0.2)
+    optionalDependencies:
+      '@vue/compiler-sfc': 3.5.26
+
   '@thednp/dommatrix@2.0.12': {}
 
   '@tiptap/core@3.27.0(@tiptap/pm@3.27.0)':
@@ -31607,7 +31622,6 @@ snapshots:
       '@vue/compiler-ssr': 3.5.26
       '@vue/shared': 3.5.26
       vue: 3.5.26(typescript@7.0.2)
-    optional: true
 
   '@vue/shared@3.5.26': {}
 
@@ -42543,7 +42557,6 @@ snapshots:
       '@vue/shared': 3.5.26
     optionalDependencies:
       typescript: 7.0.2
-    optional: true
 
   vuedraggable@4.1.0(patch_hash=eaa2c80f80cdc4293b0f1c9c0410823960f839fc15f155c8cb23666d5950e049)(vue@3.5.26(typescript@6.0.2)):
     dependencies:
