@@ -5,6 +5,10 @@ import { NodeOperationError, OperationalError } from 'n8n-workflow';
 
 import { DEFAULT_ERROR_RETRY_DELAY_MS } from '../../utils';
 
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
 /** When a message's read position is recorded as done. Mirrors v1.3's option. */
 export type ResolveOffsetMode = 'immediately' | 'onCompletion' | 'onSuccess' | 'onStatus';
 
@@ -32,10 +36,18 @@ export interface DataEmitterOptions {
 	errorRetryDelay?: number;
 }
 
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
 const DEFAULT_EXECUTION_TIMEOUT_SECONDS = 3600;
 
 const ADVANCE: EmitResult = { success: true };
 const HOLD_BACK: EmitResult = { success: false };
+
+// ---------------------------------------------------------------------------
+// Entry point
+// ---------------------------------------------------------------------------
 
 /**
  * Builds the function that starts an execution for a chunk of items and decides
@@ -59,6 +71,10 @@ export function createDataEmitter(
 		? createImmediateEmitter(ctx, closeSignal)
 		: createAwaitingEmitter(ctx, options, closeSignal);
 }
+
+// ---------------------------------------------------------------------------
+// The two emitter shapes
+// ---------------------------------------------------------------------------
 
 /** Hands the chunk over and advances at once, without waiting for the run. */
 function createImmediateEmitter(ctx: DataEmitterContext, closeSignal: AbortSignal): DataEmitter {
@@ -113,6 +129,10 @@ function createAwaitingEmitter(
 		}
 	};
 }
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 
 /** The statuses that let the offset advance, or undefined when any status does. */
 function resolveAllowedStatuses(
