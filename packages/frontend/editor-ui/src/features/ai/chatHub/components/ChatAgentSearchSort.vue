@@ -60,7 +60,7 @@ function updateSortBy(value: 'updatedAt' | 'createdAt') {
 		</N8nInput>
 
 		<N8nSelect2
-			size="xlarge"
+			size="medium"
 			:model-value="modelValue.sortBy"
 			:class="$style.sort"
 			:items="sortOptions"
