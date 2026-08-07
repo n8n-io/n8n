@@ -1694,7 +1694,7 @@ describe('ExecutionPersistence', () => {
 		});
 	});
 
-	describe('getExecutionsForPublicApi', () => {
+	describe('findManyInWorkflows', () => {
 		const wf = 'wf-1';
 		const where = { workflowId: wf };
 		const publicApiSelect = [
@@ -1711,18 +1711,19 @@ describe('ExecutionPersistence', () => {
 		];
 
 		beforeEach(() => {
-			executionRepository.getFindExecutionsForPublicApiCondition.mockReturnValue(where);
+			executionRepository.getFindManyInWorkflowsCondition.mockReturnValue(where);
 		});
 
 		it('should query per the repository where condition, without data when not requested', async () => {
 			const executionPersistence = createPersistenceService('db');
 			executionRepository.findMultipleExecutions.mockResolvedValue([]);
-			const params = { limit: 10, workflowIds: [wf] };
+			const options = { limit: 10 };
 
-			await executionPersistence.getExecutionsForPublicApi(params);
+			await executionPersistence.findManyInWorkflows([wf], options);
 
-			expect(executionRepository.getFindExecutionsForPublicApiCondition).toHaveBeenCalledWith(
-				params,
+			expect(executionRepository.getFindManyInWorkflowsCondition).toHaveBeenCalledWith(
+				[wf],
+				options,
 			);
 			expect(executionRepository.findMultipleExecutions).toHaveBeenCalledWith(
 				{ select: publicApiSelect, where, order: { id: 'DESC' }, take: 10 },
@@ -1755,7 +1756,7 @@ describe('ExecutionPersistence', () => {
 				]),
 			);
 
-			const result = await executionPersistence.getExecutionsForPublicApi({
+			const result = await executionPersistence.findManyInWorkflows([wf], {
 				limit: 10,
 				includeData: true,
 			});

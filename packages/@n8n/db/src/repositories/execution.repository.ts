@@ -628,19 +628,19 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		});
 	}
 
-	async getExecutionsCountForPublicApi(params: {
-		limit: number;
-		lastId?: string;
-		workflowIds?: string[];
-		status?: ExecutionStatus;
-		excludedExecutionsIds?: string[];
-	}): Promise<number> {
-		const executionsCount = await this.count({
-			where: this.getFindExecutionsForPublicApiCondition(params),
-			take: params.limit,
+	async countInWorkflows(
+		workflowIds: string[],
+		options: {
+			limit: number;
+			lastId?: string;
+			status?: ExecutionStatus;
+			excludedExecutionsIds?: string[];
+		},
+	): Promise<number> {
+		return await this.count({
+			where: this.getFindManyInWorkflowsCondition(workflowIds, options),
+			take: options.limit,
 		});
-
-		return executionsCount;
 	}
 
 	private getStatusCondition(status?: ExecutionStatus) {
@@ -667,19 +667,21 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		return condition;
 	}
 
-	getFindExecutionsForPublicApiCondition(params: {
-		lastId?: string;
-		workflowIds?: string[];
-		status?: ExecutionStatus;
-		excludedExecutionsIds?: string[];
-	}) {
+	getFindManyInWorkflowsCondition(
+		workflowIds: string[],
+		options: {
+			lastId?: string;
+			status?: ExecutionStatus;
+			excludedExecutionsIds?: string[];
+		} = {},
+	) {
 		const where: FindOptionsWhere<IExecutionFlattedDb> = {
 			...this.getIdCondition({
-				lastId: params.lastId,
-				excludedExecutionsIds: params.excludedExecutionsIds,
+				lastId: options.lastId,
+				excludedExecutionsIds: options.excludedExecutionsIds,
 			}),
-			...this.getStatusCondition(params.status),
-			...(params.workflowIds && { workflowId: In(params.workflowIds) }),
+			...this.getStatusCondition(options.status),
+			workflowId: In(workflowIds),
 		};
 
 		return where;
