@@ -221,7 +221,7 @@ onBeforeUnmount(() => {
 					<N8nText
 						:class="$style['item-label']"
 						:title="titleAttr"
-						size="medium"
+						step="sm"
 						:color="disabled ? 'text-xlight' : 'text-dark'"
 					>
 						{{ label }}
@@ -369,7 +369,7 @@ onBeforeUnmount(() => {
 				<N8nText
 					:class="$style['item-label']"
 					:title="titleAttr"
-					size="medium"
+					step="sm"
 					:color="disabled ? 'text-xlight' : 'text-dark'"
 				>
 					{{ label }}
@@ -405,7 +405,7 @@ onBeforeUnmount(() => {
 				<N8nText
 					:class="$style['item-label']"
 					:title="titleAttr"
-					size="medium"
+					step="sm"
 					:color="disabled ? 'text-xlight' : 'text-dark'"
 				>
 					{{ label }}
@@ -452,7 +452,7 @@ onBeforeUnmount(() => {
 }
 
 .item {
-	font-size: var(--font-size--2xs);
+	font-size: var(--font-size--sm);
 	line-height: 1;
 	border-radius: var(--radius--2xs);
 	display: flex;
