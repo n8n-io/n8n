@@ -12,6 +12,7 @@ describe('WorkflowMutationHooksProxy', () => {
 		await expect(proxy.afterWorkflowArchived('workflow-1')).resolves.toBeUndefined();
 		await expect(proxy.afterWorkflowsTransferred(['workflow-1'])).resolves.toBeUndefined();
 		await expect(proxy.beforeWorkflowDeleted('workflow-1')).resolves.toBeUndefined();
+		await expect(proxy.afterWorkflowDeleted('workflow-1')).resolves.toBeUndefined();
 	});
 
 	test('forwards each hook to the registered provider', async () => {
@@ -22,6 +23,7 @@ describe('WorkflowMutationHooksProxy', () => {
 		await proxy.afterWorkflowArchived('workflow-1');
 		await proxy.afterWorkflowsTransferred(['workflow-1', 'workflow-2']);
 		await proxy.beforeWorkflowDeleted('workflow-3');
+		await proxy.afterWorkflowDeleted('workflow-4');
 
 		expect(provider.afterWorkflowArchived).toHaveBeenCalledExactlyOnceWith('workflow-1');
 		expect(provider.afterWorkflowsTransferred).toHaveBeenCalledExactlyOnceWith([
@@ -29,5 +31,6 @@ describe('WorkflowMutationHooksProxy', () => {
 			'workflow-2',
 		]);
 		expect(provider.beforeWorkflowDeleted).toHaveBeenCalledExactlyOnceWith('workflow-3');
+		expect(provider.afterWorkflowDeleted).toHaveBeenCalledExactlyOnceWith('workflow-4');
 	});
 });

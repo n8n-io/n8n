@@ -132,6 +132,37 @@ describe('WorkflowReviewAutoCloseService', () => {
 		expect(logger.error).toHaveBeenCalled();
 	});
 
+	describe('afterWorkflowDeleted', () => {
+		it('closes the requests the delete orphaned, outside any lock', async () => {
+			requestRepository.closeOrphanedOpenRequests.mockResolvedValue(['req-9']);
+
+			await service.afterWorkflowDeleted('wf-1');
+
+			// A single atomic statement pair, so it needs no lock — and must not take one
+			// after a delete, where camping on the create lock would serialize submissions.
+			expect(requestRepository.closeOrphanedOpenRequests).toHaveBeenCalledExactlyOnceWith({});
+			expect(dbLockService.withLockContext).not.toHaveBeenCalled();
+			expect(logger.info).toHaveBeenCalled();
+		});
+
+		it('stays quiet when the delete orphaned nothing', async () => {
+			requestRepository.closeOrphanedOpenRequests.mockResolvedValue([]);
+
+			await service.afterWorkflowDeleted('wf-1');
+
+			expect(logger.info).not.toHaveBeenCalled();
+		});
+
+		// The delete already committed, so there is nothing left to abort.
+		it('swallows repository errors, unlike the pre-delete hook', async () => {
+			requestRepository.closeOrphanedOpenRequests.mockRejectedValue(new Error('db down'));
+
+			await expect(service.afterWorkflowDeleted('wf-1')).resolves.toBeUndefined();
+
+			expect(logger.error).toHaveBeenCalled();
+		});
+	});
+
 	it('a failed broadcast is only warned about, never thrown', async () => {
 		requestRepository.findOpenRequestsForWorkflows.mockResolvedValue([
 			{ request: openRequest(), workflowIds: ['wf-1'] },

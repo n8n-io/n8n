@@ -99,6 +99,47 @@ export class WorkflowReviewRequestRepository extends BaseRepository<WorkflowRevi
 		return await this.managerFor(ctx).save(WorkflowReviewRequest, request);
 	}
 
+	/**
+	 * Closes every open request left with no linked workflow, returning the ids closed.
+	 *
+	 * A workflow hard delete cascades the link rows away, so an open request that has
+	 * lost its last one covers nothing and can never be acted on again. `create` writes
+	 * the request and its link row in one transaction, so a request is only ever visible
+	 * without links once the workflow behind it is gone — the two steps here cannot see
+	 * a half-written create and so need no lock.
+	 */
+	async closeOrphanedOpenRequests(ctx: OperationContext): Promise<string[]> {
+		const openState: WorkflowReviewRequestState = 'open';
+		const closedState: WorkflowReviewRequestState = 'closed';
+		const manager = this.managerFor(ctx);
+
+		const orphans = await manager
+			.createQueryBuilder(WorkflowReviewRequest, 'review')
+			.select('review.id', 'id')
+			.where('review.state = :openState', { openState })
+			.andWhere((qb) => {
+				const linkedWorkflowExists = qb
+					.subQuery()
+					.select('1')
+					.from(WorkflowReviewRequestWorkflow, 'requestWorkflow')
+					.where('requestWorkflow.workflowReviewRequestId = review.id')
+					.getQuery();
+				return `NOT EXISTS ${linkedWorkflowExists}`;
+			})
+			.getRawMany<{ id: string }>();
+
+		if (orphans.length === 0) return [];
+
+		const ids = orphans.map(({ id }) => id);
+		// A system close has no closing user; the decision stays as-is.
+		await manager.update(WorkflowReviewRequest, ids, {
+			state: closedState,
+			closedById: null,
+		});
+
+		return ids;
+	}
+
 	async findById(id: string, ctx: OperationContext): Promise<WorkflowReviewRequest | null> {
 		return await this.managerFor(ctx).findOne(WorkflowReviewRequest, { where: { id } });
 	}

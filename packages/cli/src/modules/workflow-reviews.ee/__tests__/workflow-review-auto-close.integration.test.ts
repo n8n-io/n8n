@@ -9,6 +9,7 @@ import {
 } from '@n8n/backend-test-utils';
 import type { Project, User } from '@n8n/db';
 import {
+	WorkflowRepository,
 	WorkflowReviewRequestAuthorRepository,
 	WorkflowReviewRequestRepository,
 	WorkflowReviewRequestWorkflowRepository,
@@ -183,6 +184,36 @@ describe('auto-close on workflow hard delete', () => {
 		expect(closed?.state).toBe('closed');
 		// The link row cascaded away with the workflow; the request itself remains, closed.
 		expect(await linkRepository.findByRequestId(request.id, {})).toHaveLength(0);
+	});
+
+	// A review opened after the pre-delete hook ran loses its link row to the cascade and
+	// can no longer be found by workflow id. The post-delete sweep is what catches it.
+	test('a review orphaned by a delete that skipped the hooks is closed by the next delete', async () => {
+		const orphaned = await createReviewableWorkflow();
+		const request = await createOpenReview(orphaned.workflow.id, orphaned.versionId);
+
+		// Delete the row straight from the repository, as a folder-hierarchy cascade does:
+		// no hook fires, so the request is left open with its link row cascaded away.
+		await Container.get(WorkflowRepository).delete(orphaned.workflow.id);
+		expect((await requestRepository.findById(request.id, {}))?.state).toBe('open');
+		expect(await linkRepository.findByRequestId(request.id, {})).toHaveLength(0);
+
+		const unrelated = await createReviewableWorkflow();
+		await Container.get(WorkflowService).delete(owner, unrelated.workflow.id, true);
+
+		const closed = await requestRepository.findById(request.id, {});
+		expect(closed?.state).toBe('closed');
+		expect(closed?.closedById).toBeNull();
+	});
+
+	test('leaves a review whose workflow still exists open', async () => {
+		const live = await createReviewableWorkflow();
+		const request = await createOpenReview(live.workflow.id, live.versionId);
+
+		const other = await createReviewableWorkflow();
+		await Container.get(WorkflowService).delete(owner, other.workflow.id, true);
+
+		expect((await requestRepository.findById(request.id, {}))?.state).toBe('open');
 	});
 });
 

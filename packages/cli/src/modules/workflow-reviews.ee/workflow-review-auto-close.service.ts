@@ -41,6 +41,34 @@ export class WorkflowReviewAutoCloseService implements WorkflowMutationHooks {
 		});
 	}
 
+	/**
+	 * Closes reviews whose workflow is gone: the cascade took their link row, so they can
+	 * only be found by "open with nothing linked", not by workflow id. Catches reviews
+	 * opened after the pre-delete hook ran, and any left by a delete that skips the hooks.
+	 */
+	async afterWorkflowDeleted(workflowId: string): Promise<void> {
+		try {
+			const closedRequestIds = await this.workflowReviewRequestRepository.closeOrphanedOpenRequests(
+				{},
+			);
+
+			if (closedRequestIds.length === 0) return;
+
+			this.logger.info('Closed workflow review request(s) left without a workflow', {
+				reason: 'workflow-deleted',
+				workflowId,
+				workflowReviewRequestIds: closedRequestIds,
+			});
+		} catch (error) {
+			// The delete has already committed; failing it now would be worse than a
+			// request that stays open, which the inbox hides until the next sweep.
+			this.logger.error('Failed to close workflow review request(s) left without a workflow', {
+				workflowId,
+				error,
+			});
+		}
+	}
+
 	private async closeOpenRequestsForWorkflows(
 		workflowIds: string[],
 		reason: AutoCloseReason,
