@@ -78,10 +78,24 @@ export function createMessageParser(
 			try {
 				value = await registry.decode(message.value);
 			} catch (error) {
-				logger.warn(
-					'Could not decode message with Schema Registry, returning original message',
+				// Deliberately fatal, unlike v1, which warns and hands the workflow the
+				// raw bytes. An undecoded Avro value is a magic byte, a schema id and
+				// binary rendered through UTF-8: unusable downstream, and v1 commits the
+				// offset anyway, so the message is gone for good. Measured against a real
+				// broker: stop the registry, consume, restart it, rejoin the same group,
+				// and the message never comes back.
+				//
+				// Throwing hands it to the consume loop, which paces a retry and leaves
+				// the chunk unresolved, so Kafka redelivers it and the message survives
+				// until the registry is healthy again. The partition stalls meanwhile,
+				// which is the visible, recoverable failure we want in place of silent
+				// corruption. A JSON parse failure above stays a warning: a message that
+				// is not JSON is a legitimate case and the string is still usable.
+				logger.error(
+					'Could not decode message with Schema Registry, leaving it unread',
 					sanitizeRegistryError(error),
 				);
+				throw error;
 			}
 		}
 
