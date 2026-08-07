@@ -38,7 +38,7 @@ export class WorkflowsConfig {
 	@Env('N8N_WORKFLOW_PUBLICATION_OUTBOX_LEASE_SECONDS')
 	publicationOutboxLeaseSeconds: number = 2 * Time.minutes.toSeconds;
 
-	/** Number of workflow publication outbox records the leader processes in parallel per drain. */
+	/** Max concurrent workflow publication activations on the leader, shared across all paths that (de)register triggers (outbox drain, reconciliation). */
 	@Env('N8N_WORKFLOW_PUBLICATION_CONCURRENCY', positiveIntSchema)
 	workflowPublicationConcurrency: number = 5;
 
