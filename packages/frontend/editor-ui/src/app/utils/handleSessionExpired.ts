@@ -47,7 +47,7 @@ export async function handleSessionExpired(router: Router, baseURL: string): Pro
 	});
 	notificationsStore.setNotificationsSuppressed(true);
 
-	const redirectPath = getSanitizedCurrentPath();
+	const redirectPath = getSanitizedCurrentPath(router.currentRoute.value);
 
 	try {
 		await usersStore.logout();

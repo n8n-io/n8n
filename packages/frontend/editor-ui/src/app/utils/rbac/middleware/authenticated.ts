@@ -10,7 +10,7 @@ export const authenticatedMiddleware: RouterMiddleware<AuthenticatedPermissionOp
 	next,
 	options,
 ) => {
-	const redirect = to.query.redirect ?? encodeURIComponent(getSanitizedCurrentPath());
+	const redirect = to.query.redirect ?? encodeURIComponent(getSanitizedCurrentPath(to));
 
 	const valid = isAuthenticated(options);
 	if (!valid) {

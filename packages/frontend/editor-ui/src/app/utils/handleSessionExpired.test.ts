@@ -14,6 +14,10 @@ vi.mock('@n8n/stores/users.store', () => ({
 	useUsersStore: vi.fn(),
 }));
 
+function createRouterMock(push = vi.fn(), fullPath = '/'): Router {
+	return { push, currentRoute: { value: { fullPath } } } as unknown as Router;
+}
+
 describe('handleSessionExpired', () => {
 	let ownBackendURL: string;
 
@@ -28,7 +32,7 @@ describe('handleSessionExpired', () => {
 			typeof useUsersStore
 		>);
 		const push = vi.fn();
-		const router = { push } as unknown as Router;
+		const router = createRouterMock(push);
 
 		await handleSessionExpired(router, ownBackendURL);
 
@@ -44,7 +48,7 @@ describe('handleSessionExpired', () => {
 			logout,
 		} as unknown as ReturnType<typeof useUsersStore>);
 		const push = vi.fn();
-		const router = { push } as unknown as Router;
+		const router = createRouterMock(push);
 
 		await handleSessionExpired(router, 'https://thirdparty.example.com');
 
@@ -59,9 +63,7 @@ describe('handleSessionExpired', () => {
 			logout,
 		} as unknown as ReturnType<typeof useUsersStore>);
 		const push = vi.fn();
-		const router = { push } as unknown as Router;
-
-		window.history.pushState({}, '', '/workflow/1');
+		const router = createRouterMock(push, '/workflow/1');
 
 		await handleSessionExpired(router, ownBackendURL);
 
@@ -78,7 +80,7 @@ describe('handleSessionExpired', () => {
 			currentUser: { id: '123' },
 			logout,
 		} as unknown as ReturnType<typeof useUsersStore>);
-		const router = { push: vi.fn() } as unknown as Router;
+		const router = createRouterMock();
 
 		void handleSessionExpired(router, ownBackendURL);
 
@@ -93,7 +95,7 @@ describe('handleSessionExpired', () => {
 			logout,
 		} as unknown as ReturnType<typeof useUsersStore>);
 		const push = vi.fn();
-		const router = { push } as unknown as Router;
+		const router = createRouterMock(push);
 
 		await handleSessionExpired(router, ownBackendURL);
 
@@ -107,7 +109,7 @@ describe('handleSessionExpired', () => {
 			logout,
 		} as unknown as ReturnType<typeof useUsersStore>);
 		const push = vi.fn();
-		const router = { push } as unknown as Router;
+		const router = createRouterMock(push);
 
 		await Promise.all([
 			handleSessionExpired(router, ownBackendURL),
@@ -131,7 +133,7 @@ describe('handleSessionExpired', () => {
 				currentUser: { id: '123' },
 				logout,
 			} as unknown as ReturnType<typeof useUsersStore>);
-			const router = { push: vi.fn() } as unknown as Router;
+			const router = createRouterMock();
 
 			await handleSessionExpired(router, ownBackendURL);
 			restoreNotificationSuppression();
@@ -147,7 +149,7 @@ describe('handleSessionExpired', () => {
 				currentUser: { id: '123' },
 				logout,
 			} as unknown as ReturnType<typeof useUsersStore>);
-			const router = { push: vi.fn() } as unknown as Router;
+			const router = createRouterMock();
 
 			await handleSessionExpired(router, ownBackendURL);
 			restoreNotificationSuppression();
