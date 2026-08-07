@@ -299,6 +299,84 @@ describe('workflow_step_execution table (integration)', () => {
 		expect(completed).toEqual(new Set(['a']));
 	});
 
+	it('TypeOrmStepStore.createSteps persists a skipped step (settled at birth)', async () => {
+		const executionId = await createExecution();
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+
+		const { id } = await createStep(store, { executionId, nodeId: 'x', status: 'skipped' });
+
+		const step = await store.loadStep(id);
+		expect(step.status).toBe('skipped');
+		expect(step.outputs).toBeNull();
+		expect(step.error).toBeNull();
+	});
+
+	it('TypeOrmStepStore.loadStepsByNodeIds returns rows keyed by node id, omitting absent nodes', async () => {
+		const executionId = await createExecution();
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const { id: aId } = await createStep(store, { executionId, nodeId: 'a', status: 'running' });
+		// a multi-slot output with a dead slot round-trips as stored
+		await store.completeStep(aId, [[{ json: { from: 'a' } }], null]);
+		const { id: bId } = await createStep(store, { executionId, nodeId: 'b', status: 'skipped' });
+		await createStep(store, { executionId, nodeId: 'c', status: 'queued' });
+		// scoped to the execution: a sibling execution's row for 'a' must not leak in
+		const otherExecutionId = await createExecution();
+		await createStep(store, { executionId: otherExecutionId, nodeId: 'a', status: 'queued' });
+
+		const steps = await store.loadStepsByNodeIds(executionId, ['a', 'b', 'c', 'd']);
+
+		// 'd' has no row, so it has no key — absence means "not planned yet"
+		expect(Object.keys(steps).sort()).toEqual(['a', 'b', 'c']);
+		expect(steps.a).toMatchObject({
+			id: aId,
+			status: 'completed',
+			outputs: [[{ json: { from: 'a' } }], null],
+		});
+		expect(steps.b).toMatchObject({ id: bId, status: 'skipped', outputs: null });
+		expect(steps.c).toMatchObject({ status: 'queued', outputs: null });
+	});
+
+	it('TypeOrmStepStore.loadStepSummaries reports per-slot liveness without payloads', async () => {
+		const executionId = await createExecution();
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const { id: aId } = await createStep(store, { executionId, nodeId: 'a', status: 'running' });
+		// slot 0 has data, slot 1 was never fired, slot 2 ran but produced zero
+		// items — [] is live, only JSON null marks a dead slot
+		await store.completeStep(aId, [[{ json: { big: 'payload' } }], null, []]);
+		const { id: bId } = await createStep(store, { executionId, nodeId: 'b', status: 'skipped' });
+		await createStep(store, { executionId, nodeId: 'c', status: 'queued' });
+		// scoped to the execution: a sibling execution's row for 'a' must not leak in
+		const otherExecutionId = await createExecution();
+		await createStep(store, { executionId: otherExecutionId, nodeId: 'a', status: 'queued' });
+
+		const summaries = await store.loadStepSummaries(executionId, ['a', 'b', 'c', 'd']);
+
+		expect(Object.keys(summaries).sort()).toEqual(['a', 'b', 'c']);
+		expect(summaries.a).toEqual({
+			id: aId,
+			nodeId: 'a',
+			status: 'completed',
+			filledOutputSlots: [true, false, true],
+		});
+		expect(summaries.b).toEqual({
+			id: bId,
+			nodeId: 'b',
+			status: 'skipped',
+			filledOutputSlots: [],
+		});
+		expect(summaries.c).toMatchObject({ status: 'queued', filledOutputSlots: [] });
+	});
+
+	it('TypeOrmStepStore.loadStepSummaries is a no-op for no node ids', async () => {
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		expect(await store.loadStepSummaries('00000000-0000-7000-8000-000000000000', [])).toEqual({});
+	});
+
+	it('TypeOrmStepStore.loadStepsByNodeIds is a no-op for no node ids', async () => {
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		expect(await store.loadStepsByNodeIds('00000000-0000-7000-8000-000000000000', [])).toEqual({});
+	});
+
 	it('rejects an invalid status (check constraint)', async () => {
 		const executionId = await createExecution();
 		const repo = dataSource.getRepository(WorkflowStepExecution);

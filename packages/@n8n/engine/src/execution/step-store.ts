@@ -35,6 +35,19 @@ export interface StepRecord {
 	error: StepError | null;
 }
 
+/**
+ * Planning view of a step row: everything a settlement decision needs, and no
+ * payloads — outputs can dominate row size, and planning only ever asks
+ * whether a slot holds data, not what.
+ */
+export interface StepSummary {
+	id: string;
+	nodeId: string;
+	status: StepStatus;
+	/** Per output slot: whether the completed step put data there. Empty unless completed. */
+	filledOutputSlots: boolean[];
+}
+
 /** Thrown by `loadStep` when no step exists for the given id. */
 export class StepNotFoundError extends Error {
 	constructor(readonly stepId: string) {
@@ -83,6 +96,23 @@ export interface StepStore {
 
 	/** Cancel every step of the execution still `queued` (`queued → cancelled`). */
 	cancelQueuedSteps(executionId: string): Promise<void>;
+
+	/**
+	 * Step rows of the given nodes within an execution, keyed by node id. A node
+	 * with no row yet is absent from the result — absence always means "not
+	 * planned yet", never "forgotten".
+	 *
+	 * Full rows, outputs included — for gathering a ready step's inputs from its
+	 * direct predecessors. Planning reads `loadStepSummaries` instead.
+	 */
+	loadStepsByNodeIds(executionId: string, nodeIds: string[]): Promise<Record<string, StepRecord>>;
+
+	/**
+	 * Planning view of the given nodes' rows, keyed by node id; absent as in
+	 * `loadStepsByNodeIds`. Slot liveness is computed in the database so
+	 * settlement decisions never pull output payloads over the wire.
+	 */
+	loadStepSummaries(executionId: string, nodeIds: string[]): Promise<Record<string, StepSummary>>;
 
 	/**
 	 * Outputs of the given nodes' *completed* steps within an execution, keyed by

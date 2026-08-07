@@ -18,8 +18,8 @@ import { InMemoryWorkQueue, type OrchestrationMessage, type StepMessage } from '
 import { ExecutionStartHandler } from '../execution-start-handler';
 import { OrchestrationWorker } from '../orchestration-worker';
 import { StartExecutionService } from '../start-execution.service';
-import { StepSettledHandler } from '../step-settled-handler';
 import { StepReadyHandler } from '../step-ready-handler';
+import { StepSettledHandler } from '../step-settled-handler';
 import { StepWorker } from '../step-worker';
 
 const graph: WorkflowGraph = {

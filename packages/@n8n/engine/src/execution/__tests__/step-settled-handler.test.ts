@@ -70,6 +70,8 @@ function makeStepStore(step: Partial<StepRecord> = {}, overrides: Partial<StepSt
 		completeStep: vi.fn(),
 		failStep: vi.fn(),
 		cancelQueuedSteps: vi.fn(),
+		loadStepsByNodeIds: vi.fn().mockResolvedValue({}),
+		loadStepSummaries: vi.fn().mockResolvedValue({}),
 		loadStepOutputs: vi.fn(),
 		// every node completed, so a case has to opt out to be unready
 		loadCompletedNodeIds: vi.fn().mockResolvedValue(new Set(graph.nodes.map(({ id }) => id))),

@@ -10,6 +10,7 @@ import {
 	type StepError,
 	type StepRecord,
 	type StepStore,
+	type StepSummary,
 } from '../execution/step-store';
 
 /** TypeORM-backed `StepStore` adapter. */
@@ -105,6 +106,49 @@ export class TypeOrmStepStore implements StepStore {
 	): Promise<boolean> {
 		const result = await this.repo.update({ id, status: from }, { ...fields, status: to });
 		return result.affected === 1;
+	}
+
+	async loadStepsByNodeIds(
+		executionId: string,
+		nodeIds: string[],
+	): Promise<Record<string, StepRecord>> {
+		if (nodeIds.length === 0) return {};
+
+		const rows = await this.repo.find({ where: { executionId, nodeId: In(nodeIds) } });
+		return Object.fromEntries(rows.map((row) => [row.nodeId, row]));
+	}
+
+	async loadStepSummaries(
+		executionId: string,
+		nodeIds: string[],
+	): Promise<Record<string, StepSummary>> {
+		if (nodeIds.length === 0) return {};
+
+		// Slot liveness is projected in SQL so the jsonb payloads never leave the
+		// database: a slot is filled unless it holds JSON null.
+		const rows: Array<{
+			id: string;
+			nodeId: string;
+			status: StepStatus;
+			filledOutputSlots: boolean[];
+		}> = await this.repo
+			.createQueryBuilder('step')
+			.select('step.id', 'id')
+			.addSelect('step.node_id', 'nodeId')
+			.addSelect('step.status', 'status')
+			.addSelect(
+				`COALESCE(
+					(SELECT array_agg(jsonb_typeof(slot.value) <> 'null' ORDER BY slot.ordinality)
+					 FROM jsonb_array_elements(step.outputs) WITH ORDINALITY AS slot),
+					'{}'
+				)`,
+				'filledOutputSlots',
+			)
+			.where('step.execution_id = :executionId', { executionId })
+			.andWhere('step.node_id IN (:...nodeIds)', { nodeIds })
+			.getRawMany();
+
+		return Object.fromEntries(rows.map((row) => [row.nodeId, row]));
 	}
 
 	async loadStepOutputs(
