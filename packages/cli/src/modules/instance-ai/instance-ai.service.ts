@@ -39,6 +39,7 @@ import {
 	disabledInstanceAiSkillIds,
 	createInstanceAiTraceContext,
 	createInternalOperationTraceContext,
+	emitAgentSnapshotTraceEvent,
 	createInstanceAiLivenessPolicyConfig,
 	InstanceAiLivenessPolicy,
 	McpClientManager,
@@ -77,6 +78,7 @@ import {
 	type ManagedBackgroundTask,
 	type McpServerConfig,
 	type ModelConfig,
+	type AgentSnapshotArtifact,
 	type OrchestrationContext,
 	type InstanceAiTraceContext,
 	type PlannedTaskGraph,
@@ -235,6 +237,9 @@ function buildContextResourcesBlock(contextAttachments: InstanceAiResourceAttach
 	const lines = contextAttachments.map((attachment) => {
 		const name = attachment.name ? ` "${attachment.name}"` : '';
 		if (attachment.type === 'agent') {
+			if (attachment.pending) {
+				return `- New unsaved Agent artifact${name} (pending id: \`${attachment.id}\`, in project \`${attachment.projectId}\`).`;
+			}
 			return `- Agent${name} (id: \`${attachment.id}\`, in project \`${attachment.projectId}\`).`;
 		}
 		// Only mention the execution when one was actually handed off.
@@ -246,11 +251,19 @@ function buildContextResourcesBlock(contextAttachments: InstanceAiResourceAttach
 	const header = contextAttachments.some((attachment) => attachment.type === 'agent')
 		? 'The user opened this conversation from the agent editor, where they are looking at:'
 		: 'The user opened this conversation from the workflow editor, where they are looking at:';
+	const pendingAgentGuidance = contextAttachments.some(
+		(attachment) => attachment.type === 'agent' && attachment.pending,
+	)
+		? "Treat references such as “the agent” as this pending artifact. It has no persisted agent row yet. When the user asks to build or change it, use `build-agent`'s new-agent path with a name; do not pass its pending id as an existing `agentId`. The thread's pending target will make creation reuse that id."
+		: '';
 	const prose = [
 		header,
 		...lines,
+		pendingAgentGuidance,
 		"Treat this purely as context. Until the user tells you what they need, don't read, inspect, run, or otherwise call tools on these resources, and don't make claims about their contents — just briefly acknowledge what they're working on and ask how you can help.",
-	].join('\n');
+	]
+		.filter(Boolean)
+		.join('\n');
 	// Wrap in EDITOR_CONTEXT_BLOCK so the UI strips it from the visible message
 	// (cleanStoredUserMessage) and the parser can reconstruct the attachments on
 	// reload from the leading JSON line — keeping the resource durable without
@@ -262,11 +275,18 @@ function buildHandoffContextBlock(context: InstanceAiHandoffContext | undefined)
 	if (!context || context.source !== 'credential-modal') return '';
 
 	const { credential } = context;
+	const placeholderTitles = credential.placeholderTitles ?? [];
 	const lines = [
 		`- Credential type: \`${credential.credentialType}\` (${credential.displayName}).`,
 		credential.id ? `- Existing credential id: \`${credential.id}\`.` : '',
 		credential.nodeName ? `- Node name: "${credential.nodeName}".` : '',
 		credential.nodeType ? `- Node type: \`${credential.nodeType}\`.` : '',
+		placeholderTitles.length
+			? `- The credential form is fully pre-filled from a recipe; the user only pastes: ${placeholderTitles.map((title) => `"${title}"`).join(', ')}.`
+			: '',
+		credential.docsUrl
+			? `- The provider page where the user creates/copies the secret (verified during recipe research): ${credential.docsUrl}`
+			: '',
 		credential.documentationUrl ? `- n8n documentation URL: ${credential.documentationUrl}` : '',
 		credential.oauthRedirectUrl
 			? `- OAuth redirect/callback URL shown in the modal: ${credential.oauthRedirectUrl}`
@@ -276,7 +296,12 @@ function buildHandoffContextBlock(context: InstanceAiHandoffContext | undefined)
 		'The user opened this conversation from the credential setup modal and is asking for setup guidance.',
 		...lines,
 		'Use this metadata only as setup context. Never ask the user to paste credential secrets into chat. For credential setup docs, load `n8n-docs-assistant` and use `n8n-docs` with `intent: "credential-setup"`.',
-	].join('\n');
+		placeholderTitles.length
+			? `Because the form is pre-filled, give step-by-step guidance on where to obtain the listed value(s) on the provider side${credential.docsUrl ? ' — direct the user to the provider page above rather than re-researching' : ' (research the provider if needed)'} — and do NOT suggest editing the auth template, test URL, or any other credential field.`
+			: '',
+	]
+		.filter(Boolean)
+		.join('\n');
 
 	return `${CREDENTIAL_CONTEXT_OPEN_TAG}\n${JSON.stringify(context)}\n\n${prose}\n${CREDENTIAL_CONTEXT_CLOSE_TAG}`;
 }
@@ -3499,6 +3524,10 @@ export class InstanceAiService {
 				}
 			}
 
+			// The builder never sees an attach-only turn, so nothing else records what
+			// the attached agent looked like when the conversation opened.
+			await this.snapshotAttachedAgents(contextAttachments, orchestrationContext, tracing);
+
 			const enrichedMessage = await this.buildMessageWithRunningTasks(threadId, message);
 			const contextResourcesBlock = buildContextResourcesBlock(contextAttachments);
 
@@ -5724,6 +5753,37 @@ export class InstanceAiService {
 			};
 		}
 		return { status: 'limit-reached' };
+	}
+
+	/** Snapshot every Agent the editor attached, as it stands before this turn
+	 *  acts on it. Best-effort: it only feeds eval-seed authoring. */
+	private async snapshotAttachedAgents(
+		attachments: InstanceAiResourceAttachment[],
+		orchestrationContext: OrchestrationContext,
+		tracing: InstanceAiTraceContext | undefined,
+	): Promise<void> {
+		const delegate = orchestrationContext.domainContext?.builderDelegate;
+		if (!delegate || !tracing) return;
+		for (const attachment of attachments) {
+			if (attachment.type !== 'agent') continue;
+			let artifact: AgentSnapshotArtifact | null = null;
+			try {
+				artifact = (await delegate.readAgentArtifact?.(attachment.id)) ?? null;
+			} catch (error) {
+				this.logger.debug(
+					`[agent-snapshot] attached read for ${attachment.id} failed: ${error instanceof Error ? error.message : String(error)}`,
+				);
+				continue;
+			}
+			if (!artifact) continue;
+			await emitAgentSnapshotTraceEvent(tracing, {
+				agentId: attachment.id,
+				projectId: attachment.projectId,
+				reason: 'attached',
+				artifact,
+				logger: this.logger,
+			});
+		}
 	}
 
 	private async buildMessageWithRunningTasks(threadId: string, message: string): Promise<string> {

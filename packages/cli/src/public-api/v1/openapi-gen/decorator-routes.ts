@@ -228,6 +228,7 @@ export function getDecoratorGeneratedOperations(
 			...(route.apiKeyScope
 				? { 'x-required-scope': scopeRequirementToString(route.apiKeyScope) }
 				: {}),
+			...(route.deprecated ? { deprecated: true } : {}),
 			...(parameters ? { parameters } : {}),
 			...((requestParams ?? requestQuery ?? requestBody)
 				? {
