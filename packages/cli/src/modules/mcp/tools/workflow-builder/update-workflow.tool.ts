@@ -238,6 +238,7 @@ function parseStrictOperations(operations: OperationInput[]): PartialUpdateOpera
 		.join('; ');
 	throw new Error(`Invalid operations: ${details}`);
 }
+
 const NON_FATAL_OPERATION_TYPES_LIST = [...NON_FATAL_OPERATION_TYPES].join(', ');
 const buildToolDescription = (canvasGroupsEnabled: boolean) => {
 	const base =
@@ -248,7 +249,7 @@ const buildToolDescription = (canvasGroupsEnabled: boolean) => {
 };
 // The concrete return type (not a widened z.ZodRawShape) keeps the tool's
 // generic coupled to the real schema shape, so the handler's argument
-// annotation is compile-checked against it via ToolCallback's parameter types.
+// annotation is compile-checked against it via ToolHandler's parameter types.
 const buildInputSchema = (canvasGroupsEnabled: boolean) =>
 	({
 		workflowId: z.string().describe('The ID of the workflow to update.'),
