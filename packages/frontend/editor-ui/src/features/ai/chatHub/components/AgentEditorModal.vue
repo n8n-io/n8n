@@ -667,7 +667,6 @@ watch(documentVisibility, (visibility) => {
 							/>
 						</div>
 						<N8nButton
-							type="tertiary"
 							icon="plus"
 							variant="subtle"
 							:class="$style.addFileButton"

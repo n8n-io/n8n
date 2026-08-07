@@ -222,7 +222,7 @@ function onCancel() {
 		</N8nText>
 
 		<div v-if="canSave" :class="$style.actions">
-			<N8nButton type="secondary" size="small" @click="onCancel">
+			<N8nButton size="small" @click="onCancel">
 				{{ i18n.baseText('generic.cancel') }}
 			</N8nButton>
 			<N8nButton size="small" :loading="store.isSaving" @click="onSave">

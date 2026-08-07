@@ -761,7 +761,6 @@ onBeforeUnmount(() => {
 			v-if="showSaveButton && !isArchived && workflowPermissions.update"
 			:loading="isSaving"
 			:disabled="!uiStore.stateIsDirty || collaborationReadOnly"
-			type="secondary"
 			data-test-id="workflow-save-button"
 			@click="onSaveButtonClick"
 		>

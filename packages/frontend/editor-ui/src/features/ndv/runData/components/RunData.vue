@@ -1782,7 +1782,6 @@ defineExpose({ enterEditMode });
 				<N8nButton
 					v-if="pinnedData.hasData.value"
 					class="mt-s"
-					type="secondary"
 					size="small"
 					data-test-id="ndv-trimmed-corrupted-unpin"
 					@click="onTogglePinData({ source: 'context-menu' })"
