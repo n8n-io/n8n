@@ -230,6 +230,26 @@ export class CredentialsOverwrites {
 		return this.get(type) !== undefined;
 	}
 
+	/**
+	 * OAuth credential type whose client this instance provides via overwrites
+	 * (clientId + clientSecret), excluding skip-list types where managed
+	 * creation is disabled. These types support one-click connect in the editor.
+	 */
+	isManagedOAuthType(type: string): boolean {
+		if (!this.credentialTypes.recognizes(type)) return false;
+
+		const oauthBases = ['oAuth1Api', 'oAuth2Api'];
+		const isOAuthType =
+			oauthBases.includes(type) ||
+			this.credentialTypes.getParentTypes(type).some((parent) => oauthBases.includes(parent));
+		if (!isOAuthType) return false;
+
+		if (this.globalConfig.credentials.overwrite?.skipTypes?.includes(type)) return false;
+
+		const overwrites = this.get(type);
+		return !!overwrites && 'clientId' in overwrites && 'clientSecret' in overwrites;
+	}
+
 	usesManagedAuth(type: string, data: Record<string, unknown>): boolean {
 		const overwrites = this.get(type);
 		if (overwrites === undefined) return false;

@@ -475,6 +475,129 @@ describe('resolveCredentials', () => {
 		});
 	});
 
+	describe('managed OAuth auth preference', () => {
+		function makeNotionNode(withCredentialSlot = true) {
+			return {
+				id: '1',
+				name: 'Notion',
+				type: 'n8n-nodes-base.notion',
+				typeVersion: 2,
+				position: [0, 0] as [number, number],
+				parameters: { authentication: 'apiKey' },
+				...(withCredentialSlot
+					? { credentials: { notionApi: undefined as unknown as { id: string; name: string } } }
+					: {}),
+			};
+		}
+
+		function mockNotionDescription(ctx: InstanceAiContext) {
+			(ctx.nodeService as unknown as { getDescription: Mock }).getDescription = vi
+				.fn()
+				.mockResolvedValue({
+					credentials: [
+						{ name: 'notionApi', displayOptions: { show: { authentication: ['apiKey'] } } },
+						{ name: 'notionOAuth2Api', displayOptions: { show: { authentication: ['oAuth2'] } } },
+					],
+				});
+		}
+
+		function setManagedOAuthTypes(ctx: InstanceAiContext, types: string[]) {
+			(
+				ctx.credentialService as unknown as { isManagedOAuthCredentialType: Mock }
+			).isManagedOAuthCredentialType = vi.fn(
+				async (type: string) => await Promise.resolve(types.includes(type)),
+			);
+		}
+
+		it('switches the node auth to a managed-OAuth sibling instead of mocking the written API-key type', async () => {
+			const json = makeWorkflow({ nodes: [makeNotionNode()] });
+			const ctx = createMockContext();
+			(ctx.credentialService.list as Mock).mockResolvedValue([]);
+			mockNotionDescription(ctx);
+			setManagedOAuthTypes(ctx, ['notionOAuth2Api']);
+
+			const result = await resolveCredentials(json, undefined, ctx);
+
+			// Auth switched so every setup surface derives the OAuth type.
+			expect(json.nodes[0].parameters).toEqual({ authentication: 'oAuth2' });
+			// Nothing is attached — setup asks for the OAuth credential.
+			expect(json.nodes[0].credentials).toEqual({});
+			expect(result.resolvedCredentialsByNode).toEqual({});
+			expect(result.mockedNodeNames).toEqual(['Notion']);
+			expect(result.mockedCredentialTypes).toEqual(['notionOAuth2Api']);
+			expect(result.mockedCredentialsByNode).toEqual({ Notion: ['notionOAuth2Api'] });
+		});
+
+		it('keeps the written type when the user has stored credentials of it', async () => {
+			const json = makeWorkflow({ nodes: [makeNotionNode()] });
+			const ctx = createMockContext();
+			mockNotionDescription(ctx);
+			setManagedOAuthTypes(ctx, ['notionOAuth2Api']);
+			// Two stored credentials: the sole-credential fallback doesn't bind, and
+			// the stored-credential guard must keep the node on the API-key type.
+			const credentialMap = makeCredentialMap([
+				{ id: 'cred-1', name: 'Notion account 1', type: 'notionApi' },
+				{ id: 'cred-2', name: 'Notion account 2', type: 'notionApi' },
+			]);
+
+			const result = await resolveCredentials(json, undefined, ctx, credentialMap);
+
+			expect(json.nodes[0].parameters).toEqual({ authentication: 'apiKey' });
+			expect(result.mockedCredentialsByNode).toEqual({ Notion: ['notionApi'] });
+		});
+
+		it('prefers n8n credits over a managed-OAuth sibling', async () => {
+			const json = makeWorkflow({ nodes: [makeNotionNode()] });
+			const ctx = createMockContext();
+			(ctx.credentialService.list as Mock).mockResolvedValue([]);
+			mockNotionDescription(ctx);
+			setManagedOAuthTypes(ctx, ['notionOAuth2Api']);
+			(
+				ctx.credentialService as unknown as { isAiGatewayCredentialType: Mock }
+			).isAiGatewayCredentialType = vi.fn(
+				async (type: string) => await Promise.resolve(type === 'notionApi'),
+			);
+
+			const result = await resolveCredentials(json, undefined, ctx);
+
+			expect(json.nodes[0].credentials).toEqual({
+				notionApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+			});
+			expect(json.nodes[0].parameters).toEqual({ authentication: 'apiKey' });
+			expect(result.mockedCredentialsByNode).toEqual({});
+		});
+
+		it('mocks the written type when no managed-OAuth sibling is available', async () => {
+			// The adapter method is absent (older adapter / self-hosted) — behave as before.
+			const json = makeWorkflow({ nodes: [makeNotionNode()] });
+			const ctx = createMockContext();
+			(ctx.credentialService.list as Mock).mockResolvedValue([]);
+			mockNotionDescription(ctx);
+
+			const result = await resolveCredentials(json, undefined, ctx);
+
+			expect(json.nodes[0].parameters).toEqual({ authentication: 'apiKey' });
+			expect(result.mockedCredentialsByNode).toEqual({ Notion: ['notionApi'] });
+		});
+
+		it('switches auth for a credential-less node whose required type has a managed-OAuth sibling', async () => {
+			// The LLM omitted the credential slot entirely — the second pass still
+			// prefers the managed-OAuth auth option, without attaching anything.
+			const json = makeWorkflow({ nodes: [makeNotionNode(false)] });
+			const ctx = createMockContext();
+			(ctx.credentialService.list as Mock).mockResolvedValue([]);
+			mockNotionDescription(ctx);
+			setManagedOAuthTypes(ctx, ['notionOAuth2Api']);
+
+			const result = await resolveCredentials(json, undefined, ctx);
+
+			expect(json.nodes[0].parameters).toEqual({ authentication: 'oAuth2' });
+			expect(json.nodes[0].credentials).toBeUndefined();
+			expect(result.resolvedCredentialsByNode).toEqual({});
+			expect(result.mockedNodeNames).toEqual([]);
+		});
+	});
+
 	describe('existing workflow restoration', () => {
 		it('restores credentials from existing workflow for updates', async () => {
 			const json = makeWorkflow({
