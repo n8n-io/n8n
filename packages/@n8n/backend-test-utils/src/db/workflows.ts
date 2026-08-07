@@ -191,9 +191,21 @@ export async function createWorkflowWithTrigger(
 				},
 				{
 					id: 'uuid-2',
+<<<<<<< HEAD
 					parameters: { rule: { interval: [{ field: 'days' }] } },
 					name: 'Schedule Trigger',
 					type: 'n8n-nodes-base.scheduleTrigger',
+=======
+					// Deliberately a schedule that cannot fire during a test run. Suites
+					// that don't mock `ActiveWorkflowManager` register this with the real
+					// `ScheduledTaskManager`, and an `everyMinute` tick starts a real
+					// execution that outlives the test that activated the workflow.
+					parameters: {
+						triggerTimes: { item: [{ mode: 'everyMonth', hour: 0, minute: 0, dayOfMonth: 1 }] },
+					},
+					name: 'Cron',
+					type: 'n8n-nodes-base.cron',
+>>>>>>> 5438bb2cd4b18692837dff4954bd71ee709e6a92
 					typeVersion: 1,
 					position: [500, 300],
 				},
