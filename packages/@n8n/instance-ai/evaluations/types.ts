@@ -12,7 +12,7 @@ import type {
 import type { CheckOutcome } from './binaryChecks/types';
 import type { WorkflowResponse } from './clients/n8n-client';
 import type { EvalAttribution } from './harness/attribution';
-import type { CaseSeed } from './harness/schema';
+import type { CaseSeed, ExternalWorkflowEdit } from './harness/schema';
 
 // ---------------------------------------------------------------------------
 // Checklist items and verification
@@ -251,6 +251,11 @@ export interface WorkflowTestCase {
 	 *  LangSmith trace at run time and supplies the live turn itself, which is why
 	 *  `conversation` is optional for it. See `harness/schema.ts`. */
 	seed?: CaseSeed;
+	/** Edits made to a built workflow from outside the conversation, applied at a
+	 *  turn boundary while the agent is idle. Lets a case reach the "workflow was
+	 *  modified outside this conversation" conflict on purpose rather than by
+	 *  chance. See `ExternalWorkflowEditSchema`. */
+	externalEdits?: ExternalWorkflowEdit[];
 	/** Logical groupings this case belongs to (e.g. `['pr', 'full']`). Defaults to `['full']`. */
 	datasets: string[];
 }

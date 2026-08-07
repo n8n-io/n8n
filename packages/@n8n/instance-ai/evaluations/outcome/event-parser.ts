@@ -628,6 +628,31 @@ function extractIdFromRecord(record: Record<string, unknown>, keys: string[]): s
 	return undefined;
 }
 
+/**
+ * Workflow ids from builds that actually SAVED, in first-seen order.
+ *
+ * Deliberately narrower than `extractOutcomeFromEvents().workflowIds`, which
+ * includes ids from FAILED builds on purpose: a save that parsed but didn't
+ * persist still returns `{ success: false, workflowId }`, and discovery wants
+ * those so cleanup can claim and delete whatever the run touched.
+ *
+ * That's the wrong set for any caller that MUTATES a workflow. A failed build
+ * against an attached or pre-existing workflow would otherwise look like a
+ * build this run performed, and the caller would act on state it never created.
+ * Requires `success === true` rather than `!== false`, so a result shape
+ * without the flag is treated as not-saved — the safe direction when the
+ * consequence is writing to someone else's workflow.
+ */
+export function savedWorkflowIdsFromEvents(events: CapturedEvent[]): string[] {
+	const saved = extractOutcomeFromEvents(events)
+		.toolCalls.filter((call) => WORKFLOW_TOOLS.has(call.toolName))
+		.filter((call) => toResultRecord(call.result)?.success === true)
+		.map((call) => extractIdFromResult(call.result, 'workflowId', 'id'))
+		.filter((id): id is string => id !== undefined);
+
+	return dedupe(saved);
+}
+
 function dedupe(arr: string[]): string[] {
 	return [...new Set(arr)];
 }

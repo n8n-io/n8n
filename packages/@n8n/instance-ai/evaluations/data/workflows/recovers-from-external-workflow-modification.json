@@ -1,0 +1,39 @@
+{
+	"description": "Sourced from thread e4bc6a89-4d63-4f98-8549-20d97c83d561 (LangTracer obs 5166, severity wrong). There build-workflow reported the workflow had been modified outside the conversation; the agent could not re-sync and looped on identical failing builds. The remediation the product itself returns is: call workflows(action=get-as-code), re-apply the intended change to the returned code, write it to the same filePath, rebuild. This case makes that conflict happen on purpose — `externalEdits` renames the built workflow at a turn boundary, advancing the checksum the agent's next save is validated against — and then asks whether the agent recovers. Scope note: the source thread ALSO hit a get-as-code crash (obs 5167, 'Cannot read properties of null'), which is a product bug the harness cannot summon. This case therefore guards the recovery path, not that crash; if get-as-code is broken the case reds and says so, which is the correct signal either way. The sharpest assertion is that the external rename survives: re-applying onto current state preserves it, while overwriting with a stale in-memory copy silently reverts someone else's edit.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": [
+				"Build me a workflow I can run by hand that fetches https://api.github.com/repos/n8n-io/n8n and posts the star count to a webhook at https://example.com/hooks/stars.",
+				"Keep it simple — two steps is fine."
+			]
+		},
+		{
+			"role": "assistant",
+			"text": "Built — a manual trigger fetches the repo and posts the star count on to your webhook."
+		},
+		{
+			"role": "user",
+			"text": [
+				"[Once the workflow has been built, do not end the conversation — the user comes back with one more change.]",
+				"One more thing: only post when the star count is above 1000, otherwise do nothing.",
+				"[Ask for exactly this one change and nothing else. If the agent reports that the workflow changed outside the conversation, or that saving failed, do not tell it what to do — say you did rename it in another tab a moment ago, and ask it to apply the change anyway. Accept its answer once it has either saved the change or clearly explained why it cannot.]",
+				"[Never attach a comment to a widget response. Approvals, confirmations and setup cards get the bare action and nothing else; anything the user wants to say goes in a separate chat message.]"
+			]
+		}
+	],
+	"externalEdits": [{ "afterWorkflowCount": 1, "rename": "Star counter (renamed in another tab)" }],
+	"messageBudget": 8,
+	"complexity": "medium",
+	"tags": ["behaviour", "debugging", "http-request", "concurrency"],
+	"datasets": ["full", "behaviour"],
+	"triggerType": "manual",
+	"processExpectations": [
+		"When the save came back reporting the workflow had been modified outside the conversation, the agent re-read the workflow's current state before trying again — rather than resubmitting the same source unchanged and hitting the identical failure repeatedly.",
+		"The agent did not present the requested change as saved while the save was in fact still failing. If it could not complete the change, it said so plainly and said why."
+	],
+	"outcomeExpectations": [
+		"The saved workflow gates the webhook post on the star count being above 1000 — the change the user asked for is actually present, not merely described.",
+		"The workflow is still named 'Star counter (renamed in another tab)'. That name was set outside the conversation after the agent's first save, so keeping it is the evidence the agent re-applied its change onto the workflow's current state; reverting to its own earlier name means it overwrote a change it never read."
+	]
+}
