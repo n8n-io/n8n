@@ -28,6 +28,7 @@ import { AgentSkillsService } from './agent-skills.service';
 import type { Agent } from './entities/agent.entity';
 import { syncAgentIntegrations } from './integrations/integrations-sync';
 import { composeJsonConfig, decomposeJsonConfig } from './json-config/agent-config-composition';
+import { NodeToolAiGatewayService } from './json-config/node-tool-ai-gateway.service';
 import { sanitizeUnknownAgentCredentials } from './json-config/sanitize-unknown-agent-credentials';
 import { AgentTaskRepository } from './repositories/agent-task.repository';
 import { AgentRepository } from './repositories/agent.repository';
@@ -47,6 +48,7 @@ export class AgentConfigService {
 		private readonly runtimeCacheService: AgentRuntimeCacheService,
 		private readonly credentialsService: CredentialsService,
 		private readonly workflowRepository: WorkflowRepository,
+		private readonly nodeToolAiGatewayService: NodeToolAiGatewayService,
 		private readonly eventService: EventService,
 		private readonly setupCompletionService: AgentSetupCompletionService,
 		private readonly modificationTelemetry: AgentModificationTelemetryService,
@@ -133,8 +135,9 @@ export class AgentConfigService {
 			projectId,
 			user,
 		);
+		const accessibleCredentials = await credentialProvider.list();
 		const accessibleCredentialIds = new Set(
-			(await credentialProvider.list()).map((credential) => credential.id),
+			accessibleCredentials.map((credential) => credential.id),
 		);
 		const sanitizedBaseConfig = sanitizeAgentJsonConfig(config);
 		const sanitizedConfig = sanitizeUnknownAgentCredentials(
@@ -153,6 +156,10 @@ export class AgentConfigService {
 		const validatedConfig = reconcileNativeWebSearch(result.config);
 
 		if (validatedConfig.tools !== undefined) {
+			await this.nodeToolAiGatewayService.assignManagedCredentials(
+				validatedConfig.tools,
+				new Set(accessibleCredentials.map((credential) => credential.type)),
+			);
 			await normalizeWorkflowToolRefs(this.workflowRepository, validatedConfig.tools, projectId);
 		}
 

@@ -10,12 +10,31 @@ describe('ExpressionEngineConfig', () => {
 	});
 
 	describe('defaults', () => {
+		test('engine defaults to vm', () => {
+			expect(Container.get(ExpressionEngineConfig).engine).toBe('vm');
+		});
+
 		test('bridgeTimeout defaults to 5000', () => {
 			expect(Container.get(ExpressionEngineConfig).bridgeTimeout).toBe(5000);
 		});
 
 		test('bridgeMemoryLimit defaults to 128', () => {
 			expect(Container.get(ExpressionEngineConfig).bridgeMemoryLimit).toBe(128);
+		});
+	});
+
+	describe('N8N_EXPRESSION_ENGINE', () => {
+		test('overrides engine to legacy', () => {
+			vi.stubEnv('N8N_EXPRESSION_ENGINE', 'legacy');
+			expect(Container.get(ExpressionEngineConfig).engine).toBe('legacy');
+		});
+
+		test('falls back to default on invalid value', () => {
+			const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+			vi.stubEnv('N8N_EXPRESSION_ENGINE', 'not-an-engine');
+			expect(Container.get(ExpressionEngineConfig).engine).toBe('vm');
+			expect(consoleWarnSpy).toHaveBeenCalled();
 		});
 	});
 

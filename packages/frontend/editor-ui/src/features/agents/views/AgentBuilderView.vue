@@ -5,10 +5,10 @@ import {
 	N8nAssistantIcon,
 	N8nButton,
 	N8nIcon,
+	type ActionDropdownItem,
 	type DropdownMenuItemProps,
+	type PathItem,
 } from '@n8n/design-system';
-import type { ActionDropdownItem } from '@n8n/design-system/types/action-dropdown';
-import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import {
 	MAX_AGENT_FILE_SIZE_BYTES,
@@ -108,6 +108,8 @@ const props = withDefaults(
 const emit = defineEmits<{
 	/** The agent behind an unsaved artifact now exists. */
 	persisted: [agent: AgentResource];
+	/** The agent name was successfully saved. */
+	'name-saved': [name: string];
 }>();
 
 const route = useRoute();
@@ -235,7 +237,7 @@ const sessionOptions = computed<Array<DropdownMenuItemProps<string>>>(() =>
 );
 
 // Config
-const { config, fetchConfig, updateConfig } = useAgentConfig();
+const { config, fetchConfig, updateConfig, repoint: repointConfig } = useAgentConfig();
 const {
 	validation: configValidation,
 	repoint: repointConfigValidation,
@@ -714,6 +716,7 @@ async function saveConfig(snapshot: ConfigAutosaveSnapshot): Promise<'skipped' |
 	// `agent.versionId` would otherwise be polluted with values for the
 	// previous agent.
 	if (result.stale) return undefined;
+	emit('name-saved', snapshot.config.name);
 	if (agent.value && agent.value.id === snapshot.agentId && result.versionId !== undefined) {
 		agent.value = { ...agent.value, versionId: result.versionId };
 	}
@@ -1058,6 +1061,31 @@ async function replayPendingExternalRefresh() {
 
 agentsEventBus.on('agentUpdated', onExternalAgentUpdated);
 
+// Serves a request from outside the builder to focus the eval surface (the
+// assistant's post-setup suggestion). `immediate` so a request raised before
+// this builder mounted is still honoured — which is the normal case, since the
+// assistant reveals the agent artifact as part of accepting the suggestion.
+watch(
+	[() => agentEvalsStore.pendingEvalsFocus, agentId, visibleMainTabOptions, initialized],
+	() => {
+		if (!agentEvalsStore.pendingEvalsFocus) return;
+		// Hold the request until initialize() resolves: `isUnsaved` — and so the tab
+		// row — isn't settled before then, so deciding earlier would honour a
+		// request for an agent whose Evals tab turns out to be hidden.
+		if (!initialized.value) return;
+		// Checked against the rendered tab row rather than the flag, so the request
+		// can't select a tab the user has no way to see — `visibleMainTabOptions`
+		// also drops everything but Agent while the agent is still unsaved.
+		if (!visibleMainTabOptions.value.some((option) => option.value === 'evals')) return;
+
+		const request = agentEvalsStore.consumeEvalsFocus(agentId.value);
+		if (!request) return;
+		activeMainTab.value = 'evals';
+		if (request.generate) void onGenerateEvalCases();
+	},
+	{ immediate: true },
+);
+
 const headerActions = computed(() => {
 	const actions: Array<ActionDropdownItem<string>> = [
 		{
@@ -1273,6 +1301,7 @@ async function initialize({ preserveState = false }: { preserveState?: boolean }
 			agentFilesLoading.value = false;
 			agentFilesUploading.value = false;
 			deletingAgentFileId.value = null;
+			repointConfig(projectId.value, agentId.value);
 			repointConfigValidation(projectId.value, agentId.value);
 		}
 

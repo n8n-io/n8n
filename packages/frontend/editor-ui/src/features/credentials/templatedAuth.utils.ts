@@ -1,4 +1,5 @@
 import escapeRegExp from 'lodash/escapeRegExp';
+import startCase from 'lodash/startCase';
 import { CREDENTIAL_BLANKING_VALUE, jsonParse } from 'n8n-workflow';
 
 /**
@@ -138,5 +139,58 @@ export function parsePlaceholderValues(raw: unknown): Record<string, string> {
 		Object.entries(parsed).filter(
 			(entry): entry is [string, string] => typeof entry[1] === 'string',
 		),
+	);
+}
+
+/**
+ * "fal.ai API Key" + user → "fal.ai API Key (Jan D)". Suffixes the creator so
+ * same-recipe credentials stay tellable-apart in shared projects.
+ */
+export function composeCredentialNameWithUser(
+	base: string,
+	user: { firstName?: string | null; lastName?: string | null } | null | undefined,
+): string {
+	const first = user?.firstName?.trim();
+	if (!first) return base;
+	const lastInitial = user?.lastName?.trim().charAt(0) ?? '';
+	return `${base} (${first}${lastInitial ? ` ${lastInitial}` : ''})`;
+}
+
+/**
+ * Human service identity for labels: the recipe's suggested credential name
+ * ("fal.ai API Key").
+ */
+export function deriveServiceName(
+	setupHint: { suggestedName?: string } | undefined,
+): string | undefined {
+	return setupHint?.suggestedName?.trim() || undefined;
+}
+
+/** A stored URL only when it parses as http(s) — junk must not reach the
+ *  handoff context's strict url() validation. */
+export function parseHttpUrl(value: unknown): string | undefined {
+	if (typeof value !== 'string' || !/^https?:\/\//i.test(value)) return undefined;
+	try {
+		new URL(value);
+		return value;
+	} catch {
+		return undefined;
+	}
+}
+
+/**
+ * The guided form's input labels, one per template marker — what the user
+ * actually pastes into a recipe-created credential.
+ */
+export function listPlaceholderTitles(credentialData: {
+	template?: unknown;
+	placeholderDefs?: unknown;
+}): string[] {
+	const template = parseTemplatedAuthField<unknown>(credentialData.template, {});
+	const defsByName = new Map(
+		parsePlaceholderDefs(credentialData.placeholderDefs).map((def) => [def.name, def]),
+	);
+	return extractTemplateMarkers(template).map(
+		(marker) => defsByName.get(marker)?.title || startCase(marker),
 	);
 }

@@ -65,7 +65,9 @@ function getToolDiscoverySection(
 
 ${mcpSearchGuidance}When the available tools do not cover the user's request, remember that you have access to more tools. Use \`search_tools\` with keyword queries to find relevant tools, then \`load_tool\` to activate them. Loaded tools persist for the rest of the conversation. When a loaded skill names a tool you do not see, search for that tool name and load it before proceeding.
 
-Examples: ${mcpExamples}search "n8n docs" for \`n8n-docs\`, search "create tasks" for \`create-tasks\`, search "eval" for \`evals\`.
+Examples: ${mcpExamples}search "create tasks" for \`create-tasks\`, search "eval" for \`evals\`.
+
+For questions about n8n itself — how a node behaves, the shape of its output, what a parameter does, product semantics — prefer \`n8n-docs\` and the node type definitions, both already loaded and needing no search, over web search, which is for third-party services and APIs.
 `;
 }
 
@@ -179,7 +181,7 @@ Don't fabricate provider setup mechanics (credential field names, secret values,
 ## Safety
 
 - **Destructive operations** show a confirmation UI automatically — don't ask via text.
-- **Credential setup** uses \`workflows(action="setup")\` when a workflowId is available — it opens the inline setup card in the AI Assistant panel and handles credentials, parameters, and triggers in one step. Use \`credentials(action="setup")\` only when the user explicitly asks to create a credential outside of any workflow context. Never call both tools for the same workflow. Never describe workflow setup as something the user starts from the canvas or editor. Setup cards are only open while the setup call is pending — once it returns a result, the card is resolved: describe the outcome (e.g. credentials selected and ready), never that a card is open or that the user still needs to authorize.
+- **Credential setup** uses \`workflows(action="setup")\` when a workflowId is available — it opens the inline setup card in the AI Assistant panel and handles credentials, parameters, and triggers in one step. Use \`credentials(action="setup")\` only when the user explicitly asks to create a credential outside of any workflow context. Never call both tools for the same workflow. Never describe workflow setup as something the user starts from the canvas or editor. Setup cards are only open while the setup call is pending — once it returns a result, the card is resolved: describe the outcome (e.g. credentials selected and ready), never that a card is open or that the user still needs to authorize. When a skipped node carries \`parameterIssues\`, the connected credential can't reach the value that was configured (e.g. a model outside what the credential allows) — fix the value, then tell the user plainly which value didn't work and what you set instead. Never silently swap a model or other parameter without saying so.
 - **Error workflows are per workflow** — n8n has no global/instance-wide error workflow setting. Mention that only when the user explicitly asks about global error workflow behavior; build/assign steps live in \`workflow-builder\` and \`post-build-flow\`.
 - **Never expose credential secrets** — metadata only.
 
