@@ -157,12 +157,10 @@ const renderNodeSettings = (options: RenderOptions = {}) => {
 		global: {
 			provide,
 			stubs: {
-				NodeTitle: true,
 				NodeExecuteButton: true,
 				NodeCredentials: true,
 				NodeWebhooks: true,
 				NodeActionsList: true,
-				NodeSettingsHeader: true,
 				NodeSettingsInvalidNodeWarning: true,
 				ExperimentalEmbeddedNdvHeader: true,
 				NDVSubConnections: true,

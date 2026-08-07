@@ -7,6 +7,7 @@
  * picks mocked nodes up and pins them with generated fixtures at verify time.
  */
 
+import { TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE } from '@n8n/api-types';
 import type { NodeJSON, WorkflowJSON } from '@n8n/workflow-sdk';
 
 import { AI_GATEWAY_CREDENTIAL, N8N_CONNECT_DISPLAY_NAME } from './credential-utils';
@@ -288,6 +289,24 @@ export async function resolveCredentials(
 			};
 
 			if (value !== undefined && value !== null) {
+				// Templated Custom Auth ids are service-agnostic at the type level, so a
+				// model-attached reference can silently wire another service's credential
+				// (e.g. a Pexels key onto fal.ai nodes). Trust it only when it matches the
+				// node's own prior wiring; anything fresh routes through credential setup,
+				// where the card offers existing credentials without silently applying one.
+				if (key === TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE) {
+					const suppliedId = getCredentialId(value);
+					const priorId = getCredentialId(existingCreds?.[key]);
+					if (suppliedId !== undefined && suppliedId === priorId) {
+						cleanupMockPinData(json, node.name);
+						continue;
+					}
+					if (restoreExistingCredential()) {
+						continue;
+					}
+					await mockOrAttachGateway();
+					continue;
+				}
 				if (isKnownCredentialForType(value, key, availableCredentials)) {
 					cleanupMockPinData(json, node.name);
 					continue;
@@ -303,8 +322,11 @@ export async function resolveCredentials(
 				continue;
 			}
 
+			// The sole-credential fallback is skipped for Templated Custom Auth: the
+			// type is shared by every service, so "the only stored credential" may
+			// belong to a different service — mock instead so setup asks.
 			const credentialsForType = availableCredentials?.get(key);
-			if (credentialsForType?.length === 1) {
+			if (credentialsForType?.length === 1 && key !== TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE) {
 				const [credential] = credentialsForType;
 				creds[key] = { id: credential.id, name: credential.name };
 				recordResolvedCredential(credential.id, credential.name);
