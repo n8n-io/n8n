@@ -9,8 +9,7 @@ let inFlight: Promise<ChatIntegrationDescriptor[]> | null = null;
 export function useAgentIntegrationsCatalog() {
 	const rootStore = useRootStore();
 
-	async function ensureLoaded(projectId: string): Promise<ChatIntegrationDescriptor[]> {
-		if (catalog.value) return catalog.value;
+	async function fetchCatalog(projectId: string): Promise<ChatIntegrationDescriptor[]> {
 		if (!inFlight) {
 			inFlight = listAgentIntegrations(rootStore.restApiContext, projectId)
 				.then((list) => {
@@ -26,8 +25,13 @@ export function useAgentIntegrationsCatalog() {
 		return await inFlight;
 	}
 
+	async function ensureLoaded(projectId: string): Promise<ChatIntegrationDescriptor[]> {
+		return catalog.value ?? (await fetchCatalog(projectId));
+	}
+
 	return {
 		catalog,
 		ensureLoaded,
+		reload: fetchCatalog,
 	};
 }

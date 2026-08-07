@@ -14,7 +14,7 @@ import type {
 	RoleProjectMembersResponse,
 } from '@n8n/api-types';
 import { LICENSE_FEATURES } from '@n8n/constants';
-import { AuthenticatedRequest } from '@n8n/db';
+import { AuthenticatedRequest, User } from '@n8n/db';
 import {
 	Body,
 	Delete,
@@ -27,7 +27,7 @@ import {
 	Query,
 	RestController,
 } from '@n8n/decorators';
-import { Role as RoleDTO } from '@n8n/permissions';
+import { hasGlobalScope, Role as RoleDTO } from '@n8n/permissions';
 
 import { EventService } from '@/events/event.service';
 import { RoleService } from '@/services/role.service';
@@ -38,6 +38,23 @@ export class RoleController {
 		private readonly roleService: RoleService,
 		private readonly eventService: EventService,
 	) {}
+
+	/**
+	 * Reassigning a deleted role's users is effectively a bulk instance-role change,
+	 * so it is only honored for callers entitled to change users' instance roles
+	 * (the same scopes the dedicated role-change endpoint requires), never for
+	 * project roles, and never for the caller's own role. When it is not honored the
+	 * reassignment target is ignored, so a role that still has users cannot be
+	 * deleted.
+	 */
+	private canReassignUsers(user: User, role: RoleDTO): boolean {
+		return (
+			role.roleType === 'global' &&
+			user.role.slug !== role.slug &&
+			hasGlobalScope(user, 'role:manage') &&
+			hasGlobalScope(user, 'user:changeRole')
+		);
+	}
 
 	@Get('/')
 	async getAllRoles(
@@ -129,7 +146,10 @@ export class RoleController {
 	): Promise<RoleDTO> {
 		const role = await this.roleService.getRole(slug);
 		this.roleService.assertCanManageRoleType(req.user, role.roleType);
-		const result = await this.roleService.removeCustomRole(slug, query.reassignRoleSlug);
+		const reassignRoleSlug = this.canReassignUsers(req.user, role)
+			? query.reassignRoleSlug
+			: undefined;
+		const result = await this.roleService.removeCustomRole(slug, reassignRoleSlug);
 		this.eventService.emit('custom-role-deleted', {
 			userId: req.user.id,
 			roleSlug: result.slug,

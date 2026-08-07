@@ -6,6 +6,7 @@ import {
 	AI_REQUEST_TIMEOUT_MS,
 	createAiMcpFetch,
 	createAiProxyFetch,
+	createWebSearchFetch,
 } from '@/utils/ai-proxy-fetch';
 
 describe('AI outbound fetch helpers', () => {
@@ -67,6 +68,40 @@ describe('AI outbound fetch helpers', () => {
 				headersTimeout: AI_REQUEST_TIMEOUT_MS,
 				bodyTimeout: AI_REQUEST_TIMEOUT_MS,
 			},
+		});
+	});
+
+	it('creates web-search fetch with SSRF protection enabled when configured', () => {
+		const fetch = vi.fn() as typeof global.fetch;
+		const transport = mock<HttpTransport>();
+		transport.asCustomFetch.mockReturnValue(fetch);
+		const outboundHttp = mock<OutboundHttp>();
+		outboundHttp.transport.mockReturnValue(transport);
+		const ssrfConfig = { enabled: true } as SsrfProtectionConfig;
+		const ssrfProtectionService = mock<SsrfProtectionService>();
+
+		expect(createWebSearchFetch(outboundHttp, ssrfConfig, ssrfProtectionService)).toBe(fetch);
+
+		expect(outboundHttp.transport).toHaveBeenCalledWith({
+			proxy: 'env',
+			ssrf: ssrfProtectionService,
+		});
+	});
+
+	it('creates web-search fetch with SSRF protection disabled when configured', () => {
+		const fetch = vi.fn() as typeof global.fetch;
+		const transport = mock<HttpTransport>();
+		transport.asCustomFetch.mockReturnValue(fetch);
+		const outboundHttp = mock<OutboundHttp>();
+		outboundHttp.transport.mockReturnValue(transport);
+		const ssrfConfig = { enabled: false } as SsrfProtectionConfig;
+		const ssrfProtectionService = mock<SsrfProtectionService>();
+
+		expect(createWebSearchFetch(outboundHttp, ssrfConfig, ssrfProtectionService)).toBe(fetch);
+
+		expect(outboundHttp.transport).toHaveBeenCalledWith({
+			proxy: 'env',
+			ssrf: 'disabled',
 		});
 	});
 });
