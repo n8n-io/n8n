@@ -676,14 +676,18 @@ export class N8nClient {
 	}
 
 	/**
-	 * Invite member users in one batched request and return each invitee's
-	 * accept token. Requires an owner session and an instance without SMTP —
-	 * an emailed invite omits `inviteAcceptUrl` (the token's only carrier).
+	 * Invite member users in one batched request. Requires an owner session.
+	 * Returns one row per invitee, reporting rather than throwing on failure:
+	 * n8n creates the user shells before it reports per-invite errors, so the
+	 * caller needs every id back to clean up. `acceptToken` is present only when
+	 * the invite was not emailed (`inviteAcceptUrl` is the token's only carrier,
+	 * and it is withheld when SMTP is configured or N8N_INVITE_LINKS_EMAIL_ONLY
+	 * is set).
 	 * POST /rest/invitations  body: [{ email, role: 'global:member' }, ...]
 	 */
 	async inviteMembers(
 		emails: string[],
-	): Promise<Array<{ id: string; email: string; acceptToken: string }>> {
+	): Promise<Array<{ id: string; email: string; acceptToken?: string; error?: string }>> {
 		if (emails.length === 0) return [];
 		const response = InvitedUsersEnvelope.parse(
 			await this.fetch('/rest/invitations', {
@@ -691,20 +695,14 @@ export class N8nClient {
 				body: emails.map((email) => ({ email, role: 'global:member' })),
 			}),
 		);
-		return response.data.map(({ user, error }) => {
-			if (error) {
-				throw new Error(`Invitation for ${user.email} failed: ${error}`);
-			}
-			const token = user.inviteAcceptUrl
-				? new URL(user.inviteAcceptUrl).searchParams.get('token')
-				: null;
-			if (!token) {
-				throw new Error(
-					`Invitation for ${user.email} returned no accept token — the instance likely has SMTP configured (the invite was emailed instead), which the eval user-provisioning flow cannot use`,
-				);
-			}
-			return { id: user.id, email: user.email, acceptToken: token };
-		});
+		return response.data.map(({ user, error }) => ({
+			id: user.id,
+			email: user.email,
+			acceptToken: user.inviteAcceptUrl
+				? (new URL(user.inviteAcceptUrl).searchParams.get('token') ?? undefined)
+				: undefined,
+			error: error === '' ? undefined : error,
+		}));
 	}
 
 	/**
