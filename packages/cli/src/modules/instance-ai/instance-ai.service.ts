@@ -74,6 +74,7 @@ import {
 	saveAgentBuilderTarget,
 	type ConfirmationData,
 	type DomainAccessTracker,
+	type InstanceAiContext,
 	type ManagedBackgroundTask,
 	type McpServerConfig,
 	type ModelConfig,
@@ -556,6 +557,7 @@ export class InstanceAiService {
 			userId: string;
 			attempts: Array<{
 				credentialType: string;
+				setupMethod: 'setup_card' | 'conversation';
 				attemptId?: string;
 				startedAt: number;
 				created: boolean;
@@ -2194,36 +2196,7 @@ export class InstanceAiService {
 
 		context.runId = runId;
 
-		const findOpenAttempt = (credentialType: string) => {
-			const attempts = this.pendingBrowserCredentialSetups.get(runId)?.attempts ?? [];
-			return attempts.findLast(
-				(attempt) => attempt.credentialType === credentialType && !attempt.created,
-			);
-		};
-		context.browserCredentialSetup = {
-			markPending: (credentialType: string, attemptId?: string) => {
-				let pending = this.pendingBrowserCredentialSetups.get(runId);
-				if (!pending) {
-					pending = { userId: user.id, attempts: [] };
-					this.pendingBrowserCredentialSetups.set(runId, pending);
-				}
-				if (attemptId && pending.attempts.some((attempt) => attempt.attemptId === attemptId)) {
-					return;
-				}
-				pending.attempts.push({ credentialType, attemptId, startedAt: Date.now(), created: false });
-			},
-			markCreated: (credentialType: string) => {
-				const attempt = findOpenAttempt(credentialType);
-				if (attempt) {
-					attempt.created = true;
-					attempt.errorCode = undefined;
-				}
-			},
-			markCreateFailed: (credentialType: string, errorCode: string) => {
-				const attempt = findOpenAttempt(credentialType);
-				if (attempt) attempt.errorCode = errorCode;
-			},
-		};
+		context.browserCredentialSetup = this.createBrowserCredentialSetupTracker(runId, user.id);
 
 		// Per-user, thread-level "always allow" grants are persisted in the DB so they survive
 		// reload/navigation and are visible across mains. Load once per run; a tool resuming
@@ -5953,6 +5926,65 @@ export class InstanceAiService {
 	}
 
 	/**
+	 * Per-run bookkeeping behind `context.browserCredentialSetup` (NODE-5511).
+	 * `markPending` opens an attempt when the user clicks auto-setup on the
+	 * credential card; `markCreated`/`markCreateFailed` resolve the latest open
+	 * attempt for the type — or open an implicit `'conversation'` attempt when
+	 * there is none, so LLM-initiated creations (user asked directly in chat,
+	 * no setup card involved) still produce a terminal telemetry event.
+	 */
+	private createBrowserCredentialSetupTracker(
+		runId: string,
+		userId: string,
+	): NonNullable<InstanceAiContext['browserCredentialSetup']> {
+		const getOrCreateAttempts = () => {
+			let pending = this.pendingBrowserCredentialSetups.get(runId);
+			if (!pending) {
+				pending = { userId, attempts: [] };
+				this.pendingBrowserCredentialSetups.set(runId, pending);
+			}
+			return pending.attempts;
+		};
+		const resolveOpenAttempt = (credentialType: string) => {
+			const attempts = getOrCreateAttempts();
+			let attempt = attempts.findLast((a) => a.credentialType === credentialType && !a.created);
+			if (!attempt) {
+				attempt = {
+					credentialType,
+					setupMethod: 'conversation',
+					startedAt: Date.now(),
+					created: false,
+				};
+				attempts.push(attempt);
+			}
+			return attempt;
+		};
+		return {
+			markPending: (credentialType: string, attemptId?: string) => {
+				const attempts = getOrCreateAttempts();
+				if (attemptId && attempts.some((attempt) => attempt.attemptId === attemptId)) {
+					return;
+				}
+				attempts.push({
+					credentialType,
+					setupMethod: 'setup_card',
+					attemptId,
+					startedAt: Date.now(),
+					created: false,
+				});
+			},
+			markCreated: (credentialType: string) => {
+				const attempt = resolveOpenAttempt(credentialType);
+				attempt.created = true;
+				attempt.errorCode = undefined;
+			},
+			markCreateFailed: (credentialType: string, errorCode: string) => {
+				resolveOpenAttempt(credentialType).errorCode = errorCode;
+			},
+		};
+	}
+
+	/**
 	 * Emit one terminal telemetry event per browser-assisted credential setup
 	 * attempt of the finished run (NODE-5511). Consumes the pending record so
 	 * every attempt yields exactly one success or failure event. When the flow
@@ -5991,7 +6023,7 @@ export class InstanceAiService {
 				// The flow never runs a credential test, so validation support is unknown.
 				is_valid: null,
 				is_new: true,
-				setup_method: 'ai',
+				setup_method: attempt.setupMethod,
 				thread_id: threadId,
 				run_id: runId,
 				...(attempt.attemptId ? { credential_setup_attempt_id: attempt.attemptId } : {}),

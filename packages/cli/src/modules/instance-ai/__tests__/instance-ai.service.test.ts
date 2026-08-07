@@ -669,6 +669,7 @@ type TerminalGuardOrderServiceInternals = {
 			userId: string;
 			attempts: Array<{
 				credentialType: string;
+				setupMethod: 'setup_card' | 'conversation';
 				attemptId?: string;
 				startedAt: number;
 				created: boolean;
@@ -676,6 +677,14 @@ type TerminalGuardOrderServiceInternals = {
 			}>;
 		}
 	>;
+	createBrowserCredentialSetupTracker: (
+		runId: string,
+		userId: string,
+	) => {
+		markPending: (credentialType: string, attemptId?: string) => void;
+		markCreated: (credentialType: string) => void;
+		markCreateFailed: (credentialType: string, errorCode: string) => void;
+	};
 	saveAgentTreeSnapshot: Mock;
 	backgroundTasks: { getRunningTasks: Mock; getRunningTasksByParentCheckpoint?: Mock };
 	temporaryWorkflowService: { reapForRun: Mock };
@@ -2963,15 +2972,27 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 		service.pendingBrowserCredentialSetups.set('run-1', {
 			userId: 'user-1',
 			attempts: [
-				{ credentialType: 'slackApi', attemptId: 'attempt-1', startedAt: 1000, created: true },
+				{
+					credentialType: 'slackApi',
+					setupMethod: 'setup_card' as const,
+					attemptId: 'attempt-1',
+					startedAt: 1000,
+					created: true,
+				},
 				{
 					credentialType: 'notionApi',
+					setupMethod: 'setup_card' as const,
 					attemptId: 'attempt-2',
 					startedAt: 2000,
 					created: false,
 					errorCode: 'missing_captured_fields',
 				},
-				{ credentialType: 'githubApi', startedAt: 3000, created: false },
+				{
+					credentialType: 'githubApi',
+					setupMethod: 'setup_card' as const,
+					startedAt: 3000,
+					created: false,
+				},
 			],
 		});
 
@@ -2998,7 +3019,7 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 				status: 'success',
 				is_valid: null,
 				is_new: true,
-				setup_method: 'ai',
+				setup_method: 'setup_card',
 				thread_id: 'thread-a',
 				run_id: 'run-1',
 				credential_setup_attempt_id: 'attempt-1',
@@ -3015,7 +3036,7 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 				error_code: 'missing_captured_fields',
 				is_valid: null,
 				is_new: true,
-				setup_method: 'ai',
+				setup_method: 'setup_card',
 				thread_id: 'thread-a',
 				run_id: 'run-1',
 				credential_setup_attempt_id: 'attempt-2',
@@ -3032,7 +3053,7 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 				error_code: 'not_attempted',
 				is_valid: null,
 				is_new: true,
-				setup_method: 'ai',
+				setup_method: 'setup_card',
 				thread_id: 'thread-a',
 				run_id: 'run-1',
 				duration_ms: expect.any(Number),
@@ -3052,7 +3073,14 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 		});
 		service.pendingBrowserCredentialSetups.set('run-1', {
 			userId: 'user-1',
-			attempts: [{ credentialType: 'slackApi', startedAt: 1000, created: false }],
+			attempts: [
+				{
+					credentialType: 'slackApi',
+					setupMethod: 'setup_card' as const,
+					startedAt: 1000,
+					created: false,
+				},
+			],
 		});
 
 		await service.processResumedStream(
@@ -3079,6 +3107,63 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 				error_code: 'run_cancelled',
 			}),
 		);
+	});
+
+	it('tracks a conversation-driven attempt when the LLM creates a credential without a setup card', async () => {
+		const service = createTerminalGuardOrderService();
+		const abortController = new AbortController();
+		mockClaimedResumeResult({
+			status: 'completed',
+			agentRunId: 'agent-run-1',
+			text: Promise.resolve('done'),
+			workSummary: { toolCalls: [], totalToolCalls: 0, totalToolErrors: 0 },
+		});
+
+		const tracker = service.createBrowserCredentialSetupTracker('run-1', 'user-1');
+		// No markPending — the user asked in chat, no setup card was shown.
+		tracker.markCreateFailed('slackApi', 'missing_captured_fields');
+		tracker.markCreated('slackApi');
+		tracker.markCreateFailed('notionApi', 'credential_create_failed');
+
+		await service.processResumedStream(
+			{},
+			{},
+			{
+				runId: 'run-1',
+				agentRunId: 'agent-run-1',
+				threadId: 'thread-a',
+				user: fakeUser,
+				toolCallId: 'tool-call-1',
+				signal: abortController.signal,
+				abortController,
+				snapshotStorage: {},
+			},
+		);
+
+		// The failed-then-retried slack attempt resolves as one success.
+		expect(service.telemetry.track).toHaveBeenCalledWith(
+			'Instance AI Browser Use credential setup completed',
+			expect.objectContaining({
+				user_id: 'user-1',
+				credential_type: 'slackApi',
+				status: 'success',
+				setup_method: 'conversation',
+			}),
+		);
+		expect(service.telemetry.track).toHaveBeenCalledWith(
+			'Instance AI Browser Use credential setup completed',
+			expect.objectContaining({
+				credential_type: 'notionApi',
+				status: 'failure',
+				failure_stage: 'persistence',
+				error_code: 'credential_create_failed',
+				setup_method: 'conversation',
+			}),
+		);
+		const setupEvents = service.telemetry.track.mock.calls.filter(
+			([eventName]) => eventName === 'Instance AI Browser Use credential setup completed',
+		);
+		expect(setupEvents).toHaveLength(2);
 	});
 
 	it('claims credits for the consumed segment when a resumed run suspends again', async () => {
