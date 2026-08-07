@@ -67,7 +67,7 @@
 		{
 			"name": "WorkflowReviewRequest",
 			"path": "packages/@n8n/db/src/entities/workflow-review-request.ee.ts",
-			"reason": "Not transferred with the project. Open reviews should be closed when their workflows move to another project; that close-on-move behaviour is deferred."
+			"reason": "Not transferred with the project. Open reviews are closed when their workflow is archived, moved to another project, or deleted (workflow lifecycle hooks); rows are removed via the projectId FK cascade when the source project itself is deleted, as in ownership-transfer flows."
 		}
 	]
 }
