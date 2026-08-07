@@ -1,6 +1,6 @@
-import { shouldIncludeModel } from '../modelFiltering';
+import { shouldIncludeOpenAiModel } from '../providers/openai';
 
-describe('shouldIncludeModel', () => {
+describe('shouldIncludeOpenAiModel', () => {
 	const testCases: Array<{ modelId: string; officialAPI: boolean }> = [
 		// Excluded model types
 		{ modelId: 'babbage-002', officialAPI: false },
@@ -15,9 +15,21 @@ describe('shouldIncludeModel', () => {
 		{ modelId: 'gpt-4o-realtime-preview', officialAPI: false }, // infix check for -realtime
 		{ modelId: 'gpt-3.5-turbo-instruct', officialAPI: false }, // gpt-* with instruct
 
+		// Non-chat families named gpt-*, so caught by infix rather than prefix
+		{ modelId: 'gpt-image-2', officialAPI: false },
+		{ modelId: 'chatgpt-image-latest', officialAPI: false },
+		{ modelId: 'gpt-transcribe', officialAPI: false },
+		{ modelId: 'gpt-4o-transcribe-diarize', officialAPI: false },
+		// Every diarization model OpenAI ships today is also *-transcribe-diarize,
+		// so this pins the -diarize clause on its own
+		{ modelId: 'gpt-4o-diarize', officialAPI: false },
+
 		// Included models (standard chat models)
 		{ modelId: 'gpt-4', officialAPI: true },
 		{ modelId: 'gpt-4o', officialAPI: true },
+		// Unsupported on responses, but supported on chat/completions, which the
+		// OpenAI node's "Message a Model" uses, so it must stay selectable
+		{ modelId: 'gpt-audio', officialAPI: true },
 		{ modelId: 'o1-preview', officialAPI: true },
 		{ modelId: 'ft:gpt-3.5-turbo', officialAPI: true }, // fine-tuned models
 
@@ -28,7 +40,7 @@ describe('shouldIncludeModel', () => {
 
 	describe('Custom API behavior', () => {
 		it.each(testCases)('should include "$modelId"', ({ modelId }) => {
-			expect(shouldIncludeModel(modelId, true)).toBe(true);
+			expect(shouldIncludeOpenAiModel(modelId, true)).toBe(true);
 		});
 	});
 
@@ -39,7 +51,7 @@ describe('shouldIncludeModel', () => {
 		}));
 
 		it.each(testCasesWithAction)('should $action "$modelId"', ({ modelId, officialAPI }) => {
-			expect(shouldIncludeModel(modelId, false)).toBe(officialAPI);
+			expect(shouldIncludeOpenAiModel(modelId, false)).toBe(officialAPI);
 		});
 	});
 });
