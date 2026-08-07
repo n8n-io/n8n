@@ -47,4 +47,6 @@ export interface WorkflowReviewRequestDetail extends WorkflowReviewInboxItem {
 	viewerCanDecide: boolean;
 	/** Set if `viewerCanDecide` is false. */
 	viewerDecisionIneligibilityReason: WorkflowReviewDecisionIneligibilityReason | null;
+	/** Not advisory, unlike `viewerCanDecide`: the comment endpoint applies the same verdict. */
+	viewerCanComment: boolean;
 }

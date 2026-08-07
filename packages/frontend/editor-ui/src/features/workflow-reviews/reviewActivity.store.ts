@@ -4,14 +4,22 @@ import { ref } from 'vue';
 
 import { useRootStore } from '@n8n/stores/useRootStore';
 
-import { fetchWorkflowReviewActivity } from './workflowReviews.api';
+import { createWorkflowReviewComment, fetchWorkflowReviewActivity } from './workflowReviews.api';
 import { toError } from './workflowReviews.utils';
 
 const DEFAULT_LIMIT = 25;
 
+function withoutIdsIn(
+	entries: WorkflowReviewActivityEntry[],
+	others: WorkflowReviewActivityEntry[],
+): WorkflowReviewActivityEntry[] {
+	const ids = new Set(others.map((entry) => entry.id));
+	return entries.filter((entry) => !ids.has(entry.id));
+}
+
 /**
  * The activity feed of one review. `entries` is ascending by id: the backend pages
- * backwards, so `loadMore` prepends older pages.
+ * backwards, so `loadMore` prepends older pages and `postComment` appends.
  */
 export const useReviewActivityStore = defineStore('workflowReviewActivity', () => {
 	const rootStore = useRootStore();
@@ -22,6 +30,7 @@ export const useReviewActivityStore = defineStore('workflowReviewActivity', () =
 	const hasMore = ref(false);
 	const loading = ref(false);
 	const loadingMore = ref(false);
+	const posting = ref(false);
 	const error = ref<Error | null>(null);
 
 	let feedRequestSeq = 0;
@@ -37,6 +46,9 @@ export const useReviewActivityStore = defineStore('workflowReviewActivity', () =
 		loadingMore.value = false;
 		loading.value = true;
 		error.value = null;
+		// A post still in flight for the review we just left must not leave this one's
+		// send button disabled.
+		posting.value = false;
 
 		try {
 			const response = await fetchWorkflowReviewActivity(rootStore.restApiContext, reviewId, {
@@ -44,7 +56,9 @@ export const useReviewActivityStore = defineStore('workflowReviewActivity', () =
 			});
 			if (requestSeq !== feedRequestSeq) return;
 
-			entries.value = response.data;
+			// Merged, not assigned: a comment posted while this page was in flight is already
+			// appended, and the server snapshot predates it.
+			entries.value = [...response.data, ...withoutIdsIn(entries.value, response.data)];
 			nextCursor.value = response.nextCursor;
 			hasMore.value = response.hasMore;
 		} catch (e) {
@@ -90,6 +104,25 @@ export const useReviewActivityStore = defineStore('workflowReviewActivity', () =
 		}
 	}
 
+	async function postComment(body: string) {
+		const reviewId = currentReviewId.value;
+		// Thrown, not swallowed: a silent return would read as success to the caller.
+		if (!reviewId) throw new Error('Cannot post a comment without a selected review');
+
+		posting.value = true;
+		try {
+			const entry = await createWorkflowReviewComment(rootStore.restApiContext, reviewId, { body });
+			if (currentReviewId.value !== reviewId) return;
+
+			// A feed refetch that raced this post may already carry the comment.
+			entries.value = [...withoutIdsIn(entries.value, [entry]), entry];
+		} finally {
+			// Only for the review this post belongs to. A switch already cleared the flag, and
+			// clearing it again would re-enable the send button mid-post on the new review.
+			if (currentReviewId.value === reviewId) posting.value = false;
+		}
+	}
+
 	function reset() {
 		feedRequestSeq += 1;
 		currentReviewId.value = null;
@@ -98,6 +131,7 @@ export const useReviewActivityStore = defineStore('workflowReviewActivity', () =
 		hasMore.value = false;
 		loading.value = false;
 		loadingMore.value = false;
+		posting.value = false;
 		error.value = null;
 	}
 
@@ -108,9 +142,11 @@ export const useReviewActivityStore = defineStore('workflowReviewActivity', () =
 		hasMore,
 		loading,
 		loadingMore,
+		posting,
 		error,
 		fetchFeed,
 		loadMore,
+		postComment,
 		reset,
 	};
 });
