@@ -9,6 +9,8 @@ import type {
 import {
 	applyBranchReadOnlyOverrides,
 	buildProxyHeaders,
+	credentialSetupHintSchema,
+	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
 	type InstanceAiAttachment,
 	type InstanceAiHandoffContext,
 	type InstanceAiAgentAttachment,
@@ -106,6 +108,7 @@ import {
 	ThreadTaskStorage,
 } from '@n8n/instance-ai';
 import type { Scope } from '@n8n/permissions';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { lazyImport } from '@n8n/utils/lazy-import';
 import { setSchemaBaseDirs } from '@n8n/workflow-sdk';
 import { ErrorReporter, InstanceSettings } from 'n8n-core';
@@ -276,11 +279,18 @@ function buildHandoffContextBlock(context: InstanceAiHandoffContext | undefined)
 	if (!context || context.source !== 'credential-modal') return '';
 
 	const { credential } = context;
+	const placeholderTitles = credential.placeholderTitles ?? [];
 	const lines = [
 		`- Credential type: \`${credential.credentialType}\` (${credential.displayName}).`,
 		credential.id ? `- Existing credential id: \`${credential.id}\`.` : '',
 		credential.nodeName ? `- Node name: "${credential.nodeName}".` : '',
 		credential.nodeType ? `- Node type: \`${credential.nodeType}\`.` : '',
+		placeholderTitles.length
+			? `- The credential form is fully pre-filled from a recipe; the user only pastes: ${placeholderTitles.map((title) => `"${title}"`).join(', ')}.`
+			: '',
+		credential.docsUrl
+			? `- The provider page where the user creates/copies the secret (verified during recipe research): ${credential.docsUrl}`
+			: '',
 		credential.documentationUrl ? `- n8n documentation URL: ${credential.documentationUrl}` : '',
 		credential.oauthRedirectUrl
 			? `- OAuth redirect/callback URL shown in the modal: ${credential.oauthRedirectUrl}`
@@ -290,7 +300,12 @@ function buildHandoffContextBlock(context: InstanceAiHandoffContext | undefined)
 		'The user opened this conversation from the credential setup modal and is asking for setup guidance.',
 		...lines,
 		'Use this metadata only as setup context. Never ask the user to paste credential secrets into chat. For credential setup docs, load `n8n-docs-assistant` and use `n8n-docs` with `intent: "credential-setup"`.',
-	].join('\n');
+		placeholderTitles.length
+			? `Because the form is pre-filled, give step-by-step guidance on where to obtain the listed value(s) on the provider side${credential.docsUrl ? ' — direct the user to the provider page above rather than re-researching' : ' (research the provider if needed)'} — and do NOT suggest editing the auth template, test URL, or any other credential field.`
+			: '',
+	]
+		.filter(Boolean)
+		.join('\n');
 
 	return `${CREDENTIAL_CONTEXT_OPEN_TAG}\n${JSON.stringify(context)}\n\n${prose}\n${CREDENTIAL_CONTEXT_CLOSE_TAG}`;
 }
@@ -310,6 +325,9 @@ const WORKFLOW_SETUP_ROUTING_CLAIM_TTL_MS = 15 * 60 * 1000;
 
 const CONFIRMATION_EXPIRED_MESSAGE =
 	'This confirmation has expired. Send a new message to continue.';
+
+const RESUME_REJECTED_MESSAGE =
+	'I could not apply that confirmation. Send a new message to continue.';
 
 /**
  * Upper bound on how long `shutdown()` will wait for in-flight executeRun /
@@ -350,6 +368,9 @@ export const QUOTA_EXHAUSTED_USER_MESSAGE =
 const OPERATIONAL_ERROR_USER_MESSAGE =
 	'I hit an operational error before I could finish that response. Please try again.';
 
+const GENERIC_ERROR_USER_MESSAGE =
+	'Something went wrong before I could finish that response. Please try again.';
+
 /** Structured error code for the UI when a run failed because credits ran out. */
 function getUserFacingErrorCode(error: unknown): 'quota_exhausted' | undefined {
 	return isQuotaExhaustedError(error) ? 'quota_exhausted' : undefined;
@@ -357,7 +378,12 @@ function getUserFacingErrorCode(error: unknown): 'quota_exhausted' | undefined {
 
 type TerminalErrorCode = NonNullable<ReturnType<typeof getUserFacingErrorCode>>;
 
-export function getUserFacingErrorMessage(error: unknown): string {
+/** `fallback` lets a caller name what specifically failed when the error itself
+ *  carries no user-facing meaning. */
+export function getUserFacingErrorMessage(
+	error: unknown,
+	fallback: string = GENERIC_ERROR_USER_MESSAGE,
+): string {
 	if (isQuotaExhaustedError(error)) {
 		return QUOTA_EXHAUSTED_USER_MESSAGE;
 	}
@@ -378,11 +404,7 @@ export function getUserFacingErrorMessage(error: unknown): string {
 		return OPERATIONAL_ERROR_USER_MESSAGE;
 	}
 
-	if (error instanceof UnexpectedError) {
-		return 'Something went wrong before I could finish that response. Please try again.';
-	}
-
-	return 'Something went wrong before I could finish that response. Please try again.';
+	return fallback;
 }
 
 /**
@@ -474,7 +496,7 @@ function classifyUnclaimedResume(
 	if (flags.aborted) return flags.preserveHitl ? { kind: 'preserve-hitl' } : { kind: 'cancelled' };
 	return {
 		kind: 'errored',
-		reason: getUserFacingErrorMessage(error),
+		reason: getUserFacingErrorMessage(error, RESUME_REJECTED_MESSAGE),
 		errorCode: getUserFacingErrorCode(error),
 		errorMessage: getErrorMessage(error),
 	};
@@ -4810,6 +4832,17 @@ export class InstanceAiService {
 		} = suspended;
 		if (user.id !== requestingUserId) return null;
 
+		const activeRun = this.runState.getActiveRun(threadId);
+		if (activeRun) {
+			this.logger.warn('Rejecting suspended-run confirmation: thread already has an active run', {
+				requestId,
+				threadId,
+				suspendedRunId: runId,
+				activeRunId: activeRun.runId,
+			});
+			return null;
+		}
+
 		const activeUser = await this.revalidateActiveUser(user.id);
 		if (!activeUser) {
 			this.logger.warn('Cancelling suspended run: user no longer authorized for AI Assistant', {
@@ -6002,13 +6035,49 @@ export class InstanceAiService {
 			}
 		}
 
+		const credentialRequests = (
+			Array.isArray(payload.credentialRequests) ? payload.credentialRequests : []
+		).filter(
+			(request): request is { credentialType?: unknown; setupHint?: unknown } =>
+				typeof request === 'object' && request !== null,
+		);
+
+		// Whether any requested credential is a recipe-driven Templated Custom Auth
+		// one (recipe-seeded modal), to compare completion against plain types.
+		const containsTemplatedCred = credentialRequests.some(
+			(request) =>
+				request.credentialType === TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE ||
+				(request.setupHint !== null && request.setupHint !== undefined),
+		);
+
 		this.telemetry.track('Builder asked for input', {
 			user_id: userId,
 			thread_id: threadId,
 			input_thread_id: inputThreadId,
 			type,
 			num_steps: numSteps,
+			contains_templated_cred: containsTemplatedCred,
 		});
+
+		// Recipe content at spec time — production visibility into template and
+		// link quality (the offline eval suite grades the same fields). One event
+		// per recipe; secret-free by construction: recipes are agent-authored
+		// before any user input.
+		for (const request of credentialRequests) {
+			const parsedHint = credentialSetupHintSchema.safeParse(request.setupHint);
+			if (!parsedHint.success) continue;
+			const hint = parsedHint.data;
+			this.telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.BUILDER_SPECCED_TEMPLATED_CRED, {
+				thread_id: threadId,
+				input_thread_id: inputThreadId,
+				template: hint.template,
+				placeholders: hint.placeholders,
+				test_url: hint.testUrl,
+				docs_url: hint.docsUrl,
+				service_host: hint.serviceHost,
+				accepted_status_codes: hint.acceptedStatusCodes,
+			});
+		}
 	}
 
 	private async finalizeCancelledSuspendedRun(

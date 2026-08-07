@@ -3,7 +3,7 @@ import { computed, ref } from 'vue';
 import { onClickOutside, useElementBounding } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
 import { N8nActionDropdown, N8nIcon } from '@n8n/design-system';
-import type { ActionDropdownItem } from '@n8n/design-system/types';
+import type { ActionDropdownItem } from '@n8n/design-system';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import DiffBadge from '@/features/workflows/workflowDiff/DiffBadge.vue';
 import { RestoreVersionConfirm } from '@n8n/design-system/components/AskAssistantChat';

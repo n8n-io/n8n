@@ -1882,6 +1882,7 @@ type SuspendedRunResumeServiceInternals = {
 		findSuspendedByRequestId: Mock;
 		activateSuspendedRun: Mock;
 		clearActiveRun: Mock;
+		getActiveRun: Mock;
 	};
 	emitTerminalRun: Mock;
 	logger: { warn: Mock };
@@ -1921,6 +1922,7 @@ function createSuspendedRunResumeService(): SuspendedRunResumeServiceInternals {
 		})),
 		activateSuspendedRun: vi.fn(() => ({})),
 		clearActiveRun: vi.fn(),
+		getActiveRun: vi.fn(() => undefined),
 	};
 	service.emitTerminalRun = vi.fn(async () => {});
 	service.logger = { warn: vi.fn() };
@@ -2606,6 +2608,22 @@ describe('InstanceAiService — suspended run user revalidation', () => {
 	});
 });
 
+describe('InstanceAiService — stale confirmation resume guard', () => {
+	it('rejects a suspended-run confirmation when the thread already has an active run', async () => {
+		const service = createSuspendedRunResumeService();
+		service.revalidateActiveUser.mockResolvedValue({ id: 'user-1', disabled: false } as User);
+		service.runState.getActiveRun.mockReturnValue({ runId: 'run-2' });
+
+		const result = await service.resumeSuspendedRun('user-1', 'req-1', { approved: true });
+
+		expect(result).toBeNull();
+		expect(service.runState.activateSuspendedRun).not.toHaveBeenCalled();
+		expect(service.suspendedThreads.dropPendingConfirmation).not.toHaveBeenCalled();
+		expect(service.processResumedStream).not.toHaveBeenCalled();
+		expect(service.cancelRun).not.toHaveBeenCalled();
+	});
+});
+
 describe('InstanceAiService — rebuildAgentForAutoSetupResume', () => {
 	type RebuildAgentServiceInternals = {
 		rebuildAgentForAutoSetupResume: (
@@ -2885,6 +2903,69 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			error_source: 'exception',
 			user_id: 'user-1',
 		});
+	});
+
+	it('terminates the run visibly when a resume fails before the claim', async () => {
+		const service = createTerminalGuardOrderService();
+		const abortController = new AbortController();
+		const resumeExecutionToken = Symbol('resume-token');
+		vi.mocked(resumeAgentRun).mockImplementationOnce(async () => {
+			throw new Error('Invalid resume payload: data must NOT have additional properties');
+		});
+
+		await service.processResumedStream(
+			{},
+			{},
+			{
+				runId: 'run-1',
+				agentRunId: 'agent-run-1',
+				threadId: 'thread-a',
+				user: fakeUser,
+				toolCallId: 'tool-call-1',
+				signal: abortController.signal,
+				abortController,
+				snapshotStorage: {},
+				resumeExecutionToken,
+			},
+		);
+
+		expect(service.eventBus.events.map((event) => event.type)).toEqual(['error', 'run-finish']);
+		expect(service.instanceAiErrorReporter.report).toHaveBeenCalledWith(
+			expect.any(Error),
+			expect.objectContaining({ component: 'instance-ai-resume-claim' }),
+		);
+		expect(service.runState.clearActiveRun).toHaveBeenCalledWith('thread-a', resumeExecutionToken);
+	});
+
+	it('stays silent when the pre-claim failure is a stale resume owned elsewhere', async () => {
+		const service = createTerminalGuardOrderService();
+		const abortController = new AbortController();
+		const resumeExecutionToken = Symbol('resume-token');
+		vi.mocked(resumeAgentRun).mockImplementationOnce(async () => {
+			throw Object.assign(new Error('Run agent-run-1 is not suspended. Cannot resume.'), {
+				name: 'StaleResumeError',
+			});
+		});
+
+		await service.processResumedStream(
+			{},
+			{},
+			{
+				runId: 'run-1',
+				agentRunId: 'agent-run-1',
+				threadId: 'thread-a',
+				user: fakeUser,
+				toolCallId: 'tool-call-1',
+				signal: abortController.signal,
+				abortController,
+				snapshotStorage: {},
+				resumeExecutionToken,
+			},
+		);
+
+		expect(service.eventBus.events).toEqual([]);
+		expect(service.instanceAiErrorReporter.report).not.toHaveBeenCalled();
+		expect(service.runState.clearActiveRun).toHaveBeenCalledWith('thread-a', resumeExecutionToken);
 	});
 
 	it('tracks "Builder generation errored" when a resumed stream reports an error', async () => {
@@ -3518,7 +3599,7 @@ describe('InstanceAiService — run error reporter lifecycle', () => {
 		);
 		expect(terminalResponse).toHaveBeenCalledWith('thread-a', 'run-1', 'errored', {
 			messageGroupId: 'group-1',
-			errorMessage: 'Something went wrong before I could finish that response. Please try again.',
+			errorMessage: 'I could not apply that confirmation. Send a new message to continue.',
 			errorCode: undefined,
 		});
 		expect(service.eventBus.events.map((event) => event.type)).toEqual(['error', 'run-finish']);
@@ -3574,7 +3655,7 @@ describe('InstanceAiService — run error reporter lifecycle', () => {
 			'Invalid resume payload: data must NOT have additional properties',
 		);
 		const userFacingMessage =
-			'Something went wrong before I could finish that response. Please try again.';
+			'I could not apply that confirmation. Send a new message to continue.';
 		service.temporaryWorkflowService.reapForRun.mockResolvedValue(['wf-temp-1']);
 		vi.mocked(resumeAgentRun).mockRejectedValueOnce(resumeError);
 
