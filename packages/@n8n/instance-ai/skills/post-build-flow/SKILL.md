@@ -147,27 +147,19 @@ again.
    when the latest verification evidence used mocks or simulations. If this
    follow-up is due, ask only that question now; do not also ask about the error
    workflow in the same response.
-7. For a direct new primary workflow, follow
-   [Error workflow follow-up](#error-workflow-follow-up) after the mocked
-   live-test follow-up is no longer pending for this workflow. If no mocked
-   live-test follow-up is due, ask about the error workflow before any generic
-   testing prompt. Do not replace this explicit opt-in with a generic "add
-   anything else?", publish, or test question.
-8. Ask the user if they want to test the workflow (skip this if
-   `verify-built-workflow` already proved it works end-to-end with full
-   coverage). If you need to ask about both generic testing and an error
-   workflow, ask the error-workflow opt-in first and leave generic testing as a
-   later follow-up unless the user already requested testing.
-9. Only call `workflows(action="publish")` when the user explicitly asks to
+7. If testing has not already been offered or completed, ask whether the user
+   wants to test the workflow. Skip this if `verify-built-workflow` already
+   proved it works end-to-end with full coverage.
+8. Only call `workflows(action="publish")` when the user explicitly asks to
    publish. Never publish automatically.
+9. After a direct new primary workflow is successfully published, follow
+   [Error workflow follow-up](#error-workflow-follow-up).
+   Do not replace this explicit opt-in with a generic "add
+   anything else?", publish, or test question.
 
 ## Error workflow follow-up
 
-This follow-up comes after the mocked verification live-test follow-up when that
-follow-up is due, and before generic "want to test it?" prompts. For a direct
-new primary workflow, ask about the error workflow after the user answers,
-declines, or defers any pending live/no-mock testing question. If no mocked
-live-test follow-up is due, ask about the error workflow first.
+This follow-up comes only after a direct new primary workflow is successfully published.
 
 If you just built an Error Trigger workflow because the user opted into adding
 one for a known target workflow, do not ask whether to build another error
@@ -175,7 +167,7 @@ workflow. Continue the publish-before-assign flow for the target workflow:
 ask whether to publish the error workflow and set it on that target workflow,
 then publish and assign only after the user approves.
 
-After saving and handling verification/setup for a direct new primary workflow,
+After successfully publishing a direct new primary workflow,
 ask once whether the user wants to build an error workflow for that workflow.
 Use `ask-user` with a yes/no choice or a concise visible question. Do **not**
 create an error workflow before the user opts in.
@@ -227,15 +219,9 @@ that workflow used mocked credentials, simulated node output, fixture overrides,
 temporary pin data, or another mocked input, ask whether the user wants a live
 test without mocks. Do not run the live test automatically.
 
-This follow-up has priority over the error-workflow opt-in for a direct new
-primary workflow. If both follow-ups are due, ask about the live/no-mock test
-first and ask the error-workflow question only after the user has answered,
-declined, or deferred the live/no-mock test follow-up.
-
 If the user agrees, use the explicit live execution path (`executions(action="run")`
 for a direct live run) and report the result separately from the earlier mocked
-verification. If the user declines or defers, state what remains untested and do
-not claim live end-to-end verification.
+verification. If the user declines or defers, state what remains untested and do not claim live end-to-end verification.
 
 ## Claiming success
 

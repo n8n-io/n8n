@@ -21,6 +21,7 @@ import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
 import { useToast } from '@n8n/composables/useToast';
 import WorkflowVersionForm from '@/app/components/WorkflowVersionForm.vue';
 import { useReviewVersionName } from '@/features/workflow-reviews/composables/useReviewVersionName';
+import { formatUserDisplayName } from '@/features/workflow-reviews/formatUserDisplayName';
 import { useReviewRequiredStore } from '@/features/workflow-reviews/reviewRequired.store';
 import { useWorkflowReviewStatusStore } from '@/features/workflow-reviews/reviewStatus.store';
 import {
@@ -81,7 +82,7 @@ const isSubmitDisabled = computed(
 const reviewerOptions = computed<IUser[]>(() =>
 	eligibleReviewers.value.map((reviewer) => ({
 		...reviewer,
-		fullName: [reviewer.firstName, reviewer.lastName].filter(Boolean).join(' ') || undefined,
+		fullName: formatUserDisplayName(reviewer) || undefined,
 	})),
 );
 
