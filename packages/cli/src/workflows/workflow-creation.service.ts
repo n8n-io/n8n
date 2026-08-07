@@ -347,7 +347,14 @@ export class WorkflowCreationService {
 	private async resolveMcpExposureOnCreate(newWorkflow: WorkflowEntity): Promise<void> {
 		if (newWorkflow.settings?.availableInMCP !== undefined) return;
 
-		if (!(await this.mcpSettingsService.getAutoExposeNewWorkflows())) return;
+		try {
+			if (!(await this.mcpSettingsService.getAutoExposeNewWorkflows())) return;
+		} catch (error) {
+			this.logger.warn('Failed to resolve auto-expose setting for new workflow', {
+				cause: error instanceof Error ? error.message : String(error),
+			});
+			return;
+		}
 
 		newWorkflow.settings = { ...(newWorkflow.settings ?? {}), availableInMCP: true };
 	}

@@ -1,4 +1,4 @@
-import type { LicenseState } from '@n8n/backend-common';
+import type { Logger, LicenseState } from '@n8n/backend-common';
 import type { ProjectRepository, Role, User } from '@n8n/db';
 import { WorkflowEntity } from '@n8n/db';
 import type { MockProxy } from 'vitest-mock-extended';
@@ -42,10 +42,12 @@ describe('WorkflowCreationService', () => {
 	let workflowFinderServiceMock: MockProxy<WorkflowFinderService>;
 	let workflowHookContextServiceMock: MockProxy<WorkflowHookContextService>;
 	let mcpSettingsService: MockProxy<McpSettingsService>;
+	let loggerMock: MockProxy<Logger>;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 
+		loggerMock = mock<Logger>();
 		credentialsServiceMock = mock<CredentialsService>();
 		enterpriseWorkflowServiceMock = mock<EnterpriseWorkflowService>();
 		licenseStateMock = mock<LicenseState>();
@@ -67,7 +69,7 @@ describe('WorkflowCreationService', () => {
 		mcpSettingsService = mock<McpSettingsService>();
 
 		workflowCreationService = new WorkflowCreationService(
-			mock(), // logger
+			loggerMock,
 			mock(), // sharedWorkflowRepository
 			mock(), // tagService
 			workflowHistoryServiceMock,
@@ -746,23 +748,20 @@ describe('WorkflowCreationService', () => {
 			expect(workflow.settings?.availableInMCP).toBe(true);
 		});
 
-		it('respects an explicit false from the caller', async () => {
-			mcpSettingsService.getAutoExposeNewWorkflows.mockResolvedValue(true);
-			const workflow = makeWorkflow({ settings: { availableInMCP: false } });
+		it.each([
+			{ explicitValue: false, settingValue: true },
+			{ explicitValue: true, settingValue: false },
+		])(
+			'respects an explicit $explicitValue from the caller over a setting of $settingValue',
+			async ({ explicitValue, settingValue }) => {
+				mcpSettingsService.getAutoExposeNewWorkflows.mockResolvedValue(settingValue);
+				const workflow = makeWorkflow({ settings: { availableInMCP: explicitValue } });
 
-			await workflowCreationService.createWorkflow(user, workflow, { projectId: 'project-1' });
+				await workflowCreationService.createWorkflow(user, workflow, { projectId: 'project-1' });
 
-			expect(workflow.settings?.availableInMCP).toBe(false);
-		});
-
-		it('respects an explicit true from the caller', async () => {
-			mcpSettingsService.getAutoExposeNewWorkflows.mockResolvedValue(false);
-			const workflow = makeWorkflow({ settings: { availableInMCP: true } });
-
-			await workflowCreationService.createWorkflow(user, workflow, { projectId: 'project-1' });
-
-			expect(workflow.settings?.availableInMCP).toBe(true);
-		});
+				expect(workflow.settings?.availableInMCP).toBe(explicitValue);
+			},
+		);
 
 		it('does not seed when the setting is off', async () => {
 			mcpSettingsService.getAutoExposeNewWorkflows.mockResolvedValue(false);
@@ -771,6 +770,21 @@ describe('WorkflowCreationService', () => {
 			await workflowCreationService.createWorkflow(user, workflow, { projectId: 'project-1' });
 
 			expect(workflow.settings?.availableInMCP).toBeUndefined();
+		});
+
+		it('still creates the workflow when reading the auto-expose setting throws', async () => {
+			mcpSettingsService.getAutoExposeNewWorkflows.mockRejectedValue(new Error('cache down'));
+			const workflow = makeWorkflow({ settings: {} });
+
+			await expect(
+				workflowCreationService.createWorkflow(user, workflow, { projectId: 'project-1' }),
+			).resolves.not.toThrow();
+
+			expect(workflow.settings?.availableInMCP).toBeUndefined();
+			expect(loggerMock.warn).toHaveBeenCalledWith(
+				'Failed to resolve auto-expose setting for new workflow',
+				{ cause: 'cache down' },
+			);
 		});
 	});
 });

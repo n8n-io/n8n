@@ -69,8 +69,7 @@ describe('ExposeAllWorkflowsToMcpModal', () => {
 			skippedCount: 0,
 			failedCount: 0,
 		});
-		// Mirrors the real store's local-state-only write so component tests can
-		// observe it landing in settingsStore, without exercising a network call.
+
 		mcpStore.applyAutoExposeNewWorkflowsLocally.mockImplementation((enabled: boolean) => {
 			const settingsStore = useSettingsStore();
 			settingsStore.moduleSettings.mcp = {

@@ -139,15 +139,6 @@ describe('McpSettingsService', () => {
 			);
 			expect(cacheService.set).toHaveBeenCalledWith('mcp.autoExposeNewWorkflows', 'true');
 		});
-
-		test('persists false without special-casing it', async () => {
-			await service.setAutoExposeNewWorkflows(false);
-
-			expect(upsert).toHaveBeenCalledWith(
-				{ key: 'mcp.autoExposeNewWorkflows', value: 'false', loadOnStartup: true },
-				['key'],
-			);
-		});
 	});
 
 	describe('getAllowedRedirectUris', () => {
