@@ -8,6 +8,12 @@ export const operationFields: INodeProperties[] = [
 		noDataExpression: true,
 		options: [
 			{
+				name: 'Create or Update',
+				value: 'upsert',
+				description: 'Create a new record, or update the current one if it already exists (upsert)',
+				action: 'Insert or update rows in a table',
+			},
+			{
 				name: 'Create Row',
 				value: 'create',
 				description: 'Create rows in a table',
@@ -226,6 +232,82 @@ export const operationFields: INodeProperties[] = [
 	},
 
 	// ----------------------------------
+	//              upsert
+	// ----------------------------------
+	{
+		displayName: 'Upsert Criteria',
+		name: 'upsertCriteria',
+		placeholder: 'Add Criteria Field',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValueButtonText: 'Add Criteria Field',
+			multipleValues: true,
+		},
+		displayOptions: {
+			show: {
+				operation: ['upsert'],
+			},
+		},
+		default: {},
+		description: 'Fields to use for matching existing records',
+		options: [
+			{
+				displayName: 'Properties',
+				name: 'properties',
+				values: [
+					{
+						displayName: 'Column Name or ID',
+						name: 'fieldId',
+						description:
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+						type: 'options',
+						typeOptions: {
+							loadOptionsDependsOn: ['tableId'],
+							loadOptionsMethod: 'getTableColumns',
+						},
+						default: '',
+					},
+					{
+						displayName: 'Field Value',
+						name: 'fieldValue',
+						type: 'string',
+						default: '',
+					},
+				],
+			},
+		],
+	},
+	{
+		displayName: 'On Multiple Matches',
+		name: 'onMany',
+		type: 'options',
+		displayOptions: {
+			show: {
+				operation: ['upsert'],
+			},
+		},
+		options: [
+			{
+				name: 'Update First Match',
+				value: 'first',
+				description: 'Update the first matching record (default)',
+			},
+			{
+				name: 'Do Not Update',
+				value: 'none',
+				description: 'Do not update anything if multiple matches found',
+			},
+			{
+				name: 'Update All Matches',
+				value: 'all',
+				description: 'Update all matching records',
+			},
+		],
+		default: 'first',
+		description: 'What to do when multiple records match the upsert criteria',
+	},
+
+	// ----------------------------------
 	//         create + update
 	// ----------------------------------
 	{
@@ -246,7 +328,7 @@ export const operationFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				operation: ['create', 'update'],
+				operation: ['create', 'update', 'upsert'],
 			},
 		},
 		default: 'defineInNode',
@@ -258,7 +340,7 @@ export const operationFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: ['create', 'update'],
+				operation: ['create', 'update', 'upsert'],
 				dataToSend: ['autoMapInputs'],
 			},
 		},
@@ -278,7 +360,7 @@ export const operationFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				operation: ['create', 'update'],
+				operation: ['create', 'update', 'upsert'],
 				dataToSend: ['defineInNode'],
 			},
 		},
