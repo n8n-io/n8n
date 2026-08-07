@@ -317,9 +317,30 @@ decision after testing.
 - Never use raw credential objects like `{ id: '...', name: '...' }` in SDK
   code; replace them with `newCredential()` when editing roundtripped code.
 - If a required credential type is not listed, call
-  `credentials(action="search-types")` with the service name. Prefer dedicated
-  credential types over generic auth; when generic auth is truly needed,
-  prefer `httpBearerAuth` over `httpHeaderAuth`.
+  `credentials(action="search-types")` with the service name. Pick in this
+  order:
+  1. A **dedicated credential type** whenever search finds one.
+  2. **Simplified Custom Auth** (`httpTemplatedCustomAuth`) for any service
+     without a dedicated type whose auth is expressible as header/query/body
+     values — this covers API keys and bearer tokens. When the provider
+     documents `Authorization: Bearer <token>`, do NOT reach for
+     `httpBearerAuth`: template it as
+     `{"headers":{"Authorization":"Bearer {{api_key}}"}}`. Set the HTTP
+     Request node's `genericAuthType` to `httpTemplatedCustomAuth`, and note
+     the provider's documented auth scheme (header format, key page, a cheap
+     authenticated GET endpoint) while you have the docs open: the setup call
+     needs them for the `credentialHints` recipe (see the post-build-flow
+     skill). Before that setup call, load the `credential-recipe-research`
+     skill and execute its lookup procedure — the recipe's template, docsUrl
+     and testUrl must come from pages fetched there, never from memory. Setup
+     rejects new plain generic credentials on HTTP Request nodes, so picking
+     Bearer/Header/Query/Custom Auth here means rebuilding — unless the user
+     explicitly asked for that plain type: an explicit user choice wins (setup
+     accepts it with `allowPlainGenericAuth: true`), don't argue with it.
+  3. Plain generic types (`httpBasicAuth`, `httpDigestAuth`, `oAuth2Api`, …)
+     only for what a template cannot express: basic auth's base64-encoded
+     pair, digest's challenge-response, OAuth flows — or when the user
+     explicitly asks for a specific plain type.
 - `credentials(action="list", type=...)` may include a synthetic n8n credits
   entry `{ id: null, name: "n8n credits", type, __aiGatewayManaged: true }`
   when the type is covered by n8n credits (see n8n credits Preference). It is
