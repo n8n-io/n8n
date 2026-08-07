@@ -31,8 +31,10 @@ Execution** enabled it also contains `server_tool_use` and
 - **`$json.merged_response`** — all `text` blocks joined into one string; the
   simplest field to consume downstream. Only present when the node option
   **Include Merged Response** is enabled, so prefer enabling it.
-- **`$json.content.find(c => c.type === 'text').text`** — the first text
-  block, safe regardless of node options.
+- **`$json.content.find(c => c.type === 'text')?.text`** — the first text
+  block, safe regardless of node options. Keep the `?.`: a turn can end with
+  no text block at all (e.g. cut off mid-tool-use by the iteration cap or
+  `max_tokens`).
 - `$json.content[0].text` — only safe in the plain default configuration
   (no web search / code execution).
 
@@ -43,7 +45,8 @@ text block. Parse the text block's `text`, not `content`:
 
 ```javascript
 // Correct
-const text = $json.content.find((c) => c.type === 'text').text;
+const text = $json.content.find((c) => c.type === 'text')?.text;
+if (!text) throw new Error('Model returned no text block');
 const parsed = JSON.parse(text);
 
 // Wrong — content is an array of blocks, JSON.parse will throw
@@ -54,7 +57,7 @@ Models often wrap JSON in markdown fences even when told not to; strip them
 defensively before parsing:
 
 ```javascript
-const text = $json.content.find((c) => c.type === 'text').text;
+const text = $json.content.find((c) => c.type === 'text')?.text ?? '';
 const raw = text.trim().replace(/^```(?:json)?\s*/, '').replace(/\s*```$/, '');
 const parsed = JSON.parse(raw);
 ```
