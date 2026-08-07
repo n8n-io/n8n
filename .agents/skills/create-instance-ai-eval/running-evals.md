@@ -65,11 +65,18 @@ Workflows without the suffix — real ones, and anything the agent built — are
 touched. So `--keep-workflows` is safe to use on a seeded case; the leftover is
 cleaned up by the next run rather than contaminating it.
 
+**Seeded agents are not evicted** — they get a fresh id per run but keep their
+authored name, so `--keep-workflows` on an agent-seeding case leaves one behind
+and they accumulate under the same name. That can't misdirect a later run (the
+live turn is bound to its own agent by id), but it does clutter what the `agents`
+tool lists. Delete them yourself when calibrating:
+`DELETE /rest/projects/<projectId>/agents/v2/<agentId>`.
+
 ## Case source: disk vs langtracer
 
 | Source | When to use it |
 |---|---|
-| **`disk`** (default) | **Preferred for local development** — authoring and calibrating the case in front of you: drop the JSON into `data/workflows/`, `--filter` it, iterate. Also the only home of the `agents` tier and the seeded carve-out cases; since the corpus migration the directory holds only those, not the full suite. |
+| **`disk`** (default) | **Preferred for local development** — authoring and calibrating the case in front of you: drop the JSON into `data/workflows/`, `--filter` it, iterate. Also the only home of the `agents` tier and of a `replay`-seeded case (reconstructed from a trace at run time, so no suite can hold it); since the corpus migration the directory holds only those, not the full suite. |
 | **`langtracer`** (`--source langtracer --suite baseline`) | Bigger runs (the full corpus or a whole tier), re-running specific cases that already live in the suite, and CI — which always runs this way. Needs `LANGTRACER_URL`/`LANGTRACER_API_KEY` in your env. |
 
 ## Configuration & secrets

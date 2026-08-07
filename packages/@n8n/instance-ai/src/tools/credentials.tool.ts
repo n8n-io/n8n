@@ -2,14 +2,19 @@
  * Consolidated credentials tool — list, get, delete, search-types, setup, test.
  */
 import { Tool } from '@n8n/agents';
-import { instanceAiConfirmationSeveritySchema } from '@n8n/api-types';
+import {
+	credentialRequestSchema,
+	instanceAiConfirmationSeveritySchema,
+	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
+	type InstanceAiCredentialSetupHint,
+} from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext } from '../types';
 import { CREDENTIALS_TOOL_ID } from './tool-ids';
-import { N8N_CONNECT_DISPLAY_NAME } from './workflows/credential-utils';
+import { extractServiceHost, N8N_CONNECT_DISPLAY_NAME } from './workflows/credential-utils';
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
@@ -24,6 +29,7 @@ const GENERIC_AUTH_TYPES = new Set([
 	'httpQueryAuth',
 	'httpBasicAuth',
 	'httpCustomAuth',
+	'httpTemplatedCustomAuth',
 	'httpDigestAuth',
 	'oAuth1Api',
 	'oAuth2Api',
@@ -32,6 +38,189 @@ const GENERIC_AUTH_TYPES = new Set([
 // ── Shared fields (single source of truth for fields used across actions) ───
 
 const credentialIdField = z.string().describe('Credential ID');
+
+/** Model-facing schema for the Templated Custom Auth creation recipe. */
+export const setupHintField = z
+	.object({
+		template: z
+			.object({
+				headers: z.record(z.string()).optional(),
+				qs: z.record(z.string()).optional(),
+				body: z.record(z.unknown()).optional(),
+			})
+			.describe(
+				'The authentication parts of the request exactly as the service documents them, with `{{placeholder}}` markers where the user\'s values go — e.g. headers: { "Authorization": "Key {{api_key}}" }. Statics (header names, version literals) are written verbatim. NEVER include a real secret value.',
+			),
+		placeholders: z
+			.array(
+				z.object({
+					name: z.string().describe('Marker name used in the template as {{name}}'),
+					title: z.string().describe('Input label shown to the user (e.g. "API key")'),
+					info: z
+						.string()
+						.optional()
+						.describe(
+							'Optional one-line clarification of the value itself — its format or which of the provider\'s tokens it is (e.g. "Starts with tvly-"). NEVER where to obtain it: the user asks the AI Assistant for that. No URLs or domains.',
+						),
+					type: z
+						.enum(['password', 'plain'])
+						.optional()
+						.describe('Defaults to password (masked input)'),
+					optional: z
+						.boolean()
+						.optional()
+						.describe(
+							'Set true only when the service documents the value as optional (e.g. an org/region qualifier) — the user may leave it empty, and template entries referencing an empty optional placeholder are omitted from the request. Omit for anything required to authenticate.',
+						),
+				}),
+			)
+			.min(1)
+			.describe('One entry per {{marker}} in the template — every marker must be described here.'),
+		docsUrl: z
+			.string()
+			.optional()
+			.describe(
+				'Direct URL of the provider page where the user creates/copies the secret (e.g. https://replicate.com/account/api-tokens). Not shown in the form — the AI help thread uses it to send the user to the exact page, so it must come from a fetched page, never constructed. NOT the API reference documentation.',
+			),
+		suggestedName: z
+			.string()
+			.optional()
+			.describe(
+				'Display name for the created credential, also used as the setup card title ("Set up {suggestedName}"). Name it after the service, user-facing — e.g. "fal.ai API Key", not the generic type name.',
+			),
+		testUrl: z
+			.string()
+			.optional()
+			.describe(
+				"Side-effect-free endpoint that answers an authenticated GET, used to verify the credential on save and on later retests. Prefer a documented account/profile/me-style endpoint; when the provider has none, use another documented read-only GET that rejects invalid keys (usage, quota, list/discovery). Never a resource or action URL, never anything that can trigger billable work, never one of the workflow's own endpoints. Omit only when the provider documents no such endpoint.",
+			),
+		// acceptedStatusCodes is deliberately NOT model-facing: models pad it
+		// regardless of instructions, and a padded [401] blinds the probe to real
+		// rejections. The credential's own field stays user-editable.
+	})
+	.describe(
+		`Recipe for creating a "${TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE}" credential so the user only has to paste their secret(s) — the rest is pre-filled. Provide it whenever the service has no dedicated credential type and its auth is expressible as header/query/body values; ground it in the provider's documentation, never guess the format.`,
+	);
+
+/**
+ * Plain generic auth types a Templated Custom Auth template can fully express
+ * (basic auth is excluded: base64-encoding the user/password pair is beyond a
+ * template). Creating a NEW credential of one of these on an HTTP Request node
+ * is steered to the templated type instead.
+ */
+export const TEMPLATABLE_PLAIN_AUTH_TYPES = new Set([
+	'httpBearerAuth',
+	'httpHeaderAuth',
+	'httpQueryAuth',
+	'httpCustomAuth',
+]);
+
+const TEMPLATE_MARKER_REGEX = /\{\{\s*([\w.-]+)\s*\}\}/g;
+
+// Navigation belongs in docsUrl, so info must not carry URLs — including
+// schemeless domains ("app.tavily.com/home"), which slip past a scheme-only
+// check. TLD heuristic; a false positive costs one retriable correction.
+const INFO_LINK_REGEX =
+	/https?:\/\/|www\.|\b[\w-]+(?:\.[\w-]+)*\.(?:com|io|ai|dev|app|net|org|co|run|sh|cloud)\b/i;
+
+/**
+ * Reduce a (possibly expression-typed) URL to a comparable `origin + pathname`
+ * prefix: strips the `=` expression marker, cuts at the first `{{`, drops the
+ * query string and trailing slashes. Returns undefined for non-http values.
+ */
+function normalizeUrlForComparison(raw: unknown): string | undefined {
+	if (typeof raw !== 'string') return undefined;
+	const plain = (raw.startsWith('=') ? raw.slice(1) : raw).split('{{')[0].trim();
+	if (!/^https?:\/\//i.test(plain)) return undefined;
+	try {
+		const url = new URL(plain);
+		return `${url.origin}${url.pathname}`.replace(/\/+$/, '');
+	} catch {
+		return undefined;
+	}
+}
+
+/**
+ * Collect recipe problems so the model corrects them instead of the card
+ * silently degrading. `nodeUrls` additionally rejects a testUrl pointing at
+ * one of the workflow's own endpoints — the probe GETs it, so that yields a
+ * meaningless verdict at best and a billable request at worst.
+ */
+export function findSetupHintProblems(
+	hint: InstanceAiCredentialSetupHint,
+	options: { nodeUrls?: unknown[] } = {},
+): string[] {
+	const markers = new Set<string>();
+	const collect = (value: unknown): void => {
+		if (typeof value === 'string') {
+			for (const match of value.matchAll(TEMPLATE_MARKER_REGEX)) markers.add(match[1]);
+			return;
+		}
+		if (Array.isArray(value)) {
+			value.forEach(collect);
+			return;
+		}
+		if (typeof value === 'object' && value !== null) {
+			Object.values(value).forEach(collect);
+		}
+	};
+	collect(hint.template);
+
+	const problems: string[] = [];
+	if (markers.size === 0) {
+		problems.push('the template contains no {{placeholder}} marker');
+	}
+	for (const placeholder of hint.placeholders) {
+		if (INFO_LINK_REGEX.test(placeholder.info ?? '')) {
+			problems.push(
+				`placeholder "${placeholder.name}" mentions a URL or domain in its info — keep info to the value itself (its format, or which of the provider's tokens it is); the user asks the AI Assistant where to get it`,
+			);
+		}
+	}
+	// The type defaults to password, so this only trips recipes that explicitly
+	// mark every input plain — which would render every secret in cleartext.
+	if (
+		hint.placeholders.length > 0 &&
+		hint.placeholders.every((placeholder) => placeholder.type === 'plain')
+	) {
+		problems.push(
+			'every placeholder is plain — at least one must be a password (masked) input; omit type or use "password" for the secret',
+		);
+	}
+	// A duplicate name silently collapses in the defined-Set below, and the form
+	// keeps the last def — so a masked def followed by a plain one would render
+	// the secret in cleartext. Require exactly one def per marker.
+	const defined = new Set<string>();
+	for (const placeholder of hint.placeholders) {
+		if (defined.has(placeholder.name)) {
+			problems.push(
+				`placeholder "${placeholder.name}" is defined more than once — each {{marker}} needs exactly one definition`,
+			);
+		}
+		defined.add(placeholder.name);
+	}
+	for (const marker of markers) {
+		if (!defined.has(marker)) problems.push(`marker {{${marker}}} has no placeholders entry`);
+	}
+	for (const name of defined) {
+		if (!markers.has(name)) problems.push(`placeholder "${name}" is never used in the template`);
+	}
+	const normalizedTestUrl = normalizeUrlForComparison(hint.testUrl);
+	if (normalizedTestUrl) {
+		const collision = (options.nodeUrls ?? [])
+			.map(normalizeUrlForComparison)
+			.some((nodeUrl) => nodeUrl !== undefined && nodeUrl === normalizedTestUrl);
+		if (collision) {
+			problems.push(
+				`testUrl "${hint.testUrl}" is one of the workflow's own endpoints — the probe sends a GET, so it must be a separate documented read-only endpoint (account/usage/list); omit testUrl if the provider documents none`,
+			);
+		}
+	}
+	return problems;
+}
+
+export const INVALID_SETUP_HINT_MESSAGE =
+	'Each setup hint must be a secret-free template whose {{marker}}s match its placeholders one-to-one. Fix the recipe (or omit it entirely) and retry.';
 
 // ── Action schemas ─────────────────────────────────────────────────────────
 
@@ -114,6 +303,7 @@ const setupAction = z.object({
 					.describe(
 						'Suggested display name for the credential (e.g. "Linear API key"). Pre-fills the name field when creating a new credential.',
 					),
+				setupHint: setupHintField.optional(),
 			}),
 		)
 		.describe('List of credentials to set up'),
@@ -241,16 +431,7 @@ const suspendSchema = z.object({
 	requestId: z.string(),
 	message: z.string(),
 	severity: instanceAiConfirmationSeveritySchema,
-	credentialRequests: z
-		.array(
-			z.object({
-				credentialType: z.string(),
-				reason: z.string(),
-				existingCredentials: z.array(z.object({ id: z.string(), name: z.string() })),
-				suggestedName: z.string().optional(),
-			}),
-		)
-		.optional(),
+	credentialRequests: z.array(credentialRequestSchema).optional(),
 	projectId: z.string().optional(),
 	credentialFlow: z.object({ stage: z.enum(['generic', 'finalize']) }).optional(),
 });
@@ -400,6 +581,13 @@ async function handleSearchTypes(
 	// Filter out generic auth types — the AI should use dedicated types
 	const results = allResults.filter((r) => !GENERIC_AUTH_TYPES.has(r.type));
 
+	if (results.length === 0) {
+		return {
+			results,
+			guidance: `No dedicated credential type matches. If the service's auth fits header/query/body values, use "${TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE}" and provide a credentialHints recipe during setup (see the workflow-builder skill). This includes bearer tokens: when the provider documents \`Authorization: Bearer <token>\`, do NOT use httpBearerAuth — template it as {"headers":{"Authorization":"Bearer {{api_key}}"}}. Fall back to other generic types for what a template cannot express (basic auth's base64 pair, digest, OAuth flows) — or when the user explicitly asks for a specific plain type: an explicit user choice wins (setup accepts it with allowPlainGenericAuth: true).`,
+		};
+	}
+
 	return { results };
 }
 
@@ -421,18 +609,52 @@ async function handleSetup(
 
 	// State 1: First call — look up existing credentials per type and suspend
 	if (resumeData === undefined || resumeData === null) {
+		const hintProblems = input.credentials.flatMap(
+			(req: { credentialType: string; setupHint?: InstanceAiCredentialSetupHint }) => {
+				if (!req.setupHint) return [];
+				const problems = findSetupHintProblems(req.setupHint);
+				if (req.credentialType !== TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE) {
+					problems.push(`setupHint is only supported for ${TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE}`);
+				}
+				return problems.map((problem) => `${req.credentialType}: ${problem}`);
+			},
+		);
+		if (hintProblems.length > 0) {
+			return {
+				error: 'invalid_setup_hint',
+				message: INVALID_SETUP_HINT_MESSAGE,
+				problems: hintProblems,
+			};
+		}
+
 		const credentialRequests = await Promise.all(
 			input.credentials.map(
-				async (req: { credentialType: string; reason?: string; suggestedName?: string }) => {
-					const existing = await context.credentialService.list({
-						type: req.credentialType,
-						...(context.projectId ? { projectId: context.projectId } : {}),
-					});
+				async (req: {
+					credentialType: string;
+					reason?: string;
+					suggestedName?: string;
+					setupHint?: InstanceAiCredentialSetupHint;
+				}) => {
+					// This card has no node context to match candidates by service, so
+					// offer none (fail closed) rather than another service's key.
+					const existing =
+						req.credentialType === TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE
+							? []
+							: await context.credentialService.list({
+									type: req.credentialType,
+									...(context.projectId ? { projectId: context.projectId } : {}),
+								});
+					// Service identity comes from the recipe's test endpoint here; an
+					// untagged credential is never offered automatically later.
+					const serviceHost = req.setupHint ? extractServiceHost(req.setupHint.testUrl) : undefined;
 					return {
 						credentialType: req.credentialType,
 						reason: req.reason ?? `Required for ${req.credentialType}`,
 						existingCredentials: existing.map((c) => ({ id: c.id, name: c.name })),
 						...(req.suggestedName ? { suggestedName: req.suggestedName } : {}),
+						...(req.setupHint
+							? { setupHint: { ...req.setupHint, ...(serviceHost ? { serviceHost } : {}) } }
+							: {}),
 					};
 				},
 			),

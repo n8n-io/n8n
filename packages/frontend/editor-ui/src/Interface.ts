@@ -1,6 +1,7 @@
 import type {
 	AgentJsonConfig,
 	FrontendSettings,
+	InstanceAiCredentialSetupHint,
 	IUserManagementSettings,
 	IVersionNotificationSettings,
 	Role,
@@ -77,6 +78,7 @@ declare global {
 				key: string,
 				options?: {
 					api_host?: string;
+					tracing_headers?: string[];
 					autocapture?: boolean;
 					disable_session_recording?: boolean;
 					advanced_disable_feature_flags?: boolean;
@@ -664,6 +666,9 @@ export interface NewCredentialsModal extends ModalState {
 	closeOnSave?: boolean;
 	projectId?: string;
 	suggestedName?: string;
+	/** Agent-supplied Templated Custom Auth recipe — pre-fills the credential's
+	 * template fields so the modal opens on the guided simple view. */
+	credentialSetupHint?: InstanceAiCredentialSetupHint;
 	nodeName?: string;
 	contextNode?: INodeUi;
 	hideAskAssistant?: boolean;
@@ -679,6 +684,8 @@ export interface NewCredentialsModal extends ModalState {
 		nodeName?: string;
 		nodeType?: string;
 		id?: string;
+		placeholderTitles?: string[];
+		docsUrl?: string;
 		documentationUrl?: string;
 		oauthRedirectUrl?: string;
 	}) => Promise<boolean>;

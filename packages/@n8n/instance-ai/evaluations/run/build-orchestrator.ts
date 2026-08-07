@@ -45,6 +45,7 @@ import type { ScenarioSeedContext } from '../harness/seed-tables';
 import {
 	extractErrorMessage,
 	findProviderOutage,
+	isRequestAbort,
 	isTransientNetworkError,
 	MAX_PROVIDER_BUILD_ATTEMPTS,
 	providerRetryBackoffMs,
@@ -298,9 +299,16 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 
 	// A build that sat out its timeout against a dead lane reports "Run timed
 	// out", not "fetch failed" — so any failed build also health-probes its lane.
+	// A request abort counts too; the chat loop's own overrun ("Run timed out after
+	// Nms") does not — that is the agent being slow on a healthy lane.
 	async function isTransportFailure(build: BuildResult, lane: LaneState): Promise<boolean> {
 		if (build.success) return false;
-		if (build.error !== undefined && isTransientNetworkError(build.error)) return true;
+		if (
+			build.error !== undefined &&
+			(isTransientNetworkError(build.error) || isRequestAbort(build.error))
+		) {
+			return true;
+		}
 		return !(await laneHealthy(lane));
 	}
 
@@ -473,7 +481,7 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 				if (build.success && !build.workflowChecks) {
 					build.workflowChecks = await runWorkflowChecks({
 						workflow: build.workflowJsons[0],
-						prompt: conversationUserTurnsAsText(entry.conversation ?? []),
+						prompt: conversationUserTurnsAsText(entry.conversation ?? [], entry.seed),
 						agentText: undefined,
 						logger,
 					});
@@ -502,10 +510,13 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 					// No transcript in prebuilt mode, but the authored conversation still
 					// carries the user's request — feed it so prompt-aware checks (e.g.
 					// fulfills_user_request) grade against real intent instead of "".
-					const conversation = testCaseByFileSlug.get(fileSlug)?.conversation ?? [];
+					const prebuiltCase = testCaseByFileSlug.get(fileSlug);
 					build.workflowChecks = await runWorkflowChecks({
 						workflow: build.workflowJsons[0],
-						prompt: conversationUserTurnsAsText(conversation),
+						prompt: conversationUserTurnsAsText(
+							prebuiltCase?.conversation ?? [],
+							prebuiltCase?.seed,
+						),
 						agentText: undefined,
 						logger,
 					});
