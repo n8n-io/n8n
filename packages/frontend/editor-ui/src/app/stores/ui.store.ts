@@ -27,7 +27,7 @@ import { defineStore } from 'pinia';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { applyThemeToBody, getThemeOverride, isValidTheme } from './ui.utils';
 import { SHELL_MODAL_INITIAL_STATE } from './ui.store.modals';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import type { IMenuItem } from '@n8n/design-system';
 import type { Connection } from '@vue-flow/core';
 import { useLocalStorage, useMediaQuery } from '@vueuse/core';
@@ -105,6 +105,25 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const modalRuntimeStateById = ref<Record<string, ModalState>>({});
 
 	const modalStack = ref<string[]>([]);
+
+	/**
+	 * Runtime state lives exactly as long as the definition it accumulated under:
+	 * a modal that is unregistered while open must not stay open, and must come
+	 * back in its declared initial state if it registers again.
+	 *
+	 * Ad-hoc keys are told apart from unregistered ones by the registry itself —
+	 * only a key that was in it can be taken out of it. dataTable's per-row keys
+	 * are never registered, so they are never in `previous` and never swept.
+	 */
+	watch(
+		() => new Set(modalRegistry.getAll().keys()),
+		(registered, previouslyRegistered) => {
+			for (const key of previouslyRegistered) {
+				if (!registered.has(key)) forgetModalState(key);
+			}
+		},
+		{ flush: 'sync' },
+	);
 	const sidebarMenuCollapsed = useLocalStorage<boolean | null>('sidebar.collapsed', null, {
 		serializer: {
 			read: (v) => (v === 'null' ? null : v === 'true'),
@@ -324,6 +343,13 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			...patch,
 		} as ModalState;
 	};
+
+	/** Discard everything runtime has accumulated for a key, open or not. */
+	function forgetModalState(name: ModalKey): void {
+		// eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+		delete modalRuntimeStateById.value[name];
+		modalStack.value = modalStack.value.filter((openModalName) => name !== openModalName);
+	}
 
 	const setMode = (name: keyof Modals, mode: string): void => {
 		patchModalState(name, { mode });

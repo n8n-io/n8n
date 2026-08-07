@@ -1,6 +1,7 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { modalRegistry } from '@n8n/frontend-module-sdk';
 
+import type { ModalState } from '@/Interface';
 import { listenForModalChanges, useUIStore } from '@/app/stores/ui.store';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 
@@ -184,6 +185,72 @@ describe('UI Store', () => {
 				open: false,
 				mode: '',
 				activeId: null,
+			});
+		});
+
+		// Runtime state is scoped to the lifetime of the definition it accumulated
+		// under. Registered keys and ad-hoc ones are told apart by the registry
+		// itself: only a key that was in it can be taken out of it.
+		describe('when a definition is unregistered', () => {
+			const register = (initialState?: ModalState) =>
+				modalRegistry.register({ key: MODAL_KEY, component: {}, initialState });
+
+			it('should forget the runtime state that accumulated under it', () => {
+				const uiStore = useUIStore();
+				register({ open: false, mode: 'edit' });
+				uiStore.openModalWithData({ name: MODAL_KEY, data: { secret: 'shhh' } });
+
+				modalRegistry.unregister(MODAL_KEY);
+
+				expect(uiStore.modalsById[MODAL_KEY]).toEqual({ open: false });
+				expect(uiStore.modalRuntimeStateById[MODAL_KEY]).toBeUndefined();
+			});
+
+			it('should not reopen with stale data when the key is registered again', () => {
+				const uiStore = useUIStore();
+				register({ open: false, mode: 'edit' });
+				uiStore.openModalWithData({ name: MODAL_KEY, data: { secret: 'shhh' } });
+
+				modalRegistry.unregister(MODAL_KEY);
+				register({ open: false, mode: 'edit' });
+
+				expect(uiStore.modalsById[MODAL_KEY]).toEqual({ open: false, mode: 'edit' });
+			});
+
+			it('should drop it from the modal stack so nothing counts as open', () => {
+				const uiStore = useUIStore();
+				register();
+				uiStore.openModal(MODAL_KEY);
+				expect(uiStore.isAnyModalOpen).toBe(true);
+
+				modalRegistry.unregister(MODAL_KEY);
+
+				expect(uiStore.isAnyModalOpen).toBe(false);
+				expect(uiStore.isModalActiveById[MODAL_KEY]).toBe(false);
+			});
+
+			it('should leave an ad-hoc key alone — it never had a definition to lose', () => {
+				const uiStore = useUIStore();
+				// dataTable's per-row keys are opened without ever being registered, so
+				// nothing about them may hinge on the registry.
+				const perRowKey = `${MODAL_KEY}-row-42`;
+				register();
+				uiStore.openModalWithData({ name: perRowKey, data: { rowId: '42' } });
+
+				modalRegistry.unregister(MODAL_KEY);
+				modalRegistry.clear();
+
+				expect(uiStore.modalsById[perRowKey]).toEqual({ open: true, data: { rowId: '42' } });
+				expect(uiStore.isModalActiveById[perRowKey]).toBe(true);
+			});
+
+			it('should leave shell-owned keys alone when the registry empties', () => {
+				const uiStore = useUIStore();
+				uiStore.openModal(CREDENTIAL_EDIT_MODAL_KEY);
+
+				modalRegistry.clear();
+
+				expect(uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY].open).toBe(true);
 			});
 		});
 	});
