@@ -2,7 +2,7 @@
 	"name": "n8n (Codespaces agent sessions)",
 	"dockerComposeFile": "docker-compose.yml",
 	"service": "n8n",
-	"workspaceFolder": "/workspaces",
+	"workspaceFolder": "/workspaces/n8n",
 	"hostRequirements": {
 		"cpus": 4,
 		"memory": "16gb"
