@@ -1467,6 +1467,13 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 .selectContainer {
 	position: relative;
 	flex: 1;
+	display: grid;
+	grid-template-areas: 'control';
+
+	> :global(.n8n-select),
+	.balanceIndicator {
+		grid-area: control;
+	}
 }
 
 /* Merge the select visually with the private connection row below it.
@@ -1615,18 +1622,33 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 
 .selectWithBalance {
 	:global(.el-input__inner) {
-		padding-right: 120px;
+		padding-right: 35px;
 	}
 }
 
 // Non-interactive status pill rendered over the select, like .dynamicIndicator.
 .balanceIndicator {
-	position: absolute;
-	right: 28px;
-	top: 50%;
-	transform: translateY(-50%);
+	--balance-indicator-offset: calc(26px + 7ch + var(--spacing--2xs));
+
+	display: flex;
+	align-items: center;
+	align-self: center;
+	justify-self: start;
+	max-width: calc(100% - var(--balance-indicator-offset) - 35px);
+	margin-left: var(--balance-indicator-offset);
 	z-index: 1;
 	pointer-events: none;
+}
+
+.balanceIndicator > span,
+.credentialOption > .optionName + span {
+	padding: var(--spacing--5xs) var(--spacing--3xs);
+	border-radius: var(--radius);
+	background-color: light-dark(var(--color--neutral-200), var(--color--neutral-700));
+	color: light-dark(var(--color--neutral-750), var(--color--neutral-150));
+	font-size: var(--font-size--3xs);
+	font-weight: var(--font-weight--regular);
+	line-height: var(--line-height--sm);
 }
 
 .dynamicIndicator {
@@ -1663,7 +1685,10 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 	&:not([disabled]) {
 		cursor: pointer;
 		&:hover {
-			background-color: var(--color--background--light-2);
+			background-color: light-dark(
+				var(--color--background--light-2),
+				var(--menu--color--background--hover)
+			);
 		}
 	}
 
@@ -1720,6 +1745,10 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 // Off-screen twin of the placeholder. Same type and icon/caret padding as the
 // input, so the grid column ends up exactly as wide as the rendered trigger.
 .emptySizer {
+	--empty-select-label-padding: calc(
+		var(--spacing--2xs) + var(--spacing--5xs) + var(--spacing--sm) + var(--spacing--3xs)
+	);
+
 	grid-area: 1 / 1;
 	height: 0;
 	overflow: hidden;
@@ -1727,11 +1756,17 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 	pointer-events: none;
 	white-space: nowrap;
 	font-size: var(--font-size--2xs);
-	padding-left: 37px;
-	padding-right: 30px;
+	padding-left: var(--empty-select-label-padding);
+	padding-right: var(--empty-select-label-padding);
 }
 
 .emptySelect {
+	--empty-select-height: calc(var(--spacing--lg) + var(--spacing--4xs));
+	--empty-select-side-padding: calc(var(--spacing--2xs) + var(--spacing--5xs));
+	--empty-select-label-padding: calc(
+		var(--empty-select-side-padding) + var(--spacing--sm) + var(--spacing--3xs)
+	);
+
 	// Compact invitational trigger; the label reads as a button, not a hint.
 	// `width: auto` (not 100%) so this item doesn't blow the grid track out to
 	// full width; grid's default stretch still fills the cell the sizer defines.
@@ -1739,11 +1774,22 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 	width: auto;
 	min-width: 0;
 
+	:global(.el-input__prefix) {
+		left: var(--empty-select-side-padding);
+	}
+
+	:global(.el-input__suffix) {
+		right: var(--empty-select-side-padding);
+	}
+
 	:global(.el-input__inner) {
 		// Room for the absolutely-positioned prefix icon and caret; mirrors the
 		// sizer's padding so the placeholder lines up with the column.
-		padding-left: 37px;
-		padding-right: 30px;
+		height: var(--empty-select-height);
+		min-height: var(--empty-select-height);
+		line-height: var(--empty-select-height);
+		padding-left: var(--empty-select-label-padding);
+		padding-right: var(--empty-select-label-padding);
 
 		&::placeholder {
 			color: var(--color--text--shade-1);
@@ -1757,7 +1803,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 .emptySelect,
 .selectContainer {
 	:global(.el-input__prefix-inner > :last-child) {
-		margin-right: var(--spacing--2xs);
+		margin-right: var(--spacing--3xs);
 	}
 }
 </style>
