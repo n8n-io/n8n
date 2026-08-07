@@ -1711,6 +1711,14 @@ describe('NodeCredentials', () => {
 
 				// Trigger overlay + the dropdown row both carry the balance.
 				expect(screen.getAllByText('$2.75 remaining').length).toBeGreaterThanOrEqual(1);
+
+				const credentialsSelect = screen.getByTestId('node-credentials-select');
+				await userEvent.click(credentialsSelect);
+
+				const credentialSearch = credentialsSelect.querySelector('input') as HTMLElement;
+				await userEvent.type(credentialSearch, 'My');
+
+				expect(screen.queryByText('$2.75 remaining')).not.toBeInTheDocument();
 			});
 
 			it('shows a top-up gear instead of the pen while managed', () => {

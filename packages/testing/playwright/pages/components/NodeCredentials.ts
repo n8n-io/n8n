@@ -38,9 +38,19 @@ export class NodeCredentials {
 		return this.root.getByTestId('node-credentials-empty-state');
 	}
 
+	/** Direct create button shown for standard empty states with no alternate credential choice */
+	getEmptyStateCreateButton(eq: number = 0): Locator {
+		return this.getEmptyState().nth(eq).getByRole('button');
+	}
+
 	/** Quick-connect empty state (MCP / OAuth quick connect flows) */
 	getQuickConnectEmptyState(): Locator {
 		return this.root.getByTestId('quick-connect-empty-state');
+	}
+
+	/** Primary quick-connect action shown in the quick-connect empty state */
+	getQuickConnectButton(eq: number = 0): Locator {
+		return this.getQuickConnectEmptyState().nth(eq).getByRole('button').first();
 	}
 
 	/** Combobox input that holds the selected credential name */
@@ -103,20 +113,25 @@ export class NodeCredentials {
 	 * Enter the "create new credential" flow. Handles the three possible
 	 * UI states for an empty credential slot:
 	 *
+	 *  - Quick-connect button (when quick connect is the only setup path)
 	 *  - "Set up manually" link (when the picker offers auth alternatives)
-	 *  - Standard empty-state picker → opens the compact select and clicks
-	 *    "Use my own credential"
+	 *  - Standard empty-state button → opens the credential modal directly
+	 *  - Standard empty-state picker with choices → opens the compact select
+	 *    and clicks "Use my own credential"
 	 *  - Existing picker → opens the dropdown and clicks "Create new"
 	 *
-	 * The last two share the same create row (`node-credentials-select-item-new`);
+	 * The dropdown states share the same create row (`node-credentials-select-item-new`);
 	 * they differ only in which trigger opens the dropdown.
 	 */
 	async clickCreateNew(eq: number = 0): Promise<void> {
 		const setupManually = this.getSetupManuallyLink(eq);
 		const emptyState = this.getEmptyState().nth(eq);
+		const emptyStateCreateButton = this.getEmptyStateCreateButton(eq);
+		const quickConnectEmptyState = this.getQuickConnectEmptyState().nth(eq);
 		const credentialSelect = this.getSelect().nth(eq);
 
 		await Promise.race([
+			quickConnectEmptyState.waitFor({ state: 'visible', timeout: 10_000 }),
 			setupManually.waitFor({ state: 'visible', timeout: 10_000 }),
 			emptyState.waitFor({ state: 'visible', timeout: 10_000 }),
 			credentialSelect.waitFor({ state: 'visible', timeout: 10_000 }),
@@ -124,6 +139,16 @@ export class NodeCredentials {
 
 		if (await setupManually.isVisible()) {
 			await setupManually.click();
+			return;
+		}
+
+		if (await quickConnectEmptyState.isVisible()) {
+			await this.getQuickConnectButton(eq).click();
+			return;
+		}
+
+		if (await emptyStateCreateButton.isVisible()) {
+			await emptyStateCreateButton.click();
 			return;
 		}
 

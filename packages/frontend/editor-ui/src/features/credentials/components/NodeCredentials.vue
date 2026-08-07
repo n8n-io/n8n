@@ -203,6 +203,7 @@ const toast = useToast();
 
 const subscribedToCredentialType = ref('');
 const filter = ref('');
+const openCredentialSelectType = ref<string | null>(null);
 const listeningForAuthChange = ref(false);
 const selectRefs = ref<Array<InstanceType<typeof N8nSelect>>>([]);
 
@@ -917,6 +918,11 @@ function setFilter(newFilter = '') {
 	filter.value = newFilter;
 }
 
+function onSelectVisibleChange(credentialType: string, isVisible: boolean) {
+	openCredentialSelectType.value = isVisible ? credentialType : null;
+	if (!isVisible) setFilter();
+}
+
 function matches(needle: string, haystack: string) {
 	return haystack.toLocaleLowerCase().includes(needle.toLocaleLowerCase());
 }
@@ -926,6 +932,16 @@ function matches(needle: string, haystack: string) {
 // `{ id: null, name: '', __aiGatewayManaged: true }` shape.
 function showN8nCreditsOption(credentialType: string): boolean {
 	return showAiGatewaySelector(credentialType) && matches(filter.value, N8N_CREDITS_LABEL);
+}
+
+function showBalanceIndicator(credentialType: string): boolean {
+	return (
+		isAiGatewayManagedCredentials(credentialType) && Boolean(balancePill.value) && !filter.value
+	);
+}
+
+function isBalanceIndicatorMuted(credentialType: string): boolean {
+	return openCredentialSelectType.value === credentialType;
 }
 
 /** @param credentialIdOrTag a credential id, or `AI_GATEWAY_MANAGED_TAG` from the n8n credits option */
@@ -1005,13 +1021,6 @@ function showStandardEmptySlot(
 		showStandardEmptyState(type) &&
 		!isAiGatewayManagedCredentials(type.name)
 	);
-}
-
-function showUseOwnCredentialFooter(
-	type: INodeCredentialDescription,
-	options: CredentialDropdownOption[],
-): boolean {
-	return isAiGatewayManagedCredentials(type.name) && options.length === 0;
 }
 
 function canManuallySetUpCredential(credentialTypeName: string): boolean {
@@ -1128,7 +1137,18 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 					:class="$style.standardEmptyContainer"
 					data-test-id="node-credentials-empty-state"
 				>
+					<button
+						v-if="!showN8nCreditsOption(type.name)"
+						type="button"
+						:class="$style.emptySelectButton"
+						:disabled="!canCreateCredentials"
+						@click="onClickCreateCredential(type)"
+					>
+						<CredentialIcon :credential-type-name="type.name" :size="16" />
+						<span>{{ entryPlaceholder(type.name) }}</span>
+					</button>
 					<N8nSelect
+						v-else
 						ref="selectRefs"
 						:class="$style.emptySelect"
 						size="small"
@@ -1189,9 +1209,13 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 					</N8nSelect>
 					<!-- Invisible sizer: its width (label + icon/caret room) sizes the grid
 					     cell so the select stacked in the same cell hugs the label. -->
-					<span :class="$style.emptySizer" aria-hidden="true">{{
-						entryPlaceholder(type.name)
-					}}</span>
+					<span
+						v-if="showN8nCreditsOption(type.name)"
+						:class="$style.emptySizer"
+						aria-hidden="true"
+					>
+						{{ entryPlaceholder(type.name) }}
+					</span>
 				</div>
 				<div
 					v-else
@@ -1216,17 +1240,15 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 							:model-value="getSelectedId(type)"
 							:placeholder="getSelectPlaceholder(type.name, getIssues(type.name))"
 							size="small"
-							:filterable="!showUseOwnCredentialFooter(type, options)"
+							filterable
 							:filter-method="setFilter"
-							:popper-class="`${$style.selectPopper} ${
-								showUseOwnCredentialFooter(type, options) ? $style.ownCredentialPopper : ''
-							}`"
+							:popper-class="$style.selectPopper"
 							:class="{
 								[$style.selectWithDynamic]: isCredentialResolvable(type.name),
-								[$style.selectWithBalance]: isAiGatewayManagedCredentials(type.name) && balancePill,
-								[$style.selectWithoutSearch]: showUseOwnCredentialFooter(type, options),
+								[$style.selectWithBalance]: showBalanceIndicator(type.name),
 							}"
 							@update:model-value="(value: string) => onCredentialOptionSelected(type, value)"
+							@visible-change="(isVisible: boolean) => onSelectVisibleChange(type.name, isVisible)"
 							@blur="emit('blur', 'credentials')"
 						>
 							<template #prefix>
@@ -1312,25 +1334,6 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 							<template #empty> </template>
 							<template #footer>
 								<button
-									v-if="showUseOwnCredentialFooter(type, options)"
-									type="button"
-									data-test-id="node-credentials-select-item-new"
-									:class="[$style.newCredential, $style.entryCreate]"
-									:disabled="!canCreateCredentials"
-									@click="onClickCreateCredential(type)"
-								>
-									<N8nIcon size="large" icon="key-round" :class="$style.optionIcon" />
-									<span :class="$style.entryText">
-										<N8nText :class="$style.optionName">
-											{{ i18n.baseText('aiGateway.picker.useOwnCredential') }}
-										</N8nText>
-										<N8nText :class="$style.entrySubtitle">
-											{{ i18n.baseText('aiGateway.picker.bringYourOwnKey') }}
-										</N8nText>
-									</span>
-								</button>
-								<button
-									v-else
 									type="button"
 									data-test-id="node-credentials-select-item-new"
 									:class="[$style.newCredential]"
@@ -1343,10 +1346,14 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 							</template>
 						</N8nSelect>
 						<div
-							v-if="isAiGatewayManagedCredentials(type.name) && balancePill"
-							:class="$style.balanceIndicator"
+							v-if="showBalanceIndicator(type.name)"
+							data-test-id="credential-balance-indicator"
+							:class="[
+								$style.balanceIndicator,
+								{ [$style.balanceIndicatorMuted]: isBalanceIndicatorMuted(type.name) },
+							]"
 						>
-							<N8nActionPill size="small" :type="balancePill.type" :text="balancePill.text" />
+							<N8nActionPill size="small" :type="balancePill?.type" :text="balancePill?.text" />
 						</div>
 						<div v-if="isCredentialResolvable(type.name)" :class="$style.dynamicIndicator">
 							<N8nTooltip placement="top">
@@ -1606,7 +1613,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 // grows past this if content is longer. el-select pins the popper min-width
 // inline, hence the important.
 .entryPopper {
-	min-width: calc(var(--spacing--5xl) + var(--spacing--3xl)) !important;
+	min-width: calc(var(--spacing--5xl) + var(--spacing--2xl)) !important;
 
 	// The entry menu is invitational, so it keeps the footer spacing but skips
 	// the divider used by the regular credential menu.
@@ -1619,12 +1626,6 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 	:global(.el-popper__arrow) {
 		left: 50% !important;
 		transform: translateX(-50%);
-	}
-}
-
-.ownCredentialPopper {
-	:global(.el-select-dropdown__footer) {
-		border-top: none;
 	}
 }
 
@@ -1681,12 +1682,6 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 	}
 }
 
-.selectWithoutSearch {
-	:global(.el-input__inner) {
-		caret-color: transparent;
-	}
-}
-
 // Non-interactive status pill rendered over the select, like .dynamicIndicator.
 .balanceIndicator {
 	--balance-indicator-offset: calc(
@@ -1713,6 +1708,10 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 	font-size: var(--font-size--3xs);
 	font-weight: var(--font-weight--regular);
 	line-height: var(--line-height--sm);
+}
+
+.balanceIndicatorMuted {
+	opacity: 0.6;
 }
 
 .dynamicIndicator {
@@ -1805,6 +1804,51 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 
 .emptySizer {
 	display: none;
+}
+
+.emptySelectButton {
+	box-sizing: border-box;
+	appearance: none;
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+	height: calc(var(--spacing--lg) + var(--spacing--4xs));
+	max-width: 100%;
+	padding: 0 calc(var(--spacing--2xs) + var(--spacing--5xs));
+	border: var.$input-border;
+	border-right-color: var.$input-border-right-color;
+	border-bottom-color: var.$input-border-bottom-color;
+	border-radius: var.$input-border-radius;
+	background-color: var.$input-background-color;
+	color: var.$input-font-color;
+	font-family: inherit;
+	font-size: var(--font-size--2xs);
+	font-weight: var(--font-weight--medium);
+	line-height: var(--line-height--lg);
+	text-align: left;
+	cursor: pointer;
+
+	&:not(:disabled):hover {
+		border-color: var.$input-hover-border;
+	}
+
+	&:focus {
+		outline: none;
+		border-color: var.$input-focus-border;
+	}
+
+	&:disabled {
+		border-color: var.$input-disabled-border;
+		background-color: var.$input-disabled-fill;
+		color: var.$input-disabled-color;
+		cursor: not-allowed;
+	}
+
+	span {
+		overflow: hidden;
+		white-space: nowrap;
+		text-overflow: ellipsis;
+	}
 }
 
 .emptySelect {
