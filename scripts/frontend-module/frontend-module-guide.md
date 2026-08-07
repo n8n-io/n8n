@@ -434,7 +434,7 @@ pnpm --filter @n8n/frontend-module-my-feature test:dev    # watch
 Colocate tests next to the code (`my-feature.store.test.ts`), the same convention editor-ui uses.
 `vite.config.ts` already wires `@vitejs/plugin-vue` and the shared source aliases, so `.vue` files
 compile in tests with no extra setup. `src/__tests__/setup.ts` imports the shared jsdom harness
-(`@n8n/vitest-config/frontend-setup` — observers, matchMedia, canvas, timers, teardown guards) and
+(`@n8n/vitest-config/setup/frontend` — observers, matchMedia, canvas, timers, teardown guards) and
 boots Pinia per test. Framework boot stays per-package on purpose: `@n8n/i18n` devDepends on
 `@n8n/vitest-config`, so booting i18n inside the shared harness would close a turbo cycle. Add
 `useI18n` boot to your own setup file if you need it.
@@ -449,8 +449,9 @@ runs in PR CI, and the job is green.
 This is not hypothetical: `@n8n/frontend-module-sdk`, `@n8n/frontend-constants` and
 `@n8n/frontend-utils` are in exactly that hole today. Do not add a fourth.
 
-**`passWithNoTests: true`.** Inherited from `@n8n/vitest-config/frontend` (`frontend.ts:33`), so
-you get it for free — but do not override it. CI shards the frontend two ways
+**`passWithNoTests: true`.** Inherited from `@n8n/vitest-config/frontend`
+(`packages/@n8n/vitest-config/frontend.ts:33` — the config factory, not the `setup/frontend.ts`
+harness above), so you get it for free — but do not override it. CI shards the frontend two ways
 (`--shard=N/2`), and vitest exits non-zero when a shard is handed no test files. A sparse module
 would fail on shard 2 for no reason.
 
