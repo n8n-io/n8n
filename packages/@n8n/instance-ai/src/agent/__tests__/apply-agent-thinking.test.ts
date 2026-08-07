@@ -91,17 +91,6 @@ describe('applyAgentThinking', () => {
 		});
 	});
 
-	it.each(['openai/zai-org/GLM-5.2', 'openai/zai-org/GLM-5.2-Fast'] as const)(
-		'maps medium effort to high reasoning effort for legacy OpenAI-compatible Baseten %s',
-		(modelId) => {
-			const agent = new Agent('test');
-			applyAgentThinking(agent, modelId);
-			expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('openai', {
-				reasoningEffort: 'high',
-			});
-		},
-	);
-
 	it.each([
 		'baseten/zai-org/GLM-5.2',
 		'baseten/zai-org/GLM-5.2-Fast',

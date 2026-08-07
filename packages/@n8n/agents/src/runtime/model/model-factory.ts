@@ -65,6 +65,59 @@ type ProviderRegistry = {
 	[P in ProviderId]: RegistryEntry<P>;
 };
 
+type OpenAiCompatibleCreds = {
+	apiKey?: string;
+	baseURL?: string;
+	headers?: Record<string, string>;
+};
+
+/**
+ * Shared builder for OpenAI-compatible HTTP providers. Prefer this over
+ * `@ai-sdk/<provider>` packages that pull optional NAPI binaries or v4-only types.
+ */
+function buildOpenAiCompatible(
+	name: string,
+	defaultBaseURL: string | undefined,
+	creds: OpenAiCompatibleCreds,
+	model: string,
+	fetch: FetchFn | undefined,
+	options?: { includeUsage?: boolean; supportsStructuredOutputs?: boolean },
+): LanguageModel {
+	const { createOpenAICompatible } =
+		require('@ai-sdk/openai-compatible') as typeof import('@ai-sdk/openai-compatible');
+	const baseURL = creds.baseURL ?? defaultBaseURL;
+	if (!baseURL) {
+		throw new Error(`baseURL is required for OpenAI-compatible provider "${name}"`);
+	}
+	return createOpenAICompatible({
+		name,
+		baseURL,
+		apiKey: creds.apiKey,
+		headers: creds.headers,
+		fetch,
+		includeUsage: options?.includeUsage ?? true,
+		supportsStructuredOutputs: options?.supportsStructuredOutputs ?? true,
+	})(model);
+}
+
+type OpenAiCompatibleProviderId =
+	| 'baseten'
+	| 'fireworks'
+	| 'wafer'
+	| 'morph'
+	| 'togetherai'
+	| 'nvidia';
+
+function openAiCompatibleEntry<P extends OpenAiCompatibleProviderId>(
+	name: P,
+	defaultBaseURL: string,
+): RegistryEntry<P> {
+	return {
+		build: (creds, model, fetch) =>
+			buildOpenAiCompatible(name, defaultBaseURL, creds, model, fetch),
+	};
+}
+
 /**
  * Registry of language model providers.
  * Each entry maps a provider id to a builder that loads its @ai-sdk/* package
@@ -86,102 +139,20 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 		},
 	},
 	custom: {
-		build: (creds, model, fetch) => {
-			const { createOpenAICompatible } =
-				require('@ai-sdk/openai-compatible') as typeof import('@ai-sdk/openai-compatible');
-			return createOpenAICompatible({
-				name: 'custom',
-				baseURL: creds.baseURL,
-				apiKey: creds.apiKey,
-				headers: creds.headers,
-				fetch,
-				// Without this the SDK drops JSON schemas and sends json_object only.
-				includeUsage: true,
-				supportsStructuredOutputs: true,
-			})(model);
-		},
+		build: (creds, model, fetch) =>
+			// Without includeUsage/supportsStructuredOutputs the SDK drops JSON
+			// schemas and sends json_object only.
+			buildOpenAiCompatible('custom', undefined, creds, model, fetch),
 	},
-	baseten: {
-		// OpenAI-compatible HTTP only. Avoid @ai-sdk/baseten: it eagerly loads
-		// @basetenlabs/performance-client (NAPI optional binaries), which pnpm
-		// deploy --no-optional strips — Alpine Docker then fails at require time.
-		build: (creds, model, fetch) => {
-			const { createOpenAICompatible } =
-				require('@ai-sdk/openai-compatible') as typeof import('@ai-sdk/openai-compatible');
-			return createOpenAICompatible({
-				name: 'baseten',
-				baseURL: creds.baseURL ?? 'https://inference.baseten.co/v1',
-				apiKey: creds.apiKey,
-				fetch,
-				// Request the final stream usage chunk so LangSmith/OTel get tokens.
-				includeUsage: true,
-				supportsStructuredOutputs: true,
-			})(model);
-		},
-	},
-	fireworks: {
-		// OpenAI-compatible HTTP; avoids @ai-sdk/fireworks v4 model types in the v3 registry.
-		build: (creds, model, fetch) => {
-			const { createOpenAICompatible } =
-				require('@ai-sdk/openai-compatible') as typeof import('@ai-sdk/openai-compatible');
-			return createOpenAICompatible({
-				name: 'fireworks',
-				baseURL: creds.baseURL ?? 'https://api.fireworks.ai/inference/v1',
-				apiKey: creds.apiKey,
-				fetch,
-				// Without this, streams omit usage (e.g. kimi-k3-fast) → 0 tokens in LangSmith.
-				includeUsage: true,
-				supportsStructuredOutputs: true,
-			})(model);
-		},
-	},
-	wafer: {
-		// OpenAI-compatible HTTP (pass.wafer.ai); Bearer auth + chat/completions.
-		build: (creds, model, fetch) => {
-			const { createOpenAICompatible } =
-				require('@ai-sdk/openai-compatible') as typeof import('@ai-sdk/openai-compatible');
-			return createOpenAICompatible({
-				name: 'wafer',
-				baseURL: creds.baseURL ?? 'https://pass.wafer.ai/v1',
-				apiKey: creds.apiKey,
-				fetch,
-				includeUsage: true,
-				supportsStructuredOutputs: true,
-			})(model);
-		},
-	},
-	morph: {
-		// OpenAI-compatible HTTP (api.morphllm.com/v1). Morph also speaks Anthropic
-		// Messages at /v1/messages; we use chat/completions for the agent runtime.
-		build: (creds, model, fetch) => {
-			const { createOpenAICompatible } =
-				require('@ai-sdk/openai-compatible') as typeof import('@ai-sdk/openai-compatible');
-			return createOpenAICompatible({
-				name: 'morph',
-				baseURL: creds.baseURL ?? 'https://api.morphllm.com/v1',
-				apiKey: creds.apiKey,
-				fetch,
-				includeUsage: true,
-				supportsStructuredOutputs: true,
-			})(model);
-		},
-	},
-	togetherai: {
-		// OpenAI-compatible HTTP (api.together.ai/v1). Avoid @ai-sdk/togetherai so we
-		// stay on the shared openai-compatible path used by Fireworks/Baseten/Morph.
-		build: (creds, model, fetch) => {
-			const { createOpenAICompatible } =
-				require('@ai-sdk/openai-compatible') as typeof import('@ai-sdk/openai-compatible');
-			return createOpenAICompatible({
-				name: 'togetherai',
-				baseURL: creds.baseURL ?? 'https://api.together.ai/v1',
-				apiKey: creds.apiKey,
-				fetch,
-				includeUsage: true,
-				supportsStructuredOutputs: true,
-			})(model);
-		},
-	},
+	// Avoid @ai-sdk/baseten: it eagerly loads @basetenlabs/performance-client
+	// (NAPI optional binaries), which pnpm deploy --no-optional strips.
+	baseten: openAiCompatibleEntry('baseten', 'https://inference.baseten.co/v1'),
+	// Avoid @ai-sdk/fireworks v4 model types in the v3 registry.
+	fireworks: openAiCompatibleEntry('fireworks', 'https://api.fireworks.ai/inference/v1'),
+	wafer: openAiCompatibleEntry('wafer', 'https://pass.wafer.ai/v1'),
+	// Morph also speaks Anthropic Messages at /v1/messages; we use chat/completions.
+	morph: openAiCompatibleEntry('morph', 'https://api.morphllm.com/v1'),
+	togetherai: openAiCompatibleEntry('togetherai', 'https://api.together.ai/v1'),
 	anthropic: {
 		build: (creds, model, fetch) => {
 			const { createAnthropic } =
@@ -279,20 +250,7 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 			return createOpenRouter({ apiKey: creds.apiKey, baseURL: creds.baseURL, fetch })(model);
 		},
 	},
-	nvidia: {
-		build: (creds, model, fetch) => {
-			const { createOpenAICompatible } =
-				require('@ai-sdk/openai-compatible') as typeof import('@ai-sdk/openai-compatible');
-			return createOpenAICompatible({
-				name: 'nvidia',
-				baseURL: creds.baseURL ?? 'https://integrate.api.nvidia.com/v1',
-				apiKey: creds.apiKey,
-				headers: creds.headers,
-				fetch,
-				supportsStructuredOutputs: true,
-			})(model);
-		},
-	},
+	nvidia: openAiCompatibleEntry('nvidia', 'https://integrate.api.nvidia.com/v1'),
 	'azure-openai': {
 		build: (creds, model, fetch) => {
 			const { createAzure } = require('@ai-sdk/azure') as typeof import('@ai-sdk/azure');

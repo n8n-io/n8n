@@ -3,6 +3,7 @@ import type {
 	AnthropicThinkingConfig,
 	GoogleThinkingConfig,
 	JSONObject,
+	OpenAIReasoningEffort,
 	OpenAIThinkingConfig,
 	ThinkingConfig,
 	XaiThinkingConfig,
@@ -39,6 +40,36 @@ function anthropicUsesAdaptiveThinking(modelId: string): boolean {
 	if (ANTHROPIC_ADAPTIVE_THINKING.test(modelId)) return true;
 	if (ANTHROPIC_BUDGET_THINKING.test(modelId)) return false;
 	return modelId.includes('claude-');
+}
+
+/** OpenAI-compatible providers that map effort to top-level `reasoning_effort`. */
+function reasoningEffortQuirk(
+	provider: ProviderId,
+	defaultEffort: OpenAIReasoningEffort,
+): ProviderQuirks {
+	return {
+		thinkingToProviderOptions: (thinking) => {
+			const cfg = thinking as OpenAIThinkingConfig;
+			return { [provider]: { reasoningEffort: cfg.reasoningEffort ?? defaultEffort } };
+		},
+	};
+}
+
+/** Providers that map effort to nested `reasoning: { effort }` (OpenRouter, Morph). */
+function nestedReasoningEffortQuirk(
+	provider: ProviderId,
+	defaultEffort: OpenAIReasoningEffort,
+): ProviderQuirks {
+	return {
+		thinkingToProviderOptions: (thinking) => {
+			const cfg = thinking as OpenAIThinkingConfig;
+			return {
+				[provider]: {
+					reasoning: { effort: cfg.reasoningEffort ?? defaultEffort },
+				},
+			};
+		},
+	};
 }
 
 /**
@@ -154,71 +185,21 @@ export const PROVIDER_QUIRKS: Partial<Record<ProviderId, ProviderQuirks>> = {
 			return { xai: { reasoningEffort: cfg.reasoningEffort ?? 'high' } };
 		},
 	},
-	openrouter: {
-		// OpenRouter's AI SDK provider reads `providerOptions.openrouter.reasoning`
-		// and forwards it as the chat-completions `reasoning` body field.
-		thinkingToProviderOptions: (thinking) => {
-			const cfg = thinking as OpenAIThinkingConfig;
-			return {
-				openrouter: {
-					reasoning: { effort: cfg.reasoningEffort ?? 'medium' },
-				},
-			};
-		},
-	},
-	baseten: {
-		// Baseten Model APIs use the OpenAI-compatible chat schema; reasoning maps to
-		// the top-level `reasoning_effort` body field via providerOptions.baseten.
-		thinkingToProviderOptions: (thinking) => {
-			const cfg = thinking as OpenAIThinkingConfig;
-			return { baseten: { reasoningEffort: cfg.reasoningEffort ?? 'none' } };
-		},
-	},
+	openrouter: nestedReasoningEffortQuirk('openrouter', 'medium'),
+	// Baseten Model APIs use the OpenAI-compatible chat schema; reasoning maps to
+	// the top-level `reasoning_effort` body field via providerOptions.baseten.
+	baseten: reasoningEffortQuirk('baseten', 'none'),
 	fireworks: {
 		// Fireworks Serverless priority tier: stronger admission during congestion.
 		callProviderOptionDefaults: { service_tier: 'priority' },
-		// OpenAI-compatible chat schema; reasoning maps to top-level `reasoning_effort`.
-		thinkingToProviderOptions: (thinking) => {
-			const cfg = thinking as OpenAIThinkingConfig;
-			return { fireworks: { reasoningEffort: cfg.reasoningEffort ?? 'medium' } };
-		},
+		...reasoningEffortQuirk('fireworks', 'medium'),
 	},
-	wafer: {
-		// OpenAI-compatible chat schema; reasoning maps to top-level `reasoning_effort`
-		// via providerOptions.wafer.
-		thinkingToProviderOptions: (thinking) => {
-			const cfg = thinking as OpenAIThinkingConfig;
-			return { wafer: { reasoningEffort: cfg.reasoningEffort ?? 'medium' } };
-		},
-	},
-	morph: {
-		// Morph OpenAI chat accepts `reasoning: { effort }` (not `reasoning_effort`).
-		// See https://docs.morphllm.com/sdk/components/fast-models
-		thinkingToProviderOptions: (thinking) => {
-			const cfg = thinking as OpenAIThinkingConfig;
-			return {
-				morph: {
-					reasoning: { effort: cfg.reasoningEffort ?? 'medium' },
-				},
-			};
-		},
-	},
-	togetherai: {
-		// OpenAI-compatible chat schema; reasoning maps to top-level `reasoning_effort`
-		// via providerOptions.togetherai.
-		thinkingToProviderOptions: (thinking) => {
-			const cfg = thinking as OpenAIThinkingConfig;
-			return { togetherai: { reasoningEffort: cfg.reasoningEffort ?? 'medium' } };
-		},
-	},
-	custom: {
-		// OpenAI-compatible chat schema (@ai-sdk/openai-compatible name: 'custom');
-		// reasoning maps to top-level `reasoning_effort` via providerOptions.custom.
-		thinkingToProviderOptions: (thinking) => {
-			const cfg = thinking as OpenAIThinkingConfig;
-			return { custom: { reasoningEffort: cfg.reasoningEffort ?? 'medium' } };
-		},
-	},
+	wafer: reasoningEffortQuirk('wafer', 'medium'),
+	// Morph OpenAI chat accepts `reasoning: { effort }` (not `reasoning_effort`).
+	// See https://docs.morphllm.com/sdk/components/fast-models
+	morph: nestedReasoningEffortQuirk('morph', 'medium'),
+	togetherai: reasoningEffortQuirk('togetherai', 'medium'),
+	custom: reasoningEffortQuirk('custom', 'medium'),
 };
 
 export function getProviderQuirks(providerId: string): ProviderQuirks {
@@ -239,15 +220,18 @@ export function providerIdFromModelId(modelId: string): string {
 	return modelId.split('/')[0];
 }
 
-/** GLM 5.2 default output cap on Baseten/Z.AI (131072 max; 65536 is the API default). */
-export const GLM_52_DEFAULT_MAX_OUTPUT_TOKENS = 65_536;
-
 /**
- * Kimi K3 default completion tokens.
- * Context window is 131072 input+output shared; requesting the full window as
- * max_tokens overflows once any prompt tokens are present.
+ * Default completion-token cap for reasoning-heavy models (GLM 5.2, Kimi K3).
+ * Context windows are often 131072 shared input+output; requesting the full
+ * window as max_tokens overflows once any prompt tokens are present.
  */
-export const KIMI_K3_DEFAULT_MAX_OUTPUT_TOKENS = 65_536;
+export const HIGH_REASONING_DEFAULT_MAX_OUTPUT_TOKENS = 65_536;
+
+/** @deprecated Prefer {@link HIGH_REASONING_DEFAULT_MAX_OUTPUT_TOKENS}. */
+export const GLM_52_DEFAULT_MAX_OUTPUT_TOKENS = HIGH_REASONING_DEFAULT_MAX_OUTPUT_TOKENS;
+
+/** @deprecated Prefer {@link HIGH_REASONING_DEFAULT_MAX_OUTPUT_TOKENS}. */
+export const KIMI_K3_DEFAULT_MAX_OUTPUT_TOKENS = HIGH_REASONING_DEFAULT_MAX_OUTPUT_TOKENS;
 
 function isGlm52Model(modelId: string): boolean {
 	const modelName = (
@@ -269,11 +253,8 @@ function isKimiK3Model(modelId: string): boolean {
  * before emitting text or tool calls.
  */
 export function resolveDefaultMaxOutputTokens(modelId: string): number | undefined {
-	if (isGlm52Model(modelId)) {
-		return GLM_52_DEFAULT_MAX_OUTPUT_TOKENS;
-	}
-	if (isKimiK3Model(modelId)) {
-		return KIMI_K3_DEFAULT_MAX_OUTPUT_TOKENS;
+	if (isGlm52Model(modelId) || isKimiK3Model(modelId)) {
+		return HIGH_REASONING_DEFAULT_MAX_OUTPUT_TOKENS;
 	}
 	return undefined;
 }

@@ -60,12 +60,12 @@ on:
         type: string
         default: ''
       model:
-        description: 'Model override for all Instance AI agents in the lane backends, provider/model format. Empty = backend default (anthropic/claude-opus-4-8). Examples: anthropic/claude-opus-5, anthropic/claude-sonnet-4-6. openai/* → EVALS_OPENAI_KEY; openrouter/* → EVALS_OPENROUTER_KEY; xai/* → EVALS_XAI_KEY; baseten/* → EVALS_BASETEN_KEY; fireworks/* → EVALS_FIREWORKS_KEY; wafer/* → EVALS_WAFER_KEY; morph/* → EVALS_MORPH_KEY; togetherai/* → EVALS_TOGETHER_KEY; vertex/* → EVALS_VERTEX_SA_JSON (+ vertex-project/location). custom/* + model-url → OpenAI-compatible endpoint (keyless routers, or Databricks AI Gateway via EVALS_DATABRICKS_KEY). anthropic/* + model-url → EVALS_AZURE_FOUNDRY_KEY.'
+        description: 'Model override (provider/model). Empty = anthropic/claude-opus-4-8. See packages/@n8n/instance-ai/evaluations/README.md for provider→secret routing.'
         required: false
         type: string
         default: ''
       model-url:
-        description: 'Optional base URL for lane backends (N8N_INSTANCE_AI_MODEL_URL). With custom/*: OpenAI-compatible /v1 base (e.g. https://host/v1, or Databricks https://<workspace>.cloud.databricks.com/ai-gateway/mlflow/v1 → EVALS_DATABRICKS_KEY). With anthropic/*: Anthropic-compatible base (e.g. Azure Foundry https://<resource>.services.ai.azure.com/anthropic) using EVALS_AZURE_FOUNDRY_KEY. Eval CLI verifier/mocks keep EVALS_ANTHROPIC_KEY.'
+        description: 'Optional N8N_INSTANCE_AI_MODEL_URL (custom/* OpenAI-compatible /v1, or anthropic/* Azure Foundry). See evaluations/README.md.'
         required: false
         type: string
         default: ''
@@ -293,10 +293,15 @@ jobs:
 
           # Lane builds use the provider matching N8N_INSTANCE_AI_MODEL.
           # The eval CLI step keeps EVALS_ANTHROPIC_KEY for Sonnet verifier/mocks.
-          # model-url + custom/* → OpenAI-compatible endpoint (keyless routers, or
-          # Databricks AI Gateway with EVALS_DATABRICKS_KEY).
-          # model-url + anthropic/* (etc.) → Azure Foundry / Anthropic-compatible key.
           MODEL_API_KEY="$EVALS_ANTHROPIC_KEY"
+          MODEL_PROVIDER="${INSTANCE_AI_MODEL%%/*}"
+          require_secret() {
+            local name="$1" value="$2"
+            if [ -z "$value" ]; then
+              echo "::error::model is ${MODEL_PROVIDER}/* but ${name} secret is empty"
+              exit 1
+            fi
+          }
           if [[ "$INSTANCE_AI_MODEL" == custom/* ]]; then
             if [ -z "$INSTANCE_AI_MODEL_URL" ]; then
               echo "::error::model custom/* requires model-url (OpenAI-compatible base URL ending in /v1)"
@@ -305,77 +310,19 @@ jobs:
             # Dedicated OpenAI-compatible routers often need no auth. Databricks AI
             # Gateway (and similar mlflow gateways) authenticate with a Bearer PAT.
             if [[ "$INSTANCE_AI_MODEL_URL" == *databricks.com* ]] || [[ "$INSTANCE_AI_MODEL_URL" == *ai-gateway/mlflow* ]]; then
-              if [ -z "$EVALS_DATABRICKS_KEY" ]; then
-                echo "::error::Databricks model-url requires EVALS_DATABRICKS_KEY secret"
-                exit 1
-              fi
+              require_secret EVALS_DATABRICKS_KEY "$EVALS_DATABRICKS_KEY"
               MODEL_API_KEY="$EVALS_DATABRICKS_KEY"
             else
               MODEL_API_KEY=""
             fi
           elif [ -n "$INSTANCE_AI_MODEL_URL" ]; then
-            if [ -z "$EVALS_AZURE_FOUNDRY_KEY" ]; then
-              echo "::error::model-url is set but EVALS_AZURE_FOUNDRY_KEY secret is empty (use custom/* for keyless OpenAI-compatible endpoints)"
-              exit 1
-            fi
+            require_secret EVALS_AZURE_FOUNDRY_KEY "$EVALS_AZURE_FOUNDRY_KEY"
             MODEL_API_KEY="$EVALS_AZURE_FOUNDRY_KEY"
-          elif [[ "$INSTANCE_AI_MODEL" == openai/* ]]; then
-            if [ -z "$EVALS_OPENAI_KEY" ]; then
-              echo "::error::model is openai/* but EVALS_OPENAI_KEY secret is empty"
-              exit 1
-            fi
-            MODEL_API_KEY="$EVALS_OPENAI_KEY"
-          elif [[ "$INSTANCE_AI_MODEL" == openrouter/* ]]; then
-            if [ -z "$EVALS_OPENROUTER_KEY" ]; then
-              echo "::error::model is openrouter/* but EVALS_OPENROUTER_KEY secret is empty"
-              exit 1
-            fi
-            MODEL_API_KEY="$EVALS_OPENROUTER_KEY"
-          elif [[ "$INSTANCE_AI_MODEL" == xai/* ]]; then
-            if [ -z "$EVALS_XAI_KEY" ]; then
-              echo "::error::model is xai/* but EVALS_XAI_KEY secret is empty"
-              exit 1
-            fi
-            MODEL_API_KEY="$EVALS_XAI_KEY"
-          elif [[ "$INSTANCE_AI_MODEL" == baseten/* ]]; then
-            if [ -z "$EVALS_BASETEN_KEY" ]; then
-              echo "::error::model is baseten/* but EVALS_BASETEN_KEY secret is empty"
-              exit 1
-            fi
-            MODEL_API_KEY="$EVALS_BASETEN_KEY"
-          elif [[ "$INSTANCE_AI_MODEL" == fireworks/* ]]; then
-            if [ -z "$EVALS_FIREWORKS_KEY" ]; then
-              echo "::error::model is fireworks/* but EVALS_FIREWORKS_KEY secret is empty"
-              exit 1
-            fi
-            MODEL_API_KEY="$EVALS_FIREWORKS_KEY"
-          elif [[ "$INSTANCE_AI_MODEL" == wafer/* ]]; then
-            if [ -z "$EVALS_WAFER_KEY" ]; then
-              echo "::error::model is wafer/* but EVALS_WAFER_KEY secret is empty"
-              exit 1
-            fi
-            MODEL_API_KEY="$EVALS_WAFER_KEY"
-          elif [[ "$INSTANCE_AI_MODEL" == morph/* ]]; then
-            if [ -z "$EVALS_MORPH_KEY" ]; then
-              echo "::error::model is morph/* but EVALS_MORPH_KEY secret is empty"
-              exit 1
-            fi
-            MODEL_API_KEY="$EVALS_MORPH_KEY"
-          elif [[ "$INSTANCE_AI_MODEL" == togetherai/* ]]; then
-            if [ -z "$EVALS_TOGETHER_KEY" ]; then
-              echo "::error::model is togetherai/* but EVALS_TOGETHER_KEY secret is empty"
-              exit 1
-            fi
-            MODEL_API_KEY="$EVALS_TOGETHER_KEY"
           elif [[ "$INSTANCE_AI_MODEL" == vertex/* ]]; then
             # Vertex Claude: GCP service-account JSON + project/location.
             # Lane agent uses N8N_INSTANCE_AI_VERTEX_*; MODEL_API_KEY stays
-            # Anthropic for any leftover key-only paths. Verifier/mocks still
-            # use EVALS_ANTHROPIC_KEY in the eval CLI step.
-            if [ -z "$EVALS_VERTEX_SA_JSON" ]; then
-              echo "::error::model is vertex/* but EVALS_VERTEX_SA_JSON secret is empty"
-              exit 1
-            fi
+            # Anthropic for any leftover key-only paths.
+            require_secret EVALS_VERTEX_SA_JSON "$EVALS_VERTEX_SA_JSON"
             VERTEX_PROJECT="${INSTANCE_AI_VERTEX_PROJECT:-$EVALS_VERTEX_PROJECT}"
             if [ -z "$VERTEX_PROJECT" ]; then
               VERTEX_PROJECT=$(printf '%s' "$EVALS_VERTEX_SA_JSON" | jq -r '.project_id // empty')
@@ -390,6 +337,17 @@ jobs:
               -e N8N_INSTANCE_AI_VERTEX_LOCATION="$VERTEX_LOCATION"
               -e N8N_INSTANCE_AI_VERTEX_CREDENTIALS="$EVALS_VERTEX_SA_JSON"
             )
+          else
+            case "$MODEL_PROVIDER" in
+              openai) require_secret EVALS_OPENAI_KEY "$EVALS_OPENAI_KEY"; MODEL_API_KEY="$EVALS_OPENAI_KEY" ;;
+              openrouter) require_secret EVALS_OPENROUTER_KEY "$EVALS_OPENROUTER_KEY"; MODEL_API_KEY="$EVALS_OPENROUTER_KEY" ;;
+              xai) require_secret EVALS_XAI_KEY "$EVALS_XAI_KEY"; MODEL_API_KEY="$EVALS_XAI_KEY" ;;
+              baseten) require_secret EVALS_BASETEN_KEY "$EVALS_BASETEN_KEY"; MODEL_API_KEY="$EVALS_BASETEN_KEY" ;;
+              fireworks) require_secret EVALS_FIREWORKS_KEY "$EVALS_FIREWORKS_KEY"; MODEL_API_KEY="$EVALS_FIREWORKS_KEY" ;;
+              wafer) require_secret EVALS_WAFER_KEY "$EVALS_WAFER_KEY"; MODEL_API_KEY="$EVALS_WAFER_KEY" ;;
+              morph) require_secret EVALS_MORPH_KEY "$EVALS_MORPH_KEY"; MODEL_API_KEY="$EVALS_MORPH_KEY" ;;
+              togetherai) require_secret EVALS_TOGETHER_KEY "$EVALS_TOGETHER_KEY"; MODEL_API_KEY="$EVALS_TOGETHER_KEY" ;;
+            esac
           fi
 
           if [ "$LANES" -lt 1 ] || [ "$LANES" -gt 11 ]; then
@@ -400,6 +358,8 @@ jobs:
           for i in $(seq 0 $((LANES - 1))); do
             PORTS+=($((5678 + i)))
           done
+          # Reuse across later steps (Create test users / Assert / Run Evals).
+          echo "LANE_PORTS=${PORTS[*]}" >> "$GITHUB_ENV"
           echo "Starting $LANES lane(s) on ports ${PORTS[*]} (eval concurrency $EVAL_CONCURRENCY)"
           for i in "${!PORTS[@]}"; do
             port="${PORTS[$i]}"
@@ -466,10 +426,7 @@ jobs:
 
       - name: Create test users
         run: |
-          PORTS=()
-          for i in $(seq 0 $((LANES - 1))); do
-            PORTS+=($((5678 + i)))
-          done
+          read -ra PORTS <<< "$LANE_PORTS"
           for port in "${PORTS[@]}"; do
             curl -sf -X POST "http://localhost:$port/rest/e2e/reset" \
               -H "Content-Type: application/json" \
@@ -490,10 +447,7 @@ jobs:
           SANDBOX_PROVIDER: ${{ inputs.sandbox-provider || 'n8n-sandbox' }}
           INSTANCE_AI_MODEL: ${{ inputs.model }}
         run: |
-          PORTS=()
-          for i in $(seq 0 $((LANES - 1))); do
-            PORTS+=($((5678 + i)))
-          done
+          read -ra PORTS <<< "$LANE_PORTS"
           bad=0
           for i in "${!PORTS[@]}"; do
             port="${PORTS[$i]}"
@@ -577,10 +531,7 @@ jobs:
           EXPERIMENT_NAME: ${{ inputs.experiment-name }}
           EVAL_PR_NUMBER: ${{ inputs.pr-number || github.event.pull_request.number }}
         run: |
-          PORTS=()
-          for i in $(seq 0 $((LANES - 1))); do
-            PORTS+=($((5678 + i)))
-          done
+          read -ra PORTS <<< "$LANE_PORTS"
           URLS=()
           for port in "${PORTS[@]}"; do
             URLS+=("http://localhost:$port")
