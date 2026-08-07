@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { Z } from './zod-class';
+import { Z } from '../zod-class';
 
 describe('Z.array', () => {
 	class TagIdDto extends Z.array(z.object({ id: z.string() })) {}
