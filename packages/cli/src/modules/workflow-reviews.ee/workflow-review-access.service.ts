@@ -57,7 +57,10 @@ export class WorkflowReviewAccessService {
 		user: User,
 		workflowReviewRequestId: string,
 	): Promise<ReadableWorkflowReviewRequest> {
-		const request = await this.workflowReviewRequestRepository.findById(workflowReviewRequestId, {});
+		const request = await this.workflowReviewRequestRepository.findById(
+			workflowReviewRequestId,
+			{},
+		);
 		if (!request || !(await this.canAccessRequest(user, request))) {
 			throw new NotFoundError('Could not find review request');
 		}

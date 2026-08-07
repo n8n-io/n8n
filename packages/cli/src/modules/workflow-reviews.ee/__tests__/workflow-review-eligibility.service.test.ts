@@ -122,7 +122,10 @@ describe('WorkflowReviewEligibilityService', () => {
 				workflowId,
 			);
 
-			expect(eligibility).toEqual({ canDecide: false, decisionIneligibilityReason: 'missing_publish_permission' });
+			expect(eligibility).toEqual({
+				canDecide: false,
+				decisionIneligibilityReason: 'missing_publish_permission',
+			});
 			expect(authorRepository.isAuthor).not.toHaveBeenCalled();
 		});
 
@@ -144,7 +147,10 @@ describe('WorkflowReviewEligibilityService', () => {
 		it('reports a review with no linked workflow as ineligible without any lookup', async () => {
 			const eligibility = await service.resolveViewerEligibility(memberUser(), request(), null);
 
-			expect(eligibility).toEqual({ canDecide: false, decisionIneligibilityReason: 'missing_publish_permission' });
+			expect(eligibility).toEqual({
+				canDecide: false,
+				decisionIneligibilityReason: 'missing_publish_permission',
+			});
 			expect(workflowFinderService.findWorkflowForUser).not.toHaveBeenCalled();
 		});
 	});

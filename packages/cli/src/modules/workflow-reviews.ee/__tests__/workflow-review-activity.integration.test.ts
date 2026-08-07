@@ -117,10 +117,7 @@ async function seedRequest(
 		},
 		{},
 	);
-	await authorRepository.addAuthor(
-		{ workflowReviewRequestId: request.id, userId: author.id },
-		{},
-	);
+	await authorRepository.addAuthor({ workflowReviewRequestId: request.id, userId: author.id }, {});
 	return request;
 }
 
@@ -181,7 +178,6 @@ describe('Reading the activity feed', () => {
 		});
 	});
 
-
 	test('pages backwards from the newest entry without skipping or repeating', async () => {
 		const { request } = await seedReviewInTeamProject(owner);
 		const ids = await seedEntries(request.id, 5);
@@ -202,7 +198,6 @@ describe('Reading the activity feed', () => {
 		// Newest page first, ascending within each page
 		expect(pages).toEqual([[ids[3], ids[4]], [ids[1], ids[2]], [ids[0]]]);
 	});
-
 
 	test('stops paging when the last page comes out exactly full', async () => {
 		const { request } = await seedReviewInTeamProject(owner);
@@ -226,7 +221,6 @@ describe('Reading the activity feed', () => {
 		expect(secondPage.body.data.hasMore).toBe(false);
 		expect(secondPage.body.data.nextCursor).toBeNull();
 	});
-
 
 	test('hides the feed entirely from someone without access to the review', async () => {
 		const { request } = await seedReviewInTeamProject(owner);
@@ -272,12 +266,10 @@ describe('Reading the activity feed', () => {
 			.expect(400);
 	});
 
-
 	test('refuses to read the feed when an admin has turned reviews off', async () => {
 		const { request } = await seedReviewInTeamProject(owner);
 		await policyService.set(false);
 
 		await ownerAgent.get(`/workflow-review-requests/${request.id}/activity`).expect(403);
 	});
-
 });
