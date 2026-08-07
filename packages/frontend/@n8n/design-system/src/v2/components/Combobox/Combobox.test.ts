@@ -98,6 +98,27 @@ describe('v2/components/Combobox', () => {
 			});
 			expect(wrapper.getByTestId('combobox')).toBeInTheDocument();
 		});
+
+		it('should apply a generated id to the input when none is provided', () => {
+			const wrapper = render(Combobox, {
+				props: {
+					items: options('Option 1'),
+				},
+			});
+
+			expect(getComboboxInput(wrapper).id).toBeTruthy();
+		});
+
+		it('should apply the provided id to the input', () => {
+			const wrapper = render(Combobox, {
+				props: {
+					id: 'status-field',
+					items: options('Option 1'),
+				},
+			});
+
+			expect(getComboboxInput(wrapper)).toHaveAttribute('id', 'status-field');
+		});
 	});
 
 	describe('accessible name', () => {
@@ -687,6 +708,97 @@ describe('v2/components/Combobox', () => {
 
 			await waitFor(() => {
 				expect(getComboboxInput(wrapper)).toHaveValue('Option 2');
+			});
+		});
+	});
+
+	describe('defaultValue', () => {
+		it('should show the clear button for an uncontrolled single selection', () => {
+			const wrapper = render(Combobox, {
+				props: {
+					items: options('Option 1', 'Option 2', 'Option 3'),
+					defaultValue: 'Option 2',
+					clearable: true,
+				},
+			});
+
+			expect(wrapper.getByRole('button', { name: 'Clear selection' })).toBeVisible();
+			expect(wrapper.getByTestId('combobox')).not.toHaveAttribute('data-empty');
+			expect(getComboboxInput(wrapper)).toHaveValue('Option 2');
+		});
+
+		it('should render the selected item icon for an uncontrolled selection', async () => {
+			const items = [
+				{ value: '1', label: 'Option 1', icon: 'check' as const },
+				{ value: '2', label: 'Option 2', icon: 'users' as const },
+			];
+
+			const wrapper = render(Combobox, {
+				props: {
+					items,
+					defaultValue: '2',
+					clearable: true,
+				},
+			});
+
+			await waitFor(() => {
+				const trigger = wrapper.getByTestId('combobox');
+				expect(trigger.querySelector('[data-icon="users"]')).toBeVisible();
+			});
+		});
+
+		it('should clear an uncontrolled single selection', async () => {
+			const wrapper = render(Combobox, {
+				props: {
+					items: options('Option 1', 'Option 2'),
+					defaultValue: 'Option 1',
+					clearable: true,
+				},
+			});
+
+			await userEvent.click(wrapper.getByRole('button', { name: 'Clear selection' }));
+
+			await waitFor(() => {
+				expect(wrapper.emitted('update:modelValue')?.[0]).toEqual([undefined]);
+				expect(getComboboxInput(wrapper)).toHaveValue('');
+				expect(wrapper.queryByRole('button', { name: 'Clear selection' })).not.toBeInTheDocument();
+				expect(wrapper.getByTestId('combobox')).toHaveAttribute('data-empty', 'true');
+			});
+		});
+
+		it('should render tags for an uncontrolled multiple selection', () => {
+			const wrapper = render(Combobox, {
+				props: {
+					items: options('Option 1', 'Option 2', 'Option 3'),
+					defaultValue: ['Option 1', 'Option 3'],
+					multiple: true,
+					clearable: true,
+				},
+			});
+
+			expect(wrapper.getAllByTestId('tags-input-tag')).toHaveLength(2);
+			expect(wrapper.getByText('Option 1')).toBeVisible();
+			expect(wrapper.getByText('Option 3')).toBeVisible();
+			expect(wrapper.getByRole('button', { name: 'Clear selection' })).toBeVisible();
+			expect(wrapper.getByTestId('combobox')).not.toHaveAttribute('data-empty');
+		});
+
+		it('should clear an uncontrolled multiple selection', async () => {
+			const wrapper = render(Combobox, {
+				props: {
+					items: options('Option 1', 'Option 2', 'Option 3'),
+					defaultValue: ['Option 1', 'Option 3'],
+					multiple: true,
+					clearable: true,
+				},
+			});
+
+			await userEvent.click(wrapper.getByRole('button', { name: 'Clear selection' }));
+
+			await waitFor(() => {
+				expect(wrapper.emitted('update:modelValue')?.[0]).toEqual([[]]);
+				expect(wrapper.queryAllByTestId('tags-input-tag')).toHaveLength(0);
+				expect(wrapper.queryByRole('button', { name: 'Clear selection' })).not.toBeInTheDocument();
 			});
 		});
 	});

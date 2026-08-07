@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import { ref } from 'vue';
 
 import N8nIcon from '@n8n/design-system/components/N8nIcon/Icon.vue';
+import N8nInput from '@n8n/design-system/components/N8nInput';
 
 import type { ComboboxItem as ComboboxItemType } from './Combobox.types';
 import Combobox from './Combobox.vue';
@@ -521,5 +522,77 @@ export const WithSlots = {
 	args: {
 		items: slotItems,
 		modelValue: undefined,
+	},
+} satisfies Story;
+
+export const InForm = {
+	name: 'In Form',
+	render: () => ({
+		components: { Combobox, N8nInput },
+		setup() {
+			const name = ref('');
+			const status = ref<string | undefined>();
+			const fruits = ref<string[]>(['apple', 'banana']);
+			const notes = ref('');
+
+			return { name, status, fruits, notes, statusItems, fruitItems };
+		},
+		template: `
+		<form
+			style="${storyContainerStyle}; display: flex; flex-direction: column; gap: var(--spacing--md);"
+			@submit.prevent
+		>
+			<label style="display: flex; flex-direction: column; gap: var(--spacing--2xs); font-size: var(--font-size--sm);">
+				Name
+				<N8nInput v-model="name" placeholder="Enter name..." />
+			</label>
+			<label style="display: flex; flex-direction: column; gap: var(--spacing--2xs); font-size: var(--font-size--sm);">
+				Status
+				<Combobox
+					:items="statusItems"
+					v-model="status"
+					placeholder="Search status..."
+				/>
+			</label>
+			<label style="display: flex; flex-direction: column; gap: var(--spacing--2xs); font-size: var(--font-size--sm);">
+				Fruits
+				<Combobox
+					:items="fruitItems"
+					v-model="fruits"
+					multiple
+					clearable
+					placeholder="Select fruits..."
+				/>
+			</label>
+			<label style="display: flex; flex-direction: column; gap: var(--spacing--2xs); font-size: var(--font-size--sm);">
+				Notes
+				<N8nInput v-model="notes" placeholder="Enter notes..." />
+			</label>
+			<button
+				type="submit"
+				style="
+					align-self: flex-start;
+					padding: var(--spacing--2xs) var(--spacing--sm);
+					border: var(--border);
+					border-radius: var(--radius--2xs);
+					background: var(--background--surface);
+					color: var(--text-color);
+					cursor: pointer;
+					font: inherit;
+					font-size: var(--font-size--sm);
+				"
+			>
+				Submit
+			</button>
+		</form>
+		`,
+	}),
+	parameters: {
+		docs: {
+			description: {
+				story:
+					'Single and multiple Comboboxes between N8nInput fields. Use Tab / Shift+Tab to verify focus moves correctly into and out of each combobox.',
+			},
+		},
 	},
 } satisfies Story;

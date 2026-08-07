@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { reactiveOmit, reactivePick } from '@vueuse/core';
-import { computed, nextTick, useAttrs, useCssModule, useTemplateRef } from 'vue';
+import { computed, nextTick, ref, useAttrs, useCssModule, useId, useTemplateRef, watch } from 'vue';
 
 import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
 import { useI18n } from '@n8n/design-system/composables/useI18n';
@@ -52,6 +52,8 @@ const { t } = useI18n();
 
 const placeholder = computed(() => props.placeholder ?? t('combobox.placeholder'));
 const emptyText = computed(() => props.emptyText ?? t('combobox.emptyText'));
+const generatedId = useId();
+const inputId = computed(() => props.id ?? generatedId);
 
 const inputNameAttrs = reactivePick(
 	attrs,
@@ -84,8 +86,38 @@ const rootProps = useForwardPropsEmits(
 		'openOnClick',
 		'highlightOnHover',
 	),
-	emit,
+	(event, ...args) => {
+		// Handled by onModelValueUpdate so uncontrolled defaultValue stays in sync.
+		if (event === 'update:modelValue') {
+			return;
+		}
+
+		if (event === 'update:open') {
+			emit('update:open', args[0] as boolean);
+			return;
+		}
+
+		if (event === 'highlight') {
+			emit('highlight', args[0] as ComboboxEmits['highlight'][0]);
+		}
+	},
 );
+
+const selectedValue = ref<ComboboxValue | ComboboxValue[] | undefined>(
+	props.modelValue ?? props.defaultValue,
+);
+
+watch(
+	() => props.modelValue,
+	(value) => {
+		selectedValue.value = value;
+	},
+);
+
+function onModelValueUpdate(value: ComboboxValue | ComboboxValue[] | undefined) {
+	selectedValue.value = value;
+	emit('update:modelValue', value);
+}
 
 function isStructuralItem(item: ComboboxItem): item is ComboboxLabelItem | ComboboxSeparatorItem {
 	return item.type === 'label' || item.type === 'separator';
@@ -228,21 +260,21 @@ function getTagLabel(value: TagsInputValue): string {
 }
 
 const selectedTags = computed(() => {
-	if (!props.multiple || !Array.isArray(props.modelValue)) {
+	if (!props.multiple || !Array.isArray(selectedValue.value)) {
 		return [];
 	}
 
-	return props.modelValue;
+	return selectedValue.value;
 });
 
 const hasValue = computed(() => {
-	const { modelValue, multiple } = props;
+	const value = selectedValue.value;
 
-	if (multiple) {
-		return Array.isArray(modelValue) && modelValue.length > 0;
+	if (props.multiple) {
+		return Array.isArray(value) && value.length > 0;
 	}
 
-	return modelValue !== undefined && modelValue !== null && modelValue !== '';
+	return value !== undefined && value !== null && value !== '';
 });
 
 const showClearButton = computed(() => props.clearable && !props.disabled && hasValue.value);
@@ -252,20 +284,20 @@ const selectedItem = computed(() => {
 		return undefined;
 	}
 
-	const { modelValue } = props;
-	if (modelValue === undefined || modelValue === null || Array.isArray(modelValue)) {
+	const value = selectedValue.value;
+	if (value === undefined || value === null || Array.isArray(value)) {
 		return undefined;
 	}
 
 	return groups.value.find(
-		(item): item is ComboboxOptionBase => isOptionItem(item) && item.value === modelValue,
+		(item): item is ComboboxOptionBase => isOptionItem(item) && item.value === value,
 	);
 });
 
 const leadingIcon = computed(() => selectedItem.value?.icon ?? props.icon);
 
 function onClear() {
-	emit('update:modelValue', props.multiple ? [] : undefined);
+	onModelValueUpdate(props.multiple ? [] : undefined);
 
 	void nextTick(() => {
 		const element = inputRef.value?.$el;
@@ -286,7 +318,7 @@ function onTagsUpdate(value: TagsInputValue[]) {
 			nextValue.push(tag);
 		}
 	}
-	emit('update:modelValue', nextValue);
+	onModelValueUpdate(nextValue);
 }
 </script>
 
@@ -295,9 +327,9 @@ function onTagsUpdate(value: TagsInputValue[]) {
 		:name="props.name"
 		v-bind="rootProps"
 		:disabled="props.disabled"
-		:default-value="props.defaultValue"
-		:model-value="props.modelValue"
+		:model-value="selectedValue"
 		:open-on-focus="true"
+		@update:model-value="onModelValueUpdate"
 	>
 		<ComboboxAnchor
 			ref="anchor"
@@ -322,6 +354,7 @@ function onTagsUpdate(value: TagsInputValue[]) {
 
 			<N8nTagsInput2
 				v-if="props.multiple"
+				:id="inputId"
 				:embedded="true"
 				:model-value="selectedTags"
 				:size="props.size"
@@ -333,7 +366,7 @@ function onTagsUpdate(value: TagsInputValue[]) {
 			>
 				<template #input="inputProps">
 					<ComboboxInput
-						:id="props.id"
+						:id="inputId"
 						as-child
 						:display-value="getDisplayValue"
 						v-bind="inputNameAttrs"
@@ -353,7 +386,7 @@ function onTagsUpdate(value: TagsInputValue[]) {
 
 			<ComboboxInput
 				v-else
-				:id="props.id"
+				:id="inputId"
 				ref="input"
 				:class="$style.comboboxInput"
 				:placeholder="placeholder"
@@ -681,13 +714,13 @@ function onTagsUpdate(value: TagsInputValue[]) {
 .comboboxEmpty {
 	padding: var(--spacing--xs) var(--spacing--sm);
 	font-size: var(--font-size--xs);
-	color: var(--text-color--subtle);
+	color: var(--text-color--subtler);
 	text-align: center;
 }
 
 .comboboxLabel {
 	padding: var(--spacing--3xs) var(--spacing--2xs) var(--spacing--4xs);
-	color: var(--text-color--subtle);
+	color: var(--text-color--subtler);
 	font-size: var(--font-size--2xs);
 }
 

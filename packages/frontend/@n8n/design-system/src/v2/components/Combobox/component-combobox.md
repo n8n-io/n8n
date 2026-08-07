@@ -33,13 +33,13 @@ Items with `type: 'label'` start a new `ComboboxGroup`. That keeps each heading�
 
 **Props**
 
-- `id?: string` — Applied to the combobox input
+- `id?: string` — Applied to the combobox input. Falls back to a generated id when omitted so the field always has an `id` for label association and browser a11y checks
 - `name?: string` — Form field name passed to reka-ui root
 - `placeholder?: string` — Shown in the input when no value is selected | `default: t('combobox.placeholder')`
 - `emptyText?: string` — Shown when filtering returns no matches | `default: t('combobox.emptyText')`
 - `autoFocus?: boolean` — Focus the input on mount
 - `items?: ComboboxItem[]` — Array of options to render (see [Item shapes](#item-shapes) below)
-- `defaultValue?: ComboboxValue | ComboboxValue[]` — Initial value when uncontrolled
+- `defaultValue?: ComboboxValue | ComboboxValue[]` — Initial value when uncontrolled. Seeds the selection used for tags, the clear button, leading icon, and `data-empty` (same as a controlled `modelValue`).
 - `modelValue?: ComboboxValue | ComboboxValue[]` — Controlled value. Bind with `v-model`
 - `multiple?: boolean` — Allow selecting multiple options. Selected values render as removable tags via embedded `N8nTagsInput2` (search input stays empty; filtering still works while typing)
 - `open?: boolean` — Controlled open state. Bind with `v-model:open`
@@ -84,7 +84,7 @@ The dropdown content defaults to a max height of **500px** with vertical scrolli
 
 **Attributes**
 
-- Input ARIA attributes (`aria-label`, `aria-labelledby`, `aria-describedby`, `aria-errormessage`, `aria-invalid`) are forwarded to the combobox input. The placeholder is never used as an accessible name — associate a `<label>` via `id`, or pass `aria-label` / `aria-labelledby`.
+- Input ARIA attributes (`aria-label`, `aria-labelledby`, `aria-describedby`, `aria-errormessage`, `aria-invalid`) are forwarded to the combobox input. The placeholder is never used as an accessible name — associate a `<label>` via the input `id` (generated when omitted, or pass an explicit `id`), or pass `aria-label` / `aria-labelledby`.
 - Other non-prop attributes (e.g. `data-test-id`) fall through to `ComboboxAnchor`, not the root.
 
 **Slots**
