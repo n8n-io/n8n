@@ -1857,6 +1857,19 @@ export class Telegram implements INodeType {
 						default: 0,
 						description: 'Width of the video',
 					},
+					{
+						displayName: 'Protect Content',
+						name: 'protect_content',
+						type: 'boolean',
+						default: false,
+						displayOptions: {
+							hide: {
+								'/operation': ['editMessageText'],
+							},
+						},
+						description:
+							'Whether to protect the contents of the sent message from forwarding and saving',
+					},
 				],
 			},
 
