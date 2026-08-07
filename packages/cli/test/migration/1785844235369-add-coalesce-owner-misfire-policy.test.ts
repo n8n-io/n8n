@@ -216,8 +216,8 @@ describe('AddCoalesceOwnerMisfirePolicy Migration', () => {
 		it('folds coalesce_owner back to coalesce without deleting a job or a task', async () => {
 			await seedJobsAndTasks();
 			await runSingleMigration(MIGRATION_NAME);
-			// Simulates a node the scheduling module already moved onto coalesce_owner
-			// after `up()` ran, since this migration no longer backfills it itself.
+			// Simulates a job the scheduling module moved onto coalesce_owner after
+			// up() ran, since this migration doesn't backfill it.
 			const seeded = createTestMigrationContext(dataSource);
 			await insertJob(seeded, 'trigger_owner', SCHEDULE_TRIGGER_TASK_TYPE, 'coalesce_owner');
 			await seeded.queryRunner.release();

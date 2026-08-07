@@ -8,7 +8,7 @@ import { AddCoalesceOwnerMisfirePolicy1785844235369 as BaseMigration } from '../
  * Only the rollback needs this flag: for `up`, TypeORM's own `beforeMigration` hook
  * already issues `PRAGMA foreign_keys = OFF` before the migration transaction opens. On
  * the rollback path it issues that pragma inside the transaction, where SQLite ignores
- * it, so this flag is what keeps the drop local to `scheduled_job` there.
+ * it, so this flag keeps the drop local to `scheduled_job` on that path.
  */
 export class AddCoalesceOwnerMisfirePolicy1785844235369 extends BaseMigration {
 	withFKsDisabled = true as const;

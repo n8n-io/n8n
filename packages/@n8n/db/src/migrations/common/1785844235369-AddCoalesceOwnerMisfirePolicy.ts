@@ -16,15 +16,11 @@ const POLICY_COMMENT =
 
 /**
  * Widens the `misfirePolicy` CHECK to accept `coalesce_owner`. Existing schedule
- * trigger jobs are left on `coalesce`; the scheduling module moves a node onto
- * `coalesce_owner` itself the next time it provisions that node (activation,
- * redefinition, or the node's own policy setting), not by a schema-time
- * rewrite. A blanket backfill here would move every existing schedule trigger
- * job onto a policy value that binaries predating this release do not
- * recognise (such a binary treats the row as corrupt, defers it by
- * `planRetrySeconds` and advances its clock), which a rolling upgrade or a
- * downgrade that skips `db:revert` would hit for every node at once instead of
- * only the ones provisioning finds.
+ * trigger jobs stay on `coalesce`; the scheduling module moves a job onto
+ * `coalesce_owner` itself the next time it provisions it, not via a schema-time
+ * backfill, since binaries predating this release don't recognise the value and
+ * would treat those rows as unschedulable during a rolling upgrade or a
+ * downgrade that skips `db:revert`.
  *
  * `down()` folds any `coalesce_owner` rows back to `coalesce` instead of
  * deleting them, so a rollback leaves every live trigger scheduled.
@@ -51,10 +47,8 @@ export class AddCoalesceOwnerMisfirePolicy1785844235369 implements ReversibleMig
 	 * `misfirePolicy`, `misfireGraceSeconds` and `missedAfter` were added with raw
 	 * `ALTER TABLE`, which TypeORM never observed, so the `Table` it caches per query
 	 * runner can be stale. SQLite rebuilds the table from that cache for the CHECK swap
-	 * and would silently drop those columns. What the cache holds at this point depends
-	 * on which unrelated migrations happened to run earlier on the same query runner, so
-	 * every dialect refreshes rather than depend on that. `getTable()` reloads the real
-	 * schema from the database.
+	 * and would silently drop those columns; every dialect refreshes rather than rely
+	 * on what the cache happens to hold.
 	 */
 	private async refreshTableMetadata({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.getTable(`${tablePrefix}${jobTable}`);
