@@ -34,6 +34,8 @@ import {
 } from './reka-ui';
 
 defineOptions({ inheritAttrs: false });
+defineSlots<ComboboxSlots>();
+const emit = defineEmits<ComboboxEmits>();
 
 const $style = useCssModule();
 const attrs = useAttrs();
@@ -46,8 +48,7 @@ const props = withDefaults(defineProps<ComboboxProps>(), {
 	clearable: false,
 	teleported: true,
 });
-const emit = defineEmits<ComboboxEmits>();
-defineSlots<ComboboxSlots>();
+
 const { t } = useI18n();
 
 const placeholder = computed(() => props.placeholder ?? t('combobox.placeholder'));
@@ -63,6 +64,7 @@ const inputNameAttrs = reactivePick(
 	'aria-errormessage',
 	'aria-invalid',
 );
+
 const anchorAttrs = reactiveOmit(
 	attrs,
 	'aria-label',
@@ -86,21 +88,6 @@ const rootProps = useForwardPropsEmits(
 		'openOnClick',
 		'highlightOnHover',
 	),
-	(event, ...args) => {
-		// Handled by onModelValueUpdate so uncontrolled defaultValue stays in sync.
-		if (event === 'update:modelValue') {
-			return;
-		}
-
-		if (event === 'update:open') {
-			emit('update:open', args[0] as boolean);
-			return;
-		}
-
-		if (event === 'highlight') {
-			emit('highlight', args[0] as ComboboxEmits['highlight'][0]);
-		}
-	},
 );
 
 const selectedValue = ref<ComboboxValue | ComboboxValue[] | undefined>(
@@ -159,7 +146,7 @@ const sizes: Record<ComboboxSizes, string> = {
 
 const sizeClass = computed(() => sizes[props.size]);
 
-const groups = computed<ComboboxItem[]>(() => {
+const normalisedItems = computed<ComboboxItem[]>(() => {
 	if (!props.items?.length) return [];
 
 	const result: ComboboxItem[] = [];
@@ -213,7 +200,7 @@ const sections = computed<ComboboxSection[]>(() => {
 	const result: ComboboxSection[] = [];
 	let current: ComboboxSection = { items: [] };
 
-	for (const item of groups.value) {
+	for (const item of normalisedItems.value) {
 		if (item.type === 'label') {
 			if (current.label || current.items.length > 0) {
 				result.push(current);
@@ -241,7 +228,7 @@ function getDisplayValue(value: unknown): string {
 		return '';
 	}
 
-	const matchedItem = groups.value.find(
+	const matchedItem = normalisedItems.value.find(
 		(item): item is ComboboxOptionBase => isOptionItem(item) && item.value === value,
 	);
 	if (matchedItem) {
@@ -289,7 +276,7 @@ const selectedItem = computed(() => {
 		return undefined;
 	}
 
-	return groups.value.find(
+	return normalisedItems.value.find(
 		(item): item is ComboboxOptionBase => isOptionItem(item) && item.value === value,
 	);
 });
@@ -330,6 +317,8 @@ function onTagsUpdate(value: TagsInputValue[]) {
 		:model-value="selectedValue"
 		:open-on-focus="true"
 		@update:model-value="onModelValueUpdate"
+		@update:open="emit('update:open', $event)"
+		@highlight="emit('highlight', $event)"
 	>
 		<ComboboxAnchor
 			ref="anchor"
