@@ -42,6 +42,7 @@ Real output:
 
 ```
 Created @n8n/frontend-module-my-feature at packages/frontend/modules/my-feature
+  updated @n8n/vitest-config/frontend-source-packages.ts (Vite alias)
   updated editor-ui/package.json (dependency)
   updated editor-ui/tsconfig.json (paths)
   updated editor-ui/src/app/modules.manifest.ts (registration)
@@ -230,32 +231,48 @@ import { useToast } from '@n8n/composables/useToast';            // ✅
 
 `@n8n/stores/src/index.ts` is a single line — `export * from './constants'` — so a root import
 resolves but exposes nothing you want. `@n8n/composables` has no `src/index.ts` at all and
-declares only `"./*"` in its `exports`, so a root import does not resolve. The alias generator
-encodes this: a package without a root entry gets no bare-specifier alias, deliberately
-(`frontend-aliases.ts`, `FrontendSourcePackage.entry`).
+declares only `"./*"` in its `exports`, so a root import does not resolve. The source-packages
+table encodes this: `entry: false` marks a package with no root entry, and it gets no
+bare-specifier alias, deliberately
+(`@n8n/vitest-config/frontend-source-packages.ts`).
 
 Always import the subpath. The design proposal's dependency list implies root imports; it is
 wrong.
 
-### The no-cross-module rule is a convention, not yet enforced
+### The no-cross-module rule: what is enforced, and what is not
 
-Do not believe that typecheck will catch a cross-module import. It will not. The generated
-tsconfig base says so itself:
+Be precise about this one, because two different things get called "the boundary".
+
+**Accidental cross-module imports are blocked, in two places.** A module's `vite.config.ts`
+spreads `frontendSourceAliases` only — the platform table. Sibling modules live in a second
+array, `modulePackages`, which only the shell expands. So a stray import of a sibling fails to
+resolve at test time:
+
+```
+Error: Failed to resolve import "@n8n/frontend-module-instance-registry" from "src/cross.test.ts". Does the file exist?
+```
+
+And it fails at typecheck too, because the shared tsconfig base omits module `paths`.
+
+**A deliberate cross-module import is still not blocked by either.** Add the sibling to your
+`dependencies`, and pnpm symlinks it; because modules are source-only (`"main": "src/index.ts"`),
+node resolution finds it with no alias involved. Verified both ways on this branch: with the
+dependency declared, the same import runs green under vitest **and** typechecks clean under
+`vue-tsc`. The tsconfig base says so itself:
 
 > `paths` lists the L0-L2 packages a module consumes from source. Module packages are absent
 > from it on purpose, which stops an *accidental* cross-module import — but it is not a
 > boundary: `paths` is additive, so once a module declares another module as a dependency,
 > pnpm symlinks it and the import typechecks clean. Boundary enforcement is the ESLint rule.
 >
-> — `packages/@n8n/typescript-config/tsconfig.frontend-module.json`, lines 6–9
+> — `packages/@n8n/typescript-config/tsconfig.frontend-module.json`, lines 7–10
 
-Omitting module paths raises the cost of an accident. It does not stop a deliberate import: add
-the dependency to `package.json`, and the same import compiles clean.
-
-The actual enforcement is an ESLint `no-restricted-imports` rule, and **it does not exist in the
-repo yet** — tracked as **CAT-3692**. Until it lands, treat the boundary as a review
-responsibility. Reviewers: a new `@n8n/frontend-module-*` entry in a module's `dependencies` is
-the tell.
+So: the alias split raises the cost of an accident from "silently works" to "fails in two
+places". It does not stop anyone who means it. The enforcement that would is an ESLint
+`no-restricted-imports` rule, and **it does not exist in the repo yet** — tracked as
+**CAT-3692**. Until it lands, treat the boundary as a review responsibility. Reviewers: a new
+`@n8n/frontend-module-*` entry in a module's `dependencies` is the tell, and it is the *only*
+tell — once it is there, every check goes green.
 
 ## Stores
 
@@ -309,49 +326,69 @@ const isEnabled = computed(
 
 ## Registering with the shell
 
-A module is inert until the shell can see it. That takes **three file edits plus a CODEOWNERS
-line** — the scaffolder makes the three edits for you, and this section exists for when you are
+A module is inert until the shell can see it. That takes **four file edits plus a CODEOWNERS
+line** — the scaffolder makes the four edits for you, and this section exists for when you are
 hand-registering or debugging a red CI.
 
-| # | Where                                     | What                                                | Scaffolded? |
-| - | ----------------------------------------- | --------------------------------------------------- | ----------- |
-| 1 | `editor-ui/package.json`                  | `"@n8n/frontend-module-x": "workspace:*"`            | ✅          |
-| 2 | `editor-ui/tsconfig.json`                 | two `paths` entries (bare + `/*`)                    | ✅          |
-| 3 | `editor-ui/src/app/modules.manifest.ts`   | import + array entry                                 | ✅          |
-| 4 | Vite alias                                | **nothing** — derived from the filesystem            | n/a         |
-| 5 | `.github/CODEOWNERS`                      | one line for the new package                         | ❌ do this  |
+| # | Where                                                  | What                                        | Scaffolded? |
+| - | ------------------------------------------------------ | ------------------------------------------- | ----------- |
+| 1 | `@n8n/vitest-config/frontend-source-packages.ts`       | an entry in the `modulePackages` array       | ✅          |
+| 2 | `editor-ui/package.json`                               | `"@n8n/frontend-module-x": "workspace:*"`    | ✅          |
+| 3 | `editor-ui/tsconfig.json`                              | two `paths` entries (bare + `/*`)            | ✅          |
+| 4 | `editor-ui/src/app/modules.manifest.ts`                | import + array entry                         | ✅          |
+| 5 | `.github/CODEOWNERS`                                   | one line for the new package                 | ❌ do this  |
 
 The frontend has no CODEOWNERS entries at all today, so #5 is a new habit rather than a line to
 copy. Add yours at creation time — a package with no owner is how half-migrations rot.
 
-**The dependency and the tsconfig `paths` entry must land in the same PR.** They are not
-alternatives. The Vite alias is selected *by declared dependency*, so without #1 the manifest's
-bare import does not resolve at all; and with #1 but without #2, `pnpm check:frontend-aliases`
-fails in `lint:ci`:
+**#1, #2 and #3 must land in the same PR.** They are not alternatives, and each covers a
+different resolver:
+
+- **#1** is the Vite alias — what makes the dev server and the production bundle load your module
+  from `src`. The mapping is **hand-maintained**; it does not appear on its own.
+- **#2** is what makes a bare import resolve outside Vite at all — vue-tsc, node.
+- **#3** is what makes vue-tsc resolve the same `src` Vite does.
+
+⚠️ **The list used to be derived from the filesystem. It is not any more** — `fae4c98` reversed
+that deliberately, in favour of a table you read and edit. If you are working from an older
+description of this system, that is the part that changed.
+
+### The table is guarded by name
+
+Miss #1 and you do not get a silent bundle/typecheck split — you get a named test failure.
+Dropping a module from the table and running `editor-ui/vite/aliases.test.ts`:
 
 ```
-1 problem(s):
-  - packages/frontend/editor-ui/tsconfig.json: no `paths` entry for @n8n/frontend-module-my-feature, which Vite resolves from source
+ FAIL  vite/aliases.test.ts > editor-ui vite aliases > aliases every source package editor-ui typechecks from src
+AssertionError: expected [ '@n8n/frontend-module-my-feature' ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "@n8n/frontend-module-my-feature",
++ ]
 ```
 
-That message reads like a build-system bug on someone's first module PR. It isn't — it means
-vue-tsc and Vite would disagree about where your module's source lives, which is exactly the
-drift the check exists to prevent.
+It names the package you forgot. That test is the enforcement for registration — a real gate,
+not a convention — and it exists because the failure it catches is not hypothetical: four
+packages spent months typechecked from `src` while the bundle was built from their `dist`.
 
-#4 needs no edit because `frontendSourceAliases()` scans `packages/frontend/@n8n/*` and
-`packages/frontend/modules/*` at config load and emits the alias array, narrowed to the
-consumer's declared dependencies. Narrowing to declared deps is what keeps turbo's cache honest:
-turbo hashes a package by its declared dependencies, so an alias without a dependency edge means
-edits to that package never invalidate the consumer.
+Note what it does and does not cover. It guards that the alias table, editor-ui's `paths` and the
+shared module base all agree. It says nothing about whether one module imports another — that is
+the separate, still-unenforced boundary above.
 
-If you add or rename a platform package, regenerate the shared base:
+The old `pnpm check:frontend-aliases` script is gone; `aliases.test.ts` replaced it, so the guard
+now runs in the normal frontend test job rather than in `lint:ci`.
 
-```sh
-pnpm --filter @n8n/vitest-config sync-frontend-aliases --write
-```
+If you add or rename a **platform** package, add it to the `sourcePackages` array in the same
+file, and update `editor-ui/tsconfig.json` and `tsconfig.frontend-module.json` to match. The same
+test tells you if you missed one.
 
-`packages/@n8n/typescript-config/tsconfig.frontend-module.json` is **generated**. Do not hand-edit
-it; `pnpm check:frontend-aliases` fails on drift.
+`packages/@n8n/typescript-config/tsconfig.frontend-module.json` is **hand-maintained** and has to
+agree with both the alias table and editor-ui's `paths`. `aliases.test.ts` fails when they
+diverge.
 
 ## Typecheck
 
@@ -364,7 +401,7 @@ knowing before they surprise you.
 Relative entries in `rootDirs`, `types` and `include` resolve against the **consuming** config,
 so a copy of them in the base would point at the base's own directory. `paths` is the exception —
 it anchors to the file that *declares* it, which is what lets one shared base serve modules at
-any depth. That asymmetry is why the generated tsconfig template looks lopsided.
+any depth. That asymmetry is why the module tsconfig template looks lopsided.
 
 ### Ambient `.d.ts` shims live per-module, for the same reason
 
@@ -434,7 +471,7 @@ pnpm --filter @n8n/frontend-module-my-feature test:dev    # watch
 Colocate tests next to the code (`my-feature.store.test.ts`), the same convention editor-ui uses.
 `vite.config.ts` already wires `@vitejs/plugin-vue` and the shared source aliases, so `.vue` files
 compile in tests with no extra setup. `src/__tests__/setup.ts` imports the shared jsdom harness
-(`@n8n/vitest-config/frontend-setup` — observers, matchMedia, canvas, timers, teardown guards) and
+(`@n8n/vitest-config/setup/frontend` — observers, matchMedia, canvas, timers, teardown guards) and
 boots Pinia per test. Framework boot stays per-package on purpose: `@n8n/i18n` devDepends on
 `@n8n/vitest-config`, so booting i18n inside the shared harness would close a turbo cycle. Add
 `useI18n` boot to your own setup file if you need it.
@@ -474,8 +511,10 @@ and leave `private` off.
 1. **Six descriptor surfaces are typed but not wired** — `locales`, `pushHandlers`, `commands`,
    `shortcuts`, `banners`, `setup` (**CAT-3685**). Until then, cross-feature glue still goes
    through the shell.
-2. **The cross-module boundary has no enforcement** — the ESLint `no-restricted-imports` rule is
-   **CAT-3692**. It should land before the second extraction, not after.
+2. **The cross-module boundary has no enforcement against a deliberate import** — the ESLint
+   `no-restricted-imports` rule is **CAT-3692**. The alias split blocks accidents at test time and
+   the tsconfig base blocks them at typecheck, but declaring the dependency clears both. It
+   should land before the second extraction, not after.
 3. **Per-module i18n.** Modules currently keep their strings in the central `@n8n/i18n` `en.json`.
    The `locales` descriptor field plus per-module key types is the target; central `en.json` is
    the accepted fallback and must not become permanent.
@@ -507,4 +546,4 @@ and leave `private` off.
   the shell for now; see the modularization roadmap on CAT-3680.
 - **Does a module PR use a special PR-title scope?** No. Module PRs keep the `editor` scope.
 - **How do I remove a module?** Reverse the four registration points, delete the package, run
-  `pnpm install` and `pnpm check:frontend-aliases`. Check inbound imports first.
+  `pnpm install`, and re-run `editor-ui/vite/aliases.test.ts`. Check inbound imports first.
