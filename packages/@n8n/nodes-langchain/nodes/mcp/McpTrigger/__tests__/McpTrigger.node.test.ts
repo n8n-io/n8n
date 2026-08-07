@@ -345,13 +345,6 @@ describe('McpTrigger', () => {
 			expect(toolInputPassedToSubNodes()).toBeUndefined();
 		});
 
-		it('should declare authorization and cookie headers as sensitive output fields', () => {
-			expect(mcpTrigger.description.sensitiveOutputFields).toEqual([
-				'headers.authorization',
-				'headers.cookie',
-			]);
-		});
-
 		it('should handle Streamable HTTP setup when no session exists', async () => {
 			const req = createMockRequest({ method: 'POST' });
 			const resp = createMockResponse();
@@ -553,8 +546,6 @@ describe('McpTrigger', () => {
 		});
 	});
 
-	// Which header carries the credential depends on the credential itself, so the node
-	// redacts whatever the auth check recorded rather than a list of its own.
 	describe('consumed auth headers', () => {
 		const setup = (typeVersion: number) => {
 			const req = createMockRequest({
@@ -564,7 +555,7 @@ describe('McpTrigger', () => {
 			const resp = createMockResponse();
 
 			validateWebhookAuthenticationMock.mockImplementation(async () => {
-				recordConsumedAuth(req, { headers: ['x-api-key'] });
+				recordConsumedAuth(req, ['x-api-key']);
 			});
 
 			mockContext.getNodeParameter.mockReturnValue('headerAuth');

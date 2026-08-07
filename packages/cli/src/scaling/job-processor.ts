@@ -529,7 +529,6 @@ export class JobProcessor {
 		workflow: Workflow;
 		sourceNodeName: string;
 		toolArgs: Record<string, unknown>;
-		/** The MCP request as node input, built on the main from the request itself. */
 		toolInput?: IDataObject;
 		additionalData: Awaited<ReturnType<typeof WorkflowExecuteAdditionalData.getBase>>;
 		runExecutionData: IRunExecutionData;
@@ -548,7 +547,7 @@ export class JobProcessor {
 			typeof toolArgs === 'object' && toolArgs !== null && !Array.isArray(toolArgs) ? toolArgs : {};
 
 		// A tool can feed several MCP triggers, and connection order says nothing about which
-		// one this execution came from - only the trigger that ran has run data. Recording it
+		// one this execution came from — only the trigger that ran has run data. Recording it
 		// as parent points the tool's run data `source` at it, as in direct mode.
 		const { runData } = runExecutionData.resultData;
 		const triggerNames = workflow.getChildNodes(sourceNodeName, NodeConnectionTypes.AiTool, 1);

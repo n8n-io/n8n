@@ -824,8 +824,6 @@ describe('Webhook Utils', () => {
 				});
 			});
 
-			// Only the carrier that authenticated is n8n's — an `x-auth-token` the caller
-			// happens to send alongside basic auth is their own data
 			it('records only the carrier that authenticated', async () => {
 				const { ctx, request } = setup(
 					'basicAuth',

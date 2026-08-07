@@ -295,8 +295,7 @@ export async function validateWebhookAuthentication(
 				throw new WebhookAuthorizationError(403);
 			}
 
-			// `x-auth-token` carries the token derived from the same credential
-			recordConsumedAuth(req, { headers: ['x-auth-token'] });
+			recordConsumedAuth(req, ['x-auth-token']);
 		} else if (
 			providedAuth.name !== expectedAuth.user ||
 			providedAuth.pass !== expectedAuth.password
@@ -304,7 +303,7 @@ export async function validateWebhookAuthentication(
 			// Provided authentication data is wrong
 			throw new WebhookAuthorizationError(401, 'Authentication data is wrong!');
 		} else {
-			recordConsumedAuth(req, { headers: ['authorization'] });
+			recordConsumedAuth(req, ['authorization']);
 		}
 	} else if (authentication === 'bearerAuth') {
 		let expectedAuth: ICredentialDataDecryptedObject | undefined;
@@ -321,7 +320,7 @@ export async function validateWebhookAuthentication(
 			throw new WebhookAuthorizationError(403);
 		}
 
-		recordConsumedAuth(req, { headers: ['authorization'] });
+		recordConsumedAuth(req, ['authorization']);
 	} else if (authentication === 'headerAuth') {
 		// Special header with value is needed to call webhook
 		let expectedAuth: ICredentialDataDecryptedObject | undefined;
@@ -344,7 +343,7 @@ export async function validateWebhookAuthentication(
 			throw new WebhookAuthorizationError(403);
 		}
 
-		recordConsumedAuth(req, { headers: [headerName] });
+		recordConsumedAuth(req, [headerName]);
 	} else if (authentication === 'jwtAuth') {
 		let expectedAuth;
 
@@ -382,8 +381,7 @@ export async function validateWebhookAuthentication(
 				algorithms: [expectedAuth.algorithm],
 			}) as IDataObject;
 
-			// The verified claims are surfaced as `jwtPayload`, so the raw token isn't needed
-			recordConsumedAuth(req, { headers: ['authorization'] });
+			recordConsumedAuth(req, ['authorization']);
 
 			return payload;
 		} catch (error) {

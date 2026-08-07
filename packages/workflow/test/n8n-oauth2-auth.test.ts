@@ -119,7 +119,6 @@ describe('n8nOAuth2Auth', () => {
 		expect(response.send).toHaveBeenCalledWith('OAuth token validation is not available');
 	});
 
-	// Recording leaves the request alone; the trigger decides whether to act on it
 	it('records the authorization header as consumed once the token is validated', async () => {
 		const { context, request } = buildContext({
 			authorization: 'Bearer good-token',

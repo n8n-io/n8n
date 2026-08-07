@@ -197,7 +197,8 @@ export const getConnectedTools = async (
 	escapeCurlyBrackets: boolean = false,
 	options?: { inputData?: IDataObject },
 ): Promise<Tool[]> => {
-	// Only a webhook context can seed the sub-nodes' input with something other than the body.
+	// `getRequestObject` narrows to IWebhookFunctions, the only context whose
+	// getInputConnectionData signature takes the input override.
 	const toolkitConnections = (await ('getRequestObject' in ctx
 		? ctx.getInputConnectionData(NodeConnectionTypes.AiTool, 0, options)
 		: ctx.getInputConnectionData(NodeConnectionTypes.AiTool, 0))) as SupplyDataToolResponse[];

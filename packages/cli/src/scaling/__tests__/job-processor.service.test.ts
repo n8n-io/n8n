@@ -1276,13 +1276,9 @@ describe('JobProcessor', () => {
 				position: [0, 0] as [number, number],
 			};
 
-			// Built on the main by the trigger, so the worker passes it through as-is
 			const mcpToolInput = { method: 'tools/call', headers: { 'x-user-id': 'user-1' } };
 
-			/**
-			 * Runs a tool call where the tool feeds `triggerNames` (in connection order) and
-			 * only `triggerThatRan` has run data, and returns what the tool node saw.
-			 */
+			/** `triggerNames` is in connection order; only `triggerThatRan` gets run data. */
 			const runToolCall = async ({
 				triggerNames,
 				triggerThatRan,
@@ -1326,8 +1322,8 @@ describe('JobProcessor', () => {
 					mock<IExecutionResponse>({ status: 'success', workflowData }),
 				);
 
-				// The completed run must carry real (mutable) run-execution-data, so the tool
-				// node's own run lands in `resultData.runData` next to the trigger's.
+				// Real (mutable) run-execution-data, not a mock, so the tool node's own run
+				// lands in `resultData.runData` next to the trigger's.
 				const run: IRun = {
 					mode: 'trigger',
 					status: 'success',
@@ -1402,7 +1398,6 @@ describe('JobProcessor', () => {
 				expect(toolNodeInput).toEqual([{ json: expected }]);
 			});
 
-			// A tool shared between triggers must not depend on connection order
 			it.each(['MCP Trigger A', 'MCP Trigger B'])(
 				'should record the tool run against the trigger that ran (%s)',
 				async (triggerThatRan) => {

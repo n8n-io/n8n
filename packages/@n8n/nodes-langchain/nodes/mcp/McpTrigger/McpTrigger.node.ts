@@ -204,8 +204,8 @@ export class McpTrigger extends Node {
 
 		const node = context.getNode();
 
-		// The credential n8n authenticated with is its own, so the tools never see its value —
-		// neither here nor on the worker, which rebuilds their input from `toolInput`.
+		// n8n's own auth credential must never reach the tools — not here, and not on the
+		// worker, which rebuilds their input from `toolInput`.
 		const headers = redactedHeaders(req);
 		const toolInput: IDataObject | undefined =
 			node.typeVersion >= 2.1 ? { body: context.getBodyData(), headers } : undefined;

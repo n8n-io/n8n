@@ -96,9 +96,8 @@ export const n8nOAuth2Auth = async (
 	}
 
 	// The bearer token is n8n's own, issued for this resource — the validated identity
-	// travels via `establishTriggerIdentity` instead. Triggers that keep it out of node
-	// input call `redactedHeaders`.
-	recordConsumedAuth(req, { headers: ['authorization'] });
+	// travels via `establishTriggerIdentity` instead.
+	recordConsumedAuth(req, ['authorization']);
 
 	return {
 		status: 'ok',
