@@ -2231,8 +2231,6 @@
 	"nodeCredentials.quickConnect.consent.confirm": "Confirm",
 	"nodeCredentials.quickConnect.credential.created.success": "Credential created successfully",
 	"nodeCredentials.quickConnect.credential.created.error": "Failed to create the credential",
-	"nodeCredentials.emptyState.noCredentials": "No credentials yet",
-	"nodeCredentials.emptyState.setupCredential": "Set up credential",
 	"nodeCredentials.oauth.accountConnected": "Account connected successfully",
 	"aiGateway.toggle.label": "Use n8n credits",
 	"aiGateway.toggle.description": "n8n credits is the easy way to manage AI model usage",

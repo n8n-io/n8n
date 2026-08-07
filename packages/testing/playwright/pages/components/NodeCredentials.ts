@@ -99,36 +99,39 @@ export class NodeCredentials {
 		return this.root.getByTestId('setup-manually-link').nth(eq);
 	}
 
-	getSetupCredentialButton(eq: number = 0): Locator {
-		return this.root.getByTestId('setup-credential-button').nth(eq);
-	}
-
 	/**
 	 * Enter the "create new credential" flow. Handles the three possible
 	 * UI states for an empty credential slot:
 	 *
 	 *  - "Set up manually" link (when the picker offers auth alternatives)
-	 *  - "Set up credential" button (quick-connect empty state)
+	 *  - Standard empty-state picker → opens the compact select and clicks
+	 *    "Use my own credential"
 	 *  - Existing picker → opens the dropdown and clicks "Create new"
+	 *
+	 * The last two share the same create row (`node-credentials-select-item-new`);
+	 * they differ only in which trigger opens the dropdown.
 	 */
 	async clickCreateNew(eq: number = 0): Promise<void> {
 		const setupManually = this.getSetupManuallyLink(eq);
-		const setupCredential = this.getSetupCredentialButton(eq);
+		const emptyState = this.getEmptyState().nth(eq);
 		const credentialSelect = this.getSelect().nth(eq);
 
 		await Promise.race([
 			setupManually.waitFor({ state: 'visible', timeout: 10_000 }),
-			setupCredential.waitFor({ state: 'visible', timeout: 10_000 }),
+			emptyState.waitFor({ state: 'visible', timeout: 10_000 }),
 			credentialSelect.waitFor({ state: 'visible', timeout: 10_000 }),
 		]);
 
 		if (await setupManually.isVisible()) {
 			await setupManually.click();
-		} else if (await setupCredential.isVisible()) {
-			await setupCredential.click();
-		} else {
-			await credentialSelect.click();
-			await this.getCreateNewItem(eq).click();
+			return;
 		}
+
+		// Both the populated picker and the empty-state select open a dropdown
+		// whose footer row creates a new credential. `eq` picks which slot's
+		// trigger to open; the resulting popper holds a single create row.
+		const trigger = (await credentialSelect.isVisible()) ? credentialSelect : emptyState;
+		await trigger.click();
+		await this.getCreateNewItem().click();
 	}
 }
