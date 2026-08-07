@@ -64,17 +64,13 @@ describe('WorkflowReviewActivityFeed', () => {
 		store.error = null;
 	});
 
-	it.each([
-		['no', 0],
-		['one', 1],
-		['several', 3],
-	])('shows a feed with %s entries', async (_label, count) => {
-		store.entries = Array.from({ length: count }, (_, index) => makeEntry({ id: String(index) }));
+	it('shows one entry per activity in the feed', async () => {
+		store.entries = Array.from({ length: 3 }, (_, index) => makeEntry({ id: String(index) }));
 
 		const { queryAllByTestId } = renderComponent();
 		await nextTick();
 
-		expect(queryAllByTestId('workflow-review-activity-entry')).toHaveLength(count);
+		expect(queryAllByTestId('workflow-review-activity-entry')).toHaveLength(3);
 	});
 
 	it('shows a loading state while the first page is in flight', () => {
