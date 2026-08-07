@@ -5499,27 +5499,12 @@ importers:
       '@n8n/api-types':
         specifier: workspace:*
         version: link:../../../@n8n/api-types
-      '@n8n/constants':
-        specifier: workspace:*
-        version: link:../../../@n8n/constants
       '@n8n/frontend-utils':
         specifier: workspace:*
         version: link:../frontend-utils
-      '@n8n/permissions':
-        specifier: workspace:*
-        version: link:../../../@n8n/permissions
-      '@n8n/utils':
-        specifier: workspace:*
-        version: link:../../../@n8n/utils
       axios:
         specifier: 1.18.0
         version: 1.18.0(patch_hash=149e256a2a7b632497650b32816716ced972ab02a5ab00fbd8a5158a51722c49)(debug@4.4.3)
-      flatted:
-        specifier: 3.4.2
-        version: 3.4.2
-      js-base64:
-        specifier: 'catalog:'
-        version: 3.7.8
       n8n-workflow:
         specifier: workspace:*
         version: link:../../../workflow
@@ -5527,9 +5512,6 @@ importers:
       '@n8n/eslint-config':
         specifier: workspace:*
         version: link:../../../@n8n/eslint-config
-      '@n8n/i18n':
-        specifier: workspace:*
-        version: link:../i18n
       '@n8n/playwright-janitor':
         specifier: workspace:*
         version: link:../../../testing/janitor
@@ -5539,12 +5521,6 @@ importers:
       '@n8n/vitest-config':
         specifier: workspace:*
         version: link:../../../@n8n/vitest-config
-      '@testing-library/jest-dom':
-        specifier: catalog:frontend
-        version: 6.6.3
-      '@testing-library/user-event':
-        specifier: catalog:frontend
-        version: 14.6.1(@testing-library/dom@10.4.0)
       tsdown:
         specifier: 'catalog:'
         version: 0.16.5(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(typescript@6.0.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2))

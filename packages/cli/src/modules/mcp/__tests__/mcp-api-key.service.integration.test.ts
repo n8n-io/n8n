@@ -10,6 +10,7 @@ import { TOKEN_EXCHANGE_ISSUER } from '@/modules/token-exchange/token-exchange.t
 import { ApiKeyAuthStrategy } from '@/services/api-key-auth.strategy';
 import { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
 import { JwtService } from '@/services/jwt.service';
+import { SessionCookieAuthStrategy } from '@/services/session-cookie-auth.strategy';
 import { createMember, createOwner, createOwnerWithApiKey } from '@test-integration/db/users';
 
 import { McpServerApiKeyService } from '../mcp-api-key.service';
@@ -41,10 +42,11 @@ describe('McpServerApiKeyService.verifyApiKey (integration)', () => {
 	beforeAll(async () => {
 		await testDb.init();
 
-		// Mirror the registration order set up by public API + token-exchange module init.
+		// Mirror the registration order set up by server.ts + token-exchange module init.
 		const registry = Container.get(AuthStrategyRegistry);
 		jwtService = Container.get(JwtService);
 		registry.register(Container.get(ApiKeyAuthStrategy));
+		registry.register(Container.get(SessionCookieAuthStrategy));
 		registry.register(Container.get(ScopedJwtStrategy));
 
 		service = Container.get(McpServerApiKeyService);
@@ -142,6 +144,9 @@ describe('McpServerApiKeyService.verifyApiKey (integration)', () => {
 				token: () => makeScopedJwt(jwtService, '00000000-0000-0000-0000-000000000000'),
 			},
 			{
+				// SessionCookieAuthStrategy is registered into the same registry above,
+				// so this proves its buildTokenGrant genuinely abstains rather than the
+				// audience check merely never encountering the strategy.
 				name: 'a valid browser session cookie (must not satisfy the mcp-server-api audience)',
 				token: async () => {
 					const owner = await createOwner();

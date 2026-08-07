@@ -9,7 +9,7 @@ import { AuthService } from '@/auth/auth.service';
 import { AUTH_COOKIE_NAME } from '@/constants';
 import { createOwner } from '@test-integration/db/users';
 
-import { PublicApiCookieAuthenticator } from '../public-api-cookie-authenticator';
+import { SessionCookieAuthStrategy } from '../session-cookie-auth.strategy';
 
 // MFA enforcement gates inside AuthService.authenticateUserBasedOnToken call into the
 // license state; stub it so any feature check returns "not licensed".
@@ -32,13 +32,13 @@ const mockReqWithoutCookie = (): AuthenticatedRequest => {
 };
 
 let authService: AuthService;
-let authenticator: PublicApiCookieAuthenticator;
+let authenticator: SessionCookieAuthStrategy;
 
-describe('PublicApiCookieAuthenticator', () => {
+describe('SessionCookieAuthStrategy', () => {
 	beforeAll(async () => {
 		await testDb.init();
 		authService = Container.get(AuthService);
-		authenticator = new PublicApiCookieAuthenticator(authService);
+		authenticator = new SessionCookieAuthStrategy(authService);
 	});
 
 	beforeEach(async () => {
@@ -88,7 +88,16 @@ describe('PublicApiCookieAuthenticator', () => {
 		expect(await authenticator.authenticate(mockReqWith(token))).toBe(false);
 	});
 
-	it('has no buildTokenGrant method — session cookies must never satisfy audience-scoped bearer-token checks', () => {
-		expect('buildTokenGrant' in authenticator).toBe(false);
+	it('buildTokenGrant always abstains — session cookies must never satisfy audience-scoped bearer-token checks', async () => {
+		expect(await authenticator.buildTokenGrant('anything')).toBeNull();
+		expect(await authenticator.buildTokenGrant('')).toBeNull();
+
+		// Even a genuinely valid session JWT, passed as a raw bearer token with an
+		// audience mirroring a real scoped-token check, must still be refused.
+		const owner = await createOwner();
+		const validSessionJwt = authService.issueJWT(owner, false);
+		expect(
+			await authenticator.buildTokenGrant(validSessionJwt, { audience: 'mcp-server-api' }),
+		).toBeNull();
 	});
 });
