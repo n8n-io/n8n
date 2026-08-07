@@ -268,7 +268,7 @@ describe('AiGatewaySelector', () => {
 
 			expect(uiStore.openModalWithData).toHaveBeenCalledWith({
 				name: AI_GATEWAY_TOP_UP_MODAL_KEY,
-				data: { credentialType: undefined },
+				data: { credentialType: undefined, source: 'credential_selector' },
 			});
 		});
 
@@ -297,7 +297,7 @@ describe('AiGatewaySelector', () => {
 
 			expect(uiStore.openModalWithData).toHaveBeenCalledWith({
 				name: AI_GATEWAY_TOP_UP_MODAL_KEY,
-				data: { credentialType: undefined },
+				data: { credentialType: undefined, source: 'credential_selector' },
 			});
 		});
 	});
