@@ -243,24 +243,11 @@ export function providerIdFromModelId(modelId: string): string {
 export const GLM_52_DEFAULT_MAX_OUTPUT_TOKENS = 65_536;
 
 /**
- * Kimi K3 default completion tokens on direct/OpenAI-compatible routes.
+ * Kimi K3 default completion tokens.
  * Context window is 131072 input+output shared; requesting the full window as
  * max_tokens overflows once any prompt tokens are present.
  */
 export const KIMI_K3_DEFAULT_MAX_OUTPUT_TOKENS = 65_536;
-
-/**
- * Thinking budget for Fireworks models on the Anthropic Messages path.
- * Keep in sync with `applyAgentThinking` in `@n8n/instance-ai`.
- */
-export const FIREWORKS_ANTHROPIC_THINKING_BUDGET_TOKENS = 8_192;
-
-/**
- * n8n AI Anthropic proxy validates `max_tokens` against Claude Sonnet's 64k cap,
- * even when the upstream model is Fireworks Kimi. The AI SDK adds the thinking
- * budget into `max_tokens`, so the caller's maxOutputTokens must leave room.
- */
-export const ANTHROPIC_PROXY_MAX_OUTPUT_TOKENS = 64_000;
 
 function isGlm52Model(modelId: string): boolean {
 	const modelName = (
@@ -282,19 +269,10 @@ function isKimiK3Model(modelId: string): boolean {
  * before emitting text or tool calls.
  */
 export function resolveDefaultMaxOutputTokens(modelId: string): number | undefined {
-	const provider = providerIdFromModelId(modelId);
-	if (
-		(provider === 'baseten' || provider === 'openai' || provider === 'morph') &&
-		isGlm52Model(modelId)
-	) {
+	if (isGlm52Model(modelId)) {
 		return GLM_52_DEFAULT_MAX_OUTPUT_TOKENS;
 	}
-	// Covers direct Fireworks/OpenRouter/Wafer/Morph ids and Anthropic-proxy
-	// LanguageModels (`anthropic/accounts/fireworks/models/kimi-k3`).
 	if (isKimiK3Model(modelId)) {
-		if (provider === 'anthropic') {
-			return ANTHROPIC_PROXY_MAX_OUTPUT_TOKENS - FIREWORKS_ANTHROPIC_THINKING_BUDGET_TOKENS;
-		}
 		return KIMI_K3_DEFAULT_MAX_OUTPUT_TOKENS;
 	}
 	return undefined;

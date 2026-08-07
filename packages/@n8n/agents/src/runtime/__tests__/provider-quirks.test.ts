@@ -1,8 +1,6 @@
 import { describe, it, expect } from 'vitest';
 
 import {
-	ANTHROPIC_PROXY_MAX_OUTPUT_TOKENS,
-	FIREWORKS_ANTHROPIC_THINKING_BUDGET_TOKENS,
 	GLM_52_DEFAULT_MAX_OUTPUT_TOKENS,
 	KIMI_K3_DEFAULT_MAX_OUTPUT_TOKENS,
 	applyToolProviderOptionDefaults,
@@ -333,15 +331,6 @@ describe('resolveDefaultMaxOutputTokens', () => {
 		'morph/morph-kimik3-fast',
 	] as const)('raises the output cap to the Kimi K3 default for %s', (modelId) => {
 		expect(resolveDefaultMaxOutputTokens(modelId)).toBe(KIMI_K3_DEFAULT_MAX_OUTPUT_TOKENS);
-	});
-
-	it.each([
-		'anthropic/accounts/fireworks/models/kimi-k3',
-		'anthropic/accounts/fireworks/routers/kimi-k3-fast',
-	] as const)('leaves room for thinking budget under the Anthropic proxy cap for %s', (modelId) => {
-		expect(resolveDefaultMaxOutputTokens(modelId)).toBe(
-			ANTHROPIC_PROXY_MAX_OUTPUT_TOKENS - FIREWORKS_ANTHROPIC_THINKING_BUDGET_TOKENS,
-		);
 	});
 
 	it('leaves unrelated models unset', () => {
