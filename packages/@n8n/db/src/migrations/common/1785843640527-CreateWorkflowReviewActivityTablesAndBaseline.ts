@@ -63,13 +63,11 @@ export class CreateWorkflowReviewActivityTablesAndBaseline1785843640527
 					.comment('Schema version of the `data` payload for this `type`'),
 				column('data').json.comment('Detail per activity type'),
 				column('createdById').uuid,
-				// A review can cover several workflows and a caller may read only some of them, so
-				// workflow-scoped entries have to be filtered in the WHERE clause: filtering after
-				// the query would break the keyset paging, which derives `hasMore` and the next
-				// cursor from the rows the page returned. Hence a column, not a key in `data`.
+				// A column rather than a key in `data` so the feed can query and filter on it
+				// directly, for instance by what the reader may open.
 				column('workflowId')
 					.varchar(36)
-					.comment('Workflow this entry is about; NULL for review-level entries like comments'),
+					.comment('Scopes the entry to one workflow; NULL for review-level entries like comments'),
 			)
 			.withCreatedAt.withForeignKey('workflowReviewRequestId', {
 				tableName: REQUEST_TABLE,

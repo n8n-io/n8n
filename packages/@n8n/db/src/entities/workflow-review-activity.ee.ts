@@ -42,10 +42,9 @@ export class WorkflowReviewActivity extends WithCreatedAt {
 	createdById: string | null;
 
 	/**
-	 * Workflow this entry is about; `null` for review-level entries such as comments. A column
-	 * rather than a key in `data` because the feed must filter unreadable workflows in the WHERE
-	 * clause: the keyset paging derives `hasMore` and the next cursor from the rows the page
-	 * returned, so filtering afterwards breaks both. Nothing writes it until LIGO-935.
+	 * Scopes an entry to one workflow; `null` for review-level entries such as comments. A column
+	 * rather than a key in `data` so the feed can query and filter on it directly, for instance to
+	 * leave out entries about workflows the reader may not open. Nothing writes it yet.
 	 */
 	@Column({ type: 'varchar', length: 36, nullable: true })
 	workflowId: string | null;

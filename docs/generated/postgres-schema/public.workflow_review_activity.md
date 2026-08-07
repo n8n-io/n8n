@@ -10,7 +10,7 @@
 | id | integer |  | false | [public.workflow_review_activity_comment](public.workflow_review_activity_comment.md) |  |  |
 | type | varchar(64) |  | false |  |  | Feed entry kind; see WorkflowReviewActivityType in @n8n/api-types |
 | typeVersion | integer | 1 | false |  |  | Schema version of the `data` payload for this `type` |
-| workflowId | varchar(36) |  | true |  | [public.workflow_entity](public.workflow_entity.md) | Workflow this entry is about; NULL for review-level entries like comments |
+| workflowId | varchar(36) |  | true |  | [public.workflow_entity](public.workflow_entity.md) | Scopes the entry to one workflow; NULL for review-level entries like comments |
 | workflowReviewRequestId | varchar(36) |  | false |  | [public.workflow_review_request](public.workflow_review_request.md) |  |
 
 ## Constraints
