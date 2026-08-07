@@ -15,7 +15,7 @@ import { Telemetry } from '@/telemetry';
 import { McpServerApiKeyService } from './mcp-api-key.service';
 import { McpProtectedResource } from './mcp-protected-resource';
 import { USER_CONNECTED_TO_MCP_EVENT, UNAUTHORIZED_ERROR_MESSAGE } from './mcp.constants';
-import { getClientInfo } from './mcp.utils';
+import { getClientInfo, getProtocolVersion } from './mcp.utils';
 
 /**
  * MCP Server Middleware Service
@@ -142,6 +142,7 @@ export class McpServerMiddlewareService {
 			error: UNAUTHORIZED_ERROR_MESSAGE,
 			client_name: clientInfo?.name,
 			client_version: clientInfo?.version,
+			protocol_version: getProtocolVersion(req),
 			...context,
 		};
 		this.telemetry.track(USER_CONNECTED_TO_MCP_EVENT, payload);

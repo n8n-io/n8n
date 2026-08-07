@@ -16,6 +16,26 @@ export const MCP_PREVIEW_RENDER_REQUESTED_EVENT = 'MCP App preview render reques
 export const MCP_CREDENTIALS_AUTOASSIGN_EVENT = 'MCP credentials autoassign';
 
 /**
+ * Per-request `_meta` envelope keys (2026-07-28 revision, SEP-2575). The
+ * `initialize` handshake is gone; clients now stamp their protocol version and
+ * identity into `params._meta` on every request, keyed by these spec-defined
+ * URIs. Mirrored locally rather than imported so reading them off a request
+ * never eagerly loads the v2 SDK at boot — every value import of
+ * `@modelcontextprotocol/server` is lazy (see mcp.controller.ts /
+ * mcp.service.ts). A unit test pins these to the SDK's exported constants so
+ * they can't silently drift.
+ */
+export const MCP_PROTOCOL_VERSION_META_KEY = 'io.modelcontextprotocol/protocolVersion';
+export const MCP_CLIENT_INFO_META_KEY = 'io.modelcontextprotocol/clientInfo';
+
+/**
+ * The modern capability-discovery RPC (SEP-2575). Replaces `initialize` as the
+ * point where a client probes the server's protocol version and capabilities,
+ * so it's the connection-handshake analog for telemetry.
+ */
+export const MCP_DISCOVER_METHOD = 'server/discover';
+
+/**
  * Message constants
  */
 export const UNAUTHORIZED_ERROR_MESSAGE = 'Unauthorized';

@@ -120,7 +120,10 @@ export type JSONRPCRequest = {
 	jsonrpc?: string;
 	method?: string;
 	params?: {
+		/** 2025-era location; superseded by the `_meta` envelope in 2026-07-28. */
 		clientInfo?: McpClientInfo;
+		/** Per-request envelope carrying protocol version and client identity. */
+		_meta?: Record<string, unknown>;
 		[key: string]: unknown;
 	};
 	id?: string | number | null;
@@ -138,6 +141,8 @@ export type UserConnectedToMCPEventPayload = {
 	user_id?: string;
 	client_name?: string;
 	client_version?: string;
+	/** Protocol revision the client declared in its `_meta` envelope (2026-07-28+). */
+	protocol_version?: string;
 	auth_type?: Mcpauth_type;
 	mcp_connection_status: 'success' | 'error';
 	mcp_apps_enabled?: boolean;
