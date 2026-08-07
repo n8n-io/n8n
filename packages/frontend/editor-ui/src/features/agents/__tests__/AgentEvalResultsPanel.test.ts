@@ -74,6 +74,7 @@ const render = (
 	vi.mocked(store.getDraft).mockReturnValue(undefined);
 	vi.mocked(store.isStartingRun).mockReturnValue(false);
 	vi.mocked(store.isRunInFlight).mockReturnValue(inFlight);
+	vi.mocked(store.wouldDiscardOnAgreement).mockReturnValue(false);
 
 	return { ...renderComponent({ pinia }), store };
 };
@@ -255,6 +256,8 @@ describe('AgentEvalResultsPanel', () => {
 			vi.mocked(store.getDraft).mockReturnValue(undefined);
 			vi.mocked(store.isStartingRun).mockReturnValue(false);
 			vi.mocked(store.isRunInFlight).mockReturnValue(false);
+			// The persisted rating carries a note, so agreement would discard it.
+			vi.mocked(store.wouldDiscardOnAgreement).mockReturnValue(true);
 
 			const { getAllByTestId } = renderComponent({ pinia });
 			await userEvent.click(getAllByTestId('stub-vote-up')[0]);

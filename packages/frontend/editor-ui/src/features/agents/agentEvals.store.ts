@@ -246,6 +246,70 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 		getReview(runId).results.length <= MAX_ITEMS_PER_PAGE;
 
 	/**
+	 * Reads back a window wider than one request by walking pages.
+	 *
+	 * `take` is clamped server-side, so a window past the cap cannot be fetched in
+	 * one go — and asking anyway silently returns fewer rows than are on screen.
+	 * Only used where correctness beats request count (settling a run), never on the
+	 * polling path.
+	 */
+	const readResultsWindow = async (
+		projectId: string,
+		agentId: string,
+		runId: string,
+		target: number,
+	) => {
+		const collected: AgentEvalResultRecord[] = [];
+		let run: AgentEvalRunRecord | null = null;
+		let total = 0;
+
+		while (collected.length < target) {
+			const detail = await agentEvalsApi.getRunDetail(
+				rootStore.restApiContext,
+				projectId,
+				agentId,
+				runId,
+				{
+					take: Math.min(AGENT_EVAL_RESULTS_DEFAULT_TAKE, target - collected.length),
+					skip: collected.length,
+				},
+			);
+			const { results, ...rest } = detail;
+			run = rest;
+			total = results.count;
+			if (results.data.length === 0) break;
+			collected.push(...results.data);
+			if (collected.length >= total) break;
+		}
+
+		return { run, results: collected, total };
+	};
+
+	/**
+	 * The one-off read when a run finishes: every case now has a final status and an
+	 * answer, and any rating submitted while it was running needs picking up.
+	 *
+	 * Results and ratings are refreshed independently, because they fail differently
+	 * — the results window can exceed what a single request carries, the ratings
+	 * route is unpaginated and always readable in one.
+	 */
+	const settleRun = async (projectId: string, agentId: string, runId: string) => {
+		const target = loadedWindow(runId);
+		const [window, ratings] = await Promise.all([
+			readResultsWindow(projectId, agentId, runId, target),
+			agentEvalsApi.listLatestRatingsForRun(rootStore.restApiContext, projectId, agentId, runId),
+		]);
+
+		const current = getReview(runId);
+		patchReview(runId, {
+			...(window.run ? { run: window.run } : {}),
+			results: window.results,
+			resultsCount: window.total,
+			ratingsByResultId: mergeRatings(current.ratingsByResultId, ratings),
+		});
+	};
+
+	/**
 	 * Loads a run's cases together with every latest rating in the run. Ratings are
 	 * read whole rather than per page: the route returns one row per rated case,
 	 * which keeps the reviewed tally right before the user pages.
@@ -343,6 +407,22 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 
 	const startingDraft = (runId: string, resultId: string): ReviewDraft =>
 		getDraft(runId, resultId) ?? draftFromRating(getReview(runId).ratingsByResultId[resultId]);
+
+	/**
+	 * Whether switching this case to agreement would throw away a reason or a rewrite.
+	 *
+	 * Reads the persisted rating and the draft directly rather than the row's view:
+	 * a view is shadowed by any open draft, so a reviewer who had just opened the
+	 * note editor would look unrated and lose the note without being asked.
+	 */
+	const wouldDiscardOnAgreement = (runId: string, resultId: string) => {
+		const state = getReview(runId);
+		const saved = state.ratingsByResultId[resultId];
+		if (saved && (saved.comment ?? readCorrectionText(saved.correction))) return true;
+
+		const draft = state.draftsByResultId[resultId];
+		return Boolean(draft && (draft.comment.trim() || draft.correction.trim()));
+	};
 
 	const beginVote = (runId: string, resultId: string, vote: AgentEvalVote) => {
 		const draft = startingDraft(runId, resultId);
@@ -522,13 +602,11 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 			});
 
 			if (!isPendingStatus(summary.status)) {
-				// Settled: re-read so answers and ratings land together, over the window
-				// the reviewer has open rather than just the first page. Past the route's
-				// cap the read would return fewer rows than are on screen, so the list is
-				// left as it is — every row in it is already final by definition.
-				if (canRefreshWholeWindow(runId)) {
-					await openRun(projectId, agentId, runId, loadedWindow(runId));
-				}
+				// Settled: always re-read. Rows loaded while the run was in flight still
+				// carry a queued/running status and no answer, so skipping this would
+				// leave them waiting on an agent that has already finished — and any
+				// rating submitted during the run would stay missing.
+				await settleRun(projectId, agentId, runId);
 				return true;
 			}
 
@@ -621,6 +699,7 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 		loadMoreResults,
 		getDraft,
 		beginVote,
+		wouldDiscardOnAgreement,
 		beginAnswerEdit,
 		beginNoteEdit,
 		setDraftComment,
@@ -656,7 +735,11 @@ const mergeRatings = (
 	const merged = { ...held };
 	for (const rating of fetched) {
 		const mine = merged[rating.resultId];
-		if (!mine || ratedAt(rating) >= ratedAt(mine)) merged[rating.resultId] = rating;
+		// Strictly newer, so a tie keeps what is held. Two ratings can share a
+		// millisecond, and the server's ordering between them is arbitrary — but a
+		// held record is one this client just saved or last read, so preferring it
+		// means an in-flight read can never undo the most recent vote.
+		if (!mine || ratedAt(rating) > ratedAt(mine)) merged[rating.resultId] = rating;
 	}
 	return merged;
 };

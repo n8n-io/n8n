@@ -103,11 +103,10 @@ const onSave = async (resultId: string) => {
 };
 
 const onVote = async (resultId: string, vote: AgentEvalVote) => {
-	// Read before the draft is written: whether this vote discards anything depends
-	// on what was already persisted.
-	const before = viewFor(resultId);
-	const discardsWork =
-		before.kind === 'settled' && (before.comment !== null || before.correction !== null);
+	// Asked before the draft is written, and answered from the persisted rating
+	// rather than the row's view — a view is shadowed by any open draft, so reading
+	// it here would treat a row whose note editor happens to be open as unrated.
+	const discardsWork = store.wouldDiscardOnAgreement(props.runId, resultId);
 
 	store.beginVote(props.runId, resultId, vote);
 

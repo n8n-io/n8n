@@ -780,15 +780,24 @@ describe('useAgentEvalsStore', () => {
 		// without the preserved window a reviewer who had paged through a long run
 		// would be yanked back to the first 50 the moment it finished.
 		it('settles over the window the reviewer had paged in', async () => {
-			getRunDetail.mockResolvedValue(
-				runDetail(
-					Array.from({ length: 60 }, (_, i) => result(`c${i}`)),
-					60,
-				),
+			// Honours take/skip so paging is observable — a mock returning every row
+			// regardless would make a single unpaged read look correct.
+			const all = Array.from({ length: 60 }, (_, i) => result(`c${i}`));
+			getRunDetail.mockImplementation(
+				async (
+					_ctx: unknown,
+					_p: string,
+					_a: string,
+					_r: string,
+					q: { take: number; skip: number },
+				) => ({
+					...run(RUN_ID),
+					results: { count: all.length, data: all.slice(q.skip, q.skip + q.take) },
+				}),
 			);
 			listLatestRatingsForRun.mockResolvedValue([]);
 			const store = useAgentEvalsStore();
-			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
+			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID, 60);
 			expect(store.getReview(RUN_ID).results).toHaveLength(60);
 
 			getRunSummary.mockResolvedValue({
@@ -799,10 +808,14 @@ describe('useAgentEvalsStore', () => {
 			store.startPollingRun(PROJECT_ID, AGENT_ID, RUN_ID);
 			await vi.advanceTimersByTimeAsync(0);
 
-			expect(getRunDetail).toHaveBeenLastCalledWith(REST_CONTEXT, PROJECT_ID, AGENT_ID, RUN_ID, {
-				take: 60,
-				skip: 0,
-			});
+			// Paged, because a 60-row window can't be asked for in one clamped request:
+			// 50 from the top, then the remaining 10.
+			const windows = getRunDetail.mock.calls.slice(-2).map((c) => c[4]);
+			expect(windows).toEqual([
+				{ take: 50, skip: 0 },
+				{ take: 10, skip: 50 },
+			]);
+			expect(store.getReview(RUN_ID).results).toHaveLength(60);
 			store.stopPollingRun();
 		});
 
