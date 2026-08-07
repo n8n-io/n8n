@@ -7,6 +7,10 @@ import { mockedStore } from '@/__tests__/utils';
 import { createComponentRenderer } from '@/__tests__/render';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
+import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import type { AiGatewayConfigDto } from '@n8n/api-types';
+import type { ICredentialType } from 'n8n-workflow';
 import AiGatewayTopUpModal from './AiGatewayTopUpModal.vue';
 
 const mockGoToUpgrade = vi.fn();
@@ -34,19 +38,41 @@ vi.mock('@/features/credentials/components/CredentialIcon.vue', () => ({
 
 const renderComponent = createComponentRenderer(AiGatewayTopUpModal);
 
+const KNOWN_CREDENTIAL_TYPES: Record<string, string> = {
+	openAiApi: 'OpenAI',
+	anthropicApi: 'Anthropic',
+	googlePalmApi: 'Google Gemini(PaLM) Api',
+	serpApi: 'SerpAPI',
+	firecrawlApi: 'Firecrawl',
+	browserbaseApi: 'Browserbase',
+	pdfcoApi: 'PDF.co',
+	scrapelessApi: 'Scrapeless',
+};
+
 function renderModal({
 	isInstanceOwner,
 	userIsTrialing,
+	credentialTypes,
 }: {
 	isInstanceOwner: boolean;
 	userIsTrialing: boolean;
+	credentialTypes?: string[];
 }) {
 	const pinia = createTestingPinia();
 	setActivePinia(pinia);
 	const usersStore = mockedStore(useUsersStore);
 	const cloudPlanStore = mockedStore(useCloudPlanStore);
+	const aiGatewayStore = mockedStore(useAiGatewayStore);
+	const credentialsStore = mockedStore(useCredentialsStore);
 	usersStore.isInstanceOwner = isInstanceOwner;
 	cloudPlanStore.userIsTrialing = userIsTrialing;
+	aiGatewayStore.config = {
+		credentialTypes: credentialTypes ?? ['openAiApi', 'anthropicApi'],
+	} as AiGatewayConfigDto;
+	credentialsStore.getCredentialTypeByName = (name: string) =>
+		KNOWN_CREDENTIAL_TYPES[name]
+			? ({ name, displayName: KNOWN_CREDENTIAL_TYPES[name] } as ICredentialType)
+			: undefined;
 	return renderComponent({ pinia });
 }
 
@@ -62,10 +88,42 @@ describe('AiGatewayTopUpModal.vue', () => {
 		expect(screen.getByText(/Only the Instance Owner can top up/)).toBeInTheDocument();
 		expect(screen.getByTestId('ai-gateway-topup-services')).toBeInTheDocument();
 		expect(screen.getByText('OpenAI')).toBeInTheDocument();
-		expect(screen.getByText('Firecrawl')).toBeInTheDocument();
-		expect(screen.getByText('Browserbase')).toBeInTheDocument();
+		expect(screen.getByText('Anthropic')).toBeInTheDocument();
 		expect(screen.getByTestId('ai-gateway-topup-close')).toBeInTheDocument();
 		expect(screen.queryByTestId('ai-gateway-topup-upgrade')).not.toBeInTheDocument();
+	});
+
+	it('lists the services the gateway covers, dropping types this instance cannot render', () => {
+		renderModal({
+			isInstanceOwner: false,
+			userIsTrialing: false,
+			credentialTypes: ['someUnknownApi', 'firecrawlApi', 'openAiApi'],
+		});
+
+		expect(screen.getByText('Firecrawl')).toBeInTheDocument();
+		expect(screen.getByText('OpenAI')).toBeInTheDocument();
+		expect(screen.queryByText('someUnknownApi')).not.toBeInTheDocument();
+	});
+
+	it('trims the credential-picker suffix from partner names', () => {
+		renderModal({
+			isInstanceOwner: false,
+			userIsTrialing: false,
+			credentialTypes: ['googlePalmApi', 'serpApi'],
+		});
+
+		expect(screen.getByText('Google Gemini(PaLM)')).toBeInTheDocument();
+		expect(screen.getByText('SerpAPI')).toBeInTheDocument();
+	});
+
+	it('summarises the remainder when the gateway covers more than the preview fits', () => {
+		renderModal({
+			isInstanceOwner: false,
+			userIsTrialing: false,
+			credentialTypes: Object.keys(KNOWN_CREDENTIAL_TYPES),
+		});
+
+		expect(screen.getByText('and 2 more services')).toBeInTheDocument();
 	});
 
 	it('shows owner copy for owners when the Cloud redirect is unavailable', () => {

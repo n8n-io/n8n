@@ -1,7 +1,7 @@
 <script lang="ts" setup>
-import { computed } from 'vue';
-import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
-import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import { computed, onMounted } from 'vue';
+import { N8nButton, N8nCard, N8nHeading, N8nIcon, N8nText } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
 import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
@@ -9,22 +9,71 @@ import { AI_GATEWAY_TOP_UP_MODAL_KEY, CLOUD_N8N_CONNECT_TOP_UP_PATH } from '@/ap
 import Modal from '@/app/components/Modal.vue';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
+import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 
 const i18n = useI18n();
 const usersStore = useUsersStore();
 const cloudPlanStore = useCloudPlanStore();
 const settingsStore = useSettingsStore();
+const aiGatewayStore = useAiGatewayStore();
+const credentialsStore = useCredentialsStore();
 const { goToUpgrade } = usePageRedirectionHelper();
 
 type TopUpVariant = 'member' | 'memberTrial' | 'owner' | 'ownerTrial';
 
-const COVERED_SERVICES = [
-	{ credentialType: 'openAiApi', labelKey: 'aiGateway.topUp.modal.service.openAi' },
-	{ credentialType: 'anthropicApi', labelKey: 'aiGateway.topUp.modal.service.anthropic' },
-	{ credentialType: 'googlePalmApi', labelKey: 'aiGateway.topUp.modal.service.google' },
-	{ credentialType: 'firecrawlApi', labelKey: 'aiGateway.topUp.modal.service.firecrawl' },
-	{ credentialType: 'browserbaseApi', labelKey: 'aiGateway.topUp.modal.service.browserbase' },
-] as const satisfies ReadonlyArray<{ credentialType: string; labelKey: BaseTextKey }>;
+const SERVICE_PREVIEW_LIMIT = 6;
+
+// Shown until the gateway config lands, and as a floor if it comes back empty.
+const FEATURED_CREDENTIAL_TYPES = ['openAiApi', 'anthropicApi', 'googlePalmApi'];
+
+// Credential display names are written for the credential picker ("Google Gemini(PaLM) Api");
+// drop the trailing noun so the tiles read as partner brands.
+function toBrandName(displayName: string): string {
+	return displayName.replace(/\s+(api|account|credentials?)$/i, '');
+}
+
+function featuredRank(credentialType: string): number {
+	const index = FEATURED_CREDENTIAL_TYPES.indexOf(credentialType);
+	return index === -1 ? FEATURED_CREDENTIAL_TYPES.length : index;
+}
+
+/**
+ * Covered services come from the gateway config rather than a hardcoded list, so the modal
+ * can only advertise what the gateway actually serves. Types this instance doesn't know are
+ * dropped — without a registered credential type there is no logo, and a placeholder glyph
+ * next to a partner name reads as broken.
+ */
+const coveredServices = computed(() => {
+	const credentialTypes = aiGatewayStore.config?.credentialTypes?.length
+		? aiGatewayStore.config.credentialTypes
+		: FEATURED_CREDENTIAL_TYPES;
+
+	return credentialTypes
+		.map((credentialType) => ({
+			credentialType,
+			displayName: credentialsStore.getCredentialTypeByName(credentialType)?.displayName,
+		}))
+		.filter(
+			(service): service is { credentialType: string; displayName: string } =>
+				service.displayName !== undefined,
+		)
+		.map((service) => ({ ...service, displayName: toBrandName(service.displayName) }))
+		.sort((a, b) => featuredRank(a.credentialType) - featuredRank(b.credentialType));
+});
+
+const visibleServices = computed(() => coveredServices.value.slice(0, SERVICE_PREVIEW_LIMIT));
+
+const hiddenServiceCount = computed(() =>
+	Math.max(coveredServices.value.length - SERVICE_PREVIEW_LIMIT, 0),
+);
+
+onMounted(async () => {
+	await Promise.allSettled([
+		aiGatewayStore.fetchConfig(),
+		credentialsStore.fetchCredentialTypes(false),
+	]);
+});
 
 const variant = computed<TopUpVariant>(() => {
 	if (usersStore.isInstanceOwner) {
@@ -96,31 +145,45 @@ async function onOpenAdminPanel(close: () => void): Promise<void> {
 			<div :class="$style.body">
 				<N8nIcon
 					:icon="showUpgradeCta ? 'circle-dollar-sign' : 'hand-coins'"
-					size="xlarge"
-					color="text-base"
+					:size="40"
+					:stroke-width="1.5"
+					color="foreground-xdark"
 				/>
-				<N8nText size="large" bold color="text-dark" tag="h2">{{ title }}</N8nText>
-				<N8nText size="small" color="text-light" tag="p" :class="$style.description">
-					{{ description }}
-				</N8nText>
+				<div :class="$style.intro">
+					<N8nHeading tag="h2" size="large" bold align="center">{{ title }}</N8nHeading>
+					<N8nText size="small" color="text-base" tag="p">{{ description }}</N8nText>
+				</div>
 
-				<div :class="$style.services" data-test-id="ai-gateway-topup-services">
+				<div
+					v-if="visibleServices.length"
+					:class="$style.services"
+					data-test-id="ai-gateway-topup-services"
+				>
 					<N8nText size="small" color="text-light">
 						{{ i18n.baseText('aiGateway.topUp.modal.servicesHint') }}
 					</N8nText>
-					<div :class="$style.providerIcons" role="list">
-						<div
-							v-for="service in COVERED_SERVICES"
+					<div :class="$style.serviceGrid" role="list">
+						<N8nCard
+							v-for="service in visibleServices"
 							:key="service.credentialType"
-							:class="$style.provider"
+							:class="$style.serviceCard"
 							role="listitem"
 						>
-							<CredentialIcon :credential-type-name="service.credentialType" :size="20" />
-							<N8nText size="small" color="text-base">
-								{{ i18n.baseText(service.labelKey) }}
-							</N8nText>
-						</div>
+							<div :class="$style.service">
+								<CredentialIcon :credential-type-name="service.credentialType" :size="18" />
+								<N8nText size="small" color="text-dark" :class="$style.serviceName">
+									{{ service.displayName }}
+								</N8nText>
+							</div>
+						</N8nCard>
 					</div>
+					<N8nText v-if="hiddenServiceCount" size="small" color="text-light">
+						{{
+							i18n.baseText('aiGateway.topUp.modal.servicesMore', {
+								interpolate: { count: hiddenServiceCount },
+							})
+						}}
+					</N8nText>
 				</div>
 			</div>
 		</template>
@@ -159,14 +222,20 @@ async function onOpenAdminPanel(close: () => void): Promise<void> {
 	flex-direction: column;
 	align-items: center;
 	text-align: center;
-	gap: var(--spacing--sm);
+	gap: var(--spacing--md);
 	padding: var(--spacing--sm) 0 var(--spacing--md);
 	min-height: 240px;
 	justify-content: center;
 }
 
-.description {
-	margin: 0;
+.intro {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+
+	p {
+		margin: 0;
+	}
 }
 
 .services {
@@ -175,21 +244,33 @@ async function onOpenAdminPanel(close: () => void): Promise<void> {
 	align-items: center;
 	gap: var(--spacing--xs);
 	width: 100%;
-	padding-top: var(--spacing--sm);
+	padding-top: var(--spacing--md);
 	border-top: var(--border-width) solid var(--color--foreground);
 }
 
-.providerIcons {
-	display: flex;
-	flex-wrap: wrap;
-	justify-content: center;
-	gap: var(--spacing--sm);
+.serviceGrid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+	gap: var(--spacing--2xs);
+	width: 100%;
 }
 
-.provider {
-	display: inline-flex;
+.serviceCard {
+	--card--padding: var(--spacing--2xs) var(--spacing--xs);
+}
+
+.service {
+	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
+	min-width: 0;
+	text-align: left;
+}
+
+.serviceName {
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
 }
 
 .footer {
