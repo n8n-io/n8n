@@ -3,8 +3,9 @@ import type { LanguageModel, Output } from 'ai';
 
 import type { AgentRuntimeConfig } from './agent-runtime';
 import type { AgentExecutionCounter, BuiltTool, JSONObject } from '../../types';
-import type { AgentPersistenceOptions, ExecutionOptions, ModelConfig } from '../../types/sdk/agent';
+import type { AgentPersistenceOptions, ExecutionOptions } from '../../types/sdk/agent';
 import { lockAdditionalProperties } from '../../utils/json-schema';
+import { getModelIdString } from '../../utils/model';
 import { isZodSchema } from '../../utils/zod';
 import {
 	createRecallMemoryTool,
@@ -29,21 +30,6 @@ import { buildToolMap, toAiSdkProviderTools, toAiSdkTools } from '../tools/tool-
 function wrapBuiltInRules(fragments: string[]): string | undefined {
 	if (fragments.length === 0) return undefined;
 	return `<built_in_rules>\n${fragments.map((f) => `- ${f}`).join('\n')}\n</built_in_rules>`;
-}
-
-/** Resolve a model config to its canonical `provider/model` id string. */
-export function getModelIdString(model: ModelConfig): string {
-	if (typeof model === 'string') return model;
-	if ('id' in model && typeof model.id === 'string') return model.id;
-	if ('modelId' in model && typeof model.modelId === 'string') {
-		const rawProvider = 'provider' in model ? String(model.provider) : 'unknown';
-		// AI SDK providers stamp a dotted sub-namespace (e.g. 'anthropic.messages',
-		// 'openai.chat'); strip it so the id matches the canonical 'provider/model'
-		// the billing rate table is keyed on.
-		const provider = rawProvider.split('.')[0];
-		return `${provider}/${model.modelId}`;
-	}
-	return 'unknown';
 }
 
 export interface StaticLoopContext {

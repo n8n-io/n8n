@@ -12,10 +12,9 @@ import type {
 	ObservationLogMarker,
 	ObservationLogObserveFn,
 	ObservationLogObserverInput,
-	TokenCounter,
 } from '../../types/sdk/observation-log';
-import { estimateObservationTokens } from '../../types/sdk/observation-log';
 import type { BuiltTelemetry } from '../../types/telemetry';
+import { estimateObservationTokens, type TokenCounter } from '../model/model-token-counter';
 
 export type { ObservationLogObserveFn, ObservationLogObserverInput };
 
@@ -182,7 +181,7 @@ export async function runObservationLogObserver(
 
 	const tokenCounter = opts.tokenCounter ?? estimateObservationTokens;
 	const transcript = renderObserverTranscript(deltaMessages);
-	const tokenCount = tokenCounter(transcript);
+	const tokenCount = await tokenCounter(transcript);
 	if (tokenCount < opts.observerThresholdTokens) {
 		return { status: 'skipped', reason: 'below-threshold', tokenCount };
 	}
@@ -213,15 +212,28 @@ export async function runObservationLogObserver(
 		opts.onMalformedLine?.(line);
 	}
 
+	const prepared = await Promise.all(
+		parsed.entries.map(async (entry) => {
+			const text = redactText(entry.text).text;
+			return {
+				marker: entry.marker,
+				parentIndex: entry.parentIndex,
+				text,
+				tokenCount: await tokenCounter(text),
+			};
+		}),
+	);
+
 	const inserted: ObservationLogEntry[] = [];
-	for (const entry of parsed.entries) {
+	for (const entry of prepared) {
 		const parentId = entry.parentIndex === null ? null : (inserted[entry.parentIndex]?.id ?? null);
 		const [row] = await memory.appendObservationLogEntries([
 			{
 				observationScopeId,
 				marker: entry.marker,
-				text: redactText(entry.text).text,
+				text: entry.text,
 				parentId,
+				tokenCount: entry.tokenCount,
 				createdAt: new Date(now.getTime() + inserted.length),
 			},
 		]);

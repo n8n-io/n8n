@@ -145,10 +145,8 @@ export type {
 	ObservationLogStatus,
 	ObservationLogTaskKind,
 	ObservationLogTaskLockHandle,
-	TokenCounter,
 } from './sdk/observation-log';
 export {
-	estimateObservationTokens,
 	OBSERVATION_LOG_MARKERS,
 	OBSERVATION_LOG_STATUSES,
 } from './sdk/observation-log';

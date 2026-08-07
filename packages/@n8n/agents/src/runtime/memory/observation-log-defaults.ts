@@ -8,8 +8,8 @@ import type {
 } from './observation-log-reflector';
 import type { ModelConfig } from '../../types/sdk/agent';
 import type { MemoryTaskUsageReport } from '../../types/sdk/observation-log';
+import { getModelIdString } from '../../utils/model';
 import { incrementTokenCountFromUsage } from '../loop/execution-counter';
-import { getModelIdString } from '../loop/runtime-context';
 import { loadAi } from '../model/lazy-ai';
 import { createModel } from '../model/model-factory';
 import { toTokenUsage } from '../streaming/stream';

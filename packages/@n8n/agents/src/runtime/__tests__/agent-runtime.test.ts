@@ -24,7 +24,7 @@ import {
 	type DelegateSubAgentRunner,
 } from '../tools/delegate-sub-agent-tool';
 import { toAiSdkTools } from '../tools/tool-adapter';
-import { MAX_MODEL_TOOL_RESULT_CHARS } from '../tools/tool-result-guard';
+import { MAX_MODEL_TOOL_RESULT_TOKENS } from '../tools/tool-result-guard';
 
 // ---------------------------------------------------------------------------
 // Module mocks
@@ -7383,6 +7383,14 @@ describe('AgentRuntime — oversized tool results', () => {
 		}
 	}
 
+	async function expectWithinTokenLimit(value: unknown): Promise<void> {
+		const { getEncoding } = await import('@n8n/ai-utilities/tokenizer');
+		const encoder = await getEncoding('o200k_base');
+		expect(encoder.encode(JSON.stringify(value)).length).toBeLessThanOrEqual(
+			MAX_MODEL_TOOL_RESULT_TOKENS,
+		);
+	}
+
 	function getModelToolResult(callIndex = 1): unknown {
 		const call = generateText.mock.calls[callIndex][0] as {
 			messages: Array<{
@@ -7416,9 +7424,9 @@ describe('AgentRuntime — oversized tool results', () => {
 
 	it('bounds an oversized transformed result while preserving raw output', async () => {
 		const rawOutput = {
-			value: `RAW_HEAD${'r'.repeat(MAX_MODEL_TOOL_RESULT_CHARS)}RAW_TAIL`,
+			value: `RAW_HEAD${'r '.repeat(MAX_MODEL_TOOL_RESULT_TOKENS + 10_000)}RAW_TAIL`,
 		};
-		const transformedOutput = `TRANSFORM_HEAD${'t'.repeat(MAX_MODEL_TOOL_RESULT_CHARS)}TRANSFORM_TAIL`;
+		const transformedOutput = `TRANSFORM_HEAD${'t '.repeat(MAX_MODEL_TOOL_RESULT_TOKENS + 10_000)}TRANSFORM_TAIL`;
 		const tool: BuiltTool = {
 			name: 'large_result',
 			description: 'Return a large result',
@@ -7436,7 +7444,7 @@ describe('AgentRuntime — oversized tool results', () => {
 		const result = await runtime.generate('run');
 		const envelope = getModelToolResult() as TruncationEnvelope;
 
-		expect(JSON.stringify(envelope).length).toBeLessThanOrEqual(MAX_MODEL_TOOL_RESULT_CHARS);
+		await expectWithinTokenLimit(envelope);
 		expect(envelope).toMatchObject({
 			_truncated: true,
 			originalCharCount: JSON.stringify(transformedOutput).length,
@@ -7487,7 +7495,9 @@ describe('AgentRuntime — oversized tool results', () => {
 			description: 'Throw a large error',
 			inputSchema: z.object({}),
 			handler: () => {
-				throw new Error(`ERROR_HEAD${'e'.repeat(MAX_MODEL_TOOL_RESULT_CHARS)}ERROR_TAIL`);
+				throw new Error(
+					`ERROR_HEAD${'e '.repeat(MAX_MODEL_TOOL_RESULT_TOKENS + 10_000)}ERROR_TAIL`,
+				);
 			},
 		};
 		const { runtime } = createRuntimeWithTools([tool], 1);
@@ -7508,14 +7518,14 @@ describe('AgentRuntime — oversized tool results', () => {
 
 		expect(result.finishReason).toBe('stop');
 		expect(toolCall?.state).toBe('rejected');
-		expect(JSON.stringify(envelope).length).toBeLessThanOrEqual(MAX_MODEL_TOOL_RESULT_CHARS);
+		await expectWithinTokenLimit(envelope);
 		expect(envelope.head).toContain('ERROR_HEAD');
 		expect(envelope.tail).toContain('ERROR_TAIL');
 	});
 
 	it('bounds aggregate toMessage text while preserving file content', async () => {
 		const fileData = Buffer.from('file').toString('base64');
-		const textBlockLength = Math.floor(MAX_MODEL_TOOL_RESULT_CHARS / 2);
+		const textBlockTokenCount = Math.floor(MAX_MODEL_TOOL_RESULT_TOKENS * 0.6);
 		const tool: BuiltTool = {
 			name: 'large_message',
 			description: 'Return a large message',
@@ -7524,9 +7534,9 @@ describe('AgentRuntime — oversized tool results', () => {
 			toMessage: () => ({
 				role: 'assistant',
 				content: [
-					{ type: 'text', text: `MESSAGE_HEAD${'m'.repeat(textBlockLength)}` },
+					{ type: 'text', text: `MESSAGE_HEAD${'m '.repeat(textBlockTokenCount)}` },
 					{ type: 'file', mediaType: 'text/plain', data: fileData },
-					{ type: 'text', text: `${'n'.repeat(textBlockLength)}MESSAGE_TAIL` },
+					{ type: 'text', text: `${'n '.repeat(textBlockTokenCount)}MESSAGE_TAIL` },
 				],
 			}),
 		};
@@ -7554,7 +7564,7 @@ describe('AgentRuntime — oversized tool results', () => {
 		const envelope = parseEnvelope(textBlocks[0]?.text ?? '');
 
 		expect(textBlocks).toHaveLength(1);
-		expect(JSON.stringify(envelope).length).toBeLessThanOrEqual(MAX_MODEL_TOOL_RESULT_CHARS);
+		await expectWithinTokenLimit(envelope);
 		expect(envelope.head).toContain('MESSAGE_HEAD');
 		expect(envelope.tail).toContain('MESSAGE_TAIL');
 		expect(fileBlock).toMatchObject({ type: 'file', mediaType: 'text/plain', data: fileData });

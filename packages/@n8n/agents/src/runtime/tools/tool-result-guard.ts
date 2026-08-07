@@ -1,11 +1,12 @@
 import { toJsonValue } from '@n8n/utils/json/to-json-value';
 
 import type { AgentMessage, MessageContent } from '../../types/sdk/message';
-import { estimateObservationTokens } from '../../types/sdk/observation-log';
 import type { JSONObject, JSONValue } from '../../types/utils/json';
+import { estimateObservationTokens, type TokenCounter } from '../model/model-token-counter';
 
 export const MAX_MODEL_TOOL_RESULT_TOKENS = 50_000;
-export const MAX_MODEL_TOOL_RESULT_CHARS = MAX_MODEL_TOOL_RESULT_TOKENS * 4;
+// BPE tokens cannot exceed UTF-8 bytes; reserve room for provider message framing.
+const SMALL_PAYLOAD_OVERHEAD_BYTES = 1_024;
 
 interface TruncatedToolResult extends JSONObject {
 	_truncated: true;
@@ -21,33 +22,52 @@ export interface GuardedToolResult {
 	truncated: boolean;
 }
 
-export function guardToolResultForModel(output: unknown): GuardedToolResult {
+export async function guardToolResultForModel(
+	output: unknown,
+	tokenCounter: TokenCounter = estimateObservationTokens,
+): Promise<GuardedToolResult> {
 	const historyOutput = toJsonValue(output);
 	const serialized = JSON.stringify(historyOutput);
 
-	if (estimateObservationTokens(serialized) <= MAX_MODEL_TOOL_RESULT_TOKENS) {
+	if (isClearlyWithinTokenLimit(serialized)) {
 		return { historyOutput, wireOutput: output, truncated: false };
 	}
 
-	const truncated = buildTruncationEnvelope(serialized);
+	const tokenCount = await tokenCounter(serialized);
+	if (tokenCount <= MAX_MODEL_TOOL_RESULT_TOKENS) {
+		return { historyOutput, wireOutput: output, truncated: false };
+	}
+
+	const truncated = await buildTruncationEnvelope(serialized, tokenCount, tokenCounter);
 	return { historyOutput: truncated, wireOutput: truncated, truncated: true };
 }
 
-export function guardToolErrorForModel(errorText: string): string {
-	const guarded = guardToolResultForModel(errorText);
+export async function guardToolErrorForModel(
+	errorText: string,
+	tokenCounter: TokenCounter = estimateObservationTokens,
+): Promise<string> {
+	const guarded = await guardToolResultForModel(errorText, tokenCounter);
 	return guarded.truncated ? JSON.stringify(guarded.historyOutput) : errorText;
 }
 
-export function guardToolMessageForModel(message: AgentMessage): AgentMessage {
+export async function guardToolMessageForModel(
+	message: AgentMessage,
+	tokenCounter: TokenCounter = estimateObservationTokens,
+): Promise<AgentMessage> {
 	if (!('content' in message)) return message;
 
 	const textBlocks = message.content.filter((block) => block.type === 'text');
 	if (textBlocks.length === 0) return message;
 
 	const serialized = JSON.stringify(textBlocks.map(({ text }) => text));
-	if (estimateObservationTokens(serialized) <= MAX_MODEL_TOOL_RESULT_TOKENS) return message;
+	if (isClearlyWithinTokenLimit(serialized)) return message;
 
-	const replacement = JSON.stringify(buildTruncationEnvelope(serialized));
+	const tokenCount = await tokenCounter(serialized);
+	if (tokenCount <= MAX_MODEL_TOOL_RESULT_TOKENS) return message;
+
+	const replacement = JSON.stringify(
+		await buildTruncationEnvelope(serialized, tokenCount, tokenCounter),
+	);
 	let replacedText = false;
 	const content = message.content.flatMap((block): MessageContent[] => {
 		if (block.type !== 'text') return [block];
@@ -60,31 +80,42 @@ export function guardToolMessageForModel(message: AgentMessage): AgentMessage {
 	return { ...message, content };
 }
 
-function buildTruncationEnvelope(serialized: string): TruncatedToolResult {
+function isClearlyWithinTokenLimit(serialized: string): boolean {
+	return (
+		Buffer.byteLength(serialized, 'utf8') + SMALL_PAYLOAD_OVERHEAD_BYTES <=
+		MAX_MODEL_TOOL_RESULT_TOKENS
+	);
+}
+
+async function buildTruncationEnvelope(
+	serialized: string,
+	originalTokenCount: number,
+	tokenCounter: TokenCounter,
+): Promise<TruncatedToolResult> {
 	const base = {
 		_truncated: true,
 		originalCharCount: serialized.length,
-		estimatedTokenCount: estimateObservationTokens(serialized),
+		estimatedTokenCount: originalTokenCount,
 	} as const;
-	let low = 0;
-	let high = Math.min(serialized.length, MAX_MODEL_TOOL_RESULT_CHARS);
-	let best: TruncatedToolResult = { ...base, head: '', tail: '' };
+	let excerptLength = Math.floor(
+		(serialized.length * MAX_MODEL_TOOL_RESULT_TOKENS * 0.9) / originalTokenCount,
+	);
 
-	while (low <= high) {
-		const excerptLength = Math.floor((low + high) / 2);
+	while (true) {
 		const { head, tail } = splitHeadAndTail(serialized, excerptLength);
 		const candidate: TruncatedToolResult = { ...base, head, tail };
-
-		if (JSON.stringify(candidate).length <= MAX_MODEL_TOOL_RESULT_CHARS) {
-			best = candidate;
-			low = excerptLength + 1;
-		} else {
-			high = excerptLength - 1;
+		const candidateTokenCount = await tokenCounter(JSON.stringify(candidate));
+		if (candidateTokenCount <= MAX_MODEL_TOOL_RESULT_TOKENS || excerptLength === 0) {
+			return candidate;
 		}
-	}
 
-	return best;
+		excerptLength = Math.min(
+			excerptLength - 1,
+			Math.floor((excerptLength * MAX_MODEL_TOOL_RESULT_TOKENS * 0.9) / candidateTokenCount),
+		);
+	}
 }
+
 function splitHeadAndTail(value: string, excerptLength: number): { head: string; tail: string } {
 	const headLength = Math.ceil(excerptLength / 2);
 	const tailLength = Math.floor(excerptLength / 2);
