@@ -6,7 +6,7 @@
  * Owns which run is shown. There is no run picker yet, so it resolves the newest
  * run of the newest dataset itself rather than depending on a list view.
  */
-import { computed, onMounted, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { N8nButton, N8nIcon, N8nLoading, N8nText } from '@n8n/design-system';
 import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
@@ -35,20 +35,36 @@ const datasets = computed(() => store.getDatasets(props.agentId));
 // Datasets come back newest-first, and generation makes exactly one; a picker is
 // the case-list view's to add.
 const dataset = computed(() => datasets.value[0]);
-// An agent with no row yet is never fetched for, so there is nothing to wait on:
-// it falls through to the first-run state instead of a skeleton that never ends.
-const awaitingDatasets = computed(() => !props.agentUnsaved && !store.isLoaded(props.agentId));
+/**
+ * False until the read for the current agent has finished — either way. Keyed on
+ * the attempt rather than on `isLoaded`, because a *failed* read never populates
+ * the cache: reading `isLoaded` alone leaves the skeleton up for good once the
+ * toast has gone, with nothing to retry from. An agent with no row yet is never
+ * fetched for at all, so it is settled from the start.
+ */
+const hasSettled = ref(false);
+
+const awaitingDatasets = computed(() => !hasSettled.value);
 const runId = computed(() => (dataset.value ? store.getLatestRunId(dataset.value.id) : undefined));
 
 const load = async () => {
-	if (!props.agentId || props.agentUnsaved) return;
+	if (!props.agentId || props.agentUnsaved) {
+		hasSettled.value = true;
+		return;
+	}
+
+	hasSettled.value = false;
 	try {
 		const fetched = await store.fetchDatasets(props.projectId, props.agentId);
 		const newest = fetched[0];
 		if (!newest) return;
 		await store.resolveLatestRunId(props.projectId, props.agentId, newest.id);
 	} catch (error) {
+		// Degrades to the first-run state rather than a permanent skeleton: with no
+		// datasets to show, offering to generate is still the right next step.
 		toast.showError(error, i18n.baseText('agents.builder.agentEvals.review.loadError'));
+	} finally {
+		hasSettled.value = true;
 	}
 };
 

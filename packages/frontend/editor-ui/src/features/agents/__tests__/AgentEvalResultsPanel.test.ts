@@ -13,7 +13,13 @@ configure({ testIdAttribute: 'data-testid' });
 
 // The rows have their own suite; this one is about the card around them.
 vi.mock('../components/AgentEvalResultRow.vue', () => ({
-	default: { name: 'AgentEvalResultRow', template: '<div data-testid="agent-eval-result-row" />' },
+	default: {
+		name: 'AgentEvalResultRow',
+		emits: ['vote'],
+		template: `<div data-testid="agent-eval-result-row">
+			<button data-testid="stub-vote-up" @click="$emit('vote', 'up')" />
+			<button data-testid="stub-vote-down" @click="$emit('vote', 'down')" /></div>`,
+	},
 }));
 
 const result = (id: string): AgentEvalResultRecord => ({
@@ -133,6 +139,19 @@ describe('AgentEvalResultsPanel', () => {
 			expect(getByTestId('agent-eval-progress-chip')).toHaveTextContent('4 of 6 cases done');
 		});
 
+		// Before the first poll lands — or if polling keeps failing — `counts` is null.
+		// Falling back to "N cases run" would tell a working run it had finished.
+		it('still reports in progress when the tallies have not arrived', () => {
+			const { getByTestId, queryByTestId } = render(
+				{ results: [result('c1')], resultsCount: 6 },
+				0,
+				true,
+			);
+
+			expect(getByTestId('agent-eval-progress-chip')).toHaveTextContent('Running');
+			expect(queryByTestId('agent-eval-cases-run-chip')).not.toBeInTheDocument();
+		});
+
 		it('returns to the past-tense count once the run settles', () => {
 			const { getByTestId, queryByTestId } = render(
 				{
@@ -169,17 +188,13 @@ describe('AgentEvalResultsPanel', () => {
 		it('uses the singular sentence with one case left', () => {
 			const { getByText } = render({ results: [result('c1')], resultsCount: 5 }, 4);
 
-			expect(
-				getByText('1 case still to review — send now, or finish it first.'),
-			).toBeInTheDocument();
+			expect(getByText('1 case still to review.')).toBeInTheDocument();
 		});
 
 		it('uses the plural sentence with several left', () => {
 			const { getByText } = render({ results: [result('c1')], resultsCount: 5 }, 3);
 
-			expect(
-				getByText('2 cases still to review — send now, or finish them first.'),
-			).toBeInTheDocument();
+			expect(getByText('2 cases still to review.')).toBeInTheDocument();
 		});
 
 		it('says so when nothing is left to review', () => {
@@ -194,6 +209,30 @@ describe('AgentEvalResultsPanel', () => {
 		const { getByTestId } = render({ results: [result('c1')], resultsCount: 1 });
 
 		expect(getByTestId('agent-eval-send-feedback')).toBeDisabled();
+	});
+
+	// Agreement has nothing further to ask, so it must not park the row behind a
+	// Save button the way disagreement does.
+	describe('voting', () => {
+		it('persists a thumbs-up straight away', async () => {
+			const { getAllByTestId, store } = render({ results: [result('c1')], resultsCount: 1 });
+
+			await userEvent.click(getAllByTestId('stub-vote-up')[0]);
+			await flushPromises();
+
+			expect(store.beginVote).toHaveBeenCalledWith('run-1', 'c1', 'up');
+			expect(store.saveReview).toHaveBeenCalledWith('project-1', 'agent-1', 'run-1', 'c1');
+		});
+
+		it('leaves a thumbs-down unsaved, waiting on its reason', async () => {
+			const { getAllByTestId, store } = render({ results: [result('c1')], resultsCount: 1 });
+
+			await userEvent.click(getAllByTestId('stub-vote-down')[0]);
+			await flushPromises();
+
+			expect(store.beginVote).toHaveBeenCalledWith('run-1', 'c1', 'down');
+			expect(store.saveReview).not.toHaveBeenCalled();
+		});
 	});
 
 	it('asks the surface above to re-run rather than switching runs itself', async () => {

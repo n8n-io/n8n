@@ -300,6 +300,54 @@ describe('useAgentEvalsStore', () => {
 			});
 		});
 
+		// A vote saved while this read is in flight is absent from the response it
+		// returns; replacing the map would make a rating the server already holds
+		// vanish from the list.
+		it('keeps a locally saved rating the ratings response has not caught up with', async () => {
+			mockRun({ results: [result('c1'), result('c2')], count: 2, ratings: [] });
+			const store = useAgentEvalsStore();
+			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
+
+			store.beginVote(RUN_ID, 'c1', 'up');
+			rateResult.mockResolvedValue(rating('c1'));
+			await store.saveReview(PROJECT_ID, AGENT_ID, RUN_ID, 'c1');
+
+			// The run settles; the ratings route still hasn't returned c1's rating.
+			mockRun({ results: [result('c1'), result('c2')], count: 2, ratings: [] });
+			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
+
+			expect(store.getReview(RUN_ID).ratingsByResultId.c1).toBeDefined();
+			expect(store.reviewedCount(RUN_ID)).toBe(1);
+		});
+
+		// Settling a run the reviewer had paged through must not drop them back to
+		// the first page.
+		it('re-reads over the window already paged in, not just the first page', async () => {
+			mockRun({
+				results: Array.from({ length: 50 }, (_, i) => result(`c${i}`)),
+				count: 120,
+				ratings: [],
+			});
+			const store = useAgentEvalsStore();
+			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
+
+			getRunDetail.mockResolvedValue(
+				runDetail(
+					Array.from({ length: 100 }, (_, i) => result(`c${i}`)),
+					120,
+				),
+			);
+			await store.loadMoreResults(PROJECT_ID, AGENT_ID, RUN_ID);
+			expect(store.getReview(RUN_ID).results).toHaveLength(100);
+
+			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID, 100);
+
+			expect(getRunDetail).toHaveBeenLastCalledWith(REST_CONTEXT, PROJECT_ID, AGENT_ID, RUN_ID, {
+				take: 100,
+				skip: 0,
+			});
+		});
+
 		it('clears loading when the read rejects', async () => {
 			getRunDetail.mockRejectedValue(new Error('boom'));
 			listLatestRatingsForRun.mockResolvedValue([]);
@@ -643,6 +691,36 @@ describe('useAgentEvalsStore', () => {
 			// No further polls, and the settled run has been re-read.
 			expect(getRunSummary).toHaveBeenCalledTimes(1);
 			expect(store.getReview(RUN_ID).run?.status).toBe('completed');
+		});
+
+		// The settle reload goes through `openRun`, which defaults to one page — so
+		// without the preserved window a reviewer who had paged through a long run
+		// would be yanked back to the first 50 the moment it finished.
+		it('settles over the window the reviewer had paged in', async () => {
+			getRunDetail.mockResolvedValue(
+				runDetail(
+					Array.from({ length: 60 }, (_, i) => result(`c${i}`)),
+					60,
+				),
+			);
+			listLatestRatingsForRun.mockResolvedValue([]);
+			const store = useAgentEvalsStore();
+			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
+			expect(store.getReview(RUN_ID).results).toHaveLength(60);
+
+			getRunSummary.mockResolvedValue({
+				runId: RUN_ID,
+				status: 'completed',
+				counts: { total: 60, success: 60, error: 0, cancelled: 0, pending: 0 },
+			});
+			store.startPollingRun(PROJECT_ID, AGENT_ID, RUN_ID);
+			await vi.advanceTimersByTimeAsync(0);
+
+			expect(getRunDetail).toHaveBeenLastCalledWith(REST_CONTEXT, PROJECT_ID, AGENT_ID, RUN_ID, {
+				take: 60,
+				skip: 0,
+			});
+			store.stopPollingRun();
 		});
 
 		// Stopping cannot un-send the read already in flight, but it must prevent

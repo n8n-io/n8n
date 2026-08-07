@@ -230,12 +230,25 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 		return runId;
 	};
 
+	/** The window a re-read must cover to avoid collapsing what the reviewer has paged in. */
+	const loadedWindow = (runId: string) =>
+		Math.max(getReview(runId).results.length, AGENT_EVAL_RESULTS_DEFAULT_TAKE);
+
 	/**
-	 * Loads a run's first page of cases together with every latest rating in the
-	 * run. Ratings are read whole rather than per page: the route returns one row
-	 * per rated case, which keeps the reviewed tally right before the user pages.
+	 * Loads a run's cases together with every latest rating in the run. Ratings are
+	 * read whole rather than per page: the route returns one row per rated case,
+	 * which keeps the reviewed tally right before the user pages.
+	 *
+	 * `take` defaults to one page, but a re-read of a run already on screen passes
+	 * the window the reviewer has open — otherwise settling a run they had paged
+	 * through would silently drop them back to the first page.
 	 */
-	const openRun = async (projectId: string, agentId: string, runId: string) => {
+	const openRun = async (
+		projectId: string,
+		agentId: string,
+		runId: string,
+		take: number = AGENT_EVAL_RESULTS_DEFAULT_TAKE,
+	) => {
 		const key = openKeyFor(projectId, agentId, runId);
 		latestOpenKey = key;
 		patchReview(runId, { loading: true });
@@ -243,7 +256,7 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 		try {
 			const [detail, ratings] = await Promise.all([
 				agentEvalsApi.getRunDetail(rootStore.restApiContext, projectId, agentId, runId, {
-					take: AGENT_EVAL_RESULTS_DEFAULT_TAKE,
+					take,
 					skip: 0,
 				}),
 				agentEvalsApi.listLatestRatingsForRun(rootStore.restApiContext, projectId, agentId, runId),
@@ -251,6 +264,7 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 			if (latestOpenKey !== key) return;
 
 			const { results, ...run } = detail;
+			const current = getReview(runId);
 			// Drafts and in-flight votes are deliberately left alone. Cases settle
 			// individually, so a reviewer can be part-way through a reason on a
 			// finished case while the run is still going — and the poll re-reads the
@@ -261,7 +275,10 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 				run,
 				results: results.data,
 				resultsCount: results.count,
-				ratingsByResultId: indexRatings(ratings),
+				// Merged, not replaced: a vote saved while this read was in flight is
+				// absent from the response it returns, and overwriting would make a
+				// rating the server already holds vanish from the list.
+				ratingsByResultId: { ...current.ratingsByResultId, ...indexRatings(ratings) },
 				loading: false,
 			});
 		} finally {
@@ -470,13 +487,12 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 	 * collapse it back to the first page.
 	 */
 	const refreshResults = async (projectId: string, agentId: string, runId: string) => {
-		const loaded = getReview(runId).results.length;
 		const detail = await agentEvalsApi.getRunDetail(
 			rootStore.restApiContext,
 			projectId,
 			agentId,
 			runId,
-			{ take: Math.max(loaded, AGENT_EVAL_RESULTS_DEFAULT_TAKE), skip: 0 },
+			{ take: loadedWindow(runId), skip: 0 },
 		);
 		const { results, ...run } = detail;
 		patchReview(runId, { run, results: results.data, resultsCount: results.count });
@@ -498,8 +514,9 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 			});
 
 			if (!isPendingStatus(summary.status)) {
-				// Settled: re-read in full so answers and ratings land together.
-				await openRun(projectId, agentId, runId);
+				// Settled: re-read in full so answers and ratings land together, over the
+				// window the reviewer has open rather than just the first page.
+				await openRun(projectId, agentId, runId, loadedWindow(runId));
 				return true;
 			}
 

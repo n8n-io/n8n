@@ -102,8 +102,13 @@ const onSave = async (resultId: string) => {
 	}
 };
 
-const onVote = (resultId: string, vote: AgentEvalVote) =>
+const onVote = async (resultId: string, vote: AgentEvalVote) => {
 	store.beginVote(props.runId, resultId, vote);
+	// Agreement is a one-click action: there is nothing further to ask, so it
+	// persists straight away rather than leaving the row unsaved behind a Save
+	// button. Disagreement stops here — its reason is what the Save is waiting on.
+	if (vote === 'up') await onSave(resultId);
+};
 
 onMounted(load);
 watch(() => props.runId, load);
@@ -130,14 +135,19 @@ onBeforeUnmount(store.stopPollingRun);
 				</N8nButton>
 			</div>
 			<div :class="$style.meta">
-				<!-- "cases run" is past tense, so a run still working says so instead. -->
-				<N8nBadge v-if="inFlight && counts" data-testid="agent-eval-progress-chip">
+				<!-- "cases run" is past tense, so a run still working says so instead.
+				     Keyed on the run's own status, not on the tallies: the first poll may
+				     not have landed, and repeated poll failures would otherwise leave a
+				     working run claiming it had finished. -->
+				<N8nBadge v-if="inFlight" data-testid="agent-eval-progress-chip">
 					<span :class="$style.progressChip">
 						<N8nSpinner size="small" />
 						{{
-							i18n.baseText('agents.builder.agentEvals.review.progress', {
-								interpolate: { done: settledCases, total: counts.total },
-							})
+							counts
+								? i18n.baseText('agents.builder.agentEvals.review.progress', {
+										interpolate: { done: settledCases, total: counts.total },
+									})
+								: i18n.baseText('agents.builder.agentEvals.review.running')
 						}}
 					</span>
 				</N8nBadge>

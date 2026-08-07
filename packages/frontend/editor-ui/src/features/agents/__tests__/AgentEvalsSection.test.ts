@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { configure } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
+import { flushPromises } from '@vue/test-utils';
 
 import { createComponentRenderer } from '@/__tests__/render';
 import { useAgentEvalsStore } from '../agentEvals.store';
@@ -46,7 +47,7 @@ const renderComponent = createComponentRenderer(AgentEvalsSection, {
 	props: { projectId: PROJECT_ID, agentId: AGENT_ID },
 });
 
-const render = (
+const renderRaw = (
 	state: {
 		loaded?: boolean;
 		datasets?: AgentEvalDatasetRecord[];
@@ -63,7 +64,18 @@ const render = (
 	vi.mocked(store.isStartingRun).mockReturnValue(false);
 	vi.mocked(store.fetchDatasets).mockResolvedValue(state.datasets ?? []);
 
-	return { ...renderComponent({ pinia, props }), store };
+	const rendered = renderComponent({ pinia, props });
+	return { rendered, store };
+};
+
+/** The section reads on mount, so every branch assertion needs that read settled. */
+const render = async (
+	state: Parameters<typeof renderRaw>[0] = {},
+	props: Record<string, unknown> = {},
+) => {
+	const { rendered, store } = renderRaw(state, props);
+	await flushPromises();
+	return { ...rendered, store };
 };
 
 describe('AgentEvalsSection', () => {
@@ -72,8 +84,8 @@ describe('AgentEvalsSection', () => {
 	});
 
 	describe('the first-run state', () => {
-		it('renders its title, description and CTA when the agent has no datasets', () => {
-			const { getByTestId, getByText } = render({ datasets: [] });
+		it('renders its title, description and CTA when the agent has no datasets', async () => {
+			const { getByTestId, getByText } = await render({ datasets: [] });
 
 			expect(getByTestId('agent-evals-section')).toBeInTheDocument();
 			expect(getByTestId('agent-evals-empty-state')).toBeInTheDocument();
@@ -84,30 +96,33 @@ describe('AgentEvalsSection', () => {
 		});
 
 		it('emits generate when the CTA is clicked', async () => {
-			const { getByTestId, emitted } = render({ datasets: [] });
+			const { getByTestId, emitted } = await render({ datasets: [] });
 
 			await userEvent.click(getByTestId('agent-evals-generate-button'));
 
 			expect(emitted('generate')).toBeTruthy();
 		});
 
-		it('disables the CTA for users who cannot edit the agent', () => {
-			const { getByTestId } = render({ datasets: [] }, { disabled: true });
+		it('disables the CTA for users who cannot edit the agent', async () => {
+			const { getByTestId } = await render({ datasets: [] }, { disabled: true });
 
 			expect(getByTestId('agent-evals-generate-button')).toBeDisabled();
 		});
 	});
 
 	describe('branching', () => {
-		it('shows a skeleton until the datasets have loaded', () => {
-			const { getByTestId, queryByTestId } = render({ loaded: false });
+		// Deliberately not flushed: the skeleton only exists while the read is in
+		// flight, so awaiting it would assert on the state after it has gone.
+		it('shows a skeleton while the datasets are still loading', () => {
+			const { rendered } = renderRaw({ loaded: false });
+			const { getByTestId, queryByTestId } = rendered;
 
 			expect(getByTestId('agent-evals-loading')).toBeInTheDocument();
 			expect(queryByTestId('agent-evals-empty-state')).not.toBeInTheDocument();
 		});
 
-		it('shows the review card for the newest run of the newest dataset', () => {
-			const { getByTestId } = render({
+		it('shows the review card for the newest run of the newest dataset', async () => {
+			const { getByTestId } = await render({
 				datasets: [dataset('d-new'), dataset('d-old')],
 				latestRunId: 'run-7',
 			});
@@ -115,8 +130,8 @@ describe('AgentEvalsSection', () => {
 			expect(getByTestId('agent-eval-results-panel')).toHaveTextContent('run-7');
 		});
 
-		it('explains itself when a dataset exists but has never run', () => {
-			const { getByTestId, queryByTestId } = render({
+		it('explains itself when a dataset exists but has never run', async () => {
+			const { getByTestId, queryByTestId } = await render({
 				datasets: [dataset('d1')],
 				latestRunId: null,
 			});
@@ -129,15 +144,15 @@ describe('AgentEvalsSection', () => {
 		// Without this the view is unreachable: `Re-run all` lives inside the results
 		// card, which only exists once a run does.
 		it('offers to run the cases when none has ever run', async () => {
-			const { getByTestId, store } = render({ datasets: [dataset('d1')], latestRunId: null });
+			const { getByTestId, store } = await render({ datasets: [dataset('d1')], latestRunId: null });
 
 			await userEvent.click(getByTestId('agent-eval-run-cases-button'));
 
 			expect(store.startRun).toHaveBeenCalledWith(PROJECT_ID, AGENT_ID, 'd1');
 		});
 
-		it('does not offer to run for a user who cannot edit the agent', () => {
-			const { getByTestId } = render(
+		it('does not offer to run for a user who cannot edit the agent', async () => {
+			const { getByTestId } = await render(
 				{ datasets: [dataset('d1')], latestRunId: null },
 				{ disabled: true },
 			);
@@ -147,32 +162,53 @@ describe('AgentEvalsSection', () => {
 	});
 
 	describe('fetching', () => {
-		it('reads the datasets on mount', () => {
-			const { store } = render({ datasets: [dataset('d1')] });
+		it('reads the datasets on mount', async () => {
+			const { store } = await render({ datasets: [dataset('d1')] });
 
 			expect(store.fetchDatasets).toHaveBeenCalledWith(PROJECT_ID, AGENT_ID);
 		});
 
 		// An unsaved agent has no row yet, so the agent-scoped routes would 404.
-		it('fetches nothing while the agent is unsaved', () => {
-			const { store } = render({ datasets: [] }, { agentUnsaved: true });
+		it('fetches nothing while the agent is unsaved', async () => {
+			const { store } = await render({ datasets: [] }, { agentUnsaved: true });
 
 			expect(store.fetchDatasets).not.toHaveBeenCalled();
 		});
 
 		// Nothing is loading, so there is nothing to wait for — a skeleton here would
 		// never resolve.
-		it('shows the first-run state rather than a skeleton while the agent is unsaved', () => {
-			const { getByTestId, queryByTestId } = render({ loaded: false }, { agentUnsaved: true });
+		it('shows the first-run state rather than a skeleton while the agent is unsaved', async () => {
+			const { getByTestId, queryByTestId } = await render(
+				{ loaded: false },
+				{ agentUnsaved: true },
+			);
 
 			expect(getByTestId('agent-evals-empty-state')).toBeInTheDocument();
 			expect(queryByTestId('agent-evals-loading')).not.toBeInTheDocument();
 		});
 	});
 
+	// A failed read never populates the cache, so keying the skeleton off `isLoaded`
+	// left it up for good once the toast had gone.
+	it('falls through to the first-run state when the dataset read fails', async () => {
+		const pinia = createTestingPinia({ stubActions: true });
+		const store = useAgentEvalsStore();
+		vi.mocked(store.isLoaded).mockReturnValue(false);
+		vi.mocked(store.getDatasets).mockReturnValue([]);
+		vi.mocked(store.getLatestRunId).mockReturnValue(null);
+		vi.mocked(store.isStartingRun).mockReturnValue(false);
+		vi.mocked(store.fetchDatasets).mockRejectedValue(new Error('offline'));
+
+		const { getByTestId, queryByTestId } = renderComponent({ pinia });
+		await flushPromises();
+
+		expect(queryByTestId('agent-evals-loading')).not.toBeInTheDocument();
+		expect(getByTestId('agent-evals-empty-state')).toBeInTheDocument();
+	});
+
 	// The card only asks; the section owns which dataset gets run.
 	it('starts a run on the shown dataset when the card asks for one', async () => {
-		const { getByTestId, store } = render({
+		const { getByTestId, store } = await render({
 			datasets: [dataset('d1')],
 			latestRunId: 'run-7',
 		});
