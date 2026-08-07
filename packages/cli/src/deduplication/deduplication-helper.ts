@@ -100,6 +100,11 @@ export class DeduplicationHelper implements IDataDeduplicator {
 	}
 
 	private static createValueHash(value: DeduplicationItemTypes): string {
+		return createHash('sha256').update(value.toString()).digest('base64');
+	}
+
+	/** @deprecated Use only for backward-compatible lookups of legacy data */
+	private static createLegacyValueHash(value: DeduplicationItemTypes): string {
 		return createHash('md5').update(value.toString()).digest('base64');
 	}
 
@@ -234,9 +239,17 @@ export class DeduplicationHelper implements IDataDeduplicator {
 
 		const processedDataValue = processedData.value;
 		const processedItemsSet = new Set(processedDataValue.data);
+		const legacyHashes = items.map((item) => DeduplicationHelper.createLegacyValueHash(item));
 
 		hashedItems.forEach((item, index) => {
 			if (processedItemsSet.has(item)) {
+				returnData.processed.push(items[index]);
+			} else if (processedItemsSet.has(legacyHashes[index])) {
+				// Migrate legacy MD5 hash to SHA-256
+				const legacyIndex = processedDataValue.data.indexOf(legacyHashes[index]);
+				if (legacyIndex !== -1) {
+					processedDataValue.data[legacyIndex] = item;
+				}
 				returnData.processed.push(items[index]);
 			} else {
 				returnData.new.push(items[index]);
@@ -307,8 +320,14 @@ export class DeduplicationHelper implements IDataDeduplicator {
 
 		const processedDataValue = processedData.value;
 
-		hashedItems.forEach((item) => {
-			const index = processedDataValue.data.findIndex((value) => value === item);
+		const legacyHashes = items.map((item) => DeduplicationHelper.createLegacyValueHash(item));
+
+		hashedItems.forEach((item, i) => {
+			let index = processedDataValue.data.indexOf(item);
+			if (index === -1) {
+				// Fall back to legacy MD5 hash
+				index = processedDataValue.data.indexOf(legacyHashes[i]);
+			}
 			if (index !== -1) {
 				processedDataValue.data.splice(index, 1);
 			}
