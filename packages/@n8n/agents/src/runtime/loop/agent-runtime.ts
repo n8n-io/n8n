@@ -890,6 +890,9 @@ export class AgentRuntime {
 			) {
 				totalUsage = mergeUsage(totalUsage, turn.usage);
 				incrementTokenCountFromUsage(options?.executionCounter, turn.usage);
+				// Publish before the abort check so a cancel between the empty attempt
+				// and the retry still bills those tokens via getAbortFinish().
+				sink.reportUsage(totalUsage);
 				this.assertNotAborted(abortScope);
 				turn = await sink.callModel(modelCallContext);
 			}

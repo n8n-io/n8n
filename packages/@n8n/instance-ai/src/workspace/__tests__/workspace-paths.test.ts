@@ -36,6 +36,14 @@ describe('normalizeWorkspaceRelativePath', () => {
 			).toBe('src/main.workflow.ts');
 		});
 
+		it('collapses redundant slashes under the root', () => {
+			expect(
+				normalizeWorkspaceRelativePath('/home/user/workspace//src//main.workflow.ts', {
+					workspaceRoot,
+				}),
+			).toBe('src/main.workflow.ts');
+		});
+
 		it('rejects absolute paths outside the root', () => {
 			expect(() =>
 				normalizeWorkspaceRelativePath('/tmp/main.workflow.ts', { workspaceRoot }),

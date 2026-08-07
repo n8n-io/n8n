@@ -12,8 +12,10 @@ export interface NormalizeWorkspaceRelativePathOptions {
 function stripWorkspaceRootPrefix(path: string, workspaceRoot: string): string {
 	const root = workspaceRoot.replace(/\/+$/, '');
 	if (root.length === 0) return path;
-	if (path === root) return '';
-	return path.startsWith(`${root}/`) ? path.slice(root.length + 1) : path;
+	// Collapse redundant slashes so echoed paths like `/root//src/...` still match.
+	const collapsed = path.replace(/\/{2,}/g, '/');
+	if (collapsed === root) return '';
+	return collapsed.startsWith(`${root}/`) ? collapsed.slice(root.length + 1) : path;
 }
 
 export function normalizeWorkspaceRelativePath(

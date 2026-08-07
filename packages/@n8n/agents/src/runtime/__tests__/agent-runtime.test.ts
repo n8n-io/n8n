@@ -1283,6 +1283,50 @@ describe('AgentRuntime.stream() — usage billing on abort', () => {
 		expect(runtime.getState().status).toBe('cancelled');
 	});
 
+	it('bills a discarded empty stop attempt when aborted during the retry', async () => {
+		const { runtime } = createRuntime();
+		const controller = new AbortController();
+		const abortError = Object.assign(new Error('This operation was aborted'), {
+			name: 'AbortError',
+		});
+
+		streamText
+			// Empty stop turn — usage must be published before the retry starts.
+			.mockReturnValueOnce({
+				stream: makeChunkStream([]),
+				finishReason: Promise.resolve('stop'),
+				usage: Promise.resolve({ inputTokens: 10, outputTokens: 0, totalTokens: 10 }),
+				response: Promise.resolve({ messages: [] }),
+				toolCalls: Promise.resolve([]),
+			})
+			// Retry starts a new raw-usage reader; abort mid-retry must still bill
+			// the discarded empty attempt via the usage already reported to the sink.
+			.mockReturnValueOnce({
+				stream: (function* () {
+					controller.abort();
+				})(),
+				finishReason: silentReject(abortError),
+				usage: silentReject(abortError),
+				response: silentReject(abortError),
+				toolCalls: silentReject(abortError),
+			});
+
+		const { stream } = await runtime.stream('hello', { abortSignal: controller.signal });
+		const chunks = await collectChunks(stream);
+
+		const finish = chunks.filter((c) => c.type === 'finish').at(-1) as
+			| (StreamChunk & { type: 'finish' })
+			| undefined;
+
+		expect(streamText).toHaveBeenCalledTimes(2);
+		expect(finish?.usage).toMatchObject({
+			promptTokens: 10,
+			completionTokens: 0,
+			totalTokens: 10,
+		});
+		expect(runtime.getState().status).toBe('cancelled');
+	});
+
 	it('recovers usage from the raw provider stream when aborted before the model finishes', async () => {
 		// Anthropic model id: raw `message_start`/`message_delta` events are
 		// Anthropic-shaped, so the run must resolve the Anthropic raw-usage reader.
