@@ -3,15 +3,16 @@ import { Service } from '@n8n/di';
 
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
+import type { WorkflowNodeTypeSource } from './node-type-usage';
 import { WorkflowSerializer } from './workflow.serializer';
 import type { PackageWriter } from '../../io/package-writer';
 import { UniqueFilenameAllocator } from '../../io/unique-filename-allocator';
+import type { PathStyle } from '../../n8n-packages.types';
 import type { ManifestEntry } from '../../spec/manifest.schema';
 import { CredentialRequirementsExtractor } from '../credential/credential-requirements.extractor';
 import type { WorkflowCredentialRequirement } from '../credential/credential.types';
 import { DataTableRequirementsExtractor } from '../data-table/data-table-requirements.extractor';
 import type { WorkflowDataTableRequirement } from '../data-table/data-table.types';
-import type { WorkflowNodeTypeSource } from './node-type-usage';
 import { assertEveryRequestedEntityAccessible } from '../package-export.errors';
 import type { WorkflowExportRequirements } from '../requirements.types';
 import { TagRequirementsExtractor } from '../tag/tag-requirements.extractor';
@@ -27,6 +28,7 @@ export interface WorkflowExportRequest {
 
 	// Directory the workflow is written under. e.g. folders/{folderId}/
 	basePrefix?: string;
+	pathStyle?: PathStyle;
 }
 
 export interface WorkflowExportResult {
@@ -70,10 +72,11 @@ export class WorkflowExporter {
 		const fileNames = new UniqueFilenameAllocator(
 			request.basePrefix ? `${request.basePrefix}/workflows` : 'workflows',
 			'workflow',
+			request.pathStyle,
 		);
 
 		for (const workflow of workflowsForExport) {
-			const target = fileNames.allocate(workflow.name);
+			const target = fileNames.allocate(workflow.name, workflow.id);
 			const serialized = this.workflowSerializer.serialize(workflow, {
 				includeTags: request.includeTags,
 			});

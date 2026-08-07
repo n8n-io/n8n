@@ -17,16 +17,18 @@ import { ProjectExporter } from './entities/project/project.exporter';
 import { mergeRequirements } from './entities/requirements.types';
 import { TagExporter } from './entities/tag/tag.exporter';
 import { VariableExporter } from './entities/variable/variable.exporter';
-import { collectNodeTypeUsage } from './entities/workflow/node-type-usage';
-import { assertStaticSubWorkflowsIncluded } from './entities/workflow/static-sub-workflow-requirements';
 import { AutoIncludedWorkflowResolver } from './entities/workflow/auto-included-workflow-resolver';
 import {
 	AutoIncludedWorkflowExporter,
 	type AutoIncludedWorkflowExportResult,
 } from './entities/workflow/auto-included-workflow.exporter';
+import { collectNodeTypeUsage } from './entities/workflow/node-type-usage';
+import { assertStaticSubWorkflowsIncluded } from './entities/workflow/static-sub-workflow-requirements';
 import { WorkflowDependencyResolver } from './entities/workflow/workflow-dependency-resolver';
 import { WorkflowRequirementExporter } from './entities/workflow/workflow-requirement.exporter';
 import { WorkflowExporter } from './entities/workflow/workflow.exporter';
+import type { PackageReader } from './io/package-reader';
+import type { PackageWriter } from './io/package-writer';
 import { TarPackageReader } from './io/tar/tar-package-reader';
 import { TarPackageWriter } from './io/tar/tar-package-writer';
 import { PackageImportConfig } from './n8n-packages.config';
@@ -36,6 +38,7 @@ import {
 	type ExportPackageRequest,
 	type ExportPackageResult,
 	type ImportPackageRequest,
+	type ImportRequestOptions,
 	type ImportResult,
 } from './n8n-packages.types';
 import { FORMAT_VERSION } from './spec/constants';
@@ -69,12 +72,13 @@ export class N8nPackagesService {
 		private readonly autoIncludedWorkflowExporter: AutoIncludedWorkflowExporter,
 	) {}
 
-	async exportPackage(request: ExportPackageRequest): Promise<ExportPackageResult> {
-		const { missingWorkflowDependencyPolicy } = request;
+	async exportPackage(
+		request: ExportPackageRequest,
+		writer: PackageWriter = new TarPackageWriter(),
+	): Promise<ExportPackageResult> {
+		const { missingWorkflowDependencyPolicy, pathStyle } = request;
 		const isReferenceOnly =
 			missingWorkflowDependencyPolicy === MissingWorkflowDependencyPolicy.ReferenceOnly;
-
-		const writer = new TarPackageWriter();
 		const workflowIds = request.workflowIds ?? [];
 		const folderIds = request.folderIds ?? [];
 		const projectIds = request.projectIds ?? [];
@@ -87,6 +91,7 @@ export class N8nPackagesService {
 						folderIds,
 						writer,
 						includeTags,
+						pathStyle,
 					})
 				: undefined;
 
@@ -102,6 +107,7 @@ export class N8nPackagesService {
 						workflowIds: workflowsForExport,
 						writer,
 						includeTags,
+						pathStyle,
 					})
 				: undefined;
 
@@ -112,6 +118,7 @@ export class N8nPackagesService {
 						projectIds,
 						writer,
 						includeTags,
+						pathStyle,
 					})
 				: undefined;
 
@@ -155,6 +162,7 @@ export class N8nPackagesService {
 				existingProjectEntries: allProjectsBeforeAutoInclude,
 				includeTags,
 				projectTargetsById: projectExportResult?.projectTargetsById,
+				pathStyle,
 			});
 		}
 
@@ -208,6 +216,7 @@ export class N8nPackagesService {
 			writer,
 			// Routes project-owned credentials into their project namespace; others stay top-level.
 			projectTargetsById,
+			pathStyle,
 		});
 
 		const dataTableExportResult = await this.dataTableExporter.export({
@@ -216,6 +225,7 @@ export class N8nPackagesService {
 			writer,
 			// Routes project-owned data tables into their project namespace; others stay top-level.
 			projectTargetsById,
+			pathStyle,
 		});
 
 		const workflowRequirementExportResult = await this.workflowRequirementExporter.export({
@@ -230,11 +240,13 @@ export class N8nPackagesService {
 			writer,
 			includeVariableValues,
 			projectTargetsById,
+			pathStyle,
 		});
 
 		const tagExportResult = this.tagExporter.export({
 			usages: requirements.tags,
 			writer,
+			pathStyle,
 		});
 
 		const manifestRequirements = this.buildManifestRequirements({
@@ -295,6 +307,13 @@ export class N8nPackagesService {
 
 	async importPackage(request: ImportPackageRequest): Promise<ImportResult> {
 		const reader = new TarPackageReader(request.packageBuffer, this.packageImportConfig);
+		return await this.importFromReader(request, reader);
+	}
+
+	async importFromReader(
+		request: ImportRequestOptions,
+		reader: PackageReader,
+	): Promise<ImportResult> {
 		const manifest = await this.packageParser.getManifest(reader);
 		if (isProjectPackage(manifest)) {
 			if (request.variableParentPolicy !== undefined) {

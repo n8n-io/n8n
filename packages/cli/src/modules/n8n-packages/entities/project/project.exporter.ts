@@ -8,6 +8,7 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { ProjectSerializer } from './project.serializer';
 import type { PackageWriter } from '../../io/package-writer';
 import { UniqueFilenameAllocator } from '../../io/unique-filename-allocator';
+import type { PathStyle } from '../../n8n-packages.types';
 import type { ManifestEntry } from '../../spec/manifest.schema';
 import { FolderExporter } from '../folder/folder.exporter';
 import type { FolderExportResult } from '../folder/folder.exporter';
@@ -22,6 +23,7 @@ export interface ProjectExportRequest {
 	projectIds: string[];
 	writer: PackageWriter;
 	includeTags: boolean;
+	pathStyle?: PathStyle;
 }
 
 interface ProjectExportResult {
@@ -57,11 +59,11 @@ export class ProjectExporter {
 			async (ids) => await this.projectService.findExistingProjectIds(ids),
 		);
 
-		const allocator = new UniqueFilenameAllocator('projects', 'project');
+		const allocator = new UniqueFilenameAllocator('projects', 'project', request.pathStyle);
 		const results: ProjectExportResult[] = [];
 
 		for (const project of projects) {
-			const target = allocator.allocate(project.name);
+			const target = allocator.allocate(project.name, project.id);
 			results.push(await this.exportProject(project, target, request));
 		}
 
@@ -112,6 +114,7 @@ export class ProjectExporter {
 			writer: request.writer,
 			includeTags: request.includeTags,
 			basePrefix: target,
+			pathStyle: request.pathStyle,
 		});
 	}
 
@@ -131,6 +134,7 @@ export class ProjectExporter {
 			writer: request.writer,
 			includeTags: request.includeTags,
 			basePrefix: target,
+			pathStyle: request.pathStyle,
 		});
 	}
 

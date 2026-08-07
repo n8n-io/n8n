@@ -148,6 +148,15 @@ export type TagMissingMode = (typeof TagMissingMode)[keyof typeof TagMissingMode
 
 export type TagConflictPolicy = (typeof TagConflictPolicy)[keyof typeof TagConflictPolicy];
 
+/**
+ * How exported entity paths are derived: 'slug' (readable, name-derived — the
+ * `.n8np` archive default) or 'id' (rename-stable — used for git-backed sync).
+ *
+ * POC (LIGO-923): internal-only option, deliberately not propagated through the
+ * DTO / public API / CLI layers described in this module's CLAUDE.md.
+ */
+export type PathStyle = 'slug' | 'id';
+
 export interface ExportPackageRequest {
 	user: User;
 	workflowIds?: string[];
@@ -157,6 +166,7 @@ export interface ExportPackageRequest {
 	canExportVariableValues?: boolean;
 	includeTags?: boolean;
 	missingWorkflowDependencyPolicy?: MissingWorkflowDependencyPolicy;
+	pathStyle?: PathStyle;
 }
 
 export type ImportPackageRequest = {
@@ -172,6 +182,9 @@ export type ImportPackageRequest = {
 	ImportDataTableProperties &
 	ImportVariableProperties &
 	ImportTagProperties;
+
+/** Import request without the archive buffer — for callers that supply their own PackageReader. */
+export type ImportRequestOptions = Omit<ImportPackageRequest, 'packageBuffer'>;
 
 export type ImportCredentialProperties = {
 	credentialMatchingMode: CredentialMatchingMode;

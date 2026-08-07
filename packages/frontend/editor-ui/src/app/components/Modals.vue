@@ -66,6 +66,8 @@ import {
 	MOVE_FOLDER_MODAL_KEY,
 } from '@/features/core/folders/folders.constants';
 import {
+	SOURCE_CONTROL_CONNECTION_PULL_MODAL_KEY,
+	SOURCE_CONTROL_CONNECTION_PUSH_MODAL_KEY,
 	SOURCE_CONTROL_PULL_MODAL_KEY,
 	SOURCE_CONTROL_PULL_RESULT_MODAL_KEY,
 	SOURCE_CONTROL_PUSH_MODAL_KEY,
@@ -109,6 +111,8 @@ import PersonalizationModal from '@/features/settings/users/components/Personali
 import ProjectMoveResourceModal from '@/features/collaboration/projects/components/ProjectMoveResourceModal.vue';
 import EventDestinationSettingsModal from '@/features/integrations/logStreaming.ee/components/EventDestinationSettingsModal.vue';
 import SetupWorkflowCredentialsModal from '@/features/workflows/templates/components/SetupWorkflowCredentialsModal.vue';
+import SourceControlConnectionPullModal from '@/features/integrations/sourceControl.ee/components/SourceControlConnectionPullModal.vue';
+import SourceControlConnectionPushModal from '@/features/integrations/sourceControl.ee/components/SourceControlConnectionPushModal.vue';
 import SourceControlPullModal from '@/features/integrations/sourceControl.ee/components/SourceControlPullModal.vue';
 import SourceControlPullResultModal from '@/features/integrations/sourceControl.ee/components/SourceControlPullResultModal.vue';
 import SourceControlPushModal from '@/features/integrations/sourceControl.ee/components/SourceControlPushModal.vue';
@@ -322,6 +326,18 @@ const TrialIntroModal = defineAsyncComponent(
 		<ModalRoot :name="SOURCE_CONTROL_PULL_RESULT_MODAL_KEY">
 			<template #default="{ modalName, data }">
 				<SourceControlPullResultModal :modal-name="modalName" :data="data" />
+			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="SOURCE_CONTROL_CONNECTION_PUSH_MODAL_KEY">
+			<template #default="{ modalName, data }">
+				<SourceControlConnectionPushModal :modal-name="modalName" :data="data" />
+			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="SOURCE_CONTROL_CONNECTION_PULL_MODAL_KEY">
+			<template #default="{ modalName, data }">
+				<SourceControlConnectionPullModal :modal-name="modalName" :data="data" />
 			</template>
 		</ModalRoot>
 

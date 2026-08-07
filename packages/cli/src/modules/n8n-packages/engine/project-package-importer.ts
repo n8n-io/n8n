@@ -17,7 +17,7 @@ import type {
 	ImportBindingMap,
 	ImportedFolderSummary,
 	ImportedWorkflowSummary,
-	ImportPackageRequest,
+	ImportRequestOptions,
 	ImportResult,
 	ImportTagSummary,
 	PackageImportBindings,
@@ -58,7 +58,7 @@ export class ProjectPackageImporter {
 	) {}
 
 	async import(
-		request: ImportPackageRequest,
+		request: ImportRequestOptions,
 		reader: PackageReader,
 		manifest: PackageManifest,
 	): Promise<ImportResult> {
@@ -193,7 +193,7 @@ export class ProjectPackageImporter {
 	}
 
 	private async buildImportContextForProject(
-		request: ImportPackageRequest,
+		request: ImportRequestOptions,
 		reader: PackageReader,
 		manifest: PackageManifest,
 		project: ManifestEntry,
@@ -261,7 +261,7 @@ export class ProjectPackageImporter {
 	}
 
 	private assertAdequatePermissions(
-		request: ImportPackageRequest,
+		request: ImportRequestOptions,
 		manifest: PackageManifest,
 	): void {
 		// A project package can create new projects or update matched ones (by source id), so require both —

@@ -7,6 +7,7 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { FolderSerializer } from './folder.serializer';
 import type { PackageWriter } from '../../io/package-writer';
 import { UniqueFilenameAllocator } from '../../io/unique-filename-allocator';
+import type { PathStyle } from '../../n8n-packages.types';
 import type { ManifestEntry } from '../../spec/manifest.schema';
 import { assertEveryRequestedEntityAccessible } from '../package-export.errors';
 import { mergeRequirements } from '../requirements.types';
@@ -25,6 +26,7 @@ export interface FolderExportRequest {
 	 * same walk nests under `projects/<slug>/folders/...`.
 	 */
 	basePrefix?: string;
+	pathStyle?: PathStyle;
 }
 
 export interface FolderExportResult {
@@ -115,12 +117,12 @@ export class FolderExporter {
 		reservedName?: string,
 	): Promise<FolderExportResult> {
 		// File names need to be unique within a folder only.
-		const allocator = new UniqueFilenameAllocator(parentDir, 'folder');
+		const allocator = new UniqueFilenameAllocator(parentDir, 'folder', context.request.pathStyle);
 		if (reservedName) allocator.reserve(reservedName);
 
 		const results: FolderExportResult[] = [];
 		for (const folder of this.orderedByCreation(siblings)) {
-			const target = allocator.allocate(folder.name);
+			const target = allocator.allocate(folder.name, folder.id);
 			results.push(await this.exportFolder(folder, target, effectiveParentId, context));
 		}
 
@@ -184,6 +186,7 @@ export class FolderExporter {
 			workflowIds,
 			includeTags: request.includeTags,
 			basePrefix,
+			pathStyle: request.pathStyle,
 		});
 	}
 

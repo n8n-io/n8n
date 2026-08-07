@@ -7,6 +7,7 @@ import { CredentialSerializer } from './credential.serializer';
 import type { WorkflowCredentialRequirement } from './credential.types';
 import type { PackageWriter } from '../../io/package-writer';
 import { UniqueFilenameAllocator } from '../../io/unique-filename-allocator';
+import type { PathStyle } from '../../n8n-packages.types';
 import type { ManifestEntry } from '../../spec/manifest.schema';
 import type { PackageCredentialRequirement } from '../../spec/requirements.schema';
 
@@ -23,6 +24,7 @@ export interface CredentialExportRequest {
 	// Contains a map of projectId to export location
 	// p123 -> /project/p123/
 	projectTargetsById?: Map<string, string>;
+	pathStyle?: PathStyle;
 }
 
 export interface CredentialExportResult {
@@ -44,7 +46,7 @@ export class CredentialExporter {
 		const allocatorFor = (baseDir: string) => {
 			const existing = allocators.get(baseDir);
 			if (existing) return existing;
-			const created = new UniqueFilenameAllocator(baseDir, 'credential');
+			const created = new UniqueFilenameAllocator(baseDir, 'credential', request.pathStyle);
 			allocators.set(baseDir, created);
 			return created;
 		};
@@ -69,7 +71,7 @@ export class CredentialExporter {
 
 			if (credential) {
 				const baseDir = this.resolveBaseDir(credential, request.projectTargetsById);
-				const target = allocatorFor(baseDir).allocate(name);
+				const target = allocatorFor(baseDir).allocate(name, id);
 				request.writer.writeDirectory(target);
 				request.writer.writeFile(
 					`${target}/credential.json`,

@@ -18,7 +18,7 @@ import type { VariableImportRequest } from '../entities/variable/variable.types'
 import { WorkflowPublisher } from '../entities/workflow/workflow-publisher';
 import type { PackageReader } from '../io/package-reader';
 import { VariableParentPolicy } from '../n8n-packages.types';
-import type { ImportContext, ImportPackageRequest, ImportResult } from '../n8n-packages.types';
+import type { ImportContext, ImportRequestOptions, ImportResult } from '../n8n-packages.types';
 import { assertPackageImportApiKeyScopes, assertTagWritesAllowed } from './import-gates';
 import { ImportOrchestrator } from './import-orchestrator';
 import {
@@ -51,7 +51,7 @@ export class WorkflowPackageImporter {
 	) {}
 
 	async import(
-		request: ImportPackageRequest,
+		request: ImportRequestOptions,
 		reader: PackageReader,
 		manifest: PackageManifest,
 	): Promise<ImportResult> {

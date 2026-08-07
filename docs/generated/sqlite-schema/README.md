@@ -106,6 +106,8 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [settings](settings.md) | 3 |  | table |
 | [shared_credentials](shared_credentials.md) | 5 |  | table |
 | [shared_workflow](shared_workflow.md) | 5 |  | table |
+| [source_control_connection](source_control_connection.md) | 13 |  | table |
+| [source_control_scope](source_control_scope.md) | 6 |  | table |
 | [tag_entity](tag_entity.md) | 4 |  | table |
 | [test_case_execution](test_case_execution.md) | 16 |  | table |
 | [test_run](test_run.md) | 16 |  | table |
@@ -276,6 +278,8 @@ erDiagram
 "shared_credentials" |o--|| "credentials_entity" : "FOREIGN KEY (credentialsId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "shared_workflow" |o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "shared_workflow" |o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"source_control_scope" }o--o| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"source_control_scope" }o--|| "source_control_connection" : "FOREIGN KEY (connectionId) REFERENCES source_control_connection (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "test_case_execution" }o--|| "test_run" : "FOREIGN KEY (testRunId) REFERENCES test_run (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "test_case_execution" }o--o| "execution_entity" : "FOREIGN KEY (pastExecutionId) REFERENCES execution_entity (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "test_case_execution" }o--o| "execution_entity" : "FOREIGN KEY (executionId) REFERENCES execution_entity (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
@@ -1284,6 +1288,29 @@ erDiagram
   TEXT role
   datetime_3_ updatedAt
   varchar_36_ workflowId PK
+}
+"source_control_connection" {
+  varchar_16_ branchColor
+  varchar_255_ branchName
+  boolean branchReadOnly
+  boolean connected
+  varchar_16_ connectionType
+  datetime_3_ createdAt
+  TEXT encryptedPassword
+  TEXT encryptedPrivateKey
+  TEXT encryptedUsername
+  varchar_36_ id PK
+  TEXT publicKey
+  TEXT repositoryUrl
+  datetime_3_ updatedAt
+}
+"source_control_scope" {
+  varchar_36_ connectionId FK
+  datetime_3_ createdAt
+  varchar_36_ id PK
+  varchar_36_ projectId FK
+  varchar_16_ scopeType
+  datetime_3_ updatedAt
 }
 "tag_entity" {
   datetime_3_ createdAt

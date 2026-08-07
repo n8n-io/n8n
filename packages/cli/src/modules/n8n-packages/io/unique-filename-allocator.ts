@@ -1,6 +1,7 @@
 import { UnexpectedError } from 'n8n-workflow';
 
 import { generateSlug } from './slug.utils';
+import type { PathStyle } from '../n8n-packages.types';
 
 export class UniqueFilenameAllocator {
 	private readonly used = new Set<string>();
@@ -8,6 +9,7 @@ export class UniqueFilenameAllocator {
 	constructor(
 		private readonly baseDir: string,
 		private readonly fallback: string,
+		private readonly pathStyle: PathStyle = 'slug',
 	) {}
 
 	reserve(segment: string): void {
@@ -26,8 +28,12 @@ export class UniqueFilenameAllocator {
 		this.used.add(path);
 	}
 
-	allocate(name: string): string {
-		const base = `${this.baseDir}/${generateSlug(name, this.fallback)}`;
+	allocate(name: string, id?: string): string {
+		// 'id' paths stay stable across renames and allocation order — required for
+		// long-lived git trees (source control sync), where slug churn is destructive.
+		const segment =
+			this.pathStyle === 'id' && id !== undefined ? id : generateSlug(name, this.fallback);
+		const base = `${this.baseDir}/${segment}`;
 
 		if (!this.used.has(base)) {
 			this.used.add(base);

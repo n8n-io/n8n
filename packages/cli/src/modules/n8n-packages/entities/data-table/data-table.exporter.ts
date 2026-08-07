@@ -10,6 +10,7 @@ import { DataTableSerializer } from './data-table.serializer';
 import type { WorkflowDataTableRequirement } from './data-table.types';
 import type { PackageWriter } from '../../io/package-writer';
 import { UniqueFilenameAllocator } from '../../io/unique-filename-allocator';
+import type { PathStyle } from '../../n8n-packages.types';
 import type { ManifestEntry } from '../../spec/manifest.schema';
 import type { PackageDataTableRequirement } from '../../spec/requirements.schema';
 
@@ -18,6 +19,7 @@ export interface DataTableExportRequest {
 	requirements: WorkflowDataTableRequirement[];
 	writer: PackageWriter;
 	projectTargetsById?: Map<string, string>;
+	pathStyle?: PathStyle;
 }
 
 export interface DataTableExportResult {
@@ -61,7 +63,7 @@ export class DataTableExporter {
 		const allocatorFor = (baseDir: string) => {
 			const existing = allocators.get(baseDir);
 			if (existing) return existing;
-			const created = new UniqueFilenameAllocator(baseDir, 'data-table');
+			const created = new UniqueFilenameAllocator(baseDir, 'data-table', request.pathStyle);
 			allocators.set(baseDir, created);
 			return created;
 		};
@@ -72,7 +74,7 @@ export class DataTableExporter {
 		for (const dataTable of dataTables) {
 			const usedByWorkflows = usedByWorkflowsById.get(dataTable.id) ?? [];
 			const baseDir = this.resolveBaseDir(dataTable, request.projectTargetsById);
-			const target = allocatorFor(baseDir).allocate(dataTable.name);
+			const target = allocatorFor(baseDir).allocate(dataTable.name, dataTable.id);
 
 			request.writer.writeDirectory(target);
 			request.writer.writeFile(

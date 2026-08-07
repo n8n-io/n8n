@@ -2,11 +2,12 @@ import type { Folder, Project, WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { UnexpectedError } from 'n8n-workflow';
 
-import type { WorkflowNodeTypeSource } from './node-type-usage';
 import type { AutoIncludedWorkflow } from './auto-included-workflow-resolver';
+import type { WorkflowNodeTypeSource } from './node-type-usage';
 import { WorkflowSerializer } from './workflow.serializer';
 import type { PackageWriter } from '../../io/package-writer';
 import { UniqueFilenameAllocator } from '../../io/unique-filename-allocator';
+import type { PathStyle } from '../../n8n-packages.types';
 import type { ManifestEntry } from '../../spec/manifest.schema';
 import { CredentialRequirementsExtractor } from '../credential/credential-requirements.extractor';
 import type { WorkflowCredentialRequirement } from '../credential/credential.types';
@@ -28,6 +29,7 @@ export interface AutoIncludedWorkflowExportRequest {
 	existingProjectEntries: ManifestEntry[];
 	includeTags: boolean;
 	projectTargetsById?: Map<string, string>;
+	pathStyle?: PathStyle;
 }
 
 export interface AutoIncludedWorkflowExportResult {
@@ -42,6 +44,7 @@ interface ExportAllocators {
 	workflows: Map<string, UniqueFilenameAllocator>;
 	folders: Map<string, UniqueFilenameAllocator>;
 	project: UniqueFilenameAllocator;
+	pathStyle?: PathStyle;
 }
 
 /**
@@ -64,7 +67,8 @@ export class AutoIncludedWorkflowExporter {
 		const allocators: ExportAllocators = {
 			workflows: new Map(),
 			folders: new Map(),
-			project: new UniqueFilenameAllocator('projects', 'project'),
+			project: new UniqueFilenameAllocator('projects', 'project', request.pathStyle),
+			pathStyle: request.pathStyle,
 		};
 
 		const workflowEntriesById = new Map(
@@ -119,6 +123,7 @@ export class AutoIncludedWorkflowExporter {
 				request.writer,
 				allocators.workflows,
 				request.includeTags,
+				request.pathStyle,
 			);
 			workflowEntries.push(entry);
 			workflowEntriesById.set(entry.id, entry);
@@ -173,6 +178,7 @@ export class AutoIncludedWorkflowExporter {
 				folderEntriesById: options.folderEntriesById,
 				folderEntries: options.folderEntries,
 				allocators: options.allocators.folders,
+				pathStyle: options.allocators.pathStyle,
 			});
 			return `${folderTarget}/workflows`;
 		}
@@ -185,6 +191,7 @@ export class AutoIncludedWorkflowExporter {
 				folderEntriesById: options.folderEntriesById,
 				folderEntries: options.folderEntries,
 				allocators: options.allocators.folders,
+				pathStyle: options.allocators.pathStyle,
 			});
 			return `${folderTarget}/workflows`;
 		}
@@ -203,7 +210,7 @@ export class AutoIncludedWorkflowExporter {
 		const existing = options.projectEntriesById.get(options.project.id);
 		if (existing) return existing.target;
 
-		const target = options.allocator.allocate(options.project.name);
+		const target = options.allocator.allocate(options.project.name, options.project.id);
 		const serialized = this.projectSerializer.serialize(options.project);
 		options.writer.writeDirectory(target);
 		options.writer.writeFile(`${target}/project.json`, JSON.stringify(serialized, null, '\t'));
@@ -222,6 +229,7 @@ export class AutoIncludedWorkflowExporter {
 		folderEntriesById: Map<string, ManifestEntry>;
 		folderEntries: ManifestEntry[];
 		allocators: Map<string, UniqueFilenameAllocator>;
+		pathStyle?: PathStyle;
 	}): string {
 		let parentTarget: string | undefined;
 		let effectiveParentId: string | null = null;
@@ -234,12 +242,17 @@ export class AutoIncludedWorkflowExporter {
 				continue;
 			}
 
-			const allocator = allocatorFor(options.allocators, parentTarget ?? options.baseDir, 'folder');
+			const allocator = allocatorFor(
+				options.allocators,
+				parentTarget ?? options.baseDir,
+				'folder',
+				options.pathStyle,
+			);
 			// A folder's directly-contained workflows are written under `<folder>/workflows`,
 			// so reserve that segment before placing child folders — otherwise a child folder
 			// named "workflows" would collide with its parent's workflow directory.
 			if (parentTarget) allocator.reserve('workflows');
-			const target = allocator.allocate(folder.name);
+			const target = allocator.allocate(folder.name, folder.id);
 			const serialized = this.folderSerializer.serialize(folder, effectiveParentId);
 			options.writer.writeDirectory(target);
 			options.writer.writeFile(`${target}/folder.json`, JSON.stringify(serialized, null, '\t'));
@@ -269,8 +282,12 @@ export class AutoIncludedWorkflowExporter {
 		writer: PackageWriter,
 		allocators: Map<string, UniqueFilenameAllocator>,
 		includeTags: boolean,
+		pathStyle?: PathStyle,
 	): ManifestEntry {
-		const target = allocatorFor(allocators, baseDir, 'workflow').allocate(workflow.name);
+		const target = allocatorFor(allocators, baseDir, 'workflow', pathStyle).allocate(
+			workflow.name,
+			workflow.id,
+		);
 		const serialized = this.workflowSerializer.serialize(workflow, { includeTags });
 		writer.writeDirectory(target);
 		writer.writeFile(`${target}/workflow.json`, JSON.stringify(serialized, null, '\t'));
@@ -286,11 +303,12 @@ function allocatorFor(
 	allocators: Map<string, UniqueFilenameAllocator>,
 	baseDir: string,
 	fallback: string,
+	pathStyle?: PathStyle,
 ): UniqueFilenameAllocator {
 	const existing = allocators.get(baseDir);
 	if (existing) return existing;
 
-	const allocator = new UniqueFilenameAllocator(baseDir, fallback);
+	const allocator = new UniqueFilenameAllocator(baseDir, fallback, pathStyle);
 	allocators.set(baseDir, allocator);
 	return allocator;
 }

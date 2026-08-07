@@ -1,27 +1,35 @@
 <script lang="ts" setup>
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import { getResourcePermissions } from '@n8n/permissions';
-import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
+import { useSourceControlConnectionsStore } from '@/features/integrations/sourceControl.ee/sourceControlConnections.store';
+import {
+	SOURCE_CONTROL_CONNECTION_PULL_MODAL_KEY,
+	SOURCE_CONTROL_CONNECTION_PUSH_MODAL_KEY,
+} from '@/features/integrations/sourceControl.ee/sourceControl.constants';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { useRoute, useRouter } from 'vue-router';
+import { useUIStore } from '@/app/stores/ui.store';
 
 import { N8nButton, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 defineProps<{
 	isCollapsed: boolean;
 }>();
 
-const sourceControlStore = useSourceControlStore();
+const connectionsStore = useSourceControlConnectionsStore();
 const projectStore = useProjectsStore();
+const uiStore = useUIStore();
 const i18n = useI18n();
-const route = useRoute();
-const router = useRouter();
 const tooltipOpenDelay = ref(300);
 
-const currentBranch = computed(() => {
-	return sourceControlStore.preferences.branchName;
-});
+// Most-specific-wins: the project's own connection, else the instance connection.
+const resolvedConnection = computed(() =>
+	connectionsStore.connectionForProject(projectStore.currentProjectId ?? undefined),
+);
+
+const currentBranch = computed(() => resolvedConnection.value?.branchName ?? '');
+const branchColor = computed(() => resolvedConnection.value?.branchColor ?? '#5296D6');
+const branchReadOnly = computed(() => resolvedConnection.value?.branchReadOnly ?? false);
 
 // Check if the user has permission to push for at least one project
 const hasPushPermission = computed(() => {
@@ -40,7 +48,7 @@ const hasPullPermission = computed(() => {
 
 const sourceControlAvailable = computed(
 	() =>
-		sourceControlStore.isEnterpriseSourceControlEnabled &&
+		connectionsStore.isEnterpriseSourceControlEnabled &&
 		(hasPullPermission.value || hasPushPermission.value),
 );
 
@@ -59,29 +67,33 @@ function getAccessibleTextColor(backgroundColor: string): string {
 	return luminance > 0.5 ? '#000000' : '#ffffff';
 }
 
-const accessibleTextColor = computed(() => {
-	return getAccessibleTextColor(sourceControlStore.preferences.branchColor);
-});
+const accessibleTextColor = computed(() => getAccessibleTextColor(branchColor.value));
 
-async function pushWorkfolder() {
-	// Navigate to route with sourceControl param - modal will handle data loading and loading states
-	void router.push({
-		query: {
-			...route.query,
-			sourceControl: 'push',
-		},
+function pushWorkfolder() {
+	if (!resolvedConnection.value) return;
+	uiStore.openModalWithData({
+		name: SOURCE_CONTROL_CONNECTION_PUSH_MODAL_KEY,
+		data: { connectionId: resolvedConnection.value.id },
 	});
 }
 
 function pullWorkfolder() {
-	// Navigate to route with sourceControl param - modal will handle the pull operation
-	void router.push({
-		query: {
-			...route.query,
-			sourceControl: 'pull',
-		},
+	if (!resolvedConnection.value) return;
+	uiStore.openModalWithData({
+		name: SOURCE_CONTROL_CONNECTION_PULL_MODAL_KEY,
+		data: { connectionId: resolvedConnection.value.id },
 	});
 }
+
+onMounted(async () => {
+	if (sourceControlAvailable.value && connectionsStore.connections.length === 0) {
+		try {
+			await connectionsStore.fetchAll();
+		} catch {
+			// non-admins cannot list connections; the chip simply stays hidden
+		}
+	}
+});
 </script>
 
 <template>
@@ -90,12 +102,12 @@ function pullWorkfolder() {
 		:class="{
 			[$style.sync]: true,
 			[$style.collapsed]: isCollapsed,
-			[$style.isConnected]: sourceControlStore.isEnterpriseSourceControlEnabled,
+			[$style.isConnected]: connectionsStore.isEnterpriseSourceControlEnabled,
 		}"
 		data-test-id="main-sidebar-source-control"
 	>
 		<div
-			v-if="sourceControlStore.preferences.connected && sourceControlStore.preferences.branchName"
+			v-if="resolvedConnection?.connected && currentBranch"
 			:class="$style.connected"
 			data-test-id="main-sidebar-source-control-connected"
 		>
@@ -114,7 +126,7 @@ function pullWorkfolder() {
 					:class="$style.icon"
 					:style="{
 						color: accessibleTextColor,
-						background: sourceControlStore.preferences.branchColor,
+						background: branchColor,
 					}"
 				>
 					<N8nIcon icon="git-branch" size="small" />
@@ -125,7 +137,7 @@ function pullWorkfolder() {
 				:class="$style.icon"
 				:style="{
 					color: accessibleTextColor,
-					background: sourceControlStore.preferences.branchColor,
+					background: branchColor,
 				}"
 			>
 				<N8nIcon icon="git-branch" size="small" />
@@ -157,16 +169,14 @@ function pullWorkfolder() {
 					/>
 				</N8nTooltip>
 				<N8nTooltip
-					:disabled="
-						!isCollapsed && !sourceControlStore.preferences.branchReadOnly && hasPushPermission
-					"
+					:disabled="!isCollapsed && !branchReadOnly && hasPushPermission"
 					:show-after="tooltipOpenDelay"
 					:placement="isCollapsed ? 'right' : 'top'"
 				>
 					<template #content>
 						<div>
 							{{
-								sourceControlStore.preferences.branchReadOnly || !hasPushPermission
+								branchReadOnly || !hasPushPermission
 									? i18n.baseText('settings.sourceControl.button.push.forbidden')
 									: i18n.baseText('settings.sourceControl.button.push')
 							}}
@@ -178,7 +188,7 @@ function pullWorkfolder() {
 						data-test-id="main-sidebar-source-control-push"
 						icon="arrow-up"
 						:label="isCollapsed ? '' : i18n.baseText('settings.sourceControl.button.push')"
-						:disabled="sourceControlStore.preferences.branchReadOnly || !hasPushPermission"
+						:disabled="branchReadOnly || !hasPushPermission"
 						@click="pushWorkfolder"
 					/>
 				</N8nTooltip>

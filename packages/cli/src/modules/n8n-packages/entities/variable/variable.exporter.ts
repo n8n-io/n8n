@@ -73,7 +73,7 @@ export class VariableExporter {
 		const allocatorFor = (baseDir: string) => {
 			const existing = allocators.get(baseDir);
 			if (existing) return existing;
-			const created = new UniqueFilenameAllocator(baseDir, 'variable');
+			const created = new UniqueFilenameAllocator(baseDir, 'variable', request.pathStyle);
 			allocators.set(baseDir, created);
 			return created;
 		};
@@ -90,7 +90,7 @@ export class VariableExporter {
 				bundledVariableIds.add(variable.id);
 
 				const baseDir = this.resolveBaseDir(variable, request.projectTargetsById);
-				const target = allocatorFor(baseDir).allocate(variable.key);
+				const target = allocatorFor(baseDir).allocate(variable.key, variable.id);
 				request.writer.writeDirectory(target);
 				request.writer.writeFile(
 					`${target}/variable.json`,

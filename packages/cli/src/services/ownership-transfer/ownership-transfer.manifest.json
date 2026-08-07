@@ -68,6 +68,11 @@
 			"name": "WorkflowReviewRequest",
 			"path": "packages/@n8n/db/src/entities/workflow-review-request.ee.ts",
 			"reason": "Not transferred with the project. Open reviews should be closed when their workflows move to another project; that close-on-move behaviour is deferred."
+		},
+		{
+			"name": "SourceControlScope",
+			"path": "packages/cli/src/modules/source-control.ee/multi-repo/source-control-scope.entity.ts",
+			"reason": "Source-control ownership claim for the deleted project itself; dropped via FK cascade, never moved to another project (LIGO-923 POC)."
 		}
 	]
 }

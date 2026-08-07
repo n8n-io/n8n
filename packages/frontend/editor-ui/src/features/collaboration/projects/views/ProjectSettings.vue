@@ -27,6 +27,7 @@ import type { TableOptions } from '@n8n/design-system/components/N8nDataTableSer
 import type { UserAction } from '@n8n/design-system';
 import { isProjectRole } from '@/app/utils/typeGuards';
 import ProjectExternalSecrets from '../components/ProjectExternalSecrets.vue';
+import ProjectSourceControl from '../components/ProjectSourceControl.vue';
 import ProjectSettingsCustomTelemetryTags from '../components/ProjectSettingsCustomTelemetryTags.vue';
 import { getResourcePermissions } from '@n8n/permissions';
 import { hasPermission } from '@/app/utils/rbac/permissions';
@@ -652,6 +653,8 @@ onMounted(async () => {
 			</template>
 
 			<ProjectExternalSecrets :class="$style.externalSecrets" />
+
+			<ProjectSourceControl />
 
 			<template v-if="canUpdateProject">
 				<fieldset id="projectMembers">

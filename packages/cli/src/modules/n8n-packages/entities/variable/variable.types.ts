@@ -1,7 +1,7 @@
 import type { User } from '@n8n/db';
 
 import type { PackageWriter } from '../../io/package-writer';
-import type { VariableMissingMode } from '../../n8n-packages.types';
+import type { PathStyle, VariableMissingMode } from '../../n8n-packages.types';
 import type { ManifestEntry } from '../../spec/manifest.schema';
 import type { PackageVariableRequirement } from '../../spec/requirements.schema';
 
@@ -16,6 +16,7 @@ export interface VariableExportRequest {
 	writer: PackageWriter;
 	includeVariableValues: boolean;
 	projectTargetsById?: Map<string, string>;
+	pathStyle?: PathStyle;
 }
 
 export interface VariableExportResult {

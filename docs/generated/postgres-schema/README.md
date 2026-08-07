@@ -106,6 +106,8 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.settings](public.settings.md) | 3 |  | BASE TABLE |
 | [public.shared_credentials](public.shared_credentials.md) | 5 |  | BASE TABLE |
 | [public.shared_workflow](public.shared_workflow.md) | 5 |  | BASE TABLE |
+| [public.source_control_connection](public.source_control_connection.md) | 13 |  | BASE TABLE |
+| [public.source_control_scope](public.source_control_scope.md) | 6 |  | BASE TABLE |
 | [public.tag_entity](public.tag_entity.md) | 4 |  | BASE TABLE |
 | [public.test_case_execution](public.test_case_execution.md) | 14 |  | BASE TABLE |
 | [public.test_run](public.test_run.md) | 16 |  | BASE TABLE |
@@ -293,6 +295,8 @@ erDiagram
 "public.shared_credentials" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.shared_workflow" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 "public.shared_workflow" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
+"public.source_control_scope" }o--o| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
+"public.source_control_scope" }o--|| "public.source_control_connection" : "FOREIGN KEY (#quot;connectionId#quot;) REFERENCES source_control_connection(id) ON DELETE CASCADE"
 "public.test_case_execution" }o--o| "public.execution_entity" : "FOREIGN KEY (#quot;executionId#quot;) REFERENCES execution_entity(id) ON DELETE SET NULL"
 "public.test_case_execution" }o--|| "public.test_run" : "FOREIGN KEY (#quot;testRunId#quot;) REFERENCES test_run(id) ON DELETE CASCADE"
 "public.test_run" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
@@ -1297,6 +1301,29 @@ erDiagram
   text role
   timestamp_3__with_time_zone updatedAt
   varchar_36_ workflowId FK
+}
+"public.source_control_connection" {
+  varchar_16_ branchColor
+  varchar_255_ branchName
+  boolean branchReadOnly
+  boolean connected
+  varchar_16_ connectionType
+  timestamp_3__with_time_zone createdAt
+  text encryptedPassword
+  text encryptedPrivateKey
+  text encryptedUsername
+  varchar_36_ id
+  text publicKey
+  text repositoryUrl
+  timestamp_3__with_time_zone updatedAt
+}
+"public.source_control_scope" {
+  varchar_36_ connectionId FK
+  timestamp_3__with_time_zone createdAt
+  varchar_36_ id
+  varchar_36_ projectId FK
+  varchar_16_ scopeType
+  timestamp_3__with_time_zone updatedAt
 }
 "public.tag_entity" {
   timestamp_3__with_time_zone createdAt
