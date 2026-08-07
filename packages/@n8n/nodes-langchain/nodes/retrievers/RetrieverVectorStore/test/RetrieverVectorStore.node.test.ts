@@ -2,7 +2,7 @@ import { ContextualCompressionRetriever } from '@langchain/classic/retrievers/co
 import type { BaseDocumentCompressor } from '@langchain/core/retrievers/document_compressors';
 import { VectorStore } from '@langchain/core/vectorstores';
 import type { ISupplyDataFunctions } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
 
 import { RetrieverVectorStore } from '../RetrieverVectorStore.node';
@@ -129,6 +129,65 @@ describe('RetrieverVectorStore', () => {
 
 			expect(mockContext.getNodeParameter).toHaveBeenCalledWith('topK', 0, 4);
 			expect(mockVectorStore.asRetriever).toHaveBeenCalledWith(4);
+		});
+
+		it('should create a retriever from a duck-typed VectorStore (prototype mismatch)', async () => {
+			const mockDuckVectorStore = {
+				asRetriever: vi.fn().mockReturnValue({ test: 'duck-retriever' }),
+				similaritySearch: vi.fn(),
+			};
+
+			mockContext.getNodeParameter.mockImplementation((param, _itemIndex, defaultValue) => {
+				if (param === 'topK') return 4;
+				return defaultValue;
+			});
+			mockContext.getInputConnectionData.mockResolvedValue(mockDuckVectorStore);
+
+			const result = await retrieverNode.supplyData.call(mockContext, 0);
+
+			expect(mockContext.getInputConnectionData).toHaveBeenCalledWith(
+				NodeConnectionTypes.AiVectorStore,
+				0,
+			);
+			expect(mockDuckVectorStore.asRetriever).toHaveBeenCalledWith(4);
+			expect(result).toHaveProperty('response', { test: 'duck-retriever' });
+		});
+
+		it('should create a ContextualCompressionRetriever when input contains reranker and duck-typed vectorStore', async () => {
+			const mockDuckVectorStore = {
+				asRetriever: vi.fn().mockReturnValue({ test: 'base-duck-retriever' }),
+				similaritySearch: vi.fn(),
+			};
+
+			const mockReranker = {} as BaseDocumentCompressor;
+
+			const inputWithReranker = {
+				reranker: mockReranker,
+				vectorStore: mockDuckVectorStore,
+			};
+
+			mockContext.getNodeParameter.mockImplementation((param, _itemIndex, defaultValue) => {
+				if (param === 'topK') return 4;
+				return defaultValue;
+			});
+			mockContext.getInputConnectionData.mockResolvedValue(inputWithReranker);
+
+			const result = await retrieverNode.supplyData.call(mockContext, 0);
+
+			expect(mockDuckVectorStore.asRetriever).toHaveBeenCalledWith(4);
+			expect(result.response).toBeInstanceOf(ContextualCompressionRetriever);
+		});
+
+		it('should throw NodeOperationError when input is missing or invalid', async () => {
+			mockContext.getNodeParameter.mockImplementation(
+				(_param, _itemIndex, defaultValue) => defaultValue,
+			);
+			mockContext.getInputConnectionData.mockResolvedValue(undefined);
+			mockContext.getNode = vi.fn().mockReturnValue({ name: 'Vector Store Retriever' });
+
+			await expect(retrieverNode.supplyData.call(mockContext, 0)).rejects.toThrow(
+				NodeOperationError,
+			);
 		});
 	});
 });
