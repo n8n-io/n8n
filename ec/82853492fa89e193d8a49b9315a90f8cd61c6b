@@ -1,0 +1,32 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/SessionTimelineTable.spec.ts
+  s_4bc79cf80826f6::t_86fb02e4fb2515 189,195,198-199
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderEditorColumn.spec.ts
+  s_4bc79cf80826f6::t_648ce8f095dee0 25,258-261
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_4bc79cf80826f6::t_b56043257fc1ec 113-119,131,137-139,186
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentPreviewDock.test.ts
+  s_4bc79cf80826f6::t_2c1fc32ce5a96a 23
+  s_4bc79cf80826f6::t_a557f275ff6a1d 24,30-31,35,42,99,106,112,118,124,127-129,132-136
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSessionsListView.spec.ts
+  s_4bc79cf80826f6::t_accf630d101899 167,206,217
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentBuilderSession.test.ts
+  s_4bc79cf80826f6::t_b69357550c8f5f 55-59,63-65,67
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSessionTimelinePanel.spec.ts
+  s_4bc79cf80826f6::t_39a645d07b229a 25,37-64,67,70,72-77,110,135,140,145,151,156,161,167,172
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "ec82853492fa89e193d8a49b9315a90f8cd61c6b",
+  "prompts": {},
+  "sessions": {
+    "s_4bc79cf80826f6": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fc821-4348-7fc2-93b6-13c4143d0153",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}
