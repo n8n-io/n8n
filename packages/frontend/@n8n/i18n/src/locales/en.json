@@ -1351,6 +1351,8 @@
 	"experiments.resourceCenter.title": "Resources",
 	"experiments.resourceCenter.video.level": "Level: {level}",
 	"experiments.templatesDataQuality.modalTitle": "Featured templates",
+	"e2eTestMode.marker": "E2E MODE",
+	"e2eTestMode.markerTooltip": "This instance runs with E2E_TESTS=true. It exposes test-only reset endpoints and changes some defaults — don't use it for anything you want to keep.",
 	"error": "Error",
 	"error.goBack": "Go back",
 	"error.pageNotFound": "Oops, couldn’t find that",
