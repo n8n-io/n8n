@@ -9,8 +9,8 @@
     },
     "./package.json": "./package.json",
     "./scripts/generate-types": {
-      "types": "./src/generate-types/generate-types.ts",
-      "default": "./src/generate-types/generate-types.ts"
+      "types": "./dist/generate-types/generate-types.d.ts",
+      "default": "./dist/generate-types/generate-types.js"
     },
     "./dist/generate-types/generate-types": {
       "default": "./dist/generate-types/generate-types.js"
