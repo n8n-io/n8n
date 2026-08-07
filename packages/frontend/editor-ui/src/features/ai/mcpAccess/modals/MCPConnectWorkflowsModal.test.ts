@@ -51,7 +51,7 @@ const ModalStub = defineComponent({
 
 const initialState = {
 	ui: {
-		modalsById: {
+		modalRuntimeStateById: {
 			[MCP_CONNECT_WORKFLOWS_MODAL_KEY]: {
 				open: true,
 			},

@@ -24,7 +24,7 @@ const ModalStub = {
 
 const initialState = {
 	[STORES.UI]: {
-		modalsById: {
+		modalRuntimeStateById: {
 			[CONFIRM_PASSWORD_MODAL_KEY]: {
 				open: true,
 			},

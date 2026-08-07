@@ -62,7 +62,7 @@ const mockUsersList: UsersList = {
 
 const initialState = {
 	[STORES.UI]: {
-		modalsById: {
+		modalRuntimeStateById: {
 			[DELETE_USER_MODAL_KEY]: {
 				open: true,
 			},

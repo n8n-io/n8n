@@ -182,7 +182,7 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		workflowsListStore.searchWorkflows = vi.fn().mockResolvedValue([]);
 		mockedStore(useUsersStore).isAdminOrOwner = true;
 
-		uiStore.modalsById = {
+		uiStore.modalRuntimeStateById = {
 			[MODAL_NAME]: { open: true, data: {} },
 			agentToolConfigModal: { open: false },
 		};
@@ -234,7 +234,7 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		await flushPromises();
 		expect(modalAttrs.open).toBe(true);
 
-		uiStore.modalsById[MODAL_NAME].open = false;
+		uiStore.modalRuntimeStateById[MODAL_NAME].open = false;
 		await flushPromises();
 		expect(modalAttrs.open).toBe(false);
 	});
@@ -247,11 +247,11 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		await flushPromises();
 		expect(modalAttrs.open).toBe(true);
 
-		uiStore.modalsById.agentToolConfigModal.open = true;
+		uiStore.modalRuntimeStateById.agentToolConfigModal.open = true;
 		await flushPromises();
 		expect(modalAttrs.open).toBe(false);
 
-		uiStore.modalsById.agentToolConfigModal.open = false;
+		uiStore.modalRuntimeStateById.agentToolConfigModal.open = false;
 		await flushPromises();
 		expect(modalAttrs.open).toBe(true);
 	});
