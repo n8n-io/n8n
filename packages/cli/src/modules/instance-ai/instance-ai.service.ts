@@ -135,6 +135,7 @@ import { EvalThreadCredentialAllowlistService } from './eval/thread-credential-a
 import { DurableEventLog } from './event-bus/durable-event-log';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
 import { InterruptedRunSweeper } from './event-bus/interrupted-run-sweeper';
+import { maskCreditsForDisplay } from './instance-ai-credit-display';
 import { InstanceAiCreditService } from './instance-ai-credit.service';
 import {
 	getAgentErrorSeverity,
@@ -857,9 +858,18 @@ export class InstanceAiService {
 		return this.modelService.isProxyEnabled();
 	}
 
-	/** Get current credit usage from the AI service proxy. */
+	/**
+	 * Get current credit usage from the AI service proxy.
+	 *
+	 * Doubles as the reconcile point for the activation lock: this runs on every page load, so a
+	 * lock call that was lost to a failed request, an evicted record or a process restart is
+	 * re-asserted here without any scheduled job.
+	 */
 	async getCredits(user: User): Promise<{ creditsQuota: number; creditsClaimed: number }> {
-		return await this.modelService.getCredits(user);
+		await this.creditService.ensureQuotaLockApplied(user);
+
+		const credits = await this.modelService.getCredits(user);
+		return maskCreditsForDisplay(credits, this.settingsService.isActivationCapped());
 	}
 
 	/**
@@ -878,9 +888,13 @@ export class InstanceAiService {
 	): Promise<unknown> {
 		if (!isMaskedStreamFailure(error)) return error;
 		try {
-			const { creditsQuota, creditsClaimed } = await this.modelService.getCredits(user);
-			// A negative quota is the unlimited sentinel (e.g. proxy disabled).
-			if (creditsQuota < 0 || creditsClaimed < creditsQuota) return error;
+			// The activation lock refuses use while the quota still has credits left, so the
+			// numbers alone would not explain the failure (INS-1082).
+			if (!(await this.creditService.isActivationLockActive())) {
+				const { creditsQuota, creditsClaimed } = await this.modelService.getCredits(user);
+				// A negative quota is the unlimited sentinel (e.g. proxy disabled).
+				if (creditsQuota < 0 || creditsClaimed < creditsQuota) return error;
+			}
 		} catch (creditsError) {
 			this.logger.debug('Masked stream failure credit re-check failed; keeping original error', {
 				error: getErrorMessage(creditsError),

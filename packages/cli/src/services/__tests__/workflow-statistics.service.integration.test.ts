@@ -95,9 +95,11 @@ describe('WorkflowStatisticsService', () => {
 		beforeEach(async () => {
 			vi.restoreAllMocks();
 			await testDb.truncate(['WorkflowStatistics', 'WorkflowStatisticsDelta']);
-			// Clear first production failure setting
+			// Clear the instance-level milestone settings; without this the first test to reach a
+			// milestone leaves the row behind and every later test silently skips emitting it.
 			const settingsRepository = Container.get(SettingsRepository);
 			await settingsRepository.delete({ key: 'instance.firstProductionFailure' });
+			await settingsRepository.delete({ key: 'instance.firstProductionSuccess' });
 		});
 
 		test.each<WorkflowExecuteMode>(['cli', 'retry', 'trigger', 'webhook', 'evaluation'])(
@@ -370,11 +372,17 @@ describe('WorkflowStatisticsService', () => {
 				// (~completion time), not `runData.startedAt` — an accepted best-effort drift.
 				userActivatedAt: isPostgres ? expect.any(Number) : runData.startedAt.getTime(),
 			});
-			expect(emitSpy).toHaveBeenCalledTimes(1);
+			expect(emitSpy).toHaveBeenCalledTimes(2);
 			expect(emitSpy).toHaveBeenCalledWith('first-production-workflow-succeeded', {
 				projectId: personalProject.id,
 				workflowId: workflow.id,
 				userId: user.id,
+			});
+			expect(emitSpy).toHaveBeenCalledWith('instance-first-production-workflow-succeeded', {
+				projectId: personalProject.id,
+				workflowId: workflow.id,
+				userId: user.id,
+				activatedAt: isPostgres ? expect.any(Number) : runData.startedAt.getTime(),
 			});
 		});
 
@@ -615,12 +623,59 @@ describe('WorkflowStatisticsService', () => {
 
 			// ASSERT
 			expect(updateSettingsSpy).not.toHaveBeenCalled();
-			expect(emitSpy).toHaveBeenCalledTimes(1);
+			expect(emitSpy).toHaveBeenCalledTimes(2);
 			expect(emitSpy).toHaveBeenCalledWith('first-production-workflow-succeeded', {
 				projectId: teamProject.id,
 				workflowId: teamWorkflow.id,
 				userId: null,
 			});
+			// The instance still activates: `userActivated` is personal-project-only, so this is the
+			// only signal that fires here, and the activation cap depends on it (INS-1082).
+			expect(emitSpy).toHaveBeenCalledWith('instance-first-production-workflow-succeeded', {
+				projectId: teamProject.id,
+				workflowId: teamWorkflow.id,
+				userId: null,
+				activatedAt: expect.any(Number),
+			});
+		});
+
+		test('records the instance activation exactly once, whatever runs next', async () => {
+			// ARRANGE
+			const settingsRepository = Container.get(SettingsRepository);
+			const secondWorkflow = await createWorkflow({}, user);
+			const runData: IRun = {
+				finished: true,
+				status: 'success',
+				data: createEmptyRunExecutionData(),
+				mode: 'internal',
+				startedAt: new Date(),
+				storedAt: 'db',
+			};
+
+			// ACT
+			await completeAndFlush(workflowStatisticsService, workflow, runData);
+			const afterFirst = await settingsRepository.findByKey('instance.firstProductionSuccess');
+
+			const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
+			await completeAndFlush(workflowStatisticsService, secondWorkflow, runData);
+
+			// ASSERT
+			expect(afterFirst).not.toBeNull();
+			expect(JSON.parse(afterFirst!.value)).toMatchObject({ workflowId: workflow.id });
+
+			// The second workflow reaches its own first success, so the per-workflow event fires
+			// again — but the instance has already activated, so the instance-level one does not.
+			expect(emitSpy).toHaveBeenCalledWith(
+				'first-production-workflow-succeeded',
+				expect.anything(),
+			);
+			expect(emitSpy).not.toHaveBeenCalledWith(
+				'instance-first-production-workflow-succeeded',
+				expect.anything(),
+			);
+
+			const afterSecond = await settingsRepository.findByKey('instance.firstProductionSuccess');
+			expect(JSON.parse(afterSecond!.value)).toMatchObject({ workflowId: workflow.id });
 		});
 
 		test('emits instance-first-production-workflow-failed with instance owner for team project', async () => {

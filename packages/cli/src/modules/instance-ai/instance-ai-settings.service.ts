@@ -1312,6 +1312,16 @@ export class InstanceAiSettingsService {
 		return this.config.browserUseEnabled;
 	}
 
+	/**
+	 * Whether this instance is in the activation-capped trial cohort (INS-1082): credits are never
+	 * shown, and the remaining quota is forfeited once the instance activates and has used the
+	 * assistant. Read everything about the cohort through here — with the env var unset, every one
+	 * of those code paths must be inert.
+	 */
+	isActivationCapped(): boolean {
+		return this.config.activationCapped;
+	}
+
 	/** Whether workflow building can use the required sandbox workspace. */
 	getSandboxStatus(): InstanceAiSandboxStatus {
 		const provider = normalizeSandboxProvider(this.config.sandboxProvider);

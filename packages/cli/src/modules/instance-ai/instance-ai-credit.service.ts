@@ -9,8 +9,12 @@ import { nanoid } from 'nanoid';
 
 import { Push } from '@/push';
 import { AiService } from '@/services/ai.service';
+import { InstanceActivationService } from '@/services/instance-activation.service';
 import { Telemetry } from '@/telemetry';
 
+import { maskCreditsForDisplay } from './instance-ai-credit-display';
+import { InstanceAiSettingsService } from './instance-ai-settings.service';
+import { InstanceAiMessageRepository } from './repositories/instance-ai-message.repository';
 import { InstanceAiThreadRepository } from './repositories/instance-ai-thread.repository';
 
 function getErrorMessage(error: unknown): string {
@@ -46,6 +50,16 @@ export class InstanceAiCreditService {
 	/** Max attempts for the idempotent token-usage claim before giving up. */
 	private static readonly CLAIM_MAX_ATTEMPTS = 3;
 
+	/**
+	 * Set once the service has confirmed the pool is locked, to skip re-asserting on every read.
+	 * Purely an optimisation: the durable state is the activation settings row plus the
+	 * service-side flag, so a fresh process or a lost value just re-fires an idempotent call.
+	 */
+	private quotaLockConfirmed = false;
+
+	/** Memoised once a user message exists. Monotonic — messages are never un-sent. */
+	private hasUserMessage = false;
+
 	constructor(
 		logger: Logger,
 		private readonly aiService: AiService,
@@ -53,8 +67,78 @@ export class InstanceAiCreditService {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly push: Push,
 		private readonly threadRepo: InstanceAiThreadRepository,
+		private readonly settingsService: InstanceAiSettingsService,
+		private readonly activationService: InstanceActivationService,
+		private readonly messageRepo: InstanceAiMessageRepository,
 	) {
 		this.logger = logger.scoped('instance-ai');
+	}
+
+	/**
+	 * Apply the activation lock if this instance is in the capped trial cohort and has met the
+	 * trigger: it has activated (first successful production execution) **and** someone has sent
+	 * the assistant at least one message.
+	 *
+	 * Both halves matter. Activation alone would wall a user who activated before ever opening the
+	 * assistant — they would get no use of it at all, which is worse than the control variant and
+	 * makes their conversion signal meaningless. Requiring a message guarantees the cohort actually
+	 * experiences the product before being asked to pay.
+	 *
+	 * Best-effort and idempotent: callers invoke it on the activation event and again on reads, so
+	 * a failed call, an evicted Redis record or a restarted process all repair themselves on the
+	 * next interaction. Never throws — a locking failure must not break the caller's own work.
+	 */
+	async ensureQuotaLockApplied(user: User): Promise<void> {
+		if (this.quotaLockConfirmed) return;
+		if (!this.settingsService.isActivationCapped()) return;
+		if (!this.aiService.isProxyEnabled()) return;
+
+		try {
+			const activatedAt = await this.resolveTriggerActivatedAt();
+			if (activatedAt === undefined) return;
+
+			const result = await this.aiService.lockInstanceAiQuota(user, activatedAt);
+			this.quotaLockConfirmed = result.quotaLocked;
+
+			this.logger.debug('Applied Instance AI activation lock', {
+				userId: user.id,
+				activatedAt,
+				quotaLocked: result.quotaLocked,
+			});
+		} catch (error) {
+			// Left unconfirmed on purpose so the next read retries.
+			this.logger.warn('Failed to apply Instance AI activation lock', {
+				error: getErrorMessage(error),
+				userId: user.id,
+			});
+		}
+	}
+
+	/**
+	 * Whether the lock condition holds, and when the instance activated. Both halves are
+	 * monotonic, so each is memoised once true and this settles into pure in-memory checks.
+	 * Returns `undefined` while either half is still outstanding.
+	 */
+	private async resolveTriggerActivatedAt(): Promise<number | undefined> {
+		const activatedAt = await this.activationService.getActivatedAt();
+		if (activatedAt === undefined) return undefined;
+
+		this.hasUserMessage ||= await this.messageRepo.hasAnyUserMessage();
+		if (!this.hasUserMessage) return undefined;
+
+		return activatedAt;
+	}
+
+	/**
+	 * Whether this instance's pool should be treated as locked, evaluated from n8n's own state.
+	 * Used where the service's own answer isn't to hand — see the masked-stream reclassification
+	 * in `InstanceAiService`.
+	 */
+	async isActivationLockActive(): Promise<boolean> {
+		if (this.quotaLockConfirmed) return true;
+		if (!this.settingsService.isActivationCapped()) return false;
+
+		return (await this.resolveTriggerActivatedAt()) !== undefined;
 	}
 
 	/**
@@ -162,14 +246,12 @@ export class InstanceAiCreditService {
 		this.push.sendToUsers(
 			{
 				type: 'updateInstanceAiCredits',
-				data: {
-					creditsQuota,
-					creditsClaimed,
+				data: maskCreditsForDisplay(
+					{ creditsQuota, creditsClaimed },
+					this.settingsService.isActivationCapped(),
 					// Only attach the per-thread total when we actually computed one.
-					...(totalCreditsUsed !== undefined
-						? { creditsPerThread: { threadId, totalCreditsUsed } }
-						: {}),
-				},
+					totalCreditsUsed !== undefined ? { threadId, totalCreditsUsed } : undefined,
+				),
 			},
 			[user.id],
 		);

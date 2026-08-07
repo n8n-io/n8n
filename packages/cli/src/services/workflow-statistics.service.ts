@@ -227,6 +227,46 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 			workflowId,
 			userId,
 		});
+
+		await this.emitInstanceFirstProductionWorkflowSucceeded(
+			project.id,
+			workflowId,
+			userId,
+			userActivatedAtMs,
+		);
+	}
+
+	/**
+	 * Record the instance's activation moment, exactly once, whatever the project type.
+	 *
+	 * The per-user `userActivated` flag above only covers personal projects, so an instance whose
+	 * first success happens in a team project would otherwise never look activated. Guarded by a
+	 * settings row, mirroring `instance.firstProductionFailure`.
+	 */
+	private async emitInstanceFirstProductionWorkflowSucceeded(
+		projectId: string,
+		workflowId: string,
+		userId: string | null,
+		activatedAt: number,
+	): Promise<void> {
+		const alreadyActivated = await this.settingsRepository.findByKey(
+			'instance.firstProductionSuccess',
+		);
+
+		if (alreadyActivated) return;
+
+		await this.settingsRepository.save({
+			key: 'instance.firstProductionSuccess',
+			value: JSON.stringify({ workflowId, projectId, userId, timestamp: activatedAt }),
+			loadOnStartup: false,
+		});
+
+		this.eventService.emit('instance-first-production-workflow-succeeded', {
+			projectId,
+			workflowId,
+			userId,
+			activatedAt,
+		});
 	}
 
 	private async emitInstanceFirstProductionWorkflowFailed(

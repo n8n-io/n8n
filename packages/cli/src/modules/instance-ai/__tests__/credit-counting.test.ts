@@ -1,4 +1,5 @@
 import type { Mock } from 'vitest';
+import { UNLIMITED_CREDITS } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import type { BuilderUsageItem } from '@n8n/instance-ai';
 
@@ -19,9 +20,23 @@ function createService(deps: {
 	aiService: { isProxyEnabled: Mock; getClient: Mock };
 	push: { sendToUsers: Mock };
 	telemetry: { track: Mock };
+	/** Activation-capped cohort (INS-1082); off unless a test opts in. */
+	activationCapped?: boolean;
+	activatedAt?: number;
+	hasUserMessage?: boolean;
 }) {
 	const scopedLogger = { warn: vi.fn(), debug: vi.fn() };
 	const logger = { scoped: vi.fn().mockReturnValue(scopedLogger) };
+	const settingsService = {
+		isActivationCapped: vi.fn().mockReturnValue(deps.activationCapped ?? false),
+	};
+	const activationService = {
+		getActivatedAt: vi.fn().mockResolvedValue(deps.activatedAt),
+		markActivated: vi.fn(),
+	};
+	const messageRepo = {
+		hasAnyUserMessage: vi.fn().mockResolvedValue(deps.hasUserMessage ?? false),
+	};
 	return new InstanceAiCreditService(
 		logger as never,
 		deps.aiService as never,
@@ -29,6 +44,9 @@ function createService(deps: {
 		{ instanceId: 'inst-1' } as never,
 		deps.push as never,
 		deps.threadRepo as never,
+		settingsService as never,
+		activationService as never,
+		messageRepo as never,
 	);
 }
 
@@ -152,6 +170,39 @@ describe('claimRunUsage', () => {
 			['user-1'],
 		);
 		expect(delta).toBe(0.5);
+	});
+
+	// INS-1082: this cohort must never see a balance, so the push carries the unlimited sentinel
+	// rather than the real figures — which is what makes the editor hide the whole credits surface.
+	// The claim itself is unaffected: the ledger and its telemetry still get the real numbers.
+	it('masks the pushed balance for the activation-capped cohort', async () => {
+		const threadRepo = createMockThreadRepo({ id: 't1', metadata: { creditsUsed: 2 } });
+		const ai = createMockAiService({
+			claimResult: { delta: 0.5, creditsClaimed: 5.5, creditsQuota: 100 },
+		});
+		const push = { sendToUsers: vi.fn() };
+		const telemetry = { track: vi.fn() };
+
+		const service = createService({
+			threadRepo,
+			aiService: ai,
+			push,
+			telemetry,
+			activationCapped: true,
+		});
+		await callClaim(service);
+
+		expect(push.sendToUsers).toHaveBeenCalledWith(
+			expect.objectContaining({
+				type: 'updateInstanceAiCredits',
+				data: { creditsQuota: UNLIMITED_CREDITS, creditsClaimed: 0 },
+			}),
+			['user-1'],
+		);
+		expect(telemetry.track).toHaveBeenCalledWith(
+			'Builder credits claimed',
+			expect.objectContaining({ credits_claimed_total: 5.5, credits_quota: 100 }),
+		);
 	});
 
 	it('fires the "Builder credits claimed" event with success true on the happy path', async () => {

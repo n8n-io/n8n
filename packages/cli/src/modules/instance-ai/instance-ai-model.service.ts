@@ -11,6 +11,7 @@ import { ProxyTokenManager } from '@/services/proxy-token-manager';
 import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 import { callAiServiceWithRetry } from '@/utils/ai-service-retry';
 
+import { InstanceAiCreditService } from './instance-ai-credit.service';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 
 /**
@@ -35,6 +36,7 @@ export class InstanceAiModelService {
 		private readonly settingsService: InstanceAiSettingsService,
 		private readonly aiService: AiService,
 		private readonly outboundHttp: OutboundHttp,
+		private readonly creditService: InstanceAiCreditService,
 	) {}
 
 	/** Whether the AI service proxy is enabled for credit counting. */
@@ -55,6 +57,11 @@ export class InstanceAiModelService {
 	 */
 	async resolveAgentModelConfig(user: User): Promise<ModelConfig> {
 		if (this.aiService.isProxyEnabled()) {
+			// The other reconcile point for the activation lock (INS-1082). `getCredits` covers page
+			// load; this covers a session that was already open when the instance activated, so the
+			// lock lands on the next message rather than only on the next reload.
+			await this.creditService.ensureQuotaLockApplied(user);
+
 			const client = await this.aiService.getClient();
 			const proxyBaseUrl = client.getApiProxyBaseUrl();
 			const tokenManager = new ProxyTokenManager(async () => {

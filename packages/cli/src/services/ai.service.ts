@@ -8,7 +8,7 @@ import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
 import { ErrorReporter, InstanceSettings } from 'n8n-core';
-import { assert, type IUser } from 'n8n-workflow';
+import { assert, OperationalError, type IUser } from 'n8n-workflow';
 
 import { N8N_VERSION } from '../constants';
 import { License } from '../license';
@@ -97,5 +97,47 @@ export class AiService {
 			this.errorReporter,
 			{ retryOnTimeout: false },
 		);
+	}
+
+	/**
+	 * Forfeit the remaining Instance AI quota for this instance (INS-1082). Idempotent server-side,
+	 * so callers re-assert it rather than depending on one call landing.
+	 *
+	 * Posted directly rather than through the SDK because the pinned SDK version predates
+	 * `lockInstanceAiQuota`; swap the body for that call once the catalog is bumped. Everything else
+	 * — retries, the caller, the response shape — stays as it is.
+	 */
+	async lockInstanceAiQuota(
+		user: IUser,
+		activatedAt?: number,
+	): Promise<{ creditsQuota: number; creditsClaimed: number; quotaLocked: boolean }> {
+		const licenseCert = await this.licenseService.loadCertStr();
+		const url = `${this.globalConfig.aiAssistant.baseUrl}/v1/instance-ai/lock-quota`;
+
+		const response = await fetch(url, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+				'x-user-id': user.id,
+				'x-instance-id': this.instanceSettings.instanceId,
+				'x-n8n-version': N8N_VERSION,
+			},
+			body: JSON.stringify({
+				licenseCert,
+				...(activatedAt !== undefined ? { activatedAt } : {}),
+			}),
+		});
+
+		if (!response.ok) {
+			throw new OperationalError(
+				`Failed to lock Instance AI quota: ${response.status} ${response.statusText}`,
+			);
+		}
+
+		return (await response.json()) as {
+			creditsQuota: number;
+			creditsClaimed: number;
+			quotaLocked: boolean;
+		};
 	}
 }
