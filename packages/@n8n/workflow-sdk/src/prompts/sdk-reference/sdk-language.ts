@@ -114,9 +114,10 @@ ${renderRulesLines()}
 `;
 
 /**
- * Grouping judgement guidance, appended to the technique list when the canvas
- * groups feature flag is on. Covers *when* to group; the exact rules live in the
- * SDK reference's "groups" section (see `NODE_GROUPS_REFERENCE`).
+ * Grouping judgement guidance: *when* to group — the rules that make a group
+ * valid live in `NODE_GROUPS_REFERENCE`. MCP appends it to the technique list
+ * only when the canvas-groups flag is on; Instance AI always materializes it
+ * into the knowledge base.
  */
 export const GROUPING_GUIDANCE = `## Grouping
 
@@ -127,7 +128,7 @@ Organise larger workflows into named node groups — visual frames drawn on the 
 - **Naming:** short, outcome-first titles ("Fetch new recordings", not "HTTP + Drive").
 - Groups are created collapsed by default, so the name is what the user sees first — make it descriptive.
 
-Fetch the "groups" section of the SDK reference for the exact rules before creating groups.`;
+Read the node groups reference for the exact rules before creating groups.`;
 
 /**
  * Render the full language reference. The node-groups section is included by
