@@ -303,6 +303,12 @@ decision after testing.
 - Call `credentials(action="list")` early when the task touches external
   services; note each credential's `id`, `name`, and `type` (the credential
   key, e.g. `slackApi`, comes from the node type definition).
+- When the workflow needs an LLM/chat-model provider and the user hasn't named
+  one, pick it from that unfiltered list: one stored LLM-provider credential →
+  build with that provider bound to it; several → ask which to use; none →
+  keep the default provider. Never probe a single provider's type (e.g.
+  `openAiApi`) to confirm a default — an empty filtered result does not mean
+  the user has no LLM credential.
 - Use `newCredential('Credential Name', 'credential-id')` only when the user
   selected a specific credential, exactly one unambiguous match exists, or the
   workflow already had it. Otherwise use `newCredential('Suggested Credential

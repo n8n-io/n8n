@@ -25,3 +25,38 @@ export function pickPreferredChatModelNode(
 	}
 	return undefined;
 }
+
+/** Whether a credential type belongs to an LLM provider with a chat model node. */
+export function isChatModelProviderCredentialType(credentialType: string): boolean {
+	return CHAT_MODEL_BY_CREDENTIAL_TYPE.some(([type]) => type === credentialType);
+}
+
+/**
+ * Hint for a credential listing filtered to an LLM-provider type that found no
+ * stored credential: names the LLM-provider credentials the user does have, so
+ * the builder prefers one of those providers (or asks) instead of locking in
+ * its own default. Undefined when the requested type is not an LLM provider,
+ * a stored credential of it exists, or there is no alternative to prefer.
+ */
+export function buildChatModelProviderHint(
+	requestedType: string,
+	storedCredentials: ReadonlyArray<{ id: string; name: string; type: string }>,
+): string | undefined {
+	if (!isChatModelProviderCredentialType(requestedType)) return undefined;
+	if (storedCredentials.some((cred) => cred.type === requestedType)) return undefined;
+
+	const alternatives = CHAT_MODEL_BY_CREDENTIAL_TYPE.flatMap(([credentialType]) =>
+		credentialType === requestedType
+			? []
+			: storedCredentials.filter((cred) => cred.type === credentialType),
+	);
+	if (alternatives.length === 0) return undefined;
+
+	const listed = alternatives
+		.map((cred) => `"${cred.name}" (${cred.type}, id: ${cred.id})`)
+		.join(', ');
+	return (
+		`No stored ${requestedType} credential exists, but the user already has LLM-provider credential(s): ${listed}. ` +
+		`Unless the user explicitly asked for ${requestedType}, use a chat model from a provider they already have a credential for — or ask which provider to use.`
+	);
+}
