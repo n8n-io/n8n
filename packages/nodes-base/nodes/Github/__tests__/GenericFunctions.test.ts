@@ -141,6 +141,92 @@ describe('GenericFunctions', () => {
 			expect(calls[1][1].headers?.['If-None-Match']).toBe('"abc123"');
 		});
 
+		it('should not cache a response body that exceeds the per-entry byte budget', async () => {
+			const method = 'GET';
+			const endpoint = '/repos/test-owner/test-repo/pulls/1';
+			const body = {};
+			const staticData: Record<string, unknown> = {};
+			(mockExecuteHookFunctions.getWorkflowStaticData as Mock).mockReturnValue(staticData);
+
+			// A body larger than the 1 MiB per-entry budget must not be cached, so a
+			// following request cannot revalidate it and re-fetches in full.
+			const largeBody = { data: 'x'.repeat(1024 * 1024 + 1) };
+			(mockExecuteHookFunctions.helpers.requestWithAuthentication as Mock).mockResolvedValue({
+				statusCode: 200,
+				headers: { etag: '"big"' },
+				body: largeBody,
+			});
+
+			await githubApiRequest.call(mockExecuteHookFunctions, method, endpoint, body, undefined, {
+				conditionalRequest: true,
+			});
+			await githubApiRequest.call(mockExecuteHookFunctions, method, endpoint, body, undefined, {
+				conditionalRequest: true,
+			});
+
+			const calls = (mockExecuteHookFunctions.helpers.requestWithAuthentication as Mock).mock.calls;
+			expect(calls[1][1].headers?.['If-None-Match']).toBeUndefined();
+			expect(staticData.githubEtagCache).toEqual({});
+		});
+
+		it('should evict the oldest entry when the total byte budget is exceeded', async () => {
+			const method = 'GET';
+			const body = {};
+			const staticData: Record<string, unknown> = {};
+			(mockExecuteHookFunctions.getWorkflowStaticData as Mock).mockReturnValue(staticData);
+
+			// Each body is just under the 1 MiB per-entry budget; caching nine of them
+			// exceeds the 8 MiB total budget and evicts the oldest (first) entry.
+			const chunk = 'y'.repeat(1000 * 1024);
+			(mockExecuteHookFunctions.helpers.requestWithAuthentication as Mock).mockImplementation(
+				async (_type: string, options: { uri: string }) => ({
+					statusCode: 200,
+					headers: { etag: `"${options.uri}"` },
+					body: { uri: options.uri, data: chunk },
+				}),
+			);
+
+			for (let i = 0; i < 9; i++) {
+				await githubApiRequest.call(
+					mockExecuteHookFunctions,
+					method,
+					`/repos/test-owner/test-repo/pulls/${i}`,
+					body,
+					undefined,
+					{ conditionalRequest: true },
+				);
+			}
+
+			// The oldest endpoint (0) was evicted, so revalidating it sends no
+			// conditional header; the newest (8) is still cached and does.
+			await githubApiRequest.call(
+				mockExecuteHookFunctions,
+				method,
+				'/repos/test-owner/test-repo/pulls/0',
+				body,
+				undefined,
+				{ conditionalRequest: true },
+			);
+			await githubApiRequest.call(
+				mockExecuteHookFunctions,
+				method,
+				'/repos/test-owner/test-repo/pulls/8',
+				body,
+				undefined,
+				{ conditionalRequest: true },
+			);
+
+			const calls = (mockExecuteHookFunctions.helpers.requestWithAuthentication as Mock).mock.calls;
+			const reqZero = calls[9][1];
+			const reqEight = calls[10][1];
+			expect(reqZero.uri).toBe('https://api.github.com/repos/test-owner/test-repo/pulls/0');
+			expect(reqZero.headers?.['If-None-Match']).toBeUndefined();
+			expect(reqEight.uri).toBe('https://api.github.com/repos/test-owner/test-repo/pulls/8');
+			expect(reqEight.headers?.['If-None-Match']).toBe(
+				'"https://api.github.com/repos/test-owner/test-repo/pulls/8"',
+			);
+		});
+
 		it('should throw a NodeApiError on a non-success conditional response', async () => {
 			const method = 'GET';
 			const endpoint = '/repos/test-owner/test-repo/pulls/1';

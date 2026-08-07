@@ -14,9 +14,52 @@ import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 // different resources over their lifetime.
 const ETAG_CACHE_LIMIT = 100;
 
+// Per-entry and total byte budgets for the conditional-request cache. Entry
+// count alone does not bound memory (or the size of the persisted static data),
+// so a single large response — or many medium ones — could still grow it
+// without limit. A body larger than the per-entry budget is not cached at all;
+// the total budget evicts oldest entries until the cache fits.
+const ETAG_CACHE_MAX_ENTRY_BYTES = 1024 * 1024; // 1 MiB
+const ETAG_CACHE_MAX_TOTAL_BYTES = 8 * 1024 * 1024; // 8 MiB
+
 interface GithubEtagEntry {
 	etag: string;
 	body: unknown;
+	bytes: number;
+}
+
+// Approximate serialized size of a cache entry. The body is measured as UTF-8
+// JSON since that is how it is persisted in workflow static data; a body that
+// cannot be serialized (e.g. a circular structure) is treated as zero so it
+// still counts against the entry-count limit without breaking the request.
+function etagEntryBytes(etag: string, body: unknown): number {
+	let bodyBytes = 0;
+	try {
+		bodyBytes = Buffer.byteLength(JSON.stringify(body) ?? '', 'utf8');
+	} catch {
+		bodyBytes = 0;
+	}
+	return bodyBytes + Buffer.byteLength(etag, 'utf8');
+}
+
+// Evict oldest (insertion-ordered) entries until the cache is within both the
+// entry-count and total-byte budgets.
+function evictEtagCache(cache: Record<string, GithubEtagEntry>): void {
+	const keys = Object.keys(cache);
+	let total = 0;
+	for (const key of keys) {
+		total += cache[key].bytes;
+	}
+	let index = 0;
+	while (
+		index < keys.length &&
+		(keys.length - index > ETAG_CACHE_LIMIT || total > ETAG_CACHE_MAX_TOTAL_BYTES)
+	) {
+		const oldest = keys[index];
+		total -= cache[oldest].bytes;
+		delete cache[oldest];
+		index++;
+	}
 }
 
 function conditionalRequestKey(credentialType: string, uri: string, qs?: IDataObject): string {
@@ -132,11 +175,15 @@ export async function githubApiRequest(
 
 		const etag = (response.headers?.etag as string) ?? '';
 		if (etag) {
+			// Always drop any stale entry for this key first.
 			delete cache[cacheKey];
-			cache[cacheKey] = { etag, body: response.body };
-			const keys = Object.keys(cache);
-			if (keys.length > ETAG_CACHE_LIMIT) {
-				delete cache[keys[0]];
+			const bytes = etagEntryBytes(etag, response.body);
+			// A body that on its own exceeds the per-entry budget is left uncached;
+			// storing it would evict many smaller, more reusable entries for one
+			// oversized result that is unlikely to revalidate cheaply.
+			if (bytes <= ETAG_CACHE_MAX_ENTRY_BYTES) {
+				cache[cacheKey] = { etag, body: response.body, bytes };
+				evictEtagCache(cache);
 			}
 		}
 
