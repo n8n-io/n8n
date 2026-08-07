@@ -195,7 +195,7 @@ const tabOptions = computed(() => [
 	overflow: hidden;
 }
 
-/* A long description must not crowd out the feed. */
+/* Capped so a long description cannot crowd out the feed. */
 .activityHeader {
 	flex-shrink: 0;
 	max-height: 30%;

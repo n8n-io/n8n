@@ -70,10 +70,9 @@ export class WorkflowReviewAccessService {
 				request.id,
 			);
 		const readableWorkflowRows = await this.filterReadableWorkflowRows(user, workflowRows);
-		// Someone who reaches this review through its project has no reason to learn it
-		// exists once they can read none of the workflows it covers. The requester already
-		// knows, and their inbox still lists it, so they keep the record — narrowed to the
-		// workflows they can currently read.
+		// You reached this review through its project but can read none of the workflows it
+		// covers, so there is nothing here for you. 404 rather than 403, so its existence stays
+		// hidden too. Whoever opened it always keeps access, narrowed to what they can read.
 		if (
 			request.createdById !== user.id &&
 			workflowRows.length > 0 &&
@@ -94,7 +93,6 @@ export class WorkflowReviewAccessService {
 		};
 	}
 
-	/** Inbox visibility rule: requester, or `workflow:publish` in the review's project. */
 	private async canAccessRequest(user: User, request: WorkflowReviewRequest): Promise<boolean> {
 		if (request.createdById === user.id) {
 			return true;

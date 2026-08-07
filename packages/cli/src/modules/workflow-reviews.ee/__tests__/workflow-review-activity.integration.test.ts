@@ -95,7 +95,6 @@ beforeEach(async () => {
 	viewerAgent = testServer.authAgentFor(viewer);
 });
 
-/** Seed a review in `projectId` pinned to `versionId`, authored by `author`. */
 async function seedRequest(
 	workflowId: string,
 	versionId: string | null,
@@ -123,7 +122,6 @@ async function seedRequest(
 	return request;
 }
 
-/** A review over a workflow living in `teamProject`, authored by `author`. */
 async function seedReviewInTeamProject(author: User) {
 	const workflow = await createWorkflow({ name: 'Reviewed workflow' }, teamProject);
 	await createWorkflowHistoryItem(workflow.id, { versionId: 'version-pinned' });

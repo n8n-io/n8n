@@ -5,7 +5,6 @@ import WorkflowReviewActivityFallback from './activity-entries/WorkflowReviewAct
 
 type ActivityEntryRegistry = Partial<Record<WorkflowReviewActivityType, Record<number, Component>>>;
 
-// Empty until part 2 registers the comment renderer; LIGO-935 adds the remaining types.
 const registry: ActivityEntryRegistry = {};
 
 export function resolveActivityComponent(entry: WorkflowReviewActivityEntry): Component {

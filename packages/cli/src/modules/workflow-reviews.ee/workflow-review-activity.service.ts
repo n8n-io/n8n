@@ -18,7 +18,6 @@ import { WorkflowReviewAccessService } from './workflow-review-access.service';
 import { WorkflowReviewFeatureGate } from './workflow-review-feature-gate.service';
 import { toActivityEntry, toEligibleReviewer } from './workflow-review.mapper';
 
-/** The review activity feed. Nothing writes client-authored entries yet; comments follow. */
 @Service()
 export class WorkflowReviewActivityService {
 	constructor(
@@ -45,7 +44,6 @@ export class WorkflowReviewActivityService {
 			{},
 		);
 
-		// Ascending page, so the first entry is the oldest.
 		const oldest = entries.at(0);
 		const nextCursor = hasMore && oldest ? this.encodeCursor(oldest.activity.id) : null;
 

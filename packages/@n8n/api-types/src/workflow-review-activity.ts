@@ -42,8 +42,7 @@ export type WorkflowReviewActivityMessage = {
 };
 
 /**
- * Total over every type the CHECK constraint allows, so no stored row is ever
- * unmappable. LIGO-935 refines the second arm into per-type `data` shapes.
+ * Total over every type the CHECK constraint allows, so no stored row is ever unmappable.
  */
 export type WorkflowReviewActivityEntry =
 	| (WorkflowReviewActivityBase & {
