@@ -19,7 +19,6 @@ import { BASE_NODE_SURVEY_URL, VIEWS } from '@/app/constants';
 import NDVSubConnections from '@/features/ndv/panel/components/NDVSubConnections.vue';
 import NodeCredentials from '@/features/credentials/components/NodeCredentials.vue';
 import NodeSettingsHeader from './NodeSettingsHeader.vue';
-import NodeSettingsTabs from './NodeSettingsTabs.vue';
 import NodeWebhooks from './NodeWebhooks.vue';
 import ParameterInputList from '@/features/ndv/parameters/components/ParameterInputList.vue';
 import AgentNdvInlineControls from '@/features/ndv/agents/components/AgentNdvInlineControls.vue';
@@ -41,7 +40,6 @@ import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { importCurlEventBus } from '@/app/event-bus';
 import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
 import NodeStorageLimitCallout from '@/features/core/dataTable/components/NodeStorageLimitCallout.vue';
-import NodeTitle from '@/app/components/NodeTitle.vue';
 import { RenameNodeCommand } from '@/app/models/history';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useHistoryStore } from '@/app/stores/history.store';
@@ -62,7 +60,6 @@ import type { EventBus } from '@n8n/utils/event-bus';
 import { useResizeObserver } from '@vueuse/core';
 import CommunityNodeFooter from '@/features/settings/communityNodes/components/nodeCreator/CommunityNodeFooter.vue';
 import CommunityNodeUpdateInfo from '@/features/settings/communityNodes/components/nodeCreator/CommunityNodeUpdateInfo.vue';
-import NodeExecuteButton from '@/app/components/NodeExecuteButton.vue';
 import QuickConnectBanner from '@/features/credentials/quickConnect/components/QuickConnectBanner.vue';
 import { useQuickConnect } from '@/features/credentials/quickConnect/composables/useQuickConnect';
 
@@ -71,7 +68,6 @@ import { useRoute } from 'vue-router';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
-import { useNodeIconSource } from '@/app/composables/useNodeIconSource';
 import { useEditorContext } from '@/app/composables/useEditorContext';
 
 const props = withDefaults(
@@ -89,7 +85,6 @@ const props = withDefaults(
 		subTitle?: string;
 		extraTabsClassName?: string;
 		extraParameterWrapperClassName?: string;
-		isNdvV2?: boolean;
 		hideExecute?: boolean;
 		hideDocs?: boolean;
 		hideSubConnections?: boolean;
@@ -99,7 +94,6 @@ const props = withDefaults(
 		activeNode: undefined,
 		isEmbeddedInCanvas: false,
 		subTitle: undefined,
-		isNdvV2: false,
 		hideExecute: false,
 		hideDocs: true,
 		hideSubConnections: false,
@@ -121,7 +115,7 @@ const emit = defineEmits<{
 	dblclickHeader: [MouseEvent];
 }>();
 
-const slots = defineSlots<{ actions?: {} }>();
+defineSlots<{ actions?: {} }>();
 
 const nodeValues = ref<INodeParameters>(getNodeSettingsInitialValues());
 
@@ -529,8 +523,6 @@ const isAgentNode = computed(() => isAgentNodeV2(node.value));
 const showAgentNdvControls = computed(() => isAgentNode.value && ndvAgentConfig !== null);
 const agentNdvMode = computed(() => ndvAgentConfig?.mode?.value ?? 'referenced');
 
-const iconSource = useNodeIconSource(nodeType, node);
-
 const onParameterBlur = (parameterName: string) => {
 	hiddenIssuesInputs.value = hiddenIssuesInputs.value.filter((name) => name !== parameterName);
 };
@@ -690,38 +682,6 @@ function handleSelectAction(params: INodeParameters) {
 				<slot name="actions" />
 			</template>
 		</ExperimentalEmbeddedNdvHeader>
-		<div v-else-if="!isNdvV2" :class="$style.header">
-			<div class="header-side-menu">
-				<NodeTitle
-					v-if="node"
-					class="node-name"
-					:model-value="node.name"
-					:icon-source="iconSource"
-					:read-only="isReadOnly"
-					:node-type="nodeType"
-					@update:model-value="nameChanged"
-				/>
-				<NodeExecuteButton
-					v-if="isExecutable && !blockUI && node && nodeValid"
-					data-test-id="node-execute-button"
-					:node-name="node.name"
-					:disabled="outputPanelEditMode.enabled && !isTriggerNode"
-					:tooltip="executeButtonTooltip"
-					size="small"
-					telemetry-source="parameters"
-					@execute="onNodeExecute"
-					@stop-execution="onStopExecution"
-					@value-changed="valueChanged"
-				/>
-			</div>
-			<NodeSettingsTabs
-				v-if="node && nodeValid"
-				:model-value="openPanel"
-				:node-type="nodeType"
-				:push-ref="pushRef"
-				@update:model-value="onTabSelect"
-			/>
-		</div>
 		<NodeSettingsHeader
 			v-else-if="node && nodeValid"
 			:selected-tab="openPanel"
@@ -751,7 +711,6 @@ function handleSelectAction(params: INodeParameters) {
 			:class="[
 				'node-parameters-wrapper',
 				shouldShowStaticScrollbar ? 'with-static-scrollbar' : '',
-				{ 'ndv-v2': isNdvV2 },
 				extraParameterWrapperClassName ?? '',
 			]"
 			data-test-id="node-parameters"
@@ -886,10 +845,7 @@ function handleSelectAction(params: INodeParameters) {
 					<span>({{ nodeVersionTag }})</span>
 				</div>
 			</div>
-			<div
-				v-if="isNdvV2 && featureRequestUrl && !isEmbeddedInCanvas"
-				:class="$style.featureRequest"
-			>
+			<div v-if="featureRequestUrl && !isEmbeddedInCanvas" :class="$style.featureRequest">
 				<a target="_blank" @click="onFeatureRequestClick">
 					<N8nIcon icon="lightbulb" />
 					{{ i18n.baseText('ndv.featureRequest') }}
@@ -903,12 +859,7 @@ function handleSelectAction(params: INodeParameters) {
 			@switch-selected-node="onSwitchSelectedNode"
 			@open-connection-node-creator="onOpenConnectionNodeCreator"
 		/>
-		<N8nBlockUi
-			:show="blockUI"
-			:class="{
-				[$style.uiBlockerNdvV2]: isNdvV2,
-			}"
-		/>
+		<N8nBlockUi :show="blockUI" :class="$style.uiBlocker" />
 		<CommunityNodeFooter
 			v-if="openPanel === 'settings' && isCommunityNode"
 			:package-name="packageName"
@@ -918,10 +869,6 @@ function handleSelectAction(params: INodeParameters) {
 </template>
 
 <style lang="scss" module>
-.header {
-	background-color: var(--ndv--header--color);
-}
-
 .featureRequest {
 	margin-top: auto;
 	align-self: center;
@@ -942,7 +889,7 @@ function handleSelectAction(params: INodeParameters) {
 	margin-top: var(--spacing--sm);
 }
 
-.uiBlockerNdvV2 {
+.uiBlocker {
 	border-radius: 0;
 }
 </style>
@@ -960,28 +907,12 @@ function handleSelectAction(params: INodeParameters) {
 		margin-top: var(--spacing--xs);
 	}
 
-	.header-side-menu {
-		padding: var(--spacing--sm) var(--spacing--sm) var(--spacing--sm) var(--spacing--sm);
-		font-size: var(--font-size--lg);
-		display: flex;
-		justify-content: space-between;
-
-		.node-name {
-			padding-top: var(--spacing--5xs);
-			margin-right: var(--spacing--sm);
-		}
-	}
-
 	.node-parameters-wrapper {
 		display: flex;
 		flex-direction: column;
 		overflow-y: auto;
-		padding: 0 var(--spacing--md) var(--spacing--lg) var(--spacing--md);
+		padding: 0 var(--spacing--sm) var(--spacing--lg) var(--spacing--sm);
 		flex-grow: 1;
-
-		&.ndv-v2 {
-			padding: 0 var(--spacing--sm) var(--spacing--lg) var(--spacing--sm);
-		}
 	}
 
 	&.embedded .node-parameters-wrapper {
