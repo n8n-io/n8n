@@ -37,6 +37,7 @@ describe('AgentIntegrationManagementService', () => {
 			credentialTypes: ['slackApi'],
 		});
 		registry.require.mockReturnValue(implementation);
+		registry.get.mockReturnValue(implementation);
 		return {
 			service: new AgentIntegrationManagementService(
 				persistenceService,
@@ -82,7 +83,7 @@ describe('AgentIntegrationManagementService', () => {
 
 	it('persists but does not initialize an unpublished integration', async () => {
 		const { service, persistenceService, credentialsService, chatService } = makeService();
-		const draftAgent = { ...agent, activeVersionId: null };
+		const draftAgent = { ...agent, activeVersionId: null } as Agent;
 		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
 			{ id: integration.credentialId, type: 'slackApi' },
 		] as never);
@@ -128,7 +129,7 @@ describe('AgentIntegrationManagementService', () => {
 		persistenceService.removeCredentialIntegration.mockResolvedValue({
 			...connectedAgent,
 			integrations: [],
-		});
+		} as unknown as Agent);
 
 		await service.disconnect({
 			agent: connectedAgent,
@@ -146,4 +147,41 @@ describe('AgentIntegrationManagementService', () => {
 			{ user, modifiedBy: 'mcp', broadcast: false },
 		);
 	});
+
+	it.each([
+		['unpublished', null, undefined, true],
+		['published', 'version-1', undefined, false],
+		['unpublished with an explicit opt-out', null, false, false],
+		['published with an explicit opt-in', 'version-1', true, true],
+	])(
+		'uses the expected external deletion policy for %s agents',
+		async (_scenario, activeVersionId, deleteExternalResource, expected) => {
+			const { service, persistenceService, implementation } = makeService();
+			const connectedAgent = {
+				...agent,
+				activeVersionId,
+				integrations: [integration],
+			} as Agent;
+			persistenceService.removeCredentialIntegration.mockResolvedValue({
+				...connectedAgent,
+				integrations: [],
+			} as unknown as Agent);
+
+			await service.disconnect({
+				agent: connectedAgent,
+				user: user as never,
+				type: integration.type,
+				credentialId: integration.credentialId,
+				deleteExternalResource,
+			});
+
+			expect(implementation.onRemove).toHaveBeenCalledWith({
+				agentId: agent.id,
+				projectId: agent.projectId,
+				credentialId: integration.credentialId,
+				user,
+				deleteExternalResource: expected,
+			});
+		},
+	);
 });

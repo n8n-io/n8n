@@ -34,7 +34,6 @@ export function useCredentialOAuth() {
 	const telemetry = useTelemetry();
 
 	const oauthAbortController = ref<AbortController | null>(null);
-	const pendingCredentialId = ref<string | null>(null);
 
 	/**
 	 * Get parent types for a credential type (e.g., googleSheetsOAuth2Api extends googleOAuth2Api extends oAuth2Api).
@@ -289,6 +288,29 @@ export function useCredentialOAuth() {
 	}
 
 	/**
+	 * Authorize a credential that was just created. Keeps it out of the store
+	 * until OAuth succeeds and removes it when authorization is not completed.
+	 */
+	async function authorizeNewCredential(credential: ICredentialsResponse): Promise<boolean> {
+		const controller = new AbortController();
+		oauthAbortController.value = controller;
+		let success = false;
+
+		try {
+			success = await authorize(credential, controller.signal);
+			if (success) {
+				credentialsStore.upsertCredential(credential);
+			}
+			return success;
+		} finally {
+			oauthAbortController.value = null;
+			if (!success) {
+				await credentialsStore.deleteCredential({ id: credential.id }).catch(() => {});
+			}
+		}
+	}
+
+	/**
 	 * Create a new OAuth credential and run the full authorization flow.
 	 * Returns the credential on success, null on failure (cleans up automatically).
 	 */
@@ -337,14 +359,7 @@ export function useCredentialOAuth() {
 			return null;
 		}
 
-		const controller = new AbortController();
-		oauthAbortController.value = controller;
-		pendingCredentialId.value = credential.id;
-
-		const success = await authorize(credential, controller.signal);
-
-		oauthAbortController.value = null;
-		pendingCredentialId.value = null;
+		const success = await authorizeNewCredential(credential);
 
 		const trackProperties: Record<string, GenericValue> = {
 			credential_type: credentialTypeName,
@@ -362,35 +377,14 @@ export function useCredentialOAuth() {
 
 		telemetry.track('User saved credentials', trackProperties);
 
-		if (success) {
-			credentialsStore.upsertCredential(credential);
-
-			return credential;
-		}
-
-		void credentialsStore.deleteCredential({ id: credential.id });
-		return null;
+		return success ? credential : null;
 	}
 
 	/**
 	 * Cancel any in-progress OAuth authorization and clean up the pending credential.
 	 */
 	function cancelAuthorize() {
-		if (oauthAbortController.value) {
-			oauthAbortController.value.abort();
-		}
-		const credentialId = pendingCredentialId.value;
-		if (!credentialId) return;
-		// Cancellation is not always explicit user intent — NodeCredentials also
-		// cancels on unmount — so keep the credential if the OAuth callback
-		// already landed and only delete when it really never connected.
-		void isConnected(credentialId).then((connected) => {
-			if (connected) {
-				void credentialsStore.fetchAllCredentials();
-			} else {
-				void credentialsStore.deleteCredential({ id: credentialId });
-			}
-		});
+		oauthAbortController.value?.abort();
 	}
 
 	return {
@@ -400,6 +394,7 @@ export function useCredentialOAuth() {
 		canOAuthCredentialQuickConnect,
 		hasManualCredentialInputFields,
 		authorize,
+		authorizeNewCredential,
 		createAndAuthorize,
 		cancelAuthorize,
 	};

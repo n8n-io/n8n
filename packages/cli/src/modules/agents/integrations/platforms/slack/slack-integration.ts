@@ -1,5 +1,5 @@
-import { Service } from '@n8n/di';
-import type { RichCardComponentType } from '@n8n/api-types';
+import type { AgentIntegrationDisconnectWarning, RichCardComponentType } from '@n8n/api-types';
+import { Container, Service } from '@n8n/di';
 import type { Thread } from 'chat';
 
 import { ConflictError } from '@/errors/response-errors/conflict.error';
@@ -8,6 +8,7 @@ import { AgentRepository } from '../../../repositories/agent.repository';
 import {
 	AgentChatIntegration,
 	type AgentChatIntegrationContext,
+	type AgentIntegrationRemovalContext,
 	type BridgeExecutionContext,
 	type BridgeMessageContextParams,
 	type BridgeResumeExecutionContext,
@@ -17,11 +18,11 @@ import {
 } from '../../agent-chat-integration';
 import type { ChatInstance } from '../../chat-integration.service';
 import { loadSlackAdapter } from '../../esm-loader';
+import { connectionUnavailable } from '../../integration-helpers';
 import {
 	resolveIntegrationActionDefinitions,
 	resolveIntegrationContextQueryDefinitions,
 } from '../../integration-tool-definitions';
-import { connectionUnavailable } from '../../integration-helpers';
 import type { ReplyExpectation } from '../../integration-tools';
 import {
 	createSlackBridgeExecutionContext,
@@ -30,6 +31,7 @@ import {
 	getSlackReplyExpectation,
 	prepareSlackInboundText,
 } from './slack-bridge-behavior';
+import { SlackManagedSetupService } from './slack-managed-setup.service';
 import { executeSlackContextQuery, subscribeSlackThread } from './slack-operations';
 
 /**
@@ -39,7 +41,7 @@ import { executeSlackContextQuery, subscribeSlackThread } from './slack-operatio
  */
 @Service()
 export class SlackIntegration extends AgentChatIntegration {
-	constructor(private readonly agentRepository?: AgentRepository) {
+	constructor(private readonly agentRepository: AgentRepository) {
 		super();
 	}
 
@@ -99,7 +101,6 @@ export class SlackIntegration extends AgentChatIntegration {
 	]);
 
 	async onBeforeConnect(ctx: AgentChatIntegrationContext): Promise<void> {
-		if (!this.agentRepository) return;
 		const others = await this.agentRepository.findByIntegrationCredential(
 			this.type,
 			ctx.credentialId,
@@ -109,6 +110,12 @@ export class SlackIntegration extends AgentChatIntegration {
 		if (others.length > 0) {
 			throw new ConflictError(`Slack credential is already connected to agent "${others[0].name}"`);
 		}
+	}
+
+	async onRemove(
+		ctx: AgentIntegrationRemovalContext,
+	): Promise<AgentIntegrationDisconnectWarning | undefined> {
+		return await Container.get(SlackManagedSetupService).deleteAppForCredential(ctx);
 	}
 
 	async prepareSentThread(thread: Thread<unknown, unknown>): Promise<void> {

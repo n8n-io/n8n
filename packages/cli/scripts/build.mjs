@@ -20,6 +20,7 @@ const publicApiEnabled = process.env.N8N_PUBLIC_API_DISABLED !== 'true';
 generateUserManagementEmailTemplates();
 generateTimezoneData();
 copyInstanceAiExamplesData();
+copyAgentIntegrationAssets();
 
 if (publicApiEnabled) {
 	createPublicApiDirectory();
@@ -158,6 +159,39 @@ function copyInstanceAiExamplesData() {
 	shell.cp(source, destination);
 	if (!existsSync(destination)) {
 		throw new Error(`Failed to copy Instance AI examples data file to: ${destination}`);
+	}
+}
+
+function copyAgentIntegrationAssets() {
+	const sourceDir = path.resolve(
+		ROOT_DIR,
+		'src',
+		'modules',
+		'agents',
+		'integrations',
+		'platforms',
+		'slack',
+		'assets',
+	);
+	const destinationDir = path.resolve(
+		ROOT_DIR,
+		'dist',
+		'modules',
+		'agents',
+		'integrations',
+		'platforms',
+		'slack',
+		'assets',
+	);
+
+	if (!existsSync(sourceDir)) {
+		throw new Error(`Agent integration assets directory not found: ${sourceDir}`);
+	}
+	shell.rm('-rf', destinationDir);
+	shell.mkdir('-p', path.dirname(destinationDir));
+	shell.cp('-R', sourceDir, destinationDir);
+	if (!existsSync(destinationDir)) {
+		throw new Error(`Failed to copy agent integration assets to: ${destinationDir}`);
 	}
 }
 

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useToast } from '@n8n/composables/useToast';
 import {
 	N8nButton,
 	N8nDialog,
@@ -44,6 +45,7 @@ interface Props {
 const props = withDefaults(defineProps<Props>(), {
 	isPublished: false,
 	simpleSetup: false,
+	ensureAgentPersisted: undefined,
 });
 
 const emit = defineEmits<{
@@ -55,6 +57,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const toast = useToast();
 const { catalog, ensureLoaded } = useAgentIntegrationsCatalog();
 const {
 	fetchStatus,
@@ -67,6 +70,7 @@ const {
 	isConfigured: isIntegrationConfigured,
 	connect,
 	disconnect,
+	clearError: clearIntegrationError,
 } = useAgentIntegrationStatus(props.projectId, props.agentId);
 
 const currentView = ref<ChannelView>(props.view);
@@ -76,6 +80,11 @@ const pendingCredentialReplacement = ref<{
 	channelType: string;
 	originalCredentialId: string;
 	replacementCredentialId: string;
+} | null>(null);
+const pendingDisconnect = ref<{
+	channelType: string;
+	credentialId: string;
+	closeAfter: boolean;
 } | null>(null);
 const credentialReplacementError = ref(false);
 
@@ -121,6 +130,25 @@ const {
 	fetchStatus,
 });
 
+watch(
+	() => {
+		const type = selectedChannelType.value;
+		return {
+			type,
+			credentialId: type ? selectedCredentials.value[type] : undefined,
+		};
+	},
+	(current, previous) => {
+		if (
+			current.type &&
+			current.type === previous.type &&
+			current.credentialId !== previous.credentialId
+		) {
+			clearIntegrationError(current.type);
+		}
+	},
+);
+
 const projectIdRef = computed(() => props.projectId);
 const agentIdRef = computed(() => props.agentId);
 const runtimes: Record<string, AgentChannelRuntime> = Object.fromEntries(
@@ -157,10 +185,40 @@ const channelViewRef = ref<AgentChannelViewExpose>();
 const listLoading = computed(() =>
 	Object.values(runtimes).some((runtime) => runtime.loading.value),
 );
+const disconnectConfirmationComponent = computed(() => {
+	const pending = pendingDisconnect.value;
+	return pending
+		? getAgentChannelPlatform(pending.channelType).disconnectConfirmationComponent
+		: undefined;
+});
+const disconnectConfirmationLoading = computed(() => {
+	const pending = pendingDisconnect.value;
+	return pending ? isLoading(pending.channelType) : false;
+});
 
 const hasPendingCredentialReplacement = computed(() => pendingCredentialReplacement.value !== null);
 const isCredentialReplacementInProgress = computed(
 	() => hasPendingCredentialReplacement.value && !credentialReplacementError.value,
+);
+const headerContentDisabled = computed(
+	() =>
+		isCredentialReplacementInProgress.value ||
+		currentRuntime.value.loading.value ||
+		channelViewRef.value?.loading === true,
+);
+const headerContentComponent = computed(() => {
+	if (isSetupMode.value) {
+		return currentPlatform.value.headerContent?.setupModal;
+	}
+	if (isEditMode.value) {
+		return currentPlatform.value.headerContent?.editModal;
+	}
+	return undefined;
+});
+const canClose = computed(
+	() =>
+		!isCredentialReplacementInProgress.value &&
+		!(selectedChannelType.value ? isLoading(selectedChannelType.value) : false),
 );
 
 function clearFailedCredentialReplacement() {
@@ -172,7 +230,9 @@ function clearFailedCredentialReplacement() {
 function prepareChannelEdit(channelType: string | null) {
 	credentialReplacementError.value = false;
 	captureConnectedCredential(channelType);
-	if (channelType && credentialIdAtEditOpen.value) {
+	if (!channelType) return;
+	clearIntegrationError(channelType);
+	if (credentialIdAtEditOpen.value) {
 		selectedCredentials.value[channelType] = credentialIdAtEditOpen.value;
 	}
 }
@@ -247,6 +307,7 @@ function connectAction(channelType: string) {
 }
 
 function goToSetup(channelType: string) {
+	clearIntegrationError(channelType);
 	currentView.value = `${channelType}_setup`;
 }
 
@@ -268,7 +329,7 @@ function goBackToList() {
 }
 
 function handleListDisconnect(channelType: string) {
-	void handleDisconnected(channelType);
+	requestDisconnect(channelType, connectedCredentials.value[channelType] ?? '', false);
 }
 
 function closeModal() {
@@ -351,26 +412,90 @@ function handlePlatformConnected() {
 	closeModal();
 }
 
-async function handleDisconnected(channelType: string, credentialId?: string) {
+async function handleDisconnected(
+	channelType: string,
+	credentialId?: string,
+	options: { deleteExternalResource?: boolean } = {},
+) {
 	// Draft channels (configured but missing a credential) have no connected
 	// credential — send '' so the backend removes the draft entry by type.
-	await disconnect(channelType, credentialId ?? connectedCredentials.value[channelType] ?? '');
+	const result = await disconnect(
+		channelType,
+		credentialId ?? connectedCredentials.value[channelType] ?? '',
+		options,
+	);
 	await fetchStatus([channelType]);
 	if (!isIntegrationConfigured(channelType)) {
 		emit('channel-disconnected', channelType);
 	}
 	emit('agent-changed');
+	return result;
 }
 
-async function removeCurrentChannel() {
-	const channelType = selectedChannelType.value;
-	if (!channelType || hasPendingCredentialReplacement.value || isLoading(channelType)) return;
+async function disconnectChannel(
+	channelType: string,
+	credentialId: string,
+	closeAfter: boolean,
+	deleteExternalResource?: boolean,
+) {
+	try {
+		const result = await handleDisconnected(channelType, credentialId, {
+			deleteExternalResource,
+		});
+		if (result.warning) {
+			const presentation = getAgentChannelPlatform(channelType).presentDisconnectWarning?.(
+				result.warning,
+				{ text: (key) => i18n.baseText(key) },
+			);
+			if (presentation) {
+				toast.showMessage({
+					type: 'warning',
+					title: presentation.title,
+					message: presentation.message,
+					duration: 0,
+				});
+			}
+		}
+		pendingDisconnect.value = null;
+		if (closeAfter) closeModal();
+	} catch (error) {
+		toast.showError(error, i18n.baseText('agents.channels.modal.removeChannelError'));
+	}
+}
 
-	await handleDisconnected(
+function requestDisconnect(channelType: string, credentialId: string, closeAfter: boolean) {
+	if (hasPendingCredentialReplacement.value || isLoading(channelType)) return;
+	const platform = getAgentChannelPlatform(channelType);
+	if (
+		platform.shouldConfirmDisconnect?.(runtimeFor(channelType), credentialId, {
+			isPublished: props.isPublished,
+		})
+	) {
+		pendingDisconnect.value = { channelType, credentialId, closeAfter };
+		return;
+	}
+	void disconnectChannel(channelType, credentialId, closeAfter);
+}
+
+function confirmDisconnect(deleteExternalResource: boolean) {
+	const pending = pendingDisconnect.value;
+	if (!pending) return;
+	void disconnectChannel(
+		pending.channelType,
+		pending.credentialId,
+		pending.closeAfter,
+		deleteExternalResource,
+	);
+}
+
+function removeCurrentChannel() {
+	const channelType = selectedChannelType.value;
+	if (!channelType) return;
+	requestDisconnect(
 		channelType,
 		credentialIdAtEditOpen.value || connectedCredentials.value[channelType] || '',
+		true,
 	);
-	closeModal();
 }
 
 async function loadChannelState() {
@@ -406,10 +531,7 @@ watch(
 		size="2xlarge"
 		:trap-focus="!credentialModalOpen"
 		:disable-outside-pointer-events="!credentialModalOpen"
-		:show-close-button="
-			!isCredentialReplacementInProgress &&
-			!(selectedChannelType ? isLoading(selectedChannelType) : false)
-		"
+		:show-close-button="false"
 		@interact-outside="(e) => e.preventDefault()"
 		@update:open="handleModalOpenUpdate"
 	>
@@ -454,8 +576,27 @@ watch(
 						/>
 						<N8nDialogTitle>{{ headerText }}</N8nDialogTitle>
 					</div>
+					<div :class="$style.headerActions">
+						<component
+							:is="headerContentComponent"
+							v-if="headerContentComponent"
+							:runtime="currentRuntime"
+							:disabled="headerContentDisabled"
+						/>
+					</div>
 				</div>
 			</Transition>
+			<N8nIconButton
+				variant="ghost"
+				size="small"
+				icon-size="medium"
+				icon="x"
+				:class="$style.closeButton"
+				aria-label="Close dialog"
+				data-test-id="dialog-close-button"
+				:disabled="!canClose"
+				@click="closeModal"
+			/>
 		</N8nDialogHeader>
 
 		<div data-testid="agent-channel-modal" :class="$style.container">
@@ -529,7 +670,7 @@ watch(
 			<N8nDialogFooter v-if="showFooterActions" :class="$style.customFooter">
 				<div :class="$style.footer">
 					<N8nButton
-						variant="destructive"
+						variant="ghost"
 						size="medium"
 						:loading="selectedChannelType ? isLoading(selectedChannelType) : false"
 						:disabled="
@@ -543,7 +684,7 @@ watch(
 					</N8nButton>
 					<div :class="$style.footerActions">
 						<N8nButton
-							variant="ghost"
+							variant="outline"
 							size="medium"
 							:disabled="
 								isCredentialReplacementInProgress ||
@@ -575,6 +716,14 @@ watch(
 				</div>
 			</N8nDialogFooter>
 		</Transition>
+		<component
+			:is="disconnectConfirmationComponent"
+			v-if="pendingDisconnect && disconnectConfirmationComponent"
+			:open="true"
+			:loading="disconnectConfirmationLoading"
+			@cancel="pendingDisconnect = null"
+			@confirm="confirmDisconnect"
+		/>
 	</N8nDialog>
 </template>
 
@@ -615,6 +764,8 @@ body:has([data-testid='agent-channel-modal'])
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--md);
+	flex: 1;
+	min-width: 0;
 }
 
 .headerTitle {
@@ -622,6 +773,17 @@ body:has([data-testid='agent-channel-modal'])
 	align-items: center;
 	gap: var(--spacing--2xs);
 	text-transform: capitalize;
+}
+
+.headerActions {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--xs);
+	margin-left: auto;
+}
+
+.closeButton {
+	flex-shrink: 0;
 }
 
 .listView {
@@ -656,6 +818,7 @@ body:has([data-testid='agent-channel-modal'])
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
+	width: 100%;
 	height: var(--height--md);
 }
 

@@ -1,4 +1,8 @@
-import { AgentIntegrationSchema, type AgentIntegrationConfig } from '@n8n/api-types';
+import {
+	AgentIntegrationSchema,
+	type AgentIntegrationConfig,
+	type AgentIntegrationDisconnectWarning,
+} from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
@@ -20,13 +24,12 @@ export class AgentIntegrationManagementService {
 		private readonly registry: ChatIntegrationRegistry,
 	) {}
 
-	async validateConfig(input: unknown): Promise<AgentIntegrationConfig> {
-		const parsed = await AgentIntegrationSchema.safeParseAsync(input);
+	async validateConfig(integration: unknown): Promise<AgentIntegrationConfig> {
+		const parsed = await AgentIntegrationSchema.safeParseAsync(integration);
 		if (!parsed.success) throw new BadRequestError(parsed.error.message);
-
-		const integration = parsed.data;
-		this.registry.require(integration.type).validateConfig?.(integration);
-		return integration;
+		const result = parsed.data;
+		this.registry.require(result.type).validateConfig?.(result);
+		return result;
 	}
 
 	async connect(options: {
@@ -34,12 +37,18 @@ export class AgentIntegrationManagementService {
 		user: User;
 		integration: unknown;
 		modifiedBy?: 'user' | 'mcp';
-	}): Promise<{ integration: AgentIntegrationConfig; savedAgent: Agent }> {
+	}): Promise<{
+		integration: AgentIntegrationConfig;
+		savedAgent: Agent;
+	}> {
 		const integration = await this.validateConfig(options.integration);
 		const implementation = this.registry.require(integration.type);
+
 		const usableCredentials = await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(
 			options.user,
-			{ projectId: options.agent.projectId },
+			{
+				projectId: options.agent.projectId,
+			},
 		);
 		const credential = usableCredentials.find((item) => item.id === integration.credentialId);
 		if (!credential) {
@@ -74,8 +83,9 @@ export class AgentIntegrationManagementService {
 		user: User;
 		type: string;
 		credentialId: string;
+		deleteExternalResource?: boolean;
 		modifiedBy?: 'user' | 'mcp';
-	}): Promise<{ savedAgent: Agent }> {
+	}): Promise<{ savedAgent: Agent; warning?: AgentIntegrationDisconnectWarning }> {
 		const persisted = (options.agent.integrations ?? []).find(
 			(item) => item.type === options.type && item.credentialId === options.credentialId,
 		);
@@ -84,6 +94,18 @@ export class AgentIntegrationManagementService {
 			credentialId: options.credentialId,
 		});
 		const integration = persisted ?? (parsed.success ? parsed.data : undefined);
+		// if agent is not published fallback to delete external resource
+		const deleteExternalResource =
+			options.deleteExternalResource ?? options.agent.activeVersionId === null;
+		const warning = persisted
+			? await this.registry.get(options.type)?.onRemove?.({
+					agentId: options.agent.id,
+					projectId: options.agent.projectId,
+					credentialId: options.credentialId,
+					user: options.user,
+					deleteExternalResource,
+				})
+			: undefined;
 
 		if (integration) {
 			await this.chatService.disconnectChannel(options.agent.id, integration);
@@ -93,13 +115,12 @@ export class AgentIntegrationManagementService {
 				credentialId: options.credentialId,
 			});
 		}
-
 		const savedAgent = await this.persistenceService.removeCredentialIntegration(
 			options.agent,
 			options.type,
 			options.credentialId,
 			{ user: options.user, modifiedBy: options.modifiedBy ?? 'user', broadcast: false },
 		);
-		return { savedAgent };
+		return { savedAgent, ...(warning ? { warning } : {}) };
 	}
 }

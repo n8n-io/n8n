@@ -75,6 +75,10 @@ export interface DialogProps {
 	 * Only rendered when header prop is also provided.
 	 */
 	description?: string;
+	/**
+	 * Render above another open dialog
+	 */
+	stacked?: boolean;
 }
 
 export interface DialogEmits {
@@ -91,6 +95,7 @@ withDefaults(defineProps<DialogProps>(), {
 	trapFocus: true,
 	disableOutsidePointerEvents: true,
 	showCloseButton: true,
+	stacked: false,
 });
 const emit = defineEmits<DialogEmits>();
 
@@ -107,7 +112,7 @@ const handleOpenChange = (value: boolean) => {
 		@update:open="handleOpenChange"
 	>
 		<DialogPortal>
-			<N8nDialogOverlay />
+			<N8nDialogOverlay :stacked="stacked" />
 			<N8nDialogContent
 				:size="size"
 				:force-mount="forceMount"
@@ -116,6 +121,7 @@ const handleOpenChange = (value: boolean) => {
 				:show-close-button="showCloseButton"
 				:aria-label="ariaLabel"
 				:aria-description="ariaDescription"
+				:stacked="stacked"
 				@escape-key-down="emit('escapeKeyDown', $event)"
 				@interact-outside="emit('interactOutside', $event)"
 				@open-auto-focus="emit('openAutoFocus', $event)"

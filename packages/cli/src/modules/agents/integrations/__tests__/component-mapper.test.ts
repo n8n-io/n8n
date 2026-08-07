@@ -1,4 +1,7 @@
 import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
+
+import type { AgentRepository } from '../../repositories/agent.repository';
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument, @typescript-eslint/naming-convention -- mocks the Slack-style SDK (PascalCase components) and intentionally uses any-based factory wrappers */
 // Define mocks inline inside the factory to avoid vi.mock hoisting issues
 type MockFn = Mock<(...args: any[]) => any>;
@@ -465,7 +468,7 @@ describe('ComponentMapper', () => {
 
 		it('should preserve radio_select components for Slack cards', async () => {
 			const registry = new ChatIntegrationRegistry();
-			registry.register(new SlackIntegration());
+			registry.register(new SlackIntegration(mock<AgentRepository>()));
 			Container.set(ChatIntegrationRegistry, registry);
 
 			const payload = {
