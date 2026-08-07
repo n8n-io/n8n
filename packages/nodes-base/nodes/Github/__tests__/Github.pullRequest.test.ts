@@ -636,7 +636,11 @@ describe('Github Node - Pull Request Operations', () => {
 				operation: 'get',
 				pullRequestNumber: 9999,
 			});
-			mock.helpers.requestWithAuthentication.mockRejectedValue(makeGithubError(404, 'Not Found'));
+			mock.helpers.requestWithAuthentication.mockResolvedValue({
+				statusCode: 404,
+				headers: {},
+				body: { message: 'Not Found' },
+			});
 
 			await expect(github.execute.call(mock)).rejects.toBeInstanceOf(NodeApiError);
 		});
