@@ -7,6 +7,7 @@ import { InstanceAiModule } from '@/features/ai/instanceAi/module.descriptor';
 import { AgentsModule } from '@/features/agents/module.descriptor';
 import { OtelModule } from '@/features/settings/otel/module.descriptor';
 import { WorkflowReviewsModule } from '@/features/workflow-reviews/module.descriptor';
+import { InstanceRegistryModule } from '@n8n/frontend-module-instance-registry';
 
 /**
  * Hard-coding modules list until we have a dynamic way to load modules.
@@ -20,4 +21,5 @@ export const modules: FrontendModuleDescription[] = [
 	AgentsModule,
 	OtelModule,
 	WorkflowReviewsModule,
+	InstanceRegistryModule,
 ];

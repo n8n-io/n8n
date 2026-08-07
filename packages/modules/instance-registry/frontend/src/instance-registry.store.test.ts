@@ -1,7 +1,8 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { setActivePinia, createPinia } from 'pinia';
 import type { ClusterInfoResponse } from '@n8n/api-types';
-import { useInstanceRegistryStore } from '../instanceRegistry.store';
+import { setActivePinia, createPinia } from 'pinia';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+import { useInstanceRegistryStore } from './instance-registry.store';
 
 const mocks = vi.hoisted(() => ({
 	getClusterInfo: vi.fn(),
