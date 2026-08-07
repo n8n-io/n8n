@@ -57,7 +57,6 @@ export class RolesPublicController {
 			description: role.description,
 			systemRole: role.systemRole,
 			roleType: createRole.roleType,
-			licensed: role.licensed,
 			scopes: role.scopes,
 			createdAt: role.createdAt!.toISOString(),
 			updatedAt: role.updatedAt!.toISOString(),

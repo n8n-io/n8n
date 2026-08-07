@@ -53,7 +53,6 @@ describe('Roles in Public API', () => {
 				description: null,
 				systemRole: false,
 				roleType: 'global',
-				licensed: expect.any(Boolean),
 				scopes: expect.arrayContaining(['user:read', 'user:list']),
 				createdAt: expect.any(String),
 				updatedAt: expect.any(String),
