@@ -91,9 +91,9 @@ ENV npm_config_nodedir=/usr/local
 # Docker's OS-layer patching and attestations. Only the Node binary is ours:
 # DHI's stock Node (at /usr/bin on Alpine) is removed and replaced by the
 # pointer-compressed build.
-# TODO: pin the digest on the first authenticated pull, tag+digest together
-# like n8n-base.
-FROM dhi.io/node:26.5.1-alpine3.24-dev AS runtime
+# Pinned to a multi-arch index digest (linux/amd64 + linux/arm64) for reproducible builds.
+# Bump the tag and digest together when updating.
+FROM dhi.io/node:26.5.1-alpine3.24-dev@sha256:c4062f85acd1ca91ffb7d15048dcc5f15a922d630e65eb3c3c0dcdcef6ea36d8 AS runtime
 
 RUN rm -f /usr/bin/node /usr/bin/nodejs /usr/bin/npm /usr/bin/npx /usr/bin/corepack
 COPY --from=builder /node-install/usr/local /usr/local
