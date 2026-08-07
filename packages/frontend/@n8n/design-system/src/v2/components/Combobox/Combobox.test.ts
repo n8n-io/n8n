@@ -767,7 +767,7 @@ describe('v2/components/Combobox', () => {
 			});
 		});
 
-		it('should render label, header, and footer slots', async () => {
+		it('should render label slot', async () => {
 			render(Combobox, {
 				props: {
 					items: [
@@ -778,8 +778,6 @@ describe('v2/components/Combobox', () => {
 				},
 				slots: {
 					label: '<span data-test-id="custom-label-heading">any</span>',
-					header: '<div data-test-id="header-content">Header</div>',
-					footer: '<button data-test-id="footer-button">Add custom role</button>',
 				},
 			});
 
@@ -787,8 +785,6 @@ describe('v2/components/Combobox', () => {
 
 			await waitFor(() => {
 				expect(within(popover).getByTestId('custom-label-heading')).toBeVisible();
-				expect(within(popover).getByTestId('header-content')).toBeVisible();
-				expect(within(popover).getByTestId('footer-button')).toBeVisible();
 			});
 		});
 	});

@@ -14,16 +14,16 @@ Combobox (N8nCombobox2)
 │   ├── Single: leading icon + ComboboxInput + clear + chevron
 │   └── Multiple: N8nTagsInput2 (embedded) + clear + chevron
 │       └── #input slot: ComboboxInput as-child → TagsInputInput
-└── ComboboxContent (portaled dropdown, max-height 500px by default)
-    ├── header slot
-    ├── ComboboxViewport (scrollable list area)
-    │   ├── ComboboxEmpty
-    │   └── ComboboxGroup (one per section; split at `type: 'label'` boundaries)
-    │       ├── ComboboxLabel (section heading, when present)
-    │       ├── ComboboxSeparator
-    │       └── N8nCombobox2Item (reka-ui ComboboxItem + default row: icon, label, check)
-    └── footer slot
+└── ComboboxContent (portaled dropdown, role="listbox", max-height 500px by default)
+    └── ComboboxViewport (scrollable list area)
+        ├── ComboboxEmpty
+        └── ComboboxGroup (one per section; split at `type: 'label'` boundaries)
+            ├── ComboboxLabel (section heading, when present)
+            ├── ComboboxSeparator
+            └── N8nCombobox2Item (reka-ui ComboboxItem + default row: icon, label, check)
 ```
+
+There are no header/footer slots. Reka applies `role="listbox"` to `ComboboxContent`, so non-option content (buttons, links, freeform markup) would break the ARIA listbox pattern. For section headings use `type: 'label'` items; for actionable chrome (e.g. “Create new…”) add a selectable option — see [Header and footer actions](#header-and-footer-actions).
 
 When `multiple` is true, selected values render via embedded `N8nTagsInput2` (shared chip/layout styles; Combobox keeps the field chrome). Freeform tag creation is disabled — values are only added from the dropdown.
 
@@ -94,8 +94,6 @@ The dropdown content defaults to a max height of **500px** with vertical scrolli
 - `item-label`: `{ item: ComboboxOptionBase }` — Pass-through to `N8nCombobox2Item`
 - `item-trailing`: `{ item: ComboboxOptionBase; ui: { class: string } }` — Pass-through to `N8nCombobox2Item`
 - `label`: `{ item: ComboboxLabelItem }` — Section heading for `type: 'label'` items
-- `header`: `()` — Content above the scrollable list
-- `footer`: `()` — Content below the scrollable list
 
 ### Item shapes
 
@@ -228,6 +226,50 @@ const value = ref<string | undefined>();
 
 <template>
   <N8nCombobox2 v-model="value" :items="items" placeholder="Select a food..." />
+</template>
+```
+
+**Header and footer actions**
+
+Do not place buttons or other freeform interactive controls in the popup — they sit inside `role="listbox"` and break the ARIA pattern. Model actions as selectable options instead: use `type: 'label'` for non-interactive headings, `type: 'separator'` to visually pin an action, and handle sentinel values in `update:modelValue` so the action does not become the field value.
+
+```vue
+<script setup lang="ts">
+import { computed, ref } from 'vue';
+import { N8nCombobox2 } from '@n8n/design-system';
+
+const CREATE_VALUE = '__create__';
+const options = [
+  { label: 'Apple', value: 'apple' },
+  { label: 'Banana', value: 'banana' },
+  { label: 'Orange', value: 'orange' },
+];
+
+const items = computed(() => [
+  { type: 'label' as const, label: 'Fruits' },
+  ...options,
+  { type: 'separator' as const },
+  { label: 'Create new fruit', value: CREATE_VALUE, icon: 'plus' as const },
+]);
+
+const value = ref<string | undefined>();
+
+function onUpdate(next: string | string[] | undefined) {
+  if (next === CREATE_VALUE) {
+    // Run the action — do not commit the sentinel as the selection.
+    return;
+  }
+  value.value = typeof next === 'string' ? next : undefined;
+}
+</script>
+
+<template>
+  <N8nCombobox2
+    :model-value="value"
+    :items="items"
+    placeholder="Select a fruit..."
+    @update:model-value="onUpdate"
+  />
 </template>
 ```
 

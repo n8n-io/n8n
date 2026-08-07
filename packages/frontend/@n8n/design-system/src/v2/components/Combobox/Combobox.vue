@@ -418,8 +418,6 @@ function onTagsUpdate(value: TagsInputValue[]) {
 				:side="props.side"
 				:side-offset="props.sideOffset"
 			>
-				<slot name="header" />
-
 				<ComboboxViewport :class="$style.comboboxViewport">
 					<ComboboxEmpty :class="$style.comboboxEmpty" role="status">
 						{{ emptyText }}
@@ -463,8 +461,6 @@ function onTagsUpdate(value: TagsInputValue[]) {
 						</template>
 					</ComboboxGroup>
 				</ComboboxViewport>
-
-				<slot name="footer" />
 			</ComboboxContent>
 		</ComboboxPortal>
 	</ComboboxRoot>

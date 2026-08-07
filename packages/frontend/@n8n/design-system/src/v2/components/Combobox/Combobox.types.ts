@@ -68,6 +68,4 @@ export type ComboboxSlots = {
 	['item-leading']?: SlotProps;
 	['item-label']?: (props: { item: ComboboxOptionBase }) => unknown;
 	['item-trailing']?: SlotProps;
-	header?: () => unknown;
-	footer?: () => unknown;
 };

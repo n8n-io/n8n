@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 
 import N8nIcon from '@n8n/design-system/components/N8nIcon/Icon.vue';
 import N8nInput from '@n8n/design-system/components/N8nInput';
@@ -492,12 +492,6 @@ export const WithSlots = {
 		template: `
 		<div style="${storyContainerStyle}">
 			<Combobox v-bind="args" v-model="value">
-				<template #header>
-					<div style="padding: var(--spacing--2xs); font-size: var(--font-size--2xs); color: var(--color--text--tint-1); border-bottom: 1px solid var(--border-color);">
-						Header slot
-					</div>
-				</template>
-
 				<template #item-leading="{ item, ui }">
 					<N8nIcon :icon="item.icon" color="primary" v-bind="ui" />
 				</template>
@@ -509,12 +503,6 @@ export const WithSlots = {
 				<template #item-trailing="{ item, ui }">
 					<N8nIcon :icon="item.icon" color="secondary" v-bind="ui" />
 				</template>
-
-				<template #footer>
-					<div style="padding: var(--spacing--2xs); font-size: var(--font-size--2xs); color: var(--color--text--tint-1); border-top: 1px solid var(--border-color);">
-						Footer slot
-					</div>
-				</template>
 			</Combobox>
 		</div>
 		`,
@@ -523,6 +511,60 @@ export const WithSlots = {
 		items: slotItems,
 		modelValue: undefined,
 	},
+} satisfies Story;
+
+const CREATE_FRUIT_VALUE = '__create_fruit__';
+
+export const WithHeaderAndFooterActions = {
+	name: 'With Header And Footer Actions',
+	render: () => ({
+		components: { Combobox },
+		setup() {
+			const value = ref<string | undefined>();
+			const lastAction = ref('');
+
+			const options = [
+				{ label: 'Apple', value: 'apple' },
+				{ label: 'Banana', value: 'banana' },
+				{ label: 'Orange', value: 'orange' },
+			];
+
+			const items = computed(() => [
+				{ type: 'label' as const, label: 'Suggested' },
+				...options,
+				{ type: 'separator' as const },
+				{
+					label: 'Create new fruit',
+					value: CREATE_FRUIT_VALUE,
+					icon: 'plus' as const,
+				},
+			]);
+
+			function onUpdate(next: string | string[] | undefined) {
+				if (next === CREATE_FRUIT_VALUE) {
+					lastAction.value = 'Create new fruit';
+					return;
+				}
+				value.value = typeof next === 'string' ? next : undefined;
+				lastAction.value = '';
+			}
+
+			return { value, items, lastAction, onUpdate };
+		},
+		template: `
+		<div style="${storyContainerStyle}">
+			<Combobox
+				:model-value="value"
+				:items="items"
+				placeholder="Select a fruit..."
+				@update:model-value="onUpdate"
+			/>
+			<p v-if="lastAction" style="margin: var(--spacing--xs) 0 0; font-size: var(--font-size--xs);">
+				Last action: {{ lastAction }}
+			</p>
+		</div>
+		`,
+	}),
 } satisfies Story;
 
 export const InForm = {
