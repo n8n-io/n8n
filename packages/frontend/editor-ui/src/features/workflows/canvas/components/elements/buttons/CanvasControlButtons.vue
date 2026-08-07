@@ -38,12 +38,6 @@ const isExperimentalNdvActive = computed(() => experimentalNdvStore.isActive(pro
 
 const isToggleZoomVisible = computed(() => experimentalNdvStore.isZoomedViewEnabled);
 
-const isResetZoomVisible = computed(() => !isToggleZoomVisible.value && props.zoom !== 1);
-
-function onResetZoom() {
-	emit('reset-zoom');
-}
-
 function onZoomIn() {
 	emit('zoom-in');
 }
@@ -127,20 +121,6 @@ function handleClickCollapseAll() {
 						)
 					"
 					@click="emit('toggle-zoom-mode')"
-				/>
-			</KeyboardShortcutTooltip>
-			<KeyboardShortcutTooltip
-				v-if="isResetZoomVisible"
-				:label="i18n.baseText('nodeView.resetZoom')"
-				:shortcut="{ keys: ['0'] }"
-			>
-				<N8nIconButton
-					variant="subtle"
-					size="large"
-					icon="undo-2"
-					:aria-label="i18n.baseText('nodeView.resetZoom')"
-					data-test-id="reset-zoom-button"
-					@click="onResetZoom"
 				/>
 			</KeyboardShortcutTooltip>
 			<KeyboardShortcutTooltip
