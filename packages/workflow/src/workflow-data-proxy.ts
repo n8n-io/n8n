@@ -805,6 +805,14 @@ export class WorkflowDataProxy {
 	getDataProxy(opts?: { throwOnMissingExecutionData: boolean }): IWorkflowDataProxyData {
 		const that = this;
 
+		// Memo slots for the lazy `$now` / `$today` / `$agentInfo` getters below
+		let lazyNow: DateTime | undefined;
+		let lazyToday: DateTime | undefined;
+		let lazyAgentInfo: { computed: boolean; value: ReturnType<WorkflowDataProxy['agentInfo']> } = {
+			computed: false,
+			value: undefined,
+		};
+
 		// replacing proxies with the actual data.
 		const jmespathWrapper = (data: IDataObject | IDataObject[], query: string) => {
 			if (typeof data !== 'object' || typeof query !== 'string') {
@@ -1622,8 +1630,17 @@ export class WorkflowDataProxy {
 			$mode: this.mode,
 			$workflow: this.workflowGetter(),
 			$itemIndex: this.itemIndex,
-			$now: DateTime.now(),
-			$today: DateTime.now().set({ hour: 0, minute: 0, second: 0, millisecond: 0 }),
+			// Lazy: Luxon DateTime construction in a named zone is expensive and
+			// most evaluations never touch these. Memoized so repeated accesses
+			// within one proxy observe a single instant, and the zone is bound
+			// explicitly because the global `Settings.defaultZone` may have been
+			// changed by another proxy by the time the getter runs.
+			get $now(): DateTime {
+				return (lazyNow ??= DateTime.now().setZone(that.timezone));
+			},
+			get $today(): DateTime {
+				return (lazyToday ??= this.$now.set({ hour: 0, minute: 0, second: 0, millisecond: 0 }));
+			},
 			$jmesPath: jmespathWrapper,
 
 			DateTime,
@@ -1642,7 +1659,13 @@ export class WorkflowDataProxy {
 			$thisRunIndex: this.runIndex,
 			$nodeVersion: that.workflow.getNode(that.activeNodeName)?.typeVersion,
 			$nodeId: that.workflow.getNode(that.activeNodeName)?.id,
-			$agentInfo: this.agentInfo(),
+			// Lazy: scans the workflow graph when the active node is an agent
+			get $agentInfo() {
+				if (!lazyAgentInfo.computed) {
+					lazyAgentInfo = { computed: true, value: that.agentInfo() };
+				}
+				return lazyAgentInfo.value;
+			},
 			$webhookId: that.workflow.getNode(that.activeNodeName)?.webhookId,
 		};
 		const throwOnMissingExecutionData = opts?.throwOnMissingExecutionData ?? true;
@@ -1652,13 +1675,11 @@ export class WorkflowDataProxy {
 			get(target, name, receiver) {
 				if (name === 'isProxy') return true;
 
-				const JSON_ACCESS_KEYS = ['$data', '$json'];
-
-				if (that.workflow.settings?.binaryMode === BINARY_MODE_COMBINED) {
-					JSON_ACCESS_KEYS.push('$item');
-				}
-
-				if (typeof name === 'string' && JSON_ACCESS_KEYS.includes(name)) {
+				if (
+					name === '$data' ||
+					name === '$json' ||
+					(name === '$item' && that.workflow.settings?.binaryMode === BINARY_MODE_COMBINED)
+				) {
 					return that.nodeDataGetter(that.contextNodeName, true, throwOnMissingExecutionData)?.json;
 				}
 				if (name === '$binary') {
