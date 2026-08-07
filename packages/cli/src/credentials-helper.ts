@@ -41,6 +41,7 @@ import {
 
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
+import { DCR_MANAGED_CREDENTIAL_FIELDS } from '@/oauth/dcr-managed-fields';
 import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 
@@ -649,13 +650,9 @@ export class CredentialsHelper extends ICredentialsHelper {
 		// When using dynamic client registration, OAuth fields negotiated at runtime
 		// are not shown in the UI, so we need to copy them from the original data.
 		if (decryptedData.useDynamicClientRegistration) {
-			decryptedData.clientId = decryptedDataOriginal.clientId;
-			decryptedData.clientSecret = decryptedDataOriginal.clientSecret;
-			decryptedData.authUrl = decryptedDataOriginal.authUrl;
-			decryptedData.accessTokenUrl = decryptedDataOriginal.accessTokenUrl;
-			decryptedData.grantType = decryptedDataOriginal.grantType;
-			decryptedData.authentication = decryptedDataOriginal.authentication;
-			decryptedData.usePkce = decryptedDataOriginal.usePkce;
+			for (const field of DCR_MANAGED_CREDENTIAL_FIELDS) {
+				decryptedData[field] = decryptedDataOriginal[field];
+			}
 		}
 
 		const parsedJsonLeafExpressionFields = this.parseJsonLeafExpressionFields(

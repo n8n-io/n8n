@@ -13,7 +13,7 @@ import Csrf from 'csrf';
 import type { Request, Response } from 'express';
 import { Credentials, Cipher } from 'n8n-core';
 import type { ICredentialDataDecryptedObject, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
-import { jsonParse, OperationalError, UnexpectedError } from 'n8n-workflow';
+import { jsonParse, OperationalError, UnexpectedError, UserError } from 'n8n-workflow';
 
 import {
 	GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE,
@@ -50,6 +50,10 @@ import { ExternalHooks } from '@/external-hooks';
 import { createHmac } from 'crypto';
 import type { RequestOptions } from 'oauth-1.0a';
 import clientOAuth1 from 'oauth-1.0a';
+import {
+	DCR_MANAGED_CREDENTIAL_FIELDS,
+	type DcrManagedCredentialValues,
+} from './dcr-managed-fields';
 import {
 	algorithmMap,
 	MAX_CSRF_AGE,
@@ -728,6 +732,12 @@ export class OauthService {
 	}
 
 	private createOAuth2ClientForRefresh(oauthCredentials: OAuth2CredentialData, resource?: string) {
+		if (!oauthCredentials.clientId || !oauthCredentials.accessTokenUrl) {
+			throw new UserError(
+				'This credential is missing its OAuth client details. Reconnect it to continue.',
+			);
+		}
+
 		const scopes = oauthCredentials.scope
 			?.split(' ')
 			.map((s) => s.trim())
@@ -1082,10 +1092,6 @@ export class OauthService {
 
 		const { authorization_endpoint, token_endpoint, registration_endpoint, scopes_supported } =
 			metadataValidation.data;
-		oauthCredentials.authUrl = authorization_endpoint;
-		oauthCredentials.accessTokenUrl = token_endpoint;
-		toUpdate.authUrl = authorization_endpoint;
-		toUpdate.accessTokenUrl = token_endpoint;
 		// Prefer the scopes advertised by the protected resource (RFC 9728) over the
 		// authorization server's scopes_supported (RFC 8414). Some servers only
 		// advertise the required scopes on the protected resource document.
@@ -1103,18 +1109,6 @@ export class OauthService {
 			metadataValidation.data.token_endpoint_auth_methods_supported ?? [],
 			metadataValidation.data.code_challenge_methods_supported ?? [],
 		);
-		oauthCredentials.grantType = grantType;
-		toUpdate.grantType = grantType;
-		oauthCredentials.usePkce = usePkce;
-		toUpdate.usePkce = usePkce;
-		if (authentication) {
-			oauthCredentials.authentication = authentication;
-			toUpdate.authentication = authentication;
-		} else {
-			delete oauthCredentials.authentication;
-			toDelete.push('authentication');
-		}
-
 		const { grant_types, token_endpoint_auth_method } = this.mapGrantTypeAndAuthenticationMethod(
 			grantType,
 			authentication,
@@ -1149,14 +1143,35 @@ export class OauthService {
 		}
 
 		const { client_id, client_secret } = registrationValidation.data;
-		oauthCredentials.clientId = client_id;
-		toUpdate.clientId = client_id;
-		if (authentication && client_secret) {
-			oauthCredentials.clientSecret = client_secret;
-			toUpdate.clientSecret = client_secret;
-		} else {
-			delete oauthCredentials.clientSecret;
-			toDelete.push('clientSecret');
+
+		this.applyDcrManagedFields(oauthCredentials, toUpdate, toDelete, {
+			authUrl: authorization_endpoint,
+			accessTokenUrl: token_endpoint,
+			grantType,
+			authentication,
+			usePkce,
+			clientId: client_id,
+			clientSecret: authentication ? client_secret : undefined,
+		});
+	}
+
+	/** Clears the fields the authorization server did not grant. */
+	private applyDcrManagedFields(
+		oauthCredentials: OAuth2CredentialData,
+		toUpdate: ICredentialDataDecryptedObject,
+		toDelete: string[],
+		negotiated: DcrManagedCredentialValues,
+	): void {
+		for (const field of DCR_MANAGED_CREDENTIAL_FIELDS) {
+			const value = negotiated[field];
+			if (value === undefined) {
+				Reflect.deleteProperty(oauthCredentials, field);
+				toDelete.push(field);
+				continue;
+			}
+
+			Object.assign(oauthCredentials, { [field]: value });
+			toUpdate[field] = value;
 		}
 	}
 

@@ -34,6 +34,7 @@ import type {
 	ICredentialsDecrypted,
 	ICredentialType,
 	IDataObject,
+	INodeParameters,
 	INodeProperties,
 	INodePropertyCollection,
 } from 'n8n-workflow';
@@ -59,6 +60,7 @@ import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
 import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
 import { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee';
+import { DCR_MANAGED_CREDENTIAL_FIELDS } from '@/oauth/dcr-managed-fields';
 import { validateOAuthUrl } from '@/oauth/validate-oauth-url';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { getChangedSharedFields } from '@/modules/dynamic-credentials.ee/services/shared-fields';
@@ -812,11 +814,61 @@ export class CredentialsService {
 			updateData.data.oauthTokenData = decryptedData.oauthTokenData;
 		}
 
+		if (!options?.clearOauthTokenData) {
+			this.restoreHiddenDcrFields(
+				existingCredential.type,
+				updateData.data as unknown as ICredentialDataDecryptedObject,
+				decryptedData,
+			);
+		}
+
 		this.validateOAuthCredentialUrls(
 			updateData.type,
 			updateData.data as unknown as ICredentialDataDecryptedObject,
 		);
 		return updateData;
+	}
+
+	/**
+	 * The frontend sends only displayed fields holding a non-default value, so a
+	 * save would drop what dynamic client registration negotiated and leave the
+	 * stored token unable to refresh. A displayed field stays the user's: its
+	 * absence means they chose its default.
+	 */
+	private restoreHiddenDcrFields(
+		credentialType: string,
+		dataToSave: ICredentialDataDecryptedObject,
+		storedData: ICredentialDataDecryptedObject,
+	): void {
+		let properties: INodeProperties[] | undefined;
+		try {
+			properties = this.credentialsHelper.getCredentialsProperties(credentialType);
+		} catch {
+			return;
+		}
+		if (!properties?.length) return;
+
+		// Display rules read `useDynamicClientRegistration`, a hidden property that
+		// is usually not stored, so defaults have to be filled in.
+		const storedWithDefaults =
+			NodeHelpers.getNodeParameters(
+				properties,
+				storedData as unknown as INodeParameters,
+				true,
+				true,
+				null,
+				null,
+			) ?? {};
+
+		for (const field of DCR_MANAGED_CREDENTIAL_FIELDS) {
+			if (field in dataToSave || !(field in storedData)) continue;
+
+			// An undeclared field has no way of being shown, so it is never the user's.
+			const property = properties.find((candidate) => candidate.name === field);
+			if (property && displayParameter(storedWithDefaults, property, null, null)) continue;
+
+			dataToSave[field] = storedData[field];
+		}
 	}
 
 	async createEncryptedData(credential: {
