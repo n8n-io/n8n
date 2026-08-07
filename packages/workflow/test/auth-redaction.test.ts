@@ -1,4 +1,4 @@
-import { recordConsumedAuth, redactedHeaders, REDACTED } from '../src/consumed-auth';
+import { recordConsumedAuth, redactedHeaders, REDACTED } from '../src/auth-redaction';
 
 const request = (headers: Record<string, string>) => ({ headers });
 

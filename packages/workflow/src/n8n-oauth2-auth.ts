@@ -1,4 +1,4 @@
-import { recordConsumedAuth } from './consumed-auth';
+import { recordConsumedAuth } from './auth-redaction';
 import { UnexpectedError } from './errors';
 import type { IWebhookFunctions } from './interfaces';
 
@@ -95,8 +95,6 @@ export const n8nOAuth2Auth = async (
 		return 'handled';
 	}
 
-	// The bearer token is n8n's own, issued for this resource — the validated identity
-	// travels via `establishTriggerIdentity` instead.
 	recordConsumedAuth(req, ['authorization']);
 
 	return {

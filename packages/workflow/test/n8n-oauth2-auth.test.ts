@@ -1,7 +1,7 @@
 import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
-import { REDACTED, redactedHeaders } from '../src/consumed-auth';
+import { REDACTED, redactedHeaders } from '../src/auth-redaction';
 import type { IWebhookFunctions, N8nOAuth2ValidationResult } from '../src/interfaces';
 import { n8nOAuth2Auth } from '../src/n8n-oauth2-auth';
 
