@@ -32,7 +32,7 @@ const meta = {
 			description: 'Visual variant of the select trigger',
 		},
 	},
-} satisfies GenericMeta<typeof Select<SelectItem[]>>;
+} satisfies GenericMeta<typeof Select>;
 export default meta;
 
 type Story = StoryObj<typeof meta>;
@@ -48,6 +48,12 @@ const fruitItems: SelectItem[] = [
 	{ label: 'Pomegranate', value: 'pomegranate' },
 	{ label: 'Guava', value: 'guava' },
 	{ label: 'Dragon Fruit', value: 'dragon_fruit' },
+];
+
+const plainItems: SelectItem[] = [
+	{ label: 'Option 1', value: 'Option 1' },
+	{ label: 'Option 2', value: 'Option 2' },
+	{ label: 'Option 3', value: 'Option 3' },
 ];
 
 const iconItems = [
@@ -83,7 +89,7 @@ export const Items = {
 		`,
 	}),
 	args: {
-		items: ['Option 1', 'Option 2', 'Option 3'],
+		items: plainItems,
 		modelValue: undefined,
 	},
 } satisfies Story;
@@ -159,8 +165,12 @@ function findItemIcon(items: SelectItem[] | undefined, selected: unknown) {
 	}
 
 	for (const item of items) {
-		if (typeof item === 'object' && item !== null && 'value' in item && item.value === selected) {
-			return 'icon' in item ? item.icon : undefined;
+		if (item.type === 'label' || item.type === 'separator') {
+			continue;
+		}
+
+		if (item.value === selected) {
+			return item.icon;
 		}
 	}
 
@@ -204,19 +214,16 @@ export const WithSlots = {
 				value: 'light',
 				label: 'Light',
 				icon: 'wrench',
-				class: 'custom-class',
 			},
 			{
 				value: 'dark',
 				label: 'Dark',
 				icon: 'filled-square',
-				class: ['custom-class2', 'custom-class3'],
 			},
 			{
 				value: 'dark2',
 				label: 'Dark2',
 				icon: 'filled-square',
-				class: { ['custom-class4']: true },
 			},
 		] satisfies SelectItem[],
 		modelValue: undefined,
@@ -248,7 +255,7 @@ export const Variants = {
 		`,
 	}),
 	args: {
-		items: ['Option 1', 'Option 2', 'Option 3'],
+		items: plainItems,
 		modelValue: undefined,
 	},
 } satisfies Story;
@@ -592,7 +599,6 @@ const customRoles = [
 
 const SelectSearchAndFooterDemo = defineComponent({
 	name: 'SelectSearchAndFooterDemo',
-	components: { Select, N8nIcon },
 	setup() {
 		const value = ref<string | undefined>('member');
 		const open = ref(false);
@@ -627,6 +633,8 @@ const SelectSearchAndFooterDemo = defineComponent({
 			selectedLabel,
 			onAddCustomRole,
 			onUpdate: action('update:modelValue'),
+			Select,
+			N8nIcon,
 		};
 	},
 	template: `
@@ -634,7 +642,8 @@ const SelectSearchAndFooterDemo = defineComponent({
 			<p style="margin: 0 0 12px; font-size: 14px; color: var(--text-color--subtle);">
 				Role-dropdown style example with built-in search and a footer action.
 			</p>
-			<Select
+			<component
+				:is="Select"
 				v-model="value"
 				v-model:open="open"
 				:items="items"
@@ -653,11 +662,11 @@ const SelectSearchAndFooterDemo = defineComponent({
 						style="display: flex; align-items: center; gap: 8px; width: 100%; min-height: var(--height--xl); padding: 0 12px; border: none; background: transparent; cursor: pointer; color: var(--color--primary);"
 						@click.stop="onAddCustomRole"
 					>
-						<N8nIcon icon="plus" size="small" />
+						<component :is="N8nIcon" icon="plus" size="small" />
 						<span style="font-size: 13px;">Add custom role</span>
 					</button>
 				</template>
-			</Select>
+			</component>
 		</div>
 	`,
 });

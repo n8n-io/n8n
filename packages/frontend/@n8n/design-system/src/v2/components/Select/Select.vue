@@ -1,12 +1,4 @@
-<script
-	setup
-	lang="ts"
-	generic="
-		T extends Array<SelectItem>,
-		VK extends GetItemKeys<T> = 'value',
-		M extends boolean = false
-	"
->
+<script setup lang="ts" generic="M extends boolean = false">
 import { reactiveOmit, reactivePick } from '@vueuse/core';
 import {
 	SelectValue as RSelectValue,
@@ -28,16 +20,18 @@ import { computed, nextTick, ref, useAttrs, useCssModule, useTemplateRef, watch 
 import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
 import N8nInput from '@n8n/design-system/components/N8nInput';
 import { useI18n } from '@n8n/design-system/composables/useI18n';
-import { get } from '@n8n/design-system/v2/utils';
-import type { GetItemKeys, GetModelValue } from '@n8n/design-system/v2/utils/types';
 
 import {
+	isOptionItem,
 	isRekaAcceptableValue,
-	isSelectItemProps,
+	isStructuralItem,
 	type SelectEmits,
 	type SelectItem,
-	type SelectItemProps,
+	type SelectLabelItem,
+	type SelectModelValue,
+	type SelectOptionBase,
 	type SelectProps,
+	type SelectSeparatorItem,
 	type SelectSizes,
 	type SelectSlots,
 	type SelectVariants,
@@ -53,7 +47,7 @@ const triggerAttrs = computed(() => reactiveOmit(attrs, ['class']));
 const $style = useCssModule();
 const { t } = useI18n();
 
-const props = withDefaults(defineProps<SelectProps<T, VK, M>>(), {
+const props = withDefaults(defineProps<SelectProps<M>>(), {
 	variant: 'default',
 	size: 'small',
 	position: 'popper',
@@ -62,8 +56,8 @@ const props = withDefaults(defineProps<SelectProps<T, VK, M>>(), {
 	clearable: false,
 	searchable: false,
 });
-const emit = defineEmits<SelectEmits<T, VK, M>>();
-defineSlots<SelectSlots<T, VK, M>>();
+const emit = defineEmits<SelectEmits<M>>();
+defineSlots<SelectSlots<M>>();
 
 const forwardedRootProps = useForwardProps(
 	reactivePick(props, 'open', 'defaultOpen', 'disabled', 'required', 'multiple'),
@@ -171,11 +165,11 @@ function hasValue() {
 	return true;
 }
 
-function showClearButton() {
-	return props.clearable && !props.disabled && hasValue();
+function showClearButton(): boolean {
+	return Boolean(props.clearable && !props.disabled && hasValue());
 }
 
-function isClearedMultipleValue(value: unknown): value is GetModelValue<T, VK, M> {
+function isClearedMultipleValue(value: unknown): value is SelectModelValue<M> {
 	return Array.isArray(value) && value.length === 0;
 }
 
@@ -195,9 +189,7 @@ function onClear(event: Event) {
 	emit('clear');
 }
 
-function toRootValue(
-	value?: GetModelValue<T, VK, M>,
-): AcceptableValue | AcceptableValue[] | undefined {
+function toRootValue(value?: SelectModelValue<M>): AcceptableValue | AcceptableValue[] | undefined {
 	if (value === undefined) {
 		return undefined;
 	}
@@ -213,8 +205,8 @@ function toRootValue(
 	return undefined;
 }
 
-function isModelValue(value: unknown): value is GetModelValue<T, VK, M> {
-	return value !== undefined;
+function isModelValue(value: unknown): value is SelectModelValue<M> {
+	return value !== undefined && value !== null;
 }
 
 function handleModelValueUpdate(value: AcceptableValue | AcceptableValue[]) {
@@ -223,31 +215,111 @@ function handleModelValueUpdate(value: AcceptableValue | AcceptableValue[]) {
 	}
 }
 
-function mapItem(item: SelectItem): SelectItemProps {
-	if (isSelectItemProps(item)) {
-		return {
+function slotModelValue(
+	value: AcceptableValue | AcceptableValue[] | null | undefined,
+): SelectModelValue<M> | undefined {
+	return isModelValue(value) ? value : undefined;
+}
+
+/** Avoid `String(object)` → `[object Object]` (eslint `@typescript-eslint/no-base-to-string`). */
+function stringifyPrimitive(value: unknown): string | undefined {
+	switch (typeof value) {
+		case 'string':
+			return value;
+		case 'number':
+		case 'bigint':
+		case 'boolean':
+			return String(value);
+		default:
+			return undefined;
+	}
+}
+
+function warnInvalidItem(message: string, item: SelectItem) {
+	if (!import.meta.env.DEV) {
+		return;
+	}
+
+	// eslint-disable-next-line no-console
+	console.warn(`[N8nSelect2] ${message}`, item);
+}
+
+function normalisedItems(): SelectItem[] {
+	if (!props.items?.length) {
+		return [];
+	}
+
+	const result: SelectItem[] = [];
+
+	for (const item of props.items) {
+		if (item.type === 'label') {
+			if (!item.label) {
+				warnInvalidItem('Skipping label item: "label" is missing or empty.', item);
+				continue;
+			}
+			result.push(item);
+			continue;
+		}
+
+		if (item.type === 'separator') {
+			result.push(item);
+			continue;
+		}
+
+		if (item.value === '') {
+			warnInvalidItem(
+				'Skipping item: "value" is missing or empty. Every selectable item needs a non-empty value.',
+				item,
+			);
+			continue;
+		}
+
+		if (!item.label) {
+			warnInvalidItem(
+				'Skipping item: "label" is missing or empty. Every selectable item needs a label.',
+				item,
+			);
+			continue;
+		}
+
+		result.push({
 			...item,
-			value: get(item, props.valueKey?.toString() ?? 'value'),
-			label: get(item, props.labelKey?.toString() ?? 'label'),
-			class: [$style.selectItem, item.class],
-			strokeWidth: iconStrokeWidth(),
-		};
+			textValue: item.textValue ?? item.label,
+		});
+	}
+
+	return result;
+}
+
+type MappedOption = SelectOptionBase & {
+	class: string;
+	strokeWidth: number;
+};
+
+type MappedItem = MappedOption | SelectLabelItem | SelectSeparatorItem;
+
+function mapItem(item: SelectItem): MappedItem {
+	if (isStructuralItem(item)) {
+		return item;
 	}
 
 	return {
-		value: item,
-		label: String(item),
+		...item,
 		class: $style.selectItem,
 		strokeWidth: iconStrokeWidth(),
 	};
 }
 
-function groups(): SelectItemProps[] {
+function groups(): MappedItem[] {
 	return visibleItems().map(mapItem);
 }
 
 function hasSelectableItems() {
-	return groups().some((item) => item.type !== 'label' && item.type !== 'separator');
+	return groups().some((item) => isOptionItem(item));
+}
+
+function itemSearchText(item: SelectOptionBase): string {
+	return (item.textValue ?? item.label).toLowerCase();
 }
 
 function filterGroupedItems(items: SelectItem[], query: string): SelectItem[] {
@@ -257,22 +329,21 @@ function filterGroupedItems(items: SelectItem[], query: string): SelectItem[] {
 	}
 
 	const result: SelectItem[] = [];
-	let pendingLabel: SelectItem | undefined;
-	let pendingSeparator: SelectItem | undefined;
+	let pendingLabel: SelectLabelItem | undefined;
+	let pendingSeparator: SelectSeparatorItem | undefined;
 
 	for (const item of items) {
-		if (isSelectItemProps(item) && item.type === 'label') {
+		if (item.type === 'label') {
 			pendingLabel = item;
 			continue;
 		}
 
-		if (isSelectItemProps(item) && item.type === 'separator') {
+		if (item.type === 'separator') {
 			pendingSeparator = item;
 			continue;
 		}
 
-		const label = itemLabel(item)?.toLowerCase() ?? '';
-		if (!label.includes(normalizedQuery)) {
+		if (!itemSearchText(item).includes(normalizedQuery)) {
 			continue;
 		}
 
@@ -293,7 +364,7 @@ function filterGroupedItems(items: SelectItem[], query: string): SelectItem[] {
 }
 
 function visibleItems(): SelectItem[] {
-	const items = props.items ?? [];
+	const items = normalisedItems();
 	if (!props.searchable) {
 		return items;
 	}
@@ -305,32 +376,6 @@ function resolvedSearchPlaceholder() {
 	return props.searchPlaceholder ?? t('nds.select.searchPlaceholder');
 }
 
-function itemValue(item: SelectItem): unknown {
-	if (isSelectItemProps(item)) {
-		return get(item, props.valueKey?.toString() ?? 'value');
-	}
-
-	return item;
-}
-
-function itemLabel(item: SelectItem): string | undefined {
-	if (isSelectItemProps(item)) {
-		if (item.type === 'label' || item.type === 'separator') {
-			return undefined;
-		}
-
-		const label = get(item, props.labelKey?.toString() ?? 'label');
-		if (typeof label === 'string' && label.length > 0) {
-			return label;
-		}
-
-		const value = itemValue(item);
-		return value == null ? undefined : String(value);
-	}
-
-	return String(item);
-}
-
 /**
  * Resolve trigger text from `items` so the label does not depend on Reka's
  * options registry (which briefly clears while the menu remounts on close).
@@ -340,25 +385,29 @@ function resolveDisplayValue(value: unknown): string | undefined {
 		return undefined;
 	}
 
-	const items = props.items ?? [];
+	const items = normalisedItems();
 
 	if (Array.isArray(value)) {
 		const labels = value
 			.map((entry) => {
-				const found = items.find((item) => itemValue(item) === entry);
-				return found !== undefined ? itemLabel(found) : String(entry);
+				const found = items.find(
+					(item): item is SelectOptionBase => isOptionItem(item) && item.value === entry,
+				);
+				return found?.label ?? stringifyPrimitive(entry);
 			})
 			.filter((label): label is string => Boolean(label));
 
 		return labels.length > 0 ? labels.join(', ') : undefined;
 	}
 
-	const found = items.find((item) => itemValue(item) === value);
+	const found = items.find(
+		(item): item is SelectOptionBase => isOptionItem(item) && item.value === value,
+	);
 	if (found !== undefined) {
-		return itemLabel(found);
+		return found.label;
 	}
 
-	return String(value);
+	return stringifyPrimitive(value);
 }
 </script>
 
@@ -387,7 +436,7 @@ function resolveDisplayValue(value: unknown): string | undefined {
 				:stroke-width="iconStrokeWidth()"
 			/>
 			<RSelectValue :placeholder="resolvedPlaceholder()" :class="$style.selectValue">
-				<slot :model-value="selectedValue" :open="open">
+				<slot :model-value="slotModelValue(selectedValue)" :open="open">
 					{{ resolveDisplayValue(selectedValue) ?? resolvedPlaceholder() }}
 				</slot>
 			</RSelectValue>

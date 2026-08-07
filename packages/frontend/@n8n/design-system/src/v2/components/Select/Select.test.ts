@@ -41,7 +41,11 @@ describe('v2/components/Select', () => {
 		it('should render with placeholder text', () => {
 			const wrapper = render(Select, {
 				props: {
-					items: ['Option 1', 'Option 2', 'Option 3'],
+					items: [
+						{ value: 'Option 1', label: 'Option 1' },
+						{ value: 'Option 2', label: 'Option 2' },
+						{ value: 'Option 3', label: 'Option 3' },
+					],
 					placeholder: 'Choose an option',
 				},
 			});
@@ -51,7 +55,11 @@ describe('v2/components/Select', () => {
 		it('should render with icon prop', () => {
 			const wrapper = render(Select, {
 				props: {
-					items: ['Option 1', 'Option 2', 'Option 3'],
+					items: [
+						{ value: 'Option 1', label: 'Option 1' },
+						{ value: 'Option 2', label: 'Option 2' },
+						{ value: 'Option 3', label: 'Option 3' },
+					],
 					icon: 'search',
 				},
 			});
@@ -61,7 +69,11 @@ describe('v2/components/Select', () => {
 		it('should render disabled state', () => {
 			const wrapper = render(Select, {
 				props: {
-					items: ['Option 1', 'Option 2', 'Option 3'],
+					items: [
+						{ value: 'Option 1', label: 'Option 1' },
+						{ value: 'Option 2', label: 'Option 2' },
+						{ value: 'Option 3', label: 'Option 3' },
+					],
 					disabled: true,
 				},
 			});
@@ -74,7 +86,7 @@ describe('v2/components/Select', () => {
 		test.each(sizeCases)('size %s should apply %s class', (size, expected) => {
 			const wrapper = render(Select, {
 				props: {
-					items: ['Option 1'],
+					items: [{ value: 'Option 1', label: 'Option 1' }],
 					size,
 				},
 			});
@@ -87,7 +99,7 @@ describe('v2/components/Select', () => {
 		test.each(variantCases)('variant %s should apply %s class', (variant, expected) => {
 			const wrapper = render(Select, {
 				props: {
-					items: ['Option 1'],
+					items: [{ value: 'Option 1', label: 'Option 1' }],
 					variant,
 				},
 			});
@@ -224,7 +236,11 @@ describe('v2/components/Select', () => {
 		it('should display selected value', async () => {
 			const wrapper = render(Select, {
 				props: {
-					items: ['Option 1', 'Option 2', 'Option 3'],
+					items: [
+						{ value: 'Option 1', label: 'Option 1' },
+						{ value: 'Option 2', label: 'Option 2' },
+						{ value: 'Option 3', label: 'Option 3' },
+					],
 					modelValue: 'Option 2',
 				},
 			});
@@ -237,7 +253,11 @@ describe('v2/components/Select', () => {
 		it('should use defaultValue in uncontrolled mode', async () => {
 			const wrapper = render(Select, {
 				props: {
-					items: ['Option 1', 'Option 2', 'Option 3'],
+					items: [
+						{ value: 'Option 1', label: 'Option 1' },
+						{ value: 'Option 2', label: 'Option 2' },
+						{ value: 'Option 3', label: 'Option 3' },
+					],
 					defaultValue: 'Option 3',
 				},
 			});
@@ -278,7 +298,11 @@ describe('v2/components/Select', () => {
 			it('should display selected value', async () => {
 				const wrapper = render(Select, {
 					props: {
-						items: ['Option 1', 'Option 2', 'Option 3'],
+						items: [
+							{ value: 'Option 1', label: 'Option 1' },
+							{ value: 'Option 2', label: 'Option 2' },
+							{ value: 'Option 3', label: 'Option 3' },
+						],
 						modelValue: ['Option 2', 'Option 1'],
 						multiple: true,
 					},
@@ -295,7 +319,11 @@ describe('v2/components/Select', () => {
 		it('should emit update:open when dropdown opens', async () => {
 			const wrapper = render(Select, {
 				props: {
-					items: ['Option 1', 'Option 2', 'Option 3'],
+					items: [
+						{ value: 'Option 1', label: 'Option 1' },
+						{ value: 'Option 2', label: 'Option 2' },
+						{ value: 'Option 3', label: 'Option 3' },
+					],
 					open: false,
 				},
 			});
@@ -312,7 +340,11 @@ describe('v2/components/Select', () => {
 		it('should emit update:open once when dropdown closes', async () => {
 			const wrapper = render(Select, {
 				props: {
-					items: ['Option 1', 'Option 2', 'Option 3'],
+					items: [
+						{ value: 'Option 1', label: 'Option 1' },
+						{ value: 'Option 2', label: 'Option 2' },
+						{ value: 'Option 3', label: 'Option 3' },
+					],
 					open: true,
 				},
 			});
@@ -356,7 +388,10 @@ describe('v2/components/Select', () => {
 		it('should render default slot with modelValue and open state', () => {
 			const wrapper = render(Select, {
 				props: {
-					items: ['Option 1', 'Option 2'],
+					items: [
+						{ value: 'Option 1', label: 'Option 1' },
+						{ value: 'Option 2', label: 'Option 2' },
+					],
 					modelValue: 'Option 1',
 				},
 				slots: {
@@ -478,38 +513,6 @@ describe('v2/components/Select', () => {
 		});
 	});
 
-	describe('custom keys', () => {
-		it('should use custom valueKey', () => {
-			const items = [
-				{ id: '1', name: 'Option 1' },
-				{ id: '2', name: 'Option 2' },
-			];
-			const wrapper = render(Select, {
-				props: {
-					items,
-					valueKey: 'id',
-					labelKey: 'name',
-					modelValue: '1',
-				},
-			});
-			expect(wrapper.container).toBeInTheDocument();
-		});
-
-		it('should use custom labelKey', () => {
-			const items = [
-				{ value: '1', title: 'Option 1' },
-				{ value: '2', title: 'Option 2' },
-			];
-			const wrapper = render(Select, {
-				props: {
-					items,
-					labelKey: 'title',
-				},
-			});
-			expect(wrapper.container).toBeInTheDocument();
-		});
-	});
-
 	describe('searchable', () => {
 		const roleItems: SelectItem[] = [
 			{ type: 'label', label: 'System roles' },
@@ -590,7 +593,10 @@ describe('v2/components/Select', () => {
 		it('should show clear button when clearable and has value', () => {
 			const wrapper = render(Select, {
 				props: {
-					items: ['Option 1', 'Option 2'],
+					items: [
+						{ value: 'Option 1', label: 'Option 1' },
+						{ value: 'Option 2', label: 'Option 2' },
+					],
 					modelValue: 'Option 1',
 					clearable: true,
 				},
@@ -601,7 +607,10 @@ describe('v2/components/Select', () => {
 		it('should not show clear button when empty', () => {
 			const wrapper = render(Select, {
 				props: {
-					items: ['Option 1', 'Option 2'],
+					items: [
+						{ value: 'Option 1', label: 'Option 1' },
+						{ value: 'Option 2', label: 'Option 2' },
+					],
 					clearable: true,
 				},
 			});
@@ -611,7 +620,10 @@ describe('v2/components/Select', () => {
 		it('should clear value on clear button click', async () => {
 			const wrapper = render(Select, {
 				props: {
-					items: ['Option 1', 'Option 2'],
+					items: [
+						{ value: 'Option 1', label: 'Option 1' },
+						{ value: 'Option 2', label: 'Option 2' },
+					],
 					modelValue: 'Option 1',
 					clearable: true,
 				},
@@ -628,7 +640,10 @@ describe('v2/components/Select', () => {
 		it('should clear multiple values to empty array', async () => {
 			const wrapper = render(Select, {
 				props: {
-					items: ['Option 1', 'Option 2'],
+					items: [
+						{ value: 'Option 1', label: 'Option 1' },
+						{ value: 'Option 2', label: 'Option 2' },
+					],
 					modelValue: ['Option 1'],
 					multiple: true,
 					clearable: true,

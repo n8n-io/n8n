@@ -12,7 +12,7 @@ import {
 	N8nTooltip,
 } from '@n8n/design-system';
 import type {
-	SelectItemProps,
+	SelectOptionBase,
 	SelectValue,
 } from '@n8n/design-system/v2/components/Select/Select.types';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
@@ -75,7 +75,7 @@ const dropdownFloor = computed<EnforcedFloor>(() =>
 	floor.value === 'off' ? 'production' : floor.value,
 );
 
-const floorOptions = computed<Array<SelectItemProps & { value: EnforcedFloor }>>(() =>
+const floorOptions = computed<Array<SelectOptionBase<EnforcedFloor>>>(() =>
 	(['production', 'all'] as EnforcedFloor[]).map((value) => ({
 		value,
 		label: i18n.baseText(

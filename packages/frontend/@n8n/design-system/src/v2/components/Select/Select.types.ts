@@ -5,38 +5,51 @@ import type {
 } from 'reka-ui';
 
 import type { IconName } from '../../../components/N8nIcon/icons';
-import type { AcceptableValue, GetItemKeys, GetModelValue } from '../../utils/types';
 
-type VueCssClass = undefined | string | Record<string, boolean> | Array<string | VueCssClass>;
+export type SelectValue = string | number | boolean;
 
-export type SelectItemProps = {
-	label?: string;
-	/**
-	 * The item type.
-	 * @defaultValue 'item'
-	 */
-	type?: 'label' | 'separator' | 'item';
-	value?: SelectValue;
-	disabled?: boolean;
-	onSelect?: (e: Event) => void;
+export type SelectOptionBase<TValue extends SelectValue = SelectValue> = {
+	type?: 'item';
+	value: TValue;
+	label: string;
 	icon?: IconName;
-	class?: VueCssClass;
-	strokeWidth?: number;
-	[key: string]: unknown;
+	disabled?: boolean;
+	/**
+	 * String used for search filtering. Defaults to `label`.
+	 * Set this when the filter text should differ from the displayed label
+	 * (e.g. include synonyms or a slot-rendered label).
+	 */
+	textValue?: string;
+	onSelect?: (e: Event) => void;
 };
 
-export type SelectValue = AcceptableValue;
-export type SelectItem = SelectValue | SelectItemProps;
+export type SelectLabelItem = {
+	type: 'label';
+	label: string;
+};
+
+export type SelectSeparatorItem = {
+	type: 'separator';
+};
+
+export type SelectStructuralItem = SelectLabelItem | SelectSeparatorItem;
+
+export type SelectItem<TValue extends SelectValue = SelectValue> =
+	| SelectOptionBase<TValue>
+	| SelectStructuralItem;
 
 export type SelectVariants = 'default' | 'ghost' | 'flush';
 /** Matches `N8nInput` / shared input size tokens. */
 export type SelectSizes = 'mini' | 'small' | 'medium' | 'large' | 'xlarge';
 
-export type SelectProps<
-	T extends SelectItem[] = SelectItem[],
-	VK extends GetItemKeys<T> = 'value',
-	M extends boolean = false,
-> = Omit<SelectRootProps, 'multiple' | 'modelValue' | 'defaultValue' | 'by'> & {
+export type SelectModelValue<M extends boolean = false> = M extends true
+	? SelectValue[]
+	: SelectValue;
+
+export type SelectProps<M extends boolean = false> = Omit<
+	SelectRootProps,
+	'multiple' | 'modelValue' | 'defaultValue' | 'by'
+> & {
 	id?: string;
 	/** The placeholder text when the select is empty. */
 	placeholder?: string;
@@ -44,21 +57,11 @@ export type SelectProps<
 	 * @defaultValue 'small'
 	 */
 	size?: SelectSizes;
-	/**
-	 * When `items` is an array of objects, select the field to use as the value.
-	 * @defaultValue 'value'
-	 */
-	valueKey?: VK;
-	/**
-	 * When `items` is an array of objects, select the field to use as the label.
-	 * @defaultValue 'label'
-	 */
-	labelKey?: GetItemKeys<T>;
-	items?: T;
+	items?: SelectItem[];
 	/** The value of the Select when initially rendered. Use when you do not need to control the state of the Select. */
-	defaultValue?: GetModelValue<T, VK, M>;
+	defaultValue?: SelectModelValue<M>;
 	/** The controlled value of the Select. Can be bind as `v-model`. */
-	modelValue?: GetModelValue<T, VK, M>;
+	modelValue?: SelectModelValue<M>;
 	/** Whether multiple options can be selected or not. */
 	multiple?: M & boolean;
 
@@ -103,28 +106,20 @@ export type SelectProps<
 	contentClass?: string;
 };
 
-export type SelectEmits<
-	A extends SelectItem[],
-	VK extends GetItemKeys<A> | undefined,
-	M extends boolean,
-> = Omit<SelectRootEmits, 'update:modelValue'> & {
-	'update:modelValue': [value: GetModelValue<A, VK, M> | undefined];
+export type SelectEmits<M extends boolean = false> = Omit<SelectRootEmits, 'update:modelValue'> & {
+	'update:modelValue': [value: SelectModelValue<M> | undefined];
 	'update:searchQuery': [value: string];
 	clear: [];
 };
 
-type SlotProps = (props: { item: SelectItemProps; ui: Record<string, unknown> }) => unknown;
+type SlotProps = (props: { item: SelectOptionBase; ui: Record<string, unknown> }) => unknown;
 
-export type SelectSlots<
-	A extends SelectItem[] = SelectItem[],
-	VK extends GetItemKeys<A> | undefined = undefined,
-	M extends boolean = false,
-> = {
-	default(props: { modelValue?: GetModelValue<A, VK, M>; open: boolean }): unknown;
-	item: (props: { item: SelectItemProps }) => unknown;
-	label: (props: { item: SelectItemProps }) => unknown;
+export type SelectSlots<M extends boolean = false> = {
+	default(props: { modelValue?: SelectModelValue<M>; open: boolean }): unknown;
+	item: (props: { item: SelectOptionBase }) => unknown;
+	label: (props: { item: SelectLabelItem }) => unknown;
 	['item-leading']: SlotProps;
-	['item-label']: (props: { item: SelectItemProps }) => unknown;
+	['item-label']: (props: { item: SelectOptionBase }) => unknown;
 	['item-trailing']: SlotProps;
 	header?: () => unknown;
 	footer?: () => unknown;
@@ -142,6 +137,10 @@ export function isRekaAcceptableValue(value: unknown): value is RekaAcceptableVa
 	);
 }
 
-export function isSelectItemProps(item: SelectItem): item is SelectItemProps {
-	return typeof item === 'object' && item !== null;
+export function isStructuralItem(item: SelectItem): item is SelectStructuralItem {
+	return item.type === 'label' || item.type === 'separator';
+}
+
+export function isOptionItem(item: SelectItem): item is SelectOptionBase {
+	return !isStructuralItem(item);
 }

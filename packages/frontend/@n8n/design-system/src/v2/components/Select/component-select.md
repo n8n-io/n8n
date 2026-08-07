@@ -1,7 +1,7 @@
 # Component specification
 
 Allows users to choose one or more options from a predefined list. It supports both single and multiple selection modes via the multiple prop.
-Built-in search (`searchable`) filters the dropdown by item label. For larger datasets that need typeahead in the trigger itself, use [ComboBox](https://www.figma.com/design/8zib7Trf2D2CHYXrEGPHkg/n8n-Design-System-V3?node-id=2631-7139&m=dev) (to be done).
+Built-in search (`searchable`) filters the dropdown by item label (or `textValue` when provided). For larger datasets that need typeahead in the trigger itself, use [ComboBox](https://www.figma.com/design/8zib7Trf2D2CHYXrEGPHkg/n8n-Design-System-V3?node-id=2631-7139&m=dev) (to be done).
 
 - **Component Name:** N8nSelect
 - **Figma Component:** [Figma](https://www.figma.com/design/8zib7Trf2D2CHYXrEGPHkg/n8n-Design-System-V3?node-id=2121-630&m=dev)
@@ -12,15 +12,44 @@ Built-in search (`searchable`) filters the dropdown by item label. For larger da
 
 ## Public API Definition
 
+**Item shape**
+
+Selectable items must be objects with required `value` and `label`. Structural rows use a discriminant `type`:
+
+```Typescript
+type SelectValue = string | number | boolean;
+
+type SelectOptionBase<TValue extends SelectValue = SelectValue> = {
+	type?: 'item';
+	value: TValue;
+	label: string;
+	icon?: IconName;
+	disabled?: boolean;
+	textValue?: string; // optional search text; defaults to label
+};
+
+type SelectLabelItem = { type: 'label'; label: string };
+type SelectSeparatorItem = { type: 'separator' };
+type SelectItem = SelectOptionBase | SelectLabelItem | SelectSeparatorItem;
+```
+
+Consumers that need extra fields should extend the base type and map source data themselves:
+
+```Typescript
+interface CustomOption extends SelectOptionBase<string> {
+	description: string;
+}
+```
+
+Primitives, object values, and `valueKey` / `labelKey` mapping are intentionally not supported.
+
 **Props**
 
 - `id?: string`
 - `placeholder?: string`
-- `items?: T` Array for elements to render
-- `valueKey?: VK` When `items` is an array of objects, select the field to use as the value.
-- `labelKey?: GetItemKeys<T>` When `items` is an array of objects, select the field to use as the label.
-- `defaultValue?: GetModelValue<T, VK, M>` The value of the Select when initially rendered. Use when you do not need to control the state of the Select.
-- `modelValue?: GetModelValue<T, VK, M>` The controlled value of the Select. Can be bind as `v-model`.
+- `items?: SelectItem[]` Array of options / labels / separators to render
+- `defaultValue?: SelectValue | SelectValue[]` The value of the Select when initially rendered. Use when you do not need to control the state of the Select.
+- `modelValue?: SelectValue | SelectValue[]` The controlled value of the Select. Can be bind as `v-model`.
 - `multiple?: boolean` Whether multiple options can be selected or not.
 - `open?: boolean` The controlled open state of the Select. Can be bind as `v-model:open`.
 - `defaultOpen?: boolean` The open state of the select when it is initially rendered. Use when you do not need to control its open state.
@@ -47,19 +76,19 @@ Built-in search (`searchable`) filters the dropdown by item label. For larger da
 
 **Events**
 
-- `update:modelValue(value: GetModelValue<T, VK, M> | undefined)`
+- `update:modelValue(value: SelectValue | SelectValue[] | undefined)`
 - `update:open(value: boolean)`
 - `update:searchQuery(value: string)`
 - `clear()`
 
 **Slots**
 
-- `default`: `{ modelValue?: GetModelValue<T, VK, M>; open: boolean }`
-- `item`: `{ item: T; }`
-- `label`: `{ item: T; }` — group label rows (`type: 'label'`)
-- `item-leading`: `{ item: T; ui: object }`
-- `item-label`: `{ item: T; }`
-- `item-trailing`: `{ item: T; ui: object }`
+- `default`: `{ modelValue?: SelectValue | SelectValue[]; open: boolean }`
+- `item`: `{ item: SelectOptionBase }`
+- `label`: `{ item: SelectLabelItem }` — group label rows (`type: 'label'`)
+- `item-leading`: `{ item: SelectOptionBase; ui: object }`
+- `item-label`: `{ item: SelectOptionBase }`
+- `item-trailing`: `{ item: SelectOptionBase; ui: object }`
 - `header?: ()`
 - `footer?: ()`
 - `empty?: ()` — shown when there are no selectable items (e.g. search with no matches)
@@ -69,8 +98,13 @@ Built-in search (`searchable`) filters the dropdown by item label. For larger da
 
 ```Typescript
 <script setup lang="ts">
-const items = ref(['Backlog', 'Todo', 'In Progress', 'Done'])
-const value = ref('Backlog')
+const items = ref([
+	{ value: 'backlog', label: 'Backlog' },
+	{ value: 'todo', label: 'Todo' },
+	{ value: 'in_progress', label: 'In Progress' },
+	{ value: 'done', label: 'Done' },
+])
+const value = ref('backlog')
 </script>
 
 <template>

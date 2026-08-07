@@ -4,10 +4,16 @@ import { useCssModule } from 'vue';
 
 import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
 
-import { isRekaAcceptableValue, type SelectItemProps } from './Select.types';
+import { isRekaAcceptableValue, type SelectOptionBase } from './Select.types';
 
 defineOptions({ inheritAttrs: false });
-const props = defineProps<SelectItemProps>();
+
+type SelectItemComponentProps = SelectOptionBase & {
+	class?: string | Record<string, boolean> | Array<string | Record<string, boolean>>;
+	strokeWidth?: number;
+};
+
+const props = defineProps<SelectItemComponentProps>();
 const $style = useCssModule();
 
 function resolveValue() {

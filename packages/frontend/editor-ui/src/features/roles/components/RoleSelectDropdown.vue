@@ -8,7 +8,8 @@ import {
 	N8nTooltip,
 } from '@n8n/design-system';
 import type {
-	SelectItemProps,
+	SelectItem,
+	SelectOptionBase,
 	SelectValue,
 } from '@n8n/design-system/v2/components/Select/Select.types';
 import type { Role } from '@n8n/permissions';
@@ -20,10 +21,12 @@ import RoleHoverPopover from './RoleHoverPopover.vue';
 import RoleContactAdminModal from './RoleContactAdminModal.vue';
 import CustomRolesUpgradeModal from './CustomRolesUpgradeModal.vue';
 
-interface RoleSelectItem extends SelectItemProps {
+interface RoleSelectOption extends SelectOptionBase<string> {
 	role?: Role;
 	requiresUpgrade?: boolean;
 }
+
+type RoleSelectItem = RoleSelectOption | Extract<SelectItem, { type: 'label' | 'separator' }>;
 
 const props = withDefaults(
 	defineProps<{
@@ -149,7 +152,8 @@ const onAddCustomRoleClick = () => {
 	}
 };
 
-const isUnavailableRoleItem = (item: SelectItemProps) => item.requiresUpgrade === true;
+const isUnavailableRoleItem = (item: SelectOptionBase) =>
+	'requiresUpgrade' in item && item.requiresUpgrade === true;
 </script>
 
 <template>

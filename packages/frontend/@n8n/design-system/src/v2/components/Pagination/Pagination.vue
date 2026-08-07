@@ -13,6 +13,7 @@ import { computed, useCssModule, ref, watch } from 'vue';
 
 import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
 import N8nSelect from '@n8n/design-system/v2/components/Select/Select.vue';
+import type { SelectValue } from '@n8n/design-system/v2/components/Select/Select.types';
 
 import type {
 	PaginationEmits,
@@ -149,8 +150,8 @@ const handlePageUpdate = (newPage: number) => {
 };
 
 // Handle page size updates
-const handlePageSizeUpdate = (newSize: number | string | undefined) => {
-	if (newSize === undefined) {
+const handlePageSizeUpdate = (newSize: SelectValue | undefined) => {
+	if (newSize === undefined || typeof newSize === 'boolean') {
 		return;
 	}
 
