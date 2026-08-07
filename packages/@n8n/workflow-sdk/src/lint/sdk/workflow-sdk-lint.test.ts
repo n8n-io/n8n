@@ -237,6 +237,21 @@ export default workflow('id', 'name').add(fetchData);
 			);
 		});
 
+		it('flags enveloped output mocks on subnode factories like reranker', () => {
+			const source = `
+const rerank = reranker({
+  type: '@n8n/n8n-nodes-langchain.rerankerCohere',
+  version: 1,
+  config: { name: 'Rerank' },
+  output: [{ json: { score: 0.9 } }],
+});
+export default workflow('id', 'name').add(rerank);
+`;
+			expect(lintWorkflowSdkSource(source).map((i) => i.code)).toContain(
+				'SDK_MOCK_OUTPUT_JSON_ENVELOPE',
+			);
+		});
+
 		it('ignores nested parameters that happen to be named output', () => {
 			const source = `
 const setFields = node({

@@ -194,6 +194,7 @@ const NODE_FACTORY_NAMES = new Set([
 	'embeddings',
 	'vectorStore',
 	'retriever',
+	'reranker',
 	'documentLoader',
 	'textSplitter',
 ]);
