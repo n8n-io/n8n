@@ -3,7 +3,6 @@ import { LICENSE_FEATURES } from '@n8n/constants';
 import { AuthenticatedRequest } from '@n8n/db';
 import {
 	ApiDescription,
-	ApiErrorResponse,
 	ApiKeyScope,
 	ApiResponse,
 	ApiSummary,
@@ -34,8 +33,6 @@ export class RolesPublicController {
 	)
 	@ApiTags(['Role'])
 	@ApiResponse(201, RolePublicDto)
-	@ApiErrorResponse(400)
-	@ApiErrorResponse(403)
 	async createRole(
 		req: AuthenticatedRequest,
 		_res: Response,

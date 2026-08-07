@@ -29,6 +29,7 @@ describe('Roles in Public API', () => {
 	});
 
 	beforeEach(async () => {
+		// Truncate users first so the cleanup below can delete custom roles they referenced.
 		await testDb.truncate(['User']);
 		await Container.get(RoleRepository).delete({ systemRole: false });
 		owner = await createOwnerWithApiKey();
