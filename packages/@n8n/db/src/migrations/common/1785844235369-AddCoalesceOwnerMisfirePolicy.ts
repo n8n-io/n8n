@@ -8,7 +8,6 @@ const policyColumn = 'misfirePolicy';
 // migration and every instance converges on the same CHECK.
 const POLICY_VALUES_BEFORE = ['coalesce', 'skip'];
 const POLICY_VALUES = [...POLICY_VALUES_BEFORE, 'coalesce_owner'];
-const SCHEDULE_TRIGGER_TASK_TYPE = 'workflow:schedule-trigger';
 
 const POLICY_COMMENT_BEFORE =
 	"What to do with occurrences that came due while nothing ran them: ''coalesce'' records a single catch-up run, ''skip'' records none.";
@@ -16,29 +15,24 @@ const POLICY_COMMENT =
 	"What to do with occurrences that came due while nothing ran them: ''coalesce'' records a single catch-up run per job, ''coalesce_owner'' a single one across every job the same owner scheduled, ''skip'' records none.";
 
 /**
- * Widens the `misfirePolicy` CHECK to accept `coalesce_owner`, and moves every
- * schedule trigger job onto it.
+ * Widens the `misfirePolicy` CHECK to accept `coalesce_owner`. Existing schedule
+ * trigger jobs are left on `coalesce`; the scheduling module moves a node onto
+ * `coalesce_owner` itself the next time it provisions that node (activation,
+ * redefinition, or the node's own policy setting), not by a schema-time
+ * rewrite. A blanket backfill here would move every existing schedule trigger
+ * job onto a policy value that binaries predating this release do not
+ * recognise (such a binary treats the row as corrupt, defers it by
+ * `planRetrySeconds` and advances its clock), which a rolling upgrade or a
+ * downgrade that skips `db:revert` would hit for every node at once instead of
+ * only the ones provisioning finds.
  *
- * Under `coalesce`, each job coalesces its own backlog, so a workflow with several
- * schedule rules produces one catch-up run per rule after an outage. Under
- * `coalesce_owner` the jobs that share an owner coalesce together, producing one
- * catch-up run for the workflow. System jobs stay on `coalesce`: they have no owner to
- * coalesce across.
- *
- * `down()` folds `coalesce_owner` rows back to `coalesce` instead of deleting them, so
- * a rollback leaves every live trigger scheduled.
- *
- * The backfill has a cost: it moves every existing schedule trigger job onto a policy
- * value that binaries predating this release do not recognise. Such a binary treats the
- * row as corrupt, defers the job by `planRetrySeconds` and advances its clock, so during
- * a rolling upgrade, or a downgrade that skips `db:revert`, an affected job can lose a
- * pending catch-up and stay quiet for that interval.
+ * `down()` folds any `coalesce_owner` rows back to `coalesce` instead of
+ * deleting them, so a rollback leaves every live trigger scheduled.
  */
 export class AddCoalesceOwnerMisfirePolicy1785844235369 implements ReversibleMigration {
 	async up(context: MigrationContext) {
 		await this.refreshTableMetadata(context);
 		await this.setPolicyCheck(context, POLICY_VALUES);
-		await this.backfillScheduleTriggerJobs(context);
 		if (context.isPostgres) {
 			await this.commentPolicyColumn(context, POLICY_COMMENT);
 		}
@@ -71,14 +65,6 @@ export class AddCoalesceOwnerMisfirePolicy1785844235369 implements ReversibleMig
 		await schemaBuilder.addEnumCheck(jobTable, policyColumn, values, {
 			recreatesOnSqlite: true,
 		});
-	}
-
-	private async backfillScheduleTriggerJobs({ escape, runQuery }: MigrationContext) {
-		const policy = escape.columnName(policyColumn);
-		await runQuery(
-			`UPDATE ${escape.tableName(jobTable)} SET ${policy} = 'coalesce_owner' ` +
-				`WHERE ${policy} = 'coalesce' AND ${escape.columnName('taskType')} = '${SCHEDULE_TRIGGER_TASK_TYPE}'`,
-		);
 	}
 
 	private async foldOwnerPolicyBack({ escape, runQuery }: MigrationContext) {

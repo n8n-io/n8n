@@ -196,15 +196,15 @@ describe('AddCoalesceOwnerMisfirePolicy Migration', () => {
 			await context.queryRunner.release();
 		});
 
-		it('moves schedule trigger jobs to coalesce_owner and leaves other jobs alone', async () => {
+		it('leaves every existing job on its current policy', async () => {
 			await seedJobsAndTasks();
 
 			await runSingleMigration(MIGRATION_NAME);
 
 			const context = createTestMigrationContext(dataSource);
 			expect(await policies(context)).toEqual({
-				trigger_a: 'coalesce_owner',
-				trigger_b: 'coalesce_owner',
+				trigger_a: 'coalesce',
+				trigger_b: 'coalesce',
 				trigger_skip: 'skip',
 				system_job: 'coalesce',
 			});
@@ -216,6 +216,11 @@ describe('AddCoalesceOwnerMisfirePolicy Migration', () => {
 		it('folds coalesce_owner back to coalesce without deleting a job or a task', async () => {
 			await seedJobsAndTasks();
 			await runSingleMigration(MIGRATION_NAME);
+			// Simulates a node the scheduling module already moved onto coalesce_owner
+			// after `up()` ran, since this migration no longer backfills it itself.
+			const seeded = createTestMigrationContext(dataSource);
+			await insertJob(seeded, 'trigger_owner', SCHEDULE_TRIGGER_TASK_TYPE, 'coalesce_owner');
+			await seeded.queryRunner.release();
 
 			await undoLastSingleMigration();
 
@@ -224,9 +229,10 @@ describe('AddCoalesceOwnerMisfirePolicy Migration', () => {
 				trigger_a: 'coalesce',
 				trigger_b: 'coalesce',
 				trigger_skip: 'skip',
+				trigger_owner: 'coalesce',
 				system_job: 'coalesce',
 			});
-			expect(await countRows(context, 'scheduled_job')).toBe(4);
+			expect(await countRows(context, 'scheduled_job')).toBe(5);
 			expect(await countRows(context, 'scheduled_task')).toBe(2);
 			expect(await taskJobNames(context)).toEqual(['system_job', 'trigger_a']);
 			expect(await foreignKeyViolations(context)).toEqual([]);
