@@ -137,10 +137,24 @@ export function makeRunWorkflow(getDataSource: () => EngineDataSource) {
 			executionStore,
 			orchestrationQueue,
 		).start({ workflowId: 'wf-m1', graph, triggerPayload });
-		await finished;
 
-		await stepWorker.stop();
-		await orchestrationWorker.stop();
+		try {
+			await Promise.race([
+				finished,
+				new Promise((_, reject) => {
+					setTimeout(() => {
+						reject(
+							new Error(
+								`execution ${executionId} never recorded an outcome: the engine stalled without calling finishExecution`,
+							),
+						);
+					}, 10_000).unref();
+				}),
+			]);
+		} finally {
+			await stepWorker.stop();
+			await orchestrationWorker.stop();
+		}
 
 		const steps = await dataSource
 			.getRepository(WorkflowStepExecution)
