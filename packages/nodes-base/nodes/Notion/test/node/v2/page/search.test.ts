@@ -72,3 +72,18 @@ describe('Test NotionV2, page => search', () => {
 		workflowFiles: ['search.workflow.json'],
 	});
 });
+
+describe('Test NotionV2, page => search with limit', () => {
+	nock('https://api.notion.com')
+		.post('/v1/search', {
+			query: 'child',
+			filter: { property: 'object', value: 'page' },
+			sort: { direction: 'ascending', timestamp: 'last_edited_time' },
+			page_size: 5,
+		})
+		.reply(200, API_RESPONSE);
+
+	new NodeTestHarness().setupTests({
+		workflowFiles: ['searchWithLimit.workflow.json'],
+	});
+});
