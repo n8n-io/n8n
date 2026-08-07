@@ -1,4 +1,4 @@
-// Base tsconfig for frontend module packages (`packages/frontend/modules/*`).
+// Base tsconfig for frontend module packages (`packages/modules/*/frontend`).
 //
 // Hand-maintained, and it has to agree with editor-ui's Vite aliases and its own tsconfig `paths`
 // — a package pointed at a different src here would typecheck modules against something the

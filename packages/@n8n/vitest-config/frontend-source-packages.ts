@@ -12,7 +12,7 @@ import type { Alias } from 'vite';
  * what else to update. `dir` is relative to `packages/`.
  *
  * It lives in this package rather than in `editor-ui/vite/aliases.mts` because editor-ui is not its
- * only consumer any more: every module under `packages/frontend/modules/` needs the same mapping
+ * only consumer any more: every module under `packages/modules/*/frontend` needs the same mapping
  * for its own vitest run, and a module cannot import from the shell it plugs into. Every frontend
  * package — modules included — already depends on `@n8n/vitest-config` and already imports
  * `@n8n/vitest-config/frontend` from its vite config, so this adds no dependency edge.
@@ -38,13 +38,13 @@ export const sourcePackages = [
 ];
 
 /**
- * Feature module packages, appended by `pnpm setup-frontend-module`. Kept separate from the table
+ * Feature module packages, appended by `n8n-module-sdk create`. Kept separate from the table
  * above because only the shell resolves them: a module aliasing its siblings would let an
  * accidental cross-module import resolve at test time, which is the boundary the module tsconfig
  * base is there to hold.
  */
 export const modulePackages: Array<{ name: string; dir: string; entry?: boolean }> = [
-	{ name: '@n8n/frontend-module-instance-registry', dir: 'frontend/modules/instance-registry' },
+	{ name: '@n8n/frontend-module-instance-registry', dir: 'modules/instance-registry/frontend' },
 ];
 
 const escapeForRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
