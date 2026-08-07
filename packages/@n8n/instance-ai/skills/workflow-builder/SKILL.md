@@ -75,7 +75,10 @@ If the service or workflow shape is clear, never stop before the first
 resources, credentials, channel IDs, or timezone; use placeholders or unresolved
 `newCredential()` calls. Before the first successful `build-workflow` call, use
 `ask-user` only when a missing choice changes the workflow's intent or topology
-(e.g. which destination service). But when that choice is which service to use
+(e.g. which destination service). When the workflow branches on a field of the
+incoming payload (a webhook body key, a form field), the exact field name and
+its values are topology — confirm them with the user before building instead of
+assuming a name; a wrong assumed field silently routes everything one way. But when that choice is which service to use
 for a capability the user did not name,
 discover coverage first and use an n8n credits–covered node instead of asking
 when the user has no credential for a comparable tool (see n8n credits
