@@ -977,9 +977,10 @@ describe('NodeCredentials', () => {
 				{ merge: true },
 			);
 
+			// Without n8n credits the empty state is a single "Connect to <service>" button.
 			expect(screen.queryByTestId('setup-credential-button')).not.toBeInTheDocument();
-			expect(screen.getByText('Use my own credential')).toBeInTheDocument();
-			expect(screen.getByText('Bring your own API key')).toBeInTheDocument();
+			const emptyState = screen.getByTestId('node-credentials-empty-state');
+			expect(within(emptyState).getByRole('button', { name: /Connect to/ })).toBeInTheDocument();
 		});
 
 		it('should show quick connect when sibling credential type has managed OAuth', () => {
@@ -1333,7 +1334,8 @@ describe('NodeCredentials', () => {
 		);
 
 		expect(screen.queryByTestId('setup-credential-button')).not.toBeInTheDocument();
-		expect(screen.getByTestId('node-credentials-select-item-new')).toBeDisabled();
+		const emptyState = screen.getByTestId('node-credentials-empty-state');
+		expect(within(emptyState).getByRole('button')).toBeDisabled();
 	});
 
 	it('should clear stale AI Gateway managed credentials on mount when gateway is disabled', () => {
@@ -1581,10 +1583,9 @@ describe('NodeCredentials', () => {
 					props: { node: googleAiNode, overrideCredType: 'googlePalmApi' },
 				});
 
-				await userEvent.click(
-					within(screen.getByTestId('node-credentials-empty-state')).getByRole('combobox'),
-				);
-
+				// Without n8n credits the empty state is a plain create button, not a picker.
+				const emptyState = screen.getByTestId('node-credentials-empty-state');
+				expect(within(emptyState).queryByRole('combobox')).not.toBeInTheDocument();
 				expect(
 					screen.queryByTestId('node-credentials-select-item-n8n-credits'),
 				).not.toBeInTheDocument();
@@ -1964,10 +1965,9 @@ describe('NodeCredentials', () => {
 					props: { node: multiAuthNode, overrideCredType: '', standalone: true },
 				});
 
-				await userEvent.click(
-					within(screen.getByTestId('node-credentials-empty-state')).getByRole('combobox'),
-				);
-
+				// The sibling fallback is suppressed, so no picker (and no n8n credits) appears.
+				const emptyState = screen.getByTestId('node-credentials-empty-state');
+				expect(within(emptyState).queryByRole('combobox')).not.toBeInTheDocument();
 				expect(
 					screen.queryByTestId('node-credentials-select-item-n8n-credits'),
 				).not.toBeInTheDocument();
@@ -1980,10 +1980,9 @@ describe('NodeCredentials', () => {
 					props: { node: multiAuthNode, overrideCredType: 'serviceOAuth2Api' },
 				});
 
-				await userEvent.click(
-					within(screen.getByTestId('node-credentials-empty-state')).getByRole('combobox'),
-				);
-
+				// The sibling fallback is suppressed, so no picker (and no n8n credits) appears.
+				const emptyState = screen.getByTestId('node-credentials-empty-state');
+				expect(within(emptyState).queryByRole('combobox')).not.toBeInTheDocument();
 				expect(
 					screen.queryByTestId('node-credentials-select-item-n8n-credits'),
 				).not.toBeInTheDocument();
@@ -2048,10 +2047,9 @@ describe('NodeCredentials', () => {
 					props: { node, overrideCredType: 'someApi' },
 				});
 
-				await userEvent.click(
-					within(screen.getByTestId('node-credentials-empty-state')).getByRole('combobox'),
-				);
-
+				// Below the minimum version the gateway is unsupported, so no picker appears.
+				const emptyState = screen.getByTestId('node-credentials-empty-state');
+				expect(within(emptyState).queryByRole('combobox')).not.toBeInTheDocument();
 				expect(
 					screen.queryByTestId('node-credentials-select-item-n8n-credits'),
 				).not.toBeInTheDocument();
