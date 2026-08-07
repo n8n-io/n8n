@@ -96,8 +96,11 @@ function createAwaitingEmitter(
 	const deadlineSeconds = options.executionTimeoutSeconds ?? DEFAULT_EXECUTION_TIMEOUT_SECONDS;
 	const errorRetryDelay = options.errorRetryDelay ?? DEFAULT_ERROR_RETRY_DELAY_MS;
 
-	// Two views of the same event: one to end a wait with a reason, one to cut a
-	// wait short quietly. Deriving the quiet one also keeps the rejection handled.
+	// Two views of closing, because the two waits below want different things.
+	// The rejecting one ends the wait for an execution with a reason, which is
+	// what gets logged. The quiet one only needs to stop the retry pause, and
+	// deriving it here also handles the rejection, so the one that loses the race
+	// is not reported as an unhandled rejection.
 	const closedWithReason = rejectOnClose(closeSignal);
 	const closedQuietly = closedWithReason.catch(() => undefined);
 
@@ -158,6 +161,7 @@ async function rejectOnClose(closeSignal: AbortSignal): Promise<never> {
 			reject(
 				new OperationalError('Trigger closed before the execution finished, offsets not resolved.'),
 			);
+		// The abort event fires once. If it already fired, no listener would run.
 		if (closeSignal.aborted) return fail();
 		closeSignal.addEventListener('abort', fail, { once: true });
 	});

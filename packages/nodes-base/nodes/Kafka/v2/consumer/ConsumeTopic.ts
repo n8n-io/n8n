@@ -75,15 +75,17 @@ export async function consumeTopic(
 	options: ConsumeTopicOptions,
 ): Promise<KafkaConsumerHandle> {
 	const { topic, parseMessage, emit, logger } = options;
-	const batchSize = countOr(options.batchSize, DEFAULT_BATCH_SIZE);
+	const batchSize = positiveCount(options.batchSize, DEFAULT_BATCH_SIZE);
 	const errorRetryDelay = options.errorRetryDelay ?? DEFAULT_ERROR_RETRY_DELAY_MS;
 
 	const closeController = new AbortController();
 	const { signal } = closeController;
 
-	// Resolves (never rejects) on close, so any wait below can be cut short
-	// without risking an unhandled rejection.
+	// Turns "we are closing" into something a wait can race against, since you can
+	// race a promise but not a signal. It only ever resolves: the loser of a race
+	// is abandoned, and an abandoned rejection gets reported as unhandled.
 	const closed = new Promise<void>((resolve) => {
+		// The abort event fires once. If it already fired, no listener would run.
 		if (signal.aborted) return resolve();
 		signal.addEventListener('abort', () => resolve(), { once: true });
 	});
@@ -99,7 +101,7 @@ export async function consumeTopic(
 		await consumer.subscribe({ topics: [topic] });
 
 		await consumer.run({
-			partitionsConsumedConcurrently: countOr(
+			partitionsConsumedConcurrently: positiveCount(
 				options.partitionsConsumedConcurrently,
 				DEFAULT_PARTITIONS_CONSUMED_CONCURRENTLY,
 			),
@@ -185,12 +187,20 @@ export async function consumeTopic(
 // ---------------------------------------------------------------------------
 
 /**
- * Resolves a caller-supplied count to a number the loop can rely on. Both uses
- * above feed either a loop increment or a library config key, where `NaN` is
- * worse than a wrong value: it slips past a `Math.max` clamp and past `??`, then
- * silently produces empty chunks or a broken worker count. A node option can
- * reach here as `NaN` from an expression that did not evaluate to a number.
+ * A whole number of at least one, or the fallback when the value cannot be used
+ * as a count. Anything unusable takes the same path: missing, not a number, not
+ * finite, or below one.
+ *
+ * Both callers feed either a loop increment or a library config key, where `NaN`
+ * does more damage than a merely wrong number. It slips past `??` because it is
+ * not `undefined`, and past `Math.max` because every comparison with `NaN` is
+ * false, and then quietly produces empty chunks or a broken worker count. A node
+ * option can arrive as `NaN` from an expression that did not evaluate to a
+ * number.
  */
-function countOr(value: number | undefined, fallback: number): number {
-	return Number.isFinite(value) ? Math.max(1, Math.trunc(value as number)) : fallback;
+function positiveCount(value: number | undefined, fallback: number): number {
+	if (typeof value !== 'number' || !Number.isFinite(value)) return fallback;
+
+	const whole = Math.trunc(value);
+	return whole >= 1 ? whole : fallback;
 }
