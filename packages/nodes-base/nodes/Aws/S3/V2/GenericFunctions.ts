@@ -67,6 +67,12 @@ export async function awsApiRequestREST(
 		options,
 		region,
 	);
+	// Some S3 endpoints return HTTP 204 No Content with an empty body
+	// (e.g. DeleteBucket, DeleteObject). Guard against empty/non-string
+	// responses before attempting XML or JSON parsing.
+	if (!response || typeof response !== 'string' || response.trim() === '') {
+		return response;
+	}
 	try {
 		if (response.includes('<?xml version="1.0" encoding="UTF-8"?>')) {
 			return await new Promise((resolve, reject) => {

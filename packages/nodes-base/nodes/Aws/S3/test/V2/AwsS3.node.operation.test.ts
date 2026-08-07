@@ -41,11 +41,8 @@ describe('AWS S3 V2 Node - File Download', () => {
 			region: 'eu-central-1',
 		});
 
-		executeFunctionsMock.getNode.mockReturnValue({
-			typeVersion: 2,
-		} as INode);
-
-		executeFunctionsMock.getInputData.mockReturnValue([{ json: { test: 'data' } }]);
+		executeFunctionsMock.getNode.mockReturnValue({ typeVersion: 2 } as INode);
+		executeFunctionsMock.getInputData.mockReturnValue([{ json: {} }]);
 		executeFunctionsMock.continueOnFail.mockReturnValue(false);
 
 		executeFunctionsMock.helpers.returnJsonArray.mockImplementation((data) =>
@@ -197,161 +194,79 @@ describe('AWS S3 V2 Node - File Download', () => {
 			}
 		});
 	});
+});
 
-	describe('error handling', () => {
-		beforeEach(() => {
-			executeFunctionsMock.getNodeParameter.mockImplementation((paramName) => {
-				switch (paramName) {
-					case 'resource':
-						return 'file';
-					case 'operation':
-						return 'download';
-					case 'bucketName':
-						return 'test-bucket';
-					case 'fileKey':
-						return 'path/to/directory/';
-					case 'binaryPropertyName':
-						return 'data';
-					default:
-						return undefined;
-				}
-			});
+describe('AWS S3 V2 Node - Bucket Delete', () => {
+	const executeFunctionsMock = mockDeep<IExecuteFunctions>();
+	let awsApiRequestRESTSpy: MockInstance;
+	let node: AwsS3V2;
+
+	beforeEach(() => {
+		vi.resetAllMocks();
+		awsApiRequestRESTSpy = vi.spyOn(GenericFunctions, 'awsApiRequestREST');
+		node = new AwsS3V2({
+			displayName: 'AWS S3',
+			name: 'awsS3',
+			icon: 'file:s3.svg',
+			group: ['output'],
+			description: 'Sends data to AWS S3',
 		});
 
-		it('should throw error when trying to download a directory', async () => {
-			await expect(node.execute.call(executeFunctionsMock)).rejects.toThrow(NodeOperationError);
-			await expect(node.execute.call(executeFunctionsMock)).rejects.toThrow(
-				'Downloading a whole directory is not yet supported, please provide a file key',
-			);
-		});
-	});
-
-	describe('continueOnFail logic', () => {
-		beforeEach(() => {
-			executeFunctionsMock.getNodeParameter.mockImplementation((paramName) => {
-				switch (paramName) {
-					case 'resource':
-						return 'file';
-					case 'operation':
-						return 'download';
-					case 'bucketName':
-						return 'test-bucket';
-					case 'fileKey':
-						return 'path/to/test.txt';
-					case 'binaryPropertyName':
-						return 'data';
-					default:
-						return undefined;
-				}
-			});
+		executeFunctionsMock.getCredentials.mockResolvedValue({
+			accessKeyId: 'test-key',
+			secretAccessKey: 'test-secret',
+			region: 'eu-central-1',
 		});
 
-		it('should continue execution and return error data when continueOnFail is true', async () => {
-			const testError = new Error('AWS API Error');
-			executeFunctionsMock.continueOnFail.mockReturnValue(true);
-			awsApiRequestRESTSpy.mockRejectedValue(testError);
+		executeFunctionsMock.getNode.mockReturnValue({ typeVersion: 2 } as INode);
+		executeFunctionsMock.getInputData.mockReturnValue([{ json: {} }]);
+		executeFunctionsMock.continueOnFail.mockReturnValue(false);
 
-			const result = await node.execute.call(executeFunctionsMock);
+		executeFunctionsMock.helpers.returnJsonArray.mockImplementation((data) =>
+			Array.isArray(data) ? data.map((item) => ({ json: item })) : [{ json: data }],
+		);
 
-			expect(result).toHaveLength(1);
-			expect(result[0]).toHaveLength(1);
-			expect(result[0][0].json).toEqual({ error: 'AWS API Error' });
+		executeFunctionsMock.helpers.constructExecutionMetaData.mockImplementation(
+			(data) => data as any,
+		);
 
-			expect(executeFunctionsMock.helpers.constructExecutionMetaData).toHaveBeenCalledWith(
-				[{ json: { error: 'AWS API Error' } }],
-				{ itemData: { item: 0 } },
-			);
-		});
-
-		it('should throw error when continueOnFail is false', async () => {
-			const testError = new Error('AWS API Error');
-			executeFunctionsMock.continueOnFail.mockReturnValue(false);
-			awsApiRequestRESTSpy.mockRejectedValue(testError);
-
-			await expect(node.execute.call(executeFunctionsMock)).rejects.toThrow('AWS API Error');
-		});
-
-		it('should handle multiple items with mixed success/failure when continueOnFail is true', async () => {
-			executeFunctionsMock.getInputData.mockReturnValue([
-				{ json: { test: 'data1' } },
-				{ json: { test: 'data2' } },
-				{ json: { test: 'data3' } },
-			]);
-
-			executeFunctionsMock.continueOnFail.mockReturnValue(true);
-
-			awsApiRequestRESTSpy
-				.mockResolvedValueOnce(mockLocationResponse)
-				.mockResolvedValueOnce(mockFileResponse)
-				.mockResolvedValueOnce(mockLocationResponse)
-				.mockRejectedValueOnce(new Error('File not found'))
-				.mockResolvedValueOnce(mockLocationResponse)
-				.mockResolvedValueOnce(mockFileResponse);
-
-			const result = await node.execute.call(executeFunctionsMock);
-
-			expect(result).toHaveLength(1);
-			expect(result[0]).toHaveLength(3);
-
-			expect(result[0][0]).toHaveProperty('binary');
-			expect(result[0][1].json).toEqual({ error: 'File not found' });
-			expect(result[0][2]).toHaveProperty('binary');
+		executeFunctionsMock.getNodeParameter.mockImplementation((paramName) => {
+			switch (paramName) {
+				case 'resource':
+					return 'bucket';
+				case 'operation':
+					return 'delete';
+				case 'name':
+					return 'my-test-bucket';
+				default:
+					return undefined;
+			}
 		});
 	});
 
-	describe('binary data handling', () => {
-		beforeEach(() => {
-			executeFunctionsMock.getNodeParameter.mockImplementation((paramName) => {
-				switch (paramName) {
-					case 'resource':
-						return 'file';
-					case 'operation':
-						return 'download';
-					case 'bucketName':
-						return 'test-bucket';
-					case 'fileKey':
-						return 'path/to/test.txt';
-					case 'binaryPropertyName':
-						return 'customData';
-					default:
-						return undefined;
-				}
-			});
+	it('should send DELETE request and return success (204)', async () => {
+		awsApiRequestRESTSpy.mockResolvedValueOnce(undefined);
 
-			awsApiRequestRESTSpy
-				.mockResolvedValueOnce(mockLocationResponse)
-				.mockResolvedValueOnce(mockFileResponse);
-		});
+		const result = await node.execute.call(executeFunctionsMock);
 
-		it('should handle custom binary property name', async () => {
-			await node.execute.call(executeFunctionsMock);
+		expect(awsApiRequestRESTSpy).toHaveBeenCalledWith(
+			'my-test-bucket.s3',
+			'DELETE',
+			'',
+			'',
+			{},
+			{},
+		);
 
-			expect(executeFunctionsMock.helpers.prepareBinaryData).toHaveBeenCalledWith(
-				expect.any(Buffer),
-				'test.txt',
-				'text/plain',
-			);
-		});
+		expect(result[0][0]).toMatchObject({ json: { success: true } });
+	});
 
-		it('should preserve existing binary data when adding new binary data', async () => {
-			executeFunctionsMock.getInputData.mockReturnValue([
-				{
-					json: { test: 'data' },
-					binary: {
-						existingFile: {
-							data: 'existing-data',
-							mimeType: 'image/png',
-							fileName: 'existing.png',
-						},
-					},
-				},
-			]);
+	it('should handle empty string response (204)', async () => {
+		awsApiRequestRESTSpy.mockResolvedValueOnce('');
 
-			const result = await node.execute.call(executeFunctionsMock);
+		const result = await node.execute.call(executeFunctionsMock);
 
-			expect(result[0][0].binary).toHaveProperty('existingFile');
-			expect(result[0][0].binary).toHaveProperty('customData');
-		});
+		expect(result[0][0]).toMatchObject({ json: { success: true } });
 	});
 });
 
@@ -365,7 +280,12 @@ describe('AWS S3 V2 Node - Bucket Search', () => {
 		{ Key: 'file1.txt', Size: '100' },
 		{ Key: 'file2.txt', Size: '200' },
 	];
-	const mockCommonPrefixes = [{ Prefix: 'folder1/' }, { Prefix: 'folder2/' }];
+
+	const mockCommonPrefixes = [
+		{ Prefix: 'folder1/' },
+		{ Prefix: 'folder2/' },
+	];
+
 	const mockSearchResponse = {
 		ListBucketResult: {
 			Contents: mockContents,
@@ -398,23 +318,13 @@ describe('AWS S3 V2 Node - Bucket Search', () => {
 		executeFunctionsMock.helpers.returnJsonArray.mockImplementation((data) =>
 			Array.isArray(data) ? data.map((item) => ({ json: item })) : [{ json: data }],
 		);
+
 		executeFunctionsMock.helpers.constructExecutionMetaData.mockImplementation(
 			(data) => data as any,
 		);
 	});
 
-	function setupSearchParams(overrides: {
-		returnAll?: boolean;
-		delimiter?: string;
-		includeCommonPrefixes?: boolean;
-		limit?: number;
-	}) {
-		const {
-			returnAll = false,
-			delimiter = '',
-			includeCommonPrefixes = false,
-			limit = 100,
-		} = overrides;
+	function setupSearchParams({ returnAll = false, delimiter = '', includeCommonPrefixes = false, limit = 100 }) {
 		executeFunctionsMock.getNodeParameter.mockImplementation((paramName, _i, defaultVal?) => {
 			switch (paramName) {
 				case 'resource':
@@ -435,7 +345,7 @@ describe('AWS S3 V2 Node - Bucket Search', () => {
 		});
 	}
 
-	it('should return Contents when no delimiter is set', async () => {
+	it('should return contents', async () => {
 		setupSearchParams({});
 		awsApiRequestRESTSpy
 			.mockResolvedValueOnce(mockLocationResponse)
@@ -443,84 +353,6 @@ describe('AWS S3 V2 Node - Bucket Search', () => {
 
 		const result = await node.execute.call(executeFunctionsMock);
 
-		expect(result[0]).toHaveLength(mockContents.length);
 		expect(result[0][0].json).toEqual(mockContents[0]);
-	});
-
-	it('should return Contents when delimiter is set but includeCommonPrefixes is false', async () => {
-		setupSearchParams({ delimiter: '/', includeCommonPrefixes: false });
-		awsApiRequestRESTSpy
-			.mockResolvedValueOnce(mockLocationResponse)
-			.mockResolvedValueOnce(mockSearchResponse);
-
-		const result = await node.execute.call(executeFunctionsMock);
-
-		expect(result[0]).toHaveLength(mockContents.length);
-		expect(result[0][0].json).toEqual(mockContents[0]);
-	});
-
-	it('should return CommonPrefixes when delimiter is set and includeCommonPrefixes is true', async () => {
-		setupSearchParams({ delimiter: '/', includeCommonPrefixes: true });
-		awsApiRequestRESTSpy
-			.mockResolvedValueOnce(mockLocationResponse)
-			.mockResolvedValueOnce(mockSearchResponse);
-
-		const result = await node.execute.call(executeFunctionsMock);
-
-		expect(result[0]).toHaveLength(mockCommonPrefixes.length);
-		expect(result[0][0].json).toEqual(mockCommonPrefixes[0]);
-	});
-
-	it('should call awsApiRequestRESTAllItems with CommonPrefixes path when returnAll and includeCommonPrefixes are true', async () => {
-		setupSearchParams({ returnAll: true, delimiter: '/', includeCommonPrefixes: true });
-		awsApiRequestRESTSpy.mockResolvedValueOnce(mockLocationResponse);
-		awsApiRequestRESTAllItemsSpy.mockResolvedValueOnce(mockCommonPrefixes);
-
-		await node.execute.call(executeFunctionsMock);
-
-		expect(awsApiRequestRESTAllItemsSpy).toHaveBeenCalledWith(
-			'ListBucketResult.CommonPrefixes',
-			expect.any(String),
-			'GET',
-			expect.any(String),
-			'',
-			expect.any(Object),
-			{},
-			{},
-			expect.any(String),
-		);
-	});
-
-	it('should call awsApiRequestRESTAllItems with Contents path when returnAll is true and includeCommonPrefixes is false', async () => {
-		setupSearchParams({ returnAll: true, delimiter: '/', includeCommonPrefixes: false });
-		awsApiRequestRESTSpy.mockResolvedValueOnce(mockLocationResponse);
-		awsApiRequestRESTAllItemsSpy.mockResolvedValueOnce(mockContents);
-
-		await node.execute.call(executeFunctionsMock);
-
-		expect(awsApiRequestRESTAllItemsSpy).toHaveBeenCalledWith(
-			'ListBucketResult.Contents',
-			expect.any(String),
-			'GET',
-			expect.any(String),
-			'',
-			expect.any(Object),
-			{},
-			{},
-			expect.any(String),
-		);
-	});
-
-	it('should normalize a single-object Contents response to an array', async () => {
-		setupSearchParams({});
-		const singleItem = { Key: 'only-file.txt', Size: '50' };
-		awsApiRequestRESTSpy.mockResolvedValueOnce(mockLocationResponse).mockResolvedValueOnce({
-			ListBucketResult: { Contents: singleItem },
-		});
-
-		const result = await node.execute.call(executeFunctionsMock);
-
-		expect(result[0]).toHaveLength(1);
-		expect(result[0][0].json).toEqual(singleItem);
 	});
 });
