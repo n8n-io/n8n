@@ -2,7 +2,7 @@ import '@n8n/vitest-config/setup/frontend';
 import { config } from '@vue/test-utils';
 import { afterEach, beforeAll, beforeEach, vi } from 'vitest';
 
-import { N8nPlugin } from '@n8n/design-system/plugin';
+import { N8nPlugin } from '../plugin';
 
 config.global.plugins = [N8nPlugin];
 
