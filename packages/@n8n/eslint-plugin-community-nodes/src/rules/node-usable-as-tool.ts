@@ -2,21 +2,11 @@ import { TSESTree } from '@typescript-eslint/utils';
 
 import {
 	isNodeTypeClass,
-	isTriggerNodeClass,
+	isTriggerNode,
 	findClassProperty,
 	findObjectProperty,
-	findArrayLiteralProperty,
 	createRule,
 } from '../utils/index.js';
-
-function hasTriggerGroup(descriptionValue: TSESTree.ObjectExpression): boolean {
-	const groupArray = findArrayLiteralProperty(descriptionValue, 'group');
-	return (
-		groupArray?.elements.some(
-			(element) => element?.type === TSESTree.AST_NODE_TYPES.Literal && element.value === 'trigger',
-		) ?? false
-	);
-}
 
 function isSetToTrue(property: TSESTree.Property | null): property is TSESTree.Property {
 	return property?.value.type === TSESTree.AST_NODE_TYPES.Literal && property.value.value === true;
@@ -60,9 +50,7 @@ export const NodeUsableAsToolRule = createRule({
 
 				const usableAsToolProperty = findObjectProperty(descriptionValue, 'usableAsTool');
 
-				// `group` is the authoritative signal (also catches e.g. Cron, Webhook, versioned
-				// `*TriggerV1` classes); the name suffix is kept as a fallback for dynamic `group` values.
-				if (hasTriggerGroup(descriptionValue) || isTriggerNodeClass(node)) {
+				if (isTriggerNode(node, descriptionValue)) {
 					if (isSetToTrue(usableAsToolProperty)) {
 						context.report({
 							node: usableAsToolProperty,
