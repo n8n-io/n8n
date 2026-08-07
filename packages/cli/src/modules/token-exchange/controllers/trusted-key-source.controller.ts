@@ -9,7 +9,8 @@ import { AuthenticatedRequest } from '@n8n/db';
 import { Body, Get, GlobalScope, Licensed, Param, Patch, RestController } from '@n8n/decorators';
 import { jsonParse } from 'n8n-workflow';
 
-import type { TrustedKeySourceEntity } from '../database/entities/trusted-key-source.entity';
+import type { TrustedKeySourceEntity } from '@/modules/identity-substrate/database/entities/trusted-key-source.entity';
+
 import { TrustedKeyService } from '../services/trusted-key.service';
 import type {
 	JwksKeySource,

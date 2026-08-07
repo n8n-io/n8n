@@ -2,8 +2,9 @@ import type { Logger } from '@n8n/backend-common';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
+import type { TokenExchangeConfig } from '@/modules/token-exchange/token-exchange.config';
+
 import type { TokenExchangeJtiRepository } from '../../database/repositories/token-exchange-jti.repository';
-import type { TokenExchangeConfig } from '../../token-exchange.config';
 import { JtiCleanupService } from '../jti-cleanup.service';
 
 const logger = mock<Logger>({ scoped: vi.fn().mockReturnThis() });

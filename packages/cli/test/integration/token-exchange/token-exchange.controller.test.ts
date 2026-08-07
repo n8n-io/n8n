@@ -70,7 +70,7 @@ function makeExternalJwt(
 const testServer = utils.setupTestServer({
 	endpointGroups: ['auth'],
 	enabledFeatures: ['feat:tokenExchange'],
-	modules: ['token-exchange'],
+	modules: ['identity-substrate', 'token-exchange'],
 });
 
 let config: TokenExchangeConfig;

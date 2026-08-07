@@ -6,6 +6,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import type { JtiStoreService } from '@/modules/identity-substrate/services/jti-store.service';
 import type { JwtService } from '@/services/jwt.service';
 
 import type { InboundAudienceService } from '../../context-establishment-hooks/inbound-audience.service';
@@ -13,7 +14,6 @@ import type { TokenExchangeConfig } from '../../token-exchange.config';
 import { TokenExchangeAuthError } from '../../token-exchange.errors';
 import type { ResolvedTrustedKey } from '../../token-exchange.schemas';
 import type { IdentityResolutionService } from '../identity-resolution.service';
-import type { JtiStoreService } from '../jti-store.service';
 import { TokenExchangeService } from '../token-exchange.service';
 import type { TrustedKeyService } from '../trusted-key.service';
 

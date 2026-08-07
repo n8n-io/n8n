@@ -13,15 +13,6 @@ function isFeatureFlagEnabled(): boolean {
 	instanceTypes: ['main'],
 })
 export class TokenExchangeModule implements ModuleInterface {
-	async entities() {
-		const { TokenExchangeJti } = await import('./database/entities/token-exchange-jti.entity.js');
-		const { TrustedKeySourceEntity } = await import(
-			'./database/entities/trusted-key-source.entity.js'
-		);
-		const { TrustedKeyEntity } = await import('./database/entities/trusted-key.entity.js');
-		return [TokenExchangeJti, TrustedKeySourceEntity, TrustedKeyEntity] as never;
-	}
-
 	async init() {
 		if (!isFeatureFlagEnabled()) {
 			return;
@@ -70,7 +61,9 @@ export class TokenExchangeModule implements ModuleInterface {
 		await import('./controllers/embed-auth.controller.js');
 		await import('./controllers/trusted-key-source.controller.js');
 
-		const { JtiCleanupService } = await import('./services/jti-cleanup.service.js');
+		const { JtiCleanupService } = await import(
+			'@/modules/identity-substrate/services/jti-cleanup.service.js'
+		);
 		Container.get(JtiCleanupService).init();
 
 		// Register the scoped JWT auth strategy into the public API auth chain.
