@@ -3,33 +3,33 @@ import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 import { VIEWS } from '@/app/constants';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import MessageWithButtons from '@n8n/chat/components/MessageWithButtons.vue';
 import { chatEventBus } from '@n8n/chat/event-buses';
-import type { ChatMessage, ChatOptions, SendMessageResponse } from '@n8n/chat/types';
+import type { ChatOptions, SendMessageResponse } from '@n8n/chat/types';
 import { v4 as uuid } from 'uuid';
 import type { ComputedRef, Ref } from 'vue';
 import { computed, ref, toValue, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useLogsStore } from '@/app/stores/logs.store';
+import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { restoreChatHistory } from '@/features/execution/logs/logs.utils';
-import type { INode, NodeParameterValue } from 'n8n-workflow';
+import { type INode, type INodeParameters, NodeHelpers } from 'n8n-workflow';
 import { isChatNode } from '@/app/utils/aiUtils';
-import { injectWorkflowState } from '@/app/composables/useWorkflowState';
-import { resolveParameter } from '@/app/composables/useWorkflowHelpers';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { MessageComponentKey } from '@n8n/chat/constants/messageComponents';
 
 interface ChatState {
 	currentSessionId: ComputedRef<string>;
-	messages: ComputedRef<ChatMessage[]>;
 	previousChatMessages: ComputedRef<string[]>;
 	refreshSession: () => void;
 	displayExecution: (executionId: string) => void;
 	chatTriggerNode: ComputedRef<INode | null>;
 	isStreamingEnabled: ComputedRef<boolean>;
 	isFileUploadsAllowed: ComputedRef<boolean>;
-	allowedFilesMimeTypes: ComputedRef<string>;
+	allowedFilesMimeTypes: ComputedRef<string | undefined>;
 	isWorkflowReadyForChat: ComputedRef<boolean>;
 	webhookUrl: ComputedRef<string>;
 	chatOptions: ComputedRef<ChatOptions>;
@@ -44,12 +44,14 @@ export function useChatState(
 ): ChatState {
 	const locale = useI18n();
 	const workflowsStore = useWorkflowsStore();
-	const workflowState = injectWorkflowState();
+	const workflowDocumentStore = injectWorkflowDocumentStore();
+	const workflowExecutionState = injectWorkflowExecutionStateStore();
 	const rootStore = useRootStore();
 	const logsStore = useLogsStore();
 	const router = useRouter();
 	const nodeHelpers = useNodeHelpers();
 	const nodeTypesStore = useNodeTypesStore();
+	const pushConnectionStore = usePushConnectionStore();
 	const { runWorkflow } = useRunWorkflow({ router });
 
 	const webhookRegistered = ref(false);
@@ -60,74 +62,74 @@ export function useChatState(
 	// Use provided sessionId or fall back to logsStore sessionId
 	const effectiveSessionId = computed(() => toValue(sessionId) ?? currentSessionId.value);
 
-	const previousChatMessages = computed(() => workflowsStore.getPastChatMessages);
-	const chatTriggerNode = computed(() => workflowsStore.allNodes.find(isChatNode) ?? null);
+	const previousChatMessages = computed(() => workflowExecutionState.value.getPastChatMessages);
+	const chatTriggerNode = computed(
+		() => workflowDocumentStore.value.allNodes.find(isChatNode) ?? null,
+	);
 
-	// Get default value for a parameter from the node type definition
-	const getNodeParameterDefault = <T>(parameterName: string, fallback: T): T => {
-		if (!chatTriggerNode.value) return fallback;
+	// Resolve the effective value for an options sub-parameter: returns the
+	// user-set value if present, otherwise the default from the node type
+	// definition (respecting displayOptions at both collection and parameter
+	// level, e.g. responseMode default varies based on availableInChat).
+	const getOptionsValue = <T>(parameterName: string): T | undefined => {
+		const node = chatTriggerNode.value;
+		const nodeType = node ? nodeTypesStore.getNodeType(node.type, node.typeVersion) : null;
 
-		const nodeType = nodeTypesStore.getNodeType(
-			chatTriggerNode.value.type,
-			chatTriggerNode.value.typeVersion,
+		if (!node || !nodeType) {
+			return undefined;
+		}
+
+		// Resolve full root parameters with defaults so displayOptions checks
+		// work even when optional parameters aren't explicitly set.
+		const resolvedParams =
+			NodeHelpers.getNodeParameters(
+				nodeType.properties,
+				node.parameters,
+				true,
+				false,
+				node,
+				nodeType,
+			) ?? {};
+		const optionsValues = (resolvedParams.options ?? {}) as INodeParameters;
+
+		// Use the user set value if present
+		if (parameterName in optionsValues) {
+			return optionsValues[parameterName] as T;
+		}
+
+		// Otherwise find the default from the active parameter definition
+		const optionsParam = nodeType.properties.find(
+			(prop) =>
+				prop.name === 'options' &&
+				prop.type === 'collection' &&
+				NodeHelpers.displayParameter(resolvedParams, prop, node, nodeType),
 		);
 
-		if (!nodeType) return fallback;
+		for (const opt of optionsParam?.options ?? []) {
+			if (opt.name !== parameterName || !('default' in opt)) continue;
 
-		// Find the options collection parameter
-		const optionsParam = nodeType.properties.find((prop) => prop.name === 'options');
-		if (!optionsParam || optionsParam.type !== 'collection') return fallback;
-
-		// Find the specific parameter within the options collection
-		const param = optionsParam.options?.find((opt) => opt.name === parameterName);
-		// Type guard: only INodeProperties has a 'default' property
-		if (param && 'default' in param) {
-			return (param.default ?? fallback) as T;
-		}
-		return fallback;
-	};
-
-	// Helper to resolve the options parameter from the chat trigger node
-	// resolveParameter is async, so we use a ref updated via watch instead of computed
-	const resolvedOptions = ref<Record<string, unknown> | null>(null);
-
-	watch(
-		() => chatTriggerNode.value?.parameters?.options,
-		async (options) => {
-			if (!chatTriggerNode.value || !options) {
-				resolvedOptions.value = null;
-				return;
+			if (NodeHelpers.displayParameter(optionsValues, opt, node, nodeType, resolvedParams)) {
+				return opt.default as T;
 			}
+		}
 
-			resolvedOptions.value = await resolveParameter<Record<string, unknown>>(
-				options as NodeParameterValue,
-				{ contextNodeName: chatTriggerNode.value.name },
-			);
-		},
-		{ immediate: true },
-	);
+		return undefined;
+	};
 
 	// Check if streaming is enabled in ChatTrigger node
 	const isStreamingEnabled = computed<boolean>(
-		() =>
-			(resolvedOptions.value?.responseMode ??
-				getNodeParameterDefault<string>('responseMode', 'lastNode')) === 'streaming',
+		() => getOptionsValue<string>('responseMode') === 'streaming',
 	);
 
 	// Check if file uploads are allowed in ChatTrigger node
 	const isFileUploadsAllowed = computed<boolean>(
-		() =>
-			(resolvedOptions.value?.allowFileUploads ??
-				getNodeParameterDefault('allowFileUploads', false)) === true,
+		() => getOptionsValue('allowFileUploads') === true,
 	);
 
 	// Get allowed file MIME types from ChatTrigger node
-	const allowedFilesMimeTypesComputed = computed<string>(() => {
-		const value = resolvedOptions.value?.allowedFilesMimeTypes;
-		return typeof value === 'string'
-			? value
-			: getNodeParameterDefault<string>('allowedFilesMimeTypes', '*');
-	});
+	const allowedFilesMimeTypesComputed = computed<string | undefined>(() =>
+		getOptionsValue<string>('allowedFilesMimeTypes'),
+	);
 
 	// Check if workflow is ready for chat execution
 	const isWorkflowReadyForChat = computed(() => {
@@ -168,9 +170,33 @@ export function useChatState(
 		isRegistering.value = true;
 
 		try {
+			// Wait for the push connection — webhook registration and execution
+			// events require it. In preview iframes the WebSocket handshake may
+			// still be in progress when the first message is sent.
+			if (!pushConnectionStore.isConnected) {
+				await new Promise<void>((resolve, reject) => {
+					let stop = () => {};
+					const timeout = setTimeout(() => {
+						stop();
+						reject(new Error('Push connection timeout'));
+					}, 10_000);
+					stop = watch(
+						() => pushConnectionStore.isConnected,
+						(connected) => {
+							if (connected) {
+								clearTimeout(timeout);
+								stop();
+								resolve();
+							}
+						},
+						{ immediate: true },
+					);
+				});
+			}
+
 			// Clear any existing execution to allow fresh webhook registration
-			workflowState.setWorkflowExecutionData(null);
-			workflowState.setActiveExecutionId(undefined);
+			workflowExecutionState.value.setWorkflowExecutionData(null);
+			workflowExecutionState.value.setActiveExecutionId(undefined);
 
 			// Use the useRunWorkflow composable to properly register the webhook
 			// Only include destinationNode if set for partial execution support
@@ -180,16 +206,20 @@ export function useChatState(
 				sessionId: effectiveSessionId.value,
 			};
 
-			if (workflowsStore.chatPartialExecutionDestinationNode) {
+			if (workflowExecutionState.value.chatPartialExecutionDestinationNode) {
 				runWorkflowOptions.destinationNode = {
-					nodeName: workflowsStore.chatPartialExecutionDestinationNode,
+					nodeName: workflowExecutionState.value.chatPartialExecutionDestinationNode,
 					mode: 'inclusive',
 				};
 				// Clear after use so subsequent messages run full workflow
-				workflowsStore.chatPartialExecutionDestinationNode = null;
+				workflowExecutionState.value.setChatPartialExecutionDestinationNode(null);
 			}
 
-			await runWorkflow(runWorkflowOptions);
+			const response = await runWorkflow(runWorkflowOptions);
+
+			if (!response) {
+				throw new Error('Failed to register chat webhook');
+			}
 
 			webhookRegistered.value = true;
 		} finally {
@@ -225,7 +255,7 @@ export function useChatState(
 			messageComponents: {
 				[MessageComponentKey.WITH_BUTTONS]: MessageWithButtons,
 			},
-			messageHistory: messages.value,
+			messageHistory: isReadOnly ? restoredChatMessages.value : messages.value,
 			disabled: ref(isReadOnly),
 			i18n: {
 				en: {
@@ -290,18 +320,19 @@ export function useChatState(
 
 	const restoredChatMessages = computed(() =>
 		restoreChatHistory(
-			workflowsStore.workflowExecutionData,
+			workflowExecutionState.value.activeExecution,
 			locale.baseText('chat.window.chat.response.empty'),
+			locale.baseText('chat.window.chat.response.redacted'),
 		),
 	);
 
 	function refreshSession() {
-		workflowState.setWorkflowExecutionData(null);
+		workflowExecutionState.value.setWorkflowExecutionData(null);
 		nodeHelpers.updateNodesExecutionIssues();
 		logsStore.resetChatSessionId();
 		logsStore.resetMessages();
 		// Clear partial execution destination to allow full workflow execution
-		workflowsStore.chatPartialExecutionDestinationNode = null;
+		workflowExecutionState.value.setChatPartialExecutionDestinationNode(null);
 
 		if (logsStore.isOpen) {
 			chatEventBus.emit('focusInput');
@@ -311,7 +342,7 @@ export function useChatState(
 	function displayExecution(executionId: string) {
 		const route = router.resolve({
 			name: VIEWS.EXECUTION_PREVIEW,
-			params: { name: workflowsStore.workflowId, executionId },
+			params: { workflowId: workflowsStore.workflowId, executionId },
 		});
 		window.open(route.href, '_blank');
 	}
@@ -329,9 +360,6 @@ export function useChatState(
 
 	return {
 		currentSessionId: computed(() => logsStore.chatSessionId),
-		messages: computed(() =>
-			isReadOnly ? restoredChatMessages.value : logsStore.chatSessionMessages,
-		),
 		previousChatMessages,
 		refreshSession,
 		displayExecution,

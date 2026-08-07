@@ -1,14 +1,16 @@
-import { ImportEntitiesCommand } from '../entities';
 import { mockInstance } from '@n8n/backend-test-utils';
+
 import { ImportService } from '@/services/import.service';
 
-jest.mock('@/services/import.service');
+import { ImportEntitiesCommand } from '../entities';
+
+vi.mock('@/services/import.service');
 
 describe('ImportEntitiesCommand', () => {
 	const mockImportService = mockInstance(ImportService);
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('run', () => {
@@ -21,8 +23,8 @@ describe('ImportEntitiesCommand', () => {
 			};
 			// @ts-expect-error Protected property
 			command.logger = {
-				info: jest.fn(),
-				error: jest.fn(),
+				info: vi.fn(),
+				error: vi.fn(),
 			};
 
 			// Mock service method - now uses transaction-based approach
@@ -36,6 +38,7 @@ describe('ImportEntitiesCommand', () => {
 				false,
 				undefined,
 				false,
+				false,
 			);
 		});
 
@@ -48,8 +51,8 @@ describe('ImportEntitiesCommand', () => {
 			};
 			// @ts-expect-error Protected property
 			command.logger = {
-				info: jest.fn(),
-				error: jest.fn(),
+				info: vi.fn(),
+				error: vi.fn(),
 			};
 
 			mockImportService.importEntities.mockResolvedValue(undefined);
@@ -60,6 +63,7 @@ describe('ImportEntitiesCommand', () => {
 				'/custom/path',
 				false,
 				undefined,
+				false,
 				false,
 			);
 		});
@@ -73,8 +77,8 @@ describe('ImportEntitiesCommand', () => {
 			};
 			// @ts-expect-error Protected property
 			command.logger = {
-				info: jest.fn(),
-				error: jest.fn(),
+				info: vi.fn(),
+				error: vi.fn(),
 			};
 
 			mockImportService.importEntities.mockResolvedValue(undefined);
@@ -86,6 +90,7 @@ describe('ImportEntitiesCommand', () => {
 				'./outputs',
 				true,
 				undefined,
+				false,
 				false,
 			);
 		});
@@ -101,8 +106,8 @@ describe('ImportEntitiesCommand', () => {
 
 			// @ts-expect-error Protected property
 			command.logger = {
-				info: jest.fn(),
-				error: jest.fn(),
+				info: vi.fn(),
+				error: vi.fn(),
 			};
 
 			await command.run();
@@ -111,6 +116,7 @@ describe('ImportEntitiesCommand', () => {
 				'./outputs',
 				false,
 				'key.txt',
+				false,
 				false,
 			);
 		});
@@ -125,8 +131,8 @@ describe('ImportEntitiesCommand', () => {
 			};
 			// @ts-expect-error Protected property
 			command.logger = {
-				info: jest.fn(),
-				error: jest.fn(),
+				info: vi.fn(),
+				error: vi.fn(),
 			};
 
 			mockImportService.importEntities.mockResolvedValue(undefined);
@@ -137,6 +143,34 @@ describe('ImportEntitiesCommand', () => {
 				'./outputs',
 				false,
 				undefined,
+				true,
+				false,
+			);
+		});
+
+		it('should skip disabling foreign key constraints when skipTogglingForeignKeyConstraints flag is true', async () => {
+			const command = new ImportEntitiesCommand();
+			// @ts-expect-error Protected property
+			command.flags = {
+				inputDir: './outputs',
+				truncateTables: false,
+				skipTogglingForeignKeyConstraints: true,
+			};
+			// @ts-expect-error Protected property
+			command.logger = {
+				info: vi.fn(),
+				error: vi.fn(),
+			};
+
+			mockImportService.importEntities.mockResolvedValue(undefined);
+
+			await command.run();
+
+			expect(mockImportService.importEntities).toHaveBeenCalledWith(
+				'./outputs',
+				false,
+				undefined,
+				false,
 				true,
 			);
 		});
@@ -150,8 +184,8 @@ describe('ImportEntitiesCommand', () => {
 			};
 			// @ts-expect-error Protected property
 			command.logger = {
-				info: jest.fn(),
-				error: jest.fn(),
+				info: vi.fn(),
+				error: vi.fn(),
 			};
 
 			mockImportService.importEntities.mockRejectedValue(new Error('Database connection failed'));
@@ -163,6 +197,7 @@ describe('ImportEntitiesCommand', () => {
 				'./outputs',
 				false,
 				undefined,
+				false,
 				false,
 			);
 		});
@@ -176,8 +211,8 @@ describe('ImportEntitiesCommand', () => {
 			};
 			// @ts-expect-error Protected property
 			command.logger = {
-				info: jest.fn(),
-				error: jest.fn(),
+				info: vi.fn(),
+				error: vi.fn(),
 			};
 
 			mockImportService.importEntities.mockRejectedValue(new Error('Transaction failed'));
@@ -190,6 +225,7 @@ describe('ImportEntitiesCommand', () => {
 				true,
 				undefined,
 				false,
+				false,
 			);
 		});
 	});
@@ -199,7 +235,7 @@ describe('ImportEntitiesCommand', () => {
 			const command = new ImportEntitiesCommand();
 			// @ts-expect-error Protected property
 			command.logger = {
-				error: jest.fn(),
+				error: vi.fn(),
 			};
 
 			const error = new Error('Test error message');
@@ -221,7 +257,7 @@ describe('ImportEntitiesCommand', () => {
 			const command = new ImportEntitiesCommand();
 			// @ts-expect-error Protected property
 			command.logger = {
-				error: jest.fn(),
+				error: vi.fn(),
 			};
 
 			const error = new Error();
@@ -243,7 +279,7 @@ describe('ImportEntitiesCommand', () => {
 			const command = new ImportEntitiesCommand();
 			// @ts-expect-error Protected property
 			command.logger = {
-				error: jest.fn(),
+				error: vi.fn(),
 			};
 
 			const error = 'String error';

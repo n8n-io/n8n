@@ -17,7 +17,7 @@ export class FacebookGraphAppApi implements ICredentialType {
 			typeOptions: { password: true },
 			default: '',
 			description:
-				'(Optional) When the app secret is set the node will verify this signature to validate the integrity and origin of the payload',
+				'(Optional) When set, the node will sign API calls and verify incoming webhook payloads for added security',
 		},
 	];
 }

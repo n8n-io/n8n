@@ -20,3 +20,7 @@ export {
 	type ResponderEvaluationContext,
 } from './responder';
 export { createExecutionEvaluator } from './execution';
+export {
+	createBinaryChecksEvaluator,
+	type BinaryChecksEvaluatorOptions,
+} from './binary-checks';

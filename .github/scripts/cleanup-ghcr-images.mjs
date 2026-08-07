@@ -3,14 +3,13 @@
  * Cleanup GHCR images for n8n CI
  *
  * Modes:
- *   --tag <tag>     Delete exact tag (merge queue cleanup - single image)
- *   --pr <number>   Delete all pr-{number}-* tags (PR cleanup - all runs for a PR)
- *   --stale <days>  Delete pr-* images older than N days (weekly scheduled cleanup)
+ *   --tag <tag>     Delete exact tag (post-run cleanup)
+ *   --stale <days>  Delete ci-* images older than N days (daily scheduled cleanup)
  *
  * Context:
- *   - PR runs use --pr to clean all images from failed/retried commits
- *   - Merge queue runs use --tag since PR number isn't available (image tagged pr--{run_id})
- *   - Weekly cron uses --stale to catch any orphaned images
+ *   - Each CI run tags images as ci-{run_id}
+ *   - Post-run cleanup uses --tag to delete the current run's images
+ *   - Daily cron uses --stale to catch any orphaned images
  */
 import { exec } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -21,8 +20,8 @@ const REPO = process.env.GHCR_REPO || 'n8n';
 const PACKAGES = [REPO, 'runners'];
 const [mode, rawValue] = process.argv.slice(2);
 
-if (!['--tag', '--pr', '--stale'].includes(mode) || !rawValue) {
-	console.error('Usage: cleanup-ghcr-images.mjs --tag <tag> | --pr <number> | --stale <days>');
+if (!['--tag', '--stale'].includes(mode) || !rawValue) {
+	console.error('Usage: cleanup-ghcr-images.mjs --tag <tag> | --stale <days>');
 	process.exit(1);
 }
 
@@ -52,14 +51,14 @@ async function fetchPage(pkg, page) {
 	}
 }
 
-const isPrImage = (v, prNum) => {
+const isCiImage = (v) => {
 	const tags = v.metadata?.container?.tags || [];
-	return prNum ? tags.some((t) => t.startsWith(`pr-${prNum}-`)) : tags.some((t) => t.startsWith('pr-'));
+	return tags.some((t) => t.startsWith('ci-') || t.startsWith('pr-'));
 };
 
 const isStale = (v, days) => {
 	const cutoff = Date.now() - days * 86400000;
-	return isPrImage(v) && new Date(v.created_at) < cutoff;
+	return isCiImage(v) && new Date(v.created_at) < cutoff;
 };
 
 async function getVersionsForTag(pkg, tag) {
@@ -68,33 +67,12 @@ async function getVersionsForTag(pkg, tag) {
 	return match ? [match] : [];
 }
 
-async function getVersionsForPr(pkg, prNumber) {
-	const versions = [];
-	let emptyPages = 0;
-
-	for (let page = 1; ; page++) {
-		const batch = await fetchPage(pkg, page);
-		if (!batch.length) break;
-
-		const matches = batch.filter((v) => isPrImage(v, prNumber));
-		if (matches.length) {
-			versions.push(...matches);
-			emptyPages = 0;
-		} else if (++emptyPages >= 3) {
-			console.log(`  Early termination after ${page} pages`);
-			break;
-		}
-		if (batch.length < 100) break;
-	}
-	return versions;
-}
-
 async function getVersionsForStale(pkg, days) {
 	const versions = [];
 	const cutoff = Date.now() - days * 86400000;
 	// Use 2x cutoff as safety window for early termination
 	const earlyExitCutoff = Date.now() - days * 2 * 86400000;
-	let pagesWithoutPrImages = 0;
+	let pagesWithoutCiImages = 0;
 
 	const firstPage = await fetchPage(pkg, 1);
 	if (!firstPage.length) return [];
@@ -112,22 +90,22 @@ async function getVersionsForStale(pkg, days) {
 		for (const batch of batches) {
 			if (!batch.length || batch.length < 100) done = true;
 
-			let hasPrImages = false;
+			let hasCiImages = false;
 			for (const v of batch) {
-				if (isPrImage(v)) {
-					hasPrImages = true;
+				if (isCiImage(v)) {
+					hasCiImages = true;
 					if (new Date(v.created_at) < cutoff) versions.push(v);
 				}
 			}
 
 			// Early termination: if we've gone through pages without finding
-			// any PR images and all items are older than 2x cutoff, we're past
-			// the PR image window
-			if (!hasPrImages) {
-				pagesWithoutPrImages++;
+			// any CI images and all items are older than 2x cutoff, we're past
+			// the CI image window
+			if (!hasCiImages) {
+				pagesWithoutCiImages++;
 				const oldestInBatch = batch[batch.length - 1];
 				if (
-					pagesWithoutPrImages >= 3 &&
+					pagesWithoutCiImages >= 3 &&
 					oldestInBatch &&
 					new Date(oldestInBatch.created_at) < earlyExitCutoff
 				) {
@@ -135,7 +113,7 @@ async function getVersionsForStale(pkg, days) {
 					done = true;
 				}
 			} else {
-				pagesWithoutPrImages = 0;
+				pagesWithoutCiImages = 0;
 			}
 
 			if (!batch.length || done) break;
@@ -154,9 +132,7 @@ for (const pkg of PACKAGES) {
 	const toDelete =
 		mode === '--tag'
 			? await getVersionsForTag(pkg, value)
-			: mode === '--pr'
-				? await getVersionsForPr(pkg, value)
-				: await getVersionsForStale(pkg, value);
+			: await getVersionsForStale(pkg, value);
 
 	if (!toDelete.length) {
 		console.log(`  No matching images found`);

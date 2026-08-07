@@ -1,6 +1,9 @@
 {
     "type": "object",
     "properties": {
+        "error": {
+            "type": "string"
+        },
         "isNew": {
             "type": "boolean"
         },
@@ -8,5 +11,5 @@
             "type": "integer"
         }
     },
-    "version": 1
+    "version": 2
 }

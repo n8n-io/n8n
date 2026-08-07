@@ -6,8 +6,12 @@ import { BasePage } from './BasePage';
  * Page object for the MFA login page that appears after entering email/password when MFA is enabled.
  */
 export class MfaLoginPage extends BasePage {
-	getForm(): Locator {
+	get container(): Locator {
 		return this.page.getByTestId('mfa-login-form');
+	}
+
+	getForm(): Locator {
+		return this.container;
 	}
 
 	getMfaCodeField(): Locator {

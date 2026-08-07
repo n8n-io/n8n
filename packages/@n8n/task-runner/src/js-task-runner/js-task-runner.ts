@@ -2,13 +2,7 @@ import isObject from 'lodash/isObject';
 import set from 'lodash/set';
 import { DateTime, Duration, Interval } from 'luxon';
 import { getAdditionalKeys } from 'n8n-core';
-import {
-	WorkflowDataProxy,
-	Workflow,
-	ObservableObject,
-	Expression,
-	jsonStringify,
-} from 'n8n-workflow';
+import { WorkflowDataProxy, Workflow, Expression, jsonStringify } from 'n8n-workflow';
 import type {
 	CodeExecutionMode,
 	IWorkflowExecuteAdditionalData,
@@ -46,6 +40,7 @@ import { isErrorLike } from './errors/error-like';
 import { ExecutionError } from './errors/execution-error';
 import { makeSerializable } from './errors/serializable-error';
 import { TimeoutError } from './errors/timeout-error';
+import { freezeGlobals } from './prototype-hardening';
 import type { RequireResolver } from './require-resolver';
 import { createRequireResolver } from './require-resolver';
 import { DataRequestResponseReconstruct } from '../data-request/data-request-response-reconstruct';
@@ -99,6 +94,31 @@ type CustomConsole = {
 };
 
 export class JsTaskRunner extends TaskRunner {
+	private static readonly CONSOLE_METHODS = [
+		'log',
+		'warn',
+		'error',
+		'info',
+		'debug',
+		'trace',
+		'dir',
+		'time',
+		'timeEnd',
+		'timeLog',
+		'assert',
+		'clear',
+		'count',
+		'countReset',
+		'group',
+		'groupEnd',
+		'groupCollapsed',
+		'table',
+		'dirxml',
+		'profile',
+		'profileEnd',
+		'timeStamp',
+	] as const;
+
 	private readonly requireResolver: RequireResolver;
 
 	private readonly builtInsParser = new BuiltInsParser();
@@ -134,6 +154,7 @@ export class JsTaskRunner extends TaskRunner {
 		this.requireResolver = createRequireResolver({
 			allowedBuiltInModules,
 			allowedExternalModules,
+			secureModules: this.mode === 'secure',
 		});
 
 		if (this.mode === 'secure') this.preventPrototypePollution(allowedExternalModules);
@@ -161,15 +182,13 @@ export class JsTaskRunner extends TaskRunner {
 			}
 		}
 
-		// Freeze globals, except in tests because Jest needs to be able to mutate prototypes
+		// Overwrite unsafe Buffer allocations on the real constructor
+		const safeAlloc = Buffer.alloc.bind(Buffer);
+		Buffer.allocUnsafe = safeAlloc as typeof Buffer.allocUnsafe;
+		Buffer.allocUnsafeSlow = safeAlloc as typeof Buffer.allocUnsafeSlow;
+
 		if (process.env.NODE_ENV !== 'test') {
-			Object.getOwnPropertyNames(globalThis)
-				// @ts-expect-error globalThis does not have string in index signature
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-return
-				.map((name) => globalThis[name])
-				.filter((value) => typeof value === 'function')
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access
-				.forEach((fn) => Object.freeze(fn.prototype));
+			freezeGlobals();
 		}
 
 		// Freeze internal classes
@@ -216,8 +235,6 @@ export class JsTaskRunner extends TaskRunner {
 			nodeTypes: this.nodeTypes,
 		});
 
-		workflow.staticData = ObservableObject.create(workflow.staticData);
-
 		const result =
 			settings.nodeMode === 'runOnceForAllItems'
 				? await this.runForAllItems(taskId, settings, data, workflow, abortSignal)
@@ -239,19 +256,9 @@ export class JsTaskRunner extends TaskRunner {
 	}
 
 	private getNativeVariables() {
-		const { mode } = this;
 		return {
 			// Exposed Node.js globals
-			Buffer: new Proxy(Buffer, {
-				get(target, prop) {
-					if (mode === 'insecure') return target[prop as keyof typeof Buffer];
-					if (prop === 'allocUnsafe' || prop === 'allocUnsafeSlow') {
-						// eslint-disable-next-line @typescript-eslint/unbound-method
-						return Buffer.alloc;
-					}
-					return target[prop as keyof typeof Buffer];
-				},
-			}),
+			Buffer,
 			setTimeout,
 			setInterval,
 			setImmediate,
@@ -278,7 +285,6 @@ export class JsTaskRunner extends TaskRunner {
 	async runCode(settings: JSExecSettings, abortSignal: AbortSignal): Promise<unknown> {
 		const context = createContext({
 			__isExecutionContext: true,
-			module: { exports: {} },
 			...settings.additionalProperties,
 		});
 
@@ -603,7 +609,7 @@ export class JsTaskRunner extends TaskRunner {
 	private buildCustomConsole(taskId: string): CustomConsole {
 		return {
 			// all except `log` are dummy methods that disregard without throwing, following existing Code node behavior
-			...Object.keys(console).reduce<Record<string, () => void>>((acc, name) => {
+			...JsTaskRunner.CONSOLE_METHODS.reduce<Record<string, () => void>>((acc, name) => {
 				acc[name] = noOp;
 				return acc;
 			}, {}),
@@ -640,7 +646,6 @@ export class JsTaskRunner extends TaskRunner {
 		return createContext({
 			__isExecutionContext: true,
 			require: this.requireResolver,
-			module: {},
 			console: this.buildCustomConsole(taskId),
 			$getWorkflowStaticData: (type: 'global' | 'node') => workflow.getStaticData(type, node),
 			...this.getNativeVariables(),
@@ -654,6 +659,7 @@ export class JsTaskRunner extends TaskRunner {
 		return [
 			// shim for `global` compatibility
 			'globalThis.global = globalThis',
+			'var module = { exports: {} }',
 
 			// prevent prototype manipulation
 			'Object.getPrototypeOf = () => ({})',
@@ -672,6 +678,9 @@ export class JsTaskRunner extends TaskRunner {
 			// Must come AFTER we've locked down Error properties above
 			'Object.defineProperty = () => ({})',
 			'Object.defineProperties = () => ({})',
+
+			// freeze constructors to prevent static method mutation
+			'[Object, Function, Array, String, Number, Boolean, RegExp, Error, TypeError, RangeError, SyntaxError, ReferenceError, Promise, Symbol, Map, Set, WeakMap, WeakSet, Date, JSON, Math, Reflect, ArrayBuffer, DataView, Int8Array, Uint8Array, Float32Array, Float64Array].forEach((constructor) => { try { Object.freeze(constructor); } catch {} })',
 
 			// wrap user code
 			`module.exports = async function VmCodeWrapper() {${code}\n}()`,

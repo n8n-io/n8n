@@ -1,15 +1,16 @@
 import type { Logger } from '@n8n/backend-common';
-import { mock } from 'jest-mock-extended';
 import { sign, JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
 import type { IBinaryData } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import type { ErrorReporter } from '@/errors';
 
 import type { BinaryDataConfig } from '../binary-data.config';
 import { BinaryDataService } from '../binary-data.service';
+import type { BinaryData } from '../types';
 
 const now = new Date('2025-01-01T01:23:45.678Z');
-jest.useFakeTimers({ now });
+vi.useFakeTimers({ now });
 
 describe('BinaryDataService', () => {
 	const signingSecret = 'test-signing-secret';
@@ -21,7 +22,7 @@ describe('BinaryDataService', () => {
 
 	let service: BinaryDataService;
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 
 		config.signingSecret = signingSecret;
 		service = new BinaryDataService(config, errorReporter, logger);
@@ -56,6 +57,21 @@ describe('BinaryDataService', () => {
 		it('should return binary-data id on valid tokens', () => {
 			const result = service.validateSignedToken(validToken);
 			expect(result).toBe(binaryData.id);
+		});
+	});
+
+	describe('manager dispatch', () => {
+		it('should route an azure-mode binary id to the registered azure manager', async () => {
+			const fileId = 'workflows/w/executions/e/binary_data/uuid';
+			const buffer = Buffer.from('blob');
+			const azureManager = mock<BinaryData.Manager>();
+			azureManager.getAsBuffer.mockResolvedValue(buffer);
+			service.setManager('azure', azureManager);
+
+			const result = await service.getAsBuffer(mock<IBinaryData>({ id: `azure:${fileId}` }));
+
+			expect(result).toBe(buffer);
+			expect(azureManager.getAsBuffer).toHaveBeenCalledWith(fileId);
 		});
 	});
 });

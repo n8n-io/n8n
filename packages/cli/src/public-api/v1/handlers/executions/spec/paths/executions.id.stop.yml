@@ -1,10 +1,11 @@
 post:
   x-eov-operation-id: stopExecution
+  x-required-scope: execution:stop
   x-eov-operation-handler: v1/handlers/executions/executions.handler
   tags:
     - Execution
   summary: Stop an execution
-  description: Stop a running execution from your instance.
+  description: Stop an execution by id.
   parameters:
     - $ref: '../schemas/parameters/executionId.yml'
   responses:

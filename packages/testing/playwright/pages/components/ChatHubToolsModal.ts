@@ -1,7 +1,14 @@
 import type { Locator } from '@playwright/test';
 
+import { dialogCloseIconIn } from './dialogLocators';
+import { NodeCredentials } from './NodeCredentials';
+
 export class ChatHubToolsModal {
-	constructor(private root: Locator) {}
+	private readonly credentials: NodeCredentials;
+
+	constructor(private root: Locator) {
+		this.credentials = new NodeCredentials(root);
+	}
 
 	getRoot(): Locator {
 		return this.root;
@@ -17,7 +24,7 @@ export class ChatHubToolsModal {
 
 	/** Credential selector rendered by NodeCredentials inside settings view */
 	getCredentialSelect(): Locator {
-		return this.root.getByTestId('node-credentials-select');
+		return this.credentials.getSelect();
 	}
 
 	/** Save button in the settings view header */
@@ -35,13 +42,8 @@ export class ChatHubToolsModal {
 		return this.getParameterInput(parameterName).getByTestId('from-ai-override-button');
 	}
 
-	/** Inline editable tool name in the settings view header */
-	getToolNameInput(): Locator {
-		return this.root.getByTestId('inline-editable-area');
-	}
-
 	/** Close button (X) shown in list view */
 	getCloseButton(): Locator {
-		return this.root.getByTestId('dialog-close-button');
+		return dialogCloseIconIn(this.root);
 	}
 }

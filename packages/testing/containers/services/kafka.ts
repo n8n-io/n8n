@@ -49,6 +49,10 @@ export const kafka: Service<KafkaResult> = {
 	},
 };
 
+/**
+ * Test helper for interacting with a Kafka broker.
+ * Provides topic management, message publishing, consumer group monitoring, and consumption.
+ */
 export class KafkaHelper {
 	private readonly kafka: Kafka;
 
@@ -61,6 +65,7 @@ export class KafkaHelper {
 		});
 	}
 
+	/** Creates a topic with the given number of partitions. */
 	async createTopic(topic: string, numPartitions = 1): Promise<void> {
 		const admin = this.kafka.admin();
 		try {
@@ -73,6 +78,7 @@ export class KafkaHelper {
 		}
 	}
 
+	/** Polls until a consumer group reaches 'Stable' state with active members, or times out. */
 	async waitForConsumerGroup(
 		groupId: string,
 		options: { timeoutMs?: number; pollIntervalMs?: number } = {},
@@ -101,6 +107,7 @@ export class KafkaHelper {
 		}
 	}
 
+	/** Publishes a single message to a topic. Lazily initializes the producer on first call. */
 	async publish(topic: string, message: string | object, key?: string): Promise<void> {
 		if (!this.producer) {
 			this.producer = this.kafka.producer();
@@ -115,6 +122,59 @@ export class KafkaHelper {
 		});
 	}
 
+	/**
+	 * Publishes messages in chunked batches to stay under Kafka's message.max.bytes limit.
+	 * Default batch size is 1000 messages; callers can override for large payloads.
+	 */
+	async publishBatch(
+		topic: string,
+		messages: Array<{ value: string | object; key?: string }>,
+		options: { batchSize?: number } = {},
+	): Promise<void> {
+		if (!this.producer) {
+			this.producer = this.kafka.producer();
+			await this.producer.connect();
+		}
+
+		const batchSize = Math.max(1, options.batchSize ?? 1000);
+		const kafkaMessages = messages.map((m) => ({
+			key: m.key,
+			value: typeof m.value === 'string' ? m.value : JSON.stringify(m.value),
+		}));
+
+		for (let i = 0; i < kafkaMessages.length; i += batchSize) {
+			const chunk = kafkaMessages.slice(i, i + batchSize);
+			await this.producer.send({ topic, messages: chunk });
+		}
+	}
+
+	/** Returns per-partition and total lag for a consumer group on a topic. */
+	async getConsumerGroupLag(
+		groupId: string,
+		topic: string,
+	): Promise<{ totalLag: number; partitions: Array<{ partition: number; lag: number }> }> {
+		const admin = this.kafka.admin();
+		try {
+			await admin.connect();
+			const offsets = await admin.fetchOffsets({ groupId, topics: [topic] });
+			const topicOffsets = await admin.fetchTopicOffsets(topic);
+
+			const consumerPartitions = offsets.find((o) => o.topic === topic)?.partitions ?? [];
+			const committedByPartition = new Map(consumerPartitions.map((p) => [p.partition, p.offset]));
+			const partitions = topicOffsets.map((tp) => {
+				const committedOffset = committedByPartition.get(tp.partition) ?? '0';
+				const lag = parseInt(tp.high, 10) - parseInt(committedOffset, 10);
+				return { partition: tp.partition, lag };
+			});
+			const totalLag = partitions.reduce((sum, p) => sum + p.lag, 0);
+
+			return { totalLag, partitions };
+		} finally {
+			await admin.disconnect();
+		}
+	}
+
+	/** Consumes up to maxMessages from a topic, returning within timeoutMs. Used for test assertions. */
 	async consume(
 		topic: string,
 		options: {

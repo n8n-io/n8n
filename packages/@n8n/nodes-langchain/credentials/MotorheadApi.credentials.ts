@@ -8,7 +8,7 @@ import type {
 export class MotorheadApi implements ICredentialType {
 	name = 'motorheadApi';
 
-	displayName = 'MotorheadApi';
+	displayName = 'Motorhead API';
 
 	documentationUrl = 'motorhead';
 

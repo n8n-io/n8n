@@ -13,12 +13,14 @@ import { CredentialsRepository, ProjectRepository, SharedCredentialsRepository }
 import { Container } from '@n8n/di';
 import type { Scope } from '@sentry/node';
 import * as a from 'assert';
-import { mock } from 'jest-mock-extended';
 import { Credentials } from 'n8n-core';
-import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
-import { randomString } from 'n8n-workflow';
+import {
+	CREDENTIAL_BLANKING_VALUE,
+	type ICredentialDataDecryptedObject,
+	randomString,
+} from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
-import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { createCredentialsFromCredentialsEntity } from '@/credentials-helper';
 import { CredentialsTester } from '@/services/credentials-tester.service';
@@ -40,7 +42,10 @@ import {
 import type { SuperAgentTest } from '../shared/types';
 import { initCredentialsTypes, setupTestServer } from '../shared/utils';
 
-const { any } = expect;
+// Vitest's asymmetric matchers are chai-based and rely on their `this` context, so they
+// can't be destructured off `expect` (a bare `const { any } = expect` throws "Cannot read
+// properties of undefined (reading '__flags')"). Wrap to call `expect.any` inline.
+const any = (...args: Parameters<typeof expect.any>) => expect.any(...args);
 
 const testServer = setupTestServer({
 	endpointGroups: ['credentials'],
@@ -191,17 +196,20 @@ describe('GET /credentials', () => {
 			expect(cred1.id).toBe(savedCredential1.id);
 			expect(cred1.scopes).toEqual(
 				[
+					'credential:connect',
+					'credential:createEndUser',
 					'credential:move',
 					'credential:read',
 					'credential:update',
 					'credential:share',
+					'credential:unshare',
 					'credential:delete',
 				].sort(),
 			);
 
 			// Shared cred
 			expect(cred2.id).toBe(savedCredential2.id);
-			expect(cred2.scopes).toEqual(['credential:read']);
+			expect(cred2.scopes).toEqual(['credential:connect', 'credential:read'].sort());
 		}
 
 		{
@@ -218,16 +226,24 @@ describe('GET /credentials', () => {
 
 			// Team cred
 			expect(cred1.id).toBe(savedCredential1.id);
-			expect(cred1.scopes).toEqual(['credential:delete', 'credential:read', 'credential:update']);
+			expect(cred1.scopes).toEqual([
+				'credential:connect',
+				'credential:delete',
+				'credential:read',
+				'credential:update',
+			]);
 
 			// Shared cred
 			expect(cred2.id).toBe(savedCredential2.id);
 			expect(cred2.scopes).toEqual(
 				[
+					'credential:connect',
+					'credential:createEndUser',
 					'credential:delete',
 					'credential:move',
 					'credential:read',
 					'credential:share',
+					'credential:unshare',
 					'credential:update',
 				].sort(),
 			);
@@ -247,13 +263,17 @@ describe('GET /credentials', () => {
 			expect(cred1.id).toBe(savedCredential1.id);
 			expect(cred1.scopes).toEqual(
 				[
+					'credential:connect',
 					'credential:create',
+					'credential:createEndUser',
 					'credential:delete',
 					'credential:list',
+					'credential:manageInstance',
 					'credential:move',
 					'credential:read',
 					'credential:share',
 					'credential:shareGlobally',
+					'credential:unshare',
 					'credential:update',
 				].sort(),
 			);
@@ -262,13 +282,17 @@ describe('GET /credentials', () => {
 			expect(cred2.id).toBe(savedCredential2.id);
 			expect(cred2.scopes).toEqual(
 				[
+					'credential:connect',
 					'credential:create',
+					'credential:createEndUser',
 					'credential:delete',
 					'credential:list',
+					'credential:manageInstance',
 					'credential:move',
 					'credential:read',
 					'credential:share',
 					'credential:shareGlobally',
+					'credential:unshare',
 					'credential:update',
 				].sort(),
 			);
@@ -329,17 +353,20 @@ describe('GET /credentials', () => {
 		expect(ownedCred.data).toBeDefined();
 		expect(ownedCred.scopes).toEqual(
 			[
+				'credential:connect',
+				'credential:createEndUser',
 				'credential:move',
 				'credential:read',
 				'credential:update',
 				'credential:share',
+				'credential:unshare',
 				'credential:delete',
 			].sort(),
 		);
 
 		expect(sharedCred.id).toBe(sharedCredential.id);
 		expect(sharedCred.data).not.toBeDefined();
-		expect(sharedCred.scopes).toEqual(['credential:read'].sort());
+		expect(sharedCred.scopes).toEqual(['credential:connect', 'credential:read'].sort());
 
 		expect(teamCredAsViewer.id).toBe(teamCredentialAsViewer.id);
 		expect(teamCredAsViewer.data).not.toBeDefined();
@@ -348,7 +375,7 @@ describe('GET /credentials', () => {
 		expect(teamCredAsEditor.id).toBe(teamCredentialAsEditor.id);
 		expect(teamCredAsEditor.data).toBeDefined();
 		expect(teamCredAsEditor.scopes).toEqual(
-			['credential:read', 'credential:update', 'credential:delete'].sort(),
+			['credential:connect', 'credential:read', 'credential:update', 'credential:delete'].sort(),
 		);
 	});
 
@@ -391,14 +418,18 @@ describe('GET /credentials', () => {
 		expect(ownedCred.data).toBeDefined();
 		expect(ownedCred.scopes).toEqual(
 			[
+				'credential:connect',
+				'credential:create',
+				'credential:createEndUser',
+				'credential:delete',
+				'credential:list',
+				'credential:manageInstance',
 				'credential:move',
 				'credential:read',
-				'credential:update',
 				'credential:share',
 				'credential:shareGlobally',
-				'credential:delete',
-				'credential:create',
-				'credential:list',
+				'credential:unshare',
+				'credential:update',
 			].sort(),
 		);
 
@@ -406,14 +437,18 @@ describe('GET /credentials', () => {
 		expect(sharedCred.data).toBeDefined();
 		expect(sharedCred.scopes).toEqual(
 			[
+				'credential:connect',
+				'credential:create',
+				'credential:createEndUser',
+				'credential:delete',
+				'credential:list',
+				'credential:manageInstance',
 				'credential:move',
 				'credential:read',
-				'credential:update',
 				'credential:share',
 				'credential:shareGlobally',
-				'credential:delete',
-				'credential:create',
-				'credential:list',
+				'credential:unshare',
+				'credential:update',
 			].sort(),
 		);
 
@@ -424,14 +459,18 @@ describe('GET /credentials', () => {
 		).toBe(true);
 		expect(teamCredAsViewer.scopes).toEqual(
 			[
+				'credential:connect',
+				'credential:create',
+				'credential:createEndUser',
+				'credential:delete',
+				'credential:list',
+				'credential:manageInstance',
 				'credential:move',
 				'credential:read',
-				'credential:update',
 				'credential:share',
 				'credential:shareGlobally',
-				'credential:delete',
-				'credential:create',
-				'credential:list',
+				'credential:unshare',
+				'credential:update',
 			].sort(),
 		);
 	});
@@ -839,10 +878,13 @@ describe('POST /credentials', () => {
 
 		expect(scopes).toEqual(
 			[
+				'credential:connect',
+				'credential:createEndUser',
 				'credential:delete',
 				'credential:move',
 				'credential:read',
 				'credential:share',
+				'credential:unshare',
 				'credential:update',
 			].sort(),
 		);
@@ -960,8 +1002,8 @@ describe('POST /credentials', () => {
 			//
 			// ASSERT
 			//
-			.expect(400, {
-				code: 400,
+			.expect(403, {
+				code: 403,
 				message: "You don't have the permissions to save the credential in this project.",
 			});
 	});
@@ -976,7 +1018,7 @@ describe('POST /credentials', () => {
 			.post('/credentials')
 			.send({ ...randomCredentialPayload(), projectId: teamProject.id });
 
-		expect(response.statusCode).toBe(400);
+		expect(response.statusCode).toBe(403);
 		expect(response.body.message).toBe(
 			"You don't have the permissions to save the credential in this project.",
 		);
@@ -1003,7 +1045,7 @@ describe('POST /credentials', () => {
 			.post('/credentials')
 			.send({ ...randomCredentialPayload() });
 
-		expect(response.statusCode).toBe(400);
+		expect(response.statusCode).toBe(403);
 		expect(response.body.message).toBe(
 			"You don't have the permissions to save the credential in this project.",
 		);
@@ -1053,7 +1095,7 @@ describe('POST /credentials', () => {
 			.post('/credentials')
 			.send({ ...randomCredentialPayload(), isGlobal: false });
 
-		expect(response.statusCode).toBe(400);
+		expect(response.statusCode).toBe(403);
 		expect(response.body.message).toBe(
 			"You don't have the permissions to save the credential in this project.",
 		);
@@ -1079,7 +1121,7 @@ describe('POST /credentials', () => {
 		delete payload.isGlobal;
 
 		const response = await testServer.authAgentFor(chatUser).post('/credentials').send(payload);
-		expect(response.statusCode).toBe(400);
+		expect(response.statusCode).toBe(403);
 		expect(response.body.message).toBe(
 			"You don't have the permissions to save the credential in this project.",
 		);
@@ -1225,13 +1267,17 @@ describe('PATCH /credentials/:id', () => {
 
 		expect(scopes).toEqual(
 			[
+				'credential:connect',
 				'credential:create',
+				'credential:createEndUser',
 				'credential:delete',
 				'credential:list',
+				'credential:manageInstance',
 				'credential:move',
 				'credential:read',
 				'credential:share',
 				'credential:shareGlobally',
+				'credential:unshare',
 				'credential:update',
 			].sort(),
 		);
@@ -1277,7 +1323,7 @@ describe('PATCH /credentials/:id', () => {
 			credential.type,
 			credential.data,
 		);
-		expect(credentialObject.getData()).toStrictEqual(patchPayload.data);
+		expect(await credentialObject.getData()).toStrictEqual(patchPayload.data);
 
 		const sharedCredential = await Container.get(SharedCredentialsRepository).findOneOrFail({
 			relations: ['credentials'],
@@ -1411,10 +1457,11 @@ describe('PATCH /credentials/:id', () => {
 		// was not overwritten
 		const dbCredential = await getCredentialById(savedCredential.id);
 		const unencryptedData = createCredentialsFromCredentialsEntity(dbCredential!);
-		expect(unencryptedData.getData().oauthTokenData).toEqual(credential.data.oauthTokenData);
+		const decryptedData = await unencryptedData.getData();
+		expect(decryptedData.oauthTokenData).toEqual(credential.data.oauthTokenData);
 
 		// was overwritten
-		expect(unencryptedData.getData().accessToken).toBe(patchPayload.data.accessToken);
+		expect(decryptedData.accessToken).toBe(patchPayload.data.accessToken);
 	});
 
 	test('should fail with invalid inputs', async () => {
@@ -1677,7 +1724,7 @@ describe('GET /credentials/:id', () => {
 
 	test('should redact the data when `includeData:true` is passed', async () => {
 		const credentialService = Container.get(CredentialsService);
-		const redactSpy = jest.spyOn(credentialService, 'redact');
+		const redactSpy = vi.spyOn(credentialService, 'redact');
 		const savedCredential = await saveCredential(randomCredentialPayload(), {
 			user: owner,
 			role: 'credential:owner',

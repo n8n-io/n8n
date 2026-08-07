@@ -1,5 +1,6 @@
 import type { NodeInstance, WorkflowJSON } from './types/base';
 import { workflow } from './workflow-builder';
+import { splitInBatches } from './workflow-builder/control-flow-builders/split-in-batches';
 import { node, trigger, sticky } from './workflow-builder/node-builders/node-builder';
 import {
 	languageModel,
@@ -7,6 +8,7 @@ import {
 	tool,
 	outputParser,
 } from './workflow-builder/node-builders/subnode-builders';
+import { generateDeterministicGroupId } from './workflow-builder/string-utils';
 
 describe('Workflow Builder', () => {
 	describe('workflow()', () => {
@@ -24,6 +26,20 @@ describe('Workflow Builder', () => {
 			const json = wf.toJSON();
 			expect(json.settings?.timezone).toBe('America/New_York');
 			expect(json.settings?.executionOrder).toBe('v1');
+		});
+
+		it('should throw a clear TypeError when id is not a string', () => {
+			expect(() => {
+				// @ts-expect-error intentional misuse
+				workflow({ id: 'test-id' }, 'Test Workflow');
+			}).toThrow(/workflow\(\) requires a string id as first argument/);
+		});
+
+		it('should throw a clear TypeError when name is not a string', () => {
+			expect(() => {
+				// @ts-expect-error intentional misuse
+				workflow('test-id', { name: 'Test Workflow' });
+			}).toThrow(/workflow\(\) requires a string name as second argument/);
 		});
 	});
 
@@ -281,6 +297,82 @@ describe('Workflow Builder', () => {
 				'Cannot call .input() on the workflow builder',
 			);
 		});
+
+		it('should throw a clear error when an OutputSelector is passed to .add()', () => {
+			const t = trigger({ type: 'n8n-nodes-base.webhookTrigger', version: 1, config: {} });
+			const source = node({
+				type: 'n8n-nodes-base.if',
+				version: 2,
+				config: { name: 'Branch' },
+			});
+			const target = node({
+				type: 'n8n-nodes-base.set',
+				version: 3,
+				config: { name: 'Set' },
+			});
+
+			const wf = workflow('test-id', 'Test Workflow').add(t);
+			const misuse = source.output(0) as unknown as NodeInstance<string, string, unknown>;
+			expect(() => wf.add(misuse).to(target)).toThrow(TypeError);
+			expect(() => wf.add(misuse).to(target)).toThrow(/Cannot pass an OutputSelector to \.add\(\)/);
+			expect(() => wf.add(misuse).to(target)).toThrow(/Branch\.output\(0\)\.to\(/);
+		});
+
+		it('should throw a clear error when an OutputSelector is passed to .to()', () => {
+			const t = trigger({ type: 'n8n-nodes-base.webhookTrigger', version: 1, config: {} });
+			const source = node({
+				type: 'n8n-nodes-base.if',
+				version: 2,
+				config: { name: 'Branch' },
+			});
+
+			const wf = workflow('test-id', 'Test Workflow').add(t);
+			const misuse = source.output(1) as unknown as NodeInstance<string, string, unknown>;
+			expect(() => wf.to(misuse)).toThrow(/Cannot pass an OutputSelector to \.to\(\)/);
+		});
+
+		it('should throw a clear error when an OutputSelector is inside an array passed to .add()', () => {
+			const t = trigger({ type: 'n8n-nodes-base.webhookTrigger', version: 1, config: {} });
+			const source = node({
+				type: 'n8n-nodes-base.if',
+				version: 2,
+				config: { name: 'Branch' },
+			});
+			const sibling = node({
+				type: 'n8n-nodes-base.set',
+				version: 3,
+				config: { name: 'Sibling' },
+			});
+
+			const wf = workflow('test-id', 'Test Workflow').add(t);
+			const misuse = [sibling, source.output(0)] as unknown as NodeInstance<
+				string,
+				string,
+				unknown
+			>;
+			expect(() => wf.add(misuse)).toThrow(/Cannot pass an OutputSelector to \.add\(\)/);
+		});
+
+		it('should accept node.output(n).to(target) inside .add() — the documented form', () => {
+			const t = trigger({ type: 'n8n-nodes-base.webhookTrigger', version: 1, config: {} });
+			const source = node({
+				type: 'n8n-nodes-base.if',
+				version: 2,
+				config: { name: 'Branch' },
+			});
+			const target = node({
+				type: 'n8n-nodes-base.set',
+				version: 3,
+				config: { name: 'Set' },
+			});
+
+			const wf = workflow('test-id', 'Test Workflow').add(t).add(source.output(0).to(target));
+			const json = wf.toJSON();
+			const branchConns = json.connections[source.name]?.main[0];
+			expect(branchConns).toBeDefined();
+			expect(branchConns).toHaveLength(1);
+			expect(branchConns?.[0]?.node).toBe(target.name);
+		});
 	});
 
 	describe('.to()', () => {
@@ -335,11 +427,12 @@ describe('Workflow Builder', () => {
 			const json = wf.toJSON();
 			expect(json.nodes).toHaveLength(3);
 
-			// Check HTTP node has two outputs: main (0) and error (1)
+			// Check HTTP node has success output at main[0] and error output at main[1]
 			expect(json.connections['HTTP']?.main[0]).toHaveLength(1);
 			expect(json.connections['HTTP']?.main[0]?.[0]?.node).toBe('Success');
 			expect(json.connections['HTTP']?.main[1]).toHaveLength(1);
 			expect(json.connections['HTTP']?.main[1]?.[0]?.node).toBe('Error Handler');
+			expect(json.connections['HTTP']?.error).toBeUndefined();
 		});
 
 		it('should calculate correct error output index for IF nodes', () => {
@@ -379,7 +472,9 @@ describe('Workflow Builder', () => {
 
 			expect(json.connections['IF']?.main[0]?.[0]?.node).toBe('True');
 			expect(json.connections['IF']?.main[1]?.[0]?.node).toBe('False');
+			// Error pin lands after the two natural IF outputs, at main[2]
 			expect(json.connections['IF']?.main[2]?.[0]?.node).toBe('Error');
+			expect(json.connections['IF']?.error).toBeUndefined();
 		});
 
 		it('should return this (not handler) for proper chaining with .to()', () => {
@@ -411,8 +506,359 @@ describe('Workflow Builder', () => {
 			// Trigger should connect to Slack (not Telegram)
 			expect(json.connections['Start']?.main[0]?.[0]?.node).toBe('Send Slack');
 
-			// Slack's error output (index 1) should connect to Telegram
+			// Slack's error output is emitted at main[1] (modern format)
 			expect(json.connections['Send Slack']?.main[1]?.[0]?.node).toBe('Error Alert');
+		});
+
+		it('should add nodes from nested .onError() chains', () => {
+			// Build: trigger → http1.onError(http2.onError(errorFinal.to(downstream)))
+			// All 5 nodes should appear in toJSON().nodes
+			const t = trigger({
+				type: 'n8n-nodes-base.manualTrigger',
+				version: 1,
+				config: { name: 'Start' },
+			});
+			const http1 = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { name: 'HTTP 1', onError: 'continueErrorOutput' },
+			});
+			const http2 = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { name: 'HTTP 2', onError: 'continueErrorOutput' },
+			});
+			const errorFinal = node({
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				config: { name: 'Error Final' },
+			});
+			const downstream = node({
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				config: { name: 'Downstream' },
+			});
+
+			// Nested .onError chain: http1 errors to http2, http2 errors to errorFinal→downstream
+			const wf = workflow('test-id', 'Test')
+				.add(t)
+				.to(http1.onError(http2.onError(errorFinal.to(downstream))));
+
+			const json = wf.toJSON();
+			const nodeNames = json.nodes.map((n) => n.name);
+
+			// All 5 nodes must be present
+			expect(nodeNames).toContain('Start');
+			expect(nodeNames).toContain('HTTP 1');
+			expect(nodeNames).toContain('HTTP 2');
+			expect(nodeNames).toContain('Error Final');
+			expect(nodeNames).toContain('Downstream');
+			expect(json.nodes).toHaveLength(5);
+
+			// http1 error output → http2 (modern format: error pin at main[1])
+			expect(json.connections['HTTP 1']?.main[1]?.[0]?.node).toBe('HTTP 2');
+			// http2 error output → errorFinal (modern format: error pin at main[1])
+			expect(json.connections['HTTP 2']?.main[1]?.[0]?.node).toBe('Error Final');
+			// errorFinal → downstream
+			expect(json.connections['Error Final']?.main[0]?.[0]?.node).toBe('Downstream');
+		});
+
+		it('should handle IfElse composite as onError target on standalone node', () => {
+			const httpNode = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { name: 'HTTP', onError: 'continueErrorOutput' },
+			});
+			const ifNode = node({
+				type: 'n8n-nodes-base.if',
+				version: 2,
+				config: { name: 'IF' },
+			}) as NodeInstance<'n8n-nodes-base.if', string, unknown>;
+			const trueHandler = node({
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				config: { name: 'True Handler' },
+			});
+			const falseHandler = node({
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				config: { name: 'False Handler' },
+			});
+
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			httpNode.onError(ifNode.onTrue!(trueHandler).onFalse(falseHandler) as any);
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			const wf = workflow('test-id', 'Test').add(httpNode as any);
+			const json = wf.toJSON();
+
+			expect(json.nodes).toHaveLength(4);
+			// HTTP has only an error pin (no main success) → padded to main[0]=[] , main[1]=IF
+			expect(json.connections['HTTP']?.main[1]?.[0]?.node).toBe('IF');
+			expect(json.connections['IF']?.main[0]?.[0]?.node).toBe('True Handler');
+			expect(json.connections['IF']?.main[1]?.[0]?.node).toBe('False Handler');
+		});
+
+		it('should handle SwitchCase composite as onError target on standalone node', () => {
+			const httpNode = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { name: 'HTTP', onError: 'continueErrorOutput' },
+			});
+			const switchNode = node({
+				type: 'n8n-nodes-base.switch',
+				version: 3.2,
+				config: { name: 'Switch', parameters: { mode: 'rules' } },
+			}) as NodeInstance<'n8n-nodes-base.switch', string, unknown>;
+			const case0 = node({
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				config: { name: 'Case 0' },
+			});
+			const case1 = node({
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				config: { name: 'Case 1' },
+			});
+
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			httpNode.onError(switchNode.onCase!(0, case0).onCase(1, case1) as any);
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			const wf = workflow('test-id', 'Test').add(httpNode as any);
+			const json = wf.toJSON();
+
+			expect(json.nodes).toHaveLength(4);
+			expect(json.connections['HTTP']?.main[1]?.[0]?.node).toBe('Switch');
+			expect(json.connections['Switch']?.main[0]?.[0]?.node).toBe('Case 0');
+			expect(json.connections['Switch']?.main[1]?.[0]?.node).toBe('Case 1');
+		});
+
+		it('should handle SplitInBatches composite as onError target on standalone node', () => {
+			const httpNode = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { name: 'HTTP', onError: 'continueErrorOutput' },
+			});
+			const sibNode = node({
+				type: 'n8n-nodes-base.splitInBatches',
+				version: 3,
+				config: { name: 'SIB', parameters: { batchSize: 10 } },
+			});
+			const doneNode = node({
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				config: { name: 'Done' },
+			});
+			const eachNode = node({
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				config: { name: 'Each' },
+			});
+
+			const sibBuilder = splitInBatches(sibNode).onDone(doneNode).onEachBatch(eachNode);
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			httpNode.onError(sibBuilder as any);
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			const wf = workflow('test-id', 'Test').add(httpNode as any);
+			const json = wf.toJSON();
+
+			expect(json.nodes).toHaveLength(4);
+			expect(json.connections['HTTP']?.main[1]?.[0]?.node).toBe('SIB');
+			expect(json.connections['SIB']?.main[0]?.[0]?.node).toBe('Done');
+			expect(json.connections['SIB']?.main[1]?.[0]?.node).toBe('Each');
+		});
+
+		it('should handle IfElse composite as onError target in chain', () => {
+			const t = trigger({
+				type: 'n8n-nodes-base.manualTrigger',
+				version: 1,
+				config: { name: 'Start' },
+			});
+			const httpNode = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { name: 'HTTP', onError: 'continueErrorOutput' },
+			});
+			const ifNode = node({
+				type: 'n8n-nodes-base.if',
+				version: 2,
+				config: { name: 'IF' },
+			}) as NodeInstance<'n8n-nodes-base.if', string, unknown>;
+			const trueHandler = node({
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				config: { name: 'True Handler' },
+			});
+			const falseHandler = node({
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				config: { name: 'False Handler' },
+			});
+
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			httpNode.onError(ifNode.onTrue!(trueHandler).onFalse(falseHandler) as any);
+			const wf = workflow('test-id', 'Test').add(t).to(httpNode);
+			const json = wf.toJSON();
+
+			expect(json.nodes).toHaveLength(5);
+			expect(json.connections['Start']?.main[0]?.[0]?.node).toBe('HTTP');
+			expect(json.connections['HTTP']?.main[1]?.[0]?.node).toBe('IF');
+			expect(json.connections['IF']?.main[0]?.[0]?.node).toBe('True Handler');
+			expect(json.connections['IF']?.main[1]?.[0]?.node).toBe('False Handler');
+		});
+
+		it('should handle chain leading to composite via onError', () => {
+			const httpNode = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { name: 'HTTP', onError: 'continueErrorOutput' },
+			});
+			const logNode = node({
+				type: 'n8n-nodes-base.set',
+				version: 3.4,
+				config: { name: 'Log' },
+			});
+			const ifNode = node({
+				type: 'n8n-nodes-base.if',
+				version: 2,
+				config: { name: 'IF' },
+			}) as NodeInstance<'n8n-nodes-base.if', string, unknown>;
+			const trueHandler = node({
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				config: { name: 'True Handler' },
+			});
+			const falseHandler = node({
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				config: { name: 'False Handler' },
+			});
+
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			httpNode.onError(logNode.to(ifNode.onTrue!(trueHandler).onFalse(falseHandler) as any));
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			const wf = workflow('test-id', 'Test').add(httpNode as any);
+			const json = wf.toJSON();
+
+			expect(json.nodes).toHaveLength(5);
+			expect(json.connections['HTTP']?.main[1]?.[0]?.node).toBe('Log');
+			expect(json.connections['Log']?.main[0]?.[0]?.node).toBe('IF');
+			expect(json.connections['IF']?.main[0]?.[0]?.node).toBe('True Handler');
+			expect(json.connections['IF']?.main[1]?.[0]?.node).toBe('False Handler');
+		});
+	});
+
+	describe('NodeChain.onError()', () => {
+		it('binds the error route to the node that declares continueErrorOutput, not the tail', () => {
+			// INS-425 regression: sendGmail.to(markSent).onError(markFailed) attached
+			// the error edge to Mark Sent (tail) instead of Send Gmail, producing a
+			// connection from an output port Mark Sent does not have.
+			const t = trigger({
+				type: 'n8n-nodes-base.scheduleTrigger',
+				version: 1.3,
+				config: { name: 'Daily' },
+			});
+			const sendGmail = node({
+				type: 'n8n-nodes-base.gmail',
+				version: 2.2,
+				config: { name: 'Send Gmail', onError: 'continueErrorOutput' },
+			});
+			const markSent = node({
+				type: 'n8n-nodes-base.dataTable',
+				version: 1.1,
+				config: { name: 'Mark Sent' },
+			});
+			const markFailed = node({
+				type: 'n8n-nodes-base.dataTable',
+				version: 1.1,
+				config: { name: 'Mark Failed' },
+			});
+
+			const wf = workflow('test-id', 'Test').add(t).to(sendGmail.to(markSent).onError(markFailed));
+
+			const json = wf.toJSON();
+
+			// Error edge originates from the gmail node's error pin
+			expect(json.connections['Send Gmail']?.main[0]?.[0]?.node).toBe('Mark Sent');
+			expect(json.connections['Send Gmail']?.main[1]?.[0]?.node).toBe('Mark Failed');
+			// Mark Sent has no phantom second output
+			expect(json.connections['Mark Sent']?.main[1]).toBeUndefined();
+		});
+
+		it('falls back to the tail and makes its error pin real when no chain node declares continueErrorOutput', () => {
+			const t = trigger({
+				type: 'n8n-nodes-base.manualTrigger',
+				version: 1,
+				config: { name: 'Start' },
+			});
+			const fetchNode = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { name: 'Fetch' },
+			});
+			const writeNode = node({
+				type: 'n8n-nodes-base.dataTable',
+				version: 1.1,
+				config: { name: 'Write' },
+			});
+			const failHandler = node({
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				config: { name: 'Log Failure' },
+			});
+
+			const wf = workflow('test-id', 'Test')
+				.add(t)
+				.to(fetchNode.to(writeNode).onError(failHandler));
+
+			const json = wf.toJSON();
+
+			// Tail keeps the error route, but its error pin must actually exist
+			const writeJson = json.nodes.find((n) => n.name === 'Write');
+			expect(writeJson?.onError).toBe('continueErrorOutput');
+			expect(json.connections['Write']?.main[1]?.[0]?.node).toBe('Log Failure');
+		});
+
+		it('node-level .onError() implies onError: continueErrorOutput on the node', () => {
+			const httpNode = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { name: 'HTTP' },
+			});
+			const errorHandler = node({
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				config: { name: 'Error Handler' },
+			});
+
+			httpNode.onError(errorHandler);
+
+			const wf = workflow('test-id', 'Test').add(httpNode).add(errorHandler);
+			const json = wf.toJSON();
+
+			const httpJson = json.nodes.find((n) => n.name === 'HTTP');
+			expect(httpJson?.onError).toBe('continueErrorOutput');
+			expect(json.connections['HTTP']?.main[1]?.[0]?.node).toBe('Error Handler');
+		});
+
+		it('does not override an explicit onError mode set in config', () => {
+			const httpNode = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { name: 'HTTP', onError: 'continueRegularOutput' },
+			});
+			const errorHandler = node({
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				config: { name: 'Error Handler' },
+			});
+
+			httpNode.onError(errorHandler);
+
+			const wf = workflow('test-id', 'Test').add(httpNode).add(errorHandler);
+			const json = wf.toJSON();
+
+			const httpJson = json.nodes.find((n) => n.name === 'HTTP');
+			expect(httpJson?.onError).toBe('continueRegularOutput');
 		});
 	});
 
@@ -436,6 +882,16 @@ describe('Workflow Builder', () => {
 			const json = wf.toJSON();
 			expect(json.settings?.timezone).toBe('America/New_York');
 			expect(json.settings?.executionTimeout).toBe(3600);
+		});
+
+		it('should serialize workflow-level error workflow settings', () => {
+			const wf = workflow('test-id', 'Test Workflow').settings({
+				errorWorkflow: 'error-handler-123',
+			});
+
+			const json = wf.toJSON();
+
+			expect(json.settings?.errorWorkflow).toBe('error-handler-123');
 		});
 	});
 
@@ -503,6 +959,109 @@ describe('Workflow Builder', () => {
 			expect(json.nodes[1].position).toBeDefined();
 			// Second node should be to the right of the first
 			expect(json.nodes[1].position[0]).toBeGreaterThan(json.nodes[0].position[0]);
+		});
+	});
+
+	describe('node groups', () => {
+		it('emits a group authored via .group() with members resolved to node ids', () => {
+			const t = trigger({
+				type: 'n8n-nodes-base.manualTrigger',
+				version: 1,
+				config: { name: 'Start' },
+			});
+			const fetch = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { name: 'Fetch' },
+			});
+			const transform = node({
+				type: 'n8n-nodes-base.set',
+				version: 3,
+				config: { name: 'Transform' },
+			});
+
+			const json = workflow('wf-1', 'Test')
+				.add(t)
+				.to(fetch)
+				.to(transform)
+				.group('Ingestion', [fetch, transform])
+				.toJSON();
+
+			const idByName = new Map(json.nodes.map((n) => [n.name, n.id]));
+			expect(json.nodeGroups).toEqual([
+				{
+					id: generateDeterministicGroupId('wf-1', 'Ingestion'),
+					name: 'Ingestion',
+					nodeIds: [idByName.get('Fetch'), idByName.get('Transform')],
+				},
+			]);
+		});
+
+		it('omits nodeGroups when no group was declared', () => {
+			const t = trigger({
+				type: 'n8n-nodes-base.manualTrigger',
+				version: 1,
+				config: { name: 'Start' },
+			});
+
+			expect(workflow('wf-1', 'Test').add(t).toJSON().nodeGroups).toBeUndefined();
+		});
+
+		it('preserves a group id imported via fromJSON across a round-trip', () => {
+			const source: WorkflowJSON = {
+				id: 'wf-1',
+				name: 'Test',
+				nodes: [
+					{
+						id: 'id-a',
+						name: 'A',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 3,
+						position: [0, 0],
+						parameters: {},
+					},
+					{
+						id: 'id-b',
+						name: 'B',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 3,
+						position: [10, 0],
+						parameters: {},
+					},
+				],
+				connections: { A: { main: [[{ node: 'B', type: 'main', index: 0 }]] } },
+				nodeGroups: [{ id: 'ui-random-id', name: 'G', nodeIds: ['id-a', 'id-b'] }],
+			};
+
+			const json = workflow.fromJSON(source).toJSON();
+
+			expect(json.nodeGroups).toEqual([
+				{ id: 'ui-random-id', name: 'G', nodeIds: ['id-a', 'id-b'] },
+			]);
+		});
+
+		it('keeps an imported group after the builder is modified', () => {
+			const source: WorkflowJSON = {
+				id: 'wf-1',
+				name: 'Test',
+				nodes: [
+					{
+						id: 'id-a',
+						name: 'A',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 3,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+				nodeGroups: [{ id: 'ui-random-id', name: 'G', nodeIds: ['id-a'] }],
+			};
+
+			const added = node({ type: 'n8n-nodes-base.set', version: 3, config: { name: 'B' } });
+			const json = workflow.fromJSON(source).to(added).toJSON();
+
+			expect(json.nodeGroups).toEqual([{ id: 'ui-random-id', name: 'G', nodeIds: ['id-a'] }]);
 		});
 	});
 
@@ -636,6 +1195,53 @@ describe('Workflow Builder', () => {
 
 			// Credentials with only name should be preserved (no added id: "")
 			expect(gmailNode?.credentials).toEqual({ gmailOAuth2: { name: 'My Gmail' } });
+		});
+
+		it('should normalize legacy top-level "error" connections to main[1] on round-trip', () => {
+			const json = {
+				id: 'legacy-error',
+				name: 'Legacy Error Workflow',
+				nodes: [
+					{
+						id: 'node-1',
+						name: 'HTTP',
+						type: 'n8n-nodes-base.httpRequest',
+						typeVersion: 4.2,
+						position: [0, 0] as [number, number],
+						parameters: {},
+						onError: 'continueErrorOutput' as const,
+					},
+					{
+						id: 'node-2',
+						name: 'Success',
+						type: 'n8n-nodes-base.noOp',
+						typeVersion: 1,
+						position: [200, 0] as [number, number],
+						parameters: {},
+					},
+					{
+						id: 'node-3',
+						name: 'ErrorHandler',
+						type: 'n8n-nodes-base.noOp',
+						typeVersion: 1,
+						position: [200, 200] as [number, number],
+						parameters: {},
+					},
+				],
+				connections: {
+					HTTP: {
+						main: [[{ node: 'Success', type: 'main', index: 0 }]],
+						error: [[{ node: 'ErrorHandler', type: 'main', index: 0 }]],
+					},
+				},
+			} as WorkflowJSON;
+
+			const wf = workflow.fromJSON(json);
+			const exported = wf.toJSON();
+
+			expect(exported.connections.HTTP?.main[0]?.[0]?.node).toBe('Success');
+			expect(exported.connections.HTTP?.main[1]?.[0]?.node).toBe('ErrorHandler');
+			expect(exported.connections.HTTP?.error).toBeUndefined();
 		});
 	});
 
@@ -2501,6 +3107,104 @@ describe('Workflow Builder', () => {
 				// The newline after the .replace() call is outside any string, should NOT be escaped
 				expect(setNode?.parameters?.text).toBe('={{ $json.text.replace(/\\"/g, "escaped")\n}}');
 			});
+		});
+	});
+
+	describe('depth overflow protection', () => {
+		it('handles convergence patterns without depth overflow', () => {
+			// Diamond pattern: trigger → IF → (true: A, false: B) → both to Merge → End
+			// This creates convergence that previously caused exponential recursion
+			const mergeNode = node({
+				type: 'n8n-nodes-base.merge',
+				version: 3,
+				config: { name: 'Merge' },
+			});
+			const nodeA = node({
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				config: { name: 'A' },
+			}).to(mergeNode.input(0));
+			const nodeB = node({
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				config: { name: 'B' },
+			}).to(mergeNode.input(1));
+			const ifNode = node({
+				type: 'n8n-nodes-base.if' as const,
+				version: 2,
+				config: { name: 'IF' },
+			});
+
+			const ifBuilder = ifNode.onTrue!(nodeA).onFalse(nodeB);
+			const end = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'End' } });
+
+			const t = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} });
+			const wf = workflow('test', 'Test').add(t.to(ifBuilder));
+			// Also connect merge output to end
+			wf.add(mergeNode.to(end));
+
+			// Should not throw - convergence should be handled efficiently
+			const exported = wf.toJSON();
+			expect(exported.nodes.length).toBeGreaterThanOrEqual(5);
+		});
+
+		it('throws when branch depth exceeds MAX_BRANCH_DEPTH', () => {
+			// Build deeply nested IF composites — each true branch is another IF builder
+			// This triggers recursive addBranchToGraph calls via the IfElse composite handler
+			// MAX_BRANCH_DEPTH is 500, so we need > 500 nesting levels
+			const leaf = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'Leaf' } });
+			let current: NodeInstance<string, string, unknown> = leaf;
+			for (let i = 0; i < 510; i++) {
+				const ifNode = node({
+					type: 'n8n-nodes-base.if' as const,
+					version: 2,
+					config: { name: `IF ${i}` },
+				});
+
+				current = ifNode.onTrue!(current) as unknown as NodeInstance<string, string, unknown>;
+			}
+
+			const t = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} });
+			const wf = workflow('test', 'Test').add(t);
+
+			expect(() => wf.to(current)).toThrow(/Maximum branch depth/);
+		});
+	});
+
+	describe('invalid input handling', () => {
+		it('should throw descriptive TypeError when name is an array', () => {
+			expect(() => {
+				// @ts-expect-error intentional misuse
+				workflow('Test', [trigger({ type: 'n8n-nodes-base.webhook', version: 2, config: {} })]);
+			}).toThrow(/workflow\(\) requires \(id: string, name: string\)/);
+		});
+
+		it('should throw descriptive TypeError when id is not a string', () => {
+			expect(() => {
+				// @ts-expect-error intentional misuse
+				workflow(123, 'Test');
+			}).toThrow(/workflow\(\) requires \(id: string, name: string\)/);
+		});
+
+		it('should throw when nodes are passed in the options argument', () => {
+			const t = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} });
+			expect(() => {
+				workflow('id', 'Test', { nodes: [t] });
+			}).toThrow(/Do not pass nodes or connections here/);
+		});
+
+		it('should throw when connections are passed in the options argument', () => {
+			expect(() => {
+				workflow('id', 'Test', { connections: { 'Node 1': { main: [[]] } } });
+			}).toThrow(/use \.add\(\) and \.to\(\)/);
+		});
+
+		it('should throw when an array of nodes is passed as the options argument', () => {
+			const t = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} });
+			expect(() => {
+				// @ts-expect-error intentional misuse
+				workflow('id', 'Test', [t]);
+			}).toThrow(/Do not pass nodes or connections here/);
 		});
 	});
 });

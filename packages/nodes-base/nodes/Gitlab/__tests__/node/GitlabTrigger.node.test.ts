@@ -15,7 +15,7 @@ describe('GitlabTrigger Node', () => {
 			mockThis = {
 				getWorkflowStaticData: () => webhookData,
 				getNodeWebhookUrl: () => 'https://example.com/webhook',
-				getNodeParameter: jest.fn().mockImplementation((name: string) => {
+				getNodeParameter: vi.fn().mockImplementation((name: string) => {
 					if (name === 'owner') return 'some-owner';
 					if (name === 'repository') return 'some-repo';
 				}),
@@ -23,11 +23,11 @@ describe('GitlabTrigger Node', () => {
 		});
 
 		afterEach(() => {
-			jest.restoreAllMocks();
+			vi.restoreAllMocks();
 		});
 
 		it('should return true when stored webhook ID exists', async () => {
-			jest.spyOn(GenericFunctions, 'gitlabApiRequest').mockResolvedValueOnce({ id: '123456' });
+			vi.spyOn(GenericFunctions, 'gitlabApiRequest').mockResolvedValueOnce({ id: '123456' });
 
 			const trigger = new GitlabTrigger();
 			const result = await trigger.webhookMethods.default.checkExists.call(mockThis);
@@ -88,7 +88,7 @@ describe('GitlabTrigger Node', () => {
 			webhookData = {};
 			mockThis.getWorkflowStaticData = () => webhookData;
 
-			jest.spyOn(GenericFunctions, 'gitlabApiRequest').mockResolvedValueOnce([]);
+			vi.spyOn(GenericFunctions, 'gitlabApiRequest').mockResolvedValueOnce([]);
 
 			const trigger = new GitlabTrigger();
 			const result = await trigger.webhookMethods.default.checkExists.call(mockThis);

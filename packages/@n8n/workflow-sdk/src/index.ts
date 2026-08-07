@@ -4,6 +4,7 @@ export type {
 	WorkflowBuilder,
 	WorkflowBuilderStatic,
 	WorkflowBuilderOptions,
+	ToJSONOptions,
 	WorkflowSettings,
 	WorkflowJSON,
 	NodeJSON,
@@ -40,7 +41,6 @@ export type {
 	// Split in batches types
 	SplitInBatchesBuilder,
 	// Other types
-	PlaceholderValue,
 	NewCredentialValue,
 	AllItemsContext,
 	EachItemContext,
@@ -124,6 +124,7 @@ export type { SwitchCaseTarget } from './workflow-builder/control-flow-builders/
 
 // Split in batches
 export { splitInBatches } from './workflow-builder/control-flow-builders/split-in-batches';
+export type { SplitInBatchesTarget } from './types/base';
 
 // Note: fanOut() removed - use plain arrays for parallel connections
 // Note: fanIn() removed - use multiple .to(node.input(n)) calls instead
@@ -136,6 +137,7 @@ export {
 	parseExpression,
 	isExpression,
 	expr,
+	nodeJson,
 	createFromAIExpression,
 } from './expression';
 
@@ -150,18 +152,36 @@ export {
 	validateWorkflow,
 	ValidationError,
 	ValidationWarning,
+	getSchemaBaseDirs,
 	setSchemaBaseDirs,
 	type ValidationResult,
 	type ValidationOptions,
 	type ValidationErrorCode,
+	validateNodeConfig,
+	type SchemaValidationResult,
+	type IssueSeverity,
+	isInformationalIssue,
+	partitionValidationIssues,
+	validateWorkflowBuilder,
+	type ValidateWorkflowBuilderOptions,
+	type ValidateWorkflowBuilderResult,
+	type CollectedValidationIssue,
 } from './validation';
 
 // Code generation
 export { generateWorkflowCode } from './codegen/index';
+export {
+	emitInstanceAi,
+	SDK_IMPORTABLE_FUNCTIONS,
+	type EmitInstanceAiOptions,
+} from './codegen/index';
 export { parseWorkflowCode, parseWorkflowCodeToBuilder } from './codegen/parse-workflow-code';
 
 // Type generation utilities (for runtime type generation in CLI)
 export * from './generate-types';
+
+// Mock/pin-data generation building blocks (LLM- and fs-free; see src/mock-data/)
+export * from './mock-data';
 
 // Plugin system
 export {
@@ -179,6 +199,22 @@ export {
 	type SerializerPlugin,
 } from './workflow-builder/plugins';
 
+// Pin data utilities
+export {
+	needsPinData,
+	discoverOutputSchemaForNode,
+	inferSchemasFromRunData,
+	normalizePinData,
+	type IsTriggerNodeFn,
+} from './pin-data-utils';
+
+// Display options matching
+export {
+	matchesDisplayOptions,
+	type DisplayOptions,
+	type DisplayOptionsContext,
+} from './validation/display-options';
+
 // Node type constants
 export {
 	NODE_TYPES,
@@ -192,3 +228,12 @@ export {
 	isWebhookType,
 	isDataTableType,
 } from './constants';
+
+// Canvas geometry — the same values the layout engine and the editor's canvas use.
+// Exported so consumers that place nodes themselves stay on the same grid.
+export {
+	GRID_SIZE,
+	DEFAULT_NODE_SIZE,
+	NODE_X_SPACING,
+	NODE_Y_SPACING,
+} from './workflow-builder/constants';

@@ -123,7 +123,7 @@ interface OpenAIStreamEvent {
 // Helpers
 
 async function* parseOpenAIStreamEvents(
-	body: ReadableStream<Uint8Array>,
+	body: AsyncIterableIterator<Buffer | Uint8Array>,
 ): AsyncIterable<OpenAIStreamEvent> {
 	for await (const message of parseSSEStream(body)) {
 		if (!message.data) continue;
@@ -331,7 +331,7 @@ interface RequestConfig {
 		url: string,
 		body?: object,
 		headers?: Record<string, string>,
-	) => Promise<{ body: ReadableStream<Uint8Array> }>;
+	) => Promise<{ body: AsyncIterableIterator<Buffer | Uint8Array> }>;
 }
 
 export class OpenAIChatModel extends BaseChatModel<OpenAIChatModelConfig> {
@@ -348,7 +348,7 @@ export class OpenAIChatModel extends BaseChatModel<OpenAIChatModelConfig> {
 
 	private getTools(config?: OpenAIChatModelConfig) {
 		const ownTools = this.tools;
-		const providerTools = config?.providerTools ?? [];
+		const providerTools = config?.providerTools ?? this.defaultConfig?.providerTools ?? [];
 		return [...ownTools, ...providerTools].map(genericToolToResponsesTool);
 	}
 

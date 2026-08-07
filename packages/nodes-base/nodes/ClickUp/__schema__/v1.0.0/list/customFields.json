@@ -35,9 +35,12 @@
                             }
                         }
                     }
+                },
+                "sorting": {
+                    "type": "string"
                 }
             }
         }
     },
-    "version": 5
+    "version": 6
 }

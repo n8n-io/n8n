@@ -8,7 +8,7 @@ import type {
 export class MalcoreApi implements ICredentialType {
 	name = 'malcoreApi';
 
-	displayName = 'MalcoreAPI';
+	displayName = 'Malcore API';
 
 	documentationUrl = 'malcore';
 

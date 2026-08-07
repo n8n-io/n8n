@@ -1,4 +1,5 @@
 import * as fs from 'fs';
+import { deepCopy } from 'n8n-workflow';
 import * as path from 'path';
 
 import { generateWorkflowCode } from './index';
@@ -10,20 +11,24 @@ import {
 	COMMITTED_FIXTURES_DIR,
 } from '../__tests__/fixtures-download';
 import type { WorkflowJSON } from '../types/base';
-
-// Workflows with known issues that need to be skipped
-// 5979: Code generator creates duplicate inline nodes, causing duplicate detection to rename them
-const SKIP_WORKFLOWS = new Set<string>(['5979']);
-
-// Workflows to skip validation due to known codegen bugs (invalid warnings)
-// These produce warnings that don't exist in the original workflow (codegen issues to fix)
-// Once fixed, these should be moved to expectedWarnings in manifest.json
-// NOTE: All previous workflows have been fixed and moved to expectedWarnings in manifests
-const SKIP_VALIDATION_WORKFLOWS = new Set<string>([
-	// Currently empty - all codegen bugs have been fixed!
-]);
+import { foldLegacyErrorConnections, normalizeConnections } from '../types/base';
+import { validateWorkflow, validateWorkflowBuilder } from '../validation';
+import {
+	escapeNewlinesInExpressionStrings,
+	isPlaceholderValue,
+} from '../workflow-builder/string-utils';
 
 interface ExpectedWarning {
+	code: string;
+	nodeName?: string;
+}
+
+interface ExpectedError {
+	code: string;
+	nodeName?: string;
+}
+
+interface ExpectedLintIssue {
 	code: string;
 	nodeName?: string;
 }
@@ -34,6 +39,16 @@ interface TestWorkflow {
 	json: WorkflowJSON;
 	nodeCount: number;
 	expectedWarnings?: ExpectedWarning[];
+	expectedErrors?: ExpectedError[];
+	/** Warnings expected from validateWorkflow when run with a nodeTypesProvider. */
+	expectedValidationWarnings?: ExpectedWarning[];
+	/** Errors expected from WorkflowBuilder.validate() (plugin validator pipeline). */
+	expectedBuilderErrors?: ExpectedError[];
+	/**
+	 * When present (including `[]`), codegen source is linted via
+	 * `validateWorkflowBuilder({ lint: true })` and must match exactly.
+	 */
+	expectedLintIssues?: ExpectedLintIssue[];
 }
 
 function loadWorkflowsFromDir(dir: string, workflows: TestWorkflow[]): void {
@@ -48,14 +63,19 @@ function loadWorkflowsFromDir(dir: string, workflows: TestWorkflow[]): void {
 			id: string | number;
 			name: string;
 			success: boolean;
+			skip?: boolean;
+			skipReason?: string;
 			expectedWarnings?: ExpectedWarning[];
+			expectedErrors?: ExpectedError[];
+			expectedValidationWarnings?: ExpectedWarning[];
+			expectedBuilderErrors?: ExpectedError[];
+			expectedLintIssues?: ExpectedLintIssue[];
 		}>;
 	};
 
 	for (const entry of manifest.workflows) {
 		if (!entry.success) continue;
-		if (SKIP_WORKFLOWS.has(String(entry.id))) continue;
-
+		if (entry.skip) continue;
 		const filePath = path.join(dir, `${entry.id}.json`);
 		if (fs.existsSync(filePath)) {
 			// eslint-disable-next-line n8n-local-rules/no-uncaught-json-parse -- Test fixture file
@@ -66,6 +86,10 @@ function loadWorkflowsFromDir(dir: string, workflows: TestWorkflow[]): void {
 				json,
 				nodeCount: json.nodes?.length ?? 0,
 				expectedWarnings: entry.expectedWarnings,
+				expectedErrors: entry.expectedErrors,
+				expectedValidationWarnings: entry.expectedValidationWarnings,
+				expectedBuilderErrors: entry.expectedBuilderErrors,
+				expectedLintIssues: entry.expectedLintIssues,
 			});
 		}
 	}
@@ -151,6 +175,145 @@ describe('parseWorkflowCode', () => {
 		expect(parsedJson.connections['Manual Trigger'].main[0]![0].node).toBe('HTTP Request');
 	});
 
+	it('should preserve node-level execution options when generating and parsing code', () => {
+		const originalJson: WorkflowJSON = {
+			id: 'debug-workflow',
+			name: 'Debug Workflow',
+			nodes: [
+				{
+					id: 'trigger-id',
+					name: 'When clicking Execute workflow',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [-160, 0],
+					parameters: {},
+				},
+				{
+					id: 'debug-id',
+					name: 'DebugHelper',
+					type: 'n8n-nodes-base.debugHelper',
+					typeVersion: 1,
+					position: [208, 0],
+					parameters: {
+						category: 'randomData',
+					},
+					executeOnce: true,
+					alwaysOutputData: true,
+					onError: 'continueErrorOutput',
+					retryOnFail: true,
+					maxTries: 4,
+					waitBetweenTries: 2500,
+					notesInFlow: true,
+					notes: 'Keep execution settings',
+					extendsCredential: 'notionApi',
+				},
+				{
+					id: 'success-id',
+					name: 'Edit Fields Success',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [416, -96],
+					parameters: {
+						options: {},
+					},
+				},
+				{
+					id: 'error-id',
+					name: 'Edit Fields Error',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [416, 96],
+					parameters: {
+						options: {},
+					},
+				},
+			],
+			connections: {
+				'When clicking Execute workflow': {
+					main: [[{ node: 'DebugHelper', type: 'main', index: 0 }]],
+				},
+				DebugHelper: {
+					main: [
+						[{ node: 'Edit Fields Success', type: 'main', index: 0 }],
+						[{ node: 'Edit Fields Error', type: 'main', index: 0 }],
+					],
+				},
+			},
+		};
+
+		const code = generateWorkflowCode(originalJson);
+		const parsedJson = parseWorkflowCode(code);
+		const debugNode = parsedJson.nodes.find((node) => node.name === 'DebugHelper');
+
+		expect(debugNode).toEqual(
+			expect.objectContaining({
+				executeOnce: true,
+				alwaysOutputData: true,
+				onError: 'continueErrorOutput',
+				retryOnFail: true,
+				maxTries: 4,
+				waitBetweenTries: 2500,
+				notesInFlow: true,
+				notes: 'Keep execution settings',
+				extendsCredential: 'notionApi',
+			}),
+		);
+	});
+
+	it('should round-trip non-ASCII characters (em-dash, en-dash, curly quotes, ellipsis) in workflow name, node names, and string parameters', () => {
+		const originalJson: WorkflowJSON = {
+			id: 'unicode-test',
+			name: 'EM — DASH · EN – DASH … "curly"',
+			nodes: [
+				{
+					id: 'trigger-1',
+					name: 'Every Hour — Run',
+					type: 'n8n-nodes-base.scheduleTrigger',
+					typeVersion: 1.2,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: 'set-1',
+					name: 'Greeting — Hello',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [200, 0],
+					parameters: {
+						assignments: {
+							assignments: [
+								{
+									id: 'a',
+									name: 'msg',
+									type: 'string',
+									value: 'hello — world · café "quoted" …',
+								},
+							],
+						},
+					},
+				},
+			],
+			connections: {
+				'Every Hour — Run': {
+					main: [[{ node: 'Greeting — Hello', type: 'main', index: 0 }]],
+				},
+			},
+		};
+
+		const code = generateWorkflowCode(originalJson);
+		const parsedJson = parseWorkflowCode(code);
+
+		expect(parsedJson.name).toBe('EM — DASH · EN – DASH … "curly"');
+		const names = parsedJson.nodes.map((n) => n.name);
+		expect(names).toContain('Every Hour — Run');
+		expect(names).toContain('Greeting — Hello');
+		const setNode = parsedJson.nodes.find((n) => n.name === 'Greeting — Hello')!;
+		const value = (setNode.parameters as { assignments: { assignments: Array<{ value: string }> } })
+			.assignments.assignments[0].value;
+		expect(value).toBe('hello — world · café "quoted" …');
+		expect(parsedJson.connections['Every Hour — Run'].main[0]![0].node).toBe('Greeting — Hello');
+	});
+
 	it('should parse workflow with settings', () => {
 		const originalJson: WorkflowJSON = {
 			id: 'settings-test',
@@ -168,6 +331,7 @@ describe('parseWorkflowCode', () => {
 			connections: {},
 			settings: {
 				timezone: 'America/New_York',
+				errorWorkflow: 'error-handler-123',
 				executionOrder: 'v1',
 			},
 		};
@@ -176,6 +340,7 @@ describe('parseWorkflowCode', () => {
 		const parsedJson = parseWorkflowCode(code);
 
 		expect(parsedJson.settings?.timezone).toBe('America/New_York');
+		expect(parsedJson.settings?.errorWorkflow).toBe('error-handler-123');
 		expect(parsedJson.settings?.executionOrder).toBe('v1');
 	});
 
@@ -968,6 +1133,85 @@ export default workflow('test-id', 'Test Workflow')
 				"={{ $('Node A').item.json.a + $('Node B').item.json.b }}",
 			);
 		});
+
+		it('should escape single-quoted bracket-access keys in expressions', () => {
+			// AI emits an expression with bracket access using single quotes, e.g.
+			// $('Settings').item.json['my key'] — the inner ['my key'] quotes must be
+			// escaped too, not just the $('...') ones, or the outer string breaks.
+			const code = `
+export default workflow('test-id', 'Test Workflow')
+  .add(trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} }))
+  .to(node({ type: 'n8n-nodes-base.set', version: 3.4, config: {
+    parameters: {
+      mode: 'raw',
+      jsonOutput: '={{ $('Settings').item.json['my key'] }}'
+    }
+  } }))
+`;
+			const parsedJson = parseWorkflowCode(code);
+			const setNode = parsedJson.nodes.find((n) => n.type === 'n8n-nodes-base.set');
+			expect((setNode?.parameters as Record<string, unknown>)?.jsonOutput).toBe(
+				"={{ $('Settings').item.json['my key'] }}",
+			);
+		});
+
+		it('should escape apostrophes inside single-quoted bracket-access keys', () => {
+			// A bracket key can itself contain an apostrophe (e.g. ['it's a key']).
+			// Only the quote before the closing ] terminates the key; the inner one
+			// must be escaped, mirroring the $('...') handling.
+			const code = `
+export default workflow('test-id', 'Test Workflow')
+  .add(trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} }))
+  .to(node({ type: 'n8n-nodes-base.set', version: 3.4, config: {
+    parameters: {
+      mode: 'raw',
+      jsonOutput: '={{ $('Settings').item.json['it's a key'] }}'
+    }
+  } }))
+`;
+			const parsedJson = parseWorkflowCode(code);
+			const setNode = parsedJson.nodes.find((n) => n.type === 'n8n-nodes-base.set');
+			expect((setNode?.parameters as Record<string, unknown>)?.jsonOutput).toBe(
+				"={{ $('Settings').item.json['it's a key'] }}",
+			);
+		});
+
+		it('should fail loudly on an unterminated bracket key instead of swallowing the rest', () => {
+			// A ['... with no closing '] is malformed. The fixer must not run to
+			// end-of-code consuming everything; it stops at the bare quote and lets
+			// the outer logic resume, which surfaces a clear syntax error.
+			const code = `
+export default workflow('test-id', 'Test Workflow')
+  .add(trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} }))
+  .to(node({ type: 'n8n-nodes-base.set', version: 3.4, config: {
+    parameters: {
+      mode: 'raw',
+      jsonOutput: '={{ $json['unterminated }}'
+    }
+  } }))
+`;
+			expect(() => parseWorkflowCode(code)).toThrow(/Failed to parse workflow code/);
+		});
+
+		it('should escape apostrophes inside node names in $() references', () => {
+			// A node name containing an apostrophe (e.g. "Bob's Node") has an inner
+			// quote that is not the closing quote — it must be escaped too.
+			const code = `
+export default workflow('test-id', 'Test Workflow')
+  .add(trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} }))
+  .to(node({ type: 'n8n-nodes-base.set', version: 3.4, config: {
+    parameters: {
+      mode: 'raw',
+      jsonOutput: '={{ $('Bob's Node').item.json.x }}'
+    }
+  } }))
+`;
+			const parsedJson = parseWorkflowCode(code);
+			const setNode = parsedJson.nodes.find((n) => n.type === 'n8n-nodes-base.set');
+			expect((setNode?.parameters as Record<string, unknown>)?.jsonOutput).toBe(
+				"={{ $('Bob's Node').item.json.x }}",
+			);
+		});
 	});
 
 	describe('parses placeholder() in workflow code', () => {
@@ -1131,6 +1375,56 @@ export default workflow('test-id', 'AI Agent')
 			expect(openAiNode).toBeDefined();
 			// newCredential serializes to undefined, which is omitted - not yet implemented
 			expect(openAiNode?.credentials).toEqual({});
+		});
+
+		it('should parse newCredential() with id to link existing credential', () => {
+			const code = `
+export default workflow('test-id', 'Test Workflow')
+  .add(trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} }))
+  .to(node({ type: 'n8n-nodes-base.slack', version: 2.2, config: {
+    name: 'Slack',
+    parameters: { channel: '#general' },
+    credentials: { slackApi: newCredential('My Slack', 'cred-123') }
+  } }))
+`;
+			const parsedJson = parseWorkflowCode(code);
+			const slackNode = parsedJson.nodes.find((n) => n.type === 'n8n-nodes-base.slack');
+			expect(slackNode).toBeDefined();
+			// newCredential with id serializes to { id, name }
+			expect(slackNode?.credentials).toEqual({
+				slackApi: { id: 'cred-123', name: 'My Slack' },
+			});
+		});
+
+		it('should roundtrip credentials via newCredential(name, id)', () => {
+			const originalJson: WorkflowJSON = {
+				id: 'cred-roundtrip',
+				name: 'Credential Roundtrip',
+				nodes: [
+					{
+						id: 'node-1',
+						name: 'Slack',
+						type: 'n8n-nodes-base.slack',
+						typeVersion: 2.2,
+						position: [0, 0],
+						parameters: { channel: '#general' },
+						credentials: {
+							slackApi: { id: 'cred-abc', name: 'Slack Bot' },
+						},
+					},
+				],
+				connections: {},
+			};
+
+			const code = generateWorkflowCode(originalJson);
+			// Code should contain newCredential('Slack Bot', 'cred-abc')
+			expect(code).toContain("newCredential('Slack Bot', 'cred-abc')");
+
+			const parsedJson = parseWorkflowCode(code);
+			const slackNode = parsedJson.nodes.find((n) => n.name === 'Slack');
+			expect(slackNode?.credentials).toEqual({
+				slackApi: { id: 'cred-abc', name: 'Slack Bot' },
+			});
 		});
 	});
 
@@ -2299,20 +2593,23 @@ export default workflow('same-name-agents', 'Same Name Agents')
 });
 
 describe('Codegen Roundtrip with Real Workflows', () => {
-	// Download fixtures if needed (runs once before all tests in this file)
+	// Extract fixtures from the committed zip if needed (runs once before all
+	// tests in this file). Unpacking ~2000 workflow files is IO-bound and can
+	// take well over the default 10s hook timeout on a contended CI runner, so
+	// give it a generous budget to avoid flaky "Hook timed out" failures.
 	beforeAll(() => {
 		try {
 			ensureFixtures();
 		} catch (error) {
 			if (error instanceof FixtureDownloadError) {
 				throw new Error(
-					`Failed to download test fixtures from n8n.io API: ${error.message}. ` +
-						'Check your network connection and ensure the API is accessible.',
+					`Failed to prepare test fixtures: ${error.message}. ` +
+						'Ensure public_published_templates.zip is committed to test-fixtures/real-workflows/.',
 				);
 			}
 			throw error;
 		}
-	});
+	}, 60_000);
 
 	if (workflows.length === 0) {
 		it('should have fixtures available (run tests again after download)', () => {
@@ -2330,6 +2627,7 @@ describe('Codegen Roundtrip with Real Workflows', () => {
 			};
 
 			// Helper to recursively add __rl: true to resource locator values
+			// and clear placeholder values in list mode (matches builder normalization)
 			const normalizeResourceLocators = (params: unknown): unknown => {
 				if (typeof params !== 'object' || params === null) return params;
 				if (Array.isArray(params)) return params.map(normalizeResourceLocators);
@@ -2337,10 +2635,14 @@ describe('Codegen Roundtrip with Real Workflows', () => {
 				const result: Record<string, unknown> = {};
 				for (const [key, value] of Object.entries(params as Record<string, unknown>)) {
 					if (isResourceLocatorLike(value)) {
-						result[key] = {
-							__rl: true,
-							...(normalizeResourceLocators(value) as Record<string, unknown>),
-						};
+						const rlValue = value;
+						const normalized = normalizeResourceLocators(value) as Record<string, unknown>;
+						// Clear placeholder values in list mode (matches builder behavior)
+						if (rlValue.mode === 'list' && isPlaceholderValue(rlValue.value)) {
+							result[key] = { __rl: true, ...normalized, value: '' };
+						} else {
+							result[key] = { __rl: true, ...normalized };
+						}
 					} else if (typeof value === 'object' && value !== null) {
 						result[key] = normalizeResourceLocators(value);
 					} else {
@@ -2374,14 +2676,28 @@ describe('Codegen Roundtrip with Real Workflows', () => {
 				if (!p || typeof p !== 'object') return p;
 				const obj = p as Record<string, unknown>;
 				if (Object.keys(obj).length === 0) return undefined;
-				if (nodeType === 'n8n-nodes-base.stickyNote' && obj.content === '') {
-					const { content, ...rest } = obj;
-					return Object.keys(rest).length === 0 ? undefined : rest;
+				if (nodeType === 'n8n-nodes-base.stickyNote') {
+					// Strip empty content and non-serializable color values (null, empty object)
+					const cleaned = { ...obj };
+					if (cleaned.content === '') delete cleaned.content;
+					if (cleaned.color === null || cleaned.color === undefined) {
+						delete cleaned.color;
+					} else if (
+						typeof cleaned.color === 'object' &&
+						Object.keys(cleaned.color as Record<string, unknown>).length === 0
+					) {
+						delete cleaned.color;
+					}
+					return Object.keys(cleaned).length === 0 ? undefined : cleaned;
 				}
 				// Normalize resource locators (add __rl: true) for fair comparison
 				// since SDK-generated code adds __rl: true to all resource locators
 				// Also normalize expressions (strip leading = from double-equals)
-				return normalizeExpressions(normalizeResourceLocators(p));
+				// Also normalize newlines in expression strings (raw \n → \\n inside quotes)
+				// since the serializer legitimately escapes raw newlines in JS string literals
+				return escapeNewlinesInExpressionStrings(
+					normalizeExpressions(normalizeResourceLocators(p)),
+				);
 			};
 
 			// Helper function for filtering empty connections, orphaned connections (from non-existent nodes),
@@ -2402,6 +2718,8 @@ describe('Codegen Roundtrip with Real Workflows', () => {
 					)) {
 						// Filter each output slot to remove connections to non-existent target nodes
 						const filteredOutputs = (outputs || []).map((slot: unknown) => {
+							// Normalize null/undefined slots to empty arrays
+							if (slot === null || slot === undefined) return [] as unknown[];
 							if (!Array.isArray(slot)) return slot as unknown[];
 							// Filter out connections to non-existent nodes
 							if (validNodeNames) {
@@ -2411,6 +2729,15 @@ describe('Codegen Roundtrip with Real Workflows', () => {
 							}
 							return slot as unknown[];
 						});
+						// Strip trailing empty arrays (semantically equivalent to absent)
+						while (filteredOutputs.length > 0) {
+							const lastSlot = filteredOutputs[filteredOutputs.length - 1];
+							if (Array.isArray(lastSlot) && lastSlot.length === 0) {
+								filteredOutputs.pop();
+							} else {
+								break;
+							}
+						}
 						// Only include non-empty output slots
 						const nonEmptyOutputs = filteredOutputs.filter(
 							(arr: unknown) => Array.isArray(arr) && arr.length > 0,
@@ -2424,6 +2751,27 @@ describe('Codegen Roundtrip with Real Workflows', () => {
 					}
 				}
 				return result;
+			};
+
+			const sortSlotConnections = (conns: Record<string, unknown>) => {
+				for (const nodeConns of Object.values(conns)) {
+					for (const outputs of Object.values(nodeConns as Record<string, unknown[][]>)) {
+						if (!Array.isArray(outputs)) continue;
+						for (const slot of outputs) {
+							if (Array.isArray(slot) && slot.length > 1) {
+								slot.sort((a: unknown, b: unknown) => {
+									const aNode = (a as { node?: string }).node ?? '';
+									const bNode = (b as { node?: string }).node ?? '';
+									const cmp = aNode.localeCompare(bNode);
+									if (cmp !== 0) return cmp;
+									const aIndex = (a as { index?: number }).index ?? 0;
+									const bIndex = (b as { index?: number }).index ?? 0;
+									return aIndex - bIndex;
+								});
+							}
+						}
+					}
+				}
 			};
 
 			// Helper to normalize warnings for comparison
@@ -2440,28 +2788,25 @@ describe('Codegen Roundtrip with Real Workflows', () => {
 					const parsedJson: WorkflowJSON = builder.toJSON();
 
 					// Validate the parsed workflow
-					if (!SKIP_VALIDATION_WORKFLOWS.has(id)) {
-						const validationResult = builder.validate();
+					const validationResult = builder.validate();
 
-						// Get actual warnings
-						const actualWarnings: ExpectedWarning[] = validationResult.warnings
-							.map((w: { code: string; nodeName?: string }) => ({
-								code: w.code,
-								nodeName: w.nodeName,
-							}))
-							.sort((a: ExpectedWarning, b: ExpectedWarning) =>
-								normalizeWarning(a).localeCompare(normalizeWarning(b)),
-							);
-
-						// Get expected warnings (from manifest or empty array)
-						const expected = (expectedWarnings ?? []).sort(
-							(a: ExpectedWarning, b: ExpectedWarning) =>
-								normalizeWarning(a).localeCompare(normalizeWarning(b)),
+					// Get actual warnings
+					const actualWarnings: ExpectedWarning[] = validationResult.warnings
+						.map((w: { code: string; nodeName?: string }) => ({
+							code: w.code,
+							nodeName: w.nodeName,
+						}))
+						.sort((a: ExpectedWarning, b: ExpectedWarning) =>
+							normalizeWarning(a).localeCompare(normalizeWarning(b)),
 						);
 
-						// Compare warnings
-						expect(actualWarnings).toEqual(expected);
-					}
+					// Get expected warnings (from manifest or empty array)
+					const expected = (expectedWarnings ?? []).sort((a: ExpectedWarning, b: ExpectedWarning) =>
+						normalizeWarning(a).localeCompare(normalizeWarning(b)),
+					);
+
+					// Compare warnings
+					expect(actualWarnings).toEqual(expected);
 
 					// Verify basic structure
 					expect(parsedJson.id ?? '').toBe(json.id ?? '');
@@ -2478,7 +2823,9 @@ describe('Codegen Roundtrip with Real Workflows', () => {
 
 						if (parsedNode) {
 							expect(parsedNode.type).toBe(originalNode.type);
-							expect(parsedNode.typeVersion).toBe(originalNode.typeVersion);
+							// typeVersion: undefined is semantically equivalent to 1
+							// Compare as numbers since string typeVersions are normalized to numbers
+							expect(parsedNode.typeVersion).toBe(Number(originalNode.typeVersion ?? 1));
 							expect(normalizeParams(parsedNode.parameters, parsedNode.type)).toEqual(
 								normalizeParams(originalNode.parameters, originalNode.type),
 							);
@@ -2494,15 +2841,262 @@ describe('Codegen Roundtrip with Real Workflows', () => {
 						expect(parsedJson.settings).toEqual(json.settings);
 					}
 
+					// Verify node groups survive the roundtrip. Node and group ids are
+					// regenerated deterministically on parse, so compare each group by name
+					// and the names of its member nodes rather than by raw id.
+					if (json.nodeGroups && json.nodeGroups.length > 0) {
+						const groupsByMemberName = (wf: WorkflowJSON) => {
+							const nameById = new Map(wf.nodes.map((n) => [n.id, n.name]));
+							return (wf.nodeGroups ?? [])
+								.map((g) => ({
+									name: g.name,
+									members: g.nodeIds.flatMap((id) => nameById.get(id) ?? []).sort(),
+								}))
+								.sort((a, b) => a.name.localeCompare(b.name));
+						};
+						expect(groupsByMemberName(parsedJson)).toEqual(groupsByMemberName(json));
+					}
+
 					// Filter connections from non-existent nodes (orphaned connections in original workflow)
 					const validNodeNames = new Set(
 						json.nodes.map((n) => n.name).filter((name): name is string => !!name),
 					);
-					const filteredOriginal = filterEmptyConnections(json.connections, validNodeNames);
+					// Normalize original connections (clone first to avoid mutating input)
+					// since the original JSON may have flat tuple connections. Also fold
+					// any legacy top-level `error` connections into main[last] — the SDK
+					// now always emits the modern shape, so the original must be aligned
+					// before comparison. Old templates are kept untouched; the test does
+					// the old/new translation so symmetry holds against the serializer's
+					// matching fold.
+					const normalizedOriginalConns = deepCopy(json.connections);
+					normalizeConnections(normalizedOriginalConns);
+					foldLegacyErrorConnections(normalizedOriginalConns, json.nodes);
+					const filteredOriginal = filterEmptyConnections(normalizedOriginalConns, validNodeNames);
 					const filteredParsed = filterEmptyConnections(parsedJson.connections);
+
+					// Verify all connection source keys match
 					expect(Object.keys(filteredParsed).sort()).toEqual(Object.keys(filteredOriginal).sort());
+
+					// Deep connection comparison
+					sortSlotConnections(filteredOriginal);
+					sortSlotConnections(filteredParsed);
+					for (const nodeName of Object.keys(filteredOriginal)) {
+						expect(filteredParsed[nodeName]).toEqual(filteredOriginal[nodeName]);
+					}
 				});
 			});
 		});
+	}
+});
+
+describe('Committed workflows — builder validator errors', () => {
+	const normalizeError = (e: ExpectedError): string => `${e.code}:${e.nodeName ?? ''}`;
+
+	const workflowsWithExpectedBuilderErrors = workflows.filter(
+		(w) => w.expectedBuilderErrors && w.expectedBuilderErrors.length > 0,
+	);
+
+	if (workflowsWithExpectedBuilderErrors.length === 0) {
+		it('has at least one fixture with expectedBuilderErrors declared', () => {
+			expect(workflowsWithExpectedBuilderErrors.length).toBeGreaterThan(0);
+		});
+	} else {
+		workflowsWithExpectedBuilderErrors.forEach(({ id, name, json, expectedBuilderErrors }) => {
+			it(`emits expected builder validation errors for workflow ${id}: "${name}"`, () => {
+				const code = generateWorkflowCode(json);
+				const builder = parseWorkflowCodeToBuilder(code);
+				const result = builder.validate({ allowDisconnectedNodes: true });
+
+				const actualErrors: ExpectedError[] = result.errors
+					.map((e) => ({ code: e.code, nodeName: e.nodeName }))
+					.sort((a, b) => normalizeError(a).localeCompare(normalizeError(b)));
+
+				const expected = (expectedBuilderErrors ?? [])
+					.slice()
+					.sort((a, b) => normalizeError(a).localeCompare(normalizeError(b)));
+
+				expect(actualErrors).toEqual(expected);
+				expect(result.valid).toBe(false);
+			});
+		});
+	}
+});
+
+describe('Committed workflows — source lint via validateWorkflowBuilder', () => {
+	const normalizeLint = (issue: ExpectedLintIssue): string =>
+		`${issue.code}:${issue.nodeName ?? ''}`;
+
+	const workflowsWithLintExpectations = workflows.filter((w) => w.expectedLintIssues !== undefined);
+
+	if (workflowsWithLintExpectations.length === 0) {
+		it('has at least one fixture with expectedLintIssues declared', () => {
+			expect(workflowsWithLintExpectations.length).toBeGreaterThan(0);
+		});
+	} else {
+		workflowsWithLintExpectations.forEach(({ id, name, json, expectedLintIssues }) => {
+			it(`emits expected lint issues for workflow ${id}: "${name}"`, () => {
+				const code = generateWorkflowCode(json);
+				const builder = parseWorkflowCodeToBuilder(code);
+				const result = validateWorkflowBuilder(builder, {
+					lint: true,
+					source: code,
+					allowDisconnectedNodes: true,
+				});
+
+				const actual: ExpectedLintIssue[] = result.lint
+					.map((issue) => ({ code: issue.code, nodeName: issue.nodeName }))
+					.sort((a, b) => normalizeLint(a).localeCompare(normalizeLint(b)));
+
+				const expected = (expectedLintIssues ?? [])
+					.slice()
+					.sort((a, b) => normalizeLint(a).localeCompare(normalizeLint(b)));
+
+				expect(actual).toEqual(expected);
+				// Lint findings are informational — they must not block ok.
+				expect(result.ok).toBe(true);
+				expect(result.lint.every((issue) => issue.severity === 'informational')).toBe(true);
+			});
+		});
+	}
+});
+
+describe('Committed workflows — schema validation errors', () => {
+	// Mirror the relevant builderHint.inputs / builderHint.outputs declarations from the
+	// real node types so validateWorkflow can resolve required AI inputs and emit
+	// output-mode warnings without pulling in the full nodes-langchain dependency tree.
+	const mockNodeTypesProvider = {
+		getByNameAndVersion: (type: string, _version?: number) => {
+			if (type === '@n8n/n8n-nodes-langchain.chatTrigger') {
+				return {
+					description: {
+						inputs: ['main'],
+						builderHint: {
+							inputs: {
+								ai_memory: {
+									required: true,
+									displayOptions: {
+										show: {
+											mode: ['hostedChat', 'webhook'],
+											'options.loadPreviousSession': ['memory'],
+										},
+									},
+								},
+							},
+						},
+					},
+				};
+			}
+			if (type === '@n8n/n8n-nodes-langchain.agent') {
+				return {
+					description: {
+						inputs: ['main'],
+						builderHint: {
+							inputs: {
+								ai_languageModel: { required: true },
+								ai_memory: { required: false },
+								ai_tool: { required: false },
+							},
+						},
+					},
+				};
+			}
+			if (type === '@n8n/n8n-nodes-langchain.vectorStoreInMemory') {
+				return {
+					description: {
+						inputs: ['main'],
+						builderHint: {
+							inputs: { ai_embedding: { required: true } },
+							outputs: {
+								main: { displayOptions: { show: { mode: ['insert', 'load', 'update'] } } },
+								ai_vectorStore: {
+									required: true,
+									displayOptions: { show: { mode: ['retrieve'] } },
+								},
+								ai_tool: {
+									required: true,
+									displayOptions: { show: { mode: ['retrieve-as-tool'] } },
+								},
+							},
+						},
+					},
+				};
+			}
+			return { description: { inputs: ['main'] } };
+		},
+		getByName: (type: string) => mockNodeTypesProvider.getByNameAndVersion(type),
+		getKnownTypes: () => ({}),
+	};
+
+	const normalizeError = (e: ExpectedError): string => `${e.code}:${e.nodeName ?? ''}`;
+
+	const workflowsWithExpectedErrors = workflows.filter(
+		(w) => w.expectedErrors && w.expectedErrors.length > 0,
+	);
+
+	if (workflowsWithExpectedErrors.length === 0) {
+		it('has at least one fixture with expectedErrors declared', () => {
+			expect(workflowsWithExpectedErrors.length).toBeGreaterThan(0);
+		});
+	} else {
+		workflowsWithExpectedErrors.forEach(({ id, name, json, expectedErrors }) => {
+			it(`emits expected validation errors for workflow ${id}: "${name}"`, () => {
+				const expectedCodes = new Set((expectedErrors ?? []).map((e) => e.code));
+
+				const result = validateWorkflow(json, {
+					nodeTypesProvider: mockNodeTypesProvider as never,
+					// Disconnected-node warnings are unrelated to the AI-input checks
+					// these fixtures are designed to exercise.
+					allowDisconnectedNodes: true,
+				});
+
+				const actualErrors: ExpectedError[] = result.errors
+					.filter((e) => expectedCodes.has(e.code))
+					.map((e) => ({ code: e.code, nodeName: e.nodeName }))
+					.sort((a, b) => normalizeError(a).localeCompare(normalizeError(b)));
+
+				const expected = (expectedErrors ?? [])
+					.slice()
+					.sort((a, b) => normalizeError(a).localeCompare(normalizeError(b)));
+
+				expect(actualErrors).toEqual(expected);
+				expect(result.valid).toBe(false);
+			});
+		});
+	}
+
+	const normalizeWarning = (w: ExpectedWarning): string => `${w.code}:${w.nodeName ?? ''}`;
+
+	const workflowsWithExpectedValidationWarnings = workflows.filter(
+		(w) => w.expectedValidationWarnings && w.expectedValidationWarnings.length > 0,
+	);
+
+	if (workflowsWithExpectedValidationWarnings.length === 0) {
+		it('has at least one fixture with expectedValidationWarnings declared', () => {
+			expect(workflowsWithExpectedValidationWarnings.length).toBeGreaterThan(0);
+		});
+	} else {
+		workflowsWithExpectedValidationWarnings.forEach(
+			({ id, name, json, expectedValidationWarnings }) => {
+				it(`emits expected validation warnings for workflow ${id}: "${name}"`, () => {
+					const expectedCodes = new Set((expectedValidationWarnings ?? []).map((w) => w.code));
+
+					const result = validateWorkflow(json, {
+						nodeTypesProvider: mockNodeTypesProvider as never,
+						allowDisconnectedNodes: true,
+					});
+
+					const actualWarnings: ExpectedWarning[] = result.warnings
+						.filter((w) => expectedCodes.has(w.code))
+						.map((w) => ({ code: w.code, nodeName: w.nodeName }))
+						.sort((a, b) => normalizeWarning(a).localeCompare(normalizeWarning(b)));
+
+					const expected = (expectedValidationWarnings ?? [])
+						.slice()
+						.sort((a, b) => normalizeWarning(a).localeCompare(normalizeWarning(b)));
+
+					expect(actualWarnings).toEqual(expected);
+				});
+			},
+		);
 	}
 });

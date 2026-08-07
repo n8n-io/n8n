@@ -8,7 +8,7 @@ When changing logic in this package, make sure your changes are backwards compat
 - don't remove existing interfaces or properties in them
 - make new properties optional or create new versions of interfaces
 - publicly exposed methods should handle both old and new interfaces
-- when making a breaking change or adding a new public helper function that is exported in `@n8n/ai-node-sdk`, make sure to update `aiNodeSdkVersion` in `package.json`
+- when making a breaking change or adding a new public helper function that is exported in `@n8n/ai-node-sdk`, make sure to update `AI_NODE_SDK_VERSION` in `ai-node-sdk-version.ts`
 
 ## Development
 

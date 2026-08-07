@@ -13,12 +13,12 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useCodeEditor } from '../../composables/useCodeEditor';
 import { useI18n } from '@n8n/i18n';
 import { useMessage } from '@/app/composables/useMessage';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import AskAI from './AskAI/AskAI.vue';
 import { CODE_PLACEHOLDERS } from './constants';
 import { useLinter } from './linter';
-import { useSettingsStore } from '@/app/stores/settings.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { dropInCodeEditor } from '../../plugins/codemirror/dragAndDrop';
 import type { TargetNodeParameterContext } from '@/Interface';
 import { valueToInsert } from './utils';
@@ -66,12 +66,12 @@ const rootStore = useRootStore();
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const settingsStore = useSettingsStore();
-const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 
 const linter = useLinter(
 	() => props.mode,
 	() => (props.language === 'pythonNative' ? 'python' : props.language),
-	() => workflowsStore.workflow.settings?.binaryMode,
+	() => workflowDocumentStore?.value?.settings?.binaryMode,
 );
 const extensions = computed(() => [linter.value]);
 const placeholder = computed(() => CODE_PLACEHOLDERS[props.language]?.[props.mode] ?? '');
@@ -210,7 +210,12 @@ async function onDrop(value: string, event: MouseEvent) {
 	await dropInCodeEditor(
 		toRaw(editor.value),
 		event,
-		valueToInsert(value, props.language, props.mode, workflowsStore.workflow.settings?.binaryMode),
+		valueToInsert(
+			value,
+			props.language,
+			props.mode,
+			workflowDocumentStore?.value?.settings?.binaryMode,
+		),
 	);
 }
 

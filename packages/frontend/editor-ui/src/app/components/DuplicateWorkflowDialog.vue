@@ -1,19 +1,19 @@
 <script lang="ts" setup>
 import { ref, watch, onMounted, nextTick } from 'vue';
 import { MAX_WORKFLOW_NAME_LENGTH } from '@/app/constants';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import WorkflowTagsDropdown from '@/features/shared/tags/components/WorkflowTagsDropdown.vue';
 import Modal from '@/app/components/Modal.vue';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
-import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
+import type { WorkflowDataCreate } from '@n8n/rest-api-client/api/workflows';
 import { createEventBus, type EventBus } from '@n8n/utils/event-bus';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
 
 import { N8nButton, N8nInput } from '@n8n/design-system';
@@ -90,7 +90,7 @@ const save = async (): Promise<void> => {
 	isSaving.value = true;
 
 	try {
-		let workflowToUpdate: WorkflowDataUpdate | undefined;
+		let workflowToCreate: WorkflowDataCreate | undefined;
 		if (workflowsStore.isWorkflowSaved[props.data.id]) {
 			const {
 				createdAt,
@@ -102,19 +102,22 @@ const save = async (): Promise<void> => {
 				activeVersionId,
 				activeVersion,
 				active,
+				// Placement is driven by `parentFolderId` below; the `parentFolder` relation object
+				// is not a valid create input and must not be forwarded to the API.
+				parentFolder,
 				...workflow
 			} = await workflowsListStore.fetchWorkflow(props.data.id);
-			workflowToUpdate = workflow;
+			workflowToCreate = { ...workflow, projectId: homeProject?.id };
 
 			workflowHelpers.removeForeignCredentialsFromWorkflow(
-				workflowToUpdate,
+				workflowToCreate,
 				credentialsStore.allCredentials,
 			);
 		}
 
 		const duplicatedWorkflowId = await workflowSaving.saveAsNewWorkflow({
 			name: workflowName,
-			data: workflowToUpdate,
+			data: workflowToCreate,
 			tags: currentTagIds.value,
 			resetWebhookUrls: true,
 			openInNewWindow: true,

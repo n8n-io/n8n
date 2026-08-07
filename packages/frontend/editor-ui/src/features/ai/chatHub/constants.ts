@@ -1,4 +1,8 @@
-import type { ChatHubLLMProvider, ChatHubProvider } from '@n8n/api-types';
+import type {
+	ChatHubLLMProvider,
+	ChatHubProvider,
+	ChatHubVectorStoreProvider,
+} from '@n8n/api-types';
 
 // Route and view identifiers
 export const CHAT_VIEW = 'chat';
@@ -10,7 +14,6 @@ export const CHAT_SETTINGS_VIEW = 'chat-settings';
 export const CHAT_SESSIONS_PAGE_SIZE = 18;
 export const MAX_AGENT_NAME_CHARS_MENU = 45;
 export const NEW_AGENT_MENU_ID = 'agent::new';
-export const MAX_AGENT_NAME_CHARS = 30;
 export const MAX_FLATTENED_SEARCH_RESULTS_PER_PROVIDER = 10;
 
 export const providerDisplayNames: Record<ChatHubProvider, string> = {
@@ -28,8 +31,15 @@ export const providerDisplayNames: Record<ChatHubProvider, string> = {
 	deepSeek: 'DeepSeek',
 	cohere: 'Cohere',
 	mistralCloud: 'Mistral Cloud',
+	nvidia: 'NVIDIA Nemotron',
 	n8n: 'Workflow agent',
 	'custom-agent': 'Personal agent',
+};
+
+export const vectorStoreProviderDisplayNames: Record<ChatHubVectorStoreProvider, string> = {
+	pgvector: 'PGVector',
+	pinecone: 'Pinecone',
+	qdrant: 'Qdrant',
 };
 
 export const MOBILE_MEDIA_QUERY = '(max-width: 768px)';

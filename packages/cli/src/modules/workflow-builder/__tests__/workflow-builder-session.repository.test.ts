@@ -1,12 +1,13 @@
 import { AIMessage, HumanMessage } from '@langchain/core/messages';
-import { mockClear } from 'jest-mock-extended';
+import { mockClear } from 'vitest-mock-extended';
 
 import { mockEntityManager } from '@test/mocking';
+
 import { WorkflowBuilderSession } from '../workflow-builder-session.entity';
 
 // Mock the ai-workflow-builder module to avoid import chain issues
-jest.mock('@n8n/ai-workflow-builder', () => ({
-	isLangchainMessagesArray: jest.fn((arr: unknown[]) => {
+vi.mock('@n8n/ai-workflow-builder', () => ({
+	isLangchainMessagesArray: vi.fn((arr: unknown[]) => {
 		if (!Array.isArray(arr)) return false;
 		return arr.every(
 			(item: unknown) =>
@@ -27,16 +28,30 @@ describe('WorkflowBuilderSessionRepository', () => {
 	const entityManager = mockEntityManager(WorkflowBuilderSession);
 	let repository: WorkflowBuilderSessionRepository;
 
+	const mockExecute = vi.fn().mockResolvedValue(undefined);
+	const mockQueryBuilder = {
+		insert: vi.fn().mockReturnThis(),
+		into: vi.fn().mockReturnThis(),
+		values: vi.fn().mockReturnThis(),
+		orUpdate: vi.fn().mockReturnThis(),
+		execute: mockExecute,
+	};
+
 	beforeEach(() => {
 		mockClear(entityManager.findOne);
-		mockClear(entityManager.upsert);
 		mockClear(entityManager.delete);
+		mockExecute.mockClear();
+		mockQueryBuilder.insert.mockClear().mockReturnThis();
+		mockQueryBuilder.into.mockClear().mockReturnThis();
+		mockQueryBuilder.values.mockClear().mockReturnThis();
+		mockQueryBuilder.orUpdate.mockClear().mockReturnThis();
 
 		// Create repository with mocked data source
 		const mockDataSource = {
 			manager: entityManager,
 		};
 		repository = new WorkflowBuilderSessionRepository(mockDataSource as never);
+		vi.spyOn(repository, 'createQueryBuilder').mockReturnValue(mockQueryBuilder as never);
 	});
 
 	describe('parseThreadId', () => {
@@ -54,6 +69,27 @@ describe('WorkflowBuilderSessionRepository', () => {
 
 		it('should throw error for empty thread ID', async () => {
 			await expect(repository.getSession('')).rejects.toThrow('Invalid thread ID format: ');
+		});
+
+		it('should strip the code-builder "-code" suffix from the userId', async () => {
+			entityManager.findOne.mockResolvedValueOnce(null);
+
+			const userUuid = 'af6cc09d-e809-41c6-9e92-ca26dfd11487';
+			await repository.getSession(`workflow-wf123-user-${userUuid}-code`);
+
+			expect(entityManager.findOne).toHaveBeenCalledWith(WorkflowBuilderSession, {
+				where: { workflowId: 'wf123', userId: userUuid },
+			});
+		});
+
+		it('should not strip "-code" from a non-suffixed userId', async () => {
+			entityManager.findOne.mockResolvedValueOnce(null);
+
+			await repository.getSession('workflow-wf123-user-user456');
+
+			expect(entityManager.findOne).toHaveBeenCalledWith(WorkflowBuilderSession, {
+				where: { workflowId: 'wf123', userId: 'user456' },
+			});
 		});
 	});
 
@@ -136,7 +172,6 @@ describe('WorkflowBuilderSessionRepository', () => {
 
 		it('should upsert session with serialized messages', async () => {
 			const messages = [new HumanMessage('Hello'), new AIMessage('Hi there!')];
-			entityManager.upsert.mockResolvedValueOnce(undefined as never);
 
 			await repository.saveSession(validThreadId, {
 				messages,
@@ -144,32 +179,31 @@ describe('WorkflowBuilderSessionRepository', () => {
 				updatedAt: new Date(),
 			});
 
-			expect(entityManager.upsert).toHaveBeenCalledWith(
-				WorkflowBuilderSession,
-				{
-					workflowId: 'wf123',
-					userId: 'user456',
-					messages: expect.any(Array), // Serialized messages
-					previousSummary: 'Summary',
-				},
+			expect(mockQueryBuilder.into).toHaveBeenCalledWith(WorkflowBuilderSession);
+			expect(mockQueryBuilder.values).toHaveBeenCalledWith({
+				id: expect.any(String),
+				workflowId: 'wf123',
+				userId: 'user456',
+				messages: expect.any(Array),
+				previousSummary: 'Summary',
+				activeVersionCardId: null,
+				resumeAfterRestoreMessageId: null,
+			});
+			expect(mockQueryBuilder.orUpdate).toHaveBeenCalledWith(
+				['messages', 'previousSummary', 'activeVersionCardId', 'resumeAfterRestoreMessageId'],
 				['workflowId', 'userId'],
 			);
+			expect(mockExecute).toHaveBeenCalled();
 		});
 
 		it('should set previousSummary to null when undefined', async () => {
-			entityManager.upsert.mockResolvedValueOnce(undefined as never);
-
 			await repository.saveSession(validThreadId, {
 				messages: [],
 				updatedAt: new Date(),
 			});
 
-			expect(entityManager.upsert).toHaveBeenCalledWith(
-				WorkflowBuilderSession,
-				expect.objectContaining({
-					previousSummary: null,
-				}),
-				['workflowId', 'userId'],
+			expect(mockQueryBuilder.values).toHaveBeenCalledWith(
+				expect.objectContaining({ previousSummary: null }),
 			);
 		});
 

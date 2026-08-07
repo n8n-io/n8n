@@ -12,8 +12,8 @@ const { width } = useElementSize(containerRef);
 
 const bp = computed(() => {
 	if (width.value <= 0) return 'default';
-	if (width.value <= 400) return 'stacked';
-	if (width.value <= 680) return 'medium';
+	if (width.value <= 520) return 'stacked';
+	if (width.value <= 880) return 'medium';
 	return 'default';
 });
 
@@ -88,7 +88,7 @@ const isStacked = computed(() => bp.value !== 'default');
 }
 
 .middle {
-	flex-grow: 0;
+	flex-grow: 1;
 	flex-basis: 160px;
 }
 
@@ -167,7 +167,7 @@ const isStacked = computed(() => bp.value !== 'default');
 	}
 
 	.item:last-of-type {
-		flex-basis: 400px;
+		flex-basis: 100%;
 		margin-top: -1px;
 
 		--input--radius--top-left: 0;

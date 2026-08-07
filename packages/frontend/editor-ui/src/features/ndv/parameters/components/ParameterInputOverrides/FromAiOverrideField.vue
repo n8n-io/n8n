@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { i18n } from '@n8n/i18n';
 
-import { N8nIconButton, N8nText } from '@n8n/design-system';
+import { N8nIcon, N8nText } from '@n8n/design-system';
 import AiStarsIcon from '@/app/components/AiStarsIcon.vue';
 defineProps<{
 	isReadOnly?: boolean;
@@ -14,7 +14,7 @@ const emit = defineEmits<{
 
 <template>
 	<div :class="$style.contentOverrideContainer" data-test-id="fromAI-override-field">
-		<div :class="[$style.iconStars, 'el-input-group__prepend', $style.noCornersRight]">
+		<div :class="[$style.iconStars, $style.noCornersRight]">
 			<AiStarsIcon />
 		</div>
 		<div :class="$style.overrideInput">
@@ -24,15 +24,9 @@ const emit = defineEmits<{
 				size="small"
 			/>
 		</div>
-		<N8nIconButton
-			variant="subtle"
-			v-if="!isReadOnly"
-			:class="['n8n-input', $style.overrideCloseButton]"
-			:outline="false"
-			icon="x"
-			size="small"
-			@click="emit('close')"
-		/>
+		<div v-if="!isReadOnly" :class="[$style.overrideCloseButton]" @click="emit('close')">
+			<N8nIcon v-if="!isReadOnly" icon="x" size="small" />
+		</div>
 	</div>
 </template>
 
@@ -42,9 +36,9 @@ const emit = defineEmits<{
 	padding-left: 8px;
 	width: 22px;
 	text-align: center;
-	border: none;
+	border: 0;
 	color: var(--color--foreground--shade-2);
-	background-color: var(--color--foreground);
+	background-color: unset;
 }
 
 .noCornersRight {
@@ -60,13 +54,18 @@ const emit = defineEmits<{
 }
 
 .overrideCloseButton {
-	padding: 0 var(--spacing--2xs);
 	border: 0;
-	color: var(--color--text);
+	color: var(--color--text--tint-1);
 	margin-left: auto;
-	--button--color--background--hover: transparent;
-	--button--color--background--active: transparent;
-	background-color: var(--color--foreground);
+	padding: 0 var(--spacing--2xs);
+	align-self: stretch;
+	display: flex;
+	align-items: center;
+	cursor: pointer;
+
+	&:hover {
+		color: var(--color--text);
+	}
 }
 
 .contentOverrideContainer {

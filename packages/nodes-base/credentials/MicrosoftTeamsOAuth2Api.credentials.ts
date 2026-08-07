@@ -4,7 +4,7 @@ const defaultScopes = [
 	'openid',
 	'offline_access',
 	'User.Read.All',
-	'Group.ReadWrite.All',
+	'Group.Read.All',
 	'Chat.ReadWrite',
 	'ChannelMessage.Read.All',
 ];
@@ -63,7 +63,7 @@ export class MicrosoftTeamsOAuth2Api implements ICredentialType {
       <br><code>ChannelMessage.Read.All</code>
       <br><code>Chat.Read.All</code>
       <br><code>Team.ReadBasic.All</code>
-      <br><code>Subscription.ReadWrite.All</code>
+      <br><code>Subscription.Read.All</code>
       <br>Configure these permissions in <a href="https://portal.azure.com">Microsoft Entra</a>
     `,
 			name: 'notice',

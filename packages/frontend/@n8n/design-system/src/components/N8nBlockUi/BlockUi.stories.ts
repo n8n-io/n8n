@@ -3,8 +3,16 @@ import type { StoryFn } from '@storybook/vue3-vite';
 import N8nBlockUi from './BlockUi.vue';
 
 export default {
-	title: 'Atoms/BlockUI',
+	title: 'Core/BlockUI',
 	component: N8nBlockUi,
+
+	parameters: {
+		docs: {
+			description: {
+				component: 'An overlay that blocks interaction and communicates loading or disabled state.',
+			},
+		},
+	},
 };
 
 const Template: StoryFn = (args, { argTypes }) => ({

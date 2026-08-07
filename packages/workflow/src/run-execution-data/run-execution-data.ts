@@ -8,6 +8,8 @@
 import type { IRunExecutionDataV0 } from './run-execution-data.v0';
 import { runExecutionDataV0ToV1, type IRunExecutionDataV1 } from './run-execution-data.v1';
 
+export type { RedactionInfo } from './run-execution-data.v1';
+
 /**
  * All the versions of the interface.
  * !!! Only used at the data access layer to handle records saved under older versions. !!!

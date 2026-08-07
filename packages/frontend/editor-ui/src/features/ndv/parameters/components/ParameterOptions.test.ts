@@ -96,7 +96,7 @@ describe('ParameterOptions', () => {
 		const actionToggle = getByTestId('action-toggle');
 		const actionToggleButton = within(actionToggle).getByRole('button');
 		expect(actionToggleButton).toBeVisible();
-		await userEvent.click(actionToggle);
+		await userEvent.click(actionToggleButton);
 		const actionToggleId = actionToggleButton.getAttribute('aria-controls');
 		const actionDropdown = document.getElementById(actionToggleId as string) as HTMLElement;
 		expect(actionDropdown).toBeInTheDocument();

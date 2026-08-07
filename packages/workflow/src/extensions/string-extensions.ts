@@ -1,3 +1,10 @@
+// NOTE: This file is intentionally mirrored in @n8n/expression-runtime/src/extensions/
+// for use inside the isolated VM. Changes here must be reflected there and vice versa.
+// TODO: Eliminate the duplication. The blocker is that @n8n/expression-runtime is
+// Vite-stubbed for browser builds (to exclude isolated-vm), which prevents n8n-workflow
+// from importing these extension utilities directly from the runtime package. Fix by
+// splitting @n8n/expression-runtime into a browser-safe extensions subpath (not stubbed)
+// and a node-only VM entry (stubbed).
 import { toBase64, fromBase64 } from 'js-base64';
 import SHA from 'jssha';
 import { DateTime } from 'luxon';
@@ -8,6 +15,7 @@ import { transliterate } from 'transliteration';
 import type { Extension, ExtensionMap } from './extensions';
 import { toDateTime as numberToDateTime } from './number-extensions';
 import { ExpressionExtensionError } from '../errors/expression-extension.error';
+import { safeRegex } from '../safe-regex';
 import { tryToParseDateTime } from '../type-validation';
 
 export const SupportedHashAlgorithms = [
@@ -297,9 +305,8 @@ function toNumber(value: string) {
 
 function quote(value: string, extraArgs: string[]) {
 	const [quoteChar = '"'] = extraArgs;
-	return `${quoteChar}${value
-		.replace(/\\/g, '\\\\')
-		.replace(new RegExp(`\\${quoteChar}`, 'g'), `\\${quoteChar}`)}${quoteChar}`;
+	const escapedBackslashes = value.replace(/\\/g, '\\\\');
+	return `${quoteChar}${safeRegex.replace(`\\${quoteChar}`, escapedBackslashes, 'g', `\\${quoteChar}`)}${quoteChar}`;
 }
 
 function isNumeric(value: string) {
@@ -355,7 +362,7 @@ function toSentenceCase(value: string) {
 		current = current.slice(puncIndex + 1);
 	}
 
-	return buffer;
+	return buffer + current;
 }
 
 function toSnakeCase(value: string) {

@@ -3,12 +3,12 @@ import Modal from '@/app/components/Modal.vue';
 import { useI18n } from '@n8n/i18n';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { computed, ref } from 'vue';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 
 import { N8nButton, N8nFormInput, N8nCallout, N8nText } from '@n8n/design-system';
 import { useExecutionsStore } from '@/features/execution/executions/executions.store';
 import { ElRow } from 'element-plus';
-import { useTelemetry } from '../composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 
 const props = defineProps<{
 	modalName: string;
@@ -101,45 +101,50 @@ function closeModal() {
 		:center="true"
 	>
 		<template #content>
-			<ElRow v-if="activeFilterHint" :class="$style.vertPadding">
-				<N8nCallout theme="info">
-					{{ activeFilterHint }}
-				</N8nCallout>
-			</ElRow>
-			<ElRow v-if="allWorkflowsHint" :class="$style.vertPadding">
-				<N8nCallout theme="warning">
-					{{ allWorkflowsHint }}
-				</N8nCallout>
-			</ElRow>
-			<ElRow :class="$style.vertPadding">
-				<N8nText color="text-base">
-					{{ i18n.baseText('executionStopManyModal.description') }}
-				</N8nText>
-			</ElRow>
-			<ElRow>
-				<N8nFormInput
-					v-model="checkQueued"
-					type="checkbox"
-					:label="i18n.baseText('executionStopManyModal.queued')"
-					data-test-id="sme-check-queued"
-				/>
-			</ElRow>
-			<ElRow>
-				<N8nFormInput
-					v-model="checkRunning"
-					type="checkbox"
-					:label="i18n.baseText('executionStopManyModal.running')"
-					data-test-id="sme-check-running"
-				/>
-			</ElRow>
-			<ElRow>
-				<N8nFormInput
-					v-model="checkWaiting"
-					type="checkbox"
-					:label="i18n.baseText('executionStopManyModal.waiting')"
-					data-test-id="sme-check-waiting"
-				/>
-			</ElRow>
+			<div :class="$style.container">
+				<ElRow v-if="activeFilterHint" :class="$style.vertPadding">
+					<N8nCallout theme="info">
+						{{ activeFilterHint }}
+					</N8nCallout>
+				</ElRow>
+				<ElRow v-if="allWorkflowsHint" :class="$style.vertPadding">
+					<N8nCallout theme="warning">
+						{{ allWorkflowsHint }}
+					</N8nCallout>
+				</ElRow>
+				<ElRow :class="$style.vertPadding">
+					<N8nText color="text-base">
+						{{ i18n.baseText('executionStopManyModal.description') }}
+					</N8nText>
+				</ElRow>
+				<ElRow>
+					<N8nFormInput
+						v-model="checkQueued"
+						type="checkbox"
+						:disabled="isLoading"
+						:label="i18n.baseText('executionStopManyModal.queued')"
+						data-test-id="sme-check-queued"
+					/>
+				</ElRow>
+				<ElRow>
+					<N8nFormInput
+						v-model="checkRunning"
+						type="checkbox"
+						:disabled="isLoading"
+						:label="i18n.baseText('executionStopManyModal.running')"
+						data-test-id="sme-check-running"
+					/>
+				</ElRow>
+				<ElRow>
+					<N8nFormInput
+						v-model="checkWaiting"
+						type="checkbox"
+						:disabled="isLoading"
+						:label="i18n.baseText('executionStopManyModal.waiting')"
+						data-test-id="sme-check-waiting"
+					/>
+				</ElRow>
+			</div>
 		</template>
 		<template #footer>
 			<div :class="$style.footer">
@@ -176,7 +181,14 @@ function closeModal() {
 	gap: var(--spacing--xs);
 }
 
+.container {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+	padding-left: var(--spacing--2xs);
+}
+
 .vertPadding {
-	padding-bottom: var(--spacing--sm);
+	padding-bottom: var(--spacing--xs);
 }
 </style>

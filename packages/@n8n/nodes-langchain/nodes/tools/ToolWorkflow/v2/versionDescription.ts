@@ -2,7 +2,7 @@
 
 import { NodeConnectionTypes, type INodeTypeDescription } from 'n8n-workflow';
 
-import { getConnectionHintNoticeField } from '../../../../utils/sharedFields';
+import { getConnectionHintNoticeField } from '@n8n/ai-utilities';
 
 export const versionDescription: INodeTypeDescription = {
 	displayName: 'Call n8n Workflow Tool',
@@ -121,6 +121,7 @@ export const versionDescription: INodeTypeDescription = {
 					addAllFields: true,
 					multiKeyMatch: false,
 					supportAutoMap: false,
+					refreshStaleSchemaOnOpen: true,
 				},
 			},
 			displayOptions: {

@@ -24,6 +24,19 @@ export function getGitRoot(cwd: string): string {
 	}
 }
 
+/** Content of `filePath` at git `ref`, or null if it doesn't exist there. */
+export function getFileAtRef(filePath: string, ref: string): string | null {
+	try {
+		const relativePath = path.relative(getGitRoot(process.cwd()), path.resolve(filePath));
+		return execFileSync('git', ['show', `${ref}:${relativePath}`], {
+			encoding: 'utf-8',
+			stdio: ['ignore', 'pipe', 'ignore'],
+		});
+	} catch {
+		return null;
+	}
+}
+
 export function parseGitStatus(
 	output: string,
 	gitRoot: string,
@@ -78,7 +91,17 @@ export function getChangedFiles(options: GitChangedFilesOptions): string[] {
 
 	try {
 		if (targetBranch) {
-			const output = execFileSync('git', ['diff', '--name-only', `${targetBranch}...HEAD`], {
+			// Fetch the base branch at depth=1 so FETCH_HEAD is available for the diff.
+			// Using FETCH_HEAD with two-dot diff avoids the need for a merge base, which
+			// fails with shallow clones (fatal: no merge base). This matches the approach
+			// used by the ci-filter action across the rest of the repo.
+			const remoteName = targetBranch.startsWith('origin/') ? targetBranch.slice(7) : targetBranch;
+			execFileSync('git', ['fetch', '--depth=1', 'origin', remoteName], {
+				cwd: gitRoot,
+				encoding: 'utf-8',
+				stdio: 'pipe',
+			});
+			const output = execFileSync('git', ['diff', '--name-only', 'FETCH_HEAD', 'HEAD'], {
 				cwd: gitRoot,
 				encoding: 'utf-8',
 			});

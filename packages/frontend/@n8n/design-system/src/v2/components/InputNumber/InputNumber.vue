@@ -116,7 +116,7 @@ const sizeClass = computed(() => sizes[props.size ?? 'medium']);
 	width: 100%;
 	border-radius: var(--radius);
 	border: var(--border);
-	background-color: var(--color--background--light-2);
+	background-color: light-dark(var(--color--neutral-white), var(--color--neutral-950));
 	transition:
 		border-color 0.2s,
 		box-shadow 0.2s;

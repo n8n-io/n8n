@@ -1,7 +1,6 @@
 import type { GlobalConfig } from '@n8n/config';
-import type { AuthIdentity, User } from '@n8n/db';
-import type { UserRepository } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import type { AuthIdentity, User, UserRepository } from '@n8n/db';
+import { mock } from 'vitest-mock-extended';
 
 import { AuthError } from '@/errors/response-errors/auth.error';
 import type { EventService } from '@/events/event.service';
@@ -24,7 +23,7 @@ describe('EmailAuthHandler', () => {
 	let handler: EmailAuthHandler;
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 		handler = new EmailAuthHandler(userRepository, passwordUtility, eventService, globalConfig);
 	});
 
@@ -114,8 +113,10 @@ describe('EmailAuthHandler', () => {
 				userRepository.findOne.mockResolvedValue(user);
 				globalConfig.sso.ldap.loginEnabled = false;
 
-				await expect(handler.handleLogin(email, password)).rejects.toThrow(
-					new AuthError('Reset your password to gain access to the instance.'),
+				const promise = handler.handleLogin(email, password);
+				await expect(promise).rejects.toThrow(AuthError);
+				await expect(promise).rejects.toThrow(
+					'Reset your password to gain access to the instance.',
 				);
 
 				expect(eventService.emit).toHaveBeenCalledWith('login-failed-due-to-ldap-disabled', {

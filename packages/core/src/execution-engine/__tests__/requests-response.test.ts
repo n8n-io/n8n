@@ -1,10 +1,10 @@
-import { mock } from 'jest-mock-extended';
 import type { IExecuteData, IRunData, EngineRequest, INodeExecutionData } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { DirectedGraph } from '../partial-execution-utils';
+import { nodeTypes, types } from './mock-node-types';
 import { createNodeData } from '../partial-execution-utils/__tests__/helpers';
 import { handleRequest } from '../requests-response';
-import { nodeTypes, types } from './mock-node-types';
 
 describe('handleRequests', () => {
 	test('throws if an action mentions a node that does not exist in the workflow', () => {

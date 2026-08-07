@@ -1,6 +1,11 @@
 import type { ChatOllamaInput } from '@langchain/ollama';
 import { ChatOllama } from '@langchain/ollama';
-import { makeN8nLlmFailedAttemptHandler, N8nLlmTracing, proxyFetch } from '@n8n/ai-utilities';
+import {
+	makeN8nLlmFailedAttemptHandler,
+	N8nLlmTracing,
+	proxyFetch,
+	getConnectionHintNoticeField,
+} from '@n8n/ai-utilities';
 import {
 	NodeConnectionTypes,
 	type INodeType,
@@ -9,7 +14,7 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
+import { wrapChatModelMessageInput } from '@utils/chatModelMessageWrapper';
 
 import { ollamaModel, ollamaOptions, ollamaDescription } from '../LMOllama/description';
 
@@ -78,7 +83,7 @@ export class LmChatOllama implements INodeType {
 		});
 
 		return {
-			response: model,
+			response: wrapChatModelMessageInput(model),
 		};
 	}
 }

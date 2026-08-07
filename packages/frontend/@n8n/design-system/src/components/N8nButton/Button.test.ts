@@ -82,7 +82,7 @@ describe('components', () => {
 
 		describe('props', () => {
 			describe('variant', () => {
-				it.each(['solid', 'subtle', 'ghost', 'outline', 'destructive'] as const)(
+				it.each(['solid', 'subtle', 'ghost', 'outline', 'destructive', 'success'] as const)(
 					'should render %s variant',
 					(variant) => {
 						const wrapper = render(N8nButton, {
@@ -94,6 +94,18 @@ describe('components', () => {
 						expect(button?.className).toContain(variant);
 					},
 				);
+
+				it('should render success variant with white text color', () => {
+					const wrapper = render(N8nButton, {
+						props: { variant: 'success' },
+						slots: { default: 'Subscribe' },
+						global: { stubs },
+					});
+					const button = wrapper.container.querySelector('button');
+					expect(button?.className).toContain('success');
+					expect(button?.className).not.toContain('destructive');
+					expect(wrapper.getByText('Subscribe')).toBeInTheDocument();
+				});
 			});
 
 			describe('size', () => {

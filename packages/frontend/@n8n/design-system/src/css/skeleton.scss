@@ -27,6 +27,12 @@
 	margin-top: 14px;
 }
 
+.el-skeleton__circle {
+	width: 40px;
+	height: 40px;
+	border-radius: 50%;
+}
+
 .el-skeleton__image {
 	width: unset;
 	height: 500px !important;

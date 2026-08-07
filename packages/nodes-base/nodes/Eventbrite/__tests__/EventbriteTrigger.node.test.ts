@@ -1,5 +1,5 @@
 import type { Request } from 'express';
-import { mock, mockDeep } from 'jest-mock-extended';
+import { mock, mockDeep } from 'vitest-mock-extended';
 import { returnJsonArray } from 'n8n-core';
 import type { INode, IWebhookFunctions } from 'n8n-workflow';
 import * as GenericFunctions from '../GenericFunctions';
@@ -11,7 +11,7 @@ describe('EventbriteTrigger node', () => {
 		const mockWebhookFunctions = mockDeep<IWebhookFunctions>();
 
 		beforeEach(() => {
-			jest.resetAllMocks();
+			vi.resetAllMocks();
 			mockWebhookFunctions.getNode.mockReturnValue(mock<INode>());
 			mockWebhookFunctions.helpers.returnJsonArray.mockImplementation(returnJsonArray);
 		});
@@ -93,7 +93,7 @@ describe('EventbriteTrigger node', () => {
 						return undefined;
 				}
 			});
-			const spy = jest.spyOn(GenericFunctions, 'eventbriteApiRequest');
+			const spy = vi.spyOn(GenericFunctions, 'eventbriteApiRequest');
 			spy.mockResolvedValue({
 				test: 123,
 			});

@@ -10,10 +10,9 @@ import {
 	NodeConnectionTypes,
 } from 'n8n-workflow';
 
-import { logWrapper, getMetadataFiltersValues } from '@n8n/ai-utilities';
-import { metadataFilterField } from '@utils/sharedFields';
+import { logWrapper, getMetadataFiltersValues, metadataFilterField } from '@n8n/ai-utilities';
 
-import { supabaseTableNameSearch } from '../shared/createVectorStoreNode/methods/listSearch';
+import { supabaseTableNameSearch } from '../shared/methods/listSearch';
 import { supabaseTableNameRLC } from '../shared/descriptions';
 
 // This node is deprecated. Use VectorStoreSupabase instead.

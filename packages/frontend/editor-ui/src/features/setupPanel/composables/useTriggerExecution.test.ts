@@ -4,6 +4,11 @@ import { createTestingPinia } from '@pinia/testing';
 import { createTestNode, mockNodeTypeDescription } from '@/__tests__/mocks';
 import { mockedStore } from '@/__tests__/utils';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
+import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
+import { useLogsStore } from '@/app/stores/logs.store';
+import { CHAT_TRIGGER_NODE_TYPE } from '@/app/constants/nodeTypes';
 import type { INodeUi } from '@/Interface';
 
 import { useTriggerExecution } from '@/features/setupPanel/composables/useTriggerExecution';
@@ -43,10 +48,15 @@ const createNode = (overrides: Partial<INodeUi> = {}): INodeUi =>
 
 describe('useTriggerExecution', () => {
 	let nodeTypesStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
+	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
+	let logsStore: ReturnType<typeof mockedStore<typeof useLogsStore>>;
 
 	beforeEach(() => {
 		createTestingPinia();
 		nodeTypesStore = mockedStore(useNodeTypesStore);
+		workflowsStore = mockedStore(useWorkflowsStore);
+		workflowsStore.workflowId = 'test-workflow-id';
+		logsStore = mockedStore(useLogsStore);
 		nodeTypesStore.getNodeType = vi.fn().mockReturnValue(null);
 
 		mockExecutionState.isExecuting = false;
@@ -107,6 +117,78 @@ describe('useTriggerExecution', () => {
 
 			expect(isInListeningState.value).toBe(true);
 		});
+
+		it('should be true for chat trigger when logs panel is open and destination node matches', () => {
+			const chatNode = createNode({
+				name: 'When chat message received',
+				type: CHAT_TRIGGER_NODE_TYPE,
+			});
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(
+				mockNodeTypeDescription({
+					name: CHAT_TRIGGER_NODE_TYPE,
+					displayName: 'When chat message received',
+				}),
+			);
+			logsStore.isOpen = true;
+			vi.spyOn(
+				useWorkflowExecutionStateStore(createWorkflowDocumentId('test-workflow-id')),
+				'chatPartialExecutionDestinationNode',
+				'get',
+			).mockReturnValue('When chat message received');
+
+			const node = ref<INodeUi | null>(chatNode);
+			const { isInListeningState } = useTriggerExecution(node);
+
+			expect(isInListeningState.value).toBe(true);
+		});
+
+		it('should be false for chat trigger when logs panel is closed', () => {
+			const chatNode = createNode({
+				name: 'When chat message received',
+				type: CHAT_TRIGGER_NODE_TYPE,
+			});
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(
+				mockNodeTypeDescription({
+					name: CHAT_TRIGGER_NODE_TYPE,
+					displayName: 'When chat message received',
+				}),
+			);
+			logsStore.isOpen = false;
+			vi.spyOn(
+				useWorkflowExecutionStateStore(createWorkflowDocumentId('test-workflow-id')),
+				'chatPartialExecutionDestinationNode',
+				'get',
+			).mockReturnValue('When chat message received');
+
+			const node = ref<INodeUi | null>(chatNode);
+			const { isInListeningState } = useTriggerExecution(node);
+
+			expect(isInListeningState.value).toBe(false);
+		});
+
+		it('should be false for chat trigger when destination node does not match', () => {
+			const chatNode = createNode({
+				name: 'When chat message received',
+				type: CHAT_TRIGGER_NODE_TYPE,
+			});
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(
+				mockNodeTypeDescription({
+					name: CHAT_TRIGGER_NODE_TYPE,
+					displayName: 'When chat message received',
+				}),
+			);
+			logsStore.isOpen = true;
+			vi.spyOn(
+				useWorkflowExecutionStateStore(createWorkflowDocumentId('test-workflow-id')),
+				'chatPartialExecutionDestinationNode',
+				'get',
+			).mockReturnValue('Some Other Node');
+
+			const node = ref<INodeUi | null>(chatNode);
+			const { isInListeningState } = useTriggerExecution(node);
+
+			expect(isInListeningState.value).toBe(false);
+		});
 	});
 
 	describe('isButtonDisabled', () => {
@@ -142,28 +224,83 @@ describe('useTriggerExecution', () => {
 		});
 	});
 
-	describe('tooltipText', () => {
-		it('should return empty string when no issues and no disabled reason', () => {
+	describe('tooltipItems', () => {
+		it('should return empty array when no issues and no disabled reason', () => {
 			const node = ref<INodeUi | null>(createNode());
-			const { tooltipText } = useTriggerExecution(node);
+			const { tooltipItems } = useTriggerExecution(node);
 
-			expect(tooltipText.value).toBe('');
+			expect(tooltipItems.value).toEqual([]);
 		});
 
-		it('should return required fields message when node has issues', () => {
+		it('should return generic message when node has issues but no issue details', () => {
 			mockExecutionState.hasIssues = true;
 			const node = ref<INodeUi | null>(createNode());
-			const { tooltipText } = useTriggerExecution(node);
+			const { tooltipItems } = useTriggerExecution(node);
 
-			expect(tooltipText.value).toBeTruthy();
+			expect(tooltipItems.value).toHaveLength(1);
+			expect(tooltipItems.value[0]).toBeTruthy();
 		});
 
-		it('should return disabled reason when provided', () => {
+		it('should return credential issue messages when node has credential issues', () => {
+			mockExecutionState.hasIssues = true;
+			const node = ref<INodeUi | null>(
+				createNode({
+					issues: {
+						credentials: {
+							slackApi: ['Credentials for Slack are not set.'],
+						},
+					},
+				}),
+			);
+			const { tooltipItems } = useTriggerExecution(node);
+
+			expect(tooltipItems.value).toEqual(['Credentials for Slack are not set.']);
+		});
+
+		it('should return parameter issue messages when node has parameter issues', () => {
+			mockExecutionState.hasIssues = true;
+			const node = ref<INodeUi | null>(
+				createNode({
+					issues: {
+						parameters: {
+							channel: ['Parameter "Channel" is required.'],
+						},
+					},
+				}),
+			);
+			const { tooltipItems } = useTriggerExecution(node);
+
+			expect(tooltipItems.value).toEqual(['Parameter "Channel" is required.']);
+		});
+
+		it('should return both credential and parameter issues', () => {
+			mockExecutionState.hasIssues = true;
+			const node = ref<INodeUi | null>(
+				createNode({
+					issues: {
+						credentials: {
+							slackApi: ['Credentials for Slack are not set.'],
+						},
+						parameters: {
+							channel: ['Parameter "Channel" is required.'],
+						},
+					},
+				}),
+			);
+			const { tooltipItems } = useTriggerExecution(node);
+
+			expect(tooltipItems.value).toEqual([
+				'Credentials for Slack are not set.',
+				'Parameter "Channel" is required.',
+			]);
+		});
+
+		it('should return disabled reason as single-item array when provided', () => {
 			mockExecutionState.disabledReason = 'Workflow not saved';
 			const node = ref<INodeUi | null>(createNode());
-			const { tooltipText } = useTriggerExecution(node);
+			const { tooltipItems } = useTriggerExecution(node);
 
-			expect(tooltipText.value).toBe('Workflow not saved');
+			expect(tooltipItems.value).toEqual(['Workflow not saved']);
 		});
 	});
 

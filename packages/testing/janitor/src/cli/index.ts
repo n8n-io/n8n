@@ -7,4 +7,9 @@ export {
 	showMethodImpactHelp,
 	showRulesHelp,
 	showTcrHelp,
+	showDiscoverHelp,
+	showOrchestrateHelp,
+	showAffectedPackagesHelp,
+	showScopeHelp,
+	showTestScopedHelp,
 } from './help.js';

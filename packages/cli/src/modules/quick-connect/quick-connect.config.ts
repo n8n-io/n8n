@@ -1,21 +1,24 @@
 import { Config, Env } from '@n8n/config';
 import { z } from 'zod';
 
-const backendFlowConfigSchema = z.object({
-	secret: z.string(),
+const disclaimerSchema = z.object({
+	text: z.string().refine((s) => s.includes('{link}'), {
+		message: '`disclaimer.text` must contain the {link} placeholder',
+	}),
+	linkUrl: z.string().url(),
+	linkLabel: z.string().optional(),
 });
-
-export type BackendFlowConfig = z.infer<typeof backendFlowConfigSchema>;
 
 const baseQuickConnectOptionSchema = z.object({
 	packageName: z.string(),
 	credentialType: z.string(),
 	text: z.string(),
 	quickConnectType: z.string(),
-	serviceName: z.string(),
 	consentText: z.string().optional(),
+	consentCheckbox: z.string().optional(),
+	disclaimer: disclaimerSchema.optional(),
 	config: z.never().optional(),
-	backendFlowConfig: backendFlowConfigSchema.optional(),
+	backendFlowConfig: z.never().optional(),
 });
 
 const pineconeQuickConnectOptionSchema = baseQuickConnectOptionSchema.extend({
@@ -25,23 +28,28 @@ const pineconeQuickConnectOptionSchema = baseQuickConnectOptionSchema.extend({
 	}),
 });
 
+const firecrawlQuickConnectSchema = baseQuickConnectOptionSchema.extend({
+	quickConnectType: z.literal('firecrawl'),
+	consentText: z.string(),
+	backendFlowConfig: z.object({
+		secret: z.string(),
+	}),
+});
+
+export type FirecrawlQuickConnect = z.infer<typeof firecrawlQuickConnectSchema>;
+
 const quickConnectOptionSchema = z.union([
+	firecrawlQuickConnectSchema,
 	pineconeQuickConnectOptionSchema,
 	baseQuickConnectOptionSchema,
 ]);
 
 export type QuickConnectOption = z.infer<typeof quickConnectOptionSchema>;
 
-const quickConnectBackendOptionSchema = baseQuickConnectOptionSchema.required({
-	backendFlowConfig: true,
-});
-
-export type QuickConnectBackendOption = z.infer<typeof quickConnectBackendOptionSchema>;
-
 const quickConnectOptionsSchema = z.string().pipe(
-	z.preprocess((input: string) => {
+	z.preprocess((input: unknown) => {
 		try {
-			return JSON.parse(input);
+			return JSON.parse(input as string);
 		} catch {
 			return [];
 		}

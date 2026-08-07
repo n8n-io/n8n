@@ -4,79 +4,81 @@ import { test, expect } from '../../../fixtures/base';
 
 test.use({ capability: 'proxy' });
 // @capability:proxy tag ensures that test suite is only run when proxy is available
-test.describe('Proxy server @capability:proxy', {
-	annotation: [
-		{ type: 'owner', description: 'Catalysts' },
-	],
-}, () => {
-	test.beforeEach(async ({ services }) => {
-		await services.proxy.clearAllExpectations();
-	});
-
-	test('should verify ProxyServer container is running', async ({ services }) => {
-		const mockResponse = await services.proxy.createGetExpectation('/health', {
-			status: 'healthy',
+test.describe(
+	'Proxy server @capability:proxy',
+	{
+		annotation: [{ type: 'owner', description: 'Catalysts' }],
+	},
+	() => {
+		test.beforeEach(async ({ services }) => {
+			await services.proxy.clearAllExpectations();
 		});
 
-		assert(typeof mockResponse !== 'string');
-		expect(mockResponse.statusCode).toBe(201);
+		test('should verify ProxyServer container is running', async ({ services }) => {
+			const mockResponse = await services.proxy.createGetExpectation('/health', {
+				status: 'healthy',
+			});
 
-		expect(await services.proxy.wasRequestMade({ method: 'GET', path: '/health' })).toBe(false);
+			assert(typeof mockResponse !== 'string');
+			expect(mockResponse.statusCode).toBe(201);
 
-		// Verify the mock endpoint works
-		const healthResponse = await fetch(`${services.proxy.url}/health`);
-		expect(healthResponse.ok).toBe(true);
-		const healthData = await healthResponse.json();
-		expect(healthData.status).toBe('healthy');
+			expect(await services.proxy.wasRequestMade({ method: 'GET', path: '/health' })).toBe(false);
 
-		expect(await services.proxy.wasRequestMade({ method: 'GET', path: '/health' })).toBe(true);
-	});
+			// Verify the mock endpoint works
+			const healthResponse = await fetch(`${services.proxy.url}/health`);
+			expect(healthResponse.ok).toBe(true);
+			const healthData = await healthResponse.json();
+			expect(healthData.status).toBe('healthy');
 
-	test('should run a simple workflow calling http endpoint', async ({ n8n, services }) => {
-		const mockResponse = { data: 'Hello from ProxyServer!', test: '1' };
+			expect(await services.proxy.wasRequestMade({ method: 'GET', path: '/health' })).toBe(true);
+		});
 
-		// Create expectation in mockserver to handle the request
-		await services.proxy.createGetExpectation('/data', mockResponse, { test: '1' });
+		test('should run a simple workflow calling http endpoint', async ({ n8n, services }) => {
+			const mockResponse = { data: 'Hello from ProxyServer!', test: '1' };
 
-		await n8n.canvas.openNewWorkflow();
+			// Create expectation in mockserver to handle the request
+			await services.proxy.createGetExpectation('/data', mockResponse, { test: '1' });
 
-		// This is calling a random endpoint http://mock-api.com
-		await n8n.canvas.importWorkflow('Simple_workflow_with_http_node.json', 'Test');
+			await n8n.canvas.openNewWorkflow();
 
-		// Execute workflow - this should now proxy through mockserver
-		await n8n.workflowComposer.executeWorkflowAndWaitForNotification('Successful');
-		await n8n.canvas.openNode('HTTP Request');
-		await expect(n8n.ndv.outputPanel.getTbodyCell(0, 0)).toContainText('Hello from ProxyServer!');
+			// This is calling a random endpoint http://mock-api.com
+			await n8n.canvas.importWorkflow('Simple_workflow_with_http_node.json', 'Test');
 
-		// Verify the request was handled by mockserver
-		expect(
-			await services.proxy.wasRequestMade({
-				method: 'GET',
-				path: '/data',
-				queryStringParameters: { test: ['1'] },
-			}),
-		).toBe(true);
-	});
+			// Execute workflow - this should now proxy through mockserver
+			await n8n.workflowComposer.executeWorkflowAndWaitForNotification('Successful');
+			await n8n.canvas.openNode('HTTP Request');
+			await expect(n8n.ndv.outputPanel.getTbodyCell(0, 0)).toContainText('Hello from ProxyServer!');
 
-	test('should use stored expectations respond to api request', async ({ services }) => {
-		await services.proxy.loadExpectations('proxy-server');
+			// Verify the request was handled by mockserver
+			expect(
+				await services.proxy.wasRequestMade({
+					method: 'GET',
+					path: '/data',
+					queryStringParameters: { test: ['1'] },
+				}),
+			).toBe(true);
+		});
 
-		const response = await fetch(`${services.proxy.url}/mock-endpoint`);
-		expect(response.ok).toBe(true);
-		const data = await response.json();
-		expect(data.title).toBe('delectus aut autem');
-		expect(await services.proxy.wasRequestMade({ method: 'GET', path: '/mock-endpoint' })).toBe(
-			true,
-		);
-	});
+		test('should use stored expectations respond to api request', async ({ services }) => {
+			await services.proxy.loadExpectations('proxy-server');
 
-	test('should run a simple workflow proxying HTTPS request', async ({ n8n }) => {
-		await n8n.canvas.openNewWorkflow();
-		await n8n.canvas.importWorkflow('Simple_workflow_with_http_node.json', 'Test');
+			const response = await fetch(`${services.proxy.url}/mock-endpoint`);
+			expect(response.ok).toBe(true);
+			const data = await response.json();
+			expect(data.title).toBe('delectus aut autem');
+			expect(await services.proxy.wasRequestMade({ method: 'GET', path: '/mock-endpoint' })).toBe(
+				true,
+			);
+		});
 
-		await n8n.canvas.openNode('HTTP Request');
-		await n8n.ndv.setParameterInput('url', 'https://jsonplaceholder.typicode.com/todos/1');
-		await n8n.ndv.execute();
-		await expect(n8n.ndv.outputPanel.getTbodyCell(0, 0)).toContainText('1');
-	});
-});
+		test('should run a simple workflow proxying HTTPS request', async ({ n8n }) => {
+			await n8n.canvas.openNewWorkflow();
+			await n8n.canvas.importWorkflow('Simple_workflow_with_http_node.json', 'Test');
+
+			await n8n.canvas.openNode('HTTP Request');
+			await n8n.ndv.setParameterInput('url', 'https://jsonplaceholder.typicode.com/todos/1');
+			await n8n.ndv.execute();
+			await expect(n8n.ndv.outputPanel.getTbodyCell(0, 0)).toContainText('1');
+		});
+	},
+);

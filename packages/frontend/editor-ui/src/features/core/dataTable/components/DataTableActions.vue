@@ -1,21 +1,26 @@
 <script setup lang="ts">
 import { useMessage } from '@/app/composables/useMessage';
-import { useTelemetry } from '@/app/composables/useTelemetry';
-import { useToast } from '@/app/composables/useToast';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { useToast } from '@n8n/composables/useToast';
 import { MODAL_CONFIRM } from '@/app/constants';
 import {
 	DATA_TABLE_CARD_ACTIONS,
 	DOWNLOAD_DATA_TABLE_MODAL_KEY,
+	IMPORT_CSV_MODAL_KEY,
 } from '@/features/core/dataTable/constants';
+
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
 import type { DataTable } from '@/features/core/dataTable/dataTable.types';
 import type { IUser, UserAction } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
+import { escapeHtml } from '@/app/utils/htmlUtils';
 
 import { N8nActionToggle } from '@n8n/design-system';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useFavoritesStore } from '@/app/stores/favorites.store';
 import DownloadDataTableModal from './DownloadDataTableModal.vue';
+import ImportCsvModal from './ImportCsvModal.vue';
 type Props = {
 	dataTable: DataTable;
 	isReadOnly?: boolean;
@@ -34,21 +39,38 @@ const emit = defineEmits<{
 		},
 	];
 	onDeleted: [];
+	imported: [];
 }>();
 
 const dataTableStore = useDataTableStore();
 const uiStore = useUIStore();
+const favoritesStore = useFavoritesStore();
 
 const i18n = useI18n();
 const message = useMessage();
 const toast = useToast();
 const telemetry = useTelemetry();
 
+const downloadModalKey = computed(() => `${DOWNLOAD_DATA_TABLE_MODAL_KEY}-${props.dataTable.id}`);
+const importCsvModalKey = computed(() => `${IMPORT_CSV_MODAL_KEY}-${props.dataTable.id}`);
+
 const actions = computed<Array<UserAction<IUser>>>(() => {
 	const availableActions = [
 		{
+			label: i18n.baseText('dataTable.importCsv'),
+			value: DATA_TABLE_CARD_ACTIONS.IMPORT_CSV,
+			disabled: !dataTableStore.projectPermissions.dataTable.writeRow || props.isReadOnly,
+		},
+		{
 			label: i18n.baseText('dataTable.download.csv'),
 			value: DATA_TABLE_CARD_ACTIONS.DOWNLOAD_CSV,
+			disabled: !dataTableStore.projectPermissions.dataTable.readRow,
+		},
+		{
+			label: favoritesStore.isFavorite(props.dataTable.id, 'dataTable')
+				? i18n.baseText('favorites.remove')
+				: i18n.baseText('favorites.add'),
+			value: DATA_TABLE_CARD_ACTIONS.FAVORITE,
 			disabled: false,
 		},
 		{
@@ -78,14 +100,22 @@ const onAction = async (action: string) => {
 			});
 			break;
 		}
+		case DATA_TABLE_CARD_ACTIONS.IMPORT_CSV: {
+			uiStore.openModal(importCsvModalKey.value);
+			break;
+		}
 		case DATA_TABLE_CARD_ACTIONS.DOWNLOAD_CSV: {
-			uiStore.openModal(DOWNLOAD_DATA_TABLE_MODAL_KEY);
+			uiStore.openModal(downloadModalKey.value);
+			break;
+		}
+		case DATA_TABLE_CARD_ACTIONS.FAVORITE: {
+			await favoritesStore.toggleFavorite(props.dataTable.id, 'dataTable');
 			break;
 		}
 		case DATA_TABLE_CARD_ACTIONS.DELETE: {
 			const promptResponse = await message.confirm(
 				i18n.baseText('dataTable.delete.confirm.message', {
-					interpolate: { name: props.dataTable.name },
+					interpolate: { name: escapeHtml(props.dataTable.name) },
 				}),
 				i18n.baseText('dataTable.delete.confirm.title'),
 				{
@@ -103,7 +133,7 @@ const onAction = async (action: string) => {
 
 const downloadDataTableCsv = async (includeSystemColumns: boolean) => {
 	try {
-		uiStore.closeModal(DOWNLOAD_DATA_TABLE_MODAL_KEY);
+		uiStore.closeModal(downloadModalKey.value);
 
 		await dataTableStore.downloadDataTableCsv(
 			props.dataTable.id,
@@ -149,10 +179,16 @@ const deleteDataTable = async () => {
 			@action="onAction"
 		/>
 		<DownloadDataTableModal
-			:modal-name="DOWNLOAD_DATA_TABLE_MODAL_KEY"
+			:modal-name="downloadModalKey"
 			:data-table-name="dataTable.name"
 			@confirm="downloadDataTableCsv"
-			@close="() => uiStore.closeModal(DOWNLOAD_DATA_TABLE_MODAL_KEY)"
+			@close="() => uiStore.closeModal(downloadModalKey)"
+		/>
+		<ImportCsvModal
+			:modal-name="importCsvModalKey"
+			:data-table="dataTable"
+			@imported="emit('imported')"
+			@close="() => uiStore.closeModal(importCsvModalKey)"
 		/>
 	</div>
 </template>

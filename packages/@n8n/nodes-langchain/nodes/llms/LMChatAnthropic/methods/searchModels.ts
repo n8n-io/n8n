@@ -1,63 +1,34 @@
-import type {
-	ILoadOptionsFunctions,
-	INodeListSearchItems,
-	INodeListSearchResult,
-} from 'n8n-workflow';
+import { getProxyAgent } from '@n8n/ai-utilities';
+import { listAnthropicModels } from '@n8n/ai-utilities/model-discovery';
+import type { ILoadOptionsFunctions, INodeListSearchResult } from 'n8n-workflow';
 
-export interface AnthropicModel {
-	id: string;
-	display_name: string;
-	type: string;
-	created_at: string;
-}
+import { mergeCustomHeaders } from '../../../../utils/helpers';
 
 export async function searchModels(
 	this: ILoadOptionsFunctions,
 	filter?: string,
 ): Promise<INodeListSearchResult> {
-	const credentials = await this.getCredentials<{ url?: string }>('anthropicApi');
+	const credentials = await this.getCredentials('anthropicApi');
+	const baseURL = (credentials.url as string) ?? 'https://api.anthropic.com';
 
-	const baseURL = credentials.url ?? 'https://api.anthropic.com';
-	const response = (await this.helpers.httpRequestWithAuthentication.call(this, 'anthropicApi', {
-		url: `${baseURL}/v1/models`,
-		headers: {
-			'anthropic-version': '2023-06-01',
-		},
-	})) as { data: AnthropicModel[] };
-
-	const models = response.data || [];
-	let results: INodeListSearchItems[] = [];
-
-	if (filter) {
-		for (const model of models) {
-			if (model.id.toLowerCase().includes(filter.toLowerCase())) {
-				results.push({
-					name: model.display_name,
-					value: model.id,
-				});
-			}
-		}
-	} else {
-		results = models.map((model) => ({
-			name: model.display_name,
-			value: model.id,
-		}));
-	}
-
-	// Sort models with more recent ones first (claude-3 before claude-2)
-	results = results.sort((a, b) => {
-		const modelA = models.find((m) => m.id === a.value);
-		const modelB = models.find((m) => m.id === b.value);
-
-		if (!modelA || !modelB) return 0;
-
-		// Sort by created_at date, most recent first
-		const dateA = new Date(modelA.created_at);
-		const dateB = new Date(modelB.created_at);
-		return dateB.getTime() - dateA.getTime();
+	// Shared with the agents model catalog: endpoint, auth, and newest-first
+	// ordering live in @n8n/ai-utilities/model-discovery. The credential's
+	// optional custom header (for gateway/proxy-backed credentials) is merged in,
+	// matching what the credential's `authenticate` applies on other requests.
+	const models = await listAnthropicModels({
+		apiKey: (credentials.apiKey as string) ?? '',
+		baseURL,
+		headers: mergeCustomHeaders(credentials, {}),
+		fetch: async (url, init) =>
+			await fetch(url, {
+				...init,
+				dispatcher: getProxyAgent(baseURL),
+			} as RequestInit),
 	});
 
 	return {
-		results,
+		results: models
+			.filter((model) => !filter || model.id.toLowerCase().includes(filter.toLowerCase()))
+			.map((model) => ({ name: model.name, value: model.id })),
 	};
 }

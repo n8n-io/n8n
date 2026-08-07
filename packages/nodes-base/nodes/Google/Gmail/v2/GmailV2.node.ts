@@ -5,6 +5,7 @@ import type {
 	INodeType,
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
+	JsonObject,
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 
@@ -181,9 +182,16 @@ export class GmailV2 implements INodeType {
 		if (resource === 'message' && operation === SEND_AND_WAIT_OPERATION) {
 			const email: IEmail = createEmail(this);
 
-			await googleApiRequest.call(this, 'POST', '/gmail/v1/users/me/messages/send', {
-				raw: await encodeEmail(email),
-			});
+			try {
+				await googleApiRequest.call(this, 'POST', '/gmail/v1/users/me/messages/send', {
+					raw: await encodeEmail(email),
+				});
+			} catch (error) {
+				if (this.continueOnFail()) {
+					return [[{ json: { error: (error as JsonObject).message } }]];
+				}
+				throw error;
+			}
 
 			const waitTill = configureWaitTillDate(this);
 
@@ -377,7 +385,7 @@ export class GmailV2 implements INodeType {
 						const options = this.getNodeParameter('options', i, {});
 						const filters = this.getNodeParameter('filters', i, {});
 						const qs: IDataObject = {};
-						Object.assign(qs, prepareQuery.call(this, filters, i), options, i);
+						Object.assign(qs, prepareQuery.call(this, filters, i));
 
 						if (returnAll) {
 							responseData = await googleApiRequestAllItems.call(

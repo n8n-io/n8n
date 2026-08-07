@@ -1,5 +1,5 @@
 import type { CreateRoleDto, UpdateRoleDto } from '@n8n/api-types';
-import { testDb } from '@n8n/backend-test-utils';
+import { createTeamProject, linkUserToProject, testDb } from '@n8n/backend-test-utils';
 import {
 	PROJECT_ADMIN_ROLE,
 	PROJECT_EDITOR_ROLE,
@@ -7,6 +7,7 @@ import {
 	PROJECT_VIEWER_ROLE,
 	RoleRepository,
 } from '@n8n/db';
+import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import { cleanupRolesAndScopes } from '../shared/db/roles';
@@ -18,11 +19,13 @@ describe('RoleController - Integration Tests', () => {
 	const testServer = setupTestServer({ endpointGroups: ['role'] });
 	let ownerAgent: SuperAgentTest;
 	let memberAgent: SuperAgentTest;
+	let owner: User;
+	let member: User;
 
 	beforeAll(async () => {
 		await testDb.init();
-		const owner = await createOwner();
-		const member = await createMember();
+		owner = await createOwner();
+		member = await createMember();
 		ownerAgent = testServer.authAgentFor(owner);
 		memberAgent = testServer.authAgentFor(member);
 	});
@@ -184,6 +187,67 @@ describe('RoleController - Integration Tests', () => {
 					updatedAt: expect.any(String),
 				},
 			});
+		});
+	});
+
+	describe('GET /roles/:slug/assignments', () => {
+		it('should return projects where the role is assigned', async () => {
+			const project = await createTeamProject('Test Project', owner);
+			await linkUserToProject(member, project, 'project:editor');
+
+			const response = await ownerAgent
+				.get(`/roles/${PROJECT_EDITOR_ROLE.slug}/assignments`)
+				.expect(200);
+
+			expect(response.body.data.totalProjects).toBeGreaterThanOrEqual(1);
+			const projectNames = response.body.data.projects.map(
+				(p: { projectName: string }) => p.projectName,
+			);
+			expect(projectNames).toContain('Test Project');
+
+			const testProject = response.body.data.projects.find(
+				(p: { projectName: string }) => p.projectName === 'Test Project',
+			);
+			expect(testProject.memberCount).toBe(1);
+			expect(testProject.projectId).toBe(project.id);
+		});
+
+		it('should return empty when role has no assignments', async () => {
+			const response = await ownerAgent
+				.get(`/roles/${PROJECT_VIEWER_ROLE.slug}/assignments`)
+				.expect(200);
+
+			expect(response.body.data.totalProjects).toBe(0);
+			expect(response.body.data.projects).toEqual([]);
+		});
+
+		it('should require role:manage scope (deny member)', async () => {
+			await memberAgent.get(`/roles/${PROJECT_EDITOR_ROLE.slug}/assignments`).expect(403);
+		});
+	});
+
+	describe('GET /roles/:slug/assignments/:projectId/members', () => {
+		it('should return only members with the specified role', async () => {
+			const project = await createTeamProject('Members Test', owner);
+			await linkUserToProject(member, project, 'project:editor');
+			// owner is project:admin via createTeamProject
+
+			const response = await ownerAgent
+				.get(`/roles/${PROJECT_EDITOR_ROLE.slug}/assignments/${project.id}/members`)
+				.expect(200);
+
+			// Should only include the editor, not the admin
+			expect(response.body.data.members).toHaveLength(1);
+			expect(response.body.data.members[0].email).toBe(member.email);
+			expect(response.body.data.members[0].role).toBe('project:editor');
+		});
+
+		it('should require role:manage scope (deny member)', async () => {
+			const project = await createTeamProject('Auth Test');
+
+			await memberAgent
+				.get(`/roles/${PROJECT_EDITOR_ROLE.slug}/assignments/${project.id}/members`)
+				.expect(403);
 		});
 	});
 });

@@ -1,8 +1,5 @@
 import type { ToolRunnableConfig } from '@langchain/core/tools';
-import type { LangGraphRunnableConfig } from '@langchain/langgraph';
-import { getCurrentTaskInput } from '@langchain/langgraph';
-import type { MockProxy } from 'jest-mock-extended';
-import { mock } from 'jest-mock-extended';
+import type { LangGraphRunnableConfig, getCurrentTaskInput } from '@langchain/langgraph';
 import type {
 	INode,
 	INodeTypeDescription,
@@ -17,6 +14,9 @@ import type {
 	IDataObject,
 } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
+import type { Mock, MockedFunction } from 'vitest';
+import type { MockProxy } from 'vitest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { ProgrammaticEvaluationResult } from '@/validation/types';
 
@@ -28,13 +28,13 @@ export const mockProgress = (): MockProxy<ProgressReporter> => mock<ProgressRepo
 
 // Mock state helpers
 export const mockStateHelpers = () => ({
-	getNodes: jest.fn(() => [] as INode[]),
-	getConnections: jest.fn(() => ({}) as SimpleWorkflow['connections']),
-	updateNode: jest.fn((_id: string, _updates: Partial<INode>) => undefined),
-	addNodes: jest.fn((_nodes: INode[]) => undefined),
-	removeNode: jest.fn((_id: string) => undefined),
-	addConnections: jest.fn((_connections: IConnection[]) => undefined),
-	removeConnection: jest.fn((_sourceId: string, _targetId: string, _type?: string) => undefined),
+	getNodes: vi.fn(() => [] as INode[]),
+	getConnections: vi.fn(() => ({}) as SimpleWorkflow['connections']),
+	updateNode: vi.fn((_id: string, _updates: Partial<INode>) => undefined),
+	addNodes: vi.fn((_nodes: INode[]) => undefined),
+	removeNode: vi.fn((_id: string) => undefined),
+	addConnections: vi.fn((_connections: IConnection[]) => undefined),
+	removeConnection: vi.fn((_sourceId: string, _targetId: string, _type?: string) => undefined),
 });
 
 export type MockStateHelpers = ReturnType<typeof mockStateHelpers>;
@@ -333,22 +333,6 @@ export interface ParsedToolContent {
 	};
 }
 
-// Setup LangGraph mocks
-export const setupLangGraphMocks = () => {
-	const mockGetCurrentTaskInput = getCurrentTaskInput as jest.MockedFunction<
-		typeof getCurrentTaskInput
-	>;
-
-	jest.mock('@langchain/langgraph', () => ({
-		getCurrentTaskInput: jest.fn(),
-		Command: jest.fn().mockImplementation((params: Record<string, unknown>) => ({
-			content: JSON.stringify(params),
-		})),
-	}));
-
-	return { mockGetCurrentTaskInput };
-};
-
 // Parse tool result with double-wrapped content handling
 export const parseToolResult = <T = ParsedToolContent>(result: unknown): T => {
 	const parsed = jsonParse<{ content?: string }>((result as MockedCommandResult).content);
@@ -358,9 +342,7 @@ export const parseToolResult = <T = ParsedToolContent>(result: unknown): T => {
 // ========== Progress Message Utilities ==========
 
 // Extract progress messages from mockWriter
-export const extractProgressMessages = (
-	mockWriter: jest.Mock,
-): Array<ToolProgressMessage<string>> => {
+export const extractProgressMessages = (mockWriter: Mock): Array<ToolProgressMessage<string>> => {
 	const progressCalls: Array<ToolProgressMessage<string>> = [];
 
 	mockWriter.mock.calls.forEach((call) => {
@@ -396,8 +378,8 @@ export const createToolConfig = (
 export const createToolConfigWithWriter = (
 	toolName: string,
 	callId: string = 'test-call',
-): ToolRunnableConfig & LangGraphRunnableConfig & { writer: jest.Mock } => {
-	const mockWriter = jest.fn();
+): ToolRunnableConfig & LangGraphRunnableConfig & { writer: Mock } => {
+	const mockWriter = vi.fn();
 	return {
 		toolCall: { id: callId, name: toolName, args: {} },
 		writer: mockWriter,
@@ -408,7 +390,7 @@ export const createToolConfigWithWriter = (
 
 // Setup workflow state with mockGetCurrentTaskInput
 export const setupWorkflowState = (
-	mockGetCurrentTaskInput: jest.MockedFunction<typeof getCurrentTaskInput>,
+	mockGetCurrentTaskInput: MockedFunction<typeof getCurrentTaskInput>,
 	workflow: SimpleWorkflow = createWorkflow([]),
 ) => {
 	mockGetCurrentTaskInput.mockReturnValue({
@@ -508,7 +490,7 @@ export interface WorkflowStateOptions {
 
 // Setup workflow state with execution context (extended version)
 export const setupWorkflowStateWithContext = (
-	mockGetCurrentTaskInput: jest.MockedFunction<typeof getCurrentTaskInput>,
+	mockGetCurrentTaskInput: MockedFunction<typeof getCurrentTaskInput>,
 	options: WorkflowStateOptions,
 ) => {
 	mockGetCurrentTaskInput.mockReturnValue({
@@ -779,8 +761,8 @@ export const createNodeTypeWithResourceLocator = (
 // Create a mock resource locator callback
 export const mockResourceLocatorCallback = (
 	results: INodeListSearchResult = { results: [] },
-): jest.MockedFunction<ResourceLocatorCallback> => {
-	return jest.fn().mockResolvedValue(results);
+): MockedFunction<ResourceLocatorCallback> => {
+	return vi.fn().mockResolvedValue(results);
 };
 
 // Create sample resource locator results
