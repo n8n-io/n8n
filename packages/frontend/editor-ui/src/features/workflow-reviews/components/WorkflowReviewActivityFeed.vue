@@ -96,7 +96,7 @@ onMounted(() => {
 			</N8nText>
 			<N8nButton
 				size="mini"
-				type="tertiary"
+				variant="ghost"
 				data-test-id="workflow-review-activity-retry"
 				@click="retryInitialLoad()"
 			>
@@ -123,7 +123,7 @@ onMounted(() => {
 				</N8nText>
 				<N8nButton
 					size="mini"
-					type="tertiary"
+					variant="ghost"
 					data-test-id="workflow-review-activity-load-more-retry"
 					@click="store.loadMore()"
 				>
