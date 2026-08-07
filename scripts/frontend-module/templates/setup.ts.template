@@ -1,5 +1,5 @@
 // The shared jsdom harness — observers, matchMedia, canvas, timers, teardown guards.
-import '@n8n/vitest-config/frontend-setup';
+import '@n8n/vitest-config/setup/frontend';
 
 import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach } from 'vitest';

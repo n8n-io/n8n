@@ -45,10 +45,10 @@
       "require": "./dist/frontend-aliases.js",
       "types": "./dist/frontend-aliases.d.ts"
     },
-    "./frontend-setup": {
-      "import": "./dist/frontend-setup/index.js",
-      "require": "./dist/frontend-setup/index.js",
-      "types": "./dist/frontend-setup/index.d.ts"
+    "./setup/frontend": {
+      "import": "./dist/setup/frontend.js",
+      "require": "./dist/setup/frontend.js",
+      "types": "./dist/setup/frontend.d.ts"
     },
     "./node": {
       "import": "./dist/node.js",
