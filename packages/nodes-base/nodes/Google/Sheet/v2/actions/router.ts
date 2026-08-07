@@ -32,33 +32,25 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 			let sheetId = '';
 			let sheetName = '';
 
-			if (operation !== 'create') {
-				// For "read" operation with "All Sheets" mode, skip sheet lookup
-				const sheetSelectionMode =
-					operation === 'read'
-						? (this.getNodeParameter('sheetSelectionMode', 0, 'single') as string)
-						: 'single';
+			// "All Sheets" resolves the sheets itself, so there is none to look up here
+			const readsAllSheets =
+				operation === 'read' && this.getNodeParameter('sheetSelectionMode', 0, 'single') === 'all';
 
-				if (sheetSelectionMode === 'all') {
-					// Pass empty values - execute function will handle "All Sheets" mode
-					sheetId = '';
-					sheetName = '';
-				} else {
-					const sheetWithinDocument = this.getNodeParameter('sheetName', 0, undefined, {
-						extractValue: true,
-					}) as string;
-					const { mode: sheetMode } = this.getNodeParameter('sheetName', 0) as {
-						mode: ResourceLocator;
-					};
+			if (operation !== 'create' && !readsAllSheets) {
+				const sheetWithinDocument = this.getNodeParameter('sheetName', 0, undefined, {
+					extractValue: true,
+				}) as string;
+				const { mode: sheetMode } = this.getNodeParameter('sheetName', 0) as {
+					mode: ResourceLocator;
+				};
 
-					const result = await googleSheet.spreadsheetGetSheet(
-						this.getNode(),
-						sheetMode,
-						sheetWithinDocument,
-					);
-					sheetId = result.sheetId.toString();
-					sheetName = result.title;
-				}
+				const result = await googleSheet.spreadsheetGetSheet(
+					this.getNode(),
+					sheetMode,
+					sheetWithinDocument,
+				);
+				sheetId = result.sheetId.toString();
+				sheetName = result.title;
 			}
 
 			switch (operation) {

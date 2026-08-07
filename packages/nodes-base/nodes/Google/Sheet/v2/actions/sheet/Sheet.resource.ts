@@ -144,14 +144,17 @@ export const descriptions: INodeProperties[] = [
 			{
 				name: 'Single Sheet',
 				value: 'single',
+				description: 'Read rows from the sheet selected below',
 			},
 			{
 				name: 'All Sheets',
 				value: 'all',
+				description:
+					'Read rows from every sheet in the document, adding a "_sheetName" field to each row',
 			},
 		],
 		description:
-			'Read rows from a single sheet or from all sheets in the spreadsheet. For spreadsheets with many sheets, "All Sheets" may consume significant API quota. When using "All Sheets" mode, use a Filter node after this node to filter rows by column values.',
+			'Whether to read from one sheet or from every sheet in the document. "All Sheets" makes one request per sheet, so it can use up a lot of API quota on large documents, and filters are not available - use a Filter node afterwards instead.',
 		displayOptions: {
 			show: {
 				resource: ['sheet'],

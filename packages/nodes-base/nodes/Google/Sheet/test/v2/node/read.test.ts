@@ -1,7 +1,8 @@
-import type { IExecuteFunctions } from 'n8n-workflow';
+import type { IExecuteFunctions, INode } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { execute } from '../../../v2/actions/sheet/read.operation';
-import type { GoogleSheet } from '../../../v2/helpers/GoogleSheet';
+import { GoogleSheet } from '../../../v2/helpers/GoogleSheet';
 
 describe('Google Sheet - Read', () => {
 	let mockExecuteFunctions: Partial<IExecuteFunctions>;
@@ -77,5 +78,247 @@ describe('Google Sheet - Read', () => {
 			'Sheet1',
 		);
 		expect(result).toEqual([]);
+	});
+
+	test('should not fetch the sheet list in single sheet mode', async () => {
+		mockSheet.spreadsheetGetSheets = vi.fn();
+
+		await execute.call(
+			mockExecuteFunctions as IExecuteFunctions,
+			mockSheet as GoogleSheet,
+			'Sheet1',
+		);
+
+		expect(mockSheet.spreadsheetGetSheets).not.toHaveBeenCalled();
+	});
+});
+
+describe('Google Sheet - Read - All Sheets', () => {
+	const node: INode = {
+		id: 'a1b2c3',
+		name: 'Google Sheets',
+		type: 'n8n-nodes-base.googleSheets',
+		typeVersion: 4.5,
+		position: [0, 0],
+		parameters: {},
+	};
+
+	let nodeParameters: { [key: string]: unknown };
+	let mockExecuteFunctions: Partial<IExecuteFunctions>;
+	let sheet: GoogleSheet;
+	let rowsBySheet: { [range: string]: string[][] };
+
+	/** Builds the `spreadsheets.get` payload the node reads sheet titles from */
+	const sheetList = (...properties: Array<{ title: string; sheetType?: string }>) => ({
+		sheets: properties.map((p, index) => ({
+			properties: { sheetId: index, sheetType: 'GRID', ...p },
+		})),
+	});
+
+	beforeEach(() => {
+		nodeParameters = {
+			sheetSelectionMode: 'all',
+			options: {},
+			'filtersUI.values': [],
+			combineFilters: 'AND',
+		};
+
+		mockExecuteFunctions = {
+			getInputData: vi.fn().mockReturnValue([{ json: {} }]),
+			getNode: vi.fn().mockReturnValue(node),
+			getNodeParameter: vi.fn(
+				(param: string, _i: number, fallback?: unknown) => nodeParameters[param] ?? fallback,
+			),
+			continueOnFail: vi.fn().mockReturnValue(false),
+		} as Partial<IExecuteFunctions>;
+
+		rowsBySheet = {
+			Q1: [
+				['name', 'amount'],
+				['Ada', '10'],
+			],
+			Q2: [
+				['name', 'amount'],
+				['Grace', '20'],
+				['Alan', '30'],
+			],
+		};
+
+		// A real GoogleSheet keeps the row-structuring logic under test; only the
+		// two methods that reach the API are stubbed.
+		sheet = new GoogleSheet('spreadsheet-id', mockExecuteFunctions as IExecuteFunctions);
+		sheet.spreadsheetGetSheets = vi
+			.fn()
+			.mockResolvedValue(sheetList({ title: 'Q1' }, { title: 'Q2' }));
+		sheet.getData = vi.fn(async (range: string) => rowsBySheet[range]);
+	});
+
+	test('should read every sheet and tag each row with its sheet name', async () => {
+		const result = await execute.call(mockExecuteFunctions as IExecuteFunctions, sheet, '');
+
+		expect(result).toEqual([
+			{
+				json: { _sheetName: 'Q1', name: 'Ada', amount: '10', row_number: 2 },
+				pairedItem: { item: 0 },
+			},
+			{
+				json: { _sheetName: 'Q2', name: 'Grace', amount: '20', row_number: 2 },
+				pairedItem: { item: 0 },
+			},
+			{
+				json: { _sheetName: 'Q2', name: 'Alan', amount: '30', row_number: 3 },
+				pairedItem: { item: 0 },
+			},
+		]);
+	});
+
+	test('should request one range per sheet', async () => {
+		await execute.call(mockExecuteFunctions as IExecuteFunctions, sheet, '');
+
+		expect(sheet.getData).toHaveBeenCalledTimes(2);
+		expect(sheet.getData).toHaveBeenNthCalledWith(1, 'Q1', 'UNFORMATTED_VALUE', 'FORMATTED_STRING');
+		expect(sheet.getData).toHaveBeenNthCalledWith(2, 'Q2', 'UNFORMATTED_VALUE', 'FORMATTED_STRING');
+	});
+
+	test('should apply the configured range to each sheet individually', async () => {
+		nodeParameters.options = {
+			dataLocationOnSheet: { values: { rangeDefinition: 'specifyRangeA1', range: 'A:B' } },
+		};
+		rowsBySheet = { 'Q1!A:B': rowsBySheet.Q1, 'Q2!A:B': rowsBySheet.Q2 };
+
+		const result = await execute.call(mockExecuteFunctions as IExecuteFunctions, sheet, '');
+
+		expect(sheet.getData).toHaveBeenNthCalledWith(
+			1,
+			'Q1!A:B',
+			'UNFORMATTED_VALUE',
+			'FORMATTED_STRING',
+		);
+		expect(sheet.getData).toHaveBeenNthCalledWith(
+			2,
+			'Q2!A:B',
+			'UNFORMATTED_VALUE',
+			'FORMATTED_STRING',
+		);
+		expect(result).toHaveLength(3);
+	});
+
+	test('should skip chart-only sheets, which hold no readable cells', async () => {
+		sheet.spreadsheetGetSheets = vi
+			.fn()
+			.mockResolvedValue(
+				sheetList({ title: 'Q1' }, { title: 'Chart', sheetType: 'OBJECT' }, { title: 'Q2' }),
+			);
+
+		const result = await execute.call(mockExecuteFunctions as IExecuteFunctions, sheet, '');
+
+		expect(sheet.getData).toHaveBeenCalledTimes(2);
+		expect(sheet.getData).not.toHaveBeenCalledWith('Chart', expect.anything(), expect.anything());
+		expect(result.map((item) => item.json._sheetName)).toEqual(['Q1', 'Q2', 'Q2']);
+	});
+
+	test('should skip sheets that hold no rows', async () => {
+		sheet.spreadsheetGetSheets = vi
+			.fn()
+			.mockResolvedValue(sheetList({ title: 'Q1' }, { title: 'Empty' }, { title: 'Q2' }));
+		rowsBySheet.Empty = [];
+
+		const result = await execute.call(mockExecuteFunctions as IExecuteFunctions, sheet, '');
+
+		expect(sheet.getData).toHaveBeenCalledTimes(3);
+		expect(result.map((item) => item.json._sheetName)).toEqual(['Q1', 'Q2', 'Q2']);
+	});
+
+	test('should keep the value of a column that is itself named _sheetName', async () => {
+		rowsBySheet.Q1 = [
+			['name', '_sheetName'],
+			['Ada', 'from-the-spreadsheet'],
+		];
+
+		const result = await execute.call(mockExecuteFunctions as IExecuteFunctions, sheet, '');
+
+		expect(result[0].json).toEqual({
+			name: 'Ada',
+			_sheetName: 'from-the-spreadsheet',
+			row_number: 2,
+		});
+	});
+
+	test('should return an empty array when the spreadsheet has no readable sheets', async () => {
+		sheet.spreadsheetGetSheets = vi
+			.fn()
+			.mockResolvedValue(sheetList({ title: 'Chart', sheetType: 'OBJECT' }));
+
+		const result = await execute.call(mockExecuteFunctions as IExecuteFunctions, sheet, '');
+
+		expect(result).toEqual([]);
+		expect(sheet.getData).not.toHaveBeenCalled();
+	});
+
+	test('should not throw when the spreadsheet response carries no sheets', async () => {
+		sheet.spreadsheetGetSheets = vi.fn().mockResolvedValue({});
+
+		const result = await execute.call(mockExecuteFunctions as IExecuteFunctions, sheet, '');
+
+		expect(result).toEqual([]);
+	});
+
+	test('should name the failing sheet when a sheet cannot be read', async () => {
+		sheet.getData = vi.fn(async (range: string) => {
+			if (range === 'Q2') throw new Error('Unable to parse range: Q2');
+			return rowsBySheet[range];
+		});
+
+		await expect(
+			execute.call(mockExecuteFunctions as IExecuteFunctions, sheet, ''),
+		).rejects.toThrow('Failed to read rows from sheet "Q2": Unable to parse range: Q2');
+	});
+
+	test('should throw a NodeOperationError when a sheet cannot be read', async () => {
+		sheet.getData = vi.fn().mockRejectedValue(new Error('boom'));
+
+		await expect(
+			execute.call(mockExecuteFunctions as IExecuteFunctions, sheet, ''),
+		).rejects.toBeInstanceOf(NodeOperationError);
+	});
+
+	test('should keep rows from the other sheets when continueOnFail is set', async () => {
+		mockExecuteFunctions.continueOnFail = vi.fn().mockReturnValue(true);
+		sheet.getData = vi.fn(async (range: string) => {
+			if (range === 'Q1') throw new Error('Quota exceeded');
+			return rowsBySheet[range];
+		});
+
+		const result = await execute.call(mockExecuteFunctions as IExecuteFunctions, sheet, '');
+
+		expect(result).toEqual([
+			{
+				json: {
+					_sheetName: 'Q1',
+					error: 'Failed to read rows from sheet "Q1": Quota exceeded',
+				},
+				pairedItem: { item: 0 },
+			},
+			{
+				json: { _sheetName: 'Q2', name: 'Grace', amount: '20', row_number: 2 },
+				pairedItem: { item: 0 },
+			},
+			{
+				json: { _sheetName: 'Q2', name: 'Alan', amount: '30', row_number: 3 },
+				pairedItem: { item: 0 },
+			},
+		]);
+	});
+
+	test('should read the spreadsheet once regardless of how many input items there are', async () => {
+		mockExecuteFunctions.getInputData = vi
+			.fn()
+			.mockReturnValue([{ json: {} }, { json: {} }, { json: {} }]);
+
+		const result = await execute.call(mockExecuteFunctions as IExecuteFunctions, sheet, '');
+
+		expect(sheet.spreadsheetGetSheets).toHaveBeenCalledTimes(1);
+		expect(sheet.getData).toHaveBeenCalledTimes(2);
+		expect(result).toHaveLength(3);
 	});
 });
