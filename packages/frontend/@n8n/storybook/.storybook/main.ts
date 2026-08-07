@@ -1,19 +1,23 @@
 import type { StorybookConfig } from '@storybook/vue3-vite';
-import { dirname } from 'path';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import remarkGfm from 'remark-gfm';
-import { fileURLToPath } from 'url';
 
 function getAbsolutePath(value: string): string {
 	return dirname(fileURLToPath(import.meta.resolve(`${value}/package.json`)));
 }
+
+const configDirectory = dirname(fileURLToPath(import.meta.url));
+const designSystemSource = resolve(configDirectory, '../../design-system/src');
+
 const config: StorybookConfig = {
 	stories: [
 		/** Only design system stories allowed.
 		 * If a component needs Storybook documentation because it is shared across multiple surfaces, it should be transfered to the design-system.
 		 * This prevents sprawl, allows for better sharing, and makes it clear a component can be re-used elsewhere.
 		 */
-		'../../design-system/src/**/*.stories.@(js|jsx|mjs|ts|tsx)',
-		'../../design-system/src/**/*.mdx',
+		`${designSystemSource}/**/*.stories.@(js|jsx|mjs|ts|tsx)`,
+		`${designSystemSource}/**/*.mdx`,
 	],
 	addons: [
 		getAbsolutePath('@chromatic-com/storybook'),
@@ -33,6 +37,16 @@ const config: StorybookConfig = {
 	],
 	framework: getAbsolutePath('@storybook/vue3-vite'),
 	staticDirs: ['../../design-system/assets'],
+	viteFinal(config) {
+		config.server ??= {};
+		config.server.watch = {
+			...config.server.watch,
+			usePolling: true,
+			interval: 100,
+		};
+
+		return config;
+	},
 	core: {
 		disableTelemetry: true,
 	},
