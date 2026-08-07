@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { GRID_SIZE } from '@/app/utils/nodeViewUtils';
 import CanvasBackgroundStripedPattern from './CanvasBackgroundStripedPattern.vue';
-import { Background } from '@vue-flow/background';
-import type { ViewportTransform } from '@vue-flow/core';
+import { Background } from '@/features/workflows/canvas/vueFlow.adapter';
+import type { ViewportTransform } from '@/features/workflows/canvas/vueFlow.adapter';
 
 defineProps<{
 	striped: boolean;

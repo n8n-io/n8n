@@ -1,5 +1,5 @@
 import { computed, ref, type Ref } from 'vue';
-import type { ViewportTransform } from '@vue-flow/core';
+import type { ViewportTransform } from '@/features/workflows/canvas/vueFlow.adapter';
 
 /**
  * Composable for calculating zoom-adjusted visual values (lightness, opacity, etc.)

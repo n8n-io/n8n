@@ -1,6 +1,11 @@
 import dagre from '@dagrejs/dagre';
 
-import { useVueFlow, type GraphEdge, type GraphNode, type XYPosition } from '@vue-flow/core';
+import {
+	useVueFlow,
+	type GraphEdge,
+	type GraphNode,
+	type XYPosition,
+} from '@/features/workflows/canvas/vueFlow.adapter';
 import { STICKY_NODE_TYPE } from '@/app/constants';
 import {
 	CanvasNodeRenderType,

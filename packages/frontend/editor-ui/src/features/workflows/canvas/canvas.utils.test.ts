@@ -15,7 +15,7 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 import type { CanvasConnection } from './canvas.types';
 import { CanvasConnectionMode } from './canvas.types';
 import type { INodeUi } from '@/Interface';
-import type { Connection } from '@vue-flow/core';
+import type { Connection } from '@/features/workflows/canvas/vueFlow.adapter';
 import { createTestNode } from '@/__tests__/mocks';
 import { NODE_MIN_INPUT_ITEMS_COUNT } from '@/app/constants';
 

@@ -35,7 +35,7 @@ import {
 	createCanvasConnectionHandleString,
 	parseCanvasConnectionHandleString,
 } from '@/features/workflows/canvas/canvas.utils';
-import type { Connection } from '@vue-flow/core';
+import type { Connection } from '@/features/workflows/canvas/vueFlow.adapter';
 import get from 'lodash/get';
 import type { IDataObject, NodeConnectionType } from 'n8n-workflow';
 import { NodeConnectionTypes, isCommunityPackageName } from 'n8n-workflow';

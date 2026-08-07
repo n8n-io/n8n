@@ -3,7 +3,7 @@ import { fireEvent } from '@testing-library/vue';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import { computed } from 'vue';
-import type { GraphNode } from '@vue-flow/core';
+import type { GraphNode } from '@/features/workflows/canvas/vueFlow.adapter';
 
 import CanvasSelectionToolbar from './CanvasSelectionToolbar.vue';
 import {

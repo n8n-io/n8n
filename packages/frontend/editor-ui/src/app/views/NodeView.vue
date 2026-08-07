@@ -40,7 +40,7 @@ import type {
 	Dimensions,
 	ViewportTransform,
 	XYPosition as VueFlowXYPosition,
-} from '@vue-flow/core';
+} from '@/features/workflows/canvas/vueFlow.adapter';
 import type {
 	CanvasNode,
 	CanvasNodeMoveEvent,
