@@ -20,7 +20,7 @@ const ModalStub = {
 
 const initialState = {
 	[STORES.UI]: {
-		modalRuntimeStateById: {
+		modalStateById: {
 			[IMPORT_WORKFLOW_URL_MODAL_KEY]: {
 				open: true,
 			},

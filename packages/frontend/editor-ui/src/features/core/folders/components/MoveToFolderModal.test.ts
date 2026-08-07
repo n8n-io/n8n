@@ -149,7 +149,7 @@ describe('MoveToFolderModal', () => {
 	beforeEach(() => {
 		createTestingPinia();
 		uiStore = mockedStore(useUIStore);
-		uiStore.modalRuntimeStateById = {
+		uiStore.modalStateById = {
 			[MOVE_FOLDER_MODAL_KEY]: {
 				open: true,
 			},

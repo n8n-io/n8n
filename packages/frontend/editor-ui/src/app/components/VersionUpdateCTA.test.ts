@@ -55,7 +55,7 @@ describe('VersionUpdateCTA', () => {
 	beforeEach(() => {
 		createTestingPinia();
 		uiStore = mockedStore(useUIStore);
-		uiStore.modalRuntimeStateById = {
+		uiStore.modalStateById = {
 			[WHATS_NEW_MODAL_KEY]: {
 				open: true,
 			},

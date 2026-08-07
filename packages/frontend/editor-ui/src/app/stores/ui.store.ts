@@ -102,28 +102,9 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	 * `SHELL_MODAL_INITIAL_STATE` (shell modals), and `modalsById` below resolves
 	 * the two together.
 	 */
-	const modalRuntimeStateById = ref<Record<string, ModalState>>({});
+	const modalStateById = ref<Record<string, ModalState>>({});
 
 	const modalStack = ref<string[]>([]);
-
-	/**
-	 * Runtime state lives exactly as long as the definition it accumulated under:
-	 * a modal that is unregistered while open must not stay open, and must come
-	 * back in its declared initial state if it registers again.
-	 *
-	 * Ad-hoc keys are told apart from unregistered ones by the registry itself —
-	 * only a key that was in it can be taken out of it. dataTable's per-row keys
-	 * are never registered, so they are never in `previous` and never swept.
-	 */
-	watch(
-		() => new Set(modalRegistry.getAll().keys()),
-		(registered, previouslyRegistered) => {
-			for (const key of previouslyRegistered) {
-				if (!registered.has(key)) forgetModalState(key);
-			}
-		},
-		{ flush: 'sync' },
-	);
 	const sidebarMenuCollapsed = useLocalStorage<boolean | null>('sidebar.collapsed', null, {
 		serializer: {
 			read: (v) => (v === 'null' ? null : v === 'true'),
@@ -261,12 +242,12 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	 * that runs before its modal registers renders nothing instead of throwing.
 	 *
 	 * This is the single derivation that replaced the store's copy of the registry;
-	 * writes go to `modalRuntimeStateById` through the actions below.
+	 * writes go to `modalStateById` through the actions below.
 	 */
 	const modalsById = computed<Record<string, ModalState>>(() => {
 		const resolved = modalDefinitionsById();
 
-		for (const [key, runtimeState] of Object.entries(modalRuntimeStateById.value)) {
+		for (const [key, runtimeState] of Object.entries(modalStateById.value)) {
 			resolved[key] = key in resolved ? { ...resolved[key], ...runtimeState } : runtimeState;
 		}
 
@@ -338,18 +319,38 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	 * a key that was never registered still works (dataTable builds per-row keys).
 	 */
 	const patchModalState = (name: ModalKey, patch: Partial<ModalState>): void => {
-		modalRuntimeStateById.value[name] = {
-			...modalRuntimeStateById.value[name],
+		modalStateById.value[name] = {
+			...modalStateById.value[name],
 			...patch,
 		} as ModalState;
 	};
 
 	/** Discard everything runtime has accumulated for a key, open or not. */
-	function forgetModalState(name: ModalKey): void {
+	const forgetModalState = (name: ModalKey): void => {
 		// eslint-disable-next-line @typescript-eslint/no-dynamic-delete
-		delete modalRuntimeStateById.value[name];
+		delete modalStateById.value[name];
 		modalStack.value = modalStack.value.filter((openModalName) => name !== openModalName);
-	}
+	};
+
+	/**
+	 * Runtime state lives exactly as long as the definition it accumulated under:
+	 * a modal unregistered while open must not stay open, and must come back in its
+	 * declared initial state if it registers again.
+	 *
+	 * Ad-hoc keys are told apart from unregistered ones by the registry itself —
+	 * only a key that was in it can be taken out of it. dataTable's per-row keys are
+	 * never registered, so they never appear in `previouslyRegistered` and are never
+	 * swept. Same for the shell catalogue, whose definitions are static.
+	 */
+	watch(
+		() => new Set(modalRegistry.getAll().keys()),
+		(registered, previouslyRegistered) => {
+			for (const key of previouslyRegistered) {
+				if (!registered.has(key)) forgetModalState(key);
+			}
+		},
+		{ flush: 'sync' },
+	);
 
 	const setMode = (name: keyof Modals, mode: string): void => {
 		patchModalState(name, { mode });
@@ -577,7 +578,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		sidebarWidth,
 		theme: computed(() => theme.value),
 		modalsById,
-		modalRuntimeStateById,
+		modalStateById,
 		currentView,
 		isAnyModalOpen,
 		activeModals,

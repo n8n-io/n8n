@@ -37,7 +37,7 @@ const renderComponent = createComponentRenderer(ApiKeyEditModal, {
 	pinia: createTestingPinia({
 		initialState: {
 			[STORES.UI]: {
-				modalRuntimeStateById: {
+				modalStateById: {
 					[API_KEY_CREATE_OR_EDIT_MODAL_KEY]: { open: true },
 				},
 			},

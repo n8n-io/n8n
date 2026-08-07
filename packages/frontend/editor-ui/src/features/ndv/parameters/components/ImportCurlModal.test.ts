@@ -59,7 +59,7 @@ describe('ImportCurlModal', () => {
 
 	it('should show empty input when no curl command exists for active node', async () => {
 		const uiStore = mockedStore(useUIStore);
-		uiStore.modalRuntimeStateById = {
+		uiStore.modalStateById = {
 			[IMPORT_CURL_MODAL_KEY]: {
 				open: true,
 				data: {
@@ -82,7 +82,7 @@ describe('ImportCurlModal', () => {
 
 	it('should show curl command for active node', async () => {
 		const uiStore = mockedStore(useUIStore);
-		uiStore.modalRuntimeStateById = {
+		uiStore.modalStateById = {
 			[IMPORT_CURL_MODAL_KEY]: {
 				open: true,
 				data: {
@@ -106,7 +106,7 @@ describe('ImportCurlModal', () => {
 
 	it('should set the input value when the import button is clicked', async () => {
 		const uiStore = mockedStore(useUIStore);
-		uiStore.modalRuntimeStateById = {
+		uiStore.modalStateById = {
 			[IMPORT_CURL_MODAL_KEY]: {
 				open: true,
 				data: {
@@ -135,7 +135,7 @@ describe('ImportCurlModal', () => {
 
 	it('should override the input value when the import button is clicked', async () => {
 		const uiStore = mockedStore(useUIStore);
-		uiStore.modalRuntimeStateById = {
+		uiStore.modalStateById = {
 			[IMPORT_CURL_MODAL_KEY]: {
 				open: true,
 				data: {
@@ -168,7 +168,7 @@ describe('ImportCurlModal', () => {
 		});
 
 		const uiStore = mockedStore(useUIStore);
-		uiStore.modalRuntimeStateById = {
+		uiStore.modalStateById = {
 			[IMPORT_CURL_MODAL_KEY]: {
 				open: true,
 				data: { curlCommands: {} },

@@ -51,7 +51,7 @@ const mockVariables: EnvironmentVariable[] = [
 
 const initialState = {
 	[STORES.UI]: {
-		modalRuntimeStateById: {
+		modalStateById: {
 			[VARIABLE_MODAL_KEY]: {
 				open: true,
 			},

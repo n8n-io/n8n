@@ -146,7 +146,7 @@ describe('UI Store', () => {
 				mode: 'edit',
 				data: { foo: 'bar' },
 			});
-			expect(uiStore.modalRuntimeStateById[MODAL_KEY]).toEqual({
+			expect(uiStore.modalStateById[MODAL_KEY]).toEqual({
 				open: true,
 				data: { foo: 'bar' },
 			});
@@ -156,11 +156,11 @@ describe('UI Store', () => {
 			const uiStore = useUIStore();
 			modalRegistry.register({ key: MODAL_KEY, component: {} });
 
-			expect(uiStore.modalRuntimeStateById).toEqual({});
+			expect(uiStore.modalStateById).toEqual({});
 
 			uiStore.openModal(MODAL_KEY);
 
-			expect(Object.keys(uiStore.modalRuntimeStateById)).toEqual([MODAL_KEY]);
+			expect(Object.keys(uiStore.modalStateById)).toEqual([MODAL_KEY]);
 		});
 
 		it('should open a key that was never registered', () => {
@@ -203,7 +203,7 @@ describe('UI Store', () => {
 				modalRegistry.unregister(MODAL_KEY);
 
 				expect(uiStore.modalsById[MODAL_KEY]).toEqual({ open: false });
-				expect(uiStore.modalRuntimeStateById[MODAL_KEY]).toBeUndefined();
+				expect(uiStore.modalStateById[MODAL_KEY]).toBeUndefined();
 			});
 
 			it('should not reopen with stale data when the key is registered again', () => {

@@ -60,7 +60,7 @@ describe('NodeRecommendationModal', () => {
 			pinia: createTestingPinia({
 				initialState: {
 					[STORES.UI]: {
-						modalRuntimeStateById: {
+						modalStateById: {
 							[EXPERIMENT_TEMPLATE_RECO_V2_KEY]: { open: true },
 						},
 					},

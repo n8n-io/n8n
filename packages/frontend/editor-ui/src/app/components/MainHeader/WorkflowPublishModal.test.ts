@@ -46,7 +46,7 @@ const initialState = {
 		},
 	},
 	[STORES.UI]: {
-		modalRuntimeStateById: {
+		modalStateById: {
 			[WORKFLOW_PUBLISH_MODAL_KEY]: {
 				open: true,
 			},

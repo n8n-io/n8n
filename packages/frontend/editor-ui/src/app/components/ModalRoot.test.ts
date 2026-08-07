@@ -70,7 +70,7 @@ describe('ModalRoot', () => {
 
 	it('passes modal state to the slot once the key is open', () => {
 		const uiStore = useUIStore();
-		uiStore.modalRuntimeStateById = {
+		uiStore.modalStateById = {
 			[MODAL_KEY]: { open: true, mode: 'edit', activeId: '42', data: { foo: 'bar' } },
 		};
 		uiStore.openModal(MODAL_KEY);

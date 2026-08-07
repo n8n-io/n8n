@@ -14,7 +14,7 @@ const renderComponent = createComponentRenderer(WorkflowVersionFormModal, {
 	pinia: createTestingPinia({
 		initialState: {
 			[STORES.UI]: {
-				modalRuntimeStateById: {
+				modalStateById: {
 					[TEST_MODAL_KEY]: {
 						open: true,
 					},
