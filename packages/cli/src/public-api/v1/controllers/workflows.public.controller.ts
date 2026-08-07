@@ -5,7 +5,13 @@ import {
 	WorkflowVersionHistoryListPublicDto,
 } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
-import type { AuthenticatedRequest } from '@n8n/db';
+import type {
+	AuthenticatedRequest,
+	SharedWorkflow,
+	TagEntity,
+	WorkflowEntity,
+	WorkflowHistory,
+} from '@n8n/db';
 import {
 	ApiDescription,
 	ApiErrorResponse,
@@ -33,6 +39,46 @@ function toPublicJson(value: unknown): Record<string, unknown> | null {
 	return value !== null && typeof value === 'object' && !Array.isArray(value)
 		? (value as Record<string, unknown>)
 		: null;
+}
+
+function toPublicTag(tag: TagEntity) {
+	return {
+		id: tag.id,
+		name: tag.name,
+		createdAt: tag.createdAt.toISOString(),
+		updatedAt: tag.updatedAt.toISOString(),
+	};
+}
+
+function toPublicSharedWorkflow(sharedWorkflow: SharedWorkflow) {
+	return {
+		role: sharedWorkflow.role,
+		workflowId: sharedWorkflow.workflowId,
+		projectId: sharedWorkflow.projectId,
+		project: {
+			id: sharedWorkflow.project.id,
+			name: sharedWorkflow.project.name,
+			type: sharedWorkflow.project.type,
+		},
+		createdAt: sharedWorkflow.createdAt.toISOString(),
+		updatedAt: sharedWorkflow.updatedAt.toISOString(),
+	};
+}
+
+function toPublicActiveVersion(activeVersion: WorkflowHistory) {
+	return {
+		versionId: activeVersion.versionId,
+		workflowId: activeVersion.workflowId,
+		nodes: activeVersion.nodes,
+		connections: activeVersion.connections,
+		nodeGroups: activeVersion.nodeGroups,
+		authors: activeVersion.authors,
+		name: activeVersion.name,
+		description: activeVersion.description,
+		autosaved: activeVersion.autosaved,
+		createdAt: activeVersion.createdAt.toISOString(),
+		updatedAt: activeVersion.updatedAt.toISOString(),
+	};
 }
 
 @PublicApiController('/workflows')
@@ -77,6 +123,14 @@ export class WorkflowsPublicController {
 			publicApi: true,
 		});
 
+		return this.toWorkflowPublicDto(workflow, { excludePinnedData: query.excludePinnedData });
+	}
+
+	/** Builds the public response shape for a single workflow, from the internal entity n8n stores. */
+	private toWorkflowPublicDto(
+		workflow: WorkflowEntity,
+		options: { excludePinnedData?: boolean } = {},
+	): WorkflowPublicDto {
 		return {
 			id: workflow.id,
 			name: workflow.name,
@@ -94,44 +148,10 @@ export class WorkflowsPublicController {
 			settings: toPublicJson(workflow.settings),
 			staticData: toPublicJson(workflow.staticData),
 			meta: toPublicJson(workflow.meta),
-			...(query.excludePinnedData ? {} : { pinData: toPublicJson(workflow.pinData) }),
-			...(workflow.tags
-				? {
-						tags: workflow.tags.map((tag) => ({
-							id: tag.id,
-							name: tag.name,
-							createdAt: tag.createdAt.toISOString(),
-							updatedAt: tag.updatedAt.toISOString(),
-						})),
-					}
-				: {}),
-			shared: workflow.shared.map((sharedWorkflow) => ({
-				role: sharedWorkflow.role,
-				workflowId: sharedWorkflow.workflowId,
-				projectId: sharedWorkflow.projectId,
-				project: {
-					id: sharedWorkflow.project.id,
-					name: sharedWorkflow.project.name,
-					type: sharedWorkflow.project.type,
-				},
-				createdAt: sharedWorkflow.createdAt.toISOString(),
-				updatedAt: sharedWorkflow.updatedAt.toISOString(),
-			})),
-			activeVersion: workflow.activeVersion
-				? {
-						versionId: workflow.activeVersion.versionId,
-						workflowId: workflow.activeVersion.workflowId,
-						nodes: workflow.activeVersion.nodes,
-						connections: workflow.activeVersion.connections,
-						nodeGroups: workflow.activeVersion.nodeGroups,
-						authors: workflow.activeVersion.authors,
-						name: workflow.activeVersion.name,
-						description: workflow.activeVersion.description,
-						autosaved: workflow.activeVersion.autosaved,
-						createdAt: workflow.activeVersion.createdAt.toISOString(),
-						updatedAt: workflow.activeVersion.updatedAt.toISOString(),
-					}
-				: null,
+			...(options.excludePinnedData ? {} : { pinData: toPublicJson(workflow.pinData) }),
+			...(workflow.tags ? { tags: workflow.tags.map(toPublicTag) } : {}),
+			shared: workflow.shared.map(toPublicSharedWorkflow),
+			activeVersion: workflow.activeVersion ? toPublicActiveVersion(workflow.activeVersion) : null,
 		};
 	}
 
