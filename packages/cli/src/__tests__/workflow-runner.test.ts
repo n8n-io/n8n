@@ -497,14 +497,17 @@ describe('enqueueExecution', () => {
 		);
 	});
 
-	it('should carry the manual-execution identity into job data', async () => {
+	it.each([
+		{ encryptedRunnerIdentity: 'encrypted-identity-blob' },
+		{ mcpToolInput: { method: 'tools/call', headers: { 'x-user-id': 'user-1' } } },
+	])('should carry %o into job data', async (processData) => {
 		const activeExecutions = Container.get(ActiveExecutions);
 		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValue();
 		vi.spyOn(runner, 'processError').mockResolvedValue();
 		const data = mock<IWorkflowExecutionDataProcess>({
 			workflowData: { nodes: [], staticData: {} },
 			executionData: undefined,
-			encryptedRunnerIdentity: 'encrypted-identity-blob',
+			...processData,
 		});
 		const error = new Error('stop for test purposes');
 
@@ -515,42 +518,7 @@ describe('enqueueExecution', () => {
 		// @ts-expect-error Private method
 		await expect(runner.enqueueExecution('1', 'workflow-xyz', data)).rejects.toThrowError(error);
 
-		expect(addJob).toHaveBeenCalledWith(
-			expect.objectContaining({
-				encryptedRunnerIdentity: 'encrypted-identity-blob',
-			}),
-			expect.any(Object),
-		);
-	});
-
-	it('should carry the MCP tool input into job data', async () => {
-		const activeExecutions = Container.get(ActiveExecutions);
-		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValue();
-		vi.spyOn(runner, 'processError').mockResolvedValue();
-		const mcpToolInput = {
-			jsonrpc: '2.0',
-			id: 1,
-			method: 'tools/call',
-			headers: { 'x-user-id': 'user-1' },
-		};
-		const data = mock<IWorkflowExecutionDataProcess>({
-			workflowData: { nodes: [], staticData: {} },
-			executionData: undefined,
-			mcpToolInput,
-		});
-		const error = new Error('stop for test purposes');
-
-		// mock a rejection to stop execution flow before we create the PCancelable promise,
-		// so that Vitest does not move on to tear down the suite until the PCancelable settles
-		addJob.mockRejectedValueOnce(error);
-
-		// @ts-expect-error Private method
-		await expect(runner.enqueueExecution('1', 'workflow-xyz', data)).rejects.toThrowError(error);
-
-		expect(addJob).toHaveBeenCalledWith(
-			expect.objectContaining({ mcpToolInput }),
-			expect.any(Object),
-		);
+		expect(addJob).toHaveBeenCalledWith(expect.objectContaining(processData), expect.any(Object));
 	});
 });
 

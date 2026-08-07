@@ -263,41 +263,46 @@ describe('WebhookContext', () => {
 	});
 
 	describe('getInputConnectionData', () => {
-		const createContext = (httpRequest: IWorkflowExecuteAdditionalData['httpRequest']) => {
-			const contextAdditionalData = mock<IWorkflowExecuteAdditionalData>({ credentialsHelper });
-			contextAdditionalData.httpRequest = httpRequest;
-			return new WebhookContext(workflow, node, contextAdditionalData, mode, webhookData, [], null);
-		};
-
 		const inputPassedToSubNodes = () => vi.mocked(getInputConnectionData).mock.calls[0][3];
 
-		it('should expose the request body and headers to sub-nodes', async () => {
-			const context = createContext(additionalData.httpRequest);
+		it('should expose the request body to sub-nodes', async () => {
+			await webhookContext.getInputConnectionData(NodeConnectionTypes.AiTool, 0);
 
-			await context.getInputConnectionData(NodeConnectionTypes.AiTool, 0);
+			expect(inputPassedToSubNodes()).toEqual([{ json: { test: 'body' } }]);
+		});
+
+		it('should expose the input data the trigger supplied instead', async () => {
+			await webhookContext.getInputConnectionData(NodeConnectionTypes.AiTool, 0, {
+				inputData: { body: { test: 'body' }, headers: { test: 'header' } },
+			});
 
 			expect(inputPassedToSubNodes()).toEqual([
-				{ json: { test: 'body', headers: { test: 'header' } } },
+				{ json: { body: { test: 'body' }, headers: { test: 'header' } } },
 			]);
 		});
 
-		it('should not let the request body shadow the headers', async () => {
-			const context = createContext({
-				body: { headers: { 'x-user-id': 'spoofed' } },
-				headers: { 'x-user-id': 'real' },
-			} as unknown as Request);
+		it('should fall back to the request body when the trigger supplies no input data', async () => {
+			await webhookContext.getInputConnectionData(NodeConnectionTypes.AiTool, 0, {});
 
-			await context.getInputConnectionData(NodeConnectionTypes.AiTool, 0);
-
-			expect(inputPassedToSubNodes()).toEqual([{ json: { headers: { 'x-user-id': 'real' } } }]);
+			expect(inputPassedToSubNodes()).toEqual([{ json: { test: 'body' } }]);
 		});
 
 		it('should not fail when there is no HTTP request', async () => {
-			const context = createContext(undefined);
+			const contextAdditionalData = mock<IWorkflowExecuteAdditionalData>({ credentialsHelper });
+			contextAdditionalData.httpRequest = undefined;
+			const context = new WebhookContext(
+				workflow,
+				node,
+				contextAdditionalData,
+				mode,
+				webhookData,
+				[],
+				null,
+			);
 
 			await context.getInputConnectionData(NodeConnectionTypes.AiTool, 0);
 
-			expect(inputPassedToSubNodes()).toEqual([{ json: { headers: {} } }]);
+			expect(inputPassedToSubNodes()).toEqual([{ json: {} }]);
 		});
 	});
 

@@ -29,7 +29,7 @@ import { getInputConnectionData } from './utils/get-input-connection-data';
 import { getRequestHelperFunctions } from './utils/request-helper-functions';
 import { returnJsonArray } from './utils/return-json-array';
 import { getNodeWebhookUrl } from './utils/webhook-helper-functions';
-import { requestAsNodeInput } from '../../utils/request-as-node-input';
+
 export class WebhookContext extends NodeExecutionContext implements IWebhookFunctions {
 	readonly helpers: IWebhookFunctions['helpers'];
 
@@ -226,11 +226,14 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 	async getInputConnectionData(
 		connectionType: AINodeConnectionType,
 		itemIndex: number,
+		options?: { inputData?: IDataObject },
 	): Promise<unknown> {
-		// To be able to use expressions like "$json.sessionId" set the request
-		// the webhook received to what is normally used for incoming node data.
+		// To be able to use expressions like "$json.sessionId" set the
+		// body data the webhook received to what is normally used for
+		// incoming node data, unless the trigger supplied its own shape.
 		const connectionInputData: INodeExecutionData[] = [
-			{ json: requestAsNodeInput(this.additionalData.httpRequest) },
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+			{ json: options?.inputData ?? (this.additionalData.httpRequest?.body || {}) },
 		];
 		const runExecutionData = this.runExecutionData ?? createEmptyRunExecutionData();
 		const executeData: IExecuteData = {

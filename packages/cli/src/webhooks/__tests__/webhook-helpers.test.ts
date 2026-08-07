@@ -28,13 +28,12 @@ import type {
 	IWorkflowExecuteAdditionalData,
 	CredentialCheckResult,
 } from 'n8n-workflow';
-
-import { MCP_TRIGGER_NODE_TYPE } from '@/constants';
 import {
 	FORM_NODE_TYPE,
 	WAIT_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
 	WEBHOOK_NODE_TYPE,
+	MCP_TRIGGER_NODE_TYPE,
 	WorkflowConfigurationError,
 	NodeOperationError,
 	MICROSOFT_AGENT365_TRIGGER_NODE_TYPE,
@@ -754,85 +753,60 @@ describe('prepareExecutionData', () => {
 		expect(runExecutionData.manualData).toBeUndefined();
 	});
 
-	test('should merge the webhook output into the seeded stack for an MCP trigger', () => {
-		const mcpNode = mock<INode>({ name: 'MCP Server Trigger', type: MCP_TRIGGER_NODE_TYPE });
-		const seededRunExecutionData = {
-			version: 1,
-			startData: {},
-			resultData: { runData: {} },
-			executionData: {
-				contextData: {},
-				metadata: {},
-				nodeExecutionStack: [{ node: mcpNode, data: { main: [] }, source: null }],
-				waitingExecution: {},
-				waitingExecutionSource: {},
-			},
-		} as unknown as IRunExecutionData;
+	describe('seeded execution stack merge condition', () => {
+		test.each([
+			MICROSOFT_AGENT365_TRIGGER_NODE_TYPE,
+			MCP_TRIGGER_NODE_TYPE,
+			CHAT_TRIGGER_NODE_TYPE,
+		])(
+			'should merge nodeExecutionStack when node type is %s and runExecutionData exists',
+			(type) => {
+				const seededTriggerNode = mock<INode>({ name: 'Seeded Trigger', type });
 
-		const { runExecutionData } = prepareExecutionData(
-			'trigger',
-			mcpNode,
-			{ workflowData: [[{ json: { headers: { 'x-user-id': 'user-42' } } }]] },
-			seededRunExecutionData,
-		);
-
-		expect(runExecutionData.executionData?.nodeExecutionStack[0].data.main[0]?.[0]?.json).toEqual({
-			headers: { 'x-user-id': 'user-42' },
-		});
-	});
-
-	describe('MICROSOFT_AGENT365_TRIGGER_NODE_TYPE merge condition', () => {
-		test('should merge nodeExecutionStack when node type is MICROSOFT_AGENT365_TRIGGER_NODE_TYPE and runExecutionData exists', () => {
-			const microsoftAgentNode = mock<INode>({
-				name: 'Microsoft Agent 365',
-				type: MICROSOFT_AGENT365_TRIGGER_NODE_TYPE,
-			});
-
-			const existingNodeExecutionStack: IExecuteData[] = [
-				{
-					node: mock<INode>({ name: 'ExistingNode' }),
-					data: {
-						main: [[{ json: { existing: 'data' } }]],
+				const existingNodeExecutionStack: IExecuteData[] = [
+					{
+						node: mock<INode>({ name: 'ExistingNode' }),
+						data: {
+							main: [[{ json: { existing: 'data' } }]],
+						},
+						source: null,
 					},
-					source: null,
-				},
-			];
+				];
 
-			const existingRunExecutionData: IRunExecutionData = {
-				version: 1,
-				startData: {},
-				resultData: { runData: {} },
-				executionData: {
-					contextData: {},
-					metadata: {},
-					nodeExecutionStack: existingNodeExecutionStack,
-					waitingExecution: {},
-					waitingExecutionSource: {},
-				},
-			} as IRunExecutionData;
+				const existingRunExecutionData: IRunExecutionData = {
+					version: 1,
+					startData: {},
+					resultData: { runData: {} },
+					executionData: {
+						contextData: {},
+						metadata: {},
+						nodeExecutionStack: existingNodeExecutionStack,
+						waitingExecution: {},
+						waitingExecutionSource: {},
+					},
+				} as IRunExecutionData;
 
-			const { runExecutionData } = prepareExecutionData(
-				'trigger',
-				microsoftAgentNode,
-				webhookResultData,
-				existingRunExecutionData,
-			);
+				const { runExecutionData } = prepareExecutionData(
+					'trigger',
+					seededTriggerNode,
+					webhookResultData,
+					existingRunExecutionData,
+				);
 
-			expect(runExecutionData.executionData?.nodeExecutionStack).toHaveLength(1);
-			expect(runExecutionData.executionData?.nodeExecutionStack[0].node.name).toBe(
-				'Microsoft Agent 365',
-			);
-			expect(runExecutionData.executionData?.nodeExecutionStack[0].node.type).toBe(
-				MICROSOFT_AGENT365_TRIGGER_NODE_TYPE,
-			);
-			expect(runExecutionData.executionData?.nodeExecutionStack[0].data.main[0]).toHaveLength(1);
-			expect(runExecutionData.executionData?.nodeExecutionStack[0].data.main[0]?.[0]?.json).toEqual(
-				{
+				expect(runExecutionData.executionData?.nodeExecutionStack).toHaveLength(1);
+				expect(runExecutionData.executionData?.nodeExecutionStack[0].node.name).toBe(
+					'Seeded Trigger',
+				);
+				expect(runExecutionData.executionData?.nodeExecutionStack[0].node.type).toBe(type);
+				expect(runExecutionData.executionData?.nodeExecutionStack[0].data.main[0]).toHaveLength(1);
+				expect(
+					runExecutionData.executionData?.nodeExecutionStack[0].data.main[0]?.[0]?.json,
+				).toEqual({
 					existing: 'data',
 					data: 'test',
-				},
-			);
-		});
+				});
+			},
+		);
 
 		test('should not merge when node type is MICROSOFT_AGENT365_TRIGGER_NODE_TYPE but runExecutionData is undefined', () => {
 			const microsoftAgentNode = mock<INode>({

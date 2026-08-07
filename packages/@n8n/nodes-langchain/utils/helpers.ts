@@ -4,6 +4,7 @@ import type { JSONSchema7 } from 'json-schema';
 import { StructuredToolkit, type SupplyDataToolResponse } from 'n8n-core';
 import type {
 	ICredentialDataDecryptedObject,
+	IDataObject,
 	IExecuteFunctions,
 	ISupplyDataFunctions,
 	IWebhookFunctions,
@@ -194,11 +195,12 @@ export const getConnectedTools = async (
 	enforceUniqueNames: boolean,
 	convertStructuredTool: boolean = true,
 	escapeCurlyBrackets: boolean = false,
+	options?: { inputData?: IDataObject },
 ): Promise<Tool[]> => {
-	const toolkitConnections = (await ctx.getInputConnectionData(
-		NodeConnectionTypes.AiTool,
-		0,
-	)) as SupplyDataToolResponse[];
+	// Only a webhook context can seed the sub-nodes' input with something other than the body.
+	const toolkitConnections = (await ('getRequestObject' in ctx
+		? ctx.getInputConnectionData(NodeConnectionTypes.AiTool, 0, options)
+		: ctx.getInputConnectionData(NodeConnectionTypes.AiTool, 0))) as SupplyDataToolResponse[];
 
 	// Get parent nodes to map toolkits to their source nodes.
 	// getInputConnectionData filters out disabled nodes, so parents must be filtered

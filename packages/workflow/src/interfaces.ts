@@ -1527,7 +1527,7 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 	getInputConnectionData(
 		connectionType: AINodeConnectionType,
 		itemIndex: number,
-		inputIndex?: number,
+		options?: { inputData?: IDataObject },
 	): Promise<unknown>;
 	getNodeParameter(
 		parameterName: string,
@@ -3117,6 +3117,8 @@ export interface IWebhookResponseData {
 	workflowData?: INodeExecutionData[][];
 	webhookResponse?: any;
 	noWebhookResponse?: boolean;
+	/** Input the trigger wants connected sub-nodes to receive, also when they run on a worker. */
+	toolInput?: IDataObject;
 }
 
 export type WebhookResponseData = 'allEntries' | 'firstEntryJson' | 'firstEntryBinary' | 'noData';
