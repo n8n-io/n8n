@@ -72,6 +72,9 @@ Custom tools are last resort and only for pure computation. Load
 
 ### Gotchas
 
+- Generic web search must use \`config.webSearch\`; never add an HTTP Request
+  Tool unless the user explicitly requests direct HTTP, API, or specific-page
+  fetching.
 - Live crawling, fetching, and API integrations need MCP, workflow, or node tools, not custom tools.
 - Do not invent MCP servers, node type names, workflow names, credential ids, or provider tool keys.
 

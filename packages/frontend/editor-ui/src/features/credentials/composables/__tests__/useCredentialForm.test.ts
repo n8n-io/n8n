@@ -6,6 +6,8 @@ import type { ICredentialType, INode, INodeTypeDescription } from 'n8n-workflow'
 import { mockedStore } from '@/__tests__/utils';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useUsersStore } from '@n8n/stores/users.store';
+import type { IUser } from '@n8n/rest-api-client/api/users';
 import { useCredentialsStore } from '../../credentials.store';
 import type { ICredentialsDecryptedResponse } from '../../credentials.types';
 import { useCredentialForm } from '../useCredentialForm';
@@ -72,7 +74,8 @@ const skipManagedOAuth: ICredentialType = {
 	],
 };
 
-// The templated generic type: no static test definition — a persisted test
+// The templated generic type: the modal seeds its template fields from an
+// agent-supplied setup hint; no static test definition — a persisted test
 // URL routes the modal's connection test through the auth probe instead.
 const templatedCustomAuth: ICredentialType = {
 	name: 'httpTemplatedCustomAuth',
@@ -109,6 +112,15 @@ const typesByName: Record<string, ICredentialType> = {
 	betaApi,
 };
 
+const falSetupHint = {
+	template: { headers: { Authorization: 'Key {{api_key}}' } },
+	placeholders: [{ name: 'api_key', title: 'fal.ai API key' }],
+	suggestedName: 'fal.ai API Key',
+	testUrl: 'https://fal.run/v1/models',
+	docsUrl: 'https://fal.ai/dashboard/keys',
+	serviceHost: 'fal.run',
+};
+
 describe('useCredentialForm', () => {
 	let credentialsStore: ReturnType<typeof mockedStore<typeof useCredentialsStore>>;
 	let settingsStore: ReturnType<typeof mockedStore<typeof useSettingsStore>>;
@@ -124,6 +136,7 @@ describe('useCredentialForm', () => {
 			get: () => (name: string) => typesByName[name],
 		});
 		credentialsStore.getNewCredentialName.mockResolvedValue('HTTP Basic Auth account');
+		credentialsStore.getDedupedCredentialName.mockImplementation(async (name: string) => name);
 	});
 
 	describe('displayCredentialParameter', () => {
@@ -160,7 +173,8 @@ describe('useCredentialForm', () => {
 			expect(form.credentialData.value).toMatchObject({ user: '', password: '' });
 		});
 
-		it('prefers the suggested name over a generated one', async () => {
+		it('prefers the suggested name over a generated one, deduped against clashes', async () => {
+			credentialsStore.getDedupedCredentialName.mockResolvedValue('My login 2');
 			const form = useCredentialForm({
 				mode: 'new',
 				activeId: 'httpBasicAuth',
@@ -169,7 +183,8 @@ describe('useCredentialForm', () => {
 
 			await form.initialize();
 
-			expect(form.credentialName.value).toBe('My login');
+			expect(credentialsStore.getDedupedCredentialName).toHaveBeenCalledWith('My login');
+			expect(form.credentialName.value).toBe('My login 2');
 			expect(credentialsStore.getNewCredentialName).not.toHaveBeenCalled();
 		});
 
@@ -187,6 +202,35 @@ describe('useCredentialForm', () => {
 			expect(form.credentialId.value).toBe('cred-1');
 			expect(form.credentialName.value).toBe('Loaded Cred');
 			expect(form.credentialData.value.user).toBe('alice');
+		});
+
+		it('seeds template fields and a creator-suffixed name from a setup hint', async () => {
+			const usersStore = mockedStore(useUsersStore);
+			usersStore.currentUser = { firstName: 'Jan', lastName: 'Doe' } as IUser;
+			const form = useCredentialForm({
+				mode: 'new',
+				activeId: 'httpTemplatedCustomAuth',
+				setupHint: falSetupHint,
+			});
+
+			await form.initialize();
+
+			expect(form.credentialName.value).toBe('fal.ai API Key (Jan D)');
+			expect(form.credentialData.value).toMatchObject({
+				template: JSON.stringify(falSetupHint.template, null, 2),
+				placeholderDefs: JSON.stringify(falSetupHint.placeholders, null, 2),
+				testUrl: falSetupHint.testUrl,
+				docsUrl: falSetupHint.docsUrl,
+				serviceHost: falSetupHint.serviceHost,
+			});
+			// Freshly seeded = the required placeholder has no value yet, so the
+			// save/test gate holds until the user pastes it.
+			expect(form.isCredentialTestable.value).toBe(false);
+			form.credentialData.value = {
+				...form.credentialData.value,
+				placeholderValues: JSON.stringify({ api_key: 'pasted-secret' }),
+			};
+			expect(form.isCredentialTestable.value).toBe(true);
 		});
 
 		it('flags custom OAuth when editing a credential with overridden client fields', async () => {
