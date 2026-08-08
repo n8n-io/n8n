@@ -1,8 +1,7 @@
 import { render, fireEvent } from '@testing-library/vue';
 
-import { n8nHtml } from '@n8n/design-system/directives';
-
 import N8nMarkdown from './Markdown.vue';
+import { n8nHtml } from '../../directives';
 
 describe('components', () => {
 	describe('N8nMarkdown', () => {

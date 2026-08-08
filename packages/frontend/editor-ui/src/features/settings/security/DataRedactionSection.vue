@@ -11,10 +11,7 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
-import type {
-	SelectItemProps,
-	SelectValue,
-} from '@n8n/design-system/v2/components/Select/Select.types';
+import type { SelectItemProps, SelectValue } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type { RedactionFloor } from '@n8n/api-types';

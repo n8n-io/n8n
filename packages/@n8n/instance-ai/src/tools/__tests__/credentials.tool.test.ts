@@ -747,6 +747,242 @@ describe('credentials tool', () => {
 			);
 		});
 
+		it('should include setupHint in credentialRequests when provided', async () => {
+			const context = createMockContext();
+			(context.credentialService.list as Mock).mockResolvedValue([]);
+
+			const setupHint = {
+				template: { headers: { Authorization: 'Key {{api_key}}' } },
+				placeholders: [
+					{
+						name: 'api_key',
+						title: 'fal.ai API key',
+						// a format-style info must pass the URL/domain-in-info validation
+						info: 'Key ID and secret, separated by a colon',
+						type: 'password' as const,
+					},
+				],
+				docsUrl: 'https://fal.ai/dashboard/keys',
+				suggestedName: 'fal.ai API Key',
+				testUrl: 'https://fal.run/v1/models',
+			};
+
+			const suspendFn = vi.fn();
+			const tool = createCredentialsTool(context);
+			await executeTool(
+				tool,
+				{
+					action: 'setup' as const,
+					credentials: [
+						{
+							credentialType: 'httpTemplatedCustomAuth',
+							reason: 'For calling the fal.ai API',
+							setupHint,
+						},
+					],
+				},
+				suspendCtx(suspendFn),
+			);
+
+			expect(suspendFn).toHaveBeenCalledTimes(1);
+			// The service identity is stamped from the recipe's test endpoint —
+			// this card has no node context to derive it from.
+			expect(suspendFn.mock.calls[0][0]).toEqual(
+				expect.objectContaining({
+					credentialRequests: [
+						expect.objectContaining({ setupHint: { ...setupHint, serviceHost: 'fal.run' } }),
+					],
+				}),
+			);
+		});
+
+		it('should offer no existing credentials for Templated Custom Auth', async () => {
+			const context = createMockContext();
+			(context.credentialService.list as Mock).mockResolvedValue([
+				{ id: 'cred-pexels', name: 'Pexels API', type: 'httpTemplatedCustomAuth' },
+			]);
+
+			const suspendFn = vi.fn();
+			const tool = createCredentialsTool(context);
+			await executeTool(
+				tool,
+				{
+					action: 'setup' as const,
+					credentials: [
+						{
+							credentialType: 'httpTemplatedCustomAuth',
+							reason: 'For calling the Apify API',
+							setupHint: {
+								template: { headers: { Authorization: 'Bearer {{api_token}}' } },
+								placeholders: [{ name: 'api_token', title: 'API token' }],
+							},
+						},
+					],
+				},
+				suspendCtx(suspendFn),
+			);
+
+			// This card has no node context to assert a candidate targets the same
+			// service, so the shared type must not surface stored credentials at all.
+			expect(context.credentialService.list).not.toHaveBeenCalled();
+			expect(suspendFn.mock.calls[0][0]).toEqual(
+				expect.objectContaining({
+					credentialRequests: [expect.objectContaining({ existingCredentials: [] })],
+				}),
+			);
+		});
+
+		it('should reject a setupHint whose markers do not match its placeholders', async () => {
+			const context = createMockContext();
+			(context.credentialService.list as Mock).mockResolvedValue([]);
+
+			const suspendFn = vi.fn();
+			const tool = createCredentialsTool(context);
+			const result = await executeTool(
+				tool,
+				{
+					action: 'setup' as const,
+					credentials: [
+						{
+							credentialType: 'httpTemplatedCustomAuth',
+							reason: 'For calling the fal.ai API',
+							setupHint: {
+								template: { headers: { Authorization: 'Key {{api_key}}' } },
+								placeholders: [{ name: 'other_key', title: 'Other key' }],
+							},
+						},
+					],
+				},
+				suspendCtx(suspendFn),
+			);
+
+			expect(suspendFn).not.toHaveBeenCalled();
+			expect(result).toMatchObject({ error: 'invalid_setup_hint' });
+		});
+
+		it.each([
+			['a URL', 'Find it at https://example.com/tokens'],
+			// schemeless domains slip past a scheme-only check
+			[
+				'a schemeless domain',
+				'Your Tavily API key (starts with tvly-). Get it from app.tavily.com/home.',
+			],
+		])('should reject a setupHint whose placeholder info mentions %s', async (_case, info) => {
+			const context = createMockContext();
+			(context.credentialService.list as Mock).mockResolvedValue([]);
+
+			const suspendFn = vi.fn();
+			const tool = createCredentialsTool(context);
+			const result = await executeTool(
+				tool,
+				{
+					action: 'setup' as const,
+					credentials: [
+						{
+							credentialType: 'httpTemplatedCustomAuth',
+							setupHint: {
+								template: { headers: { Authorization: 'Bearer {{api_key}}' } },
+								placeholders: [{ name: 'api_key', title: 'API key', info }],
+							},
+						},
+					],
+				},
+				suspendCtx(suspendFn),
+			);
+
+			expect(suspendFn).not.toHaveBeenCalled();
+			expect(result).toMatchObject({ error: 'invalid_setup_hint' });
+		});
+
+		it('should reject a setupHint whose placeholders are all plain inputs', async () => {
+			const context = createMockContext();
+			(context.credentialService.list as Mock).mockResolvedValue([]);
+
+			const suspendFn = vi.fn();
+			const tool = createCredentialsTool(context);
+			const result = await executeTool(
+				tool,
+				{
+					action: 'setup' as const,
+					credentials: [
+						{
+							credentialType: 'httpTemplatedCustomAuth',
+							setupHint: {
+								template: { headers: { Authorization: 'Key {{api_key}}', 'X-Org': '{{org}}' } },
+								placeholders: [
+									{ name: 'api_key', title: 'API key', type: 'plain' as const },
+									{ name: 'org', title: 'Organization', type: 'plain' as const },
+								],
+							},
+						},
+					],
+				},
+				suspendCtx(suspendFn),
+			);
+
+			expect(suspendFn).not.toHaveBeenCalled();
+			expect(result).toMatchObject({ error: 'invalid_setup_hint' });
+		});
+
+		it('should reject a setupHint with a duplicate placeholder name', async () => {
+			const context = createMockContext();
+			(context.credentialService.list as Mock).mockResolvedValue([]);
+
+			const suspendFn = vi.fn();
+			const tool = createCredentialsTool(context);
+			const result = await executeTool(
+				tool,
+				{
+					action: 'setup' as const,
+					credentials: [
+						{
+							credentialType: 'httpTemplatedCustomAuth',
+							setupHint: {
+								template: { headers: { Authorization: 'Key {{api_key}}' } },
+								// a masked def shadowed by a plain one for the same marker: the
+								// form keeps the last (plain) def and shows the secret in clear
+								placeholders: [
+									{ name: 'api_key', title: 'API key', type: 'password' as const },
+									{ name: 'api_key', title: 'API key', type: 'plain' as const },
+								],
+							},
+						},
+					],
+				},
+				suspendCtx(suspendFn),
+			);
+
+			expect(suspendFn).not.toHaveBeenCalled();
+			expect(result).toMatchObject({ error: 'invalid_setup_hint' });
+		});
+
+		it('should reject a setupHint on a credential type other than Templated Custom Auth', async () => {
+			const context = createMockContext();
+			(context.credentialService.list as Mock).mockResolvedValue([]);
+
+			const suspendFn = vi.fn();
+			const tool = createCredentialsTool(context);
+			const result = await executeTool(
+				tool,
+				{
+					action: 'setup' as const,
+					credentials: [
+						{
+							credentialType: 'httpHeaderAuth',
+							setupHint: {
+								template: { headers: { Authorization: 'Key {{api_key}}' } },
+								placeholders: [{ name: 'api_key', title: 'API key' }],
+							},
+						},
+					],
+				},
+				suspendCtx(suspendFn),
+			);
+
+			expect(suspendFn).not.toHaveBeenCalled();
+			expect(result).toMatchObject({ error: 'invalid_setup_hint' });
+		});
+
 		it('should use plural message for multiple credentials', async () => {
 			const context = createMockContext();
 			(context.credentialService.list as Mock).mockResolvedValue([]);
