@@ -67,7 +67,7 @@ describe('LmChatAnthropic', () => {
 				displayName: 'Anthropic Chat Model',
 				name: 'lmChatAnthropic',
 				group: ['transform'],
-				version: [1, 1.1, 1.2, 1.3, 1.4, 1.5],
+				version: [1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6],
 				description: 'Language Model Anthropic',
 			});
 		});
