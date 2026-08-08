@@ -140,9 +140,17 @@ describe('WorkflowReviewAutoCloseService', () => {
 
 			// A single atomic statement pair, so it needs no lock — and must not take one
 			// after a delete, where camping on the create lock would serialize submissions.
+			// The sweep is global, so the batch never reaches the query; it is log context only.
 			expect(requestRepository.closeOrphanedOpenRequests).toHaveBeenCalledExactlyOnceWith({});
 			expect(dbLockService.withLockContext).not.toHaveBeenCalled();
-			expect(logger.info).toHaveBeenCalled();
+			expect(logger.info).toHaveBeenCalledExactlyOnceWith(
+				expect.any(String),
+				expect.objectContaining({
+					reason: 'workflow-deleted',
+					workflowIds: ['wf-1', 'wf-2'],
+					workflowReviewRequestIds: ['req-9'],
+				}),
+			);
 		});
 
 		it('stays quiet when the delete orphaned nothing', async () => {
@@ -157,9 +165,12 @@ describe('WorkflowReviewAutoCloseService', () => {
 		it('swallows repository errors, unlike the pre-delete hook', async () => {
 			requestRepository.closeOrphanedOpenRequests.mockRejectedValue(new Error('db down'));
 
-			await expect(service.afterWorkflowsDeleted(['wf-1'])).resolves.toBeUndefined();
+			await expect(service.afterWorkflowsDeleted(['wf-1', 'wf-2'])).resolves.toBeUndefined();
 
-			expect(logger.error).toHaveBeenCalled();
+			expect(logger.error).toHaveBeenCalledExactlyOnceWith(
+				expect.any(String),
+				expect.objectContaining({ workflowIds: ['wf-1', 'wf-2'] }),
+			);
 		});
 	});
 
