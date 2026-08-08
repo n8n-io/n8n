@@ -111,8 +111,10 @@ export function getMessage(execution: IExecutionResponse) {
 		return getToolExecutorSendMessage(execution.data);
 	}
 
-	const runIndex = execution.data.resultData.runData[lastNodeExecuted].length - 1;
-	const data = execution.data.resultData.runData[lastNodeExecuted][runIndex]?.data;
+	const nodeRunData = execution.data.resultData.runData?.[lastNodeExecuted];
+	if (!nodeRunData?.length) return undefined;
+	const runIndex = nodeRunData.length - 1;
+	const data = nodeRunData[runIndex]?.data;
 	const outputs = data?.main ?? data?.[AI_TOOL];
 
 	// Check all main output branches for a message
