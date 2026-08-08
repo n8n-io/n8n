@@ -1,6 +1,15 @@
-import { NodeSearchEngine, SCORE_WEIGHTS } from '../node-search-engine';
-import type { SearchableNodeType } from '../node-search-engine.types';
-import { AI_CONNECTION_TYPES } from '../node-search-engine.types';
+/**
+ * Engine behaviour over a host-supplied `SearchableNodeType` rather than a full
+ * `INodeTypeDescription`: result caching, n8n Connect metadata, and builder
+ * hints. Moved here from @n8n/instance-ai when its forked search engine was
+ * consolidated into this package.
+ */
+
+import type { NodeConnectionType } from 'n8n-workflow';
+
+import { NodeSearchEngine, SCORE_WEIGHTS } from '../search-engine';
+import type { SearchableNodeType } from '../types';
+import { AI_CONNECTION_TYPES } from '../types';
 
 // ---------------------------------------------------------------------------
 // Test fixtures
@@ -37,26 +46,34 @@ const slackNode = makeNode({
 	description: 'Send messages to Slack',
 });
 
+/**
+ * A host's `builderHint` carries fields the engine does not declare, such as
+ * `extraTypeDefContent`. Built outside the `makeNode` literal so it reaches the
+ * engine the same way a real host's wider object does, rather than tripping the
+ * excess-property check that only applies to fresh literals.
+ */
+const agentBuilderHint = {
+	searchHint: 'Use an AI Agent for autonomous task execution',
+	inputs: {
+		ai_languageModel: { required: true },
+		ai_memory: { required: false },
+		ai_tool: { required: false, displayOptions: { show: { hasTools: [true] } } },
+	},
+	extraTypeDefContent: [
+		{
+			content:
+				'<patterns>\n<pattern title="basic">\nconst agent = node({ ... })\n</pattern>\n</patterns>',
+		},
+	],
+};
+
 const agentNode = makeNode({
 	name: '@n8n/n8n-nodes-langchain.agent',
 	displayName: 'AI Agent',
 	description: 'An AI agent that uses tools',
 	inputs: ['main', 'ai_languageModel', 'ai_memory', 'ai_tool'],
 	outputs: ['main'],
-	builderHint: {
-		message: 'Use an AI Agent for autonomous task execution',
-		inputs: {
-			ai_languageModel: { required: true },
-			ai_memory: { required: false },
-			ai_tool: { required: false, displayOptions: { show: { hasTools: [true] } } },
-		},
-		extraTypeDefContent: [
-			{
-				content:
-					'<patterns>\n<pattern title="basic">\nconst agent = node({ ... })\n</pattern>\n</patterns>',
-			},
-		],
-	},
+	builderHint: agentBuilderHint,
 });
 
 const openAiNode = makeNode({
@@ -206,7 +223,7 @@ describe('NodeSearchEngine', () => {
 			expect(results.length).toBeLessThanOrEqual(2);
 		});
 
-		it('should include builder hint message when present', () => {
+		it('should include the builder search hint alongside subnode requirements', () => {
 			const results = engine.searchByName('AI Agent');
 			const agentResult = results.find((r) => r.name === '@n8n/n8n-nodes-langchain.agent');
 			expect(agentResult).toBeDefined();
@@ -319,7 +336,7 @@ describe('NodeSearchEngine', () => {
 		});
 
 		it('should return empty for unknown connection type', () => {
-			const results = engine.searchByConnectionType('ai_nonexistent');
+			const results = engine.searchByConnectionType('ai_nonexistent' as NodeConnectionType);
 			expect(results).toEqual([]);
 		});
 
