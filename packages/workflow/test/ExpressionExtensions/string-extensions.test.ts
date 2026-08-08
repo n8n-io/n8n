@@ -349,6 +349,15 @@ describe('Data Transformation Functions', () => {
 			expect(evaluate('={{ "hello".toBoolean() }}')).toBe(true);
 		});
 
+		test('.toBoolean should trim whitespace before comparison', () => {
+			expect(evaluate('={{ " false ".toBoolean() }}')).toBe(false);
+			expect(evaluate('={{ " 0 ".toBoolean() }}')).toBe(false);
+			expect(evaluate('={{ " no ".toBoolean() }}')).toBe(false);
+			expect(evaluate('={{ "  FALSE  ".toBoolean() }}')).toBe(false);
+			expect(evaluate('={{ "   ".toBoolean() }}')).toBe(false);
+			expect(evaluate('={{ " true ".toBoolean() }}')).toBe(true);
+		});
+
 		test('.base64Encode should work on a string', () => {
 			expect(evaluate('={{ "n8n test".base64Encode() }}')).toBe('bjhuIHRlc3Q=');
 		});
