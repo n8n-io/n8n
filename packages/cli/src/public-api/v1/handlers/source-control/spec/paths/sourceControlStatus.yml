@@ -1,0 +1,41 @@
+get:
+  x-eov-operation-id: status
+  x-required-scope: sourceControl:pull,sourceControl:push
+  x-eov-operation-handler: v1/handlers/source-control/source-control.handler
+  tags:
+    - SourceControl
+  summary: Preview local changes before pushing or pulling
+  description: |
+    Returns the list of source-controlled files that differ between the local
+    instance and the remote repository, without modifying anything. Use this to
+    preview what a subsequent push (or pull) would include, then pass the
+    returned file objects to `POST /source-control/push` via `fileNames` to push
+    a specific subset of changes.
+
+    Requires the Source Control feature to be licensed and connected to a
+    repository. `direction=push` (the default) requires the `sourceControl:push`
+    scope; `direction=pull` requires the `sourceControl:pull` scope.
+  parameters:
+    - name: direction
+      in: query
+      required: false
+      description: Which diff to compute. Defaults to `push`.
+      schema:
+        type: string
+        enum:
+          - push
+          - pull
+        default: push
+  responses:
+    '200':
+      description: The list of files that differ between local and remote.
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/statusResult.yml'
+    '400':
+      $ref: '../../../../shared/spec/responses/badRequest.yml'
+    '401':
+      description: Source Control feature is not licensed.
+    '403':
+      description: The API key or user lacks permission for the requested direction.
