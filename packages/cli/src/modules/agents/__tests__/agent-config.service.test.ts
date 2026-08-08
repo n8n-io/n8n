@@ -792,6 +792,67 @@ describe('AgentConfigService', () => {
 		});
 	});
 
+	// Reproduces AGENT-582: a scheduled task's reference lives in the agent
+	// schema, but its definition (name/objective/cronExpression) lives in the
+	// separate `agent_task_definition` table. Export must carry the definition,
+	// and import must recreate it — otherwise the task is silently lost when an
+	// agent JSON leaves one instance and is imported into another.
+	describe('scheduled task export/import round-trip', () => {
+		const taskReference = { type: 'task', id: 'weekly_review', enabled: true } as const;
+		const taskDefinition = {
+			id: 'weekly_review',
+			agentId,
+			name: 'Weekly review',
+			objective: 'Summarise the week and post the digest to Slack',
+			cronExpression: '0 9 * * 1',
+		};
+
+		it('includes the full task definition in the exported config, not just the reference', async () => {
+			const { service, agentRepository, agentTaskRepository } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(
+				makeAgent({ schema: { ...baseConfig, tasks: [taskReference] } as AgentJsonConfig }),
+			);
+			agentTaskRepository.findByAgentId.mockResolvedValue([taskDefinition] as never);
+
+			const exported = await service.getConfig(agentId, projectId);
+
+			// The exported JSON carries only `{ type, id, enabled }`, so the
+			// objective and schedule are lost the moment the config is downloaded.
+			const exportedTask = exported.tasks?.[0] as Record<string, unknown> | undefined;
+			expect(exportedTask).toMatchObject({
+				id: 'weekly_review',
+				name: 'Weekly review',
+				objective: 'Summarise the week and post the digest to Slack',
+				cronExpression: '0 9 * * 1',
+			});
+		});
+
+		it('preserves a task when an exported config is imported into a fresh agent', async () => {
+			const { service, agentRepository, agentTaskRepository } = makeService();
+
+			const sourceAgentId = agentId;
+			const targetAgentId = 'agent-imported';
+			agentRepository.findByIdAndProjectId.mockImplementation(async (id) =>
+				id === sourceAgentId
+					? makeAgent({ schema: { ...baseConfig, tasks: [taskReference] } as AgentJsonConfig })
+					: makeAgent({ id: targetAgentId, schema: baseConfig }),
+			);
+			agentTaskRepository.findByAgentId.mockImplementation(async (id) =>
+				id === sourceAgentId ? ([taskDefinition] as never) : [],
+			);
+
+			// Export from the source agent, then import into a fresh agent whose
+			// `agent_task_definition` table is empty.
+			const exported = await service.getConfig(sourceAgentId, projectId);
+			await service.updateConfig(targetAgentId, projectId, exported, user, byUser);
+
+			// The task reference must survive the import instead of being dropped
+			// for lack of a matching definition.
+			const saved = agentRepository.save.mock.calls.at(-1)?.[0] as Agent;
+			expect(saved.schema?.tasks).toEqual([taskReference]);
+		});
+	});
+
 	describe('modification telemetry', () => {
 		function modifiedEvent(telemetry: Mocked<Telemetry>, entry: unknown) {
 			return telemetry.track.mock.calls.find(([called]) => called === entry)?.[1];

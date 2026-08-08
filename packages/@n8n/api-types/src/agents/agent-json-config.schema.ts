@@ -2,6 +2,11 @@ import { z, type ZodError } from 'zod';
 
 import { isDraftAgentConfig } from './agent-config-lifecycle';
 import { AgentIntegrationConfigSchema } from './agent-integration.schema';
+import {
+	AGENT_TASK_CRON_EXPRESSION_MAX_LENGTH,
+	AGENT_TASK_NAME_MAX_LENGTH,
+	AGENT_TASK_OBJECTIVE_MAX_LENGTH,
+} from './agent-task.schema';
 import { AGENT_MODEL_STRING_REGEX } from './model-providers';
 import { AGENT_REASONING_LEVELS } from './reasoning';
 /**
@@ -207,6 +212,14 @@ const AgentJsonTaskConfigSchema = z.object({
 			'Task id can only contain letters, numbers, hyphens, and underscores',
 		),
 	enabled: z.boolean(),
+	// Task body, carried only in exported/imported agent JSON so a scheduled
+	// task survives a round-trip between instances. The definition is persisted
+	// in the `agent_task_definition` table, not on the agent schema column, so
+	// these fields are optional and the stored ref keeps only `{ type, id,
+	// enabled }`.
+	name: z.string().min(1).max(AGENT_TASK_NAME_MAX_LENGTH).optional(),
+	objective: z.string().min(1).max(AGENT_TASK_OBJECTIVE_MAX_LENGTH).optional(),
+	cronExpression: z.string().min(1).max(AGENT_TASK_CRON_EXPRESSION_MAX_LENGTH).optional(),
 });
 
 export const McpAuthenticationSchemaTypes = z.enum([
