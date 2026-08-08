@@ -1,0 +1,29 @@
+packages/@n8n/agents/src/runtime/loop/runtime-context.ts
+  s_02972e2c436d8a::t_32e0b10c6d75ed 8
+packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
+  s_02972e2c436d8a::t_69626a8dd31506 54,61
+packages/@n8n/agents/src/runtime/model/model-token-counter.ts
+  s_02972e2c436d8a::t_4e64739188ccb1 2
+packages/@n8n/agents/src/runtime/memory/observation-log-defaults.ts
+  s_02972e2c436d8a::t_861b8620ec79da 11
+packages/@n8n/agents/src/utils/model.ts
+  s_02972e2c436d8a::t_155659f2300910 1-13
+packages/@n8n/agents/src/runtime/loop/__tests__/runtime-context.test.ts
+  s_02972e2c436d8a::t_45c8dc1221f766 2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "c5ca92a8d865c20547edac33c9f6dfdacceee339",
+  "prompts": {},
+  "sessions": {
+    "s_02972e2c436d8a": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "288d4719-b01e-42e0-bcfd-9ef695c5c336",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
