@@ -30,13 +30,13 @@ export const windowIdField: INodeProperties = {
 };
 
 export const profileNameField: INodeProperties = {
-	displayName: 'Profile Name',
+	displayName: 'Browser Profile ID',
 	name: 'profileName',
 	type: 'string',
 	default: '',
-	description: 'The name of the Airtop profile to load or create',
+	description: 'The Airtop browser profile ID to load or create',
 	hint: '<a href="https://docs.airtop.ai/guides/how-to/saving-a-profile" target="_blank">Learn more</a> about Airtop profiles',
-	placeholder: 'e.g. my-x-profile',
+	placeholder: 'e.g. my-profile',
 };
 
 export const urlField: INodeProperties = {

@@ -1,0 +1,91 @@
+{
+	"name": "Airtop file upload",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "16273849-4a5b-4c6d-be8f-0112233445566",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "file",
+				"operation": "upload",
+				"sessionId": "test-session-123",
+				"windowId": "test-window-123",
+				"fileName": "test.pdf",
+				"fileType": "customer_upload",
+				"source": "url",
+				"url": "https://example.com/file.pdf",
+				"triggerFileInputParameter": true,
+				"elementDescription": "the file upload box",
+				"includeHiddenElements": true
+			},
+			"id": "2738494a-5b6c-4d7e-cf90-1223344556677",
+			"name": "Airtop",
+			"type": "n8n-nodes-base.airtop",
+			"typeVersion": 1.1,
+			"position": [220, 0],
+			"credentials": {
+				"airtopApi": {
+					"id": "1",
+					"name": "Airtop account"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"id": "38494a5b-6c7d-4e8f-d901-2334455667788",
+			"name": "No Operation, do nothing",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [440, 0]
+		}
+	],
+	"pinData": {
+		"No Operation, do nothing": [
+			{
+				"json": {
+					"sessionId": "test-session-123",
+					"windowId": "test-window-123",
+					"data": {
+						"fileId": "file-123",
+						"message": "File uploaded successfully"
+					}
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Airtop",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Airtop": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"versionId": "494a5b6c-7d8e-4f90-ea12-3445566778899",
+	"id": "5b6c7d8e-9f01-4a12-fb23-445566778899a",
+	"meta": {},
+	"tags": []
+}
