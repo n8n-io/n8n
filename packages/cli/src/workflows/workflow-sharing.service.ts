@@ -56,6 +56,7 @@ export class WorkflowSharingService {
 
 		const sharedWorkflows = await this.sharedWorkflowRepository.find({
 			where: {
+				...(projectId && { projectId }),
 				role: In(workflowRoles),
 				project: {
 					projectRelations: {
