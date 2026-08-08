@@ -195,7 +195,6 @@ describe('Telegram > GenericFunctions', () => {
 			expect(body).toEqual({
 				text: 'Hello, world!',
 				disable_web_page_preview: true,
-				parse_mode: 'Markdown',
 				reply_markup: {
 					inline_keyboard: [
 						[{ text: 'Button 1', url: 'https://example.com' }, { text: 'Button 2' }],
@@ -228,7 +227,6 @@ describe('Telegram > GenericFunctions', () => {
 			expect(body).toEqual({
 				text: 'Hello, world!',
 				disable_web_page_preview: true,
-				parse_mode: 'Markdown',
 				reply_markup: { force_reply: true },
 			});
 		});
@@ -257,8 +255,61 @@ describe('Telegram > GenericFunctions', () => {
 			expect(body).toEqual({
 				text: 'Hello, world!',
 				disable_web_page_preview: true,
-				parse_mode: 'Markdown',
 				reply_markup: { remove_keyboard: true },
+			});
+		});
+
+		it('should not force Markdown parse_mode when attribution is disabled (issue #35386)', () => {
+			const body: IDataObject = { text: 'Workflow: My_Workflow' };
+			const index = 0;
+			const nodeVersion = 1.2;
+
+			(mockThis.getNodeParameter as Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'operation':
+						return 'sendMessage';
+					case 'additionalFields':
+						return { appendAttribution: false };
+					case 'replyMarkup':
+						return 'none';
+					default:
+						return '';
+				}
+			});
+
+			addAdditionalFields.call(mockThis, body, index, nodeVersion);
+
+			expect(body).toEqual({
+				text: 'Workflow: My_Workflow',
+				disable_web_page_preview: true,
+			});
+			expect(body).not.toHaveProperty('parse_mode');
+		});
+
+		it('should preserve explicit parse_mode when attribution is disabled', () => {
+			const body: IDataObject = { text: '*bold* and My_Workflow' };
+			const index = 0;
+			const nodeVersion = 1.2;
+
+			(mockThis.getNodeParameter as Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'operation':
+						return 'sendMessage';
+					case 'additionalFields':
+						return { appendAttribution: false, parse_mode: 'HTML' };
+					case 'replyMarkup':
+						return 'none';
+					default:
+						return '';
+				}
+			});
+
+			addAdditionalFields.call(mockThis, body, index, nodeVersion);
+
+			expect(body).toEqual({
+				text: '*bold* and My_Workflow',
+				disable_web_page_preview: true,
+				parse_mode: 'HTML',
 			});
 		});
 
