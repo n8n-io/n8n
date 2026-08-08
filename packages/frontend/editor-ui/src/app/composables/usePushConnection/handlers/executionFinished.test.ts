@@ -771,6 +771,78 @@ describe('executionFinished', () => {
 		expect(workflowExecutionStateStore.clearStoppedExecutionId).not.toHaveBeenCalled();
 		expect(workflowExecutionStateStore.setActiveExecutionId).not.toHaveBeenCalled();
 	});
+
+	describe('replayed terminal events', () => {
+		it('clears the stranded spinner but suppresses the toast for a replayed finish', async () => {
+			setActivePinia(createTestingPinia({ stubActions: false }));
+			mockShowMessage.mockClear();
+
+			const executionId = 'replayed-exec';
+			const workflowExecutionStateStore = useWorkflowExecutionStateStore(documentId);
+			workflowExecutionStateStore.setActiveExecutionId(executionId);
+			vi.spyOn(useWorkflowsStore(), 'fetchExecutionDataById').mockResolvedValue(null);
+
+			await executionFinished(
+				{
+					type: 'executionFinished',
+					data: { executionId, workflowId: '1', status: 'success' },
+					meta: { eventId: 'evt-1', ts: '2026-07-24T00:00:00.000Z', replayed: true },
+				},
+				opts,
+			);
+
+			// State converges: the stranded spinner clears without a manual refresh.
+			expect(workflowExecutionStateStore.activeExecutionId).toBeUndefined();
+			// ...but the belated finish does not fire a toast.
+			expect(mockShowMessage).not.toHaveBeenCalled();
+		});
+
+		it('shows the toast for the same finish delivered live (non-replayed)', async () => {
+			setActivePinia(createTestingPinia({ stubActions: false }));
+			mockShowMessage.mockClear();
+
+			const executionId = 'live-exec';
+			const workflowExecutionStateStore = useWorkflowExecutionStateStore(documentId);
+			workflowExecutionStateStore.setActiveExecutionId(executionId);
+			vi.spyOn(useWorkflowsStore(), 'fetchExecutionDataById').mockResolvedValue(null);
+
+			await executionFinished(
+				{
+					type: 'executionFinished',
+					data: { executionId, workflowId: '1', status: 'success' },
+				},
+				opts,
+			);
+
+			// Same setup, delivered live: it DOES toast — proving the suppression above
+			// is driven by `meta.replayed`, not the fixture.
+			expect(workflowExecutionStateStore.activeExecutionId).toBeUndefined();
+			expect(mockShowMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
+		});
+
+		it('is a no-op for a replayed finish of an execution this document is not tracking', async () => {
+			setActivePinia(createTestingPinia());
+			mockShowMessage.mockClear();
+
+			const workflowExecutionStateStore = useWorkflowExecutionStateStore(documentId);
+			vi.spyOn(workflowExecutionStateStore, 'activeExecutionId', 'get').mockReturnValue(
+				'current-exec',
+			);
+			const fetchSpy = vi.spyOn(useWorkflowsStore(), 'fetchExecutionDataById');
+
+			await executionFinished(
+				{
+					type: 'executionFinished',
+					data: { executionId: 'other-exec', workflowId: '1', status: 'success' },
+					meta: { eventId: 'evt-2', ts: '2026-07-24T00:00:00.000Z', replayed: true },
+				},
+				opts,
+			);
+
+			expect(fetchSpy).not.toHaveBeenCalled();
+			expect(mockShowMessage).not.toHaveBeenCalled();
+		});
+	});
 });
 
 describe('manual execution stats tracking', () => {
