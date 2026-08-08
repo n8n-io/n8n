@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { N8nIcon, N8nText } from '@n8n/design-system';
-import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
+import type { IconName } from '@n8n/design-system';
 
 import CheckHeader from './CheckHeader.vue';
 

@@ -420,12 +420,13 @@ describe('ExecutionPersistence', () => {
 			expect(execution?.data?.resultData?.runData).toHaveProperty('bigNode');
 		});
 
-		it('getExecutionsForPublicApi omits oversized data and flags it', async () => {
+		it('findManyInWorkflows omits oversized data and flags it', async () => {
 			const executionPersistence = Container.get(ExecutionPersistence);
 			const { workflow } = await createSizedExecution(2 * ONE_MB);
 
-			const executions = (await executionPersistence.getExecutionsForPublicApi(
-				{ limit: 10, includeData: true, workflowIds: [workflow.id] },
+			const executions = (await executionPersistence.findManyInWorkflows(
+				[workflow.id],
+				{ limit: 10, includeData: true },
 				ONE_MB,
 			)) as IExecutionResponse[];
 

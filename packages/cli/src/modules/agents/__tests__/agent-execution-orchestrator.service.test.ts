@@ -1,4 +1,9 @@
-import type { Agent as RuntimeAgent, SerializableAgentState, StreamChunk } from '@n8n/agents';
+import type {
+	Agent as RuntimeAgent,
+	JSONValue,
+	SerializableAgentState,
+	StreamChunk,
+} from '@n8n/agents';
 import { N8N_CHAT_INTEGRATION_TYPE, type AgentJsonConfig } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
@@ -74,8 +79,12 @@ function makeRuntime(chunks: StreamChunk[] = [{ type: 'finish', finishReason: 's
 		agent: {
 			name: 'Runtime Agent',
 			snapshot: { model: { provider: 'anthropic', name: 'claude-sonnet-4-5' } },
-			stream: vi.fn().mockResolvedValue({ stream: makeReadableStream(chunks) }),
-			resume: vi.fn().mockResolvedValue({ stream: makeReadableStream(chunks) }),
+			stream: vi
+				.fn()
+				.mockResolvedValue({ runId: 'runtime-run-1', stream: makeReadableStream(chunks) }),
+			resume: vi
+				.fn()
+				.mockResolvedValue({ runId: 'runtime-run-1', stream: makeReadableStream(chunks) }),
 			structuredOutput: vi.fn(),
 			close: vi.fn(),
 		} as unknown as RuntimeAgent & {
@@ -99,7 +108,8 @@ function makeService() {
 	const agentRunTracingService = mock<AgentRunTracingService>();
 	const externalHooks = mock<ExternalHooks>();
 
-	executionService.recordMessage.mockResolvedValue('execution-1');
+	executionService.startExecutionRecording.mockResolvedValue('execution-1');
+	executionService.finalizeExecution.mockResolvedValue('execution-1');
 	agentRunTracingService.build.mockResolvedValue(undefined);
 
 	const service = new AgentExecutionOrchestratorService(
@@ -131,9 +141,88 @@ async function collect(generator: AsyncGenerator<StreamChunk>) {
 	return chunks;
 }
 
+function makeCheckpoint(
+	pendingToolCalls: SerializableAgentState['pendingToolCalls'] = {},
+	persistence: SerializableAgentState['persistence'] = {
+		threadId: 'thread-1',
+		resourceId: 'draft-chat:user-1',
+	},
+): SerializableAgentState {
+	return {
+		status: 'suspended',
+		persistence,
+		messageList: { messages: [], historyIds: [], inputIds: [], responseIds: [] },
+		pendingToolCalls,
+	};
+}
+
+function delegatedPending(
+	toolCallId: string,
+	continuation: JSONValue,
+): SerializableAgentState['pendingToolCalls'][string] {
+	return {
+		toolCallId,
+		toolName: 'delegate_subagent',
+		input: {},
+		suspended: true,
+		runId: 'run-1',
+		resumeSchema: { type: 'object' },
+		suspendPayload: { type: 'approval' },
+		continuation,
+	};
+}
+
 describe('AgentExecutionOrchestratorService', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+	});
+
+	it('starts durable recording before consuming timeline events and finalizes the same row', async () => {
+		const { service, executionService } = makeService();
+		executionService.startExecutionRecording.mockResolvedValue('execution-running');
+		executionService.finalizeExecution.mockResolvedValue('execution-running');
+		const runtime = makeRuntime([
+			{ type: 'text-delta', id: 'text-1', delta: 'Working' },
+			{ type: 'finish', finishReason: 'stop' },
+		]);
+
+		await collect(
+			service.streamChatResponse({
+				agentInstance: runtime.agent,
+				toolRegistry: runtime.toolRegistry,
+				agentId,
+				userId,
+				message: 'hello',
+				memory: { threadId: 'thread-1', resourceId: 'resource-1' },
+				projectId,
+				telemetry: telemetryContext,
+			}),
+		);
+
+		expect(executionService.startExecutionRecording).toHaveBeenCalledWith(
+			expect.objectContaining({ threadId: 'thread-1', userMessage: 'hello' }),
+			expect.any(Date),
+		);
+		expect(executionService.startExecutionRecording.mock.invocationCallOrder[0]).toBeLessThan(
+			executionService.recordTimelineSnapshot.mock.invocationCallOrder[0],
+		);
+		expect(executionService.recordTimelineSnapshot).toHaveBeenCalledWith(
+			expect.objectContaining({
+				projectId,
+				agentId,
+				threadId: 'thread-1',
+				executionId: 'execution-running',
+			}),
+		);
+		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
+			'execution-running',
+			expect.objectContaining({
+				record: expect.objectContaining({ assistantResponse: 'Working' }),
+			}),
+		);
+		const startedAt = executionService.startExecutionRecording.mock.calls[0][1];
+		const finalizedRecord = executionService.finalizeExecution.mock.calls[0][1].record;
+		expect(startedAt.getTime()).toBe(finalizedRecord.startTime);
 	});
 
 	it('streams chat responses and records suspended executions', async () => {
@@ -173,7 +262,8 @@ describe('AgentExecutionOrchestratorService', () => {
 				abortSignal: abortController.signal,
 			}),
 		);
-		expect(executionService.recordMessage).toHaveBeenCalledWith(
+		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
+			'execution-1',
 			expect.objectContaining({
 				threadId: 'thread-1',
 				userMessage: 'hello',
@@ -183,7 +273,7 @@ describe('AgentExecutionOrchestratorService', () => {
 		);
 	});
 
-	it('awaits recordMessage and notifies onExecutionRecorded with the returned id', async () => {
+	it('awaits finalization and notifies onExecutionRecorded with the returned id', async () => {
 		const { service, executionService } = makeService();
 		const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
 		const onExecutionRecorded = vi.fn();
@@ -202,7 +292,7 @@ describe('AgentExecutionOrchestratorService', () => {
 			}),
 		);
 
-		expect(executionService.recordMessage).toHaveBeenCalled();
+		expect(executionService.finalizeExecution).toHaveBeenCalled();
 		expect(onExecutionRecorded).toHaveBeenCalledWith('execution-1');
 	});
 
@@ -223,10 +313,10 @@ describe('AgentExecutionOrchestratorService', () => {
 			}),
 		);
 
-		expect(executionService.recordMessage).toHaveBeenCalled();
+		expect(executionService.finalizeExecution).toHaveBeenCalled();
 	});
 
-	it('executes in-app chat against the draft runtime', async () => {
+	it('executes in-app chat against the draft runtime with the caller source', async () => {
 		const {
 			service,
 			runtimeCacheService,
@@ -245,6 +335,7 @@ describe('AgentExecutionOrchestratorService', () => {
 				message: 'hello',
 				user,
 				memory: { threadId: 'thread-1', resourceId: 'resource-1' },
+				source: 'instance-ai',
 			}),
 		);
 
@@ -275,9 +366,10 @@ describe('AgentExecutionOrchestratorService', () => {
 			}),
 		);
 		expect(externalHooks.run).not.toHaveBeenCalled();
-		expect(executionService.recordMessage).toHaveBeenCalledWith(
+		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
+			'execution-1',
 			expect.objectContaining({
-				source: undefined,
+				source: 'instance-ai',
 				taskId: undefined,
 				telemetry: {
 					runType: 'test',
@@ -285,11 +377,9 @@ describe('AgentExecutionOrchestratorService', () => {
 				},
 			}),
 		);
-		// In-app test chat has no `source` — the tracing metadata normalizes it
-		// to 'test', distinct from the (unrelated) analytics `source` above.
 		expect(agentRunTracingService.build).toHaveBeenCalledWith(
 			expect.objectContaining({
-				source: 'test',
+				source: 'instance-ai',
 				threadId: 'thread-1',
 				modelId: 'anthropic/claude-sonnet-4-5',
 			}),
@@ -328,7 +418,8 @@ describe('AgentExecutionOrchestratorService', () => {
 		expect(externalHooks.run.mock.invocationCallOrder[0] ?? 0).toBeLessThan(
 			runtimeCacheService.getRuntime.mock.invocationCallOrder[0] ?? 0,
 		);
-		expect(executionService.recordMessage).toHaveBeenCalledWith(
+		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
+			'execution-1',
 			expect.objectContaining({
 				source: 'slack',
 				telemetry: {
@@ -375,7 +466,8 @@ describe('AgentExecutionOrchestratorService', () => {
 		expect(externalHooks.run.mock.invocationCallOrder[0] ?? 0).toBeLessThan(
 			runtimeCacheService.getRuntime.mock.invocationCallOrder[0] ?? 0,
 		);
-		expect(executionService.recordMessage).toHaveBeenCalledWith(
+		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
+			'execution-1',
 			expect.objectContaining({
 				source: 'task',
 				taskId: 'task-1',
@@ -455,7 +547,8 @@ describe('AgentExecutionOrchestratorService', () => {
 
 		expect(generatedTextIndex).toBeGreaterThan(-1);
 		expect(generatedTextIndex).toBeLessThan(finishIndex);
-		expect(executionService.recordMessage).toHaveBeenCalledWith(
+		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
+			'execution-1',
 			expect.objectContaining({
 				record: expect.objectContaining({
 					assistantResponse: expect.stringContaining('maximum number of iterations'),
@@ -484,7 +577,8 @@ describe('AgentExecutionOrchestratorService', () => {
 			),
 		).rejects.toThrow('reader failed while consuming stream');
 
-		expect(executionService.recordMessage).toHaveBeenCalledWith(
+		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
+			'execution-1',
 			expect.objectContaining({
 				threadId: 'thread-1',
 				agentId,
@@ -524,7 +618,8 @@ describe('AgentExecutionOrchestratorService', () => {
 		abortController.abort();
 		await collect(stream);
 
-		expect(executionService.recordMessage).toHaveBeenCalledWith(
+		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
+			'execution-1',
 			expect.objectContaining({
 				userMessage: 'hello',
 				record: expect.objectContaining({
@@ -585,6 +680,7 @@ describe('AgentExecutionOrchestratorService', () => {
 				}),
 			),
 		).rejects.toThrow(UserError);
+		expect(checkpointStorage.getStatus).toHaveBeenLastCalledWith('expired-run', agentId);
 
 		checkpointStorage.getStatus.mockResolvedValueOnce({
 			status: 'active',
@@ -604,6 +700,7 @@ describe('AgentExecutionOrchestratorService', () => {
 				abortSignal: abortController.signal,
 			}),
 		);
+		expect(checkpointStorage.getStatus).toHaveBeenLastCalledWith('run-1', agentId);
 
 		expect(runtime.agent.resume).toHaveBeenCalledWith(
 			'stream',
@@ -616,7 +713,8 @@ describe('AgentExecutionOrchestratorService', () => {
 		);
 		expect(externalHooks.run).not.toHaveBeenCalled();
 		expect(JSON.stringify(runtime.agent.resume.mock.calls[0])).not.toContain('platform-user-1');
-		expect(executionService.recordMessage).toHaveBeenCalledWith(
+		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
+			'execution-1',
 			expect.objectContaining({
 				threadId: 'thread-1',
 				userMessage: null,
@@ -658,7 +756,8 @@ describe('AgentExecutionOrchestratorService', () => {
 		abortController.abort();
 		await collect(stream);
 
-		expect(executionService.recordMessage).toHaveBeenCalledWith(
+		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
+			'execution-1',
 			expect.objectContaining({
 				userMessage: null,
 				hitlStatus: 'resumed',
@@ -674,12 +773,7 @@ describe('AgentExecutionOrchestratorService', () => {
 
 	it('atomically cancels only suspended checkpoints owned by the preview user', async () => {
 		const { service, checkpointStorage } = makeService();
-		const checkpoint: SerializableAgentState = {
-			status: 'suspended',
-			persistence: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
-			messageList: { messages: [], historyIds: [], inputIds: [], responseIds: [] },
-			pendingToolCalls: {},
-		};
+		const checkpoint = makeCheckpoint();
 		checkpointStorage.getStatus.mockResolvedValue({ status: 'active', checkpoint });
 		checkpointStorage.cancelSuspended.mockResolvedValue(true);
 
@@ -690,6 +784,7 @@ describe('AgentExecutionOrchestratorService', () => {
 				resourceId: 'draft-chat:user-1',
 			}),
 		).resolves.toBe(true);
+		expect(checkpointStorage.getStatus).toHaveBeenLastCalledWith('run-1', agentId);
 		expect(checkpointStorage.cancelSuspended).toHaveBeenCalledWith('run-1', checkpoint, agentId);
 
 		checkpointStorage.cancelSuspended.mockClear();
@@ -701,6 +796,146 @@ describe('AgentExecutionOrchestratorService', () => {
 			}),
 		).resolves.toBe(false);
 		expect(checkpointStorage.cancelSuspended).not.toHaveBeenCalled();
+	});
+
+	it('does not resume a checkpoint outside the expected draft memory scope', async () => {
+		const { service, checkpointStorage, runtimeCacheService } = makeService();
+		checkpointStorage.getStatus.mockResolvedValue({
+			status: 'active',
+			checkpoint: makeCheckpoint(),
+		});
+
+		for (const expectedMemory of [
+			{ threadId: 'another-thread', resourceId: 'draft-chat:user-1' },
+			{ threadId: 'thread-1', resourceId: 'draft-chat:another-user' },
+		]) {
+			await expect(
+				collect(
+					service.resumeForChat({
+						agentId,
+						projectId,
+						runId: 'run-1',
+						toolCallId: 'tool-call-1',
+						resumeData: { approved: true },
+						expectedMemory,
+					}),
+				),
+			).rejects.toThrow('Checkpoint run-1 does not belong to this chat');
+		}
+
+		expect(runtimeCacheService.getRuntime).not.toHaveBeenCalled();
+	});
+
+	it('does not directly cancel or resume a delegated child checkpoint', async () => {
+		const { service, checkpointStorage, runtimeCacheService } = makeService();
+		const checkpoint = makeCheckpoint(
+			{},
+			{
+				threadId: 'child-thread-1',
+				resourceId: 'draft-chat:user-1',
+				delegated: true,
+			},
+		);
+		checkpointStorage.getStatus.mockResolvedValue({ status: 'active', checkpoint });
+
+		await expect(
+			service.cancelChatRun({
+				agentId,
+				runId: 'child-run-1',
+				resourceId: 'draft-chat:user-1',
+			}),
+		).resolves.toBe(false);
+		expect(checkpointStorage.cancelSuspended).not.toHaveBeenCalled();
+		expect(checkpointStorage.delete).not.toHaveBeenCalled();
+
+		await expect(
+			collect(
+				service.resumeForChat({
+					agentId,
+					projectId,
+					runId: 'child-run-1',
+					toolCallId: 'child-tool-call-1',
+					resumeData: { approved: true },
+				}),
+			),
+		).rejects.toThrow('Delegated actions must be resumed through their parent agent');
+		expect(runtimeCacheService.getRuntime).not.toHaveBeenCalled();
+	});
+
+	it('expires configured and inline child checkpoints when cancelling a suspended parent', async () => {
+		const { service, checkpointStorage } = makeService();
+		const checkpoint = makeCheckpoint({
+			configured: delegatedPending('configured', {
+				runId: 'configured-child-run',
+				toolCallId: 'configured-child-call',
+				taskPath: '/root/configured_0',
+				subAgentId: 'configured-agent',
+				childCount: 0,
+				threadId: 'configured-child-thread',
+				resumeContext: {
+					agentId: 'configured-agent',
+					versionId: 'configured-version',
+				},
+			}),
+			inline: delegatedPending('inline', {
+				runId: 'inline-child-run',
+				toolCallId: 'inline-child-call',
+				taskPath: '/root/inline_1',
+				subAgentId: 'inline',
+				childCount: 1,
+			}),
+		});
+		checkpointStorage.getStatus.mockResolvedValue({ status: 'active', checkpoint });
+		checkpointStorage.cancelSuspended.mockResolvedValue(true);
+
+		await expect(
+			service.cancelChatRun({
+				agentId,
+				runId: 'run-1',
+				resourceId: 'draft-chat:user-1',
+			}),
+		).resolves.toBe(true);
+
+		expect(checkpointStorage.delete).toHaveBeenCalledTimes(3);
+		expect(checkpointStorage.delete).toHaveBeenCalledWith(
+			'configured-child-run',
+			'configured-agent',
+		);
+		expect(checkpointStorage.delete).toHaveBeenCalledWith('inline-child-run', agentId);
+		expect(checkpointStorage.delete).toHaveBeenCalledWith('run-1', agentId);
+	});
+
+	it('retries child cleanup from retained parent checkpoint references', async () => {
+		const { service, checkpointStorage } = makeService();
+		const checkpoint = makeCheckpoint({
+			delegated: delegatedPending('delegated', {
+				runId: 'child-run-1',
+				toolCallId: 'child-tool-call-1',
+				taskPath: '/root/inline_0',
+				subAgentId: 'inline',
+				childCount: 0,
+			}),
+		});
+		checkpointStorage.getStatus
+			.mockResolvedValueOnce({ status: 'active', checkpoint })
+			.mockResolvedValueOnce({ status: 'expired', checkpoint });
+		checkpointStorage.cancelSuspended.mockResolvedValue(true);
+		checkpointStorage.delete
+			.mockRejectedValueOnce(new Error('child checkpoint unavailable'))
+			.mockResolvedValue(undefined);
+
+		const request = {
+			agentId,
+			runId: 'run-1',
+			resourceId: 'draft-chat:user-1',
+		};
+		await expect(service.cancelChatRun(request)).rejects.toThrow('child checkpoint unavailable');
+		await expect(service.cancelChatRun(request)).resolves.toBe(true);
+
+		expect(checkpointStorage.cancelSuspended).toHaveBeenCalledOnce();
+		expect(checkpointStorage.delete).toHaveBeenNthCalledWith(1, 'child-run-1', agentId);
+		expect(checkpointStorage.delete).toHaveBeenNthCalledWith(2, 'child-run-1', agentId);
+		expect(checkpointStorage.delete).toHaveBeenNthCalledWith(3, 'run-1', agentId);
 	});
 
 	it('passes tracing telemetry returned by AgentRunTracingService into stream() and resume()', async () => {
@@ -784,6 +1019,14 @@ describe('AgentExecutionOrchestratorService', () => {
 
 		expect(executionService.findLatestSuspendedRun).toHaveBeenCalledWith('thread-1');
 		expect(agentRunTracingService.build).toHaveBeenCalledWith(
+			expect.objectContaining({ source: 'telegram' }),
+		);
+		expect(executionService.startExecutionRecording).toHaveBeenCalledWith(
+			expect.objectContaining({ source: 'telegram' }),
+			expect.any(Date),
+		);
+		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
+			'execution-1',
 			expect.objectContaining({ source: 'telegram' }),
 		);
 	});
@@ -883,7 +1126,8 @@ describe('AgentExecutionOrchestratorService', () => {
 			}),
 		);
 
-		expect(executionService.recordMessage).toHaveBeenCalledWith(
+		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
+			'execution-1',
 			expect.objectContaining({ threadId: 'thread-1', userMessage: null, hitlStatus: 'suspended' }),
 		);
 	});

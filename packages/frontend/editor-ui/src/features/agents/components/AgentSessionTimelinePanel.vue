@@ -1,5 +1,7 @@
 <script lang="ts" setup>
+import type { PushMessage } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
+import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useAgentSessionsStore } from '@/features/agents/agentSessions.store';
 import type {
 	AgentExecution,
@@ -24,8 +26,8 @@ import { shouldIgnoreCanvasShortcut } from '@/features/workflows/canvas/canvas.u
 import type { FilterOption, TimelineItem } from '@/features/agents/session-timeline.types';
 import { useI18n } from '@n8n/i18n';
 import { N8nIcon, N8nInput } from '@n8n/design-system';
-import { computed, ref, watch } from 'vue';
-import { useActiveElement, useEventListener } from '@vueuse/core';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { useActiveElement, useDocumentVisibility, useEventListener } from '@vueuse/core';
 
 const props = defineProps<{
 	projectId: string;
@@ -43,7 +45,9 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const toast = useToast();
 const sessionsStore = useAgentSessionsStore();
+const pushStore = usePushConnectionStore();
 const activeElement = useActiveElement();
+const documentVisibility = useDocumentVisibility();
 
 const projectId = computed(() => props.projectId);
 
@@ -53,7 +57,10 @@ const selectedIndex = ref<number | null>(null);
 const highlightedIndex = ref<number | null>(null);
 const selectedFilters = ref<Set<string>>(new Set());
 const searchQuery = ref('');
-let loadThreadDetailRequestId = 0;
+let threadDetailRequestId = 0;
+let refreshPending = false;
+let removePushListener: (() => void) | undefined;
+let activeRequest: { identity: string; promise: Promise<void> } | undefined;
 
 const baseItems = computed<TimelineItem[]>(() =>
 	flattenExecutionsToTimelineItems(executions.value),
@@ -149,6 +156,10 @@ function selectTimelineItem(index: number | null) {
 	highlightedIndex.value = index;
 }
 
+function timelineItemKey(item: TimelineItem): string {
+	return `${item.executionId}:${item.kind}:${item.toolCallId ?? item.timestamp}`;
+}
+
 function onKeyDown(event: KeyboardEvent) {
 	if (activeElement.value && shouldIgnoreCanvasShortcut(activeElement.value)) return;
 
@@ -189,18 +200,27 @@ function onKeyUp(event: KeyboardEvent) {
 
 useEventListener(document, 'keyup', onKeyUp);
 
-async function loadThreadDetail() {
-	const currentProjectId = props.projectId;
-	const currentAgentId = props.agentId;
-	const currentThreadId = props.threadId;
-	const requestId = ++loadThreadDetailRequestId;
-
+function loadThreadDetail() {
 	executions.value = [];
 	selectedFilters.value = new Set();
 	searchQuery.value = '';
 	selectTimelineItem(null);
 	loading.value = true;
 	emit('loaded', null);
+	refreshPending = false;
+	startThreadDetailRequest(true);
+}
+
+function threadIdentity(): string {
+	return `${props.projectId}:${props.agentId}:${props.threadId}`;
+}
+
+async function fetchThreadDetail(initial: boolean) {
+	const currentProjectId = props.projectId;
+	const currentAgentId = props.agentId;
+	const currentThreadId = props.threadId;
+	const identity = threadIdentity();
+	const requestId = ++threadDetailRequestId;
 
 	try {
 		const result = await sessionsStore.getThreadDetail(
@@ -208,18 +228,79 @@ async function loadThreadDetail() {
 			currentAgentId,
 			currentThreadId,
 		);
-		if (requestId !== loadThreadDetailRequestId) return;
+		if (requestId !== threadDetailRequestId || identity !== threadIdentity()) {
+			return;
+		}
+		const selectedKey = !initial && selectedItem.value ? timelineItemKey(selectedItem.value) : null;
 		executions.value = result.executions;
+		if (selectedKey) {
+			const nextIndex = items.value.findIndex((item) => timelineItemKey(item) === selectedKey);
+			selectTimelineItem(nextIndex >= 0 ? nextIndex : null);
+		}
 		emit('loaded', result);
 	} catch (error) {
-		if (requestId !== loadThreadDetailRequestId) return;
-		toast.showError(error, i18n.baseText('agentSessions.showError.load'));
+		if (requestId !== threadDetailRequestId) return;
+		if (initial) toast.showError(error, i18n.baseText('agentSessions.showError.load'));
 	} finally {
-		if (requestId === loadThreadDetailRequestId) {
-			loading.value = false;
-		}
+		if (initial && requestId === threadDetailRequestId) loading.value = false;
 	}
 }
+
+function startThreadDetailRequest(initial: boolean) {
+	const identity = threadIdentity();
+	const request = { identity, promise: fetchThreadDetail(initial) };
+	activeRequest = request;
+	void request.promise.finally(() => {
+		if (activeRequest !== request) return;
+		activeRequest = undefined;
+		if (refreshPending && identity === threadIdentity()) {
+			refreshPending = false;
+			refreshThreadDetail();
+		}
+	});
+}
+
+function refreshThreadDetail() {
+	if (activeRequest?.identity === threadIdentity()) {
+		refreshPending = true;
+		return;
+	}
+	startThreadDetailRequest(false);
+}
+
+function onPushMessage(event: PushMessage) {
+	if (
+		event.type === 'agentExecutionUpdated' &&
+		event.data.projectId === props.projectId &&
+		event.data.agentId === props.agentId &&
+		event.data.threadId === props.threadId
+	) {
+		refreshThreadDetail();
+	}
+}
+
+watch(documentVisibility, (visibility) => {
+	if (visibility === 'visible') refreshThreadDetail();
+});
+
+watch(
+	() => pushStore.isConnected,
+	(isConnected, wasConnected) => {
+		if (isConnected && !wasConnected) refreshThreadDetail();
+	},
+);
+
+onMounted(() => {
+	pushStore.pushConnect();
+	removePushListener = pushStore.addEventListener(onPushMessage);
+});
+
+onBeforeUnmount(() => {
+	threadDetailRequestId++;
+	refreshPending = false;
+	removePushListener?.();
+	pushStore.pushDisconnect();
+});
 
 watch([() => props.projectId, () => props.agentId, () => props.threadId], loadThreadDetail, {
 	immediate: true,

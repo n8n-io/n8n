@@ -2,6 +2,8 @@ import { createTestingPinia } from '@pinia/testing';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { flushPromises, mount } from '@vue/test-utils';
 
+import type { AgentBuilderMainTab } from '../composables/useAgentBuilderMainTabs';
+
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
 		baseText: (key: string) =>
@@ -41,8 +43,10 @@ vi.mock('@n8n/design-system', () => ({
 		props: ['disabled', 'ariaLabel'],
 	},
 	N8nLoading: { template: '<div />', props: ['rows', 'variant'] },
+	N8nOption: { template: '<div />', props: ['value', 'label', 'disabled'] },
 	N8nRadioButtons: { template: '<div />', props: ['modelValue', 'options'] },
 	N8nScrollArea: { template: '<div><slot /></div>', props: ['maxHeight', 'type'] },
+	N8nSelect: { template: '<div><slot /></div>', props: ['modelValue', 'disabled', 'size'] },
 	N8nSwitch: { template: '<button data-test-id="agent-memory-toggle"></button>' },
 	N8nSwitch2: { template: '<button />', props: ['modelValue', 'disabled'] },
 	N8nText: { template: '<span><slot /></span>', props: ['tag', 'bold', 'size', 'color'] },
@@ -53,14 +57,6 @@ vi.mock('@n8n/design-system', () => ({
 		props: ['modelValue', 'options'],
 	},
 	N8nTooltip: { template: '<div><slot /><slot name="content" /></div>' },
-}));
-
-vi.mock('@n8n/design-system/components/N8nSelect', () => ({
-	default: { template: '<div><slot /></div>', props: ['modelValue', 'disabled', 'size'] },
-}));
-
-vi.mock('@n8n/design-system/components/N8nOption', () => ({
-	default: { template: '<div />', props: ['value', 'label', 'disabled'] },
 }));
 
 vi.mock('../components/AgentAdvancedPanel.vue', () => ({
@@ -127,12 +123,13 @@ vi.setConfig({ testTimeout: 30_000 });
 
 async function mountColumn(
 	overrides: Partial<{
-		activeMainTab: 'agent' | 'knowledge' | 'sessions' | 'settings';
+		activeMainTab: AgentBuilderMainTab;
 		mainTabOptions: Array<{
 			label: string;
-			value: 'agent' | 'knowledge' | 'sessions' | 'settings';
+			value: AgentBuilderMainTab;
 		}>;
 		knowledgeBaseEnabled: boolean;
+		canEditAgent: boolean;
 	}> = {},
 ) {
 	const { default: AgentBuilderEditorColumn } = await import(
@@ -162,7 +159,7 @@ async function mountColumn(
 			knowledgeBaseEnabled: overrides.knowledgeBaseEnabled ?? true,
 			appliedSkills: [],
 			connectedTriggers: [],
-			canEditAgent: true,
+			canEditAgent: overrides.canEditAgent ?? true,
 			executionsDescription: '',
 		},
 		global: {
@@ -244,12 +241,29 @@ describe('AgentBuilderEditorColumn', () => {
 		['knowledge', 'agent-knowledge-tab-content'],
 		['sessions', 'agent-sessions-tab-content'],
 		['settings', 'agent-settings-tab-content'],
+		['evals', 'agent-evals-tab-content'],
 	] as const)('renders the %s tab through the shared tab panel', async (activeMainTab, testId) => {
 		const wrapper = await mountColumn({ activeMainTab });
 
 		const panels = wrapper.findAllComponents({ name: 'AgentBuilderTabPanel' });
 		expect(panels).toHaveLength(1);
 		expect(panels[0].attributes('data-testid')).toBe(testId);
+	});
+
+	it('forwards the evals generate request to the host', async () => {
+		const wrapper = await mountColumn({ activeMainTab: 'evals' });
+
+		// The shell owns no generation flow yet, so the request has to reach the
+		// host rather than being emitted into nothing.
+		wrapper.getComponent({ name: 'AgentEvalsSection' }).vm.$emit('generate');
+
+		expect(wrapper.emitted('generate-eval-cases')).toHaveLength(1);
+	});
+
+	it('disables the evals CTA for a read-only agent', async () => {
+		const wrapper = await mountColumn({ activeMainTab: 'evals', canEditAgent: false });
+
+		expect(wrapper.getComponent({ name: 'AgentEvalsSection' }).props('disabled')).toBe(true);
 	});
 
 	it('uses embedded session list spacing inside the Sessions tab panel', async () => {
