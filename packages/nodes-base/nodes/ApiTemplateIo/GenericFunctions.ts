@@ -41,7 +41,7 @@ export async function apiTemplateIoApiRequest(
 			options,
 		);
 		if (response.status === 'error') {
-			throw new NodeApiError(this.getNode(), response.message as JsonObject);
+			throw new NodeApiError(this.getNode(), response as JsonObject);
 		}
 		return response;
 	} catch (error) {
@@ -133,7 +133,7 @@ export async function apiTemplateIoApiRequestV2(
 			options,
 		);
 		if (!returnBinary && response.status === 'error') {
-			throw new NodeApiError(this.getNode(), response.message as JsonObject);
+			throw new NodeApiError(this.getNode(), response as JsonObject);
 		}
 		return response;
 	} catch (error) {
