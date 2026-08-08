@@ -20,8 +20,19 @@ function getAgentLookup(agent: http.Agent | https.Agent): unknown {
 }
 
 // `http.Agent['options']` is not exposed on the public Node types.
-function getAgentOptions(agent: http.Agent | https.Agent): { keepAlive?: boolean } {
-	return (agent as unknown as { options?: { keepAlive?: boolean } }).options ?? {};
+function getAgentOptions(
+	agent: http.Agent | https.Agent,
+): { keepAlive?: boolean } & Record<string, unknown> {
+	return (
+		(agent as unknown as { options?: { keepAlive?: boolean } & Record<string, unknown> }).options ??
+		{}
+	);
+}
+
+// HttpsProxyAgent stores TLS settings in `connectOpts` (used for the
+// tls.connect call), not in `options`.
+function getProxyConnectOpts(agent: http.Agent | https.Agent): Record<string, unknown> {
+	return (agent as unknown as { connectOpts?: Record<string, unknown> }).connectOpts ?? {};
 }
 
 // ---------------------------------------------------------------------------
@@ -68,6 +79,45 @@ describe('buildNodeAgents', () => {
 
 			expect(getAgentOptions(httpAgent).keepAlive).toBe(true);
 		});
+
+		it.each([
+			// An http:// proxy performs a cleartext CONNECT and never runs
+			// tls.connect on the proxy socket, so the stripped options had no
+			// observable effect there.
+			['http://proxy.internal:3128', 'http proxy'],
+			// The reported bug (ERR_TLS_CERT_ALTNAME_INVALID) only occurs with an
+			// https:// proxy, where HttpsProxyAgent runs tls.connect on the proxy
+			// socket and https-proxy-agent validates the proxy certificate against
+			// the target hostname when `servername` is forwarded.
+			['https://proxy.internal:3128', 'https proxy'],
+		])(
+			'strips target-specific TLS options from the explicit-proxy agent (%s)',
+			(proxyUrl: string) => {
+				// `servername`, `rejectUnauthorized` and `secureOptions` describe the
+				// tunnelled target session, not the proxy socket. Forwarding them makes
+				// `https-proxy-agent` validate the proxy certificate against the target
+				// hostname (ERR_TLS_CERT_ALTNAME_INVALID). They must be omitted.
+				const { httpAgent, httpsAgent } = buildNodeAgents(proxyUrl, 'disabled', {
+					keepAlive: true,
+					servername: 'target.example.com',
+					rejectUnauthorized: false,
+					secureOptions: 1,
+				});
+
+				const httpOpts = getAgentOptions(httpAgent);
+				const httpsOpts = getProxyConnectOpts(httpsAgent);
+
+				expect(httpOpts.keepAlive).toBe(true);
+				expect(httpOpts).not.toHaveProperty('servername');
+				expect(httpOpts).not.toHaveProperty('rejectUnauthorized');
+				expect(httpOpts).not.toHaveProperty('secureOptions');
+
+				expect(httpsOpts.keepAlive).toBe(true);
+				expect(httpsOpts).not.toHaveProperty('servername');
+				expect(httpsOpts).not.toHaveProperty('rejectUnauthorized');
+				expect(httpsOpts).not.toHaveProperty('secureOptions');
+			},
+		);
 	});
 
 	describe('rejects a caller-provided lookup (managed by the SSRF policy)', () => {
