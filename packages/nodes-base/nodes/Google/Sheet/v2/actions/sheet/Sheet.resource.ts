@@ -136,6 +136,33 @@ export const descriptions: INodeProperties[] = [
 		},
 	},
 	{
+		displayName: 'Sheet Selection Mode',
+		name: 'sheetSelectionMode',
+		type: 'options',
+		default: 'single',
+		options: [
+			{
+				name: 'Single Sheet',
+				value: 'single',
+				description: 'Read rows from the sheet selected below',
+			},
+			{
+				name: 'All Sheets',
+				value: 'all',
+				description:
+					'Read rows from every sheet in the document, adding a "_sheetName" field to each row',
+			},
+		],
+		description:
+			'Whether to read from one sheet or from every sheet in the document. "All Sheets" makes one request per sheet, so it can use up a lot of API quota on large documents, and filters are not available - use a Filter node afterwards instead.',
+		displayOptions: {
+			show: {
+				resource: ['sheet'],
+				operation: ['read'],
+			},
+		},
+	},
+	{
 		displayName: 'Sheet',
 		name: 'sheetName',
 		type: 'resourceLocator',
@@ -202,6 +229,7 @@ export const descriptions: INodeProperties[] = [
 			show: {
 				resource: ['sheet'],
 				operation: ['append', 'appendOrUpdate', 'clear', 'delete', 'read', 'remove', 'update'],
+				sheetSelectionMode: ['single'],
 			},
 		},
 	},
