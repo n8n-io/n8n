@@ -336,5 +336,7 @@ defineExpose({
 	align-items: stretch;
 	justify-content: stretch;
 	background-color: var(--canvas--color--background);
+	user-select: none;
+	-webkit-user-select: none;
 }
 </style>
