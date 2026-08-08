@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { VIEWS } from '@/app/constants';
 import { CUSTOM_ROLES_DOCS_URL } from '@/app/constants/urls';
-import { useRolesStore } from '@/app/stores/roles.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useRolesStore } from '@n8n/stores/roles.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import type { TabOptions } from '@n8n/design-system';
 import { N8nButton, N8nHeading, N8nLink, N8nTabs, N8nTag, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -45,14 +45,17 @@ const addRoleLabel = computed(() =>
 	i18n.baseText(activeTab.value === 'project' ? 'roles.addRole.project' : 'roles.addRole.instance'),
 );
 
-const tabOptions = computed<Array<TabOptions<RolesTab>>>(() =>
-	canManageInstanceRoles.value
-		? [
-				{ label: i18n.baseText('roles.tab.instance'), value: 'instance' },
-				{ label: i18n.baseText('roles.tab.project'), value: 'project' },
-			]
-		: [{ label: i18n.baseText('roles.tab.project'), value: 'project' }],
-);
+const tabOptions = computed<Array<TabOptions<RolesTab>>>(() => [
+	{
+		label: i18n.baseText('roles.tab.instance'),
+		value: 'instance',
+		disabled: !canManageInstanceRoles.value,
+		tooltip: canManageInstanceRoles.value
+			? undefined
+			: i18n.baseText('roles.tab.instance.disabledTooltip'),
+	},
+	{ label: i18n.baseText('roles.tab.project'), value: 'project' },
+]);
 
 // Reflect tab selection in the URL (replace keeps history clean / back-button safe).
 watch(activeTab, (tab) => {

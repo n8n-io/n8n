@@ -11,7 +11,7 @@ vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({ baseText: (k: string) => k }),
 }));
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showError: vi.fn() }),
 }));
 
@@ -156,25 +156,32 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		vi.restoreAllMocks();
 	});
 
-	it('renders an approval card when preview chat suspends for tool approval', async () => {
+	it('renders nested approval while preserving delegated tool input', async () => {
+		const delegateInput = {
+			subAgentId: 'inline',
+			taskName: 'research_api',
+			goal: 'Research the requested API',
+			context: 'Use the configured research agent',
+		};
+		const suspendPayload = {
+			type: 'approval',
+			toolName: 'http_request',
+			args: { url: 'https://example.com/data' },
+		};
 		const events: AgentSseEvent[] = [
 			{
 				type: 'tool-call',
-				toolCallId: 'tc-approval',
-				toolName: 'calculator',
-				input: { input: '2 + 2' },
+				toolCallId: 'parent-tool-call-1',
+				toolName: 'delegate_subagent',
+				input: delegateInput,
 			},
 			{
 				type: 'tool-call-suspended',
 				payload: {
-					toolCallId: 'tc-approval',
-					runId: 'run-approval',
-					toolName: 'calculator',
-					input: {
-						type: 'approval',
-						toolName: 'calculator',
-						args: { input: '2 + 2' },
-					},
+					toolCallId: 'parent-tool-call-1',
+					runId: 'parent-run-1',
+					toolName: 'delegate_subagent',
+					input: suspendPayload,
 				},
 			},
 			{ type: 'done' },
@@ -182,18 +189,22 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
 
 		const hook = buildHook();
-		await hook.sendMessage('calculate 2 + 2');
+		await hook.sendMessage('research this API');
 		await nextTick();
 
 		const assistant = hook.messages.value[1];
 		expect(assistant.status).toBe('awaitingUser');
-		expect(assistant.toolCalls?.[0].state).toBe('suspended');
-		expect(assistant.interactive?.toolName).toBe(APPROVAL_TOOL_NAME);
-		expect(assistant.interactive?.runId).toBe('run-approval');
-		expect(assistant.interactive?.input).toEqual({
-			type: 'approval',
-			toolName: 'calculator',
-			args: { input: '2 + 2' },
+		expect(assistant.toolCalls?.[0]).toMatchObject({
+			input: delegateInput,
+			suspendPayload,
+			state: 'suspended',
+			runId: 'parent-run-1',
+		});
+		expect(assistant.interactive).toEqual({
+			toolCallId: 'parent-tool-call-1',
+			toolName: APPROVAL_TOOL_NAME,
+			input: suspendPayload,
+			runId: 'parent-run-1',
 		});
 	});
 
@@ -771,6 +782,62 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		expect(assistant.toolCalls?.[0].state).toBe('done');
 		expect(assistant.interactive?.resolvedAt).toBeDefined();
 		expect(assistant.status).toBe('success');
+	});
+
+	it('reopens a cancelled HITL card when backend cleanup re-suspends it', async () => {
+		const approvalInput = {
+			type: 'approval' as const,
+			toolName: 'calculator',
+			args: { input: '2 + 2' },
+		};
+		const suspensionEvent: AgentSseEvent = {
+			type: 'tool-call-suspended',
+			payload: {
+				toolCallId: 'tc-approval',
+				runId: 'run-approval',
+				toolName: 'calculator',
+				input: approvalInput,
+			},
+		};
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(
+				makeSseResponse([
+					{
+						type: 'tool-call',
+						toolCallId: 'tc-approval',
+						toolName: 'calculator',
+						input: { input: '2 + 2' },
+					},
+					suspensionEvent,
+				]),
+			)
+			.mockResolvedValueOnce(makeSseResponse([suspensionEvent]));
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('calculate 2 + 2');
+		await hook.resume({
+			runId: 'run-approval',
+			toolCallId: 'tc-approval',
+			cancelled: true,
+			text: 'Keep waiting',
+		});
+
+		const assistant = hook.messages.value[1];
+		expect(assistant.status).toBe('awaitingUser');
+		expect(assistant.toolCalls?.[0]).toMatchObject({
+			state: 'suspended',
+			canceled: false,
+			output: undefined,
+			displaySummary: undefined,
+		});
+		expect(assistant.interactive).toMatchObject({
+			toolCallId: 'tc-approval',
+			runId: 'run-approval',
+		});
+		expect(assistant.interactive?.cancelled).toBeUndefined();
+		expect(assistant.interactive?.resolvedAt).toBeUndefined();
 	});
 
 	it('reconciles a failed resume against the backend suspension state', async () => {
@@ -1904,5 +1971,155 @@ describe('useAgentChatStream — done executionId', () => {
 		const assistant = hook.messages.value.find((m) => m.role === 'assistant');
 		expect(assistant?.content).toBe('Hello');
 		expect(assistant?.executionId).toBe('exec-live-1');
+	});
+});
+
+describe('useAgentChatStream — subagent-chunk', () => {
+	it('accumulates child text on the parent delegate tool call without minting a bubble', async () => {
+		const events: AgentSseEvent[] = [
+			{ type: 'start-step' },
+			{
+				type: 'tool-call',
+				toolCallId: 'tc-delegate',
+				toolName: 'delegate_subagent',
+				input: { subAgentId: 'inline', taskName: 'research', goal: 'Find it' },
+			},
+			{ type: 'finish-step' },
+			{
+				type: 'tool-execution-start',
+				toolCallId: 'tc-delegate',
+				toolName: 'delegate_subagent',
+				startTime: 1_000,
+			},
+			{
+				type: 'subagent-chunk',
+				parentToolCallId: 'tc-delegate',
+				taskPath: '/root/research_0',
+				chunk: { type: 'text-delta', id: 't-1', delta: 'Hello ' },
+			},
+			{
+				type: 'subagent-chunk',
+				parentToolCallId: 'tc-delegate',
+				taskPath: '/root/research_0',
+				chunk: { type: 'text-delta', id: 't-1', delta: 'world' },
+			},
+			{ type: 'done' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('delegate');
+		await nextTick();
+
+		const assistants = hook.messages.value.filter((m) => m.role === 'assistant');
+		expect(assistants).toHaveLength(1);
+		expect(assistants[0].toolCalls?.[0].childProgress?.text).toBe('Hello world');
+	});
+
+	it('accumulates child reasoning deltas into one segment by id', async () => {
+		const events: AgentSseEvent[] = [
+			{ type: 'start-step' },
+			{
+				type: 'tool-call',
+				toolCallId: 'tc-delegate',
+				toolName: 'delegate_subagent',
+				input: { subAgentId: 'inline', taskName: 'research', goal: 'Find it' },
+			},
+			{ type: 'finish-step' },
+			{
+				type: 'subagent-chunk',
+				parentToolCallId: 'tc-delegate',
+				taskPath: '/root/research_0',
+				chunk: { type: 'reasoning-delta', id: 'r-1', delta: 'Think ' },
+			},
+			{
+				type: 'subagent-chunk',
+				parentToolCallId: 'tc-delegate',
+				taskPath: '/root/research_0',
+				chunk: { type: 'reasoning-delta', id: 'r-1', delta: 'hard' },
+			},
+			{
+				type: 'subagent-chunk',
+				parentToolCallId: 'tc-delegate',
+				taskPath: '/root/research_0',
+				chunk: { type: 'reasoning-end', id: 'r-1' },
+			},
+			{ type: 'done' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('delegate');
+		await nextTick();
+
+		const segments = hook.messages.value[1].toolCalls?.[0].childProgress?.reasoningSegments;
+		expect(segments).toHaveLength(1);
+		expect(segments?.[0].content).toBe('Think hard');
+		expect(segments?.[0].endTime).toBeTypeOf('number');
+	});
+
+	it('ignores subagent-chunk events whose parentToolCallId matches nothing', async () => {
+		const events: AgentSseEvent[] = [
+			{ type: 'start-step' },
+			{
+				type: 'tool-call',
+				toolCallId: 'tc-other',
+				toolName: 'compute',
+				input: {},
+			},
+			{ type: 'finish-step' },
+			{
+				type: 'subagent-chunk',
+				parentToolCallId: 'missing',
+				taskPath: '/root/x_0',
+				chunk: { type: 'text-delta', id: 't-1', delta: 'orphan' },
+			},
+			{ type: 'done' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('hi');
+		await nextTick();
+
+		expect(hook.messages.value[1].toolCalls?.[0].childProgress).toBeUndefined();
+		expect(hook.messages.value).toHaveLength(2);
+	});
+
+	it('keeps childProgress after the delegate tool result arrives', async () => {
+		const events: AgentSseEvent[] = [
+			{ type: 'start-step' },
+			{
+				type: 'tool-call',
+				toolCallId: 'tc-delegate',
+				toolName: 'delegate_subagent',
+				input: { subAgentId: 'inline', taskName: 'research', goal: 'Find it' },
+			},
+			{ type: 'finish-step' },
+			{
+				type: 'subagent-chunk',
+				parentToolCallId: 'tc-delegate',
+				taskPath: '/root/research_0',
+				chunk: { type: 'text-delta', id: 't-1', delta: 'live' },
+			},
+			{
+				type: 'tool-result',
+				toolCallId: 'tc-delegate',
+				toolName: 'delegate_subagent',
+				output: { status: 'completed', answer: 'done' },
+			},
+			{ type: 'done' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('delegate');
+		await nextTick();
+
+		expect(hook.messages.value[1].toolCalls?.[0].childProgress?.text).toBe('live');
+		expect(hook.messages.value[1].toolCalls?.[0].output).toEqual({
+			status: 'completed',
+			answer: 'done',
+		});
 	});
 });

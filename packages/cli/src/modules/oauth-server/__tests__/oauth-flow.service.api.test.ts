@@ -43,7 +43,9 @@ const formTriggerNode = (): INode => ({
 	type: FORM_TRIGGER_NODE_TYPE,
 	typeVersion: 2,
 	position: [0, 0],
-	parameters: { path: 'unused', authentication: 'n8nUserAuth' },
+	// `requireExecuteAccess` is opt-in, so set it explicitly: these tests exercise the
+	// execute-access gate on the resource the flow issues tokens for.
+	parameters: { path: 'unused', authentication: 'n8nUserAuth', requireExecuteAccess: true },
 });
 
 /** Active form workflow + production webhook row; returns the canonical resource URL. */

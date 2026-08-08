@@ -11,7 +11,7 @@ vi.mock('@n8n/composables/useTelemetry', () => ({
 }));
 
 const storageRef = ref<string | null>(null);
-vi.mock('@/app/composables/useStorage', () => ({
+vi.mock('@n8n/composables/useStorage', () => ({
 	useStorage: vi.fn(() => storageRef),
 }));
 
@@ -23,7 +23,7 @@ vi.mock('@/app/stores/posthog.store', () => ({
 }));
 
 let mockUserIsTrialing = false;
-vi.mock('@/app/stores/cloudPlan.store', () => ({
+vi.mock('@n8n/stores/cloudPlan.store', () => ({
 	useCloudPlanStore: vi.fn(() => ({
 		get userIsTrialing() {
 			return mockUserIsTrialing;

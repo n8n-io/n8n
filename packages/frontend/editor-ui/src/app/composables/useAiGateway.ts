@@ -1,7 +1,7 @@
 import { computed } from 'vue';
 import type { INode } from 'n8n-workflow';
 import { useRouter } from 'vue-router';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
 import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
 
@@ -24,6 +24,9 @@ export function useAiGateway() {
 
 	const isCredentialTypeSupported = (credentialType: string): boolean =>
 		aiGatewayStore.isCredentialTypeSupported(credentialType);
+
+	const canServeCredentialType = (credentialType: string): boolean =>
+		aiGatewayStore.canServeCredentialType(credentialType);
 
 	const isActionSupported = (
 		nodeName: string,
@@ -60,6 +63,7 @@ export function useAiGateway() {
 		fetchConfig,
 		fetchWallet,
 		isCredentialTypeSupported,
+		canServeCredentialType,
 		isActionSupported,
 		isActionOptionVisible,
 		isNodeTypeVersionSupported,

@@ -504,7 +504,7 @@ async function main(): Promise<void> {
 			casesBySlug.set(slug, testCaseSchema.parse(readJson(file, `test case ${slug}`)).conversation);
 		}
 	}
-	// Drop cases with no user turn to build from (e.g. seedThread-only).
+	// Drop cases with no user turn to build from (e.g. `replay`-seeded only).
 	for (const [slug, conv] of [...casesBySlug]) {
 		if (!conv.some((t) => t.role === 'user' && t.text.trim().length > 0)) {
 			console.log(`  [${slug}] skip: no user turn to build from`);

@@ -18,14 +18,22 @@ import { Container, Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 import { hasGlobalScope } from '@n8n/permissions';
 import type { EntityManager } from '@n8n/typeorm';
-import { In } from '@n8n/typeorm';
+import { In, QueryFailedError } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import isEqual from 'lodash/isEqual';
 import pick from 'lodash/pick';
 import type { INode, INodes, IWorkflowSettings, JsonValue, IConnections } from 'n8n-workflow';
-import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { PROJECT_ROOT, Workflow, assert, calculateWorkflowChecksum } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
+
+import { WorkflowPublicationNotifier } from './publication/workflow-publication-notifier';
+import { getErrorDescription, getErrorNodeId, getRequiredRedactionScopes } from './utils';
+import { WorkflowFinderService } from './workflow-finder.service';
+import { WorkflowHistoryService } from './workflow-history/workflow-history.service';
+import { WorkflowMutationHooksProxy } from './workflow-mutation-hooks-proxy.service';
+import { WorkflowPublishGuardProxy } from './workflow-publish-guard-proxy.service';
+import { WorkflowValidationService } from './workflow-validation.service';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
@@ -52,17 +60,11 @@ import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
 import { TagService } from '@/services/tag.service';
-import { getBase as getWorkflowExecutionData } from '@/workflow-execute-additional-data';
-import { WorkflowHookContextService } from '@/workflow-hook-context.service';
-
-import { WorkflowValidationService } from './workflow-validation.service';
-
+import { WEBHOOK_CONFLICT_MESSAGE } from '@/webhooks/constants';
 import { WebhookService } from '@/webhooks/webhook.service';
+import { getBase as getWorkflowExecutionData } from '@/workflow-execute-additional-data';
 import * as WorkflowHelpers from '@/workflow-helpers';
-import { WorkflowPublicationNotifier } from './publication/workflow-publication-notifier';
-import { getErrorDescription, getErrorNodeId, getRequiredRedactionScopes } from './utils';
-import { WorkflowFinderService } from './workflow-finder.service';
-import { WorkflowHistoryService } from './workflow-history/workflow-history.service';
+import { WorkflowHookContextService } from '@/workflow-hook-context.service';
 
 @Service()
 export class WorkflowService {
@@ -96,6 +98,8 @@ export class WorkflowService {
 		private readonly pollTriggerJobRegistrar: PollTriggerJobRegistrar,
 		private readonly workflowPublishedVersionRepository: WorkflowPublishedVersionRepository,
 		private readonly workflowHookContextService: WorkflowHookContextService,
+		private readonly workflowPublishGuard: WorkflowPublishGuardProxy,
+		private readonly workflowMutationHooks: WorkflowMutationHooksProxy,
 	) {}
 
 	async getMany(
@@ -564,11 +568,8 @@ export class WorkflowService {
 			);
 		}
 
-		const publishCurrent = workflow.activeVersionId && publishIfActive;
-		if (publishCurrent) {
-			updatePayload.active = true;
-			updatePayload.activeVersionId = workflowUpdateData.versionId;
-		}
+		const versionIdToPublish =
+			workflow.activeVersionId && publishIfActive ? workflowUpdateData.versionId : null;
 
 		if (parentFolderId) {
 			const project = await this.sharedWorkflowRepository.getWorkflowOwningProject(workflow.id);
@@ -632,11 +633,17 @@ export class WorkflowService {
 			source,
 		});
 
-		// Activate workflow if requested, or
-		// Reactivate workflow if settings changed and workflow has an active version
-		if (updatedWorkflow.activeVersionId && (publishCurrent || settingsChanged)) {
+		if (versionIdToPublish) {
+			const publishedWorkflow = await this.activateWorkflow(user, workflowId, {
+				versionId: versionIdToPublish,
+				source,
+			});
+			updatedWorkflow.active = publishedWorkflow.active;
+			updatedWorkflow.activeVersionId = publishedWorkflow.activeVersionId;
+			updatedWorkflow.activeVersion = publishedWorkflow.activeVersion;
+		} else if (settingsChanged && workflow.activeVersionId) {
 			await this.activateWorkflow(user, workflowId, {
-				versionId: updatedWorkflow.activeVersionId,
+				versionId: workflow.activeVersionId,
 				source,
 			});
 		}
@@ -747,7 +754,7 @@ export class WorkflowService {
 
 		if (conflicts.length > 0) {
 			throw new ConflictError(
-				'There is a conflict with one of the webhooks.',
+				WEBHOOK_CONFLICT_MESSAGE,
 				JSON.stringify(
 					conflicts.map(({ trigger, conflict }) => ({
 						trigger,
@@ -851,6 +858,12 @@ export class WorkflowService {
 				nodeId: getErrorNodeId(error),
 				description: getErrorDescription(error),
 			});
+		}
+
+		// re-applying the already-published version (e.g. a settings-only update)
+		// publishes no new version, so the review gate must not block it.
+		if (versionIdToActivate !== previousActiveVersionId) {
+			await this.workflowPublishGuard.assertCanPublish(workflowId);
 		}
 
 		if (this.globalConfig.workflows.useWorkflowPublicationService) {
@@ -1165,6 +1178,12 @@ export class WorkflowService {
 			throw new BadRequestError('Workflow must be archived before it can be deleted.');
 		}
 
+		// Ahead of every destructive step, including the trigger teardown below: the
+		// hook may throw to abort the delete, and deactivation is not rolled back, so
+		// running it later would strand the workflow as active in the DB but no longer
+		// running.
+		await this.workflowMutationHooks.beforeWorkflowDeleted(workflowId);
+
 		if (workflow.active) {
 			// deactivate before deleting
 			await this.activeWorkflowManager.remove(workflowId);
@@ -1176,6 +1195,10 @@ export class WorkflowService {
 		await this.executionPersistence.hardDeleteByWorkflowId(workflowId);
 
 		await this.workflowRepository.delete(workflowId);
+
+		// After the cascade, so it can see the rows the delete orphaned. Observes a
+		// committed delete, so it must not throw — the module swallows its own errors.
+		await this.workflowMutationHooks.afterWorkflowDeleted(workflowId);
 
 		this.eventService.emit('workflow-deleted', { user, workflowId, publicApi: false });
 		await this.externalHooks.run('workflow.afterDelete', [
@@ -1242,6 +1265,8 @@ export class WorkflowService {
 		});
 
 		await this.workflowHistoryService.saveVersion(user, workflow, workflowId);
+
+		await this.workflowMutationHooks.afterWorkflowArchived(workflowId);
 
 		this.eventService.emit('workflow-archived', {
 			user,
@@ -1611,5 +1636,29 @@ export class WorkflowService {
 		// Wake the leader now that the record is committed, so it drains without
 		// waiting for the next poll cycle.
 		this.workflowPublicationNotifier.requestDrain();
+	}
+
+	/**
+	 * Replace all tag mappings on a workflow. Missing tag IDs surface as NotFoundError.
+	 */
+	async updateWorkflowTags(user: User, workflowId: string, tagIds: string[]) {
+		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
+			'workflow:update',
+		]);
+
+		if (!workflow) {
+			throw new NotFoundError('Not Found');
+		}
+
+		try {
+			await this.workflowTagMappingRepository.overwriteTaggings(workflowId, tagIds);
+		} catch (error) {
+			if (error instanceof QueryFailedError) {
+				throw new NotFoundError('Some tags not found');
+			}
+			throw error;
+		}
+
+		return await this.tagService.getAllByWorkflowId(workflowId);
 	}
 }

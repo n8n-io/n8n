@@ -30,6 +30,7 @@ import { z } from 'zod';
 
 import type { ActiveExecutions } from '@/active-executions';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
+import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
 import type { WorkflowRunner } from '@/workflow-runner';
 
 import type { InstrumentToolAdditionalData } from '../agent-runtime-instrumentation';
@@ -381,9 +382,13 @@ export async function executeWorkflow(
 
 	const result = await extractResult(executionId, allOutputs);
 	if (isWorkflowToolResponse(webhookResponse)) {
+		const response = await Container.get(WebhookResponseRelay).restoreOffloadedBody(
+			webhookResponse,
+			{ reclaim: true, context: { workflowId: workflow.id, executionId } },
+		);
 		result.data = {
 			...(result.data ?? {}),
-			response: truncateResultData({ response: webhookResponse }).response,
+			response: truncateWebhookResponse(response),
 		};
 	}
 	return result;
@@ -501,6 +506,47 @@ function truncateNodeOutput(items: unknown[]): unknown {
 	};
 }
 
+/**
+ * Caps a webhook response's body at {@link MAX_RESULT_CHARS}, describing it
+ * instead of carrying it once over. Headers and status code pass through.
+ *
+ * @remarks A Buffer body is described without being serialized at all:
+ * `JSON.stringify` turns it into one array element per byte, which costs about
+ * twelve times the body and throws above V8's max string length. A body
+ * `JSON.stringify` rejects (a cycle, a BigInt) is described bare, with neither
+ * length nor preview.
+ */
+function truncateWebhookResponse(response: IExecuteResponsePromiseData): unknown {
+	if (!isRecord(response)) {
+		return response;
+	}
+
+	const { body, ...rest } = response;
+
+	if (Buffer.isBuffer(body)) {
+		return { ...rest, body: { _truncated: true, _byteLength: body.length } };
+	}
+
+	let serialized: string;
+	try {
+		serialized = JSON.stringify(body) ?? '';
+	} catch {
+		return { ...rest, body: { _truncated: true } };
+	}
+	if (serialized.length <= MAX_RESULT_CHARS) {
+		return response;
+	}
+
+	return {
+		...rest,
+		body: {
+			_truncated: true,
+			_charLength: serialized.length,
+			_preview: serialized.slice(0, MAX_RESULT_CHARS),
+		},
+	};
+}
+
 function truncateResultData(data: Record<string, unknown>): Record<string, unknown> {
 	const serialized = JSON.stringify(data);
 	if (serialized.length <= MAX_RESULT_CHARS) return data;
@@ -543,11 +589,11 @@ async function buildWorkflowTool(
 ): Promise<BuiltTool> {
 	const workflowName = descriptor.workflow;
 
-	// Find the workflow by name. Access control is project sharing: the
+	// Access control is project sharing: the
 	// workflow must be shared with the agent's project.
 	const candidateWorkflow = await findWorkflowToolWorkflow(
 		context.workflowRepository,
-		workflowName,
+		descriptor,
 		context.projectId,
 	);
 

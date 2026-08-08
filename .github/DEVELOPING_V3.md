@@ -13,8 +13,8 @@ and this guide explains how to develop against them without friction.
 ## The branch model
 
 `3.x` is not a divergent fork — it is simply **"whatever is on `master`, plus the
-breaking-change commits"**. Their histories stay in lockstep via a daily sync, so
-merging `3.x` back into `master` at release time is painless.
+breaking-change commits"**. A daily sync keeps that literally true by replaying those
+commits on top of `master`, so merging `3.x` back into `master` at release time is painless.
 
 ```mermaid
 flowchart LR
@@ -27,7 +27,7 @@ flowchart LR
     end
     F --> master
     D --> master
-    master -- "daily sync (util-sync-master-to-3x.yml)" --> threex
+    master -- "daily sync: replay 3.x commits<br/>onto master (util-sync-master-to-3x.yml)" --> threex
     B --> threex
     threex -. "merged to master at v3 release" .-> master
 ```
@@ -107,9 +107,11 @@ Override flags locally without touching PostHog:
 
 ## Introducing a breaking change (on `3.x`)
 
-Breaking changes go **only on `3.x`**, via a PR that targets `3.x` directly
-(branch off the latest `3.x`, open the PR against `3.x`). Do not land breaking
-changes on `master` — the sync guarantees `master` stays releasable as v2.
+Breaking changes go **only on `3.x`**, via a PR that targets `3.x` directly. Branch off
+**latest `master`** and open the PR against `3.x` — since `3.x` is `master` plus the breaking
+commits, such a PR merges cleanly and is immune to the daily force-push (see
+[How the daily sync works](#how-the-daily-sync-works)). Do not land breaking changes on
+`master` — the sync guarantees `master` stays releasable as v2.
 
 - Track the change in the [v3 breaking-changes tracker](https://www.notion.so/n8n/1a75b6e0c94f802caca3ce378d0d8046)
   and the [Release v3 Linear project](https://linear.app/n8n/project/release-v3-7d7032bebbec/activity).
@@ -122,24 +124,59 @@ of the breaking removal on `3.x`.
 
 ## How the daily sync works
 
-[`util-sync-master-to-3x.yml`](./workflows/util-sync-master-to-3x.yml) runs daily
-and merges `master` into `3.x`:
+[`util-sync-master-to-3x.yml`](./workflows/util-sync-master-to-3x.yml) runs daily and
+**replays the `3.x`-only commits on top of `master`** (a rebase), then force-pushes `3.x`:
 
-1. **Fast-forward** when `3.x` hasn't diverged.
-2. **Three-way merge** when it has.
-3. On a **merge conflict** it opens a **draft conflict PR** (labeled
-   `automation:v3-sync`) and posts to the **`#alerts-v3-sync`** Slack channel.
-   **Syncs pause until that PR is resolved and merged** — so conflicts never pile
-   up silently.
+1. **Nothing to do** when `3.x` already contains `master`.
+2. **Replay + force-push** otherwise. A clean sync adds **no commit of its own** — `3.x`
+   stays literally "master + the breaking commits", every replayed commit kept as-is with its
+   original message and author. Nothing is ever squashed. Merge commits in the range (breaking
+   PRs merged into `3.x`) are flattened away, and a breaking commit that also landed on
+   `master` is dropped as empty.
+3. On a **conflict**, `3.x` is left **untouched** and a **draft conflict PR** (labeled
+   `automation:v3-sync`) carrying the conflict markers is opened on `sync/master-to-3x`, plus a
+   post to the **`#alerts-v3-sync`** Slack channel. **Syncs pause until that PR is merged** —
+   so conflicts never pile up silently.
 
-**Who gets pinged.** The conflict is attributed to the authors of the `3.x`
-breaking commits touching the conflicted files (computed by
-`.github/scripts/sync-conflict-owners.mjs`: the `master..HEAD` commits per
-conflicted file, mapped to GitHub accounts). Those authors are **requested as
-reviewers** on the conflict PR and listed in the `#alerts-v3-sync` message. So if you
-authored the breaking commit that caused a conflict, you'll be nudged to resolve
-it: fix the conflict markers on the `sync/master-to-3x` branch and merge the PR;
-the next daily run then resumes normally.
+Whatever route it takes, the sync verifies that the content it is about to push is **exactly
+the tree a merge of `3.x` and `master` produces** (`git merge-tree`), and that no conflict
+markers are present. Either check failing fails the run instead of rewriting `3.x`.
+
+> **`3.x` is force-pushed daily.** Branch breaking-change PRs off **`master`** and target
+> `3.x` — then your merge-base is a `master` commit that survives every rewrite and your
+> diff stays clean. If you branch off `3.x` itself, re-base after a sync
+> (`git rebase --onto origin/3.x <old-3.x-tip> <your-branch>`). Commit links on
+> already-merged `3.x` PRs keep working but point at commits no longer on any branch.
+
+### Resolving a conflict PR
+
+The conflict branch is `master` merged into `3.x` with the **conflict markers committed**, so
+you see exactly what clashed — and the required checks stay red until they're gone, so the PR
+can't be merged half-resolved:
+
+```bash
+git fetch origin sync/master-to-3x && git switch sync/master-to-3x
+# fix the conflict markers, then commit them in ONE commit of your own
+git push origin sync/master-to-3x
+```
+
+Then **merge the PR with the normal merge button.** `master`'s commits arrive as-is and your
+fix stays its own commit.
+
+`3.x` never holds markers at its tip, so nightly images keep building; the merge commit that
+carries them drops out of `3.x`'s history at the next sync (the replay takes the queue's
+commits only).
+
+The next sync then makes `3.x` linear again. The plain replay stalls at that point (a fix
+recorded around a merge commit leaves no patch to replay), so it replays a second time with
+`3.x`'s side favoured, and your fix commit — which is in the queue — does the real work.
+Nothing is squashed, and the tree guard proves the result is exactly the merge of `3.x` and
+`master`.
+
+**Who gets pinged.** The conflict is attributed to the authors of the `3.x` commits behind the
+conflicted files (`.github/scripts/sync-conflict-owners.mjs`, mapped to GitHub accounts).
+Those authors are **requested as reviewers** on the conflict PR and listed in the
+`#alerts-v3-sync` message.
 
 ## Trialing v3
 

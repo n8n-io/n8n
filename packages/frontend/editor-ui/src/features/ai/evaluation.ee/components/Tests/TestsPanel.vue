@@ -199,12 +199,7 @@ watch(
 			<N8nText size="large" color="text-dark" :class="$style.gateMessage">
 				{{ locale.baseText('evaluations.tests.empty.noNode') }}
 			</N8nText>
-			<N8nButton
-				size="small"
-				type="primary"
-				data-test-id="tests-panel-add-node-button"
-				@click="openNodeCreator"
-			>
+			<N8nButton size="small" data-test-id="tests-panel-add-node-button" @click="openNodeCreator">
 				{{ locale.baseText('evaluations.tests.empty.noNode.button') }}
 			</N8nButton>
 		</div>
@@ -225,19 +220,13 @@ watch(
 				@select="onTriggerSelect"
 			>
 				<template #activator>
-					<N8nButton size="small" type="primary">
+					<N8nButton size="small">
 						{{ locale.baseText('evaluations.tests.empty.chooseTrigger') }}
 						<N8nIcon icon="chevron-down" size="small" />
 					</N8nButton>
 				</template>
 			</N8nActionDropdown>
-			<N8nButton
-				v-else
-				size="small"
-				type="primary"
-				data-test-id="tests-panel-gate-run"
-				@click="runWorkflow"
-			>
+			<N8nButton v-else size="small" data-test-id="tests-panel-gate-run" @click="runWorkflow">
 				{{ locale.baseText('evaluations.tests.empty.execute') }}
 			</N8nButton>
 		</div>
