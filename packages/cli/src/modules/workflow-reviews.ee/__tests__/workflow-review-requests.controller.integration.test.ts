@@ -2109,6 +2109,16 @@ describe('GET /workflow-review-requests', () => {
 	});
 });
 
+/** An open request only surfaces in the inbox while it covers a live workflow. */
+async function linkToNewWorkflow(workflowReviewRequestId: string, project = teamProject) {
+	const workflow = await createWorkflow({}, project);
+	await workflowRepository.createWorkflowRow(
+		{ workflowReviewRequestId, workflowId: workflow.id },
+		{},
+	);
+	return workflow;
+}
+
 async function seedInboxRequests() {
 	const openRequest = await requestRepository.createRequest(
 		{
@@ -2119,6 +2129,8 @@ async function seedInboxRequests() {
 		},
 		{},
 	);
+	const openWorkflow = await linkToNewWorkflow(openRequest.id);
+	// No link row: a hard-deleted workflow leaves closed requests exactly like this
 	const closedRequest = await requestRepository.createRequest(
 		{
 			projectId: teamProject.id,
@@ -2128,7 +2140,7 @@ async function seedInboxRequests() {
 		},
 		{},
 	);
-	return { openRequest, closedRequest };
+	return { openRequest, closedRequest, openWorkflow };
 }
 
 describe('GET /workflow-review-requests/summary', () => {
@@ -2157,7 +2169,7 @@ describe('GET /workflow-review-requests/summary', () => {
 	});
 
 	test('counts a requester their own review regardless of project scope', async () => {
-		await requestRepository.createRequest(
+		const ownRequest = await requestRepository.createRequest(
 			{
 				projectId: teamProject.id,
 				title: 'Review submitted by viewer',
@@ -2166,10 +2178,35 @@ describe('GET /workflow-review-requests/summary', () => {
 			},
 			{},
 		);
+		await linkToNewWorkflow(ownRequest.id);
 
 		const response = await viewerAgent.get('/workflow-review-requests/summary').expect(200);
 
 		expect(response.body.data).toEqual({ open: 1, closed: 0 });
+	});
+
+	test('still counts an open review orphaned by a workflow hard delete until a sweep closes it', async () => {
+		await seedInboxRequests();
+		const orphan = await requestRepository.createRequest(
+			{
+				projectId: teamProject.id,
+				title: 'Orphaned review',
+				createdById: owner.id,
+				state: 'open',
+			},
+			{},
+		);
+		const workflow = await linkToNewWorkflow(orphan.id);
+		// Bypasses the auto-close hook and the sweep: the cascade removes the link
+		// row and leaves the request open — visible until the next delete sweeps it
+		await workflowEntityRepository.delete({ id: workflow.id });
+
+		// Owner exercises the global scope, member the project-scoped filter
+		const ownerResponse = await ownerAgent.get('/workflow-review-requests/summary').expect(200);
+		expect(ownerResponse.body.data).toEqual({ open: 2, closed: 1 });
+
+		const memberResponse = await memberAgent.get('/workflow-review-requests/summary').expect(200);
+		expect(memberResponse.body.data).toEqual({ open: 2, closed: 1 });
 	});
 
 	test('returns 403 when feature is disabled', async () => {
@@ -2181,7 +2218,7 @@ describe('GET /workflow-review-requests/summary', () => {
 
 describe('GET /workflow-review-requests/inbox', () => {
 	test('returns reviews for instance owner', async () => {
-		const { openRequest } = await seedInboxRequests();
+		const { openRequest, openWorkflow } = await seedInboxRequests();
 
 		const response = await ownerAgent
 			.get('/workflow-review-requests/inbox')
@@ -2193,7 +2230,7 @@ describe('GET /workflow-review-requests/inbox', () => {
 			id: openRequest.id,
 			title: 'Open review request',
 			state: 'open',
-			workflowName: null,
+			workflowName: openWorkflow.name,
 			workflowVersionId: null,
 		});
 		expect(response.body.data.hasMore).toBe(false);
@@ -2209,6 +2246,54 @@ describe('GET /workflow-review-requests/inbox', () => {
 		expect(response.body.data.hasMore).toBe(false);
 	});
 
+	test('still lists an open review orphaned by a workflow hard delete until a sweep closes it', async () => {
+		const { openRequest } = await seedInboxRequests();
+		const orphan = await requestRepository.createRequest(
+			{
+				projectId: teamProject.id,
+				title: 'Orphaned review',
+				createdById: owner.id,
+				state: 'open',
+			},
+			{},
+		);
+		const workflow = await linkToNewWorkflow(orphan.id);
+		// Bypasses the auto-close hook and the sweep: the cascade removes the link
+		// row and leaves the request open — visible until the next delete sweeps it
+		await workflowEntityRepository.delete({ id: workflow.id });
+
+		// Owner exercises the global scope, member the project-scoped filter
+		const ownerResponse = await ownerAgent
+			.get('/workflow-review-requests/inbox')
+			.query({ state: 'open', limit: 15 })
+			.expect(200);
+		expect(ownerResponse.body.data.data.map((row: { id: string }) => row.id).sort()).toEqual(
+			[openRequest.id, orphan.id].sort(),
+		);
+
+		const memberResponse = await memberAgent
+			.get('/workflow-review-requests/inbox')
+			.query({ state: 'open', limit: 15 })
+			.expect(200);
+		expect(memberResponse.body.data.data.map((row: { id: string }) => row.id).sort()).toEqual(
+			[openRequest.id, orphan.id].sort(),
+		);
+	});
+
+	test('still lists a closed review whose workflow was hard-deleted', async () => {
+		const { closedRequest } = await seedInboxRequests();
+
+		const response = await ownerAgent
+			.get('/workflow-review-requests/inbox')
+			.query({ state: 'closed', limit: 15 })
+			.expect(200);
+
+		// The closed seed request has no link rows — deleted-workflow history stays visible
+		expect(response.body.data.data).toEqual([
+			expect.objectContaining({ id: closedRequest.id, state: 'closed', workflowName: null }),
+		]);
+	});
+
 	test('returns 403 when license is disabled', async () => {
 		testServer.license.disable('feat:workflowReviews');
 
@@ -2217,7 +2302,7 @@ describe('GET /workflow-review-requests/inbox', () => {
 
 	test('returns cursor pagination metadata', async () => {
 		await seedInboxRequests();
-		await requestRepository.createRequest(
+		const secondRequest = await requestRepository.createRequest(
 			{
 				projectId: teamProject.id,
 				title: 'Second open review',
@@ -2226,6 +2311,7 @@ describe('GET /workflow-review-requests/inbox', () => {
 			},
 			{},
 		);
+		await linkToNewWorkflow(secondRequest.id);
 
 		const firstPage = await ownerAgent
 			.get('/workflow-review-requests/inbox')
@@ -2288,7 +2374,7 @@ describe('GET /workflow-review-requests/inbox', () => {
 
 	test('hides reviews from projects the member cannot access', async () => {
 		const otherProject = await createTeamProject('Other Reviews Project', owner);
-		await requestRepository.createRequest(
+		const privateRequest = await requestRepository.createRequest(
 			{
 				projectId: otherProject.id,
 				title: 'Private other-project review',
@@ -2297,6 +2383,7 @@ describe('GET /workflow-review-requests/inbox', () => {
 			},
 			{},
 		);
+		await linkToNewWorkflow(privateRequest.id, otherProject);
 
 		const memberResponse = await memberAgent.get('/workflow-review-requests/inbox').expect(200);
 		expect(memberResponse.body.data.data).toEqual([]);
@@ -2322,6 +2409,7 @@ describe('GET /workflow-review-requests/inbox', () => {
 			},
 			{},
 		);
+		await linkToNewWorkflow(ownRequest.id, otherProject);
 
 		const response = await memberAgent.get('/workflow-review-requests/inbox').expect(200);
 
@@ -2332,7 +2420,7 @@ describe('GET /workflow-review-requests/inbox', () => {
 
 	test('does not truncate pagination when the cursor row is deleted', async () => {
 		await seedInboxRequests();
-		await requestRepository.createRequest(
+		const secondRequest = await requestRepository.createRequest(
 			{
 				projectId: teamProject.id,
 				title: 'Second open review',
@@ -2341,6 +2429,7 @@ describe('GET /workflow-review-requests/inbox', () => {
 			},
 			{},
 		);
+		await linkToNewWorkflow(secondRequest.id);
 
 		const firstPage = await ownerAgent
 			.get('/workflow-review-requests/inbox')
@@ -2372,6 +2461,7 @@ describe('GET /workflow-review-requests/inbox', () => {
 			},
 			{},
 		);
+		await linkToNewWorkflow(request.id);
 		await reviewerRepository.addReviewers(
 			{
 				workflowReviewRequestId: request.id,
@@ -2412,6 +2502,7 @@ describe('GET /workflow-review-requests/inbox', () => {
 			},
 			{},
 		);
+		await linkToNewWorkflow(request.id);
 
 		const response = await ownerAgent
 			.get('/workflow-review-requests/inbox')
@@ -2437,6 +2528,7 @@ describe('GET /workflow-review-requests/inbox', () => {
 			},
 			{},
 		);
+		await linkToNewWorkflow(request.id);
 		await reviewerRepository.addReviewers(
 			{
 				workflowReviewRequestId: request.id,
@@ -2591,12 +2683,46 @@ describe('GET /workflow-review-requests/:workflowReviewRequestId', () => {
 		});
 	});
 
-	test('still opens the review after its workflow was deleted', async () => {
+	test('still opens an open review after its workflow was hard-deleted', async () => {
 		const workflow = await createWorkflow({}, teamProject);
 		await createWorkflowHistoryItem(workflow.id, { versionId: 'version-pinned' });
 		const request = await seedRequest(workflow.id, 'version-pinned', owner);
 
-		// Deleting the workflow removes the review's reference to it as well
+		// Bypasses the auto-close hook and the sweep: the cascade removes the link
+		// row and leaves the request open until the next delete sweeps it closed
+		await workflowEntityRepository.delete({ id: workflow.id });
+
+		const response = await ownerAgent.get(`/workflow-review-requests/${request.id}`).expect(200);
+
+		expect(response.body.data.id).toBe(request.id);
+		expect(response.body.data.state).toBe('open');
+		expect(response.body.data.workflows).toEqual([]);
+		expect(response.body.data.workflowName).toBeNull();
+	});
+
+	test('still opens a closed review after its workflow was deleted', async () => {
+		const workflow = await createWorkflow({}, teamProject);
+		await createWorkflowHistoryItem(workflow.id, { versionId: 'version-pinned' });
+		const request = await requestRepository.createRequest(
+			{
+				projectId: teamProject.id,
+				title: 'Please review',
+				createdById: owner.id,
+				state: 'closed',
+				decision: 'approved',
+			},
+			{},
+		);
+		await workflowRepository.createWorkflowRow(
+			{
+				workflowReviewRequestId: request.id,
+				workflowId: workflow.id,
+				workflowVersionId: 'version-pinned',
+			},
+			{},
+		);
+
+		// Deleting the workflow removes the review's reference, not its history
 		await workflowEntityRepository.delete({ id: workflow.id });
 
 		const response = await ownerAgent.get(`/workflow-review-requests/${request.id}`).expect(200);

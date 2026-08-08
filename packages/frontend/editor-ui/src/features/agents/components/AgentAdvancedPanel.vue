@@ -7,8 +7,14 @@
 import { ref, computed, watch } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
 import { AGENT_REASONING_LEVELS, type AgentReasoningLevel } from '@n8n/api-types';
-import { N8nIcon, N8nInputNumber2, N8nSelect, N8nSwitch2, N8nText } from '@n8n/design-system';
-import N8nOption from '@n8n/design-system/components/N8nOption';
+import {
+	N8nIcon,
+	N8nInputNumber2,
+	N8nOption,
+	N8nSelect,
+	N8nSwitch2,
+	N8nText,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
 import { useCredentialsStore } from '@/features/credentials/credentials.store';

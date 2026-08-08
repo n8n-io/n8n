@@ -24,6 +24,7 @@ import {
 	type DelegateSubAgentRunner,
 } from '../tools/delegate-sub-agent-tool';
 import { toAiSdkTools } from '../tools/tool-adapter';
+import { MAX_MODEL_TOOL_RESULT_TOKENS } from '../tools/tool-result-guard';
 
 // ---------------------------------------------------------------------------
 // Module mocks
@@ -690,6 +691,77 @@ describe('AgentRuntime — execution counters', () => {
 });
 
 // ---------------------------------------------------------------------------
+// empty stop turn retry
+// ---------------------------------------------------------------------------
+
+describe('AgentRuntime — empty stop turn retry', () => {
+	beforeEach(() => {
+		generateText.mockReset();
+		streamText.mockReset();
+	});
+
+	/** A `stop` turn with no output at all — the provider stall the loop retries. */
+	function makeGenerateEmpty() {
+		return {
+			finishReason: 'stop',
+			usage: { inputTokens: 10, outputTokens: 0, totalTokens: 10 },
+			response: { messages: [] },
+			toolCalls: [],
+		};
+	}
+
+	it('retries an empty stop turn and keeps the retry output', async () => {
+		generateText
+			.mockResolvedValueOnce(makeGenerateEmpty())
+			.mockResolvedValueOnce(makeGenerateSuccess('Recovered'));
+
+		const { runtime } = createRuntime();
+		const result = await runtime.generate('hi');
+
+		expect(generateText).toHaveBeenCalledTimes(2);
+		expect(result.finishReason).toBe('stop');
+		const assistantText = result.messages
+			.flatMap((m) => ('content' in m && Array.isArray(m.content) ? m.content : []))
+			.find((c) => c.type === 'text');
+		expect(assistantText).toMatchObject({ text: 'Recovered' });
+	});
+
+	it('bills usage from discarded empty attempts', async () => {
+		generateText
+			.mockResolvedValueOnce(makeGenerateEmpty())
+			.mockResolvedValueOnce(makeGenerateSuccess('Recovered'));
+		const counter = makeExecutionCounter();
+
+		const { runtime } = createRuntime();
+		await runtime.generate('hi', { executionCounter: counter });
+
+		expect(counter.incrementTokenCount).toHaveBeenCalledWith(10);
+		expect(counter.incrementTokenCount).toHaveBeenCalledWith(15);
+	});
+
+	it('accepts the empty turn once the retry budget is exhausted', async () => {
+		generateText.mockResolvedValue(makeGenerateEmpty());
+
+		const { runtime } = createRuntime();
+		const result = await runtime.generate('hi');
+
+		// 1 initial call + 2 retries
+		expect(generateText).toHaveBeenCalledTimes(3);
+		expect(result.finishReason).toBe('stop');
+		expect(result.error).toBeUndefined();
+	});
+
+	it('does not retry a whitespace-free stop turn with text', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess('Done'));
+
+		const { runtime } = createRuntime();
+		await runtime.generate('hi');
+
+		expect(generateText).toHaveBeenCalledTimes(1);
+	});
+});
+
+// ---------------------------------------------------------------------------
 // generate() — graceful error contract
 // ---------------------------------------------------------------------------
 
@@ -1209,6 +1281,91 @@ describe('AgentRuntime.stream() — usage billing on abort', () => {
 			totalTokens: 15,
 		});
 		expect(runtime.getState().status).toBe('cancelled');
+	});
+
+	it('bills a discarded empty stop attempt when aborted during the retry', async () => {
+		const { runtime } = createRuntime();
+		const controller = new AbortController();
+		const abortError = Object.assign(new Error('This operation was aborted'), {
+			name: 'AbortError',
+		});
+
+		streamText
+			// Empty stop turn — usage must be published before the retry starts.
+			.mockReturnValueOnce({
+				stream: makeChunkStream([]),
+				finishReason: Promise.resolve('stop'),
+				usage: Promise.resolve({ inputTokens: 10, outputTokens: 0, totalTokens: 10 }),
+				response: Promise.resolve({ messages: [] }),
+				toolCalls: Promise.resolve([]),
+			})
+			// Retry starts a new raw-usage reader; abort mid-retry must still bill
+			// the discarded empty attempt via the usage already reported to the sink.
+			.mockReturnValueOnce({
+				stream: (function* () {
+					controller.abort();
+					yield* makeChunkStream([]);
+				})(),
+				finishReason: silentReject(abortError),
+				usage: silentReject(abortError),
+				response: silentReject(abortError),
+				toolCalls: silentReject(abortError),
+			});
+
+		const { stream } = await runtime.stream('hello', { abortSignal: controller.signal });
+		const chunks = await collectChunks(stream);
+
+		const finish = chunks.filter((c) => c.type === 'finish').at(-1) as
+			| (StreamChunk & { type: 'finish' })
+			| undefined;
+
+		expect(streamText).toHaveBeenCalledTimes(2);
+		expect(finish?.usage).toMatchObject({
+			promptTokens: 10,
+			completionTokens: 0,
+			totalTokens: 10,
+		});
+		expect(runtime.getState().status).toBe('cancelled');
+	});
+
+	it('bills a discarded empty stop attempt when the retry fails with a non-abort error', async () => {
+		const { runtime } = createRuntime();
+		const streamError = new Error('stream broke');
+
+		streamText
+			// Empty stop turn — its usage is reported to the sink before the retry.
+			.mockReturnValueOnce({
+				stream: makeChunkStream([]),
+				finishReason: Promise.resolve('stop'),
+				usage: Promise.resolve({ inputTokens: 10, outputTokens: 0, totalTokens: 10 }),
+				response: Promise.resolve({ messages: [] }),
+				toolCalls: Promise.resolve([]),
+			})
+			// Retry fails outright; the error finish chunk must still carry the
+			// discarded empty attempt's usage.
+			.mockReturnValueOnce({
+				stream: makeErrorStream(streamError),
+				finishReason: silentReject(streamError),
+				usage: silentReject(streamError),
+				response: silentReject(streamError),
+				toolCalls: silentReject(streamError),
+			});
+
+		const { stream } = await runtime.stream('hello');
+		const chunks = await collectChunks(stream);
+
+		const finish = chunks.filter((c) => c.type === 'finish').at(-1) as
+			| (StreamChunk & { type: 'finish'; finishReason: string })
+			| undefined;
+
+		expect(streamText).toHaveBeenCalledTimes(2);
+		expect(finish?.finishReason).toBe('error');
+		expect(finish?.usage).toMatchObject({
+			promptTokens: 10,
+			completionTokens: 0,
+			totalTokens: 10,
+		});
+		expect(runtime.getState().status).toBe('failed');
 	});
 
 	it('recovers usage from the raw provider stream when aborted before the model finishes', async () => {
@@ -7358,5 +7515,214 @@ describe('AgentRuntime — MCP connection failure warnings', () => {
 			: String((system as { content: string }).content);
 
 		expect(systemText).not.toContain('<mcp-connection-status>');
+	});
+});
+
+describe('AgentRuntime — oversized tool results', () => {
+	type TruncationEnvelope = {
+		_truncated: true;
+		originalCharCount: number;
+		estimatedTokenCount: number;
+		head: string;
+		tail: string;
+	};
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	function parseEnvelope(value: string): TruncationEnvelope {
+		try {
+			return JSON.parse(value) as TruncationEnvelope;
+		} catch {
+			throw new Error('Expected a valid truncation envelope');
+		}
+	}
+
+	async function expectWithinTokenLimit(value: unknown): Promise<void> {
+		const { getEncoding } = await import('@n8n/ai-utilities/tokenizer');
+		const encoder = await getEncoding('o200k_base');
+		expect(encoder.encode(JSON.stringify(value)).length).toBeLessThanOrEqual(
+			MAX_MODEL_TOOL_RESULT_TOKENS,
+		);
+	}
+
+	function getModelToolResult(callIndex = 1): unknown {
+		const call = generateText.mock.calls[callIndex][0] as {
+			messages: Array<{
+				role: string;
+				content: Array<{ type: string; output?: { type: string; value: unknown } }>;
+			}>;
+		};
+		const toolMessage = call.messages.find((message) => message.role === 'tool');
+		return toolMessage?.content.find((part) => part.type === 'tool-result')?.output?.value;
+	}
+
+	it('leaves a small transformed result unchanged', async () => {
+		const tool: BuiltTool = {
+			name: 'small_result',
+			description: 'Return a small result',
+			inputSchema: z.object({}),
+			handler: async () => await Promise.resolve({ raw: 'value' }),
+			toModelOutput: () => ({ summary: 'small' }),
+		};
+		const { runtime } = createRuntimeWithTools([tool], 1);
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCalls([{ toolCallId: 'tc-small', toolName: tool.name, args: {} }]),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess());
+
+		await runtime.generate('run');
+
+		expect(getModelToolResult()).toEqual({ summary: 'small' });
+	});
+
+	it('bounds an oversized transformed result while preserving raw output', async () => {
+		const rawOutput = {
+			value: `RAW_HEAD${'r '.repeat(MAX_MODEL_TOOL_RESULT_TOKENS + 10_000)}RAW_TAIL`,
+		};
+		const transformedOutput = `TRANSFORM_HEAD${'t '.repeat(MAX_MODEL_TOOL_RESULT_TOKENS + 10_000)}TRANSFORM_TAIL`;
+		const tool: BuiltTool = {
+			name: 'large_result',
+			description: 'Return a large result',
+			inputSchema: z.object({}),
+			handler: async () => await Promise.resolve(rawOutput),
+			toModelOutput: () => transformedOutput,
+		};
+		const { runtime } = createRuntimeWithTools([tool], 1);
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCalls([{ toolCallId: 'tc-large', toolName: tool.name, args: {} }]),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess());
+
+		const result = await runtime.generate('run');
+		const envelope = getModelToolResult() as TruncationEnvelope;
+
+		await expectWithinTokenLimit(envelope);
+		expect(envelope).toMatchObject({
+			_truncated: true,
+			originalCharCount: JSON.stringify(transformedOutput).length,
+		});
+		expect(envelope.head).toContain('TRANSFORM_HEAD');
+		expect(envelope.tail).toContain('TRANSFORM_TAIL');
+		expect(result.toolCalls?.[0]?.output).toEqual(rawOutput);
+
+		const { runtime: streamRuntime } = createRuntimeWithTools([tool], 1);
+		streamText
+			.mockReturnValueOnce({
+				stream: makeChunkStream([]),
+				finishReason: Promise.resolve('tool-calls'),
+				usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
+				response: Promise.resolve({
+					messages: [
+						{
+							role: 'assistant',
+							content: [
+								{
+									type: 'tool-call',
+									toolCallId: 'tc-large-stream',
+									toolName: tool.name,
+									args: {},
+								},
+							],
+						},
+					],
+				}),
+				toolCalls: Promise.resolve([
+					{ toolCallId: 'tc-large-stream', toolName: tool.name, input: {} },
+				]),
+			})
+			.mockReturnValueOnce(makeStreamSuccess());
+
+		const { stream } = await streamRuntime.stream('run');
+		const chunks = await collectChunks(stream);
+		const streamResult = chunks.find(
+			(chunk) => chunk.type === 'tool-result' && chunk.toolCallId === 'tc-large-stream',
+		) as (StreamChunk & { type: 'tool-result' }) | undefined;
+
+		expect(streamResult?.output).toEqual(envelope);
+	});
+
+	it('bounds an oversized error without changing its rejected state', async () => {
+		const tool: BuiltTool = {
+			name: 'large_error',
+			description: 'Throw a large error',
+			inputSchema: z.object({}),
+			handler: () => {
+				throw new Error(
+					`ERROR_HEAD${'e '.repeat(MAX_MODEL_TOOL_RESULT_TOKENS + 10_000)}ERROR_TAIL`,
+				);
+			},
+		};
+		const { runtime } = createRuntimeWithTools([tool], 1);
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCalls([{ toolCallId: 'tc-error', toolName: tool.name, args: {} }]),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess('recovered'));
+
+		const result = await runtime.generate('run');
+		const toolCall = result.messages
+			.flatMap((message) => ('content' in message ? message.content : []))
+			.find(
+				(content): content is ContentToolCall =>
+					content.type === 'tool-call' && content.toolCallId === 'tc-error',
+			);
+		const envelope = parseEnvelope(toolCall?.state === 'rejected' ? toolCall.error : '');
+
+		expect(result.finishReason).toBe('stop');
+		expect(toolCall?.state).toBe('rejected');
+		await expectWithinTokenLimit(envelope);
+		expect(envelope.head).toContain('ERROR_HEAD');
+		expect(envelope.tail).toContain('ERROR_TAIL');
+	});
+
+	it('bounds aggregate toMessage text while preserving file content', async () => {
+		const fileData = Buffer.from('file').toString('base64');
+		const textBlockTokenCount = Math.floor(MAX_MODEL_TOOL_RESULT_TOKENS * 0.6);
+		const tool: BuiltTool = {
+			name: 'large_message',
+			description: 'Return a large message',
+			inputSchema: z.object({}),
+			handler: async () => await Promise.resolve({ ok: true }),
+			toMessage: () => ({
+				role: 'assistant',
+				content: [
+					{ type: 'text', text: `MESSAGE_HEAD${'m '.repeat(textBlockTokenCount)}` },
+					{ type: 'file', mediaType: 'text/plain', data: fileData },
+					{ type: 'text', text: `${'n '.repeat(textBlockTokenCount)}MESSAGE_TAIL` },
+				],
+			}),
+		};
+		const { runtime } = createRuntimeWithTools([tool], 1);
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCalls([{ toolCallId: 'tc-message', toolName: tool.name, args: {} }]),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess());
+
+		const result = await runtime.generate('run');
+		const message = result.messages.find(
+			(candidate) =>
+				'content' in candidate &&
+				candidate.content.some((content) => content.type === 'file' && content.data === fileData),
+		);
+		const textBlocks =
+			message && 'content' in message
+				? message.content.filter((content) => content.type === 'text')
+				: [];
+		const fileBlock =
+			message && 'content' in message
+				? message.content.find((content) => content.type === 'file')
+				: undefined;
+		const envelope = parseEnvelope(textBlocks[0]?.text ?? '');
+
+		expect(textBlocks).toHaveLength(1);
+		await expectWithinTokenLimit(envelope);
+		expect(envelope.head).toContain('MESSAGE_HEAD');
+		expect(envelope.tail).toContain('MESSAGE_TAIL');
+		expect(fileBlock).toMatchObject({ type: 'file', mediaType: 'text/plain', data: fileData });
 	});
 });
