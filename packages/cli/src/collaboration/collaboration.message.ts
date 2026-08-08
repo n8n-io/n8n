@@ -65,6 +65,26 @@ export type WriteAccessHeartbeatMessage = z.infer<typeof writeAccessHeartbeatMes
 
 export type WorkflowMessage = z.infer<typeof workflowMessageSchema>;
 
+const COLLABORATION_MESSAGE_TYPES = new Set<WorkflowMessage['type']>([
+	'workflowOpened',
+	'workflowClosed',
+	'writeAccessRequested',
+	'writeAccessReleaseRequested',
+	'writeAccessHeartbeat',
+]);
+
+/**
+ * Whether the message's `type` is a collaboration message type. The push
+ * `message` channel is multiplexed across features, so this lets the
+ * collaboration consumer skip messages meant for other consumers before
+ * attempting (and reporting) a strict parse.
+ */
+export const isCollaborationMessage = (msg: unknown): boolean =>
+	typeof msg === 'object' &&
+	msg !== null &&
+	'type' in msg &&
+	COLLABORATION_MESSAGE_TYPES.has((msg as { type: WorkflowMessage['type'] }).type);
+
 /**
  * Parses the given message and ensure it's of type WorkflowMessage
  */
