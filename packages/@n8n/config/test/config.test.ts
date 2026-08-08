@@ -232,6 +232,7 @@ describe('GlobalConfig', () => {
 			publicationOutboxCleanupBatchSize: 1000,
 			publicationReconcileIntervalSeconds: 10,
 			autosaveDisabled: false,
+			minScheduleIntervalSeconds: 0,
 		},
 		endpoints: {
 			metrics: {
