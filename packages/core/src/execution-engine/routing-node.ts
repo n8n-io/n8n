@@ -243,6 +243,7 @@ export class RoutingNode {
 					credentialDescription?.name,
 					itemContext[itemIndex].requestData.requestOperations,
 					credentialsDecrypted,
+					additionalKeys,
 				),
 			);
 		}
@@ -320,6 +321,7 @@ export class RoutingNode {
 		parameterValue: string | IDataObject | undefined,
 		itemIndex: number,
 		runIndex: number,
+		additionalKeys?: IWorkflowDataProxyAdditionalKeys,
 	): Promise<INodeExecutionData[]> {
 		if (typeof action === 'function') {
 			return await action.call(executeSingleFunctions, inputData, responseData);
@@ -362,6 +364,7 @@ export class RoutingNode {
 					runIndex,
 					executeSingleFunctions.getExecuteData(),
 					{
+						...additionalKeys,
 						$credentials: credentials,
 						$response: responseData,
 						$responseItem: item.json,
@@ -381,7 +384,12 @@ export class RoutingNode {
 				itemIndex,
 				runIndex,
 				executeSingleFunctions.getExecuteData(),
-				{ $response: responseData, $value: parameterValue, $version: node.typeVersion },
+				{
+					...additionalKeys,
+					$response: responseData,
+					$value: parameterValue,
+					$version: node.typeVersion,
+				},
 				false,
 			) as string;
 			return inputData.slice(0, parseInt(maxResults, 10));
@@ -397,7 +405,12 @@ export class RoutingNode {
 						itemIndex,
 						runIndex,
 						executeSingleFunctions.getExecuteData(),
-						{ $response: responseData, $value: parameterValue, $version: node.typeVersion },
+						{
+							...additionalKeys,
+							$response: responseData,
+							$value: parameterValue,
+							$version: node.typeVersion,
+						},
 						false,
 					) as IDataObject,
 				},
@@ -442,6 +455,7 @@ export class RoutingNode {
 						runIndex,
 						executeSingleFunctions.getExecuteData(),
 						{
+							...additionalKeys,
 							$response: responseData,
 							$responseItem: item.json,
 							$value: parameterValue,
@@ -467,7 +481,12 @@ export class RoutingNode {
 				itemIndex,
 				runIndex,
 				executeSingleFunctions.getExecuteData(),
-				{ $response: responseData, $value: parameterValue, $version: node.typeVersion },
+				{
+					...additionalKeys,
+					$response: responseData,
+					$value: parameterValue,
+					$version: node.typeVersion,
+				},
 				false,
 			) as string;
 
@@ -496,6 +515,7 @@ export class RoutingNode {
 		requestData: DeclarativeRestApiSettings.ResultOptions,
 		itemIndex: number,
 		runIndex: number,
+		additionalKeys?: IWorkflowDataProxyAdditionalKeys,
 	): Promise<INodeExecutionData[]> {
 		let returnData: INodeExecutionData[] = [
 			{
@@ -515,6 +535,7 @@ export class RoutingNode {
 						postReceiveMethod.data.parameterValue,
 						itemIndex,
 						runIndex,
+						additionalKeys,
 					);
 				}
 			}
@@ -567,6 +588,7 @@ export class RoutingNode {
 		credentialType?: string,
 		requestOperations?: IN8nRequestOperations,
 		credentialsDecrypted?: ICredentialsDecrypted,
+		workflowAdditionalKeys?: IWorkflowDataProxyAdditionalKeys,
 	): Promise<INodeExecutionData[]> {
 		let responseData: INodeExecutionData[];
 		for (const preSendMethod of requestData.preSend) {
@@ -590,6 +612,7 @@ export class RoutingNode {
 						requestData,
 						itemIndex,
 						runIndex,
+						workflowAdditionalKeys,
 					),
 			);
 		};
@@ -623,6 +646,7 @@ export class RoutingNode {
 					let paginateRequestData: IHttpRequestOptions;
 
 					const additionalKeys = {
+						...workflowAdditionalKeys,
 						$request: requestData.options,
 						$response: {} as IN8nHttpFullResponse,
 						$version: node.typeVersion,
@@ -656,6 +680,7 @@ export class RoutingNode {
 							requestData,
 							itemIndex,
 							runIndex,
+							workflowAdditionalKeys,
 						);
 
 						responseData.push(...tempResponseItems);
@@ -705,6 +730,7 @@ export class RoutingNode {
 									requestData,
 									itemIndex,
 									runIndex,
+									workflowAdditionalKeys,
 								),
 						);
 
@@ -751,6 +777,7 @@ export class RoutingNode {
 						requestData,
 						itemIndex,
 						runIndex,
+						workflowAdditionalKeys,
 					),
 			);
 		}
