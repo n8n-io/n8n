@@ -1,3 +1,4 @@
+import { recordConsumedAuth } from './auth-redaction';
 import { UnexpectedError } from './errors';
 import type { IWebhookFunctions } from './interfaces';
 
@@ -93,6 +94,8 @@ export const n8nOAuth2Auth = async (
 		}
 		return 'handled';
 	}
+
+	recordConsumedAuth(req, ['authorization']);
 
 	return {
 		status: 'ok',

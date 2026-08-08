@@ -16,6 +16,7 @@ import {
 	type ISupplyDataFunctions,
 	type ITaskData,
 	type IDataObject,
+	type INodeExecutionData,
 	type IWorkflowExecuteAdditionalData,
 	Workflow,
 	NodeConnectionTypes,
@@ -1264,6 +1265,151 @@ describe('JobProcessor', () => {
 				response: unknown;
 			};
 			expect(lastResponse.response).toBe('supply data tool result');
+		});
+
+		describe('MCP request context on the worker', () => {
+			const toolNode = {
+				name: 'Calculator',
+				type: '@n8n/n8n-nodes-langchain.toolCalculator',
+				typeVersion: 1,
+				parameters: {},
+				position: [0, 0] as [number, number],
+			};
+
+			const mcpToolInput = { method: 'tools/call', headers: { 'x-user-id': 'user-1' } };
+
+			/** `triggerNames` is in connection order; only `triggerThatRan` gets run data. */
+			const runToolCall = async ({
+				triggerNames,
+				triggerThatRan,
+				toolInput,
+			}: {
+				triggerNames: string[];
+				triggerThatRan: string;
+				toolInput?: IDataObject;
+			}) => {
+				const workflowData = {
+					id: 'wf-1',
+					nodes: [
+						...triggerNames.map((name) => ({
+							name,
+							type: '@n8n/n8n-nodes-langchain.mcpTrigger',
+							typeVersion: 2,
+							parameters: {},
+							position: [0, 0] as [number, number],
+						})),
+						toolNode,
+					],
+					connections: {
+						[toolNode.name]: {
+							[NodeConnectionTypes.AiTool]: [
+								triggerNames.map((node) => ({ node, type: NodeConnectionTypes.AiTool, index: 0 })),
+							],
+						},
+					},
+					staticData: {},
+				};
+
+				const executionPersistence = mock<ExecutionPersistence>();
+				executionPersistence.findSingleExecution.mockResolvedValueOnce(
+					mock<IExecutionResponse>({
+						mode: 'trigger',
+						workflowData,
+						data: mock<IRunExecutionData>({ executionData: undefined }),
+					}),
+				);
+				executionPersistence.findSingleExecution.mockResolvedValueOnce(
+					mock<IExecutionResponse>({ status: 'success', workflowData }),
+				);
+
+				// Real (mutable) run-execution-data, not a mock, so the tool node's own run
+				// lands in `resultData.runData` next to the trigger's.
+				const run: IRun = {
+					mode: 'trigger',
+					status: 'success',
+					finished: true,
+					startedAt: new Date(),
+					stoppedAt: new Date(),
+					storedAt: 'db',
+					data: createRunExecutionData({
+						resultData: { runData: { [triggerThatRan]: [mock<ITaskData>()] } },
+					}),
+				};
+
+				let toolNodeInput: INodeExecutionData[] | undefined;
+				const nodeTypes = mock<NodeTypes>();
+				nodeTypes.getByNameAndVersion.mockReturnValue({
+					description: {
+						name: 'toolCalculator',
+						outputs: [NodeConnectionTypes.AiTool],
+						properties: [],
+					},
+					execute: vi.fn().mockImplementation(function (this: ISupplyDataFunctions) {
+						toolNodeInput = this.getInputData(0, NodeConnectionTypes.Main);
+						return [[{ json: { response: 42 } }]];
+					}),
+				} as never);
+
+				const jobProcessor = new JobProcessor(
+					logger,
+					mock(), // executionRepository
+					executionPersistence,
+					mock(), // workflowRepository
+					nodeTypes,
+					{ hostId: 'worker-host-123' } as unknown as InstanceSettings,
+					createManualExecutionServiceMock(run),
+					executionsConfig,
+					mock(), // eventService
+					mock(), // webhookResponseRelay
+				);
+
+				const job = mock<Job>();
+				job.data = {
+					workflowId: 'wf-1',
+					executionId: 'exec-mcp-input',
+					loadStaticData: false,
+					isMcpExecution: true,
+					mcpType: 'trigger',
+					mcpSessionId: 'session-input',
+					mcpMessageId: 'msg-1',
+					mcpToolCall: {
+						toolName: toolNode.name,
+						arguments: { input: '2 + 2' },
+						sourceNodeName: toolNode.name,
+					},
+					mcpToolInput: toolInput,
+				};
+
+				await jobProcessor.processJob(job);
+
+				return { toolNodeInput, toolRun: run.data.resultData.runData[toolNode.name]?.[0] };
+			};
+
+			it.each([
+				{ toolInput: mcpToolInput, expected: mcpToolInput },
+				{ toolInput: undefined, expected: {} },
+			])('should give the tool node $toolInput as input data', async ({ toolInput, expected }) => {
+				const { toolNodeInput } = await runToolCall({
+					triggerNames: ['MCP Server Trigger'],
+					triggerThatRan: 'MCP Server Trigger',
+					toolInput,
+				});
+
+				expect(toolNodeInput).toEqual([{ json: expected }]);
+			});
+
+			it.each(['MCP Trigger A', 'MCP Trigger B'])(
+				'should record the tool run against the trigger that ran (%s)',
+				async (triggerThatRan) => {
+					const { toolRun } = await runToolCall({
+						triggerNames: ['MCP Trigger A', 'MCP Trigger B'],
+						triggerThatRan,
+						toolInput: mcpToolInput,
+					});
+
+					expect(toolRun?.source?.[0]?.previousNode).toBe(triggerThatRan);
+				},
+			);
 		});
 
 		it('should expose the established execution context to the tool node', async () => {

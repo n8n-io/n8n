@@ -1,6 +1,7 @@
 import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
+import { REDACTED, redactedHeaders } from '../src/auth-redaction';
 import type { IWebhookFunctions, N8nOAuth2ValidationResult } from '../src/interfaces';
 import { n8nOAuth2Auth } from '../src/n8n-oauth2-auth';
 
@@ -8,6 +9,7 @@ const WEBHOOK_URL = 'https://n8n.example.com/webhook/protected-path';
 
 const buildContext = (opts: {
 	authorization?: string;
+	otherHeaders?: Record<string, string>;
 	validation?: N8nOAuth2ValidationResult;
 	webhookUrl?: string | undefined;
 }) => {
@@ -22,14 +24,18 @@ const buildContext = (opts: {
 		'webhookUrl' in opts ? opts.webhookUrl : WEBHOOK_URL,
 	);
 	context.getResponseObject.mockReturnValue(response);
-	context.getRequestObject.mockReturnValue({
-		headers: opts.authorization ? { authorization: opts.authorization } : {},
-	} as never);
+	const request = {
+		headers: {
+			...(opts.authorization ? { authorization: opts.authorization } : {}),
+			...opts.otherHeaders,
+		} as Record<string, string>,
+	};
+	context.getRequestObject.mockReturnValue(request as never);
 	context.validateN8nOAuth2Token.mockResolvedValue(
 		opts.validation ?? { valid: true, user: { id: 'u1' } as never },
 	);
 
-	return { context, response, validateN8nOAuth2Token: context.validateN8nOAuth2Token };
+	return { context, response, request, validateN8nOAuth2Token: context.validateN8nOAuth2Token };
 };
 
 describe('n8nOAuth2Auth', () => {
@@ -111,6 +117,36 @@ describe('n8nOAuth2Auth', () => {
 		expect(result).toBe('handled');
 		expect(response.status).toHaveBeenCalledWith(503);
 		expect(response.send).toHaveBeenCalledWith('OAuth token validation is not available');
+	});
+
+	it('records the authorization header as consumed once the token is validated', async () => {
+		const { context, request } = buildContext({
+			authorization: 'Bearer good-token',
+			otherHeaders: { 'x-tenant-id': 'acme' },
+		});
+
+		await n8nOAuth2Auth(context, { realm: 'n8n Webhook' });
+
+		expect(request.headers).toEqual({
+			authorization: 'Bearer good-token',
+			'x-tenant-id': 'acme',
+		});
+
+		expect(redactedHeaders(request)).toEqual({
+			authorization: REDACTED,
+			'x-tenant-id': 'acme',
+		});
+	});
+
+	it('records nothing when validation fails', async () => {
+		const { context, request } = buildContext({
+			authorization: 'Bearer bad-token',
+			validation: { valid: false, reason: 'invalid_token' },
+		});
+
+		await n8nOAuth2Auth(context, { realm: 'n8n Webhook' });
+
+		expect(redactedHeaders(request)).toEqual({ authorization: 'Bearer bad-token' });
 	});
 
 	it('throws when the webhook URL is unavailable', async () => {
