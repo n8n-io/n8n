@@ -23,7 +23,7 @@ import type {
 } from 'n8n-workflow';
 
 import { STARTING_NODES } from '@/constants';
-import { isFormOAuth2Enabled, isWebhookOAuth2Enabled } from '@/constants/oauth2-triggers';
+import { isFormOAuth2Enabled } from '@/constants/oauth2-triggers';
 import { CredentialTypes } from '@/credential-types';
 import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
 import type { NodeTypes } from '@/node-types';
@@ -378,16 +378,9 @@ export class WorkflowValidationService {
 	 * flags are enabled, mirroring `classifyTriggerIdentities`.
 	 */
 	private getN8nUserAuthTriggersList(): string {
-		const n8nUserAuthTriggers = [
-			isFormOAuth2Enabled() && 'form',
-			isWebhookOAuth2Enabled() && 'webhook',
-		]
-			.filter((trigger): trigger is string => Boolean(trigger))
-			.join(' or ');
+		const n8nUserAuthTriggers = isFormOAuth2Enabled() ? 'form or webhook' : 'webhook';
 
-		return n8nUserAuthTriggers
-			? `manual, chat, MCP, sub-workflow, and ${n8nUserAuthTriggers} triggers with n8n user authentication`
-			: 'manual, chat, MCP, and sub-workflow triggers';
+		return `manual, chat, MCP, sub-workflow, and ${n8nUserAuthTriggers} triggers with n8n user authentication`;
 	}
 
 	/** Collects the ids of all credentials referenced by enabled nodes. */
@@ -430,7 +423,6 @@ export class WorkflowValidationService {
 		let allTriggersProvideN8nIdentity = true;
 		let hasTrigger = false;
 		const formOAuth2Enabled = isFormOAuth2Enabled();
-		const webhookOAuth2Enabled = isWebhookOAuth2Enabled();
 
 		for (const node of nodes) {
 			if (node.disabled) continue;
@@ -446,7 +438,7 @@ export class WorkflowValidationService {
 			const { providesExternalIdentity, providesN8nIdentity } = classifyTriggerIdentity(
 				node.type,
 				node.parameters,
-				{ isFormOAuth2Enabled: formOAuth2Enabled, isWebhookOAuth2Enabled: webhookOAuth2Enabled },
+				{ isFormOAuth2Enabled: formOAuth2Enabled },
 			);
 			allTriggersProvideExternalIdentity &&= providesExternalIdentity;
 			allTriggersProvideN8nIdentity &&= providesN8nIdentity;

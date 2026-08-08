@@ -709,10 +709,9 @@ describe('WorkflowValidationService', () => {
 
 		beforeEach(() => {
 			mockNodeTypes = mock<NodeTypes>();
-			// Pin the flags off so the expected copy never depends on the ambient env.
-			// Tests that need them on opt in with `withFormOAuth2(true)` / `withWebhookOAuth2(true)`.
+			// Pin the flag off so the expected copy never depends on the ambient env.
+			// Tests that need it on opt in with `withFormOAuth2(true)`.
 			vi.stubEnv('N8N_ENV_FEAT_FORM_TRIGGER_OAUTH2', 'false');
-			vi.stubEnv('N8N_ENV_FEAT_WEBHOOK_PRIVATE_CREDENTIALS', 'false');
 		});
 
 		afterEach(() => {
@@ -889,7 +888,7 @@ describe('WorkflowValidationService', () => {
 			expect(result.error).toContain('end-user credentials');
 			expect(result.error).toContain('"My OAuth2"');
 			expect(result.error).toContain(
-				'only supported with manual, chat, MCP, and sub-workflow triggers',
+				'only supported with manual, chat, MCP, sub-workflow, and webhook triggers with n8n user authentication',
 			);
 		});
 
@@ -1072,9 +1071,6 @@ describe('WorkflowValidationService', () => {
 		const withFormOAuth2 = (enabled: boolean) =>
 			vi.stubEnv('N8N_ENV_FEAT_FORM_TRIGGER_OAUTH2', enabled ? 'true' : 'false');
 
-		const withWebhookOAuth2 = (enabled: boolean) =>
-			vi.stubEnv('N8N_ENV_FEAT_WEBHOOK_PRIVATE_CREDENTIALS', enabled ? 'true' : 'false');
-
 		describe('webhook trigger', () => {
 			const validateWithOAuth2Webhook = async () => {
 				const nodes: INode[] = [
@@ -1099,25 +1095,10 @@ describe('WorkflowValidationService', () => {
 				return await service.validateDynamicCredentials(nodes, mockNodeTypes);
 			};
 
-			it('should return valid for n8nOAuth2 when webhook private credentials are enabled', async () => {
-				withWebhookOAuth2(true);
-
+			it('should return valid for n8nOAuth2', async () => {
 				const result = await validateWithOAuth2Webhook();
 
 				expect(result.isValid).toBe(true);
-			});
-
-			it('should reject n8nOAuth2 when webhook private credentials are disabled', async () => {
-				// The option is hidden in the editor while the flag is off, so an
-				// already-configured node must not be treated as identity-providing.
-				withWebhookOAuth2(false);
-
-				const result = await validateWithOAuth2Webhook();
-
-				expect(result.isValid).toBe(false);
-				expect(result.error).toBe(
-					'Cannot publish workflow: end-user credentials ("My OAuth2") are only supported with manual, chat, MCP, and sub-workflow triggers. To use another trigger, switch the credential to Fixed.',
-				);
 			});
 		});
 
@@ -1162,7 +1143,7 @@ describe('WorkflowValidationService', () => {
 
 				expect(result.isValid).toBe(false);
 				expect(result.error).toBe(
-					'Cannot publish workflow: end-user credentials ("My OAuth2") are only supported with manual, chat, MCP, sub-workflow, and form triggers with n8n user authentication. To use another trigger, switch the credential to Fixed.',
+					'Cannot publish workflow: end-user credentials ("My OAuth2") are only supported with manual, chat, MCP, sub-workflow, and form or webhook triggers with n8n user authentication. To use another trigger, switch the credential to Fixed.',
 				);
 			});
 
@@ -1176,41 +1157,12 @@ describe('WorkflowValidationService', () => {
 				expect(result.isValid).toBe(false);
 				// The form option is not advertised while the flag is off.
 				expect(result.error).toContain(
-					'only supported with manual, chat, MCP, and sub-workflow triggers',
+					'only supported with manual, chat, MCP, sub-workflow, and webhook triggers with n8n user authentication',
 				);
 			});
 
 			it('should offer the form option in the generic message when form OAuth2 is enabled', async () => {
 				withFormOAuth2(true);
-
-				const nodes: INode[] = [
-					createNode('Schedule', 'n8n-nodes-base.scheduleTrigger'),
-					createNode('HTTP', 'n8n-nodes-base.httpRequest', {
-						credentials: { oAuth2Api: { id: 'cred-1' } },
-					}),
-				];
-
-				mockCredentialsRepository.find.mockResolvedValue([
-					{ id: 'cred-1', name: 'My OAuth2' } as any,
-				]);
-				useSystemResolver();
-
-				mockNodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
-					if (type === 'n8n-nodes-base.scheduleTrigger') return createTriggerNodeType();
-					return {} as INodeType;
-				}) as any);
-
-				const result = await service.validateDynamicCredentials(nodes, mockNodeTypes);
-
-				expect(result.isValid).toBe(false);
-				expect(result.error).toContain(
-					'only supported with manual, chat, MCP, sub-workflow, and form triggers with n8n user authentication',
-				);
-			});
-
-			it('should offer both form and webhook in the generic message when both OAuth2 flags are enabled', async () => {
-				withFormOAuth2(true);
-				withWebhookOAuth2(true);
 
 				const nodes: INode[] = [
 					createNode('Schedule', 'n8n-nodes-base.scheduleTrigger'),
@@ -1279,7 +1231,7 @@ describe('WorkflowValidationService', () => {
 			const result = await service.validateDynamicCredentials(nodes, mockNodeTypes);
 
 			expect(result.error).toBe(
-				'Cannot publish workflow: end-user credentials ("My OAuth2") are only supported with manual, chat, MCP, and sub-workflow triggers. To use another trigger, switch the credential to Fixed.',
+				'Cannot publish workflow: end-user credentials ("My OAuth2") are only supported with manual, chat, MCP, sub-workflow, and webhook triggers with n8n user authentication. To use another trigger, switch the credential to Fixed.',
 			);
 		});
 

@@ -10,14 +10,7 @@ import type { ApiHelpers } from '../../../services/api-helper';
  *
  * The method being served is part of the resource URL (`?method=POST`), since one
  * path can host several triggers as long as their methods are disjoint.
- *
- * Requires `N8N_ENV_FEAT_WEBHOOK_PRIVATE_CREDENTIALS=true` — with the flag off the
- * resolver never publishes the resource, so no token can be minted for it.
  */
-test.use({
-	capability: { env: { N8N_ENV_FEAT_WEBHOOK_PRIVATE_CREDENTIALS: 'true' } },
-});
-
 interface ProtectedWebhook {
 	workflowId: string;
 	versionId: string;

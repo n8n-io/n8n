@@ -4,7 +4,6 @@ import { User, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { WEBHOOK_NODE_TYPE } from 'n8n-workflow';
 
-import { isWebhookOAuth2Enabled } from '@/constants/oauth2-triggers';
 import type {
 	ProtectedResource,
 	ProtectedResourceResolver,
@@ -77,10 +76,6 @@ export class WorkflowWebhookTriggerResourceResolver implements ProtectedResource
 	}
 
 	async resolveByPath(pathname: string, search?: string) {
-		if (!isWebhookOAuth2Enabled()) {
-			return undefined;
-		}
-
 		if (!pathname.startsWith(`/${this.config.endpoints.webhook}/`)) {
 			// we can quickly rule out non-webhook paths without doing any DB work, so check that first
 			return undefined;
