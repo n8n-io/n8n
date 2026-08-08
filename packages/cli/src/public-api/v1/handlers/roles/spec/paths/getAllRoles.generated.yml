@@ -1,0 +1,202 @@
+operationId: getAllRoles
+tags:
+  - Role
+summary: Retrieve all roles
+description: Returns all roles grouped by type (global, project, credential and workflow). Set `withUsageCount` to include how many users and projects use each role.
+x-required-scope: role:list
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+parameters:
+  - schema:
+      type: string
+      enum:
+        - 'true'
+        - 'false'
+      default: 'false'
+    required: false
+    name: withUsageCount
+    in: query
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            global:
+              type: array
+              items:
+                type: object
+                properties:
+                  slug:
+                    type: string
+                  displayName:
+                    type: string
+                  description:
+                    type: string
+                    nullable: true
+                  systemRole:
+                    type: boolean
+                  roleType:
+                    type: string
+                    enum:
+                      - global
+                  scopes:
+                    type: array
+                    items:
+                      type: string
+                  createdAt:
+                    type: string
+                    format: date-time
+                  updatedAt:
+                    type: string
+                    format: date-time
+                  usedByUsers:
+                    type: number
+                  usedByProjects:
+                    type: number
+                required:
+                  - slug
+                  - displayName
+                  - description
+                  - systemRole
+                  - roleType
+                  - scopes
+                  - createdAt
+                  - updatedAt
+            project:
+              type: array
+              items:
+                type: object
+                properties:
+                  slug:
+                    type: string
+                  displayName:
+                    type: string
+                  description:
+                    type: string
+                    nullable: true
+                  systemRole:
+                    type: boolean
+                  roleType:
+                    type: string
+                    enum:
+                      - project
+                  scopes:
+                    type: array
+                    items:
+                      type: string
+                  createdAt:
+                    type: string
+                    format: date-time
+                  updatedAt:
+                    type: string
+                    format: date-time
+                  usedByUsers:
+                    type: number
+                  usedByProjects:
+                    type: number
+                required:
+                  - slug
+                  - displayName
+                  - description
+                  - systemRole
+                  - roleType
+                  - scopes
+                  - createdAt
+                  - updatedAt
+            credential:
+              type: array
+              items:
+                type: object
+                properties:
+                  slug:
+                    type: string
+                  displayName:
+                    type: string
+                  description:
+                    type: string
+                    nullable: true
+                  systemRole:
+                    type: boolean
+                  roleType:
+                    type: string
+                    enum:
+                      - credential
+                  scopes:
+                    type: array
+                    items:
+                      type: string
+                  createdAt:
+                    type: string
+                    format: date-time
+                  updatedAt:
+                    type: string
+                    format: date-time
+                  usedByUsers:
+                    type: number
+                  usedByProjects:
+                    type: number
+                required:
+                  - slug
+                  - displayName
+                  - description
+                  - systemRole
+                  - roleType
+                  - scopes
+                  - createdAt
+                  - updatedAt
+            workflow:
+              type: array
+              items:
+                type: object
+                properties:
+                  slug:
+                    type: string
+                  displayName:
+                    type: string
+                  description:
+                    type: string
+                    nullable: true
+                  systemRole:
+                    type: boolean
+                  roleType:
+                    type: string
+                    enum:
+                      - workflow
+                  scopes:
+                    type: array
+                    items:
+                      type: string
+                  createdAt:
+                    type: string
+                    format: date-time
+                  updatedAt:
+                    type: string
+                    format: date-time
+                  usedByUsers:
+                    type: number
+                  usedByProjects:
+                    type: number
+                required:
+                  - slug
+                  - displayName
+                  - description
+                  - systemRole
+                  - roleType
+                  - scopes
+                  - createdAt
+                  - updatedAt
+          required:
+            - global
+            - project
+            - credential
+            - workflow
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml

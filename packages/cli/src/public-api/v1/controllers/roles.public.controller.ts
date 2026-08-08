@@ -1,4 +1,9 @@
-import { CreateRoleDto, RolePublicDto } from '@n8n/api-types';
+import {
+	CreateRoleDto,
+	RoleListPublicDto,
+	RoleListQueryPublicDto,
+	RolePublicDto,
+} from '@n8n/api-types';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import { AuthenticatedRequest } from '@n8n/db';
 import {
@@ -8,15 +13,25 @@ import {
 	ApiSummary,
 	ApiTags,
 	Body,
+	Get,
 	Licensed,
 	Post,
 	PublicApiController,
+	Query,
 } from '@n8n/decorators';
+import { type Role as RoleDTO } from '@n8n/permissions';
 import type { Response } from 'express';
 
 import { EventService } from '@/events/event.service';
 import { assertCanManageRoleType } from '@/services/role-authorization';
 import { RoleService } from '@/services/role.service';
+
+type PublicRoleType = 'global' | 'project' | 'credential' | 'workflow';
+const isPublicRole = (role: RoleDTO): role is RoleDTO & { roleType: PublicRoleType } =>
+	role.roleType === 'global' ||
+	role.roleType === 'project' ||
+	role.roleType === 'credential' ||
+	role.roleType === 'workflow';
 
 @PublicApiController('/roles')
 export class RolesPublicController {
@@ -24,6 +39,49 @@ export class RolesPublicController {
 		private readonly roleService: RoleService,
 		private readonly eventService: EventService,
 	) {}
+
+	@Get('/')
+	@ApiKeyScope('role:list')
+	@ApiSummary('Retrieve all roles')
+	@ApiDescription(
+		'Returns all roles grouped by type (global, project, credential and workflow). Set `withUsageCount` to include how many users and projects use each role.',
+	)
+	@ApiTags(['Role'])
+	@ApiResponse(200, RoleListPublicDto)
+	async getAllRoles(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Query query: RoleListQueryPublicDto,
+	): Promise<RoleListPublicDto> {
+		const { withUsageCount } = query;
+		const allRoles = await this.roleService.getAllRoles(withUsageCount);
+		const publicRoles = allRoles.filter(isPublicRole);
+
+		const groupOf = <T extends PublicRoleType>(roleType: T) =>
+			publicRoles
+				.filter((role): role is RoleDTO & { roleType: T } => role.roleType === roleType)
+				.map((role) => ({
+					slug: role.slug,
+					displayName: role.displayName,
+					description: role.description,
+					systemRole: role.systemRole,
+					roleType: role.roleType,
+					licensed: role.licensed,
+					scopes: role.scopes,
+					createdAt: role.createdAt!.toISOString(),
+					updatedAt: role.updatedAt!.toISOString(),
+					...(withUsageCount
+						? { usedByUsers: role.usedByUsers, usedByProjects: role.usedByProjects }
+						: {}),
+				}));
+
+		return {
+			global: groupOf('global'),
+			project: groupOf('project'),
+			credential: groupOf('credential'),
+			workflow: groupOf('workflow'),
+		};
+	}
 
 	@Post('/')
 	@ApiKeyScope({ anyOf: ['role:manage', 'role:manageProject'] })
