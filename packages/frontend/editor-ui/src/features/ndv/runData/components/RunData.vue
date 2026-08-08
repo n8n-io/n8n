@@ -406,6 +406,12 @@ const hasRedactedError = computed(() => {
 	return !!selfTaskData?.redactedError;
 });
 
+// An errored run renders the error as a single item, so it counts as one.
+const selectedRunHasError = computed(() => {
+	if (!node.value) return false;
+	return !!workflowRunData.value?.[node.value.name]?.[props.runIndex]?.hasOwnProperty('error');
+});
+
 const hasRunError = computed(
 	() =>
 		node.value &&
@@ -436,9 +442,7 @@ const workflowRunData = computed(() => {
 	}
 	return null;
 });
-const dataCount = computed(() =>
-	getDataCount(props.runIndex, currentOutputIndex.value, connectionType.value),
-);
+const dataCount = computed(() => (selectedRunHasError.value ? 1 : inputData.value.length));
 
 const isTrimmedManualExecutionDataItem = computed(() =>
 	workflowRunData.value ? hasTrimmedRunData(workflowRunData.value) : false,
@@ -456,9 +460,7 @@ const isExecutionRedacted = computed(
 		!hasRunError.value,
 );
 
-const unfilteredDataCount = computed(() =>
-	pinnedData.data.value ? pinnedData.data.value.length : rawInputData.value.length,
-);
+const unfilteredDataCount = computed(() => unfilteredInputData.value.length);
 const dataSizeInMB = computed(() => (dataSize.value / (1024 * 1024)).toFixed(1));
 const maxOutputIndex = computed(() => {
 	if (!node.value || props.runIndex === undefined) return 0;
@@ -498,7 +500,15 @@ const rawInputData = computed(() =>
 	getRawInputData(props.runIndex, currentOutputIndex.value, connectionType.value),
 );
 
-const unfilteredInputData = computed(() => getPinDataOrLiveData(rawInputData.value));
+// A search has to surface matches from every run of the node, not just the
+// selected one (ADO-5651). Pinned data and the schema view have no run split.
+const searchesAllRuns = computed(
+	() => !!search.value && !isSchemaView.value && !pinnedData.data.value,
+);
+
+const unfilteredInputData = computed(() =>
+	getVisibleData(currentOutputIndex.value, connectionType.value),
+);
 const inputData = computed(() => getFilteredData(unfilteredInputData.value));
 const inputDataPage = computed(() => {
 	const offset = pageSize.value * (currentPage.value - 1);
@@ -534,8 +544,9 @@ const branches = computed(() => {
 		if (props.overrideOutputs && !props.overrideOutputs.includes(i)) {
 			continue;
 		}
-		const totalItemsCount = getRawInputData(props.runIndex, i).length;
-		const itemsCount = getDataCount(props.runIndex, i);
+		const branchData = getVisibleData(i);
+		const totalItemsCount = branchData.length;
+		const itemsCount = getFilteredData(branchData).length;
 		const items = search.value
 			? i18n.baseText('ndv.search.items', {
 					adjustToNumber: totalItemsCount,
@@ -1297,22 +1308,21 @@ function getFilteredData(data: INodeExecutionData[]): INodeExecutionData[] {
 	return data.filter(({ json }) => searchInObject(json, search.value));
 }
 
-function getDataCount(
-	runIndex: number,
+/**
+ * Items an output branch shows: the selected run's, or every run's flattened
+ * together while a search spans all runs.
+ */
+function getVisibleData(
 	outputIndex: number,
 	connectionType: NodeConnectionType = NodeConnectionTypes.Main,
-) {
-	if (!node.value) {
-		return 0;
-	}
+): INodeExecutionData[] {
+	const runIndexes = searchesAllRuns.value
+		? (currentNodeRunData.value ?? []).map((_, index) => index)
+		: [props.runIndex];
 
-	if (workflowRunData.value?.[node.value.name]?.[runIndex]?.hasOwnProperty('error')) {
-		return 1;
-	}
-
-	const rawInputData = getRawInputData(runIndex, outputIndex, connectionType);
-	const pinOrLiveData = getPinDataOrLiveData(rawInputData);
-	return getFilteredData(pinOrLiveData).length;
+	return runIndexes.flatMap((runIndex) =>
+		getPinDataOrLiveData(getRawInputData(runIndex, outputIndex, connectionType)),
+	);
 }
 
 function determineInitialOutputIndex() {
