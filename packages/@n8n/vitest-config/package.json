@@ -26,15 +26,9 @@
     "vitest": "catalog:"
   },
   "files": [
-    "backend.mjs",
-    "frontend.mjs"
+    "dist"
   ],
   "exports": {
-    "./backend": {
-      "import": "./backend.mjs",
-      "require": "./backend.mjs",
-      "types": "./backend.d.ts"
-    },
     "./frontend": {
       "import": "./dist/frontend.js",
       "require": "./dist/frontend.js",
@@ -64,7 +58,10 @@
     "build:unchecked": "tsc -p tsconfig.build.json --noCheck",
     "format": "biome format --write .",
     "format:check": "biome ci .",
-    "watch": "tsc -p tsconfig.build.json --watch"
+    "watch": "tsc -p tsconfig.build.json --watch",
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "test:dev": "vitest --silent=false"
   },
   "license": "LicenseRef-n8n-sustainable-use"
 }
