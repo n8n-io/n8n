@@ -5,7 +5,7 @@ import { isValidNodeConnectionType } from '@/app/utils/typeGuards';
 import type { Connection, EdgeProps } from '@vue-flow/core';
 import { BaseEdge, EdgeLabelRenderer } from '@vue-flow/core';
 import { NodeConnectionTypes } from 'n8n-workflow';
-import { computed, ref, toRef, useCssModule, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, toRef, useCssModule, watch } from 'vue';
 import CanvasEdgeToolbar from './CanvasEdgeToolbar.vue';
 import { getEdgeRenderData } from './utils';
 import { useCanvas } from '../../../composables/useCanvas';
@@ -46,17 +46,29 @@ const delayedHoveredTimeout = 600;
 watch(
 	() => props.hovered,
 	(isHovered) => {
-		if (isHovered) {
-			if (delayedHoveredSetTimeoutRef.value) clearTimeout(delayedHoveredSetTimeoutRef.value);
-			delayedHovered.value = true;
-		} else {
-			delayedHoveredSetTimeoutRef.value = setTimeout(() => {
-				delayedHovered.value = false;
-			}, delayedHoveredTimeout);
+		if (delayedHoveredSetTimeoutRef.value) {
+			clearTimeout(delayedHoveredSetTimeoutRef.value);
+			delayedHoveredSetTimeoutRef.value = null;
 		}
+
+		if (isHovered) {
+			delayedHovered.value = true;
+			return;
+		}
+
+		if (!delayedHovered.value) return;
+
+		delayedHoveredSetTimeoutRef.value = setTimeout(() => {
+			delayedHovered.value = false;
+			delayedHoveredSetTimeoutRef.value = null;
+		}, delayedHoveredTimeout);
 	},
 	{ immediate: true },
 );
+
+onBeforeUnmount(() => {
+	if (delayedHoveredSetTimeoutRef.value) clearTimeout(delayedHoveredSetTimeoutRef.value);
+});
 
 const renderToolbar = computed(() => delayedHovered.value && !props.readOnly);
 
@@ -191,7 +203,7 @@ function onEdgeLabelMouseLeave() {
 				@add="onAdd"
 				@delete="onDelete"
 			/>
-			<div v-else :class="$style.edgeLabel">{{ label }}</div>
+			<div v-show="!renderToolbar" :class="$style.edgeLabel">{{ label }}</div>
 		</div>
 	</EdgeLabelRenderer>
 </template>
@@ -216,6 +228,7 @@ function onEdgeLabelMouseLeave() {
 .edgeLabelWrapper {
 	transform: translateY(calc(var(--spacing--xs) * -1));
 	position: absolute;
+	pointer-events: none;
 
 	/* stylelint-disable-next-line @n8n/css-var-naming */
 	--label-translate-y: 0;
