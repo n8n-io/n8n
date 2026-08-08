@@ -1,0 +1,116 @@
+{
+	"name": "Sort preserves field order",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "manual-trigger",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [260, 180]
+		},
+		{
+			"parameters": {
+				"data": [
+					{
+						"name": "first",
+						"value": 1,
+						"id": "a",
+						"createdAt": "2026-01-01"
+					},
+					{
+						"name": "second",
+						"value": 3,
+						"id": "b",
+						"createdAt": "2026-01-02"
+					},
+					{
+						"name": "third",
+						"value": 2,
+						"id": "c",
+						"createdAt": "2026-01-03"
+					}
+				]
+			},
+			"id": "test-data",
+			"name": "Test Data",
+			"type": "n8n-nodes-testing.testData",
+			"typeVersion": 1,
+			"position": [520, 180]
+		},
+		{
+			"parameters": {
+				"type": "simple",
+				"sortFieldsUi": {
+					"sortField": [
+						{
+							"fieldName": "value",
+							"order": "descending"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "sort",
+			"name": "Sort",
+			"type": "n8n-nodes-base.sort",
+			"typeVersion": 1,
+			"position": [740, 180]
+		}
+	],
+	"pinData": {
+		"Sort": [
+			{
+				"json": {
+					"name": "second",
+					"value": 3,
+					"id": "b",
+					"createdAt": "2026-01-02"
+				}
+			},
+			{
+				"json": {
+					"name": "third",
+					"value": 2,
+					"id": "c",
+					"createdAt": "2026-01-03"
+				}
+			},
+			{
+				"json": {
+					"name": "first",
+					"value": 1,
+					"id": "a",
+					"createdAt": "2026-01-01"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Test Data",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Test Data": {
+			"main": [
+				[
+					{
+						"node": "Sort",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"tags": []
+}
