@@ -47,6 +47,21 @@ function serverBudgetFor(timeoutMs: number): number {
 	return Math.max(timeoutMs - CLIENT_ABORT_MARGIN_MS, 30_000);
 }
 
+// -- Invitation response shapes ------------------------------------------------
+
+const InvitedUsersEnvelope = z.object({
+	data: z.array(
+		z.object({
+			user: z.object({
+				id: z.string(),
+				email: z.string(),
+				inviteAcceptUrl: z.string().optional(),
+			}),
+			error: z.string().optional(),
+		}),
+	),
+});
+
 // -- Conversation seeding response shapes -------------------------------------
 
 const RestoreThreadEnvelope = z.object({
@@ -658,6 +673,63 @@ export class N8nClient {
 	 */
 	async deleteCredential(id: string): Promise<void> {
 		await this.fetch(`/rest/credentials/${id}`, { method: 'DELETE' });
+	}
+
+	/**
+	 * Invite member users in one batched request and return each invitee's
+	 * accept token. Requires an owner session and an instance without SMTP —
+	 * an emailed invite omits `inviteAcceptUrl` (the token's only carrier).
+	 * POST /rest/invitations  body: [{ email, role: 'global:member' }, ...]
+	 */
+	async inviteMembers(
+		emails: string[],
+	): Promise<Array<{ id: string; email: string; acceptToken: string }>> {
+		if (emails.length === 0) return [];
+		const response = InvitedUsersEnvelope.parse(
+			await this.fetch('/rest/invitations', {
+				method: 'POST',
+				body: emails.map((email) => ({ email, role: 'global:member' })),
+			}),
+		);
+		return response.data.map(({ user, error }) => {
+			if (error) {
+				throw new Error(`Invitation for ${user.email} failed: ${error}`);
+			}
+			const token = user.inviteAcceptUrl
+				? new URL(user.inviteAcceptUrl).searchParams.get('token')
+				: null;
+			if (!token) {
+				throw new Error(
+					`Invitation for ${user.email} returned no accept token — the instance likely has SMTP configured (the invite was emailed instead), which the eval user-provisioning flow cannot use`,
+				);
+			}
+			return { id: user.id, email: user.email, acceptToken: token };
+		});
+	}
+
+	/**
+	 * Accept an invitation. The response issues the new user's session cookie,
+	 * so on a fresh N8nClient this doubles as their login.
+	 * POST /rest/invitations/accept
+	 */
+	async acceptInvitation(opts: {
+		token: string;
+		firstName: string;
+		lastName: string;
+		password: string;
+	}): Promise<void> {
+		await this.fetch('/rest/invitations/accept', { method: 'POST', body: opts });
+		if (!this.sessionCookie) {
+			throw new Error('Invitation accepted but no session cookie received');
+		}
+	}
+
+	/**
+	 * Delete a user, including the data remaining in their personal project.
+	 * DELETE /rest/users/:id
+	 */
+	async deleteUser(id: string): Promise<void> {
+		await this.fetch(`/rest/users/${id}`, { method: 'DELETE' });
 	}
 
 	/**
