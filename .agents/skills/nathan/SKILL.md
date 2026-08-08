@@ -15,8 +15,10 @@ the same commands from the repo via `pnpm nathan`.
 - **No tunnel setup needed.** Nathan replies asynchronously through a short-lived
   public tunnel that the script opens for you (`npx localtunnel`). A `deploy` to a
   **new** `test-<name>` also polls that instance URL directly, so it still reports
-  success even if the tunnel drops. (Redeploying a name that's *already up* skips
-  the poll — it can't tell the old instance from the new — so it falls back to the
+  success even if the tunnel drops — or if the tunnel service (loca.lt) is down
+  entirely, in which case the deploy proceeds tunnel-less and only the poll
+  reports completion. (Redeploying a name that's *already up* skips
+  the poll — it can't tell the old instance from the new — so it needs the
   tunnel; prefer a fresh name when you need the reliable report.)
 - **A token in `~/.n8n/dev/nathan-token`.** If a command reports no token, **ask the
   user for one** — point them at the form

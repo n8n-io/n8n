@@ -5,6 +5,8 @@
 // `response_url` we hand it — the same mechanism Slack uses. Since the internal
 // instance can't reach localhost, we open a throwaway public tunnel to a local
 // server, use that as the response_url, print whatever Nathan sends, and clean up.
+// If the tunnel service is unreachable, a deploy with an explicit fresh name still
+// works: the webhook is sent anyway and the instance URL is polled for completion.
 //
 // Usage:  node scripts/nathan.mjs <nathan args>     (or: pnpm nathan -- <args>)
 //   node scripts/nathan.mjs help
@@ -224,17 +226,30 @@ async function waitReachable(url) {
 	return false;
 }
 
-let tunnel;
+// Reliable backstop: if the instance URL is predictable, poll it directly so a
+// dropped tunnel doesn't cost us the result — and if the tunnel service is down
+// entirely (loca.lt outages happen), a pollable deploy can proceed without it.
+const pollUrl = predictDeployUrl(text);
+const up = (u) => fetch(`${u}/healthz`, { signal: AbortSignal.timeout(8000) }).then((r) => r.ok).catch(() => false);
+
+let tunnel = null;
 try {
 	console.error(`Opening tunnel + sending: /nathan ${text}`);
 	tunnel = await startTunnel();
+	if (!(await waitReachable(tunnel.url))) throw new Error(`${tunnel.url} did not become reachable in time`);
 } catch (e) {
 	console.error('Could not open a public tunnel:', e.message);
-	await cleanup(1);
-}
-if (!(await waitReachable(tunnel.url))) {
-	console.error(`Tunnel ${tunnel.url} did not become reachable in time.`);
-	await cleanup(1);
+	try { tunnel?.proc.kill(); } catch {}
+	tunnel = null;
+	if (!pollUrl) {
+		console.error("This command's result only arrives via the tunnel — cannot continue without one.");
+		await cleanup(1);
+	}
+	if (await up(pollUrl)) {
+		console.error(`${pollUrl} already responds, so a redeploy can't be confirmed by polling. Retry, or deploy to a fresh test-<name>.`);
+		await cleanup(1);
+	}
+	console.error(`Continuing without the tunnel: Nathan's replies will be lost; polling ${pollUrl} to confirm the deploy instead.\n`);
 }
 
 // --- fire the command --------------------------------------------------------
@@ -248,7 +263,8 @@ try {
 			token,
 			text,
 			command: '/nathan',
-			response_url: tunnel.url + CALLBACK_PATH,
+			// .invalid never resolves (RFC 2606) — replies go nowhere in tunnel-less mode
+			response_url: tunnel ? tunnel.url + CALLBACK_PATH : 'https://nathan-reply.invalid/',
 			user_id: user,
 			user_name: user,
 			channel_id: process.env.NATHAN_SLACK_CHANNEL || DEFAULT_SLACK_CHANNEL,
@@ -265,22 +281,24 @@ if (!res.ok) {
 }
 console.error('Sent. Waiting for Nathan to reply (Ctrl-C to stop)…\n');
 
-// Reliable backstop: if the instance URL is predictable, poll it directly so a
-// dropped tunnel doesn't cost us the result. Skip if it already responds — that's
-// the previous deployment still up mid-redeploy, indistinguishable from the new one.
-const pollUrl = predictDeployUrl(text);
+// Skip polling if the instance already responds — that's the previous deployment
+// still up mid-redeploy, indistinguishable from the new one (tunnel-less mode
+// already ruled this out above, before sending the webhook).
 if (pollUrl) {
-	const up = (u) => fetch(`${u}/healthz`, { signal: AbortSignal.timeout(8000) }).then((r) => r.ok).catch(() => false);
-	if (await up(pollUrl)) {
+	if (tunnel && (await up(pollUrl))) {
 		console.error(`(${pollUrl} already responds — redeploy in progress; relying on the tunnel for completion.)`);
 	} else {
 		(async () => {
+			let polls = 0;
 			while (!settled) {
 				if (await up(pollUrl)) {
 					if (!settled) console.log(`\n${'─'.repeat(60)}\n✅ Instance is up: ${pollUrl}\n   Login: test@n8n.io / helloWorld7 (default test owner)\n`);
 					return finish('up');
 				}
 				await new Promise((r) => setTimeout(r, 10000));
+				// Tunnel-less runs get no replies at all — heartbeat so a long build doesn't look like a hang.
+				if (!tunnel && ++polls % 6 === 0)
+					console.error(`… still waiting for ${pollUrl} (~${polls / 6}m; builds can take 15-20m, giving up after ${Math.round(TIMEOUT_MS / 60000)}m)`);
 			}
 		})();
 	}
@@ -291,7 +309,12 @@ process.on('SIGINT', () => finish('interrupted'));
 await finished;
 clearTimeout(overall);
 
-if (doneReason === 'timeout') console.error('\n⏱  Timed out waiting for the final reply — the deploy may still be running (check Slack / Grafana).');
+if (doneReason === 'timeout')
+	console.error(
+		tunnel
+			? '\n⏱  Timed out waiting for the final reply — the deploy may still be running (check Slack / Grafana).'
+			: `\n⏱  Timed out polling ${pollUrl} — without a reply channel a failed deploy looks the same as a slow one; check ${slackTarget} or Grafana.`,
+	);
 if (doneReason === 'interrupted') console.error('\nStopped. The command may still be running on Nathan.');
 if (doneReason === 'error') console.error('\n✖ Nathan reported an error (see the reply above).');
 await cleanup(['idle', 'up', 'local'].includes(doneReason) ? 0 : 1);
