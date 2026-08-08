@@ -24,6 +24,7 @@ import {
 	getVariablesPath,
 	isWorkflowModified,
 	isDataTableModified,
+	isNoUpstreamBranchError,
 	areSameCredentials,
 } from './source-control-helper.ee';
 import { SourceControlImportService } from './source-control-import.service.ee';
@@ -233,6 +234,12 @@ export class SourceControlStatusService {
 			await this.gitService.resetBranch();
 			await this.gitService.pull();
 		} catch (error) {
+			if (isNoUpstreamBranchError(error)) {
+				// A branch created via the commit window's "New branch" option has no
+				// remote counterpart until its first push, so there is nothing to pull yet.
+				this.logger.debug('Skipping pull: current branch has no upstream yet');
+				return;
+			}
 			this.logger.error(
 				`Failed to reset workfolder: ${error instanceof Error ? error.message : String(error)}`,
 			);

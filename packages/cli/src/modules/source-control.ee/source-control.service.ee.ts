@@ -45,6 +45,7 @@ import {
 import { SourceControlScopedService } from './source-control-scoped.service';
 import { SourceControlStatusService } from './source-control-status.service.ee';
 import type { ImportResult } from './types/import-result';
+import type { SourceControlContext } from './types/source-control-context';
 import type { SourceControlGetStatus } from './types/source-control-get-status';
 import type { SourceControlPreferences } from './types/source-control-preferences';
 
@@ -283,6 +284,38 @@ export class SourceControlService {
 		return await this.gitService.setBranch(branch);
 	}
 
+	/** Whether a requested branch actually needs the branch-selection flow to run. */
+	private isBranchSelectionApplicable(requested: string | undefined): boolean {
+		if (!requested) return false;
+		const defaultBranch = this.sourceControlPreferencesService.getBranchName();
+		return (
+			requested !== defaultBranch && this.sourceControlPreferencesService.isBranchSelectionEnabled()
+		);
+	}
+
+	/**
+	 * Resolves the branch a push targets and switches the working clone onto it.
+	 * Called before export/commit so the commit lands on the right branch.
+	 * Only call when `isBranchSelectionApplicable()` is true for `requested`.
+	 * Returns the target branch and whether it was newly created (needs upstream).
+	 */
+	private async prepareBranchForPush(
+		requested: string,
+		options: PushWorkFolderRequestDto,
+	): Promise<{ targetBranch: string; isNewBranch: boolean; defaultBranch: string }> {
+		const defaultBranch = this.sourceControlPreferencesService.getBranchName();
+
+		await this.gitService.fetch();
+
+		if (options.createBranch) {
+			await this.gitService.createBranchFrom(requested, defaultBranch);
+			return { targetBranch: requested, isNewBranch: true, defaultBranch };
+		}
+
+		await this.gitService.checkoutExistingBranch(requested);
+		return { targetBranch: requested, isNewBranch: false, defaultBranch };
+	}
+
 	// will reset the branch to the remote branch and pull
 	// this will discard all local changes
 	async resetWorkfolder(): Promise<ImportResult | undefined> {
@@ -333,6 +366,69 @@ export class SourceControlService {
 		}
 
 		const context = await this.sourceControlContextFactory.createContext(user);
+
+		const defaultBranch = this.sourceControlPreferencesService.getBranchName();
+		const requestedBranch = options.branch?.trim();
+		const branchSelectionActive = this.isBranchSelectionApplicable(requestedBranch);
+
+		let targetBranch = defaultBranch;
+		let isNewBranch = false;
+		let result:
+			| {
+					statusCode: number;
+					pushResult: PushResult | undefined;
+					statusResult: SourceControlledFile[];
+			  }
+			| undefined;
+		let pushError: unknown;
+
+		try {
+			if (branchSelectionActive && requestedBranch) {
+				({ targetBranch, isNewBranch } = await this.prepareBranchForPush(requestedBranch, options));
+			}
+
+			result = await this.exportAndPushFiles(user, options, context, targetBranch, isNewBranch);
+		} catch (error) {
+			pushError = error;
+		}
+
+		// Restore the working clone to the default branch. Pull and the next push
+		// assume HEAD stays on the default branch between operations. Checked via
+		// branchSelectionActive (not targetBranch/defaultBranch) so a failure while
+		// resolving the target branch above is cleaned up too.
+		if (branchSelectionActive) {
+			try {
+				await this.gitService.checkoutExistingBranch(defaultBranch);
+			} catch (restoreError) {
+				this.logger.error('Failed to restore default branch after push', {
+					error: restoreError,
+				});
+				// Surface this instead of swallowing it: silently returning success here
+				// would leave the shared clone on the wrong branch for the next operation.
+				// If the push itself already failed, that original error takes priority.
+				pushError ??= new UserError(
+					'Push may have succeeded, but failed to restore the default branch afterwards. Retry, or reconnect from the Source Control settings page if this keeps happening.',
+				);
+			}
+		}
+
+		if (pushError) throw pushError;
+		if (!result) throw new UnexpectedError('Push finished without a result');
+		return result;
+	}
+
+	private async exportAndPushFiles(
+		user: User,
+		options: PushWorkFolderRequestDto,
+		context: SourceControlContext,
+		targetBranch: string,
+		isNewBranch: boolean,
+	): Promise<{
+		statusCode: number;
+		pushResult: PushResult | undefined;
+		statusResult: SourceControlledFile[];
+	}> {
+		const defaultBranch = this.sourceControlPreferencesService.getBranchName();
 
 		let filesToPush: SourceControlledFile[] = options.fileNames.map((file) => {
 			const normalizedPath = normalizeAndValidateSourceControlledFilePath(
@@ -473,12 +569,12 @@ export class SourceControlService {
 			throw error;
 		}
 
-		const branchName = this.sourceControlPreferencesService.getBranchName();
 		let pushResult: PushResult | undefined;
 		try {
 			pushResult = await this.gitService.push({
-				branch: branchName,
+				branch: targetBranch,
 				force: options.force ?? false,
+				setUpstream: isNewBranch,
 			});
 
 			// Only mark files as pushed after successful push
@@ -486,7 +582,9 @@ export class SourceControlService {
 		} catch (error) {
 			this.logger.error('Failed to push changes', { error });
 			try {
-				await this.gitService.resetBranch({ hard: true, target: `origin/${branchName}` });
+				// A brand-new branch has no origin ref yet; fall back to the default.
+				const resetTarget = isNewBranch ? `origin/${defaultBranch}` : `origin/${targetBranch}`;
+				await this.gitService.resetBranch({ hard: true, target: resetTarget });
 			} catch (resetError) {
 				this.logger.error('Failed to reset branch after push error', { error: resetError });
 			}
@@ -521,6 +619,14 @@ export class SourceControlService {
 		options: PullWorkFolderRequestDto,
 	): Promise<{ statusCode: number; statusResult: SourceControlledFile[] }> {
 		await this.sanityCheck();
+
+		// Pull always targets the default branch; a prior feature-branch commit
+		// may have left HEAD elsewhere, so switch back first. Only relevant when
+		// branch selection is enabled - otherwise HEAD never moves off default.
+		if (this.sourceControlPreferencesService.isBranchSelectionEnabled()) {
+			const defaultBranch = this.sourceControlPreferencesService.getBranchName();
+			await this.gitService.checkoutExistingBranch(defaultBranch);
+		}
 
 		const statusResult = await this.sourceControlStatusService.getStatus(user, {
 			direction: 'pull',

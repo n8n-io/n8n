@@ -10,6 +10,7 @@ import { mock } from 'vitest-mock-extended';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import { SourceControlPreferencesService } from '../source-control-preferences.service.ee';
+import type { SourceControlConfig } from '../source-control.config';
 import type { SourceControlPreferences } from '../types/source-control-preferences';
 
 // Restore real fs modules for these tests since we need actual file operations
@@ -21,13 +22,30 @@ describe('SourceControlPreferencesService', () => {
 	const mockCipher = mock<Cipher>();
 	const mockLogger = mock<Logger>();
 	const mockSettingsRepository = mock<SettingsRepository>();
+	const mockSourceControlConfig = mock<SourceControlConfig>({ branchSelectionEnabled: false });
 	const service = new SourceControlPreferencesService(
 		instanceSettings,
 		mockLogger,
 		mockCipher,
 		mockSettingsRepository,
-		mock(),
+		mockSourceControlConfig,
 	);
+
+	describe('isBranchSelectionEnabled', () => {
+		afterEach(() => {
+			mockSourceControlConfig.branchSelectionEnabled = false;
+		});
+
+		it('should return false when the config flag is off', () => {
+			mockSourceControlConfig.branchSelectionEnabled = false;
+			expect(service.isBranchSelectionEnabled()).toBe(false);
+		});
+
+		it('should return true when the config flag is on', () => {
+			mockSourceControlConfig.branchSelectionEnabled = true;
+			expect(service.isBranchSelectionEnabled()).toBe(true);
+		});
+	});
 
 	it('should class validate correct preferences', async () => {
 		const validPreferences: Partial<SourceControlPreferences> = {

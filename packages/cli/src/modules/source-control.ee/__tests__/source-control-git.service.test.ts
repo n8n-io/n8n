@@ -502,6 +502,97 @@ describe('SourceControlGitService', () => {
 		});
 	});
 
+	describe('branch ops', () => {
+		let gitService: SourceControlGitService;
+		let git: ReturnType<typeof mock<SimpleGit>>;
+
+		beforeEach(() => {
+			gitService = new SourceControlGitService(mock(), mock(), mock());
+			git = mock<SimpleGit>();
+			gitService.git = git;
+		});
+
+		describe('createBranchFrom', () => {
+			it('resets base then force-creates the new branch with -B', async () => {
+				await gitService.createBranchFrom('feat/x', 'main');
+
+				expect(git.checkout).toHaveBeenCalledWith('main', ['-f']);
+				expect(git.raw).toHaveBeenCalledWith(['reset', '--hard', 'origin/main']);
+				// `-B` (create-or-reset), not the throwing `checkoutBranch`/`-b`
+				expect(git.checkout).toHaveBeenCalledWith(['-B', 'feat/x', 'main']);
+				expect(git.checkoutBranch).not.toHaveBeenCalled();
+			});
+
+			it('is idempotent when the branch already exists locally', async () => {
+				// A prior failed push can leave the local branch behind; retrying must not throw.
+				await gitService.createBranchFrom('feat/x', 'main');
+				await gitService.createBranchFrom('feat/x', 'main');
+
+				expect(git.checkout).toHaveBeenCalledWith(['-B', 'feat/x', 'main']);
+				expect(git.checkoutBranch).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('checkoutExistingBranch', () => {
+			it('force-checks-out, resets to remote tip, and sets upstream', async () => {
+				await gitService.checkoutExistingBranch('feat/x');
+
+				expect(git.checkout).toHaveBeenCalledWith('feat/x', ['-f']);
+				expect(git.raw).toHaveBeenCalledWith(['reset', '--hard', 'origin/feat/x']);
+				expect(git.branch).toHaveBeenCalledWith(['--set-upstream-to=origin/feat/x', 'feat/x']);
+
+				// Reset must happen after the checkout so it operates on the target branch.
+				expect(git.checkout.mock.invocationCallOrder[0]).toBeLessThan(
+					git.raw.mock.invocationCallOrder[0],
+				);
+			});
+		});
+
+		describe('push', () => {
+			beforeEach(() => {
+				vi.spyOn(gitService, 'setGitCommand').mockResolvedValue();
+			});
+
+			it('passes -u when setUpstream is true', async () => {
+				await gitService.push({ force: false, branch: 'feat/x', setUpstream: true });
+
+				expect(git.push).toHaveBeenCalledWith('origin', 'feat/x', ['-u']);
+			});
+
+			it('passes -u and -f when both setUpstream and force are true', async () => {
+				await gitService.push({ force: true, branch: 'feat/x', setUpstream: true });
+
+				expect(git.push).toHaveBeenCalledWith('origin', 'feat/x', ['-u', '-f']);
+			});
+
+			it('remains backwards compatible without setUpstream', async () => {
+				await gitService.push({ force: false, branch: 'feat/x' });
+
+				expect(git.push).toHaveBeenCalledWith('origin', 'feat/x');
+			});
+
+			it('passes -f when only force is true', async () => {
+				await gitService.push({ force: true, branch: 'feat/x' });
+
+				expect(git.push).toHaveBeenCalledWith('origin', 'feat/x', ['-f']);
+			});
+		});
+
+		describe('fetch', () => {
+			beforeEach(() => {
+				vi.spyOn(gitService, 'setGitCommand').mockResolvedValue();
+			});
+
+			it('prunes stale remote-tracking branches', async () => {
+				await gitService.fetch();
+
+				// Without --prune, a branch deleted on the remote keeps showing up in
+				// `git branch -r` (and therefore the branch picker) indefinitely.
+				expect(git.fetch).toHaveBeenCalledWith(['--prune']);
+			});
+		});
+	});
+
 	describe('getFileContent', () => {
 		it('should return file content at HEAD version', async () => {
 			// Arrange

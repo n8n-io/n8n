@@ -11,6 +11,7 @@ export function routesForSourceControl(server: Server) {
 		branches: [],
 		repositoryUrl: '',
 		branchReadOnly: false,
+		branchSelectionEnabled: false,
 		branchColor: '#1d6acb',
 		connected: false,
 		publicKey: 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHEX+25m',

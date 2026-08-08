@@ -395,6 +395,42 @@ describe('getStatus', () => {
 		expect(sourceControlContextFactory.createContext).toHaveBeenCalledWith(user);
 	});
 
+	it('should not fail status when the current branch has no upstream yet', async () => {
+		// ARRANGE
+		// A branch created via the commit window's "New branch" option has no
+		// remote counterpart until its first push, so `git pull` rejects with this
+		// error - it should be treated as "nothing to sync yet", not a failure.
+		gitService.pull.mockRejectedValueOnce(
+			new Error(
+				'There is no tracking information for the current branch.\nPlease specify which branch you want to merge with.',
+			),
+		);
+
+		// ACT
+		const result = await sourceControlStatusService.getStatus(globalAdminUser, {
+			direction: 'push',
+			verbose: false,
+			preferLocalVersion: true,
+		});
+
+		// ASSERT
+		expect(result).toEqual([]);
+	});
+
+	it('should throw a user-facing error when pull fails for any other reason', async () => {
+		// ARRANGE
+		gitService.pull.mockRejectedValueOnce(new Error('network unreachable'));
+
+		// ACT & ASSERT
+		await expect(
+			sourceControlStatusService.getStatus(globalAdminUser, {
+				direction: 'push',
+				verbose: false,
+				preferLocalVersion: true,
+			}),
+		).rejects.toThrowError('Unable to fetch updates from git');
+	});
+
 	describe('project', () => {
 		// Mock data for reusable test scenarios
 		const mockProjects: Record<string, ExportableProjectWithFileName> = {
