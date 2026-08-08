@@ -17,13 +17,40 @@ import {
 	validateJSON,
 } from './GenericFunctions';
 
+const resourceOptions: INodePropertyOptions[] = [
+	{
+		name: 'Account V1 (Deprecated)',
+		value: 'account',
+	},
+	{
+		name: 'Account V2',
+		value: 'accountv2',
+	},
+	{
+		name: 'Image V1 (Deprecated)',
+		value: 'image',
+	},
+	{
+		name: 'Image V2',
+		value: 'imagev2',
+	},
+	{
+		name: 'PDF V1 (Deprecated)',
+		value: 'pdf',
+	},
+	{
+		name: 'PDF V2',
+		value: 'pdfv2',
+	},
+];
+
 export class ApiTemplateIo implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'APITemplate.io (PDF/Image Generation)',
 		name: 'apiTemplateIo',
 		icon: 'file:apiTemplateIo.svg',
 		group: ['transform'],
-		version: 1,
+		version: [1, 2],
 		description: 'Consume the APITemplate.io API',
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		defaults: {
@@ -39,38 +66,34 @@ export class ApiTemplateIo implements INodeType {
 			},
 		],
 		properties: [
+			// Workflows only persist parameters that differ from the node default, so
+			// bumping the default would silently repoint existing nodes at another
+			// resource. Keep `image` for v1 and introduce the V2 default in v2 only.
 			{
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
 				noDataExpression: true,
-				options: [
-					{
-						name: 'Account V1 (Deprecated)',
-						value: 'account',
+				options: resourceOptions,
+				default: 'image',
+				displayOptions: {
+					show: {
+						'@version': [1],
 					},
-					{
-						name: 'Account V2',
-						value: 'accountv2',
-					},
-					{
-						name: 'Image V1 (Deprecated)',
-						value: 'image',
-					},
-					{
-						name: 'Image V2',
-						value: 'imagev2',
-					},
-					{
-						name: 'PDF V1 (Deprecated)',
-						value: 'pdf',
-					},
-					{
-						name: 'PDF V2',
-						value: 'pdfv2',
-					},
-				],
+				},
+			},
+			{
+				displayName: 'Resource',
+				name: 'resource',
+				type: 'options',
+				noDataExpression: true,
+				options: resourceOptions,
 				default: 'pdfv2',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 2 } }],
+					},
+				},
 			},
 			{
 				displayName: 'Operation',
