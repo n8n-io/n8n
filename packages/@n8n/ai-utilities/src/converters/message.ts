@@ -96,6 +96,16 @@ function isCitationBlock(block: unknown): block is LangchainMessages.ContentBloc
 		typeof block === 'object' && block !== null && 'type' in block && block.type === 'citation'
 	);
 }
+// `image_url` is the OpenAI-style multimodal block emitted by `toLcContent` for
+// image tool outputs. It is not part of LangChain's standard `ContentBlock` union,
+// so it needs its own guard to survive the round-trip back to n8n content.
+function isImageUrlBlock(
+	block: unknown,
+): block is { type: 'image_url'; image_url: string | { url: string; detail?: string } } {
+	return (
+		typeof block === 'object' && block !== null && 'type' in block && block.type === 'image_url'
+	);
+}
 function isNonStandardBlock(
 	block: LangchainMessages.ContentBlock,
 ): block is LangchainMessages.ContentBlock.NonStandard {
@@ -145,6 +155,11 @@ export function fromLcContent(
 					data: block.data!,
 					providerMetadata: Object.keys(metadata).length > 0 ? metadata : undefined,
 				};
+			} else if (isImageUrlBlock(block)) {
+				content = {
+					type: 'image_url',
+					image_url: block.image_url,
+				} as unknown as N8nMessages.MessageContent;
 			} else if (isToolCallBlock(block)) {
 				content = {
 					type: 'tool-call',
@@ -260,6 +275,13 @@ export function toLcContent(block: N8nMessages.MessageContent): LangchainMessage
 	if (isN8nReasoningBlock(block)) {
 		return { type: 'reasoning', reasoning: block.text };
 	}
+	if ((block.type as string) === 'image_url') {
+		const imageBlock = block as unknown as { image_url: string | { url: string; detail?: string } };
+		return {
+			type: 'image_url',
+			image_url: imageBlock.image_url,
+		} as unknown as LangchainMessages.ContentBlock;
+	}
 	if (isN8nFileBlock(block)) {
 		const { url, fileId, ...rest } = block.providerMetadata ?? {};
 		return {
@@ -355,10 +377,35 @@ export function toLcMessage(message: Message): LangchainMessages.BaseMessage {
 			if (!toolResult) {
 				throw new Error('Tool message is missing a tool-result content block');
 			}
-			const content =
-				typeof toolResult.result === 'string'
-					? toolResult.result
-					: JSON.stringify(toolResult.result);
+			let content: LangchainMessages.MessageContent;
+			const isMessageContentArray =
+				Array.isArray(toolResult.result) &&
+				toolResult.result.every(
+					(item) =>
+						item &&
+						typeof item === 'object' &&
+						'type' in item &&
+						typeof item.type === 'string' &&
+						[
+							'text',
+							'reasoning',
+							'file',
+							'image_url',
+							'tool-call',
+							'invalid-tool-call',
+							'tool-result',
+							'citation',
+							'provider',
+						].includes(item.type as string),
+				);
+			if (isMessageContentArray) {
+				content = toolResult.result.map(toLcContent);
+			} else {
+				content =
+					typeof toolResult.result === 'string'
+						? toolResult.result
+						: JSON.stringify(toolResult.result);
+			}
 			return new LangchainMessages.ToolMessage({
 				content,
 				tool_call_id: toolResult.toolCallId,

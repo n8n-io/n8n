@@ -9,6 +9,10 @@ import {
 	type RequestResponseMetadata,
 } from '@utils/agent-execution';
 import { buildResponseMetadata } from '@utils/agent-execution/buildResponseMetadata';
+import {
+	isObservationContentBlock,
+	type ObservationContentBlock,
+} from '@utils/agent-execution/types';
 import { buildTracingMetadata, getTracingConfig } from '@utils/tracing';
 import type {
 	EngineRequest,
@@ -47,9 +51,28 @@ export async function runAgent(
 ): Promise<RunAgentResult> {
 	const { itemIndex, input, steps, tools, options } = itemContext;
 
+	const parsedSteps = steps.map((step) => {
+		let observation: string | ObservationContentBlock[] = step.observation;
+		try {
+			if (typeof step.observation === 'string' && step.observation.trim().startsWith('[')) {
+				const parsed: unknown = JSON.parse(step.observation);
+				// Only treat the observation as multimodal content when every element is a
+				// valid content block. A plain JSON array that merely contains a `type` key
+				// must stay a string so existing non-image tools don't regress.
+				if (Array.isArray(parsed) && parsed.every(isObservationContentBlock)) {
+					observation = parsed;
+				}
+			}
+		} catch {}
+		return {
+			...step,
+			observation,
+		};
+	});
+
 	const invokeParams = {
 		// steps are passed to the ToolCallingAgent in the runnable sequence to keep track of tool calls
-		steps,
+		steps: parsedSteps,
 		input,
 		system_message: options.systemMessage ?? SYSTEM_MESSAGE,
 		formatting_instructions:
@@ -98,7 +121,7 @@ export async function runAgent(
 
 			return {
 				actions,
-				metadata: buildResponseMetadata(response, itemIndex),
+				metadata: await buildResponseMetadata(response, itemIndex, ctx),
 			};
 		}
 		// Save conversation to memory including any tool call context
@@ -152,7 +175,7 @@ export async function runAgent(
 
 		return {
 			actions,
-			metadata: buildResponseMetadata(response, itemIndex),
+			metadata: await buildResponseMetadata(response, itemIndex, ctx),
 		};
 	}
 }
