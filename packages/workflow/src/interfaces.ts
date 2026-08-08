@@ -3563,6 +3563,8 @@ export interface IWorkflowExecutionDataProcess {
 
 export interface ExecuteWorkflowOptions {
 	node?: INode;
+	/** Run index of `node`, so loop iterations can be told apart. */
+	nodeRunIndex?: number;
 	parentWorkflowId: string;
 	inputData?: INodeExecutionData[];
 	loadedWorkflowData?: IWorkflowBase;
@@ -3642,6 +3644,11 @@ export interface IWorkflowExecuteAdditionalData {
 	getRunExecutionData: (executionId: string) => Promise<IRunExecutionData | undefined>;
 	executionId?: string;
 	restartExecutionId?: string;
+	/**
+	 * Push session watching this execution; set only for editor-started runs.
+	 * Propagated into sub-executions so the editor can follow them live.
+	 */
+	pushRef?: string;
 	getRuntimeCredential(
 		runExecutionData: IRunExecutionData,
 		alias: string,

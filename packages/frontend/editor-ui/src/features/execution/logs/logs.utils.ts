@@ -95,7 +95,11 @@ function getChildNodes(
 	runIndex: number | undefined,
 	context: LogTreeCreationContext,
 ) {
-	const subExecutionLocator = findSubExecutionLocator(treeNode);
+	// A completed run carries its sub-execution in task metadata; one still in
+	// flight has none, so fall back to the live registry.
+	const subExecutionLocator =
+		findSubExecutionLocator(treeNode) ??
+		context.liveSubExecutions[liveSubExecutionKey(context.executionId, node.name, runIndex ?? 0)];
 
 	if (subExecutionLocator !== undefined) {
 		const workflow = context.workflows[subExecutionLocator.workflowId];
@@ -579,6 +583,7 @@ export function createLogTree(
 	filter?: LogTreeFilter,
 	nodeGroups: IWorkflowGroup[] = [],
 	subWorkflowNodeGroups: Record<string, IWorkflowGroup[]> = {},
+	liveSubExecutions: Record<string, RelatedExecution> = {},
 ): LogEntry[] {
 	return createLogTreeRec(filter, {
 		parent: undefined,
@@ -591,6 +596,7 @@ export function createLogTree(
 		isSubExecution: false,
 		nodeGroups,
 		subWorkflowNodeGroups,
+		liveSubExecutions,
 	});
 }
 
@@ -762,6 +768,14 @@ export function mergeStartData(
 
 export function hasSubExecution(entry: LogEntry): boolean {
 	return findSubExecutionLocator(entry) !== undefined;
+}
+
+/**
+ * Key for a still-running sub-execution: the node run that started it, scoped by
+ * its execution so nested sub-workflows stay distinct.
+ */
+export function liveSubExecutionKey(executionId: string, nodeName: string, runIndex: number) {
+	return `${executionId}:${nodeName}:${runIndex}`;
 }
 
 export function findSubExecutionLocator(entry: LogEntry): RelatedExecution | undefined {
@@ -1000,16 +1014,18 @@ export function isPlaceholderLog(treeNode: LogEntry): boolean {
  * TODO: use shallowRef() for execution data in workflows store to make this unnecessary.
  */
 export function copyExecutionData(executionData: IExecutionResponse): IExecutionResponse {
-	return {
-		...executionData,
-		data: createRunExecutionData({
-			...executionData.data,
-			resultData: {
-				...executionData.data?.resultData,
-				runData: Object.fromEntries(
-					Object.entries(executionData.data?.resultData.runData ?? {}).map(([k, v]) => [k, [...v]]),
-				),
-			},
-		}),
-	};
+	return { ...executionData, data: copyRunData(executionData.data) };
+}
+
+/** {@link copyExecutionData} for a bare run-execution-data payload. */
+export function copyRunData(data: IRunExecutionData | undefined): IRunExecutionData {
+	return createRunExecutionData({
+		...data,
+		resultData: {
+			...data?.resultData,
+			runData: Object.fromEntries(
+				Object.entries(data?.resultData.runData ?? {}).map(([k, v]) => [k, [...v]]),
+			),
+		},
+	});
 }

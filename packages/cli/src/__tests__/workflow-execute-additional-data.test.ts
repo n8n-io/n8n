@@ -4,6 +4,7 @@ import type { WorkflowEntity, Project, WorkflowHistory } from '@n8n/db';
 import {
 	ExecutionRepository,
 	ExecutionDataRepository,
+	UserRepository,
 	WorkflowPublishHistoryRepository,
 	WorkflowRepository,
 } from '@n8n/db';
@@ -32,11 +33,13 @@ import { CredentialsHelper } from '@/credentials-helper';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { EventService } from '@/events/event.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
+import { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service';
 import {
 	CredentialsPermissionChecker,
 	SubworkflowPolicyChecker,
 } from '@/executions/pre-execution-checks';
 import { ExternalHooks } from '@/external-hooks';
+import { Push } from '@/push';
 import { AgentWorkflowExecutionService } from '@/modules/agents/agent-workflow-execution.service';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import { OwnershipService } from '@/services/ownership.service';
@@ -130,6 +133,12 @@ describe('WorkflowExecuteAdditionalData', () => {
 	mockInstance(WorkflowPublishHistoryRepository);
 	mockInstance(DataTableProxyService);
 	mockInstance(WorkflowHookContextService);
+	// A sub-execution installs push hooks when its parent carries a push ref, and
+	// `mock<IWorkflowExecuteAdditionalData>()` stubs `pushRef` truthy, so these
+	// have to resolve here.
+	mockInstance(Push);
+	mockInstance(UserRepository);
+	mockInstance(ExecutionRedactionServiceProxy);
 	const workflowPublishedDataService = mockInstance(WorkflowPublishedDataService);
 	const workflowsConfig = Container.get(WorkflowsConfig);
 	afterEach(() => {

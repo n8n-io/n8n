@@ -4,7 +4,7 @@ import type {
 	LOGS_PANEL_STATE,
 } from '@/features/execution/logs/logs.constants';
 import type { INodeUi, LlmTokenUsageData } from '@/Interface';
-import type { IRunExecutionData, ITaskData, IWorkflowGroup } from 'n8n-workflow';
+import type { IRunExecutionData, ITaskData, IWorkflowGroup, RelatedExecution } from 'n8n-workflow';
 
 type BaseLogEntry = {
 	parent?: LogEntry;
@@ -70,6 +70,12 @@ export interface LogTreeCreationContext {
 	nodeGroups: IWorkflowGroup[];
 	/** Canvas groups of loaded sub-workflows, keyed by workflow id, applied when recursing into them */
 	subWorkflowNodeGroups: Record<string, IWorkflowGroup[]>;
+	/**
+	 * Sub-executions still in flight, keyed by the node run that started them (see
+	 * `liveSubExecutionKey`). Such a run has no `subExecution` metadata yet, so
+	 * this is what lets the log view nest it mid-flight.
+	 */
+	liveSubExecutions: Record<string, RelatedExecution>;
 }
 
 export interface LatestNodeInfo {
