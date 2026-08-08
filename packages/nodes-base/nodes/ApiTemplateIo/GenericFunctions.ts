@@ -2,29 +2,28 @@ import type {
 	IDataObject,
 	IExecuteFunctions,
 	IHttpRequestMethods,
+	IHttpRequestOptions,
 	ILoadOptionsFunctions,
 	IRequestOptions,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { jsonParse, NodeApiError } from 'n8n-workflow';
 
 export async function apiTemplateIoApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
 	endpoint: string,
-	qs = {},
-	body = {},
+	qs: IDataObject = {},
+	body: IDataObject = {},
 ) {
-	const options: IRequestOptions = {
+	const options: IHttpRequestOptions = {
 		headers: {
 			Accept: 'application/json',
 		},
-		uri: `https://api.apitemplate.io/v1${endpoint}`,
+		url: `https://api.apitemplate.io/v1${endpoint}`,
 		method,
 		qs,
 		body,
-		followRedirect: true,
-		followAllRedirects: true,
 		json: true,
 	};
 
@@ -37,7 +36,7 @@ export async function apiTemplateIoApiRequest(
 	}
 
 	try {
-		const response = await this.helpers.requestWithAuthentication.call(
+		const response = await this.helpers.httpRequestWithAuthentication.call(
 			this,
 			'apiTemplateIoApi',
 			options,
@@ -64,25 +63,29 @@ export async function loadResource(this: ILoadOptionsFunctions, resource: 'image
 	}));
 }
 
-export function validateJSON(json: string | object | undefined): any {
-	let result;
+/** Parses user-supplied JSON, returning `undefined` rather than throwing when it is malformed */
+export function validateJSON(
+	json: string | object | undefined,
+): IDataObject | IDataObject[] | undefined {
 	if (typeof json === 'object') {
-		return json;
+		return json as IDataObject;
+	}
+	if (json === undefined) {
+		return undefined;
 	}
 	try {
-		result = JSON.parse(json!);
-	} catch (exception) {
-		result = undefined;
+		return jsonParse<IDataObject | IDataObject[]>(json);
+	} catch {
+		return undefined;
 	}
-	return result;
 }
 
 export async function downloadImage(this: IExecuteFunctions, url: string) {
-	return await this.helpers.request({
-		uri: url,
+	return await this.helpers.httpRequest({
+		url,
 		method: 'GET',
 		json: false,
-		encoding: null,
+		encoding: 'arraybuffer',
 	});
 }
 
