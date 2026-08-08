@@ -130,6 +130,7 @@ async function mountColumn(
 		}>;
 		knowledgeBaseEnabled: boolean;
 		canEditAgent: boolean;
+		canExecuteAgent: boolean;
 	}> = {},
 ) {
 	const { default: AgentBuilderEditorColumn } = await import(
@@ -160,6 +161,7 @@ async function mountColumn(
 			appliedSkills: [],
 			connectedTriggers: [],
 			canEditAgent: overrides.canEditAgent ?? true,
+			canExecuteAgent: overrides.canExecuteAgent ?? true,
 			executionsDescription: '',
 		},
 		global: {
@@ -181,6 +183,14 @@ async function mountColumn(
 				AgentPanelHeader: true,
 				AgentAdvancedPanel: true,
 				AgentSessionsListView: true,
+				// Stubbed so this spec stays about the column's wiring: the real section
+				// reads datasets and cases, which is its own suite's concern.
+				AgentEvalsSection: {
+					name: 'AgentEvalsSection',
+					template: '<div data-testid="agent-evals-section" />',
+					props: ['projectId', 'agentId', 'disabled', 'canRun', 'generating'],
+					emits: ['generate'],
+				},
 			},
 		},
 	});
@@ -264,6 +274,34 @@ describe('AgentBuilderEditorColumn', () => {
 		const wrapper = await mountColumn({ activeMainTab: 'evals', canEditAgent: false });
 
 		expect(wrapper.getComponent({ name: 'AgentEvalsSection' }).props('disabled')).toBe(true);
+	});
+
+	it('identifies the agent to the evals section, which reads its own datasets', async () => {
+		const wrapper = await mountColumn({ activeMainTab: 'evals' });
+
+		const section = wrapper.getComponent({ name: 'AgentEvalsSection' });
+		expect(section.props('projectId')).toBe('project-1');
+		expect(section.props('agentId')).toBe('agent-1');
+	});
+
+	// Running is gated on execute, not edit: a project viewer holds the former and
+	// not the latter, and checking an agent behaves is what that role is for.
+	it('allows running evals for a user who cannot edit the agent', async () => {
+		const wrapper = await mountColumn({
+			activeMainTab: 'evals',
+			canEditAgent: false,
+			canExecuteAgent: true,
+		});
+
+		const section = wrapper.getComponent({ name: 'AgentEvalsSection' });
+		expect(section.props('disabled')).toBe(true);
+		expect(section.props('canRun')).toBe(true);
+	});
+
+	it('withholds running evals without the execute permission', async () => {
+		const wrapper = await mountColumn({ activeMainTab: 'evals', canExecuteAgent: false });
+
+		expect(wrapper.getComponent({ name: 'AgentEvalsSection' }).props('canRun')).toBe(false);
 	});
 
 	it('uses embedded session list spacing inside the Sessions tab panel', async () => {

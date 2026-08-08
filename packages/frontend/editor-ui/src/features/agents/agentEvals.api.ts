@@ -1,5 +1,9 @@
 import type {
 	AgentEvalDatasetRecord,
+	AgentEvalRunList,
+	AgentEvalRunRecord,
+	AgentEvalRunSummary,
+	CreateAgentEvalRunPayload,
 	GenerateDraftCasesOptions,
 	GenerateDraftCasesResult,
 } from '@n8n/api-types';
@@ -12,7 +16,10 @@ import { makeRestApiRequest } from '@n8n/rest-api-client';
 //
 // Reads the eval surface needs to render itself, and nothing more. Dataset
 // create/update/delete belong with the dataset-management UI that uses them;
-// run and result reads wait on their paginated response shapes.
+// per-case results stay out until something renders them.
+//
+// Cases are absent by design: they are rows of the dataset's Data Table, so they
+// are read and written through the Data Table client rather than a route here.
 const evalsPath = (projectId: string, agentId: string) =>
 	`/projects/${projectId}/agents/v2/${agentId}/evals`;
 
@@ -36,6 +43,74 @@ export const generateDraftCases = async (
 		context,
 		'POST',
 		`${evalsPath(projectId, agentId)}/generate`,
+		options,
+	);
+};
+
+// Resolves once the run is seeded, not once it finishes — a run executes the agent
+// per case, so progress comes from polling the summary route below.
+export const startRun = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	datasetId: string,
+	payload: CreateAgentEvalRunPayload = {},
+) => {
+	return await makeRestApiRequest<AgentEvalRunRecord>(
+		context,
+		'POST',
+		`${evalsPath(projectId, agentId)}/datasets/${datasetId}/runs`,
+		payload,
+	);
+};
+
+// Status and tallies with no per-case rows, which is what makes it cheap enough to
+// poll. `counts.pending` folds `new` and `running`, so it reaching zero is exactly
+// "settled" without reading the status enum.
+export const getRunSummary = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	runId: string,
+) => {
+	return await makeRestApiRequest<AgentEvalRunSummary>(
+		context,
+		'GET',
+		`${evalsPath(projectId, agentId)}/runs/${runId}/summary`,
+	);
+};
+
+// Asks the runner to stop; the cases already in flight settle on their own, so the
+// caller keeps polling the summary until nothing is pending. Gated on `agent:update`
+// server-side rather than `agent:execute` — cancelling stops work someone else may
+// have started, which is a write.
+export const cancelRun = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	runId: string,
+) => {
+	return await makeRestApiRequest<AgentEvalRunRecord>(
+		context,
+		'POST',
+		`${evalsPath(projectId, agentId)}/runs/${runId}/cancel`,
+	);
+};
+
+// Newest first, and paginated because nothing caps how many runs a dataset
+// accumulates. Read with `take: 1` to recover the in-flight run after a reload —
+// without it a page refresh mid-run shows an idle view that never updates.
+export const listRuns = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	datasetId: string,
+	options: { skip?: number; take?: number } = {},
+) => {
+	return await makeRestApiRequest<AgentEvalRunList>(
+		context,
+		'GET',
+		`${evalsPath(projectId, agentId)}/datasets/${datasetId}/runs`,
 		options,
 	);
 };
