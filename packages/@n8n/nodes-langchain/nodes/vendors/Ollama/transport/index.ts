@@ -9,7 +9,7 @@ type RequestParameters = {
 	headers?: IDataObject;
 	body?: IDataObject | string;
 	qs?: IDataObject;
-	option?: IDataObject;
+	option?: IDataObject & { timeout?: number };
 };
 
 export async function apiRequest(

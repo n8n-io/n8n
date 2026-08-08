@@ -87,6 +87,13 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
+				displayName: 'Timeout',
+				name: 'timeout',
+				default: 60000,
+				description: 'Maximum amount of time a request is allowed to take in milliseconds',
+				type: 'number',
+			},
+			{
 				displayName: 'Temperature',
 				name: 'temperature',
 				type: 'number',
@@ -343,6 +350,7 @@ const properties: INodeProperties[] = [
 
 interface MessageOptions {
 	system?: string;
+	timeout?: number;
 	temperature?: number;
 	think?: boolean;
 	top_p?: number;
@@ -384,6 +392,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const text = this.getNodeParameter('text', i, '') as string;
 	const simplify = this.getNodeParameter('simplify', i, true) as boolean;
 	const { think, ...options } = this.getNodeParameter('options', i, {}) as MessageOptions;
+	const timeout = options.timeout;
 
 	let images: string[];
 
@@ -429,6 +438,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	];
 
 	const processedOptions = { ...options };
+	delete processedOptions.timeout;
 	if (processedOptions.stop && typeof processedOptions.stop === 'string') {
 		processedOptions.stop = processedOptions.stop
 			.split(',')
@@ -446,6 +456,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	const response: OllamaChatResponse = await apiRequest.call(this, 'POST', '/api/chat', {
 		body,
+		option: timeout === undefined ? undefined : { timeout },
 	});
 
 	if (simplify) {
