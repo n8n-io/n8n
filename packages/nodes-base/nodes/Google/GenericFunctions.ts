@@ -80,11 +80,13 @@ export async function getGoogleAccessToken(
 		| ICredentialTestFunctions
 		| IPollFunctions,
 	credentials: IDataObject,
-	service: GoogleServiceAccount,
+	/** Omit when passing `scopeOverride` instead, e.g. to test user-configured HTTP Request node scopes. */
+	service: GoogleServiceAccount | undefined,
+	scopeOverride?: string[],
 ): Promise<IDataObject> {
 	//https://developers.google.com/identity/protocols/oauth2/service-account#httprest
 
-	const scopes = googleServiceAccountScopes[service];
+	const scopes = scopeOverride ?? (service ? googleServiceAccountScopes[service] : []);
 
 	const privateKey = formatPemBlock(credentials.privateKey as string);
 	credentials.email = ((credentials.email as string) || '').trim();
