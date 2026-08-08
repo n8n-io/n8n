@@ -17,8 +17,13 @@ const mockLoadOptionsFunctions = {
 describe('Search Functions', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		(mockLoadOptionsFunctions.getNodeParameter as Mock).mockReset();
+		(mockLoadOptionsFunctions.getCredentials as Mock).mockReset().mockResolvedValue({
+			server: 'https://api.github.com',
+		});
+		(mockLoadOptionsFunctions.helpers.requestWithAuthentication as Mock).mockReset();
+		(mockLoadOptionsFunctions.getCurrentNodeParameter as Mock).mockReset();
 	});
-
 	describe('getUsers', () => {
 		it('should fetch users', async () => {
 			const filter = 'test-user';
@@ -48,11 +53,10 @@ describe('Search Functions', () => {
 				'githubOAuth2Api',
 				expect.objectContaining({
 					method: 'GET',
-					qs: expect.objectContaining({ page: 1 }),
+					qs: expect.objectContaining({ q: filter, page: 1 }),
 				}),
 			);
 		});
-
 		it('should handle pagination', async () => {
 			const filter = 'test-user';
 			const responseData = {
@@ -77,7 +81,6 @@ describe('Search Functions', () => {
 				paginationToken: '2',
 			});
 		});
-
 		it('should use paginationToken when provided', async () => {
 			const filter = 'test-user';
 			const paginationToken = '3';
@@ -111,8 +114,45 @@ describe('Search Functions', () => {
 				}),
 			);
 		});
-	});
 
+		it('should fetch authenticated user and organizations without a filter', async () => {
+			(mockLoadOptionsFunctions.helpers.requestWithAuthentication as Mock)
+				.mockResolvedValueOnce({ login: 'test-user', html_url: 'https://github.com/test-user' })
+				.mockResolvedValueOnce([
+					{ login: 'test-org-1', html_url: 'https://github.com/test-org-1' },
+					{ login: 'test-org-2', html_url: 'https://github.com/test-org-2' },
+				]);
+
+			const result = await getUsers.call(mockLoadOptionsFunctions);
+
+			expect(result).toEqual({
+				results: [
+					{ name: 'test-user', value: 'test-user', url: 'https://github.com/test-user' },
+					{ name: 'test-org-1', value: 'test-org-1', url: 'https://github.com/test-org-1' },
+					{ name: 'test-org-2', value: 'test-org-2', url: 'https://github.com/test-org-2' },
+				],
+				paginationToken: undefined,
+			});
+
+			expect(mockLoadOptionsFunctions.helpers.requestWithAuthentication).toHaveBeenNthCalledWith(
+				1,
+				'githubOAuth2Api',
+				expect.objectContaining({
+					method: 'GET',
+					uri: 'https://api.github.com/user',
+				}),
+			);
+			expect(mockLoadOptionsFunctions.helpers.requestWithAuthentication).toHaveBeenNthCalledWith(
+				2,
+				'githubOAuth2Api',
+				expect.objectContaining({
+					method: 'GET',
+					uri: 'https://api.github.com/user/orgs',
+					qs: expect.objectContaining({ page: 1, per_page: 100 }),
+				}),
+			);
+		});
+	});
 	describe('getRepositories', () => {
 		it('should fetch repositories', async () => {
 			const filter = 'test-repo';
@@ -148,7 +188,6 @@ describe('Search Functions', () => {
 				paginationToken: undefined,
 			});
 		});
-
 		it('should fetch repositories without filter', async () => {
 			const owner = 'test-owner';
 			const responseData = {
@@ -182,7 +221,6 @@ describe('Search Functions', () => {
 				paginationToken: undefined,
 			});
 		});
-
 		it('should use paginationToken when provided', async () => {
 			const filter = 'test-repo';
 			const paginationToken = '3';
@@ -227,6 +265,14 @@ describe('Search Functions', () => {
 			);
 		});
 
+		it('should not fetch repositories before an owner is selected', async () => {
+			(mockLoadOptionsFunctions.getCurrentNodeParameter as Mock).mockReturnValue('');
+
+			const result = await getRepositories.call(mockLoadOptionsFunctions);
+
+			expect(result).toEqual({ results: [] });
+			expect(mockLoadOptionsFunctions.helpers.requestWithAuthentication).not.toHaveBeenCalled();
+		});
 		it('should handle empty repositories', async () => {
 			const filter = 'test-repo';
 			const owner = 'test-owner';
@@ -248,7 +294,6 @@ describe('Search Functions', () => {
 			});
 		});
 	});
-
 	describe('getWorkflows', () => {
 		it('should fetch workflows', async () => {
 			const owner = 'test-owner';
@@ -278,7 +323,6 @@ describe('Search Functions', () => {
 				paginationToken: undefined,
 			});
 		});
-
 		it('should handle pagination', async () => {
 			const owner = 'test-owner';
 			const repository = 'test-repo';
@@ -307,7 +351,6 @@ describe('Search Functions', () => {
 				paginationToken: '2',
 			});
 		});
-
 		it('should use paginationToken when provided and return next page token', async () => {
 			const paginationToken = '1';
 			const owner = 'test-owner';
@@ -346,6 +389,16 @@ describe('Search Functions', () => {
 			);
 		});
 
+		it('should not fetch workflows before owner and repository are selected', async () => {
+			(mockLoadOptionsFunctions.getCurrentNodeParameter as Mock)
+				.mockReturnValueOnce('')
+				.mockReturnValueOnce('test-repo');
+
+			const result = await getWorkflows.call(mockLoadOptionsFunctions);
+
+			expect(result).toEqual({ results: [] });
+			expect(mockLoadOptionsFunctions.helpers.requestWithAuthentication).not.toHaveBeenCalled();
+		});
 		it('should handle empty workflows', async () => {
 			const owner = 'test-owner';
 			const repository = 'test-repo';
@@ -369,8 +422,17 @@ describe('Search Functions', () => {
 			});
 		});
 	});
-
 	describe('getRefs', () => {
+		it('should not fetch refs before owner and repository are selected', async () => {
+			(mockLoadOptionsFunctions.getCurrentNodeParameter as Mock)
+				.mockReturnValueOnce('test-owner')
+				.mockReturnValueOnce('');
+
+			const result = await getRefs.call(mockLoadOptionsFunctions);
+
+			expect(result).toEqual({ results: [] });
+			expect(mockLoadOptionsFunctions.helpers.requestWithAuthentication).not.toHaveBeenCalled();
+		});
 		it('should fetch branches and tags using git/refs endpoint', async () => {
 			const owner = 'test-owner';
 			const repository = 'test-repo';
@@ -406,7 +468,6 @@ describe('Search Functions', () => {
 				paginationToken: undefined,
 			});
 		});
-
 		it('should use paginationToken when provided', async () => {
 			const paginationToken = '3';
 			const owner = 'test-owner';
@@ -442,7 +503,6 @@ describe('Search Functions', () => {
 				}),
 			);
 		});
-
 		it('should filter refs based on the provided filter', async () => {
 			const owner = 'test-owner';
 			const repository = 'test-repo';
@@ -470,7 +530,6 @@ describe('Search Functions', () => {
 				results: [{ name: 'v1.0.0', value: 'v1.0.0', description: 'Tag: v1.0.0' }],
 			});
 		});
-
 		it('should handle pagination correctly', async () => {
 			const owner = 'test-owner';
 			const repository = 'test-repo';
