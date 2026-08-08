@@ -80,13 +80,14 @@ export const description: INodeProperties[] = [
 
 export interface FromFileOptions {
 	failOnCsvBufferError?: boolean;
+	enableCellDates?: boolean;
 }
 
 export async function execute(
 	this: IExecuteFunctions,
 	items: INodeExecutionData[],
 	fileFormatProperty = 'fileFormat',
-	{ failOnCsvBufferError = false }: FromFileOptions = {},
+	{ failOnCsvBufferError = false, enableCellDates = false }: FromFileOptions = {},
 ) {
 	const returnData: INodeExecutionData[] = [];
 	let fileExtension;
@@ -169,7 +170,10 @@ export async function execute(
 					});
 				}
 			} else {
-				const xlsxOptions: ParsingOptions = { raw: options.rawData as boolean };
+				const xlsxOptions: ParsingOptions = {
+					raw: options.rawData as boolean,
+					...(enableCellDates && { cellDates: !options.rawData }),
+				};
 
 				let buffer: Buffer;
 				if (binaryData.id) {
