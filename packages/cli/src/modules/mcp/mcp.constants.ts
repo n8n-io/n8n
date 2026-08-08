@@ -50,6 +50,24 @@ export const MCP_CALL_AGENT_TOOL_NAME = 'call_agent';
 export const MCP_CREATE_AGENT_TOOL_NAME = 'create_agent';
 
 /**
+ * Tools that trigger workflow executions or heavy creation. They get a tighter
+ * rate limit than read tools (see `McpConfig.rateLimitWriteTool`), matched
+ * against the `Mcp-Name` header the 2026-07-28 revision requires on
+ * `tools/call`. The header is safe to key on: the SDK rejects any request whose
+ * `Mcp-Name` header disagrees with the body's tool name, so a client can't dodge
+ * the limit by mislabeling the header.
+ */
+export const RATE_LIMITED_WRITE_TOOLS = new Set<string>([
+	'execute_workflow',
+	'test_workflow',
+	'create_workflow_from_code',
+]);
+
+/** Whether a request's `Mcp-Name` header names a rate-limited write tool. */
+export const isRateLimitedWriteTool = (mcpName: string | undefined): boolean =>
+	mcpName !== undefined && RATE_LIMITED_WRITE_TOOLS.has(mcpName);
+
+/**
  * Triggers supported in production mode for MCP execution
  */
 export const SUPPORTED_PRODUCTION_MCP_TRIGGERS = {

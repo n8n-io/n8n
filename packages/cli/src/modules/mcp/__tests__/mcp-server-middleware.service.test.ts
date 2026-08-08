@@ -1,18 +1,23 @@
-import type { Mocked } from 'vitest';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import type { Request, Response, NextFunction } from 'express';
-import { mock, mockDeep } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
+import type { Mocked } from 'vitest';
+import { mock, mockDeep } from 'vitest-mock-extended';
 
 import { JwtService } from '@/services/jwt.service';
 import { OAuthTokenVerifierProxy } from '@/services/oauth-token-verifier-proxy.service';
 import { Telemetry } from '@/telemetry';
 
 import { McpServerApiKeyService } from '../mcp-api-key.service';
-import { MCP_CLIENT_INFO_META_KEY, MCP_PROTOCOL_VERSION_META_KEY } from '../mcp.constants';
 import { McpProtectedResource } from '../mcp-protected-resource';
 import { McpServerMiddlewareService } from '../mcp-server-middleware.service';
+import type { McpConfig } from '../mcp.config';
+import {
+	isRateLimitedWriteTool,
+	MCP_CLIENT_INFO_META_KEY,
+	MCP_PROTOCOL_VERSION_META_KEY,
+} from '../mcp.constants';
 
 const mockReqWith = (authHeader: string | undefined, body?: any) => {
 	const req = mockDeep<Request>();
@@ -31,6 +36,7 @@ let mcpServerApiKeyService: Mocked<McpServerApiKeyService>;
 let oauthTokenVerifier: Mocked<OAuthTokenVerifierProxy>;
 let mcpProtectedResource: Mocked<McpProtectedResource>;
 let telemetry: Mocked<Telemetry>;
+let mcpConfig: McpConfig;
 let service: McpServerMiddlewareService;
 
 describe('McpServerMiddlewareService', () => {
@@ -39,6 +45,7 @@ describe('McpServerMiddlewareService', () => {
 		oauthTokenVerifier = mockInstance(OAuthTokenVerifierProxy) as Mocked<OAuthTokenVerifierProxy>;
 		mcpProtectedResource = mockInstance(McpProtectedResource) as Mocked<McpProtectedResource>;
 		telemetry = mockInstance(Telemetry);
+		mcpConfig = mock<McpConfig>({ rateLimitWriteTool: 60 });
 
 		service = new McpServerMiddlewareService(
 			mcpServerApiKeyService,
@@ -46,6 +53,7 @@ describe('McpServerMiddlewareService', () => {
 			mcpProtectedResource,
 			jwtService,
 			telemetry,
+			mcpConfig,
 		);
 	});
 
@@ -479,6 +487,43 @@ describe('McpServerMiddlewareService', () => {
 			expect(res.status).toHaveBeenCalledWith(401);
 			expect(res.send).toHaveBeenCalledWith({ message: 'Unauthorized' });
 			expect(next).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('getToolRateLimitMiddleware', () => {
+		// inProduction is false under NODE_ENV=test, so the limiter is a pass-through
+		// here: this asserts local/dev traffic is never throttled. The active-limit
+		// path is exercised in production only, and the policy (which tools) is
+		// covered by the isRateLimitedWriteTool tests below.
+		it('is a pass-through outside production', async () => {
+			const req = mockReqWith(undefined, {});
+			const res = mockDeep<Response>();
+			const next = vi.fn() as NextFunction;
+
+			await service.getToolRateLimitMiddleware()(req, res, next);
+
+			expect(next).toHaveBeenCalledTimes(1);
+			expect(res.status).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('isRateLimitedWriteTool', () => {
+		it.each(['execute_workflow', 'test_workflow', 'create_workflow_from_code'])(
+			'caps the write tool %s',
+			(tool) => {
+				expect(isRateLimitedWriteTool(tool)).toBe(true);
+			},
+		);
+
+		it.each(['search_workflows', 'get_workflow_details', 'list_credentials'])(
+			'does not cap the read tool %s',
+			(tool) => {
+				expect(isRateLimitedWriteTool(tool)).toBe(false);
+			},
+		);
+
+		it('does not cap a request with no Mcp-Name header', () => {
+			expect(isRateLimitedWriteTool(undefined)).toBe(false);
 		});
 	});
 });
