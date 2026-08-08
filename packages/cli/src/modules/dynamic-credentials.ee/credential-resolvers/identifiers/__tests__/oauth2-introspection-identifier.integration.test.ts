@@ -79,7 +79,9 @@ describe('OAuth2TokenIntrospectionIdentifier (integration)', () => {
 				});
 				res.writeHead(200, { 'content-type': 'application/json' });
 				if (req.url === '/introspect') {
-					res.end(JSON.stringify({ active: true, sub: 'user-123' }));
+					// `client_id` names the party the token was issued to, which the
+					// resolver matches against its own configured client id.
+					res.end(JSON.stringify({ active: true, sub: 'user-123', client_id: 'test-client' }));
 				} else {
 					// Discovery: the server itself dictates the second-hop endpoint.
 					res.end(

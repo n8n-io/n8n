@@ -18,6 +18,8 @@ export const credentialResolverSchema = z.object({
 	type: credentialResolverTypeNameSchema,
 	config: z.string(), // Encrypted config
 	decryptedConfig: credentialResolverConfigSchema.optional(),
+	/** Set when the stored config predates a requirement the resolver type now enforces. */
+	needsConfigurationUpdate: z.boolean().optional(),
 	createdAt: z.coerce.date(),
 	updatedAt: z.coerce.date(),
 });
