@@ -4,6 +4,7 @@ import { type AuthenticatedRequest } from '@n8n/db';
 import { Body, Post, Get, Patch, RestController, GlobalScope } from '@n8n/decorators';
 import type { Response } from 'express';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
 import { listQueryMiddleware } from '@/middlewares';
@@ -31,20 +32,41 @@ export class McpSettingsController {
 	@GlobalScope('mcp:manage')
 	@Patch('/settings')
 	async updateSettings(req: AuthenticatedRequest, _res: Response, @Body dto: UpdateMcpSettingsDto) {
+		if (dto.mcpAccessEnabled === undefined && dto.autoExposeNewWorkflows === undefined) {
+			throw new BadRequestError(
+				'Provide at least one of mcpAccessEnabled or autoExposeNewWorkflows',
+			);
+		}
+
 		if (this.instanceSettingsLoaderConfig.mcpManagedByEnv) {
 			throw new ForbiddenError('MCP settings are managed via environment variables');
 		}
-		const enabled = dto.mcpAccessEnabled;
-		await this.mcpSettingsService.setEnabled(enabled);
-		this.eventService.emit('mcp-access-updated', { user: req.user, enabled });
-		try {
-			await this.moduleRegistry.refreshModuleSettings('mcp');
-		} catch (error) {
-			this.logger.warn('Failed to sync MCP settings to module registry', {
-				cause: error instanceof Error ? error.message : String(error),
+
+		const response: { mcpAccessEnabled?: boolean; autoExposeNewWorkflows?: boolean } = {};
+
+		if (dto.mcpAccessEnabled !== undefined) {
+			await this.mcpSettingsService.setEnabled(dto.mcpAccessEnabled);
+			this.eventService.emit('mcp-access-updated', {
+				user: req.user,
+				enabled: dto.mcpAccessEnabled,
 			});
+			response.mcpAccessEnabled = dto.mcpAccessEnabled;
 		}
-		return { mcpAccessEnabled: enabled };
+
+		// Disabling access implicitly turns auto-expose off too
+		if (dto.mcpAccessEnabled === false) {
+			await this.mcpSettingsService.setAutoExposeNewWorkflows(false);
+			response.autoExposeNewWorkflows = false;
+		}
+
+		if (dto.autoExposeNewWorkflows !== undefined) {
+			await this.mcpSettingsService.setAutoExposeNewWorkflows(dto.autoExposeNewWorkflows);
+			response.autoExposeNewWorkflows = dto.autoExposeNewWorkflows;
+		}
+
+		await this.refreshMcpModuleSettings();
+
+		return response;
 	}
 
 	@GlobalScope('mcpApiKey:create')
@@ -114,6 +136,20 @@ export class McpSettingsController {
 
 		void this.mcpSettingsService.broadcastWorkflowMCPAvailabilityChanged(changedWorkflows);
 
+		if (result.autoExposeNewWorkflows !== undefined) {
+			await this.refreshMcpModuleSettings();
+		}
+
 		return result;
+	}
+
+	private async refreshMcpModuleSettings() {
+		try {
+			await this.moduleRegistry.refreshModuleSettings('mcp');
+		} catch (error) {
+			this.logger.warn('Failed to sync MCP settings to module registry', {
+				cause: error instanceof Error ? error.message : String(error),
+			});
+		}
 	}
 }

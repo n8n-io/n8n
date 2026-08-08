@@ -97,6 +97,50 @@ describe('McpSettingsService', () => {
 		});
 	});
 
+	describe('getAutoExposeNewWorkflows', () => {
+		test('returns false by default when no setting exists', async () => {
+			cacheService.get.mockResolvedValue(undefined);
+			findByKey.mockResolvedValue(null);
+
+			await expect(service.getAutoExposeNewWorkflows()).resolves.toBe(false);
+			expect(findByKey).toHaveBeenCalledWith('mcp.autoExposeNewWorkflows');
+			expect(cacheService.set).toHaveBeenCalledWith('mcp.autoExposeNewWorkflows', 'false');
+		});
+
+		test('returns the cached value without hitting the database', async () => {
+			cacheService.get.mockResolvedValue('true');
+
+			await expect(service.getAutoExposeNewWorkflows()).resolves.toBe(true);
+			expect(findByKey).not.toHaveBeenCalled();
+		});
+
+		test('reads through to the database on a cache miss', async () => {
+			cacheService.get.mockResolvedValue(undefined);
+			findByKey.mockResolvedValue(
+				mock<Settings>({
+					key: 'mcp.autoExposeNewWorkflows',
+					value: 'true',
+					loadOnStartup: true,
+				}),
+			);
+
+			await expect(service.getAutoExposeNewWorkflows()).resolves.toBe(true);
+			expect(findByKey).toHaveBeenCalledWith('mcp.autoExposeNewWorkflows');
+		});
+	});
+
+	describe('setAutoExposeNewWorkflows', () => {
+		test('persists with loadOnStartup and primes the cache', async () => {
+			await service.setAutoExposeNewWorkflows(true);
+
+			expect(upsert).toHaveBeenCalledWith(
+				{ key: 'mcp.autoExposeNewWorkflows', value: 'true', loadOnStartup: true },
+				['key'],
+			);
+			expect(cacheService.set).toHaveBeenCalledWith('mcp.autoExposeNewWorkflows', 'true');
+		});
+	});
+
 	describe('getAllowedRedirectUris', () => {
 		test('returns empty array by default when no setting exists', async () => {
 			findByKey.mockResolvedValue(null);
@@ -681,6 +725,7 @@ describe('McpSettingsService', () => {
 						checksum: expect.stringMatching(/^[a-f0-9]{64}$/),
 					},
 				],
+				autoExposeNewWorkflows: true,
 			});
 			expect(result).not.toHaveProperty('updatedIds');
 			expect(result).not.toHaveProperty('unchangedIds');
@@ -895,6 +940,78 @@ describe('McpSettingsService', () => {
 				user,
 				['workflow:update'],
 			);
+		});
+
+		describe('auto-expose side effect', () => {
+			test.each([
+				{ availableInMCP: true, allWorkflows: true, expectEnabled: true },
+				{ availableInMCP: false, allWorkflows: true, expectEnabled: false },
+				{ availableInMCP: true, allWorkflows: false, expectEnabled: false },
+			])(
+				'availableInMCP=$availableInMCP allWorkflows=$allWorkflows -> auto-expose enabled=$expectEnabled',
+				async ({ availableInMCP, allWorkflows, expectEnabled }) => {
+					findByKey.mockResolvedValue(null);
+					workflowFinderService.findAllWorkflowIdsForUser.mockResolvedValue([]);
+					workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(
+						new Set(['wf-1']),
+					);
+
+					const dto = allWorkflows
+						? new UpdateWorkflowsAvailabilityDto({ availableInMCP, allWorkflows: true })
+						: new UpdateWorkflowsAvailabilityDto({ availableInMCP, workflowIds: ['wf-1'] });
+
+					const result = await service.bulkSetAvailableInMCP(user, dto);
+
+					if (expectEnabled) {
+						expect(upsert).toHaveBeenCalledWith(
+							{ key: 'mcp.autoExposeNewWorkflows', value: 'true', loadOnStartup: true },
+							['key'],
+						);
+						expect(result.autoExposeNewWorkflows).toBe(true);
+					} else {
+						expect(upsert).not.toHaveBeenCalledWith(
+							expect.objectContaining({ key: 'mcp.autoExposeNewWorkflows' }),
+							['key'],
+						);
+					}
+				},
+			);
+
+			test('does not fail the bulk update if enabling auto-expose throws', async () => {
+				workflowFinderService.findAllWorkflowIdsForUser.mockResolvedValue([]);
+				upsert.mockImplementationOnce(() => {
+					throw new Error('db unavailable');
+				});
+
+				const dto = new UpdateWorkflowsAvailabilityDto({
+					availableInMCP: true,
+					allWorkflows: true,
+				});
+
+				const result = await service.bulkSetAvailableInMCP(user, dto);
+
+				expect(result.autoExposeNewWorkflows).toBeUndefined();
+			});
+
+			test('handles a non-Error rejection when enabling auto-expose throws', async () => {
+				workflowFinderService.findAllWorkflowIdsForUser.mockResolvedValue([]);
+				upsert.mockImplementationOnce(() => {
+					throw 'db unavailable';
+				});
+
+				const dto = new UpdateWorkflowsAvailabilityDto({
+					availableInMCP: true,
+					allWorkflows: true,
+				});
+
+				const result = await service.bulkSetAvailableInMCP(user, dto);
+
+				expect(result.autoExposeNewWorkflows).toBeUndefined();
+				expect(logger.warn).toHaveBeenCalledWith(
+					'Failed to enable auto-expose after bulk-exposing all workflows',
+					{ cause: 'db unavailable' },
+				);
+			});
 		});
 	});
 

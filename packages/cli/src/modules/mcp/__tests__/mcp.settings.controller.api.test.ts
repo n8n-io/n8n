@@ -218,7 +218,7 @@ describe('PATCH /mcp/settings', () => {
 			.send({ mcpAccessEnabled: false });
 
 		expect(response.statusCode).toBe(200);
-		expect(response.body.data).toEqual({ mcpAccessEnabled: false });
+		expect(response.body.data).toEqual({ mcpAccessEnabled: false, autoExposeNewWorkflows: false });
 
 		const stored = await Container.get(SettingsRepository).findByKey(settingsKey);
 		expect(stored?.value).toBe('false');
@@ -238,6 +238,12 @@ describe('PATCH /mcp/settings', () => {
 			.authAgentFor(owner)
 			.patch('/mcp/settings')
 			.send({ mcpAccessEnabled: 'yes' });
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	test('rejects an empty body with 400', async () => {
+		const response = await testServer.authAgentFor(owner).patch('/mcp/settings').send({});
 
 		expect(response.statusCode).toBe(400);
 	});
@@ -473,6 +479,7 @@ describe('PATCH /mcp/workflows/toggle-access', () => {
 			unchangedCount: 0,
 			skippedCount: 0,
 			failedCount: 0,
+			autoExposeNewWorkflows: true,
 		});
 		expect(await readAvailableInMCP(memberWf.id)).toBe(true);
 		expect(await readAvailableInMCP(ownerWf.id)).toBeUndefined();
@@ -490,6 +497,7 @@ describe('PATCH /mcp/workflows/toggle-access', () => {
 			unchangedCount: 1,
 			skippedCount: 0,
 			failedCount: 0,
+			autoExposeNewWorkflows: true,
 		});
 		expect(await readAvailableInMCP(ownerWf.id)).toBe(true);
 	});

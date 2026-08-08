@@ -21,6 +21,7 @@ import type { UpdateWorkflowsAvailabilityDto } from './dto/update-workflows-avai
 
 const KEY = 'mcp.access.enabled';
 const REDIRECT_URIS_KEY = 'mcp.oauth.allowedRedirectUris';
+const AUTO_EXPOSE_NEW_WORKFLOWS_KEY = 'mcp.autoExposeNewWorkflows';
 
 const BULK_CHUNK_SIZE = 500;
 
@@ -34,6 +35,7 @@ type BulkSetAvailableInMCPResult = {
 	changedWorkflows: WorkflowMCPAvailabilityChange[];
 	updatedIds?: string[];
 	unchangedIds?: string[];
+	autoExposeNewWorkflows?: boolean;
 };
 
 type WorkflowMCPAvailabilityChange = {
@@ -105,6 +107,31 @@ export class McpSettingsService {
 		await this.cacheService.set(REDIRECT_URIS_KEY, JSON.stringify(uris));
 	}
 
+	async getAutoExposeNewWorkflows(): Promise<boolean> {
+		const cached = await this.cacheService.get<string>(AUTO_EXPOSE_NEW_WORKFLOWS_KEY);
+
+		if (cached !== undefined) {
+			return cached === 'true';
+		}
+
+		const row = await this.settingsRepository.findByKey(AUTO_EXPOSE_NEW_WORKFLOWS_KEY);
+
+		const enabled = row?.value === 'true';
+
+		await this.cacheService.set(AUTO_EXPOSE_NEW_WORKFLOWS_KEY, enabled.toString());
+
+		return enabled;
+	}
+
+	async setAutoExposeNewWorkflows(enabled: boolean): Promise<void> {
+		await this.settingsRepository.upsert(
+			{ key: AUTO_EXPOSE_NEW_WORKFLOWS_KEY, value: enabled.toString(), loadOnStartup: true },
+			['key'],
+		);
+
+		await this.cacheService.set(AUTO_EXPOSE_NEW_WORKFLOWS_KEY, enabled.toString());
+	}
+
 	async bulkSetAvailableInMCP(
 		user: User,
 		dto: UpdateWorkflowsAvailabilityDto,
@@ -116,6 +143,18 @@ export class McpSettingsService {
 			throw new BadRequestError(
 				'Provide exactly one of workflowIds, projectId, folderId or allWorkflows',
 			);
+		}
+
+		let autoExposeNewWorkflowsEnabled: boolean | undefined;
+		if (allWorkflows && availableInMCP) {
+			try {
+				await this.setAutoExposeNewWorkflows(true);
+				autoExposeNewWorkflowsEnabled = true;
+			} catch (error) {
+				this.logger.warn('Failed to enable auto-expose after bulk-exposing all workflows', {
+					cause: error instanceof Error ? error.message : String(error),
+				});
+			}
 		}
 
 		const candidateIds = await this.resolveCandidateIds(user, {
@@ -136,6 +175,9 @@ export class McpSettingsService {
 				failedCount: 0,
 				changedWorkflows: [],
 				...(isWorkflowIdsScope ? { updatedIds: [], unchangedIds: [] } : {}),
+				...(autoExposeNewWorkflowsEnabled !== undefined
+					? { autoExposeNewWorkflows: autoExposeNewWorkflowsEnabled }
+					: {}),
 			};
 		}
 
@@ -249,6 +291,9 @@ export class McpSettingsService {
 			failedCount,
 			changedWorkflows,
 			...(isWorkflowIdsScope ? { updatedIds: writtenIds, unchangedIds: noOpIds } : {}),
+			...(autoExposeNewWorkflowsEnabled !== undefined
+				? { autoExposeNewWorkflows: autoExposeNewWorkflowsEnabled }
+				: {}),
 		};
 	}
 
