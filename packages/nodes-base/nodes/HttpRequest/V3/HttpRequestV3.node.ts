@@ -305,6 +305,7 @@ export class HttpRequestV3 implements INodeType {
 					proxy,
 					timeout,
 					allowUnauthorizedCerts,
+					requestUncompressedResponse,
 					queryParameterArrays,
 					response,
 					lowercaseHeaders,
@@ -314,6 +315,7 @@ export class HttpRequestV3 implements INodeType {
 					proxy: string;
 					timeout: number;
 					allowUnauthorizedCerts: boolean;
+					requestUncompressedResponse?: boolean;
 					queryParameterArrays: 'indices' | 'brackets' | 'repeat';
 					response: {
 						response: {
@@ -632,6 +634,16 @@ export class HttpRequestV3 implements INodeType {
 					} else {
 						requestOptions.headers!.accept =
 							'application/json,text/html,application/xhtml+xml,application/xml,text/*;q=0.9, image/*;q=0.8, */*;q=0.7';
+					}
+				}
+
+				if (requestUncompressedResponse) {
+					const headers = requestOptions.headers!;
+					const hasAcceptEncoding = Object.keys(headers).some(
+						(k) => k.toLowerCase() === 'accept-encoding',
+					);
+					if (!hasAcceptEncoding) {
+						headers['Accept-Encoding'] = 'identity';
 					}
 				}
 
