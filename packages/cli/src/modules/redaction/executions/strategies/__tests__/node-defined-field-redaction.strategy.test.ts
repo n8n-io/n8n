@@ -18,7 +18,12 @@ const makeContext = (overrides: Partial<RedactionContext> = {}): RedactionContex
 });
 
 const makeExecution = (
-	nodes: Array<{ name: string; type: string; typeVersion: number }>,
+	nodes: Array<{
+		name: string;
+		type: string;
+		typeVersion: number;
+		parameters?: Record<string, unknown>;
+	}>,
 	runData: Record<
 		string,
 		Array<{
@@ -48,7 +53,7 @@ const makeExecution = (
 				type: n.type,
 				typeVersion: n.typeVersion,
 				position: [0, 0] as [number, number],
-				parameters: {},
+				parameters: n.parameters ?? {},
 			})),
 		},
 	}) as unknown as RedactableExecution;
@@ -427,6 +432,196 @@ describe('NodeDefinedFieldRedactionStrategy', () => {
 						unknown
 					>
 				).authorization,
+			).toEqual(REDACTED_MARKER);
+		});
+	});
+
+	describe('sensitiveOutputFieldsOptOutPath', () => {
+		const optOutDescription = (sensitiveOutputFields: string[], optOutPath: string) => ({
+			name: 'n8n-nodes-base.webhook',
+			sensitiveOutputFields,
+			sensitiveOutputFieldsOptOutPath: optOutPath,
+		});
+
+		it('skips redaction when the per-instance opt-out parameter is true', async () => {
+			nodeTypes.getByNameAndVersion.mockReturnValue({
+				description: optOutDescription(['headers.authorization'], 'options.exposeAuthHeaders'),
+			} as ReturnType<typeof nodeTypes.getByNameAndVersion>);
+
+			const execution = makeExecution(
+				[
+					{
+						name: 'Webhook',
+						type: 'n8n-nodes-base.webhook',
+						typeVersion: 1,
+						parameters: { options: { exposeAuthHeaders: true } },
+					},
+				],
+				{
+					Webhook: [
+						{ data: { main: [[{ json: { headers: { authorization: 'Bearer secret' } } }]] } },
+					],
+				},
+			);
+
+			await strategy.apply(execution, makeContext());
+
+			expect(
+				(
+					execution.data.resultData.runData.Webhook[0].data!.main[0]![0].json.headers as Record<
+						string,
+						unknown
+					>
+				).authorization,
+			).toBe('Bearer secret');
+		});
+
+		it('still redacts when the opt-out parameter is false', async () => {
+			nodeTypes.getByNameAndVersion.mockReturnValue({
+				description: optOutDescription(['headers.authorization'], 'options.exposeAuthHeaders'),
+			} as ReturnType<typeof nodeTypes.getByNameAndVersion>);
+
+			const execution = makeExecution(
+				[
+					{
+						name: 'Webhook',
+						type: 'n8n-nodes-base.webhook',
+						typeVersion: 1,
+						parameters: { options: { exposeAuthHeaders: false } },
+					},
+				],
+				{
+					Webhook: [
+						{ data: { main: [[{ json: { headers: { authorization: 'Bearer secret' } } }]] } },
+					],
+				},
+			);
+
+			await strategy.apply(execution, makeContext());
+
+			expect(
+				(
+					execution.data.resultData.runData.Webhook[0].data!.main[0]![0].json.headers as Record<
+						string,
+						unknown
+					>
+				).authorization,
+			).toEqual(REDACTED_MARKER);
+		});
+
+		it('still redacts when the opt-out parameter is missing entirely (default)', async () => {
+			nodeTypes.getByNameAndVersion.mockReturnValue({
+				description: optOutDescription(['headers.authorization'], 'options.exposeAuthHeaders'),
+			} as ReturnType<typeof nodeTypes.getByNameAndVersion>);
+
+			const execution = makeExecution(
+				[
+					{
+						name: 'Webhook',
+						type: 'n8n-nodes-base.webhook',
+						typeVersion: 1,
+						parameters: {},
+					},
+				],
+				{
+					Webhook: [
+						{ data: { main: [[{ json: { headers: { authorization: 'Bearer secret' } } }]] } },
+					],
+				},
+			);
+
+			await strategy.apply(execution, makeContext());
+
+			expect(
+				(
+					execution.data.resultData.runData.Webhook[0].data!.main[0]![0].json.headers as Record<
+						string,
+						unknown
+					>
+				).authorization,
+			).toEqual(REDACTED_MARKER);
+		});
+
+		it('still redacts when the opt-out parameter is a truthy non-boolean (fail-safe)', async () => {
+			nodeTypes.getByNameAndVersion.mockReturnValue({
+				description: optOutDescription(['headers.authorization'], 'options.exposeAuthHeaders'),
+			} as ReturnType<typeof nodeTypes.getByNameAndVersion>);
+
+			const execution = makeExecution(
+				[
+					{
+						name: 'Webhook',
+						type: 'n8n-nodes-base.webhook',
+						typeVersion: 1,
+						parameters: { options: { exposeAuthHeaders: 'true' as unknown } },
+					},
+				],
+				{
+					Webhook: [
+						{ data: { main: [[{ json: { headers: { authorization: 'Bearer secret' } } }]] } },
+					],
+				},
+			);
+
+			await strategy.apply(execution, makeContext());
+
+			expect(
+				(
+					execution.data.resultData.runData.Webhook[0].data!.main[0]![0].json.headers as Record<
+						string,
+						unknown
+					>
+				).authorization,
+			).toEqual(REDACTED_MARKER);
+		});
+
+		it('does not affect other nodes that lack an opt-out path on their description', async () => {
+			nodeTypes.getByNameAndVersion
+				.mockReturnValueOnce({
+					description: optOutDescription(['headers.authorization'], 'options.exposeAuthHeaders'),
+				} as ReturnType<typeof nodeTypes.getByNameAndVersion>)
+				.mockReturnValueOnce({
+					description: mockNodeDescription(['body.password']),
+				} as ReturnType<typeof nodeTypes.getByNameAndVersion>);
+
+			const execution = makeExecution(
+				[
+					{
+						name: 'NodeA',
+						type: 'n8n-nodes-base.webhook',
+						typeVersion: 1,
+						parameters: { options: { exposeAuthHeaders: true } },
+					},
+					{
+						name: 'NodeB',
+						type: 'n8n-nodes-base.httpRequest',
+						typeVersion: 1,
+						parameters: { options: { exposeAuthHeaders: true } },
+					},
+				],
+				{
+					NodeA: [{ data: { main: [[{ json: { headers: { authorization: 'secret-a' } } }]] } }],
+					NodeB: [{ data: { main: [[{ json: { body: { password: 'hunter2' } } }]] } }],
+				},
+			);
+
+			await strategy.apply(execution, makeContext());
+
+			expect(
+				(
+					execution.data.resultData.runData.NodeA[0].data!.main[0]![0].json.headers as Record<
+						string,
+						unknown
+					>
+				).authorization,
+			).toBe('secret-a');
+			expect(
+				(
+					execution.data.resultData.runData.NodeB[0].data!.main[0]![0].json.body as Record<
+						string,
+						unknown
+					>
+				).password,
 			).toEqual(REDACTED_MARKER);
 		});
 	});
