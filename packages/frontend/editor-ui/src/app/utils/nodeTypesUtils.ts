@@ -19,6 +19,7 @@ import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { isJsonKeyObject } from '@/app/utils/typesUtils';
 import {
+	getActiveCredentialTypes,
 	isResourceLocatorValue,
 	type IDataObject,
 	type INode,
@@ -570,6 +571,30 @@ export const isMatchingField = (
 	}
 	return false;
 };
+
+/**
+ * Returns the credential type names in `node.credentials` that are not used by the
+ * node's current configuration (see `getActiveCredentialTypes` in n8n-workflow).
+ *
+ * Returns an empty array when the active set cannot be determined statically
+ * (e.g. unknown node type or an expression in a credential-type parameter), since
+ * removing a credential that may be in use is worse than keeping a stale one.
+ */
+export function getInactiveCredentials(
+	node: INodeUi,
+	nodeType: INodeTypeDescription | null,
+): string[] {
+	if (!node.credentials) {
+		return [];
+	}
+
+	const activeTypes = getActiveCredentialTypes(node, nodeType);
+	if (!activeTypes) {
+		return [];
+	}
+
+	return Object.keys(node.credentials).filter((type) => !activeTypes.has(type));
+}
 
 export const getThemedValue = <T extends string>(
 	value: Themed<T> | T | undefined,
