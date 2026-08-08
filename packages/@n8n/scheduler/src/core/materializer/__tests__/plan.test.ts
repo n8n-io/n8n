@@ -25,6 +25,7 @@ const makeJob = (overrides: Partial<ScheduledJob> = {}): ScheduledJob => ({
 	maxAttempts: 1,
 	misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 	misfireGraceSeconds: 60,
+	ownerKey: null,
 	...overrides,
 });
 

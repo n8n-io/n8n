@@ -154,8 +154,26 @@ describe('ScheduleTriggerJobRegistrar', () => {
 						firstRunAt: NEXT_NINE,
 					},
 				],
-				ScheduledJobMisfirePolicy.Coalesce,
+				ScheduledJobMisfirePolicy.CoalesceOwner,
 			);
+		});
+
+		it('provisions every rule of a multi-rule node under the owner-wide coalesce policy', async () => {
+			const session = makeRegistrar().createSession();
+			const collector = session.createCollector(workflow, scheduleNode);
+			collector.registerCron(dailyAtNine, vi.fn());
+			collector.registerCron(everyThreeWeeksMonday, vi.fn());
+			collector.registerCron(
+				{ expression: '0 30 9 * * *' as CronExpression, recurrence: { activated: false } },
+				vi.fn(),
+			);
+
+			await session.commit(WORKFLOW_ID, NODE_ID);
+
+			expect(jobProvisioner.provision).toHaveBeenCalledTimes(1);
+			const [, , , , desired, misfirePolicy] = jobProvisioner.provision.mock.calls.at(-1)!;
+			expect(desired).toHaveLength(3);
+			expect(misfirePolicy).toBe(ScheduledJobMisfirePolicy.CoalesceOwner);
 		});
 
 		it('provisions a 5-field custom cron (no seconds) and plans its first fire', async () => {
@@ -355,7 +373,7 @@ describe('ScheduleTriggerJobRegistrar', () => {
 				SCHEDULE_TRIGGER_TASK_TYPE,
 				{ workflowId: WORKFLOW_ID, nodeId: NODE_ID },
 				[],
-				ScheduledJobMisfirePolicy.Coalesce,
+				ScheduledJobMisfirePolicy.CoalesceOwner,
 			);
 		});
 

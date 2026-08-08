@@ -91,4 +91,11 @@ export interface ScheduledJob {
 	misfirePolicy: ScheduledJobMisfirePolicy;
 	/** How late an occurrence may be before {@link misfirePolicy} applies to it. */
 	misfireGraceSeconds: number;
+	/**
+	 * Opaque identity of whatever provisioned the job; jobs under `coalesce_owner`
+	 * sharing a value collapse their catch-up runs; `null` when the job has no
+	 * owner. Required rather than optional so an adapter that forgets to map it
+	 * fails to compile instead of silently making every job its own group.
+	 */
+	ownerKey: string | null;
 }

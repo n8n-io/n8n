@@ -51,15 +51,20 @@ export const RecurringCronUnitList = Object.values(RecurringCronUnit);
 /**
  * What a schedule does with occurrences that missed their grace window:
  * - `coalesce`: run the most recent one and drop the rest
+ * - `coalesce_owner`: `coalesce`, plus collapse catch-ups across the jobs
+ *   sharing an owner into one
  * - `skip`: drop all of them and resume from the next occurrence
  *
  * Either way the schedule's clock advances past the backlog, so it never replays.
  *
- * A one-off schedule has no next occurrence to resume from, so `coalesce` still runs
- * it, late, while `skip` discards it for good.
+ * A one-off schedule has no next occurrence to resume from, so `coalesce` still
+ * runs it, late, while `skip` discards it for good. Under `coalesce_owner` it
+ * runs late only if it's the owner's winning member; a sibling's later catch-up
+ * can still cost it its one and only run.
  */
 export const ScheduledJobMisfirePolicy = {
 	Coalesce: 'coalesce',
+	CoalesceOwner: 'coalesce_owner',
 	Skip: 'skip',
 } as const;
 

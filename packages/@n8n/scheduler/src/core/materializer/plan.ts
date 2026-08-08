@@ -24,9 +24,16 @@ export interface OccurrencePlan {
 
 	/**
 	 * The one occurrence a `coalesce` policy kept to stand in for a backlog, always the
-	 * first of {@link occurrences}. `null` when no policy applied.
+	 * first of {@link occurrences}. `null` when no policy applied, or a sibling in
+	 * its owner group won instead.
 	 */
 	catchUpAt: Date | null;
+
+	/**
+	 * The instant before which this job's already-recorded pending occurrences
+	 * should be retired.
+	 */
+	retireBefore: Date | null;
 
 	/**
 	 * The next instant not yet recorded,
@@ -56,6 +63,7 @@ export function planOccurrences(
 			occurrences: [],
 			skippedOccurrences: 0,
 			catchUpAt: null,
+			retireBefore: null,
 			nextRunAt: null,
 			lastFiredAt: job.lastFiredAt,
 		};
@@ -78,6 +86,7 @@ export function planOccurrences(
 		occurrences,
 		skippedOccurrences: due.length - occurrences.length,
 		catchUpAt,
+		retireBefore: catchUpAt,
 		nextRunAt: fire.done ? null : fire.value,
 		// Tracks every instant this pass consumed, not only the recorded ones: a
 		// discarded occurrence is still one the schedule has moved past.

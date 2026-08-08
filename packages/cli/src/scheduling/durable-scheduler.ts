@@ -13,6 +13,7 @@ import { InstanceSettings, Tracing } from 'n8n-core';
 
 import { PrometheusSchedulerMetricsService } from '@/metrics/prometheus/scheduler-metrics.service';
 
+import { withOwnerKeys } from './owner-key';
 import { PollTriggerTaskHandler } from './poll-trigger-node/poll-trigger-task-handler';
 import { ScheduleTriggerTaskHandler } from './schedule-trigger-node/schedule-trigger-task-handler';
 import { createSchedulerTracer } from './scheduler-tracer';
@@ -170,8 +171,10 @@ export function buildMaterializerTransaction(
 		await dataSource.transaction(
 			async (manager) =>
 				await work({
-					claimDueJobs: async (limit, lookaheadMs) =>
-						await jobs.claimDue(manager, limit, lookaheadMs),
+					claimDueJobs: async (limit, lookaheadMs) => {
+						const claimed = await jobs.claimDue(manager, limit, lookaheadMs);
+						return claimed === undefined ? undefined : withOwnerKeys(claimed);
+					},
 					recordOccurrences: async (occurrences) =>
 						await tasks.insertIgnoringDuplicates(manager, occurrences),
 					retireSuperseded: async (superseded) => await tasks.updateToMissed(manager, superseded),

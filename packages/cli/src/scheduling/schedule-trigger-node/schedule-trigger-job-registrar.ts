@@ -308,7 +308,7 @@ export class ScheduleTriggerJobRegistrar {
 			SCHEDULE_TRIGGER_TASK_TYPE,
 			{ ...payload },
 			desired,
-			ScheduledJobMisfirePolicy.Coalesce,
+			ScheduledJobMisfirePolicy.CoalesceOwner,
 		);
 
 		this.logger.debug('Provisioned durable schedules for trigger node', {
