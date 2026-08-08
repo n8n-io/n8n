@@ -26,7 +26,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
 	'update:open': [value: boolean];
-	updated: [];
+	updated: [workflowReviewRequestId: string];
 }>();
 
 const i18n = useI18n();
@@ -118,7 +118,7 @@ const submit = async () => {
 
 		void reviewStatusStore.fetchStatus(workflowId);
 		emit('update:open', false);
-		emit('updated');
+		emit('updated', workflowReviewRequestId);
 	} catch (error) {
 		// Whatever went wrong (e.g. the review closed concurrently), refetch the review state.
 		void reviewStatusStore.fetchStatus(workflowId);
