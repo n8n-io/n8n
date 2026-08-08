@@ -42,7 +42,9 @@ import { ResponseError } from '@n8n/rest-api-client';
 // Hoisted: the vue-router mock factory runs before module-level consts initialize
 const { mockRouterPush, mockRouterResolve } = vi.hoisted(() => ({
 	mockRouterPush: vi.fn(),
-	mockRouterResolve: vi.fn().mockReturnValue({ href: '/workflow-review-requests/review-1' }),
+	mockRouterResolve: vi.fn(({ params }: { params: { reviewRequestId: string } }) => ({
+		href: `/workflow-review-requests/${params.reviewRequestId}`,
+	})),
 }));
 
 vi.mock('vue-router', async (importOriginal) => ({
@@ -650,7 +652,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			expect(mockShowToast).toHaveBeenCalledWith({
 				type: 'success',
 				title: 'Latest changes submitted to the existing review',
-				message: '<a href="/workflow-review-requests/review-1">Open review</a>',
+				message: '<a href="/workflow-review-requests/req-1">Open review</a>',
 				onClick: expect.any(Function),
 			});
 			const toastConfig = mockShowToast.mock.calls.at(-1)?.[0];
