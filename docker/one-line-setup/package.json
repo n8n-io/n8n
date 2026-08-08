@@ -1,0 +1,23 @@
+{
+  "name": "one-line-setup",
+  "private": true,
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "exec:osx": "npm run bundle && npm run build && npm run sign:osx && ./dist/get-n8n",
+    "bundle": "esbuild index.js --bundle --platform=node --format=esm --outfile=dist/bundle.mjs",
+    "build": "node --build-sea sea-config.json",
+    "sign:osx": "codesign --sign - ./dist/get-n8n"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@clack/prompts": "^1.7.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.1"
+  }
+}

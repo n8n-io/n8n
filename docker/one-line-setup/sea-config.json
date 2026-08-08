@@ -1,0 +1,6 @@
+{
+  "main": "./dist/bundle.mjs",
+  "mainFormat": "module",
+  "output": "dist/get-n8n",
+  "disableExperimentalSEAWarning": true
+}
