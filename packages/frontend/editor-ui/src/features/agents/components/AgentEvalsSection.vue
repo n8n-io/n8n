@@ -31,10 +31,7 @@ const i18n = useI18n();
 const toast = useToast();
 const store = useAgentEvalsStore();
 
-// Defaulted rather than trusted: the store's own contract returns an array, but a
-// consumer that renders this section without configuring the store hands back
-// `undefined`, and a computed that throws takes the whole render down with it.
-const datasets = computed(() => store.getDatasets(props.agentId) ?? []);
+const datasets = computed(() => store.getDatasets(props.agentId));
 // Datasets come back newest-first, and generation makes exactly one; a picker is
 // the case-list view's to add.
 const dataset = computed(() => datasets.value[0]);
@@ -58,7 +55,7 @@ const load = async () => {
 
 	hasSettled.value = false;
 	try {
-		const fetched = (await store.fetchDatasets(props.projectId, props.agentId)) ?? [];
+		const fetched = await store.fetchDatasets(props.projectId, props.agentId);
 		const newest = fetched[0];
 		if (!newest) return;
 		await store.resolveLatestRunId(props.projectId, props.agentId, newest.id);
