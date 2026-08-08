@@ -581,7 +581,7 @@ urlEncode.doc = {
 			name: 'allChars',
 			optional: true,
 			description:
-				'Whether to encode characters that are part of the URI syntax (e.g. <code>=</code>, <code>?</code>)',
+				'Whether to preserve URI syntax characters (e.g. <code>=</code>, <code>?</code>, <code>&</code>) instead of encoding them. When true, uses encodeURI; when false (default), uses encodeURIComponent which encodes all special characters.',
 			default: 'false',
 			type: 'boolean',
 		},
@@ -604,7 +604,7 @@ urlDecode.doc = {
 			name: 'allChars',
 			optional: true,
 			description:
-				'Whether to decode characters that are part of the URI syntax (e.g. <code>=</code>, <code>?</code>)',
+				'Whether to decode only percent-encoded characters while preserving URI syntax characters (e.g. <code>=</code>, <code>?</code>). When true, uses decodeURI; when false (default), uses decodeURIComponent which decodes all percent-encoded characters.',
 			default: 'false',
 			type: 'boolean',
 		},
@@ -693,7 +693,7 @@ isUrl.doc = {
 
 isEmpty.doc = {
 	name: 'isEmpty',
-	description: 'Returns <code>true</code> if the string has no characters or is <code>null</code>',
+	description: 'Returns <code>true</code> if the string has no characters',
 	section: 'validation',
 	returnType: 'boolean',
 	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-isEmpty',
@@ -803,7 +803,7 @@ hash.doc = {
 			name: 'algo',
 			optional: true,
 			description:
-				'The hashing algorithm to use. One of <code>md5</code>, <code>base64</code>, <code>sha1</code>, <code>sha224</code>, <code>sha256</code>, <code>sha384</code>, <code>sha512</code>, <code>sha3</code>, <code>ripemd160</code>\n        ',
+				'The hashing algorithm to use. One of <code>md5</code>, <code>base64</code>, <code>sha1</code>, <code>sha224</code>, <code>sha256</code>, <code>sha384</code>, <code>sha512</code>, <code>sha3</code>\n        ',
 			default: '"md5"',
 			type: 'string',
 		},
