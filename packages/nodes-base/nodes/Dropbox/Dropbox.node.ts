@@ -130,6 +130,12 @@ export class Dropbox implements INodeType {
 						action: 'Move a file',
 					},
 					{
+						name: 'Share',
+						value: 'share',
+						description: 'Share a file',
+						action: 'Share a file',
+					},
+					{
 						name: 'Upload',
 						value: 'upload',
 						description: 'Upload a file',
@@ -138,7 +144,6 @@ export class Dropbox implements INodeType {
 				],
 				default: 'upload',
 			},
-
 			{
 				displayName: 'Operation',
 				name: 'operation',
@@ -179,6 +184,12 @@ export class Dropbox implements INodeType {
 						value: 'move',
 						description: 'Move a folder',
 						action: 'Move a folder',
+					},
+					{
+						name: 'Share',
+						value: 'share',
+						description: 'Share a folder',
+						action: 'Share a folder',
 					},
 				],
 				default: 'create',
@@ -326,6 +337,25 @@ export class Dropbox implements INodeType {
 					},
 				},
 				hint: 'The name of the output binary field to put the file in',
+			},
+
+			// ----------------------------------
+			//         file/folder:share
+			// ----------------------------------
+			{
+				displayName: 'Share Path',
+				name: 'path',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: ['share'],
+						resource: ['file', 'folder'],
+					},
+				},
+				placeholder: '/invoices/2019/invoice_1.pdf',
+				description: 'The path to share. Can be a single file or a whole folder.',
 			},
 
 			// ----------------------------------
@@ -742,6 +772,27 @@ export class Dropbox implements INodeType {
 						});
 
 						endpoint = 'https://content.dropboxapi.com/2/files/download';
+					} else if (operation === 'share') {
+						// ----------------------------------
+						//         share
+						// ----------------------------------
+
+						requestMethod = 'POST';
+						headers['Content-Type'] = 'application/json';
+
+						endpoint = 'https://api.dropboxapi.com/2/sharing/create_shared_link_with_settings';
+
+						options = { json: false };
+
+						body = {
+							path: this.getNodeParameter('path', i) as string,
+							settings: {
+								access: 'viewer',
+								allow_download: true,
+								audience: 'public',
+								requested_visibility: 'public',
+							},
+						};
 					} else if (operation === 'upload') {
 						// ----------------------------------
 						//         upload
@@ -805,6 +856,27 @@ export class Dropbox implements INodeType {
 						Object.assign(body, filters);
 
 						endpoint = 'https://api.dropboxapi.com/2/files/list_folder';
+					} else if (operation === 'share') {
+						// ----------------------------------
+						//         share
+						// ----------------------------------
+
+						requestMethod = 'POST';
+						headers['Content-Type'] = 'application/json';
+
+						endpoint = 'https://api.dropboxapi.com/2/sharing/create_shared_link_with_settings';
+
+						options = { json: false };
+
+						body = {
+							path: this.getNodeParameter('path', i) as string,
+							settings: {
+								access: 'viewer',
+								allow_download: true,
+								audience: 'public',
+								requested_visibility: 'public',
+							},
+						};
 					}
 				} else if (resource === 'search') {
 					if (operation === 'query') {
@@ -944,6 +1016,13 @@ export class Dropbox implements INodeType {
 						Buffer.from(responseData as string),
 						filePathDownload,
 					);
+				} else if (resource === 'file' && operation === 'share') {
+					const data = JSON.parse(responseData as string);
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(data as IDataObject[]),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionData);
 				} else if (resource === 'folder' && operation === 'list') {
 					const propNames: { [key: string]: string } = {
 						id: 'id',
@@ -980,6 +1059,13 @@ export class Dropbox implements INodeType {
 						);
 						returnData.push(...executionData);
 					}
+				} else if (resource === 'folder' && operation === 'share') {
+					const data = JSON.parse(responseData as string);
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(data as IDataObject[]),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionData);
 				} else if (resource === 'search' && operation === 'query') {
 					let data = responseData;
 					if (returnAll) {
