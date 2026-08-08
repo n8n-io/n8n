@@ -234,6 +234,7 @@ const {
 	showValidationWarning,
 	isResolvable,
 	connectedByMe,
+	connectedAccountIdentifier,
 	useCustomOAuth,
 	activeNodeType,
 	credentialTypeName,
@@ -596,6 +597,7 @@ async function onResolvableChange(value: boolean) {
 	// doesn't apply to the new mode, and `oauthTokenData` (mirrored true for a connected
 	// end-user credential) would otherwise be read as "connected" once static.
 	connectedByMe.value = false;
+	connectedAccountIdentifier.value = undefined;
 	credentialData.value = {
 		...credentialData.value,
 		oauthTokenData: null as unknown as CredentialInformation,
@@ -1138,6 +1140,11 @@ async function oAuthCredentialAuthorize() {
 
 			void credentialsStore.fetchAllCredentials().then(() => {
 				nodeHelpers.updateNodesCredentialsIssues();
+				// The account just connected is only known server-side, so pick it up
+				// from the refreshed list rather than guessing at who the user is.
+				connectedAccountIdentifier.value = credentialId.value
+					? credentialsStore.getCredentialById(credentialId.value)?.connectedAccountIdentifier
+					: undefined;
 			});
 
 			// Close the window
@@ -1208,6 +1215,7 @@ async function onDisconnectMyConnection(): Promise<void> {
 		} else {
 			await credentialsStore.disconnectOauthToken({ id: credentialId.value });
 		}
+		connectedAccountIdentifier.value = undefined;
 		credentialData.value = {
 			...credentialData.value,
 			oauthTokenData: null as unknown as CredentialInformation,
@@ -1253,6 +1261,7 @@ async function onAuthTypeChanged(payload: CredentialModeOption): Promise<void> {
 		// this session (or carried over from the loaded credential) makes the banner
 		// misreport "connected" for a mode that was never actually saved.
 		connectedByMe.value = false;
+		connectedAccountIdentifier.value = undefined;
 		credentialData.value = {
 			...credentialData.value,
 			oauthTokenData: null as unknown as CredentialInformation,
@@ -1418,6 +1427,7 @@ const { width } = useElementSize(credNameRef);
 							:is-private-credentials-enabled="isPrivateCredentialsEnabled && !isInstanceCredential"
 							:is-resolvable="isResolvable"
 							:connected-by-me="connectedByMe"
+							:connected-account-identifier="connectedAccountIdentifier"
 							:is-new-credential="isNewCredential"
 							:managed-oauth-available="managedOAuthAvailable"
 							:use-custom-oauth="useCustomOAuth"
