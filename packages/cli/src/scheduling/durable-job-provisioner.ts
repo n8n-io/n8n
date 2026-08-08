@@ -156,15 +156,18 @@ export class DurableJobProvisioner {
 				// Jobs freshly inserted or redefined this pass; their first window is
 				// seeded before the transaction commits (see `seedInitialOccurrences`).
 				const seededJobIds = new Set<number>();
+				// `missedAfter` is computed from the grace, so only a grace change makes a
+				// queued task stale. Recomputing on a policy change would move an
+				// already-overdue deadline into the future.
 				const outdatedPolicyJobIds: number[] = [];
+				const outdatedGraceJobIds: number[] = [];
 				const result = await work({
 					findExisting: async () => {
 						const rows = await this.jobs.findManyByWorkflowNode(manager, workflowId, nodeId);
 						for (const row of rows) {
-							if (
-								row.misfirePolicy !== misfirePolicy ||
-								row.misfireGraceSeconds !== misfireGraceSeconds
-							) {
+							const graceChanged = row.misfireGraceSeconds !== misfireGraceSeconds;
+							if (graceChanged) outdatedGraceJobIds.push(row.id);
+							if (graceChanged || row.misfirePolicy !== misfirePolicy) {
 								outdatedPolicyJobIds.push(row.id);
 							}
 						}
@@ -218,7 +221,7 @@ export class DurableJobProvisioner {
 				// Queued tasks were stamped with the previous grace; recompute their deadline.
 				await this.tasks.updateMissedAfterForJobs(
 					manager,
-					outdatedPolicyJobIds,
+					outdatedGraceJobIds,
 					misfireGraceSeconds,
 				);
 				// After all of provisioning's own writes (including withdrawing a

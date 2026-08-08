@@ -27,7 +27,7 @@ export class ScheduleTrigger implements INodeType {
 		icon: 'node:schedule-trigger',
 		iconColor: 'black',
 		group: ['trigger', 'schedule'],
-		version: [1, 1.1, 1.2, 1.3],
+		version: [1, 1.1, 1.2, 1.3, 1.4],
 		description: 'Triggers the workflow on a given schedule',
 		eventTriggerDescription: '',
 		activationMessage:
@@ -426,6 +426,24 @@ export class ScheduleTrigger implements INodeType {
 						],
 					},
 				],
+			},
+			{
+				displayName: 'If Execution Is Missed',
+				name: 'misfirePolicy',
+				type: 'options',
+				default: 'skip',
+				options: [
+					{ name: 'Run the Most Recent Missed Execution', value: 'coalesce' },
+					{ name: "Don't Run Missed Executions", value: 'skip' },
+				],
+				hint: 'Applies once an execution is later than its configured grace period',
+				isNodeSetting: true,
+				noDataExpression: true, // read at activation, so an expression would never be resolved
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 1.4 } }],
+					},
+				},
 			},
 			{
 				// Temporary escape hatch for the durable-scheduler rollout (preview to

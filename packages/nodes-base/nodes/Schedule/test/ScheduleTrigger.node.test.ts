@@ -1,4 +1,5 @@
 import * as n8nWorkflow from 'n8n-workflow';
+import { NodeHelpers, type INodeProperties } from 'n8n-workflow';
 
 import { testTriggerNode } from '@test/nodes/TriggerHelpers';
 
@@ -14,6 +15,47 @@ describe('ScheduleTrigger', () => {
 		vi.clearAllMocks();
 		vi.useFakeTimers();
 		vi.setSystemTime(mockDate);
+	});
+
+	describe('description', () => {
+		const node = new ScheduleTrigger();
+		const { properties } = node.description;
+
+		it('includes 1.4 in the version array', () => {
+			expect(node.description.version).toContain(1.4);
+		});
+
+		it('defines misfirePolicy as a node setting offering exactly two values, defaulting to skip', () => {
+			const misfirePolicy = properties.find((property) => property.name === 'misfirePolicy');
+
+			expect(misfirePolicy).toMatchObject({
+				type: 'options',
+				default: 'skip',
+				isNodeSetting: true,
+				noDataExpression: true,
+				options: [
+					{ name: 'Run the Most Recent Missed Execution', value: 'coalesce' },
+					{ name: "Don't Run Missed Executions", value: 'skip' },
+				],
+			});
+		});
+
+		it.each<[number, boolean]>([
+			[1.3, false],
+			[1.4, true],
+		])('shows misfirePolicy at typeVersion %s: %s', (typeVersion, shown) => {
+			const misfirePolicy = properties.find((property) => property.name === 'misfirePolicy');
+			expect(misfirePolicy).toBeDefined();
+
+			expect(
+				NodeHelpers.displayParameter(
+					{},
+					misfirePolicy as INodeProperties,
+					{ typeVersion },
+					node.description,
+				),
+			).toBe(shown);
+		});
 	});
 
 	describe('trigger', () => {

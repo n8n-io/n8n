@@ -166,6 +166,22 @@ describe('DurableJobProvisioner', () => {
 			expect(summary.unchanged).toEqual([{ id: 10, name: 'wf:node:0' }]);
 		});
 
+		it("leaves the deadline of a policy-only change's queued tasks untouched", async () => {
+			jobs.findManyByWorkflowNode.mockResolvedValue([jobRow()]);
+
+			await provisioner.provision(
+				'wf',
+				'node',
+				'poll-trigger',
+				{},
+				[desiredJob('wf:node:0')],
+				ScheduledJobMisfirePolicy.Skip,
+			);
+
+			expect(jobs.updateMisfirePolicy).toHaveBeenCalledWith(manager, [10], expect.anything());
+			expect(tasks.updateMissedAfterForJobs).toHaveBeenCalledWith(manager, [], 90);
+		});
+
 		it('reconciles the grace of a job whose schedule is unchanged', async () => {
 			jobs.findManyByWorkflowNode.mockResolvedValue([jobRow({ misfireGraceSeconds: 30 })]);
 
