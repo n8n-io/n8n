@@ -132,11 +132,11 @@ describe('WorkflowReviewAutoCloseService', () => {
 		expect(logger.error).toHaveBeenCalled();
 	});
 
-	describe('afterWorkflowDeleted', () => {
+	describe('afterWorkflowsDeleted', () => {
 		it('closes the requests the delete orphaned, outside any lock', async () => {
 			requestRepository.closeOrphanedOpenRequests.mockResolvedValue(['req-9']);
 
-			await service.afterWorkflowDeleted('wf-1');
+			await service.afterWorkflowsDeleted(['wf-1', 'wf-2']);
 
 			// A single atomic statement pair, so it needs no lock — and must not take one
 			// after a delete, where camping on the create lock would serialize submissions.
@@ -148,7 +148,7 @@ describe('WorkflowReviewAutoCloseService', () => {
 		it('stays quiet when the delete orphaned nothing', async () => {
 			requestRepository.closeOrphanedOpenRequests.mockResolvedValue([]);
 
-			await service.afterWorkflowDeleted('wf-1');
+			await service.afterWorkflowsDeleted(['wf-1']);
 
 			expect(logger.info).not.toHaveBeenCalled();
 		});
@@ -157,7 +157,7 @@ describe('WorkflowReviewAutoCloseService', () => {
 		it('swallows repository errors, unlike the pre-delete hook', async () => {
 			requestRepository.closeOrphanedOpenRequests.mockRejectedValue(new Error('db down'));
 
-			await expect(service.afterWorkflowDeleted('wf-1')).resolves.toBeUndefined();
+			await expect(service.afterWorkflowsDeleted(['wf-1'])).resolves.toBeUndefined();
 
 			expect(logger.error).toHaveBeenCalled();
 		});
