@@ -2017,6 +2017,42 @@ describe('WorkflowService', () => {
 			expect(updateCall?.[1]?.[2]).toEqual(expectedActor);
 			expect(afterUpdateCall?.[1]?.[2]).toEqual(expectedActor);
 		});
+
+		// Bulk import paths (e.g. the n8n-packages workflow importer) pass entities
+		// that may carry `isArchived` from the imported payload. Archiving must only
+		// happen through `archive()`, which runs its side effects (review auto-close,
+		// events) — so `update()` must never persist the flag. If this test breaks,
+		// those import paths silently gain an archive bypass.
+		test('does not persist isArchived from the update payload', async () => {
+			const workflow = mock<WorkflowEntity>({
+				id: WORKFLOW_ID,
+				isArchived: false,
+				versionId: 'v1',
+				nodes: [],
+				connections: {},
+				settings: {},
+				activeVersionId: undefined as unknown as string,
+				tags: [],
+			});
+			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(workflow);
+			workflowRepositoryMock.findOne.mockResolvedValue(workflow);
+
+			const user = mock<User>({
+				id: 'user-1',
+				role: mock<Role>({ slug: 'global:admin' }),
+			});
+
+			await workflowService.update(
+				user,
+				{ nodes: [], connections: {}, isArchived: true } as unknown as WorkflowEntity,
+				WORKFLOW_ID,
+			);
+
+			expect(workflowRepositoryMock.update).toHaveBeenCalledWith(
+				WORKFLOW_ID,
+				expect.not.objectContaining({ isArchived: expect.anything() }),
+			);
+		});
 	});
 
 	describe('archive() and unarchive() hooks', () => {

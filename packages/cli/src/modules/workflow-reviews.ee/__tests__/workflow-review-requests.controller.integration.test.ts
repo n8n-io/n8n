@@ -2185,7 +2185,7 @@ describe('GET /workflow-review-requests/summary', () => {
 		expect(response.body.data).toEqual({ open: 1, closed: 0 });
 	});
 
-	test('does not count an open review orphaned by a workflow hard delete', async () => {
+	test('still counts an open review orphaned by a workflow hard delete until a sweep closes it', async () => {
 		await seedInboxRequests();
 		const orphan = await requestRepository.createRequest(
 			{
@@ -2197,17 +2197,16 @@ describe('GET /workflow-review-requests/summary', () => {
 			{},
 		);
 		const workflow = await linkToNewWorkflow(orphan.id);
-		// Bypasses the auto-close hook: the cascade removes the link row and
-		// leaves the request open — as the folder cascade or a create/delete race would
+		// Bypasses the auto-close hook and the sweep: the cascade removes the link
+		// row and leaves the request open — visible until the next delete sweeps it
 		await workflowEntityRepository.delete({ id: workflow.id });
 
-		// Owner exercises the global scope, member the project-scoped filter.
-		// The closed seed request has no link rows and must stay counted.
+		// Owner exercises the global scope, member the project-scoped filter
 		const ownerResponse = await ownerAgent.get('/workflow-review-requests/summary').expect(200);
-		expect(ownerResponse.body.data).toEqual({ open: 1, closed: 1 });
+		expect(ownerResponse.body.data).toEqual({ open: 2, closed: 1 });
 
 		const memberResponse = await memberAgent.get('/workflow-review-requests/summary').expect(200);
-		expect(memberResponse.body.data).toEqual({ open: 1, closed: 1 });
+		expect(memberResponse.body.data).toEqual({ open: 2, closed: 1 });
 	});
 
 	test('returns 403 when feature is disabled', async () => {
@@ -2247,7 +2246,7 @@ describe('GET /workflow-review-requests/inbox', () => {
 		expect(response.body.data.hasMore).toBe(false);
 	});
 
-	test('omits an open review orphaned by a workflow hard delete', async () => {
+	test('still lists an open review orphaned by a workflow hard delete until a sweep closes it', async () => {
 		const { openRequest } = await seedInboxRequests();
 		const orphan = await requestRepository.createRequest(
 			{
@@ -2259,8 +2258,8 @@ describe('GET /workflow-review-requests/inbox', () => {
 			{},
 		);
 		const workflow = await linkToNewWorkflow(orphan.id);
-		// Bypasses the auto-close hook: the cascade removes the link row and
-		// leaves the request open — as the folder cascade or a create/delete race would
+		// Bypasses the auto-close hook and the sweep: the cascade removes the link
+		// row and leaves the request open — visible until the next delete sweeps it
 		await workflowEntityRepository.delete({ id: workflow.id });
 
 		// Owner exercises the global scope, member the project-scoped filter
@@ -2268,17 +2267,17 @@ describe('GET /workflow-review-requests/inbox', () => {
 			.get('/workflow-review-requests/inbox')
 			.query({ state: 'open', limit: 15 })
 			.expect(200);
-		expect(ownerResponse.body.data.data.map((row: { id: string }) => row.id)).toEqual([
-			openRequest.id,
-		]);
+		expect(ownerResponse.body.data.data.map((row: { id: string }) => row.id).sort()).toEqual(
+			[openRequest.id, orphan.id].sort(),
+		);
 
 		const memberResponse = await memberAgent
 			.get('/workflow-review-requests/inbox')
 			.query({ state: 'open', limit: 15 })
 			.expect(200);
-		expect(memberResponse.body.data.data.map((row: { id: string }) => row.id)).toEqual([
-			openRequest.id,
-		]);
+		expect(memberResponse.body.data.data.map((row: { id: string }) => row.id).sort()).toEqual(
+			[openRequest.id, orphan.id].sort(),
+		);
 	});
 
 	test('still lists a closed review whose workflow was hard-deleted', async () => {
@@ -2684,17 +2683,21 @@ describe('GET /workflow-review-requests/:workflowReviewRequestId', () => {
 		});
 	});
 
-	test('no longer opens an open review after its workflow was hard-deleted', async () => {
+	test('still opens an open review after its workflow was hard-deleted', async () => {
 		const workflow = await createWorkflow({}, teamProject);
 		await createWorkflowHistoryItem(workflow.id, { versionId: 'version-pinned' });
 		const request = await seedRequest(workflow.id, 'version-pinned', owner);
 
-		// Bypasses the auto-close hook: the cascade removes the link row and
-		// leaves the request open — a dead leftover nothing can decide or update
+		// Bypasses the auto-close hook and the sweep: the cascade removes the link
+		// row and leaves the request open until the next delete sweeps it closed
 		await workflowEntityRepository.delete({ id: workflow.id });
 
-		// 404 even for the requester (owner) — their inbox no longer lists it either
-		await ownerAgent.get(`/workflow-review-requests/${request.id}`).expect(404);
+		const response = await ownerAgent.get(`/workflow-review-requests/${request.id}`).expect(200);
+
+		expect(response.body.data.id).toBe(request.id);
+		expect(response.body.data.state).toBe('open');
+		expect(response.body.data.workflows).toEqual([]);
+		expect(response.body.data.workflowName).toBeNull();
 	});
 
 	test('still opens a closed review after its workflow was deleted', async () => {
