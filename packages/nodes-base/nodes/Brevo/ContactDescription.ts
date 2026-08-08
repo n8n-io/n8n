@@ -293,6 +293,20 @@ const getAllOperations: INodeProperties[] = [
 		default: {},
 		options: [
 			{
+				displayName: 'Created Since',
+				name: 'createdSince',
+				type: 'dateTime',
+				routing: {
+					send: {
+						type: 'query',
+						property: 'createdSince',
+					},
+				},
+				default: '',
+				description:
+					'Filter (urlencoded) the contacts created after a given UTC date-time (YYYY-MM-DDTHH:mm:ss.SSSZ)',
+			},
+			{
 				displayName: 'Modified Since',
 				name: 'modifiedSince',
 				type: 'dateTime',
@@ -305,6 +319,37 @@ const getAllOperations: INodeProperties[] = [
 				default: '',
 				description:
 					'Filter (urlencoded) the contacts modified after a given UTC date-time (YYYY-MM-DDTHH:mm:ss.SSSZ)',
+			},
+			{
+				displayName: 'List IDs',
+				name: 'listIds',
+				type: 'number',
+				routing: {
+					send: {
+						type: 'query',
+						property: 'listIds',
+					},
+				},
+				default: {},
+				typeOptions: {
+					multipleValues: true,
+				},
+				description: 'Ids of the list. Either listIds or segmentId can be passed.',
+			},
+			{
+				displayName: 'Filter',
+				name: 'filter',
+				type: 'string',
+				routing: {
+					send: {
+						type: 'query',
+						property: 'filter',
+					},
+				},
+				default: '',
+				placeholder: 'equals(ATTRIBUTE,"value")',
+				description:
+					'Filter the contacts on the basis of attributes. Allowed operator: equals. For multiple-choice options, the filter will apply an AND condition between the options. For category attributes, the filter will work with both id and value. (e.g. filter=equals(FIRSTNAME,"Antoine"), filter=equals(B1, true), filter=equals(DOB, "1989-11-23"), filter=equals(GENDER, "1"), filter=equals(GENDER, "MALE"), filter=equals(COUNTRY,"USA, INDIA")',
 			},
 		],
 	},
