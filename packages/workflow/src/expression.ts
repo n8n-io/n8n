@@ -511,7 +511,7 @@ export class Expression {
 			return 'null';
 		}
 
-		let typeName = value.constructor.name ?? 'Object';
+		let typeName = value?.constructor?.name ?? 'Object';
 		if (DateTime.isDateTime(value)) {
 			typeName = 'DateTime';
 		}

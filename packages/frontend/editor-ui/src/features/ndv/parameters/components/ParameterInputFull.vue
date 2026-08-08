@@ -50,6 +50,7 @@ type Props = {
 	optionsPosition?: 'bottom' | 'top' | 'top-absolute';
 	hideHint?: boolean;
 	isReadOnly?: boolean;
+	isForCredential?: boolean;
 	rows?: number;
 	isAssignment?: boolean;
 	hideLabel?: boolean;
@@ -376,6 +377,7 @@ function removeOverride(clearField = false) {
 					:model-value="value"
 					:path="path"
 					:is-read-only="isReadOnly"
+					:is-for-credential="isForCredential"
 					:rows="rows"
 					:droppable="droppable"
 					:active-drop="activeDrop"
@@ -487,6 +489,7 @@ function removeOverride(clearField = false) {
 						:model-value="value"
 						:path="path"
 						:is-read-only="isReadOnly"
+						:is-for-credential="isForCredential"
 						:is-assignment="isAssignment"
 						:rows="rows"
 						:droppable="droppable"

@@ -12,6 +12,7 @@ export type Props = {
 	path: string;
 	values?: Record<string, INodeParameters[] | INodeParameters>;
 	isReadOnly?: boolean;
+	isForCredential?: boolean;
 	isNested?: boolean;
 	isNewlyAdded?: boolean;
 	canDelete?: boolean;

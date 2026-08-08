@@ -40,6 +40,7 @@ export type Props = {
 	path: string;
 	values?: Record<string, INodeParameters[] | INodeParameters>;
 	isReadOnly?: boolean;
+	isForCredential?: boolean;
 	isNested?: boolean;
 	hiddenIssuesInputs?: string[];
 };
@@ -469,6 +470,7 @@ function getItemKey(_item: INodeParameters, index: number) {
 								:node-values="nodeValues"
 								:path="getPropertyPath(property.name, index)"
 								:is-read-only="isReadOnly"
+								:is-for-credential="isForCredential"
 								:is-nested="isNested"
 								:hide-delete="true"
 								layout="inline"
@@ -512,6 +514,7 @@ function getItemKey(_item: INodeParameters, index: number) {
 										:node-values="nodeValues"
 										:path="getPropertyPath(property.name, index)"
 										:is-read-only="isReadOnly"
+										:is-for-credential="isForCredential"
 										:is-nested="isNested"
 										:hide-delete="true"
 										:hidden-issues-inputs="hiddenIssuesInputs"
@@ -561,6 +564,7 @@ function getItemKey(_item: INodeParameters, index: number) {
 					:node-values="nodeValues"
 					:path="getPropertyPath(property.name)"
 					:is-read-only="isReadOnly"
+					:is-for-credential="isForCredential"
 					:is-nested="isNested"
 					:hide-delete="true"
 					layout="inline"
@@ -586,6 +590,7 @@ function getItemKey(_item: INodeParameters, index: number) {
 						:node-values="nodeValues"
 						:path="getPropertyPath(property.name)"
 						:is-read-only="isReadOnly"
+						:is-for-credential="isForCredential"
 						:is-nested="isNested"
 						:hide-delete="true"
 						:class="$style.parameterItem"
