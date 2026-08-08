@@ -19,6 +19,19 @@ import { callEvalMockHandler, normalizeLegacyRequest } from '@/execution-engine/
 import { proxyRequestToAxios } from './legacy-request-adapter';
 import { requestOAuth1, requestOAuth2 } from './oauth';
 
+const DEFAULT_TOKEN_EXPIRED_STATUS_CODES = [401];
+
+function resolveTokenExpiredStatusCodes(
+	genericOptions?: IAdditionalCredentialOptions['generic'],
+): number[] {
+	const tokenExpiredStatusCodes = genericOptions?.tokenExpiredStatusCodes;
+	if (tokenExpiredStatusCodes?.length) {
+		return tokenExpiredStatusCodes;
+	}
+
+	return DEFAULT_TOKEN_EXPIRED_STATUS_CODES;
+}
+
 export async function httpRequestWithAuthentication(
 	this: IAllExecuteFunctions,
 	credentialsType: string,
@@ -106,9 +119,12 @@ export async function httpRequestWithAuthentication(
 	} catch (error) {
 		// if there is a pre authorization method defined and
 		// the method failed due to unauthorized request
+		const tokenExpiredStatusCodes = resolveTokenExpiredStatusCodes(
+			additionalCredentialOptions?.generic,
+		);
 		if (
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-			error.response?.status === 401 &&
+			tokenExpiredStatusCodes.includes(error.response?.status) &&
 			additionalData.credentialsHelper.preAuthentication !== undefined
 		) {
 			try {
