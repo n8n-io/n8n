@@ -13,6 +13,12 @@ export const invoiceOperations: INodeProperties[] = [
 		},
 		options: [
 			{
+				name: 'Archive',
+				value: 'archive',
+				description: 'Archive an invoice',
+				action: 'Archive an invoice',
+			},
+			{
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new invoice',
@@ -23,6 +29,12 @@ export const invoiceOperations: INodeProperties[] = [
 				value: 'delete',
 				description: 'Delete a invoice',
 				action: 'Delete an invoice',
+			},
+			{
+				name: 'Download',
+				value: 'download',
+				description: 'Download invoice as PDF',
+				action: 'Download an invoice',
 			},
 			{
 				name: 'Email',
@@ -41,6 +53,18 @@ export const invoiceOperations: INodeProperties[] = [
 				value: 'getAll',
 				description: 'Get data of many invoices',
 				action: 'Get many invoices',
+			},
+			{
+				name: 'Mark Paid',
+				value: 'markPaid',
+				description: 'Mark an invoice as paid',
+				action: 'Mark an invoice as paid',
+			},
+			{
+				name: 'Mark Sent',
+				value: 'markSent',
+				description: 'Mark an invoice as sent',
+				action: 'Mark an invoice as sent',
 			},
 		],
 		default: 'create',
@@ -504,5 +528,83 @@ export const invoiceFields: INodeProperties[] = [
 				default: 'all',
 			},
 		],
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                                  invoice:archive                           */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Invoice ID',
+		name: 'invoiceId',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['invoice'],
+				operation: ['archive'],
+			},
+		},
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                                  invoice:download                          */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Invoice ID',
+		name: 'invoiceId',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['invoice'],
+				operation: ['download'],
+			},
+		},
+	},
+	{
+		displayName: 'Binary Property',
+		name: 'binaryProperty',
+		type: 'string',
+		default: 'data',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['invoice'],
+				operation: ['download'],
+			},
+		},
+		description: 'Name of the binary property to which to write the PDF file',
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                                  invoice:markPaid                          */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Invoice ID',
+		name: 'invoiceId',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['invoice'],
+				operation: ['markPaid'],
+			},
+		},
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                                  invoice:markSent                          */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Invoice ID',
+		name: 'invoiceId',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['invoice'],
+				operation: ['markSent'],
+			},
+		},
 	},
 ];
