@@ -124,6 +124,7 @@ describe('PrometheusSchedulerMetricsService', () => {
 					'n8n_scheduler_tasks_reclaimed_total',
 					'n8n_scheduler_tasks_dead_lettered_total',
 					'n8n_scheduler_tasks_pruned_total',
+					'n8n_scheduler_polls_timed_out_total',
 				]),
 			);
 
@@ -162,6 +163,7 @@ describe('PrometheusSchedulerMetricsService', () => {
 				'n8n_scheduler_tasks_reclaimed_total',
 				'n8n_scheduler_tasks_dead_lettered_total',
 				'n8n_scheduler_tasks_pruned_total',
+				'n8n_scheduler_polls_timed_out_total',
 			]) {
 				expect(counterIncFor(name)).toHaveBeenCalledWith(0);
 			}
@@ -315,6 +317,14 @@ describe('PrometheusSchedulerMetricsService', () => {
 			expect(inc).toHaveBeenCalledWith(5);
 			expect(inc).toHaveBeenCalledTimes(1);
 		});
+
+		it('increments the timed-out polls counter by one', () => {
+			service.recordPollTimeout();
+
+			const inc = counterIncFor('n8n_scheduler_polls_timed_out_total');
+			expect(inc).toHaveBeenCalledWith(1);
+			expect(inc).toHaveBeenCalledTimes(1);
+		});
 	});
 
 	describe('push metrics before init', () => {
@@ -332,6 +342,7 @@ describe('PrometheusSchedulerMetricsService', () => {
 			service.recordReaped(1, 1, 1);
 			service.recordDeadLettered();
 			service.recordPruned(1);
+			service.recordPollTimeout();
 
 			expect(sharedCounterInc).not.toHaveBeenCalled();
 			expect(mockHistogramObserve).not.toHaveBeenCalled();

@@ -32,6 +32,12 @@ export interface SchedulerMetrics {
 	recordDeadLettered(): void;
 	/** Outcome of one retention pass. */
 	recordPruned(deleted: number): void;
+	/**
+	 * A poll outlived its timeout and was abandoned. Recorded by the host's poll
+	 * handler rather than the scheduler itself: the deadline sits around the node's
+	 * `poll()`, which the scheduler only knows as an opaque handler call.
+	 */
+	recordPollTimeout(): void;
 }
 
 /** Default metrics: records nothing. */
@@ -46,4 +52,5 @@ export const noopMetrics: SchedulerMetrics = {
 	recordReaped() {},
 	recordDeadLettered() {},
 	recordPruned() {},
+	recordPollTimeout() {},
 };

@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import type { Logger } from '@n8n/backend-common';
+import type { GlobalConfig } from '@n8n/config';
 import type { WorkflowRepository } from '@n8n/db';
 import { createDispatchReporter, type ClaimedTask } from '@n8n/scheduler';
 import type { TriggersAndPollers } from 'n8n-core';
@@ -8,6 +9,7 @@ import { UnexpectedError, Workflow, WorkflowExpression } from 'n8n-workflow';
 import type { MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
+import type { PrometheusSchedulerMetricsService } from '@/metrics/prometheus/scheduler-metrics.service';
 import { createNodeTypes } from '@/workflows/triggers/__tests__/trigger-test-utils';
 import type { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
 
@@ -23,11 +25,17 @@ describe('PollTriggerTaskHandler', () => {
 	const scopedLogger = mock<Logger>();
 	const rootLogger = mock<Logger>({ scoped: vi.fn().mockReturnValue(scopedLogger) });
 
+	const metrics = mock<PrometheusSchedulerMetricsService>();
+	const pollTimeoutSeconds = 60;
+	const globalConfig = mock<GlobalConfig>({ scheduler: { pollTimeoutSeconds } });
+
 	const handler = new PollTriggerTaskHandler(
 		rootLogger,
 		triggerExecutionContextFactory,
 		triggersAndPollers,
 		workflowRepository,
+		metrics,
+		globalConfig,
 	);
 
 	const onDispatch = vi.fn();
@@ -220,6 +228,74 @@ describe('PollTriggerTaskHandler', () => {
 			// Handled, not retried: the occurrence is reported as dispatched.
 			expect(onDispatch).toHaveBeenCalledTimes(1);
 			expect(releaseIsolate).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe('poll timeout', () => {
+		const pollTimeoutMs = pollTimeoutSeconds * 1000;
+
+		beforeEach(() => {
+			vi.useFakeTimers();
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		test('abandons a poll that outlives the timeout and reports no dispatch', async () => {
+			triggersAndPollers.runPollFunction.mockReturnValue(new Promise(() => {}));
+
+			const executing = handler.execute(buildTask(), report);
+			await vi.advanceTimersByTimeAsync(pollTimeoutMs);
+
+			await expect(executing).resolves.toBeDefined();
+			// Writes nothing: no cursor advance via __emit, and no error workflow run
+			// either, so the next occurrence covers the same poll window.
+			expect(pollFunctions.__emit).not.toHaveBeenCalled();
+			expect(pollFunctions.__emitError).not.toHaveBeenCalled();
+			expect(onDispatch).not.toHaveBeenCalled();
+			expect(releaseIsolate).toHaveBeenCalledTimes(1);
+			expect(metrics.recordPollTimeout).toHaveBeenCalledTimes(1);
+		});
+
+		test('keeps a poll that finishes just inside the timeout', async () => {
+			let resolvePoll: (data: INodeExecutionData[][]) => void = () => {};
+			triggersAndPollers.runPollFunction.mockReturnValue(
+				new Promise((resolve) => {
+					resolvePoll = resolve;
+				}),
+			);
+
+			const executing = handler.execute(buildTask(), report);
+			await vi.advanceTimersByTimeAsync(pollTimeoutMs - 1);
+			resolvePoll(pollData);
+			await executing;
+
+			expect(pollFunctions.__emit).toHaveBeenCalledWith(pollData);
+			expect(onDispatch).toHaveBeenCalledTimes(1);
+			expect(metrics.recordPollTimeout).not.toHaveBeenCalled();
+			// The deadline is cleared once the poll wins, so it can't outlive the tick.
+			expect(vi.getTimerCount()).toBe(0);
+		});
+
+		test('discards an abandoned poll that fails after the timeout', async () => {
+			let rejectPoll: (error: Error) => void = () => {};
+			triggersAndPollers.runPollFunction.mockReturnValue(
+				new Promise((_resolve, reject) => {
+					rejectPoll = reject;
+				}),
+			);
+
+			const executing = handler.execute(buildTask(), report);
+			await vi.advanceTimersByTimeAsync(pollTimeoutMs);
+			await executing;
+			rejectPoll(new Error('poll source unreachable'));
+			await vi.advanceTimersByTimeAsync(0);
+
+			// The tick was already reported as abandoned, so the late failure is dropped
+			// rather than routed to the error workflow.
+			expect(pollFunctions.__emitError).not.toHaveBeenCalled();
+			expect(onDispatch).not.toHaveBeenCalled();
 		});
 	});
 
