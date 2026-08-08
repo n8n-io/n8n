@@ -40,6 +40,7 @@ export {
 	ExecutionNotFoundError,
 	ExecutionStartHandler,
 	OrchestrationWorker,
+	StartExecutionService,
 	StepCompletedHandler,
 	StepNotFoundError,
 	StepReadyHandler,
@@ -52,6 +53,8 @@ export type {
 	ExecutionStore,
 	NewExecutionRecord,
 	NewStepRecord,
+	StartExecutionRequest,
+	StartExecutionResult,
 	StepError,
 	StepRecord,
 	StepSlots,
@@ -59,4 +62,10 @@ export type {
 	StepStore,
 } from './execution';
 
-export { createDataSource, TypeOrmExecutionStore, TypeOrmStepStore } from './database';
+export {
+	createDataSource,
+	TypeOrmExecutionStore,
+	TypeOrmStepStore,
+	WorkflowExecution,
+	WorkflowStepExecution,
+} from './database';
