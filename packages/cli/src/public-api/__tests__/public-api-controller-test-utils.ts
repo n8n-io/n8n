@@ -19,3 +19,5 @@ export class WidgetQueryDto extends Z.class({ q: z.string().optional() }) {}
 export class WidgetResponseDto extends Z.class({ id: z.string() }) {}
 /** Query DTO carrying a shared pagination field, for tests asserting `SHARED_PAGINATION_PARAMS` handling. */
 export class WidgetPaginationQueryDto extends Z.class({ limit: z.number().optional() }) {}
+/** Array-rooted DTO, for tests asserting a bare-array request/response (no `{ data, nextCursor }` envelope). */
+export class WidgetArrayResponseDto extends Z.array(z.object({ id: z.string() })) {}

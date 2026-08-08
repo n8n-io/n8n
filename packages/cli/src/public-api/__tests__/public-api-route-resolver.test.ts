@@ -19,6 +19,7 @@ import { UnexpectedError } from 'n8n-workflow';
 
 import {
 	markPublicApiController,
+	WidgetArrayResponseDto,
 	WidgetBodyDto,
 	WidgetQueryDto,
 	WidgetResponseDto,
@@ -70,6 +71,16 @@ describe('public-api-route-resolver', () => {
 
 			expect(resolve(TestController as Controller)).toEqual([
 				{ type: 'query', dto: WidgetQueryDto },
+			]);
+		});
+
+		it('resolves a body arg to an array-rooted Zod DTO via design:paramtypes reflection', () => {
+			class TestController {
+				method(@Body _body: WidgetArrayResponseDto) {}
+			}
+
+			expect(resolve(TestController as Controller)).toEqual([
+				{ type: 'body', dto: WidgetArrayResponseDto },
 			]);
 		});
 
