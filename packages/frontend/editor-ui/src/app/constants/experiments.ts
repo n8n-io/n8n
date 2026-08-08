@@ -129,10 +129,6 @@ export const INSTANCE_AI_BROWSER_CREDENTIAL_SETUP_EXPERIMENT = createExperiment(
 export const EXPOSE_ALL_WORKFLOWS_TO_MCP_EXPERIMENT = createExperiment(
 	'095_expose_all_workflows_to_mcp',
 );
-export const N8N_CREDITS_CREDENTIAL_SELECTION_EXPERIMENT = createExperiment(
-	'100_n8n_credits_credential_selection',
-);
-
 export const TRIAL_INTRO_MODAL_EXPERIMENT = createExperiment('101_trial_intro_modal');
 export const INLINE_AGENTS_EXPERIMENT = createExperiment('103_inline_agents');
 
@@ -170,7 +166,6 @@ export const EXPERIMENTS_TO_TRACK = [
 	INSTANCE_AI_TEMPLATE_EXAMPLES_EXPERIMENT.name,
 	INSTANCE_AI_BROWSER_CREDENTIAL_SETUP_EXPERIMENT.name,
 	EXPOSE_ALL_WORKFLOWS_TO_MCP_EXPERIMENT.name,
-	N8N_CREDITS_CREDENTIAL_SELECTION_EXPERIMENT.name,
 	TRIAL_INTRO_MODAL_EXPERIMENT.name,
 	INLINE_AGENTS_EXPERIMENT.name,
 ];
