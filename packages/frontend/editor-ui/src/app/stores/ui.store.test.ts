@@ -1,9 +1,14 @@
 import { createPinia, setActivePinia } from 'pinia';
-import { useUIStore } from '@/app/stores/ui.store';
+import { modalRegistry } from '@n8n/frontend-module-sdk';
+
+import type { ModalState } from '@/Interface';
+import { listenForModalChanges, useUIStore } from '@/app/stores/ui.store';
+import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 
 describe('UI Store', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia());
+		modalRegistry.clear();
 	});
 
 	describe('markStateDirty', () => {
@@ -78,32 +83,175 @@ describe('UI Store', () => {
 		});
 	});
 
-	describe('modalStateById', () => {
+	describe('modalsById', () => {
 		const MODAL_KEY = 'someFeatureModal';
 
 		it('should resolve an unregistered key to a closed state instead of undefined', () => {
 			const uiStore = useUIStore();
-			uiStore.modalsById = {};
 
-			expect(uiStore.modalStateById[MODAL_KEY]).toEqual({ open: false });
+			expect(uiStore.modalsById[MODAL_KEY]).toEqual({ open: false });
 		});
 
-		it('should return the stored state for a registered key', () => {
+		it('should resolve a registered key to the state it was registered with', () => {
 			const uiStore = useUIStore();
-			uiStore.modalsById = {};
-			uiStore.registerModal(MODAL_KEY, { open: false, mode: 'edit' });
+			modalRegistry.register({
+				key: MODAL_KEY,
+				component: {},
+				initialState: { open: false, mode: 'edit' },
+			});
 
-			expect(uiStore.modalStateById[MODAL_KEY]).toEqual({ open: false, mode: 'edit' });
+			expect(uiStore.modalsById[MODAL_KEY]).toEqual({ open: false, mode: 'edit' });
 		});
 
 		it('should reflect a key registered after the first read', () => {
 			const uiStore = useUIStore();
-			uiStore.modalsById = {};
-			expect(uiStore.modalStateById[MODAL_KEY].open).toBe(false);
+			expect(uiStore.modalsById[MODAL_KEY].open).toBe(false);
 
-			uiStore.registerModal(MODAL_KEY, { open: true });
+			modalRegistry.register({
+				key: MODAL_KEY,
+				component: {},
+				initialState: { open: true },
+			});
 
-			expect(uiStore.modalStateById[MODAL_KEY].open).toBe(true);
+			expect(uiStore.modalsById[MODAL_KEY].open).toBe(true);
+		});
+
+		it('should stop resolving a key once its definition is unregistered', () => {
+			const uiStore = useUIStore();
+			modalRegistry.register({
+				key: MODAL_KEY,
+				component: {},
+				initialState: { open: false, mode: 'edit' },
+			});
+			expect(uiStore.modalsById[MODAL_KEY].mode).toBe('edit');
+
+			modalRegistry.unregister(MODAL_KEY);
+
+			expect(uiStore.modalsById[MODAL_KEY]).toEqual({ open: false });
+		});
+
+		it('should keep runtime state out of the definitions it resolves over', () => {
+			const uiStore = useUIStore();
+			modalRegistry.register({
+				key: MODAL_KEY,
+				component: {},
+				initialState: { open: false, mode: 'edit' },
+			});
+
+			uiStore.openModalWithData({ name: MODAL_KEY, data: { foo: 'bar' } });
+
+			// The definition's `mode` survives; only what was written is stored.
+			expect(uiStore.modalsById[MODAL_KEY]).toEqual({
+				open: true,
+				mode: 'edit',
+				data: { foo: 'bar' },
+			});
+			expect(uiStore.modalStateById[MODAL_KEY]).toEqual({
+				open: true,
+				data: { foo: 'bar' },
+			});
+		});
+
+		it('should materialize state lazily — an untouched modal has none', () => {
+			const uiStore = useUIStore();
+			modalRegistry.register({ key: MODAL_KEY, component: {} });
+
+			expect(uiStore.modalStateById).toEqual({});
+
+			uiStore.openModal(MODAL_KEY);
+
+			expect(Object.keys(uiStore.modalStateById)).toEqual([MODAL_KEY]);
+		});
+
+		it('should open a key that was never registered', () => {
+			const uiStore = useUIStore();
+			// dataTable builds per-row keys at runtime, so registration cannot be mandatory.
+			const perRowKey = `${MODAL_KEY}-row-42`;
+
+			uiStore.openModal(perRowKey);
+
+			expect(uiStore.modalsById[perRowKey].open).toBe(true);
+			expect(uiStore.isModalActiveById[perRowKey]).toBe(true);
+
+			uiStore.closeModal(perRowKey);
+
+			expect(uiStore.modalsById[perRowKey].open).toBe(false);
+		});
+
+		it('should resolve shell-owned keys without anything registering them', () => {
+			const uiStore = useUIStore();
+
+			expect(uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY]).toMatchObject({
+				open: false,
+				mode: '',
+				activeId: null,
+			});
+		});
+
+		// Runtime state is scoped to the lifetime of the definition it accumulated
+		// under. Registered keys and ad-hoc ones are told apart by the registry
+		// itself: only a key that was in it can be taken out of it.
+		describe('when a definition is unregistered', () => {
+			const register = (initialState?: ModalState) =>
+				modalRegistry.register({ key: MODAL_KEY, component: {}, initialState });
+
+			it('should forget the runtime state that accumulated under it', () => {
+				const uiStore = useUIStore();
+				register({ open: false, mode: 'edit' });
+				uiStore.openModalWithData({ name: MODAL_KEY, data: { secret: 'shhh' } });
+
+				modalRegistry.unregister(MODAL_KEY);
+
+				expect(uiStore.modalsById[MODAL_KEY]).toEqual({ open: false });
+				expect(uiStore.modalStateById[MODAL_KEY]).toBeUndefined();
+			});
+
+			it('should not reopen with stale data when the key is registered again', () => {
+				const uiStore = useUIStore();
+				register({ open: false, mode: 'edit' });
+				uiStore.openModalWithData({ name: MODAL_KEY, data: { secret: 'shhh' } });
+
+				modalRegistry.unregister(MODAL_KEY);
+				register({ open: false, mode: 'edit' });
+
+				expect(uiStore.modalsById[MODAL_KEY]).toEqual({ open: false, mode: 'edit' });
+			});
+
+			it('should drop it from the modal stack so nothing counts as open', () => {
+				const uiStore = useUIStore();
+				register();
+				uiStore.openModal(MODAL_KEY);
+				expect(uiStore.isAnyModalOpen).toBe(true);
+
+				modalRegistry.unregister(MODAL_KEY);
+
+				expect(uiStore.isAnyModalOpen).toBe(false);
+				expect(uiStore.isModalActiveById[MODAL_KEY]).toBe(false);
+			});
+
+			it('should leave an ad-hoc key alone — it never had a definition to lose', () => {
+				const uiStore = useUIStore();
+				// dataTable's per-row keys are opened without ever being registered, so
+				// nothing about them may hinge on the registry.
+				const perRowKey = `${MODAL_KEY}-row-42`;
+				register();
+				uiStore.openModalWithData({ name: perRowKey, data: { rowId: '42' } });
+
+				modalRegistry.unregister(MODAL_KEY);
+				modalRegistry.clear();
+
+				expect(uiStore.modalsById[perRowKey]).toEqual({ open: true, data: { rowId: '42' } });
+				expect(uiStore.isModalActiveById[perRowKey]).toBe(true);
+			});
+
+			it('should leave shell-owned keys alone when the registry empties', () => {
+				const uiStore = useUIStore();
+				uiStore.openModal(CREDENTIAL_EDIT_MODAL_KEY);
+
+				modalRegistry.clear();
+
+				expect(uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY].open).toBe(true);
+			});
 		});
 	});
 
@@ -112,22 +260,40 @@ describe('UI Store', () => {
 
 		it('should report an unregistered key as inactive instead of undefined', () => {
 			const uiStore = useUIStore();
-			uiStore.modalsById = {};
 
 			expect(uiStore.isModalActiveById[MODAL_KEY]).toBe(false);
 		});
 
 		it('should still report only the topmost open modal as active', () => {
 			const uiStore = useUIStore();
-			uiStore.modalsById = {};
-			uiStore.registerModal('first');
-			uiStore.registerModal('second');
 
 			uiStore.openModal('first');
 			uiStore.openModal('second');
 
 			expect(uiStore.isModalActiveById.second).toBe(true);
 			expect(uiStore.isModalActiveById.first).toBe(false);
+		});
+	});
+
+	describe('listenForModalChanges', () => {
+		const MODAL_KEY = 'someFeatureModal';
+
+		// Filters `$onAction` on literal action names, so it breaks silently — with no
+		// type error — if opening or closing stops going through a store action.
+		it('should still fire for open and close', () => {
+			const uiStore = useUIStore();
+			const onModalOpened = vi.fn();
+			const onModalClosed = vi.fn();
+			listenForModalChanges({ store: uiStore, onModalOpened, onModalClosed });
+
+			uiStore.openModal(MODAL_KEY);
+			expect(onModalOpened).toHaveBeenCalledWith(MODAL_KEY);
+
+			uiStore.openModalWithData({ name: MODAL_KEY, data: {} });
+			expect(onModalOpened).toHaveBeenCalledTimes(2);
+
+			uiStore.closeModal(MODAL_KEY);
+			expect(onModalClosed).toHaveBeenCalledWith(MODAL_KEY);
 		});
 	});
 });
