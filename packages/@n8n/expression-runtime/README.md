@@ -302,7 +302,7 @@ See the main n8n repository for contribution guidelines.
 
 ## License
 
-See [LICENSE.md](../../LICENSE.md) in the n8n repository root.
+See [LICENSE.md](../../../LICENSE.md) in the n8n repository root.
 
 ## Related
 
