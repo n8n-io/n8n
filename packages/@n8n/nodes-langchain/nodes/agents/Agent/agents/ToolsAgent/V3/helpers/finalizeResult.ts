@@ -1,10 +1,9 @@
 import type { BaseChatMemory } from '@langchain/classic/memory';
+import { serializeIntermediateSteps } from '@utils/agent-execution';
+import type { N8nOutputParser } from '@utils/output_parsers/N8nOutputParser';
 import omit from 'lodash/omit';
 import { jsonParse } from 'n8n-workflow';
 import type { INodeExecutionData } from 'n8n-workflow';
-
-import type { N8nOutputParser } from '@utils/output_parsers/N8nOutputParser';
-import { serializeIntermediateSteps } from '@utils/agent-execution';
 
 import type { AgentResult } from '../types';
 
@@ -13,14 +12,12 @@ import type { AgentResult } from '../types';
  * Handles output parser integration and memory-based parsing.
  *
  * @param result - The agent result to finalize
- * @param itemIndex - The current item index
  * @param memory - Optional memory for parsing context
  * @param outputParser - Optional output parser for structured responses
  * @returns INodeExecutionData ready for output
  */
 export function finalizeResult(
 	result: AgentResult,
-	itemIndex: number,
 	memory: BaseChatMemory | undefined,
 	outputParser: N8nOutputParser | undefined,
 ): INodeExecutionData {
@@ -47,7 +44,6 @@ export function finalizeResult(
 			'chat_history',
 			'agent_scratchpad',
 		),
-		pairedItem: { item: itemIndex },
 	};
 
 	return itemResult;

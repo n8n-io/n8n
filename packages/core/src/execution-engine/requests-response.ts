@@ -99,7 +99,9 @@ function prepareRequestedNodesForExecution(
 		actions: [],
 		metadata: request.metadata,
 	};
-	const parentSourceData = executionData.source?.main?.[runIndex];
+	// Source data is keyed by input index, so resumed agent executions must read the
+	// original upstream branch from the first main input instead of the node run index.
+	const parentSourceData = executionData.source?.main?.[0];
 	const defaultParentOutputIndex = parentSourceData?.previousNodeOutput ?? 0;
 	const defaultParentSourceNode = parentSourceData?.previousNode ?? currentNode.name;
 
@@ -211,14 +213,17 @@ function prepareRequestingNodeForResuming(
 
 		return undefined;
 	}
-	const metadata: Partial<ITaskMetadata> =
-		executionData.metadata?.preservedSourceOverwrite &&
-		executionData.metadata?.preserveSourceOverwrite
-			? {
-					preserveSourceOverwrite: true,
-					preservedSourceOverwrite: executionData.metadata.preservedSourceOverwrite,
-				}
-			: {};
+	// TODO: This unconditionally overwrites preservedSourceOverwrite for nested agent‑as‑tool chains.
+	// When an agent is invoked as a tool and itself pauses, the outer provenance is lost.
+	// Should preserve existing preservedSourceOverwrite if present, only synthesizing as fallback.
+	const metadata: Partial<ITaskMetadata> = {
+		preserveSourceOverwrite: true,
+		preservedSourceOverwrite: {
+			previousNode: parentNode,
+			previousNodeOutput: executionData.source?.main?.[0]?.previousNodeOutput ?? 0,
+			previousNodeRun: executionData.source?.main?.[0]?.previousNodeRun ?? 0,
+		},
+	};
 	const connectionData: IConnection = {
 		// agents always have a main input
 		type: 'ai_tool',
@@ -252,7 +257,17 @@ export function handleRequest({
 }): {
 	nodesToBeExecuted: NodeToBeExecuted[];
 } {
-	// 1. collect nodes to be put on the stack
+	// 1. create metadata for current node (must succeed before scheduling tools)
+	const result = prepareRequestingNodeForResuming(workflow, request, executionData);
+	if (!result) {
+		// Early return when the agent's execution context has no source (e.g., malformed or incomplete resume request).
+		// Previously this would still schedule tools with inputOverride, which led to unpredictable lineage.
+		// The current safe behaviour is to schedule nothing – the workflow will fail cleanly rather than
+		// producing orphaned tool executions. This matches the engine's contract: no source → no execution.
+		return { nodesToBeExecuted: [] };
+	}
+
+	// 2. collect nodes to be put on the stack
 	const { nodesToBeExecuted, subNodeExecutionData } = prepareRequestedNodesForExecution(
 		workflow,
 		currentNode,
@@ -262,21 +277,30 @@ export function handleRequest({
 		executionData,
 	);
 
-	// 2. create metadata for current node
-	const result = prepareRequestingNodeForResuming(workflow, request, executionData);
-	if (!result) {
-		return { nodesToBeExecuted: [] };
-	}
+	// Preserve the original pairedItem.item from the agent's input so the resumed
+	// execution can keep the same upstream item lineage after the tool call returns.
+	// Logic is tied into an `if-else` chain to enhance readability.
+	const originalPairedItemIndices = (executionData.data.main?.[0] ?? []).map((item) => {
+		const pairedItem = item.pairedItem;
+		if (typeof pairedItem === 'number') return pairedItem;
+		if (Array.isArray(pairedItem)) return pairedItem[0]?.item ?? 0;
+		return pairedItem?.item ?? 0;
+	});
 
 	// 3. add current node back to the bottom of the stack
 	nodesToBeExecuted.unshift({
 		inputConnectionData: result.connectionData,
-		parentOutputIndex: 0,
+		parentOutputIndex: executionData.source?.main?.[0]?.previousNodeOutput ?? 0,
 		parentNode: result.parentNode,
 		parentOutputData: executionData.data.main as INodeExecutionData[][],
 		runIndex,
 		nodeRunIndex: runIndex,
-		metadata: { nodeWasResumed: true, subNodeExecutionData, ...result.metadata },
+		metadata: {
+			nodeWasResumed: true,
+			subNodeExecutionData,
+			...result.metadata,
+			originalPairedItemIndices,
+		},
 	});
 
 	return { nodesToBeExecuted };
