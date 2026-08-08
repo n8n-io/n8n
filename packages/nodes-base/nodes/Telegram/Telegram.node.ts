@@ -1102,6 +1102,10 @@ export class Telegram implements INodeType {
 										type: 'options',
 										options: [
 											{
+												name: 'None',
+												value: '',
+											},
+											{
 												name: 'Markdown (Legacy)',
 												value: 'Markdown',
 											},
@@ -1742,6 +1746,10 @@ export class Telegram implements INodeType {
 						type: 'options',
 						options: [
 							{
+								name: 'None',
+								value: '',
+							},
+							{
 								name: 'Markdown (Legacy)',
 								value: 'Markdown',
 							},
@@ -1923,6 +1931,10 @@ export class Telegram implements INodeType {
 						name: 'parse_mode',
 						type: 'options',
 						options: [
+							{
+								name: 'None',
+								value: '',
+							},
 							{
 								name: 'Markdown (Legacy)',
 								value: 'Markdown',
@@ -2328,6 +2340,9 @@ export class Telegram implements INodeType {
 								Object.assign(mediaItem, mediaItem.additionalFields);
 								delete mediaItem.additionalFields;
 							}
+							if (mediaItem.parse_mode === '') {
+								delete mediaItem.parse_mode;
+							}
 							(body.media as IDataObject[]).push(mediaItem);
 						}
 					} else if (operation === 'sendPhoto') {
@@ -2386,6 +2401,9 @@ export class Telegram implements INodeType {
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						Object.assign(body, additionalFields);
+						if (body.parse_mode === '') {
+							delete body.parse_mode;
+						}
 					} else if (operation === 'sendRichMessage' || operation === 'sendRichMessageDraft') {
 						// ----------------------------------------------
 						//   message:sendRichMessage/sendRichMessageDraft

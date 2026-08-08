@@ -160,6 +160,34 @@ describe('Telegram > GenericFunctions', () => {
 			});
 		});
 
+		it('should omit parse_mode when None is selected', () => {
+			const body: IDataObject = { text: 'Hello, world!' };
+			const index = 0;
+			const nodeVersion = 1.1;
+			const instanceId = '45';
+
+			(mockThis.getNodeParameter as Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'operation':
+						return 'sendMessage';
+					case 'additionalFields':
+						return { parse_mode: '', appendAttribution: true };
+					case 'replyMarkup':
+						return 'none';
+					default:
+						return '';
+				}
+			});
+
+			addAdditionalFields.call(mockThis, body, index, nodeVersion, instanceId);
+
+			expect(body).toEqual({
+				text: 'Hello, world!\n\nThis message was sent automatically with n8n (https://n8n.io/?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=n8n-nodes-base.telegram_45)',
+				disable_web_page_preview: true,
+			});
+			expect(body).not.toHaveProperty('parse_mode');
+		});
+
 		it('should add reply markup for inlineKeyboard', () => {
 			const body: IDataObject = { text: 'Hello, world!' };
 			const index = 0;
