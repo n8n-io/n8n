@@ -72,6 +72,9 @@ export async function jiraSoftwareCloudApiRequest(
 		credentialType = 'jiraSoftwareCloudApi';
 	}
 
+	// Strip trailing slashes from domain to prevent double slashes in URL construction
+	domain = domain.replace(/\/+$/, '');
+
 	const options: IRequestOptions = {
 		headers: {
 			Accept: 'application/json',
