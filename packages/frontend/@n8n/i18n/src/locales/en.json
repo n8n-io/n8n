@@ -4614,7 +4614,6 @@
 	"workflowReviews.submitted.description": "You can view {submission} in the reviews area. Your workflow version is waiting for review. Once approved, your workflow version will be published.",
 	"workflowReviews.submitted.description.submission": "your submission",
 	"workflowReviews.submitted.gotIt": "Got it",
-	"workflowReviews.submitted.toast": "Workflow version submitted for review successfully",
 	"workflowReviews.editorBanner.openReview": "Open review",
 	"workflowReviews.editorBanner.submitChanges": "Submit changes",
 	"workflowReviews.editorBanner.submitChanges.savedVersionHint": "Save your changes first to submit them to this review.",
