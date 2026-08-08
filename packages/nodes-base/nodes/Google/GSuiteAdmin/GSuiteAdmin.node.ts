@@ -377,6 +377,46 @@ export class GSuiteAdmin implements INodeType {
 						}
 					}
 
+					//https://developers.google.com/admin-sdk/directory/reference/rest/v1/members/list
+					if (operation === 'getMembers') {
+						const groupId = this.getNodeParameter('groupId', i, undefined, {
+							extractValue: true,
+						}) as string;
+						const returnAll = this.getNodeParameter('returnAll', i);
+						const options = this.getNodeParameter('options', i, {}) as {
+							includeDerivedMembership?: boolean;
+							roles?: string[];
+						};
+
+						if (options.includeDerivedMembership) {
+							qs.includeDerivedMembership = true;
+						}
+						if (options.roles?.length) {
+							qs.roles = options.roles.join(',');
+						}
+
+						if (returnAll) {
+							responseData = await googleApiRequestAllItems.call(
+								this,
+								'members',
+								'GET',
+								`/directory/v1/groups/${groupId}/members`,
+								{},
+								qs,
+							);
+						} else {
+							qs.maxResults = this.getNodeParameter('limit', i);
+							responseData = await googleApiRequest.call(
+								this,
+								'GET',
+								`/directory/v1/groups/${groupId}/members`,
+								{},
+								qs,
+							);
+							responseData = responseData.members ?? [];
+						}
+					}
+
 					//https://developers.google.com/admin-sdk/directory/v1/reference/groups/update
 					if (operation === 'update') {
 						const groupId = this.getNodeParameter('groupId', i, undefined, {
