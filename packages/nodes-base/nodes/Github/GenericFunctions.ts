@@ -9,6 +9,82 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
+// Maximum number of ETag entries retained in workflow static data. Bounds the
+// growth of the conditional-request cache for workflows that read many
+// different resources over their lifetime.
+const ETAG_CACHE_LIMIT = 100;
+
+// Per-entry and total byte budgets for the conditional-request cache. Entry
+// count alone does not bound memory (or the size of the persisted static data),
+// so a single large response — or many medium ones — could still grow it
+// without limit. A body larger than the per-entry budget is not cached at all;
+// the total budget evicts oldest entries until the cache fits.
+const ETAG_CACHE_MAX_ENTRY_BYTES = 1024 * 1024; // 1 MiB
+const ETAG_CACHE_MAX_TOTAL_BYTES = 8 * 1024 * 1024; // 8 MiB
+
+interface GithubEtagEntry {
+	etag: string;
+	body: unknown;
+	// Optional: entries persisted by a revision predating the byte budget lack it.
+	bytes?: number;
+}
+
+// Approximate serialized size of a cache entry. The body is measured as UTF-8
+// JSON since that is how it is persisted in workflow static data; a body that
+// cannot be serialized (e.g. a circular structure) is treated as zero so it
+// still counts against the entry-count limit without breaking the request.
+function etagEntryBytes(etag: string, body: unknown): number {
+	let bodyBytes = 0;
+	try {
+		bodyBytes = Buffer.byteLength(JSON.stringify(body) ?? '', 'utf8');
+	} catch {
+		bodyBytes = 0;
+	}
+	return bodyBytes + Buffer.byteLength(etag, 'utf8');
+}
+
+// Size of a cache entry, tolerating entries persisted by an earlier revision
+// that predates the `bytes` field. Such legacy entries have `bytes` undefined,
+// which would turn the running total into NaN and silently disable the byte
+// budget; recompute their size from etag+body so the budget applies immediately.
+function entryBytes(entry: GithubEtagEntry): number {
+	return typeof entry.bytes === 'number' && Number.isFinite(entry.bytes)
+		? entry.bytes
+		: etagEntryBytes(entry.etag, entry.body);
+}
+
+// Evict oldest (insertion-ordered) entries until the cache is within both the
+// entry-count and total-byte budgets.
+function evictEtagCache(cache: Record<string, GithubEtagEntry>): void {
+	const keys = Object.keys(cache);
+	let total = 0;
+	for (const key of keys) {
+		total += entryBytes(cache[key]);
+	}
+	let index = 0;
+	while (
+		index < keys.length &&
+		(keys.length - index > ETAG_CACHE_LIMIT || total > ETAG_CACHE_MAX_TOTAL_BYTES)
+	) {
+		const oldest = keys[index];
+		total -= entryBytes(cache[oldest]);
+		delete cache[oldest];
+		index++;
+	}
+}
+
+function conditionalRequestKey(credentialType: string, uri: string, qs?: IDataObject): string {
+	const sortedQs = qs
+		? Object.keys(qs)
+				.sort()
+				.reduce<IDataObject>((acc, key) => {
+					acc[key] = qs[key];
+					return acc;
+				}, {})
+		: {};
+	return `${credentialType} ${uri} ${JSON.stringify(sortedQs)}`;
+}
+
 /**
  * Make an API request to Github
  *
@@ -21,6 +97,13 @@ export async function githubApiRequest(
 	query?: IDataObject,
 	option: IDataObject = {},
 ): Promise<any> {
+	// `conditionalRequest` is an internal flag (not a request option) that opts a
+	// GET into ETag / If-None-Match revalidation. It is stripped before the
+	// remaining options are forwarded to the HTTP client.
+	const useConditionalRequest = method === 'GET' && option.conditionalRequest === true;
+	const requestOption = { ...option };
+	delete requestOption.conditionalRequest;
+
 	const options: IRequestOptions = {
 		method,
 		body,
@@ -29,8 +112,8 @@ export async function githubApiRequest(
 		json: true,
 	};
 
-	if (Object.keys(option).length !== 0) {
-		Object.assign(options, option);
+	if (Object.keys(requestOption).length !== 0) {
+		Object.assign(options, requestOption);
 	}
 
 	try {
@@ -61,8 +144,65 @@ export async function githubApiRequest(
 			options.uri = `${baseUrl}${endpoint}`;
 		}
 
-		return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
+		if (!useConditionalRequest) {
+			return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
+		}
+
+		const staticData = this.getWorkflowStaticData('node');
+		const cache =
+			(staticData.githubEtagCache as unknown as Record<string, GithubEtagEntry>) ?? {};
+		staticData.githubEtagCache = cache as unknown as IDataObject;
+
+		const cacheKey = conditionalRequestKey(credentialType, options.uri, query);
+		const cached = cache[cacheKey];
+
+		// Ask the API to revalidate. A 304 Not Modified does not count against the
+		// primary rate limit, so an unchanged resource is served from cache below.
+		options.resolveWithFullResponse = true;
+		options.simple = false;
+		if (cached?.etag) {
+			options.headers = {
+				...(options.headers as IDataObject),
+				'If-None-Match': cached.etag,
+			};
+		}
+
+		const response = await this.helpers.requestWithAuthentication.call(
+			this,
+			credentialType,
+			options,
+		);
+
+		if (response.statusCode === 304 && cached) {
+			return cached.body;
+		}
+
+		if (response.statusCode < 200 || response.statusCode >= 300) {
+			throw new NodeApiError(this.getNode(), {
+				statusCode: response.statusCode,
+				...(response.body as IDataObject),
+			} as JsonObject);
+		}
+
+		const etag = (response.headers?.etag as string) ?? '';
+		if (etag) {
+			// Always drop any stale entry for this key first.
+			delete cache[cacheKey];
+			const bytes = etagEntryBytes(etag, response.body);
+			// A body that on its own exceeds the per-entry budget is left uncached;
+			// storing it would evict many smaller, more reusable entries for one
+			// oversized result that is unlikely to revalidate cheaply.
+			if (bytes <= ETAG_CACHE_MAX_ENTRY_BYTES) {
+				cache[cacheKey] = { etag, body: response.body, bytes };
+				evictEtagCache(cache);
+			}
+		}
+
+		return response.body;
 	} catch (error) {
+		if (error instanceof NodeApiError) {
+			throw error;
+		}
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
