@@ -477,6 +477,13 @@ export class LmChatAnthropic implements INodeType {
 						description:
 							'Whether the model should stream its response over Server-Sent Events instead of returning a single non-streamed payload. Final output shape is unchanged.',
 					},
+					{
+						displayName: 'Timeout',
+						name: 'timeout',
+						default: 360000,
+						description: 'Maximum amount of time a request is allowed to take in milliseconds',
+						type: 'number',
+					},
 				],
 			},
 		],
@@ -513,6 +520,7 @@ export class LmChatAnthropic implements INodeType {
 			thinkingMode?: 'disabled' | 'adaptive' | 'manual';
 			effort?: 'low' | 'medium' | 'high' | 'xhigh' | 'max';
 			streaming?: boolean;
+			timeout?: number;
 		};
 
 		const isOpus47Model = modelName.startsWith('claude-opus-4-7');
@@ -576,13 +584,19 @@ export class LmChatAnthropic implements INodeType {
 			};
 		};
 
+		const timeout = options.timeout;
 		const clientOptions: {
 			fetchOptions?: { dispatcher: ReturnType<typeof getProxyAgent> };
 			defaultHeaders?: Record<string, string>;
+			timeout?: number;
 		} = {
 			fetchOptions: {
-				dispatcher: getProxyAgent(baseURL),
+				dispatcher: getProxyAgent(baseURL, {
+					headersTimeout: timeout,
+					bodyTimeout: timeout,
+				}),
 			},
+			...(timeout !== undefined && { timeout }),
 		};
 
 		const customHeader = getCustomCredentialHeader(credentials);
