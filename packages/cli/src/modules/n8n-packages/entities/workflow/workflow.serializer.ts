@@ -8,11 +8,59 @@ import {
 } from '../../spec/serialized/workflow.schema';
 import { compareTagsByName } from '../tag/tag.types';
 
-/** Fields restored from package workflow.json; the target instance assigns the rest. */
-type WorkflowPackageContent = Pick<
-	WorkflowEntity,
-	'name' | 'nodes' | 'connections' | 'isArchived' | 'settings'
->;
+type WorkflowEntityDataKey = {
+	[K in keyof WorkflowEntity]-?: WorkflowEntity[K] extends (...args: never[]) => unknown
+		? never
+		: K;
+}[keyof WorkflowEntity];
+
+// `copy` writes and restores the same field. `transform` uses the field in the package
+// without restoring it directly (for example, tags become tagIds). `exclude` omits it.
+type WorkflowPackageDecision = 'copy' | 'transform' | 'exclude';
+
+const workflowPackagePolicy = {
+	id: 'transform',
+	createdAt: 'exclude',
+	updatedAt: 'exclude',
+	name: 'copy',
+	description: 'exclude',
+	active: 'exclude',
+	isArchived: 'copy',
+	nodes: 'copy',
+	connections: 'copy',
+	settings: 'copy',
+	staticData: 'exclude',
+	meta: 'exclude',
+	nodeGroups: 'exclude',
+	tags: 'transform',
+	tagMappings: 'exclude',
+	shared: 'exclude',
+	pinData: 'exclude',
+	versionId: 'transform',
+	activeVersionId: 'transform',
+	activeVersion: 'exclude',
+	versionCounter: 'exclude',
+	triggerCount: 'exclude',
+	parentFolder: 'transform',
+	testRuns: 'exclude',
+	sourceWorkflowId: 'exclude',
+} as const satisfies Record<WorkflowEntityDataKey, WorkflowPackageDecision>;
+
+type WorkflowPackageContentKey = {
+	[K in keyof typeof workflowPackagePolicy]-?: (typeof workflowPackagePolicy)[K] extends 'copy'
+		? K
+		: never;
+}[keyof typeof workflowPackagePolicy];
+
+type WorkflowPackageContent = Pick<WorkflowEntity, WorkflowPackageContentKey>;
+
+// Copy fields must exist in both the serialized schema and the payload, even when optional.
+// The record allows package-only keys such as `parentFolderId`.
+type SerializePayload = {
+	[K in WorkflowPackageContentKey]-?: K extends keyof SerializedWorkflow
+		? WorkflowEntity[K]
+		: never;
+} & Record<string, unknown>;
 
 @Service()
 export class WorkflowSerializer {
@@ -34,7 +82,7 @@ export class WorkflowSerializer {
 			isPublished: workflow.activeVersionId === workflow.versionId,
 			isArchived: workflow.isArchived,
 			...(tags ? { tagIds: tags.map((tag) => tag.id) } : {}),
-		});
+		} satisfies SerializePayload);
 	}
 
 	/**
