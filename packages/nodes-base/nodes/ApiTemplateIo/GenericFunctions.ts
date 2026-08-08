@@ -4,7 +4,6 @@ import type {
 	IHttpRequestMethods,
 	IHttpRequestOptions,
 	ILoadOptionsFunctions,
-	IRequestOptions,
 	JsonObject,
 } from 'n8n-workflow';
 import { jsonParse, NodeApiError } from 'n8n-workflow';
@@ -98,26 +97,25 @@ export async function apiTemplateIoApiRequestV2(
 	body: IDataObject = {},
 	returnBinary = false,
 ) {
-	const options: IRequestOptions = {
-		headers: {
-			'user-agent': 'n8n',
-		},
-		uri: `https://${region}.apitemplate.io${endpoint}`,
+	const headers: IDataObject = { 'user-agent': 'n8n' };
+	const options: IHttpRequestOptions = {
+		headers,
+		url: `https://${region}.apitemplate.io${endpoint}`,
 		method,
 		qs,
-		followRedirect: true,
-		followAllRedirects: true,
 	};
 
 	if (returnBinary) {
-		options.headers!['Content-Type'] = 'application/json';
+		// The response is a raw file, so keep it as a Buffer and send the body as
+		// a pre-serialised string rather than letting the helper parse either side
+		headers['Content-Type'] = 'application/json';
 		options.json = false;
-		options.encoding = null;
+		options.encoding = 'arraybuffer';
 		if (Object.keys(body).length) {
 			options.body = JSON.stringify(body);
 		}
 	} else {
-		options.headers!.Accept = 'application/json';
+		headers.Accept = 'application/json';
 		options.json = true;
 		if (Object.keys(body).length) {
 			options.body = body;
@@ -129,7 +127,7 @@ export async function apiTemplateIoApiRequestV2(
 	}
 
 	try {
-		const response = await this.helpers.requestWithAuthentication.call(
+		const response = await this.helpers.httpRequestWithAuthentication.call(
 			this,
 			'apiTemplateIoApi',
 			options,
