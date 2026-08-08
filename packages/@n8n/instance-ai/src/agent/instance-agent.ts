@@ -84,8 +84,17 @@ export async function createInstanceAgent(
 		server: f.server.name,
 		error: f.error,
 	}));
+	const browserCredentialSetup = context.browserCredentialSetup;
 	const rawLocalMcpTools = context.localMcpServer
-		? createToolsFromLocalMcpServer(context.localMcpServer, context.logger)
+		? createToolsFromLocalMcpServer(
+				context.localMcpServer,
+				context.logger,
+				browserCredentialSetup &&
+					((credentialType, outcome) => {
+						if (outcome.ok) browserCredentialSetup.markCreated(credentialType);
+						else browserCredentialSetup.markCreateFailed(credentialType, outcome.errorCode);
+					}),
+			)
 		: createToolRegistry();
 
 	const browserToolNames = new Set(
