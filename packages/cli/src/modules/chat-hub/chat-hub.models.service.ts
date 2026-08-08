@@ -910,7 +910,7 @@ export class ChatHubModelsService {
 			return [
 				{
 					id,
-					name: model.name,
+					name: model.name || id,
 					description: model.description ?? null,
 					icon: null,
 					model: {
