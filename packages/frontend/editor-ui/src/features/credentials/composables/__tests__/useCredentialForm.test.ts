@@ -89,6 +89,13 @@ const templatedCustomAuth: ICredentialType = {
 	],
 };
 
+// A type with a plain required string field.
+const requiredStringAuth: ICredentialType = {
+	name: 'requiredStringApi',
+	displayName: 'Required String API',
+	properties: [{ displayName: 'Host', name: 'host', type: 'string', required: true, default: '' }],
+};
+
 // Plain per-auth-option types for a node with an auth selector.
 const alphaApi: ICredentialType = {
 	name: 'alphaApi',
@@ -108,6 +115,7 @@ const typesByName: Record<string, ICredentialType> = {
 	privateOAuth2Api: privateOAuth,
 	skipOAuth2Api: skipManagedOAuth,
 	httpTemplatedCustomAuth: templatedCustomAuth,
+	requiredStringApi: requiredStringAuth,
 	alphaApi,
 	betaApi,
 };
@@ -301,6 +309,16 @@ describe('useCredentialForm', () => {
 	});
 
 	describe('requiredPropertiesFilled', () => {
+		it('is false while a required string field is empty and true once it is set', async () => {
+			const form = useCredentialForm({ mode: 'new', activeId: 'requiredStringApi' });
+			await form.initialize();
+
+			expect(form.requiredPropertiesFilled.value).toBe(false);
+
+			form.credentialData.value = { ...form.credentialData.value, host: 'example.com' };
+			expect(form.requiredPropertiesFilled.value).toBe(true);
+		});
+
 		it('blocks save and test while a required placeholder has no value', async () => {
 			const form = useCredentialForm({ mode: 'new', activeId: 'httpTemplatedCustomAuth' });
 			await form.initialize();
