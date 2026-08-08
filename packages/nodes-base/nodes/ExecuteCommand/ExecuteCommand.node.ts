@@ -25,7 +25,10 @@ function appendCapped(current: string, data: string): string {
 	return (current + data).slice(-MAX_OUTPUT_SIZE);
 }
 
-async function execPromise(command: string, abortSignal?: AbortSignal): Promise<IExecReturnData> {
+export async function execPromise(
+	command: string,
+	abortSignal?: AbortSignal,
+): Promise<IExecReturnData> {
 	const returnData: IExecReturnData = {
 		error: undefined,
 		exitCode: 0,
@@ -39,7 +42,12 @@ async function execPromise(command: string, abortSignal?: AbortSignal): Promise<
 			return;
 		}
 
-		const child = spawn(command, { cwd: process.cwd(), shell: true, detached: true });
+		// On Windows, `detached: true` causes external executables (e.g. curl, git) to
+		// run in a new console window whose stdio is disconnected from the parent pipe,
+		// resulting in an empty stdout.  We only need detached mode on POSIX to enable
+		// process-group killing via `process.kill(-child.pid, signal)`.
+		const isWin32 = process.platform === 'win32';
+		const child = spawn(command, { cwd: process.cwd(), shell: true, detached: !isWin32 });
 
 		child.stdout.setEncoding('utf8');
 		child.stderr.setEncoding('utf8');
