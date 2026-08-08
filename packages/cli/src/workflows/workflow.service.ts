@@ -1198,7 +1198,7 @@ export class WorkflowService {
 
 		// After the cascade, so it can see the rows the delete orphaned. Observes a
 		// committed delete, so it must not throw — the module swallows its own errors.
-		await this.workflowMutationHooks.afterWorkflowDeleted(workflowId);
+		await this.workflowMutationHooks.afterWorkflowsDeleted([workflowId]);
 
 		this.eventService.emit('workflow-deleted', { user, workflowId, publicApi: false });
 		await this.externalHooks.run('workflow.afterDelete', [
