@@ -1,5 +1,10 @@
 import { createDomainAccessTracker } from '../domain-access-tracker';
-import { checkDomainAccess, applyDomainAccessResume } from '../domain-gating';
+import {
+	checkDomainAccess,
+	checkWebSearchAccess,
+	applyDomainAccessResume,
+	applyWebSearchAccessResume,
+} from '../domain-gating';
 
 describe('checkDomainAccess', () => {
 	it('allows when permissionMode is always_allow', () => {
@@ -30,14 +35,16 @@ describe('checkDomainAccess', () => {
 		});
 		expect(result.allowed).toBe(false);
 		expect(result.suspendPayload).toBeDefined();
-		expect(result.suspendPayload!.domainAccess.host).toBe('example.com');
-		expect(result.suspendPayload!.domainAccess.url).toBe('https://example.com/secrets');
-		expect(result.suspendPayload!.severity).toBe('info');
+		const payload = result.suspendPayload!;
+		expect(payload.domainAccess?.host).toBe('example.com');
+		expect(payload.domainAccess?.url).toBe('https://example.com/secrets');
+		expect(payload.webSearch).toBeUndefined();
+		expect(payload.severity).toBe('info');
 	});
 
-	it('allows previously approved domains', () => {
+	it('allows previously approved domains', async () => {
 		const tracker = createDomainAccessTracker();
-		tracker.approveDomain('example.com');
+		await tracker.approveDomain('example.com');
 
 		const result = checkDomainAccess({
 			url: 'https://example.com/page',
@@ -81,25 +88,25 @@ describe('checkDomainAccess', () => {
 });
 
 describe('applyDomainAccessResume', () => {
-	it('returns proceed: false when denied', () => {
-		const result = applyDomainAccessResume({
+	it('returns proceed: false when denied', async () => {
+		const result = await applyDomainAccessResume({
 			resumeData: { approved: false },
 			host: 'example.com',
 		});
 		expect(result.proceed).toBe(false);
 	});
 
-	it('returns proceed: true when approved', () => {
-		const result = applyDomainAccessResume({
+	it('returns proceed: true when approved', async () => {
+		const result = await applyDomainAccessResume({
 			resumeData: { approved: true },
 			host: 'example.com',
 		});
 		expect(result.proceed).toBe(true);
 	});
 
-	it('allow_domain persists exact host in tracker', () => {
+	it('allow_domain persists exact host in tracker', async () => {
 		const tracker = createDomainAccessTracker();
-		applyDomainAccessResume({
+		await applyDomainAccessResume({
 			resumeData: { approved: true, domainAccessAction: 'allow_domain' },
 			host: 'example.com',
 			tracker,
@@ -109,9 +116,9 @@ describe('applyDomainAccessResume', () => {
 		expect(tracker.isHostAllowed('other.example.com')).toBe(false);
 	});
 
-	it('allow_all approves all domains', () => {
+	it('allow_all approves all domains', async () => {
 		const tracker = createDomainAccessTracker();
-		applyDomainAccessResume({
+		await applyDomainAccessResume({
 			resumeData: { approved: true, domainAccessAction: 'allow_all' },
 			host: 'example.com',
 			tracker,
@@ -121,9 +128,9 @@ describe('applyDomainAccessResume', () => {
 		expect(tracker.isHostAllowed('anything.com')).toBe(true);
 	});
 
-	it('allow_once sets transient run-scoped approval', () => {
+	it('allow_once sets transient run-scoped approval', async () => {
 		const tracker = createDomainAccessTracker();
-		applyDomainAccessResume({
+		await applyDomainAccessResume({
 			resumeData: { approved: true, domainAccessAction: 'allow_once' },
 			host: 'example.com',
 			tracker,
@@ -135,9 +142,9 @@ describe('applyDomainAccessResume', () => {
 		expect(tracker.isHostAllowed('example.com')).toBe(false);
 	});
 
-	it('default action (no domainAccessAction) behaves like allow_once', () => {
+	it('default action (no domainAccessAction) behaves like allow_once', async () => {
 		const tracker = createDomainAccessTracker();
-		applyDomainAccessResume({
+		await applyDomainAccessResume({
 			resumeData: { approved: true },
 			host: 'example.com',
 			tracker,
@@ -146,5 +153,155 @@ describe('applyDomainAccessResume', () => {
 
 		expect(tracker.isHostAllowed('example.com', 'run-1')).toBe(true);
 		expect(tracker.isHostAllowed('example.com')).toBe(false);
+	});
+});
+
+describe('checkWebSearchAccess', () => {
+	it('allows when permissionMode is always_allow', () => {
+		const result = checkWebSearchAccess({
+			query: 'sensitive query',
+			permissionMode: 'always_allow',
+		});
+		expect(result.allowed).toBe(true);
+		expect(result.suspendPayload).toBeUndefined();
+	});
+
+	it('blocks immediately when permissionMode is blocked', () => {
+		const result = checkWebSearchAccess({
+			query: 'q',
+			permissionMode: 'blocked',
+		});
+		expect(result.allowed).toBe(false);
+		expect(result.blocked).toBe(true);
+		expect(result.suspendPayload).toBeUndefined();
+	});
+
+	it('returns a web-search suspend payload when not yet approved', () => {
+		const tracker = createDomainAccessTracker();
+		const result = checkWebSearchAccess({
+			query: 'how to deploy n8n',
+			tracker,
+			permissionMode: 'require_approval',
+		});
+		expect(result.allowed).toBe(false);
+		expect(result.suspendPayload).toBeDefined();
+		const payload = result.suspendPayload!;
+		expect(payload.webSearch?.query).toBe('how to deploy n8n');
+		expect(payload.domainAccess).toBeUndefined();
+		expect(payload.severity).toBe('info');
+		expect(payload.message).toContain('how to deploy n8n');
+	});
+
+	it('allows when tracker has persistent web-search approval', async () => {
+		const tracker = createDomainAccessTracker();
+		await tracker.approveWebSearch();
+		const result = checkWebSearchAccess({
+			query: 'q',
+			tracker,
+			permissionMode: 'require_approval',
+		});
+		expect(result.allowed).toBe(true);
+	});
+
+	it('allows when tracker has transient web-search approval for the run', () => {
+		const tracker = createDomainAccessTracker();
+		tracker.approveWebSearchOnce('run-1');
+		const result = checkWebSearchAccess({
+			query: 'q',
+			tracker,
+			permissionMode: 'require_approval',
+			runId: 'run-1',
+		});
+		expect(result.allowed).toBe(true);
+	});
+
+	it('does not leak transient approval across runs', () => {
+		const tracker = createDomainAccessTracker();
+		tracker.approveWebSearchOnce('run-1');
+		const result = checkWebSearchAccess({
+			query: 'q',
+			tracker,
+			permissionMode: 'require_approval',
+			runId: 'run-2',
+		});
+		expect(result.allowed).toBe(false);
+	});
+
+	it('clearRun removes transient web-search approval', () => {
+		const tracker = createDomainAccessTracker();
+		tracker.approveWebSearchOnce('run-1');
+		tracker.clearRun('run-1');
+		const result = checkWebSearchAccess({
+			query: 'q',
+			tracker,
+			permissionMode: 'require_approval',
+			runId: 'run-1',
+		});
+		expect(result.allowed).toBe(false);
+	});
+
+	it('does not leak fetch-url tracker approvals into web-search', async () => {
+		const tracker = createDomainAccessTracker();
+		await tracker.approveDomain('example.com');
+		await tracker.approveAllDomains();
+		const result = checkWebSearchAccess({
+			query: 'q',
+			tracker,
+			permissionMode: 'require_approval',
+		});
+		// approveAllDomains is for fetch-url; web-search remains gated
+		expect(result.allowed).toBe(false);
+	});
+});
+
+describe('applyWebSearchAccessResume', () => {
+	it('returns proceed: false when denied', async () => {
+		const result = await applyWebSearchAccessResume({
+			resumeData: { approved: false },
+		});
+		expect(result.proceed).toBe(false);
+	});
+
+	it('allow_once sets transient run-scoped approval', async () => {
+		const tracker = createDomainAccessTracker();
+		await applyWebSearchAccessResume({
+			resumeData: { approved: true, domainAccessAction: 'allow_once' },
+			tracker,
+			runId: 'run-1',
+		});
+		expect(tracker.isWebSearchAllowed('run-1')).toBe(true);
+		expect(tracker.isWebSearchAllowed('run-2')).toBe(false);
+		expect(tracker.isWebSearchAllowed()).toBe(false);
+	});
+
+	it('default action behaves like allow_once', async () => {
+		const tracker = createDomainAccessTracker();
+		await applyWebSearchAccessResume({
+			resumeData: { approved: true },
+			tracker,
+			runId: 'run-1',
+		});
+		expect(tracker.isWebSearchAllowed('run-1')).toBe(true);
+		expect(tracker.isWebSearchAllowed()).toBe(false);
+	});
+
+	it('allow_domain grants persistent (thread-level) approval', async () => {
+		const tracker = createDomainAccessTracker();
+		await applyWebSearchAccessResume({
+			resumeData: { approved: true, domainAccessAction: 'allow_domain' },
+			tracker,
+			runId: 'run-1',
+		});
+		expect(tracker.isWebSearchAllowed()).toBe(true);
+		expect(tracker.isWebSearchAllowed('any-other-run')).toBe(true);
+	});
+
+	it('allow_all also grants persistent approval (no broader scope for search)', async () => {
+		const tracker = createDomainAccessTracker();
+		await applyWebSearchAccessResume({
+			resumeData: { approved: true, domainAccessAction: 'allow_all' },
+			tracker,
+		});
+		expect(tracker.isWebSearchAllowed()).toBe(true);
 	});
 });

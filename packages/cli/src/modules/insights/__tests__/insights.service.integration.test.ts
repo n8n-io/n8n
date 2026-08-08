@@ -7,13 +7,16 @@ import {
 	testModules,
 } from '@n8n/backend-test-utils';
 import type { InstanceType } from '@n8n/constants';
-import type { IWorkflowDb, Project, WorkflowEntity } from '@n8n/db';
+import type { IWorkflowDb, Project, User, WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
-import type { MockProxy } from 'jest-mock-extended';
-import { mock } from 'jest-mock-extended';
 import { DateTime } from 'luxon';
 import type { InstanceSettings } from 'n8n-core';
 import { UserError } from 'n8n-workflow';
+import type { MockInstance, Mocked } from 'vitest';
+import type { MockProxy } from 'vitest-mock-extended';
+import { mock } from 'vitest-mock-extended';
+
+import type { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
 import { createCompactedInsightsEvent } from '../database/entities/__tests__/db-utils';
 import type { InsightsByPeriodRepository } from '../database/repositories/insights-by-period.repository';
@@ -23,8 +26,6 @@ import type { InsightsPruningService } from '../insights-pruning.service';
 import { InsightsService } from '../insights.service';
 
 describe('InsightsService (Integration)', () => {
-	const today = new Date();
-
 	beforeAll(async () => {
 		await testModules.loadModules(['insights']);
 		await testDb.init();
@@ -51,8 +52,8 @@ describe('InsightsService (Integration)', () => {
 		let pruningService: InsightsPruningService;
 		let instanceSettings: MockProxy<InstanceSettings>;
 		let realCollectionService: InsightsCollectionService;
-		let initSpy: jest.SpyInstance;
-		let shutdownSpy: jest.SpyInstance;
+		let initSpy: MockInstance;
+		let shutdownSpy: MockInstance;
 
 		beforeEach(() => {
 			compactionService = mock<InsightsCompactionService>();
@@ -67,14 +68,15 @@ describe('InsightsService (Integration)', () => {
 				mock<LicenseState>(),
 				instanceSettings,
 				mockLogger(),
+				mock<WorkflowSharingService>(),
 			);
 
 			// Get the real service from the container and spy on it
 			realCollectionService = Container.get(InsightsCollectionService);
-			initSpy = jest.spyOn(realCollectionService, 'init');
-			shutdownSpy = jest.spyOn(realCollectionService, 'shutdown');
+			initSpy = vi.spyOn(realCollectionService, 'init');
+			shutdownSpy = vi.spyOn(realCollectionService, 'shutdown');
 
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 		});
 
 		afterEach(async () => {
@@ -85,22 +87,15 @@ describe('InsightsService (Integration)', () => {
 			shutdownSpy.mockRestore();
 		});
 
-		const setupMocks = (
-			instanceType: InstanceType,
-			isLeader: boolean = false,
-			isPruningEnabled: boolean = false,
-		) => {
+		const setupMocks = (instanceType: InstanceType, isLeader: boolean = false) => {
 			(instanceSettings as any).instanceType = instanceType;
 			Object.defineProperty(instanceSettings, 'isLeader', {
-				get: jest.fn(() => isLeader),
-			});
-			Object.defineProperty(pruningService, 'isPruningEnabled', {
-				get: jest.fn(() => isPruningEnabled),
+				get: vi.fn(() => isLeader),
 			});
 		};
 
 		test('starts flushing timer for main instance', async () => {
-			setupMocks('main', false, false);
+			setupMocks('main', false);
 
 			await insightsService.init();
 
@@ -109,18 +104,8 @@ describe('InsightsService (Integration)', () => {
 			expect(pruningService.startPruningTimer).not.toHaveBeenCalled();
 		});
 
-		test('starts compaction and flushing timers for main leader instances', async () => {
-			setupMocks('main', true, false);
-
-			await insightsService.init();
-
-			expect(initSpy).toHaveBeenCalled();
-			expect(compactionService.startCompactionTimer).toHaveBeenCalled();
-			expect(pruningService.startPruningTimer).not.toHaveBeenCalled();
-		});
-
-		test('starts compaction, flushing and pruning timers for main leader instance with pruning enabled', async () => {
-			setupMocks('main', true, true);
+		test('starts compaction, flushing and pruning timers for main leader instances', async () => {
+			setupMocks('main', true);
 
 			await insightsService.init();
 
@@ -130,7 +115,7 @@ describe('InsightsService (Integration)', () => {
 		});
 
 		test('starts only collection flushing timer for webhook instance', async () => {
-			setupMocks('webhook', false, false);
+			setupMocks('webhook', false);
 
 			await insightsService.init();
 
@@ -140,7 +125,7 @@ describe('InsightsService (Integration)', () => {
 		});
 
 		test('do no start any timers for non-main instances', async () => {
-			setupMocks('worker', false, false);
+			setupMocks('worker', false);
 
 			await insightsService.init();
 
@@ -241,7 +226,10 @@ describe('InsightsService (Integration)', () => {
 			const startDate = now.minus({ days: 7 }).toJSDate();
 
 			// ACT
-			const summary = await insightsService.getInsightsSummary({ startDate, endDate: today });
+			const summary = await insightsService.getInsightsSummary({
+				startDate,
+				endDate: now.toJSDate(),
+			});
 
 			// ASSERT
 			expect(Object.values(summary).map((v) => v.deviation)).toEqual([
@@ -325,6 +313,9 @@ describe('InsightsService (Integration)', () => {
 	describe('getInsightsByWorkflow', () => {
 		let insightsService: InsightsService;
 
+		// Owner-like user with the global `workflow:read` scope, so every workflow is accessible
+		const owner = { role: { scopes: [{ slug: 'workflow:read' }] } } as unknown as User;
+
 		beforeAll(() => {
 			insightsService = Container.get(InsightsService);
 		});
@@ -388,7 +379,7 @@ describe('InsightsService (Integration)', () => {
 					type: 'success',
 					value: 1,
 					periodUnit: 'hour',
-					periodStart: now.minus({ days: 13, hours: 23 }),
+					periodStart: now.minus({ days: 14 }).startOf('day').plus({ hours: 1 }),
 				});
 				await createCompactedInsightsEvent(workflow, {
 					type: 'success',
@@ -424,6 +415,7 @@ describe('InsightsService (Integration)', () => {
 
 			// ACT
 			const byWorkflow = await insightsService.getInsightsByWorkflow({
+				user: owner,
 				startDate,
 				endDate,
 			});
@@ -490,6 +482,7 @@ describe('InsightsService (Integration)', () => {
 
 			// ACT
 			const byWorkflow = await insightsService.getInsightsByWorkflow({
+				user: owner,
 				startDate,
 				endDate: now.toJSDate(),
 				sortBy: 'runTime:desc',
@@ -517,8 +510,9 @@ describe('InsightsService (Integration)', () => {
 
 			// ACT
 			const byWorkflow = await insightsService.getInsightsByWorkflow({
+				user: owner,
 				startDate,
-				endDate: today,
+				endDate: now.toJSDate(),
 				sortBy: 'succeeded:desc',
 				skip: 1,
 				take: 1,
@@ -528,6 +522,31 @@ describe('InsightsService (Integration)', () => {
 			expect(byWorkflow.count).toEqual(3);
 			expect(byWorkflow.data).toHaveLength(1);
 			expect(byWorkflow.data[0].workflowId).toEqual(workflow2.id);
+		});
+
+		test('returns total count when page is past the end', async () => {
+			const now = DateTime.utc();
+			for (const workflow of [workflow1, workflow2, workflow3]) {
+				await createCompactedInsightsEvent(workflow, {
+					type: 'success',
+					value: 1,
+					periodUnit: 'day',
+					periodStart: now,
+				});
+			}
+
+			const startDate = now.minus({ days: 14 }).startOf('day').toJSDate();
+
+			const byWorkflow = await insightsService.getInsightsByWorkflow({
+				user: owner,
+				startDate,
+				endDate: now.toJSDate(),
+				skip: 10,
+				take: 10,
+			});
+
+			expect(byWorkflow.count).toEqual(3);
+			expect(byWorkflow.data).toHaveLength(0);
 		});
 
 		test('compacted data are grouped by workflow correctly with projectId filter', async () => {
@@ -572,7 +591,7 @@ describe('InsightsService (Integration)', () => {
 					type: 'success',
 					value: 1,
 					periodUnit: 'hour',
-					periodStart: now.minus({ days: 14 }).endOf('day'),
+					periodStart: now.minus({ days: 14 }).startOf('day').plus({ hours: 1 }),
 				});
 
 				// Out of date range insight (should not be included)
@@ -589,6 +608,7 @@ describe('InsightsService (Integration)', () => {
 
 			// ACT
 			const byWorkflow = await insightsService.getInsightsByWorkflow({
+				user: owner,
 				startDate,
 				endDate: now.toJSDate(),
 				projectId: project.id,
@@ -630,12 +650,14 @@ describe('InsightsService (Integration)', () => {
 
 		test('compacted data are grouped by workflow correctly even with 0 data (check division by 0)', async () => {
 			// ARRANGE
-			const startDate = DateTime.utc().minus({ days: 14 }).toJSDate();
+			const now = DateTime.utc();
+			const startDate = now.minus({ days: 14 }).toJSDate();
 
 			// ACT
 			const byWorkflow = await insightsService.getInsightsByWorkflow({
+				user: owner,
 				startDate,
-				endDate: today,
+				endDate: now.toJSDate(),
 			});
 
 			// ASSERT
@@ -666,10 +688,11 @@ describe('InsightsService (Integration)', () => {
 		});
 
 		test('returns empty array when no insights exist', async () => {
-			const startDate = DateTime.utc().minus({ days: 14 }).toJSDate();
+			const now = DateTime.utc();
+			const startDate = now.minus({ days: 14 }).toJSDate();
 			const byTime = await insightsService.getInsightsByTime({
 				startDate,
-				endDate: today,
+				endDate: now.toJSDate(),
 			});
 			expect(byTime).toEqual([]);
 		});
@@ -687,7 +710,7 @@ describe('InsightsService (Integration)', () => {
 
 			const byTime = await insightsService.getInsightsByTime({
 				startDate,
-				endDate: today,
+				endDate: now.toJSDate(),
 			});
 			expect(byTime).toEqual([]);
 		});
@@ -733,7 +756,7 @@ describe('InsightsService (Integration)', () => {
 					type: workflow === workflow1 ? 'success' : 'failure',
 					value: 1,
 					periodUnit: 'hour',
-					periodStart: now.minus({ days: 14 }).endOf('day'),
+					periodStart: now.minus({ days: 14 }).startOf('day').plus({ hours: 1 }),
 				});
 
 				// Out of date range insight (should not be included)
@@ -751,7 +774,7 @@ describe('InsightsService (Integration)', () => {
 			// ACT
 			const byTime = await insightsService.getInsightsByTime({
 				startDate,
-				endDate: today,
+				endDate: now.toJSDate(),
 			});
 
 			// ASSERT
@@ -829,7 +852,7 @@ describe('InsightsService (Integration)', () => {
 			// ACT
 			const byTime = await insightsService.getInsightsByTime({
 				startDate,
-				endDate: today,
+				endDate: now.toJSDate(),
 				insightTypes: ['time_saved_min', 'failure'],
 			});
 
@@ -891,7 +914,7 @@ describe('InsightsService (Integration)', () => {
 					type: workflow === workflow1 ? 'success' : 'failure',
 					value: 1,
 					periodUnit: 'hour',
-					periodStart: now.minus({ days: 14 }).endOf('day'),
+					periodStart: now.minus({ days: 14 }).startOf('day').plus({ hours: 1 }),
 				});
 
 				// Out of date range insight (should not be included)
@@ -909,7 +932,7 @@ describe('InsightsService (Integration)', () => {
 			// ACT
 			const byTime = await insightsService.getInsightsByTime({
 				startDate,
-				endDate: today,
+				endDate: now.toJSDate(),
 				projectId: project.id,
 			});
 
@@ -965,7 +988,7 @@ describe('InsightsService (Integration)', () => {
 	});
 
 	describe('validateDateFiltersLicense', () => {
-		let licenseStateMock: jest.Mocked<LicenseState>;
+		let licenseStateMock: Mocked<LicenseState>;
 		let insightsService: InsightsService;
 
 		beforeEach(() => {
@@ -977,6 +1000,7 @@ describe('InsightsService (Integration)', () => {
 				licenseStateMock,
 				mock<InstanceSettings>(),
 				mockLogger(),
+				mock<WorkflowSharingService>(),
 			);
 		});
 
@@ -987,12 +1011,13 @@ describe('InsightsService (Integration)', () => {
 			const startDate = DateTime.now().minus({ days: 3 }).startOf('day');
 			const endDate = startDate.plus({ hours: 10 });
 
-			expect(() =>
+			const execution = () =>
 				insightsService.validateDateFiltersLicense({
 					startDate: startDate.toJSDate(),
 					endDate: endDate.toJSDate(),
-				}),
-			).toThrowError(new UserError('Hourly data is not available with your current license'));
+				});
+			expect(execution).toThrow(UserError);
+			expect(execution).toThrow('Hourly data is not available with your current license');
 		});
 
 		test('does not throw if granularity is hour and hourly data is licensed', () => {
@@ -1018,10 +1043,10 @@ describe('InsightsService (Integration)', () => {
 			const startDate = today.minus({ days: 8 }).toJSDate();
 			const endDate = today.toJSDate();
 
-			expect(() => insightsService.validateDateFiltersLicense({ startDate, endDate })).toThrowError(
-				new UserError(
-					'The selected date range exceeds the maximum history allowed by your license',
-				),
+			const execution = () => insightsService.validateDateFiltersLicense({ startDate, endDate });
+			expect(execution).toThrow(UserError);
+			expect(execution).toThrow(
+				'The selected date range exceeds the maximum history allowed by your license',
 			);
 		});
 
@@ -1069,11 +1094,11 @@ describe('InsightsService (Integration)', () => {
 		let insightsService: InsightsService;
 
 		const mockCompactionService = mock<InsightsCompactionService>({
-			stopCompactionTimer: jest.fn(),
+			stopCompactionTimer: vi.fn(),
 		});
 
 		const mockPruningService = mock<InsightsPruningService>({
-			stopPruningTimer: jest.fn(),
+			stopPruningTimer: vi.fn(),
 		});
 
 		beforeAll(() => {
@@ -1084,14 +1109,22 @@ describe('InsightsService (Integration)', () => {
 				mock<LicenseState>(),
 				mock<InstanceSettings>({ instanceType: 'main' }),
 				mockLogger(),
+				mock<WorkflowSharingService>(),
 			);
+		});
+
+		beforeEach(() => {
+			mockCompactionService.stopCompactionTimer.mockReset();
+			mockCompactionService.stopCompactionTimer.mockResolvedValue(undefined);
+			mockPruningService.stopPruningTimer.mockReset();
+			mockPruningService.stopPruningTimer.mockReturnValue(undefined);
 		});
 
 		test('shutdown stops timers and shuts down services', async () => {
 			// ARRANGE
 			// Get the real service from the container and spy on it
 			const realCollectionService = Container.get(InsightsCollectionService);
-			const shutdownSpy = jest.spyOn(realCollectionService, 'shutdown');
+			const shutdownSpy = vi.spyOn(realCollectionService, 'shutdown');
 
 			// ACT
 			await insightsService.shutdown();
@@ -1100,6 +1133,31 @@ describe('InsightsService (Integration)', () => {
 			expect(shutdownSpy).toHaveBeenCalled();
 			expect(mockCompactionService.stopCompactionTimer).toHaveBeenCalled();
 			expect(mockPruningService.stopPruningTimer).toHaveBeenCalled();
+		});
+
+		test('stops pruning before waiting for compaction to finish', async () => {
+			// ARRANGE
+			const callOrder: string[] = [];
+			let resolveCompaction!: () => void;
+			mockCompactionService.stopCompactionTimer.mockImplementation(async () => {
+				callOrder.push('compaction');
+				await new Promise<void>((resolve) => {
+					resolveCompaction = resolve;
+				});
+			});
+			mockPruningService.stopPruningTimer.mockImplementation(() => {
+				callOrder.push('pruning');
+			});
+
+			// ACT
+			const stopPromise = insightsService.stopCompactionAndPruningTimers();
+			await Promise.resolve();
+
+			// ASSERT
+			expect(callOrder).toEqual(['pruning', 'compaction']);
+
+			resolveCompaction();
+			await stopPromise;
 		});
 	});
 });

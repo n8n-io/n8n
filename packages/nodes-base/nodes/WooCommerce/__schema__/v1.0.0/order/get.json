@@ -15,6 +15,31 @@
                         }
                     }
                 },
+                "customer": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "href": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "email_templates": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "embeddable": {
+                                "type": "boolean"
+                            },
+                            "href": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
                 "self": {
                     "type": "array",
                     "items": {
@@ -128,6 +153,9 @@
                                 }
                             }
                         }
+                    },
+                    "nominal_amount": {
+                        "type": "integer"
                     }
                 }
             }
@@ -234,6 +262,9 @@
             "items": {
                 "type": "object",
                 "properties": {
+                    "global_unique_id": {
+                        "type": "string"
+                    },
                     "id": {
                         "type": "integer"
                     },
@@ -545,5 +576,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

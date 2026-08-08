@@ -10,18 +10,19 @@ export default defineConfig({
 	test: {
 		reporters,
 		outputFile,
-		workspace: [
-			{
-				test: {
-					...sharedTestConfig,
-					name: 'legacy-engine',
-				},
-			},
+		projects: [
 			{
 				test: {
 					...sharedTestConfig,
 					name: 'vm-engine',
 					env: { N8N_EXPRESSION_ENGINE: 'vm' },
+				},
+			},
+			{
+				test: {
+					...sharedTestConfig,
+					name: 'legacy-engine',
+					env: { N8N_EXPRESSION_ENGINE: 'legacy' },
 				},
 			},
 		],

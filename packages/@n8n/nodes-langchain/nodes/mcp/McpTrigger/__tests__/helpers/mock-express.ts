@@ -1,4 +1,5 @@
 import type { Request } from 'express';
+import type { Mocked } from 'vitest';
 
 import type { CompressionResponse } from '../../transport/Transport';
 
@@ -8,23 +9,23 @@ export const MCP_SESSION_ID_HEADER = 'mcp-session-id';
 /**
  * Creates a mock Express Response with compression support
  */
-export function createMockResponse(): jest.Mocked<CompressionResponse> {
+export function createMockResponse(): Mocked<CompressionResponse> {
 	const response = {
-		status: jest.fn().mockReturnThis(),
-		send: jest.fn().mockReturnThis(),
-		json: jest.fn().mockReturnThis(),
-		end: jest.fn().mockReturnThis(),
-		write: jest.fn().mockReturnThis(),
-		writeHead: jest.fn().mockReturnThis(),
-		setHeader: jest.fn().mockReturnThis(),
-		getHeader: jest.fn(),
-		flush: jest.fn(),
-		on: jest.fn().mockReturnThis(),
-		once: jest.fn().mockReturnThis(),
-		removeListener: jest.fn().mockReturnThis(),
-		emit: jest.fn().mockReturnValue(true),
+		status: vi.fn().mockReturnThis(),
+		send: vi.fn().mockReturnThis(),
+		json: vi.fn().mockReturnThis(),
+		end: vi.fn().mockReturnThis(),
+		write: vi.fn().mockReturnThis(),
+		writeHead: vi.fn().mockReturnThis(),
+		setHeader: vi.fn().mockReturnThis(),
+		getHeader: vi.fn(),
+		flush: vi.fn(),
+		on: vi.fn().mockReturnThis(),
+		once: vi.fn().mockReturnThis(),
+		removeListener: vi.fn().mockReturnThis(),
+		emit: vi.fn().mockReturnValue(true),
 		headersSent: false,
-	} as unknown as jest.Mocked<CompressionResponse>;
+	} as unknown as Mocked<CompressionResponse>;
 
 	return response;
 }
@@ -42,7 +43,7 @@ export function createMockRequest(
 		method?: string;
 		path?: string;
 	} = {},
-): jest.Mocked<Request> & { rawBody: Buffer } {
+): Mocked<Request> & { rawBody: Buffer } {
 	const {
 		sessionId,
 		body = {},
@@ -71,8 +72,8 @@ export function createMockRequest(
 		params: {},
 		url: path,
 		path,
-		get: jest.fn((name: string) => finalHeaders[name.toLowerCase()]),
-	} as unknown as jest.Mocked<Request> & { rawBody: Buffer };
+		get: vi.fn((name: string) => finalHeaders[name.toLowerCase()]),
+	} as unknown as Mocked<Request> & { rawBody: Buffer };
 }
 
 /**
@@ -81,7 +82,7 @@ export function createMockRequest(
 export function createMockRequestWithSessionId(
 	sessionId: string,
 	rawBody: string,
-): jest.Mocked<Request> & { rawBody: Buffer } {
+): Mocked<Request> & { rawBody: Buffer } {
 	return createMockRequest({
 		sessionId,
 		rawBody,
@@ -125,7 +126,7 @@ export function createListToolsMessage(id: string | number = 1): string {
 export function createMockRequestWithHeaderSessionId(
 	sessionId: string,
 	rawBody: string = '{}',
-): jest.Mocked<Request> & { rawBody: Buffer } {
+): Mocked<Request> & { rawBody: Buffer } {
 	return createMockRequest({
 		rawBody,
 		headers: { [MCP_SESSION_ID_HEADER]: sessionId },

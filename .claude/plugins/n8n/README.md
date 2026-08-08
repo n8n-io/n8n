@@ -1,51 +1,30 @@
 # n8n Claude Code Plugin
 
-Shared skills, commands, and agents for n8n development.
+Shared commands and agents for n8n development, plus Claude Code skill links.
+All plugin items are namespaced under `n8n:` to avoid collisions with personal
+or third-party plugins.
 
-## Skills
+## Usage
 
-### `n8n:setup-mcps`
+Skills, commands, and agents are auto-discovered by Claude Code from this
+plugin directory. Everything gets the `n8n:` namespace prefix automatically.
 
-Configures commonly used MCP servers for n8n engineers.
+| Type | Example | Invocation |
+|------|---------|------------|
+| Skill | `skills/create-pr/SKILL.md` | `n8n:create-pr` |
+| Command | `commands/plan.md` | `/n8n:plan PAY-XXX` |
+| Agent | `agents/developer.md` | `n8n:developer` |
 
-**Usage:**
-```
-/n8n:setup-mcps
-```
+Shared skill sources live in `.agents/skills/`. Most entries under
+`.claude/plugins/n8n/skills/` are symlinks to those shared sources. Claude-only
+skills or overrides remain real directories in this plugin path.
 
-**What it does:**
-1. Checks which MCPs are already configured (matches by URL, not name)
-2. Presents a multi-select menu of available MCPs (Linear, Notion, Context7, Figma)
-3. For each selected MCP, asks which scope to install in:
-   - **user** (recommended) — available across all projects
-   - **local** — only in this project (`settings.local.json`)
-4. Installs using official recommended commands
-
-**Note:** Project scope is intentionally not offered since `.claude/settings.json` is tracked in git.
-
-## Design Decisions
-
-### Why a plugin instead of standalone skills?
-
-To get the `n8n:` namespace prefix for all n8n-specific skills, avoiding name
-collisions with built-in or personal skills. Claude Code only supports
-colon-namespaced skills (`n8n:setup-mcps`) through the plugin system —
-standalone `.claude/skills/` entries cannot be namespaced. This also provides a
-home for future n8n skills, commands, and agents under the same `n8n:` prefix.
-
-### Why only user and local scope (no project scope)?
-
-Project scope writes MCP config to `.claude/settings.json`, which is tracked in
-git. Since MCP credentials are personal (OAuth tokens, API keys), they should
-not end up in version control. User scope makes MCPs available across all
-projects; local scope (`settings.local.json`) keeps them project-specific but
-gitignored.
-
-### Why ask scope per MCP instead of once for all?
-
-Engineers may want different scopes for different MCPs. For example, Context7
-and Figma are useful across all projects (user scope), while Linear or Notion
-might only be needed for this project (local scope).
+> **Requires symlink support.** These shared-skill entries are git symlinks. On
+> Windows, check out with symlinks enabled (`git config core.symlinks true`,
+> plus Developer Mode or WSL) — otherwise git writes them as plain text stubs
+> and Claude Code fails to load the affected skills. `node
+> scripts/sync-agent-skill-links.mjs --check` flags stubs with an actionable
+> error.
 
 ## Plugin Structure
 
@@ -54,14 +33,28 @@ might only be needed for this project (local scope).
 ├── .claude-plugin/
 │   ├── marketplace.json    # Marketplace manifest
 │   └── plugin.json         # Plugin identity
+├── agents/
+│   └── <name>.md           # → n8n:<name> agent
+├── commands/
+│   └── <name>.md           # → /n8n:<name> command
 ├── skills/
-│   └── sample-skill/
-│       └── SKILL.md
+│   ├── <shared> -> ../../../../.agents/skills/<shared>
+│   └── <claude-only>/SKILL.md
 └── README.md
 ```
 
-## Known Issues
+Run `pnpm sync:skill-links` after adding or removing shared skills. Run
+`pnpm check:skill-links` before submitting changes.
 
-- Plugin skill namespacing requires omitting the `name` field from SKILL.md
-  frontmatter due to a [Claude Code bug](https://github.com/anthropics/claude-code/issues/17271).
-  The directory name is used as the skill identifier instead.
+## Design Decisions
+
+### Why a plugin instead of standalone skills?
+
+To get the `n8n:` namespace prefix, avoiding collisions with personal or
+third-party plugins. Claude Code only supports colon-namespaced items through
+the plugin system — standalone `.claude/skills/` entries cannot be namespaced.
+
+### Skill Frontmatter
+
+Shared skills keep `name: n8n:<name>` in `SKILL.md` frontmatter for cross-agent
+discovery. Do not remove shared skill names when linking them into this plugin.

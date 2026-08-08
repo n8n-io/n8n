@@ -6,6 +6,12 @@ export default {
 	title: 'Core/Heading',
 	component: N8nHeading,
 	argTypes: {
+		step: {
+			control: {
+				type: 'select',
+			},
+			options: [undefined, '4xs', '3xs', '2xs', 'xs', 'sm', 'md', 'lg', 'xl', '2xl'],
+		},
 		size: {
 			control: {
 				type: 'select',

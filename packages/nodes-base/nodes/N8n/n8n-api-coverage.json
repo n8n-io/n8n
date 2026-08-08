@@ -5,7 +5,19 @@
 			"status": "covered",
 			"nodeOperation": "audit:generate"
 		},
+		"POST /roles": {
+			"status": "gap"
+		},
+		"GET /settings/security-policy": {
+			"status": "gap"
+		},
+		"PUT /settings/security-policy": {
+			"status": "gap"
+		},
 		"GET /credentials": {
+			"status": "gap"
+		},
+		"GET /credentials/{id}": {
 			"status": "gap"
 		},
 		"POST /credentials": {
@@ -26,6 +38,9 @@
 		"PUT /credentials/{id}/transfer": {
 			"status": "gap"
 		},
+		"POST /credentials/{id}/test": {
+			"status": "gap"
+		},
 		"GET /community-packages": {
 			"status": "gap"
 		},
@@ -39,6 +54,9 @@
 			"status": "gap"
 		},
 		"GET /discover": {
+			"status": "gap"
+		},
+		"GET /insights/summary": {
 			"status": "gap"
 		},
 		"GET /executions": {
@@ -66,6 +84,9 @@
 			"status": "gap"
 		},
 		"PUT /executions/{id}/tags": {
+			"status": "gap"
+		},
+		"GET /insights/summary": {
 			"status": "gap"
 		},
 		"POST /tags": {
@@ -107,6 +128,9 @@
 			"status": "covered",
 			"nodeOperation": "workflow:getVersion"
 		},
+		"GET /workflows/{id}/history": {
+			"status": "gap"
+		},
 		"POST /workflows/{id}/activate": {
 			"status": "covered",
 			"nodeOperation": "workflow:activate"
@@ -114,6 +138,12 @@
 		"POST /workflows/{id}/deactivate": {
 			"status": "covered",
 			"nodeOperation": "workflow:deactivate"
+		},
+		"POST /workflows/{id}/publish": {
+			"status": "gap"
+		},
+		"POST /workflows/{id}/unpublish": {
+			"status": "gap"
 		},
 		"POST /workflows/{id}/archive": {
 			"status": "gap"
@@ -128,6 +158,21 @@
 			"status": "gap"
 		},
 		"PUT /workflows/{id}/tags": {
+			"status": "gap"
+		},
+		"GET /workflows/{id}/test-runs": {
+			"status": "gap"
+		},
+		"POST /workflows/{id}/test-runs": {
+			"status": "gap"
+		},
+		"GET /workflows/{id}/test-runs/{runId}": {
+			"status": "gap"
+		},
+		"POST /workflows/{id}/test-runs/{runId}/cancel": {
+			"status": "gap"
+		},
+		"GET /workflows/{id}/test-runs/{runId}/test-cases": {
 			"status": "gap"
 		},
 		"GET /users": {
@@ -146,6 +191,45 @@
 			"status": "gap"
 		},
 		"POST /source-control/pull": {
+			"status": "gap"
+		},
+		"GET /settings/security-policy": {
+			"status": "gap"
+		},
+		"PUT /settings/security-policy": {
+			"status": "gap"
+		},
+		"GET /settings/sso/saml": {
+			"status": "gap"
+		},
+		"PUT /settings/sso/saml": {
+			"status": "gap"
+		},
+		"GET /settings/log-streaming/event-types": {
+			"status": "gap"
+		},
+		"GET /settings/log-streaming/destinations": {
+			"status": "gap"
+		},
+		"POST /settings/log-streaming/destinations": {
+			"status": "gap"
+		},
+		"GET /settings/log-streaming/destinations/{id}": {
+			"status": "gap"
+		},
+		"PUT /settings/log-streaming/destinations/{id}": {
+			"status": "gap"
+		},
+		"DELETE /settings/log-streaming/destinations/{id}": {
+			"status": "gap"
+		},
+		"POST /settings/log-streaming/destinations/{id}/test": {
+			"status": "gap"
+		},
+		"GET /settings/sso/oidc": {
+			"status": "gap"
+		},
+		"PUT /settings/sso/oidc": {
 			"status": "gap"
 		},
 		"POST /variables": {
@@ -190,6 +274,21 @@
 		"DELETE /data-tables/{dataTableId}/rows/delete": {
 			"status": "gap"
 		},
+		"DELETE /data-tables/{dataTableId}/rows/clear": {
+			"status": "gap"
+		},
+		"GET /data-tables/{dataTableId}/columns": {
+			"status": "gap"
+		},
+		"POST /data-tables/{dataTableId}/columns": {
+			"status": "gap"
+		},
+		"PATCH /data-tables/{dataTableId}/columns/{columnId}": {
+			"status": "gap"
+		},
+		"DELETE /data-tables/{dataTableId}/columns/{columnId}": {
+			"status": "gap"
+		},
 		"POST /projects": {
 			"status": "gap"
 		},
@@ -202,6 +301,15 @@
 		"PUT /projects/{projectId}": {
 			"status": "gap"
 		},
+		"GET /projects/{projectId}/folders": {
+			"status": "gap"
+		},
+		"POST /projects/{projectId}/folders": {
+			"status": "gap"
+		},
+		"DELETE /projects/{projectId}/folders/{folderId}": {
+			"status": "gap"
+		},
 		"GET /projects/{projectId}/users": {
 			"status": "gap"
 		},
@@ -212,6 +320,27 @@
 			"status": "gap"
 		},
 		"PATCH /projects/{projectId}/users/{userId}": {
+			"status": "gap"
+		},
+		"DELETE /projects/{projectId}/folders/{folderId}": {
+			"status": "gap"
+		},
+		"POST /projects/{projectId}/folders": {
+			"status": "gap"
+		},
+		"GET /projects/{projectId}/folders": {
+			"status": "gap"
+		},
+		"GET /projects/{projectId}/folders/{folderId}": {
+			"status": "gap"
+		},
+		"PATCH /projects/{projectId}/folders/{folderId}": {
+			"status": "gap"
+		},
+		"POST /n8n-packages/export": {
+			"status": "gap"
+		},
+		"POST /n8n-packages/import": {
 			"status": "gap"
 		}
 	}

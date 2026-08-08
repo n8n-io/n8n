@@ -46,6 +46,7 @@ export async function microsoftApiRequestAllItems(
 
 	body: any = {},
 	query: IDataObject = {},
+	limit?: number,
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -53,12 +54,19 @@ export async function microsoftApiRequestAllItems(
 	let uri: string | undefined;
 
 	do {
-		responseData = await microsoftApiRequest.call(this, method, endpoint, body, query, uri);
+		// `@odata.nextLink` already carries the query params; don't re-send them
+		responseData = await microsoftApiRequest.call(
+			this,
+			method,
+			endpoint,
+			body,
+			uri ? {} : query,
+			uri,
+		);
 		uri = responseData['@odata.nextLink'];
 		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
-		const limit = query.limit as number | undefined;
-		if (limit && limit <= returnData.length) {
-			return returnData;
+		if (limit && returnData.length >= limit) {
+			return returnData.slice(0, limit);
 		}
 	} while (responseData['@odata.nextLink'] !== undefined);
 
@@ -70,7 +78,6 @@ export async function microsoftApiRequestAllItemsSkip(
 	propertyName: string,
 	method: IHttpRequestMethods,
 	endpoint: string,
-
 	body: any = {},
 	query: IDataObject = {},
 ): Promise<any> {

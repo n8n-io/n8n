@@ -1,4 +1,5 @@
 name: 'Test: E2E Helm Chart'
+run-name: "${{ github.event_name == 'workflow_dispatch' && format('Test: E2E Helm Chart (mode={0}, branch={1}, chart={2})', inputs.mode, inputs.branch || 'default', inputs['helm-chart-ref']) || '' }}"
 
 on:
   pull_request:
@@ -94,7 +95,10 @@ jobs:
         env:
           TESTCONTAINERS_RYUK_DISABLED: 'true'
         run: |
-          npx tsx packages/testing/containers/helm-start-stack.ts \
+          # tsx is a devDependency of n8n-containers, not the repo root, so it
+          # must run via that package (root `npx tsx` stopped resolving when
+          # shamefully-hoist was removed).
+          pnpm --filter n8n-containers exec tsx helm-start-stack.ts \
             --env E2E_TESTS=true --env NODE_ENV=development \
             --mode "${{ inputs.mode || 'queue' }}" \
             --image "${{ env.DOCKER_IMAGE }}" \

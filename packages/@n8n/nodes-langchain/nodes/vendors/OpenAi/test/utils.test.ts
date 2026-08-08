@@ -1,6 +1,6 @@
+import { BufferWindowMemory } from '@langchain/classic/memory';
 import { AIMessage, HumanMessage } from '@langchain/core/messages';
 import type { Tool } from '@langchain/core/tools';
-import { BufferWindowMemory } from '@langchain/classic/memory';
 import { z } from 'zod';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 
@@ -12,10 +12,10 @@ import {
 	getChatMessages,
 } from '../helpers/utils';
 
-jest.mock('zod-to-json-schema', () => ({
-	zodToJsonSchema: jest.fn(),
+vi.mock('zod-to-json-schema', () => ({
+	zodToJsonSchema: vi.fn(),
 }));
-const mockZodToJsonSchema = jest.mocked(zodToJsonSchema);
+const mockZodToJsonSchema = vi.mocked(zodToJsonSchema);
 
 describe('OpenAI message history', () => {
 	it('should only get a limited number of messages', async () => {
@@ -65,8 +65,8 @@ describe('OpenAI formatting functions', () => {
 			name,
 			description,
 			schema: z.object({}),
-			func: jest.fn(),
-			call: jest.fn(),
+			func: vi.fn(),
+			call: vi.fn(),
 			returnDirect: false,
 			verboseParsingErrors: false,
 			lc_namespace: ['test'],
@@ -74,7 +74,7 @@ describe('OpenAI formatting functions', () => {
 		}) as unknown as Tool;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('formatToOpenAIFunction', () => {

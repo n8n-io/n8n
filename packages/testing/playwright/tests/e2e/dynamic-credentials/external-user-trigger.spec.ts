@@ -33,7 +33,7 @@ test.use({
  *  10. Wait for execution and assert success (HTTP node resolved credential + called userinfo)
  */
 test.describe(
-	'Dynamic Credentials: webhook execution @capability:dynamic-credentials',
+	'Dynamic Credentials: webhook execution @capability:dynamic-credentials @licensed',
 	{
 		annotation: [{ type: 'owner', description: 'Identity & Access' }],
 	},
@@ -170,7 +170,7 @@ test.describe(
 			// Navigates Keycloak's login form and returns the n8n callback URL (with code + state).
 			const n8nCallbackUrl = await keycloak.completeAuthorizationCodeFlow(keycloakAuthUrl);
 			// GET the n8n callback with the owner session: n8n exchanges the code and stores tokens
-			await api.request.get(n8nCallbackUrl);
+			await api.dynamicCredentials.completeAuthorizationCallback(n8nCallbackUrl);
 
 			// Activate the workflow to register the production webhook URL
 			await api.workflows.activate(workflowId, createdWorkflow.versionId as string);

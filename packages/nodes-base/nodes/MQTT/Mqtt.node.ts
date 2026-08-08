@@ -1,4 +1,5 @@
 import type { IClientPublishOptions } from 'mqtt';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import {
 	type IExecuteFunctions,
 	type ICredentialsDecrypted,
@@ -8,7 +9,6 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 	NodeConnectionTypes,
-	ensureError,
 } from 'n8n-workflow';
 
 import { createClient, type MqttCredential } from './GenericFunctions';

@@ -53,9 +53,9 @@ jobs:
 
       - name: Notify on failure
         if: failure()
-        uses: act10ns/slack@44541246747a30eb3102d87f7a4cc5471b0ffb7d # v2.1.0
-        with:
-          status: ${{ job.status }}
-          channel: '#alerts-security'
-          webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
-          message: 'Security fix PR creation failed. Run "Security: Sync from Public" workflow, rebase your branch, reopen PR. (${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})'
+        env:
+          SLACK_TOKEN: ${{ secrets.QBOT_SLACK_TOKEN }}
+        run: |
+          node .github/scripts/slack/notify.mjs \
+            --channel '#alerts-security' \
+            --text 'Security fix PR creation failed. Run "Security: Sync from Public" workflow, rebase your branch, reopen PR. (${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})'

@@ -13,13 +13,12 @@ import { Container } from '@n8n/di';
 import { DateTime } from 'luxon';
 import type { DataTableRow } from 'n8n-workflow';
 
+import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
+import type { SourceControlPreferences } from '@/modules/source-control.ee/types/source-control-preferences';
 import { createDataTable } from '@test-integration/db/data-tables';
 import { createOwner, createMember, createAdmin } from '@test-integration/db/users';
 import type { SuperAgentTest } from '@test-integration/types';
 import * as utils from '@test-integration/utils';
-
-import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
-import type { SourceControlPreferences } from '@/modules/source-control.ee/types/source-control-preferences';
 
 import { DataTableColumnRepository } from '../data-table-column.repository';
 import { DataTableRowsRepository } from '../data-table-rows.repository';
@@ -99,6 +98,24 @@ describe('POST /projects/:projectId/data-tables', () => {
 		};
 
 		await authOwnerAgent.post(`/projects/${project.id}/data-tables`).send(payload).expect(400);
+	});
+
+	test('should return 409 when column name conflicts with system columns', async () => {
+		const project = await createTeamProject(undefined, owner);
+
+		for (const systemColumnName of ['id', 'ID', 'createdAt', 'updatedAt']) {
+			const payload = {
+				name: `Table with ${systemColumnName}`,
+				columns: [{ name: systemColumnName, type: 'string' }],
+			};
+
+			const response = await authOwnerAgent
+				.post(`/projects/${project.id}/data-tables`)
+				.send(payload)
+				.expect(409);
+
+			expect(response.body.message).toContain('reserved');
+		}
 	});
 
 	test('should not create data table if user has project:viewer role in team project', async () => {
@@ -2909,6 +2926,75 @@ describe('DELETE /projects/:projectId/data-tables/:dataTableId/rows', () => {
 				updatedAt: expect.any(String),
 			},
 		]);
+	});
+
+	describe('dryRun', () => {
+		const filter = JSON.stringify({
+			type: 'and',
+			filters: [{ columnName: 'first', condition: 'eq', value: 'keep me' }],
+		});
+
+		const createTable = async () =>
+			await createDataTable(memberProject, {
+				columns: [{ name: 'first', type: 'string' }],
+				data: [{ first: 'keep me' }, { first: 'untouched' }],
+			});
+
+		test('should not delete rows when dryRun is set', async () => {
+			const dataTable = await createTable();
+
+			await authMemberAgent
+				.delete(`/projects/${memberProject.id}/data-tables/${dataTable.id}/rows`)
+				.query({ filter, dryRun: true })
+				.expect(200);
+
+			const remaining = await authMemberAgent
+				.get(`/projects/${memberProject.id}/data-tables/${dataTable.id}/rows`)
+				.expect(200);
+
+			expect(remaining.body.data.count).toBe(2);
+		});
+
+		test('should return the rows that would be deleted when dryRun is set', async () => {
+			const dataTable = await createTable();
+
+			const result = await authMemberAgent
+				.delete(`/projects/${memberProject.id}/data-tables/${dataTable.id}/rows`)
+				.query({ filter, dryRun: true })
+				.expect(200);
+
+			expect(result.body.data).toEqual([
+				{
+					id: expect.any(Number),
+					first: 'keep me',
+					createdAt: expect.any(String),
+					updatedAt: expect.any(String),
+					dryRunState: 'before',
+				},
+				{
+					id: null,
+					first: null,
+					createdAt: null,
+					updatedAt: null,
+					dryRunState: 'after',
+				},
+			]);
+		});
+
+		test('should still delete rows when dryRun is not set', async () => {
+			const dataTable = await createTable();
+
+			await authMemberAgent
+				.delete(`/projects/${memberProject.id}/data-tables/${dataTable.id}/rows`)
+				.query({ filter })
+				.expect(200);
+
+			const remaining = await authMemberAgent
+				.get(`/projects/${memberProject.id}/data-tables/${dataTable.id}/rows`)
+				.expect(200);
+
+			expect(remaining.body.data.count).toBe(1);
+		});
 	});
 });
 

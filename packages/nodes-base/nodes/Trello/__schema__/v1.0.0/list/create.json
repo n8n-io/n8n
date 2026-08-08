@@ -24,9 +24,15 @@
         "name": {
             "type": "string"
         },
+        "softLimit": {
+            "type": "null"
+        },
+        "subscribed": {
+            "type": "boolean"
+        },
         "type": {
             "type": "null"
         }
     },
-    "version": 1
+    "version": 2
 }

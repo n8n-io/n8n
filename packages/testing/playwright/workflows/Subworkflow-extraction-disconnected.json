@@ -33,9 +33,9 @@
 				"assignments": {
 					"assignments": [
 						{
-							"id": "624c7310-e17a-4075-922f-3b57952e3dfa",
+							"id": "60b214cf-3997-4a70-b29d-017f51001caf",
 							"name": "x",
-							"value": "={{ $json.x + 'al' }}",
+							"value": "={{ $json.x + 'a' }}",
 							"type": "string"
 						}
 					]
@@ -44,9 +44,29 @@
 			},
 			"type": "n8n-nodes-base.set",
 			"typeVersion": 3.4,
-			"position": [440, 120],
+			"position": [220, 180],
+			"id": "763e2dc4-1701-47fd-a767-843c48fb06bd",
+			"name": "Edit Fields Disconnected 1"
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "d742372e-83e6-4fa2-a960-1d0f250525b4",
+							"name": "x",
+							"value": "={{ $json.x + 'l' }}",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [440, 180],
 			"id": "c279107f-08c2-4be6-9016-d19215cfeb9e",
-			"name": "Edit Fields Disconnected"
+			"name": "Edit Fields Disconnected 2"
 		}
 	],
 	"connections": {
@@ -55,6 +75,17 @@
 				[
 					{
 						"node": "Edit Fields Connected",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Edit Fields Disconnected 1": {
+			"main": [
+				[
+					{
+						"node": "Edit Fields Disconnected 2",
 						"type": "main",
 						"index": 0
 					}

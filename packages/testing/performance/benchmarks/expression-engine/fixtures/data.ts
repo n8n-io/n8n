@@ -150,6 +150,7 @@ export async function useVmEngine(): Promise<void> {
 		engine: 'vm',
 		poolSize: 1,
 		maxCodeCacheSize: 1024,
-		timeout: 60_000,
+		bridgeTimeout: 60_000,
+		bridgeMemoryLimit: 128,
 	});
 }

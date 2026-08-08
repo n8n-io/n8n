@@ -1,15 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import type { RuntimeBridge } from '../../types';
 import { IsolatePool, PoolDisposedError, PoolExhaustedError } from '../isolate-pool';
-
-function createMockBridge(): RuntimeBridge {
-	return {
-		initialize: vi.fn().mockResolvedValue(undefined),
-		execute: vi.fn().mockReturnValue('result'),
-		dispose: vi.fn().mockResolvedValue(undefined),
-		isDisposed: vi.fn().mockReturnValue(false),
-	};
-}
+import { createMockBridge } from '../../__tests__/helpers';
 
 function createFactory() {
 	return vi.fn().mockImplementation(async () => createMockBridge());

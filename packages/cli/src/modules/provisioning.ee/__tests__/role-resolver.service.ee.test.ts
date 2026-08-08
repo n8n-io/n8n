@@ -1,19 +1,28 @@
 import type { Logger } from '@n8n/backend-common';
 import type { ProjectRepository } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
-import { RoleResolverService } from '../role-resolver.service.ee';
 import type {
 	ProjectInfo,
 	RoleMappingConfig,
 	RoleMappingRule,
 	RoleResolverContext,
 } from '../role-resolver-types';
+import { RoleResolverService } from '../role-resolver.service.ee';
 
 const logger = mock<Logger>();
 const projectRepository = mock<ProjectRepository>();
 
 const service = new RoleResolverService(logger, projectRepository);
+
+/** Helper that strips metadata to simplify assertions in existing tests */
+async function resolveRolesSimple(config: RoleMappingConfig, context: RoleResolverContext) {
+	const metadata = await service.resolveRoles(config, context);
+	return {
+		instanceRole: metadata.instanceRole.role,
+		projectRoles: new Map([...metadata.projectRoles].map(([id, pr]) => [id, pr.role])),
+	};
+}
 
 function makeRule(overrides: Partial<RoleMappingRule> = {}): RoleMappingRule {
 	return {
@@ -54,7 +63,7 @@ function makeProject(overrides: Partial<ProjectInfo> = {}): ProjectInfo {
 
 describe('RoleResolverService', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		projectRepository.find.mockResolvedValue([]);
 	});
 
@@ -68,7 +77,7 @@ describe('RoleResolverService', () => {
 				],
 			});
 
-			const result = await service.resolveRoles(config, makeContext());
+			const result = await resolveRolesSimple(config, makeContext());
 
 			expect(result.instanceRole).toBe('global:admin');
 		});
@@ -81,7 +90,7 @@ describe('RoleResolverService', () => {
 				fallbackInstanceRole: 'global:member',
 			});
 
-			const result = await service.resolveRoles(config, makeContext());
+			const result = await resolveRolesSimple(config, makeContext());
 
 			expect(result.instanceRole).toBe('global:member');
 		});
@@ -89,7 +98,7 @@ describe('RoleResolverService', () => {
 		it('should fallback when there are no rules', async () => {
 			const config = makeConfig({ instanceRoleRules: [] });
 
-			const result = await service.resolveRoles(config, makeContext());
+			const result = await resolveRolesSimple(config, makeContext());
 
 			expect(result.instanceRole).toBe('global:member');
 		});
@@ -102,7 +111,7 @@ describe('RoleResolverService', () => {
 				],
 			});
 
-			const result = await service.resolveRoles(config, makeContext());
+			const result = await resolveRolesSimple(config, makeContext());
 
 			expect(result.instanceRole).toBe('global:member');
 		});
@@ -119,7 +128,7 @@ describe('RoleResolverService', () => {
 			});
 			const context = makeContext({ $claims: { role: 'admin' } });
 
-			const result = await service.resolveRoles(config, context);
+			const result = await resolveRolesSimple(config, context);
 
 			expect(result.instanceRole).toBe('global:admin');
 		});
@@ -142,7 +151,7 @@ describe('RoleResolverService', () => {
 				},
 			});
 
-			const result = await service.resolveRoles(config, context);
+			const result = await resolveRolesSimple(config, context);
 
 			expect(result.instanceRole).toBe('global:admin');
 		});
@@ -163,7 +172,7 @@ describe('RoleResolverService', () => {
 				$saml: { attributes: { role: 'admin' } },
 			});
 
-			const result = await service.resolveRoles(config, context);
+			const result = await resolveRolesSimple(config, context);
 
 			expect(result.instanceRole).toBe('global:admin');
 		});
@@ -179,7 +188,7 @@ describe('RoleResolverService', () => {
 				],
 			});
 
-			const result = await service.resolveRoles(config, makeContext());
+			const result = await resolveRolesSimple(config, makeContext());
 
 			expect(result.instanceRole).toBe('global:member');
 		});
@@ -195,12 +204,35 @@ describe('RoleResolverService', () => {
 				],
 			});
 
-			const result = await service.resolveRoles(config, makeContext());
+			const result = await resolveRolesSimple(config, makeContext());
 
 			expect(result.instanceRole).toBe('global:member');
 			expect(logger.warn).toHaveBeenCalledWith(
 				'Role resolver expression evaluation failed, treating as false',
-				expect.objectContaining({ expression: '{{ throw new Error("bad") }}' }),
+				expect.objectContaining({
+					ruleId: 'r1',
+					expression: '{{ throw new Error("bad") }}',
+				}),
+			);
+		});
+
+		it('should emit a debug log for each evaluated rule', async () => {
+			const config = makeConfig({
+				instanceRoleRules: [
+					makeRule({ id: 'r1', expression: '{{ false }}', role: 'global:admin' }),
+					makeRule({ id: 'r2', expression: '{{ true }}', role: 'global:member' }),
+				],
+			});
+
+			await resolveRolesSimple(config, makeContext());
+
+			expect(logger.debug).toHaveBeenCalledWith(
+				'Role mapping rule evaluated',
+				expect.objectContaining({ ruleId: 'r1', matched: false }),
+			);
+			expect(logger.debug).toHaveBeenCalledWith(
+				'Role mapping rule evaluated',
+				expect.objectContaining({ ruleId: 'r2', matched: true }),
 			);
 		});
 
@@ -213,7 +245,7 @@ describe('RoleResolverService', () => {
 				],
 			});
 
-			const result = await service.resolveRoles(config, makeContext());
+			const result = await resolveRolesSimple(config, makeContext());
 
 			expect(result.instanceRole).toBe('global:member');
 		});
@@ -225,7 +257,7 @@ describe('RoleResolverService', () => {
 				],
 			});
 
-			const result = await service.resolveRoles(config, makeContext());
+			const result = await resolveRolesSimple(config, makeContext());
 
 			expect(result.instanceRole).toBe('global:admin');
 		});
@@ -262,7 +294,7 @@ describe('RoleResolverService', () => {
 				],
 			});
 
-			const result = await service.resolveRoles(config, makeContext());
+			const result = await resolveRolesSimple(config, makeContext());
 
 			expect(result.projectRoles.get('proj-1')).toBe('project:admin');
 			expect(result.projectRoles.get('proj-2')).toBe('project:editor');
@@ -283,7 +315,7 @@ describe('RoleResolverService', () => {
 				],
 			});
 
-			const result = await service.resolveRoles(config, makeContext());
+			const result = await resolveRolesSimple(config, makeContext());
 
 			expect(result.projectRoles.size).toBe(0);
 		});
@@ -302,7 +334,7 @@ describe('RoleResolverService', () => {
 				],
 			});
 
-			const result = await service.resolveRoles(config, makeContext());
+			const result = await resolveRolesSimple(config, makeContext());
 
 			expect(result.projectRoles.size).toBe(0);
 			expect(logger.warn).toHaveBeenCalledWith(
@@ -325,7 +357,7 @@ describe('RoleResolverService', () => {
 				],
 			});
 
-			const result = await service.resolveRoles(config, makeContext());
+			const result = await resolveRolesSimple(config, makeContext());
 
 			expect(result.projectRoles.get('proj-1')).toBe('project:admin');
 		});
@@ -348,7 +380,7 @@ describe('RoleResolverService', () => {
 				$claims: { groups: ['engineering', 'devops'] },
 			});
 
-			const result = await service.resolveRoles(config, context);
+			const result = await resolveRolesSimple(config, context);
 
 			expect(result.projectRoles.get('proj-1')).toBe('project:editor');
 		});
@@ -368,7 +400,7 @@ describe('RoleResolverService', () => {
 				],
 			});
 
-			const result = await service.resolveRoles(config, makeContext());
+			const result = await resolveRolesSimple(config, makeContext());
 
 			expect(result.projectRoles.get('proj-1')).toBe('project:viewer');
 		});
@@ -389,7 +421,7 @@ describe('RoleResolverService', () => {
 				],
 			});
 
-			const result = await service.resolveRoles(config, makeContext());
+			const result = await resolveRolesSimple(config, makeContext());
 
 			expect(result.projectRoles.size).toBe(0);
 		});
@@ -406,7 +438,7 @@ describe('RoleResolverService', () => {
 				],
 			});
 
-			const result = await service.resolveRoles(config, makeContext());
+			const result = await resolveRolesSimple(config, makeContext());
 
 			expect(result.projectRoles.size).toBe(0);
 		});
@@ -416,7 +448,7 @@ describe('RoleResolverService', () => {
 		it('should not query DB when there are no project rules', async () => {
 			const config = makeConfig({ projectRoleRules: [] });
 
-			await service.resolveRoles(config, makeContext());
+			await resolveRolesSimple(config, makeContext());
 
 			expect(projectRepository.find).not.toHaveBeenCalled();
 		});
@@ -434,7 +466,7 @@ describe('RoleResolverService', () => {
 				],
 			});
 
-			await service.resolveRoles(config, makeContext());
+			await resolveRolesSimple(config, makeContext());
 
 			expect(projectRepository.find).not.toHaveBeenCalled();
 		});
@@ -466,7 +498,7 @@ describe('RoleResolverService', () => {
 				],
 			});
 
-			await service.resolveRoles(config, makeContext());
+			await resolveRolesSimple(config, makeContext());
 
 			expect(projectRepository.find).toHaveBeenCalledTimes(1);
 			const callArgs = projectRepository.find.mock.calls[0][0]!;
@@ -493,7 +525,7 @@ describe('RoleResolverService', () => {
 				],
 			});
 
-			await service.resolveRoles(config, makeContext());
+			await resolveRolesSimple(config, makeContext());
 
 			expect(projectRepository.find).toHaveBeenCalledTimes(1);
 		});
@@ -523,10 +555,187 @@ describe('RoleResolverService', () => {
 			});
 			const context = makeContext({ $claims: { role: 'admin' } });
 
-			const result = await service.resolveRoles(config, context);
+			const result = await resolveRolesSimple(config, context);
 
 			expect(result.instanceRole).toBe('global:admin');
 			expect(result.projectRoles.get('proj-1')).toBe('project:editor');
+		});
+	});
+
+	describe('resolveRoles - custom global roles', () => {
+		// The resolver treats the target role as an opaque slug, so custom global
+		// roles resolve exactly like built-in ones. These lock that behavior.
+		const customRole = 'global:auditor';
+
+		it('should resolve a custom global role when its rule matches (SAML attribute)', async () => {
+			const config = makeConfig({
+				instanceRoleRules: [
+					makeRule({
+						id: 'r1',
+						expression: '{{ $saml.attributes.department === "audit" }}',
+						role: customRole,
+					}),
+				],
+			});
+			const context = makeContext({
+				$provider: 'saml',
+				$saml: { attributes: { department: 'audit' } },
+			});
+
+			const result = await resolveRolesSimple(config, context);
+
+			expect(result.instanceRole).toBe(customRole);
+		});
+
+		it('should resolve a custom global role when its rule matches (OIDC claim)', async () => {
+			const config = makeConfig({
+				instanceRoleRules: [
+					makeRule({
+						id: 'r1',
+						expression: '{{ $oidc.userInfo.groups.includes("auditors") }}',
+						role: customRole,
+					}),
+				],
+			});
+			const context = makeContext({
+				$provider: 'oidc',
+				$oidc: { idToken: {}, userInfo: { groups: ['auditors'] } },
+			});
+
+			const result = await resolveRolesSimple(config, context);
+
+			expect(result.instanceRole).toBe(customRole);
+		});
+
+		it('should fall back to the default role when no rule matches the attribute', async () => {
+			const config = makeConfig({
+				instanceRoleRules: [
+					makeRule({
+						id: 'r1',
+						expression: '{{ $claims.department === "audit" }}',
+						role: customRole,
+					}),
+				],
+				fallbackInstanceRole: 'global:member',
+			});
+			const context = makeContext({ $claims: { department: 'sales' } });
+
+			const result = await resolveRolesSimple(config, context);
+
+			expect(result.instanceRole).toBe('global:member');
+		});
+
+		it('should re-resolve to a different role when the attributes change', async () => {
+			const config = makeConfig({
+				instanceRoleRules: [
+					makeRule({
+						id: 'r1',
+						expression: '{{ $claims.department === "audit" }}',
+						role: customRole,
+					}),
+					makeRule({
+						id: 'r2',
+						expression: '{{ $claims.department === "engineering" }}',
+						role: 'global:admin',
+					}),
+				],
+			});
+
+			const first = await resolveRolesSimple(
+				config,
+				makeContext({ $claims: { department: 'audit' } }),
+			);
+			expect(first.instanceRole).toBe(customRole);
+
+			// Same config, changed IdP attributes on a later login → re-resolved role.
+			const second = await resolveRolesSimple(
+				config,
+				makeContext({ $claims: { department: 'engineering' } }),
+			);
+			expect(second.instanceRole).toBe('global:admin');
+		});
+	});
+
+	describe('resolveRoles', () => {
+		it('should return matched rule metadata for instance role', async () => {
+			const config = makeConfig({
+				instanceRoleRules: [
+					makeRule({ id: 'r1', expression: '{{ false }}', role: 'global:owner' }),
+					makeRule({ id: 'r2', expression: '{{ true }}', role: 'global:admin' }),
+				],
+			});
+
+			const result = await service.resolveRoles(config, makeContext());
+
+			expect(result.instanceRole).toEqual({
+				role: 'global:admin',
+				matchedRuleId: 'r2',
+				expression: '{{ true }}',
+				isFallback: false,
+			});
+		});
+
+		it('should return fallback metadata when no instance rule matches', async () => {
+			const config = makeConfig({
+				instanceRoleRules: [
+					makeRule({ id: 'r1', expression: '{{ false }}', role: 'global:admin' }),
+				],
+			});
+
+			const result = await service.resolveRoles(config, makeContext());
+
+			expect(result.instanceRole).toEqual({
+				role: 'global:member',
+				matchedRuleId: null,
+				expression: null,
+				isFallback: true,
+			});
+		});
+
+		it('should return matched rule metadata for project roles', async () => {
+			const projects = [makeProject({ id: 'proj-1' })];
+			projectRepository.find.mockResolvedValue(projects as never);
+
+			const config = makeConfig({
+				projectRoleRules: [
+					makeRule({
+						id: 'pr1',
+						expression: '{{ $claims.team === "eng" }}',
+						role: 'project:editor',
+						projectId: 'proj-1',
+					}),
+				],
+			});
+			const context = makeContext({ $claims: { team: 'eng' } });
+
+			const result = await service.resolveRoles(config, context);
+
+			expect(result.projectRoles.get('proj-1')).toEqual({
+				projectId: 'proj-1',
+				role: 'project:editor',
+				matchedRuleId: 'pr1',
+				expression: '{{ $claims.team === "eng" }}',
+			});
+		});
+
+		it('should return empty project roles when no rule matches', async () => {
+			const projects = [makeProject({ id: 'proj-1' })];
+			projectRepository.find.mockResolvedValue(projects as never);
+
+			const config = makeConfig({
+				projectRoleRules: [
+					makeRule({
+						id: 'pr1',
+						expression: '{{ false }}',
+						role: 'project:editor',
+						projectId: 'proj-1',
+					}),
+				],
+			});
+
+			const result = await service.resolveRoles(config, makeContext());
+
+			expect(result.projectRoles.size).toBe(0);
 		});
 	});
 });

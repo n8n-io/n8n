@@ -4,24 +4,18 @@ import {
 	GetDestinationQueryDto,
 	TestDestinationQueryDto,
 } from '@n8n/api-types';
+import { OutboundHttp } from '@n8n/backend-network';
+import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Delete, Get, GlobalScope, Licensed, Post, Query, RestController } from '@n8n/decorators';
-import type {
-	MessageEventBusDestinationOptions,
-	MessageEventBusDestinationSentryOptions,
-	MessageEventBusDestinationSyslogOptions,
-	MessageEventBusDestinationWebhookOptions,
-} from 'n8n-workflow';
-import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
+import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { eventNamesAll } from '@/eventbus/event-message-classes';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 
-import { MessageEventBusDestinationSentry } from './destinations/message-event-bus-destination-sentry.ee';
-import { MessageEventBusDestinationSyslog } from './destinations/message-event-bus-destination-syslog.ee';
-import { MessageEventBusDestinationWebhook } from './destinations/message-event-bus-destination-webhook.ee';
-import type { MessageEventBusDestination } from './destinations/message-event-bus-destination.ee';
+import { createMessageEventBusDestination } from './create-message-event-bus-destination';
 import { LogStreamingDestinationService } from './log-streaming-destination.service';
 
 @RestController('/eventbus')
@@ -29,7 +23,17 @@ export class EventBusController {
 	constructor(
 		private readonly eventBus: MessageEventBus,
 		private readonly destinationService: LogStreamingDestinationService,
+		private readonly instanceSettingsLoaderConfig: InstanceSettingsLoaderConfig,
+		private readonly outboundHttp: OutboundHttp,
 	) {}
+
+	private assertNotManagedByEnv() {
+		if (this.instanceSettingsLoaderConfig.logStreamingManagedByEnv) {
+			throw new ForbiddenError(
+				'Log streaming destinations are managed via environment variables and cannot be modified through the API',
+			);
+		}
+	}
 
 	@Get('/eventnames')
 	async getEventNames(): Promise<string[]> {
@@ -51,6 +55,8 @@ export class EventBusController {
 	@Post('/destination')
 	@GlobalScope('eventBusDestination:create')
 	async postDestination(req: AuthenticatedRequest): Promise<MessageEventBusDestinationOptions> {
+		this.assertNotManagedByEnv();
+
 		// Manually validate using the discriminated union schema since TypeScript reflection doesn't work with plain Zod schemas
 		// And ZodClass doesn't support discriminated unions directly
 		const parseResult = CreateDestinationDto.safeParse(req.body);
@@ -58,39 +64,12 @@ export class EventBusController {
 			throw new BadRequestError(parseResult.error.errors[0].message);
 		}
 
-		const body = parseResult.data;
-		let result: MessageEventBusDestination;
-
-		switch (body.__type) {
-			case MessageEventBusDestinationTypeNames.webhook:
-				result = await this.destinationService.addDestination(
-					new MessageEventBusDestinationWebhook(
-						this.eventBus,
-						body as MessageEventBusDestinationWebhookOptions,
-					),
-				);
-				break;
-			case MessageEventBusDestinationTypeNames.sentry:
-				result = await this.destinationService.addDestination(
-					new MessageEventBusDestinationSentry(
-						this.eventBus,
-						body as MessageEventBusDestinationSentryOptions,
-					),
-				);
-				break;
-			case MessageEventBusDestinationTypeNames.syslog:
-				result = await this.destinationService.addDestination(
-					new MessageEventBusDestinationSyslog(
-						this.eventBus,
-						body as MessageEventBusDestinationSyslogOptions,
-					),
-				);
-				break;
-			default:
-				throw new BadRequestError(
-					`Unknown destination type: ${(body as { __type: string }).__type}`,
-				);
-		}
+		const destination = createMessageEventBusDestination(
+			this.eventBus,
+			this.outboundHttp,
+			parseResult.data as MessageEventBusDestinationOptions,
+		);
+		const result = await this.destinationService.addDestination(destination);
 
 		return result.serialize();
 	}
@@ -114,6 +93,7 @@ export class EventBusController {
 		_res: unknown,
 		@Query query: DeleteDestinationQueryDto,
 	): Promise<void> {
+		this.assertNotManagedByEnv();
 		await this.destinationService.removeDestination(query.id);
 	}
 }

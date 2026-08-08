@@ -4,12 +4,16 @@ import { CredentialModal } from './components/CredentialModal';
 import { ResourceCards } from './components/ResourceCards';
 
 export class CredentialsPage extends BasePage {
-	readonly credentialModal = new CredentialModal(this.page.getByTestId('editCredential-modal'));
+	async goto() {
+		await this.page.goto('/home/credentials');
+	}
+
+	readonly credentialModal = CredentialModal.fromPage(this.page);
 	readonly addResource = new AddResource(this.page);
 	readonly cards = new ResourceCards(this.page);
 
 	get emptyListCreateCredentialButton() {
-		return this.page.getByRole('button', { name: 'Add first credential' });
+		return this.getResourcesListEmptyState().getByRole('button', { name: 'Create credential' });
 	}
 
 	get createCredentialButton() {
@@ -40,7 +44,7 @@ export class CredentialsPage extends BasePage {
 	}
 
 	async clearSearch() {
-		await this.page.getByTestId('resources-list-search').clear();
+		await this.getResourcesListSearch().clear();
 	}
 
 	async sortByNameDescending() {

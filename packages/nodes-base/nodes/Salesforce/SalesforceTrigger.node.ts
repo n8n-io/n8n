@@ -26,7 +26,7 @@ export class SalesforceTrigger implements INodeType {
 		name: 'salesforceTrigger',
 		icon: 'file:salesforce.svg',
 		group: ['trigger'],
-		version: 1,
+		version: [1, 1.1],
 		description:
 			'Fetches data from Salesforce and starts the workflow on specified polling intervals.',
 		subtitle: '={{($parameter["triggerOn"])}}',
@@ -37,12 +37,43 @@ export class SalesforceTrigger implements INodeType {
 			{
 				name: 'salesforceOAuth2Api',
 				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['oAuth2'],
+					},
+				},
+			},
+			{
+				name: 'salesforceJwtApi',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['jwt'],
+					},
+				},
 			},
 		],
 		polling: true,
 		inputs: [],
 		outputs: [NodeConnectionTypes.Main],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'OAuth2',
+						value: 'oAuth2',
+					},
+					{
+						name: 'OAuth2 JWT',
+						value: 'jwt',
+					},
+				],
+				default: 'oAuth2',
+				description: 'OAuth Authorization Flow',
+			},
 			{
 				displayName: 'Trigger On',
 				name: 'triggerOn',
@@ -194,6 +225,7 @@ export class SalesforceTrigger implements INodeType {
 		const triggerOn = this.getNodeParameter('triggerOn') as string;
 		let triggerResource = triggerOn.slice(0, 1).toUpperCase() + triggerOn.slice(1, -7);
 		const changeType = triggerOn.slice(-7);
+		const nodeVersion = this.getNode().typeVersion;
 
 		if (triggerResource === 'CustomObject') {
 			triggerResource = this.getNodeParameter('customObject') as string;
@@ -249,9 +281,9 @@ export class SalesforceTrigger implements INodeType {
 
 			try {
 				if (this.getMode() === 'manual') {
-					qs.q = getQuery(options, triggerResource, false, 1);
+					qs.q = getQuery(options, triggerResource, false, 1, nodeVersion);
 				} else {
-					qs.q = getQuery(options, triggerResource, true);
+					qs.q = getQuery(options, triggerResource, true, 0, nodeVersion);
 				}
 				responseData = await salesforceApiRequestAllItems.call(
 					this,
@@ -273,6 +305,7 @@ export class SalesforceTrigger implements INodeType {
 			const { newItems, updatedProcessedIds } = filterAndManageProcessedItems(
 				responseData,
 				processedIds,
+				changeType === 'Created' ? 'Created' : 'Updated',
 			);
 
 			workflowData.processedIds = updatedProcessedIds;

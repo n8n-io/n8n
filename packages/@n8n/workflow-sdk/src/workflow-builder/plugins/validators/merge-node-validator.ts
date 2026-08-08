@@ -76,7 +76,7 @@ export const mergeNodeValidator: ValidatorPlugin = {
 		if (inputCount < 2) {
 			issues.push({
 				code: 'MERGE_SINGLE_INPUT',
-				message: `'${mapKey}' has only ${inputCount} input connection(s). Merge nodes require at least 2 inputs.`,
+				message: `'${mapKey}' has only ${inputCount} input connection(s). Merge nodes require at least 2 inputs. Wire each upstream branch to a distinct input via \`.to(mergeNode.input(0))\`, \`.to(mergeNode.input(1))\`, etc.`,
 				severity: 'warning',
 				violationLevel: 'major',
 				nodeName: mapKey,

@@ -1,7 +1,7 @@
 import type { GlobalConfig } from '@n8n/config';
-import { mock } from 'jest-mock-extended';
 import type { Socket } from 'node:net';
 import request from 'supertest';
+import { mock } from 'vitest-mock-extended';
 import type { Server as WSServer, WebSocket } from 'ws';
 
 import type { TaskBrokerAuthController } from '@/task-runners/task-broker/auth/task-broker-auth.controller';

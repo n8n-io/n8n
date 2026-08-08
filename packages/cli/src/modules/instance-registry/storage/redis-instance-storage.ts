@@ -3,7 +3,8 @@ import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type { Cluster, Redis } from 'ioredis';
-import { ensureError, jsonParse, jsonStringify } from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { jsonParse, jsonStringify } from 'n8n-workflow';
 
 import { RedisClientService } from '@/services/redis-client.service';
 
@@ -31,11 +32,18 @@ export class RedisInstanceStorage implements InstanceStorage {
 	}
 
 	async register(registration: InstanceRegistration): Promise<void> {
-		await this.upsertRegistration(registration, 'register');
+		await this.upsertRegistration(registration);
 	}
 
 	async heartbeat(registration: InstanceRegistration): Promise<void> {
-		await this.upsertRegistration(registration, 'heartbeat');
+		try {
+			await this.upsertRegistration(registration);
+		} catch (error) {
+			this.logger.warn('Failed to heartbeat instance', {
+				instanceKey: registration.instanceKey,
+				error: ensureError(error).message,
+			});
+		}
 	}
 
 	async unregister(instanceKey: string): Promise<void> {
@@ -178,25 +186,15 @@ export class RedisInstanceStorage implements InstanceStorage {
 		this.redisClient.disconnect();
 	}
 
-	private async upsertRegistration(
-		registration: InstanceRegistration,
-		operation: string,
-	): Promise<void> {
-		try {
-			await this.redisClient.eval(
-				REGISTER_SCRIPT,
-				2,
-				this.instanceKey(registration.instanceKey),
-				this.membershipSetKey(),
-				jsonStringify(registration),
-				String(REGISTRY_CONSTANTS.REGISTRATION_TTL_SECONDS),
-			);
-		} catch (error) {
-			this.logger.warn(`Failed to ${operation} instance`, {
-				instanceKey: registration.instanceKey,
-				error: ensureError(error).message,
-			});
-		}
+	private async upsertRegistration(registration: InstanceRegistration): Promise<void> {
+		await this.redisClient.eval(
+			REGISTER_SCRIPT,
+			2,
+			this.instanceKey(registration.instanceKey),
+			this.membershipSetKey(),
+			jsonStringify(registration),
+			String(REGISTRY_CONSTANTS.REGISTRATION_TTL_SECONDS),
+		);
 	}
 
 	private instanceKey(key: string): string {

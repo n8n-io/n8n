@@ -42,9 +42,32 @@ const ClusterVersionMismatchSchema = z.object({
 // Version mismatch type (for REST API response)
 export type ClusterVersionMismatch = z.infer<typeof ClusterVersionMismatchSchema>;
 
+const ClusterCheckWarningSchema = z.object({
+	check: z.string(),
+	code: z.string(),
+	message: z.string(),
+	severity: z.enum(['info', 'warning', 'error']).optional(),
+	context: z.record(z.string(), z.unknown()).optional(),
+});
+
+const ClusterCheckResultSchema = z.object({
+	check: z.string(),
+	executedAt: z.number(),
+	warnings: z.array(ClusterCheckWarningSchema),
+	status: z.enum(['succeeded', 'failed']),
+});
+
+export type ClusterCheckResult = z.infer<typeof ClusterCheckResultSchema>;
+
+// Single warning raised by a cluster check (for REST API response)
+export type ClusterCheckWarning = z.infer<typeof ClusterCheckWarningSchema>;
+
+const ClusterCheckSummarySchema = z.record(z.string(), ClusterCheckResultSchema);
+export type ClusterCheckSummary = z.infer<typeof ClusterCheckSummarySchema>;
+
 const ClusterInfoResponseSchema = z.object({
 	instances: z.array(instanceRegistrationSchema),
-	versionMismatch: ClusterVersionMismatchSchema.nullable(),
+	checks: ClusterCheckSummarySchema,
 });
 
 // REST API response type

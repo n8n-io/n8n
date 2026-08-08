@@ -284,6 +284,7 @@ describe('BuiltInsParser', () => {
 				'Interval',
 				'Duration',
 				'$execution',
+				'$evaluation',
 				'$vars',
 				'$secrets',
 				'$executionId',

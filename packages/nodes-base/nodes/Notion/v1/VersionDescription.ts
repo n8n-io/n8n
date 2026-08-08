@@ -67,7 +67,7 @@ export const versionDescription: INodeTypeDescription = {
 		// },
 		{
 			displayName:
-				'In Notion, make sure to <a href="https://www.notion.so/help/add-and-manage-connections-with-the-api" target="_blank">add your connection</a> to the pages you want to access.',
+				'In Notion, make sure to <a href="https://www.notion.com/help/add-and-manage-connections-with-the-api" target="_blank">add your connection</a> to the pages you want to access.',
 			name: 'notionNotice',
 			type: 'notice',
 			default: '',

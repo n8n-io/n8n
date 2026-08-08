@@ -13,6 +13,7 @@ export declare namespace Cloud {
 		metadata: PlanMetadata;
 		userIsTrialing?: boolean;
 		bannerConfig?: BannerConfig;
+		licenseFeatures?: Record<string, number>;
 	}
 
 	export interface PlanMetadata {
@@ -56,6 +57,17 @@ export declare namespace Cloud {
 		forceShow?: boolean; // Override localStorage dismissal
 	}
 
+	export interface UpgradeOffer {
+		slug: string;
+		quotas: { monthlyExecutionsLimit: number; instanceAiCredits: number };
+		currency?: { code: string; symbol: string; position: 'prefix' | 'suffix' };
+		prices?: {
+			monthly: number;
+			yearlyPerMonth: number;
+			discountPct: number;
+		};
+	}
+
 	export type UserAccount = {
 		confirmed: boolean;
 		username: string;
@@ -85,6 +97,12 @@ export async function getCurrentUsage(context: IRestApiContext): Promise<Instanc
 
 export async function getCloudUserInfo(context: IRestApiContext): Promise<Cloud.UserAccount> {
 	return await get(context.baseUrl, '/cloud/proxy/user/me');
+}
+
+export async function getUpgradeOffer(
+	context: IRestApiContext,
+): Promise<Cloud.UpgradeOffer | Record<string, never>> {
+	return await post(context.baseUrl, '/cloud/proxy/upgrade-offer');
 }
 
 export async function sendConfirmationEmail(context: IRestApiContext): Promise<Cloud.UserAccount> {

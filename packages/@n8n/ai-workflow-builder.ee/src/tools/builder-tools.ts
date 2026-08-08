@@ -18,7 +18,6 @@ import { GET_EXECUTION_SCHEMA_TOOL } from './get-execution-schema.tool';
 import { GET_EXPRESSION_DATA_MAPPING_TOOL } from './get-expression-data-mapping.tool';
 import { GET_NODE_CONTEXT_TOOL } from './get-node-context.tool';
 import { GET_NODE_PARAMETER_TOOL } from './get-node-parameter.tool';
-import { GET_WORKFLOW_EXAMPLES_TOOL } from './get-workflow-examples.tool';
 import { GET_WORKFLOW_OVERVIEW_TOOL } from './get-workflow-overview.tool';
 import { INTROSPECT_TOOL } from './introspect.tool';
 import { NODE_DETAILS_TOOL } from './node-details.tool';
@@ -42,12 +41,6 @@ export function getBuilderToolsForDisplay({
 	featureFlags?: BuilderFeatureFlags;
 }): BuilderToolBase[] {
 	const tools: BuilderToolBase[] = [GET_DOCUMENTATION_TOOL];
-
-	// Conditionally add workflow examples tool based on feature flag
-	// Only enabled when flag is explicitly true
-	if (featureFlags?.templateExamples === true) {
-		tools.push(GET_WORKFLOW_EXAMPLES_TOOL);
-	}
 
 	// Add remaining tools
 	tools.push(

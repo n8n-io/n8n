@@ -1,5 +1,5 @@
 import { createPinia, setActivePinia } from 'pinia';
-import { defineComponent, nextTick, reactive } from 'vue';
+import { defineComponent, nextTick, reactive, shallowRef } from 'vue';
 import { mount } from '@vue/test-utils';
 import { useReviewChanges } from './useReviewChanges';
 import type { INode, IConnections } from 'n8n-workflow';
@@ -84,6 +84,7 @@ const mockWorkflowDocumentStore = reactive({
 	get allNodes() {
 		return mockWorkflowsStore.workflow.nodes;
 	},
+	getSnapshot: vi.fn().mockReturnValue({}),
 });
 
 vi.mock('@/features/ai/assistant/builder.store', () => ({
@@ -96,6 +97,7 @@ vi.mock('@/app/stores/workflows.store', () => ({
 
 vi.mock('@/app/stores/workflowDocument.store', () => ({
 	useWorkflowDocumentStore: () => mockWorkflowDocumentStore,
+	injectWorkflowDocumentStore: () => shallowRef(mockWorkflowDocumentStore),
 	createWorkflowDocumentId: () => 'test-id',
 }));
 

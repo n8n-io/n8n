@@ -97,6 +97,21 @@ export interface ICredentialResolver {
 	validateIdentity?(context: ICredentialContext, handle: CredentialResolverHandle): Promise<void>;
 
 	/**
+	 * Returns the n8n user id the resolved credentials belong to, when this
+	 * resolver maps the context identity to an n8n user (e.g. the n8n JWT
+	 * resolver). Resolvers keyed on external identities (Slack, OAuth subjects)
+	 * leave this unimplemented, so the execution has no attributable n8n user.
+	 *
+	 * Consumed by the redaction layer to grant the executing user access to
+	 * their own data on executions that resolved private credentials.
+	 * Optional - not all resolvers map to n8n users.
+	 */
+	resolveOwningUserId?(
+		context: ICredentialContext,
+		handle: CredentialResolverHandle,
+	): Promise<string | undefined>;
+
+	/**
 	 * Runs initialization logic for the resolver. This might be called multiple times!
 	 * Optional - not all resolvers require initialization.
 	 */

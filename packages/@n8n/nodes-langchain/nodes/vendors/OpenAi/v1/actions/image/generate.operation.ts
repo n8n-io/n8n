@@ -4,7 +4,7 @@ import type {
 	INodeExecutionData,
 	IDataObject,
 } from 'n8n-workflow';
-import { updateDisplayOptions } from 'n8n-workflow';
+import { NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
 
 import { apiRequest } from '../../../transport';
 
@@ -255,6 +255,11 @@ export const description = updateDisplayOptions(displayOptions, properties);
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
 	const model = this.getNodeParameter('model', i) as string;
 	const prompt = this.getNodeParameter('prompt', i) as string;
+	if (!prompt.trim()) {
+		throw new NodeOperationError(this.getNode(), 'A non-empty prompt is required.', {
+			itemIndex: i,
+		});
+	}
 	const options = this.getNodeParameter('options', i, {});
 	let response_format = 'b64_json';
 	let binaryPropertyOutput = 'data';

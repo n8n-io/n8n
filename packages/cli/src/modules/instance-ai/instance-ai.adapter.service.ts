@@ -1,4 +1,6 @@
 import { randomUUID } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
 import type {
 	InstanceAiContext,
 	InstanceAiWorkflowService,
@@ -7,9 +9,9 @@ import type {
 	InstanceAiNodeService,
 	InstanceAiDataTableService,
 	InstanceAiWebResearchService,
-	InstanceAiFilesystemService,
+	InstanceAiWorkspaceService,
+	InstanceAiWorkflowTemplateService,
 	FetchedPage,
-	WebSearchResponse,
 	DataTableSummary,
 	DataTableColumnInfo,
 	WorkflowSummary,
@@ -20,118 +22,218 @@ import type {
 	ExecutionResult,
 	ExecutionDebugInfo,
 	NodeOutputResult,
+	ResolvedNodeParametersResult,
 	ExecutionSummary as InstanceAiExecutionSummary,
 	CredentialSummary,
 	CredentialDetail,
 	NodeSummary,
 	NodeDescription,
 	SearchableNodeDescription,
+	AiGatewayNodeMeta,
 	ExploreResourcesParams,
 	ExploreResourcesResult,
-	InstanceAiWorkspaceService,
+	UnavailableLocatorValue,
 	ProjectSummary,
 	FolderSummary,
 	ServiceProxyConfig,
 	CredentialTypeSearchResult,
+	CredentialHostInfo,
+	InstanceAiEvaluationConfigService,
+	EvaluationConfigSummary,
+	EvaluationConfigDetail,
+	UpsertEvaluationConfigInput,
+	InstanceAiMcpService,
+	McpRegistryServerSummary,
+	ModelConfig,
 } from '@n8n/instance-ai';
-import { wrapUntrustedData } from '@n8n/instance-ai';
+import { braveSearch, searxngSearch, type WebSearchResponse } from '@n8n/ai-utilities';
+import {
+	BuilderTemplatesService,
+	builderTemplatesOptionsFromEnv,
+	wrapUntrustedData,
+	deriveCredentialHosts,
+	WorkflowSaveConflictError,
+} from '@n8n/instance-ai';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
+import {
+	CONFIG_EVALUATIONS_FLAG,
+	CONFIG_EVALUATIONS_ENABLED_VARIANT,
+	INSTANCE_AI_MCP_CONNECTIONS_FLAG,
+	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
+	upsertEvaluationConfigSchema,
+	INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT,
+} from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import type { User, WorkflowEntity } from '@n8n/db';
+import type { User, ExecutionSummaries, EvaluationConfig } from '@n8n/db';
+import { nanoid } from 'nanoid';
 
+import { extractResolvedNodeParameters } from './extract-resolved-node-parameters';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
+import { InstanceAiMcpRegistryService } from './mcp';
+import { WorkflowTemplatesService } from './workflow-templates.service';
 import {
-	resolveNodeTypeDefinition,
+	buildInstanceAiRunPinDataPlan,
+	pruneUnreachedVerificationPinData,
+	sdkPinDataToRuntime,
+} from './instance-ai-run-pin-data';
+import {
 	resolveBuiltinNodeDefinitionDirs,
 	listNodeDiscriminators,
 } from './node-definition-resolver';
+import { fetchAndExtract, maybeSummarize, LRUCache } from './web-research';
 import {
-	fetchAndExtract,
-	maybeSummarize,
-	braveSearch,
-	searxngSearch,
-	LRUCache,
-} from './web-research';
-import {
+	AiBuilderTemporaryWorkflowRepository,
 	ExecutionRepository,
 	ProjectRepository,
 	SharedWorkflowRepository,
+	WorkflowEntity,
 	WorkflowRepository,
 } from '@n8n/db';
-import { Service } from '@n8n/di';
+import { Logger, ModuleRegistry } from '@n8n/backend-common';
+import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
+import { Container, Service } from '@n8n/di';
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { LessThan } from '@n8n/typeorm';
 import {
 	type ICredentialsDecrypted,
-	type IDataObject,
 	type INode,
 	type INodeParameters,
+	type INodeProperties,
 	type INodeTypeDescription,
 	type IConnections,
 	type IWorkflowSettings,
-	type IPinData,
 	type IWorkflowExecutionDataProcess,
 	type DataTableFilter,
 	type DataTableRow,
 	type DataTableRows,
 	type WorkflowExecuteMode,
+	type ExecutionError,
+	type IRunData,
+	type ITaskData,
 	NodeHelpers,
-	createRunExecutionData,
+	Workflow,
 	CHAT_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
 	WEBHOOK_NODE_TYPE,
 	SCHEDULE_TRIGGER_NODE_TYPE,
+	ManualExecutionCancelledError,
 	TimeoutExecutionCancelledError,
+	UnexpectedError,
+	UserError,
+	isTriggerNodeType,
+	jsonParse,
+	createRunExecutionData,
+	calculateWorkflowChecksum,
 } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
+import { EvaluationConfigService } from '@/evaluation.ee/evaluation-config.service';
+import { LlmJudgeProviderRegistry } from '@/evaluation.ee/llm-judge-provider-registry';
 import { EventService } from '@/events/event.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { License } from '@/license';
+import { PostHogClient } from '@/posthog';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { NodeTypes } from '@/node-types';
+import { AgentsCredentialProvider } from '@/modules/agents/adapters/agents-credential-provider';
+import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
+import { NodeCatalogService } from '@/node-catalog';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
+import { MCP_REGISTRY_PACKAGE_NAME } from '@/modules/mcp-registry/node-description-transform';
+import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { userHasScopes } from '@/permissions.ee/check-access';
-import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
+import type { AiGatewayConfigDto } from '@n8n/api-types';
+import { AiGatewayService } from '@/services/ai-gateway.service';
 import { FolderService } from '@/services/folder.service';
+import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
 import { ProjectService } from '@/services/project.service.ee';
+import { RoleService } from '@/services/role.service';
+import { InstanceSettings } from 'n8n-core';
 import { TagService } from '@/services/tag.service';
-import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowService } from '@/workflows/workflow.service';
+import { getRequiredRedactionScopes } from '@/workflows/utils';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
+import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
-import { getBase } from '@/workflow-execute-additional-data';
+
+type BuilderTemplatesServiceInstance = InstanceType<typeof BuilderTemplatesService>;
+
+/**
+ * Fill in defaults for properties whose visibility depends on sibling values
+ * (e.g. OpenAI v2's per-resource `operation`). A naive single-pass loop picks
+ * the first variant of a duplicated property name, which leaves dependent
+ * properties (like `modelId` for `text`/`response`) out of view of the issue
+ * and credential checkers. `getNodeParameters` walks the dependency graph and
+ * fills only displayed properties.
+ */
+function resolveDisplayedDefaults(
+	nodeProperties: INodeProperties[],
+	parameters: Record<string, unknown>,
+	nodeType: string,
+	typeVersion: number,
+	desc: INodeTypeDescription,
+): INodeParameters {
+	const stubNode: INode = {
+		id: '',
+		name: '',
+		type: nodeType,
+		typeVersion,
+		parameters: parameters as INodeParameters,
+		position: [0, 0],
+	};
+	const resolved = NodeHelpers.getNodeParameters(
+		nodeProperties,
+		parameters as INodeParameters,
+		true,
+		false,
+		stubNode,
+		desc,
+	);
+	return resolved ?? (parameters as INodeParameters);
+}
+
+// Credential types are loaded once at boot, so the derived host index is
+// process-global and safe to memoize across users.
+let httpCredentialHostsCache: CredentialHostInfo[] | undefined;
 
 @Service()
 export class InstanceAiAdapterService {
+	private readonly logger: Logger;
+
 	private readonly allowSendingParameterValues: boolean;
 
 	/**
-	 * Service-level cache for collectTypes().  Shared across all node adapters
-	 * to avoid loading ~31 MB of node descriptions per run.  Expires after
+	 * Service-level cache for node type descriptions. Reads from the static JSON
+	 * file that FrontendService writes at startup, avoiding the expensive
+	 * collectTypes() → postProcessLoaders() rebuild cycle. Expires after
 	 * 5 minutes so hot-reloaded nodes are picked up without a restart.
 	 */
 	private nodesCache: {
-		promise: Promise<Awaited<ReturnType<LoadNodesAndCredentials['collectTypes']>>['nodes']>;
+		promise: Promise<INodeTypeDescription[]>;
 		expiresAt: number;
 	} | null = null;
 
 	private readonly NODES_CACHE_TTL_MS = 5 * 60 * 1000;
 
-	private async getNodesFromCache() {
+	private templatesService: BuilderTemplatesServiceInstance | undefined;
+
+	private async getNodesFromCache(): Promise<INodeTypeDescription[]> {
 		if (this.nodesCache && Date.now() < this.nodesCache.expiresAt) {
 			return await this.nodesCache.promise;
 		}
-		const promise = this.loadNodesAndCredentials.collectTypes().then((result) => result.nodes);
+		const filePath = path.join(this.instanceSettings.staticCacheDir, 'types/nodes.json');
+		const promise = readFile(filePath, 'utf-8').then((json) =>
+			jsonParse<INodeTypeDescription[]>(json),
+		);
 		this.nodesCache = { promise, expiresAt: Date.now() + this.NODES_CACHE_TTL_MS };
-		// If the promise rejects, invalidate the cache so the next call retries
 		promise.catch(() => {
 			this.nodesCache = null;
 		});
@@ -139,10 +241,10 @@ export class InstanceAiAdapterService {
 	}
 
 	constructor(
-		globalConfig: GlobalConfig,
+		logger: Logger,
+		private readonly globalConfig: GlobalConfig,
 		private readonly workflowService: WorkflowService,
 		private readonly workflowFinderService: WorkflowFinderService,
-		private readonly workflowSharingService: WorkflowSharingService,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly projectRepository: ProjectRepository,
@@ -152,9 +254,11 @@ export class InstanceAiAdapterService {
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly workflowRunner: WorkflowRunner,
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
+		private readonly nodeTypes: NodeTypes,
+		private readonly instanceSettings: InstanceSettings,
 		private readonly dataTableService: DataTableService,
 		private readonly dataTableRepository: DataTableRepository,
-		private readonly dynamicNodeParametersService: DynamicNodeParametersService,
+		private readonly nodeResourceExplorerService: NodeResourceExplorerService,
 		private readonly folderService: FolderService,
 		private readonly projectService: ProjectService,
 		private readonly tagService: TagService,
@@ -165,30 +269,250 @@ export class InstanceAiAdapterService {
 		private readonly license: License,
 		private readonly executionPersistence: ExecutionPersistence,
 		private readonly eventService: EventService,
+		private readonly roleService: RoleService,
+		private readonly telemetry: Telemetry,
+		private readonly aiBuilderTemporaryWorkflowRepository: AiBuilderTemporaryWorkflowRepository,
+		private readonly ssrfProtectionService: SsrfProtectionService,
+		private readonly outboundHttp: OutboundHttp,
+		private readonly aiGatewayService: AiGatewayService,
+		private readonly workflowTemplatesService: WorkflowTemplatesService,
+		private readonly nodeCatalogService?: NodeCatalogService,
+		// Optional: absent only in package/test contexts constructed without DI.
+		// DI (by type, not position) always provides it in a running instance.
+		private readonly evaluationConfigService?: EvaluationConfigService,
+		private readonly llmJudgeProviderRegistry?: LlmJudgeProviderRegistry,
 	) {
+		this.logger = logger.scoped('instance-ai');
 		this.allowSendingParameterValues = globalConfig.ai.allowSendingParameterValues;
+		this.loadNodesAndCredentials.addPostProcessor?.(async () => {
+			this.nodesCache = null;
+		});
 	}
 
 	createContext(
 		user: User,
 		options?: {
-			filesystemService?: InstanceAiFilesystemService;
 			searchProxyConfig?: ServiceProxyConfig;
 			pushRef?: string;
+			threadId?: string;
+			projectId?: string;
+			/** Eval-only: restrict the credential `list()` view to these IDs. */
+			credentialIdAllowlist?: string[];
+			/** Eval-only: resolve a credential's connection test as successful without
+			 *  contacting the provider. A predicate rather than a list because the
+			 *  harness registers bypasses mid-run, after this context is built. */
+			shouldBypassCredentialTest?: (credentialId: string) => boolean;
+			/** Pre-bound agent for the build-existing-agent flow. When omitted, the
+			 *  assistant can create one via the build-agent tool. */
+			agentId?: string;
+			/** Per-user config-evals gate (via `isConfigEvalsEnabled`). Falsy →
+			 *  eval-config service/tool not wired. */
+			configEvalsEnabled?: boolean;
+			/** Per-user MCP registry gate (via `isMcpConnectionsEnabled`). Falsy →
+			 *  mcp service/tool not wired. */
+			mcpConnectionsEnabled?: boolean;
+			/** Host-resolved model for the run — fallback for utility LLM calls
+			 *  (simulation fixtures, destructiveness classification). */
+			modelId?: ModelConfig;
 		},
 	): InstanceAiContext {
-		const { filesystemService, searchProxyConfig, pushRef } = options ?? {};
+		const {
+			searchProxyConfig,
+			pushRef,
+			threadId,
+			projectId,
+			credentialIdAllowlist,
+			shouldBypassCredentialTest,
+			agentId,
+			configEvalsEnabled,
+			mcpConnectionsEnabled,
+			modelId,
+		} = options ?? {};
+
+		// Record gateway availability once per context. Fire-and-forget: the
+		// underlying config is cached process-wide (1h TTL) so this rarely hits
+		// the network, and telemetry must never block context creation.
+		void this.trackGatewayAvailability();
+
+		const builderDelegateAdapter = this.getBuilderDelegateAdapter();
 		return {
 			userId: user.id,
-			workflowService: this.createWorkflowAdapter(user),
-			executionService: this.createExecutionAdapter(user, pushRef),
-			credentialService: this.createCredentialAdapter(user),
+			projectId,
+			modelId,
+			workflowService: this.createWorkflowAdapter(user, threadId, projectId),
+			executionService: this.createExecutionAdapter(user, pushRef, threadId),
+			credentialService: this.createCredentialAdapter(
+				user,
+				projectId,
+				credentialIdAllowlist,
+				shouldBypassCredentialTest,
+			),
 			nodeService: this.createNodeAdapter(user),
-			dataTableService: this.createDataTableAdapter(user),
+			dataTableService: this.createDataTableAdapter(user, projectId),
+			...(configEvalsEnabled && this.evaluationConfigService
+				? {
+						evaluationConfigService: this.createEvaluationConfigAdapter(
+							this.evaluationConfigService,
+							user,
+						),
+					}
+				: {}),
+			mcpService: mcpConnectionsEnabled ? this.createMcpAdapter(user) : undefined,
 			webResearchService: this.createWebResearchAdapter(user, searchProxyConfig),
 			workspaceService: this.createWorkspaceAdapter(user),
+			templatesService: this.getTemplatesService(),
+			workflowTemplateService: this.createWorkflowTemplateAdapter(),
 			licenseHints: this.buildLicenseHints(),
-			...(filesystemService ? { filesystemService } : {}),
+			logger: this.logger,
+			nodeTypesProvider: this.nodeTypes,
+			// Optional call for the same reason as addPostProcessor?.() above:
+			// adapter tests construct the service with placeholder deps.
+			outputSchemaLookup: this.loadNodesAndCredentials.createOutputSchemaLookup?.(),
+			allowSendingParameterValues: this.allowSendingParameterValues,
+			...(builderDelegateAdapter && agentId && projectId
+				? { agentBuilderTarget: { agentId, projectId } }
+				: {}),
+			...(builderDelegateAdapter && projectId
+				? {
+						builderDelegate: builderDelegateAdapter.createDelegate(
+							user,
+							projectId,
+							new AgentsCredentialProvider(this.credentialsService, projectId, user),
+						),
+					}
+				: {}),
+		};
+	}
+
+	/**
+	 * Resolve the builder-delegate adapter only when the `agents` module is
+	 * active. The adapter class is statically imported (so its `@Service` is
+	 * always registered), so the module-enabled check is what gates
+	 * agent-building. Returns null when the module is off, so `builderDelegate`
+	 * (and the build-agent sub-agent tool it powers) is simply absent from the
+	 * context.
+	 */
+	private getBuilderDelegateAdapter(): InstanceAiBuilderDelegateAdapterService | null {
+		if (!Container.get(ModuleRegistry).isActive('agents')) return null;
+		try {
+			return Container.get(InstanceAiBuilderDelegateAdapterService);
+		} catch (error) {
+			this.logger.warn('Failed to resolve builder delegate adapter; agent building disabled', {
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return null;
+		}
+	}
+
+	/**
+	 * Fail-open read of the AI Gateway config. Returns null when the instance is
+	 * disabled or the fetch fails for any reason. Every consumer
+	 * (node annotations, credential list, verifier) treats a null as "gateway not
+	 * available", a valid degraded state. Backed by `AiGatewayService`'s own
+	 * process-wide cache (1h TTL), so repeated calls are cheap.
+	 */
+	private async getGatewayConfigOrNull(): Promise<AiGatewayConfigDto | null> {
+		try {
+			this.aiGatewayService.assertEnabled();
+			return await this.aiGatewayService.getGatewayConfig();
+		} catch {
+			return null;
+		}
+	}
+
+	/** Per-user gate for config-based evals: on when the config-evaluations
+	 *  experiment is on the enabled variant, so we never create evals the user
+	 *  can't run. Fails closed: `getFeatureFlags` returns `{}` on a PostHog outage. */
+	async isConfigEvalsEnabled(user: User): Promise<boolean> {
+		const flags = await Container.get(PostHogClient).getFeatureFlags(user);
+		return flags?.[CONFIG_EVALUATIONS_FLAG] === CONFIG_EVALUATIONS_ENABLED_VARIANT;
+	}
+
+	/** Gate for MCP registry discovery tool. All three must hold:
+	 * 1. the `mcp-registry` module is active
+	 * 2. the admin allows MCP access instance-wide
+	 * 3. the user is part of the MCP connections experiment */
+	async isMcpConnectionsEnabled(user: User): Promise<boolean> {
+		if (!Container.get(ModuleRegistry).isActive('mcp-registry')) return false;
+		if (!this.settingsService.isMcpAccessEnabled()) return false;
+		const flags = await Container.get(PostHogClient).getFeatureFlags(user);
+		return (
+			flags?.[INSTANCE_AI_MCP_CONNECTIONS_FLAG] === INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT
+		);
+	}
+
+	private createMcpAdapter(user: User): InstanceAiMcpService {
+		return {
+			search: async (queries: string[]): Promise<McpRegistryServerSummary[]> => {
+				const [servers, connectedSlugs] = await Promise.all([
+					Container.get(McpRegistryService).search(queries),
+					this.listConnectedMcpRegistrySlugs(user),
+				]);
+				return servers
+					.filter((server) => !connectedSlugs.has(server.slug))
+					.map((server) => ({
+						slug: server.slug,
+						title: server.title,
+						description: server.description,
+						tools: server.tools.map((tool) => tool.name),
+					}));
+			},
+		};
+	}
+
+	/** Slugs the user already has a connection row for. Reads the rows rather than
+	 *  resolving them into loadable servers: resolving decrypts credentials per
+	 *  connection, and a row that fails to resolve still blocks connecting again
+	 *  (one connection per user+slug), so re-offering it would dead-end. */
+	private async listConnectedMcpRegistrySlugs(user: User): Promise<Set<string>> {
+		try {
+			const connections = await Container.get(InstanceAiMcpRegistryService).listConnectionsForUser(
+				user,
+			);
+			return new Set(connections.map((connection) => connection.serverSlug));
+		} catch (error) {
+			this.logger.warn('Failed to list connected MCP registry servers for registry search', {
+				userId: user.id,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return new Set();
+		}
+	}
+
+	private buildAiGatewayNodeMeta(
+		config: AiGatewayConfigDto | null,
+		nodeName: string,
+	): AiGatewayNodeMeta | undefined {
+		if (!config) return undefined;
+		if (!config.nodes.includes(nodeName)) return undefined;
+
+		const meta: AiGatewayNodeMeta = { supported: true };
+		const operations = config.supportedActions?.[nodeName];
+		if (operations && Object.keys(operations).length > 0) meta.operations = operations;
+		const minVersion = config.minNodeTypeVersion?.[nodeName];
+		if (minVersion !== undefined) meta.minVersion = minVersion;
+		const hiddenProperties = config.hiddenNodeProperties?.[nodeName];
+		if (hiddenProperties && hiddenProperties.length > 0) meta.hiddenProperties = hiddenProperties;
+		return meta;
+	}
+
+	private getTemplatesService(): BuilderTemplatesServiceInstance {
+		if (!this.templatesService) {
+			this.templatesService = new BuilderTemplatesService({
+				...builderTemplatesOptionsFromEnv({ logger: this.logger }),
+				cacheDir: path.join(this.instanceSettings.n8nFolder, 'n8n-sdk-templates'),
+				logger: this.logger,
+			});
+		}
+		return this.templatesService;
+	}
+
+	private createWorkflowTemplateAdapter(): InstanceAiWorkflowTemplateService {
+		const workflowTemplatesService = this.workflowTemplatesService;
+		return {
+			async getTemplate(templateId: string) {
+				return await workflowTemplatesService.getTemplate(templateId);
+			},
 		};
 	}
 
@@ -207,7 +531,25 @@ export class InstanceAiAdapterService {
 		return hints;
 	}
 
-	private createProjectScopeHelpers(user: User) {
+	/** Emit the gateway-availability telemetry event when the gateway is reachable. */
+	private async trackGatewayAvailability(): Promise<void> {
+		const config = await this.getGatewayConfigOrNull();
+		if (!config) return;
+		this.telemetry.track('instance_ai_gateway_available', {
+			nodeCount: config.nodes.length,
+			credentialTypeCount: config.credentialTypes.length,
+		});
+	}
+
+	private assertInstanceNotReadOnly(resourceType: string) {
+		if (this.sourceControlPreferencesService.getPreferences().branchReadOnly) {
+			throw new Error(
+				`Cannot modify ${resourceType} on a protected instance. This instance is in read-only mode.`,
+			);
+		}
+	}
+
+	private createProjectScopeHelpers(user: User, boundProjectId?: string) {
 		const { projectRepository } = this;
 		let personalProjectIdPromise: Promise<string> | null = null;
 
@@ -226,36 +568,59 @@ export class InstanceAiAdapterService {
 		};
 
 		const resolveProjectId = async (scopes: Scope[], providedProjectId?: string) => {
-			const projectId = providedProjectId ?? (await getPersonalProjectId());
+			const projectId = providedProjectId ?? boundProjectId ?? (await getPersonalProjectId());
 			await assertProjectScope(scopes, projectId);
 			return projectId;
 		};
 
-		return { getPersonalProjectId, assertProjectScope, resolveProjectId };
+		const resolveBoundProjectId = async (scopes: Scope[]) => {
+			if (!boundProjectId) {
+				throw new UnexpectedError(
+					'Cannot create a resource: this Instance AI run has no bound project.',
+				);
+			}
+			await assertProjectScope(scopes, boundProjectId);
+			return boundProjectId;
+		};
+
+		return { getPersonalProjectId, assertProjectScope, resolveProjectId, resolveBoundProjectId };
 	}
 
-	private createWorkflowAdapter(user: User): InstanceAiWorkflowService {
+	private createWorkflowAdapter(
+		user: User,
+		threadId?: string,
+		boundProjectId?: string,
+	): InstanceAiWorkflowService {
 		const {
 			workflowService,
 			workflowFinderService,
 			workflowRepository,
 			sharedWorkflowRepository,
+			aiBuilderTemporaryWorkflowRepository,
 			workflowHistoryService,
 			enterpriseWorkflowService,
+			executionRepository,
+			executionPersistence,
 			license,
 			allowSendingParameterValues,
+			telemetry,
 		} = this;
-		const { resolveProjectId } = this.createProjectScopeHelpers(user);
+		const logger = this.logger;
+		const assertNotReadOnly = () => this.assertInstanceNotReadOnly('workflows');
+		const { resolveBoundProjectId } = this.createProjectScopeHelpers(user, boundProjectId);
 		const redactParameters = !allowSendingParameterValues;
 
 		return {
 			async list(options) {
+				const filter = {
+					...(options?.status === 'all' ? {} : { isArchived: options?.status === 'archived' }),
+					...(options?.query ? { query: options.query } : {}),
+					...(options?.scope !== 'instance' && boundProjectId ? { projectId: boundProjectId } : {}),
+				};
+
 				const { workflows } = await workflowService.getMany(user, {
 					take: options?.limit ?? 50,
-					filter: {
-						isArchived: false,
-						...(options?.query ? { query: options.query } : {}),
-					},
+					filter,
 				});
 
 				return workflows
@@ -266,6 +631,7 @@ export class InstanceAiAdapterService {
 							name: wf.name,
 							versionId: wf.versionId,
 							activeVersionId: wf.activeVersionId ?? null,
+							isArchived: wf.isArchived,
 							createdAt: wf.createdAt.toISOString(),
 							updatedAt: wf.updatedAt.toISOString(),
 						}),
@@ -281,15 +647,53 @@ export class InstanceAiAdapterService {
 					throw new Error(`Workflow ${workflowId} not found or not accessible`);
 				}
 
-				return toWorkflowDetail(workflow, { redactParameters });
+				return await toWorkflowDetailWithChecksum(workflow, { redactParameters });
 			},
 
 			async archive(workflowId: string) {
-				await workflowService.archive(user, workflowId, { skipArchived: true });
+				assertNotReadOnly();
+				const result = await workflowService.archive(user, workflowId, { skipArchived: true });
+				if (!result) {
+					throw new Error(`Workflow ${workflowId} not found or not accessible`);
+				}
 			},
 
-			async delete(workflowId: string) {
-				await workflowService.delete(user, workflowId);
+			async unarchive(workflowId: string) {
+				assertNotReadOnly();
+				const result = await workflowService.unarchive(user, workflowId);
+				if (!result) {
+					throw new Error(`Workflow ${workflowId} not found or not accessible`);
+				}
+			},
+
+			async clearAiTemporary(workflowId: string) {
+				assertNotReadOnly();
+				const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, [
+					'workflow:update',
+				]);
+				if (!workflow) return;
+				if (!(await aiBuilderTemporaryWorkflowRepository.existsForWorkflow(workflowId))) return;
+
+				await aiBuilderTemporaryWorkflowRepository.unmark(workflowId);
+			},
+
+			async archiveIfAiTemporary(workflowId: string) {
+				assertNotReadOnly();
+				const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, [
+					'workflow:update',
+				]);
+				if (!workflow) return false;
+				if (!(await aiBuilderTemporaryWorkflowRepository.existsForWorkflow(workflowId))) {
+					return false;
+				}
+				if (workflow.isArchived) {
+					await aiBuilderTemporaryWorkflowRepository.unmark(workflowId);
+					return false;
+				}
+
+				await workflowService.archive(user, workflowId, { skipArchived: true });
+				await aiBuilderTemporaryWorkflowRepository.unmark(workflowId);
+				return true;
 			},
 
 			async publish(
@@ -300,35 +704,105 @@ export class InstanceAiAdapterService {
 					versionId: options?.versionId,
 					name: options?.name,
 					description: options?.description,
+					source: 'n8n-ai',
 				});
 				if (!wf.activeVersionId) {
 					throw new Error(`Workflow ${workflowId} was not activated — no active version set`);
 				}
+
+				if (threadId) {
+					telemetry.track('Builder published workflow', {
+						user_id: user.id,
+						thread_id: threadId,
+						workflow_id: workflowId,
+						executed_by: 'ai',
+					});
+				}
+
 				return { activeVersionId: wf.activeVersionId };
 			},
 
 			async unpublish(workflowId: string) {
-				await workflowService.deactivateWorkflow(user, workflowId);
+				await workflowService.deactivateWorkflow(user, workflowId, {
+					source: 'n8n-ai',
+				});
 			},
 
-			async getAsWorkflowJSON(workflowId: string) {
+			async getAsWorkflowJSON(workflowId: string, versionId?: string) {
 				const wf = await workflowFinderService.findWorkflowForUser(workflowId, user, [
 					'workflow:read',
 				]);
 				if (!wf) throw new Error(`Workflow ${workflowId} not found or not accessible`);
-				return toWorkflowJSON(wf, { redactParameters });
+				if (!versionId) return toWorkflowJSON(wf, { redactParameters });
+				const version = await workflowHistoryService.getVersion(user, workflowId, versionId);
+				return toWorkflowJSON(wf, { redactParameters, graph: version });
 			},
 
-			async createFromWorkflowJSON(json: WorkflowJSON, options?: { projectId?: string }) {
-				const projectId = await resolveProjectId(['workflow:create'], options?.projectId);
+			async getWorkflowHead(workflowId: string) {
+				const head = await workflowFinderService.findWorkflowHeadForUser(workflowId, user, [
+					'workflow:read',
+				]);
+				if (!head) throw new Error(`Workflow ${workflowId} not found or not accessible`);
+				return { versionId: head.versionId, updatedAt: head.updatedAt.getTime() };
+			},
+
+			async getWorkflowSnapshot(workflowId: string) {
+				const wf = await workflowFinderService.findWorkflowForUser(workflowId, user, [
+					'workflow:read',
+				]);
+				if (!wf) throw new Error(`Workflow ${workflowId} not found or not accessible`);
+				return {
+					json: toWorkflowJSON(wf, { redactParameters }),
+					versionId: wf.versionId,
+					updatedAt: wf.updatedAt.getTime(),
+				};
+			},
+
+			async getLatestRunData(workflowId: string) {
+				// Caller must be able to read the workflow to see its execution history.
+				// Silent null on no-access keeps validation usable even when access was
+				// revoked between fetches — validation degrades gracefully instead of
+				// throwing in the middle of a per-node loop.
+				const accessible = await workflowFinderService.findWorkflowForUser(workflowId, user, [
+					'workflow:read',
+				]);
+				if (!accessible) return null;
+
+				const [latest] = await executionRepository.find({
+					select: ['id'],
+					where: { workflowId },
+					order: { startedAt: 'DESC' },
+					take: 1,
+				});
+				if (!latest) return null;
+
+				const execution = await executionPersistence.findSingleExecution(latest.id, {
+					includeData: true,
+					unflattenData: true,
+				});
+				return execution?.data?.resultData?.runData ?? null;
+			},
+
+			async createFromWorkflowJSON(
+				json: WorkflowJSON,
+				options?: { projectId?: string; markAsAiTemporary?: boolean },
+			) {
+				assertNotReadOnly();
+				const projectId = await resolveBoundProjectId(['workflow:create']);
+
+				// Without an explicit order the engine falls back to legacy v0, which walks
+				// the graph breadth-first. Generated code still wins if it sets its own.
+				const settings = {
+					executionOrder: 'v1',
+					...(json.settings ?? {}),
+				} as IWorkflowSettings;
 
 				// Strip redactionPolicy if the user lacks the required scope —
 				// mirrors the check in WorkflowCreationService.createWorkflow().
-				const settings = (json.settings ?? {}) as IWorkflowSettings;
-				if (settings.redactionPolicy !== undefined) {
+				if (settings.redactionPolicy !== undefined && settings.redactionPolicy !== 'none') {
 					const canUpdateRedaction = await userHasScopes(
 						user,
-						['workflow:updateRedactionSetting'],
+						['workflow:enableRedaction'],
 						false,
 						{ projectId },
 					);
@@ -350,77 +824,163 @@ export class InstanceAiAdapterService {
 					versionId: randomUUID(),
 				} as Partial<WorkflowEntity>);
 
-				const saved = await workflowRepository.save(newWorkflow);
-
-				await sharedWorkflowRepository.save(
-					sharedWorkflowRepository.create({
-						role: 'workflow:owner',
-						projectId,
-						workflow: saved,
-					}),
-				);
+				const saved = await workflowRepository.manager.transaction(async (transactionManager) => {
+					const workflow = await transactionManager.save(WorkflowEntity, newWorkflow);
+					await sharedWorkflowRepository.makeOwner([workflow.id], projectId, transactionManager);
+					if (options?.markAsAiTemporary) {
+						if (!threadId) {
+							throw new UnexpectedError(
+								'Cannot mark AI-builder temporary workflow without a thread ID',
+							);
+						}
+						await aiBuilderTemporaryWorkflowRepository.mark(
+							workflow.id,
+							threadId,
+							transactionManager,
+						);
+					}
+					return workflow;
+				});
 
 				// Now update with actual nodes — this creates the WorkflowHistory entry
 				// needed for activation and publishing.
+				const nodes = sanitizeCredentialReferencesForSave(json.nodes);
 				let updateData = workflowRepository.create({
 					name: json.name,
-					nodes: json.nodes as unknown as INode[],
+					nodes: nodes as unknown as INode[],
 					connections: json.connections as unknown as IConnections,
 					settings,
 					pinData: sdkPinDataToRuntime(json.pinData),
+					nodeGroups: sdkNodeGroupsToRuntime(json.nodeGroups),
 				} as Partial<WorkflowEntity>);
 
-				// Enforce credential tamper protection — same guard as the
-				// REST controller (workflows.controller PATCH /:workflowId).
-				if (license.isSharingEnabled()) {
-					updateData = await enterpriseWorkflowService.preventTampering(updateData, saved.id, user);
+				let updated: WorkflowEntity;
+				try {
+					// Enforce credential tamper protection — same guard as the
+					// REST controller (workflows.controller PATCH /:workflowId).
+					if (license.isSharingEnabled()) {
+						updateData = await enterpriseWorkflowService.preventTampering(
+							updateData,
+							saved.id,
+							user,
+						);
+					}
+
+					updated = await workflowService.update(user, updateData, saved.id, {
+						source: 'n8n-ai',
+					});
+				} catch (error) {
+					logger.warn('AI-builder workflow save failed', {
+						threadId,
+						workflowId: saved.id,
+						error: error instanceof Error ? error.message : String(error),
+					});
+					try {
+						const archived = await workflowService.archive(user, saved.id, { skipArchived: true });
+						if (archived && options?.markAsAiTemporary) {
+							await aiBuilderTemporaryWorkflowRepository.unmark(saved.id);
+						}
+					} catch (cleanupError) {
+						logger.warn('Failed to clean up AI-builder workflow shell after create failure', {
+							threadId,
+							workflowId: saved.id,
+							error: cleanupError instanceof Error ? cleanupError.message : String(cleanupError),
+						});
+					}
+					throw error;
 				}
 
-				const updated = await workflowService.update(user, updateData, saved.id);
+				if (threadId) {
+					telemetry.track('Builder created workflow', {
+						user_id: user.id,
+						thread_id: threadId,
+						workflow_id: updated.id,
+					});
+				}
 
-				return toWorkflowDetail(updated, { redactParameters });
+				return await toWorkflowDetailWithChecksum(updated, { redactParameters });
 			},
 
 			async updateFromWorkflowJSON(
 				workflowId: string,
 				json: WorkflowJSON,
-				_options?: { projectId?: string },
+				options?: { projectId?: string; expectedChecksum?: string },
 			) {
-				// Strip redactionPolicy if the user lacks the required scope —
-				// mirrors the check in createFromWorkflowJSON() and WorkflowService.update().
+				assertNotReadOnly();
+				// Strip redactionPolicy if the user lacks the required directional scope —
+				// mirrors the check in WorkflowService.update().
 				const settings = (json.settings ?? {}) as IWorkflowSettings;
 				if (settings.redactionPolicy !== undefined) {
-					const canUpdateRedaction = await userHasScopes(
-						user,
-						['workflow:updateRedactionSetting'],
-						false,
-						{ workflowId },
-					);
-					if (!canUpdateRedaction) {
-						delete settings.redactionPolicy;
+					const [existingWorkflow, ownerProject] = await Promise.all([
+						workflowRepository.findOne({ where: { id: workflowId } }),
+						sharedWorkflowRepository.getWorkflowOwningProject(workflowId),
+					]);
+
+					const currentPolicy = existingWorkflow?.settings?.redactionPolicy;
+
+					if (settings.redactionPolicy !== currentPolicy) {
+						const requiredScopes = getRequiredRedactionScopes(
+							currentPolicy,
+							settings.redactionPolicy,
+						);
+
+						const canUpdateRedaction =
+							ownerProject &&
+							(await userHasScopes(user, requiredScopes, false, { projectId: ownerProject.id }));
+
+						if (!canUpdateRedaction) {
+							delete settings.redactionPolicy;
+						}
 					}
 				}
 
+				const nodes = sanitizeCredentialReferencesForSave(json.nodes);
 				let updateData = workflowRepository.create({
 					name: json.name,
-					nodes: json.nodes as unknown as INode[],
+					nodes: nodes as unknown as INode[],
 					connections: json.connections as unknown as IConnections,
 					settings,
 					pinData: sdkPinDataToRuntime(json.pinData),
+					nodeGroups: sdkNodeGroupsToRuntime(json.nodeGroups),
 				} as Partial<WorkflowEntity>);
 
-				// Enforce credential tamper protection — same guard as the
-				// REST controller (workflows.controller PATCH /:workflowId).
-				if (license.isSharingEnabled()) {
-					updateData = await enterpriseWorkflowService.preventTampering(
-						updateData,
+				let updated: WorkflowEntity;
+				try {
+					// Enforce credential tamper protection — same guard as the
+					// REST controller (workflows.controller PATCH /:workflowId).
+					if (license.isSharingEnabled()) {
+						updateData = await enterpriseWorkflowService.preventTampering(
+							updateData,
+							workflowId,
+							user,
+						);
+					}
+
+					updated = await workflowService.update(user, updateData, workflowId, {
+						source: 'n8n-ai',
+						...(options?.expectedChecksum ? { expectedChecksum: options.expectedChecksum } : {}),
+					});
+				} catch (error) {
+					if (error instanceof ConflictError) {
+						throw new WorkflowSaveConflictError(workflowId);
+					}
+					logger.warn('AI-builder workflow save failed', {
+						threadId,
 						workflowId,
-						user,
-					);
+						error: error instanceof Error ? error.message : String(error),
+					});
+					throw error;
 				}
 
-				const updated = await workflowService.update(user, updateData, workflowId);
-				return toWorkflowDetail(updated, { redactParameters });
+				if (threadId) {
+					telemetry.track('Builder modified workflow', {
+						user_id: user.id,
+						thread_id: threadId,
+						workflow_id: workflowId,
+					});
+				}
+
+				return await toWorkflowDetailWithChecksum(updated, { redactParameters });
 			},
 
 			async listVersions(workflowId, options) {
@@ -472,6 +1032,7 @@ export class InstanceAiAdapterService {
 						(n): WorkflowNode => ({
 							name: n.name,
 							type: n.type,
+							typeVersion: n.typeVersion,
 							parameters: redactParameters ? undefined : (n.parameters as Record<string, unknown>),
 							position: n.position,
 						}),
@@ -486,9 +1047,14 @@ export class InstanceAiAdapterService {
 				const updateData = workflowRepository.create({
 					nodes: version.nodes,
 					connections: version.connections,
+					// Restore the group state from the same snapshot so groups stay consistent
+					// with the restored graph (history rows always carry nodeGroups).
+					nodeGroups: version.nodeGroups,
 				} as Partial<WorkflowEntity>);
 
-				await workflowService.update(user, updateData, workflowId);
+				await workflowService.update(user, updateData, workflowId, {
+					source: 'n8n-ai',
+				});
 			},
 
 			...(this.license.isLicensed('feat:namedVersions')
@@ -505,15 +1071,24 @@ export class InstanceAiAdapterService {
 		};
 	}
 
-	private createExecutionAdapter(user: User, pushRef?: string): InstanceAiExecutionService {
+	private createExecutionAdapter(
+		user: User,
+		pushRef?: string,
+		threadId?: string,
+	): InstanceAiExecutionService {
 		const {
 			workflowFinderService,
-			workflowSharingService,
 			workflowRunner,
 			activeExecutions,
 			executionRepository,
+			nodeTypes,
 			allowSendingParameterValues,
+			roleService,
+			telemetry,
+			logger,
+			globalConfig,
 		} = this;
+		const assertNotReadOnly = () => this.assertInstanceNotReadOnly('executions');
 
 		const DEFAULT_TIMEOUT_MS = 5 * Time.minutes.toMilliseconds;
 		const MAX_TIMEOUT_MS = 10 * Time.minutes.toMilliseconds;
@@ -545,17 +1120,24 @@ export class InstanceAiAdapterService {
 
 		return {
 			async list(options) {
-				const accessibleWorkflowIds = await workflowSharingService.getSharedWorkflowIds(user, {
-					scopes: ['workflow:read'],
-				});
+				const scope: Scope = 'workflow:read';
 
-				if (accessibleWorkflowIds.length === 0) return [];
+				// Visibility from role scopes, not the sharing license — mirrors
+				// ExecutionService.buildSharingOptions and the REST executions list.
+				const projectRoles = await roleService.rolesWithScope('project', [scope]);
+				const workflowRoles = await roleService.rolesWithScope('workflow', [scope]);
+				const sharingOptions: ExecutionSummaries.RangeQuery['sharingOptions'] = {
+					scopes: [scope],
+					projectRoles,
+					workflowRoles,
+				};
 
-				const query = {
+				const query: ExecutionSummaries.RangeQuery = {
 					kind: 'range' as const,
 					range: { limit: options?.limit ?? 20, lastId: undefined, firstId: undefined },
 					order: { startedAt: 'DESC' as const },
-					accessibleWorkflowIds,
+					user,
+					sharingOptions,
 					...(options?.workflowId ? { workflowId: options.workflowId } : {}),
 					...(options?.status
 						? {
@@ -589,6 +1171,7 @@ export class InstanceAiAdapterService {
 			},
 
 			async run(workflowId: string, inputData, options) {
+				assertNotReadOnly();
 				const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, [
 					'workflow:execute',
 				]);
@@ -606,98 +1189,239 @@ export class InstanceAiAdapterService {
 					? (nodes.find((n) => n.name === options.triggerNodeName) ?? findTriggerNode(nodes))
 					: findTriggerNode(nodes);
 
+				const timeoutMs = Math.min(options?.timeout ?? DEFAULT_TIMEOUT_MS, MAX_TIMEOUT_MS);
+
+				// Sever the listed edges on this run's ephemeral copy only — used by
+				// scripted wait-gate verification to keep each pass acyclic.
+				const connections = options?.omitConnections?.length
+					? omitWorkflowConnections(workflow.connections, options.omitConnections)
+					: workflow.connections;
+
+				// Force-save AI-initiated executions so that follow-up
+				// `executions(list/get/debug)` calls can read the result, regardless of
+				// instance-wide or per-workflow save settings. Manual mode is gated by
+				// `saveManualExecutions`; trigger modes (webhook, chat, trigger) are
+				// gated by the success/error settings — override all three.
 				const runData: IWorkflowExecutionDataProcess = {
 					executionMode: triggerNode
 						? getExecutionModeForTrigger(triggerNode)
 						: ('manual' as WorkflowExecuteMode),
-					workflowData: workflow,
+					workflowData: {
+						...workflow,
+						connections,
+						settings: {
+							...workflow.settings,
+							saveManualExecutions: true,
+							saveDataSuccessExecution: 'all',
+							saveDataErrorExecution: 'all',
+							// Engine-side bound: checked between node executions, so it fires
+							// even when a fast pinned loop starves the timer-based cancel below.
+							executionTimeout: Math.ceil(timeoutMs / 1000),
+						},
+					},
 					userId: user.id,
 					pushRef,
+					// A verification run picks a production execution mode above so the
+					// trigger behaves realistically. Without this opt-out, a failed build
+					// attempt would dispatch the user's error workflow as if production
+					// had broken — the one side effect node simulation cannot pin, since
+					// it is dispatched by the execution lifecycle, not by a node.
+					...(options?.isVerificationRun ? { suppressErrorWorkflow: true } : {}),
 				};
 
-				// Merge pin data from three sources:
-				// 1. Workflow-level pinData (from the saved workflow)
-				// 2. Override pinData (passed by verify-built-workflow for mocked credential verification)
-				// 3. Trigger input pinData (from the inputData parameter)
-				const workflowPinData = workflow.pinData ?? {};
-				const overridePinData = options?.pinData
-					? (sdkPinDataToRuntime(options.pinData) ?? {})
-					: {};
-				const basePinData = { ...workflowPinData, ...overridePinData };
+				const pinDataPlan = buildInstanceAiRunPinDataPlan({
+					workflowPinData: workflow.pinData ?? {},
+					verificationPinData: options?.verificationPinData,
+					inputData,
+					triggerNode,
+				});
+				if (pinDataPlan.startNodeName) {
+					runData.startNodes = [{ name: pinDataPlan.startNodeName, sourceData: null }];
+				} else if (triggerNode) {
+					// No inputData but we have a trigger node (e.g. test-trigger from
+					// setup-workflow). Tell the execution engine which node to start from
+					// so it doesn't fail to auto-detect webhook-only triggers like ChatTrigger.
+					runData.triggerToStartFrom = { name: triggerNode.name };
+				}
+				if (pinDataPlan.runPinData) {
+					runData.pinData = pinDataPlan.runPinData;
+				}
+				if (pinDataPlan.triggerExecutionData) {
+					// Persist pin data in executionData so queued workers can hydrate
+					// verification fixtures while starting from the trigger node.
+					runData.executionData = pinDataPlan.triggerExecutionData;
+				}
 
-				if (inputData && triggerNode) {
-					const triggerPinData = getPinDataForTrigger(triggerNode, inputData);
-					const mergedPinData = { ...basePinData, ...triggerPinData };
+				runData.source = 'instance_ai';
+				runData.telemetryMetadata = {
+					mockDataSources: pinDataPlan.mockDataSources,
+				};
 
-					runData.startNodes = [{ name: triggerNode.name, sourceData: null }];
-					runData.pinData = mergedPinData;
+				// In queue mode the worker rebuilds the run from persisted `execution.data`,
+				// where top-level `runData.source` doesn't survive. Persist it in
+				// `manualData` so worker-side statistics can classify IAI runs, and so
+				// the worker's save hook honours `suppressErrorWorkflow`. A run without
+				// `executionData` has no trigger node, which means `executionMode` is
+				// 'manual' and the error workflow is already skipped.
+				if (runData.executionData) {
+					runData.executionData.manualData = {
+						...runData.executionData.manualData,
+						userId: user.id,
+						source: runData.source,
+						suppressErrorWorkflow: runData.suppressErrorWorkflow,
+					};
+				}
+
+				// When manual executions are offloaded to workers (queue mode), the worker
+				// rebuilds the run from the persisted `execution.data`. The adapter's manual
+				// run details otherwise live in transient top-level fields that don't survive
+				// serialization, so wrap them into `executionData` — mirroring
+				// `workflow-execution.service`. A trigger run already carries its stack in
+				// `executionData`, so only wrap when it's absent.
+				const offloadingManualExecutionsInQueueMode =
+					globalConfig.executions?.mode === 'queue' &&
+					process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS === 'true';
+				if (
+					runData.executionMode === 'manual' &&
+					offloadingManualExecutionsInQueueMode &&
+					!runData.executionData
+				) {
 					runData.executionData = createRunExecutionData({
-						startData: {},
-						resultData: { pinData: mergedPinData, runData: {} },
-						executionData: {
-							contextData: {},
-							metadata: {},
-							nodeExecutionStack: [
-								{
-									node: triggerNode,
-									data: { main: [triggerPinData[triggerNode.name]] },
-									source: null,
-								},
-							],
-							waitingExecution: {},
-							waitingExecutionSource: {},
+						startData: { startNodes: runData.startNodes },
+						resultData: { pinData: runData.pinData, runData: null },
+						manualData: {
+							userId: runData.userId,
+							triggerToStartFrom: runData.triggerToStartFrom,
+							source: runData.source,
 						},
+						executionData: null,
 					});
-				} else if (Object.keys(basePinData).length > 0) {
-					runData.pinData = basePinData;
 				}
 
-				const executionId = await workflowRunner.run(runData);
+				const trackBuilderExecutedWorkflow = (
+					status: ExecutionResult['status'],
+					error?: string,
+				) => {
+					if (!threadId) return;
 
-				// Wait for completion with timeout protection
-				const timeoutMs = Math.min(options?.timeout ?? DEFAULT_TIMEOUT_MS, MAX_TIMEOUT_MS);
-
-				if (activeExecutions.has(executionId)) {
-					let timeoutId: NodeJS.Timeout | undefined;
-					const timeoutPromise = new Promise<never>((_, reject) => {
-						timeoutId = setTimeout(() => {
-							reject(new Error(`Execution timed out after ${timeoutMs}ms`));
-						}, timeoutMs);
+					telemetry.track('Builder executed workflow', {
+						user_id: user.id,
+						thread_id: threadId,
+						workflow_id: workflowId,
+						executed_by: 'ai',
+						pinned_node_count: Object.keys(runData.pinData ?? {}).length,
+						exec_type: runData.executionMode,
+						status,
+						...(error ? { error } : {}),
 					});
+				};
 
-					try {
-						await Promise.race([
-							activeExecutions.getPostExecutePromise(executionId),
-							timeoutPromise,
-						]);
-						clearTimeout(timeoutId);
-					} catch (error) {
-						clearTimeout(timeoutId);
-						// On timeout, cancel the execution
-						if (error instanceof Error && error.message.includes('timed out')) {
-							try {
-								activeExecutions.stopExecution(
-									executionId,
-									new TimeoutExecutionCancelledError(executionId),
-								);
-							} catch {
-								// Execution may have completed between timeout and cancel
-							}
-							return {
+				try {
+					const executionId = await workflowRunner.run(runData);
+					const pruneVerificationPins = async (executedNodeNames?: string[]) => {
+						try {
+							await pruneUnreachedVerificationPinData({
 								executionId,
-								status: 'error',
-								error: `Execution timed out after ${timeoutMs}ms and was cancelled`,
-							} satisfies ExecutionResult;
+								verificationPinData: pinDataPlan.verificationPinData,
+								nonVerificationPinData: pinDataPlan.nonVerificationPinData,
+								executedNodeNames,
+							});
+						} catch (error) {
+							logger.warn('Failed to prune verification pin data from execution', {
+								executionId,
+								error: error instanceof Error ? error.message : String(error),
+							});
 						}
-						throw error;
-					}
-				}
+					};
 
-				return await extractExecutionResult(
-					executionRepository,
-					executionId,
-					allowSendingParameterValues,
-				);
+					// Wait for completion with timeout / abort protection
+					const abortSignal = options?.abortSignal;
+
+					if (activeExecutions.has(executionId)) {
+						let timeoutId: NodeJS.Timeout | undefined;
+						const timeoutPromise = new Promise<never>((_, reject) => {
+							timeoutId = setTimeout(() => {
+								reject(new Error(`Execution timed out after ${timeoutMs}ms`));
+							}, timeoutMs);
+						});
+
+						let onAbort: (() => void) | undefined;
+						const abortPromise =
+							abortSignal === undefined
+								? undefined
+								: new Promise<never>((_, reject) => {
+										onAbort = () => {
+											const error = new Error(
+												typeof abortSignal.reason === 'string'
+													? abortSignal.reason
+													: 'This operation was aborted',
+											);
+											error.name = 'AbortError';
+											reject(error);
+										};
+										if (abortSignal.aborted) {
+											onAbort();
+											return;
+										}
+										abortSignal.addEventListener('abort', onAbort, { once: true });
+									});
+
+						try {
+							await Promise.race([
+								activeExecutions.getPostExecutePromise(executionId),
+								timeoutPromise,
+								...(abortPromise ? [abortPromise] : []),
+							]);
+							clearTimeout(timeoutId);
+							if (onAbort) abortSignal?.removeEventListener('abort', onAbort);
+						} catch (error) {
+							clearTimeout(timeoutId);
+							if (onAbort) abortSignal?.removeEventListener('abort', onAbort);
+							const isTimeout = error instanceof Error && error.message.includes('timed out');
+							const isAbort =
+								error instanceof Error &&
+								(error.name === 'AbortError' || abortSignal?.aborted === true);
+							// On timeout or abort, cancel the execution with the matching reason
+							if (isTimeout || isAbort) {
+								try {
+									activeExecutions.stopExecution(
+										executionId,
+										isAbort
+											? new ManualExecutionCancelledError(executionId)
+											: new TimeoutExecutionCancelledError(executionId),
+									);
+								} catch {
+									// Execution may have completed between timeout/abort and cancel
+								}
+								const result = {
+									executionId,
+									status: 'error',
+									error: isAbort
+										? 'Execution was cancelled'
+										: `Execution timed out after ${timeoutMs}ms and was cancelled`,
+								} satisfies ExecutionResult;
+								await pruneVerificationPins();
+								trackBuilderExecutedWorkflow(result.status, result.error);
+								return result;
+							}
+							throw error;
+						}
+					}
+
+					const result = await extractExecutionResult(executionId, allowSendingParameterValues);
+					await pruneVerificationPins(result.executedNodeNames);
+					trackBuilderExecutedWorkflow(result.status, result.error);
+					return result;
+				} catch (error) {
+					// A failure to launch (or any other unsettled error) is still an
+					// errored builder run — track it before rethrowing so it isn't
+					// silently dropped from telemetry.
+					trackBuilderExecutedWorkflow(
+						'error',
+						error instanceof Error ? error.message : String(error),
+					);
+					throw error;
+				}
 			},
 
 			async getStatus(executionId: string) {
@@ -706,11 +1430,7 @@ export class InstanceAiAdapterService {
 				if (isRunning) {
 					return { executionId, status: 'running' } satisfies ExecutionResult;
 				}
-				return await extractExecutionResult(
-					executionRepository,
-					executionId,
-					allowSendingParameterValues,
-				);
+				return await extractExecutionResult(executionId, allowSendingParameterValues);
 			},
 
 			async getResult(executionId: string) {
@@ -719,14 +1439,11 @@ export class InstanceAiAdapterService {
 				if (activeExecutions.has(executionId)) {
 					await activeExecutions.getPostExecutePromise(executionId);
 				}
-				return await extractExecutionResult(
-					executionRepository,
-					executionId,
-					allowSendingParameterValues,
-				);
+				return await extractExecutionResult(executionId, allowSendingParameterValues);
 			},
 
 			async stop(executionId: string) {
+				assertNotReadOnly();
 				await assertExecutionAccess(executionId, ['workflow:execute']);
 				if (!activeExecutions.has(executionId)) {
 					return {
@@ -751,11 +1468,7 @@ export class InstanceAiAdapterService {
 
 			async getDebugInfo(executionId: string) {
 				await assertExecutionAccess(executionId);
-				return await extractExecutionDebugInfo(
-					executionRepository,
-					executionId,
-					allowSendingParameterValues,
-				);
+				return await extractExecutionDebugInfo(executionId, allowSendingParameterValues, nodeTypes);
 			},
 
 			async getNodeOutput(executionId, nodeName, options) {
@@ -770,16 +1483,80 @@ export class InstanceAiAdapterService {
 					} satisfies NodeOutputResult;
 				}
 
-				return await extractNodeOutput(executionRepository, executionId, nodeName, options);
+				return await extractNodeOutput(executionId, nodeName, options);
+			},
+
+			getResolvedNodeParameters: async (
+				executionId: string,
+				nodeName: string,
+				options?: { itemIndex?: number; runIndex?: number },
+			): Promise<ResolvedNodeParametersResult> => {
+				await assertExecutionAccess(executionId);
+
+				if (!allowSendingParameterValues) {
+					return {
+						nodeName,
+						runIndex: options?.runIndex ?? 0,
+						itemIndex: options?.itemIndex ?? 0,
+						parameters: null,
+						resolved: null,
+						failedExpressions: [],
+						emptyResolutions: [],
+						suppressed: 'parameter-values-disabled',
+					} satisfies ResolvedNodeParametersResult;
+				}
+
+				return await extractResolvedNodeParameters(nodeTypes, executionId, nodeName, options);
 			},
 		};
 	}
 
-	private createCredentialAdapter(user: User): InstanceAiCredentialService {
+	private createCredentialAdapter(
+		user: User,
+		boundProjectId?: string,
+		credentialIdAllowlist?: string[],
+		shouldBypassCredentialTest?: (credentialId: string) => boolean,
+	): InstanceAiCredentialService {
 		const { credentialsService, credentialsFinderService, loadNodesAndCredentials } = this;
+		const getGatewayConfig = async () => await this.getGatewayConfigOrNull();
 
-		return {
+		const adapter: InstanceAiCredentialService = {
 			async list(options) {
+				// In a project-bound thread the credential list is always the bound
+				// project's usable set (project-shared + global) — the same intersection
+				// `preventTampering` (workflow.service.ee.ts) accepts. A caller-supplied
+				// workflowId/projectId must not broaden it.
+				if (boundProjectId) {
+					const scoped = await credentialsService.getCredentialsAUserCanUseInAWorkflow(user, {
+						projectId: boundProjectId,
+					});
+					const filtered = options?.type ? scoped.filter((c) => c.type === options.type) : scoped;
+					return filtered.map((c): CredentialSummary => ({ id: c.id, name: c.name, type: c.type }));
+				}
+
+				// Unbound runs (temporary-workflow archiving, the only caller without a
+				// bound project) scope to the caller-supplied workflow or project so the
+				// candidates still match what the save path will accept.
+				if (options?.workflowId || options?.projectId) {
+					const scoped = options.workflowId
+						? await credentialsService.getCredentialsAUserCanUseInAWorkflow(user, {
+								workflowId: options.workflowId,
+							})
+						: await credentialsService.getCredentialsAUserCanUseInAWorkflow(user, {
+								projectId: options.projectId!,
+							});
+
+					const filtered = options.type ? scoped.filter((c) => c.type === options.type) : scoped;
+
+					return filtered.map(
+						(c): CredentialSummary => ({
+							id: c.id,
+							name: c.name,
+							type: c.type,
+						}),
+					);
+				}
+
 				const credentials = await credentialsService.getMany(user, {
 					listQueryOptions: {
 						filter: options?.type ? { type: options.type } : undefined,
@@ -792,8 +1569,6 @@ export class InstanceAiAdapterService {
 						id: c.id,
 						name: c.name,
 						type: c.type,
-						createdAt: c.createdAt.toISOString(),
-						updatedAt: c.updatedAt.toISOString(),
 					}),
 				);
 			},
@@ -804,8 +1579,6 @@ export class InstanceAiAdapterService {
 					id: credential.id,
 					name: credential.name,
 					type: credential.type,
-					createdAt: credential.createdAt.toISOString(),
-					updatedAt: credential.updatedAt.toISOString(),
 				} satisfies CredentialDetail;
 			},
 
@@ -826,11 +1599,22 @@ export class InstanceAiAdapterService {
 					throw new Error(`Credential ${credentialId} not found or not accessible`);
 				}
 
+				// Eval-only, and deliberately AFTER the access check above so a bypass can
+				// never turn "not accessible" into a synthetic success: an eval seeds
+				// placeholder tokens, so a real test would always fail and the setup card
+				// refuses to apply a credential that fails one. The message stays
+				// indistinguishable from a genuine pass on purpose — a hint that it was
+				// bypassed would make the agent hedge, which is the very behaviour such a
+				// case exists to rule out. The harness records the bypass on its own side.
+				if (shouldBypassCredentialTest?.(credentialId) === true) {
+					return { success: true, message: 'Connection tested successfully' };
+				}
+
 				const credentialsToTest: ICredentialsDecrypted = {
 					id: credential.id,
 					name: credential.name,
 					type: credential.type,
-					data: credentialsService.decrypt(credential, true),
+					data: await credentialsService.decrypt(credential, true),
 				};
 
 				const result = await credentialsService.test(user.id, credentialsToTest);
@@ -838,6 +1622,48 @@ export class InstanceAiAdapterService {
 					success: result.status === 'OK',
 					message: result.message,
 				};
+			},
+
+			// Same-service filtering for the shared Templated Custom Auth type:
+			// decryption stays on this side of the boundary and only the recipe's
+			// non-secret `serviceHost` crosses it — never credential data.
+			async getTemplatedCredentialHosts(credentialIds: string[]) {
+				// The stored value is a bare host stamped from the recipe, but the
+				// field is user-editable — tolerate a pasted URL by extracting its
+				// hostname; anything unparseable stays untagged (never offered).
+				const normalizeHost = (value: string): string | null => {
+					const trimmed = value.trim().toLowerCase();
+					if (!/^https?:\/\//.test(trimmed)) return trimmed || null;
+					try {
+						return new URL(trimmed).hostname || null;
+					} catch {
+						return null;
+					}
+				};
+				const hosts: Record<string, string | null> = {};
+				await Promise.all(
+					credentialIds.map(async (credentialId) => {
+						hosts[credentialId] = null;
+						try {
+							const credential = await credentialsFinderService.findCredentialForUser(
+								credentialId,
+								user,
+								['credential:read'],
+							);
+							if (!credential || credential.type !== TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE) {
+								return;
+							}
+							const data = await credentialsService.decrypt(credential, true);
+							const serviceHost = data.serviceHost;
+							if (typeof serviceHost === 'string') {
+								hosts[credentialId] = normalizeHost(serviceHost);
+							}
+						} catch {
+							// Unreadable credential — leave it untagged (never offered).
+						}
+					}),
+				);
+				return hosts;
 			},
 
 			async isTestable(credentialType: string) {
@@ -966,31 +1792,281 @@ export class InstanceAiAdapterService {
 
 				return results;
 			},
+
+			async listHttpCredentialHosts(): Promise<CredentialHostInfo[]> {
+				if (httpCredentialHostsCache) return httpCredentialHostsCache;
+
+				const { knownCredentials } = loadNodesAndCredentials;
+				const result: CredentialHostInfo[] = [];
+
+				for (const typeName of Object.keys(knownCredentials)) {
+					let credType;
+					try {
+						credType = loadNodesAndCredentials.getCredential(typeName).type;
+					} catch {
+						// Type not loadable — skip.
+						continue;
+					}
+
+					// Only credentials selectable in the HTTP node (authenticate / OAuth).
+					const usableInHttpNode =
+						Boolean(credType.authenticate) ||
+						(knownCredentials[typeName]?.extends ?? []).some(
+							(parent) => parent === 'oAuth2Api' || parent === 'oAuth1Api',
+						);
+					if (!usableInHttpNode) continue;
+
+					const hosts = deriveCredentialHosts(credType);
+					if (hosts.length === 0) continue;
+
+					result.push({ type: typeName, displayName: credType.displayName, hosts });
+				}
+
+				httpCredentialHostsCache = result;
+				return result;
+			},
+
+			async getAccountContext(credentialId: string) {
+				const credential = await credentialsFinderService.findCredentialForUser(
+					credentialId,
+					user,
+					['credential:read'],
+				);
+
+				if (!credential) {
+					return { accountIdentifier: undefined };
+				}
+
+				const mask = (id: string): string => {
+					const atIdx = id.indexOf('@');
+					if (atIdx > 0) {
+						const local = id.slice(0, atIdx);
+						const domain = id.slice(atIdx);
+						const keep = Math.min(2, local.length);
+						return local.slice(0, keep) + '***' + domain;
+					}
+					if (id.length <= 3) return id;
+					return id.slice(0, 2) + '***' + id.slice(-1);
+				};
+
+				try {
+					// Use redacted decryption first — accountIdentifier is not a
+					// password field so it survives redaction. This avoids exposing
+					// the full secret payload (tokens, keys) in memory.
+					const redacted = await credentialsService.decrypt(credential, false);
+
+					if (typeof redacted.accountIdentifier === 'string' && redacted.accountIdentifier) {
+						return { accountIdentifier: mask(redacted.accountIdentifier) };
+					}
+
+					for (const key of ['email', 'user', 'username', 'account', 'serviceAccountEmail']) {
+						const value = redacted[key];
+						if (typeof value === 'string' && value) {
+							return { accountIdentifier: mask(value) };
+						}
+					}
+
+					// Fallback for legacy credentials: oauthTokenData is blanked by
+					// redaction, so we need unredacted access here only.
+					const raw = await credentialsService.decrypt(credential, true);
+					const tokenData = raw.oauthTokenData;
+					if (tokenData && typeof tokenData === 'object') {
+						const { OauthService } = await import('@/oauth/oauth.service.js');
+						const identifier = OauthService.extractAccountIdentifier(
+							tokenData as Record<string, unknown>,
+						);
+						if (identifier) {
+							return { accountIdentifier: mask(identifier) };
+						}
+					}
+
+					return { accountIdentifier: undefined };
+				} catch {
+					return { accountIdentifier: undefined };
+				}
+			},
+
+			async isAiGatewayCredentialType(credType: string): Promise<boolean> {
+				// Fail open if the gateway config is unavailable — the credential
+				// type check is a best-effort validation, not a security gate.
+				const config = await getGatewayConfig();
+				return config?.credentialTypes.includes(credType) ?? false;
+			},
+
+			async listAiGatewayCredentialTypes(): Promise<string[]> {
+				const config = await getGatewayConfig();
+				return config?.credentialTypes ?? [];
+			},
+		};
+
+		if (!credentialIdAllowlist) return adapter;
+
+		// Eval runs pin each build thread to a declared credential set so
+		// concurrent test cases can't observe each other's credentials. Discovery
+		// only: get/test/delete still resolve explicit IDs the caller already has.
+		const allowed = new Set(credentialIdAllowlist);
+		return {
+			...adapter,
+			list: async (options) =>
+				allowed.size === 0 ? [] : (await adapter.list(options)).filter((c) => allowed.has(c.id)),
 		};
 	}
 
-	private createDataTableAdapter(user: User): InstanceAiDataTableService {
-		const { dataTableService, dataTableRepository, sourceControlPreferencesService } = this;
+	private createEvaluationConfigAdapter(
+		evaluationConfigService: EvaluationConfigService,
+		user: User,
+	): InstanceAiEvaluationConfigService {
+		const { workflowFinderService, credentialsFinderService, llmJudgeProviderRegistry } = this;
+		const assertNotReadOnly = () => this.assertInstanceNotReadOnly('evaluations');
 
-		const assertInstanceNotReadOnly = () => {
-			if (sourceControlPreferencesService.getPreferences().branchReadOnly) {
-				throw new Error(
-					'Cannot modify data tables on a protected instance. This instance is in read-only mode.',
-				);
+		const findWorkflow = async (
+			workflowId: string,
+			scope: 'workflow:read' | 'workflow:update',
+		): Promise<WorkflowEntity> => {
+			const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, [scope]);
+			if (!workflow) {
+				throw new Error(`Workflow ${workflowId} not found or not accessible`);
 			}
+			return workflow;
 		};
 
-		const { resolveProjectId } = this.createProjectScopeHelpers(user);
+		// The judge `provider` is the chat-model node type, which the caller often
+		// doesn't know — but the credential they pick determines it (each credential
+		// type maps to exactly one provider). Fill any missing provider from the
+		// credential so the agent only needs to supply a credential + model.
+		const resolveProviders = async (input: UpsertEvaluationConfigInput) =>
+			await resolveMetricProviders(input, {
+				user,
+				credentialsFinderService,
+				llmJudgeProviderRegistry,
+			});
 
-		// Check scope for a data table and return its projectId for downstream service calls
-		const resolveProjectIdForTable = async (scopes: Scope[], dataTableId: string) => {
-			const allowed = await userHasScopes(user, scopes, false, { dataTableId });
-			if (!allowed) {
+		return {
+			async list(workflowId) {
+				await findWorkflow(workflowId, 'workflow:read');
+				const configs = await evaluationConfigService.list(workflowId);
+				return configs.map(evaluationConfigToSummary);
+			},
+			async get(workflowId, configId) {
+				await findWorkflow(workflowId, 'workflow:read');
+				const config = await evaluationConfigService.get(workflowId, configId);
+				return config ? evaluationConfigToSummary(config) : null;
+			},
+			async describe(workflowId, configId) {
+				await findWorkflow(workflowId, 'workflow:read');
+				const config = await evaluationConfigService.get(workflowId, configId);
+				return config ? evaluationConfigToDetail(config) : null;
+			},
+			async create(workflowId, input) {
+				assertNotReadOnly();
+				const workflow = await findWorkflow(workflowId, 'workflow:update');
+				const resolved = await resolveProviders(input);
+				const config = await evaluationConfigService.create(
+					workflowId,
+					workflow,
+					user,
+					buildEvaluationConfigDto(resolved),
+				);
+				return evaluationConfigToSummary(config);
+			},
+			async update(workflowId, configId, input) {
+				assertNotReadOnly();
+				const workflow = await findWorkflow(workflowId, 'workflow:update');
+				const resolved = await resolveProviders(input);
+				const config = await evaluationConfigService.update(
+					workflowId,
+					configId,
+					workflow,
+					user,
+					buildEvaluationConfigDto(resolved),
+				);
+				return evaluationConfigToSummary(config);
+			},
+			async delete(workflowId, configId) {
+				assertNotReadOnly();
+				await findWorkflow(workflowId, 'workflow:update');
+				await evaluationConfigService.delete(workflowId, configId);
+			},
+		};
+	}
+
+	private createDataTableAdapter(user: User, boundProjectId?: string): InstanceAiDataTableService {
+		const { dataTableService, dataTableRepository } = this;
+		const assertNotReadOnly = () => this.assertInstanceNotReadOnly('data tables');
+
+		const { resolveProjectId, resolveBoundProjectId } = this.createProjectScopeHelpers(
+			user,
+			boundProjectId,
+		);
+
+		const logger = this.logger;
+
+		/**
+		 * Resolve a data-table identifier (UUID or name) to a concrete row the
+		 * caller can access. Returns the resolved `id`, `name`, and `projectId`.
+		 * Throws on not-found, ambiguous-name (when multiple accessible projects
+		 * share the name and no `projectId` disambiguator was given), or
+		 * UUID+projectId mismatch (when both are provided but the UUID's actual
+		 * project differs from the one passed).
+		 */
+		const resolveAccessibleTable = async (
+			scopes: Scope[],
+			dataTableId: string,
+			disambiguator?: { projectId?: string },
+		): Promise<DataTableRecord> => {
+			const projectIdFilter = disambiguator?.projectId;
+			const result = await resolveDataTableByIdOrName(dataTableRepository, logger, dataTableId, {
+				projectIdFilter,
+				accessFilter: async (id) => await userHasScopes(user, scopes, false, { dataTableId: id }),
+			});
+			if (result.kind === 'miss') {
 				throw new Error(`Data table "${dataTableId}" not found`);
 			}
-			const table = await dataTableRepository.findOneByOrFail({ id: dataTableId });
-			return table.projectId;
+			if (result.kind === 'ambiguous') {
+				const projectIds = result.candidates.map((c) => c.projectId).join(', ');
+				throw new Error(
+					`Data table name "${dataTableId}" is ambiguous across accessible projects ` +
+						`(${projectIds}); pass the UUID or include a \`projectId\` to disambiguate.`,
+				);
+			}
+			// UUID + projectId mismatch: the id hit resolved, but the caller's
+			// disambiguator points at a different project. Never silently drop
+			// the projectId — return mismatch so the caller fixes the call.
+			if (projectIdFilter && result.table.projectId !== projectIdFilter) {
+				throw new Error(
+					`Data table "${dataTableId}" does not belong to project "${projectIdFilter}".`,
+				);
+			}
+			return result.table;
 		};
+
+		// Check scope and return projectId + resolved UUID for downstream service calls
+		const resolveProjectIdForTable = async (
+			scopes: Scope[],
+			dataTableId: string,
+			disambiguator?: { projectId?: string },
+		) => {
+			const table = await resolveAccessibleTable(scopes, dataTableId, disambiguator);
+			return { projectId: table.projectId, resolvedId: table.id };
+		};
+
+		// Like resolveProjectIdForTable but also returns the table name
+		const resolveTableMeta = async (
+			scopes: Scope[],
+			dataTableId: string,
+			disambiguator?: { projectId?: string },
+		) => {
+			const table = await resolveAccessibleTable(scopes, dataTableId, disambiguator);
+			return { projectId: table.projectId, tableName: table.name, resolvedId: table.id };
+		};
+
+		const referenceScopes = {
+			read: ['dataTable:read'],
+			readRow: ['dataTable:readRow'],
+			writeRow: ['dataTable:writeRow'],
+			update: ['dataTable:update'],
+			delete: ['dataTable:delete'],
+		} satisfies Record<DataTableReferencePermission, Scope[]>;
 
 		return {
 			async list(options) {
@@ -1011,9 +2087,9 @@ export class InstanceAiAdapterService {
 				);
 			},
 
-			async create(name, columns, options) {
-				assertInstanceNotReadOnly();
-				const projectId = await resolveProjectId(['dataTable:create'], options?.projectId);
+			async create(name, columns) {
+				assertNotReadOnly();
+				const projectId = await resolveBoundProjectId(['dataTable:create']);
 				const result = await dataTableService.createDataTable(projectId, { name, columns });
 
 				return {
@@ -1026,15 +2102,32 @@ export class InstanceAiAdapterService {
 				};
 			},
 
-			async delete(dataTableId) {
-				assertInstanceNotReadOnly();
-				const projectId = await resolveProjectIdForTable(['dataTable:delete'], dataTableId);
-				await dataTableService.deleteDataTable(dataTableId, projectId);
+			async delete(dataTableId, options) {
+				assertNotReadOnly();
+				const { projectId, resolvedId } = await resolveProjectIdForTable(
+					['dataTable:delete'],
+					dataTableId,
+					options,
+				);
+				await dataTableService.deleteDataTable(resolvedId, projectId);
 			},
 
-			async getSchema(dataTableId) {
-				const projectId = await resolveProjectIdForTable(['dataTable:read'], dataTableId);
-				const columns = await dataTableService.getColumns(dataTableId, projectId);
+			async resolveTableReference(dataTableId: string, options?: DataTableReferenceOptions) {
+				const { projectId, tableName, resolvedId } = await resolveTableMeta(
+					referenceScopes[options?.permission ?? 'read'],
+					dataTableId,
+					options,
+				);
+				return { id: resolvedId, name: tableName, projectId };
+			},
+
+			async getSchema(dataTableId, options) {
+				const { projectId, resolvedId } = await resolveProjectIdForTable(
+					['dataTable:read'],
+					dataTableId,
+					options,
+				);
+				const columns = await dataTableService.getColumns(resolvedId, projectId);
 				return columns.map(
 					(c, index): DataTableColumnInfo => ({
 						id: c.id,
@@ -1045,10 +2138,14 @@ export class InstanceAiAdapterService {
 				);
 			},
 
-			async addColumn(dataTableId, column) {
-				assertInstanceNotReadOnly();
-				const projectId = await resolveProjectIdForTable(['dataTable:update'], dataTableId);
-				const result = await dataTableService.addColumn(dataTableId, projectId, column);
+			async addColumn(dataTableId, column, options) {
+				assertNotReadOnly();
+				const { projectId, resolvedId } = await resolveProjectIdForTable(
+					['dataTable:update'],
+					dataTableId,
+					options,
+				);
+				const result = await dataTableService.addColumn(resolvedId, projectId, column);
 				return {
 					id: result.id,
 					name: result.name,
@@ -1057,63 +2154,102 @@ export class InstanceAiAdapterService {
 				};
 			},
 
-			async deleteColumn(dataTableId, columnId) {
-				assertInstanceNotReadOnly();
-				const projectId = await resolveProjectIdForTable(['dataTable:update'], dataTableId);
-				await dataTableService.deleteColumn(dataTableId, projectId, columnId);
+			async deleteColumn(dataTableId, columnId, options) {
+				assertNotReadOnly();
+				const { projectId, resolvedId } = await resolveProjectIdForTable(
+					['dataTable:update'],
+					dataTableId,
+					options,
+				);
+				await dataTableService.deleteColumn(resolvedId, projectId, columnId);
 			},
 
-			async renameColumn(dataTableId, columnId, newName) {
-				assertInstanceNotReadOnly();
-				const projectId = await resolveProjectIdForTable(['dataTable:update'], dataTableId);
-				await dataTableService.renameColumn(dataTableId, projectId, columnId, {
+			async renameColumn(dataTableId, columnId, newName, options) {
+				assertNotReadOnly();
+				const { projectId, resolvedId } = await resolveProjectIdForTable(
+					['dataTable:update'],
+					dataTableId,
+					options,
+				);
+				await dataTableService.renameColumn(resolvedId, projectId, columnId, {
 					name: newName,
 				});
 			},
 
 			async queryRows(dataTableId, options) {
-				const projectId = await resolveProjectIdForTable(['dataTable:readRow'], dataTableId);
-				return await dataTableService.getManyRowsAndCount(dataTableId, projectId, {
+				const { projectId, resolvedId } = await resolveProjectIdForTable(
+					['dataTable:readRow'],
+					dataTableId,
+					options,
+				);
+				return await dataTableService.getManyRowsAndCount(resolvedId, projectId, {
 					take: options?.limit ?? 50,
 					skip: options?.offset ?? 0,
 					filter: options?.filter as DataTableFilter | undefined,
 				});
 			},
 
-			async insertRows(dataTableId, rows) {
-				assertInstanceNotReadOnly();
-				const projectId = await resolveProjectIdForTable(['dataTable:writeRow'], dataTableId);
-				const result = await dataTableService.insertRows(
+			async insertRows(dataTableId, rows, options) {
+				assertNotReadOnly();
+				const { projectId, tableName, resolvedId } = await resolveTableMeta(
+					['dataTable:writeRow'],
 					dataTableId,
+					options,
+				);
+				const result = await dataTableService.insertRows(
+					resolvedId,
 					projectId,
 					rows as DataTableRows,
 					'count',
 				);
-				return { insertedCount: typeof result === 'number' ? result : rows.length };
+				return {
+					insertedCount: typeof result === 'number' ? result : rows.length,
+					dataTableId: resolvedId,
+					tableName,
+					projectId,
+				};
 			},
 
-			async updateRows(dataTableId, filter, data) {
-				assertInstanceNotReadOnly();
-				const projectId = await resolveProjectIdForTable(['dataTable:writeRow'], dataTableId);
-				const result = await dataTableService.updateRows(
+			async updateRows(dataTableId, filter, data, options) {
+				assertNotReadOnly();
+				const { projectId, tableName, resolvedId } = await resolveTableMeta(
+					['dataTable:writeRow'],
 					dataTableId,
+					options,
+				);
+				const result = await dataTableService.updateRows(
+					resolvedId,
 					projectId,
 					{ filter: filter as DataTableFilter, data: data as DataTableRow },
 					true,
 				);
-				return { updatedCount: Array.isArray(result) ? result.length : 0 };
+				return {
+					updatedCount: Array.isArray(result) ? result.length : 0,
+					dataTableId: resolvedId,
+					tableName,
+					projectId,
+				};
 			},
 
-			async deleteRows(dataTableId, filter) {
-				assertInstanceNotReadOnly();
-				const projectId = await resolveProjectIdForTable(['dataTable:writeRow'], dataTableId);
-				const result = await dataTableService.deleteRows(
+			async deleteRows(dataTableId, filter, options) {
+				assertNotReadOnly();
+				const { projectId, tableName, resolvedId } = await resolveTableMeta(
+					['dataTable:writeRow'],
 					dataTableId,
+					options,
+				);
+				const result = await dataTableService.deleteRows(
+					resolvedId,
 					projectId,
 					{ filter: filter as DataTableFilter },
 					true,
 				);
-				return { deletedCount: Array.isArray(result) ? result.length : 0 };
+				return {
+					deletedCount: Array.isArray(result) ? result.length : 0,
+					dataTableId: resolvedId,
+					tableName,
+					projectId,
+				};
 			},
 		};
 	}
@@ -1137,6 +2273,11 @@ export class InstanceAiAdapterService {
 		const fetchCache = this.webResearchCache;
 		const searchCacheRef = this.searchCache;
 		const settingsService = this.settingsService;
+
+		const { outboundHttp, ssrfProtectionService } = this;
+		const sharedTransport = outboundHttp.transport({
+			ssrf: this.ssrfProtectionService, // LLM/user-chosen URLs
+		});
 		const userId = user.id;
 
 		// Lazy search method that resolves credentials on first call
@@ -1144,7 +2285,7 @@ export class InstanceAiAdapterService {
 		let searchResolved = false;
 		const lazySearch: InstanceAiWebResearchService['search'] = async (query, options) => {
 			if (!searchResolved) {
-				const config = await settingsService.resolveSearchConfig(user);
+				const config = await settingsService.resolveSearchConfig();
 				resolvedSearchMethod = this.buildSearchMethod(
 					config.braveApiKey ?? '',
 					config.searxngUrl ?? '',
@@ -1167,6 +2308,7 @@ export class InstanceAiAdapterService {
 					maxContentLength?: number;
 					maxResponseBytes?: number;
 					timeoutMs?: number;
+					abortSignal?: AbortSignal;
 					authorizeUrl?: (targetUrl: string) => Promise<void>;
 				},
 			) {
@@ -1189,12 +2331,20 @@ export class InstanceAiAdapterService {
 					return cached;
 				}
 
-				// Fetch and extract — pass authorizeUrl for redirect-hop gating
+				const authorizeUrl = options?.authorizeUrl;
+				const transport = authorizeUrl
+					? outboundHttp.transport({
+							ssrf: ssrfProtectionService,
+							authorize: async (target: URL) => await authorizeUrl(target.href),
+						})
+					: sharedTransport;
+
 				const page = await fetchAndExtract(url, {
 					maxContentLength: options?.maxContentLength,
 					maxResponseBytes: options?.maxResponseBytes,
 					timeoutMs: options?.timeoutMs,
-					authorizeUrl: options?.authorizeUrl,
+					abortSignal: options?.abortSignal,
+					transport,
 				});
 
 				// Attempt summarization (truncation fallback — no model injection yet)
@@ -1225,16 +2375,21 @@ export class InstanceAiAdapterService {
 			maxResults?: number;
 			includeDomains?: string[];
 			excludeDomains?: string[];
+			abortSignal?: AbortSignal;
 		};
 
 		const keyPrefix = userId ? `${userId}:` : '';
+		const searchCacheKey = (query: string, options?: SearchOptions) => {
+			const { abortSignal: _abortSignal, ...cacheable } = options ?? {};
+			return `${keyPrefix}${JSON.stringify([query, cacheable])}`;
+		};
 
 		// When the AI service proxy is enabled (licensed instance), search always goes
 		// through the proxy which provides managed Brave Search with credit tracking.
 		// This intentionally takes priority over local SearXNG or API key configuration.
 		if (searchProxyConfig) {
 			return async (query: string, options?: SearchOptions) => {
-				const cacheKey = `${keyPrefix}${JSON.stringify([query, options ?? {}])}`;
+				const cacheKey = searchCacheKey(query, options);
 				const cached = cache.get(cacheKey);
 				if (cached) return cached;
 
@@ -1249,7 +2404,7 @@ export class InstanceAiAdapterService {
 
 		if (apiKey) {
 			return async (query: string, options?: SearchOptions) => {
-				const cacheKey = `${keyPrefix}${JSON.stringify([query, options ?? {}])}`;
+				const cacheKey = searchCacheKey(query, options);
 				const cached = cache.get(cacheKey);
 				if (cached) return cached;
 
@@ -1261,7 +2416,7 @@ export class InstanceAiAdapterService {
 
 		if (searxngUrl) {
 			return async (query: string, options?: SearchOptions) => {
-				const cacheKey = `${keyPrefix}${JSON.stringify([query, options ?? {}])}`;
+				const cacheKey = searchCacheKey(query, options);
 				const cached = cache.get(cacheKey);
 				if (cached) return cached;
 
@@ -1278,18 +2433,26 @@ export class InstanceAiAdapterService {
 	private _nodeDefinitionDirs?: string[];
 
 	getNodeDefinitionDirs(): string[] {
+		const catalogDirs = this.nodeCatalogService?.getNodeDefinitionDirs();
+		if (catalogDirs?.length) return catalogDirs;
+
 		if (!this._nodeDefinitionDirs) {
 			this._nodeDefinitionDirs = resolveBuiltinNodeDefinitionDirs();
 		}
 		return this._nodeDefinitionDirs;
 	}
 
-	private createNodeAdapter(user: User): InstanceAiNodeService {
-		const { dynamicNodeParametersService, projectRepository, credentialsFinderService } = this;
+	private getNodeCatalogService(): NodeCatalogService {
+		return this.nodeCatalogService ?? Container.get(NodeCatalogService);
+	}
 
+	private createNodeAdapter(user: User): InstanceAiNodeService {
 		// Use the service-level cache instead of a per-adapter closure.
 		// This avoids each run retaining its own ~31 MB copy of node descriptions.
 		const getNodes = async () => await this.getNodesFromCache();
+		const getGatewayConfig = async () => await this.getGatewayConfigOrNull();
+		const buildMeta = (config: AiGatewayConfigDto | null, nodeName: string) =>
+			this.buildAiGatewayNodeMeta(config, nodeName);
 
 		/** Find a node description matching type and optionally version. Falls back to any version. */
 		const findNodeByVersion = (
@@ -1310,12 +2473,15 @@ export class InstanceAiAdapterService {
 
 		return {
 			async listAvailable(options) {
-				const nodes = await getNodes();
+				const [nodes, gatewayConfig] = await Promise.all([
+					getNodes(),
+					options?.n8nConnectOnly ? getGatewayConfig() : Promise.resolve(null),
+				]);
 				let filtered = nodes;
 
 				if (options?.query) {
 					const q = options.query.toLowerCase();
-					filtered = nodes.filter(
+					filtered = filtered.filter(
 						(n) =>
 							n.displayName.toLowerCase().includes(q) ||
 							n.name.toLowerCase().includes(q) ||
@@ -1323,19 +2489,26 @@ export class InstanceAiAdapterService {
 					);
 				}
 
-				return filtered.map(
-					(n): NodeSummary => ({
+				const summaries = filtered.map((n): NodeSummary => {
+					const summary: NodeSummary = {
 						name: n.name,
 						displayName: n.displayName,
 						description: n.description ?? '',
 						group: n.group ?? [],
 						version: Array.isArray(n.version) ? n.version[n.version.length - 1] : n.version,
-					}),
-				);
+					};
+					const meta = buildMeta(gatewayConfig, n.name);
+					if (meta) summary.aiGateway = meta;
+					return summary;
+				});
+
+				// n8nConnectOnly answers "which nodes support n8n Connect?" — keep only
+				// nodes the gateway covers (meta present).
+				return options?.n8nConnectOnly ? summaries.filter((s) => s.aiGateway) : summaries;
 			},
 
 			async listSearchable() {
-				const nodes = await getNodes();
+				const [nodes, gatewayConfig] = await Promise.all([getNodes(), getGatewayConfig()]);
 
 				const toStringArray = (
 					value: (typeof nodes)[number]['inputs'] | (typeof nodes)[number]['outputs'],
@@ -1353,13 +2526,15 @@ export class InstanceAiAdapterService {
 						inputs: toStringArray(n.inputs),
 						outputs: toStringArray(n.outputs),
 					};
+					const meta = buildMeta(gatewayConfig, n.name);
+					if (meta) result.aiGateway = meta;
 					if (n.codex?.alias) {
 						result.codex = { alias: n.codex.alias };
 					}
 					if (n.builderHint) {
 						result.builderHint = {};
-						if (n.builderHint.message) {
-							result.builderHint.message = n.builderHint.message;
+						if (n.builderHint.searchHint) {
+							result.builderHint.message = n.builderHint.searchHint;
 						}
 						if (n.builderHint.inputs) {
 							const inputs: Record<
@@ -1376,13 +2551,28 @@ export class InstanceAiAdapterService {
 							}
 							result.builderHint.inputs = inputs;
 						}
+						if (n.builderHint.outputs) {
+							const outputs: Record<
+								string,
+								{ required?: boolean; displayOptions?: Record<string, unknown> }
+							> = {};
+							for (const [key, config] of Object.entries(n.builderHint.outputs)) {
+								outputs[key] = {
+									...(config.required !== undefined ? { required: config.required } : {}),
+									...(config.displayOptions
+										? { displayOptions: config.displayOptions as Record<string, unknown> }
+										: {}),
+								};
+							}
+							result.builderHint.outputs = outputs;
+						}
 					}
 					return result;
 				});
 			},
 
 			async getDescription(nodeType: string, version?: number) {
-				const nodes = await getNodes();
+				const [nodes, gatewayConfig] = await Promise.all([getNodes(), getGatewayConfig()]);
 				let desc =
 					version !== undefined
 						? nodes.find((n) => {
@@ -1399,6 +2589,8 @@ export class InstanceAiAdapterService {
 				if (!desc) {
 					throw new Error(`Node type ${nodeType} not found`);
 				}
+
+				const meta = buildMeta(gatewayConfig, desc.name);
 
 				return {
 					name: desc.name,
@@ -1428,27 +2620,43 @@ export class InstanceAiAdapterService {
 					credentials: desc.credentials?.map((c) => ({
 						name: c.name,
 						required: c.required,
+						...(c.displayOptions
+							? { displayOptions: c.displayOptions as Record<string, unknown> }
+							: {}),
 					})),
 					inputs: Array.isArray(desc.inputs) ? desc.inputs.map(String) : [],
 					outputs: Array.isArray(desc.outputs) ? desc.outputs.map(String) : [],
 					...(desc.webhooks ? { webhooks: desc.webhooks as unknown[] } : {}),
 					...(desc.polling ? { polling: desc.polling } : {}),
 					...(desc.triggerPanel !== undefined ? { triggerPanel: desc.triggerPanel } : {}),
+					...(meta ? { aiGateway: meta } : {}),
 				} satisfies NodeDescription;
 			},
 
 			getNodeTypeDefinition: async (nodeType, options) => {
-				const result = resolveNodeTypeDefinition(nodeType, this.getNodeDefinitionDirs(), options);
+				const nodeCatalogService = this.getNodeCatalogService();
+				await nodeCatalogService.initialize();
 
-				if (result.error) {
-					return { content: '', error: result.error };
-				}
+				const { version, resource, operation, mode } = options ?? {};
+				const getDefinition = async (nodeId: string) =>
+					await nodeCatalogService.getNodeTypeDefinition({
+						nodeId,
+						...(version ? { version } : {}),
+						...(resource ? { resource } : {}),
+						...(operation ? { operation } : {}),
+						...(mode ? { mode } : {}),
+					});
 
-				return { content: result.content, version: result.version };
+				const result = await getDefinition(nodeType);
+				if (!result.error || nodeType.includes('.')) return result;
+
+				return await getDefinition(`${MCP_REGISTRY_PACKAGE_NAME}.${nodeType}`);
 			},
 
 			listDiscriminators: async (nodeType) => {
-				return listNodeDiscriminators(nodeType, this.getNodeDefinitionDirs());
+				const nodeCatalogService = this.getNodeCatalogService();
+				await nodeCatalogService.initialize();
+				return listNodeDiscriminators(nodeType, nodeCatalogService.getNodeDefinitionDirs());
 			},
 
 			getParameterIssues: async (nodeType, typeVersion, parameters) => {
@@ -1457,21 +2665,20 @@ export class InstanceAiAdapterService {
 				if (!desc) return {};
 
 				const nodeProperties = desc.properties;
-
-				// Fill in default values for parameters not explicitly set
-				const paramsWithDefaults: Record<string, unknown> = { ...parameters };
-				for (const prop of nodeProperties) {
-					if (!(prop.name in paramsWithDefaults) && prop.default !== undefined) {
-						paramsWithDefaults[prop.name] = prop.default;
-					}
-				}
+				const paramsWithDefaults = resolveDisplayedDefaults(
+					nodeProperties,
+					parameters,
+					nodeType,
+					typeVersion,
+					desc as unknown as INodeTypeDescription,
+				);
 
 				const minimalNode: INode = {
 					id: '',
 					name: '',
 					type: nodeType,
 					typeVersion,
-					parameters: paramsWithDefaults as INodeParameters,
+					parameters: paramsWithDefaults,
 					position: [0, 0],
 				};
 
@@ -1503,7 +2710,7 @@ export class InstanceAiAdapterService {
 						if (
 							prop.displayOptions &&
 							!NodeHelpers.displayParameter(
-								paramsWithDefaults as INodeParameters,
+								paramsWithDefaults,
 								prop,
 								minimalNode,
 								desc as unknown as INodeTypeDescription,
@@ -1520,38 +2727,39 @@ export class InstanceAiAdapterService {
 				return filteredIssues;
 			},
 
-			getNodeCredentialTypes: async (nodeType, typeVersion, parameters, existingCredentials) => {
+			getNodeCredentialTypes: async (nodeType, typeVersion, parameters, _existingCredentials) => {
 				const nodes = await getNodes();
 				const desc = findNodeByVersion(nodes, nodeType, typeVersion);
 				if (!desc) return [];
 
 				const credentialTypes = new Set<string>();
 
-				// 1. Displayable credentials from node type description
-				const nodeCredentials = desc.credentials ?? [];
-				// Fill defaults before evaluating display options
-				const paramsWithDefaultsForCreds: Record<string, unknown> = { ...parameters };
-				for (const prop of desc.properties) {
-					if (!(prop.name in paramsWithDefaultsForCreds) && prop.default !== undefined) {
-						paramsWithDefaultsForCreds[prop.name] = prop.default;
-					}
-				}
-				const credCheckNode: INode = {
+				const paramsWithDefaults = resolveDisplayedDefaults(
+					desc.properties,
+					parameters,
+					nodeType,
+					typeVersion,
+					desc as unknown as INodeTypeDescription,
+				);
+				const minimalNode: INode = {
 					id: '',
 					name: '',
 					type: nodeType,
 					typeVersion,
-					parameters: paramsWithDefaultsForCreds as INodeParameters,
+					parameters: paramsWithDefaults,
 					position: [0, 0],
 				};
+
+				// 1. Displayable credentials from node type description
+				const nodeCredentials = desc.credentials ?? [];
 				for (const cred of nodeCredentials) {
 					// Check if credential is displayable given current parameters
 					if (cred.displayOptions) {
 						if (
 							!NodeHelpers.displayParameter(
-								paramsWithDefaultsForCreds as INodeParameters,
+								paramsWithDefaults,
 								cred,
-								credCheckNode,
+								minimalNode,
 								desc as unknown as INodeTypeDescription,
 							)
 						) {
@@ -1562,20 +2770,6 @@ export class InstanceAiAdapterService {
 				}
 
 				// 2. Node issues for dynamic credentials (e.g. HTTP Request missing auth)
-				const paramsWithDefaults: Record<string, unknown> = { ...parameters };
-				for (const prop of desc.properties) {
-					if (!(prop.name in paramsWithDefaults) && prop.default !== undefined) {
-						paramsWithDefaults[prop.name] = prop.default;
-					}
-				}
-				const minimalNode: INode = {
-					id: '',
-					name: '',
-					type: nodeType,
-					typeVersion,
-					parameters: paramsWithDefaults as INodeParameters,
-					position: [0, 0],
-				};
 				const issues = NodeHelpers.getNodeParametersIssues(
 					desc.properties,
 					minimalNode,
@@ -1586,119 +2780,61 @@ export class InstanceAiAdapterService {
 					credentialTypes.add(credType);
 				}
 
-				// 3. Already-assigned credentials
-				if (existingCredentials) {
-					for (const credType of Object.keys(existingCredentials)) {
-						credentialTypes.add(credType);
-					}
+				// 3. Dynamic credential resolution for nodes that use genericCredentialType
+				// or predefinedCredentialType (e.g. HTTP Request). The credential type name
+				// is stored in the node parameters rather than the description's credentials array.
+				if (parameters.authentication === 'genericCredentialType' && parameters.genericAuthType) {
+					credentialTypes.add(parameters.genericAuthType as string);
+				} else if (
+					parameters.authentication === 'predefinedCredentialType' &&
+					parameters.nodeCredentialType
+				) {
+					credentialTypes.add(parameters.nodeCredentialType as string);
 				}
 
 				return Array.from(credentialTypes);
 			},
 
-			exploreResources: async (params: ExploreResourcesParams): Promise<ExploreResourcesResult> => {
-				// Validate credential ownership before using it to query external resources
-				const credential = await credentialsFinderService.findCredentialForUser(
-					params.credentialId,
-					user,
-					['credential:read'],
+			getResolvedNodeInputs: async (workflowJson, nodeName) => {
+				const nodeJson = workflowJson.nodes.find((n) => n.name === nodeName);
+				if (!nodeJson) return [];
+
+				const nodeType = this.nodeTypes.getByNameAndVersion(
+					nodeJson.type,
+					nodeJson.typeVersion ?? 1,
 				);
-				if (!credential || credential.type !== params.credentialType) {
-					throw new Error(`Credential ${params.credentialId} not found or not accessible`);
-				}
+				if (!nodeType) return [];
 
-				const nodeTypeAndVersion = {
-					name: params.nodeType,
-					version: params.version,
-				};
-
-				const currentNodeParameters = (params.currentNodeParameters ?? {}) as INodeParameters;
-				const credentials = {
-					[credential.type]: { id: credential.id, name: credential.name },
-				};
-
-				// Auto-detect the authentication parameter value from the credential type.
-				// Many nodes (e.g. Google Sheets) use an `authentication` parameter to switch
-				// between serviceAccount/oAuth2, and `getNodeParameter('authentication', 0)`
-				// falls back to the wrong default when it's not set.
-				if (!currentNodeParameters.authentication) {
-					const nodes = await getNodes();
-					const nodeDesc = nodes.find((n) => n.name === params.nodeType);
-					if (nodeDesc) {
-						const authProp = nodeDesc.properties.find((p) => p.name === 'authentication');
-						if (authProp?.options) {
-							// Find the option whose credentialTypes includes our credential type
-							for (const opt of authProp.options) {
-								if (typeof opt === 'object' && 'value' in opt && typeof opt.value === 'string') {
-									const credTypes = nodeDesc.credentials
-										?.filter((c) => {
-											const show = c.displayOptions?.show?.authentication;
-											return Array.isArray(show) && show.includes(opt.value);
-										})
-										.map((c) => c.name);
-									if (credTypes?.includes(params.credentialType)) {
-										currentNodeParameters.authentication = opt.value;
-										break;
-									}
-								}
-							}
-						}
-					}
-				}
-
-				const personalProject = await projectRepository.getPersonalProjectForUserOrFail(user.id);
-
-				const additionalData = await getBase({
-					userId: user.id,
-					projectId: personalProject.id,
-					currentNodeParameters,
+				// Construct a transient Workflow so dynamic `inputs` expressions can be
+				// evaluated against the node's current parameters and the surrounding
+				// workflow graph. Not persisted; lives only for this call.
+				const workflow = new Workflow({
+					nodes: workflowJson.nodes as unknown as INode[],
+					connections: workflowJson.connections as unknown as IConnections,
+					active: false,
+					nodeTypes: this.nodeTypes,
 				});
-				try {
-					if (params.methodType === 'listSearch') {
-						const result = await dynamicNodeParametersService.getResourceLocatorResults(
-							params.methodName,
-							'',
-							additionalData,
-							nodeTypeAndVersion,
-							currentNodeParameters,
-							credentials,
-							params.filter,
-							params.paginationToken,
-						);
-						return {
-							results: (result.results ?? []).map((r) => ({
-								name: String(r.name),
-								value: r.value,
-								url: r.url,
-							})),
-							paginationToken: result.paginationToken,
-						};
-					}
 
-					const options = await dynamicNodeParametersService.getOptionsViaMethodName(
-						params.methodName,
-						'',
-						additionalData,
-						nodeTypeAndVersion,
-						currentNodeParameters,
-						credentials,
-					);
-					return {
-						results: options.map((o) => ({
-							name: String(o.name),
-							value: o.value,
-							description: o.description,
-						})),
-					};
-				} catch (error) {
-					console.error(
-						'[explore-resources] ERROR:',
-						error instanceof Error ? error.message : error,
-					);
-					console.error('[explore-resources] stack:', error instanceof Error ? error.stack : 'N/A');
-					throw error;
+				const workflowNode = workflow.getNode(nodeName);
+				if (!workflowNode) return [];
+
+				// Dynamic `inputs` expressions resolve via workflow.expression, which
+				// needs a V8 isolate acquired for this workflow when
+				// N8N_EXPRESSION_ENGINE=vm — otherwise the VM bridge throws "No bridge
+				// acquired" and getNodeInputs silently returns []. No-op in legacy mode.
+				await workflow.expression.acquireIsolate();
+				try {
+					return NodeHelpers.getNodeInputs(workflow, workflowNode, nodeType.description);
+				} finally {
+					await workflow.expression.releaseIsolate();
 				}
 			},
+
+			exploreResources: async (params: ExploreResourcesParams): Promise<ExploreResourcesResult> =>
+				await this.nodeResourceExplorerService.exploreResources(user, params),
+
+			findUnavailableLocatorValues: async (params): Promise<UnavailableLocatorValue[]> =>
+				await this.nodeResourceExplorerService.findUnavailableResourceLocatorValues(user, params),
 		};
 	}
 
@@ -1713,6 +2849,7 @@ export class InstanceAiAdapterService {
 			executionPersistence,
 			eventService,
 		} = this;
+		const assertNotReadOnly = (resource: string) => this.assertInstanceNotReadOnly(resource);
 		const { assertProjectScope } = this.createProjectScopeHelpers(user);
 
 		const adapter: InstanceAiWorkspaceService = {
@@ -1750,6 +2887,7 @@ export class InstanceAiAdapterService {
 							projectId: string,
 							parentFolderId?: string,
 						): Promise<FolderSummary> {
+							assertNotReadOnly('folders');
 							await assertProjectScope(['folder:create'], projectId);
 							const folder = await folderService.createFolder(
 								{ name, parentFolderId: parentFolderId ?? undefined },
@@ -1767,6 +2905,7 @@ export class InstanceAiAdapterService {
 							projectId: string,
 							transferToFolderId?: string,
 						): Promise<void> {
+							assertNotReadOnly('folders');
 							await assertProjectScope(['folder:delete'], projectId);
 							await folderService.deleteFolder(user, folderId, projectId, {
 								transferToFolderId: transferToFolderId ?? undefined,
@@ -1774,6 +2913,7 @@ export class InstanceAiAdapterService {
 						},
 
 						async moveWorkflowToFolder(workflowId: string, folderId: string): Promise<void> {
+							assertNotReadOnly('workflows');
 							const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, [
 								'workflow:update',
 							]);
@@ -1782,12 +2922,14 @@ export class InstanceAiAdapterService {
 							}
 							await workflowService.update(user, workflow, workflowId, {
 								parentFolderId: folderId,
+								source: 'n8n-ai',
 							});
 						},
 					}
 				: {}),
 
 			async tagWorkflow(workflowId: string, tagNames: string[]): Promise<string[]> {
+				assertNotReadOnly('workflows');
 				const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, [
 					'workflow:update',
 				]);
@@ -1817,7 +2959,7 @@ export class InstanceAiAdapterService {
 					}
 				}
 
-				await workflowService.update(user, workflow, workflowId, { tagIds });
+				await workflowService.update(user, workflow, workflowId, { tagIds, source: 'n8n-ai' });
 				return tagNames;
 			},
 
@@ -1842,6 +2984,7 @@ export class InstanceAiAdapterService {
 				workflowId: string,
 				options?: { olderThanHours?: number },
 			): Promise<{ deletedCount: number }> {
+				assertNotReadOnly('executions');
 				// Access-check the workflow with execute scope (matches controller behavior)
 				const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, [
 					'workflow:execute',
@@ -1903,6 +3046,215 @@ const MAX_RESULT_CHARS = 20_000;
 const MAX_NODE_OUTPUT_CHARS = 1_000;
 
 /**
+ * Minimal DataTable shape the resolver needs. Kept narrow so tests can mock
+ * the repository without depending on the full TypeORM entity.
+ */
+interface DataTableRecord {
+	id: string;
+	name: string;
+	projectId: string;
+}
+
+type DataTableReferencePermission = 'read' | 'readRow' | 'writeRow' | 'update' | 'delete';
+
+type DataTableReferenceOptions = {
+	projectId?: string;
+	permission?: DataTableReferencePermission;
+};
+
+interface DataTableIdOrNameRepository {
+	findOneBy: (where: { id: string }) => Promise<DataTableRecord | null>;
+	findBy: (where: { name: string; projectId?: string }) => Promise<DataTableRecord[]>;
+}
+
+interface DataTableResolverLogger {
+	warn: (message: string, meta?: Record<string, unknown>) => void;
+}
+
+export type ResolveDataTableResult =
+	| { kind: 'hit'; table: DataTableRecord }
+	| { kind: 'miss' }
+	| { kind: 'ambiguous'; candidates: DataTableRecord[] };
+
+interface ResolveMetricProvidersDeps {
+	user: User;
+	credentialsFinderService: CredentialsFinderService;
+	llmJudgeProviderRegistry?: LlmJudgeProviderRegistry;
+}
+
+/**
+ * Fill each metric's `provider` (the chat-model node type) from its credential
+ * when the caller didn't supply one. Each credential type maps to exactly one
+ * provider, so the agent only needs to pass a credential id + model. Metrics
+ * that already carry a provider are left untouched.
+ */
+export async function resolveMetricProviders(
+	input: UpsertEvaluationConfigInput,
+	deps: ResolveMetricProvidersDeps,
+): Promise<UpsertEvaluationConfigInput> {
+	const { user, credentialsFinderService, llmJudgeProviderRegistry } = deps;
+	const metrics = await Promise.all(
+		input.metrics.map(async (metric) => {
+			if (metric.provider) return metric;
+			if (!llmJudgeProviderRegistry) {
+				throw new UnexpectedError(
+					'Cannot derive the judge provider: provider registry is unavailable.',
+				);
+			}
+			const credential = await credentialsFinderService.findCredentialForUser(
+				metric.credentialId,
+				user,
+				['credential:read'],
+			);
+			if (!credential) {
+				throw new UserError(
+					`Credential "${metric.credentialId}" for metric "${metric.name}" was not found or is not accessible.`,
+				);
+			}
+			const provider = llmJudgeProviderRegistry.getByCredentialType(credential.type);
+			if (!provider) {
+				throw new UserError(
+					`Credential type "${credential.type}" for metric "${metric.name}" is not a supported LLM judge provider.`,
+				);
+			}
+			return { ...metric, provider: provider.nodeType };
+		}),
+	);
+	return { ...input, metrics };
+}
+
+/**
+ * Map the tool's focused LLM-judge input onto the full evaluation-config DTO,
+ * validating it against the api-types schema before it reaches the service.
+ */
+export function buildEvaluationConfigDto(input: UpsertEvaluationConfigInput) {
+	return upsertEvaluationConfigSchema.parse({
+		name: input.name,
+		startNodeName: input.startNodeName,
+		endNodeName: input.endNodeName,
+		datasetSource: 'data_table',
+		datasetRef: { dataTableId: input.dataTableId },
+		metrics: input.metrics.map((metric) => ({
+			id: nanoid(),
+			name: metric.name,
+			type: 'llm_judge',
+			config: {
+				preset: metric.preset,
+				...(metric.prompt ? { prompt: metric.prompt } : {}),
+				provider: metric.provider,
+				credentialId: metric.credentialId,
+				model: metric.model,
+				outputType: metric.outputType,
+				inputs: {
+					actualAnswer: metric.actualAnswer,
+					...(metric.userQuery ? { userQuery: metric.userQuery } : {}),
+					...(metric.expectedAnswer ? { expectedAnswer: metric.expectedAnswer } : {}),
+				},
+			},
+		})),
+	});
+}
+
+/** Map a persisted evaluation-config entity to the agent-facing summary. */
+export function evaluationConfigToSummary(config: EvaluationConfig): EvaluationConfigSummary {
+	const dataTableId =
+		config.datasetSource === 'data_table' && 'dataTableId' in config.datasetRef
+			? config.datasetRef.dataTableId
+			: undefined;
+	return {
+		id: config.id,
+		workflowId: config.workflowId,
+		name: config.name,
+		status: config.status,
+		invalidReason: config.invalidReason,
+		startNodeName: config.startNodeName,
+		endNodeName: config.endNodeName,
+		metrics: config.metrics.map((metric) => ({
+			id: metric.id,
+			name: metric.name,
+			type: metric.type,
+		})),
+		datasetSource: config.datasetSource,
+		...(dataTableId !== undefined ? { dataTableId } : {}),
+	};
+}
+
+/** Like {@link evaluationConfigToSummary} but keeps the full metric bodies
+ *  (expression strings, judge model, prompt) so the agent can read a config
+ *  before an `update` replaces it wholesale. */
+export function evaluationConfigToDetail(config: EvaluationConfig): EvaluationConfigDetail {
+	const dataTableId =
+		config.datasetSource === 'data_table' && 'dataTableId' in config.datasetRef
+			? config.datasetRef.dataTableId
+			: undefined;
+	return {
+		id: config.id,
+		workflowId: config.workflowId,
+		name: config.name,
+		status: config.status,
+		invalidReason: config.invalidReason,
+		startNodeName: config.startNodeName,
+		endNodeName: config.endNodeName,
+		metrics: config.metrics,
+		datasetSource: config.datasetSource,
+		...(dataTableId !== undefined ? { dataTableId } : {}),
+	};
+}
+
+/**
+ * Look up a data table by the orchestrator-supplied identifier. Tries `id`
+ * first; if that misses, tries `name`. The name fallback exists because the
+ * orchestrator occasionally passes the human-readable table name it saw in a
+ * `data-tables list` response instead of the numeric id.
+ *
+ * When the caller provides an `accessFilter`, candidates the user cannot
+ * access are filtered out BEFORE the ambiguity check — so a collision across
+ * projects the caller can't see still resolves cleanly to the one they can.
+ * `projectIdFilter` narrows the name lookup at the database level when the
+ * caller already knows the target project (table names are unique per
+ * project).
+ */
+export async function resolveDataTableByIdOrName(
+	repository: DataTableIdOrNameRepository,
+	logger: DataTableResolverLogger,
+	idOrName: string,
+	options?: {
+		projectIdFilter?: string;
+		accessFilter?: (id: string) => Promise<boolean>;
+	},
+): Promise<ResolveDataTableResult> {
+	const byId = await repository.findOneBy({ id: idOrName });
+	if (byId) {
+		if (options?.accessFilter && !(await options.accessFilter(byId.id))) {
+			return { kind: 'miss' };
+		}
+		return { kind: 'hit', table: byId };
+	}
+
+	const candidates = await repository.findBy({
+		name: idOrName,
+		...(options?.projectIdFilter ? { projectId: options.projectIdFilter } : {}),
+	});
+	let filtered = candidates;
+	if (options?.accessFilter) {
+		filtered = [];
+		for (const c of candidates) {
+			if (await options.accessFilter(c.id)) filtered.push(c);
+		}
+	}
+	if (filtered.length === 0) return { kind: 'miss' };
+	if (filtered.length > 1) return { kind: 'ambiguous', candidates: filtered };
+
+	const hit = filtered[0];
+	logger.warn('data-tables tool called with table name instead of id — resolved by name fallback', {
+		passedValue: idOrName,
+		resolvedId: hit.id,
+		projectId: hit.projectId,
+	});
+	return { kind: 'hit', table: hit };
+}
+
+/**
  * Truncate execution result data to stay within context budget.
  * Keeps first item per node as a preview; replaces arrays with summary objects.
  */
@@ -1948,12 +3300,61 @@ function wrapResultDataEntries(data: Record<string, unknown>): Record<string, un
 	return wrapped;
 }
 
+const MAX_NODE_ERRORS = 10;
+
+function isFailedNodeRun(nodeRun: ITaskData): boolean {
+	return (
+		nodeRun.executionStatus === 'error' ||
+		nodeRun.error !== undefined ||
+		nodeRun.redactedError !== undefined
+	);
+}
+
+function nodeContinuesOnError(node: INode | undefined): boolean {
+	return (
+		node?.continueOnFail === true ||
+		node?.onError === 'continueRegularOutput' ||
+		node?.onError === 'continueErrorOutput'
+	);
+}
+
+function extractNodeErrors(
+	runData: IRunData | undefined,
+	includeUpstreamDetails: boolean,
+	workflowNodes: INode[] = [],
+): NonNullable<ExecutionResult['nodeErrors']> {
+	if (!runData) return [];
+
+	const nodesByName = new Map(workflowNodes.map((node) => [node.name, node]));
+	const nodeErrors: NonNullable<ExecutionResult['nodeErrors']> = [];
+	for (const [nodeName, nodeRuns] of Object.entries(runData)) {
+		if (nodeErrors.length >= MAX_NODE_ERRORS) break;
+		if (nodeContinuesOnError(nodesByName.get(nodeName))) continue;
+
+		const failedRun = nodeRuns.find(isFailedNodeRun);
+		if (!failedRun) continue;
+
+		const message = failedRun.error
+			? formatExecutionError(failedRun.error, includeUpstreamDetails)
+			: failedRun.redactedError
+				? `${failedRun.redactedError.type} error${
+						failedRun.redactedError.httpCode ? ` (${failedRun.redactedError.httpCode})` : ''
+					}`
+				: undefined;
+		nodeErrors.push({
+			nodeName,
+			...(message ? { message } : {}),
+		});
+	}
+
+	return nodeErrors;
+}
+
 export async function extractExecutionResult(
-	executionRepository: ExecutionRepository,
 	executionId: string,
 	includeOutputData = true,
 ): Promise<ExecutionResult> {
-	const execution = await executionRepository.findSingleExecution(executionId, {
+	const execution = await Container.get(ExecutionPersistence).findSingleExecution(executionId, {
 		includeData: true,
 		unflattenData: true,
 	});
@@ -1974,8 +3375,13 @@ export async function extractExecutionResult(
 	// When N8N_AI_ALLOW_SENDING_PARAMETER_VALUES is disabled, only return
 	// status + error — no full node output data flows to the LLM provider
 	const resultData: Record<string, unknown> = {};
+	// All nodes that ran — including zero-output ones, which `resultData`
+	// omits. Verification uses this to tell "ran and returned nothing" apart
+	// from "never reached". Node names only, so it is safe regardless of the
+	// parameter-values privacy setting.
+	const runData = execution.data?.resultData?.runData;
+	const executedNodeNames = Object.keys(runData ?? {});
 	if (includeOutputData) {
-		const runData = execution.data?.resultData?.runData;
 		if (runData) {
 			for (const [nodeName, nodeRuns] of Object.entries(runData)) {
 				const lastRun = nodeRuns[nodeRuns.length - 1];
@@ -1993,7 +3399,9 @@ export async function extractExecutionResult(
 	}
 
 	// Extract error if present
-	const errorMessage = execution.data?.resultData?.error?.message;
+	const error = execution.data?.resultData?.error;
+	const errorMessage = error ? formatExecutionError(error, includeOutputData) : undefined;
+	const nodeErrors = extractNodeErrors(runData, includeOutputData, execution.workflowData?.nodes);
 
 	return {
 		executionId,
@@ -2002,10 +3410,55 @@ export async function extractExecutionResult(
 			Object.keys(resultData).length > 0
 				? wrapResultDataEntries(truncateResultData(resultData))
 				: undefined,
+		executedNodeNames: executedNodeNames.length > 0 ? executedNodeNames : undefined,
+		nodeErrors: nodeErrors.length > 0 ? nodeErrors : undefined,
+		lastNodeExecuted: execution.data?.resultData?.lastNodeExecuted,
 		error: errorMessage,
 		startedAt: execution.startedAt?.toISOString(),
 		finishedAt: execution.stoppedAt?.toISOString(),
 	};
+}
+
+/**
+ * NodeApiError.messages can hold large API response bodies; cap formatted
+ * errors so a single failure doesn't blow up the agent's context window.
+ */
+const MAX_ERROR_CHARS = 4_000;
+
+/**
+ * `.description` and `.messages[]` carry upstream API response content, so
+ * they're gated behind the AI privacy setting. `.message` stays — it's
+ * sanitized (STATUS_CODE_MESSAGES) and lets the LLM recognize the failure.
+ *
+ * Accesses fields structurally: persisted errors lose their prototype on
+ * `unflattenData`, so `instanceof Error` is false in production.
+ */
+export function formatExecutionError(
+	error: ExecutionError,
+	includeUpstreamDetails: boolean,
+): string {
+	const parts: string[] = [];
+	if (error.message) parts.push(error.message);
+
+	if (includeUpstreamDetails) {
+		if (error.description && error.description !== error.message) {
+			parts.push(error.description);
+		}
+		if ('messages' in error && error.messages.length > 0) {
+			parts.push(`Details: ${error.messages.join(' | ')}`);
+		}
+	} else {
+		const hasDescription = !!error.description && error.description !== error.message;
+		const hasMessages = 'messages' in error && error.messages.length > 0;
+		if (hasDescription || hasMessages) {
+			parts.push(
+				'(upstream error details suppressed by the instance AI privacy setting; ask the user to share the node error from the UI)',
+			);
+		}
+	}
+
+	const combined = parts.join(' — ') || 'Unknown error';
+	return combined.length > MAX_ERROR_CHARS ? `${combined.slice(0, MAX_ERROR_CHARS)}…` : combined;
 }
 
 /**
@@ -2049,12 +3502,11 @@ const MAX_ITEM_CHARS = 50_000;
  * Each item is capped at MAX_ITEM_CHARS to prevent a single giant JSON blob from flooding context.
  */
 export async function extractNodeOutput(
-	executionRepository: ExecutionRepository,
 	executionId: string,
 	nodeName: string,
 	options?: { startIndex?: number; maxItems?: number },
 ): Promise<NodeOutputResult> {
-	const execution = await executionRepository.findSingleExecution(executionId, {
+	const execution = await Container.get(ExecutionPersistence).findSingleExecution(executionId, {
 		includeData: true,
 		unflattenData: true,
 	});
@@ -2124,16 +3576,36 @@ const KNOWN_TRIGGER_TYPES = new Set([
 	SCHEDULE_TRIGGER_NODE_TYPE,
 ]);
 
-/** Find the trigger node: known types first, then fall back to naive string matching. */
+/**
+ * Find the trigger node: known types first (priority among multiple triggers),
+ * then the canonical n8n-workflow detection — the same detection the
+ * instance-ai simulation planner uses, so a trigger the planner simulates
+ * (e.g. suffix-less cron/emailReadImap) is always found here too.
+ */
 function findTriggerNode(nodes: INode[]): INode | undefined {
-	// Prefer known trigger types
 	const known = nodes.find((n) => KNOWN_TRIGGER_TYPES.has(n.type));
 	if (known) return known;
 
-	// Fall back to any node with "Trigger" or "webhook" in its type
-	return nodes.find(
-		(n) => n.type.includes('Trigger') || n.type.includes('trigger') || n.type.includes('webhook'),
-	);
+	return nodes.find((n) => isTriggerNodeType(n.type));
+}
+
+/** Copy of `connections` minus every listed source→target edge (any type). */
+function omitWorkflowConnections(
+	connections: IConnections,
+	omit: Array<{ source: string; target: string }>,
+): IConnections {
+	const omitted = new Set(omit.map((edge) => `${edge.source}→${edge.target}`));
+	const result: IConnections = {};
+	for (const [source, byType] of Object.entries(connections)) {
+		const nextByType: IConnections[string] = {};
+		for (const [type, groups] of Object.entries(byType)) {
+			nextByType[type] = (groups ?? []).map((group) =>
+				group ? group.filter((connection) => !omitted.has(`${source}→${connection.node}`)) : group,
+			);
+		}
+		result[source] = nextByType;
+	}
+	return result;
 }
 
 /** Get the execution mode based on the trigger node type. */
@@ -2151,87 +3623,13 @@ function getExecutionModeForTrigger(node: INode): WorkflowExecuteMode {
 	}
 }
 
-/** Construct proper pin data per trigger type. */
-function getPinDataForTrigger(node: INode, inputData: Record<string, unknown>): IPinData {
-	switch (node.type) {
-		case CHAT_TRIGGER_NODE_TYPE:
-			return {
-				[node.name]: [
-					{
-						json: {
-							sessionId: `instance-ai-${Date.now()}`,
-							action: 'sendMessage',
-							chatInput:
-								typeof inputData.chatInput === 'string'
-									? inputData.chatInput
-									: JSON.stringify(inputData),
-						},
-					},
-				],
-			};
-
-		case FORM_TRIGGER_NODE_TYPE:
-			return {
-				[node.name]: [
-					{
-						json: {
-							submittedAt: new Date().toISOString(),
-							formMode: 'instanceAi',
-							...inputData,
-						},
-					},
-				],
-			};
-
-		case WEBHOOK_NODE_TYPE:
-			return {
-				[node.name]: [
-					{
-						json: {
-							headers: {},
-							query: {},
-							body: inputData,
-						},
-					},
-				],
-			};
-
-		case SCHEDULE_TRIGGER_NODE_TYPE: {
-			const now = new Date();
-			return {
-				[node.name]: [
-					{
-						json: {
-							timestamp: now.toISOString(),
-							'Readable date': now.toLocaleString(),
-							'Day of week': now.toLocaleDateString('en-US', { weekday: 'long' }),
-							Year: String(now.getFullYear()),
-							Month: now.toLocaleDateString('en-US', { month: 'long' }),
-							'Day of month': String(now.getDate()).padStart(2, '0'),
-							Hour: String(now.getHours()).padStart(2, '0'),
-							Minute: String(now.getMinutes()).padStart(2, '0'),
-							Second: String(now.getSeconds()).padStart(2, '0'),
-						},
-					},
-				],
-			};
-		}
-
-		default:
-			// Generic fallback for unknown trigger types
-			return {
-				[node.name]: [{ json: inputData as never }],
-			};
-	}
-}
-
 /** Extract structured debug info from a completed execution. */
 export async function extractExecutionDebugInfo(
-	executionRepository: ExecutionRepository,
 	executionId: string,
 	includeOutputData = true,
+	nodeTypes?: NodeTypes,
 ): Promise<ExecutionDebugInfo> {
-	const execution = await executionRepository.findSingleExecution(executionId, {
+	const execution = await Container.get(ExecutionPersistence).findSingleExecution(executionId, {
 		includeData: true,
 		unflattenData: true,
 	});
@@ -2244,15 +3642,13 @@ export async function extractExecutionDebugInfo(
 		};
 	}
 
-	const baseResult = await extractExecutionResult(
-		executionRepository,
-		executionId,
-		includeOutputData,
-	);
+	const baseResult = await extractExecutionResult(executionId, includeOutputData);
 
 	const runData = execution.data?.resultData?.runData;
 	const nodeTrace: ExecutionDebugInfo['nodeTrace'] = [];
 	let failedNode: ExecutionDebugInfo['failedNode'];
+	let failedItemIndex: number | undefined;
+	let failedRunIndex: number | undefined;
 
 	if (runData) {
 		const workflowNodes = execution.workflowData?.nodes ?? [];
@@ -2262,13 +3658,12 @@ export async function extractExecutionDebugInfo(
 			const lastRun = nodeRuns[nodeRuns.length - 1];
 			if (!lastRun) continue;
 
-			const hasError = lastRun.error !== undefined;
 			const nodeType = nodeTypeMap.get(nodeName) ?? 'unknown';
 
 			nodeTrace.push({
 				name: nodeName,
 				type: nodeType,
-				status: hasError ? 'error' : 'success',
+				status: isFailedNodeRun(lastRun) ? 'error' : 'success',
 				startedAt:
 					lastRun.startTime !== undefined ? new Date(lastRun.startTime).toISOString() : undefined,
 				finishedAt:
@@ -2278,14 +3673,17 @@ export async function extractExecutionDebugInfo(
 			});
 
 			// Capture the first failed node with its error and input data
-			if (hasError && !failedNode) {
+			if (lastRun.error !== undefined && !failedNode) {
+				const errorContext = (lastRun.error as { context?: Record<string, unknown> }).context;
+				failedItemIndex =
+					typeof errorContext?.itemIndex === 'number' ? errorContext.itemIndex : undefined;
+				failedRunIndex =
+					typeof errorContext?.runIndex === 'number' ? errorContext.runIndex : nodeRuns.length - 1;
+
 				failedNode = {
 					name: nodeName,
 					type: nodeType,
-					error:
-						lastRun.error instanceof Error
-							? lastRun.error.message
-							: String(lastRun.error ?? 'Unknown error'),
+					error: formatExecutionError(lastRun.error, includeOutputData),
 					inputData: includeOutputData
 						? (() => {
 								const inputItems = lastRun.data?.main
@@ -2310,6 +3708,24 @@ export async function extractExecutionDebugInfo(
 		}
 	}
 
+	// Attach resolved-parameter view for the failed node so the agent sees both the
+	// raw expression and what it resolved to (or which expression threw).
+	if (failedNode && includeOutputData && nodeTypes) {
+		try {
+			const {
+				nodeName: _omitName,
+				suppressed: _omitSuppressed,
+				...bundle
+			} = await extractResolvedNodeParameters(nodeTypes, executionId, failedNode.name, {
+				itemIndex: failedItemIndex,
+				runIndex: failedRunIndex,
+			});
+			failedNode.resolvedParameters = bundle;
+		} catch {
+			// debug must always succeed — silently skip the resolved-params view.
+		}
+	}
+
 	return {
 		...baseResult,
 		failedNode,
@@ -2318,27 +3734,63 @@ export async function extractExecutionDebugInfo(
 }
 
 /**
- * Convert SDK pinData (Record<string, IDataObject[]>) to runtime format (IPinData).
- * SDK stores plain objects; runtime wraps each item in { json: item }.
+ * Groups are authoritative on save: persist the emitted groups, or [] to clear when the
+ * agent removed every `.group(...)`. `undefined` would leave the NOT-NULL column stale.
  */
-function sdkPinDataToRuntime(pinData: Record<string, unknown[]> | undefined): IPinData | undefined {
-	if (!pinData || Object.keys(pinData).length === 0) return undefined;
-	const result: IPinData = {};
-	for (const [nodeName, items] of Object.entries(pinData)) {
-		result[nodeName] = items.map((item) => ({ json: (item ?? {}) as IDataObject }));
+function sdkNodeGroupsToRuntime(
+	nodeGroups: WorkflowJSON['nodeGroups'],
+): NonNullable<WorkflowJSON['nodeGroups']> {
+	return nodeGroups ?? [];
+}
+
+function hasCredentialId(value: unknown): boolean {
+	if (typeof value !== 'object' || value === null) return false;
+	if (Reflect.get(value, 'id') === null && Reflect.get(value, '__aiGatewayManaged') === true) {
+		return true;
 	}
-	return result;
+	const id = Reflect.get(value, 'id');
+	return typeof id === 'string' && id.trim() !== '';
+}
+
+function sanitizeCredentialReferencesForSave(nodes: WorkflowJSON['nodes']): WorkflowJSON['nodes'] {
+	return nodes.map((node) => {
+		if (!node.credentials) return node;
+
+		const credentials = Object.entries(node.credentials).reduce<
+			NonNullable<typeof node.credentials>
+		>((acc, [type, value]) => {
+			if (hasCredentialId(value)) {
+				acc[type] = value;
+			}
+			return acc;
+		}, {});
+
+		if (Object.keys(credentials).length === Object.keys(node.credentials).length) return node;
+
+		const sanitized = { ...node };
+		if (Object.keys(credentials).length > 0) {
+			sanitized.credentials = credentials;
+		} else {
+			delete sanitized.credentials;
+		}
+		return sanitized;
+	});
 }
 
 function toWorkflowJSON(
 	workflow: WorkflowEntity,
-	options?: { redactParameters?: boolean },
+	options?: {
+		redactParameters?: boolean;
+		/** Substitute a history version's graph; id/name/settings stay from the live entity, as history rows only carry a version label. */
+		graph?: Pick<WorkflowEntity, 'nodes' | 'connections' | 'nodeGroups'>;
+	},
 ): WorkflowJSON {
 	const redact = options?.redactParameters ?? false;
+	const source = options?.graph ?? workflow;
 	return {
 		id: workflow.id,
 		name: workflow.name,
-		nodes: (workflow.nodes ?? []).map((n) => ({
+		nodes: (source.nodes ?? []).map((n) => ({
 			id: n.id ?? '',
 			name: n.name,
 			type: n.type,
@@ -2349,9 +3801,15 @@ function toWorkflowJSON(
 			webhookId: n.webhookId,
 			disabled: n.disabled,
 			notes: n.notes,
+			notesInFlow: n.notesInFlow,
+			executeOnce: n.executeOnce,
+			retryOnFail: n.retryOnFail,
+			alwaysOutputData: n.alwaysOutputData,
+			onError: n.onError,
 		})),
-		connections: workflow.connections as WorkflowJSON['connections'],
+		connections: source.connections as WorkflowJSON['connections'],
 		settings: workflow.settings as WorkflowJSON['settings'],
+		...(source.nodeGroups ? { nodeGroups: source.nodeGroups } : {}),
 	};
 }
 
@@ -2365,12 +3823,14 @@ function toWorkflowDetail(
 		name: workflow.name,
 		versionId: workflow.versionId,
 		activeVersionId: workflow.activeVersionId ?? null,
+		isArchived: workflow.isArchived,
 		createdAt: workflow.createdAt.toISOString(),
 		updatedAt: workflow.updatedAt.toISOString(),
 		nodes: (workflow.nodes ?? []).map(
 			(n): WorkflowNode => ({
 				name: n.name,
 				type: n.type,
+				typeVersion: n.typeVersion,
 				parameters: redact ? undefined : n.parameters,
 				position: n.position,
 				webhookId: n.webhookId,
@@ -2379,4 +3839,13 @@ function toWorkflowDetail(
 		connections: workflow.connections as Record<string, unknown>,
 		settings: workflow.settings as Record<string, unknown> | undefined,
 	};
+}
+
+async function toWorkflowDetailWithChecksum(
+	workflow: WorkflowEntity,
+	options?: { redactParameters?: boolean },
+): Promise<WorkflowDetail> {
+	const detail = toWorkflowDetail(workflow, options);
+	detail.checksum = await calculateWorkflowChecksum(workflow);
+	return detail;
 }

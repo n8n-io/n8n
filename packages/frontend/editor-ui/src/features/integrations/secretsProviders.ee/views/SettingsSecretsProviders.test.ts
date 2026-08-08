@@ -1,13 +1,14 @@
 import { createTestingPinia } from '@pinia/testing';
 import merge from 'lodash/merge';
 import userEvent from '@testing-library/user-event';
+import { screen, within } from '@testing-library/vue';
 import { EnterpriseEditionFeature } from '@/app/constants';
 import { STORES } from '@n8n/stores';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import SettingsSecretsProviders from './SettingsSecretsProviders.ee.vue';
 import { createComponentRenderer } from '@/__tests__/render';
-import { useSettingsStore } from '@/app/stores/settings.store';
-import { useRBACStore } from '@/app/stores/rbac.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useRBACStore } from '@n8n/stores/rbac.store';
 import { setupServer } from '@/__tests__/server';
 import { computed, ref } from 'vue';
 import type { SecretProviderConnection } from '@n8n/api-types';
@@ -31,7 +32,7 @@ vi.mock('vue-router', async () => {
 const mockShowMessage = vi.fn();
 const mockShowError = vi.fn();
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: vi.fn(() => ({
 		showMessage: mockShowMessage,
 		showError: mockShowError,
@@ -84,6 +85,11 @@ let settingsStore: ReturnType<typeof useSettingsStore>;
 let server: ReturnType<typeof setupServer>;
 
 const renderComponent = createComponentRenderer(SettingsSecretsProviders);
+
+const openActionsMenu = async (getByTestId: (id: string) => HTMLElement) => {
+	const actionToggle = getByTestId('secrets-provider-action-toggle');
+	await userEvent.click(within(actionToggle).getByRole('button'));
+};
 
 describe('SettingsSecretsProviders', () => {
 	beforeAll(() => {
@@ -308,7 +314,8 @@ describe('SettingsSecretsProviders', () => {
 			const { getByTestId } = renderComponent({ pinia });
 
 			// Click the action toggle to open the dropdown, then click reload
-			await userEvent.click(getByTestId('action-reload'));
+			await openActionsMenu(getByTestId);
+			await userEvent.click(await screen.findByTestId('action-reload'));
 
 			await vi.waitFor(() => {
 				expect(mockReloadConnection).toHaveBeenCalledWith('aws-prod');
@@ -330,7 +337,8 @@ describe('SettingsSecretsProviders', () => {
 
 			const { getByTestId } = renderComponent({ pinia });
 
-			await userEvent.click(getByTestId('action-reload'));
+			await openActionsMenu(getByTestId);
+			await userEvent.click(await screen.findByTestId('action-reload'));
 
 			await vi.waitFor(() => {
 				expect(mockReloadConnection).toHaveBeenCalledWith('aws-prod');
@@ -352,7 +360,8 @@ describe('SettingsSecretsProviders', () => {
 
 			const { getByTestId } = renderComponent({ pinia });
 
-			await userEvent.click(getByTestId('action-reload'));
+			await openActionsMenu(getByTestId);
+			await userEvent.click(await screen.findByTestId('action-reload'));
 
 			await vi.waitFor(() => {
 				expect(mockReloadConnection).toHaveBeenCalledWith('aws-prod');
@@ -392,7 +401,8 @@ describe('SettingsSecretsProviders', () => {
 
 			const { getByTestId } = renderComponent({ pinia });
 
-			await userEvent.click(getByTestId('action-activate'));
+			await openActionsMenu(getByTestId);
+			await userEvent.click(await screen.findByTestId('action-activate'));
 
 			await vi.waitFor(() => {
 				expect(mockActivateConnection).toHaveBeenCalledWith('aws-prod');
@@ -415,7 +425,8 @@ describe('SettingsSecretsProviders', () => {
 
 			const { getByTestId } = renderComponent({ pinia });
 
-			await userEvent.click(getByTestId('action-activate'));
+			await openActionsMenu(getByTestId);
+			await userEvent.click(await screen.findByTestId('action-activate'));
 
 			await vi.waitFor(() => {
 				expect(mockActivateConnection).toHaveBeenCalledWith('aws-prod');

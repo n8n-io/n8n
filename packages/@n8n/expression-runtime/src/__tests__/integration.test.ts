@@ -284,6 +284,34 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 		});
 	});
 
+	describe('Date marshaling from workflow data', () => {
+		it('should read a top-level Date in $json as a Date, not {}', () => {
+			const data = { $json: { d: new Date('2026-06-30T20:34:04.498Z') } };
+
+			const result = evaluator.evaluate('{{ $json.d }}', data, caller);
+
+			expect(result).not.toEqual({});
+			expect(result).toBeInstanceOf(Date);
+			expect((result as Date).toISOString()).toBe('2026-06-30T20:34:04.498Z');
+		});
+
+		it('should read a nested Date in $json (e.g. Data Table createdAt)', () => {
+			const data = { $json: { row: { createdAt: new Date('2026-06-30T20:34:04.498Z') } } };
+
+			const result = evaluator.evaluate('{{ $json.row.createdAt }}', data, caller);
+
+			expect(result).toBeInstanceOf(Date);
+		});
+
+		it('should read a Date array element in $json', () => {
+			const data = { $json: { dates: [new Date('2026-06-30T20:34:04.498Z')] } };
+
+			const result = evaluator.evaluate('{{ $json.dates[0] }}', data, caller);
+
+			expect(result).toBeInstanceOf(Date);
+		});
+	});
+
 	it('should throw on invalid timezone', async () => {
 		const data = { $json: { x: 1 } };
 
@@ -349,6 +377,72 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 		expect(result).toBe('name,age,city');
 	});
 
+	it('should not leak host references through non-index array access', () => {
+		// Reading a non-index key like $json.a.constructor must return undefined,
+		// so a guest can't walk from an array to the host Object prototype.
+		const data = { $json: { a: [1337] } };
+		const expression = `{{
+  (function() {
+    const hostLookupParams = (() => eval)()(\`(args, res) => {
+      const _copy = {copy: true};
+      const _reference = {reference: true};
+      const params = {};
+      params.arguments = args === 'copy' ? _copy : _reference;
+      params.result = res === 'copy' ? _copy : _reference;
+      return params;
+    }\`);
+    const refs = (() => eval)()(\`
+(function () { return arguments.callee.caller.caller.caller.arguments })()
+\`);
+    const getArrayElement = refs[1];
+
+    var log = [];
+
+    function t(label, fn) {
+      try {
+        const result = fn();
+        log.push(label + '=' + result);
+        return result;
+      } catch (e) {
+        log.push(label + ':ERR ' + String(e && e.message ? e.message : e));
+      }
+    }
+
+    const hostArrayPath = ['$json', 'a'];
+    const HostArray = t('host array', function() {
+      return getArrayElement.applySync(null, [hostArrayPath, 'constructor'], hostLookupParams('copy', 'reference'));
+    });
+    const HostLookupGetter = t('host lookup getter', function() {
+      return getArrayElement.applySync(null, [hostArrayPath, '__lookupGetter__'], hostLookupParams('copy', 'reference'));
+    });
+    const hostArrayInstance = t('host array instance', function() {
+      return HostArray.applySync(null, [1], hostLookupParams('copy', 'reference'));
+    });
+    const HostProtoGetter = t('host __proto__ getter', function() {
+      return HostLookupGetter.applySync(hostArrayInstance.derefInto(), ['__proto__'], hostLookupParams('copy', 'reference'));
+    });
+    const arrProto = t('host Array prototype', function() {
+      return HostProtoGetter.applySync(hostArrayInstance.derefInto(), [], hostLookupParams('copy', 'reference'));
+    });
+    const objProto = t('host Object prototype', function() {
+      return HostProtoGetter.applySync(arrProto.derefInto(), [], hostLookupParams('copy', 'reference'));
+    });
+
+    objProto.setSync('win', 1337);
+    return log;
+  })();
+}}`;
+
+		try {
+			// The bridge swallows the TypeError; what matters is the host Object
+			// prototype was never mutated.
+			evaluator.evaluate(expression, data, caller);
+			expect((Object.prototype as Record<string, unknown>).win).toBeUndefined();
+		} finally {
+			delete (Object.prototype as Record<string, unknown>).win;
+		}
+	});
+
 	it('should preserve error name, message, and custom properties across isolate boundary', () => {
 		const data = { $json: {} };
 
@@ -377,58 +471,34 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 
 	it('should handle throw null without crashing', () => {
 		const data = { $json: {} };
-		let error: Error | undefined;
-		try {
-			evaluator.evaluate('{{ (() => { throw null })() }}', data, caller);
-		} catch (e) {
-			error = e as Error;
-		}
-		expect(error).toBeDefined();
-		expect(error?.message).not.toContain('Cannot read properties');
+		expect(evaluator.evaluate('{{ (() => { throw null })() }}', data, caller)).toBeUndefined();
 	});
 
 	it('should handle throw undefined without crashing', () => {
 		const data = { $json: {} };
-		let error: Error | undefined;
-		try {
-			evaluator.evaluate('{{ (() => { throw undefined })() }}', data, caller);
-		} catch (e) {
-			error = e as Error;
-		}
-		expect(error).toBeDefined();
-		expect(error?.message).not.toContain('Cannot read properties');
+		expect(evaluator.evaluate('{{ (() => { throw undefined })() }}', data, caller)).toBeUndefined();
 	});
 
 	it('should handle throw of null-prototype object with properties without crashing', () => {
 		const data = { $json: {} };
-		let error: Error | undefined;
-		try {
+		expect(
 			evaluator.evaluate(
 				'{{ (() => { var e = Object.create(null); e.foo = "bar"; throw e; })() }}',
 				data,
 				caller,
-			);
-		} catch (e) {
-			error = e as Error;
-		}
-		expect(error).toBeDefined();
-		expect(error?.message).not.toContain('hasOwnProperty is not a function');
+			),
+		).toBeUndefined();
 	});
 
 	it('should handle throw of object with hasOwnProperty shadowed by null without crashing', () => {
 		const data = { $json: {} };
-		let error: Error | undefined;
-		try {
+		expect(
 			evaluator.evaluate(
 				'{{ (() => { throw { hasOwnProperty: null, foo: "bar" }; })() }}',
 				data,
 				caller,
-			);
-		} catch (e) {
-			error = e as Error;
-		}
-		expect(error).toBeDefined();
-		expect(error?.message).not.toContain('hasOwnProperty is not a function');
+			),
+		).toBeUndefined();
 	});
 
 	it('should swallow TypeError and return undefined', () => {
@@ -445,19 +515,48 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 		expect(result).toBeUndefined();
 	});
 
-	it('should propagate errors thrown when reading a property across the isolate boundary', () => {
+	it('should re-throw ExpressionError from host-side callbacks', () => {
+		const json = {
+			get brokenProp() {
+				const err = new Error('paired item failed');
+				err.name = 'ExpressionError';
+				throw err;
+			},
+		};
+
+		expect(() => evaluator.evaluate('{{ $json.brokenProp }}', { $json: json }, caller)).toThrow(
+			expect.objectContaining({ name: 'ExpressionError', message: 'paired item failed' }),
+		);
+	});
+
+	it('should re-throw ExpressionExtensionError from host-side callbacks', () => {
+		const json = {
+			get brokenProp() {
+				const err = new Error('extension failed');
+				err.name = 'ExpressionExtensionError';
+				throw err;
+			},
+		};
+
+		expect(() => evaluator.evaluate('{{ $json.brokenProp }}', { $json: json }, caller)).toThrow(
+			expect.objectContaining({
+				name: 'ExpressionExtensionError',
+				message: 'extension failed',
+			}),
+		);
+	});
+
+	it('should swallow generic errors thrown when reading a property across the isolate boundary', () => {
 		const json = {
 			get brokenProp() {
 				throw new Error('property access failed');
 			},
 		};
 
-		expect(() => evaluator.evaluate('{{ $json.brokenProp }}', { $json: json }, caller)).toThrow(
-			'property access failed',
-		);
+		expect(evaluator.evaluate('{{ $json.brokenProp }}', { $json: json }, caller)).toBeUndefined();
 	});
 
-	it('should propagate errors thrown by functions accessed via the lazy proxy', () => {
+	it('should swallow generic errors thrown by functions accessed via the lazy proxy', () => {
 		const data = {
 			$json: {
 				myFn() {
@@ -466,22 +565,20 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 			},
 		};
 
-		expect(() => evaluator.evaluate('{{ $json.myFn() }}', data, caller)).toThrow('function threw');
+		expect(evaluator.evaluate('{{ $json.myFn() }}', data, caller)).toBeUndefined();
 	});
 
-	it('should propagate errors from $items() when result properties are accessed', () => {
+	it('should swallow generic errors from $items() when result properties are accessed', () => {
 		const data = {
 			$items() {
 				throw new Error('items failed');
 			},
 		};
 
-		// Without throwIfErrorSentinel in the $items wrapper, the sentinel is
-		// returned as a value and .length reads undefined on it — silently swallowed
-		expect(() => evaluator.evaluate('{{ $items().length }}', data, caller)).toThrow('items failed');
+		expect(evaluator.evaluate('{{ $items().length }}', data, caller)).toBeUndefined();
 	});
 
-	it('should propagate errors thrown during array element access across the isolate boundary', () => {
+	it('should swallow generic errors thrown during array element access across the isolate boundary', () => {
 		const items = [1, 2, 3];
 		Object.defineProperty(items, '0', {
 			get() {
@@ -493,12 +590,10 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 
 		const data = { $json: { items } };
 
-		expect(() => evaluator.evaluate('{{ $json.items[0] }}', data, caller)).toThrow(
-			'element access failed',
-		);
+		expect(evaluator.evaluate('{{ $json.items[0] }}', data, caller)).toBeUndefined();
 	});
 
-	it('should propagate errors thrown during an "in" operator check across the isolate boundary', () => {
+	it('should swallow generic errors thrown during an "in" operator check across the isolate boundary', () => {
 		const json = {
 			get brokenProp() {
 				throw new Error('in-check access failed');
@@ -507,11 +602,24 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 
 		// The 'in' operator triggers the has trap on $json proxy.
 		// The bridge calls __getValueAtPath(['$json', 'brokenProp']) which throws.
-		// Without throwIfErrorSentinel in the has trap, the sentinel is returned
-		// as a non-undefined value so 'brokenProp' in $json incorrectly returns true.
-		expect(() =>
+		expect(
 			evaluator.evaluate('{{ "brokenProp" in $json }}', { $json: json }, caller),
-		).toThrow('in-check access failed');
+		).toBeUndefined();
+	});
+
+	it('should handle re-entrant execute() calls via closure-scoped contexts', () => {
+		const data = {
+			$json: {
+				get nested() {
+					// Trigger a nested evaluate() through the same bridge.
+					// With closure-scoped contexts, this should succeed —
+					// each evaluation gets its own closure with independent callbacks.
+					return evaluator.evaluate('{{ "inner" }}', { $json: { val: 1 } }, caller);
+				},
+			},
+		};
+
+		expect(evaluator.evaluate('{{ $json.nested }}', data, caller)).toBe('inner');
 	});
 });
 

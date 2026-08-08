@@ -1,0 +1,14 @@
+openapi: 3.0.0
+info:
+  title: decorator-routes
+  version: 0.0.0
+paths:
+  /roles:
+    post:
+      $ref: ./handlers/roles/spec/paths/createRole.generated.yml
+  /tags:
+    get:
+      $ref: ./handlers/tags/spec/paths/getTags.generated.yml
+  /workflows/{workflowId}/history:
+    get:
+      $ref: ./handlers/workflows/spec/paths/getWorkflowHistory.generated.yml
