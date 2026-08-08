@@ -302,4 +302,61 @@ describe('requestWithAuthenticationPaginated', () => {
 
 		expect(capturedKeys[0].$request).toBe(requestOptions);
 	});
+
+	test('issues a second request when continue is true and credentialsType is undefined', async () => {
+		const requestOptions: IRequestOptions = {
+			uri: 'https://example.com',
+			qs: { limit: 10 },
+			headers: { Authorization: 'Bearer token' },
+		};
+
+		const paginationOptions = {
+			continue: '={{ true }}',
+			request: { url: 'https://example.com', qs: { page: '={{ $pageCount }}' } },
+		} as unknown as PaginationOptions;
+
+		let continueCalls = 0;
+		const resolveValue = vi.fn((parameterValue) => {
+			if (parameterValue === paginationOptions.request) {
+				return { url: 'https://example.com', qs: { page: continueCalls } };
+			}
+			if (parameterValue === paginationOptions.continue) {
+				continueCalls += 1;
+				// Continue after the first page, stop after the second
+				return continueCalls === 1;
+			}
+			if (parameterValue === paginationOptions.requestInterval) {
+				return 0;
+			}
+			return parameterValue;
+		});
+
+		const request = vi.fn().mockResolvedValue({
+			body: { items: [1] },
+			headers: { 'content-type': 'application/json' },
+			statusCode: 200,
+		});
+		const requestWithAuthentication = vi.fn();
+		const ctx = {
+			helpers: { request, requestWithAuthentication },
+		} as unknown as IExecuteFunctions;
+
+		const responses = await requestWithAuthenticationPaginated.call(
+			ctx,
+			requestOptions,
+			0,
+			paginationOptions,
+			resolveValue,
+			node,
+			undefined,
+		);
+
+		expect(request).toHaveBeenCalledTimes(2);
+		expect(requestWithAuthentication).not.toHaveBeenCalled();
+		expect(responses).toHaveLength(2);
+
+		const secondCallOptions = request.mock.calls[1][0] as IRequestOptions;
+		expect(secondCallOptions.qs).toEqual({ limit: 10, page: 1 });
+		expect((secondCallOptions.headers as IDataObject).Authorization).toBe('Bearer token');
+	});
 });
