@@ -166,6 +166,115 @@ describe('LmChatOpenRouter', () => {
 			const callArgs = MockedChatOpenAI.mock.calls[0][0];
 			expect(callArgs?.configuration?.fetch).toEqual(expect.any(Function));
 		});
+
+		describe('provider routing options', () => {
+			it('should handle order option with comma-separated providers and spaces', async () => {
+				const ctx = setupMockContext();
+				ctx.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+					if (paramName === 'model') return 'anthropic/claude-sonnet-4-20250514';
+					if (paramName === 'options') {
+						return { providerRouting: { order: ' anthropic , openai ,, google ' } };
+					}
+					return undefined;
+				});
+
+				await node.supplyData.call(ctx, 0);
+
+				expect(MockedChatOpenAI).toHaveBeenCalledWith(
+					expect.objectContaining({
+						modelKwargs: expect.objectContaining({
+							provider: expect.objectContaining({
+								order: ['anthropic', 'openai', 'google'],
+							}),
+						}),
+					}),
+				);
+			});
+
+			it('should map provider routing fields to OpenRouter payload', async () => {
+				const ctx = setupMockContext();
+				ctx.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+					if (paramName === 'model') return 'anthropic/claude-sonnet-4-20250514';
+					if (paramName === 'options') {
+						return {
+							providerRouting: {
+								allowFallbacks: false,
+								requireParameters: true,
+								dataCollection: 'deny',
+								zdr: true,
+								only: 'azure,anthropic',
+								ignore: 'google',
+								sort: 'price',
+							},
+						};
+					}
+					return undefined;
+				});
+
+				await node.supplyData.call(ctx, 0);
+
+				expect(MockedChatOpenAI).toHaveBeenCalledWith(
+					expect.objectContaining({
+						modelKwargs: expect.objectContaining({
+							provider: expect.objectContaining({
+								allow_fallbacks: false,
+								require_parameters: true,
+								data_collection: 'deny',
+								zdr: true,
+								only: ['azure', 'anthropic'],
+								ignore: ['google'],
+								sort: 'price',
+							}),
+						}),
+					}),
+				);
+			});
+
+			it('should include response format and provider routing together', async () => {
+				const ctx = setupMockContext();
+				ctx.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+					if (paramName === 'model') return 'anthropic/claude-sonnet-4-20250514';
+					if (paramName === 'options') {
+						return {
+							responseFormat: 'json_object',
+							providerRouting: {
+								order: 'anthropic,openai',
+								sort: 'price',
+							},
+						};
+					}
+					return undefined;
+				});
+
+				await node.supplyData.call(ctx, 0);
+
+				expect(MockedChatOpenAI).toHaveBeenCalledWith(
+					expect.objectContaining({
+						modelKwargs: expect.objectContaining({
+							response_format: { type: 'json_object' },
+							provider: expect.objectContaining({
+								order: ['anthropic', 'openai'],
+								sort: 'price',
+							}),
+						}),
+					}),
+				);
+			});
+
+			it('should not add provider to modelKwargs when providerRouting is empty', async () => {
+				const ctx = setupMockContext();
+				ctx.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+					if (paramName === 'model') return 'anthropic/claude-sonnet-4-20250514';
+					if (paramName === 'options') return { providerRouting: {} };
+					return undefined;
+				});
+
+				await node.supplyData.call(ctx, 0);
+
+				const callArgs = MockedChatOpenAI.mock.calls[0][0];
+				expect(callArgs.modelKwargs).toBeUndefined();
+			});
+		});
 	});
 
 	describe('fetch wrapper (empty tool call arguments fix)', () => {
