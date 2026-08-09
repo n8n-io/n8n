@@ -10,7 +10,7 @@ import N8nUserInfo from '../N8nUserInfo';
 
 const props = withDefaults(
 	defineProps<{
-		users: UserStackGroups;
+		users: IUser[] | UserStackGroups;
 		currentUserEmail?: string | null;
 		maxAvatars?: number;
 		size?: AvatarSize;
@@ -25,12 +25,21 @@ const props = withDefaults(
 // Keep the overflow badge the same diameter as the avatars.
 const badgeSize = computed(() => `${AVATAR_SIZES[props.size]}px`);
 
+/**
+ * Groups exist only to label sections, and a lone group never renders its heading —
+ * so callers showing one unlabelled list pass a plain array instead of inventing a
+ * group name that is never shown.
+ */
+const groups = computed<UserStackGroups>(() =>
+	Array.isArray(props.users) ? { '': props.users } : props.users,
+);
+
 const nonEmptyGroups = computed(() => {
 	const users: UserStackGroups = {};
 
-	for (const groupName in props.users) {
-		if (props.users[groupName].length > 0) {
-			users[groupName] = props.users[groupName];
+	for (const groupName in groups.value) {
+		if (groups.value[groupName].length > 0) {
+			users[groupName] = groups.value[groupName];
 		}
 	}
 
@@ -44,8 +53,8 @@ const groupCount = computed(() => {
 const flatUserList = computed(() => {
 	const users: IUser[] = [];
 
-	for (const groupName in props.users) {
-		users.push(...props.users[groupName]);
+	for (const groupName in groups.value) {
+		users.push(...groups.value[groupName]);
 	}
 
 	return users;

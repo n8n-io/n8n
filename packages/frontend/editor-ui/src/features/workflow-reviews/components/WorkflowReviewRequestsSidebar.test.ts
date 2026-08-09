@@ -1,5 +1,6 @@
 import type { WorkflowReviewInboxItem } from '@n8n/api-types';
 import { createTestingPinia } from '@pinia/testing';
+import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import { useUsersStore } from '@n8n/stores/users.store';
@@ -43,6 +44,13 @@ const reviewers = [
 	},
 ];
 
+const laterAuthor = {
+	id: 'user-author',
+	email: 'author@example.com',
+	firstName: 'Ada',
+	lastName: 'Author',
+};
+
 function makeItem(overrides: Partial<WorkflowReviewInboxItem> = {}): WorkflowReviewInboxItem {
 	return {
 		id: 'req-1',
@@ -50,6 +58,8 @@ function makeItem(overrides: Partial<WorkflowReviewInboxItem> = {}): WorkflowRev
 		title: 'Needs review',
 		workflowName: 'My workflow',
 		requester,
+		// The backend always carries the requester in `authors` too.
+		authors: [{ ...requester }, laterAuthor],
 		reviewers: reviewers.slice(0, 1),
 		decision: 'pending',
 		state: 'open',
@@ -83,8 +93,14 @@ describe('WorkflowReviewRequestsSidebar', () => {
 		} as never;
 	});
 
-	it('renders requester and reviewer avatars for populated participants', () => {
-		const { getByTestId } = renderComponent({
+	function avatarIds(container: Element) {
+		return [...container.querySelectorAll('[data-test-id^="user-stack-avatar-"]')].map((avatar) =>
+			avatar.getAttribute('data-test-id')?.replace('user-stack-avatar-', ''),
+		);
+	}
+
+	it('orders participants requester first, then reviewers, then remaining authors', () => {
+		const { getByTestId, container } = renderComponent({
 			props: {
 				...baseProps,
 				items: [makeItem()],
@@ -92,29 +108,76 @@ describe('WorkflowReviewRequestsSidebar', () => {
 		});
 
 		expect(getByTestId('workflow-review-request-users')).toBeInTheDocument();
-		expect(getByTestId(`user-stack-avatar-${requester.id}`)).toBeInTheDocument();
-		expect(getByTestId(`user-stack-avatar-${reviewers[0].id}`)).toBeInTheDocument();
+		expect(avatarIds(container)).toEqual([requester.id, reviewers[0].id, laterAuthor.id]);
 	});
 
-	it('shows overflow badge when participants exceed maxAvatars', () => {
-		const { getByTestId, container } = renderComponent({
+	it('shows each participant once even when they hold several roles', () => {
+		const { container } = renderComponent({
 			props: {
 				...baseProps,
-				items: [makeItem({ reviewers })],
+				items: [
+					makeItem({
+						reviewers: [reviewers[0]],
+						// Separate object instances: deduplication must go by id, not identity.
+						authors: [{ ...requester }, { ...reviewers[0] }, laterAuthor],
+					}),
+				],
 			},
 		});
 
-		// Requester + 3 reviewers = 4 participants; maxAvatars is 3, so +1.
+		// The reviewer-author keeps the reviewer slot, ahead of the co-author.
+		expect(avatarIds(container)).toEqual([requester.id, reviewers[0].id, laterAuthor.id]);
+	});
+
+	it('lists every participant once and without role headings in the popover', async () => {
+		const { getByTestId, findByTestId, findAllByTestId } = renderComponent({
+			props: {
+				...baseProps,
+				items: [makeItem()],
+			},
+		});
+
+		await userEvent.hover(getByTestId('user-stack-avatars'));
+		const list = await findByTestId('user-stack-list');
+
+		for (const { id } of [requester, reviewers[0], laterAuthor]) {
+			expect(await findAllByTestId(`user-stack-info-${id}`)).toHaveLength(1);
+		}
+		// A single group renders no heading — role labels are the detail view's job.
+		expect(list.querySelector('[class*="groupName"]')).toBeNull();
+	});
+
+	it('counts deduplicated participants in the overflow badge', () => {
+		const { getByTestId, container } = renderComponent({
+			props: {
+				...baseProps,
+				items: [makeItem({ reviewers, authors: [{ ...requester }, laterAuthor] })],
+			},
+		});
+
+		// Requester + 3 reviewers + 1 later author = 5 participants; maxAvatars is 3, so +2.
 		expect(getByTestId('workflow-review-request-users')).toBeInTheDocument();
-		expect(container.querySelectorAll('[data-test-id^="user-stack-avatar-"]')).toHaveLength(3);
-		expect(container.querySelector('.hiddenBadge')).toHaveTextContent('+1');
+		expect(avatarIds(container)).toHaveLength(3);
+		expect(container.querySelector('.hiddenBadge')).toHaveTextContent('+2');
+	});
+
+	it('keeps the user stack visible when only authors remain', () => {
+		const { getByTestId, container } = renderComponent({
+			props: {
+				...baseProps,
+				items: [makeItem({ requester: null, reviewers: [], authors: [laterAuthor] })],
+			},
+		});
+
+		expect(getByTestId('workflow-review-request-users')).toBeInTheDocument();
+		expect(avatarIds(container)).toEqual([laterAuthor.id]);
 	});
 
 	it('does not render the user stack when there are no nameable participants', () => {
 		const { queryByTestId } = renderComponent({
 			props: {
 				...baseProps,
-				items: [makeItem({ requester: null, reviewers: [] })],
+				items: [makeItem({ requester: null, reviewers: [], authors: [] })],
 			},
 		});
 

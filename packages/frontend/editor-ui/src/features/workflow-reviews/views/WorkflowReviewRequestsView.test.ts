@@ -761,6 +761,7 @@ function createInboxItem(): WorkflowReviewInboxItem {
 		workflowName: 'My workflow',
 		workflowVersionId: null,
 		requester: null,
+		authors: [],
 		reviewers: [],
 		decision: 'pending',
 		state: 'open',
