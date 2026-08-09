@@ -155,10 +155,9 @@ const onConfirmDisable = async () => {
 const fetchoAuthCLients = async () => {
 	try {
 		await mcpStore.getAllOAuthClients();
+		isLoadingClients.value = false;
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.mcp.error.fetching.oAuthClients'));
-	} finally {
-		isLoadingClients.value = false;
 	}
 };
 

@@ -8,7 +8,7 @@ import SettingsMCPView from '@/features/ai/mcpAccess/SettingsMCPView.vue';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import type { FrontendSettings } from '@n8n/api-types';
+import type { FrontendSettings, OAuthClientResponseDto } from '@n8n/api-types';
 import { MCP_CLIENTS_VIEW, MCP_WORKFLOWS_VIEW } from '@/features/ai/mcpAccess/mcp.constants';
 import type { WorkflowListItem } from '@/Interface';
 import { EXPOSE_ALL_WORKFLOWS_TO_MCP_MODAL_KEY } from '@/experiments/exposeAllWorkflowsToMcp/constants';
@@ -197,6 +197,62 @@ describe('SettingsMCPView', () => {
 			await userEvent.click(getByTestId('mcp-connect-client-button'));
 
 			expect(mcpStore.openConnectPopover).toHaveBeenCalled();
+		});
+	});
+
+	describe('Connected clients loading state', () => {
+		beforeEach(() => {
+			enableMcpSettings();
+		});
+
+		it('should show — instead of 0 while getAllOAuthClients is pending', async () => {
+			// Create a promise we control so we can keep it pending
+			let resolveClients!: (value: OAuthClientResponseDto[]) => void;
+			const clientsPromise = new Promise<OAuthClientResponseDto[]>((res) => {
+				resolveClients = res;
+			});
+			mcpStore.getAllOAuthClients.mockReturnValue(clientsPromise);
+
+			const { getByTestId } = createComponent({ pinia });
+			await nextTick();
+
+			// While request is still pending, should show — not 0
+			const row = getByTestId('mcp-clients-view-all-row');
+			expect(row).toHaveTextContent('—');
+			expect(row).not.toHaveTextContent('0');
+
+			// Now resolve and confirm the real count appears
+			resolveClients([]);
+			await waitFor(() => {
+				expect(getByTestId('mcp-clients-view-all-row')).not.toHaveTextContent('—');
+			});
+		});
+
+		it('should show 0 after getAllOAuthClients resolves with zero clients', async () => {
+			mcpStore.oauthClientTotals = { mine: 0 };
+			mcpStore.getAllOAuthClients.mockResolvedValue([]);
+
+			const { getByTestId } = createComponent({ pinia });
+
+			await waitFor(() => {
+				const row = getByTestId('mcp-clients-view-all-row');
+				expect(row).not.toHaveTextContent('—');
+				expect(row).toHaveTextContent('0');
+			});
+		});
+
+		it('should keep — and not silently show 0 when getAllOAuthClients fails', async () => {
+			mcpStore.getAllOAuthClients.mockRejectedValue(new Error('network error'));
+
+			const { getByTestId } = createComponent({ pinia });
+
+			await waitFor(() => {
+				expect(mcpStore.getAllOAuthClients).toHaveBeenCalled();
+			});
+
+			const row = getByTestId('mcp-clients-view-all-row');
+			expect(row).toHaveTextContent('—');
+			expect(row).not.toHaveTextContent('0');
 		});
 	});
 
