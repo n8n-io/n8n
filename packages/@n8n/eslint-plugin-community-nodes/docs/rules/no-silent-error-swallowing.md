@@ -20,6 +20,9 @@ methods of a node's `webhookMethods` that:
 - have an empty body, or
 - contain only a `return true`, `return false`, or bare `return` statement.
 
+A group or method key names the same thing however it is written, so `delete`,
+`'delete'` and `['delete']` are all checked.
+
 Handle the error instead: log it (so it surfaces in execution logs) and/or
 rethrow it. A `catch` that logs before returning, rethrows, or returns a
 computed value is allowed.
