@@ -1,4 +1,4 @@
-import { reactive } from 'vue';
+import { reactive, shallowRef } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
@@ -12,11 +12,11 @@ import type { MockedStore } from '@/__tests__/utils';
 import { mockedStore, getDropdownItems } from '@/__tests__/utils';
 import { createComponentRenderer } from '@/__tests__/render';
 import WorkflowShareModal from './WorkflowShareModal.ee.vue';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsEEStore } from '@/app/stores/workflows.ee.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { useRolesStore } from '@/app/stores/roles.store';
+import { useRolesStore } from '@n8n/stores/roles.store';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 
 const mockWorkflowDocumentState = reactive({
@@ -24,9 +24,13 @@ const mockWorkflowDocumentState = reactive({
 	scopes: [] as string[],
 	sharedWithProjects: [] as ProjectSharingData[],
 	name: '',
+	workflowTriggerNodes: [] as unknown[],
+	allNodes: [] as unknown[],
+	setSharedWithProjects: vi.fn(),
 });
 vi.mock('@/app/stores/workflowDocument.store', () => ({
 	useWorkflowDocumentStore: () => mockWorkflowDocumentState,
+	injectWorkflowDocumentStore: () => shallowRef(mockWorkflowDocumentState),
 	createWorkflowDocumentId: (id: string) => `${id}@latest`,
 }));
 
@@ -39,7 +43,7 @@ vi.mock('vue-router', async (importOriginal) => {
 		}),
 	};
 });
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({
 		showMessage: vi.fn(),
 		showError: vi.fn(),
@@ -145,21 +149,7 @@ describe('WorkflowShareModal.ee.vue', () => {
 			updatedAt: new Date().toISOString(),
 		};
 
-		workflowsStore.workflow = {
-			id: '',
-			name: 'My workflow',
-			active: false,
-			activeVersionId: null,
-			isArchived: false,
-			createdAt: new Date().toISOString(),
-			updatedAt: new Date().toISOString(),
-			versionId: '',
-			scopes: [],
-			nodes: [],
-			connections: {},
-			homeProject,
-		};
-
+		workflowsStore.workflowId = '';
 		mockWorkflowDocumentState.homeProject = homeProject;
 
 		const saveWorkflowSharedWithSpy = vi.spyOn(workflowsEEStore, 'saveWorkflowSharedWith');
@@ -210,21 +200,7 @@ describe('WorkflowShareModal.ee.vue', () => {
 				updatedAt: new Date().toISOString(),
 			};
 
-			workflowsStore.workflow = {
-				id: 'workflow-1',
-				name: 'My workflow',
-				active: false,
-				activeVersionId: null,
-				isArchived: false,
-				createdAt: new Date().toISOString(),
-				updatedAt: new Date().toISOString(),
-				versionId: '',
-				scopes: [],
-				nodes: [],
-				connections: {},
-				homeProject,
-			};
-
+			workflowsStore.workflowId = 'workflow-1';
 			mockWorkflowDocumentState.homeProject = homeProject;
 
 			const props = {
@@ -254,19 +230,7 @@ describe('WorkflowShareModal.ee.vue', () => {
 				type: ProjectTypes.Team,
 			});
 
-			workflowsStore.workflow = {
-				id: 'workflow-1',
-				name: 'My workflow',
-				active: false,
-				activeVersionId: null,
-				isArchived: false,
-				createdAt: new Date().toISOString(),
-				updatedAt: new Date().toISOString(),
-				versionId: '',
-				scopes: [],
-				nodes: [],
-				connections: {},
-			};
+			workflowsStore.workflowId = 'workflow-1';
 
 			const props = {
 				data: { id: 'workflow-1' },

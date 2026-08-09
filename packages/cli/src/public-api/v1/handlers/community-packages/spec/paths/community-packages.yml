@@ -1,5 +1,6 @@
 post:
   x-eov-operation-id: installPackage
+  x-required-scope: communityPackage:install
   x-eov-operation-handler: v1/handlers/community-packages/community-packages.handler
   tags:
     - CommunityPackage
@@ -27,6 +28,7 @@ post:
     - ApiKeyAuth: []
 get:
   x-eov-operation-id: getInstalledPackages
+  x-required-scope: communityPackage:list
   x-eov-operation-handler: v1/handlers/community-packages/community-packages.handler
   tags:
     - CommunityPackage

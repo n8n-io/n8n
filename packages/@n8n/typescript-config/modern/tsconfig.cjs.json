@@ -5,6 +5,7 @@
 		"module": "umd",
 		"moduleResolution": "node",
 		"verbatimModuleSyntax": false,
-		"resolveJsonModule": false
+		"resolveJsonModule": false,
+		"tsBuildInfoFile": "${configDir}/dist/cjs/build.tsbuildinfo"
 	}
 }

@@ -9,8 +9,24 @@ const baseEnv = (extras: Record<string, string | undefined> = {}): NodeJS.Proces
 };
 
 describe('resolveSandboxConfig', () => {
+	it('returns an n8n-sandbox config by default when serviceUrl is set', () => {
+		const env = baseEnv({
+			N8N_SANDBOX_SERVICE_URL: 'https://sandbox.example.com',
+			N8N_SANDBOX_SERVICE_API_KEY: 'sb_key',
+		});
+		const config = resolveSandboxConfig(env);
+		expect(config).toEqual({
+			enabled: true,
+			provider: 'n8n-sandbox',
+			serviceUrl: 'https://sandbox.example.com',
+			apiKey: 'sb_key',
+			timeout: 300_000,
+		});
+	});
+
 	it('returns a daytona config when DAYTONA env vars are set', () => {
 		const env = baseEnv({
+			N8N_INSTANCE_AI_SANDBOX_PROVIDER: 'daytona',
 			DAYTONA_API_URL: 'https://app.daytona.io/api',
 			DAYTONA_API_KEY: 'dtn_xxx',
 		});
@@ -27,6 +43,7 @@ describe('resolveSandboxConfig', () => {
 
 	it('forwards optional image + timeout overrides', () => {
 		const env = baseEnv({
+			N8N_INSTANCE_AI_SANDBOX_PROVIDER: 'daytona',
 			DAYTONA_API_URL: 'https://app.daytona.io/api',
 			DAYTONA_API_KEY: 'dtn_xxx',
 			N8N_INSTANCE_AI_SANDBOX_IMAGE: 'custom/image:1.0',
@@ -39,8 +56,32 @@ describe('resolveSandboxConfig', () => {
 		expect(config.createTimeoutSeconds).toBe(900);
 	});
 
+	it('forwards N8N_INSTANCE_AI_SANDBOX_NAME_PREFIX as namePrefix', () => {
+		const env = baseEnv({
+			N8N_INSTANCE_AI_SANDBOX_PROVIDER: 'daytona',
+			DAYTONA_API_URL: 'https://app.daytona.io/api',
+			DAYTONA_API_KEY: 'dtn_xxx',
+			N8N_INSTANCE_AI_SANDBOX_NAME_PREFIX: 'eval-baseline-daily',
+		});
+		const config = resolveSandboxConfig(env);
+		if (!config.enabled || config.provider !== 'daytona') throw new Error('expected daytona');
+		expect(config.namePrefix).toBe('eval-baseline-daily');
+	});
+
+	it('omits namePrefix when N8N_INSTANCE_AI_SANDBOX_NAME_PREFIX is unset', () => {
+		const env = baseEnv({
+			N8N_INSTANCE_AI_SANDBOX_PROVIDER: 'daytona',
+			DAYTONA_API_URL: 'https://app.daytona.io/api',
+			DAYTONA_API_KEY: 'dtn_xxx',
+		});
+		const config = resolveSandboxConfig(env);
+		if (!config.enabled || config.provider !== 'daytona') throw new Error('expected daytona');
+		expect(config.namePrefix).toBeUndefined();
+	});
+
 	it('honors a custom createTimeoutSeconds env override', () => {
 		const env = baseEnv({
+			N8N_INSTANCE_AI_SANDBOX_PROVIDER: 'daytona',
 			DAYTONA_API_URL: 'https://app.daytona.io/api',
 			DAYTONA_API_KEY: 'dtn_xxx',
 			N8N_INSTANCE_AI_SANDBOX_CREATE_TIMEOUT_SECONDS: '1800',
@@ -52,6 +93,7 @@ describe('resolveSandboxConfig', () => {
 
 	it('rejects a non-integer createTimeoutSeconds', () => {
 		const env = baseEnv({
+			N8N_INSTANCE_AI_SANDBOX_PROVIDER: 'daytona',
 			DAYTONA_API_URL: 'https://app.daytona.io/api',
 			DAYTONA_API_KEY: 'dtn_xxx',
 			N8N_INSTANCE_AI_SANDBOX_CREATE_TIMEOUT_SECONDS: 'not-a-number',
@@ -62,19 +104,24 @@ describe('resolveSandboxConfig', () => {
 	});
 
 	it('throws a clear error when DAYTONA_API_KEY is missing', () => {
-		const env = baseEnv({ DAYTONA_API_URL: 'https://app.daytona.io/api' });
+		const env = baseEnv({
+			N8N_INSTANCE_AI_SANDBOX_PROVIDER: 'daytona',
+			DAYTONA_API_URL: 'https://app.daytona.io/api',
+		});
 		expect(() => resolveSandboxConfig(env)).toThrow(/DAYTONA_API_KEY/);
 	});
 
 	it('throws a clear error when DAYTONA_API_URL is missing', () => {
-		const env = baseEnv({ DAYTONA_API_KEY: 'dtn_xxx' });
+		const env = baseEnv({
+			N8N_INSTANCE_AI_SANDBOX_PROVIDER: 'daytona',
+			DAYTONA_API_KEY: 'dtn_xxx',
+		});
 		expect(() => resolveSandboxConfig(env)).toThrow(/DAYTONA_API_URL/);
 	});
 
-	it('returns a local config when provider=local', () => {
+	it('rejects local provider', () => {
 		const env = baseEnv({ N8N_INSTANCE_AI_SANDBOX_PROVIDER: 'local' });
-		const config = resolveSandboxConfig(env);
-		expect(config).toEqual({ enabled: true, provider: 'local', timeout: 300_000 });
+		expect(() => resolveSandboxConfig(env)).toThrow(/Invalid sandbox provider/);
 	});
 
 	it('returns an n8n-sandbox config when provider=n8n-sandbox with serviceUrl', () => {
@@ -93,8 +140,8 @@ describe('resolveSandboxConfig', () => {
 		});
 	});
 
-	it('throws a clear error when provider=n8n-sandbox without serviceUrl', () => {
-		const env = baseEnv({ N8N_INSTANCE_AI_SANDBOX_PROVIDER: 'n8n-sandbox' });
+	it('throws a clear error when default n8n-sandbox provider has no serviceUrl', () => {
+		const env = baseEnv();
 		expect(() => resolveSandboxConfig(env)).toThrow(/N8N_SANDBOX_SERVICE_URL/);
 	});
 

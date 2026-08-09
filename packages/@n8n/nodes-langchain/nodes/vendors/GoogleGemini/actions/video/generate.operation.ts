@@ -130,6 +130,11 @@ export const description = updateDisplayOptions(displayOptions, properties);
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
 	const model = this.getNodeParameter('modelId', i, '', { extractValue: true }) as string;
 	const prompt = this.getNodeParameter('prompt', i, '') as string;
+	if (!prompt.trim()) {
+		throw new NodeOperationError(this.getNode(), 'A non-empty prompt is required.', {
+			itemIndex: i,
+		});
+	}
 	const returnAs = this.getNodeParameter('returnAs', i, 'video');
 	const options = this.getNodeParameter('options', i, {});
 	const binaryPropertyOutput = this.getNodeParameter(

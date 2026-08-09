@@ -1,10 +1,10 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { FolderRepository, User } from '@n8n/db';
 
-import { createSearchFoldersTool } from '../tools/search-folders.tool';
-
 import { ProjectService } from '@/services/project.service.ee';
 import { Telemetry } from '@/telemetry';
+
+import { createSearchFoldersTool } from '../tools/search-folders.tool';
 
 describe('search-folders MCP tool', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });
@@ -19,17 +19,17 @@ describe('search-folders MCP tool', () => {
 		const projectAccessible = overrides?.projectAccessible ?? true;
 
 		const folderRepository = mockInstance(FolderRepository, {
-			getManyAndCount: jest.fn().mockResolvedValue([folders, count]),
+			getManyAndCount: vi.fn().mockResolvedValue([folders, count]),
 		});
 
 		const projectService = mockInstance(ProjectService, {
-			getProjectWithScope: jest
+			getProjectWithScope: vi
 				.fn()
 				.mockResolvedValue(projectAccessible ? { id: 'proj-1', type: 'team' } : null),
 		});
 
 		const telemetry = mockInstance(Telemetry, {
-			track: jest.fn(),
+			track: vi.fn(),
 		});
 
 		return { folderRepository, projectService, telemetry };
@@ -142,12 +142,12 @@ describe('search-folders MCP tool', () => {
 
 	test('handles errors', async () => {
 		const folderRepository = mockInstance(FolderRepository, {
-			getManyAndCount: jest.fn().mockRejectedValue(new Error('DB error')),
+			getManyAndCount: vi.fn().mockRejectedValue(new Error('DB error')),
 		});
 		const projectService = mockInstance(ProjectService, {
-			getProjectWithScope: jest.fn().mockResolvedValue({ id: 'proj-1', type: 'team' }),
+			getProjectWithScope: vi.fn().mockResolvedValue({ id: 'proj-1', type: 'team' }),
 		});
-		const telemetry = mockInstance(Telemetry, { track: jest.fn() });
+		const telemetry = mockInstance(Telemetry, { track: vi.fn() });
 
 		const tool = createSearchFoldersTool(
 			user,

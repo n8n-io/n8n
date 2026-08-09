@@ -6,6 +6,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { ImapSimple } from './imap-simple';
 import { PartData } from './part-data';
+import type { MessagePart } from './types';
 
 type MockImap = EventEmitter & {
 	connect: Mocked<() => unknown>;
@@ -124,6 +125,32 @@ describe('ImapSimple', () => {
 	});
 
 	describe('search', () => {
+		it('should not throw if fetch emits error after end', async () => {
+			const { imapSimple, mockImap } = createImap();
+
+			const fetchEmitter = new EventEmitter();
+			vi.mocked(mockImap.search).mockImplementation((_criteria, onResult) =>
+				onResult(null as unknown as Error, [1]),
+			);
+			mockImap.fetch = vi.fn(() => fetchEmitter);
+
+			const searchPromise = imapSimple.search(['UNSEEN'], { bodies: ['BODY'] });
+
+			const messageEmitter = new EventEmitter();
+			const bodyStream = Readable.from('body');
+			fetchEmitter.emit('message', messageEmitter, 1);
+			messageEmitter.emit('body', bodyStream, { which: 'TEXT', size: 4 });
+			messageEmitter.emit('attributes', { uid: 1 });
+			await new Promise((resolve) => bodyStream.on('end', resolve));
+			messageEmitter.emit('end');
+			fetchEmitter.emit('end');
+
+			await searchPromise;
+
+			// Error after fetchOnEnd must not throw an uncaught exception
+			expect(() => fetchEmitter.emit('error', new Error('late error'))).not.toThrow();
+		});
+
 		it('should resolve with messages returned from fetch', async () => {
 			const { imapSimple, mockImap } = createImap();
 
@@ -183,6 +210,31 @@ describe('ImapSimple', () => {
 	});
 
 	describe('getPartData', () => {
+		it('should not throw if fetch emits error after end', async () => {
+			const { imapSimple, mockImap } = createImap();
+
+			const fetchEmitter = new EventEmitter();
+			mockImap.fetch = vi.fn(() => fetchEmitter);
+
+			const message = { attributes: { uid: 123 } };
+			const part = mock<MessagePart>({ partID: '1.2', encoding: 'BASE64' });
+			const partDataPromise = imapSimple.getPartData(mock(message), part);
+
+			const messageEmitter = new EventEmitter();
+			const bodyStream = Readable.from('body');
+			fetchEmitter.emit('message', messageEmitter);
+			messageEmitter.emit('body', bodyStream, { which: part.partID, size: 4 });
+			messageEmitter.emit('attributes', {});
+			await new Promise((resolve) => bodyStream.on('end', resolve));
+			messageEmitter.emit('end');
+			fetchEmitter.emit('end');
+
+			await partDataPromise;
+
+			// Error after fetchOnEnd must not throw an uncaught exception
+			expect(() => fetchEmitter.emit('error', new Error('late error'))).not.toThrow();
+		});
+
 		it('should return decoded part data', async () => {
 			const { imapSimple, mockImap } = createImap();
 
@@ -190,9 +242,9 @@ describe('ImapSimple', () => {
 			mockImap.fetch = vi.fn(() => fetchEmitter);
 
 			const message = { attributes: { uid: 123 } };
-			const part = { partID: '1.2', encoding: 'BASE64' };
+			const part = mock<MessagePart>({ partID: '1.2', encoding: 'BASE64' });
 
-			const partDataPromise = imapSimple.getPartData(mock(message), mock(part));
+			const partDataPromise = imapSimple.getPartData(mock(message), part);
 
 			const body = 'encoded-body';
 			const messageEmitter = new EventEmitter();
@@ -212,6 +264,37 @@ describe('ImapSimple', () => {
 
 			const result = await partDataPromise;
 			expect(PartData.fromData).toHaveBeenCalledWith('encoded-body', 'BASE64');
+			expect(result).toBe('decoded');
+		});
+
+		it('should default to 7BIT when the part encoding is missing', async () => {
+			const { imapSimple, mockImap } = createImap();
+
+			const fetchEmitter = new EventEmitter();
+			mockImap.fetch = vi.fn(() => fetchEmitter);
+
+			const message = { attributes: { uid: 123 } };
+			const part = mock<MessagePart>({ partID: '1.2', encoding: null });
+
+			const partDataPromise = imapSimple.getPartData(mock(message), part);
+
+			const body = 'plain-body';
+			const messageEmitter = new EventEmitter();
+			const bodyStream = Readable.from(body);
+
+			fetchEmitter.emit('message', messageEmitter);
+			messageEmitter.emit('body', bodyStream, {
+				which: part.partID,
+				size: Buffer.byteLength(body),
+			});
+			messageEmitter.emit('attributes', {});
+			await new Promise((resolve) => bodyStream.on('end', resolve));
+			messageEmitter.emit('end');
+
+			fetchEmitter.emit('end');
+
+			const result = await partDataPromise;
+			expect(PartData.fromData).toHaveBeenCalledWith('plain-body', '7BIT');
 			expect(result).toBe('decoded');
 		});
 	});

@@ -1,4 +1,8 @@
 name: 'Util: Claude Task Runner'
+# The `task` input is deliberately not in the run name: dispatchers pass large
+# multiline payloads (e.g. a full Linear issue as JSON) that must not appear in
+# the publicly visible run list.
+run-name: 'Util: Claude Task Runner (model=${{ inputs.model }}, ref=${{ inputs.ref }})'
 
 on:
   workflow_dispatch:
@@ -76,10 +80,13 @@ jobs:
           git checkout -b "$BRANCH_NAME"
 
       - name: Configure git author
+        env:
+          GH_ACTOR: ${{ github.actor }}
+          GH_ACTOR_ID: ${{ github.actor_id }}
         run: |
-          git config user.name "${{ github.actor }}"
-          git config user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
-          echo "Git author configured as: ${{ github.actor }}"
+          git config user.name "$GH_ACTOR"
+          git config user.email "$GH_ACTOR_ID+$GH_ACTOR@users.noreply.github.com"
+          echo "Git author configured as: $GH_ACTOR"
 
       - name: Prepare Claude prompt
         env:
@@ -131,8 +138,8 @@ jobs:
           prompt: ${{ env.CLAUDE_PROMPT }}
           show_full_output: ${{ inputs.suppress_output != true }}
           display_report: false
-          plugin_marketplaces: "./.claude/plugins/n8n"
-          plugins: "n8n@n8n"
+          plugin_marketplaces: './.claude/plugins/n8n'
+          plugins: 'n8n@n8n'
           settings: |
             {
               "permissions": {

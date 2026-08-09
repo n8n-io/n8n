@@ -1,6 +1,7 @@
 import * as getMany from '../../../actions/file/getMany.operation';
 import * as transport from '../../../transport';
 import { createMockExecuteFunction } from '../helpers';
+import type { Mock } from 'vitest';
 
 const baseNodeParameters = {
 	resource: 'file',
@@ -43,25 +44,21 @@ const mockPaginatedResponse = {
 	},
 };
 
-jest.mock('../../../transport', () => {
-	const originalModule = jest.requireActual<typeof transport>('../../../transport');
+vi.mock('../../../transport', async () => {
+	const originalModule = await vi.importActual<typeof transport>('../../../transport');
 	return {
 		...originalModule,
-		apiRequest: jest.fn(),
+		apiRequest: vi.fn(),
 	};
 });
 
 describe('Test Airtop, get many files operation', () => {
-	afterAll(() => {
-		jest.unmock('../../../transport');
-	});
-
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should get all files successfully', async () => {
-		const apiRequestMock = transport.apiRequest as jest.Mock;
+		const apiRequestMock = transport.apiRequest as Mock;
 		apiRequestMock.mockResolvedValueOnce(mockFilesResponse);
 
 		const result = await getMany.execute.call(createMockExecuteFunction(baseNodeParameters), 0);
@@ -87,7 +84,7 @@ describe('Test Airtop, get many files operation', () => {
 	});
 
 	it('should handle limited results', async () => {
-		const apiRequestMock = transport.apiRequest as jest.Mock;
+		const apiRequestMock = transport.apiRequest as Mock;
 		apiRequestMock.mockResolvedValueOnce(mockPaginatedResponse);
 
 		const nodeParameters = {

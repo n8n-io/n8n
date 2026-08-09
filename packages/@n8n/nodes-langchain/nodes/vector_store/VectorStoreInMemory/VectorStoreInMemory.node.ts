@@ -8,7 +8,7 @@ import {
 	type NodeParameterValueType,
 	type IExecuteFunctions,
 	type ISupplyDataFunctions,
-	ApplicationError,
+	UserError,
 } from 'n8n-workflow';
 
 import { createVectorStoreNode, MemoryVectorStoreManager } from '@n8n/ai-utilities';
@@ -163,7 +163,7 @@ export class VectorStoreInMemory extends createVectorStoreNode<MemoryVectorStore
 				payload: string | IDataObject | undefined,
 			): Promise<NodeParameterValueType> {
 				if (!payload || typeof payload === 'string') {
-					throw new ApplicationError('Invalid payload type');
+					throw new UserError('Invalid payload type');
 				}
 
 				const { name } = payload;

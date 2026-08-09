@@ -3,7 +3,7 @@
 //
 // Reads the same env vars production reads (N8N_INSTANCE_AI_SANDBOX_*,
 // DAYTONA_*, N8N_SANDBOX_SERVICE_*) and produces a SandboxConfig the
-// in-process eval harness can hand to BuilderSandboxFactory.
+// in-process eval harness can use to create the shared builder workspace.
 //
 // The sandbox is always on for evals — there is no opt-out. Missing
 // required env vars raise clear errors so misconfiguration shows up at
@@ -19,10 +19,10 @@ const DEFAULT_TIMEOUT_MS = 300_000;
  * than the SDK's 300s default; 900s avoids spurious eval-run failures.
  */
 const DEFAULT_DAYTONA_CREATE_TIMEOUT_SECONDS = 900;
-const VALID_PROVIDERS: SandboxProvider[] = ['daytona', 'local', 'n8n-sandbox'];
+const VALID_PROVIDERS: SandboxProvider[] = ['n8n-sandbox', 'daytona'];
 
 export function resolveSandboxConfig(env: NodeJS.ProcessEnv): SandboxConfig {
-	const providerRaw = env.N8N_INSTANCE_AI_SANDBOX_PROVIDER ?? 'daytona';
+	const providerRaw = env.N8N_INSTANCE_AI_SANDBOX_PROVIDER ?? 'n8n-sandbox';
 	if (!VALID_PROVIDERS.includes(providerRaw as SandboxProvider)) {
 		throw new Error(
 			`Invalid sandbox provider "${providerRaw}". Set N8N_INSTANCE_AI_SANDBOX_PROVIDER to one of: ${VALID_PROVIDERS.join(', ')}.`,
@@ -45,6 +45,7 @@ export function resolveSandboxConfig(env: NodeJS.ProcessEnv): SandboxConfig {
 			);
 		}
 		const image = env.N8N_INSTANCE_AI_SANDBOX_IMAGE;
+		const namePrefix = env.N8N_INSTANCE_AI_SANDBOX_NAME_PREFIX;
 		const createTimeoutSeconds =
 			parsePositiveInt(
 				env.N8N_INSTANCE_AI_SANDBOX_CREATE_TIMEOUT_SECONDS,
@@ -58,6 +59,7 @@ export function resolveSandboxConfig(env: NodeJS.ProcessEnv): SandboxConfig {
 			timeout,
 			createTimeoutSeconds,
 			...(image ? { image } : {}),
+			...(namePrefix ? { namePrefix } : {}),
 		};
 	}
 
@@ -65,7 +67,7 @@ export function resolveSandboxConfig(env: NodeJS.ProcessEnv): SandboxConfig {
 		const serviceUrl = env.N8N_SANDBOX_SERVICE_URL;
 		if (!serviceUrl) {
 			throw new Error(
-				'N8N_SANDBOX_SERVICE_URL is required for sandbox provider "n8n-sandbox". Set it to the service URL, or pick a different provider via N8N_INSTANCE_AI_SANDBOX_PROVIDER.',
+				'N8N_SANDBOX_SERVICE_URL is required for sandbox provider "n8n-sandbox". Set it to the service URL.',
 			);
 		}
 		const apiKey = env.N8N_SANDBOX_SERVICE_API_KEY;
@@ -78,7 +80,10 @@ export function resolveSandboxConfig(env: NodeJS.ProcessEnv): SandboxConfig {
 		};
 	}
 
-	return { enabled: true, provider: 'local', timeout };
+	const exhaustiveProvider: never = provider;
+	throw new Error(
+		`Invalid sandbox provider "${String(exhaustiveProvider)}". Set N8N_INSTANCE_AI_SANDBOX_PROVIDER to one of: ${VALID_PROVIDERS.join(', ')}.`,
+	);
 }
 
 function parseTimeout(raw: string | undefined): number | undefined {

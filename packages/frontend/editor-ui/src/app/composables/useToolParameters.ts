@@ -7,11 +7,8 @@ import {
 	traverseNodeParameters,
 } from 'n8n-workflow';
 import { computed, reactive, ref, watch, type Ref } from 'vue';
-import { useWorkflowsStore } from '../stores/workflows.store';
-import {
-	useWorkflowDocumentStore,
-	createWorkflowDocumentId,
-} from '@/app/stores/workflowDocument.store';
+import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useNodeTypesStore } from '../stores/nodeTypes.store';
 import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
@@ -30,14 +27,12 @@ interface GetToolParametersProps {
 
 export function useToolParameters({ node }: GetToolParametersProps) {
 	const parameters = ref<IFormInput[]>([]);
-	const workflowsStore = useWorkflowsStore();
+	const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
 	const projectsStore = useProjectsStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const agentRequestStore = useAgentRequestStore();
 
-	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
-	);
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 
 	const selectedToolMap = reactive<Record<string, string | undefined>>({});
 	const error = ref<Error | undefined>(undefined);
@@ -45,7 +40,7 @@ export function useToolParameters({ node }: GetToolParametersProps) {
 	const nodeRunData = computed(() => {
 		if (!node.value) return undefined;
 
-		const workflowExecutionData = workflowsStore.getWorkflowExecution;
+		const workflowExecutionData = workflowExecutionStateStore.value.activeExecution;
 		const lastRunData = workflowExecutionData?.data?.resultData.runData[node.value?.name];
 		if (!lastRunData) return undefined;
 		return lastRunData[0];
@@ -114,7 +109,7 @@ export function useToolParameters({ node }: GetToolParametersProps) {
 			currentNodeParameters: newNode.parameters,
 			credentials: newNode.credentials,
 			projectId: projectsStore.currentProjectId,
-			workflowId: workflowsStore.workflowId,
+			workflowId: workflowDocumentStore.value.workflowId,
 		});
 
 		// Load available tools
@@ -271,7 +266,7 @@ export function useToolParameters({ node }: GetToolParametersProps) {
 			const initialValue = inputQuery?.[value.key]
 				? inputQuery[value.key]
 				: (agentRequestStore.getQueryValue(
-						workflowsStore.workflowId,
+						workflowDocumentStore.value.workflowId,
 						toolNode.id,
 						toolNode.name,
 						value.key,
@@ -301,7 +296,7 @@ export function useToolParameters({ node }: GetToolParametersProps) {
 			const queryValue =
 				inputQuery ??
 				agentRequestStore.getQueryValue(
-					workflowsStore.workflowId,
+					workflowDocumentStore.value.workflowId,
 					toolNode.id,
 					toolNode.name,
 					key,

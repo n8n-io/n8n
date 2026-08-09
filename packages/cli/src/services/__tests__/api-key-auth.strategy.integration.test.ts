@@ -1,14 +1,16 @@
+import { Logger } from '@n8n/backend-common';
 import { testDb } from '@n8n/backend-test-utils';
 import type { AuthenticatedRequest, User } from '@n8n/db';
 import { ApiKey, ApiKeyRepository, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { randomUUID } from 'crypto';
-import { mock } from 'jest-mock-extended';
 import { DateTime } from 'luxon';
 import { randomString } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { TOKEN_EXCHANGE_ISSUER } from '@/modules/token-exchange/token-exchange.types';
 import { createOwnerWithApiKey } from '@test-integration/db/users';
+import { retryUntil } from '@test-integration/retry-until';
 
 import { ApiKeyAuthStrategy } from '../api-key-auth.strategy';
 import { JwtService } from '../jwt.service';
@@ -55,7 +57,11 @@ describe('ApiKeyAuthStrategy', () => {
 	beforeAll(async () => {
 		await testDb.init();
 		jwtService = Container.get(JwtService);
-		strategy = new ApiKeyAuthStrategy(Container.get(ApiKeyRepository), jwtService);
+		strategy = new ApiKeyAuthStrategy(
+			Container.get(ApiKeyRepository),
+			jwtService,
+			Container.get(Logger),
+		);
 	});
 
 	beforeEach(async () => {
@@ -121,12 +127,50 @@ describe('ApiKeyAuthStrategy', () => {
 			expect(await strategy.buildTokenGrant(disabledOwner.apiKeys[0].apiKey)).toBe(false);
 		});
 
+		describe('lastUsedAt tracking', () => {
+			it('updates lastUsedAt on the API key record after a successful auth', async () => {
+				const owner = await createOwnerWithApiKey();
+				const [{ apiKey, id: apiKeyId }] = owner.apiKeys;
+				const repo = Container.get(ApiKeyRepository);
+
+				expect((await repo.findOneByOrFail({ id: apiKeyId })).lastUsedAt).toBeNull();
+
+				const grant = await strategy.buildTokenGrant(apiKey);
+				expect(grant).toBeTruthy();
+
+				const updated = await retryUntil(async () => {
+					const record = await repo.findOneByOrFail({ id: apiKeyId });
+					expect(record.lastUsedAt).toBeInstanceOf(Date);
+					return record;
+				});
+				expect(updated.lastUsedAt).toBeInstanceOf(Date);
+			});
+
+			it('skips the lastUsedAt update while still within the throttle window', async () => {
+				const owner = await createOwnerWithApiKey();
+				const [{ apiKey, id: apiKeyId }] = owner.apiKeys;
+				const repo = Container.get(ApiKeyRepository);
+
+				const recent = new Date();
+				await repo.update({ id: apiKeyId }, { lastUsedAt: recent });
+
+				const updateSpy = vi.spyOn(repo, 'update');
+
+				const grant = await strategy.buildTokenGrant(apiKey);
+				expect(grant).toBeTruthy();
+				await new Promise((resolve) => setImmediate(resolve));
+
+				expect(updateSpy).not.toHaveBeenCalled();
+				updateSpy.mockRestore();
+			});
+		});
+
 		it('rethrows non-TokenExpiredError from JWT verification', async () => {
 			const owner = await createOwnerWithApiKey();
 			const [{ apiKey }] = owner.apiKeys;
 
 			const verifyError = new Error('Unexpected JWT error');
-			jest.spyOn(jwtService, 'verify').mockImplementationOnce(() => {
+			vi.spyOn(jwtService, 'verify').mockImplementationOnce(() => {
 				throw verifyError;
 			});
 

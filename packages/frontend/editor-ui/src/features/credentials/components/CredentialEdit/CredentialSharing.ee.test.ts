@@ -2,10 +2,10 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import CredentialSharing from './CredentialSharing.ee.vue';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
-import { useRolesStore } from '@/app/stores/roles.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useRolesStore } from '@n8n/stores/roles.store';
 import type { ICredentialsResponse } from '../../credentials.types';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { getDropdownItems } from '@/__tests__/utils';
@@ -146,6 +146,8 @@ describe('CredentialSharing.ee', () => {
 				customRoles: false,
 				personalSpacePolicy: false,
 				dataRedaction: false,
+				otelCustomSpanAttributes: false,
+				workflowReviews: false,
 			});
 	});
 
@@ -394,6 +396,26 @@ describe('CredentialSharing.ee', () => {
 
 			// Team project shows the team sharee message
 			expect(getByText(/shared by team project/i)).toBeInTheDocument();
+		});
+	});
+
+	describe('dynamic credentials', () => {
+		it('should allow sharing a private credential', () => {
+			const credential = createCredential();
+			const { queryByText, getByTestId } = renderComponent({
+				props: {
+					credentialId: credential.id,
+					credentialData: {},
+					credentialPermissions: { share: true },
+					credential,
+					modalBus: createEventBus(),
+				},
+			});
+
+			// Sharing is no longer blocked: the add-share input is available...
+			expect(getByTestId('project-sharing-select')).toBeInTheDocument();
+			// ...and no "not supported" notice is shown
+			expect(queryByText(/not supported/i)).not.toBeInTheDocument();
 		});
 	});
 });

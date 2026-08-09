@@ -1,14 +1,16 @@
-import { ChatTriggerConfig } from '@n8n/config';
+import { ChatTriggerConfig } from '@n8n/config/src';
 import { Container } from '@n8n/di';
-import { jest } from '@jest/globals';
 import type { Request, Response } from 'express';
-import { mock } from 'jest-mock-extended';
 import type { INode, IWebhookFunctions } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { ChatTrigger } from '../ChatTrigger.node';
+import { ChatTriggerAuthorizationError } from '../error';
+import { validateAuth } from '../GenericFunctions';
+import type { LoadPreviousSessionChatOption } from '../types';
 
-jest.mock('../GenericFunctions', () => ({
-	validateAuth: jest.fn().mockResolvedValue(undefined as never),
+vi.mock('../GenericFunctions', () => ({
+	validateAuth: vi.fn(),
 }));
 
 const INBOUND_TRIGGER_AUTHENTICATION_BUILDER_HINT =
@@ -22,10 +24,11 @@ describe('ChatTrigger Node', () => {
 	let chatTriggerConfig: ChatTriggerConfig;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
-		chatTrigger = new ChatTrigger();
 		chatTriggerConfig = new ChatTriggerConfig();
+		vi.mocked(Container.get).mockReturnValue(chatTriggerConfig as never);
+		chatTrigger = new ChatTrigger();
 		Container.set(ChatTriggerConfig, chatTriggerConfig);
 
 		mockResponse.status.mockReturnValue(mockResponse);
@@ -37,9 +40,9 @@ describe('ChatTrigger Node', () => {
 		// Provide socket methods required by the streaming keepalive configuration
 		mockRequest.socket = {
 			...mockRequest.socket,
-			setTimeout: jest.fn(),
-			setNoDelay: jest.fn(),
-			setKeepAlive: jest.fn(),
+			setTimeout: vi.fn(),
+			setNoDelay: vi.fn(),
+			setKeepAlive: vi.fn(),
 		} as unknown as Request['socket'];
 
 		mockContext.getRequestObject.mockReturnValue(mockRequest);
@@ -53,7 +56,7 @@ describe('ChatTrigger Node', () => {
 		mockContext.getWebhookName.mockReturnValue('default');
 		mockContext.getBodyData.mockReturnValue({ message: 'Hello' });
 		mockContext.helpers = {
-			returnJsonArray: jest.fn().mockReturnValue([]),
+			returnJsonArray: vi.fn().mockReturnValue([]),
 		} as unknown as IWebhookFunctions['helpers'];
 		mockContext.getNodeParameter.mockImplementation(
 			(
@@ -71,15 +74,91 @@ describe('ChatTrigger Node', () => {
 	});
 
 	describe('description', () => {
-		it('should tell builders to keep inbound authentication disabled unless requested', () => {
+		beforeEach(() => {
+			mockContext.getBodyData.mockReturnValue({ action: 'loadPreviousSession' });
+		});
+
+		it('should tell builders to keep inbound authentication disabled unless requested', async () => {
+			// Call the webhook method
+			const result = await chatTrigger.webhook(mockContext);
+
+			// Verify the returned result contains empty data array
+			expect(result).toEqual({
+				webhookResponse: { data: [] },
+			});
+		});
+
+		it('should return empty array when loadPreviousSession is "notSupported"', async () => {
+			// Mock options with notSupported loadPreviousSession
+			mockContext.getNodeParameter.mockImplementation(
+				(
+					paramName: string,
+					defaultValue?: boolean | string | object,
+				): boolean | string | object | undefined => {
+					if (paramName === 'public') return true;
+					if (paramName === 'mode') return 'hostedChat';
+					if (paramName === 'options') return { loadPreviousSession: 'notSupported' };
+					return defaultValue;
+				},
+			);
+
+			// Call the webhook method
+			const result = await chatTrigger.webhook(mockContext);
+
+			// Verify the returned result contains empty data array
+			expect(result).toEqual({
+				webhookResponse: { data: [] },
+			});
+		});
+
+		it('should handle loadPreviousSession="memory" correctly', async () => {
 			const authParam = chatTrigger.description.properties.find(
 				(property) => property.name === 'authentication',
 			);
 
+			// Mock chat history data
+			const mockMessages = [
+				{ toJSON: () => ({ content: 'Message 1' }) },
+				{ toJSON: () => ({ content: 'Message 2' }) },
+			];
+
+			// Mock memory with chat history
+			const mockMemory = {
+				chatHistory: {
+					getMessages: vi.fn().mockReturnValueOnce(mockMessages),
+				},
+			};
+
+			// Mock options with memory loadPreviousSession
+			mockContext.getNodeParameter.mockImplementation(
+				(
+					paramName: string,
+					defaultValue?: boolean | string | object,
+				): boolean | string | object | undefined => {
+					if (paramName === 'public') return true;
+					if (paramName === 'mode') return 'hostedChat';
+					if (paramName === 'options')
+						return { loadPreviousSession: 'memory' as LoadPreviousSessionChatOption };
+					return defaultValue;
+				},
+			);
+
+			// Mock getInputConnectionData to return memory
+			mockContext.getInputConnectionData.mockResolvedValue(mockMemory);
+
+			// Call the webhook method
+			const result = await chatTrigger.webhook(mockContext);
+
+			// Verify the returned result contains messages from memory
+			expect(result).toEqual({
+				webhookResponse: {
+					data: [{ content: 'Message 1' }, { content: 'Message 2' }],
+				},
+			});
 			expect(authParam).toMatchObject({
 				default: 'none',
 				builderHint: {
-					message: INBOUND_TRIGGER_AUTHENTICATION_BUILDER_HINT,
+					propertyHint: INBOUND_TRIGGER_AUTHENTICATION_BUILDER_HINT,
 				},
 			});
 		});
@@ -218,6 +297,95 @@ describe('ChatTrigger Node', () => {
 				workflowData: expect.any(Array),
 				noWebhookResponse: true,
 			});
+		});
+
+		it('skips auth validation for manual (test) executions', async () => {
+			mockContext.getMode.mockReturnValue('manual');
+			mockContext.getNodeParameter.mockImplementation(
+				(
+					paramName: string,
+					defaultValue?: boolean | string | object,
+				): boolean | string | object | undefined => {
+					if (paramName === 'public') return true;
+					if (paramName === 'mode') return 'hostedChat';
+					if (paramName === 'options') return {};
+					if (paramName === 'availableInChat') return false;
+					if (paramName === 'authentication') return 'basicAuth';
+					return defaultValue;
+				},
+			);
+
+			const result = await chatTrigger.webhook(mockContext);
+
+			expect(validateAuth).not.toHaveBeenCalled();
+			expect(mockResponse.writeHead).not.toHaveBeenCalledWith(401, expect.anything());
+			expect(result).toEqual({
+				webhookResponse: { status: 200 },
+				workflowData: expect.any(Array),
+			});
+		});
+
+		it('still enforces auth validation for production executions', async () => {
+			mockContext.getMode.mockReturnValue('webhook');
+			mockContext.getNode.mockReturnValue({
+				name: 'Chat Trigger',
+				type: 'n8n-nodes-langchain.chatTrigger',
+				typeVersion: 1,
+				webhookId: 'abc123',
+			} as INode);
+			mockContext.getNodeParameter.mockImplementation(
+				(
+					paramName: string,
+					defaultValue?: boolean | string | object,
+				): boolean | string | object | undefined => {
+					if (paramName === 'public') return true;
+					if (paramName === 'mode') return 'hostedChat';
+					if (paramName === 'options') return {};
+					if (paramName === 'availableInChat') return false;
+					if (paramName === 'authentication') return 'basicAuth';
+					return defaultValue;
+				},
+			);
+			vi.mocked(validateAuth).mockRejectedValueOnce(new ChatTriggerAuthorizationError(401));
+
+			const result = await chatTrigger.webhook(mockContext);
+
+			expect(validateAuth).toHaveBeenCalledWith(mockContext);
+			expect(mockResponse.writeHead).toHaveBeenCalledWith(401, {
+				'www-authenticate': 'Basic realm="Webhook abc123"',
+			});
+			expect(result).toEqual({ noWebhookResponse: true });
+		});
+
+		it('falls back to the plain realm when the node has no webhookId', async () => {
+			mockContext.getMode.mockReturnValue('webhook');
+			mockContext.getNode.mockReturnValue({
+				name: 'Chat Trigger',
+				type: 'n8n-nodes-langchain.chatTrigger',
+				typeVersion: 1,
+			} as INode);
+			mockContext.getNodeParameter.mockImplementation(
+				(
+					paramName: string,
+					defaultValue?: boolean | string | object,
+				): boolean | string | object | undefined => {
+					if (paramName === 'public') return true;
+					if (paramName === 'mode') return 'hostedChat';
+					if (paramName === 'options') return {};
+					if (paramName === 'availableInChat') return false;
+					if (paramName === 'authentication') return 'basicAuth';
+					return defaultValue;
+				},
+			);
+			vi.mocked(validateAuth).mockRejectedValueOnce(new ChatTriggerAuthorizationError(401));
+
+			const result = await chatTrigger.webhook(mockContext);
+
+			expect(validateAuth).toHaveBeenCalledWith(mockContext);
+			expect(mockResponse.writeHead).toHaveBeenCalledWith(401, {
+				'www-authenticate': 'Basic realm="Webhook"',
+			});
+			expect(result).toEqual({ noWebhookResponse: true });
 		});
 	});
 });

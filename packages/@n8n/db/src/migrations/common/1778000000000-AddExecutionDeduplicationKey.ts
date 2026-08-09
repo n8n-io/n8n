@@ -13,7 +13,9 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
  */
 export class AddExecutionDeduplicationKey1778000000000 implements ReversibleMigration {
 	async up({ schemaBuilder: { addColumns, column, createIndex } }: MigrationContext) {
-		await addColumns('execution_entity', [column('deduplicationKey').varchar(255)]);
+		await addColumns('execution_entity', [column('deduplicationKey').varchar(255)], {
+			recreatesOnSqlite: true,
+		});
 		// NOTE: partial unique index. Two inserts with the same non-null key race and the
 		// second fails, so duplicates can be detected. Null rows are excluded from the index
 		// entirely — executions without a dedupe key don't occupy index space and aren't
@@ -29,6 +31,6 @@ export class AddExecutionDeduplicationKey1778000000000 implements ReversibleMigr
 
 	async down({ schemaBuilder: { dropIndex, dropColumns } }: MigrationContext) {
 		await dropIndex('execution_entity', ['deduplicationKey']);
-		await dropColumns('execution_entity', ['deduplicationKey']);
+		await dropColumns('execution_entity', ['deduplicationKey'], { recreatesOnSqlite: true });
 	}
 }

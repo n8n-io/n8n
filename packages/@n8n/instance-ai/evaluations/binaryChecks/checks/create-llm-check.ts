@@ -2,24 +2,22 @@ import type { Agent } from '@n8n/agents';
 
 import { createEvalAgent, extractText } from '../../../src/utils/eval-agents';
 import type { WorkflowResponse } from '../../clients/n8n-client';
-import type { BinaryCheck, BinaryCheckContext } from '../types';
+import { parseJudgeVerdict, REASONING_FIRST_SUFFIX } from '../../utils/llm-judge';
+import type { BinaryCheck, BinaryCheckContext, CheckDimension } from '../types';
 
-const DEFAULT_TIMEOUT_MS = 30_000;
+// Headroom for the multi-turn honesty check, which reasons over every claim across all turns.
+const DEFAULT_TIMEOUT_MS = 60_000;
 
-const REASONING_FIRST_SUFFIX = `
-
-IMPORTANT: Write your reasoning FIRST, then decide pass or fail. Be concise — focus only on critical issues.
-
-Respond with a JSON object (inside a markdown code fence) with exactly two fields:
-- "reasoning": brief analysis (max 3-4 sentences)
-- "pass": true or false`;
-
-const FENCED_JSON = /```(?:json)?\s*\n?([\s\S]*?)```/;
-const BARE_JSON_OBJECT = /\{[\s\S]*\}/;
+function isLlmCheckTimeout(error: unknown, checkName: string): error is Error {
+	return (
+		error instanceof Error && error.message.startsWith(`LLM check "${checkName}" timed out after `)
+	);
+}
 
 interface LlmCheckOptions {
 	name: string;
 	description: string;
+	dimension: CheckDimension;
 	systemPrompt: string;
 	humanTemplate: string;
 	/**
@@ -27,36 +25,6 @@ interface LlmCheckOptions {
 	 * or undefined to proceed with evaluation.
 	 */
 	skipIf?: (workflow: WorkflowResponse, ctx: BinaryCheckContext) => string | undefined;
-}
-
-function tryParseJudgeResult(jsonStr: string): { reasoning: string; pass: boolean } | undefined {
-	try {
-		const parsed: unknown = JSON.parse(jsonStr);
-		return isJudgeResult(parsed) ? parsed : undefined;
-	} catch {
-		return undefined;
-	}
-}
-
-/**
- * Parse a `{ reasoning: string, pass: boolean }` object from LLM text output.
- * Tries fenced JSON first, then raw JSON extraction.
- */
-function parseJudgeResult(text: string): { reasoning: string; pass: boolean } | undefined {
-	const fenceMatch = text.match(FENCED_JSON);
-	const fenced = fenceMatch
-		? tryParseJudgeResult(fenceMatch[1].trim())
-		: tryParseJudgeResult(text.trim());
-	if (fenced) return fenced;
-
-	const objectMatch = text.match(BARE_JSON_OBJECT);
-	return objectMatch ? tryParseJudgeResult(objectMatch[0]) : undefined;
-}
-
-function isJudgeResult(value: unknown): value is { reasoning: string; pass: boolean } {
-	if (typeof value !== 'object' || value === null) return false;
-	if (!('pass' in value) || !('reasoning' in value)) return false;
-	return typeof value.pass === 'boolean' && typeof value.reasoning === 'string';
 }
 
 // Cache agents across check invocations to avoid rebuilding the provider +
@@ -87,15 +55,16 @@ export function createLlmCheck(options: LlmCheckOptions): BinaryCheck {
 		name: options.name,
 		description: options.description,
 		kind: 'llm',
+		dimension: options.dimension,
 		async run(workflow: WorkflowResponse, ctx: BinaryCheckContext) {
 			if (!ctx.modelId) {
-				return { pass: true, comment: 'Skipped: no modelId in context' };
+				return { pass: true, applicable: false, comment: 'Skipped: no modelId in context' };
 			}
 
 			if (options.skipIf) {
 				const skipMessage = options.skipIf(workflow, ctx);
 				if (skipMessage) {
-					return { pass: true, comment: skipMessage };
+					return { pass: true, applicable: false, comment: skipMessage };
 				}
 			}
 
@@ -105,7 +74,7 @@ export function createLlmCheck(options: LlmCheckOptions): BinaryCheck {
 				.replace('{agentTextResponse}', ctx.agentTextResponse ?? '')
 				.replace(
 					'{workflowBefore}',
-					ctx.existingWorkflow ? JSON.stringify(ctx.existingWorkflow, null, 2) : '{}',
+					ctx.workflowBefore ? JSON.stringify(ctx.workflowBefore, null, 2) : '{}',
 				);
 
 			const agent = getOrCreateAgent(options.name, ctx.modelId, systemPrompt);
@@ -116,29 +85,44 @@ export function createLlmCheck(options: LlmCheckOptions): BinaryCheck {
 				providerOptions: { anthropic: { maxTokens: 8_192 } },
 			});
 
-			let timeoutId: ReturnType<typeof setTimeout>;
+			let timeoutId: ReturnType<typeof setTimeout> | undefined;
 
-			const result = await Promise.race([
-				resultPromise,
-				new Promise<never>((_, reject) => {
-					timeoutId = setTimeout(
-						() =>
-							reject(
-								new Error(`LLM check "${options.name}" timed out after ${String(timeoutMs)}ms`),
-							),
-						timeoutMs,
-					);
-				}),
-			]).finally(() => {
-				clearTimeout(timeoutId);
-			});
+			let result: Awaited<typeof resultPromise>;
+			try {
+				result = await Promise.race([
+					resultPromise,
+					new Promise<never>((_, reject) => {
+						timeoutId = setTimeout(
+							() =>
+								reject(
+									new Error(`LLM check "${options.name}" timed out after ${String(timeoutMs)}ms`),
+								),
+							timeoutMs,
+						);
+					}),
+				]);
+			} catch (error) {
+				if (isLlmCheckTimeout(error, options.name)) {
+					// Timeouts are measurement failures, not inapplicability — report
+					// as errored so they stay out of both pass-rate and N/A counts.
+					return { pass: false, errored: true, comment: error.message };
+				}
+				throw error;
+			} finally {
+				if (timeoutId) clearTimeout(timeoutId);
+			}
 
 			const text = extractText(result);
-			const parsed = parseJudgeResult(text);
+			const parsed = parseJudgeVerdict(text);
 
 			if (!parsed) {
+				// Same class as a timeout above: the judge never returned a verdict, so
+				// there is nothing to score. Without `errored` this counts as a real
+				// failure and reads as a defect in the workflow — the raw text is often
+				// a markdown analysis that AGREED with the workflow.
 				return {
 					pass: false,
+					errored: true,
 					comment: `Failed to parse LLM response. Raw (first 500 chars): ${text.slice(0, 500)}`,
 				};
 			}

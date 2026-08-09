@@ -1,19 +1,20 @@
-import { mock, mockDeep } from 'jest-mock-extended';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
+import type { Mock, Mocked } from 'vitest';
+import { mock, mockDeep } from 'vitest-mock-extended';
 
 import * as binaryDataHelpers from '../../../../helpers/binary-data';
 import type { ChatResponse } from '../../../../helpers/interfaces';
 import * as transport from '../../../../transport';
 import { execute } from '../../../../v2/actions/image/analyze.operation';
 
-jest.mock('../../../../helpers/binary-data');
-jest.mock('../../../../transport');
+vi.mock('../../../../helpers/binary-data');
+vi.mock('../../../../transport');
 
 describe('Image Analyze Operation', () => {
-	let mockExecuteFunctions: jest.Mocked<IExecuteFunctions>;
+	let mockExecuteFunctions: Mocked<IExecuteFunctions>;
 	let mockNode: INode;
-	const apiRequestSpy = jest.spyOn(transport, 'apiRequest');
-	const getBinaryDataFileSpy = jest.spyOn(binaryDataHelpers, 'getBinaryDataFile');
+	const apiRequestSpy = vi.spyOn(transport, 'apiRequest');
+	const getBinaryDataFileSpy = vi.spyOn(binaryDataHelpers, 'getBinaryDataFile');
 
 	beforeEach(() => {
 		mockExecuteFunctions = mockDeep<IExecuteFunctions>();
@@ -27,11 +28,49 @@ describe('Image Analyze Operation', () => {
 		});
 
 		mockExecuteFunctions.getNode.mockReturnValue(mockNode);
-		mockExecuteFunctions.helpers.binaryToBuffer = jest.fn();
+		mockExecuteFunctions.helpers.binaryToBuffer = vi.fn();
 	});
 
 	afterEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
+	});
+
+	describe('empty text validation', () => {
+		it('should throw error when text is empty', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				const params = {
+					modelId: 'gpt-4o',
+					text: '',
+					inputType: 'url',
+					imageUrls: 'https://example.com/image.jpg',
+					simplify: true,
+					options: {},
+				};
+				return params[paramName as keyof typeof params];
+			});
+
+			await expect(execute.call(mockExecuteFunctions, 0)).rejects.toThrow(
+				'A non-empty prompt is required.',
+			);
+		});
+
+		it('should throw error when text is whitespace-only', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				const params = {
+					modelId: 'gpt-4o',
+					text: '   ',
+					inputType: 'url',
+					imageUrls: 'https://example.com/image.jpg',
+					simplify: true,
+					options: {},
+				};
+				return params[paramName as keyof typeof params];
+			});
+
+			await expect(execute.call(mockExecuteFunctions, 0)).rejects.toThrow(
+				'A non-empty prompt is required.',
+			);
+		});
 	});
 
 	describe('successful execution with URL input', () => {
@@ -317,7 +356,7 @@ describe('Image Analyze Operation', () => {
 			} as ChatResponse;
 
 			getBinaryDataFileSpy.mockResolvedValue(mockBinaryFile);
-			(mockExecuteFunctions.helpers.binaryToBuffer as jest.Mock).mockResolvedValue(
+			(mockExecuteFunctions.helpers.binaryToBuffer as Mock).mockResolvedValue(
 				mockBinaryFile.fileContent,
 			);
 			apiRequestSpy.mockResolvedValue(mockResponse);
@@ -400,7 +439,7 @@ describe('Image Analyze Operation', () => {
 			getBinaryDataFileSpy
 				.mockResolvedValueOnce(mockBinaryFile1)
 				.mockResolvedValueOnce(mockBinaryFile2);
-			(mockExecuteFunctions.helpers.binaryToBuffer as jest.Mock)
+			(mockExecuteFunctions.helpers.binaryToBuffer as Mock)
 				.mockResolvedValueOnce(mockBinaryFile1.fileContent)
 				.mockResolvedValueOnce(mockBinaryFile2.fileContent);
 			apiRequestSpy.mockResolvedValue(mockResponse);
@@ -482,7 +521,7 @@ describe('Image Analyze Operation', () => {
 			getBinaryDataFileSpy
 				.mockResolvedValueOnce(mockBinaryFile1)
 				.mockResolvedValueOnce(mockBinaryFile2);
-			(mockExecuteFunctions.helpers.binaryToBuffer as jest.Mock)
+			(mockExecuteFunctions.helpers.binaryToBuffer as Mock)
 				.mockResolvedValueOnce(mockBinaryFile1.fileContent)
 				.mockResolvedValueOnce(mockBinaryFile2.fileContent);
 			apiRequestSpy.mockResolvedValue(mockResponse);
@@ -537,7 +576,7 @@ describe('Image Analyze Operation', () => {
 			});
 		});
 
-		it('should use default text when not specified', async () => {
+		it('should throw error when text is not specified (defaults to empty)', async () => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation(
 				(paramName: string, _index: number, defaultValue?: any) => {
 					const params: Record<string, any> = {
@@ -549,45 +588,16 @@ describe('Image Analyze Operation', () => {
 					};
 
 					if (paramName === 'text') {
-						return defaultValue; // Should return empty string as default
+						return defaultValue; // Returns empty string as default
 					}
 
 					return params[paramName];
 				},
 			);
 
-			const mockResponse = {
-				id: 'response-default-text',
-				status: 'completed',
-				output: [
-					{
-						type: 'message',
-						role: 'assistant',
-						content: [{ type: 'output_text', text: 'Analysis with default text.' }],
-					},
-				],
-			} as ChatResponse;
-
-			apiRequestSpy.mockResolvedValue(mockResponse);
-
-			await execute.call(mockExecuteFunctions, 0);
-
-			expect(apiRequestSpy).toHaveBeenCalledWith('POST', '/responses', {
-				body: expect.objectContaining({
-					input: [
-						{
-							role: 'user',
-							content: [
-								{
-									type: 'input_text',
-									text: '',
-								},
-								expect.any(Object),
-							],
-						},
-					],
-				}),
-			});
+			await expect(execute.call(mockExecuteFunctions, 0)).rejects.toThrow(
+				'A non-empty prompt is required.',
+			);
 		});
 
 		it('should use default maxTokens when not specified in options', async () => {

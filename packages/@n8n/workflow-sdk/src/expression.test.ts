@@ -30,11 +30,9 @@ describe('Expression System', () => {
 			expect(result).toBe("={{ $('Config').item.json.apiUrl }}");
 		});
 
-		it('should throw clear error when called with a PlaceholderValue', () => {
-			const placeholderObj = { __placeholder: true, hint: 'Your API URL' };
-			expect(() => expr(placeholderObj as unknown as string)).toThrow(
-				"expr(placeholder('Your API URL')) is invalid. Use placeholder() directly as the value, not inside expr().",
-			);
+		it('prepends = to a placeholder marker (preserves round-trip with `=marker`)', () => {
+			const marker = '<__PLACEHOLDER_VALUE__Your API URL__>';
+			expect(expr(marker)).toBe('=' + marker);
 		});
 
 		it('should throw clear error when called with a NewCredentialValue', () => {

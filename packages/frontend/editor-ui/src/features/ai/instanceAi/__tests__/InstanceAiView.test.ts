@@ -1,164 +1,197 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { defineComponent, h, ref } from 'vue';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
-import { setActivePinia } from 'pinia';
+import { fireEvent, waitFor } from '@testing-library/vue';
 import { createComponentRenderer } from '@/__tests__/render';
-import { mockedStore } from '@/__tests__/utils';
 import InstanceAiView from '../InstanceAiView.vue';
-import { useInstanceAiStore } from '../instanceAi.store';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
-import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
+import { INSTANCE_AI_VIEW } from '../constants';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { hasPermission } from '@/app/utils/rbac/permissions';
 
-vi.mock('@/app/composables/useDocumentTitle', () => ({
-	useDocumentTitle: () => ({ set: vi.fn() }),
-}));
+const TEST_INSTANCE_ID = 'test-instance-id';
 
-vi.mock('@/app/composables/usePageRedirectionHelper', () => ({
-	usePageRedirectionHelper: () => ({ goToUpgrade: vi.fn() }),
-}));
+const routerPush = vi.hoisted(() => vi.fn());
+const routerReplace = vi.hoisted(() => vi.fn());
+const routerHistoryState = vi.hoisted(() => ({ back: null as string | null }));
+const routeState = vi.hoisted(() => ({ name: '', params: { threadId: 'thread-1' } }));
+const telemetryTrack = vi.hoisted(() => vi.fn());
 
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal()),
-	useRoute: () => ({
-		params: {},
-		path: '/instance-ai',
-		matched: [],
-		fullPath: '/instance-ai',
-		query: {},
-		hash: '',
-		meta: {},
+	useRoute: () => routeState,
+	useRouter: () => ({
+		push: routerPush,
+		replace: routerReplace,
+		options: { history: { state: routerHistoryState } },
 	}),
-	useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+	onBeforeRouteLeave: vi.fn(),
+	RouterView: { template: '<div data-test-id="router-view-stub" />' },
 }));
 
-vi.mock('@vueuse/core', async (importOriginal) => ({
-	...(await importOriginal()),
-	useScroll: () => ({ arrivedState: { bottom: true } }),
-	useWindowSize: () => ({ width: ref(1200) }),
-	useLocalStorage: (_key: string, defaultValue: unknown) => ref(defaultValue),
+vi.mock('@n8n/composables/useTelemetry', () => ({
+	useTelemetry: () => ({ track: telemetryTrack }),
 }));
 
-const InstanceAiInputStub = defineComponent({
-	name: 'InstanceAiInputStub',
-	props: {
-		suggestions: { type: Array, required: false },
-		isStreaming: { type: Boolean, required: false },
-	},
-	setup(props, { expose }) {
-		expose({ focus: vi.fn() });
-		return () =>
-			h(
-				'div',
-				{ 'data-test-id': 'instance-ai-input-stub' },
-				props.suggestions === undefined ? 'unset' : String(props.suggestions.length),
-			);
-	},
-});
+vi.mock('@n8n/composables/useDeviceSupport', () => ({
+	useDeviceSupport: () => ({
+		isCtrlKeyPressed: (event: KeyboardEvent) => event.ctrlKey || event.metaKey,
+	}),
+}));
+
+vi.mock('@/app/utils/rbac/permissions', () => ({
+	hasPermission: vi.fn().mockReturnValue(false),
+}));
+
+vi.mock('@n8n/stores/useRootStore', () => ({
+	useRootStore: () => ({ instanceId: TEST_INSTANCE_ID }),
+}));
 
 const renderView = createComponentRenderer(InstanceAiView, {
 	global: {
 		stubs: {
-			InstanceAiInput: InstanceAiInputStub,
+			InstanceAiThreadList: { template: '<div data-test-id="thread-list-stub" />' },
+			InstanceAiOnboardingView: {
+				emits: ['completed'],
+				template: '<button data-test-id="onboarding-view-stub" @click="$emit(\'completed\')" />',
+			},
+			N8nResizeWrapper: { template: '<div><slot /></div>' },
 		},
 	},
 });
 
 describe('InstanceAiView', () => {
-	let store: ReturnType<typeof mockedStore<typeof useInstanceAiStore>>;
-	let settingsStore: ReturnType<typeof mockedStore<typeof useInstanceAiSettingsStore>>;
+	let pinia: ReturnType<typeof createTestingPinia>;
 
 	beforeEach(() => {
-		const pinia = createTestingPinia({ stubActions: false });
-		setActivePinia(pinia);
-
-		store = mockedStore(useInstanceAiStore);
-		settingsStore = mockedStore(useInstanceAiSettingsStore);
-		const pushStore = mockedStore(usePushConnectionStore);
-
-		store.currentThreadId = 'thread-1';
-		store.loadThreads.mockResolvedValue(true);
-		store.fetchCredits.mockResolvedValue(undefined);
-		store.loadHistoricalMessages.mockResolvedValue('applied');
-		store.connectSSE.mockResolvedValue(undefined);
-		store.closeSSE.mockReturnValue(undefined);
-		settingsStore.isLocalGatewayDisabled = true;
-		settingsStore.refreshModuleSettings.mockResolvedValue(undefined);
-		pushStore.pushConnect.mockReturnValue(undefined);
+		pinia = createTestingPinia();
+		const settingsStore = useInstanceAiSettingsStore();
+		settingsStore.refreshModuleSettings = vi.fn().mockResolvedValue(undefined);
+		settingsStore.ensurePreferencesLoaded = vi.fn().mockResolvedValue(undefined);
+		vi.mocked(hasPermission).mockReturnValue(false);
+		routerPush.mockClear();
+		routerReplace.mockClear();
+		telemetryTrack.mockClear();
+		routerHistoryState.back = null;
+		routeState.name = INSTANCE_AI_VIEW;
+		sessionStorage.clear();
 	});
 
-	afterEach(() => {
-		vi.clearAllMocks();
+	it('opens a new thread with Ctrl/Cmd+Shift+O', () => {
+		renderView({ pinia });
+
+		document.dispatchEvent(
+			new KeyboardEvent('keydown', {
+				key: 'o',
+				ctrlKey: true,
+				shiftKey: true,
+				bubbles: true,
+				cancelable: true,
+			}),
+		);
+
+		expect(routerPush).toHaveBeenCalledWith({ name: INSTANCE_AI_VIEW, force: true });
 	});
 
-	it('passes the fixed suggestions to the empty-state composer', () => {
-		const { getByTestId } = renderView();
-		expect(getByTestId('instance-ai-input-stub')).toHaveTextContent('4');
-	});
+	it('tracks "User viewed AI assistant" with the previous in-app route on mount', () => {
+		routerHistoryState.back = '/workflow/abc123';
 
-	it('does not pass suggestions once the thread has messages', () => {
-		store.hasMessages = true;
-		store.messages = [
-			{
-				id: 'msg-1',
-				role: 'user',
-				content: 'hello',
-				isStreaming: false,
-				createdAt: '2026-04-01T00:00:00.000Z',
-			},
-		] as typeof store.messages;
+		renderView({ pinia });
 
-		const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
-		expect(getByTestId('instance-ai-input-stub')).toHaveTextContent('unset');
-	});
-
-	it('does not pass suggestions while an existing thread is hydrating', () => {
-		store.isHydratingThread = true;
-
-		const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
-		expect(getByTestId('instance-ai-input-stub')).toHaveTextContent('unset');
-	});
-
-	it('clears the current thread when mounted on the base route (AI-2408)', async () => {
-		// Default setup has store.currentThreadId = 'thread-1'. Rendering the
-		// view WITHOUT a `threadId` prop simulates landing on /instance-ai
-		// (fresh load, back button, or AI Assistant nav link). The view must
-		// reset the store so the sidebar doesn't keep highlighting 'thread-1'
-		// alongside the empty main view.
-		store.sseState = 'disconnected';
-
-		renderView();
-
-		await vi.waitFor(() => {
-			expect(store.clearCurrentThread).toHaveBeenCalled();
+		expect(telemetryTrack).toHaveBeenCalledWith('User viewed AI assistant', {
+			instance_id: TEST_INSTANCE_ID,
+			source_url: '/workflow/abc123',
 		});
-		expect(store.loadHistoricalMessages).not.toHaveBeenCalled();
-		expect(store.loadThreadStatus).not.toHaveBeenCalled();
-		expect(store.connectSSE).not.toHaveBeenCalled();
 	});
 
-	it('reconnects on same-thread re-entry (thread route, SSE disconnected)', async () => {
-		store.currentThreadId = 'thread-1';
-		store.sseState = 'disconnected';
-		store.hasMessages = true;
-		store.messages = [
-			{
-				id: 'msg-history',
-				role: 'assistant',
-				content: 'already loaded',
-				isStreaming: false,
-				createdAt: '2026-04-01T00:00:00.000Z',
-			},
-		] as typeof store.messages;
-		store.loadHistoricalMessages.mockResolvedValue('skipped');
+	it('tracks "User viewed AI assistant" with a null source on direct visits', () => {
+		routerHistoryState.back = null;
 
-		// Render WITH the threadId prop — this is the thread-route re-entry
-		// path (user lands on /instance-ai/thread-1 after SSE was torn down).
-		renderView({ props: { threadId: 'thread-1' } });
+		renderView({ pinia });
 
-		await vi.waitFor(() => {
-			expect(store.loadHistoricalMessages).toHaveBeenCalledWith('thread-1');
+		expect(telemetryTrack).toHaveBeenCalledWith('User viewed AI assistant', {
+			instance_id: TEST_INSTANCE_ID,
+			source_url: null,
 		});
-		expect(store.loadThreadStatus).toHaveBeenCalledWith('thread-1');
-		expect(store.connectSSE).toHaveBeenCalledWith('thread-1');
+	});
+
+	it('shows onboarding to self-managed admins and returns to chat after completion', async () => {
+		vi.mocked(hasPermission).mockReturnValue(true);
+		useSettingsStore().moduleSettings = {
+			'instance-ai': {
+				enabled: true,
+				localGatewayDisabled: false,
+				browserUseEnabled: true,
+				proxyEnabled: false,
+				cloudManaged: false,
+				setupCompleted: false,
+				sandboxEnabled: false,
+				workflowBuilderAvailable: false,
+				sandboxUnavailableReason: null,
+				runDebugEnabled: false,
+			},
+		};
+		routeState.name = 'InstanceAiThread';
+
+		const { findByTestId, getByTestId, queryByTestId } = renderView({ pinia });
+
+		expect(await findByTestId('onboarding-view-stub')).toBeVisible();
+		expect(routerReplace).toHaveBeenCalledWith({ name: INSTANCE_AI_VIEW });
+		expect(queryByTestId('router-view-stub')).toBeNull();
+
+		await fireEvent.click(getByTestId('onboarding-view-stub'));
+		expect(getByTestId('router-view-stub')).toBeVisible();
+		expect(sessionStorage.getItem('instanceAi.onboarding.completionPending')).toBe('false');
+	});
+
+	it('ignores a stale onboarding session after setup completes in Settings', () => {
+		vi.mocked(hasPermission).mockReturnValue(true);
+		sessionStorage.setItem('instanceAi.onboarding.completionPending', 'true');
+		useSettingsStore().moduleSettings = {
+			'instance-ai': {
+				enabled: true,
+				localGatewayDisabled: false,
+				browserUseEnabled: true,
+				proxyEnabled: false,
+				cloudManaged: false,
+				setupCompleted: true,
+				sandboxEnabled: true,
+				workflowBuilderAvailable: true,
+				sandboxUnavailableReason: null,
+				runDebugEnabled: false,
+			},
+		};
+
+		const { getByTestId, queryByTestId } = renderView({ pinia });
+
+		expect(queryByTestId('onboarding-view-stub')).toBeNull();
+		expect(getByTestId('router-view-stub')).toBeVisible();
+		expect(sessionStorage.getItem('instanceAi.onboarding.completionPending')).toBe('false');
+	});
+
+	it('keeps the active wizard open when its final save completes setup', async () => {
+		vi.mocked(hasPermission).mockReturnValue(true);
+		const appSettingsStore = useSettingsStore();
+		appSettingsStore.moduleSettings = {
+			'instance-ai': {
+				enabled: true,
+				localGatewayDisabled: false,
+				browserUseEnabled: true,
+				proxyEnabled: false,
+				cloudManaged: false,
+				setupCompleted: false,
+				sandboxEnabled: true,
+				workflowBuilderAvailable: true,
+				sandboxUnavailableReason: null,
+				runDebugEnabled: false,
+			},
+		};
+		const { getByTestId, queryByTestId } = renderView({ pinia });
+
+		appSettingsStore.moduleSettings = {
+			'instance-ai': { ...appSettingsStore.moduleSettings['instance-ai']!, setupCompleted: true },
+		};
+
+		await waitFor(() => expect(getByTestId('onboarding-view-stub')).toBeVisible());
+		expect(queryByTestId('router-view-stub')).toBeNull();
 	});
 });

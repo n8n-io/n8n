@@ -3,6 +3,19 @@ import { DataSource, Repository } from '@n8n/typeorm';
 
 import { DeploymentKey } from '../entities/deployment-key';
 
+export type DeploymentKeySortField = 'createdAt' | 'updatedAt' | 'status';
+export type DeploymentKeySortDirection = 'ASC' | 'DESC';
+
+export type ListDeploymentKeysOptions = {
+	type?: string;
+	sortField: DeploymentKeySortField;
+	sortDirection: DeploymentKeySortDirection;
+	skip: number;
+	take: number;
+	createdAtFrom?: Date;
+	createdAtTo?: Date;
+};
+
 @Service()
 export class DeploymentKeyRepository extends Repository<DeploymentKey> {
 	constructor(dataSource: DataSource) {
@@ -15,6 +28,40 @@ export class DeploymentKeyRepository extends Repository<DeploymentKey> {
 
 	async findAllByType(type: string): Promise<DeploymentKey[]> {
 		return await this.find({ where: { type } });
+	}
+
+	async findAndCountForList(
+		opts: ListDeploymentKeysOptions,
+	): Promise<{ items: DeploymentKey[]; count: number }> {
+		const qb = this.createQueryBuilder('deploymentKey');
+
+		if (opts.type) {
+			qb.andWhere('deploymentKey.type = :type', { type: opts.type });
+		}
+
+		if (opts.createdAtFrom && opts.createdAtTo) {
+			qb.andWhere('deploymentKey.createdAt BETWEEN :from AND :to', {
+				from: opts.createdAtFrom,
+				to: opts.createdAtTo,
+			});
+		} else if (opts.createdAtFrom) {
+			qb.andWhere('deploymentKey.createdAt >= :from', { from: opts.createdAtFrom });
+		} else if (opts.createdAtTo) {
+			qb.andWhere('deploymentKey.createdAt <= :to', { to: opts.createdAtTo });
+		}
+
+		qb.orderBy(`deploymentKey.${opts.sortField}`, opts.sortDirection);
+
+		// Stable secondary sort so pagination is deterministic when ties occur.
+		if (opts.sortField !== 'createdAt') {
+			qb.addOrderBy('deploymentKey.createdAt', 'DESC');
+		}
+		qb.addOrderBy('deploymentKey.id', 'ASC');
+
+		qb.skip(opts.skip).take(opts.take);
+
+		const [items, count] = await qb.getManyAndCount();
+		return { items, count };
 	}
 
 	/**

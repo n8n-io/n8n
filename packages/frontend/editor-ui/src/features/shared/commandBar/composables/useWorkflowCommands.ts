@@ -9,7 +9,7 @@ import { useTagsStore } from '@/features/shared/tags/tags.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 import {
 	DUPLICATE_MODAL_KEY,
@@ -22,10 +22,7 @@ import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 import type { IWorkflowToShare } from '@/Interface';
 import { saveAs } from 'file-saver';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import {
-	useWorkflowDocumentStore,
-	createWorkflowDocumentId,
-} from '@/app/stores/workflowDocument.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import type { CommandGroup, CommandBarItem } from '../types';
 import uniqBy from 'lodash/uniqBy';
 import { nodeViewEventBus } from '@/app/event-bus';
@@ -60,9 +57,7 @@ export function useWorkflowCommands(): CommandGroup {
 	const sourceControlStore = useSourceControlStore();
 	const collaborationStore = useCollaborationStore();
 
-	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
-	);
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 
 	const router = useRouter();
 
@@ -288,6 +283,8 @@ export function useWorkflowCommands(): CommandGroup {
 									id: workflowsStore.workflowId,
 									name: workflowDocumentStore.value.name,
 									tags: workflowDocumentStore.value.tags,
+									// Place the copy in the source workflow's folder
+									parentFolderId: workflowDocumentStore.value.parentFolder?.id,
 								},
 							});
 						},

@@ -178,12 +178,12 @@ describe('getConnectedTools', () => {
 
 		mockExecuteFunctions = createMockExecuteFunction({}, mockNode);
 		// Add getParentNodes mock for metadata functionality
-		mockExecuteFunctions.getParentNodes = jest.fn().mockReturnValue([]);
+		mockExecuteFunctions.getParentNodes = vi.fn().mockReturnValue([]);
 
 		mockN8nTool = new N8nTool(mockExecuteFunctions as unknown as ISupplyDataFunctions, {
 			name: 'Dummy Tool',
 			description: 'A dummy tool for testing',
-			func: jest.fn(),
+			func: vi.fn(),
 			schema: z.object({
 				foo: z.string(),
 			}),
@@ -191,7 +191,7 @@ describe('getConnectedTools', () => {
 	});
 
 	it('should return empty array when no tools are connected', async () => {
-		mockExecuteFunctions.getInputConnectionData = jest.fn().mockResolvedValue([]);
+		mockExecuteFunctions.getInputConnectionData = vi.fn().mockResolvedValue([]);
 
 		const tools = await getConnectedTools(mockExecuteFunctions, true);
 		expect(tools).toEqual([]);
@@ -203,7 +203,7 @@ describe('getConnectedTools', () => {
 			{ name: 'tool1', description: 'desc2' }, // Duplicate name
 		];
 
-		mockExecuteFunctions.getInputConnectionData = jest.fn().mockResolvedValue(mockTools);
+		mockExecuteFunctions.getInputConnectionData = vi.fn().mockResolvedValue(mockTools);
 
 		const tools = await getConnectedTools(mockExecuteFunctions, false);
 		expect(tools).toEqual(mockTools);
@@ -215,7 +215,7 @@ describe('getConnectedTools', () => {
 			{ name: 'tool1', description: 'desc2' },
 		];
 
-		mockExecuteFunctions.getInputConnectionData = jest.fn().mockResolvedValue(mockTools);
+		mockExecuteFunctions.getInputConnectionData = vi.fn().mockResolvedValue(mockTools);
 
 		await expect(getConnectedTools(mockExecuteFunctions, true)).rejects.toThrow(NodeOperationError);
 	});
@@ -223,7 +223,7 @@ describe('getConnectedTools', () => {
 	it('should escape curly brackets in tool descriptions when escapeCurlyBrackets is true', async () => {
 		const mockTools = [{ name: 'tool1', description: 'Test {value}' }] as Tool[];
 
-		mockExecuteFunctions.getInputConnectionData = jest.fn().mockResolvedValue(mockTools);
+		mockExecuteFunctions.getInputConnectionData = vi.fn().mockResolvedValue(mockTools);
 
 		const tools = await getConnectedTools(mockExecuteFunctions, true, false, true);
 		expect(tools[0].description).toBe('Test {{value}}');
@@ -233,12 +233,12 @@ describe('getConnectedTools', () => {
 		const mockDynamicTool = new DynamicTool({
 			name: 'dynamicTool',
 			description: 'desc',
-			func: jest.fn(),
+			func: vi.fn(),
 		});
-		const asDynamicToolSpy = jest.fn().mockReturnValue(mockDynamicTool);
+		const asDynamicToolSpy = vi.fn().mockReturnValue(mockDynamicTool);
 		mockN8nTool.asDynamicTool = asDynamicToolSpy;
 
-		mockExecuteFunctions.getInputConnectionData = jest.fn().mockResolvedValue([mockN8nTool]);
+		mockExecuteFunctions.getInputConnectionData = vi.fn().mockResolvedValue([mockN8nTool]);
 
 		const tools = await getConnectedTools(mockExecuteFunctions, true, true);
 		expect(asDynamicToolSpy).toHaveBeenCalled();
@@ -246,7 +246,7 @@ describe('getConnectedTools', () => {
 	});
 
 	it('should not convert N8nTool when convertStructuredTool is false', async () => {
-		mockExecuteFunctions.getInputConnectionData = jest.fn().mockResolvedValue([mockN8nTool]);
+		mockExecuteFunctions.getInputConnectionData = vi.fn().mockResolvedValue([mockN8nTool]);
 
 		const tools = await getConnectedTools(mockExecuteFunctions, true, false);
 		expect(tools[0]).toBe(mockN8nTool);
@@ -262,24 +262,24 @@ describe('getConnectedTools', () => {
 			] as any),
 		];
 
-		mockExecuteFunctions.getInputConnectionData = jest.fn().mockResolvedValue(mockTools);
+		mockExecuteFunctions.getInputConnectionData = vi.fn().mockResolvedValue(mockTools);
 
 		const tools = await getConnectedTools(mockExecuteFunctions, false);
 		expect(tools).toEqual([
 			{
 				name: 'tool1',
 				description: 'desc1',
-				metadata: { isFromToolkit: false, sourceNodeName: undefined },
+				metadata: { isFromToolkit: false, sourceNodeName: 'tool1' },
 			},
 			{
 				name: 'toolkitTool1',
 				description: 'toolkitToolDesc1',
-				metadata: { isFromToolkit: true, sourceNodeName: undefined },
+				metadata: { isFromToolkit: true, sourceNodeName: 'toolkitTool1' },
 			},
 			{
 				name: 'toolkitTool2',
 				description: 'toolkitToolDesc2',
-				metadata: { isFromToolkit: true, sourceNodeName: undefined },
+				metadata: { isFromToolkit: true, sourceNodeName: 'toolkitTool2' },
 			},
 		]);
 	});
@@ -294,8 +294,8 @@ describe('getConnectedTools', () => {
 			] as any),
 		];
 
-		mockExecuteFunctions.getInputConnectionData = jest.fn().mockResolvedValue(mockTools);
-		mockExecuteFunctions.getParentNodes = jest.fn().mockReturnValue(mockParentNodes);
+		mockExecuteFunctions.getInputConnectionData = vi.fn().mockResolvedValue(mockTools);
+		mockExecuteFunctions.getParentNodes = vi.fn().mockReturnValue(mockParentNodes);
 
 		const tools = await getConnectedTools(mockExecuteFunctions, false);
 
@@ -330,8 +330,8 @@ describe('getConnectedTools', () => {
 			] as any),
 		];
 
-		mockExecuteFunctions.getInputConnectionData = jest.fn().mockResolvedValue(mockTools);
-		mockExecuteFunctions.getParentNodes = jest.fn().mockReturnValue(mockParentNodes);
+		mockExecuteFunctions.getInputConnectionData = vi.fn().mockResolvedValue(mockTools);
+		mockExecuteFunctions.getParentNodes = vi.fn().mockReturnValue(mockParentNodes);
 
 		const tools = await getConnectedTools(mockExecuteFunctions, false);
 
@@ -339,6 +339,116 @@ describe('getConnectedTools', () => {
 			customField: 'value',
 			isFromToolkit: true,
 			sourceNodeName: 'MCP Client Tool',
+		});
+	});
+
+	describe('toolkit detection across duplicated n8n-core copies', () => {
+		class ForeignStructuredToolkit {
+			constructor(readonly tools: Tool[]) {}
+
+			getTools(): Tool[] {
+				return this.tools;
+			}
+		}
+
+		it('should flatten a toolkit whose class identity differs from the local StructuredToolkit', async () => {
+			const gatedTool = { name: 'gmail_send', description: 'Send an email' } as Tool;
+
+			mockExecuteFunctions.getInputConnectionData = vi
+				.fn()
+				.mockResolvedValue([new ForeignStructuredToolkit([gatedTool])]);
+			mockExecuteFunctions.getParentNodes = vi.fn().mockReturnValue([{ name: 'Gmail HITL' }]);
+
+			const tools = await getConnectedTools(mockExecuteFunctions, false);
+
+			expect(tools).toHaveLength(1);
+			expect(tools[0].name).toBe('gmail_send');
+			expect(tools[0].metadata).toEqual({
+				isFromToolkit: true,
+				sourceNodeName: 'Gmail HITL',
+			});
+		});
+
+		it('should keep plain tools untouched when connected alongside a foreign-identity toolkit', async () => {
+			const directTool = { name: 'direct_tool', description: 'Direct tool' } as Tool;
+			const gatedTool1 = { name: 'gated_tool_1', description: 'Gated tool 1' } as Tool;
+			const gatedTool2 = { name: 'gated_tool_2', description: 'Gated tool 2' } as Tool;
+
+			mockExecuteFunctions.getInputConnectionData = vi
+				.fn()
+				.mockResolvedValue([directTool, new ForeignStructuredToolkit([gatedTool1, gatedTool2])]);
+			mockExecuteFunctions.getParentNodes = vi
+				.fn()
+				.mockReturnValue([{ name: 'Direct Tool' }, { name: 'Gmail HITL' }]);
+
+			const tools = await getConnectedTools(mockExecuteFunctions, false);
+
+			expect(tools.map((tool) => tool.name)).toEqual([
+				'direct_tool',
+				'gated_tool_1',
+				'gated_tool_2',
+			]);
+			expect(tools[0].metadata).toEqual({
+				isFromToolkit: false,
+				sourceNodeName: 'Direct Tool',
+			});
+			expect(tools[1].metadata).toEqual({
+				isFromToolkit: true,
+				sourceNodeName: 'Gmail HITL',
+			});
+			expect(tools[2].metadata).toEqual({
+				isFromToolkit: true,
+				sourceNodeName: 'Gmail HITL',
+			});
+		});
+
+		it('should fall back to the tool name when no parent node is found for a toolkit', async () => {
+			const gatedTool = { name: 'gmail_send', description: 'Send an email' } as Tool;
+
+			mockExecuteFunctions.getInputConnectionData = vi
+				.fn()
+				.mockResolvedValue([new ForeignStructuredToolkit([gatedTool])]);
+			mockExecuteFunctions.getParentNodes = vi.fn().mockReturnValue([]);
+
+			const tools = await getConnectedTools(mockExecuteFunctions, false);
+
+			expect(tools).toHaveLength(1);
+			expect(tools[0].metadata).toEqual({
+				isFromToolkit: true,
+				sourceNodeName: 'gmail_send',
+			});
+		});
+	});
+
+	it('should map source node names correctly when a disabled tool node is still connected', async () => {
+		// getParentNodes returns ALL parents including disabled ones,
+		// while getInputConnectionData filters disabled nodes out.
+		// getConnectedTools must skip disabled parents to keep the index in sync.
+		const mockParentNodes = [
+			{ name: 'Tool Alpha', disabled: false },
+			{ name: 'Tool Bravo', disabled: true },
+			{ name: 'Tool Charlie', disabled: false },
+		];
+		const mockTools = [
+			{ name: 'alpha', description: 'desc-alpha' },
+			{ name: 'charlie', description: 'desc-charlie' },
+		];
+
+		mockExecuteFunctions.getInputConnectionData = vi.fn().mockResolvedValue(mockTools);
+		mockExecuteFunctions.getParentNodes = vi.fn().mockReturnValue(mockParentNodes);
+
+		const tools = await getConnectedTools(mockExecuteFunctions, false);
+
+		expect(tools).toHaveLength(2);
+		expect(tools[0].name).toBe('alpha');
+		expect(tools[0].metadata).toEqual({
+			isFromToolkit: false,
+			sourceNodeName: 'Tool Alpha',
+		});
+		expect(tools[1].name).toBe('charlie');
+		expect(tools[1].metadata).toEqual({
+			isFromToolkit: false,
+			sourceNodeName: 'Tool Charlie',
 		});
 	});
 });
@@ -446,15 +556,15 @@ describe('getSessionId', () => {
 
 	beforeEach(() => {
 		mockCtx = {
-			getNodeParameter: jest.fn(),
-			evaluateExpression: jest.fn(),
-			getChatTrigger: jest.fn(),
-			getNode: jest.fn(),
+			getNodeParameter: vi.fn(),
+			evaluateExpression: vi.fn(),
+			getChatTrigger: vi.fn(),
+			getNode: vi.fn(),
 		};
 	});
 
 	it('should retrieve sessionId from bodyData', () => {
-		mockCtx.getBodyData = jest.fn();
+		mockCtx.getBodyData = vi.fn();
 		mockCtx.getNodeParameter.mockReturnValue('fromInput');
 		mockCtx.getBodyData.mockReturnValue({ sessionId: '12345' });
 

@@ -10,6 +10,7 @@
 	--background--brand--disabled: var(--color--neutral-200);
 
 	--background--surface: var(--color--neutral-white);
+	--background--subtle: var(--color--neutral-50);
 	--background--hover: var(--color--black-alpha-50);
 	--background--active: var(--color--black-alpha-100);
 	--background--focus: var(--color--black-alpha-100);
@@ -31,6 +32,7 @@
 	--text-color: var(--color--neutral-900);
 	--text-color--subtle: var(--color--neutral-700);
 	--text-color--subtler: var(--color--neutral-500);
+	--text-color--disabled: var(--color--neutral-400);
 
 	--background--success: var(--color--green-50);
 	--border-color--success: var(--color--green-200);
@@ -70,7 +72,7 @@
 	// Canvas
 	--canvas--color--background: var(--color--neutral-125);
 	--canvas--dot--color: var(--color--neutral-500);
-	--canvas--read-only-line--color: var(--color--neutral-100);
+	--canvas--read-only-line--color: var(--color--neutral-200);
 	--canvas--color--selected: var(--color--neutral-150);
 	--canvas--color--selected-transparent: hsla(220, 47%, 30%, 0.1);
 	--canvas--label--color: var(--color--neutral-600);
@@ -353,13 +355,12 @@
 
 	// NDV
 	--run-data--color--background: var(--color--neutral-150);
-	--ndvv2--run-data--color--background: var(--color--neutral-125);
+	--ndv--run-data--color--background: var(--color--neutral-125);
 	--ndv--droppable-parameter--color: var(--color--secondary);
 	--ndv--droppable-parameter--color--background: var(--color--purple-alpha-100);
 	--ndv--droppable-parameter--color--background--active: var(--color--green-alpha-100);
 	--ndv--back--color--text: var(--color--neutral-white);
 	--ndv--background--color: var(--color--background--light-3);
-	--ndv--header--color: var(--color--background);
 
 	// Notice
 	--notice--border-color--warning: var(--color--warning--tint-1);
@@ -656,6 +657,7 @@
 	--background--brand--disabled: var(--color--neutral-800);
 
 	--background--surface: var(--color--neutral-900);
+	--background--subtle: var(--color--neutral-800);
 	--background--hover: var(--color--white-alpha-100);
 	--background--active: var(--color--white-alpha-150);
 	--background--focus: var(--color--white-alpha-150);
@@ -675,6 +677,7 @@
 	--text-color: var(--color--neutral-white);
 	--text-color--subtle: var(--color--neutral-200);
 	--text-color--subtler: var(--color--neutral-400);
+	--text-color--disabled: var(--color--neutral-600);
 
 	--background--success: var(--color--green-950);
 	--border-color--success: var(--color--green-800);
@@ -961,13 +964,12 @@
 
 	// NDV
 	--run-data--color--background: var(--color--neutral-900);
-	--ndvv2--run-data--color--background: var(--color--neutral-900);
+	--ndv--run-data--color--background: var(--color--neutral-900);
 	--ndv--droppable-parameter--color: var(--color--orange-500);
 	--ndv--droppable-parameter--color--background: var(--color--orange-alpha-100);
 	--ndv--droppable-parameter--color--background--active: var(--color--green-alpha-100);
 	--ndv--back--color--text: var(--color--neutral-white);
 	--ndv--background--color: var(--color--background--light-1);
-	--ndv--header--color: var(--color--neutral-750);
 
 	// Notice
 	--notice--border-color--warning: var(--color--gold-200);
@@ -1241,11 +1243,12 @@
 	@include theme;
 }
 
-body[data-theme='light'] {
+[data-theme='light'] {
+	@include theme;
 	color-scheme: light;
 }
 
-body[data-theme='dark'] {
+[data-theme='dark'] {
 	@include theme-dark;
 	color-scheme: dark;
 }

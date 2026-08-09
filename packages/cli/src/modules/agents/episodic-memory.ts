@@ -1,0 +1,14 @@
+export {
+	DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL,
+	DEFAULT_EPISODIC_MEMORY_EXTRACTION_PROMPT,
+	DEFAULT_EPISODIC_MEMORY_REFLECTION_PROMPT,
+	buildEpisodicMemoryExtractorPrompt as buildN8nEpisodicMemoryExtractorPrompt,
+	buildEpisodicMemoryReflectorPrompt as buildN8nEpisodicMemoryReflectorPrompt,
+	createEpisodicMemoryExtractFn as createN8nEpisodicMemoryExtractFn,
+	createEpisodicMemoryReflectFn as createN8nEpisodicMemoryReflectFn,
+} from '@n8n/agents';
+
+export type {
+	CreateEpisodicMemoryExtractFnOptions as CreateN8nEpisodicMemoryExtractFnOptions,
+	CreateEpisodicMemoryReflectFnOptions as CreateN8nEpisodicMemoryReflectFnOptions,
+} from '@n8n/agents';

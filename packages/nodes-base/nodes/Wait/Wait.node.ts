@@ -315,7 +315,7 @@ export class Wait extends Webhook {
 				name: 'resume',
 				type: 'options',
 				builderHint: {
-					message:
+					propertyHint:
 						'For user approval workflows, consider using nodes with operation: "sendAndWait" (e.g., email, Slack) instead of Wait node. If using "webhook", the URL will be generated at runtime and can be referenced with {{ $execution.resumeUrl }}.',
 				},
 				options: [
@@ -531,7 +531,7 @@ export class Wait extends Webhook {
 			const returnData = await this.configureAndPutToWait(context);
 
 			if (resume === 'form' && hasFormTrigger) {
-				context.sendResponse({
+				await context.sendResponse({
 					headers: {
 						location: context.evaluateExpression('{{ $execution.resumeFormUrl }}', 0),
 					},

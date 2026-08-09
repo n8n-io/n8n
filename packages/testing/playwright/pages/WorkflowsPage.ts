@@ -1,8 +1,11 @@
 import type { Locator } from '@playwright/test';
 
 import { BasePage } from './BasePage';
+import { ActionToggle } from './components/ActionToggle';
 import { AddResource } from './components/AddResource';
+import { ProjectHeader } from './components/ProjectHeader';
 import { ResourceCards } from './components/ResourceCards';
+import { ResourceMoveModal } from './components/ResourceMoveModal';
 
 export class WorkflowsPage extends BasePage {
 	async goto() {
@@ -11,6 +14,13 @@ export class WorkflowsPage extends BasePage {
 
 	readonly addResource = new AddResource(this.page);
 	readonly cards = new ResourceCards(this.page);
+	readonly actionToggle = new ActionToggle(this.page);
+	readonly resourceMoveModal = new ResourceMoveModal(this.page);
+	readonly projectHeader = new ProjectHeader(this.page);
+
+	private async openWorkflowCardActions(workflowItem: Locator) {
+		await workflowItem.getByTestId('workflow-card-actions').getByRole('button').click();
+	}
 
 	/**
 	 * This is the new workflow button on the workflows page, visible when there are no workflows.
@@ -29,21 +39,21 @@ export class WorkflowsPage extends BasePage {
 	}
 
 	getProjectName() {
-		return this.page.getByTestId('project-name');
+		return this.projectHeader.getProjectName();
 	}
 
 	getSearchBar() {
-		return this.page.getByTestId('resources-list-search');
+		return this.getResourcesListSearch();
 	}
 
 	async unarchiveWorkflow(workflowItem: Locator) {
-		await workflowItem.getByTestId('workflow-card-actions').click();
+		await this.openWorkflowCardActions(workflowItem);
 		await this.page.getByRole('menuitem', { name: 'Unarchive' }).click();
 	}
 
 	async deleteWorkflow(workflowItem: Locator) {
-		await workflowItem.getByTestId('workflow-card-actions').click();
-		await this.page.getByTestId('action-delete').click();
+		await this.openWorkflowCardActions(workflowItem);
+		await this.actionToggle.getAction('delete').click();
 		await this.page.getByRole('button', { name: 'delete' }).click();
 	}
 
@@ -58,7 +68,7 @@ export class WorkflowsPage extends BasePage {
 
 	async shareWorkflow(workflowName: string) {
 		const workflow = this.cards.getWorkflow(workflowName);
-		await workflow.getByTestId('workflow-card-actions').click();
+		await this.openWorkflowCardActions(workflow);
 		await this.page.getByRole('menuitem', { name: 'Share...' }).click();
 	}
 
@@ -67,12 +77,12 @@ export class WorkflowsPage extends BasePage {
 	}
 
 	async archiveWorkflow(workflowItem: Locator) {
-		await workflowItem.getByTestId('workflow-card-actions').click();
+		await this.openWorkflowCardActions(workflowItem);
 		await this.getArchiveMenuItem().click();
 	}
 
 	async unpublishWorkflow(workflowItem: Locator) {
-		await workflowItem.getByTestId('workflow-card-actions').click();
+		await this.openWorkflowCardActions(workflowItem);
 		await this.page.getByRole('menuitem', { name: 'Unpublish' }).click();
 		await this.page.getByRole('button', { name: 'Unpublish' }).click();
 	}
@@ -100,7 +110,7 @@ export class WorkflowsPage extends BasePage {
 		await this.clickByTestId('tags-dropdown');
 
 		for (const tag of tags) {
-			await this.page.getByRole('option', { name: tag }).locator('span').click();
+			await this.getVisiblePopoverOption(tag).locator('span').click();
 		}
 
 		await this.closeFilters();
@@ -114,15 +124,11 @@ export class WorkflowsPage extends BasePage {
 	}
 
 	getFolderBreadcrumbsActionToggle() {
-		return this.page.getByTestId('action-toggle-dropdown');
+		return this.actionToggle.root;
 	}
 
 	getFolderBreadcrumbsAction(actionName: string) {
-		return this.getFolderBreadcrumbsActionToggle().getByTestId(`action-${actionName}`);
-	}
-
-	addFolderButton() {
-		return this.page.getByTestId('add-folder-button');
+		return this.actionToggle.getAction(actionName);
 	}
 
 	// Add region for actions
@@ -165,7 +171,7 @@ export class WorkflowsPage extends BasePage {
 	}
 
 	transferFolderOption(folderName: string) {
-		return this.page.getByTestId('move-to-folder-option').filter({ hasText: folderName });
+		return this.resourceMoveModal.getFolderOption(folderName);
 	}
 
 	// Move folder modal methods
@@ -178,7 +184,7 @@ export class WorkflowsPage extends BasePage {
 	}
 
 	moveFolderOption(folderName: string) {
-		return this.page.getByTestId('move-to-folder-option').filter({ hasText: folderName });
+		return this.resourceMoveModal.getFolderOption(folderName);
 	}
 
 	moveFolderConfirmButton() {

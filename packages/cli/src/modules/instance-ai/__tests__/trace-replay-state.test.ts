@@ -1,24 +1,29 @@
 import { z } from 'zod';
 
-jest.mock('@n8n/instance-ai', () => ({
-	createMemory: jest.fn(),
+vi.mock('@n8n/instance-ai', () => ({
 	workflowLoopStateSchema: z.string(),
 	attemptRecordSchema: z.object({}),
 	workflowBuildOutcomeSchema: z.string(),
-	buildAgentTreeFromEvents: jest.fn(),
-	TraceIndex: jest.fn().mockImplementation(() => ({
-		next: jest.fn(),
-	})),
-	IdRemapper: jest.fn().mockImplementation(() => ({
-		learn: jest.fn(),
-		remapInput: jest.fn(),
-		remapOutput: jest.fn(),
-	})),
-	TraceWriter: jest.fn().mockImplementation(() => ({
-		recordToolCall: jest.fn(),
-		getEvents: jest.fn().mockReturnValue([]),
-		toJsonl: jest.fn().mockReturnValue(''),
-	})),
+	buildAgentTreeFromEvents: vi.fn(),
+	TraceIndex: vi.fn().mockImplementation(function () {
+		return {
+			next: vi.fn(),
+		};
+	}),
+	IdRemapper: vi.fn().mockImplementation(function () {
+		return {
+			learn: vi.fn(),
+			remapInput: vi.fn(),
+			remapOutput: vi.fn(),
+		};
+	}),
+	TraceWriter: vi.fn().mockImplementation(function () {
+		return {
+			recordToolCall: vi.fn(),
+			getEvents: vi.fn().mockReturnValue([]),
+			toJsonl: vi.fn().mockReturnValue(''),
+		};
+	}),
 }));
 
 import type { InstanceAiTraceContext } from '@n8n/instance-ai';
@@ -30,7 +35,7 @@ describe('TraceReplayState', () => {
 
 	beforeEach(() => {
 		process.env = { ...originalEnv };
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	afterAll(() => {
@@ -146,6 +151,86 @@ describe('TraceReplayState', () => {
 			expect(result).toEqual(writerEvents);
 		});
 
+		it('should merge preserved events with active writer events', () => {
+			const state = new TraceReplayState();
+			state.loadEvents('my-slug', [{ kind: 'header' }, { kind: 'tool-call', stepId: 1 }]);
+			const entries = [
+				{
+					traceSlug: 'my-slug',
+					tracing: { traceWriter: { getEvents: () => [{ kind: 'tool-resume', stepId: 2 }] } },
+				},
+			];
+
+			const result = state.getEventsWithWriterFallback(
+				'my-slug',
+				entries as Iterable<{ traceSlug?: string; tracing: InstanceAiTraceContext }>,
+			);
+
+			expect(result).toEqual([
+				{ kind: 'header' },
+				{ kind: 'tool-call', stepId: 1 },
+				{ kind: 'tool-resume', stepId: 2 },
+			]);
+		});
+
+		it('should de-dupe exact tool events while merging preserved and writer events', () => {
+			const duplicate = { kind: 'tool-call', stepId: 1, agentRole: 'orchestrator', toolName: 'x' };
+			const state = new TraceReplayState();
+			state.loadEvents('my-slug', [{ kind: 'header' }, duplicate]);
+			const entries = [
+				{
+					traceSlug: 'my-slug',
+					tracing: { traceWriter: { getEvents: () => [{ kind: 'header' }, duplicate] } },
+				},
+			];
+
+			const result = state.getEventsWithWriterFallback(
+				'my-slug',
+				entries as Iterable<{ traceSlug?: string; tracing: InstanceAiTraceContext }>,
+			);
+
+			expect(result).toEqual([{ kind: 'header' }, duplicate]);
+		});
+
+		it('should not let an active header-only writer hide preserved tool events', () => {
+			const state = new TraceReplayState();
+			state.loadEvents('my-slug', [{ kind: 'header' }, { kind: 'tool-suspend', stepId: 1 }]);
+			const entries = [
+				{
+					traceSlug: 'my-slug',
+					tracing: { traceWriter: { getEvents: () => [{ kind: 'header' }] } },
+				},
+			];
+
+			const result = state.getEventsWithWriterFallback(
+				'my-slug',
+				entries as Iterable<{ traceSlug?: string; tracing: InstanceAiTraceContext }>,
+			);
+
+			expect(result).toEqual([{ kind: 'header' }, { kind: 'tool-suspend', stepId: 1 }]);
+		});
+
+		it('should de-dupe header-only events from shared writers', () => {
+			const state = new TraceReplayState();
+			const entries = [
+				{
+					traceSlug: 'my-slug',
+					tracing: { traceWriter: { getEvents: () => [{ kind: 'header' }] } },
+				},
+				{
+					traceSlug: 'my-slug',
+					tracing: { traceWriter: { getEvents: () => [{ kind: 'header' }] } },
+				},
+			];
+
+			const result = state.getEventsWithWriterFallback(
+				'my-slug',
+				entries as Iterable<{ traceSlug?: string; tracing: InstanceAiTraceContext }>,
+			);
+
+			expect(result).toEqual([{ kind: 'header' }]);
+		});
+
 		it('should fall back to preserved events when no writers match', () => {
 			const state = new TraceReplayState();
 			state.loadEvents('my-slug', [{ kind: 'header' }]);
@@ -185,6 +270,20 @@ describe('TraceReplayState', () => {
 
 			expect(result).toEqual([{ kind: 'header' }]);
 		});
+
+		it('should include active writer events without a stored slug', () => {
+			const state = new TraceReplayState();
+			state.loadEvents('my-slug', [{ kind: 'header' }]);
+			const writerEvents = [{ kind: 'tool-call', stepId: 1 }];
+			const entries = [{ tracing: { traceWriter: { getEvents: () => writerEvents } } }];
+
+			const result = state.getEventsWithWriterFallback(
+				'my-slug',
+				entries as Iterable<{ traceSlug?: string; tracing: InstanceAiTraceContext }>,
+			);
+
+			expect(result).toEqual([{ kind: 'header' }, ...writerEvents]);
+		});
 	});
 
 	describe('configureReplayMode', () => {
@@ -211,6 +310,18 @@ describe('TraceReplayState', () => {
 			expect(tracing.idRemapper).toBeDefined();
 		});
 
+		it('should set record mode when only a header event is loaded', async () => {
+			process.env.E2E_TESTS = 'true';
+			const state = new TraceReplayState();
+			state.loadEvents('test', [{ kind: 'header' }]);
+			const tracing = {} as Record<string, unknown>;
+
+			await state.configureReplayMode(tracing as unknown as InstanceAiTraceContext);
+
+			expect(tracing.replayMode).toBe('record');
+			expect(tracing.traceWriter).toBeDefined();
+		});
+
 		it('should set record mode when no events are loaded', async () => {
 			process.env.E2E_TESTS = 'true';
 			const state = new TraceReplayState();
@@ -223,10 +334,22 @@ describe('TraceReplayState', () => {
 			expect(tracing.traceWriter).toBeDefined();
 		});
 
-		it('should reuse shared TraceIndex/IdRemapper for same slug', async () => {
+		it('should keep recording when only trace headers are loaded', async () => {
 			process.env.E2E_TESTS = 'true';
 			const state = new TraceReplayState();
 			state.loadEvents('test', [{ kind: 'header' }]);
+			const tracing = {} as Record<string, unknown>;
+
+			await state.configureReplayMode(tracing as unknown as InstanceAiTraceContext);
+
+			expect(tracing.replayMode).toBe('record');
+			expect(tracing.traceWriter).toBeDefined();
+		});
+
+		it('should reuse shared TraceIndex/IdRemapper for same slug', async () => {
+			process.env.E2E_TESTS = 'true';
+			const state = new TraceReplayState();
+			state.loadEvents('test', [{ kind: 'header' }, { kind: 'tool-call' }]);
 
 			const tracing1 = {} as Record<string, unknown>;
 			const tracing2 = {} as Record<string, unknown>;
@@ -238,22 +361,54 @@ describe('TraceReplayState', () => {
 			expect(tracing1.idRemapper).toBe(tracing2.idRemapper);
 		});
 
+		it('should reuse shared TraceWriter for the same recording slug', async () => {
+			process.env.E2E_TESTS = 'true';
+			const state = new TraceReplayState();
+			state.activateSlug('test');
+
+			const tracing1 = {} as Record<string, unknown>;
+			const tracing2 = {} as Record<string, unknown>;
+
+			await state.configureReplayMode(tracing1 as unknown as InstanceAiTraceContext);
+			await state.configureReplayMode(tracing2 as unknown as InstanceAiTraceContext);
+
+			expect(tracing1.traceWriter).toBe(tracing2.traceWriter);
+		});
+
 		it('should clear shared state when slug changes via clearEvents', async () => {
 			process.env.E2E_TESTS = 'true';
 			const state = new TraceReplayState();
-			state.loadEvents('test-a', [{ kind: 'header' }]);
+			state.loadEvents('test-a', [{ kind: 'header' }, { kind: 'tool-call', stepId: 1 }]);
 
 			const tracing1 = {} as Record<string, unknown>;
 			await state.configureReplayMode(tracing1 as unknown as InstanceAiTraceContext);
 			const firstIndex = tracing1.traceIndex;
 
 			state.clearEvents('test-a');
-			state.loadEvents('test-b', [{ kind: 'header' }]);
+			state.loadEvents('test-b', [{ kind: 'header' }, { kind: 'tool-call', stepId: 1 }]);
 
 			const tracing2 = {} as Record<string, unknown>;
 			await state.configureReplayMode(tracing2 as unknown as InstanceAiTraceContext);
 
 			expect(tracing2.traceIndex).not.toBe(firstIndex);
+		});
+
+		it('should clear shared writer state when slug changes via clearEvents', async () => {
+			process.env.E2E_TESTS = 'true';
+			const state = new TraceReplayState();
+			state.activateSlug('test-a');
+
+			const tracing1 = {} as Record<string, unknown>;
+			await state.configureReplayMode(tracing1 as unknown as InstanceAiTraceContext);
+			const firstWriter = tracing1.traceWriter;
+
+			state.clearEvents('test-a');
+			state.activateSlug('test-b');
+
+			const tracing2 = {} as Record<string, unknown>;
+			await state.configureReplayMode(tracing2 as unknown as InstanceAiTraceContext);
+
+			expect(tracing2.traceWriter).not.toBe(firstWriter);
 		});
 	});
 });

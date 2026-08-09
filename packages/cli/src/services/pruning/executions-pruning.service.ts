@@ -5,7 +5,7 @@ import { ExecutionRepository, DbConnection } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
-import { ensureError } from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { strict } from 'node:assert';
 
 import { ExecutionPersistence } from '@/executions/execution-persistence';

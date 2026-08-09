@@ -11,7 +11,7 @@ import {
 	encodeCustomFieldsV2,
 	resolveCustomFieldsV2,
 	coerceToBoolean,
-	toRfc3339,
+	toDateOnly,
 	addFieldsToBody,
 } from '../../helpers';
 import { customFieldsCollection, rawCustomFieldKeysOption } from '../common.description';
@@ -155,13 +155,28 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			const updateFields = this.getNodeParameter('updateFields', i);
 			addFieldsToBody(body, updateFields);
 
+			// Pipedrive v2 activities API renamed `user_id` to `owner_id`; remap so the existing
+			// `user_id` parameter (kept for backward compatibility with saved workflows) is accepted.
+			if (body.user_id !== undefined) {
+				body.owner_id = body.user_id;
+				delete body.user_id;
+			}
+
+			// Pipedrive v2 made `person_id` read-only on the activities API; it must be set
+			// via the `participants` array instead. Remap the existing `person_id` parameter
+			// (kept for backward compatibility with saved workflows) and drop the read-only key.
+			if (body.person_id) {
+				body.participants = [{ person_id: body.person_id, primary: true }];
+			}
+			delete body.person_id;
+
 			// Coerce done to boolean for v2 API
 			if (body.done !== undefined) {
 				body.done = coerceToBoolean(body.done);
 			}
 
 			if (body.due_date) {
-				body.due_date = toRfc3339(body.due_date as string);
+				body.due_date = toDateOnly(body.due_date as string);
 			}
 
 			if (customProperties) {

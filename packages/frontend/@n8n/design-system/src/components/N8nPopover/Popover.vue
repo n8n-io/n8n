@@ -11,7 +11,6 @@ import {
 	type FocusOutsideEvent,
 } from 'reka-ui';
 import { watch } from 'vue';
-import type { CSSProperties } from 'vue';
 
 defineOptions({ name: 'N8nPopover' });
 
@@ -42,7 +41,7 @@ interface Props
 	 */
 	enableSlideIn?: boolean;
 	/**
-	 * Whether to suppress auto-focus behavior when the content includes focusable element
+	 * Whether to suppress auto-focus behavior when the popover opens or closes.
 	 */
 	suppressAutoFocus?: boolean;
 	/**
@@ -55,8 +54,14 @@ interface Props
 	width?: string;
 	/**
 	 * z-index of popover content
+	 *
+	 * Spelled out rather than reusing `CSSProperties['zIndex']`: that resolves to
+	 * csstype's `ZIndex`, which the compiler cannot name through pnpm's hashed
+	 * paths, and the declaration for this component was then silently skipped
+	 * (TS2883). `ZIndex` is `Globals | 'auto' | (number & {}) | (string & {})`, so
+	 * this accepts the same set of values.
 	 */
-	zIndex?: number | CSSProperties['zIndex'];
+	zIndex?: number | string;
 	/**
 	 * Popover max height
 	 */
@@ -103,6 +108,12 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<Emits>();
 
 function handleOpenAutoFocus(e: Event) {
+	if (props.suppressAutoFocus) {
+		e.preventDefault();
+	}
+}
+
+function handleCloseAutoFocus(e: Event) {
 	if (props.suppressAutoFocus) {
 		e.preventDefault();
 	}
@@ -155,6 +166,7 @@ watch(
 				:force-mount="forceMount"
 				:position-strategy="positionStrategy"
 				@open-auto-focus="handleOpenAutoFocus"
+				@close-auto-focus="handleCloseAutoFocus"
 				@pointer-down-outside="handleOutsideInteraction"
 				@interact-outside="handleOutsideInteraction"
 			>
@@ -177,28 +189,27 @@ watch(
 </template>
 
 <style lang="scss" module>
+@use '../../css/mixins/motion';
+
 .popoverContent {
 	--popover--offset--slide-x: 0;
 	--popover--offset--slide-y: 0;
 	--popover--offset--origin-x: center;
 	--popover--offset--origin-y: center;
+	--animation--popover-in--translate-x: var(--popover--offset--slide-x);
+	--animation--popover-in--translate-y: var(--popover--offset--slide-y);
 
-	border-radius: var(--radius);
-	background-color: var(--color--foreground--tint-2);
-	border: var(--border);
-	// NOTE: In https://github.com/n8n-io/n8n/pull/27429 we'll replace custom shadows with tokens
+	border-radius: var(--radius--xs);
+	background-color: var(--background--surface);
 	box-shadow:
-		rgba(0, 0, 0, 0.1) 0 10px 15px -3px,
-		rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+		var(--shadow--md),
+		inset var(--shadow--outline);
 	will-change: transform, opacity;
 	transform-origin: var(--popover--offset--origin-x) var(--popover--offset--origin-y);
 
 	&.enableSlideIn {
-		animation-duration: var(--duration--snappy);
-		animation-timing-function: var(--easing--ease-out);
-
 		&[data-state='open'] {
-			animation-name: popoverIn;
+			@include motion.popover-in;
 		}
 	}
 
@@ -251,21 +262,11 @@ watch(
 	--popover--offset--origin-y: bottom;
 }
 
-@keyframes popoverIn {
-	from {
-		opacity: 0;
-		transform: translate(var(--popover--offset--slide-x), var(--popover--offset--slide-y))
-			scale(0.96);
-	}
-	to {
-		opacity: 1;
-		transform: translate(0, 0) scale(1);
-	}
-}
-
 .popoverArrow {
-	fill: var(--color--foreground--tint-2);
-	stroke: var(--color--foreground);
+	fill: var(--background--surface);
+	stroke: var(--border-color);
 	stroke-width: 1px;
+	// Overlap the card by 1px so its outline shadow doesn't cut the arrow off.
+	transform: translateY(-1px);
 }
 </style>

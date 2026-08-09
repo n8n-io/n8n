@@ -15,6 +15,7 @@ describe('Test PipedriveV2, deal => create', () => {
 			value: 5000,
 			currency: 'USD',
 			status: 'open',
+			owner_id: 25455458,
 		})
 		.reply(200, {
 			success: true,

@@ -43,7 +43,7 @@ export class OpenAi extends VersionedNodeType {
 				},
 			},
 			builderHint: {
-				message:
+				searchHint:
 					'For text generation, reasoning and tools, use AI Agent with OpenAI Chat Model. This OpenAI node is for specialized operations: image generation (DALL-E), audio (Whisper, TTS), and video generation (Sora).',
 				relatedNodes: [
 					{

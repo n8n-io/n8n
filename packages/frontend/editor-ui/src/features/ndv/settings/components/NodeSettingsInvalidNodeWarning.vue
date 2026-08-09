@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import { useInstallNode } from '@/features/settings/communityNodes/composables/useInstallNode';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { CUSTOM_NODES_DOCS_URL } from '@/app/constants';
 import { COMMUNITY_PACKAGE_INSTALL_MODAL_KEY } from '@/features/settings/communityNodes/communityNodes.constants';
 import type { INodeUi } from '@/Interface';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { isCommunityPackageName } from 'n8n-workflow';
@@ -17,6 +17,7 @@ import { I18nT } from 'vue-i18n';
 import ContactAdministratorToInstall from '@/features/settings/communityNodes/components/ContactAdministratorToInstall.vue';
 import { removePreviewToken } from '@/features/shared/nodeCreator/nodeCreator.utils';
 import { useQuickConnect } from '@/features/credentials/quickConnect/composables/useQuickConnect';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 
 const { node, previewMode = false } = defineProps<{ node: INodeUi; previewMode?: boolean }>();
 
@@ -24,9 +25,10 @@ const i18n = useI18n();
 const telemetry = useTelemetry();
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 const nodeCreatorStore = useNodeCreatorStore();
 const usersStore = useUsersStore();
+const workflowId = useWorkflowId();
 
 const isCommunityNode = computed(() => isCommunityPackageName(node.type));
 const isVerifiedCommunityNode = computed(
@@ -50,7 +52,7 @@ async function onViewDetailsClick() {
 		node_type: node.type,
 	});
 	if (isVerifiedCommunityNode.value) {
-		await nodeCreatorStore.openNodeCreatorWithNode(node.name);
+		await nodeCreatorStore.openNodeCreatorWithNode(workflowId.value, node.name);
 	} else if (npmPackage.value) {
 		window.open(`https://www.npmjs.com/package/${npmPackage.value}`, '_blank');
 	}
@@ -89,7 +91,7 @@ async function onInstallClick() {
 // close the modal when the node gets installed
 watch(isNodeDefined, () => {
 	if (isNodeDefined.value) {
-		ndvStore.unsetActiveNodeName();
+		ndvStore.value.unsetActiveNodeName();
 	}
 });
 </script>

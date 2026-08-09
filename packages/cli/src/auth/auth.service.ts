@@ -1,4 +1,3 @@
-import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
@@ -10,6 +9,7 @@ import type { NextFunction, Request, Response } from 'express';
 import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
 import type { StringValue as TimeUnitValue } from 'ms';
 
+import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { License } from '@/license';
@@ -39,6 +39,10 @@ interface PasswordResetToken {
 	hash: string;
 }
 
+function escapeRegExp(value: string): string {
+	return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 interface CreateAuthMiddlewareOptions {
 	/**
 	 * If true, MFA is not enforced
@@ -58,8 +62,13 @@ interface CreateAuthMiddlewareOptions {
 
 @Service()
 export class AuthService {
-	// The browser-id check needs to be skipped on these endpoints
-	private skipBrowserIdCheckEndpoints: string[];
+	/**
+	 * Endpoints exempt from the browser-id check on GET requests. Strings are
+	 * matched exactly against `baseUrl + route path`; RegExps cover routes
+	 * whose controller prefix carries resolved params (e.g. a `:projectId`
+	 * that express substitutes into `req.baseUrl`).
+	 */
+	private skipBrowserIdCheckEndpoints: Array<string | RegExp>;
 
 	constructor(
 		private readonly globalConfig: GlobalConfig,
@@ -84,6 +93,11 @@ export class AuthService {
 			`/${restEndpoint}/oauth1-credential/callback`,
 			`/${restEndpoint}/oauth2-credential/callback`,
 
+			// The dynamic-credential authorize link is a top-level browser navigation
+			// (link click / redirect), so it can't carry the browser-id header. The
+			// GET method guard below keeps this GET-only; POST authorize is unaffected.
+			`/${restEndpoint}/credentials/:id/authorize`,
+
 			// Skip browser ID check for type files
 			'/types/nodes.json',
 			'/types/credentials.json',
@@ -95,6 +109,13 @@ export class AuthService {
 
 			// Skip browser ID check for Instance AI SSE endpoint — EventSource can't send custom headers
 			`/${restEndpoint}/instance-ai/events/:threadId`,
+
+			// Agent chat attachments render via <img> tags, which can't send the
+			// browser-id header. The controller prefix carries a resolved
+			// :projectId in req.baseUrl, so this one needs a pattern.
+			new RegExp(
+				`^/${escapeRegExp(restEndpoint)}/projects/[^/]+/agents/v2/:agentId/chat/attachments/:attachmentId$`,
+			),
 		];
 	}
 
@@ -155,7 +176,7 @@ export class AuthService {
 			const isPreviewMode = process.env.N8N_PREVIEW_MODE === 'true';
 			const shouldSkipAuth = (allowSkipPreviewAuth && isPreviewMode) || allowUnauthenticated;
 
-			if (req.user) next();
+			if (Object.hasOwn(req, 'user') && req.user) next();
 			else if (shouldSkipAuth) next();
 			else res.status(401).json({ status: 'error', message: 'Unauthorized' });
 		};
@@ -248,11 +269,15 @@ export class AuthService {
 	 * Validate a cookie auth token: checks revocation, JWT signature/expiry,
 	 * user existence, and hash consistency. Skips browser-id and MFA checks
 	 * since those are not applicable to webhook cookie validation.
+	 *
+	 * @returns the authenticated `User` on success
+	 * @throws `AuthError('Unauthorized')` if the token is revoked or invalid
 	 */
-	async validateCookieToken(token: string): Promise<void> {
+	async validateCookieToken(token: string): Promise<User> {
 		const isInvalid = await this.invalidAuthTokenRepository.existsBy({ token });
 		if (isInvalid) throw new AuthError('Unauthorized');
-		await this.validateToken(token);
+		const { user } = await this.validateToken(token);
+		return user;
 	}
 
 	async authenticateUserBasedOnToken(
@@ -268,22 +293,49 @@ export class AuthService {
 
 		this.validateBrowserId(jwtPayload, browserId, endpoint, method);
 
-		const usedMfa = jwtPayload.usedMfa ?? false;
+		await this.checkMfaGate(user, jwtPayload);
 
-		// MFA was used, we are good either way.
-		if (usedMfa) {
-			return user;
+		return user;
+	}
+
+	/**
+	 * Validates an n8n auth cookie (JWT) without request-bound checks (browserId / endpoint / method).
+	 *
+	 * Use when the cookie was captured at the controller boundary and must be re-validated
+	 * later in the execution lifecycle, after the original HTTP request is no longer available.
+	 *
+	 * @param cookie - The JWT string extracted from the `n8n-auth` browser cookie.
+	 */
+	async authenticateUserByCookie(cookie: string): Promise<User> {
+		const isInvalid = await this.invalidAuthTokenRepository.existsBy({ token: cookie });
+		if (isInvalid) throw new AuthError('Unauthorized');
+
+		const { user, jwtPayload } = await this.validateToken(cookie);
+
+		await this.checkMfaGate(user, jwtPayload);
+		return user;
+	}
+
+	private async checkMfaGate(user: User, jwtPayload: IssuedJWT): Promise<void> {
+		if (jwtPayload.usedMfa ?? false) {
+			return;
 		}
-		const mfaEnforced = await this.mfaService.isMFAEnforced();
 
+		const mfaEnforced = await this.mfaService.isMFAEnforced();
 		if (!mfaEnforced && !user.mfaEnabled) {
 			// MFA is not enforced and the user has MFA not enabled
 			// we are good
-			return user;
+			return;
 		}
 
 		// either MFA is enforced or user has MFA enabled
 		throw new AuthError('Unauthorized');
+	}
+
+	private endpointSkipsBrowserIdCheck(endpoint: string): boolean {
+		return this.skipBrowserIdCheckEndpoints.some((entry) =>
+			typeof entry === 'string' ? entry === endpoint : entry.test(endpoint),
+		);
 	}
 
 	private validateBrowserId(
@@ -292,7 +344,7 @@ export class AuthService {
 		endpoint: string,
 		method: string,
 	) {
-		if (method === 'GET' && this.skipBrowserIdCheckEndpoints.includes(endpoint)) {
+		if (method === 'GET' && this.endpointSkipsBrowserIdCheck(endpoint)) {
 			this.logger.debug(`Skipped browserId check on ${endpoint}`);
 		} else if (
 			jwtPayload.browserId &&
@@ -385,9 +437,9 @@ export class AuthService {
 			decodedToken = this.jwtService.verify(token);
 		} catch (e) {
 			if (e instanceof TokenExpiredError) {
-				this.logger.debug('Reset password token expired', { token });
+				this.logger.debug('Reset password token expired');
 			} else {
-				this.logger.debug('Error verifying token', { token });
+				this.logger.debug('Error verifying token');
 			}
 			return;
 		}
@@ -400,7 +452,7 @@ export class AuthService {
 		if (!user) {
 			this.logger.debug(
 				'Request to resolve password token failed because no user was found for the provided user ID',
-				{ userId: decodedToken.sub, token },
+				{ userId: decodedToken.sub },
 			);
 			return;
 		}

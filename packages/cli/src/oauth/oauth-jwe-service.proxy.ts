@@ -1,32 +1,47 @@
 import { Service } from '@n8n/di';
+import type { JWK } from 'jose';
 import type { IDataObject, OauthJweProxyProvider } from 'n8n-workflow';
 import { UserError } from 'n8n-workflow';
 
-export interface OAuthJweDecryptHandler {
+/**
+ * JWE-related fields of an RFC 7591 dynamic client registration payload.
+ * Per RFC 7591 §2, `jwks_uri` and `jwks` are mutually exclusive. Empty
+ * when the JWE feature is not in play for a given registration.
+ */
+export type DcrJweFields = {
+	jwks_uri?: string;
+	jwks?: { keys: JWK[] };
+	id_token_encrypted_response_alg?: string;
+};
+
+export interface OAuthJweHandler {
 	decryptOAuth2TokenData(tokenData: IDataObject): Promise<IDataObject>;
+	getDcrJweFields(inlineJwks: boolean): Promise<DcrJweFields>;
 }
 
 /**
- * CLI-side proxy for OAuth2 JWE decryption. Lives outside the `oauth-jwe`
- * module so non-module callers (the OAuth2 callback controller) and the
- * execution engine (via `additionalData['oauth-jwe']`) consume it without
- * importing module internals. The module wires the real handler at init time
- * via {@link setHandler}; callers gate on the per-credential `jweEnabled`
- * flag, so reaching this proxy means decryption was explicitly requested —
- * a missing handler means the OAuth2 JWE feature is disabled while a stored
- * credential still expects it, and we surface that loudly rather than
- * silently persisting an undecrypted JWE blob.
+ * CLI-side proxy for the OAuth2 JWE module. Lives outside the `oauth-jwe`
+ * module so non-module callers (the OAuth2 callback controller, the OAuth
+ * service for dynamic client registration) and the execution engine
+ * (via `additionalData['oauth-jwe']`) consume it without importing module
+ * internals or knowing about the JWE feature flag.
  *
  * Mirrors the redaction proxy pattern in `execution-redaction-proxy.service.ts`.
  */
 @Service()
 export class OAuthJweServiceProxy implements OauthJweProxyProvider {
-	private handler?: OAuthJweDecryptHandler;
+	private handler?: OAuthJweHandler;
 
-	setHandler(handler: OAuthJweDecryptHandler) {
+	setHandler(handler: OAuthJweHandler) {
 		this.handler = handler;
 	}
 
+	/**
+	 * Strict: callers reaching this method have confirmed
+	 * `credential.jweEnabled === true`, so a missing handler means a
+	 * misconfiguration we want to surface loudly rather than silently
+	 * persisting an undecrypted JWE blob.
+	 */
 	async decryptOAuth2TokenData(tokenData: IDataObject): Promise<IDataObject> {
 		if (!this.handler) {
 			throw new UserError(
@@ -34,5 +49,18 @@ export class OAuthJweServiceProxy implements OauthJweProxyProvider {
 			);
 		}
 		return await this.handler.decryptOAuth2TokenData(tokenData);
+	}
+
+	/**
+	 * Lenient: returns an empty object when the JWE feature is off on this
+	 * instance. The per-credential opt-in (`jweEnabled`) is checked by the
+	 * caller — reaching this method means the credential has asked for JWE.
+	 * When `inlineJwks` is true the handler returns the JWKS by value
+	 * (`jwks`) instead of by reference (`jwks_uri`) per RFC 7591 §2, for
+	 * IdPs that cannot reach this instance's JWKS endpoint.
+	 */
+	async getDcrJweFields(inlineJwks: boolean): Promise<DcrJweFields> {
+		if (!this.handler) return {};
+		return await this.handler.getDcrJweFields(inlineJwks);
 	}
 }

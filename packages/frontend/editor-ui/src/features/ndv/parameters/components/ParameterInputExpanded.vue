@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import type { IUpdateInformation } from '@/Interface';
 import { useI18n } from '@n8n/i18n';
-import { useTelemetry } from '@/app/composables/useTelemetry';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { isValueExpression as isValueExpressionUtil } from '@/app/utils/nodeTypesUtils';
 import { createEventBus } from '@n8n/utils/event-bus';
 import {
@@ -20,6 +19,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { storeToRefs } from 'pinia';
 
 import { N8nInputLabel, N8nLink, N8nText } from '@n8n/design-system';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 const LazyFixedCollectionParameter = defineAsyncComponent(
 	async () => await import('./FixedCollection/FixedCollectionParameter.vue'),
@@ -51,7 +51,7 @@ const menuExpanded = ref(false);
 const eventBus = ref(createEventBus());
 const uiStore = useUIStore();
 
-const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 
 const i18n = useI18n();
 const telemetry = useTelemetry();
@@ -160,7 +160,7 @@ function onDocumentationUrlClick(): void {
 	telemetry.track('User clicked credential modal docs link', {
 		docs_link: props.documentationUrl,
 		source: 'field',
-		workflow_id: workflowsStore.workflowId,
+		workflow_id: workflowDocumentStore.value.workflowId,
 	});
 }
 const param = useTemplateRef<{ displaysIssues?: ComputedRef<boolean> }>('param');
@@ -188,6 +188,7 @@ defineExpose({
 					:is-read-only="false"
 					:show-options="!isFixedCollectionType"
 					:show-expression-selector="!isFixedCollectionType"
+					:show-focus-panel="false"
 					:is-value-expression="isValueExpression"
 					@update:model-value="optionSelected"
 					@menu-expanded="onMenuExpanded"

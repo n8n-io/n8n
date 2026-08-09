@@ -8,7 +8,7 @@ type TabSettings = {
 	pageSize?: number;
 };
 
-export type LocalStorageTabKey = 'workflows' | 'credentials' | 'dataTable';
+export type LocalStorageTabKey = 'workflows' | 'credentials' | 'dataTable' | 'agents';
 
 // We are currently only saving workflow tab settings
 // but we are keeping the credentials tab settings here for future use

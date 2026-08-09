@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { XYPosition } from '@/Interface';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { v4 as uuid } from 'uuid';
 import { computed, ref, watch } from 'vue';
 
@@ -27,10 +27,10 @@ const hovering = ref(false);
 const targetRef = ref<HTMLElement>();
 const id = ref(uuid());
 
-const ndvStore = useNDVStore();
-const isDragging = computed(() => ndvStore.isDraggableDragging);
-const draggableType = computed(() => ndvStore.draggableType);
-const draggableDimensions = computed(() => ndvStore.draggable.dimensions);
+const ndvStore = injectNDVStore();
+const isDragging = computed(() => ndvStore.value.isDraggableDragging);
+const draggableType = computed(() => ndvStore.value.draggableType);
+const draggableDimensions = computed(() => ndvStore.value.draggable.dimensions);
 const droppable = computed(
 	() => !props.disabled && isDragging.value && draggableType.value === props.type,
 );
@@ -39,10 +39,10 @@ const activeDrop = computed(() => droppable.value && hovering.value);
 watch(activeDrop, (active) => {
 	if (active) {
 		const stickyPosition = getStickyPosition();
-		ndvStore.setDraggableTarget({ id: id.value, stickyPosition });
-	} else if (ndvStore.draggable.activeTarget?.id === id.value) {
+		ndvStore.value.setDraggableTarget({ id: id.value, stickyPosition });
+	} else if (ndvStore.value.draggable.activeTarget?.id === id.value) {
 		// Only clear active target if it is this one
-		ndvStore.setDraggableTarget(null);
+		ndvStore.value.setDraggableTarget(null);
 	}
 });
 
@@ -56,7 +56,7 @@ function onMouseLeave() {
 
 function onMouseUp(event: MouseEvent) {
 	if (activeDrop.value) {
-		const data = ndvStore.draggableData;
+		const data = ndvStore.value.draggableData;
 		emit('drop', data, event);
 	}
 }

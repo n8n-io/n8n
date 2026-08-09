@@ -91,6 +91,14 @@ export class OAuth2Api implements ICredentialType {
 			required: true,
 		},
 		{
+			// Hidden ordering anchor: lets extending credentials (e.g. microsoftOAuth2Api) render a
+			// secret/certificate selector right after Client ID by overriding this field. Inert here.
+			displayName: 'Authentication',
+			name: 'clientCredentialType',
+			type: 'hidden',
+			default: 'clientSecret',
+		},
+		{
 			displayName: 'Client Secret',
 			name: 'clientSecret',
 			type: 'string',
@@ -104,6 +112,20 @@ export class OAuth2Api implements ICredentialType {
 			},
 			default: '',
 			required: true,
+		},
+		{
+			// Hidden ordering anchors (see `clientCredentialType` above): let extending credentials
+			// render the certificate fields right after Client Secret instead of appended at the end.
+			displayName: 'Private Key',
+			name: 'privateKey',
+			type: 'hidden',
+			default: '',
+		},
+		{
+			displayName: 'Certificate',
+			name: 'certificate',
+			type: 'hidden',
+			default: '',
 		},
 		// WARNING: if you are extending from this credentials and allow user to set their own scopes
 		// you HAVE TO add it to GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE in packages/cli/src/constants.ts
@@ -209,20 +231,46 @@ export class OAuth2Api implements ICredentialType {
 			type: 'boolean',
 			default: false,
 			description:
-				'Whether the IdP returns tokens encrypted as JWE to the public key at this instance’s JWKS endpoint. The response must contain at least one JWE-encrypted token (access or ID token); fully plaintext responses are rejected. The field is hidden by the server unless the OAuth2 JWE feature is enabled.',
+				'Whether the IdP returns tokens encrypted as JWE to the public key at this instance’s JWKS endpoint. The response must contain at least one JWE-encrypted token (access or ID token); fully plaintext responses are rejected.',
+			envFeatureFlag: 'OAUTH2_JWE',
 			doNotInherit: true,
 		},
 		{
-			// `displayName` is filled in at runtime by FrontendService with the
-			// instance JWKS URI. Server-side gating drops both this notice and
-			// the toggle above when the OAuth2 JWE feature flag is off.
-			displayName: '',
-			name: 'jwksUriNotice',
-			type: 'notice',
+			// `doNotInherit` matches `jweEnabled` above. Inheriting just `jwksUri`
+			// without `jweEnabled` breaks `getParameterResolveOrder` on every
+			// extending credential because `jwksUri.displayOptions` references a
+			// field the child doesn't have, leaving the dependency unresolved.
+			// Future JWE-aware OAuth2 extensions can re-declare both fields.
+			displayName: 'JWKS URI',
+			name: 'jwksUri',
+			type: 'string',
+			typeOptions: {
+				copyButton: true,
+			},
 			default: '',
+			description:
+				'Provide this URL to your IdP so it can fetch the public key used to encrypt access and ID tokens for this instance.',
 			displayOptions: {
 				show: {
 					jweEnabled: [true],
+				},
+			},
+			doNotInherit: true,
+		},
+		{
+			// Transitively gated by `envFeatureFlag: 'OAUTH2_JWE'` on
+			// `jweEnabled`: when the flag is off, `jweEnabled` is hidden, so this
+			// toggle's `displayOptions.show: jweEnabled: [true]` can never match.
+			displayName: 'Inline JWKS in Client Registration',
+			name: 'inlineJwks',
+			type: 'boolean',
+			default: false,
+			description:
+				'Whether to send the public keys directly in the dynamic client registration payload instead of advertising a JWKS URI. Enable this when the IdP cannot reach this instance (e.g. when self-hosted behind a firewall).',
+			displayOptions: {
+				show: {
+					jweEnabled: [true],
+					useDynamicClientRegistration: [true],
 				},
 			},
 			doNotInherit: true,

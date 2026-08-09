@@ -7,7 +7,7 @@ import { Agent, Tool } from '../../index';
 const describe = describeIf('anthropic');
 
 describe('stream timing', () => {
-	it('tool-call-delta chunks arrive incrementally (not all buffered)', async () => {
+	it('tool-input-delta chunks arrive incrementally (not all buffered)', async () => {
 		const agent = new Agent('timing-test')
 			.model(getModel('anthropic'))
 			.instructions(
@@ -31,16 +31,21 @@ describe('stream timing', () => {
 
 		const reader = result.stream.getReader();
 
-		// Track timestamps of each reader.read() that returns a tool-call-delta
+		// Track timestamps of each reader.read() that returns a tool-input-delta
+		// for the set_code tool. We seed `setCodeToolCallId` from the matching
+		// tool-input-start so subsequent deltas can be filtered by toolCallId.
 		// This measures when the reader YIELDS each chunk, not when the agent enqueues it.
 		const deltaReadTimes: number[] = [];
 		const start = Date.now();
+		let setCodeToolCallId: string | undefined;
 
 		while (true) {
 			const { done, value } = await reader.read();
 			if (done) break;
 			const chunk = value;
-			if (chunk.type === 'tool-call-delta' && (chunk as { name?: string }).name === 'set_code') {
+			if (chunk.type === 'tool-input-start' && chunk.toolName === 'set_code') {
+				setCodeToolCallId = chunk.toolCallId;
+			} else if (chunk.type === 'tool-input-delta' && chunk.toolCallId === setCodeToolCallId) {
 				deltaReadTimes.push(Date.now() - start);
 			}
 		}

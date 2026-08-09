@@ -14,6 +14,16 @@ import ExperimentalNodeDetailsDrawer from './ExperimentalNodeDetailsDrawer.vue';
 import { nextTick, shallowRef } from 'vue';
 import { fireEvent } from '@testing-library/vue';
 
+// Instantiates a store that derives the workflow id from the route. These tests run
+// without a router, so resolve the id directly.
+vi.mock('@/app/composables/useWorkflowId', async () => {
+	const { computed } = await import('vue');
+	return {
+		useWorkflowId: () => computed(() => ''),
+		useRouteWorkflowId: () => computed(() => ''),
+	};
+});
+
 vi.mock('@/app/stores/workflowDocument.store', async () => {
 	const actual = await vi.importActual('@/app/stores/workflowDocument.store');
 	return {
@@ -47,8 +57,7 @@ describe('ExperimentalNodeDetailsDrawer', () => {
 		});
 
 		workflowsStore = useWorkflowsStore(pinia);
-		workflowsStore.workflow.id = 'test-workflow';
-		workflowsStore.workflow.nodes = mockNodes;
+		workflowsStore.setWorkflowId('test-workflow');
 
 		const workflowDocumentStore = useWorkflowDocumentStore(
 			createWorkflowDocumentId(workflowsStore.workflowId),
@@ -69,7 +78,7 @@ describe('ExperimentalNodeDetailsDrawer', () => {
 				description: '',
 			},
 		]);
-		ndvStore = useNDVStore();
+		ndvStore = useNDVStore(createWorkflowDocumentId(workflowsStore.workflowId));
 	});
 
 	it('should show updated parameter after closing NDV', async () => {

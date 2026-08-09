@@ -19,7 +19,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import type { IConnection, NodeConnectionType } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { createTestNode } from '@/__tests__/mocks';
 import type { INodeUi } from '@/Interface';
 import {
@@ -60,15 +59,11 @@ function createConnectionData(
 }
 
 describe('useWorkflowDocumentConnections', () => {
-	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
 	let deps: WorkflowDocumentConnectionsDeps;
 
 	beforeEach(() => {
 		setActivePinia(createPinia());
-		workflowsStore = useWorkflowsStore();
 		deps = createDeps();
-
-		workflowsStore.workflow.connections = {};
 	});
 
 	describe('round-trip: setConnections → read', () => {

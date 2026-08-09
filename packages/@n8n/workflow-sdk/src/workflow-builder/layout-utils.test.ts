@@ -383,5 +383,41 @@ describe('calculateNodePositionsDagre', () => {
 			const positions2 = calculateNodePositionsDagre(nodes2);
 			expect(positions2.has('remote-note')).toBe(false);
 		});
+
+		it('preserves explicit positions and anchors new nodes around them', () => {
+			const nodes = new Map<string, GraphNode>();
+			const triggerConns = makeMainConns([[0, [makeTarget('set')]]]);
+
+			nodes.set(
+				'trigger',
+				createGraphNode('trigger', 'n8n-nodes-base.manualTrigger', triggerConns, [500, 600]),
+			);
+			nodes.set('set', createGraphNode('set', 'n8n-nodes-base.set'));
+
+			const positions = calculateNodePositionsDagre(nodes);
+
+			// Explicit position is not overwritten (function only returns positions for unpositioned nodes)
+			expect(positions.has('trigger')).toBe(false);
+			// New node gets a position from dagre
+			expect(positions.has('set')).toBe(true);
+		});
+
+		it('reanchors sticky notes using explicit positions of covered nodes', () => {
+			const nodes = new Map<string, GraphNode>();
+			const triggerConns = makeMainConns([[0, [makeTarget('set')]]]);
+
+			nodes.set(
+				'trigger',
+				createGraphNode('trigger', 'n8n-nodes-base.manualTrigger', triggerConns, [500, 600]),
+			);
+			nodes.set('set', createGraphNode('set', 'n8n-nodes-base.set'));
+			// Sticky overlapping the explicitly positioned trigger
+			nodes.set('note', createGraphNode('note', STICKY_NODE_TYPE, undefined, [500, 600]));
+
+			const positions = calculateNodePositionsDagre(nodes);
+
+			// Sticky is reanchored relative to trigger's explicit position, not dagre's guess
+			expect(positions.get('note')).toEqual([496, 672]);
+		});
 	});
 });

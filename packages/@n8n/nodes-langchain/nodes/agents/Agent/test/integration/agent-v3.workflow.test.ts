@@ -1,9 +1,11 @@
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
-import path from 'node:path';
 import type { WorkflowTestData } from 'n8n-workflow';
+import path from 'node:path';
 
 // CI has cold-start overhead on the first test (coverage instrumentation, module loading)
-jest.setTimeout(10_000);
+vi.setConfig({
+	testTimeout: 10000,
+});
 
 /**
  * Helper to create a standard OpenAI chat completion response.

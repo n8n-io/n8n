@@ -16,7 +16,9 @@
 				"operation": "getAll",
 				"returnAll": false,
 				"limit": 2,
-				"filters": {}
+				"filters": {
+					"user_id": 25455458
+				}
 			},
 			"id": "e5e5e5e5-f6f6-a7a7-b8b8-c9c9c9c9c9c9",
 			"name": "Pipedrive",

@@ -1,4 +1,10 @@
-import { DeploymentKeyRepository, type DeploymentKey } from '@n8n/db';
+import type { ListEncryptionKeysQueryDto } from '@n8n/api-types';
+import {
+	DeploymentKeyRepository,
+	type DeploymentKey,
+	type DeploymentKeySortDirection,
+	type DeploymentKeySortField,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 import { Cipher, type CipherAlgorithm } from 'n8n-core';
 import { randomBytes } from 'node:crypto';
@@ -88,10 +94,28 @@ export class KeyManagerService {
 		});
 	}
 
-	/** Lists encryption keys, optionally filtered by type. */
-	async listKeys(type?: string): Promise<DeploymentKey[]> {
-		if (type) return await this.deploymentKeyRepository.findAllByType(type);
-		return await this.deploymentKeyRepository.find();
+	/**
+	 * Lists encryption keys with pagination, optional filtering by type and
+	 * activation date, and an optional `sortBy` of the form `field:direction`.
+	 * Defaults to `createdAt:desc` when no `sortBy` is provided.
+	 */
+	async listKeys(
+		query: ListEncryptionKeysQueryDto,
+	): Promise<{ items: DeploymentKey[]; count: number }> {
+		const [field, direction] = (query.sortBy ?? 'createdAt:desc').split(':') as [
+			DeploymentKeySortField,
+			'asc' | 'desc',
+		];
+
+		return await this.deploymentKeyRepository.findAndCountForList({
+			type: query.type,
+			sortField: field,
+			sortDirection: direction.toUpperCase() as DeploymentKeySortDirection,
+			skip: query.skip,
+			take: query.take,
+			createdAtFrom: query.activatedFrom ? new Date(query.activatedFrom) : undefined,
+			createdAtTo: query.activatedTo ? new Date(query.activatedTo) : undefined,
+		});
 	}
 
 	/**

@@ -4,7 +4,7 @@ export const idExtractionRegexp = `^(${notionIdRegexp})`;
 export const idValidationRegexp = `${idExtractionRegexp}.*`;
 
 const baseUrlRegexp =
-	'(?:https|http)://(?:www\\.notion\\.so|app\\.notion\\.com)/(?:p/)?(?:[a-z0-9-]{2,}/)?';
+	'(?:https|http)://(?:www\\.notion\\.(?:so|com)|app\\.notion\\.com)/(?:p/)?(?:[a-z0-9-]{2,}/)?';
 
 export const databaseUrlExtractionRegexp = `${baseUrlRegexp}(${notionIdRegexp})`;
 export const databaseUrlValidationRegexp = `${databaseUrlExtractionRegexp}.*`;

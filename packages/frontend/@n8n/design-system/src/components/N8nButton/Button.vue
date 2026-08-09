@@ -61,6 +61,7 @@ const classes = computed(() =>
 		props.loading && $style.loading,
 		props.iconOnly && $style.iconOnly,
 		props.disabled && $style.disabled,
+		isDisabled.value && 'is-disabled',
 		props.class,
 	),
 );
@@ -109,7 +110,7 @@ const handleClick = (event: MouseEvent) => {
 		</Transition>
 
 		<div :class="$style['button-inner']">
-			<slot name="icon">
+			<slot v-if="!loading" name="icon">
 				<N8nIcon v-if="icon && !loading" :icon="icon" :size="computedIconSize" />
 			</slot>
 
@@ -127,6 +128,7 @@ const handleClick = (event: MouseEvent) => {
 
 <style lang="scss" module>
 @use '../../css/mixins/focus';
+@use '../../css/mixins/motion';
 
 .button {
 	appearance: none;
@@ -178,7 +180,9 @@ const handleClick = (event: MouseEvent) => {
 			var(--button--shadow--hover);
 	}
 
-	&:active {
+	&:active,
+	&[aria-expanded='true'],
+	:global([aria-expanded='true']) & {
 		background-color: var(--button--color--background-active);
 		box-shadow:
 			inset var(--button--border--shadow--active),
@@ -250,12 +254,12 @@ const handleClick = (event: MouseEvent) => {
 		--button--color--background-hover: color-mix(
 			in srgb,
 			var(--button--color--background),
-			var(--background--hover)
+			light-dark(var(--color--neutral-black), var(--color--neutral-white)) 5%
 		);
 		--button--color--background-active: color-mix(
 			in srgb,
 			var(--button--color--background),
-			var(--background--active)
+			light-dark(var(--color--neutral-black), var(--color--neutral-white)) 10%
 		);
 		--button--shadow: var(--shadow--xs);
 		--button--shadow--hover: var(--shadow--xs);
@@ -387,6 +391,7 @@ const handleClick = (event: MouseEvent) => {
 }
 
 .button-inner {
+	flex: 1;
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -408,11 +413,7 @@ const handleClick = (event: MouseEvent) => {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	animation: spin 1s linear infinite;
-
-	@media (prefers-reduced-motion: reduce) {
-		animation: none;
-	}
+	@include motion.spin;
 }
 
 /* TODO: Move to global animations css library */
@@ -437,15 +438,6 @@ const handleClick = (event: MouseEvent) => {
 	@media (prefers-reduced-motion: reduce) {
 		transform: none;
 		filter: none;
-	}
-}
-
-@keyframes spin {
-	from {
-		transform: rotate(0deg);
-	}
-	to {
-		transform: rotate(360deg);
 	}
 }
 </style>

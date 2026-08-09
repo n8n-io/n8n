@@ -1,5 +1,6 @@
 delete:
   x-eov-operation-id: deleteFolder
+  x-required-scope: folder:delete
   x-eov-operation-handler: v1/handlers/folders/folders.handler
   tags:
     - Folders
@@ -37,6 +38,7 @@ delete:
       $ref: '../../../../shared/spec/responses/notFound.yml'
 get:
   x-eov-operation-id: getFolder
+  x-required-scope: folder:read
   x-eov-operation-handler: v1/handlers/folders/folders.handler
   tags:
     - Folders
@@ -94,6 +96,7 @@ get:
       $ref: '../../../../shared/spec/responses/notFound.yml'
 patch:
   x-eov-operation-id: updateFolder
+  x-required-scope: folder:update
   x-eov-operation-handler: v1/handlers/folders/folders.handler
   tags:
     - Folders

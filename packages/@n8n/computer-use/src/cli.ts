@@ -3,22 +3,23 @@
 import { select } from '@inquirer/prompts';
 import * as fs from 'node:fs/promises';
 
-import { isOriginAllowed, parseConfig } from './config';
+import { isOriginAllowed, parseConfig, resolvePermissionConfirmation } from './config';
 import { cliConfirmResourceAccess, sanitizeForTerminal } from './confirm-resource-cli';
-import { GatewayClient } from './gateway-client';
+import { GatewayAuthError, GatewayClient } from './gateway-client';
 import { GatewaySession } from './gateway-session';
 import {
 	configure,
 	logger,
 	printBanner,
 	printConnected,
+	printInvalidToken,
+	printModuleDiagnostics,
 	printModuleStatus,
 	printToolList,
 } from './logger';
 import { SettingsStore } from './settings-store';
 import {
 	editPermissions,
-	ensureSettingsFile,
 	isAllDeny,
 	printPermissionsTable,
 	promptFilesystemDir,
@@ -117,6 +118,8 @@ Global options:
   --log-level <level>            Log level: silent, error, warn, info, debug (default: info)
   --allowed-origins <patterns>   Comma-separated allowed origin patterns
                                  (default: https://*.app.n8n.cloud)
+                                 When connecting to a non-cloud instance, resource
+                                 confirmations are always prompted in this terminal.
   --non-interactive              Skip all prompts (deny per default)
   --auto-confirm                 Auto-confirm all prompts (no readline)
   -h, --help                     Show this help message
@@ -133,6 +136,11 @@ Permissions (deny | ask | allow):
 
 Computer use:
   --computer-shell-timeout <ms>      Shell command timeout (default: 30000)
+  --dangerously-disable-shell-sandbox
+                                     Run shell commands WITHOUT the OS sandbox.
+                                     Insecure — only use in a trusted, isolated
+                                     environment. Without a sandbox the shell
+                                     tool is disabled by default.
 
 Browser:
   --no-browser                       Disable browser tools
@@ -173,7 +181,17 @@ async function main(
 		process.exit(1);
 	}
 
-	await ensureSettingsFile(config);
+	config.permissionConfirmation = resolvePermissionConfirmation(
+		config.permissionConfirmation,
+		origin,
+	);
+	logger.info(
+		config.permissionConfirmation === 'client'
+			? 'Resource confirmations will be prompted in this terminal'
+			: 'Resource confirmations will be prompted in the n8n UI',
+	);
+
+	await SettingsStore.ensureInitialized(config);
 
 	const settingsStore = await SettingsStore.create();
 	const defaults = settingsStore.getDefaults(parsed.config);
@@ -200,13 +218,6 @@ async function main(
 		process.exit(1);
 	}
 
-	// printModuleStatus expects a GatewayConfig shape — derive one from the session.
-	printModuleStatus({
-		...parsed.config,
-		permissions: session.getAllPermissions(),
-		filesystem: { dir: session.dir },
-	});
-
 	const client = new GatewayClient({
 		url,
 		apiKey,
@@ -215,18 +226,38 @@ async function main(
 		confirmResourceAccess: makeConfirmResourceAccess(parsed.nonInteractive, parsed.autoConfirm),
 	});
 
+	let shutdownPromise: Promise<void> | null = null;
 	const shutdown = () => {
-		logger.info('Shutting down');
-		void Promise.all([client.disconnect(), session.flush()]).finally(() => {
-			process.exit(0);
-		});
+		shutdownPromise ??= (async () => {
+			logger.info('Shutting down');
+			await Promise.all([client.disconnect(), session.flush()]).finally(() => {
+				process.exit(0);
+			});
+		})();
 	};
 	process.on('SIGINT', shutdown);
 	process.on('SIGTERM', shutdown);
 
-	await client.start();
+	try {
+		await client.start();
+	} catch (error) {
+		if (error instanceof GatewayAuthError) {
+			printInvalidToken(origin);
+			process.exit(1);
+		}
+		throw error;
+	}
 
 	printConnected(url);
+	printModuleStatus(
+		{
+			...parsed.config,
+			permissions: session.getAllPermissions(),
+			filesystem: { dir: session.dir },
+		},
+		client.toolCategories,
+	);
+	printModuleDiagnostics(client.disabledModules);
 	printToolList(client.tools);
 }
 

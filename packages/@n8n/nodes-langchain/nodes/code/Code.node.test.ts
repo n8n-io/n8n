@@ -1,22 +1,25 @@
-import { LOG_LEVELS } from 'n8n-workflow';
-import { transformLegacyLangchainImport, createSandboxLogger } from './Code.node';
+import { LOG_LEVELS, CONSOLE_OUTPUT_REDACTED_MESSAGE } from 'n8n-workflow';
+
+import {
+	transformLegacyLangchainImport,
+	createSandboxLogger,
+	createProductionConsoleLog,
+} from './Code.node';
 
 describe('Code.node', () => {
 	describe('createSandboxLogger', () => {
-		const logLevelKeys = LOG_LEVELS.filter((level) => level !== 'silent') as Array<
-			Exclude<(typeof LOG_LEVELS)[number], 'silent'>
-		>;
+		const logLevelKeys = LOG_LEVELS.filter((level) => level !== 'silent');
 
 		function buildMockLogger() {
 			const logger = {
-				error: jest.fn(),
-				warn: jest.fn(),
-				info: jest.fn(),
-				debug: jest.fn(),
+				error: vi.fn(),
+				warn: vi.fn(),
+				info: vi.fn(),
+				debug: vi.fn(),
 				// Sensitive properties that must never appear in the sandbox
-				globalConfig: jest.fn(),
-				instanceSettingsConfig: jest.fn(),
-				internalLogger: jest.fn(),
+				globalConfig: vi.fn(),
+				instanceSettingsConfig: vi.fn(),
+				internalLogger: vi.fn(),
 			};
 			return logger;
 		}
@@ -174,6 +177,34 @@ describe('Code.node', () => {
 				const result = transformLegacyLangchainImport('langchain/stores/message/in_memory');
 				expect(result).toBe('@langchain/classic/stores/message/in_memory');
 			});
+		});
+	});
+
+	describe('createProductionConsoleLog', () => {
+		let logSpy: ReturnType<typeof vi.spyOn>;
+
+		beforeEach(() => {
+			logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+		});
+
+		afterEach(() => {
+			logSpy.mockRestore();
+		});
+
+		it('passes output through with the workflow/node prefix when not redacted', () => {
+			createProductionConsoleLog('wf-1', 'My Node', false)('hello', 42);
+
+			expect(logSpy).toHaveBeenCalledWith('[Workflow "wf-1"][Node "My Node"]', 'hello', 42);
+		});
+
+		it('emits only the redaction marker when redacted', () => {
+			createProductionConsoleLog('wf-1', 'My Node', true)('secret-payload');
+
+			expect(logSpy).toHaveBeenCalledWith(
+				'[Workflow "wf-1"][Node "My Node"]',
+				CONSOLE_OUTPUT_REDACTED_MESSAGE,
+			);
+			expect(logSpy).not.toHaveBeenCalledWith(expect.anything(), 'secret-payload');
 		});
 	});
 });

@@ -1,20 +1,13 @@
 import type { INodeUi } from '@/Interface';
-import useEnvironmentsStore from '@/features/settings/environments.ee/environments.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import {
-	useWorkflowDocumentStore,
-	createWorkflowDocumentId,
-} from '@/app/stores/workflowDocument.store';
+import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import type { ExpressionLocalResolveContext } from '@/app/types/expressions';
 import { computed, type ComputedRef } from 'vue';
 
 export function useExpressionResolveCtx(node: ComputedRef<INodeUi | null | undefined>) {
-	const environmentsStore = useEnvironmentsStore();
-	const workflowsStore = useWorkflowsStore();
+	const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
 
-	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
-	);
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 
 	return computed<ExpressionLocalResolveContext | undefined>(() => {
 		if (!node.value || !workflowDocumentStore.value) {
@@ -22,7 +15,7 @@ export function useExpressionResolveCtx(node: ComputedRef<INodeUi | null | undef
 		}
 
 		const runIndex = 0; // not changeable for now
-		const execution = workflowsStore.workflowExecutionData;
+		const execution = workflowExecutionStateStore.value.activeExecution;
 		const nodeName = node.value.name;
 
 		function findInputNode(): ExpressionLocalResolveContext['inputNode'] {
@@ -52,13 +45,9 @@ export function useExpressionResolveCtx(node: ComputedRef<INodeUi | null | undef
 
 		return {
 			localResolve: true,
-			envVars: environmentsStore.variablesAsObject,
-			workflow: workflowDocumentStore.value.getWorkflowObjectAccessorSnapshot(),
-			execution,
 			nodeName,
 			additionalKeys: {},
 			inputNode: findInputNode(),
-			connections: workflowDocumentStore.value.connectionsBySourceNode,
 		};
 	});
 }

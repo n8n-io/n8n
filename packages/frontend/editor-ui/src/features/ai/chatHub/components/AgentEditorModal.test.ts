@@ -6,7 +6,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useChatStore } from '@/features/ai/chatHub/chat.store';
 import { usePostHog } from '@/app/stores/posthog.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { TOOLS_MANAGER_MODAL_KEY } from '@/features/ai/chatHub/constants';
 import AgentEditorModal from './AgentEditorModal.vue';
 import { waitFor, fireEvent, within } from '@testing-library/vue';
@@ -17,7 +17,6 @@ import type { ChatModelDto, FrontendModuleSettings } from '@n8n/api-types';
 import { createMockAgentDto, createMockKnowledgeItem } from '@/features/ai/chatHub/__test__/data';
 
 vi.mock('@n8n/i18n', async (importOriginal) => {
-	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
 	const actual = await importOriginal<typeof import('@n8n/i18n')>();
 	const i18n = {
 		baseText: (key: string) => key,
@@ -56,7 +55,7 @@ vi.mock('@/app/composables/useMessage', () => ({
 
 const mockShowError = vi.fn();
 const mockShowMessage = vi.fn();
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showError: mockShowError, showMessage: mockShowMessage }),
 }));
 

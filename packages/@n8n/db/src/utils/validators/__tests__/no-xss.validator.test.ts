@@ -30,7 +30,9 @@ describe('NoXss', () => {
 				expect(errors).toHaveLength(1);
 				const [error] = errors;
 				expect(error.property).toEqual('name');
-				expect(error.constraints).toEqual({ NoXss: 'Potentially malicious string' });
+				expect(error.constraints).toEqual({
+					NoXss: 'Only letters, numbers, spaces and punctuation are allowed',
+				});
 			});
 		}
 	});
@@ -111,7 +113,9 @@ describe('NoXss', () => {
 				expect(errors).toHaveLength(1);
 				const [error] = errors;
 				expect(error.property).toEqual('categories');
-				expect(error.constraints).toEqual({ NoXss: 'Potentially malicious string' });
+				expect(error.constraints).toEqual({
+					NoXss: 'Only letters, numbers, spaces and punctuation are allowed',
+				});
 			});
 		}
 	});

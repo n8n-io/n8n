@@ -1,4 +1,6 @@
+import { raceWithAbort } from '../../sdk/abort';
 import type {
+	AbortableOptions,
 	ProviderStatus,
 	WorkspaceSandbox,
 	BaseSandboxOptions,
@@ -102,7 +104,23 @@ export abstract class BaseSandbox implements WorkspaceSandbox {
 		}
 	}
 
-	async ensureRunning(): Promise<void> {
+	/**
+	 * Drop the cached "running" state so the next `ensureRunning()`/`_start()`
+	 * re-runs the provider's `start()`. Used to recover when the remote sandbox
+	 * was stopped/deleted out from under us (the in-memory status is stale).
+	 * No-op once destroyed/destroying — those are terminal.
+	 *
+	 * Intentionally does NOT touch `startPromise`: clearing it would let a
+	 * concurrent caller bypass the single-flight start dedupe in `_start()` and
+	 * launch a second start. A start that is genuinely in flight will be awaited
+	 * (and deduped) by the next `_start()`.
+	 */
+	protected markNeedsStart(): void {
+		if (this.status === 'destroyed' || this.status === 'destroying') return;
+		this.status = 'pending';
+	}
+
+	async ensureRunning(options?: AbortableOptions): Promise<void> {
 		if (this.status === 'destroyed') {
 			throw new Error(`Sandbox "${this.name}" has been destroyed`);
 		}
@@ -114,7 +132,7 @@ export abstract class BaseSandbox implements WorkspaceSandbox {
 			if (this.stopPromise) await this.stopPromise.catch(() => {});
 		}
 		if (this.status !== 'running') {
-			await this._start();
+			await raceWithAbort(async () => await this._start(), options?.abortSignal);
 		}
 		if (this.status !== 'running') {
 			throw new Error(`Sandbox "${this.name}" failed to start (status: ${this.status})`);
@@ -126,16 +144,20 @@ export abstract class BaseSandbox implements WorkspaceSandbox {
 		args?: string[],
 		options?: ExecuteCommandOptions,
 	): Promise<CommandResult> {
-		await this.ensureRunning();
+		await this.ensureRunning({ abortSignal: options?.abortSignal });
 		if (!this.processes) {
 			throw new Error(`Sandbox "${this.name}" has no process manager`);
 		}
 		const fullCommand = args?.length ? `${command} ${args.map(shellQuote).join(' ')}` : command;
 		const handle = await this.processes.spawn(fullCommand, options);
-		return await handle.wait({
-			onStdout: options?.onStdout,
-			onStderr: options?.onStderr,
-		});
+		return await raceWithAbort(
+			async () =>
+				await handle.wait({
+					onStdout: options?.onStdout,
+					onStderr: options?.onStderr,
+				}),
+			options?.abortSignal,
+		);
 	}
 
 	getInstructions(): string {

@@ -31,7 +31,7 @@ import { createLdapConfig, defaultLdapConfig } from '../shared/ldap';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 
-jest.mock('@/telemetry');
+vi.mock('@/telemetry');
 
 let owner: User;
 let authOwnerAgent: SuperAgentTest;
@@ -63,7 +63,7 @@ beforeEach(async () => {
 
 	await Container.get(UserRepository).delete({ id: Not(owner.id) });
 
-	jest.mock('@/telemetry');
+	vi.mock('@/telemetry');
 
 	await setCurrentAuthenticationMethod('email');
 });
@@ -204,7 +204,7 @@ describe('POST /ldap/test-connection', () => {
 	});
 
 	test('route should success', async () => {
-		jest.spyOn(LdapService.prototype, 'testConnection').mockResolvedValue();
+		vi.spyOn(LdapService.prototype, 'testConnection').mockResolvedValue();
 
 		await authOwnerAgent.post('/ldap/test-connection').expect(200);
 	});
@@ -212,7 +212,7 @@ describe('POST /ldap/test-connection', () => {
 	test('route should fail', async () => {
 		const errorMessage = 'Invalid connection';
 
-		jest.spyOn(LdapService.prototype, 'testConnection').mockRejectedValue(new Error(errorMessage));
+		vi.spyOn(LdapService.prototype, 'testConnection').mockRejectedValue(new Error(errorMessage));
 
 		const response = await authOwnerAgent.post('/ldap/test-connection');
 		expect(response.statusCode).toBe(400);
@@ -239,7 +239,7 @@ describe('POST /ldap/sync', () => {
 
 	describe('dry mode', () => {
 		const runTest = async (ldapUsers: LdapUser[]) => {
-			jest.spyOn(LdapService.prototype, 'searchWithAdminBinding').mockResolvedValue(ldapUsers);
+			vi.spyOn(LdapService.prototype, 'searchWithAdminBinding').mockResolvedValue(ldapUsers);
 
 			await authOwnerAgent.post('/ldap/sync').send({ type: 'dry' }).expect(200);
 
@@ -334,7 +334,7 @@ describe('POST /ldap/sync', () => {
 
 	describe('live mode', () => {
 		const runTest = async (ldapUsers: LdapUser[]) => {
-			jest.spyOn(LdapService.prototype, 'searchWithAdminBinding').mockResolvedValue(ldapUsers);
+			vi.spyOn(LdapService.prototype, 'searchWithAdminBinding').mockResolvedValue(ldapUsers);
 
 			await authOwnerAgent.post('/ldap/sync').send({ type: 'live' }).expect(200);
 
@@ -464,7 +464,7 @@ describe('POST /ldap/sync', () => {
 		test('should remove user instance access once the user is disabled during synchronization', async () => {
 			const member = await createLdapUser({ role: { slug: 'global:member' } }, uniqueId());
 
-			jest.spyOn(LdapService.prototype, 'searchWithAdminBinding').mockResolvedValue([]);
+			vi.spyOn(LdapService.prototype, 'searchWithAdminBinding').mockResolvedValue([]);
 
 			await authOwnerAgent.post('/ldap/sync').send({ type: 'live' });
 
@@ -491,7 +491,7 @@ describe('POST /ldap/sync', () => {
 
 			const ldapUsers = [validLdapUser, invalidLdapUser];
 
-			const loggerSpy = jest.spyOn(Container.get(LdapService)['logger'], 'warn');
+			const loggerSpy = vi.mocked(Container.get(LdapService)['logger'].warn);
 
 			const synchronization = await runTest(ldapUsers);
 
@@ -538,7 +538,7 @@ describe('POST /ldap/sync', () => {
 				uid: originalUserId,
 			};
 
-			const loggerSpy = jest.spyOn(Container.get(LdapService)['logger'], 'warn');
+			const loggerSpy = vi.mocked(Container.get(LdapService)['logger'].warn);
 
 			const synchronization = await runTest([invalidLdapUser]);
 
@@ -598,9 +598,9 @@ describe('POST /login', () => {
 
 		await setCurrentAuthenticationMethod('ldap');
 
-		jest.spyOn(LdapService.prototype, 'searchWithAdminBinding').mockResolvedValue([ldapUser]);
+		vi.spyOn(LdapService.prototype, 'searchWithAdminBinding').mockResolvedValue([ldapUser]);
 
-		jest.spyOn(LdapService.prototype, 'validUser').mockResolvedValue();
+		vi.spyOn(LdapService.prototype, 'validUser').mockResolvedValue();
 
 		const response = await testServer.authlessAgent
 			.post('/login')

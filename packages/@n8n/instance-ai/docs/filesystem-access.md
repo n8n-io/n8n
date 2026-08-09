@@ -270,8 +270,8 @@ Two options:
   The static key is used for all requests — no pairing/session upgrade.
 - **Dynamic (pairing → session key)**:
   1. `POST /instance-ai/gateway/create-link` (requires session auth) →
-     returns `{ token, command }`. The token is a **one-time pairing token**
-     (5-min TTL).
+     returns `{ token, command, expiresAt, ttlSeconds }`. The token is a
+     **one-time pairing token** (5-min TTL).
   2. Daemon calls `POST /instance-ai/gateway/init` with the pairing token →
      server consumes the token and returns `{ ok: true, sessionKey }`.
   3. All subsequent requests (SSE, response) use the **session key** instead
@@ -289,6 +289,8 @@ create-link → pairingToken (5 min TTL, single-use)
 
 This prevents token replay: the pairing token is visible in terminal output
 and `ps aux`, but it becomes useless after the first successful `init` call.
+The resulting session key has no time-based expiry and remains valid until
+explicit disconnect/revocation.
 All key comparisons use `timingSafeEqual()` to prevent timing attacks.
 
 ---

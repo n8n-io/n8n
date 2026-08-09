@@ -1,6 +1,6 @@
 import { GLOBAL_ADMIN_ROLE, GLOBAL_MEMBER_ROLE, WorkflowEntity } from '@n8n/db';
 import type { User, SharedWorkflowRepository, WorkflowRepository } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { ActivationErrorsService } from '@/activation-errors.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -22,7 +22,7 @@ describe('ActiveWorkflowsService', () => {
 	);
 	const activeIds = ['1', '2', '3', '4'];
 
-	beforeEach(() => jest.clearAllMocks());
+	beforeEach(() => vi.clearAllMocks());
 
 	describe('getAllActiveIdsInStorage', () => {
 		it('should filter out any workflow ids that have activation errors', async () => {

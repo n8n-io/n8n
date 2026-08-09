@@ -1,6 +1,6 @@
 # @n8n/cli
 
-> **Beta** — Client CLI for n8n. Manage workflows, executions, credentials, and more from the terminal.
+> Client CLI for n8n. Manage workflows, executions, credentials, and more from the terminal.
 
 A lightweight, zero-dependency CLI that talks to any n8n instance via its public API. Designed for humans, scripts, and AI coding agents alike.
 
@@ -61,6 +61,7 @@ n8n-cli --url=https://my-n8n.app.n8n.cloud --api-key=n8n_api_xxxxx workflow list
 | `user` | `list`, `get` |
 | `config` | `set-url`, `set-api-key`, `show` |
 | `source-control` | `pull` |
+| `package` | `export`, `import` _(beta)_ |
 | `skill` | `install` |
 | `audit` | _(top-level)_ |
 | `login` / `logout` | _(top-level)_ |
