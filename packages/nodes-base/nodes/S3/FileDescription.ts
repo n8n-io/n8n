@@ -100,12 +100,12 @@ export const fileFields: INodeProperties[] = [
 				displayName: 'Expires (Seconds)',
 				name: 'expires',
 				type: 'number',
+				default: 3600,
 				typeOptions: {
 					minValue: 1,
 					maxValue: 604800,
 					numberPrecision: 0,
 				},
-				default: 3600,
 				description: 'The number of seconds until the URL expires',
 			},
 		],

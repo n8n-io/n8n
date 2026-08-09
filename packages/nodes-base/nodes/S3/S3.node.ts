@@ -13,7 +13,7 @@ import { Builder } from 'xml2js';
 
 import { s3ApiRequestREST, s3ApiRequestSOAP, s3ApiRequestSOAPAllItems } from './GenericFunctions';
 import { bucketFields, bucketOperations } from '../Aws/S3/V1/BucketDescription';
-import { fileFields, fileOperations } from '../Aws/S3/V1/FileDescription';
+import { fileFields, fileOperations } from './FileDescription';
 import { folderFields, folderOperations } from '../Aws/S3/V1/FolderDescription';
 
 export class S3 implements INodeType {
@@ -486,6 +486,14 @@ export class S3 implements INodeType {
 						const fileKey = this.getNodeParameter('fileKey', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
+						const expires = (additionalFields.expires as number) ?? 3600;
+						if (expires < 1 || expires > 604800) {
+							throw new NodeOperationError(
+								this.getNode(),
+								'The Expires field must be between 1 and 604800 seconds.',
+							);
+						}
+
 						const credentials = await this.getCredentials('s3');
 
 						const endpoint = new URL(credentials.endpoint as string);
@@ -501,7 +509,10 @@ export class S3 implements INodeType {
 							.map((segment) => encodeURIComponent(segment))
 							.join('/');
 
-						if (credentials.forcePathStyle) {
+						const forcePathStyle =
+							(credentials.forcePathStyle as boolean) || bucketName.includes('.');
+
+						if (forcePathStyle) {
 							path = `${basepath}/${bucketName}/${encodedFileKey}`;
 						} else {
 							endpoint.host = `${bucketName}.${endpoint.host}`;
@@ -513,7 +524,7 @@ export class S3 implements INodeType {
 						const signOpts: IDataObject = {
 							host: endpoint.host,
 							method: 'GET',
-							path: `${path}?X-Amz-Expires=${additionalFields.expires ?? 3600}`,
+							path: `${path}?X-Amz-Expires=${expires}`,
 							service: 's3',
 							region: credentials.region,
 							signQuery: true,
