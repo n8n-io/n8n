@@ -539,10 +539,10 @@ export class AwsS3V2 implements INodeType {
 						
 
 						const expires = (additionalFields.expires as number) ?? 3600;
-						if (expires < 1 || expires > 604800) {
+						if (!Number.isInteger(expires) || expires < 1 || expires > 604800) {
 							throw new NodeOperationError(
 								this.getNode(),
-								'The Expires field must be between 1 and 604800 seconds.',
+								'The Expires field must be number and between 1 and 604800 seconds.',
 							);
 						}
 
