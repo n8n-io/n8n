@@ -487,7 +487,7 @@ export class S3 implements INodeType {
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const expires = (additionalFields.expires as number) ?? 3600;
-						if (expires < 1 || expires > 604800) {
+						if (!Number.isInteger(expires) || expires < 1 || expires > 604800) {
 							throw new NodeOperationError(
 								this.getNode(),
 								'The Expires field must be between 1 and 604800 seconds.',
