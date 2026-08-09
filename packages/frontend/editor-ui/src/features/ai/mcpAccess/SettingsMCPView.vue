@@ -48,13 +48,14 @@ const agentsModuleActive = computed(() => settingsStore.isModuleActive('agents')
 
 const mcpStatusLoading = ref(false);
 const showDisableDialog = ref(false);
+const isLoadingClients = ref(true);
 
 const canManageMcpInstance = computed(() =>
 	hasPermission(['rbac'], { rbac: { scope: 'mcp:manage' } }),
 );
 const canToggleMCP = computed(() => canManageMcpInstance.value && !mcpStore.mcpManagedByEnv);
 
-const exposedWorkflowsCount = ref(0);
+const exposedWorkflowsCount = ref<number | null>(null);
 
 const showCallbackUrlsDialog = ref(false);
 const savingCallbackUrls = ref(false);
@@ -72,19 +73,23 @@ const instanceCapacityNoticeContent = computed(() => {
 });
 
 const workflowsExposedValue = computed(() =>
-	i18n.baseText('settings.mcp.workflowsExposed.count', {
-		adjustToNumber: exposedWorkflowsCount.value,
-		interpolate: { count: String(exposedWorkflowsCount.value) },
-	}),
+	exposedWorkflowsCount.value === null
+		? '-'
+		: i18n.baseText('settings.mcp.workflowsExposed.count', {
+				adjustToNumber: exposedWorkflowsCount.value,
+				interpolate: { count: String(exposedWorkflowsCount.value) },
+			}),
 );
 
-const exposedAgentsCount = ref(0);
+const exposedAgentsCount = ref<number | null>(null);
 
 const agentsExposedValue = computed(() =>
-	i18n.baseText('settings.mcp.agentsExposed.count', {
-		adjustToNumber: exposedAgentsCount.value,
-		interpolate: { count: String(exposedAgentsCount.value) },
-	}),
+	exposedAgentsCount.value === null
+		? '-'
+		: i18n.baseText('settings.mcp.agentsExposed.count', {
+				adjustToNumber: exposedAgentsCount.value,
+				interpolate: { count: String(exposedAgentsCount.value) },
+			}),
 );
 
 const callbackUrlsValue = computed(() =>
@@ -152,6 +157,8 @@ const fetchoAuthCLients = async () => {
 		await mcpStore.getAllOAuthClients();
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.mcp.error.fetching.oAuthClients'));
+	} finally {
+		isLoadingClients.value = false;
 	}
 };
 
@@ -321,10 +328,12 @@ onMounted(async () => {
 					<N8nSettingsRow
 						:title="i18n.baseText('settings.mcp.connectedClients.viewAll.title')"
 						:description="
-							i18n.baseText('settings.mcp.connectedClients.viewAll.description', {
-								adjustToNumber: connectedClientsTotal,
-								interpolate: { count: String(connectedClientsTotal) },
-							})
+							isLoadingClients
+								? '-'
+								: i18n.baseText('settings.mcp.connectedClients.viewAll.description', {
+										adjustToNumber: connectedClientsTotal,
+										interpolate: { count: String(connectedClientsTotal) },
+									})
 						"
 						clickable
 						data-test-id="mcp-clients-view-all-row"
