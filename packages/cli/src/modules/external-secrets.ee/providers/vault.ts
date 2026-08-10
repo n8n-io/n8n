@@ -45,6 +45,8 @@ interface VaultSettings {
 	// Manual KV configuration (bypasses sys/mounts auto-discovery)
 	kvMountPath?: string;
 	kvVersion?: string;
+	// Folder inside the KV mount. Inserted after metadata/ or data/ for KV v2.
+	kvSecretPath?: string;
 }
 
 interface VaultResponse<T> {
@@ -100,6 +102,12 @@ type VaultAppRoleResp = VaultUserPassLoginResp;
 
 interface VaultSecretList {
 	keys: string[];
+}
+
+interface DiscoveredKvMount {
+	path: string;
+	version: string;
+	secretPath: string;
 }
 
 export class VaultProvider extends SecretsProvider {
@@ -240,7 +248,7 @@ export class VaultProvider extends SecretsProvider {
 			required: false,
 			noDataExpression: true,
 			placeholder: 'e.g. secret/',
-			hint: 'Specify the KV engine mount path to skip sys/mounts auto-discovery. Leave blank to auto-detect.',
+			hint: 'The KV engine mount only, not a folder inside it. Leave blank to auto-detect.',
 		},
 		{
 			displayName: 'KV Version',
@@ -254,6 +262,16 @@ export class VaultProvider extends SecretsProvider {
 				{ name: 'v2', value: '2' },
 			],
 			hint: 'Only used when KV Mount Path is specified.',
+		},
+		{
+			displayName: 'KV Secret Path (optional)',
+			name: 'kvSecretPath',
+			type: 'string',
+			default: '',
+			required: false,
+			noDataExpression: true,
+			placeholder: 'e.g. my-app/',
+			hint: 'Folder inside the KV mount to read from. Leave blank to use the whole mount. Only used when KV Mount Path is specified.',
 		},
 	];
 
@@ -534,7 +552,9 @@ export class VaultProvider extends SecretsProvider {
 				.map((i) => (i.status === 'rejected' ? null : i.value))
 				.filter((v): v is [string, IDataObject] => v !== null),
 		);
-		const name = path.substring(0, path.length - 1);
+		// Use the last folder segment as the map key so nested folders become
+		// `parent.child` instead of a single `parent/child` secret name.
+		const name = path.split('/').filter(Boolean).pop() ?? '';
 		this.logger.debug(`Vault provider retrieved kv secrets from ${name}`);
 		return [name, data];
 	}
@@ -543,11 +563,41 @@ export class VaultProvider extends SecretsProvider {
 		return mountPath.endsWith('/') ? mountPath : `${mountPath}/`;
 	}
 
-	private async discoverKvMounts(): Promise<Array<{ path: string; version: string }>> {
-		const { kvMountPath, kvVersion } = this.settings;
+	private normalizeSecretPath(secretPath: string | undefined): string {
+		if (!secretPath) {
+			return '';
+		}
+		const trimmed = secretPath.replace(/^\/+|\/+$/g, '');
+		return trimmed === '' ? '' : `${trimmed}/`;
+	}
+
+	/**
+	 * KV v2 requires `metadata/` / `data/` immediately after the mount, then any
+	 * folder path. Callers used to append folders to the mount, which produced
+	 * invalid paths like `secret/my-app/metadata/`.
+	 */
+	private buildKvListPath(mountPath: string, kvVersion: string, secretPath: string): string {
+		const mount = this.normalizeKvPath(mountPath);
+		const path = this.normalizeSecretPath(secretPath);
+		return kvVersion === '2' ? `${mount}metadata/${path}` : `${mount}${path}`;
+	}
+
+	private nestSecretsUnderPath(secretPath: string, data: IDataObject): IDataObject {
+		const parts = secretPath.split('/').filter((part) => part.length > 0);
+		return parts.reduceRight<IDataObject>((acc, part) => ({ [part]: acc }), data);
+	}
+
+	private async discoverKvMounts(): Promise<DiscoveredKvMount[]> {
+		const { kvMountPath, kvVersion, kvSecretPath } = this.settings;
 
 		if (kvMountPath) {
-			return [{ path: this.normalizeKvPath(kvMountPath), version: kvVersion ?? '2' }];
+			return [
+				{
+					path: this.normalizeKvPath(kvMountPath),
+					version: kvVersion ?? '2',
+					secretPath: this.normalizeSecretPath(kvSecretPath),
+				},
+			];
 		}
 
 		const mounts = await this.#http.request<VaultResponse<VaultMountsResp>>({
@@ -557,32 +607,30 @@ export class VaultProvider extends SecretsProvider {
 		const kvMounts = Object.entries(mounts.data).filter(([, mount]) => mount.type === 'kv');
 
 		return kvMounts
-			.map(([basePath, mount]) => {
+			.map(([basePath, mount]): DiscoveredKvMount | null => {
 				const version = mount.options?.version;
 				if (typeof version !== 'string') {
 					this.logger.debug(`Skipping KV mount "${basePath}" — no version in mount options`);
 					return null;
 				}
-				return { path: basePath, version };
+				return { path: basePath, version, secretPath: '' };
 			})
-			.filter((entry): entry is { path: string; version: string } => entry !== null);
+			.filter((entry): entry is DiscoveredKvMount => entry !== null);
 	}
 
 	private async testSecretAccess(): Promise<[boolean] | [boolean, string]> {
-		const { kvMountPath, kvVersion } = this.settings;
+		const { kvMountPath, kvVersion, kvSecretPath } = this.settings;
 
 		let listUrl: string;
 		let forbiddenMessage: string;
 		let failureMessage: (status: number) => string;
 
 		if (kvMountPath) {
-			const normalizedPath = this.normalizeKvPath(kvMountPath);
 			const version = kvVersion ?? '2';
-			listUrl =
-				version === '2' ? `${normalizedPath}metadata/?list=true` : `${normalizedPath}?list=true`;
-			forbiddenMessage = `Permission denied accessing ${kvMountPath}. Check your token policies.`;
-			failureMessage = (status) =>
-				`Could not access KV mount at ${kvMountPath} (status ${status}).`;
+			const listPath = this.buildKvListPath(kvMountPath, version, kvSecretPath ?? '');
+			listUrl = `${listPath}?list=true`;
+			forbiddenMessage = `Permission denied accessing ${listPath}. Check your token policies.`;
+			failureMessage = (status) => `Could not access ${listPath} (status ${status}).`;
 		} else {
 			listUrl = 'sys/mounts';
 			forbiddenMessage =
@@ -610,13 +658,18 @@ export class VaultProvider extends SecretsProvider {
 			const secrets = Object.fromEntries(
 				(
 					await Promise.all(
-						kvMounts.map(async ({ path, version }): Promise<[string, IDataObject] | null> => {
-							const value = await this.getKVSecrets(path, version, '');
-							if (value === null) {
-								return null;
-							}
-							return [path.substring(0, path.length - 1), value[1]];
-						}),
+						kvMounts.map(
+							async ({ path, version, secretPath }): Promise<[string, IDataObject] | null> => {
+								const value = await this.getKVSecrets(path, version, secretPath);
+								if (value === null) {
+									return null;
+								}
+								return [
+									path.substring(0, path.length - 1),
+									this.nestSecretsUnderPath(secretPath, value[1]),
+								];
+							},
+						),
 					)
 				).filter((entry): entry is [string, IDataObject] => entry !== null),
 			);

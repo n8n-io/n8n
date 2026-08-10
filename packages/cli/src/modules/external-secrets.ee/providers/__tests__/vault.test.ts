@@ -24,13 +24,14 @@ const vaultSettings = {
 	},
 };
 
-function vaultSettingsWithKvPath(kvMountPath: string, kvVersion: string) {
+function vaultSettingsWithKvPath(kvMountPath: string, kvVersion: string, kvSecretPath?: string) {
 	return {
 		...vaultSettings,
 		settings: {
 			...vaultSettings.settings,
 			kvMountPath,
 			kvVersion,
+			...(kvSecretPath === undefined ? {} : { kvSecretPath }),
 		},
 	};
 }
@@ -266,6 +267,33 @@ describe('VaultProvider', () => {
 	});
 
 	describe('update', () => {
+		it('should nest multi-level folders under a KV v2 mount', async () => {
+			const { provider } = await initProvider([
+				{
+					method: 'GET',
+					pathname: '/v1/sys/mounts',
+					body: mountsResponse({ 'secret/': { type: 'kv', options: { version: '2' } } }),
+				},
+				{ method: 'GET', pathname: '/v1/secret/metadata/', body: { data: { keys: ['apps/'] } } },
+				{
+					method: 'GET',
+					pathname: '/v1/secret/metadata/apps/',
+					body: { data: { keys: ['api'] } },
+				},
+				{
+					method: 'GET',
+					pathname: '/v1/secret/data/apps/api',
+					body: kvV2SecretResponse({ token: 'abc' }),
+				},
+			]);
+
+			await provider.update();
+
+			expect(provider.getSecret('secret')).toEqual({ apps: { api: { token: 'abc' } } });
+			expect(provider.getSecretNames()).toContain('secret.apps.api.token');
+			expect(provider.getSecretNames().some((name) => name.includes('apps/api'))).toBe(false);
+		});
+
 		it('should cache secrets from a valid KV v2 mount', async () => {
 			const { provider } = await initProvider([
 				{
@@ -419,6 +447,121 @@ describe('VaultProvider', () => {
 
 			expect(provider.hasSecret('secret')).toBe(false);
 			expect(provider.getSecretNames()).toHaveLength(0);
+		});
+
+		it('should list and read a KV v2 folder after metadata/ and data/', async () => {
+			const { provider, httpRequest } = await initProvider(
+				[
+					{
+						method: 'GET',
+						pathname: '/v1/secret/metadata/my-app/',
+						body: { data: { keys: ['db'] } },
+					},
+					{
+						method: 'GET',
+						pathname: '/v1/secret/data/my-app/db',
+						body: kvV2SecretResponse({ password: 'hunter2' }),
+					},
+				],
+				vaultSettingsWithKvPath('secret/', '2', 'my-app'),
+			);
+
+			await provider.update();
+
+			const requestedUrls = httpRequest.mock.calls.map(([options]) => options.url);
+			expect(requestedUrls).toEqual(
+				expect.arrayContaining([
+					expect.stringContaining('/v1/secret/metadata/my-app/'),
+					expect.stringContaining('/v1/secret/data/my-app/db'),
+				]),
+			);
+			expect(requestedUrls.some((url) => url.includes('/v1/secret/my-app/metadata/'))).toBe(false);
+			expect(provider.getSecret('secret')).toEqual({
+				'my-app': { db: { password: 'hunter2' } },
+			});
+			expect(provider.getSecretNames()).toContain('secret.my-app.db.password');
+		});
+
+		it('should recurse into nested folders under a KV v2 secret path', async () => {
+			const { provider } = await initProvider(
+				[
+					{
+						method: 'GET',
+						pathname: '/v1/secret/metadata/my-app/',
+						body: { data: { keys: ['db/', 'api'] } },
+					},
+					{
+						method: 'GET',
+						pathname: '/v1/secret/metadata/my-app/db/',
+						body: { data: { keys: ['creds'] } },
+					},
+					{
+						method: 'GET',
+						pathname: '/v1/secret/data/my-app/db/creds',
+						body: kvV2SecretResponse({ password: 'hunter2' }),
+					},
+					{
+						method: 'GET',
+						pathname: '/v1/secret/data/my-app/api',
+						body: kvV2SecretResponse({ token: 'abc' }),
+					},
+				],
+				vaultSettingsWithKvPath('secret/', '2', '/my-app/'),
+			);
+
+			await provider.update();
+
+			expect(provider.getSecret('secret')).toEqual({
+				'my-app': {
+					db: { creds: { password: 'hunter2' } },
+					api: { token: 'abc' },
+				},
+			});
+			expect(provider.getSecretNames()).toEqual(
+				expect.arrayContaining(['secret.my-app.db.creds.password', 'secret.my-app.api.token']),
+			);
+		});
+
+		it('should nest multi-segment secret paths so expression names stay stable', async () => {
+			const { provider } = await initProvider(
+				[
+					{
+						method: 'GET',
+						pathname: '/v1/example-kv/metadata/team/app/',
+						body: { data: { keys: ['db'] } },
+					},
+					{
+						method: 'GET',
+						pathname: '/v1/example-kv/data/team/app/db',
+						body: kvV2SecretResponse({ password: 'hunter2' }),
+					},
+				],
+				vaultSettingsWithKvPath('example-kv', '2', 'team/app'),
+			);
+
+			await provider.update();
+
+			expect(provider.getSecret('example-kv')).toEqual({
+				team: { app: { db: { password: 'hunter2' } } },
+			});
+			expect(provider.getSecretNames()).toContain('example-kv.team.app.db.password');
+		});
+
+		it('should list a KV v1 secret path without inserting metadata/', async () => {
+			const { provider, httpRequest } = await initProvider(
+				[
+					{ method: 'GET', pathname: '/v1/kv/my-app/', body: { data: { keys: ['db'] } } },
+					{ method: 'GET', pathname: '/v1/kv/my-app/db', body: { data: { password: 'hunter2' } } },
+				],
+				vaultSettingsWithKvPath('kv/', '1', 'my-app'),
+			);
+
+			await provider.update();
+
+			const requestedUrls = httpRequest.mock.calls.map(([options]) => options.url);
+			expect(requestedUrls.some((url) => url.includes('/metadata/'))).toBe(false);
+			expect(provider.getSecret('kv')).toEqual({ 'my-app': { db: { password: 'hunter2' } } });
+			expect(provider.getSecretNames()).toContain('kv.my-app.db.password');
 		});
 	});
 
@@ -592,7 +735,9 @@ describe('VaultProvider', () => {
 			const [success, message] = await provider.test();
 
 			expect(success).toBe(false);
-			expect(message).toBe('Permission denied accessing secret/. Check your token policies.');
+			expect(message).toBe(
+				'Permission denied accessing secret/metadata/. Check your token policies.',
+			);
 		});
 
 		it('should return error when configured KV path returns an unexpected status', async () => {
@@ -607,7 +752,7 @@ describe('VaultProvider', () => {
 			const [success, message] = await provider.test();
 
 			expect(success).toBe(false);
-			expect(message).toBe('Could not access KV mount at secret/ (status 500).');
+			expect(message).toBe('Could not access secret/metadata/ (status 500).');
 		});
 
 		it('should validate KV v1 path without metadata segment', async () => {
@@ -617,6 +762,70 @@ describe('VaultProvider', () => {
 					{ method: 'GET', pathname: '/v1/kv/', body: { data: { keys: [] } } },
 				],
 				vaultSettingsWithKvPath('kv/', '1'),
+			);
+
+			const [success] = await provider.test();
+
+			expect(success).toBe(true);
+		});
+
+		it('should validate a KV v2 secret path between metadata/ and the folder', async () => {
+			const { provider, httpRequest } = await initProvider(
+				[
+					{ method: 'GET', pathname: '/v1/auth/token/lookup-self', body: tokenLookupResponse() },
+					{
+						method: 'GET',
+						pathname: '/v1/secret/metadata/my-app/',
+						body: { data: { keys: [] } },
+					},
+				],
+				vaultSettingsWithKvPath('secret/', '2', 'my-app'),
+			);
+
+			const [success] = await provider.test();
+
+			expect(success).toBe(true);
+			const testUrls = httpRequest.mock.calls.map(([options]) => options.url);
+			expect(testUrls.some((url) => url.includes('/v1/secret/metadata/my-app/?list=true'))).toBe(
+				true,
+			);
+			expect(testUrls.some((url) => url.includes('/v1/secret/my-app/metadata/'))).toBe(false);
+		});
+
+		it('should include the requested Vault path in a secret-path 403', async () => {
+			const { provider } = await initProvider(
+				[
+					{ method: 'GET', pathname: '/v1/auth/token/lookup-self', body: tokenLookupResponse() },
+					{
+						method: 'GET',
+						pathname: '/v1/secret/metadata/my-app/',
+						status: 403,
+						body: { errors: [] },
+					},
+				],
+				vaultSettingsWithKvPath('secret', '2', 'my-app/'),
+			);
+
+			const [success, message] = await provider.test();
+
+			expect(success).toBe(false);
+			expect(message).toBe(
+				'Permission denied accessing secret/metadata/my-app/. Check your token policies.',
+			);
+		});
+
+		it('should treat 404 as success for an empty KV v2 secret path', async () => {
+			const { provider } = await initProvider(
+				[
+					{ method: 'GET', pathname: '/v1/auth/token/lookup-self', body: tokenLookupResponse() },
+					{
+						method: 'GET',
+						pathname: '/v1/secret/metadata/my-app/',
+						status: 404,
+						body: { errors: [] },
+					},
+				],
+				vaultSettingsWithKvPath('secret/', '2', 'my-app'),
 			);
 
 			const [success] = await provider.test();
