@@ -7787,3 +7787,100 @@ describe('AgentRuntime — oversized tool results', () => {
 		expect(fileBlock).toMatchObject({ type: 'file', mediaType: 'text/plain', data: fileData });
 	});
 });
+
+// ---------------------------------------------------------------------------
+// model stream stall handling
+// ---------------------------------------------------------------------------
+
+describe('AgentRuntime — model stream stall handling', () => {
+	beforeEach(() => {
+		streamText.mockReset();
+	});
+
+	/**
+	 * streamText response that emits `chunks` then goes silent — a dead
+	 * connection. Always leads with the SDK's synthetic `start` lifecycle chunk,
+	 * which arrives before any provider byte and must not count as content.
+	 */
+	function makeStalledStream(chunks: Array<Record<string, unknown>> = []) {
+		chunks = [{ type: 'start' }, ...chunks];
+		return {
+			stream: (async function* () {
+				for (const c of chunks) yield await Promise.resolve(c);
+				await new Promise(() => {});
+			})(),
+			finishReason: new Promise(() => {}),
+			usage: new Promise(() => {}),
+			response: new Promise(() => {}),
+			toolCalls: new Promise(() => {}),
+		};
+	}
+
+	it('silently retries a turn that stalls before any content and completes', async () => {
+		streamText
+			.mockReturnValueOnce(makeStalledStream())
+			.mockReturnValueOnce(makeStreamSuccess('Recovered'));
+		const { runtime } = createRuntime();
+
+		const result = await runtime.stream('hi', {
+			modelStreamIdleTimeoutMs: 50,
+			modelStreamFirstOutputTimeoutMs: 50,
+		});
+		const chunks = await collectChunks(result.stream);
+
+		expect(streamText).toHaveBeenCalledTimes(2);
+		const finish = chunks.filter((c) => c.type === 'finish').at(-1) as
+			| (StreamChunk & { type: 'finish'; finishReason: string })
+			| undefined;
+		expect(finish?.finishReason).toBe('stop');
+		const text = chunks
+			.filter(
+				(c): c is StreamChunk & { type: 'text-delta'; delta: string } => c.type === 'text-delta',
+			)
+			.map((c) => c.delta)
+			.join('');
+		expect(text).toBe('Recovered');
+		expect(runtime.getState().status).toBe('success');
+	});
+
+	it('fails without retry when the stalled turn already streamed content', async () => {
+		streamText
+			.mockReturnValueOnce(
+				makeStalledStream([{ type: 'text-delta', id: 'text-1', text: 'partial' }]),
+			)
+			// A wrongly-taken retry completes loudly instead of hanging the test.
+			.mockReturnValue(makeStreamSuccess('should-not-run'));
+		const { runtime } = createRuntime();
+
+		const result = await runtime.stream('hi', {
+			modelStreamIdleTimeoutMs: 50,
+			modelStreamFirstOutputTimeoutMs: 50,
+		});
+		const chunks = await collectChunks(result.stream);
+
+		expect(streamText).toHaveBeenCalledTimes(1);
+		const errorChunk = chunks.find((c) => c.type === 'error') as
+			| (StreamChunk & { type: 'error'; error: unknown })
+			| undefined;
+		expect(String(errorChunk?.error)).toContain('stalled');
+		expect(runtime.getState().status).toBe('failed');
+	});
+
+	it('surfaces the stall error when the retry stalls too', async () => {
+		streamText.mockReturnValueOnce(makeStalledStream()).mockReturnValueOnce(makeStalledStream());
+		const { runtime } = createRuntime();
+
+		const result = await runtime.stream('hi', {
+			modelStreamIdleTimeoutMs: 50,
+			modelStreamFirstOutputTimeoutMs: 50,
+		});
+		const chunks = await collectChunks(result.stream);
+
+		expect(streamText).toHaveBeenCalledTimes(2);
+		const errorChunk = chunks.find((c) => c.type === 'error') as
+			| (StreamChunk & { type: 'error'; error: unknown })
+			| undefined;
+		expect(String(errorChunk?.error)).toContain('stalled');
+		expect(runtime.getState().status).toBe('failed');
+	});
+});
