@@ -7,7 +7,7 @@ export const MCP_TELEMETRY = defineTelemetryEvents({
 		name: 'User toggled auto-expose new workflows to MCP',
 		description:
 			'An admin turned the "Auto-expose new workflows" MCP setting on or off. Reports the resulting state so enabling and disabling are distinguishable.',
-		properties: z.looseObject({
+		properties: z.object({
 			enabled: z.boolean().describe('Resulting state of the setting, not the prior one'),
 			source: z
 				.enum(['settings', 'expose_all'])
