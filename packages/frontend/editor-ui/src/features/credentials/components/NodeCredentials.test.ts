@@ -19,7 +19,7 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import type { Project } from '@/features/collaboration/projects/projects.types';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useAiGateway } from '@/app/composables/useAiGateway';
@@ -52,6 +52,7 @@ vi.mock('@/app/composables/useAiGateway', () => ({
 	useAiGateway: vi.fn(() => ({
 		isEnabled: ref(false),
 		isCredentialTypeSupported: vi.fn(() => false),
+		canServeCredentialType: vi.fn(() => false),
 		balance: computed(() => undefined),
 		budget: computed(() => undefined),
 		fetchConfig: vi.fn().mockResolvedValue(undefined),
@@ -251,6 +252,20 @@ describe('NodeCredentials', () => {
 		expect(screen.queryByText('OpenAi account')).toBeInTheDocument();
 	});
 
+	it('replaces the type-derived field label when credentialsFieldLabel is set', () => {
+		ndvStore.activeNode = httpNode;
+		credentialsStore.state.credentials = {
+			c8vqdPpPClh4TgIO: createCredential(),
+		};
+
+		renderComponent(
+			{ props: { credentialsFieldLabel: 'fal.ai API Key credentials' } },
+			{ merge: true },
+		);
+
+		expect(screen.getByTestId('credentials-label')).toHaveTextContent('fal.ai API Key credentials');
+	});
+
 	it('renders standalone when no active workflow document store is provided', () => {
 		// Instance AI credential card: rendered standalone, outside a loaded
 		// workflow document. The strict injectNDVStore() used to throw here on the
@@ -366,7 +381,7 @@ describe('NodeCredentials', () => {
 		);
 	});
 
-	it('should hide the assistant when opening credentials from a tool context', async () => {
+	it('should configure the new credential modal for a tool context', async () => {
 		ndvStore.activeNode = httpNode;
 		credentialsStore.state.credentials = {
 			c8vqdPpPClh4TgIO: createCredential(),
@@ -393,7 +408,7 @@ describe('NodeCredentials', () => {
 			undefined,
 			httpNode.name,
 			httpNode,
-			{ hideAskAssistant: true, closeOnSave: true },
+			{ hideAskAssistant: true, closeOnSave: true, appendToBody: true },
 		);
 	});
 
@@ -1281,6 +1296,32 @@ describe('NodeCredentials', () => {
 
 			expect(screen.queryByTestId('credential-edit-button')).toBeInTheDocument();
 		});
+
+		it('should configure the edit credential modal for a tool context', async () => {
+			ndvStore.activeNode = httpNode;
+			credentialsStore.state.credentials = {
+				c8vqdPpPClh4TgIO: createCredential(),
+			};
+
+			renderComponent({
+				global: {
+					provide: {
+						[ChatHubToolContextKey as symbol]: true,
+					},
+				},
+			});
+
+			const editIcon = screen
+				.getByTestId('credential-edit-button')
+				.querySelector('[data-icon="pen"]');
+			expect(editIcon).not.toBeNull();
+			await userEvent.click(editIcon!);
+
+			expect(uiStore.openExistingCredential).toHaveBeenCalledWith('c8vqdPpPClh4TgIO', {
+				hideAskAssistant: true,
+				appendToBody: true,
+			});
+		});
 	});
 
 	it('should not show "Set up credential" button when user cannot create credentials', () => {
@@ -1426,6 +1467,7 @@ describe('NodeCredentials', () => {
 			vi.mocked(useAiGateway).mockReturnValue({
 				isEnabled: computed(() => true),
 				isCredentialTypeSupported: vi.fn((credType: string) => credType === 'googlePalmApi'),
+				canServeCredentialType: vi.fn((credType: string) => credType === 'googlePalmApi'),
 				isNodeTypeVersionSupported: vi.fn(() => true),
 				isActionSupported: vi.fn(() => true),
 				isActionOptionVisible: vi.fn(() => true),
@@ -1502,6 +1544,7 @@ describe('NodeCredentials', () => {
 				vi.mocked(useAiGateway).mockReturnValue({
 					isEnabled: computed(() => true),
 					isCredentialTypeSupported: vi.fn(() => false),
+					canServeCredentialType: vi.fn(() => false),
 					isNodeTypeVersionSupported: vi.fn(() => true),
 					isActionSupported: vi.fn(() => true),
 					isActionOptionVisible: vi.fn(() => true),
@@ -1533,6 +1576,7 @@ describe('NodeCredentials', () => {
 				vi.mocked(useAiGateway).mockReturnValue({
 					isEnabled: computed(() => false),
 					isCredentialTypeSupported: vi.fn(() => false),
+					canServeCredentialType: vi.fn(() => false),
 					isNodeTypeVersionSupported: vi.fn(() => true),
 					isActionSupported: vi.fn(() => true),
 					isActionOptionVisible: vi.fn(() => true),
@@ -1654,6 +1698,7 @@ describe('NodeCredentials', () => {
 				vi.mocked(useAiGateway).mockReturnValue({
 					isEnabled: computed(() => true),
 					isCredentialTypeSupported: vi.fn((credType: string) => credType === 'serviceApiKey'),
+					canServeCredentialType: vi.fn((credType: string) => credType === 'serviceApiKey'),
 					isNodeTypeVersionSupported: vi.fn(() => true),
 					isActionSupported: vi.fn(() => true),
 					isActionOptionVisible: vi.fn(() => true),
@@ -1820,6 +1865,7 @@ describe('NodeCredentials', () => {
 				vi.mocked(useAiGateway).mockReturnValue({
 					isEnabled: computed(() => true),
 					isCredentialTypeSupported: vi.fn((credType: string) => credType === 'someApi'),
+					canServeCredentialType: vi.fn((credType: string) => credType === 'someApi'),
 					isNodeTypeVersionSupported: vi.fn(() => false),
 					isActionSupported: vi.fn(() => true),
 					isActionOptionVisible: vi.fn(() => true),
@@ -1855,6 +1901,7 @@ describe('NodeCredentials', () => {
 				vi.mocked(useAiGateway).mockReturnValue({
 					isEnabled: computed(() => true),
 					isCredentialTypeSupported: vi.fn((credType: string) => credType === 'someApi'),
+					canServeCredentialType: vi.fn((credType: string) => credType === 'someApi'),
 					isNodeTypeVersionSupported: vi.fn(() => true),
 					isActionSupported: vi.fn(() => true),
 					isActionOptionVisible: vi.fn(() => true),
@@ -1890,6 +1937,7 @@ describe('NodeCredentials', () => {
 				vi.mocked(useAiGateway).mockReturnValue({
 					isEnabled: computed(() => true),
 					isCredentialTypeSupported: vi.fn((credType: string) => credType === 'someApi'),
+					canServeCredentialType: vi.fn((credType: string) => credType === 'someApi'),
 					isNodeTypeVersionSupported: vi.fn(() => false),
 					isActionSupported: vi.fn(() => true),
 					isActionOptionVisible: vi.fn(() => true),
@@ -1930,6 +1978,7 @@ describe('NodeCredentials', () => {
 				vi.mocked(useAiGateway).mockReturnValue({
 					isEnabled: computed(() => true),
 					isCredentialTypeSupported: vi.fn((credType: string) => credType === 'someApi'),
+					canServeCredentialType: vi.fn((credType: string) => credType === 'someApi'),
 					isNodeTypeVersionSupported: vi.fn(() => false),
 					isActionSupported: vi.fn(() => true),
 					isActionOptionVisible: vi.fn(() => true),
@@ -2099,6 +2148,7 @@ describe('NodeCredentials', () => {
 			vi.mocked(useAiGateway).mockReturnValue({
 				isEnabled: computed(() => true),
 				isCredentialTypeSupported: vi.fn((credType: string) => credType === 'googlePalmApi'),
+				canServeCredentialType: vi.fn((credType: string) => credType === 'googlePalmApi'),
 				isNodeTypeVersionSupported: vi.fn(() => true),
 				isActionSupported: vi.fn(() => false),
 				isActionOptionVisible: vi.fn(() => true),

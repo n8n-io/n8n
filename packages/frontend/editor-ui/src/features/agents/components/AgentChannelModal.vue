@@ -9,7 +9,7 @@ import {
 	N8nIcon,
 	N8nText,
 } from '@n8n/design-system';
-import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
+import type { IconName } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { FocusScope } from 'reka-ui';
 import { computed, ref, watch } from 'vue';
@@ -20,6 +20,7 @@ import AgentChannelListItem from './AgentChannelListItem.vue';
 import AgentChannelSlackSetup from './AgentChannelSlackSetup.vue';
 import AgentChannelLinearSetup from './AgentChannelLinearSetup.vue';
 import AgentChannelTelegramSetup from './AgentChannelTelegramSetup.vue';
+import AgentChannelDiscordSetup from './AgentChannelDiscordSetup.vue';
 import AgentIntegrationCredentialConnection from './AgentIntegrationCredentialConnection.vue';
 
 export type ChannelView =
@@ -29,15 +30,17 @@ export type ChannelView =
 	| 'linear_setup'
 	| 'linear_edit'
 	| 'telegram_setup'
-	| 'telegram_edit';
+	| 'telegram_edit'
+	| 'discord_setup'
+	| 'discord_edit';
 
 interface Props {
 	open: boolean;
 	agentId: string;
 	projectId: string;
-	view: ChannelView;
-	connectedChannels: string[];
 	isPublished: boolean;
+	view: ChannelView;
+	ensureAgentPersisted?: () => Promise<void>;
 }
 
 const props = defineProps<Props>();
@@ -60,6 +63,7 @@ const {
 	errorMessages,
 	errorIsConflict,
 	isConnected: isIntegrationConnected,
+	isConfigured: isIntegrationConfigured,
 	connect,
 	disconnect,
 } = useAgentIntegrationStatus(props.projectId, props.agentId);
@@ -115,7 +119,7 @@ const {
 	currentIntegration,
 	connectedCredentials,
 	fetchStatus,
-	isIntegrationConnected,
+	isIntegrationConfigured,
 });
 
 const hasPendingCredentialReplacement = computed(() => pendingCredentialReplacement.value !== null);
@@ -179,7 +183,11 @@ const headerText = computed(() => {
 });
 
 function isConnected(channelType: string): boolean {
-	return props.connectedChannels.includes(channelType) || isIntegrationConnected(channelType);
+	return isIntegrationConnected(channelType);
+}
+
+function isConfigured(channelType: string): boolean {
+	return isIntegrationConfigured(channelType);
 }
 
 function isLoading(channelType: string): boolean {
@@ -196,6 +204,7 @@ const CONNECTED_TEXT_KEYS = {
 } as const;
 
 function integrationConnectedText(channelType: string): string {
+	if (!isIntegrationConnected(channelType)) return '';
 	const key = CONNECTED_TEXT_KEYS[channelType as keyof typeof CONNECTED_TEXT_KEYS];
 	return key ? i18n.baseText(key) : '';
 }
@@ -265,6 +274,7 @@ async function saveChannelConfig() {
 	const credentialId = currentChannelCredentialId.value;
 	if (!channelType || !credentialId) return;
 	if (channelSetupRef.value?.validationError) return;
+	await props.ensureAgentPersisted?.();
 	const pendingReplacement = pendingCredentialReplacement.value;
 	if (pendingReplacement?.channelType === channelType) {
 		selectedCredentials.value[channelType] = pendingReplacement.replacementCredentialId;
@@ -296,6 +306,7 @@ async function saveChannelConfig() {
 }
 
 async function setupSlackApp(appConfigurationToken: string): Promise<boolean> {
+	await props.ensureAgentPersisted?.();
 	return await runSlackAppSetup(appConfigurationToken, () => {
 		emit('channel-connected', 'slack');
 		emit('agent-changed');
@@ -304,11 +315,10 @@ async function setupSlackApp(appConfigurationToken: string): Promise<boolean> {
 }
 
 async function handleDisconnected(channelType: string, credentialId?: string) {
-	// Draft channels (configured but missing a credential) have no connected
-	// credential — send '' so the backend removes the draft entry by type.
+	// Draft channel placeholders have no credential, so send '' to remove them by type.
 	await disconnect(channelType, credentialId ?? connectedCredentials.value[channelType] ?? '');
 	await fetchStatus([channelType]);
-	if (!isIntegrationConnected(channelType)) {
+	if (!isIntegrationConfigured(channelType)) {
 		emit('channel-disconnected', channelType);
 	}
 	emit('agent-changed');
@@ -414,6 +424,7 @@ watch(
 							v-for="integration in catalog"
 							:key="integration.type"
 							:integration="integration"
+							:configured="isConfigured(integration.type)"
 							:connected="isConnected(integration.type)"
 							@setup="goToSetup"
 							@edit="goToEdit"
@@ -427,8 +438,7 @@ watch(
 						v-if="selectedChannelType === 'slack'"
 						ref="channelSetupRef"
 						v-model="selectedCredentials.slack"
-						:connected="isConnected('slack')"
-						:is-published="isPublished"
+						:connected="isConfigured('slack')"
 						:setup-slack-app="setupSlackApp"
 						:project-id="projectId"
 						:agent-id="agentId"
@@ -453,14 +463,13 @@ watch(
 						:credential-permissions="credentialPermissions"
 						:credentials-loading="credentialsLoading"
 						:loading="isLoading(currentIntegration.type)"
-						:connected="isConnected(currentIntegration.type)"
+						:connected="isConfigured(currentIntegration.type)"
 						:connected-description="integrationConnectedText(currentIntegration.type)"
 						:error-message="
 							hasError(currentIntegration.type) ? errorMessages[currentIntegration.type] : ''
 						"
 						:error-is-conflict="errorIsConflict[currentIntegration.type]"
 						:saved-settings="integrationSettings[currentIntegration.type]"
-						:is-published="isPublished"
 						:agent-name="agentId"
 						:project-id="projectId"
 						:agent-id="agentId"
@@ -478,15 +487,36 @@ watch(
 						:credential-permissions="credentialPermissions"
 						:credentials-loading="credentialsLoading"
 						:loading="isLoading(currentIntegration.type)"
-						:connected="isConnected(currentIntegration.type)"
+						:connected="isConfigured(currentIntegration.type)"
 						:connected-description="integrationConnectedText(currentIntegration.type)"
 						:error-message="
 							hasError(currentIntegration.type) ? errorMessages[currentIntegration.type] : ''
 						"
 						:error-is-conflict="errorIsConflict[currentIntegration.type]"
 						:saved-settings="integrationSettings[currentIntegration.type]"
-						:is-published="isPublished"
 						:agent-name="agentId"
+						:project-id="projectId"
+						:agent-id="agentId"
+						@create="createCredential"
+						@edit="editCredential"
+						@connect="saveChannelConfig"
+					/>
+					<AgentChannelDiscordSetup
+						v-else-if="currentIntegration?.type === 'discord'"
+						ref="channelSetupRef"
+						v-model="selectedCredentials[currentIntegration.type]"
+						mode="setup"
+						:integration="currentIntegration"
+						:credentials="getCredentials(currentIntegration.type)"
+						:credential-permissions="credentialPermissions"
+						:credentials-loading="credentialsLoading"
+						:loading="isLoading(currentIntegration.type)"
+						:connected="isConfigured(currentIntegration.type)"
+						:error-message="
+							hasError(currentIntegration.type) ? errorMessages[currentIntegration.type] : ''
+						"
+						:error-is-conflict="errorIsConflict[currentIntegration.type]"
+						:is-published="props.isPublished"
 						:project-id="projectId"
 						:agent-id="agentId"
 						@create="createCredential"
@@ -532,7 +562,7 @@ watch(
 						:credential-permissions="credentialPermissions"
 						:credentials-loading="credentialsLoading"
 						:loading="hasPendingCredentialReplacement || isLoading(currentIntegration.type)"
-						:connected="isConnected(currentIntegration.type)"
+						:connected="isConfigured(currentIntegration.type)"
 						:saved-settings="integrationSettings[currentIntegration.type]"
 						:agent-name="agentId"
 						:project-id="projectId"
@@ -548,9 +578,23 @@ watch(
 						:credential-permissions="credentialPermissions"
 						:credentials-loading="credentialsLoading"
 						:loading="hasPendingCredentialReplacement || isLoading(currentIntegration.type)"
-						:connected="isConnected(currentIntegration.type)"
+						:connected="isConfigured(currentIntegration.type)"
 						:saved-settings="integrationSettings[currentIntegration.type]"
 						:agent-name="agentId"
+						:project-id="projectId"
+						:agent-id="agentId"
+					/>
+					<AgentChannelDiscordSetup
+						v-else-if="currentIntegration?.type === 'discord'"
+						ref="channelSetupRef"
+						v-model="selectedCredentials[currentIntegration.type]"
+						mode="edit"
+						:integration="currentIntegration"
+						:credentials="getCredentials(currentIntegration.type)"
+						:credential-permissions="credentialPermissions"
+						:credentials-loading="credentialsLoading"
+						:loading="hasPendingCredentialReplacement || isLoading(currentIntegration.type)"
+						:connected="isConfigured(currentIntegration.type)"
 						:project-id="projectId"
 						:agent-id="agentId"
 					/>

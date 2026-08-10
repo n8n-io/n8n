@@ -66,6 +66,7 @@ const nodeToolWithoutCredential: Extract<AgentJsonToolConfig, { type: 'node' }> 
 
 const workflowTool: Extract<AgentJsonToolConfig, { type: 'workflow' }> = {
 	type: 'workflow',
+	workflowId: 'wf-1',
 	workflow: 'Lookup customer',
 };
 
@@ -168,7 +169,7 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 		const entity = makeAgentEntity([nodeToolWithCredential, workflowTool, customTool]);
 		const credentialProvider = mock<CredentialProvider>();
 
-		await service.reconstructFromAgentEntity(entity, credentialProvider);
+		await service.reconstructFromAgentEntity(entity, credentialProvider, 'production');
 
 		expect(userHasScopes).not.toHaveBeenCalled();
 		expect(toolNamesPassedToBuildFromJson()).toEqual(
@@ -182,7 +183,13 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 		const entity = makeAgentEntity([nodeToolWithCredential, workflowTool, customTool]);
 		const credentialProvider = mock<CredentialProvider>();
 
-		await service.reconstructFromAgentEntity(entity, credentialProvider, undefined, testUser);
+		await service.reconstructFromAgentEntity(
+			entity,
+			credentialProvider,
+			'production',
+			undefined,
+			testUser,
+		);
 
 		expect(userHasScopes).toHaveBeenCalledWith(testUser, ['workflow:execute'], false, {
 			projectId,
@@ -198,7 +205,13 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 		const entity = makeAgentEntity([nodeToolWithCredential, nodeToolWithoutCredential]);
 		const credentialProvider = mock<CredentialProvider>();
 
-		await service.reconstructFromAgentEntity(entity, credentialProvider, undefined, testUser);
+		await service.reconstructFromAgentEntity(
+			entity,
+			credentialProvider,
+			'production',
+			undefined,
+			testUser,
+		);
 
 		expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith(
 			'cred-1',
@@ -211,15 +224,27 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 	it('drops a workflow tool the user cannot access, keeps one they can', async () => {
 		vi.mocked(userHasScopes).mockResolvedValue(true);
 		const workflowRepository = mock<WorkflowRepository>();
-		workflowRepository.findOne.mockResolvedValue(mock<WorkflowEntity>({ id: 'wf-1' }));
+		workflowRepository.findOneByAgentToolReference.mockResolvedValue(
+			mock<WorkflowEntity>({ id: 'wf-1' }),
+		);
 		const workflowFinderService = mock<WorkflowFinderService>();
 		workflowFinderService.findWorkflowForUser.mockResolvedValue(null);
 		const { service } = makeService({ workflowRepository, workflowFinderService });
 		const entity = makeAgentEntity([workflowTool]);
 		const credentialProvider = mock<CredentialProvider>();
 
-		await service.reconstructFromAgentEntity(entity, credentialProvider, undefined, testUser);
+		await service.reconstructFromAgentEntity(
+			entity,
+			credentialProvider,
+			'production',
+			undefined,
+			testUser,
+		);
 
+		expect(workflowRepository.findOneByAgentToolReference).toHaveBeenCalledWith(projectId, {
+			workflowId: 'wf-1',
+			workflowName: 'Lookup customer',
+		});
 		expect(workflowFinderService.findWorkflowForUser).toHaveBeenCalledWith('wf-1', testUser, [
 			'workflow:execute',
 		]);
@@ -233,7 +258,9 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 			mock<CredentialsEntity>({ id: 'cred-1' }),
 		);
 		const workflowRepository = mock<WorkflowRepository>();
-		workflowRepository.findOne.mockResolvedValue(mock<WorkflowEntity>({ id: 'wf-1' }));
+		workflowRepository.findOneByAgentToolReference.mockResolvedValue(
+			mock<WorkflowEntity>({ id: 'wf-1' }),
+		);
 		const workflowFinderService = mock<WorkflowFinderService>();
 		workflowFinderService.findWorkflowForUser.mockResolvedValue(
 			mock<Awaited<ReturnType<WorkflowFinderService['findWorkflowForUser']>>>({ id: 'wf-1' }),
@@ -246,7 +273,13 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 		const entity = makeAgentEntity([nodeToolWithCredential, workflowTool, customTool]);
 		const credentialProvider = mock<CredentialProvider>();
 
-		await service.reconstructFromAgentEntity(entity, credentialProvider, undefined, testUser);
+		await service.reconstructFromAgentEntity(
+			entity,
+			credentialProvider,
+			'production',
+			undefined,
+			testUser,
+		);
 
 		expect(toolNamesPassedToBuildFromJson()).toEqual(
 			expect.arrayContaining(['Send Slack message', 'Lookup customer', 'custom_tool']),
@@ -288,6 +321,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromResolvedSource — pe
 			toolCodeByName: {},
 			skills: {},
 			runtimeProfile: 'sub-agent',
+			runType: 'test',
 			user: testUser,
 		});
 
@@ -310,6 +344,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromResolvedSource — pe
 			toolCodeByName: {},
 			skills: {},
 			runtimeProfile: 'sub-agent',
+			runType: 'production',
 		});
 
 		expect(userHasScopes).not.toHaveBeenCalled();

@@ -1,7 +1,24 @@
 import { Service } from '@n8n/di';
 import { DataSource, IsNull, Not, Repository } from '@n8n/typeorm';
+import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 
 import { AgentExecution } from '../entities/agent-execution.entity';
+
+export type RunningAgentExecution = Pick<
+	AgentExecution,
+	'id' | 'threadId' | 'startedAt' | 'updatedAt' | 'timeline'
+>;
+
+type AgentExecutionFinalizationValues = Pick<
+	AgentExecution,
+	'status' | 'stoppedAt' | 'duration' | 'timeline' | 'storedAt' | 'error'
+> &
+	Partial<
+		Pick<
+			AgentExecution,
+			'model' | 'promptTokens' | 'completionTokens' | 'totalTokens' | 'cost' | 'hitlStatus'
+		>
+	>;
 
 @Service()
 export class AgentExecutionRepository extends Repository<AgentExecution> {
@@ -12,6 +29,39 @@ export class AgentExecutionRepository extends Repository<AgentExecution> {
 	/** All executions in a thread, oldest first — used by the timeline view. */
 	async findByThreadIdOrdered(threadId: string): Promise<AgentExecution[]> {
 		return await this.find({ where: { threadId }, order: { createdAt: 'ASC' } });
+	}
+
+	async findRunning(): Promise<RunningAgentExecution[]> {
+		return await this.find({
+			select: ['id', 'threadId', 'startedAt', 'updatedAt', 'timeline'],
+			where: { status: 'running' },
+		});
+	}
+
+	async touchRunning(executionId: string): Promise<void> {
+		await this.update({ id: executionId, status: 'running' }, { updatedAt: new Date() });
+	}
+
+	async updateTimelineIfRunning(
+		executionId: string,
+		timeline: AgentExecution['timeline'],
+	): Promise<boolean> {
+		const result = await this.update({ id: executionId, status: 'running' }, {
+			timeline,
+			updatedAt: new Date(),
+		} as QueryDeepPartialEntity<AgentExecution>);
+		return result.affected === 1;
+	}
+
+	async updateIfRunning(
+		executionId: string,
+		values: AgentExecutionFinalizationValues,
+	): Promise<boolean> {
+		const result = await this.update(
+			{ id: executionId, status: 'running' },
+			values as QueryDeepPartialEntity<AgentExecution>,
+		);
+		return result.affected === 1;
 	}
 
 	/**

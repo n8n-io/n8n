@@ -16,10 +16,10 @@ import { computed, ref } from 'vue';
 import debounce from 'lodash/debounce';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { useRBACStore } from '@n8n/stores/rbac.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
 import { DEBOUNCE_TIME } from '@/app/constants';
-import type { TableHeader } from '@n8n/design-system/components/N8nDataTableServer';
+import type { TableHeader } from '@n8n/design-system';
 import TimeAgo from '@/app/components/TimeAgo.vue';
 import {
 	EMPTY_OAUTH_CLIENT_FILTERS,

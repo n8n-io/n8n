@@ -94,7 +94,7 @@ vi.mock('@/app/composables/useBrowserNotifications', () => ({
 }));
 
 // Mock useToast
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({
 		showMessage: vi.fn(),
 		showError: vi.fn(),
