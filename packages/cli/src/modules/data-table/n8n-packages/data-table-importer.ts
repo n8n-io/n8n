@@ -1,29 +1,28 @@
-import { ModuleRegistry } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import type { DataTable } from '@/modules/data-table/data-table.entity';
-import { DataTableService } from '@/modules/data-table/data-table.service';
-import { userHasScopes } from '@/permissions.ee/check-access';
-
-import { matchTargetTable } from './data-table-matching-mode';
-import { decideAbsentTable } from './data-table-missing-mode';
-import type { TableEffect } from './data-table-missing-mode';
-import { findSchemaConflict } from './data-table-schema-conflict-policy';
-import { createFailure } from './data-table.types';
+import { decideAbsentTable } from '@/modules/n8n-packages/entities/data-table/data-table-missing-mode';
+import type { TableEffect } from '@/modules/n8n-packages/entities/data-table/data-table-missing-mode';
+import { findSchemaConflict } from '@/modules/n8n-packages/entities/data-table/data-table-schema-conflict-policy';
+import { createFailure } from '@/modules/n8n-packages/entities/data-table/data-table.types';
 import type {
 	DataTableImportPlan,
 	DataTableImportRequest,
 	DataTableResolutionFailure,
-} from './data-table.types';
+} from '@/modules/n8n-packages/entities/data-table/data-table.types';
 import type {
 	DataTableMissingMode,
 	DataTableSchemaConflictPolicy,
 	ImportContext,
-} from '../../n8n-packages.types';
-import type { PackageDataTableRequirement } from '../../spec/requirements.schema';
-import type { SerializedDataTable } from '../../spec/serialized/data-table.schema';
+} from '@/modules/n8n-packages/n8n-packages.types';
+import type { PackageDataTableRequirement } from '@/modules/n8n-packages/spec/requirements.schema';
+import type { SerializedDataTable } from '@/modules/n8n-packages/spec/serialized/data-table.schema';
+import { userHasScopes } from '@/permissions.ee/check-access';
+
+import { matchTargetTable } from './data-table-matching-mode';
+import type { DataTable } from '../data-table.entity';
+import { DataTableService } from '../data-table.service';
 
 interface PlannedCreation {
 	table: SerializedDataTable;
@@ -32,10 +31,7 @@ interface PlannedCreation {
 
 @Service()
 export class DataTableImporter {
-	constructor(
-		private readonly dataTableService: DataTableService,
-		private readonly moduleRegistry: ModuleRegistry,
-	) {}
+	constructor(private readonly dataTableService: DataTableService) {}
 
 	/**
 	 * Resolves the package's data table references against the target project.
@@ -49,14 +45,6 @@ export class DataTableImporter {
 	): Promise<DataTableImportPlan> {
 		const requirements = request.requirements ?? [];
 		if (requirements.length === 0) return { creations: [], failures: [], matchedCount: 0 };
-
-		if (!this.moduleRegistry.isActive('data-table')) {
-			return {
-				creations: [],
-				failures: [{ kind: 'module-disabled', usedByWorkflows: workflowsUsing(requirements) }],
-				matchedCount: 0,
-			};
-		}
 
 		const packageTablesById = new Map(request.packageDataTables.map((table) => [table.id, table]));
 		const targets = await this.dataTableService.findDataTablesByIds(

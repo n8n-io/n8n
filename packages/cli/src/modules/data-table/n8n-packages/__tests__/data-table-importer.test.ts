@@ -1,14 +1,13 @@
-import type { ModuleRegistry } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import type { DataTable } from '@/modules/data-table/data-table.entity';
-import type { DataTableService } from '@/modules/data-table/data-table.service';
+import type { DataTableImportRequest } from '@/modules/n8n-packages/entities/data-table/data-table.types';
+import type { ImportContext } from '@/modules/n8n-packages/n8n-packages.types';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
+import type { DataTable } from '../../data-table.entity';
+import type { DataTableService } from '../../data-table.service';
 import { DataTableImporter } from '../data-table-importer';
-import type { DataTableImportRequest } from '../data-table.types';
-import type { ImportContext } from '../../../n8n-packages.types';
 
 vi.mock('@/permissions.ee/check-access', () => ({
 	userHasScopes: vi.fn(),
@@ -24,11 +23,9 @@ const context: ImportContext = {
 
 function makeImporter() {
 	const dataTableService = mock<DataTableService>();
-	const moduleRegistry = mock<ModuleRegistry>();
-	moduleRegistry.isActive.mockReturnValue(true);
 	dataTableService.findDataTablesByIds.mockResolvedValue([]);
 	dataTableService.findDataTablesByNamesInProject.mockResolvedValue([]);
-	return { importer: new DataTableImporter(dataTableService, moduleRegistry), moduleRegistry };
+	return { importer: new DataTableImporter(dataTableService) };
 }
 
 function makeRequest(overrides: Partial<DataTableImportRequest> = {}): DataTableImportRequest {
@@ -51,22 +48,11 @@ beforeEach(() => {
 
 describe('DataTableImporter.plan', () => {
 	it('returns an empty plan when the package requires no data tables', async () => {
-		const { importer, moduleRegistry } = makeImporter();
+		const { importer } = makeImporter();
 
 		const plan = await importer.plan(context, makeRequest({ requirements: undefined }));
 
 		expect(plan).toEqual({ creations: [], failures: [], matchedCount: 0 });
-		expect(moduleRegistry.isActive).not.toHaveBeenCalled();
-	});
-
-	it('fails with module-disabled when the data-table module is inactive', async () => {
-		const { importer, moduleRegistry } = makeImporter();
-		moduleRegistry.isActive.mockReturnValue(false);
-
-		const plan = await importer.plan(context, makeRequest());
-
-		expect(plan.creations).toEqual([]);
-		expect(plan.failures).toEqual([{ kind: 'module-disabled', usedByWorkflows: ['wf-1'] }]);
 	});
 
 	it('fails with permission-denied when the user cannot create tables in the target project', async () => {
@@ -105,11 +91,9 @@ describe('DataTableImporter.plan', () => {
 			columns: [],
 		});
 		const dataTableService = mock<DataTableService>();
-		const moduleRegistry = mock<ModuleRegistry>();
-		moduleRegistry.isActive.mockReturnValue(true);
 		dataTableService.findDataTablesByIds.mockResolvedValue([foreignTable]);
 		dataTableService.findDataTablesByNamesInProject.mockResolvedValue([]);
-		const importer = new DataTableImporter(dataTableService, moduleRegistry);
+		const importer = new DataTableImporter(dataTableService);
 
 		const plan = await importer.plan(context, makeRequest());
 

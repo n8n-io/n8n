@@ -1,15 +1,14 @@
-import type { ModuleRegistry } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { jsonParse } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import type { DataTable } from '@/modules/data-table/data-table.entity';
-import type { DataTableService } from '@/modules/data-table/data-table.service';
+import type { WorkflowDataTableRequirement } from '@/modules/n8n-packages/entities/data-table/data-table.types';
+import { CapturingWriter } from '@/modules/n8n-packages/io/__tests__/utils/capturing-writer';
 
-import { CapturingWriter } from '../../../io/__tests__/utils/capturing-writer';
+import type { DataTable } from '../../data-table.entity';
+import type { DataTableService } from '../../data-table.service';
 import { DataTableExporter } from '../data-table.exporter';
 import { DataTableSerializer } from '../data-table.serializer';
-import type { WorkflowDataTableRequirement } from '../data-table.types';
 
 const user = mock<User>({ id: 'user-1' });
 
@@ -37,14 +36,8 @@ function makeRequirement(
 
 function makeExporter() {
 	const dataTableService = mock<DataTableService>();
-	const moduleRegistry = mock<ModuleRegistry>();
-	moduleRegistry.isActive.mockReturnValue(true);
-	const exporter = new DataTableExporter(
-		dataTableService,
-		new DataTableSerializer(),
-		moduleRegistry,
-	);
-	return { exporter, dataTableService, moduleRegistry };
+	const exporter = new DataTableExporter(dataTableService, new DataTableSerializer());
+	return { exporter, dataTableService };
 }
 
 describe('DataTableExporter', () => {
@@ -59,21 +52,6 @@ describe('DataTableExporter', () => {
 			expect(writer.files).toEqual([]);
 			expect(writer.directories).toEqual([]);
 			expect(dataTableService.findDataTablesByIdsForUser).not.toHaveBeenCalled();
-		});
-	});
-
-	describe('module guard', () => {
-		it('throws when tables are required but the data-table module is disabled', async () => {
-			const { exporter, dataTableService, moduleRegistry } = makeExporter();
-			moduleRegistry.isActive.mockReturnValue(false);
-			const writer = new CapturingWriter();
-
-			await expect(
-				exporter.export({ user, requirements: [makeRequirement()], writer }),
-			).rejects.toThrowError(/data-table module is disabled/);
-
-			expect(dataTableService.findDataTablesByIdsForUser).not.toHaveBeenCalled();
-			expect(writer.files).toEqual([]);
 		});
 	});
 

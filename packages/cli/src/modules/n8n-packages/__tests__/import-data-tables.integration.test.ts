@@ -1,4 +1,4 @@
-import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
+import { LicenseState } from '@n8n/backend-common';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import type { Project, User } from '@n8n/db';
 import { FolderRepository, WorkflowRepository } from '@n8n/db';
@@ -14,25 +14,27 @@ import { mockDataTableSizeValidator } from '@/modules/data-table/__tests__/test-
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
+import { registerDataTablePackageHandler } from '@/modules/data-table/n8n-packages/register';
 import { createFolder } from '@test-integration/db/folders';
 import { createOwner } from '@test-integration/db/users';
 import { LicenseMocker } from '@test-integration/license';
 import { initNodeTypes } from '@test-integration/utils';
 
 import { N8nPackagesService } from '../n8n-packages.service';
-import { importPackageRequest } from './fixtures/import-request';
 import type { ImportPackageRequest } from '../n8n-packages.types';
+import { PackageEntityHandlerRegistry } from '../package-entity-handler.registry';
+import { importPackageRequest } from './fixtures/import-request';
 import type { PackageDataTableRequirement } from '../spec/requirements.schema';
-import type { SerializedDataTable } from '../spec/serialized/data-table.schema';
-import type { SerializedWorkflow } from '../spec/serialized/workflow.schema';
 import {
 	buildEntityPackageBuffer,
 	dataTableRequirement,
 	serializedDataTable,
 	serializedWorkflowWithDataTable,
 } from './fixtures/package-fixtures';
-import { buildWorkflowReferencingDataTables } from './utils/test-builders';
 import { streamToBuffer } from './utils/tar-support';
+import { buildWorkflowReferencingDataTables } from './utils/test-builders';
+import type { SerializedDataTable } from '../spec/serialized/data-table.schema';
+import type { SerializedWorkflow } from '../spec/serialized/workflow.schema';
 
 let service: N8nPackagesService;
 let dataTableService: DataTableService;
@@ -44,6 +46,8 @@ const licenseMocker = new LicenseMocker();
 beforeAll(async () => {
 	await testModules.loadModules(['n8n-packages', 'data-table']);
 	await testDb.init();
+	// loadModules skips module init, where this registration normally happens.
+	registerDataTablePackageHandler();
 	// Register node types so the plan-phase missing-node-type check can resolve
 	// the node types used by the package fixtures.
 	await initNodeTypes();
@@ -524,9 +528,10 @@ describe('workflow package import — with data tables', () => {
 
 		it('blocks when the package requires data tables and the module is disabled', async () => {
 			const { packageBuffer } = await buildDataTablePackage([serializedDataTable()]);
-			const isActive = vi
-				.spyOn(Container.get(ModuleRegistry), 'isActive')
-				.mockImplementation((moduleName) => moduleName !== 'data-table');
+			// A disabled data-table module never registers its package handler.
+			const getHandler = vi
+				.spyOn(Container.get(PackageEntityHandlerRegistry), 'get')
+				.mockReturnValue(undefined);
 
 			try {
 				await expectBlocked(importPackage({ user: owner, projectId: project.id, packageBuffer }), {
@@ -534,7 +539,7 @@ describe('workflow package import — with data tables', () => {
 					kind: 'module-disabled',
 				});
 			} finally {
-				isActive.mockRestore();
+				getHandler.mockRestore();
 			}
 
 			expect(await workflowRepository.count()).toBe(0);

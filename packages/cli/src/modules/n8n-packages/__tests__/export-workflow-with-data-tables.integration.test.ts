@@ -1,4 +1,3 @@
-import type { Project, User } from '@n8n/db';
 import {
 	createTeamProject,
 	getPersonalProject,
@@ -7,6 +6,7 @@ import {
 	testDb,
 	testModules,
 } from '@n8n/backend-test-utils';
+import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { jsonParse } from 'n8n-workflow';
 
@@ -14,10 +14,12 @@ import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { mockDataTableSizeValidator } from '@/modules/data-table/__tests__/test-helpers';
 import { DataTableService } from '@/modules/data-table/data-table.service';
+import { registerDataTablePackageHandler } from '@/modules/data-table/n8n-packages/register';
 import { createFolder } from '@test-integration/db/folders';
 import { createMember, createOwner } from '@test-integration/db/users';
 
 import { N8nPackagesService } from '../n8n-packages.service';
+import { PackageEntityHandlerRegistry } from '../package-entity-handler.registry';
 import { readExport } from './utils/tar-support';
 import {
 	buildWorkflowCallingSubWorkflow,
@@ -30,6 +32,8 @@ let dataTableService: DataTableService;
 beforeAll(async () => {
 	await testModules.loadModules(['n8n-packages', 'data-table']);
 	await testDb.init();
+	// loadModules skips module init, where this registration normally happens.
+	registerDataTablePackageHandler();
 	mockDataTableSizeValidator();
 	service = Container.get(N8nPackagesService);
 	dataTableService = Container.get(DataTableService);
@@ -514,6 +518,33 @@ describe('workflow package export — with data tables', () => {
 					workflowIds: [accessibleWf.id, forbiddenWf.id],
 				}),
 			).rejects.toThrow(/data table\(s\) not found or not accessible/i);
+		});
+	});
+
+	describe('module disabled', () => {
+		it('rejects an export whose workflows use data tables when the module is disabled', async () => {
+			const dataTable = await dataTableService.createDataTable(project.id, {
+				name: 'Customers',
+				columns: [{ name: 'email', type: 'string' }],
+			});
+			const workflow = await buildWorkflowReferencingDataTables({
+				name: 'Workflow with table',
+				project,
+				references: [{ dataTableId: dataTable.id }],
+			});
+
+			// A disabled data-table module never registers its package handler.
+			const getHandler = vi
+				.spyOn(Container.get(PackageEntityHandlerRegistry), 'get')
+				.mockReturnValue(undefined);
+
+			try {
+				await expect(
+					service.exportPackage({ user: owner, workflowIds: [workflow.id] }),
+				).rejects.toThrow(/data-table module is disabled/);
+			} finally {
+				getHandler.mockRestore();
+			}
 		});
 	});
 

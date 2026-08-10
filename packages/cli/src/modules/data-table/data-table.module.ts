@@ -29,6 +29,9 @@ export class DataTableModule implements ModuleInterface {
 			},
 		});
 
+		const { registerDataTablePackageHandler } = await import('./n8n-packages/register.js');
+		registerDataTablePackageHandler();
+
 		const { DataTableAggregateService } = await import('./data-table-aggregate.service.js');
 		await Container.get(DataTableAggregateService).start();
 

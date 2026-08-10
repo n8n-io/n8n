@@ -1,11 +1,11 @@
 import { Service } from '@n8n/di';
 
-import type { DataTable } from '@/modules/data-table/data-table.entity';
-
 import {
 	serializedDataTableSchema,
 	type SerializedDataTable,
-} from '../../spec/serialized/data-table.schema';
+} from '@/modules/n8n-packages/spec/serialized/data-table.schema';
+
+import type { DataTable } from '../data-table.entity';
 
 @Service()
 export class DataTableSerializer {
