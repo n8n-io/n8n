@@ -195,12 +195,14 @@ export const Sizes = {
 				small: 42,
 				medium: 42,
 				large: 42,
+				xlarge: 42,
 			});
 			const controlsRight = reactive({
 				mini: 42,
 				small: 42,
 				medium: 42,
 				large: 42,
+				xlarge: 42,
 			});
 			return { withoutControls, controlsBoth, controlsRight };
 		},
@@ -220,6 +222,7 @@ export const Sizes = {
 				<InputNumber v-model="controlsBoth.small" size="small" :controls="true" controls-position="both" />
 				<InputNumber v-model="controlsBoth.medium" size="medium" :controls="true" controls-position="both" />
 				<InputNumber v-model="controlsBoth.large" size="large" :controls="true" controls-position="both" />
+				<InputNumber v-model="controlsBoth.xlarge" size="xlarge" :controls="true" controls-position="both" />
 			</div>
 			<div style="width: 200px; display: flex; flex-direction: column; gap: var(--spacing--xs);">
 				<N8nInputLabel label="With controls (right)" />
@@ -227,6 +230,7 @@ export const Sizes = {
 				<InputNumber v-model="controlsRight.small" size="small" :controls="true" controls-position="right" />
 				<InputNumber v-model="controlsRight.medium" size="medium" :controls="true" controls-position="right" />
 				<InputNumber v-model="controlsRight.large" size="large" :controls="true" controls-position="right" />
+				<InputNumber v-model="controlsRight.xlarge" size="xlarge" :controls="true" controls-position="right" />
 			</div>
 		</div>
 		`,
