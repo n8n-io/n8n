@@ -154,6 +154,7 @@ export function useSlackChannelRuntime(context: AgentChannelRuntimeContext): Sla
 				return context.isConfigured('slack');
 			},
 			timeoutMs: SLACK_APP_SETUP_TIMEOUT_MS,
+			abortOnPopupClose: true,
 		});
 		popup.close();
 		return outcome === 'success';
@@ -218,10 +219,14 @@ export function useSlackChannelRuntime(context: AgentChannelRuntimeContext): Sla
 			if (!credential) throw new Error('Slack manager credential could not be loaded');
 			if (createdCredentialId) {
 				authorizationStarted = true;
-				const connected = await credentialOAuth.authorizeNewCredential(credential);
+				const connected = await credentialOAuth.authorizeNewCredential(credential, {
+					abortOnPopupClose: true,
+				});
 				return await finalizeConnectedManagerCredential(id, connected);
 			}
-			const connected = await credentialOAuth.authorize(credential);
+			const connected = await credentialOAuth.authorize(credential, undefined, {
+				abortOnPopupClose: true,
+			});
 			return await finalizeConnectedManagerCredential(id, connected);
 		} finally {
 			if (createdCredentialId && !authorizationStarted) {

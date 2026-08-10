@@ -19,6 +19,10 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { getTrustedOAuthOrigins, hasOAuthTokenData, waitForOAuthCallback } from './oauthCallback';
 
+interface OAuthAuthorizationOptions {
+	abortOnPopupClose?: boolean;
+}
+
 /**
  * Composable for OAuth credential type detection and authorization.
  * Used by NodeCredentials for the quick connect OAuth flow.
@@ -220,6 +224,7 @@ export function useCredentialOAuth() {
 	async function authorize(
 		credential: ICredentialsResponse,
 		signal?: AbortSignal,
+		options: OAuthAuthorizationOptions = {},
 	): Promise<boolean> {
 		// Token presence in credential data can only confirm the flow for fixed
 		// credentials that had no token before the popup opened: a reconnect's old
@@ -252,6 +257,7 @@ export function useCredentialOAuth() {
 			verifyConnected: canVerifyConnected
 				? async () => await isConnected(credential.id)
 				: undefined,
+			abortOnPopupClose: options.abortOnPopupClose,
 		});
 
 		// Timeout and abort can race the backend committing the token: authorization
@@ -291,13 +297,16 @@ export function useCredentialOAuth() {
 	 * Authorize a credential that was just created. Keeps it out of the store
 	 * until OAuth succeeds and removes it when authorization is not completed.
 	 */
-	async function authorizeNewCredential(credential: ICredentialsResponse): Promise<boolean> {
+	async function authorizeNewCredential(
+		credential: ICredentialsResponse,
+		options: OAuthAuthorizationOptions = {},
+	): Promise<boolean> {
 		const controller = new AbortController();
 		oauthAbortController.value = controller;
 		let success = false;
 
 		try {
-			success = await authorize(credential, controller.signal);
+			success = await authorize(credential, controller.signal, options);
 			if (success) {
 				credentialsStore.upsertCredential(credential);
 			}
