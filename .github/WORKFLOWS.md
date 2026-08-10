@@ -425,11 +425,14 @@ During the v3 release window, `master` carries normal feature work (behind opt-i
 flags) and the long-lived `3.x` branch carries breaking changes. `util-sync-master-to-3x.yml`
 syncs daily by **replaying the `3.x`-only commits onto `master` and force-pushing `3.x`**, so a
 clean sync adds no commit and nothing is squashed. What it pushes is always verified to be
-exactly the tree a merge of `3.x` and `master` produces, and marker-free. On a real conflict
-`3.x` is left untouched and a draft PR carrying the conflict markers (labeled
-`automation:v3-sync`) is opened on `sync/master-to-3x`, requesting the breaking-commit authors
-as reviewers via `sync-conflict-owners.mjs`, posting to `#alerts-v3-sync` and pausing further
-syncs until it is resolved and merged normally.
+exactly the tree a merge of `3.x` and `master` produces, and marker-free. Conflicts confined
+to mechanical, tool-generated files (the pnpm lockfile, bot-maintained data files — see
+`MECHANICAL_PATHS` in `sync-master-to-3x.mjs`) are auto-resolved during the replay; the tree
+check then applies to every path except those files. On a real code conflict `3.x` is left
+untouched and a draft PR carrying the conflict markers (labeled `automation:v3-sync`, with
+mechanical files pre-resolved) is opened on `sync/master-to-3x`, requesting the
+breaking-commit authors as reviewers via `sync-conflict-owners.mjs`, posting to
+`#alerts-v3-sync` and pausing further syncs until it is resolved and merged normally.
 `build-v3-nightly.yml` publishes `n8nio/n8n:v3-nightly[-<date>]` images from `3.x`
 by calling `docker-build-push.yml` with `ref: 3.x` + `date_tag`.
 
