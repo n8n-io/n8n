@@ -111,8 +111,21 @@ const showWorkflowReviewControls = computed(
 
 const latestReviewRequest = computed(() => reviewStatusStore.latestReviewRequest(props.id));
 
+const openReviewRequest = computed(() => reviewStatusStore.openReviewRequest(props.id));
+
 /** Saved version of the working copy — what a review is pinned to, or diverges from. */
 const savedVersionId = computed(() => workflowDocumentStore.value.versionId || undefined);
+
+/** Whether the open review already contains the current saved workflow version. */
+const reviewContainsSavedVersion = computed(() => {
+	const reviewVersionId = openReviewRequest.value?.workflowVersionId;
+	return !!reviewVersionId && reviewVersionId === savedVersionId.value;
+});
+
+/** Unsaved workflow edits can still produce a new version when Publish saves first. */
+const isReviewUpdateBlocked = computed(
+	() => reviewContainsSavedVersion.value && !uiStore.hasUnsavedWorkflowChanges,
+);
 
 const autoSaveForPublish = ref(false);
 const isSaving = ref(false);
@@ -301,6 +314,7 @@ const onReviewConflict = () => {
  */
 const onSubmitChangesFromBanner = async () => {
 	if (!(await ensureWorkflowSaved())) return;
+	if (reviewContainsSavedVersion.value) return;
 	showUpdateReviewDialog.value = true;
 };
 
@@ -351,6 +365,7 @@ const onPublishButtonClick = async () => {
 		// on-mount fetch resolves) reads as "no open review" — accepted, since
 		// only backend enforcement can close that hole.
 		if (reviewStatusStore.hasOpenReview(props.id)) {
+			if (reviewContainsSavedVersion.value) return;
 			showUpdateReviewDialog.value = true;
 			return;
 		}
@@ -526,7 +541,8 @@ const shouldDisablePublishButton = computed(() => {
 		props.isNewWorkflow ||
 		collaborationReadOnly.value ||
 		!publishButtonConfig.value.enabled ||
-		!hasPublishPermission.value
+		!hasPublishPermission.value ||
+		(isWorkflowReviewsEnabled.value && isReviewUpdateBlocked.value)
 	);
 });
 
@@ -893,6 +909,7 @@ onBeforeUnmount(() => {
 				v-model:open="showUpdateReviewDialog"
 				:workflow-id="props.id"
 				:flush-save="flushSaveForReview"
+				:can-submit="!isReviewUpdateBlocked"
 				@updated="onReviewUpdated"
 			/>
 		</template>

@@ -23,6 +23,14 @@ const xmlParser = new XmlParser({
 
 const payloadSizeMax = Container.get(GlobalConfig).endpoints.payloadSizeMax;
 
+/**
+ * A leading byte order mark is not valid JSON, but RFC 8259 §8.1 permits
+ * implementations to ignore it rather than treating it as an error. Both the
+ * UTF-8 (EF BB BF) and UTF-16 (FF FE) BOMs decode to U+FEFF, so stripping the
+ * decoded character covers every declared charset.
+ */
+const stripBom = (text: string) => (text.charCodeAt(0) === 0xfeff ? text.slice(1) : text);
+
 const isClientAbortError = (error: unknown): boolean =>
 	error instanceof Error &&
 	'type' in error &&
@@ -87,12 +95,12 @@ export const parseBody = async (req: Request) => {
 		try {
 			if (contentType === 'application/json') {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-				req.body = jsonParse(rawBody.toString(encoding));
+				req.body = jsonParse(stripBom(rawBody.toString(encoding)));
 			} else if (contentType?.endsWith('/xml') || contentType?.endsWith('+xml')) {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				req.body = await xmlParser.parseStringPromise(rawBody.toString(encoding));
 			} else if (contentType === 'application/x-www-form-urlencoded') {
-				req.body = parseQueryString(rawBody.toString(encoding), undefined, undefined, {
+				req.body = parseQueryString(stripBom(rawBody.toString(encoding)), undefined, undefined, {
 					maxKeys: 1000,
 				});
 			} else if (contentType === 'text/plain') {

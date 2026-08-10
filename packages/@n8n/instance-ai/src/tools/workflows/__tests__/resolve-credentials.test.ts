@@ -513,6 +513,157 @@ describe('resolveCredentials', () => {
 		});
 	});
 
+	describe('sibling node credential reuse', () => {
+		function makeNotionNode(name: string, credentials: Record<string, unknown>) {
+			return {
+				id: name,
+				name,
+				type: 'n8n-nodes-base.notion',
+				typeVersion: 2,
+				position: [0, 0] as [number, number],
+				credentials: credentials as unknown as { [key: string]: { id: string; name: string } },
+			};
+		}
+
+		const twoNotionCreds = makeCredentialMap([
+			{ id: 'cred-1', name: 'Notion main', type: 'notionApi' },
+			{ id: 'cred-2', name: 'Notion other', type: 'notionApi' },
+		]);
+
+		it('reuses the credential bound to a sibling node of the same type', async () => {
+			const json = makeWorkflow({
+				nodes: [
+					makeNotionNode('Notion', { notionApi: { id: 'cred-1', name: 'Notion main' } }),
+					makeNotionNode('Notion 2', { notionApi: undefined }),
+				],
+			});
+
+			const result = await resolveCredentials(json, undefined, createMockContext(), twoNotionCreds);
+
+			expect(result.mockedNodeNames).toEqual([]);
+			expect(json.nodes[1].credentials).toEqual({
+				notionApi: { id: 'cred-1', name: 'Notion main' },
+			});
+			expect(result.resolvedCredentialsByNode['Notion 2']).toEqual([
+				{ type: 'notionApi', id: 'cred-1', name: 'Notion main' },
+			]);
+		});
+
+		it('reuses a saved-workflow binding for a node the build added', async () => {
+			const json = makeWorkflow({
+				nodes: [makeNotionNode('Notion 2', { notionApi: undefined })],
+			});
+			const existingWorkflow = makeWorkflow({
+				nodes: [makeNotionNode('Notion', { notionApi: { id: 'cred-1', name: 'Notion main' } })],
+			});
+
+			const result = await resolveCredentials(
+				json,
+				'wf-123',
+				createMockContext(existingWorkflow),
+				twoNotionCreds,
+			);
+
+			expect(result.mockedNodeNames).toEqual([]);
+			expect(json.nodes[0].credentials).toEqual({
+				notionApi: { id: 'cred-1', name: 'Notion main' },
+			});
+		});
+
+		it('rebinds an unknown raw id to the sibling credential instead of mocking', async () => {
+			const json = makeWorkflow({
+				nodes: [
+					makeNotionNode('Notion', { notionApi: { id: 'cred-1', name: 'Notion main' } }),
+					makeNotionNode('Notion 2', { notionApi: { id: 'fake-id', name: 'Made up' } }),
+				],
+			});
+
+			const result = await resolveCredentials(json, undefined, createMockContext(), twoNotionCreds);
+
+			expect(result.mockedNodeNames).toEqual([]);
+			expect(json.nodes[1].credentials).toEqual({
+				notionApi: { id: 'cred-1', name: 'Notion main' },
+			});
+		});
+
+		it('does not reuse a sibling binding whose id is not stored', async () => {
+			const json = makeWorkflow({
+				nodes: [
+					makeNotionNode('Notion', { notionApi: { id: 'cred-gone', name: 'Stale' } }),
+					makeNotionNode('Notion 2', { notionApi: undefined }),
+				],
+			});
+
+			const result = await resolveCredentials(json, undefined, createMockContext(), twoNotionCreds);
+
+			expect(result.mockedNodeNames).toContain('Notion 2');
+			expect(json.nodes[1].credentials).toEqual({});
+		});
+
+		it('does not reuse a sibling Templated Custom Auth credential across nodes', async () => {
+			// One shared type serves every service — the sibling's key may belong to
+			// a different service, so the slot must route to setup instead.
+			const json = makeWorkflow({
+				nodes: [
+					makeNotionNode('Call Pexels', {
+						httpTemplatedCustomAuth: { id: 'cred-pexels', name: 'Pexels API' },
+					}),
+					makeNotionNode('Call fal.ai', { httpTemplatedCustomAuth: undefined }),
+				],
+			});
+			const credentials = makeCredentialMap([
+				{ id: 'cred-pexels', name: 'Pexels API', type: 'httpTemplatedCustomAuth' },
+				{ id: 'cred-fal', name: 'fal.ai API', type: 'httpTemplatedCustomAuth' },
+			]);
+
+			const result = await resolveCredentials(json, undefined, createMockContext(), credentials);
+
+			expect(result.mockedNodeNames).toContain('Call fal.ai');
+			expect(json.nodes[1].credentials).toEqual({});
+		});
+
+		it.each(['httpBearerAuth', 'oAuth2Api'])(
+			'does not reuse a sibling %s credential across nodes',
+			async (credentialType) => {
+				// Same shared-type rule as Templated Custom Auth: the binding on one
+				// node may belong to a different service than the new node calls.
+				const json = makeWorkflow({
+					nodes: [
+						makeNotionNode('Call service A', {
+							[credentialType]: { id: 'cred-a', name: 'Service A auth' },
+						}),
+						makeNotionNode('Call service B', { [credentialType]: undefined }),
+					],
+				});
+				const credentials = makeCredentialMap([
+					{ id: 'cred-a', name: 'Service A auth', type: credentialType },
+					{ id: 'cred-b', name: 'Service B auth', type: credentialType },
+				]);
+
+				const result = await resolveCredentials(json, undefined, createMockContext(), credentials);
+
+				expect(result.mockedNodeNames).toContain('Call service B');
+				expect(json.nodes[1].credentials).toEqual({});
+			},
+		);
+
+		it('ignores gateway-managed sibling markers', async () => {
+			const json = makeWorkflow({
+				nodes: [
+					makeNotionNode('Notion', {
+						notionApi: { id: null, name: 'n8n Connect', __aiGatewayManaged: true },
+					}),
+					makeNotionNode('Notion 2', { notionApi: undefined }),
+				],
+			});
+
+			const result = await resolveCredentials(json, undefined, createMockContext(), twoNotionCreds);
+
+			expect(result.mockedNodeNames).toContain('Notion 2');
+			expect(json.nodes[1].credentials).toEqual({});
+		});
+	});
+
 	describe('credential mocking', () => {
 		it('mocks unresolved credentials and preserves existing pinData', async () => {
 			const json = makeWorkflow({

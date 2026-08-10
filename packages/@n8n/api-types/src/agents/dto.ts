@@ -231,10 +231,6 @@ export class RevertAgentToVersionDto extends Z.class({
 	versionId: z.string().min(1),
 }) {}
 
-export class CreateSlackAgentAppDto extends Z.class({
-	appConfigurationToken: z.string().min(1),
-}) {}
-
 export class TestAgentVectorStoreDto extends Z.class({
 	vectorStore: AgentVectorStoreConfigSchema,
 }) {}
