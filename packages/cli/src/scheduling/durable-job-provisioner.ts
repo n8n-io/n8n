@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import type { ScheduledJobMisfirePolicy } from '@n8n/constants';
+import { type ScheduledJobMisfirePolicy, Time } from '@n8n/constants';
 import type { EntityManager, NewScheduledJob, ScheduledJob } from '@n8n/db';
 import { DataSource, ScheduledJobRepository, ScheduledTaskRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -21,6 +21,12 @@ import { UnexpectedError } from 'n8n-workflow';
 
 import { createSchedulerTracer } from './scheduler-tracer';
 
+/**
+ * Ceiling for a resolved misfire grace: the cap the config value carries, and well
+ * inside the column's `int` range.
+ */
+const MAX_MISFIRE_GRACE_SECONDS = 30 * Time.days.toSeconds;
+
 /** Identifies one workflow node's jobs, and stamps the rows provisioning inserts. */
 interface ProvisionScope {
 	workflowId: string;
@@ -28,6 +34,7 @@ interface ProvisionScope {
 	taskType: string;
 	payload: Record<string, unknown>;
 	misfirePolicy: ScheduledJobMisfirePolicy;
+	misfireGraceSeconds?: number;
 }
 
 /** Identifies jobs for deletion: one node's jobs, or one workflow's jobs of a task type. */
@@ -107,9 +114,10 @@ export class DurableJobProvisioner {
 		payload: Record<string, unknown>,
 		desired: DesiredJob[],
 		misfirePolicy: ScheduledJobMisfirePolicy,
+		misfireGraceSeconds?: number,
 	): Promise<ProvisionSummary> {
 		return await this.provisioner.provision(
-			{ workflowId, nodeId, taskType, payload, misfirePolicy },
+			{ workflowId, nodeId, taskType, payload, misfirePolicy, misfireGraceSeconds },
 			desired,
 		);
 	}
@@ -149,8 +157,16 @@ export class DurableJobProvisioner {
 		taskType,
 		payload,
 		misfirePolicy,
+		misfireGraceSeconds: requestedMisfireGraceSeconds,
 	}: ProvisionScope): RunInProvisionTransaction {
-		const misfireGraceSeconds = this.globalConfig.scheduler.misfireGraceSeconds;
+		// Resolved before `findExisting`, because it is what a stored row's grace is
+		// compared against; resolving later would make every provision see a changed
+		// grace and rewrite queued deadlines.
+		const misfireGraceSeconds = this.resolveMisfireGraceSeconds(
+			requestedMisfireGraceSeconds,
+			workflowId,
+			nodeId,
+		);
 		return async (work) =>
 			await this.dataSource.transaction(async (manager) => {
 				// Jobs freshly inserted or redefined this pass; their first window is
@@ -229,6 +245,64 @@ export class DurableJobProvisioner {
 				await this.seedInitialOccurrences(manager, seededJobIds);
 				return result;
 			});
+	}
+
+	/**
+	 * Resolve the grace stamped on a node's job rows. A non-positive or non-finite
+	 * request resolves to the instance value: `0` is the sentinel a node property uses
+	 * to inherit it, and a parameter equal to its schema default is stripped on save,
+	 * so an absent value and `0` must mean the same thing. The instance value itself
+	 * passes through unclamped, as an out-of-range one is warned about at startup.
+	 *
+	 * A node value out of range is clamped rather than rejected: the bounds are
+	 * scheduling internals invisible in the editor, so activation must never fail on a
+	 * grace, and lowering the executor interval must not break workflows that ran fine
+	 * before.
+	 */
+	private resolveMisfireGraceSeconds(
+		requested: unknown,
+		workflowId: string,
+		nodeId: string,
+	): number {
+		const { misfireGraceSeconds, executorIntervalSeconds, materializationWindowSeconds } =
+			this.globalConfig.scheduler;
+
+		const numeric = Number(requested);
+		if (!Number.isFinite(numeric)) return misfireGraceSeconds;
+
+		const truncated = Math.trunc(numeric);
+		if (truncated < 1) return misfireGraceSeconds;
+
+		// A second above the executor interval, so a late run still has a tick left to be
+		// claimed in, and at or above the materialization window, so runs missed during a
+		// short outage are caught up rather than dropped. Neither input is bounded above,
+		// so the floor takes the ceiling too.
+		const floor = Math.min(
+			Math.max(executorIntervalSeconds + 1, materializationWindowSeconds),
+			MAX_MISFIRE_GRACE_SECONDS,
+		);
+		// A missing interval or window leaves no floor to clamp against.
+		if (!Number.isFinite(floor)) return misfireGraceSeconds;
+
+		const effective = Math.min(Math.max(truncated, floor), MAX_MISFIRE_GRACE_SECONDS);
+
+		// `numeric` is checked too because a fractional request just above the max
+		// truncates down to exactly the max, which would otherwise hide the clamp.
+		if (effective !== truncated || numeric > MAX_MISFIRE_GRACE_SECONDS) {
+			this.logger.warn(
+				effective > truncated
+					? "Raised a node's misfire grace to the scheduler's minimum"
+					: "Lowered a node's misfire grace to the scheduler's maximum",
+				{
+					workflowId,
+					nodeId,
+					requestedMisfireGraceSeconds: truncated,
+					misfireGraceSeconds: effective,
+				},
+			);
+		}
+
+		return effective;
 	}
 
 	/**
