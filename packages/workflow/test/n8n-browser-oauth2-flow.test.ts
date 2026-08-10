@@ -95,6 +95,23 @@ describe('n8nBrowserOAuth2Flow', () => {
 		expect(response.writeHead).toHaveBeenCalledWith(302, { Location: '/webhook/abc?ref=email' });
 	});
 
+	it('scopes the cookie to the resolved request path, not the templated resourceUrl path', async () => {
+		const DYNAMIC_RESOURCE_URL = 'https://n8n.example.com/webhook/abc/user/:id?method=GET';
+		const { context, response } = buildContext({
+			query: { code: 'c1', state: 's1' },
+			originalUrl: '/webhook/abc/user/42?method=GET&code=c1&state=s1',
+		});
+		context.completeN8nOAuth2Flow.mockResolvedValue(VALID_COMPLETION);
+
+		await n8nBrowserOAuth2Flow(context, DYNAMIC_RESOURCE_URL);
+
+		expect(response.cookie).toHaveBeenCalledWith(
+			'n8n-webhook-oauth',
+			'fresh-token',
+			expect.objectContaining({ path: '/webhook/abc/user/42' }),
+		);
+	});
+
 	it('falls back to the request URL (minus callback params) when no returnTo was stashed', async () => {
 		const { context, response } = buildContext({
 			query: { code: 'c1', state: 's1' },

@@ -21,7 +21,18 @@ export type N8nBrowserOAuth2Outcome =
 	/** Not a browser navigation — the caller falls back to bearer-token auth. */
 	| 'not-applicable';
 
-function cookieOptions(req: Request, resourceUrl: string) {
+/**
+ * The request's own path, not `resourceUrl`'s: for dynamic webhook paths
+ * (`/webhook/<id>/user/:id`), the resource URL still carries the literal param name,
+ * while every real request (callback and clean follow-up GET alike) sits on the
+ * resolved path (`/webhook/<id>/user/42`).
+ */
+function requestPath(req: Request): string {
+	const path = req.originalUrl.split('?')[0];
+	return `/${path.replace(/^\/+/, '')}`;
+}
+
+function cookieOptions(req: Request) {
 	// Derive `secure` from the request scheme (honouring x-forwarded-proto) rather than
 	// config, so the cookie is actually sent back on the follow-up GET over http in dev
 	// while staying Secure over https.
@@ -31,7 +42,7 @@ function cookieOptions(req: Request, resourceUrl: string) {
 		httpOnly: true,
 		sameSite: 'lax' as const, // must be Lax: sent on our own top-level 302 → GET
 		secure: proto === 'https',
-		path: new URL(resourceUrl).pathname, // scope the token to this webhook
+		path: requestPath(req), // scope the token to this resolved path, so it round-trips
 	};
 }
 
@@ -57,11 +68,11 @@ function isBrowserNavigation(req: Request): boolean {
  * never become a protocol-relative (off-instance) redirect.
  */
 function returnToUrl(req: Request): string {
-	const [path, query] = req.originalUrl.split('?');
+	const [, query] = req.originalUrl.split('?');
 	const params = new URLSearchParams(query ?? '');
 	for (const param of CALLBACK_PARAMS) params.delete(param);
 	const search = params.toString();
-	const safePath = `/${path.replace(/^\/+/, '')}`;
+	const safePath = requestPath(req);
 	return search ? `${safePath}?${search}` : safePath;
 }
 
@@ -127,7 +138,7 @@ export const n8nBrowserOAuth2Flow = async (
 				// token in a one-hop cookie and bounce to the clean URL — the follow-up GET
 				// picks the cookie up below.
 				res.cookie(BROWSER_OAUTH_COOKIE_NAME, result.token, {
-					...cookieOptions(req, resourceUrl),
+					...cookieOptions(req),
 					maxAge: 60_000, // one redirect hop; short by design
 				});
 				return redirect(res, result.metadata?.returnTo ?? returnToUrl(req));
@@ -138,7 +149,7 @@ export const n8nBrowserOAuth2Flow = async (
 		}
 		// Fall through to restart the flow.
 	} else if (cookieToken !== null) {
-		res.clearCookie(BROWSER_OAUTH_COOKIE_NAME, cookieOptions(req, resourceUrl));
+		res.clearCookie(BROWSER_OAUTH_COOKIE_NAME, cookieOptions(req));
 		const validation = await context.validateN8nOAuth2Token(cookieToken, resourceUrl);
 		if (validation.valid) {
 			return { status: 'ok', token: cookieToken };
