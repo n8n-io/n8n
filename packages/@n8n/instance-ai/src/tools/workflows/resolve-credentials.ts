@@ -10,7 +10,11 @@
 import { TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE } from '@n8n/api-types';
 import type { NodeJSON, WorkflowJSON } from '@n8n/workflow-sdk';
 
-import { AI_GATEWAY_CREDENTIAL, N8N_CONNECT_DISPLAY_NAME } from './credential-utils';
+import {
+	AI_GATEWAY_CREDENTIAL,
+	GENERIC_AUTH_CREDENTIAL_TYPES,
+	N8N_CONNECT_DISPLAY_NAME,
+} from './credential-utils';
 import type { ResolvedCredential } from './resolved-credential.schema';
 import {
 	getCredentialActivationParameters,
@@ -21,25 +25,6 @@ import {
 import type { InstanceAiContext } from '../../types';
 
 export type { ResolvedCredential };
-
-// Generic auth types carry per-service secrets under one shared type, so a
-// sibling node's binding may belong to a different service than the new node
-// calls — never reuse them across nodes. Templated Custom Auth instances do
-// record their service (serviceHost), but matching it needs the node's target
-// URL, which is setup's job — the setup card offers those host-matched.
-// Mirrors the credentials flagged `genericAuth` in nodes-base; service-specific
-// types (slackApi, notionApi, …) identify the service by type and reuse safely.
-const NON_REUSABLE_SIBLING_TYPES = new Set<string>([
-	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
-	'httpHeaderAuth',
-	'httpBearerAuth',
-	'httpQueryAuth',
-	'httpBasicAuth',
-	'httpDigestAuth',
-	'httpCustomAuth',
-	'oAuth1Api',
-	'oAuth2Api',
-]);
 
 /** Flat credential entry — preserves duplicates of the same type. */
 export interface CredentialEntry {
@@ -224,7 +209,11 @@ export async function resolveCredentials(
 	// so they stay visible to later slots of the same type.
 	const siblingBindingsByType = new Map<string, { id: string; name: string }>();
 	const registerSiblingBinding = (credentialType: string, value: unknown) => {
-		if (NON_REUSABLE_SIBLING_TYPES.has(credentialType)) return;
+		// A generic-auth binding on a sibling node may belong to a different
+		// service than this node calls, so it never qualifies for reuse.
+		// (Templated Custom Auth instances do record their serviceHost, but
+		// matching it against the node's target URL is the setup card's job.)
+		if (GENERIC_AUTH_CREDENTIAL_TYPES.has(credentialType)) return;
 		if (siblingBindingsByType.has(credentialType)) return;
 		const id = getCredentialId(value);
 		if (!id) return;
