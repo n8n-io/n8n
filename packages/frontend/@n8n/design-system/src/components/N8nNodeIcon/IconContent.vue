@@ -58,8 +58,6 @@ const supportedIconName = computed((): IconName | NodeIconName | undefined => {
 
 <template>
 	<div v-if="type !== 'unknown'" :class="$style.icon">
-		<!-- `src` can be a third-party URL (MCP registry icons), so never send the
-		     instance's address along with the request. -->
 		<img
 			v-if="type === 'file'"
 			:src="src"
