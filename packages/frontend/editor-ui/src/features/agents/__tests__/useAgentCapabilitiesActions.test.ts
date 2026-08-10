@@ -11,6 +11,7 @@ import { createAgentSkill } from '../composables/useAgentApi';
 import type {
 	AgentJsonConfig,
 	AgentJsonMcpServerConfig,
+	AgentJsonToolConfig,
 	AgentResource,
 	AgentSkill,
 } from '../types';
@@ -259,7 +260,7 @@ describe('useAgentCapabilitiesActions — localSkills host seam', () => {
 
 	it('includes MCP server names in skill availableTools', () => {
 		const { uiStore, actions } = setupLocal({
-			tools: [{ type: 'node', name: 'darwin' } as AgentJsonConfig['tools'][number]],
+			tools: [{ type: 'node', name: 'darwin' } as AgentJsonToolConfig],
 			mcpServers: [
 				{
 					name: 'Notion mcp',
