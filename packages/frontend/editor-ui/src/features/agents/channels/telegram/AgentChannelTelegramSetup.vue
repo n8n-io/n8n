@@ -1,12 +1,17 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { N8nButton, N8nStepper, N8nText } from '@n8n/design-system';
-import type { ChatIntegrationDescriptor, AgentIntegrationSettings } from '@n8n/api-types';
+import type {
+	AgentIntegrationSettings,
+	AgentTelegramIntegrationSettings,
+	ChatIntegrationDescriptor,
+} from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import type { PermissionsRecord } from '@n8n/permissions';
-import AgentIntegrationCredentialConnection from './AgentIntegrationCredentialConnection.vue';
-import AgentIntegrationSettingsForm from './AgentIntegrationSettingsForm.vue';
-import type { AgentCredentialOption } from './AgentCredentialSelect.vue';
+import { resolveSavedTelegramSettings } from '../../utils/telegramAccessSettings';
+import AgentIntegrationCredentialConnection from '../../components/AgentIntegrationCredentialConnection.vue';
+import AgentTelegramAccessSettingsForm from '../../components/AgentTelegramAccessSettingsForm.vue';
+import type { AgentCredentialOption } from '../../components/AgentCredentialSelect.vue';
 
 const credentialId = defineModel<string>({ default: '' });
 
@@ -47,8 +52,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
-const settingsFormRef = ref<InstanceType<typeof AgentIntegrationSettingsForm>>();
-void props;
+const settingsFormRef = ref<InstanceType<typeof AgentTelegramAccessSettingsForm>>();
 
 const steps = computed(() => [
 	{
@@ -74,6 +78,9 @@ const canConnect = computed(
 
 const currentSettings = computed(() => settingsFormRef.value?.currentSettings);
 const validationError = computed(() => settingsFormRef.value?.validationError ?? null);
+const telegramSavedSettings = computed<AgentTelegramIntegrationSettings | undefined>(() =>
+	resolveSavedTelegramSettings(props.savedSettings, props.connected),
+);
 
 defineExpose({ credentialId, currentSettings, validationError });
 </script>
@@ -98,16 +105,11 @@ defineExpose({ credentialId, currentSettings, validationError });
 							@edit="emit('edit')"
 						/>
 					</div>
-					<AgentIntegrationSettingsForm
+					<AgentTelegramAccessSettingsForm
 						v-else-if="step.id === 'access'"
 						ref="settingsFormRef"
-						:type="integration.type"
 						:disabled="connected || loading"
-						:connected="connected"
-						:saved-settings="savedSettings"
-						:agent-name="agentName"
-						:project-id="projectId"
-						:agent-id="agentId"
+						:saved-settings="telegramSavedSettings"
 					/>
 					<div v-else-if="step.id === 'connect'" :class="$style.connectStep">
 						<N8nButton
@@ -120,6 +122,22 @@ defineExpose({ credentialId, currentSettings, validationError });
 						>
 							{{ i18n.baseText('agents.builder.addTrigger.connect') }}
 						</N8nButton>
+						<N8nText
+							v-if="errorMessage"
+							:class="$style.errorText"
+							size="small"
+							data-testid="telegram-connect-error"
+						>
+							{{ errorMessage }}
+							<a
+								v-if="credentialId && !errorIsConflict"
+								:class="$style.link"
+								href="#"
+								@click.prevent="emit('edit')"
+							>
+								{{ i18n.baseText('agents.builder.addTrigger.editCredential') }}
+							</a>
+						</N8nText>
 					</div>
 				</div>
 			</template>
@@ -139,19 +157,14 @@ defineExpose({ credentialId, currentSettings, validationError });
 				@edit="emit('edit')"
 			/>
 			<N8nText v-else-if="connectedDescription" size="small">{{ connectedDescription }}</N8nText>
-			<AgentIntegrationSettingsForm
+			<AgentTelegramAccessSettingsForm
 				ref="settingsFormRef"
-				:type="integration.type"
 				:disabled="loading"
-				:connected="connected"
-				:saved-settings="savedSettings"
-				:agent-name="agentName"
-				:project-id="projectId"
-				:agent-id="agentId"
+				:saved-settings="telegramSavedSettings"
 			/>
 		</div>
 
-		<N8nText v-if="errorMessage" :class="$style.errorText" size="small">
+		<N8nText v-if="mode === 'edit' && errorMessage" :class="$style.errorText" size="small">
 			{{ errorMessage }}
 			<a
 				v-if="credentialId && !errorIsConflict"
