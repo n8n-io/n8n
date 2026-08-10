@@ -83,9 +83,7 @@ const sizes: Record<NonNullable<InputNumberProps['size']>, string> = {
 	xlarge: $style.xlarge,
 };
 
-function sizeClass() {
-	return sizes[props.size];
-}
+const sizeClass = computed(() => sizes[props.size ?? 'medium']);
 </script>
 
 <template>
@@ -94,7 +92,7 @@ function sizeClass() {
 		v-bind="{ ...rootProps, ...rootAttrs, formatOptions }"
 		:class="[
 			$style.inputNumber,
-			sizeClass(),
+			sizeClass,
 			rootClass,
 			{
 				[$style.isDisabled]: props.disabled,
