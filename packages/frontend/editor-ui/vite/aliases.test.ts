@@ -3,7 +3,9 @@ import { dirname, join, relative, resolve } from 'node:path';
 import type { Alias } from 'vite';
 import { describe, expect, it } from 'vitest';
 
-import { editorUiAliases, sourcePackages } from './aliases.mjs';
+import { modulePackages, sourcePackages } from '@n8n/vitest-config/frontend-source-packages';
+
+import { editorUiAliases } from './aliases.mjs';
 
 // vitest runs with the package root as cwd; `import.meta.url` is not a file URL under jsdom.
 const editorUiDir = process.cwd();
@@ -68,17 +70,20 @@ describe('editor-ui vite aliases', () => {
 	// Both lists are hand-maintained, and drifting apart is not a hypothetical: four packages
 	// spent months typechecked from `src` while the bundle was built from their `dist`. Adding a
 	// package to one list and not the other has to fail here.
-	it.each(sourcePackages)('resolves $name to the same src as tsconfig does', ({ name, dir }) => {
-		const srcDir = resolve(packagesDir, dir, 'src');
-		const src = relative(repoRoot, srcDir);
+	it.each([...sourcePackages, ...modulePackages])(
+		'resolves $name to the same src as tsconfig does',
+		({ name, dir }) => {
+			const srcDir = resolve(packagesDir, dir, 'src');
+			const src = relative(repoRoot, srcDir);
 
-		expect(resolveSpecifier(`${name}/probe`, aliases)).toBe(`${src}/probe`);
-		expect(editorUiPaths.get(name)).toBe(srcDir);
-	});
+			expect(resolveSpecifier(`${name}/probe`, aliases)).toBe(`${src}/probe`);
+			expect(editorUiPaths.get(name)).toBe(srcDir);
+		},
+	);
 
 	it('aliases every source package editor-ui typechecks from src', () => {
 		// The direction that actually bit: a tsconfig path added without the matching alias.
-		const aliased = new Set(sourcePackages.map(({ name }) => name));
+		const aliased = new Set([...sourcePackages, ...modulePackages].map(({ name }) => name));
 		const pathed = [...editorUiPaths.keys()]
 			// editor-ui's own browser stub, not a package consumed from source.
 			.filter((name) => name !== '@n8n/expression-runtime');

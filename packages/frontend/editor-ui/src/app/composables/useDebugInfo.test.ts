@@ -62,7 +62,7 @@ const { mockClusterInfo } = vi.hoisted(() => ({
 	mockClusterInfo: { value: null as ClusterInfoResponse | null },
 }));
 
-vi.mock('@/features/instanceRegistry/stores/instanceRegistry.store', () => ({
+vi.mock('@n8n/frontend-module-instance-registry', () => ({
 	useInstanceRegistryStore: () => ({
 		get clusterInfo() {
 			return mockClusterInfo.value;

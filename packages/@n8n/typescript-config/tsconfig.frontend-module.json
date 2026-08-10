@@ -1,4 +1,4 @@
-// Base tsconfig for frontend module packages (`packages/frontend/modules/*`).
+// Base tsconfig for frontend module packages (`packages/modules/*/frontend`).
 //
 // Hand-maintained, and it has to agree with editor-ui's Vite aliases and its own tsconfig `paths`
 // — a package pointed at a different src here would typecheck modules against something the
@@ -9,14 +9,20 @@
 // boundary: `paths` is additive, so once a module declares another module as a dependency,
 // pnpm symlinks it and the import typechecks clean. Boundary enforcement is the ESLint rule.
 //
-// Modules must declare their own `include` and `rootDirs`: relative `include` globs inherited
-// through `extends` resolve against the config that declared them, not the consumer. `rootDirs`
-// cannot live here at all for the same reason — its `"."` entry would anchor to this directory.
+// Modules declare their own `include`, `rootDirs` and `types`, and cannot inherit them: relative
+// entries in those three resolve against the *consuming* config, so inheriting them from here
+// would point them at this directory. `paths` is the exception — it anchors to the file that
+// declares it, which is what lets one base serve modules at any depth.
+//
+// `useUnknownInCatchVariables` is a cost of consuming L1/L2 packages from source rather than from
+// a built `dist`; see the comment on it below. The ambient `.d.ts` shims are the other half of
+// that cost, and live in each module's own tsconfig for the resolution reason above.
 {
 	"extends": "./tsconfig.frontend.json",
 	"compilerOptions": {
 		"moduleResolution": "bundler",
 		"noEmit": true,
+		"useUnknownInCatchVariables": false,
 		"paths": {
 			"@n8n/api-types": ["../api-types/src/index.ts"],
 			"@n8n/api-types/*": ["../api-types/src/*"],
