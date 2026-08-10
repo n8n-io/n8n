@@ -330,7 +330,6 @@ describe('buildTimelineBlocks', () => {
 		expect(blocks.map((block) => block.type)).toEqual(['thinking', 'mcp-connect']);
 	});
 
-	// Pulling it out before there is a card to draw leaves a gap with no progress.
 	test('an in-flight connect call stays a trace row until its payload arrives', () => {
 		const blocks = blocksOf(
 			[reasoning('r1'), toolEntry('tc-1', 'r1')],

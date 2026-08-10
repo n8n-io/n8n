@@ -559,20 +559,15 @@ export const mcpConnectServerSchema = z.object({
 	serverSlug: z.string(),
 	title: z.string(),
 	tagline: z.string().optional(),
-	/** Every registry server has one — the card needs it to connect or swap. */
 	credentialType: z.string(),
 });
 export type InstanceAiMcpConnectServer = z.infer<typeof mcpConnectServerSchema>;
 
-/** A list, not one server: several registry entries may plausibly match what the
- *  user asked for, and they pick. */
 export const mcpConnectRequestSchema = z.object({
 	servers: z.array(mcpConnectServerSchema).min(1),
 });
 export type InstanceAiMcpConnectRequest = z.infer<typeof mcpConnectRequestSchema>;
 
-/** Shared with the suspending tool's `.resume()`: drift between the two is silent,
- *  since the payload parser drops fields it cannot read. */
 export const mcpConnectResumeSchema = z.object({
 	approved: z.boolean(),
 	connectedSlugs: z.array(z.string()).optional(),

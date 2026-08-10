@@ -159,8 +159,6 @@ describe('mcp-servers tool', () => {
 			expect(inputJsonSchema().required).toEqual(['action']);
 		});
 
-		// The model parrots UI nouns back: this once printed "opening the connection
-		// card now" above the card itself.
 		it('keeps the per-action guidance the model needs to pick an action', () => {
 			const schema = inputJsonSchema();
 
@@ -298,84 +296,6 @@ describe('mcp-servers tool', () => {
 		});
 	});
 
-	it('passes the queries through and returns the matching servers', async () => {
-		const mcpService = makeService([notion, linear]);
-		const tool = createMcpServersTool(makeContext(mcpService));
-
-		const output = await executeTool<SearchOutput>(tool, {
-			action: 'search',
-			queries: ['notion', 'linear'],
-		});
-
-		expect(mcpService.search).toHaveBeenCalledWith(['notion', 'linear']);
-		expect(output.results.map((result) => result.slug)).toEqual(['notion', 'linear']);
-	});
-
-	it('returns no results when nothing matches', async () => {
-		const output = await search([]);
-
-		expect(output.results).toEqual([]);
-	});
-
-	// credentialType is the connect card's, and never reaches the model.
-	it('passes each server through without its credential type', async () => {
-		const output = await search([notion, linear]);
-
-		expect(output.results).toEqual([
-			{ slug: 'notion', title: 'Notion', description: notion.description, tools: notion.tools },
-			{ slug: 'linear', title: 'Linear', description: linear.description, tools: linear.tools },
-		]);
-	});
-
-	it('caps the results and says it truncated', async () => {
-		const output = await search(makeServers(8), ['api']);
-
-		expect(output.results).toHaveLength(5);
-		expect(output.hint).toContain('narrower query');
-	});
-
-	it('does not claim truncation when everything fits', async () => {
-		const output = await search(makeServers(5), ['api']);
-
-		expect(output.hint).not.toContain('narrower query');
-	});
-
-	it('points at the connect action whenever something was found', async () => {
-		const output = await search([notion]);
-
-		expect(output.hint).toContain('action: "connect"');
-	});
-
-	it('omits the hint when nothing was found', async () => {
-		const output = await search([]);
-
-		expect(output.hint).toBeUndefined();
-	});
-
-	it('rejects an empty query list', async () => {
-		const tool = createMcpServersTool(makeContext(makeService([notion])));
-
-		await expect(executeTool(tool, { action: 'search', queries: [] })).rejects.toThrow();
-	});
-
-	it('fails loudly when the host did not wire the MCP service', async () => {
-		const tool = createMcpServersTool(makeContext(undefined));
-
-		await expect(executeTool(tool, { action: 'search', queries: ['notion'] })).rejects.toThrow(
-			'Tool connections are not available on this instance.',
-		);
-	});
-
-	it('propagates registry failures', async () => {
-		const mcpService = makeService([], {
-			search: vi.fn().mockRejectedValue(new Error('registry unavailable')),
-		});
-		const tool = createMcpServersTool(makeContext(mcpService));
-
-		await expect(executeTool(tool, { action: 'search', queries: ['notion'] })).rejects.toThrow(
-			'registry unavailable',
-		);
-	});
 	describe('search', () => {
 		it('passes the queries through and returns the matching servers', async () => {
 			const mcpService = makeService([notion, linear]);
@@ -387,7 +307,6 @@ describe('mcp-servers tool', () => {
 			});
 
 			expect(mcpService.search).toHaveBeenCalledWith(['notion', 'linear']);
-			// credentialType is the connect card's, and never reaches the model.
 			expect(output.results).toEqual([
 				{
 					slug: 'notion',
@@ -446,8 +365,6 @@ describe('mcp-servers tool', () => {
 			await expect(executeTool(tool, { action: 'search', queries: [] })).rejects.toThrow();
 		});
 
-		// The flattened provider schema marks every per-action field optional, so the
-		// handler is the only thing still enforcing them.
 		it('rejects a search with no queries at all', async () => {
 			const mcpService = makeService([notion]);
 			const tool = createMcpServersTool(makeContext(mcpService));

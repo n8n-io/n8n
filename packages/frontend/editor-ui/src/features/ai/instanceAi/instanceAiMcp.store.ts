@@ -50,8 +50,6 @@ export const useInstanceAiMcpStore = defineStore('instanceAiMcp', () => {
 		return map;
 	});
 
-	/** Deduped only while in flight: surfaces that mount together share one request,
-	 *  but a later call refetches, since connections also change in other tabs. */
 	async function fetchConnections(): Promise<void> {
 		connectionsLoad ??= loadConnections();
 		await connectionsLoad;

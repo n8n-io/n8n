@@ -4827,12 +4827,6 @@ export class InstanceAiService {
 		}
 	}
 
-	/**
-	 * Rebuild the agent for a resume whose confirmation changed what the agent
-	 * can reach — credentials created by auto-setup, tools from a just-connected
-	 * MCP server. Both attach at construction time, so the suspended instance
-	 * would keep running against the pre-confirmation environment.
-	 */
 	private async rebuildAgentForResume(
 		user: User,
 		threadId: string,
@@ -6083,8 +6077,6 @@ export class InstanceAiService {
 		payload.inputThreadId = inputThreadId;
 
 		const inputType = payload.inputType as string | undefined;
-		// The connect card carries no `inputType`; classify it as the kind the answer
-		// side reports so the ask→answer funnel can be joined.
 		const mcpConnectServers = mcpConnectRequestSchema.safeParse(payload.mcpConnectRequest).data
 			?.servers;
 		let type: string;

@@ -1,9 +1,4 @@
 <script lang="ts" setup>
-/**
- * Transport adapter around `InstanceAiMcpConnectCard`, in the shape of
- * `InstanceAiChannelSetup.vue`. Unlike that one the card is NOT unmounted after
- * resolving — it stays in the transcript in its resolved state.
- */
 import { computed, ref } from 'vue';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -69,8 +64,6 @@ async function onResolve({
 		});
 	}
 	if (!confirmed) {
-		// Leave the card actionable for another try. If the run is gone rather than
-		// merely unreachable, its cancelled `run-finish` settles the card read-only.
 		submitted.value = false;
 		return;
 	}

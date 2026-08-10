@@ -1,8 +1,4 @@
 <script lang="ts" setup>
-/**
- * Inline "Available tools" card. Owns the connect flow and the store reads; the
- * transport of the resolution is the caller's job (see `InstanceAiMcpConnect.vue`).
- */
 import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { InstanceAiMcpConnectServer, McpRegistryServerResponse } from '@n8n/api-types';
@@ -27,10 +23,7 @@ import ConnectionRow, { type ConnectionRowIcon } from './ConnectionRow.vue';
 
 const props = defineProps<{
 	servers: InstanceAiMcpConnectServer[];
-	/** The card has settled: it stays in the transcript with no way left to resolve
-	 *  it, but connected rows keep their live credential and settings actions. */
 	readOnly?: boolean;
-	/** The underlying confirmation is gone (TTL prune, restart, cancel). */
 	expired?: boolean;
 }>();
 
@@ -49,7 +42,6 @@ const { connectServer, connectWithCredential, createCredentialAdapter } = useMcp
 
 const isConnecting = ref(false);
 
-/** Connected before the card opened; `null` until the connections have loaded. */
 const preConnectedSlugs = ref<Set<string> | null>(null);
 
 void mcpStore.fetchCatalogLazy();
@@ -79,11 +71,6 @@ interface CardRow {
 	item: McpServerConnectionItem & { credentials: ToolCredentialRef[] };
 }
 
-/**
- * The live registry entry wins over the payload snapshot — it carries the icon and
- * credential type. Connected state is read now, not replayed, so a card reflects
- * today's connections.
- */
 const rows = computed<CardRow[]>(() =>
 	props.servers.map((server) => {
 		const entry = catalogBySlug.value.get(server.serverSlug);
@@ -111,8 +98,6 @@ const rows = computed<CardRow[]>(() =>
 
 const isActionable = computed(() => !props.readOnly && !props.expired);
 const anyConnected = computed(() => rows.value.some((row) => row.item.isConnected));
-// The card can be offered on the backend's gate alone, but the modal behind this
-// link renders MCP off its own experiment gate — without this it can open empty.
 const showsBrowseAll = computed(
 	() => isMcpFeatureEnabled.value && instanceAiSettingsStore.settings?.mcpAccessEnabled,
 );
@@ -125,10 +110,6 @@ function finish(approved: boolean) {
 	});
 }
 
-// Also covers connecting elsewhere (the modal, the sidebar, another tab), which
-// would otherwise leave nothing to click and the run suspended. Needs a row that
-// opened unconnected, so a card offered to swap a credential stays put. Latched:
-// a failed confirm re-enables the card, and re-arming would retry forever.
 const autoFinished = ref(false);
 watch(
 	[isActionable, rows, preConnectedSlugs],
@@ -147,7 +128,6 @@ function showsCredentialPicker(row: CardRow): boolean {
 	return row.item.isConnected || isActionable.value;
 }
 
-/** One connect at a time, so a second one cannot report the first as finished. */
 async function runConnect(attempt: () => Promise<unknown>) {
 	if (isConnecting.value) return;
 	isConnecting.value = true;
@@ -259,8 +239,6 @@ function openSettings(row: CardRow) {
 					</N8nText>
 				</button>
 			</span>
-			<!-- Doubles as continue: with several rows offered, connecting one leaves the
-			     card pending, and "Skip connecting" would misdescribe carrying on. -->
 			<N8nButton
 				variant="ghost"
 				size="small"
@@ -303,8 +281,6 @@ function openSettings(row: CardRow) {
 .rows {
 	display: flex;
 	flex-direction: column;
-	/* ConnectionRow carries its own left margin — subtract it so the row icon
-	   lines up with the header icon. */
 	padding: var(--spacing--2xs) var(--spacing--sm) var(--spacing--2xs)
 		calc(var(--spacing--sm) - var(--spacing--2xs));
 }

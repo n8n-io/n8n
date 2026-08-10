@@ -3994,7 +3994,6 @@ describe('MCP registry discovery', () => {
 			]);
 		});
 
-		// `connected` answers what the user already has, so search only offers additions.
 		it('drops a server the user already has a connection for', async () => {
 			stubContainer({
 				registrySearch: vi
@@ -4046,7 +4045,6 @@ describe('MCP registry discovery', () => {
 			expect(await context.mcpService!.listConnections()).toEqual([{ slug: 'google-drive' }]);
 		});
 
-		// Reporting no connections would let the agent offer to connect what already is.
 		it('surfaces a lookup failure rather than reporting no connections', async () => {
 			stubContainer({
 				listConnectionsForUser: vi.fn().mockRejectedValue(new Error('query failed')),

@@ -205,7 +205,6 @@ describe('InstanceAiMcpConnectCard', () => {
 		expect(getByTestId('instance-ai-mcp-connect-resolve')).toBeVisible();
 	});
 
-	// A failed confirm re-enables the card; without a latch this would loop.
 	it('auto-resolves once even if the card is re-enabled afterwards', async () => {
 		const store = makeMcpStore();
 		mcpStoreMock.mockReturnValue(store);
@@ -261,8 +260,6 @@ describe('InstanceAiMcpConnectCard', () => {
 		expect(emitted().resolve).toEqual([[{ approved: false, connectedSlugs: [] }]]);
 	});
 
-	// Reports the connection so the agent knows its tools are there, but not as a
-	// change — nothing happened here, so the agent must not be rebuilt for it.
 	it('continues as approved with what was connected when some rows are left', async () => {
 		mcpStoreMock.mockReturnValue(makeMcpStore({ connections: [BRAVE_CONNECTION] }));
 		const { getByTestId, emitted } = renderComponent({

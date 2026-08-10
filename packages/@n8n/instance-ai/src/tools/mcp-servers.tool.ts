@@ -189,38 +189,37 @@ async function handleSearch(
 	};
 }
 
+async function resumeConnect(
+	mcpService: InstanceAiMcpService,
+	serverSlugs: string[],
+	resumeData: z.infer<typeof mcpConnectResumeSchema>,
+): Promise<z.infer<typeof connectOutputSchema>> {
+	const connected = new Set((await mcpService.listConnections()).map(({ slug }) => slug));
+	const claimed = resumeData.connectedSlugs ?? [];
+	const connectedSlugs = serverSlugs.filter(
+		(slug) => claimed.includes(slug) && connected.has(slug),
+	);
+
+	if (connectedSlugs.length === 0) {
+		const outcome = resumeData.approved
+			? 'No connection was created.'
+			: 'The user chose not to connect.';
+		return { connectedSlugs, message: outcome + NOT_CONNECTED_GUIDANCE };
+	}
+
+	return {
+		connectedSlugs,
+		message: `Connected: ${connectedSlugs.join(', ')}. Their tools are available now — find them with \`search_tools\` and carry on with the request.`,
+	};
+}
+
 async function handleConnect(
 	context: InstanceAiContext,
 	input: z.infer<typeof connectAction>,
 	ctx: McpServersToolContext,
 ): Promise<z.infer<typeof connectOutputSchema>> {
 	const mcpService = requireMcpService(context);
-	const { resumeData } = ctx;
-
-	if (resumeData !== undefined && resumeData !== null) {
-		// The client's report is a filter, never evidence: intersecting it with the
-		// server's own view lets a client understate what happened but never overstate it.
-		const connections = await mcpService.listConnections();
-		const connected = new Set(connections.map((connection) => connection.slug));
-		const claimed = resumeData.connectedSlugs ?? [];
-		const verified = input.serverSlugs.filter(
-			(slug) => claimed.includes(slug) && connected.has(slug),
-		);
-
-		if (verified.length === 0) {
-			return {
-				connectedSlugs: [],
-				message:
-					(resumeData.approved ? 'No connection was created.' : 'The user chose not to connect.') +
-					NOT_CONNECTED_GUIDANCE,
-			};
-		}
-
-		return {
-			connectedSlugs: verified,
-			message: `Connected: ${verified.join(', ')}. Their tools are available now — find them with \`search_tools\` and carry on with the request.`,
-		};
-	}
+	if (ctx.resumeData) return await resumeConnect(mcpService, input.serverSlugs, ctx.resumeData);
 
 	const servers = await mcpService.getServers(input.serverSlugs);
 	if (servers.length === 0) {
@@ -230,8 +229,6 @@ async function handleConnect(
 		};
 	}
 
-	// `message` is never shown: the UI renders the servers and the model writes its
-	// own sentence, so a correction has to ride the resume result instead.
 	return await ctx.suspend({
 		requestId: nanoid(),
 		message: input.reason,
