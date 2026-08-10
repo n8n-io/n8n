@@ -952,7 +952,7 @@ describe('analyzeWorkflow', () => {
 		expect(result[0].needsAction).toBe(true);
 	});
 
-	it('keeps testable trigger requests even when their credential is already valid', async () => {
+	it('hides settled trigger requests whose credential is already valid', async () => {
 		const trigger = makeNode({
 			name: 'Webhook',
 			type: 'n8n-nodes-base.webhook',
@@ -974,10 +974,14 @@ describe('analyzeWorkflow', () => {
 
 		const result = await analyzeWorkflow(context, 'wf-1');
 
-		expect(result).toHaveLength(1);
-		expect(result[0].isTrigger).toBe(true);
-		expect(result[0].isTestable).toBe(true);
-		expect(result[0].needsAction).toBe(false);
+		expect(result).toHaveLength(0);
+
+		const settled = await analyzeWorkflow(context, 'wf-1', undefined, { includeSettled: true });
+
+		expect(settled).toHaveLength(1);
+		expect(settled[0].isTrigger).toBe(true);
+		expect(settled[0].isTestable).toBe(true);
+		expect(settled[0].needsAction).toBe(false);
 	});
 
 	it('keeps requests with parameter issues regardless of credential validity', async () => {

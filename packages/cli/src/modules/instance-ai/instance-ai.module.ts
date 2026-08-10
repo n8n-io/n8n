@@ -3,19 +3,9 @@ import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule, OnShutdown } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 
-const YELLOW = '\x1b[33m';
-const CLEAR = '\x1b[0m';
-const WARNING_MESSAGE =
-	"[Instance AI] 'instance-ai' module is experimental, undocumented and subject to change. " +
-	'Before its official release any features may become inaccessible at any point, ' +
-	'and using the module could compromise the stability of your system. Use at your own risk!';
-
 @BackendModule({ name: 'instance-ai', instanceTypes: ['main'] })
 export class InstanceAiModule implements ModuleInterface {
 	async init() {
-		const logger = Container.get(Logger).scoped('instance-ai');
-		logger.warn(`${YELLOW}${WARNING_MESSAGE}${CLEAR}`);
-
 		const { InstanceCredentialBroker } = await import(
 			'@/credentials/instance-credential-broker.js'
 		);
@@ -48,6 +38,7 @@ export class InstanceAiModule implements ModuleInterface {
 		if (Container.get(GlobalConfig).instanceAi.durableLog) {
 			const { InterruptedRunSweeper } = await import('./event-bus/interrupted-run-sweeper.js');
 			const { InstanceAiService } = await import('./instance-ai.service.js');
+			const logger = Container.get(Logger).scoped('instance-ai');
 			const sweeper = Container.get(InterruptedRunSweeper);
 			sweeper.setResumeHost(Container.get(InstanceAiService));
 			void sweeper.sweep().catch((error: unknown) => {
