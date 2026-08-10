@@ -270,6 +270,29 @@ describe('useAgentEvalsStore', () => {
 			expect(fetchDataTableById).toHaveBeenCalledTimes(1);
 		});
 
+		// Caching the fallback would pin the wrong project for the session, so the card's
+		// retry could never recover from one transient failure.
+		it('does not cache the fallback, so a later lookup can still succeed', async () => {
+			fetchDataTableById.mockRejectedValueOnce(new Error('offline'));
+			fetchDataTableContent.mockResolvedValue({ count: 0, data: [] });
+			const store = useAgentEvalsStore();
+
+			await store.fetchCases(PROJECT_ID, source);
+			expect(fetchDataTableContent).toHaveBeenLastCalledWith('dt-1', PROJECT_ID, 1, 250, 'id:asc');
+
+			fetchDataTableById.mockResolvedValue({ id: 'dt-1', projectId: 'other-project' });
+			await store.fetchCases(PROJECT_ID, source);
+
+			expect(fetchDataTableById).toHaveBeenCalledTimes(2);
+			expect(fetchDataTableContent).toHaveBeenLastCalledWith(
+				'dt-1',
+				'other-project',
+				1,
+				250,
+				'id:asc',
+			);
+		});
+
 		it("falls back to the agent's project when the table cannot be looked up", async () => {
 			fetchDataTableById.mockRejectedValue(new Error('forbidden'));
 			fetchDataTableContent.mockResolvedValue({ count: 0, data: [] });

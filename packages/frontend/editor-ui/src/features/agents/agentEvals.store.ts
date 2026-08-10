@@ -198,27 +198,30 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 	// project — not necessarily the agent's. Generation co-locates the two, but a
 	// dataset attached through the API may point at a table in another project (the
 	// runner resolves that case via `getProjectIdForDataTable`, so such datasets are
-	// runnable and must be editable too). Resolved once per table and cached; a failed
-	// lookup falls back to the agent's project, which is correct for every dataset
-	// this UI creates.
+	// runnable and must be editable too).
+	//
+	// Only a resolved answer is cached. Caching the fallback would pin the agent's
+	// project for the rest of the session after a single transient failure, so the
+	// card's retry would keep re-reading the wrong project and never recover.
 	const resolveTableProjectId = async (agentProjectId: string, dataTableId: string) => {
 		const cached = tableProjectByDataTableId.value[dataTableId];
 		if (cached) return cached;
 
 		// `fetchDataTableById` is the store's existing global point lookup: it does not
 		// touch the list state, and it returns null when the user lacks `dataTable:list`
-		// rather than firing a request that would be refused — either way we fall back.
+		// rather than firing a request that would be refused.
 		const resolved = await dataTableStore
 			.fetchDataTableById(dataTableId)
 			.then((table) => table?.projectId)
 			.catch(() => undefined);
-		const projectId = resolved ?? agentProjectId;
+
+		if (!resolved) return agentProjectId;
 
 		tableProjectByDataTableId.value = {
 			...tableProjectByDataTableId.value,
-			[dataTableId]: projectId,
+			[dataTableId]: resolved,
 		};
-		return projectId;
+		return resolved;
 	};
 
 	// Sorted by row id so the numbering the view shows is stable across reads, and
