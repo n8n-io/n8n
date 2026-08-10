@@ -90,24 +90,42 @@ interface BuildCtx {
 	abortSignal?: AbortSignal;
 }
 
+/**
+ * Structural (schema-level) filePath check. Absolute paths are accepted here
+ * even though only paths under the workspace root are valid: the root is only
+ * known at handler time, and a schema rejection surfaces as a hard
+ * AI_InvalidToolInputError instead of a recoverable tool result. The handler
+ * does the authoritative normalization against the workspace root.
+ */
+function isStructurallyValidWorkflowSourceFilePath(value: string): boolean {
+	try {
+		normalizeWorkflowSourceFilePath(value);
+		return true;
+	} catch {
+		const trimmed = value.trim();
+		return (
+			trimmed.startsWith('/') &&
+			trimmed.length > 1 &&
+			!trimmed.includes('\\') &&
+			!trimmed.includes('\0') &&
+			!trimmed.split('/').some((segment) => segment === '..')
+		);
+	}
+}
+
 export const buildWorkflowInputSchema = z
 	.object({
 		filePath: z
 			.string()
 			.min(1)
-			.refine(
-				(value) => {
-					try {
-						normalizeWorkflowSourceFilePath(value);
-						return true;
-					} catch {
-						return false;
-					}
-				},
-				{ message: 'Workflow source file path must stay within the workspace root.' },
-			)
+			.refine(isStructurallyValidWorkflowSourceFilePath, {
+				message:
+					'Workflow source file path must stay within the workspace ' +
+					'(no "..", "~", backslashes, or null bytes). ' +
+					'Pass a workspace-relative path like src/workflows/my-workflow.workflow.ts.',
+			})
 			.describe(
-				'Workspace path to the workflow source file to build. Supports TypeScript SDK files and WorkflowJSON .json files.',
+				'Workspace-relative path to the workflow source file to build, e.g. src/workflows/my-workflow.workflow.ts. Supports TypeScript SDK files and WorkflowJSON .json files.',
 			),
 		sourceCode: z
 			.string()
@@ -225,7 +243,7 @@ export function autoImportMissingSdkSymbols(
 const POST_BUILD_FLOW_SKILL_ID = 'post-build-flow';
 
 const POST_BUILD_FLOW_GUIDANCE =
-	'This direct build is not complete yet. Follow the post-build instructions in `instructions` now (do NOT load the post-build-flow skill — they are the same instructions) before verification, setup, error-workflow follow-up, publishing, testing, or any final user-visible summary. Follow-up order is verification/setup first, then mocked/no-mock live-test when latest verification used mocks or simulations, then explicit error-workflow opt-in for direct new primary workflows, then generic testing prompts. Do not replace the error-workflow opt-in with a generic add-anything, publish, or test question.';
+	'This direct build is not complete yet. Follow the post-build instructions in `instructions` now (do NOT load the post-build-flow skill — they are the same instructions) before verification, setup, error-workflow follow-up, publishing, testing, or any final user-visible summary. Follow-up order is verification/setup first, then mocked/no-mock live-test when latest verification used mocks or simulations, then generic testing prompts. Offer the explicit error-workflow opt-in for direct new primary workflows only after the primary workflow is successfully published. Do not replace the error-workflow opt-in with a generic add-anything, publish, or test question.';
 
 // Inlined into successful build results; the skill stays registered for tag-driven follow-up turns.
 let postBuildFlowInstructionsCache: string | undefined;
@@ -321,7 +339,28 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 		.suspend(confirmationSuspendSchema)
 		.resume(confirmationResumeSchema)
 		.handler(async (input, ctx: BuildCtx) => {
-			const filePath = normalizeWorkflowSourceFilePath(input.filePath);
+			let filePath: string;
+			try {
+				// Accepts absolute paths under the workspace root (models often echo
+				// them from prompts/shell output) and converts them to relative.
+				filePath = normalizeWorkflowSourceFilePath(input.filePath, {
+					workspaceRoot: context.workspaceRoot,
+				});
+			} catch (error) {
+				const guidance =
+					'Call build-workflow again with a workspace-relative filePath like src/workflows/my-workflow.workflow.ts.';
+				return {
+					success: false,
+					filePath: input.filePath,
+					errors: [error instanceof Error ? error.message : String(error)],
+					remediation: createRemediation({
+						category: 'code_fixable',
+						shouldEdit: false,
+						reason: 'invalid_file_path',
+						guidance,
+					}),
+				};
+			}
 			let binding = (await getWorkflowSourceFileBinding(context, filePath)) ?? { filePath };
 
 			if (input.workflowId && binding.workflowId && input.workflowId !== binding.workflowId) {

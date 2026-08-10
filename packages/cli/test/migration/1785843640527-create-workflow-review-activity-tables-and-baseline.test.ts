@@ -18,6 +18,8 @@ const COMMENT_TABLE = 'workflow_review_activity_comment';
 const REQUEST_WORKFLOW_TABLE = 'workflow_review_request_workflow';
 const BASELINE_VERSION_COLUMN = 'baselineVersionId';
 const BASELINE_VERSION_FK = 'FK_workflow_review_request_workflow_baselineVersionId';
+const AUTHORS_TABLE = 'workflow_review_request_authors';
+const AUTHORS_USER_INDEX = 'IDX_workflow_review_request_authors_user';
 
 async function tableExists(context: TestMigrationContext, table: string): Promise<boolean> {
 	const name = `${context.tablePrefix}${table}`;
@@ -53,6 +55,26 @@ async function columnMeta(
 		{ tableName: `${context.tablePrefix}${table}`, columnName },
 	);
 	return rows[0] && { nullable: rows[0].is_nullable === 'YES' };
+}
+
+async function indexExists(
+	context: TestMigrationContext,
+	table: string,
+	indexName: string,
+): Promise<boolean> {
+	const name = `${context.tablePrefix}${indexName}`;
+	if (context.isSqlite) {
+		const rows = await context.runQuery<Array<{ name: string }>>(
+			"SELECT name FROM sqlite_master WHERE type = 'index' AND name = :name",
+			{ name },
+		);
+		return rows.length > 0;
+	}
+	const rows = await context.runQuery<Array<{ indexname: string }>>(
+		'SELECT indexname FROM pg_indexes WHERE tablename = :tableName AND indexname = :name',
+		{ tableName: `${context.tablePrefix}${table}`, name },
+	);
+	return rows.length > 0;
 }
 
 async function foreignKeyNames(
@@ -162,16 +184,22 @@ describe('CreateWorkflowReviewActivityTablesAndBaseline Migration', () => {
 	 */
 	async function insertActivity(
 		context: TestMigrationContext,
-		fields: { workflowReviewRequestId: string; type?: string; createdById?: string },
+		fields: {
+			workflowReviewRequestId: string;
+			type?: string;
+			createdById?: string;
+			workflowId?: string;
+		},
 	): Promise<number> {
 		const activityTable = context.escape.tableName(ACTIVITY_TABLE);
 		await context.runQuery(
-			`INSERT INTO ${activityTable} ("workflowReviewRequestId", "type", "createdById", "createdAt")
-			 VALUES (:workflowReviewRequestId, :type, :createdById, :createdAt)`,
+			`INSERT INTO ${activityTable} ("workflowReviewRequestId", "type", "createdById", "workflowId", "createdAt")
+			 VALUES (:workflowReviewRequestId, :type, :createdById, :workflowId, :createdAt)`,
 			{
 				workflowReviewRequestId: fields.workflowReviewRequestId,
 				type: fields.type ?? 'review.opened',
 				createdById: fields.createdById ?? null,
+				workflowId: fields.workflowId ?? null,
 				createdAt: new Date(),
 			},
 		);
@@ -183,6 +211,27 @@ describe('CreateWorkflowReviewActivityTablesAndBaseline Migration', () => {
 			`SELECT MAX("id") AS "maxId" FROM ${context.escape.tableName(ACTIVITY_TABLE)}`,
 		);
 		return maxId ?? 0;
+	}
+
+	async function seedWorkflow(context: TestMigrationContext): Promise<string> {
+		const workflowId = generateNanoId();
+		const now = new Date();
+		await context.runQuery(
+			`INSERT INTO ${context.escape.tableName('workflow_entity')}
+			 ("id", "name", "active", "nodes", "connections", "versionId", "createdAt", "updatedAt")
+			 VALUES (:id, :name, :active, :nodes, :connections, :versionId, :createdAt, :updatedAt)`,
+			{
+				id: workflowId,
+				name: `Activity test workflow ${workflowId}`,
+				active: false,
+				nodes: '[]',
+				connections: '{}',
+				versionId: randomUUID(),
+				createdAt: now,
+				updatedAt: now,
+			},
+		);
+		return workflowId;
 	}
 
 	async function insertComment(
@@ -398,6 +447,59 @@ describe('CreateWorkflowReviewActivityTablesAndBaseline Migration', () => {
 			}
 		});
 
+		// The whole reason `workflowId` is CASCADE and not SET NULL: NULL marks a review-level
+		// entry, so nulling on delete would widen a workflow-scoped entry to everyone who can
+		// read the review.
+		it('drops entries about a deleted workflow and keeps the review-level ones', async () => {
+			const context = createTestMigrationContext(dataSource);
+			try {
+				const requestId = await seedRequest(context);
+				const workflowId = await seedWorkflow(context);
+				const scopedId = await insertActivity(context, {
+					workflowReviewRequestId: requestId,
+					type: 'workflow.published',
+					workflowId,
+				});
+				const reviewLevelId = await insertActivity(context, {
+					workflowReviewRequestId: requestId,
+					type: 'comment.created',
+				});
+				await insertComment(context, reviewLevelId);
+
+				await context.runQuery(
+					`DELETE FROM ${context.escape.tableName('workflow_entity')} WHERE "id" = :id`,
+					{ id: workflowId },
+				);
+
+				const remaining = await context.runQuery<Array<{ id: number }>>(
+					`SELECT "id" FROM ${context.escape.tableName(ACTIVITY_TABLE)} WHERE "workflowReviewRequestId" = :requestId`,
+					{ requestId },
+				);
+				expect(remaining.map(({ id }) => Number(id))).toEqual([reviewLevelId]);
+				expect(remaining.map(({ id }) => Number(id))).not.toContain(scopedId);
+
+				// The comment on the surviving entry rides its parent, so it stays too.
+				const commentRows = await context.runQuery<unknown[]>(
+					`SELECT "id" FROM ${context.escape.tableName(COMMENT_TABLE)} WHERE "activityId" = :id`,
+					{ id: reviewLevelId },
+				);
+				expect(commentRows).toHaveLength(1);
+			} finally {
+				await context.queryRunner.release();
+			}
+		});
+
+		// The authors table ships in an earlier migration, so this index is created here and has
+		// to be dropped explicitly in `down()`; nothing else removes it.
+		it('indexes the authors table by user', async () => {
+			const context = createTestMigrationContext(dataSource);
+			try {
+				expect(await indexExists(context, AUTHORS_TABLE, AUTHORS_USER_INDEX)).toBe(true);
+			} finally {
+				await context.queryRunner.release();
+			}
+		});
+
 		// The name is what makes `down()` deterministic: SQLite drops a foreign key by matching the
 		// constraint name, and an auto-generated one never matches what the DSL passes in.
 		it('names the baseline foreign key explicitly', async () => {
@@ -426,6 +528,7 @@ describe('CreateWorkflowReviewActivityTablesAndBaseline Migration', () => {
 				expect(
 					await columnMeta(before, REQUEST_WORKFLOW_TABLE, BASELINE_VERSION_COLUMN),
 				).toBeDefined();
+				expect(await indexExists(before, AUTHORS_TABLE, AUTHORS_USER_INDEX)).toBe(true);
 			} finally {
 				// Release before reverting: holding a pooled lease across the revert exhausts the
 				// Postgres pool and the migration times out trying to connect.
@@ -441,6 +544,8 @@ describe('CreateWorkflowReviewActivityTablesAndBaseline Migration', () => {
 				expect(
 					await columnMeta(after, REQUEST_WORKFLOW_TABLE, BASELINE_VERSION_COLUMN),
 				).toBeUndefined();
+				// The authors table survives the revert, so a missed dropIndex would leave this behind.
+				expect(await indexExists(after, AUTHORS_TABLE, AUTHORS_USER_INDEX)).toBe(false);
 			} finally {
 				await after.queryRunner.release();
 			}
