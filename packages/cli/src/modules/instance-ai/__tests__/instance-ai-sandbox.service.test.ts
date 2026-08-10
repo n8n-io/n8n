@@ -895,5 +895,66 @@ describe('InstanceAiSandboxService', () => {
 
 			await expect(service.destroySandbox('missing-thread')).resolves.toBeUndefined();
 		});
+
+		it('deletes the uncached remote sandbox for the n8n-sandbox provider', async () => {
+			// No prior getOrCreateWorkspace call: simulates a thread deleted after
+			// a restart or idle eviction, when the in-process cache has no entry.
+			const { service } = createSandboxService({
+				config: {
+					sandboxEnabled: true,
+					sandboxProvider: 'n8n-sandbox',
+					n8nSandboxServiceUrl: 'https://env.sandbox',
+				},
+			});
+			const sandbox = { destroy: vi.fn(async () => {}) };
+			(createSandbox as Mock).mockResolvedValue(sandbox);
+
+			await service.destroySandbox('thread-1');
+
+			expect(createSandbox).toHaveBeenCalledWith(
+				expect.objectContaining({
+					provider: 'n8n-sandbox',
+					id: expect.stringMatching(/^[0-9a-f-]{36}$/),
+				}),
+				expect.any(Object),
+			);
+			expect(sandbox.destroy).toHaveBeenCalledTimes(1);
+		});
+
+		it('does not attempt an uncached destroy for the daytona provider', async () => {
+			const { service } = createSandboxService({
+				config: { sandboxEnabled: true, sandboxProvider: 'daytona' },
+			});
+
+			await service.destroySandbox('thread-1');
+
+			expect(createSandbox).not.toHaveBeenCalled();
+		});
+
+		it('swallows uncached destroy errors and logs a warning', async () => {
+			const { service, logger } = createSandboxService({
+				config: {
+					sandboxEnabled: true,
+					sandboxProvider: 'n8n-sandbox',
+					n8nSandboxServiceUrl: 'https://env.sandbox',
+				},
+			});
+			(createSandbox as Mock).mockResolvedValue({
+				destroy: vi.fn(async () => {
+					throw new Error('service unreachable');
+				}),
+			});
+
+			await expect(service.destroySandbox('thread-1', 'custom_reason')).resolves.toBeUndefined();
+
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to destroy sandbox',
+				expect.objectContaining({
+					threadId: 'thread-1',
+					reason: 'custom_reason',
+					error: 'service unreachable',
+				}),
+			);
+		});
 	});
 });

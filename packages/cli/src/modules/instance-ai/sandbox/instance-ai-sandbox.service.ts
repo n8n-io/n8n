@@ -467,11 +467,50 @@ export class InstanceAiSandboxService {
 	/** Destroy and remove the shared runtime workspace for a thread. */
 	async destroySandbox(threadId: string, reason = 'thread_cleanup'): Promise<void> {
 		const entry = this.sandboxes.get(threadId);
-		if (!entry?.sandbox) return;
+		if (!entry?.sandbox) {
+			await this.destroyUncachedSandbox(threadId, reason);
+			return;
+		}
 
 		this.evictSandboxEntry(threadId, entry);
 		try {
 			await entry.workspace?.destroy();
+		} catch (error) {
+			this.logger.warn('Failed to destroy sandbox', {
+				threadId,
+				reason,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
+	}
+
+	/**
+	 * Delete the remote sandbox for a thread with no cache entry (after a
+	 * restart or an idle eviction). Only the n8n-sandbox provider supports
+	 * this: its id is recomputable from the thread id, and a delete for an id
+	 * that never existed is a cheap 404. Daytona is left to its own
+	 * auto-stop/auto-delete lifecycle.
+	 */
+	private async destroyUncachedSandbox(threadId: string, reason: string): Promise<void> {
+		try {
+			const base = this.getSandboxConfigFromEnv();
+			if (!base.enabled || base.provider !== 'n8n-sandbox') return;
+
+			const settings = await this.options.settingsService.resolveN8nSandboxConfig();
+			const config = withThreadScopedSandboxIdentity(
+				{
+					...base,
+					serviceUrl: settings.serviceUrl ?? base.serviceUrl,
+					apiKey: settings.apiKey ?? base.apiKey,
+				},
+				threadId,
+			);
+			// Constructing the adapter makes no remote calls; destroy() issues the delete.
+			const sandbox = await createSandbox(config, {
+				logger: this.logger,
+				errorReporter: this.options.errorReporter,
+			});
+			await sandbox?.destroy?.();
 		} catch (error) {
 			this.logger.warn('Failed to destroy sandbox', {
 				threadId,
