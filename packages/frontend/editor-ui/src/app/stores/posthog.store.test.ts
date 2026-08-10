@@ -237,17 +237,22 @@ describe('Posthog store', () => {
 			posthog.init();
 			postHogLoadedCallback?.();
 
-			// logout → login in the same page load
+			// logout → a different user logs in, without a page reload
 			posthog.reset();
 			vi.mocked(window.posthog!.init!).mockClear();
 			vi.mocked(window.posthog!.identify!).mockClear();
+			vi.mocked(window.posthog!.group!).mockClear();
 			window.posthog!.__loaded = true;
+
+			const OTHER_USER_ID = '2';
+			useUsersStore().addUsers([{ id: OTHER_USER_ID, isPending: false }]);
+			useUsersStore().currentUserId = OTHER_USER_ID;
 
 			posthog.init();
 
 			expect(window.posthog?.init).not.toHaveBeenCalled();
 			expect(window.posthog?.identify).toHaveBeenCalledWith(
-				`${CURRENT_INSTANCE_ID}#${CURRENT_USER_ID}`,
+				`${CURRENT_INSTANCE_ID}#${OTHER_USER_ID}`,
 				expect.objectContaining({ instance_id: CURRENT_INSTANCE_ID }),
 			);
 			expect(window.posthog?.group).toHaveBeenCalledWith('company', CURRENT_INSTANCE_ID);
