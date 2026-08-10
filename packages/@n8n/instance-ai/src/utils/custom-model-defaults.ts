@@ -89,17 +89,6 @@ export function resolveCustomModelExperimentDefaults(
 	};
 }
 
-function warnInvalidEnvOverride(envName: string, value: string): void {
-	console.warn(
-		`[instance-ai] Ignoring invalid ${envName}="${value}"; falling back to custom model defaults map when available.`,
-	);
-}
-
-/**
- * Env → map → omit. Used by apply-thinking and model-config resolution so both
- * knobs share one path. Workflow inputs only need to set the env vars when
- * overriding; they should not re-implement the map lookup.
- */
 export function resolveCustomModelExperimentDefaultsFromEnv(
 	modelId: string,
 	envOverrides: {
@@ -114,20 +103,17 @@ export function resolveCustomModelExperimentDefaultsFromEnv(
 		process.env.N8N_INSTANCE_AI_SUPPORTS_STRUCTURED_OUTPUTS;
 
 	const reasoningEffort = parseReasoningEffort(reasoningEffortRaw);
-	if (reasoningEffort === undefined && reasoningEffortRaw?.trim()) {
-		warnInvalidEnvOverride('N8N_INSTANCE_AI_REASONING_EFFORT', reasoningEffortRaw);
-	}
-
 	const supportsStructuredOutputs = parseSupportsStructuredOutputs(supportsStructuredOutputsRaw);
-	if (supportsStructuredOutputs === undefined && supportsStructuredOutputsRaw?.trim()) {
-		warnInvalidEnvOverride(
-			'N8N_INSTANCE_AI_SUPPORTS_STRUCTURED_OUTPUTS',
-			supportsStructuredOutputsRaw,
-		);
+
+	const customConfig: CustomModelExperimentDefaults = {};
+
+	if (reasoningEffort) {
+		customConfig.reasoningEffort = reasoningEffort;
 	}
 
-	return resolveCustomModelExperimentDefaults(modelId, {
-		reasoningEffort,
-		supportsStructuredOutputs,
-	});
+	if (supportsStructuredOutputs) {
+		customConfig.supportsStructuredOutputs = supportsStructuredOutputs;
+	}
+
+	return resolveCustomModelExperimentDefaults(modelId, customConfig);
 }

@@ -385,7 +385,7 @@ describe('createModel', () => {
 				baseURL: 'https://example.com/v1',
 			}) as unknown as Record<string, unknown>;
 			expect(model.provider).toBe('custom');
-			expect(model.supportsStructuredOutputs).toBe(false);
+			expect(model.supportsStructuredOutputs).toBe(undefined);
 		});
 
 		it('should forward supportsStructuredOutputs for custom when set', () => {
