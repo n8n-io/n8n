@@ -103,6 +103,10 @@ export class WorkflowMcpTriggerResourceResolver implements ProtectedResourceReso
 				getAudiences: () => [resourceUrl],
 				scopes: WORKFLOW_MCP_TRIGGER_SCOPES,
 				displayName: workflow.name,
+				getGrant: () => ({
+					audiences: [resourceUrl],
+					executeAccessWorkflowId: requireExecute ? workflow.id : undefined,
+				}),
 				authorize: async (user: User) => {
 					if (requireExecute) {
 						return (

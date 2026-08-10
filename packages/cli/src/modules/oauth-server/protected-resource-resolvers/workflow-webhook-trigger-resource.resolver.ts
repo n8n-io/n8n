@@ -173,6 +173,10 @@ export class WorkflowWebhookTriggerResourceResolver implements ProtectedResource
 				getAudiences: () => methods.map(urlFor),
 				scopes: WEBHOOK_TRIGGER_SCOPES,
 				displayName: workflow.name,
+				getGrant: () => ({
+					audiences: methods.map(urlFor),
+					executeAccessWorkflowId: requireExecute ? workflow.id : undefined,
+				}),
 				authorize: async (user: User) => {
 					if (requireExecute) {
 						return (

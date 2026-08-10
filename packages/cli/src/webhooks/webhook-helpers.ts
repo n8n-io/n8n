@@ -72,6 +72,7 @@ import {
 } from '@/services/oauth-token-verifier-proxy.service';
 import { OAuth2FlowProxy } from '@/services/oauth2-flow-proxy.service';
 import { OwnershipService } from '@/services/ownership.service';
+import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { WaitTracker } from '@/wait-tracker';
 import { WebhookExecutionContext } from '@/webhooks/webhook-execution-context';
@@ -615,9 +616,15 @@ export async function executeWebhook(
 	};
 
 	additionalData.establishTriggerIdentity = async (token: string, resource: string) => {
+		// Snapshot the resource's gate while it still resolves: the run re-verifies this
+		// token long after the trigger has stopped listening.
+		const grant = (
+			await Container.get(ProtectedResourceRegistry).getByResourceUrl(resource)
+		)?.getGrant?.();
+
 		additionalData.encryptedRunnerIdentity = await Container.get(
 			ExecutionContextService,
-		).buildTriggerIdentityCredentials(token, resource);
+		).buildTriggerIdentityCredentials(token, resource, grant);
 		if (runExecutionData) {
 			await establishExecutionContext(workflow, runExecutionData, additionalData, executionMode);
 		}

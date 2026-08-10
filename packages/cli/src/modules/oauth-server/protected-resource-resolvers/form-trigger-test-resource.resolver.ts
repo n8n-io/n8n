@@ -92,6 +92,10 @@ export class FormTriggerTestResourceResolver implements ProtectedResourceResolve
 				getAllowedRedirectUris: async () => [resourceUrl],
 				scopes: FORM_TRIGGER_SCOPES,
 				displayName: workflowEntity.name,
+				getGrant: () => ({
+					audiences: [resourceUrl],
+					executeAccessWorkflowId: requireExecute ? workflowEntity.id : undefined,
+				}),
 				authorize: async (user: User) => {
 					if (requireExecute) {
 						return (
