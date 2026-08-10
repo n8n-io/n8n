@@ -1,5 +1,6 @@
 import { UpdateWorkflowHistoryVersionDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import {
 	WorkflowHistory,
@@ -11,16 +12,78 @@ import { Service } from '@n8n/di';
 import type { EntityManager } from '@n8n/typeorm';
 import { In } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
-import type { IWorkflowBase } from 'n8n-workflow';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import { UnexpectedError } from 'n8n-workflow';
+import type { IConnections, INode, IWorkflowBase } from 'n8n-workflow';
+import { OperationalError, UnexpectedError } from 'n8n-workflow';
+import { z } from 'zod';
 
 import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error';
 import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
 import { EventService } from '@/events/event.service';
 import type { WorkflowActionSource } from '@/events/maps/relay.event-map';
+import { InstanceAiModelService } from '@/modules/instance-ai/instance-ai-model.service';
+import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 
 import { WorkflowFinderService } from '../workflow-finder.service';
+
+const STICKY_NOTE_TYPE = 'n8n-nodes-base.stickyNote';
+const GENERATE_DESCRIPTION_TIMEOUT_MS = 30_000;
+const GENERATE_DESCRIPTION_MAX_OUTPUT_TOKENS = 400;
+
+const generatePublishDescriptionSchema = z.object({
+	hasMeaningfulChanges: z
+		.boolean()
+		.describe(
+			'False only when comparing two versions and the current version has no meaningful ' +
+				'difference from the previous one (cosmetic-only changes like node position or ' +
+				'renaming without behavior changes). Always true when summarizing a first publish.',
+		),
+	description: z
+		.string()
+		.describe(
+			'1-3 concise sentences in the tone of a git commit message or PR description, no ' +
+				'markdown. Empty string when hasMeaningfulChanges is false.',
+		),
+});
+
+/**
+ * Renders a workflow's structure (nodes, parameters, connections) as compact
+ * text for an LLM prompt. Sticky notes are excluded — they document the
+ * workflow, they aren't part of its logic. Node parameters are included
+ * (like n8n's AI workflow builder does when feeding node config to an LLM) —
+ * credentials are a separate `node.credentials` reference field, never
+ * embedded in `parameters`, so this doesn't leak secrets, and without them
+ * a parameter-only edit (e.g. changing an HTTP node's URL) is invisible to
+ * the diff.
+ */
+function summarizeWorkflowStructure(nodes: INode[], connections: IConnections): string {
+	const realNodes = nodes.filter((node) => node.type !== STICKY_NOTE_TYPE);
+	const nodeLines = realNodes.map((node) => {
+		const parameters = JSON.stringify(node.parameters);
+		return `- ${node.name} (${node.type}${node.disabled ? ', disabled' : ''}) | ${parameters}`;
+	});
+
+	const realNodeNames = new Set(realNodes.map((node) => node.name));
+	const connectionLines: string[] = [];
+	for (const [sourceName, sourceConnections] of Object.entries(connections)) {
+		if (!realNodeNames.has(sourceName)) continue;
+		for (const connectionsOfType of Object.values(sourceConnections)) {
+			for (const connectionGroup of connectionsOfType) {
+				for (const connection of connectionGroup ?? []) {
+					if (!realNodeNames.has(connection.node)) continue;
+					connectionLines.push(`- ${sourceName} -> ${connection.node}`);
+				}
+			}
+		}
+	}
+
+	return [
+		'Nodes:',
+		nodeLines.length > 0 ? nodeLines.join('\n') : '(none)',
+		'Connections:',
+		connectionLines.length > 0 ? connectionLines.join('\n') : '(none)',
+	].join('\n');
+}
 
 @Service()
 export class WorkflowHistoryService {
@@ -31,6 +94,8 @@ export class WorkflowHistoryService {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly eventService: EventService,
+		private readonly modelService: InstanceAiModelService,
+		private readonly outboundHttp: OutboundHttp,
 	) {}
 
 	async getList(
@@ -336,5 +401,80 @@ export class WorkflowHistoryService {
 			user: e.user,
 			versionName: e.workflowHistory?.name ?? null,
 		}));
+	}
+
+	/**
+	 * Draft a publish-version description by asking Instance AI's model to
+	 * summarize what changed since the workflow's last published version (or,
+	 * for a first publish, what the workflow does). Proof-of-concept: reuses
+	 * Instance AI's model resolution but skips its agent/tool/memory
+	 * machinery entirely — this is a single one-off completion, closer to
+	 * `InstanceAiVerificationService.verifyModel` than to a chat turn.
+	 */
+	async generatePublishDescription(
+		user: User,
+		workflowId: string,
+	): Promise<{ hasMeaningfulChanges: boolean; description: string }> {
+		const workflow = await this.workflowFinderService.findWorkflowForUser(
+			workflowId,
+			user,
+			['workflow:read'],
+			{ includeActiveVersion: true },
+		);
+
+		if (!workflow) {
+			throw new SharedWorkflowNotFoundError('');
+		}
+
+		const currentSummary = summarizeWorkflowStructure(workflow.nodes, workflow.connections);
+		const previousVersion = workflow.activeVersion;
+
+		const prompt = previousVersion
+			? [
+					'You are drafting a short changelog-style description for a new published version of an',
+					'automation workflow. Compare the previous published version to the current version below',
+					'and summarize the meaningful changes: nodes added/removed, parameter changes (URLs,',
+					'expressions, conditions, request bodies, etc.), logic changes, trigger changes, connection',
+					'rewiring. Ignore purely cosmetic changes such as node position or renaming without a',
+					'behavior change. If, after that comparison, there is no meaningful difference, set',
+					'hasMeaningfulChanges to false and leave description empty — do not invent a description',
+					'for a cosmetic-only or no-op change.',
+					'',
+					'<previous_version>',
+					summarizeWorkflowStructure(previousVersion.nodes, previousVersion.connections),
+					'</previous_version>',
+					'',
+					'<current_version>',
+					currentSummary,
+					'</current_version>',
+				].join('\n')
+			: [
+					'You are drafting a short description for the first published version of an automation',
+					'workflow. Summarize what the workflow below does. Always set hasMeaningfulChanges to true',
+					'here — there is nothing to compare against yet.',
+					'',
+					'<workflow>',
+					currentSummary,
+					'</workflow>',
+				].join('\n');
+
+		const modelConfig = await this.modelService.resolveAgentModelConfig(user);
+		const { createModel } = await import('@n8n/agents');
+		const { generateObject } = await import('ai');
+
+		const result = await generateObject({
+			model: createModel(modelConfig, createAiProxyFetch(this.outboundHttp)),
+			schema: generatePublishDescriptionSchema,
+			prompt,
+			maxOutputTokens: GENERATE_DESCRIPTION_MAX_OUTPUT_TOKENS,
+			abortSignal: AbortSignal.timeout(GENERATE_DESCRIPTION_TIMEOUT_MS),
+		});
+
+		const { hasMeaningfulChanges, description } = result.object;
+		if (hasMeaningfulChanges && !description.trim()) {
+			throw new OperationalError('Instance AI returned an empty publish description');
+		}
+
+		return { hasMeaningfulChanges, description: description.trim() };
 	}
 }

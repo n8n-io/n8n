@@ -1,4 +1,5 @@
 import { mockLogger, mockInstance } from '@n8n/backend-test-utils';
+import { OutboundHttp } from '@n8n/backend-network';
 import type { WorkflowHistory } from '@n8n/db';
 import {
 	User,
@@ -12,6 +13,7 @@ import { mockClear } from 'vitest-mock-extended';
 import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error';
 import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
 import { EventService } from '@/events/event.service';
+import { InstanceAiModelService } from '@/modules/instance-ai/instance-ai-model.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { getWorkflow, getWorkflowHistory } from '@test-integration/workflow';
@@ -22,6 +24,8 @@ const workflowRepository = mockInstance(WorkflowRepository);
 const logger = mockLogger();
 const workflowFinderService = mockInstance(WorkflowFinderService);
 const eventService = mockInstance(EventService);
+const modelService = mockInstance(InstanceAiModelService);
+const outboundHttp = mockInstance(OutboundHttp);
 const workflowHistoryService = new WorkflowHistoryService(
 	logger,
 	workflowHistoryRepository,
@@ -29,6 +33,8 @@ const workflowHistoryService = new WorkflowHistoryService(
 	workflowRepository,
 	workflowFinderService,
 	eventService,
+	modelService,
+	outboundHttp,
 );
 const testUser = Object.assign(new User(), {
 	id: '1234',

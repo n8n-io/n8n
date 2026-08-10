@@ -1,4 +1,4 @@
-import type { ProjectIcon, ProjectType } from '@n8n/api-types';
+import type { GeneratePublishDescriptionResponse, ProjectIcon, ProjectType } from '@n8n/api-types';
 import type {
 	APIRequest,
 	AuthenticatedRequest,
@@ -276,6 +276,10 @@ export declare namespace WorkflowHistoryRequest {
 	type GetVersion = AuthenticatedRequest<
 		{ workflowId: string; versionId: string },
 		WorkflowHistory
+	>;
+	type GenerateDescription = AuthenticatedRequest<
+		{ workflowId: string },
+		GeneratePublishDescriptionResponse
 	>;
 }
 

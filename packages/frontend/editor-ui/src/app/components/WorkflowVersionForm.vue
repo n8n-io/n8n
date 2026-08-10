@@ -59,7 +59,11 @@ defineExpose({
 		<N8nInputLabel
 			input-name="workflow-version-description"
 			:label="i18n.baseText('workflows.publishModal.descriptionPlaceholder')"
+			:show-options="true"
 		>
+			<template v-if="$slots.descriptionOptions" #options>
+				<slot name="descriptionOptions" />
+			</template>
 			<N8nInput
 				id="workflow-version-description"
 				v-model="description"

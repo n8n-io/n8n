@@ -665,6 +665,7 @@ export {
 export { ALLOWED_DOMAINS, isAllowedDomain } from './utils/allowed-domains';
 
 export type { PublishTimelineEvent } from './schemas/workflow-publish-timeline.schema';
+export type { GeneratePublishDescriptionResponse } from './schemas/generate-publish-description.schema';
 export {
 	X_N8N_FEATURE_HEADER,
 	X_N8N_VERSION_HEADER,

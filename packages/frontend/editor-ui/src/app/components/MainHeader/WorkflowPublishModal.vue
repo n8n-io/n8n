@@ -7,8 +7,8 @@ import {
 	onBeforeUnmount,
 	useTemplateRef,
 	type DeepReadonly,
+	VNode,
 } from 'vue';
-import type { VNode } from 'vue';
 import Modal from '@/app/components/Modal.vue';
 import { WORKFLOW_PUBLISH_MODAL_KEY } from '@/app/constants';
 import { telemetry } from '@/app/plugins/telemetry';
@@ -20,7 +20,9 @@ import WorkflowVersionForm from '@/app/components/WorkflowVersionForm.vue';
 import { getActivatableTriggerNodes } from '@/app/utils/nodeTypesUtils';
 import { useToast } from '@n8n/composables/useToast';
 import { useWorkflowActivate } from '@/app/composables/useWorkflowActivate';
+import { useEditorContext } from '@/app/composables/useEditorContext';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { useWorkflowHistoryStore } from '@/features/workflows/workflowHistory/workflowHistory.store';
 import { OPEN_AI_API_CREDENTIAL_TYPE } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 import type { IUsedCredential } from '@/features/credentials/credentials.types';
@@ -34,14 +36,38 @@ const i18n = useI18n();
 const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const credentialsStore = useCredentialsStore();
-const { showMessage } = useToast();
+const workflowHistoryStore = useWorkflowHistoryStore();
+const { showMessage, showError } = useToast();
 const workflowActivate = useWorkflowActivate();
+const { instanceAi } = useEditorContext();
 const publishing = ref(false);
+const generatingDescription = ref(false);
 
 const publishForm = useTemplateRef<InstanceType<typeof WorkflowVersionForm>>('publishForm');
 
 const description = ref('');
 const versionName = ref('');
+
+async function generateDescriptionWithAi() {
+	generatingDescription.value = true;
+	try {
+		const result = await workflowHistoryStore.generatePublishDescription(
+			workflowDocumentStore.value.workflowId,
+		);
+		if (result.hasMeaningfulChanges) {
+			description.value = result.description;
+		} else {
+			showMessage({
+				title: i18n.baseText('workflows.publishModal.generateDescription.noChanges'),
+				type: 'info',
+			});
+		}
+	} catch (error) {
+		showError(error, i18n.baseText('workflows.publishModal.generateDescription.error'));
+	} finally {
+		generatingDescription.value = false;
+	}
+}
 
 const foundTriggers = computed(() =>
 	getActivatableTriggerNodes(workflowDocumentStore.value.workflowTriggerNodes),
@@ -317,7 +343,21 @@ async function handlePublish() {
 					version-name-test-id="workflow-publish-version-name-input"
 					description-test-id="workflow-publish-description-input"
 					@submit="handlePublish"
-				/>
+				>
+					<template v-if="instanceAi" #descriptionOptions>
+						<N8nButton
+							icon="sparkles"
+							variant="ghost"
+							size="small"
+							:loading="generatingDescription"
+							:disabled="inputsDisabled"
+							data-test-id="workflow-publish-generate-description-button"
+							@click="generateDescriptionWithAi"
+						>
+							{{ i18n.baseText('workflows.publishModal.generateDescription.button') }}
+						</N8nButton>
+					</template>
+				</WorkflowVersionForm>
 				<div :class="$style.actions">
 					<N8nButton
 						variant="subtle"

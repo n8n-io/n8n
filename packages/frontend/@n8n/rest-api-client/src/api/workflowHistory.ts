@@ -1,4 +1,4 @@
-import type { PublishTimelineEvent } from '@n8n/api-types';
+import type { GeneratePublishDescriptionResponse, PublishTimelineEvent } from '@n8n/api-types';
 import type { IConnections, INode, IWorkflowGroup } from 'n8n-workflow';
 
 import type { IRestApiContext } from '../types';
@@ -87,7 +87,7 @@ export const getWorkflowVersionsByIds = async (
 	return data;
 };
 
-export type { PublishTimelineEvent } from '@n8n/api-types';
+export type { PublishTimelineEvent, GeneratePublishDescriptionResponse } from '@n8n/api-types';
 
 export const getPublishTimeline = async (
 	context: IRestApiContext,
@@ -96,6 +96,17 @@ export const getPublishTimeline = async (
 	const { data } = await get(
 		context.baseUrl,
 		`/workflow-history/workflow/${workflowId}/publish-timeline`,
+	);
+	return data;
+};
+
+export const generatePublishDescription = async (
+	context: IRestApiContext,
+	workflowId: string,
+): Promise<GeneratePublishDescriptionResponse> => {
+	const { data } = await post(
+		context.baseUrl,
+		`/workflow-history/workflow/${workflowId}/generate-description`,
 	);
 	return data;
 };

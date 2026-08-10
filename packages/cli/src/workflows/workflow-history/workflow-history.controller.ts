@@ -7,6 +7,7 @@ import { AuthenticatedRequest } from '@n8n/db';
 import { RestController, Get, Post, Query, Body, Patch, Param, Licensed } from '@n8n/decorators';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
 import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error';
 import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
 import { WorkflowHistoryRequest } from '@/requests';
@@ -72,6 +73,18 @@ export class WorkflowHistoryController {
 				throw new NotFoundError('Could not find workflow');
 			}
 			throw e;
+		}
+	}
+
+	@Post('/workflow/:workflowId/generate-description')
+	async generateDescription(req: WorkflowHistoryRequest.GenerateDescription) {
+		try {
+			return await this.historyService.generatePublishDescription(req.user, req.params.workflowId);
+		} catch (e) {
+			if (e instanceof SharedWorkflowNotFoundError) {
+				throw new NotFoundError('Could not find workflow');
+			}
+			throw new ServiceUnavailableError('Could not generate a publish description right now');
 		}
 	}
 

@@ -29,6 +29,7 @@ packages/**/.turbo
 **/reports/mutation/
 *.tsbuildinfo
 .stylelintcache
+.cache
 *.swp
 CHANGELOG-*.md
 *.mdx
