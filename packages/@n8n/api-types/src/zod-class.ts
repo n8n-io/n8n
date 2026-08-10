@@ -82,9 +82,6 @@ export const Z = {
 			static schema = schema;
 
 			constructor(data: Output) {
-				// Returning an object from a constructor overrides `this`, which is what makes `new`
-				// yield the real array. Assigning onto `this` instead (as the object-rooted `Z.class`
-				// does) would produce `{ 0: …, 1: … }` with no array methods or `length`.
 				return schema.parse(data);
 			}
 
