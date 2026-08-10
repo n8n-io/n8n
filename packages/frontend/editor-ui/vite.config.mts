@@ -14,7 +14,7 @@ import legacy from '@vitejs/plugin-legacy';
 import browserslist from 'browserslist';
 import { isLocaleFile, sendLocaleUpdate } from './vite/i18n-locales-hmr-helpers';
 import { nodePopularityPlugin } from './vite/vite-plugin-node-popularity.mjs';
-import { editorUiAliases } from './vite/aliases.mjs';
+import { editorUiAliases, resolveConditions } from './vite/aliases.mjs';
 
 const publicPath = process.env.VUE_APP_PUBLIC_PATH || '/';
 
@@ -158,7 +158,7 @@ export default mergeConfig(
 			BASE_PATH: `'${publicPath}'`,
 		},
 		plugins,
-		resolve: { alias },
+		resolve: { alias, conditions: resolveConditions },
 		base: publicPath,
 		envPrefix: ['VUE', 'N8N_ENV_FEAT'],
 		css: {

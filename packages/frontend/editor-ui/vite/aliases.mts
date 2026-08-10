@@ -1,12 +1,24 @@
 import { resolve } from 'path';
-import type { Alias } from 'vite';
+import { defaultClientConditions, type Alias } from 'vite';
+
+/**
+ * Export conditions editor-ui resolves with. `@n8n/tournament` declares an `n8n:source` condition
+ * pointing at its TypeScript source, and opting in here is what makes the browser graph reach that
+ * source instead of its CJS `dist` — which the dev server serves verbatim (the browser then fails
+ * to parse a named export out of it) and which costs the build ~397 kB in defeated tree-shaking.
+ * Resolution lives in that package's own `package.json`, so there is no list here to keep in sync.
+ *
+ * Spreading vite's defaults is mandatory: `conditions` replaces them rather than appending, so
+ * dropping the spread would silently change how every third-party package in the graph resolves.
+ */
+export const resolveConditions = ['n8n:source', ...defaultClientConditions];
 
 /**
  * Aliases that belong to editor-ui itself: its own `@/` root and the fixes for transitive
  * dependencies that misbehave in a browser graph. These packages are reached through
  * `n8n-workflow`, not imported by editor-ui directly.
  */
-export const appAliases = (editorUiDir: string, packagesDir: string): Alias[] => [
+export const appAliases = (editorUiDir: string): Alias[] => [
 	{ find: '@', replacement: resolve(editorUiDir, 'src') },
 	{ find: 'stream', replacement: 'stream-browserify' },
 	// Stub out @n8n/expression-runtime for browser build (it pulls in isolated-vm, a Node.js-only native module)
@@ -14,11 +26,6 @@ export const appAliases = (editorUiDir: string, packagesDir: string): Alias[] =>
 		find: '@n8n/expression-runtime',
 		replacement: resolve(editorUiDir, 'vite/expression-runtime-stub.ts'),
 	},
-	// `n8n-workflow`'s expression-sandboxing imports `astVisit` from @n8n/tournament, whose dist is
-	// CJS. Linked workspace packages skip optimizeDeps, so the dev server serves that file verbatim
-	// and the browser fails to parse a named export out of it; the build survives because rolldown
-	// interops CJS, but pays ~397 kB in defeated tree-shaking. Resolving to src avoids both.
-	{ find: '@n8n/tournament', replacement: resolve(packagesDir, '@n8n', 'tournament', 'src') },
 ];
 
 /**
@@ -89,7 +96,7 @@ export const vendorAliases = (editorUiDir: string): Alias[] => [
 ];
 
 export const editorUiAliases = (editorUiDir: string, packagesDir: string): Alias[] => [
-	...appAliases(editorUiDir, packagesDir),
+	...appAliases(editorUiDir),
 	...frontendSourceAliases(packagesDir),
 	...vendorAliases(editorUiDir),
 ];

@@ -1,9 +1,9 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
-import type { Alias } from 'vite';
+import { createServer, defaultClientConditions, type Alias } from 'vite';
 import { describe, expect, it } from 'vitest';
 
-import { editorUiAliases, sourcePackages } from './aliases.mjs';
+import { editorUiAliases, resolveConditions, sourcePackages } from './aliases.mjs';
 
 // vitest runs with the package root as cwd; `import.meta.url` is not a file URL under jsdom.
 const editorUiDir = process.cwd();
@@ -96,18 +96,6 @@ describe('editor-ui vite aliases', () => {
 		}
 	});
 
-	it('resolves @n8n/tournament from source', () => {
-		// Reached transitively via `n8n-workflow`, so it is not a declared dependency and is not in
-		// `sourcePackages`. Its dist is CJS: on `dist` the dev server fails to parse a named export
-		// out of it and the build loses ~397 kB to defeated tree-shaking.
-		expect(resolveSpecifier('@n8n/tournament', aliases)).toBe(
-			'packages/@n8n/tournament/src/index.ts',
-		);
-		expect(resolveSpecifier('@n8n/tournament/ast', aliases)).toBe(
-			'packages/@n8n/tournament/src/ast',
-		);
-	});
-
 	it('resolves a package and its subpaths independently of entry order', () => {
 		// An open-ended `^@n8n/chat(.+)$` also matches `@n8n/chat-hub/…`, so a list carrying both
 		// only resolves correctly while the more specific entry happens to come first.
@@ -115,5 +103,54 @@ describe('editor-ui vite aliases', () => {
 		expect(resolveSpecifier('@n8n/chat-hub/api', [...aliases].reverse())).toBe(
 			'packages/@n8n/chat-hub/src/api',
 		);
+	});
+});
+
+describe('editor-ui resolve conditions', () => {
+	// `@n8n/tournament` is reached transitively through `n8n-workflow`'s built ESM, so it is not a
+	// declared dependency of editor-ui and resolves relative to that file, not to editor-ui's root.
+	const importer = join(repoRoot, 'packages/workflow/dist/esm/extensions/expression-parser.js');
+
+	/** Real vite resolution — the same code path the dev server and the build take. */
+	const resolveThroughVite = async (conditions: string[]) => {
+		const server = await createServer({
+			configFile: false,
+			root: editorUiDir,
+			logLevel: 'silent',
+			server: { middlewareMode: true, ws: false },
+			resolve: { conditions },
+		});
+
+		try {
+			const resolved = await server.environments.client.pluginContainer.resolveId(
+				'@n8n/tournament',
+				importer,
+			);
+			return resolved && relative(repoRoot, resolved.id);
+		} finally {
+			await server.close();
+		}
+	};
+
+	it('resolves @n8n/tournament to src through the n8n:source condition', async () => {
+		expect(await resolveThroughVite(resolveConditions)).toBe(
+			'packages/@n8n/tournament/src/index.ts',
+		);
+	});
+
+	it('falls back to the CJS dist when the condition is absent', async () => {
+		// The negative control, and the reason this test exists: a wrong condition does not error,
+		// it silently lands on `dist` — where the dev server serves CJS the browser cannot parse a
+		// named export out of, and the build loses ~397 kB to defeated tree-shaking. Without this
+		// case, the assertion above would still pass if `n8n:source` stopped doing any work.
+		expect(await resolveThroughVite([...defaultClientConditions])).toBe(
+			'packages/@n8n/tournament/dist/index.js',
+		);
+	});
+
+	it('keeps vite defaults active alongside the custom condition', () => {
+		// `conditions` replaces vite's defaults instead of appending to them, so a missing spread
+		// would change third-party resolution across the whole graph rather than fail loudly.
+		expect(resolveConditions).toEqual(['n8n:source', ...defaultClientConditions]);
 	});
 });
