@@ -356,10 +356,10 @@ export class WorkflowValidationService {
 		const { allTriggersProvideExternalIdentity, allTriggersProvideN8nIdentity } = triggers;
 
 		if (workflowResolverId === this.dynamicCredentialsProxy.getSystemResolverId()) {
-			// System resolver: every trigger must establish the n8n user identity. Form and
-			// webhook are only listed while their respective OAuth2 flags are enabled —
-			// without them neither establishes an identity, so listing them would advertise
-			// a fix that doesn't work.
+			// System resolver: every trigger must establish the n8n user identity. The form
+			// trigger is only listed while the form OAuth2 flag is enabled — without it a
+			// form establishes no identity, so listing it would advertise a fix that
+			// doesn't work.
 			if (allTriggersProvideN8nIdentity) return undefined;
 
 			const triggersList = this.getN8nUserAuthTriggersList();
@@ -373,14 +373,14 @@ export class WorkflowValidationService {
 
 	/**
 	 * Describes which triggers the system resolver currently accepts, for the
-	 * publish-error copy. Manual, chat, MCP, and sub-workflow triggers always
-	 * qualify; form and webhook only join the list while their respective OAuth2
-	 * flags are enabled, mirroring `classifyTriggerIdentities`.
+	 * publish-error copy. Manual, chat, MCP, sub-workflow, and webhook triggers
+	 * always qualify; form only joins the list while the form OAuth2 flag is
+	 * enabled, mirroring `classifyTriggerIdentities`.
 	 */
 	private getN8nUserAuthTriggersList(): string {
-		const n8nUserAuthTriggers = isFormOAuth2Enabled() ? 'form or webhook' : 'webhook';
+		const formTrigger = isFormOAuth2Enabled() ? 'form or ' : '';
 
-		return `manual, chat, MCP, sub-workflow, and ${n8nUserAuthTriggers} triggers with n8n user authentication`;
+		return `manual, chat, MCP, sub-workflow, and ${formTrigger}webhook triggers with n8n user authentication`;
 	}
 
 	/** Collects the ids of all credentials referenced by enabled nodes. */
