@@ -1,0 +1,20 @@
+docs/superpowers/specs/2026-08-10-agent-builder-skill-lifecycle-design.md
+  s_0fa6ec0e54a067::t_961efbd12f5d29 1-56,59-66,71-94,97
+  s_0fa6ec0e54a067::t_a6f1264032f10d 57-58,67-70,95-96
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "caccd895d337b8662ef45b6325c4c0217c8c7d78",
+  "prompts": {},
+  "sessions": {
+    "s_0fa6ec0e54a067": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019feaef-e753-7822-a73f-a401a4d32bb6",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}
