@@ -231,17 +231,17 @@ const sizeClass = computed(() => sizes[props.size ?? 'medium']);
 	border: none;
 	background: transparent;
 	cursor: pointer;
-	color: var(--color--text--tint-1);
+	color: var(--icon-color);
 
 	&:hover:not(:disabled) {
-		color: var(--color--text--shade-1);
+		color: var(--icon-color--strong);
 		background-color: var(--background--hover);
 	}
 
 	&:disabled,
 	&[data-disabled] {
 		cursor: not-allowed;
-		color: var(--color--text--tint-2);
+		color: var(--icon-color--subtle);
 	}
 }
 
