@@ -37,6 +37,7 @@ export type ContextMenuAction =
 	| 'deselect_all'
 	| 'add_node'
 	| 'add_sticky'
+	| 'generate_sticky_note'
 	| 'change_color'
 	| 'open_sub_workflow'
 	| 'tidy_up'
@@ -329,6 +330,14 @@ export function useContextMenuItems(
 					divided: true,
 					label: i18n.baseText('contextMenu.focusAiOnSelected', i18nOptions),
 					shortcut: { altKey: true, keys: ['I'] },
+					disabled: isReadOnly.value,
+				},
+			!onlyStickies &&
+				instanceAi.value && {
+					id: 'generate_sticky_note',
+					divided: true,
+					icon: 'sparkles',
+					label: i18n.baseText('contextMenu.generateStickyNote', i18nOptions),
 					disabled: isReadOnly.value,
 				},
 		].filter(Boolean) as Item[];

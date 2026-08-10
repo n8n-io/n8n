@@ -26,7 +26,11 @@ import { i18n } from '@n8n/i18n';
 
 import { computed, ref } from 'vue';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import type { ExecutionRedactionQueryDto, WorkflowPublicationStatus } from '@n8n/api-types';
+import type {
+	ExecutionRedactionQueryDto,
+	GenerateStickyNoteResponse,
+	WorkflowPublicationStatus,
+} from '@n8n/api-types';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { updateCurrentUserSettings } from '@n8n/rest-api-client/api/users';
@@ -382,6 +386,20 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return updatedWorkflow;
 	}
 
+	async function generateStickyNoteContent(
+		id: string,
+		nodes: Array<Pick<INodeUi, 'name' | 'type' | 'disabled' | 'parameters'>>,
+	): Promise<string> {
+		const { content } = await makeRestApiRequest<GenerateStickyNoteResponse>(
+			rootStore.restApiContext,
+			'POST',
+			`/workflows/${id}/generate-sticky-note`,
+			{ nodes } as unknown as IDataObject,
+		);
+
+		return content;
+	}
+
 	async function fetchPublicationStatus(id: string): Promise<WorkflowPublicationStatus> {
 		return await makeRestApiRequest<WorkflowPublicationStatus>(
 			rootStore.restApiContext,
@@ -545,6 +563,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		updateWorkflow,
 		publishWorkflow,
 		fetchPublicationStatus,
+		generateStickyNoteContent,
 		deactivateWorkflow,
 		updateWorkflowSetting,
 		runWorkflow,

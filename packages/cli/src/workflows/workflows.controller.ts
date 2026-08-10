@@ -4,6 +4,7 @@ import {
 	CreateWorkflowDto,
 	DeactivateWorkflowDto,
 	ExecutionRedactionQueryDtoSchema,
+	GenerateStickyNoteDto,
 	ImportWorkflowFromUrlDto,
 	ManualRunDto,
 	TransferWorkflowBodyDto,
@@ -64,6 +65,7 @@ import { WorkflowCreationService } from './workflow-creation.service';
 import { createWorkflowEntityFromPayload } from './workflow-entity-mapper';
 import { WorkflowExecutionService } from './workflow-execution.service';
 import { WorkflowFinderService } from './workflow-finder.service';
+import { WorkflowStickyNoteService } from './workflow-sticky-note.service';
 import { WorkflowRequest } from './workflow.request';
 import { WorkflowService } from './workflow.service';
 import { EnterpriseWorkflowService } from './workflow.service.ee';
@@ -94,6 +96,7 @@ export class WorkflowsController {
 		private readonly outboundHttp: OutboundHttp,
 		private readonly workflowPublicationStatusService: WorkflowPublicationStatusService,
 		private readonly ownershipService: OwnershipService,
+		private readonly workflowStickyNoteService: WorkflowStickyNoteService,
 	) {}
 
 	@Post('/')
@@ -556,6 +559,16 @@ export class WorkflowsController {
 		}
 
 		return result;
+	}
+
+	@Post('/:workflowId/generate-sticky-note')
+	@ProjectScope('workflow:read')
+	async generateStickyNote(
+		req: AuthenticatedRequest<{ workflowId: string }>,
+		_res: unknown,
+		@Body body: GenerateStickyNoteDto,
+	) {
+		return await this.workflowStickyNoteService.generateContent(req.user, body.nodes);
 	}
 
 	@Licensed('feat:sharing')

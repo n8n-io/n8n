@@ -163,6 +163,7 @@ const emit = defineEmits<{
 	'open:sub-workflow': [nodeId: string];
 	'start-chat': [];
 	'extract-workflow': [ids: string[]];
+	'generate:sticky-note': [ids: string[]];
 	'save:workflow': [];
 }>();
 
@@ -1533,6 +1534,8 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[],
 			void chatPanelStore.open({ mode: 'builder' });
 			return;
 		}
+		case 'generate_sticky_note':
+			return emit('generate:sticky-note', nodeIds);
 	}
 }
 

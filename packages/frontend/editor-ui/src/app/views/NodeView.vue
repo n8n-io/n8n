@@ -104,8 +104,16 @@ import { sourceControlEventBus } from '@/features/integrations/sourceControl.ee/
 import { useTagsStore } from '@/features/shared/tags/tags.store';
 
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
-import { getBounds, getNodeViewTab } from '@/app/utils/nodeViewUtils';
+import {
+	getBounds,
+	getNodeViewTab,
+	getLeftMostNode,
+	getTopMostNode,
+	getNodesGroupSize,
+	snapPositionToGrid,
+} from '@/app/utils/nodeViewUtils';
 import { isChatNode } from '@/app/utils/aiUtils';
+import { isPresent } from '@/app/utils/typesUtils';
 import CanvasStopCurrentExecutionButton from '@/features/workflows/canvas/components/elements/buttons/CanvasStopCurrentExecutionButton.vue';
 import CanvasStopWaitingForWebhookButton from '@/features/workflows/canvas/components/elements/buttons/CanvasStopWaitingForWebhookButton.vue';
 import { nodeViewEventBus } from '@/app/event-bus';
@@ -1041,6 +1049,81 @@ function closeNodeCreator() {
 
 function onCreateSticky() {
 	void onAddNodesAndConnections({ nodes: [{ type: STICKY_NODE_TYPE }], connections: [] });
+}
+
+// Generated content is prose, not the short label the manual "add sticky"
+// default is sized for, so it gets a wider/taller minimum than
+// DEFAULT_STICKY_WIDTH/DEFAULT_STICKY_HEIGHT.
+const GENERATED_STICKY_NOTE_MIN_WIDTH = 320;
+const GENERATED_STICKY_NOTE_HEIGHT = 240;
+const GENERATED_STICKY_NOTE_GAP = 40;
+
+/**
+ * Places a new sticky note directly above the selection's bounding box,
+ * horizontally centered over it, and sized to span at least the selection's
+ * width (or a sensible minimum for a small selection).
+ */
+function computeStickyNotePositionAboveNodes(nodes: INodeUi[]): {
+	position: XYPosition;
+	width: number;
+} {
+	const leftMostNode = getLeftMostNode(nodes);
+	const topMostNode = getTopMostNode(nodes);
+	const [groupWidth] = getNodesGroupSize(nodes);
+	const width = Math.max(groupWidth, GENERATED_STICKY_NOTE_MIN_WIDTH);
+	const groupCenterX = leftMostNode.position[0] + groupWidth / 2;
+
+	const candidatePosition: XYPosition = [
+		groupCenterX - width / 2,
+		topMostNode.position[1] - GENERATED_STICKY_NOTE_HEIGHT - GENERATED_STICKY_NOTE_GAP,
+	];
+
+	// Skip getNewNodePosition's normal conflict-avoidance/viewport-clamp pass: it's
+	// tuned for dropping a single ~default-sized node near the cursor, and nudges
+	// conflicts down-and-right only. That's the wrong shape for a wide sticky whose
+	// position is already deliberately computed to sit clear above the selection.
+	const position = snapPositionToGrid(candidatePosition);
+
+	return { position, width };
+}
+
+async function onGenerateStickyNote(ids: string[]) {
+	const nodes = ids
+		.map((id) => workflowDocumentStore.value.getNodeById(id))
+		.filter(isPresent)
+		.filter((node) => node.type !== STICKY_NODE_TYPE);
+
+	if (nodes.length === 0) return;
+
+	canvasStore.startLoading(i18n.baseText('stickyNote.generate.loading'));
+	try {
+		const content = await workflowsStore.generateStickyNoteContent(
+			workflowId.value,
+			nodes.map((node) => ({
+				name: node.name,
+				type: node.type,
+				disabled: node.disabled,
+				parameters: node.parameters,
+			})),
+		);
+
+		const { position, width } = computeStickyNotePositionAboveNodes(nodes);
+
+		await onAddNodesAndConnections({
+			nodes: [
+				{
+					type: STICKY_NODE_TYPE,
+					position,
+					parameters: { content, height: GENERATED_STICKY_NOTE_HEIGHT, width },
+				},
+			],
+			connections: [],
+		});
+	} catch (error) {
+		toast.showError(error, i18n.baseText('stickyNote.generate.error'));
+	} finally {
+		canvasStore.stopLoading();
+	}
 }
 
 function onClickConnectionAdd(connection: Connection) {
@@ -2033,6 +2116,7 @@ onBeforeUnmount(() => {
 			@click:pane="onClickPane"
 			@create:node="onOpenNodeCreatorFromCanvas"
 			@create:sticky="onCreateSticky"
+			@generate:sticky-note="onGenerateStickyNote"
 			@delete:nodes="onDeleteNodes"
 			@update:nodes:enabled="onToggleNodesDisabled"
 			@update:nodes:pin="onPinNodes"
