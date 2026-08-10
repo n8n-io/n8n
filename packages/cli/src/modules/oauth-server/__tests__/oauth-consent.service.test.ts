@@ -6,6 +6,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { OAuthAuthorizationCodeService } from '../oauth-authorization-code.service';
 import { OAuthConsentService } from '../oauth-consent.service';
+import { OAuth2FlowService } from '../oauth-flow.service';
 import { OAuthClientRepository } from '../database/repositories/oauth-client.repository';
 import { OAuthSessionService } from '../oauth-session.service';
 import type { UserConsent } from '../database/entities/oauth-user-consent.entity';
@@ -36,6 +37,7 @@ let userConsentRepository: Mocked<UserConsentRepository>;
 let authorizationCodeService: Mocked<OAuthAuthorizationCodeService>;
 let protectedResourceRegistry: Mocked<ProtectedResourceRegistry>;
 let urlService: Mocked<UrlService>;
+let oauth2FlowService: Mocked<OAuth2FlowService>;
 let service: OAuthConsentService;
 
 describe('OAuthConsentService', () => {
@@ -49,6 +51,7 @@ describe('OAuthConsentService', () => {
 			ProtectedResourceRegistry,
 		) as Mocked<ProtectedResourceRegistry>;
 		urlService = mockInstance(UrlService) as Mocked<UrlService>;
+		oauth2FlowService = mockInstance(OAuth2FlowService) as Mocked<OAuth2FlowService>;
 
 		service = new OAuthConsentService(
 			logger,
@@ -58,6 +61,7 @@ describe('OAuthConsentService', () => {
 			authorizationCodeService,
 			protectedResourceRegistry,
 			urlService,
+			oauth2FlowService,
 		);
 	});
 
@@ -318,6 +322,111 @@ describe('OAuthConsentService', () => {
 			const result = await service.getConsentDetails(sessionToken, mock<User>({ id: 'user-1' }));
 
 			expect(result).toEqual({ ok: false, reason: 'resource_unavailable' });
+		});
+	});
+
+	// A first-party trigger (form, webhook) re-runs the whole flow on every visit, so
+	// an unchanged grant is re-approved without showing the screen — but only when a
+	// human navigated there, since the screen is what otherwise stops a scripted
+	// cross-site navigation from running a workflow as the logged-in user.
+	describe('getConsentDetails silent approval', () => {
+		const TRIGGER_URL = 'https://n8n.example.com/webhook/abc?method=GET';
+		const sessionPayload = {
+			clientId: TRIGGER_URL,
+			redirectUri: TRIGGER_URL,
+			codeChallenge: 'challenge',
+			state: 'flow-state-1',
+			resource: TRIGGER_URL,
+		};
+
+		const firstPartyResource = (scopes: string[] = []) =>
+			({
+				displayName: 'My Workflow',
+				scopes,
+				isFirstParty: true,
+				authorize: async () => true,
+			}) as unknown as ProtectedResource;
+
+		const consentGranted = (scope: string[] = [], ageMs = 0) =>
+			mock<UserConsent>({ scope, grantedAt: Date.now() - ageMs });
+
+		beforeEach(() => {
+			oauthSessionService.verifySession.mockReturnValue(sessionPayload);
+			oauthClientRepository.findOne.mockResolvedValue(
+				mock<OAuthClient>({ id: TRIGGER_URL, name: 'My Workflow' }),
+			);
+			protectedResourceRegistry.getByResourceUrl.mockResolvedValue(firstPartyResource());
+			oauth2FlowService.getNavigationIntent.mockResolvedValue('user-navigation');
+			userConsentRepository.findOneBy.mockResolvedValue(consentGranted());
+		});
+
+		const detailsFor = async () =>
+			await service.getConsentDetails('session-token', mock<User>({ id: 'user-1' }));
+
+		it('should approve silently when the same consent was already granted', async () => {
+			expect(await detailsFor()).toMatchObject({ ok: true, silentApproval: true });
+			expect(oauth2FlowService.getNavigationIntent).toHaveBeenCalledWith('flow-state-1');
+			expect(userConsentRepository.findOneBy).toHaveBeenCalledWith({
+				userId: 'user-1',
+				clientId: TRIGGER_URL,
+			});
+		});
+
+		it('should prompt when the flow was not started by a user navigation', async () => {
+			oauth2FlowService.getNavigationIntent.mockResolvedValue('unknown');
+
+			expect(await detailsFor()).not.toHaveProperty('silentApproval');
+		});
+
+		// An expired flow or a third-party client's own `state` resolves to no intent.
+		it('should prompt when the flow has no recorded intent', async () => {
+			oauth2FlowService.getNavigationIntent.mockResolvedValue(undefined);
+
+			expect(await detailsFor()).not.toHaveProperty('silentApproval');
+		});
+
+		it('should prompt when the resource is not first-party', async () => {
+			protectedResourceRegistry.getByResourceUrl.mockResolvedValue({
+				scopes: [],
+				authorize: async () => true,
+			} as unknown as ProtectedResource);
+
+			expect(await detailsFor()).not.toHaveProperty('silentApproval');
+			expect(oauth2FlowService.getNavigationIntent).not.toHaveBeenCalled();
+		});
+
+		it('should prompt on the first visit, when no consent exists yet', async () => {
+			userConsentRepository.findOneBy.mockResolvedValue(null);
+
+			expect(await detailsFor()).not.toHaveProperty('silentApproval');
+		});
+
+		it('should prompt when the grant is older than the silent-approval window', async () => {
+			userConsentRepository.findOneBy.mockResolvedValue(
+				consentGranted([], 31 * 24 * 60 * 60 * 1000),
+			);
+
+			expect(await detailsFor()).not.toHaveProperty('silentApproval');
+		});
+
+		it('should prompt when a scope is now grantable that was not granted before', async () => {
+			protectedResourceRegistry.getByResourceUrl.mockResolvedValue(
+				firstPartyResource(['workflow:read', 'workflow:write']),
+			);
+			userConsentRepository.findOneBy.mockResolvedValue(consentGranted(['workflow:read']));
+
+			expect(await detailsFor()).not.toHaveProperty('silentApproval');
+		});
+
+		it('should approve silently when every grantable scope was already granted', async () => {
+			protectedResourceRegistry.getByResourceUrl.mockResolvedValue(
+				firstPartyResource(['workflow:read']),
+			);
+			userConsentRepository.findOneBy.mockResolvedValue(
+				consentGranted(['workflow:read', 'workflow:write']),
+			);
+
+			expect(await detailsFor()).toMatchObject({ silentApproval: true });
 		});
 	});
 

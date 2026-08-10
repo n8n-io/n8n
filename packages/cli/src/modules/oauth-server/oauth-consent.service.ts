@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { Time } from '@n8n/constants';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
@@ -6,6 +7,7 @@ import { UserError } from 'n8n-workflow';
 import { OAuthClientRepository } from './database/repositories/oauth-client.repository';
 import { UserConsentRepository } from './database/repositories/oauth-user-consent.repository';
 import { OAuthAuthorizationCodeService } from './oauth-authorization-code.service';
+import { OAuth2FlowService } from './oauth-flow.service';
 import { OAuthSessionService, type OAuthSessionPayload } from './oauth-session.service';
 import { OAuthHelpers } from './oauth.helpers';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
@@ -29,9 +31,23 @@ type ConsentDetailsResult =
 			previousScopes?: string[];
 			/** Tool names each scope unlocks, shown per scope group in the picker. */
 			scopeTools?: Record<string, string[]>;
+			/**
+			 * The user already granted this exact consent and a human navigated here, so
+			 * the screen has nothing new to ask: the caller may approve without rendering
+			 * it. See {@link OAuthConsentService.mayApproveSilently}.
+			 */
+			silentApproval?: boolean;
 	  }
 	| { ok: false; reason: 'resource_unavailable' }
 	| { ok: false; reason: 'forbidden' };
+
+/**
+ * How long a consent keeps letting a first-party flow through without re-prompting.
+ * A grant on a first-party trigger is invisible in the connected-clients list (it
+ * filters to `isFirstParty: false`), so it must lapse on its own rather than
+ * becoming a permanent silent permission the user can't find.
+ */
+const SILENT_APPROVAL_MAX_AGE_MS = 30 * Time.days.toMilliseconds;
 
 /**
  * Manages the consent flow for the shared OAuth server.
@@ -47,6 +63,7 @@ export class OAuthConsentService {
 		private readonly authorizationCodeService: OAuthAuthorizationCodeService,
 		private readonly protectedResourceRegistry: ProtectedResourceRegistry,
 		private readonly urlService: UrlService,
+		private readonly oauth2FlowService: OAuth2FlowService,
 	) {}
 
 	/**
@@ -91,6 +108,11 @@ export class OAuthConsentService {
 					scopes,
 					previousScopes: await this.previousScopes(user.id, client.id, scopes),
 					scopeTools: resource.getScopeTools?.(),
+					// Only present when it applies, so a third-party client's payload — and the
+					// shape every existing caller asserts on — is untouched.
+					...((await this.mayApproveSilently(sessionPayload, user, resource, scopes)) && {
+						silentApproval: true,
+					}),
 				};
 			}
 
@@ -122,6 +144,53 @@ export class OAuthConsentService {
 	private grantableScopes(supportedScopes: string[], requestedScopes?: string[]): string[] {
 		if (!requestedScopes || requestedScopes.length === 0) return supportedScopes;
 		return supportedScopes.filter((scope) => requestedScopes.includes(scope));
+	}
+
+	/**
+	 * Whether this flow may complete without showing the consent screen.
+	 *
+	 * A first-party trigger (form, webhook) re-runs the whole authorization flow on
+	 * every visit, so without this the user re-approves the same thing on every
+	 * click. These resources also grant no scopes, which makes the screen a pure
+	 * "did you mean to do this?" interstitial rather than a permission grant — and
+	 * that question is worth asking once, not every time.
+	 *
+	 * All five conditions must hold:
+	 * 1. **First-party resource.** A registered third-party client always prompts.
+	 * 2. **A prior consent exists** for this (user, client).
+	 * 3. **Nothing new is being asked**: everything grantable now was granted then,
+	 *    so any future scope addition re-prompts on its own.
+	 * 4. **The grant is still fresh** ({@link SILENT_APPROVAL_MAX_AGE_MS}).
+	 * 5. **A human navigated here.** The consent screen is what currently stops a
+	 *    cross-site page from scripting a navigation to a trigger URL and running a
+	 *    workflow as whoever is logged in — `n8n-auth` is `SameSite=Lax`, so the
+	 *    session rides along on top-level cross-site GETs. Skipping the screen
+	 *    therefore requires the flow to have started from a real user navigation
+	 *    (see `classifyNavigationIntent`). Anything else — including a client that
+	 *    sends no fetch metadata — still gets the screen.
+	 */
+	private async mayApproveSilently(
+		sessionPayload: OAuthSessionPayload,
+		user: User,
+		resource: { isFirstParty?: boolean },
+		grantableScopes: string[],
+	): Promise<boolean> {
+		if (!resource.isFirstParty || !sessionPayload.state) return false;
+
+		const intent = await this.oauth2FlowService.getNavigationIntent(sessionPayload.state);
+		if (intent !== 'user-navigation') return false;
+
+		const consent = await this.userConsentRepository.findOneBy({
+			userId: user.id,
+			clientId: sessionPayload.clientId,
+		});
+		if (!consent) return false;
+
+		const granted = consent.scope ?? [];
+		if (!grantableScopes.every((scope) => granted.includes(scope))) return false;
+
+		// `grantedAt` is a bigint column, so it can surface as a string.
+		return Date.now() - Number(consent.grantedAt) <= SILENT_APPROVAL_MAX_AGE_MS;
 	}
 
 	/**

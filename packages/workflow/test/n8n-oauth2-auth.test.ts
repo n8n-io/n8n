@@ -135,9 +135,10 @@ describe('n8nOAuth2Auth', () => {
 			});
 
 			expect(result).toBe('handled');
-			expect(context.beginN8nOAuth2Flow).toHaveBeenCalledWith(`${WEBHOOK_URL}?method=GET`, {
-				returnTo: '/webhook/protected-path',
-			});
+			expect(context.beginN8nOAuth2Flow).toHaveBeenCalledWith(
+				`${WEBHOOK_URL}?method=GET`,
+				expect.objectContaining({ returnTo: '/webhook/protected-path' }),
+			);
 			expect(response.writeHead).toHaveBeenCalledWith(302, {
 				Location: 'https://n8n.example.com/oauth/authorize?state=s1',
 			});

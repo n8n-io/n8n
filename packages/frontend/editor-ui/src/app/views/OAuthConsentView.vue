@@ -90,17 +90,16 @@ watch(
 	{ immediate: true },
 );
 
-const handleAllow = async () => {
+const approve = async (scopes: string[] | undefined, silent: boolean) => {
 	try {
-		const response = await consentStore.approveConsent(
-			true,
-			hasScopes.value ? selectedScopes.value : undefined,
-		);
+		const response = await consentStore.approveConsent(true, scopes);
 		telemetry.track('User approved MCP consent', {
 			client_name: clientDetails.value?.clientName,
-			selected_scopes: selectedScopes.value,
-			selected_scopes_count: selectedScopes.value.length,
-			all_scopes_selected: selectedScopes.value.length === availableScopes.value.length,
+			selected_scopes: scopes ?? [],
+			selected_scopes_count: scopes?.length ?? 0,
+			all_scopes_selected: (scopes?.length ?? 0) === availableScopes.value.length,
+			// Re-approval of an unchanged grant, completed without showing this screen.
+			silent,
 		});
 		waitingForRedirect.value = true;
 		window.location.href = response.redirectUrl;
@@ -108,6 +107,9 @@ const handleAllow = async () => {
 		toast.showError(err, i18n.baseText('oauth.consentView.error.allow'));
 	}
 };
+
+const handleAllow = async () =>
+	await approve(hasScopes.value ? selectedScopes.value : undefined, false);
 
 const handleDeny = async () => {
 	try {
@@ -131,6 +133,17 @@ onMounted(async () => {
 	documentTitle.set(i18n.baseText('oauth.consentView.title'));
 	try {
 		await consentStore.fetchConsentDetails();
+
+		// The server decided this grant is a re-approval of something unchanged (only
+		// possible for n8n's own triggers), so asking again would be noise: complete the
+		// flow and never render the picker. Scopes come from the server's record of the
+		// earlier grant, not from `selectedScopes` — its watcher may not have flushed yet.
+		if (clientDetails.value?.silentApproval) {
+			waitingForRedirect.value = true;
+			await approve(hasScopes.value ? (clientDetails.value.previousScopes ?? []) : undefined, true);
+			return;
+		}
+
 		telemetry.track('User viewed MCP consent screen', {
 			client_name: clientDetails.value?.clientName,
 			available_scopes_count: availableScopes.value.length,
