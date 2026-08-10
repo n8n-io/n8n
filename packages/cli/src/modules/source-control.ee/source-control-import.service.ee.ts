@@ -1,4 +1,4 @@
-import type { SourceControlledFile } from '@n8n/api-types';
+import type { SourceControlledFile, WorkflowPublishBlockedDetails } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type {
 	FindOptionsWhere,
@@ -40,6 +40,7 @@ import path from 'path';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
+import { WorkflowPublishBlockedError } from '@/errors/response-errors/workflow-publish-blocked.error';
 import type { IWorkflowToImport } from '@/interfaces';
 import { DataTableColumn } from '@/modules/data-table/data-table-column.entity';
 import { DataTableColumnRepository } from '@/modules/data-table/data-table-column.repository';
@@ -54,6 +55,8 @@ import { TagService } from '@/services/tag.service';
 import { assertNever } from '@/utils';
 import { validateWorkflowNodeGroups, sanitizeNodeGroupDescriptions } from '@/workflow-helpers';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
+import { WorkflowMutationHooksProxy } from '@/workflows/workflow-mutation-hooks-proxy.service';
+import { WorkflowPublishGuardProxy } from '@/workflows/workflow-publish-guard-proxy.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
 import {
@@ -150,6 +153,8 @@ export class SourceControlImportService {
 		private readonly dataTableSizeValidator: DataTableSizeValidator,
 		private readonly activeWorkflowManager: ActiveWorkflowManager,
 		private readonly executionPersistence: ExecutionPersistence,
+		private readonly workflowPublishGuard: WorkflowPublishGuardProxy,
+		private readonly workflowMutationHooks: WorkflowMutationHooksProxy,
 	) {
 		this.gitFolder = path.join(instanceSettings.n8nFolder, SOURCE_CONTROL_GIT_FOLDER);
 		this.workflowExportFolder = path.join(this.gitFolder, SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER);
@@ -830,18 +835,26 @@ export class SourceControlImportService {
 			importedWorkflow.settings?.redactionPolicy,
 		);
 
-		const { shouldPublishAfterImport, publishingError } = await this.preparePublishStateForImport(
-			existingWorkflow,
-			importedWorkflow,
-			autoPublish,
-			userId,
-		);
+		const { shouldPublishAfterImport, publishingError, publishingErrorDetails } =
+			await this.preparePublishStateForImport(
+				existingWorkflow,
+				importedWorkflow,
+				autoPublish,
+				userId,
+			);
 
 		let finalPublishingError = publishingError;
+		let finalPublishingErrorDetails = publishingErrorDetails;
 
 		const parentFolderId = importedWorkflow.parentFolderId ?? '';
 
 		this.logger.debug(`Updating workflow id ${id ?? 'new'}`);
+
+		// The upsert below writes `isArchived` directly instead of going through
+		// `WorkflowService.archive()`, so detect the transition to run its
+		// side effects (e.g. closing open review requests) ourselves.
+		const archivedByPull =
+			!!existingWorkflow && !existingWorkflow.isArchived && !!importedWorkflow.isArchived;
 
 		const upsertResult = await this.workflowRepository.upsert(
 			{
@@ -854,6 +867,10 @@ export class SourceControlImportService {
 			throw new UnexpectedError('Failed to upsert workflow', {
 				extra: { workflowId: id ?? 'new' },
 			});
+		}
+
+		if (archivedByPull) {
+			await this.workflowMutationHooks.afterWorkflowArchived(id);
 		}
 
 		try {
@@ -886,6 +903,7 @@ export class SourceControlImportService {
 			const publishResult = await this.publishWorkflow(id, versionId, userId);
 			if (!publishResult.success) {
 				finalPublishingError = publishResult.error;
+				finalPublishingErrorDetails = publishResult.errorDetails;
 			}
 		}
 
@@ -893,6 +911,9 @@ export class SourceControlImportService {
 			id,
 			name: candidate.file,
 			publishingError: finalPublishingError,
+			...(finalPublishingErrorDetails && {
+				publishingErrorDetails: finalPublishingErrorDetails,
+			}),
 		};
 	}
 
@@ -960,7 +981,11 @@ export class SourceControlImportService {
 		workflowId: string,
 		versionId: string,
 		userId: string,
-	): Promise<{ success: boolean; error?: string }> {
+	): Promise<{
+		success: boolean;
+		error?: string;
+		errorDetails?: WorkflowPublishBlockedDetails;
+	}> {
 		const user = await this.userRepository.findOne({ where: { id: userId }, relations: ['role'] });
 		if (!user) {
 			const errorMessage = `User ${userId} not found, cannot publish workflow ${workflowId}`;
@@ -977,7 +1002,11 @@ export class SourceControlImportService {
 		} catch (e) {
 			const error = ensureError(e);
 			this.logger.error(`Failed to publish workflow ${workflowId}`, { error });
-			return { success: false, error: error.message };
+			return {
+				success: false,
+				error: error.message,
+				errorDetails: e instanceof WorkflowPublishBlockedError ? e.details : undefined,
+			};
 		}
 	}
 
@@ -1772,13 +1801,15 @@ export class SourceControlImportService {
 				select: ['id'],
 				where: { parentFolder: { id: In(folderIds) } },
 			});
-			await this.deactivateWorkflowsAndHardDeleteExecutions(
+			const cascadedWorkflowIds = await this.deactivateWorkflowsAndHardDeleteExecutions(
 				workflows.map((workflow) => workflow.id),
 			);
 
 			await this.folderRepository.delete({
 				id: In(candidateIds),
 			});
+
+			await this.sweepAfterWorkflowCascade(cascadedWorkflowIds);
 		} catch (error) {
 			throw this.deletionError('folder', candidates, error);
 		}
@@ -1799,13 +1830,15 @@ export class SourceControlImportService {
 				select: ['workflowId'],
 				where: { projectId: In(candidateIds), role: 'workflow:owner' },
 			});
-			await this.deactivateWorkflowsAndHardDeleteExecutions(
+			const cascadedWorkflowIds = await this.deactivateWorkflowsAndHardDeleteExecutions(
 				ownedWorkflows.map((sw) => sw.workflowId),
 			);
 
 			await this.projectRepository.delete({
 				id: In(candidateIds),
 			});
+
+			await this.sweepAfterWorkflowCascade(cascadedWorkflowIds);
 		} catch (error) {
 			throw this.deletionError('project', candidates, error);
 		}
@@ -1822,29 +1855,57 @@ export class SourceControlImportService {
 	 * pulling user holds `workflow:delete` on, and the pull already ran it for
 	 * those (see `deleteWorkflowsNotInWorkfolder`). Any workflow still standing
 	 * was skipped by that permission check, yet the FK cascade below deletes it
-	 * regardless — so we do the physical cleanup directly beforehand. Deletion
-	 * hooks (`workflow.delete`/`workflow.afterDelete`) and the `workflow-deleted`
-	 * event don't fire for these workflows — a pre-existing gap for any
-	 * cascade-deleted workflow.
+	 * regardless — so we do the physical cleanup directly beforehand. The
+	 * `beforeWorkflowDeleted` mutation hook fires here so modules can run their
+	 * pre-delete side effects (e.g. closing open review requests), and the
+	 * caller fires `afterWorkflowsDeleted` once the cascade has run (see
+	 * {@link sweepAfterWorkflowCascade}) — but external hooks
+	 * (`workflow.delete`/`workflow.afterDelete`) and the `workflow-deleted`
+	 * event still don't fire, a pre-existing gap for any cascade-deleted
+	 * workflow.
 	 *
 	 * REVIEW(question): should we instead extract the permission-free part of
 	 * `WorkflowService.delete` (deactivate + drain + delete row + hooks/events)
-	 * into an internal method and call it here? That would restore hook/event
-	 * parity, at the cost of refactoring a hot service for this edge path.
+	 * into an internal method and call it here? That would restore full
+	 * hook/event parity, at the cost of refactoring a hot service for this
+	 * edge path.
 	 */
 	private async deactivateWorkflowsAndHardDeleteExecutions(workflowIds: string[]) {
+		const workflows: WorkflowEntity[] = [];
 		for (const workflowId of workflowIds) {
 			const workflow = await this.workflowRepository.findOne({
 				select: ['id', 'active'],
 				where: { id: workflowId },
 			});
-			if (!workflow) continue;
+			if (workflow) workflows.push(workflow);
+		}
 
+		// The hook may throw to abort the deletion, so it runs for every workflow
+		// before any destructive teardown — a rejection halfway through the batch
+		// must not leave earlier workflows deactivated with their executions gone.
+		for (const workflow of workflows) {
+			await this.workflowMutationHooks.beforeWorkflowDeleted(workflow.id);
+		}
+
+		for (const workflow of workflows) {
 			if (workflow.active) {
 				await this.activeWorkflowManager.remove(workflow.id);
 			}
 			await this.executionPersistence.hardDeleteByWorkflowId(workflow.id);
 		}
+
+		return workflows.map((workflow) => workflow.id);
+	}
+
+	/**
+	 * Fire `afterWorkflowsDeleted` once the folder/project row delete has
+	 * cascaded the given workflows away, mirroring `WorkflowService.delete`:
+	 * the sweep behind the hook closes review requests opened after the
+	 * pre-delete hooks ran and now left without a workflow.
+	 */
+	private async sweepAfterWorkflowCascade(cascadedWorkflowIds: string[]) {
+		if (cascadedWorkflowIds.length === 0) return;
+		await this.workflowMutationHooks.afterWorkflowsDeleted(cascadedWorkflowIds);
 	}
 
 	/** Contextual error for a failed deletion during pull, so the operator learns which resource to look at. */
@@ -2034,7 +2095,11 @@ export class SourceControlImportService {
 		importedWorkflow: IWorkflowToImport,
 		autoPublish: AutoPublishMode,
 		userId: string,
-	): Promise<{ shouldPublishAfterImport: boolean; publishingError?: string }> {
+	): Promise<{
+		shouldPublishAfterImport: boolean;
+		publishingError?: string;
+		publishingErrorDetails?: WorkflowPublishBlockedDetails;
+	}> {
 		const shouldAutoPublishRemote = this.shouldAutoPublishWorkflow(
 			existingWorkflow,
 			importedWorkflow,
@@ -2052,7 +2117,19 @@ export class SourceControlImportService {
 
 		let unpublishedLocal = false;
 		let publishingError: string | undefined;
-		if (mustUnpublishLocal && existingWorkflow) {
+		let publishingErrorDetails: WorkflowPublishBlockedDetails | undefined;
+		if (mustUnpublishLocal && shouldAutoPublishRemote && existingWorkflow) {
+			try {
+				await this.workflowPublishGuard.assertCanPublish(existingWorkflow.id);
+			} catch (error) {
+				if (!(error instanceof WorkflowPublishBlockedError)) throw error;
+
+				publishingError = error.message;
+				publishingErrorDetails = error.details;
+			}
+		}
+
+		if (mustUnpublishLocal && existingWorkflow && !publishingErrorDetails) {
 			unpublishedLocal = await this.unpublishWorkflow(existingWorkflow.id, userId);
 			if (!unpublishedLocal) {
 				publishingError = 'Failed to unpublish workflow before import';
@@ -2060,7 +2137,9 @@ export class SourceControlImportService {
 		}
 
 		const shouldPublishAfterImport =
-			shouldAutoPublishRemote && (!mustUnpublishLocal || unpublishedLocal);
+			!publishingErrorDetails &&
+			shouldAutoPublishRemote &&
+			(!mustUnpublishLocal || unpublishedLocal);
 
 		this.resolvePublishedStatus(
 			importedWorkflow,
@@ -2069,7 +2148,7 @@ export class SourceControlImportService {
 			unpublishedLocal,
 		);
 
-		return { shouldPublishAfterImport, publishingError };
+		return { shouldPublishAfterImport, publishingError, publishingErrorDetails };
 	}
 
 	/**

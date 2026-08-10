@@ -1,12 +1,12 @@
 <script lang="ts" setup>
 import TextWithHighlights from './TextWithHighlights.vue';
-import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
+import { type IconName } from '@n8n/design-system';
 import { saveAs } from 'file-saver';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { BINARY_DATA_VIEW_MODAL_KEY } from '@/app/constants';
 import type { BinaryMetadata } from '@n8n/design-system';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { getBinaryDataFileName } from '@/app/utils/fileUtils';
 
@@ -247,6 +247,8 @@ const emit = defineEmits<{
 	font-size: var(--font-size--2xs);
 	margin-left: var(--spacing--2xs);
 	word-break: break-word;
+	/** Fixes DS-538 where text was optically un-aligned from baseline **/
+	transform: translateY(-1px);
 }
 
 .collapse-icon {

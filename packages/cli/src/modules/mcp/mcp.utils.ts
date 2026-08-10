@@ -3,18 +3,53 @@ import { isRecord } from '@n8n/utils/is-record';
 import type { Request } from 'express';
 import type { INode } from 'n8n-workflow';
 
-import { SUPPORTED_MCP_TRIGGERS, SUPPORTED_PRODUCTION_MCP_TRIGGERS } from './mcp.constants';
+import {
+	MCP_CLIENT_INFO_META_KEY,
+	MCP_PROTOCOL_VERSION_META_KEY,
+	SUPPORTED_MCP_TRIGGERS,
+	SUPPORTED_PRODUCTION_MCP_TRIGGERS,
+} from './mcp.constants';
 import { isJSONRPCRequest } from './mcp.typeguards';
-import type { McpClientInfo } from './mcp.types';
+import type { JSONRPCRequest, McpClientInfo } from './mcp.types';
 
 type McpExecutionMode = 'manual' | 'production';
 
-export const getClientInfo = (req: Request | AuthenticatedRequest) => {
-	let clientInfo: McpClientInfo | undefined;
-	if (isJSONRPCRequest(req.body) && req.body.params?.clientInfo) {
-		clientInfo = req.body.params.clientInfo;
+/** Reads a single key off a request's `params._meta` envelope, if present. */
+const getRequestMetaValue = (params: JSONRPCRequest['params'], key: string): unknown => {
+	const meta = params?._meta;
+	return isRecord(meta) ? meta[key] : undefined;
+};
+
+/**
+ * Extracts the client's self-identification from a request. The 2026-07-28
+ * revision moves this into the per-request `_meta` envelope (sent on every
+ * request), so read that first; fall back to the 2025-era `initialize` params
+ * location so legacy clients on the stateless fallback are still identified.
+ */
+export const getClientInfo = (req: Request | AuthenticatedRequest): McpClientInfo | undefined => {
+	if (!isJSONRPCRequest(req.body)) return undefined;
+	const params = req.body.params;
+
+	const metaClientInfo = getRequestMetaValue(params, MCP_CLIENT_INFO_META_KEY);
+	if (isRecord(metaClientInfo)) {
+		return {
+			name: typeof metaClientInfo.name === 'string' ? metaClientInfo.name : undefined,
+			version: typeof metaClientInfo.version === 'string' ? metaClientInfo.version : undefined,
+		};
 	}
-	return clientInfo;
+
+	return params?.clientInfo;
+};
+
+/**
+ * Reads the protocol version a client declares in its per-request `_meta`
+ * envelope (2026-07-28). Absent for 2025-era clients, which carried it in the
+ * `initialize` handshake the new revision removed.
+ */
+export const getProtocolVersion = (req: Request | AuthenticatedRequest): string | undefined => {
+	if (!isJSONRPCRequest(req.body)) return undefined;
+	const version = getRequestMetaValue(req.body.params, MCP_PROTOCOL_VERSION_META_KEY);
+	return typeof version === 'string' ? version : undefined;
 };
 
 /**

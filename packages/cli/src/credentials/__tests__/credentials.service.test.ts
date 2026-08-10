@@ -14,6 +14,7 @@ import type {
 import { CredentialsEntity, DbLock, GLOBAL_OWNER_ROLE, GLOBAL_MEMBER_ROLE } from '@n8n/db';
 import type { EntityManager } from '@n8n/typeorm';
 import { CREDENTIAL_ERRORS, CredentialDataError, Credentials, type ErrorReporter } from 'n8n-core';
+import { OAuth2Api } from 'n8n-nodes-base/credentials/OAuth2Api.credentials';
 import {
 	CREDENTIAL_BLANKING_VALUE,
 	CREDENTIAL_EMPTY_VALUE,
@@ -36,6 +37,10 @@ import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
 import type { ExternalHooks } from '@/external-hooks';
 import type { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
 import type { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee';
+import {
+	DCR_MANAGED_CREDENTIAL_FIELDS,
+	type DcrManagedCredentialField,
+} from '@/oauth/dcr-managed-fields';
 import * as checkAccess from '@/permissions.ee/check-access';
 import type { CredentialsTester } from '@/services/credentials-tester.service';
 import type { OwnershipService } from '@/services/ownership.service';
@@ -201,6 +206,105 @@ describe('CredentialsService', () => {
 			// Must propagate the failure rather than overwrite the credential with empty data.
 			await expect(service.clearOauthTokenData(credential)).rejects.toThrow(decryptionError);
 			expect(updateSpy).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('prepareUpdateData with dynamic client registration', () => {
+		const CREDENTIAL_TYPE = 'linearMcpOAuth2Api';
+
+		const DCR_FIELDS: Record<DcrManagedCredentialField, string | boolean> = {
+			clientId: 'dcr-client-id',
+			clientSecret: 'dcr-client-secret',
+			authUrl: 'https://linear.app/oauth/authorize',
+			accessTokenUrl: 'https://linear.app/oauth/token',
+			grantType: 'authorizationCode',
+			authentication: 'header',
+			usePkce: true,
+		};
+
+		const oauthTokenData = { access_token: 'stale-token', refresh_token: 'refresh-token' };
+
+		/** Merged properties of an `oAuth2Api` descendant, with DCR on or off. */
+		function credentialProperties(useDynamicClientRegistration: boolean): INodeProperties[] {
+			return new OAuth2Api().properties.map((property) =>
+				property.name === 'useDynamicClientRegistration'
+					? { ...property, default: useDynamicClientRegistration }
+					: property,
+			);
+		}
+
+		function storedCredential(data: ICredentialDataDecryptedObject) {
+			vi.spyOn(Credentials.prototype, 'getData').mockResolvedValue(data);
+			return mock<CredentialsEntity>({
+				id: 'cred-1',
+				name: 'Linear',
+				type: CREDENTIAL_TYPE,
+				usageScope: 'project',
+				shared: [{ role: 'credential:owner', projectId: 'project-1' }],
+			});
+		}
+
+		beforeEach(() => {
+			credentialTypes.getByName.mockReturnValue(
+				mock<ICredentialType>({ extends: [], properties: [] }),
+			);
+			credentialsRepository.create.mockImplementation(
+				(data) => Object.assign(new CredentialsEntity(), data) as CredentialsEntity,
+			);
+			credentialsHelper.getCredentialsProperties.mockReturnValue(credentialProperties(true));
+		});
+
+		it('keeps the negotiated client fields, which the frontend never sends back', async () => {
+			const credential = storedCredential({ ...DCR_FIELDS, oauthTokenData });
+
+			const prepared = await service.prepareUpdateData(
+				ownerUser,
+				{ name: 'Linear', type: CREDENTIAL_TYPE, data: { scope: 'read write' } },
+				credential,
+			);
+
+			expect(prepared.data).toMatchObject(DCR_FIELDS);
+		});
+
+		it('drops them along with the token when the caller clears it', async () => {
+			const credential = storedCredential({ ...DCR_FIELDS, oauthTokenData });
+
+			const prepared = await service.prepareUpdateData(
+				ownerUser,
+				{ name: 'Linear', type: CREDENTIAL_TYPE, data: {} },
+				credential,
+				{ clearOauthTokenData: true },
+			);
+
+			const preparedData = prepared.data as unknown as ICredentialDataDecryptedObject;
+			expect(preparedData.oauthTokenData).toBeUndefined();
+			for (const field of DCR_MANAGED_CREDENTIAL_FIELDS) {
+				expect(preparedData[field]).toBeUndefined();
+			}
+		});
+
+		it('lets the user clear a displayed field by returning it to its default', async () => {
+			credentialsHelper.getCredentialsProperties.mockReturnValue(credentialProperties(false));
+			const credential = storedCredential({
+				clientId: 'user-client-id',
+				clientSecret: 'user-client-secret',
+				// Switching this back to the default 'header' means the frontend omits it.
+				authentication: 'body',
+				oauthTokenData,
+			});
+
+			const prepared = await service.prepareUpdateData(
+				ownerUser,
+				{
+					name: 'Discord',
+					type: CREDENTIAL_TYPE,
+					data: { clientId: 'user-client-id', clientSecret: 'user-client-secret' },
+				},
+				credential,
+			);
+
+			const preparedData = prepared.data as unknown as ICredentialDataDecryptedObject;
+			expect(preparedData.authentication).toBeUndefined();
 		});
 	});
 
@@ -668,6 +772,19 @@ describe('CredentialsService', () => {
 				);
 
 				expect(result.json).toEqual(JSON.stringify({ port: '***', timeout: '***' }, null, 2));
+			});
+
+			it('should keep expression leaf values visible', () => {
+				credentialTypes.getByName.calledWith('httpCustomAuth').mockReturnValueOnce(makeCredType());
+
+				const result = service.redact(
+					{ json: '{"token": "={{ $secrets.vault.replicate }}", "key": "abc"}' },
+					makeHttpCustomAuthCredential(),
+				);
+
+				expect(result.json).toEqual(
+					JSON.stringify({ token: '={{ $secrets.vault.replicate }}', key: '***' }, null, 2),
+				);
 			});
 
 			it('should redact boolean leaf values', () => {
@@ -3819,6 +3936,93 @@ describe('CredentialsService', () => {
 			await expect(
 				service.checkCredentialData('myOAuth1Cred', data, ownerUser, testProjectId),
 			).resolves.toBeUndefined();
+		});
+	});
+
+	describe('probeById', () => {
+		const storedCredential = mock<CredentialsEntity>({
+			id: 'cred-id',
+			name: 'Templated cred',
+			type: 'httpTemplatedCustomAuth',
+		});
+
+		const mockDecryptedData = (data: ICredentialDataDecryptedObject) =>
+			vi.spyOn(service, 'decrypt').mockResolvedValue(data);
+
+		it('should throw when the credential is not accessible to the user', async () => {
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(null);
+
+			await expect(service.probeById(memberUser, 'cred-id')).rejects.toThrow(
+				CredentialNotFoundError,
+			);
+			expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith(
+				'cred-id',
+				memberUser,
+				['credential:read'],
+			);
+		});
+
+		it('should throw when the credential has no test URL', async () => {
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(storedCredential);
+			mockDecryptedData({ template: '{}' });
+
+			await expect(service.probeById(ownerUser, 'cred-id')).rejects.toThrow(
+				'The credential has no test URL to probe',
+			);
+			expect(credentialsTester.probeCredentialAuth).not.toHaveBeenCalled();
+		});
+
+		it('should refuse an expression test URL instead of resolving it', async () => {
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(storedCredential);
+			mockDecryptedData({ testUrl: '={{ $vars.url }}' });
+
+			await expect(service.probeById(ownerUser, 'cred-id')).rejects.toThrow(
+				'The credential has no test URL to probe',
+			);
+			expect(credentialsTester.probeCredentialAuth).not.toHaveBeenCalled();
+		});
+
+		it('should probe the persisted test URL with parsed accepted status codes', async () => {
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(storedCredential);
+			const data: ICredentialDataDecryptedObject = {
+				testUrl: 'https://api.example.com/me',
+				acceptedStatusCodes: '[401]',
+			};
+			mockDecryptedData(data);
+			const verdict = {
+				status: 'OK' as const,
+				message: 'Connection successful!',
+				outcome: 'accepted' as const,
+			};
+			credentialsTester.probeCredentialAuth.mockResolvedValue(verdict);
+
+			await expect(service.probeById(ownerUser, 'cred-id')).resolves.toEqual(verdict);
+			expect(credentialsTester.probeCredentialAuth).toHaveBeenCalledWith(
+				ownerUser.id,
+				'httpTemplatedCustomAuth',
+				{ id: 'cred-id', name: 'Templated cred', type: 'httpTemplatedCustomAuth', data },
+				'https://api.example.com/me',
+				{ acceptedStatusCodes: [401] },
+			);
+		});
+
+		it('should ignore malformed accepted status codes', async () => {
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(storedCredential);
+			mockDecryptedData({ testUrl: 'https://api.example.com/me', acceptedStatusCodes: 'nope' });
+			credentialsTester.probeCredentialAuth.mockResolvedValue({
+				status: 'OK',
+				message: 'Connection successful!',
+				outcome: 'accepted',
+			});
+
+			await service.probeById(ownerUser, 'cred-id');
+			expect(credentialsTester.probeCredentialAuth).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.anything(),
+				expect.anything(),
+				expect.anything(),
+				{ acceptedStatusCodes: undefined },
+			);
 		});
 	});
 

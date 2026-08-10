@@ -22,6 +22,7 @@ import type {
 import {
 	buildParameterizedConnString,
 	connectMongoClient,
+	parseAndResolveQueryParameters,
 	prepareFields,
 	prepareItems,
 	serializeMongoItems,
@@ -128,8 +129,11 @@ export class MongoDb implements INodeType {
 			if (operation === 'aggregate') {
 				for (let i = 0; i < itemsLength; i++) {
 					try {
-						const queryParameter = JSON.parse(
+						const queryParameter = parseAndResolveQueryParameters(
 							this.getNodeParameter('query', i) as string,
+							this.getNodeParameter('queryParameters', i, '[]'),
+							node,
+							i,
 						) as IDataObject;
 
 						if (queryParameter._id && typeof queryParameter._id === 'string') {
@@ -159,9 +163,15 @@ export class MongoDb implements INodeType {
 			if (operation === 'delete') {
 				for (let i = 0; i < itemsLength; i++) {
 					try {
+						const queryParameter = parseAndResolveQueryParameters(
+							this.getNodeParameter('query', i) as string,
+							this.getNodeParameter('queryParameters', i, '[]'),
+							node,
+							i,
+						) as Document;
 						const { deletedCount } = await mdb
 							.collection(this.getNodeParameter('collection', i) as string)
-							.deleteMany(JSON.parse(this.getNodeParameter('query', i) as string) as Document);
+							.deleteMany(queryParameter);
 
 						returnData.push({
 							json: { deletedCount },
@@ -183,8 +193,11 @@ export class MongoDb implements INodeType {
 			if (operation === 'find') {
 				for (let i = 0; i < itemsLength; i++) {
 					try {
-						const queryParameter = JSON.parse(
+						const queryParameter = parseAndResolveQueryParameters(
 							this.getNodeParameter('query', i) as string,
+							this.getNodeParameter('queryParameters', i, '[]'),
+							node,
+							i,
 						) as IDataObject;
 
 						if (queryParameter._id && typeof queryParameter._id === 'string') {

@@ -2,12 +2,23 @@ import { LicenseState } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
+import { UnexpectedError } from 'n8n-workflow';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { ProjectService } from '@/services/project.service.ee';
 
-import type { PreparedProject, ProjectPlanItem } from './project-import.types';
-import type { ImportedProjectSummary } from '../../n8n-packages.types';
+import { decideMatchedProject } from './project-conflict-policy';
+import type {
+	PreparedProject,
+	ProjectImportPlan,
+	ProjectPlanFields,
+	ProjectPlanItem,
+} from './project-import.types';
+import type {
+	ImportedProjectSummary,
+	ProjectConflict,
+	ProjectConflictPolicy,
+} from '../../n8n-packages.types';
 
 @Service()
 export class ProjectImporter {
@@ -16,8 +27,14 @@ export class ProjectImporter {
 		private readonly licenseState: LicenseState,
 	) {}
 
-	async plan(user: User, projects: PreparedProject[]): Promise<ProjectPlanItem[]> {
+	async plan(
+		user: User,
+		projects: PreparedProject[],
+		policy: ProjectConflictPolicy,
+	): Promise<ProjectImportPlan> {
 		const items: ProjectPlanItem[] = [];
+		const conflicts: ProjectConflict[] = [];
+		const decision = decideMatchedProject(policy);
 
 		for (const project of projects) {
 			const existing = await this.projectService.findProject(project.sourceProjectId);
@@ -29,6 +46,7 @@ export class ProjectImporter {
 						`Cannot import project "${project.name}": its id belongs to a non-team project on this instance.`,
 					);
 				}
+				// Required for `merge` too: the package's contents are still written into the project.
 				const authorized = await this.projectService.getProjectWithScope(user, existing.id, [
 					'project:update',
 				]);
@@ -37,49 +55,86 @@ export class ProjectImporter {
 						`You do not have permission to update the existing project "${project.name}".`,
 					);
 				}
-				items.push({ action: 'update', ...toFields(project) });
+
+				if (decision.blocked) {
+					conflicts.push({
+						kind: 'fail-policy',
+						sourceProjectId: project.sourceProjectId,
+						name: project.name,
+					});
+					continue;
+				}
+
+				items.push(
+					decision.action === 'update'
+						? { action: 'update', ...toFields(project) }
+						: { action: 'skip', existingName: existing.name, ...toFields(project) },
+				);
 			} else {
 				this.assertCanCreateProjects(user);
 				items.push({ action: 'create', ...toFields(project) });
 			}
 		}
 
-		return items;
+		return { items, conflicts };
 	}
 
 	async apply(user: User, items: ProjectPlanItem[]): Promise<ImportedProjectSummary[]> {
 		const summaries: ImportedProjectSummary[] = [];
 
 		for (const item of items) {
-			if (item.action === 'create') {
-				const project = await this.projectService.createTeamProject(
-					user,
-					{ name: item.name, icon: item.icon },
-					{
-						id: item.sourceProjectId,
-						description: item.description ?? null,
+			switch (item.action) {
+				case 'skip':
+					// `merge`: the existing project is left untouched; only its contents come in.
+					summaries.push({
+						sourceProjectId: item.sourceProjectId,
+						localId: item.sourceProjectId,
+						name: item.existingName,
+						status: 'skipped',
+					});
+					break;
+
+				case 'create': {
+					const project = await this.projectService.createTeamProject(
+						user,
+						{ name: item.name, icon: item.icon },
+						{
+							id: item.sourceProjectId,
+							description: item.description ?? null,
+							customTelemetryTags: item.customTelemetryTags,
+						},
+					);
+					summaries.push({
+						sourceProjectId: item.sourceProjectId,
+						localId: project.id,
+						name: project.name,
+						status: 'created',
+					});
+					break;
+				}
+
+				case 'update':
+					await this.projectService.updateProject(item.sourceProjectId, {
+						name: item.name,
+						icon: item.icon,
+						description: item.description,
 						customTelemetryTags: item.customTelemetryTags,
-					},
-				);
-				summaries.push({
-					sourceProjectId: item.sourceProjectId,
-					localId: project.id,
-					name: project.name,
-					status: 'created',
-				});
-			} else {
-				await this.projectService.updateProject(item.sourceProjectId, {
-					name: item.name,
-					icon: item.icon,
-					description: item.description,
-					customTelemetryTags: item.customTelemetryTags,
-				});
-				summaries.push({
-					sourceProjectId: item.sourceProjectId,
-					localId: item.sourceProjectId,
-					name: item.name,
-					status: 'updated',
-				});
+					});
+					summaries.push({
+						sourceProjectId: item.sourceProjectId,
+						localId: item.sourceProjectId,
+						name: item.name,
+						status: 'updated',
+					});
+					break;
+
+				default: {
+					// A new action must decide for itself whether it writes; never fall into `update`.
+					const unhandled: never = item;
+					throw new UnexpectedError(
+						`Unhandled project import action: ${JSON.stringify(unhandled)}`,
+					);
+				}
 			}
 		}
 
@@ -98,7 +153,7 @@ export class ProjectImporter {
 	}
 }
 
-function toFields(project: PreparedProject): Omit<ProjectPlanItem, 'action'> {
+function toFields(project: PreparedProject): ProjectPlanFields {
 	return {
 		sourceProjectId: project.sourceProjectId,
 		name: project.name,

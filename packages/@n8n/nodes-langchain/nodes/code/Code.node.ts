@@ -1,9 +1,16 @@
 import type { Tool } from '@langchain/core/tools';
-import { makeResolverFromLegacyOptions } from 'vm2';
+
+import { logWrapper } from '@n8n/ai-utilities';
 import { JavaScriptSandbox } from 'n8n-nodes-base/dist/nodes/Code/JavaScriptSandbox';
 import { getSandboxContext } from 'n8n-nodes-base/dist/nodes/Code/Sandbox';
 import { standardizeOutput } from 'n8n-nodes-base/dist/nodes/Code/utils';
-import { NodeOperationError, NodeConnectionTypes, LOG_LEVELS } from 'n8n-workflow';
+import {
+	NodeOperationError,
+	NodeConnectionTypes,
+	LOG_LEVELS,
+	CONSOLE_OUTPUT_REDACTED_MESSAGE,
+} from 'n8n-workflow';
+import { makeResolverFromLegacyOptions } from 'vm2';
 import type {
 	IExecuteFunctions,
 	INodeExecutionData,
@@ -16,8 +23,6 @@ import type {
 } from 'n8n-workflow';
 
 // TODO: Add support for execute function. Got already started but got commented out
-
-import { logWrapper } from '@n8n/ai-utilities';
 
 const { NODE_FUNCTION_ALLOW_BUILTIN: builtIn, NODE_FUNCTION_ALLOW_EXTERNAL: external } =
 	process.env;
@@ -155,6 +160,18 @@ export function createSandboxLogger(logger: Logger): Logger {
 	}, {} as Logger);
 }
 
+export function createProductionConsoleLog(
+	workflowId: string | undefined,
+	nodeName: string,
+	redactConsole: boolean,
+): (...args: unknown[]) => void {
+	return (...args: unknown[]) =>
+		console.log(
+			`[Workflow "${workflowId}"][Node "${nodeName}"]`,
+			...(redactConsole ? [CONSOLE_OUTPUT_REDACTED_MESSAGE] : args),
+		);
+}
+
 const langchainModules = ['langchain', '@langchain/*'];
 export const vmResolver = makeResolverFromLegacyOptions({
 	external: {
@@ -208,8 +225,11 @@ function getSandbox(
 		'output',
 		workflowMode === 'manual'
 			? this.sendMessageToUI.bind(this)
-			: (...args: unknown[]) =>
-					console.log(`[Workflow "${this.getWorkflow().id}"][Node "${node.name}"]`, ...args),
+			: createProductionConsoleLog(
+					this.getWorkflow().id,
+					node.name,
+					this.isConsoleOutputRedacted(),
+				),
 	);
 	return sandbox;
 }

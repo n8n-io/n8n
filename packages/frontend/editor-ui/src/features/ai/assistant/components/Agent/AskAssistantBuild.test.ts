@@ -66,8 +66,9 @@ vi.mock('./NotificationPermissionBanner.vue', () => ({
 }));
 
 // Mock AskAssistantChat component
-vi.mock('@n8n/design-system/components/AskAssistantChat/AskAssistantChat.vue', () => ({
-	default: defineComponent({
+vi.mock('@n8n/design-system', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/design-system')>()),
+	N8nAskAssistantChat: defineComponent({
 		name: 'AskAssistantChat',
 		props: [
 			'user',
@@ -159,7 +160,7 @@ import {
 } from '@/app/stores/workflowDocument.store';
 import { useHistoryStore } from '@/app/stores/history.store';
 import type { INodeUi } from '@/Interface';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 import { useWorkflowSaveStore } from '@/app/stores/workflowSave.store';
 import { AutoSaveState } from '@/app/constants';

@@ -104,6 +104,7 @@ export {
 	CreateVariableRequestDto,
 	NEW_VARIABLE_KEY_REGEX,
 } from './variables/create-variable-request.dto';
+export { variableTypeSchema, variableValueSchema } from './variables/base.dto';
 export { UpdateVariableRequestDto } from './variables/update-variable-request.dto';
 export { CredentialsGetOneRequestQuery } from './credentials/credentials-get-one-request.dto';
 export { CredentialsGetManyRequestQuery } from './credentials/credentials-get-many-request.dto';
@@ -131,6 +132,13 @@ export { DeactivateWorkflowDto } from './workflows/deactivate-workflow.dto';
 export { ArchiveWorkflowDto } from './workflows/archive-workflow.dto';
 export { GetResourceDependencyCountsDto } from './workflows/get-resource-dependency-counts.dto';
 export { GetResourceDependenciesDto } from './workflows/get-resource-dependencies.dto';
+export { GetWorkflowQueryDto } from './workflows/get-workflow-query.dto';
+export {
+	WorkflowPublicDto,
+	workflowPublicSchema,
+	sharedWorkflowPublicSchema,
+	activeWorkflowVersionPublicSchema,
+} from './workflows/workflow-public.dto';
 
 export { CreateOrUpdateTagRequestDto } from './tag/create-or-update-tag-request.dto';
 export { RetrieveTagQueryDto } from './tag/retrieve-tag-query.dto';
@@ -179,6 +187,7 @@ export {
 
 export { UpdateRoleDto } from './roles/update-role.dto';
 export { CreateRoleDto } from './roles/create-role.dto';
+export { RolePublicDto } from './roles/role-public.dto';
 export { CreateRoleMappingRuleDto } from './roles/create-role-mapping-rule.dto';
 export {
 	PatchRoleMappingRuleDto,
@@ -308,7 +317,12 @@ export type { EncryptionKeyResponseDto } from './encryption/encryption-key-respo
 export { CreateWorkflowReviewRequestDto } from './workflow-reviews/create-workflow-review-request.dto';
 export { DecideWorkflowReviewRequestDto } from './workflow-reviews/decide-workflow-review-request.dto';
 export { GetWorkflowReviewEligibleReviewersQueryDto } from './workflow-reviews/get-eligible-reviewers-query.dto';
-export { ListWorkflowReviewRequestsQueryDto } from './workflow-reviews/list-workflow-review-requests-query.dto';
+export {
+	ListWorkflowReviewRequestsQueryDto,
+	type WorkflowReviewApprovedPublicationState,
+	type WorkflowReviewRequestForWorkflow,
+	type WorkflowReviewRequestList,
+} from './workflow-reviews/list-workflow-review-requests-query.dto';
 export { UpdateWorkflowReviewRequestVersionDto } from './workflow-reviews/update-workflow-review-request-version.dto';
 export * from './workflow-reviews/list-workflow-review-inbox.dto';
 export type * from './workflow-reviews/get-workflow-review-request-detail.dto';

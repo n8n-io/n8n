@@ -30,12 +30,13 @@ export interface ConfigureChannelToolDeps {
 export function buildConfigureChannelTool(deps: ConfigureChannelToolDeps): BuiltTool {
 	return new Tool(CONFIGURE_CHANNEL_TOOL_NAME)
 		.description(
-			'Connect one available chat channel to the target agent. First call ' +
+			'Configure one available chat channel for the target agent. First call ' +
 				'list_integration_types and pass a returned `type` as `integrationType`; do not infer ' +
 				'channel names. Shows setup UI in chat where the user creates a new channel credential ' +
-				'or skips. The setup UI persists the connection, so use this for channel credentials ' +
-				'instead of the credentials tool or config writes. Returns { connected: boolean } (plus configMutated/agentId refresh metadata when connected); if ' +
-				'false, continue without the channel and do not re-prompt.',
+				'or skips. The setup UI persists the channel configuration and does not publish the agent, ' +
+				'so use this for channel credentials instead of the credentials tool or config writes. ' +
+				'Returns { configured: boolean } (plus configMutated/agentId refresh metadata when configured); ' +
+				'false means the user skipped, so continue without the channel and do not re-prompt.',
 		)
 		.input(configureChannelInputSchema)
 		.suspend(channelSuspendPayloadSchema)
@@ -45,18 +46,18 @@ export function buildConfigureChannelTool(deps: ConfigureChannelToolDeps): Built
 				{ integrationType }: ConfigureChannelInput,
 				ctx: InterruptibleToolContext<ChannelSuspendPayload, ChannelResumeData>,
 			) => {
-				// Resumed — the user connected (approved) or skipped (dismissed). Handled
+				// Resumed — the user configured (approved) or skipped (dismissed). Handled
 				// before the integration-catalog validation below: a run rebuilt from a
 				// checkpoint after a process restart may see a different (or empty)
-				// catalog than the original call, but the setup card already persisted
-				// (or skipped) the connection, so the resume leg only reports the outcome.
+				// catalog than the original call, but the setup card already persisted (or
+				// skipped) the configuration, so the resume leg only reports the outcome.
 				if (ctx.resumeData !== undefined && ctx.resumeData !== null) {
 					if (ctx.resumeData.approved) {
 						deps.track(TELEMETRY_EVENT.AGENTS.BUILDER_ADDED_TRIGGER, {
 							trigger_type: integrationType,
 						});
 					}
-					return { connected: ctx.resumeData.approved };
+					return { configured: ctx.resumeData.approved };
 				}
 
 				const availableTypes = deps.listChatIntegrationTypes();

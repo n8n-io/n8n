@@ -17,12 +17,14 @@ import type { McpClientConnectedPeriod, McpClientTypeFilter } from '@n8n/api-typ
 import { getMcpClientType, MCP_CLIENT_TYPE_FILTER_BUCKETS } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
+import { INSTANCE_MCP_RESOURCE_ID } from '@n8n/constants';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import type { Response } from 'express';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { EventService } from '@/events/event.service';
 import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
 import { UrlService } from '@/services/url.service';
 import { UserManagementMailer } from '@/user-management/email';
@@ -104,6 +106,7 @@ export class OAuthServerService implements OAuthServerProvider {
 		private readonly resourceRegistry: ProtectedResourceRegistry,
 		private readonly mailer: UserManagementMailer,
 		private readonly urlService: UrlService,
+		private readonly eventService: EventService,
 	) {}
 
 	get clientsStore(): OAuthRegisteredClientsStore {
@@ -452,6 +455,21 @@ export class OAuthServerService implements OAuthServerProvider {
 			grantedScopes,
 		);
 
+		// Completion of the authorization-code grant is the point at which the user
+		// has finished the OAuth flow for this client. The authorization server is
+		// shared by every protected resource on the instance (MCP, forms, ...), so
+		// only grants targeting the instance MCP server count as MCP usage.
+		const grantedResource = finalResource
+			? await this.resourceRegistry.getByResourceUrl(finalResource)
+			: this.resourceRegistry.getDefaultResource();
+		if (grantedResource?.id === INSTANCE_MCP_RESOURCE_ID) {
+			this.eventService.emit('mcp-oauth-completed', {
+				userId: authRecord.userId,
+				clientId: client.client_id,
+				clientName: client.client_name,
+			});
+		}
+
 		return {
 			access_token: accessToken,
 			token_type: 'Bearer',
@@ -504,7 +522,19 @@ export class OAuthServerService implements OAuthServerProvider {
 			throw new InvalidResourceIndicatorError(resource, knownResources);
 		}
 
-		return normalizedResource;
+		// Keep the caller's spelling when it exactly names one of the resource's own
+		// URLs — the MCP server publishes several, and a client reaching it through the
+		// instance hostname must get the audience it asked for.
+		//
+		// Otherwise return the canonical URL. Lookup deliberately tolerates equivalent
+		// spellings (a webhook's `?method=` query survives percent-encoding), and
+		// echoing one of those back would mint an `aud` that the resource gate — which
+		// compares against `getAudiences()` — can never match, leaving the client
+		// holding a token that silently 401s forever.
+		const declaredUrls = match.getResourceUrls?.() ?? [match.getResourceUrl()];
+		const isDeclared = declaredUrls.some((url) => url.replace(/\/$/, '') === normalizedResource);
+
+		return isDeclared ? normalizedResource : match.getResourceUrl();
 	}
 
 	async revokeToken(

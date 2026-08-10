@@ -15,7 +15,7 @@ describe('CredentialSelectorModal', () => {
 	it('keeps the selector and nested credential editor above its parent modal', () => {
 		const wrapper = shallowMount(CredentialSelectorModal, {
 			props: {
-				modalName: 'agentModelCredentialModal',
+				modalName: 'chatCredentialSelectorModal',
 				data: {
 					credentialType: 'anthropicApi',
 					displayName: 'Anthropic',
