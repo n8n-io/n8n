@@ -1,0 +1,22 @@
+scripts/frontend-module/frontend-module-guide.md
+  s_35c20391b0161f::t_b7e0c551e8087c 514-517
+  s_35c20391b0161f::t_6afa95c68d4854 45,389-391,404,474,549
+  s_35c20391b0161f::t_4710c79f317502 234-237,242,244-261,268,270-275
+  s_35c20391b0161f::t_0fc4a77c8f3fa5 329-330,333-339,344-359,362-371,374-376,378-380,382-383,385-387
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "cffeeb32ac6dd91e1a05e1269bf78cbc3a44a8af",
+  "prompts": {},
+  "sessions": {
+    "s_35c20391b0161f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a22086e8-a476-4c65-926f-3d844120055d",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}
