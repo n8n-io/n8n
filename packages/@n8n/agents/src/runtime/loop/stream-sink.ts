@@ -62,11 +62,6 @@ export class StreamSink implements RunOutputSink<void> {
 	// implementations live behind `RawErrorReader`; undefined when the run's
 	// provider has no reader.
 	private rawErrorReader: RawErrorReader | undefined;
-	// Usage captured from attempts abandoned to a pre-content stall retry.
-	// Folded into the eventual turn usage (or the terminal finish on abort) so
-	// prompt processing the provider already billed is never dropped.
-	private stallAbandonedUsage: TokenUsage | undefined;
-
 	constructor(
 		private readonly guard: StreamWriterGuard,
 		private readonly services: RunServices,
@@ -77,9 +72,7 @@ export class StreamSink implements RunOutputSink<void> {
 		this.lastUsage = usage;
 		// The just-completed turn is now folded into `usage`; its raw capture is
 		// stale and must not be re-added to a later between-turns abort total.
-		// Same for stall-abandoned usage: the turn result already included it.
 		this.rawUsageReader = undefined;
-		this.stallAbandonedUsage = undefined;
 	}
 
 	/**
@@ -105,10 +98,7 @@ export class StreamSink implements RunOutputSink<void> {
 	 */
 	getTerminalFinish(): { usage?: TokenUsage; model: string } {
 		const usage = this.services.applyCost(
-			mergeUsage(
-				this.lastUsage,
-				mergeUsage(this.stallAbandonedUsage, this.rawUsageReader?.getUsage()),
-			),
+			mergeUsage(this.lastUsage, this.rawUsageReader?.getUsage()),
 		);
 		return { ...(usage && { usage }), model: this.services.modelId };
 	}
@@ -141,7 +131,6 @@ export class StreamSink implements RunOutputSink<void> {
 			idleMs,
 			this.options?.modelStreamFirstOutputTimeoutMs ?? DEFAULT_MODEL_STREAM_FIRST_OUTPUT_TIMEOUT_MS,
 		);
-		this.stallAbandonedUsage = undefined;
 		for (let attempt = 0; ; attempt++) {
 			// Opt-in: only build the reader (and request raw chunks) when the host bills
 			// stopped runs. Also requires a reader for the provider, so an unsupported
@@ -154,13 +143,10 @@ export class StreamSink implements RunOutputSink<void> {
 			// raw stream — no error, no content — so raw chunks are required to
 			// explain an otherwise silent empty response.
 			this.rawErrorReader = createRawErrorReader(this.services.modelId);
-			// Per-attempt controller chained to the run signal: a stall must be able
-			// to cancel this attempt's fetch (releasing the socket the 1h network
-			// timeout would otherwise hold) without touching the run-level signal.
+			// Per-attempt controller: a stall must be able to cancel this attempt's
+			// fetch (releasing the socket the 1h network timeout would otherwise
+			// hold) without touching the run-level signal.
 			const turnAbort = new AbortController();
-			const onRunAbort = () => turnAbort.abort();
-			if (ctx.abortSignal.aborted) turnAbort.abort();
-			else ctx.abortSignal.addEventListener('abort', onRunAbort, { once: true });
 			const attemptState = { streamedContent: false };
 			try {
 				return await this.streamModelTurn(ctx, turnAbort, { idleMs, firstOutputMs }, attemptState);
@@ -170,20 +156,15 @@ export class StreamSink implements RunOutputSink<void> {
 				// run for what is usually a dead connection at request time. Once
 				// content has streamed, a retry would duplicate segments and orphan
 				// already-persisted tool-call facts, so the error surfaces instead.
+				// The abandoned attempt's prompt processing goes unbilled — accepted:
+				// it only has usage at all when the stream died between message_start
+				// and the first content chunk.
 				const retryable =
 					error instanceof ModelStreamStallError &&
 					attempt < MAX_MODEL_STREAM_STALL_RETRIES &&
 					!attemptState.streamedContent &&
 					!ctx.abortSignal.aborted;
 				if (!retryable) throw error;
-				// The stalled attempt may still have billed prompt processing (raw
-				// message_start) — fold its capture so the turn's usage stays honest.
-				this.stallAbandonedUsage = mergeUsage(
-					this.stallAbandonedUsage,
-					this.rawUsageReader?.getUsage(),
-				);
-			} finally {
-				ctx.abortSignal.removeEventListener('abort', onRunAbort);
 			}
 		}
 	}
@@ -201,7 +182,9 @@ export class StreamSink implements RunOutputSink<void> {
 			instructions: ctx.system,
 			messages: ctx.messages,
 			allowSystemInMessages: true,
-			abortSignal: turnAbort.signal,
+			// Run abort (user stop) and turn abort (stall watchdog) both cancel
+			// this attempt's fetch.
+			abortSignal: AbortSignal.any([ctx.abortSignal, turnAbort.signal]),
 			...(ctx.reasoning ? { reasoning: ctx.reasoning } : {}),
 			// Surface the provider's raw message_start/message_delta events so an
 			// aborted run can recover its usage — the SDK reports none on abort.
@@ -303,9 +286,7 @@ export class StreamSink implements RunOutputSink<void> {
 		return {
 			aiFinishReason,
 			finishReason: fromAiFinishReason(aiFinishReason),
-			// Include usage billed by attempts abandoned to a pre-content stall
-			// retry, so the turn reports everything the provider actually charged.
-			usage: mergeUsage(this.stallAbandonedUsage, toTokenUsage(usage, providerMetadata)),
+			usage: toTokenUsage(usage, providerMetadata),
 			newMessages,
 			toolCalls: await settle(result.toolCalls),
 			structuredOutput:

@@ -60,18 +60,17 @@ function getChunkIterator<T>(
  */
 export async function* withChunkIdleTimeout<T>(
 	source: AsyncIterable<T> | Iterable<T>,
-	idleMs: number | (() => number),
+	getIdleMs: () => number,
 	onStall: () => void,
 ): AsyncGenerator<T> {
 	const iterator = getChunkIterator(source);
-	const resolveIdleMs = typeof idleMs === 'function' ? idleMs : () => idleMs;
 	try {
 		while (true) {
 			const next = Promise.resolve(iterator.next());
 			// If the deadline wins, the losing read settles later — without a
 			// handler its rejection would surface as an unhandled rejection.
 			next.catch(() => undefined);
-			const result = await raceWithStallDeadline(next, resolveIdleMs(), onStall);
+			const result = await raceWithStallDeadline(next, getIdleMs(), onStall);
 			if (result.done) return;
 			yield result.value;
 		}

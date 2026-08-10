@@ -21,7 +21,11 @@ describe('withChunkIdleTimeout', () => {
 		}
 		const seen: number[] = [];
 
-		for await (const chunk of withChunkIdleTimeout(source(), 60_000, () => {})) {
+		for await (const chunk of withChunkIdleTimeout(
+			source(),
+			() => 60_000,
+			() => {},
+		)) {
 			seen.push(chunk);
 		}
 
@@ -35,7 +39,11 @@ describe('withChunkIdleTimeout', () => {
 		}
 		const seen: string[] = [];
 
-		for await (const chunk of withChunkIdleTimeout(source(), 60_000, () => {})) {
+		for await (const chunk of withChunkIdleTimeout(
+			source(),
+			() => 60_000,
+			() => {},
+		)) {
 			seen.push(chunk);
 		}
 
@@ -49,7 +57,7 @@ describe('withChunkIdleTimeout', () => {
 			yield 1;
 			yield await gate;
 		}
-		const iterator = withChunkIdleTimeout(source(), 60_000, onStall);
+		const iterator = withChunkIdleTimeout(source(), () => 60_000, onStall);
 
 		await expect(iterator.next()).resolves.toEqual({ done: false, value: 1 });
 
@@ -76,7 +84,11 @@ describe('withChunkIdleTimeout', () => {
 			});
 			yield 3;
 		}
-		const iterator = withChunkIdleTimeout(source(), 60_000, () => {});
+		const iterator = withChunkIdleTimeout(
+			source(),
+			() => 60_000,
+			() => {},
+		);
 
 		await expect(iterator.next()).resolves.toEqual({ done: false, value: 1 });
 
@@ -97,7 +109,11 @@ describe('withChunkIdleTimeout', () => {
 			yield await Promise.resolve(1);
 			throw new Error('provider exploded');
 		}
-		const iterator = withChunkIdleTimeout(source(), 60_000, () => {});
+		const iterator = withChunkIdleTimeout(
+			source(),
+			() => 60_000,
+			() => {},
+		);
 
 		await expect(iterator.next()).resolves.toEqual({ done: false, value: 1 });
 		await expect(iterator.next()).rejects.toThrow('provider exploded');
