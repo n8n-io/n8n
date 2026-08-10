@@ -7,6 +7,7 @@ export type {
 } from './workflow-graph';
 export {
 	findTriggerNode,
+	getDescendantNodeIds,
 	getPredecessorNodeIds,
 	getSuccessorNodeIds,
 } from './workflow-graph-queries';
