@@ -28,6 +28,13 @@ import {
 	transcriptPrefixFromSeed,
 	type ConversationSeed,
 } from './conversation-seed';
+import { probeCredentialValue, type CredentialValueProbe } from './credential-setup-checks';
+import {
+	resolveFixtureForCredentialType,
+	startCredentialSetupLane,
+	type CredentialSetupLane,
+	type LaneSelection,
+} from './credential-setup-lane';
 import { reconstructSeedFromThread } from './langsmith-seed';
 import type { EvalLogger } from './logger';
 import type { CaseSeed } from './schema';
@@ -236,6 +243,10 @@ export interface BuildResult {
 	 *  spent. Routed to `framework_issue` with `PROVIDER_OUTAGE_ROOT_CAUSE`, so an
 	 *  outage never lands in the builder's baseline (TRUST-374). */
 	providerOutage?: string;
+	/** Ledger from the credential-setup lane, when one ran. Absent for every
+	 *  ordinary case; present even on a failed build, so the deterministic checks
+	 *  can report WHY nothing was created. */
+	credentialSetup?: CredentialSetupRunFacts;
 }
 
 /**
@@ -251,6 +262,34 @@ export function buildFailedOnInfra(build: BuildResult): boolean {
 		build.transportFailure === true ||
 		build.providerOutage !== undefined
 	);
+}
+
+/** What the credential-setup lane knows once a build is over — the input to the
+ *  deterministic checks. Data only: judging lives in `credential-setup-checks.ts`. */
+export interface CredentialSetupRunFacts {
+	/** Credential type the case targets. Undefined in local mode = "any type". */
+	credentialType?: string;
+	/** The exact secret the fixture minted for this run. Absent in local mode —
+	 *  the key is real and its value is never revealed to the harness. */
+	mintedSecret?: string;
+	/** True when this ran against the REAL provider site. */
+	local?: boolean;
+	/** Provider key prefix for the shape-based leak scan in local mode. */
+	secretPrefix?: string;
+	/** Whether the fixture's create-key action was actually invoked. */
+	secretWasIssued: boolean;
+	/** Credential ids that existed BEFORE the build — the diff base, so a
+	 *  credential an earlier run left behind can't satisfy the "created" check. */
+	credentialIdsBefore: string[];
+	/** Provider-API stand-in for the credential test, when the fixture ships one
+	 *  AND n8n can reach it. Undefined => the value check is DISCARDED (reported
+	 *  unverifiable) rather than failed. */
+	verifyBaseUrl?: string;
+	/** Result of running the credential's own test against that stand-in.
+	 *  Gathered HERE, not in the checks, because the fixture server dies with the
+	 *  lane in the `finally` below — by the time the orchestrator judges, the
+	 *  stand-in is gone and every probe would look like a rejection. */
+	valueProbe?: CredentialValueProbe;
 }
 
 export interface BuildWorkflowConfig {
@@ -291,6 +330,13 @@ export interface BuildWorkflowConfig {
 	/** False for answer-only cases: ending the conversation without a saved
 	 *  workflow is then a valid outcome, not a failed build. Defaults to true. */
 	workflowExpected?: boolean;
+	/** What the credential-setup lane should do for this case, already resolved
+	 *  by the session. `{kind:'none'}` (or absent) for every ordinary case — and
+	 *  then no browser launches and no port opens. */
+	credentialSetupSelection?: LaneSelection;
+	/** Credential type for a `local` run, where there is no fixture manifest to
+	 *  read it from. */
+	credentialSetupType?: string;
 }
 
 /** A case needs a workflow iff something judges one: execution scenarios or
@@ -349,6 +395,38 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 	// Seed-declared workflow id -> the workflow as actually restored (fresh id and
 	// name). Lets an authored `attach` reference survive the per-run remap.
 	let seedWorkflowsBySeedId = new Map<string, { id: string; name: string }>();
+	// Credential-setup lane (fixture server + extension-loaded browser). Stays
+	// undefined unless the session resolved a fixture for this case.
+	let credentialSetupLane: CredentialSetupLane | undefined;
+	let credentialIdsBefore: string[] = [];
+	/** Snapshot the lane's ledger for the BuildResult. Called on every return
+	 *  path, and always BEFORE teardown, so `secretWasIssued` is still readable
+	 *  and the provider stand-in is still listening. */
+	const credentialSetupFacts = async (): Promise<CredentialSetupRunFacts | undefined> => {
+		if (!credentialSetupLane) return undefined;
+		const lane = credentialSetupLane;
+		return {
+			credentialType: lane.credentialType,
+			// Local runs mint nothing: the key is real and we never learn its value.
+			mintedSecret: lane.fixture?.mintedSecret,
+			secretWasIssued: lane.fixture?.secretWasIssued ?? false,
+			local: lane.local,
+			// Local runs have no fixture, but the registry still knows this
+			// provider's key shape — enough for a shape-based leak scan.
+			secretPrefix: await resolveSecretPrefix(client, lane, credentialIdsBefore),
+			credentialIdsBefore,
+			verifyBaseUrl: lane.verifyBaseUrl,
+			valueProbe: await probeCredentialValue({
+				client,
+				credentialType: lane.credentialType,
+				credentialIdsBefore,
+				fixture: lane.fixture,
+				verifyBaseUrl: lane.verifyBaseUrl,
+				local: lane.local,
+				logger,
+			}),
+		};
+	};
 
 	try {
 		const buildStart = Date.now();
@@ -441,6 +519,18 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			logger.info(
 				`  Credential-pin endpoint unavailable, building unpinned${config.laneTag ?? ''}`,
 			);
+		}
+
+		// Credential-setup lane, after the pin so the "created" diff base is the
+		// same credential set the build starts from.
+		if (config.credentialSetupSelection && config.credentialSetupSelection.kind !== 'none') {
+			credentialIdsBefore = await client.listCredentialIds();
+			credentialSetupLane = await startCredentialSetupLane({
+				client,
+				selection: config.credentialSetupSelection,
+				logger,
+				localCredentialType: config.credentialSetupType,
+			});
 		}
 
 		// Restore the seed before the first live message. No degraded mode: a
@@ -716,6 +806,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 					transcript,
 					credentialViewPinned,
 					seedingFailed,
+					credentialSetup: await credentialSetupFacts(),
 				};
 			}
 			return {
@@ -734,6 +825,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				transcript,
 				credentialViewPinned,
 				seedingFailed,
+				credentialSetup: await credentialSetupFacts(),
 			};
 		}
 
@@ -773,6 +865,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			transcript,
 			workflowChecks,
 			credentialViewPinned,
+			credentialSetup: await credentialSetupFacts(),
 		};
 	} catch (error: unknown) {
 		abortController.abort();
@@ -790,7 +883,20 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			threadId,
 			credentialViewPinned,
 			seedingFailed,
+			credentialSetup: await credentialSetupFacts(),
 		};
+	} finally {
+		// Covers every return path above: a leaked browser or an open fixture port
+		// would outlive the case and poison the next one.
+		if (credentialSetupLane) {
+			await credentialSetupLane.close().catch((error: unknown) => {
+				logger.warn(
+					`  Credential-setup lane teardown failed: ${
+						error instanceof Error ? error.message : String(error)
+					}`,
+				);
+			});
+		}
 	}
 }
 
@@ -891,4 +997,37 @@ function formatProxyStatsSuffix(stats: ProxyDecisionStats | undefined): string {
 function truncate(text: string, maxLength: number): string {
 	if (text.length <= maxLength) return text;
 	return text.slice(0, maxLength) + '...';
+}
+
+/**
+ * The provider key shape for the leak scan.
+ *
+ * A fixture run knows it from the manifest. A LOCAL run does not know the
+ * credential type up front (the case declares none), so infer it from what the
+ * agent actually created and look the fixture up by that — which is exactly
+ * what `findFixtureForCredentialType` is for. Undefined => the leak check
+ * reports itself unverifiable rather than guessing.
+ */
+async function resolveSecretPrefix(
+	client: N8nClient,
+	lane: CredentialSetupLane,
+	credentialIdsBefore: string[],
+): Promise<string | undefined> {
+	if (lane.fixture) return lane.fixture.manifestSecretPrefix;
+	try {
+		const type = lane.credentialType ?? (await inferCreatedType(client, credentialIdsBefore));
+		if (!type) return undefined;
+		return (await resolveFixtureForCredentialType(type))?.manifest.secretPrefix;
+	} catch {
+		return undefined;
+	}
+}
+
+async function inferCreatedType(
+	client: N8nClient,
+	credentialIdsBefore: string[],
+): Promise<string | undefined> {
+	const before = new Set(credentialIdsBefore);
+	const all = await client.listCredentials();
+	return all.find((c) => !before.has(c.id))?.type;
 }

@@ -30,6 +30,7 @@ import {
 	type BuildResult,
 } from '../harness/build-workflow';
 import { cleanupBuild } from '../harness/cleanup';
+import { resolveCredentialSetupFixture } from '../harness/credential-setup-lane';
 import type { EvalLogger } from '../harness/logger';
 import type { PrebuiltManifest } from '../harness/prebuilt-workflows';
 import { executeScenario } from '../harness/scenario-execution';
@@ -150,6 +151,10 @@ export function createEvalSession(config: EvalSessionConfig): EvalSession {
 						logger,
 						laneTag,
 						workflowExpected: workflowExpectedForCase(buildArgs),
+						// `{kind:'none'}` for every case that hasn't opted in, so no browser
+						// launches and no port opens.
+						credentialSetupSelection: await resolveCredentialSetupFixture(buildArgs),
+						credentialSetupType: buildArgs.credentials?.[0]?.type,
 					}),
 			),
 			tracedExecute: wrap(

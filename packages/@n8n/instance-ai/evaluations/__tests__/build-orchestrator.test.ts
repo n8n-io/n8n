@@ -4,6 +4,7 @@ import type { N8nClient } from '../clients/n8n-client';
 import { resolveArtifactContext } from '../harness/artifacts/artifact-context';
 import type { BuildResult } from '../harness/build-workflow';
 import { runWorkflowChecks } from '../harness/cleanup';
+import { runCredentialSetupChecks } from '../harness/credential-setup-checks';
 import type { EvalLogger } from '../harness/logger';
 import {
 	createBuildOrchestrator,
@@ -37,6 +38,10 @@ vi.mock('../harness/cleanup', async (importOriginal) => {
 
 vi.mock('../harness/capture-run-debug', () => ({
 	captureThreadRunDebug: vi.fn().mockResolvedValue([]),
+}));
+
+vi.mock('../harness/credential-setup-checks', () => ({
+	runCredentialSetupChecks: vi.fn().mockResolvedValue([]),
 }));
 
 vi.mock('../harness/artifacts/artifact-context', () => ({
@@ -148,6 +153,26 @@ afterEach(() => {
 });
 
 describe('createBuildOrchestrator', () => {
+	it("forwards the case's credentialFixture to the build", async () => {
+		// Load-bearing, and invisible to tsc: `wrap()` erases the callback's
+		// parameter type, so a field dropped from the BuildArgs Pick still type-
+		// checks. That is exactly how this one shipped broken once — added
+		// everywhere EXCEPT the Pick, so the lane silently never booted and the
+		// case failed as if the agent had misbehaved.
+		const tracedBuild = vi.fn().mockResolvedValue(okBuild());
+		const orchestrator = createBuildOrchestrator(
+			makeDeps([makeLane(1, tracedBuild)], {
+				testCaseByFileSlug: new Map([['case-a', baseCase({ credentialFixture: 'local' })]]),
+			}),
+		);
+
+		await orchestrator.getOrBuild(0, 'case-a');
+
+		expect(tracedBuild).toHaveBeenCalledWith(
+			expect.objectContaining({ credentialFixture: 'local' }),
+		);
+	});
+
 	it('builds once per (iteration, fileSlug) and caches the promise', async () => {
 		const tracedBuild = vi.fn().mockResolvedValue(okBuild());
 		const orchestrator = createBuildOrchestrator(makeDeps([makeLane(1, tracedBuild)]));
@@ -465,5 +490,60 @@ describe('expectation judging context', () => {
 			expect.anything(),
 			expect.objectContaining({ artifactContext: 'RESOLVED ARTIFACTS' }),
 		);
+	});
+});
+
+describe('credential-setup check wiring', () => {
+	// This file has no global mock reset; without it the second test counts the
+	// first test's call.
+	beforeEach(() => {
+		vi.mocked(runCredentialSetupChecks).mockClear();
+	});
+
+	const SECRET = 'sk-ant-api03-LEAKED-abcdefghijklmnop';
+
+	function credentialSetupBuild() {
+		return okBuild({
+			credentialSetup: {
+				credentialType: 'anthropicApi',
+				mintedSecret: SECRET,
+				secretWasIssued: true,
+				credentialIdsBefore: [],
+			},
+			transcript: [{ userMessage: 'set up an anthropic credential', steps: [] }],
+			// A tool trace carrying the secret — the leak scan's real haystack. The
+			// agent won't leak on request (verified live), so the ONLY way to know
+			// the scan can still fire is to check what it is handed.
+			events: [
+				{ type: 'tool_result', data: { output: `{"snapshot":"key ${SECRET} shown"}` } },
+			] as unknown as BuildResult['events'],
+		});
+	}
+
+	it('hands the leak scan both the transcript and the tool traces', async () => {
+		// Guards a silent-no-op class of bug: if searchableRunText were assembled
+		// wrong (empty, or transcript-only), the leak check would pass forever and
+		// nothing would ever reveal it — the same shape as the `tags` bug.
+		const orchestrator = createBuildOrchestrator(
+			makeDeps([makeLane(1, vi.fn().mockResolvedValue(credentialSetupBuild()))]),
+		);
+
+		await orchestrator.getOrBuild(0, 'case-a');
+
+		expect(runCredentialSetupChecks).toHaveBeenCalledTimes(1);
+		const arg = vi.mocked(runCredentialSetupChecks).mock.calls[0][0];
+		expect(arg.searchableRunText).toContain('set up an anthropic credential');
+		expect(arg.searchableRunText).toContain(SECRET);
+		expect(arg.facts.mintedSecret).toBe(SECRET);
+	});
+
+	it('does not run the checks for an ordinary case', async () => {
+		const orchestrator = createBuildOrchestrator(
+			makeDeps([makeLane(1, vi.fn().mockResolvedValue(okBuild()))]),
+		);
+
+		await orchestrator.getOrBuild(0, 'case-a');
+
+		expect(runCredentialSetupChecks).not.toHaveBeenCalled();
 	});
 });

@@ -27,6 +27,10 @@ import { attributionForExpectation } from '../harness/attribution';
 import { buildFailedOnInfra, type BuildResult } from '../harness/build-workflow';
 import { captureThreadRunDebug } from '../harness/capture-run-debug';
 import { effectiveTimeoutMs, runWorkflowChecks } from '../harness/cleanup';
+import {
+	redactTranscriptSecrets,
+	runCredentialSetupChecks,
+} from '../harness/credential-setup-checks';
 import type { EvalLogger } from '../harness/logger';
 import {
 	fetchPrebuiltBuild,
@@ -89,6 +93,12 @@ export type BuildArgs = Pick<
 	| 'seed'
 	| 'executionScenarios'
 	| 'outcomeExpectations'
+	// Load-bearing, not metadata: the credential-setup lane is selected from
+	// this, and a build that never receives it silently runs without a browser —
+	// the case then fails as if the AGENT had misbehaved. `wrap()` erases the
+	// callback's parameter type, so tsc cannot catch a dropped field here; the
+	// orchestrator test pins it.
+	| 'credentialFixture'
 > & { timeoutMs: number };
 
 /** A lane plus the allocator-managed counters and the caller-provided (traced)
@@ -342,8 +352,44 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 		build: BuildResult,
 		isPrebuilt: boolean,
 	): void {
+		// Snapshot the haystack BEFORE anything redacts it: the leak check has to
+		// see what the agent actually emitted. Transcript prose plus every tool
+		// call's inputs/outputs.
+		const searchableRunText = JSON.stringify({
+			transcript: build.transcript ?? [],
+			events: build.events ?? [],
+		});
+		// In LOCAL mode the captured key is a real, working credential, and
+		// `redact.ts` only redacts by key NAME — so one echoed in prose or typed
+		// into a form field would ride the transcript into eval-results.json,
+		// which another repo ingests and republishes. Redact what PERSISTS, after
+		// the snapshot above, so detection and disclosure don't trade off.
+		// Deliberately outside the `testCase` guard below: a build with no case
+		// entry still gets persisted.
+		if (build.credentialSetup?.local && build.credentialSetup.secretPrefix) {
+			build.transcript = redactTranscriptSecrets(
+				build.transcript,
+				build.credentialSetup.secretPrefix,
+			);
+		}
 		const testCase = testCaseByFileSlug.get(fileSlug);
 		if (!testCase) return;
+		// Deterministic credential-setup verdicts, started EAGERLY: per-build
+		// cleanup deletes artifacts later, and a credential read that lost that
+		// race would report "not created" for a run that did create one.
+		const injected = build.credentialSetup
+			? runCredentialSetupChecks({
+					client,
+					facts: build.credentialSetup,
+					searchableRunText,
+					logger,
+				}).catch((error: unknown) => {
+					logger.warn(
+						`  Credential-setup checks failed: ${error instanceof Error ? error.message : String(error)}`,
+					);
+					return [] as BuildExpectationResult[];
+				})
+			: undefined;
 		const { expectations, transcript, unjudged } = selectAuthorExpectations({
 			testCase,
 			transcript: build.transcript,
@@ -358,37 +404,51 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 		const infraFailed = buildFailedOnInfra(build);
 		const attribute = (verdicts: BuildExpectationResult[]): BuildExpectationResult[] =>
 			verdicts.map((v) => ({ ...v, attribution: attributionForExpectation(v, infraFailed) }));
+		// The lane's deterministic verdicts ride along on EVERY path, including the
+		// unjudged one: they describe what the run actually did to the provider and
+		// to n8n, which stays true whether or not the author expectations got judged.
+		// Deliberately not passed through `attribute` — that answers "is this the
+		// agent's miss or infra's", and these are measurements, not judgements.
+		const withInjected = async (
+			verdicts: BuildExpectationResult[] | Promise<BuildExpectationResult[]>,
+		): Promise<BuildExpectationResult[]> =>
+			injected ? [...(await verdicts), ...(await injected)] : await verdicts;
 		// Recorded as incomplete rather than dropped, so the case keeps its unit
 		// count and the report says why they weren't graded.
 		if (unjudged.length > 0) {
-			buildExpectationsByKey.set(key, Promise.resolve(attribute(unjudged)));
+			buildExpectationsByKey.set(key, withInjected(attribute(unjudged)));
 			return;
 		}
-		if (expectations.length === 0) return;
+		if (expectations.length === 0) {
+			if (injected) buildExpectationsByKey.set(key, injected);
+			return;
+		}
 		buildExpectationsByKey.set(
 			key,
-			(async () =>
-				await verifyBuildExpectations(expectations, {
-					transcript,
-					workflowJson: build.workflowJsons[0],
-					metrics: build.conversationMetrics,
-					// Rendered non-workflow artifacts (agent AND config-eval), sectioned
-					// with "(no <type> produced)" fallbacks, so outcome expectations can
-					// judge artifact existence, absence and content — parity with the
-					// retired direct loop, which always threaded resolveArtifactContext.
-					artifactContext: await resolveArtifactContext({
-						artifactRefs: build.artifactRefs ?? [],
-						client,
-						logger,
-					}),
-				}))()
-				.catch((error: unknown) =>
-					allFailVerdicts(
-						expectations,
-						`judge error: ${error instanceof Error ? error.message : String(error)}`,
-					),
-				)
-				.then(attribute),
+			withInjected(
+				(async () =>
+					await verifyBuildExpectations(expectations, {
+						transcript,
+						workflowJson: build.workflowJsons[0],
+						metrics: build.conversationMetrics,
+						// Rendered non-workflow artifacts (agent AND config-eval), sectioned
+						// with "(no <type> produced)" fallbacks, so outcome expectations can
+						// judge artifact existence, absence and content — parity with the
+						// retired direct loop, which always threaded resolveArtifactContext.
+						artifactContext: await resolveArtifactContext({
+							artifactRefs: build.artifactRefs ?? [],
+							client,
+							logger,
+						}),
+					}))()
+					.catch((error: unknown) =>
+						allFailVerdicts(
+							expectations,
+							`judge error: ${error instanceof Error ? error.message : String(error)}`,
+						),
+					)
+					.then(attribute),
+			),
 		);
 	}
 
@@ -513,6 +573,7 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 						seed: entry.seed,
 						executionScenarios: entry.executionScenarios,
 						outcomeExpectations: entry.outcomeExpectations,
+						credentialFixture: entry.credentialFixture,
 						timeoutMs,
 					});
 				} finally {

@@ -168,6 +168,11 @@ export const MCP_BUILD_KEY_SUPPORT: Record<
 	// reach this check; classified only to keep the map schema-complete.
 	buildExpectations: 'supported',
 	credentials: 'orchestrator-only',
+	// The browser lane is orchestrator machinery — the fixture server, the
+	// extension-loaded Chromium and the relay are all booted around the build.
+	// `claude` gets a flattened prompt and no browser, so such a case would
+	// build without the page it is supposed to drive.
+	credentialFixture: 'orchestrator-only',
 	seed: 'orchestrator-only',
 	datasets: 'supported',
 };

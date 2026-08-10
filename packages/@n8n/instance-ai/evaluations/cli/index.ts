@@ -14,6 +14,7 @@ import { join } from 'path';
 
 import { parseCliArgs } from './args';
 import { loadTestCases } from '../data/source';
+import { LOCAL_FIXTURE_ID } from '../harness/credential-setup-lane';
 import { createLogger } from '../harness/logger';
 import { type McpBuildSpend } from '../run/build-orchestrator';
 import { selectCases } from '../run/case-selection';
@@ -32,6 +33,47 @@ async function main(): Promise<void> {
 		await loadTestCases(args, logger),
 		logger,
 	);
+
+	// A `local` case drives the developer's own browser against the real provider.
+	// That cannot be parallelised: concurrency defaults to 16, lanes cap at 4 and
+	// iterations multiply again, and a single Chrome profile cannot be opened
+	// twice. Serialise, and refuse a multi-case selection outright rather than
+	// opening windows nobody is watching. Enforced HERE because the case count is
+	// only known after selectCases.
+	const localCases = testCasesWithFiles.filter(
+		({ testCase }) => testCase.credentialFixture === LOCAL_FIXTURE_ID,
+	);
+	if (localCases.length > 0) {
+		if (testCasesWithFiles.length > 1) {
+			throw new Error(
+				`credentialFixture "${LOCAL_FIXTURE_ID}" drives your real browser, so it runs one case at a time — ` +
+					`the current selection has ${String(testCasesWithFiles.length)}. Narrow it with --filter.`,
+			);
+		}
+		if (args.iterations > 1) {
+			throw new Error(
+				`credentialFixture "${LOCAL_FIXTURE_ID}" cannot run multiple iterations — each one creates a REAL credential.`,
+			);
+		}
+		args.concurrency = 1;
+		logger.info('  Local mode: serialised, and every run creates a REAL credential.');
+	}
+
+	// Every browser-lane case shares ONE resource: the instance's single relay.
+	// `createBrowserLink()` / `disconnectBrowserSession()` are instance-wide, so
+	// a second concurrent browser build displaces the first and either build's
+	// tools can end up driving the other's browser. The lane allocator only
+	// serialises same-case builds, so it does not help here. Serialise when more
+	// than one such case is selected; a single one cannot collide with itself.
+	const browserCases = testCasesWithFiles.filter(
+		({ testCase }) => testCase.credentialFixture !== undefined,
+	);
+	if (browserCases.length > 1 && args.concurrency !== 1) {
+		args.concurrency = 1;
+		logger.info(
+			`  ${String(browserCases.length)} browser-lane cases selected: serialised, because the n8n relay is instance-wide.`,
+		);
+	}
 
 	// Per-build `claude` logs (--build-via-mcp only). One shared dir; filenames
 	// are slug/iteration/attempt-scoped so concurrent lanes never collide.
