@@ -1,29 +1,9 @@
+import { z } from 'zod';
+
 import defaultsJson from './custom-model-defaults.json';
 
 /** Mirrors OpenAI-compatible reasoning effort values used by `@n8n/agents`. */
-export type CustomModelReasoningEffort =
-	| 'none'
-	| 'minimal'
-	| 'low'
-	| 'medium'
-	| 'high'
-	| 'xhigh'
-	| 'max';
-
-export type CustomModelExperimentDefaults = {
-	reasoningEffort?: CustomModelReasoningEffort;
-	supportsStructuredOutputs?: boolean;
-};
-
-type CustomModelDefaultEntry = {
-	match: string;
-	reasoningEffort?: CustomModelReasoningEffort;
-	supportsStructuredOutputs?: boolean;
-};
-
-const CUSTOM_MODEL_DEFAULTS = defaultsJson.defaults as CustomModelDefaultEntry[];
-
-const REASONING_EFFORTS = new Set<string>([
+const customModelReasoningEffortSchema = z.enum([
 	'none',
 	'minimal',
 	'low',
@@ -33,12 +13,36 @@ const REASONING_EFFORTS = new Set<string>([
 	'max',
 ]);
 
+export type CustomModelReasoningEffort = z.infer<typeof customModelReasoningEffortSchema>;
+
+export type CustomModelExperimentDefaults = {
+	reasoningEffort?: CustomModelReasoningEffort;
+	supportsStructuredOutputs?: boolean;
+};
+
+const customModelDefaultEntrySchema = z
+	.object({
+		match: z.string().min(1),
+		reasoningEffort: customModelReasoningEffortSchema.optional(),
+		supportsStructuredOutputs: z.boolean().optional(),
+	})
+	.strict();
+
+const customModelDefaultsFileSchema = z
+	.object({
+		defaults: z.array(customModelDefaultEntrySchema),
+	})
+	.strict();
+
+const CUSTOM_MODEL_DEFAULTS = customModelDefaultsFileSchema.parse(defaultsJson).defaults;
+
 export function parseReasoningEffort(
 	value: string | undefined,
 ): CustomModelReasoningEffort | undefined {
 	const trimmed = value?.trim().toLowerCase();
 	if (!trimmed) return undefined;
-	return REASONING_EFFORTS.has(trimmed) ? (trimmed as CustomModelReasoningEffort) : undefined;
+	const parsed = customModelReasoningEffortSchema.safeParse(trimmed);
+	return parsed.success ? parsed.data : undefined;
 }
 
 export function parseSupportsStructuredOutputs(value: string | undefined): boolean | undefined {
@@ -73,6 +77,12 @@ export function resolveCustomModelExperimentDefaults(
 	};
 }
 
+function warnInvalidEnvOverride(envName: string, value: string): void {
+	console.warn(
+		`[instance-ai] Ignoring invalid ${envName}="${value}"; falling back to custom model defaults map when available.`,
+	);
+}
+
 /**
  * Env → map → omit. Used by apply-thinking and model-config resolution so both
  * knobs share one path. Workflow inputs only need to set the env vars when
@@ -85,13 +95,27 @@ export function resolveCustomModelExperimentDefaultsFromEnv(
 		supportsStructuredOutputs?: string;
 	} = {},
 ): CustomModelExperimentDefaults {
+	const reasoningEffortRaw =
+		envOverrides.reasoningEffort ?? process.env.N8N_INSTANCE_AI_REASONING_EFFORT;
+	const supportsStructuredOutputsRaw =
+		envOverrides.supportsStructuredOutputs ??
+		process.env.N8N_INSTANCE_AI_SUPPORTS_STRUCTURED_OUTPUTS;
+
+	const reasoningEffort = parseReasoningEffort(reasoningEffortRaw);
+	if (reasoningEffort === undefined && reasoningEffortRaw?.trim()) {
+		warnInvalidEnvOverride('N8N_INSTANCE_AI_REASONING_EFFORT', reasoningEffortRaw);
+	}
+
+	const supportsStructuredOutputs = parseSupportsStructuredOutputs(supportsStructuredOutputsRaw);
+	if (supportsStructuredOutputs === undefined && supportsStructuredOutputsRaw?.trim()) {
+		warnInvalidEnvOverride(
+			'N8N_INSTANCE_AI_SUPPORTS_STRUCTURED_OUTPUTS',
+			supportsStructuredOutputsRaw,
+		);
+	}
+
 	return resolveCustomModelExperimentDefaults(modelId, {
-		reasoningEffort: parseReasoningEffort(
-			envOverrides.reasoningEffort ?? process.env.N8N_INSTANCE_AI_REASONING_EFFORT,
-		),
-		supportsStructuredOutputs: parseSupportsStructuredOutputs(
-			envOverrides.supportsStructuredOutputs ??
-				process.env.N8N_INSTANCE_AI_SUPPORTS_STRUCTURED_OUTPUTS,
-		),
+		reasoningEffort,
+		supportsStructuredOutputs,
 	});
 }

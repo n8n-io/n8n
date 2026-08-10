@@ -139,7 +139,7 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 			// structured outputs, so default them off explicitly rather than relying
 			// on the SDK's internal default.
 			buildOpenAiCompatible('custom', undefined, creds, model, fetch, {
-				supportsStructuredOutputs: creds.supportsStructuredOutputs ?? false,
+				supportsStructuredOutputs: creds.supportsStructuredOutputs,
 			}),
 	},
 	anthropic: {
