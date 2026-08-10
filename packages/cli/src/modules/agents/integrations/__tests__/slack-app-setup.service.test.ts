@@ -973,8 +973,7 @@ describe('Slack setup services', () => {
 				slackResponse({
 					ok: false,
 					error: 'admin_approval_required',
-					oauth_authorize_url:
-						'https://slack.com/oauth/v2/authorize?client_id=response-client',
+					oauth_authorize_url: 'https://slack.com/oauth/v2/authorize?client_id=response-client',
 					team_id: 'T123',
 				}),
 			)
@@ -1046,8 +1045,7 @@ describe('Slack setup services', () => {
 					slackResponse({
 						ok: false,
 						error: errorCode,
-						oauth_authorize_url:
-							'https://slack.com/oauth/v2/authorize?client_id=response-client',
+						oauth_authorize_url: 'https://slack.com/oauth/v2/authorize?client_id=response-client',
 						team_id: 'T123',
 					}),
 				);
@@ -1103,8 +1101,7 @@ describe('Slack setup services', () => {
 				slackResponse({
 					ok: false,
 					error: 'app_approval_request_eligible',
-					oauth_authorize_url:
-						'https://slack.com/oauth/v2/authorize?client_id=response-client',
+					oauth_authorize_url: 'https://slack.com/oauth/v2/authorize?client_id=response-client',
 					team_id: 'T456',
 				}),
 			)
