@@ -941,7 +941,7 @@ describe('Slack setup services', () => {
 		);
 	});
 
-	it('returns the child OAuth URL when managed installation needs approval', async () => {
+	it('uses Slack OAuth responses and falls back to the app session URL', async () => {
 		credentialsOverwrites.getOverwrites.mockReturnValue({
 			clientId: 'client',
 			clientSecret: 'secret',
@@ -969,7 +969,15 @@ describe('Slack setup services', () => {
 		requestMock
 			.mockResolvedValueOnce(slackAppCreatedResponse())
 			.mockResolvedValueOnce(slackResponse({ ok: true }))
-			.mockResolvedValueOnce(slackResponse({ ok: false, error: 'app_approval_request_eligible' }))
+			.mockResolvedValueOnce(
+				slackResponse({
+					ok: false,
+					error: 'admin_approval_required',
+					oauth_authorize_url:
+						'https://slack.com/oauth/v2/authorize?client_id=response-client',
+					team_id: 'T123',
+				}),
+			)
 			.mockResolvedValueOnce(slackResponse({ ok: false, error: 'installation_denied' }));
 
 		const result = await service.installManagedApp({
@@ -982,15 +990,21 @@ describe('Slack setup services', () => {
 
 		expect(result.status).toBe('manual_install_required');
 		if (result.status === 'manual_install_required') {
-			expect(new URL(result.installUrl).searchParams.get('state')).toBeTruthy();
+			const installUrl = new URL(result.installUrl);
+			expect(installUrl.searchParams.get('client_id')).toBe('response-client');
+			expect(installUrl.searchParams.get('state')).toBeTruthy();
 		}
-		await service.installManagedApp({
+		const fallbackResult = await service.installManagedApp({
 			projectId: 'project-1',
 			agentId: 'agent-1',
 			managerCredentialId: 'manager',
 			workspaceId: 'T123',
 			user,
 		});
+		expect(fallbackResult.status).toBe('manual_install_required');
+		if (fallbackResult.status === 'manual_install_required') {
+			expect(new URL(fallbackResult.installUrl).searchParams.get('client_id')).toBe('C123');
+		}
 		expect(
 			requestMock.mock.calls.filter(
 				([request]) => request.url === 'https://slack.com/api/apps.manifest.create',
@@ -1027,7 +1041,15 @@ describe('Slack setup services', () => {
 		requestMock
 			.mockResolvedValueOnce(slackAppCreatedResponse())
 			.mockResolvedValueOnce(slackResponse({ ok: true }))
-			.mockResolvedValueOnce(slackResponse({ ok: false, error: 'app_approval_request_eligible' }))
+			.mockResolvedValueOnce(
+				slackResponse({
+					ok: false,
+					error: 'app_approval_request_eligible',
+					oauth_authorize_url:
+						'https://slack.com/oauth/v2/authorize?client_id=response-client',
+					team_id: 'T456',
+				}),
+			)
 			.mockResolvedValueOnce(slackOAuthResponse());
 		userRepository.findOne.mockResolvedValue(user);
 		credentialsService.createManagedCredential.mockResolvedValue({
@@ -1045,7 +1067,9 @@ describe('Slack setup services', () => {
 		expect(result.status).toBe('manual_install_required');
 		if (result.status !== 'manual_install_required') return;
 
-		const state = new URL(result.installUrl).searchParams.get('state') ?? '';
+		const installUrl = new URL(result.installUrl);
+		expect(installUrl.searchParams.get('client_id')).toBe('response-client');
+		const state = installUrl.searchParams.get('state') ?? '';
 		await service.completeInstall({
 			projectId: 'project-1',
 			agentId: 'agent-1',
@@ -1061,7 +1085,7 @@ describe('Slack setup services', () => {
 					accessToken: 'xoxb-installed-token',
 					signatureSecret: 'signing-secret',
 					managedAppId: 'A123',
-					teamId: 'T123',
+					teamId: 'T456',
 					managerCredentialId: 'manager',
 				},
 				projectId: 'project-1',
@@ -1140,6 +1164,8 @@ describe('Slack setup services', () => {
 			appHomeUrl: 'https://api.slack.com/apps/A123/app-home',
 		});
 		expect(fetchParams(requestMock, 0).get('app_id')).toBe('A123');
+		expect(fetchParams(requestMock, 0).get('token')).toBe('xoxp-manager');
+		expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledTimes(2);
 	});
 
 	it('updates the live manifest', async () => {
@@ -1168,7 +1194,6 @@ describe('Slack setup services', () => {
 			.mockResolvedValueOnce(managerCredential);
 		credentialsService.decrypt
 			.mockResolvedValueOnce({
-				accessToken: 'xoxb-old',
 				signatureSecret: 'signing-secret',
 				managedAppId: 'A123',
 				managerCredentialId: 'manager',
@@ -1235,6 +1260,9 @@ describe('Slack setup services', () => {
 			always_online: false,
 		});
 		expect(updatedManifest.settings).toEqual({ socket_mode_enabled: false });
+		expect(fetchParams(requestMock, 0).get('token')).toBe('xoxp-manager');
+		expect(fetchParams(requestMock, 1).get('token')).toBe('xoxp-manager');
+		expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledTimes(2);
 		expect(credentialsService.createEncryptedData).not.toHaveBeenCalled();
 		expect(credentialsService.update).not.toHaveBeenCalled();
 	});
@@ -1372,6 +1400,7 @@ describe('Slack setup services', () => {
 		);
 		expect(fetchParams(requestMock, 0).get('app_id')).toBe('A123');
 		expect(fetchParams(requestMock, 0).get('token')).toBe('xoxp-manager');
+		expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledTimes(2);
 		expect(credentialsService.delete).toHaveBeenCalledWith(user, 'bot-credential');
 	});
 

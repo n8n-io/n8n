@@ -130,6 +130,7 @@ describe('useSlackChannelRuntime', () => {
 		expect(runtime.setup.value.managedSetupAvailable).toBe(true);
 		expect(runtime.settings.value?.credentialId).toBe('bot');
 		expect(runtime.isManagedCredential('bot')).toBe(true);
+		expect(mocks.getSettings).toHaveBeenCalledOnce();
 	});
 
 	it.each([

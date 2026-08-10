@@ -284,11 +284,7 @@ export function useSlackChannelRuntime(context: AgentChannelRuntimeContext): Sla
 		}
 	}
 
-	watch(
-		[context.selectedCredentialId, setup],
-		([credentialId]) => void loadSettings(credentialId),
-		{ deep: true },
-	);
+	watch(context.selectedCredentialId, (credentialId) => void loadSettings(credentialId));
 	watch(context.credentialModalOpen, (isOpen, wasOpen) => {
 		if (wasOpen && !isOpen) void load();
 	});

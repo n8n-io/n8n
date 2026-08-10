@@ -336,13 +336,17 @@ export class SlackManagedSetupService {
 		}
 
 		const error = stringProperty(response, 'error') ?? 'unknown_error';
-		if (MANAGED_INSTALL_FALLBACK_ERRORS.has(error)) {
+		const responseOauthAuthorizeUrl = stringProperty(response, 'oauth_authorize_url');
+		if (responseOauthAuthorizeUrl || MANAGED_INSTALL_FALLBACK_ERRORS.has(error)) {
+			const oauthAuthorizeUrl = responseOauthAuthorizeUrl ?? session.oauthAuthorizeUrl;
+			const teamId = stringProperty(response, 'team_id') ?? session.teamId;
+			const updatedSession: ManagedSlackAppSession = { ...session, oauthAuthorizeUrl, teamId };
 			const state = randomBytes(32).toString('hex');
-			await this.methods.storeSession(state, session);
+			await this.methods.storeSession(state, updatedSession);
 			return {
 				status: 'manual_install_required',
 				appId: session.appId,
-				installUrl: this.methods.installUrl(session.oauthAuthorizeUrl, state, session.redirectUrl),
+				installUrl: this.methods.installUrl(oauthAuthorizeUrl, state, session.redirectUrl),
 			};
 		}
 
