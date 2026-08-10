@@ -35,7 +35,8 @@ export function isSettledStatus(status: StepStatus): boolean {
  * input slot; the engine understands the slot structure and nothing below it —
  * a slot's contents are opaque and step-type-specific.
  *
- * TODO(CAT-2874): outputs currently only support slot 0 (graph validation rejects edges with `outputIndex !== 0`).
- * Inputs may populate multiple slots; an unfilled slot is represented as `null`.
+ * `null` marks a slot without data: on outputs, the step didn't fire the slot
+ * (a branch not taken); on inputs, nothing arrived (a dead edge). `[]` is not
+ * the same thing — a step that ran and produced zero items is still live.
  */
 export type StepSlots = JsonValue[];

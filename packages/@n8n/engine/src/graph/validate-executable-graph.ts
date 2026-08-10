@@ -51,16 +51,6 @@ export function validateExecutableGraph(graph: WorkflowGraph): void {
 		}
 	}
 
-	// TODO(CAT-2874): multi-slot outputs arrive with branching; until then only
-	// output slot 0 fires, and the runtime can assume single-slot outputs.
-	for (const edge of graph.edges) {
-		if (edge.outputIndex !== 0) {
-			throw new UnimplementedError(
-				`Edge ${edge.from} → ${edge.to} leaves output slot ${edge.outputIndex}; only output slot 0 is supported yet`,
-			);
-		}
-	}
-
 	// TODO(CAT-3982): same-slot convergence gets a defined meaning (concatenation);
 	// until then it is rejected rather than given accidental semantics.
 	const seenInputSlots = new Set<string>();

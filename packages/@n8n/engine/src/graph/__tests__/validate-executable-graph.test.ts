@@ -68,14 +68,13 @@ describe('validateExecutableGraph', () => {
 		expect(() => validateExecutableGraph(graph)).toThrow('above 100');
 	});
 
-	it('rejects an edge leaving an output slot other than 0 as unimplemented', () => {
+	it('accepts a fan-out across output slots (If/Switch shape)', () => {
 		const graph: WorkflowGraph = {
 			nodes: [...validGraph.nodes, { id: 'b', name: 'B', type: 'v1-node' }],
 			edges: [...validGraph.edges, { from: 'a', to: 'b', outputIndex: 1, inputIndex: 0 }],
 		};
 
-		expect(() => validateExecutableGraph(graph)).toThrow(UnimplementedError);
-		expect(() => validateExecutableGraph(graph)).toThrow('output slot');
+		expect(() => validateExecutableGraph(graph)).not.toThrow();
 	});
 
 	it('accepts a fan-in: edges into distinct input slots of one node', () => {
