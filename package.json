@@ -161,7 +161,8 @@
       "axios": "1.18.0",
       "hono@<=4.12.27": "4.12.27",
       "vue-i18n@<=11.4.4": "11.4.4",
-      "linkify-it@<=5.0.1": "5.0.1"
+      "linkify-it@<=5.0.1": "5.0.1",
+      "fast-uri": "3.1.5"
     },
     "patchedDependencies": {
       "bull@4.16.4": "patches/bull@4.16.4.patch",
