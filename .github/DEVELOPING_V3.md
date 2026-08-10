@@ -133,14 +133,26 @@ of the breaking removal on `3.x`.
    original message and author. Nothing is ever squashed. Merge commits in the range (breaking
    PRs merged into `3.x`) are flattened away, and a breaking commit that also landed on
    `master` is dropped as empty.
-3. On a **conflict**, `3.x` is left **untouched** and a **draft conflict PR** (labeled
-   `automation:v3-sync`) carrying the conflict markers is opened on `sync/master-to-3x`, plus a
-   post to the **`#alerts-v3-sync`** Slack channel. **Syncs pause until that PR is merged** —
-   so conflicts never pile up silently.
+3. Conflicts confined to **mechanical files** — tool-generated content with a deterministic
+   resolution (`pnpm-lock.yaml`, `packages/frontend/editor-ui/data/node-popularity.json`,
+   `.github/test-metrics/e2e-impact-map.json`) — are **auto-resolved during the replay**,
+   exactly as a human resolver would: the lockfile is regenerated with
+   `pnpm install --lockfile-only` (pnpm merges its own conflict markers), bot-maintained data
+   files take `master`'s side. The resolution is folded into the stalled commit, so this
+   still adds **no commit and no PR**. The list lives in `MECHANICAL_PATHS` in
+   [`sync-master-to-3x.mjs`](./scripts/sync-master-to-3x.mjs).
+4. On a **real code conflict**, `3.x` is left **untouched** and a **draft conflict PR**
+   (labeled `automation:v3-sync`) carrying the conflict markers is opened on
+   `sync/master-to-3x` — with the mechanical files already pre-resolved — plus a post to the
+   **`#alerts-v3-sync`** Slack channel. **Syncs pause until that PR is merged** — so
+   conflicts never pile up silently.
 
 Whatever route it takes, the sync verifies that the content it is about to push is **exactly
 the tree a merge of `3.x` and `master` produces** (`git merge-tree`), and that no conflict
-markers are present. Either check failing fails the run instead of rewriting `3.x`.
+markers are present. When mechanical files had to be regenerated, the exactness check applies
+to every path **except** those files, and a regenerated lockfile must additionally be
+consistent with the manifests in the pushed tree. Any check failing fails the run instead of
+rewriting `3.x`.
 
 > **`3.x` is force-pushed daily.** Branch breaking-change PRs off **`master`** and target
 > `3.x` — then your merge-base is a `master` commit that survives every rewrite and your
@@ -152,7 +164,8 @@ markers are present. Either check failing fails the run instead of rewriting `3.
 
 The conflict branch is `master` merged into `3.x` with the **conflict markers committed**, so
 you see exactly what clashed — and the required checks stay red until they're gone, so the PR
-can't be merged half-resolved:
+can't be merged half-resolved. Mechanical files arrive **pre-resolved** (listed in the PR
+under "Auto-resolved for you"), so only the real code conflicts need you:
 
 ```bash
 git fetch origin sync/master-to-3x && git switch sync/master-to-3x
@@ -160,8 +173,13 @@ git fetch origin sync/master-to-3x && git switch sync/master-to-3x
 git push origin sync/master-to-3x
 ```
 
+If the PR says the lockfile was **deferred** (a `package.json` / `pnpm-workspace.yaml` is
+conflicted too), resolve the manifests first, then regenerate it with
+`pnpm install --lockfile-only` and include the result in your fix commit.
+
 Then **merge the PR with the normal merge button.** `master`'s commits arrive as-is and your
-fix stays its own commit.
+fix stays its own commit. **Never close a conflict PR unmerged** — closing resolves nothing,
+the same conflict reopens on the next sync, and the new PR will call out the abandoned one.
 
 `3.x` never holds markers at its tip, so nightly images keep building; the merge commit that
 carries them drops out of `3.x`'s history at the next sync (the replay takes the queue's
@@ -170,7 +188,9 @@ commits only).
 The next sync then makes `3.x` linear again. The plain replay stalls at that point (a fix
 recorded around a merge commit leaves no patch to replay), so it replays a second time with
 `3.x`'s side favoured, and your fix commit — which is in the queue — does the real work.
-Nothing is squashed, and the tree guard proves the result is exactly the merge of `3.x` and
+Stalls that favouring cannot settle on its own (e.g. modify/delete, when `master` touched a
+file a breaking commit deletes) are resolved toward `3.x`'s side during the replay. Nothing
+is squashed, and the tree guard proves the result is exactly the merge of `3.x` and
 `master`.
 
 **Who gets pinged.** The conflict is attributed to the authors of the `3.x` commits behind the

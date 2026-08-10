@@ -202,6 +202,15 @@ for (const backend of ['memory', 'redis'] as const) {
 			}
 		});
 
+		describe('take', () => {
+			test('should return a value only once', async () => {
+				await cacheService.set('single-use', 'value');
+
+				await expect(cacheService.take('single-use')).resolves.toBe('value');
+				await expect(cacheService.take('single-use')).resolves.toBeUndefined();
+			});
+		});
+
 		describe('delete', () => {
 			test('should delete a key', async () => {
 				await cacheService.set('key', 'value');

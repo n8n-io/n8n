@@ -23,6 +23,7 @@ import {
 	WorkflowPublishHistoryRepository,
 	WorkflowReviewRequestAuthorRepository,
 	WorkflowReviewRequestRepository,
+	WorkflowRepository,
 	WorkflowReviewRequestReviewerRepository,
 	WorkflowReviewRequestWorkflowRepository,
 	type OperationContext,
@@ -47,6 +48,12 @@ import { WorkflowReviewDecisionEligibilityService } from './workflow-review-deci
 import { WorkflowReviewFeatureGate } from './workflow-review-feature-gate.service';
 import { toEligibleReviewer } from './workflow-review.mapper';
 
+/** Omitted stays omitted (column untouched); an empty/whitespace string clears to null. */
+function normalizeVersionDescription(description: string | undefined): string | null | undefined {
+	if (description === undefined) return undefined;
+	return description.trim() || null;
+}
+
 /**
  * The workflow-scoped review request lifecycle: listing a workflow's reviews,
  * resolving its eligible reviewers, opening a review, re-pinning it to a new
@@ -61,6 +68,7 @@ export class WorkflowReviewRequestService {
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly workflowHistoryService: WorkflowHistoryService,
 		private readonly workflowHistoryRepository: WorkflowHistoryRepository,
+		private readonly workflowRepository: WorkflowRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly workflowPublishHistoryRepository: WorkflowPublishHistoryRepository,
 		private readonly workflowReviewRequestRepository: WorkflowReviewRequestRepository,
@@ -252,10 +260,11 @@ export class WorkflowReviewRequestService {
 		workflowId: string,
 		versionId: string,
 		name: string,
+		description: string | null | undefined,
 		ctx: OperationContext,
 	): Promise<void> {
-		const affected = await this.workflowHistoryRepository.updateVersionName(
-			{ workflowId, versionId, name },
+		const affected = await this.workflowHistoryRepository.updateVersionMetadata(
+			{ workflowId, versionId, name, description },
 			ctx,
 		);
 
@@ -266,12 +275,49 @@ export class WorkflowReviewRequestService {
 		}
 	}
 
+	/**
+	 * Re-asserts under the lock what `create`'s pre-lock checks established: the
+	 * workflow still exists, is unarchived, and still belongs to the same project.
+	 * Access is not re-checked — the races this guards against are archive and
+	 * transfer, both of which these two reads cover.
+	 *
+	 * Every read is threaded with `ctx` so it runs on the lock transaction's own
+	 * connection. A read that checks out a second connection here deadlocks against
+	 * the transaction holding the first one (see the same note in `decide`).
+	 */
+	private async assertWorkflowStillReviewable(
+		workflowId: string,
+		expectedProjectId: string,
+		ctx: OperationContext,
+	): Promise<void> {
+		const workflow = await this.workflowRepository.findArchivedState(workflowId, ctx);
+		if (!workflow) {
+			throw new NotFoundError('Could not find workflow');
+		}
+
+		if (workflow.isArchived) {
+			throw new BadRequestError(
+				`The workflow '${workflowId}' is archived and cannot be submitted for review`,
+			);
+		}
+
+		const project = await this.sharedWorkflowRepository.getWorkflowOwningProject(workflowId, ctx);
+		if (project?.id !== expectedProjectId) {
+			throw new ConflictError(
+				`The workflow '${workflowId}' moved to another project and cannot be submitted for review here`,
+				'Retry from the project that now owns the workflow',
+			);
+		}
+	}
+
 	async create(
 		user: User,
 		dto: CreateWorkflowReviewRequestDto,
 	): Promise<WorkflowReviewRequestSummary> {
-		const { workflowId, workflowVersionId, workflowVersionName } = dto.workflows[0];
-		const versionName = workflowVersionName?.trim();
+		const { workflowId, workflowVersionId, workflowVersionName, workflowVersionDescription } =
+			dto.workflows[0];
+		const versionName = workflowVersionName.trim();
+		const versionDescription = normalizeVersionDescription(workflowVersionDescription);
 
 		await this.featureGate.assertAvailable();
 
@@ -321,6 +367,10 @@ export class WorkflowReviewRequestService {
 		const request = await this.dbLockService.withLockContext(
 			DbLock.WORKFLOW_REVIEW_REQUEST_CREATE,
 			async (ctx) => {
+				// without this, a create that lost the race opens a review on an archived
+				// or moved workflow.
+				await this.assertWorkflowStillReviewable(workflowId, project.id, ctx);
+
 				const existing = await this.workflowReviewRequestRepository.findOpenRequestForWorkflow(
 					workflowId,
 					ctx,
@@ -352,10 +402,8 @@ export class WorkflowReviewRequestService {
 					ctx,
 				);
 
-				// After the conflict check, so a 409 never renames the version.
-				if (versionName) {
-					await this.nameVersion(workflowId, workflowVersionId, versionName, ctx);
-				}
+				// After the conflict check, so a 409 never renames or describes the version.
+				await this.nameVersion(workflowId, workflowVersionId, versionName, versionDescription, ctx);
 
 				await this.workflowReviewRequestAuthorRepository.addAuthor(
 					{ workflowReviewRequestId: created.id, userId: user.id },
@@ -431,15 +479,26 @@ export class WorkflowReviewRequestService {
 			);
 		}
 
-		const versionName = dto.workflowVersionName?.trim();
+		const versionName = dto.workflowVersionName.trim();
+		const versionDescription = normalizeVersionDescription(dto.workflowVersionDescription);
+		const metadataChanged = (current: { name: string | null; description: string | null }) =>
+			versionName !== current.name ||
+			(versionDescription !== undefined && versionDescription !== current.description);
 
 		// Nothing new to review: skip the lock, write nothing, broadcast nothing.
 		if (workflowRow.workflowVersionId === dto.workflowVersionId) {
-			// A rename is the one thing that can still be pending here, and a lone
-			// UPDATE is atomic, so apply it rather than silently dropping it.
-			if (versionName && versionName !== version.name) {
+			// A rename or re-description is the one thing that can still be pending
+			// here, and a lone UPDATE is atomic, so apply it rather than silently
+			// dropping it.
+			if (metadataChanged(version)) {
 				// No transaction here: a lone UPDATE is atomic, so the root context is right.
-				await this.nameVersion(dto.workflowId, dto.workflowVersionId, versionName, {});
+				await this.nameVersion(
+					dto.workflowId,
+					dto.workflowVersionId,
+					versionName,
+					versionDescription,
+					{},
+				);
 			}
 
 			return this.toSummary(request, workflowRow.workflowVersionId);
@@ -471,10 +530,16 @@ export class WorkflowReviewRequestService {
 				}
 				if (currentRow.workflowVersionId === dto.workflowVersionId) {
 					// A concurrent sync won the lock and already re-pinned this version
-					// but our rename can still be pending — apply it rather than
-					// dropping it, mirroring the pre-lock branch.
-					if (versionName && versionName !== version.name) {
-						await this.nameVersion(dto.workflowId, dto.workflowVersionId, versionName, ctx);
+					// but our rename or re-description can still be pending — apply it
+					// rather than dropping it, mirroring the pre-lock branch.
+					if (metadataChanged(version)) {
+						await this.nameVersion(
+							dto.workflowId,
+							dto.workflowVersionId,
+							versionName,
+							versionDescription,
+							ctx,
+						);
 					}
 
 					return { request: current, changed: false };
@@ -489,9 +554,13 @@ export class WorkflowReviewRequestService {
 					ctx,
 				);
 
-				if (versionName) {
-					await this.nameVersion(dto.workflowId, dto.workflowVersionId, versionName, ctx);
-				}
+				await this.nameVersion(
+					dto.workflowId,
+					dto.workflowVersionId,
+					versionName,
+					versionDescription,
+					ctx,
+				);
 
 				current.decision = 'pending';
 				current.updatedById = user.id;

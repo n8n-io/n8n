@@ -9,6 +9,8 @@ import type {
 import {
 	applyBranchReadOnlyOverrides,
 	buildProxyHeaders,
+	credentialSetupHintSchema,
+	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
 	type InstanceAiAttachment,
 	type InstanceAiHandoffContext,
 	type InstanceAiAgentAttachment,
@@ -39,6 +41,7 @@ import {
 	disabledInstanceAiSkillIds,
 	createInstanceAiTraceContext,
 	createInternalOperationTraceContext,
+	emitAgentSnapshotTraceEvent,
 	createInstanceAiLivenessPolicyConfig,
 	InstanceAiLivenessPolicy,
 	McpClientManager,
@@ -77,6 +80,7 @@ import {
 	type ManagedBackgroundTask,
 	type McpServerConfig,
 	type ModelConfig,
+	type AgentSnapshotArtifact,
 	type OrchestrationContext,
 	type InstanceAiTraceContext,
 	type PlannedTaskGraph,
@@ -104,6 +108,7 @@ import {
 	ThreadTaskStorage,
 } from '@n8n/instance-ai';
 import type { Scope } from '@n8n/permissions';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { lazyImport } from '@n8n/utils/lazy-import';
 import { setSchemaBaseDirs } from '@n8n/workflow-sdk';
 import { ErrorReporter, InstanceSettings } from 'n8n-core';
@@ -122,6 +127,7 @@ import { AiService } from '@/services/ai.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
 import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
+import { assertNever } from '@/utils';
 
 import { resolveAgentPreviewHandoff } from './agent-preview-handoff';
 import { composeLocalMcpServers } from './browser/composite-local-mcp-server';
@@ -235,6 +241,9 @@ function buildContextResourcesBlock(contextAttachments: InstanceAiResourceAttach
 	const lines = contextAttachments.map((attachment) => {
 		const name = attachment.name ? ` "${attachment.name}"` : '';
 		if (attachment.type === 'agent') {
+			if (attachment.pending) {
+				return `- New unsaved Agent artifact${name} (pending id: \`${attachment.id}\`, in project \`${attachment.projectId}\`).`;
+			}
 			return `- Agent${name} (id: \`${attachment.id}\`, in project \`${attachment.projectId}\`).`;
 		}
 		// Only mention the execution when one was actually handed off.
@@ -246,11 +255,19 @@ function buildContextResourcesBlock(contextAttachments: InstanceAiResourceAttach
 	const header = contextAttachments.some((attachment) => attachment.type === 'agent')
 		? 'The user opened this conversation from the agent editor, where they are looking at:'
 		: 'The user opened this conversation from the workflow editor, where they are looking at:';
+	const pendingAgentGuidance = contextAttachments.some(
+		(attachment) => attachment.type === 'agent' && attachment.pending,
+	)
+		? "Treat references such as “the agent” as this pending artifact. It has no persisted agent row yet. When the user asks to build or change it, use `build-agent`'s new-agent path with a name; do not pass its pending id as an existing `agentId`. The thread's pending target will make creation reuse that id."
+		: '';
 	const prose = [
 		header,
 		...lines,
+		pendingAgentGuidance,
 		"Treat this purely as context. Until the user tells you what they need, don't read, inspect, run, or otherwise call tools on these resources, and don't make claims about their contents — just briefly acknowledge what they're working on and ask how you can help.",
-	].join('\n');
+	]
+		.filter(Boolean)
+		.join('\n');
 	// Wrap in EDITOR_CONTEXT_BLOCK so the UI strips it from the visible message
 	// (cleanStoredUserMessage) and the parser can reconstruct the attachments on
 	// reload from the leading JSON line — keeping the resource durable without
@@ -262,11 +279,18 @@ function buildHandoffContextBlock(context: InstanceAiHandoffContext | undefined)
 	if (!context || context.source !== 'credential-modal') return '';
 
 	const { credential } = context;
+	const placeholderTitles = credential.placeholderTitles ?? [];
 	const lines = [
 		`- Credential type: \`${credential.credentialType}\` (${credential.displayName}).`,
 		credential.id ? `- Existing credential id: \`${credential.id}\`.` : '',
 		credential.nodeName ? `- Node name: "${credential.nodeName}".` : '',
 		credential.nodeType ? `- Node type: \`${credential.nodeType}\`.` : '',
+		placeholderTitles.length
+			? `- The credential form is fully pre-filled from a recipe; the user only pastes: ${placeholderTitles.map((title) => `"${title}"`).join(', ')}.`
+			: '',
+		credential.docsUrl
+			? `- The provider page where the user creates/copies the secret (verified during recipe research): ${credential.docsUrl}`
+			: '',
 		credential.documentationUrl ? `- n8n documentation URL: ${credential.documentationUrl}` : '',
 		credential.oauthRedirectUrl
 			? `- OAuth redirect/callback URL shown in the modal: ${credential.oauthRedirectUrl}`
@@ -276,7 +300,12 @@ function buildHandoffContextBlock(context: InstanceAiHandoffContext | undefined)
 		'The user opened this conversation from the credential setup modal and is asking for setup guidance.',
 		...lines,
 		'Use this metadata only as setup context. Never ask the user to paste credential secrets into chat. For credential setup docs, load `n8n-docs-assistant` and use `n8n-docs` with `intent: "credential-setup"`.',
-	].join('\n');
+		placeholderTitles.length
+			? `Because the form is pre-filled, give step-by-step guidance on where to obtain the listed value(s) on the provider side${credential.docsUrl ? ' — direct the user to the provider page above rather than re-researching' : ' (research the provider if needed)'} — and do NOT suggest editing the auth template, test URL, or any other credential field.`
+			: '',
+	]
+		.filter(Boolean)
+		.join('\n');
 
 	return `${CREDENTIAL_CONTEXT_OPEN_TAG}\n${JSON.stringify(context)}\n\n${prose}\n${CREDENTIAL_CONTEXT_CLOSE_TAG}`;
 }
@@ -296,6 +325,9 @@ const WORKFLOW_SETUP_ROUTING_CLAIM_TTL_MS = 15 * 60 * 1000;
 
 const CONFIRMATION_EXPIRED_MESSAGE =
 	'This confirmation has expired. Send a new message to continue.';
+
+const RESUME_REJECTED_MESSAGE =
+	'I could not apply that confirmation. Send a new message to continue.';
 
 /**
  * Upper bound on how long `shutdown()` will wait for in-flight executeRun /
@@ -333,12 +365,25 @@ function isStaleResumeError(error: unknown): boolean {
 export const QUOTA_EXHAUSTED_USER_MESSAGE =
 	"You've run out of AI credits. Upgrade your plan to continue using the AI assistant.";
 
+const OPERATIONAL_ERROR_USER_MESSAGE =
+	'I hit an operational error before I could finish that response. Please try again.';
+
+const GENERIC_ERROR_USER_MESSAGE =
+	'Something went wrong before I could finish that response. Please try again.';
+
 /** Structured error code for the UI when a run failed because credits ran out. */
 function getUserFacingErrorCode(error: unknown): 'quota_exhausted' | undefined {
 	return isQuotaExhaustedError(error) ? 'quota_exhausted' : undefined;
 }
 
-export function getUserFacingErrorMessage(error: unknown): string {
+type TerminalErrorCode = NonNullable<ReturnType<typeof getUserFacingErrorCode>>;
+
+/** `fallback` lets a caller name what specifically failed when the error itself
+ *  carries no user-facing meaning. */
+export function getUserFacingErrorMessage(
+	error: unknown,
+	fallback: string = GENERIC_ERROR_USER_MESSAGE,
+): string {
 	if (isQuotaExhaustedError(error)) {
 		return QUOTA_EXHAUSTED_USER_MESSAGE;
 	}
@@ -356,14 +401,10 @@ export function getUserFacingErrorMessage(error: unknown): string {
 	}
 
 	if (error instanceof OperationalError) {
-		return 'I hit an operational error before I could finish that response. Please try again.';
+		return OPERATIONAL_ERROR_USER_MESSAGE;
 	}
 
-	if (error instanceof UnexpectedError) {
-		return 'Something went wrong before I could finish that response. Please try again.';
-	}
-
-	return 'Something went wrong before I could finish that response. Please try again.';
+	return fallback;
 }
 
 /**
@@ -422,6 +463,44 @@ type RunFinishErrorInfo = {
 	/** 'stream' = the run reported an error but terminated cleanly; 'exception' = the run loop threw. */
 	errorSource?: 'stream' | 'exception';
 };
+
+type UnclaimedResumeContext = {
+	threadId: string;
+	runId: string;
+	user: User;
+	signal: AbortSignal;
+	snapshotStorage: DbSnapshotStorage;
+	tracing?: InstanceAiTraceContext;
+	messageGroupId?: string;
+	unregisteredResumeTracing?: InstanceAiTraceContext;
+};
+
+type UnclaimedResumeOutcome =
+	| { kind: 'preserve-hitl' }
+	| { kind: 'stale' }
+	| { kind: 'cancelled' }
+	| { kind: 'errored'; reason: string; errorCode?: TerminalErrorCode; errorMessage: string };
+
+/**
+ * A resume that never claimed its checkpoint gets no terminal event from the run
+ * loop, so one has to be issued for it — except when the checkpoint is stale,
+ * which means another owner is driving the run and may still finish it
+ * successfully. The cancellation reason is left to the caller because reading it
+ * consumes the run's timeout, which must not happen on the silent outcomes.
+ */
+function classifyUnclaimedResume(
+	error: unknown,
+	flags: { aborted: boolean; preserveHitl: boolean },
+): UnclaimedResumeOutcome {
+	if (isStaleResumeError(error)) return { kind: 'stale' };
+	if (flags.aborted) return flags.preserveHitl ? { kind: 'preserve-hitl' } : { kind: 'cancelled' };
+	return {
+		kind: 'errored',
+		reason: getUserFacingErrorMessage(error, RESUME_REJECTED_MESSAGE),
+		errorCode: getUserFacingErrorCode(error),
+		errorMessage: getErrorMessage(error),
+	};
+}
 
 const MAX_CONCURRENT_BACKGROUND_TASKS_PER_THREAD = 5;
 
@@ -2309,6 +2388,7 @@ export class InstanceAiService {
 		}
 
 		context.workspace = runtimeWorkspace;
+		context.workspaceRoot = workspaceRoot;
 		context.threadId = threadId;
 		context.threadMemory = memory;
 		context.trackTelemetry = (eventName, properties) => {
@@ -3498,6 +3578,10 @@ export class InstanceAiService {
 					this.tracing.storeTraceContext(runId, threadId, tracing, messageGroupId);
 				}
 			}
+
+			// The builder never sees an attach-only turn, so nothing else records what
+			// the attached agent looked like when the conversation opened.
+			await this.snapshotAttachedAgents(contextAttachments, orchestrationContext, tracing);
 
 			const enrichedMessage = await this.buildMessageWithRunningTasks(threadId, message);
 			const contextResourcesBlock = buildContextResourcesBlock(contextAttachments);
@@ -4749,6 +4833,17 @@ export class InstanceAiService {
 		} = suspended;
 		if (user.id !== requestingUserId) return null;
 
+		const activeRun = this.runState.getActiveRun(threadId);
+		if (activeRun) {
+			this.logger.warn('Rejecting suspended-run confirmation: thread already has an active run', {
+				requestId,
+				threadId,
+				suspendedRunId: runId,
+				activeRunId: activeRun.runId,
+			});
+			return null;
+		}
+
 		const activeUser = await this.revalidateActiveUser(user.id);
 		if (!activeUser) {
 			this.logger.warn('Cancelling suspended run: user no longer authorized for AI Assistant', {
@@ -4839,16 +4934,32 @@ export class InstanceAiService {
 				messageGroupId,
 			);
 			if (!rebuilt) {
+				const rebuildFailure = 'Agent rebuild failed';
 				await this.tracing.finalizeDetachedTraceRun(
 					`resume-rebuild:${runId}`,
 					unregisteredResumeTracing,
 					{
 						status: 'failed',
-						error: 'Agent rebuild failed',
+						error: rebuildFailure,
 						metadata: { completion_source: 'resume_rebuild' },
 					},
 				);
 				this.cancelRun(threadId, 'agent_rebuild_failed');
+				// `activateSuspendedRun` above already promoted this run to active, so
+				// `cancelRun` leaves the terminal event to a run loop that was never
+				// started — and the pending confirmation is already dropped, so the
+				// card can't be retried either.
+				await this.emitTerminalRun({
+					threadId,
+					runId,
+					status: 'errored',
+					reason: OPERATIONAL_ERROR_USER_MESSAGE,
+					errorInfo: { errorMessage: rebuildFailure, errorSource: 'exception' },
+					messageGroupId,
+					user: activeUser,
+					snapshotStorage: this.dbSnapshotStorage,
+				});
+				this.runState.clearActiveRun(threadId, resumeExecutionToken);
 				return null;
 			}
 			resumeAgent = rebuilt.agent;
@@ -4876,7 +4987,7 @@ export class InstanceAiService {
 			resumeExecutionToken,
 			messageGroupId,
 			resumeTracing,
-			discardTracingOnStale: unregisteredResumeTracing,
+			unregisteredResumeTracing,
 		});
 		return { ok: true, runId };
 	}
@@ -4910,7 +5021,7 @@ export class InstanceAiService {
 			resumeExecutionToken?: symbol;
 			messageGroupId?: string;
 			resumeTracing?: InstanceAiTraceContext;
-			discardTracingOnStale?: InstanceAiTraceContext;
+			unregisteredResumeTracing?: InstanceAiTraceContext;
 		},
 	): Promise<void> {
 		let messageTraceFinalization: MessageTraceFinalization | undefined;
@@ -5009,24 +5120,7 @@ export class InstanceAiService {
 			if (!resumeClaimed) {
 				skipPostRunCleanup = true;
 				const claimError = result.error ?? new Error('Resume checkpoint claim did not complete');
-				this.instanceAiErrorReporter.report(claimError, {
-					component: 'instance-ai-resume-claim',
-					threadId: opts.threadId,
-					runId: opts.runId,
-					tracing: opts.tracing,
-					agentId: orchestratorAgentId(opts.runId),
-					userId: opts.user.id,
-					messageGroupId: opts.messageGroupId,
-				});
-				await this.tracing.finalizeDetachedTraceRun(
-					`unclaimed-resume:${opts.runId}`,
-					opts.discardTracingOnStale,
-					{
-						status: 'failed',
-						error: getErrorMessage(claimError),
-						metadata: { completion_source: 'resume_claim' },
-					},
-				);
+				await this.settleUnclaimedResume(opts, claimError, 'stream');
 				return;
 			}
 			if (result.status === 'suspended') {
@@ -5266,39 +5360,9 @@ export class InstanceAiService {
 				});
 			}
 		} catch (error) {
-			if (!resumeClaimed && isStaleResumeError(error)) {
-				skipPostRunCleanup = true;
-				await this.tracing.finalizeDetachedTraceRun(
-					`stale-resume:${opts.runId}`,
-					opts.discardTracingOnStale,
-					{
-						status: 'cancelled',
-						outputs: { runId: opts.runId },
-						metadata: { completion_source: 'stale_resume' },
-					},
-				);
-				return;
-			}
 			if (!resumeClaimed) {
 				skipPostRunCleanup = true;
-				this.instanceAiErrorReporter.report(error, {
-					component: 'instance-ai-resume-claim',
-					threadId: opts.threadId,
-					runId: opts.runId,
-					tracing: opts.tracing,
-					agentId: orchestratorAgentId(opts.runId),
-					userId: opts.user.id,
-					messageGroupId: opts.messageGroupId,
-				});
-				await this.tracing.finalizeDetachedTraceRun(
-					`unclaimed-resume:${opts.runId}`,
-					opts.discardTracingOnStale,
-					{
-						status: 'failed',
-						error: getErrorMessage(error),
-						metadata: { completion_source: 'resume_claim' },
-					},
-				);
+				await this.settleUnclaimedResume(opts, error, 'exception');
 				return;
 			}
 
@@ -5477,6 +5541,169 @@ export class InstanceAiService {
 			if (errorReporterExecutionToken) {
 				this.instanceAiErrorReporter.endRun(opts.runId, errorReporterExecutionToken);
 			}
+		}
+	}
+
+	private async settleUnclaimedResume(
+		opts: UnclaimedResumeContext,
+		error: unknown,
+		errorSource: NonNullable<RunFinishErrorInfo['errorSource']>,
+	): Promise<void> {
+		const outcome = classifyUnclaimedResume(error, {
+			aborted: opts.signal.aborted,
+			preserveHitl: this.shouldPreserveHitlOnShutdown(opts.runId),
+		});
+
+		switch (outcome.kind) {
+			case 'preserve-hitl':
+				return;
+
+			case 'stale':
+				await this.tracing.finalizeDetachedTraceRun(
+					`stale-resume:${opts.runId}`,
+					opts.unregisteredResumeTracing,
+					{
+						status: 'cancelled',
+						outputs: { runId: opts.runId },
+						metadata: { completion_source: 'stale_resume' },
+					},
+				);
+				return;
+
+			case 'cancelled': {
+				const reason = this.liveness.consumeRunTimeout(opts.runId).timedOut
+					? INSTANCE_AI_RUN_TIMEOUT_REASON
+					: getAbortReason(opts.signal);
+				await this.tracing.finalizeDetachedTraceRun(
+					`cancelled-resume:${opts.runId}`,
+					opts.unregisteredResumeTracing,
+					{
+						status: 'cancelled',
+						outputs: { runId: opts.runId },
+						metadata: { completion_source: 'resume_cancelled', cancellation_reason: reason },
+					},
+				);
+				await this.emitTerminalRun({
+					threadId: opts.threadId,
+					runId: opts.runId,
+					status: 'cancelled',
+					reason,
+					messageGroupId: opts.messageGroupId,
+					user: opts.user,
+					snapshotStorage: opts.snapshotStorage,
+				});
+				return;
+			}
+
+			case 'errored':
+				this.instanceAiErrorReporter.report(error, {
+					component: 'instance-ai-resume-claim',
+					threadId: opts.threadId,
+					runId: opts.runId,
+					tracing: opts.tracing,
+					agentId: orchestratorAgentId(opts.runId),
+					userId: opts.user.id,
+					messageGroupId: opts.messageGroupId,
+				});
+				await this.tracing.finalizeDetachedTraceRun(
+					`unclaimed-resume:${opts.runId}`,
+					opts.unregisteredResumeTracing,
+					{
+						status: 'failed',
+						error: outcome.errorMessage,
+						metadata: { completion_source: 'resume_claim' },
+					},
+				);
+				await this.emitTerminalRun({
+					threadId: opts.threadId,
+					runId: opts.runId,
+					status: 'errored',
+					reason: outcome.reason,
+					errorCode: outcome.errorCode,
+					errorInfo: { errorMessage: outcome.errorMessage, errorSource },
+					// The resume trace context is never registered before the claim, so the
+					// message group has to come from the suspended run, not the trace registry.
+					messageGroupId: opts.messageGroupId,
+					user: opts.user,
+					snapshotStorage: opts.snapshotStorage,
+				});
+				return;
+
+			default:
+				assertNever(outcome);
+		}
+	}
+
+	/**
+	 * Terminalizes a run that ended in a stop or a failure. `publishRunFinish` is
+	 * the one step that has to land — without it the chat hangs forever — so every
+	 * DB-touching step around it is best-effort. `saveAgentTreeSnapshot` rebuilds
+	 * the agent tree by folding the event bus, so it has to come last.
+	 */
+	private async emitTerminalRun(args: {
+		threadId: string;
+		runId: string;
+		status: 'cancelled' | 'errored';
+		reason: string;
+		errorCode?: TerminalErrorCode;
+		errorInfo?: RunFinishErrorInfo;
+		messageGroupId?: string;
+		user: User;
+		snapshotStorage: DbSnapshotStorage;
+	}): Promise<void> {
+		const { threadId, runId, status } = args;
+		const context = { threadId, runId };
+
+		await this.bestEffort(
+			'Failed to evaluate the terminal response for a settling run',
+			context,
+			async () =>
+				await this.terminalOutcome.evaluateTerminalResponse(threadId, runId, status, {
+					messageGroupId: args.messageGroupId,
+					...(status === 'errored' ? { errorMessage: args.reason, errorCode: args.errorCode } : {}),
+				}),
+		);
+
+		const archivedWorkflowIds =
+			(await this.bestEffort(
+				'Failed to reap temporary workflows for a settling run',
+				context,
+				async () =>
+					await this.temporaryWorkflowService.reapForRun(
+						threadId,
+						args.user,
+						undefined,
+						this.backgroundTasks.getRunningTasks(threadId).length,
+					),
+			)) ?? [];
+
+		this.publishRunFinish(
+			threadId,
+			runId,
+			status,
+			args.reason,
+			archivedWorkflowIds,
+			args.user.id,
+			args.errorInfo,
+		);
+
+		await this.bestEffort(
+			'Failed to save the agent tree snapshot for a settling run',
+			context,
+			async () => await this.saveAgentTreeSnapshot(threadId, runId, args.snapshotStorage),
+		);
+	}
+
+	private async bestEffort<T>(
+		failureMessage: string,
+		context: { threadId: string; runId: string },
+		step: () => T | Promise<T>,
+	): Promise<Awaited<T> | undefined> {
+		try {
+			return await step();
+		} catch (error) {
+			this.logger.warn(failureMessage, { ...context, error: getErrorMessage(error) });
+			return undefined;
 		}
 	}
 
@@ -5726,6 +5953,37 @@ export class InstanceAiService {
 		return { status: 'limit-reached' };
 	}
 
+	/** Snapshot every Agent the editor attached, as it stands before this turn
+	 *  acts on it. Best-effort: it only feeds eval-seed authoring. */
+	private async snapshotAttachedAgents(
+		attachments: InstanceAiResourceAttachment[],
+		orchestrationContext: OrchestrationContext,
+		tracing: InstanceAiTraceContext | undefined,
+	): Promise<void> {
+		const delegate = orchestrationContext.domainContext?.builderDelegate;
+		if (!delegate || !tracing) return;
+		for (const attachment of attachments) {
+			if (attachment.type !== 'agent') continue;
+			let artifact: AgentSnapshotArtifact | null = null;
+			try {
+				artifact = (await delegate.readAgentArtifact?.(attachment.id)) ?? null;
+			} catch (error) {
+				this.logger.debug(
+					`[agent-snapshot] attached read for ${attachment.id} failed: ${error instanceof Error ? error.message : String(error)}`,
+				);
+				continue;
+			}
+			if (!artifact) continue;
+			await emitAgentSnapshotTraceEvent(tracing, {
+				agentId: attachment.id,
+				projectId: attachment.projectId,
+				reason: 'attached',
+				artifact,
+				logger: this.logger,
+			});
+		}
+	}
+
 	private async buildMessageWithRunningTasks(threadId: string, message: string): Promise<string> {
 		return await enrichMessageWithBackgroundTasks(
 			message,
@@ -5778,13 +6036,49 @@ export class InstanceAiService {
 			}
 		}
 
+		const credentialRequests = (
+			Array.isArray(payload.credentialRequests) ? payload.credentialRequests : []
+		).filter(
+			(request): request is { credentialType?: unknown; setupHint?: unknown } =>
+				typeof request === 'object' && request !== null,
+		);
+
+		// Whether any requested credential is a recipe-driven Templated Custom Auth
+		// one (recipe-seeded modal), to compare completion against plain types.
+		const containsTemplatedCred = credentialRequests.some(
+			(request) =>
+				request.credentialType === TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE ||
+				(request.setupHint !== null && request.setupHint !== undefined),
+		);
+
 		this.telemetry.track('Builder asked for input', {
 			user_id: userId,
 			thread_id: threadId,
 			input_thread_id: inputThreadId,
 			type,
 			num_steps: numSteps,
+			contains_templated_cred: containsTemplatedCred,
 		});
+
+		// Recipe content at spec time — production visibility into template and
+		// link quality (the offline eval suite grades the same fields). One event
+		// per recipe; secret-free by construction: recipes are agent-authored
+		// before any user input.
+		for (const request of credentialRequests) {
+			const parsedHint = credentialSetupHintSchema.safeParse(request.setupHint);
+			if (!parsedHint.success) continue;
+			const hint = parsedHint.data;
+			this.telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.BUILDER_SPECCED_TEMPLATED_CRED, {
+				thread_id: threadId,
+				input_thread_id: inputThreadId,
+				template: hint.template,
+				placeholders: hint.placeholders,
+				test_url: hint.testUrl,
+				docs_url: hint.docsUrl,
+				service_host: hint.serviceHost,
+				accepted_status_codes: hint.acceptedStatusCodes,
+			});
+		}
 	}
 
 	private async finalizeCancelledSuspendedRun(

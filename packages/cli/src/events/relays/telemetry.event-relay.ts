@@ -147,6 +147,7 @@ export class TelemetryEventRelay extends EventRelay {
 			'credentials-updated': (event) => this.credentialsUpdated(event),
 			'credentials-deleted': (event) => this.credentialsDeleted(event),
 			'credentials-user-disconnected': (event) => this.credentialsUserDisconnected(event),
+			'credentials-probed': (event) => this.credentialsProbed(event),
 			'private-credential-created': (event) => this.privateCredentialCreated(event),
 			'private-credential-toggled-to-private': (event) =>
 				this.privateCredentialToggledToPrivate(event),
@@ -734,6 +735,14 @@ export class TelemetryEventRelay extends EventRelay {
 			user_role: user.role?.slug,
 			credential_type: credentialType,
 			credential_id: credentialId,
+		});
+	}
+
+	private credentialsProbed({ user, credentialId, outcome }: RelayEventMap['credentials-probed']) {
+		this.telemetry.track(TELEMETRY_EVENT.CREDENTIALS.USER_PROBED_CREDENTIAL, {
+			user_id: user.id,
+			credential_id: credentialId,
+			outcome,
 		});
 	}
 
