@@ -118,7 +118,7 @@ describe('DynamicNodeParametersService', () => {
 		it('should resolve routing from the node definition and run it', async () => {
 			const runNode = jest.fn().mockResolvedValue([[{ json: { name: 'opt', value: 'v' } }]]);
 			(RoutingNode as unknown as jest.Mock).mockImplementation(() => ({ runNode }));
-			jest.spyOn(Expression.prototype, 'acquireIsolate').mockResolvedValue(undefined);
+			jest.spyOn(Expression.prototype, 'acquireIsolate').mockResolvedValue(true);
 			jest.spyOn(Expression.prototype, 'releaseIsolate').mockResolvedValue(undefined);
 
 			const nodeRouting = { request: { url: '/v1/models', method: 'GET' as const } };
