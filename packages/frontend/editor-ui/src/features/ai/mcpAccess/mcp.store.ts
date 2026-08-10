@@ -153,9 +153,15 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		};
 
 		// autoExposeNewWorkflows is reported as false by the backend while MCP access is disabled,
-		// so re-enabling must re-fetch to surface its real stored value.
+		// so re-enabling must re-fetch to surface its real stored value. Best-effort: the
+		// enable already succeeded, so a transient refresh failure must not report it as failed.
 		if (next) {
-			await settingsStore.getModuleSettings();
+			try {
+				await settingsStore.getModuleSettings();
+			} catch {
+				// Swallow: the enable already succeeded server-side, so a transient
+				// refresh failure must not report it as failed to the caller.
+			}
 		}
 		return next;
 	}

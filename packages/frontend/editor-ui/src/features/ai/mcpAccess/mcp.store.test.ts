@@ -558,6 +558,14 @@ describe('mcp.store', () => {
 			expect(getModuleSettings).toHaveBeenCalledTimes(expectRefetch ? 1 : 0);
 		});
 
+		it('still resolves as enabled when the post-enable settings refresh fails', async () => {
+			vi.spyOn(mcpApi, 'updateMcpSettings').mockResolvedValue({ mcpAccessEnabled: true });
+			const settingsStore = useSettingsStore();
+			vi.spyOn(settingsStore, 'getModuleSettings').mockRejectedValue(new Error('network'));
+
+			await expect(useMCPStore().setMcpAccessEnabled(true)).resolves.toBe(true);
+		});
+
 		it('falls back to the requested value and defaults when no settings or response value exist', async () => {
 			vi.spyOn(mcpApi, 'updateMcpSettings').mockResolvedValue({});
 			const settingsStore = useSettingsStore();
