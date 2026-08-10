@@ -235,12 +235,16 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 			expect(detail.workflowVersionId).toBeNull();
 		});
 
-		// An open review with no covered workflow is a dead leftover (nothing can
-		// decide or update it), so it is hidden — from its requester too
-		it('reports an open review whose workflows were all deleted as not found', async () => {
+		// An open review can transiently cover no workflow when a delete orphaned
+		// it and the sweep hasn't closed it yet — it stays readable until then
+		it('returns an open review with no workflows when its workflow was deleted', async () => {
 			workflowRepository.findLinkedWorkflowDetailsByRequestId.mockResolvedValue([]);
 
-			await expect(service.getDetail(requester, requestId)).rejects.toThrow(NotFoundError);
+			const detail = await service.getDetail(requester, requestId);
+
+			expect(detail.state).toBe('open');
+			expect(detail.workflows).toEqual([]);
+			expect(detail.workflowName).toBeNull();
 		});
 	});
 
