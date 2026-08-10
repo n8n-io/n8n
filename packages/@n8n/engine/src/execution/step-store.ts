@@ -137,6 +137,14 @@ export interface StepStore {
 	/** Whether the execution has any step still `queued` or `running`. */
 	hasActiveSteps(executionId: string): Promise<boolean>;
 
+	/**
+	 * How many of the execution's steps have settled (completed, failed,
+	 * skipped, or cancelled). Rows are unique per node and only exist for
+	 * reachable nodes, so comparing this against the graph's reachable node
+	 * count answers "has everything settled?" exactly.
+	 */
+	countSettledSteps(executionId: string): Promise<number>;
+
 	/** Whether any of the execution's steps failed. */
 	hasFailedSteps(executionId: string): Promise<boolean>;
 }

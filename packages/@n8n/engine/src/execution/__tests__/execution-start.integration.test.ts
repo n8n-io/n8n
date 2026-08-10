@@ -61,7 +61,7 @@ describe('execution start (integration)', () => {
 		const worker = new OrchestrationWorker(
 			orchestrationQueue,
 			new ExecutionStartHandler(executionStore, stepStore, orchestrationQueue),
-			new StepSettledHandler(executionStore, stepStore, stepQueue),
+			new StepSettledHandler(executionStore, stepStore, stepQueue, orchestrationQueue),
 		);
 		worker.start();
 		const startExecution = new StartExecutionService(

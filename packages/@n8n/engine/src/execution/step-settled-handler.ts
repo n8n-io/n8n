@@ -1,17 +1,24 @@
-import { getPredecessorNodeIds, getSuccessorNodeIds } from '../graph';
-import type { StepSettledEvent, StepMessage, WorkQueue } from '../queue';
+import { UnexpectedError } from '../common';
+import {
+	findTriggerNode,
+	getDescendantNodeIds,
+	getPredecessorNodeIds,
+	getSuccessorNodeIds,
+} from '../graph';
+import type { OrchestrationMessage, StepMessage, StepSettledEvent, WorkQueue } from '../queue';
 import type { ExecutionRecord, ExecutionStore } from './execution-store';
-import type { StepStore } from './step-store';
+import { decideSuccessors } from './settlement';
+import type { StepStore, StepSummary } from './step-store';
 import { validateStepContext } from './validate-step-context';
 
 /**
- * Handles the `step:settled` orchestration event: plans the successors of the
- * finished step and publishes `step:ready` for each, or records the execution's
- * outcome when there is nothing left to run.
- *
- * A successor is planned once, when every predecessor has completed — never
- * planned early and held back at run time — so a step row exists only for work
- * whose inputs are all available.
+ * Handles the `step:settled` orchestration event: decides the fate of the
+ * settled step's direct successors — queued when a live edge feeds them,
+ * skipped when every input is settled dead (see the rules in `settlement.ts`)
+ * — and records the execution's outcome once every reachable node has
+ * settled. Skips are settlements too: each one is announced back onto the
+ * orchestration queue, and handling it here decides the next hop, so a dead
+ * region cascades through the event loop one settlement at a time.
  *
  * An event whose step and execution disagree is rejected before anything is
  * planned, leaving both executions untouched.
@@ -21,6 +28,7 @@ export class StepSettledHandler {
 		private readonly executionStore: ExecutionStore,
 		private readonly stepStore: StepStore,
 		private readonly stepQueue: WorkQueue<StepMessage>,
+		private readonly orchestrationQueue: WorkQueue<OrchestrationMessage>,
 	) {}
 
 	async handle(event: StepSettledEvent): Promise<void> {
@@ -40,97 +48,109 @@ export class StepSettledHandler {
 
 		if (execution.status !== 'running') return;
 
-		const planned =
-			step.status === 'completed' ? await this.planSuccessors(execution, step.nodeId) : 0;
+		const queued =
+			step.status === 'completed' || step.status === 'skipped'
+				? await this.planSuccessors(execution, step.nodeId)
+				: 0;
 
-		// If we've planned steps, we know the execution isn't done yet, so we definitely don't need
-		// to mark it finished.
-		if (planned > 0) return;
+		// If we've queued steps, we know the execution isn't done yet, so we
+		// definitely don't need to mark it finished.
+		if (queued > 0) return;
 
-		await this.finishExecutionIfDone(execution.id);
+		await this.finishExecutionIfDone(execution);
 	}
 
-	/**
-	 * Records the execution's outcome once no step is left to run: `failed` if any
-	 * step failed, `completed` otherwise. A no-op while work is still outstanding.
-	 *
-	 * TODO(CAT-3910): there's a possible race condition with two branches, where
-	 * one branch finishes and the other is still running. If we check while the
-	 * still-running branch has finished a step but not yet planned its successors,
-	 * it will look like there are no active steps and we'll mark the execution
-	 * finished. There are a few possible approaches to close this race e.g.,
-	 * distinguish between "completed" and "completed AND possible next steps planned".
-	 */
-	private async finishExecutionIfDone(executionId: string): Promise<void> {
-		if (await this.stepStore.hasActiveSteps(executionId)) return;
-
-		const failed = await this.stepStore.hasFailedSteps(executionId);
-		await this.executionStore.finishExecution(executionId, failed ? 'failed' : 'completed');
-	}
-
-	/** Plans the ready successors of `nodeId`, returning how many were queued. */
+	/** Plans the direct successors of `nodeId`, returning how many were queued. */
 	private async planSuccessors(execution: ExecutionRecord, nodeId: string): Promise<number> {
-		const readyNodeIds = await this.readySuccessorNodeIds(execution, nodeId);
-		if (readyNodeIds.length === 0) return 0;
+		const steps = await this.loadDecisionSteps(execution, nodeId);
+		const { toQueue, toSkip } = decideSuccessors(execution.graph, nodeId, steps);
+		if (toQueue.length === 0 && toSkip.length === 0) return 0;
 
-		// Planned together so a fan-out is one round trip, and published only after
-		// the rows exist, so a consumer can always load the step. A step another
-		// planner got to first isn't returned, so it isn't announced twice either.
-		// TODO(CAT-2938): a crash between the insert and the publishes strands the
-		// rows `queued` forever; the reconciler re-announces stale queued steps.
-		const created = await this.stepStore.createSteps(
-			readyNodeIds.map((readyNodeId) => ({
+		// One batch, so a settlement's consequence lands atomically and a fan-out
+		// costs one round trip. A row another planner got to first isn't
+		// returned, so it isn't announced twice either.
+		// TODO(CAT-2938): a crash between the insert and the publishes strands
+		// the rows forever; the reconciler re-announces stale queued steps and
+		// settled steps whose decidable successors have no rows.
+		const created = await this.stepStore.createSteps([
+			...toQueue.map((id) => ({
 				executionId: execution.id,
-				nodeId: readyNodeId,
+				nodeId: id,
 				status: 'queued' as const,
 			})),
-		);
-
-		for (const { id: stepId } of created) {
-			await this.stepQueue.publish({
-				type: 'step:ready',
+			...toSkip.map((id) => ({
 				executionId: execution.id,
-				stepId,
-			});
-		}
+				nodeId: id,
+				status: 'skipped' as const,
+			})),
+		]);
 
-		return created.length;
+		return await this.announceCreatedSteps(execution.id, created, new Set(toQueue));
 	}
 
 	/**
-	 * Successors of `nodeId` whose every predecessor has completed.
-	 * We get the successors straight from the graph, while we check
-	 * for predecessors completion in a single query to the step store,
-	 * so a fan-out costs one round trip.
-	 *
-	 * NOTE: we exclude `nodeId` itself from the check, since we know it's complete.
-	 * This also lets us skip a database trip when there's no merging happening,
-	 * which is the common case.
+	 * The rows a successor decision reads: the successors themselves (an
+	 * existing row means already decided) and their predecessors (settledness
+	 * and slot liveness), which include the settled node itself.
 	 */
-	private async readySuccessorNodeIds(
+	private async loadDecisionSteps(
 		execution: ExecutionRecord,
 		nodeId: string,
-	): Promise<string[]> {
-		const successors = getSuccessorNodeIds(execution.graph, nodeId).map((id) => ({
-			id,
-			predecessorIds: getPredecessorNodeIds(execution.graph, id),
-		}));
+	): Promise<Record<string, StepSummary>> {
+		const successors = getSuccessorNodeIds(execution.graph, nodeId);
+		const nodeIds = [
+			...new Set([
+				...successors,
+				...successors.flatMap((id) => getPredecessorNodeIds(execution.graph, id)),
+			]),
+		];
+		return await this.stepStore.loadStepSummaries(execution.id, nodeIds);
+	}
 
-		// We get all the predecessors of our successors, for possible merging.
-		const predecessorsToCheck = successors
-			.flatMap(({ predecessorIds }) => predecessorIds)
-			// NOTE: we exclude ourselves, since we know we're complete.
-			.filter((id) => id !== nodeId);
+	/**
+	 * Announces the created rows — `step:ready` for queued ones, `step:settled`
+	 * for skips, which settle at birth — and returns how many were queued.
+	 * Published only after the rows exist, so a consumer can always load them.
+	 */
+	private async announceCreatedSteps(
+		executionId: string,
+		created: Array<{ id: string; nodeId: string }>,
+		queuedNodeIds: Set<string>,
+	): Promise<number> {
+		let queued = 0;
+		for (const { id: stepId, nodeId } of created) {
+			if (queuedNodeIds.has(nodeId)) {
+				queued += 1;
+				await this.stepQueue.publish({ type: 'step:ready', executionId, stepId });
+			} else {
+				await this.orchestrationQueue.publish({ type: 'step:settled', executionId, stepId });
+			}
+		}
+		return queued;
+	}
 
-		const completed =
-			predecessorsToCheck.length === 0
-				? new Set<string>()
-				: await this.stepStore.loadCompletedNodeIds(execution.id, predecessorsToCheck);
+	/**
+	 * Records the execution's outcome once every reachable node has settled:
+	 * `failed` if any step failed, `completed` otherwise. Settled rows are
+	 * unique per node, only exist for reachable nodes, and never unsettle, so
+	 * the count comparison cannot pass early — in-flight events and unplanned
+	 * successors both leave reachable nodes unsettled.
+	 */
+	private async finishExecutionIfDone(execution: ExecutionRecord): Promise<void> {
+		const settled = await this.stepStore.countSettledSteps(execution.id);
+		if (settled < this.reachableNodeCount(execution)) return;
 
-		return successors
-			.filter(({ predecessorIds }) =>
-				predecessorIds.every((id) => id === nodeId || completed.has(id)),
-			)
-			.map(({ id }) => id);
+		const failed = await this.stepStore.hasFailedSteps(execution.id);
+		await this.executionStore.finishExecution(execution.id, failed ? 'failed' : 'completed');
+	}
+
+	private reachableNodeCount(execution: ExecutionRecord): number {
+		const trigger = findTriggerNode(execution.graph);
+		if (!trigger) {
+			// The start boundary rejects triggerless graphs, so this execution
+			// should never have been created.
+			throw new UnexpectedError(`Execution ${execution.id} has no trigger node in its graph`);
+		}
+		return 1 + getDescendantNodeIds(execution.graph, trigger.id).length;
 	}
 }

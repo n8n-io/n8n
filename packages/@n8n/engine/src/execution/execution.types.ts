@@ -18,15 +18,15 @@ export type StepStatus = 'queued' | 'running' | 'completed' | 'failed' | 'skippe
  * immutable, and it will never produce more data. Planning decisions are made
  * over settled predecessors only, so they hold no matter when they're computed.
  */
-const SETTLED_STEP_STATUSES: ReadonlySet<StepStatus> = new Set([
+export const SETTLED_STEP_STATUSES: readonly StepStatus[] = [
 	'completed',
 	'failed',
 	'skipped',
 	'cancelled',
-]);
+];
 
 export function isSettledStatus(status: StepStatus): boolean {
-	return SETTLED_STEP_STATUSES.has(status);
+	return SETTLED_STEP_STATUSES.includes(status);
 }
 
 /**

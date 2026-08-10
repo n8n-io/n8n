@@ -34,6 +34,7 @@ function makeStepStore(createSteps = vi.fn()): StepStore {
 		loadStepOutputs: vi.fn(),
 		loadCompletedNodeIds: vi.fn(),
 		hasActiveSteps: vi.fn(),
+		countSettledSteps: vi.fn(),
 		hasFailedSteps: vi.fn(),
 	};
 }

@@ -377,6 +377,26 @@ describe('workflow_step_execution table (integration)', () => {
 		expect(await store.loadStepsByNodeIds('00000000-0000-7000-8000-000000000000', [])).toEqual({});
 	});
 
+	it('TypeOrmStepStore.countSettledSteps counts terminal rows only, per execution', async () => {
+		const executionId = await createExecution();
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		await store.createSteps([
+			{ executionId, nodeId: 'trigger', status: 'completed' },
+			{ executionId, nodeId: 'a', status: 'skipped' },
+			{ executionId, nodeId: 'b', status: 'cancelled' },
+			{ executionId, nodeId: 'c', status: 'queued' },
+			{ executionId, nodeId: 'd', status: 'running' },
+		]);
+		const { id: eId } = await createStep(store, { executionId, nodeId: 'e', status: 'running' });
+		await store.failStep(eId, { name: 'Error', message: 'node blew up' });
+		// a sibling execution's settled rows must not count
+		const otherExecutionId = await createExecution();
+		await createStep(store, { executionId: otherExecutionId, nodeId: 'x', status: 'completed' });
+
+		// trigger, a, b, e — not c (queued) or d (running)
+		expect(await store.countSettledSteps(executionId)).toBe(4);
+	});
+
 	it('rejects an invalid status (check constraint)', async () => {
 		const executionId = await createExecution();
 		const repo = dataSource.getRepository(WorkflowStepExecution);

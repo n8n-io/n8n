@@ -3,7 +3,11 @@ import { In, type Repository } from '@n8n/typeorm';
 import type { WorkflowStepExecution } from './entities';
 import { generateId } from './generate-id';
 import { UnexpectedError } from '../common';
-import type { StepSlots, StepStatus } from '../execution/execution.types';
+import {
+	SETTLED_STEP_STATUSES,
+	type StepSlots,
+	type StepStatus,
+} from '../execution/execution.types';
 import {
 	StepNotFoundError,
 	type NewStepRecord,
@@ -179,6 +183,12 @@ export class TypeOrmStepStore implements StepStore {
 		});
 
 		return new Set(rows.map((row) => row.nodeId));
+	}
+
+	async countSettledSteps(executionId: string): Promise<number> {
+		return await this.repo.count({
+			where: { executionId, status: In([...SETTLED_STEP_STATUSES]) },
+		});
 	}
 
 	async hasActiveSteps(executionId: string): Promise<boolean> {
