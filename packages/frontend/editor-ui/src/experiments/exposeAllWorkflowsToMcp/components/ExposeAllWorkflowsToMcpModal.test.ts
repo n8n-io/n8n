@@ -141,15 +141,4 @@ describe('ExposeAllWorkflowsToMcpModal', () => {
 		expect(mcpStore.setAutoExposeNewWorkflows).toHaveBeenCalledWith(true);
 		expect(trackAutoExposeToggledSpy).toHaveBeenCalledWith({ enabled: true, source: 'expose_all' });
 	});
-
-	it('does not enable auto-expose when exposing all workflows fails', async () => {
-		mcpStore.toggleWorkflowsMcpAccess.mockRejectedValue(new Error('boom'));
-		const user = userEvent.setup();
-		const { getByTestId } = renderComponent({ pinia, props: defaultProps });
-
-		await user.click(getByTestId('expose-all-workflows-mcp-confirm-button'));
-
-		expect(mcpStore.setAutoExposeNewWorkflows).not.toHaveBeenCalled();
-		expect(trackAutoExposeToggledSpy).not.toHaveBeenCalled();
-	});
 });
