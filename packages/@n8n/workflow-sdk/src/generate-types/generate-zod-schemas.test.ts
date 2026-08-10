@@ -5,6 +5,7 @@ import {
 } from './generate-types';
 import {
 	generateConditionalSchemaLine,
+	generateResourceIndexSchemaFile,
 	generateSingleVersionSchemaFile,
 	stripDiscriminatorKeysFromDisplayOptions,
 	generateDiscriminatorSchemaFile,
@@ -2479,5 +2480,108 @@ describe('mapPropertyToZodSchema for agentSelector', () => {
 		expect(schema).toContain('value: z.union([z.string(), z.number()])');
 		expect(schema).toContain('cachedResultName: z.string().optional()');
 		expect(schema).toContain('expressionSchema');
+	});
+});
+
+describe('per-resource operation defaults', () => {
+	// Mirrors nodes like Salesforce that declare one `operation` property per
+	// resource, each gated by displayOptions and carrying its own default.
+	const multiResourceNode: NodeTypeDescription = {
+		group: ['transform'],
+		inputs: ['main'],
+		outputs: ['main'],
+		name: 'n8n-nodes-base.testNode',
+		displayName: 'Test Node',
+		version: 1,
+		properties: [
+			{
+				name: 'resource',
+				displayName: 'Resource',
+				type: 'options',
+				options: [
+					{ name: 'Lead', value: 'lead' },
+					{ name: 'Search', value: 'search' },
+				],
+				default: 'lead',
+			},
+			{
+				name: 'operation',
+				displayName: 'Operation',
+				type: 'options',
+				displayOptions: { show: { resource: ['lead'] } },
+				options: [
+					{ name: 'Create', value: 'create' },
+					{ name: 'Get', value: 'get' },
+				],
+				default: 'create',
+			},
+			{
+				name: 'operation',
+				displayName: 'Operation',
+				type: 'options',
+				displayOptions: { show: { resource: ['search'] } },
+				options: [{ name: 'Query', value: 'query' }],
+				default: 'query',
+			},
+		],
+	};
+
+	it('applies the default of the operation property scoped to the resource', () => {
+		const code = generateResourceIndexSchemaFile(multiResourceNode, 1, 'search', ['query']);
+
+		expect(code).toContain("operation: 'query'");
+	});
+
+	it('does not apply another resource’s operation default', () => {
+		const code = generateResourceIndexSchemaFile(multiResourceNode, 1, 'search', ['query']);
+
+		expect(code).not.toContain("operation: 'create'");
+	});
+
+	it('still applies the default for the first resource', () => {
+		const code = generateResourceIndexSchemaFile(multiResourceNode, 1, 'lead', ['create', 'get']);
+
+		expect(code).toContain("operation: 'create'");
+	});
+
+	// The editor omits `operation` when it equals the resource's default, so the
+	// leaf schema has to accept it as absent.
+	it('makes the operation literal defaultable when it is the resource default', () => {
+		const code = generateDiscriminatorSchemaFile(
+			multiResourceNode,
+			1,
+			{ resource: 'search', operation: 'query' },
+			[],
+			5,
+			[],
+		);
+
+		expect(code).toContain("operation: z.literal('query').default('query')");
+	});
+
+	it('keeps the operation literal required when it is not the resource default', () => {
+		const code = generateDiscriminatorSchemaFile(
+			multiResourceNode,
+			1,
+			{ resource: 'lead', operation: 'get' },
+			[],
+			5,
+			[],
+		);
+
+		expect(code).toContain("operation: z.literal('get'),");
+	});
+
+	it('makes the operation literal defaultable for the first resource default', () => {
+		const code = generateDiscriminatorSchemaFile(
+			multiResourceNode,
+			1,
+			{ resource: 'lead', operation: 'create' },
+			[],
+			5,
+			[],
+		);
+
+		expect(code).toContain("operation: z.literal('create').default('create')");
 	});
 });

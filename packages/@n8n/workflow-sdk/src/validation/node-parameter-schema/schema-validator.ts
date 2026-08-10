@@ -459,10 +459,14 @@ function extractUnionErrorSummary(unionErrors: Array<{ issues: ZodIssue[] }>): s
 				if (literalIssues.length > 0) {
 					const receivedValue = (literalIssues[0] as { received?: unknown }).received;
 
-					// For missing discriminators, collect ALL valid values from ALL variants
+					// Collect ALL valid values from ALL variants, not just the best-matching
+					// one — otherwise a node with 12 resources reports only the first.
+					// The best-path literals are a fallback for schemas whose variants
+					// don't surface an issue at this exact path.
+					const allValues = collectAllDiscriminatorValues(unionErrors, path);
 					const expectedValues =
-						receivedValue === undefined
-							? collectAllDiscriminatorValues(unionErrors, path)
+						allValues.length > 0
+							? allValues
 							: [...new Set(literalIssues.map((i) => (i as { expected?: unknown }).expected))];
 
 					const expectedStr = expectedValues.map((v) => `"${String(v)}"`).join(', ');
