@@ -127,9 +127,16 @@ describe('ImportCurlModal', () => {
 		await userEvent.type(input, 'curl -X GET https://api.example.com/data');
 		const button = getByTestId('import-curl-modal-button');
 		await userEvent.click(button);
-		expect(uiStore.modalsById[IMPORT_CURL_MODAL_KEY].data?.curlCommands).toEqual({
-			'node-1': 'curl -X GET https://api.example.com/data',
-			'node-2': 'curl -X POST https://api.example.com/submit',
+		// Asserted on the write, not on the read: what the store resolves is derived,
+		// so a component must ask it to store the merged map rather than mutate it.
+		expect(uiStore.setModalData).toHaveBeenCalledWith({
+			name: IMPORT_CURL_MODAL_KEY,
+			data: {
+				curlCommands: {
+					'node-1': 'curl -X GET https://api.example.com/data',
+					'node-2': 'curl -X POST https://api.example.com/submit',
+				},
+			},
 		});
 	});
 
@@ -157,8 +164,9 @@ describe('ImportCurlModal', () => {
 		await userEvent.type(input, 'curl -X GET https://api.example.com/other');
 		const button = getByTestId('import-curl-modal-button');
 		await userEvent.click(button);
-		expect(uiStore.modalsById[IMPORT_CURL_MODAL_KEY].data?.curlCommands).toEqual({
-			'node-1': 'curl -X GET https://api.example.com/other',
+		expect(uiStore.setModalData).toHaveBeenCalledWith({
+			name: IMPORT_CURL_MODAL_KEY,
+			data: { curlCommands: { 'node-1': 'curl -X GET https://api.example.com/other' } },
 		});
 	});
 

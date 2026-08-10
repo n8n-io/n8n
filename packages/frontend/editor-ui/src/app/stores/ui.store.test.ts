@@ -2,6 +2,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { modalRegistry } from '@n8n/frontend-module-sdk';
 
 import type { ModalState } from '@/Interface';
+import { IMPORT_CURL_MODAL_KEY } from '@/app/constants';
 import { listenForModalChanges, useUIStore } from '@/app/stores/ui.store';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 
@@ -253,6 +254,34 @@ describe('UI Store', () => {
 				expect(uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY].open).toBe(true);
 			});
 		});
+
+		// The shell catalogue is a module-level constant shared by every store
+		// instance. What the store resolves must never be a reference into it, or one
+		// session's writes reach the next.
+		describe('isolation from the shell catalogue', () => {
+			it('should not hand out state that writes through to the next store instance', () => {
+				const first = useUIStore();
+				const handedOut = first.modalsById[IMPORT_CURL_MODAL_KEY].data as {
+					curlCommands: Record<string, string>;
+				};
+
+				handedOut.curlCommands['node-1'] = 'curl https://leaked.example';
+
+				setActivePinia(createPinia());
+				expect(useUIStore().modalsById[IMPORT_CURL_MODAL_KEY].data).toEqual({ curlCommands: {} });
+			});
+
+			it('should give two instances independent state for the same key', () => {
+				const first = useUIStore();
+				first.openModalWithData({
+					name: IMPORT_CURL_MODAL_KEY,
+					data: { curlCommands: { a: 'b' } },
+				});
+
+				setActivePinia(createPinia());
+				expect(useUIStore().modalsById[IMPORT_CURL_MODAL_KEY].open).toBe(false);
+			});
+		});
 	});
 
 	describe('isModalActiveById', () => {
@@ -278,22 +307,62 @@ describe('UI Store', () => {
 	describe('listenForModalChanges', () => {
 		const MODAL_KEY = 'someFeatureModal';
 
-		// Filters `$onAction` on literal action names, so it breaks silently — with no
-		// type error — if opening or closing stops going through a store action.
-		it('should still fire for open and close', () => {
-			const uiStore = useUIStore();
+		const listen = () => {
 			const onModalOpened = vi.fn();
 			const onModalClosed = vi.fn();
-			listenForModalChanges({ store: uiStore, onModalOpened, onModalClosed });
+			const stop = listenForModalChanges({
+				store: useUIStore(),
+				onModalOpened,
+				onModalClosed,
+			});
+			return { onModalOpened, onModalClosed, stop };
+		};
+
+		it('should fire for open and close', () => {
+			const uiStore = useUIStore();
+			const { onModalOpened, onModalClosed } = listen();
 
 			uiStore.openModal(MODAL_KEY);
 			expect(onModalOpened).toHaveBeenCalledWith(MODAL_KEY);
 
-			uiStore.openModalWithData({ name: MODAL_KEY, data: {} });
-			expect(onModalOpened).toHaveBeenCalledTimes(2);
-
 			uiStore.closeModal(MODAL_KEY);
 			expect(onModalClosed).toHaveBeenCalledWith(MODAL_KEY);
+		});
+
+		// The reason this is derived from state rather than filtered on action names:
+		// every path that closes a modal has to be observable, and the sweep is one.
+		it('should fire when a modal closes because its definition was unregistered', () => {
+			const uiStore = useUIStore();
+			modalRegistry.register({ key: MODAL_KEY, component: {} });
+			const { onModalClosed } = listen();
+			uiStore.openModal(MODAL_KEY);
+
+			modalRegistry.unregister(MODAL_KEY);
+
+			expect(onModalClosed).toHaveBeenCalledWith(MODAL_KEY);
+		});
+
+		it('should report each modal in a stack separately', () => {
+			const uiStore = useUIStore();
+			const { onModalOpened, onModalClosed } = listen();
+
+			uiStore.openModal('first');
+			uiStore.openModal('second');
+			expect(onModalOpened.mock.calls).toEqual([['first'], ['second']]);
+
+			uiStore.closeModal('first');
+			uiStore.closeModal('second');
+			expect(onModalClosed.mock.calls).toEqual([['first'], ['second']]);
+		});
+
+		it('should stop listening when the returned handle is called', () => {
+			const uiStore = useUIStore();
+			const { onModalOpened, stop } = listen();
+
+			stop();
+			uiStore.openModal(MODAL_KEY);
+
+			expect(onModalOpened).not.toHaveBeenCalled();
 		});
 	});
 });

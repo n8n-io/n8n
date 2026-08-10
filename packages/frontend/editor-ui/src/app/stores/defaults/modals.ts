@@ -78,9 +78,6 @@ import {
 } from '@/features/shared/tags/tags.constants';
 import type { ModalState } from '@/Interface';
 
-/** Shared closed state for keys that need no other initial fields. */
-const CLOSED: ModalState = Object.freeze({ open: false });
-
 /**
  * Modal definitions still owned by the shell: the key and the state it starts in.
  *
@@ -93,12 +90,12 @@ const CLOSED: ModalState = Object.freeze({ open: false });
  * empty when the inversion is complete. Nothing else should be added to it.
  */
 export const SHELL_MODAL_INITIAL_STATE: Readonly<Record<string, ModalState>> = Object.freeze({
-	[ABOUT_MODAL_KEY]: CLOSED,
+	[ABOUT_MODAL_KEY]: { open: false },
 	[ADD_EXECUTION_TO_DATASET_MODAL_KEY]: { open: false, data: {} },
-	[AGENT_CONFIRMATION_MODAL_KEY]: CLOSED,
-	[AI_BUILDER_DIFF_MODAL_KEY]: CLOSED,
-	[AI_GATEWAY_TOP_UP_MODAL_KEY]: CLOSED,
-	[ANNOTATION_TAGS_MANAGER_MODAL_KEY]: CLOSED,
+	[AGENT_CONFIRMATION_MODAL_KEY]: { open: false },
+	[AI_BUILDER_DIFF_MODAL_KEY]: { open: false },
+	[AI_GATEWAY_TOP_UP_MODAL_KEY]: { open: false },
+	[ANNOTATION_TAGS_MANAGER_MODAL_KEY]: { open: false },
 	[API_KEY_CREATE_OR_EDIT_MODAL_KEY]: {
 		open: false,
 		data: {
@@ -106,22 +103,22 @@ export const SHELL_MODAL_INITIAL_STATE: Readonly<Record<string, ModalState>> = O
 			mode: '',
 		},
 	},
-	[BINARY_DATA_VIEW_MODAL_KEY]: CLOSED,
-	[CHANGE_PASSWORD_MODAL_KEY]: CLOSED,
-	[CHAT_EMBED_MODAL_KEY]: CLOSED,
+	[BINARY_DATA_VIEW_MODAL_KEY]: { open: false },
+	[CHANGE_PASSWORD_MODAL_KEY]: { open: false },
+	[CHAT_EMBED_MODAL_KEY]: { open: false },
 	[COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY]: {
 		open: false,
 		mode: '',
 		activeId: null,
 	},
-	[COMMUNITY_PACKAGE_INSTALL_MODAL_KEY]: CLOSED,
+	[COMMUNITY_PACKAGE_INSTALL_MODAL_KEY]: { open: false },
 	[COMMUNITY_PLUS_ENROLLMENT_MODAL]: {
 		open: false,
 		data: {
 			customHeading: undefined,
 		},
 	},
-	[CONFIRM_PASSWORD_MODAL_KEY]: CLOSED,
+	[CONFIRM_PASSWORD_MODAL_KEY]: { open: false },
 	[CREDENTIAL_EDIT_MODAL_KEY]: {
 		open: false,
 		mode: '',
@@ -129,9 +126,9 @@ export const SHELL_MODAL_INITIAL_STATE: Readonly<Record<string, ModalState>> = O
 		showAuthSelector: false,
 		closeOnSave: false,
 	} as ModalState,
-	[CREDENTIAL_RESOLVER_EDIT_MODAL_KEY]: CLOSED,
-	[CREDENTIAL_SELECT_MODAL_KEY]: CLOSED,
-	[DEBUG_PAYWALL_MODAL_KEY]: CLOSED,
+	[CREDENTIAL_RESOLVER_EDIT_MODAL_KEY]: { open: false },
+	[CREDENTIAL_SELECT_MODAL_KEY]: { open: false },
+	[DEBUG_PAYWALL_MODAL_KEY]: { open: false },
 	[DELETE_FOLDER_MODAL_KEY]: {
 		open: false,
 		activeId: null,
@@ -143,20 +140,20 @@ export const SHELL_MODAL_INITIAL_STATE: Readonly<Record<string, ModalState>> = O
 			},
 		},
 	},
-	[DELETE_SECRETS_PROVIDER_MODAL_KEY]: CLOSED,
+	[DELETE_SECRETS_PROVIDER_MODAL_KEY]: { open: false },
 	[DELETE_USER_MODAL_KEY]: {
 		open: false,
 		activeId: null,
 	},
-	[DUPLICATE_MODAL_KEY]: CLOSED,
+	[DUPLICATE_MODAL_KEY]: { open: false },
 	[EXPERIMENT_TEMPLATE_RECO_V2_KEY]: {
 		open: false,
 		data: {
 			nodeName: '',
 		},
 	},
-	[EXPERIMENT_TEMPLATE_RECO_V3_KEY]: CLOSED,
-	[EXTERNAL_SECRETS_PROVIDER_MODAL_KEY]: CLOSED,
+	[EXPERIMENT_TEMPLATE_RECO_V3_KEY]: { open: false },
+	[EXTERNAL_SECRETS_PROVIDER_MODAL_KEY]: { open: false },
 	[FROM_AI_PARAMETERS_MODAL_KEY]: {
 		open: false,
 		data: {
@@ -175,15 +172,15 @@ export const SHELL_MODAL_INITIAL_STATE: Readonly<Record<string, ModalState>> = O
 			url: '',
 		},
 	},
-	[INSTANCE_AI_CREDENTIAL_SETUP_MODAL_KEY]: CLOSED,
-	[INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY]: CLOSED,
-	[INVITE_USER_MODAL_KEY]: CLOSED,
+	[INSTANCE_AI_CREDENTIAL_SETUP_MODAL_KEY]: { open: false },
+	[INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY]: { open: false },
+	[INVITE_USER_MODAL_KEY]: { open: false },
 	[LOG_STREAM_MODAL_KEY]: {
 		open: false,
 		data: undefined,
 	},
-	[MFA_SETUP_MODAL_KEY]: CLOSED,
-	[MIGRATE_WORKFLOW_MODAL_KEY]: CLOSED,
+	[MFA_SETUP_MODAL_KEY]: { open: false },
+	[MIGRATE_WORKFLOW_MODAL_KEY]: { open: false },
 	[MOVE_FOLDER_MODAL_KEY]: {
 		open: false,
 		activeId: null,
@@ -191,21 +188,21 @@ export const SHELL_MODAL_INITIAL_STATE: Readonly<Record<string, ModalState>> = O
 			workflowListEventBus: undefined,
 		},
 	},
-	[NEW_ASSISTANT_SESSION_MODAL]: CLOSED,
-	[NPS_SURVEY_MODAL_KEY]: CLOSED,
-	[PERSONALIZATION_MODAL_KEY]: CLOSED,
-	[PROJECT_MOVE_RESOURCE_MODAL]: CLOSED,
-	[PROMPT_MFA_CODE_MODAL_KEY]: CLOSED,
-	[SECRETS_PROVIDER_CONNECTION_MODAL_KEY]: CLOSED,
-	[SETUP_CREDENTIALS_MODAL_KEY]: CLOSED,
-	[SOURCE_CONTROL_PULL_MODAL_KEY]: CLOSED,
-	[SOURCE_CONTROL_PULL_RESULT_MODAL_KEY]: CLOSED,
-	[SOURCE_CONTROL_PUSH_MODAL_KEY]: CLOSED,
+	[NEW_ASSISTANT_SESSION_MODAL]: { open: false },
+	[NPS_SURVEY_MODAL_KEY]: { open: false },
+	[PERSONALIZATION_MODAL_KEY]: { open: false },
+	[PROJECT_MOVE_RESOURCE_MODAL]: { open: false },
+	[PROMPT_MFA_CODE_MODAL_KEY]: { open: false },
+	[SECRETS_PROVIDER_CONNECTION_MODAL_KEY]: { open: false },
+	[SETUP_CREDENTIALS_MODAL_KEY]: { open: false },
+	[SOURCE_CONTROL_PULL_MODAL_KEY]: { open: false },
+	[SOURCE_CONTROL_PULL_RESULT_MODAL_KEY]: { open: false },
+	[SOURCE_CONTROL_PUSH_MODAL_KEY]: { open: false },
 	[STOP_MANY_EXECUTIONS_MODAL_KEY]: { open: false, data: {} },
-	[TAGS_MANAGER_MODAL_KEY]: CLOSED,
-	[TRIAL_INTRO_MODAL_KEY]: CLOSED,
-	[VARIABLE_MODAL_KEY]: CLOSED,
-	[VERSIONS_MODAL_KEY]: CLOSED,
+	[TAGS_MANAGER_MODAL_KEY]: { open: false },
+	[TRIAL_INTRO_MODAL_KEY]: { open: false },
+	[VARIABLE_MODAL_KEY]: { open: false },
+	[VERSIONS_MODAL_KEY]: { open: false },
 	[WHATS_NEW_MODAL_KEY]: {
 		open: false,
 		data: {
@@ -222,21 +219,21 @@ export const SHELL_MODAL_INITIAL_STATE: Readonly<Record<string, ModalState>> = O
 			node: '',
 		},
 	},
-	[WORKFLOW_ACTIVE_MODAL_KEY]: CLOSED,
-	[WORKFLOW_DESCRIPTION_MODAL_KEY]: CLOSED,
-	[WORKFLOW_DIFF_MODAL_KEY]: CLOSED,
+	[WORKFLOW_ACTIVE_MODAL_KEY]: { open: false },
+	[WORKFLOW_DESCRIPTION_MODAL_KEY]: { open: false },
+	[WORKFLOW_DIFF_MODAL_KEY]: { open: false },
 	[WORKFLOW_EXTRACTION_NAME_MODAL_KEY]: {
 		open: false,
 		data: {
 			workflowName: '',
 		},
 	},
-	[WORKFLOW_HISTORY_DIFF_MODAL_KEY]: CLOSED,
-	[WORKFLOW_HISTORY_NAME_VERSION_MODAL_KEY]: CLOSED,
-	[WORKFLOW_HISTORY_PUBLISH_MODAL_KEY]: CLOSED,
-	[WORKFLOW_HISTORY_VERSION_RESTORE]: CLOSED,
-	[WORKFLOW_HISTORY_VERSION_UNPUBLISH]: CLOSED,
-	[WORKFLOW_PUBLISH_MODAL_KEY]: CLOSED,
-	[WORKFLOW_SETTINGS_MODAL_KEY]: CLOSED,
-	[WORKFLOW_SHARE_MODAL_KEY]: CLOSED,
+	[WORKFLOW_HISTORY_DIFF_MODAL_KEY]: { open: false },
+	[WORKFLOW_HISTORY_NAME_VERSION_MODAL_KEY]: { open: false },
+	[WORKFLOW_HISTORY_PUBLISH_MODAL_KEY]: { open: false },
+	[WORKFLOW_HISTORY_VERSION_RESTORE]: { open: false },
+	[WORKFLOW_HISTORY_VERSION_UNPUBLISH]: { open: false },
+	[WORKFLOW_PUBLISH_MODAL_KEY]: { open: false },
+	[WORKFLOW_SETTINGS_MODAL_KEY]: { open: false },
+	[WORKFLOW_SHARE_MODAL_KEY]: { open: false },
 });

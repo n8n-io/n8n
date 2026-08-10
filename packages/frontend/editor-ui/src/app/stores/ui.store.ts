@@ -72,15 +72,29 @@ function withFallback<T>(source: Record<string, T>, fallback: T): Record<string,
  * The registry is shallow-reactive, so reading it here is enough to make callers
  * re-derive when a module registers or unregisters a modal — the store keeps no
  * mirror of it.
+ *
+ * `shellDefaults` is the caller's own copy of the catalogue (see `ownedCopyOf`) —
+ * a definition resolved from here is handed straight to components, and several
+ * of them still write to modal state in place.
  */
-function modalDefinitionsById(): Record<string, ModalState> {
-	const definitions: Record<string, ModalState> = { ...SHELL_MODAL_INITIAL_STATE };
+function modalDefinitionsById(shellDefaults: Record<string, ModalState>) {
+	const definitions: Record<string, ModalState> = { ...shellDefaults };
 
 	for (const [key, definition] of modalRegistry.getAll()) {
 		definitions[key] = definition.initialState ?? CLOSED_MODAL_STATE;
 	}
 
 	return definitions;
+}
+
+/**
+ * Deep copy of the initial-state catalogue, so nothing the store resolves is a
+ * reference into a module-level constant that outlives every store instance.
+ * `structuredClone` preserves shared references within the input, so the entries
+ * that share a closed-state object still share one copy.
+ */
+function ownedCopyOf(catalogue: Readonly<Record<string, ModalState>>): Record<string, ModalState> {
+	return structuredClone(catalogue) as Record<string, ModalState>;
 }
 
 export const useUIStore = defineStore(STORES.UI, () => {
@@ -95,12 +109,15 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		},
 	});
 
+	/** This store instance's copy of the shell catalogue (`ownedCopyOf`). */
+	const shellModalDefaults = ownedCopyOf(SHELL_MODAL_INITIAL_STATE);
+
 	/**
 	 * Runtime modal state, keyed by modal key — only the keys actually touched at
 	 * runtime (opened, closed, given data) are present. It is deliberately NOT a
 	 * mirror of the definitions: those live in `modalRegistry` (module modals) and
-	 * `SHELL_MODAL_INITIAL_STATE` (shell modals), and `modalsById` below resolves
-	 * the two together.
+	 * `shellModalDefaults` (shell modals), and `modalsById` below resolves the two
+	 * together.
 	 */
 	const modalStateById = ref<Record<string, ModalState>>({});
 
@@ -245,7 +262,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	 * writes go to `modalStateById` through the actions below.
 	 */
 	const modalsById = computed<Record<string, ModalState>>(() => {
-		const resolved = modalDefinitionsById();
+		const resolved = modalDefinitionsById(shellModalDefaults);
 
 		for (const [key, runtimeState] of Object.entries(modalStateById.value)) {
 			resolved[key] = key in resolved ? { ...resolved[key], ...runtimeState } : runtimeState;
@@ -609,7 +626,15 @@ export const useUIStore = defineStore(STORES.UI, () => {
 });
 
 /**
- * Helper function for listening to model opening and closings in the store
+ * Listen for modals opening and closing.
+ *
+ * Derived from which modals are open, not from which actions were called: there
+ * is more than one way a modal closes — `closeModal`, and its definition being
+ * unregistered — and an observer keyed on action names sees only the first. That
+ * shape breaks silently, with no type error, every time a close path is added.
+ *
+ * Returns a stop handle, and is owned by the effect scope it is created in, so a
+ * caller inside `effectScope()` disposes it by stopping that scope.
  */
 export const listenForModalChanges = (opts: {
 	store: UiStore;
@@ -617,34 +642,23 @@ export const listenForModalChanges = (opts: {
 	onModalClosed?: (name: keyof Modals) => void;
 }) => {
 	const { store, onModalClosed, onModalOpened } = opts;
-	const listeningForActions = ['openModal', 'openModalWithData', 'closeModal'];
 
-	return store.$onAction((result) => {
-		const { name, after, args } = result;
-		after(() => {
-			if (!listeningForActions.includes(name)) {
-				return;
+	return watch(
+		() => store.activeModals,
+		(openList, previouslyOpenList) => {
+			// Deduplicated: the same key can sit on the stack more than once (two
+			// callers opening the credential modal), and that must still read as one
+			// modal opening once and closing once.
+			const open = new Set(openList);
+			const previouslyOpen = new Set(previouslyOpenList);
+
+			for (const name of open) {
+				if (!previouslyOpen.has(name)) onModalOpened?.(name);
 			}
-
-			switch (name) {
-				case 'openModal': {
-					const modalName = args[0];
-					onModalOpened?.(modalName);
-					break;
-				}
-
-				case 'openModalWithData': {
-					const { name: modalName } = args[0] ?? {};
-					onModalOpened?.(modalName);
-					break;
-				}
-
-				case 'closeModal': {
-					const modalName = args[0];
-					onModalClosed?.(modalName);
-					break;
-				}
+			for (const name of previouslyOpen) {
+				if (!open.has(name)) onModalClosed?.(name);
 			}
-		});
-	});
+		},
+		{ flush: 'sync' },
+	);
 };
