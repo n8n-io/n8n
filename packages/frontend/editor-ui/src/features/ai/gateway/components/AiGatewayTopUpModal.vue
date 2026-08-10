@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, onMounted } from 'vue';
+import { computed, onMounted, type Component } from 'vue';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { N8nButton, N8nCard, N8nHeading, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
@@ -15,6 +15,11 @@ import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHe
 import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import BraveSearchLogo from '../assets/service-icons/brave-search.svg?component';
+import BrowserbaseLogo from '../assets/service-icons/browserbase.svg?component';
+import FirecrawlLogo from '../assets/service-icons/firecrawl.svg?component';
+import LlamaIndexLogo from '../assets/service-icons/llamaindex.svg?component';
+import PdfcoLogo from '../assets/service-icons/pdfco.svg?component';
 
 const i18n = useI18n();
 const usersStore = useUsersStore();
@@ -32,17 +37,47 @@ type TopUpVariant = 'member' | 'memberTrial' | 'owner' | 'ownerTrial';
  * Named up front, and named even when the instance can't resolve them: the model providers
  * people look for, then the tool services they don't expect credits to cover. Everything else
  * the gateway covers follows in config order.
+ *
+ * The partner logos are bundled because those integrations are community packages — without a
+ * bundled copy their tiles would render name-only until someone installs the package. The model
+ * providers ship with n8n, so their credential icons always resolve.
  */
 const FEATURED_SERVICES = [
 	{ credentialType: 'openAiApi', labelKey: 'aiGateway.topUp.modal.service.openAi' },
 	{ credentialType: 'anthropicApi', labelKey: 'aiGateway.topUp.modal.service.anthropic' },
 	{ credentialType: 'googlePalmApi', labelKey: 'aiGateway.topUp.modal.service.googleGemini' },
-	{ credentialType: 'firecrawlApi', labelKey: 'aiGateway.topUp.modal.service.firecrawl' },
-	{ credentialType: 'browserbaseApi', labelKey: 'aiGateway.topUp.modal.service.browserbase' },
-	{ credentialType: 'braveSearchApi', labelKey: 'aiGateway.topUp.modal.service.brave' },
-	{ credentialType: 'pdfcoApi', labelKey: 'aiGateway.topUp.modal.service.pdfco' },
-	{ credentialType: 'llamaParseApi', labelKey: 'aiGateway.topUp.modal.service.llamaIndex' },
-] as const satisfies ReadonlyArray<{ credentialType: string; labelKey: BaseTextKey }>;
+	{
+		credentialType: 'firecrawlApi',
+		labelKey: 'aiGateway.topUp.modal.service.firecrawl',
+		logo: FirecrawlLogo,
+	},
+	{
+		credentialType: 'browserbaseApi',
+		labelKey: 'aiGateway.topUp.modal.service.browserbase',
+		logo: BrowserbaseLogo,
+	},
+	{
+		credentialType: 'braveSearchApi',
+		labelKey: 'aiGateway.topUp.modal.service.brave',
+		logo: BraveSearchLogo,
+	},
+	{ credentialType: 'pdfcoApi', labelKey: 'aiGateway.topUp.modal.service.pdfco', logo: PdfcoLogo },
+	{
+		credentialType: 'llamaParseApi',
+		labelKey: 'aiGateway.topUp.modal.service.llamaIndex',
+		logo: LlamaIndexLogo,
+	},
+] as const satisfies ReadonlyArray<{
+	credentialType: string;
+	labelKey: BaseTextKey;
+	logo?: Component;
+}>;
+
+const BUNDLED_LOGOS = new Map<string, Component>(
+	FEATURED_SERVICES.flatMap((service) =>
+		'logo' in service ? [[service.credentialType, service.logo]] : [],
+	),
+);
 
 const FEATURED_LABEL_KEYS = new Map<string, BaseTextKey>(
 	FEATURED_SERVICES.map((service) => [service.credentialType, service.labelKey]),
@@ -100,6 +135,7 @@ const services = computed(() => {
 			{
 				credentialType,
 				label,
+				logo: BUNDLED_LOGOS.get(credentialType),
 				hasCredentialIcon: Boolean(credential?.icon ?? credential?.iconUrl),
 				nodeType,
 			},
@@ -213,8 +249,14 @@ async function onOpenAdminPanel(close: () => void): Promise<void> {
 						>
 							<div :class="$style.service">
 								<span :class="$style.logo">
+									<component
+										:is="service.logo"
+										v-if="service.logo"
+										:class="$style.logoSvg"
+										:data-test-id="`service-logo-${service.credentialType}`"
+									/>
 									<CredentialIcon
-										v-if="service.hasCredentialIcon"
+										v-else-if="service.hasCredentialIcon"
 										:credential-type-name="service.credentialType"
 										:size="18"
 									/>
@@ -317,6 +359,11 @@ async function onOpenAdminPanel(close: () => void): Promise<void> {
 	flex: none;
 	width: 18px;
 	height: 18px;
+}
+
+.logoSvg {
+	width: 100%;
+	height: 100%;
 }
 
 .serviceName {

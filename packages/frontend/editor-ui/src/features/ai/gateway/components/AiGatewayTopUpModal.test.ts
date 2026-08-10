@@ -53,22 +53,20 @@ vi.mock('@/app/components/NodeIcon.vue', () => ({
 
 const renderComponent = createComponentRenderer(AiGatewayTopUpModal);
 
-// Credential types this instance knows about. Only the built-in providers ship a logo;
-// the community-node partners are registered on demand, so they render name-only.
+// Credential types this instance knows about. The built-in providers ship a logo; the
+// community-node partners are absent entirely until someone installs the package.
 const INSTALLED_CREDENTIAL_TYPES: Record<string, Partial<ICredentialType>> = {
 	openAiApi: { displayName: 'OpenAI', iconUrl: 'icons/openAi.svg' },
 	anthropicApi: { displayName: 'Anthropic', iconUrl: 'icons/anthropic.svg' },
 	googlePalmApi: { displayName: 'Google Gemini(PaLM) Api', iconUrl: 'icons/gemini.svg' },
-	braveSearchApi: { displayName: 'Brave Search' },
-	pdfcoApi: { displayName: 'PDF.co' },
 	moonshotApi: { displayName: 'Moonshot API', iconUrl: 'icons/moonshot.svg' },
 	miniMaxApi: { displayName: 'MiniMax Account' },
 	openAiAssistantApi: { displayName: 'OpenAI', iconUrl: 'icons/openAi.svg' },
 };
 
-// Community packages keep the logo on the node rather than the credential.
+// Some packages keep the logo on the node rather than the credential.
 const INSTALLED_NODE_TYPES = [
-	{ name: 'n8n-nodes-pdfco.pdfco', credentials: [{ name: 'pdfcoApi' }] },
+	{ name: 'miniMax', credentials: [{ name: 'miniMaxApi' }] },
 	{ name: 'openAi', credentials: [{ name: 'openAiApi' }] },
 ] as unknown as INodeTypeDescription[];
 
@@ -140,20 +138,31 @@ describe('AiGatewayTopUpModal.vue', () => {
 		}
 	});
 
-	it('uses the credential logo when it has one', () => {
+	it('shows a logo for every featured partner, installed or not', () => {
 		renderModal({ isInstanceOwner: false, userIsTrialing: false });
 
+		// Built-in providers resolve through their credential; the community-node partners
+		// come from bundled assets, so they have a logo on an instance without the packages.
 		expect(screen.getByTestId('credential-icon-openAiApi')).toBeInTheDocument();
-		expect(screen.queryByTestId('credential-icon-pdfcoApi')).not.toBeInTheDocument();
+		for (const credentialType of [
+			'firecrawlApi',
+			'browserbaseApi',
+			'braveSearchApi',
+			'pdfcoApi',
+			'llamaParseApi',
+		]) {
+			expect(screen.getByTestId(`service-logo-${credentialType}`)).toBeInTheDocument();
+		}
 	});
 
 	it("falls back to the node's logo for credentials that ship none", () => {
-		renderModal({ isInstanceOwner: false, userIsTrialing: false });
+		renderModal({
+			isInstanceOwner: false,
+			userIsTrialing: false,
+			credentialTypes: ['openAiApi', 'miniMaxApi'],
+		});
 
-		// PDF.co keeps its logo on the node; Brave Search has neither, so it stays name-only.
-		expect(screen.getByTestId('node-icon-n8n-nodes-pdfco.pdfco')).toBeInTheDocument();
-		expect(screen.getByText('Brave Search')).toBeInTheDocument();
-		expect(screen.queryByTestId('node-icon-braveSearch')).not.toBeInTheDocument();
+		expect(screen.getByTestId('node-icon-miniMax')).toBeInTheDocument();
 	});
 
 	it('lists every service the gateway covers, named as brands', () => {
