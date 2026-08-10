@@ -1,13 +1,14 @@
 import { defineStore } from 'pinia';
+import { shallowReactive } from 'vue';
 
 export const useAgentNodeCanvasGeometryStore = defineStore('agentNodeCanvasGeometry', () => {
-	const nodeHeightsByCanvas = new Map<string, Map<string, number>>();
+	const nodeHeightsByCanvas = shallowReactive(new Map<string, Map<string, number>>());
 	const pendingCenterYByCanvas = new Map<string, Map<string, number>>();
 
 	function setNodeHeight(canvasId: string, nodeId: string, height: number) {
 		let heightsByNode = nodeHeightsByCanvas.get(canvasId);
 		if (!heightsByNode) {
-			heightsByNode = new Map();
+			heightsByNode = shallowReactive(new Map<string, number>());
 			nodeHeightsByCanvas.set(canvasId, heightsByNode);
 		}
 		heightsByNode.set(nodeId, height);

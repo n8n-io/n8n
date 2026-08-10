@@ -26,6 +26,7 @@ import {
 	mapLegacyConnectionsToCanvasConnections,
 	parseCanvasConnectionHandleString,
 } from '../canvas.utils';
+import { AGENT_NODE_SIZE } from '@/app/utils/nodeViewUtils';
 import type { IConnections, ITaskData, IWorkflowGroup } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
@@ -52,6 +53,7 @@ export function useCanvasMapping({
 	allGroups = ref([]),
 	nodeGroupView,
 	isExperimentalNdvActive = ref(false),
+	getAgentNodeHeight,
 }: {
 	nodes: Ref<INodeUi[]>;
 	connections: Ref<IConnections>;
@@ -59,6 +61,7 @@ export function useCanvasMapping({
 	allGroups?: Ref<IWorkflowGroup[]>;
 	nodeGroupView?: CanvasNodeGroupView;
 	isExperimentalNdvActive?: Ref<boolean>;
+	getAgentNodeHeight?: (id: string) => number | undefined;
 }) {
 	const i18n = useI18n();
 
@@ -123,14 +126,19 @@ export function useCanvasMapping({
 		for (const node of nodes.value) {
 			const render = rd.renderTypeByNodeId.get(node.id)?.value;
 
-			if (render?.type !== CanvasNodeRenderType.Default) continue;
-
-			dimensionsById[node.id] = computeNodeDisplaySize(
-				node.id,
-				render.options,
-				rd,
-				isExperimentalNdvActive.value,
-			);
+			if (render?.type === CanvasNodeRenderType.Default) {
+				dimensionsById[node.id] = computeNodeDisplaySize(
+					node.id,
+					render.options,
+					rd,
+					isExperimentalNdvActive.value,
+				);
+			} else if (render?.type === CanvasNodeRenderType.Agent) {
+				dimensionsById[node.id] = {
+					width: AGENT_NODE_SIZE[0],
+					height: getAgentNodeHeight?.(node.id) ?? AGENT_NODE_SIZE[1],
+				};
+			}
 		}
 		return dimensionsById;
 	});
