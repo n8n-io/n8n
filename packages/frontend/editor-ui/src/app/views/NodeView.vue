@@ -130,6 +130,7 @@ import { useLogsStore } from '@/app/stores/logs.store';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 import CanvasChatButton from '@/features/workflows/canvas/components/elements/buttons/CanvasChatButton.vue';
 import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
+import { useSessionExpiryStore } from '@/app/stores/sessionExpiry.store';
 import { useEvaluationsWizardSidepanelStore } from '@/features/ai/evaluation.ee/wizardSidepanel.store';
 import { useEvaluationsWizardSidepanelExperiment } from '@/experiments/evaluationsWizardSidepanel/useEvaluationsWizardSidepanelExperiment';
 import EvaluationsCanvasInfoCard from '@/features/ai/evaluation.ee/components/EvaluationsCanvasInfoCard/EvaluationsCanvasInfoCard.vue';
@@ -205,6 +206,7 @@ const tagsStore = useTagsStore();
 
 const ndvStore = injectNDVStore();
 const focusPanelStore = useFocusPanelStore();
+const sessionExpiryStore = useSessionExpiryStore();
 const evaluationsWizardSidepanelStore = useEvaluationsWizardSidepanelStore();
 const { isFeatureEnabled: isEvaluationsWizardSidepanelEnabled } =
 	useEvaluationsWizardSidepanelExperiment();
@@ -1889,6 +1891,12 @@ onBeforeRouteLeave(async (to, from, next) => {
 	}
 
 	if (isReadOnlyEnvironment.value) {
+		next();
+		return;
+	}
+
+	// The session is already invalid server-side, so saving would fail anyway; let the redirect to sign-in through.
+	if (sessionExpiryStore.handled) {
 		next();
 		return;
 	}
