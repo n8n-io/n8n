@@ -14,8 +14,6 @@ import type {
 	AgentProviderModelsResponse,
 	AgentVersionListItemDto,
 	ChatIntegrationDescriptor,
-	CreateSlackAgentAppResponse,
-	SlackAgentAppManifestResponse,
 	VectorStoreTestResult,
 } from '@n8n/api-types';
 import { getFullApiResponse, makeRestApiRequest } from '@n8n/rest-api-client';
@@ -198,7 +196,7 @@ export const disconnectIntegration = async (
 	type: string,
 	credentialId: string,
 ): Promise<{ status: string }> => {
-	return await makeRestApiRequest(
+	return await makeRestApiRequest<{ status: string }>(
 		context,
 		'POST',
 		`/projects/${projectId}/agents/v2/${agentId}/integrations/disconnect`,
@@ -282,49 +280,6 @@ export const runAgentTask = async (
 		context,
 		'POST',
 		`/projects/${projectId}/agents/v2/${agentId}/tasks/${taskId}/run`,
-	);
-};
-
-// Backward-compatible aliases
-export const connectSlack = async (
-	ctx: IRestApiContext,
-	projectId: string,
-	agentId: string,
-	credentialId: string,
-) => await connectIntegration(ctx, projectId, agentId, 'slack', credentialId);
-
-export const disconnectSlack = async (
-	ctx: IRestApiContext,
-	projectId: string,
-	agentId: string,
-	credentialId: string,
-) => await disconnectIntegration(ctx, projectId, agentId, 'slack', credentialId);
-
-export const getSlackStatus = getIntegrationStatus;
-
-export const createSlackAgentApp = async (
-	context: IRestApiContext,
-	projectId: string,
-	agentId: string,
-	appConfigurationToken: string,
-): Promise<CreateSlackAgentAppResponse> => {
-	return await makeRestApiRequest<CreateSlackAgentAppResponse>(
-		context,
-		'POST',
-		`/projects/${projectId}/agents/v2/${agentId}/integrations/slack/app`,
-		{ appConfigurationToken },
-	);
-};
-
-export const getSlackAgentAppManifest = async (
-	context: IRestApiContext,
-	projectId: string,
-	agentId: string,
-): Promise<SlackAgentAppManifestResponse> => {
-	return await makeRestApiRequest<SlackAgentAppManifestResponse>(
-		context,
-		'GET',
-		`/projects/${projectId}/agents/v2/${agentId}/integrations/slack/manifest`,
 	);
 };
 

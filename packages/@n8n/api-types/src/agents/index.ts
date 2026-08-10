@@ -10,6 +10,7 @@ export * from './agent-skill.schema';
 export * from './child-trace';
 export * from './inline-agent-config.schema';
 export * from './sanitize-agent-json-config';
+export * from './slack';
 export * from './agent-task.schema';
 export * from './dto';
 export * from './model-providers';
