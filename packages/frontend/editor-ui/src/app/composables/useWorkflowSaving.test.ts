@@ -525,15 +525,12 @@ describe('useWorkflowSaving', () => {
 				name: 'Trello duplicate test',
 				active: false,
 				nodes: [
-					{
-						parameters: { authentication: 'apiKey', id: '4d5ea62fd76aa1136000000c' },
-						id: 'a5b1c6e0-1111-2222-3333-444455556666',
+					createTestNode({
 						name: 'Trello Trigger',
 						type: 'n8n-nodes-base.trelloTrigger',
-						typeVersion: 1,
-						position: [0, 0],
+						parameters: { authentication: 'apiKey', id: '4d5ea62fd76aa1136000000c' },
 						webhookId: 'original-node-webhook-id',
-					},
+					}),
 				],
 				connections: {},
 			};

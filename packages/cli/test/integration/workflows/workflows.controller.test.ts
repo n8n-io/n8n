@@ -167,9 +167,7 @@ describe('POST /workflows', () => {
 		expect(response.statusCode).toBe(400);
 	});
 
-	// CAT-3966: static data is backend-owned (poll cursors, third-party webhook
-	// registrations). A duplicated workflow used to inherit the source's, and tore down
-	// the source's webhooks when it was deactivated.
+	// CAT-3966: static data is backend-owned (poll cursors, third-party webhook registrations).
 	test('should ignore client-supplied `staticData`', async () => {
 		const payload = {
 			...makeWorkflow({ withPinData: false }),
@@ -178,9 +176,7 @@ describe('POST /workflows', () => {
 
 		const response = await authMemberAgent.post('/workflows').send(payload).expect(200);
 
-		const created = await Container.get(WorkflowRepository).findOneByOrFail({
-			id: response.body.data.id,
-		});
+		const created = await workflowRepository.findOneByOrFail({ id: response.body.data.id });
 		expect(created.staticData).toBeNull();
 	});
 
@@ -3352,7 +3348,7 @@ describe('PATCH /workflows/:workflowId', () => {
 			})
 			.expect(200);
 
-		const updated = await Container.get(WorkflowRepository).findOneByOrFail({ id: workflow.id });
+		const updated = await workflowRepository.findOneByOrFail({ id: workflow.id });
 		expect(updated.staticData).toEqual({
 			'node:Trello Trigger': { webhookId: 'registered-by-the-engine' },
 		});

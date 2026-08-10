@@ -102,9 +102,7 @@ export const baseWorkflowShape = {
 	// Optional workflow configuration
 	settings: workflowSettingsSchema.optional(),
 	// `staticData` is deliberately absent: it is backend-owned state (poll cursors,
-	// third-party webhook registrations) written by the execution engine, never by a
-	// client. Accepting it let a duplicated workflow inherit the source's webhook
-	// registrations and tear them down on deactivation.
+	// third-party webhook registrations) written by the execution engine, never by a client.
 	meta: workflowMetaSchema.optional(),
 	pinData: workflowPinDataSchema.optional(),
 	nodeGroups: workflowNodeGroupsSchema.optional(),

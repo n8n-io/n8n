@@ -303,8 +303,6 @@ describe('UpdateWorkflowDto', () => {
 				expect(result.data).not.toHaveProperty('versionId');
 			});
 
-			// CAT-3966: static data holds backend-owned state such as third-party webhook
-			// registrations, so a client must never be able to overwrite it.
 			test('should not accept staticData field', () => {
 				const result = UpdateWorkflowDto.safeParse({
 					name: 'Updated',

@@ -534,8 +534,6 @@ describe('CreateWorkflowDto', () => {
 				expect(result.data).not.toHaveProperty('isArchived');
 			});
 
-			// CAT-3966: static data holds backend-owned state such as third-party webhook
-			// registrations, so a client must never be able to seed it.
 			test('should not accept staticData field', () => {
 				const result = CreateWorkflowDto.safeParse({
 					name: 'Test',
