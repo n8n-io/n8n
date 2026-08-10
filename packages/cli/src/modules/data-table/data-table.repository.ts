@@ -7,7 +7,8 @@ import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Project, withTransaction } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, EntityManager, Repository, SelectQueryBuilder } from '@n8n/typeorm';
+import { DataSource, EntityManager, In, Repository, SelectQueryBuilder } from '@n8n/typeorm';
+import type { FindOptionsWhere } from '@n8n/typeorm';
 import {
 	DATA_TABLE_SYSTEM_COLUMNS,
 	DATA_TABLE_SYSTEM_TESTING_COLUMN,
@@ -109,6 +110,69 @@ export class DataTableRepository extends Repository<DataTable> {
 			});
 
 			return createdDataTable;
+		});
+	}
+
+	/**
+	 * Fetches the given data tables with the relations the source control
+	 * export needs, optionally restricted to an owning-project filter.
+	 */
+	async findForSourceControlExport(ids: string[], projectFilter?: FindOptionsWhere<Project>) {
+		return await this.find({
+			where: {
+				id: In(ids),
+				...(projectFilter ? { project: projectFilter } : {}),
+			},
+			relations: [
+				'columns',
+				'project',
+				'project.projectRelations',
+				'project.projectRelations.role',
+				'project.projectRelations.user',
+			],
+			select: {
+				id: true,
+				name: true,
+				projectId: true,
+				createdAt: true,
+				updatedAt: true,
+				columns: {
+					id: true,
+					name: true,
+					type: true,
+					index: true,
+				},
+				project: {
+					id: true,
+					name: true,
+					type: true,
+					projectRelations: {
+						userId: true,
+						role: {
+							slug: true,
+						},
+						user: {
+							email: true,
+						},
+					},
+				},
+			},
+		});
+	}
+
+	/**
+	 * Fetches all data tables with the relations the source control status
+	 * comparison needs, optionally restricted to an owning-project filter.
+	 */
+	async findForSourceControlStatus(projectFilter?: FindOptionsWhere<Project>) {
+		return await this.find({
+			relations: [
+				'columns',
+				'project',
+				'project.projectRelations',
+				'project.projectRelations.role',
+			],
+			where: projectFilter ? { project: projectFilter } : {},
 		});
 	}
 

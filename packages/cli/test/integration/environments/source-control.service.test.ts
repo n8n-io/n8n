@@ -36,6 +36,8 @@ import { SourceControlExportService } from '@/modules/source-control.ee/source-c
 import type { SourceControlGitService } from '@/modules/source-control.ee/source-control-git.service.ee';
 import { SourceControlImportService } from '@/modules/source-control.ee/source-control-import.service.ee';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
+import { DataTableSourceControlService } from '@/modules/data-table/source-control/data-table-source-control.service';
+import { SourceControlResourceHandlerRegistry } from '@/modules/source-control.ee/source-control-resource-handler.registry';
 import { SourceControlScopedService } from '@/modules/source-control.ee/source-control-scoped.service';
 import { SourceControlStatusService } from '@/modules/source-control.ee/source-control-status.service.ee';
 import { SourceControlService } from '@/modules/source-control.ee/source-control.service.ee';
@@ -248,6 +250,12 @@ describe('SourceControlService', () => {
 	beforeAll(async () => {
 		await testModules.loadModules(['data-table']);
 		await testDb.init();
+
+		// Module init() does not run in tests, so register the data-table
+		// source control handler the way `DataTableModule.init()` does.
+		Container.get(SourceControlResourceHandlerRegistry).registerDataTableHandler(
+			Container.get(DataTableSourceControlService),
+		);
 
 		cipher = Container.get(Cipher);
 
@@ -537,6 +545,7 @@ describe('SourceControlService', () => {
 			Container.get(SourceControlScopedService),
 			Container.get(EventService),
 			statusService,
+			Container.get(SourceControlResourceHandlerRegistry),
 		);
 
 		// Skip actual git operations

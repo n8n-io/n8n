@@ -24,6 +24,8 @@ import type { SourceControlGitService } from '../source-control-git.service.ee';
 import * as sourceControlHelper from '../source-control-helper.ee';
 import type { SourceControlImportService } from '../source-control-import.service.ee';
 import { SourceControlPreferencesService } from '../source-control-preferences.service.ee';
+import type { SourceControlDataTableHandler } from '../source-control-resource-handler.registry';
+import { SourceControlResourceHandlerRegistry } from '../source-control-resource-handler.registry';
 import { SourceControlStatusService } from '../source-control-status.service.ee';
 import type { StatusExportableCredential } from '../types/exportable-credential';
 import type { ExportableProjectWithFileName } from '../types/exportable-project';
@@ -50,6 +52,9 @@ describe('getStatus', () => {
 		mock(),
 	);
 	const sourceControlContextFactory = mock<SourceControlContextFactory>();
+	const dataTableHandler = mock<SourceControlDataTableHandler>();
+	const resourceHandlers = new SourceControlResourceHandlerRegistry();
+	resourceHandlers.registerDataTableHandler(dataTableHandler);
 	const sourceControlStatusService = new SourceControlStatusService(
 		mockLogger(),
 		gitService,
@@ -60,6 +65,7 @@ describe('getStatus', () => {
 		folderRepository,
 		workflowRepository,
 		mock<EventService>(),
+		resourceHandlers,
 	);
 
 	beforeEach(() => {
@@ -108,12 +114,12 @@ describe('getStatus', () => {
 		sourceControlImportService.getLocalTeamProjectsFromDb.mockResolvedValue([]);
 
 		// data tables
-		sourceControlImportService.getRemoteDataTablesFromFiles.mockResolvedValue([]);
-		sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue([]);
+		dataTableHandler.getRemoteDataTablesFromFiles.mockResolvedValue([]);
+		dataTableHandler.getLocalDataTablesFromDb.mockResolvedValue([]);
 		// Mirrors the real resolution: team id for team owners, the pulling
 		// user's personal project otherwise
-		sourceControlImportService.resolveRemoteDataTableProjectId.mockImplementation(
-			async (ownedBy) => (ownedBy?.type === 'team' ? ownedBy.teamId : 'pulling-user-project'),
+		dataTableHandler.resolveRemoteDataTableProjectId.mockImplementation(async (ownedBy) =>
+			ownedBy?.type === 'team' ? ownedBy.teamId : 'pulling-user-project',
 		);
 
 		// repositories
@@ -1782,8 +1788,8 @@ describe('getStatus', () => {
 			const user = globalAdminUserWithId;
 
 			// Mock undefined data tables from remote
-			sourceControlImportService.getRemoteDataTablesFromFiles.mockResolvedValue(undefined as any);
-			sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue([]);
+			dataTableHandler.getRemoteDataTablesFromFiles.mockResolvedValue(undefined as any);
+			dataTableHandler.getLocalDataTablesFromDb.mockResolvedValue([]);
 
 			// ACT
 			const result = await sourceControlStatusService.getStatus(user, {
@@ -1803,8 +1809,8 @@ describe('getStatus', () => {
 			const user = globalAdminUserWithId;
 
 			// Mock undefined data tables from local
-			sourceControlImportService.getRemoteDataTablesFromFiles.mockResolvedValue([]);
-			sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue(undefined as any);
+			dataTableHandler.getRemoteDataTablesFromFiles.mockResolvedValue([]);
+			dataTableHandler.getLocalDataTablesFromDb.mockResolvedValue(undefined as any);
 
 			// ACT
 			const result = await sourceControlStatusService.getStatus(user, {
@@ -1824,8 +1830,8 @@ describe('getStatus', () => {
 			const user = globalAdminUserWithId;
 
 			// Mock both undefined
-			sourceControlImportService.getRemoteDataTablesFromFiles.mockResolvedValue(undefined as any);
-			sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue(undefined as any);
+			dataTableHandler.getRemoteDataTablesFromFiles.mockResolvedValue(undefined as any);
+			dataTableHandler.getLocalDataTablesFromDb.mockResolvedValue(undefined as any);
 
 			// ACT
 			const result = await sourceControlStatusService.getStatus(user, {
@@ -1855,8 +1861,8 @@ describe('getStatus', () => {
 				updatedAt: '2024-01-01T00:00:00.000Z',
 			};
 
-			sourceControlImportService.getRemoteDataTablesFromFiles.mockResolvedValue([remoteDataTable]);
-			sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue([]);
+			dataTableHandler.getRemoteDataTablesFromFiles.mockResolvedValue([remoteDataTable]);
+			dataTableHandler.getLocalDataTablesFromDb.mockResolvedValue([]);
 
 			// ACT
 			const result = await sourceControlStatusService.getStatus(user, {
@@ -1890,8 +1896,8 @@ describe('getStatus', () => {
 				updatedAt: '2024-01-01T00:00:00.000Z',
 			};
 
-			sourceControlImportService.getRemoteDataTablesFromFiles.mockResolvedValue([]);
-			sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue([localDataTable]);
+			dataTableHandler.getRemoteDataTablesFromFiles.mockResolvedValue([]);
+			dataTableHandler.getLocalDataTablesFromDb.mockResolvedValue([localDataTable]);
 
 			// ACT
 			const result = await sourceControlStatusService.getStatus(user, {
@@ -1936,8 +1942,8 @@ describe('getStatus', () => {
 				updatedAt: '2024-01-01T00:00:00.000Z',
 			};
 
-			sourceControlImportService.getRemoteDataTablesFromFiles.mockResolvedValue([remoteDataTable]);
-			sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue([localDataTable]);
+			dataTableHandler.getRemoteDataTablesFromFiles.mockResolvedValue([remoteDataTable]);
+			dataTableHandler.getLocalDataTablesFromDb.mockResolvedValue([localDataTable]);
 
 			// ACT
 			const result = await sourceControlStatusService.getStatus(user, {
@@ -1970,8 +1976,8 @@ describe('getStatus', () => {
 				updatedAt: '2024-01-01T00:00:00.000Z',
 			};
 
-			sourceControlImportService.getRemoteDataTablesFromFiles.mockResolvedValue([dataTable]);
-			sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue([dataTable]);
+			dataTableHandler.getRemoteDataTablesFromFiles.mockResolvedValue([dataTable]);
+			dataTableHandler.getLocalDataTablesFromDb.mockResolvedValue([dataTable]);
 
 			// ACT
 			const result = await sourceControlStatusService.getStatus(user, {
@@ -2056,8 +2062,8 @@ describe('getStatus', () => {
 				},
 			];
 
-			sourceControlImportService.getRemoteDataTablesFromFiles.mockResolvedValue(remoteDataTables);
-			sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue(localDataTables);
+			dataTableHandler.getRemoteDataTablesFromFiles.mockResolvedValue(remoteDataTables);
+			dataTableHandler.getLocalDataTablesFromDb.mockResolvedValue(localDataTables);
 
 			// ACT
 			const result = await sourceControlStatusService.getStatus(user, {
@@ -2117,10 +2123,8 @@ describe('getStatus', () => {
 					updatedAt: '2024-01-01T00:00:00.000Z',
 				};
 
-				sourceControlImportService.getRemoteDataTablesFromFiles.mockResolvedValue([
-					remoteDataTable,
-				]);
-				sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue([localDataTable]);
+				dataTableHandler.getRemoteDataTablesFromFiles.mockResolvedValue([remoteDataTable]);
+				dataTableHandler.getLocalDataTablesFromDb.mockResolvedValue([localDataTable]);
 
 				// ACT
 				const result = await sourceControlStatusService.getStatus(user, {
@@ -2165,10 +2169,8 @@ describe('getStatus', () => {
 					updatedAt: '2024-01-01T00:00:00.000Z',
 				};
 
-				sourceControlImportService.getRemoteDataTablesFromFiles.mockResolvedValue([
-					remoteDataTable,
-				]);
-				sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue([localDataTable]);
+				dataTableHandler.getRemoteDataTablesFromFiles.mockResolvedValue([remoteDataTable]);
+				dataTableHandler.getLocalDataTablesFromDb.mockResolvedValue([localDataTable]);
 
 				// ACT
 				const result = await sourceControlStatusService.getStatus(user, {
@@ -2216,10 +2218,8 @@ describe('getStatus', () => {
 					updatedAt: '2024-01-01T00:00:00.000Z',
 				};
 
-				sourceControlImportService.getRemoteDataTablesFromFiles.mockResolvedValue([
-					remoteDataTable,
-				]);
-				sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue([localDataTable]);
+				dataTableHandler.getRemoteDataTablesFromFiles.mockResolvedValue([remoteDataTable]);
+				dataTableHandler.getLocalDataTablesFromDb.mockResolvedValue([localDataTable]);
 
 				// ACT
 				const result = await sourceControlStatusService.getStatus(user, {
@@ -2267,10 +2267,8 @@ describe('getStatus', () => {
 					updatedAt: '2024-01-01T00:00:00.000Z',
 				};
 
-				sourceControlImportService.getRemoteDataTablesFromFiles.mockResolvedValue([
-					remoteDataTable,
-				]);
-				sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue([localDataTable]);
+				dataTableHandler.getRemoteDataTablesFromFiles.mockResolvedValue([remoteDataTable]);
+				dataTableHandler.getLocalDataTablesFromDb.mockResolvedValue([localDataTable]);
 
 				// ACT
 				const result = await sourceControlStatusService.getStatus(user, {
@@ -2318,10 +2316,8 @@ describe('getStatus', () => {
 					updatedAt: '2024-01-01T00:00:00.000Z',
 				};
 
-				sourceControlImportService.getRemoteDataTablesFromFiles.mockResolvedValue([
-					remoteDataTable,
-				]);
-				sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue([localDataTable]);
+				dataTableHandler.getRemoteDataTablesFromFiles.mockResolvedValue([remoteDataTable]);
+				dataTableHandler.getLocalDataTablesFromDb.mockResolvedValue([localDataTable]);
 
 				// ACT
 				const result = await sourceControlStatusService.getStatus(user, {
@@ -2356,8 +2352,8 @@ describe('getStatus', () => {
 					updatedAt: '2024-01-01T00:00:00.000Z',
 				};
 
-				sourceControlImportService.getRemoteDataTablesFromFiles.mockResolvedValue([dataTable]);
-				sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue([dataTable]);
+				dataTableHandler.getRemoteDataTablesFromFiles.mockResolvedValue([dataTable]);
+				dataTableHandler.getLocalDataTablesFromDb.mockResolvedValue([dataTable]);
 
 				// ACT
 				const result = await sourceControlStatusService.getStatus(user, {
@@ -2403,10 +2399,8 @@ describe('getStatus', () => {
 					updatedAt: '2024-01-01T00:00:00.000Z',
 				};
 
-				sourceControlImportService.getRemoteDataTablesFromFiles.mockResolvedValue([
-					remoteDataTable,
-				]);
-				sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue([localDataTable]);
+				dataTableHandler.getRemoteDataTablesFromFiles.mockResolvedValue([remoteDataTable]);
+				dataTableHandler.getLocalDataTablesFromDb.mockResolvedValue([localDataTable]);
 
 				// ACT
 				const result = await sourceControlStatusService.getStatus(user, {
@@ -2448,10 +2442,8 @@ describe('getStatus', () => {
 					updatedAt: '2024-01-01T00:00:00.000Z',
 				};
 
-				sourceControlImportService.getRemoteDataTablesFromFiles.mockResolvedValue([
-					remoteDataTable,
-				]);
-				sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue([localDataTable]);
+				dataTableHandler.getRemoteDataTablesFromFiles.mockResolvedValue([remoteDataTable]);
+				dataTableHandler.getLocalDataTablesFromDb.mockResolvedValue([localDataTable]);
 
 				// ACT
 				const result = await sourceControlStatusService.getStatus(user, {
@@ -2490,10 +2482,8 @@ describe('getStatus', () => {
 					updatedAt: '2024-01-01T00:00:00.000Z',
 				};
 
-				sourceControlImportService.getRemoteDataTablesFromFiles.mockResolvedValue([
-					remoteDataTable,
-				]);
-				sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue([localDataTable]);
+				dataTableHandler.getRemoteDataTablesFromFiles.mockResolvedValue([remoteDataTable]);
+				dataTableHandler.getLocalDataTablesFromDb.mockResolvedValue([localDataTable]);
 
 				// ACT
 				const result = await sourceControlStatusService.getStatus(user, {
@@ -2527,8 +2517,8 @@ describe('getStatus', () => {
 					updatedAt: '2024-01-01T00:00:00.000Z',
 				};
 
-				sourceControlImportService.getRemoteDataTablesFromFiles.mockResolvedValue([]);
-				sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue([localDataTable]);
+				dataTableHandler.getRemoteDataTablesFromFiles.mockResolvedValue([]);
+				dataTableHandler.getLocalDataTablesFromDb.mockResolvedValue([localDataTable]);
 
 				// ACT
 				const result = await sourceControlStatusService.getStatus(user, {
@@ -2562,10 +2552,8 @@ describe('getStatus', () => {
 					updatedAt: '2024-01-01T00:00:00.000Z',
 				};
 
-				sourceControlImportService.getRemoteDataTablesFromFiles.mockResolvedValue([
-					remoteDataTable,
-				]);
-				sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue([]);
+				dataTableHandler.getRemoteDataTablesFromFiles.mockResolvedValue([remoteDataTable]);
+				dataTableHandler.getLocalDataTablesFromDb.mockResolvedValue([]);
 
 				// ACT
 				const result = await sourceControlStatusService.getStatus(user, {
@@ -2608,10 +2596,8 @@ describe('getStatus', () => {
 					updatedAt: '2024-01-01T00:00:00.000Z',
 				};
 
-				sourceControlImportService.getRemoteDataTablesFromFiles.mockResolvedValue([
-					remoteDataTable,
-				]);
-				sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue([localDataTable]);
+				dataTableHandler.getRemoteDataTablesFromFiles.mockResolvedValue([remoteDataTable]);
+				dataTableHandler.getLocalDataTablesFromDb.mockResolvedValue([localDataTable]);
 
 				// ACT
 				const result = await sourceControlStatusService.getStatus(user, {
@@ -2656,10 +2642,8 @@ describe('getStatus', () => {
 					updatedAt: '2024-01-01T00:00:00.000Z',
 				};
 
-				sourceControlImportService.getRemoteDataTablesFromFiles.mockResolvedValue([
-					remoteFromInstanceA,
-				]);
-				sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue([localTable]);
+				dataTableHandler.getRemoteDataTablesFromFiles.mockResolvedValue([remoteFromInstanceA]);
+				dataTableHandler.getLocalDataTablesFromDb.mockResolvedValue([localTable]);
 
 				// ACT
 				const result = await sourceControlStatusService.getStatus(user, {
@@ -2704,10 +2688,8 @@ describe('getStatus', () => {
 					updatedAt: '2024-01-01T00:00:00.000Z',
 				};
 
-				sourceControlImportService.getRemoteDataTablesFromFiles.mockResolvedValue([
-					remoteDataTable,
-				]);
-				sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue([localDataTable]);
+				dataTableHandler.getRemoteDataTablesFromFiles.mockResolvedValue([remoteDataTable]);
+				dataTableHandler.getLocalDataTablesFromDb.mockResolvedValue([localDataTable]);
 
 				// ACT
 				const result = await sourceControlStatusService.getStatus(user, {
@@ -2754,11 +2736,9 @@ describe('getStatus', () => {
 					updatedAt: '2024-01-01T00:00:00.000Z',
 				};
 
-				sourceControlImportService.getRemoteDataTablesFromFiles.mockResolvedValue([
-					remoteDataTable,
-				]);
-				sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue([localDataTable]);
-				sourceControlImportService.resolveRemoteDataTableProjectId.mockResolvedValue('pp-local');
+				dataTableHandler.getRemoteDataTablesFromFiles.mockResolvedValue([remoteDataTable]);
+				dataTableHandler.getLocalDataTablesFromDb.mockResolvedValue([localDataTable]);
+				dataTableHandler.resolveRemoteDataTableProjectId.mockResolvedValue('pp-local');
 
 				// ACT
 				const result = await sourceControlStatusService.getStatus(user, {
@@ -2801,10 +2781,8 @@ describe('getStatus', () => {
 					updatedAt: '2024-01-01T00:00:00.000Z',
 				};
 
-				sourceControlImportService.getRemoteDataTablesFromFiles.mockResolvedValue([
-					remoteDataTable,
-				]);
-				sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue([localDataTable]);
+				dataTableHandler.getRemoteDataTablesFromFiles.mockResolvedValue([remoteDataTable]);
+				dataTableHandler.getLocalDataTablesFromDb.mockResolvedValue([localDataTable]);
 
 				// ACT — preferLocalVersion true (the UI dry-run flag) must not change
 				// which id the entry carries
@@ -2858,11 +2836,11 @@ describe('getStatus', () => {
 					updatedAt: '2024-01-01T00:00:00.000Z',
 				};
 
-				sourceControlImportService.getRemoteDataTablesFromFiles.mockResolvedValue([
+				dataTableHandler.getRemoteDataTablesFromFiles.mockResolvedValue([
 					remoteSameProject,
 					remoteOtherProject,
 				]);
-				sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue([localDataTable]);
+				dataTableHandler.getLocalDataTablesFromDb.mockResolvedValue([localDataTable]);
 
 				// ACT
 				const result = await sourceControlStatusService.getStatus(user, {
@@ -2907,10 +2885,8 @@ describe('getStatus', () => {
 					updatedAt: '2024-01-01T00:00:00.000Z',
 				};
 
-				sourceControlImportService.getRemoteDataTablesFromFiles.mockResolvedValue([
-					remoteDataTable,
-				]);
-				sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue([localDataTable]);
+				dataTableHandler.getRemoteDataTablesFromFiles.mockResolvedValue([remoteDataTable]);
+				dataTableHandler.getLocalDataTablesFromDb.mockResolvedValue([localDataTable]);
 
 				// ACT
 				const result = await sourceControlStatusService.getStatus(user, {

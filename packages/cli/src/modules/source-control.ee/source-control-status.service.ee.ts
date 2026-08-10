@@ -28,6 +28,7 @@ import {
 } from './source-control-helper.ee';
 import { SourceControlImportService } from './source-control-import.service.ee';
 import { SourceControlPreferencesService } from './source-control-preferences.service.ee';
+import { SourceControlResourceHandlerRegistry } from './source-control-resource-handler.registry';
 import type { StatusExportableCredential } from './types/exportable-credential';
 import type {
 	DataTableResourceOwner,
@@ -57,6 +58,7 @@ export class SourceControlStatusService {
 		private readonly folderRepository: FolderRepository,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly eventService: EventService,
+		private readonly resourceHandlers: SourceControlResourceHandlerRegistry,
 	) {}
 
 	private get gitFolder(): string {
@@ -660,10 +662,22 @@ export class SourceControlStatusService {
 		collectVerbose: boolean,
 	) {
 		const sourceControlledFiles: SourceControlledFile[] = [];
-		const dataTablesRemote =
-			(await this.sourceControlImportService.getRemoteDataTablesFromFiles(context)) ?? [];
-		const dataTablesLocal =
-			(await this.sourceControlImportService.getLocalDataTablesFromDb(context)) ?? [];
+
+		const dtMissingInLocal: ExportableDataTable[] = [];
+		const dtMissingInRemote: StatusExportableDataTable[] = [];
+		const dtModifiedInEither: Array<ExportableDataTable | StatusExportableDataTable> = [];
+
+		// Without an active data-table module there are no data tables to sync
+		const dataTableHandler = this.resourceHandlers.getDataTableHandler();
+		if (!dataTableHandler) {
+			return {
+				files: sourceControlledFiles,
+				verbose: { dtMissingInLocal, dtMissingInRemote, dtModifiedInEither },
+			};
+		}
+
+		const dataTablesRemote = (await dataTableHandler.getRemoteDataTablesFromFiles(context)) ?? [];
+		const dataTablesLocal = (await dataTableHandler.getLocalDataTablesFromDb(context)) ?? [];
 
 		const localById = new Map(dataTablesLocal.map((dt) => [dt.id, dt]));
 		const remoteById = new Map(dataTablesRemote.map((dt) => [dt.id, dt]));
@@ -679,10 +693,6 @@ export class SourceControlStatusService {
 			}
 		}
 
-		const dtMissingInLocal: ExportableDataTable[] = [];
-		const dtMissingInRemote: StatusExportableDataTable[] = [];
-		const dtModifiedInEither: Array<ExportableDataTable | StatusExportableDataTable> = [];
-
 		// Cross-id name collisions (same (project, name), different id — typically a
 		// delete+recreate upstream). Computed before the remote loop because a pull
 		// reports a collision as ONE user-facing change: the incoming id must not
@@ -694,11 +704,10 @@ export class SourceControlStatusService {
 			if (remoteById.has(local.id) || !local.ownedBy) continue;
 			for (const candidate of remotesByName.get(local.name) ?? []) {
 				if (candidate.id === local.id) continue;
-				const candidateProjectId =
-					await this.sourceControlImportService.resolveRemoteDataTableProjectId(
-						candidate.ownedBy,
-						context.user.id,
-					);
+				const candidateProjectId = await dataTableHandler.resolveRemoteDataTableProjectId(
+					candidate.ownedBy,
+					context.user.id,
+				);
 				if (candidateProjectId === local.ownedBy.projectId) {
 					nameCollisionByLocalId.set(local.id, candidate);
 					break;

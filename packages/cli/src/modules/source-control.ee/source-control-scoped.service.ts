@@ -12,7 +12,6 @@ import { hasGlobalScope } from '@n8n/permissions';
 import type { FindOptionsWhere } from '@n8n/typeorm';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import type { DataTable } from '@/modules/data-table/data-table.entity';
 
 import { SourceControlContextFactory } from './source-control-context.factory';
 import { SourceControlContext } from './types/source-control-context';
@@ -140,18 +139,6 @@ export class SourceControlScopedService {
 
 		return {
 			workflows: this.getWorkflowsInAdminProjectsFromContextFilter(context),
-		};
-	}
-
-	getDataTablesInAdminProjectsFromContextFilter(
-		context: SourceControlContext,
-	): FindOptionsWhere<DataTable> {
-		if (context.hasAccessToAllProjects()) {
-			return {};
-		}
-
-		return {
-			project: this.getProjectsWithPushScopeByContextFilter(context),
 		};
 	}
 }

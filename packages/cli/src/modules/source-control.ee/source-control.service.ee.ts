@@ -37,6 +37,7 @@ import {
 } from './source-control-helper.ee';
 import { SourceControlImportService } from './source-control-import.service.ee';
 import { SourceControlPreferencesService } from './source-control-preferences.service.ee';
+import { SourceControlResourceHandlerRegistry } from './source-control-resource-handler.registry';
 import {
 	filterByType,
 	getDeletedResources,
@@ -77,6 +78,7 @@ export class SourceControlService {
 		private sourceControlScopedService: SourceControlScopedService,
 		private readonly eventService: EventService,
 		private readonly sourceControlStatusService: SourceControlStatusService,
+		private readonly resourceHandlers: SourceControlResourceHandlerRegistry,
 	) {
 		const { gitFolder, sshFolder, sshKeyName } = sourceControlPreferencesService;
 		this.gitFolder = gitFolder;
@@ -441,10 +443,9 @@ export class SourceControlService {
 
 			const dataTableCandidates = filterByType(filesToPush, 'datatable');
 			if (dataTableCandidates.length > 0) {
-				await this.sourceControlExportService.exportDataTablesToWorkFolder(
-					dataTableCandidates,
-					context,
-				);
+				await this.resourceHandlers
+					.getDataTableHandler()
+					?.exportDataTablesToWorkFolder(dataTableCandidates, context);
 			}
 
 			await this.gitService.stage(filesToBePushed, filesToBeDeleted);
@@ -619,11 +620,9 @@ export class SourceControlService {
 
 		const dataTableCandidates = getNonDeletedResources(statusResult, 'datatable');
 		if (dataTableCandidates.length > 0) {
-			const dataTableImportResult =
-				await this.sourceControlImportService.importDataTablesFromWorkFolder(
-					dataTableCandidates,
-					user.id,
-				);
+			const dataTableImportResult = await this.resourceHandlers
+				.getDataTableHandler()
+				?.importDataTablesFromWorkFolder(dataTableCandidates, user.id);
 
 			// Surface reconciliation failures as conflicts on the pull result, not
 			// just in the logs
@@ -636,7 +635,9 @@ export class SourceControlService {
 			}
 		}
 		const dataTablesToBeDeleted = getDeletedResources(statusResult, 'datatable');
-		await this.sourceControlImportService.deleteDataTablesNotInWorkFolder(dataTablesToBeDeleted);
+		await this.resourceHandlers
+			.getDataTableHandler()
+			?.deleteDataTablesNotInWorkFolder(dataTablesToBeDeleted);
 
 		const foldersToBeDeleted = getDeletedResources(statusResult, 'folders');
 		await this.sourceControlImportService.deleteFoldersNotInWorkfolder(foldersToBeDeleted);

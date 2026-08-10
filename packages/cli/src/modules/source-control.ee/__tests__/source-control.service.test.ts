@@ -8,6 +8,8 @@ import { InstanceSettings } from 'n8n-core';
 import type { CommitResult, PullResult, PushResult } from 'simple-git';
 
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
+import type { SourceControlDataTableHandler } from '@/modules/source-control.ee/source-control-resource-handler.registry';
+import { SourceControlResourceHandlerRegistry } from '@/modules/source-control.ee/source-control-resource-handler.registry';
 import { SourceControlService } from '@/modules/source-control.ee/source-control.service.ee';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import type { EventService } from '@/events/event.service';
@@ -61,6 +63,9 @@ describe('SourceControlService', () => {
 	const sourceControlScopedService = mock<SourceControlScopedService>();
 	const gitService = mock<SourceControlGitService>();
 	const eventService = mock<EventService>();
+	const dataTableHandler = mock<SourceControlDataTableHandler>();
+	const resourceHandlers = new SourceControlResourceHandlerRegistry();
+	resourceHandlers.registerDataTableHandler(dataTableHandler);
 	const sourceControlService = new SourceControlService(
 		mock(), // logger
 		gitService,
@@ -71,6 +76,7 @@ describe('SourceControlService', () => {
 		sourceControlScopedService,
 		eventService, // event service
 		mockStatusService as any, // status service
+		resourceHandlers,
 	);
 
 	beforeEach(() => {
@@ -217,9 +223,7 @@ describe('SourceControlService', () => {
 			sourceControlExportService.exportGlobalVariablesToWorkFolder.mockResolvedValueOnce(
 				mockExportResult,
 			);
-			sourceControlExportService.exportDataTablesToWorkFolder.mockResolvedValueOnce(
-				mockExportResult,
-			);
+			dataTableHandler.exportDataTablesToWorkFolder.mockResolvedValueOnce(mockExportResult);
 			sourceControlExportService.exportFoldersToWorkFolder.mockResolvedValueOnce(mockExportResult);
 			sourceControlExportService.exportGlobalVariablesToWorkFolder.mockResolvedValueOnce(
 				mockExportResult,
@@ -261,7 +265,7 @@ describe('SourceControlService', () => {
 			expect(sourceControlExportService.exportTagsToWorkFolder).toHaveBeenCalled();
 			expect(sourceControlExportService.exportFoldersToWorkFolder).toHaveBeenCalled();
 			expect(sourceControlExportService.exportGlobalVariablesToWorkFolder).toHaveBeenCalled();
-			expect(sourceControlExportService.exportDataTablesToWorkFolder).toHaveBeenCalled();
+			expect(dataTableHandler.exportDataTablesToWorkFolder).toHaveBeenCalled();
 
 			// Deleted resources should be passed to rmFilesFromExportFolder
 			expect(sourceControlExportService.rmFilesFromExportFolder).toHaveBeenCalledWith(
@@ -624,11 +628,11 @@ describe('SourceControlService', () => {
 			sourceControlImportService.importWorkflowFromWorkFolder.mockResolvedValue([]);
 
 			const callOrder: string[] = [];
-			sourceControlImportService.importDataTablesFromWorkFolder.mockImplementation(async () => {
+			dataTableHandler.importDataTablesFromWorkFolder.mockImplementation(async () => {
 				callOrder.push('import');
 				return { imported: [], reconciliationFailures: [] };
 			});
-			sourceControlImportService.deleteDataTablesNotInWorkFolder.mockImplementation(async () => {
+			dataTableHandler.deleteDataTablesNotInWorkFolder.mockImplementation(async () => {
 				callOrder.push('delete');
 			});
 
@@ -636,13 +640,11 @@ describe('SourceControlService', () => {
 			await sourceControlService.pullWorkfolder(user, { force: true, autoPublish: 'none' });
 
 			// ASSERT
-			expect(sourceControlImportService.importDataTablesFromWorkFolder).toHaveBeenCalledWith(
+			expect(dataTableHandler.importDataTablesFromWorkFolder).toHaveBeenCalledWith(
 				[statuses[0]],
 				user.id,
 			);
-			expect(sourceControlImportService.deleteDataTablesNotInWorkFolder).toHaveBeenCalledWith([
-				statuses[1],
-			]);
+			expect(dataTableHandler.deleteDataTablesNotInWorkFolder).toHaveBeenCalledWith([statuses[1]]);
 			expect(callOrder).toEqual(['import', 'delete']);
 		});
 
@@ -660,7 +662,7 @@ describe('SourceControlService', () => {
 			];
 			mockStatusService.getStatus.mockResolvedValueOnce(statuses);
 			sourceControlImportService.importWorkflowFromWorkFolder.mockResolvedValue([]);
-			sourceControlImportService.importDataTablesFromWorkFolder.mockResolvedValue({
+			dataTableHandler.importDataTablesFromWorkFolder.mockResolvedValue({
 				imported: [],
 				reconciliationFailures: [{ id: 'dtNew', name: 'Test Table' }],
 			});

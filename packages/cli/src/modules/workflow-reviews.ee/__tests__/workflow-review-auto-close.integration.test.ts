@@ -284,11 +284,7 @@ describe('auto-close on source-control pull', () => {
 			mock(), // sourceControlContextFactory
 			mock(), // sourceControlScopedService
 			Container.get(WorkflowHistoryService),
-			mock(), // dataTableRepository
-			mock(), // dataTableColumnRepository
-			mock(), // dataTableDDLService
 			mock(), // redactionEnforcementService
-			mock(), // dataTableSizeValidator
 			mock(), // activeWorkflowManager
 			mock(), // executionPersistence
 			mock(), // workflowPublishGuard

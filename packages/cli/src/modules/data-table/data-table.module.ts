@@ -29,6 +29,16 @@ export class DataTableModule implements ModuleInterface {
 			},
 		});
 
+		const { SourceControlResourceHandlerRegistry } = await import(
+			'@/modules/source-control.ee/source-control-resource-handler.registry.js'
+		);
+		const { DataTableSourceControlService } = await import(
+			'./source-control/data-table-source-control.service.js'
+		);
+		Container.get(SourceControlResourceHandlerRegistry).registerDataTableHandler(
+			Container.get(DataTableSourceControlService),
+		);
+
 		const { DataTableAggregateService } = await import('./data-table-aggregate.service.js');
 		await Container.get(DataTableAggregateService).start();
 
