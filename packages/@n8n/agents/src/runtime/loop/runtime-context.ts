@@ -19,7 +19,6 @@ import type { AgentMessageList } from '../model/message-list';
 import { createModel } from '../model/model-factory';
 import { buildCallPromptCacheOptions, mergeProviderOptions } from '../model/prompt-cache';
 import {
-	buildCallProviderOptionDefaults,
 	getProviderQuirks,
 	PROVIDER_QUIRKS,
 	providerIdFromModelId,
@@ -277,15 +276,12 @@ export class RuntimeContextBuilder {
 	private buildCallProviderOptions(
 		runProviderOptions?: ProviderOptions,
 	): Record<string, Record<string, unknown>> | undefined {
-		const quirkDefaults = buildCallProviderOptionDefaults(this.modelId) as
-			| ProviderOptions
-			| undefined;
 		const thinkingOpts = this.buildThinkingProviderOptions() as ProviderOptions | undefined;
 		const cacheOpts = buildCallPromptCacheOptions(this.config.promptCaching, this.modelId, {
 			agentName: this.config.name,
 			instructions: this.config.instructions,
 		});
-		return mergeProviderOptions(quirkDefaults, thinkingOpts, cacheOpts, runProviderOptions) as
+		return mergeProviderOptions(thinkingOpts, cacheOpts, runProviderOptions) as
 			| Record<string, Record<string, unknown>>
 			| undefined;
 	}

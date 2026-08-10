@@ -14,8 +14,6 @@ export interface ProviderQuirks {
 	reasoningReplayKeys?: string[];
 	/** Defaults merged under this provider's namespace into every tool's providerOptions (explicit tool values win). */
 	toolProviderOptionDefaults?: JSONObject;
-	/** Defaults merged under this provider's namespace into every model call (explicit call values win). */
-	callProviderOptionDefaults?: JSONObject;
 	/** Provider defaults to strict JSON Schema validation for structured output; relax for raw user schemas. */
 	relaxStrictJsonSchemaForRawOutput?: boolean;
 	/** Translate the agent's thinking config into this provider's providerOptions namespace. */
@@ -42,7 +40,20 @@ function anthropicUsesAdaptiveThinking(modelId: string): boolean {
 	return modelId.includes('claude-');
 }
 
-/** Providers that map effort to nested `reasoning: { effort }` (OpenRouter). */
+/** Map effort to top-level `reasoningEffort` (OpenAI-compatible chat). */
+function reasoningEffortQuirk(
+	provider: ProviderId,
+	defaultEffort: OpenAIReasoningEffort,
+): ProviderQuirks {
+	return {
+		thinkingToProviderOptions: (thinking) => {
+			const cfg = thinking as OpenAIThinkingConfig;
+			return { [provider]: { reasoningEffort: cfg.reasoningEffort ?? defaultEffort } };
+		},
+	};
+}
+
+/** Map effort to nested `reasoning: { effort }` (OpenRouter). */
 function nestedReasoningEffortQuirk(
 	provider: ProviderId,
 	defaultEffort: OpenAIReasoningEffort,
@@ -152,26 +163,11 @@ export const PROVIDER_QUIRKS: Partial<Record<ProviderId, ProviderQuirks>> = {
 		},
 	},
 	openrouter: nestedReasoningEffortQuirk('openrouter', 'medium'),
-	custom: {
-		thinkingToProviderOptions: (thinking) => {
-			const cfg = thinking as OpenAIThinkingConfig;
-			return { custom: { reasoningEffort: cfg.reasoningEffort ?? 'medium' } };
-		},
-	},
+	custom: reasoningEffortQuirk('custom', 'medium'),
 };
 
 export function getProviderQuirks(providerId: string): ProviderQuirks {
 	return PROVIDER_QUIRKS[providerId as ProviderId] ?? {};
-}
-
-/** Provider/model call defaults keyed for merge into AI SDK `providerOptions`. */
-export function buildCallProviderOptionDefaults(
-	modelId: string,
-): Record<string, Record<string, unknown>> | undefined {
-	const provider = providerIdFromModelId(modelId);
-	const defaults = getProviderQuirks(provider).callProviderOptionDefaults;
-	if (!defaults) return undefined;
-	return { [provider]: defaults };
 }
 
 export function providerIdFromModelId(modelId: string): string {
@@ -179,20 +175,11 @@ export function providerIdFromModelId(modelId: string): string {
 }
 
 /**
- * Default completion-token cap for reasoning-heavy models (Kimi K3).
+ * Default completion-token cap for reasoning-heavy Kimi K3 models.
  * Context windows are often 131072 shared input+output; requesting the full
  * window as max_tokens overflows once any prompt tokens are present.
  */
 export const HIGH_REASONING_DEFAULT_MAX_OUTPUT_TOKENS = 65_536;
-
-/** @deprecated Prefer {@link HIGH_REASONING_DEFAULT_MAX_OUTPUT_TOKENS}. */
-export const KIMI_K3_DEFAULT_MAX_OUTPUT_TOKENS = HIGH_REASONING_DEFAULT_MAX_OUTPUT_TOKENS;
-
-function isKimiK3Model(modelId: string): boolean {
-	const id = modelId.toLowerCase();
-	// OpenRouter/Fireworks/custom: `kimi-k3`.
-	return id.includes('kimi-k3');
-}
 
 /**
  * Provider/model-specific default for AI SDK `maxOutputTokens`. Unknown models
@@ -200,7 +187,7 @@ function isKimiK3Model(modelId: string): boolean {
  * before emitting text or tool calls.
  */
 export function resolveDefaultMaxOutputTokens(modelId: string): number | undefined {
-	if (isKimiK3Model(modelId)) {
+	if (modelId.toLowerCase().includes('kimi-k3')) {
 		return HIGH_REASONING_DEFAULT_MAX_OUTPUT_TOKENS;
 	}
 	return undefined;

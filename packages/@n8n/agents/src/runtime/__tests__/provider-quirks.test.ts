@@ -3,7 +3,6 @@ import { describe, it, expect } from 'vitest';
 import {
 	HIGH_REASONING_DEFAULT_MAX_OUTPUT_TOKENS,
 	applyToolProviderOptionDefaults,
-	buildCallProviderOptionDefaults,
 	getProviderQuirks,
 	resolveDefaultMaxOutputTokens,
 } from '../model/provider-quirks';
@@ -205,13 +204,6 @@ describe('thinkingToProviderOptions', () => {
 		expect(getProviderQuirks('custom').thinkingToProviderOptions?.({}, 'custom/Kimi-K3')).toEqual({
 			custom: { reasoningEffort: 'medium' },
 		});
-	});
-});
-
-describe('buildCallProviderOptionDefaults', () => {
-	it('returns undefined for providers without call defaults', () => {
-		expect(buildCallProviderOptionDefaults('anthropic/claude-sonnet-4-6')).toBeUndefined();
-		expect(buildCallProviderOptionDefaults('custom/Kimi-K3')).toBeUndefined();
 	});
 });
 

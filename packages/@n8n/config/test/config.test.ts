@@ -322,7 +322,6 @@ describe('GlobalConfig', () => {
 			model: 'anthropic/claude-opus-4-8',
 			modelUrl: '',
 			modelApiKey: '',
-			modelHeadersJson: '',
 			mcpServers: '',
 			localGatewayDisabled: false,
 			browserUseEnabled: true,

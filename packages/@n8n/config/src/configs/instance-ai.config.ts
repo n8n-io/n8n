@@ -16,14 +16,6 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_MODEL_API_KEY')
 	modelApiKey: string = '';
 
-	/**
-	 * JSON object of extra HTTP headers for custom OpenAI-compatible model endpoints
-	 * (e.g. `{ "Modal-Key": "wk-...", "Modal-Secret": "ws-..." }`). Used with
-	 * `N8N_INSTANCE_AI_MODEL_URL`.
-	 */
-	@Env('N8N_INSTANCE_AI_MODEL_HEADERS')
-	modelHeadersJson: string = '';
-
 	/** Comma-separated name=url pairs for MCP servers (e.g. "github=https://mcp.github.com/sse"). */
 	@Env('N8N_INSTANCE_AI_MCP_SERVERS')
 	mcpServers: string = '';

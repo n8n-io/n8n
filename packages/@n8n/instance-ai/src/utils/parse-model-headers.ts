@@ -1,6 +1,6 @@
 /**
- * Parse `N8N_INSTANCE_AI_MODEL_HEADERS` — a JSON object of HTTP header names to
- * string values (e.g. Modal proxy auth: `{ "Modal-Key": "wk-...", "Modal-Secret": "ws-..." }`).
+ * Parse eval-only LLM header JSON (`EVAL_MODAL_LLM_HEADERS`) — a JSON object of
+ * HTTP header names to string values (e.g. Modal proxy auth).
  */
 export function parseModelHeadersJson(raw: string | undefined): Record<string, string> | undefined {
 	const trimmed = raw?.trim();

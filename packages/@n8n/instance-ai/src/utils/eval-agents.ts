@@ -93,17 +93,13 @@ function getModelUrl(): string | undefined {
 }
 
 function getModelHeaders(): Record<string, string> | undefined {
-	return (
-		parseModelHeadersJson(process.env.EVAL_MODAL_LLM_HEADERS) ??
-		parseModelHeadersJson(process.env.N8N_INSTANCE_AI_MODEL_HEADERS)
-	);
+	return parseModelHeadersJson(process.env.EVAL_MODAL_LLM_HEADERS);
 }
 
 function allowsKeylessCustomEndpoint(provider: string): boolean {
 	if (!getModelUrl()) return false;
-	// Header-auth custom endpoints (e.g. Modal) — any provider id with URL+headers.
 	if (getModelHeaders()) return true;
-	// Dedicated OpenAI-compatible routers (e.g. custom/Kimi-K3) need no auth.
+
 	return provider === 'custom';
 }
 

@@ -26,7 +26,6 @@ const MODEL_ENV_KEYS = [
 	'N8N_INSTANCE_AI_EVAL_MODEL',
 	'N8N_INSTANCE_AI_MODEL_API_KEY',
 	'N8N_INSTANCE_AI_MODEL_URL',
-	'N8N_INSTANCE_AI_MODEL_HEADERS',
 	'EVAL_MODAL_LLM_HEADERS',
 	'N8N_AI_ANTHROPIC_KEY',
 	'ANTHROPIC_API_KEY',
@@ -125,10 +124,10 @@ describe('eval agent model config', () => {
 		});
 	});
 
-	it('supports custom endpoints that authenticate with JSON model headers only', () => {
+	it('supports custom endpoints that authenticate with EVAL_MODAL_LLM_HEADERS only', () => {
 		process.env.N8N_INSTANCE_AI_MODEL = 'custom/moonshotai/Kimi-K3';
 		process.env.N8N_INSTANCE_AI_MODEL_URL = 'https://example.modal.direct/v1';
-		process.env.N8N_INSTANCE_AI_MODEL_HEADERS = '{"Modal-Key":"wk-test","Modal-Secret":"ws-test"}';
+		process.env.EVAL_MODAL_LLM_HEADERS = '{"Modal-Key":"wk-test","Modal-Secret":"ws-test"}';
 
 		const config = resolveEvalModelConfig();
 
@@ -209,18 +208,6 @@ describe('eval agent model config', () => {
 			modelId: 'anthropic/claude-sonnet-4-6',
 			apiKey: 'anthropic-eval-key',
 			url: undefined,
-		});
-	});
-
-	it('prefers EVAL_MODAL_LLM_HEADERS over N8N_INSTANCE_AI_MODEL_HEADERS', () => {
-		process.env.N8N_INSTANCE_AI_MODEL = 'custom/moonshotai/Kimi-K3';
-		process.env.N8N_INSTANCE_AI_MODEL_URL = 'https://example.modal.direct/v1';
-		process.env.N8N_INSTANCE_AI_MODEL_HEADERS =
-			'{"Modal-Key":"wk-fallback","Modal-Secret":"ws-fallback"}';
-		process.env.EVAL_MODAL_LLM_HEADERS = '{"Modal-Key":"wk-eval","Modal-Secret":"ws-eval"}';
-
-		expect(resolveEvalModelConfig()).toMatchObject({
-			headers: { 'Modal-Key': 'wk-eval', 'Modal-Secret': 'ws-eval' },
 		});
 	});
 });
