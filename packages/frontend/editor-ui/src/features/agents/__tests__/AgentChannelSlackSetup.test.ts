@@ -29,7 +29,7 @@ vi.mock('../components/AgentChannelSlackSetupSnapshots.vue', () => ({
 	},
 }));
 
-vi.mock('../composables/useAgentApi', () => ({
+vi.mock('../channels/slack/api', () => ({
 	getSlackAgentAppManifest: vi.fn().mockResolvedValue({ manifest: { display_information: {} } }),
 }));
 
