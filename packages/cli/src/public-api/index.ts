@@ -13,6 +13,7 @@ import validator from 'validator';
 import { PublicApiControllerRegistry } from './public-api-controller.registry';
 import { sendPublicApiErrorResponse } from './v1/public-api-error-response';
 
+import { AUTH_COOKIE_NAME } from '@/constants';
 import { EventService } from '@/events/event.service';
 import { License } from '@/license';
 import { createN8nPackageMulterOptions } from '@/modules/n8n-packages/utils/import-package-upload';
@@ -380,11 +381,13 @@ function createApiRouter(
 
 	const publicApiErrorHandler: ErrorRequestHandler = (
 		error: Error,
-		_req: express.Request,
+		req: express.Request,
 		res: express.Response,
 		_next: express.NextFunction,
 	) => {
-		sendPublicApiErrorResponse(res, error);
+		sendPublicApiErrorResponse(res, error, {
+			hasSessionCookie: Boolean(req.cookies?.[AUTH_COOKIE_NAME]),
+		});
 	};
 
 	apiController.use(publicApiErrorHandler);

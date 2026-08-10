@@ -110,7 +110,17 @@ describe('GET /insights/summary', () => {
 		const agent = testServer.publicApiAgentWithoutApiKey();
 		agent.jar.setCookie(`${AUTH_COOKIE_NAME}=invalid`);
 
-		await agent.get('/insights/summary').expect(401);
+		const response = await agent.get('/insights/summary').expect(401);
+
+		expect(response.body).toEqual({ message: 'Unauthorized' });
+	});
+
+	test('returns 401 with a hint to use an API key when no credentials are sent at all', async () => {
+		const agent = testServer.publicApiAgentWithoutApiKey();
+
+		const response = await agent.get('/insights/summary').expect(401);
+
+		expect(response.body).toEqual({ message: "'X-N8N-API-KEY' header required" });
 	});
 
 	test('returns 403 without insights:read scope', async () => {

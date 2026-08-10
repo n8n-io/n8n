@@ -1,4 +1,4 @@
-import { BadRequest } from 'express-openapi-validator/dist/framework/types';
+import { BadRequest, Unauthorized } from 'express-openapi-validator/dist/framework/types';
 import { OperationalError, UnexpectedError, UserError } from 'n8n-workflow';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -49,6 +49,28 @@ describe('classifyHttpError', () => {
 			kind: HttpErrorKind.httpError,
 			status: 400,
 			message: 'schema failed',
+		});
+	});
+
+	describe('Unauthorized', () => {
+		it('includes error message from express-openpapi-validator in response when no token header or session cookie sent', () => {
+			const err = new Unauthorized({ path: '/x', message: "'X-N8N-API-KEY' header required" });
+			const d = classifyHttpError(err);
+			expect(d).toEqual({
+				kind: HttpErrorKind.httpError,
+				status: 401,
+				message: "'X-N8N-API-KEY' header required",
+			});
+		});
+
+		it('does not tell user who tried to authorize to public API with session cookie that token is required for auth', () => {
+			const err = new Unauthorized({ path: '/x', message: "'X-N8N-API-KEY' header required" });
+			const d = classifyHttpError(err, { hasSessionCookie: true });
+			expect(d).toEqual({
+				kind: HttpErrorKind.httpError,
+				status: 401,
+				message: 'Unauthorized',
+			});
 		});
 	});
 
