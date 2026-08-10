@@ -33,9 +33,12 @@ import type { ToolCallBatchResult } from '../tools/tool-call-executor';
  */
 const STALL_RETRY_SAFE_CHUNK_TYPES = new Set<string>([
 	'raw',
+	'start',
+	'stream-start',
 	'start-step',
 	'finish-step',
 	'finish',
+	'abort',
 ]);
 
 /**

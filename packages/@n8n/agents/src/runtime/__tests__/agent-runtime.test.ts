@@ -7736,8 +7736,13 @@ describe('AgentRuntime — model stream stall handling', () => {
 		streamText.mockReset();
 	});
 
-	/** streamText response that emits `chunks` then goes silent — a dead connection. */
+	/**
+	 * streamText response that emits `chunks` then goes silent — a dead
+	 * connection. Always leads with the SDK's synthetic `start` lifecycle chunk,
+	 * which arrives before any provider byte and must not count as content.
+	 */
 	function makeStalledStream(chunks: Array<Record<string, unknown>> = []) {
+		chunks = [{ type: 'start' }, ...chunks];
 		return {
 			stream: (async function* () {
 				for (const c of chunks) yield await Promise.resolve(c);
