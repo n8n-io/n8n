@@ -84,13 +84,16 @@ After a stop, `pnpm session <name>` restarts the codespace (~30–60 s); run
   agent injects them into VS Code sessions only; they're delivered
   base64-encoded to `/workspaces/.codespaces/shared/.env-secrets`. The image's
   profile shim exports them for ssh/tmux sessions.
-- Codespaces on this repo (public) bill to **your personal account** by
-  default — the free tier is 120 core-hours/month. Org billing, bigger
-  machines, and prebuilds (which remove the ~20 min cold start) require org
-  admin enablement.
+- Codespaces created by org members on this repo are **org-owned and
+  org-billed** (organization ownership + a monthly Codespaces budget are
+  enabled for n8n-io). Codespaces created before that change, or by
+  non-members, bill to the personal account (free tier: 120 core-hours/month).
+  If creation unexpectedly falls back to personal billing, the org budget is
+  exhausted for the period.
 
 ## Costs
 
-You pay only while the codespace runs: ~$0.36/hr (4-core) / ~$0.72/hr
-(8-core), ~nothing stopped. `pnpm session stop` when you leave; the idle
-timeout is the backstop, not the plan.
+Compute bills only while the codespace runs: ~$0.36/hr (4-core) / ~$0.72/hr
+(8-core), ~nothing stopped. Usage draws from a shared monthly org budget, so
+`pnpm session stop` when you leave; the idle timeout is the backstop, not the
+plan.
