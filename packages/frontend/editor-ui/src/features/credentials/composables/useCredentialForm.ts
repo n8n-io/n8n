@@ -13,7 +13,12 @@ import type {
 	INodeParameters,
 	INodeProperties,
 } from 'n8n-workflow';
-import { CREDENTIAL_EMPTY_VALUE, deepCopy, NodeHelpers } from 'n8n-workflow';
+import {
+	CREDENTIAL_EMPTY_VALUE,
+	deepCopy,
+	isCredentialSentinelValue,
+	NodeHelpers,
+} from 'n8n-workflow';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -273,7 +278,10 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 			if (property.required !== true) continue;
 			const value = credentialData.value[property.name];
 
-			if (property.type === 'string' && !value) return false;
+			if (property.type === 'string') {
+				// On create a redaction sentinel is not a real secret — treat it as empty.
+				if (!value || (isNewCredential.value && isCredentialSentinelValue(value))) return false;
+			}
 
 			if (property.type === 'number') {
 				const containsExpression = typeof value === 'string' && value.startsWith('=');

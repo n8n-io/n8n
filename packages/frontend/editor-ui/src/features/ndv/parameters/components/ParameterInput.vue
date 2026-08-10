@@ -1855,6 +1855,7 @@ onUpdated(async () => {
 					:class="{ 'input-with-opener': true, 'ph-no-capture': shouldRedactValue }"
 					:size="parameterInputSize"
 					:type="getStringInputType"
+					:autocomplete="getTypeOption('password') === true ? 'new-password' : 'off'"
 					:masked="isMaskedTextarea"
 					:rows="editorRows"
 					:disabled="

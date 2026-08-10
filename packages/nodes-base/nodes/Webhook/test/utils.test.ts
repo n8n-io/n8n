@@ -679,6 +679,47 @@ describe('Webhook Utils', () => {
 			).rejects.toThrowError('Authorization data is wrong!');
 		});
 
+		// GHC-9252 / https://github.com/n8n-io/n8n/issues/35966
+		// A webhook assigned a newly created Header Auth credential must accept
+		// that credential's value and reject an older Header Auth credential's value.
+		it('should accept only the assigned Header Auth credential value, not an older one', async () => {
+			const assignedAuth = {
+				name: 'Authorization',
+				value: 'newer-secret',
+			};
+			const successHeaders = {
+				authorization: 'newer-secret',
+			};
+			const successCtx: Partial<IWebhookFunctions> = {
+				getNodeParameter: vi.fn().mockReturnValue('headerAuth'),
+				getCredentials: vi.fn().mockResolvedValue(assignedAuth),
+				getRequestObject: vi.fn().mockReturnValue({
+					headers: successHeaders,
+				}),
+				getHeaderData: vi.fn().mockReturnValue(successHeaders),
+			};
+
+			await expect(
+				validateWebhookAuthentication(successCtx as IWebhookFunctions, 'authentication'),
+			).resolves.toBeUndefined();
+
+			const olderHeaders = {
+				authorization: 'older-secret',
+			};
+			const olderCtx: Partial<IWebhookFunctions> = {
+				getNodeParameter: vi.fn().mockReturnValue('headerAuth'),
+				getCredentials: vi.fn().mockResolvedValue(assignedAuth),
+				getRequestObject: vi.fn().mockReturnValue({
+					headers: olderHeaders,
+				}),
+				getHeaderData: vi.fn().mockReturnValue(olderHeaders),
+			};
+
+			await expect(
+				validateWebhookAuthentication(olderCtx as IWebhookFunctions, 'authentication'),
+			).rejects.toThrowError('Authorization data is wrong!');
+		});
+
 		it('should throw an error if jwtAuth is enabled but no authentication data is defined on the node', async () => {
 			const ctx: Partial<IWebhookFunctions> = {
 				getNodeParameter: vi.fn().mockReturnValue('jwtAuth'),

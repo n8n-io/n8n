@@ -931,6 +931,39 @@ describe('POST /credentials', () => {
 		}
 	});
 
+	// GHC-9252 / https://github.com/n8n-io/n8n/issues/35966
+	// A newly created Header Auth credential must persist its own value, not
+	// silently reuse the secret of an older Header Auth credential.
+	test('should persist Header Auth values independently of an older Header Auth credential', async () => {
+		const older = {
+			name: 'Older Header Auth',
+			type: 'httpHeaderAuth',
+			data: { name: 'Authorization', value: 'older-secret' },
+		};
+		const newer = {
+			name: 'Newer Header Auth',
+			type: 'httpHeaderAuth',
+			data: { name: 'Authorization', value: 'newer-secret' },
+		};
+
+		const olderResponse = await authOwnerAgent.post('/credentials').send(older);
+		expect(olderResponse.statusCode).toBe(200);
+
+		const newerResponse = await authOwnerAgent.post('/credentials').send(newer);
+		expect(newerResponse.statusCode).toBe(200);
+
+		const olderCredential = await getCredentialById(olderResponse.body.data.id);
+		const newerCredential = await getCredentialById(newerResponse.body.data.id);
+		a.ok(olderCredential);
+		a.ok(newerCredential);
+
+		expect(await decryptCredentialData(olderCredential)).toStrictEqual(older.data);
+		expect(await decryptCredentialData(newerCredential)).toStrictEqual(newer.data);
+		expect(await decryptCredentialData(newerCredential)).not.toEqual(
+			await decryptCredentialData(olderCredential),
+		);
+	});
+
 	test('should ignore ID in payload', async () => {
 		const firstResponse = await authOwnerAgent
 			.post('/credentials')
@@ -1296,6 +1329,30 @@ describe('PATCH /credentials/:id', () => {
 		});
 
 		expect(sharedCredential.credentials.name).toBe(patchPayload.name); // updated
+	});
+
+	// GHC-9252 / https://github.com/n8n-io/n8n/issues/35966
+	test('should persist an updated Header Auth value instead of keeping an older secret', async () => {
+		const created = await authOwnerAgent.post('/credentials').send({
+			name: 'Header Auth',
+			type: 'httpHeaderAuth',
+			data: { name: 'Authorization', value: 'original-secret' },
+		});
+		expect(created.statusCode).toBe(200);
+
+		const response = await authOwnerAgent.patch(`/credentials/${created.body.data.id}`).send({
+			name: 'Header Auth',
+			type: 'httpHeaderAuth',
+			data: { name: 'Authorization', value: 'rotated-secret' },
+		});
+		expect(response.statusCode).toBe(200);
+
+		const credential = await getCredentialById(created.body.data.id);
+		a.ok(credential);
+		expect(await decryptCredentialData(credential)).toStrictEqual({
+			name: 'Authorization',
+			value: 'rotated-secret',
+		});
 	});
 
 	test('should update non-owned cred for owner', async () => {

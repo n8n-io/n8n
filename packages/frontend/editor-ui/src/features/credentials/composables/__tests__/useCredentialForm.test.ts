@@ -1,7 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
-import type { ICredentialType, INode, INodeTypeDescription } from 'n8n-workflow';
+import {
+	CREDENTIAL_BLANKING_VALUE,
+	type ICredentialType,
+	type INode,
+	type INodeTypeDescription,
+} from 'n8n-workflow';
 
 import { mockedStore } from '@/__tests__/utils';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -30,6 +35,22 @@ const httpBasicAuth: ICredentialType = {
 	properties: [
 		{ displayName: 'User', name: 'user', type: 'string', default: '' },
 		{ displayName: 'Password', name: 'password', type: 'string', default: '' },
+	],
+};
+
+const httpHeaderAuth: ICredentialType = {
+	name: 'httpHeaderAuth',
+	displayName: 'Header Auth',
+	properties: [
+		{ displayName: 'Name', name: 'name', type: 'string', default: '', required: true },
+		{
+			displayName: 'Value',
+			name: 'value',
+			type: 'string',
+			typeOptions: { password: true },
+			default: '',
+			required: true,
+		},
 	],
 };
 
@@ -104,6 +125,7 @@ const betaApi: ICredentialType = {
 
 const typesByName: Record<string, ICredentialType> = {
 	httpBasicAuth,
+	httpHeaderAuth,
 	acmeOAuth2Api: managedOAuth,
 	privateOAuth2Api: privateOAuth,
 	skipOAuth2Api: skipManagedOAuth,
@@ -494,6 +516,74 @@ describe('useCredentialForm', () => {
 			const form = useCredentialForm({ mode: 'new', activeId: 'skipOAuth2Api' });
 
 			expect(form.managedOAuthAvailable.value).toBe(false);
+		});
+	});
+
+	// GHC-9252 / https://github.com/n8n-io/n8n/issues/35966
+	describe('Header Auth new-credential isolation', () => {
+		it('does not seed a new Header Auth form from an older Header Auth credential', async () => {
+			credentialsStore.state.credentials = {
+				'older-header-auth': {
+					id: 'older-header-auth',
+					name: 'Older Header Auth',
+					type: 'httpHeaderAuth',
+					createdAt: new Date().toISOString(),
+					updatedAt: new Date().toISOString(),
+					isManaged: false,
+				},
+			};
+			credentialsStore.getCredentialData.mockResolvedValue({
+				id: 'older-header-auth',
+				name: 'Older Header Auth',
+				type: 'httpHeaderAuth',
+				data: { name: 'Authorization', value: 'older-secret' },
+			} as unknown as ICredentialsDecryptedResponse);
+
+			const form = useCredentialForm({ mode: 'new', activeId: 'httpHeaderAuth' });
+			await form.initialize();
+
+			expect(form.credentialData.value).toMatchObject({ name: '', value: '' });
+			expect(form.credentialData.value.value).not.toBe('older-secret');
+			expect(credentialsStore.getCredentialData).not.toHaveBeenCalled();
+		});
+
+		it('keeps the typed Header Auth value when the user fills a new credential', async () => {
+			const form = useCredentialForm({ mode: 'new', activeId: 'httpHeaderAuth' });
+			await form.initialize();
+
+			form.onDataChange({ name: 'name', value: 'Authorization' });
+			form.onDataChange({ name: 'value', value: 'newer-secret' });
+
+			expect(form.credentialData.value).toMatchObject({
+				name: 'Authorization',
+				value: 'newer-secret',
+			});
+		});
+
+		it('does not treat a redaction sentinel as a filled required value on create', async () => {
+			const form = useCredentialForm({ mode: 'new', activeId: 'httpHeaderAuth' });
+			await form.initialize();
+			form.onDataChange({ name: 'name', value: 'Authorization' });
+			form.onDataChange({ name: 'value', value: CREDENTIAL_BLANKING_VALUE });
+
+			expect(form.requiredPropertiesFilled.value).toBe(false);
+
+			form.onDataChange({ name: 'value', value: 'newer-secret' });
+			expect(form.requiredPropertiesFilled.value).toBe(true);
+		});
+
+		it('still treats a redaction sentinel as filled when editing an existing credential', async () => {
+			credentialsStore.getCredentialData.mockResolvedValue({
+				id: 'older-header-auth',
+				name: 'Older Header Auth',
+				type: 'httpHeaderAuth',
+				data: { name: 'Authorization', value: CREDENTIAL_BLANKING_VALUE },
+			} as unknown as ICredentialsDecryptedResponse);
+
+			const form = useCredentialForm({ mode: 'edit', activeId: 'older-header-auth' });
+			await form.initialize();
+
+			expect(form.requiredPropertiesFilled.value).toBe(true);
 		});
 	});
 });

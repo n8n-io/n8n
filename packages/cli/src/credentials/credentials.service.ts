@@ -43,11 +43,13 @@ import {
 	CREDENTIAL_EMPTY_VALUE,
 	deepCopy,
 	displayParameter,
+	isCredentialSentinelValue,
 	isExpression,
 	isINodePropertyCollection,
 	jsonParse,
 	jsonStringify,
 	NodeHelpers,
+	stripCredentialSentinels,
 } from 'n8n-workflow';
 
 import { CredentialTypes } from '@/credential-types';
@@ -1430,11 +1432,9 @@ export class CredentialsService {
 	private unredactRestoreValues(unmerged: any, replacement: any) {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 		for (const [key, value] of Object.entries(unmerged)) {
-			// Strip a leading `=`: switching a redacted field to expression mode
-			// prepends it to the sentinel, which would otherwise defeat the match
-			// and persist the sentinel as the real value.
-			const sentinel = typeof value === 'string' && value.startsWith('=') ? value.slice(1) : value;
-			if (sentinel === CREDENTIAL_BLANKING_VALUE || sentinel === CREDENTIAL_EMPTY_VALUE) {
+			// Expression-toggle prepends `=` to the displayed sentinel; treat that
+			// the same as the bare sentinel so we restore the saved secret.
+			if (isCredentialSentinelValue(value)) {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
 				unmerged[key] = replacement[key];
 			} else if (
@@ -1837,8 +1837,13 @@ export class CredentialsService {
 	}
 
 	private async createCredential(opts: CreateCredentialOptions, user: User) {
+		// Create has no saved secret to restore from, so a redaction sentinel
+		// (or `=`+sentinel from toggling a password field to expression) must
+		// not be persisted as the real value. GHC-9252 / n8n-io/n8n#35966
+		const data = stripCredentialSentinels((opts.data ?? {}) as ICredentialDataDecryptedObject);
+
 		if (opts.usageScope === 'instance') {
-			const savedCredential = await this.persistInstanceCredential(opts, user, {});
+			const savedCredential = await this.persistInstanceCredential({ ...opts, data }, user, {});
 			const scopes = await this.getCredentialScopes(user, savedCredential.id);
 			const { shared, ...credential } = savedCredential;
 			return { ...credential, scopes };
@@ -1850,16 +1855,11 @@ export class CredentialsService {
 			await this.ensureCanManageEndUserCredential(user, targetProjectId);
 		}
 
-		await this.checkCredentialData(
-			opts.type,
-			opts.data as ICredentialDataDecryptedObject,
-			user,
-			targetProjectId,
-		);
+		await this.checkCredentialData(opts.type, data, user, targetProjectId);
 		if (this.externalSecretsConfig.externalSecretsForProjects) {
 			await validateAccessToReferencedSecretProviders(
 				targetProjectId,
-				opts.data as ICredentialDataDecryptedObject,
+				data,
 				this.externalSecretsProviderAccessCheckService,
 				'create',
 			);
@@ -1868,7 +1868,7 @@ export class CredentialsService {
 			id: null,
 			name: opts.name,
 			type: opts.type,
-			data: opts.data as ICredentialDataDecryptedObject,
+			data,
 		});
 
 		// Set isGlobal if provided in the payload and user has permission
@@ -1894,7 +1894,7 @@ export class CredentialsService {
 			encryptedCredential,
 			user,
 			targetProjectId,
-			opts.data as ICredentialDataDecryptedObject,
+			data,
 		);
 
 		const scopes = await this.getCredentialScopes(user, credential.id);
@@ -1917,7 +1917,7 @@ export class CredentialsService {
 		if (opts.isResolvable === true || opts.isManaged) {
 			throw new BadRequestError('Provider connections cannot be end-user or managed credentials');
 		}
-		const data = opts.data as ICredentialDataDecryptedObject;
+		const data = stripCredentialSentinels(opts.data as ICredentialDataDecryptedObject);
 		this.validateInstanceCredentialData(data);
 
 		this.validateCredentialData(opts.type, data);

@@ -12,7 +12,7 @@ import type {
 	INodeParameters,
 	ITelemetryTrackProperties,
 } from 'n8n-workflow';
-import { NodeHelpers } from 'n8n-workflow';
+import { NodeHelpers, stripCredentialSentinels } from 'n8n-workflow';
 import CredentialIcon from '../CredentialIcon.vue';
 
 import CredentialConfig from './CredentialConfig.vue';
@@ -646,7 +646,7 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 
 	// Save only the none default data
 	assert(credentialType.value);
-	const data = NodeHelpers.getNodeParameters(
+	let data = NodeHelpers.getNodeParameters(
 		credentialType.value.properties,
 		credentialData.value as INodeParameters,
 		false,
@@ -654,6 +654,12 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 		null,
 		null,
 	);
+
+	const isNewCredential = props.mode === 'new' && !credentialId.value;
+	// Create cannot restore a redacted secret — never send the placeholder as the value.
+	if (isNewCredential && data) {
+		data = stripCredentialSentinels(data as ICredentialDataDecryptedObject) as INodeParameters;
+	}
 
 	assert(credentialTypeName.value);
 	const credentialDetails: ICredentialsDecrypted = {
@@ -688,8 +694,6 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 	}
 
 	let credential: ICredentialsResponse | null = null;
-
-	const isNewCredential = props.mode === 'new' && !credentialId.value;
 
 	if (isNewCredential) {
 		if (presetUsageScope.value) {

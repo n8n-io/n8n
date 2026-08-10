@@ -120,6 +120,52 @@ describe('CredentialsHelper', () => {
 	});
 
 	describe('applyDefaultsAndOverwrites', () => {
+		// GHC-9252 / https://github.com/n8n-io/n8n/issues/35966
+		// Header Auth stores the header name in a field also called `name`, which
+		// must not be replaced by the credential's display name when defaults are applied.
+		test('keeps Header Auth header name and value distinct from the credential display name', async () => {
+			const credentialType: ICredentialType = {
+				name: 'httpHeaderAuth',
+				displayName: 'Header Auth',
+				properties: [
+					{ displayName: 'Name', name: 'name', type: 'string', default: '' },
+					{
+						displayName: 'Value',
+						name: 'value',
+						type: 'string',
+						default: '',
+						typeOptions: { password: true },
+					},
+				],
+			};
+			mockNodesAndCredentials.getCredential.calledWith(credentialType.name).mockReturnValue({
+				type: credentialType,
+				sourcePath: '',
+			});
+			const credentialsOverwrites = mock<CredentialsOverwrites>();
+			credentialsOverwrites.applyOverwrite.mockImplementation((_type, data) => data);
+			const helper = new CredentialsHelper(
+				new CredentialTypes(mockNodesAndCredentials),
+				credentialsOverwrites,
+				credentialsRepository,
+				dynamicCredentialProxy,
+				secretsProviderRepository,
+				licenseState,
+				externalSecretsConfig,
+				mock<AiGatewayService>(),
+			);
+
+			const result = await helper.applyDefaultsAndOverwrites(
+				mock<IWorkflowExecuteAdditionalData>({ variables: {} }),
+				{ name: 'Authorization', value: 'newer-secret' },
+				credentialType.name,
+				'webhook',
+			);
+
+			expect(result).toEqual({ name: 'Authorization', value: 'newer-secret' });
+			expect(result.name).not.toBe('Header Auth');
+		});
+
 		test('omits marked credential fields that cannot resolve without execution context', async () => {
 			const credentialType: ICredentialType = {
 				name: 'openAiApi',
@@ -1841,6 +1887,81 @@ describe('CredentialsHelper', () => {
 				true,
 			);
 			expect(resultB.apiKey).toBe('key_account_B_UPDATED');
+		});
+	});
+
+	// GHC-9252 / https://github.com/n8n-io/n8n/issues/35966
+	describe('Header Auth credential isolation', () => {
+		const credentialType = 'httpHeaderAuth';
+		const olderData = { name: 'Authorization', value: 'older-secret' };
+		const newerData = { name: 'Authorization', value: 'newer-secret' };
+
+		const olderEntity = {
+			id: 'header-old',
+			name: 'Older Header Auth',
+			type: credentialType,
+			data: cipher.encrypt(olderData),
+			isResolvable: false,
+			resolverId: null,
+			usageScope: 'project',
+		} as CredentialsEntity;
+
+		const newerEntity = {
+			id: 'header-new',
+			name: 'Newer Header Auth',
+			type: credentialType,
+			data: cipher.encrypt(newerData),
+			isResolvable: false,
+			resolverId: null,
+			usageScope: 'project',
+		} as CredentialsEntity;
+
+		const additionalData = {
+			executionContext: undefined,
+			workflowSettings: undefined,
+			rootExecutionMode: 'webhook',
+		} as any;
+
+		beforeEach(() => {
+			vi.clearAllMocks();
+			dynamicCredentialProxy.setResolverProvider(undefined as any);
+
+			credentialsRepository.findOneByOrFail.mockImplementation(async (query: any) => {
+				if (query.id === 'header-old' && query.type === credentialType) return olderEntity;
+				if (query.id === 'header-new' && query.type === credentialType) return newerEntity;
+				throw new EntityNotFoundError(CredentialsEntity, query);
+			});
+		});
+
+		test('decrypts a new Header Auth credential to its own value, not an older one', async () => {
+			const result = await credentialsHelper.getDecrypted(
+				additionalData,
+				{ id: 'header-new', name: 'Newer Header Auth' },
+				credentialType,
+				'webhook',
+				undefined,
+				true,
+			);
+
+			expect(result).toEqual(newerData);
+			expect(result.value).toBe('newer-secret');
+			expect(result.value).not.toBe('older-secret');
+		});
+
+		test('looks up Header Auth credentials by id, not by header name or display name', async () => {
+			await credentialsHelper.getDecrypted(
+				additionalData,
+				{ id: 'header-new', name: 'Older Header Auth' },
+				credentialType,
+				'webhook',
+				undefined,
+				true,
+			);
+
+			expect(credentialsRepository.findOneByOrFail).toHaveBeenCalledWith({
+				id: 'header-new',
+				type: credentialType,
+			});
 		});
 	});
 

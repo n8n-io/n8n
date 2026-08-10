@@ -2820,6 +2820,49 @@ describe('CredentialsService', () => {
 			expect(savedCredential.isGlobal).toBeUndefined();
 		});
 
+		// GHC-9252 / https://github.com/n8n-io/n8n/issues/35966
+		it('should not persist a redaction sentinel as a Header Auth value on create', async () => {
+			mockTransactionManager();
+			const createEncryptedDataSpy = vi.spyOn(service, 'createEncryptedData');
+
+			await service.createUnmanagedCredential(
+				{
+					name: 'Newer Header Auth',
+					type: 'httpHeaderAuth',
+					data: { name: 'Authorization', value: CREDENTIAL_BLANKING_VALUE },
+					projectId: 'project-1',
+				},
+				ownerUser,
+			);
+
+			expect(createEncryptedDataSpy).toHaveBeenCalledWith(
+				expect.objectContaining({
+					data: { name: 'Authorization', value: '' },
+				}),
+			);
+		});
+
+		it('should not persist an expression-prefixed redaction sentinel on create', async () => {
+			mockTransactionManager();
+			const createEncryptedDataSpy = vi.spyOn(service, 'createEncryptedData');
+
+			await service.createUnmanagedCredential(
+				{
+					name: 'Newer Header Auth',
+					type: 'httpHeaderAuth',
+					data: { name: 'Authorization', value: `=${CREDENTIAL_BLANKING_VALUE}` },
+					projectId: 'project-1',
+				},
+				ownerUser,
+			);
+
+			expect(createEncryptedDataSpy).toHaveBeenCalledWith(
+				expect.objectContaining({
+					data: { name: 'Authorization', value: '' },
+				}),
+			);
+		});
+
 		it('should allow member to create non-global credential', async () => {
 			// ARRANGE
 			const payload = { ...credentialData, isGlobal: false };

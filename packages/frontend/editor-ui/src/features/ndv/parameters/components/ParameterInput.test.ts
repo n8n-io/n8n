@@ -1551,7 +1551,9 @@ describe('ParameterInput.vue', () => {
 			});
 
 			await nextTick();
-			expect(container.querySelector('input[type="password"]')).toBeInTheDocument();
+			const input = container.querySelector('input[type="password"]');
+			expect(input).toBeInTheDocument();
+			expect(input).toHaveAttribute('autocomplete', 'new-password');
 			expect(container.querySelector('textarea')).not.toBeInTheDocument();
 		});
 	});
