@@ -19,7 +19,7 @@ const REQUEST_WORKFLOW_TABLE = 'workflow_review_request_workflow';
 const BASELINE_VERSION_COLUMN = 'baselineVersionId';
 const BASELINE_VERSION_FK = 'FK_workflow_review_request_workflow_baselineVersionId';
 const AUTHORS_TABLE = 'workflow_review_request_authors';
-const AUTHORS_USER_INDEX = 'IDX_workflow_review_request_authors_user';
+const AUTHORS_USER_INDEX_SUFFIX = 'workflow_review_request_authors_user';
 
 async function tableExists(context: TestMigrationContext, table: string): Promise<boolean> {
 	const name = `${context.tablePrefix}${table}`;
@@ -60,9 +60,11 @@ async function columnMeta(
 async function indexExists(
 	context: TestMigrationContext,
 	table: string,
-	indexName: string,
+	indexNameSuffix: string,
 ): Promise<boolean> {
-	const name = `${context.tablePrefix}${indexName}`;
+	// The DSL composes a custom index name as `IDX_<prefix><name>`, prefix in the middle, so a
+	// plain `<prefix><name>` misses it on the Postgres leg, which runs with DB_TABLE_PREFIX.
+	const name = `IDX_${context.tablePrefix}${indexNameSuffix}`;
 	if (context.isSqlite) {
 		const rows = await context.runQuery<Array<{ name: string }>>(
 			"SELECT name FROM sqlite_master WHERE type = 'index' AND name = :name",
@@ -494,7 +496,7 @@ describe('CreateWorkflowReviewActivityTablesAndBaseline Migration', () => {
 		it('indexes the authors table by user', async () => {
 			const context = createTestMigrationContext(dataSource);
 			try {
-				expect(await indexExists(context, AUTHORS_TABLE, AUTHORS_USER_INDEX)).toBe(true);
+				expect(await indexExists(context, AUTHORS_TABLE, AUTHORS_USER_INDEX_SUFFIX)).toBe(true);
 			} finally {
 				await context.queryRunner.release();
 			}
@@ -528,7 +530,7 @@ describe('CreateWorkflowReviewActivityTablesAndBaseline Migration', () => {
 				expect(
 					await columnMeta(before, REQUEST_WORKFLOW_TABLE, BASELINE_VERSION_COLUMN),
 				).toBeDefined();
-				expect(await indexExists(before, AUTHORS_TABLE, AUTHORS_USER_INDEX)).toBe(true);
+				expect(await indexExists(before, AUTHORS_TABLE, AUTHORS_USER_INDEX_SUFFIX)).toBe(true);
 			} finally {
 				// Release before reverting: holding a pooled lease across the revert exhausts the
 				// Postgres pool and the migration times out trying to connect.
@@ -545,7 +547,7 @@ describe('CreateWorkflowReviewActivityTablesAndBaseline Migration', () => {
 					await columnMeta(after, REQUEST_WORKFLOW_TABLE, BASELINE_VERSION_COLUMN),
 				).toBeUndefined();
 				// The authors table survives the revert, so a missed dropIndex would leave this behind.
-				expect(await indexExists(after, AUTHORS_TABLE, AUTHORS_USER_INDEX)).toBe(false);
+				expect(await indexExists(after, AUTHORS_TABLE, AUTHORS_USER_INDEX_SUFFIX)).toBe(false);
 			} finally {
 				await after.queryRunner.release();
 			}
