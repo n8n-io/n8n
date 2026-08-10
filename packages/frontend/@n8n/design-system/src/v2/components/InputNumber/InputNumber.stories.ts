@@ -285,14 +285,34 @@ export const MinMax = {
 
 export const Disabled = {
 	render: () => ({
-		components: { InputNumber },
+		components: { InputNumber, N8nInputLabel },
 		setup() {
-			const value = ref(42);
-			return { value };
+			const withoutControls = ref(42);
+			const controlsBoth = ref(42);
+			const controlsRight = ref(42);
+			return { withoutControls, controlsBoth, controlsRight };
 		},
 		template: `
-		<div style="${storyPadding} max-width: 320px;">
-			<InputNumber v-model="value" placeholder="Disabled" :disabled="true" />
+		<div style="${storyStack}">
+			<N8nInputLabel label="Without controls">
+				<InputNumber v-model="withoutControls" placeholder="Disabled" :disabled="true" />
+			</N8nInputLabel>
+			<N8nInputLabel label="With controls (both)">
+				<InputNumber
+					v-model="controlsBoth"
+					:controls="true"
+					controls-position="both"
+					:disabled="true"
+				/>
+			</N8nInputLabel>
+			<N8nInputLabel label="With controls (right)">
+				<InputNumber
+					v-model="controlsRight"
+					:controls="true"
+					controls-position="right"
+					:disabled="true"
+				/>
+			</N8nInputLabel>
 		</div>
 		`,
 	}),
