@@ -121,8 +121,6 @@ describe('reclassifyMaskedStreamFailure', () => {
 		);
 	});
 
-	// The activation lock (INS-1082) refuses use while the quota still has credits left, so the
-	// numbers alone would not explain the failure.
 	it('substitutes a quota-exhausted error when the activation lock is active', async () => {
 		const service = createService(async () => ({ creditsQuota: 100, creditsClaimed: 40 }), true);
 		const masked = createNoOutputGeneratedError();

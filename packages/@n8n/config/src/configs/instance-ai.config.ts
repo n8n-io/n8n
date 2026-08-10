@@ -195,13 +195,8 @@ export class InstanceAiConfig {
 	mcpConnectionsEnabled: boolean = false;
 
 	/**
-	 * Activation-capped trial variant (INS-1082). Set by the cloud dashboard at deploy time on one
-	 * signup-experiment cohort only. These instances get a generous exchange rate and never see a
-	 * credit balance; once the instance activates and has used the assistant, the remaining quota
-	 * is forfeited and they hit the usual upgrade wall.
-	 *
-	 * Nothing about this cohort is signalled through the license, so with the flag unset the
-	 * behaviour must be identical to today's.
+	 * Activation-capped trial variant for n8n cloud experiment.
+	 * Set by the cloud dashboard at deploy time on one signup-experiment cohort only.
 	 */
 	@Env('N8N_INSTANCE_AI_ACTIVATION_CAPPED')
 	activationCapped: boolean = false;

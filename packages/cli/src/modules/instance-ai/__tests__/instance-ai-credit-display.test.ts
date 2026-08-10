@@ -24,9 +24,6 @@ describe('maskCreditsForDisplay', () => {
 	});
 
 	describe('inside the activation-capped cohort', () => {
-		// The unlimited sentinel is what makes the editor hide the credits dropdown, the warning
-		// banner and the per-thread usage line, so this projection is the whole "never show a
-		// balance" requirement (INS-1082).
 		it('reports the unlimited sentinel instead of the balance', () => {
 			expect(maskCreditsForDisplay(credits, true)).toEqual({
 				creditsQuota: UNLIMITED_CREDITS,
@@ -40,8 +37,6 @@ describe('maskCreditsForDisplay', () => {
 			);
 		});
 
-		// Masking survives the pool being exhausted or locked: the wall is driven by the
-		// quota_exhausted error code, never by a number shown here.
 		it('still hides the balance once the quota is spent', () => {
 			expect(maskCreditsForDisplay({ creditsQuota: 800, creditsClaimed: 800 }, true)).toEqual({
 				creditsQuota: UNLIMITED_CREDITS,

@@ -20,7 +20,6 @@ function createService(deps: {
 	aiService: { isProxyEnabled: Mock; getClient: Mock };
 	push: { sendToUsers: Mock };
 	telemetry: { track: Mock };
-	/** Activation-capped cohort (INS-1082); off unless a test opts in. */
 	activationCapped?: boolean;
 	activatedAt?: number;
 	hasUserMessage?: boolean;
@@ -172,9 +171,6 @@ describe('claimRunUsage', () => {
 		expect(delta).toBe(0.5);
 	});
 
-	// INS-1082: this cohort must never see a balance, so the push carries the unlimited sentinel
-	// rather than the real figures — which is what makes the editor hide the whole credits surface.
-	// The claim itself is unaffected: the ledger and its telemetry still get the real numbers.
 	it('masks the pushed balance for the activation-capped cohort', async () => {
 		const threadRepo = createMockThreadRepo({ id: 't1', metadata: { creditsUsed: 2 } });
 		const ai = createMockAiService({

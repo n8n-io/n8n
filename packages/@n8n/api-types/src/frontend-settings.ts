@@ -352,15 +352,7 @@ export type FrontendModuleSettings = {
 		sandboxUnavailableReason: string | null;
 		/** When true, orchestrator LLM step / workflow code debug is captured (`N8N_INSTANCE_AI_RUN_DEBUG_ENABLED`). */
 		runDebugEnabled: boolean;
-		/**
-		 * Whether this instance is in the activation-capped trial cohort
-		 * (`N8N_INSTANCE_AI_ACTIVATION_CAPPED`). These users are never shown a credit balance, so
-		 * the out-of-credits wall can't talk about credits they've never seen.
-		 *
-		 * Optional: absent means "not in the cohort", which is the safe default and what the
-		 * frontend already assumes. Keeps callers that synthesise these settings — the settings
-		 * store, and a good number of test fixtures — from having to know about the cohort.
-		 */
+		/** Whether this instance is in the activation-capped trial cohort (`N8N_INSTANCE_AI_ACTIVATION_CAPPED`). Optional. */
 		activationCapped?: boolean;
 	};
 

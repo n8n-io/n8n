@@ -53,8 +53,6 @@ describe('InstanceAiMessageRepository', () => {
 		);
 	}
 
-	// Feeds the activation-lock trigger (INS-1082): the lock only applies once someone has
-	// actually used the assistant, so this must not be fooled by rows the user never caused.
 	describe('hasAnyUserMessage', () => {
 		it('is false on an instance with no messages', async () => {
 			await expect(messageRepository.hasAnyUserMessage()).resolves.toBe(false);

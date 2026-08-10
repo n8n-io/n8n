@@ -10,11 +10,6 @@ import type { InstanceAiSettingsService } from '../instance-ai-settings.service'
 import type { InstanceAiMessageRepository } from '../repositories/instance-ai-message.repository';
 import type { InstanceAiThreadRepository } from '../repositories/instance-ai-thread.repository';
 
-/**
- * The activation lock trigger (INS-1082): the pool is locked only once the instance has activated
- * **and** someone has used the assistant. Both halves matter — activation alone would wall a user
- * who never opened the assistant, leaving them worse off than the control variant.
- */
 describe('InstanceAiCreditService activation lock', () => {
 	const user = mock<User>({ id: 'user-1' });
 
@@ -55,7 +50,7 @@ describe('InstanceAiCreditService activation lock', () => {
 			aiService,
 			mock<Telemetry>(),
 			{ instanceId: 'inst-1' } as never,
-			mock() as never,
+			mock(),
 			mock<InstanceAiThreadRepository>(),
 			settingsService,
 			activationService,
@@ -130,8 +125,6 @@ describe('InstanceAiCreditService activation lock', () => {
 		});
 	});
 
-	// The hard invariant for the other three trial variants: with the env var unset, nothing about
-	// this feature may run at all.
 	describe('outside the activation-capped cohort', () => {
 		it('never calls the service, whatever the conditions', async () => {
 			const { service, aiService, activationService, messageRepo } = setup({
@@ -182,7 +175,6 @@ describe('InstanceAiCreditService activation lock', () => {
 			expect(scopedLogger.warn).toHaveBeenCalled();
 		});
 
-		// Reconcile-on-read is the durability story, so a failure must leave the lock unconfirmed.
 		it('retries on the next call', async () => {
 			const { service, aiService } = setup({
 				activatedAt: 1_700_000_000,
@@ -200,7 +192,6 @@ describe('InstanceAiCreditService activation lock', () => {
 			const { service, aiService } = setup({
 				activatedAt: 1_700_000_000,
 				hasUserMessage: true,
-				// e.g. the account is no longer on a trial plan, so the service refused.
 				lockResult: { creditsQuota: 800, creditsClaimed: 12.5, quotaLocked: false },
 			});
 
