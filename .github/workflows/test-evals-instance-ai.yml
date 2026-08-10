@@ -310,12 +310,16 @@ jobs:
             fi
             # Keyless routers leave MODEL_API_KEY empty. Databricks uses a PAT;
             # Modal uses EVALS_MODAL_KEY as Bearer (prejoined proxy id.secret).
+            # Azure OpenAI (*.openai.azure.com) reuses EVALS_AZURE_FOUNDRY_KEY as Bearer.
             if [[ "$INSTANCE_AI_MODEL_URL" == *databricks.com* ]] || [[ "$INSTANCE_AI_MODEL_URL" == *ai-gateway/mlflow* ]]; then
               require_secret EVALS_DATABRICKS_KEY "$EVALS_DATABRICKS_KEY"
               MODEL_API_KEY="$EVALS_DATABRICKS_KEY"
             elif [[ "$INSTANCE_AI_MODEL_URL" == *.modal.direct* ]]; then
               require_secret EVALS_MODAL_KEY "$EVALS_MODAL_KEY"
               MODEL_API_KEY="$EVALS_MODAL_KEY"
+            elif [[ "$INSTANCE_AI_MODEL_URL" == *.openai.azure.com* ]]; then
+              require_secret EVALS_AZURE_FOUNDRY_KEY "$EVALS_AZURE_FOUNDRY_KEY"
+              MODEL_API_KEY="$EVALS_AZURE_FOUNDRY_KEY"
             else
               MODEL_API_KEY=""
             fi

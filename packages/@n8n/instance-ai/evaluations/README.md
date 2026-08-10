@@ -1019,6 +1019,8 @@ For a **dedicated OpenAI-compatible router** (no API key), set `model` to `custo
 
 For **Modal** OpenAI-compatible endpoints (`*.modal.direct`), set `model` to `custom/<model-name>` (e.g. `custom/moonshotai/Kimi-K3`) and `model-url` to the `/v1` base. Lanes authenticate with `EVALS_MODAL_KEY` as `Authorization: Bearer` (store the prejoined Modal proxy token `id.secret` as that single secret).
 
+For **Azure OpenAI** OpenAI-compatible endpoints (`*.openai.azure.com`), set `model` to `custom/<deployment-name>` (e.g. `custom/FW-Kimi-K3`) and `model-url` to the `/openai/v1` base (e.g. `https://<resource>.openai.azure.com/openai/v1`). Lanes authenticate with `EVALS_AZURE_FOUNDRY_KEY` as `Authorization: Bearer`.
+
 For **Databricks AI Gateway** Kimi-K3, set `model` to `custom/workspace.default.kimi-k3` and `model-url` to `https://<workspace>.cloud.databricks.com/ai-gateway/mlflow/v1`. Lanes authenticate with `EVALS_DATABRICKS_KEY` (Databricks PAT). Custom endpoints use low reasoning effort.
 
 For **Azure Foundry Claude** (Anthropic-compatible), also set `model-url` to the Foundry base (e.g. `https://<resource>.services.ai.azure.com/anthropic`) and use `anthropic/<deployment-name>` as `model`. Lanes authenticate with `EVALS_AZURE_FOUNDRY_KEY`; the eval CLI verifier/mocks keep `EVALS_ANTHROPIC_KEY`.
