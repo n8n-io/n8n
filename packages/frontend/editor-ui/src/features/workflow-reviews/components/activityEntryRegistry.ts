@@ -1,13 +1,13 @@
 import type { WorkflowReviewActivityEntry, WorkflowReviewActivityType } from '@n8n/api-types';
 import type { Component } from 'vue';
 
-import WorkflowReviewActivityCommentV1 from './activity-entries/WorkflowReviewActivityCommentV1.vue';
+import WorkflowReviewActivityComment from './activity-entries/WorkflowReviewActivityComment.vue';
 import WorkflowReviewActivityFallback from './activity-entries/WorkflowReviewActivityFallback.vue';
 
 type ActivityEntryRegistry = Partial<Record<WorkflowReviewActivityType, Record<number, Component>>>;
 
 const registry: ActivityEntryRegistry = {
-	'comment.created': { 1: WorkflowReviewActivityCommentV1 },
+	'comment.created': { 1: WorkflowReviewActivityComment },
 };
 
 export function resolveActivityComponent(entry: WorkflowReviewActivityEntry): Component {

@@ -2,9 +2,9 @@ import type { WorkflowReviewActivityEntry, WorkflowReviewActivityMessage } from 
 import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
 
-import WorkflowReviewActivityCommentV1 from './WorkflowReviewActivityCommentV1.vue';
+import WorkflowReviewActivityComment from './WorkflowReviewActivityComment.vue';
 
-const renderComponent = createComponentRenderer(WorkflowReviewActivityCommentV1);
+const renderComponent = createComponentRenderer(WorkflowReviewActivityComment);
 
 function makeMessage(
 	overrides: Partial<WorkflowReviewActivityMessage> = {},
@@ -39,7 +39,7 @@ function makeEntry(
 	};
 }
 
-describe('WorkflowReviewActivityCommentV1', () => {
+describe('WorkflowReviewActivityComment', () => {
 	beforeEach(() => {
 		createTestingPinia();
 	});
