@@ -24,7 +24,11 @@ const manualRef = ref<AgentChannelViewExpose>();
 const managedActionInFlight = ref(false);
 const validationError = computed(() => manualRef.value?.validationError ?? null);
 const loading = computed(
-	() => props.loading || props.runtime.loading.value || managedActionInFlight.value,
+	() =>
+		props.loading ||
+		props.runtime.loading.value ||
+		managedActionInFlight.value ||
+		manualRef.value?.loading === true,
 );
 
 async function setupApp(token: string) {

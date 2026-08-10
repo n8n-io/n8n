@@ -175,7 +175,7 @@ watch(
 	{ immediate: true },
 );
 
-defineExpose({ credentialId, validationError: null });
+defineExpose({ credentialId, validationError: null, loading: setupLoading });
 </script>
 
 <template>

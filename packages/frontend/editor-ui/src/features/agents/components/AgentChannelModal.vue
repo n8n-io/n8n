@@ -183,6 +183,7 @@ const currentPlatform = computed(() =>
 );
 const currentRuntime = computed(() => runtimeFor(selectedChannelType.value ?? 'unknown'));
 const channelViewRef = ref<AgentChannelViewExpose>();
+const channelViewLoading = computed(() => channelViewRef.value?.loading === true);
 const listLoading = computed(() =>
 	Object.values(runtimes).some((runtime) => runtime.loading.value),
 );
@@ -205,7 +206,7 @@ const headerContentDisabled = computed(
 	() =>
 		isCredentialReplacementInProgress.value ||
 		currentRuntime.value.loading.value ||
-		channelViewRef.value?.loading === true,
+		channelViewLoading.value,
 );
 const headerContentComponent = computed(() => {
 	if (isSetupMode.value) {
@@ -219,6 +220,7 @@ const headerContentComponent = computed(() => {
 const canClose = computed(
 	() =>
 		!isCredentialReplacementInProgress.value &&
+		!channelViewLoading.value &&
 		!(selectedChannelType.value ? isLoading(selectedChannelType.value) : false),
 );
 
@@ -257,7 +259,7 @@ const canSaveChannelConfig = computed(() => {
 	return (
 		selectedChannelType.value !== null &&
 		currentChannelCredentialId.value.length > 0 &&
-		!channelViewRef.value?.loading &&
+		!channelViewLoading.value &&
 		!channelViewRef.value?.validationError
 	);
 });
@@ -320,6 +322,7 @@ function goToEdit(channelType: string) {
 function goBackToList() {
 	if (
 		isCredentialReplacementInProgress.value ||
+		channelViewLoading.value ||
 		(selectedChannelType.value ? isLoading(selectedChannelType.value) : false)
 	) {
 		return;
@@ -347,6 +350,7 @@ function handleModalOpenUpdate(isOpen: boolean) {
 	if (
 		!isOpen &&
 		(isCredentialReplacementInProgress.value ||
+			channelViewLoading.value ||
 			(selectedChannelType.value ? isLoading(selectedChannelType.value) : false))
 	) {
 		return;
@@ -560,6 +564,7 @@ watch(
 						icon="arrow-left"
 						:disabled="
 							isCredentialReplacementInProgress ||
+							channelViewLoading ||
 							(selectedChannelType ? isLoading(selectedChannelType) : false)
 						"
 						:class="$style.backButton"
@@ -689,6 +694,7 @@ watch(
 							size="medium"
 							:disabled="
 								isCredentialReplacementInProgress ||
+								channelViewLoading ||
 								(selectedChannelType ? isLoading(selectedChannelType) : false)
 							"
 							@click="closeModal"
