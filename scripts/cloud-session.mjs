@@ -108,8 +108,12 @@ switch (cmd) {
 	case 'rm': {
 		const cs = findCodespace();
 		if (!cs) break;
-		if (cmd === 'stop') gh('codespace', 'stop', '-c', cs.name);
-		else ghTty('codespace', 'delete', '-c', cs.name, '--force');
+		if (cmd === 'stop') {
+			gh('codespace', 'stop', '-c', cs.name);
+		} else {
+			const { status } = ghTty('codespace', 'delete', '-c', cs.name, '--force');
+			if (status !== 0) process.exit(status ?? 1);
+		}
 		console.log(`${cmd === 'stop' ? 'Stopped' : 'Deleted'} ${cs.name}`);
 		break;
 	}
@@ -121,9 +125,10 @@ switch (cmd) {
 		}
 		const name = ensureCodespace();
 		console.log(`Attaching to session '${cmd}' on ${name} (detach: Ctrl-b d)…`);
-		ghTty(
+		const { status } = ghTty(
 			'codespace', 'ssh', '-c', name, '--', '-t',
 			`tmux new -As ${cmd} '${remoteCommand(cmd, rest.join(' '))}'`,
 		);
+		process.exitCode = status ?? 1;
 	}
 }
