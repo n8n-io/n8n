@@ -96,7 +96,7 @@ function buildOpenAiCompatible(
 		headers: creds.headers,
 		fetch,
 		includeUsage: options?.includeUsage ?? true,
-		supportsStructuredOutputs: options?.supportsStructuredOutputs ?? true,
+		supportsStructuredOutputs: options?.supportsStructuredOutputs ?? false,
 	})(model);
 }
 

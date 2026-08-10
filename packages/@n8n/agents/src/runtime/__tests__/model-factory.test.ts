@@ -374,7 +374,7 @@ describe('createModel', () => {
 			expect(model.modelId).toBe('nvidia/llama-3.3-nemotron-super-49b-v1');
 			expect(model.apiKey).toBe('nv-test');
 			expect(model.baseURL).toBe('https://integrate.api.nvidia.com/v1');
-			expect(model.supportsStructuredOutputs).toBe(true);
+			expect(model.supportsStructuredOutputs).toBe(false);
 		});
 	});
 
