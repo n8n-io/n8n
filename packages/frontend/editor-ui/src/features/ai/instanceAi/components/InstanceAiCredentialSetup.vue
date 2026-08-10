@@ -189,7 +189,13 @@ watch(
 	},
 );
 
-const hasGenericAuthRequest = computed(() =>
+/**
+ * A generic auth type (bearer, header, query, basic, digest, custom, OAuth) never
+ * identifies a service, so its credential must not be attached to whatever URL the
+ * workflow points at unless the user says so. Whenever the card carries one, the
+ * Continue button is the only path that may submit — every automatic path bails out.
+ */
+const requiresExplicitContinue = computed(() =>
 	props.credentialRequests.some((request) =>
 		GENERIC_AUTH_CREDENTIAL_TYPES.has(request.credentialType),
 	),
@@ -198,15 +204,13 @@ const hasGenericAuthRequest = computed(() =>
 // Auto-continue once every step is handled (selected or skipped) and at
 // least one credential was provided. Runs immediately so a single existing
 // service-scoped credential auto-selected on init resolves the card without
-// user input, as the setup tool describes. Generic auth types stay
-// preselected but need an explicit Continue — the type alone never identifies
-// a service. The per-step skip path submits directly instead of relying on
-// this watcher (see handleLater).
+// user input, as the setup tool describes. The per-step skip path submits
+// directly instead of relying on this watcher (see handleLater).
 watch(
 	() => allHandled.value && anySelected.value,
 	async (nowReady, wasReady) => {
 		if (nowReady && !wasReady) {
-			if (wasReady === undefined && hasGenericAuthRequest.value) return;
+			if (requiresExplicitContinue.value) return;
 			await nextTick();
 			await handleContinue();
 		}
@@ -477,6 +481,18 @@ async function handleLater() {
 	// Every step is now handled: submit the mixed selected/skipped result if
 	// anything was selected, otherwise defer the whole card as before.
 	if (anySelected.value) {
+		// Skipping the last open step must not submit a generic auth credential on
+		// the user's behalf — park on the step still awaiting confirmation instead.
+		if (requiresExplicitContinue.value) {
+			const awaitingConfirmation = props.credentialRequests.findIndex((r) =>
+				isStepComplete(r.credentialType),
+			);
+			if (awaitingConfirmation >= 0) {
+				userNavigated.value = false;
+				goToStep(awaitingConfirmation);
+			}
+			return;
+		}
 		await handleContinue();
 		return;
 	}
