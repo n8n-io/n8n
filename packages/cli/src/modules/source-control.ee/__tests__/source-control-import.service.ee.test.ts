@@ -2980,7 +2980,7 @@ describe('SourceControlImportService', () => {
 				expect(folderRepository.delete).not.toHaveBeenCalled();
 			});
 
-			it('should fire the afterWorkflowDeleted sweep once, after the folder row delete', async () => {
+			it('should fire the afterWorkflowsDeleted sweep once, after the folder row delete', async () => {
 				const candidates = [mock<SourceControlledFile>({ id: 'folder1' })];
 				const straggler = Object.assign(new WorkflowEntity(), { id: 'wf-1', active: false });
 				folderRepository.getAllFolderIdsInHierarchy.mockResolvedValueOnce([]);
@@ -2989,11 +2989,11 @@ describe('SourceControlImportService', () => {
 
 				await service.deleteFoldersNotInWorkfolder(candidates as any);
 
-				expect(workflowMutationHooks.afterWorkflowDeleted).toHaveBeenCalledTimes(1);
-				expect(workflowMutationHooks.afterWorkflowDeleted).toHaveBeenCalledWith('wf-1');
+				expect(workflowMutationHooks.afterWorkflowsDeleted).toHaveBeenCalledTimes(1);
+				expect(workflowMutationHooks.afterWorkflowsDeleted).toHaveBeenCalledWith(['wf-1']);
 				// Only the row delete cascades the workflows away, so the sweep must run after it
 				expect(
-					workflowMutationHooks.afterWorkflowDeleted.mock.invocationCallOrder[0],
+					workflowMutationHooks.afterWorkflowsDeleted.mock.invocationCallOrder[0],
 				).toBeGreaterThan(folderRepository.delete.mock.invocationCallOrder[0]);
 			});
 
@@ -3004,7 +3004,7 @@ describe('SourceControlImportService', () => {
 
 				await service.deleteFoldersNotInWorkfolder(candidates as any);
 
-				expect(workflowMutationHooks.afterWorkflowDeleted).not.toHaveBeenCalled();
+				expect(workflowMutationHooks.afterWorkflowsDeleted).not.toHaveBeenCalled();
 			});
 		});
 	});
@@ -3640,7 +3640,7 @@ describe('SourceControlImportService', () => {
 				expect(projectRepository.delete).not.toHaveBeenCalled();
 			});
 
-			it('should fire the afterWorkflowDeleted sweep once, after the project row delete', async () => {
+			it('should fire the afterWorkflowsDeleted sweep once for the whole batch, after the project row delete', async () => {
 				const candidates = [mock<SourceControlledFile>({ id: 'project-1' })];
 				sharedWorkflowRepository.find.mockResolvedValueOnce([
 					{ workflowId: 'wf-active' },
@@ -3657,10 +3657,13 @@ describe('SourceControlImportService', () => {
 				await service.deleteTeamProjectsNotInWorkfolder(candidates);
 
 				// The sweep searches globally for orphaned requests, so one call covers the batch
-				expect(workflowMutationHooks.afterWorkflowDeleted).toHaveBeenCalledTimes(1);
-				expect(workflowMutationHooks.afterWorkflowDeleted).toHaveBeenCalledWith('wf-active');
+				expect(workflowMutationHooks.afterWorkflowsDeleted).toHaveBeenCalledTimes(1);
+				expect(workflowMutationHooks.afterWorkflowsDeleted).toHaveBeenCalledWith([
+					'wf-active',
+					'wf-inactive',
+				]);
 				expect(
-					workflowMutationHooks.afterWorkflowDeleted.mock.invocationCallOrder[0],
+					workflowMutationHooks.afterWorkflowsDeleted.mock.invocationCallOrder[0],
 				).toBeGreaterThan(projectRepository.delete.mock.invocationCallOrder[0]);
 			});
 
@@ -3670,7 +3673,7 @@ describe('SourceControlImportService', () => {
 
 				await service.deleteTeamProjectsNotInWorkfolder(candidates);
 
-				expect(workflowMutationHooks.afterWorkflowDeleted).not.toHaveBeenCalled();
+				expect(workflowMutationHooks.afterWorkflowsDeleted).not.toHaveBeenCalled();
 			});
 		});
 	});
