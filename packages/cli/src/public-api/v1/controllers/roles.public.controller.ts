@@ -26,12 +26,9 @@ import { EventService } from '@/events/event.service';
 import { assertCanManageRoleType } from '@/services/role-authorization';
 import { RoleService } from '@/services/role.service';
 
-type PublicRoleNamespace = Extract<RoleNamespace, 'global' | 'project' | 'credential' | 'workflow'>;
+type PublicRoleNamespace = Extract<RoleNamespace, 'global' | 'project'>;
 const isPublicRole = (role: RoleDTO): role is RoleDTO & { roleType: PublicRoleNamespace } =>
-	role.roleType === 'global' ||
-	role.roleType === 'project' ||
-	role.roleType === 'credential' ||
-	role.roleType === 'workflow';
+	role.roleType === 'global' || role.roleType === 'project';
 
 @PublicApiController('/roles')
 export class RolesPublicController {
@@ -44,7 +41,7 @@ export class RolesPublicController {
 	@ApiKeyScope('role:list')
 	@ApiSummary('Retrieve all roles')
 	@ApiDescription(
-		'Returns all roles grouped by type (global, project, credential and workflow). Set `withUsageCount` to include how many users and projects use each role.',
+		'Returns all roles grouped by type (global and project). Set `withUsageCount` to include how many users and projects use each role.',
 	)
 	@ApiTags(['Role'])
 	@ApiResponse(200, RoleListPublicDto)
@@ -78,8 +75,6 @@ export class RolesPublicController {
 		return {
 			global: groupOf('global'),
 			project: groupOf('project'),
-			credential: groupOf('credential'),
-			workflow: groupOf('workflow'),
 		};
 	}
 

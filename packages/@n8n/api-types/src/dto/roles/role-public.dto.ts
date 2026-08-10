@@ -14,7 +14,7 @@ export class RolePublicDto extends Z.class({
 	updatedAt: z.string().datetime(),
 }) {}
 
-const roleGroupSchema = <T extends 'global' | 'project' | 'credential' | 'workflow'>(roleType: T) =>
+const roleGroupSchema = <T extends 'global' | 'project'>(roleType: T) =>
 	RolePublicDto.schema.extend({
 		roleType: z.literal(roleType),
 		licensed: z.boolean(),
@@ -25,8 +25,6 @@ const roleGroupSchema = <T extends 'global' | 'project' | 'credential' | 'workfl
 export class RoleListPublicDto extends Z.class({
 	global: z.array(roleGroupSchema('global')),
 	project: z.array(roleGroupSchema('project')),
-	credential: z.array(roleGroupSchema('credential')),
-	workflow: z.array(roleGroupSchema('workflow')),
 }) {}
 
 export class RoleListQueryPublicDto extends Z.class({

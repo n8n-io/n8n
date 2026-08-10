@@ -40,12 +40,7 @@ describe('Roles in Public API', () => {
 			const response = await testServer.publicApiAgentFor(owner).get('/roles');
 
 			expect(response.status).toBe(200);
-			expect(Object.keys(response.body).sort()).toEqual([
-				'credential',
-				'global',
-				'project',
-				'workflow',
-			]);
+			expect(Object.keys(response.body).sort()).toEqual(['global', 'project']);
 
 			const systemRole = (slug: string, roleType: string) => ({
 				slug,
@@ -60,8 +55,6 @@ describe('Roles in Public API', () => {
 			});
 			expect(response.body.global).toContainEqual(systemRole('global:owner', 'global'));
 			expect(response.body.project).toContainEqual(systemRole('project:admin', 'project'));
-			expect(response.body.credential).toContainEqual(systemRole('credential:owner', 'credential'));
-			expect(response.body.workflow).toContainEqual(systemRole('workflow:owner', 'workflow'));
 		});
 
 		it('places a newly created custom role in its type group', async () => {
@@ -92,8 +85,6 @@ describe('Roles in Public API', () => {
 		const allRolesOf = (body: Record<string, Array<Record<string, unknown>>>) => [
 			...body.global,
 			...body.project,
-			...body.credential,
-			...body.workflow,
 		];
 
 		it('omits usage counts by default', async () => {

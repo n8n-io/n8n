@@ -2,7 +2,7 @@ operationId: getAllRoles
 tags:
   - Role
 summary: Retrieve all roles
-description: Returns all roles grouped by type (global, project, credential and workflow). Set `withUsageCount` to include how many users and projects use each role.
+description: Returns all roles grouped by type (global and project). Set `withUsageCount` to include how many users and projects use each role.
 x-required-scope: role:list
 x-eov-operation-id: unreachable
 x-eov-operation-handler: v1/handlers/decorator-routed.handler
@@ -113,99 +113,9 @@ responses:
                   - createdAt
                   - updatedAt
                   - licensed
-            credential:
-              type: array
-              items:
-                type: object
-                properties:
-                  slug:
-                    type: string
-                  displayName:
-                    type: string
-                  description:
-                    type: string
-                    nullable: true
-                  systemRole:
-                    type: boolean
-                  roleType:
-                    type: string
-                    enum:
-                      - credential
-                  scopes:
-                    type: array
-                    items:
-                      type: string
-                  createdAt:
-                    type: string
-                    format: date-time
-                  updatedAt:
-                    type: string
-                    format: date-time
-                  licensed:
-                    type: boolean
-                  usedByUsers:
-                    type: number
-                  usedByProjects:
-                    type: number
-                required:
-                  - slug
-                  - displayName
-                  - description
-                  - systemRole
-                  - roleType
-                  - scopes
-                  - createdAt
-                  - updatedAt
-                  - licensed
-            workflow:
-              type: array
-              items:
-                type: object
-                properties:
-                  slug:
-                    type: string
-                  displayName:
-                    type: string
-                  description:
-                    type: string
-                    nullable: true
-                  systemRole:
-                    type: boolean
-                  roleType:
-                    type: string
-                    enum:
-                      - workflow
-                  scopes:
-                    type: array
-                    items:
-                      type: string
-                  createdAt:
-                    type: string
-                    format: date-time
-                  updatedAt:
-                    type: string
-                    format: date-time
-                  licensed:
-                    type: boolean
-                  usedByUsers:
-                    type: number
-                  usedByProjects:
-                    type: number
-                required:
-                  - slug
-                  - displayName
-                  - description
-                  - systemRole
-                  - roleType
-                  - scopes
-                  - createdAt
-                  - updatedAt
-                  - licensed
           required:
             - global
             - project
-            - credential
-            - workflow
   '400':
     $ref: ../../../../shared/spec/responses/badRequest.yml
   '401':
