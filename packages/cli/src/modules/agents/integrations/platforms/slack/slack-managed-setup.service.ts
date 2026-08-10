@@ -45,6 +45,10 @@ const MANAGED_INSTALL_FALLBACK_ERRORS = new Set([
 	'app_approval_request_eligible',
 	'manager_app_not_eligible',
 ]);
+const MANAGED_INSTALL_APPROVAL_ERRORS = new Set([
+	'app_approval_request_pending',
+	'app_approval_request_denied',
+]);
 
 export interface GetManagedSetupStateOptions {
 	projectId: string;
@@ -336,6 +340,9 @@ export class SlackManagedSetupService {
 		}
 
 		const error = stringProperty(response, 'error') ?? 'unknown_error';
+		if (MANAGED_INSTALL_APPROVAL_ERRORS.has(error)) {
+			throw this.methods.slackError('install the Slack app', response);
+		}
 		const responseOauthAuthorizeUrl = stringProperty(response, 'oauth_authorize_url');
 		if (responseOauthAuthorizeUrl || MANAGED_INSTALL_FALLBACK_ERRORS.has(error)) {
 			const oauthAuthorizeUrl = responseOauthAuthorizeUrl ?? session.oauthAuthorizeUrl;

@@ -128,6 +128,7 @@ describe('useSlackChannelRuntime', () => {
 		await runtime.load();
 
 		expect(runtime.setup.value.managedSetupAvailable).toBe(true);
+		expect(runtime.setupKind.value).toBe('managed');
 		expect(runtime.settings.value?.credentialId).toBe('bot');
 		expect(runtime.isManagedCredential('bot')).toBe(true);
 		expect(mocks.getSettings).toHaveBeenCalledOnce();
@@ -143,7 +144,16 @@ describe('useSlackChannelRuntime', () => {
 
 			await expect(runtime.connectManagerCredential(credentialId)).resolves.toBe(true);
 
-			expect(authorize).toHaveBeenCalled();
+			const expectedCredential = expect.objectContaining({ id: 'manager' });
+			if (credentialId) {
+				expect(authorize).toHaveBeenCalledWith(expectedCredential, undefined, {
+					abortOnPopupClose: true,
+				});
+			} else {
+				expect(authorize).toHaveBeenCalledWith(expectedCredential, {
+					abortOnPopupClose: true,
+				});
+			}
 			expect(mocks.finalizeManager).toHaveBeenCalledWith({}, 'project-1', 'agent-1', 'manager');
 		},
 	);

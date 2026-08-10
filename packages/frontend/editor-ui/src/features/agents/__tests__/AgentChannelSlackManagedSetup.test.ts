@@ -111,6 +111,30 @@ describe('AgentChannelSlackManagedSetup', () => {
 		expect(wrapper.text()).not.toContain('agents.channels.slack.managed.install.error');
 	});
 
+	it.each([
+		[
+			'app_approval_request_pending',
+			'slack-managed-approval-pending-error',
+			'agents.channels.slack.managed.install.approvalPending',
+		],
+		[
+			'app_approval_request_denied',
+			'slack-managed-approval-denied-error',
+			'agents.channels.slack.managed.install.approvalDenied',
+		],
+	])('shows a specific message for %s', async (code, testId, messageKey) => {
+		const error = new ResponseError('Slack could not install the Slack app', {
+			httpStatusCode: 400,
+			meta: { integrationType: 'slack', code },
+		});
+		const { wrapper } = mountSetup(1, 1, error);
+
+		await wrapper.get('[data-testid="slack-managed-install"]').trigger('click');
+
+		expect(wrapper.get(`[data-testid="${testId}"]`).text()).toContain(messageKey);
+		expect(wrapper.text()).not.toContain('agents.channels.slack.managed.install.error');
+	});
+
 	it('uses the credential dropdown new-credential action to connect another workspace', async () => {
 		const { wrapper, connectManager } = mountSetup(1);
 

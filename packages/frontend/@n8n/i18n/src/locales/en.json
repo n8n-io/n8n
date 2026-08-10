@@ -7899,6 +7899,8 @@
 	"agents.channels.slack.managed.install.button": "Install app",
 	"agents.channels.slack.managed.install.connectFirst": "Connect to Slack to proceed.",
 	"agents.channels.slack.managed.install.error": "The Slack app couldn't be installed. Check Slack approval settings and try again.",
+	"agents.channels.slack.managed.install.approvalPending": "This Slack app is waiting for admin approval. Ask a Slack admin to approve it, then try again.",
+	"agents.channels.slack.managed.install.approvalDenied": "A Slack admin denied this app request. Ask an admin to review the app approval settings before trying again.",
 	"agents.channels.slack.managed.workspace.placeholder": "Select a workspace",
 	"agents.channels.slack.managed.settings.name": "Agent name",
 	"agents.channels.slack.managed.settings.nameDescription": "The name displayed for this agent in Slack",

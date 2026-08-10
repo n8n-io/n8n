@@ -1013,6 +1013,64 @@ describe('Slack setup services', () => {
 		expect(credentialsService.createManagedCredential).not.toHaveBeenCalled();
 	});
 
+	it.each(['app_approval_request_pending', 'app_approval_request_denied'])(
+		'returns the %s managed installation error even when Slack includes an OAuth URL',
+		async (errorCode) => {
+			credentialsOverwrites.getOverwrites.mockReturnValue({
+				clientId: 'client',
+				clientSecret: 'secret',
+				userScope: 'app_configurations:read app_configurations:write managed_apps:install',
+			});
+			credentialsOverwrites.usesManagedAuth.mockReturnValue(true);
+			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+				{ id: 'manager', type: 'slackManagerOAuth2Api' },
+			] as never);
+			credentialsFinderService.findCredentialForUser.mockResolvedValue({
+				id: 'manager',
+				name: 'Slack manager',
+				type: 'slackManagerOAuth2Api',
+			} as CredentialsEntity);
+			credentialsService.decrypt.mockResolvedValue({
+				oauthTokenData: {
+					authed_user: {
+						access_token: 'xoxp-manager',
+						scope: 'app_configurations:read app_configurations:write managed_apps:install',
+					},
+					team: { id: 'T123', name: 'Example workspace' },
+				},
+			});
+			requestMock
+				.mockResolvedValueOnce(slackAppCreatedResponse())
+				.mockResolvedValueOnce(slackResponse({ ok: true }))
+				.mockResolvedValueOnce(
+					slackResponse({
+						ok: false,
+						error: errorCode,
+						oauth_authorize_url:
+							'https://slack.com/oauth/v2/authorize?client_id=response-client',
+						team_id: 'T123',
+					}),
+				);
+
+			await expect(
+				service.installManagedApp({
+					projectId: 'project-1',
+					agentId: 'agent-1',
+					managerCredentialId: 'manager',
+					workspaceId: 'T123',
+					user,
+				}),
+			).rejects.toMatchObject({
+				meta: { integrationType: 'slack', code: errorCode },
+			});
+			expect(
+				requestMock.mock.calls.filter(
+					([request]) => request.url === 'https://slack.com/api/apps.manifest.delete',
+				),
+			).toHaveLength(0);
+		},
+	);
+
 	it('preserves managed app provenance after fallback OAuth installation', async () => {
 		credentialsOverwrites.getOverwrites.mockReturnValue({
 			clientId: 'client',

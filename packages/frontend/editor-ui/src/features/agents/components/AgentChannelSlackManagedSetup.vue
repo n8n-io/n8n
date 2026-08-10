@@ -33,7 +33,14 @@ const selectedCredentialId = ref('');
 const selectedWorkspaceId = ref('');
 const connecting = ref(false);
 const installing = ref(false);
-const error = ref<'connect' | 'install' | 'service_limits_exceeded' | null>(null);
+const error = ref<
+	| 'connect'
+	| 'install'
+	| 'service_limits_exceeded'
+	| 'app_approval_request_pending'
+	| 'app_approval_request_denied'
+	| null
+>(null);
 
 const steps = computed(() => [
 	{
@@ -106,9 +113,12 @@ async function install() {
 		const installed = await props.installApp(selectedCredentialId.value, selectedWorkspaceId.value);
 		if (!installed) error.value = 'install';
 	} catch (installError) {
+		const errorCode = getSlackApiErrorCode(installError);
 		error.value =
-			getSlackApiErrorCode(installError) === 'service_limits_exceeded'
-				? 'service_limits_exceeded'
+			errorCode === 'service_limits_exceeded' ||
+			errorCode === 'app_approval_request_pending' ||
+			errorCode === 'app_approval_request_denied'
+				? errorCode
 				: 'install';
 	} finally {
 		installing.value = false;
@@ -201,6 +211,22 @@ async function install() {
 							{{ i18n.baseText('agents.channels.slack.managed.install.error') }}
 						</N8nText>
 						<AgentChannelSlackServiceLimitError v-else-if="error === 'service_limits_exceeded'" />
+						<N8nText
+							v-else-if="error === 'app_approval_request_pending'"
+							size="small"
+							:class="$style.error"
+							data-testid="slack-managed-approval-pending-error"
+						>
+							{{ i18n.baseText('agents.channels.slack.managed.install.approvalPending') }}
+						</N8nText>
+						<N8nText
+							v-else-if="error === 'app_approval_request_denied'"
+							size="small"
+							:class="$style.error"
+							data-testid="slack-managed-approval-denied-error"
+						>
+							{{ i18n.baseText('agents.channels.slack.managed.install.approvalDenied') }}
+						</N8nText>
 					</template>
 				</div>
 			</template>
