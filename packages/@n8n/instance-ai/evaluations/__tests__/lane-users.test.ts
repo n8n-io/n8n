@@ -65,6 +65,30 @@ describe('LaneUserPool', () => {
 		expect(new Set(emails).size).toBe(emails.length);
 	});
 
+	it('records shells for cleanup and explains itself when a batch yields no accept token', async () => {
+		// Mirrors an SMTP-configured lane: the shells exist server-side, but the
+		// accept URL (and so the token) is withheld.
+		const inviteMembers = vi.fn().mockResolvedValue([
+			{ id: 'u1', email: 'a@b.invalid' },
+			{ id: 'u2', email: 'c@d.invalid' },
+		]);
+		const pool = new LaneUserPool({ inviteMembers } as unknown as N8nClient, 2);
+
+		await expect(pool.claim()).rejects.toThrow('none returned an accept token');
+		expect(pool.createdUserIds).toEqual(['u1', 'u2']);
+	});
+
+	it('serves the token-bearing invites when only some of a batch carry one', async () => {
+		const inviteMembers = vi.fn().mockResolvedValue([
+			{ id: 'u1', email: 'a@b.invalid', error: 'already invited' },
+			{ id: 'u2', email: 'c@d.invalid', acceptToken: 't2' },
+		]);
+		const pool = new LaneUserPool({ inviteMembers } as unknown as N8nClient, 2);
+
+		await expect(pool.claim()).resolves.toMatchObject({ id: 'u2' });
+		expect(pool.createdUserIds).toEqual(['u1', 'u2']);
+	});
+
 	it('rejects waiting claims when the invite fails, then recovers', async () => {
 		const inviteMembers = vi
 			.fn()
@@ -98,9 +122,8 @@ describe('provisionCaseBuildUser', () => {
 
 		const mcpApiKey = await provisionCaseBuildUser({
 			pool,
-			baseUrl: 'http://lane-1',
-			onCredentialCreated: () => {},
 			memberClient: client,
+			onCredentialCreated: () => {},
 		});
 
 		expect(member.acceptInvitation).toHaveBeenCalledTimes(1);
@@ -123,10 +146,9 @@ describe('provisionCaseBuildUser', () => {
 
 		await provisionCaseBuildUser({
 			pool,
-			baseUrl: 'http://lane-1',
+			memberClient: client,
 			credentials,
 			onCredentialCreated: (id) => reported.push(id),
-			memberClient: client,
 		});
 
 		expect(created.map((c) => c.type)).toEqual(['slackApi', 'notionApi']);
@@ -142,10 +164,9 @@ describe('provisionCaseBuildUser', () => {
 		await expect(
 			provisionCaseBuildUser({
 				pool,
-				baseUrl: 'http://lane-1',
+				memberClient: client,
 				credentials: [{ type: 'slackApi' }],
 				onCredentialCreated: () => {},
-				memberClient: client,
 			}),
 		).rejects.toThrow('credential POST failed');
 	});
