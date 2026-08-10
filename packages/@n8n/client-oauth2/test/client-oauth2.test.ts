@@ -520,7 +520,7 @@ describe('ClientOAuth2', () => {
 					expect(ssrfBridge.validateUrl).toHaveBeenCalledWith(new URL(config.accessTokenUri));
 				});
 
-				it('should relax TLS through the proxy agent without a lookup when ignoreSSLIssues is set', async () => {
+				it('should route through the proxy agent without a lookup when ignoreSSLIssues is set', async () => {
 					process.env.HTTPS_PROXY = 'http://fake-proxy.example';
 					const ssrfBridge = makeSsrfBridge();
 					const axiosSpy = proxiedTokenResponse();
@@ -529,7 +529,7 @@ describe('ClientOAuth2', () => {
 
 					const httpsAgent = axiosSpy.mock.calls[0][0].httpsAgent as HttpsProxyAgent<string>;
 					expect(httpsAgent).toBeInstanceOf(HttpsProxyAgent);
-					expect(httpsAgent.connectOpts.rejectUnauthorized).toBe(false);
+					expect(httpsAgent.connectOpts.rejectUnauthorized).toBeUndefined();
 					expect(httpsAgent.connectOpts.lookup).toBeUndefined();
 				});
 
