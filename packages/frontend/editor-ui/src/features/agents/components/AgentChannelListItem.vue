@@ -1,10 +1,18 @@
 <script setup lang="ts">
-import { N8nButton, N8nDropdownMenu, N8nIcon, N8nText } from '@n8n/design-system';
-import type { DropdownMenuItemProps } from '@n8n/design-system';
-import type { IconName } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nDropdownMenu,
+	N8nIcon,
+	N8nLoading,
+	N8nText,
+	updatedIconSet,
+	type DropdownMenuItemProps,
+	type IconName,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { ChatIntegrationDescriptor } from '@n8n/api-types';
 import { computed } from 'vue';
+import type { AgentChannelConnectAction } from '../channels/types';
 
 type ChannelAction = 'edit' | 'disconnect';
 
@@ -12,6 +20,8 @@ interface Props {
 	integration: ChatIntegrationDescriptor;
 	configured: boolean;
 	connected: boolean;
+	connectAction: AgentChannelConnectAction;
+	loading?: boolean;
 }
 
 const props = defineProps<Props>();
@@ -39,8 +49,8 @@ const configuredActions = computed<Array<DropdownMenuItemProps<ChannelAction>>>(
 	return actions;
 });
 
-function toIconName(icon: string): IconName {
-	return icon as IconName;
+function isIconName(icon: string): icon is IconName {
+	return icon in updatedIconSet;
 }
 
 function handleConfiguredAction(action: ChannelAction) {
@@ -55,49 +65,71 @@ function handleConfiguredAction(action: ChannelAction) {
 
 <template>
 	<li :class="$style.channelItem">
-		<div :class="$style.iconWrapper">
-			<N8nIcon
-				:icon="integration.icon ? toIconName(integration.icon) : 'zap'"
-				:size="28"
-				:class="$style.channelIcon"
-			/>
-		</div>
-		<div :class="$style.content">
-			<N8nText :class="$style.name" size="medium" bold color="text-dark">
-				{{ integration.label }}
-			</N8nText>
-		</div>
+		<template v-if="loading">
+			<div :class="$style.iconWrapper">
+				<N8nLoading variant="circle" />
+			</div>
+			<div :class="$style.content">
+				<N8nLoading variant="text" :class="$style.nameSkeleton" />
+			</div>
+			<div :class="$style.channelActions">
+				<N8nLoading variant="rect" :class="$style.buttonSkeleton" />
+			</div>
+		</template>
 
-		<div :class="$style.channelActions">
-			<N8nDropdownMenu
-				v-if="configured"
-				:items="configuredActions"
-				placement="bottom-end"
-				:modal="false"
-				@select="handleConfiguredAction"
-			>
-				<template #trigger>
-					<N8nButton variant="ghost" size="medium" :class="$style.connectedTrigger">
-						<div
-							v-if="connected"
-							:class="$style.connectedDotContainer"
-							data-testid="agent-channel-connected-indicator"
-						>
-							<span :class="[$style.connectedDot, $style.ping]" />
-							<span :class="$style.connectedDot" />
-						</div>
-						{{
-							i18n.baseText(
-								connected ? 'agents.channels.modal.connected' : 'agents.channels.modal.configured',
-							)
-						}}
-					</N8nButton>
-				</template>
-			</N8nDropdownMenu>
-			<N8nButton v-else variant="subtle" size="medium" @click="emit('setup', integration.type)">
-				{{ i18n.baseText('generic.connect') }}
-			</N8nButton>
-		</div>
+		<template v-else>
+			<div :class="$style.iconWrapper">
+				<N8nIcon
+					:icon="integration.icon && isIconName(integration.icon) ? integration.icon : 'zap'"
+					:size="28"
+					:class="$style.channelIcon"
+				/>
+			</div>
+			<div :class="$style.content">
+				<N8nText :class="$style.name" size="medium" bold color="text-dark">
+					{{ integration.label }}
+				</N8nText>
+			</div>
+
+			<div :class="$style.channelActions">
+				<N8nDropdownMenu
+					v-if="configured"
+					:items="configuredActions"
+					placement="bottom-end"
+					:modal="false"
+					@select="handleConfiguredAction"
+				>
+					<template #trigger>
+						<N8nButton variant="ghost" size="medium" :class="$style.connectedTrigger">
+							<div
+								v-if="connected"
+								:class="$style.connectedDotContainer"
+								data-testid="agent-channel-connected-indicator"
+							>
+								<span :class="[$style.connectedDot, $style.ping]" />
+								<span :class="$style.connectedDot" />
+							</div>
+							{{
+								i18n.baseText(
+									connected
+										? 'agents.channels.modal.connected'
+										: 'agents.channels.modal.configured',
+								)
+							}}
+						</N8nButton>
+					</template>
+				</N8nDropdownMenu>
+				<N8nButton
+					v-else
+					variant="subtle"
+					size="medium"
+					:icon="connectAction.icon"
+					@click="emit('setup', integration.type)"
+				>
+					{{ connectAction.label }}
+				</N8nButton>
+			</div>
+		</template>
 	</li>
 </template>
 
@@ -122,6 +154,22 @@ function handleConfiguredAction(action: ChannelAction) {
 
 .channelIcon {
 	color: var(--icon-color--strong);
+}
+
+.nameSkeleton {
+	width: 30%;
+}
+
+.buttonSkeleton {
+	height: 32px;
+	width: 80px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+
+	div {
+		height: 100%;
+	}
 }
 
 .content {
