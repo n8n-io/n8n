@@ -155,46 +155,9 @@ export class TypeOrmStepStore implements StepStore {
 		return Object.fromEntries(rows.map((row) => [row.nodeId, row]));
 	}
 
-	async loadStepOutputs(
-		executionId: string,
-		nodeIds: string[],
-	): Promise<Record<string, StepSlots | null>> {
-		const outputsByNodeId: Record<string, StepSlots | null> = {};
-		for (const nodeId of nodeIds) outputsByNodeId[nodeId] = null;
-		if (nodeIds.length === 0) return outputsByNodeId;
-
-		// Filter on `completed` rather than relying on non-completed rows having a
-		// null `outputs` column, so the contract holds however writes are ordered.
-		const rows = await this.repo.find({
-			where: { executionId, nodeId: In(nodeIds), status: 'completed' },
-			select: ['nodeId', 'outputs'],
-		});
-		for (const row of rows) outputsByNodeId[row.nodeId] = row.outputs;
-
-		return outputsByNodeId;
-	}
-
-	async loadCompletedNodeIds(executionId: string, nodeIds: string[]): Promise<Set<string>> {
-		if (nodeIds.length === 0) return new Set();
-
-		const rows = await this.repo.find({
-			where: { executionId, nodeId: In(nodeIds), status: 'completed' },
-			select: ['nodeId'],
-		});
-
-		return new Set(rows.map((row) => row.nodeId));
-	}
-
 	async countSettledSteps(executionId: string): Promise<number> {
 		return await this.repo.count({
 			where: { executionId, status: In([...SETTLED_STEP_STATUSES]) },
-		});
-	}
-
-	async hasActiveSteps(executionId: string): Promise<boolean> {
-		// `exists({ where })`, not `existsBy`, for the reason given in `loadStep`.
-		return await this.repo.exists({
-			where: { executionId, status: In<StepStatus>(['queued', 'running']) },
 		});
 	}
 

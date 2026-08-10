@@ -99,9 +99,6 @@ function makeStepStore(
 			);
 		}),
 		loadStepsByNodeIds: vi.fn().mockResolvedValue({}),
-		loadStepOutputs: vi.fn(),
-		loadCompletedNodeIds: vi.fn(),
-		hasActiveSteps: vi.fn(),
 		// far from settled, so finish tests opt in explicitly
 		countSettledSteps: vi.fn().mockResolvedValue(0),
 		hasFailedSteps: vi.fn().mockResolvedValue(false),

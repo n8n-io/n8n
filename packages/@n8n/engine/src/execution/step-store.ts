@@ -115,29 +115,6 @@ export interface StepStore {
 	loadStepSummaries(executionId: string, nodeIds: string[]): Promise<Record<string, StepSummary>>;
 
 	/**
-	 * Outputs of the given nodes' *completed* steps within an execution, keyed by
-	 * node id. A node whose step is absent or hasn't completed maps to `null`.
-	 *
-	 * This is for gathering a step's inputs, so it deliberately can't answer
-	 * "have all predecessors completed?" — the two are indistinguishable from a
-	 * `null` here. Use `loadCompletedNodeIds` for that.
-	 */
-	loadStepOutputs(
-		executionId: string,
-		nodeIds: string[],
-	): Promise<Record<string, StepSlots | null>>;
-
-	/**
-	 * Which of `nodeIds` have a completed step in the execution. Returns the
-	 * subset rather than a yes/no so one query can answer readiness for several
-	 * candidate steps at once.
-	 */
-	loadCompletedNodeIds(executionId: string, nodeIds: string[]): Promise<Set<string>>;
-
-	/** Whether the execution has any step still `queued` or `running`. */
-	hasActiveSteps(executionId: string): Promise<boolean>;
-
-	/**
 	 * How many of the execution's steps have settled (completed, failed,
 	 * skipped, or cancelled). Rows are unique per node and only exist for
 	 * reachable nodes, so comparing this against the graph's reachable node

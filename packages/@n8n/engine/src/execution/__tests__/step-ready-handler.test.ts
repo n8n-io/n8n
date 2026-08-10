@@ -65,9 +65,6 @@ function makeStepStore(step: Partial<StepRecord> = {}, overrides: Partial<StepSt
 			.fn()
 			.mockResolvedValue({ trigger: stepRow('trigger', 'completed', [{}]) }),
 		loadStepSummaries: vi.fn().mockResolvedValue({}),
-		loadStepOutputs: vi.fn(),
-		loadCompletedNodeIds: vi.fn().mockResolvedValue(new Set()),
-		hasActiveSteps: vi.fn().mockResolvedValue(false),
 		countSettledSteps: vi.fn().mockResolvedValue(0),
 		hasFailedSteps: vi.fn().mockResolvedValue(false),
 		...overrides,
@@ -89,11 +86,9 @@ describe('StepReadyHandler', () => {
 		const stepStore = makeStepStore(
 			{},
 			{
-				loadStepsByNodeIds: vi
-					.fn()
-					.mockResolvedValue({
-						trigger: stepRow('trigger', 'completed', [{ body: { hello: 'world' } }]),
-					}),
+				loadStepsByNodeIds: vi.fn().mockResolvedValue({
+					trigger: stepRow('trigger', 'completed', [{ body: { hello: 'world' } }]),
+				}),
 			},
 		);
 		const queue = makeQueue();

@@ -263,42 +263,6 @@ describe('workflow_step_execution table (integration)', () => {
 		expect(found.error).toEqual(error);
 	});
 
-	it('TypeOrmStepStore.loadStepOutputs returns only completed outputs, keyed by node id', async () => {
-		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
-		const { id: aId } = await createStep(store, { executionId, nodeId: 'a', status: 'running' });
-		await store.completeStep(aId, [[{ json: { from: 'a' } }]]);
-		await createStep(store, { executionId, nodeId: 'b', status: 'queued' });
-		const { id: cId } = await createStep(store, { executionId, nodeId: 'c', status: 'running' });
-		await store.failStep(cId, { name: 'Error', message: 'node blew up' });
-
-		const outputs = await store.loadStepOutputs(executionId, ['a', 'b', 'c', 'd']);
-
-		expect(outputs).toEqual({
-			a: [[{ json: { from: 'a' } }]],
-			b: null, // queued
-			c: null, // failed
-			d: null, // no step row
-		});
-	});
-
-	it('TypeOrmStepStore.loadCompletedNodeIds returns only the completed ones', async () => {
-		const executionId = await createExecution();
-		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
-		const { id: aId } = await createStep(store, { executionId, nodeId: 'a', status: 'running' });
-		// completed without firing its slot — readiness must not depend on what
-		// the outputs contain, which is why it has its own method
-		await store.completeStep(aId, [null]);
-		await createStep(store, { executionId, nodeId: 'b', status: 'queued' });
-		const { id: cId } = await createStep(store, { executionId, nodeId: 'c', status: 'running' });
-		await store.failStep(cId, { name: 'Error', message: 'node blew up' });
-
-		const completed = await store.loadCompletedNodeIds(executionId, ['a', 'b', 'c', 'd']);
-
-		// b queued, c failed, d has no row at all
-		expect(completed).toEqual(new Set(['a']));
-	});
-
 	it('TypeOrmStepStore.createSteps persists a skipped step (settled at birth)', async () => {
 		const executionId = await createExecution();
 		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
