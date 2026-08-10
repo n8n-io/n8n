@@ -2,7 +2,10 @@ import { createPinia, setActivePinia } from 'pinia';
 import { modalRegistry } from '@n8n/frontend-module-sdk';
 
 import type { ModalState } from '@/Interface';
-import { IMPORT_CURL_MODAL_KEY } from '@/app/constants';
+import {
+	IMPORT_CURL_MODAL_KEY,
+	INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY,
+} from '@/app/constants';
 import { listenForModalChanges, useUIStore } from '@/app/stores/ui.store';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 
@@ -282,6 +285,51 @@ describe('UI Store', () => {
 				expect(useUIStore().modalsById[IMPORT_CURL_MODAL_KEY].open).toBe(false);
 			});
 		});
+
+		// A modal clears its own data on close so the next open starts fresh
+		// (`InstanceAiToolsConnectionModalWrapper`). For a key with a definition, what
+		// this resolves is a copy — so the write has to go through the store, and an
+		// in-place one is discarded the next time the derivation runs. That is silent
+		// in the same tick, which is how the clear-on-close broke unnoticed.
+		describe('clearing data for the next open', () => {
+			const OWNED_KEY = INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY;
+
+			it('should clear it for good when the write goes through the store', () => {
+				const uiStore = useUIStore();
+				uiStore.openModalWithData({ name: OWNED_KEY, data: { connectionId: 'conn-1' } });
+				uiStore.closeModal(OWNED_KEY);
+
+				uiStore.setModalData({ name: OWNED_KEY, data: {} });
+				uiStore.openModal(OWNED_KEY);
+
+				expect(uiStore.modalsById[OWNED_KEY].data).toEqual({});
+			});
+
+			it('should discard a write made in place onto what it resolves', () => {
+				const uiStore = useUIStore();
+				uiStore.openModalWithData({ name: OWNED_KEY, data: { connectionId: 'conn-1' } });
+				uiStore.closeModal(OWNED_KEY);
+
+				uiStore.modalsById[OWNED_KEY].data = {};
+				uiStore.openModal(OWNED_KEY);
+
+				expect(uiStore.modalsById[OWNED_KEY].data).toEqual({ connectionId: 'conn-1' });
+			});
+
+			// An ad-hoc key has no definition to resolve against, so it is the runtime
+			// entry itself rather than a copy of it — the same expression, a different
+			// write semantic. Pinned so the divergence is a decision, not a discovery.
+			it('should let an in-place write through for a key with no definition', () => {
+				const uiStore = useUIStore();
+				const perRowKey = `${MODAL_KEY}-row-42`;
+				uiStore.openModalWithData({ name: perRowKey, data: { rowId: '42' } });
+
+				uiStore.modalsById[perRowKey].data = {};
+				uiStore.openModal(perRowKey);
+
+				expect(uiStore.modalsById[perRowKey].data).toEqual({});
+			});
+		});
 	});
 
 	describe('isModalActiveById', () => {
@@ -363,6 +411,92 @@ describe('UI Store', () => {
 			uiStore.openModal(MODAL_KEY);
 
 			expect(onModalOpened).not.toHaveBeenCalled();
+		});
+
+		// Consumers act on close: settling a connect attempt, replacing the route,
+		// emitting a selection. Twice is a duplicate side effect, zero is a hang — so
+		// the count is the assertion, not just that it fired.
+		describe('exactly once', () => {
+			it('should fire once per open and once per close', () => {
+				const uiStore = useUIStore();
+				const { onModalOpened, onModalClosed } = listen();
+
+				uiStore.openModal(MODAL_KEY);
+				uiStore.closeModal(MODAL_KEY);
+
+				expect(onModalOpened).toHaveBeenCalledTimes(1);
+				expect(onModalClosed).toHaveBeenCalledTimes(1);
+			});
+
+			it('should fire once for openModalWithData, not once per inner action', () => {
+				const uiStore = useUIStore();
+				const { onModalOpened } = listen();
+
+				uiStore.openModalWithData({ name: MODAL_KEY, data: { foo: 'bar' } });
+
+				expect(onModalOpened).toHaveBeenCalledTimes(1);
+			});
+
+			// Two callers can open the credential modal, putting the key on the stack
+			// twice; one close then takes both off. That is one modal opening once and
+			// closing once, or `useMcpServerConnect` connects the same credential twice.
+			it('should treat a key opened twice as one modal opening and closing once', () => {
+				const uiStore = useUIStore();
+				const { onModalOpened, onModalClosed } = listen();
+
+				uiStore.openModal(MODAL_KEY);
+				uiStore.openModal(MODAL_KEY);
+
+				expect(onModalOpened).toHaveBeenCalledTimes(1);
+
+				uiStore.closeModal(MODAL_KEY);
+
+				expect(onModalClosed).toHaveBeenCalledTimes(1);
+			});
+
+			it('should notify every listener once when a key opened twice closes', () => {
+				const uiStore = useUIStore();
+				const first = listen();
+				const second = listen();
+
+				uiStore.openModal(MODAL_KEY);
+				uiStore.openModal(MODAL_KEY);
+				uiStore.closeModal(MODAL_KEY);
+
+				expect(first.onModalClosed).toHaveBeenCalledTimes(1);
+				expect(second.onModalClosed).toHaveBeenCalledTimes(1);
+			});
+
+			it('should fire once when the definition is unregistered while open', () => {
+				const uiStore = useUIStore();
+				modalRegistry.register({ key: MODAL_KEY, component: {} });
+				const { onModalClosed } = listen();
+				uiStore.openModal(MODAL_KEY);
+
+				modalRegistry.unregister(MODAL_KEY);
+
+				expect(onModalClosed).toHaveBeenCalledTimes(1);
+			});
+
+			it('should not fire for closing a modal that is not open', () => {
+				const uiStore = useUIStore();
+				const { onModalClosed } = listen();
+
+				uiStore.closeModal(MODAL_KEY);
+
+				expect(onModalClosed).not.toHaveBeenCalled();
+			});
+
+			it('should not fire again for a second close of the same modal', () => {
+				const uiStore = useUIStore();
+				const { onModalClosed } = listen();
+				uiStore.openModal(MODAL_KEY);
+
+				uiStore.closeModal(MODAL_KEY);
+				uiStore.closeModal(MODAL_KEY);
+
+				expect(onModalClosed).toHaveBeenCalledTimes(1);
+			});
 		});
 	});
 });
