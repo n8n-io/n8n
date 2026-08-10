@@ -1517,11 +1517,12 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 	 */
 	establishTriggerIdentity(token: string, resource: string): Promise<void>;
 	/**
-	 * Checks the status of the triggering identity's resolvable (private) credentials
+	 * Checks the status of the triggering identity's resolvable (end-user) credentials
 	 * for this workflow, using the execution context established by
 	 * `establishTriggerIdentity`. Returns connection URLs for any missing credential, or
 	 * `undefined` when no check applies (dynamic-credentials disabled or no identity
-	 * established). Used by the MCP trigger to gate a tool call before execution.
+	 * established). Used by the MCP trigger to gate a tool call, and by the Form trigger
+	 * to gate a submission, before an execution is enqueued.
 	 */
 	checkTriggerCredentialStatus(): Promise<CredentialCheckResult | undefined>;
 	getInputConnectionData(
