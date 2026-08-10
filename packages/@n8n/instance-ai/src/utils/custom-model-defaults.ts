@@ -1,8 +1,5 @@
 import { z } from 'zod';
 
-import defaultsJson from './custom-model-defaults.json';
-
-/** Mirrors OpenAI-compatible reasoning effort values used by `@n8n/agents`. */
 const customModelReasoningEffortSchema = z.enum([
 	'none',
 	'minimal',
@@ -28,13 +25,28 @@ const customModelDefaultEntrySchema = z
 	})
 	.strict();
 
-const customModelDefaultsFileSchema = z
-	.object({
-		defaults: z.array(customModelDefaultEntrySchema),
-	})
-	.strict();
+type CustomModelDefaultEntry = z.infer<typeof customModelDefaultEntrySchema>;
 
-const CUSTOM_MODEL_DEFAULTS = customModelDefaultsFileSchema.parse(defaultsJson).defaults;
+/**
+ * Known custom/* model experiment defaults. First case-insensitive substring
+ * match wins. Add entries here when a new custom model needs stable knobs.
+ */
+const CUSTOM_MODEL_DEFAULTS = [
+	{
+		match: 'kimi-k3',
+		reasoningEffort: 'low',
+		supportsStructuredOutputs: true,
+	},
+	{
+		match: 'glm-5.2',
+		reasoningEffort: 'medium',
+		supportsStructuredOutputs: true,
+	},
+	{
+		match: 'deepseek',
+		supportsStructuredOutputs: true,
+	},
+] satisfies CustomModelDefaultEntry[];
 
 export function parseReasoningEffort(
 	value: string | undefined,

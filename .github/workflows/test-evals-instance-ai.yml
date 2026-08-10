@@ -296,7 +296,7 @@ jobs:
           fi
 
           # custom/* experiment knobs: pass through workflow inputs only.
-          # When unset, the n8n runtime looks up custom-model-defaults.json and
+          # When unset, the n8n runtime looks up custom-model-defaults.ts and
           # omits the field if still unresolved — do not re-implement that map here.
           if [ -n "$INSTANCE_AI_REASONING_EFFORT" ]; then
             MODEL_ARGS+=(-e N8N_INSTANCE_AI_REASONING_EFFORT="$INSTANCE_AI_REASONING_EFFORT")
