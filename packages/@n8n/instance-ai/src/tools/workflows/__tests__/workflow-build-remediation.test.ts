@@ -1,3 +1,4 @@
+import { WorkflowNotFoundError } from '../../../errors/workflow-not-found.error';
 import { WorkflowSaveConflictError } from '../../../errors/workflow-save-conflict.error';
 import { createSaveFailureRemediation } from '../workflow-build-remediation';
 
@@ -11,5 +12,46 @@ describe('createSaveFailureRemediation', () => {
 			reason: 'workflow_modified_externally',
 		});
 		expect(remediation.guidance).toContain('get-as-code');
+	});
+
+	it('returns bound_workflow_not_found for WorkflowNotFoundError', () => {
+		const remediation = createSaveFailureRemediation(
+			new WorkflowNotFoundError('invoice-processing'),
+			true,
+		);
+
+		expect(remediation).toMatchObject({
+			category: 'blocked',
+			shouldEdit: false,
+			reason: 'bound_workflow_not_found',
+		});
+	});
+
+	it('returns bound_workflow_not_found when WorkflowNotFoundError is nested as cause', () => {
+		const remediation = createSaveFailureRemediation(
+			new Error('Failed to load existing workflow invoice-processing to preserve setup values', {
+				cause: new WorkflowNotFoundError('invoice-processing'),
+			}),
+			true,
+		);
+
+		expect(remediation).toMatchObject({
+			category: 'blocked',
+			shouldEdit: false,
+			reason: 'bound_workflow_not_found',
+		});
+	});
+
+	it('keeps workflow_save_failed when no workflow id was bound', () => {
+		const remediation = createSaveFailureRemediation(
+			new WorkflowNotFoundError('invoice-processing'),
+			false,
+		);
+
+		expect(remediation).toMatchObject({
+			category: 'code_fixable',
+			shouldEdit: true,
+			reason: 'workflow_save_failed',
+		});
 	});
 });

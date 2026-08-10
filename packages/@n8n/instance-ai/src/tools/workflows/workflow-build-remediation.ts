@@ -1,12 +1,8 @@
 import type { WorkflowSourceCompileFailureReason } from './workflow-source-compiler';
+import { isWorkflowNotFoundError } from '../../errors/workflow-not-found.error';
 import { WorkflowSaveConflictError } from '../../errors/workflow-save-conflict.error';
 import { createRemediation } from '../../workflow-loop/remediation';
 import type { RemediationMetadata } from '../../workflow-loop/workflow-loop-state';
-
-function isWorkflowNotFoundError(error: unknown): boolean {
-	const message = error instanceof Error ? error.message : String(error);
-	return /workflow not found/i.test(message);
-}
 
 function getFailureText(error: unknown): string {
 	return (error instanceof Error ? error.message : String(error)).toLowerCase();
