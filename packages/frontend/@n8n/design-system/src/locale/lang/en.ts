@@ -197,6 +197,7 @@ export default {
 	'markdownEditor.italic': 'Italic',
 	'markdownEditor.strikethrough': 'Strikethrough',
 	'markdownEditor.underline': 'Underline',
+	'markdownEditor.code': 'Inline code',
 	'markdownEditor.link': 'Link',
 	'markdownEditor.bulletList': 'Bullet list',
 	'markdownEditor.orderedList': 'Ordered list',

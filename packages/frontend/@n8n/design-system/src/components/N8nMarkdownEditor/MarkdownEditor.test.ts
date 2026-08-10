@@ -17,6 +17,7 @@ describe('components/N8nMarkdownEditorToolbar', () => {
 		expect(wrapper.getByRole('button', { name: 'Bold' })).toBeInTheDocument();
 		expect(wrapper.getByRole('button', { name: 'Italic' })).toBeInTheDocument();
 		expect(wrapper.getByRole('button', { name: 'Strikethrough' })).toBeInTheDocument();
+		expect(wrapper.getByRole('button', { name: 'Inline code' })).toBeInTheDocument();
 		expect(wrapper.getByRole('button', { name: 'Text' })).toBeInTheDocument();
 		expect(wrapper.getByRole('button', { name: 'Bullet list' })).toBeInTheDocument();
 		expect(wrapper.getByRole('button', { name: 'Task list' })).toBeInTheDocument();
@@ -84,6 +85,27 @@ describe('components/N8nMarkdownEditorToolbar', () => {
 
 		await waitFor(() => expect(wrapper.getByTestId('markdown-editor-toolbar')).toBeInTheDocument());
 		expect(wrapper.getByRole('button', { name: 'Text' })).toBeInTheDocument();
+	});
+
+	it('marks the selection as inline code and reflects the active state', async () => {
+		let editor: Editor | undefined;
+		const wrapper = render(N8nMarkdownEditor, {
+			props: {
+				modelValue: 'Content',
+				onReady: (readyEditor: Editor) => {
+					editor = readyEditor;
+				},
+			},
+		});
+
+		await waitFor(() => expect(wrapper.getByTestId('markdown-editor-toolbar')).toBeInTheDocument());
+		await waitFor(() => expect(editor).toBeDefined());
+
+		editor!.commands.selectAll();
+		await fireEvent.click(wrapper.getByRole('button', { name: 'Inline code' }));
+
+		expect(editor!.isActive('code')).toBe(true);
+		expect(editor!.getMarkdown()).toContain('`Content`');
 	});
 
 	it('disables toolbar controls when editor is disabled', async () => {

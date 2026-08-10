@@ -80,6 +80,12 @@ const markControls = computed<ToolbarControl[]>(() => [
 		icon: 'underline',
 		command: ({ editor }) => editor.chain().focus().toggleUnderline().run(),
 	},
+	{
+		id: 'code',
+		label: translate('markdownEditor.code'),
+		icon: 'code',
+		command: ({ editor }) => editor.chain().focus().toggleCode().run(),
+	},
 ]);
 
 const blockControls = computed<ToolbarControl[]>(() => [
