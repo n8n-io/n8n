@@ -32,4 +32,10 @@ describe('smartDecimal', () => {
 	it('should round to two decimal if it is smaller than the given one', () => {
 		expect(smartDecimal(42.56, 3)).toBe(42.56);
 	});
+
+	it('should not throw for numbers that serialize in exponential notation', () => {
+		// (0.0000001).toString() === '1e-7', which has no decimal point
+		expect(smartDecimal(0.0000001)).toBe(0);
+		expect(smartDecimal(5e-8, 3)).toBe(0);
+	});
 });

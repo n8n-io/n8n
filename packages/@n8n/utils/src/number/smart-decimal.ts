@@ -4,8 +4,10 @@ export const smartDecimal = (value: number, decimals = 2): number => {
 		return value;
 	}
 
-	// Check if it has only one decimal place
-	if (value.toString().split('.')[1].length <= decimals) {
+	// Numbers small enough to serialize in exponential notation (e.g. 1e-7)
+	// have no '.' in their string form, so guard the missing decimal segment.
+	const decimalPart = value.toString().split('.')[1];
+	if (decimalPart !== undefined && decimalPart.length <= decimals) {
 		return value;
 	}
 
