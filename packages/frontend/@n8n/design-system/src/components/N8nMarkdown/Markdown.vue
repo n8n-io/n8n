@@ -67,12 +67,15 @@ const props = withDefaults(defineProps<MarkdownProps>(), {
 
 const editor = ref<HTMLDivElement | undefined>(undefined);
 
-const { options } = props;
-const md = new Markdown(options.markdown)
-	.use(markdownLink, options.linkAttributes)
-	.use(markdownEmoji)
-	.use(markdownTaskLists, options.tasklists)
-	.use(markdownYoutubeEmbed, options.youtube);
+// Rebuild on options change — destructuring props here would capture the
+// initial value and leave the renderer on a stale config.
+const md = computed(() =>
+	new Markdown(props.options.markdown)
+		.use(markdownLink, props.options.linkAttributes)
+		.use(markdownEmoji)
+		.use(markdownTaskLists, props.options.tasklists)
+		.use(markdownYoutubeEmbed, props.options.youtube),
+);
 
 // `xss` is CJS with no `exports` map. Node's lexer cannot see `whiteList` as a
 // named export, so `import { whiteList }` throws at link time under native ESM
@@ -153,7 +156,7 @@ const htmlContent = computed(() => {
 			})
 			.join('\n');
 	}
-	const html = md.render(contentToRender);
+	const html = md.value.render(contentToRender);
 
 	const safeHtml = xss(html, {
 		onTagAttr(tag, name, value) {

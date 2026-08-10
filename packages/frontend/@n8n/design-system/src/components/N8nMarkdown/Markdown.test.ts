@@ -23,6 +23,38 @@ describe('components', () => {
 			});
 		});
 
+		it('should rebuild the renderer when the options prop changes', async () => {
+			const wrapper = render(N8nMarkdown, {
+				global: {
+					directives: {
+						n8nHtml,
+					},
+				},
+				props: {
+					content: 'Visit https://n8n.io for more',
+					options: {
+						markdown: { html: false, linkify: true, typographer: true, breaks: true },
+						linkAttributes: { attrs: { target: '_blank', rel: 'noopener' } },
+						tasklists: { enabled: true, label: true, labelAfter: false },
+						youtube: {},
+					},
+				},
+			});
+
+			expect(wrapper.container.querySelector('a')).toHaveAttribute('href', 'https://n8n.io');
+
+			await wrapper.rerender({
+				options: {
+					markdown: { html: false, linkify: false, typographer: true, breaks: true },
+					linkAttributes: { attrs: { target: '_blank', rel: 'noopener' } },
+					tasklists: { enabled: true, label: true, labelAfter: false },
+					youtube: {},
+				},
+			});
+
+			expect(wrapper.container.querySelector('a')).toBeNull();
+		});
+
 		it('should render image urls', () => {
 			const wrapper = render(N8nMarkdown, {
 				global: {
