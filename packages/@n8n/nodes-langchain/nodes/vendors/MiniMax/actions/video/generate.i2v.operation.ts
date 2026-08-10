@@ -2,6 +2,7 @@ import type {
 	IDataObject,
 	IExecuteFunctions,
 	INodeExecutionData,
+	INodePropertyOptions,
 	INodeProperties,
 } from 'n8n-workflow';
 import { updateDisplayOptions } from 'n8n-workflow';
@@ -9,7 +10,53 @@ import { updateDisplayOptions } from 'n8n-workflow';
 import { generateVideo } from '../../transport';
 import { assertH3Prompt, H3_MODEL, h3VideoProperties, prepareVideoOutput } from './helpers';
 
+const legacyModelOptions: INodePropertyOptions[] = [
+	{
+		name: 'I2V-01',
+		value: 'I2V-01',
+		description: 'Standard image-to-video model',
+	},
+	{
+		name: 'I2V-01-Director',
+		value: 'I2V-01-Director',
+		description: 'Image-to-video with camera control commands',
+	},
+	{
+		name: 'I2V-01-Live',
+		value: 'I2V-01-live',
+		description: 'Image-to-video live model',
+	},
+	{
+		name: 'MiniMax-Hailuo-02',
+		value: 'MiniMax-Hailuo-02',
+		description: 'Model supporting higher resolution and longer duration',
+	},
+	{
+		name: 'MiniMax-Hailuo-2.3',
+		value: 'MiniMax-Hailuo-2.3',
+		description: 'Hailuo 2.3 model with enhanced realism',
+	},
+	{
+		name: 'MiniMax-Hailuo-2.3-Fast',
+		value: 'MiniMax-Hailuo-2.3-Fast',
+		description: 'Faster image-to-video model for value and efficiency',
+	},
+];
+
 const properties: INodeProperties[] = [
+	{
+		displayName: 'Model',
+		name: 'modelId',
+		type: 'options',
+		options: legacyModelOptions,
+		default: 'MiniMax-Hailuo-2.3',
+		description: 'The model to use for video generation',
+		displayOptions: {
+			show: {
+				'@version': [1],
+			},
+		},
+	},
 	{
 		displayName: 'Model',
 		name: 'modelId',
@@ -20,39 +67,15 @@ const properties: INodeProperties[] = [
 				value: H3_MODEL,
 				description: 'Latest multimodal video generation model',
 			},
-			{
-				name: 'I2V-01',
-				value: 'I2V-01',
-				description: 'Standard image-to-video model',
-			},
-			{
-				name: 'I2V-01-Director',
-				value: 'I2V-01-Director',
-				description: 'Image-to-video with camera control commands',
-			},
-			{
-				name: 'I2V-01-Live',
-				value: 'I2V-01-live',
-				description: 'Image-to-video live model',
-			},
-			{
-				name: 'MiniMax-Hailuo-02',
-				value: 'MiniMax-Hailuo-02',
-				description: 'Model supporting higher resolution and longer duration',
-			},
-			{
-				name: 'MiniMax-Hailuo-2.3',
-				value: 'MiniMax-Hailuo-2.3',
-				description: 'Hailuo 2.3 model with enhanced realism',
-			},
-			{
-				name: 'MiniMax-Hailuo-2.3-Fast',
-				value: 'MiniMax-Hailuo-2.3-Fast',
-				description: 'Faster image-to-video model for value and efficiency',
-			},
+			...legacyModelOptions,
 		],
 		default: H3_MODEL,
 		description: 'The model to use for video generation',
+		displayOptions: {
+			show: {
+				'@version': [{ _cnd: { gte: 1.1 } }],
+			},
+		},
 	},
 	{
 		displayName: 'Image Input Type',

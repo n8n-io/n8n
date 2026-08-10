@@ -23,6 +23,7 @@ export const h3VideoProperties: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				modelId: [H3_MODEL],
+				'@version': [{ _cnd: { gte: 1.1 } }],
 			},
 		},
 	},
@@ -39,6 +40,7 @@ export const h3VideoProperties: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				modelId: [H3_MODEL],
+				'@version': [{ _cnd: { gte: 1.1 } }],
 			},
 		},
 	},
@@ -55,6 +57,7 @@ export const h3VideoProperties: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				modelId: [H3_MODEL],
+				'@version': [{ _cnd: { gte: 1.1 } }],
 			},
 		},
 	},

@@ -3,6 +3,7 @@ import type {
 	IDataObject,
 	IExecuteFunctions,
 	INodeExecutionData,
+	INodePropertyOptions,
 	INodeProperties,
 } from 'n8n-workflow';
 import { accumulateTokenUsage, jsonParse, updateDisplayOptions } from 'n8n-workflow';
@@ -18,23 +19,42 @@ import type {
 } from '../../helpers/interfaces';
 import { apiRequest } from '../../transport';
 
+const legacyModelOptions: INodePropertyOptions[] = [
+	{ name: 'MiniMax-M2', value: 'MiniMax-M2' },
+	{ name: 'MiniMax-M2.1', value: 'MiniMax-M2.1' },
+	{ name: 'MiniMax-M2.1-Highspeed', value: 'MiniMax-M2.1-highspeed' },
+	{ name: 'MiniMax-M2.5', value: 'MiniMax-M2.5' },
+	{ name: 'MiniMax-M2.5-Highspeed', value: 'MiniMax-M2.5-highspeed' },
+	{ name: 'MiniMax-M2.7', value: 'MiniMax-M2.7' },
+	{ name: 'MiniMax-M2.7-Highspeed', value: 'MiniMax-M2.7-highspeed' },
+];
+
 const properties: INodeProperties[] = [
 	{
 		displayName: 'Model',
 		name: 'modelId',
 		type: 'options',
-		options: [
-			{ name: 'MiniMax-M2', value: 'MiniMax-M2' },
-			{ name: 'MiniMax-M2.1', value: 'MiniMax-M2.1' },
-			{ name: 'MiniMax-M2.1-Highspeed', value: 'MiniMax-M2.1-highspeed' },
-			{ name: 'MiniMax-M2.5', value: 'MiniMax-M2.5' },
-			{ name: 'MiniMax-M2.5-Highspeed', value: 'MiniMax-M2.5-highspeed' },
-			{ name: 'MiniMax-M2.7', value: 'MiniMax-M2.7' },
-			{ name: 'MiniMax-M2.7-Highspeed', value: 'MiniMax-M2.7-highspeed' },
-			{ name: 'MiniMax-M3', value: 'MiniMax-M3' },
-		],
+		options: legacyModelOptions,
+		default: 'MiniMax-M2.7',
+		description: 'The model to use for generating the response',
+		displayOptions: {
+			show: {
+				'@version': [1],
+			},
+		},
+	},
+	{
+		displayName: 'Model',
+		name: 'modelId',
+		type: 'options',
+		options: [...legacyModelOptions, { name: 'MiniMax-M3', value: 'MiniMax-M3' }],
 		default: 'MiniMax-M3',
 		description: 'The model to use for generating the response',
+		displayOptions: {
+			show: {
+				'@version': [{ _cnd: { gte: 1.1 } }],
+			},
+		},
 	},
 	{
 		displayName: 'Messages',

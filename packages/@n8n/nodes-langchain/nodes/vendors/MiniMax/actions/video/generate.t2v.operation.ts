@@ -2,6 +2,7 @@ import type {
 	IDataObject,
 	IExecuteFunctions,
 	INodeExecutionData,
+	INodePropertyOptions,
 	INodeProperties,
 } from 'n8n-workflow';
 import { updateDisplayOptions } from 'n8n-workflow';
@@ -9,7 +10,43 @@ import { updateDisplayOptions } from 'n8n-workflow';
 import { generateVideo } from '../../transport';
 import { assertH3Prompt, H3_MODEL, h3VideoProperties, prepareVideoOutput } from './helpers';
 
+const legacyModelOptions: INodePropertyOptions[] = [
+	{
+		name: 'MiniMax-Hailuo-2.3',
+		value: 'MiniMax-Hailuo-2.3',
+		description: 'Hailuo 2.3 video generation model with enhanced realism',
+	},
+	{
+		name: 'MiniMax-Hailuo-02',
+		value: 'MiniMax-Hailuo-02',
+		description: 'Video model supporting higher resolution and longer duration',
+	},
+	{
+		name: 'T2V-01-Director',
+		value: 'T2V-01-Director',
+		description: 'Text-to-video model with camera control commands',
+	},
+	{
+		name: 'T2V-01',
+		value: 'T2V-01',
+		description: 'Standard text-to-video model',
+	},
+];
+
 const properties: INodeProperties[] = [
+	{
+		displayName: 'Model',
+		name: 'modelId',
+		type: 'options',
+		options: legacyModelOptions,
+		default: 'MiniMax-Hailuo-2.3',
+		description: 'The model to use for video generation',
+		displayOptions: {
+			show: {
+				'@version': [1],
+			},
+		},
+	},
 	{
 		displayName: 'Model',
 		name: 'modelId',
@@ -20,29 +57,15 @@ const properties: INodeProperties[] = [
 				value: H3_MODEL,
 				description: 'Latest multimodal video generation model',
 			},
-			{
-				name: 'MiniMax-Hailuo-2.3',
-				value: 'MiniMax-Hailuo-2.3',
-				description: 'Hailuo 2.3 video generation model with enhanced realism',
-			},
-			{
-				name: 'MiniMax-Hailuo-02',
-				value: 'MiniMax-Hailuo-02',
-				description: 'Video model supporting higher resolution and longer duration',
-			},
-			{
-				name: 'T2V-01-Director',
-				value: 'T2V-01-Director',
-				description: 'Text-to-video model with camera control commands',
-			},
-			{
-				name: 'T2V-01',
-				value: 'T2V-01',
-				description: 'Standard text-to-video model',
-			},
+			...legacyModelOptions,
 		],
 		default: H3_MODEL,
 		description: 'The model to use for video generation',
+		displayOptions: {
+			show: {
+				'@version': [{ _cnd: { gte: 1.1 } }],
+			},
+		},
 	},
 	{
 		displayName: 'Prompt',
@@ -113,6 +136,7 @@ const properties: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				modelId: [H3_MODEL],
+				'@version': [{ _cnd: { gte: 1.1 } }],
 			},
 		},
 	},

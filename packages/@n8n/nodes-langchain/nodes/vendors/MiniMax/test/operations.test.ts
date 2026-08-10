@@ -37,6 +37,7 @@ import {
 	description as videoT2VDescription,
 	execute as videoT2VExecute,
 } from '../actions/video/generate.t2v.operation';
+import { versionDescription } from '../actions/versionDescription';
 import { apiRequest, generateVideo } from '../transport';
 
 import type { Mock } from 'vitest';
@@ -65,13 +66,34 @@ describe('MiniMax Operations', () => {
 		vi.clearAllMocks();
 	});
 
-	describe('Text: message', () => {
-		it('should default to MiniMax-M3', () => {
-			const modelProperty = textMessageDescription.find(({ name }) => name === 'modelId');
+	it('should use version 1.1 for newly added nodes', () => {
+		expect(versionDescription).toMatchObject({
+			version: [1, 1.1],
+			defaultVersion: 1.1,
+		});
+	});
 
-			expect(modelProperty).toMatchObject({
+	describe('Text: message', () => {
+		it('should preserve the M2.7 default for version 1 and use M3 for version 1.1', () => {
+			const legacyModelProperty = textMessageDescription.find(
+				({ name, default: defaultValue }) => name === 'modelId' && defaultValue === 'MiniMax-M2.7',
+			);
+			const currentModelProperty = textMessageDescription.find(
+				({ name, default: defaultValue }) => name === 'modelId' && defaultValue === 'MiniMax-M3',
+			);
+
+			expect(legacyModelProperty).toMatchObject({
+				default: 'MiniMax-M2.7',
+				displayOptions: {
+					show: expect.objectContaining({ '@version': [1] }),
+				},
+			});
+			expect(currentModelProperty).toMatchObject({
 				default: 'MiniMax-M3',
 				options: expect.arrayContaining([{ name: 'MiniMax-M3', value: 'MiniMax-M3' }]),
+				displayOptions: {
+					show: expect.objectContaining({ '@version': [{ _cnd: { gte: 1.1 } }] }),
+				},
 			});
 		});
 
@@ -261,13 +283,28 @@ describe('MiniMax Operations', () => {
 
 	describe('Video: textToVideo', () => {
 		it('should keep H3 parameters separate from legacy parameters', () => {
-			const modelProperty = videoT2VDescription.find(({ name }) => name === 'modelId');
+			const legacyModelProperty = videoT2VDescription.find(
+				({ name, default: defaultValue }) =>
+					name === 'modelId' && defaultValue === 'MiniMax-Hailuo-2.3',
+			);
+			const currentModelProperty = videoT2VDescription.find(
+				({ name, default: defaultValue }) => name === 'modelId' && defaultValue === 'MiniMax-H3',
+			);
 			const h3Duration = videoT2VDescription.find(({ name }) => name === 'h3Duration');
 			const legacyDuration = videoT2VDescription.find(({ name }) => name === 'duration');
 			const h3Resolution = videoT2VDescription.find(({ name }) => name === 'h3Resolution');
 			const legacyResolution = videoT2VDescription.find(({ name }) => name === 'resolution');
 
-			expect(modelProperty).toMatchObject({ default: 'MiniMax-H3' });
+			expect(legacyModelProperty).toMatchObject({
+				default: 'MiniMax-Hailuo-2.3',
+				displayOptions: { show: expect.objectContaining({ '@version': [1] }) },
+			});
+			expect(currentModelProperty).toMatchObject({
+				default: 'MiniMax-H3',
+				displayOptions: {
+					show: expect.objectContaining({ '@version': [{ _cnd: { gte: 1.1 } }] }),
+				},
+			});
 			expect(h3Duration).toMatchObject({ default: 5 });
 			expect(legacyDuration).toMatchObject({ default: 6 });
 			expect(h3Resolution).toMatchObject({ default: '2K' });
@@ -369,13 +406,28 @@ describe('MiniMax Operations', () => {
 
 	describe('Video: imageToVideo', () => {
 		it('should keep H3 parameters separate from legacy parameters', () => {
-			const modelProperty = videoI2VDescription.find(({ name }) => name === 'modelId');
+			const legacyModelProperty = videoI2VDescription.find(
+				({ name, default: defaultValue }) =>
+					name === 'modelId' && defaultValue === 'MiniMax-Hailuo-2.3',
+			);
+			const currentModelProperty = videoI2VDescription.find(
+				({ name, default: defaultValue }) => name === 'modelId' && defaultValue === 'MiniMax-H3',
+			);
 			const h3Duration = videoI2VDescription.find(({ name }) => name === 'h3Duration');
 			const legacyDuration = videoI2VDescription.find(({ name }) => name === 'duration');
 			const h3Resolution = videoI2VDescription.find(({ name }) => name === 'h3Resolution');
 			const legacyResolution = videoI2VDescription.find(({ name }) => name === 'resolution');
 
-			expect(modelProperty).toMatchObject({ default: 'MiniMax-H3' });
+			expect(legacyModelProperty).toMatchObject({
+				default: 'MiniMax-Hailuo-2.3',
+				displayOptions: { show: expect.objectContaining({ '@version': [1] }) },
+			});
+			expect(currentModelProperty).toMatchObject({
+				default: 'MiniMax-H3',
+				displayOptions: {
+					show: expect.objectContaining({ '@version': [{ _cnd: { gte: 1.1 } }] }),
+				},
+			});
 			expect(h3Duration).toMatchObject({ default: 5 });
 			expect(legacyDuration).toMatchObject({ default: 6 });
 			expect(h3Resolution).toMatchObject({ default: '2K' });
