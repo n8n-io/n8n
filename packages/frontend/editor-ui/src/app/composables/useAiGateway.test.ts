@@ -30,9 +30,13 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 }));
 
 const mockIsAiGatewayEnabled = ref(false);
+const mockIsAiGatewayCloudUbbEnabled = ref(false);
 
 vi.mock('@n8n/stores/settings.store', () => ({
-	useSettingsStore: vi.fn(() => ({ isAiGatewayEnabled: mockIsAiGatewayEnabled.value })),
+	useSettingsStore: vi.fn(() => ({
+		isAiGatewayEnabled: mockIsAiGatewayEnabled.value,
+		isAiGatewayCloudUbbEnabled: mockIsAiGatewayCloudUbbEnabled.value,
+	})),
 }));
 
 describe('useAiGateway', () => {
@@ -40,6 +44,7 @@ describe('useAiGateway', () => {
 		setActivePinia(createPinia());
 		vi.clearAllMocks();
 		mockIsAiGatewayEnabled.value = false;
+		mockIsAiGatewayCloudUbbEnabled.value = false;
 		mockGetGatewayConfig.mockResolvedValue({ nodes: [], credentialTypes: [], providerConfig: {} });
 	});
 
@@ -58,6 +63,19 @@ describe('useAiGateway', () => {
 			mockIsAiGatewayEnabled.value = true;
 			mockGetGatewayWallet.mockResolvedValue({ balance: 7, budget: 10 });
 
+			const { fetchWallet, balance, budget } = useAiGateway();
+
+			await fetchWallet();
+
+			expect(mockGetGatewayWallet).toHaveBeenCalledOnce();
+			expect(balance.value).toBe(7);
+			expect(budget.value).toBe(10);
+		});
+
+		it('should fetch a wallet for Cloud UBB', async () => {
+			mockIsAiGatewayEnabled.value = true;
+			mockIsAiGatewayCloudUbbEnabled.value = true;
+			mockGetGatewayWallet.mockResolvedValue({ balance: 7, budget: 10 });
 			const { fetchWallet, balance, budget } = useAiGateway();
 
 			await fetchWallet();
