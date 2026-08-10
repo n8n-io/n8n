@@ -107,6 +107,8 @@ async function foreignKeyNames(
 
 describe('CreateWorkflowReviewActivityTablesAndBaseline Migration', () => {
 	let dataSource: DataSource;
+	/** Seeded before the migration runs, so the column add has existing data to preserve. */
+	let preExistingLinkRowId: string;
 
 	beforeAll(async () => {
 		const dbConnection = Container.get(DbConnection);
@@ -121,6 +123,13 @@ describe('CreateWorkflowReviewActivityTablesAndBaseline Migration', () => {
 		}
 
 		await initDbUpToMigration(MIGRATION_NAME);
+
+		const seedContext = createTestMigrationContext(dataSource);
+		try {
+			preExistingLinkRowId = await seedLinkedWorkflowRow(seedContext);
+		} finally {
+			await seedContext.queryRunner.release();
+		}
 	});
 
 	afterAll(async () => {
@@ -213,6 +222,23 @@ describe('CreateWorkflowReviewActivityTablesAndBaseline Migration', () => {
 			`SELECT MAX("id") AS "maxId" FROM ${context.escape.tableName(ACTIVITY_TABLE)}`,
 		);
 		return maxId ?? 0;
+	}
+
+	/**
+	 * A `workflow_review_request_workflow` row in its pre-migration shape. Adding a column to that
+	 * table recreates it on SQLite, so this is the data the recreate has to carry across.
+	 */
+	async function seedLinkedWorkflowRow(context: TestMigrationContext): Promise<string> {
+		const rowId = generateNanoId();
+		const requestId = await seedRequest(context);
+		const workflowId = await seedWorkflow(context);
+		await context.runQuery(
+			`INSERT INTO ${context.escape.tableName(REQUEST_WORKFLOW_TABLE)}
+			 ("id", "workflowReviewRequestId", "workflowId", "workflowVersionId")
+			 VALUES (:id, :requestId, :workflowId, :versionId)`,
+			{ id: rowId, requestId, workflowId, versionId: null },
+		);
+		return rowId;
 	}
 
 	async function seedWorkflow(context: TestMigrationContext): Promise<string> {
@@ -433,6 +459,19 @@ describe('CreateWorkflowReviewActivityTablesAndBaseline Migration', () => {
 				);
 				expect(activityRows).toEqual([{ createdById: null }]);
 				expect(commentRows).toEqual([{ createdById: null }]);
+			} finally {
+				await context.queryRunner.release();
+			}
+		});
+
+		it('keeps rows that already existed in the table it adds the column to', async () => {
+			const context = createTestMigrationContext(dataSource);
+			try {
+				const rows = await context.runQuery<Array<{ baselineVersionId: string | null }>>(
+					`SELECT "baselineVersionId" FROM ${context.escape.tableName(REQUEST_WORKFLOW_TABLE)} WHERE "id" = :id`,
+					{ id: preExistingLinkRowId },
+				);
+				expect(rows).toEqual([{ baselineVersionId: null }]);
 			} finally {
 				await context.queryRunner.release();
 			}
