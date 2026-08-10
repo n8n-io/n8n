@@ -37,6 +37,7 @@ import {
 	description as videoT2VDescription,
 	execute as videoT2VExecute,
 } from '../actions/video/generate.t2v.operation';
+import { prepareVideoOutput } from '../actions/video/helpers';
 import { versionDescription } from '../actions/versionDescription';
 import { apiRequest, generateVideo } from '../transport';
 
@@ -71,6 +72,57 @@ describe('MiniMax Operations', () => {
 			version: [1, 1.1],
 			defaultVersion: 1.1,
 		});
+	});
+
+	it('should preserve downloaded V1 video output', async () => {
+		const executeFunctions = mockDeep<IExecuteFunctions>();
+		const videoBuffer = Buffer.from('fake-video-data');
+		const binaryData: IBinaryData = {
+			mimeType: 'video/mp4',
+			fileType: 'video',
+			fileExtension: 'mp4',
+			data: '',
+			fileName: 'video.mp4',
+		};
+		executeFunctions.helpers.httpRequest.mockResolvedValue({
+			body: videoBuffer,
+			headers: { 'content-type': 'video/mp4' },
+		});
+		executeFunctions.helpers.prepareBinaryData.mockResolvedValue(binaryData);
+
+		const result = await prepareVideoOutput(
+			executeFunctions,
+			0,
+			{
+				videoUrl: 'https://cdn.minimax.io/video.mp4',
+				taskId: 'task-v1',
+				fileId: 'file-v1',
+			},
+			true,
+		);
+
+		expect(executeFunctions.helpers.httpRequest).toHaveBeenCalledWith({
+			method: 'GET',
+			url: 'https://cdn.minimax.io/video.mp4',
+			encoding: 'arraybuffer',
+			returnFullResponse: true,
+		});
+		expect(executeFunctions.helpers.prepareBinaryData).toHaveBeenCalledWith(
+			videoBuffer,
+			'video.mp4',
+			'video/mp4',
+		);
+		expect(result).toEqual([
+			{
+				binary: { data: binaryData },
+				json: {
+					videoUrl: 'https://cdn.minimax.io/video.mp4',
+					taskId: 'task-v1',
+					fileId: 'file-v1',
+				},
+				pairedItem: { item: 0 },
+			},
+		]);
 	});
 
 	describe('Text: message', () => {

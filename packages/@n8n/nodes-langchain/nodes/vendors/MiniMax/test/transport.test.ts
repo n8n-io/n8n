@@ -201,6 +201,15 @@ describe('MiniMax Transport', () => {
 			);
 		});
 
+		it('should stop polling when execution is cancelled', async () => {
+			const abortController = new AbortController();
+			abortController.abort();
+			mockExecuteFunctions.getExecutionCancelSignal.mockReturnValue(abortController.signal);
+
+			await expect(pollVideoTaskV2.call(mockExecuteFunctions, 'task-h3', 0)).rejects.toThrow();
+			expect(mockExecuteFunctions.helpers.httpRequestWithAuthentication).not.toHaveBeenCalled();
+		});
+
 		it('should throw timeout error when max poll attempts are exceeded', async () => {
 			mockExecuteFunctions.helpers.httpRequestWithAuthentication.mockResolvedValue({
 				task: { status: 'running' },

@@ -98,7 +98,11 @@ export async function pollVideoTaskV2(
 	taskId: string,
 	pollIntervalMs: number = DEFAULT_POLL_INTERVAL_MS,
 ): Promise<{ videoUrl: string; status: string }> {
+	const abortSignal = this.getExecutionCancelSignal();
+
 	for (let attempt = 0; attempt < MAX_POLL_ATTEMPTS; attempt++) {
+		abortSignal?.throwIfAborted();
+
 		const response = (await apiRequest.call(
 			this,
 			'GET',
@@ -125,7 +129,7 @@ export async function pollVideoTaskV2(
 			return { videoUrl, status };
 		}
 
-		await sleep(pollIntervalMs);
+		await sleep(pollIntervalMs, abortSignal);
 	}
 
 	throw new NodeOperationError(
