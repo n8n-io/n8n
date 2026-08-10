@@ -14,6 +14,15 @@ import { N8N_VERSION } from '../constants';
 import { License } from '../license';
 import { callAiServiceWithRetry } from '../utils/ai-service-retry';
 
+/**
+ * Version of the AI-assistant SDK this instance ships, reported in `x-sdk-version`. Read from the
+ * installed package rather than hardcoded so it can't drift from the catalog pin.
+ */
+/* eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, import-x/extensions --
+   The package's own version is only available from its package.json, and it has no `exports` map
+   restricting that. Goes away with the direct fetch once the SDK method can be called. */
+const AI_ASSISTANT_SDK_VERSION: string = require('@n8n_io/ai-assistant-sdk/package.json').version;
+
 @Service()
 export class AiService {
 	private client: AiAssistantClient | undefined;
@@ -106,6 +115,10 @@ export class AiService {
 	 * Posted directly rather than through the SDK because the pinned SDK version predates
 	 * `lockInstanceAiQuota`; swap the body for that call once the catalog is bumped. Everything else
 	 * — retries, the caller, the response shape — stays as it is.
+	 *
+	 * The header set has to match the SDK's exactly: the service validates it with a DTO that marks
+	 * user, consumer, sdk and n8n versions all `@IsDefined()`, so omitting any of them fails
+	 * validation with a 400 before the body is looked at.
 	 */
 	async lockInstanceAiQuota(
 		user: IUser,
@@ -119,8 +132,10 @@ export class AiService {
 			headers: {
 				'Content-Type': 'application/json',
 				'x-user-id': user.id,
-				'x-instance-id': this.instanceSettings.instanceId,
+				'x-consumer-id': this.licenseService.getConsumerId(),
+				'x-sdk-version': AI_ASSISTANT_SDK_VERSION,
 				'x-n8n-version': N8N_VERSION,
+				'x-instance-id': this.instanceSettings.instanceId,
 			},
 			body: JSON.stringify({
 				licenseCert,
@@ -129,8 +144,11 @@ export class AiService {
 		});
 
 		if (!response.ok) {
+			// Include the body: the status alone can't distinguish a rejected header from a rejected
+			// licence, and this call is best-effort so the response is otherwise never seen.
+			const detail = await response.text().catch(() => '');
 			throw new OperationalError(
-				`Failed to lock Instance AI quota: ${response.status} ${response.statusText}`,
+				`Failed to lock Instance AI quota: ${response.status} ${response.statusText} ${detail}`.trim(),
 			);
 		}
 
