@@ -4,12 +4,11 @@
  * per invocation.
  *
  * This is the interactive contract: the delegate session includes the
- * builder's full standard toolset, so it may suspend on `ask_questions`,
- * `ask_credential`, `ask_embedding_credential`, or `configure_channel`. When
- * it does, this tool cascades the suspension through its own `ctx.suspend()`
- * — using payloads derived from the shared interaction contract in
- * `@n8n/api-types` — so the question renders as a card in the calling
- * assistant's chat and the orchestrator's own checkpoint survives a process
+ * builder's full standard toolset, so it may suspend for builder interactions
+ * or for a target-agent tool approval. This tool cascades the suspension
+ * through its own `ctx.suspend()` using the interaction contracts in
+ * `@n8n/api-types` and the SDK approval contract in `@n8n/agents`, so it renders
+ * as a card in the calling assistant's chat and the orchestrator checkpoint survives a process
  * restart. On resume, the target agent and the builder's open suspension are
  * both re-derived from persistence (no in-memory state carried across the
  * suspend boundary) and checked for identity against the `builderCheckpoint`
@@ -23,7 +22,7 @@
  * builder UI — it is a private sub-agent conversation.
  */
 import type { InterruptibleToolContext } from '@n8n/agents';
-import { createAbortError, Tool } from '@n8n/agents';
+import { APPROVAL_SUSPEND_SCHEMA, createAbortError, Tool } from '@n8n/agents';
 import {
 	BUILDER_CHECKPOINT_UNAVAILABLE_CODE,
 	BUILDER_NOT_CONFIGURED_CODE,
@@ -149,9 +148,9 @@ const buildAgentInputSchema = z.object({
 		.string()
 		.min(1)
 		.describe(
-			'The instruction or user message to forward to the agent builder. The builder cannot ' +
-				'see this chat — include every requirement, decision, and user answer already ' +
-				'gathered in this conversation, not just the latest message.',
+			'A faithful handoff to the agent builder, which cannot see this chat. Include the ' +
+				'user’s explicit requirements, decisions, and relevant prior answers, but never infer ' +
+				'or prescribe implementation details the user did not request.',
 		),
 	agentRef: z
 		.string()
@@ -247,12 +246,17 @@ const builderSuspendPayloadSchema = z.union([
 	questionsSuspendPayloadSchema,
 	credentialSuspendPayloadSchema,
 	channelSuspendPayloadSchema,
+	APPROVAL_SUSPEND_SCHEMA,
 ]);
 
 const buildAgentSuspendSchema = z.union([
 	questionsSuspendPayloadSchema.extend({ builderCheckpoint: builderCheckpointRefSchema }),
 	credentialSuspendPayloadSchema.extend({ builderCheckpoint: builderCheckpointRefSchema }),
 	channelSuspendPayloadSchema.extend({ builderCheckpoint: builderCheckpointRefSchema }),
+	APPROVAL_SUSPEND_SCHEMA.extend({
+		requestId: z.string(),
+		builderCheckpoint: builderCheckpointRefSchema,
+	}),
 ]);
 
 /**
@@ -927,32 +931,20 @@ export function createBuildAgentTool(context: OrchestrationContext) {
 		.description(
 			'Builds and edits n8n **Agent** artifacts (instructions, model, tools, skills, tasks, ' +
 				'integrations, sub-agents) and delegates draft agent test runs to the agents-module ' +
-				'builder. When the user asks to test or run an agent, call this tool and forward that ' +
-				'intent in `message`. The builder owns the internal `call_agent` tool, so it will not ' +
-				'appear in your toolset or tool search; never conclude agent testing is unavailable ' +
-				'because you cannot see it. This tool is only for Agent artifacts. When the request ' +
-				'is workflow-anchored (via the intent gate / ' +
+				'builder. Load `agent-builder` via `load_skill` before calling this tool and follow it ' +
+				'for prerequisite creation, faithful handoff, targeting, interactive questions, ' +
+				'testing, and publishing. In `message`, forward only the user’s explicit requirements ' +
+				'and relevant prior decisions; never infer, invent, expand, recommend, or prescribe ' +
+				'implementation details. Do not translate a named outcome or service into an ' +
+				'implementation choice — for example, do not turn “a Slack agent” into a Slack node ' +
+				'tool. This tool is only for Agent artifacts. When the request is workflow-anchored ' +
+				'(via the intent gate / ' +
 				'`intent-recognition`), stay on the `workflow-builder` path and do not call this tool ' +
 				'at all — not to inspect nodes, not to list workflows, and not to compile custom ' +
 				'tools. If a workflow build seems to need a utility tool the workspace does not ' +
 				'provide, ask the user or use a placeholder; do not route around that by calling ' +
-				'`build-agent`. ' +
-				'Address agents in this conversation with `agentRef` (a short stable key you choose, ' +
-				'like a workflow `filePath`). Pass `name` with a fresh key to create the first agent; ' +
-				'repeat the same key to continue. Calls with neither key nor `agentId` keep editing ' +
-				'the current agent, and so does a fresh key once an agent is bound — naming an agent ' +
-				'never silently creates a second one. To build ANOTHER agent in the same ' +
-				'conversation, pass `createNew: true` with a different `agentRef` and `name`. To edit ' +
-				'an agent that was not built here, pass `agentId` (optionally with `agentRef`) once ' +
-				'to adopt it. The builder can also publish or unpublish the target ' +
-				'agent when the user asks to publish, activate, make it live/usable, or unpublish — ' +
-				'forward that intent in `message`; never tell the user to open the agent editor and ' +
-				'click Publish. When the builder needs user input (a choice, a ' +
-				'credential, or a chat channel), it surfaces automatically as an interactive card in ' +
-				'this chat — do not relay those questions yourself; this tool call resumes with the ' +
-				'user’s answer and returns the builder’s reply. Returns the builder’s reply, the ' +
-				'target `agentRef`/`agentId`, and whether it updated the agent config. Prefer the ' +
-				'returned `agentRef` on later calls for that agent.',
+				'`build-agent`. Returns the builder’s reply, the target `agentRef`/`agentId`, and ' +
+				'whether it updated the Agent config.',
 		)
 		.input(buildAgentInputSchema)
 		.output(buildAgentOutputSchema)

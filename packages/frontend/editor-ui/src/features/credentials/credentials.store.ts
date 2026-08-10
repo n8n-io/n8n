@@ -478,6 +478,16 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		}
 	};
 
+	/** Run a caller-chosen name through the server's numbering dedup ("X" → "X 2" on clash). */
+	const getDedupedCredentialName = async (name: string): Promise<string> => {
+		try {
+			const res = await credentialsApi.getCredentialsNewName(rootStore.restApiContext, name);
+			return res.name;
+		} catch (e) {
+			return name;
+		}
+	};
+
 	const setCredentialSharedWith = async (payload: {
 		sharedWithProjects: ProjectSharingData[];
 		credentialId: string;
@@ -554,6 +564,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		oAuth1Authorize,
 		oAuth2Authorize,
 		getNewCredentialName,
+		getDedupedCredentialName,
 		testCredential,
 		getCredentialTranslation,
 		setCredentialSharedWith,

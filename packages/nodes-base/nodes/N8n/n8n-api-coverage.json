@@ -5,6 +5,9 @@
 			"status": "covered",
 			"nodeOperation": "audit:generate"
 		},
+		"POST /roles": {
+			"status": "gap"
+		},
 		"GET /settings/security-policy": {
 			"status": "gap"
 		},
