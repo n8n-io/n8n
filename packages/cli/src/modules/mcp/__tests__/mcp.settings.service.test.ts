@@ -98,6 +98,18 @@ describe('McpSettingsService', () => {
 	});
 
 	describe('getAutoExposeNewWorkflows', () => {
+		beforeEach(() => {
+			vi.spyOn(service, 'getEnabled').mockResolvedValue(true);
+		});
+
+		test('returns false when MCP access is disabled, without reading the setting', async () => {
+			vi.spyOn(service, 'getEnabled').mockResolvedValue(false);
+
+			await expect(service.getAutoExposeNewWorkflows()).resolves.toBe(false);
+			expect(cacheService.get).not.toHaveBeenCalledWith('mcp.autoExposeNewWorkflows');
+			expect(findByKey).not.toHaveBeenCalled();
+		});
+
 		test('returns false by default when no setting exists', async () => {
 			cacheService.get.mockResolvedValue(undefined);
 			findByKey.mockResolvedValue(null);

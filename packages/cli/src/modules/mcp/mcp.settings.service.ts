@@ -107,6 +107,10 @@ export class McpSettingsService {
 	}
 
 	async getAutoExposeNewWorkflows(): Promise<boolean> {
+		// Auto-expose only takes effect while MCP access is on; a stale "true"
+		// left over from before access was disabled must not expose workflows.
+		if (!(await this.getEnabled())) return false;
+
 		const cached = await this.cacheService.get<string>(AUTO_EXPOSE_NEW_WORKFLOWS_KEY);
 
 		if (cached !== undefined) {
