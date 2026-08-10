@@ -17,6 +17,7 @@ import type { McpClientConnectedPeriod, McpClientTypeFilter } from '@n8n/api-typ
 import { getMcpClientType, MCP_CLIENT_TYPE_FILTER_BUCKETS } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
+import { INSTANCE_MCP_RESOURCE_ID } from '@n8n/constants';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
@@ -28,7 +29,6 @@ import { ProtectedResourceRegistry } from '@/services/protected-resource.registr
 import { UrlService } from '@/services/url.service';
 import { UserManagementMailer } from '@/user-management/email';
 
-import { INSTANCE_MCP_RESOURCE_ID } from './constants';
 import { OAuthClient } from './database/entities/oauth-client.entity';
 import { OAuthClientRepository } from './database/repositories/oauth-client.repository';
 import { UserConsentRepository } from './database/repositories/oauth-user-consent.repository';
