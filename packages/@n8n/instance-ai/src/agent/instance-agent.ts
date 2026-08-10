@@ -33,7 +33,9 @@ function resolveModalSessionModelId(
 	context: InstanceAiContext,
 	orchestrationThreadId: string | undefined,
 ): ModelConfig {
-	const threadId = context.threadId?.trim() || orchestrationThreadId?.trim();
+	const threadId = [context.threadId, orchestrationThreadId]
+		.map((value) => value?.trim())
+		.find((value): value is string => value !== undefined && value.length > 0);
 	if (!threadId) return modelId;
 
 	const stickyModelId = withModalSession(modelId, threadId);

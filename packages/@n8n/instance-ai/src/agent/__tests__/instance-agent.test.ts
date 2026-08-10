@@ -809,6 +809,8 @@ describe('createInstanceAgent', () => {
 	});
 
 	it('sticks Modal endpoint requests to the conversation thread via Modal-Session-ID', async () => {
+		// Sub-agents (build-agent, eval-setup, etc.) reuse context.modelId / orchestration
+		// context.modelId, so mutating the sticky header here covers those paths too.
 		const modalModel = {
 			id: 'custom/moonshotai/Kimi-K3' as const,
 			url: 'https://n8ngmbh--ep-kimi-k3-server.us-west.modal.direct/v1',

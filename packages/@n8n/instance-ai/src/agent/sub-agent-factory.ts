@@ -12,7 +12,6 @@ import type {
 	InstanceAiTraceRun,
 	ModelConfig,
 } from '../types';
-import { withModalSession } from '../utils/modal-session';
 
 export interface SubAgentOptions {
 	/** Unique ID for this sub-agent instance (e.g., "agent-V1StGX") */
@@ -25,7 +24,6 @@ export interface SubAgentOptions {
 	tools: InstanceAiToolRegistry;
 	/** Model config (same as orchestrator) */
 	modelId: ModelConfig;
-	threadId?: string;
 	/** Native checkpoint store for HITL/suspend state. */
 	checkpointStore?: CheckpointStore;
 	/** Optional trace run to annotate with the sub-agent's static config */
@@ -75,10 +73,7 @@ ${instructions}`;
 }
 
 export function createSubAgent(options: SubAgentOptions): Agent {
-	const { role, instructions, tools, traceRun, timeZone } = options;
-	const modelId = options.threadId
-		? withModalSession(options.modelId, options.threadId)
-		: options.modelId;
+	const { role, instructions, tools, modelId, traceRun, timeZone } = options;
 
 	const systemPrompt = buildSubAgentPrompt(role, instructions, timeZone);
 
