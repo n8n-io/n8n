@@ -19,9 +19,23 @@ const FALLBACK_MACHINE = 'standardLinux32gb'; // 4-core/16GB, until org policy a
 const gh = (...args) => execFileSync('gh', args, { encoding: 'utf8' }).trim();
 const ghTty = (...args) => spawnSync('gh', args, { stdio: 'inherit' });
 
-function findCodespace() {
-	const list = JSON.parse(gh('codespace', 'list', '-R', REPO, '--json', 'name,state'));
-	return list[0];
+function findCodespace(retry = false) {
+	try {
+		const list = JSON.parse(gh('codespace', 'list', '-R', REPO, '--json', 'name,state'));
+		return list[0];
+	} catch (ex) {
+		if (ex.message.includes('This API operation needs the "codespace" scope') && !retry) {
+			requestCodespaceScope();
+			return findCodespace(true);
+		} else {
+			throw new Error(ex.message);
+		}
+	}
+}
+
+function requestCodespaceScope() {
+	console.log("Requesting codespace scope");
+	ghTty("auth", "refresh", "-h", "github.com", "-s", "codespace")
 }
 
 function ensureCodespace() {
