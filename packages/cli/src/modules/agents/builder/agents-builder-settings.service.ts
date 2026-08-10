@@ -42,8 +42,8 @@ function readEnvAnthropicKey(): string | null {
 
 /**
  * Dev/CI backstop: reuse the Instance AI orchestrator model env so local setups
- * that already point Instance AI at Baseten/GLM (etc.) also configure the
- * agent-builder settings path without a separate credential.
+ * that already point Instance AI at a custom OpenAI-compatible endpoint also
+ * configure the agent-builder settings path without a separate credential.
  */
 function readEnvInstanceAiModelConfig(): ModelConfig | null {
 	const model = process.env.N8N_INSTANCE_AI_MODEL?.trim();

@@ -1,4 +1,4 @@
-import type { Agent, ModelConfig, OpenAIReasoningEffort } from '@n8n/agents';
+import type { Agent, ModelConfig } from '@n8n/agents';
 import { PROVIDER_CAPABILITIES } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 
@@ -59,12 +59,7 @@ function resolveBareModelName(modelId: ModelConfig): string | undefined {
 function isKimiK3Model(modelId: ModelConfig): boolean {
 	const id = resolveModelIdString(modelId)?.toLowerCase() ?? '';
 	const bare = resolveBareModelName(modelId)?.toLowerCase() ?? '';
-	return (
-		id.includes('kimi-k3') ||
-		bare.includes('kimi-k3') ||
-		id.includes('kimik3') ||
-		bare.includes('kimik3')
-	);
+	return id.includes('kimi-k3') || bare.includes('kimi-k3');
 }
 
 /** Grok 4.5 via xAI (`xai/grok-4.5`) or OpenRouter (`openrouter/x-ai/grok-4.5`). */
@@ -79,38 +74,13 @@ function isGpt56Model(modelId: ModelConfig): boolean {
 	return id.includes('gpt-5.6');
 }
 
-/** GLM 5.2 via custom OpenAI-compatible endpoints (`custom/zai-org/GLM-5.2`, `custom/morph-glm52-744b`). */
-function isGlm52Model(modelId: ModelConfig): boolean {
-	const id = resolveModelIdString(modelId)?.toLowerCase() ?? '';
-	const bare = resolveBareModelName(modelId)?.toLowerCase() ?? '';
-	return (
-		id.includes('glm-5.2') ||
-		bare.includes('glm-5.2') ||
-		id.includes('glm52') ||
-		bare.includes('glm52')
-	);
-}
-
-/** Morph model slugs (`custom/morph-kimik3`, `custom/morph-glm52-744b`). */
-function isMorphModel(modelId: ModelConfig): boolean {
-	const bare = resolveBareModelName(modelId)?.toLowerCase() ?? '';
-	return bare.startsWith('morph-') || bare.includes('/morph-');
-}
-
-/** Effort pin for `custom/*` OpenAI-compatible experiment endpoints. */
-function resolveCustomEffort(modelId: ModelConfig): OpenAIReasoningEffort {
-	if (isGlm52Model(modelId)) return 'none';
-	if (isMorphModel(modelId)) return 'medium';
-	return 'low';
-}
-
 export function applyAgentThinking(agent: Agent, modelId: ModelConfig): void {
 	const provider = resolveModelProvider(modelId);
 
 	if (!provider || !PROVIDER_CAPABILITIES[provider]?.thinking) return;
 
 	if (provider === 'custom') {
-		agent.thinking('custom', { reasoningEffort: resolveCustomEffort(modelId) });
+		agent.thinking('custom', { reasoningEffort: 'low' });
 		return;
 	}
 

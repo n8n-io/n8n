@@ -206,17 +206,6 @@ describe('thinkingToProviderOptions', () => {
 			custom: { reasoningEffort: 'medium' },
 		});
 	});
-
-	it('custom: Morph slugs use nested reasoning.effort', () => {
-		expect(
-			getProviderQuirks('custom').thinkingToProviderOptions?.(
-				{ reasoningEffort: 'medium' },
-				'custom/morph-kimik3',
-			),
-		).toEqual({
-			custom: { reasoning: { effort: 'medium' } },
-		});
-	});
 });
 
 describe('buildCallProviderOptionDefaults', () => {
@@ -228,20 +217,9 @@ describe('buildCallProviderOptionDefaults', () => {
 
 describe('resolveDefaultMaxOutputTokens', () => {
 	it.each([
-		'custom/zai-org/GLM-5.2',
-		'custom/zai-org/GLM-5.2-Fast',
-		'openai/zai-org/GLM-5.2',
-		'custom/morph-glm52-744b',
-	] as const)('raises the output cap for GLM 5.2 models (%s)', (modelId) => {
-		expect(resolveDefaultMaxOutputTokens(modelId)).toBe(HIGH_REASONING_DEFAULT_MAX_OUTPUT_TOKENS);
-	});
-
-	it.each([
 		'custom/accounts/fireworks/models/kimi-k3',
 		'openrouter/moonshotai/kimi-k3',
 		'custom/Kimi-K3',
-		'custom/morph-kimik3',
-		'custom/morph-kimik3-fast',
 	] as const)('raises the output cap to the Kimi K3 default for %s', (modelId) => {
 		expect(resolveDefaultMaxOutputTokens(modelId)).toBe(HIGH_REASONING_DEFAULT_MAX_OUTPUT_TOKENS);
 	});

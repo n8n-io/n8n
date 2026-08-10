@@ -70,7 +70,7 @@ on:
         type: string
         default: ''
       model-key:
-        description: 'Which EVALS_* secret to use for custom/* (or anthropic/* + model-url). One of: baseten, fireworks, together, morph, wafer, modal, databricks, azure. Empty = keyless custom, or native openai/openrouter/xai/anthropic prefix routing.'
+        description: 'Which EVALS_* secret to use for custom/* (or anthropic/* + model-url). One of: baseten, fireworks, together, modal, databricks, azure. Empty = keyless custom, or native openai/openrouter/xai/anthropic prefix routing.'
         required: false
         type: string
         default: ''
@@ -123,7 +123,7 @@ on:
         required: false
         default: ''
       model-key:
-        description: 'EVALS_* secret alias for custom/*: baseten | fireworks | together | morph | wafer | modal | databricks | azure. Empty = keyless custom or native provider prefix.'
+        description: 'EVALS_* secret alias for custom/*: baseten | fireworks | together | modal | databricks | azure. Empty = keyless custom or native provider prefix.'
         required: false
         default: ''
       lanes:
@@ -219,8 +219,6 @@ jobs:
           EVALS_XAI_KEY: ${{ secrets.EVALS_XAI_KEY }}
           EVALS_BASETEN_KEY: ${{ secrets.EVALS_BASETEN_KEY }}
           EVALS_FIREWORKS_KEY: ${{ secrets.EVALS_FIREWORKS_KEY }}
-          EVALS_WAFER_KEY: ${{ secrets.EVALS_WAFER_KEY }}
-          EVALS_MORPH_KEY: ${{ secrets.EVALS_MORPH_KEY }}
           EVALS_TOGETHER_KEY: ${{ secrets.EVALS_TOGETHER_KEY }}
           EVALS_DATABRICKS_KEY: ${{ secrets.EVALS_DATABRICKS_KEY }}
           EVALS_MODAL_KEY: ${{ secrets.EVALS_MODAL_KEY }}
@@ -302,14 +300,12 @@ jobs:
               baseten) require_secret EVALS_BASETEN_KEY "$EVALS_BASETEN_KEY"; MODEL_API_KEY="$EVALS_BASETEN_KEY" ;;
               fireworks) require_secret EVALS_FIREWORKS_KEY "$EVALS_FIREWORKS_KEY"; MODEL_API_KEY="$EVALS_FIREWORKS_KEY" ;;
               together) require_secret EVALS_TOGETHER_KEY "$EVALS_TOGETHER_KEY"; MODEL_API_KEY="$EVALS_TOGETHER_KEY" ;;
-              morph) require_secret EVALS_MORPH_KEY "$EVALS_MORPH_KEY"; MODEL_API_KEY="$EVALS_MORPH_KEY" ;;
-              wafer) require_secret EVALS_WAFER_KEY "$EVALS_WAFER_KEY"; MODEL_API_KEY="$EVALS_WAFER_KEY" ;;
               modal) require_secret EVALS_MODAL_KEY "$EVALS_MODAL_KEY"; MODEL_API_KEY="$EVALS_MODAL_KEY" ;;
               databricks) require_secret EVALS_DATABRICKS_KEY "$EVALS_DATABRICKS_KEY"; MODEL_API_KEY="$EVALS_DATABRICKS_KEY" ;;
               azure) require_secret EVALS_AZURE_FOUNDRY_KEY "$EVALS_AZURE_FOUNDRY_KEY"; MODEL_API_KEY="$EVALS_AZURE_FOUNDRY_KEY" ;;
               '') ;;
               *)
-                echo "::error::unknown model-key '${INSTANCE_AI_MODEL_KEY}' (expected baseten|fireworks|together|morph|wafer|modal|databricks|azure)"
+                echo "::error::unknown model-key '${INSTANCE_AI_MODEL_KEY}' (expected baseten|fireworks|together|modal|databricks|azure)"
                 exit 1
                 ;;
             esac
@@ -565,8 +561,6 @@ jobs:
           EVALS_XAI_KEY: ${{ secrets.EVALS_XAI_KEY }}
           EVALS_BASETEN_KEY: ${{ secrets.EVALS_BASETEN_KEY }}
           EVALS_FIREWORKS_KEY: ${{ secrets.EVALS_FIREWORKS_KEY }}
-          EVALS_WAFER_KEY: ${{ secrets.EVALS_WAFER_KEY }}
-          EVALS_MORPH_KEY: ${{ secrets.EVALS_MORPH_KEY }}
           EVALS_TOGETHER_KEY: ${{ secrets.EVALS_TOGETHER_KEY }}
           EVALS_DATABRICKS_KEY: ${{ secrets.EVALS_DATABRICKS_KEY }}
           EVALS_MODAL_KEY: ${{ secrets.EVALS_MODAL_KEY }}
@@ -583,8 +577,7 @@ jobs:
           # a time, otherwise only the first line is registered.
           for v in "$EVALS_ANTHROPIC_KEY" "$EVALS_OPENAI_KEY" "$EVALS_OPENROUTER_KEY" \
                    "$EVALS_XAI_KEY" "$EVALS_BASETEN_KEY" "$EVALS_FIREWORKS_KEY" \
-                   "$EVALS_WAFER_KEY" "$EVALS_MORPH_KEY" "$EVALS_TOGETHER_KEY" \
-                   "$EVALS_DATABRICKS_KEY" "$EVALS_MODAL_KEY" \
+                   "$EVALS_TOGETHER_KEY" "$EVALS_DATABRICKS_KEY" "$EVALS_MODAL_KEY" \
                    "$EVALS_AZURE_FOUNDRY_KEY" "$DAYTONA_API_KEY" \
                    "$N8N_LICENSE_ACTIVATION_KEY" "$N8N_LICENSE_CERT" "$N8N_ENCRYPTION_KEY" \
                    "$EVALS_LANGSMITH_API_KEY"; do

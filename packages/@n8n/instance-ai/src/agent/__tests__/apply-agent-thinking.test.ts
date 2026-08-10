@@ -71,29 +71,6 @@ describe('applyAgentThinking', () => {
 		});
 	});
 
-	it.each([
-		'custom/zai-org/GLM-5.2',
-		'custom/zai-org/GLM-5.2-Fast',
-		'custom/morph-glm52-744b',
-	] as const)('enables none reasoning effort for custom GLM %s', (modelId) => {
-		const agent = new Agent('test');
-		applyAgentThinking(agent, modelId);
-		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('custom', {
-			reasoningEffort: 'none',
-		});
-	});
-
-	it.each(['custom/morph-kimik3', 'custom/morph-kimik3-fast'] as const)(
-		'enables medium reasoning effort for Morph %s',
-		(modelId) => {
-			const agent = new Agent('test');
-			applyAgentThinking(agent, modelId);
-			expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('custom', {
-				reasoningEffort: 'medium',
-			});
-		},
-	);
-
 	it('enables low reasoning effort for custom OpenAI-compatible endpoints', () => {
 		const agent = new Agent('test');
 		applyAgentThinking(agent, 'custom/Kimi-K3');

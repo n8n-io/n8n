@@ -301,14 +301,6 @@ Not yet covered: an automatic "unexpected artifact" fail (a build producing an a
 | `EVAL_MODAL_LLM_HEADERS` | No | Eval-only override for Modal proxy auth headers; takes precedence over `N8N_INSTANCE_AI_MODEL_HEADERS` |
 | `OPENAI_API_KEY` | No | Provider-specific key used automatically when `N8N_INSTANCE_AI_MODEL` starts with `openai/` |
 | `ANTHROPIC_API_KEY` | No | Provider-specific key used automatically when `N8N_INSTANCE_AI_MODEL` starts with `anthropic/` |
-| `BASETEN_API_KEY` | No | Provider-specific key used automatically when `N8N_INSTANCE_AI_MODEL` starts with `baseten/` |
-| `FIREWORKS_API_KEY` | No | Provider-specific key used automatically when `N8N_INSTANCE_AI_MODEL` starts with `fireworks/` |
-| `WAFER_API_KEY` | No | Provider-specific key used automatically when `N8N_INSTANCE_AI_MODEL` starts with `wafer/` |
-| `MORPH_API_KEY` | No | Provider-specific key used automatically when `N8N_INSTANCE_AI_MODEL` starts with `morph/` |
-| `TOGETHER_API_KEY` | No | Provider-specific key used automatically when `N8N_INSTANCE_AI_MODEL` starts with `togetherai/` |
-| `N8N_INSTANCE_AI_VERTEX_PROJECT` | No | GCP project for `vertex/*` (also `GOOGLE_VERTEX_PROJECT`) |
-| `N8N_INSTANCE_AI_VERTEX_LOCATION` | No | Vertex location for `vertex/*` (default `global`) |
-| `N8N_INSTANCE_AI_VERTEX_CREDENTIALS` | No | Service-account JSON for `vertex/*`; empty uses ADC |
 | `N8N_EVAL_EMAIL` | No | n8n login email (defaults to E2E test owner) |
 | `N8N_EVAL_PASSWORD` | No | n8n login password (defaults to E2E test owner) |
 | `LANGSMITH_API_KEY` | No | Enables experiment tracking + tracing. **See caveat below.** |
@@ -1016,11 +1008,9 @@ For model A/B experiments, dispatch **Instance AI Evals: Experiments** (`test-ev
 | Experiment | `model` | `model-url` | `model-key` → secret |
 |------------|---------|-------------|----------------------|
 | Anthropic / OpenAI / OpenRouter / xAI | `anthropic/…`, `openai/…`, etc. | empty | (prefix → `EVALS_*`) |
-| Baseten GLM | `custom/zai-org/GLM-5.2-Fast` | `https://inference.baseten.co/v1` | `baseten` → `EVALS_BASETEN_KEY` |
+| Baseten | `custom/<model>` | `https://inference.baseten.co/v1` | `baseten` → `EVALS_BASETEN_KEY` |
 | Fireworks | `custom/accounts/fireworks/models/…` | `https://api.fireworks.ai/inference/v1` | `fireworks` → `EVALS_FIREWORKS_KEY` |
 | Together | `custom/moonshotai/Kimi-K3` | `https://api.together.ai/v1` | `together` → `EVALS_TOGETHER_KEY` |
-| Morph | `custom/morph-kimik3` | `https://api.morphllm.com/v1` | `morph` → `EVALS_MORPH_KEY` |
-| Wafer | `custom/Kimi-K3` | `https://pass.wafer.ai/v1` | `wafer` → `EVALS_WAFER_KEY` |
 | Modal | `custom/…` | `https://….modal.direct…/v1` | `modal` → `EVALS_MODAL_KEY` |
 | Databricks | `custom/workspace.default.kimi-k3` | `https://….databricks.com/ai-gateway/mlflow/v1` | `databricks` → `EVALS_DATABRICKS_KEY` |
 | Azure OpenAI | `custom/<deployment>` | `https://….openai.azure.com/openai/v1` | `azure` → `EVALS_AZURE_FOUNDRY_KEY` |
@@ -1029,7 +1019,7 @@ For model A/B experiments, dispatch **Instance AI Evals: Experiments** (`test-ev
 
 `lanes` / `eval-concurrency` default to **10 / 32**. For `model-key=baseten` they auto-throttle to **1 / 2** (~0.5M TPM — fits [Baseten Basic verified](https://docs.baseten.co/inference/model-apis/rate-limits-and-budgets)); override the inputs if you have more headroom.
 
-Verifier/mocks always use `EVALS_ANTHROPIC_KEY`. Custom endpoints default to low reasoning effort; GLM ids pin `none`, Morph slugs pin `medium`.
+Verifier/mocks always use `EVALS_ANTHROPIC_KEY`. Custom endpoints default to low reasoning effort.
 
 ## Architecture
 

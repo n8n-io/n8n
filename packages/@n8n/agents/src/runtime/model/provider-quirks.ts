@@ -152,18 +152,10 @@ export const PROVIDER_QUIRKS: Partial<Record<ProviderId, ProviderQuirks>> = {
 		},
 	},
 	openrouter: nestedReasoningEffortQuirk('openrouter', 'medium'),
-	// OpenAI-compatible custom endpoints. Morph chat wants nested
-	// `reasoning: { effort }` (see https://docs.morphllm.com/sdk/components/fast-models);
-	// everyone else maps to top-level `reasoning_effort`.
 	custom: {
-		thinkingToProviderOptions: (thinking, modelId) => {
+		thinkingToProviderOptions: (thinking) => {
 			const cfg = thinking as OpenAIThinkingConfig;
-			const effort = cfg.reasoningEffort ?? 'medium';
-			const id = modelId.toLowerCase();
-			if (id.includes('morph-')) {
-				return { custom: { reasoning: { effort } } };
-			}
-			return { custom: { reasoningEffort: effort } };
+			return { custom: { reasoningEffort: cfg.reasoningEffort ?? 'medium' } };
 		},
 	},
 };
@@ -187,30 +179,19 @@ export function providerIdFromModelId(modelId: string): string {
 }
 
 /**
- * Default completion-token cap for reasoning-heavy models (GLM 5.2, Kimi K3).
+ * Default completion-token cap for reasoning-heavy models (Kimi K3).
  * Context windows are often 131072 shared input+output; requesting the full
  * window as max_tokens overflows once any prompt tokens are present.
  */
 export const HIGH_REASONING_DEFAULT_MAX_OUTPUT_TOKENS = 65_536;
 
 /** @deprecated Prefer {@link HIGH_REASONING_DEFAULT_MAX_OUTPUT_TOKENS}. */
-export const GLM_52_DEFAULT_MAX_OUTPUT_TOKENS = HIGH_REASONING_DEFAULT_MAX_OUTPUT_TOKENS;
-
-/** @deprecated Prefer {@link HIGH_REASONING_DEFAULT_MAX_OUTPUT_TOKENS}. */
 export const KIMI_K3_DEFAULT_MAX_OUTPUT_TOKENS = HIGH_REASONING_DEFAULT_MAX_OUTPUT_TOKENS;
-
-function isGlm52Model(modelId: string): boolean {
-	const modelName = (
-		modelId.includes('/') ? modelId.split('/').slice(1).join('/') : modelId
-	).toLowerCase();
-	// Baseten/Z.AI: `zai-org/GLM-5.2`; Morph: `morph-glm52-744b`.
-	return modelName.includes('glm-5.2') || modelName.includes('glm52');
-}
 
 function isKimiK3Model(modelId: string): boolean {
 	const id = modelId.toLowerCase();
-	// OpenRouter/Fireworks/Wafer: `kimi-k3`; Morph: `morph-kimik3` / `morph-kimik3-fast`.
-	return id.includes('kimi-k3') || id.includes('kimik3');
+	// OpenRouter/Fireworks/custom: `kimi-k3`.
+	return id.includes('kimi-k3');
 }
 
 /**
@@ -219,7 +200,7 @@ function isKimiK3Model(modelId: string): boolean {
  * before emitting text or tool calls.
  */
 export function resolveDefaultMaxOutputTokens(modelId: string): number | undefined {
-	if (isGlm52Model(modelId) || isKimiK3Model(modelId)) {
+	if (isKimiK3Model(modelId)) {
 		return HIGH_REASONING_DEFAULT_MAX_OUTPUT_TOKENS;
 	}
 	return undefined;
