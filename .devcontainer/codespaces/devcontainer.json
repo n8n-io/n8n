@@ -2,14 +2,20 @@
 	"name": "n8n (Codespaces agent sessions)",
 	"dockerComposeFile": "docker-compose.yml",
 	"service": "n8n",
-	"workspaceFolder": "/workspaces",
+	// Codespaces clones the repo into /workspaces/<repo>, unlike the laptop config
+	"workspaceFolder": "/workspaces/n8n",
 	"hostRequirements": {
 		"cpus": 8,
 		"memory": "32gb",
 		"storage": "64gb"
 	},
 	"features": {
-		"ghcr.io/devcontainers/features/github-cli:1": {}
+		"ghcr.io/devcontainers/features/github-cli:1": {},
+		// gh codespace ssh needs an SSH server inside the container
+		"ghcr.io/devcontainers/features/sshd:1": {},
+		// Docker for testcontainers and `pnpm --filter n8n-containers services`;
+		// needs `privileged: true` on the n8n service (compose-based config)
+		"ghcr.io/devcontainers/features/docker-in-docker:2": {}
 	},
 	"forwardPorts": [8080, 5678],
 	// Runs in prebuilds, so a fresh codespace starts with deps installed and the build warm
@@ -20,6 +26,13 @@
 		},
 		"CLAUDE_CODE_OAUTH_TOKEN": {
 			"description": "Alternative to an API key: token from `claude setup-token` (Max subscription)"
+		},
+		// Both set at the repository level — team members get them automatically
+		"FLAKY_MCP_TOKEN": {
+			"description": "Bearer token for the Flaky (QA assistant) MCP endpoint"
+		},
+		"FLAKY_MCP_URL": {
+			"description": "URL of the Flaky MCP endpoint on the internal n8n instance"
 		}
 	}
 }

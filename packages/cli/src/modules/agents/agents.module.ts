@@ -19,6 +19,7 @@ export class AgentsModule implements ModuleInterface {
 		await import('./agent-publish.controller.js');
 		await import('./agent-chat.controller.js');
 		await import('./agent-integrations.controller.js');
+		await import('./agent-slack-integrations.controller.js');
 		await import('./agent-vector-stores.controller.js');
 		await import('./agent-tasks.controller.js');
 		await import('./agent-sandbox.controller.js');
@@ -72,7 +73,9 @@ export class AgentsModule implements ModuleInterface {
 		// Populate the integration registry with supported chat platforms.
 		// Adding a new platform is adding one subclass + one register() call.
 		const { ChatIntegrationRegistry } = await import('./integrations/agent-chat-integration.js');
-		const { SlackIntegration } = await import('./integrations/platforms/slack-integration.js');
+		const { SlackIntegration } = await import(
+			'./integrations/platforms/slack/slack-integration.js'
+		);
 		const { TelegramIntegration } = await import(
 			'./integrations/platforms/telegram-integration.js'
 		);
