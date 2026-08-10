@@ -11,8 +11,6 @@ import {
 const withCode = (code: string, message = 'socket failure') =>
 	Object.assign(new Error(message), { code });
 
-const withCause = (error: Error, cause: unknown) => Object.assign(error, { cause });
-
 describe('isTransportFailure', () => {
 	it.each([
 		'ECONNABORTED',
@@ -36,10 +34,11 @@ describe('isTransportFailure', () => {
 	});
 
 	it('reads the code off the cause chain, not just the top-level error', () => {
-		const wrapped = withCause(
-			new Error('AI_APICallError'),
-			withCause(new TypeError('fetch failed'), withCode('UND_ERR_SOCKET', 'other side closed')),
-		);
+		const wrapped = new Error('AI_APICallError', {
+			cause: new TypeError('fetch failed', {
+				cause: withCode('UND_ERR_SOCKET', 'other side closed'),
+			}),
+		});
 		expect(isTransportFailure(wrapped)).toBe(true);
 	});
 
@@ -75,7 +74,7 @@ describe('isDnsFailure', () => {
 	});
 
 	it('reads the code off the cause chain', () => {
-		expect(isDnsFailure(withCause(new TypeError('fetch failed'), withCode('ENOTFOUND')))).toBe(
+		expect(isDnsFailure(new TypeError('fetch failed', { cause: withCode('ENOTFOUND') }))).toBe(
 			true,
 		);
 	});
