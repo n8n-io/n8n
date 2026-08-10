@@ -84,10 +84,9 @@ async function onExposeAll(close: () => void) {
 				? mcpStore.toggleAgentsMcpAccess({ allAgents: true }, true)
 				: Promise.resolve(undefined),
 		]);
-		// Only enable auto-expose once exposing all existing workflows has
-		// succeeded, so the setting mirrors what the user just confirmed.
+
 		await mcpStore.setAutoExposeNewWorkflows(true);
-		mcp.trackAutoExposeToggled(true, 'expose_all');
+		mcp.trackAutoExposeToggled({ enabled: true, source: 'expose_all' });
 		closedByAction.value = true;
 		experimentStore.trackConfirmed();
 		toast.showMessage({

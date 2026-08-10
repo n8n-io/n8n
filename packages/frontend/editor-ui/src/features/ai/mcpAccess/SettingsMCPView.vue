@@ -73,7 +73,7 @@ const onToggleAutoExpose = async (value: boolean) => {
 	autoExposeSaving.value = true;
 	try {
 		const updated = await mcpStore.setAutoExposeNewWorkflows(value);
-		mcp.trackAutoExposeToggled(updated, 'settings');
+		mcp.trackAutoExposeToggled({ enabled: updated, source: 'settings' });
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.mcp.autoExpose.error.title'));
 	} finally {

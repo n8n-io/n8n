@@ -672,7 +672,7 @@ describe('SettingsMCPView', () => {
 			await userEvent.click(getByTestId('mcp-auto-expose-toggle').querySelector('input')!);
 
 			expect(mcpStore.setAutoExposeNewWorkflows).toHaveBeenCalledWith(true);
-			expect(trackAutoExposeToggledSpy).toHaveBeenCalledWith(true, 'settings');
+			expect(trackAutoExposeToggledSpy).toHaveBeenCalledWith({ enabled: true, source: 'settings' });
 		});
 
 		it('shows a toast error and does not track when persisting fails', async () => {

@@ -139,7 +139,7 @@ describe('ExposeAllWorkflowsToMcpModal', () => {
 
 		expect(mcpStore.toggleWorkflowsMcpAccess).toHaveBeenCalledWith({ allWorkflows: true }, true);
 		expect(mcpStore.setAutoExposeNewWorkflows).toHaveBeenCalledWith(true);
-		expect(trackAutoExposeToggledSpy).toHaveBeenCalledWith(true, 'expose_all');
+		expect(trackAutoExposeToggledSpy).toHaveBeenCalledWith({ enabled: true, source: 'expose_all' });
 	});
 
 	it('does not enable auto-expose when exposing all workflows fails', async () => {
