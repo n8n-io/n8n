@@ -142,11 +142,11 @@ watch(
 		:style="styles"
 	/><svg
 		v-else-if="fallbackBody"
+		v-svg-content="fallbackBody"
 		xmlns="http://www.w3.org/2000/svg"
 		viewBox="0 0 24 24"
 		:class="[...classes, $style.fallbackIcon]"
 		:height="size.height"
-		v-svg-content="fallbackBody"
 		:width="size.width"
 		fill="none"
 		stroke="currentColor"

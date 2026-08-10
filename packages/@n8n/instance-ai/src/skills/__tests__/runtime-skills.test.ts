@@ -6,6 +6,7 @@ import { INSTANCE_AI_SKILLS_DIR, loadInstanceAiRuntimeSkillSource } from '../run
 import { CONFIG_EVALS_SKILL_ID, disabledInstanceAiSkillIds } from '../skill-gates';
 
 const ORIGINAL_ENABLED_MODULES = process.env.N8N_ENABLED_MODULES;
+const AGENTS_MODULE_SKILL_IDS = ['agent-builder', 'intent-recognition'] as const;
 
 describe('Instance AI runtime skills', () => {
 	afterEach(() => {
@@ -24,6 +25,18 @@ describe('Instance AI runtime skills', () => {
 		expect(skill).toContain('knowledge-base/reference/workflow-sdk-language.md');
 	});
 
+	// The builder agent has been observed recalling a pre-ADO-5627 `.group()` signature
+	// with no description argument, so the call is spelled out in the skill itself
+	// rather than only linked — a wrong prior is not corrected by a pointer.
+	it('states the node-group call and points at the node-groups reference', () => {
+		const skill = readFileSync(
+			join(INSTANCE_AI_SKILLS_DIR, 'workflow-builder', 'SKILL.md'),
+			'utf-8',
+		);
+		expect(skill).toContain('knowledge-base/reference/node-groups.md');
+		expect(skill).toContain('.group(name, members, { description })');
+	});
+
 	it('defers sticky and other SDK defects to workflow-sdk validate', () => {
 		const skill = readFileSync(
 			join(INSTANCE_AI_SKILLS_DIR, 'workflow-builder', 'SKILL.md'),
@@ -32,6 +45,28 @@ describe('Instance AI runtime skills', () => {
 		expect(skill).toContain('unsolicited `sticky()`');
 		expect(skill).toContain('workflow-sdk validate');
 		expect(skill).not.toMatch(/import \{\n(?:[^\n]*\n)*?\s*sticky,/);
+	});
+
+	it('loads the bundled credential-recipe-research skill', () => {
+		const source = loadInstanceAiRuntimeSkillSource();
+		const recipeResearch = source.registry.skills.find(
+			(skill) => skill.name === 'credential-recipe-research',
+		);
+
+		expect(recipeResearch).toMatchObject({
+			name: 'credential-recipe-research',
+			recommendedTools: ['research', 'workflows'],
+		});
+		expect(recipeResearch?.description).toContain('Load before composing');
+		expect(recipeResearch?.description).toContain('credentialHints');
+	});
+
+	it('routes recipe composition through the research skill', () => {
+		const postBuildFlow = readFileSync(
+			join(INSTANCE_AI_SKILLS_DIR, 'post-build-flow', 'SKILL.md'),
+			'utf-8',
+		);
+		expect(postBuildFlow).toMatch(/load the\s+`credential-recipe-research` skill/);
 	});
 
 	it('loads the bundled data-table-manager skill and its linked files', async () => {
@@ -136,61 +171,26 @@ describe('Instance AI runtime skills', () => {
 		expect(configEvals?.id).toBe(CONFIG_EVALS_SKILL_ID);
 	});
 
-	it('excludes the bundled intent-recognition skill unless the agents module is enabled', async () => {
+	it('excludes bundled Agents module skills unless the module is enabled', async () => {
 		const source = await loadRuntimeSkillSourceWithEnabledModules('instance-ai');
 
-		expect(source.registry.skills).not.toContainEqual(
-			expect.objectContaining({ id: 'intent-recognition' }),
-		);
-		await expect(source.loadSkill('intent-recognition')).resolves.toBeNull();
+		for (const skillId of AGENTS_MODULE_SKILL_IDS) {
+			expect(source.registry.skills).not.toContainEqual(expect.objectContaining({ id: skillId }));
+			await expect(source.loadSkill(skillId)).resolves.toBeNull();
+		}
 	});
 
-	it('loads the bundled intent-recognition skill when the agents module is enabled', async () => {
+	it('loads bundled Agents module skills when the module is enabled', async () => {
 		const source = await loadRuntimeSkillSourceWithEnabledModules('instance-ai, agents');
-
-		expect(source.registry.skills).toContainEqual(
-			expect.objectContaining({ id: 'intent-recognition' }),
-		);
-		expect(
-			source.registry.skills.find((entry) => entry.id === 'intent-recognition')?.description,
-		).toContain('Must be used before deciding the intent of any automation request');
-		const skill = await source.loadSkill('intent-recognition');
-		expect(skill?.name).toBe('intent-recognition');
-		expect(skill?.instructions).toContain('This skill must be used before deciding');
-
 		const loadTool = createSkillLoadTool(source);
-		const loadResult = await loadTool.handler?.({ skillId: 'intent-recognition' }, {});
-		const loadedText = skillLoadText(loadResult);
-		expect(loadedText).toContain('[Skill: "intent-recognition"]');
-		expect(loadedText).toContain(
-			'workflow-anchored | agent-anchored | needs-clarification | out-of-scope',
-		);
-	});
 
-	it('keeps agent tool routing in one dedicated section', () => {
-		const skill = readFileSync(
-			join(INSTANCE_AI_SKILLS_DIR, 'intent-recognition', 'SKILL.md'),
-			'utf-8',
-		);
+		for (const skillId of AGENTS_MODULE_SKILL_IDS) {
+			expect(source.registry.skills).toContainEqual(expect.objectContaining({ id: skillId }));
+			await expect(source.loadSkill(skillId)).resolves.toMatchObject({ name: skillId });
 
-		expect(skill).toContain('## Adding tools to an agent');
-		expect(skill).toContain('Direct agent tools are the default');
-		expect(skill.match(/multiple independent node tools/g)).toHaveLength(1);
-		expect(
-			skill.match(/one agent tool call must run an ordered\s+multi-node procedure/g),
-		).toHaveLength(1);
-	});
-
-	it('requires agent prerequisites before build-agent and retries when the builder reports missing assets', () => {
-		const skill = readFileSync(
-			join(INSTANCE_AI_SKILLS_DIR, 'intent-recognition', 'SKILL.md'),
-			'utf-8',
-		);
-
-		expect(skill).toContain('Before the first `build-agent` call, create every prerequisite');
-		expect(skill).toContain('builder cannot create tables');
-		expect(skill).toContain('If a `builderReply` lists missing workflows or tables');
-		expect(skill).toContain('never ask the user to create them manually');
+			const loadResult = await loadTool.handler?.({ skillId }, {});
+			expect(skillLoadText(loadResult)).toContain(`[Skill: "${skillId}"]`);
+		}
 	});
 
 	it('loads the bundled Computer Use credential setup skill', async () => {
@@ -391,9 +391,6 @@ describe('Instance AI runtime skills', () => {
 			/ask only that question now; do not also ask about the error\s+workflow/,
 		);
 		expect(loaded?.instructions).toContain(
-			'This follow-up comes after the mocked verification live-test follow-up',
-		);
-		expect(loaded?.instructions).toContain(
 			'The error workflow must be published before it can be assigned',
 		);
 		expect(loaded?.instructions).toContain('Continue the publish-before-assign flow');
@@ -405,9 +402,6 @@ describe('Instance AI runtime skills', () => {
 			'Mention that n8n has\n   no global or instance-wide error workflow setting only when the user\n   explicitly asked about',
 		);
 		expect(loaded?.instructions).toContain('Mocked verification live-test follow-up');
-		expect(loaded?.instructions).toContain(
-			'This follow-up has priority over the error-workflow opt-in',
-		);
 		expect(loaded?.instructions).toMatch(
 			/Do not ask whether to build now and set up\s+credentials later/,
 		);

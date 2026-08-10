@@ -72,6 +72,12 @@ export function useNdvLayout(options: UseNdvLayoutOptions) {
 		}
 	});
 
+	const isUsablePanelSize = (size: NdvPanelsSize | null | undefined): size is NdvPanelsSize =>
+		!!size &&
+		Number.isFinite(size.left) &&
+		Number.isFinite(size.main) &&
+		Number.isFinite(size.right);
+
 	const safePanelWidth = ({ left, main, right }: { left: number; main: number; right: number }) => {
 		const hasInput = toValue(options.hasInputPanel);
 		const minLeft = hasInput ? minPanelWidthPercentage.value : 0;
@@ -85,32 +91,41 @@ export function useNdvLayout(options: UseNdvLayoutOptions) {
 		};
 
 		const total = newPanelWidth.left + newPanelWidth.main + newPanelWidth.right;
+		const sides = newPanelWidth.left + newPanelWidth.right;
 
-		if (total > 100) {
-			const overflow = total - 100;
+		// Panels must always span the container: distribute any difference across the
+		// side panels, otherwise a short total leaves the canvas showing through.
+		if (total !== 100 && sides > 0) {
+			const diff = 100 - total;
+			const leftShare = newPanelWidth.left / sides;
 
-			const trimLeft = (newPanelWidth.left / (newPanelWidth.left + newPanelWidth.right)) * overflow;
-			const trimRight = overflow - trimLeft;
-
-			newPanelWidth.left = Math.max(minLeft, newPanelWidth.left - trimLeft);
-			newPanelWidth.right = Math.max(minRight, newPanelWidth.right - trimRight);
+			newPanelWidth.left = Math.max(minLeft, newPanelWidth.left + diff * leftShare);
+			newPanelWidth.right = Math.max(minRight, newPanelWidth.right + diff * (1 - leftShare));
 		}
 
 		return newPanelWidth;
 	};
 
 	const persistPanelSize = () => {
+		// Before the container is measured the sizes are placeholders, not something
+		// the user chose — persisting them would overwrite their actual layout.
+		if (!containerWidth.value || !isUsablePanelSize(panelWidthPercentage.value)) return;
+
 		localStorage.setItem(localStorageKey.value, JSON.stringify(panelWidthPercentage.value));
 	};
 
 	const loadPanelSize = () => {
+		if (!containerWidth.value) return;
+
 		const storedPanelSizeString = localStorage.getItem(localStorageKey.value);
 		const defaultSize = defaultPanelSize.value;
 		if (storedPanelSizeString) {
 			const storedPanelSize = jsonParse<NdvPanelsSize>(storedPanelSizeString, {
 				fallbackValue: defaultSize,
 			});
-			panelWidthPercentage.value = safePanelWidth(storedPanelSize ?? defaultSize);
+			panelWidthPercentage.value = safePanelWidth(
+				isUsablePanelSize(storedPanelSize) ? storedPanelSize : defaultSize,
+			);
 		} else {
 			panelWidthPercentage.value = safePanelWidth(defaultSize);
 		}

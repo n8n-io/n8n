@@ -24,7 +24,7 @@ import {
 	NodeConnectionTypes,
 } from 'n8n-workflow';
 import { ref } from 'vue';
-import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
+import { type IconName } from '@n8n/design-system';
 import { DATA_TYPE_ICON_MAP } from '@/app/constants';
 import { DEFAULT_SETTINGS } from '@/app/constants/workflows';
 

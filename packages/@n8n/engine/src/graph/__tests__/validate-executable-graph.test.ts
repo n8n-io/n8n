@@ -37,6 +37,49 @@ describe('validateExecutableGraph', () => {
 		expect(() => validateExecutableGraph(graph)).toThrow('one trigger node');
 	});
 
+	it('accepts a fan-out: several edges leaving one output slot', () => {
+		const graph: WorkflowGraph = {
+			nodes: [...validGraph.nodes, { id: 'b', name: 'B', type: 'v1-node' }],
+			edges: [...validGraph.edges, { from: 'trigger', to: 'b', outputIndex: 0, inputIndex: 0 }],
+		};
+
+		expect(() => validateExecutableGraph(graph)).not.toThrow();
+	});
+
+	it('rejects an edge leaving an output slot other than 0 as unimplemented', () => {
+		const graph: WorkflowGraph = {
+			nodes: [...validGraph.nodes, { id: 'b', name: 'B', type: 'v1-node' }],
+			edges: [...validGraph.edges, { from: 'a', to: 'b', outputIndex: 1, inputIndex: 0 }],
+		};
+
+		expect(() => validateExecutableGraph(graph)).toThrow(UnimplementedError);
+		expect(() => validateExecutableGraph(graph)).toThrow('output slot');
+	});
+
+	it('rejects an edge arriving at an input slot other than 0 as unimplemented', () => {
+		const graph: WorkflowGraph = {
+			nodes: [...validGraph.nodes, { id: 'b', name: 'B', type: 'v1-node' }],
+			edges: [...validGraph.edges, { from: 'a', to: 'b', outputIndex: 0, inputIndex: 1 }],
+		};
+
+		expect(() => validateExecutableGraph(graph)).toThrow(UnimplementedError);
+		expect(() => validateExecutableGraph(graph)).toThrow('input slot');
+	});
+
+	it('rejects two edges into the same input slot of one node as unimplemented', () => {
+		const graph: WorkflowGraph = {
+			nodes: [...validGraph.nodes, { id: 'b', name: 'B', type: 'v1-node' }],
+			edges: [
+				...validGraph.edges,
+				{ from: 'trigger', to: 'b', outputIndex: 0, inputIndex: 0 },
+				{ from: 'a', to: 'b', outputIndex: 0, inputIndex: 0 },
+			],
+		};
+
+		expect(() => validateExecutableGraph(graph)).toThrow(UnimplementedError);
+		expect(() => validateExecutableGraph(graph)).toThrow('more than one edge');
+	});
+
 	it('rejects a graph with a back-edge as unimplemented', () => {
 		const graph: WorkflowGraph = {
 			nodes: [...validGraph.nodes, { id: 'b', name: 'B', type: 'v1-node' }],

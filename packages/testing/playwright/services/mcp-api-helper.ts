@@ -739,6 +739,28 @@ export class McpApiHelper {
 	}
 
 	/**
+	 * Parses a JSON-RPC response and returns the full envelope (result or error)
+	 * without throwing on a protocol error, for tests that assert on the error
+	 * itself. Handles both direct JSON and SSE responses. Prefer
+	 * {@link parseResponse} when only the successful result matters.
+	 */
+	async parseResponseEnvelope(response: APIResponse): Promise<McpJsonRpcResponse> {
+		const contentType = response.headers()['content-type'] ?? '';
+		const body = await response.text();
+
+		if (contentType.includes('text/event-stream')) {
+			for (const line of body.split('\n')) {
+				if (line.startsWith('data:')) {
+					return JSON.parse(line.slice(5).trim()) as McpJsonRpcResponse;
+				}
+			}
+			throw new Error(`Could not extract data from SSE response: ${body}`);
+		}
+
+		return JSON.parse(body) as McpJsonRpcResponse;
+	}
+
+	/**
 	 * Parses an SSE event stream to extract the JSON-RPC response.
 	 *
 	 * @param body - The SSE event stream body
