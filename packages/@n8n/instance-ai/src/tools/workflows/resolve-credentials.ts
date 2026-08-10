@@ -22,6 +22,20 @@ import type { InstanceAiContext } from '../../types';
 
 export type { ResolvedCredential };
 
+// Generic auth types carry per-service secrets under one shared type, so a
+// sibling node's credential may belong to a different service — never reuse
+// them across nodes. Service-specific types (slackApi, notionApi, …) identify
+// the service by type and are safe to reuse.
+const NON_REUSABLE_SIBLING_TYPES = new Set<string>([
+	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
+	'httpHeaderAuth',
+	'httpBearerAuth',
+	'httpQueryAuth',
+	'httpBasicAuth',
+	'httpDigestAuth',
+	'httpCustomAuth',
+]);
+
 /** Flat credential entry — preserves duplicates of the same type. */
 export interface CredentialEntry {
 	id: string;
@@ -205,9 +219,7 @@ export async function resolveCredentials(
 	// so they stay visible to later slots of the same type.
 	const siblingBindingsByType = new Map<string, { id: string; name: string }>();
 	const registerSiblingBinding = (credentialType: string, value: unknown) => {
-		// Templated Custom Auth is one type shared by every service — a sibling
-		// node's binding may carry a different service's key, so never reuse it.
-		if (credentialType === TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE) return;
+		if (NON_REUSABLE_SIBLING_TYPES.has(credentialType)) return;
 		if (siblingBindingsByType.has(credentialType)) return;
 		const id = getCredentialId(value);
 		if (!id) return;
