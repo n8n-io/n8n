@@ -191,6 +191,8 @@ describe('POST /credentials', () => {
 	});
 
 	test('should create credential with isResolvable set to true', async () => {
+		// End-user credentials are only available in team projects
+		const project = await createTeamProject();
 		const payload = {
 			name: 'test credential',
 			type: 'githubApi',
@@ -200,6 +202,7 @@ describe('POST /credentials', () => {
 				server: 'testServer',
 			},
 			isResolvable: true,
+			projectId: project.id,
 		};
 
 		const response = await authOwnerAgent.post('/credentials').send(payload);
@@ -211,6 +214,24 @@ describe('POST /credentials', () => {
 
 		const credential = await Container.get(CredentialsRepository).findOneByOrFail({ id });
 		expect(credential.isResolvable).toBe(true);
+	});
+
+	test('should not allow creating an end-user credential in a personal project', async () => {
+		const payload = {
+			name: 'test credential',
+			type: 'githubApi',
+			data: {
+				accessToken: 'abcdefghijklmnopqrstuvwxyz',
+				user: 'test',
+				server: 'testServer',
+			},
+			isResolvable: true,
+			// no projectId — the credential would land in the owner's personal project
+		};
+
+		const response = await authOwnerAgent.post('/credentials').send(payload);
+
+		expect(response.statusCode).toBe(403);
 	});
 
 	test('should create credential with isResolvable set to false', async () => {
@@ -904,7 +925,9 @@ describe('PATCH /credentials/:id', () => {
 	});
 
 	test('should update isResolvable field', async () => {
-		const savedCredential = await saveCredential(dbCredential(), { user: owner });
+		// End-user credentials are only available in team projects
+		const project = await createTeamProject();
+		const savedCredential = await saveCredential(dbCredential(), { project });
 
 		const updatePayload = {
 			isResolvable: true,
@@ -935,8 +958,9 @@ describe('PATCH /credentials/:id', () => {
 		expect(response.statusCode).toBe(403);
 	});
 
-	test('should allow the owner to switch a credential to end-user via the public API', async () => {
-		const credential = await saveCredential(dbCredential(), { user: owner });
+	test('should allow the owner to switch a team credential to end-user via the public API', async () => {
+		const project = await createTeamProject();
+		const credential = await saveCredential(dbCredential(), { project });
 
 		const response = await authOwnerAgent
 			.patch(`/credentials/${credential.id}`)
@@ -944,6 +968,30 @@ describe('PATCH /credentials/:id', () => {
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body.isResolvable).toBe(true);
+	});
+
+	test('should not allow switching a personal credential to end-user via the public API', async () => {
+		const credential = await saveCredential(dbCredential(), { user: owner });
+
+		const response = await authOwnerAgent
+			.patch(`/credentials/${credential.id}`)
+			.send({ isResolvable: true });
+
+		expect(response.statusCode).toBe(403);
+	});
+
+	test('should allow switching a personal end-user credential back to fixed via the public API', async () => {
+		const credential = await saveCredential(
+			{ ...dbCredential(), isResolvable: true },
+			{ user: owner },
+		);
+
+		const response = await authOwnerAgent
+			.patch(`/credentials/${credential.id}`)
+			.send({ isResolvable: false });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.isResolvable).toBe(false);
 	});
 
 	test('should not allow a project editor to switch an end-user credential to fixed via the public API', async () => {

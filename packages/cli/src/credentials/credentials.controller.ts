@@ -289,6 +289,9 @@ export class CredentialsController {
 		if (isTogglingToPrivate || isTogglingToStatic) {
 			const owningProject =
 				await this.sharedCredentialsRepository.findCredentialOwningProject(credentialId);
+			if (isTogglingToPrivate) {
+				await this.credentialsService.ensureEndUserCredentialAllowedInProject(owningProject?.id);
+			}
 			await this.credentialsService.ensureCanManageEndUserCredential(req.user, owningProject?.id);
 		}
 

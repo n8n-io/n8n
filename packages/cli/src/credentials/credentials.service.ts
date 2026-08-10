@@ -1818,6 +1818,19 @@ export class CredentialsService {
 	}
 
 	/**
+	 * End-user credentials can only live in team projects: creating, switching
+	 * to, or transferring one into a personal project is rejected for every
+	 * role. Deleting or switching back to fixed stays allowed for cleanup.
+	 */
+	async ensureEndUserCredentialAllowedInProject(projectId?: string) {
+		if (!projectId) return;
+		const project = await this.projectRepository.findOneBy({ id: projectId });
+		if (project?.type === 'personal') {
+			throw new ForbiddenError('End-user credentials are not available in personal projects');
+		}
+	}
+
+	/**
 	 * The end-user (resolvable) credential lifecycle — creating one, switching a
 	 * credential to or from end-user, deleting or transferring one — is limited
 	 * to roles holding `credential:createEndUser` on the owning project
@@ -1847,6 +1860,7 @@ export class CredentialsService {
 		const targetProjectId = await this.resolveOwningProjectIdForNewCredential(user, opts.projectId);
 
 		if (opts.isResolvable === true) {
+			await this.ensureEndUserCredentialAllowedInProject(targetProjectId);
 			await this.ensureCanManageEndUserCredential(user, targetProjectId);
 		}
 

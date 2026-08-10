@@ -54,36 +54,46 @@ test.describe(
 				},
 			});
 
+			// End-user credentials can only live in team projects
+			await api.enableFeature('projectRole:admin');
+			await api.enableFeature('projectRole:editor');
+			await api.setMaxTeamProjectsQuota(-1);
+			const project = await api.projects.createProject('Dynamic Credentials');
+
 			// Create an OAuth2 credential flagged as resolvable (no static data needed)
 			const credential = await api.credentials.createCredential({
 				name: `Resolvable OAuth2 Credential ${nanoid()}`,
 				type: 'oAuth2Api',
 				data: { grantType: 'authorizationCode' },
 				isResolvable: true,
+				projectId: project.id,
 			});
 
 			// Create a workflow that uses that credential, with the resolver as workflow-level fallback
-			const workflow = await api.workflows.createWorkflow({
-				name: `Dynamic Credential Workflow ${nanoid()}`,
-				nodes: [
-					{
-						id: nanoid(),
-						name: 'HTTP Request',
-						type: 'n8n-nodes-base.httpRequest',
-						typeVersion: 4.2,
-						position: [0, 0] as [number, number],
-						parameters: {},
-						credentials: {
-							oAuth2Api: { id: credential.id, name: credential.name },
+			const workflow = await api.workflows.createWorkflow(
+				{
+					name: `Dynamic Credential Workflow ${nanoid()}`,
+					nodes: [
+						{
+							id: nanoid(),
+							name: 'HTTP Request',
+							type: 'n8n-nodes-base.httpRequest',
+							typeVersion: 4.2,
+							position: [0, 0] as [number, number],
+							parameters: {},
+							credentials: {
+								oAuth2Api: { id: credential.id, name: credential.name },
+							},
 						},
+					],
+					connections: {},
+					settings: {
+						// Workflow-level resolver used as fallback for all resolvable credentials
+						credentialResolverId: resolver.id,
 					},
-				],
-				connections: {},
-				settings: {
-					// Workflow-level resolver used as fallback for all resolvable credentials
-					credentialResolverId: resolver.id,
 				},
-			});
+				project.id,
+			);
 
 			// Obtain a real access token for the Keycloak test user via ROPC (no browser needed)
 			const accessToken = await keycloak.getAccessToken(
@@ -152,6 +162,12 @@ test.describe(
 				},
 			});
 
+			// End-user credentials can only live in team projects
+			await api.enableFeature('projectRole:admin');
+			await api.enableFeature('projectRole:editor');
+			await api.setMaxTeamProjectsQuota(-1);
+			const project = await api.projects.createProject('Dynamic Credentials');
+
 			// Create a properly-configured oAuth2Api credential pointing at Keycloak.
 			// The credential is resolvable — its tokens are stored per-user by the resolver.
 			const credential = await api.credentials.createCredential({
@@ -167,29 +183,33 @@ test.describe(
 					ignoreSSLIssues: true,
 				},
 				isResolvable: true,
+				projectId: project.id,
 			});
 
 			// Create a workflow that uses that credential
-			const workflow = await api.workflows.createWorkflow({
-				name: `Configured Credential Workflow ${nanoid()}`,
-				nodes: [
-					{
-						id: nanoid(),
-						name: 'HTTP Request',
-						type: 'n8n-nodes-base.httpRequest',
-						typeVersion: 4.2,
-						position: [0, 0] as [number, number],
-						parameters: {},
-						credentials: {
-							oAuth2Api: { id: credential.id, name: credential.name },
+			const workflow = await api.workflows.createWorkflow(
+				{
+					name: `Configured Credential Workflow ${nanoid()}`,
+					nodes: [
+						{
+							id: nanoid(),
+							name: 'HTTP Request',
+							type: 'n8n-nodes-base.httpRequest',
+							typeVersion: 4.2,
+							position: [0, 0] as [number, number],
+							parameters: {},
+							credentials: {
+								oAuth2Api: { id: credential.id, name: credential.name },
+							},
 						},
+					],
+					connections: {},
+					settings: {
+						credentialResolverId: resolver.id,
 					},
-				],
-				connections: {},
-				settings: {
-					credentialResolverId: resolver.id,
 				},
-			});
+				project.id,
+			);
 
 			// Complete the OAuth2 authorization code flow for the test user.
 			// This stores the user's Keycloak tokens in the dynamic_credential_entry table.

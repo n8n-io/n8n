@@ -188,6 +188,33 @@ describe('CredentialConfig', () => {
 	});
 
 	describe('Dynamic Credentials Section', () => {
+		// Seeds the credentials store with a stored credential so the component can
+		// resolve its home project type (used for edit-mode cases).
+		const createPiniaWithStoredCredential = (projectType: 'personal' | 'team') =>
+			createTestingPinia({
+				initialState: {
+					[STORES.SETTINGS]: {
+						settings: {
+							enterprise: {
+								sharing: false,
+								externalSecrets: false,
+							},
+						},
+					},
+					[STORES.CREDENTIALS]: {
+						state: {
+							credentialTypes: {},
+							credentials: {
+								'cred-1': {
+									id: 'cred-1',
+									homeProject: { id: 'project-1', type: projectType },
+								},
+							},
+						},
+					},
+				},
+			});
+
 		it('should not display dynamic credentials section when isPrivateCredentialsEnabled is false', async () => {
 			renderComponent({
 				props: {
@@ -304,6 +331,7 @@ describe('CredentialConfig', () => {
 					isOAuthType: true,
 					isNewCredential: true,
 					isResolvable: false,
+					newCredentialProjectType: 'team',
 					credentialPermissions: {
 						create: true,
 						createEndUser: true,
@@ -323,12 +351,14 @@ describe('CredentialConfig', () => {
 
 		it('should display dynamic credentials section when all conditions are met for existing credential', async () => {
 			renderComponent({
+				pinia: createPiniaWithStoredCredential('team'),
 				props: {
 					isManaged: false,
 					mode: 'edit',
 					credentialType: mockCredentialType,
 					credentialProperties: [],
 					credentialData: {} as ICredentialDataDecryptedObject,
+					credentialId: 'cred-1',
 					isPrivateCredentialsEnabled: true,
 					isOAuthType: true,
 					isNewCredential: false,
@@ -352,12 +382,14 @@ describe('CredentialConfig', () => {
 
 		it('should keep the credential type selector enabled when the credential is already shared', async () => {
 			renderComponent({
+				pinia: createPiniaWithStoredCredential('team'),
 				props: {
 					isManaged: false,
 					mode: 'edit',
 					credentialType: mockCredentialType,
 					credentialProperties: [],
 					credentialData: {} as ICredentialDataDecryptedObject,
+					credentialId: 'cred-1',
 					isPrivateCredentialsEnabled: true,
 					isOAuthType: true,
 					isNewCredential: false,
@@ -473,6 +505,95 @@ describe('CredentialConfig', () => {
 					credentialType: mockCredentialType,
 					credentialProperties: [],
 					credentialData: {} as ICredentialDataDecryptedObject,
+					isPrivateCredentialsEnabled: true,
+					isOAuthType: true,
+					isNewCredential: false,
+					isResolvable: true,
+					credentialPermissions: {
+						create: false,
+						createEndUser: true,
+						update: true,
+						read: true,
+						delete: false,
+						share: false,
+						list: true,
+						move: false,
+					},
+				},
+			});
+
+			expect(screen.getByTestId('credential-type-selector')).toBeInTheDocument();
+		});
+
+		it('should hide the type selector for a new credential in a personal project', async () => {
+			renderComponent({
+				props: {
+					isManaged: false,
+					mode: 'new',
+					credentialType: mockCredentialType,
+					credentialProperties: [],
+					credentialData: {} as ICredentialDataDecryptedObject,
+					isPrivateCredentialsEnabled: true,
+					isOAuthType: true,
+					isNewCredential: true,
+					isResolvable: false,
+					newCredentialProjectType: 'personal',
+					credentialPermissions: {
+						create: true,
+						createEndUser: true,
+						update: false,
+						read: true,
+						delete: false,
+						share: false,
+						list: true,
+						move: false,
+					},
+				},
+			});
+
+			expect(screen.queryByTestId('credential-type-selector')).not.toBeInTheDocument();
+		});
+
+		it('should hide the type selector for an existing fixed credential in a personal project', async () => {
+			renderComponent({
+				pinia: createPiniaWithStoredCredential('personal'),
+				props: {
+					isManaged: false,
+					mode: 'edit',
+					credentialType: mockCredentialType,
+					credentialProperties: [],
+					credentialData: {} as ICredentialDataDecryptedObject,
+					credentialId: 'cred-1',
+					isPrivateCredentialsEnabled: true,
+					isOAuthType: true,
+					isNewCredential: false,
+					isResolvable: false,
+					credentialPermissions: {
+						create: false,
+						createEndUser: true,
+						update: true,
+						read: true,
+						delete: false,
+						share: false,
+						list: true,
+						move: false,
+					},
+				},
+			});
+
+			expect(screen.queryByTestId('credential-type-selector')).not.toBeInTheDocument();
+		});
+
+		it('should show the type selector for an existing end-user credential in a personal project', async () => {
+			renderComponent({
+				pinia: createPiniaWithStoredCredential('personal'),
+				props: {
+					isManaged: false,
+					mode: 'edit',
+					credentialType: mockCredentialType,
+					credentialProperties: [],
+					credentialData: {} as ICredentialDataDecryptedObject,
+					credentialId: 'cred-1',
 					isPrivateCredentialsEnabled: true,
 					isOAuthType: true,
 					isNewCredential: false,

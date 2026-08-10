@@ -4,6 +4,7 @@ import type {
 	ICredentialsDb,
 	InstanceCredentialAssignmentRepository,
 	SharedCredentialsRepository,
+	Project,
 	ProjectRepository,
 	UserRepository,
 	User,
@@ -34,6 +35,7 @@ import type { InstanceCredentialUseRegistry } from '@/credentials/instance-crede
 import * as validation from '@/credentials/validation';
 import type { CredentialsHelper } from '@/credentials-helper';
 import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import type { ExternalHooks } from '@/external-hooks';
 import type { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
 import type { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee';
@@ -1090,6 +1092,36 @@ describe('CredentialsService', () => {
 				id: instanceCredential.id,
 				usageScope: 'instance',
 			});
+		});
+	});
+
+	describe('ensureEndUserCredentialAllowedInProject', () => {
+		it('throws when the project is personal', async () => {
+			projectRepository.findOneBy.mockResolvedValue(
+				mock<Project>({ id: 'project-id', type: 'personal' }),
+			);
+
+			await expect(service.ensureEndUserCredentialAllowedInProject('project-id')).rejects.toThrow(
+				ForbiddenError,
+			);
+		});
+
+		it('allows a team project', async () => {
+			projectRepository.findOneBy.mockResolvedValue(
+				mock<Project>({ id: 'project-id', type: 'team' }),
+			);
+
+			await expect(
+				service.ensureEndUserCredentialAllowedInProject('project-id'),
+			).resolves.toBeUndefined();
+		});
+
+		it('does nothing when no project id is given', async () => {
+			await expect(
+				service.ensureEndUserCredentialAllowedInProject(undefined),
+			).resolves.toBeUndefined();
+
+			expect(projectRepository.findOneBy).not.toHaveBeenCalled();
 		});
 	});
 

@@ -169,6 +169,11 @@ const credentialsHandlers: CredentialsHandlers = {
 				const owningProjectId = existingCredential.shared?.find(
 					(sharing) => sharing.role === 'credential:owner',
 				)?.projectId;
+				if (req.body.isResolvable) {
+					await Container.get(CredentialsService).ensureEndUserCredentialAllowedInProject(
+						owningProjectId,
+					);
+				}
 				await Container.get(CredentialsService).ensureCanManageEndUserCredential(
 					req.user,
 					owningProjectId,
