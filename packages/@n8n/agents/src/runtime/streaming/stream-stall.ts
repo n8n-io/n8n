@@ -10,7 +10,20 @@
  * fail the turn fast with a typed, user-explainable error instead.
  */
 
-export const DEFAULT_MODEL_STREAM_IDLE_TIMEOUT_MS = 5 * 60_000;
+/**
+ * Max silence between chunks once the turn has streamed content. Bytes were
+ * flowing and stopped — beyond this the connection is dead for all practical
+ * purposes, and the user is staring at a frozen response.
+ */
+export const DEFAULT_MODEL_STREAM_IDLE_TIMEOUT_MS = 90_000;
+
+/**
+ * Max silence before the turn's first content chunk. Deliberately longer than
+ * the post-content limit: a large cache-miss prompt legitimately spends 1-3
+ * minutes in prompt processing before the provider sends anything, and a trip
+ * here is recovered by a silent retry rather than a user-facing error.
+ */
+export const DEFAULT_MODEL_STREAM_FIRST_OUTPUT_TIMEOUT_MS = 3 * 60_000;
 
 /**
  * How many times a stalled turn is silently re-issued before the stall error
@@ -47,17 +60,18 @@ function getChunkIterator<T>(
  */
 export async function* withChunkIdleTimeout<T>(
 	source: AsyncIterable<T> | Iterable<T>,
-	idleMs: number,
+	idleMs: number | (() => number),
 	onStall: () => void,
 ): AsyncGenerator<T> {
 	const iterator = getChunkIterator(source);
+	const resolveIdleMs = typeof idleMs === 'function' ? idleMs : () => idleMs;
 	try {
 		while (true) {
 			const next = Promise.resolve(iterator.next());
 			// If the deadline wins, the losing read settles later — without a
 			// handler its rejection would surface as an unhandled rejection.
 			next.catch(() => undefined);
-			const result = await raceWithStallDeadline(next, idleMs, onStall);
+			const result = await raceWithStallDeadline(next, resolveIdleMs(), onStall);
 			if (result.done) return;
 			yield result.value;
 		}

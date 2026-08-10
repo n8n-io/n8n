@@ -120,6 +120,7 @@ export {
 	throwIfAborted,
 } from './sdk/abort';
 export {
+	DEFAULT_MODEL_STREAM_FIRST_OUTPUT_TIMEOUT_MS,
 	DEFAULT_MODEL_STREAM_IDLE_TIMEOUT_MS,
 	ModelStreamStallError,
 } from './runtime/streaming/stream-stall';

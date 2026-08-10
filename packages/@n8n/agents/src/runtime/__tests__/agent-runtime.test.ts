@@ -7756,7 +7756,10 @@ describe('AgentRuntime — model stream stall handling', () => {
 			.mockReturnValueOnce(makeStreamSuccess('Recovered'));
 		const { runtime } = createRuntime();
 
-		const result = await runtime.stream('hi', { modelStreamIdleTimeoutMs: 50 });
+		const result = await runtime.stream('hi', {
+			modelStreamIdleTimeoutMs: 50,
+			modelStreamFirstOutputTimeoutMs: 50,
+		});
 		const chunks = await collectChunks(result.stream);
 
 		expect(streamText).toHaveBeenCalledTimes(2);
@@ -7783,7 +7786,10 @@ describe('AgentRuntime — model stream stall handling', () => {
 			.mockReturnValue(makeStreamSuccess('should-not-run'));
 		const { runtime } = createRuntime();
 
-		const result = await runtime.stream('hi', { modelStreamIdleTimeoutMs: 50 });
+		const result = await runtime.stream('hi', {
+			modelStreamIdleTimeoutMs: 50,
+			modelStreamFirstOutputTimeoutMs: 50,
+		});
 		const chunks = await collectChunks(result.stream);
 
 		expect(streamText).toHaveBeenCalledTimes(1);
@@ -7798,7 +7804,10 @@ describe('AgentRuntime — model stream stall handling', () => {
 		streamText.mockReturnValueOnce(makeStalledStream()).mockReturnValueOnce(makeStalledStream());
 		const { runtime } = createRuntime();
 
-		const result = await runtime.stream('hi', { modelStreamIdleTimeoutMs: 50 });
+		const result = await runtime.stream('hi', {
+			modelStreamIdleTimeoutMs: 50,
+			modelStreamFirstOutputTimeoutMs: 50,
+		});
 		const chunks = await collectChunks(result.stream);
 
 		expect(streamText).toHaveBeenCalledTimes(2);

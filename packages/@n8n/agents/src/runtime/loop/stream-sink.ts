@@ -15,6 +15,7 @@ import { createRawErrorReader, type RawErrorReader } from '../model/raw-error';
 import { createRawUsageReader, type RawUsageReader } from '../model/raw-usage';
 import { convertChunk, toTokenUsage } from '../streaming/stream';
 import {
+	DEFAULT_MODEL_STREAM_FIRST_OUTPUT_TIMEOUT_MS,
 	DEFAULT_MODEL_STREAM_IDLE_TIMEOUT_MS,
 	MAX_MODEL_STREAM_STALL_RETRIES,
 	ModelStreamStallError,
@@ -131,6 +132,12 @@ export class StreamSink implements RunOutputSink<void> {
 
 	async callModel(ctx: ModelCallContext): Promise<ModelTurnResult> {
 		const idleMs = this.options?.modelStreamIdleTimeoutMs ?? DEFAULT_MODEL_STREAM_IDLE_TIMEOUT_MS;
+		// Pre-first-output silence tolerates prompt processing (large cache-miss
+		// prompts send nothing for minutes); never let it undercut the idle limit.
+		const firstOutputMs = Math.max(
+			idleMs,
+			this.options?.modelStreamFirstOutputTimeoutMs ?? DEFAULT_MODEL_STREAM_FIRST_OUTPUT_TIMEOUT_MS,
+		);
 		this.stallAbandonedUsage = undefined;
 		for (let attempt = 0; ; attempt++) {
 			// Opt-in: only build the reader (and request raw chunks) when the host bills
@@ -153,7 +160,7 @@ export class StreamSink implements RunOutputSink<void> {
 			else ctx.abortSignal.addEventListener('abort', onRunAbort, { once: true });
 			const attemptState = { streamedContent: false };
 			try {
-				return await this.streamModelTurn(ctx, turnAbort, idleMs, attemptState);
+				return await this.streamModelTurn(ctx, turnAbort, { idleMs, firstOutputMs }, attemptState);
 			} catch (error) {
 				// A stall before any content is invisible to the user (and to the
 				// host's persistence) — re-issue the request instead of failing the
@@ -181,9 +188,10 @@ export class StreamSink implements RunOutputSink<void> {
 	private async streamModelTurn(
 		ctx: ModelCallContext,
 		turnAbort: AbortController,
-		idleMs: number,
+		deadlines: { idleMs: number; firstOutputMs: number },
 		attemptState: { streamedContent: boolean },
 	): Promise<ModelTurnResult> {
+		const { idleMs, firstOutputMs } = deadlines;
 		const { streamText } = loadAi();
 		const result = streamText({
 			model: ctx.model,
@@ -207,9 +215,16 @@ export class StreamSink implements RunOutputSink<void> {
 		// A healthy streaming response emits chunks continuously (raw provider
 		// events included), so prolonged silence means the connection or provider
 		// is wedged — fail the turn instead of hanging until the network timeout.
+		// Pre-first-output silence gets the longer deadline (prompt processing on
+		// large cache-miss prompts sends nothing for minutes); once content has
+		// streamed, the tighter idle limit applies.
 		const chunkStream =
 			idleMs > 0
-				? withChunkIdleTimeout(result.stream, idleMs, () => turnAbort.abort())
+				? withChunkIdleTimeout(
+						result.stream,
+						() => (attemptState.streamedContent ? idleMs : firstOutputMs),
+						() => turnAbort.abort(),
+					)
 				: result.stream;
 
 		// Consume the stream. When the AbortSignal fires mid-stream the AI SDK
