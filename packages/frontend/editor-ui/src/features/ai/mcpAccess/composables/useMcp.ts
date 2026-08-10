@@ -20,10 +20,7 @@ export function useMcp() {
 		enabled,
 		source,
 	}: { enabled: boolean; source: 'settings' | 'expose_all' }) => {
-		telemetry.track(TELEMETRY_EVENT.MCP.AUTO_EXPOSE_NEW_WORKFLOWS_TOGGLED, {
-			enabled: enabled,
-			source: source,
-		});
+		telemetry.track(TELEMETRY_EVENT.MCP.AUTO_EXPOSE_NEW_WORKFLOWS_TOGGLED, { enabled, source });
 	};
 
 	return {
