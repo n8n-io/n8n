@@ -28,7 +28,6 @@ const props = withDefaults(defineProps<InputNumberProps>(), {
 	controls: false,
 	controlsPosition: 'right',
 	step: 1,
-	// Reka defaults to true, which snaps typed decimals to `step` on blur (e.g. 3.14 → 3).
 	stepSnapping: false,
 });
 
@@ -176,9 +175,7 @@ function resolvedFormatOptions(): Intl.NumberFormatOptions {
 	@include input-mixin.size-variables('medium');
 	@include input-mixin.theme-variables(var(--border-color));
 
-	position: relative;
 	display: inline-flex;
-	align-items: stretch;
 	width: 100%;
 	min-height: var(--input--height);
 	border-radius: var(--input--radius);
@@ -219,16 +216,15 @@ function resolvedFormatOptions(): Intl.NumberFormatOptions {
 	font-size: var(--input--font-size);
 	color: var(--input--color--text);
 	padding: 0 var(--input--padding);
-	text-align: left;
-}
 
-.input::placeholder {
-	color: var(--input--placeholder--color);
-}
+	&::placeholder {
+		color: var(--input--placeholder--color);
+	}
 
-.input:disabled {
-	cursor: not-allowed;
-	color: var(--input--color--disabled);
+	&:disabled {
+		cursor: not-allowed;
+		color: var(--input--color--disabled);
+	}
 }
 
 .isControlsBoth .input {
@@ -262,26 +258,39 @@ function resolvedFormatOptions(): Intl.NumberFormatOptions {
 	width: var(--input--height);
 	border-right: var(--border-width, 1px) solid var(--input--border-color);
 	border-radius: var(--input--radius) 0 0 var(--input--radius);
+
+	&:hover:not(:disabled):not([data-disabled]) {
+		border-right-color: var(--input--border-color--hover);
+	}
 }
 
 .buttonIncrement {
 	width: var(--input--height);
 	border-left: var(--border-width, 1px) solid var(--input--border-color);
 	border-radius: 0 var(--input--radius) var(--input--radius) 0;
+
+	&:hover:not(:disabled):not([data-disabled]) {
+		border-left-color: var(--input--border-color--hover);
+	}
 }
 
 .controlsWrapper {
 	display: flex;
 	flex-direction: column;
-	width: calc(var(--input--height) * 0.75);
 	border-left: var(--border-width, 1px) solid var(--input--border-color);
+
+	&:hover:has(button:not(:disabled):not([data-disabled])) {
+		border-left-color: var(--input--border-color--hover);
+
+		.buttonUp {
+			border-bottom-color: var(--input--border-color--hover);
+		}
+	}
 }
 
 .buttonUp,
 .buttonDown {
 	flex: 1;
-	border-radius: 0;
-	min-height: 0;
 }
 
 .buttonUp {
@@ -290,7 +299,7 @@ function resolvedFormatOptions(): Intl.NumberFormatOptions {
 }
 
 .buttonDown {
-	border-radius: 0 0 var(--input--radius);
+	border-radius: 0 0 var(--input--radius) 0;
 }
 
 .mini {
