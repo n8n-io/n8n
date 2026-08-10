@@ -1,0 +1,51 @@
+{
+	"type": "object",
+	"properties": {
+		"avifUrl": {
+			"type": "string"
+		},
+		"completed_at": {
+			"type": "string"
+		},
+		"created_at": {
+			"type": "string"
+		},
+		"error": {
+			"type": "string"
+		},
+		"files": {
+			"type": "object"
+		},
+		"imageUrl": {
+			"type": "string"
+		},
+		"jpgUrl": {
+			"type": "string"
+		},
+		"metadata": {
+			"type": "string"
+		},
+		"pdfUrl": {
+			"type": "string"
+		},
+		"pngUrl": {
+			"type": "string"
+		},
+		"self": {
+			"type": "string"
+		},
+		"status": {
+			"type": "string"
+		},
+		"template": {
+			"type": "string"
+		},
+		"uid": {
+			"type": "string"
+		},
+		"webpUrl": {
+			"type": "string"
+		}
+	},
+	"version": 2
+}

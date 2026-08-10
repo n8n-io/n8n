@@ -1,0 +1,404 @@
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	ILoadOptionsFunctions,
+	INodeExecutionData,
+	INodePropertyOptions,
+	INodeType,
+	INodeTypeBaseDescription,
+	INodeTypeDescription,
+} from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
+
+import { sleep } from '@n8n/utils/sleep';
+
+import {
+	bannerbearApiRequest,
+	compact,
+	flattenImageFiles,
+	linesToArray,
+	runTool,
+	TOOL_POLL_INTERVAL_MS,
+} from './GenericFunctions';
+import { imageFields, imageOperations } from './ImageDescription';
+import { templateFields, templateOperations } from './TemplateDescription';
+import { toolFields, toolJobFields, toolJobOperations, toolOperations } from './ToolDescription';
+
+/** n8n uses camelCase parameter names; the API uses kebab-case layer properties. */
+const LAYER_PROPERTY_NAMES: IDataObject = {
+	backgroundColor: 'background-color',
+	backgroundImage: 'background-image',
+	barcodeData: 'barcode-data',
+	fontFamily: 'font-family',
+	qrTarget: 'qr-target',
+	ratingScore: 'rating-score',
+};
+
+export class BannerbearV2 implements INodeType {
+	description: INodeTypeDescription;
+
+	constructor(baseDescription: INodeTypeBaseDescription) {
+		this.description = {
+			...baseDescription,
+			version: 2,
+			defaults: {
+				name: 'Bannerbear',
+			},
+			inputs: [NodeConnectionTypes.Main],
+			outputs: [NodeConnectionTypes.Main],
+			credentials: [
+				{
+					name: 'bannerbearV5Api',
+					required: true,
+				},
+			],
+			properties: [
+				{
+					displayName: 'Resource',
+					name: 'resource',
+					type: 'options',
+					noDataExpression: true,
+					options: [
+						{
+							name: 'Image',
+							value: 'image',
+						},
+						{
+							name: 'Template',
+							value: 'template',
+						},
+						{
+							name: 'Tool',
+							value: 'tool',
+						},
+						{
+							name: 'Tool Job',
+							value: 'toolJob',
+						},
+					],
+					default: 'image',
+				},
+				// IMAGE
+				...imageOperations,
+				...imageFields,
+				// TEMPLATE
+				...templateOperations,
+				...templateFields,
+				// TOOL
+				...toolOperations,
+				...toolFields,
+				// TOOL JOB
+				...toolJobOperations,
+				...toolJobFields,
+			],
+		};
+	}
+
+	methods = {
+		loadOptions: {
+			async getTemplates(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const templates = (await bannerbearApiRequest.call(
+					this,
+					'GET',
+					'/image_templates',
+				)) as IDataObject[];
+
+				return templates.map((template) => ({
+					name: template.name as string,
+					value: template.uid as string,
+				}));
+			},
+
+			async getLayers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const templateId = this.getCurrentNodeParameter('templateId') as string;
+				const template = (await bannerbearApiRequest.call(
+					this,
+					'GET',
+					`/image_templates/${templateId}`,
+				)) as IDataObject;
+
+				const config = (template.config ?? {}) as IDataObject;
+				const objects = (config.objects ?? []) as IDataObject[];
+
+				return objects.map((object) => ({
+					name: (object.name as string) || (object.id as string),
+					value: object.id as string,
+				}));
+			},
+		},
+	};
+
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const items = this.getInputData();
+		const returnData: INodeExecutionData[] = [];
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
+
+		for (let i = 0; i < items.length; i++) {
+			try {
+				let responseData: IDataObject | IDataObject[] = {};
+
+				if (resource === 'image') {
+					if (operation === 'create') {
+						responseData = await createImage.call(this, i);
+					}
+
+					if (operation === 'get') {
+						const imageId = this.getNodeParameter('imageId', i) as string;
+						responseData = flattenImageFiles(
+							(await bannerbearApiRequest.call(this, 'GET', `/images/${imageId}`)) as IDataObject,
+						);
+					}
+				}
+
+				if (resource === 'template') {
+					if (operation === 'get') {
+						const templateId = this.getNodeParameter('templateId', i) as string;
+						responseData = (await bannerbearApiRequest.call(
+							this,
+							'GET',
+							`/image_templates/${templateId}`,
+						)) as IDataObject;
+					}
+
+					if (operation === 'getAll') {
+						responseData = (await bannerbearApiRequest.call(
+							this,
+							'GET',
+							'/image_templates',
+						)) as IDataObject[];
+					}
+				}
+
+				if (resource === 'tool') {
+					responseData = await executeTool.call(this, operation, i);
+				}
+
+				if (resource === 'toolJob') {
+					if (operation === 'get') {
+						const toolJobId = this.getNodeParameter('toolJobId', i) as string;
+						responseData = (await bannerbearApiRequest.call(
+							this,
+							'GET',
+							`/tool_jobs/${toolJobId}`,
+						)) as IDataObject;
+					}
+
+					if (operation === 'getAll') {
+						const jobs = (await bannerbearApiRequest.call(
+							this,
+							'GET',
+							'/tool_jobs',
+						)) as IDataObject[];
+						const returnAll = this.getNodeParameter('returnAll', i);
+						responseData = returnAll ? jobs : jobs.slice(0, this.getNodeParameter('limit', i));
+					}
+				}
+
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(responseData),
+					{ itemData: { item: i } },
+				);
+				returnData.push.apply(returnData, executionData);
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({
+						json: { error: (error as Error).message },
+						pairedItem: { item: i },
+					});
+					continue;
+				}
+				throw error;
+			}
+		}
+
+		return [returnData];
+	}
+}
+
+async function createImage(this: IExecuteFunctions, i: number): Promise<IDataObject> {
+	const templateId = this.getNodeParameter('templateId', i) as string;
+	const additionalFields = this.getNodeParameter('additionalFields', i);
+	const waitForImage = this.getNodeParameter('waitForImage', i) as boolean;
+	const modificationsUi = this.getNodeParameter('modificationsUi', i) as IDataObject;
+
+	const objects: IDataObject[] = [];
+	for (const modification of (modificationsUi.modificationsValues ?? []) as IDataObject[]) {
+		const object: IDataObject = {};
+		for (const [name, value] of Object.entries(modification)) {
+			if (value === undefined || value === null || value === '') continue;
+			object[(LAYER_PROPERTY_NAMES[name] as string) ?? name] = value;
+		}
+		if (Object.keys(object).length > 1) objects.push(object);
+	}
+
+	const modifications: IDataObject = { objects };
+
+	const templateSize = compact({
+		width: additionalFields.templateWidth,
+		height: additionalFields.templateHeight,
+	});
+	if (Object.keys(templateSize).length) modifications.template = templateSize;
+
+	const body = compact({
+		template: templateId,
+		modifications,
+		formats: (additionalFields.formats as string[])?.length ? additionalFields.formats : undefined,
+		scale: additionalFields.scale,
+		quality: additionalFields.quality,
+		metadata: additionalFields.metadata,
+	});
+
+	// The sync host renders inline and returns the finished image.
+	const host = waitForImage ? 'https://sync.api.bannerbear.com/v5' : undefined;
+	let image = (await bannerbearApiRequest.call(
+		this,
+		'POST',
+		'/images',
+		body,
+		{},
+		host,
+	)) as IDataObject;
+
+	if (waitForImage && image.status !== 'completed' && image.status !== 'failed') {
+		for (let tries = 0; tries < 30; tries++) {
+			await sleep(TOOL_POLL_INTERVAL_MS);
+			image = (await bannerbearApiRequest.call(
+				this,
+				'GET',
+				`/images/${image.uid as string}`,
+			)) as IDataObject;
+			if (image.status === 'completed' || image.status === 'failed') break;
+		}
+	}
+
+	return flattenImageFiles(image);
+}
+
+async function executeTool(
+	this: IExecuteFunctions,
+	operation: string | number | boolean | object,
+	i: number,
+): Promise<IDataObject> {
+	const metadata = this.getNodeParameter('metadata', i, '') as string;
+	const param = <T>(name: string, fallback?: T) => this.getNodeParameter(name, i, fallback) as T;
+
+	switch (operation) {
+		case 'removeBackground':
+			return await runTool.call(
+				this,
+				'remove_bg',
+				{
+					image_url: param<string>('imageUrl'),
+					metadata,
+				},
+				i,
+			);
+
+		case 'createPdf':
+			return await runTool.call(
+				this,
+				'create_pdf',
+				{
+					urls: linesToArray(param<string>('urls')),
+					metadata,
+				},
+				i,
+			);
+
+		case 'trimVideo':
+			return await runTool.call(
+				this,
+				'trim_video',
+				{
+					video_url: param<string>('videoUrl'),
+					start: param<number>('start'),
+					end: param<number>('end'),
+					metadata,
+				},
+				i,
+			);
+
+		case 'joinVideos': {
+			const options = param<IDataObject>('joinOptions', {});
+			return await runTool.call(
+				this,
+				'concat_videos',
+				{
+					video_urls: linesToArray(param<string>('videoUrls')),
+					width: options.width,
+					height: options.height,
+					metadata,
+				},
+				i,
+			);
+		}
+
+		case 'resizeVideo':
+			return await runTool.call(
+				this,
+				'resize_video',
+				{
+					video_url: param<string>('videoUrl'),
+					width: param<number>('width'),
+					height: param<number>('height'),
+					fit: param<string>('fit'),
+					metadata,
+				},
+				i,
+			);
+
+		case 'cropVideo':
+			return await runTool.call(
+				this,
+				'crop_video',
+				{
+					video_url: param<string>('videoUrl'),
+					x: param<number>('x'),
+					y: param<number>('y'),
+					width: param<number>('width'),
+					height: param<number>('height'),
+					metadata,
+				},
+				i,
+			);
+
+		case 'overlayVideo': {
+			const options = param<IDataObject>('overlayVideoOptions', {});
+			return await runTool.call(
+				this,
+				'overlay_video',
+				{
+					base_video_url: param<string>('baseVideoUrl'),
+					overlay_video_url: param<string>('overlayVideoUrl'),
+					x: param<number>('x'),
+					y: param<number>('y'),
+					scale: options.scale,
+					start: options.start,
+					metadata,
+				},
+				i,
+			);
+		}
+
+		case 'overlayImage': {
+			const options = param<IDataObject>('overlayImageOptions', {});
+			return await runTool.call(
+				this,
+				'overlay_image',
+				{
+					video_url: param<string>('videoUrl'),
+					image_url: param<string>('overlayImageUrl'),
+					x: param<number>('x'),
+					y: param<number>('y'),
+					opacity: options.opacity,
+					metadata,
+				},
+				i,
+			);
+		}
+
+		default:
+			return {};
+	}
+}
