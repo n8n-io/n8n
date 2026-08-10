@@ -521,21 +521,24 @@ describe('mcp.store', () => {
 	describe('setMcpAccessEnabled', () => {
 		it.each([
 			{
-				desc: 'syncs autoExposeNewWorkflows when the backend confirms a reset on disable',
+				desc: 'syncs autoExposeNewWorkflows when the backend confirms a reset on disable, without re-fetching',
 				enabled: false,
 				response: { mcpAccessEnabled: false, autoExposeNewWorkflows: false },
 				expectedAutoExpose: false,
+				// The gated autoExpose value is only stale after re-enabling, so disable skips the re-fetch.
+				expectRefetch: false,
 			},
 			{
-				desc: 'leaves autoExposeNewWorkflows unchanged when the response omits it',
+				desc: 'leaves autoExposeNewWorkflows unchanged when the response omits it, and re-fetches to refresh the gated value',
 				enabled: true,
 				response: { mcpAccessEnabled: true },
 				expectedAutoExpose: true,
+				expectRefetch: true,
 			},
-		])('$desc', async ({ enabled, response, expectedAutoExpose }) => {
+		])('$desc', async ({ enabled, response, expectedAutoExpose, expectRefetch }) => {
 			vi.spyOn(mcpApi, 'updateMcpSettings').mockResolvedValue(response);
 			const settingsStore = useSettingsStore();
-			vi.spyOn(settingsStore, 'getModuleSettings').mockResolvedValue();
+			const getModuleSettings = vi.spyOn(settingsStore, 'getModuleSettings').mockResolvedValue();
 			settingsStore.moduleSettings.mcp = {
 				mcpAccessEnabled: !enabled,
 				mcpManagedByEnv: false,
@@ -552,26 +555,7 @@ describe('mcp.store', () => {
 				autoExposeNewWorkflows: expectedAutoExpose,
 				serverUrl: 'https://example.com/mcp',
 			});
-		});
-
-		it('re-fetches module settings when enabling so gated autoExpose is refreshed', async () => {
-			vi.spyOn(mcpApi, 'updateMcpSettings').mockResolvedValue({ mcpAccessEnabled: true });
-			const settingsStore = useSettingsStore();
-			const getModuleSettings = vi.spyOn(settingsStore, 'getModuleSettings').mockResolvedValue();
-
-			await useMCPStore().setMcpAccessEnabled(true);
-
-			expect(getModuleSettings).toHaveBeenCalledTimes(1);
-		});
-
-		it('does not re-fetch module settings when disabling', async () => {
-			vi.spyOn(mcpApi, 'updateMcpSettings').mockResolvedValue({ mcpAccessEnabled: false });
-			const settingsStore = useSettingsStore();
-			const getModuleSettings = vi.spyOn(settingsStore, 'getModuleSettings').mockResolvedValue();
-
-			await useMCPStore().setMcpAccessEnabled(false);
-
-			expect(getModuleSettings).not.toHaveBeenCalled();
+			expect(getModuleSettings).toHaveBeenCalledTimes(expectRefetch ? 1 : 0);
 		});
 
 		it('falls back to the requested value and defaults when no settings or response value exist', async () => {
