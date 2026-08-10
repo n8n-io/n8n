@@ -6,7 +6,7 @@ import { useUsersStore } from '@n8n/stores/users.store';
 import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { AI_GATEWAY_TOP_UP_MODAL_KEY, CLOUD_N8N_CONNECT_TOP_UP_PATH } from '@/app/constants';
+import { AI_GATEWAY_TOP_UP_MODAL_KEY } from '@/app/constants';
 import { useAiGatewayTopUp } from './useAiGatewayTopUp';
 
 const trackMock = vi.fn();
@@ -24,95 +24,41 @@ describe('useAiGatewayTopUp', () => {
 		vi.stubGlobal('open', windowOpen);
 	});
 
-	it('opens the Cloud Admin Panel for paid Cloud owners', async () => {
-		const usersStore = mockedStore(useUsersStore);
-		const cloudPlanStore = mockedStore(useCloudPlanStore);
-		const settingsStore = mockedStore(useSettingsStore);
+	it('opens the modal and tracks the click', () => {
 		const uiStore = mockedStore(useUIStore);
-
-		usersStore.isInstanceOwner = true;
-		cloudPlanStore.userIsTrialing = false;
-		settingsStore.isCloudDeployment = true;
-		cloudPlanStore.generateCloudDashboardAutoLoginLink = vi
-			.fn()
-			.mockResolvedValue('https://app.n8n.cloud/login?code=abc&returnPath=%2Fn8n-connect');
 		uiStore.openModalWithData = vi.fn();
 
 		const { openTopUp } = useAiGatewayTopUp();
-		await openTopUp({ source: 'settings_page' });
+		openTopUp({ source: 'credential_selector', credentialType: 'openAiApi' });
 
 		expect(trackMock).toHaveBeenCalledWith('User clicked ai gateway top up', {
-			source: 'settings_page',
-			credential_type: undefined,
+			source: 'credential_selector',
+			credential_type: 'openAiApi',
 		});
-		expect(cloudPlanStore.generateCloudDashboardAutoLoginLink).toHaveBeenCalledWith({
-			redirectionPath: CLOUD_N8N_CONNECT_TOP_UP_PATH,
-		});
-		expect(windowOpen).toHaveBeenCalledWith(
-			'https://app.n8n.cloud/login?code=abc&returnPath=%2Fn8n-connect',
-			'_blank',
-			'noopener',
-		);
-		expect(uiStore.openModalWithData).not.toHaveBeenCalled();
-	});
-
-	it('opens the modal for members', async () => {
-		const usersStore = mockedStore(useUsersStore);
-		const cloudPlanStore = mockedStore(useCloudPlanStore);
-		const settingsStore = mockedStore(useSettingsStore);
-		const uiStore = mockedStore(useUIStore);
-
-		usersStore.isInstanceOwner = false;
-		cloudPlanStore.userIsTrialing = false;
-		settingsStore.isCloudDeployment = true;
-		uiStore.openModalWithData = vi.fn();
-
-		const { openTopUp } = useAiGatewayTopUp();
-		await openTopUp({ source: 'credential_selector', credentialType: 'openAiApi' });
-
 		expect(uiStore.openModalWithData).toHaveBeenCalledWith({
 			name: AI_GATEWAY_TOP_UP_MODAL_KEY,
 			data: { credentialType: 'openAiApi', source: 'credential_selector' },
 		});
-		expect(windowOpen).not.toHaveBeenCalled();
 	});
 
-	it('opens the modal for owners on trial', async () => {
+	it('explains credits in the modal before sending paid Cloud owners to the Admin Panel', () => {
 		const usersStore = mockedStore(useUsersStore);
 		const cloudPlanStore = mockedStore(useCloudPlanStore);
 		const settingsStore = mockedStore(useSettingsStore);
 		const uiStore = mockedStore(useUIStore);
 
 		usersStore.isInstanceOwner = true;
-		cloudPlanStore.userIsTrialing = true;
+		cloudPlanStore.userIsTrialing = false;
 		settingsStore.isCloudDeployment = true;
 		uiStore.openModalWithData = vi.fn();
 
 		const { openTopUp } = useAiGatewayTopUp();
-		await openTopUp({ source: 'settings_page' });
+		openTopUp({ source: 'settings_page' });
 
 		expect(uiStore.openModalWithData).toHaveBeenCalledWith({
 			name: AI_GATEWAY_TOP_UP_MODAL_KEY,
 			data: { credentialType: undefined, source: 'settings_page' },
 		});
-		expect(windowOpen).not.toHaveBeenCalled();
-	});
-
-	it('opens the modal for owners on local (non-cloud) deployments', async () => {
-		const usersStore = mockedStore(useUsersStore);
-		const cloudPlanStore = mockedStore(useCloudPlanStore);
-		const settingsStore = mockedStore(useSettingsStore);
-		const uiStore = mockedStore(useUIStore);
-
-		usersStore.isInstanceOwner = true;
-		cloudPlanStore.userIsTrialing = false;
-		settingsStore.isCloudDeployment = false;
-		uiStore.openModalWithData = vi.fn();
-
-		const { openTopUp } = useAiGatewayTopUp();
-		await openTopUp({ source: 'settings_page' });
-
-		expect(uiStore.openModalWithData).toHaveBeenCalled();
 		expect(windowOpen).not.toHaveBeenCalled();
 	});
 });

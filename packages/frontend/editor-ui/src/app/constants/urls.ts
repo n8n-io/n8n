@@ -26,10 +26,10 @@ export const CLOUD_CHANGE_PLAN_PAGE = window.location.host.includes('stage-app.n
 	: 'https://app.n8n.cloud/account/change-plan';
 
 /**
- * Cloud Admin Panel path for n8n Connect usage / top-up.
- * Placeholder until Cloud Experience ships the final returnPath.
+ * Cloud Admin Panel path for the n8n Connect balance and usage page.
+ * Only resolves once the Manage > n8n Connect tab is released in the Cloud Console.
  */
-export const CLOUD_N8N_CONNECT_TOP_UP_PATH = '/n8n-connect';
+export const CLOUD_N8N_CONNECT_TOP_UP_PATH = '/manage/connect';
 
 /**
  * Urls used to route users to the right template repository

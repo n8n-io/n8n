@@ -7,18 +7,26 @@ import { mockedStore } from '@/__tests__/utils';
 import { createComponentRenderer } from '@/__tests__/render';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { CLOUD_N8N_CONNECT_TOP_UP_PATH } from '@/app/constants';
 import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { AiGatewayConfigDto } from '@n8n/api-types';
-import type { ICredentialType } from 'n8n-workflow';
+import type { ICredentialType, INodeTypeDescription } from 'n8n-workflow';
 import AiGatewayTopUpModal from './AiGatewayTopUpModal.vue';
 
 const mockGoToUpgrade = vi.fn();
+const mockShowError = vi.fn();
 
 vi.mock('@/app/composables/usePageRedirectionHelper', () => ({
 	usePageRedirectionHelper: () => ({
 		goToUpgrade: mockGoToUpgrade,
 	}),
+}));
+
+vi.mock('@n8n/composables/useToast', () => ({
+	useToast: () => ({ showError: mockShowError }),
 }));
 
 vi.mock('@/app/components/Modal.vue', () => ({
@@ -32,48 +40,70 @@ vi.mock('@/app/components/Modal.vue', () => ({
 vi.mock('@/features/credentials/components/CredentialIcon.vue', () => ({
 	default: {
 		props: ['credentialTypeName', 'size'],
-		template: '<span :data-credential-type="credentialTypeName" />',
+		template: '<span :data-test-id="`credential-icon-${credentialTypeName}`" />',
+	},
+}));
+
+vi.mock('@/app/components/NodeIcon.vue', () => ({
+	default: {
+		props: ['nodeType', 'size'],
+		template: '<span :data-test-id="`node-icon-${nodeType.name}`" />',
 	},
 }));
 
 const renderComponent = createComponentRenderer(AiGatewayTopUpModal);
 
-const KNOWN_CREDENTIAL_TYPES: Record<string, string> = {
-	openAiApi: 'OpenAI',
-	anthropicApi: 'Anthropic',
-	googlePalmApi: 'Google Gemini(PaLM) Api',
-	serpApi: 'SerpAPI',
-	firecrawlApi: 'Firecrawl',
-	browserbaseApi: 'Browserbase',
-	pdfcoApi: 'PDF.co',
-	scrapelessApi: 'Scrapeless',
+// Credential types this instance knows about. Only the built-in providers ship a logo;
+// the community-node partners are registered on demand, so they render name-only.
+const INSTALLED_CREDENTIAL_TYPES: Record<string, Partial<ICredentialType>> = {
+	openAiApi: { displayName: 'OpenAI', iconUrl: 'icons/openAi.svg' },
+	anthropicApi: { displayName: 'Anthropic', iconUrl: 'icons/anthropic.svg' },
+	googlePalmApi: { displayName: 'Google Gemini(PaLM) Api', iconUrl: 'icons/gemini.svg' },
+	braveSearchApi: { displayName: 'Brave Search' },
+	pdfcoApi: { displayName: 'PDF.co' },
+	moonshotApi: { displayName: 'Moonshot API', iconUrl: 'icons/moonshot.svg' },
+	miniMaxApi: { displayName: 'MiniMax Account' },
+	openAiAssistantApi: { displayName: 'OpenAI', iconUrl: 'icons/openAi.svg' },
 };
+
+// Community packages keep the logo on the node rather than the credential.
+const INSTALLED_NODE_TYPES = [
+	{ name: 'n8n-nodes-pdfco.pdfco', credentials: [{ name: 'pdfcoApi' }] },
+	{ name: 'openAi', credentials: [{ name: 'openAiApi' }] },
+] as unknown as INodeTypeDescription[];
 
 function renderModal({
 	isInstanceOwner,
 	userIsTrialing,
+	isCloudDeployment = false,
 	credentialTypes,
 }: {
 	isInstanceOwner: boolean;
 	userIsTrialing: boolean;
+	isCloudDeployment?: boolean;
 	credentialTypes?: string[];
 }) {
 	const pinia = createTestingPinia();
 	setActivePinia(pinia);
 	const usersStore = mockedStore(useUsersStore);
 	const cloudPlanStore = mockedStore(useCloudPlanStore);
+	const settingsStore = mockedStore(useSettingsStore);
 	const aiGatewayStore = mockedStore(useAiGatewayStore);
 	const credentialsStore = mockedStore(useCredentialsStore);
+	const nodeTypesStore = mockedStore(useNodeTypesStore);
+	nodeTypesStore.allLatestNodeTypes = INSTALLED_NODE_TYPES;
 	usersStore.isInstanceOwner = isInstanceOwner;
 	cloudPlanStore.userIsTrialing = userIsTrialing;
+	settingsStore.isCloudDeployment = isCloudDeployment;
 	aiGatewayStore.config = {
 		credentialTypes: credentialTypes ?? ['openAiApi', 'anthropicApi'],
 	} as AiGatewayConfigDto;
 	credentialsStore.getCredentialTypeByName = (name: string) =>
-		KNOWN_CREDENTIAL_TYPES[name]
-			? ({ name, displayName: KNOWN_CREDENTIAL_TYPES[name] } as ICredentialType)
+		INSTALLED_CREDENTIAL_TYPES[name]
+			? ({ name, ...INSTALLED_CREDENTIAL_TYPES[name] } as ICredentialType)
 			: undefined;
-	return renderComponent({ pinia });
+	renderComponent({ pinia });
+	return { cloudPlanStore };
 }
 
 describe('AiGatewayTopUpModal.vue', () => {
@@ -93,45 +123,110 @@ describe('AiGatewayTopUpModal.vue', () => {
 		expect(screen.queryByTestId('ai-gateway-topup-upgrade')).not.toBeInTheDocument();
 	});
 
-	it('lists the services the gateway covers, dropping types this instance cannot render', () => {
+	it('names every featured partner, installed or not', () => {
+		renderModal({ isInstanceOwner: false, userIsTrialing: false });
+
+		for (const name of [
+			'OpenAI',
+			'Anthropic',
+			'Google Gemini',
+			'Firecrawl',
+			'Browserbase',
+			'Brave Search',
+			'PDF.co',
+			'LlamaIndex',
+		]) {
+			expect(screen.getByText(name)).toBeInTheDocument();
+		}
+	});
+
+	it('uses the credential logo when it has one', () => {
+		renderModal({ isInstanceOwner: false, userIsTrialing: false });
+
+		expect(screen.getByTestId('credential-icon-openAiApi')).toBeInTheDocument();
+		expect(screen.queryByTestId('credential-icon-pdfcoApi')).not.toBeInTheDocument();
+	});
+
+	it("falls back to the node's logo for credentials that ship none", () => {
+		renderModal({ isInstanceOwner: false, userIsTrialing: false });
+
+		// PDF.co keeps its logo on the node; Brave Search has neither, so it stays name-only.
+		expect(screen.getByTestId('node-icon-n8n-nodes-pdfco.pdfco')).toBeInTheDocument();
+		expect(screen.getByText('Brave Search')).toBeInTheDocument();
+		expect(screen.queryByTestId('node-icon-braveSearch')).not.toBeInTheDocument();
+	});
+
+	it('lists every service the gateway covers, named as brands', () => {
 		renderModal({
 			isInstanceOwner: false,
 			userIsTrialing: false,
-			credentialTypes: ['someUnknownApi', 'firecrawlApi', 'openAiApi'],
+			credentialTypes: ['openAiApi', 'moonshotApi', 'miniMaxApi'],
 		});
 
-		expect(screen.getByText('Firecrawl')).toBeInTheDocument();
-		expect(screen.getByText('OpenAI')).toBeInTheDocument();
-		expect(screen.queryByText('someUnknownApi')).not.toBeInTheDocument();
+		expect(screen.getByText('Moonshot')).toBeInTheDocument();
+		expect(screen.getByText('MiniMax')).toBeInTheDocument();
 	});
 
-	it('trims the credential-picker suffix from partner names', () => {
+	it('shows one tile per vendor and skips services it cannot name', () => {
 		renderModal({
 			isInstanceOwner: false,
 			userIsTrialing: false,
-			credentialTypes: ['googlePalmApi', 'serpApi'],
+			credentialTypes: ['openAiApi', 'openAiAssistantApi', 'mysteryApi'],
 		});
 
-		expect(screen.getByText('Google Gemini(PaLM)')).toBeInTheDocument();
-		expect(screen.getByText('SerpAPI')).toBeInTheDocument();
+		expect(screen.getAllByText('OpenAI')).toHaveLength(1);
+		expect(screen.queryByText('mysteryApi')).not.toBeInTheDocument();
 	});
 
-	it('summarises the remainder when the gateway covers more than the preview fits', () => {
-		renderModal({
-			isInstanceOwner: false,
-			userIsTrialing: false,
-			credentialTypes: Object.keys(KNOWN_CREDENTIAL_TYPES),
-		});
-
-		expect(screen.getByText('and 2 more services')).toBeInTheDocument();
-	});
-
-	it('shows owner copy for owners when the Cloud redirect is unavailable', () => {
+	it('shows owner copy without the Admin Panel link off Cloud', () => {
 		renderModal({ isInstanceOwner: true, userIsTrialing: false });
 
 		expect(screen.getByText(/Top up credits and configure auto-top-up/)).toBeInTheDocument();
 		expect(screen.queryByText(/Only the Instance Owner/)).not.toBeInTheDocument();
 		expect(screen.queryByTestId('ai-gateway-topup-upgrade')).not.toBeInTheDocument();
+		expect(screen.queryByTestId('ai-gateway-topup-admin-panel')).not.toBeInTheDocument();
+	});
+
+	it('links paid Cloud owners to the Admin Panel top-up page', async () => {
+		const windowOpen = vi.fn();
+		vi.stubGlobal('open', windowOpen);
+		const { cloudPlanStore } = renderModal({
+			isInstanceOwner: true,
+			userIsTrialing: false,
+			isCloudDeployment: true,
+		});
+		cloudPlanStore.generateCloudDashboardAutoLoginLink = vi
+			.fn()
+			.mockResolvedValue('https://app.n8n.cloud/login?code=abc&returnPath=%2Fmanage%2Fconnect');
+
+		await userEvent.click(screen.getByTestId('ai-gateway-topup-admin-panel'));
+
+		expect(cloudPlanStore.generateCloudDashboardAutoLoginLink).toHaveBeenCalledWith({
+			redirectionPath: CLOUD_N8N_CONNECT_TOP_UP_PATH,
+		});
+		expect(windowOpen).toHaveBeenCalledWith(
+			'https://app.n8n.cloud/login?code=abc&returnPath=%2Fmanage%2Fconnect',
+			'_blank',
+			'noopener',
+		);
+	});
+
+	it('keeps the modal open and reports the error when the login link fails', async () => {
+		const windowOpen = vi.fn();
+		vi.stubGlobal('open', windowOpen);
+		const { cloudPlanStore } = renderModal({
+			isInstanceOwner: true,
+			userIsTrialing: false,
+			isCloudDeployment: true,
+		});
+		cloudPlanStore.generateCloudDashboardAutoLoginLink = vi
+			.fn()
+			.mockRejectedValue(new Error('no auto-login code'));
+
+		await userEvent.click(screen.getByTestId('ai-gateway-topup-admin-panel'));
+
+		expect(windowOpen).not.toHaveBeenCalled();
+		expect(mockShowError).toHaveBeenCalled();
 	});
 
 	it('shows trial copy for non-owners during trial', () => {

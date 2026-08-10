@@ -67,7 +67,7 @@ function selectOwnCredential(): void {
 function onBadgeClick(event: MouseEvent): void {
 	event.stopPropagation();
 	if (props.readonly) return;
-	void openTopUp({
+	openTopUp({
 		source: 'credential_selector',
 		credentialType: props.credentialType,
 	});

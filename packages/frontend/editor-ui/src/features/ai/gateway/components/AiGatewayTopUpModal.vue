@@ -1,16 +1,20 @@
 <script lang="ts" setup>
 import { computed, onMounted } from 'vue';
+import type { INodeTypeDescription } from 'n8n-workflow';
 import { N8nButton, N8nCard, N8nHeading, N8nIcon, N8nText } from '@n8n/design-system';
-import { useI18n } from '@n8n/i18n';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import { useToast } from '@n8n/composables/useToast';
 import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { AI_GATEWAY_TOP_UP_MODAL_KEY, CLOUD_N8N_CONNECT_TOP_UP_PATH } from '@/app/constants';
 import Modal from '@/app/components/Modal.vue';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
+import NodeIcon from '@/app/components/NodeIcon.vue';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 
 const i18n = useI18n();
 const usersStore = useUsersStore();
@@ -18,60 +22,96 @@ const cloudPlanStore = useCloudPlanStore();
 const settingsStore = useSettingsStore();
 const aiGatewayStore = useAiGatewayStore();
 const credentialsStore = useCredentialsStore();
+const nodeTypesStore = useNodeTypesStore();
 const { goToUpgrade } = usePageRedirectionHelper();
+const toast = useToast();
 
 type TopUpVariant = 'member' | 'memberTrial' | 'owner' | 'ownerTrial';
 
-const SERVICE_PREVIEW_LIMIT = 6;
+/**
+ * Named up front, and named even when the instance can't resolve them: the model providers
+ * people look for, then the tool services they don't expect credits to cover. Everything else
+ * the gateway covers follows in config order.
+ */
+const FEATURED_SERVICES = [
+	{ credentialType: 'openAiApi', labelKey: 'aiGateway.topUp.modal.service.openAi' },
+	{ credentialType: 'anthropicApi', labelKey: 'aiGateway.topUp.modal.service.anthropic' },
+	{ credentialType: 'googlePalmApi', labelKey: 'aiGateway.topUp.modal.service.googleGemini' },
+	{ credentialType: 'firecrawlApi', labelKey: 'aiGateway.topUp.modal.service.firecrawl' },
+	{ credentialType: 'browserbaseApi', labelKey: 'aiGateway.topUp.modal.service.browserbase' },
+	{ credentialType: 'braveSearchApi', labelKey: 'aiGateway.topUp.modal.service.brave' },
+	{ credentialType: 'pdfcoApi', labelKey: 'aiGateway.topUp.modal.service.pdfco' },
+	{ credentialType: 'llamaParseApi', labelKey: 'aiGateway.topUp.modal.service.llamaIndex' },
+] as const satisfies ReadonlyArray<{ credentialType: string; labelKey: BaseTextKey }>;
 
-// Shown until the gateway config lands, and as a floor if it comes back empty.
-const FEATURED_CREDENTIAL_TYPES = ['openAiApi', 'anthropicApi', 'googlePalmApi'];
+const FEATURED_LABEL_KEYS = new Map<string, BaseTextKey>(
+	FEATURED_SERVICES.map((service) => [service.credentialType, service.labelKey]),
+);
 
-// Credential display names are written for the credential picker ("Google Gemini(PaLM) Api");
-// drop the trailing noun so the tiles read as partner brands.
+/**
+ * Many credentials ship no icon of their own — the logo lives on the node instead (PDF.co ships
+ * `pdfco.svg` on its node and nothing on `PdfcoApi`), so fall back to a node that uses the
+ * credential. First match wins, which is fine for the vendor credentials the gateway covers.
+ */
+const nodeTypeByCredentialType = computed(() => {
+	const byCredentialType = new Map<string, INodeTypeDescription>();
+	for (const nodeType of nodeTypesStore.allLatestNodeTypes) {
+		for (const credential of nodeType.credentials ?? []) {
+			if (!byCredentialType.has(credential.name)) {
+				byCredentialType.set(credential.name, nodeType);
+			}
+		}
+	}
+	return byCredentialType;
+});
+
+// Display names are written for the credential picker ("Firecrawl API"), so drop the trailing
+// noun to leave the brand.
 function toBrandName(displayName: string): string {
-	return displayName.replace(/\s+(api|account|credentials?)$/i, '');
-}
-
-function featuredRank(credentialType: string): number {
-	const index = FEATURED_CREDENTIAL_TYPES.indexOf(credentialType);
-	return index === -1 ? FEATURED_CREDENTIAL_TYPES.length : index;
+	return displayName.replace(/\s+(api|account|credentials?)$/i, '').trim();
 }
 
 /**
- * Covered services come from the gateway config rather than a hardcoded list, so the modal
- * can only advertise what the gateway actually serves. Types this instance doesn't know are
- * dropped — without a registered credential type there is no logo, and a placeholder glyph
- * next to a partner name reads as broken.
+ * Every service the gateway covers, featured ones first. A service the instance knows nothing
+ * about — no credential type, no node — is still named if it's featured, just without a logo;
+ * any other unresolvable type is dropped rather than shown as a raw credential id.
  */
-const coveredServices = computed(() => {
-	const credentialTypes = aiGatewayStore.config?.credentialTypes?.length
-		? aiGatewayStore.config.credentialTypes
-		: FEATURED_CREDENTIAL_TYPES;
+const services = computed(() => {
+	const covered = aiGatewayStore.config?.credentialTypes ?? [];
+	const credentialTypes = [
+		...FEATURED_LABEL_KEYS.keys(),
+		...covered.filter((credentialType) => !FEATURED_LABEL_KEYS.has(credentialType)),
+	];
+	const seen = new Set<string>();
 
-	return credentialTypes
-		.map((credentialType) => ({
-			credentialType,
-			displayName: credentialsStore.getCredentialTypeByName(credentialType)?.displayName,
-		}))
-		.filter(
-			(service): service is { credentialType: string; displayName: string } =>
-				service.displayName !== undefined,
-		)
-		.map((service) => ({ ...service, displayName: toBrandName(service.displayName) }))
-		.sort((a, b) => featuredRank(a.credentialType) - featuredRank(b.credentialType));
+	return credentialTypes.flatMap((credentialType) => {
+		const credential = credentialsStore.getCredentialTypeByName(credentialType);
+		const nodeType = nodeTypeByCredentialType.value.get(credentialType);
+		const labelKey = FEATURED_LABEL_KEYS.get(credentialType);
+		const label = labelKey
+			? i18n.baseText(labelKey)
+			: toBrandName(credential?.displayName ?? nodeType?.displayName ?? '');
+
+		// Vendors reachable through more than one credential type get one tile, not several.
+		if (!label || seen.has(label)) return [];
+		seen.add(label);
+
+		return [
+			{
+				credentialType,
+				label,
+				hasCredentialIcon: Boolean(credential?.icon ?? credential?.iconUrl),
+				nodeType,
+			},
+		];
+	});
 });
-
-const visibleServices = computed(() => coveredServices.value.slice(0, SERVICE_PREVIEW_LIMIT));
-
-const hiddenServiceCount = computed(() =>
-	Math.max(coveredServices.value.length - SERVICE_PREVIEW_LIMIT, 0),
-);
 
 onMounted(async () => {
 	await Promise.allSettled([
 		aiGatewayStore.fetchConfig(),
 		credentialsStore.fetchCredentialTypes(false),
+		nodeTypesStore.loadNodeTypesIfNotLoaded(),
 	]);
 });
 
@@ -126,11 +166,16 @@ async function onUpgrade(close: () => void): Promise<void> {
 }
 
 async function onOpenAdminPanel(close: () => void): Promise<void> {
-	close();
-	const link = await cloudPlanStore.generateCloudDashboardAutoLoginLink({
-		redirectionPath: CLOUD_N8N_CONNECT_TOP_UP_PATH,
-	});
-	window.open(link, '_blank', 'noopener');
+	try {
+		const link = await cloudPlanStore.generateCloudDashboardAutoLoginLink({
+			redirectionPath: CLOUD_N8N_CONNECT_TOP_UP_PATH,
+		});
+		close();
+		window.open(link, '_blank', 'noopener');
+	} catch (error) {
+		// Keep the modal open so the auto-login link can be retried.
+		toast.showError(error, i18n.baseText('aiGateway.topUp.modal.cta.openAdminPanelError'));
+	}
 }
 </script>
 
@@ -138,6 +183,7 @@ async function onOpenAdminPanel(close: () => void): Promise<void> {
 	<Modal
 		:name="AI_GATEWAY_TOP_UP_MODAL_KEY"
 		width="520px"
+		max-height="80vh"
 		custom-class="ai-gateway-topup-dialog"
 		data-test-id="ai-gateway-topup-modal"
 	>
@@ -154,36 +200,32 @@ async function onOpenAdminPanel(close: () => void): Promise<void> {
 					<N8nText size="small" color="text-base" tag="p">{{ description }}</N8nText>
 				</div>
 
-				<div
-					v-if="visibleServices.length"
-					:class="$style.services"
-					data-test-id="ai-gateway-topup-services"
-				>
+				<div :class="$style.services" data-test-id="ai-gateway-topup-services">
 					<N8nText size="small" color="text-light">
 						{{ i18n.baseText('aiGateway.topUp.modal.servicesHint') }}
 					</N8nText>
 					<div :class="$style.serviceGrid" role="list">
 						<N8nCard
-							v-for="service in visibleServices"
+							v-for="service in services"
 							:key="service.credentialType"
 							:class="$style.serviceCard"
 							role="listitem"
 						>
 							<div :class="$style.service">
-								<CredentialIcon :credential-type-name="service.credentialType" :size="18" />
+								<span :class="$style.logo">
+									<CredentialIcon
+										v-if="service.hasCredentialIcon"
+										:credential-type-name="service.credentialType"
+										:size="18"
+									/>
+									<NodeIcon v-else-if="service.nodeType" :node-type="service.nodeType" :size="18" />
+								</span>
 								<N8nText size="small" color="text-dark" :class="$style.serviceName">
-									{{ service.displayName }}
+									{{ service.label }}
 								</N8nText>
 							</div>
 						</N8nCard>
 					</div>
-					<N8nText v-if="hiddenServiceCount" size="small" color="text-light">
-						{{
-							i18n.baseText('aiGateway.topUp.modal.servicesMore', {
-								interpolate: { count: hiddenServiceCount },
-							})
-						}}
-					</N8nText>
 				</div>
 			</div>
 		</template>
@@ -250,7 +292,7 @@ async function onOpenAdminPanel(close: () => void): Promise<void> {
 
 .serviceGrid {
 	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+	grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
 	gap: var(--spacing--2xs);
 	width: 100%;
 }
@@ -265,6 +307,16 @@ async function onOpenAdminPanel(close: () => void): Promise<void> {
 	gap: var(--spacing--2xs);
 	min-width: 0;
 	text-align: left;
+}
+
+/* Reserved so names line up whether or not the service has a logo to show. */
+.logo {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	flex: none;
+	width: 18px;
+	height: 18px;
 }
 
 .serviceName {
