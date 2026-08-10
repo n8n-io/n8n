@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { N8nDataTableServer, N8nText, N8nUserInfo, type UserAction } from '@n8n/design-system';
-import type { TableHeader, TableOptions } from '@n8n/design-system/components/N8nDataTableServer';
-import type { UsersInfoProps } from '@n8n/design-system/components/N8nUserInfo/UserInfo.vue';
+import type { TableHeader, TableOptions } from '@n8n/design-system';
+import type { UsersInfoProps } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { AllRolesMap, Role } from '@n8n/permissions';
 import { computed, ref } from 'vue';
