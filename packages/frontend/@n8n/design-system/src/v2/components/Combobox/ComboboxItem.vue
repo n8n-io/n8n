@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useCssModule } from 'vue';
+import { computed, useCssModule } from 'vue';
 
 import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
 
@@ -12,6 +12,11 @@ defineSlots<ComboboxItemSlots>();
 
 const props = defineProps<ComboboxOptionBase>();
 const $style = useCssModule();
+
+/** Reka filters against a single string — join base text with optional keywords. */
+const filterText = computed(() =>
+	[props.textValue ?? props.label, ...(props.keywords ?? [])].join(' '),
+);
 </script>
 
 <template>
@@ -20,7 +25,7 @@ const $style = useCssModule();
 		:class="$style.root"
 		:disabled="props.disabled"
 		:value="props.value"
-		:text-value="props.textValue ?? props.label"
+		:text-value="filterText"
 		:data-disabled="props.disabled || undefined"
 		@mousedown.prevent
 	>

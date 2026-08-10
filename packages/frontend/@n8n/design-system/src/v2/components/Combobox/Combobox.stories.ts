@@ -118,6 +118,13 @@ const itemsWithDisabledOption: ComboboxItemType[] = [
 	{ label: 'Done', value: 'done', disabled: true },
 ];
 
+const itemsWithKeywords: ComboboxItemType[] = [
+	{ label: 'Germany', value: 'de', keywords: ['Deutschland', 'DE'] },
+	{ label: 'Japan', value: 'jp', keywords: ['Nippon', 'JP'] },
+	{ label: 'United Kingdom', value: 'uk', keywords: ['Britain', 'England', 'UK', 'GB'] },
+	{ label: 'United States', value: 'us', keywords: ['USA', 'America', 'US'] },
+];
+
 const storyContainerStyle = 'padding: 40px; max-width: 400px';
 
 const meta = {
@@ -457,6 +464,38 @@ export const WithDisabledItem = {
 	args: {
 		items: itemsWithDisabledOption,
 		modelValue: undefined,
+	},
+} satisfies Story;
+
+export const WithKeywords = {
+	name: 'With Keywords',
+	render: (args) => ({
+		components: { Combobox },
+		setup() {
+			const value = ref(args.modelValue);
+			return { args, value };
+		},
+		template: `
+		<div style="${storyContainerStyle}">
+			<Combobox
+				v-bind="args"
+				v-model="value"
+				placeholder="Try 'America', 'Britain', or 'Deutschland'..."
+			/>
+		</div>
+		`,
+	}),
+	args: {
+		items: itemsWithKeywords,
+		modelValue: undefined,
+	},
+	parameters: {
+		docs: {
+			description: {
+				story:
+					'Items can include `keywords` — extra strings matched during filtering (e.g. synonyms) without changing the displayed label. Try searching for "America", "Britain", or "Deutschland".',
+			},
+		},
 	},
 } satisfies Story;
 

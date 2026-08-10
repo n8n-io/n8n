@@ -108,7 +108,10 @@ type ComboboxOptionBase<TValue extends ComboboxValue = ComboboxValue> = {
   label: string; // required
   icon?: IconName;
   disabled?: boolean;
+  /** Filter text when it should differ from `label` (e.g. slot-rendered label). Defaults to `label`. */
   textValue?: string;
+  /** Extra strings matched during filtering (e.g. synonyms). Checked alongside `textValue` / `label`. */
+  keywords?: string[];
 };
 
 type ComboboxItem =

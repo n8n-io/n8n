@@ -13,9 +13,15 @@ export type ComboboxOptionBase<TValue extends ComboboxValue = ComboboxValue> = {
 	/**
 	 * String used for typeahead filtering. Defaults to `label`.
 	 * Set this when the filter text should differ from the displayed label
-	 * (e.g. include synonyms or a slot-rendered label).
+	 * (e.g. a slot-rendered label).
 	 */
 	textValue?: string;
+	/**
+	 * Extra strings matched during typeahead filtering (e.g. synonyms).
+	 * Does not replace `textValue` — both the base filter text and these
+	 * keywords are checked.
+	 */
+	keywords?: string[];
 };
 
 export type ComboboxLabelItem = {

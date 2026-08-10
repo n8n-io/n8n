@@ -370,6 +370,44 @@ describe('v2/components/Combobox', () => {
 			});
 		});
 
+		it('should match items via keywords without changing the displayed label', async () => {
+			const items: ComboboxItem[] = [
+				{ value: 'us', label: 'United States', keywords: ['USA', 'America'] },
+				{ value: 'uk', label: 'United Kingdom', keywords: ['Britain', 'England'] },
+			];
+
+			const wrapper = render(Combobox, {
+				props: { items, defaultOpen: true },
+			});
+
+			const input = getComboboxInput(wrapper);
+			await userEvent.type(input, 'america');
+
+			await waitFor(() => {
+				expect(wrapper.getByText('United States')).toBeVisible();
+				expect(wrapper.queryByText('United Kingdom')).not.toBeInTheDocument();
+			});
+		});
+
+		it('should still match the label when keywords are set', async () => {
+			const items: ComboboxItem[] = [
+				{ value: 'us', label: 'United States', keywords: ['USA', 'America'] },
+				{ value: 'uk', label: 'United Kingdom', keywords: ['Britain'] },
+			];
+
+			const wrapper = render(Combobox, {
+				props: { items, defaultOpen: true },
+			});
+
+			const input = getComboboxInput(wrapper);
+			await userEvent.type(input, 'united');
+
+			await waitFor(() => {
+				expect(wrapper.getByText('United States')).toBeVisible();
+				expect(wrapper.getByText('United Kingdom')).toBeVisible();
+			});
+		});
+
 		it('should not filter items when ignoreFilter is true', async () => {
 			const items: ComboboxItem[] = [
 				{ value: 'apple', label: 'Apple' },
