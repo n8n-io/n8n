@@ -52,7 +52,7 @@ const isQuotaExhausted = computed(() => errorDetails.value?.code === 'quota_exha
 
 /**
  * The activation-capped trial cohort is never shown a credit balance, so telling them they've
- * "run out of AI credits" would be the first they'd hear of any credits at all (INS-1082).
+ * "run out of AI credits" would be the first they'd hear of any credits at all.
  */
 const outOfCreditsTitleKey = computed(() =>
 	settingsStore.moduleSettings?.['instance-ai']?.activationCapped

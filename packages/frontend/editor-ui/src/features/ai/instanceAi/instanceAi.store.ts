@@ -37,6 +37,8 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	// No reset needed on thread switch — login/logout reloads the page.
 	const creditsQuota = ref<number | undefined>(undefined);
 	const creditsClaimed = ref<number | undefined>(undefined);
+	/** Whether the pool has been locked by the activation cap. */
+	const quotaLocked = ref(false);
 
 	// --- Thread runtimes ---
 	const runtimes = shallowReactive(new Map<string, ThreadRuntime>());
@@ -106,6 +108,13 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		return creditsPercentageRemaining.value !== undefined && creditsPercentageRemaining.value <= 10;
 	});
 
+	/**
+	 * Whether to warn about credits above the chat input: either the balance is running low, or the
+	 * pool has been locked outright. The two are mutually exclusive in practice — a cohort with a
+	 * masked balance can never read as "low" — so this is the single condition the views use.
+	 */
+	const showCreditWarning = computed(() => isLowCredits.value || quotaLocked.value);
+
 	// --- Credits push listener ---
 
 	let removeCreditsPushListener: (() => void) | null = null;
@@ -117,6 +126,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 			if (message.type !== 'updateInstanceAiCredits') return;
 			creditsQuota.value = message.data.creditsQuota;
 			creditsClaimed.value = message.data.creditsClaimed;
+			quotaLocked.value = message.data.quotaLocked ?? false;
 			// Per-message claims also carry the thread's running total — write it onto the
 			// matching thread so the credits dropdown updates live for the acting user.
 			const { creditsPerThread } = message.data;
@@ -141,6 +151,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 			const result = await getInstanceAiCredits(rootStore.restApiContext);
 			creditsQuota.value = result.creditsQuota;
 			creditsClaimed.value = result.creditsClaimed;
+			quotaLocked.value = result.quotaLocked ?? false;
 		} catch {
 			// Non-critical — credits display is optional
 		}
@@ -282,6 +293,8 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		creditsRemaining,
 		creditsPercentageRemaining,
 		isLowCredits,
+		quotaLocked,
+		showCreditWarning,
 
 		// Thread-list actions
 		deleteThread,

@@ -629,8 +629,6 @@ describe('WorkflowStatisticsService', () => {
 				workflowId: teamWorkflow.id,
 				userId: null,
 			});
-			// The instance still activates: `userActivated` is personal-project-only, so this is the
-			// only signal that fires here, and the activation cap depends on it (INS-1082).
 			expect(emitSpy).toHaveBeenCalledWith('instance-first-production-workflow-succeeded', {
 				projectId: teamProject.id,
 				workflowId: teamWorkflow.id,
@@ -663,8 +661,6 @@ describe('WorkflowStatisticsService', () => {
 			expect(afterFirst).not.toBeNull();
 			expect(JSON.parse(afterFirst!.value)).toMatchObject({ workflowId: workflow.id });
 
-			// The second workflow reaches its own first success, so the per-workflow event fires
-			// again — but the instance has already activated, so the instance-level one does not.
 			expect(emitSpy).toHaveBeenCalledWith(
 				'first-production-workflow-succeeded',
 				expect.anything(),

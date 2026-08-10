@@ -865,7 +865,9 @@ export class InstanceAiService {
 	 * lock call that was lost to a failed request, an evicted record or a process restart is
 	 * re-asserted here without any scheduled job.
 	 */
-	async getCredits(user: User): Promise<{ creditsQuota: number; creditsClaimed: number }> {
+	async getCredits(
+		user: User,
+	): Promise<{ creditsQuota: number; creditsClaimed: number; quotaLocked?: boolean }> {
 		await this.creditService.ensureQuotaLockApplied(user);
 
 		const credits = await this.modelService.getCredits(user);
@@ -888,8 +890,6 @@ export class InstanceAiService {
 	): Promise<unknown> {
 		if (!isMaskedStreamFailure(error)) return error;
 		try {
-			// The activation lock refuses use while the quota still has credits left, so the
-			// numbers alone would not explain the failure (INS-1082).
 			if (!(await this.creditService.isActivationLockActive())) {
 				const { creditsQuota, creditsClaimed } = await this.modelService.getCredits(user);
 				// A negative quota is the unlimited sentinel (e.g. proxy disabled).
@@ -2151,10 +2151,7 @@ export class InstanceAiService {
 		);
 		const userGateway = this.gatewayService.findGateway(user.id);
 
-		// Reconcile the activation lock (INS-1082) before the run resolves its model. This is the
-		// per-run reconcile point: the other one is `getCredits`, which only fires when the frontend
-		// mounts, so without this a conversation that was already open when the instance activated
-		// would keep running unlocked until the page was reloaded.
+		// There's another ensure lock check at `getCredits`, which only fires when the frontend mounts.
 		await this.creditService.ensureQuotaLockApplied(user);
 
 		const { searchProxyConfig, tracingProxyConfig, tokenManager, proxyBaseUrl } =

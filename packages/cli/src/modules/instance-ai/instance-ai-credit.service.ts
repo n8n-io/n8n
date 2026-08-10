@@ -105,6 +105,21 @@ export class InstanceAiCreditService {
 				creditsQuota: result.creditsQuota,
 				creditsClaimed: result.creditsClaimed,
 			});
+
+			// Tell the editor straight away so it can warn before the user types. The claim path
+			// can't do this: a locked run is refused at token mint, so it never reaches a claim.
+			if (result.quotaLocked) {
+				this.push.sendToUsers(
+					{
+						type: 'updateInstanceAiCredits',
+						data: maskCreditsForDisplay(
+							{ ...result, quotaLocked: true },
+							this.settingsService.isActivationCapped(),
+						),
+					},
+					[user.id],
+				);
+			}
 		} catch (error) {
 			// Left unconfirmed on purpose so the next read retries.
 			this.logger.warn('Failed to apply Instance AI activation lock', {

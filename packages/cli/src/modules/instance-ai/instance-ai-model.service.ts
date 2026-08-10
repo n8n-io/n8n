@@ -144,7 +144,9 @@ export class InstanceAiModelService {
 	}
 
 	/** Get current Instance AI credit usage from the AI service proxy. */
-	async getCredits(user: User): Promise<{ creditsQuota: number; creditsClaimed: number }> {
+	async getCredits(
+		user: User,
+	): Promise<{ creditsQuota: number; creditsClaimed: number; quotaLocked?: boolean }> {
 		if (!this.aiService.isProxyEnabled()) {
 			return { creditsQuota: UNLIMITED_CREDITS, creditsClaimed: 0 };
 		}

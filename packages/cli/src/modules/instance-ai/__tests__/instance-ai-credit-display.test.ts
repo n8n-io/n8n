@@ -28,6 +28,7 @@ describe('maskCreditsForDisplay', () => {
 			expect(maskCreditsForDisplay(credits, true)).toEqual({
 				creditsQuota: UNLIMITED_CREDITS,
 				creditsClaimed: 0,
+				quotaLocked: false,
 			});
 		});
 
@@ -41,6 +42,27 @@ describe('maskCreditsForDisplay', () => {
 			expect(maskCreditsForDisplay({ creditsQuota: 800, creditsClaimed: 800 }, true)).toEqual({
 				creditsQuota: UNLIMITED_CREDITS,
 				creditsClaimed: 0,
+				quotaLocked: false,
+			});
+		});
+
+		// The lock carries no figure, so it survives the masking — it is the only usage signal this
+		// cohort gets, and the editor needs it to warn before the user types.
+		it('keeps the lock flag while hiding the balance', () => {
+			expect(
+				maskCreditsForDisplay({ creditsQuota: 800, creditsClaimed: 12.5, quotaLocked: true }, true),
+			).toEqual({
+				creditsQuota: UNLIMITED_CREDITS,
+				creditsClaimed: 0,
+				quotaLocked: true,
+			});
+		});
+
+		it('reports an unlocked pool as false rather than undefined', () => {
+			expect(maskCreditsForDisplay({ creditsQuota: 800, creditsClaimed: 12.5 }, true)).toEqual({
+				creditsQuota: UNLIMITED_CREDITS,
+				creditsClaimed: 0,
+				quotaLocked: false,
 			});
 		});
 	});

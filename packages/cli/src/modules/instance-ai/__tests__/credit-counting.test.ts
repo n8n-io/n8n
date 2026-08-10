@@ -191,7 +191,7 @@ describe('claimRunUsage', () => {
 		expect(push.sendToUsers).toHaveBeenCalledWith(
 			expect.objectContaining({
 				type: 'updateInstanceAiCredits',
-				data: { creditsQuota: UNLIMITED_CREDITS, creditsClaimed: 0 },
+				data: { creditsQuota: UNLIMITED_CREDITS, creditsClaimed: 0, quotaLocked: false },
 			}),
 			['user-1'],
 		);

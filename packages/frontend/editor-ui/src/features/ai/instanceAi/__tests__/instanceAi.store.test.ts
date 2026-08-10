@@ -4,7 +4,7 @@ import { ensureThread } from '../instanceAi.api';
 import { deleteThread as deleteThreadApi } from '../instanceAi.memory.api';
 import { useInstanceAiStore } from '../instanceAi.store';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
-import type { InstanceAiThreadSummary } from '@n8n/api-types';
+import { UNLIMITED_CREDITS, type InstanceAiThreadSummary } from '@n8n/api-types';
 
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: vi.fn().mockReturnValue({
@@ -216,6 +216,54 @@ describe('useInstanceAiStore - credits', () => {
 
 			expect(store.creditsClaimed).toBe(5);
 			expect(store.threadCreditsUsed('t1')).toBe(2.5);
+		});
+
+		it('picks up the quota lock from the push payload', () => {
+			let pushCb: (m: unknown) => void = () => {};
+			vi.mocked(usePushConnectionStore).mockReturnValue({
+				addEventListener: vi.fn((cb: (m: unknown) => void) => {
+					pushCb = cb;
+					return () => {};
+				}),
+			} as unknown as ReturnType<typeof usePushConnectionStore>);
+
+			const store = useInstanceAiStore();
+			store.startCreditsPushListener();
+
+			pushCb({
+				type: 'updateInstanceAiCredits',
+				// What the activation-capped cohort receives: no usable figures, just the lock.
+				data: { creditsQuota: UNLIMITED_CREDITS, creditsClaimed: 0, quotaLocked: true },
+			});
+
+			expect(store.quotaLocked).toBe(true);
+			expect(store.showCreditWarning).toBe(true);
+		});
+	});
+
+	// For the activation-capped cohort the balance is masked, so `isLowCredits` can never fire.
+	describe('showCreditWarning', () => {
+		it('is false with no credit information', () => {
+			const store = useInstanceAiStore();
+			expect(store.showCreditWarning).toBe(false);
+		});
+
+		it('is true when credits are running low', () => {
+			const store = useInstanceAiStore();
+			store.creditsQuota = 100;
+			store.creditsClaimed = 95;
+
+			expect(store.showCreditWarning).toBe(true);
+		});
+
+		it('is true when the pool is locked despite a masked balance', () => {
+			const store = useInstanceAiStore();
+			store.creditsQuota = UNLIMITED_CREDITS;
+			store.creditsClaimed = 0;
+			store.quotaLocked = true;
+
+			expect(store.isLowCredits).toBe(false);
+			expect(store.showCreditWarning).toBe(true);
 		});
 	});
 

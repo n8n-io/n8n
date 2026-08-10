@@ -99,10 +99,7 @@ export class AiService {
 		);
 	}
 
-	/**
-	 * Forfeit the remaining Instance AI quota for this instance (INS-1082). Idempotent server-side,
-	 * so callers re-assert it rather than depending on one call landing.
-	 */
+	/** Forfeit the remaining Instance AI quota for this instance. Idempotent server-side. */
 	async lockInstanceAiQuota(user: IUser, activatedAt?: number) {
 		const client = await this.getClient();
 		return await client.lockInstanceAiQuota(user, { activatedAt });
