@@ -87,6 +87,7 @@
       "sqlite3"
     ],
     "overrides": {
+      "adm-zip": "0.6.0",
       "@isaacs/brace-expansion": "5.0.1",
       "ast-types": "0.16.1",
       "@azure/identity": "4.13.0",
