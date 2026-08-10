@@ -1,8 +1,8 @@
 import { getPredecessorNodeIds, getSuccessorNodeIds } from '../graph';
 import type { StepCompletedEvent, StepMessage, WorkQueue } from '../queue';
 import type { ExecutionRecord, ExecutionStore } from './execution-store';
-import { loadStepContext } from './load-step-context';
 import type { StepStore } from './step-store';
+import { validateStepContext } from './validate-step-context';
 
 /**
  * Handles the `step:completed` orchestration event: plans the successors of the
@@ -24,10 +24,22 @@ export class StepCompletedHandler {
 	) {}
 
 	async handle(event: StepCompletedEvent): Promise<void> {
-		const { step, execution } = await loadStepContext(this.executionStore, this.stepStore, event);
+		const [step, execution] = await Promise.all([
+			this.stepStore.loadStep(event.stepId),
+			this.executionStore.loadExecution(event.executionId),
+		]);
+		validateStepContext(step, execution);
 
-		// A step that didn't complete ends its branch: no successor of it can have
-		// all of its inputs.
+		// v1 parity: an error that escapes a node ends the whole execution, not
+		// just its branch.
+		if (step.status === 'failed') {
+			await this.executionStore.finishExecution(execution.id, 'failed');
+			await this.stepStore.cancelQueuedSteps(execution.id);
+			return;
+		}
+
+		if (execution.status !== 'running') return;
+
 		const planned =
 			step.status === 'completed' ? await this.planSuccessors(execution, step.nodeId) : 0;
 

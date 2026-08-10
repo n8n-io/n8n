@@ -7,6 +7,7 @@ import ProjectsNavigation from './ProjectNavigation.vue';
 import { useProjectsStore } from '../projects.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
+import { useRBACStore } from '@n8n/stores/rbac.store';
 
 vi.mock('vue-router', async () => {
 	const actual = await vi.importActual('vue-router');
@@ -68,12 +69,42 @@ const teamProjects = Array.from({ length: 3 }, () => createProjectListItem('team
 
 describe('ProjectsNavigation', () => {
 	beforeEach(() => {
+		vi.stubGlobal('localStorage', {
+			getItem: vi.fn().mockReturnValue(null),
+			setItem: vi.fn(),
+		});
 		createTestingPinia();
 
 		projectsStore = mockedStore(useProjectsStore);
 		settingsStore = mockedStore(useSettingsStore);
 		usersStore = mockedStore(useUsersStore);
 	});
+
+	function configureInstanceAi(setupCompleted: boolean) {
+		settingsStore.isModuleActive = vi.fn().mockReturnValue(true);
+		settingsStore.moduleSettings = {
+			'instance-ai': {
+				enabled: true,
+				localGatewayDisabled: false,
+				browserUseEnabled: true,
+				proxyEnabled: false,
+				cloudManaged: false,
+				setupCompleted,
+				sandboxEnabled: true,
+				workflowBuilderAvailable: true,
+				sandboxUnavailableReason: null,
+				runDebugEnabled: false,
+			},
+		};
+	}
+
+	function configureInstanceAiScopes({ canManage }: { canManage: boolean }) {
+		vi.mocked(useRBACStore().hasScope).mockImplementation((scope) => {
+			if (scope === 'instanceAi:manage') return canManage;
+			if (scope === 'instanceAi:message') return true;
+			return false;
+		});
+	}
 
 	it('should not throw an error', () => {
 		projectsStore.teamProjectsLimit = -1;
@@ -103,22 +134,10 @@ describe('ProjectsNavigation', () => {
 		expect(getAllByTestId('project-menu-item')).toHaveLength(teamProjects.length);
 	});
 
-	it('should show Instance AI above Home when enabled', () => {
+	it('should show Instance AI above Home for a member after setup is complete', () => {
 		projectsStore.teamProjectsLimit = -1;
-		settingsStore.isModuleActive = vi.fn().mockReturnValue(true);
-		settingsStore.moduleSettings = {
-			'instance-ai': {
-				enabled: true,
-				localGatewayDisabled: false,
-				browserUseEnabled: true,
-				proxyEnabled: false,
-				cloudManaged: false,
-				sandboxEnabled: true,
-				workflowBuilderAvailable: true,
-				sandboxUnavailableReason: null,
-				runDebugEnabled: false,
-			},
-		};
+		configureInstanceAiScopes({ canManage: false });
+		configureInstanceAi(true);
 
 		const { getByTestId } = renderComponent({
 			props: {
@@ -131,6 +150,26 @@ describe('ProjectsNavigation', () => {
 				getByTestId('project-home-menu-item'),
 			) & Node.DOCUMENT_POSITION_FOLLOWING,
 		).toBeTruthy();
+	});
+
+	it('should hide Instance AI from a member until setup is complete', () => {
+		projectsStore.teamProjectsLimit = -1;
+		configureInstanceAiScopes({ canManage: false });
+		configureInstanceAi(false);
+
+		const { queryByTestId } = renderComponent({ props: { collapsed: false } });
+
+		expect(queryByTestId('project-instance-ai-menu-item')).toBeNull();
+	});
+
+	it('should show Instance AI to an admin before setup is complete', () => {
+		projectsStore.teamProjectsLimit = -1;
+		configureInstanceAiScopes({ canManage: true });
+		configureInstanceAi(false);
+
+		const { getByTestId } = renderComponent({ props: { collapsed: false } });
+
+		expect(getByTestId('project-instance-ai-menu-item')).toBeVisible();
 	});
 
 	it('should not show "Projects" title when the menu is collapsed', async () => {

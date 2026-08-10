@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent } from '@testing-library/vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import InstanceAiQuestions, { type QuestionItem } from '../components/InstanceAiQuestions.vue';
@@ -34,6 +34,10 @@ function render(questions: QuestionItem[]) {
 }
 
 describe('InstanceAiQuestions', () => {
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
 	it('submits the final empty text question as skipped', async () => {
 		const { emitted, getByTestId } = render([textQuestion]);
 
@@ -59,17 +63,44 @@ describe('InstanceAiQuestions', () => {
 		]);
 	});
 
-	it('shows enabled Submit for the final empty single-select question', async () => {
-		const { emitted, getByTestId, queryByTestId } = render([singleQuestion]);
+	it('submits the clicked option on the final single-select question', async () => {
+		vi.useFakeTimers();
+		const { emitted, getByText } = render([singleQuestion]);
 
-		expect(queryByTestId('instance-ai-questions-skip')).toBeNull();
+		await fireEvent.click(getByText('Production'));
+		vi.advanceTimersByTime(250);
 
-		const submitButton = getByTestId('instance-ai-questions-next');
+		expect(emitted().submit).toEqual([
+			[
+				[
+					{
+						questionId: 'q-single',
+						question: 'Which credential should I use?',
+						selectedOptions: ['Production'],
+						customText: '',
+						skipped: false,
+					},
+				],
+			],
+		]);
+	});
 
-		expect(submitButton).toHaveTextContent('Submit');
-		expect(submitButton).not.toHaveAttribute('disabled');
+	it('keeps Submit disabled while an option is only highlighted, not selected', async () => {
+		const { container, getByTestId } = render([singleQuestion]);
 
-		await fireEvent.click(submitButton);
+		const firstOption = container.querySelector('[data-option-index="0"]');
+		expect(firstOption).not.toBeNull();
+		await fireEvent.mouseEnter(firstOption as Element);
+
+		expect(getByTestId('instance-ai-questions-next')).toHaveAttribute('disabled');
+	});
+
+	it('skips the final single-select question via the explicit Skip button', async () => {
+		const { emitted, getByTestId } = render([singleQuestion]);
+
+		expect(getByTestId('instance-ai-questions-next')).toHaveAttribute('disabled');
+
+		await fireEvent.click(getByTestId('instance-ai-questions-skip'));
 
 		expect(emitted().submit).toEqual([
 			[
@@ -86,17 +117,12 @@ describe('InstanceAiQuestions', () => {
 		]);
 	});
 
-	it('submits the final empty multi-select question as skipped', async () => {
-		const { emitted, getByTestId, queryByTestId } = render([multiQuestion]);
+	it('skips the final empty multi-select question via the explicit Skip button', async () => {
+		const { emitted, getByTestId } = render([multiQuestion]);
 
-		expect(queryByTestId('instance-ai-questions-skip')).toBeNull();
+		expect(getByTestId('instance-ai-questions-next')).toHaveAttribute('disabled');
 
-		const submitButton = getByTestId('instance-ai-questions-next');
-
-		expect(submitButton).toHaveTextContent('Submit');
-		expect(submitButton).not.toHaveAttribute('disabled');
-
-		await fireEvent.click(submitButton);
+		await fireEvent.click(getByTestId('instance-ai-questions-skip'));
 
 		expect(emitted().submit).toEqual([
 			[
@@ -113,13 +139,38 @@ describe('InstanceAiQuestions', () => {
 		]);
 	});
 
-	it('keeps an empty non-final text question skippable but not nextable', () => {
-		const { getByTestId } = render([textQuestion, singleQuestion]);
+	it('advances past a blank non-final text question via Next and marks it skipped', async () => {
+		vi.useFakeTimers();
+		const { emitted, getByTestId, getByText } = render([textQuestion, singleQuestion]);
 
 		const nextButton = getByTestId('instance-ai-questions-next');
-
-		expect(getByTestId('instance-ai-questions-skip')).toBeInTheDocument();
 		expect(nextButton).toHaveTextContent('Next');
-		expect(nextButton).toHaveAttribute('disabled');
+		expect(nextButton).not.toHaveAttribute('disabled');
+
+		await fireEvent.click(nextButton);
+
+		await fireEvent.click(getByText('Staging'));
+		vi.advanceTimersByTime(250);
+
+		expect(emitted().submit).toEqual([
+			[
+				[
+					{
+						questionId: 'q-text',
+						question: 'Leave blank for no filter',
+						selectedOptions: [],
+						customText: '',
+						skipped: true,
+					},
+					{
+						questionId: 'q-single',
+						question: 'Which credential should I use?',
+						selectedOptions: ['Staging'],
+						customText: '',
+						skipped: false,
+					},
+				],
+			],
+		]);
 	});
 });
