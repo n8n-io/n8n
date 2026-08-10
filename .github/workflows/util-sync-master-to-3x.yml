@@ -7,12 +7,15 @@
 # authors preserved). The content pushed is always verified to be exactly what a merge of
 # 3.x and master would produce.
 #
-# When master genuinely conflicts with 3.x, 3.x is left untouched: a draft conflict PR
-# carrying the conflict markers is opened on the sync branch and #alerts-v3-sync is notified.
-# The resolver fixes the markers in a commit of their own and merges that PR with the normal
-# merge button. No further syncs run until it is merged. 3.x itself never has markers at its
-# tip (nightly images build from it) and the merge commit holding them drops out of its
-# history at the next replay.
+# Conflicts confined to mechanical, tool-generated files (the pnpm lockfile, bot-maintained
+# data files) are resolved in place during the replay — no PR, no commit, no human. When
+# master genuinely conflicts with 3.x on real code, 3.x is left untouched: a draft conflict
+# PR carrying the conflict markers (mechanical files pre-resolved) is opened on the sync
+# branch and #alerts-v3-sync is notified. The resolver fixes the markers in a commit of their
+# own and merges that PR with the normal merge button — never closes it, since closing
+# resolves nothing and the conflict returns. No further syncs run until it is merged. 3.x
+# itself never has markers at its tip (nightly images build from it) and the merge commit
+# holding them drops out of its history at the next replay.
 #
 # See .github/DEVELOPING_V3.md for the full v3 development model.
 
@@ -60,6 +63,14 @@ jobs:
           ref: 3.x
           fetch-depth: 0
           persist-credentials: false # we push with an explicit token URL instead
+
+      # Node + pnpm toolchain for the mechanical lockfile resolution
+      # (`pnpm install --lockfile-only`). No dependency install, no build.
+      - name: Setup Node.js
+        uses: ./.github/actions/setup-nodejs
+        with:
+          install-command: ''
+          build-command: ''
 
       - name: Sync master into 3.x
         id: sync

@@ -12,7 +12,7 @@ import {
 	N8nIcon,
 	N8nTooltip,
 } from '@n8n/design-system';
-import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
+import type { IconName } from '@n8n/design-system';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { VIEWS } from '@/app/constants/navigation';
 import { parseIntegrationActionCard } from '@/features/ai/shared/agentsChat/n8nChatInteraction';

@@ -4,8 +4,13 @@ import { test } from 'node:test';
 import {
 	hasOpenConflictPr,
 	mergeTree,
-	tryRebase,
-	assertTree,
+	classifyPaths,
+	blocksLockfileRegen,
+	resolveMechanicalPath,
+	rebaseResolvingMechanical,
+	reconcileLockfileAtTip,
+	recentAbandonedConflictPrs,
+	assertTreeMatches,
 	assertNoMarkers,
 	buildConflictBranch,
 	openConflictPr,
@@ -14,9 +19,10 @@ import {
 	CONFLICT_LABEL,
 	SYNC_BRANCH,
 	TARGET_BRANCH,
+	LOCKFILE,
 } from './sync-master-to-3x.mjs';
 
-// A git/gh stub: routes calls by a matcher, records every invocation.
+// A git/gh/pnpm stub: routes calls by a matcher, records every invocation.
 function makeStub(routes = []) {
 	const calls = [];
 	const fn = (args) => {
@@ -30,24 +36,39 @@ function makeStub(routes = []) {
 	return fn;
 }
 
-const fail = (stdout = '') => () => {
-	const err = new Error('command failed');
-	err.status = 1;
-	err.stdout = stdout;
-	throw err;
-};
+const fail =
+	(stdout = '') =>
+	() => {
+		const err = new Error('command failed');
+		err.status = 1;
+		err.stdout = stdout;
+		throw err;
+	};
 
 const okFetch = (logins) => async () => ({
 	ok: true,
-	json: async () => ({ data: { repository: Object.fromEntries(logins.map((l, i) => [`c${i}`, { author: { user: { login: l } } }])) } }),
+	json: async () => ({
+		data: {
+			repository: Object.fromEntries(
+				logins.map((l, i) => [`c${i}`, { author: { user: { login: l } } }]),
+			),
+		},
+	}),
 });
 
 const PRE_HEAD = 'PREHEAD';
 const MASTER = 'MASTERSHA';
 const MERGE_TREE = 'MERGETREEOID';
+const POPULARITY = 'packages/frontend/editor-ui/data/node-popularity.json';
 
 const isRebase = (a) => a[0] === 'rebase' && a[1] !== '--abort';
 const favouringOwnSide = (a) => a[0] === 'rebase' && a.includes('-X') && a.includes('theirs');
+const isConflictedFiles = (a) => a[0] === 'diff' && a.includes('--diff-filter=U');
+
+// What `git merge-tree --write-tree --name-only` emits on a conflict: the (marker-carrying)
+// tree OID, the conflicted paths, a blank line, then informational messages.
+const conflictedMergeTree = (...paths) =>
+	fail(`${MERGE_TREE}\n${paths.join('\n')}\n\nCONFLICT (content): Merge conflict in ${paths[0]}`);
 
 // Routes shared by every sync path: master fetched, 3.x hasn't absorbed it yet, and the
 // merge tree is computable (no new conflict). git grep exits non-zero => no markers.
@@ -71,45 +92,235 @@ test('targetBranch defaults to 3.x and honours the rehearsal override', () => {
 test('hasOpenConflictPr reflects the open-PR count from gh', () => {
 	const empty = makeStub([[() => true, '[]']]);
 	assert.equal(hasOpenConflictPr(empty), false);
-	assert.deepEqual(empty.calls[0], ['pr', 'list', '--state', 'open', '--label', CONFLICT_LABEL, '--json', 'number']);
+	assert.deepEqual(empty.calls[0], [
+		'pr',
+		'list',
+		'--state',
+		'open',
+		'--label',
+		CONFLICT_LABEL,
+		'--json',
+		'number',
+	]);
 
 	const one = makeStub([[() => true, JSON.stringify([{ number: 42 }])]]);
 	assert.equal(hasOpenConflictPr(one), true);
 });
 
-test('mergeTree reports the tree when clean and not-ok when the sides conflict', () => {
+test('mergeTree reports the tree when clean, and the conflicted paths when the sides conflict', () => {
 	const clean = makeStub([[() => true, `${MERGE_TREE}\nsome extra output`]]);
-	assert.deepEqual(mergeTree(clean, 'A', 'B'), { ok: true, tree: MERGE_TREE, out: `${MERGE_TREE}\nsome extra output` });
-	assert.deepEqual(clean.calls[0], ['merge-tree', '--write-tree', 'A', 'B']);
+	assert.deepEqual(mergeTree(clean, 'A', 'B'), {
+		ok: true,
+		tree: MERGE_TREE,
+		conflictedPaths: [],
+		out: `${MERGE_TREE}\nsome extra output`,
+	});
+	assert.deepEqual(clean.calls[0], ['merge-tree', '--write-tree', '--name-only', 'A', 'B']);
 
-	const conflicting = makeStub([[() => true, fail('CONFLICT (content): x.ts')]]);
-	assert.equal(mergeTree(conflicting, 'A', 'B').ok, false);
+	const conflicting = makeStub([
+		[
+			() => true,
+			fail(
+				`${MERGE_TREE}\n${LOCKFILE}\npackages/cli/x.ts\n\nAuto-merging ${LOCKFILE}\nCONFLICT (content): Merge conflict in ${LOCKFILE}`,
+			),
+		],
+	]);
+	const res = mergeTree(conflicting, 'A', 'B');
+	assert.equal(res.ok, false);
+	// The conflicted tree is still written — it is the baseline for the relaxed guard.
+	assert.equal(res.tree, MERGE_TREE);
+	assert.deepEqual(res.conflictedPaths, [LOCKFILE, 'packages/cli/x.ts']);
 });
 
-test('tryRebase replays onto master and can favour a side', () => {
-	const git = makeStub([[(a) => a[0] === 'rebase', '']]);
-	assert.equal(tryRebase(git, MASTER, () => {}), true);
-	assert.deepEqual(git.calls[0], ['rebase', MASTER]);
+test('classifyPaths and blocksLockfileRegen split mechanical from code conflicts', () => {
+	const { mechanical, code } = classifyPaths([
+		LOCKFILE,
+		'packages/cli/x.ts',
+		'.github/test-metrics/e2e-impact-map.json',
+	]);
+	assert.deepEqual(mechanical, [LOCKFILE, '.github/test-metrics/e2e-impact-map.json']);
+	assert.deepEqual(code, ['packages/cli/x.ts']);
 
-	assert.equal(tryRebase(git, MASTER, () => {}, ['-X', 'theirs']), true);
-	assert.deepEqual(git.calls[1], ['rebase', '-X', 'theirs', MASTER]);
+	assert.equal(blocksLockfileRegen(['packages/cli/package.json']), true);
+	assert.equal(blocksLockfileRegen(['package.json']), true);
+	assert.equal(blocksLockfileRegen(['pnpm-workspace.yaml']), true);
+	assert.equal(blocksLockfileRegen(['packages/cli/x.ts']), false);
 });
 
-test('assertTree and assertNoMarkers are the push guards', () => {
-	assert.doesNotThrow(() => assertTree(makeStub([[() => true, MERGE_TREE]]), MERGE_TREE));
-	assert.throws(() => assertTree(makeStub([[() => true, 'OTHER']]), MERGE_TREE), /does not match the merge tree/);
+test('resolveMechanicalPath takes the blob from master, or the deletion when master removed the file', () => {
+	const present = makeStub([[(a) => a[0] === 'cat-file', '']]);
+	resolveMechanicalPath({
+		git: present,
+		pnpm: makeStub(),
+		path: POPULARITY,
+		masterSha: MASTER,
+		log: () => {},
+	});
+	assert.ok(
+		present.calls.some((a) => a[0] === 'checkout' && a[1] === MASTER && a.includes(POPULARITY)),
+	);
 
+	const deleted = makeStub([[(a) => a[0] === 'cat-file', fail()]]);
+	resolveMechanicalPath({
+		git: deleted,
+		pnpm: makeStub(),
+		path: POPULARITY,
+		masterSha: MASTER,
+		log: () => {},
+	});
+	assert.ok(
+		deleted.calls.some((a) => a[0] === 'rm' && a.includes('--force') && a.includes(POPULARITY)),
+	);
+});
+
+test('resolveMechanicalPath regenerates the lockfile with pnpm and stages it', () => {
+	const git = makeStub();
+	const pnpm = makeStub();
+	resolveMechanicalPath({ git, pnpm, path: LOCKFILE, masterSha: MASTER, log: () => {} });
+	// `--no-frozen-lockfile` is load-bearing: pnpm defaults to frozen when CI=true.
+	assert.deepEqual(pnpm.calls[0], ['install', '--lockfile-only', '--no-frozen-lockfile']);
+	assert.ok(git.calls.some((a) => a[0] === 'add' && a.includes(LOCKFILE)));
+});
+
+test('rebaseResolvingMechanical resolves mechanical stalls in place and skips emptied commits', () => {
+	const git = makeStub([
+		[(a) => a[0] === 'rebase' && a[1] === '--skip', ''],
+		[isRebase, fail(`CONFLICT (content): Merge conflict in ${POPULARITY}`)],
+		[isConflictedFiles, POPULARITY],
+		[(a) => a[0] === 'cat-file', ''],
+		[(a) => a[0] === 'diff-index', ''], // resolution emptied the commit
+	]);
+
+	const res = rebaseResolvingMechanical({
+		git,
+		pnpm: makeStub(),
+		masterSha: MASTER,
+		log: () => {},
+	});
+
+	assert.equal(res.ok, true);
+	assert.deepEqual(res.resolved, [POPULARITY]);
+	assert.ok(git.calls.some((a) => a[0] === 'checkout' && a[1] === MASTER));
+	assert.ok(git.calls.some((a) => a[0] === 'rebase' && a[1] === '--skip'));
+});
+
+test('rebaseResolvingMechanical bails as soon as a stall touches a code path', () => {
+	const git = makeStub([
+		[isRebase, fail('CONFLICT (content): Merge conflict in packages/cli/x.ts')],
+		[isConflictedFiles, `packages/cli/x.ts\n${LOCKFILE}`],
+	]);
+	const pnpm = makeStub();
+
+	const res = rebaseResolvingMechanical({ git, pnpm, masterSha: MASTER, log: () => {} });
+
+	assert.equal(res.ok, false);
+	assert.deepEqual(res.conflictedCode, ['packages/cli/x.ts']);
+	// Nothing may be auto-resolved when human judgement is needed for the same stall.
+	assert.equal(pnpm.calls.length, 0);
+	assert.equal(
+		git.calls.some((a) => a[0] === 'checkout'),
+		false,
+	);
+});
+
+test('assertTreeMatches is exact by default and scoped to the allowed paths otherwise', () => {
+	assert.doesNotThrow(() => assertTreeMatches(makeStub([[() => true, MERGE_TREE]]), MERGE_TREE));
+	assert.throws(
+		() => assertTreeMatches(makeStub([[() => true, 'OTHER']]), MERGE_TREE),
+		/does not match the merge tree/,
+	);
+
+	const onlyLockfile = makeStub([
+		[(a) => a[0] === 'rev-parse', 'OTHER'],
+		[(a) => a[0] === 'diff-tree', LOCKFILE],
+	]);
+	assert.doesNotThrow(() => assertTreeMatches(onlyLockfile, MERGE_TREE, [LOCKFILE]));
+
+	const alsoCode = makeStub([
+		[(a) => a[0] === 'rev-parse', 'OTHER'],
+		[(a) => a[0] === 'diff-tree', `${LOCKFILE}\npackages/cli/x.ts`],
+	]);
+	assert.throws(() => assertTreeMatches(alsoCode, MERGE_TREE, [LOCKFILE]), /non-mechanical paths/);
+});
+
+test('assertNoMarkers is a push guard', () => {
 	assert.doesNotThrow(() => assertNoMarkers(makeStub([[() => true, fail()]])));
-	assert.throws(() => assertNoMarkers(makeStub([[() => true, 'packages/cli/x.ts']])), /conflict markers present/);
+	assert.throws(
+		() => assertNoMarkers(makeStub([[() => true, 'packages/cli/x.ts']])),
+		/conflict markers present/,
+	);
 	// git grep failing for any other reason must not read as "clean".
-	assert.throws(() => assertNoMarkers(makeStub([[() => true, fail('fatal: bad object')]])), /Could not scan/);
+	assert.throws(
+		() => assertNoMarkers(makeStub([[() => true, fail('fatal: bad object')]])),
+		/Could not scan/,
+	);
+});
+
+test('reconcileLockfileAtTip folds an inconsistent lockfile into the tip commit, never a master commit', () => {
+	const consistent = makeStub([[(a) => a[0] === 'diff', '']]);
+	reconcileLockfileAtTip({ git: consistent, pnpm: makeStub(), masterSha: MASTER, log: () => {} });
+	assert.equal(
+		consistent.calls.some((a) => a[0] === 'commit'),
+		false,
+	);
+
+	const inconsistent = makeStub([
+		[(a) => a[0] === 'diff', fail()],
+		[(a) => a[0] === 'rev-parse', PRE_HEAD],
+	]);
+	const pnpm = makeStub();
+	reconcileLockfileAtTip({ git: inconsistent, pnpm, masterSha: MASTER, log: () => {} });
+	assert.deepEqual(pnpm.calls[0], ['install', '--lockfile-only', '--no-frozen-lockfile']);
+	assert.ok(inconsistent.calls.some((a) => a[0] === 'commit' && a.includes('--amend')));
+
+	const atMasterTip = makeStub([
+		[(a) => a[0] === 'diff', fail()],
+		[(a) => a[0] === 'rev-parse', MASTER],
+	]);
+	assert.throws(
+		() =>
+			reconcileLockfileAtTip({
+				git: atMasterTip,
+				pnpm: makeStub(),
+				masterSha: MASTER,
+				log: () => {},
+			}),
+		/amend a master commit/,
+	);
+});
+
+test('recentAbandonedConflictPrs keeps only recently closed-unmerged conflict PRs', () => {
+	const now = Date.parse('2026-08-10T00:00:00Z');
+	const gh = makeStub([
+		[
+			() => true,
+			JSON.stringify([
+				{
+					number: 1,
+					url: 'u1',
+					mergedAt: '2026-08-01T00:00:00Z',
+					closedAt: '2026-08-01T00:00:00Z',
+				},
+				{ number: 2, url: 'u2', mergedAt: null, closedAt: '2026-07-01T00:00:00Z' }, // too old
+				{ number: 3, url: 'u3', mergedAt: null, closedAt: '2026-08-08T00:00:00Z' },
+			]),
+		],
+	]);
+
+	const abandoned = recentAbandonedConflictPrs(gh, { now });
+
+	assert.deepEqual(
+		abandoned.map((pr) => pr.number),
+		[3],
+	);
+	assert.equal(gh.calls[0][gh.calls[0].indexOf('--state') + 1], 'closed');
 });
 
 test('sync replays and force-pushes with a lease, creating no commit', async () => {
 	const git = makeStub([...baseGitRoutes, [isRebase, '']]);
 	const gh = makeStub(noOpenPr);
 
-	await sync({ git, gh, env, log: () => {} });
+	await sync({ git, gh, pnpm: makeStub(), env, log: () => {} });
 
 	const push = git.calls.find((a) => a[0] === 'push');
 	assert.deepEqual(push, [
@@ -119,16 +330,31 @@ test('sync replays and force-pushes with a lease, creating no commit', async () 
 		`HEAD:refs/heads/${TARGET_BRANCH}`,
 	]);
 	// The point of the change: no merge, no squash, no PR on the clean path.
-	assert.equal(git.calls.some((a) => a[0] === 'merge'), false);
-	assert.equal(git.calls.some((a) => a[0] === 'commit'), false);
-	assert.equal(gh.calls.some((a) => a[0] === 'pr' && a[1] === 'create'), false);
+	assert.equal(
+		git.calls.some((a) => a[0] === 'merge'),
+		false,
+	);
+	assert.equal(
+		git.calls.some((a) => a[0] === 'commit'),
+		false,
+	);
+	assert.equal(
+		gh.calls.some((a) => a[0] === 'pr' && a[1] === 'create'),
+		false,
+	);
 });
 
 test('sync targets the rehearsal branch when SYNC_TARGET_BRANCH is set', async () => {
 	const git = makeStub([...baseGitRoutes, [isRebase, '']]);
 	const gh = makeStub(noOpenPr);
 
-	await sync({ git, gh, env: { ...env, SYNC_TARGET_BRANCH: '3x-sync-test' }, log: () => {} });
+	await sync({
+		git,
+		gh,
+		pnpm: makeStub(),
+		env: { ...env, SYNC_TARGET_BRANCH: '3x-sync-test' },
+		log: () => {},
+	});
 
 	assert.equal(git.calls.find((a) => a[0] === 'push').at(-1), 'HEAD:refs/heads/3x-sync-test');
 });
@@ -141,10 +367,18 @@ test('sync does nothing when 3.x already contains master', async () => {
 	]);
 	const gh = makeStub(noOpenPr);
 
-	await sync({ git, gh, env, log: () => {} });
+	await sync({ git, gh, pnpm: makeStub(), env, log: () => {} });
 
-	assert.equal(git.calls.some((a) => a[0] === 'rebase'), false, 'must not rebase');
-	assert.equal(git.calls.some((a) => a[0] === 'push'), false, 'must not push');
+	assert.equal(
+		git.calls.some((a) => a[0] === 'rebase'),
+		false,
+		'must not rebase',
+	);
+	assert.equal(
+		git.calls.some((a) => a[0] === 'push'),
+		false,
+		'must not push',
+	);
 });
 
 test('sync refuses to push when the replayed tree is not the merge tree', async () => {
@@ -155,15 +389,22 @@ test('sync refuses to push when the replayed tree is not the merge tree', async 
 	]);
 	const gh = makeStub(noOpenPr);
 
-	await assert.rejects(() => sync({ git, gh, env, log: () => {} }), /does not match the merge tree/);
-	assert.equal(git.calls.some((a) => a[0] === 'push'), false, 'must not push a suspect rewrite');
+	await assert.rejects(
+		() => sync({ git, gh, pnpm: makeStub(), env, log: () => {} }),
+		/does not match the merge tree/,
+	);
+	assert.equal(
+		git.calls.some((a) => a[0] === 'push'),
+		false,
+		'must not push a suspect rewrite',
+	);
 });
 
 test('sync halts (no fetch/rebase) when a conflict PR is already open', async () => {
 	const git = makeStub();
 	const gh = makeStub([[(a) => a[0] === 'pr' && a[1] === 'list', JSON.stringify([{ number: 7 }])]]);
 
-	await sync({ git, gh, env, log: () => {} });
+	await sync({ git, gh, pnpm: makeStub(), env, log: () => {} });
 
 	assert.equal(git.calls.length, 0, 'must not touch git while halted');
 });
@@ -178,55 +419,93 @@ test('sync replays favouring 3.x when the patches no longer apply on their own',
 	]);
 	const gh = makeStub(noOpenPr);
 
-	await sync({ git, gh, env, log: () => {} });
+	await sync({ git, gh, pnpm: makeStub(), env, log: () => {} });
 
-	assert.ok(git.calls.some((a) => a[0] === 'rebase' && a[1] === '--abort'), 'stalled rebase must be aborted');
+	assert.ok(
+		git.calls.some((a) => a[0] === 'rebase' && a[1] === '--abort'),
+		'stalled rebase must be aborted',
+	);
 	assert.ok(git.calls.some(favouringOwnSide), 'expected the second replay to favour 3.x');
-	assert.ok(git.calls.some((a) => a[0] === 'push'), 'expected the replay to be pushed');
+	assert.ok(
+		git.calls.some((a) => a[0] === 'push'),
+		'expected the replay to be pushed',
+	);
 	// Still no new commit and no PR: the resolver's own fix commit is already in the queue.
-	assert.equal(git.calls.some((a) => a[0] === 'commit'), false);
-	assert.equal(gh.calls.some((a) => a[0] === 'pr' && a[1] === 'create'), false);
+	assert.equal(
+		git.calls.some((a) => a[0] === 'commit'),
+		false,
+	);
+	assert.equal(
+		gh.calls.some((a) => a[0] === 'pr' && a[1] === 'create'),
+		false,
+	);
 });
 
 test('sync fails without pushing when even the favoured replay cannot finish', async () => {
-	const git = makeStub([...baseGitRoutes, [isRebase, fail('CONFLICT')]]);
+	const git = makeStub([
+		...baseGitRoutes,
+		[isRebase, fail('CONFLICT')],
+		// The favoured replay stalls on a real code file, so the driver must not resolve it.
+		[isConflictedFiles, 'packages/cli/x.ts'],
+	]);
 	const gh = makeStub(noOpenPr);
 
-	await assert.rejects(() => sync({ git, gh, env, log: () => {} }), /needs a human/);
-	assert.equal(git.calls.some((a) => a[0] === 'push'), false);
+	await assert.rejects(
+		() => sync({ git, gh, pnpm: makeStub(), env, log: () => {} }),
+		/needs a human/,
+	);
+	assert.equal(
+		git.calls.some((a) => a[0] === 'push'),
+		false,
+	);
 	assert.equal(git.calls.filter((a) => a[0] === 'rebase' && a[1] === '--abort').length, 2);
 });
 
-test('buildConflictBranch commits the conflicted state, markers and all', () => {
-	const git = makeStub([
-		[(a) => a[0] === 'merge', fail('CONFLICT (content): packages/cli/x.ts')],
-		[(a) => a[0] === 'diff', 'packages/cli/x.ts'],
-	]);
-
-	const files = buildConflictBranch({ git, masterSha: MASTER, log: () => {} });
-
-	assert.deepEqual(files, ['packages/cli/x.ts']);
-	assert.deepEqual(git.calls[0], ['merge', '--no-edit', MASTER]);
-	assert.ok(git.calls.some((a) => a[0] === 'add' && a[1] === '-A'));
-	assert.ok(git.calls.some((a) => a[0] === 'commit' && a.includes('--no-edit')));
-	// The markers ARE the review surface here, so nothing may auto-resolve them.
-	assert.equal(git.calls.some((a) => a.includes('-X')), false);
-	assert.equal(git.calls.some((a) => a[0] === 'merge' && a[1] === '--abort'), false);
-});
-
-test('buildConflictBranch refuses to guess when the merge unexpectedly succeeds', () => {
-	const git = makeStub([[(a) => a[0] === 'merge', '']]);
-
-	assert.throws(() => buildConflictBranch({ git, masterSha: MASTER, log: () => {} }), /Expected a merge conflict/);
-	assert.equal(git.calls.some((a) => a[0] === 'commit'), false);
-});
-
-test('sync opens a draft conflict PR and leaves 3.x untouched on a real conflict', async () => {
+test('sync auto-resolves a lockfile-only conflict during the replay — no PR, no commit', async () => {
 	const git = makeStub([
 		...baseGitRoutes.filter((r) => !r[0](['merge-tree'])),
-		[(a) => a[0] === 'merge-tree', fail('CONFLICT (content): packages/cli/x.ts')],
-		[(a) => a[0] === 'merge', fail('CONFLICT (content): packages/cli/x.ts')],
-		[(a) => a[0] === 'diff', 'packages/cli/x.ts'],
+		[(a) => a[0] === 'merge-tree', conflictedMergeTree(LOCKFILE)],
+		[(a) => a[0] === 'rebase' && a[1] === '--continue', ''],
+		[isRebase, fail(`CONFLICT (content): Merge conflict in ${LOCKFILE}`)],
+		[isConflictedFiles, LOCKFILE],
+		[(a) => a[0] === 'diff' && a.includes('--quiet'), ''], // tip lockfile already consistent
+		[(a) => a[0] === 'diff-index', fail()], // staged resolution -> continue, not skip
+	]);
+	const gh = makeStub(noOpenPr);
+	const pnpm = makeStub();
+
+	await sync({ git, gh, pnpm, env, log: () => {} });
+
+	// The stall regen plus the tip reconciliation check.
+	assert.deepEqual(pnpm.calls[0], ['install', '--lockfile-only', '--no-frozen-lockfile']);
+	assert.equal(pnpm.calls.length, 2);
+	assert.ok(git.calls.some((a) => a[0] === 'add' && a.includes(LOCKFILE)));
+	assert.ok(git.calls.some((a) => a[0] === 'rebase' && a[1] === '--continue'));
+	const push = git.calls.find((a) => a[0] === 'push');
+	assert.equal(push[1], `--force-with-lease=refs/heads/${TARGET_BRANCH}:${PRE_HEAD}`);
+	// No human surface: no merge commit, no amend, no conflict PR.
+	assert.equal(
+		git.calls.some((a) => a[0] === 'merge'),
+		false,
+	);
+	assert.equal(
+		git.calls.some((a) => a[0] === 'commit'),
+		false,
+	);
+	assert.equal(
+		gh.calls.some((a) => a[0] === 'pr' && a[1] === 'create'),
+		false,
+	);
+});
+
+test('sync falls back to a conflict PR when mechanical auto-resolution cannot complete', async () => {
+	const git = makeStub([
+		...baseGitRoutes.filter((r) => !r[0](['merge-tree'])),
+		[(a) => a[0] === 'merge-tree', conflictedMergeTree(LOCKFILE)],
+		[isRebase, fail('CONFLICT')],
+		// Both replay attempts stall on a code file the endpoints do not reconcile.
+		[isConflictedFiles, 'packages/cli/x.ts'],
+		[(a) => a[0] === 'merge', fail('CONFLICT (content): Merge conflict in packages/cli/x.ts')],
 		[(a) => a[0] === 'log', 'breaking-sha'],
 	]);
 	const gh = makeStub([
@@ -234,7 +513,142 @@ test('sync opens a draft conflict PR and leaves 3.x untouched on a real conflict
 		[(a) => a[0] === 'pr' && a[1] === 'create', 'https://github.com/n8n-io/n8n/pull/99'],
 	]);
 
-	await sync({ git, gh, env, fetchFn: okFetch(['alice']), log: () => {} });
+	await sync({ git, gh, pnpm: makeStub(), env, fetchFn: okFetch(['alice']), log: () => {} });
+
+	assert.ok(
+		gh.calls.some((a) => a[0] === 'pr' && a[1] === 'create'),
+		'expected the fallback conflict PR',
+	);
+	// Only the sync branch is pushed — 3.x must not move after a failed auto-resolution.
+	const pushes = git.calls.filter((a) => a[0] === 'push');
+	assert.equal(pushes.length, 1);
+	assert.equal(pushes[0].at(-1), `HEAD:refs/heads/${SYNC_BRANCH}`);
+});
+
+test('buildConflictBranch commits the conflicted state, markers and all', () => {
+	const git = makeStub([
+		[(a) => a[0] === 'merge', fail('CONFLICT (content): packages/cli/x.ts')],
+		[isConflictedFiles, 'packages/cli/x.ts'],
+	]);
+
+	const { files, preResolved, lockfileDeferred } = buildConflictBranch({
+		git,
+		pnpm: makeStub(),
+		masterSha: MASTER,
+		log: () => {},
+	});
+
+	assert.deepEqual(files, ['packages/cli/x.ts']);
+	assert.deepEqual(preResolved, []);
+	assert.equal(lockfileDeferred, false);
+	assert.deepEqual(git.calls[0], ['merge', '--no-edit', MASTER]);
+	assert.ok(git.calls.some((a) => a[0] === 'add' && a[1] === '-A'));
+	assert.ok(git.calls.some((a) => a[0] === 'commit' && a.includes('--no-edit')));
+	// The markers ARE the review surface here, so nothing may auto-resolve them.
+	assert.equal(
+		git.calls.some((a) => a.includes('-X')),
+		false,
+	);
+	assert.equal(
+		git.calls.some((a) => a[0] === 'merge' && a[1] === '--abort'),
+		false,
+	);
+});
+
+test('buildConflictBranch pre-resolves mechanical files so only code conflicts remain', () => {
+	const git = makeStub([
+		[(a) => a[0] === 'merge', fail('CONFLICT')],
+		[isConflictedFiles, `packages/cli/x.ts\n${LOCKFILE}\n${POPULARITY}`],
+		[(a) => a[0] === 'cat-file', ''],
+	]);
+	const pnpm = makeStub();
+
+	const { files, preResolved, lockfileDeferred } = buildConflictBranch({
+		git,
+		pnpm,
+		masterSha: MASTER,
+		log: () => {},
+	});
+
+	assert.deepEqual(files, ['packages/cli/x.ts']);
+	assert.deepEqual(preResolved, [LOCKFILE, POPULARITY]);
+	assert.equal(lockfileDeferred, false);
+	assert.deepEqual(pnpm.calls[0], ['install', '--lockfile-only', '--no-frozen-lockfile']);
+	assert.ok(
+		git.calls.some((a) => a[0] === 'checkout' && a[1] === MASTER && a.includes(POPULARITY)),
+	);
+});
+
+test('buildConflictBranch defers the lockfile when a manifest is conflicted too', () => {
+	const git = makeStub([
+		[(a) => a[0] === 'merge', fail('CONFLICT')],
+		[isConflictedFiles, `packages/cli/package.json\n${LOCKFILE}`],
+	]);
+	const pnpm = makeStub();
+
+	const { files, preResolved, lockfileDeferred } = buildConflictBranch({
+		git,
+		pnpm,
+		masterSha: MASTER,
+		log: () => {},
+	});
+
+	assert.deepEqual(files, ['packages/cli/package.json']);
+	assert.deepEqual(preResolved, []);
+	assert.equal(lockfileDeferred, true);
+	assert.equal(pnpm.calls.length, 0, 'regen is meaningless until the manifests are resolved');
+});
+
+test('buildConflictBranch degrades to a deferred lockfile when the regen fails', () => {
+	const git = makeStub([
+		[(a) => a[0] === 'merge', fail('CONFLICT')],
+		[isConflictedFiles, `packages/cli/x.ts\n${LOCKFILE}`],
+	]);
+	const pnpm = makeStub([[() => true, fail('ERR_PNPM_REGISTRY unreachable')]]);
+
+	const { files, preResolved, lockfileDeferred } = buildConflictBranch({
+		git,
+		pnpm,
+		masterSha: MASTER,
+		log: () => {},
+	});
+
+	assert.deepEqual(files, ['packages/cli/x.ts']);
+	assert.deepEqual(preResolved, []);
+	assert.equal(lockfileDeferred, true);
+	assert.ok(
+		git.calls.some((a) => a[0] === 'commit'),
+		'the conflict branch must still be committed',
+	);
+});
+
+test('buildConflictBranch refuses to guess when the merge unexpectedly succeeds', () => {
+	const git = makeStub([[(a) => a[0] === 'merge', '']]);
+
+	assert.throws(
+		() => buildConflictBranch({ git, pnpm: makeStub(), masterSha: MASTER, log: () => {} }),
+		/Expected a merge conflict/,
+	);
+	assert.equal(
+		git.calls.some((a) => a[0] === 'commit'),
+		false,
+	);
+});
+
+test('sync opens a draft conflict PR and leaves 3.x untouched on a real conflict', async () => {
+	const git = makeStub([
+		...baseGitRoutes.filter((r) => !r[0](['merge-tree'])),
+		[(a) => a[0] === 'merge-tree', conflictedMergeTree('packages/cli/x.ts')],
+		[(a) => a[0] === 'merge', fail('CONFLICT (content): packages/cli/x.ts')],
+		[isConflictedFiles, 'packages/cli/x.ts'],
+		[(a) => a[0] === 'log', 'breaking-sha'],
+	]);
+	const gh = makeStub([
+		...noOpenPr,
+		[(a) => a[0] === 'pr' && a[1] === 'create', 'https://github.com/n8n-io/n8n/pull/99'],
+	]);
+
+	await sync({ git, gh, pnpm: makeStub(), env, fetchFn: okFetch(['alice']), log: () => {} });
 
 	const create = gh.calls.find((a) => a[0] === 'pr' && a[1] === 'create');
 	assert.ok(create.includes('--draft'));
@@ -253,12 +667,52 @@ test('sync opens a draft conflict PR and leaves 3.x untouched on a real conflict
 	const pushes = git.calls.filter((a) => a[0] === 'push');
 	assert.equal(pushes.length, 1);
 	assert.equal(pushes[0].at(-1), `HEAD:refs/heads/${SYNC_BRANCH}`);
-	assert.equal(git.calls.some((a) => a[0] === 'rebase'), false, 'no replay attempt while a conflict is unresolved');
+	assert.equal(
+		git.calls.some((a) => a[0] === 'rebase'),
+		false,
+		'no replay attempt while a code conflict is unresolved',
+	);
+});
+
+test('sync reports only the code conflicts on a mixed conflict, with mechanical files pre-resolved', async () => {
+	const git = makeStub([
+		...baseGitRoutes.filter((r) => !r[0](['merge-tree'])),
+		[(a) => a[0] === 'merge-tree', conflictedMergeTree(LOCKFILE, 'packages/cli/x.ts')],
+		[(a) => a[0] === 'merge', fail('CONFLICT')],
+		[isConflictedFiles, `packages/cli/x.ts\n${LOCKFILE}`],
+		[(a) => a[0] === 'log' && a.includes('--format=%H'), 'breaking-sha'],
+	]);
+	const gh = makeStub([
+		...noOpenPr,
+		[(a) => a[0] === 'pr' && a[1] === 'create', 'https://github.com/n8n-io/n8n/pull/99'],
+	]);
+	const pnpm = makeStub();
+
+	await sync({ git, gh, pnpm, env, fetchFn: okFetch(['alice']), log: () => {} });
+
+	assert.equal(pnpm.calls.length, 1, 'the lockfile is regenerated for the conflict branch');
+
+	const create = gh.calls.find((a) => a[0] === 'pr' && a[1] === 'create');
+	const body = create[create.indexOf('--body') + 1];
+	assert.match(body, /### Conflicted files\n- `packages\/cli\/x\.ts`/);
+	assert.match(body, /### Auto-resolved for you/);
+	assert.ok(
+		body.indexOf(LOCKFILE) > body.indexOf('Auto-resolved'),
+		'the lockfile belongs to the auto-resolved section',
+	);
+
+	// Owner attribution is scoped to the real code conflicts only.
+	const attributions = git.calls.filter((a) => a[0] === 'log' && a.includes('--format=%H'));
+	assert.equal(attributions.length, 1);
+	assert.equal(attributions[0].at(-1), 'packages/cli/x.ts');
 });
 
 test('openConflictPr degrades gracefully when owner resolution fails', async () => {
 	const git = makeStub([[(a) => a[0] === 'log', 'sha1']]);
-	const gh = makeStub([[(a) => a[0] === 'pr' && a[1] === 'create', 'https://github.com/n8n-io/n8n/pull/1']]);
+	const gh = makeStub([
+		[(a) => a[0] === 'pr' && a[1] === 'list', '[]'],
+		[(a) => a[0] === 'pr' && a[1] === 'create', 'https://github.com/n8n-io/n8n/pull/1'],
+	]);
 	const failingFetch = async () => ({ ok: false, status: 500, json: async () => ({}) });
 
 	const { prUrl, ownersSlack } = await openConflictPr({
@@ -277,5 +731,41 @@ test('openConflictPr degrades gracefully when owner resolution fails', async () 
 	assert.equal(prUrl, 'https://github.com/n8n-io/n8n/pull/1');
 	assert.equal(ownersSlack, 'Could not auto-attribute owners.');
 	// No reviewer request when there are no owners.
-	assert.equal(gh.calls.some((a) => a[0] === 'pr' && a[1] === 'edit'), false);
+	assert.equal(
+		gh.calls.some((a) => a[0] === 'pr' && a[1] === 'edit'),
+		false,
+	);
+});
+
+test('openConflictPr calls out a recently abandoned conflict PR', async () => {
+	const git = makeStub([[(a) => a[0] === 'log', 'sha1']]);
+	const closedAt = new Date(Date.now() - 2 * 86_400_000).toISOString();
+	const gh = makeStub([
+		[
+			(a) => a[0] === 'pr' && a[1] === 'list' && a.includes('closed'),
+			JSON.stringify([
+				{ number: 42, url: 'https://github.com/n8n-io/n8n/pull/42', mergedAt: null, closedAt },
+			]),
+		],
+		[(a) => a[0] === 'pr' && a[1] === 'create', 'https://github.com/n8n-io/n8n/pull/43'],
+	]);
+
+	const { ownersSlack } = await openConflictPr({
+		git,
+		gh,
+		repo: 'n8n-io/n8n',
+		token: 't',
+		masterSha: MASTER,
+		preHead: PRE_HEAD,
+		pushUrl: 'https://push',
+		files: ['x.ts'],
+		fetchFn: okFetch(['alice']),
+		log: () => {},
+	});
+
+	const create = gh.calls.find((a) => a[0] === 'pr' && a[1] === 'create');
+	const body = create[create.indexOf('--body') + 1];
+	assert.match(body, /#42\) was closed without being merged/);
+	assert.match(body, /Merge, don't close/);
+	assert.match(ownersSlack, /<https:\/\/github\.com\/n8n-io\/n8n\/pull\/42\|#42>/);
 });
