@@ -20,6 +20,10 @@ import {
 	InboundClaimConnectService,
 } from '@/modules/dynamic-credentials.ee/services';
 import { OauthService } from '@/oauth/oauth.service';
+import type {
+	VerifiedClaim,
+	VerifiedClaimPolicy,
+} from '@/services/external-token-verifier-proxy.service';
 import { UrlService } from '@/services/url.service';
 
 import { DynamicCredentialWebService } from '../services/dynamic-credential-web.service';
@@ -61,6 +65,10 @@ describe('DynamicCredentialsController', () => {
 			identity: 'token123',
 			version: 1 as const,
 			metadata: {},
+		});
+		// Default: no trusted source vouches for the token, so there is nothing to bind.
+		dynamicCredentialWebService.getInboundIdentityFromRequest.mockResolvedValue({
+			context: { identity: 'token123', version: 1 as const, metadata: {} },
 		});
 
 		// Default: resolver does not map the link to an n8n user (link stays unbound).
@@ -235,11 +243,23 @@ describe('DynamicCredentialsController', () => {
 				expiresAt: Date.now() + 60_000,
 				boundWorkflowId: '',
 			};
-			dynamicCredentialWebService.getCredentialContextFromRequest.mockResolvedValue({
-				identity: 'idp-token',
-				version: 1,
-				metadata: { source: 'external-idp' },
-				claims: claim,
+			// The IdP's profile attributes only exist on the unsealed claim, which is
+			// what binding needs - the sealed one on the context drops them.
+			const verified = mock<VerifiedClaim>({
+				issuer: 'https://idp.example.com',
+				subject: 'external-subject-1',
+				attributes: { email: 'jo@example.com' },
+			});
+			const policy = mock<VerifiedClaimPolicy>({ kid: 'kid-1', requireVerifiedEmail: true });
+			dynamicCredentialWebService.getInboundIdentityFromRequest.mockResolvedValue({
+				context: {
+					identity: 'idp-token',
+					version: 1,
+					metadata: { source: 'external-idp' },
+					claims: claim,
+				},
+				verified,
+				policy,
 			});
 			enterpriseCredentialsService.getOne.mockResolvedValue(mockCredential);
 			resolverRepository.findOneBy.mockResolvedValue(mockResolverEntity);
@@ -250,7 +270,59 @@ describe('DynamicCredentialsController', () => {
 
 			await controller.authorizeCredential(req, res);
 
-			expect(inboundClaimConnectService.ensureBinding).toHaveBeenCalledWith(claim);
+			expect(inboundClaimConnectService.ensureBinding).toHaveBeenCalledWith(verified, policy);
+		});
+
+		it('binds before validateIdentity, so a first-time caller can be validated', async () => {
+			const mockCredential = mock<CredentialsEntity>({ id: '1', type: 'googleOAuth2Api' });
+			const req = mock<Request>({
+				params: { id: '1' },
+				query: { resolverId: 'resolver-123' },
+				headers: { authorization: 'Bearer idp-token' },
+			});
+			const res = mock<Response>();
+
+			const verified = mock<VerifiedClaim>({
+				issuer: 'https://idp.example.com',
+				subject: 'external-subject-1',
+				attributes: { email: 'jo@example.com' },
+			});
+			dynamicCredentialWebService.getInboundIdentityFromRequest.mockResolvedValue({
+				context: { identity: 'idp-token', version: 1, metadata: { source: 'external-idp' } },
+				verified,
+				policy: mock<VerifiedClaimPolicy>(),
+			});
+
+			// The n8n resolver validates by resolving the identifier, which for an
+			// external-idp context is a read-only claim lookup. Model that: it only
+			// succeeds once a binding exists.
+			const callOrder: string[] = [];
+			let bound = false;
+			inboundClaimConnectService.ensureBinding.mockImplementation(async () => {
+				callOrder.push('ensureBinding');
+				bound = true;
+				return 'user-1';
+			});
+			const resolverWithValidation = {
+				...mockResolver,
+				validateIdentity: vi.fn(async () => {
+					callOrder.push('validateIdentity');
+					if (!bound) throw new Error('No credential resolver data found');
+				}),
+			};
+
+			enterpriseCredentialsService.getOne.mockResolvedValue(mockCredential);
+			resolverRepository.findOneBy.mockResolvedValue(mockResolverEntity);
+			resolverRegistry.getResolverByTypename.mockReturnValue(resolverWithValidation);
+			cipher.decryptV2.mockResolvedValue('{}');
+			oauthService.generateAOauth2AuthUri.mockResolvedValueOnce(
+				'https://example.domain/oauth2/auth',
+			);
+
+			await expect(controller.authorizeCredential(req, res)).resolves.toBe(
+				'https://example.domain/oauth2/auth',
+			);
+			expect(callOrder).toEqual(['ensureBinding', 'validateIdentity']);
 		});
 
 		it('does not attempt to bind anything when the context carries no claim', async () => {
@@ -379,9 +451,9 @@ describe('DynamicCredentialsController', () => {
 			};
 
 			// Set up all mocks before calling the controller
-			dynamicCredentialWebService.getCredentialContextFromRequest.mockResolvedValue(
-				expectedContext,
-			);
+			dynamicCredentialWebService.getInboundIdentityFromRequest.mockResolvedValue({
+				context: expectedContext,
+			});
 			enterpriseCredentialsService.getOne.mockResolvedValue(mockCredential);
 			resolverRepository.findOneBy.mockResolvedValue(mockResolverEntity);
 			resolverRegistry.getResolverByTypename.mockReturnValue(mockResolverWithValidation);

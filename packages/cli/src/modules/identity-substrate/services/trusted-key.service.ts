@@ -90,6 +90,7 @@ export class TrustedKeyService {
 				key: cryptoKey,
 				issuer: data.issuer,
 				expectedAudience: data.expectedAudience,
+				inboundAudiences: data.inboundAudiences,
 				allowedRoles: data.allowedRoles,
 				requireVerifiedEmail: data.requireVerifiedEmail ?? true,
 				subjectClaim: data.subjectClaim ?? 'sub',

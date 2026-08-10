@@ -96,7 +96,7 @@ export class DynamicCredentialStorageService implements IDynamicCredentialStorag
 
 			// The OAuth callback rebuilds this context from the CSRF state, which
 			// carries the presented token but no claim, so re-derive it here.
-			const resolutionContext =
+			const { context: resolutionContext } =
 				await this.inboundClaimConnectService.attachVerifiedClaim(credentialContext);
 
 			await resolver.setSecret(credentialStoreMetadata.id, resolutionContext, mergedDynamicData, {

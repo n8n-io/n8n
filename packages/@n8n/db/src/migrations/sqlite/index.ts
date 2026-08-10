@@ -64,6 +64,7 @@ import { AddIsFirstPartyToOAuthClients1785162364001 } from './1785162364001-AddI
 import { AddMisfirePolicyToScheduler1785247194307 } from './1785247194307-AddMisfirePolicyToScheduler';
 import { AddSetupCompletedAtToAgents1785500832626 } from './1785500832626-AddSetupCompletedAtToAgents';
 import { AddManagedByAndIssuerToTrustedKeySource1785924000000 } from './1785924000000-AddManagedByAndIssuerToTrustedKeySource';
+import { AddPolicyToTrustedKeySource1786022834327 } from './1786022834327-AddPolicyToTrustedKeySource';
 import { UniqueWorkflowNames1620821879465 } from '../common/1620821879465-UniqueWorkflowNames';
 import { UpdateWorkflowCredentials1630330987096 } from '../common/1630330987096-UpdateWorkflowCredentials';
 import { AddNodeIds1658930531669 } from '../common/1658930531669-AddNodeIds';
@@ -467,6 +468,7 @@ const sqliteMigrations: Migration[] = [
 	AddAgentExecutionRuntimeState1785828155091,
 	AddManagedByAndIssuerToTrustedKeySource1785924000000,
 	AddStatusToAuthIdentity1785930000000,
+	AddPolicyToTrustedKeySource1786022834327,
 ];
 
 export { sqliteMigrations };

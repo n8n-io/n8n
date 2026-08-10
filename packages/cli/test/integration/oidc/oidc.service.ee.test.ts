@@ -723,7 +723,7 @@ describe('OIDC service', () => {
 			expect(user.email).toEqual('user1@example.com');
 		});
 
-		it('should sign in user if OIDC Idp does not have email verified', async () => {
+		it('should reject provisioning a new user if OIDC Idp does not have email verified', async () => {
 			const state = oidcService.generateState();
 			const nonce = oidcService.generateNonce();
 			const callbackUrl = new URL(
@@ -750,15 +750,18 @@ describe('OIDC service', () => {
 
 			authorizationCodeGrantMock.mockResolvedValueOnce(mockTokens);
 
-			// Simulate that the user already exists in the database
+			// No existing user or binding for this subject/email - this is a fresh JIT provision.
 			fetchUserInfoMock.mockResolvedValueOnce({
 				email_verified: false,
 				email: 'user3@example.com',
 			});
 
-			const { user } = await oidcService.loginUser(callbackUrl, state.signed, nonce.signed);
-			expect(user).toBeDefined();
-			expect(user.email).toEqual('user3@example.com');
+			await expect(
+				oidcService.loginUser(callbackUrl, state.signed, nonce.signed),
+			).rejects.toThrowError(BadRequestError);
+
+			const provisioned = await userRepository.findOne({ where: { email: 'user3@example.com' } });
+			expect(provisioned).toBeNull();
 		});
 
 		it('should reject linking to an existing local account when email_verified is false', async () => {

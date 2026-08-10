@@ -108,6 +108,7 @@ describe('InboundClaimVerificationHook integration with establishExecutionContex
 				attributes: {},
 				expiresAt,
 			},
+			policy: { kid: 'kid-1', requireVerifiedEmail: true },
 		});
 
 		const workflow = buildWorkflow();
@@ -229,6 +230,7 @@ describe('InboundClaimVerificationHook integration with establishExecutionContex
 				attributes: {},
 				expiresAt: new Date('2026-06-01T00:00:00.000Z'),
 			},
+			policy: { kid: 'kid-1', requireVerifiedEmail: true },
 		});
 
 		const workflow = buildWorkflow();
@@ -257,6 +259,7 @@ describe('InboundClaimVerificationHook integration with establishExecutionContex
 				attributes: {},
 				expiresAt: pastExpiry,
 			},
+			policy: { kid: 'kid-1', requireVerifiedEmail: true },
 		});
 
 		const workflow = buildWorkflow();

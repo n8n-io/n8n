@@ -47,6 +47,7 @@ erDiagram
   text lastError
   timestamp_3__with_time_zone lastRefreshedAt
   varchar_32_ managedBy
+  text policy
   varchar_32_ status
   varchar_32_ type
   timestamp_3__with_time_zone updatedAt

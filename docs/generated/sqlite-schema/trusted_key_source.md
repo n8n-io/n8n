@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "trusted_key_source" ("id" varchar(36) PRIMARY KEY NOT NULL, "type" varchar(32) NOT NULL, "config" text NOT NULL, "status" varchar(32) NOT NULL DEFAULT ('pending'), "lastError" text, "lastRefreshedAt" datetime(3), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "managedBy" varchar(32) NOT NULL DEFAULT ('env-config'), "issuer" varchar(255))
+CREATE TABLE "trusted_key_source" ("id" varchar(36) PRIMARY KEY NOT NULL, "type" varchar(32) NOT NULL, "config" text NOT NULL, "status" varchar(32) NOT NULL DEFAULT ('pending'), "lastError" text, "lastRefreshedAt" datetime(3), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "managedBy" varchar(32) NOT NULL DEFAULT ('env-config'), "issuer" varchar(255), "policy" text)
 ```
 
 </details>
@@ -22,6 +22,7 @@ CREATE TABLE "trusted_key_source" ("id" varchar(36) PRIMARY KEY NOT NULL, "type"
 | lastError | TEXT |  | true |  |  |  |
 | lastRefreshedAt | datetime(3) |  | true |  |  |  |
 | managedBy | varchar(32) | 'env-config' | false |  |  |  |
+| policy | TEXT |  | true |  |  |  |
 | status | varchar(32) | 'pending' | false |  |  |  |
 | type | varchar(32) |  | false |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
@@ -55,6 +56,7 @@ erDiagram
   TEXT lastError
   datetime_3_ lastRefreshedAt
   varchar_32_ managedBy
+  TEXT policy
   varchar_32_ status
   varchar_32_ type
   datetime_3_ updatedAt

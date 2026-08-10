@@ -137,8 +137,11 @@ export {
 export {
 	trustedKeySourceSchema,
 	trustedKeySourcesSchema,
+	trustedKeySourcePolicySchema,
 	type TrustedKeySource,
+	type TrustedKeySourcePolicy,
 } from './schemas/trusted-key-source.schema';
+export { UpdateTrustedKeySourceDto } from './dto/trusted-key-source/update-trusted-key-source.dto';
 export {
 	WORKFLOW_VERSION_NAME_MAX_LENGTH,
 	WORKFLOW_VERSION_DESCRIPTION_MAX_LENGTH,

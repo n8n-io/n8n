@@ -72,6 +72,7 @@ describe('InboundClaimVerificationHook', () => {
 					attributes: { role: 'admin' },
 					expiresAt,
 				},
+				policy: { kid: 'kid-1', requireVerifiedEmail: true },
 			});
 
 			const result = await hook.execute(createOptions());
@@ -107,6 +108,7 @@ describe('InboundClaimVerificationHook', () => {
 					attributes: {},
 					expiresAt: new Date(),
 				},
+				policy: { kid: 'kid-1', requireVerifiedEmail: true },
 			});
 
 			const result = await hook.execute(createOptions());
@@ -228,6 +230,7 @@ describe('InboundClaimVerificationHook', () => {
 					attributes: {},
 					expiresAt: pastExpiry,
 				},
+				policy: { kid: 'kid-1', requireVerifiedEmail: true },
 			});
 
 			const result = await hook.execute(createOptions());

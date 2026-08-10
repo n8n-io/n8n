@@ -17,8 +17,12 @@ import type {
 	StaticKeySource,
 	TrustedKeyData,
 	TrustedKeySource,
+	TrustedKeySourcePolicy,
 } from '@/modules/token-exchange/token-exchange.schemas';
-import { TrustedKeySourceSchema } from '@/modules/token-exchange/token-exchange.schemas';
+import {
+	TrustedKeySourcePolicySchema,
+	TrustedKeySourceSchema,
+} from '@/modules/token-exchange/token-exchange.schemas';
 
 import { JwksResolverService } from './jwks-resolver';
 import { TrustedKeySourceEntity } from '../database/entities/trusted-key-source.entity';
@@ -150,6 +154,42 @@ export class TrustedKeySyncService {
 		await this.refreshSourceInternal(source);
 	}
 
+	/**
+	 * Replace a source's admin policy and rematerialize its keys so the change
+	 * takes effect immediately — the policy is baked into each `trusted_key.data`
+	 * row at refresh time, not read at verification time.
+	 *
+	 * A full replacement, not a merge: an admin clears an override by omitting
+	 * it, which is the only way to express "go back to the derived value" in a
+	 * shape where absent already means "don't override".
+	 *
+	 * The refresh is best-effort — `refreshSourceInternal` records a failure as
+	 * `status: 'error'` / `lastError` on the row rather than throwing, so a
+	 * temporarily unreachable JWKS endpoint doesn't lose the admin's edit.
+	 */
+	async updateSourcePolicy(
+		sourceId: string,
+		policy: TrustedKeySourcePolicy,
+	): Promise<TrustedKeySourceEntity> {
+		const source = await this.trustedKeySourceRepository.findOneBy({ id: sourceId });
+		if (!source) {
+			throw new UserError(`Trusted key source not found: ${sourceId}`);
+		}
+
+		const hasOverrides = Object.values(policy).some((value) => value !== undefined);
+		await this.trustedKeySourceRepository.update(sourceId, {
+			policy: hasOverrides ? JSON.stringify(policy) : null,
+		});
+
+		await this.refreshSource(sourceId);
+
+		const updated = await this.trustedKeySourceRepository.findOneBy({ id: sourceId });
+		if (!updated) {
+			throw new UserError(`Trusted key source not found: ${sourceId}`);
+		}
+		return updated;
+	}
+
 	// ─── Private: config parsing ───────────────────────────────────────
 
 	private parseConfigSources(): TrustedKeySource[] {
@@ -249,14 +289,24 @@ export class TrustedKeySyncService {
 	 * (whether env-config or a different SSO-derived row) already claims the
 	 * same issuer — `issuer` is globally unique — rather than failing on the
 	 * DB's unique constraint with an opaque error.
+	 *
+	 * Audiences accepted for this source come from config, not from the
+	 * discovery document: an IdP doesn't advertise what it stamps in `aud`,
+	 * and it isn't the OIDC client id except on ID tokens.
 	 */
 	async registerSsoDerivedSource(issuer: string, jwksUri: string): Promise<void> {
 		const sourceId = createHash('sha256').update(issuer).digest('hex').slice(0, 36);
+		const inboundAudiences = this.config.ssoInboundAudiences
+			.split(',')
+			.map((audience) => audience.trim())
+			.filter((audience) => audience.length > 0);
 		const config: JwksKeySource = {
 			type: 'jwks',
 			url: jwksUri,
 			issuer,
 			subjectClaim: this.config.inboundSubjectClaim || undefined,
+			inboundAudiences: inboundAudiences.length > 0 ? inboundAudiences : undefined,
+			requireVerifiedEmail: this.config.inboundRequireVerifiedEmail,
 		};
 
 		await this.dbLockService.withLock(DbLock.TRUSTED_KEY_REFRESH, async (tx) => {
@@ -420,6 +470,27 @@ export class TrustedKeySyncService {
 	): Promise<
 		{ keys: Array<{ kid: string; data: TrustedKeyData }>; cacheTtlSeconds?: number } | undefined
 	> {
+		const resolved = await this.resolveKeysForSourceType(source);
+		if (!resolved) return undefined;
+
+		// Overlay the admin's policy last, so it wins over whatever the discovery
+		// document or `N8N_TRUSTED_KEYS` said. Applied here rather than in each
+		// per-type resolver so there is exactly one place where administered
+		// state beats derived state.
+		const policy = this.parsePolicy(source);
+		if (!policy) return resolved;
+
+		return {
+			...resolved,
+			keys: resolved.keys.map(({ kid, data }) => ({ kid, data: { ...data, ...policy } })),
+		};
+	}
+
+	private async resolveKeysForSourceType(
+		source: TrustedKeySourceEntity,
+	): Promise<
+		{ keys: Array<{ kid: string; data: TrustedKeyData }>; cacheTtlSeconds?: number } | undefined
+	> {
 		switch (source.type) {
 			case 'static':
 				return this.resolveKeysForStaticSource(source);
@@ -432,6 +503,38 @@ export class TrustedKeySyncService {
 				});
 				return undefined;
 		}
+	}
+
+	/**
+	 * A malformed policy is ignored rather than fatal: it must not take the
+	 * source's keys offline, and the admin can overwrite it through the API.
+	 */
+	private parsePolicy(source: TrustedKeySourceEntity): TrustedKeySourcePolicy | undefined {
+		if (!source.policy) return undefined;
+
+		// Hand-rolled rather than `jsonParse`'s `fallbackValue`: that option is
+		// detected with `!== undefined`, so an `undefined` fallback rethrows —
+		// which here would take the source's keys offline over a bad override.
+		let raw: unknown;
+		try {
+			raw = JSON.parse(source.policy);
+		} catch {
+			this.logger.warn('Ignoring trusted key source policy: malformed JSON', {
+				sourceId: source.id,
+			});
+			return undefined;
+		}
+
+		const parsed = TrustedKeySourcePolicySchema.safeParse(raw);
+		if (!parsed.success) {
+			this.logger.warn('Ignoring malformed trusted key source policy', {
+				sourceId: source.id,
+				error: parsed.error.message,
+			});
+			return undefined;
+		}
+
+		return parsed.data;
 	}
 
 	private async resolveKeysForJwksSource(
@@ -463,6 +566,7 @@ export class TrustedKeySyncService {
 					allowedRoles: key.allowedRoles,
 					requireVerifiedEmail: jwksConfig.requireVerifiedEmail ?? true,
 					subjectClaim: jwksConfig.subjectClaim,
+					inboundAudiences: jwksConfig.inboundAudiences,
 					expiresAt: new Date(Date.now() + result.ttlSeconds * 1000).toISOString(),
 				},
 			})),
@@ -510,6 +614,7 @@ export class TrustedKeySyncService {
 				allowedRoles,
 				requireVerifiedEmail,
 				subjectClaim,
+				inboundAudiences,
 			} = config;
 
 			if (seenKids.has(kid)) {
@@ -529,6 +634,7 @@ export class TrustedKeySyncService {
 					allowedRoles,
 					requireVerifiedEmail,
 					subjectClaim,
+					inboundAudiences,
 				},
 			});
 		}

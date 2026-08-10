@@ -74,6 +74,7 @@ export const TrustedKeySourceSchema = z.discriminatedUnion('type', [
 		expectedAudience: z.string().optional(),
 		allowedRoles: z.array(z.string()).optional(),
 		subjectClaim: z.string().optional(),
+		inboundAudiences: z.array(z.string()).optional(),
 	}),
 	z.object({
 		type: z.literal('jwks'),
@@ -84,6 +85,7 @@ export const TrustedKeySourceSchema = z.discriminatedUnion('type', [
 		allowedRoles: z.array(z.string()).optional(),
 		cacheTtlSeconds: z.number().int().positive().optional(),
 		subjectClaim: z.string().optional(),
+		inboundAudiences: z.array(z.string()).optional(),
 	}),
 ]);
 
@@ -106,6 +108,26 @@ export type TrustedKeySourceStatus = 'pending' | 'healthy' | 'error';
 export type TrustedKeySourceManagedBy = 'env-config' | 'sso-derived' | 'api';
 
 /**
+ * Admin-set overrides applied on top of a source's derived `config` when its
+ * keys are resolved. Stored in the source's own `policy` column, which no
+ * refresh path writes, so a discovery re-read or an `N8N_TRUSTED_KEYS` sync
+ * can't silently undo an admin's decision.
+ *
+ * Every field is optional and means "leave the derived value alone" when
+ * absent — an admin overrides the settings they care about, not the whole
+ * source.
+ */
+export const TrustedKeySourcePolicySchema = z.object({
+	expectedAudience: z.string().optional(),
+	inboundAudiences: z.array(z.string()).optional(),
+	subjectClaim: z.string().optional(),
+	requireVerifiedEmail: z.boolean().optional(),
+	allowedRoles: z.array(z.string()).optional(),
+});
+
+export type TrustedKeySourcePolicy = z.infer<typeof TrustedKeySourcePolicySchema>;
+
+/**
  * Serializable representation of a trusted key stored in the `trusted_key.data`
  * JSON column. Unlike `ResolvedTrustedKey`, this holds the raw PEM string
  * instead of a live `crypto.KeyObject`.
@@ -119,6 +141,7 @@ export const TrustedKeyDataSchema = z.object({
 	expiresAt: z.string().optional(),
 	requireVerifiedEmail: z.boolean().optional(),
 	subjectClaim: z.string().optional(),
+	inboundAudiences: z.array(z.string()).optional(),
 });
 
 export type TrustedKeyData = z.infer<typeof TrustedKeyDataSchema>;
@@ -147,6 +170,22 @@ export interface ResolvedTrustedKey {
 
 	/** Expected `aud` claim value, if restricted. */
 	expectedAudience?: string;
+
+	/**
+	 * Extra `aud` values accepted when the token is presented *directly* to
+	 * n8n as a resource server (inbound bearer on a webhook or a
+	 * credential-connect route), on top of whatever audience the caller
+	 * expects.
+	 *
+	 * Kept separate from `expectedAudience` — which is the audience of the
+	 * one-shot exchange grant — so registering an inbound audience never
+	 * widens what the exchange endpoint accepts, or vice versa.
+	 *
+	 * Always configured, never derived: what an IdP puts in `aud` isn't in its
+	 * discovery document and varies by token type and vendor (see
+	 * `TokenExchangeConfig.ssoInboundAudiences`).
+	 */
+	inboundAudiences?: string[];
 
 	/** Roles allowed for tokens signed with this key, if restricted. */
 	allowedRoles?: string[];

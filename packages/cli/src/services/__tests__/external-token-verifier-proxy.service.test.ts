@@ -3,6 +3,7 @@ import { mock } from 'vitest-mock-extended';
 import type {
 	ExternalTokenVerifier,
 	VerifiedClaim,
+	VerifiedClaimPolicy,
 } from '../external-token-verifier-proxy.service';
 import { ExternalTokenVerifierProxy } from '../external-token-verifier-proxy.service';
 
@@ -19,8 +20,9 @@ describe('ExternalTokenVerifierProxy', () => {
 	it('should delegate to the registered provider', async () => {
 		const proxy = new ExternalTokenVerifierProxy();
 		const claim = mock<VerifiedClaim>({ sourceId: 'source-1', subject: 'external-user-1' });
+		const policy = mock<VerifiedClaimPolicy>({ kid: 'kid-1', requireVerifiedEmail: true });
 		const provider = mock<ExternalTokenVerifier>();
-		provider.verifyExternalToken.mockResolvedValue({ claim });
+		provider.verifyExternalToken.mockResolvedValue({ claim, policy });
 
 		proxy.registerProvider(provider);
 
@@ -33,6 +35,6 @@ describe('ExternalTokenVerifierProxy', () => {
 			'some-token',
 			'https://n8n.example.com/resource',
 		);
-		expect(result).toEqual({ claim });
+		expect(result).toEqual({ claim, policy });
 	});
 });
