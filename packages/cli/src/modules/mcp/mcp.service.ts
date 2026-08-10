@@ -38,6 +38,7 @@ import { NodeCatalogService } from '@/node-catalog';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { AiGatewayService } from '@/services/ai-gateway.service';
+import { FolderService } from '@/services/folder.service';
 import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
@@ -62,6 +63,7 @@ import type {
 	ToolDefinition,
 } from './mcp.types';
 import { shapeToStandardSchema } from './tool-schema.util';
+import { createCreateFolderTool } from './tools/create-folder.tool';
 import {
 	createAddDataTableColumnTool,
 	createAddDataTableRowsTool,
@@ -79,6 +81,7 @@ import { createGetWorkflowVersionTool } from './tools/get-workflow-version.tool'
 import { createListCredentialsTool } from './tools/list-credentials.tool';
 import { createListN8nConnectServicesTool } from './tools/list-n8n-connect-services.tool';
 import { createListTagsTool } from './tools/list-tags.tool';
+import { createMoveWorkflowsToFolderTool } from './tools/move-workflows-to-folder.tool';
 import { createPrepareTestPinDataTool } from './tools/prepare-workflow-pin-data.tool';
 import { createPublishWorkflowTool } from './tools/publish-workflow.tool';
 import { createSearchExecutionsTool } from './tools/search-executions.tool';
@@ -87,6 +90,7 @@ import { createSearchProjectsTool } from './tools/search-projects.tool';
 import { createSearchWorkflowsTool } from './tools/search-workflows.tool';
 import { createTestWorkflowTool } from './tools/test-workflow.tool';
 import { createUnpublishWorkflowTool } from './tools/unpublish-workflow.tool';
+import { createUpdateFolderTool } from './tools/update-folder.tool';
 import { MCP_CREATE_WORKFLOW_FROM_CODE_TOOL } from './tools/workflow-builder/constants';
 import { createCreateWorkflowFromCodeTool } from './tools/workflow-builder/create-workflow-from-code.tool';
 import { createArchiveWorkflowTool } from './tools/workflow-builder/delete-workflow.tool';
@@ -219,6 +223,7 @@ export class McpService {
 		private readonly aiGatewayService: AiGatewayService,
 		private readonly moduleRegistry: ModuleRegistry,
 		private readonly eventService: EventService,
+		private readonly folderService: FolderService,
 	) {}
 
 	/**
@@ -666,6 +671,7 @@ export class McpService {
 			this.nodeTypes,
 			this.credentialsService,
 			this.projectRepository,
+			this.folderRepository,
 			dataTableOps,
 			this.aiGatewayService,
 			{ canvasGroupsEnabled: featureFlags.canvasGroupsEnabled },
@@ -715,6 +721,35 @@ export class McpService {
 			this.telemetry,
 		);
 		registerIfAllowed(searchFoldersTool);
+
+		// Folder write tools require the folders feature; unlicensed instances
+		// never see them (the consent screen filters them the same way).
+		if (this.licenseState.isFoldersLicensed()) {
+			const createFolderTool = createCreateFolderTool(
+				user,
+				this.folderService,
+				this.projectService,
+				this.telemetry,
+			);
+			registerIfAllowed(createFolderTool);
+
+			const updateFolderTool = createUpdateFolderTool(
+				user,
+				this.folderService,
+				this.projectService,
+				this.telemetry,
+			);
+			registerIfAllowed(updateFolderTool);
+
+			const moveWorkflowsToFolderTool = createMoveWorkflowsToFolderTool(
+				user,
+				this.workflowFinderService,
+				this.workflowService,
+				this.folderRepository,
+				this.telemetry,
+			);
+			registerIfAllowed(moveWorkflowsToFolderTool);
+		}
 
 		const archiveTool = createArchiveWorkflowTool(
 			user,

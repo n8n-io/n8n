@@ -13,6 +13,7 @@ describe('search-folders MCP tool', () => {
 		folders?: Array<{ id: string; name: string; parentFolderId: string | null }>;
 		count?: number;
 		projectAccessible?: boolean;
+		paths?: Map<string, string[]>;
 	}) => {
 		const folders = overrides?.folders ?? [];
 		const count = overrides?.count ?? folders.length;
@@ -20,6 +21,7 @@ describe('search-folders MCP tool', () => {
 
 		const folderRepository = mockInstance(FolderRepository, {
 			getManyAndCount: vi.fn().mockResolvedValue([folders, count]),
+			getFolderPathsToRoot: vi.fn().mockResolvedValue(overrides?.paths ?? new Map()),
 		});
 
 		const projectService = mockInstance(ProjectService, {
@@ -70,7 +72,11 @@ describe('search-folders MCP tool', () => {
 			{ id: 'folder-1', name: 'Production', parentFolderId: null },
 			{ id: 'folder-2', name: 'Dev', parentFolderId: 'folder-1' },
 		];
-		const { folderRepository, projectService, telemetry } = createMocks({ folders });
+		const paths = new Map([
+			['folder-1', ['Production']],
+			['folder-2', ['Production', 'Dev']],
+		]);
+		const { folderRepository, projectService, telemetry } = createMocks({ folders, paths });
 
 		const tool = createSearchFoldersTool(
 			user,
@@ -83,11 +89,13 @@ describe('search-folders MCP tool', () => {
 
 		expect(result.structuredContent).toEqual({
 			data: [
-				{ id: 'folder-1', name: 'Production', parentFolderId: null },
-				{ id: 'folder-2', name: 'Dev', parentFolderId: 'folder-1' },
+				{ id: 'folder-1', name: 'Production', parentFolderId: null, path: ['Production'] },
+				{ id: 'folder-2', name: 'Dev', parentFolderId: 'folder-1', path: ['Production', 'Dev'] },
 			],
 			count: 2,
 		});
+
+		expect(folderRepository.getFolderPathsToRoot).toHaveBeenCalledWith(['folder-1', 'folder-2']);
 
 		expect(projectService.getProjectWithScope).toHaveBeenCalledWith(user, 'proj-1', [
 			'folder:list',

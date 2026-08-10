@@ -21,6 +21,7 @@ import { NodeCatalogService } from '@/node-catalog';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { AiGatewayService } from '@/services/ai-gateway.service';
+import { FolderService } from '@/services/folder.service';
 import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
@@ -91,7 +92,7 @@ describe('getAllowedToolNames', () => {
 describe('McpService scope enforcement', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });
 
-	const buildService = ({ builderEnabled = true } = {}) =>
+	const buildService = ({ builderEnabled = true, foldersLicensed = true } = {}) =>
 		new McpService(
 			mockLogger(),
 			mockInstance(ExecutionsConfig, { mode: 'regular' }),
@@ -127,7 +128,9 @@ describe('McpService scope enforcement', () => {
 			mockInstance(CollaborationService),
 			mockInstance(NodeResourceExplorerService),
 			mockInstance(TagService),
-			mockInstance(LicenseState),
+			mockInstance(LicenseState, {
+				isFoldersLicensed: vi.fn().mockReturnValue(foldersLicensed),
+			}),
 			mockInstance(PostHogClient),
 			mockInstance(WorkflowHistoryService),
 			mockInstance(WorkflowsConfig),
@@ -138,6 +141,7 @@ describe('McpService scope enforcement', () => {
 			}),
 			mockInstance(ModuleRegistry),
 			mockInstance(EventService),
+			mockInstance(FolderService),
 		);
 
 	beforeEach(() => {
@@ -174,6 +178,20 @@ describe('McpService scope enforcement', () => {
 
 		const gated = [...withBuilder].filter((name) => !withoutBuilder.has(name)).sort();
 		expect(gated).toEqual([...BUILDER_TOOLS].sort());
+	});
+
+	it('does not register folder write tools when folders are not licensed', async () => {
+		const server = await buildService({ foldersLicensed: false }).getServer(
+			user,
+			mcpFeatureFlags(),
+		);
+		const registered = getRegisteredToolNames(server);
+
+		expect(registered).not.toContain('create_folder');
+		expect(registered).not.toContain('update_folder');
+		expect(registered).not.toContain('move_workflows_to_folder');
+		// The read tool is not license-gated.
+		expect(registered).toContain('search_folders');
 	});
 
 	it('registers all tools when no scopes are provided (API keys, legacy tokens)', async () => {

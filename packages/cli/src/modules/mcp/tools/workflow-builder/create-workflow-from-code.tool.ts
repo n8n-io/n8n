@@ -1,4 +1,11 @@
-import { type Project, type ProjectRepository, type User, WorkflowEntity } from '@n8n/db';
+import {
+	type Folder,
+	type FolderRepository,
+	type Project,
+	type ProjectRepository,
+	type User,
+	WorkflowEntity,
+} from '@n8n/db';
 import z from 'zod';
 
 import { buildInvalidAiToolSourceErrorResponse } from './connection-structure-check';
@@ -96,7 +103,7 @@ const inputSchema = {
 		.string()
 		.optional()
 		.describe(
-			'Optional folder ID to create the workflow in. Requires projectId to be set. Use search_folders to find a folder by name within a project.',
+			'Optional folder ID to create the workflow in. Requires projectId to be set. Use search_folders to find a folder by name within a project; when multiple folders match the name, ask the user which one they meant before creating.',
 		),
 } satisfies z.ZodRawShape;
 
@@ -138,6 +145,15 @@ const outputSchema = {
 		})
 		.optional()
 		.describe('The project the workflow was actually created in.'),
+	targetFolder: z
+		.object({
+			id: z.string().describe('The ID of the folder the workflow was created in'),
+			name: z.string().describe('The name of the folder the workflow was created in'),
+		})
+		.optional()
+		.describe(
+			'The folder the workflow was created in. Absent when the workflow was created at the project root.',
+		),
 	note: z
 		.string()
 		.optional()
@@ -194,13 +210,14 @@ export const createCreateWorkflowFromCodeTool = (
 	nodeTypes: NodeTypes,
 	credentialsService: CredentialsService,
 	projectRepository: ProjectRepository,
+	folderRepository: FolderRepository,
 	dataTableOps: DataTableUserOperations,
 	aiGatewayService: AiGatewayService,
 	options: CreateWorkflowFromCodeToolOptions = {},
 ): ToolDefinition<typeof inputSchema> => ({
 	name: MCP_CREATE_WORKFLOW_FROM_CODE_TOOL.toolName,
 	config: {
-		description: `Create a workflow in n8n from validated SDK code. This tool expects code that already follows the n8n Workflow SDK patterns and has passed ${CODE_BUILDER_VALIDATE_TOOL.toolName}. If code fails to parse, call get_workflow_sdk_reference, rewrite the code using the reference, validate again, then retry creation. If the user named a target project, resolve it via search_projects before calling this tool; when projectId is omitted, the workflow is created in the user's personal project. If you used n8n skills while preparing this workflow, pass their identifiers in skillsUsed. After creation, always tell the user which project the workflow landed in (see the targetProject field in the response).`,
+		description: `Create a workflow in n8n from validated SDK code. This tool expects code that already follows the n8n Workflow SDK patterns and has passed ${CODE_BUILDER_VALIDATE_TOOL.toolName}. If code fails to parse, call get_workflow_sdk_reference, rewrite the code using the reference, validate again, then retry creation. If the user named a target project, resolve it via search_projects before calling this tool; when projectId is omitted, the workflow is created in the user's personal project. If the user named a target folder, resolve it via search_folders. If you used n8n skills while preparing this workflow, pass their identifiers in skillsUsed. After creation, always tell the user which project — and folder, if any — the workflow landed in (see the targetProject and targetFolder fields in the response).`,
 		inputSchema,
 		outputSchema,
 		annotations: {
@@ -258,6 +275,7 @@ export const createCreateWorkflowFromCodeTool = (
 
 		let newWorkflow: WorkflowEntity | undefined;
 		let landingProject: Project | null = null;
+		let landingFolder: Folder | null = null;
 
 		try {
 			const { ParseValidateHandler, stripImportStatements } = await import(
@@ -321,6 +339,10 @@ export const createCreateWorkflowFromCodeTool = (
 				);
 			}
 			const effectiveProjectId = landingProject.id;
+
+			// Fetched only to echo the folder name back in the response; folder
+			// placement itself is validated by WorkflowCreationService.
+			landingFolder = folderId ? await folderRepository.findOneBy({ id: folderId }) : null;
 
 			const dataTableCheck = await validateDataTableReferencesForWorkflow(
 				newWorkflow.nodes,
@@ -419,6 +441,9 @@ export const createCreateWorkflowFromCodeTool = (
 					name: landingProject.name,
 					type: landingProject.type,
 				},
+				targetFolder: landingFolder
+					? { id: landingFolder.id, name: landingFolder.name }
+					: undefined,
 				note: notes.length ? notes.join(' ') : undefined,
 				skippedGroups: skippedGroups.length > 0 ? skippedGroups : undefined,
 			};
@@ -472,6 +497,9 @@ export const createCreateWorkflowFromCodeTool = (
 							name: landingProject.name,
 							type: landingProject.type,
 						},
+						targetFolder: landingFolder
+							? { id: landingFolder.id, name: landingFolder.name }
+							: undefined,
 						note: `Workflow was created successfully, but a post-save operation failed: ${errorMessage}`,
 					};
 

@@ -31,6 +31,7 @@ export const TOOLS_BY_SCOPE: Record<McpScope, readonly string[]> = {
 		'restore_workflow_version',
 		'publish_workflow',
 		'unpublish_workflow',
+		'move_workflows_to_folder',
 		// Builder support tools, so a write-only grant can still build
 		'search_nodes',
 		'get_node_types',
@@ -84,8 +85,22 @@ export const TOOLS_BY_SCOPE: Record<McpScope, readonly string[]> = {
 		'add_data_table_rows',
 	],
 	'project:read': ['search_projects', 'search_folders'],
+	// Creating or moving folders requires finding projects and folders first,
+	// so the search tools ride along on a write-only grant.
+	'project:write': ['create_folder', 'update_folder', 'search_projects', 'search_folders'],
 	'tag:read': ['list_workflow_tags'],
 };
+
+/**
+ * Tools that operate on folders and therefore require the `feat:folders`
+ * license. Only registered (and advertised on the consent screen) when the
+ * instance is licensed for folders.
+ */
+export const FOLDER_FEATURE_TOOLS: ReadonlySet<string> = new Set([
+	'create_folder',
+	'update_folder',
+	'move_workflows_to_folder',
+]);
 
 /**
  * Tools only registered when the workflow builder is enabled
@@ -106,6 +121,9 @@ export const BUILDER_TOOLS: ReadonlySet<string> = new Set([
 	'explore_node_resources',
 	'search_projects',
 	'search_folders',
+	'create_folder',
+	'update_folder',
+	'move_workflows_to_folder',
 ]);
 
 export const AGENT_TOOLS: ReadonlySet<string> = new Set([

@@ -26,6 +26,11 @@ const outputSchema = {
 					.string()
 					.nullable()
 					.describe('The ID of the parent folder, or null if at project root'),
+				path: z
+					.array(z.string())
+					.describe(
+						"The folder's full name path from the project root, ending with the folder's own name. Use it to tell same-named folders apart and to present folders to the user by name.",
+					),
 			}),
 		)
 		.describe('List of folders matching the query'),
@@ -41,7 +46,7 @@ export const createSearchFoldersTool = (
 	name: 'search_folders',
 	config: {
 		description:
-			'Search for folders within a project. Use this to find a folder ID before creating a workflow in a specific folder. Requires a projectId — use search_projects first if needed.',
+			"Search for folders within a project. Use this to resolve a folder name to an ID before creating a workflow in a folder, creating or updating a folder, or moving workflows into a folder. Each result includes the folder's full name path — when multiple folders match a name, use the paths to ask the user which one they meant. Requires a projectId — use search_projects first if needed.",
 		inputSchema,
 		outputSchema,
 		annotations: {
@@ -90,10 +95,15 @@ export const createSearchFoldersTool = (
 				take: safeLimit,
 			});
 
+			const folderPaths = await folderRepository.getFolderPathsToRoot(
+				folders.map((folder) => folder.id),
+			);
+
 			const data = folders.map((folder) => ({
 				id: folder.id,
 				name: folder.name,
 				parentFolderId: folder.parentFolderId ?? null,
+				path: folderPaths.get(folder.id) ?? [folder.name],
 			}));
 
 			telemetryPayload.results = {

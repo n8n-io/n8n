@@ -31,6 +31,7 @@ import { NodeCatalogService } from '@/node-catalog';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { AiGatewayService } from '@/services/ai-gateway.service';
+import { FolderService } from '@/services/folder.service';
 import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
@@ -125,6 +126,7 @@ describe('McpService', () => {
 			mockAiGatewayService(),
 			mockInstance(ModuleRegistry),
 			eventService,
+			mockInstance(FolderService),
 		);
 	});
 
@@ -176,6 +178,7 @@ describe('McpService', () => {
 				mockAiGatewayService(),
 				mockInstance(ModuleRegistry),
 				mockInstance(EventService),
+				mockInstance(FolderService),
 			);
 
 			expect(queueMcpService.isQueueMode).toBe(true);
@@ -382,6 +385,7 @@ describe('McpService', () => {
 				mockAiGatewayService(),
 				mockInstance(ModuleRegistry),
 				mockInstance(EventService),
+				mockInstance(FolderService),
 			);
 
 		const user = Object.assign(new User(), { id: 'user-1' });
@@ -871,6 +875,7 @@ describe('McpService', () => {
 				mockAiGatewayService(),
 				mockInstance(ModuleRegistry),
 				mockInstance(EventService),
+				mockInstance(FolderService),
 			);
 
 			const server = await service.getServer(user, mcpFeatureFlags());
@@ -924,6 +929,7 @@ describe('McpService', () => {
 				mockAiGatewayService(),
 				mockInstance(ModuleRegistry),
 				mockInstance(EventService),
+				mockInstance(FolderService),
 			);
 
 			const server = await service.getServer(user, mcpFeatureFlags());
@@ -1002,6 +1008,7 @@ describe('McpService', () => {
 					mockAiGatewayService(),
 					mockInstance(ModuleRegistry),
 					mockInstance(EventService),
+					mockInstance(FolderService),
 				);
 			};
 
