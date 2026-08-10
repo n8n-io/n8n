@@ -9,7 +9,7 @@ import { SANDBOX_PROVIDER_LABELS } from './constants';
 export type InstanceAiModelProvider = 'anthropic' | 'openai' | 'openrouter' | 'custom';
 export type InstanceAiSearchProvider = 'searxng' | 'brave' | 'disabled';
 
-export const INSTANCE_AI_RECOMMENDED_MODELS = {
+export const INSTANCE_AI_CURATED_MODELS = {
 	anthropic: ['claude-opus-5', 'claude-sonnet-5'],
 	openai: ['gpt-5.6-sol', 'gpt-5.6-terra'],
 	openrouter: [

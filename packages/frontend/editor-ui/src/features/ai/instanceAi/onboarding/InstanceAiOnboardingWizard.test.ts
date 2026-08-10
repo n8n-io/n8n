@@ -235,6 +235,33 @@ describe('InstanceAiOnboardingWizard', () => {
 		await waitFor(() => expect(emitted().advance).toEqual([[]]), { timeout: 2500 });
 	});
 
+	it('offers models from every provider when the environment-managed provider is masked', async () => {
+		const { pinia, store } = setupStore({
+			modelName: 'saved-env-model',
+			modelEnvConfigured: true,
+			envManaged: {
+				model: { provider: true, apiKey: true, baseUrl: false, model: false },
+				sandbox: { provider: false, serviceUrl: false, apiKey: false },
+				search: { provider: false, apiKey: false, url: false },
+			},
+		});
+		store.$patch({
+			modelCatalog: {
+				anthropic: [{ id: 'claude-dynamic', name: 'Claude Dynamic' }],
+				openai: [{ id: 'gpt-dynamic', name: 'GPT Dynamic' }],
+				openrouter: [{ id: 'openrouter/dynamic', name: 'OpenRouter Dynamic' }],
+			},
+		});
+		const { findByTestId, findByText } = renderWizard({ pinia });
+
+		await fireEvent.click(inputFor(await findByTestId('assistant-model-name')));
+
+		expect(await findByText('Claude Dynamic')).toBeVisible();
+		expect(await findByText('GPT Dynamic')).toBeVisible();
+		expect(await findByText('OpenRouter Dynamic')).toBeVisible();
+		expect(await findByText('saved-env-model')).toBeVisible();
+	});
+
 	it('supports a custom OpenAI-compatible model without an API key', async () => {
 		const { pinia, store } = setupStore();
 		vi.mocked(store.verifyModel).mockResolvedValue({ ok: true });

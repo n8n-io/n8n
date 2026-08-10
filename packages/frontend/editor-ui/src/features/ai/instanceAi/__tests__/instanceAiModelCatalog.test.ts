@@ -1,7 +1,7 @@
 import type { InstanceAiModelCatalogResponse } from '@n8n/api-types';
 
-import { INSTANCE_AI_RECOMMENDED_MODELS } from '../instanceAiConnection.constants';
-import { getInstanceAiModelOptions } from '../instanceAiModelCatalog';
+import { INSTANCE_AI_CURATED_MODELS } from '../instanceAiConnection.constants';
+import { getAllInstanceAiModelOptions, getInstanceAiModelOptions } from '../instanceAiModelCatalog';
 
 const catalog: InstanceAiModelCatalogResponse['models'] = {
 	anthropic: [
@@ -20,7 +20,7 @@ describe('getInstanceAiModelOptions', () => {
 	it('uses curated recommendations immediately without a catalog', () => {
 		const options = getInstanceAiModelOptions('anthropic', null, '');
 
-		expect(options.map(({ id }) => id)).toEqual(INSTANCE_AI_RECOMMENDED_MODELS.anthropic);
+		expect(options.map(({ id }) => id)).toEqual(INSTANCE_AI_CURATED_MODELS.anthropic);
 		expect(options.map(({ recommended }) => recommended)).toEqual([true, false]);
 	});
 
@@ -42,7 +42,7 @@ describe('getInstanceAiModelOptions', () => {
 		const options = getInstanceAiModelOptions('openai', catalog, 'retired-model');
 
 		expect(options.map(({ id }) => id)).toEqual([
-			...INSTANCE_AI_RECOMMENDED_MODELS.openai,
+			...INSTANCE_AI_CURATED_MODELS.openai,
 			'retired-model',
 		]);
 	});
@@ -51,7 +51,7 @@ describe('getInstanceAiModelOptions', () => {
 		const options = getInstanceAiModelOptions('anthropic', catalog, 'claude-beta');
 
 		expect(options.map(({ id }) => id)).toEqual([
-			...INSTANCE_AI_RECOMMENDED_MODELS.anthropic,
+			...INSTANCE_AI_CURATED_MODELS.anthropic,
 			'claude-zeta',
 			'claude-beta',
 			'claude-delta',
@@ -62,5 +62,40 @@ describe('getInstanceAiModelOptions', () => {
 
 	it('does not provide catalog options for custom endpoints', () => {
 		expect(getInstanceAiModelOptions('custom', catalog, 'custom-model')).toEqual([]);
+	});
+
+	it('combines every provider when the configured provider is masked', () => {
+		const options = getAllInstanceAiModelOptions(
+			{
+				...catalog,
+				openai: [{ id: 'gpt-dynamic', name: 'GPT Dynamic', releaseDate: '2026-04-01' }],
+				openrouter: [
+					{
+						id: 'openrouter/dynamic',
+						name: 'OpenRouter Dynamic',
+						releaseDate: '2026-02-01',
+					},
+				],
+			},
+			'saved-env-model',
+		);
+		const curatedIds = [
+			...INSTANCE_AI_CURATED_MODELS.anthropic,
+			...INSTANCE_AI_CURATED_MODELS.openai,
+			...INSTANCE_AI_CURATED_MODELS.openrouter,
+		];
+
+		expect(options.slice(0, curatedIds.length).map(({ id }) => id)).toEqual(curatedIds);
+		expect(options.map(({ id }) => id)).toEqual(
+			expect.arrayContaining([
+				'claude-zeta',
+				'gpt-dynamic',
+				'openrouter/dynamic',
+				'saved-env-model',
+			]),
+		);
+		expect(options.filter(({ recommended }) => recommended).map(({ id }) => id)).toEqual([
+			'claude-opus-5',
+		]);
 	});
 });

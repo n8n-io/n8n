@@ -30,13 +30,13 @@ import { SANDBOX_PROVIDER_LABELS } from '../constants';
 import { useInstanceCredentialTest } from '../composables/useInstanceCredentialTest';
 import {
 	INSTANCE_AI_MODEL_PROVIDERS,
-	INSTANCE_AI_RECOMMENDED_MODELS,
+	INSTANCE_AI_CURATED_MODELS,
 	INSTANCE_AI_SANDBOX_PROVIDERS,
 	INSTANCE_AI_SEARCH_PROVIDERS,
 	type InstanceAiModelProvider,
 	type InstanceAiSearchProvider,
 } from '../instanceAiConnection.constants';
-import { getInstanceAiModelOptions } from '../instanceAiModelCatalog';
+import { getAllInstanceAiModelOptions, getInstanceAiModelOptions } from '../instanceAiModelCatalog';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import type { InstanceAiOnboardingStep } from './useInstanceAiOnboarding';
 
@@ -50,7 +50,7 @@ const BRAVE_SEARCH_KEYS_URL = 'https://api-dashboard.search.brave.com/app/keys';
 const ENV_DOCS_URL = 'https://docs.n8n.io/deploy/host-n8n/configure-n8n/set-up-ai-assistant';
 const SUCCESS_PAUSE_MS = TIME.SECOND * 1.5;
 const DEFAULT_MODEL_PROVIDER = INSTANCE_AI_MODEL_PROVIDERS[0]!;
-const DEFAULT_MODEL_NAME = INSTANCE_AI_RECOMMENDED_MODELS[DEFAULT_MODEL_PROVIDER.id][0] ?? '';
+const DEFAULT_MODEL_NAME = INSTANCE_AI_CURATED_MODELS[DEFAULT_MODEL_PROVIDER.id][0] ?? '';
 type VerificationSuccess = Extract<InstanceAiVerificationResponse, { ok: true }>;
 const VERIFICATION_FAILURE_COPY: Record<InstanceAiVerificationFailure, BaseTextKey> = {
 	unauthorized: 'instanceAi.onboarding.verification.unauthorized',
@@ -118,7 +118,9 @@ const modelConfig = computed(
 const modelConnectionLocked = computed(() => store.settings?.envManaged?.model?.provider === true);
 const modelNameLocked = computed(() => store.settings?.envManaged?.model?.model === true);
 const modelOptions = computed(() =>
-	getInstanceAiModelOptions(modelProvider.value, store.modelCatalog, modelName.value),
+	modelConnectionLocked.value
+		? getAllInstanceAiModelOptions(store.modelCatalog, modelName.value)
+		: getInstanceAiModelOptions(modelProvider.value, store.modelCatalog, modelName.value),
 );
 const sandboxEnvManaged = computed(() => store.settings?.sandboxEnvConfigured === true);
 const searchEnvManaged = computed(() => store.settings?.searchEnvConfigured === true);
@@ -311,7 +313,7 @@ function applyExistingCredential(credential: InstanceAiProviderConnection): void
 		modelProvider.value = modelProviderForCredentialType(credential.type);
 		modelName.value =
 			(credential.id === assignedCredentialId() ? store.settings?.modelName : null) ||
-			INSTANCE_AI_RECOMMENDED_MODELS[modelProvider.value][0] ||
+			INSTANCE_AI_CURATED_MODELS[modelProvider.value][0] ||
 			'';
 	} else if (props.step === 'sandbox') {
 		sandboxProvider.value = credential.type === 'daytonaApi' ? 'daytona' : 'n8n-sandbox';
@@ -466,7 +468,7 @@ async function selectModelProvider(provider: unknown): Promise<void> {
 	modelProvider.value = next.id;
 	modelApiKey.value = '';
 	modelBaseUrl.value = '';
-	modelName.value = INSTANCE_AI_RECOMMENDED_MODELS[next.id][0] ?? '';
+	modelName.value = INSTANCE_AI_CURATED_MODELS[next.id][0] ?? '';
 	if (next.id !== 'custom') void store.loadModelCatalog();
 }
 

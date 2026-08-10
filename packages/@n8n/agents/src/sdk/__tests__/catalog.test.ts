@@ -87,6 +87,60 @@ describe('fetchProviderCatalog', () => {
 		});
 	});
 
+	it('rejects a malformed catalog response', async () => {
+		const fetchMock = vi.fn().mockResolvedValue({
+			ok: true,
+			json: async () => await Promise.resolve([]),
+		});
+		global.fetch = fetchMock as typeof fetch;
+
+		await expect(fetchProviderCatalog()).rejects.toThrow();
+	});
+
+	it('omits malformed providers and models while retaining valid entries', async () => {
+		const fetchMock = vi.fn().mockResolvedValue({
+			ok: true,
+			json: async () =>
+				await Promise.resolve({
+					invalidProvider: {
+						id: 'invalid-provider',
+						models: {},
+					},
+					openai: {
+						id: 'openai',
+						name: 'OpenAI',
+						models: {
+							'gpt-valid': {
+								id: 'gpt-valid',
+								name: 'GPT Valid',
+								tool_call: true,
+							},
+							'gpt-missing-name': {
+								id: 'gpt-missing-name',
+							},
+							'gpt-invalid-tool-call': {
+								id: 'gpt-invalid-tool-call',
+								name: 'GPT Invalid Tool Call',
+								tool_call: 'yes',
+							},
+						},
+					},
+				}),
+		});
+		global.fetch = fetchMock as typeof fetch;
+
+		const catalog = await fetchProviderCatalog();
+
+		expect(catalog.invalidProvider).toBeUndefined();
+		expect(catalog.openai.models).toEqual({
+			'gpt-valid': {
+				id: 'gpt-valid',
+				name: 'GPT Valid',
+				toolCall: true,
+			},
+		});
+	});
+
 	it('drops models marked deprecated on models.dev', async () => {
 		const fetchMock = vi.fn().mockResolvedValue({
 			ok: true,
