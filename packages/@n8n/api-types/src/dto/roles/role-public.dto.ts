@@ -17,6 +17,7 @@ export class RolePublicDto extends Z.class({
 const roleGroupSchema = <T extends 'global' | 'project' | 'credential' | 'workflow'>(roleType: T) =>
 	RolePublicDto.schema.extend({
 		roleType: z.literal(roleType),
+		licensed: z.boolean(),
 		usedByUsers: z.number().optional(),
 		usedByProjects: z.number().optional(),
 	});
