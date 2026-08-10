@@ -16,6 +16,7 @@ import type {
 	IWebhookFunctions,
 	FormFieldsParameter,
 	NodeTypeAndVersion,
+	CredentialCheckResult,
 } from 'n8n-workflow';
 import {
 	FORM_NODE_TYPE,
@@ -28,6 +29,7 @@ import {
 	BINARY_MODE_COMBINED,
 	tryToParseJsonToFormFields,
 	UnexpectedError,
+	buildCredentialConnectionsRequiredResponse,
 } from 'n8n-workflow';
 import * as a from 'node:assert';
 import sanitize from 'sanitize-html';
@@ -1209,21 +1211,38 @@ export async function formWebhook(
 		};
 	}
 
+	// Submit-time readiness gate, and the only real enforcement: the hosting shell's
+	// disabled submit button is UX, re-enablable by author script inside the form's
+	// iframe. It also works off the state at render time, so a required credential can
+	// be revoked — or the page simply left open — between render and submit. Re-check
+	// here, after identity establishment and before the execution is enqueued, so a
+	// stale page can't spawn a run that dies at credential resolution. Scoped to the
+	// trigger: the Wait node shares `formWebhook`, but its form resume continues an
+	// already-running execution.
+	if (node.type === FORM_TRIGGER_NODE_TYPE) {
+		let readiness: CredentialCheckResult | undefined;
+		try {
+			readiness = await context.checkTriggerCredentialStatus();
+		} catch (error) {
+			// Fail closed. Throwing here is swallowed by the webhook layer, which then
+			// enqueues the execution anyway — exactly the doomed run we're preventing.
+			context.logger.error('Form submit credential readiness check failed', { error });
+			res.status(503).json({ status: 'credential_readiness_check_failed' });
+			return { noWebhookResponse: true };
+		}
+
+		if (readiness && !readiness.readyToExecute) {
+			// 428, matching the webhook trigger's gate (webhook-helpers.ts) so both
+			// trigger paths answer an unconnected credential the same way.
+			res.status(428).json(buildCredentialConnectionsRequiredResponse(readiness));
+			return { noWebhookResponse: true };
+		}
+	}
+
 	let { useWorkflowTimezone } = options;
 
 	if (useWorkflowTimezone === undefined && node.typeVersion > 2) {
 		useWorkflowTimezone = true;
-	}
-
-	// Fail-closed submit gate: the shell panel / disabled button is UX only — this
-	// server-side re-check is the real guarantee (author script in the iframe can
-	// re-enable the button). Identity was established during POST authentication;
-	// reject if any required credential is still missing (also covers a credential
-	// revoked while the form was open — TOCTOU).
-	const submitGate = await context.checkTriggerCredentialStatus();
-	if (submitGate && !submitGate.readyToExecute) {
-		res.status(409).json({ message: 'Required credentials are not connected yet' });
-		return { noWebhookResponse: true };
 	}
 
 	const userForOutput = options.includeUserInOutput === false ? undefined : authedUser;
