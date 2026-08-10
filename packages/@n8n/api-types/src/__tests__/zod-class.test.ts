@@ -35,4 +35,32 @@ describe('Z.array', () => {
 	it('keeps the declared class name for OpenAPI component naming', () => {
 		expect(TagIdDto.name).toBe('TagIdDto');
 	});
+
+	describe('constructor', () => {
+		it('yields a real array, not an object with numeric keys', () => {
+			const dto = new TagIdDto([{ id: 'a' }, { id: 'b' }]);
+
+			expect(Array.isArray(dto)).toBe(true);
+			expect(dto).toEqual([{ id: 'a' }, { id: 'b' }]);
+			expect(dto).toHaveLength(2);
+		});
+
+		it('supports array methods on the constructed value', () => {
+			const dto = new TagIdDto([{ id: 'a' }, { id: 'b' }]);
+
+			expect(dto.map((tag) => tag.id)).toEqual(['a', 'b']);
+		});
+
+		it('strips unknown fields off each item', () => {
+			// @ts-expect-error deliberately passing a field the item schema does not declare
+			const dto = new TagIdDto([{ id: 'a', extra: 'nope' }]);
+
+			expect(dto).toEqual([{ id: 'a' }]);
+		});
+
+		it('throws on an invalid payload', () => {
+			// @ts-expect-error deliberately passing a payload the schema rejects
+			expect(() => new TagIdDto([{}])).toThrow(z.ZodError);
+		});
+	});
 });
