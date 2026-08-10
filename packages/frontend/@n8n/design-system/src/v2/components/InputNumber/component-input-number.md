@@ -32,14 +32,14 @@ Extends Reka UI `NumberFieldRootProps` (except `formatOptions`, derived from `pr
 **Events**
 
 - `update:modelValue` - Emitted when value changes. Payload: `number`
-- `focus` - Emitted when the input gains focus. Payload: `FocusEvent`
+- `focus` - Emitted when the input gains focus. Payload: `FocusEvent`. Also selects the full input value.
 - `blur` - Emitted when the input loses focus. Payload: `FocusEvent`
 
 **Slots**
 
 - `input` - Custom input area. Scope: `{ class, placeholder?, disabled? }`. Default: Reka `NumberFieldInput`.
-- `increment` - Custom increment control content. Scope: `{ ui: { class } }`.
-- `decrement` - Custom decrement control content. Scope: `{ ui: { class } }`.
+- `increment` - Custom increment control content (inside the control button). Scope: `{ ui: { class } }`.
+- `decrement` - Custom decrement control content (inside the control button). Scope: `{ ui: { class } }`.
 
 ### Template usage example
 
@@ -80,11 +80,11 @@ const value = ref(0)
 
 ```vue
 <N8nInputNumber2 v-model="quantity" :min="1" :max="99" :controls="true">
-  <template #decrement="{ ui }">
-    <N8nIcon icon="minus" size="small" :class="ui.class" />
+  <template #decrement>
+    <N8nIcon icon="minus" size="small" />
   </template>
-  <template #increment="{ ui }">
-    <N8nIcon icon="plus" size="small" :class="ui.class" />
+  <template #increment>
+    <N8nIcon icon="plus" size="small" />
   </template>
 </N8nInputNumber2>
 ```
