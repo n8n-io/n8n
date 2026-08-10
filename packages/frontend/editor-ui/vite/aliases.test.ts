@@ -3,7 +3,7 @@ import { dirname, join, relative, resolve } from 'node:path';
 import type { Alias } from 'vite';
 import { describe, expect, it } from 'vitest';
 
-import { modulePackages, sourcePackages } from '@n8n/frontend-vite-config';
+import { frontendAliases, modulePackages, sourcePackages } from '@n8n/frontend-vite-config';
 
 import { editorUiAliases } from './aliases.mjs';
 
@@ -111,6 +111,31 @@ describe('editor-ui vite aliases', () => {
 		expect(resolveSpecifier('@n8n/tournament/ast', aliases)).toBe(
 			'packages/@n8n/tournament/src/ast',
 		);
+	});
+
+	it('still applies the vendor rewrites the shared set drops', () => {
+		// They moved after the source and module aliases; nothing above matches a `lodash.*` or a
+		// `stream` specifier, so the shell keeps rewriting both. Only editor-ui declares the targets.
+		const rewrite = (specifier: string) => {
+			const matched = aliases.find(({ find }) =>
+				typeof find === 'string' ? specifier === find : find.test(specifier),
+			);
+			return matched ? specifier.replace(matched.find, matched.replacement) : 'unmatched';
+		};
+
+		expect(rewrite('stream')).toBe('stream-browserify');
+		expect(rewrite('lodash.camelCase')).toBe('lodash/camelCase');
+	});
+
+	it('shares only aliases that resolve to workspace source', () => {
+		// `frontendAliases` is spread into every `packages/modules/*/frontend` vitest config, and a
+		// module's `node_modules` is not the shell's. An entry rewriting to a bare specifier only
+		// editor-ui declares — `stream` → `stream-browserify`, `lodash.camelCase` → `lodash/camelCase`
+		// — makes the module fail to resolve it, reporting the original specifier rather than the
+		// alias. Those belong in `vendorAliases`, which only the shell composes.
+		const shared = frontendAliases(packagesDir).map(({ replacement }) => replacement);
+
+		expect(shared.filter((replacement) => !replacement.startsWith(packagesDir))).toEqual([]);
 	});
 
 	it('resolves a package and its subpaths independently of entry order', () => {

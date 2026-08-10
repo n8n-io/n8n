@@ -16,7 +16,14 @@ export const transitiveWorkspaceAliases = (packagesDir: string): Alias[] => [
 	{ find: '@n8n/tournament', replacement: resolve(packagesDir, '@n8n', 'tournament', 'src') },
 ];
 
-/** Rewrites for third-party specifiers, unrelated to how workspace packages resolve. */
+/**
+ * Rewrites for third-party specifiers, unrelated to how workspace packages resolve.
+ *
+ * **Shell-only, deliberately out of `frontendAliases`:** these replacements are bare specifiers
+ * resolved from the consumer's own `node_modules`, and only editor-ui declares `lodash` and
+ * `stream-browserify`. Shared with a module's vitest, a value import of `stream` anywhere in its
+ * graph fails to resolve — latent today only because `n8n-workflow` imports `stream` as a type.
+ */
 export const vendorAliases = (): Alias[] => [
 	...['orderBy', 'camelCase', 'cloneDeep', 'startCase'].map((name) => ({
 		find: new RegExp(`^lodash.${name}$`, 'i'),
@@ -28,8 +35,10 @@ export const vendorAliases = (): Alias[] => [
 ];
 
 /**
- * Everything a frontend Vite or vitest config needs that is *not* specific to one package:
- * the platform source mapping, the transitive workspace exceptions and the vendor rewrites.
+ * Everything a frontend Vite or vitest config needs that is *not* specific to one package: the
+ * platform source mapping plus the transitive workspace exceptions. Every entry here rewrites to an
+ * absolute path under `packages/`, which is what makes the set safe to share from any directory —
+ * `aliases.test.ts` holds that line.
  *
  * Sibling modules are deliberately absent — `frontendModuleAliases` is exported separately because
  * only the shell may resolve them. A module aliasing its siblings would let an accidental
@@ -38,11 +47,15 @@ export const vendorAliases = (): Alias[] => [
 export const frontendAliases = (packagesDir: string): Alias[] => [
 	...frontendSourceAliases(packagesDir),
 	...transitiveWorkspaceAliases(packagesDir),
-	...vendorAliases(),
 ];
 
-/** The shell's full set: the shared aliases plus the module mapping only it may resolve. */
+/**
+ * The shell's full set: the shared aliases, the module mapping only it may resolve, and the vendor
+ * rewrites only it can resolve. Vendor rewrites stay last, where they sat before this package
+ * existed, so the shell's resolution order is unchanged by the move.
+ */
 export const shellAliases = (packagesDir: string): Alias[] => [
 	...frontendAliases(packagesDir),
 	...frontendModuleAliases(packagesDir),
+	...vendorAliases(),
 ];
