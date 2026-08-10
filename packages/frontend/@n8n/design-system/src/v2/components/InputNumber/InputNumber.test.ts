@@ -12,6 +12,7 @@ describe('v2/components/InputNumber', () => {
 				},
 			});
 			expect(wrapper.getByPlaceholderText('Enter a number')).toBeInTheDocument();
+			expect(wrapper.getByTestId('input-number')).toBeInTheDocument();
 		});
 
 		it('should render disabled state', () => {
@@ -22,6 +23,7 @@ describe('v2/components/InputNumber', () => {
 			});
 			const input = wrapper.container.querySelector('input');
 			expect(input).toBeDisabled();
+			expect(wrapper.getByTestId('input-number').className).toContain('isDisabled');
 		});
 
 		it('should not render controls by default', () => {
@@ -39,6 +41,16 @@ describe('v2/components/InputNumber', () => {
 			const buttons = wrapper.container.querySelectorAll('button');
 			expect(buttons).toHaveLength(2);
 		});
+
+		it('should render with defaultValue when uncontrolled', () => {
+			const wrapper = render(InputNumber, {
+				props: {
+					defaultValue: 7,
+				},
+			});
+			const input = wrapper.container.querySelector('input');
+			expect(input).toHaveValue('7');
+		});
 	});
 
 	describe('sizes', () => {
@@ -55,8 +67,8 @@ describe('v2/components/InputNumber', () => {
 					size,
 				},
 			});
-			const container = wrapper.container.querySelector('[class*="inputNumber"]');
-			expect(container?.className).toContain(expected);
+			const container = wrapper.getByTestId('input-number');
+			expect(container.className).toContain(expected);
 		});
 	});
 
@@ -68,10 +80,8 @@ describe('v2/components/InputNumber', () => {
 					controlsPosition: 'both',
 				},
 			});
-			const buttons = wrapper.container.querySelectorAll('button');
-			expect(buttons).toHaveLength(2);
-			expect(buttons[0]).toHaveTextContent('−');
-			expect(buttons[1]).toHaveTextContent('+');
+			expect(wrapper.getByLabelText('Decrease')).toBeInTheDocument();
+			expect(wrapper.getByLabelText('Increase')).toBeInTheDocument();
 		});
 
 		it('should show stacked arrow buttons when controls is true (right mode)', () => {
@@ -83,7 +93,6 @@ describe('v2/components/InputNumber', () => {
 			});
 			const buttons = wrapper.container.querySelectorAll('button');
 			expect(buttons).toHaveLength(2);
-			// Right mode: increment (up arrow) first, decrement (down arrow) second
 			expect(buttons[0]).toHaveAttribute('aria-label', 'Increase');
 			expect(buttons[1]).toHaveAttribute('aria-label', 'Decrease');
 		});
@@ -96,10 +105,8 @@ describe('v2/components/InputNumber', () => {
 					modelValue: 5,
 				},
 			});
-			const buttons = wrapper.container.querySelectorAll('button');
-			const incrementButton = buttons[1];
 
-			await userEvent.click(incrementButton);
+			await userEvent.click(wrapper.getByLabelText('Increase'));
 
 			await waitFor(() => {
 				expect(wrapper.emitted('update:modelValue')?.[0]).toEqual([6]);
@@ -114,10 +121,8 @@ describe('v2/components/InputNumber', () => {
 					modelValue: 5,
 				},
 			});
-			const buttons = wrapper.container.querySelectorAll('button');
-			const decrementButton = buttons[0];
 
-			await userEvent.click(decrementButton);
+			await userEvent.click(wrapper.getByLabelText('Decrease'));
 
 			await waitFor(() => {
 				expect(wrapper.emitted('update:modelValue')?.[0]).toEqual([4]);
@@ -132,9 +137,8 @@ describe('v2/components/InputNumber', () => {
 					modelValue: 5,
 				},
 			});
-			const incrementButton = wrapper.getByLabelText('Increase');
 
-			await userEvent.click(incrementButton);
+			await userEvent.click(wrapper.getByLabelText('Increase'));
 
 			await waitFor(() => {
 				expect(wrapper.emitted('update:modelValue')?.[0]).toEqual([6]);
@@ -149,9 +153,8 @@ describe('v2/components/InputNumber', () => {
 					modelValue: 5,
 				},
 			});
-			const decrementButton = wrapper.getByLabelText('Decrease');
 
-			await userEvent.click(decrementButton);
+			await userEvent.click(wrapper.getByLabelText('Decrease'));
 
 			await waitFor(() => {
 				expect(wrapper.emitted('update:modelValue')?.[0]).toEqual([4]);
@@ -176,17 +179,19 @@ describe('v2/components/InputNumber', () => {
 					modelValue: 0,
 				},
 			});
-			const input = wrapper.container.querySelector('input')!;
+			const input = wrapper.container.querySelector('input');
+			expect(input).toBeTruthy();
+			if (!(input instanceof HTMLInputElement)) {
+				throw new Error('Expected input element');
+			}
 
 			await userEvent.clear(input);
 			await userEvent.type(input, '123');
-			// Reka UI emits on blur, not on each keystroke
 			await userEvent.tab();
 
 			await waitFor(() => {
 				const emitted = wrapper.emitted('update:modelValue');
 				expect(emitted).toBeTruthy();
-				// Check that 123 was eventually emitted
 				const lastEmit = emitted?.[emitted.length - 1];
 				expect(lastEmit).toEqual([123]);
 			});
@@ -202,16 +207,13 @@ describe('v2/components/InputNumber', () => {
 				},
 			});
 
-			const buttons = wrapper.container.querySelectorAll('button');
-			const decrementButton = buttons[0];
+			const decrementButton = wrapper.getByLabelText('Decrease');
 
-			// Click twice: first goes to 0, second should not go below
 			await userEvent.click(decrementButton);
 			await userEvent.click(decrementButton);
 
 			await waitFor(() => {
 				const emitted = wrapper.emitted('update:modelValue');
-				// Should have emitted 0 but not -1
 				expect(emitted?.flat()).toContain(0);
 				expect(emitted?.flat()).not.toContain(-1);
 			});
@@ -227,16 +229,13 @@ describe('v2/components/InputNumber', () => {
 				},
 			});
 
-			const buttons = wrapper.container.querySelectorAll('button');
-			const incrementButton = buttons[1];
+			const incrementButton = wrapper.getByLabelText('Increase');
 
-			// Click twice: first goes to 10, second should not go above
 			await userEvent.click(incrementButton);
 			await userEvent.click(incrementButton);
 
 			await waitFor(() => {
 				const emitted = wrapper.emitted('update:modelValue');
-				// Should have emitted 10 but not 11
 				expect(emitted?.flat()).toContain(10);
 				expect(emitted?.flat()).not.toContain(11);
 			});
@@ -252,10 +251,7 @@ describe('v2/components/InputNumber', () => {
 				},
 			});
 
-			const buttons = wrapper.container.querySelectorAll('button');
-			const incrementButton = buttons[1];
-
-			await userEvent.click(incrementButton);
+			await userEvent.click(wrapper.getByLabelText('Increase'));
 
 			await waitFor(() => {
 				expect(wrapper.emitted('update:modelValue')?.[0]).toEqual([5]);
@@ -266,7 +262,11 @@ describe('v2/components/InputNumber', () => {
 	describe('events', () => {
 		it('should emit focus event', async () => {
 			const wrapper = render(InputNumber);
-			const input = wrapper.container.querySelector('input')!;
+			const input = wrapper.container.querySelector('input');
+			expect(input).toBeTruthy();
+			if (!(input instanceof HTMLInputElement)) {
+				throw new Error('Expected input element');
+			}
 
 			await userEvent.click(input);
 
@@ -277,7 +277,11 @@ describe('v2/components/InputNumber', () => {
 
 		it('should emit blur event', async () => {
 			const wrapper = render(InputNumber);
-			const input = wrapper.container.querySelector('input')!;
+			const input = wrapper.container.querySelector('input');
+			expect(input).toBeTruthy();
+			if (!(input instanceof HTMLInputElement)) {
+				throw new Error('Expected input element');
+			}
 
 			await userEvent.click(input);
 			await userEvent.tab();
@@ -331,8 +335,6 @@ describe('v2/components/InputNumber', () => {
 		});
 
 		it('should accept precision prop without errors', () => {
-			// Just verify component renders with precision prop
-			// Actual formatting depends on Reka UI and Intl.NumberFormat
 			const wrapper = render(InputNumber, {
 				props: {
 					modelValue: 3.14159,

@@ -5,6 +5,7 @@ export type InputNumberControlsPosition = 'both' | 'right';
 
 export type InputNumberProps = Omit<NumberFieldRootProps, 'formatOptions'> & {
 	size?: InputNumberSize;
+	/** Maps to Reka `formatOptions` fraction digits when set. */
 	precision?: number;
 	controls?: boolean;
 	controlsPosition?: InputNumberControlsPosition;
@@ -16,7 +17,19 @@ export type InputNumberEmits = NumberFieldRootEmits & {
 	blur: [event: FocusEvent];
 };
 
+export type InputNumberControlSlotProps = {
+	ui: { class: string };
+};
+
+export type InputNumberInputSlotProps = {
+	class: string;
+	placeholder?: string;
+	disabled?: boolean;
+};
+
 export type InputNumberSlots = {
-	increment: () => unknown;
-	decrement: () => unknown;
+	/** Fully custom input; default renders `NumberFieldInput`. */
+	input?: (props: InputNumberInputSlotProps) => unknown;
+	increment?: (props: InputNumberControlSlotProps) => unknown;
+	decrement?: (props: InputNumberControlSlotProps) => unknown;
 };

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { reactiveOmit, reactivePick } from '@vueuse/core';
 import {
 	NumberFieldRoot,
 	NumberFieldInput,
@@ -6,11 +7,21 @@ import {
 	NumberFieldDecrement,
 	useForwardPropsEmits,
 } from 'reka-ui';
-import { computed, useCssModule } from 'vue';
+import { computed, useAttrs, useCssModule } from 'vue';
+
+import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
+import { useI18n } from '@n8n/design-system/composables/useI18n';
 
 import type { InputNumberProps, InputNumberEmits, InputNumberSlots } from './InputNumber.types';
 
-defineOptions({ name: 'N8nInputNumber2' });
+defineOptions({ name: 'N8nInputNumber2', inheritAttrs: false });
+
+const attrs = useAttrs();
+const rootClass = computed(() => attrs.class);
+const rootAttrs = computed(() => reactiveOmit(attrs, ['class']));
+
+const $style = useCssModule();
+const { t } = useI18n();
 
 const props = withDefaults(defineProps<InputNumberProps>(), {
 	size: 'medium',
@@ -19,38 +30,30 @@ const props = withDefaults(defineProps<InputNumberProps>(), {
 	step: 1,
 });
 
-const isControlsRight = computed(() => props.controls && props.controlsPosition === 'right');
-const isControlsBoth = computed(() => props.controls && props.controlsPosition === 'both');
-
 const emit = defineEmits<InputNumberEmits>();
 defineSlots<InputNumberSlots>();
 
-const $style = useCssModule();
-
-// Map precision to formatOptions - uses Intl.NumberFormatOptions
-// When no precision is set, use maximumFractionDigits: 20 (the max allowed by Intl.NumberFormat)
-// to preserve full decimal precision and avoid default rounding behavior
-const formatOptions = computed<Intl.NumberFormatOptions>(() =>
-	props.precision !== undefined
-		? { maximumFractionDigits: props.precision, minimumFractionDigits: props.precision }
-		: { maximumFractionDigits: 20 },
-);
-
-// Forward props to Reka UI via useForwardPropsEmits (including formatOptions)
-const forwarded = useForwardPropsEmits(
-	computed(() => ({
-		modelValue: props.modelValue,
-		defaultValue: props.defaultValue,
-		min: props.min,
-		max: props.max,
-		step: props.step,
-		disabled: props.disabled,
-		formatOptions: formatOptions.value,
-	})),
+const rootProps = useForwardPropsEmits(
+	reactivePick(
+		props,
+		'modelValue',
+		'defaultValue',
+		'min',
+		'max',
+		'step',
+		'stepSnapping',
+		'disabled',
+		'readonly',
+		'disableWheelChange',
+		'invertWheelChange',
+		'id',
+		'name',
+		'required',
+		'locale',
+	),
 	emit,
 );
 
-// Size class mapping
 const sizes: Record<NonNullable<InputNumberProps['size']>, string> = {
 	mini: $style.mini,
 	small: $style.small,
@@ -59,80 +62,140 @@ const sizes: Record<NonNullable<InputNumberProps['size']>, string> = {
 	xlarge: $style.xlarge,
 };
 
-const sizeClass = computed(() => sizes[props.size ?? 'medium']);
+function sizeClass() {
+	return sizes[props.size];
+}
+
+function showControlsBoth() {
+	return Boolean(props.controls && props.controlsPosition === 'both');
+}
+
+function showControlsRight() {
+	return Boolean(props.controls && props.controlsPosition === 'right');
+}
+
+/** Reka formatOptions from precision; max fraction digits when unset preserves decimals. */
+function resolvedFormatOptions(): Intl.NumberFormatOptions {
+	if (props.precision !== undefined) {
+		return { maximumFractionDigits: props.precision, minimumFractionDigits: props.precision };
+	}
+
+	return { maximumFractionDigits: 20 };
+}
 </script>
 
 <template>
 	<NumberFieldRoot
-		v-bind="forwarded"
+		data-test-id="input-number"
+		v-bind="{ ...rootProps, ...rootAttrs, formatOptions: resolvedFormatOptions() }"
 		:class="[
 			$style.inputNumber,
-			sizeClass,
-			{ [$style.disabled]: props.disabled, [$style.controlsRight]: isControlsRight },
+			sizeClass(),
+			rootClass,
+			{
+				[$style.isDisabled]: props.disabled,
+				[$style.isControlsBoth]: showControlsBoth(),
+			},
 		]"
 	>
-		<!-- Left decrement button (both mode) -->
-		<NumberFieldDecrement v-if="isControlsBoth" :class="[$style.button, $style.buttonDecrement]">
-			<slot name="decrement">−</slot>
+		<NumberFieldDecrement v-if="showControlsBoth()" as-child>
+			<button
+				type="button"
+				:class="[$style.button, $style.buttonDecrement]"
+				:aria-label="t('nds.inputNumber.decrease')"
+			>
+				<slot name="decrement" :ui="{ class: $style.button }">
+					<Icon icon="minus" size="small" />
+				</slot>
+			</button>
 		</NumberFieldDecrement>
 
-		<NumberFieldInput
-			:class="$style.input"
-			:placeholder="placeholder"
-			@focus="emit('focus', $event)"
-			@blur="emit('blur', $event)"
-		/>
+		<slot name="input" :class="$style.input" :placeholder="placeholder" :disabled="props.disabled">
+			<NumberFieldInput
+				:class="$style.input"
+				:placeholder="placeholder"
+				@focus="emit('focus', $event)"
+				@blur="emit('blur', $event)"
+			/>
+		</slot>
 
-		<!-- Right increment button (both mode) -->
-		<NumberFieldIncrement v-if="isControlsBoth" :class="[$style.button, $style.buttonIncrement]">
-			<slot name="increment">+</slot>
+		<NumberFieldIncrement v-if="showControlsBoth()" as-child>
+			<button
+				type="button"
+				:class="[$style.button, $style.buttonIncrement]"
+				:aria-label="t('nds.inputNumber.increase')"
+			>
+				<slot name="increment" :ui="{ class: $style.button }">
+					<Icon icon="plus" size="small" />
+				</slot>
+			</button>
 		</NumberFieldIncrement>
 
-		<!-- Stacked controls on right (right mode) -->
-		<div v-if="isControlsRight" :class="$style.controlsWrapper">
-			<NumberFieldIncrement :class="[$style.button, $style.buttonUp]">
-				<slot name="increment">
-					<svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
-						<path d="M6 4L9 7H3L6 4Z" />
-					</svg>
-				</slot>
+		<div v-if="showControlsRight()" :class="$style.controlsWrapper">
+			<NumberFieldIncrement as-child>
+				<button
+					type="button"
+					:class="[$style.button, $style.buttonUp]"
+					:aria-label="t('nds.inputNumber.increase')"
+				>
+					<slot name="increment" :ui="{ class: $style.button }">
+						<Icon icon="chevron-up" size="xsmall" />
+					</slot>
+				</button>
 			</NumberFieldIncrement>
-			<NumberFieldDecrement :class="[$style.button, $style.buttonDown]">
-				<slot name="decrement">
-					<svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
-						<path d="M6 8L3 5H9L6 8Z" />
-					</svg>
-				</slot>
+			<NumberFieldDecrement as-child>
+				<button
+					type="button"
+					:class="[$style.button, $style.buttonDown]"
+					:aria-label="t('nds.inputNumber.decrease')"
+				>
+					<slot name="decrement" :ui="{ class: $style.button }">
+						<Icon icon="chevron-down" size="xsmall" />
+					</slot>
+				</button>
 			</NumberFieldDecrement>
 		</div>
 	</NumberFieldRoot>
 </template>
 
-<style module>
+<style lang="scss" module>
+@use '../../../css/mixins/focus';
+@use '../../../css/mixins/input' as input-mixin;
+
 .inputNumber {
+	@include input-mixin.size-variables('medium');
+	@include input-mixin.theme-variables(var(--border-color));
+
 	position: relative;
 	display: inline-flex;
 	align-items: stretch;
 	width: 100%;
-	border-radius: var(--radius);
-	border: var(--border);
-	background-color: light-dark(var(--color--neutral-white), var(--color--neutral-950));
-	transition:
-		border-color 0.2s,
-		box-shadow 0.2s;
+	min-height: var(--input--height);
+	border-radius: var(--input--radius);
+	background-color: var(--input--color--background);
+	box-shadow:
+		var(--input--shadow),
+		inset var(--input--border--shadow);
+	font-size: var(--input--font-size);
+	color: var(--input--color--text);
+
+	@include focus.focus-within-ring;
+
+	&:hover:not(.isDisabled):not(:focus-within) {
+		box-shadow:
+			var(--input--shadow--hover),
+			inset var(--input--border--shadow--hover);
+	}
+
+	&:focus-within {
+		box-shadow:
+			var(--input--shadow--focus),
+			inset var(--input--border--shadow--focus);
+	}
 }
 
-.inputNumber:hover:not(.disabled) {
-	border-color: var(--color--foreground--shade-1);
-}
-
-.inputNumber:focus-within {
-	border-color: var(--color--secondary);
-	box-shadow: 0 0 0 2px var(--color--secondary--tint-2);
-}
-
-.disabled {
-	background-color: var(--color--background--light-3);
+.isDisabled {
+	background-color: var(--input--color--background--disabled);
 	cursor: not-allowed;
 	opacity: 0.6;
 }
@@ -140,189 +203,104 @@ const sizeClass = computed(() => sizes[props.size ?? 'medium']);
 .input {
 	flex: 1;
 	min-width: 0;
+	min-height: var(--input--height);
 	border: none;
 	background: transparent;
 	outline: none;
-	font-family: inherit;
-	font-size: inherit;
-	color: var(--color--text--shade-1);
-	padding: 0;
-	text-align: center;
+	font-size: var(--input--font-size);
+	color: var(--input--color--text);
+	padding: 0 var(--input--padding);
+	text-align: left;
 }
 
 .input::placeholder {
-	color: var(--color--text--tint-1);
+	color: var(--input--placeholder--color);
 }
 
 .input:disabled {
 	cursor: not-allowed;
-	color: var(--color--text--tint-1);
+	color: var(--input--color--disabled);
 }
 
-/* Control buttons */
+.isControlsBoth .input {
+	text-align: center;
+	padding-inline: var(--spacing--3xs);
+}
+
 .button {
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	flex-shrink: 0;
 	border: none;
-	background: var(--color--background);
+	background: transparent;
 	cursor: pointer;
-	color: var(--color--text--shade-1);
-	font-size: 13px;
-	transition:
-		color 0.2s,
-		background-color 0.2s;
-}
+	color: var(--color--text--tint-1);
 
-.button:hover:not(:disabled) {
-	color: var(--color--primary);
-}
+	&:hover:not(:disabled) {
+		color: var(--color--text--shade-1);
+		background-color: var(--background--hover);
+	}
 
-.button:disabled {
-	cursor: not-allowed;
-	color: var(--color--text--tint-2);
+	&:disabled,
+	&[data-disabled] {
+		cursor: not-allowed;
+		color: var(--color--text--tint-2);
+	}
 }
 
 .buttonDecrement {
-	border-right: var(--border);
-	border-radius: calc(var(--radius) - 1px) 0 0 calc(var(--radius) - 1px);
+	width: var(--input--height);
+	border-right: var(--border-width, 1px) solid var(--input--border-color);
+	border-radius: var(--input--radius) 0 0 var(--input--radius);
 }
 
 .buttonIncrement {
-	border-left: var(--border);
-	border-radius: 0 calc(var(--radius) - 1px) calc(var(--radius) - 1px) 0;
-}
-
-/* No controls - left align text */
-.inputNumber:not(:has(.button)) .input {
-	text-align: left;
-}
-
-/* Controls on right (stacked vertically) */
-.controlsRight .input {
-	text-align: left;
+	width: var(--input--height);
+	border-left: var(--border-width, 1px) solid var(--input--border-color);
+	border-radius: 0 var(--input--radius) var(--input--radius) 0;
 }
 
 .controlsWrapper {
 	display: flex;
 	flex-direction: column;
-	border-left: var(--border);
+	width: calc(var(--input--height) * 0.75);
+	border-left: var(--border-width, 1px) solid var(--input--border-color);
 }
 
 .buttonUp,
 .buttonDown {
 	flex: 1;
 	border-radius: 0;
+	min-height: 0;
 }
 
 .buttonUp {
-	border-bottom: var(--border);
-	border-radius: 0 calc(var(--radius) - 1px) 0 0;
+	border-bottom: var(--border-width, 1px) solid var(--input--border-color);
+	border-radius: 0 var(--input--radius) 0 0;
 }
 
 .buttonDown {
-	border-radius: 0 0 calc(var(--radius) - 1px);
+	border-radius: 0 0 var(--input--radius);
 }
 
-/* Size variants */
 .mini {
-	min-height: 22px;
-	font-size: var(--font-size--3xs);
-
-	& .input {
-		padding: 0 var(--spacing--3xs);
-	}
-
-	& .button {
-		width: 22px;
-		font-size: 11px;
-	}
-
-	& .controlsWrapper {
-		width: 22px;
-	}
-
-	& .buttonUp svg,
-	& .buttonDown svg {
-		width: 10px;
-		height: 10px;
-	}
+	@include input-mixin.size-variables('mini');
 }
 
 .small {
-	min-height: 28px;
-	font-size: var(--font-size--2xs);
-
-	& .input {
-		padding: 0 var(--spacing--2xs);
-	}
-
-	& .button {
-		width: 28px;
-		font-size: 12px;
-	}
-
-	& .controlsWrapper {
-		width: 28px;
-	}
-
-	& .buttonUp svg,
-	& .buttonDown svg {
-		width: 10px;
-		height: 10px;
-	}
+	@include input-mixin.size-variables('small');
 }
 
 .medium {
-	min-height: 36px;
-	font-size: var(--font-size--sm);
-
-	& .input {
-		padding: 0 var(--spacing--2xs);
-	}
-
-	& .button {
-		width: 36px;
-	}
-
-	& .controlsWrapper {
-		width: 36px;
-	}
+	@include input-mixin.size-variables('medium');
 }
 
 .large {
-	min-height: 40px;
-	font-size: var(--font-size--sm);
-
-	& .input {
-		padding: 0 var(--spacing--xs);
-	}
-
-	& .button {
-		width: 40px;
-	}
-
-	& .controlsWrapper {
-		width: 40px;
-	}
+	@include input-mixin.size-variables('large');
 }
 
 .xlarge {
-	min-height: 48px;
-	font-size: var(--font-size--md);
-
-	& .input {
-		padding: 0 var(--spacing--xs);
-	}
-
-	& .button {
-		width: 48px;
-		font-size: 15px;
-	}
-
-	& .controlsWrapper {
-		width: 48px;
-	}
+	@include input-mixin.size-variables('xlarge');
 }
 </style>
