@@ -570,7 +570,6 @@ async function handleSearchTypes(
 	const allResults = await context.credentialService.searchCredentialTypes(input.query);
 
 	// Filter out generic auth types — the AI should use dedicated types
-	// Exclude generic auth types from search results — the AI should prefer dedicated types.
 	const results = allResults.filter((r) => !GENERIC_AUTH_CREDENTIAL_TYPES.has(r.type));
 
 	if (results.length === 0) {
