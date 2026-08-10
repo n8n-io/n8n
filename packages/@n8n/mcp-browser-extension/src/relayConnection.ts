@@ -303,9 +303,31 @@ export class RelayConnection {
 			'Target.getTargetInfo',
 		)) as { targetInfo: { targetId: string } };
 
+		await this.applyFocusEmulation(chromeTabId);
+
 		const targetId = result.targetInfo.targetId;
 		log.debug(`attached: chromeTabId=${chromeTabId} → targetId=${targetId}`);
 		return targetId;
+	}
+
+	/**
+	 * Playwright's "stable" actionability check only resolves from a requestAnimationFrame
+	 * callback, and Chrome gives a backgrounded tab no frames — so clicks hang. Re-applied
+	 * on every attach because Playwright's own init-time call is lost on re-attach.
+	 */
+	private async applyFocusEmulation(chromeTabId: number): Promise<void> {
+		try {
+			await chrome.debugger.sendCommand(
+				{ tabId: chromeTabId },
+				'Emulation.setFocusEmulationEnabled',
+				{
+					enabled: true,
+				},
+			);
+			log.debug(`focus emulation enabled (chromeTabId=${chromeTabId})`);
+		} catch (e) {
+			log.warn('Failed to enable focus emulation:', e);
+		}
 	}
 
 	/** Lazily attach debugger to a tab. Deduplicates concurrent calls. */
@@ -335,6 +357,8 @@ export class RelayConnection {
 			]);
 			entry.attached = true;
 			log.debug(`ensureAttached: attached ${id}`);
+
+			await this.applyFocusEmulation(entry.chromeTabId);
 
 			// Reapply cached auto-attach so new tabs report iframes immediately
 			if (this.autoAttachParams) {
