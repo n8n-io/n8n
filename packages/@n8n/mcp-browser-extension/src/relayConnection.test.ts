@@ -360,7 +360,37 @@ describe('RelayConnection', () => {
 			await tick();
 
 			expect(chrome.debugger.attach).toHaveBeenCalledTimes(1);
-			expect(chrome.debugger.sendCommand).toHaveBeenCalledTimes(2);
+			expect(chrome.debugger.sendCommand).toHaveBeenCalledWith(
+				{ tabId: 123 },
+				'Runtime.evaluate',
+				{},
+			);
+			expect(chrome.debugger.sendCommand).toHaveBeenCalledWith(
+				{ tabId: 123 },
+				'DOM.getDocument',
+				{},
+			);
+		});
+
+		it('should enable focus emulation on attach so hidden tabs keep rendering', async () => {
+			chrome.debugger.getTargets.mockResolvedValueOnce([mockTarget(123)]);
+			await relay.registerSelectedTabs([123]);
+			const tabId = relay.getControlledIds()[0].targetId;
+
+			ws.onmessage?.({
+				data: JSON.stringify({
+					id: 1,
+					method: 'forwardCDPCommand',
+					params: { method: 'Runtime.evaluate', params: {}, id: tabId },
+				}),
+			});
+			await tick();
+
+			expect(chrome.debugger.sendCommand).toHaveBeenCalledWith(
+				{ tabId: 123 },
+				'Emulation.setFocusEmulationEnabled',
+				{ enabled: true },
+			);
 		});
 
 		it('should route CDP commands to specific tab by CDP targetId', async () => {
@@ -433,6 +463,11 @@ describe('RelayConnection', () => {
 			expect(relay.isAgentCreatedTab(999)).toBe(true);
 			// Agent-created tabs ARE eagerly attached
 			expect(chrome.debugger.attach).toHaveBeenCalledWith({ tabId: 999 }, '1.3');
+			expect(chrome.debugger.sendCommand).toHaveBeenCalledWith(
+				{ tabId: 999 },
+				'Emulation.setFocusEmulationEnabled',
+				{ enabled: true },
+			);
 
 			// Response should have CDP targetId, not chromeTabId
 			expect(parseSent(ws)).toEqual(
