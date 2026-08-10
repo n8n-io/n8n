@@ -447,6 +447,42 @@ describe('InstanceAiSandboxService', () => {
 			expect(setupSandboxWorkspace).toHaveBeenCalledTimes(1);
 		});
 
+		it('assigns a deterministic thread-scoped UUID for the n8n-sandbox provider', async () => {
+			const n8nSandboxConfig: Overrides['config'] = {
+				sandboxEnabled: true,
+				sandboxProvider: 'n8n-sandbox',
+				n8nSandboxServiceUrl: 'https://env.sandbox',
+			};
+			const workspace = { init: vi.fn(async () => {}), destroy: vi.fn(async () => {}) };
+			(createSandbox as Mock).mockResolvedValue({ id: 'sandbox-1' });
+			(createWorkspace as Mock).mockReturnValue(workspace);
+			(setupSandboxWorkspace as Mock).mockResolvedValue(undefined);
+
+			const { service } = createSandboxService({ config: n8nSandboxConfig });
+			await service.getOrCreateWorkspace('thread-1', fakeUser, {} as InstanceAiContext);
+
+			const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+			expect(createSandbox).toHaveBeenCalledWith(
+				expect.objectContaining({
+					provider: 'n8n-sandbox',
+					id: expect.stringMatching(uuidPattern),
+				}),
+				expect.any(Object),
+			);
+
+			// A fresh service instance (e.g. after a restart or on another main)
+			// derives the same id for the same thread, and a different one for
+			// another thread.
+			const { service: restartedService } = createSandboxService({ config: n8nSandboxConfig });
+			await restartedService.getOrCreateWorkspace('thread-1', fakeUser, {} as InstanceAiContext);
+			await restartedService.getOrCreateWorkspace('thread-2', fakeUser, {} as InstanceAiContext);
+
+			const ids = (createSandbox as Mock).mock.calls.map((call) => (call[0] as { id?: string }).id);
+			expect(ids).toHaveLength(3);
+			expect(ids[1]).toBe(ids[0]);
+			expect(ids[2]).not.toBe(ids[0]);
+		});
+
 		it('threads Daytona name prefixes and labels through sandbox creation', async () => {
 			const { service } = createSandboxService({
 				config: {

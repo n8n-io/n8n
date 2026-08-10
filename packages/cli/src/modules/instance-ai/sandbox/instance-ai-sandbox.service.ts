@@ -14,6 +14,7 @@ import {
 import type { ErrorReporter } from 'n8n-core';
 import { OperationalError, UnexpectedError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
+import { v5 as uuidv5 } from 'uuid';
 
 import { N8N_VERSION } from '@/constants';
 import { callAiServiceWithRetry } from '@/utils/ai-service-retry';
@@ -88,8 +89,29 @@ function buildThreadScopedSandboxLabels(
 	return labels;
 }
 
+/**
+ * Fixed UUIDv5 namespace for deriving thread-scoped n8n-sandbox ids. Never
+ * change it: any main must be able to recompute the id of a sandbox created
+ * by an older process to reattach to it.
+ */
+const N8N_SANDBOX_THREAD_ID_NAMESPACE = '5e6c2f7a-93a1-4b0e-8f27-c1d6a3b9e514';
+
+/** The n8n sandbox service only accepts lowercase UUID ids, so hash the thread-scoped name into a stable UUIDv5. */
+function buildThreadScopedSandboxUuid(threadId: string): string {
+	return uuidv5(getThreadScopedSandboxName(threadId), N8N_SANDBOX_THREAD_ID_NAMESPACE);
+}
+
+/**
+ * Give the sandbox a deterministic, thread-derived identity so any process —
+ * after a restart, a cache eviction, or on another main — resolves the same
+ * remote sandbox instead of creating a duplicate and orphaning the old one.
+ */
 function withThreadScopedSandboxIdentity(config: SandboxConfig, threadId: string): SandboxConfig {
-	if (!config.enabled || config.provider !== 'daytona') return config;
+	if (!config.enabled) return config;
+
+	if (config.provider === 'n8n-sandbox') {
+		return { ...config, id: buildThreadScopedSandboxUuid(threadId) };
+	}
 
 	const name = buildThreadScopedSandboxName(threadId, config.namePrefix);
 	return {
@@ -148,16 +170,18 @@ export type InstanceAiSandboxServiceOptions = {
  *
  * Each conversation thread gets a single shared sandbox + workspace, created
  * lazily on first use and reused across runs and background tasks. Sandbox
- * names are deterministic (derived from the thread ID) so a restarted process
- * — or another main in a multi-main deployment — reconnects to the same remote
+ * identities are deterministic (derived from the thread ID — a name for
+ * Daytona, a UUIDv5 for the n8n sandbox service) so a restarted process — or
+ * another main in a multi-main deployment — reconnects to the same remote
  * sandbox instead of spawning a duplicate. An in-process TTL drops idle cache
- * entries so the map cannot grow without bound; provider auto-stop reclaims the
- * remote sandbox itself, so an idle eviction never destroys live work.
+ * entries so the map cannot grow without bound; the provider reclaims the
+ * remote sandbox itself (Daytona auto-stop, sandbox-service idle reaping), so
+ * an idle eviction never destroys live work.
  */
 export class InstanceAiSandboxService {
 	/**
 	 * Shared runtime workspaces keyed by thread ID. This is only an in-process
-	 * cache; deterministic sandbox names let providers reconnect after restart
+	 * cache; deterministic sandbox identities let providers reconnect after restart
 	 * or from another main when the thread uses the workspace again.
 	 */
 	private readonly sandboxes = new Map<string, RuntimeSandboxEntry>();
@@ -487,8 +511,10 @@ export class InstanceAiSandboxService {
 		if (this.sandboxTtlMs <= 0) return;
 		if (entry.cleanupTimer) clearTimeout(entry.cleanupTimer);
 
-		// Provider auto-stop handles remote Daytona sandboxes. This timer only
-		// drops our in-process cache entry so the map cannot grow indefinitely.
+		// The provider reclaims the remote sandbox (Daytona auto-stop, sandbox-service
+		// idle reaping), and the deterministic identity lets a later request reattach
+		// while it is still alive. This timer only drops our in-process cache entry
+		// so the map cannot grow indefinitely.
 		const delay = Math.max(0, entry.expiresAt - Date.now());
 		entry.cleanupTimer = setTimeout(() => {
 			const current = this.sandboxes.get(threadId);
