@@ -1,4 +1,4 @@
-import type { TelemetryIntegration } from 'ai';
+import type { Telemetry as AiSdkTelemetry } from 'ai';
 
 /** OTel-compatible attribute values (no undefined). */
 export type AttributeValue = string | number | boolean | string[] | number[] | boolean[];
@@ -43,7 +43,11 @@ export interface BuiltTelemetry {
 	 */
 	readonly rootAnchored?: boolean;
 	/** Integrations are pre-wrapped with redaction if .redact() was set at build time. */
-	readonly integrations: TelemetryIntegration[];
+	readonly integrations: AiSdkTelemetry[];
+	/** @internal Rebuild metadata-sensitive integrations for the effective run metadata. */
+	readonly resolveIntegrations?: (
+		metadata: Record<string, AttributeValue> | undefined,
+	) => AiSdkTelemetry[];
 	readonly tracer?: OpaqueTracer;
 	/** @internal Provider reference for flush/shutdown. Only set when .otlpEndpoint() is used. */
 	readonly provider?: OpaqueTracerProvider;

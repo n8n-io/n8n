@@ -20,7 +20,7 @@ export const TOOLS_BY_SCOPE: Record<McpScope, readonly string[]> = {
 		'search_nodes',
 		'get_node_types',
 		'get_workflow_best_practices',
-		'get_sdk_reference',
+		'get_workflow_sdk_reference',
 		'validate_workflow',
 		'validate_node_config',
 	],
@@ -35,12 +35,40 @@ export const TOOLS_BY_SCOPE: Record<McpScope, readonly string[]> = {
 		'search_nodes',
 		'get_node_types',
 		'get_workflow_best_practices',
-		'get_sdk_reference',
+		'get_workflow_sdk_reference',
 		'validate_workflow',
 		'validate_node_config',
 	],
-	'workflow:execute': ['execute_workflow', 'test_workflow', 'prepare_test_pin_data'],
-	'execution:read': ['get_execution', 'search_executions'],
+	'workflow:execute': ['execute_workflow', 'test_workflow', 'prepare_workflow_pin_data'],
+	'execution:read': ['get_workflow_execution', 'search_workflow_executions'],
+	'agent:read': [
+		'search_agents',
+		'get_agent',
+		'list_agent_versions',
+		'discover_agent_assets',
+		'validate_agent',
+		'get_agent_builder_reference',
+	],
+	// The read tools ride along on a write-only grant: mutate_agent's
+	// configHash handshake starts at get_agent, and building needs search
+	// (sub-agents), asset discovery, validation, and the reference.
+	'agent:write': [
+		'create_agent',
+		'mutate_agent',
+		'revert_agent',
+		'delete_agent',
+		'verify_agent_mcp_server',
+		'search_agents',
+		'get_agent',
+		'list_agent_versions',
+		'discover_agent_assets',
+		'validate_agent',
+		'get_agent_builder_reference',
+		'update_agent_integration',
+		'publish_agent',
+		'unpublish_agent',
+	],
+	'agent:execute': ['call_agent'],
 	// explore_node_resources queries external services with stored credentials,
 	// so it must sit behind the credential scope rather than a workflow one.
 	'credential:read': ['list_credentials', 'list_n8n_connect_services', 'explore_node_resources'],
@@ -56,7 +84,7 @@ export const TOOLS_BY_SCOPE: Record<McpScope, readonly string[]> = {
 		'add_data_table_rows',
 	],
 	'project:read': ['search_projects', 'search_folders'],
-	'tag:read': ['list_tags'],
+	'tag:read': ['list_workflow_tags'],
 };
 
 /**
@@ -68,7 +96,7 @@ export const BUILDER_TOOLS: ReadonlySet<string> = new Set([
 	'search_nodes',
 	'get_node_types',
 	'get_workflow_best_practices',
-	'get_sdk_reference',
+	'get_workflow_sdk_reference',
 	'validate_workflow',
 	'validate_node_config',
 	'create_workflow_from_code',
@@ -78,6 +106,12 @@ export const BUILDER_TOOLS: ReadonlySet<string> = new Set([
 	'explore_node_resources',
 	'search_projects',
 	'search_folders',
+]);
+
+export const AGENT_TOOLS: ReadonlySet<string> = new Set([
+	...TOOLS_BY_SCOPE['agent:read'],
+	...TOOLS_BY_SCOPE['agent:write'],
+	...TOOLS_BY_SCOPE['agent:execute'],
 ]);
 
 function isMcpScope(scope: string): scope is McpScope {

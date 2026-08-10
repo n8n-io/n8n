@@ -2,7 +2,7 @@ import type { WorkflowReviewInboxItem } from '@n8n/api-types';
 import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import WorkflowReviewRequestsSidebar from './WorkflowReviewRequestsSidebar.vue';
 
 vi.mock('@/app/composables/useIntersectionObserver', () => ({
@@ -61,7 +61,7 @@ function makeItem(overrides: Partial<WorkflowReviewInboxItem> = {}): WorkflowRev
 }
 
 const baseProps = {
-	activeState: 'open' as const,
+	activeTab: 'open' as const,
 	openCount: 1,
 	closedCount: 0,
 	selectedId: null,
@@ -146,7 +146,7 @@ describe('WorkflowReviewRequestsSidebar', () => {
 		const { getByTestId } = renderComponent({
 			props: {
 				...baseProps,
-				activeState: state,
+				activeTab: state,
 				items: [makeItem({ state, decision })],
 			},
 		});

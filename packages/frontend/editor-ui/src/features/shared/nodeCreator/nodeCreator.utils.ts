@@ -42,10 +42,11 @@ import type { NodeViewItemSection } from './views/viewsData';
 
 import { stripToolSuffix, useAiGatewayStore } from '@/app/stores/aiGateway.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import type { NodeIconSource } from '@/app/utils/nodeIcon';
+import { getN8nAgentsNodeName } from '@/experiments/inlineAgents/useInlineAgentsExperiment';
 import { SampleTemplates } from '@/features/workflows/templates/utils/workflowSamples';
-import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
+import type { IconName } from '@n8n/design-system';
 import type { INodeOutputConfiguration, NodeConnectionType } from 'n8n-workflow';
 import { NodeConnectionTypes, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 import type { CommunityNodeDetails, ViewStack } from './composables/useViewStacks';
@@ -439,6 +440,13 @@ export function extractAiGatewaySection(
 
 function applyNodeTags(element: INodeCreateElement): INodeCreateElement {
 	if (element.type !== 'node') return element;
+
+	// Every creator list flows through here, so this also renames the item
+	// (and the panel title derived from it) for the inline agents experiment.
+	const agentsNodeName = getN8nAgentsNodeName(element.properties.name);
+	if (agentsNodeName) {
+		element.properties.displayName = agentsNodeName;
+	}
 
 	const aiSubcategories = element.properties.codex?.subcategories?.[AI_SUBCATEGORY] ?? [];
 	if (

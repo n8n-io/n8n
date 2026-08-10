@@ -3,12 +3,19 @@
  * Configure one agent tool entry (node/workflow/custom) or one MCP server.
  */
 import { computed, ref, watch } from 'vue';
-import Modal from '@/app/components/Modal.vue';
 import { useUIStore } from '@/app/stores/ui.store';
-import { N8nButton, N8nIcon, N8nRadioButtons } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nDialog,
+	N8nDialogFooter,
+	N8nDialogHeader,
+	N8nIcon,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { INode } from 'n8n-workflow';
+import { FocusScope } from 'reka-ui';
 
+import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import type {
 	AgentJsonMcpServerConfig,
 	AgentJsonToolRef,
@@ -21,7 +28,6 @@ import {
 	updateWorkflowToolRef,
 } from '../composables/useAgentToolRefAdapter';
 import { nodeToMcpServer } from '../composables/useMcpServerAdapter';
-import AgentJsonEditor from './AgentJsonEditor.vue';
 import AgentToolConfigApprovalSetting from './AgentToolConfigApprovalSetting.vue';
 import AgentToolConfigCustomContent from './AgentToolConfigCustomContent.vue';
 import AgentToolConfigMcpApprovalSetting from './AgentToolConfigMcpApprovalSetting.vue';
@@ -57,6 +63,11 @@ interface McpServerModalData {
 
 type AgentToolConfigModalData = ToolModalData | McpServerModalData;
 
+// DynamicModalLoader passes `open`/`active`/`mode`/`activeId` alongside the
+// props we declare. Without this they fall through onto N8nDialog, and the
+// inherited `open` (always true while mounted) wins over our own binding.
+defineOptions({ inheritAttrs: false });
+
 const props = defineProps<{
 	modalName: string;
 	data: AgentToolConfigModalData;
@@ -64,6 +75,16 @@ const props = defineProps<{
 
 const i18n = useI18n();
 const uiStore = useUIStore();
+const isCredentialModalOpen = computed(
+	() => uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY]?.open === true,
+);
+
+const isOpen = computed({
+	get: () => uiStore.modalsById[props.modalName]?.open === true,
+	set: (value: boolean) => {
+		if (!value) uiStore.closeModal(props.modalName);
+	},
+});
 
 function isMcpServerModalData(data: AgentToolConfigModalData): data is McpServerModalData {
 	return data.kind === 'mcpServer';
@@ -79,7 +100,6 @@ const nodeContentRef = ref<InstanceType<typeof AgentToolConfigNodeContent> | nul
 const mcpContentRef = ref<InstanceType<typeof AgentToolConfigNodeContent> | null>(null);
 const workflowContentRef = ref<InstanceType<typeof AgentToolConfigWorkflowContent> | null>(null);
 const isValid = ref(false);
-const activeView = ref<'config' | 'raw'>('config');
 const approvalRequired = ref(false);
 const mcpApproval = ref<AgentJsonMcpServerConfig['approval']>();
 const mcpApprovalValid = ref(true);
@@ -125,11 +145,6 @@ const customToolTitle = computed(() => {
 		i18n.baseText('agents.builder.tree.customBadge')
 	);
 });
-
-const viewOptions = computed(() => [
-	{ label: 'Config', value: 'config' as const },
-	{ label: 'Raw', value: 'raw' as const },
-]);
 
 const canRender = computed(
 	() => isCustomTool.value || isWorkflowTool.value || initialNode.value !== null,
@@ -189,39 +204,12 @@ const headerNodeTypeDescription = computed(() => {
 	return nodeContentRef.value?.getNodeTypeDescription() ?? null;
 });
 
-const draftRawEditorValue = computed(() => {
-	try {
-		if (isMcpTool.value) {
-			const mcpData = mcpModalData.value;
-			if (!mcpData || !currentNode.value) return mcpData?.mcpServer ?? {};
-			return withMcpApproval(nodeToMcpServer(currentNode.value, mcpData.mcpServer));
-		}
-
-		const toolData = toolModalData.value;
-		if (!toolData) return {};
-
-		if (toolData.toolRef.type === 'node' && draftNode.value) {
-			return withApprovalRequirement(updateToolRefFromNode(toolData.toolRef, draftNode.value));
-		}
-
-		return withApprovalRequirement(toolData.toolRef);
-	} catch {
-		return null;
-	}
-});
-
-const rawEditorValue = computed(() => {
-	if (draftRawEditorValue.value) {
-		return draftRawEditorValue.value;
-	}
-	const lastValidValue = isMcpTool.value
-		? (mcpModalData.value?.mcpServer ?? {})
-		: (toolModalData.value?.toolRef ?? {});
-	return lastValidValue;
-});
-
 function closeDialog() {
 	uiStore.closeModal(props.modalName);
+}
+
+function handleInteractOutside(event: Event) {
+	if (isCredentialModalOpen.value) event.preventDefault();
 }
 
 function withApprovalRequirement(ref: AgentJsonToolRef): AgentJsonToolRef {
@@ -273,10 +261,13 @@ function handleConfirm() {
 		const toolData = toolModalData.value;
 		if (!toolData) return;
 		if (!wc) return;
+		const workflowId = wc.getWorkflowId();
 		const updatedRef = updateWorkflowToolRef(toolData.toolRef, {
 			name: wc.getName(),
 			description: wc.getDescription(),
 			allOutputs: wc.getAllOutputs(),
+			workflow: wc.getWorkflow(),
+			...(workflowId !== undefined ? { workflowId } : {}),
 		});
 		toolData.onConfirm(withApprovalRequirement(updatedRef));
 		closeDialog();
@@ -327,28 +318,35 @@ function handleNodeUpdate(node: INode) {
 </script>
 
 <template>
-	<Modal
+	<N8nDialog
 		v-if="canRender"
-		:name="modalName"
-		width="780px"
-		max-height="85vh"
+		v-model:open="isOpen"
+		size="2xlarge"
+		:trap-focus="!isCredentialModalOpen"
+		:disable-outside-pointer-events="!isCredentialModalOpen"
+		:show-close-button="false"
 		data-test-id="agent-tool-config-modal"
+		@interact-outside="handleInteractOutside"
 	>
-		<template #header>
+		<FocusScope
+			v-if="isCredentialModalOpen"
+			as-child
+			@mount-auto-focus.prevent
+			@unmount-auto-focus.prevent
+		>
+			<span hidden aria-hidden="true" />
+		</FocusScope>
+
+		<N8nDialogHeader>
 			<AgentToolConfigModalHeader
 				:kind="headerKind"
 				:title="isCustomTool ? customToolTitle : nodeName"
 				:node-type-description="headerNodeTypeDescription"
 				@update:title="handleChangeName"
 			/>
-		</template>
-		<template #content>
-			<div
-				:class="[
-					$style.contentWrapper,
-					(isCustomTool || activeView === 'raw') && $style.codeContentWrapper,
-				]"
-			>
+		</N8nDialogHeader>
+		<div :class="$style.body">
+			<div :class="[$style.contentWrapper, isCustomTool && $style.codeContentWrapper]">
 				<AgentToolConfigCustomContent
 					v-if="isCustomTool"
 					:code="customToolCode"
@@ -359,25 +357,12 @@ function handleNodeUpdate(node: INode) {
 					v-model="approvalRequired"
 				/>
 				<template v-else>
-					<N8nRadioButtons
-						:model-value="activeView"
-						:options="viewOptions"
-						:class="$style.viewToggle"
-						@update:model-value="activeView = $event"
-					/>
-					<AgentJsonEditor
-						v-show="activeView === 'raw'"
-						:value="rawEditorValue"
-						read-only
-						:show-read-only-overlay="false"
-						:class="$style.rawEditor"
-						copy-button-test-id="agent-tool-json-copy"
-					/>
-					<div v-show="activeView === 'config'" :class="$style.configureTab">
+					<div :class="$style.configureTab">
 						<AgentToolConfigWorkflowContent
 							v-if="workflowInitialRef"
 							ref="workflowContentRef"
 							:initial-ref="workflowInitialRef"
+							:project-id="data.projectId"
 							:show-approval-setting="showApprovalSetting"
 							:approval-required="approvalRequired"
 							@update:valid="handleValidUpdate"
@@ -420,8 +405,8 @@ function handleNodeUpdate(node: INode) {
 					</div>
 				</template>
 			</div>
-		</template>
-		<template #footer>
+		</div>
+		<N8nDialogFooter>
 			<div :class="$style.footer">
 				<N8nButton
 					v-if="data.onRemove"
@@ -446,11 +431,20 @@ function handleNodeUpdate(node: INode) {
 					</N8nButton>
 				</div>
 			</div>
-		</template>
-	</Modal>
+		</N8nDialogFooter>
+	</N8nDialog>
 </template>
 
 <style lang="scss" module>
+// Replaces Modal's max-height prop, which N8nDialog has no equivalent for.
+.body {
+	display: flex;
+	flex-direction: column;
+	min-height: 0;
+	max-height: 70vh;
+	overflow: hidden;
+}
+
 .footer {
 	display: flex;
 	justify-content: space-between;
@@ -495,18 +489,6 @@ function handleNodeUpdate(node: INode) {
 	min-height: 0;
 	flex-direction: column;
 	gap: var(--spacing--sm);
-}
-
-.viewToggle {
-	align-self: flex-start;
-}
-
-.rawEditor {
-	flex: 1;
-	width: 100%;
-	min-height: 0;
-	min-width: 0;
-	overflow: hidden;
 }
 
 .customToolViewer {

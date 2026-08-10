@@ -8,7 +8,7 @@ import {
 } from '@/app/constants';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { MANUAL_TRIGGER_NODE_TYPE } from 'n8n-workflow';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { AIView, HitlToolView } from './viewsData';
 import { mockNodeTypeDescription } from '@/__tests__/mocks';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
@@ -19,7 +19,7 @@ const getNodeType = vi.fn();
 const aiTransformNode = mockNodeTypeDescription({ name: AI_TRANSFORM_NODE_TYPE });
 const messageAnAgentNode = mockNodeTypeDescription({
 	name: MESSAGE_AN_AGENT_NODE_TYPE,
-	displayName: 'AI Agent V1',
+	displayName: 'AI Agent V2',
 	hidden: true,
 });
 

@@ -1,10 +1,9 @@
-import type { IResult } from 'mssql';
-import mssql from 'mssql';
-import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
-import { deepCopy } from 'n8n-workflow';
-
 import { routeBinaryProperties } from '@utils/binary';
 import { chunk, flatten } from '@utils/utilities';
+import type { IResult } from 'mssql';
+import mssql from 'mssql';
+import { deepCopy, safeRegex } from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
 import type { ITables, OperationInputData } from './interfaces';
 
@@ -57,7 +56,7 @@ export function createTableStruct(
 		if (keyName) {
 			itemCopy[keyName] = keyParam;
 		}
-		(tables[table][columnString] as IDataObject[]).push(itemCopy);
+		tables[table][columnString].push(itemCopy);
 		return tables;
 	}, Object.create(null) as ITables);
 }
@@ -288,7 +287,7 @@ export async function executeSqlQueryAndPrepareResults(
 		// Process in reverse order so $10 is replaced before $1
 		for (let i = queryValues.length; i >= 1; i--) {
 			const paramName = `p${i}`;
-			processedQuery = processedQuery.replace(new RegExp(`\\$${i}(?!\\d)`, 'g'), `@${paramName}`);
+			processedQuery = safeRegex.replace(`\\$${i}(?!\\d)`, processedQuery, 'g', `@${paramName}`);
 			request.input(paramName, queryValues[i - 1]);
 		}
 	}

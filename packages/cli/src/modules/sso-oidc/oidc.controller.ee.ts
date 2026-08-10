@@ -149,20 +149,30 @@ export class OidcController {
 		// RP-Initiated Logout with the required `id_token_hint`. The cookie's
 		// presence also marks this session as OIDC-established, as opposed to
 		// e.g. an email session of the instance owner.
+		//
+		// The user is already authenticated (`issueCookie` above), so any failure
+		// storing the token must not fail the login: it only degrades sign-out to a
+		// local (n8n-only) logout, same as the oversized-token branch below.
 		if (idToken) {
-			const encryptedIdToken = await this.oidcService.encryptIdToken(idToken);
-			if (Buffer.byteLength(encryptedIdToken, 'utf8') <= OIDC_ID_TOKEN_COOKIE_MAX_BYTES) {
-				const { samesite, secure } = this.globalConfig.auth.cookie;
-				res.cookie(OIDC_ID_TOKEN_COOKIE_NAME, encryptedIdToken, {
-					maxAge: this.authService.jwtExpiration * Time.seconds.toMilliseconds,
-					httpOnly: true,
-					sameSite: samesite,
-					secure,
+			try {
+				const encryptedIdToken = await this.oidcService.encryptIdToken(idToken);
+				if (Buffer.byteLength(encryptedIdToken, 'utf8') <= OIDC_ID_TOKEN_COOKIE_MAX_BYTES) {
+					const { samesite, secure } = this.globalConfig.auth.cookie;
+					res.cookie(OIDC_ID_TOKEN_COOKIE_NAME, encryptedIdToken, {
+						maxAge: this.authService.jwtExpiration * Time.seconds.toMilliseconds,
+						httpOnly: true,
+						sameSite: samesite,
+						secure,
+					});
+				} else {
+					this.logger.warn(
+						'The OIDC ID token is too large to be stored in a cookie. Signing out will terminate the n8n session but not the OIDC provider session. Consider reducing the claims included in the ID token.',
+					);
+				}
+			} catch (error) {
+				this.logger.warn('Failed to store the OIDC ID token; sign-out will be local only', {
+					error,
 				});
-			} else {
-				this.logger.warn(
-					'The OIDC ID token is too large to be stored in a cookie. Signing out will terminate the n8n session but not the OIDC provider session. Consider reducing the claims included in the ID token.',
-				);
 			}
 		}
 		this.eventService.emit('user-logged-in', {
@@ -180,6 +190,12 @@ export class OidcController {
 	 * the client to redirect to. The n8n session is always invalidated first,
 	 * so whatever happens at the provider afterwards cannot leave a valid n8n
 	 * session behind.
+	 *
+	 * Trade-off: the returned URL carries the ID token as a URL-encoded
+	 * `id_token_hint`, so it is handed to page JS (the SPA sets `window.location`
+	 * after running its logout hooks / clearing local storage). This is accepted
+	 * for client-side RP-logout; moving the hint into a server-issued redirect so
+	 * it never reaches a JS-readable body is a possible future hardening.
 	 */
 	@Post('/logout')
 	@Licensed('feat:oidc')

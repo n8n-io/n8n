@@ -23,6 +23,8 @@ vi.mock('@n8n/i18n', () => ({
 			({
 				'agentSessions.viewTrace': 'View session trace',
 				'agentSessions.origin.agent': 'Agent',
+				'agentSessions.origin.instanceAi': 'AI Assistant',
+				'agentSessions.origin.mcp': 'MCP',
 				'agentSessions.origin.subAgent': 'Sub-agent',
 				'agentSessions.origin.task': 'Task',
 				'agentSessions.empty': 'No agent sessions',
@@ -74,7 +76,7 @@ vi.mock('@/app/composables/useMessage', () => ({
 	useMessage: () => ({ confirm: vi.fn() }),
 }));
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showError: vi.fn(), showMessage: vi.fn() }),
 }));
 
@@ -233,6 +235,8 @@ describe('AgentSessionsListView', () => {
 	it.each([
 		[{ source: 'slack' }, 'Slack'],
 		[{ source: 'telegram' }, 'Telegram'],
+		[{ source: 'instance-ai' }, 'AI Assistant'],
+		[{ source: 'mcp' }, 'MCP'],
 		[{ source: null }, 'Agent'],
 		[{ source: 'chat' }, 'Agent'],
 		[{ parentThreadId: 'parent-1', source: 'slack' }, 'Sub-agent'],

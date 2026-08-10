@@ -10,6 +10,42 @@ const minimalConfig = {
 	instructions: 'Help the user.',
 };
 
+describe('AgentJsonConfigSchema — model', () => {
+	it('accepts AWS Bedrock model names containing a version colon', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			model: 'aws-bedrock/anthropic.claude-sonnet-4-5-v1:0',
+		});
+
+		expect(result.success).toBe(true);
+	});
+});
+
+describe('AgentJsonConfigSchema — reasoning', () => {
+	it.each(['low', 'medium', 'high'] as const)(
+		'preserves generic %s reasoning effort',
+		(reasoning) => {
+			const result = AgentJsonConfigSchema.safeParse({
+				...minimalConfig,
+				config: { reasoning },
+			});
+
+			expect(result.success).toBe(true);
+			if (!result.success) return;
+			expect(result.data.config?.reasoning).toBe(reasoning);
+		},
+	);
+
+	it('rejects reasoning levels outside the agent config options', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			config: { reasoning: 'max' },
+		});
+
+		expect(result.success).toBe(false);
+	});
+});
+
 describe('AgentJsonConfigSchema — tools', () => {
 	describe('custom tool id field', () => {
 		it('accepts a valid alphanumeric id', () => {

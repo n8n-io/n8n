@@ -8,6 +8,9 @@
                 "properties": {
                     "email": {
                         "type": "string"
+                    },
+                    "validEmailDate": {
+                        "type": "string"
                     }
                 }
             }
@@ -109,5 +112,5 @@
             "type": "string"
         }
     },
-    "version": 3
+    "version": 4
 }

@@ -29,16 +29,32 @@ export type {
 export { InMemoryWorkQueue } from './queue';
 export type {
 	ExecutionEnqueuedEvent,
+	OrchestrationMessage,
+	StepCompletedEvent,
+	StepMessage,
+	StepReadyEvent,
 	WorkQueue,
-	WorkQueueMessage,
 } from './queue';
 
+export {
+	ExecutionNotFoundError,
+	ExecutionStartHandler,
+	OrchestrationWorker,
+	StepCompletedHandler,
+	StepNotFoundError,
+	StepReadyHandler,
+	StepWorker,
+} from './execution';
 export type {
 	ExecutionMode,
+	ExecutionRecord,
 	ExecutionStatus,
 	ExecutionStore,
 	NewExecutionRecord,
 	NewStepRecord,
+	StepError,
+	StepRecord,
+	StepSlots,
 	StepStatus,
 	StepStore,
 } from './execution';

@@ -358,6 +358,7 @@ describe('GlobalConfig', () => {
 			runDebugEnabled: false,
 			thinkingEnabled: true,
 			durableLog: true,
+			mcpConnectionsEnabled: false,
 		},
 		queue: {
 			health: {
@@ -408,6 +409,7 @@ describe('GlobalConfig', () => {
 			maxConcurrency: 10,
 			taskTimeout: 300,
 			taskRequestTimeout: 60,
+			taskAcceptTimeout: 2,
 			heartbeatInterval: 30,
 			grantTokenTtl: 30,
 			insecureMode: false,
@@ -467,11 +469,13 @@ describe('GlobalConfig', () => {
 			enabledForPollTriggers: false,
 			allowSkipDurableScheduler: false,
 			maxAttempts: 5,
+			misfireGraceSeconds: 60,
 		},
 		evaluation: {
 			collectionsEnabled: false,
 			configEvalsEnabled: false,
 			agentEvalsEnabled: false,
+			agentEvalsRunTimeoutMinutes: 60,
 		},
 		generic: {
 			timezone: 'America/New_York',
@@ -536,6 +540,8 @@ describe('GlobalConfig', () => {
 			saveExecutionProgress: false,
 			saveDataManualExecutions: true,
 			maxDisplaySize: 100 * 1024 * 1024,
+			webhookResponseRelaySizeMaxMiB: 64,
+			webhookResponseRelayOffloadEnabled: false,
 		},
 		diagnostics: {
 			enabled: true,
@@ -548,6 +554,9 @@ describe('GlobalConfig', () => {
 		},
 		aiAssistant: {
 			baseUrl: '',
+		},
+		aiGateway: {
+			enabled: true,
 		},
 		aiBuilder: {
 			apiKey: '',
@@ -618,7 +627,7 @@ describe('GlobalConfig', () => {
 			trimOnStartUp: false,
 		},
 		expressionEngine: {
-			engine: 'legacy',
+			engine: 'vm',
 			poolSize: 1,
 			maxCodeCacheSize: 1024,
 			bridgeTimeout: 5000,
@@ -627,6 +636,7 @@ describe('GlobalConfig', () => {
 			tracesEnabled: true,
 			slowEvaluationThresholdMs: 50,
 			tracesSampleRate: 0.0,
+			allowWebhookIsolateSkip: true,
 		},
 		instanceSettingsLoader: {
 			ownerManagedByEnv: false,
@@ -641,6 +651,8 @@ describe('GlobalConfig', () => {
 			oidcLoginEnabled: false,
 			oidcPrompt: 'select_account',
 			oidcAcrValues: '',
+			oidcAdditionalScopes: '',
+			oidcRpInitiatedLogoutEnabled: false,
 			ssoUserRoleProvisioning: 'disabled',
 			securityPolicyManagedByEnv: false,
 			mfaEnforcedEnabled: false,

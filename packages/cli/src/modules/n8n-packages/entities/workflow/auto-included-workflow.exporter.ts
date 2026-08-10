@@ -15,6 +15,8 @@ import type { WorkflowDataTableRequirement } from '../data-table/data-table.type
 import { FolderSerializer } from '../folder/folder.serializer';
 import { ProjectSerializer } from '../project/project.serializer';
 import type { WorkflowExportRequirements } from '../requirements.types';
+import { TagRequirementsExtractor } from '../tag/tag-requirements.extractor';
+import type { WorkflowTagUsage } from '../tag/tag.types';
 import { VariableRequirementsExtractor } from '../variable/variable-requirements.extractor';
 import type { WorkflowVariableRequirement } from '../variable/variable.types';
 
@@ -24,6 +26,7 @@ export interface AutoIncludedWorkflowExportRequest {
 	existingWorkflowEntries: ManifestEntry[];
 	existingFolderEntries: ManifestEntry[];
 	existingProjectEntries: ManifestEntry[];
+	includeTags: boolean;
 	projectTargetsById?: Map<string, string>;
 }
 
@@ -54,6 +57,7 @@ export class AutoIncludedWorkflowExporter {
 		private readonly credentialRequirementsExtractor: CredentialRequirementsExtractor,
 		private readonly dataTableRequirementsExtractor: DataTableRequirementsExtractor,
 		private readonly variableRequirementsExtractor: VariableRequirementsExtractor,
+		private readonly tagRequirementsExtractor: TagRequirementsExtractor,
 	) {}
 
 	export(request: AutoIncludedWorkflowExportRequest): AutoIncludedWorkflowExportResult {
@@ -93,6 +97,7 @@ export class AutoIncludedWorkflowExporter {
 		const credentials: WorkflowCredentialRequirement[] = [];
 		const dataTables: WorkflowDataTableRequirement[] = [];
 		const variables: WorkflowVariableRequirement[] = [];
+		const tags: WorkflowTagUsage[] = [];
 		const nodeTypes: WorkflowNodeTypeSource[] = [];
 
 		for (const included of request.workflows) {
@@ -113,12 +118,14 @@ export class AutoIncludedWorkflowExporter {
 				baseDir,
 				request.writer,
 				allocators.workflows,
+				request.includeTags,
 			);
 			workflowEntries.push(entry);
 			workflowEntriesById.set(entry.id, entry);
 			credentials.push(...this.credentialRequirementsExtractor.extract(included.workflow));
 			dataTables.push(...this.dataTableRequirementsExtractor.extract(included.workflow));
 			variables.push(...this.variableRequirementsExtractor.extract(included.workflow));
+			tags.push(...this.tagRequirementsExtractor.extract(included.workflow));
 			nodeTypes.push({
 				workflowId: included.workflow.id,
 				nodes: included.workflow.nodes ?? [],
@@ -129,7 +136,7 @@ export class AutoIncludedWorkflowExporter {
 			workflowEntries,
 			folderEntries,
 			projectEntries,
-			requirements: { credentials, dataTables, variables, nodeTypes },
+			requirements: { credentials, dataTables, variables, tags, nodeTypes },
 			projectTargetsById,
 		};
 	}
@@ -261,9 +268,10 @@ export class AutoIncludedWorkflowExporter {
 		baseDir: string,
 		writer: PackageWriter,
 		allocators: Map<string, UniqueFilenameAllocator>,
+		includeTags: boolean,
 	): ManifestEntry {
 		const target = allocatorFor(allocators, baseDir, 'workflow').allocate(workflow.name);
-		const serialized = this.workflowSerializer.serialize(workflow);
+		const serialized = this.workflowSerializer.serialize(workflow, { includeTags });
 		writer.writeDirectory(target);
 		writer.writeFile(`${target}/workflow.json`, JSON.stringify(serialized, null, '\t'));
 		return { id: workflow.id, name: workflow.name, target };

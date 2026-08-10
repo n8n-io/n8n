@@ -124,6 +124,7 @@ async function main(): Promise<void> {
 			gate,
 			slugByTestCase,
 			commitSha,
+			outputDir: args.outputDir,
 			jsonPath,
 			prCommentPath,
 			experimentName: args.experimentName,

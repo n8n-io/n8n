@@ -2,8 +2,9 @@ import { Router, type Router as RouterType } from 'express';
 import { z } from 'zod';
 
 import { AdmittanceRejectedError } from '../../admittance';
-import type { JsonValue } from '../../common';
+import { UnimplementedError, type JsonValue } from '../../common';
 import type { StartExecutionService } from '../../execution/start-execution.service';
+import { GraphValidationError } from '../../graph';
 
 const jsonValueSchema: z.ZodType<JsonValue> = z.lazy(() =>
 	z.union([
@@ -30,8 +31,10 @@ const GraphNodeSchema = z.object({
 const GraphEdgeSchema = z.object({
 	from: z.string(),
 	to: z.string(),
-	outputIndex: z.number().int().nonnegative().optional(),
-	inputIndex: z.number().int().nonnegative().optional(),
+	// Defaulted rather than optional so callers can omit the common 0/0 case while
+	// the engine always sees a fully-populated edge.
+	outputIndex: z.number().int().nonnegative().default(0),
+	inputIndex: z.number().int().nonnegative().default(0),
 	isBackEdge: z.boolean().optional(),
 });
 
@@ -66,6 +69,14 @@ export function createWorkflowExecutionsRouter(startExecution: StartExecutionSer
 		} catch (error) {
 			if (error instanceof AdmittanceRejectedError) {
 				res.status(429).json({ error: 'admittance_rejected', reason: error.reason });
+				return;
+			}
+			if (error instanceof GraphValidationError) {
+				res.status(400).json({ error: 'invalid_graph', reason: error.message });
+				return;
+			}
+			if (error instanceof UnimplementedError) {
+				res.status(501).json({ error: 'unimplemented', reason: error.message });
 				return;
 			}
 			throw error;

@@ -305,7 +305,7 @@ N8N_DEV_RELOAD=true pnpm dev
 pnpm start
 
 # Terminal 2: Run frontend dev server
-cd packages/editor-ui
+cd packages/frontend/editor-ui
 pnpm dev
 ```
 

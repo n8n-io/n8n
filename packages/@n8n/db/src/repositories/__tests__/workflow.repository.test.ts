@@ -40,6 +40,7 @@ describe('WorkflowRepository', () => {
 		queryBuilder.select.mockReturnThis();
 		queryBuilder.addSelect.mockReturnThis();
 		queryBuilder.leftJoin.mockReturnThis();
+		queryBuilder.leftJoinAndSelect.mockReturnThis();
 		queryBuilder.innerJoin.mockReturnThis();
 		queryBuilder.orderBy.mockReturnThis();
 		queryBuilder.addOrderBy.mockReturnThis();
@@ -273,7 +274,7 @@ describe('WorkflowRepository', () => {
 	});
 
 	describe('applyActiveVersionRelation', () => {
-		it('should join activeVersion relation when select.activeVersion is true', async () => {
+		it('should join activeVersion with the shared list columns when select.activeVersion is true', async () => {
 			const workflowIds = ['workflow1'];
 			const options = {
 				select: { activeVersion: true } as const,
@@ -284,8 +285,16 @@ describe('WorkflowRepository', () => {
 			expect(queryBuilder.leftJoin).toHaveBeenCalledWith('workflow.activeVersion', 'activeVersion');
 			expect(queryBuilder.addSelect).toHaveBeenCalledWith([
 				'activeVersion.versionId',
+				'activeVersion.workflowId',
 				'activeVersion.nodes',
 				'activeVersion.connections',
+				'activeVersion.nodeGroups',
+				'activeVersion.authors',
+				'activeVersion.name',
+				'activeVersion.description',
+				'activeVersion.autosaved',
+				'activeVersion.createdAt',
+				'activeVersion.updatedAt',
 			]);
 		});
 
