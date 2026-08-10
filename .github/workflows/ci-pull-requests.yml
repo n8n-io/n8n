@@ -70,8 +70,10 @@ jobs:
               !**/*.spec.ts
               !packages/testing/playwright/**
               !packages/frontend/@n8n/storybook/**
+              !.devcontainer/**
               !scripts/agent-setup.mjs
               !scripts/backend-module/**
+              !scripts/cloud-session.mjs
               !scripts/licenses/**
               !scripts/mutation-health/**
               !scripts/sync-agent-skill-links.mjs
@@ -83,8 +85,10 @@ jobs:
               !**/*.md
               !**/LICENSE
               !**/CHANGELOG.md
+              !.devcontainer/**
               !scripts/agent-setup.mjs
               !scripts/backend-module/**
+              !scripts/cloud-session.mjs
               !scripts/licenses/**
               !scripts/mutation-health/**
               !scripts/sync-agent-skill-links.mjs
