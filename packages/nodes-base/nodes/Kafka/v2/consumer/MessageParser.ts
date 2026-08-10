@@ -8,7 +8,7 @@ import type {
 	ITriggerFunctions,
 	Logger,
 } from 'n8n-workflow';
-import { jsonParse } from 'n8n-workflow';
+import { jsonParse, OperationalError } from 'n8n-workflow';
 
 import { sanitizeRegistryError } from '../../utils';
 
@@ -91,11 +91,14 @@ export function createMessageParser(
 				// which is the visible, recoverable failure we want in place of silent
 				// corruption. A JSON parse failure above stays a warning: a message that
 				// is not JSON is a legitimate case and the string is still usable.
-				logger.error(
-					'Could not decode message with Schema Registry, leaving it unread',
-					sanitizeRegistryError(error),
-				);
-				throw error;
+				const sanitized = sanitizeRegistryError(error);
+				logger.error('Could not decode message with Schema Registry, leaving it unread', sanitized);
+				// Sanitized, and deliberately without the original as `cause`. A registry
+				// error message can carry the URL it was built from, userinfo included,
+				// and the consume loop logs whatever this throws when it decides to leave
+				// the chunk unresolved. Rethrowing the raw error, or attaching it, would
+				// put the credential back in the log the line above just scrubbed.
+				throw new OperationalError(sanitized.message);
 			}
 		}
 

@@ -179,6 +179,24 @@ describe('createMessageParser', () => {
 			);
 		});
 
+		it('throws a sanitized error, since the consume loop logs whatever it is handed', async () => {
+			// The line above scrubs what this file logs, but the throw travels on: the
+			// consume loop logs the error when it leaves the chunk unresolved, so an
+			// unsanitized rethrow would put the registry password straight back in the
+			// log. The original is not attached as `cause` for the same reason.
+			const registry = mock<SchemaRegistry>({
+				decode: vi.fn(async () => {
+					throw new Error('Request failed for https://user:sup3r-secret@registry');
+				}),
+			});
+
+			const thrown = await parse({}, message(), registry).catch((error: Error) => error);
+
+			expect(thrown.message).not.toContain('sup3r-secret');
+			expect(thrown.message).toContain('https://***@registry');
+			expect(thrown.cause).toBeUndefined();
+		});
+
 		it('does not call the registry for an empty value', async () => {
 			const registry = mock<SchemaRegistry>({ decode: vi.fn() });
 
