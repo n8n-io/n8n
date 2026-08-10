@@ -26,8 +26,6 @@ import {
 	FORM_TRIGGER_NODE_TYPE,
 	KEEP_AUTH_IN_NDV_FOR_NODES,
 	MODAL_CONFIRM,
-	SLACK_NODE_TYPE,
-	TELEGRAM_NODE_TYPE,
 	WAIT_NODE_TYPE,
 } from '@/app/constants';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -46,18 +44,10 @@ import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
 import { useAiGateway } from '@/app/composables/useAiGateway';
 import { useCollectionOverhaul } from '@/app/composables/useCollectionOverhaul';
 import {
-	filterTelegramHitlParameters,
-	useEnhancedHitlTelegramExperiment,
-} from '@/experiments/enhancedHitlTelegram';
-import {
-	filterSlackHitlParameters,
-	useEnhancedHitlSlackExperiment,
-} from '@/experiments/enhancedHitlSlack';
-import {
 	getParameterTypeOption,
 	type ParameterOptionsOverrides,
 } from '@/features/ndv/shared/ndv.utils';
-import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
+import type { IconName } from '@n8n/design-system';
 import { captureException } from '@sentry/vue';
 import { throttledWatch } from '@vueuse/core';
 import get from 'lodash/get';
@@ -124,8 +114,6 @@ const asyncLoadingError = ref(false);
 const workflowHelpers = useWorkflowHelpers();
 const i18n = useI18n();
 const { isEnabled: isCollectionOverhaulEnabled } = useCollectionOverhaul();
-const { isFeatureEnabled: isEnhancedHitlTelegramEnabled } = useEnhancedHitlTelegramExperiment();
-const { isFeatureEnabled: isEnhancedHitlSlackEnabled } = useEnhancedHitlSlackExperiment();
 const {
 	dismissCallout,
 	isCalloutDismissed,
@@ -195,14 +183,7 @@ const parameterItems = ref<ParameterComputedData[]>([]);
 let previousParameterNames: string[] = [];
 
 throttledWatch(
-	[
-		() => props.parameters,
-		() => props.nodeValues,
-		node,
-		hasChatParent,
-		isEnhancedHitlTelegramEnabled,
-		isEnhancedHitlSlackEnabled,
-	],
+	[() => props.parameters, () => props.nodeValues, node, hasChatParent],
 	async () => {
 		// Pre-calculate disabled state map
 		const disabledMap: Record<string, boolean> = {};
@@ -243,19 +224,6 @@ throttledWatch(
 			(node.value.typeVersion ?? 0) >= 3.1
 		) {
 			filteredParameters = updateAgentParameters(parameters, node.value.name);
-		} else if (
-			node.value &&
-			node.value.type === TELEGRAM_NODE_TYPE &&
-			!isEnhancedHitlTelegramEnabled.value
-		) {
-			filteredParameters = filterTelegramHitlParameters(parameters);
-		} else if (
-			node.value &&
-			// usableAsTool appends `Tool` to the node type; gate the tool variant too.
-			(node.value.type === SLACK_NODE_TYPE || node.value.type === `${SLACK_NODE_TYPE}Tool`) &&
-			!isEnhancedHitlSlackEnabled.value
-		) {
-			filteredParameters = filterSlackHitlParameters(parameters);
 		} else {
 			filteredParameters = parameters;
 		}

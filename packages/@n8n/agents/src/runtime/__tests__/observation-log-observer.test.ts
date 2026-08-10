@@ -400,6 +400,10 @@ describe('runObservationLogObserver', () => {
 
 	it('writes parsed observations and advances the cursor after observing', async () => {
 		const store = new InMemoryMemory();
+		const parentText = 'User needs the current request remembered.';
+		const childText = 'Observer pipeline parsed the child row.';
+		const tokenCounter = async (text: string) =>
+			await Promise.resolve(text === parentText ? 7 : text === childText ? 9 : 10);
 		await store.saveThread({ id: 'thread-1', resourceId: 'user-1' });
 		await store.saveMessages({
 			threadId: 'thread-1',
@@ -407,19 +411,17 @@ describe('runObservationLogObserver', () => {
 			messages: [message('m1', 'user', 'I need this remembered.', new Date(2026, 4, 12, 14, 30))],
 		});
 
+		const now = new Date(2026, 4, 12, 14, 31);
 		const result = await runObservationLogObserver({
 			memory: store,
 			observationScopeId: 'thread-1',
 			observerThresholdTokens: 1,
 			observationLogTailLimit: 20,
-			tokenCounter: () => 10,
-			now: new Date(2026, 4, 12, 14, 31),
+			tokenCounter,
+			now,
 			observe: async () =>
 				await Promise.resolve(
-					[
-						'* CRITICAL (14:31) User needs the current request remembered.',
-						'  * COMPLETION (14:31) Observer pipeline parsed the child row.',
-					].join('\n'),
+					[`* CRITICAL (14:31) ${parentText}`, `  * COMPLETION (14:31) ${childText}`].join('\n'),
 				),
 		});
 
@@ -430,13 +432,17 @@ describe('runObservationLogObserver', () => {
 		expect(observations).toMatchObject([
 			{
 				marker: 'critical',
-				text: 'User needs the current request remembered.',
+				text: parentText,
 				parentId: null,
+				tokenCount: 7,
+				createdAt: now,
 			},
 			{
 				marker: 'completion',
-				text: 'Observer pipeline parsed the child row.',
+				text: childText,
 				parentId: observations[0]?.id,
+				tokenCount: 9,
+				createdAt: new Date(now.getTime() + 1),
 			},
 		]);
 		expect(await store.getCursor('thread-1')).toMatchObject({

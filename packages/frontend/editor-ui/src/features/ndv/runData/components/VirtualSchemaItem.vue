@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import TextWithHighlights from './TextWithHighlights.vue';
-import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
+import { type IconName } from '@n8n/design-system';
 import { saveAs } from 'file-saver';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';

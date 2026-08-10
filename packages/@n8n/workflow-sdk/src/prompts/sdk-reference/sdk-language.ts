@@ -114,6 +114,23 @@ ${renderRulesLines()}
 `;
 
 /**
+ * Grouping judgement guidance: *when* to group — the rules that make a group
+ * valid live in `NODE_GROUPS_REFERENCE`. MCP appends it to the technique list
+ * only when the canvas-groups flag is on; Instance AI always materializes it
+ * into the knowledge base.
+ */
+export const GROUPING_GUIDANCE = `## Grouping
+
+Organise larger workflows into named node groups — visual frames drawn on the canvas — so the result is readable the first time the user sees it.
+
+- **When to group:** larger workflows that split into clear stages (e.g. ingest → transform → deliver). Give each stage its own group. Small workflows don't need groups — a group there is just noise.
+- **Groups vs sub-workflows:** a group is cosmetic organisation *inside* one workflow; a sub-workflow is a separately-executed, reusable unit. Group to make one canvas readable; extract a sub-workflow to reuse logic or isolate execution.
+- **Naming:** short, outcome-first titles ("Fetch new recordings", not "HTTP + Drive").
+- Groups are created collapsed by default, so the name is what the user sees first — make it descriptive.
+
+Read the node groups reference for the exact rules before creating groups.`;
+
+/**
  * Render the full language reference. The node-groups section is included by
  * default (Instance AI's knowledge base); the MCP SDK reference passes its
  * `canvasGroupsEnabled` flag state as `includeGroups`.
