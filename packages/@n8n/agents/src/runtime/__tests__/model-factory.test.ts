@@ -7,6 +7,8 @@ type ProviderOpts = {
 	baseURL?: string;
 	fetch?: typeof globalThis.fetch;
 	headers?: Record<string, string>;
+	includeUsage?: boolean;
+	supportsStructuredOutputs?: boolean;
 };
 
 // All providers are mocked via vi.mock so require() inside the registry entries
@@ -162,6 +164,8 @@ vi.mock('@ai-sdk/openai-compatible', () => ({
 		baseURL: opts.baseURL,
 		headers: opts.headers,
 		fetch: opts.fetch,
+		includeUsage: opts.includeUsage,
+		supportsStructuredOutputs: opts.supportsStructuredOutputs,
 		specificationVersion: 'v3',
 	}),
 }));
@@ -370,6 +374,7 @@ describe('createModel', () => {
 			expect(model.modelId).toBe('nvidia/llama-3.3-nemotron-super-49b-v1');
 			expect(model.apiKey).toBe('nv-test');
 			expect(model.baseURL).toBe('https://integrate.api.nvidia.com/v1');
+			expect(model.supportsStructuredOutputs).toBe(true);
 		});
 	});
 

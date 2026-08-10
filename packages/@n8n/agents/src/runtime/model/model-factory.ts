@@ -65,6 +65,53 @@ type ProviderRegistry = {
 	[P in ProviderId]: RegistryEntry<P>;
 };
 
+type OpenAiCompatibleCreds = {
+	apiKey?: string;
+	baseURL?: string;
+	headers?: Record<string, string>;
+};
+
+/**
+ * Shared builder for OpenAI-compatible HTTP providers. Prefer this over
+ * `@ai-sdk/<provider>` packages that pull optional NAPI binaries or v4-only types.
+ */
+function buildOpenAiCompatible(
+	name: string,
+	defaultBaseURL: string | undefined,
+	creds: OpenAiCompatibleCreds,
+	model: string,
+	fetch: FetchFn | undefined,
+	options?: { includeUsage?: boolean; supportsStructuredOutputs?: boolean },
+): LanguageModel {
+	const { createOpenAICompatible } =
+		require('@ai-sdk/openai-compatible') as typeof import('@ai-sdk/openai-compatible');
+	const baseURL = creds.baseURL ?? defaultBaseURL;
+	if (!baseURL) {
+		throw new Error(`baseURL is required for OpenAI-compatible provider "${name}"`);
+	}
+	return createOpenAICompatible({
+		name,
+		baseURL,
+		apiKey: creds.apiKey,
+		headers: creds.headers,
+		fetch,
+		includeUsage: options?.includeUsage ?? true,
+		supportsStructuredOutputs: options?.supportsStructuredOutputs ?? true,
+	})(model);
+}
+
+type OpenAiCompatibleProviderId = 'nvidia';
+
+function openAiCompatibleEntry<P extends OpenAiCompatibleProviderId>(
+	name: P,
+	defaultBaseURL: string,
+): RegistryEntry<P> {
+	return {
+		build: (creds, model, fetch) =>
+			buildOpenAiCompatible(name, defaultBaseURL, creds, model, fetch),
+	};
+}
+
 /**
  * Registry of language model providers.
  * Each entry maps a provider id to a builder that loads its @ai-sdk/* package
@@ -86,17 +133,10 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 		},
 	},
 	custom: {
-		build: (creds, model, fetch) => {
-			const { createOpenAICompatible } =
-				require('@ai-sdk/openai-compatible') as typeof import('@ai-sdk/openai-compatible');
-			return createOpenAICompatible({
-				name: 'custom',
-				baseURL: creds.baseURL,
-				apiKey: creds.apiKey,
-				headers: creds.headers,
-				fetch,
-			})(model);
-		},
+		build: (creds, model, fetch) =>
+			// Without includeUsage/supportsStructuredOutputs the SDK drops JSON
+			// schemas and sends json_object only.
+			buildOpenAiCompatible('custom', undefined, creds, model, fetch),
 	},
 	anthropic: {
 		build: (creds, model, fetch) => {
@@ -165,19 +205,7 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 			return createOpenRouter({ apiKey: creds.apiKey, baseURL: creds.baseURL, fetch })(model);
 		},
 	},
-	nvidia: {
-		build: (creds, model, fetch) => {
-			const { createOpenAICompatible } =
-				require('@ai-sdk/openai-compatible') as typeof import('@ai-sdk/openai-compatible');
-			return createOpenAICompatible({
-				name: 'nvidia',
-				baseURL: creds.baseURL ?? 'https://integrate.api.nvidia.com/v1',
-				apiKey: creds.apiKey,
-				headers: creds.headers,
-				fetch,
-			})(model);
-		},
-	},
+	nvidia: openAiCompatibleEntry('nvidia', 'https://integrate.api.nvidia.com/v1'),
 	'azure-openai': {
 		build: (creds, model, fetch) => {
 			const { createAzure } = require('@ai-sdk/azure') as typeof import('@ai-sdk/azure');
