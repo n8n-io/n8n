@@ -174,6 +174,15 @@ describe('OAuth2UserInfoIdentifier', () => {
 			);
 		});
 
+		test('should report a blank expected audience as missing, not malformed', async () => {
+			// The form sends every rendered property, so an untouched field arrives as ''.
+			await expect(
+				identifier.validateOptions({ ...validOptions, expectedAudience: '   ' }),
+			).rejects.toThrow(
+				'An expected audience is required when validating via the UserInfo endpoint',
+			);
+		});
+
 		test('should throw IdentifierValidationError when metadata missing userinfo_endpoint', async () => {
 			const metadataWithoutUserInfo = {
 				issuer: 'https://auth.example.com',

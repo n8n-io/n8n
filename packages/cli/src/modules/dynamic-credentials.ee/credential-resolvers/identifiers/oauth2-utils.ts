@@ -4,8 +4,18 @@ import z from 'zod';
 export const OAuth2OptionsSchema = z.object({
 	metadataUri: z.string().url(),
 	subjectClaim: z.string().optional().default('sub'),
-	/** Override for the audience a token must carry. See {@link assertAudience}. */
-	expectedAudience: z.string().trim().min(1).optional(),
+	/**
+	 * The audience a token must carry. See {@link checkAudience}.
+	 *
+	 * Left blank the field arrives as an empty string, since the form sends every
+	 * property it renders. That means "not configured", so it is normalised away
+	 * rather than rejected — an unset audience is a valid, unenforced resolver.
+	 */
+	expectedAudience: z
+		.string()
+		.trim()
+		.optional()
+		.transform((value) => (value === '' ? undefined : value)),
 });
 
 export type OAuth2Options = z.infer<typeof OAuth2OptionsSchema>;

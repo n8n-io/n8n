@@ -257,6 +257,16 @@ describe('OAuth2TokenIntrospectionIdentifier', () => {
 			);
 		});
 
+		test('should treat a blank expectedAudience as not configured', async () => {
+			// The form sends every rendered property, so an untouched field arrives as ''.
+			const options = { ...validOptions, expectedAudience: '   ' };
+			const response = { active: true, sub: 'user-123', aud: 'other-app' };
+			stubFlow(validMetadata, response);
+
+			await expect(identifier.resolve(mockContext, options)).resolves.toBe('user-123');
+			expect(logger.warn).toHaveBeenCalled();
+		});
+
 		test('should reject a mismatch once expectedAudience is configured', async () => {
 			const options = { ...validOptions, expectedAudience: 'https://api.example.com' };
 			const response = { active: true, sub: 'user-123', aud: 'other-app', client_id: 'other-app' };
