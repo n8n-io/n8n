@@ -78,6 +78,9 @@ describe('reclassifyMaskedStreamFailure', () => {
 		modelService: {
 			getCredits: ReturnType<typeof vi.fn>;
 		};
+		creditService: {
+			isActivationLockActive: ReturnType<typeof vi.fn>;
+		};
 		logger: { debug: ReturnType<typeof vi.fn>; info: ReturnType<typeof vi.fn> };
 	};
 
@@ -86,9 +89,13 @@ describe('reclassifyMaskedStreamFailure', () => {
 
 	function createService(
 		getCredits: () => Promise<{ creditsQuota: number; creditsClaimed: number }>,
+		activationLockActive = false,
 	): ReclassifyInternals {
 		const service = Object.create(InstanceAiService.prototype) as unknown as ReclassifyInternals;
 		service.modelService = { getCredits: vi.fn(getCredits) };
+		service.creditService = {
+			isActivationLockActive: vi.fn().mockResolvedValue(activationLockActive),
+		};
 		service.logger = { debug: vi.fn(), info: vi.fn() };
 		return service;
 	}
@@ -112,6 +119,19 @@ describe('reclassifyMaskedStreamFailure', () => {
 		await expect(service.reclassifyMaskedStreamFailure(masked, user, context)).resolves.toBe(
 			masked,
 		);
+	});
+
+	// The activation lock (INS-1082) refuses use while the quota still has credits left, so the
+	// numbers alone would not explain the failure.
+	it('substitutes a quota-exhausted error when the activation lock is active', async () => {
+		const service = createService(async () => ({ creditsQuota: 100, creditsClaimed: 40 }), true);
+		const masked = createNoOutputGeneratedError();
+
+		const resolved = await service.reclassifyMaskedStreamFailure(masked, user, context);
+
+		expect(resolved).toBeInstanceOf(QuotaExhaustedStreamError);
+		// The balance is never consulted once the lock explains it.
+		expect(service.modelService.getCredits).not.toHaveBeenCalled();
 	});
 
 	it('keeps the original error on the unlimited-credits sentinel', async () => {
