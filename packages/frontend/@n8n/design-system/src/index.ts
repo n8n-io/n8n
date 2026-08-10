@@ -6,7 +6,7 @@ export * from './plugin';
 export * from './types';
 export * from './utils';
 export * from './directives';
-export type { IconOrEmoji } from './components/N8nIconPicker/types';
+export { isIconOrEmoji, type IconOrEmoji } from './components/N8nIconPicker/types';
 export { IconBodyLoaderKey, useInjectIconBodyLoader } from './composables/useIconBodyLoader';
 export type { IconBodyLoader } from './composables/useIconBodyLoader';
 export { useMessage } from './composables/useMessage';
