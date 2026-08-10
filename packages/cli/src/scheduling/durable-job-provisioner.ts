@@ -286,7 +286,9 @@ export class DurableJobProvisioner {
 
 		const effective = Math.min(Math.max(truncated, floor), MAX_MISFIRE_GRACE_SECONDS);
 
-		if (effective !== truncated) {
+		// `numeric` is checked too because a fractional request just above the max
+		// truncates down to exactly the max, which would otherwise hide the clamp.
+		if (effective !== truncated || numeric > MAX_MISFIRE_GRACE_SECONDS) {
 			this.logger.warn(
 				effective > truncated
 					? "Raised a node's misfire grace to the scheduler's minimum"
