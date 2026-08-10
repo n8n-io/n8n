@@ -12,6 +12,7 @@ import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useQuickConnect } from '@/features/credentials/quickConnect/composables/useQuickConnect';
 import type { INodeUi, INodeUpdatePropertiesInformation } from '@/Interface';
 import {
+	GENERIC_AUTH_CREDENTIAL_TYPES,
 	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
 	type InstanceAiCredentialFlow,
 	type InstanceAiCredentialRequest,
@@ -188,15 +189,24 @@ watch(
 	},
 );
 
+const hasGenericAuthRequest = computed(() =>
+	props.credentialRequests.some((request) =>
+		GENERIC_AUTH_CREDENTIAL_TYPES.has(request.credentialType),
+	),
+);
+
 // Auto-continue once every step is handled (selected or skipped) and at
 // least one credential was provided. Runs immediately so a single existing
-// credential auto-selected on init resolves the card without user input, as
-// the setup tool describes. The per-step skip path submits directly instead
-// of relying on this watcher (see handleLater).
+// service-scoped credential auto-selected on init resolves the card without
+// user input, as the setup tool describes. Generic auth types stay
+// preselected but need an explicit Continue — the type alone never identifies
+// a service. The per-step skip path submits directly instead of relying on
+// this watcher (see handleLater).
 watch(
 	() => allHandled.value && anySelected.value,
 	async (nowReady, wasReady) => {
 		if (nowReady && !wasReady) {
+			if (wasReady === undefined && hasGenericAuthRequest.value) return;
 			await nextTick();
 			await handleContinue();
 		}
@@ -601,9 +611,7 @@ async function handleSetupAutomatically() {
 							standalone
 							hide-issues
 							:instance-ai-credential-help="instanceAiCredentialHelp"
-							:skip-auto-select="
-								currentRequest.credentialType === TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE
-							"
+							:skip-auto-select="GENERIC_AUTH_CREDENTIAL_TYPES.has(currentRequest.credentialType)"
 							:credential-setup-hint="currentRequest.setupHint"
 							:credentials-field-label="credentialsFieldLabel"
 							@credential-selected="onCredentialSelected(currentRequest.credentialType, $event)"

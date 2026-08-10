@@ -516,6 +516,35 @@ describe('InstanceAiCredentialSetup', () => {
 			expect(getByText('instanceAi.credential.allSelected')).toBeTruthy();
 		});
 
+		it('keeps a sole generic auth credential preselected but does not auto-submit', async () => {
+			const requests: InstanceAiCredentialRequest[] = [
+				{
+					credentialType: 'httpBearerAuth',
+					reason: 'Authenticate the MCP server',
+					existingCredentials: [{ id: 'existing-bearer', name: 'Bearer Auth account' }],
+				},
+			];
+			const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
+
+			const { getByTestId } = renderComponent({
+				props: {
+					requestId: 'req-1',
+					credentialRequests: requests,
+					message: 'Set up credentials',
+				},
+			});
+
+			await nextTick();
+			await nextTick();
+			expect(confirmSpy).not.toHaveBeenCalled();
+
+			await userEvent.click(getByTestId('instance-ai-credential-continue-button'));
+			expect(confirmSpy).toHaveBeenCalledWith('req-1', {
+				kind: 'credentialSelection',
+				credentials: { httpBearerAuth: 'existing-bearer' },
+			});
+		});
+
 		it('shows deferred state after skip', async () => {
 			const requests = makeCredentialRequests(1);
 			vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
