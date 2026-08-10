@@ -1,0 +1,156 @@
+packages/@n8n/agents/src/types/sdk/tool.ts
+  s_2aa332997f69a5::t_75504b4015a1d4 160
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-tool-filtering.test.ts
+  s_2aa332997f69a5::t_cce66912c39b68 19,110,123,134,147-153,187-225
+  s_2aa332997f69a5::t_0a620d28f2c0a7 29,226,339-365,431-458
+  s_2aa332997f69a5::t_47e766aba1876a 242-272
+  s_2aa332997f69a5::t_09bb772c5ea463 227,273-276,459-462
+packages/@n8n/agents/src/sdk/agent.ts
+  s_2aa332997f69a5::t_bd49159f1f6433 888,891,909-911,914,916-918
+  s_2aa332997f69a5::t_b297ecf6feb78c 741,758,787,817,881,884,886,899-908,912-913,919-922
+  s_2aa332997f69a5::t_ef46f87839db61 955
+  s_2aa332997f69a5::t_d9651ba4bb003e 895-898,915
+  s_2aa332997f69a5::t_3f8496e3e90641 51,887,889-890,892-893,956-962,1133-1136
+  s_2aa332997f69a5::t_771ee1b011417a 943,952-954,1367-1369,1462
+packages/cli/src/modules/agents/sub-agents/sub-agent-foreground-runner.ts
+  s_2aa332997f69a5::t_6c5e33333dcb78 109-111,113-115
+  s_2aa332997f69a5::t_55ae9a97c0c966 118-120
+packages/cli/src/modules/agents/tools/__tests__/node-tool-factory.test.ts
+  s_2aa332997f69a5::t_b1cd1c297812d7 349-351
+  s_2aa332997f69a5::t_86dc79c1eea589 338-347,352-353,355-358,360-384,386-388,391-397,400-406,408-417,443-444
+  s_2aa332997f69a5::t_f23969250aacb7 1,418-442
+  s_2aa332997f69a5::t_0c4aa260b6bd30 9,389-390,407
+  s_2aa332997f69a5::t_51c17d0130ed8c 348,354,359,385,398-399
+packages/cli/src/modules/agents/expression/agent-expression-context.service.ts
+  s_2aa332997f69a5::t_a4251d8c51fa0f 26-32,34-36
+packages/cli/src/modules/agents/sub-agents/__tests__/sub-agent-foreground-runner.test.ts
+  s_2aa332997f69a5::t_d9c2cdef7074b0 239-259
+packages/cli/src/modules/agents/__tests__/agents-service-reconstruct-gating.test.ts
+  s_2aa332997f69a5::t_8fe11519732d5e 244-277
+  s_2aa332997f69a5::t_b78c11df9fb614 39,425-457
+packages/@n8n/agents/src/types/sdk/agent.ts
+  s_2aa332997f69a5::t_bd49159f1f6433 13,180-181
+packages/cli/src/modules/agents/expression/agent-expression-context.ts
+  s_2aa332997f69a5::t_014ff2c5c89d5f 3,34-46,52
+packages/cli/src/modules/agents/tools/node-tool-factory.ts
+  s_2aa332997f69a5::t_dab893396cd2f4 112,155-156,170,172-178
+  s_2aa332997f69a5::t_c42d08706f3835 8,67-88,111,136-141,148-149,165-169,171,179,208-212
+  s_2aa332997f69a5::t_fe51dfb394fec5 15-18
+  s_2aa332997f69a5::t_c73cd4dae9d903 180
+packages/cli/src/modules/agents/expression/__tests__/agent-expression-context.service.test.ts
+  s_2aa332997f69a5::t_a4251d8c51fa0f 144-147,152,155,158-162
+packages/cli/src/modules/agents/json-config/vector-store-runnability.ts
+  s_2aa332997f69a5::t_014ff2c5c89d5f 1-5
+packages/cli/src/modules/instance-ai/eval/__tests__/agent-execution.service.test.ts
+  s_2aa332997f69a5::t_d9375c5051e68b 22,49-55,368,388-390,426,436-461,466-485,541,774-775,950,1017-1036
+  s_2aa332997f69a5::t_da0121f87b6590 75-76,160,166-170
+  s_2aa332997f69a5::t_c8131d26a988d9 367
+  s_2aa332997f69a5::t_5e4a3d436c5c2a 386
+  s_2aa332997f69a5::t_e279b5207179d1 3,526,536
+  s_2aa332997f69a5::t_8f0db8e21bbe96 462-465,486,523-525,527-535,537-540,542-558,560,1037-1038
+  s_2aa332997f69a5::t_e6b6cc8f777289 769-773
+  s_2aa332997f69a5::t_43eb2e7089ecd7 387,487-522,563,1041
+  s_2aa332997f69a5::t_e7fa7322d6f874 954
+  s_2aa332997f69a5::t_d91854b386dae1 56,171-173,336,369-370,379,427-428,559,561-562,759,776,781-783,957,1039-1040
+packages/cli/src/modules/agents/expression/agent-run-overlay.ts
+  s_2aa332997f69a5::t_aa21ad23ae1656 16-17,20-26
+  s_2aa332997f69a5::t_bd49159f1f6433 29
+  s_2aa332997f69a5::t_19f9ff91ef3765 6-10,31
+packages/cli/src/modules/agents/expression/agent-run-fields.ts
+  s_2aa332997f69a5::t_19f9ff91ef3765 21,71,296,298,305-308,310-313,352
+  s_2aa332997f69a5::t_fda20bc5c73ea3 55,190,195,238-240,242,317,321
+  s_2aa332997f69a5::t_b80302189179a6 54,286,309
+  s_2aa332997f69a5::t_8503e41e141ec6 41-46,346
+  s_2aa332997f69a5::t_aa21ad23ae1656 15,59-61,63,219-221,227,234,278-284,287,319
+  s_2aa332997f69a5::t_a747171d8b6009 31,53,285,299-304
+  s_2aa332997f69a5::t_1cdbae8c7d0839 23,62,206,222-226,228,230,241,250-270,315-316,318,320,322-324,335
+  s_2aa332997f69a5::t_014ff2c5c89d5f 19-20,22,24-26,32,169-181,288-292,327-330,333,347
+  s_2aa332997f69a5::t_a55490c3795c5f 271-272,314,325-326,336-339,353,372,376
+packages/@n8n/api-types/src/agents/agent-json-config.schema.ts
+  s_2aa332997f69a5::t_014ff2c5c89d5f 134-135,139,224-225,240-242,323-328,347,527
+  s_2aa332997f69a5::t_10d30d39f30632 528
+  s_2aa332997f69a5::t_cbfdeae705e861 529
+packages/@n8n/agents/src/sdk/__tests__/agent-isolated-runtime.test.ts
+  s_2aa332997f69a5::t_86dc79c1eea589 218-235,246-257
+  s_2aa332997f69a5::t_c5aea37bcd176d 258-259,261-296,346
+  s_2aa332997f69a5::t_996ad10a8c30bc 12,15,260,297-317,330-331,333-335,337-345
+  s_2aa332997f69a5::t_6056c8d0ce13db 13,378-389,391-478,701
+  s_2aa332997f69a5::t_12f35a89923d7a 54,236-245,336,367,669
+  s_2aa332997f69a5::t_d9651ba4bb003e 351,353-366,368-377,479-480
+  s_2aa332997f69a5::t_bd49159f1f6433 318-329,332,347-350
+  s_2aa332997f69a5::t_b9eb6d55fd5645 390
+  s_2aa332997f69a5::t_1d387ca1c4c8bb 352,481,675
+packages/cli/src/modules/agents/__tests__/agent-task.service.test.ts
+  s_2aa332997f69a5::t_d443596f2f7080 6-7,18-19
+  s_2aa332997f69a5::t_8a8127231571b8 1,726,736-739,741-756,910,920-923,925-940
+  s_2aa332997f69a5::t_76a1e275283806 740,924
+  s_2aa332997f69a5::t_98033a252ee8c7 941
+packages/cli/src/modules/instance-ai/eval/agent-execution.service.ts
+  s_2aa332997f69a5::t_c0563d84f1cd44 37-40,174
+  s_2aa332997f69a5::t_6c5e33333dcb78 393-396
+  s_2aa332997f69a5::t_b80302189179a6 154-156,187,685,689,716-720,729
+  s_2aa332997f69a5::t_6a2d48f344b981 2,186,205
+  s_2aa332997f69a5::t_691dc1a610e726 33,175,177-181,183,185,188,196,202,207
+  s_2aa332997f69a5::t_9f8f2ce6a954a6 206,208-210,212-215,283,762,797-800
+  s_2aa332997f69a5::t_f584689bee50e8 351-366,369,398,402-413,415
+  s_2aa332997f69a5::t_e279b5207179d1 203-204
+  s_2aa332997f69a5::t_968b477fc9e57f 42,211,277,763,793
+packages/cli/src/modules/agents/json-config/mcp-server-runnability.ts
+  s_2aa332997f69a5::t_8bc1f475aec168 1-14
+packages/cli/src/modules/agents/expression/__tests__/agent-run-overlay.test.ts
+  s_2aa332997f69a5::t_cce66912c39b68 197-212,214-217,219,221-243
+  s_2aa332997f69a5::t_aa400fc5f28159 324,351
+  s_2aa332997f69a5::t_36a0625add8430 406-480
+  s_2aa332997f69a5::t_7d3d82ee71e8ee 136,140-144,146-150
+  s_2aa332997f69a5::t_bd49159f1f6433 1,139,145,173-178
+  s_2aa332997f69a5::t_d973e20568debf 276-288
+  s_2aa332997f69a5::t_8f0db8e21bbe96 405,481-554
+  s_2aa332997f69a5::t_3f779b48be4d6b 298-320,369-404
+  s_2aa332997f69a5::t_b518bd3aa489a2 80,267-275,289-297,321-323,325-350,352-368
+  s_2aa332997f69a5::t_9797d7caaf8ba9 213,218,220
+  s_2aa332997f69a5::t_cbf814c310f6cc 244,555
+packages/cli/src/modules/agents/json-config/from-json-config.ts
+  s_2aa332997f69a5::t_014ff2c5c89d5f 45,185
+  s_2aa332997f69a5::t_2fe26900b3aa69 41,169-172,174
+packages/cli/src/modules/agents/utils/sub-agent-resolver.ts
+  s_2aa332997f69a5::t_8503e41e141ec6 6-9,22,29
+packages/@n8n/agents/src/skills/tools.ts
+  s_2aa332997f69a5::t_c4a365a5a91425 3,107-116,120-132
+packages/cli/src/modules/agents/agent-runtime-instrumentation.ts
+  s_2aa332997f69a5::t_6c5e33333dcb78 15-19,65
+packages/cli/src/modules/agents/agent-task.service.ts
+  s_2aa332997f69a5::t_86708661fbe9df 1-6,495-499,602-606
+packages/cli/src/node-execution/__tests__/ephemeral-node-executor.test.ts
+  s_2aa332997f69a5::t_86dc79c1eea589 13,656-698
+packages/cli/src/node-execution/ephemeral-node-executor.ts
+  s_2aa332997f69a5::t_4da199ce67be03 486
+  s_2aa332997f69a5::t_7cd8f058eae0fc 478-479
+  s_2aa332997f69a5::t_0f457bc51ac9b3 484-485,487
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_2aa332997f69a5::t_b587d35a6842bc 4,54-58,112-120
+  s_2aa332997f69a5::t_6c5e33333dcb78 125,406,424,502
+  s_2aa332997f69a5::t_903d49f63e6639 501
+  s_2aa332997f69a5::t_a227d66a2416fa 198-201,203-211,213-216
+  s_2aa332997f69a5::t_fda20bc5c73ea3 282,299,303-304,307,329,349,352,386,405,423,503
+  s_2aa332997f69a5::t_33d8d40d5d0be5 202,212
+  s_2aa332997f69a5::t_8503e41e141ec6 99-104,540,556,790-795
+  s_2aa332997f69a5::t_2cbcd9b014ab05 437,477
+  s_2aa332997f69a5::t_c00aebadc04055 495-498,506,522-528
+  s_2aa332997f69a5::t_98d01e7fcaa11d 217-229,246-253,370-377
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "0ae8dd77954d7eea3750c196aa455921e4d7c11c",
+  "prompts": {},
+  "sessions": {
+    "s_2aa332997f69a5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fb33c-e258-7363-982f-32182e1f30e6",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

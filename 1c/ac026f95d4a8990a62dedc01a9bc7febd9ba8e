@@ -1,0 +1,38 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiCredentialSetup.vue
+  s_704a1a6a42be24::t_a03e0cd5a03960 252-253,302-303
+packages/@n8n/instance-ai/src/tools/workflows/credential-utils.ts
+  s_704a1a6a42be24::t_e8d72a44210154 123-124
+packages/@n8n/instance-ai/src/tools/workflows/setup-workflow.service.ts
+  s_704a1a6a42be24::t_a5888c0e773613 473-474
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useInstanceAiHandoff.ts
+  s_704a1a6a42be24::t_a03e0cd5a03960 29-31
+packages/@n8n/instance-ai/src/tools/credentials.tool.ts
+  s_704a1a6a42be24::t_2c0c5251ba4bca 627-628,636-637
+  s_704a1a6a42be24::t_a03e0cd5a03960 97-99,120-122,144-147
+packages/@n8n/instance-ai/src/tools/__tests__/credentials.tool.test.ts
+  s_704a1a6a42be24::t_c90de569753f71 863-867
+  s_704a1a6a42be24::t_63b49fe36cd8a6 868-870
+  s_704a1a6a42be24::t_eaa19d14cd647b 885
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useInstanceAiCredentialHelp.ts
+  s_704a1a6a42be24::t_2c0c5251ba4bca 14-18
+packages/frontend/editor-ui/src/features/ai/instanceAi/workflowSetup/components/WorkflowSetupSectionBody.vue
+  s_704a1a6a42be24::t_a03e0cd5a03960 72-73
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_704a1a6a42be24::t_a03e0cd5a03960 5788-5789
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "1cac026f95d4a8990a62dedc01a9bc7febd9ba8e",
+  "prompts": {},
+  "sessions": {
+    "s_704a1a6a42be24": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b2cbbabf-304d-413b-b4e6-2ce7d66d0ec9",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,25 @@
+packages/@n8n/config/src/configs/expression-engine.config.ts
+  s_2a226e0095c004::t_fa25015f5e24e9 66-68
+packages/cli/src/commands/base-command.ts
+  s_2a226e0095c004::t_4bf8d92684f7fa 29,229-238
+packages/workflow/src/node-parameters/native-parameter-resolution.ts
+  s_2a226e0095c004::t_cd6a33ac9699b5 104-114,127-128
+packages/workflow/test/node-parameters/native-parameter-resolution.test.ts
+  s_2a226e0095c004::t_539388d83b0aba 7,161-175
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "a6b92269c3e991cfcf19b1425bac4c31b1381943",
+  "prompts": {},
+  "sessions": {
+    "s_2a226e0095c004": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_2a226e0095c004",
+        "model": "unknown"
+      },
+      "human_author": "Mike Repeć <mike.repec@n8n.io>"
+    }
+  }
+}

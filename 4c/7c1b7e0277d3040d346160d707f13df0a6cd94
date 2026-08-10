@@ -1,0 +1,40 @@
+packages/cli/src/modules/agents/repositories/agent-credential-dependency.repository.ts
+  s_c86301c80dfc9a::t_ee62ff65a65948 66-68
+packages/@n8n/db/src/migrations/sqlite/index.ts
+  s_c86301c80dfc9a::t_ee62ff65a65948 233,467
+packages/cli/src/modules/agents/entities/agent-credential-dependency.entity.ts
+  s_c86301c80dfc9a::t_243f1ae39ef1bd 2
+packages/@n8n/db/src/migrations/postgresdb/index.ts
+  s_c86301c80dfc9a::t_ee62ff65a65948 241,485
+packages/cli/test/integration/workflows/workflow-dependency.controller.test.ts
+  s_c86301c80dfc9a::t_3be888809c550f 16,26,44,77,89-99
+  s_c86301c80dfc9a::t_1863d6d3004fb9 1-2,88
+packages/cli/src/modules/agents/__tests__/agent-credential-dependency.repository.test.ts
+  s_c86301c80dfc9a::t_69036bc46ab251 82
+packages/@n8n/db/src/migrations/common/1785828155092-CreateAgentCredentialDependencyTable.ts
+  s_c86301c80dfc9a::t_ee62ff65a65948 3
+docs/generated/postgres-schema/README.md
+  s_c86301c80dfc9a::t_06b49ac51fc0dd 14
+docs/generated/postgres-schema/public.agent_credential_dependency.md
+  s_c86301c80dfc9a::t_d1b7fd4ad88924 17,27
+docs/generated/sqlite-schema/README.md
+  s_c86301c80dfc9a::t_d48d6afc0fa264 14
+docs/generated/sqlite-schema/agent_credential_dependency.md
+  s_c86301c80dfc9a::t_ef25e0967eb7c9 9,30,37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "4c7c1b7e0277d3040d346160d707f13df0a6cd94",
+  "prompts": {},
+  "sessions": {
+    "s_c86301c80dfc9a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fc8fd-58da-7420-8c1c-456f4a68fc45",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}
