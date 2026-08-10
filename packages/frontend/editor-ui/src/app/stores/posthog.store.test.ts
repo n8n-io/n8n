@@ -158,6 +158,7 @@ describe('Posthog store', () => {
 				expect.objectContaining({
 					bootstrap: {
 						distinctID: `${CURRENT_INSTANCE_ID}#${CURRENT_USER_ID}`,
+						isIdentifiedID: true,
 						featureFlags: flags,
 					},
 				}),
@@ -229,6 +230,27 @@ describe('Posthog store', () => {
 				instance_id: CURRENT_INSTANCE_ID,
 				version_cli: CURRENT_VERSION_CLI,
 			});
+		});
+
+		it('re-identifies without re-initializing when the SDK is already loaded', () => {
+			const posthog = usePostHog();
+			posthog.init();
+			postHogLoadedCallback?.();
+
+			// logout → login in the same page load
+			posthog.reset();
+			vi.mocked(window.posthog!.init!).mockClear();
+			vi.mocked(window.posthog!.identify!).mockClear();
+			window.posthog!.__loaded = true;
+
+			posthog.init();
+
+			expect(window.posthog?.init).not.toHaveBeenCalled();
+			expect(window.posthog?.identify).toHaveBeenCalledWith(
+				`${CURRENT_INSTANCE_ID}#${CURRENT_USER_ID}`,
+				expect.objectContaining({ instance_id: CURRENT_INSTANCE_ID }),
+			);
+			expect(window.posthog?.group).toHaveBeenCalledWith('company', CURRENT_INSTANCE_ID);
 		});
 
 		it('identifies the instance group', () => {
