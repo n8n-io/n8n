@@ -7,7 +7,6 @@ import {
 } from '@n8n/ai-utilities';
 import {
 	NodeConnectionTypes,
-	type INodePropertyOptions,
 	type INodeType,
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
@@ -15,17 +14,8 @@ import {
 } from 'n8n-workflow';
 
 import type { OpenAICompatibleCredential } from '../../../types/types';
+import { minimaxTextModelOptions } from '../../vendors/MiniMax/helpers/modelOptions';
 import { openAiFailedAttemptHandler } from '../../vendors/OpenAi/helpers/error-handling';
-
-const legacyModelOptions: INodePropertyOptions[] = [
-	{ name: 'MiniMax-M2', value: 'MiniMax-M2' },
-	{ name: 'MiniMax-M2.1', value: 'MiniMax-M2.1' },
-	{ name: 'MiniMax-M2.1-Highspeed', value: 'MiniMax-M2.1-highspeed' },
-	{ name: 'MiniMax-M2.5', value: 'MiniMax-M2.5' },
-	{ name: 'MiniMax-M2.5-Highspeed', value: 'MiniMax-M2.5-highspeed' },
-	{ name: 'MiniMax-M2.7', value: 'MiniMax-M2.7' },
-	{ name: 'MiniMax-M2.7-Highspeed', value: 'MiniMax-M2.7-highspeed' },
-];
 
 export class LmChatMinimax implements INodeType {
 	description: INodeTypeDescription = {
@@ -78,7 +68,7 @@ export class LmChatMinimax implements INodeType {
 				type: 'options',
 				description:
 					'The model which will generate the completion. <a href="https://platform.minimax.io/docs/api-reference/text-openai-api">Learn more</a>.',
-				options: legacyModelOptions,
+				options: minimaxTextModelOptions.v1,
 				default: 'MiniMax-M2.7',
 				displayOptions: {
 					show: {
@@ -92,7 +82,7 @@ export class LmChatMinimax implements INodeType {
 				type: 'options',
 				description:
 					'The model which will generate the completion. <a href="https://platform.minimax.io/docs/api-reference/text-openai-api">Learn more</a>.',
-				options: [...legacyModelOptions, { name: 'MiniMax-M3', value: 'MiniMax-M3' }],
+				options: minimaxTextModelOptions.v1_1,
 				default: 'MiniMax-M3',
 				builderHint: {
 					propertyHint: 'Default to the latest MiniMax flagship model (MiniMax-M3).',

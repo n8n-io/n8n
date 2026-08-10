@@ -92,6 +92,10 @@ describe('LmChatMinimax', () => {
 				default: 'MiniMax-M2.7',
 				displayOptions: { show: { '@version': [1] } },
 			});
+			expect(legacyModelProperty?.options).not.toContainEqual({
+				name: 'MiniMax-M3',
+				value: 'MiniMax-M3',
+			});
 			expect(currentModelProperty).toMatchObject({
 				default: 'MiniMax-M3',
 				options: expect.arrayContaining([{ name: 'MiniMax-M3', value: 'MiniMax-M3' }]),

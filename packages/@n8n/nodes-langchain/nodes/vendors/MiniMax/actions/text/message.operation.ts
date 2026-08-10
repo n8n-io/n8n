@@ -3,7 +3,6 @@ import type {
 	IDataObject,
 	IExecuteFunctions,
 	INodeExecutionData,
-	INodePropertyOptions,
 	INodeProperties,
 } from 'n8n-workflow';
 import { accumulateTokenUsage, jsonParse, updateDisplayOptions } from 'n8n-workflow';
@@ -17,24 +16,15 @@ import type {
 	ToolCall,
 	ToolFunction,
 } from '../../helpers/interfaces';
+import { minimaxTextModelOptions } from '../../helpers/modelOptions';
 import { apiRequest } from '../../transport';
-
-const legacyModelOptions: INodePropertyOptions[] = [
-	{ name: 'MiniMax-M2', value: 'MiniMax-M2' },
-	{ name: 'MiniMax-M2.1', value: 'MiniMax-M2.1' },
-	{ name: 'MiniMax-M2.1-Highspeed', value: 'MiniMax-M2.1-highspeed' },
-	{ name: 'MiniMax-M2.5', value: 'MiniMax-M2.5' },
-	{ name: 'MiniMax-M2.5-Highspeed', value: 'MiniMax-M2.5-highspeed' },
-	{ name: 'MiniMax-M2.7', value: 'MiniMax-M2.7' },
-	{ name: 'MiniMax-M2.7-Highspeed', value: 'MiniMax-M2.7-highspeed' },
-];
 
 const properties: INodeProperties[] = [
 	{
 		displayName: 'Model',
 		name: 'modelId',
 		type: 'options',
-		options: legacyModelOptions,
+		options: minimaxTextModelOptions.v1,
 		default: 'MiniMax-M2.7',
 		description: 'The model to use for generating the response',
 		displayOptions: {
@@ -47,7 +37,7 @@ const properties: INodeProperties[] = [
 		displayName: 'Model',
 		name: 'modelId',
 		type: 'options',
-		options: [...legacyModelOptions, { name: 'MiniMax-M3', value: 'MiniMax-M3' }],
+		options: minimaxTextModelOptions.v1_1,
 		default: 'MiniMax-M3',
 		description: 'The model to use for generating the response',
 		displayOptions: {
