@@ -5,7 +5,7 @@ import {
 	type AgentJsonToolConfig,
 	type SUPPORTED_WORKFLOW_TOOL_TRIGGERS,
 } from '@n8n/api-types';
-import type { WorkflowRepository, WorkflowEntity } from '@n8n/db';
+import type { WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
@@ -14,6 +14,9 @@ import type {
 	IExecuteResponsePromiseData,
 	INode,
 	IPinData,
+	IRun,
+	IRunData,
+	ITaskData,
 	IWorkflowExecutionDataProcess,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
@@ -35,7 +38,10 @@ import type { WorkflowRunner } from '@/workflow-runner';
 
 import type { InstrumentToolAdditionalData } from '../agent-runtime-instrumentation';
 import { sanitizeToolName } from '../json-config/agent-config-composition';
-import { findWorkflowToolWorkflow } from './workflow-tool-workflow-resolver';
+import type {
+	WorkflowToolWorkflowLoader,
+	WorkflowToolWorkflowReference,
+} from './workflow-tool-workflow-loader.service';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -78,11 +84,14 @@ function isWorkflowToolResponse(value: unknown): value is IExecuteResponsePromis
 // Context passed from the compile step
 // ---------------------------------------------------------------------------
 
+export type WorkflowToolExecutionMode = Extract<WorkflowExecuteMode, 'manual' | 'integrated'>;
+
 export interface WorkflowToolContext {
-	workflowRepository: WorkflowRepository;
+	workflowLoader: WorkflowToolWorkflowLoader;
 	workflowRunner: WorkflowRunner;
 	activeExecutions: ActiveExecutions;
 	projectId: string;
+	executionMode: WorkflowToolExecutionMode;
 	/** Base URL for webhooks/forms (e.g. http://localhost:5678/) */
 	webhookBaseUrl?: string;
 	/** Eval-only additionalData decoration for the sub-execution — absent on every production path. */
@@ -138,6 +147,7 @@ export function normalizeTriggerInput(
 	triggerNode: INode,
 	triggerType: string,
 	inputData: Record<string, unknown>,
+	executionMode: WorkflowToolExecutionMode,
 ): IPinData {
 	switch (triggerType) {
 		case 'chat':
@@ -167,7 +177,7 @@ export function normalizeTriggerInput(
 							query: isRecord(query) ? query : {},
 							body: isRecord(body) ? body : inputData,
 							webhookUrl: '',
-							executionMode: 'agent',
+							executionMode: executionMode === 'manual' ? 'test' : 'production',
 						},
 					},
 				],
@@ -285,24 +295,24 @@ export async function executeWorkflow(
 	const { workflowRunner, activeExecutions } = context;
 
 	// Build pin data for the trigger
-	const triggerPinData = normalizeTriggerInput(triggerNode, triggerType, inputData);
-
-	// Merge with workflow's existing pinData
-	const workflowPinData = workflow.pinData ?? {};
-	const mergedPinData: IPinData = { ...workflowPinData, ...triggerPinData };
-
-	// Determine execution mode from trigger type
-	const executionMode: WorkflowExecuteMode = triggerType === 'chat' ? 'chat' : 'manual';
+	const triggerPinData = normalizeTriggerInput(
+		triggerNode,
+		triggerType,
+		inputData,
+		context.executionMode,
+	);
+	const workflowData =
+		workflow.pinData === undefined ? workflow : { ...workflow, pinData: undefined };
 
 	// Build execution data following Instance AI adapter's pattern
 	const runData: IWorkflowExecutionDataProcess = {
-		executionMode,
-		workflowData: workflow,
+		executionMode: context.executionMode,
+		workflowData,
 		startNodes: [{ name: triggerNode.name, sourceData: null }],
-		pinData: mergedPinData,
+		pinData: triggerPinData,
 		executionData: createRunExecutionData({
 			startData: {},
-			resultData: { pinData: mergedPinData, runData: {} },
+			resultData: { pinData: triggerPinData, runData: {} },
 			executionData: {
 				contextData: {},
 				metadata: {},
@@ -348,6 +358,7 @@ export async function executeWorkflow(
 	// Wait for completion with timeout protection
 	const timeoutMs = DEFAULT_TIMEOUT_MS;
 
+	let completedRun: IRun | undefined;
 	if (activeExecutions.has(executionId)) {
 		let timeoutId: NodeJS.Timeout | undefined;
 		const timeoutPromise = new Promise<never>((_, reject) => {
@@ -357,7 +368,10 @@ export async function executeWorkflow(
 		});
 
 		try {
-			await Promise.race([activeExecutions.getPostExecutePromise(executionId), timeoutPromise]);
+			completedRun = await Promise.race([
+				activeExecutions.getPostExecutePromise(executionId),
+				timeoutPromise,
+			]);
 			clearTimeout(timeoutId);
 		} catch (error) {
 			clearTimeout(timeoutId);
@@ -380,7 +394,10 @@ export async function executeWorkflow(
 		}
 	}
 
-	const result = await extractResult(executionId, allOutputs);
+	const result =
+		completedRun && context.executionMode === 'integrated'
+			? formatResult(executionId, completedRun.status, completedRun.data, allOutputs)
+			: await extractResult(executionId, allOutputs);
 	if (isWorkflowToolResponse(webhookResponse)) {
 		const response = await Container.get(WebhookResponseRelay).restoreOffloadedBody(
 			webhookResponse,
@@ -407,22 +424,14 @@ function normaliseExecutionStatus(status: string | undefined): string {
 }
 
 /** Extract the JSON items produced by the last run of a node. */
-function outputItemsFromNodeRuns(
-	nodeRuns: Array<{ data?: { main?: Array<Array<{ json: unknown } | null | undefined>> } }>,
-): unknown[] {
+function outputItemsFromNodeRuns(nodeRuns: ITaskData[]): unknown[] {
 	const lastRun = nodeRuns[nodeRuns.length - 1];
 	if (!lastRun?.data?.main) return [];
-	return lastRun.data.main
-		.flat()
-		.filter((item): item is NonNullable<typeof item> => item !== null && item !== undefined)
-		.map((item) => item.json);
+	return lastRun.data.main.flatMap((items) => items ?? []).map((item) => item.json);
 }
 
 /** Build the resultData map from an execution's runData, scoped by `allOutputs`. */
-function collectResultData(
-	runData: Record<string, Parameters<typeof outputItemsFromNodeRuns>[0]>,
-	allOutputs: boolean,
-): Record<string, unknown> {
+function collectResultData(runData: IRunData, allOutputs: boolean): Record<string, unknown> {
 	const resultData: Record<string, unknown> = {};
 
 	if (allOutputs) {
@@ -446,6 +455,23 @@ function collectResultData(
 	return resultData;
 }
 
+function formatResult(
+	executionId: string,
+	status: string | undefined,
+	data: IRun['data'] | undefined,
+	allOutputs: boolean,
+) {
+	const runData = data?.resultData?.runData;
+	const resultData = runData ? collectResultData(runData, allOutputs) : {};
+
+	return {
+		executionId,
+		status: normaliseExecutionStatus(status),
+		data: Object.keys(resultData).length > 0 ? truncateResultData(resultData) : undefined,
+		error: data?.resultData?.error?.message,
+	};
+}
+
 export async function extractResult(
 	executionId: string,
 	allOutputs: boolean,
@@ -464,20 +490,7 @@ export async function extractResult(
 		return { executionId, status: 'unknown' };
 	}
 
-	const runData = execution.data?.resultData?.runData;
-	const resultData = runData
-		? collectResultData(
-				runData as Record<string, Parameters<typeof outputItemsFromNodeRuns>[0]>,
-				allOutputs,
-			)
-		: {};
-
-	return {
-		executionId,
-		status: normaliseExecutionStatus(execution.status),
-		data: Object.keys(resultData).length > 0 ? truncateResultData(resultData) : undefined,
-		error: execution.data?.resultData?.error?.message,
-	};
+	return formatResult(executionId, execution.status, execution.data, allOutputs);
 }
 
 // ---------------------------------------------------------------------------
@@ -588,20 +601,17 @@ async function buildWorkflowTool(
 	context: WorkflowToolContext,
 ): Promise<BuiltTool> {
 	const workflowName = descriptor.workflow;
-
-	// Access control is project sharing: the
-	// workflow must be shared with the agent's project.
-	const candidateWorkflow = await findWorkflowToolWorkflow(
-		context.workflowRepository,
-		descriptor,
+	const initialReference: WorkflowToolWorkflowReference = {
+		workflowName,
+		...(descriptor.workflowId !== undefined ? { workflowId: descriptor.workflowId } : {}),
+	};
+	const workflow = await context.workflowLoader.loadPublishedWorkflow(
 		context.projectId,
+		initialReference,
 	);
-
-	if (!candidateWorkflow) {
+	if (!workflow) {
 		throw new Error(`Workflow "${workflowName}" not found`);
 	}
-
-	const workflow = candidateWorkflow;
 
 	validateCompatibility(workflow);
 	const { node: triggerNode, triggerType } = detectTriggerNode(workflow);
@@ -615,18 +625,14 @@ async function buildWorkflowTool(
 	const toolDescription = descriptor.description ?? `Execute the "${workflowName}" workflow`;
 	const inputSchema = inferInputSchema(triggerNode, triggerType);
 	const allOutputs = descriptor.allOutputs ?? false;
+	const reference: WorkflowToolWorkflowReference = {
+		workflowId: workflow.id,
+		workflowName: workflow.name,
+	};
 
 	// Form triggers return a link — the user fills out the form in their browser,
 	// and the workflow executes independently when they submit.
 	if (triggerType === 'form') {
-		const formPath =
-			(triggerNode.parameters?.path as string) ??
-			((triggerNode.parameters?.options as Record<string, unknown>)?.path as string) ??
-			triggerNode.webhookId ??
-			workflow.id;
-		const baseUrl = (context.webhookBaseUrl ?? 'http://localhost:5678/').replace(/\/$/, '');
-		const formUrl = `${baseUrl}/form/${formPath}`;
-
 		const builder = new Tool(toolName)
 			.description(
 				toolDescription === `Execute the "${workflowName}" workflow`
@@ -634,19 +640,38 @@ async function buildWorkflowTool(
 					: toolDescription,
 			)
 			.input(inputSchema)
+			.output(
+				z.object({
+					status: z.literal('form_link_sent'),
+					formUrl: z.string(),
+					message: z.string(),
+				}),
+			)
 			.toMessage(
-				() =>
+				(output) =>
 					({
 						type: 'custom',
 						components: [
-							{ type: 'section', text: `📋 *<${formUrl}|Click here to open the form>*` },
+							{
+								type: 'section',
+								text: `📋 *<${output.formUrl}|Click here to open the form>*`,
+							},
 						],
 					}) as never,
 			)
-			// eslint-disable-next-line @typescript-eslint/require-await -- Tool.handler() expects an async callback
 			.handler(async (input: Record<string, unknown>) => {
-				const reason = (input.reason as string) ?? `Please fill out the ${workflowName} form`;
-				return { status: 'form_link_sent', formUrl, message: reason };
+				const current = await loadCurrentPublishedWorkflow(context, reference, triggerType);
+				const parsedInput = inferInputSchema(current.triggerNode, current.triggerType).parse(input);
+				const formUrl = getFormUrl(current.workflow, current.triggerNode, context.webhookBaseUrl);
+				const reason = parsedInput.reason;
+				return {
+					status: 'form_link_sent' as const,
+					formUrl,
+					message:
+						typeof reason === 'string'
+							? reason
+							: `Please fill out the ${current.workflow.name} form`,
+				};
 			});
 
 		const built = builder.build();
@@ -674,11 +699,13 @@ async function buildWorkflowTool(
 			}),
 		)
 		.handler(async (input: Record<string, unknown>) => {
+			const current = await loadCurrentPublishedWorkflow(context, reference, triggerType);
+			const parsedInput = inferInputSchema(current.triggerNode, current.triggerType).parse(input);
 			return await executeWorkflow(
-				workflow,
-				triggerNode,
-				triggerType,
-				input,
+				current.workflow,
+				current.triggerNode,
+				current.triggerType,
+				parsedInput,
 				context,
 				allOutputs,
 				toolName,
@@ -695,6 +722,45 @@ async function buildWorkflowTool(
 			triggerType,
 		},
 	};
+}
+
+async function loadCurrentPublishedWorkflow(
+	context: WorkflowToolContext,
+	reference: WorkflowToolWorkflowReference,
+	expectedTriggerType: string,
+) {
+	const workflow = await context.workflowLoader.loadPublishedWorkflow(context.projectId, reference);
+	if (!workflow) {
+		throw new Error(`Workflow "${reference.workflowName}" is no longer published or accessible`);
+	}
+
+	validateCompatibility(workflow);
+	const { node: triggerNode, triggerType } = detectTriggerNode(workflow);
+	if (triggerType !== expectedTriggerType) {
+		throw new Error(
+			`Workflow "${reference.workflowName}" changed trigger type from ${expectedTriggerType} to ${triggerType}`,
+		);
+	}
+
+	return { workflow, triggerNode, triggerType };
+}
+
+function getFormUrl(
+	workflow: WorkflowEntity,
+	triggerNode: INode,
+	webhookBaseUrl: string | undefined,
+): string {
+	const directPath = triggerNode.parameters?.path;
+	const options: unknown = triggerNode.parameters?.options;
+	const optionPath = isRecord(options) ? options.path : undefined;
+	const formPath =
+		typeof directPath === 'string'
+			? directPath
+			: typeof optionPath === 'string'
+				? optionPath
+				: (triggerNode.webhookId ?? workflow.id);
+	const baseUrl = (webhookBaseUrl ?? 'http://localhost:5678/').replace(/\/$/, '');
+	return `${baseUrl}/form/${formPath}`;
 }
 
 // ---------------------------------------------------------------------------
