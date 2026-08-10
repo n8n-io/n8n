@@ -4370,34 +4370,44 @@ describe('row-content authorization on write endpoints', () => {
 	};
 
 	let project: Project;
+	let otherProject: Project;
+	let readWriteUser: User;
+	let writeOnlyRoleSlug: string;
 	let writerAgent: SuperAgentTest;
 	let readWriterAgent: SuperAgentTest;
 
-	const createSensitiveTable = async () => {
-		const dataTable = await createDataTable(project, {
+	const createSensitiveTable = async (owningProject: Project = project) =>
+		await createDataTable(owningProject, {
 			name: 'Sensitive Table',
 			columns: [{ name: 'secret', type: 'string' }],
+			data: [{ secret: SECRET }],
 		});
-		const columns = await dataTableColumnRepository.getColumns(dataTable.id);
-		await dataTableRowsRepository.insertRows(dataTable.id, [{ secret: SECRET }], columns, 'id');
-		return dataTable;
+
+	const readSecrets = async (dataTableId: string) => {
+		const response = await readWriterAgent
+			.get(`/projects/${project.id}/data-tables/${dataTableId}/rows`)
+			.expect(200);
+
+		return (response.body.data.data as DataTableRow[]).map((row) => row.secret);
 	};
 
 	beforeAll(async () => {
 		project = await createTeamProject('row authorization project', owner);
+		otherProject = await createTeamProject('other row authorization project', owner);
 
 		const writeOnlyRole = await createCustomRoleWithScopeSlugs(['dataTable:writeRow'], {
 			roleType: 'project',
 		});
+		writeOnlyRoleSlug = writeOnlyRole.slug;
 		const writeOnlyUser = await createMember();
-		await linkUserToProject(writeOnlyUser, project, writeOnlyRole.slug);
+		await linkUserToProject(writeOnlyUser, project, writeOnlyRoleSlug);
 		writerAgent = testServer.authAgentFor(writeOnlyUser);
 
 		const readWriteRole = await createCustomRoleWithScopeSlugs(
 			['dataTable:writeRow', 'dataTable:readRow'],
 			{ roleType: 'project' },
 		);
-		const readWriteUser = await createMember();
+		readWriteUser = await createMember();
 		await linkUserToProject(readWriteUser, project, readWriteRole.slug);
 		readWriterAgent = testServer.authAgentFor(readWriteUser);
 	});
@@ -4415,10 +4425,13 @@ describe('row-content authorization on write endpoints', () => {
 		test('rejects returnData without dataTable:readRow scope', async () => {
 			const dataTable = await createSensitiveTable();
 
-			await writerAgent
+			const response = await writerAgent
 				.patch(`/projects/${project.id}/data-tables/${dataTable.id}/rows`)
 				.send({ filter: MATCH_ALL_FILTER, data: { secret: 'overwritten' }, returnData: true })
 				.expect(403);
+
+			expect(JSON.stringify(response.body)).not.toContain(SECRET);
+			expect(await readSecrets(dataTable.id)).toEqual([SECRET]);
 		});
 
 		test('allows a plain update without dataTable:readRow scope', async () => {
@@ -4428,6 +4441,8 @@ describe('row-content authorization on write endpoints', () => {
 				.patch(`/projects/${project.id}/data-tables/${dataTable.id}/rows`)
 				.send({ filter: MATCH_ALL_FILTER, data: { secret: 'overwritten' } })
 				.expect(200);
+
+			expect(await readSecrets(dataTable.id)).toEqual(['overwritten']);
 		});
 
 		test('returns row contents with dataTable:readRow scope', async () => {
@@ -4438,7 +4453,10 @@ describe('row-content authorization on write endpoints', () => {
 				.send({ filter: MATCH_ALL_FILTER, data: { secret: 'overwritten' }, dryRun: true })
 				.expect(200);
 
-			expect(JSON.stringify(response.body)).toContain(SECRET);
+			expect(response.body.data).toMatchObject([
+				{ secret: SECRET, dryRunState: 'before' },
+				{ secret: 'overwritten', dryRunState: 'after' },
+			]);
 		});
 	});
 
@@ -4455,10 +4473,12 @@ describe('row-content authorization on write endpoints', () => {
 		test('rejects returnData without dataTable:readRow scope', async () => {
 			const dataTable = await createSensitiveTable();
 
-			await writerAgent
+			const response = await writerAgent
 				.post(`/projects/${project.id}/data-tables/${dataTable.id}/upsert`)
 				.send({ filter: MATCH_ALL_FILTER, data: { secret: 'overwritten' }, returnData: true })
 				.expect(403);
+
+			expect(JSON.stringify(response.body)).not.toContain(SECRET);
 		});
 
 		test('allows a plain upsert without dataTable:readRow scope', async () => {
@@ -4468,6 +4488,22 @@ describe('row-content authorization on write endpoints', () => {
 				.post(`/projects/${project.id}/data-tables/${dataTable.id}/upsert`)
 				.send({ filter: MATCH_ALL_FILTER, data: { secret: 'overwritten' } })
 				.expect(200);
+
+			expect(await readSecrets(dataTable.id)).toEqual(['overwritten']);
+		});
+
+		test('returns row contents with dataTable:readRow scope', async () => {
+			const dataTable = await createSensitiveTable();
+
+			const response = await readWriterAgent
+				.post(`/projects/${project.id}/data-tables/${dataTable.id}/upsert`)
+				.send({ filter: MATCH_ALL_FILTER, data: { secret: 'overwritten' }, dryRun: true })
+				.expect(200);
+
+			expect(response.body.data).toMatchObject([
+				{ secret: SECRET, dryRunState: 'before' },
+				{ secret: 'overwritten', dryRunState: 'after' },
+			]);
 		});
 	});
 
@@ -4475,10 +4511,13 @@ describe('row-content authorization on write endpoints', () => {
 		test('rejects returnData without dataTable:readRow scope', async () => {
 			const dataTable = await createSensitiveTable();
 
-			await writerAgent
+			const response = await writerAgent
 				.delete(`/projects/${project.id}/data-tables/${dataTable.id}/rows`)
 				.query({ filter: JSON.stringify(MATCH_ALL_FILTER), returnData: 'true' })
 				.expect(403);
+
+			expect(JSON.stringify(response.body)).not.toContain(SECRET);
+			expect(await readSecrets(dataTable.id)).toEqual([SECRET]);
 		});
 
 		test('allows a plain delete without dataTable:readRow scope', async () => {
@@ -4488,6 +4527,8 @@ describe('row-content authorization on write endpoints', () => {
 				.delete(`/projects/${project.id}/data-tables/${dataTable.id}/rows`)
 				.query({ filter: JSON.stringify(MATCH_ALL_FILTER) })
 				.expect(200);
+
+			expect(await readSecrets(dataTable.id)).toEqual([]);
 		});
 
 		test('returns row contents with dataTable:readRow scope', async () => {
@@ -4498,10 +4539,25 @@ describe('row-content authorization on write endpoints', () => {
 				.query({ filter: JSON.stringify(MATCH_ALL_FILTER), returnData: 'true' })
 				.expect(200);
 
-			expect(JSON.stringify(response.body)).toContain(SECRET);
+			expect(response.body.data).toMatchObject([{ secret: SECRET }]);
+		});
+	});
+
+	describe('cross-project targeting', () => {
+		test('does not accept dataTable:readRow held on the project in the URL', async () => {
+			await linkUserToProject(readWriteUser, otherProject, writeOnlyRoleSlug);
+			const dataTable = await createSensitiveTable(otherProject);
+
+			const response = await readWriterAgent
+				.patch(`/projects/${project.id}/data-tables/${dataTable.id}/rows`)
+				.send({ filter: MATCH_ALL_FILTER, data: { secret: 'overwritten' }, dryRun: true })
+				.expect(403);
+
+			expect(JSON.stringify(response.body)).not.toContain(SECRET);
 		});
 	});
 });
+
 describe('Source Control read-only mode', () => {
 	let sourceControlPreferencesService: SourceControlPreferencesService;
 	let testDataTable: DataTable;

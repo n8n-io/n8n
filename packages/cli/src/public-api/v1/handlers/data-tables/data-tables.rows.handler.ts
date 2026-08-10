@@ -9,7 +9,7 @@ import { Container } from '@n8n/di';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { assertRowReadAccess } from '@/modules/data-table/data-table-permissions';
+import { assertRowReadAccessIfReturningRows } from '@/modules/data-table/data-table-permissions';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import { DataTableNotFoundError } from '@/modules/data-table/errors/data-table-not-found.error';
 import { DataTableValidationError } from '@/modules/data-table/errors/data-table-validation.error';
@@ -149,9 +149,7 @@ const dataTableRowsHandlers: DataTableRowsHandlers = {
 				const { filter, data, returnData = false, dryRun = false } = payload.data;
 				const params = { filter, data };
 
-				if (dryRun || returnData) {
-					await assertRowReadAccess(req.user, { dataTableId });
-				}
+				await assertRowReadAccessIfReturningRows(req.user, dataTableId, { dryRun, returnData });
 
 				const result = dryRun
 					? await service.updateRows(dataTableId, projectId, params, returnData, true)
@@ -184,9 +182,7 @@ const dataTableRowsHandlers: DataTableRowsHandlers = {
 				const { filter, data, returnData = false, dryRun = false } = payload.data;
 				const params = { filter, data };
 
-				if (dryRun || returnData) {
-					await assertRowReadAccess(req.user, { dataTableId });
-				}
+				await assertRowReadAccessIfReturningRows(req.user, dataTableId, { dryRun, returnData });
 
 				const result = dryRun
 					? await service.upsertRow(dataTableId, projectId, params, returnData, true)
@@ -238,9 +234,7 @@ const dataTableRowsHandlers: DataTableRowsHandlers = {
 				const { filter, returnData = false, dryRun = false } = payload.data;
 				const params = { filter };
 
-				if (dryRun || returnData) {
-					await assertRowReadAccess(req.user, { dataTableId });
-				}
+				await assertRowReadAccessIfReturningRows(req.user, dataTableId, { dryRun, returnData });
 
 				const result = dryRun
 					? await service.deleteRows(dataTableId, projectId, params, returnData, true)
