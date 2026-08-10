@@ -79,6 +79,7 @@
     "@tiptap/extension-table-row": "catalog:",
     "@tiptap/extension-task-item": "catalog:",
     "@tiptap/extension-task-list": "catalog:",
+    "@tiptap/extension-underline": "catalog:",
     "@tiptap/markdown": "catalog:",
     "@tiptap/starter-kit": "catalog:",
     "@tiptap/vue-3": "catalog:",
