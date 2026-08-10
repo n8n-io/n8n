@@ -35,7 +35,7 @@ import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
+import { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 import { ProjectService } from '@/services/project.service.ee';
 
 import { DataTableService } from './data-table.service';
@@ -51,7 +51,7 @@ export class DataTableController {
 	constructor(
 		private readonly dataTableService: DataTableService,
 		private readonly projectService: ProjectService,
-		private readonly sourceControlPreferencesService: SourceControlPreferencesService,
+		private readonly instanceWriteAccess: InstanceWriteAccessService,
 	) {}
 
 	private handleDataTableColumnOperationError(e: unknown): never {
@@ -75,8 +75,7 @@ export class DataTableController {
 	}
 
 	private checkInstanceWriteAccess(): void {
-		const preferences = this.sourceControlPreferencesService.getPreferences();
-		if (preferences.branchReadOnly) {
+		if (this.instanceWriteAccess.isReadOnly()) {
 			throw new ForbiddenError(
 				'Cannot modify data tables on a protected instance. This instance is in read-only mode.',
 			);

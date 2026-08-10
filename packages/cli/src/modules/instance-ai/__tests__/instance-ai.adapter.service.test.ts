@@ -1231,7 +1231,7 @@ import { UserError, UnexpectedError } from 'n8n-workflow';
 import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import type { DataTableService } from '@/modules/data-table/data-table.service';
-import type { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
+import type { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { WorkflowSaveConflictError } from '../../../../../@n8n/instance-ai/src/errors/workflow-save-conflict.error';
 import type { WorkflowService } from '@/workflows/workflow.service';
@@ -1298,7 +1298,7 @@ function createNodeAdapterServiceForTests(
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[19],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[20],
 		{
-			getPreferences: vi.fn().mockReturnValue({ branchReadOnly: false }),
+			isReadOnly: vi.fn().mockReturnValue(false),
 		} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[21],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[22],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[23],
@@ -1621,10 +1621,8 @@ function createDataTableAdapterForTests(overrides?: {
 			.mockResolvedValue({ id: 'dt-1', name: 'Orders', projectId: 'team-project-id' }),
 	};
 
-	const mockSourceControlPreferencesService = {
-		getPreferences: vi.fn().mockReturnValue({
-			branchReadOnly: overrides?.branchReadOnly ?? false,
-		}),
+	const mockInstanceWriteAccess = {
+		isReadOnly: vi.fn().mockReturnValue(overrides?.branchReadOnly ?? false),
 	};
 
 	const mockUser = { id: 'user-1', role: { slug: 'global:member' } } as unknown as User;
@@ -1659,7 +1657,7 @@ function createDataTableAdapterForTests(overrides?: {
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[18],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[19],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[20],
-		mockSourceControlPreferencesService as unknown as SourceControlPreferencesService,
+		mockInstanceWriteAccess as unknown as InstanceWriteAccessService,
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[22],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[23],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[24],
@@ -1686,7 +1684,7 @@ function createDataTableAdapterForTests(overrides?: {
 		mockProjectRepository,
 		mockDataTableService,
 		mockDataTableRepository,
-		mockSourceControlPreferencesService,
+		mockInstanceWriteAccess,
 		mockUser,
 	};
 }
@@ -1973,10 +1971,8 @@ function createWorkflowAdapterForTests(overrides?: {
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[19],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[20],
 		{
-			getPreferences: vi
-				.fn()
-				.mockReturnValue({ branchReadOnly: overrides?.branchReadOnly ?? false }),
-		} as unknown as SourceControlPreferencesService,
+			isReadOnly: vi.fn().mockReturnValue(overrides?.branchReadOnly ?? false),
+		} as unknown as InstanceWriteAccessService,
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[22],
 		mockWorkflowHistoryService as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
@@ -2794,8 +2790,8 @@ function createExecutionAdapterForTests(overrides?: { sharingEnabled?: boolean }
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[19],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[20],
 		{
-			getPreferences: vi.fn().mockReturnValue({ branchReadOnly: false }),
-		} as unknown as SourceControlPreferencesService,
+			isReadOnly: vi.fn().mockReturnValue(false),
+		} as unknown as InstanceWriteAccessService,
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[22],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[23],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[24],
@@ -3056,7 +3052,7 @@ function createRunAdapterForTests(
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[19],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[20],
 		{
-			getPreferences: vi.fn().mockReturnValue({ branchReadOnly: false }),
+			isReadOnly: vi.fn().mockReturnValue(false),
 		} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[21],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[22],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[23],
@@ -3560,7 +3556,7 @@ function createAdapterWithGatewayMock(
 		typeof InstanceAiAdapterService
 	>[14];
 	args[21] = {
-		getPreferences: vi.fn().mockReturnValue({ branchReadOnly: false }),
+		isReadOnly: vi.fn().mockReturnValue(false),
 	} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[21];
 	if (overrides?.settingsService) {
 		args[22] = overrides.settingsService as unknown as ConstructorParameters<
