@@ -22,7 +22,7 @@ import type { InstanceAiConfig, DeploymentConfig } from '@n8n/config';
 import { DbLock, DbLockService, SettingsRepository, UserRepository } from '@n8n/db';
 import type { CredentialsEntity, ICredentialsDb, OperationContext, User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
-import type { ModelConfig } from '@n8n/instance-ai';
+import { resolveCustomModelExperimentDefaultsFromEnv, type ModelConfig } from '@n8n/instance-ai';
 import { hasGlobalScope } from '@n8n/permissions';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type { ICredentialDataDecryptedObject, IUserSettings } from 'n8n-workflow';
@@ -1612,12 +1612,14 @@ export class InstanceAiSettingsService {
 		const id: `${string}/${string}` = model.includes('/')
 			? (model as `${string}/${string}`)
 			: `custom/${model}`;
+		const customOptions = this.customModelOptionsFor(id);
 
 		if (modelUrl) {
 			return {
 				id,
 				url: modelUrl,
 				...(modelApiKey ? { apiKey: modelApiKey } : {}),
+				...customOptions,
 			};
 		}
 
@@ -1626,10 +1628,18 @@ export class InstanceAiSettingsService {
 				id,
 				url: '',
 				apiKey: modelApiKey,
+				...customOptions,
 			};
 		}
 
 		return model;
+	}
+
+	/** Optional custom/* knobs from env override → known-model map → omit. */
+	private customModelOptionsFor(modelId: string): { supportsStructuredOutputs?: boolean } {
+		if (!modelId.startsWith('custom/')) return {};
+		const { supportsStructuredOutputs } = resolveCustomModelExperimentDefaultsFromEnv(modelId);
+		return supportsStructuredOutputs !== undefined ? { supportsStructuredOutputs } : {};
 	}
 
 	private extractModelName(model: string): string {

@@ -19,6 +19,7 @@ export const PROVIDER_CREDENTIAL_SCHEMAS = {
 	}),
 	custom: apiKeyCreds.extend({
 		baseURL: z.string().min(1, 'baseURL is required'),
+		supportsStructuredOutputs: z.boolean().optional(),
 	}),
 	anthropic: apiKeyCreds,
 	google: apiKeyCreds,

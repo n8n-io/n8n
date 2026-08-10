@@ -378,6 +378,26 @@ describe('createModel', () => {
 			expect(model.includeUsage).toBe(false);
 			expect(model.supportsStructuredOutputs).toBe(true);
 		});
+
+		it('should omit supportsStructuredOutputs for custom when unset', () => {
+			const model = createModel({
+				id: 'custom/Kimi-K3',
+				apiKey: 'key',
+				baseURL: 'https://example.com/v1',
+			}) as unknown as Record<string, unknown>;
+			expect(model.provider).toBe('custom');
+			expect(model.supportsStructuredOutputs).toBeUndefined();
+		});
+
+		it('should forward supportsStructuredOutputs for custom when set', () => {
+			const model = createModel({
+				id: 'custom/Kimi-K3',
+				apiKey: 'key',
+				baseURL: 'https://example.com/v1',
+				supportsStructuredOutputs: true,
+			}) as unknown as Record<string, unknown>;
+			expect(model.supportsStructuredOutputs).toBe(true);
+		});
 	});
 
 	describe('anthropic baseURL normalization', () => {

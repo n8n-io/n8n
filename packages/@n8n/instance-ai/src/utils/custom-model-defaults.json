@@ -1,0 +1,18 @@
+{
+	"defaults": [
+		{
+			"match": "kimi-k3",
+			"reasoningEffort": "low",
+			"supportsStructuredOutputs": true
+		},
+		{
+			"match": "glm-5.2",
+			"reasoningEffort": "medium",
+			"supportsStructuredOutputs": true
+		},
+		{
+			"match": "deepseek",
+			"supportsStructuredOutputs": true
+		}
+	]
+}

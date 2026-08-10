@@ -71,7 +71,7 @@ describe('applyAgentThinking', () => {
 		});
 	});
 
-	it('enables low reasoning effort for custom OpenAI-compatible endpoints', () => {
+	it('enables mapped low reasoning effort for known custom Kimi K3 models', () => {
 		const agent = new Agent('test');
 		applyAgentThinking(agent, 'custom/Kimi-K3');
 		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('custom', {
@@ -79,12 +79,33 @@ describe('applyAgentThinking', () => {
 		});
 	});
 
-	it('enables low reasoning effort for Databricks AI Gateway Kimi-K3', () => {
+	it('enables mapped low reasoning effort for Databricks AI Gateway Kimi-K3', () => {
 		const agent = new Agent('test');
 		applyAgentThinking(agent, 'custom/workspace.default.kimi-k3');
 		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('custom', {
 			reasoningEffort: 'low',
 		});
+	});
+
+	it('skips thinking for unknown custom models without an env override', () => {
+		const agent = new Agent('test');
+		applyAgentThinking(agent, 'custom/unknown-model');
+		expect(mockAgentInstances[0]?.thinking).not.toHaveBeenCalled();
+	});
+
+	it('prefers N8N_INSTANCE_AI_REASONING_EFFORT over the known-model map', () => {
+		const previous = process.env.N8N_INSTANCE_AI_REASONING_EFFORT;
+		process.env.N8N_INSTANCE_AI_REASONING_EFFORT = 'high';
+		try {
+			const agent = new Agent('test');
+			applyAgentThinking(agent, 'custom/Kimi-K3');
+			expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('custom', {
+				reasoningEffort: 'high',
+			});
+		} finally {
+			if (previous === undefined) delete process.env.N8N_INSTANCE_AI_REASONING_EFFORT;
+			else process.env.N8N_INSTANCE_AI_REASONING_EFFORT = previous;
+		}
 	});
 
 	it('skips providers without thinking support', () => {

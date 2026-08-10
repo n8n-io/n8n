@@ -2,6 +2,8 @@ import type { Agent, ModelConfig } from '@n8n/agents';
 import { PROVIDER_CAPABILITIES } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 
+import { resolveCustomModelExperimentDefaultsFromEnv } from '../utils/custom-model-defaults';
+
 function normalizeProvider(provider: string): string {
 	return provider.split('.')[0] ?? provider;
 }
@@ -80,7 +82,12 @@ export function applyAgentThinking(agent: Agent, modelId: ModelConfig): void {
 	if (!provider || !PROVIDER_CAPABILITIES[provider]?.thinking) return;
 
 	if (provider === 'custom') {
-		agent.thinking('custom', { reasoningEffort: 'low' });
+		// No blanket custom default: env override → known-model map → omit.
+		const resolvedModelId = resolveModelIdString(modelId) ?? '';
+		const { reasoningEffort } = resolveCustomModelExperimentDefaultsFromEnv(resolvedModelId);
+		if (reasoningEffort !== undefined) {
+			agent.thinking('custom', { reasoningEffort });
+		}
 		return;
 	}
 

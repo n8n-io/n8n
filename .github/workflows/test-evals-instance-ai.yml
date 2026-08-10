@@ -74,6 +74,16 @@ on:
         required: false
         type: string
         default: ''
+      reasoning-effort:
+        description: 'Optional custom/* reasoning effort override (none|minimal|low|medium|high|xhigh|max). Empty = runtime known-model map; still empty = omit.'
+        required: false
+        type: string
+        default: ''
+      supports-structured-outputs:
+        description: 'Optional custom/* supportsStructuredOutputs override (true|false). Empty = runtime known-model map; still empty = omit.'
+        required: false
+        type: string
+        default: ''
       lanes:
         description: 'Parallel n8n lane containers (1-11). Empty = 10, or 1 when model-key=baseten (fits Baseten Basic verified ~500k TPM).'
         required: false
@@ -124,6 +134,14 @@ on:
         default: ''
       model-key:
         description: 'EVALS_* secret alias for custom/*: baseten | fireworks | together | modal | databricks | azure. Empty = keyless custom or native provider prefix.'
+        required: false
+        default: ''
+      reasoning-effort:
+        description: 'Optional custom/* reasoning effort override (none|minimal|low|medium|high|xhigh|max). Empty = runtime known-model map; still empty = omit.'
+        required: false
+        default: ''
+      supports-structured-outputs:
+        description: 'Optional custom/* supportsStructuredOutputs override (true|false). Empty = runtime known-model map; still empty = omit.'
         required: false
         default: ''
       lanes:
@@ -239,6 +257,8 @@ jobs:
           INSTANCE_AI_MODEL: ${{ inputs.model }}
           INSTANCE_AI_MODEL_URL: ${{ inputs.model-url }}
           INSTANCE_AI_MODEL_KEY: ${{ inputs.model-key }}
+          INSTANCE_AI_REASONING_EFFORT: ${{ inputs.reasoning-effort }}
+          INSTANCE_AI_SUPPORTS_STRUCTURED_OUTPUTS: ${{ inputs.supports-structured-outputs }}
         run: |
           # Build provider-specific env args
           SANDBOX_ARGS=()
@@ -273,6 +293,18 @@ jobs:
           # appends /v1/messages itself.
           if [ -n "$INSTANCE_AI_MODEL_URL" ]; then
             MODEL_ARGS+=(-e N8N_INSTANCE_AI_MODEL_URL="$INSTANCE_AI_MODEL_URL")
+          fi
+
+          # custom/* experiment knobs: pass through workflow inputs only.
+          # When unset, the n8n runtime looks up custom-model-defaults.json and
+          # omits the field if still unresolved — do not re-implement that map here.
+          if [ -n "$INSTANCE_AI_REASONING_EFFORT" ]; then
+            MODEL_ARGS+=(-e N8N_INSTANCE_AI_REASONING_EFFORT="$INSTANCE_AI_REASONING_EFFORT")
+            echo "custom reasoning effort override: $INSTANCE_AI_REASONING_EFFORT"
+          fi
+          if [ -n "$INSTANCE_AI_SUPPORTS_STRUCTURED_OUTPUTS" ]; then
+            MODEL_ARGS+=(-e N8N_INSTANCE_AI_SUPPORTS_STRUCTURED_OUTPUTS="$INSTANCE_AI_SUPPORTS_STRUCTURED_OUTPUTS")
+            echo "custom supportsStructuredOutputs override: $INSTANCE_AI_SUPPORTS_STRUCTURED_OUTPUTS"
           fi
 
           # EvalMock / pin-data / in-product eval LLMs always use Anthropic Sonnet,

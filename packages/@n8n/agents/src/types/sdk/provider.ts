@@ -69,7 +69,10 @@ export type OpenAIReasoningEffort =
 	| 'max';
 
 export interface OpenAIThinkingConfig {
-	/** Reasoning effort level. Defaults to 'medium'. Mapped to AI SDK `providerOptions.openai.reasoningEffort`. */
+	/**
+	 * Reasoning effort level. Mapped to AI SDK `providerOptions.<provider>.reasoningEffort`.
+	 * OpenAI/OpenRouter quirks may default when unset; `custom` only forwards an explicit value.
+	 */
 	reasoningEffort?: OpenAIReasoningEffort;
 }
 

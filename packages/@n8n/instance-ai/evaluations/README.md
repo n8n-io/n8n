@@ -1018,7 +1018,13 @@ For model A/B experiments, dispatch **Instance AI Evals: Experiments** (`test-ev
 
 `lanes` / `eval-concurrency` default to **10 / 32**. For `model-key=baseten` they auto-throttle to **1 / 2** (~0.5M TPM — fits [Baseten Basic verified](https://docs.baseten.co/inference/model-apis/rate-limits-and-budgets)); override the inputs if you have more headroom.
 
-Verifier/mocks always use `EVALS_ANTHROPIC_KEY`. Custom endpoints default to low reasoning effort.
+Verifier/mocks always use `EVALS_ANTHROPIC_KEY`.
+
+For `custom/*`, optional dispatch inputs `reasoning-effort` and `supports-structured-outputs`
+override `N8N_INSTANCE_AI_REASONING_EFFORT` / `N8N_INSTANCE_AI_SUPPORTS_STRUCTURED_OUTPUTS`.
+When unset, the runtime looks up
+`packages/@n8n/instance-ai/src/utils/custom-model-defaults.json` (substring match on the model id).
+If still unresolved, the field is omitted from the request (no blanket custom default).
 
 ## Architecture
 

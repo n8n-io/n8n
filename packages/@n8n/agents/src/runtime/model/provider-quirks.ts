@@ -43,12 +43,14 @@ function anthropicUsesAdaptiveThinking(modelId: string): boolean {
 /** Map effort to top-level `reasoningEffort` (OpenAI-compatible chat). */
 function reasoningEffortQuirk(
 	provider: ProviderId,
-	defaultEffort: OpenAIReasoningEffort,
+	defaultEffort?: OpenAIReasoningEffort,
 ): ProviderQuirks {
 	return {
 		thinkingToProviderOptions: (thinking) => {
 			const cfg = thinking as OpenAIThinkingConfig;
-			return { [provider]: { reasoningEffort: cfg.reasoningEffort ?? defaultEffort } };
+			const reasoningEffort = cfg.reasoningEffort ?? defaultEffort;
+			if (reasoningEffort === undefined) return {};
+			return { [provider]: { reasoningEffort } };
 		},
 	};
 }
@@ -163,7 +165,8 @@ export const PROVIDER_QUIRKS: Partial<Record<ProviderId, ProviderQuirks>> = {
 		},
 	},
 	openrouter: nestedReasoningEffortQuirk('openrouter', 'medium'),
-	custom: reasoningEffortQuirk('custom', 'medium'),
+	// custom/*: only forward an explicit effort — no provider-level default.
+	custom: reasoningEffortQuirk('custom'),
 };
 
 export function getProviderQuirks(providerId: string): ProviderQuirks {

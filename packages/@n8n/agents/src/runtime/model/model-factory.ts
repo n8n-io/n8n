@@ -96,7 +96,9 @@ function buildOpenAiCompatible(
 		headers: creds.headers,
 		fetch,
 		includeUsage: options?.includeUsage ?? true,
-		supportsStructuredOutputs: options?.supportsStructuredOutputs ?? true,
+		...(options?.supportsStructuredOutputs !== undefined
+			? { supportsStructuredOutputs: options.supportsStructuredOutputs }
+			: {}),
 	})(model);
 }
 
@@ -135,9 +137,13 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 	},
 	custom: {
 		build: (creds, model, fetch) =>
-			// Without includeUsage/supportsStructuredOutputs the SDK drops JSON
-			// schemas and sends json_object only.
-			buildOpenAiCompatible('custom', undefined, creds, model, fetch),
+			// Only enable structured outputs when callers opt in — many OpenAI-
+			// compatible routers reject or mishandle json_schema otherwise.
+			buildOpenAiCompatible('custom', undefined, creds, model, fetch, {
+				...(typeof creds.supportsStructuredOutputs === 'boolean'
+					? { supportsStructuredOutputs: creds.supportsStructuredOutputs }
+					: {}),
+			}),
 	},
 	anthropic: {
 		build: (creds, model, fetch) => {
@@ -209,6 +215,7 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 	// NVIDIA's OpenAI-compatible endpoint rejects stream_options.include_usage.
 	nvidia: openAiCompatibleEntry('nvidia', 'https://integrate.api.nvidia.com/v1', {
 		includeUsage: false,
+		supportsStructuredOutputs: true,
 	}),
 	'azure-openai': {
 		build: (creds, model, fetch) => {

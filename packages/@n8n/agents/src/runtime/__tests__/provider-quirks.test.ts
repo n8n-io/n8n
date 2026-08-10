@@ -200,10 +200,10 @@ describe('thinkingToProviderOptions', () => {
 		});
 	});
 
-	it('custom: defaults reasoning effort to medium', () => {
-		expect(getProviderQuirks('custom').thinkingToProviderOptions?.({}, 'custom/Kimi-K3')).toEqual({
-			custom: { reasoningEffort: 'medium' },
-		});
+	it('custom: omits reasoning effort when unset', () => {
+		expect(getProviderQuirks('custom').thinkingToProviderOptions?.({}, 'custom/Kimi-K3')).toEqual(
+			{},
+		);
 	});
 });
 
