@@ -34,6 +34,11 @@ export interface AccessScope {
 	globalOnly: boolean;
 }
 
+export interface DeprecationInfo {
+	/** When the endpoint became deprecated. Emitted as an RFC 9745 `Deprecation` header. */
+	since: Date;
+}
+
 export interface RouteMetadata {
 	method: Method;
 	path: string;
@@ -65,6 +70,8 @@ export interface RouteMetadata {
 	tags?: string[];
 	/** OpenAPI error responses. */
 	errorResponses?: number[];
+	/** OpenAPI deprecation; also emits an RFC 9745 `Deprecation` header at request time. */
+	deprecated?: DeprecationInfo;
 	args: Arg[];
 	router?: Router;
 }

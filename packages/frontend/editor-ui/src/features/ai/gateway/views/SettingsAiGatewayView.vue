@@ -10,7 +10,7 @@ import {
 	N8nTooltip,
 	N8nActionPill,
 } from '@n8n/design-system';
-import type { TableHeader } from '@n8n/design-system/components/N8nDataTableServer';
+import type { TableHeader } from '@n8n/design-system';
 import type { AiGatewayUsageEntry } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { useRouter } from 'vue-router';
@@ -265,7 +265,6 @@ onMounted(async () => {
 				<div v-if="hasMore && entries.length > 0" :class="$style.loadMore">
 					<N8nButton
 						:label="i18n.baseText('settings.n8nConnect.usage.loadMore')"
-						type="secondary"
 						:loading="isLoading && isAppending"
 						@click="loadMore"
 					/>

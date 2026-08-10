@@ -669,8 +669,6 @@ const isSchemaPreviewEnabled = computed(
 		!(nodeType.value?.codex?.categories ?? []).some((category) => category === CORE_NODES_CATEGORY),
 );
 
-const isNDVV2 = computed(() => true);
-
 const hasPreviewSchema = asyncComputed(async () => {
 	if (!isSchemaPreviewEnabled.value || props.nodes.length === 0) return false;
 	const nodes = props.nodes
@@ -1037,7 +1035,7 @@ function onClickSaveEdit() {
 		const clearedValue = clearJsonKey(value) as INodeExecutionData[];
 		try {
 			pinnedData.setData(clearedValue, 'save-edit');
-		} catch (error) {
+		} catch {
 			// setData function already shows toasts on error, so just return here
 			return;
 		}
@@ -1345,9 +1343,7 @@ function init() {
 		emit('displayModeChange', 'schema');
 	}
 
-	if (isNDVV2.value) {
-		pageSize.value = RUN_DATA_DEFAULT_PAGE_SIZE;
-	}
+	pageSize.value = RUN_DATA_DEFAULT_PAGE_SIZE;
 
 	if (props.paneType === 'output') {
 		setDisplayMode();
@@ -1469,7 +1465,6 @@ defineExpose({ enterEditMode });
 			'run-data',
 			$style.container,
 			{
-				[$style['ndv-v2']]: isNDVV2,
 				[$style.compact]: compact,
 				[$style.showActionsOnHover]: showActionsOnHover && !search,
 			},
@@ -1787,7 +1782,6 @@ defineExpose({ enterEditMode });
 				<N8nButton
 					v-if="pinnedData.hasData.value"
 					class="mt-s"
-					type="secondary"
 					size="small"
 					data-test-id="ndv-trimmed-corrupted-unpin"
 					@click="onTogglePinData({ source: 'context-menu' })"
@@ -2222,13 +2216,7 @@ defineExpose({ enterEditMode });
 			@update:current-page="onCurrentPageChange"
 			@update:page-size="onPageSizeChange"
 		/>
-		<N8nBlockUi
-			:show="blockUI"
-			:class="{
-				[$style.uiBlocker]: true,
-				[$style.uiBlockerNdvV2]: isNDVV2,
-			}"
-		/>
+		<N8nBlockUi :show="blockUI" :class="$style.uiBlocker" />
 	</div>
 </template>
 
@@ -2253,7 +2241,7 @@ defineExpose({ enterEditMode });
 }
 
 .container {
-	--ndv--spacing: var(--spacing--sm);
+	--ndv--spacing: var(--spacing--2xs);
 	position: relative;
 	width: 100%;
 	height: 100%;
@@ -2356,14 +2344,10 @@ defineExpose({ enterEditMode });
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
-	padding-left: var(--ndv--spacing);
+	padding-left: var(--spacing--xs);
 	padding-right: var(--ndv--spacing);
 	padding-bottom: var(--ndv--spacing);
 	flex-flow: wrap;
-}
-
-.ndv-v2 .itemsCount {
-	padding-left: var(--spacing--xs);
 }
 
 .inputSelect {
@@ -2487,11 +2471,6 @@ defineExpose({ enterEditMode });
 }
 
 .uiBlocker {
-	border-top-left-radius: 0;
-	border-bottom-left-radius: 0;
-}
-
-.uiBlockerNdvV2 {
 	border-radius: 0;
 }
 
@@ -2561,11 +2540,6 @@ defineExpose({ enterEditMode });
 		visibility: hidden;
 		width: 0;
 	}
-}
-
-.ndv-v2,
-.compact {
-	--ndv--spacing: var(--spacing--2xs);
 }
 
 .dataSizeWarning {

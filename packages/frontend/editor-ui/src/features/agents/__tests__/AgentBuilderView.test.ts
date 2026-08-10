@@ -120,6 +120,7 @@ const getAgentMock = vi.fn();
 const createAgentMock = vi.fn();
 const updateConfigMock = vi.fn();
 const fetchConfigMock = vi.fn();
+const repointConfigMock = vi.fn();
 const deleteAgentMock = vi.fn().mockResolvedValue(undefined);
 const listAgentFilesMock = vi.fn().mockResolvedValue([]);
 const uploadAgentFilesMock = vi.fn().mockResolvedValue([]);
@@ -148,6 +149,15 @@ const generateDraftCasesMock = vi.fn();
 vi.mock('../agentEvals.api', () => ({
 	getDatasets: vi.fn().mockResolvedValue([]),
 	generateDraftCases: (...args: unknown[]) => generateDraftCasesMock(...args),
+}));
+
+const agentEvalsFlagMock = vi.hoisted(() => ({ enabled: false }));
+vi.mock('@/features/ai/evaluation.ee/composables/useAgentEvalsFlag', () => ({
+	useAgentEvalsFlag: () => ({
+		get value() {
+			return agentEvalsFlagMock.enabled;
+		},
+	}),
 }));
 
 const builderTelemetryMock = vi.hoisted(() => ({
@@ -251,6 +261,7 @@ vi.mock('../composables/useAgentConfig', () => ({
 			mockConfig.value = withDefaultLlm(intendedConfig);
 		}),
 		updateConfig: updateConfigMock,
+		repoint: repointConfigMock,
 	}),
 }));
 
@@ -321,10 +332,13 @@ async function renderView({
 	knowledgeBaseEnabled = false,
 	waitForAsyncSetup = true,
 	props,
+	seedStores,
 }: {
 	knowledgeBaseEnabled?: boolean;
 	waitForAsyncSetup?: boolean;
 	props?: Record<string, unknown>;
+	/** Runs against the fresh pinia before mount, for state the view reads on setup. */
+	seedStores?: () => void;
 } = {}) {
 	const { default: AgentBuilderView } = await import('../views/AgentBuilderView.vue');
 	const pinia = createPinia();
@@ -339,6 +353,7 @@ async function renderView({
 			proxyEnabled: false,
 		},
 	};
+	seedStores?.();
 	const wrapper = mount(AgentBuilderView, {
 		props,
 		global: {
@@ -514,6 +529,9 @@ function resetViewMocks() {
 	openModalWithDataMock.mockReset();
 	closeModalMock.mockReset();
 	routeName = 'AgentBuilderView';
+	agentEvalsFlagMock.enabled = false;
+	generateDraftCasesMock.mockReset();
+	generateDraftCasesMock.mockResolvedValue({ cases: [] });
 	for (const key of Object.keys(routeQuery)) delete routeQuery[key];
 	sessionThreads.length = 0;
 	sessionStorage.removeItem('N8N_DEBOUNCE_MULTIPLIER');
@@ -525,6 +543,7 @@ function resetViewMocks() {
 	mockConfig.value = withDefaultLlm(intendedConfig);
 	updateConfigMock.mockReset();
 	updateConfigMock.mockResolvedValue({ versionId: 'v1', stale: false });
+	repointConfigMock.mockReset();
 	getAgentMock.mockResolvedValue(makeAgentResponse());
 	createAgentMock.mockReset();
 	createAgentMock.mockResolvedValue(makeAgentResponse({ id: 'aBcDeFgHiJkLmNoP' }));
@@ -1608,11 +1627,22 @@ describe('AgentBuilderView — three-column shell', () => {
 			expect(createAgentMock).not.toHaveBeenCalled();
 		});
 
-		it('creates the agent once on the first edits, under the minted id', async () => {
+		it('creates the pending agent once and refreshes validation after the first save', async () => {
+			let configTarget: string | undefined;
+			repointConfigMock.mockImplementation((projectId: string, agentId: string) => {
+				configTarget = `${projectId}:${agentId}`;
+			});
+			updateConfigMock.mockImplementation(async (projectId: string, agentId: string) => ({
+				versionId: 'v1',
+				stale: configTarget !== `${projectId}:${agentId}`,
+			}));
 			const wrapper = await renderView({ props: pendingProps });
 			const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
 
-			editor.vm.$emit('update:config', { instructions: 'Answer support mail' });
+			editor.vm.$emit('update:config', {
+				name: 'Support Agent',
+				instructions: 'Answer support mail',
+			});
 			editor.vm.$emit('update:config', { model: 'anthropic/claude-sonnet-4-5' });
 			await vi.waitFor(() => expect(updateConfigMock).toHaveBeenCalled());
 
@@ -1625,6 +1655,14 @@ describe('AgentBuilderView — three-column shell', () => {
 				'aBcDeFgHiJkLmNoP',
 				expect.objectContaining({ instructions: 'Answer support mail' }),
 			);
+			await vi.waitFor(() =>
+				expect(
+					wrapper
+						.find('[data-testid="stub-agent-builder-header"]')
+						.attributes('data-config-validation-status'),
+				).toBe('valid'),
+			);
+			expect(wrapper.emitted('name-saved')).toContainEqual(['Support Agent']);
 		});
 
 		it('persists the icon and gradient with the first save, so a new agent keeps them', async () => {
@@ -2252,4 +2290,107 @@ describe('AgentBuilderView — three-column shell', () => {
 		// The catch block must have surfaced the error to the user.
 		expect(showErrorMock).toHaveBeenCalledWith(expect.any(Error), expect.any(String));
 	});
+});
+
+// Generous timeout for the same reason as the preview-routing block: mounting
+// this SFC plus its design-system deps is slow enough under parallel-suite
+// pressure to trip default timeouts.
+describe('AgentBuilderView — evals focus request', { timeout: 60_000 }, () => {
+	beforeEach(() => {
+		resetViewMocks();
+		agentEvalsFlagMock.enabled = true;
+	});
+
+	async function seedFocusRequest(
+		agentId: string,
+		generate: boolean,
+		props?: Record<string, unknown>,
+	) {
+		const { useAgentEvalsStore } = await import('../agentEvals.store');
+		return await renderView({
+			props,
+			seedStores: () => {
+				useAgentEvalsStore().requestEvalsFocus(agentId, generate);
+			},
+		});
+	}
+
+	/**
+	 * Settle by pumping ticks rather than wall-clock polling: earlier blocks in
+	 * this file install fake timers, under which `vi.waitFor` stalls.
+	 *
+	 * Condition-based rather than a fixed tick budget because the watcher holds
+	 * the request until `initialize()` resolves, and how many ticks that takes
+	 * varies with how the mocked fetches interleave. Stops early once `settled`
+	 * holds; on a negative assertion it runs the full budget, which is what makes
+	 * "still not shown" mean quiesced rather than merely not-yet-processed.
+	 */
+	async function settle(settled: () => boolean) {
+		// Budget is generous because pumping microtasks is cheap and this file's
+		// mocked fetch chains settle over a variable number of ticks under load.
+		for (let i = 0; i < 200; i++) {
+			if (settled()) return;
+			await flushPromises();
+			await nextTick();
+		}
+	}
+
+	function evalsTabShown(wrapper: Awaited<ReturnType<typeof renderView>>) {
+		return () => wrapper.find('[data-testid="agent-evals-tab-content"]').exists();
+	}
+
+	it('selects the evals tab for a request raised before it mounted', async () => {
+		const wrapper = await seedFocusRequest('a1', false);
+		await settle(evalsTabShown(wrapper));
+
+		expect(evalsTabShown(wrapper)()).toBe(true);
+		expect(generateDraftCasesMock).not.toHaveBeenCalled();
+	});
+
+	it('starts generation when the request asks for it', async () => {
+		await seedFocusRequest('a1', true);
+		await settle(() => generateDraftCasesMock.mock.calls.length > 0);
+
+		expect(generateDraftCasesMock).toHaveBeenCalledOnce();
+	});
+
+	it('ignores a request naming a different agent', async () => {
+		const wrapper = await seedFocusRequest('some-other-agent', true);
+		await settle(evalsTabShown(wrapper));
+
+		expect(evalsTabShown(wrapper)()).toBe(false);
+		expect(generateDraftCasesMock).not.toHaveBeenCalled();
+	});
+
+	it('ignores the request while the evals tab is absent from the row', async () => {
+		agentEvalsFlagMock.enabled = false;
+
+		const wrapper = await seedFocusRequest('a1', true);
+		await settle(evalsTabShown(wrapper));
+
+		expect(evalsTabShown(wrapper)()).toBe(false);
+		expect(generateDraftCasesMock).not.toHaveBeenCalled();
+	});
+
+	it('ignores the request while the agent is still unsaved', async () => {
+		// Unsaved narrows the row to Agent only, so honouring the request here
+		// would render evals content with no Evals tab visible to match it.
+		const wrapper = await seedFocusRequest('aBcDeFgHiJkLmNoP', true, {
+			artifactMode: true,
+			artifactProjectId: 'p1',
+			artifactAgentId: 'aBcDeFgHiJkLmNoP',
+			artifactAgentPending: true,
+		});
+		await settle(evalsTabShown(wrapper));
+
+		expect(evalsTabShown(wrapper)()).toBe(false);
+		expect(generateDraftCasesMock).not.toHaveBeenCalled();
+	});
+
+	// Not covered here: a request raised *after* this view mounted. It is the same
+	// watcher on a different trigger, and a view-level test for it proved
+	// irreducibly flaky in CI — this file's mounted views leave async work in
+	// flight, so whether the request is served or still legitimately held within a
+	// bounded settle is not deterministic. The store tests pin the hold/consume
+	// semantics instead; see `agentEvals.store.test.ts`.
 });
