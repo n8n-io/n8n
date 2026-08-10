@@ -318,7 +318,7 @@ export class LmChatOpenRouter implements INodeType {
 								],
 								default: 'allow',
 								description:
-									'Whether to use providers that may store data. Deny restricts to providers with zero data retention.',
+									"Select 'Deny' to route requests only through providers that don't collect your data",
 							},
 							{
 								displayName: 'Zero Data Retention (ZDR)',

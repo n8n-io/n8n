@@ -272,7 +272,7 @@ describe('LmChatOpenRouter', () => {
 				await node.supplyData.call(ctx, 0);
 
 				const callArgs = MockedChatOpenAI.mock.calls[0][0];
-				expect(callArgs.modelKwargs).toBeUndefined();
+				expect(callArgs?.modelKwargs).toBeUndefined();
 			});
 		});
 	});
