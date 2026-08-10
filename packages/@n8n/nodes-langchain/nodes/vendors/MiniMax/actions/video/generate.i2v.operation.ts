@@ -10,7 +10,7 @@ import { updateDisplayOptions } from 'n8n-workflow';
 import { generateVideo } from '../../transport';
 import { assertH3Prompt, H3_MODEL, h3VideoProperties, prepareVideoOutput } from './helpers';
 
-const legacyModelOptions: INodePropertyOptions[] = [
+const modelOptionsV1: INodePropertyOptions[] = [
 	{
 		name: 'I2V-01',
 		value: 'I2V-01',
@@ -43,12 +43,21 @@ const legacyModelOptions: INodePropertyOptions[] = [
 	},
 ];
 
+const modelOptionsV1_1: INodePropertyOptions[] = [
+	{
+		name: H3_MODEL,
+		value: H3_MODEL,
+		description: 'Latest multimodal video generation model',
+	},
+	...modelOptionsV1,
+];
+
 const properties: INodeProperties[] = [
 	{
 		displayName: 'Model',
 		name: 'modelId',
 		type: 'options',
-		options: legacyModelOptions,
+		options: modelOptionsV1,
 		default: 'MiniMax-Hailuo-2.3',
 		description: 'The model to use for video generation',
 		displayOptions: {
@@ -61,14 +70,7 @@ const properties: INodeProperties[] = [
 		displayName: 'Model',
 		name: 'modelId',
 		type: 'options',
-		options: [
-			{
-				name: H3_MODEL,
-				value: H3_MODEL,
-				description: 'Latest multimodal video generation model',
-			},
-			...legacyModelOptions,
-		],
+		options: modelOptionsV1_1,
 		default: H3_MODEL,
 		description: 'The model to use for video generation',
 		displayOptions: {
