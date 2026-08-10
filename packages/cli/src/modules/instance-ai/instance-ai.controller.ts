@@ -66,6 +66,7 @@ import { InProcessEventBus } from './event-bus/in-process-event-bus';
 import { InstanceAiErrorReporterService } from './instance-ai-error-reporter.service';
 import { InstanceAiGatewayService } from './instance-ai-gateway.service';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
+import { InstanceAiModelCatalogService } from './instance-ai-model-catalog.service';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { InstanceAiVerificationService } from './instance-ai-verification.service';
 import { InstanceAiService } from './instance-ai.service';
@@ -128,6 +129,7 @@ export class InstanceAiController {
 		private readonly browserSessionService: InstanceAiBrowserSessionService,
 		private readonly memoryService: InstanceAiMemoryService,
 		private readonly settingsService: InstanceAiSettingsService,
+		private readonly modelCatalogService: InstanceAiModelCatalogService,
 		private readonly evalExecutionService: EvalExecutionService,
 		private readonly evalAgentExecutionService: EvalAgentExecutionService,
 		private readonly evalCredentialAllowlists: EvalThreadCredentialAllowlistService,
@@ -679,6 +681,12 @@ export class InstanceAiController {
 	@GlobalScope('instanceAi:manage')
 	async getAdminSettings(_req: AuthenticatedRequest) {
 		return await this.settingsService.getAdminSettings();
+	}
+
+	@Get('/settings/models')
+	@GlobalScope('instanceAi:manage')
+	async getModelCatalog(_req: AuthenticatedRequest) {
+		return await this.modelCatalogService.getModels();
 	}
 
 	@Put('/settings')
