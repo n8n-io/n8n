@@ -20,12 +20,12 @@ import { jsonParse } from 'n8n-workflow';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { NodeCatalogService } from '@/node-catalog';
 
-import { InstanceAiCreditService } from '../../instance-ai/instance-ai-credit.service';
 import { AgentsService } from '../agents.service';
 import { buildAgentPreviewPath } from './agent-builder-preview-path';
 import { getModelRecommendationsSection } from './agents-builder-model-recommendations';
 import { buildBuilderPrompt } from './agents-builder-prompts';
 import { AgentsBuilderToolsService } from './agents-builder-tools.service';
+import { BuilderCreditProviderRegistry } from './builder-credit-provider';
 import { BuilderCheckpointUnavailableError } from './errors';
 import {
 	BUILDER_PLANNER_TODOS_DESCRIPTION,
@@ -80,7 +80,7 @@ export class AgentsBuilderService {
 		private readonly nodeCatalogService: NodeCatalogService,
 		private readonly agentsBuilderToolsService: AgentsBuilderToolsService,
 		private readonly n8nMemory: N8nMemory,
-		private readonly instanceAiCreditService: InstanceAiCreditService,
+		private readonly builderCreditProvider: BuilderCreditProviderRegistry,
 		private readonly n8nCheckpointStorage: N8NCheckpointStorage,
 		private readonly agentCheckpointRepository: AgentCheckpointRepository,
 	) {}
@@ -243,7 +243,7 @@ export class AgentsBuilderService {
 			try {
 				const items = tokenUsageToBuilderUsageItems(report.model, report.usage);
 				if (items.length === 0) return;
-				await this.instanceAiCreditService.claimRunUsage(
+				await this.builderCreditProvider.claimRunUsage(
 					user,
 					session.hostThreadId,
 					`${session.runId}:agent-builder:${agentId}:memory:${report.task}:${report.reportId}`,
