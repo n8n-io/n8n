@@ -20,6 +20,8 @@ export function isConnectionRefusedError(error: unknown): boolean {
 }
 
 const TRANSPORT_FAILURE_CODES: ReadonlySet<string> = new Set([
+	// libuv errno names, surfaced by Node as `err.code` on socket operations.
+	// https://docs.libuv.org/en/v1.x/errors.html
 	'ECONNABORTED',
 	'ECONNREFUSED',
 	'ECONNRESET',
@@ -28,12 +30,16 @@ const TRANSPORT_FAILURE_CODES: ReadonlySet<string> = new Set([
 	'ENETUNREACH',
 	'EPIPE',
 	'ETIMEDOUT',
+	// undici error codes, thrown by fetch and by the SDKs built on it.
+	// https://github.com/nodejs/undici/blob/main/docs/docs/api/Errors.md
 	'UND_ERR_BODY_TIMEOUT',
 	'UND_ERR_CONNECT_TIMEOUT',
 	'UND_ERR_HEADERS_TIMEOUT',
 	'UND_ERR_SOCKET',
 ]);
 
+// getaddrinfo codes, not libuv errnos: Node exposes them on `err.code` for name resolution.
+// https://nodejs.org/api/dns.html#error-codes
 const DNS_FAILURE_CODES: ReadonlySet<string> = new Set(['EAI_AGAIN', 'ENOTFOUND']);
 
 /**
