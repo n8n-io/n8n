@@ -135,10 +135,11 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 	},
 	custom: {
 		build: (creds, model, fetch) =>
-			// Opt-in only: the shared builder defaults structured outputs on, which
-			// many custom OpenAI-compatible routers reject or mishandle.
+			// Opt-in only: many custom OpenAI-compatible routers reject or mishandle
+			// structured outputs, so default them off explicitly rather than relying
+			// on the SDK's internal default.
 			buildOpenAiCompatible('custom', undefined, creds, model, fetch, {
-				supportsStructuredOutputs: creds.supportsStructuredOutputs,
+				supportsStructuredOutputs: creds.supportsStructuredOutputs ?? false,
 			}),
 	},
 	anthropic: {
