@@ -75,5 +75,4 @@ describe('agent channel platform registry', () => {
 		expect(presentation?.title).toBe('agents.channels.modal.slackAppNotDeleted.title');
 		expect(presentation?.message).toBeDefined();
 	});
-
 });
