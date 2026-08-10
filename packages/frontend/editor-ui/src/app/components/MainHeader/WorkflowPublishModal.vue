@@ -15,7 +15,7 @@ import { telemetry } from '@/app/plugins/telemetry';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useI18n } from '@n8n/i18n';
-import { N8nHeading, N8nCallout, N8nButton, N8nLink } from '@n8n/design-system';
+import { N8nHeading, N8nCallout, N8nButton, N8nLink, N8nText } from '@n8n/design-system';
 import WorkflowVersionForm from '@/app/components/WorkflowVersionForm.vue';
 import { getActivatableTriggerNodes } from '@/app/utils/nodeTypesUtils';
 import { useToast } from '@n8n/composables/useToast';
@@ -26,12 +26,19 @@ import type { INodeUi } from '@/Interface';
 import type { IUsedCredential } from '@/features/credentials/credentials.types';
 import WorkflowActivationErrorMessage from '@/app/components/WorkflowActivationErrorMessage.vue';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
-import { generateVersionLabelFromId } from '@/features/workflows/workflowHistory/utils';
+import {
+	formatTimestamp,
+	generateVersionLabelFromId,
+	getVersionLabel,
+} from '@/features/workflows/workflowHistory/utils';
+import { useWorkflowHistoryStore } from '@/features/workflows/workflowHistory/workflowHistory.store';
+import type { WorkflowHistory } from '@n8n/rest-api-client/api/workflowHistory';
 
 const modalBus = createEventBus();
 const i18n = useI18n();
 
 const workflowsStore = useWorkflowsStore();
+const workflowHistoryStore = useWorkflowHistoryStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const credentialsStore = useCredentialsStore();
 const { showMessage } = useToast();
@@ -108,6 +115,38 @@ function onModalOpened() {
 	publishForm.value?.focusInput();
 }
 
+const changelog = ref<WorkflowHistory[]>([]);
+
+async function loadChangelog() {
+	const publishedVersionId = workflowDocumentStore.value.activeVersion?.versionId;
+	if (!publishedVersionId) return;
+
+	try {
+		const history = await workflowHistoryStore.getWorkflowHistory(
+			workflowDocumentStore.value.workflowId,
+			{ take: 20 },
+		);
+		const publishedIndex = history.findIndex((v) => v.versionId === publishedVersionId);
+		changelog.value = publishedIndex === -1 ? history : history.slice(0, publishedIndex);
+	} catch {
+		// ponytail: changelog is informational; publishing works without it
+	}
+}
+
+function changelogVersionLabel(version: WorkflowHistory) {
+	return getVersionLabel({
+		workflowHistory: version,
+		currentVersionId: workflowDocumentStore.value.versionId ?? undefined,
+	});
+}
+
+function changelogVersionMeta(version: WorkflowHistory) {
+	const authors = version.authors.split(', ');
+	const author = authors.length > 1 ? `${authors[0]} + ${authors.length - 1}` : authors[0];
+	const { date, time } = formatTimestamp(version.createdAt);
+	return `${author}, ${i18n.baseText('workflowHistory.item.createdAt', { interpolate: { date, time } })}`;
+}
+
 onMounted(() => {
 	const currentVersionData = workflowDocumentStore.value?.versionData;
 
@@ -124,6 +163,8 @@ onMounted(() => {
 	}
 
 	modalBus.on('opened', onModalOpened);
+
+	void loadChangelog();
 });
 
 onBeforeUnmount(() => {
@@ -318,6 +359,26 @@ async function handlePublish() {
 					description-test-id="workflow-publish-description-input"
 					@submit="handlePublish"
 				/>
+				<div v-if="changelog.length > 0" data-test-id="workflow-publish-changelog">
+					<N8nText size="small" :bold="true" color="text-dark">
+						{{ i18n.baseText('workflows.publishModal.changelog') }}
+					</N8nText>
+					<ul :class="$style.changelogList">
+						<li
+							v-for="version in changelog"
+							:key="version.versionId"
+							:class="$style.changelogItem"
+							data-test-id="workflow-publish-changelog-item"
+						>
+							<N8nText size="small" color="text-dark" :class="$style.changelogName">
+								{{ changelogVersionLabel(version) }}
+							</N8nText>
+							<N8nText size="small" color="text-base" :class="$style.changelogMeta">
+								{{ changelogVersionMeta(version) }}
+							</N8nText>
+						</li>
+					</ul>
+				</div>
 				<div :class="$style.actions">
 					<N8nButton
 						variant="subtle"
@@ -350,6 +411,35 @@ async function handlePublish() {
 	display: flex;
 	justify-content: flex-end;
 	gap: var(--spacing--xs);
+}
+
+.changelogList {
+	list-style: none;
+	max-height: 180px;
+	overflow-y: auto;
+	margin-top: var(--spacing--3xs);
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--3xs);
+}
+
+.changelogItem {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: var(--spacing--xs);
+	min-width: 0;
+}
+
+.changelogName {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.changelogMeta {
+	white-space: nowrap;
+	flex-shrink: 0;
 }
 
 .nodeLinks {

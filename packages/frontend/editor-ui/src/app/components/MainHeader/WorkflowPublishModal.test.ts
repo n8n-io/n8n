@@ -4,6 +4,8 @@ import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import WorkflowPublishModal from '@/app/components/MainHeader/WorkflowPublishModal.vue';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import { useWorkflowHistoryStore } from '@/features/workflows/workflowHistory/workflowHistory.store';
+import type { WorkflowHistory } from '@n8n/rest-api-client/api/workflowHistory';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { WORKFLOW_PUBLISH_MODAL_KEY } from '@/app/constants';
 import { STORES } from '@n8n/stores';
@@ -91,11 +93,14 @@ const WEBHOOK_NODE_TYPE_DESCRIPTION: INodeTypeDescription = {
 describe('WorkflowPublishModal', () => {
 	let workflowsStore: MockedStore<typeof useWorkflowsStore>;
 	let workflowsListStore: MockedStore<typeof useWorkflowsListStore>;
+	let workflowHistoryStore: MockedStore<typeof useWorkflowHistoryStore>;
 	let workflowDocumentStore: ReturnType<typeof useWorkflowDocumentStore>;
 
 	beforeEach(() => {
 		workflowsStore = mockedStore(useWorkflowsStore);
 		workflowsListStore = mockedStore(useWorkflowsListStore);
+		workflowHistoryStore = mockedStore(useWorkflowHistoryStore);
+		workflowHistoryStore.getWorkflowHistory.mockResolvedValue([]);
 
 		// Register the webhook node type so workflowTriggerNodes computed recognises triggers
 		const nodeTypesStore = useNodeTypesStore();
@@ -221,6 +226,65 @@ describe('WorkflowPublishModal', () => {
 					workflow_id: 'workflow-1',
 				});
 			});
+		});
+	});
+
+	describe('changelog since last publish', () => {
+		const historyItem = (overrides: Partial<WorkflowHistory>): WorkflowHistory => ({
+			versionId: 'id',
+			authors: 'Test Author',
+			createdAt: '2024-01-01T00:00:00.000Z',
+			updatedAt: '2024-01-01T00:00:00.000Z',
+			workflowPublishHistory: [],
+			name: null,
+			description: null,
+			...overrides,
+		});
+
+		it('shows only versions newer than the published one, with author and date', async () => {
+			workflowHistoryStore.getWorkflowHistory.mockResolvedValue([
+				historyItem({
+					versionId: 'new-version',
+					authors: 'Alice',
+					createdAt: '2024-03-02T10:00:00.000Z',
+				}),
+				historyItem({
+					versionId: 'mid-version',
+					name: 'Mid version',
+					authors: 'Alice, Bob',
+					createdAt: '2024-03-01T09:00:00.000Z',
+				}),
+				historyItem({ versionId: 'old-version', name: 'Published Version' }),
+				historyItem({ versionId: 'ancient-version' }),
+			]);
+
+			const { getByTestId, getAllByTestId, queryByText } = renderComponent();
+
+			await waitFor(() => {
+				expect(getByTestId('workflow-publish-changelog')).toBeInTheDocument();
+			});
+
+			const items = getAllByTestId('workflow-publish-changelog-item');
+			expect(items).toHaveLength(2);
+			expect(items[0]).toHaveTextContent('Current changes');
+			expect(items[0]).toHaveTextContent('Alice');
+			expect(items[0]).toHaveTextContent('2024 Mar 2');
+			expect(items[1]).toHaveTextContent('Mid version');
+			expect(items[1]).toHaveTextContent('Alice + 1');
+			expect(queryByText('Published Version')).not.toBeInTheDocument();
+		});
+
+		it('is hidden when there are no versions since the last publish', async () => {
+			workflowHistoryStore.getWorkflowHistory.mockResolvedValue([
+				historyItem({ versionId: 'old-version', name: 'Published Version' }),
+			]);
+
+			const { queryByTestId } = renderComponent();
+
+			await waitFor(() => {
+				expect(workflowHistoryStore.getWorkflowHistory).toHaveBeenCalled();
+			});
+			expect(queryByTestId('workflow-publish-changelog')).not.toBeInTheDocument();
 		});
 	});
 
