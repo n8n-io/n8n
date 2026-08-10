@@ -1,6 +1,5 @@
 import userEvent from '@testing-library/user-event';
 import { render, waitFor } from '@testing-library/vue';
-import { h } from 'vue';
 
 import InputNumber from './InputNumber.vue';
 
@@ -298,45 +297,6 @@ describe('v2/components/InputNumber', () => {
 			});
 			expect(wrapper.getByTestId('custom-decrement')).toBeInTheDocument();
 			expect(wrapper.getByText('DOWN')).toBeInTheDocument();
-		});
-
-		it('should keep NumberField wiring when using custom input slot', async () => {
-			const wrapper = render(InputNumber, {
-				props: {
-					modelValue: 42,
-					placeholder: 'Custom placeholder',
-				},
-				slots: {
-					input: (slotProps: { class: string; placeholder?: string; disabled?: boolean }) =>
-						h('input', {
-							'data-test-id': 'custom-input',
-							class: slotProps.class,
-							placeholder: slotProps.placeholder,
-							disabled: slotProps.disabled,
-						}),
-				},
-			});
-
-			const customInput = wrapper.getByTestId('custom-input');
-			expect(customInput).toBeInTheDocument();
-			expect(customInput).toHaveAttribute('placeholder', 'Custom placeholder');
-			expect(customInput).toHaveAttribute('role', 'spinbutton');
-			expect(customInput).toHaveValue('42');
-
-			await userEvent.click(customInput);
-			await waitFor(() => {
-				expect(wrapper.emitted('focus')).toBeTruthy();
-			});
-
-			await userEvent.clear(customInput);
-			await userEvent.type(customInput, '7');
-			await userEvent.tab();
-
-			await waitFor(() => {
-				expect(wrapper.emitted('blur')).toBeTruthy();
-				const emitted = wrapper.emitted('update:modelValue');
-				expect(emitted?.[emitted.length - 1]).toEqual([7]);
-			});
 		});
 	});
 

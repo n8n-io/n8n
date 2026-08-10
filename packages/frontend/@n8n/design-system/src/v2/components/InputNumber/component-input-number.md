@@ -37,7 +37,6 @@ Extends Reka UI `NumberFieldRootProps` (except `formatOptions`, derived from `pr
 
 **Slots**
 
-- `input` - Custom input element. Scope: `{ class, placeholder?, disabled? }`. Must render a single root that can accept native input attributes (typically `<input>`). Wrapped with Reka `NumberFieldInput` via `as-child` so value sync and focus/blur stay connected to `NumberFieldRoot`.
 - `increment` - Custom increment control content (inside the control button). Scope: `{ ui: { class } }`.
 - `decrement` - Custom decrement control content (inside the control button). Scope: `{ ui: { class } }`.
 
@@ -94,21 +93,6 @@ const price = ref(0)
   </template>
   <template #increment>
     <N8nIcon icon="plus" size="small" />
-  </template>
-</N8nInputNumber2>
-```
-
-**Custom input (single element; Reka bindings are merged via `as-child`):**
-
-```vue
-<N8nInputNumber2 v-model="value">
-  <template #input="{ class: inputClass, placeholder, disabled }">
-    <input
-      data-test-id="custom-number-input"
-      :class="inputClass"
-      :placeholder="placeholder"
-      :disabled="disabled"
-    />
   </template>
 </N8nInputNumber2>
 ```

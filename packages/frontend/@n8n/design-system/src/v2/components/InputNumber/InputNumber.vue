@@ -120,21 +120,11 @@ function resolvedFormatOptions(): Intl.NumberFormatOptions {
 		</NumberFieldDecrement>
 
 		<NumberFieldInput
-			as-child
 			:class="$style.input"
 			:placeholder="placeholder"
 			@focus="onFocus"
 			@blur="emit('blur', $event)"
-		>
-			<slot
-				name="input"
-				:class="$style.input"
-				:placeholder="placeholder"
-				:disabled="props.disabled"
-			>
-				<input />
-			</slot>
-		</NumberFieldInput>
+		/>
 
 		<NumberFieldIncrement v-if="showControlsBoth()" as-child>
 			<button
