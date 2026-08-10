@@ -235,6 +235,8 @@ export class AgentRuntimeCacheService {
 				usePublishedVersion ? 'production' : 'test',
 				integrationType,
 				user,
+				undefined,
+				usePublishedVersion ? 'integrated' : 'manual',
 			);
 
 		return {

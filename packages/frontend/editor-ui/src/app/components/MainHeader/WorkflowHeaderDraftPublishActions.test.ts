@@ -547,7 +547,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			).not.toBeInTheDocument();
 		});
 
-		const seedOpenReview = () => {
+		const seedOpenReview = (overrides: Partial<WorkflowReviewRequestForWorkflow> = {}) => {
 			vi.mocked(fetchWorkflowReviewRequests).mockResolvedValue({
 				count: 1,
 				data: [
@@ -560,10 +560,48 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 						updatedAt: '2026-07-20T10:00:00.000Z',
 						decisionBy: null,
 						approvedVersionPublicationState: null,
+						...overrides,
 					},
 				],
 			});
 		};
+
+		it('disables Publish when the open review already contains the saved version', async () => {
+			setWorkflowReviewGates();
+			setupEnabledPublishButton();
+			seedOpenReview({ workflowVersionId: 'version-1' });
+
+			const { getByTestId, findByTestId } = renderComponent();
+			await waitFor(() =>
+				expect(useWorkflowReviewStatusStore().hasOpenReview(defaultWorkflowProps.id)).toBe(true),
+			);
+
+			expect(getByTestId('workflow-open-publish-modal-button')).toBeDisabled();
+			expect(await findByTestId('workflow-review-status-pill')).toHaveTextContent(
+				'Waiting for review',
+			);
+		});
+
+		it('rechecks the saved version after saving unsaved workflow changes', async () => {
+			setWorkflowReviewGates();
+			setupEnabledPublishButton();
+			seedOpenReview({ workflowVersionId: 'version-1' });
+			uiStore.markStateDirty();
+
+			const { getByTestId, queryByRole } = renderComponent();
+			await waitFor(() =>
+				expect(useWorkflowReviewStatusStore().hasOpenReview(defaultWorkflowProps.id)).toBe(true),
+			);
+
+			const publishButton = getByTestId('workflow-open-publish-modal-button');
+			expect(publishButton).toBeEnabled();
+			await userEvent.click(publishButton);
+
+			expect(mockSaveCurrentWorkflow).toHaveBeenCalledWith({}, true);
+			expect(
+				queryByRole('dialog', { name: 'Submit latest changes to existing review' }),
+			).not.toBeInTheDocument();
+		});
 
 		it('opens the update-review dialog for an open review even with the local preference off', async () => {
 			const openModalSpy = vi.spyOn(uiStore, 'openModalWithData');

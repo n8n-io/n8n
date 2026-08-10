@@ -16,7 +16,12 @@ const integration = {
 
 function mountItem(configured: boolean, connected: boolean) {
 	return mount(AgentChannelListItem, {
-		props: { integration, configured, connected },
+		props: {
+			integration,
+			configured,
+			connected,
+			connectAction: { label: 'generic.connect' },
+		},
 		global: {
 			stubs: {
 				N8nButton: { template: '<button><slot /></button>' },
@@ -42,5 +47,29 @@ describe('AgentChannelListItem', () => {
 		expect(wrapper.find('[data-testid="agent-channel-connected-indicator"]').exists()).toBe(
 			connected,
 		);
+	});
+
+	it('renders registry-provided connect action metadata', () => {
+		const wrapper = mount(AgentChannelListItem, {
+			props: {
+				integration,
+				configured: false,
+				connected: false,
+				connectAction: { label: 'Add to Slack', icon: 'plus' },
+			},
+			global: {
+				stubs: {
+					N8nButton: {
+						props: ['icon'],
+						template: '<button :data-icon="icon"><slot /></button>',
+					},
+					N8nIcon: { template: '<i />' },
+					N8nText: { template: '<span><slot /></span>' },
+				},
+			},
+		});
+
+		expect(wrapper.get('button').text()).toContain('Add to Slack');
+		expect(wrapper.get('button').attributes('data-icon')).toBe('plus');
 	});
 });
