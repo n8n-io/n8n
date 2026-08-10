@@ -90,11 +90,13 @@ export class InstanceAiCreditService {
 	 * the caller's own work.
 	 */
 	async ensureQuotaLockApplied(user: User): Promise<void> {
-		if (await this.shouldSkipQuotaLock()) return;
-
-		const activatedAt = await this.activationService.getActivatedAt();
-
+		// Everything is inside the try, including the prerequisite reads: a run awaits this before
+		// starting, so a blip reading the activation row or the message count must not take the run
+		// down with it. Whatever fails, the next interaction re-attempts.
 		try {
+			if (await this.shouldSkipQuotaLock()) return;
+
+			const activatedAt = await this.activationService.getActivatedAt();
 			const result = await this.aiService.lockInstanceAiQuota(user, activatedAt);
 			this.quotaLockConfirmed = result.quotaLocked;
 
@@ -145,33 +147,6 @@ export class InstanceAiCreditService {
 
 		this.hasUserMessage ||= await this.messageRepo.hasAnyUserMessage();
 		return !this.hasUserMessage;
-	}
-
-	/**
-	 * Whether the lock condition holds, and when the instance activated. Both halves are
-	 * monotonic, so each is memoised once true and this settles into pure in-memory checks.
-	 * Returns `undefined` while either half is still outstanding.
-	 */
-	private async resolveTriggerActivatedAt(): Promise<number | undefined> {
-		const activatedAt = await this.activationService.getActivatedAt();
-		if (activatedAt === undefined) return undefined;
-
-		this.hasUserMessage ||= await this.messageRepo.hasAnyUserMessage();
-		if (!this.hasUserMessage) return undefined;
-
-		return activatedAt;
-	}
-
-	/**
-	 * Whether this instance's pool should be treated as locked, evaluated from n8n's own state.
-	 * Used where the service's own answer isn't to hand — see the masked-stream reclassification
-	 * in `InstanceAiService`.
-	 */
-	async isActivationLockActive(): Promise<boolean> {
-		if (this.quotaLockConfirmed) return true;
-		if (!this.settingsService.isActivationCapped()) return false;
-
-		return (await this.resolveTriggerActivatedAt()) !== undefined;
 	}
 
 	/**

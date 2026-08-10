@@ -69,12 +69,6 @@ describe('InstanceAiCreditService activation lock', () => {
 			expect(aiService.lockInstanceAiQuota).toHaveBeenCalledWith(user, 1_700_000_000);
 		});
 
-		it('reports the lock as active', async () => {
-			const { service } = setup({ activatedAt: 1_700_000_000, hasUserMessage: true });
-
-			await expect(service.isActivationLockActive()).resolves.toBe(true);
-		});
-
 		it('stops calling the service once the lock is confirmed', async () => {
 			const { service, aiService } = setup({ activatedAt: 1_700_000_000, hasUserMessage: true });
 
@@ -93,7 +87,6 @@ describe('InstanceAiCreditService activation lock', () => {
 			await service.ensureQuotaLockApplied(user);
 
 			expect(aiService.lockInstanceAiQuota).not.toHaveBeenCalled();
-			await expect(service.isActivationLockActive()).resolves.toBe(false);
 		});
 
 		it('does not lock on assistant use alone', async () => {
@@ -139,15 +132,38 @@ describe('InstanceAiCreditService activation lock', () => {
 			expect(activationService.getActivatedAt).not.toHaveBeenCalled();
 			expect(messageRepo.hasAnyUserMessage).not.toHaveBeenCalled();
 		});
+	});
 
-		it('never reports the lock as active', async () => {
-			const { service } = setup({
-				activationCapped: false,
-				activatedAt: 1_700_000_000,
-				hasUserMessage: true,
-			});
+	// A run awaits this before starting, so nothing in here — including the prerequisite reads —
+	// may escape and take the run down with it.
+	describe('when a prerequisite read fails', () => {
+		it('swallows an activation-row read failure', async () => {
+			const { service, activationService, scopedLogger } = setup({ hasUserMessage: true });
+			activationService.getActivatedAt.mockRejectedValue(new Error('db unavailable'));
 
-			await expect(service.isActivationLockActive()).resolves.toBe(false);
+			await expect(service.ensureQuotaLockApplied(user)).resolves.toBeUndefined();
+			expect(scopedLogger.warn).toHaveBeenCalled();
+		});
+
+		it('swallows a message-count read failure', async () => {
+			const { service, messageRepo, scopedLogger } = setup({ activatedAt: 1_700_000_000 });
+			messageRepo.hasAnyUserMessage.mockRejectedValue(new Error('db unavailable'));
+
+			await expect(service.ensureQuotaLockApplied(user)).resolves.toBeUndefined();
+			expect(scopedLogger.warn).toHaveBeenCalled();
+		});
+
+		it('retries on the next call rather than giving up', async () => {
+			const { service, aiService, activationService } = setup({ hasUserMessage: true });
+			activationService.getActivatedAt.mockRejectedValueOnce(new Error('db unavailable'));
+
+			await service.ensureQuotaLockApplied(user);
+			expect(aiService.lockInstanceAiQuota).not.toHaveBeenCalled();
+
+			activationService.getActivatedAt.mockResolvedValue(1_700_000_000);
+			await service.ensureQuotaLockApplied(user);
+
+			expect(aiService.lockInstanceAiQuota).toHaveBeenCalledTimes(1);
 		});
 	});
 
