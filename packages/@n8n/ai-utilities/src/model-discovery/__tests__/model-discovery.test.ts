@@ -1,4 +1,4 @@
-import { listModelsForProvider, MODEL_DISCOVERY_PROVIDERS } from '../index';
+import { isOpenAiCustomEndpoint, listModelsForProvider, MODEL_DISCOVERY_PROVIDERS } from '../index';
 
 function mockFetch(body: unknown, ok = true, status = 200) {
 	return vi.fn().mockResolvedValue({
@@ -53,6 +53,18 @@ describe('model-discovery', () => {
 	});
 
 	describe('openai', () => {
+		describe('isOpenAiCustomEndpoint', () => {
+			it.each([
+				[undefined, false],
+				['https://api.openai.com/v1/', false],
+				['https://ai-assistant.n8n.io/v1', false],
+				['https://litellm.example.com/v1', true],
+				['not-a-valid-url', true],
+			] as const)('classifies %s as custom: %s', (baseURL, expected) => {
+				expect(isOpenAiCustomEndpoint(baseURL)).toBe(expected);
+			});
+		});
+
 		it('filters out non-chat models on the official API and sorts by id', async () => {
 			const fetch = mockFetch({
 				data: [
