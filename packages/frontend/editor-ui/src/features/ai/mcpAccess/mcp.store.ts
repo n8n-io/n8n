@@ -152,6 +152,11 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 			// (e.g. it reset auto-expose as a side effect of disabling access).
 			...(updatedAutoExpose !== undefined ? { autoExposeNewWorkflows: updatedAutoExpose } : {}),
 		};
+		// autoExposeNewWorkflows is reported as false by the backend while access
+		// is off, so re-enabling must re-fetch to surface its real stored value.
+		if (next) {
+			await settingsStore.getModuleSettings();
+		}
 		return next;
 	}
 
