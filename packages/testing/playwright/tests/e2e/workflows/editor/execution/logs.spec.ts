@@ -272,19 +272,19 @@ test.describe(
 			await n8n.ndv.close();
 			await n8n.canvas.logsPanel.open();
 
-			// Each chat send creates its own execution; wait on chat messages (not
-			// refreshSession + toast) so the second turn is reliable in CI.
-			await n8n.canvas.logsPanel.sendManualChatMessage('First message');
-			await expect(n8n.canvas.logsPanel.getManualChatMessages().nth(0)).toContainText(
-				'First message',
-			);
+			// Prompts must match MockServer expectations under expectations/execution.logs
+			// (strictBodyMatching). Use refreshSession between turns so each Anthropic
+			// request stays single-message and matches a recorded expectation.
+			await n8n.canvas.logsPanel.sendManualChatMessage('Hi!');
+			await expect(n8n.canvas.logsPanel.getManualChatMessages().nth(0)).toContainText('Hi!');
 			await expect(n8n.canvas.logsPanel.getManualChatMessages().nth(1)).toContainText('Hello');
 
-			await n8n.canvas.logsPanel.sendManualChatMessage('Second message');
-			await expect(n8n.canvas.logsPanel.getManualChatMessages().nth(2)).toContainText(
-				'Second message',
-			);
-			await expect(n8n.canvas.logsPanel.getManualChatMessages().nth(3)).toContainText('Hello');
+			await n8n.canvas.logsPanel.refreshSession();
+			await expect(n8n.canvas.logsPanel.getManualChatMessages()).not.toBeAttached();
+
+			await n8n.canvas.logsPanel.sendManualChatMessage('Hey!');
+			await expect(n8n.canvas.logsPanel.getManualChatMessages().nth(0)).toContainText('Hey!');
+			await expect(n8n.canvas.logsPanel.getManualChatMessages().nth(1)).toContainText('Hello');
 
 			await n8n.canvas.openExecutions();
 			await n8n.executions.getAutoRefreshButton().click();
@@ -292,21 +292,15 @@ test.describe(
 
 			// Newest execution first
 			await n8n.executions.getExecutionItems().nth(0).click();
-			await expect(n8n.executions.logsPanel.getManualChatMessages().nth(0)).toContainText(
-				'Second message',
-			);
+			await expect(n8n.executions.logsPanel.getManualChatMessages().nth(0)).toContainText('Hey!');
 			await expect(n8n.executions.logsPanel.getManualChatMessages().nth(1)).toContainText('Hello');
 
 			await n8n.executions.getExecutionItems().nth(1).click();
-			await expect(n8n.executions.logsPanel.getManualChatMessages().nth(0)).toContainText(
-				'First message',
-			);
+			await expect(n8n.executions.logsPanel.getManualChatMessages().nth(0)).toContainText('Hi!');
 			await expect(n8n.executions.logsPanel.getManualChatMessages().nth(1)).toContainText('Hello');
 
 			await n8n.executions.getExecutionItems().nth(0).click();
-			await expect(n8n.executions.logsPanel.getManualChatMessages().nth(0)).toContainText(
-				'Second message',
-			);
+			await expect(n8n.executions.logsPanel.getManualChatMessages().nth(0)).toContainText('Hey!');
 		});
 
 		test('should show logs for a workflow with a node that waits for webhook', async ({
