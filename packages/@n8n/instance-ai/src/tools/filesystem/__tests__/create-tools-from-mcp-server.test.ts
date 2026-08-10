@@ -107,7 +107,7 @@ function makeMockServer(tools: McpTool[] = [SAMPLE_TOOL]): Mocked<LocalMcpServer
 
 /** Build the tool and return its execute function. */
 function getExecute(server: LocalMcpServer, toolName = 'write_file') {
-	const tools = createToolsFromLocalMcpServer(server, mockLogger);
+	const tools = createToolsFromLocalMcpServer({ server, logger: mockLogger });
 	const tool = tools.get(toolName);
 	if (!tool) throw new Error(`Tool '${toolName}' was not created`);
 	return async (args: Record<string, unknown>, ctx: unknown) =>
@@ -130,7 +130,7 @@ describe('createToolsFromLocalMcpServer', () => {
 	describe('tool creation', () => {
 		it('creates a tool for each advertised tool', () => {
 			const server = makeMockServer([SAMPLE_TOOL, { ...SAMPLE_TOOL, name: 'read_file' }]);
-			const tools = createToolsFromLocalMcpServer(server, mockLogger);
+			const tools = createToolsFromLocalMcpServer({ server, logger: mockLogger });
 			expect(tools.has('write_file')).toBe(true);
 			expect(tools.has('read_file')).toBe(true);
 		});
@@ -144,8 +144,10 @@ describe('createToolsFromLocalMcpServer', () => {
 				},
 			]);
 			// Should not throw — the tool must be created even with a bad schema
-			expect(() => createToolsFromLocalMcpServer(server, mockLogger)).not.toThrow();
-			expect(createToolsFromLocalMcpServer(server, mockLogger).get('bad_tool')).toBeDefined();
+			expect(() => createToolsFromLocalMcpServer({ server, logger: mockLogger })).not.toThrow();
+			expect(
+				createToolsFromLocalMcpServer({ server, logger: mockLogger }).get('bad_tool'),
+			).toBeDefined();
 		});
 
 		it('skips tools with invalid names', () => {
@@ -155,7 +157,7 @@ describe('createToolsFromLocalMcpServer', () => {
 				{ ...SAMPLE_TOOL, name: 'read_file' },
 			]);
 
-			const tools = createToolsFromLocalMcpServer(server, logger as never);
+			const tools = createToolsFromLocalMcpServer({ server, logger: logger as never });
 
 			expect(tools.get('bad tool')).toBeUndefined();
 			expect(tools.get('read_file')).toBeDefined();
@@ -175,7 +177,7 @@ describe('createToolsFromLocalMcpServer', () => {
 				{ ...SAMPLE_TOOL, name: 'read_file' },
 			]);
 
-			const tools = createToolsFromLocalMcpServer(server, logger as never);
+			const tools = createToolsFromLocalMcpServer({ server, logger: logger as never });
 
 			expect(tools.has('constructor')).toBe(false);
 			expect(tools.get('read_file')).toBeDefined();
@@ -195,7 +197,7 @@ describe('createToolsFromLocalMcpServer', () => {
 				{ ...SAMPLE_TOOL, name: 'custom-tool' },
 			]);
 
-			const tools = createToolsFromLocalMcpServer(server, logger as never);
+			const tools = createToolsFromLocalMcpServer({ server, logger: logger as never });
 
 			expect(tools.get('custom_tool')).toBeDefined();
 			expect(tools.get('custom-tool')).toBeUndefined();
@@ -215,7 +217,7 @@ describe('createToolsFromLocalMcpServer', () => {
 				{ ...SAMPLE_TOOL, name: 'read_file' },
 			]);
 
-			const tools = createToolsFromLocalMcpServer(server, logger as never);
+			const tools = createToolsFromLocalMcpServer({ server, logger: logger as never });
 
 			expect(tools.get('ＴＯＯＬ')).toBeUndefined();
 			expect(tools.get('read_file')).toBeDefined();
@@ -242,7 +244,7 @@ describe('createToolsFromLocalMcpServer', () => {
 				{ ...SAMPLE_TOOL, name: 'read_file' },
 			]);
 
-			const tools = createToolsFromLocalMcpServer(server, logger as never);
+			const tools = createToolsFromLocalMcpServer({ server, logger: logger as never });
 
 			expect(tools.get('huge_tool')).toBeUndefined();
 			expect(tools.get('read_file')).toBeDefined();
@@ -260,7 +262,7 @@ describe('createToolsFromLocalMcpServer', () => {
 	describe('media output', () => {
 		it('returns native file parts from toMessage for gateway image results', () => {
 			const server = makeMockServer();
-			const tool = createToolsFromLocalMcpServer(server, mockLogger).get('write_file');
+			const tool = createToolsFromLocalMcpServer({ server, logger: mockLogger }).get('write_file');
 
 			const message = tool?.toMessage?.(SCREENSHOT_RESULT);
 
@@ -275,14 +277,14 @@ describe('createToolsFromLocalMcpServer', () => {
 
 		it('does not create an extra message for text-only results', () => {
 			const server = makeMockServer();
-			const tool = createToolsFromLocalMcpServer(server, mockLogger).get('write_file');
+			const tool = createToolsFromLocalMcpServer({ server, logger: mockLogger }).get('write_file');
 
 			expect(tool?.toMessage?.(SUCCESS_RESULT)).toBeUndefined();
 		});
 
 		it('returns AI SDK content output for gateway image results', () => {
 			const server = makeMockServer();
-			const tool = createToolsFromLocalMcpServer(server, mockLogger).get('write_file');
+			const tool = createToolsFromLocalMcpServer({ server, logger: mockLogger }).get('write_file');
 
 			expect(tool?.toModelOutput?.(SCREENSHOT_RESULT)).toEqual({
 				type: 'content',
@@ -295,7 +297,7 @@ describe('createToolsFromLocalMcpServer', () => {
 
 		it('returns a native file part from toMessage for gateway resource results', () => {
 			const server = makeMockServer();
-			const tool = createToolsFromLocalMcpServer(server, mockLogger).get('write_file');
+			const tool = createToolsFromLocalMcpServer({ server, logger: mockLogger }).get('write_file');
 
 			expect(tool?.toMessage?.(PDF_RESULT)).toEqual({
 				role: 'assistant',
@@ -305,7 +307,7 @@ describe('createToolsFromLocalMcpServer', () => {
 
 		it('falls back to application/octet-stream when resource has no mimeType', () => {
 			const server = makeMockServer();
-			const tool = createToolsFromLocalMcpServer(server, mockLogger).get('write_file');
+			const tool = createToolsFromLocalMcpServer({ server, logger: mockLogger }).get('write_file');
 
 			const result: McpToolCallResult = {
 				content: [{ type: 'resource', resource: { uri: 'file:///x', blob: 'base64-bytes' } }],
@@ -319,7 +321,7 @@ describe('createToolsFromLocalMcpServer', () => {
 
 		it('returns AI SDK content output for gateway resource results', () => {
 			const server = makeMockServer();
-			const tool = createToolsFromLocalMcpServer(server, mockLogger).get('write_file');
+			const tool = createToolsFromLocalMcpServer({ server, logger: mockLogger }).get('write_file');
 
 			expect(tool?.toModelOutput?.(PDF_RESULT)).toEqual({
 				type: 'content',
@@ -486,7 +488,11 @@ describe('createToolsFromLocalMcpServer', () => {
 
 		function getExecuteWithCallback(server: LocalMcpServer, toolName: string) {
 			const onCredentialCreateResult = vi.fn();
-			const tools = createToolsFromLocalMcpServer(server, mockLogger, onCredentialCreateResult);
+			const tools = createToolsFromLocalMcpServer({
+				server,
+				logger: mockLogger,
+				onCredentialCreateResult,
+			});
 			const tool = tools.get(toolName);
 			if (!tool) throw new Error(`Tool '${toolName}' was not created`);
 			const execute = async (args: Record<string, unknown>, ctx: unknown) =>
