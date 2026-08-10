@@ -654,7 +654,7 @@ function onTagsUpdate(value: TagsInputValue[]) {
 	min-width: var(--reka-combobox-trigger-width);
 	max-height: min(
 		var(--combobox-content--max-height),
-		var(--reka-combobox-content-available-height, 100dvh)
+		var(--reka-combobox-content-available-height, 75dvh)
 	);
 }
 
