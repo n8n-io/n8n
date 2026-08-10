@@ -26,10 +26,28 @@ const nullableObjectPublicSchema = z.custom<Record<string, unknown> | null>(
 	{ message: 'Must be an object or null' },
 );
 
+const projectIconPublicSchema = z
+	.object({
+		type: z.enum(['emoji', 'icon']),
+		value: z.string(),
+	})
+	.nullable();
+
+const projectCustomTelemetryTagPublicSchema = z.object({
+	key: z.string(),
+	value: z.string(),
+});
+
 const workflowProjectPublicSchema = z.object({
 	id: z.string(),
 	name: z.string(),
 	type: z.enum(['personal', 'team']),
+	icon: projectIconPublicSchema,
+	description: z.string().nullable(),
+	customTelemetryTags: z.array(projectCustomTelemetryTagPublicSchema),
+	creatorId: z.string().nullable(),
+	createdAt: z.string().datetime(),
+	updatedAt: z.string().datetime(),
 });
 
 export const sharedWorkflowPublicSchema = z.object({
@@ -39,6 +57,15 @@ export const sharedWorkflowPublicSchema = z.object({
 	project: workflowProjectPublicSchema,
 	createdAt: z.string().datetime(),
 	updatedAt: z.string().datetime(),
+});
+
+const workflowPublishHistoryPublicSchema = z.object({
+	id: z.number(),
+	workflowId: z.string(),
+	versionId: z.string().nullable(),
+	event: z.enum(['activated', 'deactivated']),
+	userId: z.string().nullable(),
+	createdAt: z.string().datetime(),
 });
 
 export const activeWorkflowVersionPublicSchema = z.object({
@@ -53,6 +80,7 @@ export const activeWorkflowVersionPublicSchema = z.object({
 	autosaved: z.boolean(),
 	createdAt: z.string().datetime(),
 	updatedAt: z.string().datetime(),
+	workflowPublishHistory: z.array(workflowPublishHistoryPublicSchema),
 });
 
 export const workflowPublicSchema = z.object({
@@ -65,6 +93,8 @@ export const workflowPublicSchema = z.object({
 	updatedAt: z.string().datetime(),
 	isArchived: z.boolean(),
 	versionId: z.string(),
+	versionCounter: z.number(),
+	sourceWorkflowId: z.string().nullable(),
 	triggerCount: z.number(),
 	nodes: nodesPublicSchema,
 	connections: connectionsPublicSchema,

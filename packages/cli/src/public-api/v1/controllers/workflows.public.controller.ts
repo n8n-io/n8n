@@ -11,6 +11,7 @@ import type {
 	TagEntity,
 	WorkflowEntity,
 	WorkflowHistory,
+	WorkflowPublishHistory,
 } from '@n8n/db';
 import {
 	ApiDescription,
@@ -59,9 +60,26 @@ function toPublicSharedWorkflow(sharedWorkflow: SharedWorkflow) {
 			id: sharedWorkflow.project.id,
 			name: sharedWorkflow.project.name,
 			type: sharedWorkflow.project.type,
+			icon: sharedWorkflow.project.icon,
+			description: sharedWorkflow.project.description,
+			customTelemetryTags: sharedWorkflow.project.customTelemetryTags,
+			creatorId: sharedWorkflow.project.creatorId,
+			createdAt: sharedWorkflow.project.createdAt.toISOString(),
+			updatedAt: sharedWorkflow.project.updatedAt.toISOString(),
 		},
 		createdAt: sharedWorkflow.createdAt.toISOString(),
 		updatedAt: sharedWorkflow.updatedAt.toISOString(),
+	};
+}
+
+function toPublicWorkflowPublishHistory(entry: WorkflowPublishHistory) {
+	return {
+		id: entry.id,
+		workflowId: entry.workflowId,
+		versionId: entry.versionId,
+		event: entry.event,
+		userId: entry.userId,
+		createdAt: entry.createdAt.toISOString(),
 	};
 }
 
@@ -78,6 +96,9 @@ function toPublicActiveVersion(activeVersion: WorkflowHistory) {
 		autosaved: activeVersion.autosaved,
 		createdAt: activeVersion.createdAt.toISOString(),
 		updatedAt: activeVersion.updatedAt.toISOString(),
+		workflowPublishHistory: activeVersion.workflowPublishHistory.map(
+			toPublicWorkflowPublishHistory,
+		),
 	};
 }
 
@@ -141,6 +162,8 @@ export class WorkflowsPublicController {
 			updatedAt: workflow.updatedAt.toISOString(),
 			isArchived: workflow.isArchived,
 			versionId: workflow.versionId,
+			versionCounter: workflow.versionCounter,
+			sourceWorkflowId: workflow.sourceWorkflowId,
 			triggerCount: workflow.triggerCount,
 			nodes: workflow.nodes,
 			connections: workflow.connections,

@@ -10,6 +10,8 @@ const baseWorkflow = {
 	updatedAt: '2024-01-01T00:00:00.000Z',
 	isArchived: false,
 	versionId: 'version-1',
+	versionCounter: 3,
+	sourceWorkflowId: null,
 	triggerCount: 0,
 	nodes: [],
 	connections: {},
@@ -22,7 +24,17 @@ const baseWorkflow = {
 			role: 'workflow:owner',
 			workflowId: '1',
 			projectId: 'project-1',
-			project: { id: 'project-1', name: 'My project', type: 'personal' },
+			project: {
+				id: 'project-1',
+				name: 'My project',
+				type: 'personal',
+				icon: null,
+				description: null,
+				customTelemetryTags: [],
+				creatorId: 'user-1',
+				createdAt: '2024-01-01T00:00:00.000Z',
+				updatedAt: '2024-01-01T00:00:00.000Z',
+			},
 			createdAt: '2024-01-01T00:00:00.000Z',
 			updatedAt: '2024-01-01T00:00:00.000Z',
 		},
@@ -62,6 +74,16 @@ describe('WorkflowPublicDto', () => {
 				autosaved: false,
 				createdAt: baseWorkflow.createdAt,
 				updatedAt: baseWorkflow.updatedAt,
+				workflowPublishHistory: [
+					{
+						id: 1,
+						workflowId: '1',
+						versionId: 'version-1',
+						event: 'activated',
+						userId: 'user-1',
+						createdAt: baseWorkflow.createdAt,
+					},
+				],
 			},
 		});
 
@@ -79,16 +101,24 @@ describe('WorkflowPublicDto', () => {
 	test('strips fields not part of the public contract', () => {
 		const result = WorkflowPublicDto.safeParse({
 			...baseWorkflow,
-			versionCounter: 3,
-			sourceWorkflowId: 'source-1',
 			tagMappings: [{ workflowId: '1', tagId: 't1' }],
 		});
 
 		expect(result.success).toBe(true);
 		if (result.success) {
-			expect(result.data).not.toHaveProperty('versionCounter');
-			expect(result.data).not.toHaveProperty('sourceWorkflowId');
 			expect(result.data).not.toHaveProperty('tagMappings');
+		}
+	});
+
+	test('passes through fields mirrored from the raw entity (versionCounter, sourceWorkflowId, project details, publish history)', () => {
+		const result = WorkflowPublicDto.safeParse(baseWorkflow);
+
+		expect(result.success).toBe(true);
+		if (result.success) {
+			expect(result.data.versionCounter).toBe(3);
+			expect(result.data.sourceWorkflowId).toBeNull();
+			expect(result.data.shared[0].project.creatorId).toBe('user-1');
+			expect(result.data.shared[0].project.customTelemetryTags).toEqual([]);
 		}
 	});
 
