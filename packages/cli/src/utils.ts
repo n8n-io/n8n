@@ -131,10 +131,10 @@ export async function withExpressionIsolate<T>(
 	workflow: Workflow,
 	fn: () => Promise<T>,
 ): Promise<T> {
-	await workflow.expression.acquireIsolate();
+	const acquired = await workflow.expression.acquireIsolate();
 	try {
 		return await fn();
 	} finally {
-		await workflow.expression.releaseIsolate();
+		if (acquired) await workflow.expression.releaseIsolate();
 	}
 }

@@ -45,7 +45,7 @@ describe('ActiveWorkflows', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
-		acquireIsolate = jest.fn().mockResolvedValue(undefined);
+		acquireIsolate = jest.fn().mockResolvedValue(true);
 		releaseIsolate = jest.fn().mockResolvedValue(undefined);
 		// @ts-expect-error -- assign minimal expression stub for isolate-acquisition tests
 		workflow.expression = { acquireIsolate, releaseIsolate };
@@ -210,6 +210,38 @@ describe('ActiveWorkflows', () => {
 				expect(triggersAndPollers.runPoll).toHaveBeenCalledTimes(2);
 				expect(pollFunctions.__emit).not.toHaveBeenCalled();
 				expect(pollFunctions.__emitError).toHaveBeenCalledWith(error);
+			});
+
+			it('should not acquire or release the isolate for the initial test poll', async () => {
+				await addWorkflow({ pollNodes: [pollNode] });
+
+				expect(acquireIsolate).not.toHaveBeenCalled();
+				expect(releaseIsolate).not.toHaveBeenCalled();
+			});
+
+			it('should acquire and release the isolate per scheduled poll tick', async () => {
+				await addWorkflow({ pollNodes: [pollNode] });
+
+				const executeTrigger = scheduledTaskManager.registerCron.mock
+					.calls[0][1] as () => Promise<void>;
+				await executeTrigger();
+
+				expect(acquireIsolate).toHaveBeenCalledTimes(1);
+				expect(releaseIsolate).toHaveBeenCalledTimes(1);
+			});
+
+			it('should not release an isolate it did not newly acquire', async () => {
+				await addWorkflow({ pollNodes: [pollNode] });
+
+				// Simulate a scheduled tick firing while the activation's outer
+				// isolate window still holds the bridge: acquire reports "already held"
+				acquireIsolate.mockResolvedValue(false);
+				const executeTrigger = scheduledTaskManager.registerCron.mock
+					.calls[0][1] as () => Promise<void>;
+				await executeTrigger();
+
+				expect(acquireIsolate).toHaveBeenCalledTimes(1);
+				expect(releaseIsolate).not.toHaveBeenCalled();
 			});
 		});
 	});

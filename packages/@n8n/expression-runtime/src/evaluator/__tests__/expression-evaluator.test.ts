@@ -47,4 +47,22 @@ describe('ExpressionEvaluator', () => {
 		await evaluator.release(caller);
 		await evaluator.dispose();
 	});
+
+	it('should report whether a bridge was newly acquired', async () => {
+		const evaluator = new ExpressionEvaluator({
+			createBridge: createMockBridge,
+			maxCodeCacheSize: 100,
+		});
+		await evaluator.initialize();
+
+		const caller = {};
+		await expect(evaluator.acquire(caller)).resolves.toBe(true);
+		await expect(evaluator.acquire(caller)).resolves.toBe(false);
+
+		await evaluator.release(caller);
+		await expect(evaluator.acquire(caller)).resolves.toBe(true);
+
+		await evaluator.release(caller);
+		await evaluator.dispose();
+	});
 });
