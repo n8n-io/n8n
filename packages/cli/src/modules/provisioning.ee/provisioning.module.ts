@@ -25,10 +25,7 @@ export class ProvisioningModule implements ModuleInterface {
 
 		// Register the SSO login hooks so SAML/OIDC logins trigger role
 		// provisioning without those modules importing this one.
-		const { SsoProvisioningHooks } = await import('@/sso.ee/sso-provisioning-hooks.js');
-		const { SsoProvisioningHandlerService } = await import('./sso-provisioning.handler.ee.js');
-		Container.get(SsoProvisioningHooks).registerHandler(
-			Container.get(SsoProvisioningHandlerService),
-		);
+		const { registerSsoProvisioningHandler } = await import('./register.js');
+		registerSsoProvisioningHandler();
 	}
 }
