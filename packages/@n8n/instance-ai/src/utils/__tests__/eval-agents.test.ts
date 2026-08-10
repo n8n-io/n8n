@@ -130,56 +130,6 @@ describe('eval agent model config', () => {
 		});
 	});
 
-	it('resolves vertex Claude without an API key', () => {
-		const sa = JSON.stringify({ type: 'service_account', project_id: 'gcp-proj' });
-		process.env.N8N_INSTANCE_AI_VERTEX_PROJECT = 'gcp-proj';
-		process.env.N8N_INSTANCE_AI_VERTEX_LOCATION = 'us-east5';
-		process.env.N8N_INSTANCE_AI_VERTEX_CREDENTIALS = sa;
-
-		const config = resolveEvalModelConfig('vertex/claude-opus-4-8');
-
-		expect(config).toEqual({
-			modelId: 'vertex/claude-opus-4-8',
-			provider: 'vertex',
-			providerModelId: 'claude-opus-4-8',
-			apiKey: '',
-			project: 'gcp-proj',
-			location: 'us-east5',
-			googleCredentialsJson: sa,
-		});
-	});
-
-	it('builds a vertex eval agent with adaptive thinking', () => {
-		process.env.N8N_INSTANCE_AI_VERTEX_PROJECT = 'gcp-proj';
-
-		createEvalAgent('test-agent', {
-			model: 'vertex/claude-opus-4-8',
-			instructions: 'Do the task.',
-		});
-
-		expect(mockAgentInstances[0]?.model).toHaveBeenCalledWith({
-			id: 'vertex/claude-opus-4-8',
-			project: 'gcp-proj',
-			location: 'global',
-		});
-		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('vertex', {
-			mode: 'adaptive',
-			effort: 'medium',
-		});
-	});
-
-	it('falls back to GOOGLE_VERTEX_* when n8n vertex env vars are blank', () => {
-		process.env.N8N_INSTANCE_AI_VERTEX_PROJECT = '';
-		process.env.N8N_INSTANCE_AI_VERTEX_LOCATION = '   ';
-		process.env.GOOGLE_VERTEX_PROJECT = 'fallback-project';
-		process.env.GOOGLE_VERTEX_LOCATION = 'us-east5';
-
-		const config = resolveEvalModelConfig('vertex/claude-opus-4-8');
-
-		expect(config.project).toBe('fallback-project');
-		expect(config.location).toBe('us-east5');
-	});
-
 	it('supports custom endpoints that authenticate with JSON model headers only', () => {
 		process.env.N8N_INSTANCE_AI_MODEL = 'custom/moonshotai/Kimi-K3';
 		process.env.N8N_INSTANCE_AI_MODEL_URL = 'https://example.modal.direct/v1';

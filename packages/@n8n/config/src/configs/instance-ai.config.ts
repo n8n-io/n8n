@@ -24,27 +24,6 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_MODEL_HEADERS')
 	modelHeadersJson: string = '';
 
-	/**
-	 * Google Cloud project for Claude on Vertex (`vertex/*` models).
-	 * Falls back to `GOOGLE_VERTEX_PROJECT` / ADC when empty.
-	 */
-	@Env('N8N_INSTANCE_AI_VERTEX_PROJECT')
-	vertexProject: string = '';
-
-	/**
-	 * Vertex location for Claude (`global`, `us-east5`, …). Empty until set via env;
-	 * resolved to `GOOGLE_VERTEX_LOCATION` or `global` when building vertex models.
-	 */
-	@Env('N8N_INSTANCE_AI_VERTEX_LOCATION')
-	vertexLocation: string = '';
-
-	/**
-	 * Service-account JSON for Vertex auth. When empty, google-auth-library uses
-	 * Application Default Credentials (`GOOGLE_APPLICATION_CREDENTIALS`, etc.).
-	 */
-	@Env('N8N_INSTANCE_AI_VERTEX_CREDENTIALS')
-	vertexCredentials: string = '';
-
 	/** Comma-separated name=url pairs for MCP servers (e.g. "github=https://mcp.github.com/sse"). */
 	@Env('N8N_INSTANCE_AI_MCP_SERVERS')
 	mcpServers: string = '';

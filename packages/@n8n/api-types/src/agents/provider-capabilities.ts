@@ -92,14 +92,6 @@ export const PROVIDER_CAPABILITIES: Record<string, ProviderCapabilities> = {
 		providerTools: [],
 		attachments: { image: true, pdf: true, audio: true },
 	},
-	// Claude on Google Vertex — Anthropic Messages API (adaptive / budgetTokens).
-	vertex: {
-		thinking: 'budgetTokens',
-		promptCaching: 'ttl',
-		webSearch: false,
-		providerTools: [],
-		attachments: { image: true, pdf: true, audio: false },
-	},
 	xai: {
 		thinking: 'reasoningEffort',
 		promptCaching: false,
@@ -129,41 +121,6 @@ export const PROVIDER_CAPABILITIES: Record<string, ProviderCapabilities> = {
 		attachments: NO_ATTACHMENTS,
 	},
 	openrouter: {
-		thinking: 'reasoningEffort',
-		promptCaching: false,
-		webSearch: false,
-		providerTools: [],
-		attachments: NO_ATTACHMENTS,
-	},
-	baseten: {
-		thinking: 'reasoningEffort',
-		promptCaching: false,
-		webSearch: false,
-		providerTools: [],
-		attachments: NO_ATTACHMENTS,
-	},
-	fireworks: {
-		thinking: 'reasoningEffort',
-		promptCaching: false,
-		webSearch: false,
-		providerTools: [],
-		attachments: NO_ATTACHMENTS,
-	},
-	wafer: {
-		thinking: 'reasoningEffort',
-		promptCaching: false,
-		webSearch: false,
-		providerTools: [],
-		attachments: NO_ATTACHMENTS,
-	},
-	morph: {
-		thinking: 'reasoningEffort',
-		promptCaching: false,
-		webSearch: false,
-		providerTools: [],
-		attachments: NO_ATTACHMENTS,
-	},
-	togetherai: {
 		thinking: 'reasoningEffort',
 		promptCaching: false,
 		webSearch: false,

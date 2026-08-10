@@ -52,26 +52,6 @@ describe('applyAgentThinking', () => {
 		});
 	});
 
-	it('uses enabled thinking with a medium budget for Fireworks models via Anthropic proxy', () => {
-		const agent = new Agent('test');
-		applyAgentThinking(agent, {
-			modelId: 'accounts/fireworks/models/kimi-k3',
-			config: { provider: 'anthropic.messages' },
-		} as unknown as Parameters<typeof applyAgentThinking>[1]);
-		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('anthropic', {
-			mode: 'enabled',
-			budgetTokens: 8192,
-		});
-	});
-
-	it('enables medium reasoning effort for Fireworks provider models', () => {
-		const agent = new Agent('test');
-		applyAgentThinking(agent, 'fireworks/accounts/fireworks/models/kimi-k3');
-		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('fireworks', {
-			reasoningEffort: 'medium',
-		});
-	});
-
 	it.each(['openai/gpt-5.6-sol', 'openai/gpt-5.6-terra', 'openai/gpt-5.6-luna'] as const)(
 		'enables medium OpenAI reasoning effort for %s',
 		(modelId) => {
@@ -92,43 +72,27 @@ describe('applyAgentThinking', () => {
 	});
 
 	it.each([
-		'baseten/zai-org/GLM-5.2',
-		'baseten/zai-org/GLM-5.2-Fast',
-		'baseten/deepseek-ai/DeepSeek-V4-Pro',
-	] as const)('enables none reasoning effort for Baseten %s', (modelId) => {
+		'custom/zai-org/GLM-5.2',
+		'custom/zai-org/GLM-5.2-Fast',
+		'custom/morph-glm52-744b',
+	] as const)('enables none reasoning effort for custom GLM %s', (modelId) => {
 		const agent = new Agent('test');
 		applyAgentThinking(agent, modelId);
-		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('baseten', {
+		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('custom', {
 			reasoningEffort: 'none',
 		});
 	});
 
-	it('enables medium reasoning effort for Wafer Kimi-K3', () => {
-		const agent = new Agent('test');
-		applyAgentThinking(agent, 'wafer/Kimi-K3');
-		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('wafer', {
-			reasoningEffort: 'medium',
-		});
-	});
-
-	it.each(['morph/morph-kimik3', 'morph/morph-kimik3-fast', 'morph/morph-glm52-744b'] as const)(
+	it.each(['custom/morph-kimik3', 'custom/morph-kimik3-fast'] as const)(
 		'enables medium reasoning effort for Morph %s',
 		(modelId) => {
 			const agent = new Agent('test');
 			applyAgentThinking(agent, modelId);
-			expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('morph', {
+			expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('custom', {
 				reasoningEffort: 'medium',
 			});
 		},
 	);
-
-	it('enables low reasoning effort for Together AI', () => {
-		const agent = new Agent('test');
-		applyAgentThinking(agent, 'togetherai/riqwanthahamir-d900/deepseek-v4-flash');
-		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('togetherai', {
-			reasoningEffort: 'low',
-		});
-	});
 
 	it('enables low reasoning effort for custom OpenAI-compatible endpoints', () => {
 		const agent = new Agent('test');
@@ -143,15 +107,6 @@ describe('applyAgentThinking', () => {
 		applyAgentThinking(agent, 'custom/workspace.default.kimi-k3');
 		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('custom', {
 			reasoningEffort: 'low',
-		});
-	});
-
-	it('enables adaptive thinking for Vertex Claude', () => {
-		const agent = new Agent('test');
-		applyAgentThinking(agent, 'vertex/claude-opus-4-8');
-		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('vertex', {
-			mode: 'adaptive',
-			effort: 'medium',
 		});
 	});
 

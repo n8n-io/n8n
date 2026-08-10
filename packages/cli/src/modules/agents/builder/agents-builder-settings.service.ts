@@ -76,7 +76,7 @@ interface ResolvedBuilderModelConfig {
  *   2. `mode: 'default'` + AI proxy enabled — runs through the n8n AI assistant proxy.
  *   3. `mode: 'default'` + Instance AI model env (`N8N_INSTANCE_AI_MODEL` +
  *      `N8N_INSTANCE_AI_MODEL_API_KEY`) — same provider/model as Instance AI
- *      (e.g. `baseten/zai-org/GLM-5.2-Fast`).
+ *      (e.g. `custom/Kimi-K3` or `openai/gpt-5-mini`).
  *   4. `mode: 'default'` + Anthropic env backstop (`N8N_AI_ANTHROPIC_KEY` /
  *      `ANTHROPIC_API_KEY`) — direct Anthropic API calls.
  */

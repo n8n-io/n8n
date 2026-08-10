@@ -11,13 +11,10 @@ persisted in settings takes precedence over `N8N_INSTANCE_AI_SANDBOX_PROVIDER`.
 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
-| `N8N_INSTANCE_AI_MODEL` | string | `anthropic/claude-opus-4-8` | LLM model in `provider/model` format for built-in providers, or a bare model name when `N8N_INSTANCE_AI_MODEL_URL` is set. Must be set for the module to enable. Opus 5: `anthropic/claude-opus-5`. Vertex Claude: `vertex/claude-opus-4-8`. |
+| `N8N_INSTANCE_AI_MODEL` | string | `anthropic/claude-opus-4-8` | LLM model in `provider/model` format for built-in providers, or a bare model name when `N8N_INSTANCE_AI_MODEL_URL` is set. Must be set for the module to enable. Opus 5: `anthropic/claude-opus-5`. |
 | `N8N_INSTANCE_AI_MODEL_URL` | string | `''` | Base URL for an OpenAI-compatible endpoint (e.g. `http://localhost:1234/v1` for LM Studio). When set, model requests go to this URL instead of the built-in provider. |
 | `N8N_INSTANCE_AI_MODEL_API_KEY` | string | `''` | API key for the custom model endpoint. Optional — some local servers don't require one. |
 | `N8N_INSTANCE_AI_MODEL_HEADERS` | string | `''` | JSON object of extra HTTP headers for custom OpenAI-compatible endpoints (used with `N8N_INSTANCE_AI_MODEL_URL`). Values must be strings, e.g. `{"Modal-Key":"wk-...","Modal-Secret":"ws-..."}`. |
-| `N8N_INSTANCE_AI_VERTEX_PROJECT` | string | `''` | GCP project for `vertex/*` models. Falls back to `GOOGLE_VERTEX_PROJECT`. |
-| `N8N_INSTANCE_AI_VERTEX_LOCATION` | string | `''` | Vertex location for `vertex/*` (e.g. `global`, `us-east5`). Falls back to `GOOGLE_VERTEX_LOCATION`, then `global`. |
-| `N8N_INSTANCE_AI_VERTEX_CREDENTIALS` | string | `''` | Service-account JSON for Vertex auth. Empty = Application Default Credentials (`GOOGLE_APPLICATION_CREDENTIALS`). |
 | `N8N_INSTANCE_AI_MCP_SERVERS` | string | `''` | Comma-separated MCP server configs. Format: `name=url,name=url` |
 | `N8N_INSTANCE_AI_LOCAL_GATEWAY_DISABLED` | boolean | `false` | Disable the local gateway (filesystem, shell, browser) for all users |
 

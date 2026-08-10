@@ -42,20 +42,7 @@ function anthropicUsesAdaptiveThinking(modelId: string): boolean {
 	return modelId.includes('claude-');
 }
 
-/** OpenAI-compatible providers that map effort to top-level `reasoning_effort`. */
-function reasoningEffortQuirk(
-	provider: ProviderId,
-	defaultEffort: OpenAIReasoningEffort,
-): ProviderQuirks {
-	return {
-		thinkingToProviderOptions: (thinking) => {
-			const cfg = thinking as OpenAIThinkingConfig;
-			return { [provider]: { reasoningEffort: cfg.reasoningEffort ?? defaultEffort } };
-		},
-	};
-}
-
-/** Providers that map effort to nested `reasoning: { effort }` (OpenRouter, Morph). */
+/** Providers that map effort to nested `reasoning: { effort }` (OpenRouter). */
 function nestedReasoningEffortQuirk(
 	provider: ProviderId,
 	defaultEffort: OpenAIReasoningEffort,
@@ -115,27 +102,6 @@ export const PROVIDER_QUIRKS: Partial<Record<ProviderId, ProviderQuirks>> = {
 			};
 		},
 	},
-	// Claude on Vertex: same Messages thinking shape; options stay under `anthropic`
-	// (see @ai-sdk/google-vertex/anthropic). Replay/tool defaults reuse anthropic's.
-	vertex: {
-		thinkingToProviderOptions: (thinking) => {
-			const cfg = thinking as AnthropicThinkingConfig;
-			if (cfg.mode === 'adaptive') {
-				return {
-					anthropic: {
-						thinking: { type: 'adaptive', display: cfg.display ?? 'summarized' },
-						effort: cfg.effort ?? 'medium',
-					},
-				};
-			}
-			return {
-				anthropic: {
-					thinking: { type: 'enabled', budgetTokens: cfg.budgetTokens ?? 10000 },
-					...(cfg.effort !== undefined ? { effort: cfg.effort } : {}),
-				},
-			};
-		},
-	},
 	openai: {
 		// QUIRK(openai): the Responses API pairs each function_call item with a
 		// reasoning item; dropping the reasoning part from history makes the next
@@ -186,20 +152,20 @@ export const PROVIDER_QUIRKS: Partial<Record<ProviderId, ProviderQuirks>> = {
 		},
 	},
 	openrouter: nestedReasoningEffortQuirk('openrouter', 'medium'),
-	// Baseten Model APIs use the OpenAI-compatible chat schema; reasoning maps to
-	// the top-level `reasoning_effort` body field via providerOptions.baseten.
-	baseten: reasoningEffortQuirk('baseten', 'none'),
-	fireworks: {
-		// Fireworks Serverless priority tier: stronger admission during congestion.
-		callProviderOptionDefaults: { service_tier: 'priority' },
-		...reasoningEffortQuirk('fireworks', 'medium'),
+	// OpenAI-compatible custom endpoints. Morph chat wants nested
+	// `reasoning: { effort }` (see https://docs.morphllm.com/sdk/components/fast-models);
+	// everyone else maps to top-level `reasoning_effort`.
+	custom: {
+		thinkingToProviderOptions: (thinking, modelId) => {
+			const cfg = thinking as OpenAIThinkingConfig;
+			const effort = cfg.reasoningEffort ?? 'medium';
+			const id = modelId.toLowerCase();
+			if (id.includes('morph-')) {
+				return { custom: { reasoning: { effort } } };
+			}
+			return { custom: { reasoningEffort: effort } };
+		},
 	},
-	wafer: reasoningEffortQuirk('wafer', 'medium'),
-	// Morph OpenAI chat accepts `reasoning: { effort }` (not `reasoning_effort`).
-	// See https://docs.morphllm.com/sdk/components/fast-models
-	morph: nestedReasoningEffortQuirk('morph', 'medium'),
-	togetherai: reasoningEffortQuirk('togetherai', 'medium'),
-	custom: reasoningEffortQuirk('custom', 'medium'),
 };
 
 export function getProviderQuirks(providerId: string): ProviderQuirks {

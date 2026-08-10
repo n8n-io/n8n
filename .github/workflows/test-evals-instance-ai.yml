@@ -60,32 +60,27 @@ on:
         type: string
         default: ''
       model:
-        description: 'Model override (provider/model). Empty = anthropic/claude-opus-4-8. See packages/@n8n/instance-ai/evaluations/README.md for provider→secret routing.'
+        description: 'Model override (provider/model). Empty = anthropic/claude-opus-4-8. OpenAI-compat experiments use custom/<model> + model-url + model-key. See evaluations/README.md.'
         required: false
         type: string
         default: ''
       model-url:
-        description: 'Optional N8N_INSTANCE_AI_MODEL_URL (custom/* OpenAI-compatible /v1, or anthropic/* Azure Foundry). See evaluations/README.md.'
+        description: 'Optional N8N_INSTANCE_AI_MODEL_URL (required for custom/* OpenAI-compatible /v1; also anthropic/* Azure Foundry). See evaluations/README.md.'
         required: false
         type: string
         default: ''
-      vertex-project:
-        description: 'GCP project for vertex/* models. Empty = EVALS_VERTEX_PROJECT secret, or project_id from EVALS_VERTEX_SA_JSON.'
-        required: false
-        type: string
-        default: ''
-      vertex-location:
-        description: 'Vertex location for vertex/* models (e.g. global, us-east5). Empty = global.'
+      model-key:
+        description: 'Which EVALS_* secret to use for custom/* (or anthropic/* + model-url). One of: baseten, fireworks, together, morph, wafer, modal, databricks, azure. Empty = keyless custom, or native openai/openrouter/xai/anthropic prefix routing.'
         required: false
         type: string
         default: ''
       lanes:
-        description: 'Parallel n8n lane containers (1-11). Empty = 10, or 1 when model is baseten/* (fits Baseten Basic verified ~500k TPM).'
+        description: 'Parallel n8n lane containers (1-11). Empty = 10, or 1 when model-key=baseten (fits Baseten Basic verified ~500k TPM).'
         required: false
         type: string
         default: ''
       eval-concurrency:
-        description: 'Concurrent scenario executions. Empty = 32, or 2 when model is baseten/* (~0.5M TPM / ~12 RPM — fits Baseten Basic verified).'
+        description: 'Concurrent scenario executions. Empty = 32, or 2 when model-key=baseten (~0.5M TPM / ~12 RPM — fits Baseten Basic verified).'
         required: false
         type: string
         default: ''
@@ -120,23 +115,23 @@ on:
         required: false
         default: ''
       model:
-        description: 'Model for all Instance AI agents (provider/model). Empty = backend default (anthropic/claude-opus-4-8). Experiments: anthropic/claude-opus-5, custom/Kimi-K3, togetherai/moonshotai/Kimi-K3, fireworks/accounts/fireworks/models/*'
+        description: 'Model for all Instance AI agents (provider/model). Empty = backend default (anthropic/claude-opus-4-8). OpenAI-compat experiments: custom/<model> + model-url + model-key.'
         required: false
         default: ''
       model-url:
-        description: 'Optional base URL (N8N_INSTANCE_AI_MODEL_URL). Leave empty for provider defaults.'
+        description: 'Base URL (N8N_INSTANCE_AI_MODEL_URL). Required for custom/*; optional for anthropic/* Azure Foundry.'
         required: false
         default: ''
-      vertex-project:
-        description: 'GCP project for vertex/*. Empty = EVALS_VERTEX_PROJECT secret or project_id in EVALS_VERTEX_SA_JSON.'
+      model-key:
+        description: 'EVALS_* secret alias for custom/*: baseten | fireworks | together | morph | wafer | modal | databricks | azure. Empty = keyless custom or native provider prefix.'
         required: false
         default: ''
       lanes:
-        description: 'Parallel n8n lane containers (1-11). Empty = 10, or 1 when model is baseten/* (fits Baseten Basic verified ~500k TPM).'
+        description: 'Parallel n8n lane containers (1-11). Empty = 10, or 1 when model-key=baseten (fits Baseten Basic verified ~500k TPM).'
         required: false
         default: ''
       eval-concurrency:
-        description: 'Concurrent scenarios. Empty = 32, or 2 when model is baseten/* (~0.5M TPM / ~12 RPM — fits Baseten Basic verified).'
+        description: 'Concurrent scenarios. Empty = 32, or 2 when model-key=baseten (~0.5M TPM / ~12 RPM — fits Baseten Basic verified).'
         required: false
         default: ''
 
@@ -151,14 +146,14 @@ jobs:
     # full suite becomes ~5 h; +2 h buffer for provider backoff). Plain
     # comparison (not fromJSON): coerces the string input to a number;
     # malformed NaN falls back to the 90-minute guard instead of erroring.
-    timeout-minutes: ${{ startsWith(inputs.model || '', 'baseten/') && 600 || ((inputs.iterations || '3') >= 5 && 240 || 90) }}
+    timeout-minutes: ${{ (inputs['model-key'] || '') == 'baseten' && 600 || ((inputs.iterations || '3') >= 5 && 240 || 90) }}
     env:
       # Contiguous ports from 5678; 5678..5688 avoids Node fetch()'s blocked-
       # port list (max 11 lanes). Defaults: 10 lanes / c=32 for Anthropic;
-      # baseten/* auto-throttles to 1 / 2 to stay under Baseten Basic verified
-      # (~500k TPM).
-      LANES: ${{ inputs.lanes != '' && inputs.lanes || (startsWith(inputs.model || '', 'baseten/') && '1' || '10') }}
-      EVAL_CONCURRENCY: ${{ inputs.eval-concurrency != '' && inputs.eval-concurrency || (startsWith(inputs.model || '', 'baseten/') && '2' || '32') }}
+      # model-key=baseten auto-throttles to 1 / 2 to stay under Baseten Basic
+      # verified (~500k TPM).
+      LANES: ${{ inputs.lanes != '' && inputs.lanes || ((inputs['model-key'] || '') == 'baseten' && '1' || '10') }}
+      EVAL_CONCURRENCY: ${{ inputs.eval-concurrency != '' && inputs.eval-concurrency || ((inputs['model-key'] || '') == 'baseten' && '2' || '32') }}
     permissions:
       contents: read
       pull-requests: write
@@ -245,8 +240,7 @@ jobs:
           SANDBOX_PROVIDER: ${{ inputs.sandbox-provider || 'n8n-sandbox' }}
           INSTANCE_AI_MODEL: ${{ inputs.model }}
           INSTANCE_AI_MODEL_URL: ${{ inputs.model-url }}
-          INSTANCE_AI_VERTEX_PROJECT: ${{ inputs.vertex-project }}
-          INSTANCE_AI_VERTEX_LOCATION: ${{ inputs.vertex-location }}
+          INSTANCE_AI_MODEL_KEY: ${{ inputs.model-key }}
         run: |
           # Build provider-specific env args
           SANDBOX_ARGS=()
@@ -299,62 +293,51 @@ jobs:
           require_secret() {
             local name="$1" value="$2"
             if [ -z "$value" ]; then
-              echo "::error::model is ${MODEL_PROVIDER}/* but ${name} secret is empty"
+              echo "::error::${name} secret is empty (model=${INSTANCE_AI_MODEL:-default} model-key=${INSTANCE_AI_MODEL_KEY:-})"
               exit 1
             fi
+          }
+          resolve_model_key() {
+            case "$INSTANCE_AI_MODEL_KEY" in
+              baseten) require_secret EVALS_BASETEN_KEY "$EVALS_BASETEN_KEY"; MODEL_API_KEY="$EVALS_BASETEN_KEY" ;;
+              fireworks) require_secret EVALS_FIREWORKS_KEY "$EVALS_FIREWORKS_KEY"; MODEL_API_KEY="$EVALS_FIREWORKS_KEY" ;;
+              together) require_secret EVALS_TOGETHER_KEY "$EVALS_TOGETHER_KEY"; MODEL_API_KEY="$EVALS_TOGETHER_KEY" ;;
+              morph) require_secret EVALS_MORPH_KEY "$EVALS_MORPH_KEY"; MODEL_API_KEY="$EVALS_MORPH_KEY" ;;
+              wafer) require_secret EVALS_WAFER_KEY "$EVALS_WAFER_KEY"; MODEL_API_KEY="$EVALS_WAFER_KEY" ;;
+              modal) require_secret EVALS_MODAL_KEY "$EVALS_MODAL_KEY"; MODEL_API_KEY="$EVALS_MODAL_KEY" ;;
+              databricks) require_secret EVALS_DATABRICKS_KEY "$EVALS_DATABRICKS_KEY"; MODEL_API_KEY="$EVALS_DATABRICKS_KEY" ;;
+              azure) require_secret EVALS_AZURE_FOUNDRY_KEY "$EVALS_AZURE_FOUNDRY_KEY"; MODEL_API_KEY="$EVALS_AZURE_FOUNDRY_KEY" ;;
+              '') ;;
+              *)
+                echo "::error::unknown model-key '${INSTANCE_AI_MODEL_KEY}' (expected baseten|fireworks|together|morph|wafer|modal|databricks|azure)"
+                exit 1
+                ;;
+            esac
           }
           if [[ "$INSTANCE_AI_MODEL" == custom/* ]]; then
             if [ -z "$INSTANCE_AI_MODEL_URL" ]; then
               echo "::error::model custom/* requires model-url (OpenAI-compatible base URL ending in /v1)"
               exit 1
             fi
-            # Keyless routers leave MODEL_API_KEY empty. Databricks uses a PAT;
-            # Modal uses EVALS_MODAL_KEY as Bearer (prejoined proxy id.secret).
-            # Azure OpenAI (*.openai.azure.com) reuses EVALS_AZURE_FOUNDRY_KEY as Bearer.
-            if [[ "$INSTANCE_AI_MODEL_URL" == *databricks.com* ]] || [[ "$INSTANCE_AI_MODEL_URL" == *ai-gateway/mlflow* ]]; then
-              require_secret EVALS_DATABRICKS_KEY "$EVALS_DATABRICKS_KEY"
-              MODEL_API_KEY="$EVALS_DATABRICKS_KEY"
-            elif [[ "$INSTANCE_AI_MODEL_URL" == *.modal.direct* ]]; then
-              require_secret EVALS_MODAL_KEY "$EVALS_MODAL_KEY"
-              MODEL_API_KEY="$EVALS_MODAL_KEY"
-            elif [[ "$INSTANCE_AI_MODEL_URL" == *.openai.azure.com* ]]; then
-              require_secret EVALS_AZURE_FOUNDRY_KEY "$EVALS_AZURE_FOUNDRY_KEY"
-              MODEL_API_KEY="$EVALS_AZURE_FOUNDRY_KEY"
+            # model-key selects EVALS_*; empty model-key = keyless custom router.
+            if [ -n "$INSTANCE_AI_MODEL_KEY" ]; then
+              resolve_model_key
             else
               MODEL_API_KEY=""
             fi
           elif [ -n "$INSTANCE_AI_MODEL_URL" ]; then
-            require_secret EVALS_AZURE_FOUNDRY_KEY "$EVALS_AZURE_FOUNDRY_KEY"
-            MODEL_API_KEY="$EVALS_AZURE_FOUNDRY_KEY"
-          elif [[ "$INSTANCE_AI_MODEL" == vertex/* ]]; then
-            # Vertex Claude: GCP service-account JSON + project/location.
-            # Lane agent uses N8N_INSTANCE_AI_VERTEX_*; MODEL_API_KEY stays
-            # Anthropic for any leftover key-only paths.
-            require_secret EVALS_VERTEX_SA_JSON "$EVALS_VERTEX_SA_JSON"
-            VERTEX_PROJECT="${INSTANCE_AI_VERTEX_PROJECT:-$EVALS_VERTEX_PROJECT}"
-            if [ -z "$VERTEX_PROJECT" ]; then
-              VERTEX_PROJECT=$(printf '%s' "$EVALS_VERTEX_SA_JSON" | jq -r '.project_id // empty')
+            # anthropic/* + model-url = Azure Foundry Claude (or model-key=azure).
+            if [ -n "$INSTANCE_AI_MODEL_KEY" ]; then
+              resolve_model_key
+            else
+              require_secret EVALS_AZURE_FOUNDRY_KEY "$EVALS_AZURE_FOUNDRY_KEY"
+              MODEL_API_KEY="$EVALS_AZURE_FOUNDRY_KEY"
             fi
-            if [ -z "$VERTEX_PROJECT" ]; then
-              echo "::error::vertex/* requires vertex-project input, EVALS_VERTEX_PROJECT, or project_id in EVALS_VERTEX_SA_JSON"
-              exit 1
-            fi
-            VERTEX_LOCATION="${INSTANCE_AI_VERTEX_LOCATION:-global}"
-            MODEL_ARGS+=(
-              -e N8N_INSTANCE_AI_VERTEX_PROJECT="$VERTEX_PROJECT"
-              -e N8N_INSTANCE_AI_VERTEX_LOCATION="$VERTEX_LOCATION"
-              -e N8N_INSTANCE_AI_VERTEX_CREDENTIALS="$EVALS_VERTEX_SA_JSON"
-            )
           else
             case "$MODEL_PROVIDER" in
               openai) require_secret EVALS_OPENAI_KEY "$EVALS_OPENAI_KEY"; MODEL_API_KEY="$EVALS_OPENAI_KEY" ;;
               openrouter) require_secret EVALS_OPENROUTER_KEY "$EVALS_OPENROUTER_KEY"; MODEL_API_KEY="$EVALS_OPENROUTER_KEY" ;;
               xai) require_secret EVALS_XAI_KEY "$EVALS_XAI_KEY"; MODEL_API_KEY="$EVALS_XAI_KEY" ;;
-              baseten) require_secret EVALS_BASETEN_KEY "$EVALS_BASETEN_KEY"; MODEL_API_KEY="$EVALS_BASETEN_KEY" ;;
-              fireworks) require_secret EVALS_FIREWORKS_KEY "$EVALS_FIREWORKS_KEY"; MODEL_API_KEY="$EVALS_FIREWORKS_KEY" ;;
-              wafer) require_secret EVALS_WAFER_KEY "$EVALS_WAFER_KEY"; MODEL_API_KEY="$EVALS_WAFER_KEY" ;;
-              morph) require_secret EVALS_MORPH_KEY "$EVALS_MORPH_KEY"; MODEL_API_KEY="$EVALS_MORPH_KEY" ;;
-              togetherai) require_secret EVALS_TOGETHER_KEY "$EVALS_TOGETHER_KEY"; MODEL_API_KEY="$EVALS_TOGETHER_KEY" ;;
             esac
           fi
 
@@ -588,7 +571,6 @@ jobs:
           EVALS_DATABRICKS_KEY: ${{ secrets.EVALS_DATABRICKS_KEY }}
           EVALS_MODAL_KEY: ${{ secrets.EVALS_MODAL_KEY }}
           EVALS_AZURE_FOUNDRY_KEY: ${{ secrets.EVALS_AZURE_FOUNDRY_KEY }}
-          EVALS_VERTEX_SA_JSON: ${{ secrets.EVALS_VERTEX_SA_JSON }}
           DAYTONA_API_KEY: ${{ secrets.DAYTONA_API_KEY }}
           N8N_LICENSE_ACTIVATION_KEY: ${{ secrets.N8N_LICENSE_ACTIVATION_KEY }}
           N8N_LICENSE_CERT: ${{ secrets.N8N_LICENSE_CERT }}
@@ -603,7 +585,7 @@ jobs:
                    "$EVALS_XAI_KEY" "$EVALS_BASETEN_KEY" "$EVALS_FIREWORKS_KEY" \
                    "$EVALS_WAFER_KEY" "$EVALS_MORPH_KEY" "$EVALS_TOGETHER_KEY" \
                    "$EVALS_DATABRICKS_KEY" "$EVALS_MODAL_KEY" \
-                   "$EVALS_AZURE_FOUNDRY_KEY" "$EVALS_VERTEX_SA_JSON" "$DAYTONA_API_KEY" \
+                   "$EVALS_AZURE_FOUNDRY_KEY" "$DAYTONA_API_KEY" \
                    "$N8N_LICENSE_ACTIVATION_KEY" "$N8N_LICENSE_CERT" "$N8N_ENCRYPTION_KEY" \
                    "$EVALS_LANGSMITH_API_KEY"; do
             [ -z "$v" ] && continue

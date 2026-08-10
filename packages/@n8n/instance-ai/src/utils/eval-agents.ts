@@ -22,11 +22,6 @@ const PROVIDER_API_KEY_ENV: Record<string, string> = {
 	anthropic: 'ANTHROPIC_API_KEY',
 	google: 'GOOGLE_GENERATIVE_AI_API_KEY',
 	openai: 'OPENAI_API_KEY',
-	baseten: 'BASETEN_API_KEY',
-	fireworks: 'FIREWORKS_API_KEY',
-	wafer: 'WAFER_API_KEY',
-	morph: 'MORPH_API_KEY',
-	togetherai: 'TOGETHER_API_KEY',
 	xai: 'XAI_API_KEY',
 };
 
@@ -37,9 +32,6 @@ export interface EvalModelConfig {
 	apiKey: string;
 	url?: string;
 	headers?: Record<string, string>;
-	project?: string;
-	location?: string;
-	googleCredentialsJson?: string;
 }
 
 function getModelId(model?: string): string {
@@ -65,8 +57,6 @@ function isResolvingBuilderModel(modelId: string): boolean {
 
 function getApiKey(modelId: string): string {
 	const [provider] = modelId.split('/');
-	// Vertex uses GCP ADC / service-account JSON, not an API key.
-	if (provider === 'vertex') return '';
 	const providerKeyEnv = PROVIDER_API_KEY_ENV[provider];
 	const providerKey = providerKeyEnv ? process.env[providerKeyEnv] : undefined;
 	const anthropicLegacy = provider === 'anthropic' ? process.env.N8N_AI_ANTHROPIC_KEY : undefined;
@@ -117,28 +107,6 @@ function allowsKeylessCustomEndpoint(provider: string): boolean {
 	return provider === 'custom';
 }
 
-function trimmedEnvVar(name: string): string | undefined {
-	const value = process.env[name]?.trim();
-	if (!value) return undefined;
-	return value;
-}
-
-function getVertexProject(): string | undefined {
-	return trimmedEnvVar('N8N_INSTANCE_AI_VERTEX_PROJECT') ?? trimmedEnvVar('GOOGLE_VERTEX_PROJECT');
-}
-
-function getVertexLocation(): string {
-	return (
-		trimmedEnvVar('N8N_INSTANCE_AI_VERTEX_LOCATION') ??
-		trimmedEnvVar('GOOGLE_VERTEX_LOCATION') ??
-		'global'
-	);
-}
-
-function getVertexCredentialsJson(): string | undefined {
-	return trimmedEnvVar('N8N_INSTANCE_AI_VERTEX_CREDENTIALS');
-}
-
 export function resolveEvalModelConfig(model?: string): EvalModelConfig {
 	const modelId = getModelId(model);
 	const [provider, ...rest] = modelId.split('/');
@@ -146,17 +114,6 @@ export function resolveEvalModelConfig(model?: string): EvalModelConfig {
 	let providerModelId = modelId;
 	if (joinedProviderModelId.length > 0) {
 		providerModelId = joinedProviderModelId;
-	}
-	if (provider === 'vertex') {
-		return {
-			modelId,
-			provider,
-			providerModelId,
-			apiKey: '',
-			project: getVertexProject(),
-			location: getVertexLocation(),
-			googleCredentialsJson: getVertexCredentialsJson(),
-		};
 	}
 	// Builder endpoint (URL/headers) only applies when resolving that builder model.
 	// A dedicated Anthropic eval model must hit Anthropic, not the custom/Foundry base.
@@ -192,16 +149,7 @@ const CACHE_PROVIDER_OPTS = {
  */
 function resolveAgentModel(model?: string, fallbackModelConfig?: ModelConfig): ModelConfig {
 	try {
-		const { modelId, apiKey, url, headers, project, location, googleCredentialsJson } =
-			resolveEvalModelConfig(model);
-		if (modelId.startsWith('vertex/')) {
-			return {
-				id: modelId,
-				...(project ? { project } : {}),
-				...(location ? { location } : {}),
-				...(googleCredentialsJson ? { googleCredentialsJson } : {}),
-			};
-		}
+		const { modelId, apiKey, url, headers } = resolveEvalModelConfig(model);
 		return {
 			id: modelId,
 			apiKey,

@@ -100,13 +100,7 @@ function buildOpenAiCompatible(
 	})(model);
 }
 
-type OpenAiCompatibleProviderId =
-	| 'baseten'
-	| 'fireworks'
-	| 'wafer'
-	| 'morph'
-	| 'togetherai'
-	| 'nvidia';
+type OpenAiCompatibleProviderId = 'nvidia';
 
 function openAiCompatibleEntry<P extends OpenAiCompatibleProviderId>(
 	name: P,
@@ -144,15 +138,6 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 			// schemas and sends json_object only.
 			buildOpenAiCompatible('custom', undefined, creds, model, fetch),
 	},
-	// Avoid @ai-sdk/baseten: it eagerly loads @basetenlabs/performance-client
-	// (NAPI optional binaries), which pnpm deploy --no-optional strips.
-	baseten: openAiCompatibleEntry('baseten', 'https://inference.baseten.co/v1'),
-	// Avoid @ai-sdk/fireworks v4 model types in the v3 registry.
-	fireworks: openAiCompatibleEntry('fireworks', 'https://api.fireworks.ai/inference/v1'),
-	wafer: openAiCompatibleEntry('wafer', 'https://pass.wafer.ai/v1'),
-	// Morph also speaks Anthropic Messages at /v1/messages; we use chat/completions.
-	morph: openAiCompatibleEntry('morph', 'https://api.morphllm.com/v1'),
-	togetherai: openAiCompatibleEntry('togetherai', 'https://api.together.ai/v1'),
 	anthropic: {
 		build: (creds, model, fetch) => {
 			const { createAnthropic } =
@@ -175,36 +160,6 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 		build: (creds, model, fetch) => {
 			const { createGoogle } = require('@ai-sdk/google') as typeof import('@ai-sdk/google');
 			return createGoogle({ ...creds, fetch })(model);
-		},
-	},
-	vertex: {
-		// Claude on Vertex Agent Platform (Anthropic Messages via GCP auth).
-		// Package is ESM; Node 22+ can require() it. Do not swap for a plain
-		// createAnthropic + baseURL — Vertex puts the model in the URL path and
-		// requires anthropic_version: vertex-2023-10-16 in the body.
-		build: (creds, model, fetch) => {
-			const { createVertexAnthropic } =
-				require('@ai-sdk/google-vertex/anthropic') as typeof import('@ai-sdk/google-vertex/anthropic');
-			let googleAuthOptions: { credentials: Record<string, unknown> } | undefined;
-			if (creds.googleCredentialsJson) {
-				try {
-					const credentials: unknown = JSON.parse(creds.googleCredentialsJson);
-					if (typeof credentials !== 'object' || credentials === null) {
-						throw new Error('expected a JSON object');
-					}
-					googleAuthOptions = { credentials: credentials as Record<string, unknown> };
-				} catch (error) {
-					const reason = error instanceof Error ? error.message : String(error);
-					throw new Error(`Invalid googleCredentialsJson for provider "vertex": ${reason}`);
-				}
-			}
-			return createVertexAnthropic({
-				project: creds.project,
-				location: creds.location ?? 'global',
-				googleAuthOptions,
-				headers: creds.headers,
-				fetch,
-			})(model);
 		},
 	},
 	xai: {

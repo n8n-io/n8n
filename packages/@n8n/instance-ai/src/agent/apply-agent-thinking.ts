@@ -59,18 +59,12 @@ function resolveBareModelName(modelId: ModelConfig): string | undefined {
 function isKimiK3Model(modelId: ModelConfig): boolean {
 	const id = resolveModelIdString(modelId)?.toLowerCase() ?? '';
 	const bare = resolveBareModelName(modelId)?.toLowerCase() ?? '';
-	return id.includes('kimi-k3') || bare.includes('kimi-k3');
-}
-
-/**
- * Fireworks model ids — string form (`fireworks/...`) or Anthropic LanguageModel
- * objects whose `modelId` contains a Fireworks resource path (AI service proxy
- * mounts `@ai-sdk/anthropic`).
- */
-function isFireworksModel(modelId: ModelConfig): boolean {
-	const id = resolveModelIdString(modelId)?.toLowerCase() ?? '';
-	const bare = resolveBareModelName(modelId)?.toLowerCase() ?? '';
-	return id.startsWith('fireworks/') || id.includes('/fireworks/') || bare.includes('/fireworks/');
+	return (
+		id.includes('kimi-k3') ||
+		bare.includes('kimi-k3') ||
+		id.includes('kimik3') ||
+		bare.includes('kimik3')
+	);
 }
 
 /** Grok 4.5 via xAI (`xai/grok-4.5`) or OpenRouter (`openrouter/x-ai/grok-4.5`). */
@@ -85,20 +79,29 @@ function isGpt56Model(modelId: ModelConfig): boolean {
 	return id.includes('gpt-5.6');
 }
 
-/** Providers that pin a fixed OpenAI-style reasoning effort for every model. */
-const PROVIDER_EFFORT_PINS = {
-	baseten: 'none',
-	wafer: 'medium',
-	morph: 'medium',
-	togetherai: 'low',
-	custom: 'low',
-	fireworks: 'medium',
-} as const satisfies Record<string, OpenAIReasoningEffort>;
+/** GLM 5.2 via custom OpenAI-compatible endpoints (`custom/zai-org/GLM-5.2`, `custom/morph-glm52-744b`). */
+function isGlm52Model(modelId: ModelConfig): boolean {
+	const id = resolveModelIdString(modelId)?.toLowerCase() ?? '';
+	const bare = resolveBareModelName(modelId)?.toLowerCase() ?? '';
+	return (
+		id.includes('glm-5.2') ||
+		bare.includes('glm-5.2') ||
+		id.includes('glm52') ||
+		bare.includes('glm52')
+	);
+}
 
-type PinnedEffortProvider = keyof typeof PROVIDER_EFFORT_PINS;
+/** Morph model slugs (`custom/morph-kimik3`, `custom/morph-glm52-744b`). */
+function isMorphModel(modelId: ModelConfig): boolean {
+	const bare = resolveBareModelName(modelId)?.toLowerCase() ?? '';
+	return bare.startsWith('morph-') || bare.includes('/morph-');
+}
 
-function isPinnedEffortProvider(provider: string): provider is PinnedEffortProvider {
-	return Object.hasOwn(PROVIDER_EFFORT_PINS, provider);
+/** Effort pin for `custom/*` OpenAI-compatible experiment endpoints. */
+function resolveCustomEffort(modelId: ModelConfig): OpenAIReasoningEffort {
+	if (isGlm52Model(modelId)) return 'none';
+	if (isMorphModel(modelId)) return 'medium';
+	return 'low';
 }
 
 export function applyAgentThinking(agent: Agent, modelId: ModelConfig): void {
@@ -106,8 +109,8 @@ export function applyAgentThinking(agent: Agent, modelId: ModelConfig): void {
 
 	if (!provider || !PROVIDER_CAPABILITIES[provider]?.thinking) return;
 
-	if (isPinnedEffortProvider(provider)) {
-		agent.thinking(provider, { reasoningEffort: PROVIDER_EFFORT_PINS[provider] });
+	if (provider === 'custom') {
+		agent.thinking('custom', { reasoningEffort: resolveCustomEffort(modelId) });
 		return;
 	}
 
@@ -119,19 +122,7 @@ export function applyAgentThinking(agent: Agent, modelId: ModelConfig): void {
 	}
 
 	if (provider === 'anthropic') {
-		// Fireworks Anthropic-compat rejects `adaptive` and `output_config.effort`
-		// ("Extra inputs are not permitted"). Control depth via budget_tokens.
-		if (isFireworksModel(modelId)) {
-			agent.thinking('anthropic', { mode: 'enabled', budgetTokens: 8192 });
-			return;
-		}
 		agent.thinking('anthropic', { mode: 'adaptive', effort: 'medium' });
-		return;
-	}
-
-	if (provider === 'vertex') {
-		// Claude on Vertex — same adaptive thinking as direct Anthropic.
-		agent.thinking('vertex', { mode: 'adaptive', effort: 'medium' });
 		return;
 	}
 

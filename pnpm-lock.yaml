@@ -27,9 +27,6 @@ catalogs:
     '@ai-sdk/google':
       specifier: ^4.0.24
       version: 4.0.24
-    '@ai-sdk/google-vertex':
-      specifier: 5.0.30
-      version: 5.0.30
     '@ai-sdk/groq':
       specifier: ^4.0.13
       version: 4.0.13
@@ -969,9 +966,6 @@ importers:
       '@ai-sdk/google':
         specifier: 'catalog:'
         version: 4.0.24(zod@3.25.76)
-      '@ai-sdk/google-vertex':
-        specifier: 'catalog:'
-        version: 5.0.30(zod@3.25.76)
       '@ai-sdk/groq':
         specifier: 'catalog:'
         version: 4.0.13(zod@3.25.76)
@@ -7249,12 +7243,6 @@ packages:
 
   '@ai-sdk/gateway@4.0.37':
     resolution: {integrity: sha512-YBCTsSlX0ETVsjo0ihfBOeJ3p3y1wXKXDzF9Ygp9dscUY06dzOGmyWJSGsKg+khKVArzBWUW4UCSAKms20ZDmg==}
-    engines: {node: '>=22'}
-    peerDependencies:
-      zod: 3.25.76
-
-  '@ai-sdk/google-vertex@5.0.30':
-    resolution: {integrity: sha512-ol53oXM8qLWoiNCUYIc5BV0ABkOR20OMJK1hCHJgfVrS0Dwn9Y5Q+CrOBh8fPjxY6aWjAbuiTtS9FsYrWDoB5Q==}
     engines: {node: '>=22'}
     peerDependencies:
       zod: 3.25.76
@@ -23321,18 +23309,6 @@ snapshots:
       '@vercel/oidc': 3.2.0
       zod: 3.25.76
 
-  '@ai-sdk/google-vertex@5.0.30(zod@3.25.76)':
-    dependencies:
-      '@ai-sdk/anthropic': 4.0.20(zod@3.25.76)
-      '@ai-sdk/google': 4.0.24(zod@3.25.76)
-      '@ai-sdk/openai-compatible': 3.0.14(zod@3.25.76)
-      '@ai-sdk/provider': 4.0.3
-      '@ai-sdk/provider-utils': 5.0.12(zod@3.25.76)
-      google-auth-library: 10.9.1
-      zod: 3.25.76
-    transitivePeerDependencies:
-      - supports-color
-
   '@ai-sdk/google@4.0.24(zod@3.25.76)':
     dependencies:
       '@ai-sdk/provider': 4.0.3
@@ -35376,6 +35352,7 @@ snapshots:
       json-bigint: 1.0.0
     transitivePeerDependencies:
       - supports-color
+    optional: true
 
   generate-function@2.3.1:
     dependencies:
@@ -35605,6 +35582,7 @@ snapshots:
       jws: 4.0.1
     transitivePeerDependencies:
       - supports-color
+    optional: true
 
   google-auth-library@9.15.1:
     dependencies:
@@ -35637,7 +35615,8 @@ snapshots:
 
   google-logging-utils@1.1.1: {}
 
-  google-logging-utils@1.1.3: {}
+  google-logging-utils@1.1.3:
+    optional: true
 
   gopd@1.2.0: {}
 

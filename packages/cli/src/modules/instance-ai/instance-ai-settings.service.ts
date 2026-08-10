@@ -88,9 +88,6 @@ const CREDENTIAL_TO_MODEL_PROVIDER: Record<string, string> = {
 	mistralCloudApi: 'mistral',
 	xAiApi: 'xai',
 	openRouterApi: 'openrouter',
-	basetenApi: 'baseten',
-	fireworksApi: 'fireworks',
-	togetherAiApi: 'togetherai',
 	cohereApi: 'cohere',
 } satisfies Record<(typeof INSTANCE_AI_MODEL_CREDENTIAL_TYPES)[number], string>;
 
@@ -99,9 +96,6 @@ const URL_FIELD_MAP: Record<string, string> = {
 	openAiApi: 'url',
 	anthropicApi: 'url',
 	googlePalmApi: 'host',
-	basetenApi: 'url',
-	fireworksApi: 'url',
-	togetherAiApi: 'url',
 };
 
 function requireConnectionValue(
@@ -1365,11 +1359,12 @@ export class InstanceAiSettingsService {
 			const provider = config.includes('/') ? config.slice(0, config.indexOf('/')) : 'custom';
 			return `${provider}/${modelName}`;
 		}
-		if ('id' in config && typeof config.id === 'string') {
+		if ('id' in config && typeof config.id === 'string' && 'url' in config) {
 			const provider = config.id.includes('/')
 				? config.id.slice(0, config.id.indexOf('/'))
 				: 'custom';
-			return { ...config, id: `${provider}/${modelName}` };
+			const id: `${string}/${string}` = `${provider}/${modelName}`;
+			return { ...config, id };
 		}
 		return config;
 	}
@@ -1614,32 +1609,11 @@ export class InstanceAiSettingsService {
 	}
 
 	private envVarModelConfigForModel(model: string): ModelConfig {
-		const {
-			modelUrl,
-			modelApiKey,
-			vertexProject,
-			vertexLocation,
-			vertexCredentials,
-			modelHeadersJson,
-		} = this.config;
+		const { modelUrl, modelApiKey, modelHeadersJson } = this.config;
 		const headers = this.resolveEnvModelHeaders(modelHeadersJson);
 		const id: `${string}/${string}` = model.includes('/')
 			? (model as `${string}/${string}`)
 			: `custom/${model}`;
-
-		if (id.startsWith('vertex/')) {
-			const vertexId = id as `vertex/${string}`;
-			const project = vertexProject.trim() || process.env.GOOGLE_VERTEX_PROJECT?.trim() || '';
-			const location =
-				vertexLocation.trim() || process.env.GOOGLE_VERTEX_LOCATION?.trim() || 'global';
-			const googleCredentialsJson = vertexCredentials.trim();
-			return {
-				id: vertexId,
-				...(project ? { project } : {}),
-				location,
-				...(googleCredentialsJson ? { googleCredentialsJson } : {}),
-			};
-		}
 
 		if (modelUrl) {
 			return {

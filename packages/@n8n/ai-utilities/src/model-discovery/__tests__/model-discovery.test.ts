@@ -192,11 +192,8 @@ describe('model-discovery', () => {
 	});
 
 	describe.each([
-		['baseten', 'https://inference.baseten.co/v1/models'],
 		['deepseek', 'https://api.deepseek.com/models'],
-		['fireworks', 'https://api.fireworks.ai/inference/v1/models'],
 		['openrouter', 'https://openrouter.ai/api/v1/models'],
-		['togetherai', 'https://api.together.ai/v1/models'],
 		['xai', 'https://api.x.ai/v1/models'],
 		['vercel', 'https://ai-gateway.vercel.sh/v1/models'],
 	] as const)('%s', (provider, expectedUrl) => {
@@ -283,17 +280,14 @@ describe('model-discovery', () => {
 	it('exposes a registry of all supported providers', () => {
 		expect(Object.keys(MODEL_DISCOVERY_PROVIDERS).sort()).toEqual([
 			'anthropic',
-			'baseten',
 			'cohere',
 			'deepseek',
-			'fireworks',
 			'google',
 			'groq',
 			'mistral',
 			'nvidia',
 			'openai',
 			'openrouter',
-			'togetherai',
 			'vercel',
 			'xai',
 		]);

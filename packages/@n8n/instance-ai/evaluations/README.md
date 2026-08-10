@@ -1011,21 +1011,25 @@ Evals run automatically on PRs that change Instance AI code (path-filtered). The
 
 The job is **non-blocking**. Results are posted as a PR comment and uploaded as artifacts. When `LANGSMITH_API_KEY` is set via the `EVALS_LANGSMITH_API_KEY` secret, runs also land as LangSmith experiments tagged with commit SHA + branch, so you can compare against master side-by-side.
 
-For model A/B experiments, dispatch **Instance AI Evals: Experiments** (`test-evals-instance-ai.yml`) and set the `model` input. Supported experiment models include `anthropic/claude-opus-5`, `anthropic/claude-sonnet-4-6`, `vertex/claude-opus-4-8`, `openai/gpt-5.6-sol`, `openai/gpt-5.6-terra`, `openai/gpt-5.6-luna`, `openrouter/moonshotai/kimi-k3`, `wafer/Kimi-K3`, `morph/morph-kimik3`, `morph/morph-kimik3-fast`, `morph/morph-glm52-744b`, `xai/grok-4.5`, `baseten/zai-org/GLM-5.2`, `baseten/zai-org/GLM-5.2-Fast`, `fireworks/accounts/fireworks/models/llama-v3p1-70b-instruct`, `togetherai/meta-llama/Llama-3.3-70B-Instruct-Turbo`, and `custom/<model>` with `model-url` for dedicated OpenAI-compatible routers. CI routes the matching provider key from repo secrets (`EVALS_*_KEY`; Baseten uses `EVALS_BASETEN_KEY`, Fireworks uses `EVALS_FIREWORKS_KEY`, Wafer uses `EVALS_WAFER_KEY`, Morph uses `EVALS_MORPH_KEY`, Together AI uses `EVALS_TOGETHER_KEY`, Modal uses `EVALS_MODAL_KEY`).
+For model A/B experiments, dispatch **Instance AI Evals: Experiments** (`test-evals-instance-ai.yml`). Native providers use `model` alone (`anthropic/*`, `openai/*`, `openrouter/*`, `xai/*`). OpenAI-compatible vendors use **`custom/<model>` + `model-url` + `model-key`** — no first-class provider prefixes.
 
-`lanes` / `eval-concurrency` default to **10 / 32** (Anthropic-sized). For `baseten/*` models they auto-throttle to **1 / 2** (~0.5M TPM / ~12 RPM — fits [Baseten Basic verified](https://docs.baseten.co/inference/model-apis/rate-limits-and-budgets) 500k TPM / 120 RPM); override the inputs to raise them if your workspace has Pro/Enterprise headroom.
+| Experiment | `model` | `model-url` | `model-key` → secret |
+|------------|---------|-------------|----------------------|
+| Anthropic / OpenAI / OpenRouter / xAI | `anthropic/…`, `openai/…`, etc. | empty | (prefix → `EVALS_*`) |
+| Baseten GLM | `custom/zai-org/GLM-5.2-Fast` | `https://inference.baseten.co/v1` | `baseten` → `EVALS_BASETEN_KEY` |
+| Fireworks | `custom/accounts/fireworks/models/…` | `https://api.fireworks.ai/inference/v1` | `fireworks` → `EVALS_FIREWORKS_KEY` |
+| Together | `custom/moonshotai/Kimi-K3` | `https://api.together.ai/v1` | `together` → `EVALS_TOGETHER_KEY` |
+| Morph | `custom/morph-kimik3` | `https://api.morphllm.com/v1` | `morph` → `EVALS_MORPH_KEY` |
+| Wafer | `custom/Kimi-K3` | `https://pass.wafer.ai/v1` | `wafer` → `EVALS_WAFER_KEY` |
+| Modal | `custom/…` | `https://….modal.direct…/v1` | `modal` → `EVALS_MODAL_KEY` |
+| Databricks | `custom/workspace.default.kimi-k3` | `https://….databricks.com/ai-gateway/mlflow/v1` | `databricks` → `EVALS_DATABRICKS_KEY` |
+| Azure OpenAI | `custom/<deployment>` | `https://….openai.azure.com/openai/v1` | `azure` → `EVALS_AZURE_FOUNDRY_KEY` |
+| Keyless custom router | `custom/<model>` | `https://host/v1` | empty (no API key) |
+| Azure Foundry Claude | `anthropic/<deployment>` | Foundry Anthropic base | `azure` (or omit — defaults to Foundry key) |
 
-For a **dedicated OpenAI-compatible router** (no API key), set `model` to `custom/<model-name>` (e.g. `custom/Kimi-K3`) and `model-url` to the `/v1` base (e.g. `https://host/v1`). Lanes leave `N8N_INSTANCE_AI_MODEL_API_KEY` empty; verifier/mocks still use `EVALS_ANTHROPIC_KEY`.
+`lanes` / `eval-concurrency` default to **10 / 32**. For `model-key=baseten` they auto-throttle to **1 / 2** (~0.5M TPM — fits [Baseten Basic verified](https://docs.baseten.co/inference/model-apis/rate-limits-and-budgets)); override the inputs if you have more headroom.
 
-For **Modal** OpenAI-compatible endpoints (`*.modal.direct`), set `model` to `custom/<model-name>` (e.g. `custom/moonshotai/Kimi-K3`) and `model-url` to the `/v1` base. Lanes authenticate with `EVALS_MODAL_KEY` as `Authorization: Bearer` (store the prejoined Modal proxy token `id.secret` as that single secret).
-
-For **Azure OpenAI** OpenAI-compatible endpoints (`*.openai.azure.com`), set `model` to `custom/<deployment-name>` (e.g. `custom/FW-Kimi-K3`) and `model-url` to the `/openai/v1` base (e.g. `https://<resource>.openai.azure.com/openai/v1`). Lanes authenticate with `EVALS_AZURE_FOUNDRY_KEY` as `Authorization: Bearer`.
-
-For **Databricks AI Gateway** Kimi-K3, set `model` to `custom/workspace.default.kimi-k3` and `model-url` to `https://<workspace>.cloud.databricks.com/ai-gateway/mlflow/v1`. Lanes authenticate with `EVALS_DATABRICKS_KEY` (Databricks PAT). Custom endpoints use low reasoning effort.
-
-For **Azure Foundry Claude** (Anthropic-compatible), also set `model-url` to the Foundry base (e.g. `https://<resource>.services.ai.azure.com/anthropic`) and use `anthropic/<deployment-name>` as `model`. Lanes authenticate with `EVALS_AZURE_FOUNDRY_KEY`; the eval CLI verifier/mocks keep `EVALS_ANTHROPIC_KEY`.
-
-For **Google Vertex Claude**, set `model` to `vertex/claude-opus-4-8` (or another Vertex Claude id). Lanes authenticate with `EVALS_VERTEX_SA_JSON` (service-account JSON) and resolve the GCP project from the `vertex-project` input, `EVALS_VERTEX_PROJECT`, or `project_id` inside the SA JSON. Optional `vertex-location` defaults to `global`. Verifier/mocks still use `EVALS_ANTHROPIC_KEY`.
+Verifier/mocks always use `EVALS_ANTHROPIC_KEY`. Custom endpoints default to low reasoning effort; GLM ids pin `none`, Morph slugs pin `medium`.
 
 ## Architecture
 

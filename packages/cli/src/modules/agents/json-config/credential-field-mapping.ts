@@ -34,12 +34,6 @@ const PROVIDER_CREDENTIAL_MAPPERS: Record<string, CredMapper> = {
 	vercel: (c) => ({ apiKey: c.apiKey, baseURL: c.url }),
 	// OpenRouterApi.credentials.ts → apiKey, url (hidden, base URL)
 	openrouter: (c) => ({ apiKey: c.apiKey, baseURL: c.url }),
-	// BasetenApi.credentials.ts → apiKey, url (hidden, base URL)
-	baseten: (c) => ({ apiKey: c.apiKey, baseURL: c.url }),
-	// FireworksApi.credentials.ts → apiKey, url (hidden, base URL)
-	fireworks: (c) => ({ apiKey: c.apiKey, baseURL: c.url }),
-	// TogetherAiApi.credentials.ts → apiKey, url (hidden, base URL)
-	togetherai: (c) => ({ apiKey: c.apiKey, baseURL: c.url }),
 	// NvidiaApi.credentials.ts → apiKey, url (base URL)
 	nvidia: (c) => ({ apiKey: c.apiKey, baseURL: c.url }),
 

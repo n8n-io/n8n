@@ -13,17 +13,12 @@ describe('provider-capabilities', () => {
 		expect([...REASONING_EFFORT_OPTIONS]).toEqual(['low', 'medium', 'high']);
 	});
 
-	it('uses budget-tokens for Anthropic/Vertex and reasoning-effort for OpenAI/OpenRouter/xAI', () => {
+	it('uses budget-tokens for Anthropic and reasoning-effort for OpenAI/OpenRouter/xAI/custom', () => {
 		expect(PROVIDER_CAPABILITIES.anthropic.thinking).toBe('budgetTokens');
-		expect(PROVIDER_CAPABILITIES.vertex.thinking).toBe('budgetTokens');
 		expect(PROVIDER_CAPABILITIES.openai.thinking).toBe('reasoningEffort');
 		expect(PROVIDER_CAPABILITIES.openrouter.thinking).toBe('reasoningEffort');
-		expect(PROVIDER_CAPABILITIES.baseten.thinking).toBe('reasoningEffort');
-		expect(PROVIDER_CAPABILITIES.fireworks.thinking).toBe('reasoningEffort');
-		expect(PROVIDER_CAPABILITIES.wafer.thinking).toBe('reasoningEffort');
-		expect(PROVIDER_CAPABILITIES.morph.thinking).toBe('reasoningEffort');
-		expect(PROVIDER_CAPABILITIES.togetherai.thinking).toBe('reasoningEffort');
 		expect(PROVIDER_CAPABILITIES.xai.thinking).toBe('reasoningEffort');
+		expect(PROVIDER_CAPABILITIES.custom.thinking).toBe('reasoningEffort');
 	});
 
 	it('keeps the canonical Anthropic cache-ttl order', () => {
@@ -39,17 +34,12 @@ describe('provider-capabilities', () => {
 	it('marks providers without native web search support as `false`', () => {
 		const noWebSearch = [
 			'google',
-			'vertex',
 			'xai',
 			'groq',
 			'deepseek',
 			'mistral',
 			'openrouter',
-			'baseten',
-			'fireworks',
-			'wafer',
-			'morph',
-			'togetherai',
+			'custom',
 			'cohere',
 			'ollama',
 		];

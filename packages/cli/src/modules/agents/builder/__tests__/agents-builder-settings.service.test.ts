@@ -119,16 +119,16 @@ describe('AgentsBuilderSettingsService', () => {
 		it('mode=default + proxy disabled + Instance AI env set → returns Instance AI model config', async () => {
 			mockPersistedSettings({ mode: 'default' });
 			aiService.isProxyEnabled.mockReturnValue(false);
-			process.env.N8N_INSTANCE_AI_MODEL = 'baseten/zai-org/GLM-5.2-Fast';
-			process.env.N8N_INSTANCE_AI_MODEL_API_KEY = 'bt-key';
+			process.env.N8N_INSTANCE_AI_MODEL = 'custom/Kimi-K3';
+			process.env.N8N_INSTANCE_AI_MODEL_API_KEY = 'custom-key';
 			process.env.N8N_AI_ANTHROPIC_KEY = 'sk-env';
 
 			const result = await service.resolveModelConfig(user);
 
 			expect(result).toEqual({
 				config: {
-					id: 'baseten/zai-org/GLM-5.2-Fast',
-					apiKey: 'bt-key',
+					id: 'custom/Kimi-K3',
+					apiKey: 'custom-key',
 				},
 				isProxied: false,
 			});

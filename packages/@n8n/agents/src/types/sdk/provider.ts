@@ -5,23 +5,17 @@
  */
 export type Provider =
 	| 'anthropic'
-	| 'baseten'
 	| 'cerebras'
 	| 'custom'
 	| 'deepinfra'
 	| 'deepseek'
-	| 'fireworks'
 	| 'google'
 	| 'groq'
 	| 'mistral'
-	| 'morph'
 	| 'openai'
 	| 'openrouter'
 	| 'perplexity'
-	| 'togetherai'
 	| 'vercel'
-	| 'vertex'
-	| 'wafer'
 	| 'xai'
 	| (string & {});
 
@@ -55,7 +49,7 @@ export type AnthropicThinkingConfig =
 			budgetTokens?: number;
 			/**
 			 * Maps to Anthropic `output_config.effort`. Used with `type: 'enabled'` for
-			 * Anthropic-compatible gateways (e.g. Fireworks) that reject `adaptive`.
+			 * Anthropic-compatible gateways that reject `adaptive`.
 			 */
 			effort?: AnthropicThinkingEffort;
 	  };
@@ -96,7 +90,7 @@ export interface XaiThinkingConfig {
  * Known providers get their specific config; unknown providers default
  * to OpenAI-style (reasoningEffort) since most providers follow that API.
  */
-export type ThinkingConfigFor<P> = P extends 'anthropic' | 'vertex'
+export type ThinkingConfigFor<P> = P extends 'anthropic'
 	? AnthropicThinkingConfig
 	: P extends 'google'
 		? GoogleThinkingConfig
