@@ -6,7 +6,7 @@ import { Service } from '@n8n/di';
 import type { ProtectedResource } from '@/services/protected-resource.registry';
 import { UrlService } from '@/services/url.service';
 
-import { BUILDER_TOOLS, TOOLS_BY_SCOPE } from './mcp-scopes';
+import { BUILDER_TOOLS } from './mcp-scopes';
 import { AGENTS_MCP_TOOL_PROVIDER, McpToolProviderRegistry } from './mcp-tool-provider.registry';
 import { McpConfig } from './mcp.config';
 import { McpSettingsService } from './mcp.settings.service';
@@ -15,7 +15,8 @@ export const INSTANCE_MCP_RESOURCE_ID = 'instance-mcp';
 
 /**
  * Scopes a user can grant on the consent screen. Enforced per-tool via the
- * mapping in `mcp-scopes.ts` when the MCP server registers tools.
+ * merged scope map (`McpToolProviderRegistry.getToolsByScope`) when the MCP
+ * server registers tools.
  */
 export const SUPPORTED_SCOPES: string[] = [...MCP_INSTANCE_SCOPES];
 const AGENT_SCOPES = new Set<string>(MCP_AGENT_SCOPES);
@@ -69,7 +70,7 @@ export class McpProtectedResource implements ProtectedResource {
 		const supportedScopes = new Set(this.scopes);
 
 		return Object.fromEntries(
-			Object.entries(TOOLS_BY_SCOPE)
+			Object.entries(this.toolProviderRegistry.getToolsByScope())
 				.filter(([scope]) => supportedScopes.has(scope))
 				.map(([scope, tools]) => [
 					scope,

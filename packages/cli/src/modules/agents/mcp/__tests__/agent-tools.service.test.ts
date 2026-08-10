@@ -48,11 +48,11 @@ import { AgentsService } from '@/modules/agents/agents.service';
 import { AttachableWorkflowsService } from '@/modules/agents/attachable-workflows.service';
 import type { Agent } from '@/modules/agents/entities/agent.entity';
 import type { NodeToolAiGatewayService } from '@/modules/agents/json-config/node-tool-ai-gateway.service';
+import { AGENT_TOOLS, AGENT_TOOLS_BY_SCOPE } from '@/modules/agents/mcp/agent-mcp-scopes';
 import type { AgentTaskRepository } from '@/modules/agents/repositories/agent-task.repository';
 import type { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { AgentSecureRuntime } from '@/modules/agents/runtime/agent-secure-runtime';
 import { getAgentConfigHash } from '@/modules/agents/utils/agent-config-hash';
-import { AGENT_TOOLS, TOOLS_BY_SCOPE } from '@/modules/mcp/mcp-scopes';
 import { USER_CALLED_MCP_TOOL_EVENT } from '@/modules/mcp/mcp.constants';
 import type { RegisterToolFn } from '@/modules/mcp/mcp.types';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
@@ -302,7 +302,7 @@ describe('McpAgentToolsService', () => {
 		};
 
 		it('registers only the tools allowed by the granted scopes', () => {
-			const allowed = new Set<string>(TOOLS_BY_SCOPE['agent:read']);
+			const allowed = new Set<string>(AGENT_TOOLS_BY_SCOPE['agent:read']);
 			const { tools: filteredTools, resource } = registerFiltered(allowed);
 
 			expect(new Set(filteredTools.keys())).toEqual(allowed);
@@ -316,7 +316,7 @@ describe('McpAgentToolsService', () => {
 				issues: [],
 			} as never);
 			const { tools: filteredTools } = registerFiltered(
-				new Set<string>(TOOLS_BY_SCOPE['agent:read']),
+				new Set<string>(AGENT_TOOLS_BY_SCOPE['agent:read']),
 			);
 			const validateAgent = filteredTools.get('validate_agent');
 			if (!validateAgent) throw new Error('validate_agent is not registered');

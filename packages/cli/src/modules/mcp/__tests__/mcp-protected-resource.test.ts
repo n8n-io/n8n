@@ -1,6 +1,7 @@
 import type { GlobalConfig } from '@n8n/config';
 import { mock } from 'vitest-mock-extended';
 
+import { AGENT_TOOLS_BY_SCOPE } from '@/modules/agents/mcp/agent-mcp-scopes';
 import type { UrlService } from '@/services/url.service';
 
 import { McpProtectedResource } from '../mcp-protected-resource';
@@ -18,7 +19,12 @@ const makeGlobalConfig = ({ builderEnabled = true, tagsDisabled = false } = {}) 
 // builder env flag as its availability predicate.
 const makeRegistry = (isAvailable: () => boolean) => {
 	const registry = new McpToolProviderRegistry();
-	registry.register({ name: AGENTS_MCP_TOOL_PROVIDER, isAvailable, registerTools: () => {} });
+	registry.register({
+		name: AGENTS_MCP_TOOL_PROVIDER,
+		toolsByScope: AGENT_TOOLS_BY_SCOPE,
+		isAvailable,
+		registerTools: () => {},
+	});
 	return registry;
 };
 

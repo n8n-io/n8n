@@ -1,3 +1,4 @@
+import type { McpScope } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
@@ -29,6 +30,22 @@ import {
 @Service()
 export class DataTableMcpService implements McpToolProvider {
 	readonly name = 'data-table';
+
+	/** Keep in sync with `registerTools` below — drift guard in
+	 * `__tests__/data-table-mcp.service.test.ts`. */
+	readonly toolsByScope: Partial<Record<McpScope, readonly string[]>> = {
+		'dataTable:read': ['search_data_tables'],
+		// Writing requires finding tables, so search rides along.
+		'dataTable:write': [
+			'search_data_tables',
+			'create_data_table',
+			'rename_data_table',
+			'add_data_table_column',
+			'delete_data_table_column',
+			'rename_data_table_column',
+			'add_data_table_rows',
+		],
+	};
 
 	constructor(
 		private readonly dataTableProxyService: DataTableProxyService,

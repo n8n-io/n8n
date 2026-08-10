@@ -50,7 +50,6 @@ import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-hi
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
-import { getAllowedToolNames } from './mcp-scopes';
 import {
 	AGENTS_MCP_TOOL_PROVIDER,
 	McpToolProviderRegistry,
@@ -381,7 +380,7 @@ export class McpService {
 		const n8nConnectAvailable = builderEnabled
 			? (await this.aiGatewayService.isAvailable()).available
 			: false;
-		const allowedToolNames = getAllowedToolNames(grantedScopes);
+		const allowedToolNames = this.toolProviderRegistry.getAllowedToolNames(grantedScopes);
 		// The builder walkthrough is only useful when the grant can actually
 		// create workflows; a read-only grant gets the plain intro instead of
 		// steps referencing tools it cannot call.

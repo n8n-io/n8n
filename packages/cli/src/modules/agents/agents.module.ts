@@ -69,8 +69,10 @@ export class AgentsModule implements ModuleInterface {
 			'@/modules/mcp/mcp-tool-provider.registry.js'
 		);
 		const { McpAgentToolsService } = await import('./mcp/agent-tools.service.js');
+		const { AGENT_TOOLS_BY_SCOPE } = await import('./mcp/agent-mcp-scopes.js');
 		Container.get(McpToolProviderRegistry).register({
 			name: AGENTS_MCP_TOOL_PROVIDER,
+			toolsByScope: AGENT_TOOLS_BY_SCOPE,
 			isAvailable: () => Container.get(GlobalConfig).endpoints.mcpBuilderEnabled,
 			registerTools: ({ registerTool, registerResource, user, allowedToolNames }) =>
 				Container.get(McpAgentToolsService).registerTools(

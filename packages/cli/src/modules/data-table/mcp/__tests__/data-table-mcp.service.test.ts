@@ -1,7 +1,5 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 
-import { DATA_TABLE_TOOLS } from '@/modules/mcp/mcp-scopes';
-
 import { createTelemetry, user } from './test-utils';
 import { DataTableProxyService } from '../../data-table-proxy.service';
 import { DataTableMcpService } from '../data-table-mcp.service';
@@ -20,6 +18,6 @@ describe('DataTableMcpService', () => {
 			allowedToolNames: undefined,
 		});
 
-		expect(registered).toEqual(new Set(DATA_TABLE_TOOLS));
+		expect(registered).toEqual(new Set(Object.values(service.toolsByScope).flat()));
 	});
 });

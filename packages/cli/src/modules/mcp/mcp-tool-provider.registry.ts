@@ -1,7 +1,10 @@
+import type { McpScope } from '@n8n/api-types';
+import { MCP_INSTANCE_SCOPES } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { INode } from 'n8n-workflow';
 
+import { CORE_TOOLS_BY_SCOPE, isMcpScope } from './mcp-scopes';
 import type { RegisterResourceFn, RegisterToolFn } from './mcp.types';
 
 /** Provider name the agents module registers under; the MCP server checks it
@@ -25,6 +28,9 @@ export type McpToolRegistrationContext = {
  */
 export interface McpToolProvider {
 	name: string;
+	/** Scope→tool mapping for the tools this provider registers, merged into
+	 * the instance-wide map by `McpToolProviderRegistry.getToolsByScope`. */
+	toolsByScope: Partial<Record<McpScope, readonly string[]>>;
 	isAvailable(): boolean;
 	registerTools(context: McpToolRegistrationContext): void | Promise<void>;
 }
@@ -72,6 +78,45 @@ export class McpToolProviderRegistry {
 
 	getAvailableProviders(): McpToolProvider[] {
 		return [...this.providers.values()].filter((provider) => provider.isAvailable());
+	}
+
+	/**
+	 * The MCP module's own scope map merged with every registered provider's
+	 * contribution. Providers are included regardless of availability — an
+	 * unavailable provider's tools are never registered, so allowing their
+	 * names is harmless.
+	 */
+	getToolsByScope(): Partial<Record<McpScope, readonly string[]>> {
+		const providers = [...this.providers.values()];
+		const merged: Partial<Record<McpScope, readonly string[]>> = {};
+		for (const scope of MCP_INSTANCE_SCOPES) {
+			const tools = [
+				...(CORE_TOOLS_BY_SCOPE[scope] ?? []),
+				...providers.flatMap((provider) => provider.toolsByScope[scope] ?? []),
+			];
+			if (tools.length > 0) merged[scope] = tools;
+		}
+		return merged;
+	}
+
+	/**
+	 * Resolves the set of tool names a token with the given granted scopes may
+	 * list and call. `undefined` means the credential predates scoping or is
+	 * not scope-bearing (e.g. an API key) and grants access to all tools.
+	 */
+	getAllowedToolNames(grantedScopes: string[] | undefined): Set<string> | undefined {
+		if (grantedScopes === undefined) return undefined;
+
+		const toolsByScope = this.getToolsByScope();
+		const allowed = new Set<string>();
+		for (const scope of grantedScopes) {
+			if (!isMcpScope(scope)) continue;
+			for (const toolName of toolsByScope[scope] ?? []) {
+				allowed.add(toolName);
+			}
+		}
+
+		return allowed;
 	}
 
 	registerDataTableValidator(factory: (user: User) => McpDataTableValidator) {
