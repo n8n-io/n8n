@@ -172,6 +172,225 @@ describe('parseWithSchema — JSON Schema', () => {
 });
 
 // ---------------------------------------------------------------------------
+// parseWithSchema — JSON Schema dialects
+// ---------------------------------------------------------------------------
+
+describe('parseWithSchema — JSON Schema dialects', () => {
+	it('compiles a schema declaring the 2020-12 dialect', async () => {
+		const schema = {
+			$schema: 'https://json-schema.org/draft/2020-12/schema',
+			type: 'object' as const,
+			properties: { name: { type: 'string' } },
+			required: ['name'],
+		} as JSONSchema7;
+
+		const valid = await parseWithSchema(schema, { name: 'Bob' });
+		expect(valid.success).toBe(true);
+
+		const invalid = await parseWithSchema(schema, { name: 42 });
+		expect(invalid.success).toBe(false);
+	});
+
+	it('honours 2020-12 tuple semantics via prefixItems', async () => {
+		const schema = {
+			$schema: 'https://json-schema.org/draft/2020-12/schema',
+			type: 'array' as const,
+			prefixItems: [{ type: 'string' }, { type: 'number' }],
+		} as unknown as JSONSchema7;
+
+		const valid = await parseWithSchema(schema, ['a', 1]);
+		expect(valid.success).toBe(true);
+
+		const invalid = await parseWithSchema(schema, [1, 'a']);
+		expect(invalid.success).toBe(false);
+	});
+
+	it('compiles a schema declaring the draft-07 dialect', async () => {
+		const schema = {
+			$schema: 'http://json-schema.org/draft-07/schema#',
+			type: 'object' as const,
+			properties: { name: { type: 'string' } },
+			required: ['name'],
+		} as JSONSchema7;
+
+		const valid = await parseWithSchema(schema, { name: 'Bob' });
+		expect(valid.success).toBe(true);
+
+		const invalid = await parseWithSchema(schema, {});
+		expect(invalid.success).toBe(false);
+	});
+
+	it('honours draft-07 tuple semantics via array-valued items', async () => {
+		const schema = {
+			$schema: 'http://json-schema.org/draft-07/schema#',
+			type: 'array' as const,
+			items: [{ type: 'string' }, { type: 'number' }],
+		} as JSONSchema7;
+
+		const valid = await parseWithSchema(schema, ['a', 1]);
+		expect(valid.success).toBe(true);
+
+		const invalid = await parseWithSchema(schema, [1, 'a']);
+		expect(invalid.success).toBe(false);
+	});
+
+	it('does not fall back to another dialect when the declared one rejects the schema', async () => {
+		// Array-valued `items` is a draft-07 tuple, which 2020-12 cannot compile.
+		const schema = {
+			$schema: 'https://json-schema.org/draft/2020-12/schema',
+			type: 'array' as const,
+			items: [{ type: 'string' }, { type: 'number' }],
+		} as JSONSchema7;
+
+		const result = await parseWithSchema(schema, ['a', 1]);
+
+		expect(result.success).toBe(false);
+		if (!result.success) expect(result.schemaInvalid).toBe(true);
+	});
+
+	it('falls back to the legacy bundle for an undeclared draft-07 tuple', async () => {
+		const schema = {
+			type: 'array' as const,
+			items: [{ type: 'string' }, { type: 'number' }],
+		} as JSONSchema7;
+
+		const valid = await parseWithSchema(schema, ['a', 1]);
+		expect(valid.success).toBe(true);
+
+		const invalid = await parseWithSchema(schema, [1, 'a']);
+		expect(invalid.success).toBe(false);
+	});
+
+	it('honours 2019-09 keyword semantics via unevaluatedProperties', async () => {
+		const schema = {
+			$schema: 'https://json-schema.org/draft/2019-09/schema',
+			type: 'object' as const,
+			properties: { name: { type: 'string' } },
+			unevaluatedProperties: false,
+		} as unknown as JSONSchema7;
+
+		const valid = await parseWithSchema(schema, { name: 'Bob' });
+		expect(valid.success).toBe(true);
+
+		const invalid = await parseWithSchema(schema, { name: 'Bob', extra: true });
+		expect(invalid.success).toBe(false);
+	});
+
+	it('reports the schema as the defect when it compiles on no dialect', async () => {
+		const schema = { type: 'objct' } as unknown as JSONSchema7;
+
+		const result = await parseWithSchema(schema, { anything: true });
+
+		expect(result.success).toBe(false);
+		if (!result.success) {
+			expect(result.error).toContain('Schema could not be compiled');
+			expect(result.schemaInvalid).toBe(true);
+		}
+	});
+
+	it('does not flag invalid data as a schema defect', async () => {
+		const schema = {
+			type: 'object' as const,
+			properties: { name: { type: 'string' } },
+			required: ['name'],
+		} as JSONSchema7;
+
+		const result = await parseWithSchema(schema, {});
+
+		expect(result.success).toBe(false);
+		if (!result.success) expect(result.schemaInvalid).toBeUndefined();
+	});
+
+	it('keeps validating on the fallback bundle across repeated calls', async () => {
+		const schema = {
+			type: 'array' as const,
+			items: [{ type: 'string' }, { type: 'number' }],
+		} as JSONSchema7;
+
+		for (let i = 0; i < 3; i++) {
+			expect((await parseWithSchema(schema, ['a', 1])).success).toBe(true);
+			expect((await parseWithSchema(schema, [1, 'a'])).success).toBe(false);
+		}
+	});
+});
+
+// ---------------------------------------------------------------------------
+// parseWithSchema — schemas that declare an $id
+// ---------------------------------------------------------------------------
+
+describe('parseWithSchema — schemas that declare an $id', () => {
+	const withId = (): JSONSchema7 =>
+		({
+			$id: 'https://example.com/parse-test/tool-input',
+			type: 'object' as const,
+			properties: { q: { type: 'string' } },
+			required: ['q'],
+		}) as JSONSchema7;
+
+	it('keeps validating separate copies of a schema that declares an $id', async () => {
+		for (let i = 0; i < 8; i++) {
+			const schema = withId();
+			expect((await parseWithSchema(schema, { q: 'x' })).success).toBe(true);
+			const invalid = await parseWithSchema(schema, {});
+			expect(invalid.success).toBe(false);
+			if (!invalid.success) expect(invalid.schemaInvalid).toBeUndefined();
+		}
+	});
+
+	it('resolves a recursive $ref back to the root $id', async () => {
+		const schema = {
+			$id: 'https://example.com/parse-test/node',
+			type: 'object' as const,
+			properties: {
+				name: { type: 'string' },
+				next: { $ref: 'https://example.com/parse-test/node' },
+			},
+			required: ['name'],
+		} as unknown as JSONSchema7;
+
+		expect((await parseWithSchema(schema, { name: 'a', next: { name: 'b' } })).success).toBe(true);
+		const invalid = await parseWithSchema(schema, { name: 'a', next: { name: 1 } });
+		expect(invalid.success).toBe(false);
+		if (!invalid.success) expect(invalid.schemaInvalid).toBeUndefined();
+	});
+
+	it('resolves internal $refs without registering the schema globally', async () => {
+		const schema = {
+			$id: 'https://example.com/parse-test/with-defs',
+			type: 'object' as const,
+			properties: { inner: { $ref: '#/$defs/Inner' } },
+			required: ['inner'],
+			$defs: { Inner: { type: 'object', properties: { n: { type: 'number' } }, required: ['n'] } },
+		} as unknown as JSONSchema7;
+
+		expect((await parseWithSchema(schema, { inner: { n: 1 } })).success).toBe(true);
+		expect((await parseWithSchema(schema, { inner: { n: 'no' } })).success).toBe(false);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// parseWithSchema — error reporting
+// ---------------------------------------------------------------------------
+
+describe('parseWithSchema — error reporting', () => {
+	it('reports every violation, not just the first', async () => {
+		const schema = {
+			type: 'object' as const,
+			properties: { name: { type: 'string' }, age: { type: 'integer' } },
+			required: ['name', 'age'],
+		} as JSONSchema7;
+
+		const result = await parseWithSchema(schema, {});
+
+		expect(result.success).toBe(false);
+		if (!result.success) {
+			expect(result.error).toContain('name');
+			expect(result.error).toContain('age');
+		}
+	});
+});
+
+// ---------------------------------------------------------------------------
 // parseWithSchema — stripUnknown
 // ---------------------------------------------------------------------------
 

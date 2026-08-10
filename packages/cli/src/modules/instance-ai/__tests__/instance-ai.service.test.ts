@@ -123,11 +123,22 @@ vi.mock('@n8n/instance-ai', async () => {
 					};
 				}
 
+				// A stopped run needs no assistant placeholder — the UI shows the
+				// stopped state itself.
+				if (status === 'cancelled') {
+					return {
+						status,
+						visibilitySource: 'none',
+						action: 'none',
+						reason: 'cancelled-silent',
+					};
+				}
+
 				return {
 					status,
 					visibilitySource: 'none',
 					action: 'emit',
-					reason: status === 'cancelled' ? 'cancelled-silent' : 'completed-silent',
+					reason: 'completed-silent',
 					event: {
 						type: 'text-delta',
 						runId: this.options.runId,
@@ -219,6 +230,7 @@ import {
 	InstanceAiTerminalOutcomeService,
 	type InstanceAiTerminalOutcomeServiceOptions,
 } from '../instance-ai-terminal-outcome.service';
+import { INSTANCE_AI_RUN_TIMEOUT_REASON } from '../liveness/instance-ai-liveness.service';
 import { InstanceAiService } from '../instance-ai.service';
 import { InstanceAiSandboxService } from '../sandbox';
 
@@ -696,7 +708,7 @@ type TerminalGuardOrderServiceInternals = {
 			resumeExecutionToken?: symbol;
 			messageGroupId?: string;
 			resumeTracing?: InstanceAiTraceContext;
-			discardTracingOnStale?: InstanceAiTraceContext;
+			unregisteredResumeTracing?: InstanceAiTraceContext;
 		},
 	) => Promise<void>;
 };
@@ -1869,8 +1881,10 @@ type SuspendedRunResumeServiceInternals = {
 	runState: {
 		findSuspendedByRequestId: Mock;
 		activateSuspendedRun: Mock;
+		clearActiveRun: Mock;
 		getActiveRun: Mock;
 	};
+	emitTerminalRun: Mock;
 	logger: { warn: Mock };
 	dbSnapshotStorage: unknown;
 	tracing: { createOrchestratorResumeTraceContext: Mock; finalizeDetachedTraceRun: Mock };
@@ -1907,8 +1921,10 @@ function createSuspendedRunResumeService(): SuspendedRunResumeServiceInternals {
 			runHandoff: undefined,
 		})),
 		activateSuspendedRun: vi.fn(() => ({})),
+		clearActiveRun: vi.fn(),
 		getActiveRun: vi.fn(() => undefined),
 	};
+	service.emitTerminalRun = vi.fn(async () => {});
 	service.logger = { warn: vi.fn() };
 	service.dbSnapshotStorage = {};
 	service.tracing = {
@@ -2477,7 +2493,7 @@ describe('InstanceAiService — suspended run user revalidation', () => {
 				orchestrationContext,
 				tracing: resumeTracing,
 				resumeTracing,
-				discardTracingOnStale: resumeTracing,
+				unregisteredResumeTracing: resumeTracing,
 				messageGroupId: 'group-1',
 			}),
 		);
@@ -2541,6 +2557,15 @@ describe('InstanceAiService — suspended run user revalidation', () => {
 			},
 		);
 		expect(service.cancelRun).toHaveBeenCalledWith('thread-a', 'agent_rebuild_failed');
+		expect(service.emitTerminalRun).toHaveBeenCalledWith(
+			expect.objectContaining({
+				threadId: 'thread-a',
+				runId: 'run-1',
+				status: 'errored',
+				errorInfo: { errorMessage: 'Agent rebuild failed', errorSource: 'exception' },
+			}),
+		);
+		expect(service.runState.clearActiveRun).toHaveBeenCalled();
 		expect(service.processResumedStream).not.toHaveBeenCalled();
 	});
 
@@ -3472,7 +3497,7 @@ describe('InstanceAiService — run error reporter lifecycle', () => {
 			...resumedStreamOpts(abortController),
 			tracing: resumeTracing,
 			resumeTracing,
-			discardTracingOnStale: resumeTracing,
+			unregisteredResumeTracing: resumeTracing,
 			messageGroupId: 'group-1',
 			orchestrationContext,
 		};
@@ -3537,7 +3562,7 @@ describe('InstanceAiService — run error reporter lifecycle', () => {
 			...resumedStreamOpts(abortController),
 			tracing: resumeTracing,
 			resumeTracing,
-			discardTracingOnStale: resumeTracing,
+			unregisteredResumeTracing: resumeTracing,
 			messageGroupId: 'group-1',
 			orchestrationContext,
 		};
@@ -3572,13 +3597,209 @@ describe('InstanceAiService — run error reporter lifecycle', () => {
 				metadata: { completion_source: 'resume_claim' },
 			},
 		);
-		expect(terminalResponse).not.toHaveBeenCalled();
-		expect(service.eventBus.events).toEqual([]);
+		expect(terminalResponse).toHaveBeenCalledWith('thread-a', 'run-1', 'errored', {
+			messageGroupId: 'group-1',
+			errorMessage: 'I could not apply that confirmation. Send a new message to continue.',
+			errorCode: undefined,
+		});
+		expect(service.eventBus.events.map((event) => event.type)).toEqual(['error', 'run-finish']);
+		expect(service.saveAgentTreeSnapshot).toHaveBeenCalledWith('thread-a', 'run-1', {});
 		expect(service.tracing.finalizeRunTracing).not.toHaveBeenCalled();
 		expect(service.tracing.finalizeMessageTraceRoot).not.toHaveBeenCalled();
-		expect(service.saveAgentTreeSnapshot).not.toHaveBeenCalled();
 		expect(service.schedulePlannedTasks).not.toHaveBeenCalled();
 		expect(service.taskProjector.syncFromWorkflowLoop).not.toHaveBeenCalled();
+	});
+
+	it('stays silent when the claim returns a stale resume error instead of throwing it', async () => {
+		const service = createTerminalGuardOrderService();
+		const abortController = new AbortController();
+		const resumeTracing = { id: 'resume-trace' } as unknown as InstanceAiTraceContext;
+		const opts = {
+			...resumedStreamOpts(abortController),
+			resumeTracing,
+			unregisteredResumeTracing: resumeTracing,
+			messageGroupId: 'group-1',
+		};
+		const terminalResponse = vi.spyOn(service.terminalOutcome, 'evaluateTerminalResponse');
+		const staleError = Object.assign(new Error('already claimed'), { name: 'StaleResumeError' });
+		vi.mocked(resumeAgentRun).mockResolvedValueOnce({
+			status: 'errored',
+			agentRunId: 'agent-run-1',
+			text: Promise.resolve(''),
+			error: staleError,
+			workSummary: { toolCalls: [], totalToolCalls: 0, totalToolErrors: 0 },
+		});
+
+		await service.processResumedStream({}, {}, opts);
+
+		expect(service.instanceAiErrorReporter.report).not.toHaveBeenCalled();
+		expect(service.tracing.finalizeDetachedTraceRun).toHaveBeenCalledWith(
+			'stale-resume:run-1',
+			resumeTracing,
+			{
+				status: 'cancelled',
+				outputs: { runId: 'run-1' },
+				metadata: { completion_source: 'stale_resume' },
+			},
+		);
+		expect(terminalResponse).not.toHaveBeenCalled();
+		expect(service.eventBus.events).toEqual([]);
+		expect(service.saveAgentTreeSnapshot).not.toHaveBeenCalled();
+	});
+
+	it('surfaces an error to the user when a resume throws before claiming its checkpoint', async () => {
+		const service = createTerminalGuardOrderService();
+		const abortController = new AbortController();
+		const opts = { ...resumedStreamOpts(abortController), messageGroupId: 'group-1' };
+		const resumeError = new Error(
+			'Invalid resume payload: data must NOT have additional properties',
+		);
+		const userFacingMessage =
+			'I could not apply that confirmation. Send a new message to continue.';
+		service.temporaryWorkflowService.reapForRun.mockResolvedValue(['wf-temp-1']);
+		vi.mocked(resumeAgentRun).mockRejectedValueOnce(resumeError);
+
+		await service.processResumedStream({}, {}, opts);
+
+		expect(service.instanceAiErrorReporter.report).toHaveBeenCalledWith(
+			resumeError,
+			expect.objectContaining({ component: 'instance-ai-resume-claim', runId: 'run-1' }),
+		);
+		expect(service.temporaryWorkflowService.reapForRun).toHaveBeenCalledWith(
+			'thread-a',
+			fakeUser,
+			undefined,
+			0,
+		);
+		expect(service.eventBus.events).toEqual([
+			expect.objectContaining({
+				type: 'error',
+				runId: 'run-1',
+				payload: { content: userFacingMessage },
+			}),
+			expect.objectContaining({
+				type: 'run-finish',
+				runId: 'run-1',
+				payload: {
+					status: 'error',
+					reason: userFacingMessage,
+					archivedWorkflowIds: ['wf-temp-1'],
+				},
+			}),
+		]);
+		expect(service.telemetry.track).toHaveBeenCalledWith('Builder generation errored', {
+			thread_id: 'thread-a',
+			run_id: 'run-1',
+			error_message: 'Invalid resume payload: data must NOT have additional properties',
+			error_source: 'exception',
+			user_id: 'user-1',
+		});
+		expect(service.saveAgentTreeSnapshot).toHaveBeenCalledWith('thread-a', 'run-1', {});
+		expect(service.runState.clearActiveRun).toHaveBeenCalledWith(
+			'thread-a',
+			opts.resumeExecutionToken,
+		);
+	});
+
+	it('still finishes a failed resume when reaping temporary workflows throws', async () => {
+		const service = createTerminalGuardOrderService();
+		const abortController = new AbortController();
+		const opts = { ...resumedStreamOpts(abortController), messageGroupId: 'group-1' };
+		service.temporaryWorkflowService.reapForRun.mockRejectedValue(new Error('archive failed'));
+		vi.mocked(resumeAgentRun).mockRejectedValueOnce(new Error('Invalid resume payload'));
+
+		await service.processResumedStream({}, {}, opts);
+
+		expect(service.eventBus.events.map((event) => event.type)).toEqual(['error', 'run-finish']);
+	});
+
+	it('still finishes a failed resume when the guard read and the snapshot save fail', async () => {
+		const service = createTerminalGuardOrderService();
+		const abortController = new AbortController();
+		const opts = { ...resumedStreamOpts(abortController), messageGroupId: 'group-1' };
+		service.eventBus.getEventsForRuns.mockRejectedValue(new Error('event log unavailable'));
+		service.saveAgentTreeSnapshot.mockRejectedValue(new Error('snapshot write failed'));
+		vi.mocked(resumeAgentRun).mockRejectedValueOnce(new Error('Invalid resume payload'));
+
+		await service.processResumedStream({}, {}, opts);
+
+		expect(service.eventBus.events.map((event) => event.type)).toEqual(['run-finish']);
+		expect(service.logger.warn).toHaveBeenCalledWith(
+			'Failed to evaluate the terminal response for a settling run',
+			expect.objectContaining({ error: 'event log unavailable' }),
+		);
+		expect(service.logger.warn).toHaveBeenCalledWith(
+			'Failed to save the agent tree snapshot for a settling run',
+			expect.objectContaining({ error: 'snapshot write failed' }),
+		);
+	});
+
+	it('cancels the run when a resume is aborted before claiming its checkpoint', async () => {
+		const service = createTerminalGuardOrderService();
+		const abortController = new AbortController();
+		const opts = { ...resumedStreamOpts(abortController), messageGroupId: 'group-1' };
+		service.temporaryWorkflowService.reapForRun.mockResolvedValue(['wf-temp-1']);
+		abortController.abort();
+		vi.mocked(resumeAgentRun).mockRejectedValueOnce(new Error('aborted mid-claim'));
+
+		await service.processResumedStream({}, {}, opts);
+
+		expect(service.instanceAiErrorReporter.report).not.toHaveBeenCalled();
+		expect(service.tracing.finalizeDetachedTraceRun).toHaveBeenCalledWith(
+			'cancelled-resume:run-1',
+			undefined,
+			{
+				status: 'cancelled',
+				outputs: { runId: 'run-1' },
+				metadata: {
+					completion_source: 'resume_cancelled',
+					cancellation_reason: 'user_cancelled',
+				},
+			},
+		);
+		expect(service.eventBus.events).toEqual([
+			expect.objectContaining({
+				type: 'run-finish',
+				payload: {
+					status: 'cancelled',
+					reason: 'user_cancelled',
+					archivedWorkflowIds: ['wf-temp-1'],
+				},
+			}),
+		]);
+		expect(service.saveAgentTreeSnapshot).toHaveBeenCalledWith('thread-a', 'run-1', {});
+	});
+
+	it('reports the run timeout reason when a resume times out before claiming', async () => {
+		const service = createTerminalGuardOrderService();
+		const abortController = new AbortController();
+		const opts = { ...resumedStreamOpts(abortController), messageGroupId: 'group-1' };
+		service.liveness.consumeRunTimeout = vi.fn(() => ({ timedOut: true }));
+		abortController.abort();
+		vi.mocked(resumeAgentRun).mockRejectedValueOnce(new Error('aborted mid-claim'));
+
+		await service.processResumedStream({}, {}, opts);
+
+		expect(service.eventBus.events).toEqual([
+			expect.objectContaining({
+				type: 'run-finish',
+				payload: { status: 'cancelled', reason: INSTANCE_AI_RUN_TIMEOUT_REASON },
+			}),
+		]);
+	});
+
+	it('leaves a preserved HITL snapshot alone when a resume is aborted before claiming', async () => {
+		const service = createTerminalGuardOrderService();
+		const abortController = new AbortController();
+		const opts = { ...resumedStreamOpts(abortController), messageGroupId: 'group-1' };
+		service.preserveHitlOnShutdown.add('run-1');
+		abortController.abort();
+		vi.mocked(resumeAgentRun).mockRejectedValueOnce(new Error('aborted mid-claim'));
+
+		await service.processResumedStream({}, {}, opts);
+
+		expect(service.eventBus.events).toEqual([]);
+		expect(service.saveAgentTreeSnapshot).not.toHaveBeenCalled();
 	});
 
 	it('terminalizes a same-name error that occurs after the resume was claimed', async () => {
