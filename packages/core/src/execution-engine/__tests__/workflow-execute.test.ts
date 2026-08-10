@@ -1789,6 +1789,44 @@ describe('WorkflowExecute', () => {
 			]);
 		});
 
+		test('should route HTTP Request errors with details to the error output', () => {
+			const nodeSuccessData: INodeExecutionData[][] = [
+				[
+					{
+						json: {
+							error: 'Request failed with status code 500',
+							details: {
+								message: 'The service failed to process the request',
+								httpCode: '500',
+								body: { error: 'Internal Server Error' },
+								context: { itemIndex: 0 },
+							},
+						},
+						pairedItem: { item: 0, input: 0 },
+					},
+				],
+			];
+
+			workflowExecute.handleNodeErrorOutput(workflow, executionData, nodeSuccessData, 0);
+
+			expect(nodeSuccessData[0]).toEqual([]);
+			expect(nodeSuccessData[1]).toEqual([
+				{
+					json: {
+						someData: 'test',
+						error: 'Request failed with status code 500',
+						details: {
+							message: 'The service failed to process the request',
+							httpCode: '500',
+							body: { error: 'Internal Server Error' },
+							context: { itemIndex: 0 },
+						},
+					},
+					pairedItem: { item: 0, input: 0 },
+				},
+			]);
+		});
+
 		test('should preserve pairedItem data when routing errors', () => {
 			const nodeSuccessData: INodeExecutionData[][] = [
 				[
