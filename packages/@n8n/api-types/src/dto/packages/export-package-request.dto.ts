@@ -12,4 +12,8 @@ export class ExportPackageRequestDto extends Z.class({
 		.enum(['fail', 'reference-only', 'include-in-package'])
 		.optional()
 		.default('fail'),
+	workflowVersionPolicy: z
+		.enum(['published-strict', 'prefer-published', 'ignore-unpublished', 'latest'])
+		.optional()
+		.default('latest'),
 }) {}

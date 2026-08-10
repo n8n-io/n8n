@@ -10,7 +10,9 @@ import {
 	PackageExportBlockedError,
 	assertEveryRequestedEntityAccessible,
 } from '../package-export.errors';
+import { applyWorkflowVersionPolicy, needsActiveVersion } from './workflow-version-policy';
 import type { WorkflowSubWorkflowRequirement } from './workflow.types';
+import type { WorkflowVersionPolicy } from '../../n8n-packages.types';
 
 export type WorkflowExportOrigin = 'top-level' | 'folder' | 'project';
 
@@ -41,6 +43,7 @@ export class AutoIncludedWorkflowResolver {
 		folderWorkflowIds: string[];
 		projectWorkflowIds: string[];
 		includeTags: boolean;
+		workflowVersionPolicy: WorkflowVersionPolicy;
 	}): Promise<AutoIncludedWorkflowResolution> {
 		const originsByWorkflowId = this.seedExportedOrigins({
 			topLevelWorkflowIds: options.topLevelWorkflowIds,
@@ -60,6 +63,7 @@ export class AutoIncludedWorkflowResolver {
 			workflowIds: autoIncludedWorkflowIds,
 			originsByWorkflowId,
 			includeTags: options.includeTags,
+			workflowVersionPolicy: options.workflowVersionPolicy,
 		});
 
 		return { autoIncludedWorkflows };
@@ -148,6 +152,7 @@ export class AutoIncludedWorkflowResolver {
 		workflowIds: string[];
 		originsByWorkflowId: Map<string, Set<WorkflowExportOrigin>>;
 		includeTags: boolean;
+		workflowVersionPolicy: WorkflowVersionPolicy;
 	}): Promise<AutoIncludedWorkflow[]> {
 		if (options.workflowIds.length === 0) return [];
 
@@ -155,6 +160,7 @@ export class AutoIncludedWorkflowResolver {
 			options.user,
 			options.workflowIds,
 			options.includeTags,
+			options.workflowVersionPolicy,
 		);
 		const workflowsById = new Map(workflows.map((workflow) => [workflow.id, workflow]));
 		const ownersByWorkflowId = await this.sharedWorkflowRepository.findOwnerProjectsByWorkflowIds(
@@ -229,12 +235,17 @@ export class AutoIncludedWorkflowResolver {
 		user: User,
 		workflowIds: string[],
 		includeTags: boolean,
+		workflowVersionPolicy: WorkflowVersionPolicy,
 	): Promise<WorkflowEntity[]> {
 		const workflows = await this.workflowFinder.findWorkflowsByIdsForUser(
 			workflowIds,
 			user,
 			['workflow:export'],
-			{ includeParentFolder: true, includeTags },
+			{
+				includeParentFolder: true,
+				includeTags,
+				includeActiveVersion: needsActiveVersion(workflowVersionPolicy),
+			},
 		);
 
 		await assertEveryRequestedEntityAccessible(
@@ -244,7 +255,7 @@ export class AutoIncludedWorkflowResolver {
 			async (ids) => await this.workflowFinder.findExistingWorkflowIds(ids),
 		);
 
-		return workflows;
+		return applyWorkflowVersionPolicy(workflows, workflowVersionPolicy);
 	}
 
 	private async findAccessibleFolderChains(

@@ -9,6 +9,7 @@ import {
 } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { jsonParse, type INode } from 'n8n-workflow';
 
 import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
@@ -21,9 +22,11 @@ import { N8nPackagesService } from '../n8n-packages.service';
 import { FORMAT_VERSION } from '../spec/constants';
 import { readExport } from './utils/tar-support';
 import {
+	buildVersionedWorkflow,
 	buildWorkflowReferencingCredential,
 	buildWorkflowCallingSubWorkflow,
 	buildWorkflowReferencingVariables,
+	noOpNode,
 } from './utils/test-builders';
 
 let service: N8nPackagesService;
@@ -41,7 +44,9 @@ afterAll(async () => {
 beforeEach(async () => {
 	await testDb.truncate([
 		'Folder',
+		// WorkflowEntity first: its activeVersionId points at WorkflowHistory.
 		'WorkflowEntity',
+		'WorkflowHistory',
 		'SharedWorkflow',
 		'CredentialsEntity',
 		'SharedCredentials',
@@ -586,6 +591,35 @@ describe('project package export — with folders / workflows', () => {
 		expect(workflowAEntry.target.startsWith(`${projectAEntry.target}/`)).toBe(true);
 		expect(workflowBEntry.target.startsWith(`${projectBEntry.target}/`)).toBe(true);
 		expect(projectAEntry.target).not.toBe(projectBEntry.target);
+	});
+
+	it('exports a project folder workflow at its published version, skipping unpublished ones', async () => {
+		const owner = await createOwner();
+		const project = await createTeamProject('team-ligo', owner);
+		const folder = await createFolder(project, { name: 'in_progress' });
+		const { workflow: published } = await buildVersionedWorkflow({
+			name: 'triage',
+			project,
+			parentFolder: folder,
+			versions: [[noOpNode('published-v1')], [noOpNode('published-v2')]],
+			publishedVersion: 0,
+		});
+		await buildVersionedWorkflow({ name: 'sync', project, versions: [[noOpNode('draft-v1')]] });
+
+		const { stream } = await service.exportPackage({
+			user: owner,
+			projectIds: [project.id],
+			workflowVersionPolicy: 'ignore-unpublished',
+		});
+		const { manifest, entries } = await readExport(stream);
+
+		expect(manifest.workflows!.map(({ id }) => id)).toEqual([published.id]);
+		const exported = jsonParse<{ nodes: INode[] }>(
+			entries
+				.find((e) => e.name === `${manifest.workflows![0].target}/workflow.json`)!
+				.content.toString(),
+		);
+		expect(exported.nodes.map(({ name }) => name)).toEqual(['published-v1']);
 	});
 
 	// Telemetry

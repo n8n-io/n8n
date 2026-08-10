@@ -49,7 +49,11 @@ describe('WorkflowDependencyResolver', () => {
 			makeWorkflow('workflow-c'),
 		]);
 
-		const requirements = await resolver.resolve({ user, workflowIds: ['workflow-a'] });
+		const requirements = await resolver.resolve({
+			user,
+			workflowIds: ['workflow-a'],
+			workflowVersionPolicy: 'latest',
+		});
 
 		expect(requirements).toEqual([
 			{ workflowId: 'workflow-a', referencedWorkflowId: 'workflow-b' },
@@ -63,7 +67,11 @@ describe('WorkflowDependencyResolver', () => {
 			makeWorkflow('workflow-b', 'workflow-a'),
 		]);
 
-		const requirements = await resolver.resolve({ user, workflowIds: ['workflow-a'] });
+		const requirements = await resolver.resolve({
+			user,
+			workflowIds: ['workflow-a'],
+			workflowVersionPolicy: 'latest',
+		});
 
 		expect(requirements).toEqual([
 			{ workflowId: 'workflow-a', referencedWorkflowId: 'workflow-b' },
@@ -75,14 +83,21 @@ describe('WorkflowDependencyResolver', () => {
 	it('keeps missing or inaccessible dependencies as requirements but does not traverse them', async () => {
 		const { resolver, workflowFinder } = makeResolver([makeWorkflow('workflow-a', 'workflow-b')]);
 
-		const requirements = await resolver.resolve({ user, workflowIds: ['workflow-a'] });
+		const requirements = await resolver.resolve({
+			user,
+			workflowIds: ['workflow-a'],
+			workflowVersionPolicy: 'latest',
+		});
 
 		expect(requirements).toEqual([
 			{ workflowId: 'workflow-a', referencedWorkflowId: 'workflow-b' },
 		]);
-		expect(workflowFinder.findWorkflowsByIdsForUser).toHaveBeenCalledWith(['workflow-b'], user, [
-			'workflow:export',
-		]);
+		expect(workflowFinder.findWorkflowsByIdsForUser).toHaveBeenCalledWith(
+			['workflow-b'],
+			user,
+			['workflow:export'],
+			{ includeActiveVersion: false },
+		);
 	});
 
 	it('resolves a complex graph with fan-out, cycles, convergence, and inaccessible dependencies', async () => {
@@ -96,7 +111,11 @@ describe('WorkflowDependencyResolver', () => {
 			makeWorkflow('workflow-e', 'workflow-b'),
 		]);
 
-		const requirements = await resolver.resolve({ user, workflowIds: ['workflow-a'] });
+		const requirements = await resolver.resolve({
+			user,
+			workflowIds: ['workflow-a'],
+			workflowVersionPolicy: 'latest',
+		});
 
 		expect(requirements).toEqual([
 			{ workflowId: 'workflow-a', referencedWorkflowId: 'workflow-b' },
@@ -112,18 +131,21 @@ describe('WorkflowDependencyResolver', () => {
 			['workflow-a'],
 			user,
 			['workflow:export'],
+			{ includeActiveVersion: false },
 		);
 		expect(workflowFinder.findWorkflowsByIdsForUser).toHaveBeenNthCalledWith(
 			2,
 			['workflow-b', 'workflow-c'],
 			user,
 			['workflow:export'],
+			{ includeActiveVersion: false },
 		);
 		expect(workflowFinder.findWorkflowsByIdsForUser).toHaveBeenNthCalledWith(
 			3,
 			['workflow-e', 'workflow-d'],
 			user,
 			['workflow:export'],
+			{ includeActiveVersion: false },
 		);
 	});
 
@@ -139,6 +161,7 @@ describe('WorkflowDependencyResolver', () => {
 				user,
 				workflowIds: ['workflow-a'],
 				traversal: 'direct',
+				workflowVersionPolicy: 'latest',
 			});
 
 			expect(requirements).toEqual([
@@ -157,6 +180,7 @@ describe('WorkflowDependencyResolver', () => {
 				user,
 				workflowIds: ['workflow-a', 'workflow-b'],
 				traversal: 'direct',
+				workflowVersionPolicy: 'latest',
 			});
 
 			expect(requirements).toEqual([

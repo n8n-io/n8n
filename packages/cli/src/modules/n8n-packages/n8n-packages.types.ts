@@ -80,6 +80,17 @@ export const MissingWorkflowDependencyPolicy = {
 	IncludeInPackage: 'include-in-package',
 } as const;
 
+export const WorkflowVersionPolicy = {
+	/** Exports the latest published version, failing if any workflow has none. */
+	PublishedStrict: 'published-strict',
+	/** Exports the latest published version where there is one, the latest version otherwise. */
+	PreferPublished: 'prefer-published',
+	/** Exports only published workflows, leaving unpublished ones out of the package. */
+	IgnoreUnpublished: 'ignore-unpublished',
+	/** Exports the latest version of every workflow, published or not. */
+	Latest: 'latest',
+} as const;
+
 export const DataTableMatchingMode = {
 	/** Matches a package table to the target-project table with the same id. Never falls back to name matching. */
 	ById: 'by-id',
@@ -158,6 +169,9 @@ export type MissingNodeTypeMode = (typeof MissingNodeTypeMode)[keyof typeof Miss
 export type MissingWorkflowDependencyPolicy =
 	(typeof MissingWorkflowDependencyPolicy)[keyof typeof MissingWorkflowDependencyPolicy];
 
+export type WorkflowVersionPolicy =
+	(typeof WorkflowVersionPolicy)[keyof typeof WorkflowVersionPolicy];
+
 export type DataTableMatchingMode =
 	(typeof DataTableMatchingMode)[keyof typeof DataTableMatchingMode];
 
@@ -186,6 +200,7 @@ export interface ExportPackageRequest {
 	canExportVariableValues?: boolean;
 	includeTags?: boolean;
 	missingWorkflowDependencyPolicy?: MissingWorkflowDependencyPolicy;
+	workflowVersionPolicy?: WorkflowVersionPolicy;
 }
 
 export type ImportPackageRequest = {

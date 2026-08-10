@@ -38,6 +38,7 @@ export interface ExportPackageFields {
 	includeVariableValues?: boolean;
 	includeTags?: boolean;
 	missingWorkflowDependencyPolicy?: string;
+	workflowVersionPolicy?: string;
 }
 
 /** True per-entity counts of what ended up in an exported package. */
@@ -472,6 +473,7 @@ export class N8nClient {
 			includeVariableValues?: boolean;
 			includeTags?: boolean;
 			missingWorkflowDependencyPolicy?: string;
+			workflowVersionPolicy?: string;
 		} = {};
 		if (fields.workflowIds?.length) body.workflowIds = fields.workflowIds;
 		if (fields.folderIds?.length) body.folderIds = fields.folderIds;
@@ -481,6 +483,7 @@ export class N8nClient {
 		body.includeTags = fields.includeTags;
 		if (fields.missingWorkflowDependencyPolicy)
 			body.missingWorkflowDependencyPolicy = fields.missingWorkflowDependencyPolicy;
+		if (fields.workflowVersionPolicy) body.workflowVersionPolicy = fields.workflowVersionPolicy;
 
 		let counts: ExportPackageCounts | undefined;
 		const archive = await this.request<Buffer>('POST', '/n8n-packages/export', {

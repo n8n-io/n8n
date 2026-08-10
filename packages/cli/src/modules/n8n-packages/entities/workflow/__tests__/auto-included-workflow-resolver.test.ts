@@ -12,6 +12,7 @@ import {
 } from '../../package-export.errors';
 import { AutoIncludedWorkflowResolver } from '../auto-included-workflow-resolver';
 import type { WorkflowSubWorkflowRequirement } from '../workflow.types';
+import { WorkflowVersionPolicy } from '../../../n8n-packages.types';
 
 const user = mock<User>({ id: 'user-1' });
 
@@ -105,6 +106,7 @@ function resolveInput(options: {
 		projectWorkflowIds: options.projectWorkflowIds ?? [],
 		requirements: options.requirements,
 		includeTags: true,
+		workflowVersionPolicy: WorkflowVersionPolicy.Latest,
 	};
 }
 
@@ -334,7 +336,7 @@ describe('AutoIncludedWorkflowResolver', () => {
 			['b'],
 			user,
 			['workflow:export'],
-			{ includeParentFolder: true, includeTags: true },
+			{ includeParentFolder: true, includeTags: true, includeActiveVersion: false },
 		);
 	});
 });
