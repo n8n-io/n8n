@@ -31,6 +31,14 @@ export interface ModelLimits {
 	output?: number;
 }
 
+/** Input and output types supported by a model. */
+export interface ModelModalities {
+	/** Supported input types. */
+	input?: string[];
+	/** Supported output types. */
+	output?: string[];
+}
+
 /** Information about a single model. */
 export interface ModelInfo {
 	/** Model ID (e.g. 'claude-sonnet-4-5'). */
@@ -43,6 +51,8 @@ export interface ModelInfo {
 	reasoning?: boolean;
 	/** Whether the model supports tool calling. */
 	toolCall: boolean;
+	/** Input and output types supported by the model. */
+	modalities?: ModelModalities;
 	/** Cost per million tokens. */
 	cost?: ModelCost;
 	/** Token limits. */
@@ -69,6 +79,7 @@ interface ModelsDevModel {
 	reasoning?: boolean;
 	tool_call?: boolean;
 	status?: string;
+	modalities?: { input?: string[]; output?: string[] };
 	cost?: { input?: number; output?: number; cache_read?: number; cache_write?: number };
 	limit?: { context?: number; output?: number };
 }
@@ -125,8 +136,10 @@ function normalizeLatestModelNames(models: Record<string, ModelInfo>): void {
  * console.log(catalog.anthropic.models['claude-sonnet-4-5'].reasoning); // true
  * ```
  */
-export async function fetchProviderCatalog(): Promise<ProviderCatalog> {
-	const response = await fetch(MODELS_DEV_URL);
+export async function fetchProviderCatalog(options?: {
+	signal?: AbortSignal;
+}): Promise<ProviderCatalog> {
+	const response = await fetch(MODELS_DEV_URL, { signal: options?.signal });
 	if (!response.ok) {
 		throw new Error(`Failed to fetch provider catalog: ${response.statusText}`);
 	}
@@ -148,6 +161,7 @@ export async function fetchProviderCatalog(): Promise<ProviderCatalog> {
 				...(model.release_date !== undefined && { releaseDate: model.release_date }),
 				...(model.reasoning !== undefined && { reasoning: model.reasoning }),
 				toolCall: model.tool_call ?? false,
+				...(model.modalities !== undefined && { modalities: model.modalities }),
 			};
 			if (model.cost?.input !== undefined && model.cost?.output !== undefined) {
 				info.cost = {

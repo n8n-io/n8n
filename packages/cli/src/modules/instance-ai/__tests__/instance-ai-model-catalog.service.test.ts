@@ -4,18 +4,18 @@ import { mock } from 'vitest-mock-extended';
 
 import { InstanceAiModelCatalogService } from '../instance-ai-model-catalog.service';
 
-const fetchProviderCatalog = vi.fn<() => Promise<ProviderCatalog>>();
+const fetchProviderCatalog = vi.fn<(signal: AbortSignal) => Promise<ProviderCatalog>>();
 
 class TestInstanceAiModelCatalogService extends InstanceAiModelCatalogService {
 	constructor(
 		logger: Logger,
-		private readonly fetcher: () => Promise<ProviderCatalog>,
+		private readonly fetcher: (signal: AbortSignal) => Promise<ProviderCatalog>,
 	) {
 		super(logger);
 	}
 
-	protected override async fetchCatalog(): Promise<ProviderCatalog> {
-		return await this.fetcher();
+	protected override async fetchCatalog(signal: AbortSignal): Promise<ProviderCatalog> {
+		return await this.fetcher(signal);
 	}
 }
 
@@ -29,6 +29,7 @@ const catalog: ProviderCatalog = {
 				name: 'Zulu',
 				releaseDate: '2026-03-01',
 				toolCall: true,
+				modalities: { output: ['text'] },
 				cost: { input: 1, output: 2 },
 			},
 			alpha: {
@@ -36,42 +37,87 @@ const catalog: ProviderCatalog = {
 				name: 'Alpha',
 				releaseDate: '2026-01-01',
 				toolCall: true,
+				modalities: { output: ['text'] },
 			},
 			beta: {
 				id: 'beta',
 				name: 'Beta',
 				releaseDate: '2026-01-01',
 				toolCall: true,
+				modalities: { output: ['text'] },
 			},
 			invalidDate: {
 				id: 'invalid-date',
 				name: 'Invalid date',
 				releaseDate: 'unknown',
 				toolCall: true,
+				modalities: { output: ['text'] },
 			},
-			undated: { id: 'undated', name: 'Undated', toolCall: true },
-			'image-only': { id: 'image-only', name: 'Image only', toolCall: false },
+			undated: {
+				id: 'undated',
+				name: 'Undated',
+				toolCall: true,
+				modalities: { output: ['text'] },
+			},
+			'image-only': {
+				id: 'image-only',
+				name: 'Image only',
+				toolCall: true,
+				modalities: { output: ['image'] },
+			},
+			'mixed-output': {
+				id: 'mixed-output',
+				name: 'Mixed output',
+				toolCall: true,
+				modalities: { output: ['text', 'audio'] },
+			},
+			'missing-modalities': {
+				id: 'missing-modalities',
+				name: 'Missing modalities',
+				toolCall: true,
+			},
+			'no-tools': {
+				id: 'no-tools',
+				name: 'No tools',
+				toolCall: false,
+				modalities: { output: ['text'] },
+			},
 		},
 	},
 	openai: {
 		id: 'openai',
 		name: 'OpenAI',
 		models: {
-			'gpt-tools': { id: 'gpt-tools', name: 'GPT Tools', toolCall: true },
+			'gpt-tools': {
+				id: 'gpt-tools',
+				name: 'GPT Tools',
+				toolCall: true,
+				modalities: { output: ['text'] },
+			},
 		},
 	},
 	openrouter: {
 		id: 'openrouter',
 		name: 'OpenRouter',
 		models: {
-			'provider/model': { id: 'provider/model', name: 'Provider Model', toolCall: true },
+			'provider/model': {
+				id: 'provider/model',
+				name: 'Provider Model',
+				toolCall: true,
+				modalities: { output: ['text'] },
+			},
 		},
 	},
 	google: {
 		id: 'google',
 		name: 'Google',
 		models: {
-			gemini: { id: 'gemini', name: 'Gemini', toolCall: true },
+			gemini: {
+				id: 'gemini',
+				name: 'Gemini',
+				toolCall: true,
+				modalities: { output: ['text'] },
+			},
 		},
 	},
 };
@@ -91,7 +137,7 @@ describe('InstanceAiModelCatalogService', () => {
 		vi.clearAllMocks();
 	});
 
-	it('returns newest tool-capable models first for supported providers only', async () => {
+	it('returns newest compatible models first for supported providers only', async () => {
 		fetchProviderCatalog.mockResolvedValue(catalog);
 		const { service, logger } = makeService();
 
@@ -119,9 +165,18 @@ describe('InstanceAiModelCatalogService', () => {
 				id: 'anthropic',
 				name: 'Anthropic',
 				models: {
-					missingName: { id: 'missing-name', toolCall: true },
+					missingName: {
+						id: 'missing-name',
+						toolCall: true,
+						modalities: { output: ['text'] },
+					},
 					null: null,
-					valid: { id: 'valid', name: 'Valid', toolCall: true },
+					valid: {
+						id: 'valid',
+						name: 'Valid',
+						toolCall: true,
+						modalities: { output: ['text'] },
+					},
 				},
 			},
 		} as unknown as ProviderCatalog);
@@ -181,9 +236,34 @@ describe('InstanceAiModelCatalogService', () => {
 		});
 	});
 
-	it('times out without making the endpoint fail', async () => {
+	it('aborts a timed-out fetch before allowing a retry', async () => {
 		vi.useFakeTimers();
-		fetchProviderCatalog.mockReturnValue(new Promise<ProviderCatalog>(() => {}));
+		let activeRequests = 0;
+		let maxActiveRequests = 0;
+		let firstSignal: AbortSignal | undefined;
+		fetchProviderCatalog
+			.mockImplementationOnce(
+				async (signal) =>
+					await new Promise<ProviderCatalog>((_resolve, reject) => {
+						firstSignal = signal;
+						activeRequests++;
+						maxActiveRequests = Math.max(maxActiveRequests, activeRequests);
+						signal.addEventListener(
+							'abort',
+							() => {
+								activeRequests--;
+								reject(new Error('aborted'));
+							},
+							{ once: true },
+						);
+					}),
+			)
+			.mockImplementationOnce(async () => {
+				activeRequests++;
+				maxActiveRequests = Math.max(maxActiveRequests, activeRequests);
+				activeRequests--;
+				return catalog;
+			});
 		const { service, logger } = makeService();
 
 		const request = service.getModels();
@@ -195,5 +275,12 @@ describe('InstanceAiModelCatalogService', () => {
 		expect(logger.warn).toHaveBeenCalledWith('Failed to load the Instance AI model catalog', {
 			error: 'Model catalog request timed out',
 		});
+		expect(firstSignal?.aborted).toBe(true);
+
+		await expect(service.getModels()).resolves.toEqual(
+			expect.objectContaining({ models: expect.objectContaining({ openai: expect.any(Array) }) }),
+		);
+		expect(fetchProviderCatalog).toHaveBeenCalledTimes(2);
+		expect(maxActiveRequests).toBe(1);
 	});
 });

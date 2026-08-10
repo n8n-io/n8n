@@ -36,15 +36,28 @@ function compareModels(a: InstanceAiCatalogModel, b: InstanceAiCatalogModel): nu
 	return a.name.localeCompare(b.name) || a.id.localeCompare(b.id);
 }
 
-function isEligibleModel(
-	model: unknown,
-): model is { id: string; name: string; toolCall: true; releaseDate?: unknown } {
+function isEligibleModel(model: unknown): model is {
+	id: string;
+	name: string;
+	toolCall: true;
+	modalities: { output: ['text'] };
+	releaseDate?: unknown;
+} {
 	const id = typeof model === 'object' && model !== null ? Reflect.get(model, 'id') : undefined;
 	const name = typeof model === 'object' && model !== null ? Reflect.get(model, 'name') : undefined;
+	const modalities =
+		typeof model === 'object' && model !== null ? Reflect.get(model, 'modalities') : undefined;
+	const output =
+		typeof modalities === 'object' && modalities !== null
+			? Reflect.get(modalities, 'output')
+			: undefined;
 	return (
 		typeof model === 'object' &&
 		model !== null &&
 		Reflect.get(model, 'toolCall') === true &&
+		Array.isArray(output) &&
+		output.length === 1 &&
+		output[0] === 'text' &&
 		typeof id === 'string' &&
 		id.length > 0 &&
 		typeof name === 'string' &&
@@ -89,14 +102,15 @@ export class InstanceAiModelCatalogService {
 	}
 
 	private async fetchCatalogWithTimeout(): Promise<ProviderCatalog> {
+		const abortController = new AbortController();
 		let timeout: ReturnType<typeof setTimeout> | undefined;
 		const timeoutPromise = new Promise<never>((_resolve, reject) => {
-			timeout = setTimeout(
-				() => reject(new Error('Model catalog request timed out')),
-				CATALOG_FETCH_TIMEOUT_MS,
-			);
+			timeout = setTimeout(() => {
+				reject(new Error('Model catalog request timed out'));
+				abortController.abort();
+			}, CATALOG_FETCH_TIMEOUT_MS);
 		});
-		const catalogPromise = this.fetchCatalog();
+		const catalogPromise = this.fetchCatalog(abortController.signal);
 		void catalogPromise.catch(() => undefined);
 
 		try {
@@ -106,9 +120,9 @@ export class InstanceAiModelCatalogService {
 		}
 	}
 
-	protected async fetchCatalog(): Promise<ProviderCatalog> {
+	protected async fetchCatalog(signal: AbortSignal): Promise<ProviderCatalog> {
 		const { fetchProviderCatalog } = await import('@n8n/agents/catalog');
-		return await fetchProviderCatalog();
+		return await fetchProviderCatalog({ signal });
 	}
 
 	private toResponse(catalog: ProviderCatalog): InstanceAiModelCatalogResponse {
