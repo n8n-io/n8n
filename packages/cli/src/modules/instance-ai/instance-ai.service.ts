@@ -681,6 +681,7 @@ export class InstanceAiService {
 		});
 		const livenessPolicyConfig = createInstanceAiLivenessPolicyConfig({
 			confirmationTimeoutMs: this.instanceAiConfig.confirmationTimeout,
+			activeRunIdleTimeoutMs: this.instanceAiConfig.activeRunIdleTimeout,
 		});
 		this.liveness = new InstanceAiLivenessService<SuspendedRunState<User>>({
 			policy: new InstanceAiLivenessPolicy(livenessPolicyConfig),
@@ -695,6 +696,15 @@ export class InstanceAiService {
 			onPendingConfirmationRejected: (requestId) => {
 				void this.suspendedThreads.dropPendingConfirmation(requestId);
 			},
+			onActiveRunTimedOut: (threadId) => this.scheduleTimedOutRunResolution(threadId),
+		});
+		// Liveness for active runs is chunk-driven (`onActivity` in the stream
+		// options), but tool bodies — builders, sub-agents — publish progress
+		// events directly without streaming chunks. Count those as activity too,
+		// scoped to the active run's own events, so a 15-minute build isn't
+		// mistaken for a stall while a genuinely wedged run stays silent.
+		this.eventBus.onPublish((threadId, event) => {
+			this.runState.touchActiveRunForRun(threadId, event.runId);
 		});
 		this.tracing = new InstanceAiTracingService({
 			logger: this.logger,
@@ -1194,6 +1204,37 @@ export class InstanceAiService {
 		}
 
 		void this.suspendedThreads.dropPendingConfirmationsForThread(threadId);
+	}
+
+	/**
+	 * Fallback terminalization for a timed-out active run whose abort never
+	 * lands. The abort normally makes the run body publish its own `run-finish`
+	 * within seconds; a run wedged in an await that ignores the signal never
+	 * does, and the durable log would then keep rendering it as running on
+	 * every reload. After a settle window, append terminal facts for whatever
+	 * is still unfinished on the thread. The delay exceeds the sweeper's
+	 * multi-main activity grace so the timeout notice published at abort time
+	 * doesn't read as sibling liveness.
+	 */
+	private scheduleTimedOutRunResolution(threadId: string): void {
+		const settleWindowMs = InterruptedRunSweeper.LIVENESS_GRACE_MS + 30_000;
+		const timer = setTimeout(() => {
+			void (async () => {
+				// Settle the drain first so a run that finalized during the window
+				// cannot be misread as unfinished and given a second terminal fact.
+				await this.eventLog.flush(threadId);
+				await this.interruptedRunSweeper.cancelUnfinishedRuns(
+					threadId,
+					INSTANCE_AI_RUN_TIMEOUT_REASON,
+				);
+			})().catch((error) => {
+				this.logger.warn('Failed to terminalize a timed-out Instance AI run', {
+					threadId,
+					error: getErrorMessage(error),
+				});
+			});
+		}, settleWindowMs);
+		timer.unref();
 	}
 
 	/** Send a correction message to a running background task. */

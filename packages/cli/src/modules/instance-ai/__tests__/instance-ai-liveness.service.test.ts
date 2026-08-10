@@ -81,6 +81,7 @@ function createLivenessService() {
 		(_suspended: TestSuspendedRun, _reason: string) => {},
 	);
 	const onPendingConfirmationRejected = vi.fn((_requestId: string) => {});
+	const onActiveRunTimedOut = vi.fn((_threadId: string) => {});
 	const logger = mock<Logger>();
 
 	const service = new InstanceAiLivenessService<TestSuspendedRun>({
@@ -91,6 +92,7 @@ function createLivenessService() {
 		eventBus,
 		finalizeCancelledSuspendedRun,
 		onPendingConfirmationRejected,
+		onActiveRunTimedOut,
 		logger,
 	});
 
@@ -102,6 +104,7 @@ function createLivenessService() {
 		eventBus,
 		finalizeCancelledSuspendedRun,
 		onPendingConfirmationRejected,
+		onActiveRunTimedOut,
 		logger,
 	};
 }
@@ -116,6 +119,7 @@ describe('InstanceAiLivenessService', () => {
 			eventBus,
 			finalizeCancelledSuspendedRun,
 			onPendingConfirmationRejected,
+			onActiveRunTimedOut,
 		} = createLivenessService();
 		const activeAbortController = new AbortController();
 		const suspendedAbortController = new AbortController();
@@ -169,6 +173,10 @@ describe('InstanceAiLivenessService', () => {
 		expect(runState.cancelSuspendedRun).toHaveBeenCalledWith('thread-suspended');
 		expect(activeAbortController.signal.aborted).toBe(true);
 		expect(suspendedAbortController.signal.aborted).toBe(true);
+		// Abort-immune runs need the deferred terminalization scheduled — but only
+		// for active runs; suspended runs settle via finalizeCancelledSuspendedRun.
+		expect(onActiveRunTimedOut).toHaveBeenCalledWith('thread-active');
+		expect(onActiveRunTimedOut).not.toHaveBeenCalledWith('thread-suspended');
 		expect(finalizeCancelledSuspendedRun).toHaveBeenCalledWith(
 			suspended,
 			INSTANCE_AI_RUN_TIMEOUT_REASON,

@@ -372,6 +372,20 @@ export class RunStateRegistry<TUser = unknown> {
 		return true;
 	}
 
+	/**
+	 * Touch activity only when the given run is the thread's active run. Used by
+	 * the event-bus publish tap: tool bodies (builders, sub-agents) publish
+	 * progress events directly without streaming chunks, and those must count as
+	 * liveness — but events from other runs on the thread (e.g. a background
+	 * task) must not keep a wedged foreground run alive.
+	 */
+	touchActiveRunForRun(threadId: string, runId: string, at = Date.now()): boolean {
+		const active = this.activeRuns.get(threadId);
+		if (!active || active.runId !== runId) return false;
+		active.lastActivityAt = at;
+		return true;
+	}
+
 	touchSuspendedRun(threadId: string, at = Date.now()): boolean {
 		const suspended = this.suspendedRuns.get(threadId);
 		if (!suspended) return false;

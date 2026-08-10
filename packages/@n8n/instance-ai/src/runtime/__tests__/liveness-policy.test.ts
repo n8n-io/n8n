@@ -12,7 +12,7 @@ function createPolicy() {
 }
 
 describe('InstanceAiLivenessPolicy', () => {
-	it('keeps default liveness limits centralized and allows the existing confirmation override', () => {
+	it('keeps default liveness limits centralized and allows the supported overrides', () => {
 		expect(INSTANCE_AI_DEFAULT_LIVENESS_POLICY_CONFIG).toEqual({
 			confirmationTimeoutMs: day,
 			backgroundTaskIdleTimeoutMs: 10 * minute,
@@ -24,6 +24,11 @@ describe('InstanceAiLivenessPolicy', () => {
 		expect(createInstanceAiLivenessPolicyConfig({ confirmationTimeoutMs: 42_000 })).toEqual({
 			...INSTANCE_AI_DEFAULT_LIVENESS_POLICY_CONFIG,
 			confirmationTimeoutMs: 42_000,
+		});
+
+		expect(createInstanceAiLivenessPolicyConfig({ activeRunIdleTimeoutMs: 10 * minute })).toEqual({
+			...INSTANCE_AI_DEFAULT_LIVENESS_POLICY_CONFIG,
+			activeRunIdleTimeoutMs: 10 * minute,
 		});
 	});
 

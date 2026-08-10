@@ -26,7 +26,9 @@ export const INSTANCE_AI_DEFAULT_LIVENESS_POLICY_CONFIG = {
 } satisfies InstanceAiLivenessPolicyConfig;
 
 export function createInstanceAiLivenessPolicyConfig(
-	overrides: Partial<Pick<InstanceAiLivenessPolicyConfig, 'confirmationTimeoutMs'>> = {},
+	overrides: Partial<
+		Pick<InstanceAiLivenessPolicyConfig, 'confirmationTimeoutMs' | 'activeRunIdleTimeoutMs'>
+	> = {},
 ): InstanceAiLivenessPolicyConfig {
 	return {
 		...INSTANCE_AI_DEFAULT_LIVENESS_POLICY_CONFIG,

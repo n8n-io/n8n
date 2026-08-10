@@ -142,6 +142,27 @@ describe('InProcessEventBus', () => {
 		});
 	});
 
+	describe('onPublish', () => {
+		it('notifies listeners for every published event and survives listener throws', () => {
+			const seen: Array<{ threadId: string; runId: string }> = [];
+			bus.onPublish(() => {
+				throw new Error('listener boom');
+			});
+			bus.onPublish((threadId, event) => seen.push({ threadId, runId: event.runId }));
+
+			bus.publish('thread-1', makeEvent('a', 'run_1'));
+			bus.publish('thread-2', makeEvent('b', 'run_2'));
+
+			expect(seen).toEqual([
+				{ threadId: 'thread-1', runId: 'run_1' },
+				{ threadId: 'thread-2', runId: 'run_2' },
+			]);
+			// The throwing listener must not break publishing itself.
+			expect(bus.getEventsAfter('thread-1', 0)).toHaveLength(1);
+			expect(bus.getEventsAfter('thread-2', 0)).toHaveLength(1);
+		});
+	});
+
 	describe('publish (multi-main, shared sequence)', () => {
 		beforeEach(() => {
 			instanceSettings = { isMultiMain: true };

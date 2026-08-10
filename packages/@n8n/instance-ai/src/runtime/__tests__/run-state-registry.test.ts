@@ -1117,6 +1117,26 @@ describe('RunStateRegistry', () => {
 		});
 	});
 
+	// ── touchActiveRunForRun ──────────────────────────────────────────────────
+
+	describe('touchActiveRunForRun', () => {
+		it('touches activity only when the event belongs to the active run', () => {
+			const { runId } = registry.startRun({ threadId: 'thread-1', user: { id: 'u1', name: 'A' } });
+			registry.touchActiveRun('thread-1', 0);
+
+			// Another run's events (e.g. a background task) must not mask a stall.
+			expect(registry.touchActiveRunForRun('thread-1', 'run_other', 20_000)).toBe(false);
+			expect(registry.sweepTimedOut(policy, 30_000).activeThreadIds).toEqual(['thread-1']);
+
+			expect(registry.touchActiveRunForRun('thread-1', runId, 20_000)).toBe(true);
+			expect(registry.sweepTimedOut(policy, 30_000).activeThreadIds).toEqual([]);
+		});
+
+		it('returns false when the thread has no active run', () => {
+			expect(registry.touchActiveRunForRun('thread-1', 'run_abc')).toBe(false);
+		});
+	});
+
 	// ── sweepTimedOut ─────────────────────────────────────────────────────────
 
 	describe('sweepTimedOut', () => {

@@ -351,6 +351,7 @@ describe('GlobalConfig', () => {
 			snapshotRetention: 86_400_000,
 			checkpointGcRetention: 604_800_000,
 			confirmationTimeout: 86_400_000,
+			activeRunIdleTimeout: 600_000,
 			outputRedactionEnabled: true,
 			outputRedactionSecrets: true,
 			outputRedactionPii: 'credit-card',

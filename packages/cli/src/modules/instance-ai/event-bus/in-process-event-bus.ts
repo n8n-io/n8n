@@ -63,6 +63,9 @@ export class InProcessEventBus implements InstanceAiEventBus {
 
 	private readonly drainingThreads = new Set<string>();
 
+	/** Synchronous observers of every locally published event (see `onPublish`). */
+	private readonly publishListeners: Array<(threadId: string, event: InstanceAiEvent) => void> = [];
+
 	private readonly seqKeyPrefix: string;
 
 	private readonly durableLogEnabled: boolean;
@@ -110,6 +113,13 @@ export class InProcessEventBus implements InstanceAiEventBus {
 		// it too.
 		if (event.ts === undefined) {
 			event = { ...event, ts: Date.now() };
+		}
+		for (const listener of this.publishListeners) {
+			try {
+				listener(threadId, event);
+			} catch (error) {
+				this.logger.warn('Instance AI event publish listener failed', { threadId, error });
+			}
 		}
 		if (this.durableLogEnabled) {
 			this.eventLog.publish(threadId, event, (drained) => this.onDrained(threadId, drained));
@@ -348,6 +358,16 @@ export class InProcessEventBus implements InstanceAiEventBus {
 			return;
 		}
 		this.storeAndEmit(threadId, { id: storedEvent.id, event: storedEvent.event });
+	}
+
+	/**
+	 * Observe every event published on this main, before sequencing/persistence.
+	 * Unlike `subscribe`, this is not thread-scoped and never sees relayed
+	 * sibling events — it exists for local liveness tracking (any event a run
+	 * body publishes proves the run is making progress).
+	 */
+	onPublish(listener: (threadId: string, event: InstanceAiEvent) => void): void {
+		this.publishListeners.push(listener);
 	}
 
 	subscribe(threadId: string, handler: (storedEvent: StoredEvent) => void): () => void {

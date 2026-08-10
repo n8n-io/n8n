@@ -351,6 +351,16 @@ describe('InterruptedRunSweeper.cancelUnfinishedRuns', () => {
 		expect(metrics.sweep.runsCrashResumed).toBe(0);
 	});
 
+	it('stamps a caller-provided finish reason (liveness-timeout fallback)', async () => {
+		const { sweeper, published } = buildSweeper({ events: [runStart()] });
+
+		expect(await sweeper.cancelUnfinishedRuns(THREAD, 'timeout')).toBe(1);
+
+		const finish = published.at(-1);
+		expect(finish?.type === 'run-finish' && finish.payload.status).toBe('cancelled');
+		expect(finish?.type === 'run-finish' && finish.payload.reason).toBe('timeout');
+	});
+
 	it('terminalizes orphaned spawned children as cancelled without an error', async () => {
 		const { sweeper, published } = buildSweeper({
 			events: [runStart(), agentSpawned('child-orphaned')],

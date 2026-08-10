@@ -91,6 +91,13 @@ export type InstanceAiLivenessServiceOptions<
 	eventBus: InstanceAiLivenessEventBus;
 	finalizeCancelledSuspendedRun: (suspended: TSuspendedRun, reason: string) => void;
 	onPendingConfirmationRejected?: (requestId: string) => void;
+	/**
+	 * Invoked after a timed-out active run has been aborted. The abort normally
+	 * makes the run body publish its own terminal facts, but a run wedged in an
+	 * await that ignores the signal never does — the callback schedules the
+	 * fallback terminalization for that case.
+	 */
+	onActiveRunTimedOut?: (threadId: string) => void;
 	logger: Logger;
 };
 
@@ -221,6 +228,7 @@ export class InstanceAiLivenessService<
 		this.timedOutActiveRunThreads.add(threadId);
 		this.publishRunTimeoutNotice(threadId, active.runId);
 		active.abortController.abort();
+		this.options.onActiveRunTimedOut?.(threadId);
 	}
 
 	cancelTimedOutSuspendedRun(threadId: string, details?: InstanceAiRunTimeoutDetails): void {

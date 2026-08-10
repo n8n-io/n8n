@@ -152,6 +152,10 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_CONFIRMATION_TIMEOUT')
 	confirmationTimeout: number = 24 * Time.hours.toMilliseconds;
 
+	/** Idle timeout in milliseconds for active runs. A run that produces no stream chunks and publishes no thread events for this long is treated as stalled and cancelled. 0 = no idle timeout. */
+	@Env('N8N_INSTANCE_AI_ACTIVE_RUN_IDLE_TIMEOUT')
+	activeRunIdleTimeout: number = 10 * Time.minutes.toMilliseconds;
+
 	/** Scan and redact secrets/PII from agent output before it reaches the user. */
 	@Env('N8N_INSTANCE_AI_OUTPUT_REDACTION_ENABLED')
 	outputRedactionEnabled: boolean = true;

@@ -152,8 +152,11 @@ export class InterruptedRunSweeper {
 	 * run-finish moments later. Both facts carry `cancelled`, the fold is
 	 * idempotent on repeats, and the terminal-fact recheck below narrows the
 	 * window — a per-run claim would need the lease table this design avoids.
+	 *
+	 * Also invoked (with reason `timeout`) as the deferred fallback after the
+	 * liveness sweep aborts an idle-timed-out run whose body never settled.
 	 */
-	async cancelUnfinishedRuns(threadId: string): Promise<number> {
+	async cancelUnfinishedRuns(threadId: string, reason = 'user_cancelled'): Promise<number> {
 		if (!this.durableLogEnabled) return 0;
 
 		let unfinished;
@@ -169,7 +172,7 @@ export class InterruptedRunSweeper {
 			try {
 				const inFlightToolCalls = await this.resolveZombieRun(threadId, run.runId, {
 					status: 'cancelled',
-					reason: 'user_cancelled',
+					reason,
 				});
 				if (inFlightToolCalls === null) continue;
 				resolved++;
