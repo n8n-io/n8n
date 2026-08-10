@@ -71,6 +71,13 @@ const sizes: Record<NonNullable<InputNumberProps['size']>, string> = {
 	xlarge: $style.xlarge,
 };
 
+/** Reka formatOptions from precision; max fraction digits when unset preserves decimals. */
+const formatOptions = computed<Intl.NumberFormatOptions>(() =>
+	props.precision !== undefined
+		? { maximumFractionDigits: props.precision, minimumFractionDigits: props.precision }
+		: { maximumFractionDigits: 20 },
+);
+
 function sizeClass() {
 	return sizes[props.size];
 }
@@ -82,21 +89,12 @@ function showControlsBoth() {
 function showControlsRight() {
 	return Boolean(props.controls && props.controlsPosition === 'right');
 }
-
-/** Reka formatOptions from precision; max fraction digits when unset preserves decimals. */
-function resolvedFormatOptions(): Intl.NumberFormatOptions {
-	if (props.precision !== undefined) {
-		return { maximumFractionDigits: props.precision, minimumFractionDigits: props.precision };
-	}
-
-	return { maximumFractionDigits: 20 };
-}
 </script>
 
 <template>
 	<NumberFieldRoot
 		data-test-id="input-number"
-		v-bind="{ ...rootProps, ...rootAttrs, formatOptions: resolvedFormatOptions() }"
+		v-bind="{ ...rootProps, ...rootAttrs, formatOptions }"
 		:class="[
 			$style.inputNumber,
 			sizeClass(),
