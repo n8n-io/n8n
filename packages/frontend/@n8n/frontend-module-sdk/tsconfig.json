@@ -16,5 +16,5 @@
 			"@n8n/utils*": ["../../../@n8n/utils/src*"]
 		}
 	},
-	"include": ["src/**/*.ts", "vite.config.ts"]
+	"include": ["src/**/*.ts", "vite.config.ts", "tsdown.config.ts"]
 }
