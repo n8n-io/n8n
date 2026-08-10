@@ -28,6 +28,7 @@ const filterText = computed(() =>
 		:text-value="filterText"
 		:data-disabled="props.disabled || undefined"
 		@mousedown.prevent
+		@select="props.onSelect?.($event)"
 	>
 		<slot name="item-leading" :item="props" :ui="{ class: $style.itemLeading }">
 			<Icon v-if="props.icon" :icon="props.icon" :class="$style.itemLeading" size="large" />

@@ -112,6 +112,8 @@ type ComboboxOptionBase<TValue extends ComboboxValue = ComboboxValue> = {
   textValue?: string;
   /** Extra strings matched during filtering (e.g. synonyms). Checked alongside `textValue` / `label`. */
   keywords?: string[];
+  /** Call `event.preventDefault()` to run an action without updating the selection. */
+  onSelect?: (event: Event) => void;
 };
 
 type ComboboxItem =
@@ -234,44 +236,46 @@ const value = ref<string | undefined>();
 
 **Header and footer actions**
 
-Do not place buttons or other freeform interactive controls in the popup — they sit inside `role="listbox"` and break the ARIA pattern. Model actions as selectable options instead: use `type: 'label'` for non-interactive headings, `type: 'separator'` to visually pin an action, and handle sentinel values in `update:modelValue` so the action does not become the field value.
+Do not place buttons or other freeform interactive controls in the popup — they sit inside `role="listbox"` and break the ARIA pattern. Model actions as selectable options instead: use `type: 'label'` for non-interactive headings, `type: 'separator'` to visually pin an action, and `onSelect` with `event.preventDefault()` so the action does not become the field value.
 
 ```vue
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { N8nCombobox2 } from '@n8n/design-system';
 
-const CREATE_VALUE = '__create__';
 const options = [
   { label: 'Apple', value: 'apple' },
   { label: 'Banana', value: 'banana' },
   { label: 'Orange', value: 'orange' },
 ];
 
+const open = ref(false);
+const createOpen = ref(false);
+const value = ref<string | undefined>();
+
 const items = computed(() => [
   { type: 'label' as const, label: 'Fruits' },
   ...options,
   { type: 'separator' as const },
-  { label: 'Create new fruit', value: CREATE_VALUE, icon: 'plus' as const },
+  {
+    label: 'Create new fruit',
+    value: '__create__',
+    icon: 'plus' as const,
+    onSelect: (event: Event) => {
+      event.preventDefault();
+      open.value = false;
+      createOpen.value = true;
+    },
+  },
 ]);
-
-const value = ref<string | undefined>();
-
-function onUpdate(next: string | string[] | undefined) {
-  if (next === CREATE_VALUE) {
-    // Run the action — do not commit the sentinel as the selection.
-    return;
-  }
-  value.value = typeof next === 'string' ? next : undefined;
-}
 </script>
 
 <template>
   <N8nCombobox2
-    :model-value="value"
+    v-model="value"
+    v-model:open="open"
     :items="items"
     placeholder="Select a fruit..."
-    @update:model-value="onUpdate"
   />
 </template>
 ```

@@ -2,6 +2,9 @@ import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import { computed, ref } from 'vue';
 
 import N8nButton from '@n8n/design-system/components/N8nButton/Button.vue';
+import N8nDialog from '@n8n/design-system/components/N8nDialog/Dialog.vue';
+import N8nDialogClose from '@n8n/design-system/components/N8nDialog/DialogClose.vue';
+import N8nDialogFooter from '@n8n/design-system/components/N8nDialog/DialogFooter.vue';
 import N8nIcon from '@n8n/design-system/components/N8nIcon/Icon.vue';
 import N8nInput from '@n8n/design-system/components/N8nInput';
 
@@ -558,10 +561,11 @@ const CREATE_FRUIT_VALUE = '__create_fruit__';
 export const WithHeaderAndFooterActions = {
 	name: 'With Header And Footer Actions',
 	render: () => ({
-		components: { Combobox },
+		components: { Combobox, N8nDialog, N8nDialogFooter, N8nDialogClose, N8nButton },
 		setup() {
 			const value = ref<string | undefined>();
-			const lastAction = ref('');
+			const open = ref(false);
+			const createOpen = ref(false);
 
 			const options = [
 				{ label: 'Apple', value: 'apple' },
@@ -577,34 +581,53 @@ export const WithHeaderAndFooterActions = {
 					label: 'Create new fruit',
 					value: CREATE_FRUIT_VALUE,
 					icon: 'plus' as const,
+					onSelect: (event: Event) => {
+						event.preventDefault();
+						open.value = false;
+						createOpen.value = true;
+					},
 				},
 			]);
 
-			function onUpdate(next: string | string[] | undefined) {
-				if (next === CREATE_FRUIT_VALUE) {
-					lastAction.value = 'Create new fruit';
-					return;
-				}
-				value.value = typeof next === 'string' ? next : undefined;
-				lastAction.value = '';
-			}
-
-			return { value, items, lastAction, onUpdate };
+			return { value, open, createOpen, items };
 		},
 		template: `
 		<div style="${storyContainerStyle}">
 			<Combobox
-				:model-value="value"
+				v-model="value"
+				v-model:open="open"
 				:items="items"
 				placeholder="Select a fruit..."
-				@update:model-value="onUpdate"
 			/>
-			<p v-if="lastAction" style="margin: var(--spacing--xs) 0 0; font-size: var(--font-size--xs);">
-				Last action: {{ lastAction }}
+			<p style="margin: var(--spacing--xs) 0 0; font-size: var(--font-size--xs); color: var(--text-color--subtle);">
+				Selected: <strong>{{ value ?? '(none)' }}</strong>
 			</p>
+			<N8nDialog
+				v-model:open="createOpen"
+				header="Create new fruit"
+				description="This action item uses onSelect with preventDefault so it never becomes the Combobox value."
+				size="small"
+			>
+				<N8nDialogFooter>
+					<N8nDialogClose as-child>
+						<N8nButton label="Cancel" variant="outline" />
+					</N8nDialogClose>
+					<N8nDialogClose as-child>
+						<N8nButton label="Create" variant="solid" />
+					</N8nDialogClose>
+				</N8nDialogFooter>
+			</N8nDialog>
 		</div>
 		`,
 	}),
+	parameters: {
+		docs: {
+			description: {
+				story:
+					'Footer actions stay inside `role="listbox"` as options. Use `onSelect` with `event.preventDefault()` so choosing the action closes/opens a modal without updating `modelValue`.',
+			},
+		},
+	},
 } satisfies Story;
 
 export const WithForm = {

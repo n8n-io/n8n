@@ -428,6 +428,31 @@ describe('v2/components/Combobox', () => {
 		});
 	});
 
+	describe('onSelect', () => {
+		it('should not update modelValue when onSelect calls preventDefault', async () => {
+			const onSelect = vi.fn((event: Event) => {
+				event.preventDefault();
+			});
+			const items: ComboboxItem[] = [
+				{ value: 'apple', label: 'Apple' },
+				{ value: '__create__', label: 'Create new fruit', onSelect },
+			];
+
+			const wrapper = render(Combobox, {
+				props: { items, defaultOpen: true, modelValue: 'apple' },
+			});
+
+			const { popover } = await getPopoverContainer();
+			await userEvent.click(within(popover).getByRole('option', { name: 'Create new fruit' }));
+
+			await waitFor(() => {
+				expect(onSelect).toHaveBeenCalled();
+			});
+			expect(wrapper.emitted('update:modelValue')).toBeFalsy();
+			expect(getComboboxInput(wrapper)).toHaveValue('Apple');
+		});
+	});
+
 	describe('clearable', () => {
 		test.each([
 			[{ modelValue: 'Option 1', clearable: true }, true],

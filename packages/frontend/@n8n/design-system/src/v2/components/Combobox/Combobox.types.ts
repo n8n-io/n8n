@@ -22,6 +22,11 @@ export type ComboboxOptionBase<TValue extends ComboboxValue = ComboboxValue> = {
 	 * keywords are checked.
 	 */
 	keywords?: string[];
+	/**
+	 * Called when the item is chosen. Call `event.preventDefault()` to keep the
+	 * selection from updating (e.g. footer actions that open a modal).
+	 */
+	onSelect?: (event: Event) => void;
 };
 
 export type ComboboxLabelItem = {
