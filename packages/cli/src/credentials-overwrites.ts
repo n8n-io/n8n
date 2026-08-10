@@ -238,16 +238,22 @@ export class CredentialsOverwrites {
 	isManagedOAuthType(type: string): boolean {
 		if (!this.credentialTypes.recognizes(type)) return false;
 
-		const oauthBases = ['oAuth1Api', 'oAuth2Api'];
-		const isOAuthType =
-			oauthBases.includes(type) ||
-			this.credentialTypes.getParentTypes(type).some((parent) => oauthBases.includes(parent));
-		if (!isOAuthType) return false;
+		// OAuth2 identifies its client with clientId/clientSecret, OAuth1 with
+		// consumerKey/consumerSecret. Detect the version so the right pair is checked
+		// (checking clientId/clientSecret for both would never match an OAuth1 client).
+		const parentTypes = this.credentialTypes.getParentTypes(type);
+		const extendsBase = (base: string) => type === base || parentTypes.includes(base);
+		const clientFields = extendsBase('oAuth2Api')
+			? (['clientId', 'clientSecret'] as const)
+			: extendsBase('oAuth1Api')
+				? (['consumerKey', 'consumerSecret'] as const)
+				: undefined;
+		if (!clientFields) return false;
 
 		if (this.globalConfig.credentials.overwrite?.skipTypes?.includes(type)) return false;
 
 		const overwrites = this.get(type);
-		return !!overwrites && 'clientId' in overwrites && 'clientSecret' in overwrites;
+		return !!overwrites && clientFields.every((field) => field in overwrites);
 	}
 
 	usesManagedAuth(type: string, data: Record<string, unknown>): boolean {

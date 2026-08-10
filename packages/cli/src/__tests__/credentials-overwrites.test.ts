@@ -1210,6 +1210,11 @@ describe('CredentialsOverwrites', () => {
 			extends: ['oAuth2Api'],
 		});
 		const baseOAuth2Type = mock<ICredentialType>({ name: 'oAuth2Api', extends: undefined });
+		const oauth1CredentialType = mock<ICredentialType>({
+			name: 'trelloOAuth1Api',
+			extends: ['oAuth1Api'],
+		});
+		const baseOAuth1Type = mock<ICredentialType>({ name: 'oAuth1Api', extends: undefined });
 		const apiKeyCredentialType = mock<ICredentialType>({ name: 'notionApi', extends: undefined });
 
 		const createInstance = async (data: ICredentialsOverwrite) => {
@@ -1230,12 +1235,16 @@ describe('CredentialsOverwrites', () => {
 			credentialTypes.getByName.mockImplementation((name) => {
 				if (name === 'notionOAuth2Api') return oauthCredentialType;
 				if (name === 'oAuth2Api') return baseOAuth2Type;
+				if (name === 'trelloOAuth1Api') return oauth1CredentialType;
+				if (name === 'oAuth1Api') return baseOAuth1Type;
 				if (name === 'notionApi') return apiKeyCredentialType;
 				throw new UnrecognizedCredentialTypeError(name);
 			});
-			credentialTypes.getParentTypes.mockImplementation((name) =>
-				name === 'notionOAuth2Api' ? ['oAuth2Api'] : [],
-			);
+			credentialTypes.getParentTypes.mockImplementation((name) => {
+				if (name === 'notionOAuth2Api') return ['oAuth2Api'];
+				if (name === 'trelloOAuth1Api') return ['oAuth1Api'];
+				return [];
+			});
 		});
 
 		it('returns true for an OAuth type whose clientId and clientSecret are overwritten', async () => {
@@ -1244,6 +1253,23 @@ describe('CredentialsOverwrites', () => {
 			});
 
 			expect(instance.isManagedOAuthType('notionOAuth2Api')).toBe(true);
+		});
+
+		it('returns true for an OAuth1 type whose consumerKey and consumerSecret are overwritten', async () => {
+			const instance = await createInstance({
+				trelloOAuth1Api: { consumerKey: 'consumer-key', consumerSecret: 'consumer-secret' },
+			});
+
+			expect(instance.isManagedOAuthType('trelloOAuth1Api')).toBe(true);
+		});
+
+		it('returns false for an OAuth1 type overwritten with the OAuth2 client fields', async () => {
+			// clientId/clientSecret are meaningless for OAuth1; only consumerKey/consumerSecret count.
+			const instance = await createInstance({
+				trelloOAuth1Api: { clientId: 'client-id', clientSecret: 'client-secret' },
+			});
+
+			expect(instance.isManagedOAuthType('trelloOAuth1Api')).toBe(false);
 		});
 
 		it('returns false for a non-OAuth type even when overwritten', async () => {
