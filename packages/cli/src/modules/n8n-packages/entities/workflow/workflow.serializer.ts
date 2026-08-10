@@ -6,20 +6,14 @@ import {
 	serializedWorkflowSchema,
 	type SerializedWorkflow,
 } from '../../spec/serialized/workflow.schema';
+import {
+	definePackageSerializationPayload,
+	type PackageEntityKeyHandling,
+} from '../package-serialization.types';
 import { compareTagsByName } from '../tag/tag.types';
 
-type WorkflowEntityDataKey = {
-	[K in keyof WorkflowEntity]-?: WorkflowEntity[K] extends (...args: never[]) => unknown
-		? never
-		: K;
-}[keyof WorkflowEntity];
-
-// `copy` writes and restores the same field. `transform` uses the field in the package
-// without restoring it directly (for example, tags become tagIds). `exclude` omits it.
-type WorkflowPackageDecision = 'copy' | 'transform' | 'exclude';
-
-const workflowPackagePolicy = {
-	id: 'transform',
+const workflowPackageKeyHandling = {
+	id: 'copy',
 	createdAt: 'exclude',
 	updatedAt: 'exclude',
 	name: 'copy',
@@ -36,7 +30,7 @@ const workflowPackagePolicy = {
 	tagMappings: 'exclude',
 	shared: 'exclude',
 	pinData: 'exclude',
-	versionId: 'transform',
+	versionId: 'copy',
 	activeVersionId: 'transform',
 	activeVersion: 'exclude',
 	versionCounter: 'exclude',
@@ -44,23 +38,18 @@ const workflowPackagePolicy = {
 	parentFolder: 'transform',
 	testRuns: 'exclude',
 	sourceWorkflowId: 'exclude',
-} as const satisfies Record<WorkflowEntityDataKey, WorkflowPackageDecision>;
+} as const satisfies PackageEntityKeyHandling<WorkflowEntity>;
 
-type WorkflowPackageContentKey = {
-	[K in keyof typeof workflowPackagePolicy]-?: (typeof workflowPackagePolicy)[K] extends 'copy'
-		? K
-		: never;
-}[keyof typeof workflowPackagePolicy];
+type WorkflowPackageContent = Pick<
+	WorkflowEntity,
+	'name' | 'nodes' | 'connections' | 'isArchived' | 'settings'
+>;
 
-type WorkflowPackageContent = Pick<WorkflowEntity, WorkflowPackageContentKey>;
-
-// Copy fields must exist in both the serialized schema and the payload, even when optional.
-// The record allows package-only keys such as `parentFolderId`.
-type SerializePayload = {
-	[K in WorkflowPackageContentKey]-?: K extends keyof SerializedWorkflow
-		? WorkflowEntity[K]
-		: never;
-} & Record<string, unknown>;
+const serializePayload = definePackageSerializationPayload<
+	WorkflowEntity,
+	SerializedWorkflow,
+	typeof workflowPackageKeyHandling
+>();
 
 @Service()
 export class WorkflowSerializer {
@@ -71,18 +60,20 @@ export class WorkflowSerializer {
 			? [...(workflow.tags ?? [])].sort(compareTagsByName)
 			: undefined;
 
-		return serializedWorkflowSchema.parse({
-			id: workflow.id,
-			name: workflow.name,
-			nodes: workflow.nodes,
-			connections: workflow.connections,
-			settings: workflow.settings,
-			versionId: workflow.versionId,
-			parentFolderId: workflow.parentFolder?.id ?? null,
-			isPublished: workflow.activeVersionId === workflow.versionId,
-			isArchived: workflow.isArchived,
-			...(tags ? { tagIds: tags.map((tag) => tag.id) } : {}),
-		} satisfies SerializePayload);
+		return serializedWorkflowSchema.parse(
+			serializePayload({
+				id: workflow.id,
+				name: workflow.name,
+				nodes: workflow.nodes,
+				connections: workflow.connections,
+				settings: workflow.settings ? { ...workflow.settings } : undefined,
+				versionId: workflow.versionId,
+				parentFolderId: workflow.parentFolder?.id ?? null,
+				isPublished: workflow.activeVersionId === workflow.versionId,
+				isArchived: workflow.isArchived,
+				...(tags ? { tagIds: tags.map((tag) => tag.id) } : {}),
+			}),
+		);
 	}
 
 	/**

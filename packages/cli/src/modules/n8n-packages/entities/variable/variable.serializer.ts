@@ -5,6 +5,24 @@ import {
 	serializedVariableSchema,
 	type SerializedVariable,
 } from '../../spec/serialized/variable.schema';
+import {
+	definePackageSerializationPayload,
+	type PackageEntityKeyHandling,
+} from '../package-serialization.types';
+
+const variablePackageKeyHandling = {
+	id: 'exclude',
+	key: 'transform',
+	type: 'copy',
+	value: 'copy',
+	project: 'transform',
+} as const satisfies PackageEntityKeyHandling<Variables>;
+
+const serializePayload = definePackageSerializationPayload<
+	Variables,
+	SerializedVariable,
+	typeof variablePackageKeyHandling
+>();
 
 @Service()
 export class VariableSerializer {
@@ -12,10 +30,14 @@ export class VariableSerializer {
 		variable: Variables,
 		{ includeValue = true }: { includeValue?: boolean } = {},
 	): SerializedVariable {
-		return serializedVariableSchema.parse({
-			name: variable.key,
-			type: variable.type,
-			...(includeValue ? { value: variable.value } : {}),
-		});
+		const type = serializedVariableSchema.shape.type.parse(variable.type);
+
+		return serializedVariableSchema.parse(
+			serializePayload({
+				name: variable.key,
+				type,
+				...(includeValue ? { value: variable.value } : {}),
+			}),
+		);
 	}
 }
