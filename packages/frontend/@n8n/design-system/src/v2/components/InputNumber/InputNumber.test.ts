@@ -233,7 +233,7 @@ describe('v2/components/InputNumber', () => {
 			});
 		});
 
-		it('should select the full value on focus', async () => {
+		it('should select the full value on input click', async () => {
 			const wrapper = render(InputNumber, {
 				props: {
 					modelValue: 42,
@@ -251,6 +251,26 @@ describe('v2/components/InputNumber', () => {
 				expect(input.selectionStart).toBe(0);
 				expect(input.selectionEnd).toBe(input.value.length);
 			});
+		});
+
+		it('should not select the value on focus alone', async () => {
+			const wrapper = render(InputNumber, {
+				props: {
+					modelValue: 42,
+				},
+			});
+			const input = wrapper.container.querySelector('input');
+			expect(input).toBeTruthy();
+			if (!(input instanceof HTMLInputElement)) {
+				throw new Error('Expected input element');
+			}
+
+			input.focus();
+
+			await waitFor(() => {
+				expect(wrapper.emitted('focus')).toBeTruthy();
+			});
+			expect(input.selectionStart).toBe(input.selectionEnd);
 		});
 
 		it('should emit blur event', async () => {

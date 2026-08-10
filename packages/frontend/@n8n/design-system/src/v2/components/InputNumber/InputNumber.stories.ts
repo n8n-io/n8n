@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import { action } from 'storybook/actions';
-import { defineComponent, ref } from 'vue';
+import { defineComponent, reactive, ref } from 'vue';
 
 import InputNumber from './InputNumber.vue';
 import N8nIcon from '../../../components/N8nIcon/Icon.vue';
@@ -183,25 +183,25 @@ export const Sizes = {
 	render: () => ({
 		components: { InputNumber, N8nInputLabel },
 		setup() {
-			const withoutControls = {
-				mini: ref(42),
-				small: ref(42),
-				medium: ref(42),
-				large: ref(42),
-				xlarge: ref(42),
-			};
-			const controlsBoth = {
-				mini: ref(42),
-				small: ref(42),
-				medium: ref(42),
-				large: ref(42),
-			};
-			const controlsRight = {
-				mini: ref(42),
-				small: ref(42),
-				medium: ref(42),
-				large: ref(42),
-			};
+			const withoutControls = reactive({
+				mini: 42,
+				small: 42,
+				medium: 42,
+				large: 42,
+				xlarge: 42,
+			});
+			const controlsBoth = reactive({
+				mini: 42,
+				small: 42,
+				medium: 42,
+				large: 42,
+			});
+			const controlsRight = reactive({
+				mini: 42,
+				small: 42,
+				medium: 42,
+				large: 42,
+			});
 			return { withoutControls, controlsBoth, controlsRight };
 		},
 		template: `
@@ -234,31 +234,97 @@ export const Sizes = {
 } satisfies Story;
 
 export const Precision = {
-	render: (args) => ({
+	render: () => ({
 		components: { InputNumber, N8nInputLabel },
 		setup() {
-			const anyDecimals = ref(args.modelValue);
-			const twoDecimals = ref(3.14);
-			const integersOnly = ref(3);
-			return { anyDecimals, twoDecimals, integersOnly };
+			const withoutControls = reactive({
+				none: 3.14159,
+				two: 3.14,
+				one: 3.1,
+				zero: 3,
+			});
+			const controlsBoth = reactive({
+				none: 3.14159,
+				two: 3.14,
+				one: 3.1,
+				zero: 3,
+			});
+			const controlsRight = reactive({
+				none: 3.14159,
+				two: 3.14,
+				one: 3.1,
+				zero: 3,
+			});
+			return { withoutControls, controlsBoth, controlsRight };
 		},
 		template: `
-		<div style="${storyStack}">
-			<N8nInputLabel label="No precision">
-				<InputNumber v-model="anyDecimals" placeholder="Any decimals" />
-			</N8nInputLabel>
-			<N8nInputLabel label="Precision: 2">
-				<InputNumber v-model="twoDecimals" :precision="2" placeholder="0.00" />
-			</N8nInputLabel>
-			<N8nInputLabel label="Precision: 0">
-				<InputNumber v-model="integersOnly" :precision="0" placeholder="0" />
-			</N8nInputLabel>
+		<div style="${storyPadding} display: flex; gap: var(--spacing--xl); flex-wrap: wrap;">
+			<div style="width: 200px; display: flex; flex-direction: column; gap: var(--spacing--xs);">
+				<N8nInputLabel label="Without controls" />
+				<InputNumber v-model="withoutControls.none" placeholder="No precision" />
+				<InputNumber v-model="withoutControls.two" :precision="2" placeholder="Precision: 2" />
+				<InputNumber v-model="withoutControls.one" :precision="1" placeholder="Precision: 1" />
+				<InputNumber v-model="withoutControls.zero" :precision="0" placeholder="Precision: 0" />
+			</div>
+			<div style="width: 200px; display: flex; flex-direction: column; gap: var(--spacing--xs);">
+				<N8nInputLabel label="With controls (both)" />
+				<InputNumber
+					v-model="controlsBoth.none"
+					:controls="true"
+					controls-position="both"
+				/>
+				<InputNumber
+					v-model="controlsBoth.two"
+					:precision="2"
+					:step="0.01"
+					:controls="true"
+					controls-position="both"
+				/>
+				<InputNumber
+					v-model="controlsBoth.one"
+					:precision="1"
+					:step="0.1"
+					:controls="true"
+					controls-position="both"
+				/>
+				<InputNumber
+					v-model="controlsBoth.zero"
+					:precision="0"
+					:controls="true"
+					controls-position="both"
+				/>
+			</div>
+			<div style="width: 200px; display: flex; flex-direction: column; gap: var(--spacing--xs);">
+				<N8nInputLabel label="With controls (right)" />
+				<InputNumber
+					v-model="controlsRight.none"
+					:controls="true"
+					controls-position="right"
+				/>
+				<InputNumber
+					v-model="controlsRight.two"
+					:precision="2"
+					:step="0.01"
+					:controls="true"
+					controls-position="right"
+				/>
+				<InputNumber
+					v-model="controlsRight.one"
+					:precision="1"
+					:step="0.1"
+					:controls="true"
+					controls-position="right"
+				/>
+				<InputNumber
+					v-model="controlsRight.zero"
+					:precision="0"
+					:controls="true"
+					controls-position="right"
+				/>
+			</div>
 		</div>
 		`,
 	}),
-	args: {
-		modelValue: 3.14159,
-	},
 } satisfies Story;
 
 export const MinMax = {

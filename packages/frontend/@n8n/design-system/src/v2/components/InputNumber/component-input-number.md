@@ -32,8 +32,10 @@ Extends Reka UI `NumberFieldRootProps` (except `formatOptions`, derived from `pr
 **Events**
 
 - `update:modelValue` - Emitted when value changes. Payload: `number`
-- `focus` - Emitted when the input gains focus. Payload: `FocusEvent`. Also selects the full input value.
+- `focus` - Emitted when the input gains focus. Payload: `FocusEvent`.
 - `blur` - Emitted when the input loses focus. Payload: `FocusEvent`
+
+Clicking the input selects the full value. Increment/decrement controls do not.
 
 **Slots**
 

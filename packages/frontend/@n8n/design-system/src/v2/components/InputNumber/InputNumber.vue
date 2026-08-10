@@ -69,6 +69,10 @@ const rootProps = useForwardPropsEmits(
 
 function onFocus(event: FocusEvent) {
 	emit('focus', event);
+}
+
+/** Select all only on direct input click — not when controls focus the field. */
+function onInputClick(event: MouseEvent) {
 	const target = event.target;
 	if (target instanceof HTMLInputElement) {
 		target.select();
@@ -116,6 +120,7 @@ const sizeClass = computed(() => sizes[props.size ?? 'medium']);
 			:class="$style.input"
 			:placeholder="placeholder"
 			@focus="onFocus"
+			@click="onInputClick"
 			@blur="emit('blur', $event)"
 		/>
 
