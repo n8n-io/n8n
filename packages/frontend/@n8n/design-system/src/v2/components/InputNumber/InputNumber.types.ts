@@ -28,8 +28,14 @@ export type InputNumberInputSlotProps = {
 };
 
 export type InputNumberSlots = {
-	/** Fully custom input; default renders `NumberFieldInput`. */
+	/**
+	 * Custom input element. Must render a single root that can accept input
+	 * attributes (typically `<input>`). Wrapped with Reka `NumberFieldInput`
+	 * via `as-child` so value sync and focus/blur stay connected.
+	 */
 	input?: (props: InputNumberInputSlotProps) => unknown;
+	/** Custom increment control content (inside the control button). */
 	increment?: (props: InputNumberControlSlotProps) => unknown;
+	/** Custom decrement control content (inside the control button). */
 	decrement?: (props: InputNumberControlSlotProps) => unknown;
 };
