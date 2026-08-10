@@ -31,8 +31,20 @@ const props = withDefaults(defineProps<InputNumberProps>(), {
 	stepSnapping: false,
 });
 
+const isControlsRight = computed(() => props.controls && props.controlsPosition === 'right');
+const isControlsBoth = computed(() => props.controls && props.controlsPosition === 'both');
+
 const emit = defineEmits<InputNumberEmits>();
 defineSlots<InputNumberSlots>();
+
+// Map precision to formatOptions - uses Intl.NumberFormatOptions
+// When no precision is set, use maximumFractionDigits: 20 (the max allowed by Intl.NumberFormat)
+// to preserve full decimal precision and avoid default rounding behavior
+const formatOptions = computed<Intl.NumberFormatOptions>(() =>
+	props.precision !== undefined
+		? { maximumFractionDigits: props.precision, minimumFractionDigits: props.precision }
+		: { maximumFractionDigits: 20 },
+);
 
 const rootProps = useForwardPropsEmits(
 	reactivePick(
@@ -71,23 +83,8 @@ const sizes: Record<NonNullable<InputNumberProps['size']>, string> = {
 	xlarge: $style.xlarge,
 };
 
-/** Reka formatOptions from precision; max fraction digits when unset preserves decimals. */
-const formatOptions = computed<Intl.NumberFormatOptions>(() =>
-	props.precision !== undefined
-		? { maximumFractionDigits: props.precision, minimumFractionDigits: props.precision }
-		: { maximumFractionDigits: 20 },
-);
-
 function sizeClass() {
 	return sizes[props.size];
-}
-
-function showControlsBoth() {
-	return Boolean(props.controls && props.controlsPosition === 'both');
-}
-
-function showControlsRight() {
-	return Boolean(props.controls && props.controlsPosition === 'right');
 }
 </script>
 
@@ -101,11 +98,11 @@ function showControlsRight() {
 			rootClass,
 			{
 				[$style.isDisabled]: props.disabled,
-				[$style.isControlsBoth]: showControlsBoth(),
+				[$style.isControlsBoth]: isControlsBoth,
 			},
 		]"
 	>
-		<NumberFieldDecrement v-if="showControlsBoth()" as-child>
+		<NumberFieldDecrement v-if="isControlsBoth" as-child>
 			<button
 				type="button"
 				:class="[$style.button, $style.buttonDecrement]"
@@ -124,7 +121,7 @@ function showControlsRight() {
 			@blur="emit('blur', $event)"
 		/>
 
-		<NumberFieldIncrement v-if="showControlsBoth()" as-child>
+		<NumberFieldIncrement v-if="isControlsBoth" as-child>
 			<button
 				type="button"
 				:class="[$style.button, $style.buttonIncrement]"
@@ -136,7 +133,7 @@ function showControlsRight() {
 			</button>
 		</NumberFieldIncrement>
 
-		<div v-if="showControlsRight()" :class="$style.controlsWrapper">
+		<div v-if="isControlsRight" :class="$style.controlsWrapper">
 			<NumberFieldIncrement as-child>
 				<button
 					type="button"
