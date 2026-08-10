@@ -339,10 +339,15 @@ export async function runMultiTurnConversation(config: MultiTurnConfig): Promise
  *
  * The proxy only ever sees the transcript, so it decides a workflow exists from
  * what the agent *claimed*. Both guards below re-derive that from ground truth
- * before writing anything. Every skip and every failure logs at `warn`, not
- * `verbose`: when the rename silently no-ops the conflict path is never
- * exercised, and the case reds looking like an agent failure instead of the
- * harness problem it is.
+ * before writing anything.
+ *
+ * Logging is deliberately loud on every path. Skips and failures are `warn`, and
+ * the success is `info` rather than `verbose` — the failure that matters most is
+ * a direction that stops driving `renameWorkflowTo` at all, and that one never
+ * reaches this function, so it cannot log anything itself. Printing the rename
+ * in a normal run is what makes its ABSENCE meaningful: without it, a case whose
+ * direction silently stopped working reds on its name assertion and reads as an
+ * agent regression, with nothing in the log to say the conflict never happened.
  *
  * A failure is logged and swallowed rather than thrown — the case grades the
  * agent's recovery, and killing the run here would report that as a build
@@ -375,7 +380,7 @@ async function applyExternalRename(config: MultiTurnConfig, rename: string): Pro
 		}
 
 		await config.client.updateWorkflow(workflowId, { name: rename });
-		config.logger.verbose(
+		config.logger.info(
 			`[external-edit] Renamed ${workflowId} from "${current.name}" to "${rename}" outside the conversation`,
 		);
 	} catch (error: unknown) {

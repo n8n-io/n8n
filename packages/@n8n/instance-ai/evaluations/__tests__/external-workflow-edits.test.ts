@@ -57,12 +57,14 @@ interface RunRecord {
 	renames: Array<{ workflowId: string; name: unknown }>;
 	messagesSent: string[];
 	warnings: string[];
+	infos: string[];
 }
 
 async function runLoop(options: RunOptions): Promise<RunRecord> {
 	const renames: RunRecord['renames'] = [];
 	const messagesSent: string[] = [];
 	const warnings: string[] = [];
+	const infos: string[] = [];
 	const remaining = [...options.followUps];
 
 	const client = {
@@ -90,7 +92,7 @@ async function runLoop(options: RunOptions): Promise<RunRecord> {
 
 	const logger = {
 		verbose: () => {},
-		info: () => {},
+		info: (message: string) => infos.push(message),
 		warn: (message: string) => warnings.push(message),
 	} as unknown as EvalLogger;
 
@@ -114,7 +116,7 @@ async function runLoop(options: RunOptions): Promise<RunRecord> {
 		}),
 	});
 
-	return { renames, messagesSent, warnings };
+	return { renames, messagesSent, warnings, infos };
 }
 
 describe('proxy-driven external rename in runMultiTurnConversation', () => {
@@ -125,6 +127,19 @@ describe('proxy-driven external rename in runMultiTurnConversation', () => {
 		});
 
 		expect(renames).toEqual([{ workflowId: 'wf-first', name: 'Renamed in another tab' }]);
+	});
+
+	it('reports a successful rename at info, so its absence is a readable signal', async () => {
+		// The failure that matters most — a direction that stops setting
+		// renameWorkflowTo — never reaches applyExternalRename and so cannot log
+		// anything itself. Printing the success in a normal (non-verbose) run is
+		// what makes a missing line mean something.
+		const { infos } = await runLoop({
+			events: [...runLifecycleEvents(), buildEvent('wf-first')],
+			followUps: [['keep going', 'Renamed in another tab'], null],
+		});
+
+		expect(infos.some((m) => m.includes('[external-edit] Renamed wf-first'))).toBe(true);
 	});
 
 	it('does nothing on a turn the proxy did not ask for a rename', async () => {
