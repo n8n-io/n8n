@@ -10,12 +10,9 @@ const acknowledgedProjectOwnedEntities = [
 	...ownershipTransferManifest.notTransferred,
 ].map(({ name, path }) => ({ name, path }));
 
-// Declared module→module dependency edges enforced by
-// `n8n-local-rules/no-undeclared-cross-module-import` — the seed data for a future
-// `@BackendModule({ dependsOn })` declaration. Shrink-only ratchet: NEVER add an edge
-// casually — prefer inverting the dependency via a registry owned by the consumed-from
-// module (see scripts/backend-module/backend-module-guide.md). `pending removal` entries
-// are deleted mechanically once the referenced PR merges.
+// Declared module→module edges; seed data for a future `@BackendModule({ dependsOn })`.
+// Shrink-only: prefer inverting the edge via a registry (see scripts/backend-module/backend-module-guide.md).
+// `pending removal` entries are deleted once the referenced PR merges.
 const allowedModuleDependencies = {
 	'agent-evals': [
 		'agents', // hard dependency
@@ -24,9 +21,9 @@ const allowedModuleDependencies = {
 		'source-control.ee', // pending removal by #35903
 	],
 	agents: [
-		'favorites', // hard dependency (registers favorite resource resolver, #35909)
+		'favorites', // registers favorite resource resolver
 		'instance-ai', // pending removal by #35907 + #35908
-		'mcp', // hard dependency (registers MCP tool provider, #35906)
+		'mcp', // registers MCP tool provider
 		'mcp-registry', // hard dependency
 		'otel', // hard dependency
 	],
@@ -34,10 +31,10 @@ const allowedModuleDependencies = {
 		'community-packages', // pending removal by #35907
 	],
 	'data-table': [
-		'favorites', // hard dependency (registers favorite resource resolver, #35909)
-		'mcp', // hard dependency (registers MCP tool provider, #35906)
-		'n8n-packages', // hard dependency (registers package entity handler, #35912)
-		'source-control.ee', // hard dependency (registers source control handler, #35905)
+		'favorites', // registers favorite resource resolver
+		'mcp', // registers MCP tool provider
+		'n8n-packages', // registers package entity handler
+		'source-control.ee', // registers source control handler
 	],
 	favorites: [
 		'agents', // pending removal by #35909
@@ -412,10 +409,8 @@ export default defineConfig(
 		},
 	},
 	{
-		// Ratchet allowlist: core files that still import from `src/modules/**`, pending
-		// inversion via a module hook/registry (see scripts/backend-module/backend-module-guide.md).
-		// NEVER add to this list — a new core→module import must fail CI. Entries are removed
-		// as each file is decoupled.
+		// Ratchet allowlist: core files still importing from `src/modules/**`.
+		// NEVER add to this list — a new core→module import must fail CI. Remove entries as files decouple.
 		files: [
 			'./src/commands/base-command.ts',
 			'./src/commands/start.ts',

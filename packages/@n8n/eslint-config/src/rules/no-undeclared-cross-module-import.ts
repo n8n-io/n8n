@@ -5,11 +5,7 @@ const CLI_SRC_MARKER = '/packages/cli/src/';
 
 type Classification = { kind: 'module'; name: string } | { kind: 'core' } | null;
 
-/**
- * Backend modules are the directories under `packages/cli/src/modules/<name>/`
- * (the module name includes any `.ee` suffix, e.g. `source-control.ee`).
- * Everything else under `packages/cli/src/` is "core".
- */
+/** `src/modules/<name>/` → that module (name keeps its `.ee` suffix); anything else under `src/` → core. */
 function classify(path: string): Classification {
 	const index = path.indexOf(CLI_SRC_MARKER);
 	if (index === -1) return null;
@@ -55,7 +51,7 @@ export const NoUndeclaredCrossModuleImportRule = ESLintUtils.RuleCreator.without
 		const srcDir = filename.slice(0, filename.indexOf(CLI_SRC_MARKER) + CLI_SRC_MARKER.length);
 
 		const check = (node: TSESTree.Node, specifier: string) => {
-			// Module init files import compiled paths like `.../registry.js`.
+			// module init() imports compiled `.js` paths
 			const cleaned = specifier.replace(/\.js$/, '');
 
 			let resolved;
@@ -67,7 +63,7 @@ export const NoUndeclaredCrossModuleImportRule = ESLintUtils.RuleCreator.without
 				return; // bare package specifier
 			}
 
-			// Append `/` so a directory import (`@/modules/favorites`) classifies as the module.
+			// trailing `/` so directory imports classify as the module
 			const target = classify(`${resolved}/`);
 			if (target === null || target.kind !== 'module') return;
 

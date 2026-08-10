@@ -3,12 +3,6 @@ import { ESLintUtils } from '@typescript-eslint/utils';
 const TARGET_RULE = 'no-undeclared-cross-module-import';
 const DISABLE_DIRECTIVE = /^eslint-disable(-next-line|-line)?\b/;
 
-/**
- * Guards the `no-undeclared-cross-module-import` boundary: an inline disable is
- * the one way to smuggle an undeclared cross-module edge past CI. New edges must
- * be declared in `allowedDependencies` in `packages/cli/eslint.config.mjs`,
- * never via an inline directive.
- */
 export const NoCrossModuleImportDisableRule = ESLintUtils.RuleCreator.withoutDocs({
 	meta: {
 		type: 'problem',
