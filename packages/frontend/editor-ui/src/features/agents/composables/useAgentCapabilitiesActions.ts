@@ -339,6 +339,15 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 			}
 		}
 
+		for (const server of localConfig.value?.mcpServers ?? []) {
+			if (!server.name) continue;
+			tools.push({
+				name: server.name,
+				label: formatToolNameForDisplay(server.name) || server.name,
+				icon: 'mcp',
+			});
+		}
+
 		return tools;
 	}
 
