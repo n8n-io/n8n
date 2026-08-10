@@ -12,6 +12,14 @@
 
 export const DEFAULT_MODEL_STREAM_IDLE_TIMEOUT_MS = 5 * 60_000;
 
+/**
+ * How many times a stalled turn is silently re-issued before the stall error
+ * surfaces. Only applies while the stalled attempt has streamed no content
+ * (see `StreamSink.callModel`) — retrying an attempt the user already saw
+ * would duplicate segments and orphan persisted tool-call facts.
+ */
+export const MAX_MODEL_STREAM_STALL_RETRIES = 1;
+
 export class ModelStreamStallError extends Error {
 	constructor(idleMs: number) {
 		super(
