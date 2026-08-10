@@ -1,29 +1,8 @@
 import { type Project, type ProjectRepository, type User, WorkflowEntity } from '@n8n/db';
 import z from 'zod';
 
-import { buildInvalidAiToolSourceErrorResponse } from './connection-structure-check';
-import { MCP_CREATE_WORKFLOW_FROM_CODE_TOOL, CODE_BUILDER_VALIDATE_TOOL } from './constants';
-import { validateWorkflowCredentialReferences } from './credential-validation';
-import {
-	autoPopulateNodeCredentials,
-	stripNullCredentialStubs,
-	trackAutoassignOutcomes,
-} from './credentials-auto-assign';
-import { validateDataTableReferencesForWorkflow } from './data-table-validation';
-import { sanitizeSkillsUsed, SKILLS_USED_PARAM_DESCRIPTION } from './skills-used';
-import {
-	buildCreateVersionMetadata,
-	resolveVersionMetadata,
-	versionDescriptionInputSchema,
-	versionNameInputSchema,
-} from './version-metadata';
-import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
-import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
-import { getSdkReferenceHint } from '../workflow-validation.utils';
-
 import type { CredentialsService } from '@/credentials/credentials.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import type { DataTableUserOperations } from '@/modules/data-table/data-table-proxy.service';
 import type { NodeTypes } from '@/node-types';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { UrlService } from '@/services/url.service';
@@ -35,6 +14,26 @@ import {
 } from '@/workflow-helpers';
 import type { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+
+import { buildInvalidAiToolSourceErrorResponse } from './connection-structure-check';
+import { MCP_CREATE_WORKFLOW_FROM_CODE_TOOL, CODE_BUILDER_VALIDATE_TOOL } from './constants';
+import { validateWorkflowCredentialReferences } from './credential-validation';
+import {
+	autoPopulateNodeCredentials,
+	stripNullCredentialStubs,
+	trackAutoassignOutcomes,
+} from './credentials-auto-assign';
+import { sanitizeSkillsUsed, SKILLS_USED_PARAM_DESCRIPTION } from './skills-used';
+import {
+	buildCreateVersionMetadata,
+	resolveVersionMetadata,
+	versionDescriptionInputSchema,
+	versionNameInputSchema,
+} from './version-metadata';
+import type { McpDataTableValidator } from '../../mcp-tool-provider.registry';
+import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
+import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
+import { getSdkReferenceHint } from '../workflow-validation.utils';
 
 const MAX_WORKFLOW_DESCRIPTION_LENGTH = 255;
 
@@ -194,7 +193,7 @@ export const createCreateWorkflowFromCodeTool = (
 	nodeTypes: NodeTypes,
 	credentialsService: CredentialsService,
 	projectRepository: ProjectRepository,
-	dataTableOps: DataTableUserOperations,
+	dataTableValidator: McpDataTableValidator | undefined,
 	aiGatewayService: AiGatewayService,
 	options: CreateWorkflowFromCodeToolOptions = {},
 ): ToolDefinition<typeof inputSchema> => ({
@@ -322,11 +321,10 @@ export const createCreateWorkflowFromCodeTool = (
 			}
 			const effectiveProjectId = landingProject.id;
 
-			const dataTableCheck = await validateDataTableReferencesForWorkflow(
+			const dataTableCheck = (await dataTableValidator?.validateReferencesForWorkflow(
 				newWorkflow.nodes,
 				effectiveProjectId,
-				dataTableOps,
-			);
+			)) ?? { ok: true as const };
 			if (!dataTableCheck.ok) {
 				throw new Error(dataTableCheck.error);
 			}

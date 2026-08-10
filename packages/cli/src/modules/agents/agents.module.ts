@@ -61,6 +61,25 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentRuntimeCacheService } = await import('./agent-runtime-cache.service.js');
 		Container.get(AgentRuntimeCacheService);
 
+		// Contribute the agent-management tool suite to the instance MCP server.
+		// Agent tools ride on the builder surface, so they share its env gate.
+		const { GlobalConfig } = await import('@n8n/config');
+		const { AGENTS_MCP_TOOL_PROVIDER, McpToolProviderRegistry } = await import(
+			'@/modules/mcp/mcp-tool-provider.registry.js'
+		);
+		const { McpAgentToolsService } = await import('./mcp/agent-tools.service.js');
+		Container.get(McpToolProviderRegistry).register({
+			name: AGENTS_MCP_TOOL_PROVIDER,
+			isAvailable: () => Container.get(GlobalConfig).endpoints.mcpBuilderEnabled,
+			registerTools: ({ registerTool, registerResource, user, allowedToolNames }) =>
+				Container.get(McpAgentToolsService).registerTools(
+					registerTool,
+					registerResource,
+					user,
+					allowedToolNames,
+				),
+		});
+
 		const { AgentHistoryRepository } = await import('./repositories/agent-history.repository.js');
 		Container.get(AgentHistoryRepository);
 

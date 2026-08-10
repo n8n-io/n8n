@@ -1,12 +1,12 @@
-import type { ModuleRegistry } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import { mock } from 'vitest-mock-extended';
 
-import type { McpConfig } from '../mcp.config';
-import type { McpSettingsService } from '../mcp.settings.service';
 import type { UrlService } from '@/services/url.service';
 
 import { McpProtectedResource } from '../mcp-protected-resource';
+import { AGENTS_MCP_TOOL_PROVIDER, McpToolProviderRegistry } from '../mcp-tool-provider.registry';
+import type { McpConfig } from '../mcp.config';
+import type { McpSettingsService } from '../mcp.settings.service';
 
 const makeGlobalConfig = ({ builderEnabled = true, tagsDisabled = false } = {}) =>
 	({
@@ -14,23 +14,31 @@ const makeGlobalConfig = ({ builderEnabled = true, tagsDisabled = false } = {}) 
 		tags: { disabled: tagsDisabled },
 	}) as unknown as GlobalConfig;
 
+// In production the agents module registers this provider on init, with the
+// builder env flag as its availability predicate.
+const makeRegistry = (isAvailable: () => boolean) => {
+	const registry = new McpToolProviderRegistry();
+	registry.register({ name: AGENTS_MCP_TOOL_PROVIDER, isAvailable, registerTools: () => {} });
+	return registry;
+};
+
 describe('McpProtectedResource', () => {
 	const urlService = mock<UrlService>();
 	const mcpSettingsService = mock<McpSettingsService>();
 	const mcpConfig = mock<McpConfig>();
-	const moduleRegistry = mock<ModuleRegistry>();
+	const agentToolsAvailable = vi.fn<() => boolean>();
 	const resource = new McpProtectedResource(
 		urlService,
 		mcpSettingsService,
 		mcpConfig,
 		makeGlobalConfig(),
-		moduleRegistry,
+		makeRegistry(agentToolsAvailable),
 	);
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mcpConfig.baseUrl = '';
-		moduleRegistry.isActive.mockReturnValue(true);
+		agentToolsAvailable.mockReturnValue(true);
 	});
 
 	describe('getScopeTools', () => {
@@ -51,7 +59,7 @@ describe('McpProtectedResource', () => {
 				mcpSettingsService,
 				mcpConfig,
 				makeGlobalConfig({ builderEnabled: false, tagsDisabled: true }),
-				moduleRegistry,
+				makeRegistry(() => false),
 			);
 
 			const scopeTools = limitedResource.getScopeTools();
@@ -70,7 +78,7 @@ describe('McpProtectedResource', () => {
 		});
 
 		it('should drop agent scopes and tools when the agents module is inactive', () => {
-			moduleRegistry.isActive.mockReturnValue(false);
+			agentToolsAvailable.mockReturnValue(false);
 
 			expect(resource.scopes).not.toContain('agent:read');
 			expect(resource.scopes).not.toContain('agent:write');

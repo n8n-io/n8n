@@ -29,6 +29,15 @@ export class DataTableModule implements ModuleInterface {
 			},
 		});
 
+		const { McpToolProviderRegistry } = await import('@/modules/mcp/mcp-tool-provider.registry.js');
+		const { DataTableMcpService } = await import('./mcp/data-table-mcp.service.js');
+		const dataTableMcpService = Container.get(DataTableMcpService);
+		const mcpToolProviderRegistry = Container.get(McpToolProviderRegistry);
+		mcpToolProviderRegistry.register(dataTableMcpService);
+		mcpToolProviderRegistry.registerDataTableValidator((user) =>
+			dataTableMcpService.makeValidator(user),
+		);
+
 		const { DataTableAggregateService } = await import('./data-table-aggregate.service.js');
 		await Container.get(DataTableAggregateService).start();
 

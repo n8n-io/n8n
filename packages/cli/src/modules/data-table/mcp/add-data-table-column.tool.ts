@@ -1,17 +1,17 @@
 import type { User } from '@n8n/db';
 import z from 'zod';
 
-import type { DataTableUserOperations } from '@/modules/data-table/data-table-proxy.service';
-import type { Telemetry } from '@/telemetry';
-
-import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
-import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
+import { USER_CALLED_MCP_TOOL_EVENT } from '@/modules/mcp/mcp.constants';
+import type { ToolDefinition, UserCalledMCPToolEventPayload } from '@/modules/mcp/mcp.types';
 import {
 	columnNameSchema,
 	dataTableColumnSchema,
 	dataTableColumnTypeSchema,
 	dataTableProjectIdSchema,
-} from '../schemas';
+} from '@/modules/mcp/tools/schemas';
+import type { Telemetry } from '@/telemetry';
+
+import type { DataTableUserOperations } from '../data-table-proxy.service';
 
 const inputSchema = {
 	dataTableId: z.string().describe('The ID of the data table to add a column to'),

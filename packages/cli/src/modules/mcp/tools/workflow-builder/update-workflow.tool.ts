@@ -6,8 +6,25 @@ import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { Workflow, type INode, type IWorkflowSettings } from 'n8n-workflow';
 import z from 'zod';
 
-import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
-import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
+import type { CollaborationService } from '@/collaboration/collaboration.service';
+import type { CredentialsService } from '@/credentials/credentials.service';
+import { SubworkflowPolicyDenialError } from '@/errors/subworkflow-policy-denial.error';
+import type { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
+import type { McpDataTableValidator } from '../../mcp-tool-provider.registry';
+import type { NodeTypes } from '@/node-types';
+import type { TagService } from '@/services/tag.service';
+import type { AiGatewayService } from '@/services/ai-gateway.service';
+import type { UrlService } from '@/services/url.service';
+import type { Telemetry } from '@/telemetry';
+import {
+	dropInvalidNodeGroups,
+	makeGetNodeTypeForGrouping,
+	resolveNodeWebhookIds,
+} from '@/workflow-helpers';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import type { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
+import type { WorkflowService } from '@/workflows/workflow.service';
+
 import { buildInvalidAiToolSourceErrorResponse } from './connection-structure-check';
 import { MCP_UPDATE_WORKFLOW_TOOL } from './constants';
 import { validateCredentialReferences } from './credential-validation';
@@ -16,7 +33,6 @@ import {
 	trackAutoassignOutcomes,
 	type SlotOutcome,
 } from './credentials-auto-assign';
-import { validateDataTableReferencesForUpdate } from './data-table-validation';
 import { sanitizeSkillsUsed, SKILLS_USED_PARAM_DESCRIPTION } from './skills-used';
 import {
 	buildUpdateVersionMetadata,
@@ -34,26 +50,8 @@ import {
 	type PartialUpdateOperation,
 	type SkippedOperation,
 } from './workflow-operations';
-
-import type { CollaborationService } from '@/collaboration/collaboration.service';
-import type { CredentialsService } from '@/credentials/credentials.service';
-import { SubworkflowPolicyDenialError } from '@/errors/subworkflow-policy-denial.error';
-import type { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
-import type { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
-import type { DataTableUserOperations } from '@/modules/data-table/data-table-proxy.service';
-import type { NodeTypes } from '@/node-types';
-import type { TagService } from '@/services/tag.service';
-import type { AiGatewayService } from '@/services/ai-gateway.service';
-import type { UrlService } from '@/services/url.service';
-import type { Telemetry } from '@/telemetry';
-import {
-	dropInvalidNodeGroups,
-	makeGetNodeTypeForGrouping,
-	resolveNodeWebhookIds,
-} from '@/workflow-helpers';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import type { WorkflowService } from '@/workflows/workflow.service';
-
+import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
+import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
 import { getMcpWorkflow } from '../workflow-validation.utils';
 
 const MAX_OPERATIONS_PER_CALL = 100;
@@ -605,7 +603,7 @@ export const createUpdateWorkflowTool = (
 	credentialsService: CredentialsService,
 	sharedWorkflowRepository: SharedWorkflowRepository,
 	collaborationService: CollaborationService,
-	dataTableOps: DataTableUserOperations,
+	dataTableValidator: McpDataTableValidator | undefined,
 	tagService: TagService,
 	globalConfig: GlobalConfig,
 	subworkflowPolicyChecker: SubworkflowPolicyChecker,
@@ -782,12 +780,11 @@ export const createUpdateWorkflowTool = (
 				select: ['projectId'],
 			});
 
-			const dataTableCheck = await validateDataTableReferencesForUpdate(
+			const dataTableCheck = (await dataTableValidator?.validateReferencesForUpdate(
 				result.workflow.nodes,
 				collectTouchedNodes(strictOperations),
 				workflowProjectId,
-				dataTableOps,
-			);
+			)) ?? { ok: true as const };
 
 			if (!dataTableCheck.ok) {
 				throw new Error(dataTableCheck.error);

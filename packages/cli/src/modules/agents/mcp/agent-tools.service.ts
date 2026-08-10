@@ -57,6 +57,17 @@ import { filterOfferedAgentModelProviders } from '@/modules/agents/model-catalog
 import { AgentSecureRuntime } from '@/modules/agents/runtime/agent-secure-runtime';
 import { getAgentConfigHash } from '@/modules/agents/utils/agent-config-hash';
 import { createAgentCredentialProvider } from '@/modules/agents/utils/agent-credential-provider';
+import {
+	MCP_CALL_AGENT_TOOL_NAME,
+	MCP_CREATE_AGENT_TOOL_NAME,
+	USER_CALLED_MCP_TOOL_EVENT,
+} from '@/modules/mcp/mcp.constants';
+import type {
+	RegisterResourceFn,
+	RegisterToolFn,
+	ToolDefinition,
+	UserCalledMCPToolEventPayload,
+} from '@/modules/mcp/mcp.types';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import { NodeTypes } from '@/node-types';
 import { OauthService } from '@/oauth/oauth.service';
@@ -72,17 +83,6 @@ import {
 	AGENT_BUILDER_REFERENCE_URI,
 	AGENT_CONFIG_JSON_SCHEMA,
 } from './agent-reference';
-import {
-	MCP_CALL_AGENT_TOOL_NAME,
-	MCP_CREATE_AGENT_TOOL_NAME,
-	USER_CALLED_MCP_TOOL_EVENT,
-} from '../../mcp.constants';
-import type {
-	RegisterResourceFn,
-	RegisterToolFn,
-	ToolDefinition,
-	UserCalledMCPToolEventPayload,
-} from '../../mcp.types';
 
 const MCP_SERVER_DISCOVERY_LIMIT = 20;
 

@@ -1,4 +1,4 @@
-import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
+import { LicenseState } from '@n8n/backend-common';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import {
@@ -8,6 +8,7 @@ import {
 	SharedWorkflowRepository,
 	User,
 } from '@n8n/db';
+import { registerWorkflowPreviewApp } from '@n8n/mcp-apps/server';
 import { InstanceSettings } from 'n8n-core';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -16,7 +17,6 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { EventService } from '@/events/event.service';
 import { ExecutionService } from '@/executions/execution.service';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
-import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import { NodeCatalogService } from '@/node-catalog';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
@@ -34,9 +34,14 @@ import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-hi
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
-import { registerWorkflowPreviewApp } from '@n8n/mcp-apps/server';
-
-import { AGENT_TOOLS, BUILDER_TOOLS, getAllowedToolNames, TOOLS_BY_SCOPE } from '../mcp-scopes';
+import {
+	AGENT_TOOLS,
+	BUILDER_TOOLS,
+	DATA_TABLE_TOOLS,
+	getAllowedToolNames,
+	TOOLS_BY_SCOPE,
+} from '../mcp-scopes';
+import { McpToolProviderRegistry } from '../mcp-tool-provider.registry';
 import { McpService, type McpFeatureFlags } from '../mcp.service';
 
 vi.mock('@n8n/mcp-apps/server', async (importOriginal) => ({
@@ -123,7 +128,7 @@ describe('McpService scope enforcement', () => {
 			mockInstance(SharedWorkflowRepository),
 			mockInstance(ExecutionRepository),
 			mockInstance(ExecutionService),
-			mockInstance(DataTableProxyService),
+			new McpToolProviderRegistry(),
 			mockInstance(CollaborationService),
 			mockInstance(NodeResourceExplorerService),
 			mockInstance(TagService),
@@ -136,7 +141,6 @@ describe('McpService scope enforcement', () => {
 			mockInstance(AiGatewayService, {
 				isAvailable: vi.fn().mockResolvedValue({ available: false }),
 			}),
-			mockInstance(ModuleRegistry),
 			mockInstance(EventService),
 		);
 
@@ -156,10 +160,11 @@ describe('McpService scope enforcement', () => {
 		const server = await buildService().getServer(user, mcpFeatureFlags());
 		const registered = getRegisteredToolNames(server);
 
-		// Agent tools require the agents module (inactive here); their own
-		// drift guard lives in agent-tools.service.test.ts.
+		// Agent and data-table tools come from their modules' MCP tool providers
+		// (not registered here); their own drift guards live in
+		// agent-tools.service.test.ts and data-table-mcp.service.test.ts.
 		const unregistered = [...ALL_MAPPED_TOOLS].filter(
-			(name) => !registered.has(name) && !AGENT_TOOLS.has(name),
+			(name) => !registered.has(name) && !AGENT_TOOLS.has(name) && !DATA_TABLE_TOOLS.has(name),
 		);
 		expect(unregistered).toEqual([]);
 	});

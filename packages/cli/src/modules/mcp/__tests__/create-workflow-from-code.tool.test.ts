@@ -7,6 +7,7 @@ import { z } from 'zod';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { toMcpDataTableValidator } from '@/modules/data-table/mcp/data-table-validation';
 import { NodeTypes } from '@/node-types';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 import { UrlService } from '@/services/url.service';
@@ -183,7 +184,7 @@ describe('create-workflow-from-code MCP tool', () => {
 			nodeTypes,
 			credentialsService,
 			projectRepository,
-			dataTableOps as never,
+			toMcpDataTableValidator(dataTableOps as never),
 			aiGatewayService,
 			options,
 		);

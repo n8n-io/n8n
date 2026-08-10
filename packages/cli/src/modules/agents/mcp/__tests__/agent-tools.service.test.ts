@@ -1,8 +1,8 @@
 import { zodToJsonSchema } from '@n8n/agents';
 import { APPROVAL_RESUME_SCHEMA } from '@n8n/agents/tool';
 import type { AgentJsonConfig } from '@n8n/api-types';
-import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
+import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { SsrfProtectionConfig } from '@n8n/config';
 import { User, type WorkflowRepository } from '@n8n/db';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
@@ -53,8 +53,10 @@ import type { AgentTaskRepository } from '@/modules/agents/repositories/agent-ta
 import type { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { AgentSecureRuntime } from '@/modules/agents/runtime/agent-secure-runtime';
 import { getAgentConfigHash } from '@/modules/agents/utils/agent-config-hash';
-import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
+import { AGENT_TOOLS, TOOLS_BY_SCOPE } from '@/modules/mcp/mcp-scopes';
+import { USER_CALLED_MCP_TOOL_EVENT } from '@/modules/mcp/mcp.constants';
 import type { RegisterToolFn } from '@/modules/mcp/mcp.types';
+import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import { NodeTypes } from '@/node-types';
 import { OauthService } from '@/oauth/oauth.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
@@ -62,9 +64,7 @@ import { ProjectScopeService } from '@/permissions.ee/project-scope.service';
 import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
 
-import { AGENT_TOOLS, TOOLS_BY_SCOPE } from '../mcp-scopes';
-import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
-import { McpAgentToolsService } from '../tools/agents/agent-tools.service';
+import { McpAgentToolsService } from '../agent-tools.service';
 
 const userHasScopesMock = userHasScopes as Mock;
 

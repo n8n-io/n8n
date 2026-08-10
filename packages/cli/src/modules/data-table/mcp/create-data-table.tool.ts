@@ -1,12 +1,12 @@
 import type { User } from '@n8n/db';
 import z from 'zod';
 
-import type { DataTableUserOperations } from '@/modules/data-table/data-table-proxy.service';
+import { USER_CALLED_MCP_TOOL_EVENT } from '@/modules/mcp/mcp.constants';
+import type { ToolDefinition, UserCalledMCPToolEventPayload } from '@/modules/mcp/mcp.types';
+import { columnNameSchema, dataTableColumnTypeSchema } from '@/modules/mcp/tools/schemas';
 import type { Telemetry } from '@/telemetry';
 
-import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
-import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
-import { columnNameSchema, dataTableColumnTypeSchema } from '../schemas';
+import type { DataTableUserOperations } from '../data-table-proxy.service';
 
 const columnSchema = z.object({
 	name: columnNameSchema,

@@ -2,7 +2,7 @@ import {
 	InvalidGrantError,
 	InvalidTargetError,
 } from '@modelcontextprotocol/sdk/server/auth/errors.js';
-import { Logger, type ModuleRegistry } from '@n8n/backend-common';
+import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { Response } from 'express';
@@ -11,6 +11,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { EventService } from '@/events/event.service';
 import { McpProtectedResource } from '@/modules/mcp/mcp-protected-resource';
+import { McpToolProviderRegistry } from '@/modules/mcp/mcp-tool-provider.registry';
 import type { McpConfig } from '@/modules/mcp/mcp.config';
 import type { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
 import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
@@ -1431,7 +1432,7 @@ describe('OAuthServerService', () => {
 				mock<McpSettingsService>(),
 				mcpConfig,
 				mock<GlobalConfig>(),
-				mock<ModuleRegistry>(),
+				new McpToolProviderRegistry(),
 			);
 			expect(mcpResource.getResourceUrl()).toBe('https://n8n-mcp.example.com/mcp-server/http');
 

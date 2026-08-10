@@ -2,22 +2,12 @@ import type { ListDataTableQueryDto } from '@n8n/api-types';
 import type { INode } from 'n8n-workflow';
 import { isExpression, isResourceLocatorValue } from 'n8n-workflow';
 
-import {
-	isAllowedNode,
-	type DataTableUserOperations,
-} from '@/modules/data-table/data-table-proxy.service';
+import type {
+	DataTableValidationResult,
+	McpDataTableValidator,
+} from '@/modules/mcp/mcp-tool-provider.registry';
 
-export interface DataTableValidationFailure {
-	ok: false;
-	error: string;
-	opIndex?: number;
-}
-
-export interface DataTableValidationSuccess {
-	ok: true;
-}
-
-export type DataTableValidationResult = DataTableValidationSuccess | DataTableValidationFailure;
+import { isAllowedNode, type DataTableUserOperations } from '../data-table-proxy.service';
 
 type ResourceLocatorMode = 'list' | 'id' | 'name';
 
@@ -135,4 +125,22 @@ export async function validateDataTableReferencesForUpdate(
 	}
 
 	return { ok: true };
+}
+
+/** Binds the validation functions above to a user's data-table operations, in
+ * the shape the mcp module's workflow-builder tools consume. */
+export function toMcpDataTableValidator(
+	dataTableOps: DataTableUserOperations,
+): McpDataTableValidator {
+	return {
+		validateReferencesForWorkflow: async (nodes, projectId) =>
+			await validateDataTableReferencesForWorkflow(nodes, projectId, dataTableOps),
+		validateReferencesForUpdate: async (nodesAfterApply, touchedNodes, projectId) =>
+			await validateDataTableReferencesForUpdate(
+				nodesAfterApply,
+				touchedNodes,
+				projectId,
+				dataTableOps,
+			),
+	};
 }

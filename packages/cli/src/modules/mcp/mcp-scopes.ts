@@ -114,6 +114,12 @@ export const AGENT_TOOLS: ReadonlySet<string> = new Set([
 	...TOOLS_BY_SCOPE['agent:execute'],
 ]);
 
+/** Tools contributed by the data-table module's MCP tool provider. */
+export const DATA_TABLE_TOOLS: ReadonlySet<string> = new Set([
+	...TOOLS_BY_SCOPE['dataTable:read'],
+	...TOOLS_BY_SCOPE['dataTable:write'],
+]);
+
 function isMcpScope(scope: string): scope is McpScope {
 	return (MCP_INSTANCE_SCOPES as readonly string[]).includes(scope);
 }
