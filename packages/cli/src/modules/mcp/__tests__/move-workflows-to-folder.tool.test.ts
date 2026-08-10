@@ -30,9 +30,11 @@ describe('move-workflows-to-folder MCP tool', () => {
 			overrides?.folder === undefined ? { id: 'folder-1', name: 'Marketing' } : overrides.folder;
 
 		const workflowFinderService = mockInstance(WorkflowFinderService, {
-			findWorkflowForUser: vi
+			findWorkflowsByIdsForUser: vi
 				.fn()
-				.mockImplementation(async (workflowId: string) => workflows[workflowId] ?? null),
+				.mockImplementation(async (workflowIds: string[]) =>
+					workflowIds.map((workflowId) => workflows[workflowId]).filter(Boolean),
+				),
 		});
 
 		const workflowService = mockInstance(WorkflowService, {
@@ -57,11 +59,6 @@ describe('move-workflows-to-folder MCP tool', () => {
 			mocks.telemetry,
 		);
 
-	const callHandler = async (
-		tool: ReturnType<typeof createMoveWorkflowsToFolderTool>,
-		args: { workflowIds: string[]; folderId: string },
-	) => await tool.handler(args, {} as never);
-
 	test('creates tool correctly', () => {
 		const tool = createTool(createMocks());
 
@@ -76,13 +73,12 @@ describe('move-workflows-to-folder MCP tool', () => {
 		const mocks = createMocks();
 		const tool = createTool(mocks);
 
-		const result = await callHandler(tool, { workflowIds: ['wf-1'], folderId: 'folder-1' });
+		const result = await tool.handler({ workflowIds: ['wf-1'], folderId: 'folder-1' });
 
-		expect(mocks.workflowFinderService.findWorkflowForUser).toHaveBeenCalledWith(
-			'wf-1',
+		expect(mocks.workflowFinderService.findWorkflowsByIdsForUser).toHaveBeenCalledWith(
+			['wf-1'],
 			user,
 			['workflow:update'],
-			expect.anything(),
 		);
 		expect(mocks.workflowService.update).toHaveBeenCalledWith(user, expect.anything(), 'wf-1', {
 			parentFolderId: 'folder-1',
@@ -105,7 +101,7 @@ describe('move-workflows-to-folder MCP tool', () => {
 		});
 		const tool = createTool(mocks);
 
-		const result = await callHandler(tool, {
+		const result = await tool.handler({
 			workflowIds: ['wf-1', 'wf-2', 'wf-3'],
 			folderId: 'folder-1',
 		});
@@ -130,7 +126,7 @@ describe('move-workflows-to-folder MCP tool', () => {
 		const mocks = createMocks();
 		const tool = createTool(mocks);
 
-		const result = await callHandler(tool, { workflowIds: ['wf-1'], folderId: PROJECT_ROOT });
+		const result = await tool.handler({ workflowIds: ['wf-1'], folderId: PROJECT_ROOT });
 
 		expect(mocks.folderRepository.findOneBy).not.toHaveBeenCalled();
 		expect(mocks.workflowService.update).toHaveBeenCalledWith(user, expect.anything(), 'wf-1', {
@@ -146,11 +142,11 @@ describe('move-workflows-to-folder MCP tool', () => {
 		const mocks = createMocks({ folder: null });
 		const tool = createTool(mocks);
 
-		const result = await callHandler(tool, { workflowIds: ['wf-1'], folderId: 'missing' });
+		const result = await tool.handler({ workflowIds: ['wf-1'], folderId: 'missing' });
 
 		expect(result.isError).toBe(true);
 		expect(result.structuredContent).toEqual({
-			error: 'Folder "missing" was not found. Use search_folders to look up a valid folder id.',
+			error: 'Could not find the folder: missing. Use search_folders to look up a valid folder id.',
 		});
 		expect(mocks.workflowService.update).not.toHaveBeenCalled();
 	});
@@ -159,7 +155,7 @@ describe('move-workflows-to-folder MCP tool', () => {
 		const mocks = createMocks({ workflows: { 'wf-1': null } });
 		const tool = createTool(mocks);
 
-		const result = await callHandler(tool, { workflowIds: ['wf-1'], folderId: 'folder-1' });
+		const result = await tool.handler({ workflowIds: ['wf-1'], folderId: 'folder-1' });
 
 		expect(result.isError).toBe(true);
 		expect(result.structuredContent).toEqual({
@@ -181,7 +177,7 @@ describe('move-workflows-to-folder MCP tool', () => {
 		});
 		const tool = createTool(mocks);
 
-		const result = await callHandler(tool, { workflowIds: ['wf-1'], folderId: 'folder-1' });
+		const result = await tool.handler({ workflowIds: ['wf-1'], folderId: 'folder-1' });
 
 		expect(result.isError).toBe(true);
 		expect(mocks.workflowService.update).not.toHaveBeenCalled();

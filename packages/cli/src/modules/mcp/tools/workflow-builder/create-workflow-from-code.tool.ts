@@ -1,6 +1,5 @@
 import {
 	type Folder,
-	type FolderRepository,
 	type Project,
 	type ProjectRepository,
 	type User,
@@ -210,7 +209,6 @@ export const createCreateWorkflowFromCodeTool = (
 	nodeTypes: NodeTypes,
 	credentialsService: CredentialsService,
 	projectRepository: ProjectRepository,
-	folderRepository: FolderRepository,
 	dataTableOps: DataTableUserOperations,
 	aiGatewayService: AiGatewayService,
 	options: CreateWorkflowFromCodeToolOptions = {},
@@ -340,10 +338,6 @@ export const createCreateWorkflowFromCodeTool = (
 			}
 			const effectiveProjectId = landingProject.id;
 
-			// Fetched only to echo the folder name back in the response; folder
-			// placement itself is validated by WorkflowCreationService.
-			landingFolder = folderId ? await folderRepository.findOneBy({ id: folderId }) : null;
-
 			const dataTableCheck = await validateDataTableReferencesForWorkflow(
 				newWorkflow.nodes,
 				effectiveProjectId,
@@ -393,6 +387,9 @@ export const createCreateWorkflowFromCodeTool = (
 				versionName: versionMetadata.name,
 				versionDescription: versionMetadata.description,
 			});
+			// The saved workflow carries the project-validated parent folder, echoed
+			// back as targetFolder.
+			landingFolder = savedWorkflow.parentFolder ?? null;
 
 			const nodeTypesByName = new Map(savedWorkflow.nodes.map((n) => [n.name, n.type]));
 			trackAutoassignOutcomes(

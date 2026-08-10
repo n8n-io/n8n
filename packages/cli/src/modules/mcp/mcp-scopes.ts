@@ -121,9 +121,7 @@ export const BUILDER_TOOLS: ReadonlySet<string> = new Set([
 	'explore_node_resources',
 	'search_projects',
 	'search_folders',
-	'create_folder',
-	'update_folder',
-	'move_workflows_to_folder',
+	...FOLDER_FEATURE_TOOLS,
 ]);
 
 export const AGENT_TOOLS: ReadonlySet<string> = new Set([

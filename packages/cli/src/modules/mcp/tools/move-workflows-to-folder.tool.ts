@@ -1,7 +1,8 @@
-import type { FolderRepository, User } from '@n8n/db';
+import type { Folder, FolderRepository, User } from '@n8n/db';
 import { PROJECT_ROOT } from 'n8n-workflow';
 import z from 'zod';
 
+import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 import type { Telemetry } from '@/telemetry';
 import { createWorkflowEntityFromPayload } from '@/workflows/workflow-entity-mapper';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
@@ -9,7 +10,8 @@ import type { WorkflowService } from '@/workflows/workflow.service';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
-import { getMcpWorkflow } from './workflow-validation.utils';
+import { createFailHandler, describeFolderError } from './folder-error.utils';
+import { validateMcpWorkflow } from './workflow-validation.utils';
 
 const MAX_WORKFLOWS = 50;
 
@@ -87,34 +89,30 @@ export const createMoveWorkflowsToFolderTool = (
 			tool_name: 'move_workflows_to_folder',
 			parameters: { workflowCount: workflowIds.length, folderId },
 		};
+		const fail = createFailHandler(telemetry, telemetryPayload);
 
 		try {
-			const folder =
-				folderId === PROJECT_ROOT ? null : await folderRepository.findOneBy({ id: folderId });
-			if (folderId !== PROJECT_ROOT && !folder) {
-				const output = {
-					error: `Folder "${folderId}" was not found. Use search_folders to look up a valid folder id.`,
-				};
-				telemetryPayload.results = { success: false, error: output.error };
-				telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
-				return {
-					content: [{ type: 'text', text: JSON.stringify(output) }],
-					structuredContent: output,
-					isError: true,
-				};
+			let folder: Folder | null = null;
+			if (folderId !== PROJECT_ROOT) {
+				folder = await folderRepository.findOneBy({ id: folderId });
+				if (!folder) {
+					return fail(describeFolderError(new FolderNotFoundError(folderId)));
+				}
 			}
+
+			const accessibleWorkflows = await workflowFinderService.findWorkflowsByIdsForUser(
+				workflowIds,
+				user,
+				['workflow:update'],
+			);
+			const workflowsById = new Map(accessibleWorkflows.map((workflow) => [workflow.id, workflow]));
 
 			const moved: Array<{ workflowId: string; name: string }> = [];
 			const failed: Array<{ workflowId: string; error: string }> = [];
 
 			for (const workflowId of workflowIds) {
 				try {
-					const workflow = await getMcpWorkflow(
-						workflowId,
-						user,
-						['workflow:update'],
-						workflowFinderService,
-					);
+					const workflow = validateMcpWorkflow(workflowsById.get(workflowId));
 					// Folder-only update, mirroring the REST PATCH path: an empty entity
 					// payload so only the folder placement (validated against the
 					// workflow's owning project) changes.
@@ -124,15 +122,13 @@ export const createMoveWorkflowsToFolderTool = (
 					});
 					moved.push({ workflowId, name: workflow.name });
 				} catch (error) {
-					failed.push({
-						workflowId,
-						error: error instanceof Error ? error.message : String(error),
-					});
+					failed.push({ workflowId, error: describeFolderError(error) });
 				}
 			}
 
+			const anyMoved = moved.length > 0;
 			telemetryPayload.results = {
-				success: moved.length > 0,
+				success: anyMoved,
 				data: { movedCount: moved.length, failedCount: failed.length },
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
@@ -140,27 +136,17 @@ export const createMoveWorkflowsToFolderTool = (
 			// The folder name is only exposed once a move succeeded, i.e. the user
 			// provably has access to the folder's project.
 			const output = {
-				...(folder && moved.length > 0 ? { folder: { id: folder.id, name: folder.name } } : {}),
-				...(moved.length > 0 ? { moved } : {}),
+				...(folder && anyMoved ? { folder: { id: folder.id, name: folder.name } } : {}),
+				...(anyMoved ? { moved } : { error: 'None of the workflows could be moved' }),
 				...(failed.length > 0 ? { failed } : {}),
-				...(moved.length === 0 ? { error: 'None of the workflows could be moved' } : {}),
 			};
 			return {
 				content: [{ type: 'text', text: JSON.stringify(output) }],
 				structuredContent: output,
-				...(moved.length === 0 ? { isError: true } : {}),
+				...(anyMoved ? {} : { isError: true }),
 			};
 		} catch (error) {
-			const errorMessage = error instanceof Error ? error.message : String(error);
-			telemetryPayload.results = { success: false, error: errorMessage };
-			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
-
-			const output = { error: errorMessage };
-			return {
-				content: [{ type: 'text', text: JSON.stringify(output) }],
-				structuredContent: output,
-				isError: true,
-			};
+			return fail(describeFolderError(error));
 		}
 	},
 });

@@ -671,7 +671,6 @@ export class McpService {
 			this.nodeTypes,
 			this.credentialsService,
 			this.projectRepository,
-			this.folderRepository,
 			dataTableOps,
 			this.aiGatewayService,
 			{ canvasGroupsEnabled: featureFlags.canvasGroupsEnabled },
@@ -716,7 +715,7 @@ export class McpService {
 
 		const searchFoldersTool = createSearchFoldersTool(
 			user,
-			this.folderRepository,
+			this.folderService,
 			this.projectService,
 			this.telemetry,
 		);

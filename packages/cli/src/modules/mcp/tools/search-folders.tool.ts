@@ -1,6 +1,7 @@
-import type { FolderRepository, User } from '@n8n/db';
+import type { User } from '@n8n/db';
 import z from 'zod';
 
+import type { FolderService } from '@/services/folder.service';
 import type { ProjectService } from '@/services/project.service.ee';
 import type { Telemetry } from '@/telemetry';
 
@@ -39,7 +40,7 @@ const outputSchema = {
 
 export const createSearchFoldersTool = (
 	user: User,
-	folderRepository: FolderRepository,
+	folderService: FolderService,
 	projectService: ProjectService,
 	telemetry: Telemetry,
 ): ToolDefinition<typeof inputSchema> => ({
@@ -87,23 +88,17 @@ export const createSearchFoldersTool = (
 
 			const safeLimit = Math.min(Math.max(1, limit), MAX_RESULTS);
 
-			const [folders, count] = await folderRepository.getManyAndCount({
-				filter: {
-					projectId,
-					...(query ? { name: query } : {}),
-				},
+			const [folders, count] = await folderService.getManyAndCount(projectId, {
+				filter: query ? { name: query } : {},
+				select: { name: true, parentFolder: true, path: true },
 				take: safeLimit,
 			});
-
-			const folderPaths = await folderRepository.getFolderPathsToRoot(
-				folders.map((folder) => folder.id),
-			);
 
 			const data = folders.map((folder) => ({
 				id: folder.id,
 				name: folder.name,
-				parentFolderId: folder.parentFolderId ?? null,
-				path: folderPaths.get(folder.id) ?? [folder.name],
+				parentFolderId: folder.parentFolder?.id ?? null,
+				path: folder.path ?? [folder.name],
 			}));
 
 			telemetryPayload.results = {

@@ -9,7 +9,8 @@ import type { Telemetry } from '@/telemetry';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
-import { describeFolderError } from './folder-error.utils';
+import { createFailHandler, describeFolderError } from './folder-error.utils';
+import { folderOutputSchema } from './schemas';
 
 const inputSchema = {
 	projectId: z
@@ -29,20 +30,6 @@ const inputSchema = {
 		),
 } satisfies z.ZodRawShape;
 
-const outputSchema = {
-	id: z.string().optional().describe('The ID of the updated folder'),
-	name: z.string().optional().describe('The name of the folder after the update'),
-	parentFolderId: z
-		.string()
-		.nullable()
-		.optional()
-		.describe('The ID of the parent folder after the update, or null if at the project root'),
-	error: z
-		.string()
-		.optional()
-		.describe('Error message explaining why the update failed. Present only on failure.'),
-} satisfies z.ZodRawShape;
-
 export const createUpdateFolderTool = (
 	user: User,
 	folderService: FolderService,
@@ -54,7 +41,7 @@ export const createUpdateFolderTool = (
 		description:
 			'Rename a folder and/or move it under another folder in the same project. Resolve folders by name with search_folders first; when multiple folders match a name, ask the user which one they meant before updating. After the update, confirm the result to the user using folder names, not IDs.',
 		inputSchema,
-		outputSchema,
+		outputSchema: folderOutputSchema,
 		annotations: {
 			title: 'Update Folder',
 			readOnlyHint: false,
@@ -80,16 +67,7 @@ export const createUpdateFolderTool = (
 			parameters: { projectId, folderId, hasName: !!name, hasParentFolderId: !!parentFolderId },
 		};
 
-		const fail = (error: string) => {
-			telemetryPayload.results = { success: false, error };
-			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
-			const output = { error };
-			return {
-				content: [{ type: 'text' as const, text: JSON.stringify(output) }],
-				structuredContent: output,
-				isError: true,
-			};
-		};
+		const fail = createFailHandler(telemetry, telemetryPayload);
 
 		if (!name && !parentFolderId) {
 			return fail('Provide at least one of name or parentFolderId');

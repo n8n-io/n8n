@@ -8,7 +8,8 @@ import type { Telemetry } from '@/telemetry';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
-import { describeFolderError } from './folder-error.utils';
+import { createFailHandler, describeFolderError } from './folder-error.utils';
+import { folderOutputSchema } from './schemas';
 
 const inputSchema = {
 	projectId: z
@@ -25,20 +26,6 @@ const inputSchema = {
 		),
 } satisfies z.ZodRawShape;
 
-const outputSchema = {
-	id: z.string().optional().describe('The ID of the created folder'),
-	name: z.string().optional().describe('The name of the created folder'),
-	parentFolderId: z
-		.string()
-		.nullable()
-		.optional()
-		.describe('The ID of the parent folder, or null if the folder is at the project root'),
-	error: z
-		.string()
-		.optional()
-		.describe('Error message explaining why the creation failed. Present only on failure.'),
-} satisfies z.ZodRawShape;
-
 export const createCreateFolderTool = (
 	user: User,
 	folderService: FolderService,
@@ -50,7 +37,7 @@ export const createCreateFolderTool = (
 		description:
 			'Create a folder in a project, optionally nested under an existing folder. Requires a projectId — use search_projects first if needed. If the user named a parent folder, resolve it with search_folders; when multiple folders match the name, ask the user which one they meant before creating. After creation, confirm the folder to the user by name, not ID.',
 		inputSchema,
-		outputSchema,
+		outputSchema: folderOutputSchema,
 		annotations: {
 			title: 'Create Folder',
 			readOnlyHint: false,
@@ -73,18 +60,12 @@ export const createCreateFolderTool = (
 			tool_name: 'create_folder',
 			parameters: { projectId, hasParentFolderId: !!parentFolderId },
 		};
+		const fail = createFailHandler(telemetry, telemetryPayload);
 
 		try {
 			const project = await projectService.getProjectWithScope(user, projectId, ['folder:create']);
 			if (!project) {
-				const output = { error: 'Project not found or access denied' };
-				telemetryPayload.results = { success: false, error: output.error };
-				telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
-				return {
-					content: [{ type: 'text', text: JSON.stringify(output) }],
-					structuredContent: output,
-					isError: true,
-				};
+				return fail('Project not found or access denied');
 			}
 
 			const folder = await folderService.createFolder({ name, parentFolderId }, projectId);
@@ -95,23 +76,14 @@ export const createCreateFolderTool = (
 			const output = {
 				id: folder.id,
 				name: folder.name,
-				parentFolderId: folder.parentFolderId ?? folder.parentFolder?.id ?? null,
+				parentFolderId: folder.parentFolder?.id ?? null,
 			};
 			return {
 				content: [{ type: 'text', text: JSON.stringify(output) }],
 				structuredContent: output,
 			};
 		} catch (error) {
-			const errorMessage = describeFolderError(error);
-			telemetryPayload.results = { success: false, error: errorMessage };
-			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
-
-			const output = { error: errorMessage };
-			return {
-				content: [{ type: 'text', text: JSON.stringify(output) }],
-				structuredContent: output,
-				isError: true,
-			};
+			return fail(describeFolderError(error));
 		}
 	},
 });

@@ -1,5 +1,5 @@
 import { mockInstance } from '@n8n/backend-test-utils';
-import { FolderRepository, ProjectRepository, User, WorkflowEntity } from '@n8n/db';
+import { ProjectRepository, User, WorkflowEntity } from '@n8n/db';
 import { NodeConnectionTypes, type INode } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -169,13 +169,6 @@ describe('create-workflow-from-code MCP tool', () => {
 	const workflowFinderService = mockInstance(WorkflowFinderService, {
 		findWorkflowForUser: vi.fn().mockResolvedValue(null),
 	});
-	const folderRepository = mockInstance(FolderRepository, {
-		findOneBy: vi.fn().mockImplementation(async ({ id }: { id: string }) => {
-			if (id === 'folder-1') return { id: 'folder-1', name: 'Marketing Campaigns' };
-			return null;
-		}),
-	});
-
 	const aiGatewayService = mock<AiGatewayService>();
 	aiGatewayService.isAvailable.mockResolvedValue({ available: false });
 
@@ -189,7 +182,6 @@ describe('create-workflow-from-code MCP tool', () => {
 			nodeTypes,
 			credentialsService,
 			projectRepository,
-			folderRepository,
 			dataTableOps as never,
 			aiGatewayService,
 			options,
@@ -253,6 +245,14 @@ describe('create-workflow-from-code MCP tool', () => {
 		});
 
 		test('passes the folder to the creation service and echoes it as targetFolder', async () => {
+			createWorkflowMock.mockImplementation(async (_user, workflow) =>
+				Object.assign(new WorkflowEntity(), {
+					...workflow,
+					id: 'wf-saved-1',
+					parentFolder: { id: 'folder-1', name: 'Marketing Campaigns' },
+				}),
+			);
+
 			const result = await callHandler({
 				code: 'const wf = ...',
 				projectId: 'custom-project-id',

@@ -12,13 +12,13 @@ describe('create-folder MCP tool', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });
 
 	const createMocks = (overrides?: {
-		createdFolder?: { id: string; name: string; parentFolderId?: string | null };
+		createdFolder?: { id: string; name: string; parentFolder?: { id: string } | null };
 		projectAccessible?: boolean;
 	}) => {
 		const createdFolder = overrides?.createdFolder ?? {
 			id: 'folder-1',
 			name: 'Marketing',
-			parentFolderId: null,
+			parentFolder: null,
 		};
 		const projectAccessible = overrides?.projectAccessible ?? true;
 
@@ -86,7 +86,7 @@ describe('create-folder MCP tool', () => {
 
 	test('creates a nested folder', async () => {
 		const mocks = createMocks({
-			createdFolder: { id: 'folder-2', name: 'Campaigns', parentFolderId: 'folder-1' },
+			createdFolder: { id: 'folder-2', name: 'Campaigns', parentFolder: { id: 'folder-1' } },
 		});
 		const tool = createTool(mocks);
 
