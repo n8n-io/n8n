@@ -455,7 +455,7 @@ export const userStoryFields: INodeProperties[] = [
 				},
 				default: '',
 				description:
-					'ID of the user to assign the the user story to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+					'ID of the user to assign the user story to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Backlog Order',

@@ -309,7 +309,7 @@ As an exception, migrations remain centralized at `@n8n/db/src/migrations`, beca
 
 ## Configuration
 
-Module-specific configuration is defined in the the `.config.ts` file:
+Module-specific configuration is defined in the `.config.ts` file:
 
 ```ts
 @Config
