@@ -47,6 +47,8 @@ tags:
     description: Beta — breaking changes may still occur without major version bump.
   - name: Projects
     description: Operations about projects
+  - name: Role
+    description: Operations about roles
   - name: SecurityPolicy
     description: Operations about the instance security policy settings
   - name: SettingsLdap
