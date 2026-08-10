@@ -167,6 +167,23 @@ describe('POST /workflows', () => {
 		expect(response.statusCode).toBe(400);
 	});
 
+	// CAT-3966: static data is backend-owned (poll cursors, third-party webhook
+	// registrations). A duplicated workflow used to inherit the source's, and tore down
+	// the source's webhooks when it was deactivated.
+	test('should ignore client-supplied `staticData`', async () => {
+		const payload = {
+			...makeWorkflow({ withPinData: false }),
+			staticData: { 'node:Trello Trigger': { webhookId: 'someone-elses-webhook' } },
+		};
+
+		const response = await authMemberAgent.post('/workflows').send(payload).expect(200);
+
+		const created = await Container.get(WorkflowRepository).findOneByOrFail({
+			id: response.body.data.id,
+		});
+		expect(created.staticData).toBeNull();
+	});
+
 	test('should retain accept `workflow.id`', async () => {
 		const payload = {
 			id: 'HDssU5Ce250UWyLg_MNG4',
@@ -3318,6 +3335,27 @@ describe('PATCH /workflows/:workflowId', () => {
 		expect(newVersion).not.toBeNull();
 		expect(newVersion!.connections).toEqual(payload.connections);
 		expect(newVersion!.nodes).toEqual(payload.nodes);
+	});
+
+	// CAT-3966: see the matching POST test — static data is backend-owned.
+	test('should ignore client-supplied `staticData`', async () => {
+		const workflow = await createWorkflow(
+			{ staticData: { 'node:Trello Trigger': { webhookId: 'registered-by-the-engine' } } },
+			owner,
+		);
+
+		await authOwnerAgent
+			.patch(`/workflows/${workflow.id}`)
+			.send({
+				name: 'name updated',
+				staticData: { 'node:Trello Trigger': { webhookId: 'someone-elses-webhook' } },
+			})
+			.expect(200);
+
+		const updated = await Container.get(WorkflowRepository).findOneByOrFail({ id: workflow.id });
+		expect(updated.staticData).toEqual({
+			'node:Trello Trigger': { webhookId: 'registered-by-the-engine' },
+		});
 	});
 
 	test('should broadcast workflow update to collaborators', async () => {

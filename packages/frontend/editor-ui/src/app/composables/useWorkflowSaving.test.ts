@@ -517,6 +517,38 @@ describe('useWorkflowSaving', () => {
 				{ id: 'group-1', name: 'My Group', nodeIds: [newId1, newId2] },
 			]);
 		});
+
+		// CAT-3966: the Trello Trigger's webhook path comes from its node description, not
+		// from a `path` parameter, so resetting webhook URLs must not add one.
+		it('should not invent a `path` parameter on a trigger that does not have one', async () => {
+			const workflow: WorkflowDataUpdate = {
+				name: 'Trello duplicate test',
+				active: false,
+				nodes: [
+					{
+						parameters: { authentication: 'apiKey', id: '4d5ea62fd76aa1136000000c' },
+						id: 'a5b1c6e0-1111-2222-3333-444455556666',
+						name: 'Trello Trigger',
+						type: 'n8n-nodes-base.trelloTrigger',
+						typeVersion: 1,
+						position: [0, 0],
+						webhookId: 'original-node-webhook-id',
+					},
+				],
+				connections: {},
+			};
+
+			const { saveAsNewWorkflow } = useWorkflowSaving({ router });
+
+			await saveAsNewWorkflow({
+				name: workflow.name,
+				resetWebhookUrls: true,
+				data: workflow,
+			});
+
+			expect(workflow.nodes![0].webhookId).not.toBe('original-node-webhook-id');
+			expect(workflow.nodes![0].parameters).not.toHaveProperty('path');
+		});
 	});
 
 	describe('saveCurrentWorkflow', () => {

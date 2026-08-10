@@ -223,11 +223,6 @@ describe('UpdateWorkflowDto', () => {
 				expectedErrorPath: ['settings', 'customTelemetryTags', 0, 'key'],
 			},
 			{
-				name: 'staticData as array',
-				request: { staticData: [] },
-				expectedErrorPath: ['staticData'],
-			},
-			{
 				name: 'pinData as array',
 				request: { pinData: [] },
 				expectedErrorPath: ['pinData'],
@@ -306,6 +301,18 @@ describe('UpdateWorkflowDto', () => {
 
 				expect(result.success).toBe(true);
 				expect(result.data).not.toHaveProperty('versionId');
+			});
+
+			// CAT-3966: static data holds backend-owned state such as third-party webhook
+			// registrations, so a client must never be able to overwrite it.
+			test('should not accept staticData field', () => {
+				const result = UpdateWorkflowDto.safeParse({
+					name: 'Updated',
+					staticData: { 'node:Trello Trigger': { webhookId: 'someone-elses-webhook' } },
+				});
+
+				expect(result.success).toBe(true);
+				expect(result.data).not.toHaveProperty('staticData');
 			});
 
 			test('should not accept isArchived field', () => {
