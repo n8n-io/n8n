@@ -302,6 +302,16 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 		return undefined;
 	}
 
+	function getInjectedDelegateTool() {
+		for (const call of builtAgent.tool.mock.calls) {
+			for (const item of Array.isArray(call[0]) ? call[0] : [call[0]]) {
+				const tool = item as BuiltTool;
+				if (tool.name === DELEGATE_SUB_AGENT_TOOL_NAME) return tool;
+			}
+		}
+		return undefined;
+	}
+
 	function getInjectedAvailableSubAgents() {
 		for (const call of builtAgent.tool.mock.calls) {
 			for (const item of Array.isArray(call[0]) ? call[0] : [call[0]]) {
@@ -364,6 +374,63 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 			maxChildren: 2,
 		});
 	});
+
+	it.each(['integrated', 'manual'] as const)(
+		'passes the %s workflow execution mode to configured sub-agents',
+		async (workflowToolExecutionMode) => {
+			const credentialProvider = mock<CredentialProvider>();
+			const foregroundRunner = mock<SubAgentForegroundRunner>();
+			foregroundRunner.runForeground.mockResolvedValue({
+				taskPath: '/root/research_api_0',
+				threadId: 'child-thread-1',
+				status: 'completed',
+				result: {
+					runId: 'child-run-1',
+					messages: [],
+					getState: () => mock<agents.SerializableAgentState>(),
+				},
+			});
+			Container.set(SubAgentForegroundRunner, foregroundRunner);
+			const agentRepository = mock<AgentRepository>();
+			agentRepository.findByIdAndProjectId.mockResolvedValue({
+				id: 'agent-2',
+				name: 'Research Agent',
+				activeVersionId: 'version-2',
+			} as Agent);
+			const service = makeReconstructionService([], { agentRepository });
+			const entity = makeAgentEntity(undefined, {
+				subAgents: { agents: [{ agentId: 'agent-2' }] },
+			});
+
+			await service.reconstructFromAgentEntity(
+				entity,
+				credentialProvider,
+				'production',
+				undefined,
+				undefined,
+				undefined,
+				workflowToolExecutionMode,
+			);
+
+			const delegateTool = getInjectedDelegateTool();
+			if (!delegateTool?.handler) throw new Error('Expected delegate tool handler');
+
+			await expect(
+				delegateTool.handler(
+					{
+						subAgentId: 'agent-2',
+						taskName: 'Research API',
+						goal: 'Find the API behavior.',
+					},
+					{ runId: 'parent-run-1' },
+				),
+			).resolves.toMatchObject({ status: 'completed' });
+			expect(foregroundRunner.runForeground).toHaveBeenCalledWith(
+				expect.any(Object),
+				expect.objectContaining({ workflowToolExecutionMode }),
+			);
+		},
+	);
 
 	it('passes saved sub-agent useWhen guidance into delegate tool metadata', async () => {
 		const credentialProvider = mock<CredentialProvider>();
