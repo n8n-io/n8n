@@ -133,10 +133,7 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 		},
 	},
 	custom: {
-		build: (creds, model, fetch) =>
-			// Without includeUsage/supportsStructuredOutputs the SDK drops JSON
-			// schemas and sends json_object only.
-			buildOpenAiCompatible('custom', undefined, creds, model, fetch),
+		build: (creds, model, fetch) => buildOpenAiCompatible('custom', undefined, creds, model, fetch),
 	},
 	anthropic: {
 		build: (creds, model, fetch) => {
