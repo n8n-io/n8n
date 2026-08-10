@@ -2,13 +2,12 @@ import { computed, type ComputedRef } from 'vue';
 
 import { useSettingsStore } from '@n8n/stores/settings.store';
 
-import { canMessageInstanceAi } from '../instanceAiPermissions';
+import { canManageInstanceAi, canMessageInstanceAi } from '../instanceAiPermissions';
 
 /**
- * Whether Instance AI can be used right now: the module is active, an admin
- * hasn't disabled it, and the current user has permission to message it. This
- * is the canonical gate for Instance AI entry points (nav item, command bar,
- * editor/credential hand-offs) — use it instead of re-deriving the three checks.
+ * Whether Instance AI can be used right now: the module is active, enabled,
+ * ready for members (or the user can finish admin setup), and the user can
+ * message it. This is the canonical gate for Instance AI entry points.
  */
 export function useInstanceAiAvailable(): ComputedRef<boolean> {
 	const settingsStore = useSettingsStore();
@@ -16,6 +15,8 @@ export function useInstanceAiAvailable(): ComputedRef<boolean> {
 		() =>
 			settingsStore.isModuleActive('instance-ai') &&
 			settingsStore.moduleSettings['instance-ai']?.enabled !== false &&
+			(settingsStore.moduleSettings['instance-ai']?.setupCompleted === true ||
+				canManageInstanceAi()) &&
 			canMessageInstanceAi(),
 	);
 }

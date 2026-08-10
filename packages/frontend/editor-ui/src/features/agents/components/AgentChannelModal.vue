@@ -9,8 +9,9 @@ import {
 	N8nIcon,
 	N8nIconButton,
 	N8nText,
+	updatedIconSet,
+	type IconName,
 } from '@n8n/design-system';
-import { updatedIconSet, type IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import { useI18n } from '@n8n/i18n';
 import { FocusScope } from 'reka-ui';
 import { computed, ref, watch } from 'vue';

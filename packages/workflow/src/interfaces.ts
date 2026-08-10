@@ -1527,11 +1527,12 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 	 */
 	establishTriggerIdentity(token: string, resource: string): Promise<void>;
 	/**
-	 * Checks the status of the triggering identity's resolvable (private) credentials
+	 * Checks the status of the triggering identity's resolvable (end-user) credentials
 	 * for this workflow, using the execution context established by
 	 * `establishTriggerIdentity`. Returns connection URLs for any missing credential, or
 	 * `undefined` when no check applies (dynamic-credentials disabled or no identity
-	 * established). Used by the MCP trigger to gate a tool call before execution.
+	 * established). Used by the MCP trigger to gate a tool call, and by the Form trigger
+	 * to gate a submission, before an execution is enqueued.
 	 */
 	checkTriggerCredentialStatus(): Promise<CredentialCheckResult | undefined>;
 	getInputConnectionData(
@@ -3014,8 +3015,31 @@ export interface IWebhookData {
 
 export type WebhookType = 'default' | 'setup';
 
+/**
+ * Key under which an {@link IWebhookDescription} holds native (engine-free)
+ * resolvers for its expression-template fields, keyed by field name. Populated
+ * by `webhookDescriptionFields()` and read via `resolveWebhookDescriptionField()`.
+ * Backend-only: not serialized with the description.
+ */
+export const WEBHOOK_RESOLVERS: unique symbol = Symbol.for('n8n.webhookDescriptionResolvers');
+
+/**
+ * Native resolvers for a webhook description's fields, keyed by field name.
+ * Each entry pairs the expression template a field carries with a function
+ * computing the same value from the node's parameters, without the expression
+ * engine. Stored under {@link WEBHOOK_RESOLVERS}.
+ */
+export type NativeParameterResolvers = Record<
+	string,
+	{
+		template: string;
+		resolve: (parameters: INodeParameters) => NodeParameterValueType | undefined;
+	}
+>;
+
 export interface IWebhookDescription {
 	[key: string]: IHttpRequestMethods | WebhookResponseMode | boolean | string | undefined;
+	[WEBHOOK_RESOLVERS]?: NativeParameterResolvers;
 	httpMethod: IHttpRequestMethods | string;
 	isFullPath?: boolean;
 	name: WebhookType;

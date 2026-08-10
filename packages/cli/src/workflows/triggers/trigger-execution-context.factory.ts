@@ -1,6 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import type { IWorkflowDb } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import {
 	ErrorReporter,
@@ -77,6 +78,65 @@ export class TriggerExecutionContextFactory {
 	}
 
 	/**
+	 * Bridge an in-flight triggered execution to the node's `donePromise`. It
+	 * always settles: with the finished run, with `undefined` when a duplicate
+	 * scheduled execution was skipped, or rejected if the execution never
+	 * started. Nodes that await it (MQTT, RabbitMQ, AMQP, Kafka) would otherwise
+	 * hang forever on failure.
+	 */
+	private settleDonePromise(
+		executePromise: Promise<string | undefined>,
+		donePromise: IDeferredPromise<IRun | undefined>,
+	) {
+		void executePromise
+			.then(async (executionId) =>
+				executionId === undefined
+					? undefined
+					: await this.activeExecutions.getPostExecutePromise(executionId),
+			)
+			.then(donePromise.resolve, (error: unknown) => donePromise.reject(ensureError(error)));
+	}
+
+	/**
+	 * Terminates the emit promise chains. Without it a failed triggered execution
+	 * surfaces as an unhandled rejection instead of a logged error.
+	 */
+	private logTriggerExecutionFailure(error: unknown, workflowData: IWorkflowBase, node: INode) {
+		const failure = ensureError(error);
+		this.logger.error(failure.message, {
+			error: failure,
+			workflowId: workflowData.id,
+			nodeName: node.name,
+		});
+	}
+
+	/**
+	 * Persist a failed trigger execution, then run the error workflow for it.
+	 */
+	private recordTriggerFailure(
+		error: ExecutionError,
+		node: INode,
+		workflowData: IWorkflowBase,
+		workflow: Workflow,
+		mode: WorkflowExecuteMode,
+	) {
+		void this.executionService
+			.createErrorExecution(error, node, workflowData, workflow, mode)
+			.then(() => {
+				this.executeErrorWorkflow(error, workflowData, mode);
+			})
+			.catch((cause: unknown) => {
+				const failure = ensureError(cause);
+				this.errorReporter.error(failure);
+				this.logger.error('Failed to record failed trigger execution', {
+					error: failure,
+					workflowId: workflowData.id,
+					nodeName: node.name,
+				});
+			});
+	}
+
+	/**
 	 * Return trigger function which gets the global functions from n8n-core
 	 * and overwrites the emit to be able to start it in subprocess
 	 */
@@ -136,40 +196,29 @@ export class TriggerExecutionContextFactory {
 						throw error;
 					});
 
-				void executePromise.then(async (executionId) => {
-					// `executionId` is undefined when the catch above swallowed a
-					// duplicate scheduled execution; nothing ran, so nothing to emit.
-					if (executionId === undefined) return;
-					const { projectId, projectName } = await getWorkflowProjectDetailsSafe(
-						this.ownershipService,
-						workflowData.id,
-					);
-					this.eventService.emit('workflow-executed', {
-						workflowId: workflowData.id,
-						workflowName: workflowData.name,
-						executionId,
-						projectId,
-						projectName,
-						source: 'trigger',
-					});
-				});
+				// Registered ahead of the telemetry chain so the post-execute promise
+				// is attached before that chain's ownership lookup yields.
+				if (donePromise) this.settleDonePromise(executePromise, donePromise);
 
-				if (donePromise) {
-					void executePromise.then((executionId) => {
-						// Same as above: a duplicate scheduled execution was skipped,
-						// so resolve with undefined and don't wait on a non-existent run.
-						if (executionId === undefined) {
-							donePromise.resolve(undefined);
-							return;
-						}
-						this.activeExecutions
-							.getPostExecutePromise(executionId)
-							.then(donePromise.resolve)
-							.catch(donePromise.reject);
-					});
-				} else {
-					executePromise.catch((error: Error) => this.logger.error(error.message, { error }));
-				}
+				void executePromise
+					.then(async (executionId) => {
+						// `executionId` is undefined when the catch above swallowed a
+						// duplicate scheduled execution; nothing ran, so nothing to emit.
+						if (executionId === undefined) return;
+						const { projectId, projectName } = await getWorkflowProjectDetailsSafe(
+							this.ownershipService,
+							workflowData.id,
+						);
+						this.eventService.emit('workflow-executed', {
+							workflowId: workflowData.id,
+							workflowName: workflowData.name,
+							executionId,
+							projectId,
+							projectName,
+							source: 'trigger',
+						});
+					})
+					.catch((error: unknown) => this.logTriggerExecutionFailure(error, workflowData, node));
 			};
 
 			const emitError = (error: Error): void => {
@@ -185,11 +234,7 @@ export class TriggerExecutionContextFactory {
 						workflowName: workflowData.name,
 					},
 				);
-				void this.executionService
-					.createErrorExecution(error, node, workflowData, workflow, mode)
-					.then(() => {
-						this.executeErrorWorkflow(error, workflowData, mode);
-					});
+				this.recordTriggerFailure(error, node, workflowData, workflow, mode);
 			};
 
 			const schedulingFunctions = this.scheduleTriggerJobRegistrar.interceptsNode(node)
@@ -249,24 +294,15 @@ export class TriggerExecutionContextFactory {
 						),
 				);
 
-				if (donePromise) {
-					void executePromise.then((executionId) => {
-						this.activeExecutions
-							.getPostExecutePromise(executionId)
-							.then(donePromise.resolve)
-							.catch(donePromise.reject);
-					});
-				} else {
-					void executePromise.catch((error: Error) => this.logger.error(error.message, { error }));
-				}
+				if (donePromise) this.settleDonePromise(executePromise, donePromise);
+
+				void executePromise.catch((error: unknown) =>
+					this.logTriggerExecutionFailure(error, workflowData, node),
+				);
 			};
 
 			const __emitError = (error: ExecutionError) => {
-				void this.executionService
-					.createErrorExecution(error, node, workflowData, workflow, mode)
-					.then(() => {
-						this.executeErrorWorkflow(error, workflowData, mode);
-					});
+				this.recordTriggerFailure(error, node, workflowData, workflow, mode);
 			};
 
 			return new PollContext(workflow, node, additionalData, mode, activation, __emit, __emitError);

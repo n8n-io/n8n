@@ -32,6 +32,7 @@ import type {
 	AiGatewayNodeMeta,
 	ExploreResourcesParams,
 	ExploreResourcesResult,
+	UnavailableLocatorValue,
 	ProjectSummary,
 	FolderSummary,
 	ServiceProxyConfig,
@@ -58,6 +59,7 @@ import {
 	CONFIG_EVALUATIONS_FLAG,
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
 	INSTANCE_AI_MCP_CONNECTIONS_FLAG,
+	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
 	upsertEvaluationConfigSchema,
 	INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT,
 } from '@n8n/api-types';
@@ -1622,6 +1624,48 @@ export class InstanceAiAdapterService {
 				};
 			},
 
+			// Same-service filtering for the shared Templated Custom Auth type:
+			// decryption stays on this side of the boundary and only the recipe's
+			// non-secret `serviceHost` crosses it — never credential data.
+			async getTemplatedCredentialHosts(credentialIds: string[]) {
+				// The stored value is a bare host stamped from the recipe, but the
+				// field is user-editable — tolerate a pasted URL by extracting its
+				// hostname; anything unparseable stays untagged (never offered).
+				const normalizeHost = (value: string): string | null => {
+					const trimmed = value.trim().toLowerCase();
+					if (!/^https?:\/\//.test(trimmed)) return trimmed || null;
+					try {
+						return new URL(trimmed).hostname || null;
+					} catch {
+						return null;
+					}
+				};
+				const hosts: Record<string, string | null> = {};
+				await Promise.all(
+					credentialIds.map(async (credentialId) => {
+						hosts[credentialId] = null;
+						try {
+							const credential = await credentialsFinderService.findCredentialForUser(
+								credentialId,
+								user,
+								['credential:read'],
+							);
+							if (!credential || credential.type !== TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE) {
+								return;
+							}
+							const data = await credentialsService.decrypt(credential, true);
+							const serviceHost = data.serviceHost;
+							if (typeof serviceHost === 'string') {
+								hosts[credentialId] = normalizeHost(serviceHost);
+							}
+						} catch {
+							// Unreadable credential — leave it untagged (never offered).
+						}
+					}),
+				);
+				return hosts;
+			},
+
 			async isTestable(credentialType: string) {
 				try {
 					const credClass = loadNodesAndCredentials.getCredential(credentialType);
@@ -2788,6 +2832,9 @@ export class InstanceAiAdapterService {
 
 			exploreResources: async (params: ExploreResourcesParams): Promise<ExploreResourcesResult> =>
 				await this.nodeResourceExplorerService.exploreResources(user, params),
+
+			findUnavailableLocatorValues: async (params): Promise<UnavailableLocatorValue[]> =>
+				await this.nodeResourceExplorerService.findUnavailableResourceLocatorValues(user, params),
 		};
 	}
 

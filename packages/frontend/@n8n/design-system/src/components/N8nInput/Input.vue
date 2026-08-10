@@ -1,10 +1,9 @@
 <script setup lang="ts">
 import { ref, computed, useCssModule, watch, nextTick, onMounted, useAttrs } from 'vue';
 
-import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
-
 import type { InputProps, InputEmits, InputSlots, InputSize } from './Input.types';
 import { useAutosizeTextarea } from '../../composables/useAutosizeTextarea';
+import Icon from '../N8nIcon/Icon.vue';
 
 defineOptions({ name: 'N8nInput', inheritAttrs: false });
 

@@ -627,7 +627,7 @@ describe('GlobalConfig', () => {
 			trimOnStartUp: false,
 		},
 		expressionEngine: {
-			engine: 'legacy',
+			engine: 'vm',
 			poolSize: 1,
 			maxCodeCacheSize: 1024,
 			bridgeTimeout: 5000,
@@ -636,6 +636,7 @@ describe('GlobalConfig', () => {
 			tracesEnabled: true,
 			slowEvaluationThresholdMs: 50,
 			tracesSampleRate: 0.0,
+			allowWebhookIsolateSkip: true,
 		},
 		instanceSettingsLoader: {
 			ownerManagedByEnv: false,
