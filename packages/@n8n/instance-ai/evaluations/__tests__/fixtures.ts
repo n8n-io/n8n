@@ -1,9 +1,19 @@
 import type { EvaluationConfigDto, InstanceAiAgentNode, InstanceAiMessage } from '@n8n/api-types';
 
 import type { WorkflowResponse } from '../clients/n8n-client';
+import type { EvalLogger } from '../harness/logger';
 import type { WorkflowTestCase } from '../types';
 
 /** Shared fixture builders for artifact-handler and outcome tests — see individual test files for usage. */
+
+export const silentLogger: EvalLogger = {
+	info: () => {},
+	verbose: () => {},
+	success: () => {},
+	warn: () => {},
+	error: () => {},
+	isVerbose: false,
+};
 
 export function agentNode(overrides: Partial<InstanceAiAgentNode> = {}): InstanceAiAgentNode {
 	return {
