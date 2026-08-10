@@ -77,7 +77,8 @@ describe('reconcileVariableSummary', () => {
 				created: [],
 				stubbed: [],
 				skipped: ['API_URL'],
+				updated: [],
 			}),
-		).toEqual({ matched: ['API_URL'], missing: [], created: [], stubbed: [] });
+		).toEqual({ matched: ['API_URL'], missing: [], created: [], stubbed: [], updated: [] });
 	});
 });

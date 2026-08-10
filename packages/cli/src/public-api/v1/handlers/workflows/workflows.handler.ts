@@ -294,6 +294,10 @@ const workflowHandlers: WorkflowHandlers = {
 			// null moves the workflow to the project root, (undefined) leaves the current folder untouched
 			const resolvedParentFolderId = parentFolderId === null ? PROJECT_ROOT : parentFolderId;
 
+			// Defaults to true so existing integrations keep publishing on save; callers that want
+			// to stage a change on an already-published workflow can opt out explicitly.
+			const { publishIfActive = true } = req.query;
+
 			// binaryMode and credentialResolverId are derived, internal settings
 			// rather than something users are expected to control programmatically;
 			// strip them so the settings merge in WorkflowService.update preserves
@@ -315,7 +319,7 @@ const workflowHandlers: WorkflowHandlers = {
 						parentFolderId: resolvedParentFolderId,
 						forceSave: true, // Skip version conflict check for public API
 						publicApi: true,
-						publishIfActive: true,
+						publishIfActive,
 						source: 'api',
 					},
 				);
