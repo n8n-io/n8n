@@ -1462,16 +1462,11 @@ export async function analyzeWorkflow(
 				req.isTrigger ||
 				(req.parameterIssues && Object.keys(req.parameterIssues).length > 0),
 		)
-		// Hide cards the user has nothing to do on: credentials already set,
-		// no parameter issues, not a trigger awaiting testing. Trigger steps
-		// are always kept — triggers require user testing regardless of
-		// credential state.
-		.filter(
-			(req) =>
-				options?.includeSettled === true ||
-				!!req.needsAction ||
-				(req.isTrigger && !!req.isTestable),
-		);
+		// Hide cards the user has nothing to do on: credentials already set
+		// and no parameter issues. Settled trigger requests are hidden too —
+		// no wizard step acts on them, so keeping them only renders an
+		// already-complete credential card as if it were pending work.
+		.filter((req) => options?.includeSettled === true || !!req.needsAction);
 
 	sortByExecutionOrder(
 		setupRequests,

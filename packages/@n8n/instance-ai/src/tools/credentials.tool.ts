@@ -14,26 +14,17 @@ import { z } from 'zod';
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext } from '../types';
 import { CREDENTIALS_TOOL_ID } from './tool-ids';
-import { extractServiceHost, N8N_CONNECT_DISPLAY_NAME } from './workflows/credential-utils';
+import {
+	extractServiceHost,
+	GENERIC_AUTH_CREDENTIAL_TYPES,
+	N8N_CONNECT_DISPLAY_NAME,
+} from './workflows/credential-utils';
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
 export { CREDENTIALS_TOOL_ID };
 
 const DEFAULT_LIMIT = 50;
-
-/** Generic auth types that should be excluded from search results — the AI should prefer dedicated types. */
-const GENERIC_AUTH_TYPES = new Set([
-	'httpHeaderAuth',
-	'httpBearerAuth',
-	'httpQueryAuth',
-	'httpBasicAuth',
-	'httpCustomAuth',
-	'httpTemplatedCustomAuth',
-	'httpDigestAuth',
-	'oAuth1Api',
-	'oAuth2Api',
-]);
 
 // ── Shared fields (single source of truth for fields used across actions) ───
 
@@ -579,7 +570,7 @@ async function handleSearchTypes(
 	const allResults = await context.credentialService.searchCredentialTypes(input.query);
 
 	// Filter out generic auth types — the AI should use dedicated types
-	const results = allResults.filter((r) => !GENERIC_AUTH_TYPES.has(r.type));
+	const results = allResults.filter((r) => !GENERIC_AUTH_CREDENTIAL_TYPES.has(r.type));
 
 	if (results.length === 0) {
 		return {
