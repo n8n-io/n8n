@@ -3,6 +3,7 @@ import { z } from 'zod';
 import {
 	domainAccessActionSchema,
 	instanceGatewayResourceDecisionSchema,
+	mcpConnectResumeSchema,
 } from '../../schemas/instance-ai.schema';
 
 /**
@@ -94,6 +95,15 @@ const setupWorkflowTestTriggerConfirmSchema = z.object({
 	nodeParameters: nodeParametersRecord,
 });
 
+/**
+ * Inline MCP connect card. `connectedSlugs` is a hint only — the resuming tool
+ * re-reads the user's connections, so a forged list cannot make the agent
+ * believe a server is connected.
+ */
+const mcpConnectConfirmSchema = mcpConnectResumeSchema.extend({
+	kind: z.literal('mcpConnect'),
+});
+
 export const InstanceAiConfirmRequestDto = z.discriminatedUnion('kind', [
 	approvalConfirmSchema,
 	questionsConfirmSchema,
@@ -105,6 +115,7 @@ export const InstanceAiConfirmRequestDto = z.discriminatedUnion('kind', [
 	resourceDecisionConfirmSchema,
 	setupWorkflowApplyConfirmSchema,
 	setupWorkflowTestTriggerConfirmSchema,
+	mcpConnectConfirmSchema,
 ]);
 
 export type InstanceAiConfirmRequest = z.infer<typeof InstanceAiConfirmRequestDto>;

@@ -497,6 +497,8 @@ export interface McpRegistryServerSummary {
 	slug: string;
 	title: string;
 	description: string;
+	/** The credential the connect card creates or picks for this server. */
+	credentialType: string;
 	tools: string[];
 }
 
@@ -509,6 +511,12 @@ export interface ConnectedMcpService {
 
 export interface InstanceAiMcpService {
 	search(queries: string[]): Promise<McpRegistryServerSummary[]>;
+	/** Unknown or unconnectable slugs are omitted, so the caller can tell the agent
+	 *  it invented one instead of offering a card for nothing. */
+	getServers(slugs: string[]): Promise<McpRegistryServerSummary[]>;
+	/** Live on every read — the user can connect mid-run, so a list built when the
+	 *  run started cannot settle whether a connect attempt landed. */
+	listConnections(): Promise<Array<{ slug: string }>>;
 }
 
 export interface ExploreResourcesParams {

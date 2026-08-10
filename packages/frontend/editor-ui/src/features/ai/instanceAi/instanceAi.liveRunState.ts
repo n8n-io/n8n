@@ -96,6 +96,8 @@ export function shouldRearmRunAfterConfirm(payload: InstanceAiConfirmRequest): b
 		case 'questions':
 		case 'setupWorkflowApply':
 		case 'setupWorkflowTestTrigger':
+		// Resumes on both legs — the agent continues whether the user connected or skipped.
+		case 'mcpConnect':
 			return true;
 		default:
 			return false;

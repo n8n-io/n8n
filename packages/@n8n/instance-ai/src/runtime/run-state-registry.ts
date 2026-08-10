@@ -82,6 +82,8 @@ export interface ConfirmationData {
 	 *  persist a thread-level grant so the same action isn't re-asked. */
 	scope?: 'once' | 'session';
 	autoSetup?: { credentialType: string; attemptId?: string };
+	/** Slugs the MCP connect card believes it connected; re-verified on resume. */
+	connectedSlugs?: string[];
 }
 
 export interface PendingConfirmation {

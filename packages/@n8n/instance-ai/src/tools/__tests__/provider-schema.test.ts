@@ -24,6 +24,10 @@ function createInstanceAiContext(): InstanceAiContext {
 		nodeService: service,
 		dataTableService: service,
 		workspaceService: service,
+		// Flag-gated tools register only when their service is wired; without these
+		// the guard silently skips them.
+		evaluationConfigService: service,
+		mcpService: service,
 		logger: {
 			debug: vi.fn(),
 			info: vi.fn(),
