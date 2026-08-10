@@ -107,11 +107,11 @@ export function resolveCustomModelExperimentDefaultsFromEnv(
 
 	const customConfig: CustomModelExperimentDefaults = {};
 
-	if (reasoningEffort) {
+	if (reasoningEffort !== undefined) {
 		customConfig.reasoningEffort = reasoningEffort;
 	}
 
-	if (supportsStructuredOutputs) {
+	if (supportsStructuredOutputs !== undefined) {
 		customConfig.supportsStructuredOutputs = supportsStructuredOutputs;
 	}
 
