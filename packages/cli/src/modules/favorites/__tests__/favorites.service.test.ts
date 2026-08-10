@@ -546,6 +546,32 @@ describe('FavoritesService', () => {
 			},
 		);
 
+		it.each([
+			{ resourceType: 'dataTable' as const, resolver: dataTableResolver },
+			{ resourceType: 'agent' as const, resolver: agentResolver },
+		])(
+			'should create the favorite when the resolver reports the $resourceType exists',
+			async ({ resourceType, resolver }) => {
+				const favorite = mock<UserFavorite>();
+				repo.findOne.mockResolvedValue(null);
+				resolver.exists.mockResolvedValue(true);
+				repo.count.mockResolvedValue(0);
+				repo.create.mockReturnValue(favorite);
+				repo.save.mockResolvedValue(favorite);
+
+				const result = await service.addFavorite('user1', 'res1', resourceType);
+
+				expect(resolver.exists).toHaveBeenCalledWith('res1');
+				expect(repo.create).toHaveBeenCalledWith({
+					userId: 'user1',
+					resourceId: 'res1',
+					resourceType,
+				});
+				expect(repo.save).toHaveBeenCalledWith(favorite);
+				expect(result).toBe(favorite);
+			},
+		);
+
 		it('should throw NotFoundError when the resource type has no registered resolver', async () => {
 			const serviceWithoutResolvers = new FavoritesService(
 				repo,

@@ -58,22 +58,8 @@ export class AgentsModule implements ModuleInterface {
 			agentKnowledgeFileStore: Container.get(AgentKnowledgeFileStore),
 		});
 
-		const { FavoriteResourceResolverRegistry } = await import(
-			'@/modules/favorites/favorite-resource-resolver.registry.js'
-		);
-		const { AgentRepository } = await import('./repositories/agent.repository.js');
-		const agentRepository = Container.get(AgentRepository);
-		Container.get(FavoriteResourceResolverRegistry).register('agent', {
-			globalReadScope: 'agent:read',
-			findMeta: async (ids) =>
-				new Map(
-					(await agentRepository.findSummariesByIds(ids)).map(({ id, name, projectId }) => [
-						id,
-						{ name, projectId },
-					]),
-				),
-			exists: async (id) => await agentRepository.existsBy({ id }),
-		});
+		const { registerFavoriteResolver } = await import('./register-favorite-resolver.js');
+		registerFavoriteResolver();
 
 		const { AgentRuntimeCacheService } = await import('./agent-runtime-cache.service.js');
 		Container.get(AgentRuntimeCacheService);

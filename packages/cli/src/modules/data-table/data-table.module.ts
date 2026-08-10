@@ -29,22 +29,8 @@ export class DataTableModule implements ModuleInterface {
 			},
 		});
 
-		const { FavoriteResourceResolverRegistry } = await import(
-			'@/modules/favorites/favorite-resource-resolver.registry.js'
-		);
-		const { DataTableRepository } = await import('./data-table.repository.js');
-		const dataTableRepository = Container.get(DataTableRepository);
-		Container.get(FavoriteResourceResolverRegistry).register('dataTable', {
-			globalReadScope: 'dataTable:read',
-			findMeta: async (ids) =>
-				new Map(
-					(await dataTableRepository.findSummariesByIds(ids)).map(({ id, name, projectId }) => [
-						id,
-						{ name, projectId },
-					]),
-				),
-			exists: async (id) => await dataTableRepository.existsBy({ id }),
-		});
+		const { registerFavoriteResolver } = await import('./register-favorite-resolver.js');
+		registerFavoriteResolver();
 
 		const { DataTableAggregateService } = await import('./data-table-aggregate.service.js');
 		await Container.get(DataTableAggregateService).start();

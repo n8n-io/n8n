@@ -15,7 +15,10 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { UserFavoriteRepository } from './database/repositories/user-favorite.repository';
-import type { FavoriteResourceMeta as ResourceMeta } from './favorite-resource-resolver.registry';
+import type {
+	FavoriteResourceMeta as ResourceMeta,
+	ResolvedFavoriteResourceType,
+} from './favorite-resource-resolver.registry';
 import { FavoriteResourceResolverRegistry } from './favorite-resource-resolver.registry';
 
 type Favorite = { resourceId: string; resourceType: FavoriteResourceType };
@@ -147,7 +150,7 @@ export class FavoritesService {
 	/** Enriches favorites whose resource type is owned by another module, via its registered resolver. */
 	private async enrichResolvedFavorites(
 		user: User,
-		resourceType: FavoriteResourceType,
+		resourceType: ResolvedFavoriteResourceType,
 		resourceIds: string[],
 		accessibleProjectIds: Set<string>,
 	): Promise<Map<string, ResourceMeta>> {
