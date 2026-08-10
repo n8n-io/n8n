@@ -23,6 +23,16 @@ function emptyCatalogResponse(): InstanceAiModelCatalogResponse {
 }
 
 function compareModels(a: InstanceAiCatalogModel, b: InstanceAiCatalogModel): number {
+	const aReleaseTime = a.releaseDate ? Date.parse(a.releaseDate) : Number.NaN;
+	const bReleaseTime = b.releaseDate ? Date.parse(b.releaseDate) : Number.NaN;
+	const aHasReleaseDate = !Number.isNaN(aReleaseTime);
+	const bHasReleaseDate = !Number.isNaN(bReleaseTime);
+
+	if (aHasReleaseDate && bHasReleaseDate && aReleaseTime !== bReleaseTime) {
+		return bReleaseTime - aReleaseTime;
+	}
+	if (aHasReleaseDate !== bHasReleaseDate) return aHasReleaseDate ? -1 : 1;
+
 	return a.name.localeCompare(b.name) || a.id.localeCompare(b.id);
 }
 

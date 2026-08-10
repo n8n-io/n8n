@@ -1,4 +1,4 @@
-import type { InstanceAiModelCatalogResponse } from '@n8n/api-types';
+import type { InstanceAiCatalogModel, InstanceAiModelCatalogResponse } from '@n8n/api-types';
 
 import {
 	INSTANCE_AI_RECOMMENDED_MODELS,
@@ -11,7 +11,17 @@ export interface InstanceAiModelOption {
 	recommended: boolean;
 }
 
-function compareModels(a: InstanceAiModelOption, b: InstanceAiModelOption): number {
+function compareModels(a: InstanceAiCatalogModel, b: InstanceAiCatalogModel): number {
+	const aReleaseTime = a.releaseDate ? Date.parse(a.releaseDate) : Number.NaN;
+	const bReleaseTime = b.releaseDate ? Date.parse(b.releaseDate) : Number.NaN;
+	const aHasReleaseDate = !Number.isNaN(aReleaseTime);
+	const bHasReleaseDate = !Number.isNaN(bReleaseTime);
+
+	if (aHasReleaseDate && bHasReleaseDate && aReleaseTime !== bReleaseTime) {
+		return bReleaseTime - aReleaseTime;
+	}
+	if (aHasReleaseDate !== bHasReleaseDate) return aHasReleaseDate ? -1 : 1;
+
 	return a.name.localeCompare(b.name) || a.id.localeCompare(b.id);
 }
 
@@ -35,20 +45,16 @@ export function getInstanceAiModelOptions(
 	});
 
 	const current = currentModel.trim();
-	const currentOption =
-		current && !seen.has(current)
-			? {
-					id: current,
-					name: catalogById.get(current)?.name ?? current,
-					recommended: false,
-				}
-			: null;
-	if (currentOption) seen.add(currentOption.id);
-
-	const dynamic = catalogModels
+	const dynamicModels: InstanceAiCatalogModel[] = catalogModels
 		.filter((model) => model.id && model.name && !seen.has(model.id))
-		.map((model) => ({ id: model.id, name: model.name, recommended: false }))
-		.sort(compareModels);
+		.map((model) => ({ ...model }));
+	if (current && !seen.has(current) && !catalogById.has(current)) {
+		dynamicModels.push({ id: current, name: current });
+	}
 
-	return [...recommended, ...(currentOption ? [currentOption] : []), ...dynamic];
+	const dynamic = dynamicModels
+		.sort(compareModels)
+		.map((model) => ({ id: model.id, name: model.name, recommended: false }));
+
+	return [...recommended, ...dynamic];
 }

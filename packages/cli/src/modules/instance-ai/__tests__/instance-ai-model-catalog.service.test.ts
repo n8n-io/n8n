@@ -24,13 +24,32 @@ const catalog: ProviderCatalog = {
 		id: 'anthropic',
 		name: 'Anthropic',
 		models: {
-			zulu: { id: 'zulu', name: 'Zulu', toolCall: true, cost: { input: 1, output: 2 } },
+			zulu: {
+				id: 'zulu',
+				name: 'Zulu',
+				releaseDate: '2026-03-01',
+				toolCall: true,
+				cost: { input: 1, output: 2 },
+			},
 			alpha: {
 				id: 'alpha',
 				name: 'Alpha',
 				releaseDate: '2026-01-01',
 				toolCall: true,
 			},
+			beta: {
+				id: 'beta',
+				name: 'Beta',
+				releaseDate: '2026-01-01',
+				toolCall: true,
+			},
+			invalidDate: {
+				id: 'invalid-date',
+				name: 'Invalid date',
+				releaseDate: 'unknown',
+				toolCall: true,
+			},
+			undated: { id: 'undated', name: 'Undated', toolCall: true },
 			'image-only': { id: 'image-only', name: 'Image only', toolCall: false },
 		},
 	},
@@ -72,7 +91,7 @@ describe('InstanceAiModelCatalogService', () => {
 		vi.clearAllMocks();
 	});
 
-	it('returns sorted tool-capable models for supported providers only', async () => {
+	it('returns newest tool-capable models first for supported providers only', async () => {
 		fetchProviderCatalog.mockResolvedValue(catalog);
 		const { service, logger } = makeService();
 
@@ -82,8 +101,11 @@ describe('InstanceAiModelCatalogService', () => {
 		expect(result).toEqual({
 			models: {
 				anthropic: [
+					{ id: 'zulu', name: 'Zulu', releaseDate: '2026-03-01' },
 					{ id: 'alpha', name: 'Alpha', releaseDate: '2026-01-01' },
-					{ id: 'zulu', name: 'Zulu' },
+					{ id: 'beta', name: 'Beta', releaseDate: '2026-01-01' },
+					{ id: 'invalid-date', name: 'Invalid date', releaseDate: 'unknown' },
+					{ id: 'undated', name: 'Undated' },
 				],
 				openai: [{ id: 'gpt-tools', name: 'GPT Tools' }],
 				openrouter: [{ id: 'provider/model', name: 'Provider Model' }],
