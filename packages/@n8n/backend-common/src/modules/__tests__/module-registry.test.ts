@@ -30,7 +30,16 @@ describe('getModuleEntryUrl', () => {
 describe('eligibleModules', () => {
 	it('should not include opt-in modules by default', () => {
 		const eligible = Container.get(ModuleRegistry).eligibleModules;
-		expect(eligible).not.toContain('instance-ai');
+		expect(eligible).not.toContain('agents');
+	});
+
+	it('should include instance-ai by default', () => {
+		expect(Container.get(ModuleRegistry).eligibleModules).toContain('instance-ai');
+	});
+
+	it('should allow opting out of a default module via env var', () => {
+		process.env.N8N_DISABLED_MODULES = 'instance-ai';
+		expect(Container.get(ModuleRegistry).eligibleModules).not.toContain('instance-ai');
 	});
 
 	it('should consider a module ineligible if it was disabled via env var', () => {
@@ -64,11 +73,12 @@ describe('eligibleModules', () => {
 			'runtime-credentials',
 			'mcp-registry',
 			'workflow-reviews',
+			'instance-ai',
 		]);
 	});
 
 	it('should consider a module eligible if it was enabled via env var', () => {
-		process.env.N8N_ENABLED_MODULES = 'instance-ai';
+		process.env.N8N_ENABLED_MODULES = 'agents';
 		expect(Container.get(ModuleRegistry).eligibleModules).toEqual([
 			'insights',
 			'external-secrets',
@@ -100,6 +110,7 @@ describe('eligibleModules', () => {
 			'mcp-registry',
 			'workflow-reviews',
 			'instance-ai',
+			'agents',
 		]);
 	});
 
