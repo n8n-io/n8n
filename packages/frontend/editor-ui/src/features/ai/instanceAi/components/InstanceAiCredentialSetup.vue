@@ -6,19 +6,25 @@ import { useInstanceAiBrowserCredentialSetupExperiment } from '@/experiments/ins
 import { useWizardNavigation } from '@/features/ai/shared/composables/useWizardNavigation';
 import { useCredentialOAuth } from '@/features/credentials/composables/useCredentialOAuth';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
+import { deriveServiceName } from '@/features/credentials/templatedAuth.utils';
 import NodeCredentials from '@/features/credentials/components/NodeCredentials.vue';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useQuickConnect } from '@/features/credentials/quickConnect/composables/useQuickConnect';
 import type { INodeUi, INodeUpdatePropertiesInformation } from '@/Interface';
-import type { InstanceAiCredentialFlow, InstanceAiCredentialRequest } from '@n8n/api-types';
+import {
+	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
+	type InstanceAiCredentialFlow,
+	type InstanceAiCredentialRequest,
+} from '@n8n/api-types';
 import { N8nActionDropdown, N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
-import type { ActionDropdownItem } from '@n8n/design-system/types';
+import type { ActionDropdownItem } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { useThread } from '../instanceAi.store';
+import { useInstanceAiCredentialHelp } from '../composables/useInstanceAiCredentialHelp';
 import ConfirmationFooter from './ConfirmationFooter.vue';
 
 type CredentialSetupChoice = 'ai' | 'manual';
@@ -227,20 +233,25 @@ onMounted(async () => {
 // Helpers
 // ---------------------------------------------------------------------------
 
-function getDisplayName(credentialType: string): string {
-	const raw =
-		credentialsStore.getCredentialTypeByName(credentialType)?.displayName ?? credentialType;
-	const appName = getAppNameFromCredType(raw);
-	return i18n.baseText('instanceAi.credential.setupTitle', { interpolate: { name: appName } });
+function getDisplayName(request: InstanceAiCredentialRequest): string {
+	// An agent-supplied recipe names the credential after the service ("fal.ai
+	// API Key") — a friendlier title than the generic type ("Header Auth"). It's
+	// already human-authored, so it skips the type-name keyword filtering.
+	const name =
+		request.setupHint?.suggestedName ??
+		getAppNameFromCredType(
+			credentialsStore.getCredentialTypeByName(request.credentialType)?.displayName ??
+				request.credentialType,
+		);
+	return i18n.baseText('instanceAi.credential.setupTitle', { interpolate: { name } });
 }
 
 const hasExistingCredentials = computed(() => {
 	if (!currentRequest.value) return false;
 	const credType = currentRequest.value.credentialType;
-	return (
-		(currentRequest.value.existingCredentials?.length ?? 0) > 0 ||
-		(credentialsStore.getUsableCredentialByType(credType)?.length ?? 0) > 0
-	);
+	// Gate on the same source NodeCredentials builds its dropdown from, so the
+	// card renders its own setup button instead of NodeCredentials' empty state.
+	return (credentialsStore.getUsableCredentialByType(credType)?.length ?? 0) > 0;
 });
 
 function hasEasySetup(credentialType: string): boolean {
@@ -272,7 +283,34 @@ const setupChoiceOptions = computed<Array<ActionDropdownItem<CredentialSetupChoi
 	},
 ]);
 
-function openNewCredentialModal() {
+const hasTemplatedHint = computed(
+	() =>
+		currentRequest.value?.credentialType === TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE &&
+		!!currentRequest.value?.setupHint,
+);
+
+// The type-derived selector label would read "Credential for Templated Custom
+// Auth" — name the service from the recipe instead ("fal.ai API Key credentials").
+const credentialsFieldLabel = computed(() => {
+	if (!hasTemplatedHint.value) return undefined;
+	const name = deriveServiceName(currentRequest.value?.setupHint);
+	return name
+		? i18n.baseText('instanceAi.credential.fieldLabel', { interpolate: { name } })
+		: undefined;
+});
+
+// Ask-AI opens a NEW help thread in a new tab: this thread's run is suspended
+// on the setup card, so appending here would derail it.
+const instanceAiCredentialHelpFactory = useInstanceAiCredentialHelp({
+	source: 'credential_edit',
+	projectId: () => props.projectId,
+	serviceName: () => deriveServiceName(currentRequest.value?.setupHint),
+});
+const instanceAiCredentialHelp = computed(() => instanceAiCredentialHelpFactory());
+
+/** Create flow: the regular credential modal, pre-filled from the recipe when
+ *  the request carries a Templated Custom Auth setup hint. */
+function openCreateCredential() {
 	const req = currentRequest.value;
 	if (!req) return;
 	uiStore.openNewCredential(
@@ -285,6 +323,8 @@ function openNewCredentialModal() {
 		undefined,
 		{
 			closeOnSave: true,
+			credentialSetupHint: req.setupHint,
+			instanceAiCredentialHelp: instanceAiCredentialHelp.value,
 		},
 	);
 }
@@ -481,7 +521,7 @@ function onSetupChoiceSelected(choice: CredentialSetupChoice) {
 
 function handleSetupManually() {
 	trackSetupChoiceClicked('manual');
-	openNewCredentialModal();
+	openCreateCredential();
 }
 
 async function submitAutoSetup(credentialType: string) {
@@ -530,7 +570,7 @@ async function handleSetupAutomatically() {
 				<header :class="$style.header">
 					<CredentialIcon :credential-type-name="currentRequest.credentialType" :size="16" />
 					<N8nText :class="$style.title" size="medium" color="text-dark" bold>
-						{{ getDisplayName(currentRequest.credentialType) }}
+						{{ getDisplayName(currentRequest) }}
 					</N8nText>
 
 					<N8nText
@@ -560,7 +600,12 @@ async function handleSetupAutomatically() {
 							:suggested-credential-name="currentRequest.suggestedName"
 							standalone
 							hide-issues
-							hide-ask-assistant
+							:instance-ai-credential-help="instanceAiCredentialHelp"
+							:skip-auto-select="
+								currentRequest.credentialType === TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE
+							"
+							:credential-setup-hint="currentRequest.setupHint"
+							:credentials-field-label="credentialsFieldLabel"
 							@credential-selected="onCredentialSelected(currentRequest.credentialType, $event)"
 						/>
 						<N8nActionDropdown
@@ -587,7 +632,7 @@ async function handleSetupAutomatically() {
 							v-else
 							:label="i18n.baseText('instanceAi.credential.setupButton')"
 							data-test-id="instance-ai-credential-setup-button"
-							@click="openNewCredentialModal"
+							@click="openCreateCredential"
 						/>
 					</div>
 				</div>

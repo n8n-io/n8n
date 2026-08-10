@@ -6,6 +6,8 @@ import {
 	N8nIcon,
 	N8nTableBase,
 	N8nTooltip,
+	N8nText,
+	N8nEmptyState,
 } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
@@ -41,9 +43,16 @@ const i18n = useI18n();
 const fileInput = useTemplateRef<HTMLInputElement>('fileInput');
 const isMutating = computed(() => props.uploading || props.deletingFileId !== null);
 const isUploadDisabled = computed(() => props.disabled || props.loading || isMutating.value);
-const uploadTooltip = computed(() => i18n.baseText('agents.builder.files.addFile' as BaseTextKey));
+const uploadButtonLabel = computed(() =>
+	i18n.baseText('agents.builder.files.addFile' as BaseTextKey),
+);
 
 const acceptAttr = ALLOWED_AGENT_FILE_EXTENSIONS.join(',');
+
+const emptyStateHeader = computed(() => i18n.baseText('agents.builder.files.empty' as BaseTextKey));
+const emptyStateDescription = computed(() =>
+	i18n.baseText('agents.builder.files.emptyDescription' as BaseTextKey),
+);
 
 function getFileIcon(file: AgentFileDto) {
 	const extension = file.fileName.split('.').pop()?.toLowerCase();
@@ -128,15 +137,15 @@ function onFilesSelected(event: Event) {
 <template>
 	<div :class="$style.panel" data-testid="agent-files-panel">
 		<div :class="$style.toolbar">
-			<span :class="$style.title" data-testid="agent-files-title">
+			<N8nText bold :class="$style.title" data-testid="agent-files-title">
 				{{ i18n.baseText('agents.builder.files.title') }}
 				<N8nTooltip
 					:content="i18n.baseText('agents.builder.files.titleTooltip' as BaseTextKey)"
 					placement="top"
 				>
-					<N8nIcon icon="circle-help" size="small" :class="$style.titleIcon" />
+					<div :class="$style.titleIcon"><N8nIcon icon="circle-help" size="small" /></div>
 				</N8nTooltip>
-			</span>
+			</N8nText>
 
 			<input
 				ref="fileInput"
@@ -148,21 +157,31 @@ function onFilesSelected(event: Event) {
 				@change="onFilesSelected"
 			/>
 
-			<N8nTooltip :content="uploadTooltip" placement="top">
-				<N8nButton
-					variant="ghost"
-					size="small"
-					icon="plus"
-					icon-only
-					:disabled="isUploadDisabled"
-					:aria-label="uploadTooltip"
-					data-testid="agent-files-upload"
-					@click="openFilePicker"
-				/>
-			</N8nTooltip>
+			<N8nButton
+				v-if="!props.loading && props.files.length > 0"
+				variant="ghost"
+				size="small"
+				icon="plus"
+				:disabled="isUploadDisabled"
+				:aria-label="uploadButtonLabel"
+				data-testid="agent-files-upload"
+				@click="openFilePicker"
+			>
+				{{ uploadButtonLabel }}
+			</N8nButton>
 		</div>
 
-		<div :class="$style.tableContainer">
+		<N8nEmptyState
+			v-if="!props.loading && props.files.length === 0"
+			:icon="{ type: 'icon', value: 'file' }"
+			:class="$style.emptyState"
+			:heading="emptyStateHeader"
+			:description="emptyStateDescription"
+			:button-text="uploadButtonLabel"
+			:button-disabled="isUploadDisabled"
+			@click:button="openFilePicker"
+		/>
+		<div v-else :class="$style.tableContainer">
 			<N8nTableBase :max-displayed-rows="10">
 				<tbody>
 					<tr
@@ -212,14 +231,6 @@ function onFilesSelected(event: Event) {
 							</td>
 						</tr>
 					</template>
-
-					<tr v-if="!props.loading && props.files.length === 0" :class="$style.lastRow">
-						<td :colspan="6">
-							<span :class="$style.emptyMessage" data-testid="agent-files-empty">
-								{{ i18n.baseText('agents.builder.files.empty') }}
-							</span>
-						</td>
-					</tr>
 				</tbody>
 			</N8nTableBase>
 		</div>
@@ -230,7 +241,7 @@ function onFilesSelected(event: Event) {
 .panel {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--sm);
+	gap: var(--spacing--xs);
 	width: 100%;
 }
 
@@ -245,15 +256,14 @@ function onFilesSelected(event: Event) {
 .title {
 	display: inline-flex;
 	align-items: center;
-	gap: var(--spacing--3xs);
 	min-width: 0;
-	color: var(--text-color--subtler);
-	font-size: var(--font-size--sm);
-	font-weight: var(--font-weight--medium);
-	line-height: var(--line-height--sm);
 }
 
 .titleIcon {
+	width: var(--height--xs);
+	height: var(--height--xs);
+	display: grid;
+	place-items: center;
 	color: var(--text-color--subtler);
 }
 

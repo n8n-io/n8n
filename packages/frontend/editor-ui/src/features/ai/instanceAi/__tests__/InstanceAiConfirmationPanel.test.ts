@@ -20,6 +20,9 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
 	useI18n: () => ({
 		baseText: (key: string, opts?: { interpolate?: Record<string, string> }) => {
+			if (key === 'agents.chat.approval.description') {
+				return `The agent wants to run the ${opts?.interpolate?.toolName ?? ''} tool.`;
+			}
 			if (opts?.interpolate) {
 				return Object.entries(opts.interpolate).reduce(
 					(str, [k, v]) => str.replace(`{${k}}`, v),
@@ -354,6 +357,48 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 							options: ['approve', 'deny'],
 							option_chosen: 'approve',
 						},
+					],
+				}),
+			);
+		});
+
+		it('shows target approval details and only submits a one-time decision', async () => {
+			injectPendingConfirmation(thread, {
+				requestId: 'req-target',
+				severity: 'warning',
+				message: 'Confirmation required',
+				targetApproval: {
+					toolName: 'delete_record',
+					displayName: 'Delete record',
+					args: { id: 'record-1' },
+				},
+			});
+			const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
+			const addKeySpy = vi.spyOn(thread, 'addAlwaysAllowKey');
+
+			const { getByTestId, getByText, queryByTestId } = renderComponent({
+				props: { kind: 'floating' },
+			});
+
+			expect(getByText('The agent wants to run the Delete record tool.')).toBeVisible();
+			expect(getByTestId('instance-ai-target-approval-args')).toHaveTextContent('"id": "record-1"');
+			expect(queryByTestId('instance-ai-panel-confirm-always-allow')).toBeNull();
+
+			await userEvent.click(getByTestId('instance-ai-panel-confirm-approve'));
+
+			expect(confirmSpy).toHaveBeenCalledWith('req-target', {
+				kind: 'approval',
+				approved: true,
+			});
+			expect(addKeySpy).not.toHaveBeenCalled();
+			expect(mockTelemetryTrack).toHaveBeenCalledWith(
+				'User finished providing input',
+				expect.objectContaining({
+					provided_inputs: [
+						expect.objectContaining({
+							options: ['approve', 'deny'],
+							option_chosen: 'approve',
+						}),
 					],
 				}),
 			);

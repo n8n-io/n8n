@@ -91,7 +91,7 @@ import { N8nHoverCard, N8nButton, N8nText } from '@n8n/design-system';
 <template>
 	<N8nHoverCard side="right" max-width="280px">
 		<template #trigger>
-			<N8nButton type="secondary">View workflow details</N8nButton>
+			<N8nButton>View workflow details</N8nButton>
 		</template>
 		<template #content>
 			<div class="workflow-preview">

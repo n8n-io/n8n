@@ -147,6 +147,7 @@ export class TelemetryEventRelay extends EventRelay {
 			'credentials-updated': (event) => this.credentialsUpdated(event),
 			'credentials-deleted': (event) => this.credentialsDeleted(event),
 			'credentials-user-disconnected': (event) => this.credentialsUserDisconnected(event),
+			'credentials-probed': (event) => this.credentialsProbed(event),
 			'private-credential-created': (event) => this.privateCredentialCreated(event),
 			'private-credential-toggled-to-private': (event) =>
 				this.privateCredentialToggledToPrivate(event),
@@ -737,6 +738,14 @@ export class TelemetryEventRelay extends EventRelay {
 		});
 	}
 
+	private credentialsProbed({ user, credentialId, outcome }: RelayEventMap['credentials-probed']) {
+		this.telemetry.track(TELEMETRY_EVENT.CREDENTIALS.USER_PROBED_CREDENTIAL, {
+			user_id: user.id,
+			credential_id: credentialId,
+			outcome,
+		});
+	}
+
 	private privateCredentialCreated({
 		user,
 		credentialId,
@@ -1066,6 +1075,7 @@ export class TelemetryEventRelay extends EventRelay {
 			data_table_missing_mode: options.dataTableMissingMode,
 			data_table_schema_conflict_policy: options.dataTableSchemaConflictPolicy,
 			variable_missing_mode: options.variableMissingMode,
+			variable_conflict_policy: options.variableConflictPolicy,
 			variable_parent_policy: options.variableParentPolicy,
 			tag_missing_mode: options.tagMissingMode,
 			tag_conflict_policy: options.tagConflictPolicy,
@@ -1082,6 +1092,7 @@ export class TelemetryEventRelay extends EventRelay {
 			variables_missing: counts.variables.missing,
 			variables_with_value_created: counts.variables.created,
 			variables_stubs_created: counts.variables.stubbed,
+			variables_updated: counts.variables.updated,
 			variables_required: counts.variables.requirements,
 			tags_matched: counts.tags.matched,
 			tags_created: counts.tags.created,

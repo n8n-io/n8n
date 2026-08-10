@@ -28,9 +28,7 @@ describe('modalRegistry', () => {
 	};
 
 	beforeEach(() => {
-		// Clear all modals before each test
-		const keys = modalRegistry.getKeys();
-		keys.forEach((key) => modalRegistry.unregister(key));
+		modalRegistry.clear();
 	});
 
 	describe('register', () => {
@@ -111,6 +109,53 @@ describe('modalRegistry', () => {
 
 			expect(listener).toHaveBeenCalledWith(expect.any(Map));
 			expect(listener).toHaveBeenCalledTimes(1);
+		});
+
+		it('should allow a key to be registered again after it was unregistered', () => {
+			modalRegistry.register(mockModal1);
+			modalRegistry.unregister('test-modal-1');
+
+			const replacement: ModalDefinition = {
+				key: 'test-modal-1',
+				component: mockComponent2,
+				initialState: { open: true },
+			};
+			modalRegistry.register(replacement);
+
+			expect(modalRegistry.get('test-modal-1')).toEqual(replacement);
+		});
+	});
+
+	describe('clear', () => {
+		it('should remove all registered modals', () => {
+			modalRegistry.register(mockModal1);
+			modalRegistry.register(mockModal2);
+
+			modalRegistry.clear();
+
+			expect(modalRegistry.getKeys()).toEqual([]);
+			expect(modalRegistry.has('test-modal-1')).toBe(false);
+			expect(modalRegistry.getAll().size).toBe(0);
+		});
+
+		it('should notify listeners so renderers drop the cleared modals', () => {
+			modalRegistry.register(mockModal1);
+			const listener = vi.fn<(modals: Map<string, ModalDefinition>) => void>();
+			modalRegistry.subscribe(listener);
+
+			modalRegistry.clear();
+
+			expect(listener).toHaveBeenCalledTimes(1);
+			expect(listener.mock.calls[0][0].size).toBe(0);
+		});
+
+		it('should allow registration again after clearing', () => {
+			modalRegistry.register(mockModal1);
+			modalRegistry.clear();
+
+			modalRegistry.register(mockModal1);
+
+			expect(modalRegistry.get('test-modal-1')).toEqual(mockModal1);
 		});
 	});
 

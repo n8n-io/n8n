@@ -1,7 +1,7 @@
 import { computed, ref, toValue, type ComputedRef, type MaybeRef } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
-import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
+import type { IconName } from '@n8n/design-system';
 
 import {
 	AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT,
