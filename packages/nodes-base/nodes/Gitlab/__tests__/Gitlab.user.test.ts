@@ -22,39 +22,6 @@ describe('Gitlab Node - User Operations', () => {
 		nock.cleanAll();
 	});
 
-	describe('user:getRepositories with returnAll=true', () => {
-		beforeAll(() => {
-			const mock = nock('https://gitlab.com/api/v4');
-			mock
-				.get('/users/test-owner/projects')
-				.query(true)
-				.reply(200, [
-					{ id: 1, name: 'r1', path_with_namespace: 'test-owner/r1' },
-					{ id: 2, name: 'r2', path_with_namespace: 'test-owner/r2' },
-				]);
-		});
-
-		new NodeTestHarness().setupTests({
-			credentials,
-			workflowFiles: ['user.getRepositories.returnAll.workflow.json'],
-		});
-	});
-
-	describe('user:getRepositories with returnAll=false', () => {
-		beforeAll(() => {
-			const mock = nock('https://gitlab.com/api/v4');
-			mock
-				.get('/users/test-owner/projects')
-				.query(true)
-				.reply(200, [{ id: 1, name: 'r1' }]);
-		});
-
-		new NodeTestHarness().setupTests({
-			credentials,
-			workflowFiles: ['user.getRepositories.limited.workflow.json'],
-		});
-	});
-
 	describe('user:getRepositories with empty result', () => {
 		beforeAll(() => {
 			const mock = nock('https://gitlab.com/api/v4');

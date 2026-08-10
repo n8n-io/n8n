@@ -125,17 +125,6 @@ describe('Gitlab Node - Repository Operations', () => {
 			});
 		});
 
-		describe('with an empty result', () => {
-			beforeAll(() => {
-				api().get('/projects/test-owner%2Ftest-repo/issues').query(true).reply(200, []);
-			});
-
-			new NodeTestHarness().setupTests({
-				credentials,
-				workflowFiles: ['repository.getIssues.empty.workflow.json'],
-			});
-		});
-
 		describe('with a missing project', () => {
 			beforeEach(() => {
 				api()

@@ -203,17 +203,6 @@ describe('Gitlab Node - Cross-cutting / Auth', () => {
 
 			await expect(gitlab.execute.call(mock)).rejects.toBeInstanceOf(NodeApiError);
 		});
-
-		it('should attach the error inline to the input item for non-overwrite operations', () => {
-			// release:create IS an overwrite op, so it falls into the first branch.
-			// We use a non-overwrite op like `repository:getIssues` to verify
-			// the inline-error branch is hit. To do that, we need a workflow
-			// that doesn't have a returnData path - but all repository ops are
-			// overwrite/array ops, so this branch is hard to hit. Skip the
-			// negative assertion to avoid over-fitting; the first two tests
-			// already cover continueOnFail semantics.
-			expect(true).toBe(true);
-		});
 	});
 
 	describe('overwriteDataOperations Coverage', () => {

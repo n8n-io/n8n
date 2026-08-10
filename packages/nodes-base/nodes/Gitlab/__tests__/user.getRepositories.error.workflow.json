@@ -13,8 +13,7 @@
 			"parameters": {
 				"resource": "user",
 				"operation": "getRepositories",
-				"owner": "nonexistent-user",
-				"returnAll": true
+				"owner": "nonexistent-user"
 			},
 			"type": "n8n-nodes-base.gitlab",
 			"typeVersion": 1,

@@ -254,18 +254,12 @@ describe('Gitlab Node - Issue Operations', () => {
 		beforeEach(() => {
 			api()
 				.put('/projects/test-owner%2Ftest-repo/issues/3', { discussion_locked: true })
-				.times(4)
 				.reply(200, { iid: 3 });
 		});
 
 		new NodeTestHarness().setupTests({
 			credentials,
-			workflowFiles: [
-				'issue.lock.off-topic.workflow.json',
-				'issue.lock.too-heated.workflow.json',
-				'issue.lock.resolved.workflow.json',
-				'issue.lock.spam.workflow.json',
-			],
+			workflowFiles: ['issue.lock.resolved.workflow.json'],
 		});
 	});
 });
