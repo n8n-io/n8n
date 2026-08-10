@@ -185,14 +185,7 @@ const parameterItems = ref<ParameterComputedData[]>([]);
 let previousParameterNames: string[] = [];
 
 throttledWatch(
-	[
-		() => props.parameters,
-		() => props.nodeValues,
-		node,
-		hasChatParent,
-		isEnhancedHitlTelegramEnabled,
-		isEnhancedHitlSlackEnabled,
-	],
+	[() => props.parameters, () => props.nodeValues, node, hasChatParent],
 	async () => {
 		// Pre-calculate disabled state map
 		const disabledMap: Record<string, boolean> = {};
