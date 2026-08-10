@@ -1138,13 +1138,15 @@ async function oAuthCredentialAuthorize() {
 
 			connectedByMe.value = true;
 
-			void credentialsStore.fetchAllCredentials().then(() => {
+			void credentialsStore.fetchAllCredentials().then((credentials) => {
 				nodeHelpers.updateNodesCredentialsIssues();
 				// The account just connected is only known server-side, so pick it up
-				// from the refreshed list rather than guessing at who the user is.
-				connectedAccountIdentifier.value = credentialId.value
-					? credentialsStore.getCredentialById(credentialId.value)?.connectedAccountIdentifier
-					: undefined;
+				// from the refresh rather than guessing at who the user is. Read this
+				// request's own response, not the store: any other credentials fetch
+				// that resolves later replaces the whole store map with its own view.
+				connectedAccountIdentifier.value = credentials.find(
+					(credential) => credential.id === credentialId.value,
+				)?.connectedAccountIdentifier;
 			});
 
 			// Close the window
