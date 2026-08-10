@@ -7,7 +7,9 @@ import {
 	classifyPaths,
 	blocksLockfileRegen,
 	resolveMechanicalPath,
+	resolveQueueSidePath,
 	rebaseResolvingMechanical,
+	reconcileWithMergeTreeAtTip,
 	reconcileLockfileAtTip,
 	recentAbandonedConflictPrs,
 	assertTreeMatches,
@@ -223,6 +225,53 @@ test('rebaseResolvingMechanical bails as soon as a stall touches a code path', (
 	);
 });
 
+test('resolveQueueSidePath takes the queue commit side, or its deletion when there is no stage 3', () => {
+	const FILE = 'packages/cli/x.ts';
+	const bothSides = makeStub([
+		[(a) => a[0] === 'ls-files', `100644 aaa 2\t${FILE}\n100644 bbb 3\t${FILE}`],
+	]);
+	resolveQueueSidePath({ git: bothSides, path: FILE, log: () => {} });
+	assert.ok(bothSides.calls.some((a) => a[0] === 'checkout' && a[1] === '--theirs'));
+	assert.ok(bothSides.calls.some((a) => a[0] === 'add' && a.includes(FILE)));
+
+	// modify/delete with the queue commit deleting: stages 1 and 2 only.
+	const queueDeleted = makeStub([
+		[(a) => a[0] === 'ls-files', `100644 aaa 1\t${FILE}\n100644 bbb 2\t${FILE}`],
+	]);
+	resolveQueueSidePath({ git: queueDeleted, path: FILE, log: () => {} });
+	assert.ok(queueDeleted.calls.some((a) => a[0] === 'rm' && a.includes(FILE)));
+	assert.equal(
+		queueDeleted.calls.some((a) => a[0] === 'checkout'),
+		false,
+	);
+});
+
+test('rebaseResolvingMechanical with favourQueue resolves a modify/delete code stall and continues', () => {
+	const FILE = 'packages/nodes-base/nodes/Function/Function.node.ts';
+	const git = makeStub([
+		[(a) => a[0] === 'rebase' && a[1] === '--continue', ''],
+		[isRebase, fail(`CONFLICT (modify/delete): ${FILE} deleted in 0ff923a066`)],
+		[isConflictedFiles, FILE],
+		[(a) => a[0] === 'ls-files', `100644 aaa 1\t${FILE}\n100644 bbb 2\t${FILE}`],
+		[(a) => a[0] === 'diff-index', fail()], // staged deletion -> continue, not skip
+	]);
+	const pnpm = makeStub();
+
+	const res = rebaseResolvingMechanical({
+		git,
+		pnpm,
+		masterSha: MASTER,
+		favourQueue: true,
+		log: () => {},
+	});
+
+	assert.equal(res.ok, true);
+	assert.ok(git.calls.some((a) => a[0] === 'rm' && a.includes(FILE)));
+	assert.ok(git.calls.some((a) => a[0] === 'rebase' && a[1] === '--continue'));
+	// The stall carried no mechanical file, so nothing mechanical may be touched.
+	assert.equal(pnpm.calls.length, 0);
+});
+
 test('assertTreeMatches is exact by default and scoped to the allowed paths otherwise', () => {
 	assert.doesNotThrow(() => assertTreeMatches(makeStub([[() => true, MERGE_TREE]]), MERGE_TREE));
 	assert.throws(
@@ -253,6 +302,97 @@ test('assertNoMarkers is a push guard', () => {
 	assert.throws(
 		() => assertNoMarkers(makeStub([[() => true, fail('fatal: bad object')]])),
 		/Could not scan/,
+	);
+});
+
+test('reconcileWithMergeTreeAtTip folds favoured-replay drift into the tip commit, never a master commit', () => {
+	// No drift: nothing to do.
+	const clean = makeStub([[(a) => a[0] === 'rev-parse' && a[1] === 'HEAD^{tree}', MERGE_TREE]]);
+	assert.deepEqual(
+		reconcileWithMergeTreeAtTip({
+			git: clean,
+			mergedTree: MERGE_TREE,
+			masterSha: MASTER,
+			log: () => {},
+		}),
+		[],
+	);
+	assert.equal(
+		clean.calls.some((a) => a[0] === 'commit'),
+		false,
+	);
+
+	// Lockfile drift: take the merge tree's blob and amend the tip.
+	const drifted = makeStub([
+		[(a) => a[0] === 'rev-parse' && a[1] === 'HEAD^{tree}', 'OTHER'],
+		[(a) => a[0] === 'rev-parse' && a[1] === 'HEAD', PRE_HEAD],
+		[(a) => a[0] === 'diff-tree', LOCKFILE],
+		[(a) => a[0] === 'cat-file', ''],
+	]);
+	assert.deepEqual(
+		reconcileWithMergeTreeAtTip({
+			git: drifted,
+			mergedTree: MERGE_TREE,
+			masterSha: MASTER,
+			log: () => {},
+		}),
+		[LOCKFILE],
+	);
+	assert.ok(
+		drifted.calls.some((a) => a[0] === 'checkout' && a[1] === MERGE_TREE && a.includes(LOCKFILE)),
+	);
+	assert.ok(drifted.calls.some((a) => a[0] === 'commit' && a.includes('--amend')));
+
+	// Excluded (mechanical) paths are left to their own reconciliation.
+	const excluded = makeStub([
+		[(a) => a[0] === 'rev-parse' && a[1] === 'HEAD^{tree}', 'OTHER'],
+		[(a) => a[0] === 'diff-tree', LOCKFILE],
+	]);
+	assert.deepEqual(
+		reconcileWithMergeTreeAtTip({
+			git: excluded,
+			mergedTree: MERGE_TREE,
+			masterSha: MASTER,
+			excludePaths: [LOCKFILE],
+			log: () => {},
+		}),
+		[],
+	);
+	assert.equal(
+		excluded.calls.some((a) => a[0] === 'commit'),
+		false,
+	);
+
+	// A path the merge deleted is removed, not checked out.
+	const deleted = makeStub([
+		[(a) => a[0] === 'rev-parse' && a[1] === 'HEAD^{tree}', 'OTHER'],
+		[(a) => a[0] === 'rev-parse' && a[1] === 'HEAD', PRE_HEAD],
+		[(a) => a[0] === 'diff-tree', 'packages/cli/gone.ts'],
+		[(a) => a[0] === 'cat-file', fail()],
+	]);
+	reconcileWithMergeTreeAtTip({
+		git: deleted,
+		mergedTree: MERGE_TREE,
+		masterSha: MASTER,
+		log: () => {},
+	});
+	assert.ok(deleted.calls.some((a) => a[0] === 'rm' && a.includes('packages/cli/gone.ts')));
+
+	// Never rewrite a master commit.
+	const atMasterTip = makeStub([
+		[(a) => a[0] === 'rev-parse' && a[1] === 'HEAD^{tree}', 'OTHER'],
+		[(a) => a[0] === 'rev-parse' && a[1] === 'HEAD', MASTER],
+		[(a) => a[0] === 'diff-tree', LOCKFILE],
+	]);
+	assert.throws(
+		() =>
+			reconcileWithMergeTreeAtTip({
+				git: atMasterTip,
+				mergedTree: MERGE_TREE,
+				masterSha: MASTER,
+				log: () => {},
+			}),
+		/amend a master commit/,
 	);
 });
 
@@ -441,12 +581,79 @@ test('sync replays favouring 3.x when the patches no longer apply on their own',
 	);
 });
 
+test('sync recovers when the favoured replay stalls on a modify/delete conflict', async () => {
+	// The endpoints reconcile (merge-tree is clean) because a fix commit in the queue
+	// re-deletes the file — but replaying the deleting commit itself stalls on
+	// modify/delete, which `-X theirs` never settles on its own.
+	const FILE = 'packages/nodes-base/nodes/Function/Function.node.ts';
+	const git = makeStub([
+		...baseGitRoutes,
+		[(a) => a[0] === 'rebase' && a[1] === '--continue', ''],
+		[isRebase, fail(`CONFLICT (modify/delete): ${FILE} deleted in 0ff923a066`)],
+		[isConflictedFiles, FILE],
+		[(a) => a[0] === 'ls-files', `100644 aaa 1\t${FILE}\n100644 bbb 2\t${FILE}`],
+		[(a) => a[0] === 'diff-index', fail()],
+	]);
+	const gh = makeStub(noOpenPr);
+
+	await sync({ git, gh, pnpm: makeStub(), env, log: () => {} });
+
+	assert.ok(
+		git.calls.some((a) => a[0] === 'rm' && a.includes(FILE)),
+		'expected the queue-side deletion to be taken',
+	);
+	assert.ok(
+		git.calls.some((a) => a[0] === 'push'),
+		'expected the replay to be pushed',
+	);
+	// Still no new commit and no PR — the fix commit in the queue does the real work.
+	assert.equal(
+		git.calls.some((a) => a[0] === 'commit'),
+		false,
+	);
+	assert.equal(
+		gh.calls.some((a) => a[0] === 'pr' && a[1] === 'create'),
+		false,
+	);
+});
+
+test('sync folds favoured-replay drift back to the merge tree before pushing', async () => {
+	// The favoured replay finishes but its tip drifts from the merge tree (the lockfile
+	// hunks `-X theirs` resolved toward 3.x): the drift is folded back, then pushed.
+	let treeReads = 0;
+	const git = makeStub([
+		...baseGitRoutes.filter((r) => !r[0](['rev-parse', 'HEAD^{tree}'])),
+		[
+			(a) => a[0] === 'rev-parse' && a[1] === 'HEAD^{tree}',
+			() => (treeReads++ === 0 ? 'DRIFTED' : MERGE_TREE),
+		],
+		[(a) => a[0] === 'diff-tree', LOCKFILE],
+		[(a) => a[0] === 'cat-file', ''],
+		[favouringOwnSide, ''],
+		[isRebase, fail('CONFLICT (content): packages/cli/x.ts')],
+	]);
+	const gh = makeStub(noOpenPr);
+
+	await sync({ git, gh, pnpm: makeStub(), env, log: () => {} });
+
+	assert.ok(git.calls.some((a) => a[0] === 'checkout' && a[1] === MERGE_TREE));
+	assert.ok(git.calls.some((a) => a[0] === 'commit' && a.includes('--amend')));
+	assert.ok(
+		git.calls.some((a) => a[0] === 'push'),
+		'expected the reconciled replay to be pushed',
+	);
+	assert.equal(
+		gh.calls.some((a) => a[0] === 'pr' && a[1] === 'create'),
+		false,
+	);
+});
+
 test('sync fails without pushing when even the favoured replay cannot finish', async () => {
 	const git = makeStub([
 		...baseGitRoutes,
-		[isRebase, fail('CONFLICT')],
-		// The favoured replay stalls on a real code file, so the driver must not resolve it.
-		[isConflictedFiles, 'packages/cli/x.ts'],
+		[isRebase, fail('rebase failed for a non-conflict reason')],
+		// No conflicted files: nothing the driver may resolve — don't guess.
+		[isConflictedFiles, ''],
 	]);
 	const gh = makeStub(noOpenPr);
 

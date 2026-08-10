@@ -188,7 +188,9 @@ commits only).
 The next sync then makes `3.x` linear again. The plain replay stalls at that point (a fix
 recorded around a merge commit leaves no patch to replay), so it replays a second time with
 `3.x`'s side favoured, and your fix commit — which is in the queue — does the real work.
-Nothing is squashed, and the tree guard proves the result is exactly the merge of `3.x` and
+Stalls that favouring cannot settle on its own (e.g. modify/delete, when `master` touched a
+file a breaking commit deletes) are resolved toward `3.x`'s side during the replay. Nothing
+is squashed, and the tree guard proves the result is exactly the merge of `3.x` and
 `master`.
 
 **Who gets pinged.** The conflict is attributed to the authors of the `3.x` commits behind the
