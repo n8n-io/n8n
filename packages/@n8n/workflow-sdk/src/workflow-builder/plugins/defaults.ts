@@ -16,6 +16,7 @@ import {
 	disconnectedNodeValidator,
 	expressionPathValidator,
 	expressionPrefixValidator,
+	executeWorkflowValidator,
 	filterNodeValidator,
 	fromAiValidator,
 	httpRequestValidator,
@@ -60,6 +61,7 @@ const coreValidators: ValidatorPlugin[] = [
 	setNodeValidator,
 	mergeNodeValidator,
 	filterNodeValidator,
+	executeWorkflowValidator,
 
 	// Expression validators (lower priority)
 	expressionPrefixValidator,
