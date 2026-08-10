@@ -3,6 +3,7 @@ import { ref } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import ChatInputBase from './ChatInputBase.vue';
+import { MAX_ATTACHMENT_BASE64_BYTES } from '@n8n/api-types';
 
 const mockStart = vi.fn();
 const mockStop = vi.fn();
@@ -10,6 +11,11 @@ const mockIsListening = ref(false);
 const mockIsSupported = ref(true);
 const mockResult = ref('');
 const mockIsFinal = ref(false);
+
+const mockShowError = vi.fn();
+vi.mock('@n8n/composables/useToast', () => ({
+	useToast: () => ({ showError: mockShowError, showMessage: vi.fn() }),
+}));
 
 vi.mock('@vueuse/core', async (importOriginal) => {
 	const actual = await importOriginal<Record<string, unknown>>();
@@ -43,6 +49,7 @@ describe('ChatInputBase', () => {
 		mockIsListening.value = false;
 		mockIsSupported.value = true;
 		mockResult.value = '';
+		mockShowError.mockClear();
 		mockIsFinal.value = false;
 		vi.clearAllMocks();
 	});
@@ -197,5 +204,63 @@ describe('ChatInputBase', () => {
 		expect(emittedValues.length).toBeGreaterThan(0);
 		const lastValue = emittedValues[emittedValues.length - 1];
 		expect(lastValue).not.toMatch(/^\s/);
+	});
+
+	describe('oversized attachments', () => {
+		/** `size` is what the guard reads; content is irrelevant to the check. */
+		function fileOfSize(name: string, decodedBytes: number): File {
+			const file = new File(['x'], name, { type: 'image/png' });
+			Object.defineProperty(file, 'size', { value: decodedBytes });
+			return file;
+		}
+
+		function pasteInto(textarea: HTMLElement, files: File[]) {
+			const event = new Event('paste', { bubbles: true, cancelable: true });
+			Object.defineProperty(event, 'clipboardData', { value: { files } });
+			textarea.dispatchEvent(event);
+		}
+
+		// A file is measured by its base64-encoded size, so the largest that fits is 3/4 of the limit.
+		const largestAllowedRawBytes = (MAX_ATTACHMENT_BASE64_BYTES / 4) * 3;
+		const oversizedRawBytes = largestAllowedRawBytes + 1;
+
+		it('does not attach a pasted file that is over the limit', () => {
+			const { getByRole, emitted } = renderComponent({ props: makeProps({ showAttach: true }) });
+
+			pasteInto(getByRole('textbox'), [fileOfSize('huge.png', oversizedRawBytes)]);
+
+			expect(emitted()['files-selected']).toBeFalsy();
+		});
+
+		it('warns the user when a pasted file is rejected for size', () => {
+			const { getByRole } = renderComponent({ props: makeProps({ showAttach: true }) });
+
+			pasteInto(getByRole('textbox'), [fileOfSize('huge.png', oversizedRawBytes)]);
+
+			expect(mockShowError).toHaveBeenCalled();
+		});
+
+		it('still attaches a pasted file that fits', () => {
+			const { getByRole, emitted } = renderComponent({ props: makeProps({ showAttach: true }) });
+
+			pasteInto(getByRole('textbox'), [fileOfSize('fine.png', 1024)]);
+
+			expect(emitted()['files-selected']).toBeTruthy();
+			expect(mockShowError).not.toHaveBeenCalled();
+		});
+
+		it('attaches the files that fit and drops only the oversized one', () => {
+			const { getByRole, emitted } = renderComponent({ props: makeProps({ showAttach: true }) });
+
+			pasteInto(getByRole('textbox'), [
+				fileOfSize('fine.png', 1024),
+				fileOfSize('huge.png', oversizedRawBytes),
+			]);
+
+			const events = emitted()['files-selected'] as Array<[File[]]>;
+			expect(events).toBeTruthy();
+			expect(events[0][0].map((f) => f.name)).toEqual(['fine.png']);
+			expect(mockShowError).toHaveBeenCalled();
+		});
 	});
 });

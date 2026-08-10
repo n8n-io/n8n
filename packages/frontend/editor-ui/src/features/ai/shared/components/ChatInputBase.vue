@@ -1,8 +1,13 @@
 <script lang="ts" setup>
 import { computed, ref, useTemplateRef, watch } from 'vue';
+import { exceedsAttachmentSizeLimit, MAX_ATTACHMENT_BASE64_BYTES } from '@n8n/api-types';
+import { useToast } from '@n8n/composables/useToast';
 import { N8nIconButton, N8nChatInput, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useSpeechRecognition } from '@vueuse/core';
+
+/** Whole megabytes, so the warning always quotes the limit actually enforced. */
+const ATTACHMENT_LIMIT_MB = Math.floor(MAX_ATTACHMENT_BASE64_BYTES / (1024 * 1024));
 
 const props = withDefaults(
 	defineProps<{
@@ -39,6 +44,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const toast = useToast();
 const inputRef = useTemplateRef<InstanceType<typeof N8nChatInput>>('inputRef');
 const fileInputRef = useTemplateRef<HTMLInputElement>('fileInputRef');
 const isFocused = ref(false);
@@ -90,11 +96,40 @@ function focusInput() {
 	inputRef.value?.focusInput();
 }
 
+/**
+ * Keep the files the backend will accept and warn about the rest.
+ *
+ * Checked here only so the user finds out before uploading megabytes — the
+ * backend enforces the same limit authoritatively. `exceedsAttachmentSizeLimit`
+ * converts to the encoded size first: the limit is denominated in base64 bytes,
+ * so comparing `File.size` against it directly would admit files ~4/3 too large.
+ */
+function withinSizeLimit(files: File[]): File[] {
+	const oversized = files.filter((file) => exceedsAttachmentSizeLimit(file.size));
+
+	if (oversized.length > 0) {
+		toast.showError(
+			new Error(
+				i18n.baseText('chat.attachment.tooLarge.message', {
+					interpolate: {
+						fileNames: oversized.map((file) => file.name).join(', '),
+						limit: ATTACHMENT_LIMIT_MB,
+					},
+				}),
+			),
+			i18n.baseText('chat.attachment.tooLarge.title'),
+		);
+	}
+
+	return files.filter((file) => !exceedsAttachmentSizeLimit(file.size));
+}
+
 function handleFileSelect(e: Event) {
 	const target = e.target as HTMLInputElement;
 	const files = target.files;
 	if (!files || files.length === 0) return;
-	emit('files-selected', Array.from(files));
+	const accepted = withinSizeLimit(Array.from(files));
+	if (accepted.length > 0) emit('files-selected', accepted);
 	target.value = '';
 	focusInput();
 }
@@ -105,7 +140,8 @@ function handlePaste(e: ClipboardEvent) {
 	const files = Array.from(e.clipboardData.files);
 	if (files.length > 0) {
 		e.preventDefault();
-		emit('files-selected', files);
+		const accepted = withinSizeLimit(files);
+		if (accepted.length > 0) emit('files-selected', accepted);
 	}
 }
 

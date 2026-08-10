@@ -1,5 +1,9 @@
 import {
 	AI_GATEWAY_MANAGED_TAG,
+	base64EncodedSize,
+	exceedsAttachmentSizeLimit,
+	instanceAiFileAttachmentSchema,
+	MAX_ATTACHMENT_BASE64_BYTES,
 	applyBranchReadOnlyOverrides,
 	buildFetchUrlGrantKey,
 	DEFAULT_INSTANCE_AI_PERMISSIONS,
@@ -581,5 +585,86 @@ describe('instanceAiEvalSeedAgentSchema resource references', () => {
 			],
 		});
 		expect(backed).toEqual([]);
+	});
+});
+
+describe('instanceAiFileAttachmentSchema size bound', () => {
+	function attachmentWithEncodedSize(bytes: number) {
+		return {
+			type: 'file' as const,
+			data: 'A'.repeat(bytes),
+			mimeType: 'image/png',
+			fileName: 'pasted.png',
+		};
+	}
+
+	it('accepts a payload exactly at the base64 limit', () => {
+		const result = instanceAiFileAttachmentSchema.safeParse(
+			attachmentWithEncodedSize(MAX_ATTACHMENT_BASE64_BYTES),
+		);
+		expect(result.success).toBe(true);
+	});
+
+	it('rejects a payload one byte over the base64 limit', () => {
+		const result = instanceAiFileAttachmentSchema.safeParse(
+			attachmentWithEncodedSize(MAX_ATTACHMENT_BASE64_BYTES + 1),
+		);
+		expect(result.success).toBe(false);
+	});
+
+	it('bounds the base64-encoded size, not the decoded size', () => {
+		// The provider limit applies to the encoded payload. A bound expressed in
+		// decoded bytes would be ~4/3 larger and admit payloads it rejects.
+		const decodedUnitBound = Math.ceil((MAX_ATTACHMENT_BASE64_BYTES * 4) / 3);
+		const result = instanceAiFileAttachmentSchema.safeParse(
+			attachmentWithEncodedSize(decodedUnitBound),
+		);
+		expect(result.success).toBe(false);
+	});
+
+	it('states the real limit in the rejection message', () => {
+		const result = instanceAiFileAttachmentSchema.safeParse(
+			attachmentWithEncodedSize(MAX_ATTACHMENT_BASE64_BYTES + 1),
+		);
+		expect(result.success).toBe(false);
+		if (!result.success) {
+			expect(result.error.issues[0].message).toContain('10 MB');
+		}
+	});
+});
+
+describe('base64EncodedSize', () => {
+	it.each([
+		[0, 0],
+		[1, 4],
+		[2, 4],
+		[3, 4],
+		[4, 8],
+	])('encodes %i raw bytes as %i base64 bytes', (raw, encoded) => {
+		expect(base64EncodedSize(raw)).toBe(encoded);
+	});
+
+	it('inflates by roughly 4/3', () => {
+		expect(base64EncodedSize(3 * 1024 * 1024)).toBe(4 * 1024 * 1024);
+	});
+});
+
+describe('exceedsAttachmentSizeLimit', () => {
+	// A file is measured by its *encoded* size, so the largest file that fits is
+	// three quarters of the limit — not the limit itself.
+	const largestAllowedRawBytes = (MAX_ATTACHMENT_BASE64_BYTES / 4) * 3;
+
+	it('accepts a file whose encoded form lands exactly on the limit', () => {
+		expect(exceedsAttachmentSizeLimit(largestAllowedRawBytes)).toBe(false);
+	});
+
+	it('rejects a file whose encoded form crosses the limit', () => {
+		expect(exceedsAttachmentSizeLimit(largestAllowedRawBytes + 1)).toBe(true);
+	});
+
+	it('rejects a raw size that only fits when the 4/3 inflation is ignored', () => {
+		// This is the case a naive `file.size > limit` check lets through.
+		expect(largestAllowedRawBytes + 1).toBeLessThan(MAX_ATTACHMENT_BASE64_BYTES);
+		expect(exceedsAttachmentSizeLimit(MAX_ATTACHMENT_BASE64_BYTES)).toBe(true);
 	});
 });

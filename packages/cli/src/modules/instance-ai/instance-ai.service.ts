@@ -10,6 +10,7 @@ import {
 	applyBranchReadOnlyOverrides,
 	buildProxyHeaders,
 	credentialSetupHintSchema,
+	MAX_ATTACHMENT_BASE64_BYTES,
 	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
 	type InstanceAiAttachment,
 	type InstanceAiHandoffContext,
@@ -131,6 +132,7 @@ import { Telemetry } from '@/telemetry';
 import { resolveAgentPreviewHandoff } from './agent-preview-handoff';
 import { composeLocalMcpServers } from './browser/composite-local-mcp-server';
 import { InstanceAiBrowserSessionService } from './browser/instance-ai-browser-session.service';
+import { dropRejectedAttachmentsFromHistory } from './drop-rejected-attachments';
 import { EvalThreadCredentialAllowlistService } from './eval/thread-credential-allowlist.service';
 import { DurableEventLog } from './event-bus/durable-event-log';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
@@ -356,6 +358,31 @@ function isStaleResumeError(error: unknown): boolean {
 	return error instanceof Error && error.name === 'StaleResumeError';
 }
 
+/** Whole megabytes, so the user-facing copy always quotes the limit we actually enforce. */
+const ATTACHMENT_LIMIT_MB = Math.floor(MAX_ATTACHMENT_BASE64_BYTES / (1024 * 1024));
+
+/** Signals that the failure is about an attached file rather than the request as a whole. */
+const ATTACHMENT_SUBJECT_PATTERN = /image|attachment/;
+
+/** Signals that the attachment was refused for its size/decodability, not merely mentioned. */
+const ATTACHMENT_REFUSAL_PATTERN = /exceed|too large|maximum|max allowed|could not process/;
+
+/**
+ * True when the provider refused an attached file outright. Both signals must be
+ * present: matching on the subject alone would misclassify unrelated failures that
+ * happen to mention an image.
+ *
+ * Matched on the message text because the provider surfaces this as a plain 400
+ * with no machine-readable discriminator. `validateAttachmentSizes` rejects the
+ * known cases before the request is built, so this is the net for provider-side
+ * limits we don't model (pixel dimensions, per-provider ceilings, format quirks) —
+ * without it, such a rejection sticks in thread history and fails every later turn.
+ */
+export function isAttachmentRejectedByProviderError(error: unknown): boolean {
+	const message = getErrorMessage(error).toLowerCase();
+	return ATTACHMENT_SUBJECT_PATTERN.test(message) && ATTACHMENT_REFUSAL_PATTERN.test(message);
+}
+
 /**
  * Shown when the user has exhausted their AI credits/quota. Self-contained so it
  * still reads clearly on older clients that don't render the structured
@@ -384,6 +411,15 @@ export function getUserFacingErrorMessage(error: unknown): string {
 
 	if (isSandboxEndpointNotAllowedError(error)) {
 		return "I couldn't finish preparing the workspace sandbox. Please try again in a moment.";
+	}
+
+	// Deliberately no "try again": the attachment is dropped from history, so the
+	// user needs to send a *new* message rather than retry the failed one.
+	if (isAttachmentRejectedByProviderError(error)) {
+		return (
+			'One of the attached images was too large for me to read, so I left it out. ' +
+			`Send it again as a smaller file — under ${ATTACHMENT_LIMIT_MB} MB and no more than 8000x8000 pixels.`
+		);
 	}
 
 	if (error instanceof OperationalError) {
@@ -4047,6 +4083,16 @@ export class InstanceAiService {
 				threadId,
 				runId,
 			});
+			// The attachment is persisted in history before the model call is known to
+			// have succeeded, so a refused file would fail every later turn as well.
+			// Drop it here to keep the thread usable.
+			if (isAttachmentRejectedByProviderError(terminalError)) {
+				await dropRejectedAttachmentsFromHistory(
+					this.agentMemory,
+					{ threadId, resourceId: user.id },
+					this.logger,
+				);
+			}
 			const errorMessage = getErrorMessage(terminalError);
 			const userFacingErrorMessage = getUserFacingErrorMessage(terminalError);
 			const userFacingErrorCode = getUserFacingErrorCode(terminalError);
@@ -5417,6 +5463,15 @@ export class InstanceAiService {
 				threadId: opts.threadId,
 				runId: opts.runId,
 			});
+			// Same recovery as the initial-run path: a refused attachment stays in
+			// history and would fail every later turn until it is removed.
+			if (isAttachmentRejectedByProviderError(terminalError)) {
+				await dropRejectedAttachmentsFromHistory(
+					this.agentMemory,
+					{ threadId: opts.threadId, resourceId: opts.user.id },
+					this.logger,
+				);
+			}
 			const errorMessage = getErrorMessage(terminalError);
 			const userFacingErrorMessage = getUserFacingErrorMessage(terminalError);
 			const userFacingErrorCode = getUserFacingErrorCode(terminalError);

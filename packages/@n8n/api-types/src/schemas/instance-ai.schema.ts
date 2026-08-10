@@ -917,11 +917,52 @@ export type InstanceAiFilesystemResponse = InstanceType<typeof InstanceAiFilesys
 // API types
 // ---------------------------------------------------------------------------
 
+/**
+ * Per-file attachment ceiling, in **base64-encoded** bytes.
+ *
+ * The provider measures an image against its encoded size, and `data` is base64
+ * (ASCII), so the string's length is exactly the quantity being limited. Stating
+ * this bound in decoded bytes would set it ~4/3 too high and admit payloads the
+ * provider then rejects — crashing the LLM call instead of failing validation.
+ *
+ * Shared so the frontend can warn pre-upload against the same value the backend
+ * enforces.
+ */
+export const MAX_ATTACHMENT_BASE64_BYTES = 10 * 1024 * 1024;
+
+/**
+ * Budget for all attachments on a single message, in base64-encoded bytes. The
+ * provider rejects requests over 32 MB in total; half of that leaves room for the
+ * system prompt, replayed thread history, and tool schemas in the same request.
+ */
+export const MAX_TOTAL_ATTACHMENT_BASE64_BYTES = 16 * 1024 * 1024;
+
+/**
+ * Encoded size of `decodedBytes` once base64'd: 3 bytes become 4 characters,
+ * padded up to a multiple of 4.
+ */
+export function base64EncodedSize(decodedBytes: number): number {
+	return Math.ceil(decodedBytes / 3) * 4;
+}
+
+/**
+ * Whether a file of `decodedBytes` (i.e. `File.size`) would breach the per-file
+ * limit once encoded.
+ *
+ * Use this instead of comparing a raw byte count against the limit directly: the
+ * limit is denominated in encoded bytes, so a naive comparison passes files ~4/3
+ * too large and defers the failure to the provider.
+ */
+export function exceedsAttachmentSizeLimit(decodedBytes: number): boolean {
+	return base64EncodedSize(decodedBytes) > MAX_ATTACHMENT_BASE64_BYTES;
+}
+
 /** A binary file the user attached to a message (image, CSV, PDF, …). */
 export const instanceAiFileAttachmentSchema = z.object({
 	type: z.literal('file'),
-	// Base64 inflates ~4/3 — 14M chars covers ~10MB decoded.
-	data: z.string().max(14_000_000, { message: 'Attachment exceeds 10 MB limit' }),
+	data: z.string().max(MAX_ATTACHMENT_BASE64_BYTES, {
+		message: 'Attachment exceeds the 10 MB limit',
+	}),
 	mimeType: z.string().max(100),
 	fileName: z.string().max(300),
 });

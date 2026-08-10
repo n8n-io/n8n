@@ -2,9 +2,22 @@ import {
 	getParseableAttachmentMimeTypes,
 	getSupportedAttachmentMimeTypes,
 	isSupportedAttachmentMimeType,
+	MAX_ATTACHMENT_BASE64_BYTES,
+	MAX_TOTAL_ATTACHMENT_BASE64_BYTES,
+	OversizedAttachmentError,
 	UnsupportedAttachmentError,
 	validateAttachmentMimeTypes,
+	validateAttachmentSizes,
 } from '../validate-attachments';
+
+/**
+ * A base64 payload of exactly `bytes` encoded length. The provider measures an
+ * image against its base64-encoded size, and base64 is ASCII, so the string's
+ * length *is* the size being limited.
+ */
+function imageOfEncodedSize(fileName: string, bytes: number) {
+	return { data: 'A'.repeat(bytes), mimeType: 'image/png', fileName };
+}
 
 describe('getParseableAttachmentMimeTypes', () => {
 	it('lists every MIME type the parsers can handle', () => {
@@ -106,6 +119,72 @@ describe('validateAttachmentMimeTypes', () => {
 				{ fileName: 'b.mp4', mimeType: 'video/mp4' },
 			]);
 			expect(error.supported.length).toBeGreaterThan(0);
+		}
+	});
+});
+
+describe('validateAttachmentSizes', () => {
+	it('returns silently for an empty attachment list', () => {
+		expect(() => validateAttachmentSizes([])).not.toThrow();
+	});
+
+	it('accepts an attachment exactly at the per-file limit', () => {
+		expect(() =>
+			validateAttachmentSizes([imageOfEncodedSize('at-limit.png', MAX_ATTACHMENT_BASE64_BYTES)]),
+		).not.toThrow();
+	});
+
+	it('throws OversizedAttachmentError one byte over the per-file limit', () => {
+		expect(() =>
+			validateAttachmentSizes([imageOfEncodedSize('big.png', MAX_ATTACHMENT_BASE64_BYTES + 1)]),
+		).toThrow(OversizedAttachmentError);
+	});
+
+	it('reports every file over the per-file limit, not just the first', () => {
+		try {
+			validateAttachmentSizes([
+				imageOfEncodedSize('ok.png', 1024),
+				imageOfEncodedSize('big-a.png', MAX_ATTACHMENT_BASE64_BYTES + 1),
+				imageOfEncodedSize('big-b.png', MAX_ATTACHMENT_BASE64_BYTES + 2),
+			]);
+			expect.fail('expected error to be thrown');
+		} catch (caught) {
+			expect(caught).toBeInstanceOf(OversizedAttachmentError);
+			const error = caught as OversizedAttachmentError;
+			expect(error.reason).toBe('per_file');
+			expect(error.oversized).toEqual([
+				{ fileName: 'big-a.png', encodedBytes: MAX_ATTACHMENT_BASE64_BYTES + 1 },
+				{ fileName: 'big-b.png', encodedBytes: MAX_ATTACHMENT_BASE64_BYTES + 2 },
+			]);
+		}
+	});
+
+	it('throws when the combined payload exceeds the total budget though each file fits', () => {
+		const perFile = Math.floor(MAX_TOTAL_ATTACHMENT_BASE64_BYTES / 2) + 1;
+		expect(perFile).toBeLessThanOrEqual(MAX_ATTACHMENT_BASE64_BYTES);
+
+		try {
+			validateAttachmentSizes([
+				imageOfEncodedSize('half-a.png', perFile),
+				imageOfEncodedSize('half-b.png', perFile),
+			]);
+			expect.fail('expected error to be thrown');
+		} catch (caught) {
+			expect(caught).toBeInstanceOf(OversizedAttachmentError);
+			const error = caught as OversizedAttachmentError;
+			expect(error.reason).toBe('total');
+			expect(error.totalEncodedBytes).toBe(perFile * 2);
+		}
+	});
+
+	it('carries the limit that was exceeded so callers can render actionable copy', () => {
+		try {
+			validateAttachmentSizes([imageOfEncodedSize('big.png', MAX_ATTACHMENT_BASE64_BYTES + 1)]);
+			expect.fail('expected error to be thrown');
+		} catch (caught) {
+			const error = caught as OversizedAttachmentError;
+			expect(error.limitBytes).toBe(MAX_ATTACHMENT_BASE64_BYTES);
+			expect(error.message).toContain('big.png');
 		}
 	});
 });

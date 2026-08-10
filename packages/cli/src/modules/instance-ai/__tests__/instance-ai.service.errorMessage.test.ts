@@ -43,6 +43,35 @@ describe('getUserFacingErrorMessage', () => {
 			'Something went wrong before I could finish that response. Please try again.',
 		);
 	});
+
+	describe('provider attachment rejections', () => {
+		// Real shapes the provider returns when it refuses an image outright.
+		it.each([
+			'messages.0.content.1.image: image exceeds 10 MB maximum: 12058221 bytes > 10485760 bytes',
+			'messages.0.content.1.image.source.base64.data: At least one of the image dimensions exceed max allowed size for many-image requests',
+			'Could not process image. The image is too large.',
+		])('tells the user which attachment to shrink for: %s', (providerMessage) => {
+			const message = getUserFacingErrorMessage(new Error(providerMessage));
+			expect(message.toLowerCase()).toContain('image');
+			expect(message).not.toContain('Something went wrong');
+		});
+
+		it('does not tell the user to retry, since a retry replays the same attachment', () => {
+			const message = getUserFacingErrorMessage(
+				new Error('messages.0.content.1.image: image exceeds 10 MB maximum'),
+			);
+			expect(message.toLowerCase()).not.toContain('try again');
+		});
+
+		it('leaves unrelated provider errors on the generic message', () => {
+			expect(getUserFacingErrorMessage(new Error('messages: too many total tokens'))).toBe(
+				'Something went wrong before I could finish that response. Please try again.',
+			);
+			expect(getUserFacingErrorMessage(new Error('image generation is not supported'))).toBe(
+				'Something went wrong before I could finish that response. Please try again.',
+			);
+		});
+	});
 });
 
 function createNoOutputGeneratedError(): Error {
