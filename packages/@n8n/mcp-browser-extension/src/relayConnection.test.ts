@@ -393,6 +393,41 @@ describe('RelayConnection', () => {
 			);
 		});
 
+		it('should keep the tab usable when focus emulation is rejected', async () => {
+			chrome.debugger.getTargets.mockResolvedValueOnce([mockTarget(123)]);
+			await relay.registerSelectedTabs([123]);
+			const tabId = relay.getControlledIds()[0].targetId;
+			ws.sent.length = 0;
+
+			// Focus emulation is the first command sent after attaching
+			chrome.debugger.sendCommand.mockRejectedValueOnce(
+				new Error('Emulation.setFocusEmulationEnabled is not allowed'),
+			);
+
+			ws.onmessage?.({
+				data: JSON.stringify({
+					id: 1,
+					method: 'forwardCDPCommand',
+					params: { method: 'Runtime.evaluate', params: {}, id: tabId },
+				}),
+			});
+			await tick();
+
+			expect(chrome.debugger.sendCommand).toHaveBeenNthCalledWith(
+				1,
+				{ tabId: 123 },
+				'Emulation.setFocusEmulationEnabled',
+				{ enabled: true },
+			);
+			expect(chrome.debugger.sendCommand).toHaveBeenCalledWith(
+				{ tabId: 123 },
+				'Runtime.evaluate',
+				{},
+			);
+			expect(parseSent(ws)).toEqual(expect.objectContaining({ id: 1 }));
+			expect(parseSent(ws)).not.toHaveProperty('error');
+		});
+
 		it('should route CDP commands to specific tab by CDP targetId', async () => {
 			chrome.debugger.getTargets.mockResolvedValueOnce([mockTarget(10), mockTarget(20)]);
 			await relay.registerSelectedTabs([10, 20]);
