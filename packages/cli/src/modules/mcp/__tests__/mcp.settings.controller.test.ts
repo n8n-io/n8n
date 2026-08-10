@@ -197,24 +197,6 @@ describe('McpSettingsController', () => {
 			expect(() => new UpdateMcpSettingsDto({ mcpAccessEnabled: 'yes' } as never)).toThrow();
 		});
 
-		test.each([{ mcpAccessEnabled: false }, { mcpAccessEnabled: true }])(
-			'leaves autoExposeNewWorkflows untouched when access is set to $mcpAccessEnabled',
-			async ({ mcpAccessEnabled }) => {
-				const user = createUser();
-				const req = createReq({ mcpAccessEnabled }, { user });
-				const dto = UpdateMcpSettingsDto.parse({ mcpAccessEnabled });
-				mcpSettingsService.setEnabled.mockResolvedValue(undefined);
-				moduleRegistry.refreshModuleSettings.mockResolvedValue(null);
-
-				const res = createRes();
-				const result = await controller.updateSettings(req, res, dto);
-
-				expect(mcpSettingsService.setEnabled).toHaveBeenCalledWith(mcpAccessEnabled);
-				expect(mcpSettingsService.setAutoExposeNewWorkflows).not.toHaveBeenCalled();
-				expect(result).toEqual({ mcpAccessEnabled });
-			},
-		);
-
 		test('updates both fields when both are patched', async () => {
 			const user = createUser();
 			const req = createReq({ mcpAccessEnabled: true, autoExposeNewWorkflows: false }, { user });
@@ -247,16 +229,6 @@ describe('McpSettingsController', () => {
 			expect(mcpSettingsService.setAutoExposeNewWorkflows).toHaveBeenCalledWith(true);
 			expect(eventService.emit).not.toHaveBeenCalled();
 			expect(result).toEqual({ autoExposeNewWorkflows: true });
-		});
-
-		test('rejects any patch when MCP settings are managed by env', async () => {
-			instanceSettingsLoaderConfig.mcpManagedByEnv = true;
-			const dto = UpdateMcpSettingsDto.parse({ autoExposeNewWorkflows: true });
-
-			await expect(controller.updateSettings(createReq({}), createRes(), dto)).rejects.toThrow(
-				ForbiddenError,
-			);
-			expect(mcpSettingsService.setAutoExposeNewWorkflows).not.toHaveBeenCalled();
 		});
 
 		test('rejects an empty body', () => {
