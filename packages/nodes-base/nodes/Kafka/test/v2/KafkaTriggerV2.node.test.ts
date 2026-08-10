@@ -214,6 +214,60 @@ describe('toConsumerOptions', () => {
 			expect((rebalanceTimeout ?? 0) * 2).toBe(DEFAULT_EXECUTION_TIMEOUT_SECONDS * 1000);
 		});
 
+		describe('and stays above the Session Timeout, which the library also requires', () => {
+			// librdkafka refuses max.poll.interval.ms < session.timeout.ms on the classic
+			// group protocol (rdkafka_conf.c:4257). Both values are individually legal, so
+			// only the pair is wrong, and the consumer refuses to connect.
+			it.each([
+				['a 20s workflow timeout against the 30s session default', 20, undefined, 30_000],
+				['a 5s workflow timeout', 5, undefined, 30_000],
+			])('raises %s to the session timeout', (_label, seconds, session, expectedFloor) => {
+				const logger = mock<Logger>();
+
+				const { rebalanceTimeout } = toConsumerOptions(
+					session === undefined ? {} : { sessionTimeout: session },
+					'g',
+					seconds,
+					logger,
+				);
+
+				expect((rebalanceTimeout ?? 0) * 2).toBeGreaterThanOrEqual(expectedFloor);
+				expect(logger.warn).toHaveBeenCalledWith(
+					expect.stringContaining('raised to the Session Timeout'),
+					expect.objectContaining({ appliedMs: expectedFloor }),
+				);
+			});
+
+			it('raises a too-small Rebalance Timeout option the same way', () => {
+				const { rebalanceTimeout } = toConsumerOptions({ rebalanceTimeout: 2_000 }, 'g', undefined);
+
+				expect((rebalanceTimeout ?? 0) * 2).toBeGreaterThanOrEqual(30_000);
+			});
+
+			it('respects a lowered Session Timeout instead of forcing the 30s default', () => {
+				const logger = mock<Logger>();
+
+				const { rebalanceTimeout, sessionTimeout } = toConsumerOptions(
+					{ sessionTimeout: 8_000 },
+					'g',
+					5,
+					logger,
+				);
+
+				// 5s of workflow timeout is below an 8s session, so 8s is the floor.
+				expect((rebalanceTimeout ?? 0) * 2).toBeGreaterThanOrEqual(sessionTimeout ?? 0);
+				expect((rebalanceTimeout ?? 0) * 2).toBe(8_000);
+			});
+
+			it('says nothing when the deadline already clears the session timeout', () => {
+				const logger = mock<Logger>();
+
+				toConsumerOptions({}, 'g', 600, logger);
+
+				expect(logger.warn).not.toHaveBeenCalled();
+			});
+		});
+
 		it('lets an explicitly set Rebalance Timeout win when there is no workflow timeout', () => {
 			const { rebalanceTimeout } = toConsumerOptions(
 				{ rebalanceTimeout: 120_000 },

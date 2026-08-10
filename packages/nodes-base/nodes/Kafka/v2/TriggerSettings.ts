@@ -294,7 +294,30 @@ export function toConsumerOptions(
 		deadlineMs = DEFAULT_EXECUTION_TIMEOUT_SECONDS * 1000;
 	}
 
-	const wanted = Math.ceil(deadlineMs / 2);
+	const sessionTimeout = options.sessionTimeout ?? DEFAULT_SESSION_TIMEOUT_MS;
+
+	// librdkafka refuses a `max.poll.interval.ms` below `session.timeout.ms`
+	// (`rdkafka_conf.c:4257`, on the classic group protocol we use), and the
+	// deadline becomes exactly that. A range check cannot catch it because both
+	// values are individually legal. Left alone, a workflow timeout under the 30s
+	// session default made the consumer refuse to connect, complaining about two
+	// numbers where the user only chose one.
+	// An unusable session timeout is left for librdkafka to reject by name, as the
+	// heartbeat clamp does. Flooring against it would turn the deadline into NaN
+	// and hide the value actually at fault behind a second complaint.
+	const sessionUsable = Number.isFinite(sessionTimeout) && sessionTimeout > 0;
+	const floored = sessionUsable ? Math.max(deadlineMs, sessionTimeout) : deadlineMs;
+	if (floored !== deadlineMs) {
+		logger?.warn(
+			'Kafka processing deadline raised to the Session Timeout, the shortest the library allows',
+			{ requestedMs: deadlineMs, appliedMs: floored, sessionTimeout },
+		);
+	}
+
+	const wanted = Math.ceil(floored / 2);
+	// Capped last: the ceiling exists to stop the doubled value overflowing a
+	// 32-bit int, which outranks the floor above. They cannot both bite, since a
+	// session timeout large enough to collide is one librdkafka already rejects.
 	const rebalanceTimeout = Math.min(wanted, MAX_REBALANCE_TIMEOUT_MS);
 	if (rebalanceTimeout !== wanted) {
 		logger?.warn('Kafka processing deadline capped at the largest the library accepts, 24 hours', {
@@ -302,8 +325,6 @@ export function toConsumerOptions(
 			appliedMs: rebalanceTimeout * 2,
 		});
 	}
-
-	const sessionTimeout = options.sessionTimeout ?? DEFAULT_SESSION_TIMEOUT_MS;
 
 	return {
 		groupId,
