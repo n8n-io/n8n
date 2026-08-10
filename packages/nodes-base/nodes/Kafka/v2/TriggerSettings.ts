@@ -62,6 +62,50 @@ const MAX_REBALANCE_TIMEOUT_MS = 43_200_000;
 const MAX_AUTO_COMMIT_INTERVAL_MS = 86_400_000;
 
 /**
+ * Kafka's own guidance, and the ratio both defaults already sit at: a heartbeat
+ * every 10s against a 30s session. Three beats fit inside one session, so two
+ * can be lost before the broker gives up on the consumer.
+ */
+const HEARTBEATS_PER_SESSION = 3;
+
+/**
+ * Keeps the heartbeat frequent enough for the session timeout it is paired with.
+ *
+ * The two options are independent in the UI but not in Kafka, and getting them
+ * wrong fails silently rather than loudly. Lower Session Timeout to 10s and
+ * leave the 10s heartbeat default alone, and the first beat lands exactly on the
+ * deadline: the broker fences the consumer, the uncommitted offset is lost, and
+ * the same message is redelivered forever with no error anywhere. Measured
+ * against a real broker: a workflow that takes 5s re-ran the same message every
+ * ~10s indefinitely.
+ *
+ * v1 has the same trap. Clamping is a deliberate improvement over it, and the
+ * safe direction is unambiguous, so it is applied rather than only warned about.
+ * @param heartbeatInterval - Resolved Heartbeat Interval, in milliseconds
+ * @param sessionTimeout - Resolved Session Timeout, in milliseconds
+ * @param logger - Warns when the supplied heartbeat had to be lowered
+ */
+function heartbeatWithinSession(
+	heartbeatInterval: number,
+	sessionTimeout: number,
+	logger?: Logger,
+): number {
+	// An unusable session timeout is left to librdkafka to reject by name.
+	if (!Number.isFinite(sessionTimeout) || sessionTimeout <= 0) return heartbeatInterval;
+
+	const largest = Math.floor(sessionTimeout / HEARTBEATS_PER_SESSION);
+	if (Number.isFinite(heartbeatInterval) && heartbeatInterval <= largest) {
+		return heartbeatInterval;
+	}
+
+	logger?.warn(
+		'Kafka Heartbeat Interval lowered to stay under a third of the Session Timeout, so the consumer is not dropped from its group',
+		{ supplied: heartbeatInterval, applied: largest, sessionTimeout },
+	);
+	return largest;
+}
+
+/**
  * A user-supplied millisecond value, or `undefined` to leave the library's own
  * default in place. Options can come from an expression, so a value that
  * librdkafka would reject is dropped with a warning rather than passed on: it
@@ -200,10 +244,16 @@ export function toConsumerOptions(
 		});
 	}
 
+	const sessionTimeout = options.sessionTimeout ?? DEFAULT_SESSION_TIMEOUT_MS;
+
 	return {
 		groupId,
-		sessionTimeout: options.sessionTimeout ?? DEFAULT_SESSION_TIMEOUT_MS,
-		heartbeatInterval: options.heartbeatInterval ?? DEFAULT_HEARTBEAT_INTERVAL_MS,
+		sessionTimeout,
+		heartbeatInterval: heartbeatWithinSession(
+			options.heartbeatInterval ?? DEFAULT_HEARTBEAT_INTERVAL_MS,
+			sessionTimeout,
+			logger,
+		),
 		rebalanceTimeout,
 		maxBytesPerPartition: options.fetchMaxBytes,
 		minBytes: options.fetchMinBytes,

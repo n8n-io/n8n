@@ -241,6 +241,86 @@ describe('toConsumerOptions', () => {
 		);
 	});
 
+	describe('Heartbeat Interval stays under a third of the Session Timeout', () => {
+		// The two options are independent in the UI but not in Kafka, and pairing them
+		// badly fails silently: the broker fences the consumer, the offset is never
+		// committed, and the same message is redelivered forever. Measured against a
+		// real broker with a 10s session and the 10s heartbeat default, a 5s workflow
+		// re-ran one message every ~10s indefinitely.
+		it('leaves the defaults alone, which already sit at the recommended ratio', () => {
+			const result = toConsumerOptions({}, 'g', undefined);
+
+			expect(result).toMatchObject({ sessionTimeout: 30_000, heartbeatInterval: 10_000 });
+		});
+
+		it('lowers the default heartbeat when the user shortens only the session timeout', () => {
+			const logger = mock<Logger>();
+
+			const result = toConsumerOptions({ sessionTimeout: 10_000 }, 'g', undefined, logger);
+
+			expect(result.heartbeatInterval).toBe(3_333);
+			expect(logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('Heartbeat Interval'),
+				expect.objectContaining({ supplied: 10_000, applied: 3_333, sessionTimeout: 10_000 }),
+			);
+		});
+
+		it.each([
+			[30_000, 10_000, 10_000],
+			[30_000, 3_000, 3_000],
+			[9_000, 3_000, 3_000],
+		])('leaves %ims / %ims as set, since it is within the ratio', (session, beat, expected) => {
+			const logger = mock<Logger>();
+
+			const result = toConsumerOptions(
+				{ sessionTimeout: session, heartbeatInterval: beat },
+				'g',
+				undefined,
+				logger,
+			);
+
+			expect(result.heartbeatInterval).toBe(expected);
+			expect(logger.warn).not.toHaveBeenCalled();
+		});
+
+		it.each([
+			[10_000, 20_000, 3_333],
+			[10_000, 10_000, 3_333],
+			[6_000, 6_000, 2_000],
+		])('clamps %ims / %ims down to %ims', (session, beat, expected) => {
+			const result = toConsumerOptions(
+				{ sessionTimeout: session, heartbeatInterval: beat },
+				'g',
+				undefined,
+			);
+
+			expect(result.heartbeatInterval).toBe(expected);
+		});
+
+		it.each([NaN, Infinity])('clamps a %s heartbeat rather than forwarding it', (beat) => {
+			const result = toConsumerOptions({ heartbeatInterval: beat }, 'g', undefined);
+
+			expect(result.heartbeatInterval).toBe(10_000);
+		});
+
+		it.each([0, -1, NaN])(
+			'leaves the heartbeat alone when the session timeout is %s, so librdkafka names the bad value',
+			(session) => {
+				const logger = mock<Logger>();
+
+				const result = toConsumerOptions(
+					{ sessionTimeout: session, heartbeatInterval: 10_000 },
+					'g',
+					undefined,
+					logger,
+				);
+
+				expect(result).toMatchObject({ sessionTimeout: session, heartbeatInterval: 10_000 });
+				expect(logger.warn).not.toHaveBeenCalled();
+			},
+		);
+	});
+
 	it('drops a zero Max Number of Requests instead of forwarding it', () => {
 		// v1 turns 0 into null to mean "no limit". The library has no such sentinel,
 		// and a present-but-undefined key makes librdkafka fail.

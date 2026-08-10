@@ -206,7 +206,7 @@ export const versionDescription: INodeTypeDescription = {
 					default: 10000,
 					description:
 						'Controls how often the consumer sends heartbeats to the broker to indicate it is still alive. Must be lower than Session Timeout. Recommended value is approximately one third of the Session Timeout (for example: 10s heartbeat with 30s session timeout).',
-					hint: 'Value in milliseconds',
+					hint: 'Value in milliseconds. Lowered automatically if it is more than a third of the Session Timeout.',
 				},
 				{
 					displayName: 'Max Number of Requests',
@@ -297,7 +297,7 @@ export const versionDescription: INodeTypeDescription = {
 					default: 30000,
 					description:
 						'Timeout in milliseconds used to detect failures. Has to be higher than Heartbeat Interval. During the workflow execution heartbeat will be sent periodically to keep the session alive with configured Heartbeat Interval.',
-					hint: 'Value in milliseconds',
+					hint: 'Value in milliseconds. Lowering this below three times the Heartbeat Interval will lower the heartbeat to match.',
 				},
 			],
 		},
