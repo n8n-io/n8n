@@ -1,0 +1,111 @@
+import type { IConnections, INode, IWorkflowGroup } from 'n8n-workflow';
+import { z } from 'zod';
+
+import { Z } from '../../zod-class';
+import { tagPublicSchema } from '../tag/tag-public.dto';
+
+// These fields can look different for every workflow, so we only check
+// whether each one is the right basic type (a list or an object), not what's
+// inside it. Checking more than that could reject real, already-saved
+// workflows that were created before this check existed.
+const nodesPublicSchema = z.custom<INode[]>((value) => Array.isArray(value), {
+	message: 'Nodes must be an array',
+});
+
+const connectionsPublicSchema = z.custom<IConnections>(
+	(value) => typeof value === 'object' && value !== null && !Array.isArray(value),
+	{ message: 'Connections must be an object' },
+);
+
+const nodeGroupsPublicSchema = z.custom<IWorkflowGroup[]>((value) => Array.isArray(value), {
+	message: 'Node groups must be an array',
+});
+
+const nullableObjectPublicSchema = z.custom<Record<string, unknown> | null>(
+	(value) => value === null || (typeof value === 'object' && !Array.isArray(value)),
+	{ message: 'Must be an object or null' },
+);
+
+const projectIconPublicSchema = z
+	.object({
+		type: z.enum(['emoji', 'icon']),
+		value: z.string(),
+	})
+	.nullable();
+
+const projectCustomTelemetryTagPublicSchema = z.object({
+	key: z.string(),
+	value: z.string(),
+});
+
+const workflowProjectPublicSchema = z.object({
+	id: z.string(),
+	name: z.string(),
+	type: z.enum(['personal', 'team']),
+	icon: projectIconPublicSchema,
+	description: z.string().nullable(),
+	customTelemetryTags: z.array(projectCustomTelemetryTagPublicSchema),
+	creatorId: z.string().nullable(),
+	createdAt: z.string().datetime(),
+	updatedAt: z.string().datetime(),
+});
+
+export const sharedWorkflowPublicSchema = z.object({
+	role: z.string(),
+	workflowId: z.string(),
+	projectId: z.string(),
+	project: workflowProjectPublicSchema,
+	createdAt: z.string().datetime(),
+	updatedAt: z.string().datetime(),
+});
+
+const workflowPublishHistoryPublicSchema = z.object({
+	id: z.number(),
+	workflowId: z.string(),
+	versionId: z.string().nullable(),
+	event: z.enum(['activated', 'deactivated']),
+	userId: z.string().nullable(),
+	createdAt: z.string().datetime(),
+});
+
+export const activeWorkflowVersionPublicSchema = z.object({
+	versionId: z.string(),
+	workflowId: z.string(),
+	nodes: nodesPublicSchema,
+	connections: connectionsPublicSchema,
+	nodeGroups: nodeGroupsPublicSchema,
+	authors: z.string(),
+	name: z.string().nullable(),
+	description: z.string().nullable(),
+	autosaved: z.boolean(),
+	createdAt: z.string().datetime(),
+	updatedAt: z.string().datetime(),
+	workflowPublishHistory: z.array(workflowPublishHistoryPublicSchema),
+});
+
+export const workflowPublicSchema = z.object({
+	id: z.string(),
+	name: z.string(),
+	description: z.string().nullable(),
+	active: z.boolean(),
+	activeVersionId: z.string().nullable(),
+	createdAt: z.string().datetime(),
+	updatedAt: z.string().datetime(),
+	isArchived: z.boolean(),
+	versionId: z.string(),
+	versionCounter: z.number(),
+	sourceWorkflowId: z.string().nullable(),
+	triggerCount: z.number(),
+	nodes: nodesPublicSchema,
+	connections: connectionsPublicSchema,
+	nodeGroups: nodeGroupsPublicSchema,
+	settings: nullableObjectPublicSchema,
+	staticData: nullableObjectPublicSchema,
+	pinData: nullableObjectPublicSchema.optional(),
+	meta: nullableObjectPublicSchema,
+	tags: z.array(tagPublicSchema).optional(),
+	shared: z.array(sharedWorkflowPublicSchema),
+	activeVersion: activeWorkflowVersionPublicSchema.nullable(),
+});
+
+export class WorkflowPublicDto extends Z.class(workflowPublicSchema.shape) {}

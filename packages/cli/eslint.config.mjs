@@ -127,7 +127,6 @@ export default defineConfig(
 			'./src/public-api/v1/handlers/users/users.handler.ee.ts',
 			'./src/public-api/v1/handlers/users/users.service.ee.ts',
 			'./src/public-api/v1/handlers/workflows/workflows.handler.ts',
-			'./src/public-api/v1/handlers/workflows/workflows.service.ts',
 		],
 		rules: {
 			'n8n-local-rules/no-repository-in-public-api-handler': 'off',

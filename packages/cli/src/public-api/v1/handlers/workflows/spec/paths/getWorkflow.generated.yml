@@ -1,0 +1,275 @@
+operationId: getWorkflow
+tags:
+  - Workflow
+summary: Retrieve a workflow
+description: Retrieve a workflow.
+x-required-scope: workflow:read
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+parameters:
+  - schema:
+      type: string
+    required: true
+    name: workflowId
+    in: path
+  - schema:
+      type: string
+      enum:
+        - 'true'
+        - 'false'
+      default: 'false'
+    required: false
+    name: excludePinnedData
+    in: query
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            id:
+              type: string
+            name:
+              type: string
+            description:
+              type: string
+              nullable: true
+            active:
+              type: boolean
+            activeVersionId:
+              type: string
+              nullable: true
+            createdAt:
+              type: string
+              format: date-time
+            updatedAt:
+              type: string
+              format: date-time
+            isArchived:
+              type: boolean
+            versionId:
+              type: string
+            versionCounter:
+              type: number
+            sourceWorkflowId:
+              type: string
+              nullable: true
+            triggerCount:
+              type: number
+            nodes: {}
+            connections: {}
+            nodeGroups: {}
+            settings:
+              nullable: true
+            staticData:
+              nullable: true
+            pinData:
+              nullable: true
+            meta:
+              nullable: true
+            tags:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  name:
+                    type: string
+                  createdAt:
+                    type: string
+                    format: date-time
+                  updatedAt:
+                    type: string
+                    format: date-time
+                required:
+                  - id
+                  - name
+                  - createdAt
+                  - updatedAt
+            shared:
+              type: array
+              items:
+                type: object
+                properties:
+                  role:
+                    type: string
+                  workflowId:
+                    type: string
+                  projectId:
+                    type: string
+                  project:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      name:
+                        type: string
+                      type:
+                        type: string
+                        enum:
+                          - personal
+                          - team
+                      icon:
+                        type: object
+                        nullable: true
+                        properties:
+                          type:
+                            type: string
+                            enum:
+                              - emoji
+                              - icon
+                          value:
+                            type: string
+                        required:
+                          - type
+                          - value
+                      description:
+                        type: string
+                        nullable: true
+                      customTelemetryTags:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            key:
+                              type: string
+                            value:
+                              type: string
+                          required:
+                            - key
+                            - value
+                      creatorId:
+                        type: string
+                        nullable: true
+                      createdAt:
+                        type: string
+                        format: date-time
+                      updatedAt:
+                        type: string
+                        format: date-time
+                    required:
+                      - id
+                      - name
+                      - type
+                      - icon
+                      - description
+                      - customTelemetryTags
+                      - creatorId
+                      - createdAt
+                      - updatedAt
+                  createdAt:
+                    type: string
+                    format: date-time
+                  updatedAt:
+                    type: string
+                    format: date-time
+                required:
+                  - role
+                  - workflowId
+                  - projectId
+                  - project
+                  - createdAt
+                  - updatedAt
+            activeVersion:
+              type: object
+              nullable: true
+              properties:
+                versionId:
+                  type: string
+                workflowId:
+                  type: string
+                nodes: {}
+                connections: {}
+                nodeGroups: {}
+                authors:
+                  type: string
+                name:
+                  type: string
+                  nullable: true
+                description:
+                  type: string
+                  nullable: true
+                autosaved:
+                  type: boolean
+                createdAt:
+                  type: string
+                  format: date-time
+                updatedAt:
+                  type: string
+                  format: date-time
+                workflowPublishHistory:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: number
+                      workflowId:
+                        type: string
+                      versionId:
+                        type: string
+                        nullable: true
+                      event:
+                        type: string
+                        enum:
+                          - activated
+                          - deactivated
+                      userId:
+                        type: string
+                        nullable: true
+                      createdAt:
+                        type: string
+                        format: date-time
+                    required:
+                      - id
+                      - workflowId
+                      - versionId
+                      - event
+                      - userId
+                      - createdAt
+              required:
+                - versionId
+                - workflowId
+                - nodes
+                - connections
+                - nodeGroups
+                - authors
+                - name
+                - description
+                - autosaved
+                - createdAt
+                - updatedAt
+                - workflowPublishHistory
+          required:
+            - id
+            - name
+            - description
+            - active
+            - activeVersionId
+            - createdAt
+            - updatedAt
+            - isArchived
+            - versionId
+            - versionCounter
+            - sourceWorkflowId
+            - triggerCount
+            - nodes
+            - connections
+            - nodeGroups
+            - settings
+            - staticData
+            - meta
+            - shared
+            - activeVersion
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
