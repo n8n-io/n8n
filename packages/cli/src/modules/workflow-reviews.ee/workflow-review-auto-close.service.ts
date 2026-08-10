@@ -42,11 +42,12 @@ export class WorkflowReviewAutoCloseService implements WorkflowMutationHooks {
 	}
 
 	/**
-	 * Closes reviews whose workflow is gone: the cascade took their link row, so they can
-	 * only be found by "open with nothing linked", not by workflow id. Catches reviews
-	 * opened after the pre-delete hook ran, and any left by a delete that skips the hooks.
+	 * Closes reviews whose workflow is gone: the cascade took their link rows, so they
+	 * can only be found by "open with nothing linked", not by workflow id — the sweep is
+	 * global and one call covers the whole batch. Catches reviews opened after the
+	 * pre-delete hooks ran, and any left by a delete that skips the hooks.
 	 */
-	async afterWorkflowDeleted(workflowId: string): Promise<void> {
+	async afterWorkflowsDeleted(workflowIds: string[]): Promise<void> {
 		try {
 			const closedRequestIds = await this.workflowReviewRequestRepository.closeOrphanedOpenRequests(
 				{},
@@ -56,14 +57,14 @@ export class WorkflowReviewAutoCloseService implements WorkflowMutationHooks {
 
 			this.logger.info('Closed workflow review request(s) left without a workflow', {
 				reason: 'workflow-deleted',
-				workflowId,
+				workflowIds,
 				workflowReviewRequestIds: closedRequestIds,
 			});
 		} catch (error) {
 			// The delete has already committed; failing it now would be worse than a
 			// request that stays open until the next sweep closes it.
 			this.logger.error('Failed to close workflow review request(s) left without a workflow', {
-				workflowId,
+				workflowIds,
 				error,
 			});
 		}

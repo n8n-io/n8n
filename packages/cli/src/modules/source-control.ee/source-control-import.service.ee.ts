@@ -1858,7 +1858,7 @@ export class SourceControlImportService {
 	 * regardless — so we do the physical cleanup directly beforehand. The
 	 * `beforeWorkflowDeleted` mutation hook fires here so modules can run their
 	 * pre-delete side effects (e.g. closing open review requests), and the
-	 * caller fires `afterWorkflowDeleted` once the cascade has run (see
+	 * caller fires `afterWorkflowsDeleted` once the cascade has run (see
 	 * {@link sweepAfterWorkflowCascade}) — but external hooks
 	 * (`workflow.delete`/`workflow.afterDelete`) and the `workflow-deleted`
 	 * event still don't fire, a pre-existing gap for any cascade-deleted
@@ -1898,15 +1898,14 @@ export class SourceControlImportService {
 	}
 
 	/**
-	 * Fire `afterWorkflowDeleted` once the folder/project row delete has
+	 * Fire `afterWorkflowsDeleted` once the folder/project row delete has
 	 * cascaded the given workflows away, mirroring `WorkflowService.delete`:
 	 * the sweep behind the hook closes review requests opened after the
-	 * pre-delete hooks ran and now left without a workflow. It searches
-	 * globally for such orphans, so one call covers the whole batch.
+	 * pre-delete hooks ran and now left without a workflow.
 	 */
 	private async sweepAfterWorkflowCascade(cascadedWorkflowIds: string[]) {
 		if (cascadedWorkflowIds.length === 0) return;
-		await this.workflowMutationHooks.afterWorkflowDeleted(cascadedWorkflowIds[0]);
+		await this.workflowMutationHooks.afterWorkflowsDeleted(cascadedWorkflowIds);
 	}
 
 	/** Contextual error for a failed deletion during pull, so the operator learns which resource to look at. */

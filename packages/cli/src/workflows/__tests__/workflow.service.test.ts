@@ -1847,21 +1847,21 @@ describe('WorkflowService', () => {
 		});
 
 		// It cleans up rows the cascade orphaned, which cannot be found until the row is gone.
-		test('runs the afterWorkflowDeleted lifecycle hook once the row is deleted', async () => {
+		test('runs the afterWorkflowsDeleted lifecycle hook once the row is deleted', async () => {
 			const workflow = makeWorkflowEntity({ isArchived: true, activeVersionId: null });
 			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(workflow);
 
 			await workflowService.delete(mock<User>(), WORKFLOW_ID, true);
 
-			expect(workflowMutationHooksMock.afterWorkflowDeleted).toHaveBeenCalledExactlyOnceWith(
+			expect(workflowMutationHooksMock.afterWorkflowsDeleted).toHaveBeenCalledExactlyOnceWith([
 				WORKFLOW_ID,
-			);
+			]);
 			expect(
-				workflowMutationHooksMock.afterWorkflowDeleted.mock.invocationCallOrder[0],
+				workflowMutationHooksMock.afterWorkflowsDeleted.mock.invocationCallOrder[0],
 			).toBeGreaterThan(workflowRepositoryMock.delete.mock.invocationCallOrder[0]);
 		});
 
-		test('does not run the afterWorkflowDeleted lifecycle hook when the deletion is aborted', async () => {
+		test('does not run the afterWorkflowsDeleted lifecycle hook when the deletion is aborted', async () => {
 			const workflow = makeWorkflowEntity({ isArchived: true, activeVersionId: null });
 			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(workflow);
 			workflowMutationHooksMock.beforeWorkflowDeleted.mockRejectedValue(new Error('db down'));
@@ -1870,7 +1870,7 @@ describe('WorkflowService', () => {
 				'db down',
 			);
 
-			expect(workflowMutationHooksMock.afterWorkflowDeleted).not.toHaveBeenCalled();
+			expect(workflowMutationHooksMock.afterWorkflowsDeleted).not.toHaveBeenCalled();
 		});
 
 		test('deletes the workflow executions before the workflow itself', async () => {
