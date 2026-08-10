@@ -10,8 +10,9 @@ import { Body, Get, GlobalScope, Licensed, Param, Patch, RestController } from '
 import { jsonParse } from 'n8n-workflow';
 
 import type { TrustedKeySourceEntity } from '@/modules/identity-substrate/database/entities/trusted-key-source.entity';
+import { TrustedKeySyncService } from '@/modules/identity-substrate/services/trusted-key-sync.service';
+import { TrustedKeyService } from '@/modules/identity-substrate/services/trusted-key.service';
 
-import { TrustedKeyService } from '../services/trusted-key.service';
 import type {
 	JwksKeySource,
 	StaticKeySource,
@@ -61,6 +62,7 @@ function sanitizeSource(source: TrustedKeySourceEntity): TrustedKeySource {
 export class TrustedKeySourceController {
 	constructor(
 		private readonly trustedKeyService: TrustedKeyService,
+		private readonly trustedKeySyncService: TrustedKeySyncService,
 		private readonly logger: Logger,
 	) {}
 
@@ -90,7 +92,7 @@ export class TrustedKeySourceController {
 		@Param('id') id: string,
 		@Body payload: UpdateTrustedKeySourceDto,
 	): Promise<TrustedKeySource> {
-		const updated = await this.trustedKeyService.updateSourcePolicy(id, payload.policy);
+		const updated = await this.trustedKeySyncService.updateSourcePolicy(id, payload.policy);
 
 		this.logger.info('Trusted key source policy updated', {
 			sourceId: id,
