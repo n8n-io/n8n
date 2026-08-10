@@ -5,6 +5,7 @@ import type { Router } from 'vue-router';
 
 import { VIEWS } from '@/app/constants';
 import { useSessionExpiryStore } from '@/app/stores/sessionExpiry.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { getSanitizedCurrentPath } from '@/app/utils/urlUtils';
 
 // Called on successful login so a future expiry is handled again.
@@ -38,6 +39,8 @@ export async function handleSessionExpired(router: Router, baseURL: string): Pro
 		return;
 	}
 	sessionExpiryStore.markHandled();
+
+	useUIStore().closeAllModals();
 
 	// Set before any `await` so the triggering request's own toast is suppressed too.
 	const notificationsStore = useNotificationsStore();
