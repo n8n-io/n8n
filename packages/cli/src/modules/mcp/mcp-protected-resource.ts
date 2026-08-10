@@ -7,11 +7,10 @@ import { BUILDER_TOOLS, TOOLS_BY_SCOPE } from './mcp-scopes';
 import { areAgentToolsAvailable } from './mcp-tool-availability';
 import { McpConfig } from './mcp.config';
 import { McpSettingsService } from './mcp.settings.service';
+import { INSTANCE_MCP_RESOURCE_ID } from '@/modules/oauth-server/constants';
 import type { ProtectedResource } from '@/services/protected-resource.registry';
 import { UrlService } from '@/services/url.service';
 import type { User } from '@n8n/db';
-
-export const INSTANCE_MCP_RESOURCE_ID = 'instance-mcp';
 
 /**
  * Scopes a user can grant on the consent screen. Enforced per-tool via the
