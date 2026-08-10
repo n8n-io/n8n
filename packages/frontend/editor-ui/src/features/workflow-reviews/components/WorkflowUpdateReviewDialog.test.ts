@@ -64,6 +64,8 @@ const renderComponent = createComponentRenderer(WorkflowUpdateReviewDialog, {
 const renderDialog = async ({
 	flushSave = vi.fn().mockResolvedValue(SAVED_VERSION_ID),
 	seedOpenReview = true,
+	reviewData = openReview,
+	canSubmit = true,
 	versionData = {
 		versionId: SAVED_VERSION_ID,
 		name: null,
@@ -78,7 +80,7 @@ const renderDialog = async ({
 	documentStore.setVersionData(versionData);
 	const reviewStatusStore = useWorkflowReviewStatusStore(pinia);
 	if (seedOpenReview) {
-		vi.mocked(fetchWorkflowReviewRequests).mockResolvedValue({ count: 1, data: [openReview] });
+		vi.mocked(fetchWorkflowReviewRequests).mockResolvedValue({ count: 1, data: [reviewData] });
 		await reviewStatusStore.fetchStatus('workflow-1');
 	} else {
 		vi.mocked(fetchWorkflowReviewRequests).mockResolvedValue({ count: 0, data: [] });
@@ -89,6 +91,7 @@ const renderDialog = async ({
 		open: false,
 		workflowId: 'workflow-1',
 		flushSave,
+		canSubmit,
 	};
 	const result = renderComponent({ pinia, props });
 	await result.rerender({ ...props, open: true });
@@ -154,6 +157,27 @@ describe('WorkflowUpdateReviewDialog', () => {
 		expect(fetchStatusSpy).toHaveBeenCalledWith('workflow-1');
 		expect(emitted('updated')).toHaveLength(1);
 		expect(emitted('update:open')).toContainEqual([false]);
+		expect(mockShowError).not.toHaveBeenCalled();
+	});
+
+	it('disables submission when the caller knows the review is up to date', async () => {
+		const { getByTestId, flushSave } = await renderDialog({ canSubmit: false });
+
+		expect(getByTestId('workflow-update-review-submit-button')).toBeDisabled();
+		expect(flushSave).not.toHaveBeenCalled();
+	});
+
+	it('closes without updating when saving resolves to the reviewed version', async () => {
+		const { getByTestId, flushSave, emitted } = await renderDialog({
+			reviewData: { ...openReview, workflowVersionId: SAVED_VERSION_ID },
+		});
+
+		await userEvent.click(getByTestId('workflow-update-review-submit-button'));
+
+		await waitFor(() => expect(emitted('update:open')).toContainEqual([false]));
+		expect(flushSave).toHaveBeenCalledOnce();
+		expect(updateWorkflowReviewRequestVersion).not.toHaveBeenCalled();
+		expect(emitted('updated')).toBeUndefined();
 		expect(mockShowError).not.toHaveBeenCalled();
 	});
 

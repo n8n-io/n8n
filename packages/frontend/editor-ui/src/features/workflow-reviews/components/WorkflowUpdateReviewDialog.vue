@@ -18,11 +18,15 @@ import { WORKFLOW_REVIEW_REQUESTS_VIEW } from '@/features/workflow-reviews/const
 import { useWorkflowReviewStatusStore } from '@/features/workflow-reviews/reviewStatus.store';
 import { updateWorkflowReviewRequestVersion } from '@/features/workflow-reviews/workflowReviews.api';
 
-const props = defineProps<{
-	open: boolean;
-	workflowId: string;
-	flushSave: () => Promise<string | undefined>;
-}>();
+const props = withDefaults(
+	defineProps<{
+		open: boolean;
+		workflowId: string;
+		flushSave: () => Promise<string | undefined>;
+		canSubmit?: boolean;
+	}>(),
+	{ canSubmit: true },
+);
 
 const emit = defineEmits<{
 	'update:open': [value: boolean];
@@ -47,7 +51,7 @@ const workflowReviewRequestId = computed(
 );
 
 const isSubmitDisabled = computed(
-	() => isSubmitting.value || versionName.value.trim().length === 0,
+	() => isSubmitting.value || !props.canSubmit || versionName.value.trim().length === 0,
 );
 
 watch(
@@ -63,13 +67,13 @@ const close = () => {
 };
 
 /** The open review may have been closed elsewhere in the meantime — refetch once before giving up. */
-const resolveOpenReviewRequestId = async (workflowId: string): Promise<string | undefined> => {
+const resolveOpenReviewRequest = async (workflowId: string) => {
 	let request = reviewStatusStore.openReviewRequest(workflowId);
 	if (!request) {
 		await reviewStatusStore.fetchStatus(workflowId);
 		request = reviewStatusStore.openReviewRequest(workflowId);
 	}
-	return request?.id;
+	return request;
 };
 
 const submit = async () => {
@@ -97,8 +101,8 @@ const submit = async () => {
 			return;
 		}
 
-		const workflowReviewRequestId = await resolveOpenReviewRequestId(workflowId);
-		if (!workflowReviewRequestId) {
+		const openReviewRequest = await resolveOpenReviewRequest(workflowId);
+		if (!openReviewRequest) {
 			toast.showError(
 				new Error(i18n.baseText('workflowReviews.updateReview.error.noOpenReview')),
 				i18n.baseText('workflowReviews.updateReview.error.title'),
@@ -106,8 +110,12 @@ const submit = async () => {
 			emit('update:open', false);
 			return;
 		}
+		if (openReviewRequest.workflowVersionId === workflowVersionId) {
+			emit('update:open', false);
+			return;
+		}
 
-		await updateWorkflowReviewRequestVersion(rootStore.restApiContext, workflowReviewRequestId, {
+		await updateWorkflowReviewRequestVersion(rootStore.restApiContext, openReviewRequest.id, {
 			workflowId,
 			workflowVersionId,
 			workflowVersionName: trimmedVersionName,
