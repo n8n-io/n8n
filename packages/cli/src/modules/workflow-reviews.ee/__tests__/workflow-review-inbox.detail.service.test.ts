@@ -154,13 +154,29 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 			expect(detail.workflows[0]).toMatchObject({ workflowId, workflowName: 'My workflow' });
 		});
 
-		// A covered workflow is removed along with the workflow itself, so a review can end up with none
-		it('returns no workflows when the review no longer covers any', async () => {
+		// A covered workflow is removed along with the workflow itself, so a closed
+		// review — history of a deleted workflow — can legitimately cover none
+		it('returns a closed review with no workflows when its workflow was deleted', async () => {
+			requestRepository.findById.mockResolvedValue(reviewRequest({ state: 'closed' }));
+			workflowRepository.findLinkedWorkflowDetailsByRequestId.mockResolvedValue([]);
+
 			const detail = await service.getDetail(requester, requestId);
 
 			expect(detail.workflows).toEqual([]);
 			expect(detail.workflowName).toBeNull();
 			expect(detail.workflowVersionId).toBeNull();
+		});
+
+		// An open review can transiently cover no workflow when a delete orphaned
+		// it and the sweep hasn't closed it yet — it stays readable until then
+		it('returns an open review with no workflows when its workflow was deleted', async () => {
+			workflowRepository.findLinkedWorkflowDetailsByRequestId.mockResolvedValue([]);
+
+			const detail = await service.getDetail(requester, requestId);
+
+			expect(detail.state).toBe('open');
+			expect(detail.workflows).toEqual([]);
+			expect(detail.workflowName).toBeNull();
 		});
 	});
 
@@ -210,7 +226,10 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 			expect(detail.viewerDecisionIneligibilityReason).toBe('missing_publish_permission');
 		});
 
-		it('passes no workflow id when the review no longer covers any workflow', async () => {
+		it('passes no workflow id when a closed review no longer covers any workflow', async () => {
+			requestRepository.findById.mockResolvedValue(reviewRequest({ state: 'closed' }));
+			workflowRepository.findLinkedWorkflowDetailsByRequestId.mockResolvedValue([]);
+
 			await service.getDetail(requester, requestId);
 
 			expect(eligibilityService.resolveViewerEligibility).toHaveBeenCalledWith(

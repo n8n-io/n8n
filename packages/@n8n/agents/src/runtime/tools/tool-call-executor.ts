@@ -1,4 +1,3 @@
-import { toJsonValue } from '@n8n/utils/json/to-json-value';
 import { zodToJsonSchema, type JsonSchema7Type } from 'zod-to-json-schema';
 
 import {
@@ -7,6 +6,11 @@ import {
 } from './delegate-sub-agent-tool';
 import { DEFAULT_SUB_AGENT_MAX_CHILDREN } from './sub-agent-task-path';
 import { executeTool, isSuspendedToolResult, type SuspendedToolResult } from './tool-adapter';
+import {
+	guardToolErrorForModel,
+	guardToolMessageForModel,
+	guardToolResultForModel,
+} from './tool-result-guard';
 import { isAbortError, raceWithAbort } from '../../sdk/abort';
 import { isCancellation } from '../../sdk/cancellation';
 import { isLlmMessage } from '../../sdk/message';
@@ -24,8 +28,10 @@ import type { JSONObject, JSONValue } from '../../types/utils/json';
 import { parseWithSchema } from '../../utils/parse';
 import { isZodSchema } from '../../utils/zod';
 import { incrementToolCallCount } from '../loop/execution-counter';
+import { stringifyError } from '../loop/runtime-helpers';
 import type { AgentMessageList } from '../model/message-list';
 import { normalizeToolInputForModel } from '../model/messages';
+import type { TokenCounter } from '../model/model-token-counter';
 import type { AgentEventBus } from '../state/event-bus';
 import type { RuntimeTelemetry } from '../telemetry/runtime-telemetry';
 
@@ -176,6 +182,7 @@ export interface ToolCallExecutorDeps {
 	concurrency: number;
 	/** Invoked when a run is aborted mid-batch so the runtime can set cancelled state. */
 	onCancelled: () => void;
+	tokenCounter: TokenCounter;
 }
 
 /**
@@ -658,7 +665,7 @@ export class ToolCallExecutor {
 		const builtTool = toolMap.get(toolName);
 
 		if (!builtTool) {
-			return this.toolError(params, new Error(`Tool ${toolName} not found`));
+			return await this.toolError(params, new Error(`Tool ${toolName} not found`));
 		}
 
 		// Already settled by the AI SDK (e.g. provider-executed tools): emit the
@@ -738,14 +745,14 @@ export class ToolCallExecutor {
 				this.deps.onCancelled();
 				return this.buildCancelledOutcome(params, 'Run aborted');
 			}
-			return this.toolError(params, error as Error);
+			return await this.toolError(params, error as Error);
 		}
 
 		if (isSuspendedToolResult(toolResult)) {
 			return await this.buildSuspendedOutcome(params, builtTool, toolResult);
 		}
 
-		return this.buildSuccessOutcome(params, builtTool, input, toolResult);
+		return await this.buildSuccessOutcome(params, builtTool, input, toolResult);
 	}
 
 	private async runCancellationCleanup(
@@ -842,7 +849,7 @@ export class ToolCallExecutor {
 	}
 
 	/** Emit a failed ToolExecutionEnd, record the error on the list, return an error outcome. */
-	private toolError(params: ProcessToolCallParams, error: unknown): ToolCallOutcome {
+	private async toolError(params: ProcessToolCallParams, error: unknown): Promise<ToolCallOutcome> {
 		this.eventBus.emit({
 			type: AgentEvent.ToolExecutionEnd,
 			toolCallId: params.toolCallId,
@@ -850,7 +857,10 @@ export class ToolCallExecutor {
 			result: error,
 			isError: true,
 		});
-		params.list.setToolCallError(params.toolCallId, error);
+		params.list.setToolCallError(
+			params.toolCallId,
+			await guardToolErrorForModel(stringifyError(error), this.deps.tokenCounter),
+		);
 		return { outcome: 'error', error };
 	}
 
@@ -919,7 +929,7 @@ export class ToolCallExecutor {
 		if (!result.success) {
 			return {
 				ok: false,
-				outcome: this.toolError(params, new Error(`Invalid tool input: ${result.error}`)),
+				outcome: await this.toolError(params, new Error(`Invalid tool input: ${result.error}`)),
 			};
 		}
 		return { ok: true, input: result.data as JSONValue };
@@ -978,13 +988,19 @@ export class ToolCallExecutor {
 		if (builtTool.suspendSchema) {
 			const parseResult = await parseWithSchema(builtTool.suspendSchema, toolResult.payload);
 			if (!parseResult.success) {
-				return this.toolError(params, new Error(`Invalid suspend payload: ${parseResult.error}`));
+				return await this.toolError(
+					params,
+					new Error(`Invalid suspend payload: ${parseResult.error}`),
+				);
 			}
 			toolResult.payload = parseResult.data as JSONValue;
 		}
 		const resumeSchema = getToolResumeJsonSchema(builtTool, toolResult.resumeSchema);
 		if (!resumeSchema) {
-			return this.toolError(params, new Error(`Tool ${params.toolName} has no resume schema`));
+			return await this.toolError(
+				params,
+				new Error(`Tool ${params.toolName} has no resume schema`),
+			);
 		}
 		return {
 			outcome: 'suspended',
@@ -995,12 +1011,12 @@ export class ToolCallExecutor {
 	}
 
 	/** Apply toModelOutput, emit ToolExecutionEnd, build the success outcome. */
-	private buildSuccessOutcome(
+	private async buildSuccessOutcome(
 		params: ProcessToolCallParams,
 		builtTool: BuiltTool,
 		input: JSONValue,
 		toolResult: unknown,
-	): ToolCallOutcome {
+	): Promise<ToolCallOutcome> {
 		const { toolCallId, toolName, list } = params;
 
 		// Apply toModelOutput transform before emitting the success event.
@@ -1010,8 +1026,9 @@ export class ToolCallExecutor {
 		try {
 			modelResult = builtTool.toModelOutput ? builtTool.toModelOutput(toolResult) : toolResult;
 		} catch (error) {
-			return this.toolError(params, error);
+			return await this.toolError(params, error);
 		}
+		const guardedResult = await guardToolResultForModel(modelResult, this.deps.tokenCounter);
 
 		this.eventBus.emit({
 			type: AgentEvent.ToolExecutionEnd,
@@ -1021,11 +1038,14 @@ export class ToolCallExecutor {
 			isError: false,
 		});
 
-		list.setToolCallResult(toolCallId, toJsonValue(modelResult));
+		list.setToolCallResult(toolCallId, guardedResult.historyOutput);
 
 		const customMessage = builtTool.toMessage?.(toolResult);
-		if (customMessage) {
-			list.addResponse([customMessage]);
+		const guardedCustomMessage = customMessage
+			? await guardToolMessageForModel(customMessage, this.deps.tokenCounter)
+			: undefined;
+		if (guardedCustomMessage) {
+			list.addResponse([guardedCustomMessage]);
 		}
 
 		return {
@@ -1036,8 +1056,8 @@ export class ToolCallExecutor {
 				output: toolResult,
 				transformed: !!builtTool.toModelOutput,
 			},
-			modelOutput: modelResult,
-			customMessage,
+			modelOutput: guardedResult.wireOutput,
+			customMessage: guardedCustomMessage,
 		};
 	}
 }

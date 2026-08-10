@@ -25,6 +25,9 @@
       "http-proxy-agent": [
         "dist/esm/utils/http-proxy-agent.d.ts"
       ],
+      "tokenizer": [
+        "dist/esm/utils/tokenizer/tiktoken.d.ts"
+      ],
       "web-search": [
         "dist/esm/web-search/index.d.ts"
       ],
@@ -68,6 +71,11 @@
       "types": "./dist/esm/utils/http-proxy-agent.d.ts",
       "import": "./dist/esm/utils/http-proxy-agent.js",
       "require": "./dist/cjs/utils/http-proxy-agent.js"
+    },
+    "./tokenizer": {
+      "types": "./dist/esm/utils/tokenizer/tiktoken.d.ts",
+      "import": "./dist/esm/utils/tokenizer/tiktoken.js",
+      "require": "./dist/cjs/utils/tokenizer/tiktoken.js"
     },
     "./web-search": {
       "types": "./dist/esm/web-search/index.d.ts",
