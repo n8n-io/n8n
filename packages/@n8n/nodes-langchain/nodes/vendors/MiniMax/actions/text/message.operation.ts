@@ -31,8 +31,9 @@ const properties: INodeProperties[] = [
 			{ name: 'MiniMax-M2.5-Highspeed', value: 'MiniMax-M2.5-highspeed' },
 			{ name: 'MiniMax-M2.7', value: 'MiniMax-M2.7' },
 			{ name: 'MiniMax-M2.7-Highspeed', value: 'MiniMax-M2.7-highspeed' },
+			{ name: 'MiniMax-M3', value: 'MiniMax-M3' },
 		],
-		default: 'MiniMax-M2.7',
+		default: 'MiniMax-M3',
 		description: 'The model to use for generating the response',
 	},
 	{
@@ -223,7 +224,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		body.tools = tools;
 	}
 
-	let response = (await apiRequest.call(this, 'POST', '/chat/completions', {
+	let response = (await apiRequest.call(this, 'POST', '/v1/chat/completions', {
 		body,
 	})) as ChatCompletionResponse;
 
@@ -267,7 +268,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		await handleToolUse.call(this, choice.message.tool_calls, messages, connectedTools);
 		currentIteration++;
 
-		response = (await apiRequest.call(this, 'POST', '/chat/completions', {
+		response = (await apiRequest.call(this, 'POST', '/v1/chat/completions', {
 			body,
 		})) as ChatCompletionResponse;
 

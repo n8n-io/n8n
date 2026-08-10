@@ -42,7 +42,7 @@ describe('LmChatMinimax', () => {
 		});
 		ctx.getNode = vi.fn().mockReturnValue(nodeDef);
 		ctx.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
-			if (paramName === 'model') return 'MiniMax-M2.7';
+			if (paramName === 'model') return 'MiniMax-M3';
 			if (paramName === 'options') return {};
 			return undefined;
 		});
@@ -78,6 +78,17 @@ describe('LmChatMinimax', () => {
 			expect(node.description.outputs).toEqual(['ai_languageModel']);
 			expect(node.description.outputNames).toEqual(['Model']);
 		});
+
+		it('should default to MiniMax-M3', () => {
+			const modelProperty = node.description.properties.find(
+				(property) => property?.name === 'model',
+			);
+
+			expect(modelProperty).toMatchObject({
+				default: 'MiniMax-M3',
+				options: expect.arrayContaining([{ name: 'MiniMax-M3', value: 'MiniMax-M3' }]),
+			});
+		});
 	});
 
 	describe('supplyData', () => {
@@ -90,7 +101,7 @@ describe('LmChatMinimax', () => {
 			expect(MockedChatOpenAI).toHaveBeenCalledWith(
 				expect.objectContaining({
 					apiKey: 'test-minimax-key',
-					model: 'MiniMax-M2.7',
+					model: 'MiniMax-M3',
 					maxRetries: 2,
 					callbacks: expect.arrayContaining([expect.any(Object)]),
 					onFailedAttempt: expect.any(Function),

@@ -4,10 +4,10 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
-import { NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
+import { updateDisplayOptions } from 'n8n-workflow';
 
-import type { VideoGenerationResponse } from '../../helpers/interfaces';
-import { apiRequest, getVideoDownloadUrl, pollVideoTask } from '../../transport';
+import { generateVideo } from '../../transport';
+import { assertH3Prompt, H3_MODEL, h3VideoProperties, prepareVideoOutput } from './helpers';
 
 const properties: INodeProperties[] = [
 	{
@@ -16,9 +16,14 @@ const properties: INodeProperties[] = [
 		type: 'options',
 		options: [
 			{
+				name: H3_MODEL,
+				value: H3_MODEL,
+				description: 'Latest multimodal video generation model',
+			},
+			{
 				name: 'MiniMax-Hailuo-2.3',
 				value: 'MiniMax-Hailuo-2.3',
-				description: 'Latest video generation model with enhanced realism',
+				description: 'Hailuo 2.3 video generation model with enhanced realism',
 			},
 			{
 				name: 'MiniMax-Hailuo-02',
@@ -36,7 +41,7 @@ const properties: INodeProperties[] = [
 				description: 'Standard text-to-video model',
 			},
 		],
-		default: 'MiniMax-Hailuo-2.3',
+		default: H3_MODEL,
 		description: 'The model to use for video generation',
 	},
 	{
@@ -51,7 +56,13 @@ const properties: INodeProperties[] = [
 		description:
 			'Text description of the video (max 2000 characters). Camera movements can be controlled using [command] syntax, e.g. [Push in], [Pan left].',
 		placeholder: 'e.g. A cat playing with a ball of yarn [Static shot]',
+		displayOptions: {
+			hide: {
+				modelId: [H3_MODEL],
+			},
+		},
 	},
+	...h3VideoProperties,
 	{
 		displayName: 'Duration (Seconds)',
 		name: 'duration',
@@ -62,6 +73,11 @@ const properties: INodeProperties[] = [
 		],
 		default: 6,
 		description: 'Duration of the generated video',
+		displayOptions: {
+			hide: {
+				modelId: [H3_MODEL],
+			},
+		},
 	},
 	{
 		displayName: 'Resolution',
@@ -74,6 +90,31 @@ const properties: INodeProperties[] = [
 		],
 		default: '768P',
 		description: 'Resolution of the generated video. Available options depend on the model.',
+		displayOptions: {
+			hide: {
+				modelId: [H3_MODEL],
+			},
+		},
+	},
+	{
+		displayName: 'Aspect Ratio',
+		name: 'ratio',
+		type: 'options',
+		options: [
+			{ name: '1:1', value: '1:1' },
+			{ name: '16:9', value: '16:9' },
+			{ name: '21:9', value: '21:9' },
+			{ name: '3:4', value: '3:4' },
+			{ name: '4:3', value: '4:3' },
+			{ name: '9:16', value: '9:16' },
+		],
+		default: '16:9',
+		description: 'Aspect ratio of the generated video',
+		displayOptions: {
+			show: {
+				modelId: [H3_MODEL],
+			},
+		},
 	},
 	{
 		displayName: 'Download Video',
@@ -89,6 +130,11 @@ const properties: INodeProperties[] = [
 		placeholder: 'Add Option',
 		type: 'collection',
 		default: {},
+		displayOptions: {
+			hide: {
+				modelId: [H3_MODEL],
+			},
+		},
 		options: [
 			{
 				displayName: 'Prompt Optimizer',
@@ -116,77 +162,36 @@ export async function execute(
 ): Promise<INodeExecutionData[]> {
 	const model = this.getNodeParameter('modelId', itemIndex) as string;
 	const prompt = this.getNodeParameter('prompt', itemIndex) as string;
-	const duration = this.getNodeParameter('duration', itemIndex) as number;
-	const resolution = this.getNodeParameter('resolution', itemIndex) as string;
 	const downloadVideo = this.getNodeParameter('downloadVideo', itemIndex, true) as boolean;
-	const options = this.getNodeParameter('options', itemIndex, {}) as {
-		promptOptimizer?: boolean;
-	};
+	const isH3 = model === H3_MODEL;
 
-	const body: IDataObject = {
-		model,
-		prompt,
-		duration,
-		resolution,
-	};
+	let body: IDataObject;
+	if (isH3) {
+		assertH3Prompt(this, prompt);
+		const ratio = this.getNodeParameter('ratio', itemIndex) as string;
+		body = {
+			model,
+			content: [{ type: 'text', text: prompt }],
+			duration: this.getNodeParameter('h3Duration', itemIndex) as number,
+			resolution: this.getNodeParameter('h3Resolution', itemIndex) as string,
+			ratio,
+		};
+	} else {
+		const options = this.getNodeParameter('options', itemIndex, {}) as {
+			promptOptimizer?: boolean;
+		};
+		body = {
+			model,
+			prompt,
+			duration: this.getNodeParameter('duration', itemIndex) as number,
+			resolution: this.getNodeParameter('resolution', itemIndex) as string,
+		};
 
-	if (options.promptOptimizer !== undefined) {
-		body.prompt_optimizer = options.promptOptimizer;
+		if (options.promptOptimizer !== undefined) {
+			body.prompt_optimizer = options.promptOptimizer;
+		}
 	}
 
-	const createResponse = (await apiRequest.call(this, 'POST', '/video_generation', {
-		body,
-	})) as VideoGenerationResponse;
-
-	if (createResponse.base_resp?.status_code !== 0) {
-		throw new NodeOperationError(
-			this.getNode(),
-			`Failed to create video task: ${createResponse.base_resp?.status_msg || 'Unknown error'}`,
-		);
-	}
-
-	const taskId = createResponse.task_id;
-	if (!taskId) {
-		throw new NodeOperationError(
-			this.getNode(),
-			'No task_id returned from video generation request',
-		);
-	}
-
-	const { fileId } = await pollVideoTask.call(this, taskId);
-	const videoUrl = await getVideoDownloadUrl.call(this, fileId);
-
-	const jsonData: IDataObject = {
-		videoUrl,
-		taskId,
-		fileId,
-	};
-
-	if (downloadVideo && videoUrl) {
-		const videoResponse = await this.helpers.httpRequest({
-			method: 'GET',
-			url: videoUrl,
-			encoding: 'arraybuffer',
-			returnFullResponse: true,
-		});
-
-		const contentType = (videoResponse.headers?.['content-type'] as string) || 'video/mp4';
-		const fileContent = Buffer.from(videoResponse.body as ArrayBuffer);
-		const binaryData = await this.helpers.prepareBinaryData(fileContent, 'video.mp4', contentType);
-
-		return [
-			{
-				binary: { data: binaryData },
-				json: jsonData,
-				pairedItem: { item: itemIndex },
-			},
-		];
-	}
-
-	return [
-		{
-			json: jsonData,
-			pairedItem: { item: itemIndex },
-		},
-	];
+	const result = await generateVideo.call(this, isH3 ? 'v2' : 'v1', body);
+	return await prepareVideoOutput(this, itemIndex, result, downloadVideo);
 }
