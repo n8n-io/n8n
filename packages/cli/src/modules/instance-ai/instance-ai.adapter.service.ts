@@ -77,10 +77,7 @@ import {
 	pruneUnreachedVerificationPinData,
 	sdkPinDataToRuntime,
 } from './instance-ai-run-pin-data';
-import {
-	resolveBuiltinNodeDefinitionDirs,
-	listNodeDiscriminators,
-} from './node-definition-resolver';
+import { listNodeDiscriminators } from './node-definition-resolver';
 import { fetchAndExtract, maybeSummarize, LRUCache } from './web-research';
 import {
 	AiBuilderTemporaryWorkflowRepository,
@@ -148,6 +145,7 @@ import { MCP_REGISTRY_PACKAGE_NAME } from '@/modules/mcp-registry/node-descripti
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { userHasScopes } from '@/permissions.ee/check-access';
+import { resolveBuiltinNodeDefinitionDirs } from '@/utils/node-definition-dirs';
 import type { AiGatewayConfigDto } from '@n8n/api-types';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import { FolderService } from '@/services/folder.service';

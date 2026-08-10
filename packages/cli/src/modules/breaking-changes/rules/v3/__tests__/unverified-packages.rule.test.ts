@@ -1,11 +1,14 @@
 import { mock } from 'vitest-mock-extended';
 
-import type { CommunityPackagesConfig } from '../../../../community-packages/community-packages.config';
-import { UnverifiedPackagesRule } from '../unverified-packages.rule';
+import {
+	type CommunityPackagesEnabledConfig,
+	UnverifiedPackagesRule,
+} from '../unverified-packages.rule';
 
 describe('UnverifiedPackagesRule', () => {
 	let rule: UnverifiedPackagesRule;
-	const communityPackagesConfig: CommunityPackagesConfig = mock<CommunityPackagesConfig>();
+	const communityPackagesConfig: CommunityPackagesEnabledConfig =
+		mock<CommunityPackagesEnabledConfig>();
 	const originalEnv = process.env;
 
 	beforeEach(() => {
