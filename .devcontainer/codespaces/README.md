@@ -25,6 +25,7 @@ and Playwright system deps, on the same Postgres sidecar setup.
 pnpm session              # attach the default agent session (creates everything on first run)
 pnpm session fix-flaky    # a second, parallel agent in its own git worktree
 pnpm session ls           # what's running
+pnpm session tunnel       # forward n8n ports (default 5678, 8080) to localhost; Ctrl-C to stop
 pnpm session stop         # end of day: billing stops, disk survives
 pnpm session rm           # delete the codespace
 ```
@@ -36,6 +37,27 @@ pnpm session rm           # delete the codespace
   in fresh worktrees are cache-hits via a shared turbo cache.
 - First codespace creation takes ~20 min uncached (image + full build). After
   that, sessions attach instantly; new worktrees cost a `pnpm install` (~1–2 min).
+
+## Viewing the dev UI locally
+
+Two terminal windows:
+
+```bash
+pnpm session          # window 1: attach the agent session
+pnpm session tunnel   # window 2: forward 5678 + 8080 to localhost
+```
+
+Attaching lands you in the agent (Claude), not a shell — open a shell in a
+new tmux window with `Ctrl-b c` (or ask the agent) and run `pnpm dev` there.
+Then open http://localhost:8080.
+
+The tunnel prints nothing while forwarding — that's normal. `Connection
+refused` means nothing is listening on that port in the codespace yet; it
+starts serving as soon as `pnpm dev` is up, no restart needed. Pass ports to
+override the defaults (`pnpm session tunnel 5678 8080 5679`), but always
+forward the pair together with matching numbers: the Vite dev UI points its
+API base at `localhost:5678` (the `N8N_PORT` default), so an asymmetric or
+partial mapping breaks it.
 
 ## What survives what
 

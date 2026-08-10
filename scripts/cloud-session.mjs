@@ -6,6 +6,7 @@
 //   pnpm session            attach the default session (main checkout, /workspaces/n8n)
 //   pnpm session <name>     attach a named session in its own worktree (/workspaces/wt-<name>)
 //   pnpm session ls         list codespaces and the tmux sessions inside
+//   pnpm session tunnel [port…]  forward ports (default 5678, 8080) to localhost; Ctrl-C to stop
 //   pnpm session stop       stop the codespace (compute billing stops; disk survives)
 //   pnpm session rm         delete the codespace
 import { execFileSync, spawnSync } from 'node:child_process';
@@ -73,6 +74,34 @@ switch (cmd) {
 		if (cs.state === 'Available') {
 			ghTty('codespace', 'ssh', '-c', cs.name, '--', 'tmux ls 2>/dev/null || echo "  no active sessions"');
 		}
+		break;
+	}
+	case 'tunnel': {
+		// Local ports must match remote ones: the Vite dev UI (8080) points its API
+		// base at localhost:5678 (N8N_PORT's default), so an asymmetric or partial
+		// mapping breaks it.
+		const ports = rest.length ? rest : ['5678', '8080'];
+		if (ports.some((p) => !/^\d+$/.test(p) || +p < 1 || +p > 65535)) {
+			console.error(`Ports must be 1-65535, got: ${ports.join(' ')}`);
+			process.exit(1);
+		}
+		const cs = findCodespace();
+		if (!cs) {
+			console.log(`No codespace on ${REPO}. Run \`pnpm session\` first.`);
+			break;
+		}
+		if (cs.state !== 'Available') {
+			console.error(`${cs.name} is ${cs.state} — run \`pnpm session\` to start it first.`);
+			process.exit(1);
+		}
+		console.log(`Forwarding ${ports.map((p) => `localhost:${p}`).join(', ')} from ${cs.name} — Ctrl-C to stop…`);
+		// ssh -L over `gh codespace ports forward`: gh binds all interfaces (LAN-exposed),
+		// ssh binds loopback only. ExitOnForwardFailure fails fast if a port is taken.
+		const { status } = ghTty(
+			'codespace', 'ssh', '-c', cs.name, '--', '-N', '-o', 'ExitOnForwardFailure=yes',
+			...ports.flatMap((p) => ['-L', `${p}:localhost:${p}`]),
+		);
+		process.exitCode = status ?? 1;
 		break;
 	}
 	case 'stop':
