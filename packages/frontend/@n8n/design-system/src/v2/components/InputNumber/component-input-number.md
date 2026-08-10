@@ -67,13 +67,22 @@ const value = ref(0)
 **With step and precision:**
 
 ```vue
-<N8nInputNumber2
-  v-model="price"
-  :step="0.01"
-  :precision="2"
-  :min="0"
-  :placeholder="i18n.baseText('…')"
-/>
+<script setup lang="ts">
+import { ref } from 'vue'
+import { N8nInputNumber2 } from '@n8n/design-system'
+
+const price = ref(0)
+</script>
+
+<template>
+  <N8nInputNumber2
+    v-model="price"
+    :step="0.01"
+    :precision="2"
+    :min="0"
+    placeholder="0.00"
+  />
+</template>
 ```
 
 **With controls and custom buttons:**
