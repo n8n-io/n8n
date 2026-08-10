@@ -10,9 +10,7 @@ import { audienceFailureMessage, checkAudience, OAuth2OptionsSchema, sha256 } fr
 
 import { CacheService } from '@/services/cache/cache.service';
 
-// Use minimum of 30 seconds to avoid cache thrashing
 // Cap at 5 minutes to ensure periodic revalidation
-const MIN_TOKEN_CACHE_TIMEOUT = 30 * Time.seconds.toMilliseconds;
 const MAX_TOKEN_CACHE_TIMEOUT = 5 * Time.minutes.toMilliseconds;
 const DEFAULT_CACHE_TIMEOUT = 60 * Time.seconds.toMilliseconds; // 60 seconds
 
@@ -122,17 +120,18 @@ export class OAuth2TokenIntrospectionIdentifier implements ITokenIdentifier {
 			return cached;
 		}
 
-		let ttl = DEFAULT_CACHE_TIMEOUT;
 		const { subject, ttl: ttlOverwrite } = await this.resolveBasedOnTokenIntrospection(
 			metadata,
 			options,
 			context,
 		);
-		if (ttlOverwrite) {
-			ttl = ttlOverwrite;
-		}
 
-		await this.cache.set(identifierCacheKey, subject, ttl);
+		// `??`, not truthiness: a zero TTL means the token is spent, and caching the
+		// subject under the default would keep resolving it after it expired.
+		const ttl = ttlOverwrite ?? DEFAULT_CACHE_TIMEOUT;
+		if (ttl > 0) {
+			await this.cache.set(identifierCacheKey, subject, ttl);
+		}
 		return subject;
 	}
 
@@ -318,15 +317,12 @@ export class OAuth2TokenIntrospectionIdentifier implements ITokenIdentifier {
 
 		this.logger.debug('Token introspected successfully', { subject: subjectStr });
 
-		let ttl: number | undefined = undefined;
-		if (introspectionData.exp) {
-			const expiresIn = introspectionData.exp * 1000 - Date.now();
-			if (expiresIn > 0) {
-				ttl = Math.max(MIN_TOKEN_CACHE_TIMEOUT, Math.min(expiresIn, MAX_TOKEN_CACHE_TIMEOUT));
-			} else {
-				ttl = MIN_TOKEN_CACHE_TIMEOUT;
-			}
-		}
+		// `resolve` serves a cached subject without re-introspecting, so the entry must
+		// never outlive the token itself.
+		const ttl =
+			introspectionData.exp === undefined
+				? undefined
+				: Math.min(Math.max(introspectionData.exp * 1000 - Date.now(), 0), MAX_TOKEN_CACHE_TIMEOUT);
 
 		return { subject: subjectStr, ttl };
 	}

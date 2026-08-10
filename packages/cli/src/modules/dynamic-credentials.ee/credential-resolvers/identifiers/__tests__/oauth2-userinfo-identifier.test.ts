@@ -374,6 +374,56 @@ describe('OAuth2UserInfoIdentifier', () => {
 		});
 	});
 
+	describe('Key rotation', () => {
+		/** A key set that does not contain the key the token was signed with. */
+		const staleJwks = { keys: [] };
+
+		test('should refetch the key set when the signing key is unknown', async () => {
+			// The issuer publishes the rotated key only on the second fetch.
+			let fetches = 0;
+			request.mockImplementation(async (options: IHttpRequestOptions) => {
+				if (options.url === validOptions.metadataUri) {
+					return { statusCode: 200, body: validMetadata };
+				}
+				if (options.url === validMetadata.jwks_uri) {
+					fetches += 1;
+					return { statusCode: 200, body: fetches === 1 ? staleJwks : jwks };
+				}
+				throw new Error(`Unexpected request to ${String(options.url)}`);
+			});
+			const token = await signToken({ sub: 'user-123', aud: AUDIENCE });
+
+			await expect(
+				identifier.resolve({ ...mockContext, identity: token }, boundOptions),
+			).resolves.toBe('user-123');
+			expect(fetches).toBe(2);
+		});
+
+		test('should not refetch while the refresh cooldown is held', async () => {
+			let fetches = 0;
+			request.mockImplementation(async (options: IHttpRequestOptions) => {
+				if (options.url === validOptions.metadataUri) {
+					return { statusCode: 200, body: validMetadata };
+				}
+				if (options.url === validMetadata.jwks_uri) {
+					fetches += 1;
+					return { statusCode: 200, body: staleJwks };
+				}
+				throw new Error(`Unexpected request to ${String(options.url)}`);
+			});
+			// Cooldown already claimed, so an unknown key id must not trigger another fetch.
+			cache.get.mockImplementation(async (key: string) =>
+				key.includes(':jwks-refresh:') ? true : undefined,
+			);
+			const token = await signToken({ sub: 'user-123', aud: AUDIENCE });
+
+			await expect(
+				identifier.resolve({ ...mockContext, identity: token }, boundOptions),
+			).rejects.toThrow('Access token verification failed');
+			expect(fetches).toBe(1);
+		});
+	});
+
 	describe('Configuration without an expected audience', () => {
 		test('should keep resolving and warn', async () => {
 			request
@@ -469,7 +519,9 @@ describe('OAuth2UserInfoIdentifier', () => {
 			expect(subjectCacheCall![2]).toBe(5 * Time.minutes.toMilliseconds);
 		});
 
-		test('should use MIN_TOKEN_CACHE_TIMEOUT for expired token', async () => {
+		test('should not cache the subject of an expired token', async () => {
+			// `resolve` serves a cached subject without re-verifying, so caching a spent
+			// token would keep resolving it past its expiry.
 			const expiredResponse = {
 				...validUserInfoResponse,
 				exp: Math.floor(Date.now() / 1000) - 3600, // 1 hour ago
@@ -482,8 +534,24 @@ describe('OAuth2UserInfoIdentifier', () => {
 			await identifier.resolve(mockContext, validOptions);
 
 			const subjectCacheCall = cache.set.mock.calls.find((call) => call[0].includes(':subject:'));
+			expect(subjectCacheCall).toBeUndefined();
+		});
+
+		test('should not cache a subject for longer than the token has left', async () => {
+			const soonToExpire = {
+				...validUserInfoResponse,
+				exp: Math.floor(Date.now() / 1000) + 5, // shorter than the old 30s floor
+			};
+
+			request
+				.mockResolvedValueOnce({ statusCode: 200, body: validMetadata })
+				.mockResolvedValueOnce({ statusCode: 200, body: soonToExpire });
+
+			await identifier.resolve(mockContext, validOptions);
+
+			const subjectCacheCall = cache.set.mock.calls.find((call) => call[0].includes(':subject:'));
 			expect(subjectCacheCall).toBeDefined();
-			expect(subjectCacheCall![2]).toBe(30 * Time.seconds.toMilliseconds);
+			expect(subjectCacheCall![2]).toBeLessThanOrEqual(5 * Time.seconds.toMilliseconds);
 		});
 
 		test('should calculate correct TTL for token expiring in 2 minutes', async () => {

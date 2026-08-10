@@ -19,6 +19,12 @@ interface FetchMetadataParams {
 	cachePrefix: string;
 	/** Skip reading/writing the metadata cache — used on the validation path. */
 	skipCache: boolean;
+	/**
+	 * Ignore the cached value but still store what comes back, so a document that
+	 * changed before its entry expired is refreshed for every caller rather than
+	 * just this one.
+	 */
+	forceRefresh?: boolean;
 }
 
 /**
@@ -63,10 +69,10 @@ export class OAuth2MetadataHttpClient {
 	 */
 	async fetchMetadata<T>(
 		schema: z.ZodType<T>,
-		{ metadataUri, cachePrefix, skipCache }: FetchMetadataParams,
+		{ metadataUri, cachePrefix, skipCache, forceRefresh = false }: FetchMetadataParams,
 	): Promise<T> {
 		const cacheKey = `${cachePrefix}:metadata:${metadataUri}`;
-		if (!skipCache) {
+		if (!skipCache && !forceRefresh) {
 			const cached = await this.cache.get<T>(cacheKey);
 			if (cached) {
 				return cached;

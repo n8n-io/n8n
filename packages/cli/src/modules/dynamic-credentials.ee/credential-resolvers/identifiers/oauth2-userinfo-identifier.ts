@@ -11,9 +11,7 @@ import { IdentifierValidationError, ITokenIdentifier } from './identifier-interf
 import { OAuth2MetadataHttpClient } from './oauth2-metadata-http-client';
 import { audienceFailureMessage, checkAudience, OAuth2OptionsSchema, sha256 } from './oauth2-utils';
 
-// Use minimum of 30 seconds to avoid cache thrashing
 // Cap at 5 minutes to ensure periodic revalidation
-const MIN_TOKEN_CACHE_TIMEOUT = 30 * Time.seconds.toMilliseconds;
 const MAX_TOKEN_CACHE_TIMEOUT = 5 * Time.minutes.toMilliseconds;
 const DEFAULT_CACHE_TIMEOUT = 60 * Time.seconds.toMilliseconds; // 60 seconds
 
@@ -31,6 +29,19 @@ const OAuth2MetadataSchema = z.object({
 });
 
 type OAuth2Metadata = z.infer<typeof OAuth2MetadataSchema>;
+
+/** Shortest interval between key-set refreshes triggered by an unknown key id. */
+const JWKS_REFRESH_COOLDOWN = 30 * Time.seconds.toMilliseconds;
+
+/** jose reports a key id absent from the set with this code, before verifying anything. */
+function isNoMatchingKeyError(error: unknown): boolean {
+	return (
+		typeof error === 'object' &&
+		error !== null &&
+		'code' in error &&
+		error.code === 'ERR_JWKS_NO_MATCHING_KEY'
+	);
+}
 
 function isJwks(value: unknown): value is JSONWebKeySet {
 	return (
@@ -117,13 +128,14 @@ export class OAuth2UserInfoIdentifier implements ITokenIdentifier {
 			return cached;
 		}
 
-		let ttl = DEFAULT_CACHE_TIMEOUT;
 		const { subject, ttl: ttlOverwrite } = await this.resolveSubject(metadata, options, context);
-		if (ttlOverwrite) {
-			ttl = ttlOverwrite;
-		}
 
-		await this.cache.set(identifierCacheKey, subject, ttl);
+		// `??`, not truthiness: a zero TTL means the token is spent, and caching the
+		// subject under the default would keep resolving it after it expired.
+		const ttl = ttlOverwrite ?? DEFAULT_CACHE_TIMEOUT;
+		if (ttl > 0) {
+			await this.cache.set(identifierCacheKey, subject, ttl);
+		}
 		return subject;
 	}
 
@@ -228,29 +240,72 @@ export class OAuth2UserInfoIdentifier implements ITokenIdentifier {
 			);
 		}
 
-		// `jwks_uri` comes from the third-party metadata document, so the fetch goes
-		// through the SSRF-guarded client rather than jose's own remote key set.
-		const jwks = await this.http.fetchMetadata(JwksSchema, {
-			metadataUri: metadata.jwks_uri,
-			cachePrefix: `${CACHE_PREFIX}:jwks`,
-			skipCache: false,
-		});
-
 		const { createLocalJWKSet, jwtVerify } = await import('jose');
+
+		const verify = async (jwks: JSONWebKeySet) =>
+			await jwtVerify(token, createLocalJWKSet(jwks), { issuer: metadata.issuer });
 
 		let payload: JWTPayload;
 		try {
-			({ payload } = await jwtVerify(token, createLocalJWKSet(jwks), {
-				issuer: metadata.issuer,
-			}));
+			payload = (await verify(await this.fetchJwks(metadata.jwks_uri))).payload;
 		} catch (error) {
+			// A key set cached before the issuer rotated its keys has no entry for the new
+			// `kid`. Refetch once so a rotation does not black out verification until the
+			// cached copy expires. Rate limited, because the key lookup happens before any
+			// signature check and so is reachable with an unauthenticated token.
+			if (isNoMatchingKeyError(error) && (await this.mayRefreshJwks(metadata.jwks_uri))) {
+				try {
+					payload = (await verify(await this.fetchJwks(metadata.jwks_uri, true))).payload;
+					this.logger.debug('Verified access token after refreshing the key set', {
+						issuer: metadata.issuer,
+					});
+					return this.assertTokenAudience(payload, expectedAudience, metadata);
+				} catch (retryError) {
+					this.logger.error('Access token verification failed', { error: retryError });
+					throw new IdentifierValidationError('Access token verification failed', {
+						cause: retryError,
+					});
+				}
+			}
+
 			this.logger.error('Access token verification failed', { error });
 			throw new IdentifierValidationError('Access token verification failed', { cause: error });
 		}
 
-		// Checked outside the catch so an audience failure is not relabelled as a
-		// verification failure. Always strict, unlike introspection's fallback: reaching
-		// here means the admin configured the audience, so it is never an inferred value.
+		return this.assertTokenAudience(payload, expectedAudience, metadata);
+	}
+
+	/** `jwks_uri` is third-party controlled, so it goes through the SSRF-guarded client. */
+	private async fetchJwks(jwksUri: string, forceRefresh = false): Promise<JSONWebKeySet> {
+		return await this.http.fetchMetadata(JwksSchema, {
+			metadataUri: jwksUri,
+			cachePrefix: `${CACHE_PREFIX}:jwks`,
+			skipCache: false,
+			forceRefresh,
+		});
+	}
+
+	/**
+	 * Claims the single refresh slot for this key set, so a caller presenting tokens
+	 * with unknown key ids cannot drive repeated requests at the issuer.
+	 */
+	private async mayRefreshJwks(jwksUri: string): Promise<boolean> {
+		const cooldownKey = `${CACHE_PREFIX}:jwks-refresh:${jwksUri}`;
+		if (await this.cache.get<boolean>(cooldownKey)) {
+			return false;
+		}
+		await this.cache.set(cooldownKey, true, JWKS_REFRESH_COOLDOWN);
+		return true;
+	}
+
+	private assertTokenAudience(
+		payload: JWTPayload,
+		expectedAudience: string,
+		metadata: OAuth2Metadata,
+	): JWTPayload {
+		// Checked outside the verification catch so an audience failure is not relabelled
+		// as a verification failure. Always strict, unlike introspection's fallback:
+		// reaching here means the admin configured the audience, never an inferred value.
 		const result = checkAudience(payload, expectedAudience);
 		if (result !== 'matched') {
 			this.logger.error('Access token failed the audience check', {
@@ -300,16 +355,17 @@ export class OAuth2UserInfoIdentifier implements ITokenIdentifier {
 		return subjectStr;
 	}
 
+	/**
+	 * `resolve` serves a cached subject without re-verifying the token, so the entry
+	 * must never outlive the token itself. The minimum only damps cache churn while
+	 * there is lifetime left to spend; it never extends past `exp`.
+	 */
 	private cacheTtlFor(exp: unknown): number | undefined {
 		if (typeof exp !== 'number') {
 			return undefined;
 		}
 
-		const expiresIn = exp * 1000 - Date.now();
-		if (expiresIn > 0) {
-			return Math.max(MIN_TOKEN_CACHE_TIMEOUT, Math.min(expiresIn, MAX_TOKEN_CACHE_TIMEOUT));
-		}
-		return MIN_TOKEN_CACHE_TIMEOUT;
+		return Math.min(Math.max(exp * 1000 - Date.now(), 0), MAX_TOKEN_CACHE_TIMEOUT);
 	}
 
 	/** Legacy path for resolvers stored without an expected audience. */

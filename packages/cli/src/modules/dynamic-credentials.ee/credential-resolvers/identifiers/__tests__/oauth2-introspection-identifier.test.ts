@@ -425,7 +425,9 @@ describe('OAuth2TokenIntrospectionIdentifier', () => {
 			expect(subjectCacheCall![2]).toBe(5 * Time.minutes.toMilliseconds);
 		});
 
-		test('should use MIN_TOKEN_CACHE_TIMEOUT for expired but active token', async () => {
+		test('should not cache the subject of an expired but active token', async () => {
+			// `resolve` serves a cached subject without re-introspecting, so caching a
+			// spent token would keep resolving it past its expiry.
 			const expiredButActiveResponse = {
 				...validIntrospectionResponse,
 				exp: Math.floor(Date.now() / 1000) - 3600, // 1 hour ago
@@ -435,12 +437,25 @@ describe('OAuth2TokenIntrospectionIdentifier', () => {
 
 			await identifier.resolve(mockContext, validOptions);
 
-			// Check that the subject cache was set with the min TTL
-			// Find the call that sets the subject (not metadata)
+			const subjectCacheCall = cache.set.mock.calls.find((call) => call[0].includes(':subject:'));
+
+			expect(subjectCacheCall).toBeUndefined();
+		});
+
+		test('should not cache a subject for longer than the token has left', async () => {
+			const soonToExpire = {
+				...validIntrospectionResponse,
+				exp: Math.floor(Date.now() / 1000) + 5, // shorter than the old 30s floor
+			};
+
+			stubFlow(validMetadata, soonToExpire);
+
+			await identifier.resolve(mockContext, validOptions);
+
 			const subjectCacheCall = cache.set.mock.calls.find((call) => call[0].includes(':subject:'));
 
 			expect(subjectCacheCall).toBeDefined();
-			expect(subjectCacheCall![2]).toBe(30 * Time.seconds.toMilliseconds);
+			expect(subjectCacheCall![2]).toBeLessThanOrEqual(5 * Time.seconds.toMilliseconds);
 		});
 	});
 });
