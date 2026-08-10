@@ -107,7 +107,9 @@ export class McpSettingsService {
 	}
 
 	async getAutoExposeNewWorkflows(): Promise<boolean> {
-		if (!(await this.getEnabled())) return false;
+		if (!(await this.getEnabled())) {
+			return false;
+		}
 
 		const cached = await this.cacheService.get<string>(AUTO_EXPOSE_NEW_WORKFLOWS_KEY);
 
