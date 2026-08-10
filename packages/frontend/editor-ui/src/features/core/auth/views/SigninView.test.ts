@@ -44,13 +44,11 @@ vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showMessage, showError, clearAllStickyNotifications }),
 }));
 
-const { resetSessionExpiredHandledFlag, restoreNotificationSuppression } = vi.hoisted(() => ({
-	resetSessionExpiredHandledFlag: vi.fn(),
+const { restoreNotificationSuppression } = vi.hoisted(() => ({
 	restoreNotificationSuppression: vi.fn(),
 }));
 
 vi.mock('@/app/utils/handleSessionExpired', () => ({
-	resetSessionExpiredHandledFlag,
 	restoreNotificationSuppression,
 }));
 
@@ -157,12 +155,6 @@ describe('SigninView', () => {
 		await signInWithValidUser();
 
 		expect(restoreNotificationSuppression).toHaveBeenCalled();
-	});
-
-	it('should reset the session-expiry handled flag on successful login, so a future expiry can be handled again', async () => {
-		await signInWithValidUser();
-
-		expect(resetSessionExpiredHandledFlag).toHaveBeenCalled();
 	});
 
 	it('should restore notification suppression when leaving via a route other than a login attempt', () => {

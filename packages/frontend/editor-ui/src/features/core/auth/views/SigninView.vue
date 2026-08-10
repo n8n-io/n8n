@@ -13,10 +13,7 @@ import { useNotificationsStore } from '@n8n/stores/notifications.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
-import {
-	resetSessionExpiredHandledFlag,
-	restoreNotificationSuppression,
-} from '@/app/utils/handleSessionExpired';
+import { restoreNotificationSuppression } from '@/app/utils/handleSessionExpired';
 
 import type { IFormBoxConfig } from '@/Interface';
 import { MFA_AUTHENTICATION_REQUIRED_ERROR_CODE, VIEWS, MFA_FORM } from '@/app/constants';
@@ -160,8 +157,6 @@ const login = async (form: LoginRequestDto) => {
 			mfaRecoveryCode: form.mfaRecoveryCode,
 		});
 		loading.value = false;
-		// Before getSettings(), which can independently fail with correct credentials.
-		resetSessionExpiredHandledFlag();
 		await settingsStore.getSettings();
 
 		toast.clearAllStickyNotifications();
