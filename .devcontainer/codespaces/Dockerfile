@@ -16,7 +16,13 @@ RUN npx -y playwright@${PLAYWRIGHT_VERSION} install-deps chromium
 ENV DISABLE_AUTOUPDATER=1
 RUN npm install -g @anthropic-ai/claude-code opencode-ai
 
+COPY codespaces-env.sh /usr/local/lib/codespaces-env.sh
 COPY codespaces-secrets.sh /etc/profile.d/codespaces-secrets.sh
+
+# git and gh must survive token rotation: these read the token on each call
+COPY gitcredential-refresh.sh /usr/local/bin/gitcredential-refresh.sh
+COPY gh-shim.sh /usr/local/bin/gh
+RUN chmod +x /usr/local/bin/gitcredential-refresh.sh /usr/local/bin/gh
 
 RUN echo node ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/node && chmod 0440 /etc/sudoers.d/node
 RUN mkdir -p /workspaces && chown node:node /workspaces

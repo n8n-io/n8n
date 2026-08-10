@@ -349,6 +349,7 @@ export {
 	isInstanceAiSandboxProvider,
 	INSTANCE_AI_MODEL_CREDENTIAL_TYPES,
 	INSTANCE_AI_SEARCH_CREDENTIAL_TYPES,
+	INSTANCE_AI_CATALOG_PROVIDERS,
 	GATEWAY_CONFIRMATION_REQUIRED_PREFIX,
 	InstanceAiSendMessageRequest,
 	InstanceAiEvalExecutionRequest,
@@ -389,6 +390,9 @@ export type {
 	InstanceAiThreadSource,
 	InstanceAiThreadSourcePersisted,
 	InstanceAiThreadOrigin,
+	InstanceAiCatalogProvider,
+	InstanceAiCatalogModel,
+	InstanceAiModelCatalogResponse,
 } from './schemas/instance-ai.schema';
 
 export type {
