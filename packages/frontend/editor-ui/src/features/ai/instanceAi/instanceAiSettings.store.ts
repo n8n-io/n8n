@@ -11,6 +11,7 @@ import {
 	updatePreferences,
 	fetchServiceCredentials,
 	fetchInstanceModelCredentials,
+	fetchModelCatalog,
 	verifyModel as verifyModelRequest,
 	verifySandbox as verifySandboxRequest,
 	verifySearch as verifySearchRequest,
@@ -32,6 +33,7 @@ import type {
 	InstanceAiProviderConnection,
 	InstanceAiPermissions,
 	InstanceAiPermissionMode,
+	InstanceAiModelCatalogResponse,
 	ToolCategory,
 	InstanceAiVerifyModelRequest,
 	InstanceAiVerifySandboxRequest,
@@ -58,6 +60,9 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	const preferences = ref<InstanceAiUserPreferencesResponse | null>(null);
 	const serviceCredentials = ref<InstanceAiProviderConnection[]>([]);
 	const instanceModelCredentials = ref<InstanceAiProviderConnection[]>([]);
+	const modelCatalog = ref<InstanceAiModelCatalogResponse['models'] | null>(null);
+	const isModelCatalogLoading = ref(false);
+	let modelCatalogFetchPromise: Promise<void> | null = null;
 	const draft = reactive<InstanceAiAdminSettingsUpdateRequest>({});
 
 	// ── Gateway / daemon state ──────────────────────────────────────────
@@ -604,6 +609,27 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		} catch {}
 	}
 
+	async function loadModelCatalog(): Promise<void> {
+		if (modelCatalog.value) return;
+		if (modelCatalogFetchPromise) return await modelCatalogFetchPromise;
+
+		isModelCatalogLoading.value = true;
+		const request = fetchModelCatalog(rootStore.restApiContext)
+			.then((response) => {
+				if (Object.values(response.models).some((models) => models.length > 0)) {
+					modelCatalog.value = response.models;
+				}
+			})
+			.catch(() => {})
+			.finally(() => {
+				isModelCatalogLoading.value = false;
+				modelCatalogFetchPromise = null;
+			});
+		modelCatalogFetchPromise = request;
+
+		await request;
+	}
+
 	async function refreshModuleSettings(): Promise<void> {
 		const promises: Array<Promise<unknown>> = [settingsStore.getModuleSettings()];
 		if (!preferences.value) {
@@ -642,9 +668,11 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		preferences,
 		serviceCredentials,
 		instanceModelCredentials,
+		modelCatalog,
 		draft,
 		isLoading,
 		isSaving,
+		isModelCatalogLoading,
 		fetch,
 		save,
 		persistEnabled,
@@ -681,6 +709,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		clearSetupCommand,
 		refreshCredentials,
 		refreshInstanceModelCredentials,
+		loadModelCatalog,
 		refreshModuleSettings,
 		verifyModel,
 		verifySandbox,

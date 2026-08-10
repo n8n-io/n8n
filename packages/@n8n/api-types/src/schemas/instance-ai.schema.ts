@@ -1505,6 +1505,19 @@ export const INSTANCE_AI_MODEL_CREDENTIAL_TYPES = [
 
 export const INSTANCE_AI_SEARCH_CREDENTIAL_TYPES = ['braveSearchApi', 'searXngApi'] as const;
 
+export const INSTANCE_AI_CATALOG_PROVIDERS = ['anthropic', 'openai', 'openrouter'] as const;
+export type InstanceAiCatalogProvider = (typeof INSTANCE_AI_CATALOG_PROVIDERS)[number];
+
+export interface InstanceAiCatalogModel {
+	id: string;
+	name: string;
+	releaseDate?: string;
+}
+
+export interface InstanceAiModelCatalogResponse {
+	models: Record<InstanceAiCatalogProvider, InstanceAiCatalogModel[]>;
+}
+
 export interface InstanceAiEnvManagedFields {
 	model: {
 		provider: boolean;

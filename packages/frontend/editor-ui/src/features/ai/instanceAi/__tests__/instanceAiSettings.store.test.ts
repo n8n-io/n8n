@@ -36,6 +36,7 @@ const mockFetchPreferences = vi.fn();
 const mockUpdatePreferences = vi.fn();
 const mockFetchServiceCredentials = vi.fn().mockResolvedValue([]);
 const mockFetchInstanceModelCredentials = vi.fn().mockResolvedValue([]);
+const mockFetchModelCatalog = vi.fn();
 const mockVerifyModel = vi.fn();
 const mockVerifySandbox = vi.fn();
 const mockVerifySearch = vi.fn();
@@ -49,6 +50,7 @@ vi.mock('../instanceAi.settings.api', () => ({
 	updatePreferences: (...args: unknown[]) => mockUpdatePreferences(...args),
 	fetchServiceCredentials: (...args: unknown[]) => mockFetchServiceCredentials(...args),
 	fetchInstanceModelCredentials: (...args: unknown[]) => mockFetchInstanceModelCredentials(...args),
+	fetchModelCatalog: (...args: unknown[]) => mockFetchModelCatalog(...args),
 	verifyModel: (...args: unknown[]) => mockVerifyModel(...args),
 	verifySandbox: (...args: unknown[]) => mockVerifySandbox(...args),
 	verifySearch: (...args: unknown[]) => mockVerifySearch(...args),
@@ -414,6 +416,55 @@ describe('useInstanceAiSettingsStore', () => {
 				{ baseUrl: 'http://localhost:5678/rest' },
 				searchPayload,
 			);
+		});
+	});
+
+	describe('model catalog', () => {
+		const response = {
+			models: {
+				anthropic: [{ id: 'claude-opus-5', name: 'Claude Opus 5' }],
+				openai: [],
+				openrouter: [],
+			},
+		};
+
+		it('de-duplicates in-flight requests and keeps the successful catalog', async () => {
+			let resolveFetch: (value: typeof response) => void = () => {};
+			mockFetchModelCatalog.mockImplementation(
+				async () =>
+					await new Promise<typeof response>((resolve) => {
+						resolveFetch = resolve;
+					}),
+			);
+
+			const first = store.loadModelCatalog();
+			const second = store.loadModelCatalog();
+			expect(store.isModelCatalogLoading).toBe(true);
+			expect(mockFetchModelCatalog).toHaveBeenCalledOnce();
+
+			resolveFetch(response);
+			await Promise.all([first, second]);
+			expect(store.modelCatalog).toEqual(response.models);
+			expect(store.isModelCatalogLoading).toBe(false);
+
+			await store.loadModelCatalog();
+			expect(mockFetchModelCatalog).toHaveBeenCalledOnce();
+		});
+
+		it('allows a retry after a failed or empty response', async () => {
+			mockFetchModelCatalog
+				.mockRejectedValueOnce(new Error('offline'))
+				.mockResolvedValueOnce({ models: { anthropic: [], openai: [], openrouter: [] } })
+				.mockResolvedValueOnce(response);
+
+			await store.loadModelCatalog();
+			expect(store.modelCatalog).toBeNull();
+			await store.loadModelCatalog();
+			expect(store.modelCatalog).toBeNull();
+			await store.loadModelCatalog();
+
+			expect(store.modelCatalog).toEqual(response.models);
+			expect(mockFetchModelCatalog).toHaveBeenCalledTimes(3);
 		});
 	});
 
