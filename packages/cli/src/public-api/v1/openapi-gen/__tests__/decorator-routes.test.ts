@@ -7,6 +7,7 @@ import {
 	ApiTags,
 	Body,
 	ControllerRegistryMetadata,
+	Deprecated,
 	Get,
 	Param,
 	Post,
@@ -87,6 +88,20 @@ describe('getDecoratorGeneratedOperations', () => {
 		expect(operation.config['x-required-scope']).toBe('workflow:read');
 	});
 
+	it('marks the operation deprecated when @Deprecated is present', () => {
+		class WidgetsPublicController {
+			@Get('/')
+			@ApiResponse(200)
+			@Deprecated({ since: new Date('2026-07-23T00:00:00Z') })
+			method() {}
+		}
+		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+		const [operation] = getDecoratorGeneratedOperations();
+
+		expect(operation.config.deprecated).toBe(true);
+	});
+
 	it('includes shared pagination parameters when the query DTO declares them', () => {
 		class WidgetsPublicController {
 			@Get('/')
@@ -136,6 +151,7 @@ describe('getDecoratorGeneratedOperations', () => {
 		expect(operation.config['x-required-scope']).toBeUndefined();
 		expect(operation.config.parameters).toBeUndefined();
 		expect(operation.config.request).toBeUndefined();
+		expect(operation.config.deprecated).toBeUndefined();
 		expect(operation.config.responses[200]).toEqual({ description: 'Operation successful.' });
 		expect(operation.config.responses[401]).toEqual({
 			$ref: '../../../../shared/spec/responses/unauthorized.yml',

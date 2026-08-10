@@ -32,6 +32,7 @@ import type {
 	AiGatewayNodeMeta,
 	ExploreResourcesParams,
 	ExploreResourcesResult,
+	UnavailableLocatorValue,
 	ProjectSummary,
 	FolderSummary,
 	ServiceProxyConfig,
@@ -41,6 +42,8 @@ import type {
 	EvaluationConfigSummary,
 	EvaluationConfigDetail,
 	UpsertEvaluationConfigInput,
+	InstanceAiMcpService,
+	McpRegistryServerSummary,
 	ModelConfig,
 } from '@n8n/instance-ai';
 import { braveSearch, searxngSearch, type WebSearchResponse } from '@n8n/ai-utilities';
@@ -55,7 +58,10 @@ import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import {
 	CONFIG_EVALUATIONS_FLAG,
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
+	INSTANCE_AI_MCP_CONNECTIONS_FLAG,
+	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
 	upsertEvaluationConfigSchema,
+	INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT,
 } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
@@ -64,16 +70,14 @@ import { nanoid } from 'nanoid';
 
 import { extractResolvedNodeParameters } from './extract-resolved-node-parameters';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
+import { InstanceAiMcpRegistryService } from './mcp';
 import { WorkflowTemplatesService } from './workflow-templates.service';
 import {
 	buildInstanceAiRunPinDataPlan,
 	pruneUnreachedVerificationPinData,
 	sdkPinDataToRuntime,
 } from './instance-ai-run-pin-data';
-import {
-	resolveBuiltinNodeDefinitionDirs,
-	listNodeDiscriminators,
-} from './node-definition-resolver';
+import { listNodeDiscriminators } from './node-definition-resolver';
 import { fetchAndExtract, maybeSummarize, LRUCache } from './web-research';
 import {
 	AiBuilderTemporaryWorkflowRepository,
@@ -138,8 +142,10 @@ import { NodeCatalogService } from '@/node-catalog';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import { MCP_REGISTRY_PACKAGE_NAME } from '@/modules/mcp-registry/node-description-transform';
+import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { userHasScopes } from '@/permissions.ee/check-access';
+import { resolveBuiltinNodeDefinitionDirs } from '@/utils/node-definition-dirs';
 import type { AiGatewayConfigDto } from '@n8n/api-types';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import { FolderService } from '@/services/folder.service';
@@ -300,6 +306,9 @@ export class InstanceAiAdapterService {
 			/** Per-user config-evals gate (via `isConfigEvalsEnabled`). Falsy →
 			 *  eval-config service/tool not wired. */
 			configEvalsEnabled?: boolean;
+			/** Per-user MCP registry gate (via `isMcpConnectionsEnabled`). Falsy →
+			 *  mcp service/tool not wired. */
+			mcpConnectionsEnabled?: boolean;
 			/** Host-resolved model for the run — fallback for utility LLM calls
 			 *  (simulation fixtures, destructiveness classification). */
 			modelId?: ModelConfig;
@@ -314,6 +323,7 @@ export class InstanceAiAdapterService {
 			shouldBypassCredentialTest,
 			agentId,
 			configEvalsEnabled,
+			mcpConnectionsEnabled,
 			modelId,
 		} = options ?? {};
 
@@ -345,6 +355,7 @@ export class InstanceAiAdapterService {
 						),
 					}
 				: {}),
+			mcpService: mcpConnectionsEnabled ? this.createMcpAdapter(user) : undefined,
 			webResearchService: this.createWebResearchAdapter(user, searchProxyConfig),
 			workspaceService: this.createWorkspaceAdapter(user),
 			templatesService: this.getTemplatesService(),
@@ -413,6 +424,57 @@ export class InstanceAiAdapterService {
 	async isConfigEvalsEnabled(user: User): Promise<boolean> {
 		const flags = await Container.get(PostHogClient).getFeatureFlags(user);
 		return flags?.[CONFIG_EVALUATIONS_FLAG] === CONFIG_EVALUATIONS_ENABLED_VARIANT;
+	}
+
+	/** Gate for MCP registry discovery tool. All three must hold:
+	 * 1. the `mcp-registry` module is active
+	 * 2. the admin allows MCP access instance-wide
+	 * 3. the user is part of the MCP connections experiment */
+	async isMcpConnectionsEnabled(user: User): Promise<boolean> {
+		if (!Container.get(ModuleRegistry).isActive('mcp-registry')) return false;
+		if (!this.settingsService.isMcpAccessEnabled()) return false;
+		const flags = await Container.get(PostHogClient).getFeatureFlags(user);
+		return (
+			flags?.[INSTANCE_AI_MCP_CONNECTIONS_FLAG] === INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT
+		);
+	}
+
+	private createMcpAdapter(user: User): InstanceAiMcpService {
+		return {
+			search: async (queries: string[]): Promise<McpRegistryServerSummary[]> => {
+				const [servers, connectedSlugs] = await Promise.all([
+					Container.get(McpRegistryService).search(queries),
+					this.listConnectedMcpRegistrySlugs(user),
+				]);
+				return servers
+					.filter((server) => !connectedSlugs.has(server.slug))
+					.map((server) => ({
+						slug: server.slug,
+						title: server.title,
+						description: server.description,
+						tools: server.tools.map((tool) => tool.name),
+					}));
+			},
+		};
+	}
+
+	/** Slugs the user already has a connection row for. Reads the rows rather than
+	 *  resolving them into loadable servers: resolving decrypts credentials per
+	 *  connection, and a row that fails to resolve still blocks connecting again
+	 *  (one connection per user+slug), so re-offering it would dead-end. */
+	private async listConnectedMcpRegistrySlugs(user: User): Promise<Set<string>> {
+		try {
+			const connections = await Container.get(InstanceAiMcpRegistryService).listConnectionsForUser(
+				user,
+			);
+			return new Set(connections.map((connection) => connection.serverSlug));
+		} catch (error) {
+			this.logger.warn('Failed to list connected MCP registry servers for registry search', {
+				userId: user.id,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return new Set();
+		}
 	}
 
 	private buildAiGatewayNodeMeta(
@@ -1558,6 +1620,48 @@ export class InstanceAiAdapterService {
 					success: result.status === 'OK',
 					message: result.message,
 				};
+			},
+
+			// Same-service filtering for the shared Templated Custom Auth type:
+			// decryption stays on this side of the boundary and only the recipe's
+			// non-secret `serviceHost` crosses it — never credential data.
+			async getTemplatedCredentialHosts(credentialIds: string[]) {
+				// The stored value is a bare host stamped from the recipe, but the
+				// field is user-editable — tolerate a pasted URL by extracting its
+				// hostname; anything unparseable stays untagged (never offered).
+				const normalizeHost = (value: string): string | null => {
+					const trimmed = value.trim().toLowerCase();
+					if (!/^https?:\/\//.test(trimmed)) return trimmed || null;
+					try {
+						return new URL(trimmed).hostname || null;
+					} catch {
+						return null;
+					}
+				};
+				const hosts: Record<string, string | null> = {};
+				await Promise.all(
+					credentialIds.map(async (credentialId) => {
+						hosts[credentialId] = null;
+						try {
+							const credential = await credentialsFinderService.findCredentialForUser(
+								credentialId,
+								user,
+								['credential:read'],
+							);
+							if (!credential || credential.type !== TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE) {
+								return;
+							}
+							const data = await credentialsService.decrypt(credential, true);
+							const serviceHost = data.serviceHost;
+							if (typeof serviceHost === 'string') {
+								hosts[credentialId] = normalizeHost(serviceHost);
+							}
+						} catch {
+							// Unreadable credential — leave it untagged (never offered).
+						}
+					}),
+				);
+				return hosts;
 			},
 
 			async isTestable(credentialType: string) {
@@ -2726,6 +2830,9 @@ export class InstanceAiAdapterService {
 
 			exploreResources: async (params: ExploreResourcesParams): Promise<ExploreResourcesResult> =>
 				await this.nodeResourceExplorerService.exploreResources(user, params),
+
+			findUnavailableLocatorValues: async (params): Promise<UnavailableLocatorValue[]> =>
+				await this.nodeResourceExplorerService.findUnavailableResourceLocatorValues(user, params),
 		};
 	}
 

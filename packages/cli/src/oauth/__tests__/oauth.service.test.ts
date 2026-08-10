@@ -11,7 +11,7 @@ import type { Request, Response } from 'express';
 import type { Cipher } from 'n8n-core';
 import { Credentials } from 'n8n-core';
 import type { IHttpRequestOptions, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError, UserError } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -5339,6 +5339,38 @@ describe('OauthService', () => {
 			const result = await service.refreshOAuth2CredentialById(credentialId, projectId);
 
 			expect(result).toBeNull();
+		});
+
+		it('reports a dynamically registered credential whose client registration is gone', async () => {
+			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
+			// Stands in for the real client: without a client id or token endpoint
+			// the exchange is rejected by the authorization server.
+			const mockToken = {
+				refresh: vi.fn().mockRejectedValue(new Error('invalid_client')),
+				client: {},
+			};
+			vi.mocked(ClientOAuth2).mockImplementation(function () {
+				return { createToken: vi.fn().mockReturnValue(mockToken) } as never;
+			});
+
+			credentialsRepository.findOne.mockResolvedValue(makeCredential({ isGlobal: true }) as never);
+			vi.spyOn(service, 'getOAuthCredentials').mockResolvedValue({
+				useDynamicClientRegistration: true,
+				serverUrl: 'https://mcp.linear.app/mcp',
+				// clientId and accessTokenUrl are absent: nothing identifies the
+				// client and there is no token endpoint to post to.
+				oauthTokenData: {
+					access_token: 'stale',
+					refresh_token: 'refresh-tok',
+					token_type: 'bearer',
+				},
+			} as unknown as OAuth2CredentialData);
+
+			// Expect an error when DCR data is missing
+			await expect(service.refreshOAuth2CredentialById(credentialId, projectId)).rejects.toThrow(
+				UserError,
+			);
+			expect(mockToken.refresh).not.toHaveBeenCalled();
 		});
 
 		it('refreshes the token with token.refresh() for authorizationCode grant and returns a Bearer header', async () => {

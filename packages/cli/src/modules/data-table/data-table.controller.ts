@@ -419,35 +419,12 @@ export class DataTableController {
 		this.checkInstanceWriteAccess();
 		await assertRowReadAccessIfReturningRows(req.user, dataTableId, dto);
 		try {
-			// because of strict overloads, we need separate paths
-			const dryRun = dto.dryRun;
-			if (dryRun) {
-				return await this.dataTableService.upsertRow(
-					dataTableId,
-					req.params.projectId,
-					dto,
-					true, // we want to always return data for dry runs
-					dryRun,
-				);
-			}
-
-			const returnData = dto.returnData;
-			if (returnData) {
-				return await this.dataTableService.upsertRow(
-					dataTableId,
-					req.params.projectId,
-					dto,
-					returnData,
-					dryRun,
-				);
-			}
-
 			return await this.dataTableService.upsertRow(
 				dataTableId,
 				req.params.projectId,
 				dto,
-				returnData,
-				dryRun,
+				dto.returnData,
+				dto.dryRun,
 			);
 		} catch (e: unknown) {
 			if (e instanceof DataTableNotFoundError) {
@@ -473,35 +450,12 @@ export class DataTableController {
 		this.checkInstanceWriteAccess();
 		await assertRowReadAccessIfReturningRows(req.user, dataTableId, dto);
 		try {
-			// because of strict overloads, we need separate paths
-			const dryRun = dto.dryRun;
-			if (dryRun) {
-				return await this.dataTableService.updateRows(
-					dataTableId,
-					req.params.projectId,
-					dto,
-					true, // we want to always return data for dry runs
-					dryRun,
-				);
-			}
-
-			const returnData = dto.returnData;
-			if (returnData) {
-				return await this.dataTableService.updateRows(
-					dataTableId,
-					req.params.projectId,
-					dto,
-					returnData,
-					dryRun,
-				);
-			}
-
 			return await this.dataTableService.updateRows(
 				dataTableId,
 				req.params.projectId,
 				dto,
-				returnData,
-				dryRun,
+				dto.returnData,
+				dto.dryRun,
 			);
 		} catch (e: unknown) {
 			if (e instanceof DataTableNotFoundError) {
@@ -532,6 +486,7 @@ export class DataTableController {
 				req.params.projectId,
 				dto,
 				dto.returnData,
+				dto.dryRun,
 			);
 		} catch (e: unknown) {
 			if (e instanceof DataTableNotFoundError) {
