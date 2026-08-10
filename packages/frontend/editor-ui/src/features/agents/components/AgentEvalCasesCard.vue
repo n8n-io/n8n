@@ -77,6 +77,11 @@ const isLoading = computed(
 	() => store.isLoadingCases(props.dataset.id) && !store.areCasesLoaded(props.dataset.id),
 );
 
+// Rows past the page this view reads are neither shown nor editable, yet a run
+// covers them — so say so rather than letting the count and the list disagree in
+// silence.
+const hiddenCaseCount = computed(() => Math.max(0, caseCount.value - cases.value.length));
+
 // Destructured so the template reads the refs directly — properties of a returned
 // object are not unwrapped the way top-level setup bindings are.
 const { summary, isRunning, isStarting, isCancelling, lostTrack, startRun, cancelRun } =
@@ -292,6 +297,20 @@ async function onRegenerate() {
 					{{ i18n.baseText('agents.builder.agentEvals.cases.retry') }}
 				</N8nButton>
 			</template>
+		</N8nCallout>
+
+		<N8nCallout
+			v-if="hiddenCaseCount > 0"
+			theme="warning"
+			:class="$style.notice"
+			data-testid="agent-evals-cases-truncated"
+		>
+			{{
+				i18n.baseText('agents.builder.agentEvals.cases.truncated', {
+					adjustToNumber: hiddenCaseCount,
+					interpolate: { shown: String(cases.length), hidden: String(hiddenCaseCount) },
+				})
+			}}
 		</N8nCallout>
 
 		<div v-if="isLoading" :class="$style.loading" data-testid="agent-evals-cases-loading">

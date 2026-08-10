@@ -56,6 +56,15 @@ describe('agentEvalCases.utils', () => {
 			});
 		});
 
+		// Nothing in `agentEvalColumnMappingSchema` forbids naming one column for two
+		// roles, and writing both fields there would let the check overwrite the request.
+		it('treats a criteria that aliases the input column as absent', () => {
+			expect(resolveCaseColumns({ input: 'text', criteria: 'text' })).toEqual({
+				input: 'text',
+				whatToCheck: null,
+			});
+		});
+
 		it('ignores an expectedOutput column, which the cases view does not read', () => {
 			expect(resolveCaseColumns({ input: 'request', expectedOutput: 'answer' })).toEqual({
 				input: 'request',
@@ -185,6 +194,15 @@ describe('agentEvalCases.utils', () => {
 					},
 				),
 			).toEqual({ input: 'Plan a trip' });
+		});
+
+		it('cannot overwrite the request when both roles name one column', () => {
+			const columns = resolveCaseColumns({ input: 'text', criteria: 'text' });
+			expect(columns).not.toBeNull();
+
+			expect(toDataTableRow({ input: 'the request', whatToCheck: 'the check' }, columns!)).toEqual({
+				text: 'the request',
+			});
 		});
 
 		it("uses the dataset's own column names rather than the generated defaults", () => {

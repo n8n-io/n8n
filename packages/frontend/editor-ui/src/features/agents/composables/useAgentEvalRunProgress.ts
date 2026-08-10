@@ -136,10 +136,11 @@ export function useAgentEvalRunProgress(params: UseAgentEvalRunProgressParams) {
 			const next = await store.fetchRunSummary(projectId, agentId, datasetId, runId);
 			// The view may have moved to another agent or dataset while this was in
 			// flight; settling the new target on the old run's counts would be wrong.
-			if (isStaleRun(projectId, agentId, datasetId, runId)) {
-				pause();
-				return;
-			}
+			//
+			// Drop the result without pausing. The target watcher already stopped this
+			// watch and may have resumed it for the *new* dataset — pausing here would
+			// kill that fresh poller and freeze its progress permanently.
+			if (isStaleRun(projectId, agentId, datasetId, runId)) return;
 
 			consecutiveErrors.value = 0;
 			if (next.counts.pending === 0) {
@@ -147,10 +148,7 @@ export function useAgentEvalRunProgress(params: UseAgentEvalRunProgressParams) {
 				announceSettled(next);
 			}
 		} catch {
-			if (isStaleRun(projectId, agentId, datasetId, runId)) {
-				pause();
-				return;
-			}
+			if (isStaleRun(projectId, agentId, datasetId, runId)) return;
 
 			// Retried rather than surfaced: a toast per failed poll would flood the
 			// user for what is usually one dropped request.

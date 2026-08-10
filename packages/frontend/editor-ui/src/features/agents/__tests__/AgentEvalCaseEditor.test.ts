@@ -95,6 +95,26 @@ describe('AgentEvalCaseEditor', () => {
 		expect(emitted('remove')).toHaveLength(1);
 	});
 
+	// Escape has to honour the same guard as the Cancel button, or the editor closes
+	// over a write that is still in flight.
+	it('ignores Escape while a save is pending', async () => {
+		const { getByTestId, emitted } = renderComponent({ props: { saving: true } });
+
+		await userEvent.type(getByTestId('agent-evals-case-input'), '{Escape}');
+
+		expect(emitted('cancel')).toBeUndefined();
+	});
+
+	it('ignores Escape while a removal is pending', async () => {
+		const { getByTestId, emitted } = renderComponent({
+			props: { removable: true, removing: true },
+		});
+
+		await userEvent.type(getByTestId('agent-evals-case-input'), '{Escape}');
+
+		expect(emitted('cancel')).toBeUndefined();
+	});
+
 	it('locks the fields and both actions while saving', () => {
 		const { getByTestId } = renderComponent({ props: { removable: true, saving: true } });
 

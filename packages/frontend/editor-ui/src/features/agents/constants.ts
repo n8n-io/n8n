@@ -29,12 +29,14 @@ export const CONFIG_JSON_SECTION_KEY = '__config_json';
 export const EXECUTIONS_SECTION_KEY = '__executions';
 
 /**
- * Rows read in one page of an agent's eval cases. Case generation caps a dataset at
- * 20 cases and the view has no pager, so a single page covers anything the builder
- * can produce; the server's total is cached alongside so the run button stays
- * truthful if rows were added outside the builder.
+ * Rows read in one page of an agent's eval cases. Set to the row route's own ceiling
+ * (`MAX_ITEMS_PER_PAGE`), which is the most this view can read without paging — so a
+ * dataset is fully editable up to that size. Generation caps a dataset at 20, but
+ * cases can also be added by hand or by attaching a table, and a row past this page
+ * would otherwise be invisible *and* uneditable while still counting toward the run.
+ * The card says so explicitly when the server's total exceeds what it loaded.
  */
-export const AGENT_EVAL_CASES_PAGE_SIZE = 100;
+export const AGENT_EVAL_CASES_PAGE_SIZE = 250;
 
 export {
 	CHAT_MESSAGE_STATUS,

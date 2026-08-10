@@ -19,12 +19,15 @@ const { getDatasets, generateDraftCases, startRun, cancelRun, getRunSummary, lis
 		listRuns: vi.fn(),
 	}));
 
-const { fetchDataTableContent, insertRow, updateRow, deleteRows } = vi.hoisted(() => ({
-	fetchDataTableContent: vi.fn(),
-	insertRow: vi.fn(),
-	updateRow: vi.fn(),
-	deleteRows: vi.fn(),
-}));
+const { fetchDataTableContent, findDataTableById, insertRow, updateRow, deleteRows } = vi.hoisted(
+	() => ({
+		fetchDataTableContent: vi.fn(),
+		findDataTableById: vi.fn(),
+		insertRow: vi.fn(),
+		updateRow: vi.fn(),
+		deleteRows: vi.fn(),
+	}),
+);
 
 vi.mock('../agentEvals.api', () => ({
 	getDatasets,
@@ -38,6 +41,7 @@ vi.mock('../agentEvals.api', () => ({
 vi.mock('@/features/core/dataTable/dataTable.store', () => ({
 	useDataTableStore: vi.fn(() => ({
 		fetchDataTableContent,
+		findDataTableById,
 		insertRow,
 		updateRow,
 		deleteRows,
@@ -103,6 +107,8 @@ describe('useAgentEvalsStore', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia());
 		vi.clearAllMocks();
+		// Default: the table lives in the agent's own project, as generation creates it.
+		findDataTableById.mockResolvedValue({ id: 'dt-1', projectId: PROJECT_ID });
 	});
 
 	describe('fetchDatasets', () => {
@@ -192,7 +198,7 @@ describe('useAgentEvalsStore', () => {
 
 			await store.fetchCases(PROJECT_ID, source);
 
-			expect(fetchDataTableContent).toHaveBeenCalledWith('dt-1', PROJECT_ID, 1, 100, 'id:asc');
+			expect(fetchDataTableContent).toHaveBeenCalledWith('dt-1', PROJECT_ID, 1, 250, 'id:asc');
 			expect(store.getCases(DATASET_ID)).toEqual([
 				{ rowId: 1, input: 'first', whatToCheck: 'a' },
 				{ rowId: 2, input: 'second', whatToCheck: 'b' },
@@ -239,6 +245,39 @@ describe('useAgentEvalsStore', () => {
 
 			expect(store.areCasesLoaded(DATASET_ID)).toBe(true);
 			expect(store.getCases(DATASET_ID)).toEqual([]);
+		});
+
+		// The Data Table routes scope on the project in the path, which is the *table's*
+		// project. A dataset attached via the API can point at a table elsewhere; the
+		// runner resolves that case, so the card has to as well.
+		it("reads rows from the table's own project, not the agent's", async () => {
+			findDataTableById.mockResolvedValue({ id: 'dt-1', projectId: 'other-project' });
+			fetchDataTableContent.mockResolvedValue({ count: 0, data: [] });
+			const store = useAgentEvalsStore();
+
+			await store.fetchCases(PROJECT_ID, source);
+
+			expect(fetchDataTableContent).toHaveBeenCalledWith('dt-1', 'other-project', 1, 250, 'id:asc');
+		});
+
+		it("resolves a table's project once and reuses it", async () => {
+			fetchDataTableContent.mockResolvedValue({ count: 0, data: [] });
+			const store = useAgentEvalsStore();
+
+			await store.fetchCases(PROJECT_ID, source);
+			await store.fetchCases(PROJECT_ID, source);
+
+			expect(findDataTableById).toHaveBeenCalledTimes(1);
+		});
+
+		it("falls back to the agent's project when the table cannot be looked up", async () => {
+			findDataTableById.mockRejectedValue(new Error('forbidden'));
+			fetchDataTableContent.mockResolvedValue({ count: 0, data: [] });
+			const store = useAgentEvalsStore();
+
+			await store.fetchCases(PROJECT_ID, source);
+
+			expect(fetchDataTableContent).toHaveBeenCalledWith('dt-1', PROJECT_ID, 1, 250, 'id:asc');
 		});
 
 		it('clears the loading flag when the read rejects', async () => {

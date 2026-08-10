@@ -34,8 +34,18 @@ export type AgentEvalCaseColumns = {
  */
 export const resolveCaseColumns = (
 	mapping: AgentEvalColumnMapping | null,
-): AgentEvalCaseColumns | null =>
-	mapping?.input ? { input: mapping.input, whatToCheck: mapping.criteria ?? null } : null;
+): AgentEvalCaseColumns | null => {
+	if (!mapping?.input) return null;
+
+	// A mapping may name the same column for both roles — nothing in
+	// `agentEvalColumnMappingSchema` forbids it. Writing both fields to one column
+	// would let the check text overwrite the request, so the next run would send the
+	// wrong prompt. Treat an aliased criteria as absent: the request stays writable
+	// and the check renders read-only rather than corrupting the row.
+	const criteria = mapping.criteria === mapping.input ? undefined : mapping.criteria;
+
+	return { input: mapping.input, whatToCheck: criteria ?? null };
+};
 
 /** Narrows a dataset to its Data Table backing — the single place the ref union is split. */
 export const isDataTableDataset = (

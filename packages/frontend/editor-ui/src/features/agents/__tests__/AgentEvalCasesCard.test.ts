@@ -11,12 +11,15 @@ import type { AgentEvalDataTableDataset } from '../agentEvals.types';
 
 configure({ testIdAttribute: 'data-testid' });
 
-const { fetchDataTableContent, insertRow, updateRow, deleteRows } = vi.hoisted(() => ({
-	fetchDataTableContent: vi.fn(),
-	insertRow: vi.fn(),
-	updateRow: vi.fn(),
-	deleteRows: vi.fn(),
-}));
+const { fetchDataTableContent, findDataTableById, insertRow, updateRow, deleteRows } = vi.hoisted(
+	() => ({
+		fetchDataTableContent: vi.fn(),
+		findDataTableById: vi.fn(),
+		insertRow: vi.fn(),
+		updateRow: vi.fn(),
+		deleteRows: vi.fn(),
+	}),
+);
 
 const { startRun, cancelRun, getRunSummary, listRuns } = vi.hoisted(() => ({
 	startRun: vi.fn(),
@@ -41,6 +44,7 @@ vi.mock('../agentEvals.api', () => ({
 vi.mock('@/features/core/dataTable/dataTable.store', () => ({
 	useDataTableStore: vi.fn(() => ({
 		fetchDataTableContent,
+		findDataTableById,
 		insertRow,
 		updateRow,
 		deleteRows,
@@ -103,6 +107,7 @@ describe('AgentEvalCasesCard', () => {
 		setActivePinia(createPinia());
 		vi.clearAllMocks();
 		fetchDataTableContent.mockResolvedValue(twoCases);
+		findDataTableById.mockResolvedValue({ id: 'dt-1', projectId: 'project-1' });
 		listRuns.mockResolvedValue({ count: 0, data: [] });
 	});
 
@@ -153,6 +158,23 @@ describe('AgentEvalCasesCard', () => {
 				'mocked-agents.builder.agentEvals.run.progress(done=1,total=2)',
 			),
 		);
+	});
+
+	// Rows past the page are neither rendered nor editable, but a run still covers
+	// them — the count and the list must not disagree in silence.
+	it('says so when the dataset holds more cases than it can show', async () => {
+		fetchDataTableContent.mockResolvedValue({ count: 300, data: twoCases.data });
+		const { getByTestId } = renderComponent();
+
+		await waitFor(() => expect(getByTestId('agent-evals-cases-truncated')).toBeInTheDocument());
+		expect(getByTestId('agent-evals-cases-truncated')).toHaveTextContent('hidden=298');
+	});
+
+	it('shows no truncation notice when every case is loaded', async () => {
+		const { getAllByTestId, queryByTestId } = renderComponent();
+
+		await waitFor(() => expect(getAllByTestId('agent-evals-case-row')).toHaveLength(2));
+		expect(queryByTestId('agent-evals-cases-truncated')).not.toBeInTheDocument();
 	});
 
 	describe('when the rows cannot be read', () => {

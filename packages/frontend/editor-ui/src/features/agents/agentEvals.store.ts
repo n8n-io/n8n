@@ -62,6 +62,9 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 	const runSummariesByRunId = ref<Record<string, AgentEvalRunSummary>>({});
 	const startingRunByDatasetId = ref<Record<string, boolean | undefined>>({});
 	const cancellingRunByDatasetId = ref<Record<string, boolean | undefined>>({});
+	// A case table's owning project, which the Data Table routes scope on. Keyed by
+	// table id because it is a property of the table, not of the agent reading it.
+	const tableProjectByDataTableId = ref<Record<string, string | undefined>>({});
 
 	/**
 	 * A request from another surface to focus an agent's eval tab, optionally
@@ -191,20 +194,39 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 		}
 	};
 
+	// The Data Table routes scope on the project in the path, which is *the table's*
+	// project — not necessarily the agent's. Generation co-locates the two, but a
+	// dataset attached through the API may point at a table in another project (the
+	// runner resolves that case via `getProjectIdForDataTable`, so such datasets are
+	// runnable and must be editable too). Resolved once per table and cached; a failed
+	// lookup falls back to the agent's project, which is correct for every dataset
+	// this UI creates.
+	const resolveTableProjectId = async (agentProjectId: string, dataTableId: string) => {
+		const cached = tableProjectByDataTableId.value[dataTableId];
+		if (cached) return cached;
+
+		const resolved = await dataTableStore
+			.findDataTableById(dataTableId)
+			.then((table) => table?.projectId)
+			.catch(() => undefined);
+		const projectId = resolved ?? agentProjectId;
+
+		tableProjectByDataTableId.value = {
+			...tableProjectByDataTableId.value,
+			[dataTableId]: projectId,
+		};
+		return projectId;
+	};
+
 	// Sorted by row id so the numbering the view shows is stable across reads, and
 	// read as one page: generation caps a dataset well below the page size.
-	//
-	// `projectId` is the agent's, which the Data Table routes scope on. That holds for
-	// every dataset this UI can produce, since generation creates the table in the
-	// agent's own project — but a dataset attached through the API can point at a table
-	// in another project, and the runner resolves that case properly where this cannot.
-	// Such a dataset surfaces as a failed read rather than silently empty rows.
 	const fetchCases = async (projectId: string, source: AgentEvalCaseSource) => {
 		loadingCases.value = { ...loadingCases.value, [source.datasetId]: true };
 		try {
+			const tableProjectId = await resolveTableProjectId(projectId, source.dataTableId);
 			const { count, data } = await dataTableStore.fetchDataTableContent(
 				source.dataTableId,
-				projectId,
+				tableProjectId,
 				1,
 				AGENT_EVAL_CASES_PAGE_SIZE,
 				`${DEFAULT_ID_COLUMN_NAME}:asc`,
@@ -227,9 +249,10 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 		source: AgentEvalCaseSource,
 		value: AgentEvalCaseValue,
 	) => {
+		const tableProjectId = await resolveTableProjectId(projectId, source.dataTableId);
 		const inserted = await dataTableStore.insertRow(
 			source.dataTableId,
-			projectId,
+			tableProjectId,
 			toDataTableRow(value, source.columns),
 		);
 		setCasesCount(source.datasetId, getCasesCount(source.datasetId) + 1);
@@ -252,9 +275,10 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 	) => {
 		setMutatingCase(source.datasetId, rowId, true);
 		try {
+			const tableProjectId = await resolveTableProjectId(projectId, source.dataTableId);
 			const updated = await dataTableStore.updateRow(
 				source.dataTableId,
-				projectId,
+				tableProjectId,
 				rowId,
 				toDataTableRow(value, source.columns),
 			);
@@ -273,7 +297,8 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 	const deleteCase = async (projectId: string, source: AgentEvalCaseSource, rowId: number) => {
 		setMutatingCase(source.datasetId, rowId, true);
 		try {
-			const deleted = await dataTableStore.deleteRows(source.dataTableId, projectId, [rowId]);
+			const tableProjectId = await resolveTableProjectId(projectId, source.dataTableId);
+			const deleted = await dataTableStore.deleteRows(source.dataTableId, tableProjectId, [rowId]);
 			if (!deleted) return false;
 
 			const remaining = getCases(source.datasetId).filter((c) => c.rowId !== rowId);

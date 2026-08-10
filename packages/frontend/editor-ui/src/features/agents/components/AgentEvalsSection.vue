@@ -39,11 +39,13 @@ const dataset = computed(() => datasets.value.find(isDataTableDataset) ?? null);
 // through the API, but falling through to "no test cases yet" would be a lie.
 const hasOnlyExternalDatasets = computed(() => datasets.value.length > 0 && dataset.value === null);
 
-/** False until the read for the current agent settles — either way, so a failed read
- * can't leave the skeleton up forever. */
-const hasSettled = ref(false);
+/** The target whose read is allowed to settle. Reads for anything else are stale:
+ * an earlier agent's fetch finishing must not dismiss the current agent's skeleton
+ * and expose a first-run CTA for an agent that may already have cases. */
+const settledFor = ref<string | null>(null);
 
-const isLoading = computed(() => !hasSettled.value);
+const targetKey = computed(() => `${props.projectId}:${props.agentId}`);
+const isLoading = computed(() => settledFor.value !== targetKey.value);
 
 // Absence of a cache entry is "not read yet" rather than "none", which is what
 // decides whether to read at all. A failure degrades to the first-run state: with
@@ -52,19 +54,21 @@ watch(
 	[() => props.projectId, () => props.agentId],
 	async ([projectId, agentId]) => {
 		if (!projectId || !agentId) return;
+
+		const target = `${projectId}:${agentId}`;
 		if (store.isLoaded(agentId)) {
-			hasSettled.value = true;
+			settledFor.value = target;
 			return;
 		}
 
-		hasSettled.value = false;
 		try {
 			await store.fetchDatasets(projectId, agentId);
 		} catch {
 			// Intentionally quiet — the first-run state is a reasonable fallback, and a
 			// toast here would fire on every visit to the tab while the read keeps failing.
 		} finally {
-			hasSettled.value = true;
+			// Only the read for the target still on screen may settle.
+			if (target === targetKey.value) settledFor.value = target;
 		}
 	},
 	{ immediate: true },

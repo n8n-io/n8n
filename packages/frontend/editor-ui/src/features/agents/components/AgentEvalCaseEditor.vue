@@ -62,14 +62,18 @@ function onSave() {
 		whatToCheck: props.requestOnly ? '' : whatToCheck.value.trim(),
 	});
 }
+
+// Escape has to respect the same guard as the Cancel button: closing the editor
+// mid-save would hide a write that is still in flight.
+function onCancel() {
+	if (busy.value) return;
+
+	emit('cancel');
+}
 </script>
 
 <template>
-	<div
-		:class="$style.editor"
-		data-testid="agent-evals-case-editor"
-		@keydown.esc.stop="emit('cancel')"
-	>
+	<div :class="$style.editor" data-testid="agent-evals-case-editor" @keydown.esc.stop="onCancel">
 		<N8nInputLabel
 			:label="i18n.baseText('agents.builder.agentEvals.case.request.label')"
 			:bold="false"
@@ -127,7 +131,7 @@ function onSave() {
 				type="button"
 				:disabled="busy"
 				data-testid="agent-evals-case-cancel"
-				@click="emit('cancel')"
+				@click="onCancel"
 			>
 				{{ i18n.baseText('agents.builder.agentEvals.case.cancel') }}
 			</N8nButton>
