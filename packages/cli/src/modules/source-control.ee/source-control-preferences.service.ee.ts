@@ -60,7 +60,7 @@ export class SourceControlPreferencesService {
 		);
 		// Mirror into core so consumers can check write access without
 		// depending on this module.
-		this.instanceWriteAccess.setReadOnly(this._sourceControlPreferences.branchReadOnly);
+		this.instanceWriteAccess.setReadOnly(this._sourceControlPreferences.branchReadOnly ?? false);
 	}
 
 	isSourceControlSetup() {
