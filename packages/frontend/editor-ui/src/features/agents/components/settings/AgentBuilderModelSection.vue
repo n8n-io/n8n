@@ -2,13 +2,13 @@
 import { AGENT_BUILDER_DEFAULT_MODEL } from '@n8n/api-types';
 import { N8nButton, N8nHeading, N8nRadioButtons, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { useSettingsStore } from '@/app/stores/settings.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useAgentModelCredentials } from '../../composables/useAgentModelCredentials';
 import { useAgentProjectId } from '../../composables/useAgentProjectId';
 import AgentModelSelector from '../AgentModelSelector.vue';
 import { computed, watch } from 'vue';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useAgentBuilderSettingsStore } from '../../agentBuilderSettings.store';
 import { sanitizeModelId } from '../../utils/model-string';
 import { useModelCatalog } from '../../composables/useModelCatalog';
@@ -222,7 +222,7 @@ function onCancel() {
 		</N8nText>
 
 		<div v-if="canSave" :class="$style.actions">
-			<N8nButton type="secondary" size="small" @click="onCancel">
+			<N8nButton size="small" @click="onCancel">
 				{{ i18n.baseText('generic.cancel') }}
 			</N8nButton>
 			<N8nButton size="small" :loading="store.isSaving" @click="onSave">

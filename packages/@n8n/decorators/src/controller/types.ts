@@ -13,6 +13,8 @@ export type ApiKeyScopeRequirement =
 
 export type ResponseDtoClass = Pick<ZodClass, 'parse'>;
 
+export type SuccessStatus = 200 | 201 | 202 | 204;
+
 export type Method = 'get' | 'post' | 'put' | 'patch' | 'delete' | 'head' | 'options';
 
 export type Arg = { type: 'body' | 'query' } | { type: 'param'; key: string };
@@ -30,6 +32,11 @@ export type HandlerName = string;
 export interface AccessScope {
 	scope: Scope;
 	globalOnly: boolean;
+}
+
+export interface DeprecationInfo {
+	/** When the endpoint became deprecated. Emitted as an RFC 9745 `Deprecation` header. */
+	since: Date;
 }
 
 export interface RouteMetadata {
@@ -53,6 +60,18 @@ export interface RouteMetadata {
 	accessScope?: AccessScope;
 	apiKeyScope?: ApiKeyScopeRequirement;
 	responseDto?: ResponseDtoClass;
+	/** OpenAPI HTTP status sent on success, and documented as such. */
+	successStatus?: SuccessStatus;
+	/** OpenAPI operation summary. */
+	summary?: string;
+	/** OpenAPI operation description. */
+	description?: string;
+	/** OpenAPI operation tags. */
+	tags?: string[];
+	/** OpenAPI error responses. */
+	errorResponses?: number[];
+	/** OpenAPI deprecation; also emits an RFC 9745 `Deprecation` header at request time. */
+	deprecated?: DeprecationInfo;
 	args: Arg[];
 	router?: Router;
 }

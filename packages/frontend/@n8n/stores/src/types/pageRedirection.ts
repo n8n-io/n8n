@@ -1,7 +1,7 @@
 /**
  * Vocabulary for the upgrade/redirect CTAs driven by `useBasePageRedirectionHelper`.
  * Relocated here from editor-ui's `@/Interface` so the composable carries its own
- * parameter types; `@/Interface` re-exports both for existing importers.
+ * parameter types. The composable is their only consumer.
  */
 
 /** Which surface the user clicked an upgrade CTA from. Reported to telemetry and as the `source` query param. */
@@ -39,7 +39,8 @@ export type CloudUpdateLinkSourceType =
 	| 'empty-state-builder-prompt'
 	| 'instance-ai'
 	| 'data-redaction'
-	| 'workflow-settings';
+	| 'workflow-settings'
+	| 'trial-welcome-modal';
 
 /** Campaign attribution for an upgrade link, sent as the `utm_campaign` query param. */
 export type UTMCampaign =

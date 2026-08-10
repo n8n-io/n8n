@@ -14,7 +14,7 @@ import type {
 	INode,
 	IWorkflowGroup,
 } from 'n8n-workflow';
-import { useToast } from './useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useRouter } from 'vue-router';
 import { VIEWS, WORKFLOW_EXTRACTION_NAME_MODAL_KEY } from '@/app/constants';
 import { useHistoryStore } from '@/app/stores/history.store';

@@ -3,7 +3,7 @@ import { useI18n } from '@n8n/i18n';
 import { useRoute } from 'vue-router';
 import { VIEWS } from '@/app/constants';
 import type { ExecutionStatus, ExecutionSummary } from 'n8n-workflow';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';

@@ -1,15 +1,20 @@
-import type { WorkflowReviewInboxItem, WorkflowReviewRequestDetail } from '@n8n/api-types';
+import type {
+	DecideWorkflowReviewRequestResponse,
+	WorkflowReviewInboxItem,
+	WorkflowReviewRequestDetail,
+} from '@n8n/api-types';
 import { createTestingPinia } from '@pinia/testing';
+import { within } from '@testing-library/vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore, waitAllPromises } from '@/__tests__/utils';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { createMemoryHistory, createRouter } from 'vue-router';
 
 import { WORKFLOW_REVIEW_REQUESTS_VIEW } from '../constants';
 import { useReviewInboxStore } from '../reviewInbox.store';
 import WorkflowReviewRequestsView from './WorkflowReviewRequestsView.vue';
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: vi.fn(),
 }));
 
@@ -19,7 +24,18 @@ vi.mock('@/app/composables/useDocumentTitle', () => ({
 	}),
 }));
 
+// The changes sections pull in the whole workflow-diff canvas machinery, which
+// is far too heavy for these routing/wiring tests.
+vi.mock('@/features/workflow-reviews/components/WorkflowReviewChangesSection.vue', () => ({
+	default: {
+		name: 'WorkflowReviewChangesSection',
+		props: ['workflow'],
+		template: '<div data-test-id="workflow-review-changes-section" />',
+	},
+}));
+
 const showError = vi.fn();
+const showMessage = vi.fn();
 
 const router = createRouter({
 	history: createMemoryHistory(),
@@ -53,6 +69,15 @@ const renderComponent = createComponentRenderer(WorkflowReviewRequestsView, {
 						<button data-test-id="select-open-tab" @click="$emit('update:active-tab', 'open')" />
 					</div>`,
 			},
+			// The real tooltip renders its content in a popper on hover, which jsdom
+			// cannot exercise; expose the bindings as attributes instead.
+			N8nTooltip: {
+				props: ['disabled', 'content'],
+				template: `
+					<div data-test-id="workflow-review-decision-tooltip" :data-disabled="disabled" :data-content="content">
+						<slot />
+					</div>`,
+			},
 		},
 	},
 });
@@ -63,7 +88,10 @@ describe('WorkflowReviewRequestsView', () => {
 	beforeEach(async () => {
 		createTestingPinia();
 		showError.mockReset();
-		vi.mocked(useToast).mockReturnValue({ showError } as unknown as ReturnType<typeof useToast>);
+		showMessage.mockReset();
+		vi.mocked(useToast).mockReturnValue({ showError, showMessage } as unknown as ReturnType<
+			typeof useToast
+		>);
 		await router.push('/workflow-review-requests');
 		await router.isReady();
 
@@ -152,6 +180,38 @@ describe('WorkflowReviewRequestsView', () => {
 		expect(pushSpy).not.toHaveBeenCalled();
 	});
 
+	it('drops the tab when selecting a different review, so it lands on Activity', async () => {
+		await router.replace('/workflow-review-requests/req-2?state=closed&tab=changes');
+		store.probeSettled = true;
+		store.showSidebar = true;
+		const replaceSpy = vi.spyOn(router, 'replace');
+
+		const { getByTestId } = renderComponent();
+		getByTestId('select-review').click();
+		await waitAllPromises();
+
+		expect(replaceSpy).toHaveBeenCalledWith({
+			params: { reviewRequestId: 'req-1' },
+			query: { state: 'closed' },
+		});
+	});
+
+	it('keeps the tab when re-selecting the review already open', async () => {
+		await router.replace('/workflow-review-requests/req-1?tab=changes');
+		store.probeSettled = true;
+		store.showSidebar = true;
+		const replaceSpy = vi.spyOn(router, 'replace');
+
+		const { getByTestId } = renderComponent();
+		getByTestId('select-review').click();
+		await waitAllPromises();
+
+		expect(replaceSpy).toHaveBeenCalledWith({
+			params: { reviewRequestId: 'req-1' },
+			query: { tab: 'changes' },
+		});
+	});
+
 	it('clears the selection back to the bare inbox path', async () => {
 		await router.replace('/workflow-review-requests/req-1?state=closed');
 		store.probeSettled = true;
@@ -204,13 +264,21 @@ describe('WorkflowReviewRequestsView', () => {
 		store.showSidebar = true;
 		store.items = [createInboxItem()];
 
-		const { getByTestId } = renderComponent();
+		const { getByTestId, queryByTestId } = renderComponent();
 		await waitAllPromises();
 		expect(getByTestId('workflow-review-request-title')).toHaveTextContent('List review');
+		expect(
+			within(getByTestId('workflow-review-request-title-row')).getByTestId(
+				'workflow-review-request-status-dot',
+			),
+		).toBeInTheDocument();
+		// The list item carries no eligibility data, so no decision actions yet
+		expect(queryByTestId('workflow-review-approve-button')).not.toBeInTheDocument();
 
 		store.detail = createDetail({ title: 'Detail review' });
 		await waitAllPromises();
 		expect(getByTestId('workflow-review-request-title')).toHaveTextContent('Detail review');
+		expect(getByTestId('workflow-review-approve-button')).toBeInTheDocument();
 	});
 
 	it('hydrates the tab from the query before probing', async () => {
@@ -262,13 +330,80 @@ describe('WorkflowReviewRequestsView', () => {
 		expect(store.setActiveTab).toHaveBeenCalledWith('closed');
 	});
 
-	describe('decision actions', () => {
+	describe('detail tabs', () => {
 		beforeEach(async () => {
 			await router.replace('/workflow-review-requests/req-1');
 			store.probeSettled = true;
 			store.showSidebar = true;
 			store.detail = createDetail();
-			store.decideOnReview.mockResolvedValue(undefined);
+		});
+
+		it('defaults to the activity tab', async () => {
+			const { getByTestId, queryByTestId } = renderComponent();
+			await waitAllPromises();
+
+			expect(getByTestId('workflow-review-activity-panel')).toBeInTheDocument();
+			expect(queryByTestId('workflow-review-changes-panel')).not.toBeInTheDocument();
+		});
+
+		it('hydrates the changes tab from the query', async () => {
+			await router.replace('/workflow-review-requests/req-1?tab=changes');
+
+			const { getByTestId, queryByTestId } = renderComponent();
+			await waitAllPromises();
+
+			expect(getByTestId('workflow-review-changes-panel')).toBeInTheDocument();
+			expect(queryByTestId('workflow-review-activity-panel')).not.toBeInTheDocument();
+		});
+
+		it('falls back to the activity tab for an invalid tab query', async () => {
+			await router.replace('/workflow-review-requests/req-1?tab=bogus');
+
+			const { getByTestId } = renderComponent();
+			await waitAllPromises();
+
+			expect(getByTestId('workflow-review-activity-panel')).toBeInTheDocument();
+		});
+
+		it('writes the tab to the query preserving selection and state', async () => {
+			await router.replace('/workflow-review-requests/req-1?state=closed');
+
+			const { getByRole } = renderComponent();
+			await waitAllPromises();
+
+			getByRole('tab', { name: 'Changes' }).click();
+			await waitAllPromises();
+
+			expect(router.currentRoute.value.query).toEqual({ state: 'closed', tab: 'changes' });
+			expect(router.currentRoute.value.params.reviewRequestId).toBe('req-1');
+
+			getByRole('tab', { name: 'Activity' }).click();
+			await waitAllPromises();
+
+			expect(router.currentRoute.value.query).toEqual({ state: 'closed' });
+			expect(router.currentRoute.value.params.reviewRequestId).toBe('req-1');
+		});
+	});
+
+	describe('decision actions', () => {
+		const decisionResponse = (
+			overrides: Partial<DecideWorkflowReviewRequestResponse> = {},
+		): DecideWorkflowReviewRequestResponse => ({
+			id: 'req-1',
+			state: 'closed',
+			decision: 'approved',
+			workflowVersionId: null,
+			createdAt: '2024-01-01T00:00:00.000Z',
+			updatedAt: '2024-01-02T00:00:00.000Z',
+			...overrides,
+		});
+
+		beforeEach(async () => {
+			await router.replace('/workflow-review-requests/req-1');
+			store.probeSettled = true;
+			store.showSidebar = true;
+			store.detail = createDetail();
+			store.decideOnReview.mockResolvedValue(decisionResponse());
 		});
 
 		it('renders both action buttons for an open review', async () => {
@@ -310,6 +445,145 @@ describe('WorkflowReviewRequestsView', () => {
 			expect(store.decideOnReview).toHaveBeenCalledWith('req-1', 'changes_requested');
 		});
 
+		it('shows a success toast when the approval published the workflow', async () => {
+			store.decideOnReview.mockResolvedValueOnce(
+				decisionResponse({ autoPublish: { status: 'published' } }),
+			);
+
+			const { getByTestId } = renderComponent();
+			await waitAllPromises();
+
+			getByTestId('workflow-review-approve-button').click();
+			await waitAllPromises();
+
+			expect(showMessage).toHaveBeenCalledWith({
+				type: 'success',
+				title: 'Review approved',
+				message: 'The reviewed workflow version has been published.',
+			});
+			expect(showError).not.toHaveBeenCalled();
+		});
+
+		it('shows a warning toast with the reason when the auto-publish failed', async () => {
+			store.decideOnReview.mockResolvedValueOnce(
+				decisionResponse({ autoPublish: { status: 'failed', message: 'Version not found' } }),
+			);
+
+			const { getByTestId } = renderComponent();
+			await waitAllPromises();
+
+			getByTestId('workflow-review-approve-button').click();
+			await waitAllPromises();
+
+			expect(showMessage).toHaveBeenCalledWith({
+				type: 'warning',
+				duration: 0,
+				title: 'Review approved, but the workflow is not published',
+				message: 'Version not found. Publish the workflow manually to retry.',
+			});
+			expect(showError).not.toHaveBeenCalled();
+		});
+
+		it('does not double up punctuation on an already-terminated message', async () => {
+			store.decideOnReview.mockResolvedValueOnce(
+				decisionResponse({
+					autoPublish: { status: 'failed', message: 'Cannot activate an archived workflow.' },
+				}),
+			);
+
+			const { getByTestId } = renderComponent();
+			await waitAllPromises();
+
+			getByTestId('workflow-review-approve-button').click();
+			await waitAllPromises();
+
+			expect(showMessage).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message: 'Cannot activate an archived workflow. Publish the workflow manually to retry.',
+				}),
+			);
+		});
+
+		it('shows no publish toast when requesting changes', async () => {
+			store.decideOnReview.mockResolvedValueOnce(
+				decisionResponse({ state: 'open', decision: 'changes_requested' }),
+			);
+
+			const { getByTestId } = renderComponent();
+			await waitAllPromises();
+
+			getByTestId('workflow-review-request-changes-button').click();
+			await waitAllPromises();
+
+			expect(showMessage).not.toHaveBeenCalled();
+		});
+
+		it('follows a closed review to the closed tab, keeping it selected', async () => {
+			store.decideOnReview.mockResolvedValueOnce(
+				decisionResponse({ autoPublish: { status: 'published' } }),
+			);
+
+			const { getByTestId } = renderComponent();
+			await waitAllPromises();
+
+			getByTestId('workflow-review-approve-button').click();
+			await waitAllPromises();
+
+			expect(router.currentRoute.value.fullPath).toBe(
+				'/workflow-review-requests/req-1?state=closed',
+			);
+			expect(router.currentRoute.value.params.reviewRequestId).toBe('req-1');
+		});
+
+		// The review closes on approval whether or not the publish succeeded, and a
+		// failure is exactly when the card is needed to retry from.
+		it('follows the review to the closed tab even when the auto-publish failed', async () => {
+			store.decideOnReview.mockResolvedValueOnce(
+				decisionResponse({ autoPublish: { status: 'failed', message: 'Version not found' } }),
+			);
+
+			const { getByTestId } = renderComponent();
+			await waitAllPromises();
+
+			getByTestId('workflow-review-approve-button').click();
+			await waitAllPromises();
+
+			expect(router.currentRoute.value.fullPath).toBe(
+				'/workflow-review-requests/req-1?state=closed',
+			);
+		});
+
+		it('stays on the open tab when the review stays open', async () => {
+			store.decideOnReview.mockResolvedValueOnce(
+				decisionResponse({ state: 'open', decision: 'changes_requested' }),
+			);
+
+			const { getByTestId } = renderComponent();
+			await waitAllPromises();
+
+			getByTestId('workflow-review-request-changes-button').click();
+			await waitAllPromises();
+
+			expect(router.currentRoute.value.fullPath).toBe('/workflow-review-requests/req-1');
+		});
+
+		it('does not renavigate when already on the closed tab', async () => {
+			await router.replace('/workflow-review-requests/req-1?state=closed');
+			store.activeTab = 'closed';
+
+			const { getByTestId } = renderComponent();
+			await waitAllPromises();
+			const replaceSpy = vi.spyOn(router, 'replace');
+
+			getByTestId('workflow-review-approve-button').click();
+			await waitAllPromises();
+
+			expect(replaceSpy).not.toHaveBeenCalled();
+			expect(router.currentRoute.value.fullPath).toBe(
+				'/workflow-review-requests/req-1?state=closed',
+			);
+		});
+
 		it('shows an error toast when the decision fails', async () => {
 			const error = new Error('forbidden');
 			store.decideOnReview.mockRejectedValueOnce(error);
@@ -338,12 +612,74 @@ describe('WorkflowReviewRequestsView', () => {
 			expect(store.fetchDetail).toHaveBeenCalledWith('req-1');
 		});
 
+		// Each button carries its own tooltip, so both must agree.
+		it('keeps the buttons enabled and the tooltips off when the viewer can decide', async () => {
+			const { getByTestId } = renderComponent();
+			await waitAllPromises();
+
+			for (const button of decisionButtons(getByTestId)) {
+				expect(button).not.toBeDisabled();
+				expect(decisionTooltip(button)).toHaveAttribute('data-disabled', 'true');
+			}
+		});
+
+		it('disables the buttons and says why when the viewer contributed a version', async () => {
+			store.detail = createDetail({
+				viewerCanDecide: false,
+				viewerDecisionIneligibilityReason: 'author',
+			});
+
+			const { getByTestId } = renderComponent();
+			await waitAllPromises();
+
+			for (const button of decisionButtons(getByTestId)) {
+				expect(button).toBeDisabled();
+				expect(decisionTooltip(button)).toHaveAttribute('data-disabled', 'false');
+				expect(decisionTooltip(button)).toHaveAttribute(
+					'data-content',
+					'You contributed a version to this review.',
+				);
+			}
+		});
+
+		it('falls back to the generic permission hint for any other reason', async () => {
+			store.detail = createDetail({
+				viewerCanDecide: false,
+				viewerDecisionIneligibilityReason: 'missing_publish_permission',
+			});
+
+			const { getByTestId } = renderComponent();
+			await waitAllPromises();
+
+			for (const button of decisionButtons(getByTestId)) {
+				expect(button).toBeDisabled();
+				expect(decisionTooltip(button)).toHaveAttribute(
+					'data-content',
+					'Missing permissions to perform this action',
+				);
+			}
+		});
+
+		it('does not submit a decision for an ineligible viewer', async () => {
+			store.detail = createDetail({
+				viewerCanDecide: false,
+				viewerDecisionIneligibilityReason: 'author',
+			});
+
+			const { getByTestId } = renderComponent();
+			await waitAllPromises();
+			getByTestId('workflow-review-approve-button').click();
+			await waitAllPromises();
+
+			expect(store.decideOnReview).not.toHaveBeenCalled();
+		});
+
 		it('disables both buttons while a decision is in flight', async () => {
 			let resolveDecision!: () => void;
 			store.decideOnReview.mockImplementationOnce(
 				async () =>
-					await new Promise<void>((resolve) => {
-						resolveDecision = resolve;
+					await new Promise<DecideWorkflowReviewRequestResponse>((resolve) => {
+						resolveDecision = () => resolve(decisionResponse());
 					}),
 			);
 
@@ -400,6 +736,23 @@ describe('WorkflowReviewRequestsView', () => {
 	});
 });
 
+function decisionButtons(getByTestId: (id: string) => HTMLElement) {
+	return [
+		getByTestId('workflow-review-approve-button'),
+		getByTestId('workflow-review-request-changes-button'),
+	];
+}
+
+/**
+ * The tab bar renders a tooltip per tab, which the N8nTooltip stub matches too,
+ * so walk up from the button rather than querying the test id globally.
+ */
+function decisionTooltip(button: HTMLElement) {
+	const tooltip = button.closest('[data-test-id="workflow-review-decision-tooltip"]');
+	if (!tooltip) throw new Error('decision button is not wrapped in a tooltip');
+	return tooltip;
+}
+
 function createInboxItem(): WorkflowReviewInboxItem {
 	return {
 		id: 'req-1',
@@ -423,6 +776,8 @@ function createDetail(
 		...createInboxItem(),
 		description: null,
 		workflows: [],
+		viewerCanDecide: true,
+		viewerDecisionIneligibilityReason: null,
 		...overrides,
 	};
 }

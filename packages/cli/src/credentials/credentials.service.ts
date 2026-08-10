@@ -34,6 +34,7 @@ import type {
 	ICredentialsDecrypted,
 	ICredentialType,
 	IDataObject,
+	INodeParameters,
 	INodeProperties,
 	INodePropertyCollection,
 } from 'n8n-workflow';
@@ -59,6 +60,7 @@ import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
 import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
 import { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee';
+import { DCR_MANAGED_CREDENTIAL_FIELDS } from '@/oauth/dcr-managed-fields';
 import { validateOAuthUrl } from '@/oauth/validate-oauth-url';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { getChangedSharedFields } from '@/modules/dynamic-credentials.ee/services/shared-fields';
@@ -155,6 +157,15 @@ type WorkflowCredentialResult = {
 	currentUserHasAccess: boolean;
 	connectedByMe?: boolean;
 };
+
+/** Codes an auth probe must not treat as rejection, stored as a JSON array in the credential. */
+function parseAcceptedStatusCodes(raw: unknown): number[] | undefined {
+	if (typeof raw !== 'string' || raw.trim() === '') return undefined;
+	const parsed = jsonParse<unknown>(raw, { fallbackValue: null });
+	if (!Array.isArray(parsed)) return undefined;
+	const codes = parsed.filter((code): code is number => Number.isInteger(code));
+	return codes.length > 0 ? codes : undefined;
+}
 
 @Service()
 export class CredentialsService {
@@ -803,11 +814,61 @@ export class CredentialsService {
 			updateData.data.oauthTokenData = decryptedData.oauthTokenData;
 		}
 
+		if (!options?.clearOauthTokenData) {
+			this.restoreHiddenDcrFields(
+				existingCredential.type,
+				updateData.data as unknown as ICredentialDataDecryptedObject,
+				decryptedData,
+			);
+		}
+
 		this.validateOAuthCredentialUrls(
 			updateData.type,
 			updateData.data as unknown as ICredentialDataDecryptedObject,
 		);
 		return updateData;
+	}
+
+	/**
+	 * The frontend sends only displayed fields holding a non-default value, so a
+	 * save would drop what dynamic client registration negotiated and leave the
+	 * stored token unable to refresh. A displayed field stays the user's: its
+	 * absence means they chose its default.
+	 */
+	private restoreHiddenDcrFields(
+		credentialType: string,
+		dataToSave: ICredentialDataDecryptedObject,
+		storedData: ICredentialDataDecryptedObject,
+	): void {
+		let properties: INodeProperties[] | undefined;
+		try {
+			properties = this.credentialsHelper.getCredentialsProperties(credentialType);
+		} catch {
+			return;
+		}
+		if (!properties?.length) return;
+
+		// Display rules read `useDynamicClientRegistration`, a hidden property that
+		// is usually not stored, so defaults have to be filled in.
+		const storedWithDefaults =
+			NodeHelpers.getNodeParameters(
+				properties,
+				storedData as unknown as INodeParameters,
+				true,
+				true,
+				null,
+				null,
+			) ?? {};
+
+		for (const field of DCR_MANAGED_CREDENTIAL_FIELDS) {
+			if (field in dataToSave || !(field in storedData)) continue;
+
+			// An undeclared field has no way of being shown, so it is never the user's.
+			const property = properties.find((candidate) => candidate.name === field);
+			if (property && displayParameter(storedWithDefaults, property, null, null)) continue;
+
+			dataToSave[field] = storedData[field];
+		}
 	}
 
 	async createEncryptedData(credential: {
@@ -1182,6 +1243,45 @@ export class CredentialsService {
 		return await this.test(user.id, mergedCredentials);
 	}
 
+	/**
+	 * Auth-probe a stored credential against the test URL persisted in its own
+	 * data (e.g. Templated Custom Auth, whose type declares no test of its own).
+	 * The target is never caller-supplied, so a merely readable credential
+	 * cannot be pointed at an arbitrary endpoint.
+	 */
+	async probeById(user: User, credentialId: string) {
+		const storedCredential = await this.credentialsFinderService.findCredentialForUser(
+			credentialId,
+			user,
+			['credential:read'],
+		);
+
+		if (!storedCredential) {
+			throw new CredentialNotFoundError(credentialId);
+		}
+
+		const data = await this.decrypt(storedCredential, true);
+
+		// Expressions (leading '=') and non-http values are refused, not resolved.
+		const testUrl = data.testUrl;
+		if (typeof testUrl !== 'string' || !/^https?:\/\//i.test(testUrl)) {
+			throw new BadRequestError('The credential has no test URL to probe');
+		}
+
+		return await this.credentialsTester.probeCredentialAuth(
+			user.id,
+			storedCredential.type,
+			{
+				id: storedCredential.id,
+				name: storedCredential.name,
+				type: storedCredential.type,
+				data,
+			},
+			testUrl,
+			{ acceptedStatusCodes: parseAcceptedStatusCodes(data.acceptedStatusCodes) },
+		);
+	}
+
 	// Take data and replace all sensitive values with a sentinel value.
 	// This will replace password fields and oauth data.
 	redact(data: ICredentialDataDecryptedObject, credential: CredentialsEntity) {
@@ -1296,6 +1396,9 @@ export class CredentialsService {
 				]),
 			);
 		}
+		// Expressions are references (e.g. external secrets), not secrets — keep
+		// them visible and editable, mirroring the field-level password rule.
+		if (typeof obj === 'string' && obj.startsWith('={{')) return obj;
 		return CUSTOM_AUTH_JSON_REDACTED_VALUE;
 	}
 

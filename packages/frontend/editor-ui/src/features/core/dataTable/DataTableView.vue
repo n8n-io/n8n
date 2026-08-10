@@ -14,7 +14,7 @@ import {
 import { getDebounceTime, useDebounce } from '@n8n/composables/useDebounce';
 import debounce from 'lodash/debounce';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
 import type { DataTableResource } from '@/features/core/dataTable/types';

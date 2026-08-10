@@ -1,10 +1,7 @@
 <script lang="ts" setup>
-import ActionsDropdownMenu from '@/app/components/MainHeader/ActionsDropdownMenu.vue';
-import WorkflowHistoryButton from '@/features/workflows/workflowHistory/components/WorkflowHistoryButton.vue';
-import type { FolderShortInfo } from '@/features/core/folders/folders.types';
 import type { IWorkflowDb } from '@/Interface';
 import type { PermissionsRecord } from '@n8n/permissions';
-import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import {
 	VIEWS,
 	WORKFLOW_PUBLISH_MODAL_KEY,
@@ -24,7 +21,7 @@ import {
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { getActivatableTriggerNodes } from '@/app/utils/nodeTypesUtils';
 import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
 import { useRouter } from 'vue-router';
@@ -40,7 +37,7 @@ import { useCollaborationStore } from '@/features/collaboration/collaboration/co
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useWorkflowActivate } from '@/app/composables/useWorkflowActivate';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { createEventBus } from '@n8n/utils/event-bus';
 import type { WorkflowVersionFormModalEventBusEvents } from '@/features/workflows/workflowHistory/components/WorkflowVersionFormModal.vue';
 import { useWorkflowHistoryStore } from '@/features/workflows/workflowHistory/workflowHistory.store';
@@ -68,15 +65,10 @@ import {
 
 const props = defineProps<{
 	id: IWorkflowDb['id'];
-	tags: readonly string[];
-	name: IWorkflowDb['name'];
-	currentFolder?: FolderShortInfo;
 	isArchived: IWorkflowDb['isArchived'];
 	isNewWorkflow: boolean;
 	workflowPermissions: PermissionsRecord['workflow'];
 }>();
-
-const actionsMenuRef = useTemplateRef<InstanceType<typeof ActionsDropdownMenu>>('actionsMenu');
 
 const uiStore = useUIStore();
 const workflowDocumentStore = computed(() =>
@@ -119,8 +111,21 @@ const showWorkflowReviewControls = computed(
 
 const latestReviewRequest = computed(() => reviewStatusStore.latestReviewRequest(props.id));
 
+const openReviewRequest = computed(() => reviewStatusStore.openReviewRequest(props.id));
+
 /** Saved version of the working copy — what a review is pinned to, or diverges from. */
 const savedVersionId = computed(() => workflowDocumentStore.value.versionId || undefined);
+
+/** Whether the open review already contains the current saved workflow version. */
+const reviewContainsSavedVersion = computed(() => {
+	const reviewVersionId = openReviewRequest.value?.workflowVersionId;
+	return !!reviewVersionId && reviewVersionId === savedVersionId.value;
+});
+
+/** Unsaved workflow edits can still produce a new version when Publish saves first. */
+const isReviewUpdateBlocked = computed(
+	() => reviewContainsSavedVersion.value && !uiStore.hasUnsavedWorkflowChanges,
+);
 
 const autoSaveForPublish = ref(false);
 const isSaving = ref(false);
@@ -153,8 +158,6 @@ const onSaveButtonClick = async () => {
 		isSaving.value = false;
 	}
 };
-
-const importFileRef = computed(() => actionsMenuRef.value?.importFileRef);
 
 const foundTriggers = computed(() =>
 	getActivatableTriggerNodes(workflowDocumentStore.value.workflowTriggerNodes),
@@ -304,6 +307,17 @@ const onReviewConflict = () => {
 	showUpdateReviewDialog.value = true;
 };
 
+/**
+ * Save before opening. The dialog prefills the version name from the current
+ * `versionId`, but submitting flushes a dirty editor into a *new* version, so
+ * opening dirty would name the new version after the old one.
+ */
+const onSubmitChangesFromBanner = async () => {
+	if (!(await ensureWorkflowSaved())) return;
+	if (reviewContainsSavedVersion.value) return;
+	showUpdateReviewDialog.value = true;
+};
+
 const onOpenReviewFromBanner = async () => {
 	const review = latestReviewRequest.value;
 	if (!review) return;
@@ -351,6 +365,7 @@ const onPublishButtonClick = async () => {
 		// on-mount fetch resolves) reads as "no open review" — accepted, since
 		// only backend enforcement can close that hole.
 		if (reviewStatusStore.hasOpenReview(props.id)) {
+			if (reviewContainsSavedVersion.value) return;
 			showUpdateReviewDialog.value = true;
 			return;
 		}
@@ -526,7 +541,8 @@ const shouldDisablePublishButton = computed(() => {
 		props.isNewWorkflow ||
 		collaborationReadOnly.value ||
 		!publishButtonConfig.value.enabled ||
-		!hasPublishPermission.value
+		!hasPublishPermission.value ||
+		(isWorkflowReviewsEnabled.value && isReviewUpdateBlocked.value)
 	);
 });
 
@@ -752,10 +768,6 @@ onBeforeUnmount(() => {
 	nodeViewEventBus.off('publishWorkflow', onPublishButtonClick);
 	nodeViewEventBus.off('unpublishWorkflow', onUnpublish);
 });
-
-defineExpose({
-	importFileRef,
-});
 </script>
 
 <template>
@@ -765,7 +777,6 @@ defineExpose({
 			v-if="showSaveButton && !isArchived && workflowPermissions.update"
 			:loading="isSaving"
 			:disabled="!uiStore.stateIsDirty || collaborationReadOnly"
-			type="secondary"
 			data-test-id="workflow-save-button"
 			@click="onSaveButtonClick"
 		>
@@ -782,7 +793,7 @@ defineExpose({
 				:can-open-review="canOpenReview"
 				:is-publishing="isRetryingPublish"
 				@open-review="onOpenReviewFromBanner"
-				@submit-changes="showUpdateReviewDialog = true"
+				@submit-changes="onSubmitChangesFromBanner"
 				@retry-publish="onRetryPublishFromBanner"
 			/>
 		</div>
@@ -876,17 +887,6 @@ defineExpose({
 				</N8nActionDropdown>
 			</div>
 		</div>
-		<WorkflowHistoryButton :workflow-id="props.id" :is-new-workflow="isNewWorkflow" />
-		<ActionsDropdownMenu
-			:id="id"
-			ref="actionsMenu"
-			:workflow-permissions="workflowPermissions"
-			:is-new-workflow="isNewWorkflow"
-			:is-archived="isArchived"
-			:name="name"
-			:tags="tags"
-			:current-folder="currentFolder"
-		/>
 		<template v-if="isWorkflowReviewsEnabled">
 			<WorkflowPublishChoiceDialog
 				v-model:open="showPublishChoiceDialog"
@@ -909,6 +909,7 @@ defineExpose({
 				v-model:open="showUpdateReviewDialog"
 				:workflow-id="props.id"
 				:flush-save="flushSaveForReview"
+				:can-submit="!isReviewUpdateBlocked"
 				@updated="onReviewUpdated"
 			/>
 		</template>
@@ -944,7 +945,6 @@ defineExpose({
 .publishButtonWrapper {
 	position: relative;
 	display: inline-flex;
-	margin-inline: var(--spacing--2xs);
 }
 
 .buttonGroup {

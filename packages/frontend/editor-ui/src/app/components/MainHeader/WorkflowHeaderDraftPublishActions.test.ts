@@ -12,7 +12,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useWorkflowHistoryStore } from '@/features/workflows/workflowHistory/workflowHistory.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { WORKFLOW_PUBLISH_MODAL_KEY, EnterpriseEditionFeature } from '@/app/constants';
 import { STORES } from '@n8n/stores';
 import type { INodeUi } from '@/Interface';
@@ -30,7 +30,7 @@ import {
 	LOCAL_STORAGE_WORKFLOW_REVIEW_REQUIRED_BY_WORKFLOW,
 	LOCAL_STORAGE_WORKFLOW_REVIEW_SUBMITTED_DIALOG_HIDDEN,
 } from '@/app/constants/localStorage';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { WORKFLOW_REVIEW_REQUESTS_VIEW } from '@/features/workflow-reviews/constants';
 import {
 	createWorkflowReviewRequest,
@@ -79,7 +79,7 @@ vi.mock('@/app/composables/useWorkflowActivate', () => ({
 	}),
 }));
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({
 		showMessage: mockShowMessage,
 		showError: mockShowError,
@@ -126,12 +126,6 @@ const renderComponent = createComponentRenderer(WorkflowHeaderDraftPublishAction
 	pinia: createTestingPinia({ initialState, stubActions: false }),
 	global: {
 		stubs: {
-			ActionsMenu: {
-				template: '<div data-test-id="actions-menu-stub"></div>',
-			},
-			WorkflowHistoryButton: {
-				template: '<div data-test-id="workflow-history-button-stub"></div>',
-			},
 			N8nTooltip: {
 				template: '<div><slot name="content" /><slot /></div>',
 			},
@@ -231,7 +225,6 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 		workflowDocumentStore.setVersionData({ versionId: 'version-1', name: null, description: null });
 		workflowDocumentStore.setActiveState({ activeVersionId: null, activeVersion: null });
 		uiStore.markStateClean();
-		uiStore.isActionActive = { workflowSaving: false };
 		collaborationStore.shouldBeReadOnly = false;
 
 		mockSaveCurrentWorkflow.mockClear();
@@ -554,7 +547,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			).not.toBeInTheDocument();
 		});
 
-		const seedOpenReview = () => {
+		const seedOpenReview = (overrides: Partial<WorkflowReviewRequestForWorkflow> = {}) => {
 			vi.mocked(fetchWorkflowReviewRequests).mockResolvedValue({
 				count: 1,
 				data: [
@@ -567,10 +560,48 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 						updatedAt: '2026-07-20T10:00:00.000Z',
 						decisionBy: null,
 						approvedVersionPublicationState: null,
+						...overrides,
 					},
 				],
 			});
 		};
+
+		it('disables Publish when the open review already contains the saved version', async () => {
+			setWorkflowReviewGates();
+			setupEnabledPublishButton();
+			seedOpenReview({ workflowVersionId: 'version-1' });
+
+			const { getByTestId, findByTestId } = renderComponent();
+			await waitFor(() =>
+				expect(useWorkflowReviewStatusStore().hasOpenReview(defaultWorkflowProps.id)).toBe(true),
+			);
+
+			expect(getByTestId('workflow-open-publish-modal-button')).toBeDisabled();
+			expect(await findByTestId('workflow-review-status-pill')).toHaveTextContent(
+				'Waiting for review',
+			);
+		});
+
+		it('rechecks the saved version after saving unsaved workflow changes', async () => {
+			setWorkflowReviewGates();
+			setupEnabledPublishButton();
+			seedOpenReview({ workflowVersionId: 'version-1' });
+			uiStore.markStateDirty();
+
+			const { getByTestId, queryByRole } = renderComponent();
+			await waitFor(() =>
+				expect(useWorkflowReviewStatusStore().hasOpenReview(defaultWorkflowProps.id)).toBe(true),
+			);
+
+			const publishButton = getByTestId('workflow-open-publish-modal-button');
+			expect(publishButton).toBeEnabled();
+			await userEvent.click(publishButton);
+
+			expect(mockSaveCurrentWorkflow).toHaveBeenCalledWith({}, true);
+			expect(
+				queryByRole('dialog', { name: 'Submit latest changes to existing review' }),
+			).not.toBeInTheDocument();
+		});
 
 		it('opens the update-review dialog for an open review even with the local preference off', async () => {
 			const openModalSpy = vi.spyOn(uiStore, 'openModalWithData');
@@ -617,6 +648,12 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			setWorkflowReviewGates();
 			setupEnabledPublishButton();
 			seedOpenReview();
+			// The dialog prefills its version-name field from the current version.
+			workflowDocumentStore.setVersionData({
+				versionId: 'version-1',
+				name: 'Release 3',
+				description: null,
+			});
 
 			const { getByTestId, findByRole } = renderComponent();
 			await waitFor(() =>
@@ -634,7 +671,12 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 				expect(updateWorkflowReviewRequestVersion).toHaveBeenCalledWith(
 					expect.any(Object),
 					'req-1',
-					{ workflowId: defaultWorkflowProps.id, workflowVersionId: 'version-1' },
+					{
+						workflowId: defaultWorkflowProps.id,
+						workflowVersionId: 'version-1',
+						workflowVersionName: 'Release 3',
+						workflowVersionDescription: undefined,
+					},
 				);
 			});
 			expect(mockShowMessage).toHaveBeenCalledWith({
@@ -657,6 +699,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			const { getByTestId, findByRole, queryByRole } = renderComponent();
 			await userEvent.click(getByTestId('workflow-open-publish-modal-button'));
 			const submitDialog = await findByRole('dialog', { name: 'Submit for review' });
+			await userEvent.click(within(submitDialog).getByTestId('workflow-review-next-button'));
 			await userEvent.type(
 				within(submitDialog).getByTestId('workflow-review-title-input'),
 				'Review payments',
@@ -717,6 +760,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			const { getByTestId, findByRole } = renderComponent();
 			await userEvent.click(getByTestId('workflow-open-publish-modal-button'));
 			const submitDialog = await findByRole('dialog', { name: 'Submit for review' });
+			await userEvent.click(within(submitDialog).getByTestId('workflow-review-next-button'));
 			await userEvent.type(
 				within(submitDialog).getByTestId('workflow-review-title-input'),
 				'Review payments',
@@ -741,6 +785,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			const { getByTestId, findByRole, queryByRole } = renderComponent();
 			await userEvent.click(getByTestId('workflow-open-publish-modal-button'));
 			const submitDialog = await findByRole('dialog', { name: 'Submit for review' });
+			await userEvent.click(within(submitDialog).getByTestId('workflow-review-next-button'));
 			await userEvent.type(
 				within(submitDialog).getByTestId('workflow-review-title-input'),
 				'Review payments',
@@ -1245,6 +1290,40 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			expect(
 				await findByRole('dialog', { name: 'Submit latest changes to existing review' }),
 			).toBeInTheDocument();
+		});
+
+		it('saves a dirty workflow before opening the update-review dialog', async () => {
+			setWorkflowReviewGates();
+			setupEnabledPublishButton();
+			seedLatestReview();
+			uiStore.markStateDirty();
+
+			const { pill, getByTestId, findByRole } = await renderWithBanner();
+
+			await userEvent.click(pill);
+			await userEvent.click(getByTestId('workflow-review-submit-changes-button'));
+
+			expect(mockSaveCurrentWorkflow).toHaveBeenCalledWith({}, true);
+			expect(
+				await findByRole('dialog', { name: 'Submit latest changes to existing review' }),
+			).toBeInTheDocument();
+		});
+
+		it('keeps the update-review dialog closed when saving a dirty workflow fails', async () => {
+			setWorkflowReviewGates();
+			setupEnabledPublishButton();
+			seedLatestReview();
+			uiStore.markStateDirty();
+			mockSaveCurrentWorkflow.mockResolvedValue(false);
+
+			const { pill, getByTestId, queryByRole } = await renderWithBanner();
+
+			await userEvent.click(pill);
+			await userEvent.click(getByTestId('workflow-review-submit-changes-button'));
+
+			expect(
+				queryByRole('dialog', { name: 'Submit latest changes to existing review' }),
+			).not.toBeInTheDocument();
 		});
 
 		it.each([

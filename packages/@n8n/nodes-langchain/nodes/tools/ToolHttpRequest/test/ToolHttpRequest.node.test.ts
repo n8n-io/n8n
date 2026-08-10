@@ -238,6 +238,45 @@ describe('ToolHttpRequest', () => {
 			);
 		});
 
+		it('should apply Simplified Custom Auth through credential authentication', async () => {
+			helpers.httpRequestWithAuthentication.mockResolvedValue({
+				body: 'Hello World',
+				headers: { 'content-type': 'text/plain' },
+			});
+
+			executeFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'GET';
+					case 'url':
+						return 'https://api.example.com/data';
+					case 'authentication':
+						return 'genericCredentialType';
+					case 'genericAuthType':
+						return 'httpTemplatedCustomAuth';
+					case 'options':
+						return {};
+					case 'placeholderDefinitions.values':
+						return [];
+					default:
+						return undefined;
+				}
+			});
+			executeFunctions.getCredentials.mockResolvedValue({
+				template: JSON.stringify({ headers: { Authorization: 'Bearer {{api_key}}' } }),
+				placeholderValues: JSON.stringify({ api_key: 'secret' }),
+			});
+
+			const { response } = await httpTool.supplyData.call(executeFunctions, 0);
+			const result = await (response as N8nTool).invoke({});
+
+			expect(result).toBe('Hello World');
+			expect(helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
+				'httpTemplatedCustomAuth',
+				expect.objectContaining({ url: 'https://api.example.com/data' }),
+			);
+		});
+
 		it('should not send generic credentials to a domain the credential restricts', async () => {
 			executeFunctions.getNodeParameter.mockImplementation((paramName: string) => {
 				switch (paramName) {

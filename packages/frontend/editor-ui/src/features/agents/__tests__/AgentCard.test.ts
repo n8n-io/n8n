@@ -40,7 +40,7 @@ vi.mock('@/app/stores/favorites.store', () => ({
 	useFavoritesStore: () => favoritesStoreMock,
 }));
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showError: vi.fn() }),
 }));
 
@@ -53,7 +53,7 @@ const settingsStoreMock = {
 	},
 };
 
-vi.mock('@/app/stores/settings.store', () => ({
+vi.mock('@n8n/stores/settings.store', () => ({
 	useSettingsStore: () => settingsStoreMock,
 }));
 

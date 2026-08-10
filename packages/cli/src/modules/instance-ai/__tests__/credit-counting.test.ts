@@ -337,6 +337,23 @@ describe('claimRunUsage', () => {
 		expect(push.sendToUsers).not.toHaveBeenCalled();
 	});
 
+	it('does not charge an errored segment with no billable usage', async () => {
+		const threadRepo = createMockThreadRepo({ id: 't1', metadata: {} });
+		const ai = createMockAiService();
+		const push = { sendToUsers: vi.fn() };
+		const telemetry = { track: vi.fn() };
+
+		const service = createService({ threadRepo, aiService: ai, push, telemetry });
+		await callClaim(service, { usage: [], status: 'errored' });
+
+		expect(ai.getClient).not.toHaveBeenCalled();
+		expect(ai.__getInstanceAiApiProxyToken).not.toHaveBeenCalled();
+		expect(ai.__markInstanceAiTokenUsage).not.toHaveBeenCalled();
+		expect(threadRepo.save).not.toHaveBeenCalled();
+		expect(push.sendToUsers).not.toHaveBeenCalled();
+		expect(telemetry.track).not.toHaveBeenCalled();
+	});
+
 	it('does nothing when the proxy is disabled', async () => {
 		const threadRepo = createMockThreadRepo({ id: 't1', metadata: {} });
 		const ai = createMockAiService({ proxyEnabled: false });

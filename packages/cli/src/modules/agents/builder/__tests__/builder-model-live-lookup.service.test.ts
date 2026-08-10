@@ -10,7 +10,8 @@ import type { AiGatewayService } from '@/services/ai-gateway.service';
 import { BuilderModelLiveLookupService } from '../builder-model-live-lookup.service';
 
 const listModelsForProvider = vi.fn();
-vi.mock('@n8n/ai-utilities/model-discovery', () => ({
+vi.mock('@n8n/ai-utilities/model-discovery', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/ai-utilities/model-discovery')>()),
 	listModelsForProvider: (...args: unknown[]) => listModelsForProvider(...args) as unknown,
 }));
 
@@ -44,6 +45,172 @@ function usable(id: string, type: string) {
 describe('BuilderModelLiveLookupService', () => {
 	beforeEach(() => {
 		listModelsForProvider.mockReset();
+	});
+
+	describe('lookup', () => {
+		it('returns endpoint-only models and forwards OpenAI credential request options', async () => {
+			const { service, credentialsService, credentialsFinderService } = makeService();
+			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue(
+				usable('cred-1', 'openAiApi'),
+			);
+			credentialsFinderService.findCredentialById.mockResolvedValue(mock<CredentialsEntity>());
+			credentialsService.decrypt.mockResolvedValue({
+				apiKey: 'sk-key',
+				url: 'https://openai-compatible.example/v1',
+				organizationId: 'org-123',
+				header: true,
+				headerName: 'authorization',
+				headerValue: 'Bearer custom-token',
+			});
+			listModelsForProvider.mockResolvedValue([{ id: 'custom-model', name: 'Custom model' }]);
+
+			const result = await service.lookup(user, projectId, 'cred-1', 'openAiApi', 'openai');
+
+			expect(result).toEqual({
+				status: 'success',
+				policy: 'endpoint-only',
+				models: [{ name: 'Custom model', value: 'custom-model' }],
+			});
+			expect(listModelsForProvider).toHaveBeenCalledWith(
+				'openai',
+				expect.objectContaining({
+					apiKey: 'sk-key',
+					baseURL: 'https://openai-compatible.example/v1',
+					headers: {
+						Authorization: 'Bearer custom-token',
+						'OpenAI-Organization': 'org-123',
+					},
+				}),
+			);
+		});
+
+		it('lets a custom OpenAI organization header override the credential organization', async () => {
+			const { service, credentialsService, credentialsFinderService } = makeService();
+			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue(
+				usable('cred-1', 'openAiApi'),
+			);
+			credentialsFinderService.findCredentialById.mockResolvedValue(mock<CredentialsEntity>());
+			credentialsService.decrypt.mockResolvedValue({
+				apiKey: 'sk-key',
+				url: 'https://openai-compatible.example/v1',
+				organizationId: 'org-default',
+				header: true,
+				headerName: 'openai-organization',
+				headerValue: 'org-custom',
+			});
+			listModelsForProvider.mockResolvedValue([{ id: 'custom-model', name: 'Custom model' }]);
+
+			await service.lookup(user, projectId, 'cred-1', 'openAiApi', 'openai');
+
+			expect(listModelsForProvider).toHaveBeenCalledWith(
+				'openai',
+				expect.objectContaining({
+					headers: { 'OpenAI-Organization': 'org-custom' },
+				}),
+			);
+		});
+
+		it('returns curated models for the official OpenAI endpoint', async () => {
+			const { service, credentialsService, credentialsFinderService } = makeService();
+			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue(
+				usable('cred-1', 'openAiApi'),
+			);
+			credentialsFinderService.findCredentialById.mockResolvedValue(mock<CredentialsEntity>());
+			credentialsService.decrypt.mockResolvedValue({
+				apiKey: 'sk-key',
+				url: 'https://api.openai.com/v1',
+			});
+			listModelsForProvider.mockResolvedValue([{ id: 'gpt-5', name: 'GPT-5' }]);
+
+			const result = await service.lookup(user, projectId, 'cred-1', 'openAiApi', 'openai');
+
+			expect(result).toEqual({
+				status: 'success',
+				policy: 'curated',
+				models: [{ name: 'GPT-5', value: 'gpt-5' }],
+			});
+		});
+
+		it('preserves endpoint-only policy when custom OpenAI discovery fails', async () => {
+			const { service, credentialsService, credentialsFinderService } = makeService();
+			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue(
+				usable('cred-1', 'openAiApi'),
+			);
+			credentialsFinderService.findCredentialById.mockResolvedValue(mock<CredentialsEntity>());
+			credentialsService.decrypt.mockResolvedValue({
+				apiKey: 'sk-key',
+				url: 'https://openai-compatible.example/v1',
+			});
+			const error = new Error('Model listing failed');
+			listModelsForProvider.mockRejectedValue(error);
+
+			const result = await service.lookup(user, projectId, 'cred-1', 'openAiApi', 'openai');
+
+			expect(result).toEqual({ status: 'unavailable', policy: 'endpoint-only', error });
+		});
+
+		it('preserves endpoint-only policy when custom OpenAI discovery is empty', async () => {
+			const { service, credentialsService, credentialsFinderService } = makeService();
+			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue(
+				usable('cred-1', 'openAiApi'),
+			);
+			credentialsFinderService.findCredentialById.mockResolvedValue(mock<CredentialsEntity>());
+			credentialsService.decrypt.mockResolvedValue({
+				apiKey: 'sk-key',
+				url: 'https://openai-compatible.example/v1',
+			});
+			listModelsForProvider.mockResolvedValue([]);
+
+			const result = await service.lookup(user, projectId, 'cred-1', 'openAiApi', 'openai');
+
+			expect(result).toEqual({
+				status: 'unavailable',
+				policy: 'endpoint-only',
+				error: expect.objectContaining({ message: 'Provider openai returned no models' }),
+			});
+		});
+
+		it('returns managed policy for the n8n Connect managed tag', async () => {
+			const { service, aiGatewayService } = makeService();
+			aiGatewayService.getCredentialTypeForProvider.mockResolvedValue('openAiApi');
+			aiGatewayService.getSyntheticCredential.mockResolvedValue({
+				apiKey: 'gateway-jwt',
+				url: 'https://gw.example/v1/gateway/openai/v1',
+			});
+			listModelsForProvider.mockResolvedValue([{ id: 'gpt-5-mini', name: 'GPT-5 mini' }]);
+
+			const result = await service.lookup(
+				user,
+				projectId,
+				AI_GATEWAY_MANAGED_TAG,
+				'openAiApi',
+				'openai',
+			);
+
+			expect(result).toEqual({
+				status: 'success',
+				policy: 'managed',
+				models: [{ name: 'GPT-5 mini', value: 'gpt-5-mini' }],
+			});
+		});
+
+		it('keeps list compatible with successful and unavailable lookups', async () => {
+			const { service } = makeService();
+			const models = [{ name: 'GPT-5', value: 'gpt-5' }];
+			const error = new Error('Model listing failed');
+			const lookup = vi
+				.spyOn(service, 'lookup')
+				.mockResolvedValueOnce({ status: 'success', policy: 'curated', models })
+				.mockResolvedValueOnce({ status: 'unavailable', policy: 'curated', error });
+
+			await expect(service.list(user, projectId, 'cred-1', 'openAiApi', 'openai')).resolves.toBe(
+				models,
+			);
+			await expect(service.list(user, projectId, 'cred-1', 'openAiApi', 'openai')).rejects.toBe(
+				error,
+			);
+			expect(lookup).toHaveBeenCalledTimes(2);
+		});
 	});
 
 	it('lists models for a credential the user can use in the project', async () => {

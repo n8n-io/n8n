@@ -70,13 +70,14 @@ export function emitPackageImportedEvent(
 		missing: scopes.flatMap(({ imported }) =>
 			imported.variablePlan.missing.map(({ name }) => name),
 		),
+		created: scopes.flatMap(({ imported }) => imported.variableResult.created),
 		stubbed: scopes.flatMap(({ imported }) => imported.variableResult.stubbed),
 		skipped: scopes.flatMap(({ imported }) => imported.variableResult.skippedExisting),
+		updated: scopes.flatMap(({ imported }) => imported.variableResult.updated),
 	});
-	const variablesCreated = scopes.reduce(
-		(total, { imported }) => total + imported.variableResult.createdCount,
-		0,
-	);
+	// Rows, not reconciled names: a name written in two projects is two rows.
+	const countRows = (pick: (result: ImportContentResult) => string[]) =>
+		scopes.reduce((total, { imported }) => total + pick(imported).length, 0);
 
 	// Tags are global, so several scopes may plan the same tag; count each id once.
 	const tagPlans = scopes.map(({ imported }) => imported.tagPlan);
@@ -104,6 +105,7 @@ export function emitPackageImportedEvent(
 			dataTableMissingMode: request.dataTableMissingMode,
 			dataTableSchemaConflictPolicy: request.dataTableSchemaConflictPolicy,
 			variableMissingMode: request.variableMissingMode,
+			variableConflictPolicy: request.variableConflictPolicy,
 			// An omitted policy places variables in the project, so report what the import did.
 			variableParentPolicy: request.variableParentPolicy ?? VariableParentPolicy.Project,
 			tagMissingMode: request.tagMissingMode,
@@ -135,13 +137,16 @@ export function emitPackageImportedEvent(
 			variables: {
 				matched: variableSummary.matched.length,
 				missing: variableSummary.missing.length,
-				created: variablesCreated,
+				created: countRows(({ variableResult }) => variableResult.created),
+				stubbed: countRows(({ variableResult }) => variableResult.stubbed),
+				updated: countRows(({ variableResult }) => variableResult.updated),
 				requirements: variableRequirements,
 			},
 			tags: {
 				matched: uniqueTagIds((plan) => plan.matched),
 				created: uniqueTagIds((plan) => plan.creations),
 				renamed: uniqueTagIds((plan) => plan.renames),
+				reconciled: uniqueTagIds((plan) => plan.reconciles),
 				skipped: uniqueTagIds((plan) => plan.dropped),
 				requirements: tagRequirements,
 			},

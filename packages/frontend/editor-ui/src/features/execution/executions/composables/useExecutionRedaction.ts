@@ -5,7 +5,7 @@ import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutio
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
 import { useMessage } from '@/app/composables/useMessage';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { MODAL_CONFIRM } from '@/app/constants/modals';
 import RevealDataWarning from '../components/RevealDataWarning.vue';

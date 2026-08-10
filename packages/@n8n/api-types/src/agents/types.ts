@@ -42,53 +42,8 @@ export interface AgentIntegrationStatusEntry {
 }
 
 export interface AgentIntegrationStatusResponse {
-	status: 'connected' | 'disconnected';
+	status: 'configured' | 'connected' | 'disconnected';
 	integrations: AgentIntegrationStatusEntry[];
-}
-
-export interface CreateSlackAgentAppResponse {
-	appId: string;
-	installUrl: string;
-}
-
-export interface SlackAgentAppManifest {
-	display_information: {
-		name: string;
-	};
-	features: {
-		app_home: {
-			home_tab_enabled: boolean;
-			messages_tab_enabled: boolean;
-			messages_tab_read_only_enabled: boolean;
-		};
-		bot_user: {
-			display_name: string;
-			always_online: boolean;
-		};
-	};
-	oauth_config: {
-		redirect_urls?: string[];
-		scopes: {
-			bot: string[];
-		};
-	};
-	settings: {
-		event_subscriptions: {
-			request_url: string;
-			bot_events: string[];
-		};
-		interactivity: {
-			is_enabled: boolean;
-			request_url: string;
-		};
-		org_deploy_enabled: boolean;
-		socket_mode_enabled: boolean;
-		token_rotation_enabled: boolean;
-	};
-}
-
-export interface SlackAgentAppManifestResponse {
-	manifest: SlackAgentAppManifest;
 }
 
 export interface AgentSkillReference {
@@ -241,7 +196,7 @@ export interface AgentPersistedMessageDto {
 	/** Agent-execution turn id when this message was produced from an execution transcript. */
 	executionId?: string;
 	/** Outcome of the execution that produced this message. */
-	executionStatus?: 'success' | 'error';
+	executionStatus?: 'running' | 'success' | 'error' | 'cancelled' | 'interrupted';
 }
 
 export const AGENT_BUILDER_DEFAULT_MODEL = 'claude-sonnet-4-6' as const;
@@ -273,6 +228,8 @@ export type AgentBuilderAdminSettingsUpdateRequest = AgentBuilderAdminSettings;
 export interface AgentBuilderOpenSuspension {
 	toolCallId: string;
 	runId: string;
+	/** Client-visible suspend payload used to rebuild an interactive card after history reload. */
+	suspendPayload?: unknown;
 }
 
 /** Chat history envelope returned by the agent chat messages endpoints. */

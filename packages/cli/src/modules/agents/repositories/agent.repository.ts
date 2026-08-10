@@ -1,6 +1,6 @@
 import type { ListAgentsQueryDto } from '@n8n/api-types';
 import { Service } from '@n8n/di';
-import { DataSource, In, Repository, type SelectQueryBuilder } from '@n8n/typeorm';
+import { DataSource, In, IsNull, Repository, type SelectQueryBuilder } from '@n8n/typeorm';
 
 import { Agent } from '../entities/agent.entity';
 
@@ -159,6 +159,33 @@ export class AgentRepository extends Repository<Agent> {
 		});
 	}
 
+	async findCredentialIndexAgentIdsBatch(
+		afterId: string | null,
+		batchSize: number,
+	): Promise<Array<Pick<Agent, 'id'>>> {
+		const query = this.createQueryBuilder('agent')
+			.select(['agent.id'])
+			.orderBy('agent.id', 'ASC')
+			.take(batchSize);
+
+		if (afterId !== null) {
+			query.where('agent.id > :afterId', { afterId });
+		}
+
+		return await query.getMany();
+	}
+
+	async findSummariesByIds(
+		ids: string[],
+	): Promise<Array<Pick<Agent, 'id' | 'name' | 'projectId'>>> {
+		if (ids.length === 0) return [];
+
+		return await this.find({
+			select: ['id', 'name', 'projectId'],
+			where: { id: In(ids) },
+		});
+	}
+
 	async findByIdInProjects(id: string, projectIds: string[]): Promise<Agent | null> {
 		if (projectIds.length === 0) return null;
 		return await this.findOne({
@@ -205,6 +232,20 @@ export class AgentRepository extends Repository<Agent> {
 	async setAvailableInMCP(agentIds: string[], availableInMCP: boolean): Promise<void> {
 		if (agentIds.length === 0) return;
 		await this.update({ id: In(agentIds) }, { availableInMCP });
+	}
+
+	/**
+	 * Claims the once-per-agent setup-completion marker. Returns true only for
+	 * the caller that actually set it, so concurrent writers that all saw the
+	 * marker unset cannot each report the milestone.
+	 */
+	async claimSetupCompleted(id: string, completedAt: Date): Promise<boolean> {
+		const result = await this.update(
+			{ id, setupCompletedAt: IsNull() },
+			{ setupCompletedAt: completedAt },
+		);
+
+		return (result.affected ?? 0) > 0;
 	}
 
 	async findPublished(): Promise<Agent[]> {

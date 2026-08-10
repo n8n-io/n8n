@@ -81,6 +81,15 @@ export class UpdateAgentsMcpAvailabilityDto extends Z.class({
 
 export class CreateAgentDto extends Z.class({
 	name: z.string().min(1),
+	/**
+	 * Client-minted agent id, so a surface can reference the agent (an artifact
+	 * tab, a thread binding) before it decides to persist it. Must match the
+	 * nanoid shape the entity would otherwise generate.
+	 */
+	id: z
+		.string()
+		.regex(/^[0-9A-Za-z]{16}$/)
+		.optional(),
 }) {}
 
 export class UpdateAgentConfigDto extends Z.class({
@@ -220,10 +229,6 @@ export class PublishAgentDto extends Z.class({
 
 export class RevertAgentToVersionDto extends Z.class({
 	versionId: z.string().min(1),
-}) {}
-
-export class CreateSlackAgentAppDto extends Z.class({
-	appConfigurationToken: z.string().min(1),
 }) {}
 
 export class TestAgentVectorStoreDto extends Z.class({

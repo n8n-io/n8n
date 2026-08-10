@@ -12,9 +12,14 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 
+import { attributionForScenario } from './attribution';
 import type { EvalLogger } from './logger';
 import { reseedScenarioTables, type ScenarioSeedContext } from './seed-tables';
-import { isTransientExecutionAbort, MAX_EXEC_ATTEMPTS } from './transient-error';
+import {
+	throwIfServerBudgetStop,
+	isTransientExecutionAbort,
+	MAX_EXEC_ATTEMPTS,
+} from './transient-error';
 import { buildWorkflowContextBlock } from './workflow-context';
 import { isMockableTriggerNodeType } from '../../src/tools/workflows/workflow-json-utils';
 import { type VerifierAttemptDebug, verifyChecklist } from '../checklist/verifier';
@@ -305,6 +310,9 @@ async function runScenario(
 			pinNodes,
 		);
 	}
+	// Killed for time, not by the builder — throw so the timeout path classifies it.
+	throwIfServerBudgetStop(evalResult);
+
 	const execMs = Date.now() - execStart;
 
 	const pinTag = pinNodes ? ` pinned=${pinNodes.join(',')}` : '';
@@ -360,6 +368,7 @@ async function runScenario(
 		`No verification result — verifier exhausted all attempts${attemptErrors.length > 0 ? ` (${attemptErrors.join('; ')})` : ''}`;
 	const failureCategory = result?.failureCategory ?? (result ? undefined : 'verification_failure');
 	const rootCause = result?.rootCause;
+	const attribution = attributionForScenario({ passed, incomplete, failureCategory });
 
 	const categoryLabel = failureCategory ? ` [${failureCategory}]` : '';
 	const statusLabel = incomplete ? 'INCOMPLETE (excluded from scoring)' : passed ? 'PASS' : 'FAIL';
@@ -378,6 +387,7 @@ async function runScenario(
 		score: passed ? 1 : 0,
 		reasoning,
 		failureCategory,
+		attribution,
 		rootCause,
 		...(incomplete ? { incomplete: true } : {}),
 	};
@@ -549,15 +559,19 @@ function buildScenarioContextBlock(
 			);
 		}
 		for (const req of nr.interceptedRequests) {
-			if (
-				typeof req.mockResponse === 'object' &&
-				req.mockResponse !== null &&
-				'_evalMockError' in (req.mockResponse as Record<string, unknown>)
-			) {
-				const msg = (req.mockResponse as Record<string, unknown>).message;
+			if (typeof req.mockResponse !== 'object' || req.mockResponse === null) continue;
+			const mockResponse = req.mockResponse as Record<string, unknown>;
+			// `_evalMockError` = HTTP-mock generation failure; `evalMockGenerationError`
+			// = LLM wire-server generation/translation failure. Flag both.
+			if ('_evalMockError' in mockResponse) {
+				const msg = mockResponse.message;
 				const msgStr = typeof msg === 'string' ? msg : 'unknown';
 				preAnalysis.push(
 					`⚠ MOCK ISSUE: "${nodeName}" ${req.method} ${req.url} → mock generation failed: ${msgStr}`,
+				);
+			} else if (typeof mockResponse.evalMockGenerationError === 'string') {
+				preAnalysis.push(
+					`⚠ MOCK ISSUE: "${nodeName}" ${req.method} ${req.url} → mock generation failed: ${mockResponse.evalMockGenerationError}`,
 				);
 			}
 		}

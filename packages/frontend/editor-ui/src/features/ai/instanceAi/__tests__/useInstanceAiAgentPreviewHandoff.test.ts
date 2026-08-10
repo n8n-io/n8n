@@ -1,3 +1,4 @@
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { computed } from 'vue';
 
@@ -63,10 +64,13 @@ describe('useInstanceAiAgentPreviewHandoff', () => {
 			},
 			{ newTab: true },
 		);
-		expect(trackMock).toHaveBeenCalledWith('Instance AI opened from agent preview', {
-			agent_id: 'agent-1',
-			preview_thread_id: 'thread-1',
-		});
+		expect(trackMock).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.AGENTS.INSTANCE_AI_OPENED_FROM_AGENT_PREVIEW,
+			{
+				agent_id: 'agent-1',
+				preview_thread_id: 'thread-1',
+			},
+		);
 	});
 
 	it('passes executionId into preview handoff context and telemetry', async () => {
@@ -97,11 +101,14 @@ describe('useInstanceAiAgentPreviewHandoff', () => {
 			},
 			{ newTab: true },
 		);
-		expect(trackMock).toHaveBeenCalledWith('Instance AI opened from agent preview', {
-			agent_id: 'agent-1',
-			preview_thread_id: 'thread-1',
-			preview_execution_id: 'exec-1',
-		});
+		expect(trackMock).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.AGENTS.INSTANCE_AI_OPENED_FROM_AGENT_PREVIEW,
+			{
+				agent_id: 'agent-1',
+				preview_thread_id: 'thread-1',
+				preview_execution_id: 'exec-1',
+			},
+		);
 	});
 
 	it('does not track telemetry when opening the instance AI thread fails', async () => {

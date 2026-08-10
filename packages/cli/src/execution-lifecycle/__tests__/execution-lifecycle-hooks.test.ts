@@ -63,6 +63,14 @@ describe('Execution Lifecycle Hooks', () => {
 	const redactionProxy = mockInstance(ExecutionRedactionServiceProxy);
 	const workflowHookContext = mockInstance(WorkflowHookContextService);
 
+	/**
+	 * The error-workflow dispatch is deliberately fire-and-forget: the hook does
+	 * not await it, and it resolves `WorkflowExecutionService` through a lazy
+	 * import. Drain the microtask queue (this suite fakes timers, so `nextTick`
+	 * rather than `setImmediate`) before asserting on it.
+	 */
+	const flushErrorWorkflowDispatch = async () => await new Promise(process.nextTick);
+
 	const nodeName = 'Test Node';
 	const nodeType = 'n8n-nodes-base.testNode';
 	const nodeId = 'test-node-id';
@@ -440,6 +448,7 @@ describe('Execution Lifecycle Hooks', () => {
 					workflow,
 					'manual',
 					workflowHookContext,
+					undefined,
 				]);
 			});
 		});
@@ -871,6 +880,7 @@ describe('Execution Lifecycle Hooks', () => {
 					workflow,
 					'manual',
 					workflowHookContext,
+					undefined,
 				]);
 			});
 
@@ -1119,6 +1129,7 @@ describe('Execution Lifecycle Hooks', () => {
 
 					await lifecycleHooks.runHook('workflowExecuteAfter', [failedRun, {}]);
 
+					await flushErrorWorkflowDispatch();
 					expect(workflowExecutionService.executeErrorWorkflow).toHaveBeenCalledWith(
 						errorWorkflow,
 						{
@@ -1176,6 +1187,7 @@ describe('Execution Lifecycle Hooks', () => {
 
 					await lifecycleHooks.runHook('workflowExecuteAfter', [failedRun, {}]);
 
+					await flushErrorWorkflowDispatch();
 					expect(workflowExecutionService.executeErrorWorkflow).toHaveBeenCalledWith(
 						errorWorkflow,
 						expect.objectContaining({ workflow: { id: workflowId, name: workflowData.name } }),
@@ -1290,6 +1302,7 @@ describe('Execution Lifecycle Hooks', () => {
 					workflow,
 					'manual',
 					workflowHookContext,
+					undefined,
 				]);
 			});
 		});
@@ -1539,6 +1552,7 @@ describe('Execution Lifecycle Hooks', () => {
 
 				await lifecycleHooks.runHook('workflowExecuteAfter', [failedRun, {}]);
 
+				await flushErrorWorkflowDispatch();
 				expect(workflowExecutionService.executeErrorWorkflow).toHaveBeenCalledWith(
 					errorWorkflow,
 					{
@@ -1593,6 +1607,7 @@ describe('Execution Lifecycle Hooks', () => {
 
 				await lifecycleHooks.runHook('workflowExecuteAfter', [failedRun, {}]);
 
+				await flushErrorWorkflowDispatch();
 				expect(workflowExecutionService.executeErrorWorkflow).toHaveBeenCalledWith(
 					errorWorkflow,
 					expect.objectContaining({ workflow: { id: workflowId, name: workflowData.name } }),

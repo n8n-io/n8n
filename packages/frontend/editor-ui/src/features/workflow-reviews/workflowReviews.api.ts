@@ -1,10 +1,12 @@
 import type {
 	CreateWorkflowReviewRequestDto,
+	DecideWorkflowReviewRequestDto,
+	DecideWorkflowReviewRequestResponse,
 	GetWorkflowReviewEligibleReviewersQueryDto,
 	GetWorkflowReviewInboxSummaryResponse,
 	ListWorkflowReviewInboxResponse,
+	UpdateWorkflowReviewRequestVersionDto,
 	WorkflowReviewEligibleReviewersList,
-	WorkflowReviewRequestDecision,
 	WorkflowReviewRequestDetail,
 	WorkflowReviewRequestList,
 	WorkflowReviewRequestState,
@@ -19,7 +21,7 @@ export type FetchWorkflowReviewInboxParams = {
 };
 
 /** A decision a reviewer can submit; `pending` is the initial state, never an input. */
-export type WorkflowReviewDecisionInput = Exclude<WorkflowReviewRequestDecision, 'pending'>;
+export type WorkflowReviewDecisionInput = DecideWorkflowReviewRequestDto['decision'];
 
 /** Workflow-scoped list used by the review status sync (toggle + canvas banner). */
 export async function fetchWorkflowReviewRequests(
@@ -61,7 +63,7 @@ export async function createWorkflowReviewRequest(
 export async function updateWorkflowReviewRequestVersion(
 	context: IRestApiContext,
 	workflowReviewRequestId: string,
-	payload: { workflowId: string; workflowVersionId: string },
+	payload: UpdateWorkflowReviewRequestVersionDto,
 ): Promise<WorkflowReviewRequestSummary> {
 	return await makeRestApiRequest<WorkflowReviewRequestSummary>(
 		context,
@@ -74,9 +76,9 @@ export async function updateWorkflowReviewRequestVersion(
 export async function decideWorkflowReviewRequest(
 	context: IRestApiContext,
 	workflowReviewRequestId: string,
-	payload: { decision: WorkflowReviewDecisionInput },
-): Promise<WorkflowReviewRequestSummary> {
-	return await makeRestApiRequest<WorkflowReviewRequestSummary>(
+	payload: DecideWorkflowReviewRequestDto,
+): Promise<DecideWorkflowReviewRequestResponse> {
+	return await makeRestApiRequest<DecideWorkflowReviewRequestResponse>(
 		context,
 		'POST',
 		`/workflow-review-requests/${workflowReviewRequestId}/decision`,

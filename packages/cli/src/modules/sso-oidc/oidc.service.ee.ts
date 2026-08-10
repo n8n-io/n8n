@@ -54,6 +54,7 @@ type OidcRuntimeConfig = Pick<
 	| 'prompt'
 	| 'authenticationContextClassReference'
 	| 'additionalScopes'
+	| 'emailVerifiedRequired'
 	| 'rpInitiatedLogoutEnabled'
 > & {
 	discoveryEndpoint: URL;
@@ -345,6 +346,10 @@ export class OidcService {
 		});
 
 		if (foundUser) {
+			// Linking to an existing account uses the email as the key, so only do it
+			// when the IdP says the email is verified.
+			this.assertEmailVerified(userInfo.email_verified);
+
 			this.logger.debug(
 				`OIDC login: User with email ${userInfo.email} already exists, linking OIDC identity.`,
 			);
@@ -449,6 +454,19 @@ export class OidcService {
 			id_token_hint: idToken,
 			post_logout_redirect_uri: `${this.urlService.getInstanceBaseUrl()}/signin`,
 		});
+	}
+
+	/**
+	 * Throws if the email is not verified. By default only an explicit `false` is
+	 * rejected; `emailVerifiedRequired` also rejects an absent claim.
+	 */
+	private assertEmailVerified(emailVerified: unknown): void {
+		const isVerified = emailVerified === true || emailVerified === 'true';
+		const isExplicitlyUnverified = emailVerified === false || emailVerified === 'false';
+
+		if (isExplicitlyUnverified || (this.oidcConfig.emailVerifiedRequired && !isVerified)) {
+			throw new BadRequestError('Email address is not verified by the identity provider');
+		}
 	}
 
 	async generateTestLoginUrl(): Promise<{ url: URL; state: string; nonce: string }> {

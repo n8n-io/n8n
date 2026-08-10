@@ -6,14 +6,15 @@ import { API_KEY_CREATE_OR_EDIT_MODAL_KEY } from '../apiKeys.constants';
 import { isApiKeyExpired } from '../apiKeys.utils';
 import { computed, onMounted, ref } from 'vue';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useRBACStore } from '@n8n/stores/rbac.store';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useApiKeysStore } from '../apiKeys.store';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import type { BaseTextKey } from '@n8n/i18n';
 import { DateTime } from 'luxon';
 import type { ApiKey, ApiKeyWithRawValue, CreateApiKeyRequestDto } from '@n8n/api-types';
@@ -49,6 +50,7 @@ const rootStore = useRootStore();
 const apiKeysStore = useApiKeysStore();
 const { createApiKey, updateApiKey, deleteApiKey, apiKeysById, availableScopes } = apiKeysStore;
 const usersStore = useUsersStore();
+const rbacStore = useRBACStore();
 const documentTitle = useDocumentTitle();
 
 const label = ref('');
@@ -126,10 +128,17 @@ const currentApiKey = computed<ApiKey | null>(() =>
 	props.mode === 'edit' ? (apiKeysById[props.activeId] ?? null) : null,
 );
 
-const isReadOnly = computed(() => {
+const isOwnKey = computed(() => {
 	const apiKey = currentApiKey.value;
-	if (!apiKey?.owner || !usersStore.currentUser) return false;
-	return apiKey.owner.id !== usersStore.currentUser.id;
+	if (!apiKey?.owner || !usersStore.currentUser) return true;
+	return apiKey.owner.id === usersStore.currentUser.id;
+});
+
+// Someone else's key is always view-only; own keys become view-only when the
+// role doesn't allow editing them.
+const isReadOnly = computed(() => {
+	if (!currentApiKey.value) return false;
+	return !isOwnKey.value || !rbacStore.hasScope('apiKey:update');
 });
 
 // Copy for "expires on X" / "expired on X" / "never expires", shared by the
@@ -276,10 +285,13 @@ const modalTitle = computed(() => {
 	if (props.rotatedApiKey) {
 		return i18n.baseText('settings.api.rotate.success.title');
 	}
-	if (isReadOnly.value && currentApiKey.value?.owner) {
-		return i18n.baseText('settings.api.view.modal.title.readonly', {
-			interpolate: { email: currentApiKey.value.owner.email },
-		});
+	if (isReadOnly.value) {
+		// Own key that the role can't edit vs. a key owned by someone else.
+		return isOwnKey.value || !currentApiKey.value?.owner
+			? i18n.baseText('settings.api.view.modal.title.readonly.own')
+			: i18n.baseText('settings.api.view.modal.title.readonly', {
+					interpolate: { email: currentApiKey.value.owner.email },
+				});
 	}
 	let path = 'edit';
 	if (props.mode === 'new') {
@@ -446,7 +458,7 @@ async function handleEnterKey(event: KeyboardEvent) {
 					:api-key="currentApiKey"
 					:open="showRevokeConfirm"
 					:loading="revoking"
-					:revoking-for-other="isReadOnly"
+					:revoking-for-other="!isOwnKey"
 					@confirm="onRevokeConfirm"
 					@cancel="showRevokeConfirm = false"
 					@update:open="showRevokeConfirm = $event"
