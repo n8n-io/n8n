@@ -11,10 +11,10 @@ import type { AgentEvalDataTableDataset } from '../agentEvals.types';
 
 configure({ testIdAttribute: 'data-testid' });
 
-const { fetchDataTableContent, findDataTableById, insertRow, updateRow, deleteRows } = vi.hoisted(
+const { fetchDataTableContent, fetchDataTableById, insertRow, updateRow, deleteRows } = vi.hoisted(
 	() => ({
 		fetchDataTableContent: vi.fn(),
-		findDataTableById: vi.fn(),
+		fetchDataTableById: vi.fn(),
 		insertRow: vi.fn(),
 		updateRow: vi.fn(),
 		deleteRows: vi.fn(),
@@ -44,7 +44,7 @@ vi.mock('../agentEvals.api', () => ({
 vi.mock('@/features/core/dataTable/dataTable.store', () => ({
 	useDataTableStore: vi.fn(() => ({
 		fetchDataTableContent,
-		findDataTableById,
+		fetchDataTableById,
 		insertRow,
 		updateRow,
 		deleteRows,
@@ -107,7 +107,7 @@ describe('AgentEvalCasesCard', () => {
 		setActivePinia(createPinia());
 		vi.clearAllMocks();
 		fetchDataTableContent.mockResolvedValue(twoCases);
-		findDataTableById.mockResolvedValue({ id: 'dt-1', projectId: 'project-1' });
+		fetchDataTableById.mockResolvedValue({ id: 'dt-1', projectId: 'project-1' });
 		listRuns.mockResolvedValue({ count: 0, data: [] });
 	});
 

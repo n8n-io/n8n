@@ -348,21 +348,6 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		return inserted[0];
 	};
 
-	// Point lookup by id across every project the user can see, for a caller that
-	// holds a table id but not the project it lives in. Deliberately does not touch
-	// `dataTables`/`totalCount` — that list state belongs to the Data tables view and
-	// a lookup must not clobber it. Uses the global endpoint, which is gated on
-	// `dataTable:list`, a scope every global role holds.
-	const findDataTableById = async (dataTableId: string) => {
-		const { data } = await fetchDataTablesApi(
-			rootStore.restApiContext,
-			'',
-			{ skip: 0, take: 1 },
-			{ id: dataTableId },
-		);
-		return data[0] ?? null;
-	};
-
 	// Data-carrying sibling of `insertEmptyRow`, for callers that build the row up
 	// front instead of letting the grid fill in a blank one cell by cell.
 	const insertRow = async (dataTableId: string, projectId: string, row: DataTableRow) => {
@@ -475,7 +460,6 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		moveDataTableColumn,
 		renameDataTableColumn,
 		fetchDataTableContent,
-		findDataTableById,
 		insertEmptyRow,
 		insertRow,
 		updateRow,

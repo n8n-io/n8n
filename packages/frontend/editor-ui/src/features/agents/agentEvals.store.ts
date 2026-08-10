@@ -205,8 +205,11 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 		const cached = tableProjectByDataTableId.value[dataTableId];
 		if (cached) return cached;
 
+		// `fetchDataTableById` is the store's existing global point lookup: it does not
+		// touch the list state, and it returns null when the user lacks `dataTable:list`
+		// rather than firing a request that would be refused — either way we fall back.
 		const resolved = await dataTableStore
-			.findDataTableById(dataTableId)
+			.fetchDataTableById(dataTableId)
 			.then((table) => table?.projectId)
 			.catch(() => undefined);
 		const projectId = resolved ?? agentProjectId;

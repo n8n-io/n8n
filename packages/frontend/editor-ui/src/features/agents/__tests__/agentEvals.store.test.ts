@@ -19,10 +19,10 @@ const { getDatasets, generateDraftCases, startRun, cancelRun, getRunSummary, lis
 		listRuns: vi.fn(),
 	}));
 
-const { fetchDataTableContent, findDataTableById, insertRow, updateRow, deleteRows } = vi.hoisted(
+const { fetchDataTableContent, fetchDataTableById, insertRow, updateRow, deleteRows } = vi.hoisted(
 	() => ({
 		fetchDataTableContent: vi.fn(),
-		findDataTableById: vi.fn(),
+		fetchDataTableById: vi.fn(),
 		insertRow: vi.fn(),
 		updateRow: vi.fn(),
 		deleteRows: vi.fn(),
@@ -41,7 +41,7 @@ vi.mock('../agentEvals.api', () => ({
 vi.mock('@/features/core/dataTable/dataTable.store', () => ({
 	useDataTableStore: vi.fn(() => ({
 		fetchDataTableContent,
-		findDataTableById,
+		fetchDataTableById,
 		insertRow,
 		updateRow,
 		deleteRows,
@@ -108,7 +108,7 @@ describe('useAgentEvalsStore', () => {
 		setActivePinia(createPinia());
 		vi.clearAllMocks();
 		// Default: the table lives in the agent's own project, as generation creates it.
-		findDataTableById.mockResolvedValue({ id: 'dt-1', projectId: PROJECT_ID });
+		fetchDataTableById.mockResolvedValue({ id: 'dt-1', projectId: PROJECT_ID });
 	});
 
 	describe('fetchDatasets', () => {
@@ -251,7 +251,7 @@ describe('useAgentEvalsStore', () => {
 		// project. A dataset attached via the API can point at a table elsewhere; the
 		// runner resolves that case, so the card has to as well.
 		it("reads rows from the table's own project, not the agent's", async () => {
-			findDataTableById.mockResolvedValue({ id: 'dt-1', projectId: 'other-project' });
+			fetchDataTableById.mockResolvedValue({ id: 'dt-1', projectId: 'other-project' });
 			fetchDataTableContent.mockResolvedValue({ count: 0, data: [] });
 			const store = useAgentEvalsStore();
 
@@ -267,11 +267,11 @@ describe('useAgentEvalsStore', () => {
 			await store.fetchCases(PROJECT_ID, source);
 			await store.fetchCases(PROJECT_ID, source);
 
-			expect(findDataTableById).toHaveBeenCalledTimes(1);
+			expect(fetchDataTableById).toHaveBeenCalledTimes(1);
 		});
 
 		it("falls back to the agent's project when the table cannot be looked up", async () => {
-			findDataTableById.mockRejectedValue(new Error('forbidden'));
+			fetchDataTableById.mockRejectedValue(new Error('forbidden'));
 			fetchDataTableContent.mockResolvedValue({ count: 0, data: [] });
 			const store = useAgentEvalsStore();
 
