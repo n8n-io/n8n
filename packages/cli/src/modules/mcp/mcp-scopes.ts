@@ -93,10 +93,12 @@ export const TOOLS_BY_SCOPE: Record<McpScope, readonly string[]> = {
 
 /**
  * Tools that operate on folders and therefore require the `feat:folders`
- * license. Only registered (and advertised on the consent screen) when the
- * instance is licensed for folders.
+ * license, matching the gate on the REST and public API folder endpoints.
+ * Only registered (and advertised on the consent screen) when the instance
+ * is licensed for folders.
  */
 export const FOLDER_FEATURE_TOOLS: ReadonlySet<string> = new Set([
+	'search_folders',
 	'create_folder',
 	'update_folder',
 	'move_workflows_to_folder',

@@ -73,7 +73,7 @@ describe('McpProtectedResource', () => {
 			expect(scopeTools['tag:read']).toEqual([]);
 		});
 
-		it('should drop folder write tools when folders are not licensed', () => {
+		it('should drop folder tools when folders are not licensed', () => {
 			licenseState.isFoldersLicensed.mockReturnValue(false);
 
 			const scopeTools = resource.getScopeTools();
@@ -81,8 +81,9 @@ describe('McpProtectedResource', () => {
 			expect(scopeTools['project:write']).not.toContain('create_folder');
 			expect(scopeTools['project:write']).not.toContain('update_folder');
 			expect(scopeTools['workflow:write']).not.toContain('move_workflows_to_folder');
-			// The read tool is not license-gated.
-			expect(scopeTools['project:write']).toContain('search_folders');
+			expect(scopeTools['project:write']).not.toContain('search_folders');
+			expect(scopeTools['project:read']).not.toContain('search_folders');
+			expect(scopeTools['project:read']).toContain('search_projects');
 		});
 
 		it('should drop agent scopes and tools when the agents module is inactive', () => {

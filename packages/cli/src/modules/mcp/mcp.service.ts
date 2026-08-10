@@ -713,17 +713,18 @@ export class McpService {
 		);
 		registerIfAllowed(searchProjectsTool);
 
-		const searchFoldersTool = createSearchFoldersTool(
-			user,
-			this.folderService,
-			this.projectService,
-			this.telemetry,
-		);
-		registerIfAllowed(searchFoldersTool);
-
-		// Folder write tools require the folders feature; unlicensed instances
-		// never see them (the consent screen filters them the same way).
+		// Folder tools require the folders feature; unlicensed instances never
+		// see them (the consent screen filters them the same way), matching the
+		// license gate on the REST and public API folder endpoints.
 		if (this.licenseState.isFoldersLicensed()) {
+			const searchFoldersTool = createSearchFoldersTool(
+				user,
+				this.folderService,
+				this.projectService,
+				this.telemetry,
+			);
+			registerIfAllowed(searchFoldersTool);
+
 			const createFolderTool = createCreateFolderTool(
 				user,
 				this.folderService,

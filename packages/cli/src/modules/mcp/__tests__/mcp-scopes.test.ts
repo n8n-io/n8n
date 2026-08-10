@@ -180,18 +180,18 @@ describe('McpService scope enforcement', () => {
 		expect(gated).toEqual([...BUILDER_TOOLS].sort());
 	});
 
-	it('does not register folder write tools when folders are not licensed', async () => {
+	it('does not register folder tools when folders are not licensed', async () => {
 		const server = await buildService({ foldersLicensed: false }).getServer(
 			user,
 			mcpFeatureFlags(),
 		);
 		const registered = getRegisteredToolNames(server);
 
+		expect(registered).not.toContain('search_folders');
 		expect(registered).not.toContain('create_folder');
 		expect(registered).not.toContain('update_folder');
 		expect(registered).not.toContain('move_workflows_to_folder');
-		// The read tool is not license-gated.
-		expect(registered).toContain('search_folders');
+		expect(registered).toContain('search_projects');
 	});
 
 	it('registers all tools when no scopes are provided (API keys, legacy tokens)', async () => {
