@@ -395,6 +395,38 @@ describe('Source Control Helper', () => {
 
 			expect(isWorkflowModified(local, remote)).toBe(true);
 		});
+
+		it('should detect modifications when Available in MCP differs and version IDs match', () => {
+			const local = createWorkflowVersion({ settings: { availableInMCP: true } });
+			const remote = createWorkflowVersion({ settings: { availableInMCP: false } });
+
+			expect(isWorkflowModified(local, remote)).toBe(true);
+		});
+
+		it('should detect modifications when a settings-only field is present locally and missing remotely', () => {
+			const local = createWorkflowVersion({ settings: { availableInMCP: true } });
+			const remote = createWorkflowVersion();
+
+			expect(isWorkflowModified(local, remote)).toBe(true);
+		});
+
+		it('should not detect modifications when settings objects are deeply equal', () => {
+			const local = createWorkflowVersion({
+				settings: { availableInMCP: true, timezone: 'UTC' },
+			});
+			const remote = createWorkflowVersion({
+				settings: { timezone: 'UTC', availableInMCP: true },
+			});
+
+			expect(isWorkflowModified(local, remote)).toBe(false);
+		});
+
+		it('should treat missing settings as equal to an empty settings object', () => {
+			const local = createWorkflowVersion();
+			const remote = createWorkflowVersion({ settings: {} });
+
+			expect(isWorkflowModified(local, remote)).toBe(false);
+		});
 	});
 
 	describe('hasOwnerChanged', () => {

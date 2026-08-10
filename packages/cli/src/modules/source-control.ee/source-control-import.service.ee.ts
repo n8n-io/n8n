@@ -203,6 +203,7 @@ export class SourceControlImportService {
 					filename: getWorkflowExportPath(remote.id, this.workflowExportFolder),
 					owner: toStatusOwner(project),
 					isRemoteArchived: remote.isArchived,
+					settings: remote.settings,
 				};
 			},
 		);
@@ -220,6 +221,7 @@ export class SourceControlImportService {
 				versionId: true,
 				name: true,
 				updatedAt: true,
+				settings: true,
 				parentFolder: {
 					id: true,
 				},
@@ -246,6 +248,7 @@ export class SourceControlImportService {
 				parentFolderId: local.parentFolder?.id ?? null,
 				filename: getWorkflowExportPath(local.id, this.workflowExportFolder),
 				updatedAt: updatedAt.toISOString(),
+				settings: local.settings,
 			};
 		}) as SourceControlWorkflowVersionId[];
 	}
@@ -265,6 +268,7 @@ export class SourceControlImportService {
 				versionId: true,
 				name: true,
 				updatedAt: true,
+				settings: true,
 				parentFolder: {
 					id: true,
 				},
@@ -305,6 +309,7 @@ export class SourceControlImportService {
 				filename: getWorkflowExportPath(local.id, this.workflowExportFolder),
 				updatedAt: updatedAt.toISOString(),
 				owner: toStatusOwner(ownerProject),
+				settings: local.settings,
 			};
 		});
 	}

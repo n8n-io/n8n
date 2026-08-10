@@ -1148,6 +1148,54 @@ describe('getStatus', () => {
 				expect(result.wfModifiedInEither).toHaveLength(0);
 			});
 		});
+
+		describe('settings changes', () => {
+			it('should detect when Available in MCP is the only change', async () => {
+				const local = createWorkflow({
+					settings: { availableInMCP: true },
+				});
+				const remote = createWorkflow({
+					settings: { availableInMCP: false },
+				});
+
+				sourceControlImportService.getRemoteVersionIdsFromFiles.mockResolvedValue([remote]);
+				sourceControlImportService.getLocalVersionIdsFromDb.mockResolvedValue([local]);
+
+				const result = await sourceControlStatusService.getStatus(user, {
+					direction: 'push',
+					verbose: true,
+					preferLocalVersion: false,
+				});
+
+				if (Array.isArray(result)) expect.fail('Expected result to be an object.');
+				expect(result.wfModifiedInEither).toHaveLength(1);
+				expect(result.sourceControlledFiles).toEqual([
+					expect.objectContaining({
+						id: 'wf1',
+						type: 'workflow',
+						status: 'modified',
+					}),
+				]);
+			});
+
+			it('should not detect as modified when settings match', async () => {
+				const workflow = createWorkflow({
+					settings: { availableInMCP: true },
+				});
+
+				sourceControlImportService.getRemoteVersionIdsFromFiles.mockResolvedValue([workflow]);
+				sourceControlImportService.getLocalVersionIdsFromDb.mockResolvedValue([workflow]);
+
+				const result = await sourceControlStatusService.getStatus(user, {
+					direction: 'push',
+					verbose: true,
+					preferLocalVersion: false,
+				});
+
+				if (Array.isArray(result)) expect.fail('Expected result to be an object.');
+				expect(result.wfModifiedInEither).toHaveLength(0);
+			});
+		});
 	});
 
 	describe('credentials', () => {

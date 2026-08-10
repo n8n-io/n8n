@@ -163,6 +163,7 @@ describe('SourceControlImportService', () => {
 				id: 'workflow1',
 				versionId: 'v1',
 				name: 'Test Workflow',
+				settings: { availableInMCP: true },
 				owner: {
 					type: 'personal',
 					personalEmail: 'email@email.com',
@@ -180,6 +181,7 @@ describe('SourceControlImportService', () => {
 					id: 'workflow1',
 					versionId: 'v1',
 					name: 'Test Workflow',
+					settings: { availableInMCP: true },
 				}),
 			);
 		});
@@ -2744,6 +2746,30 @@ describe('SourceControlImportService', () => {
 			const result = await service.getLocalVersionIdsFromDb(globalAdminContext);
 
 			expect(result[0].updatedAt).toBe(now.toISOString());
+		});
+
+		it('should include workflow settings so settings-only edits are visible to status', async () => {
+			const mockWorkflows = [
+				{
+					id: 'workflow1',
+					name: 'Test Workflow',
+					versionId: 'v1',
+					updatedAt: now,
+					settings: { availableInMCP: true },
+					shared: [],
+				},
+			] as unknown as WorkflowEntity[];
+
+			workflowRepository.find.mockResolvedValue(mockWorkflows);
+
+			const result = await service.getLocalVersionIdsFromDb(globalAdminContext);
+
+			expect(result[0].settings).toEqual({ availableInMCP: true });
+			expect(workflowRepository.find).toHaveBeenCalledWith(
+				expect.objectContaining({
+					select: expect.objectContaining({ settings: true }),
+				}),
+			);
 		});
 	});
 

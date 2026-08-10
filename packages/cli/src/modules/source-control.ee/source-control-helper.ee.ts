@@ -457,8 +457,11 @@ export function hasOwnerChanged(
 }
 
 /**
- * Checks if a workflow has been modified by comparing version IDs and parent folder IDs
- * between local and remote versions
+ * Checks if a workflow has been modified by comparing version IDs, parent folder
+ * IDs, ownership, and settings between local and remote versions.
+ *
+ * Settings must be compared explicitly: a settings-only edit (for example the
+ * "Available in MCP" toggle) does not generate a new `versionId`.
  */
 export function isWorkflowModified(
 	local: SourceControlWorkflowVersionId,
@@ -468,8 +471,9 @@ export function isWorkflowModified(
 	const hasParentFolderIdChanged =
 		remote.parentFolderId !== undefined && remote.parentFolderId !== local.parentFolderId;
 	const ownerChanged = hasOwnerChanged(remote.owner, local.owner);
+	const hasSettingsChanged = !isEqual(local.settings ?? {}, remote.settings ?? {});
 
-	return hasVersionIdChanged || hasParentFolderIdChanged || ownerChanged;
+	return hasVersionIdChanged || hasParentFolderIdChanged || ownerChanged || hasSettingsChanged;
 }
 
 /**
