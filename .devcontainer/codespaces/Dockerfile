@@ -16,6 +16,8 @@ RUN npx -y playwright@${PLAYWRIGHT_VERSION} install-deps chromium
 ENV DISABLE_AUTOUPDATER=1
 RUN npm install -g @anthropic-ai/claude-code opencode-ai
 
+COPY codespaces-secrets.sh /etc/profile.d/codespaces-secrets.sh
+
 RUN echo node ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/node && chmod 0440 /etc/sudoers.d/node
 RUN mkdir -p /workspaces && chown node:node /workspaces
 RUN corepack enable

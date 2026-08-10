@@ -1,8 +1,10 @@
 import type { WorkflowRepository, WorkflowEntity } from '@n8n/db';
+import { Container } from '@n8n/di';
 import type { INode } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
+import { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { WorkflowRunner } from '@/workflow-runner';
 
 import {
@@ -13,6 +15,7 @@ import {
 } from '../tools/workflow-tool-factory';
 import type { WorkflowToolContext } from '../tools/workflow-tool-factory';
 import { findWorkflowToolWorkflows } from '../tools/workflow-tool-workflow-resolver';
+import type { WorkflowToolWorkflowLoader } from '../tools/workflow-tool-workflow-loader.service';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -85,17 +88,18 @@ function makeWorkflow(
 }
 
 function makeContext(foundWorkflow: WorkflowEntity | null): WorkflowToolContext {
-	const workflowRepository = mock<WorkflowRepository>();
 	const workflowRunner = mock<WorkflowRunner>();
 	const activeExecutions = mock<ActiveExecutions>();
+	const workflowLoader = mock<WorkflowToolWorkflowLoader>();
 
-	workflowRepository.findOneByAgentToolReference.mockResolvedValue(foundWorkflow);
+	workflowLoader.loadPublishedWorkflow.mockResolvedValue(foundWorkflow);
 
 	return {
-		workflowRepository,
+		workflowLoader,
 		workflowRunner,
 		activeExecutions,
 		projectId: 'project-1',
+		executionMode: 'manual',
 	};
 }
 
@@ -104,6 +108,10 @@ function makeContext(foundWorkflow: WorkflowEntity | null): WorkflowToolContext 
 // ---------------------------------------------------------------------------
 
 describe('resolveWorkflowTool() — metadata attachment', () => {
+	afterEach(() => {
+		Container.reset();
+	});
+
 	it('attaches metadata with triggerType "manual" for a manual trigger workflow', async () => {
 		const workflow = makeWorkflow(
 			{ id: 'wf-manual-1', name: 'Manual Workflow' },
@@ -173,10 +181,9 @@ describe('resolveWorkflowTool() — metadata attachment', () => {
 
 		await resolveWorkflowTool({ type: 'workflow', workflow: 'Scoped Workflow' }, context);
 
-		expect(context.workflowRepository.findOneByAgentToolReference).toHaveBeenCalledWith(
-			'project-1',
-			{ workflowName: 'Scoped Workflow' },
-		);
+		expect(context.workflowLoader.loadPublishedWorkflow).toHaveBeenCalledWith('project-1', {
+			workflowName: 'Scoped Workflow',
+		});
 	});
 
 	it('does not fall back to the cached name when an id is present', async () => {
@@ -189,10 +196,10 @@ describe('resolveWorkflowTool() — metadata attachment', () => {
 			),
 		).rejects.toThrow('Workflow "Existing Workflow" not found');
 
-		expect(context.workflowRepository.findOneByAgentToolReference).toHaveBeenCalledWith(
-			'project-1',
-			{ workflowId: 'missing-id', workflowName: 'Existing Workflow' },
-		);
+		expect(context.workflowLoader.loadPublishedWorkflow).toHaveBeenCalledWith('project-1', {
+			workflowId: 'missing-id',
+			workflowName: 'Existing Workflow',
+		});
 	});
 
 	it('throws when the workflow is not shared with the project', async () => {
@@ -201,6 +208,82 @@ describe('resolveWorkflowTool() — metadata attachment', () => {
 		await expect(
 			resolveWorkflowTool({ type: 'workflow', workflow: 'Missing Workflow' }, context),
 		).rejects.toThrow('Workflow "Missing Workflow" not found');
+	});
+
+	it('loads the current published workflow for every invocation', async () => {
+		const initial = makeWorkflow({ id: 'wf-current', name: 'Current Workflow' });
+		const secondVersion = makeWorkflow({
+			id: 'wf-current',
+			name: 'Current Workflow',
+			versionId: 'version-2',
+			nodes: [makeManualTriggerNode(), { ...makeRespondToWebhookNode(), name: 'Version 2' }],
+		});
+		const thirdVersion = makeWorkflow({
+			id: 'wf-current',
+			name: 'Current Workflow',
+			versionId: 'version-3',
+			nodes: [makeManualTriggerNode(), { ...makeRespondToWebhookNode(), name: 'Version 3' }],
+		});
+		const context = makeContext(initial);
+		const loadPublishedWorkflow = vi
+			.fn()
+			.mockResolvedValueOnce(initial)
+			.mockResolvedValueOnce(secondVersion)
+			.mockResolvedValueOnce(thirdVersion);
+		Object.assign(context, {
+			workflowLoader: { loadPublishedWorkflow },
+			executionMode: 'integrated',
+		});
+		context.workflowRunner.run = vi
+			.fn()
+			.mockResolvedValueOnce('exec-1')
+			.mockResolvedValueOnce('exec-2');
+		context.activeExecutions.has = vi.fn().mockReturnValue(false);
+		Container.set(ExecutionPersistence, {
+			findSingleExecution: vi
+				.fn()
+				.mockResolvedValue({ status: 'success', data: { resultData: { runData: {} } } }),
+		} as unknown as ExecutionPersistence);
+
+		const tool = await resolveWorkflowTool(
+			{ type: 'workflow', workflowId: 'wf-current', workflow: 'Current Workflow' },
+			context,
+		);
+		await tool.handler?.({}, {});
+		await tool.handler?.({}, {});
+
+		expect(loadPublishedWorkflow).toHaveBeenNthCalledWith(1, 'project-1', {
+			workflowId: 'wf-current',
+			workflowName: 'Current Workflow',
+		});
+		expect(loadPublishedWorkflow).toHaveBeenNthCalledWith(2, 'project-1', {
+			workflowId: 'wf-current',
+			workflowName: 'Current Workflow',
+		});
+		expect(loadPublishedWorkflow).toHaveBeenNthCalledWith(3, 'project-1', {
+			workflowId: 'wf-current',
+			workflowName: 'Current Workflow',
+		});
+		expect(context.workflowRunner.run).toHaveBeenNthCalledWith(
+			1,
+			expect.objectContaining({
+				workflowData: expect.objectContaining({ versionId: 'version-2' }),
+			}),
+			undefined,
+			undefined,
+			undefined,
+			expect.anything(),
+		);
+		expect(context.workflowRunner.run).toHaveBeenNthCalledWith(
+			2,
+			expect.objectContaining({
+				workflowData: expect.objectContaining({ versionId: 'version-3' }),
+			}),
+			undefined,
+			undefined,
+			undefined,
+			expect.anything(),
+		);
 	});
 });
 
@@ -244,10 +327,15 @@ describe('workflow tool compatibility', () => {
 
 	it('normalizes webhook tool input into the webhook trigger output shape', () => {
 		const triggerNode = makeWebhookTriggerNode();
-		const pinData = normalizeTriggerInput(triggerNode, 'webhook', {
-			customerId: '123',
-			priority: 'high',
-		});
+		const pinData = normalizeTriggerInput(
+			triggerNode,
+			'webhook',
+			{
+				customerId: '123',
+				priority: 'high',
+			},
+			'integrated',
+		);
 
 		expect(pinData).toEqual({
 			Webhook: [
@@ -258,7 +346,7 @@ describe('workflow tool compatibility', () => {
 						query: {},
 						body: { customerId: '123', priority: 'high' },
 						webhookUrl: '',
-						executionMode: 'agent',
+						executionMode: 'production',
 					},
 				},
 			],
