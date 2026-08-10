@@ -7,6 +7,7 @@ import type {
 	User,
 	UserRepository,
 	WorkflowEntity,
+	WorkflowHistoryRepository,
 	WorkflowPublishHistoryRepository,
 	WorkflowReviewRequest,
 	WorkflowReviewRequestAuthorRepository,
@@ -14,9 +15,11 @@ import type {
 	WorkflowReviewRequestReviewerRepository,
 	WorkflowReviewRequestWorkflow,
 	WorkflowReviewRequestWorkflowRepository,
+	WorkflowRepository,
+	Transaction,
+	OperationContext,
 } from '@n8n/db';
 import { DbLock } from '@n8n/db';
-import type { EntityManager } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 
 import type { CollaborationService } from '@/collaboration/collaboration.service';
@@ -44,6 +47,7 @@ describe('WorkflowReviewRequestService.decide', () => {
 	const workflowReviewPolicyService = mock<WorkflowReviewPolicyService>();
 	const workflowFinderService = mock<WorkflowFinderService>();
 	const workflowHistoryService = mock<WorkflowHistoryService>();
+	const workflowHistoryRepository = mock<WorkflowHistoryRepository>();
 	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
 	const publishHistoryRepository = mock<WorkflowPublishHistoryRepository>();
 	const requestRepository = mock<WorkflowReviewRequestRepository>();
@@ -58,13 +62,16 @@ describe('WorkflowReviewRequestService.decide', () => {
 	const collaborationService = mock<CollaborationService>();
 	const workflowService = mock<WorkflowService>();
 	const logger = mock<Logger>();
-	const tx = mock<EntityManager>();
+	/** The lock's context. Distinct from the root `{}` so tests can tell the two apart. */
+	const ctx: OperationContext = { trx: mock<Transaction>() };
 
 	const service = new WorkflowReviewRequestService(
 		logger,
 		new WorkflowReviewFeatureGate(licenseState, workflowReviewPolicyService),
 		workflowFinderService,
 		workflowHistoryService,
+		workflowHistoryRepository,
+		mock<WorkflowRepository>(),
 		sharedWorkflowRepository,
 		publishHistoryRepository,
 		requestRepository,
@@ -113,7 +120,7 @@ describe('WorkflowReviewRequestService.decide', () => {
 		);
 		authorRepository.isAuthor.mockResolvedValue(false);
 		projectRelationRepository.getAccessibleProjectsByRoles.mockResolvedValue([]);
-		tx.save.mockImplementation(async (entity) => entity);
+		requestRepository.saveRequest.mockImplementation(async (request) => request);
 	};
 
 	beforeEach(() => {
@@ -122,7 +129,7 @@ describe('WorkflowReviewRequestService.decide', () => {
 		licenseState.isWorkflowReviewsLicensed.mockReturnValue(true);
 		workflowReviewPolicyService.get.mockResolvedValue({ enabled: true });
 		// By default, run the critical section against the mocked transaction.
-		dbLockService.withLock.mockImplementation(async (_id, fn) => await fn(tx, {}));
+		dbLockService.withLockContext.mockImplementation(async (_id, fn) => await fn(ctx));
 		collaborationService.broadcastWorkflowReviewStateChanged.mockResolvedValue(undefined);
 		collaborationService.broadcastWorkflowUpdate.mockResolvedValue(undefined);
 	});
@@ -135,7 +142,7 @@ describe('WorkflowReviewRequestService.decide', () => {
 		);
 
 		expect(requestRepository.findById).not.toHaveBeenCalled();
-		expect(dbLockService.withLock).not.toHaveBeenCalled();
+		expect(dbLockService.withLockContext).not.toHaveBeenCalled();
 	});
 
 	it('throws NotFoundError when the review request does not exist', async () => {
@@ -145,7 +152,7 @@ describe('WorkflowReviewRequestService.decide', () => {
 			NotFoundError,
 		);
 
-		expect(dbLockService.withLock).not.toHaveBeenCalled();
+		expect(dbLockService.withLockContext).not.toHaveBeenCalled();
 	});
 
 	it('throws NotFoundError when the request has no linked workflow row', async () => {
@@ -157,7 +164,7 @@ describe('WorkflowReviewRequestService.decide', () => {
 		);
 
 		expect(workflowFinderService.findWorkflowForUser).not.toHaveBeenCalled();
-		expect(dbLockService.withLock).not.toHaveBeenCalled();
+		expect(dbLockService.withLockContext).not.toHaveBeenCalled();
 	});
 
 	it('throws NotFoundError when the user lacks publish access to the workflow', async () => {
@@ -173,7 +180,7 @@ describe('WorkflowReviewRequestService.decide', () => {
 			expect.anything(),
 			['workflow:publish'],
 		);
-		expect(dbLockService.withLock).not.toHaveBeenCalled();
+		expect(dbLockService.withLockContext).not.toHaveBeenCalled();
 	});
 
 	it.each([
@@ -187,7 +194,7 @@ describe('WorkflowReviewRequestService.decide', () => {
 			ConflictError,
 		);
 
-		expect(dbLockService.withLock).not.toHaveBeenCalled();
+		expect(dbLockService.withLockContext).not.toHaveBeenCalled();
 	});
 
 	describe('author eligibility', () => {
@@ -200,7 +207,7 @@ describe('WorkflowReviewRequestService.decide', () => {
 				ForbiddenError,
 			);
 
-			expect(dbLockService.withLock).not.toHaveBeenCalled();
+			expect(dbLockService.withLockContext).not.toHaveBeenCalled();
 		});
 
 		it('rejects a caller who became an author while waiting for the lock', async () => {
@@ -218,9 +225,9 @@ describe('WorkflowReviewRequestService.decide', () => {
 			expect(authorRepository.isAuthor).toHaveBeenNthCalledWith(
 				2,
 				expect.objectContaining({ workflowReviewRequestId: requestId }),
-				tx,
+				ctx,
 			);
-			expect(tx.save).not.toHaveBeenCalled();
+			expect(requestRepository.saveRequest).not.toHaveBeenCalled();
 		});
 
 		it.each([['global:admin'], ['global:owner']])(
@@ -260,7 +267,7 @@ describe('WorkflowReviewRequestService.decide', () => {
 				ForbiddenError,
 			);
 
-			expect(dbLockService.withLock).not.toHaveBeenCalled();
+			expect(dbLockService.withLockContext).not.toHaveBeenCalled();
 		});
 
 		it('resolves the admin override once, before taking the lock', async () => {
@@ -272,7 +279,7 @@ describe('WorkflowReviewRequestService.decide', () => {
 			// single-connection pool it would deadlock waiting for a second connection.
 			const [overrideOrder] =
 				projectRelationRepository.getAccessibleProjectsByRoles.mock.invocationCallOrder;
-			const [lockOrder] = dbLockService.withLock.mock.invocationCallOrder;
+			const [lockOrder] = dbLockService.withLockContext.mock.invocationCallOrder;
 			expect(overrideOrder).toBeLessThan(lockOrder);
 			expect(projectRelationRepository.getAccessibleProjectsByRoles).toHaveBeenCalledOnce();
 		});
@@ -283,13 +290,13 @@ describe('WorkflowReviewRequestService.decide', () => {
 
 		const result = await service.decide(memberUser(), requestId, approveDto);
 
-		expect(dbLockService.withLock).toHaveBeenCalledWith(
+		expect(dbLockService.withLockContext).toHaveBeenCalledWith(
 			DbLock.WORKFLOW_REVIEW_REQUEST_CREATE,
 			expect.any(Function),
 		);
 		// Re-checked under the lock through the transaction manager.
-		expect(requestRepository.findById).toHaveBeenCalledWith(requestId, tx);
-		const savedEntity = tx.save.mock.calls[0]?.[0] as unknown as WorkflowReviewRequest;
+		expect(requestRepository.findById).toHaveBeenCalledWith(requestId, ctx);
+		const savedEntity = requestRepository.saveRequest.mock.calls[0]?.[0];
 		expect(savedEntity).toMatchObject({
 			decision: 'approved',
 			state: 'closed',
@@ -314,7 +321,7 @@ describe('WorkflowReviewRequestService.decide', () => {
 
 		const result = await service.decide(memberUser(), requestId, requestChangesDto);
 
-		const savedEntity = tx.save.mock.calls[0]?.[0] as unknown as WorkflowReviewRequest;
+		const savedEntity = requestRepository.saveRequest.mock.calls[0]?.[0];
 		expect(savedEntity).toMatchObject({
 			decision: 'changes_requested',
 			state: 'open',
@@ -334,7 +341,7 @@ describe('WorkflowReviewRequestService.decide', () => {
 		const result = await service.decide(memberUser('user-2'), requestId, requestChangesDto);
 
 		expect(result.decision).toBe('changes_requested');
-		const savedEntity = tx.save.mock.calls[0]?.[0] as unknown as WorkflowReviewRequest;
+		const savedEntity = requestRepository.saveRequest.mock.calls[0]?.[0];
 		expect(savedEntity).toMatchObject({ updatedById: 'user-2' });
 	});
 
@@ -358,7 +365,7 @@ describe('WorkflowReviewRequestService.decide', () => {
 			ConflictError,
 		);
 
-		expect(tx.save).not.toHaveBeenCalled();
+		expect(requestRepository.saveRequest).not.toHaveBeenCalled();
 		expect(collaborationService.broadcastWorkflowReviewStateChanged).not.toHaveBeenCalled();
 	});
 
@@ -371,7 +378,7 @@ describe('WorkflowReviewRequestService.decide', () => {
 
 		const result = await service.decide(memberUser(), requestId, approveDto);
 
-		expect(workflowRepository.findByRequestId).toHaveBeenLastCalledWith(requestId, tx);
+		expect(workflowRepository.findByRequestId).toHaveBeenLastCalledWith(requestId, ctx);
 		expect(result.workflowVersionId).toBe('ver-2');
 		// The published version must be the one the approval was recorded against.
 		expect(workflowService.activateWorkflow).toHaveBeenCalledWith(
@@ -394,7 +401,7 @@ describe('WorkflowReviewRequestService.decide', () => {
 			);
 			// The approval must commit before publishing: the closed review is what
 			// lets the publish gate pass without a bypass.
-			const [lockOrder] = dbLockService.withLock.mock.invocationCallOrder;
+			const [lockOrder] = dbLockService.withLockContext.mock.invocationCallOrder;
 			const [publishOrder] = workflowService.activateWorkflow.mock.invocationCallOrder;
 			expect(lockOrder).toBeLessThan(publishOrder);
 			expect(result.autoPublish).toEqual({ status: 'published' });
@@ -424,7 +431,10 @@ describe('WorkflowReviewRequestService.decide', () => {
 			const result = await service.decide(memberUser(), requestId, approveDto);
 
 			// The approval is committed and never reverted by a publish failure.
-			expect(tx.save.mock.calls[0]?.[0]).toMatchObject({ decision: 'approved', state: 'closed' });
+			expect(requestRepository.saveRequest.mock.calls[0]?.[0]).toMatchObject({
+				decision: 'approved',
+				state: 'closed',
+			});
 			expect(result).toMatchObject({
 				state: 'closed',
 				decision: 'approved',

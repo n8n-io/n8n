@@ -1,4 +1,4 @@
-import type { StreamChunk } from '@n8n/agents';
+import { APPROVAL_SUSPEND_SCHEMA, type StreamChunk } from '@n8n/agents';
 import {
 	credentialRequestSchema,
 	workflowSetupNodeSchema,
@@ -198,6 +198,15 @@ function extractErrorInfo(error: unknown): ErrorInfo {
 		return info;
 	}
 
+	if (isRecord(error)) {
+		if (error.type === 'overloaded_error') {
+			return { content: 'The model is overloaded. Try again in a few minutes.' };
+		}
+
+		const message = nonEmptyString(error.message);
+		if (message) return { content: message };
+	}
+
 	return { content: 'Unknown error' };
 }
 
@@ -335,6 +344,18 @@ function mapSuspendedChunk(
 		gatewayConfirmationRequiredPayloadSchema,
 	);
 	const channelConfig = parseSchemaRecord(suspendPayload.channelConfig, channelConfigSchema);
+	const targetApprovalResult = isRecord(suspendPayload.builderCheckpoint)
+		? APPROVAL_SUSPEND_SCHEMA.safeParse(suspendPayload)
+		: undefined;
+	const targetApproval = targetApprovalResult?.success
+		? {
+				toolName: targetApprovalResult.data.toolName,
+				...(targetApprovalResult.data.displayName
+					? { displayName: targetApprovalResult.data.displayName }
+					: {}),
+				args: targetApprovalResult.data.args,
+			}
+		: undefined;
 
 	return {
 		type: 'confirmation-request',
@@ -349,6 +370,7 @@ function mapSuspendedChunk(
 				typeof suspendPayload.message === 'string'
 					? suspendPayload.message
 					: 'Confirmation required',
+			...(targetApproval ? { targetApproval } : {}),
 			...(credentialRequests ? { credentialRequests } : {}),
 			...(projectId ? { projectId } : {}),
 			...(inputType ? { inputType } : {}),

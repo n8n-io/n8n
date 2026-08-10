@@ -34,6 +34,7 @@ function makeExecutionStore(overrides: Partial<ExecutionRecord> = {}): Execution
 		createExecution: vi.fn(),
 		loadExecution: vi.fn().mockResolvedValue(execution),
 		transitionStatus: vi.fn().mockResolvedValue(true),
+		finishExecution: vi.fn().mockResolvedValue(true),
 	};
 }
 
@@ -50,10 +51,14 @@ function makeStepStore(step: Partial<StepRecord> = {}, overrides: Partial<StepSt
 	return {
 		createSteps: vi.fn(),
 		loadStep: vi.fn().mockResolvedValue(record),
-		claimStep: vi.fn().mockResolvedValue(true),
+		claimStep: vi.fn().mockResolvedValue(record),
 		completeStep: vi.fn().mockResolvedValue(true),
 		failStep: vi.fn().mockResolvedValue(true),
-		loadStepOutputs: vi.fn().mockResolvedValue({}),
+		cancelQueuedSteps: vi.fn(),
+		loadStepOutputs: vi.fn().mockResolvedValue({ trigger: [{}] }),
+		loadCompletedNodeIds: vi.fn().mockResolvedValue(new Set()),
+		hasActiveSteps: vi.fn().mockResolvedValue(false),
+		hasFailedSteps: vi.fn().mockResolvedValue(false),
 		...overrides,
 	} satisfies StepStore;
 }
@@ -70,10 +75,17 @@ const event = { type: 'step:ready', executionId: 'exec-1', stepId: 'step-a' } as
 
 describe('StepReadyHandler', () => {
 	it('claims the step, runs it through the executor, records its outputs and reports completion', async () => {
-		const stepStore = makeStepStore();
+		const stepStore = makeStepStore(
+			{},
+			{
+				loadStepOutputs: vi.fn().mockResolvedValue({ trigger: [{ body: { hello: 'world' } }] }),
+			},
+		);
 		const queue = makeQueue();
 		const executor = makeExecutor({ outputs: [[{ json: { ok: true } }]] });
-		const executionStore = makeExecutionStore({ triggerPayload: { body: { hello: 'world' } } });
+		// a stale payload on the execution record must not be consulted: the
+		// trigger's step row is the one source of its output
+		const executionStore = makeExecutionStore({ triggerPayload: { body: { stale: true } } });
 		const handler = new StepReadyHandler(executionStore, stepStore, queue, {
 			v1StepExecutor: executor,
 		});
@@ -81,10 +93,11 @@ describe('StepReadyHandler', () => {
 		await handler.handle(event);
 
 		expect(stepStore.claimStep).toHaveBeenCalledWith('step-a');
-		// 'a' sits directly behind the trigger, so its inputs are the trigger payload
+		// 'a' sits behind the trigger; its input slot 0 is the trigger's output slot 0
+		expect(stepStore.loadStepOutputs).toHaveBeenCalledWith('exec-1', ['trigger']);
 		expect(executor.execute).toHaveBeenCalledWith({
 			node: { id: 'a', name: 'A', type: 'v1-node', config: { some: 'config' } },
-			inputs: { body: { hello: 'world' } },
+			inputs: [{ body: { hello: 'world' } }],
 			context: {
 				executionId: 'exec-1',
 				stepId: 'step-a',
@@ -120,16 +133,154 @@ describe('StepReadyHandler', () => {
 		);
 	});
 
-	it('is a no-op when the step cannot be claimed (duplicate delivery)', async () => {
-		const stepStore = makeStepStore({}, { claimStep: vi.fn().mockResolvedValue(false) });
+	it('fails the step when the executor produces more than one output slot', async () => {
+		// A single-wired If passes graph validation but still emits two slots —
+		// this guard is where branch selection gets rejected until it exists.
+		const stepStore = makeStepStore(
+			{},
+			{ loadStepOutputs: vi.fn().mockResolvedValue({ trigger: [{}] }) },
+		);
 		const queue = makeQueue();
-		const executor = makeExecutor();
+		const executor = makeExecutor({ outputs: [[{ json: { taken: true } }], []] });
 		const handler = new StepReadyHandler(makeExecutionStore(), stepStore, queue, {
 			v1StepExecutor: executor,
 		});
 
 		await handler.handle(event);
 
+		expect(stepStore.completeStep).not.toHaveBeenCalled();
+		expect(stepStore.failStep).toHaveBeenCalledWith('step-a', {
+			name: 'UnimplementedError',
+			message: expect.stringContaining('output slot') as string,
+			stack: expect.any(String) as string,
+		});
+		expect(queue.publish).toHaveBeenCalledWith({
+			type: 'step:completed',
+			executionId: 'exec-1',
+			stepId: 'step-a',
+		});
+	});
+
+	it('fails the step when it leaves its connected output slot unfilled', async () => {
+		// 'a' has a successor, so an empty slot 0 means a branch was not taken —
+		// unrepresentable until settlement lands
+		const stepStore = makeStepStore(
+			{},
+			{ loadStepOutputs: vi.fn().mockResolvedValue({ trigger: [{}] }) },
+		);
+		const executor = makeExecutor({ outputs: [] });
+		const handler = new StepReadyHandler(makeExecutionStore(), stepStore, makeQueue(), {
+			v1StepExecutor: executor,
+		});
+
+		await handler.handle(event);
+
+		expect(stepStore.completeStep).not.toHaveBeenCalled();
+		expect(stepStore.failStep).toHaveBeenCalledWith('step-a', {
+			name: 'UnimplementedError',
+			message: expect.stringContaining('did not fire output slot 0') as string,
+			stack: expect.any(String) as string,
+		});
+	});
+
+	it('completes a terminal step that leaves its output slot unfilled', async () => {
+		// nothing is connected to b's output, so declining to fire it means nothing
+		const stepStore = makeStepStore(
+			{ id: 'step-b', nodeId: 'b' },
+			{ loadStepOutputs: vi.fn().mockResolvedValue({ a: [[{ json: { from: 'a' } }]] }) },
+		);
+		const executor = makeExecutor({ outputs: [null] });
+		const handler = new StepReadyHandler(makeExecutionStore(), stepStore, makeQueue(), {
+			v1StepExecutor: executor,
+		});
+
+		await handler.handle({ ...event, stepId: 'step-b' });
+
+		expect(stepStore.failStep).not.toHaveBeenCalled();
+		expect(stepStore.completeStep).toHaveBeenCalledWith('step-b', [null]);
+	});
+
+	it('throws when a predecessor row carries more than one output slot', async () => {
+		// the write-time guard makes this unreachable; reaching it means the store
+		// and this handler disagree, so nothing is recorded
+		const stepStore = makeStepStore(
+			{ id: 'step-b', nodeId: 'b' },
+			{ loadStepOutputs: vi.fn().mockResolvedValue({ a: [[{ json: {} }], [{ json: {} }]] }) },
+		);
+		const executor = makeExecutor();
+		const handler = new StepReadyHandler(makeExecutionStore(), stepStore, makeQueue(), {
+			v1StepExecutor: executor,
+		});
+
+		await expect(handler.handle({ ...event, stepId: 'step-b' })).rejects.toMatchObject({
+			name: 'UnexpectedError',
+			message: expect.stringContaining('more than one output slot') as string,
+		});
+
+		expect(executor.execute).not.toHaveBeenCalled();
+		expect(stepStore.completeStep).not.toHaveBeenCalled();
+		expect(stepStore.failStep).not.toHaveBeenCalled();
+	});
+
+	it('throws, running nothing, when the predecessor step has no completed outputs', async () => {
+		// a step is planned only once every predecessor completed, so a null entry
+		// means the planner and the store disagree — running on a fabricated empty
+		// input would mask that
+		const stepStore = makeStepStore(
+			{},
+			{ loadStepOutputs: vi.fn().mockResolvedValue({ trigger: null }) },
+		);
+		const executor = makeExecutor();
+		const handler = new StepReadyHandler(makeExecutionStore(), stepStore, makeQueue(), {
+			v1StepExecutor: executor,
+		});
+
+		await expect(handler.handle(event)).rejects.toMatchObject({
+			name: 'UnexpectedError',
+			message: expect.stringContaining('not completed') as string,
+		});
+
+		expect(executor.execute).not.toHaveBeenCalled();
+		expect(stepStore.completeStep).not.toHaveBeenCalled();
+		expect(stepStore.failStep).not.toHaveBeenCalled();
+	});
+
+	it('is a no-op when the step cannot be claimed (duplicate delivery)', async () => {
+		const stepStore = makeStepStore({}, { claimStep: vi.fn().mockResolvedValue(null) });
+		const queue = makeQueue();
+		const executor = makeExecutor();
+		const executionStore = makeExecutionStore();
+		const handler = new StepReadyHandler(executionStore, stepStore, queue, {
+			v1StepExecutor: executor,
+		});
+
+		await handler.handle(event);
+
+		// the claim comes first, so a duplicate touches nothing else
+		expect(stepStore.loadStep).not.toHaveBeenCalled();
+		expect(executionStore.loadExecution).not.toHaveBeenCalled();
+		expect(executor.execute).not.toHaveBeenCalled();
+		expect(stepStore.completeStep).not.toHaveBeenCalled();
+		expect(stepStore.failStep).not.toHaveBeenCalled();
+		expect(queue.publish).not.toHaveBeenCalled();
+	});
+
+	it('claims the step but runs nothing when the execution is no longer running', async () => {
+		// the claim already happened, so the step stays `running` for
+		// reconciliation (CAT-2938) to resolve — nothing is recorded or announced
+		const stepStore = makeStepStore();
+		const queue = makeQueue();
+		const executor = makeExecutor();
+		const handler = new StepReadyHandler(
+			makeExecutionStore({ status: 'cancelled' }),
+			stepStore,
+			queue,
+			{ v1StepExecutor: executor },
+		);
+
+		await handler.handle(event);
+
+		expect(stepStore.claimStep).toHaveBeenCalledWith('step-a');
 		expect(executor.execute).not.toHaveBeenCalled();
 		expect(stepStore.completeStep).not.toHaveBeenCalled();
 		expect(stepStore.failStep).not.toHaveBeenCalled();
@@ -149,7 +300,7 @@ describe('StepReadyHandler', () => {
 		expect(queue.publish).not.toHaveBeenCalled();
 	});
 
-	it('throws, recording nothing, when the event names an execution the step is not part of', async () => {
+	it('claims the step but throws, recording nothing, when the event names an execution the step is not part of', async () => {
 		const stepStore = makeStepStore({ executionId: 'exec-other' });
 		const queue = makeQueue();
 		const executor = makeExecutor();
@@ -161,7 +312,7 @@ describe('StepReadyHandler', () => {
 			'step step-a belongs to execution exec-other, but the event claims exec-1',
 		);
 
-		expect(stepStore.claimStep).not.toHaveBeenCalled();
+		expect(stepStore.claimStep).toHaveBeenCalledWith('step-a');
 		expect(executor.execute).not.toHaveBeenCalled();
 		expect(stepStore.completeStep).not.toHaveBeenCalled();
 		expect(stepStore.failStep).not.toHaveBeenCalled();
@@ -237,8 +388,10 @@ describe('StepReadyHandler', () => {
 	});
 
 	/**
-	 * Pre-claim validation failing means the event was rejected untouched: the
-	 * step stays `queued` for a redelivery (or a corrected event) to pick up.
+	 * Context validation runs only after the claim (the execution status has
+	 * to be checked post-claim, and the context load comes with it), so the
+	 * handler throws with the step left `running` for reconciliation
+	 * (CAT-2938) or internal consistency checks (CAT-3930) to resolve.
 	 */
 	it.each([
 		{
@@ -258,7 +411,7 @@ describe('StepReadyHandler', () => {
 			expected: { name: 'UnexpectedError', message: 'ghost' },
 		},
 	])(
-		'throws without claiming the step when $reason',
+		'claims the step but throws, recording nothing, when $reason',
 		async ({ stepId, steps, execution, deps, expected }) => {
 			const stepStore = steps();
 			const queue = makeQueue();
@@ -270,7 +423,7 @@ describe('StepReadyHandler', () => {
 				message: expect.stringContaining(expected.message) as string,
 			});
 
-			expect(stepStore.claimStep).not.toHaveBeenCalled();
+			expect(stepStore.claimStep).toHaveBeenCalledWith(stepId);
 			expect(executor.execute).not.toHaveBeenCalled();
 			expect(stepStore.completeStep).not.toHaveBeenCalled();
 			expect(stepStore.failStep).not.toHaveBeenCalled();
@@ -279,10 +432,11 @@ describe('StepReadyHandler', () => {
 	);
 
 	/**
-	 * Input shapes we can't gather are only detected after the claim, so the
-	 * handler throws and leaves the step `running` — recording `failed` for a
-	 * step that never ran would be a lie. Reconciliation (CAT-2938) or internal
-	 * consistency checks (CAT-3930) will resolve these.
+	 * Graph shapes ruled out by `validateExecutableGraph` are only detected after
+	 * the claim, so the handler throws and leaves the step `running` — such a
+	 * graph should never have been admitted, making this a bug, not a case to
+	 * record. Reconciliation (CAT-2938) or internal consistency checks
+	 * (CAT-3930) will resolve these.
 	 */
 	it.each([
 		{
@@ -298,7 +452,7 @@ describe('StepReadyHandler', () => {
 					},
 				}),
 			deps: (executor: IStepExecutor): ExternalDependencies => ({ v1StepExecutor: executor }),
-			expected: { name: 'UnimplementedError', message: 'connection slots' },
+			expected: { name: 'UnexpectedError', message: 'incoming edges' },
 		},
 		{
 			reason: 'one node feeds it through two edges',
@@ -313,7 +467,7 @@ describe('StepReadyHandler', () => {
 					},
 				}),
 			deps: (executor: IStepExecutor): ExternalDependencies => ({ v1StepExecutor: executor }),
-			expected: { name: 'UnimplementedError', message: 'connection slots' },
+			expected: { name: 'UnexpectedError', message: 'incoming edges' },
 		},
 		{
 			reason: "its edge leaves the predecessor's second output",
@@ -325,13 +479,13 @@ describe('StepReadyHandler', () => {
 						nodes: graph.nodes,
 						edges: [
 							graph.edges[0],
-							// the pass-through would hand b all of a's outputs, not slot 1
+							// slot routing beyond 0→0 is rejected at graph validation
 							{ from: 'a', to: 'b', outputIndex: 1, inputIndex: 0 },
 						],
 					},
 				}),
 			deps: (executor: IStepExecutor): ExternalDependencies => ({ v1StepExecutor: executor }),
-			expected: { name: 'UnimplementedError', message: 'connection slots' },
+			expected: { name: 'UnexpectedError', message: 'slot 0' },
 		},
 		{
 			reason: 'its node has no predecessor in the graph',

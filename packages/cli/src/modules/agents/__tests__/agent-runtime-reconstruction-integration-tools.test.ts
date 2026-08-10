@@ -35,6 +35,7 @@ import type { WorkflowFinderService } from '@/workflows/workflow-finder.service'
 
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import { AgentConfigService } from '../agent-config.service';
+import type { NodeToolAiGatewayService } from '../json-config/node-tool-ai-gateway.service';
 import { AgentCustomToolsService } from '../agent-custom-tools.service';
 import { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
 import type { AgentExecutionService } from '../agent-execution.service';
@@ -219,7 +220,6 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 		n8nMemory.getImplementation.mockReturnValue(memoryBackend);
 		n8nCheckpointStorage = mock<N8NCheckpointStorage>();
 		agentExecutionService = mock<AgentExecutionService>();
-		agentExecutionService.recordMessage.mockResolvedValue('exec-id');
 		chatIntegrationService = mock<ChatIntegrationService>();
 		agentKnowledgeService = mock<AgentKnowledgeService>();
 		publisher = mock<Publisher>();
@@ -255,6 +255,8 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			runtimeCacheService,
 			credentialsService,
 			mock<WorkflowRepository>(),
+			mock<NodeToolAiGatewayService>(),
+			mock<EventService>(),
 			mock<AgentSetupCompletionService>(),
 			modificationTelemetry,
 		);
@@ -279,6 +281,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			chatIntegrationService,
 			runtimeCacheService,
 			chatIntegrationRegistry,
+			mock<EventService>(),
 			modificationTelemetry,
 			credentialsService,
 			mock<AgentSetupCompletionService>(),
@@ -304,6 +307,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			agentValidationService,
 			credentialsService,
 			telemetry,
+			mock<EventService>(),
 			mock<AgentSetupCompletionService>(),
 			mock<AgentModificationTelemetryService>(),
 		);
