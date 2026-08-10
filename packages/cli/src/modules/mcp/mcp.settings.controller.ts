@@ -4,7 +4,6 @@ import { type AuthenticatedRequest } from '@n8n/db';
 import { Body, Post, Get, Patch, RestController, GlobalScope } from '@n8n/decorators';
 import type { Response } from 'express';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
 import { listQueryMiddleware } from '@/middlewares';
@@ -32,12 +31,6 @@ export class McpSettingsController {
 	@GlobalScope('mcp:manage')
 	@Patch('/settings')
 	async updateSettings(req: AuthenticatedRequest, _res: Response, @Body dto: UpdateMcpSettingsDto) {
-		if (dto.mcpAccessEnabled === undefined && dto.autoExposeNewWorkflows === undefined) {
-			throw new BadRequestError(
-				'Provide at least one of mcpAccessEnabled or autoExposeNewWorkflows',
-			);
-		}
-
 		if (this.instanceSettingsLoaderConfig.mcpManagedByEnv) {
 			throw new ForbiddenError('MCP settings are managed via environment variables');
 		}
