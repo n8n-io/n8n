@@ -4,8 +4,9 @@ import type {
 	ILoadOptionsFunctions,
 	IPollFunctions,
 	IWebhookFunctions,
+	JsonObject,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 type AtlassianContext =
 	| IHookFunctions
@@ -21,7 +22,15 @@ const PRODUCT_NAMES: Record<AtlassianProduct, string> = {
 	confluence: 'Confluence',
 };
 
-// Module-level cache: site hostname → cloudId (persists for the life of the n8n process)
+export interface AccessibleResource {
+	id: string;
+	url: string;
+	name?: string;
+}
+
+// credentialId:hostname → cloudId, for the life of the n8n process. Keyed per credential:
+// with a shared hostname-only key, cold vs warm failures would let one user infer which
+// sites another credential on the instance can reach.
 const cloudIdCache = new Map<string, string>();
 
 export function clearAtlassianCloudIdCache() {
@@ -40,7 +49,7 @@ export function extractAtlassianSiteHostname(siteUrl: string): string {
 }
 
 export function getAtlassianApiBaseUrl(product: AtlassianProduct, cloudId: string): string {
-	return `https://api.atlassian.com/ex/${product}/${cloudId}`;
+	return `https://api.atlassian.com/ex/${product}/${encodeURIComponent(cloudId)}`;
 }
 
 /**
@@ -63,13 +72,24 @@ export async function getAtlassianCloudId(
 		);
 	}
 
-	const cached = cloudIdCache.get(hostname);
+	const rawCredentialId = this.getNode().credentials?.[credentialType]?.id;
+	const credentialId = typeof rawCredentialId === 'string' ? rawCredentialId : '';
+	const cacheKey = `${credentialId}:${hostname}`;
+	const cached = cloudIdCache.get(cacheKey);
 	if (cached) return cached;
 
-	const resources = (await this.helpers.requestWithAuthentication.call(this, credentialType, {
-		uri: 'https://api.atlassian.com/oauth/token/accessible-resources',
-		json: true,
-	})) as Array<{ id: string; url: string }>;
+	let resources: AccessibleResource[];
+	try {
+		resources = await this.helpers.httpRequestWithAuthentication.call(this, credentialType, {
+			method: 'GET',
+			url: 'https://api.atlassian.com/oauth/token/accessible-resources',
+			json: true,
+		});
+	} catch (error) {
+		throw new NodeApiError(this.getNode(), error as JsonObject);
+	}
+
+	if (!Array.isArray(resources)) resources = [];
 
 	const site = resources.find((resource) => {
 		try {
@@ -80,15 +100,20 @@ export async function getAtlassianCloudId(
 	});
 
 	if (!site) {
-		const accessibleUrls = resources.map((resource) => resource.url).join(', ');
+		// Capped at 5 so a bogus siteUrl can't dump the full site list into persisted execution data
+		const urls = resources
+			.filter((resource) => typeof resource?.url === 'string' && resource.url !== '')
+			.map((resource) => resource.url);
+		const reachable =
+			urls.slice(0, 5).join(', ') + (urls.length > 5 ? `, and ${urls.length - 5} more` : '');
 		throw new NodeOperationError(
 			this.getNode(),
-			`No ${PRODUCT_NAMES[product]} site matched "${hostname}". This connection can access: ${
-				accessibleUrls || 'no sites'
+			`No ${PRODUCT_NAMES[product]} site matched "${siteUrl}". This connection can access: ${
+				reachable || 'no sites'
 			}.`,
 		);
 	}
 
-	cloudIdCache.set(hostname, site.id);
+	cloudIdCache.set(cacheKey, site.id);
 	return site.id;
 }

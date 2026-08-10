@@ -98,27 +98,26 @@ describe('Jira -> GenericFunctions', () => {
 			mockExecuteFunctions.getCredentials.mockResolvedValue({
 				domain: 'https://example.atlassian.net',
 			});
-			// First call returns accessible-resources, second call returns the actual API response
-			mockExecuteFunctions.helpers.requestWithAuthentication
-				.mockResolvedValueOnce([{ id: cloudId, url: 'https://example.atlassian.net' }])
-				.mockResolvedValueOnce({});
+			// The cloudId lookup goes through httpRequestWithAuthentication,
+			// the actual API request through the legacy requestWithAuthentication
+			mockExecuteFunctions.helpers.httpRequestWithAuthentication.mockResolvedValueOnce([
+				{ id: cloudId, url: 'https://example.atlassian.net' },
+			]);
+			mockExecuteFunctions.helpers.requestWithAuthentication.mockResolvedValueOnce({});
 
 			await jiraSoftwareCloudApiRequest.call(mockExecuteFunctions, '/api/2/myself', 'GET');
 
 			expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith(
 				'jiraSoftwareCloudOAuth2Api',
 			);
-			// First call must be the accessible-resources lookup
-			expect(mockExecuteFunctions.helpers.requestWithAuthentication).toHaveBeenNthCalledWith(
-				1,
+			expect(mockExecuteFunctions.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
 				'jiraSoftwareCloudOAuth2Api',
 				expect.objectContaining({
-					uri: 'https://api.atlassian.com/oauth/token/accessible-resources',
+					url: 'https://api.atlassian.com/oauth/token/accessible-resources',
 				}),
 			);
-			// Second call must use the api.atlassian.com base URL with cloudId
-			expect(mockExecuteFunctions.helpers.requestWithAuthentication).toHaveBeenNthCalledWith(
-				2,
+			// The API request must use the api.atlassian.com base URL with cloudId
+			expect(mockExecuteFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
 				'jiraSoftwareCloudOAuth2Api',
 				expect.objectContaining({
 					uri: `https://api.atlassian.com/ex/jira/${cloudId}/rest/api/2/myself`,

@@ -185,6 +185,7 @@ describe('JiraTrigger', () => {
 
 			function mockOAuth2HookFunctions(
 				mockRequest: IHookFunctions['helpers']['requestWithAuthentication'],
+				mockHttpRequest?: IHookFunctions['helpers']['httpRequestWithAuthentication'],
 			) {
 				return mockDeep<IHookFunctions>({
 					getWorkflowStaticData: () => staticData,
@@ -198,29 +199,33 @@ describe('JiraTrigger', () => {
 					}),
 					getCredentials: async <T extends object = ICredentialDataDecryptedObject>() =>
 						({ domain }) as T,
-					helpers: { requestWithAuthentication: mockRequest },
+					helpers: {
+						requestWithAuthentication: mockRequest,
+						...(mockHttpRequest ? { httpRequestWithAuthentication: mockHttpRequest } : {}),
+					},
 				});
 			}
 
 			const baseApiUrl = `https://api.atlassian.com/ex/jira/${cloudId}/rest/api/3/webhook`;
 
-			// checkExists — GET /api/3/webhook
+			// checkExists — the cloudId lookup, then GET /api/3/webhook
+			const mockCloudIdRequest = vi.fn().mockResolvedValueOnce(accessibleResources);
 			const mockExistsRequest = vi
 				.fn()
-				.mockResolvedValueOnce(accessibleResources) // getCloudId call
 				.mockResolvedValueOnce({ isLast: true, maxResults: 50, startAt: 0, total: 0, values: [] });
 
 			const exists = await trigger.webhookMethods.default?.checkExists.call(
-				mockOAuth2HookFunctions(mockExistsRequest),
+				mockOAuth2HookFunctions(mockExistsRequest, mockCloudIdRequest),
 			);
 
-			expect(mockExistsRequest).toHaveBeenCalledTimes(2);
-			expect(mockExistsRequest).toHaveBeenCalledWith(
+			expect(mockCloudIdRequest).toHaveBeenCalledTimes(1);
+			expect(mockCloudIdRequest).toHaveBeenCalledWith(
 				'jiraSoftwareCloudOAuth2Api',
 				expect.objectContaining({
-					uri: 'https://api.atlassian.com/oauth/token/accessible-resources',
+					url: 'https://api.atlassian.com/oauth/token/accessible-resources',
 				}),
 			);
+			expect(mockExistsRequest).toHaveBeenCalledTimes(1);
 			expect(mockExistsRequest).toHaveBeenCalledWith(
 				'jiraSoftwareCloudOAuth2Api',
 				expect.objectContaining({ uri: baseApiUrl, method: 'GET' }),
