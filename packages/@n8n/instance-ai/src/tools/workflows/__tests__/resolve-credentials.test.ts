@@ -622,27 +622,30 @@ describe('resolveCredentials', () => {
 			expect(json.nodes[1].credentials).toEqual({});
 		});
 
-		it('does not reuse a sibling generic HTTP auth credential across nodes', async () => {
-			// Same shared-type rule as Templated Custom Auth: a bearer token bound to
-			// one node may belong to a different service than the new node calls.
-			const json = makeWorkflow({
-				nodes: [
-					makeNotionNode('Call service A', {
-						httpBearerAuth: { id: 'cred-a', name: 'Service A token' },
-					}),
-					makeNotionNode('Call service B', { httpBearerAuth: undefined }),
-				],
-			});
-			const credentials = makeCredentialMap([
-				{ id: 'cred-a', name: 'Service A token', type: 'httpBearerAuth' },
-				{ id: 'cred-b', name: 'Service B token', type: 'httpBearerAuth' },
-			]);
+		it.each(['httpBearerAuth', 'oAuth2Api'])(
+			'does not reuse a sibling %s credential across nodes',
+			async (credentialType) => {
+				// Same shared-type rule as Templated Custom Auth: the binding on one
+				// node may belong to a different service than the new node calls.
+				const json = makeWorkflow({
+					nodes: [
+						makeNotionNode('Call service A', {
+							[credentialType]: { id: 'cred-a', name: 'Service A auth' },
+						}),
+						makeNotionNode('Call service B', { [credentialType]: undefined }),
+					],
+				});
+				const credentials = makeCredentialMap([
+					{ id: 'cred-a', name: 'Service A auth', type: credentialType },
+					{ id: 'cred-b', name: 'Service B auth', type: credentialType },
+				]);
 
-			const result = await resolveCredentials(json, undefined, createMockContext(), credentials);
+				const result = await resolveCredentials(json, undefined, createMockContext(), credentials);
 
-			expect(result.mockedNodeNames).toContain('Call service B');
-			expect(json.nodes[1].credentials).toEqual({});
-		});
+				expect(result.mockedNodeNames).toContain('Call service B');
+				expect(json.nodes[1].credentials).toEqual({});
+			},
+		);
 
 		it('ignores gateway-managed sibling markers', async () => {
 			const json = makeWorkflow({

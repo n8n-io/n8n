@@ -23,9 +23,12 @@ import type { InstanceAiContext } from '../../types';
 export type { ResolvedCredential };
 
 // Generic auth types carry per-service secrets under one shared type, so a
-// sibling node's credential may belong to a different service — never reuse
-// them across nodes. Service-specific types (slackApi, notionApi, …) identify
-// the service by type and are safe to reuse.
+// sibling node's binding may belong to a different service than the new node
+// calls — never reuse them across nodes. Templated Custom Auth instances do
+// record their service (serviceHost), but matching it needs the node's target
+// URL, which is setup's job — the setup card offers those host-matched.
+// Mirrors the credentials flagged `genericAuth` in nodes-base; service-specific
+// types (slackApi, notionApi, …) identify the service by type and reuse safely.
 const NON_REUSABLE_SIBLING_TYPES = new Set<string>([
 	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
 	'httpHeaderAuth',
@@ -34,6 +37,8 @@ const NON_REUSABLE_SIBLING_TYPES = new Set<string>([
 	'httpBasicAuth',
 	'httpDigestAuth',
 	'httpCustomAuth',
+	'oAuth1Api',
+	'oAuth2Api',
 ]);
 
 /** Flat credential entry — preserves duplicates of the same type. */
