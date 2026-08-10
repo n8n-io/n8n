@@ -2151,6 +2151,12 @@ export class InstanceAiService {
 		);
 		const userGateway = this.gatewayService.findGateway(user.id);
 
+		// Reconcile the activation lock (INS-1082) before the run resolves its model. This is the
+		// per-run reconcile point: the other one is `getCredits`, which only fires when the frontend
+		// mounts, so without this a conversation that was already open when the instance activated
+		// would keep running unlocked until the page was reloaded.
+		await this.creditService.ensureQuotaLockApplied(user);
+
 		const { searchProxyConfig, tracingProxyConfig, tokenManager, proxyBaseUrl } =
 			proxyRunConfig ?? (await this.createProxyRunConfig(user));
 

@@ -4,7 +4,6 @@ import type { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import type { AiService } from '@/services/ai.service';
-import type { InstanceAiCreditService } from '../instance-ai-credit.service';
 
 const capturedTokenGetters: Array<() => Promise<unknown>> = [];
 vi.mock('@/services/proxy-token-manager', () => ({
@@ -35,14 +34,13 @@ describe('InstanceAiModelService', () => {
 	const settingsService = mock<InstanceAiSettingsService>();
 	const aiService = mock<AiService>();
 	const outboundHttp = mock<OutboundHttp>();
-	const creditService = mock<InstanceAiCreditService>();
 
 	let service: InstanceAiModelService;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 		capturedTokenGetters.length = 0;
-		service = new InstanceAiModelService(settingsService, aiService, outboundHttp, creditService);
+		service = new InstanceAiModelService(settingsService, aiService, outboundHttp);
 	});
 
 	afterEach(() => {
@@ -126,29 +124,6 @@ describe('InstanceAiModelService', () => {
 				{ id: fakeUser.id },
 				expect.objectContaining({ userMessageId: expect.any(String) }),
 			);
-		});
-
-		// One of the two reconcile points for the activation lock (INS-1082). It covers a session
-		// that was already open when the instance activated, so the lock lands on the next message
-		// rather than only on the next page load.
-		it('reconciles the activation lock before minting a token', async () => {
-			aiService.isProxyEnabled.mockReturnValue(true);
-			const client = createClient();
-			aiService.getClient.mockResolvedValue(client as never);
-			vi.spyOn(service, 'resolveProxyModel').mockResolvedValue('model' as never);
-
-			await service.resolveAgentModelConfig(fakeUser);
-
-			expect(creditService.ensureQuotaLockApplied).toHaveBeenCalledWith(fakeUser);
-		});
-
-		it('does not reconcile the activation lock when no proxy is active', async () => {
-			aiService.isProxyEnabled.mockReturnValue(false);
-			settingsService.resolveModelConfig.mockResolvedValue('anthropic/claude' as never);
-
-			await service.resolveAgentModelConfig(fakeUser);
-
-			expect(creditService.ensureQuotaLockApplied).not.toHaveBeenCalled();
 		});
 	});
 });

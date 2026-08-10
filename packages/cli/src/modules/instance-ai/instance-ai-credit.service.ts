@@ -84,26 +84,35 @@ export class InstanceAiCreditService {
 	 * makes their conversion signal meaningless. Requiring a message guarantees the cohort actually
 	 * experiences the product before being asked to pay.
 	 *
-	 * Best-effort and idempotent: callers invoke it on the activation event and again on reads, so
-	 * a failed call, an evicted Redis record or a restarted process all repair themselves on the
-	 * next interaction. Never throws — a locking failure must not break the caller's own work.
+	 * Best-effort and idempotent: there is no event-driven trigger, so this runs whenever credits are
+	 * read or a proxy token is minted. A failed call, an evicted Redis record or a restarted process
+	 * all repair themselves on the next interaction. Never throws — a locking failure must not break
+	 * the caller's own work.
+	 *
+	 * Every path logs why it did or didn't act. The gates are cheap and mostly invisible, so without
+	 * that a misconfigured instance looks identical to a working one.
 	 */
 	async ensureQuotaLockApplied(user: User): Promise<void> {
-		if (this.quotaLockConfirmed) return;
-		if (!this.settingsService.isActivationCapped()) return;
-		if (!this.aiService.isProxyEnabled()) return;
+		const skipReason = await this.getQuotaLockSkipReason();
+		if (skipReason) {
+			this.logger.debug(`Skipping Instance AI activation lock: ${skipReason}`, {
+				userId: user.id,
+			});
+			return;
+		}
+
+		const activatedAt = await this.activationService.getActivatedAt();
 
 		try {
-			const activatedAt = await this.resolveTriggerActivatedAt();
-			if (activatedAt === undefined) return;
-
 			const result = await this.aiService.lockInstanceAiQuota(user, activatedAt);
 			this.quotaLockConfirmed = result.quotaLocked;
 
-			this.logger.debug('Applied Instance AI activation lock', {
+			this.logger.info('Applied Instance AI activation lock', {
 				userId: user.id,
 				activatedAt,
 				quotaLocked: result.quotaLocked,
+				creditsQuota: result.creditsQuota,
+				creditsClaimed: result.creditsClaimed,
 			});
 		} catch (error) {
 			// Left unconfirmed on purpose so the next read retries.
@@ -112,6 +121,29 @@ export class InstanceAiCreditService {
 				userId: user.id,
 			});
 		}
+	}
+
+	/**
+	 * Why the lock shouldn't be applied right now, or `undefined` when it should. Ordered cheapest
+	 * first: the in-memory checks settle every non-cohort instance without touching the database.
+	 */
+	private async getQuotaLockSkipReason(): Promise<string | undefined> {
+		if (this.quotaLockConfirmed) return 'already locked';
+		if (!this.settingsService.isActivationCapped()) {
+			return 'instance is not in the activation-capped cohort (N8N_INSTANCE_AI_ACTIVATION_CAPPED)';
+		}
+		// The lock is a credit-pool operation, so it is meaningless without the proxy. Note this
+		// needs the AI-assistant licence *and* a base URL, not just the base URL.
+		if (!this.aiService.isProxyEnabled()) return 'AI service proxy is disabled';
+
+		if ((await this.activationService.getActivatedAt()) === undefined) {
+			return 'instance has not activated yet (no first successful production execution)';
+		}
+
+		this.hasUserMessage ||= await this.messageRepo.hasAnyUserMessage();
+		if (!this.hasUserMessage) return 'nobody has sent the assistant a message yet';
+
+		return undefined;
 	}
 
 	/**
