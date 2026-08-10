@@ -82,7 +82,13 @@ const formattedTechnicalDetails = computed(() => {
 	}
 });
 
-const attachments = computed(() => props.message.attachments ?? []);
+const attachments = computed(() =>
+	(props.message.attachments ?? []).map((attachment) => {
+		if (attachment.type !== 'agent') return attachment;
+		const name = thread.producedArtifacts.get(attachment.id)?.name;
+		return name && name !== attachment.name ? { ...attachment, name } : attachment;
+	}),
+);
 
 /** Transient status message from the backend (e.g. "Recalling conversation..."). */
 const statusMessage = computed(() => {

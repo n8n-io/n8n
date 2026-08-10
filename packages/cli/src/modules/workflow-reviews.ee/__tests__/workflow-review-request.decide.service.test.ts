@@ -15,6 +15,7 @@ import type {
 	WorkflowReviewRequestReviewerRepository,
 	WorkflowReviewRequestWorkflow,
 	WorkflowReviewRequestWorkflowRepository,
+	WorkflowRepository,
 	Transaction,
 	OperationContext,
 } from '@n8n/db';
@@ -70,6 +71,7 @@ describe('WorkflowReviewRequestService.decide', () => {
 		workflowFinderService,
 		workflowHistoryService,
 		workflowHistoryRepository,
+		mock<WorkflowRepository>(),
 		sharedWorkflowRepository,
 		publishHistoryRepository,
 		requestRepository,

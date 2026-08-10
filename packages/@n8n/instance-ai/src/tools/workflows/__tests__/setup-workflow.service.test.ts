@@ -3,14 +3,17 @@ import type { WorkflowJSON, NodeJSON } from '@n8n/workflow-sdk';
 import type { Mock } from 'vitest';
 
 import type { InstanceAiContext } from '../../../types';
+import type { SetupRequest } from '../setup-workflow.schema';
 import {
 	buildSetupRequests,
 	analyzeWorkflow,
+	applyCredentialHints,
 	applyNodeChanges,
 	applyNodeCredentials,
 	buildCompletedReport,
 	createCredentialCache,
 	stripStaleCredentialsFromWorkflow,
+	type CredentialHintInput,
 } from '../setup-workflow.service';
 
 // ---------------------------------------------------------------------------
@@ -1999,5 +2002,201 @@ describe('applyNodeCredentials — credential ownership revalidation', () => {
 				error: 'Node "GhostNode" was not found in the workflow',
 			},
 		]);
+	});
+});
+
+describe('applyCredentialHints', () => {
+	const request = (nodeName: string, credentialType?: string): SetupRequest => ({
+		node: {
+			name: nodeName,
+			type: 'n8n-nodes-base.httpRequest',
+			typeVersion: 4.4,
+			parameters: {},
+			position: [0, 0],
+			id: `${nodeName}-id`,
+		},
+		...(credentialType ? { credentialType } : {}),
+		isTrigger: false,
+	});
+
+	const hint = (overrides: Partial<CredentialHintInput> = {}): CredentialHintInput => ({
+		template: { headers: { Authorization: 'Key {{api_key}}' } },
+		placeholders: [{ name: 'api_key', title: 'API key' }],
+		...overrides,
+	});
+
+	it('attaches a type-wide hint to Templated Custom Auth requests only', () => {
+		const requests = [
+			request('Call fal.ai', 'httpTemplatedCustomAuth'),
+			request('Post to Slack', 'slackApi'),
+			request('No credential'),
+		];
+
+		applyCredentialHints(requests, [hint({ suggestedName: 'fal.ai API Key' })]);
+
+		expect(requests[0].setupHint).toMatchObject({ suggestedName: 'fal.ai API Key' });
+		expect(requests[0].setupHint).not.toHaveProperty('nodeName');
+		expect(requests[1].setupHint).toBeUndefined();
+		expect(requests[2].setupHint).toBeUndefined();
+	});
+
+	it('prefers a node-scoped hint over a type-wide one', () => {
+		const requests = [
+			request('Call fal.ai', 'httpTemplatedCustomAuth'),
+			request('Call replicate', 'httpTemplatedCustomAuth'),
+		];
+
+		applyCredentialHints(requests, [
+			hint({ suggestedName: 'Fallback' }),
+			hint({ nodeName: 'Call replicate', suggestedName: 'Replicate API Key' }),
+		]);
+
+		expect(requests[0].setupHint).toMatchObject({ suggestedName: 'Fallback' });
+		expect(requests[1].setupHint).toMatchObject({ suggestedName: 'Replicate API Key' });
+	});
+
+	it('stamps the service host derived from the node URL, expressions included', () => {
+		const requests = [request('Call fal.ai', 'httpTemplatedCustomAuth')];
+		requests[0].node.parameters = { url: '=https://queue.fal.run/fal-ai/flux/{{ $json.id }}' };
+
+		applyCredentialHints(requests, [hint()]);
+
+		expect(requests[0].setupHint?.serviceHost).toBe('queue.fal.run');
+	});
+
+	it('stamps each request with its own node host from a shared type-wide hint', () => {
+		const requests = [
+			request('Call Pexels', 'httpTemplatedCustomAuth'),
+			request('Call Apify', 'httpTemplatedCustomAuth'),
+		];
+		requests[0].node.parameters = { url: 'https://api.pexels.com/v1/search' };
+		requests[1].node.parameters = { url: 'https://api.apify.com/v2/acts' };
+		const shared = hint();
+
+		applyCredentialHints(requests, [shared]);
+
+		expect(requests[0].setupHint?.serviceHost).toBe('api.pexels.com');
+		expect(requests[1].setupHint?.serviceHost).toBe('api.apify.com');
+		expect(shared).not.toHaveProperty('serviceHost');
+	});
+
+	it('omits serviceHost when the node URL is not derivable', () => {
+		const requests = [request('Call fal.ai', 'httpTemplatedCustomAuth')];
+		requests[0].node.parameters = { url: '={{ $json.url }}' };
+
+		applyCredentialHints(requests, [hint()]);
+
+		expect(requests[0].setupHint).toBeDefined();
+		expect(requests[0].setupHint).not.toHaveProperty('serviceHost');
+	});
+});
+
+// ---------------------------------------------------------------------------
+// buildSetupRequests — Templated Custom Auth service identity
+// ---------------------------------------------------------------------------
+
+describe('buildSetupRequests — Templated Custom Auth service identity', () => {
+	let context: InstanceAiContext;
+
+	const templatedNode = (url?: string) =>
+		makeNode({
+			name: 'Call API',
+			type: 'n8n-nodes-base.httpRequest',
+			parameters: {
+				authentication: 'genericCredentialType',
+				genericAuthType: 'httpTemplatedCustomAuth',
+				...(url ? { url } : {}),
+			},
+		});
+
+	const withHosts = (hosts: Record<string, string | null>) => {
+		(context.credentialService as unknown as Record<string, unknown>).getTemplatedCredentialHosts =
+			vi.fn().mockResolvedValue(hosts);
+	};
+
+	beforeEach(() => {
+		context = createMockContext();
+		(context.nodeService.getDescription as Mock).mockResolvedValue({
+			group: [],
+			credentials: [],
+		});
+		(context.credentialService.list as Mock).mockResolvedValue([
+			{ id: 'cred-pexels', name: 'Pexels API' },
+		]);
+		(context.credentialService.test as Mock).mockResolvedValue({ success: true });
+	});
+
+	it("drops another service's credential from the offer", async () => {
+		withHosts({ 'cred-pexels': 'api.pexels.com' });
+
+		const result = await buildSetupRequests(
+			context,
+			templatedNode('https://api.apify.com/v2/acts/run'),
+		);
+
+		expect(result[0].existingCredentials).toBeUndefined();
+		expect(result[0].isAutoApplied).toBeFalsy();
+		expect(result[0].needsAction).toBe(true);
+	});
+
+	it('offers a same-service credential but never auto-applies it', async () => {
+		withHosts({ 'cred-pexels': 'api.pexels.com' });
+
+		const result = await buildSetupRequests(
+			context,
+			templatedNode('https://api.pexels.com/v1/search?query=x'),
+		);
+
+		expect(result[0].existingCredentials).toEqual([{ id: 'cred-pexels', name: 'Pexels API' }]);
+		expect(result[0].isAutoApplied).toBeFalsy();
+		expect(result[0].node.credentials).toBeUndefined();
+	});
+
+	it('matches subdomains of the same service', async () => {
+		(context.credentialService.list as Mock).mockResolvedValue([
+			{ id: 'cred-fal', name: 'fal.ai API Key' },
+		]);
+		withHosts({ 'cred-fal': 'fal.run' });
+
+		const result = await buildSetupRequests(
+			context,
+			templatedNode('=https://queue.fal.run/fal-ai/kling/{{ $json.id }}'),
+		);
+
+		expect(result[0].existingCredentials).toEqual([{ id: 'cred-fal', name: 'fal.ai API Key' }]);
+	});
+
+	it('drops untagged legacy credentials', async () => {
+		withHosts({ 'cred-pexels': null });
+
+		const result = await buildSetupRequests(
+			context,
+			templatedNode('https://api.pexels.com/v1/search'),
+		);
+
+		expect(result[0].existingCredentials).toBeUndefined();
+	});
+
+	it('offers nothing when the node host cannot be derived', async () => {
+		withHosts({ 'cred-pexels': 'api.pexels.com' });
+
+		const result = await buildSetupRequests(context, templatedNode('={{ $json.url }}'));
+
+		expect(result[0].existingCredentials).toBeUndefined();
+	});
+
+	it('leaves dedicated credential types unfiltered', async () => {
+		withHosts({});
+		(context.credentialService.list as Mock).mockResolvedValue([
+			{ id: 'cred-slack', name: 'My Slack' },
+		]);
+		(context.nodeService.getDescription as Mock).mockResolvedValue({
+			group: [],
+			credentials: [{ name: 'slackApi' }],
+		});
+
+		const result = await buildSetupRequests(context, makeNode());
+
+		expect(result[0].existingCredentials).toEqual([{ id: 'cred-slack', name: 'My Slack' }]);
 	});
 });

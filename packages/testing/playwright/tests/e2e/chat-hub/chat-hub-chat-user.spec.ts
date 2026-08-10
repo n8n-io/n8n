@@ -22,8 +22,8 @@ test.describe(
 				},
 			});
 
-			await n8n.goHome();
-			await n8n.page.waitForURL('/home/chat'); // home is chat UI for chat users
+			await n8n.goToRoot();
+			await n8n.page.waitForURL('/home/chat'); // root is the chat UI for chat users
 
 			// Verify global credential is available and pre-selected
 			await expect(n8n.chatHubChat.getModelSelectorButton()).toContainText(/claude/i); // pre-selected
