@@ -23,6 +23,7 @@ import { createTestNode } from '@/__tests__/mocks';
 import type { INodeUi } from '@/Interface';
 import { CanvasNodeRenderType, type CanvasNodeData } from '../canvas.types';
 import { MarkerType } from '@vue-flow/core';
+import { AGENT_NODE_SIZE } from '@/app/utils/nodeViewUtils';
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
@@ -273,6 +274,45 @@ describe('useCanvasMapping — mapped nodes', () => {
 		const betaMapped = nodes.value.find((n) => n.id === 'b');
 		expect(alphaMapped?.data?.connections.outputs.main?.[0]?.[0]?.node).toBe('Beta');
 		expect(betaMapped?.data?.connections.inputs.main?.[0]?.[0]?.node).toBe('Alpha');
+	});
+});
+
+describe('useCanvasMapping — node display sizes', () => {
+	it('uses the agent card width and measured height for Message an Agent nodes', () => {
+		const agent = createTestNode({
+			id: 'agent',
+			name: 'Message an Agent',
+			type: CanvasNodeRenderType.Agent,
+		}) as INodeUi;
+		const measuredHeight = ref<number | undefined>();
+		const rd = createEmptyCanvasRenderData();
+		const render: CanvasNodeData['render'] = {
+			type: CanvasNodeRenderType.Agent,
+			options: {},
+		};
+		rd.renderTypeByNodeId.set(
+			agent.id,
+			computed(() => render),
+		);
+
+		const { nodeDisplaySizeById } = useCanvasMapping({
+			nodes: ref([agent]),
+			connections: ref({}),
+			renderData: shallowRef(rd),
+			getAgentNodeHeight: () => measuredHeight.value,
+		});
+
+		expect(nodeDisplaySizeById.value[agent.id]).toEqual({
+			width: AGENT_NODE_SIZE[0],
+			height: AGENT_NODE_SIZE[1],
+		});
+
+		measuredHeight.value = 224;
+
+		expect(nodeDisplaySizeById.value[agent.id]).toEqual({
+			width: AGENT_NODE_SIZE[0],
+			height: 224,
+		});
 	});
 });
 
