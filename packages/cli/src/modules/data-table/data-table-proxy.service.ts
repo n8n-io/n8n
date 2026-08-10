@@ -217,6 +217,8 @@ export class DataTableProxyService implements DataTableProxyProvider {
 			async updateRows(dataTableId: string, projectId: string, options: UpdateDataTableRowOptions) {
 				checkInstanceWriteAccess();
 				await requireScope('dataTable:writeRow', projectId);
+				// unconditional because this proxy always returns the affected rows
+				await requireScope('dataTable:readRow', projectId);
 				return await dataTableService.updateRows(
 					dataTableId,
 					projectId,
@@ -233,6 +235,8 @@ export class DataTableProxyService implements DataTableProxyProvider {
 			) {
 				checkInstanceWriteAccess();
 				await requireScope('dataTable:writeRow', projectId);
+				// unconditional because this proxy always returns the affected rows
+				await requireScope('dataTable:readRow', projectId);
 				return await dataTableService.deleteRows(
 					dataTableId,
 					projectId,
