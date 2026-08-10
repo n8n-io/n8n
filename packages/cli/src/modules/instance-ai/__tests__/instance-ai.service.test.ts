@@ -13,6 +13,7 @@ vi.mock('@n8n/instance-ai', async () => {
 			disconnect = vi.fn();
 		},
 		createDomainAccessTracker: vi.fn(),
+		emitAgentSnapshotTraceEvent: vi.fn(async () => await Promise.resolve('emitted')),
 		createSandbox: vi.fn(),
 		createWorkspace: vi.fn(),
 		createLazyRuntimeWorkspace: vi.fn(
@@ -196,6 +197,7 @@ import {
 	resumeAgentRun,
 	setupSandboxWorkspace,
 	shutdownProductTelemetryProviders,
+	emitAgentSnapshotTraceEvent,
 	type BuilderUsageItem,
 	type ManagedBackgroundTask,
 	type InstanceAiTraceContext,
@@ -895,6 +897,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				createContext: Mock;
 				getNodeDefinitionDirs: Mock;
 				isConfigEvalsEnabled: Mock;
+				isMcpConnectionsEnabled: Mock;
 			};
 			sourceControlPreferencesService: { getPreferences: Mock };
 			modelService: { resolveAgentModelConfig: Mock; resolveProxyModel: Mock };
@@ -942,6 +945,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			createContext: vi.fn(() => ({})),
 			getNodeDefinitionDirs: vi.fn(() => []),
 			isConfigEvalsEnabled: vi.fn().mockResolvedValue(true),
+			isMcpConnectionsEnabled: vi.fn().mockResolvedValue(false),
 		};
 		service.sourceControlPreferencesService = {
 			getPreferences: vi.fn(() => ({ branchReadOnly: false })),
@@ -1865,6 +1869,7 @@ type SuspendedRunResumeServiceInternals = {
 	runState: {
 		findSuspendedByRequestId: Mock;
 		activateSuspendedRun: Mock;
+		getActiveRun: Mock;
 	};
 	logger: { warn: Mock };
 	dbSnapshotStorage: unknown;
@@ -1902,6 +1907,7 @@ function createSuspendedRunResumeService(): SuspendedRunResumeServiceInternals {
 			runHandoff: undefined,
 		})),
 		activateSuspendedRun: vi.fn(() => ({})),
+		getActiveRun: vi.fn(() => undefined),
 	};
 	service.logger = { warn: vi.fn() };
 	service.dbSnapshotStorage = {};
@@ -2577,6 +2583,22 @@ describe('InstanceAiService — suspended run user revalidation', () => {
 	});
 });
 
+describe('InstanceAiService — stale confirmation resume guard', () => {
+	it('rejects a suspended-run confirmation when the thread already has an active run', async () => {
+		const service = createSuspendedRunResumeService();
+		service.revalidateActiveUser.mockResolvedValue({ id: 'user-1', disabled: false } as User);
+		service.runState.getActiveRun.mockReturnValue({ runId: 'run-2' });
+
+		const result = await service.resumeSuspendedRun('user-1', 'req-1', { approved: true });
+
+		expect(result).toBeNull();
+		expect(service.runState.activateSuspendedRun).not.toHaveBeenCalled();
+		expect(service.suspendedThreads.dropPendingConfirmation).not.toHaveBeenCalled();
+		expect(service.processResumedStream).not.toHaveBeenCalled();
+		expect(service.cancelRun).not.toHaveBeenCalled();
+	});
+});
+
 describe('InstanceAiService — rebuildAgentForAutoSetupResume', () => {
 	type RebuildAgentServiceInternals = {
 		rebuildAgentForAutoSetupResume: (
@@ -2856,6 +2878,69 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			error_source: 'exception',
 			user_id: 'user-1',
 		});
+	});
+
+	it('terminates the run visibly when a resume fails before the claim', async () => {
+		const service = createTerminalGuardOrderService();
+		const abortController = new AbortController();
+		const resumeExecutionToken = Symbol('resume-token');
+		vi.mocked(resumeAgentRun).mockImplementationOnce(async () => {
+			throw new Error('Invalid resume payload: data must NOT have additional properties');
+		});
+
+		await service.processResumedStream(
+			{},
+			{},
+			{
+				runId: 'run-1',
+				agentRunId: 'agent-run-1',
+				threadId: 'thread-a',
+				user: fakeUser,
+				toolCallId: 'tool-call-1',
+				signal: abortController.signal,
+				abortController,
+				snapshotStorage: {},
+				resumeExecutionToken,
+			},
+		);
+
+		expect(service.eventBus.events.map((event) => event.type)).toEqual(['error', 'run-finish']);
+		expect(service.instanceAiErrorReporter.report).toHaveBeenCalledWith(
+			expect.any(Error),
+			expect.objectContaining({ component: 'instance-ai-resume-claim' }),
+		);
+		expect(service.runState.clearActiveRun).toHaveBeenCalledWith('thread-a', resumeExecutionToken);
+	});
+
+	it('stays silent when the pre-claim failure is a stale resume owned elsewhere', async () => {
+		const service = createTerminalGuardOrderService();
+		const abortController = new AbortController();
+		const resumeExecutionToken = Symbol('resume-token');
+		vi.mocked(resumeAgentRun).mockImplementationOnce(async () => {
+			throw Object.assign(new Error('Run agent-run-1 is not suspended. Cannot resume.'), {
+				name: 'StaleResumeError',
+			});
+		});
+
+		await service.processResumedStream(
+			{},
+			{},
+			{
+				runId: 'run-1',
+				agentRunId: 'agent-run-1',
+				threadId: 'thread-a',
+				user: fakeUser,
+				toolCallId: 'tool-call-1',
+				signal: abortController.signal,
+				abortController,
+				snapshotStorage: {},
+				resumeExecutionToken,
+			},
+		);
+
+		expect(service.eventBus.events).toEqual([]);
+		expect(service.instanceAiErrorReporter.report).not.toHaveBeenCalled();
+		expect(service.runState.clearActiveRun).toHaveBeenCalledWith('thread-a', resumeExecutionToken);
 	});
 
 	it('tracks "Builder generation errored" when a resumed stream reports an error', async () => {
@@ -3913,6 +3998,125 @@ describe('InstanceAiService — editor handoff context resources', () => {
 
 		expect(source).toContain('buildContextResourcesBlock(contextAttachments)');
 		expect(source).not.toContain('buildContextResourcesBlock(workflowAttachments)');
+	});
+
+	it('traces the attached resources, which the raw message no longer shows', () => {
+		const source = InstanceAiService.toString();
+
+		// Assignment-form tolerant: the wiring is what matters, not whether the
+		// field is spread into the literal or set on it afterwards.
+		expect(source).toMatch(/resourceAttachments\s*[:=]\s*contextAttachments\.map/);
+	});
+});
+
+describe('InstanceAiService — agent snapshots for attached agents', () => {
+	type SnapshotService = {
+		logger: { debug: Mock };
+		snapshotAttachedAgents: (
+			attachments: Array<Record<string, unknown>>,
+			orchestrationContext: Record<string, unknown>,
+			tracing: unknown,
+		) => Promise<void>;
+	};
+
+	const emitSnapshot = emitAgentSnapshotTraceEvent as unknown as Mock;
+	const TRACING = { actorRun: { id: 'actor-1' } };
+	const ARTIFACT = { config: { name: 'Support Triage' }, skills: {}, configHash: 'hash-1' };
+
+	function createService(): SnapshotService {
+		const service = Object.create(InstanceAiService.prototype) as unknown as SnapshotService;
+		service.logger = { debug: vi.fn() };
+		return service;
+	}
+
+	function makeContext(readAgentArtifact?: Mock) {
+		return {
+			domainContext: readAgentArtifact ? { builderDelegate: { readAgentArtifact } } : {},
+		};
+	}
+
+	beforeEach(() => emitSnapshot.mockClear());
+
+	it('snapshots an attached agent as it stood when the turn opened', async () => {
+		const service = createService();
+		const readAgentArtifact = vi.fn(async () => await Promise.resolve(ARTIFACT));
+
+		await service.snapshotAttachedAgents(
+			[{ type: 'agent', id: 'agent-1', projectId: 'proj-1' }],
+			makeContext(readAgentArtifact),
+			TRACING,
+		);
+
+		expect(readAgentArtifact).toHaveBeenCalledWith('agent-1');
+		expect(emitSnapshot).toHaveBeenCalledTimes(1);
+		expect(emitSnapshot.mock.calls[0][1]).toMatchObject({
+			agentId: 'agent-1',
+			projectId: 'proj-1',
+			reason: 'attached',
+			artifact: ARTIFACT,
+		});
+	});
+
+	it('ignores a workflow attachment — the workflow side has its own event', async () => {
+		const service = createService();
+		const readAgentArtifact = vi.fn();
+
+		await service.snapshotAttachedAgents(
+			[{ type: 'workflow', id: 'wf-1' }],
+			makeContext(readAgentArtifact),
+			TRACING,
+		);
+
+		expect(readAgentArtifact).not.toHaveBeenCalled();
+		expect(emitSnapshot).not.toHaveBeenCalled();
+	});
+
+	it('does nothing when the agents module is off, rather than failing the turn', async () => {
+		const service = createService();
+
+		await expect(
+			service.snapshotAttachedAgents(
+				[{ type: 'agent', id: 'agent-1', projectId: 'proj-1' }],
+				makeContext(undefined),
+				TRACING,
+			),
+		).resolves.toBeUndefined();
+		expect(emitSnapshot).not.toHaveBeenCalled();
+	});
+
+	it('does nothing without a trace to attach the event to', async () => {
+		const service = createService();
+		const readAgentArtifact = vi.fn();
+
+		await service.snapshotAttachedAgents(
+			[{ type: 'agent', id: 'agent-1', projectId: 'proj-1' }],
+			makeContext(readAgentArtifact),
+			undefined,
+		);
+
+		expect(readAgentArtifact).not.toHaveBeenCalled();
+		expect(emitSnapshot).not.toHaveBeenCalled();
+	});
+
+	it('skips an agent it cannot read and keeps going', async () => {
+		const service = createService();
+		const readAgentArtifact = vi.fn(async (agentId: string) =>
+			agentId === 'agent-broken'
+				? await Promise.reject(new Error('gone'))
+				: await Promise.resolve(ARTIFACT),
+		);
+
+		await service.snapshotAttachedAgents(
+			[
+				{ type: 'agent', id: 'agent-broken', projectId: 'proj-1' },
+				{ type: 'agent', id: 'agent-ok', projectId: 'proj-1' },
+			],
+			makeContext(readAgentArtifact),
+			TRACING,
+		);
+
+		expect(emitSnapshot).toHaveBeenCalledTimes(1);
+		expect(emitSnapshot.mock.calls[0][1]).toMatchObject({ agentId: 'agent-ok' });
 	});
 });
 

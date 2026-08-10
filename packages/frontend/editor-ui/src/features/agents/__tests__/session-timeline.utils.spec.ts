@@ -319,7 +319,7 @@ describe('flattenExecutionsToTimelineItems', () => {
 		});
 	});
 
-	it('maps a regular tool-call timeline event to kind:tool', () => {
+	it('maps a running tool-call without marking it failed', () => {
 		const items = flattenExecutionsToTimelineItems([
 			withTimeline([
 				{
@@ -328,10 +328,10 @@ describe('flattenExecutionsToTimelineItems', () => {
 					name: 'http',
 					toolCallId: 'tc-1',
 					input: { method: 'GET' },
-					output: { ok: true },
+					output: undefined,
 					startTime: 1000,
-					endTime: 1200,
-					success: true,
+					endTime: 0,
+					success: false,
 				},
 			]),
 		]);
@@ -339,9 +339,10 @@ describe('flattenExecutionsToTimelineItems', () => {
 		expect(tool).toMatchObject({
 			toolName: 'http',
 			timestamp: 1000,
-			endTimestamp: 1200,
+			endTimestamp: 1000,
 			toolInput: { method: 'GET' },
-			toolOutput: { ok: true },
+			toolOutput: undefined,
+			toolSuccess: undefined,
 		});
 		expect(tool?.workflowId).toBeUndefined();
 	});

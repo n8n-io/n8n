@@ -13,6 +13,7 @@ import type {
 } from 'n8n-workflow';
 
 import type { ConcurrencyQueueType } from '@/concurrency/concurrency-control.service';
+import type { CredentialAuthProbeOutcome } from '@/services/credentials-tester.service';
 import type {
 	ExportPackageEventCounts,
 	ImportAuditCredentialIds,
@@ -486,6 +487,12 @@ export type RelayEventMap = {
 		user: UserLike;
 		credentialType: string;
 		credentialId: string;
+	};
+
+	'credentials-probed': {
+		user: UserLike;
+		credentialId: string;
+		outcome: CredentialAuthProbeOutcome;
 	};
 
 	'oauth-callback-binding-rejected': {
@@ -993,6 +1000,11 @@ export type RelayEventMap = {
 		executionId: string;
 	};
 
+	'runner-disconnected': {
+		reason: 'failed-heartbeat-check' | 'runner-unresponsive';
+		mode: 'internal' | 'external';
+	};
+
 	// #endregion
 
 	// #region queue
@@ -1052,6 +1064,10 @@ export type RelayEventMap = {
 	// #endregion
 
 	// region Agents
+	'agent-saved': {
+		agentId: string;
+	};
+
 	'agent-deleted': {
 		agentId: string;
 		projectId: string;

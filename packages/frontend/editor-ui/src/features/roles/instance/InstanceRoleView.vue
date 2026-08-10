@@ -4,13 +4,14 @@ import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@n8n/composables/useToast';
 import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import { useRolesStore } from '@n8n/stores/roles.store';
-import { N8nButton, N8nHeading, N8nTabs, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nHeading, N8nTabs, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { GLOBAL_ADMIN_ROLE_SLUG } from '@n8n/permissions';
 import { computed, toRaw } from 'vue';
 import { useRouter } from 'vue-router';
 
 import RoleEditorLayout, { type RoleEditorLabels } from '../components/RoleEditorLayout.vue';
+import { useRoleDeleteGuard } from '../composables/useRoleDeleteGuard';
 import { useRoleDeletion } from '../composables/useRoleDeletion';
 import { useRoleEditorForm } from '../composables/useRoleEditorForm';
 import InstanceRoleAssignmentsTab from './InstanceRoleAssignmentsTab.vue';
@@ -20,6 +21,7 @@ import { ALL_INSTANCE_SCOPES } from './instanceRoleScopes';
 
 const rolesStore = useRolesStore();
 const router = useRouter();
+const { deleteBlockedReason } = useRoleDeleteGuard();
 const { showMessage, showError } = useToast();
 const i18n = useI18n();
 const message = useMessage();
@@ -72,6 +74,13 @@ const presetRoles = computed(() =>
 const reassignTargetRoles = computed(() =>
 	rolesStore.processedInstanceRoles.filter((r) => r.slug !== reassignState.value?.role.slug),
 );
+
+// Explain up front (and disable) when the role can't be deleted — e.g. it's the
+// current user's own role, or it has assigned users the caller can't reassign.
+const deleteBlockedTooltip = computed(() =>
+	initialState.value ? deleteBlockedReason(initialState.value, 'global') : undefined,
+);
+const isDeleteDisabled = computed(() => Boolean(deleteBlockedTooltip.value));
 
 function onBackClick() {
 	void router.push({ name: VIEWS.ROLES_SETTINGS, query: { tab: 'instance' } });
@@ -249,9 +258,16 @@ async function deleteRole() {
 				<N8nText tag="p" class="mb-s">
 					{{ i18n.baseText('roles.instance.action.delete.warning') }}
 				</N8nText>
-				<N8nButton variant="destructive" @click="deleteRole">
-					{{ i18n.baseText('roles.instance.action.delete.button') }}
-				</N8nButton>
+				<N8nTooltip
+					:disabled="!isDeleteDisabled"
+					placement="top-start"
+					content-class="instanceRoleDeleteTooltip"
+					:content="deleteBlockedTooltip"
+				>
+					<N8nButton variant="destructive" :disabled="isDeleteDisabled" @click="deleteRole">
+						{{ i18n.baseText('roles.instance.action.delete.button') }}
+					</N8nButton>
+				</N8nTooltip>
 			</div>
 		</div>
 
@@ -274,5 +290,12 @@ async function deleteRole() {
 .presetsContainer {
 	display: flex;
 	gap: 8px;
+}
+
+/* Widen the delete tooltip so the message wraps to two lines instead of three.
+   Teleported to body, so target it globally; the two-class selector outranks
+   the design-system default max-width. */
+:global(.n8n-tooltip.instanceRoleDeleteTooltip) {
+	max-width: 260px;
 }
 </style>

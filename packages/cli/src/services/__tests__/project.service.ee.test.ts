@@ -46,7 +46,8 @@ describe('ProjectService', () => {
 		projectRelationRepository,
 		roleService,
 		sharedCredentialsRepository,
-		mock(),
+		mock(), // folderRepository
+		mock(), // licenseState
 		moduleRegistry,
 		ownershipService,
 		logger,

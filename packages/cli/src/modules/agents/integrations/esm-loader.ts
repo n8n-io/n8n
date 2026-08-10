@@ -36,6 +36,10 @@ export async function loadLinearAdapter() {
 	return await esmImport<typeof import('@chat-adapter/linear')>('@chat-adapter/linear');
 }
 
+export async function loadDiscordAdapter() {
+	return await esmImport<typeof import('@chat-adapter/discord')>('@chat-adapter/discord');
+}
+
 export async function loadMemoryState() {
 	return await esmImport<typeof import('@chat-adapter/state-memory')>('@chat-adapter/state-memory');
 }

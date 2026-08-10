@@ -43,7 +43,7 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 import { AiService } from '@/services/ai.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
 import { UrlService } from '@/services/url.service';
-import { createAiMcpFetch, createAiProxyFetch } from '@/utils/ai-proxy-fetch';
+import { createAiMcpFetch, createAiProxyFetch, createWebSearchFetch } from '@/utils/ai-proxy-fetch';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -77,7 +77,9 @@ import { createN8nDelegateSubAgentTool } from './sub-agents/delegate-sub-agent-t
 import { SubAgentForegroundRunner } from './sub-agents/sub-agent-foreground-runner';
 import { buildToolRegistry, type ToolRegistry } from './tool-registry';
 import { createGetEnvironmentTool } from './tools/environment-tool';
+import type { WorkflowToolExecutionMode } from './tools/workflow-tool-factory';
 import { findWorkflowToolWorkflow } from './tools/workflow-tool-workflow-resolver';
+import { WorkflowToolWorkflowLoader } from './tools/workflow-tool-workflow-loader.service';
 import { resolveUniqueSubAgents } from './utils/sub-agent-resolver';
 /**
  * `inline` runs an agent defined in a workflow node's parameters: no entity
@@ -109,6 +111,11 @@ export interface ReconstructAgentRuntimeParams {
 	 * its own published snapshot.
 	 */
 	runType: AgentRunTelemetryType;
+	/**
+	 * Execution classification for workflow tools. It stays separate from runType
+	 * because production-classified agents can run inside a workflow execution.
+	 */
+	workflowToolExecutionMode?: WorkflowToolExecutionMode;
 	/** Delegating parent agent id for sub-agent runs; defaults to memoryOwnerAgentId for top-level. */
 	parentAgentIdForDelegation?: string;
 	/** Top-level chat/integration runtimes only. */
@@ -182,6 +189,7 @@ export class AgentRuntimeReconstructionService {
 		integrationType?: string,
 		user?: User,
 		instrumentation?: AgentRuntimeInstrumentation,
+		workflowToolExecutionMode: WorkflowToolExecutionMode = 'manual',
 	): Promise<{ agent: RuntimeAgent; toolRegistry: ToolRegistry }> {
 		let config = agentEntity.schema;
 		if (!config) {
@@ -222,6 +230,7 @@ export class AgentRuntimeReconstructionService {
 			skills: agentEntity.skills ?? {},
 			runtimeProfile: 'top-level',
 			runType,
+			workflowToolExecutionMode,
 			parentAgentIdForDelegation: agentEntity.id,
 			integrationType,
 			credentialIntegrations: agentEntity.integrations ?? [],
@@ -276,11 +285,7 @@ export class AgentRuntimeReconstructionService {
 			}
 
 			// ref.type === 'workflow'
-			const workflow = await findWorkflowToolWorkflow(
-				this.workflowRepository,
-				ref.workflow,
-				projectId,
-			);
+			const workflow = await findWorkflowToolWorkflow(this.workflowRepository, ref, projectId);
 			if (!workflow) continue;
 
 			const accessibleWorkflow = await this.workflowFinderService.findWorkflowForUser(
@@ -338,6 +343,7 @@ export class AgentRuntimeReconstructionService {
 		skills: Record<string, AgentSkill>;
 		runtimeProfile: AgentRuntimeProfile;
 		runType: AgentRunTelemetryType;
+		workflowToolExecutionMode?: WorkflowToolExecutionMode;
 		parentAgentIdForDelegation?: string;
 		integrationType?: string;
 		credentialIntegrations: AgentIntegrationConfig[];
@@ -355,6 +361,7 @@ export class AgentRuntimeReconstructionService {
 			skills,
 			runtimeProfile,
 			runType,
+			workflowToolExecutionMode = 'manual',
 			parentAgentIdForDelegation,
 			integrationType,
 			credentialIntegrations,
@@ -364,7 +371,11 @@ export class AgentRuntimeReconstructionService {
 		} = options;
 
 		const toolExecutor = this.secureRuntime.createToolExecutor(toolCodeByName);
-		const toolResolver = this.makeToolResolver(projectId, instrumentation);
+		const toolResolver = this.makeToolResolver(
+			projectId,
+			workflowToolExecutionMode,
+			instrumentation,
+		);
 		const resolvedTools: BuiltTool[] = [];
 
 		// Transport for LLM calls
@@ -373,6 +384,13 @@ export class AgentRuntimeReconstructionService {
 		const aiMcpFetch =
 			instrumentation?.mcpFetch ??
 			createAiMcpFetch(this.outboundHttp, this.ssrfConfig, this.ssrfProtectionService);
+
+		// Transport for fallback web-search calls
+		const webSearchFetch = createWebSearchFetch(
+			this.outboundHttp,
+			this.ssrfConfig,
+			this.ssrfProtectionService,
+		);
 
 		const buildMcpClient = async (server: AgentJsonMcpServerConfig) =>
 			await buildMcpClientForServer(server, {
@@ -413,6 +431,7 @@ export class AgentRuntimeReconstructionService {
 			fallbackWebSearch: instrumentation?.webSearch,
 			// Only the mock MCP transport makes attaching auth-pending servers safe.
 			attachAuthPendingMcpServers: instrumentation?.mcpFetch !== undefined,
+			webSearchFetch,
 		});
 
 		await this.injectRuntimeDependencies({
@@ -422,6 +441,7 @@ export class AgentRuntimeReconstructionService {
 			credentialProvider,
 			runtimeProfile,
 			runType,
+			workflowToolExecutionMode,
 			config,
 			subAgentDelegation,
 			parentAgentIdForDelegation: parentAgentIdForDelegation ?? memoryOwnerAgentId,
@@ -508,6 +528,7 @@ export class AgentRuntimeReconstructionService {
 	}
 	private makeToolResolver(
 		projectId: string,
+		workflowToolExecutionMode: WorkflowToolExecutionMode,
 		instrumentation?: AgentRuntimeInstrumentation,
 	): ToolResolver {
 		const instrumentToolAdditionalData = instrumentation?.configureToolAdditionalData;
@@ -515,10 +536,11 @@ export class AgentRuntimeReconstructionService {
 			if (ref.type === 'workflow') {
 				const { resolveWorkflowTool } = await import('./tools/workflow-tool-factory.js');
 				return await resolveWorkflowTool(ref, {
-					workflowRepository: this.workflowRepository,
+					workflowLoader: Container.get(WorkflowToolWorkflowLoader),
 					workflowRunner: await getWorkflowRunner(),
 					activeExecutions: this.activeExecutions,
 					projectId,
+					executionMode: workflowToolExecutionMode,
 					webhookBaseUrl: this.urlService.getWebhookBaseUrl(),
 					instrumentToolAdditionalData,
 				});
@@ -544,6 +566,7 @@ export class AgentRuntimeReconstructionService {
 		credentialProvider: CredentialProvider;
 		runtimeProfile: AgentRuntimeProfile;
 		runType: AgentRunTelemetryType;
+		workflowToolExecutionMode: WorkflowToolExecutionMode;
 		config: AgentJsonConfig;
 		subAgentDelegation: SubAgentDelegationConfig;
 		parentAgentIdForDelegation: string;
@@ -559,6 +582,7 @@ export class AgentRuntimeReconstructionService {
 			credentialProvider,
 			runtimeProfile,
 			runType,
+			workflowToolExecutionMode,
 			config,
 			subAgentDelegation,
 			parentAgentIdForDelegation,
@@ -653,6 +677,7 @@ export class AgentRuntimeReconstructionService {
 				projectId,
 				credentialProvider,
 				runType,
+				workflowToolExecutionMode,
 				delegation: subAgentDelegation,
 				user,
 				instrumentation,
@@ -684,6 +709,7 @@ export class AgentRuntimeReconstructionService {
 		projectId: string;
 		credentialProvider: CredentialProvider;
 		runType: AgentRunTelemetryType;
+		workflowToolExecutionMode: WorkflowToolExecutionMode;
 		delegation: SubAgentDelegationConfig;
 		user?: User;
 		instrumentation?: AgentRuntimeInstrumentation;
@@ -695,6 +721,7 @@ export class AgentRuntimeReconstructionService {
 			projectId,
 			credentialProvider,
 			runType,
+			workflowToolExecutionMode,
 			delegation,
 			user,
 			instrumentation,
@@ -711,6 +738,7 @@ export class AgentRuntimeReconstructionService {
 				parentAgentId,
 				credentialProvider,
 				runType,
+				workflowToolExecutionMode,
 				user,
 				instrumentation,
 				policy: this.buildSubAgentPolicy(config),
