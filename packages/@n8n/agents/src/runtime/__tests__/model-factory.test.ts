@@ -378,7 +378,7 @@ describe('createModel', () => {
 			expect(model.supportsStructuredOutputs).toBeUndefined();
 		});
 
-		it('should disable supportsStructuredOutputs for custom when unset', () => {
+		it('should have undefined supportsStructuredOutputs for custom when unset', () => {
 			const model = createModel({
 				id: 'custom/Kimi-K3',
 				apiKey: 'key',
