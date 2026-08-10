@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { ITriggerFunctions, Logger } from 'n8n-workflow';
 import { UserError } from 'n8n-workflow';
 
+import { DEFAULT_EXECUTION_TIMEOUT_SECONDS } from './consumer';
 import type { DataEmitterOptions, KafkaMessageParserOptions, ResolveOffsetMode } from './consumer';
 import type { KafkaConsumerOptions } from './transport';
 
@@ -48,7 +49,6 @@ export interface KafkaTriggerSettings {
  * always >= 1.3, so the heartbeat default is 1.3's 10s rather than 3s. */
 const DEFAULT_SESSION_TIMEOUT_MS = 30_000;
 const DEFAULT_HEARTBEAT_INTERVAL_MS = 10_000;
-const DEFAULT_REBALANCE_TIMEOUT_MS = 600_000;
 
 /**
  * The most we may ask for. librdkafka accepts 1..86400000 for
@@ -273,11 +273,26 @@ export function toConsumerOptions(
 		Number.isFinite(executionTimeoutSeconds) &&
 		executionTimeoutSeconds > 0;
 	const configured = options.rebalanceTimeout;
-	const fallbackMs =
-		typeof configured === 'number' && Number.isFinite(configured) && configured > 0
-			? configured
-			: DEFAULT_REBALANCE_TIMEOUT_MS;
-	const deadlineMs = fromWorkflow ? executionTimeoutSeconds * 1000 : fallbackMs;
+	const usableOption =
+		typeof configured === 'number' && Number.isFinite(configured) && configured > 0;
+
+	// Three sources, most specific first.
+	//
+	// The last one used to be the Rebalance Timeout default, which handed the broker
+	// a 10 minute deadline while the emitter was still prepared to wait an hour for
+	// the same execution. Anything in between was fenced and redelivered while n8n
+	// believed the run still owned it: two of our own defaults disagreeing about one
+	// deadline, so they are now the same value by construction.
+	let deadlineMs: number;
+	if (fromWorkflow) {
+		deadlineMs = executionTimeoutSeconds * 1000;
+	} else if (usableOption) {
+		// No usable workflow timeout, but the user set this deliberately.
+		deadlineMs = configured;
+	} else {
+		// Nothing set anywhere, so match how long the emitter will actually wait.
+		deadlineMs = DEFAULT_EXECUTION_TIMEOUT_SECONDS * 1000;
+	}
 
 	const wanted = Math.ceil(deadlineMs / 2);
 	const rebalanceTimeout = Math.min(wanted, MAX_REBALANCE_TIMEOUT_MS);

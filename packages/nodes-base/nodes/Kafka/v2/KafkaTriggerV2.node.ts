@@ -49,8 +49,18 @@ export class KafkaTriggerV2 implements INodeType {
 		const emit = createDataEmitter(this, settings.emitter, closeController.signal);
 
 		let handle: KafkaConsumerHandle | undefined;
+		// A manual run starts the consumer from `manualTriggerFunction`, so unlike an
+		// activated workflow the start is not awaited before n8n can call close.
+		// Cancelling the test run mid-start would otherwise find `handle` still unset
+		// and leave a consumer connected with nothing left holding it.
+		let startup: Promise<void> | undefined;
 
 		const startConsumer = async () => {
+			startup = startConsumerOnce();
+			await startup;
+		};
+
+		const startConsumerOnce = async () => {
 			try {
 				const consumer = await createKafkaConsumer(credentials, settings.consumer, {
 					logger: this.logger,
@@ -82,6 +92,10 @@ export class KafkaTriggerV2 implements INodeType {
 		const closeFunction = async () => {
 			closeController.abort();
 			try {
+				// Let an in-flight start finish so its consumer is closed rather than
+				// leaked. Its own failure is not a teardown failure, and it has already
+				// been reported to whoever awaited the start.
+				await startup?.catch(() => {});
 				await handle?.close();
 			} catch (error) {
 				// A disconnect that overruns its bound is reported the way v1 reports

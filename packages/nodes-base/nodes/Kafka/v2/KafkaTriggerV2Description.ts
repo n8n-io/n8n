@@ -271,7 +271,9 @@ export const versionDescription: INodeTypeDescription = {
 					name: 'rebalanceTimeout',
 					type: 'number',
 					default: 600000,
-					description: 'The maximum time allowed for a consumer to join the group',
+					description:
+						'How long one batch may take to process before the consumer is dropped from its group. Only used when the workflow has no execution timeout of its own, since that timeout is the real deadline and takes precedence.',
+					hint: 'Value in milliseconds',
 				},
 				{
 					displayName: 'Retry Delay on Error',

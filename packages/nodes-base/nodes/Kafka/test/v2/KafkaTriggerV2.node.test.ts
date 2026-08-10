@@ -6,6 +6,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { testTriggerNode } from '@test/nodes/TriggerHelpers';
 
+import { DEFAULT_EXECUTION_TIMEOUT_SECONDS } from '../../v2/consumer';
 import { KafkaTriggerV2 } from '../../v2/KafkaTriggerV2.node';
 import {
 	explainManualRunGroupDenial,
@@ -95,8 +96,9 @@ describe('toConsumerOptions', () => {
 			sessionTimeout: 30000,
 			// v1.3's default, not the 3000 v1 uses below 1.3
 			heartbeatInterval: 10000,
-			// No workflow timeout, so the Rebalance Timeout default stands in, halved
-			rebalanceTimeout: 300000,
+			// No workflow timeout and no option, so the emitter's own default wait
+			// stands in, halved because the library doubles it
+			rebalanceTimeout: 1_800_000,
 			maxBytesPerPartition: undefined,
 			minBytes: undefined,
 			maxInFlightRequests: undefined,
@@ -193,14 +195,34 @@ describe('toConsumerOptions', () => {
 		});
 
 		it.each([NaN, Infinity])(
-			'falls back to the default when Rebalance Timeout is %s',
+			'falls back to the emitter default when Rebalance Timeout is %s',
 			(rebalanceTimeout) => {
 				// It can come from an expression, so it is not trusted to be usable.
 				const result = toConsumerOptions({ rebalanceTimeout }, 'my-group', undefined);
 
-				expect(result.rebalanceTimeout).toBe(300_000);
+				expect(result.rebalanceTimeout).toBe(1_800_000);
 			},
 		);
+
+		it('gives the broker the same deadline the emitter is prepared to wait', () => {
+			// These used to disagree: the broker got the Rebalance Timeout default of 10
+			// minutes while the emitter waited an hour, so an execution in between was
+			// fenced and its message redelivered while n8n believed the run owned it.
+			const { rebalanceTimeout } = toConsumerOptions({}, 'my-group', undefined);
+
+			// Doubled, because that is what the library hands librdkafka.
+			expect((rebalanceTimeout ?? 0) * 2).toBe(DEFAULT_EXECUTION_TIMEOUT_SECONDS * 1000);
+		});
+
+		it('lets an explicitly set Rebalance Timeout win when there is no workflow timeout', () => {
+			const { rebalanceTimeout } = toConsumerOptions(
+				{ rebalanceTimeout: 120_000 },
+				'my-group',
+				undefined,
+			);
+
+			expect(rebalanceTimeout).toBe(60_000);
+		});
 
 		it('falls back to the option when the workflow timeout is not a usable number', () => {
 			const result = toConsumerOptions({ rebalanceTimeout: 120_000 }, 'my-group', NaN);
@@ -797,6 +819,29 @@ describe('KafkaTriggerV2 Node', () => {
 			expect((emitError.mock.calls[0][0] as UserError).description).toContain(
 				'orders-consumer-n8n-manual-',
 			);
+		});
+
+		it('closes a consumer that finished starting while the run was being cancelled', async () => {
+			// Only manual runs can reach this: an activated workflow awaits the start
+			// before n8n has a close function to call. Here the start is handed over as
+			// manualTriggerFunction, so cancelling mid-start used to find no handle yet
+			// and leave a connected consumer behind with nothing holding it.
+			const started = await testTriggerNode(new KafkaTriggerV2(baseDescription), {
+				mode: 'manual',
+				node: {
+					parameters: { topic: 'test-topic', groupId: 'orders-consumer', useSchemaRegistry: false },
+				},
+				credential,
+			});
+
+			// Deliberately not awaited, so close lands while connect/subscribe/run are
+			// still in flight.
+			const starting = started.manualTriggerFunction?.();
+			await started.close?.();
+			await starting;
+
+			const consumer = await lastFakeConsumer();
+			expect(consumer.disconnect).toHaveBeenCalled();
 		});
 
 		it('joins a throwaway group, never the one the activated workflow uses', async () => {
