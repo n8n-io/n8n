@@ -88,18 +88,9 @@ export class InstanceAiCreditService {
 	 * read or a proxy token is minted. A failed call, an evicted Redis record or a restarted process
 	 * all repair themselves on the next interaction. Never throws — a locking failure must not break
 	 * the caller's own work.
-	 *
-	 * Every path logs why it did or didn't act. The gates are cheap and mostly invisible, so without
-	 * that a misconfigured instance looks identical to a working one.
 	 */
 	async ensureQuotaLockApplied(user: User): Promise<void> {
-		const skipReason = await this.getQuotaLockSkipReason();
-		if (skipReason) {
-			this.logger.debug(`Skipping Instance AI activation lock: ${skipReason}`, {
-				userId: user.id,
-			});
-			return;
-		}
+		if (await this.shouldSkipQuotaLock()) return;
 
 		const activatedAt = await this.activationService.getActivatedAt();
 
@@ -124,26 +115,21 @@ export class InstanceAiCreditService {
 	}
 
 	/**
-	 * Why the lock shouldn't be applied right now, or `undefined` when it should. Ordered cheapest
-	 * first: the in-memory checks settle every non-cohort instance without touching the database.
+	 * Whether the lock can't be applied yet. Ordered cheapest first, so the common cases — already
+	 * locked, not in the cohort, no proxy — settle in memory without touching the database.
 	 */
-	private async getQuotaLockSkipReason(): Promise<string | undefined> {
-		if (this.quotaLockConfirmed) return 'already locked';
-		if (!this.settingsService.isActivationCapped()) {
-			return 'instance is not in the activation-capped cohort (N8N_INSTANCE_AI_ACTIVATION_CAPPED)';
-		}
+	private async shouldSkipQuotaLock(): Promise<boolean> {
+		if (this.quotaLockConfirmed) return true;
+		if (!this.settingsService.isActivationCapped()) return true;
 		// The lock is a credit-pool operation, so it is meaningless without the proxy. Note this
 		// needs the AI-assistant licence *and* a base URL, not just the base URL.
-		if (!this.aiService.isProxyEnabled()) return 'AI service proxy is disabled';
+		if (!this.aiService.isProxyEnabled()) return true;
 
-		if ((await this.activationService.getActivatedAt()) === undefined) {
-			return 'instance has not activated yet (no first successful production execution)';
-		}
+		// Activation alone isn't enough: see the two halves of the trigger above.
+		if ((await this.activationService.getActivatedAt()) === undefined) return true;
 
 		this.hasUserMessage ||= await this.messageRepo.hasAnyUserMessage();
-		if (!this.hasUserMessage) return 'nobody has sent the assistant a message yet';
-
-		return undefined;
+		return !this.hasUserMessage;
 	}
 
 	/**
