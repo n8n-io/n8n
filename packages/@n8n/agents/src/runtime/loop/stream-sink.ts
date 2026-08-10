@@ -14,6 +14,11 @@ import { fromAiFinishReason, fromAiMessages } from '../model/messages';
 import { createRawErrorReader, type RawErrorReader } from '../model/raw-error';
 import { createRawUsageReader, type RawUsageReader } from '../model/raw-usage';
 import { convertChunk, toTokenUsage } from '../streaming/stream';
+import {
+	DEFAULT_MODEL_STREAM_IDLE_TIMEOUT_MS,
+	raceWithStallDeadline,
+	withChunkIdleTimeout,
+} from '../streaming/stream-stall';
 import type { StreamWriterGuard } from '../streaming/stream-writer-guard';
 import type { ToolCallBatchResult } from '../tools/tool-call-executor';
 
@@ -111,13 +116,33 @@ export class StreamSink implements RunOutputSink<void> {
 		// raw stream — no error, no content — so raw chunks are required to
 		// explain an otherwise silent empty response.
 		this.rawErrorReader = createRawErrorReader(this.services.modelId);
+		const idleMs = this.options?.modelStreamIdleTimeoutMs ?? DEFAULT_MODEL_STREAM_IDLE_TIMEOUT_MS;
+		// Per-turn controller chained to the run signal: a stall must be able to
+		// cancel this turn's fetch (releasing the socket the 1h network timeout
+		// would otherwise hold) without touching the run-level signal.
+		const turnAbort = new AbortController();
+		const onRunAbort = () => turnAbort.abort();
+		if (ctx.abortSignal.aborted) turnAbort.abort();
+		else ctx.abortSignal.addEventListener('abort', onRunAbort, { once: true });
+		try {
+			return await this.streamModelTurn(ctx, turnAbort, idleMs);
+		} finally {
+			ctx.abortSignal.removeEventListener('abort', onRunAbort);
+		}
+	}
+
+	private async streamModelTurn(
+		ctx: ModelCallContext,
+		turnAbort: AbortController,
+		idleMs: number,
+	): Promise<ModelTurnResult> {
 		const { streamText } = loadAi();
 		const result = streamText({
 			model: ctx.model,
 			instructions: ctx.system,
 			messages: ctx.messages,
 			allowSystemInMessages: true,
-			abortSignal: ctx.abortSignal,
+			abortSignal: turnAbort.signal,
 			...(ctx.reasoning ? { reasoning: ctx.reasoning } : {}),
 			// Surface the provider's raw message_start/message_delta events so an
 			// aborted run can recover its usage — the SDK reports none on abort.
@@ -131,10 +156,18 @@ export class StreamSink implements RunOutputSink<void> {
 			...this.buildSmoothStreamTransformOptions(),
 		});
 
+		// A healthy streaming response emits chunks continuously (raw provider
+		// events included), so prolonged silence means the connection or provider
+		// is wedged — fail the turn instead of hanging until the network timeout.
+		const chunkStream =
+			idleMs > 0
+				? withChunkIdleTimeout(result.stream, idleMs, () => turnAbort.abort())
+				: result.stream;
+
 		// Consume the stream. When the AbortSignal fires mid-stream the AI SDK
 		// cancels the underlying fetch and the async iterator throws; the error
 		// propagates to the StreamSession which closes the consumer stream.
-		for await (const chunk of result.stream) {
+		for await (const chunk of chunkStream) {
 			// Track usage from raw provider events so an aborted turn (which never
 			// reaches the post-loop awaits) can still be billed via getTerminalFinish.
 			if (chunk.type === 'raw') {
@@ -179,10 +212,18 @@ export class StreamSink implements RunOutputSink<void> {
 			}
 		}
 
-		const aiFinishReason = await result.finishReason;
-		const usage = await result.usage;
-		const providerMetadata = await result.providerMetadata;
-		const response = await result.response;
+		// The result promises settle as part of stream close on a healthy turn;
+		// guard them with the same stall deadline so an SDK-internal promise that
+		// never settles cannot hang the turn after the chunk loop ended.
+		const settle = async <T>(promise: PromiseLike<T>): Promise<T> =>
+			idleMs > 0
+				? await raceWithStallDeadline(promise, idleMs, () => turnAbort.abort())
+				: await promise;
+
+		const aiFinishReason = await settle(result.finishReason);
+		const usage = await settle(result.usage);
+		const providerMetadata = await settle(result.providerMetadata);
+		const response = await settle(result.response);
 		const newMessages = fromAiMessages(response.messages);
 		const errorReason = classifyModelTurnError({
 			aiFinishReason,
@@ -195,9 +236,9 @@ export class StreamSink implements RunOutputSink<void> {
 			finishReason: fromAiFinishReason(aiFinishReason),
 			usage: toTokenUsage(usage, providerMetadata),
 			newMessages,
-			toolCalls: await result.toolCalls,
+			toolCalls: await settle(result.toolCalls),
 			structuredOutput:
-				ctx.outputSpec && aiFinishReason !== 'tool-calls' ? await result.output : undefined,
+				ctx.outputSpec && aiFinishReason !== 'tool-calls' ? await settle(result.output) : undefined,
 			...(errorReason && { errorReason }),
 		};
 	}

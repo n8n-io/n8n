@@ -188,6 +188,14 @@ export interface ExecutionOptions {
 	 * streaming raw provider events that nothing consumes.
 	 */
 	recoverUsageOnAbort?: boolean;
+	/**
+	 * Max silence in milliseconds between model stream chunks before the turn
+	 * fails with a stall error. Healthy streaming responses emit chunks
+	 * continuously, so prolonged chunk silence means a dead connection that the
+	 * long AI network timeouts (raised to 1h for slow non-streaming calls) would
+	 * otherwise keep open. 0 disables. Defaults to 5 minutes.
+	 */
+	modelStreamIdleTimeoutMs?: number;
 	/** Inherited telemetry from a host runtime. */
 	telemetry?: BuiltTelemetry;
 	/** Inherited execution counter from the host runtime. Used for aggregate heartbeat telemetry. */
