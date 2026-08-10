@@ -1,4 +1,4 @@
-import { SandboxClient, SandboxServiceError, type SandboxRecord } from '@n8n/sandbox-client';
+import { SandboxClient, SandboxServiceError } from '@n8n/sandbox-client';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 
@@ -6,6 +6,7 @@ import { BaseSandbox } from './base-sandbox';
 import type { CommandResult, ExecuteCommandOptions, ProviderStatus, SandboxInfo } from '../types';
 
 export interface N8nSandboxServiceSandboxOptions {
+	/** Lowercase UUID to create or reconnect to; the service generates one when omitted. */
 	id?: string;
 	apiKey?: string;
 	serviceUrl?: string;
@@ -59,17 +60,15 @@ export class N8nSandboxServiceSandbox extends BaseSandbox {
 	}
 
 	override async start(): Promise<void> {
-		if (this.sandboxId) {
-			const existing = await this.tryGetExistingSandbox(this.sandboxId);
-			if (existing) {
-				this.createdAt = new Date(existing.createdAt * 1000);
-				return;
-			}
-		}
-
-		const sandbox = await this.client.createSandbox();
+		// With an id, the service creates-or-reconnects: an existing live sandbox
+		// is returned as-is, a stale one is replaced under the same id. This is
+		// what lets a restarted process (or another main) reattach to a thread's
+		// sandbox instead of orphaning it.
+		const sandbox = await this.client.createSandbox(
+			this.sandboxId ? { id: this.sandboxId } : undefined,
+		);
 		this.sandboxId = sandbox.id;
-		this.createdAt = new Date();
+		this.createdAt = new Date(sandbox.createdAt * 1000);
 	}
 
 	override async destroy(): Promise<void> {
@@ -143,16 +142,6 @@ export class N8nSandboxServiceSandbox extends BaseSandbox {
 
 	getClient(): SandboxClient {
 		return this.client;
-	}
-
-	/** Returns the remote sandbox record, or `null` if it no longer exists (404). */
-	private async tryGetExistingSandbox(sandboxId: string): Promise<SandboxRecord | null> {
-		try {
-			return await this.client.getSandbox(sandboxId);
-		} catch (error) {
-			if (error instanceof SandboxServiceError && error.status === 404) return null;
-			throw error;
-		}
 	}
 
 	/** Merges constructor-level env with per-command env, filtering out undefined values. */

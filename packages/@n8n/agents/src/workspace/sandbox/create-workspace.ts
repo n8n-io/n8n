@@ -58,6 +58,7 @@ function buildSandbox(
 
 	if (provider === 'n8n-sandbox') {
 		return new N8nSandboxServiceSandbox({
+			id: config.id,
 			apiKey: config.apiKey,
 			serviceUrl: config.serviceUrl,
 			timeout: config.timeout ?? 300_000,
