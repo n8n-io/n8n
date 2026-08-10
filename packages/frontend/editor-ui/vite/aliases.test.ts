@@ -3,7 +3,7 @@ import { dirname, join, relative, resolve } from 'node:path';
 import type { Alias } from 'vite';
 import { describe, expect, it } from 'vitest';
 
-import { modulePackages, sourcePackages } from '@n8n/vitest-config/frontend-source-packages';
+import { modulePackages, sourcePackages } from '@n8n/frontend-vite-config';
 
 import { editorUiAliases } from './aliases.mjs';
 

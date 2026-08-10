@@ -45,7 +45,7 @@ Real output:
 ```
 ✔ Created packages/modules/my-feature
   packages/modules/my-feature/frontend  → @n8n/frontend-module-my-feature
-  updated @n8n/vitest-config/frontend-source-packages.ts (Vite alias)
+  updated @n8n/frontend-vite-config/source-packages.ts (Vite alias)
   updated editor-ui/package.json (dependency)
   updated editor-ui/tsconfig.json (paths)
   updated editor-ui/src/app/modules.manifest.ts (registration)
@@ -243,7 +243,7 @@ resolves but exposes nothing you want. `@n8n/composables` has no `src/index.ts` 
 declares only `"./*"` in its `exports`, so a root import does not resolve. The source-packages
 table encodes this: `entry: false` marks a package with no root entry, and it gets no
 bare-specifier alias, deliberately
-(`@n8n/vitest-config/frontend-source-packages.ts`).
+(`@n8n/frontend-vite-config/source-packages.ts`).
 
 Always import the subpath. The design proposal's dependency list implies root imports; it is
 wrong.
@@ -341,7 +341,7 @@ hand-registering or debugging a red CI.
 
 | # | Where                                                  | What                                        | Scaffolded? |
 | - | ------------------------------------------------------ | ------------------------------------------- | ----------- |
-| 1 | `@n8n/vitest-config/frontend-source-packages.ts`       | an entry in the `modulePackages` array       | ✅          |
+| 1 | `@n8n/frontend-vite-config/source-packages.ts`         | an entry in the `modulePackages` array       | ✅          |
 | 2 | `editor-ui/package.json`                               | `"@n8n/frontend-module-x": "workspace:*"`    | ✅          |
 | 3 | `editor-ui/tsconfig.json`                              | two `paths` entries (bare + `/*`)            | ✅          |
 | 4 | `editor-ui/src/app/modules.manifest.ts`                | import + array entry                         | ✅          |

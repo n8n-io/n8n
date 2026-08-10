@@ -11,8 +11,8 @@ const SOURCE_PACKAGES = join(
 	repoRoot,
 	'packages',
 	'@n8n',
-	'vitest-config',
-	'frontend-source-packages.ts',
+	'frontend-vite-config',
+	'source-packages.ts',
 );
 
 /** template → path inside the new package. */
@@ -34,7 +34,7 @@ const files = (name) => [
  * Writes `packages/modules/<name>/frontend` and makes the four registrations outside it. A
  * frontend module is not usable until the shell can see it, so the registrations are the point:
  *
- *   1. `@n8n/vitest-config/frontend-source-packages.ts` — the Vite alias, so the shell resolves the
+ *   1. `@n8n/frontend-vite-config/source-packages.ts` — the Vite alias, so the shell resolves the
  *      module to its `src`. The mapping is hand-maintained, so it does not appear on its own.
  *   2. `editor-ui/package.json`  — the dependency, so pnpm links the package and a bare import
  *      resolves outside Vite too (vue-tsc, node).
@@ -55,12 +55,12 @@ export const createFrontend = ({ name, packageDir, substitutions }) => {
 		editLines(SOURCE_PACKAGES, (lines) => {
 			if (lines.some((line) => line.includes(`'${packageName}'`))) return undefined;
 
-			const at = lineIndex(lines, /^export const modulePackages/, 'frontend-source-packages.ts');
+			const at = lineIndex(lines, /^export const modulePackages/, 'source-packages.ts');
 			lines.splice(at + 1, 0, `\t{ name: '${packageName}', dir: 'modules/${name}/frontend' },`);
 			return lines;
 		})
 	) {
-		edits.push('@n8n/vitest-config/frontend-source-packages.ts (Vite alias)');
+		edits.push('@n8n/frontend-vite-config/source-packages.ts (Vite alias)');
 	}
 
 	// 2. The dependency, so the package resolves outside Vite too. Inserted in sort order because the

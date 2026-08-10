@@ -11,11 +11,11 @@ import type { Alias } from 'vite';
  * `editor-ui/vite/aliases.test.ts` fails when they diverge; add a package here and it will tell you
  * what else to update. `dir` is relative to `packages/`.
  *
- * It lives in this package rather than in `editor-ui/vite/aliases.mts` because editor-ui is not its
- * only consumer any more: every `packages/modules/<name>/frontend` needs the same mapping for its
- * own vitest run, and a module cannot import from the shell it plugs into. Every frontend
- * package — modules included — already depends on `@n8n/vitest-config` and already imports
- * `@n8n/vitest-config/frontend` from its vite config, so this adds no dependency edge.
+ * It lives in this package rather than in editor-ui because editor-ui is not its only consumer:
+ * every `packages/modules/<name>/frontend` needs the same mapping for its own vitest run, and a
+ * module cannot import from the shell it plugs into. The cost is one declared dependency per
+ * consumer — accepted deliberately over the earlier home inside `@n8n/vitest-config`, which needed
+ * no new edge but put frontend Vite resolution inside a test-config package.
  *
  * `entry: false` marks packages with no `src/index.ts`. Their `exports` map has no `.`, so a bare
  * import of them does not resolve at all and must not be aliased.
