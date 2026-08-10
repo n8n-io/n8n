@@ -16,7 +16,6 @@ import { INSTANCE_AI_MEMORY_TASK_WAIT_TIMEOUT_MS } from '@n8n/api-types';
 import { setTimeout as delay } from 'node:timers/promises';
 
 import type { EvalLogger } from './logger';
-import type { ExternalWorkflowEdit } from './schema';
 import type { N8nClient } from '../clients/n8n-client';
 import { consumeSseStream } from '../clients/sse-client';
 import { savedWorkflowIdsFromEvents } from '../outcome/event-parser';
@@ -277,23 +276,26 @@ function formatMemoryTasksForLog(
 // Multi-turn conversation loop
 // ---------------------------------------------------------------------------
 
-export type NextMessageDecision = { kind: 'followUp'; message: string } | { kind: 'done' };
+export type NextMessageDecision =
+	| {
+			kind: 'followUp';
+			message: string;
+			/**
+			 * The user-proxy asked for the last saved workflow to be renamed from
+			 * outside the conversation, driven by a stage direction. Lets a case
+			 * exercise the optimistic-concurrency path ("modified outside this
+			 * conversation"), which the agent otherwise only reaches by accident when
+			 * its own setup or credential work happens to advance the checksum.
+			 */
+			renameWorkflowTo?: string;
+	  }
+	| { kind: 'done' };
 
 export interface MultiTurnConfig extends WaitConfig {
 	nextMessageDecider: () => Promise<NextMessageDecision>;
-	/**
-	 * Edits applied to a built workflow from outside the conversation, at a turn
-	 * boundary — the agent is idle and the user hasn't spoken yet. Lets a case
-	 * exercise the optimistic-concurrency path ("modified outside this
-	 * conversation"), which the agent otherwise only reaches by accident when its
-	 * own setup or credential work happens to advance the checksum.
-	 */
-	externalEdits?: ExternalWorkflowEdit[];
 }
 
 export async function runMultiTurnConversation(config: MultiTurnConfig): Promise<void> {
-	const pendingEdits = [...(config.externalEdits ?? [])];
-
 	while (true) {
 		await waitForAllActivity(config);
 
@@ -313,7 +315,9 @@ export async function runMultiTurnConversation(config: MultiTurnConfig): Promise
 		// After the decision, so an edit never lands on the boundary that ends the
 		// conversation: there the agent would get no turn to react, and the renamed
 		// workflow would still be what the judge and workflow checks read.
-		await applyDueExternalEdits(config, pendingEdits);
+		if (decision.renameWorkflowTo !== undefined) {
+			await applyExternalRename(config, decision.renameWorkflowTo);
+		}
 
 		config.logger.verbose(
 			`[multi-turn] Sending follow-up: ${decision.message.slice(0, 80)}${decision.message.length > 80 ? '...' : ''}`,
@@ -330,49 +334,55 @@ export async function runMultiTurnConversation(config: MultiTurnConfig): Promise
 }
 
 /**
- * Applies any external edit whose build threshold is now met, removing it from
- * `pending` so it fires once per run. A failed edit is logged and dropped rather
- * than thrown: the case it belongs to grades the agent's recovery, and killing
- * the run here would report that as a build failure instead.
+ * Renames the workflow this run last saved, from outside the conversation — the
+ * side effect behind a `renameWorkflowTo` stage direction.
+ *
+ * The proxy only ever sees the transcript, so it decides a workflow exists from
+ * what the agent *claimed*. Both guards below re-derive that from ground truth
+ * before writing anything. Every skip and every failure logs at `warn`, not
+ * `verbose`: when the rename silently no-ops the conflict path is never
+ * exercised, and the case reds looking like an agent failure instead of the
+ * harness problem it is.
+ *
+ * A failure is logged and swallowed rather than thrown — the case grades the
+ * agent's recovery, and killing the run here would report that as a build
+ * failure instead.
  */
-async function applyDueExternalEdits(
-	config: MultiTurnConfig,
-	pending: ExternalWorkflowEdit[],
-): Promise<void> {
-	if (pending.length === 0) return;
-
-	// Only builds that actually SAVED, deduped — so this is DISTINCT workflows and
-	// repeated rebuilds of one stay at a count of 1, which is what
-	// `afterWorkflowCount` means. Failed builds are excluded deliberately: they
-	// still report a workflowId, and acting on one would rename a workflow this
-	// run never created (an attached or pre-existing one).
-	const builtWorkflowIds = savedWorkflowIdsFromEvents(config.events);
-
-	const due = pending.filter((edit) => builtWorkflowIds.length >= edit.afterWorkflowCount);
-	if (due.length === 0) return;
-
-	// Drop them from `pending` first, so each fires once per run even if applying
-	// one throws. Applied in declaration order below: two edits naming the same
-	// workflow must leave it named by the LAST one the case lists.
-	for (const edit of due) {
-		const at = pending.indexOf(edit);
-		if (at !== -1) pending.splice(at, 1);
+async function applyExternalRename(config: MultiTurnConfig, rename: string): Promise<void> {
+	// Only builds that actually SAVED, deduped. Failed builds are excluded
+	// deliberately: they still report a workflowId, and acting on one would
+	// rename a workflow this run never created (an attached or pre-existing one).
+	// Last rather than first — the proxy fires at a turn boundary, so "the
+	// workflow under discussion" is the most recent one to reach the instance.
+	const workflowId = savedWorkflowIdsFromEvents(config.events).at(-1);
+	if (workflowId === undefined) {
+		config.logger.warn(
+			`[external-edit] Skipped rename to "${rename}": this run has saved no workflow yet, so there is nothing to conflict`,
+		);
+		return;
 	}
 
-	for (const edit of due) {
-		const workflowId = builtWorkflowIds[edit.afterWorkflowCount - 1];
-
-		try {
-			await config.client.updateWorkflow(workflowId, { name: edit.rename });
-			config.logger.verbose(
-				`[external-edit] Renamed ${workflowId} to "${edit.rename}" outside the conversation`,
+	try {
+		const current = await config.client.getWorkflow(workflowId);
+		if (current.name === rename) {
+			// Re-issuing the same rename advances the checksum a second time and
+			// re-conflicts a save the agent may already have recovered from, which
+			// would grade a successful recovery as a failure.
+			config.logger.warn(
+				`[external-edit] Skipped rename of ${workflowId}: it is already named "${rename}"`,
 			);
-		} catch (error: unknown) {
-			const message = error instanceof Error ? error.message : String(error);
-			config.logger.verbose(
-				`[external-edit] Failed to rename ${workflowId}: ${message} — the conflict path will not be exercised`,
-			);
+			return;
 		}
+
+		await config.client.updateWorkflow(workflowId, { name: rename });
+		config.logger.verbose(
+			`[external-edit] Renamed ${workflowId} from "${current.name}" to "${rename}" outside the conversation`,
+		);
+	} catch (error: unknown) {
+		const message = error instanceof Error ? error.message : String(error);
+		config.logger.warn(
+			`[external-edit] Failed to rename ${workflowId} to "${rename}": ${message} — the conflict path was not exercised`,
+		);
 	}
 }
 

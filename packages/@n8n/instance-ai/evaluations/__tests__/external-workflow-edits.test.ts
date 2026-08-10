@@ -3,7 +3,6 @@ import { vi } from 'vitest';
 import type { N8nClient } from '../clients/n8n-client';
 import { runMultiTurnConversation } from '../harness/chat-loop';
 import type { EvalLogger } from '../harness/logger';
-import type { ExternalWorkflowEdit } from '../harness/schema';
 import type { CapturedEvent } from '../types';
 
 /** A `tool-result` for a workflow tool — the shape the parser reads build ids
@@ -38,26 +37,43 @@ function runLifecycleEvents(): CapturedEvent[] {
 	];
 }
 
+/** One turn boundary. A string sends that message with no rename; the tuple form
+ *  is the proxy also setting `renameWorkflowTo`; `null` ends the conversation. A
+ *  function runs at that boundary first, so a test can simulate the agent
+ *  building again mid-conversation. */
+type Turn = string | [message: string, renameWorkflowTo: string] | null;
+
 interface RunOptions {
 	events: CapturedEvent[];
-	externalEdits?: ExternalWorkflowEdit[];
-	/** One entry per turn boundary; `null` ends the conversation. A function runs
-	 *  at that boundary first, so a test can simulate the agent building again. */
-	followUps: Array<string | null | (() => string | null)>;
+	followUps: Array<Turn | (() => Turn)>;
+	/** Current name the instance reports for every workflow — the ground truth the
+	 *  idempotence guard reads. */
+	currentName?: string;
 	updateShouldThrow?: boolean;
+	getShouldThrow?: boolean;
 }
 
 interface RunRecord {
 	renames: Array<{ workflowId: string; name: unknown }>;
 	messagesSent: string[];
+	warnings: string[];
 }
 
 async function runLoop(options: RunOptions): Promise<RunRecord> {
 	const renames: RunRecord['renames'] = [];
 	const messagesSent: string[] = [];
+	const warnings: string[] = [];
 	const remaining = [...options.followUps];
 
 	const client = {
+		getWorkflow: options.getShouldThrow
+			? vi.fn().mockRejectedValue(new Error('workflow not found'))
+			: vi
+					.fn()
+					.mockImplementation(
+						async (id: string) =>
+							await Promise.resolve({ id, name: options.currentName ?? 'Original name' }),
+					),
 		updateWorkflow: options.updateShouldThrow
 			? vi.fn().mockRejectedValue(new Error('workflow is read-only'))
 			: vi.fn().mockImplementation(async (id: string, updates: Record<string, unknown>) => {
@@ -72,7 +88,11 @@ async function runLoop(options: RunOptions): Promise<RunRecord> {
 		cancelRun: vi.fn().mockResolvedValue(undefined),
 	} as unknown as N8nClient;
 
-	const logger = { verbose: () => {}, info: () => {}, warn: () => {} } as unknown as EvalLogger;
+	const logger = {
+		verbose: () => {},
+		info: () => {},
+		warn: (message: string) => warnings.push(message),
+	} as unknown as EvalLogger;
 
 	await runMultiTurnConversation({
 		client,
@@ -82,47 +102,44 @@ async function runLoop(options: RunOptions): Promise<RunRecord> {
 		startTime: Date.now(),
 		timeoutMs: 30_000,
 		logger,
-		externalEdits: options.externalEdits,
 		nextMessageDecider: vi.fn().mockImplementation(async () => {
 			const next = remaining.shift() ?? null;
 			const resolved = typeof next === 'function' ? next() : next;
-			return await Promise.resolve(
-				resolved === null ? { kind: 'done' } : { kind: 'followUp', message: resolved },
-			);
+			if (resolved === null) return await Promise.resolve({ kind: 'done' });
+			if (typeof resolved === 'string') {
+				return await Promise.resolve({ kind: 'followUp', message: resolved });
+			}
+			const [message, renameWorkflowTo] = resolved;
+			return await Promise.resolve({ kind: 'followUp', message, renameWorkflowTo });
 		}),
 	});
 
-	return { renames, messagesSent };
+	return { renames, messagesSent, warnings };
 }
 
-describe('externalEdits in runMultiTurnConversation', () => {
-	it('renames the built workflow once its build threshold is met', async () => {
+describe('proxy-driven external rename in runMultiTurnConversation', () => {
+	it('renames the last saved workflow when the proxy asks for it', async () => {
 		const { renames } = await runLoop({
 			events: [...runLifecycleEvents(), buildEvent('wf-first')],
-			externalEdits: [{ afterWorkflowCount: 1, rename: 'Renamed in another tab' }],
-			followUps: ['keep going', null],
+			followUps: [['keep going', 'Renamed in another tab'], null],
 		});
 
 		expect(renames).toEqual([{ workflowId: 'wf-first', name: 'Renamed in another tab' }]);
 	});
 
-	it('applies every due edit in the array', async () => {
-		const { renames } = await runLoop({
+	it('does nothing on a turn the proxy did not ask for a rename', async () => {
+		const { renames, messagesSent } = await runLoop({
 			events: [...runLifecycleEvents(), buildEvent('wf-first')],
-			externalEdits: [
-				{ afterWorkflowCount: 1, rename: 'First rename' },
-				{ afterWorkflowCount: 1, rename: 'Second rename' },
-			],
-			followUps: ['keep going', null],
+			followUps: ['just talking', null],
 		});
 
-		expect(renames.map((r) => r.name)).toEqual(['First rename', 'Second rename']);
+		expect(renames).toHaveLength(0);
+		expect(messagesSent).toEqual(['just talking']);
 	});
 
-	it('does not apply an edit on the boundary that ends the conversation', async () => {
+	it('does not rename on the boundary that ends the conversation', async () => {
 		const { renames } = await runLoop({
 			events: [...runLifecycleEvents(), buildEvent('wf-first')],
-			externalEdits: [{ afterWorkflowCount: 1, rename: 'Too late to matter' }],
 			// The proxy ends the conversation at the first boundary, so the agent would
 			// never get a turn to react to the edit.
 			followUps: [null],
@@ -131,83 +148,74 @@ describe('externalEdits in runMultiTurnConversation', () => {
 		expect(renames).toHaveLength(0);
 	});
 
-	it('ignores a failed build — it reports a workflowId but saved nothing', async () => {
+	it('targets the most recently saved workflow', async () => {
+		const events = [...runLifecycleEvents(), buildEvent('wf-first')];
+
 		const { renames } = await runLoop({
+			events,
+			followUps: [
+				// The agent builds a second workflow during this turn; the rename on the
+				// NEXT boundary must land on that one, not the first.
+				() => {
+					events.push(buildEvent('wf-second'));
+					return 'keep going';
+				},
+				['and again', 'Renamed in another tab'],
+				null,
+			],
+		});
+
+		expect(renames).toEqual([{ workflowId: 'wf-second', name: 'Renamed in another tab' }]);
+	});
+
+	it('ignores a failed build — it reports a workflowId but saved nothing', async () => {
+		const { renames, warnings } = await runLoop({
 			events: [...runLifecycleEvents(), failedBuildEvent('wf-never-saved')],
-			externalEdits: [{ afterWorkflowCount: 1, rename: 'Should not be applied' }],
-			followUps: ['keep going', 'and again', null],
+			followUps: [['keep going', 'Should not be applied'], null],
 		});
 
 		// Renaming here would mutate a workflow this run never created — an
 		// attached or pre-existing one the agent merely tried to save to.
 		expect(renames).toHaveLength(0);
+		expect(warnings.some((w) => w.includes('saved no workflow yet'))).toBe(true);
 	});
 
-	it('does not let a failed build on another workflow push the count over the threshold', async () => {
-		const { renames } = await runLoop({
-			events: [...runLifecycleEvents(), failedBuildEvent('wf-attached'), buildEvent('wf-saved')],
-			externalEdits: [{ afterWorkflowCount: 2, rename: 'Should not be applied' }],
-			followUps: ['keep going', 'and again', null],
-		});
-
-		// Counting the failed build would reach 2 and rename `wf-saved` — or worse,
-		// `wf-attached`, a workflow this run never created.
-		expect(renames).toHaveLength(0);
-	});
-
-	it('applies a due edit exactly once, across several turn boundaries', async () => {
-		const { renames } = await runLoop({
+	it('skips the rename when the workflow already carries that name', async () => {
+		const { renames, warnings } = await runLoop({
 			events: [...runLifecycleEvents(), buildEvent('wf-first')],
-			externalEdits: [{ afterWorkflowCount: 1, rename: 'Renamed once' }],
-			// Three boundaries, all of which the edit stays "due" for.
-			followUps: ['keep going', 'and again', null],
-		});
-
-		expect(renames).toHaveLength(1);
-	});
-
-	it('waits for the build count the edit asks for', async () => {
-		const events = [...runLifecycleEvents(), buildEvent('wf-first')];
-
-		const { renames } = await runLoop({
-			events,
-			externalEdits: [{ afterWorkflowCount: 2, rename: 'Second build renamed' }],
-			followUps: [
-				// Not due yet — only one workflow exists at this boundary.
-				'keep going',
-				// The agent builds a second workflow during that turn; now it is due,
-				// and must target the SECOND build, not the first.
-				() => {
-					events.push(buildEvent('wf-second'));
-					return 'and again';
-				},
-				null,
-			],
-		});
-
-		expect(renames).toEqual([{ workflowId: 'wf-second', name: 'Second build renamed' }]);
-	});
-
-	it('never fires when the build count is not reached', async () => {
-		const { renames } = await runLoop({
-			events: [...runLifecycleEvents(), buildEvent('wf-first')],
-			externalEdits: [{ afterWorkflowCount: 2, rename: 'Never applied' }],
-			followUps: ['keep going', 'and again', null],
+			currentName: 'Renamed in another tab',
+			// A repeat PATCH would advance the checksum again and re-conflict a save
+			// the agent may already have recovered from.
+			followUps: [['keep going', 'Renamed in another tab'], null],
 		});
 
 		expect(renames).toHaveLength(0);
+		expect(warnings.some((w) => w.includes('already named'))).toBe(true);
 	});
 
-	it('swallows a failed rename and keeps the conversation going', async () => {
-		const { renames, messagesSent } = await runLoop({
+	it('warns and keeps the conversation going when the rename fails', async () => {
+		const { renames, messagesSent, warnings } = await runLoop({
 			events: [...runLifecycleEvents(), buildEvent('wf-first')],
-			externalEdits: [{ afterWorkflowCount: 1, rename: 'Doomed rename' }],
-			followUps: ['still talking', null],
+			followUps: [['still talking', 'Doomed rename'], null],
 			updateShouldThrow: true,
 		});
 
 		expect(renames).toHaveLength(0);
 		// The point of swallowing: the run continues so the case can grade recovery.
 		expect(messagesSent).toEqual(['still talking']);
+		// At warn, not verbose — a silent no-op reds the case as an agent failure.
+		expect(warnings.some((w) => w.includes('Failed to rename'))).toBe(true);
+	});
+
+	it('warns and keeps going when the current name cannot be read', async () => {
+		const { renames, messagesSent, warnings } = await runLoop({
+			events: [...runLifecycleEvents(), buildEvent('wf-first')],
+			followUps: [['still talking', 'Never applied'], null],
+			getShouldThrow: true,
+		});
+
+		expect(renames).toHaveLength(0);
+		expect(messagesSent).toEqual(['still talking']);
+		expect(warnings.some((w) => w.includes('Failed to rename'))).toBe(true);
 	});
 });

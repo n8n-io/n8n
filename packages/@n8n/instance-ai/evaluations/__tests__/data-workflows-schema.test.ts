@@ -375,29 +375,6 @@ describe('EvalTestCaseSchema', () => {
 		).toThrow(/full envelope[\s\S]*shorthand/);
 	});
 
-	it('defaults externalEdits afterWorkflowCount to the first workflow', () => {
-		const parsed = EvalTestCaseSchema.parse({
-			...validFixture(),
-			conversation: [
-				{ role: 'user' as const, text: 'Build a thing' },
-				{ role: 'user' as const, text: 'now change it' },
-			],
-			externalEdits: [{ rename: 'Renamed elsewhere' }],
-		});
-
-		expect(parsed.externalEdits?.[0].afterWorkflowCount).toBe(1);
-	});
-
-	it('rejects externalEdits on a single-prompt case — the edit would never fire', () => {
-		expect(() =>
-			EvalTestCaseSchema.parse({
-				...validFixture(),
-				conversation: [{ role: 'user' as const, text: 'Build a thing' }],
-				externalEdits: [{ afterWorkflowCount: 1, rename: 'Renamed elsewhere' }],
-			}),
-		).toThrow(/multi-turn conversation/);
-	});
-
 	it('accepts an attach on the opening turn naming a seeded workflow', () => {
 		const parsed = EvalTestCaseSchema.parse({
 			...validFixture(),

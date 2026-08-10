@@ -171,7 +171,6 @@ export const MCP_BUILD_KEY_SUPPORT: Record<
 	seed: 'orchestrator-only',
 	// Applied at a turn boundary in the orchestrator's multi-turn loop, which a
 	// single-shot `claude` build never enters — the edit would silently never fire.
-	externalEdits: 'orchestrator-only',
 	datasets: 'supported',
 };
 

@@ -135,28 +135,6 @@ export function isMultiTurnConversation(
 	return conversation[0].role !== 'user';
 }
 
-/**
- * One edit made to a built workflow from outside the conversation, applied at a
- * turn boundary — the agent is idle and the simulated user hasn't spoken yet.
- */
-export const ExternalWorkflowEditSchema = z
-	.object({
-		/** Fire once at least this many DISTINCT workflows exist (1 = after the first
-		 *  one is built). Counts workflows, not build calls: an agent that rebuilds
-		 *  the same workflow repeatedly still has one.
-		 *
-		 *  Anchored on that rather than a turn index because the user-proxy decides
-		 *  how many follow-ups a run takes, so a turn number drifts between runs
-		 *  where "the first workflow exists" does not. */
-		afterWorkflowCount: z.number().int().positive().default(1),
-		/** New workflow name. `name` is one of WORKFLOW_CHECKSUM_FIELDS, so a rename
-		 *  conflicts the agent's next save without touching nodes. */
-		rename: z.string().min(1),
-	})
-	.strict();
-
-export type ExternalWorkflowEdit = z.infer<typeof ExternalWorkflowEditSchema>;
-
 const evalTestCaseObjectSchema = z
 	.object({
 		/** Optional human-readable note on what this case is testing (esp. for behaviour cases). */
@@ -222,13 +200,6 @@ const evalTestCaseObjectSchema = z
 		 * Only meaningful on a multi-turn case — a refine below rejects it otherwise,
 		 * since the hook lives in the multi-turn loop and would silently do nothing.
 		 */
-		externalEdits: z
-			.array(ExternalWorkflowEditSchema)
-			// A cap rather than an unbounded list: each edit is a real write against the
-			// instance mid-run, and a case needing more than a handful is describing a
-			// different scenario than "something changed under the agent".
-			.max(5)
-			.optional(),
 		/**
 		 * Logical groupings this case belongs to (e.g. `['pr', 'full']`). Used by
 		 * the eval CLI's `--tier` flag and propagated to LangSmith as example
@@ -284,13 +255,6 @@ export const EvalTestCaseSchema = evalTestCaseObjectSchema
 	// The hook that applies these lives in the multi-turn loop, which a single-prompt
 	// case never enters — so on one the edit would silently never fire and every
 	// assertion depending on it would pass vacuously. Rejected at load instead.
-	.refine(
-		(c) => (c.externalEdits ?? []).length === 0 || isMultiTurnConversation(c.conversation ?? []),
-		{
-			message:
-				'`externalEdits` needs a multi-turn conversation — the edit is applied at a turn boundary, so a single-prompt case would never apply it',
-		},
-	)
 	// The chat API refuses a message that is empty with nothing attached, so catch it
 	// at load rather than mid-run as a 400 that reads like an infrastructure fault.
 	// Every user turn, not just the opening; assistant turns are proxy script data
