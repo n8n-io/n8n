@@ -22,5 +22,13 @@ export class ProvisioningModule implements ModuleInterface {
 		Container.get(RoleDeletionCheckProxy).registerProvider(
 			Container.get(ProvisioningRoleDeletionChecker),
 		);
+
+		// Register the SSO login hooks so SAML/OIDC logins trigger role
+		// provisioning without those modules importing this one.
+		const { SsoProvisioningHooks } = await import('@/sso.ee/sso-provisioning-hooks.js');
+		const { SsoProvisioningHandlerService } = await import('./sso-provisioning.handler.ee.js');
+		Container.get(SsoProvisioningHooks).registerHandler(
+			Container.get(SsoProvisioningHandlerService),
+		);
 	}
 }
