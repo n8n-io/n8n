@@ -1,0 +1,45 @@
+packages/frontend/editor-ui/src/features/catalog/catalog.utils.test.ts
+  s_5e1597e8ea25b2::t_0ce83f7ec1d92a 1-7
+  s_5e1597e8ea25b2::t_a1b61e9c4cf377 52-98
+packages/frontend/editor-ui/src/features/catalog/catalog.utils.ts
+  s_5e1597e8ea25b2::t_b038486880ef63 1-33
+packages/frontend/editor-ui/src/features/catalog/CatalogView.vue
+  s_5e1597e8ea25b2::t_f76edf1635a59a 331-338
+  s_5e1597e8ea25b2::t_883c2381a6c31a 13
+  s_5e1597e8ea25b2::t_710e09ad76f091 296-299
+  s_5e1597e8ea25b2::t_6df50ba1722ad5 57-79
+  s_5e1597e8ea25b2::t_f483d592583694 33-34
+  s_5e1597e8ea25b2::t_2c697a33c9bc99 111,129-146
+  s_5e1597e8ea25b2::t_6e8080ce23b018 490-491
+  s_5e1597e8ea25b2::t_143d1d0632c5ff 20
+  s_5e1597e8ea25b2::t_0767e06611e557 112-128
+  s_5e1597e8ea25b2::t_0aad8880e2dc90 80-82
+  s_5e1597e8ea25b2::t_8a956871f84629 147-149
+  s_5e1597e8ea25b2::t_2fe48e31f125c1 300
+  s_5e1597e8ea25b2::t_807aa55d088a8a 339-341
+  s_5e1597e8ea25b2::t_a301d127decadc 492-494
+  s_5e1597e8ea25b2::t_2eef638e2a6b31 268,302,307,312,314
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_5e1597e8ea25b2::t_b89ef14f301a63 5027-5029,5031-5032
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "926b1ddc3b2505eba5d24610270064cd2fa4b645",
+  "prompts": {},
+  "humans": {
+    "h_21437a83314767": {
+      "author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_5e1597e8ea25b2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3addddf2-b534-4e10-93c7-b150ce8b013e",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}
