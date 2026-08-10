@@ -21,12 +21,13 @@ Extends Reka UI `NumberFieldRootProps` (except `formatOptions`, derived from `pr
 - `min?: number` - Minimum allowed value.
 - `max?: number` - Maximum allowed value.
 - `step?: number` - Increment/decrement step amount. Default: `1`
+- `stepSnapping?: boolean` - When `true`, typed values snap to `step` on blur. Default: `false` (Reka defaults to `true`; we override so decimals are preserved unless opted in).
 - `precision?: number` - Decimal places. Maps to Reka `formatOptions` fraction digits.
 - `controls?: boolean` - Show increment/decrement buttons. Default: `false`
 - `controlsPosition?: 'both' | 'right'` - Control layout. Default: `'right'`
 - `disabled?: boolean` - Disables the field. Default: `false`
 - `placeholder?: string` - Placeholder when empty (pass an i18n string from the consumer).
-- Also forwards Reka form/field props: `id`, `name`, `required`, `readonly`, `locale`, `stepSnapping`, `disableWheelChange`, `invertWheelChange`.
+- Also forwards Reka form/field props: `id`, `name`, `required`, `readonly`, `locale`, `disableWheelChange`, `invertWheelChange`.
 
 **Events**
 

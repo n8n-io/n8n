@@ -28,6 +28,8 @@ const props = withDefaults(defineProps<InputNumberProps>(), {
 	controls: false,
 	controlsPosition: 'right',
 	step: 1,
+	// Reka defaults to true, which snaps typed decimals to `step` on blur (e.g. 3.14 → 3).
+	stepSnapping: false,
 });
 
 const emit = defineEmits<InputNumberEmits>();
@@ -53,6 +55,14 @@ const rootProps = useForwardPropsEmits(
 	),
 	emit,
 );
+
+function onFocus(event: FocusEvent) {
+	emit('focus', event);
+	const target = event.target;
+	if (target instanceof HTMLInputElement) {
+		target.select();
+	}
+}
 
 const sizes: Record<NonNullable<InputNumberProps['size']>, string> = {
 	mini: $style.mini,
@@ -114,7 +124,7 @@ function resolvedFormatOptions(): Intl.NumberFormatOptions {
 			<NumberFieldInput
 				:class="$style.input"
 				:placeholder="placeholder"
-				@focus="emit('focus', $event)"
+				@focus="onFocus"
 				@blur="emit('blur', $event)"
 			/>
 		</slot>
@@ -195,7 +205,6 @@ function resolvedFormatOptions(): Intl.NumberFormatOptions {
 }
 
 .isDisabled {
-	background-color: var(--input--color--background--disabled);
 	cursor: not-allowed;
 	opacity: 0.6;
 }

@@ -1,5 +1,6 @@
 import userEvent from '@testing-library/user-event';
 import { render, waitFor } from '@testing-library/vue';
+import { h } from 'vue';
 
 import InputNumber from './InputNumber.vue';
 
@@ -275,6 +276,26 @@ describe('v2/components/InputNumber', () => {
 			});
 		});
 
+		it('should select the full value on focus', async () => {
+			const wrapper = render(InputNumber, {
+				props: {
+					modelValue: 42,
+				},
+			});
+			const input = wrapper.container.querySelector('input');
+			expect(input).toBeTruthy();
+			if (!(input instanceof HTMLInputElement)) {
+				throw new Error('Expected input element');
+			}
+
+			await userEvent.click(input);
+
+			await waitFor(() => {
+				expect(input.selectionStart).toBe(0);
+				expect(input.selectionEnd).toBe(input.value.length);
+			});
+		});
+
 		it('should emit blur event', async () => {
 			const wrapper = render(InputNumber);
 			const input = wrapper.container.querySelector('input');
@@ -320,6 +341,30 @@ describe('v2/components/InputNumber', () => {
 			expect(wrapper.getByTestId('custom-decrement')).toBeInTheDocument();
 			expect(wrapper.getByText('DOWN')).toBeInTheDocument();
 		});
+
+		it('should render custom input slot', () => {
+			const wrapper = render(InputNumber, {
+				props: {
+					placeholder: 'Custom placeholder',
+					disabled: true,
+				},
+				slots: {
+					input: (slotProps: { class: string; placeholder?: string; disabled?: boolean }) =>
+						h('input', {
+							'data-test-id': 'custom-input',
+							class: slotProps.class,
+							placeholder: slotProps.placeholder,
+							disabled: slotProps.disabled,
+						}),
+				},
+			});
+
+			const customInput = wrapper.getByTestId('custom-input');
+			expect(customInput).toBeInTheDocument();
+			expect(customInput).toHaveAttribute('placeholder', 'Custom placeholder');
+			expect(customInput).toBeDisabled();
+			expect(wrapper.container.querySelector('[role="spinbutton"]')).not.toBeInTheDocument();
+		});
 	});
 
 	describe('precision', () => {
@@ -343,6 +388,222 @@ describe('v2/components/InputNumber', () => {
 			});
 			const input = wrapper.container.querySelector('input');
 			expect(input).toBeInTheDocument();
+		});
+
+		it('should preserve decimals on blur when precision is unset', async () => {
+			const wrapper = render(InputNumber, {
+				props: {
+					modelValue: 3.14159,
+				},
+			});
+			const input = wrapper.container.querySelector('input');
+			expect(input).toBeTruthy();
+			if (!(input instanceof HTMLInputElement)) {
+				throw new Error('Expected input element');
+			}
+
+			await userEvent.click(input);
+			await userEvent.tab();
+
+			await waitFor(() => {
+				expect(input).toHaveValue('3.14159');
+			});
+		});
+
+		it('should keep precision formatting on blur', async () => {
+			const wrapper = render(InputNumber, {
+				props: {
+					modelValue: 3.14,
+					precision: 2,
+				},
+			});
+			const input = wrapper.container.querySelector('input');
+			expect(input).toBeTruthy();
+			if (!(input instanceof HTMLInputElement)) {
+				throw new Error('Expected input element');
+			}
+
+			await userEvent.click(input);
+			await userEvent.tab();
+
+			await waitFor(() => {
+				expect(input).toHaveValue('3.14');
+			});
+		});
+
+		it('should format as an integer on blur when precision is 0', async () => {
+			const wrapper = render(InputNumber, {
+				props: {
+					modelValue: 3.7,
+					precision: 0,
+				},
+			});
+			const input = wrapper.container.querySelector('input');
+			expect(input).toBeTruthy();
+			if (!(input instanceof HTMLInputElement)) {
+				throw new Error('Expected input element');
+			}
+
+			expect(input).toHaveValue('4');
+
+			await userEvent.click(input);
+			await userEvent.tab();
+
+			await waitFor(() => {
+				expect(input).toHaveValue('4');
+				const emitted = wrapper.emitted('update:modelValue');
+				expect(emitted?.[emitted.length - 1]).toEqual([4]);
+			});
+		});
+	});
+
+	describe('stepSnapping', () => {
+		it('should snap typed value to step on blur when stepSnapping is true', async () => {
+			const wrapper = render(InputNumber, {
+				props: {
+					modelValue: 0,
+					step: 1,
+					stepSnapping: true,
+				},
+			});
+			const input = wrapper.container.querySelector('input');
+			expect(input).toBeTruthy();
+			if (!(input instanceof HTMLInputElement)) {
+				throw new Error('Expected input element');
+			}
+
+			await userEvent.clear(input);
+			await userEvent.type(input, '3.14');
+			await userEvent.tab();
+
+			await waitFor(() => {
+				const emitted = wrapper.emitted('update:modelValue');
+				expect(emitted).toBeTruthy();
+				const lastEmit = emitted?.[emitted.length - 1];
+				expect(lastEmit).toEqual([3]);
+				expect(input).toHaveValue('3');
+			});
+		});
+	});
+
+	describe('readonly', () => {
+		it('should render readonly state', () => {
+			const wrapper = render(InputNumber, {
+				props: {
+					modelValue: 42,
+					readonly: true,
+				},
+			});
+			const input = wrapper.container.querySelector('input');
+			expect(input).toHaveAttribute('readonly');
+			expect(wrapper.getByTestId('input-number')).toHaveAttribute('data-readonly');
+		});
+
+		it('should not update value when clicking controls while readonly', async () => {
+			const wrapper = render(InputNumber, {
+				props: {
+					modelValue: 5,
+					readonly: true,
+					controls: true,
+					controlsPosition: 'both',
+				},
+			});
+
+			await userEvent.click(wrapper.getByLabelText('Increase'));
+
+			expect(wrapper.emitted('update:modelValue')).toBeUndefined();
+			expect(wrapper.container.querySelector('input')).toHaveValue('5');
+		});
+	});
+
+	describe('disabled controls', () => {
+		it('should not update value when clicking controls while disabled', async () => {
+			const wrapper = render(InputNumber, {
+				props: {
+					modelValue: 5,
+					disabled: true,
+					controls: true,
+					controlsPosition: 'both',
+				},
+			});
+
+			await userEvent.click(wrapper.getByLabelText('Increase'));
+			await userEvent.click(wrapper.getByLabelText('Decrease'));
+
+			expect(wrapper.emitted('update:modelValue')).toBeUndefined();
+			expect(wrapper.container.querySelector('input')).toHaveValue('5');
+		});
+	});
+
+	describe('typed min/max', () => {
+		it('should clamp typed value to min on blur', async () => {
+			const wrapper = render(InputNumber, {
+				props: {
+					modelValue: 15,
+					min: 10,
+				},
+			});
+			const input = wrapper.container.querySelector('input');
+			expect(input).toBeTruthy();
+			if (!(input instanceof HTMLInputElement)) {
+				throw new Error('Expected input element');
+			}
+
+			await userEvent.clear(input);
+			await userEvent.type(input, '5');
+			await userEvent.tab();
+
+			await waitFor(() => {
+				const emitted = wrapper.emitted('update:modelValue');
+				expect(emitted).toBeTruthy();
+				const lastEmit = emitted?.[emitted.length - 1];
+				expect(lastEmit).toEqual([10]);
+				expect(input).toHaveValue('10');
+			});
+		});
+
+		it('should clamp typed value to max on blur', async () => {
+			const wrapper = render(InputNumber, {
+				props: {
+					modelValue: 5,
+					max: 10,
+				},
+			});
+			const input = wrapper.container.querySelector('input');
+			expect(input).toBeTruthy();
+			if (!(input instanceof HTMLInputElement)) {
+				throw new Error('Expected input element');
+			}
+
+			await userEvent.clear(input);
+			await userEvent.type(input, '50');
+			await userEvent.tab();
+
+			await waitFor(() => {
+				const emitted = wrapper.emitted('update:modelValue');
+				expect(emitted).toBeTruthy();
+				const lastEmit = emitted?.[emitted.length - 1];
+				expect(lastEmit).toEqual([10]);
+				expect(input).toHaveValue('10');
+			});
+		});
+	});
+
+	describe('external v-model updates', () => {
+		it('should display value when parent updates modelValue', async () => {
+			const wrapper = render(InputNumber, {
+				props: {
+					modelValue: 5,
+				},
+			});
+			const input = wrapper.container.querySelector('input');
+			expect(input).toHaveValue('5');
+
+			await wrapper.rerender({ modelValue: 10 });
+
+			await waitFor(() => {
+				expect(input).toHaveValue('10');
+			});
 		});
 	});
 });

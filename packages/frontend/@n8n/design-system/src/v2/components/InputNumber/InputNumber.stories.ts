@@ -4,6 +4,8 @@ import { defineComponent, ref } from 'vue';
 
 import InputNumber from './InputNumber.vue';
 import N8nIcon from '../../../components/N8nIcon/Icon.vue';
+import N8nInputLabel from '../../../components/N8nInputLabel/InputLabel.vue';
+import N8nText from '../../../components/N8nText/Text.vue';
 
 const meta = {
 	title: 'Experimental/InputNumber',
@@ -53,40 +55,38 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-const withLiveValue = (template: string) => ({
-	render: (args: Story['args']) => ({
-		components: { InputNumber, N8nIcon },
+const storyPadding = 'padding: var(--spacing--xl);';
+const storyStack = `${storyPadding} display: flex; flex-direction: column; gap: var(--spacing--md); max-width: 320px;`;
+
+export const Default = {
+	render: (args) => ({
+		components: { InputNumber },
 		setup() {
-			const value = ref(args?.modelValue);
+			const value = ref(args.modelValue);
 			return { args, value };
 		},
 		template: `
-		<div style="padding: 40px; max-width: 320px;">
-			${template}
-			<p style="margin-top: 16px;">Value: {{ value }}</p>
+		<div style="${storyPadding} max-width: 320px;">
+			<InputNumber v-bind="args" v-model="value" />
 		</div>
 		`,
 	}),
-});
-
-export const Basic = {
-	...withLiveValue('<InputNumber v-bind="args" v-model="value" />'),
 } satisfies Story;
 
 const InputNumberControlledUncontrolledDemo = defineComponent({
 	name: 'InputNumberControlledUncontrolledDemo',
-	components: { InputNumber },
+	components: { InputNumber, N8nInputLabel, N8nText },
 	setup() {
 		const value = ref(5);
 		return { value, onUpdate: action('update:modelValue') };
 	},
 	template: `
-		<div style="padding: 40px; display: flex; flex-direction: column; gap: 32px; max-width: 360px;">
-			<section>
-				<h3 style="margin: 0 0 8px; font-size: 14px; font-weight: 600;">Controlled</h3>
-				<p style="margin: 0 0 16px; font-size: 14px; color: var(--text-color--subtle);">
+		<div style="padding: var(--spacing--xl); display: flex; flex-direction: column; gap: var(--spacing--xl); max-width: 360px;">
+			<section style="display: flex; flex-direction: column; gap: var(--spacing--xs);">
+				<N8nInputLabel label="Controlled" />
+				<N8nText size="small" color="text-light">
 					Parent-controlled value via <code>v-model</code>. Use the buttons below to set the value externally.
-				</p>
+				</N8nText>
 				<InputNumber
 					key="controlled"
 					v-model="value"
@@ -96,7 +96,7 @@ const InputNumberControlledUncontrolledDemo = defineComponent({
 					controls-position="both"
 					@update:model-value="onUpdate"
 				/>
-				<div style="display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap;">
+				<div style="display: flex; gap: var(--spacing--2xs); flex-wrap: wrap;">
 					<button type="button" style="padding: 4px 12px; font-size: 13px; cursor: pointer;" @click="value = 0">
 						Set to 0
 					</button>
@@ -107,13 +107,13 @@ const InputNumberControlledUncontrolledDemo = defineComponent({
 						Set to 10
 					</button>
 				</div>
-				<p style="margin-top: 16px; font-size: 14px;">Selected: <strong>{{ value }}</strong></p>
+				<N8nText size="small">Selected: <strong>{{ value }}</strong></N8nText>
 			</section>
-			<section>
-				<h3 style="margin: 0 0 8px; font-size: 14px; font-weight: 600;">Uncontrolled</h3>
-				<p style="margin: 0 0 16px; font-size: 14px; color: var(--text-color--subtle);">
+			<section style="display: flex; flex-direction: column; gap: var(--spacing--xs);">
+				<N8nInputLabel label="Uncontrolled" />
+				<N8nText size="small" color="text-light">
 					Initial value set with <code>defaultValue="3"</code>. The parent does not track changes.
-				</p>
+				</N8nText>
 				<InputNumber
 					key="uncontrolled"
 					:default-value="3"
@@ -136,9 +136,18 @@ export const ControlledUncontrolled: Story = {
 };
 
 export const WithControlsBoth = {
-	...withLiveValue(
-		'<InputNumber v-bind="args" v-model="value" :controls="true" controls-position="both" />',
-	),
+	render: (args) => ({
+		components: { InputNumber },
+		setup() {
+			const value = ref(args.modelValue);
+			return { args, value };
+		},
+		template: `
+		<div style="${storyPadding} max-width: 320px;">
+			<InputNumber v-bind="args" v-model="value" :controls="true" controls-position="both" />
+		</div>
+		`,
+	}),
 	args: {
 		modelValue: 5,
 		min: 0,
@@ -149,9 +158,18 @@ export const WithControlsBoth = {
 } satisfies Story;
 
 export const WithControlsRight = {
-	...withLiveValue(
-		'<InputNumber v-bind="args" v-model="value" :controls="true" controls-position="right" />',
-	),
+	render: (args) => ({
+		components: { InputNumber },
+		setup() {
+			const value = ref(args.modelValue);
+			return { args, value };
+		},
+		template: `
+		<div style="${storyPadding} max-width: 320px;">
+			<InputNumber v-bind="args" v-model="value" :controls="true" controls-position="right" />
+		</div>
+		`,
+	}),
 	args: {
 		modelValue: 5,
 		min: 0,
@@ -162,30 +180,62 @@ export const WithControlsRight = {
 } satisfies Story;
 
 export const Sizes = {
-	render: (args) => ({
-		components: { InputNumber },
+	render: () => ({
+		components: { InputNumber, N8nInputLabel },
 		setup() {
-			const value = ref(args.modelValue);
-			return { args, value };
+			const withoutControls = {
+				mini: ref(42),
+				small: ref(42),
+				medium: ref(42),
+				large: ref(42),
+				xlarge: ref(42),
+			};
+			const controlsBoth = {
+				mini: ref(42),
+				small: ref(42),
+				medium: ref(42),
+				large: ref(42),
+			};
+			const controlsRight = {
+				mini: ref(42),
+				small: ref(42),
+				medium: ref(42),
+				large: ref(42),
+			};
+			return { withoutControls, controlsBoth, controlsRight };
 		},
 		template: `
-		<div style="padding: 40px; max-width: 320px; display: flex; flex-direction: column; gap: 12px;">
-			<InputNumber v-model="value" size="mini" placeholder="mini" />
-			<InputNumber v-model="value" size="small" placeholder="small" />
-			<InputNumber v-model="value" size="medium" placeholder="medium" />
-			<InputNumber v-model="value" size="large" placeholder="large" />
-			<InputNumber v-model="value" size="xlarge" placeholder="xlarge" />
+		<div style="${storyPadding} display: flex; gap: var(--spacing--xl); flex-wrap: wrap;">
+			<div style="width: 200px; display: flex; flex-direction: column; gap: var(--spacing--xs);">
+				<N8nInputLabel label="Without controls" />
+				<InputNumber v-model="withoutControls.mini" size="mini" placeholder="mini" />
+				<InputNumber v-model="withoutControls.small" size="small" placeholder="small" />
+				<InputNumber v-model="withoutControls.medium" size="medium" placeholder="medium" />
+				<InputNumber v-model="withoutControls.large" size="large" placeholder="large" />
+				<InputNumber v-model="withoutControls.xlarge" size="xlarge" placeholder="xlarge" />
+			</div>
+			<div style="width: 200px; display: flex; flex-direction: column; gap: var(--spacing--xs);">
+				<N8nInputLabel label="With controls (both)" />
+				<InputNumber v-model="controlsBoth.mini" size="mini" :controls="true" controls-position="both" />
+				<InputNumber v-model="controlsBoth.small" size="small" :controls="true" controls-position="both" />
+				<InputNumber v-model="controlsBoth.medium" size="medium" :controls="true" controls-position="both" />
+				<InputNumber v-model="controlsBoth.large" size="large" :controls="true" controls-position="both" />
+			</div>
+			<div style="width: 200px; display: flex; flex-direction: column; gap: var(--spacing--xs);">
+				<N8nInputLabel label="With controls (right)" />
+				<InputNumber v-model="controlsRight.mini" size="mini" :controls="true" controls-position="right" />
+				<InputNumber v-model="controlsRight.small" size="small" :controls="true" controls-position="right" />
+				<InputNumber v-model="controlsRight.medium" size="medium" :controls="true" controls-position="right" />
+				<InputNumber v-model="controlsRight.large" size="large" :controls="true" controls-position="right" />
+			</div>
 		</div>
 		`,
 	}),
-	args: {
-		modelValue: 42,
-	},
 } satisfies Story;
 
 export const Precision = {
 	render: (args) => ({
-		components: { InputNumber },
+		components: { InputNumber, N8nInputLabel },
 		setup() {
 			const anyDecimals = ref(args.modelValue);
 			const twoDecimals = ref(3.14);
@@ -193,19 +243,16 @@ export const Precision = {
 			return { anyDecimals, twoDecimals, integersOnly };
 		},
 		template: `
-		<div style="padding: 40px; max-width: 320px; display: flex; flex-direction: column; gap: 16px;">
-			<div>
-				<p>No precision</p>
+		<div style="${storyStack}">
+			<N8nInputLabel label="No precision">
 				<InputNumber v-model="anyDecimals" placeholder="Any decimals" />
-			</div>
-			<div>
-				<p>Precision: 2</p>
+			</N8nInputLabel>
+			<N8nInputLabel label="Precision: 2">
 				<InputNumber v-model="twoDecimals" :precision="2" placeholder="0.00" />
-			</div>
-			<div>
-				<p>Precision: 0</p>
+			</N8nInputLabel>
+			<N8nInputLabel label="Precision: 0">
 				<InputNumber v-model="integersOnly" :precision="0" placeholder="0" />
-			</div>
+			</N8nInputLabel>
 		</div>
 		`,
 	}),
@@ -215,17 +262,25 @@ export const Precision = {
 } satisfies Story;
 
 export const MinMax = {
-	...withLiveValue(
-		'<InputNumber v-bind="args" v-model="value" :controls="true" controls-position="both" />',
-	),
-	args: {
-		modelValue: 50,
-		min: 0,
-		max: 100,
-		step: 10,
-		controls: true,
-		controlsPosition: 'both',
-	},
+	name: 'Min/Max',
+	render: () => ({
+		components: { InputNumber, N8nInputLabel },
+		setup() {
+			const minValue = ref(5);
+			const maxValue = ref(50);
+			return { minValue, maxValue };
+		},
+		template: `
+		<div style="${storyStack}">
+			<N8nInputLabel label="Min = 0">
+				<InputNumber v-model="minValue" :min="0" :controls="true" controls-position="both" />
+			</N8nInputLabel>
+			<N8nInputLabel label="Max = 100">
+				<InputNumber v-model="maxValue" :max="100" :controls="true" controls-position="both" />
+			</N8nInputLabel>
+		</div>
+		`,
+	}),
 } satisfies Story;
 
 export const Disabled = {
@@ -236,31 +291,33 @@ export const Disabled = {
 			return { value };
 		},
 		template: `
-		<div style="display: flex; gap: 16px; align-items: flex-start; padding: 40px;">
-			<div style="width: 160px;">
-				<p>Default</p>
-				<InputNumber v-model="value" placeholder="Enabled" />
-			</div>
-			<div style="width: 160px;">
-				<p>Disabled</p>
-				<InputNumber v-model="value" placeholder="Disabled" :disabled="true" />
-			</div>
+		<div style="${storyPadding} max-width: 320px;">
+			<InputNumber v-model="value" placeholder="Disabled" :disabled="true" />
 		</div>
 		`,
 	}),
 } satisfies Story;
 
 export const CustomButtons = {
-	...withLiveValue(`
-		<InputNumber v-bind="args" v-model="value" :controls="true" controls-position="both">
-			<template #decrement>
-				<N8nIcon icon="minus" size="small" />
-			</template>
-			<template #increment>
-				<N8nIcon icon="plus" size="small" />
-			</template>
-		</InputNumber>
-	`),
+	render: (args) => ({
+		components: { InputNumber, N8nIcon },
+		setup() {
+			const value = ref(args.modelValue);
+			return { args, value };
+		},
+		template: `
+		<div style="${storyPadding} max-width: 320px;">
+			<InputNumber v-bind="args" v-model="value" :controls="true" controls-position="both">
+				<template #decrement>
+					<N8nIcon icon="chevron-left" size="small" />
+				</template>
+				<template #increment>
+					<N8nIcon icon="chevron-right" size="small" />
+				</template>
+			</InputNumber>
+		</div>
+		`,
+	}),
 	args: {
 		modelValue: 5,
 		min: 1,
@@ -268,32 +325,4 @@ export const CustomButtons = {
 		controls: true,
 		controlsPosition: 'both',
 	},
-} satisfies Story;
-
-export const ControlsSizes = {
-	render: () => ({
-		components: { InputNumber },
-		setup() {
-			const value = ref(42);
-			return { value };
-		},
-		template: `
-		<div style="padding: 40px; display: flex; gap: 32px;">
-			<div style="width: 200px; display: flex; flex-direction: column; gap: 10px;">
-				<p>Both (left/right)</p>
-				<InputNumber v-model="value" size="mini" :controls="true" controls-position="both" />
-				<InputNumber v-model="value" size="small" :controls="true" controls-position="both" />
-				<InputNumber v-model="value" size="medium" :controls="true" controls-position="both" />
-				<InputNumber v-model="value" size="large" :controls="true" controls-position="both" />
-			</div>
-			<div style="width: 200px; display: flex; flex-direction: column; gap: 10px;">
-				<p>Right (stacked)</p>
-				<InputNumber v-model="value" size="mini" :controls="true" controls-position="right" />
-				<InputNumber v-model="value" size="small" :controls="true" controls-position="right" />
-				<InputNumber v-model="value" size="medium" :controls="true" controls-position="right" />
-				<InputNumber v-model="value" size="large" :controls="true" controls-position="right" />
-			</div>
-		</div>
-		`,
-	}),
 } satisfies Story;
