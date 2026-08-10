@@ -428,6 +428,46 @@ describe('RelayConnection', () => {
 			expect(parseSent(ws)).not.toHaveProperty('error');
 		});
 
+		it('should re-apply focus emulation when a tab is re-registered after a detach', async () => {
+			const forward = (id: string, method: string) =>
+				ws.onmessage?.({
+					data: JSON.stringify({
+						id: 1,
+						method: 'forwardCDPCommand',
+						params: { method, params: {}, id },
+					}),
+				});
+
+			// A second tab keeps the relay alive once the first one detaches
+			chrome.debugger.getTargets.mockResolvedValue([mockTarget(42), mockTarget(43)]);
+			await relay.registerSelectedTabs([42, 43]);
+
+			forward(targetIdForTab(42), 'Runtime.evaluate');
+			await tick();
+			expect(chrome.debugger.sendCommand).toHaveBeenCalledWith(
+				{ tabId: 42 },
+				'Emulation.setFocusEmulationEnabled',
+				{ enabled: true },
+			);
+
+			// Detach drops the tab entirely, so recovery goes through re-registration
+			fireDebuggerDetach({ tabId: 42 }, 'target_closed');
+			expect(ws.closed).toBe(false);
+			chrome.debugger.sendCommand.mockClear();
+			chrome.debugger.attach.mockClear();
+
+			await relay.registerSelectedTabs([42]);
+			forward(targetIdForTab(42), 'DOM.getDocument');
+			await tick();
+
+			expect(chrome.debugger.attach).toHaveBeenCalledWith({ tabId: 42 }, '1.3');
+			expect(chrome.debugger.sendCommand).toHaveBeenCalledWith(
+				{ tabId: 42 },
+				'Emulation.setFocusEmulationEnabled',
+				{ enabled: true },
+			);
+		});
+
 		it('should route CDP commands to specific tab by CDP targetId', async () => {
 			chrome.debugger.getTargets.mockResolvedValueOnce([mockTarget(10), mockTarget(20)]);
 			await relay.registerSelectedTabs([10, 20]);
