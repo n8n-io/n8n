@@ -321,9 +321,34 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 	const buildDurations = new Map<string, number>();
 
 	function stashTranscript(build: BuildResult): void {
+		scrubLocalSecrets(build);
 		if (build.threadId && build.transcript) {
 			transcriptByThreadId.set(build.threadId, build.transcript);
 		}
+	}
+
+	/**
+	 * Strip the real provider key from a LOCAL run before ANY consumer captures
+	 * the transcript.
+	 *
+	 * Done here rather than next to the leak check because this is the choke
+	 * point every build path passes through first: `transcriptByThreadId` is
+	 * read by reshape when it writes `eval-results.json`, so redacting later
+	 * left the artifact holding the pre-redaction copy — the redaction ran, and
+	 * the key shipped anyway.
+	 *
+	 * The leak CHECK still needs the raw text, so the haystack is snapshotted
+	 * here, before the scrub, and carried on the facts for the checks to use.
+	 */
+	function scrubLocalSecrets(build: BuildResult): void {
+		const facts = build.credentialSetup;
+		if (!facts?.local || !facts.secretPrefix || facts.leakHaystack !== undefined) return;
+		facts.leakHaystack = JSON.stringify({
+			transcript: build.transcript ?? [],
+			events: build.events ?? [],
+		});
+		build.transcript = redactTranscriptSecrets(build.transcript, facts.secretPrefix);
+		build.events = redactTranscriptSecrets(build.events, facts.secretPrefix);
 	}
 
 	// Agent config + skills, fetched once per build and shared by every
@@ -352,26 +377,12 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 		build: BuildResult,
 		isPrebuilt: boolean,
 	): void {
-		// Snapshot the haystack BEFORE anything redacts it: the leak check has to
-		// see what the agent actually emitted. Transcript prose plus every tool
-		// call's inputs/outputs.
-		const searchableRunText = JSON.stringify({
-			transcript: build.transcript ?? [],
-			events: build.events ?? [],
-		});
-		// In LOCAL mode the captured key is a real, working credential, and
-		// `redact.ts` only redacts by key NAME — so one echoed in prose or typed
-		// into a form field would ride the transcript into eval-results.json,
-		// which another repo ingests and republishes. Redact what PERSISTS, after
-		// the snapshot above, so detection and disclosure don't trade off.
-		// Deliberately outside the `testCase` guard below: a build with no case
-		// entry still gets persisted.
-		if (build.credentialSetup?.local && build.credentialSetup.secretPrefix) {
-			build.transcript = redactTranscriptSecrets(
-				build.transcript,
-				build.credentialSetup.secretPrefix,
-			);
-		}
+		// `scrubLocalSecrets` (in stashTranscript, which always runs first) has
+		// already redacted a local run's transcript and kept the pre-scrub text
+		// here for exactly this check.
+		const searchableRunText =
+			build.credentialSetup?.leakHaystack ??
+			JSON.stringify({ transcript: build.transcript ?? [], events: build.events ?? [] });
 		const testCase = testCaseByFileSlug.get(fileSlug);
 		if (!testCase) return;
 		// Deterministic credential-setup verdicts, started EAGERLY: per-build

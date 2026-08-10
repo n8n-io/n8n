@@ -40,7 +40,11 @@ vi.mock('../harness/capture-run-debug', () => ({
 	captureThreadRunDebug: vi.fn().mockResolvedValue([]),
 }));
 
-vi.mock('../harness/credential-setup-checks', () => ({
+vi.mock('../harness/credential-setup-checks', async (importOriginal) => ({
+	...(await importOriginal<typeof import('../harness/credential-setup-checks')>()),
+	// Only the call that would hit n8n is stubbed. `redactTranscriptSecrets`
+	// stays REAL: mocking the whole module would have made the leak test below
+	// pass against a no-op.
 	runCredentialSetupChecks: vi.fn().mockResolvedValue([]),
 }));
 
@@ -545,5 +549,69 @@ describe('credential-setup check wiring', () => {
 		await orchestrator.getOrBuild(0, 'case-a');
 
 		expect(runCredentialSetupChecks).not.toHaveBeenCalled();
+	});
+});
+
+describe('local-mode secret scrubbing', () => {
+	const PREFIX = 'sk-ant-api03-';
+	const KEY = `${PREFIX}abcdefghijklmnopqrstuvwx`;
+
+	const localBuild = () =>
+		okBuild({
+			threadId: 'thread-local',
+			transcript: [
+				{ userMessage: 'set it up', steps: [{ kind: 'agent-text', text: `saved ${KEY}` }] },
+			],
+			credentialSetup: {
+				credentialType: undefined,
+				mintedSecret: undefined,
+				secretWasIssued: false,
+				local: true,
+				secretPrefix: PREFIX,
+				credentialIdsBefore: [],
+			},
+		} as Partial<BuildResult>);
+
+	it('redacts the key from the transcript the RESULTS artifact is built from', async () => {
+		// reshape reads transcriptByThreadId when it writes eval-results.json, so
+		// redacting `build.transcript` alone left the artifact holding the real
+		// key — the redaction ran and the key shipped anyway.
+		const deps = makeDeps([makeLane(1, vi.fn().mockResolvedValue(localBuild()))]);
+		const orchestrator = createBuildOrchestrator(deps);
+
+		await orchestrator.getOrBuild(0, 'case-a');
+
+		const persisted = JSON.stringify(deps.transcriptByThreadId.get('thread-local'));
+		expect(persisted).not.toContain(KEY);
+		expect(persisted).toContain('sk-ant-api03-[REDACTED]');
+	});
+
+	it('still gives the leak check the RAW text, or it could never detect a leak', async () => {
+		const build = localBuild();
+		const deps = makeDeps([makeLane(1, vi.fn().mockResolvedValue(build))], {
+			testCaseByFileSlug: new Map([['case-a', baseCase({})]]),
+		});
+
+		await createBuildOrchestrator(deps).getOrBuild(0, 'case-a');
+
+		expect(build.credentialSetup?.leakHaystack).toContain(KEY);
+	});
+
+	it('leaves a hermetic (non-local) run transcript untouched', async () => {
+		const build = okBuild({
+			threadId: 'thread-fixture',
+			transcript: [{ userMessage: 'x', steps: [{ kind: 'agent-text', text: `saved ${KEY}` }] }],
+			credentialSetup: {
+				credentialType: 'anthropicApi',
+				mintedSecret: KEY,
+				secretWasIssued: true,
+				credentialIdsBefore: [],
+			},
+		} as Partial<BuildResult>);
+		const deps = makeDeps([makeLane(1, vi.fn().mockResolvedValue(build))]);
+
+		await createBuildOrchestrator(deps).getOrBuild(0, 'case-a');
+
+		expect(JSON.stringify(deps.transcriptByThreadId.get('thread-fixture'))).toContain(KEY);
 	});
 });

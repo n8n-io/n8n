@@ -281,6 +281,10 @@ export interface CredentialSetupRunFacts {
 	/** Credential ids that existed BEFORE the build — the diff base, so a
 	 *  credential an earlier run left behind can't satisfy the "created" check. */
 	credentialIdsBefore: string[];
+	/** Transcript + events as they were BEFORE local-mode redaction — the leak
+	 *  scan's haystack. Set by the orchestrator at the moment it scrubs, because
+	 *  afterwards the raw text exists nowhere else. */
+	leakHaystack?: string;
 	/** Provider-API stand-in for the credential test, when the fixture ships one
 	 *  AND n8n can reach it. Undefined => the value check is DISCARDED (reported
 	 *  unverifiable) rather than failed. */
@@ -405,6 +409,18 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 	const credentialSetupFacts = async (): Promise<CredentialSetupRunFacts | undefined> => {
 		if (!credentialSetupLane) return undefined;
 		const lane = credentialSetupLane;
+		// Hand anything the AGENT created to the lane's cleanup registry — the
+		// same one seeded credentials use. Nothing else knows about these: they
+		// are created through the browser, not by the seeder, so without this
+		// every credential-setup run leaves one behind in the eval account.
+		// (The provider-side key of a `local` run is a separate matter, and
+		// deliberately not ours to revoke — see docs/browser-eval-lane.md.)
+		if (config.createdCredentialIds) {
+			const before = new Set(credentialIdsBefore);
+			for (const id of await client.listCredentialIds().catch(() => [] as string[])) {
+				if (!before.has(id)) config.createdCredentialIds.add(id);
+			}
+		}
 		return {
 			credentialType: lane.credentialType,
 			// Local runs mint nothing: the key is real and we never learn its value.

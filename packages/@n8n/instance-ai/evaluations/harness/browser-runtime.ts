@@ -268,6 +268,10 @@ export async function startBrowserRuntime(
 	const cleanup = async () => {
 		await context.close().catch(() => {});
 		await rm(userDataDir, { recursive: true, force: true });
+		// The relay session is INSTANCE-WIDE. A failed startup that leaves it
+		// connected strands it: the next case's `createBrowserLink` hands out a
+		// link the extension will not honour, and that run times out waiting.
+		await client.disconnectBrowserSession().catch(() => {});
 	};
 
 	try {
@@ -397,6 +401,17 @@ export async function attachToRunningBrowser(
 	// base URL, so a non-loopback --base-url produced no rule and slipped
 	// through — pointing the developer's own browser at a remote relay. Fails
 	// closed: an absent or unparseable relay param is a refusal, not a pass.
+	// A requested DNS rule means n8n is NOT on loopback. The launch path fixes
+	// that with `--host-resolver-rules`; we cannot, because this browser is not
+	// ours to give flags to — so the connect page would resolve `localhost` on
+	// the developer's machine, where nothing is listening.
+	if (relayPlan.hostResolverRule) {
+		throw new Error(
+			'Local mode needs an n8n reachable on loopback from your own browser, but ' +
+				`--base-url is ${client.baseUrl}, which needs a DNS rule only a launched ` +
+				'browser can be given. Point --base-url at localhost (a published port is fine).',
+		);
+	}
 	const relayHost = relayHostname(relayPlan.connectUrl);
 	if (relayHost === undefined || !LOOPBACK_HOSTS.has(relayHost)) {
 		throw new Error(
@@ -447,6 +462,7 @@ export async function attachToRunningBrowser(
 		}
 		await new Promise((resolve) => setTimeout(resolve, 500));
 	}
+	await client.disconnectBrowserSession().catch(() => {});
 	throw new Error(
 		`Your browser did not connect to the n8n relay within ${String(connectTimeoutMs)}ms. ` +
 			'Check that the browser-use extension is installed and enabled in the browser ' +
