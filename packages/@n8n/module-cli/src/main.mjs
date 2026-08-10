@@ -96,6 +96,8 @@ const create = defineCommand({
 						`  pnpm turbo typecheck --filter=${packageName}`,
 						`  pnpm turbo lint --filter=${packageName}`,
 						`  pnpm turbo test --filter=${packageName}`,
+						'',
+						'Guide: packages/@n8n/module-cli/frontend-module-guide.md',
 					].join('\n')
 				: ['Next:', `  read packages/modules/${name}/backend/README.md`].join('\n'),
 		);

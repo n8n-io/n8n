@@ -3,6 +3,8 @@
 Frontend feature module. Consumed from source by the editor-ui shell through
 `src/app/modules.manifest.ts`; there is no build step and no `dist`.
 
+Full guide: `packages/@n8n/module-cli/frontend-module-guide.md`.
+
 ```bash
 pnpm turbo typecheck --filter=@n8n/frontend-module-{{name}}
 pnpm turbo lint --filter=@n8n/frontend-module-{{name}}

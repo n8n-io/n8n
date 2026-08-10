@@ -2,6 +2,9 @@
 
 Interactive scaffolder for n8n modules. Replaces `pnpm setup-frontend-module`.
 
+**Writing a module? Read [`frontend-module-guide.md`](./frontend-module-guide.md)** — the
+descriptor contract, the import rules, the traps. This file only covers the CLI itself.
+
 ```bash
 pnpm n8n-module-sdk create                    # prompts for name and stack
 pnpm n8n-module-sdk create my-feature --stack=frontend

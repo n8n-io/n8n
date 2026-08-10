@@ -1,7 +1,7 @@
 # Frontend module
 
 A frontend module is a self-contained unit of editor-ui functionality, shipped as its own
-workspace package under `packages/frontend/modules/`, and registered with the editor-ui shell
+workspace package at `packages/modules/<name>/frontend`, and registered with the editor-ui shell
 through a descriptor.
 
 Benefits of modularity:
@@ -22,7 +22,7 @@ And a `dist` would have no consumer: every frontend package is already aliased t
 the shell's Vite graph compiles module sources directly. "Built separately" here means
 **typechecked, linted and tested separately**, which is where the CI win actually comes from.
 
-This guide is written against the shipped scaffolder. Where it disagrees with the original
+This guide is written against the shipped CLI. Where it disagrees with the original
 modularization design proposal (CAT-3680), the code wins; those disagreements are called out
 inline.
 
@@ -31,54 +31,63 @@ inline.
 From the monorepo root:
 
 ```sh
-pnpm setup-frontend-module my-feature
+pnpm n8n-module-sdk create                      # prompts for name and stack
+pnpm n8n-module-sdk create my-feature --stack=frontend
 ```
 
-The name is the canonical spelling of your module — it becomes the package suffix, the directory
-name, the file infix, the descriptor `id`, and the backend module id it must match. It must be
-kebab-case; the script rejects anything else.
+`create` prompts for two things: the module name, and whether you want the frontend half, the
+backend half, or both. The name is the canonical spelling of your module — it becomes the package
+suffix, the directory name, the file infix, the descriptor `id`, and the backend module id it must
+match. It must be kebab-case; the CLI rejects anything else.
 
 Real output:
 
 ```
-Created @n8n/frontend-module-my-feature at packages/frontend/modules/my-feature
+✔ Created packages/modules/my-feature
+  packages/modules/my-feature/frontend  → @n8n/frontend-module-my-feature
   updated @n8n/vitest-config/frontend-source-packages.ts (Vite alias)
   updated editor-ui/package.json (dependency)
   updated editor-ui/tsconfig.json (paths)
   updated editor-ui/src/app/modules.manifest.ts (registration)
 
-Next:
-  pnpm install
-  pnpm --filter @n8n/frontend-module-my-feature typecheck
-  pnpm --filter @n8n/frontend-module-my-feature lint
-  pnpm --filter @n8n/frontend-module-my-feature test
+ ╭───────────────────────────────────────────────────────────────────╮
+ │  Next:                                                            │
+ │    pnpm install                                                   │
+ │    pnpm turbo typecheck --filter=@n8n/frontend-module-my-feature  │
+ │    pnpm turbo lint --filter=@n8n/frontend-module-my-feature       │
+ │    pnpm turbo test --filter=@n8n/frontend-module-my-feature       │
+ ╰───────────────────────────────────────────────────────────────────╯
 ```
 
-Then:
-
-```sh
-pnpm install                                              # link the new workspace package
-pnpm turbo typecheck lint test --filter=@n8n/frontend-module-my-feature
-```
-
-⚠️ **Use `pnpm turbo typecheck`, not `pnpm --filter … typecheck`, on a fresh tree.** The
-scaffolder's printed next-steps are right for a warm tree only. `n8n-workflow` and
-`@n8n/permissions` are consumed from their built `dist` (they are not in the module tsconfig
-base's `paths`), so a direct `--filter` run before those are built fails with a wall of
+⚠️ **Those next-steps go through turbo on purpose — don't "simplify" them to
+`pnpm --filter … typecheck`.** `n8n-workflow` and `@n8n/permissions` are consumed from their built
+`dist` (they are not in the module tsconfig base's `paths`), so a direct `--filter` run on a cold
+tree fails with a wall of
 
 ```
 ../../../@n8n/api-types/src/scaling.ts(1,59): error TS2307: Cannot find module 'n8n-workflow' or its corresponding type declarations.
 ```
 
-Nothing is wrong with your module. `turbo typecheck` declares `dependsOn: ["^build"]`, builds
-the dependencies first, and passes. `lint` and `test` are green either way.
+Nothing is wrong with your module. `turbo typecheck` declares `dependsOn: ["^build"]`, builds the
+dependencies first, and passes. `lint` and `test` are green either way.
 
-Every edit the scaffolder makes is idempotent, so re-running after a partial failure is safe.
+Every edit the CLI makes outside the new package is idempotent, so re-running after a partial
+failure is safe.
+
+### `--stack=backend` is a placeholder
+
+The backend half is a reserved path and a README, and **nothing loads it**. The backend runtime
+discovers modules under `packages/cli/src/modules/<name>`, which is where all 34 real backend
+modules live, so `packages/modules/<name>/backend` is deliberately not a workspace package. To
+create a backend module that actually runs, use `pnpm setup-backend-module` and follow
+`scripts/backend-module/backend-module-guide.md`. The CLI says all of this on stdout when you ask
+for the backend half; it is repeated here because it is the one thing about `create` that could
+mislead you.
 
 ## File structure
 
 ```sh
-packages/frontend/modules/my-feature/
+packages/modules/my-feature/frontend/
 ├── package.json               # source-only; deps are L0-L2 only
 ├── tsconfig.json              # extends the shared module base
 ├── vite.config.ts             # vitest config + the shared source aliases
@@ -98,7 +107,7 @@ Add what you need — `views/`, `components/`, `composables/`, `my-feature.api.t
 `my-feature.constants.ts`. As on the backend, infixes are not enforced (except on `.module.ts`)
 but are strongly recommended: they make files searchable once a module has several dozen.
 
-The worked example in-repo is **`packages/frontend/modules/instance-registry`** — the first real
+The worked example in-repo is **`packages/modules/instance-registry/frontend`** — the first real
 extraction, small enough to read in one sitting.
 
 ## Entrypoint
@@ -327,7 +336,7 @@ const isEnabled = computed(
 ## Registering with the shell
 
 A module is inert until the shell can see it. That takes **four file edits plus a CODEOWNERS
-line** — the scaffolder makes the four edits for you, and this section exists for when you are
+line** — the CLI makes the four edits for you, and this section exists for when you are
 hand-registering or debugging a red CI.
 
 | # | Where                                                  | What                                        | Scaffolded? |
@@ -410,8 +419,8 @@ any depth. That asymmetry is why the module tsconfig template looks lopsided.
 	"vite/client",
 	"vitest/globals",
 	"unplugin-icons/types/vue",
-	"../../@n8n/design-system/src/shims-modules.d.ts",  // ~icons/*, markdown-it-task-lists
-	"../../@n8n/stores/src/shims.d.ts"                  // window.BASE_PATH
+	"../../../frontend/@n8n/design-system/src/shims-modules.d.ts",  // ~icons/*, markdown-it-task-lists
+	"../../../frontend/@n8n/stores/src/shims.d.ts"                  // window.BASE_PATH
 ]
 ```
 
@@ -424,7 +433,7 @@ Keep them. If a module drops the `@n8n/design-system` dependency, drop the match
 
 ### `useUnknownInCatchVariables: false`
 
-Every module inherits it (base line 24). A `catch` variable types as **`any`, not `unknown`** —
+Every module inherits it (base line 25). A `catch` variable types as **`any`, not `unknown`** —
 so this compiles clean inside a module, and would not elsewhere:
 
 ```ts
@@ -441,8 +450,8 @@ line. It goes away when that package's source stops needing it. Narrow your erro
 ## Lint
 
 ```sh
-pnpm --filter @n8n/frontend-module-my-feature lint      # eslint src --quiet
-pnpm --filter @n8n/frontend-module-my-feature lint:fix
+pnpm turbo lint --filter=@n8n/frontend-module-my-feature      # eslint src --quiet
+pnpm --filter @n8n/frontend-module-my-feature lint:fix        # no build needed to autofix
 ```
 
 ⚠️ **Extracted code hits stricter lint than it did in the shell.** `editor-ui/eslint.config.mjs:203`
@@ -464,8 +473,8 @@ isn't there.
 ## Tests
 
 ```sh
-pnpm --filter @n8n/frontend-module-my-feature test        # vitest run
-pnpm --filter @n8n/frontend-module-my-feature test:dev    # watch
+pnpm turbo test --filter=@n8n/frontend-module-my-feature   # vitest run
+pnpm --filter @n8n/frontend-module-my-feature test:dev     # watch
 ```
 
 Colocate tests next to the code (`my-feature.store.test.ts`), the same convention editor-ui uses.
@@ -479,9 +488,13 @@ boots Pinia per test. Framework boot stays per-package on purpose: `@n8n/i18n` d
 ### Two entries in `package.json` are mandatory, not optional
 
 **`"test:changed": "janitor test-scoped"`.** PR CI runs
-`turbo run test:changed --continue --filter='./packages/frontend/**'`. Turbo **silently no-ops a
-package that does not define the script** — no error, no skip notice. Your suite simply never
-runs in PR CI, and the job is green.
+`turbo run test:changed --continue --filter='./packages/frontend/**' --filter='./packages/modules/**'`.
+Turbo **silently no-ops a package that does not define the script** — no error, no skip notice.
+Your suite simply never runs in PR CI, and the job is green.
+
+(That second filter is why modules are in the frontend test job at all: `packages/modules/**` is
+not under `packages/frontend/**`, so without it a module would drop out of the sharded frontend
+job and reappear in the backend one.)
 
 This is not hypothetical: `@n8n/frontend-module-sdk`, `@n8n/frontend-constants` and
 `@n8n/frontend-utils` are in exactly that hole today. Do not add a fourth.
@@ -493,7 +506,7 @@ harness above), so you get it for free — but do not override it. CI shards the
 would fail on shard 2 for no reason.
 
 The pair is a trade: `passWithNoTests` means an empty module suite is green rather than red. So
-`test:changed` and a real test are what actually protect you. The scaffolder emits a passing
+`test:changed` and a real test are what actually protect you. The CLI emits a passing
 example test — replace it, don't delete it.
 
 ## Publishing
@@ -522,13 +535,14 @@ and leave `private` off.
 4. **Per-module build-time chunks.** Once descriptors are genuinely import-light, the manifest can
    become a static map of dynamic imports and Vite emits one chunk per module. Decision point is
    wave-2 exit, with bundle data. Runtime dynamic loading is ruled out.
-5. **The scaffolder's printed next-steps** suggest `pnpm --filter … typecheck`, which fails on a
-   cold tree. Prefer `pnpm turbo typecheck --filter=…` until that line is fixed.
-6. **CODEOWNERS is manual.** Adding it to the scaffolder is a small, obvious follow-up.
+5. **CODEOWNERS is manual.** Adding it to the CLI is a small, obvious follow-up.
+6. **`@n8n/module-cli` has no `lint` script.** Type-aware lint on a package with no types produces
+   only `no-unsafe-*` noise; nine other `@n8n/*` packages ship the same way and biome still formats
+   it. Revisit if the CLI grows past a few hundred lines.
 
 ## FAQs
 
-- **What is a good example of a frontend module?** `packages/frontend/modules/instance-registry` —
+- **What is a good example of a frontend module?** `packages/modules/instance-registry/frontend` —
   the first extraction, small enough to read end to end.
 - **Why is there no `build` script?** There is nothing to build. Modules are consumed from source
   by whatever Vite context loads them — the dev server, the shell's production build, or the
