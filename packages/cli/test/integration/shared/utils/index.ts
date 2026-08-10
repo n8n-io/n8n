@@ -41,7 +41,7 @@ export { setupTestServer } from './test-server';
  */
 export async function initActiveWorkflowManager() {
 	mockInstance(BinaryDataConfig);
-	mockInstance(InstanceSettings, {
+	const instanceSettings = mockInstance(InstanceSettings, {
 		isMultiMain: false,
 		n8nFolder: '/tmp/n8n-test',
 	});
@@ -49,6 +49,12 @@ export async function initActiveWorkflowManager() {
 	mockInstance(Push);
 	const { ActiveWorkflowManager } = await import('@/active-workflow-manager.js');
 	const activeWorkflowManager = Container.get(ActiveWorkflowManager);
+	// `ActiveWorkflowManager` may already be a cached DI singleton by the time this runs (e.g. a
+	// public-api controller injecting a service that depends on it, resolved while activating the
+	// test server's router) - `Container.get` above then returns that instance still holding the
+	// real, pre-mock `InstanceSettings`. Patch it onto the already-built instance so `.init()` sees
+	// the mock instead of silently keeping a stale reference.
+	Object.assign(activeWorkflowManager, { instanceSettings });
 	await activeWorkflowManager.init();
 	return activeWorkflowManager;
 }
