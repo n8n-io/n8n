@@ -130,6 +130,15 @@ export class McpTrigger extends Node {
 				required: true,
 				description: 'The base path for this MCP server',
 			},
+			{
+				displayName: 'Instructions',
+				name: 'instructions',
+				type: 'string',
+				typeOptions: { rows: 4 },
+				default: '',
+				description:
+					"Sent to MCP clients when they connect. Clients that support server instructions typically add them to the model's system prompt — use for guidance that spans multiple tools, such as tool-choice rules or multi-step workflows.",
+			},
 		],
 		webhooks: [
 			{
@@ -196,6 +205,7 @@ export class McpTrigger extends Node {
 
 		const node = context.getNode();
 		const serverName = node.typeVersion > 1 ? nodeNameToToolName(node) : 'n8n-mcp-server';
+		const instructions = (context.getNodeParameter('instructions', '') as string) || undefined;
 		const mcpServer = McpServer.instance(context.logger);
 
 		if (webhookName === 'setup') {
@@ -205,7 +215,14 @@ export class McpTrigger extends Node {
 					: req.path;
 
 			const connectedTools = await getConnectedTools(context, true);
-			await mcpServer.handleSetupRequest(req, resp, serverName, postUrl, connectedTools);
+			await mcpServer.handleSetupRequest(
+				req,
+				resp,
+				serverName,
+				postUrl,
+				connectedTools,
+				instructions,
+			);
 
 			return { noWebhookResponse: true };
 		} else if (webhookName === 'default') {
@@ -228,7 +245,14 @@ export class McpTrigger extends Node {
 					}
 
 					const { wasToolCall, toolCallInfo, messageId, relaySessionId, needsListToolsRelay } =
-						await mcpServer.handlePostMessage(req, resp, connectedTools, serverName, gateResult);
+						await mcpServer.handlePostMessage(
+							req,
+							resp,
+							connectedTools,
+							serverName,
+							gateResult,
+							instructions,
+						);
 
 					if (wasToolCall) {
 						const workflowData = {
@@ -256,7 +280,13 @@ export class McpTrigger extends Node {
 					}
 				} else {
 					const connectedTools = await getConnectedTools(context, true);
-					await mcpServer.handleStreamableHttpSetup(req, resp, serverName, connectedTools);
+					await mcpServer.handleStreamableHttpSetup(
+						req,
+						resp,
+						serverName,
+						connectedTools,
+						instructions,
+					);
 				}
 			}
 

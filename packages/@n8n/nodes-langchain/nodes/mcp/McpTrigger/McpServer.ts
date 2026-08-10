@@ -107,8 +107,9 @@ export class McpServer {
 		serverName: string,
 		postUrl: string,
 		tools: Tool[],
+		instructions?: string,
 	): Promise<void> {
-		const server = this.createServer(serverName);
+		const server = this.createServer(serverName, instructions);
 		const transport = this.transportFactory.createSSE(postUrl, resp);
 
 		await this.setupSession(server, transport, tools, resp);
@@ -119,8 +120,9 @@ export class McpServer {
 		resp: CompressionResponse,
 		serverName: string,
 		tools: Tool[],
+		instructions?: string,
 	): Promise<void> {
-		const server = this.createServer(serverName);
+		const server = this.createServer(serverName, instructions);
 		const transport = this.transportFactory.createStreamableHttp(
 			{
 				sessionIdGenerator: () => randomUUID(),
@@ -148,6 +150,7 @@ export class McpServer {
 		tools: Tool[],
 		serverName?: string,
 		gateResult?: CredentialCheckResult,
+		instructions?: string,
 	): Promise<HandlePostResult> {
 		const sessionId = this.getSessionId(req);
 		// A request on a known session counts as activity (no-op for unknown ids).
@@ -173,6 +176,7 @@ export class McpServer {
 				serverName,
 				tools,
 				resp,
+				instructions,
 			);
 			if (!recreated) {
 				resp.status(404).send('Session not found');
@@ -462,8 +466,11 @@ export class McpServer {
 		return this.pendingCallsManager;
 	}
 
-	private createServer(serverName: string): Server {
-		return new Server({ name: serverName, version: '0.1.0' }, { capabilities: { tools: {} } });
+	private createServer(serverName: string, instructions?: string): Server {
+		return new Server(
+			{ name: serverName, version: '0.1.0' },
+			{ capabilities: { tools: {} }, instructions },
+		);
 	}
 
 	private async setupSession(
@@ -507,6 +514,7 @@ export class McpServer {
 		serverName: string,
 		tools: Tool[],
 		resp: CompressionResponse,
+		instructions?: string,
 	): Promise<boolean> {
 		const isValid = await this.sessionManager.isSessionValid(sessionId);
 		if (!isValid) {
@@ -514,7 +522,7 @@ export class McpServer {
 			return false;
 		}
 
-		const server = this.createServer(serverName);
+		const server = this.createServer(serverName, instructions);
 		const transport = this.transportFactory.recreateStreamableHttp(sessionId, resp);
 
 		await this.sessionManager.registerSession(sessionId, server, transport, tools);

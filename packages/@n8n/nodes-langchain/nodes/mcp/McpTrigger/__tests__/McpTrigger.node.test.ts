@@ -140,6 +140,34 @@ describe('McpTrigger', () => {
 			expect(result).toEqual({ noWebhookResponse: true });
 		});
 
+		it('should forward configured instructions to the setup request', async () => {
+			const req = createMockRequest({ path: '/webhook' });
+			const resp = createMockResponse();
+			const node = mock<INode>({
+				typeVersion: 2,
+				name: 'MCP Server Trigger',
+			});
+
+			mockContext.getWebhookName.mockReturnValue('setup');
+			mockContext.getRequestObject.mockReturnValue(req as never);
+			mockContext.getResponseObject.mockReturnValue(resp as never);
+			mockContext.getNode.mockReturnValue(node);
+			mockContext.getNodeParameter.mockImplementation((name: string) =>
+				name === 'instructions' ? 'Call the context tool first.' : undefined,
+			);
+
+			await mcpTrigger.webhook(mockContext);
+
+			expect(mockMcpServer.handleSetupRequest).toHaveBeenCalledWith(
+				req,
+				resp,
+				expect.any(String),
+				expect.any(String),
+				expect.any(Array),
+				'Call the context tool first.',
+			);
+		});
+
 		it('should use n8n-mcp-server name for version 1', async () => {
 			const req = createMockRequest({ path: '/webhook/sse' });
 			const resp = createMockResponse();
@@ -161,6 +189,7 @@ describe('McpTrigger', () => {
 				'n8n-mcp-server',
 				expect.any(String),
 				expect.any(Array),
+				undefined,
 			);
 		});
 
@@ -186,6 +215,7 @@ describe('McpTrigger', () => {
 				expect.stringMatching(/^[a-z0-9_-]+$/i),
 				expect.any(String),
 				expect.any(Array),
+				undefined,
 			);
 		});
 
@@ -210,6 +240,7 @@ describe('McpTrigger', () => {
 				expect.any(String),
 				'/webhook/messages',
 				expect.any(Array),
+				undefined,
 			);
 		});
 
@@ -234,6 +265,7 @@ describe('McpTrigger', () => {
 				expect.any(String),
 				'/webhook',
 				expect.any(Array),
+				undefined,
 			);
 		});
 	});
@@ -318,6 +350,35 @@ describe('McpTrigger', () => {
 
 			expect(mockMcpServer.handleStreamableHttpSetup).toHaveBeenCalled();
 			expect(result).toEqual({ noWebhookResponse: true });
+		});
+
+		it('should forward configured instructions to the Streamable HTTP setup', async () => {
+			const req = createMockRequest({ method: 'POST' });
+			const resp = createMockResponse();
+			const node = mock<INode>({
+				typeVersion: 2,
+				name: 'MCP Server Trigger',
+			});
+
+			mockMcpServer.getSessionId.mockReturnValue(undefined);
+
+			mockContext.getWebhookName.mockReturnValue('default');
+			mockContext.getRequestObject.mockReturnValue(req as never);
+			mockContext.getResponseObject.mockReturnValue(resp as never);
+			mockContext.getNode.mockReturnValue(node);
+			mockContext.getNodeParameter.mockImplementation((name: string) =>
+				name === 'instructions' ? 'Call the context tool first.' : undefined,
+			);
+
+			await mcpTrigger.webhook(mockContext);
+
+			expect(mockMcpServer.handleStreamableHttpSetup).toHaveBeenCalledWith(
+				req,
+				resp,
+				expect.any(String),
+				expect.any(Array),
+				'Call the context tool first.',
+			);
 		});
 	});
 

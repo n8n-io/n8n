@@ -13,6 +13,7 @@ import {
 } from './helpers';
 import type { McpServerConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
+import type { Server } from '@modelcontextprotocol/sdk/server/index.js';
 
 import { QueuedExecutionStrategy } from '../execution/QueuedExecutionStrategy';
 import { McpServer } from '../McpServer';
@@ -298,6 +299,60 @@ describe('McpServer', () => {
 
 			expect(response.status).toHaveBeenCalledWith(404);
 			expect(response.send).toHaveBeenCalledWith('Session not found');
+		});
+	});
+
+	describe('createServer', () => {
+		type ServerFactory = {
+			createServer(serverName: string, instructions?: string): Server;
+		};
+
+		// Drives a real SDK Server through a stub transport and returns the
+		// InitializeResult the client would receive.
+		const initialize = async (server: Server) => {
+			const sent: Array<{ result?: { instructions?: string; serverInfo?: { name: string } } }> = [];
+			const transport = {
+				start: vi.fn().mockResolvedValue(undefined),
+				send: vi.fn().mockImplementation(async (message: (typeof sent)[number]) => {
+					sent.push(message);
+				}),
+				close: vi.fn().mockResolvedValue(undefined),
+				onmessage: undefined as ((message: unknown) => void) | undefined,
+			};
+			await server.connect(transport as never);
+			transport.onmessage?.({
+				jsonrpc: '2.0',
+				id: 1,
+				method: 'initialize',
+				params: {
+					protocolVersion: '2025-03-26',
+					capabilities: {},
+					clientInfo: { name: 'test-client', version: '1.0' },
+				},
+			});
+			await vi.waitFor(() => expect(sent).toHaveLength(1));
+			return sent[0].result;
+		};
+
+		it('should include instructions in the initialize result when provided', async () => {
+			const server = (mcpServer as unknown as ServerFactory).createServer(
+				'test-server',
+				'Call the context tool first.',
+			);
+
+			const result = await initialize(server);
+
+			expect(result?.serverInfo?.name).toBe('test-server');
+			expect(result?.instructions).toBe('Call the context tool first.');
+		});
+
+		it('should omit instructions from the initialize result when not provided', async () => {
+			const server = (mcpServer as unknown as ServerFactory).createServer('test-server');
+
+			const result = await initialize(server);
+
+			expect(result?.serverInfo?.name).toBe('test-server');
+			expect(result?.instructions).toBeUndefined();
 		});
 	});
 
