@@ -37,8 +37,8 @@ Extends Reka UI `NumberFieldRootProps` (except `formatOptions`, derived from `pr
 
 **Slots**
 
-- `increment` - Custom increment control content (inside the control button). Scope: `{ ui: { class } }`.
-- `decrement` - Custom decrement control content (inside the control button). Scope: `{ ui: { class } }`.
+- `increment` - Fully custom increment control. Scope: `{ ui: { class } }`. Default: button with plus/chevron icon.
+- `decrement` - Fully custom decrement control. Scope: `{ ui: { class } }`. Default: button with minus/chevron icon.
 
 ### Template usage example
 
@@ -88,11 +88,15 @@ const price = ref(0)
 
 ```vue
 <N8nInputNumber2 v-model="quantity" :min="1" :max="99" :controls="true">
-  <template #decrement>
-    <N8nIcon icon="minus" size="small" />
+  <template #decrement="{ ui }">
+    <button type="button" :class="ui.class" aria-label="Decrease">
+      <N8nIcon icon="minus" size="small" />
+    </button>
   </template>
-  <template #increment>
-    <N8nIcon icon="plus" size="small" />
+  <template #increment="{ ui }">
+    <button type="button" :class="ui.class" aria-label="Increase">
+      <N8nIcon icon="plus" size="small" />
+    </button>
   </template>
 </N8nInputNumber2>
 ```

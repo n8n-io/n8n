@@ -308,11 +308,15 @@ export const CustomButtons = {
 		template: `
 		<div style="${storyPadding} max-width: 320px;">
 			<InputNumber v-bind="args" v-model="value" :controls="true" controls-position="both">
-				<template #decrement>
-					<N8nIcon icon="chevron-left" size="small" />
+				<template #decrement="{ ui }">
+					<button type="button" :class="ui.class" aria-label="Decrease">
+						<N8nIcon icon="chevron-left" size="small" />
+					</button>
 				</template>
-				<template #increment>
-					<N8nIcon icon="chevron-right" size="small" />
+				<template #increment="{ ui }">
+					<button type="button" :class="ui.class" aria-label="Increase">
+						<N8nIcon icon="chevron-right" size="small" />
+					</button>
 				</template>
 			</InputNumber>
 		</div>

@@ -22,8 +22,8 @@ export type InputNumberControlSlotProps = {
 };
 
 export type InputNumberSlots = {
-	/** Custom increment control content (inside the control button). */
+	/** Fully custom increment control. Default: button with plus/chevron icon. */
 	increment?: (props: InputNumberControlSlotProps) => unknown;
-	/** Custom decrement control content (inside the control button). */
+	/** Fully custom decrement control. Default: button with minus/chevron icon. */
 	decrement?: (props: InputNumberControlSlotProps) => unknown;
 };

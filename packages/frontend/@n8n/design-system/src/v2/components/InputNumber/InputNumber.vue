@@ -103,15 +103,15 @@ function sizeClass() {
 		]"
 	>
 		<NumberFieldDecrement v-if="isControlsBoth" as-child>
-			<button
-				type="button"
-				:class="[$style.button, $style.buttonDecrement]"
-				:aria-label="t('nds.inputNumber.decrease')"
-			>
-				<slot name="decrement" :ui="{ class: $style.button }">
+			<slot name="decrement" :ui="{ class: [$style.button, $style.buttonDecrement].join(' ') }">
+				<button
+					type="button"
+					:class="[$style.button, $style.buttonDecrement]"
+					:aria-label="t('nds.inputNumber.decrease')"
+				>
 					<Icon icon="minus" size="small" />
-				</slot>
-			</button>
+				</button>
+			</slot>
 		</NumberFieldDecrement>
 
 		<NumberFieldInput
@@ -122,39 +122,39 @@ function sizeClass() {
 		/>
 
 		<NumberFieldIncrement v-if="isControlsBoth" as-child>
-			<button
-				type="button"
-				:class="[$style.button, $style.buttonIncrement]"
-				:aria-label="t('nds.inputNumber.increase')"
-			>
-				<slot name="increment" :ui="{ class: $style.button }">
+			<slot name="increment" :ui="{ class: [$style.button, $style.buttonIncrement].join(' ') }">
+				<button
+					type="button"
+					:class="[$style.button, $style.buttonIncrement]"
+					:aria-label="t('nds.inputNumber.increase')"
+				>
 					<Icon icon="plus" size="small" />
-				</slot>
-			</button>
+				</button>
+			</slot>
 		</NumberFieldIncrement>
 
 		<div v-if="isControlsRight" :class="$style.controlsWrapper">
 			<NumberFieldIncrement as-child>
-				<button
-					type="button"
-					:class="[$style.button, $style.buttonUp]"
-					:aria-label="t('nds.inputNumber.increase')"
-				>
-					<slot name="increment" :ui="{ class: $style.button }">
+				<slot name="increment" :ui="{ class: [$style.button, $style.buttonUp].join(' ') }">
+					<button
+						type="button"
+						:class="[$style.button, $style.buttonUp]"
+						:aria-label="t('nds.inputNumber.increase')"
+					>
 						<Icon icon="chevron-up" size="xsmall" />
-					</slot>
-				</button>
+					</button>
+				</slot>
 			</NumberFieldIncrement>
 			<NumberFieldDecrement as-child>
-				<button
-					type="button"
-					:class="[$style.button, $style.buttonDown]"
-					:aria-label="t('nds.inputNumber.decrease')"
-				>
-					<slot name="decrement" :ui="{ class: $style.button }">
+				<slot name="decrement" :ui="{ class: [$style.button, $style.buttonDown].join(' ') }">
+					<button
+						type="button"
+						:class="[$style.button, $style.buttonDown]"
+						:aria-label="t('nds.inputNumber.decrease')"
+					>
 						<Icon icon="chevron-down" size="xsmall" />
-					</slot>
-				</button>
+					</button>
+				</slot>
 			</NumberFieldDecrement>
 		</div>
 	</NumberFieldRoot>

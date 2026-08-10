@@ -278,7 +278,8 @@ describe('v2/components/InputNumber', () => {
 					controlsPosition: 'both',
 				},
 				slots: {
-					increment: '<span data-test-id="custom-increment">UP</span>',
+					increment:
+						'<button type="button" data-test-id="custom-increment" aria-label="Increase">UP</button>',
 				},
 			});
 			expect(wrapper.getByTestId('custom-increment')).toBeInTheDocument();
@@ -292,7 +293,8 @@ describe('v2/components/InputNumber', () => {
 					controlsPosition: 'both',
 				},
 				slots: {
-					decrement: '<span data-test-id="custom-decrement">DOWN</span>',
+					decrement:
+						'<button type="button" data-test-id="custom-decrement" aria-label="Decrease">DOWN</button>',
 				},
 			});
 			expect(wrapper.getByTestId('custom-decrement')).toBeInTheDocument();
