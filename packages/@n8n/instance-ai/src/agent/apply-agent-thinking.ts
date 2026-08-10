@@ -47,24 +47,7 @@ function resolveModelIdString(modelId: ModelConfig): string | undefined {
 	return provider && model ? `${provider}/${model}` : undefined;
 }
 
-/** Bare model resource name from a string id or AI SDK LanguageModel (`modelId`). */
-function resolveBareModelName(modelId: ModelConfig): string | undefined {
-	if (typeof modelId === 'string') {
-		const slashIndex = modelId.indexOf('/');
-		return slashIndex > 0 ? modelId.slice(slashIndex + 1) : modelId;
-	}
-	if (!isRecord(modelId)) return undefined;
-	return getStringProperty(modelId, 'modelId') ?? getStringProperty(modelId, 'id');
-}
-
-/** Moonshot Kimi K3 via OpenRouter (`openrouter/moonshotai/kimi-k3`, dated slugs, etc.). */
-function isKimiK3Model(modelId: ModelConfig): boolean {
-	const id = resolveModelIdString(modelId)?.toLowerCase() ?? '';
-	const bare = resolveBareModelName(modelId)?.toLowerCase() ?? '';
-	return id.includes('kimi-k3') || bare.includes('kimi-k3');
-}
-
-/** Grok 4.5 via xAI (`xai/grok-4.5`) or OpenRouter (`openrouter/x-ai/grok-4.5`). */
+/** Grok 4.5 via xAI (`xai/grok-4.5`). */
 function isGrok45Model(modelId: ModelConfig): boolean {
 	const id = resolveModelIdString(modelId)?.toLowerCase() ?? '';
 	return id.includes('grok-4.5');
@@ -100,14 +83,6 @@ export function applyAgentThinking(agent: Agent, modelId: ModelConfig): void {
 
 	if (provider === 'anthropic') {
 		agent.thinking('anthropic', { mode: 'adaptive', effort: 'medium' });
-		return;
-	}
-
-	if (provider === 'openrouter') {
-		// Pin medium for models that default to heavy/max thinking.
-		if (isKimiK3Model(modelId) || isGrok45Model(modelId)) {
-			agent.thinking('openrouter', { reasoningEffort: 'medium' });
-		}
 		return;
 	}
 

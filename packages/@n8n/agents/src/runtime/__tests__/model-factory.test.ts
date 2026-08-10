@@ -364,7 +364,7 @@ describe('createModel', () => {
 			expect(model.apiKey).toBe('or-test');
 		});
 
-		it('should create model for nvidia without stream usage accounting', () => {
+		it('should create model for nvidia with SDK defaults for usage and structured outputs', () => {
 			const model = createModel({
 				id: 'nvidia/nvidia/llama-3.3-nemotron-super-49b-v1',
 				apiKey: 'nv-test',
@@ -374,19 +374,18 @@ describe('createModel', () => {
 			expect(model.modelId).toBe('nvidia/llama-3.3-nemotron-super-49b-v1');
 			expect(model.apiKey).toBe('nv-test');
 			expect(model.baseURL).toBe('https://integrate.api.nvidia.com/v1');
-			// NVIDIA rejects stream_options.include_usage; keep the pre-shared-builder default.
-			expect(model.includeUsage).toBe(false);
-			expect(model.supportsStructuredOutputs).toBe(true);
+			expect(model.includeUsage).toBeUndefined();
+			expect(model.supportsStructuredOutputs).toBeUndefined();
 		});
 
-		it('should omit supportsStructuredOutputs for custom when unset', () => {
+		it('should disable supportsStructuredOutputs for custom when unset', () => {
 			const model = createModel({
 				id: 'custom/Kimi-K3',
 				apiKey: 'key',
 				baseURL: 'https://example.com/v1',
 			}) as unknown as Record<string, unknown>;
 			expect(model.provider).toBe('custom');
-			expect(model.supportsStructuredOutputs).toBeUndefined();
+			expect(model.supportsStructuredOutputs).toBe(false);
 		});
 
 		it('should forward supportsStructuredOutputs for custom when set', () => {

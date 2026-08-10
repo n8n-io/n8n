@@ -95,10 +95,8 @@ function buildOpenAiCompatible(
 		apiKey: creds.apiKey,
 		headers: creds.headers,
 		fetch,
-		includeUsage: options?.includeUsage ?? true,
-		...(options?.supportsStructuredOutputs !== undefined
-			? { supportsStructuredOutputs: options.supportsStructuredOutputs }
-			: {}),
+		includeUsage: options?.includeUsage,
+		supportsStructuredOutputs: options?.supportsStructuredOutputs,
 	})(model);
 }
 
@@ -137,12 +135,10 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 	},
 	custom: {
 		build: (creds, model, fetch) =>
-			// Only enable structured outputs when callers opt in — many OpenAI-
-			// compatible routers reject or mishandle json_schema otherwise.
+			// Opt-in only: the shared builder defaults structured outputs on, which
+			// many custom OpenAI-compatible routers reject or mishandle.
 			buildOpenAiCompatible('custom', undefined, creds, model, fetch, {
-				...(typeof creds.supportsStructuredOutputs === 'boolean'
-					? { supportsStructuredOutputs: creds.supportsStructuredOutputs }
-					: {}),
+				supportsStructuredOutputs: creds.supportsStructuredOutputs,
 			}),
 	},
 	anthropic: {
@@ -212,11 +208,7 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 			return createOpenRouter({ apiKey: creds.apiKey, baseURL: creds.baseURL, fetch })(model);
 		},
 	},
-	// NVIDIA's OpenAI-compatible endpoint rejects stream_options.include_usage.
-	nvidia: openAiCompatibleEntry('nvidia', 'https://integrate.api.nvidia.com/v1', {
-		includeUsage: false,
-		supportsStructuredOutputs: true,
-	}),
+	nvidia: openAiCompatibleEntry('nvidia', 'https://integrate.api.nvidia.com/v1', {}),
 	'azure-openai': {
 		build: (creds, model, fetch) => {
 			const { createAzure } = require('@ai-sdk/azure') as typeof import('@ai-sdk/azure');

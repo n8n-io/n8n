@@ -71,7 +71,7 @@ export type OpenAIReasoningEffort =
 export interface OpenAIThinkingConfig {
 	/**
 	 * Reasoning effort level. Mapped to AI SDK `providerOptions.<provider>.reasoningEffort`.
-	 * OpenAI/OpenRouter quirks may default when unset; `custom` only forwards an explicit value.
+	 * OpenAI quirks may default when unset; `custom` only forwards an explicit value.
 	 */
 	reasoningEffort?: OpenAIReasoningEffort;
 }

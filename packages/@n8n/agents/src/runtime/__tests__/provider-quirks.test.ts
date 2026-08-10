@@ -168,25 +168,6 @@ describe('thinkingToProviderOptions', () => {
 		});
 	});
 
-	it('openrouter: maps reasoningEffort to reasoning.effort', () => {
-		expect(
-			getProviderQuirks('openrouter').thinkingToProviderOptions?.(
-				{
-					reasoningEffort: 'low',
-				},
-				'',
-			),
-		).toEqual({
-			openrouter: { reasoning: { effort: 'low' } },
-		});
-	});
-
-	it('openrouter: defaults reasoning effort to medium', () => {
-		expect(getProviderQuirks('openrouter').thinkingToProviderOptions?.({}, '')).toEqual({
-			openrouter: { reasoning: { effort: 'medium' } },
-		});
-	});
-
 	it('custom: maps reasoningEffort to providerOptions.custom', () => {
 		expect(
 			getProviderQuirks('custom').thinkingToProviderOptions?.(

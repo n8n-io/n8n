@@ -55,23 +55,6 @@ function reasoningEffortQuirk(
 	};
 }
 
-/** Map effort to nested `reasoning: { effort }` (OpenRouter). */
-function nestedReasoningEffortQuirk(
-	provider: ProviderId,
-	defaultEffort: OpenAIReasoningEffort,
-): ProviderQuirks {
-	return {
-		thinkingToProviderOptions: (thinking) => {
-			const cfg = thinking as OpenAIThinkingConfig;
-			return {
-				[provider]: {
-					reasoning: { effort: cfg.reasoningEffort ?? defaultEffort },
-				},
-			};
-		},
-	};
-}
-
 /**
  * Declarative registry of provider-specific behavior the AI SDK doesn't
  * normalize away. Each entry documents why the quirk exists and its upstream
@@ -164,7 +147,6 @@ export const PROVIDER_QUIRKS: Partial<Record<ProviderId, ProviderQuirks>> = {
 			return { xai: { reasoningEffort: cfg.reasoningEffort ?? 'high' } };
 		},
 	},
-	openrouter: nestedReasoningEffortQuirk('openrouter', 'medium'),
 	// custom/*: only forward an explicit effort — no provider-level default.
 	custom: reasoningEffortQuirk('custom'),
 };

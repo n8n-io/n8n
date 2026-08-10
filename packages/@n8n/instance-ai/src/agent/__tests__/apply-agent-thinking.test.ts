@@ -114,20 +114,10 @@ describe('applyAgentThinking', () => {
 		expect(mockAgentInstances[0]?.thinking).not.toHaveBeenCalled();
 	});
 
-	it('enables medium reasoning effort for Kimi K3 via OpenRouter', () => {
+	it('skips OpenRouter models (thinking unsupported)', () => {
 		const agent = new Agent('test');
 		applyAgentThinking(agent, 'openrouter/moonshotai/kimi-k3');
-		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('openrouter', {
-			reasoningEffort: 'medium',
-		});
-	});
-
-	it('enables medium reasoning effort for Grok 4.5 via OpenRouter', () => {
-		const agent = new Agent('test');
-		applyAgentThinking(agent, 'openrouter/x-ai/grok-4.5');
-		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('openrouter', {
-			reasoningEffort: 'medium',
-		});
+		expect(mockAgentInstances[0]?.thinking).not.toHaveBeenCalled();
 	});
 
 	it('enables medium reasoning effort for Grok 4.5 via xAI', () => {
@@ -136,12 +126,6 @@ describe('applyAgentThinking', () => {
 		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('xai', {
 			reasoningEffort: 'medium',
 		});
-	});
-
-	it('skips OpenRouter models without a pinned-effort default', () => {
-		const agent = new Agent('test');
-		applyAgentThinking(agent, 'openrouter/openai/gpt-4o');
-		expect(mockAgentInstances[0]?.thinking).not.toHaveBeenCalled();
 	});
 
 	it('skips xAI models that are not Grok 4.5', () => {
