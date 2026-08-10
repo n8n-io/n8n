@@ -123,7 +123,8 @@ describe('McpSettingsController', () => {
 				user,
 				enabled: false,
 			});
-			expect(result).toEqual({ mcpAccessEnabled: false, autoExposeNewWorkflows: false });
+			expect(mcpSettingsService.setAutoExposeNewWorkflows).not.toHaveBeenCalled();
+			expect(result).toEqual({ mcpAccessEnabled: false });
 		});
 
 		test('enables MCP access correctly', async () => {
@@ -196,31 +197,21 @@ describe('McpSettingsController', () => {
 			expect(() => new UpdateMcpSettingsDto({ mcpAccessEnabled: 'yes' } as never)).toThrow();
 		});
 
-		test.each([
-			{ mcpAccessEnabled: false, expectReset: true },
-			{ mcpAccessEnabled: true, expectReset: false },
-		])(
-			'$expectReset resets autoExposeNewWorkflows when access is set to $mcpAccessEnabled',
-			async ({ mcpAccessEnabled, expectReset }) => {
+		test.each([{ mcpAccessEnabled: false }, { mcpAccessEnabled: true }])(
+			'leaves autoExposeNewWorkflows untouched when access is set to $mcpAccessEnabled',
+			async ({ mcpAccessEnabled }) => {
 				const user = createUser();
 				const req = createReq({ mcpAccessEnabled }, { user });
 				const dto = UpdateMcpSettingsDto.parse({ mcpAccessEnabled });
 				mcpSettingsService.setEnabled.mockResolvedValue(undefined);
-				mcpSettingsService.setAutoExposeNewWorkflows.mockResolvedValue(undefined);
 				moduleRegistry.refreshModuleSettings.mockResolvedValue(null);
 
 				const res = createRes();
 				const result = await controller.updateSettings(req, res, dto);
 
 				expect(mcpSettingsService.setEnabled).toHaveBeenCalledWith(mcpAccessEnabled);
-				if (expectReset) {
-					expect(mcpSettingsService.setAutoExposeNewWorkflows).toHaveBeenCalledWith(false);
-					expect(mcpSettingsService.setAutoExposeNewWorkflows).toHaveBeenCalledTimes(1);
-					expect(result).toEqual({ mcpAccessEnabled, autoExposeNewWorkflows: false });
-				} else {
-					expect(mcpSettingsService.setAutoExposeNewWorkflows).not.toHaveBeenCalled();
-					expect(result).toEqual({ mcpAccessEnabled });
-				}
+				expect(mcpSettingsService.setAutoExposeNewWorkflows).not.toHaveBeenCalled();
+				expect(result).toEqual({ mcpAccessEnabled });
 			},
 		);
 
@@ -480,24 +471,6 @@ describe('McpSettingsController', () => {
 				failedCount: 0,
 			});
 			expect(moduleRegistry.refreshModuleSettings).not.toHaveBeenCalled();
-		});
-
-		test('refreshes the module registry when the bulk update also enabled auto-expose', async () => {
-			const dto = new UpdateWorkflowsAvailabilityDto({ availableInMCP: true, allWorkflows: true });
-			mcpSettingsService.bulkSetAvailableInMCP.mockResolvedValue({
-				updatedCount: 1,
-				unchangedCount: 0,
-				skippedCount: 0,
-				failedCount: 0,
-				changedWorkflows: [],
-				autoExposeNewWorkflows: true,
-			});
-			moduleRegistry.refreshModuleSettings.mockResolvedValue(null);
-
-			const req = createReq({}, { user });
-			await controller.toggleWorkflowsMCPAccess(req, mock<Response>(), dto);
-
-			expect(moduleRegistry.refreshModuleSettings).toHaveBeenCalledWith('mcp');
 		});
 	});
 

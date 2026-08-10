@@ -24,8 +24,9 @@ const { routerPush } = vi.hoisted(() => ({ routerPush: vi.fn() }));
 const { hasPermissionMock } = vi.hoisted(() => ({
 	hasPermissionMock: vi.fn().mockReturnValue(true),
 }));
-const { trackSpy } = vi.hoisted(() => ({
+const { trackSpy, trackAutoExposeToggledSpy } = vi.hoisted(() => ({
 	trackSpy: vi.fn(),
+	trackAutoExposeToggledSpy: vi.fn(),
 }));
 
 vi.mock('@/app/utils/rbac/permissions', () => ({
@@ -64,6 +65,7 @@ vi.mock('@/app/composables/useDocumentTitle', () => ({
 vi.mock('@/features/ai/mcpAccess/composables/useMcp', () => ({
 	useMcp: () => ({
 		trackUserToggledMcpAccess: vi.fn(),
+		trackAutoExposeToggled: trackAutoExposeToggledSpy,
 	}),
 }));
 
@@ -670,9 +672,7 @@ describe('SettingsMCPView', () => {
 			await userEvent.click(getByTestId('mcp-auto-expose-toggle').querySelector('input')!);
 
 			expect(mcpStore.setAutoExposeNewWorkflows).toHaveBeenCalledWith(true);
-			expect(trackSpy).toHaveBeenCalledWith(TELEMETRY_EVENT.MCP.AUTO_EXPOSE_NEW_WORKFLOWS_TOGGLED, {
-				enabled: true,
-			});
+			expect(trackAutoExposeToggledSpy).toHaveBeenCalledWith(true, 'settings');
 		});
 
 		it('shows a toast error and does not track when persisting fails', async () => {
@@ -686,10 +686,7 @@ describe('SettingsMCPView', () => {
 			await userEvent.click(getByTestId('mcp-auto-expose-toggle').querySelector('input')!);
 			await waitAllPromises();
 
-			expect(trackSpy).not.toHaveBeenCalledWith(
-				TELEMETRY_EVENT.MCP.AUTO_EXPOSE_NEW_WORKFLOWS_TOGGLED,
-				expect.anything(),
-			);
+			expect(trackAutoExposeToggledSpy).not.toHaveBeenCalled();
 			expect(useToast().showError).toHaveBeenCalledWith(
 				expect.anything(),
 				'Could not update setting',

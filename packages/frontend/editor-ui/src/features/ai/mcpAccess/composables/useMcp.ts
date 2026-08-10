@@ -16,9 +16,14 @@ export function useMcp() {
 		telemetry.track('User toggled MCP access', { state: enabled });
 	};
 
+	const trackAutoExposeToggled = (enabled: boolean, source: 'settings' | 'expose_all') => {
+		telemetry.track(TELEMETRY_EVENT.MCP.AUTO_EXPOSE_NEW_WORKFLOWS_TOGGLED, { enabled, source });
+	};
+
 	return {
 		trackMcpAccessEnabledForWorkflow,
 		trackMcpAccessEnabledForAgent,
 		trackUserToggledMcpAccess,
+		trackAutoExposeToggled,
 	};
 }

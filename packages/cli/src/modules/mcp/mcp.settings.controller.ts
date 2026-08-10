@@ -46,12 +46,6 @@ export class McpSettingsController {
 			response.mcpAccessEnabled = dto.mcpAccessEnabled;
 		}
 
-		// Disabling access implicitly turns auto-expose off too
-		if (dto.mcpAccessEnabled === false) {
-			await this.mcpSettingsService.setAutoExposeNewWorkflows(false);
-			response.autoExposeNewWorkflows = false;
-		}
-
 		if (dto.autoExposeNewWorkflows !== undefined) {
 			await this.mcpSettingsService.setAutoExposeNewWorkflows(dto.autoExposeNewWorkflows);
 			response.autoExposeNewWorkflows = dto.autoExposeNewWorkflows;
@@ -128,10 +122,6 @@ export class McpSettingsController {
 		);
 
 		void this.mcpSettingsService.broadcastWorkflowMCPAvailabilityChanged(changedWorkflows);
-
-		if (result.autoExposeNewWorkflows !== undefined) {
-			await this.refreshMcpModuleSettings();
-		}
 
 		return result;
 	}

@@ -18,9 +18,7 @@ import {
 } from '@n8n/design-system';
 
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
-import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@n8n/composables/useToast';
-import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { useExposeAllWorkflowsToMcpOffer } from '@/experiments/exposeAllWorkflowsToMcp/composables/useExposeAllWorkflowsToMcpOffer';
 import { useExposeAllWorkflowsToMcpStore } from '@/experiments/exposeAllWorkflowsToMcp/stores/exposeAllWorkflowsToMcp.store';
 import MCPEmptyState from '@/features/ai/mcpAccess/components/MCPEmptyState.vue';
@@ -42,7 +40,6 @@ import { UNKNOWN_COUNT_VALUE } from '@/features/ai/mcpAccess/mcp.constants';
 
 const i18n = useI18n();
 const toast = useToast();
-const telemetry = useTelemetry();
 const documentTitle = useDocumentTitle();
 const mcp = useMcp();
 const router = useRouter();
@@ -76,9 +73,7 @@ const onToggleAutoExpose = async (value: boolean) => {
 	autoExposeSaving.value = true;
 	try {
 		const updated = await mcpStore.setAutoExposeNewWorkflows(value);
-		telemetry.track(TELEMETRY_EVENT.MCP.AUTO_EXPOSE_NEW_WORKFLOWS_TOGGLED, {
-			enabled: updated,
-		});
+		mcp.trackAutoExposeToggled(updated, 'settings');
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.mcp.autoExpose.error.title'));
 	} finally {

@@ -1,14 +1,13 @@
 <script setup lang="ts">
 import Modal from '@/app/components/Modal.vue';
-import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@n8n/composables/useToast';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { EXPOSE_ALL_WORKFLOWS_TO_MCP_MODAL_KEY } from '@/experiments/exposeAllWorkflowsToMcp/constants';
 import { useExposeAllWorkflowsToMcpStore } from '@/experiments/exposeAllWorkflowsToMcp/stores/exposeAllWorkflowsToMcp.store';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
+import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 import { N8nButton, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 
@@ -20,7 +19,7 @@ const props = defineProps<{
 
 const i18n = useI18n();
 const toast = useToast();
-const telemetry = useTelemetry();
+const mcp = useMcp();
 const mcpStore = useMCPStore();
 const settingsStore = useSettingsStore();
 const experimentStore = useExposeAllWorkflowsToMcpStore();
@@ -85,14 +84,10 @@ async function onExposeAll(close: () => void) {
 				? mcpStore.toggleAgentsMcpAccess({ allAgents: true }, true)
 				: Promise.resolve(undefined),
 		]);
-		if (workflowsResponse.autoExposeNewWorkflows) {
-			// The backend already turned this on as part of the same expose-all
-			// request; sync it into local state so the UI doesn't need a reload.
-			mcpStore.applyAutoExposeNewWorkflowsLocally(true);
-			telemetry.track(TELEMETRY_EVENT.MCP.AUTO_EXPOSE_NEW_WORKFLOWS_TOGGLED, {
-				enabled: true,
-			});
-		}
+		// Only enable auto-expose once exposing all existing workflows has
+		// succeeded, so the setting mirrors what the user just confirmed.
+		await mcpStore.setAutoExposeNewWorkflows(true);
+		mcp.trackAutoExposeToggled(true, 'expose_all');
 		closedByAction.value = true;
 		experimentStore.trackConfirmed();
 		toast.showMessage({
