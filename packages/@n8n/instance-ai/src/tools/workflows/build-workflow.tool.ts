@@ -113,11 +113,6 @@ function isStructurallyValidWorkflowSourceFilePath(value: string): boolean {
 	}
 }
 
-const INVALID_WORKFLOW_ID_GUIDANCE =
-	'Call build-workflow again with the same filePath and omit workflowId to create a new workflow. ' +
-	'workflowId must be a real n8n workflow id from a prior build-workflow or workflows() tool result — ' +
-	'never the first argument of workflow(slug, name).';
-
 export const buildWorkflowInputSchema = z
 	.object({
 		filePath: z
@@ -144,7 +139,7 @@ export const buildWorkflowInputSchema = z
 			.describe(
 				'Real n8n workflow id from a prior build-workflow or workflows() tool result, used to bind this file on the first update. ' +
 					'Never pass the first argument of workflow(slug, name). Once bound, omit this on retries. ' +
-					'Omit to create a new workflow.',
+					'Omit to create a new workflow. Missing and inaccessible ids look the same — confirm with workflows() before inventing one.',
 			),
 		projectId: z
 			.string()
@@ -402,24 +397,15 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					binding = await bindSourceFileToExistingWorkflow(context, binding, input.workflowId);
 				} catch (error) {
 					const message = error instanceof Error ? error.message : String(error);
-					const remediation = createSaveFailureRemediation(error, true);
-
-					const bindRemediation =
-						remediation.reason === 'bound_workflow_not_found'
-							? createRemediation({
-									category: 'blocked',
-									shouldEdit: false,
-									reason: 'workflow_id_not_found',
-									guidance: INVALID_WORKFLOW_ID_GUIDANCE,
-								})
-							: remediation;
+					// File is not bound yet, so not-found maps to workflow_id_not_found (not bound_*).
+					const remediation = createSaveFailureRemediation(error, false);
 
 					trackWorkflowSourceBuild(context, {
 						result: 'blocked',
 						stage: 'save',
 						binding,
 						targetWorkflowId: input.workflowId,
-						remediation: bindRemediation,
+						remediation,
 						errorCount: 1,
 					});
 
@@ -427,7 +413,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						success: false,
 						...sourceResponseBase(binding),
 						errors: [`Failed to bind source file to workflow ${input.workflowId}: ${message}`],
-						remediation: bindRemediation,
+						remediation,
 					};
 				}
 			}

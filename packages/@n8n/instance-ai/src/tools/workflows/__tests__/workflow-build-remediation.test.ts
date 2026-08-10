@@ -42,16 +42,18 @@ describe('createSaveFailureRemediation', () => {
 		});
 	});
 
-	it('keeps workflow_save_failed when no workflow id was bound', () => {
+	it('returns workflow_id_not_found when no workflow id was bound', () => {
 		const remediation = createSaveFailureRemediation(
 			new WorkflowNotFoundError('invoice-processing'),
 			false,
 		);
 
 		expect(remediation).toMatchObject({
-			category: 'code_fixable',
-			shouldEdit: true,
-			reason: 'workflow_save_failed',
+			category: 'blocked',
+			shouldEdit: false,
+			reason: 'workflow_id_not_found',
 		});
+		expect(remediation.guidance).toContain('omit workflowId');
+		expect(remediation.guidance).toContain('workflows()');
 	});
 });

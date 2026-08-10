@@ -1,8 +1,8 @@
-import { UnexpectedError } from 'n8n-workflow';
+import { OperationalError } from 'n8n-workflow';
 
-export class WorkflowNotFoundError extends UnexpectedError {
+export class WorkflowNotFoundError extends OperationalError {
 	constructor(readonly workflowId: string) {
-		super(`Workflow ${workflowId} not found or not accessible`);
+		super(`Workflow ${workflowId} not found or not accessible`, { level: 'warning' });
 	}
 }
 
