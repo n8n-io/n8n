@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { ITriggerFunctions, Logger } from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
 
 import type { DataEmitterOptions, KafkaMessageParserOptions, ResolveOffsetMode } from './consumer';
 import type { KafkaConsumerOptions } from './transport';
@@ -28,6 +29,10 @@ export interface KafkaTriggerV2Options extends KafkaMessageParserOptions {
  */
 export interface KafkaTriggerSettings {
 	topic: string;
+	/** Whether this is an editor test run, which gets a throwaway consumer group. */
+	isManualRun: boolean;
+	/** The Group ID as typed, before a manual run's suffix. For error messages. */
+	configuredGroupId: string;
 	/** Ready for the consumer factory, including the manual-run group. */
 	consumer: KafkaConsumerOptions;
 	/** Ready for the data emitter, including the manual-run offset mode. */
@@ -155,15 +160,19 @@ export function getSettings(this: ITriggerFunctions): KafkaTriggerSettings {
 			// an absent value keeps the at-least-once behaviour.
 			(this.getNodeParameter('resolveOffset', 'onCompletion') as ResolveOffsetMode);
 
+	const configuredGroupId = this.getNodeParameter('groupId') as string;
+
 	return {
 		topic: this.getNodeParameter('topic') as string,
+		isManualRun,
+		configuredGroupId,
 		consumer: toConsumerOptions(
 			// Read Messages From Beginning defaults to on, and a manual run's group is
 			// brand new, so honouring it would replay the whole topic into the editor.
 			// On an activated workflow the setting is moot anyway, since the group
 			// already has a committed offset to resume from.
 			isManualRun ? { ...options, fromBeginning: false } : options,
-			manualRunGroupId(this.getNodeParameter('groupId') as string, isManualRun),
+			manualRunGroupId(configuredGroupId, isManualRun),
 			executionTimeout,
 			this.logger,
 		),
@@ -197,7 +206,42 @@ export function getSettings(this: ITriggerFunctions): KafkaTriggerSettings {
  * @param isManualRun - Whether this is an editor test run
  */
 export function manualRunGroupId(configured: string, isManualRun: boolean): string {
-	return isManualRun ? `${configured}-n8n-manual-${randomUUID()}` : configured;
+	return isManualRun ? `${MANUAL_RUN_PREFIX(configured)}${randomUUID()}` : configured;
+}
+
+/** The part of a manual run's group id that is stable, and so grantable in an ACL. */
+const MANUAL_RUN_PREFIX = (configured: string) => `${configured}-n8n-manual-`;
+
+/** Broker rejections that mean the group itself was refused, not the credential. */
+const GROUP_AUTHORIZATION_FAILED = /group authorization failed/i;
+
+/**
+ * Explains a group authorization failure on a manual run, where the group the
+ * broker refused is one the user never chose and cannot see.
+ *
+ * On a cluster with an authorizer, group ACLs are usually granted `LITERAL` on
+ * the exact Group ID. The throwaway group is a different resource name, so the
+ * join is denied while the activated workflow keeps working: "Listen for test
+ * event" fails on its own, and the raw broker message names neither the group
+ * nor the fix. A `PREFIXED` ACL on the stable part covers every future test run.
+ *
+ * Only manual runs are rewritten. On an activated workflow the group is exactly
+ * what the user typed, so the broker's own message is already actionable.
+ * @param error - The error raised from the library's log stream
+ * @param configuredGroupId - The node's Group ID parameter, before the suffix
+ * @param isManualRun - Whether this is an editor test run
+ */
+export function explainManualRunGroupDenial(
+	error: Error,
+	configuredGroupId: string,
+	isManualRun: boolean,
+): Error {
+	if (!isManualRun || !GROUP_AUTHORIZATION_FAILED.test(error.message)) return error;
+
+	return new UserError('Kafka refused the consumer group used for a test run', {
+		description: `A test run uses a throwaway consumer group so it cannot mark messages read for the activated workflow, and this cluster has not authorized it. Grant a prefixed group ACL for "${MANUAL_RUN_PREFIX(configuredGroupId)}", or run the workflow activated instead of testing it.`,
+		cause: error,
+	});
 }
 
 /**

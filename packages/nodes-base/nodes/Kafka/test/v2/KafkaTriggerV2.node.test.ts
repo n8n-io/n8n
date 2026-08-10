@@ -1,13 +1,18 @@
 import { SchemaRegistry } from '@kafkajs/confluent-schema-registry';
 import type { INodeTypeBaseDescription, IRun, Logger } from 'n8n-workflow';
-import { TriggerCloseError } from 'n8n-workflow';
+import { TriggerCloseError, UserError } from 'n8n-workflow';
 import type { Mock, Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { testTriggerNode } from '@test/nodes/TriggerHelpers';
 
 import { KafkaTriggerV2 } from '../../v2/KafkaTriggerV2.node';
-import { manualRunGroupId, toConsumerOptions, toEmitterOptions } from '../../v2/TriggerSettings';
+import {
+	explainManualRunGroupDenial,
+	manualRunGroupId,
+	toConsumerOptions,
+	toEmitterOptions,
+} from '../../v2/TriggerSettings';
 import {
 	confluentKafkaModuleMock,
 	getFakeConsumers,
@@ -205,8 +210,10 @@ describe('toConsumerOptions', () => {
 	});
 
 	describe('Auto Commit Interval', () => {
-		// Declared in the UI since v1 but never read until now, so a user could set
-		// it and nothing happened. librdkafka takes 0..86400000.
+		// v1 honours this too, via getAutoCommitSettings. What differs is the range
+		// check: librdkafka takes 0..86400000 and refuses the whole connection on
+		// anything else, naming a number the user never typed, so an unusable value
+		// is dropped with a warning here instead.
 		it('passes a user-set interval through, overriding the pinned default', () => {
 			expect(
 				toConsumerOptions({ autoCommitInterval: 1_000 }, 'g', undefined).autoCommitInterval,
@@ -343,6 +350,38 @@ describe('manualRunGroupId', () => {
 		expect(first).not.toBe('orders-consumer');
 		// Two editors testing at once must not land in the same group either.
 		expect(second).not.toBe(first);
+	});
+});
+
+describe('explainManualRunGroupDenial', () => {
+	// A cluster with an authorizer usually grants group ACLs LITERAL on the exact
+	// Group ID, so the throwaway group is a resource nobody authorized. Only test
+	// runs break, and the broker's message names neither the group nor the fix.
+	const denial = new Error('Broker: Group authorization failed');
+
+	it('names the prefix to grant, so the fix does not need guessing', () => {
+		const result = explainManualRunGroupDenial(denial, 'orders-consumer', true);
+
+		expect(result).not.toBe(denial);
+		expect(result).toBeInstanceOf(UserError);
+		expect((result as UserError).description).toContain('orders-consumer-n8n-manual-');
+		// The original stays reachable rather than being replaced outright.
+		expect((result as UserError).cause).toBe(denial);
+	});
+
+	it('leaves an activated workflow alone, since its group is what the user typed', () => {
+		expect(explainManualRunGroupDenial(denial, 'orders-consumer', false)).toBe(denial);
+	});
+
+	it.each([
+		'Broker: Topic authorization failed',
+		'Broker: Not authorized to access cluster',
+		'SASL authentication failed',
+		'Broker: Unknown topic or partition',
+	])('leaves %s alone, since the group is not what was refused', (message) => {
+		const other = new Error(message);
+
+		expect(explainManualRunGroupDenial(other, 'orders-consumer', true)).toBe(other);
 	});
 });
 
@@ -742,6 +781,23 @@ describe('KafkaTriggerV2 Node', () => {
 			await started.manualTriggerFunction?.();
 			return started;
 		}
+
+		it('tells the user which group ACL prefix to grant when the broker refuses it', async () => {
+			// On a cluster with an authorizer, group ACLs are usually granted LITERAL on
+			// the exact Group ID, so the throwaway group is a resource nobody authorized
+			// and only test runs break. The broker names neither the group nor the fix.
+			const { emitError } = await startManualRun();
+			const consumer = await lastFakeConsumer();
+			const logger = consumer.config.kafkaJS?.logger;
+			if (!logger) throw new Error('the node gave the library no logger');
+
+			logger.error('Broker: Group authorization failed');
+
+			expect(emitError).toHaveBeenCalledTimes(1);
+			expect((emitError.mock.calls[0][0] as UserError).description).toContain(
+				'orders-consumer-n8n-manual-',
+			);
+		});
 
 		it('joins a throwaway group, never the one the activated workflow uses', async () => {
 			await startManualRun();

@@ -12,7 +12,7 @@ import { setSchemaRegistry, type KafkaCredentials } from '../utils';
 import { consumeTopic, createDataEmitter, createMessageParser } from './consumer';
 import type { KafkaConsumerHandle } from './consumer';
 import { versionDescription } from './KafkaTriggerV2Description';
-import { getSettings } from './TriggerSettings';
+import { explainManualRunGroupDenial, getSettings } from './TriggerSettings';
 import { createKafkaConsumer } from './transport';
 
 export class KafkaTriggerV2 implements INodeType {
@@ -58,7 +58,10 @@ export class KafkaTriggerV2 implements INodeType {
 					// re-activates the trigger. Errors caused by our own teardown are
 					// not failures, so they stay quiet.
 					onFatalError: (error) => {
-						if (!closeController.signal.aborted) this.emitError(error);
+						if (closeController.signal.aborted) return;
+						this.emitError(
+							explainManualRunGroupDenial(error, settings.configuredGroupId, settings.isManualRun),
+						);
 					},
 				});
 
