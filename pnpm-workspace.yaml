@@ -40,7 +40,7 @@ catalog:
   lodash: 4.18.1
   luxon: 3.4.4
   mime-types: 3.0.2
-  mysql2: 3.17.0
+  mysql2: 3.23.1
   nanoid: 3.3.8
   nodemailer: 7.0.11
   picocolors: 1.0.1
