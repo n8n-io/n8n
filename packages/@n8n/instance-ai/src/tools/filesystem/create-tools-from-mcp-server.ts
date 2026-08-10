@@ -286,14 +286,18 @@ function warnSkippedLocalMcpTool(logger: Logger) {
  * The `toModelOutput` callback converts MCP image blocks into AI SDK content
  * output parts so the LLM receives gateway screenshots as real multimodal input.
  */
-export function createToolsFromLocalMcpServer(
-	server: LocalMcpServer,
-	logger: Logger,
+export function createToolsFromLocalMcpServer({
+	server,
+	logger,
+	onCredentialCreateResult,
+}: {
+	server: LocalMcpServer;
+	logger: Logger;
 	onCredentialCreateResult?: (
 		credentialType: string,
 		outcome: BrowserCredentialCreateOutcome,
-	) => void,
-): InstanceAiToolRegistry {
+	) => void;
+}): InstanceAiToolRegistry {
 	const tools = createToolRegistry();
 	const claimedToolNames = createClaimedToolNames([]);
 	const warnTool = warnSkippedLocalMcpTool(logger);

@@ -685,6 +685,18 @@ type TerminalGuardOrderServiceInternals = {
 		markCreated: (credentialType: string) => void;
 		markCreateFailed: (credentialType: string, errorCode: string) => void;
 	};
+	emitBrowserCredentialSetupOutcomes: (
+		threadId: string,
+		runId: string,
+		runStatus: 'completed' | 'cancelled' | 'errored',
+		runFinishReason?: string,
+	) => void;
+	publishRunFinish: (
+		threadId: string,
+		runId: string,
+		status: 'completed' | 'cancelled' | 'errored',
+		reason?: string,
+	) => void;
 	saveAgentTreeSnapshot: Mock;
 	backgroundTasks: { getRunningTasks: Mock; getRunningTasksByParentCheckpoint?: Mock };
 	temporaryWorkflowService: { reapForRun: Mock };
@@ -3561,6 +3573,154 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			vi.mocked(resumeAgentRun).mock.invocationCallOrder[0],
 		);
 		expect(tracing.withActiveSpan).toHaveBeenCalledWith(tracing.actorRun, expect.any(Function));
+	});
+});
+
+describe('InstanceAiService — emitBrowserCredentialSetupOutcomes', () => {
+	const CREDENTIAL_SETUP_EVENT = 'Instance AI Browser Use credential setup completed';
+
+	function seedAttempts(
+		service: TerminalGuardOrderServiceInternals,
+		attempts: Array<{
+			credentialType: string;
+			setupMethod: 'setup_card' | 'conversation';
+			attemptId?: string;
+			startedAt: number;
+			created: boolean;
+			errorCode?: string;
+		}>,
+	) {
+		service.pendingBrowserCredentialSetups.set('run-1', { userId: 'user-1', attempts });
+	}
+
+	it('emits nothing when the run has no pending setups', () => {
+		const service = createTerminalGuardOrderService();
+
+		service.emitBrowserCredentialSetupOutcomes('thread-a', 'run-1', 'completed');
+
+		expect(service.telemetry.track).not.toHaveBeenCalled();
+	});
+
+	it('emits one event per attempt and consumes the record', () => {
+		const service = createTerminalGuardOrderService();
+		seedAttempts(service, [
+			{
+				credentialType: 'slackApi',
+				setupMethod: 'setup_card',
+				attemptId: 'attempt-1',
+				startedAt: 1000,
+				created: true,
+			},
+			{
+				credentialType: 'notionApi',
+				setupMethod: 'conversation',
+				startedAt: 2000,
+				created: false,
+				errorCode: 'unresolved_field',
+			},
+		]);
+
+		service.emitBrowserCredentialSetupOutcomes('thread-a', 'run-1', 'completed');
+
+		expect(service.telemetry.track).toHaveBeenCalledTimes(2);
+		expect(service.telemetry.track).toHaveBeenCalledWith(CREDENTIAL_SETUP_EVENT, {
+			user_id: 'user-1',
+			credential_type: 'slackApi',
+			status: 'success',
+			is_valid: null,
+			is_new: true,
+			setup_method: 'setup_card',
+			thread_id: 'thread-a',
+			run_id: 'run-1',
+			credential_setup_attempt_id: 'attempt-1',
+			duration_ms: expect.any(Number),
+		});
+		expect(service.telemetry.track).toHaveBeenCalledWith(CREDENTIAL_SETUP_EVENT, {
+			user_id: 'user-1',
+			credential_type: 'notionApi',
+			status: 'failure',
+			failure_stage: 'generation',
+			error_code: 'unresolved_field',
+			is_valid: null,
+			is_new: true,
+			setup_method: 'conversation',
+			thread_id: 'thread-a',
+			run_id: 'run-1',
+			duration_ms: expect.any(Number),
+		});
+		expect(service.pendingBrowserCredentialSetups.size).toBe(0);
+
+		service.telemetry.track.mockClear();
+		service.emitBrowserCredentialSetupOutcomes('thread-a', 'run-1', 'completed');
+		expect(service.telemetry.track).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		['completed', undefined, 'not_attempted'],
+		['cancelled', undefined, 'run_cancelled'],
+		['cancelled', 'timeout', 'run_timed_out'],
+		['errored', 'stream_error', 'run_errored'],
+	] as const)(
+		'maps a %s run (reason %s) without flow error to error code %s',
+		(runStatus, reason, errorCode) => {
+			const service = createTerminalGuardOrderService();
+			seedAttempts(service, [
+				{ credentialType: 'slackApi', setupMethod: 'setup_card', startedAt: 1000, created: false },
+			]);
+
+			service.emitBrowserCredentialSetupOutcomes('thread-a', 'run-1', runStatus, reason);
+
+			expect(service.telemetry.track).toHaveBeenCalledWith(
+				CREDENTIAL_SETUP_EVENT,
+				expect.objectContaining({
+					status: 'failure',
+					failure_stage: 'unknown',
+					error_code: errorCode,
+				}),
+			);
+		},
+	);
+
+	it('prefers the flow error code over the run termination code', () => {
+		const service = createTerminalGuardOrderService();
+		seedAttempts(service, [
+			{
+				credentialType: 'slackApi',
+				setupMethod: 'setup_card',
+				startedAt: 1000,
+				created: false,
+				errorCode: 'missing_captured_fields',
+			},
+		]);
+
+		service.emitBrowserCredentialSetupOutcomes('thread-a', 'run-1', 'cancelled');
+
+		expect(service.telemetry.track).toHaveBeenCalledWith(
+			CREDENTIAL_SETUP_EVENT,
+			expect.objectContaining({
+				failure_stage: 'generation',
+				error_code: 'missing_captured_fields',
+			}),
+		);
+	});
+
+	it('is invoked by publishRunFinish with the run status and reason', () => {
+		const service = createTerminalGuardOrderService();
+		seedAttempts(service, [
+			{ credentialType: 'slackApi', setupMethod: 'setup_card', startedAt: 1000, created: false },
+		]);
+
+		service.publishRunFinish('thread-a', 'run-1', 'cancelled', 'timeout');
+
+		expect(service.telemetry.track).toHaveBeenCalledWith(
+			CREDENTIAL_SETUP_EVENT,
+			expect.objectContaining({
+				credential_type: 'slackApi',
+				status: 'failure',
+				error_code: 'run_timed_out',
+			}),
+		);
+		expect(service.pendingBrowserCredentialSetups.size).toBe(0);
 	});
 });
 
