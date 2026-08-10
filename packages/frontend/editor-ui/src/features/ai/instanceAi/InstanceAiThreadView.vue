@@ -29,6 +29,7 @@ import type {
 	InstanceAiHandoffContext,
 } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { COLLAPSED_MAIN_SIDEBAR_WIDTH, useSidebarLayout } from '@/app/composables/useSidebarLayout';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
@@ -244,6 +245,15 @@ const currentThreadTitle = computed<string | undefined>(() => {
 	}
 	return undefined;
 });
+
+// The tab names the conversation, not the workflow previewed inside it — the
+// parent view claims the title so the embedded canvas can't overwrite this.
+const documentTitle = useDocumentTitle();
+watch(
+	currentThreadTitle,
+	(title) => documentTitle.set(title ?? i18n.baseText('instanceAi.view.title')),
+	{ immediate: true },
+);
 
 // --- Canvas / data table preview ---
 const preview = useCanvasPreview({
