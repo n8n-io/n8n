@@ -1937,7 +1937,7 @@ describe('AgentsBuilderToolsService', () => {
 				response: 'Deletion approved. I need approval to notify the owner.',
 			};
 			const { service, agentTestRunService } = makeService();
-			agentTestRunService.resumeDraftRun.mockResolvedValue({
+			agentTestRunService.resumeDraftApproval.mockResolvedValue({
 				status: 'suspended',
 				response: secondContinuation.response,
 				sessionId: secondContinuation.sessionId,
@@ -1966,16 +1966,13 @@ describe('AgentsBuilderToolsService', () => {
 			);
 			const secondSuspensions = suspendedChunks(await collectChunks(resumedRun.stream));
 
-			expect(agentTestRunService.resumeDraftRun).toHaveBeenCalledWith({
+			expect(agentTestRunService.resumeDraftApproval).toHaveBeenCalledWith({
 				agentId,
 				projectId,
-				sessionId: firstContinuation.sessionId,
-				runId: firstContinuation.runId,
-				toolCallId: firstContinuation.toolCallId,
-				resumeData: { approved: true },
+				continuation: firstContinuation,
+				approved: true,
 				user,
 				source: 'instance-ai',
-				response: firstContinuation.response,
 				abortSignal: expect.any(AbortSignal),
 			});
 			expect(secondSuspensions).toHaveLength(1);
@@ -2019,13 +2016,19 @@ describe('AgentsBuilderToolsService', () => {
 					},
 				],
 			});
-			agentTestRunService.cancelSuspendedRun.mockResolvedValue(true);
+			agentTestRunService.cancelSuspendedRuns.mockResolvedValue(true);
 
 			const result = await getCallAgentTool(service).handler!({ message: 'Schedule it' }, ctx);
 
-			expect(agentTestRunService.cancelSuspendedRun).toHaveBeenCalledWith({
+			expect(agentTestRunService.cancelSuspendedRuns).toHaveBeenCalledWith({
 				agentId,
-				runId: 'run-1',
+				suspensions: [
+					expect.objectContaining({
+						runId: 'run-1',
+						toolCallId: 'tool-call-1',
+						toolName: 'schedule_record',
+					}),
+				],
 				userId: 'user-1',
 			});
 			expect(result).toEqual({
