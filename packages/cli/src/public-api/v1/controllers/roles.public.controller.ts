@@ -19,15 +19,15 @@ import {
 	PublicApiController,
 	Query,
 } from '@n8n/decorators';
-import { type Role as RoleDTO } from '@n8n/permissions';
+import { RoleNamespace, type Role as RoleDTO } from '@n8n/permissions';
 import type { Response } from 'express';
 
 import { EventService } from '@/events/event.service';
 import { assertCanManageRoleType } from '@/services/role-authorization';
 import { RoleService } from '@/services/role.service';
 
-type PublicRoleType = 'global' | 'project' | 'credential' | 'workflow';
-const isPublicRole = (role: RoleDTO): role is RoleDTO & { roleType: PublicRoleType } =>
+type PublicRoleNamespace = Extract<RoleNamespace, 'global' | 'project' | 'credential' | 'workflow'>;
+const isPublicRole = (role: RoleDTO): role is RoleDTO & { roleType: PublicRoleNamespace } =>
 	role.roleType === 'global' ||
 	role.roleType === 'project' ||
 	role.roleType === 'credential' ||
@@ -57,7 +57,7 @@ export class RolesPublicController {
 		const allRoles = await this.roleService.getAllRoles(withUsageCount);
 		const publicRoles = allRoles.filter(isPublicRole);
 
-		const groupOf = <T extends PublicRoleType>(roleType: T) =>
+		const groupOf = <T extends PublicRoleNamespace>(roleType: T) =>
 			publicRoles
 				.filter((role): role is RoleDTO & { roleType: T } => role.roleType === roleType)
 				.map((role) => ({
