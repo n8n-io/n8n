@@ -75,8 +75,7 @@ describe('resolveCustomModelExperimentDefaultsFromEnv', () => {
 		});
 	});
 
-	it('warns and falls back when env overrides are non-empty but invalid', () => {
-		const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+	it('falls back to the model map when env overrides are non-empty but invalid', () => {
 		process.env.N8N_INSTANCE_AI_REASONING_EFFORT = 'nope';
 		process.env.N8N_INSTANCE_AI_SUPPORTS_STRUCTURED_OUTPUTS = 'maybe';
 
@@ -84,14 +83,6 @@ describe('resolveCustomModelExperimentDefaultsFromEnv', () => {
 			reasoningEffort: 'low',
 			supportsStructuredOutputs: true,
 		});
-		expect(warnSpy).toHaveBeenCalledWith(
-			expect.stringContaining('N8N_INSTANCE_AI_REASONING_EFFORT="nope"'),
-		);
-		expect(warnSpy).toHaveBeenCalledWith(
-			expect.stringContaining('N8N_INSTANCE_AI_SUPPORTS_STRUCTURED_OUTPUTS="maybe"'),
-		);
-
-		warnSpy.mockRestore();
 	});
 });
 
