@@ -1,9 +1,9 @@
 import { z } from 'zod';
 import { isRecord } from '@n8n/utils/is-record';
 
-import type { ChatInstance } from '../chat-integration.service';
-import { stringValue, unsupportedQuery } from '../integration-helpers';
-import type { IntegrationContextQuery } from '../integration-tools';
+import type { ChatInstance } from '../../chat-integration.service';
+import { stringValue, unsupportedQuery } from '../../integration-helpers';
+import type { IntegrationContextQuery } from '../../integration-tools';
 
 const PLATFORM = 'slack';
 
