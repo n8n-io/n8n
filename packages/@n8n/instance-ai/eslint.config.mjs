@@ -28,6 +28,8 @@ export default defineConfig(
 			// Local eval scratch output — never linted, never committed.
 			'.data/**',
 			'evaluations/.data/**',
+			'evaluations/.output/**',
+			'.output/**',
 			// Deep-imports ai-workflow-builder.ee's evaluations source, so it sits outside
 			// evaluations/tsconfig.json (see its exclude) and the eslint project service.
 			'evaluations/cli/pairwise.ts',

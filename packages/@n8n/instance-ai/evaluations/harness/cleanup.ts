@@ -246,11 +246,9 @@ export async function runWorkflowChecks(args: {
 }
 
 function hasAnthropicKey(): boolean {
-	// Use || so an empty N8N_INSTANCE_AI_MODEL_API_KEY (keyless custom/* lanes)
-	// does not mask ANTHROPIC_API_KEY / N8N_AI_ANTHROPIC_KEY used by the verifier.
-	return Boolean(
-		process.env.N8N_AI_ANTHROPIC_KEY?.trim() ||
-			process.env.ANTHROPIC_API_KEY?.trim() ||
-			process.env.N8N_INSTANCE_AI_MODEL_API_KEY?.trim(),
-	);
+	return [
+		process.env.N8N_AI_ANTHROPIC_KEY,
+		process.env.ANTHROPIC_API_KEY,
+		process.env.N8N_INSTANCE_AI_MODEL_API_KEY,
+	].some((value) => Boolean(value?.trim()));
 }

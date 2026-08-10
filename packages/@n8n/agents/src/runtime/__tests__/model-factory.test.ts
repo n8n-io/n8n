@@ -364,7 +364,7 @@ describe('createModel', () => {
 			expect(model.apiKey).toBe('or-test');
 		});
 
-		it('should create model for nvidia', () => {
+		it('should create model for nvidia without stream usage accounting', () => {
 			const model = createModel({
 				id: 'nvidia/nvidia/llama-3.3-nemotron-super-49b-v1',
 				apiKey: 'nv-test',
@@ -374,6 +374,8 @@ describe('createModel', () => {
 			expect(model.modelId).toBe('nvidia/llama-3.3-nemotron-super-49b-v1');
 			expect(model.apiKey).toBe('nv-test');
 			expect(model.baseURL).toBe('https://integrate.api.nvidia.com/v1');
+			// NVIDIA rejects stream_options.include_usage; keep the pre-shared-builder default.
+			expect(model.includeUsage).toBe(false);
 			expect(model.supportsStructuredOutputs).toBe(true);
 		});
 	});

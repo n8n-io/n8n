@@ -2,8 +2,8 @@
 
 import { Agent, Tool, type GenerateResult, type ModelConfig } from '@n8n/agents';
 
-import { applyAgentThinking } from '../agent/apply-agent-thinking';
 import { parseModelHeadersJson } from './parse-model-headers';
+import { applyAgentThinking } from '../agent/apply-agent-thinking';
 
 export { Tool };
 

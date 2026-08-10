@@ -105,10 +105,11 @@ type OpenAiCompatibleProviderId = 'nvidia';
 function openAiCompatibleEntry<P extends OpenAiCompatibleProviderId>(
 	name: P,
 	defaultBaseURL: string,
+	options?: { includeUsage?: boolean; supportsStructuredOutputs?: boolean },
 ): RegistryEntry<P> {
 	return {
 		build: (creds, model, fetch) =>
-			buildOpenAiCompatible(name, defaultBaseURL, creds, model, fetch),
+			buildOpenAiCompatible(name, defaultBaseURL, creds, model, fetch, options),
 	};
 }
 
@@ -205,7 +206,10 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 			return createOpenRouter({ apiKey: creds.apiKey, baseURL: creds.baseURL, fetch })(model);
 		},
 	},
-	nvidia: openAiCompatibleEntry('nvidia', 'https://integrate.api.nvidia.com/v1'),
+	// NVIDIA's OpenAI-compatible endpoint rejects stream_options.include_usage.
+	nvidia: openAiCompatibleEntry('nvidia', 'https://integrate.api.nvidia.com/v1', {
+		includeUsage: false,
+	}),
 	'azure-openai': {
 		build: (creds, model, fetch) => {
 			const { createAzure } = require('@ai-sdk/azure') as typeof import('@ai-sdk/azure');
