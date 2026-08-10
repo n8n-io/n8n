@@ -1214,7 +1214,24 @@ describe('row-content authorization on write endpoints', () => {
 
 	let project: Project;
 	let dataTable: DataTable;
+	let writeOnlyRoleSlug: string;
+	let readWriteRoleSlug: string;
 	let writerAgent: SuperAgentTest;
+	let readWriterAgent: SuperAgentTest;
+
+	beforeAll(async () => {
+		// roles survive the per-test truncation of `Project`/`ProjectRelation`
+		const writeOnlyRole = await createCustomRoleWithScopeSlugs(['dataTable:writeRow'], {
+			roleType: 'project',
+		});
+		writeOnlyRoleSlug = writeOnlyRole.slug;
+
+		const readWriteRole = await createCustomRoleWithScopeSlugs(
+			['dataTable:writeRow', 'dataTable:readRow'],
+			{ roleType: 'project' },
+		);
+		readWriteRoleSlug = readWriteRole.slug;
+	});
 
 	beforeEach(async () => {
 		project = await createTeamProject('write-only project', owner);
@@ -1223,12 +1240,13 @@ describe('row-content authorization on write endpoints', () => {
 			data: [{ secret: SECRET }],
 		});
 
-		const writeOnlyRole = await createCustomRoleWithScopeSlugs(['dataTable:writeRow'], {
-			roleType: 'project',
-		});
 		const writeOnlyUser = await createMemberWithApiKey();
-		await linkUserToProject(writeOnlyUser, project, writeOnlyRole.slug);
+		await linkUserToProject(writeOnlyUser, project, writeOnlyRoleSlug);
 		writerAgent = testServer.publicApiAgentFor(writeOnlyUser);
+
+		const readWriteUser = await createMemberWithApiKey();
+		await linkUserToProject(readWriteUser, project, readWriteRoleSlug);
+		readWriterAgent = testServer.publicApiAgentFor(readWriteUser);
 	});
 
 	test('rejects update dryRun without dataTable:readRow scope', async () => {
@@ -1250,6 +1268,21 @@ describe('row-content authorization on write endpoints', () => {
 		});
 
 		expect(response.statusCode).toBe(403);
+		expect(JSON.stringify(response.body)).not.toContain(SECRET);
+	});
+
+	test('returns update row contents with dataTable:readRow scope', async () => {
+		const response = await readWriterAgent.patch(`/data-tables/${dataTable.id}/rows/update`).send({
+			filter: MATCH_ALL_FILTER,
+			data: { secret: 'overwritten' },
+			dryRun: true,
+		});
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).toMatchObject([
+			{ secret: SECRET, dryRunState: 'before' },
+			{ secret: 'overwritten', dryRunState: 'after' },
+		]);
 	});
 
 	test('allows a plain update without dataTable:readRow scope', async () => {
@@ -1279,6 +1312,7 @@ describe('row-content authorization on write endpoints', () => {
 		});
 
 		expect(response.statusCode).toBe(403);
+		expect(JSON.stringify(response.body)).not.toContain(SECRET);
 	});
 
 	test('rejects delete returnData without dataTable:readRow scope', async () => {
@@ -1296,6 +1330,29 @@ describe('row-content authorization on write endpoints', () => {
 			.query({ filter: JSON.stringify(MATCH_ALL_FILTER) });
 
 		expect(response.statusCode).toBe(200);
+	});
+
+	test('returns upsert row contents with dataTable:readRow scope', async () => {
+		const response = await readWriterAgent.post(`/data-tables/${dataTable.id}/rows/upsert`).send({
+			filter: MATCH_ALL_FILTER,
+			data: { secret: 'overwritten' },
+			dryRun: true,
+		});
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).toMatchObject([
+			{ secret: SECRET, dryRunState: 'before' },
+			{ secret: 'overwritten', dryRunState: 'after' },
+		]);
+	});
+
+	test('returns deleted row contents with dataTable:readRow scope', async () => {
+		const response = await readWriterAgent
+			.delete(`/data-tables/${dataTable.id}/rows/delete`)
+			.query({ filter: JSON.stringify(MATCH_ALL_FILTER), returnData: 'true' });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).toMatchObject([{ secret: SECRET }]);
 	});
 });
 
