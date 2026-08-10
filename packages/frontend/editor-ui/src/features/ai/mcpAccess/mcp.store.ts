@@ -160,22 +160,17 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		return next;
 	}
 
-	/** Local-state-only write; does not call the backend. Callers must have already confirmed the value server-side. */
-	function applyAutoExposeNewWorkflowsLocally(enabled: boolean): void {
-		settingsStore.moduleSettings.mcp = {
-			mcpAccessEnabled: false,
-			mcpManagedByEnv: false,
-			...(settingsStore.moduleSettings.mcp ?? {}),
-			autoExposeNewWorkflows: enabled,
-		};
-	}
-
 	async function setAutoExposeNewWorkflows(enabled: boolean): Promise<boolean> {
 		const { autoExposeNewWorkflows: updated } = await updateMcpSettings(rootStore.restApiContext, {
 			autoExposeNewWorkflows: enabled,
 		});
 		const next = updated ?? enabled;
-		applyAutoExposeNewWorkflowsLocally(next);
+		settingsStore.moduleSettings.mcp = {
+			mcpAccessEnabled: false,
+			mcpManagedByEnv: false,
+			...(settingsStore.moduleSettings.mcp ?? {}),
+			autoExposeNewWorkflows: next,
+		};
 		return next;
 	}
 
@@ -429,7 +424,6 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		fetchAgentsAvailableForMCPPage,
 		setMcpAccessEnabled,
 		setAutoExposeNewWorkflows,
-		applyAutoExposeNewWorkflowsLocally,
 		toggleWorkflowMcpAccess,
 		toggleWorkflowsMcpAccess,
 		toggleAgentMcpAccess,

@@ -612,35 +612,4 @@ describe('mcp.store', () => {
 			});
 		});
 	});
-
-	describe('applyAutoExposeNewWorkflowsLocally', () => {
-		it('updates local state without making a network request', () => {
-			const updateSpy = vi.spyOn(mcpApi, 'updateMcpSettings');
-			const settingsStore = useSettingsStore();
-			settingsStore.moduleSettings.mcp = {
-				mcpAccessEnabled: true,
-				mcpManagedByEnv: false,
-				autoExposeNewWorkflows: false,
-			};
-
-			useMCPStore().applyAutoExposeNewWorkflowsLocally(true);
-
-			expect(settingsStore.moduleSettings.mcp?.autoExposeNewWorkflows).toBe(true);
-			expect(settingsStore.moduleSettings.mcp?.mcpAccessEnabled).toBe(true);
-			expect(updateSpy).not.toHaveBeenCalled();
-		});
-
-		it('defaults sibling fields when no settings exist yet', () => {
-			const settingsStore = useSettingsStore();
-			settingsStore.moduleSettings.mcp = undefined;
-
-			useMCPStore().applyAutoExposeNewWorkflowsLocally(true);
-
-			expect(settingsStore.moduleSettings.mcp).toEqual({
-				mcpAccessEnabled: false,
-				mcpManagedByEnv: false,
-				autoExposeNewWorkflows: true,
-			});
-		});
-	});
 });
