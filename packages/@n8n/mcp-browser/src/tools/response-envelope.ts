@@ -45,7 +45,7 @@ export async function enrichResponse(
 
 	if (options.autoSnapshot) {
 		try {
-			const snap = await state.adapter.snapshot(pageId);
+			const snap = await state.adapter.snapshot(pageId, undefined, options.snapshotInteractive);
 			record.snapshot = snap.tree;
 			sensitivity = analyzeHtmlSensitivity(await state.adapter.probePageHtml(pageId));
 		} catch {
@@ -139,7 +139,7 @@ export async function buildErrorResponse(
 
 		if (options.autoSnapshot) {
 			try {
-				const snap = await state.adapter.snapshot(pageId);
+				const snap = await state.adapter.snapshot(pageId, undefined, options.snapshotInteractive);
 				errorData.snapshot = snap.tree;
 			} catch {
 				// Snapshot failure on error path is expected

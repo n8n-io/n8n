@@ -63,7 +63,7 @@ describe('createTabTools', () => {
 				const data = structuredOf(result);
 
 				expect(data.snapshot).toBe('<snapshot-tree>');
-				expect(mockConnection.adapter.snapshot).toHaveBeenCalledWith('page2');
+				expect(mockConnection.adapter.snapshot).toHaveBeenCalledWith('page2', undefined, undefined);
 			});
 		});
 	});
