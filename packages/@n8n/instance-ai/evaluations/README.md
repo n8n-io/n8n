@@ -1012,6 +1012,7 @@ For model A/B experiments, dispatch **Instance AI Evals: Experiments** (`test-ev
 | Together | `custom/moonshotai/Kimi-K3` | `https://api.together.ai/v1` | `together` → `EVALS_TOGETHER_KEY` |
 | Modal | `custom/…` | `https://….modal.direct…/v1` | `modal` → `EVALS_MODAL_KEY` |
 | Databricks | `custom/workspace.default.kimi-k3` | `https://….databricks.com/ai-gateway/mlflow/v1` | `databricks` → `EVALS_DATABRICKS_KEY` |
+| Lyceum | `custom/moonshotai/Kimi-K3` | OpenAI-compatible `/v1` base URL | `lyceum` → `EVALS_LYCEUM_KEY` |
 | Azure OpenAI | `custom/<deployment>` | `https://….openai.azure.com/openai/v1` | `azure` → `EVALS_AZURE_FOUNDRY_KEY` |
 | Keyless custom router | `custom/<model>` | `https://host/v1` | empty (no API key) |
 | Azure Foundry Claude | `anthropic/<deployment>` | Foundry Anthropic base | `azure` (or omit — defaults to Foundry key) |
