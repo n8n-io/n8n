@@ -1,5 +1,5 @@
 {
-	"name": "Mindee Test Workflow split",
+	"name": "Mindee Test Workflow extraction",
 	"nodes": [
 		{
 			"parameters": {},
@@ -11,7 +11,7 @@
 		},
 		{
 			"parameters": {
-				"operation": "split",
+				"operation": "extraction",
 				"modelId": {
 					"__rl": true,
 					"value": "87654321-4321-4321-4321-CBA987654321",
@@ -19,8 +19,8 @@
 				},
 				"options": {}
 			},
-			"type": "n8n-nodes-base.mindeeV2",
-			"typeVersion": 1,
+			"type": "n8n-nodes-base.mindee",
+			"typeVersion": 4,
 			"position": [176, -80],
 			"id": "117a1394-59f6-458f-aea0-e0ebf73bcbec",
 			"name": "Upload a document and get the result",
