@@ -4,8 +4,10 @@ import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type {
 	IExecuteResponsePromiseData,
 	INode,
+	IRun,
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
+import { createRunExecutionData } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
@@ -33,13 +35,165 @@ const workflow = {
 
 function buildContext(run: ReturnType<typeof vi.fn>, extras: Partial<WorkflowToolContext> = {}) {
 	return {
-		workflowRepository: {} as never,
+		workflowLoader: {} as never,
 		workflowRunner: { run } as unknown as WorkflowRunner,
 		activeExecutions: { has: vi.fn().mockReturnValue(false) } as unknown as ActiveExecutions,
 		projectId: 'p1',
+		executionMode: 'manual',
 		...extras,
 	} satisfies WorkflowToolContext;
 }
+
+describe('executeWorkflow → execution classification', () => {
+	beforeEach(() => {
+		Container.set(ExecutionPersistence, {
+			findSingleExecution: vi
+				.fn()
+				.mockResolvedValue({ status: 'success', data: { resultData: { runData: {} } } }),
+		} as unknown as ExecutionPersistence);
+	});
+
+	afterEach(() => {
+		Container.reset();
+	});
+
+	it.each([
+		['manual', 'test'],
+		['integrated', 'production'],
+	] as const)(
+		'runs %s agent workflow tools as %s executions',
+		async (executionMode, publicMode) => {
+			const run = vi.fn().mockResolvedValue('exec-1');
+			const context = {
+				...buildContext(run),
+				executionMode,
+			} as WorkflowToolContext;
+
+			await executeWorkflow(workflow, triggerNode, 'webhook', { body: { value: 1 } }, context);
+
+			const runData = run.mock.calls[0][0] as IWorkflowExecutionDataProcess;
+			expect(runData.executionMode).toBe(executionMode);
+			expect(
+				runData.executionData?.executionData?.nodeExecutionStack[0].data.main[0]?.[0]?.json,
+			).toMatchObject({ executionMode: publicMode });
+		},
+	);
+
+	it('does not execute saved editor pin data', async () => {
+		const run = vi.fn().mockResolvedValue('exec-1');
+		const workflowWithPinData = {
+			...workflow,
+			pinData: { 'Pinned Node': [{ json: { value: 'editor-only' } }] },
+		} as WorkflowEntity;
+
+		await executeWorkflow(workflowWithPinData, triggerNode, 'manual', { input: 'live' }, {
+			...buildContext(run),
+			executionMode: 'integrated',
+		} as WorkflowToolContext);
+
+		const runData = run.mock.calls[0][0] as IWorkflowExecutionDataProcess;
+		expect(runData.pinData).toEqual({
+			[triggerNode.name]: [{ json: { input: 'live' } }],
+		});
+		expect(runData.workflowData.pinData).toBeUndefined();
+	});
+
+	it('returns output from the completed integrated run when execution data is not retained', async () => {
+		const completedRun = {
+			mode: 'integrated',
+			status: 'success',
+			finished: true,
+			startedAt: new Date(),
+			stoppedAt: new Date(),
+			storedAt: 'db',
+			data: createRunExecutionData({
+				resultData: {
+					runData: {
+						Result: [
+							{
+								data: { main: [[{ json: { answer: 42 } }]] },
+								executionIndex: 0,
+								startTime: 0,
+								executionTime: 1,
+								source: [],
+							},
+						],
+					},
+				},
+			}),
+		} satisfies IRun;
+		Container.set(ExecutionPersistence, {
+			findSingleExecution: vi.fn().mockResolvedValue(undefined),
+		} as unknown as ExecutionPersistence);
+		const run = vi.fn().mockResolvedValue('exec-1');
+		const activeExecutions = {
+			has: vi.fn().mockReturnValue(true),
+			getPostExecutePromise: vi.fn().mockResolvedValue(completedRun),
+		} as unknown as ActiveExecutions;
+
+		const result = await executeWorkflow(workflow, triggerNode, 'manual', {}, {
+			...buildContext(run),
+			activeExecutions,
+			executionMode: 'integrated',
+		} as WorkflowToolContext);
+
+		expect(result).toEqual({
+			executionId: 'exec-1',
+			status: 'success',
+			data: { Result: [{ answer: 42 }] },
+		});
+	});
+
+	it('reads persisted output for a completed manual run', async () => {
+		const completedRun = {
+			mode: 'manual',
+			status: 'success',
+			finished: true,
+			startedAt: new Date(),
+			stoppedAt: new Date(),
+			storedAt: 'db',
+			data: createRunExecutionData({ resultData: { runData: {} } }),
+		} satisfies IRun;
+		Container.set(ExecutionPersistence, {
+			findSingleExecution: vi.fn().mockResolvedValue({
+				status: 'success',
+				data: createRunExecutionData({
+					resultData: {
+						runData: {
+							Result: [
+								{
+									data: { main: [[{ json: { answer: 42 } }]] },
+									executionIndex: 0,
+									startTime: 0,
+									executionTime: 1,
+									source: [],
+								},
+							],
+						},
+					},
+				}),
+			}),
+		} as unknown as ExecutionPersistence);
+		const run = vi.fn().mockResolvedValue('exec-1');
+		const activeExecutions = {
+			has: vi.fn().mockReturnValue(true),
+			getPostExecutePromise: vi.fn().mockResolvedValue(completedRun),
+		} as unknown as ActiveExecutions;
+
+		const result = await executeWorkflow(
+			workflow,
+			triggerNode,
+			'manual',
+			{},
+			{
+				...buildContext(run),
+				activeExecutions,
+			},
+		);
+
+		expect(result.data).toEqual({ Result: [{ answer: 42 }] });
+	});
+});
 
 describe('executeWorkflow → eval instrumentation', () => {
 	beforeEach(() => {
