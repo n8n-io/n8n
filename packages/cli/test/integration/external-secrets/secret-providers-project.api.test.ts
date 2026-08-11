@@ -641,7 +641,7 @@ describe('Secret Providers Project API', () => {
 
 		beforeAll(async () => {
 			agents = { owner: ownerAgent, admin: adminAgent, member: memberAgent };
-			const { DummyProvider } = await import('../../shared/external-secrets/utils');
+			const { DummyProvider } = await import('../../shared/external-secrets/utils.js');
 			mockProvidersInstance.setProviders({
 				dummy: DummyProvider,
 				awsSecretsManager: DummyProvider,
@@ -664,7 +664,7 @@ describe('Secret Providers Project API', () => {
 			await createProviderConnection('test-conn', [teamProject1.id]);
 
 			const { ExternalSecretsManager } = await import(
-				'@/modules/external-secrets.ee/external-secrets-manager.ee'
+				'@/modules/external-secrets.ee/external-secrets-manager.ee.js'
 			);
 			await Container.get(ExternalSecretsManager).reloadAllProviders();
 
@@ -708,7 +708,7 @@ describe('Secret Providers Project API', () => {
 					await createProviderConnection(`test-auth-${role}`, [teamProject1.id]);
 
 					const { ExternalSecretsManager } = await import(
-						'@/modules/external-secrets.ee/external-secrets-manager.ee'
+						'@/modules/external-secrets.ee/external-secrets-manager.ee.js'
 					);
 					await Container.get(ExternalSecretsManager).reloadAllProviders();
 

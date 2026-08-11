@@ -96,7 +96,7 @@ describe('FocusSidebarTabs', () => {
 		expect(getByText('Evaluations')).toBeInTheDocument();
 	});
 
-	it('shows the Evaluations tab when the experiment is enabled AND an AI root node is present', () => {
+	it('shows the Evaluations tab when the experiment is enabled and an AI root node is present', () => {
 		isEvaluationsEnabled.value = true;
 		aiRootNodes.value = [{ name: 'AI Agent', type: '@n8n/n8n-nodes-langchain.agent' }];
 		const { getByText } = renderComponent();
@@ -104,23 +104,21 @@ describe('FocusSidebarTabs', () => {
 		expect(getByText('Evaluations')).toBeInTheDocument();
 	});
 
-	it('hides the Evaluations tab when the experiment is enabled but no AI root node is present', () => {
+	it('shows the Evaluations tab when the experiment is enabled even without an AI root node', () => {
+		// The Tests panel renders its own "add a node first" empty state, so the tab
+		// must stay reachable regardless of whether the workflow has an AI node.
 		isEvaluationsEnabled.value = true;
 		aiRootNodes.value = [];
-		const { queryByText } = renderComponent();
+		const { getByText } = renderComponent();
 
-		expect(queryByText('Evaluations')).not.toBeInTheDocument();
+		expect(getByText('Evaluations')).toBeInTheDocument();
 	});
 
-	it('hides the Evaluations tab when no AI root node is present even after one is removed', async () => {
-		isEvaluationsEnabled.value = true;
+	it('hides the Evaluations tab when the experiment is disabled', () => {
+		isEvaluationsEnabled.value = false;
 		aiRootNodes.value = [{ name: 'AI Agent', type: '@n8n/n8n-nodes-langchain.agent' }];
-		const { getByText, queryByText, rerender } = renderComponent();
-		expect(getByText('Evaluations')).toBeInTheDocument();
+		const { queryByText } = renderComponent();
 
-		aiRootNodes.value = [];
-		// Await reactivity flush
-		await rerender({});
 		expect(queryByText('Evaluations')).not.toBeInTheDocument();
 	});
 

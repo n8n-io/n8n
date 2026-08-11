@@ -1,4 +1,4 @@
-import type { StreamChunk } from '@n8n/agents';
+import { APPROVAL_SUSPEND_SCHEMA, type StreamChunk } from '@n8n/agents';
 import {
 	credentialRequestSchema,
 	workflowSetupNodeSchema,
@@ -6,10 +6,15 @@ import {
 	plannedTaskArgSchema,
 	gatewayConfirmationRequiredPayloadSchema,
 	webSearchMetaSchema,
+	channelConfigSchema,
 } from '@n8n/api-types';
 import type { InstanceAiEvent } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { z } from 'zod';
+
+import { isQuotaExhaustedError, QUOTA_EXHAUSTED_ERROR_CODE } from '../utils/quota-error';
+
+export { isQuotaExhaustedError, QUOTA_EXHAUSTED_ERROR_CODE } from '../utils/quota-error';
 
 const questionItemSchema = z.object({
 	id: z.string(),
@@ -98,6 +103,7 @@ const agentStreamChunkTypes = new Set<string>([
 	'finish',
 	'text-delta',
 	'reasoning-delta',
+	'tool-input-start',
 	'tool-call',
 	'tool-result',
 	'error',
@@ -114,6 +120,44 @@ interface ErrorInfo {
 	statusCode?: number;
 	provider?: string;
 	technicalDetails?: string;
+	code?: 'quota_exhausted';
+}
+
+/** Find an ai-sdk `statusCode` on the error or its `cause` chain, alongside the response body. */
+function readStatusCode(error: unknown, visited = new WeakSet<object>()): number | undefined {
+	if (typeof error !== 'object' || error === null) return undefined;
+	if (visited.has(error)) return undefined;
+	visited.add(error);
+	if ('statusCode' in error && typeof error.statusCode === 'number') return error.statusCode;
+	if ('cause' in error && error.cause !== error) return readStatusCode(error.cause, visited);
+	return undefined;
+}
+
+/** Find an ai-sdk `responseBody` on the error or its `cause` chain (the API error can arrive wrapped). */
+function readResponseBody(error: unknown, visited = new WeakSet<object>()): string | undefined {
+	if (typeof error !== 'object' || error === null) return undefined;
+	if (visited.has(error)) return undefined;
+	visited.add(error);
+	if ('responseBody' in error && typeof error.responseBody === 'string') return error.responseBody;
+	if ('cause' in error && error.cause !== error) return readResponseBody(error.cause, visited);
+	return undefined;
+}
+
+/** Parse an ai-sdk JSON `responseBody` into its message and machine-readable code, if present. */
+function parseResponseBody(responseBody: string): { message?: string; code?: string } {
+	try {
+		const body = JSON.parse(responseBody) as {
+			message?: string;
+			code?: string;
+			error?: { message?: string; type?: string };
+		};
+		return {
+			message: body?.error?.message ?? body?.message,
+			code: body?.code ?? body?.error?.type,
+		};
+	} catch {
+		return {};
+	}
 }
 
 function extractErrorInfo(error: unknown): ErrorInfo {
@@ -123,21 +167,22 @@ function extractErrorInfo(error: unknown): ErrorInfo {
 		const info: ErrorInfo = { content: error.message };
 
 		// APICallError from ai-sdk carries statusCode and responseBody
-		if ('statusCode' in error && typeof error.statusCode === 'number') {
-			info.statusCode = error.statusCode;
+		const statusCode = readStatusCode(error);
+		if (statusCode !== undefined) {
+			info.statusCode = statusCode;
 		}
 
 		if ('responseBody' in error && typeof error.responseBody === 'string') {
 			info.technicalDetails = error.responseBody;
-			try {
-				const body = JSON.parse(error.responseBody) as {
-					error?: { message?: string; type?: string };
-				};
-				if (body?.error?.message) {
-					info.content = body.error.message;
-				}
-			} catch {
-				// not JSON — keep raw responseBody as technicalDetails
+			const { message } = parseResponseBody(error.responseBody);
+			if (message) info.content = message;
+		} else {
+			// No direct responseBody — unwrap the cause chain (mirrors `readErrorCode`).
+			const wrappedBody = readResponseBody(error.cause);
+			if (wrappedBody) {
+				info.technicalDetails = wrappedBody;
+				const { message } = parseResponseBody(wrappedBody);
+				if (message) info.content = message;
 			}
 		}
 
@@ -148,7 +193,18 @@ function extractErrorInfo(error: unknown): ErrorInfo {
 			else if (urlStr.includes('openai')) info.provider = 'OpenAI';
 		}
 
+		if (isQuotaExhaustedError(error)) info.code = QUOTA_EXHAUSTED_ERROR_CODE;
+
 		return info;
+	}
+
+	if (isRecord(error)) {
+		if (error.type === 'overloaded_error') {
+			return { content: 'The model is overloaded. Try again in a few minutes.' };
+		}
+
+		const message = nonEmptyString(error.message);
+		if (message) return { content: message };
 	}
 
 	return { content: 'Unknown error' };
@@ -287,6 +343,19 @@ function mapSuspendedChunk(
 		suspendPayload.resourceDecision,
 		gatewayConfirmationRequiredPayloadSchema,
 	);
+	const channelConfig = parseSchemaRecord(suspendPayload.channelConfig, channelConfigSchema);
+	const targetApprovalResult = isRecord(suspendPayload.builderCheckpoint)
+		? APPROVAL_SUSPEND_SCHEMA.safeParse(suspendPayload)
+		: undefined;
+	const targetApproval = targetApprovalResult?.success
+		? {
+				toolName: targetApprovalResult.data.toolName,
+				...(targetApprovalResult.data.displayName
+					? { displayName: targetApprovalResult.data.displayName }
+					: {}),
+				args: targetApprovalResult.data.args,
+			}
+		: undefined;
 
 	return {
 		type: 'confirmation-request',
@@ -301,6 +370,7 @@ function mapSuspendedChunk(
 				typeof suspendPayload.message === 'string'
 					? suspendPayload.message
 					: 'Confirmation required',
+			...(targetApproval ? { targetApproval } : {}),
 			...(credentialRequests ? { credentialRequests } : {}),
 			...(projectId ? { projectId } : {}),
 			...(inputType ? { inputType } : {}),
@@ -314,6 +384,7 @@ function mapSuspendedChunk(
 			...(tasks ? { tasks } : {}),
 			...(planItems ? { planItems } : {}),
 			...(resourceDecision ? { resourceDecision } : {}),
+			...(channelConfig ? { channelConfig } : {}),
 		},
 	};
 }
@@ -381,6 +452,7 @@ function mapErrorChunk(
 		payload: {
 			content: errorInfo.content,
 			...(errorInfo.statusCode !== undefined ? { statusCode: errorInfo.statusCode } : {}),
+			...(errorInfo.code ? { code: errorInfo.code } : {}),
 			...(errorInfo.provider ? { provider: errorInfo.provider } : {}),
 			...(errorInfo.technicalDetails ? { technicalDetails: errorInfo.technicalDetails } : {}),
 		},
@@ -402,6 +474,14 @@ export function mapAgentChunkToEvent(
 			return { type: 'text-delta', ...base, payload: { text: chunk.delta } };
 		case 'reasoning-delta':
 			return { type: 'reasoning-delta', ...base, payload: { text: chunk.delta } };
+		case 'tool-input-start':
+			// Surfaces the pending tool call while its arguments stream — the
+			// full `tool-call` event follows once the args are complete.
+			return {
+				type: 'tool-input-start',
+				...base,
+				payload: { toolCallId: chunk.toolCallId, toolName: chunk.toolName },
+			};
 		case 'tool-call':
 			return mapToolCallChunk(chunk, base);
 		case 'tool-result':

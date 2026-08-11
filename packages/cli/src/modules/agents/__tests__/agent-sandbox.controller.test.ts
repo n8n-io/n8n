@@ -12,8 +12,6 @@ describe('AgentSandboxController', () => {
 		const agentKnowledgeService = mock<AgentKnowledgeService>();
 		const controller = new AgentSandboxController(agentKnowledgeService, mock<Logger>(), {
 			sandboxEnabled: true,
-			sandboxProvider: 'daytona',
-			daytonaVolumeId: 'volume-1',
 		} as AgentsConfig);
 		const req = { user: { id: 'user-1' } } as AuthenticatedRequest<{ projectId: string }>;
 		const res = mock<Response>();
@@ -26,10 +24,23 @@ describe('AgentSandboxController', () => {
 		});
 
 		expect(res.status).toHaveBeenCalledWith(202);
-		expect(agentKnowledgeService.warmSandbox).toHaveBeenCalledWith(
-			'agent-1',
-			'project-1',
-			'user-1',
-		);
+		expect(agentKnowledgeService.warmSandbox).toHaveBeenCalledWith('agent-1', 'project-1');
+	});
+
+	it('rejects warmup when the knowledge base is disabled', async () => {
+		const agentKnowledgeService = mock<AgentKnowledgeService>();
+		const controller = new AgentSandboxController(agentKnowledgeService, mock<Logger>(), {
+			sandboxEnabled: false,
+		} as AgentsConfig);
+
+		await expect(
+			controller.warmKnowledgeSandbox(
+				{} as AuthenticatedRequest<{ projectId: string }>,
+				mock<Response>(),
+				'project-1',
+				'agent-1',
+			),
+		).rejects.toThrow('Agent knowledge base is not enabled');
+		expect(agentKnowledgeService.warmSandbox).not.toHaveBeenCalled();
 	});
 });

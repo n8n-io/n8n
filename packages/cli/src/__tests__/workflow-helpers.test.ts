@@ -2,7 +2,9 @@ import { MAX_PINNED_DATA_SIZE, MAX_WORKFLOW_SIZE, MAX_EXPECTED_REQUEST_SIZE } fr
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { CredentialsEntity, IExecutionResponse, Project, Variables } from '@n8n/db';
 import { CredentialsRepository } from '@n8n/db';
+import { GROUP_DESCRIPTION_MAX_LENGTH, STICKY_NODE_TYPE } from 'n8n-workflow';
 import type {
+	DynamicCredentialsUsage,
 	ExecutionError,
 	IRun,
 	ITaskData,
@@ -15,6 +17,7 @@ import { VariablesService } from '@/environments.ee/variables/variables.service.
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { OwnershipService } from '@/services/ownership.service';
 import {
+	dropInvalidNodeGroups,
 	getLastExecutedNodeData,
 	getLastExecutedNodeRuns,
 	getVariables,
@@ -26,6 +29,7 @@ import {
 	validatePinDataSize,
 	validateWorkflowNodeGroups,
 	validateWorkflowStructure,
+	sanitizeNodeGroupDescriptions,
 	WorkflowStructureBadRequestError,
 } from '@/workflow-helpers';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -469,10 +473,18 @@ describe('validateWorkflowStructure', () => {
 	});
 });
 
-describe('validateWorkflowNodeGroups', () => {
-	const makeNode = (id: string) =>
-		({ id, name: `Node ${id}`, type: 'test', position: [0, 0], parameters: {} }) as never;
+// Shared by both node-group suites: the connection fixtures below key off the
+// `Node <id>` naming, so the two must stay defined together.
+const makeNode = (id: string) =>
+	({ id, name: `Node ${id}`, type: 'test', position: [0, 0], parameters: {} }) as never;
+const regularNodeType = { group: ['transform'] } as never;
+// Two nodes connected n1 → n2 form a groupable chain.
+const connectedNodes = [makeNode('n1'), makeNode('n2')];
+const chainConnections = {
+	'Node n1': { main: [[{ node: 'Node n2', type: 'main', index: 0 }]] },
+} as never;
 
+describe('validateWorkflowNodeGroups', () => {
 	it('should pass when nodeGroups is undefined', () => {
 		expect(() =>
 			validateWorkflowNodeGroups({ nodes: [makeNode('n1')], nodeGroups: undefined }, null),
@@ -521,6 +533,18 @@ describe('validateWorkflowNodeGroups', () => {
 		).toThrow('Group "Empty Group" references node ID "bad1"');
 	});
 
+	it('should throw when a group has no members', () => {
+		expect(() =>
+			validateWorkflowNodeGroups(
+				{
+					nodes: [makeNode('n1')],
+					nodeGroups: [{ id: 'g1', name: 'My Group', nodeIds: [] }],
+				},
+				null,
+			),
+		).toThrow('Group "My Group" has no members.');
+	});
+
 	it('should throw when a node belongs to multiple groups', () => {
 		expect(() =>
 			validateWorkflowNodeGroups(
@@ -533,7 +557,7 @@ describe('validateWorkflowNodeGroups', () => {
 				},
 				null,
 			),
-		).toThrow('Node "n1" belongs to multiple groups: "Group A" and "Group B".');
+		).toThrow('Node "Node n1" belongs to multiple groups: "Group A" and "Group B".');
 	});
 
 	it('should throw when group names are not unique', () => {
@@ -568,12 +592,8 @@ describe('validateWorkflowNodeGroups', () => {
 
 	describe('full validation', () => {
 		const triggerType = { group: ['trigger'] } as never;
-		const regularType = { group: ['transform'] } as never;
-		// Two nodes connected n1 → n2 form a groupable chain.
-		const connectedNodes = [makeNode('n1'), makeNode('n2')];
-		const connections = {
-			'Node n1': { main: [[{ node: 'Node n2', type: 'main', index: 0 }]] },
-		} as never;
+		const regularType = regularNodeType;
+		const connections = chainConnections;
 
 		it('passes for a valid connected group', () => {
 			expect(() =>
@@ -598,7 +618,7 @@ describe('validateWorkflowNodeGroups', () => {
 					},
 					() => triggerType,
 				),
-			).toThrow('Node group "Has trigger" (g1) cannot contain trigger nodes');
+			).toThrow('Node group "Has trigger" cannot contain trigger nodes');
 		});
 
 		it('does not run full checks when getNodeType is null (basic-only)', () => {
@@ -614,6 +634,197 @@ describe('validateWorkflowNodeGroups', () => {
 				),
 			).not.toThrow();
 		});
+
+		describe('sticky notes', () => {
+			const makeStickyNode = (id: string) =>
+				({
+					id,
+					name: `Sticky ${id}`,
+					type: STICKY_NODE_TYPE,
+					position: [0, 0],
+					parameters: {},
+				}) as never;
+			const stickyType = { name: STICKY_NODE_TYPE, group: ['input'] } as never;
+			const getNodeType = (node: { type: string }) =>
+				node.type === STICKY_NODE_TYPE ? stickyType : regularType;
+
+			it('passes for a group containing a sticky alongside a connected chain', () => {
+				expect(() =>
+					validateWorkflowNodeGroups(
+						{
+							nodes: [...connectedNodes, makeStickyNode('s1')],
+							connections,
+							nodeGroups: [{ id: 'g1', name: 'Chain', nodeIds: ['n1', 'n2', 's1'] }],
+						},
+						getNodeType,
+					),
+				).not.toThrow();
+			});
+
+			it('passes for a sticky-only group', () => {
+				// Groups can degenerate to sticky-only when their last connectable
+				// node is deleted; such groups must keep saving.
+				expect(() =>
+					validateWorkflowNodeGroups(
+						{
+							nodes: [makeStickyNode('s1'), makeStickyNode('s2')],
+							connections: {},
+							nodeGroups: [{ id: 'g1', name: 'Notes', nodeIds: ['s1', 's2'] }],
+						},
+						getNodeType,
+					),
+				).not.toThrow();
+			});
+
+			it('still rejects disconnected connectable nodes when a sticky is present', () => {
+				expect(() =>
+					validateWorkflowNodeGroups(
+						{
+							nodes: [makeNode('n1'), makeNode('n2'), makeStickyNode('s1')],
+							connections: {},
+							nodeGroups: [{ id: 'g1', name: 'Disconnected', nodeIds: ['n1', 'n2', 's1'] }],
+						},
+						getNodeType,
+					),
+				).toThrow(
+					'Node group "Disconnected" must form a single connected subgraph with a single entry and exit.',
+				);
+			});
+		});
+	});
+});
+
+describe('dropInvalidNodeGroups', () => {
+	it('leaves a valid workflow untouched and reports nothing', () => {
+		const workflow = {
+			nodes: [makeNode('n1'), makeNode('n2')],
+			nodeGroups: [{ id: 'g1', name: 'Group', nodeIds: ['n1', 'n2'] }],
+		};
+
+		expect(dropInvalidNodeGroups(workflow, null)).toEqual([]);
+		expect(workflow.nodeGroups).toEqual([{ id: 'g1', name: 'Group', nodeIds: ['n1', 'n2'] }]);
+	});
+
+	it('drops every violating group and keeps the valid ones', () => {
+		const workflow = {
+			nodes: [makeNode('n1')],
+			nodeGroups: [
+				{ id: 'g1', name: 'Valid', nodeIds: ['n1'] },
+				{ id: 'g2', name: 'Unknown member', nodeIds: ['n999'] },
+			],
+		};
+
+		const violations = dropInvalidNodeGroups(workflow, null);
+
+		expect(violations).toHaveLength(1);
+		expect(violations[0]).toMatchObject({ groupId: 'g2', code: 'unknown-node-id' });
+		expect(workflow.nodeGroups).toEqual([{ id: 'g1', name: 'Valid', nodeIds: ['n1'] }]);
+	});
+
+	describe('with a shouldDrop predicate', () => {
+		// Two groups sharing n1: the second is flagged for the overlap, and the
+		// first for holding a node that now belongs elsewhere. A caller that can
+		// only blame one of them must be able to drop just that one.
+		const buildOverlapping = () => ({
+			nodes: connectedNodes,
+			connections: chainConnections,
+			nodeGroups: [
+				{ id: 'g1', name: 'First', nodeIds: ['n1', 'n2'] },
+				{ id: 'g2', name: 'Second', nodeIds: ['n1'] },
+			],
+		});
+
+		const regularType = regularNodeType;
+
+		it('drops only the matching groups and reports only those', () => {
+			const workflow = buildOverlapping();
+
+			const violations = dropInvalidNodeGroups(
+				workflow,
+				() => regularType,
+				(violation) => violation.groupId === 'g2',
+			);
+
+			expect(violations).toHaveLength(1);
+			expect(violations[0].groupId).toBe('g2');
+			expect(workflow.nodeGroups).toEqual([{ id: 'g1', name: 'First', nodeIds: ['n1', 'n2'] }]);
+		});
+
+		it('clears the collateral violation once the culprit is gone', () => {
+			const workflow = buildOverlapping();
+			dropInvalidNodeGroups(
+				workflow,
+				() => regularType,
+				(violation) => violation.groupId === 'g2',
+			);
+
+			// Second pass: "First" only ever failed because "Second" overlapped it.
+			expect(dropInvalidNodeGroups(workflow, () => regularType)).toEqual([]);
+			expect(workflow.nodeGroups).toHaveLength(1);
+		});
+
+		it('keeps the workflow untouched when nothing matches', () => {
+			const workflow = buildOverlapping();
+
+			expect(
+				dropInvalidNodeGroups(
+					workflow,
+					() => regularType,
+					() => false,
+				),
+			).toEqual([]);
+			expect(workflow.nodeGroups).toHaveLength(2);
+		});
+	});
+});
+
+describe('sanitizeNodeGroupDescriptions', () => {
+	it('returns no warnings and leaves descriptions within the cap untouched', () => {
+		const workflow = {
+			nodeGroups: [{ id: 'g1', name: 'Group 1', nodeIds: [], description: 'short' }],
+		};
+		expect(sanitizeNodeGroupDescriptions(workflow)).toEqual([]);
+		expect(workflow.nodeGroups[0].description).toBe('short');
+	});
+
+	it('truncates an over-cap description and returns a warning', () => {
+		const workflow = {
+			nodeGroups: [
+				{
+					id: 'g1',
+					name: 'Group 1',
+					nodeIds: [],
+					description: 'a'.repeat(GROUP_DESCRIPTION_MAX_LENGTH + 10),
+				},
+			],
+		};
+		const warnings = sanitizeNodeGroupDescriptions(workflow);
+
+		expect(workflow.nodeGroups[0].description).toHaveLength(GROUP_DESCRIPTION_MAX_LENGTH);
+		expect(warnings).toEqual([
+			`Group "Group 1" description exceeded ${GROUP_DESCRIPTION_MAX_LENGTH} characters and was truncated.`,
+		]);
+	});
+
+	it.each([
+		['a number', 123],
+		['an object', { a: 1 }],
+		['an array', Array.from({ length: GROUP_DESCRIPTION_MAX_LENGTH + 10 }, (_, i) => i)],
+	])('removes a non-string description (%s) and returns a warning', (_label, description) => {
+		const workflow = {
+			nodeGroups: [{ id: 'g1', name: 'Group 1', nodeIds: [], description: description as never }],
+		};
+		const warnings = sanitizeNodeGroupDescriptions(workflow);
+
+		expect(workflow.nodeGroups[0].description).toBeUndefined();
+		expect(warnings).toEqual(['Group "Group 1" description was not plain text and was removed.']);
+	});
+
+	it('handles missing nodeGroups and groups without a description', () => {
+		expect(sanitizeNodeGroupDescriptions({ nodeGroups: undefined })).toEqual([]);
+		expect(
+			sanitizeNodeGroupDescriptions({ nodeGroups: [{ id: 'g1', name: 'G', nodeIds: [] }] }),
+		).toEqual([]);
 	});
 });
 
@@ -802,18 +1013,24 @@ describe('updateParentExecutionWithChildResults', () => {
 		lastNode: string,
 		nodeRun: Partial<ITaskData>,
 		error?: ExecutionError,
+		executedByUserId?: string,
 	): IRun =>
 		({
 			mode: 'integrated',
 			status,
 			data: {
 				resultData: { lastNodeExecuted: lastNode, error, runData: { [lastNode]: [nodeRun] } },
+				...(executedByUserId ? { executionData: { runtimeData: { executedByUserId } } } : {}),
 			},
 		}) as unknown as IRun;
 
 	type StackEntry = {
 		data?: unknown;
-		metadata?: { resumeError?: ExecutionError; subExecution?: RelatedExecution };
+		metadata?: {
+			resumeError?: ExecutionError;
+			subExecution?: RelatedExecution;
+			dynamicCredentialsUsage?: DynamicCredentialsUsage;
+		};
 	};
 
 	// Runs the workflow helper against a waiting parent and returns the updated stack entry.
@@ -850,6 +1067,133 @@ describe('updateParentExecutionWithChildResults', () => {
 
 		expect(entry.data).toEqual({ main: [[{ json: { out: 2 } }]] });
 		expect(entry.metadata?.resumeError).toBeUndefined();
+		expect(entry.metadata?.dynamicCredentialsUsage).toBeUndefined();
+	});
+
+	// The parent's waiting task is popped and its node re-runs disabled on resume, so the
+	// child's private-credential usage must ride on the stack entry to reach the new task.
+	it('stashes the child dynamic-credential usage on the resumed stack entry', async () => {
+		const entry = await resumeWith(
+			childRun(
+				'success',
+				'Done',
+				{
+					data: { main: [[{ json: { out: 2 } }]] },
+					usedDynamicCredentials: true,
+					attemptedDynamicCredentials: true,
+				},
+				undefined,
+				'resolved-user',
+			),
+		);
+
+		expect(entry.metadata?.dynamicCredentialsUsage).toEqual({
+			usedDynamicCredentials: true,
+			attemptedDynamicCredentials: true,
+			dynamicCredentialsResolvedUserId: 'resolved-user',
+		});
+	});
+
+	it('stashes the attempted flag even when the child failed', async () => {
+		const error = { name: 'NodeOperationError', message: 'ERROR' } as unknown as ExecutionError;
+		const entry = await resumeWith(
+			childRun('error', 'Stop and Error', { error, attemptedDynamicCredentials: true }, error),
+		);
+
+		expect(entry.metadata?.resumeError).toMatchObject({ message: 'ERROR' });
+		expect(entry.metadata?.dynamicCredentialsUsage).toEqual({ attemptedDynamicCredentials: true });
+	});
+
+	// "Run once for each item" spawns several children per wait; a weaker later report
+	// (attempted-only) must not clobber a sibling's used flag or resolved user.
+	it('unions the stash across sibling children instead of replacing it', async () => {
+		let stored = waitingParent();
+		const executionPersistence = mockInstance(ExecutionPersistence);
+		executionPersistence.findSingleExecution.mockImplementation(async () =>
+			structuredClone(stored),
+		);
+		executionPersistence.updateExistingExecution.mockImplementation(async (_id, patch) => {
+			stored = { ...stored, ...patch } as IExecutionResponse;
+			return true;
+		});
+
+		const usedChild = childRun(
+			'success',
+			'Done',
+			{
+				data: { main: [[{ json: { out: 1 } }]] },
+				usedDynamicCredentials: true,
+				attemptedDynamicCredentials: true,
+			},
+			undefined,
+			'resolved-user',
+		);
+		const error = { name: 'NodeOperationError', message: 'ERROR' } as unknown as ExecutionError;
+		const attemptedChild = childRun(
+			'error',
+			'Stop and Error',
+			{ error, attemptedDynamicCredentials: true },
+			error,
+		);
+
+		await updateParentExecutionWithChildResults(PARENT_ID, usedChild);
+		await updateParentExecutionWithChildResults(PARENT_ID, attemptedChild);
+
+		const entry = stored.data.executionData!.nodeExecutionStack[0] as unknown as StackEntry;
+		expect(entry.metadata?.dynamicCredentialsUsage).toEqual({
+			usedDynamicCredentials: true,
+			attemptedDynamicCredentials: true,
+			dynamicCredentialsResolvedUserId: 'resolved-user',
+		});
+	});
+
+	// The parent can sit in 'waiting' for a long time with the child's output already
+	// embedded, so the waiting task must be flagged immediately, not only after resume.
+	it('stamps the parent waiting task and runtime data at stash time', async () => {
+		const parent = waitingParent();
+		parent.data.resultData = {
+			runData: {
+				'Execute Sub-workflow': [
+					{
+						startTime: 0,
+						executionTime: 0,
+						executionIndex: 0,
+						executionStatus: 'waiting',
+						source: [],
+					} as ITaskData,
+				],
+			},
+		} as unknown as IExecutionResponse['data']['resultData'];
+		parent.data.executionData!.runtimeData = {
+			version: 1,
+			establishedAt: 0,
+			source: 'trigger',
+		};
+
+		const executionPersistence = mockInstance(ExecutionPersistence);
+		executionPersistence.findSingleExecution.mockResolvedValue(parent);
+
+		await updateParentExecutionWithChildResults(
+			PARENT_ID,
+			childRun(
+				'success',
+				'Done',
+				{
+					data: { main: [[{ json: { out: 2 } }]] },
+					usedDynamicCredentials: true,
+					attemptedDynamicCredentials: true,
+				},
+				undefined,
+				'resolved-user',
+			),
+		);
+
+		const [, payload] = executionPersistence.updateExistingExecution.mock.calls[0];
+		const persisted = payload as IExecutionResponse;
+		const waitingTask = persisted.data.resultData.runData['Execute Sub-workflow'][0];
+		expect(waitingTask.usedDynamicCredentials).toBe(true);
+		expect(waitingTask.attemptedDynamicCredentials).toBe(true);
+		expect(persisted.data.executionData?.runtimeData?.executedByUserId).toBe('resolved-user');
 	});
 
 	// In "run once for each item" mode multiple children update the same waiting

@@ -49,6 +49,8 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 	override needsTaskRunner = true;
 
+	override seedsInstanceIdentity = true;
+
 	/**
 	 * Stop n8n in a graceful way.
 	 * Make for example sure that all the webhooks from third party services
@@ -99,7 +101,6 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		Container.get(DeprecationService).warn();
 
-		await this.instanceSettings.initialize(Container.get(DeploymentKeyRepository));
 		await Container.get(JwtService).initialize(Container.get(DeploymentKeyRepository));
 		await Container.get(BinaryDataConfig).initialize(Container.get(DeploymentKeyRepository));
 
@@ -178,7 +179,7 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 	}
 
 	async initScalingService() {
-		const { ScalingService } = await import('@/scaling/scaling.service');
+		const { ScalingService } = await import('@/scaling/scaling.service.js');
 		this.scalingService = Container.get(ScalingService);
 
 		await this.scalingService.setupQueue();
@@ -193,7 +194,7 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		let workerServer: WorkerServer | undefined;
 		if (Object.values(endpointsConfig).some((e) => e)) {
-			const { WorkerServer } = await import('@/scaling/worker-server');
+			const { WorkerServer } = await import('@/scaling/worker-server.js');
 			workerServer = Container.get(WorkerServer);
 			await workerServer.init(endpointsConfig);
 		}

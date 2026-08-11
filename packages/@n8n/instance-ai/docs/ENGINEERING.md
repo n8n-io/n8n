@@ -143,8 +143,8 @@ hardest to debug after the fact.
 
 ```typescript
 it('should handle run-finish after connection drop and reconnect', ...);
-it('should not lose events when sub-agent completes during page reload', ...);
-it('should reject delegate with MCP tool names', ...);
+it('should not lose events when a background agent completes during page reload', ...);
+it('should reject MCP tool names in orchestrator tool sets', ...);
 it('should not leak credentials in tool-call args for credential tools', ...);
 ```
 

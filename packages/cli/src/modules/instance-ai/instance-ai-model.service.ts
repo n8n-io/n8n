@@ -1,4 +1,4 @@
-import { UNLIMITED_CREDITS, buildProxyHeaders } from '@n8n/api-types';
+import { UNLIMITED_CREDITS, buildProxyHeaders, type InstanceAiCredits } from '@n8n/api-types';
 import { OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -9,6 +9,7 @@ import { N8N_VERSION } from '@/constants';
 import { AiService } from '@/services/ai.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
 import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
+import { callAiServiceWithRetry } from '@/utils/ai-service-retry';
 
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 
@@ -143,11 +144,14 @@ export class InstanceAiModelService {
 	}
 
 	/** Get current Instance AI credit usage from the AI service proxy. */
-	async getCredits(user: User): Promise<{ creditsQuota: number; creditsClaimed: number }> {
+	async getCredits(user: User): Promise<InstanceAiCredits> {
 		if (!this.aiService.isProxyEnabled()) {
 			return { creditsQuota: UNLIMITED_CREDITS, creditsClaimed: 0 };
 		}
 		const client = await this.aiService.getClient();
-		return await client.getInstanceAiCredits({ id: user.id });
+		return await callAiServiceWithRetry(
+			'Instance AI credits fetch',
+			async () => await client.getInstanceAiCredits({ id: user.id }),
+		);
 	}
 }

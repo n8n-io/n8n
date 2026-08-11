@@ -30,7 +30,7 @@ It's built on Reka UI's `DropdownMenu` for accessibility and interaction pattern
 **Search-specific Props**
 - `searchable?: boolean` Enable search functionality
 - `searchPlaceholder?: string` Search input placeholder
-- `searchDebounce?: number` Debounce delay in ms | `default: 300`
+- `searchDebounce?: number` Debounce delay in ms | `default: 0`
 
 
 **Events**

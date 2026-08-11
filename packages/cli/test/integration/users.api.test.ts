@@ -17,6 +17,8 @@ import {
 	GLOBAL_OWNER_ROLE,
 	ProjectRelationRepository,
 	ProjectRepository,
+	RoleMappingRuleRepository,
+	RoleRepository,
 	SharedCredentialsRepository,
 	SharedWorkflowRepository,
 	UserRepository,
@@ -599,6 +601,7 @@ describe('GET /users', () => {
 							id: project.id,
 							role: 'project:admin',
 							name: project.name,
+							icon: null,
 						},
 					]),
 				);
@@ -1382,7 +1385,7 @@ describe('PATCH /users/:id/role', () => {
 	let memberAgent: SuperAgentTest;
 	let authlessAgent: SuperAgentTest;
 
-	const { NO_ADMIN_ON_OWNER, NO_USER, NO_OWNER_ON_OWNER } =
+	const { NO_ADMIN_ON_OWNER, NO_USER, CANNOT_CHANGE_OWN_ROLE } =
 		UsersController.ERROR_MESSAGES.CHANGE_ROLE;
 
 	beforeAll(async () => {
@@ -1591,7 +1594,7 @@ describe('PATCH /users/:id/role', () => {
 			});
 
 			expect(response.statusCode).toBe(403);
-			expect(response.body.message).toBe(NO_OWNER_ON_OWNER);
+			expect(response.body.message).toBe(CANNOT_CHANGE_OWN_ROLE);
 		});
 
 		test('should fail to demote self to member', async () => {
@@ -1600,7 +1603,7 @@ describe('PATCH /users/:id/role', () => {
 			});
 
 			expect(response.statusCode).toBe(403);
-			expect(response.body.message).toBe(NO_OWNER_ON_OWNER);
+			expect(response.body.message).toBe(CANNOT_CHANGE_OWN_ROLE);
 		});
 
 		test('should fail to promote member to admin if not licensed', async () => {
@@ -1742,9 +1745,10 @@ describe('PATCH /users/:id/role', () => {
 			savedConfig = { ...provisioningService.provisioningConfig };
 		});
 
-		afterEach(() => {
+		afterEach(async () => {
 			// @ts-expect-error - provisioningConfig is private
 			provisioningService.provisioningConfig = { ...savedConfig };
+			await Container.get(RoleMappingRuleRepository).delete({});
 		});
 
 		test('should return 403 when SSO provider controls instance roles', async () => {
@@ -1760,6 +1764,20 @@ describe('PATCH /users/:id/role', () => {
 		test('should return 403 when expression-based role mapping is active', async () => {
 			// @ts-expect-error - provisioningConfig is private
 			provisioningService.provisioningConfig.scopesUseExpressionMapping = true;
+
+			// Expression mapping only manages instance roles when instance-type rules exist.
+			const adminRole = await Container.get(RoleRepository).findOneOrFail({
+				where: { slug: 'global:admin' },
+			});
+			const ruleRepository = Container.get(RoleMappingRuleRepository);
+			await ruleRepository.save(
+				ruleRepository.create({
+					expression: '{{ true }}',
+					role: adminRole,
+					type: 'instance',
+					order: 0,
+				}),
+			);
 
 			await ownerAgent
 				.patch(`/users/${member.id}/role`)

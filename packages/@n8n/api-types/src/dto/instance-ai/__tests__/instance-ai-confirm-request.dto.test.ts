@@ -54,6 +54,15 @@ describe('InstanceAiConfirmRequestDto', () => {
 					credentials: { slackApi: 'cred-1', githubApi: 'cred-2' },
 				},
 			],
+			// InstanceAiCredentialSetup: handleSetupAutomatically
+			[
+				'credentialAutoSetup with credential type',
+				{ kind: 'credentialAutoSetup', credentialType: 'firecrawlApi' },
+			],
+			[
+				'credentialAutoSetup with attempt id',
+				{ kind: 'credentialAutoSetup', credentialType: 'firecrawlApi', attemptId: 'attempt-1' },
+			],
 			// DomainAccessApproval: handleAction (primary path — with action)
 			[
 				'domainAccessApprove with allow_domain',
@@ -139,6 +148,20 @@ describe('InstanceAiConfirmRequestDto', () => {
 
 		test('credentialSelection without credentials map', () => {
 			const result = InstanceAiConfirmRequestDto.safeParse({ kind: 'credentialSelection' });
+			expect(result.success).toBe(false);
+		});
+
+		test('credentialAutoSetup without credentialType', () => {
+			const result = InstanceAiConfirmRequestDto.safeParse({ kind: 'credentialAutoSetup' });
+			expect(result.success).toBe(false);
+		});
+
+		test('credentialAutoSetup with empty attemptId', () => {
+			const result = InstanceAiConfirmRequestDto.safeParse({
+				kind: 'credentialAutoSetup',
+				credentialType: 'slackApi',
+				attemptId: '  ',
+			});
 			expect(result.success).toBe(false);
 		});
 

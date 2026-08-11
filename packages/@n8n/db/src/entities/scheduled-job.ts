@@ -1,21 +1,11 @@
+import { ScheduledJobMisfirePolicy } from '@n8n/constants';
+import type { ScheduledJobKind, RecurringCronUnit } from '@n8n/constants';
 import { Column, Entity, Index, PrimaryGeneratedColumn } from '@n8n/typeorm';
 
 import { DateTimeColumn, JsonColumn, WithTimestamps } from './abstract-entity';
 
-/**
- * Recurrence kind.
- * It selects which schedule columns apply.
- */
-export const ScheduledJobKind = {
-	Cron: 'cron',
-	Interval: 'interval',
-	OneOff: 'one_off',
-} as const;
-
-export type ScheduledJobKind = (typeof ScheduledJobKind)[keyof typeof ScheduledJobKind];
-
-/** All recurrence kinds as a runtime list. */
-export const ScheduledJobKindList = Object.values(ScheduledJobKind);
+export { ScheduledJobKind, ScheduledJobKindList } from '@n8n/constants';
+export { ScheduledJobMisfirePolicy } from '@n8n/constants';
 
 /**
  * A scheduled job: the rule for when something should run,
@@ -72,7 +62,7 @@ export class ScheduledJob extends WithTimestamps {
 	/**
 	 * What kind of work this job runs.
 	 * The scheduler is generic, so this is how it knows what to do when the job
-	 * fires, e.g. `'scheduleTrigger'` for a workflow's schedule trigger.
+	 * fires, e.g. `'workflow:schedule-trigger'` for a workflow's schedule trigger.
 	 * Paired with {@link payload}, which carries the handler's input.
 	 */
 	@Column({ type: 'varchar', length: 128 })
@@ -89,7 +79,7 @@ export class ScheduledJob extends WithTimestamps {
 
 	/**
 	 * Cron expression driving recurrence.
-	 * Set only when {@link kind} is `cron`.
+	 * Set when {@link kind} is `cron` or `recurring_cron`.
 	 */
 	@Column({ type: 'varchar', length: 255, nullable: true })
 	cronExpression: string | null;
@@ -115,21 +105,36 @@ export class ScheduledJob extends WithTimestamps {
 	@DateTimeColumn({ nullable: true })
 	fireAt: Date | null;
 
+	/**
+	 * Calendar period the every-Nth-period recurrence gate counts in.
+	 * Set only when {@link kind} is `recurring_cron`.
+	 */
+	@Column({ type: 'varchar', length: 16, nullable: true })
+	recurrenceUnit: RecurringCronUnit | null;
+
+	/**
+	 * How many periods between fires, e.g. 3 for "every 3 weeks".
+	 * At least 2: a stride of 1 keeps every fire, which is just a plain `cron`.
+	 * Set only when {@link kind} is `recurring_cron`.
+	 */
+	@Column({ type: 'int', nullable: true })
+	recurrenceSize: number | null;
+
 	@Column({ default: true })
 	enabled: boolean;
 
 	/**
 	 * Next time an occurrence is due to be materialized.
-	 * The scheduler's sweep reads this to find work.
+	 * The scheduler's materializer reads this to find work.
 	 * It's set to `null` once the job is disabled or a one-off has fired,
-	 * which drops the row out of the sweep index.
+	 * which drops the row out of the materializer's index.
 	 */
 	@DateTimeColumn({ nullable: true })
 	nextRunAt: Date | null;
 
 	/**
-	 * Last time an occurrence was materialized,
-	 * used to recompute {@link nextRunAt}.
+	 * The latest instant the job's clock has advanced past. Not proof a run
+	 * happened: a discarded occurrence still advances it.
 	 */
 	@DateTimeColumn({ nullable: true })
 	lastFiredAt: Date | null;
@@ -139,4 +144,22 @@ export class ScheduledJob extends WithTimestamps {
 	 */
 	@Column({ type: 'int', default: 1 })
 	maxAttempts: number;
+
+	/** What happens to an occurrence overdue by more than {@link misfireGraceSeconds}. */
+	@Column({ type: 'varchar', length: 16, default: ScheduledJobMisfirePolicy.Coalesce })
+	misfirePolicy: ScheduledJobMisfirePolicy;
+
+	/**
+	 * How late an occurrence may still be and count as on time, so that an ordinary
+	 * restart or a slow pass never reaches {@link misfirePolicy}.
+	 *
+	 * Copied from {@link SchedulerConfig.misfireGraceSeconds} onto each row rather than
+	 * read live, so every instance agrees on one job's deadline through a rolling
+	 * config change.
+	 *
+	 * Pinned to a literal, not the shared constant, so a later change to the
+	 * constant can't retroactively change what this entity declares.
+	 */
+	@Column({ type: 'int', default: 60 })
+	misfireGraceSeconds: number;
 }

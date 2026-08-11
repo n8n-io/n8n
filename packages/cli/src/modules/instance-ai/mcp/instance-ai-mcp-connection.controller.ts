@@ -1,4 +1,7 @@
-import type { InstanceAiMcpConnectionResponse } from '@n8n/api-types';
+import type {
+	InstanceAiMcpConnectionResponse,
+	InstanceAiMcpConnectionToolResponse,
+} from '@n8n/api-types';
 import {
 	InstanceAiMcpCreateConnectionRequestDto,
 	InstanceAiMcpUpdateConnectionRequestDto,
@@ -93,6 +96,16 @@ export class InstanceAiMcpConnectionController {
 		);
 	}
 
+	@Get('/:id/tools')
+	@GlobalScope('instanceAi:message')
+	async listTools(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('id') id: string,
+	): Promise<InstanceAiMcpConnectionToolResponse[]> {
+		return await this.service.listConnectionTools(req.user, id);
+	}
+
 	@Patch('/:id')
 	@GlobalScope('instanceAi:message')
 	async update(
@@ -140,6 +153,7 @@ function toResponse(
 		credentialId: connection.credentialId,
 		credentialName,
 		credentialType,
+		toolFilter: connection.toolFilter,
 		createdAt: connection.createdAt.toISOString(),
 		updatedAt: connection.updatedAt.toISOString(),
 	};

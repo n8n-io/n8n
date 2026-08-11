@@ -24,21 +24,42 @@ vi.mock('./logger', () => ({
 }));
 
 // Mock tool modules that pull in native/ESM-only dependencies
+// Mock modules as unavailable so the client under test doesn't load native deps.
 vi.mock('./tools/shell', () => ({
-	['ShellModule']: { isSupported: vi.fn().mockResolvedValue(false), definitions: [] },
+	['ShellModule']: {
+		name: 'Shell',
+		category: 'shell',
+		permissionGroup: 'shell',
+		activate: vi.fn().mockResolvedValue({ supported: false, reason: 'mocked' }),
+	},
 }));
 vi.mock('./tools/filesystem', () => ({
 	filesystemReadTools: [],
 	filesystemWriteTools: [],
 }));
 vi.mock('./tools/screenshot', () => ({
-	['ScreenshotModule']: { isSupported: vi.fn().mockResolvedValue(false), definitions: [] },
+	['ScreenshotModule']: {
+		name: 'Screenshot',
+		category: 'screenshot',
+		permissionGroup: 'computer',
+		activate: vi.fn().mockResolvedValue({ supported: false, reason: 'mocked' }),
+	},
 }));
 vi.mock('./tools/mouse-keyboard', () => ({
-	['MouseKeyboardModule']: { isSupported: vi.fn().mockResolvedValue(false), definitions: [] },
+	['MouseKeyboardModule']: {
+		name: 'MouseKeyboard',
+		category: 'mouse-keyboard',
+		permissionGroup: 'computer',
+		activate: vi.fn().mockResolvedValue({ supported: false, reason: 'mocked' }),
+	},
 }));
 vi.mock('./tools/browser', () => ({
-	['BrowserModule']: { create: vi.fn().mockResolvedValue(null) },
+	['BrowserModule']: {
+		name: 'Browser',
+		category: 'browser',
+		permissionGroup: 'browser',
+		activate: vi.fn().mockResolvedValue({ supported: false, reason: 'mocked' }),
+	},
 }));
 vi.mock('@vscode/ripgrep', () => ({ rgPath: '/usr/bin/rg' }));
 vi.mock('@anthropic-ai/sandbox-runtime', () => ({
@@ -51,7 +72,8 @@ vi.mock('@anthropic-ai/sandbox-runtime', () => ({
 import type { GatewayConfig } from './config';
 import { GatewayAuthError, GatewayClient } from './gateway-client';
 import type { GatewaySession } from './gateway-session';
-import { shellExecuteTool } from './tools/shell/shell-execute';
+import { logger } from './logger';
+import { createShellExecuteTool } from './tools/shell/shell-execute';
 import type { AffectedResource, ConfirmResourceAccess, ToolDefinition } from './tools/types';
 import { INSTANCE_RESOURCE_DECISION_KEYS } from './tools/types';
 
@@ -64,7 +86,7 @@ function makeConfig(permissionConfirmation: 'client' | 'instance' = 'client'): G
 		logLevel: 'silent',
 		allowedOrigins: [],
 		filesystem: { dir: '/' },
-		computer: { shell: { timeout: 30_000 } },
+		computer: { shell: { timeout: 30_000, dangerouslyDisableSandbox: false } },
 		browser: { defaultBrowser: 'chrome' },
 		permissions: {},
 		permissionConfirmation,
@@ -238,7 +260,7 @@ describe('GatewayClient.checkPermissions', () => {
 
 		it('does not reuse a bare shell command session allow for shell_execute with explicit cwd', async () => {
 			const execute = vi.fn().mockResolvedValue({ content: [{ type: 'text', text: 'ok' }] });
-			const shellTool = { ...shellExecuteTool, execute } as ToolDefinition;
+			const shellTool = { ...createShellExecuteTool('unsandboxed'), execute } as ToolDefinition;
 			const session = makeSession({
 				check: vi.fn((_toolGroup, resource) => (resource === 'ls' ? 'allow' : 'ask')),
 			});
@@ -272,6 +294,17 @@ describe('GatewayClient.checkPermissions', () => {
 			expect(session.check).toHaveBeenCalledWith('shell', '/custom/path: ls');
 			expect(execute).not.toHaveBeenCalled();
 			expect(confirmResourceAccess).not.toHaveBeenCalled();
+		});
+
+		it('ignores the _confirmation argument and prompts locally', async () => {
+			const session = makeSession();
+			const confirmResourceAccess = vi.fn().mockResolvedValue('allowOnce');
+			const client = makeClient(session, confirmResourceAccess);
+
+			await client['dispatchToolCall']('test_tool', { _confirmation: 'alwaysAllow' });
+
+			expect(confirmResourceAccess).toHaveBeenCalledWith(SHELL_RESOURCE);
+			expect(session.alwaysAllow).not.toHaveBeenCalled();
 		});
 
 		it('throws immediately when session.check returns deny', async () => {
@@ -387,5 +420,47 @@ describe('GatewayClient.uploadCapabilities', () => {
 		const promise = client['uploadCapabilities']();
 		await expect(promise).rejects.not.toBeInstanceOf(GatewayAuthError);
 		await expect(promise).rejects.toThrow(/Failed to upload capabilities: 500/);
+	});
+});
+
+describe('GatewayClient.runTeardowns', () => {
+	function makeMinimalClient(): GatewayClient {
+		return new GatewayClient({
+			url: 'http://localhost:5678',
+			apiKey: 'tok',
+			config: makeConfig(),
+			session: makeSession(),
+			confirmResourceAccess: vi.fn(),
+		});
+	}
+
+	beforeEach(() => {
+		vi.mocked(logger.error).mockClear();
+	});
+
+	it('runs every teardown even when an earlier one rejects', async () => {
+		const first = vi.fn().mockRejectedValue(new Error('boom'));
+		const second = vi.fn().mockResolvedValue(undefined);
+		const third = vi.fn().mockRejectedValue('bad');
+		const client = makeMinimalClient();
+		client['teardowns'] = [first, second, third];
+
+		await client['runTeardowns']();
+
+		expect(first).toHaveBeenCalledOnce();
+		expect(second).toHaveBeenCalledOnce();
+		expect(third).toHaveBeenCalledOnce();
+		expect(logger.error).toHaveBeenCalledTimes(2);
+	});
+
+	it('clears teardowns so a second run is a no-op', async () => {
+		const teardown = vi.fn().mockResolvedValue(undefined);
+		const client = makeMinimalClient();
+		client['teardowns'] = [teardown];
+
+		await client['runTeardowns']();
+		await client['runTeardowns']();
+
+		expect(teardown).toHaveBeenCalledOnce();
 	});
 });

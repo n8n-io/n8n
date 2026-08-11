@@ -5,12 +5,13 @@ import { VIEWS } from '@/app/constants';
 import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
 import { RESOURCE_CENTER_EXPERIMENT } from '@/app/constants/experiments';
 import { setupServer } from '@/__tests__/server';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { usePostHog } from '@/app/stores/posthog.store';
-import { useRBACStore } from '@/app/stores/rbac.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useRBACStore } from '@n8n/stores/rbac.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import type { Scope } from '@n8n/permissions';
 import type { RouteRecordName } from 'vue-router';
+import type { MockInstance } from 'vitest';
 import * as init from '@/app/init';
 
 const App = {
@@ -22,7 +23,8 @@ let settingsStore: ReturnType<typeof useSettingsStore>;
 
 describe('router', () => {
 	let server: ReturnType<typeof setupServer>;
-	const initializeAuthenticatedFeaturesSpy = vi.spyOn(init, 'initializeAuthenticatedFeatures');
+	// `restoreMocks` restores this spy before each test, so it is re-created in beforeEach.
+	let initializeAuthenticatedFeaturesSpy: MockInstance;
 
 	beforeAll(async () => {
 		server = setupServer();
@@ -33,13 +35,23 @@ describe('router', () => {
 		renderComponent({ pinia });
 	});
 
-	beforeEach(() => {
+	beforeEach(async () => {
 		settingsStore = useSettingsStore();
+		settingsStore.settings.aiGateway = undefined;
 		const usersStore = useUsersStore();
-		initializeAuthenticatedFeaturesSpy.mockImplementation(async () => {
-			await usersStore.initialize();
-		});
-	});
+		initializeAuthenticatedFeaturesSpy = vi
+			.spyOn(init, 'initializeAuthenticatedFeatures')
+			.mockImplementation(async () => {
+				await usersStore.initialize();
+			});
+		// Reset to a neutral route (an id no test targets) so each test's push is a
+		// real navigation that triggers the guard. `restoreMocks` clears call history
+		// per test, so a duplicate navigation (e.g. the '/' → '/workflows' redirect
+		// leaving us at '/workflows') would otherwise record zero calls and fail the
+		// toHaveBeenCalled assertion.
+		await router.replace('/workflow/router-test-reset');
+		initializeAuthenticatedFeaturesSpy.mockClear();
+	}, 20000);
 
 	afterAll(() => {
 		server.shutdown();
@@ -190,6 +202,14 @@ describe('router', () => {
 		expect(router.currentRoute.value.name).toBe(name);
 	});
 
+	test('should block n8n Connect settings for Cloud UBB', async () => {
+		settingsStore.settings.aiGateway = { enabled: true, budget: 0, cloudUbbEnabled: true };
+
+		await router.push('/settings/n8n-connect');
+
+		expect(router.currentRoute.value.name).toBe(VIEWS.WORKFLOWS);
+	});
+
 	describe('resource center route guard', () => {
 		beforeEach(async () => {
 			// Reset to a neutral route so each test's push('/resource-center')
@@ -253,6 +273,7 @@ describe('router', () => {
 		// Drive the `/` route's beforeEnter directly with a captured `next` instead.
 		const instanceAiModuleSettings = {
 			enabled: true,
+			setupCompleted: true,
 			localGatewayDisabled: false,
 			browserUseEnabled: true,
 			proxyEnabled: false,
@@ -328,23 +349,18 @@ describe('router', () => {
 			await router.push('/workflows');
 		});
 
-		test('resolves /settings/project-roles to project roles when custom instance roles disabled', async () => {
-			settingsStore.settings.envFeatureFlags = {} as typeof settingsStore.settings.envFeatureFlags;
-
-			await router.push('/settings/project-roles');
-
-			expect(router.currentRoute.value.name).toBe(VIEWS.PROJECT_ROLES_SETTINGS);
-		});
-
-		test('redirects /settings/project-roles to the Roles shell (project tab) when enabled', async () => {
-			settingsStore.settings.envFeatureFlags = {
-				N8N_ENV_FEAT_CUSTOM_INSTANCE_ROLES: true,
-			} as typeof settingsStore.settings.envFeatureFlags;
-
+		test('redirects /settings/project-roles to the Roles shell (project tab)', async () => {
 			await router.push('/settings/project-roles');
 
 			expect(router.currentRoute.value.name).toBe(VIEWS.ROLES_SETTINGS);
 			expect(router.currentRoute.value.query.tab).toBe('project');
+		});
+
+		test('redirects /settings/instance-roles to the Roles shell (instance tab)', async () => {
+			await router.push('/settings/instance-roles');
+
+			expect(router.currentRoute.value.name).toBe(VIEWS.ROLES_SETTINGS);
+			expect(router.currentRoute.value.query.tab).toBe('instance');
 		});
 	});
 

@@ -1,3 +1,5 @@
+import { Container } from '@n8n/di';
+import { buildHitlCallbackReference, InstanceSettings } from 'n8n-core';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -266,7 +268,7 @@ export function getSecretToken(this: IHookFunctions | IWebhookFunctions) {
 	return secret_token.replace(/[^a-zA-Z0-9\_\-]+/g, '');
 }
 
-export function createSendAndWaitMessageBody(context: IExecuteFunctions) {
+export function createSendAndWaitMessageBody(context: IExecuteFunctions, chatApproval = false) {
 	const chat_id = context.getNodeParameter('chatId', 0) as string;
 
 	const config = getSendAndWaitConfig(context);
@@ -288,6 +290,18 @@ export function createSendAndWaitMessageBody(context: IExecuteFunctions) {
 		reply_markup: {
 			inline_keyboard: [
 				config.options.map((option) => {
+					if (chatApproval) {
+						const executionId = context.getExecutionId();
+						const hmacSecret = Container.get(InstanceSettings).hmacSignatureSecret;
+						return {
+							text: option.label,
+							callback_data: buildHitlCallbackReference(
+								executionId,
+								option.approved ? 'a' : 'd',
+								hmacSecret,
+							),
+						};
+					}
 					return {
 						text: option.label,
 						url: option.url,

@@ -14,7 +14,9 @@ import {
 	recurrenceCheck,
 	resetStaleRecurrence,
 	toCronExpression,
+	toCronSource,
 	validateInterval,
+	withIntervalDefaults,
 } from './GenericFunctions';
 import type { IRecurrenceRule, Rule } from './SchedulerInterface';
 
@@ -419,18 +421,32 @@ export class ScheduleTrigger implements INodeType {
 										field: ['cronExpression'],
 									},
 								},
-								hint: 'Format: [Second] [Minute] [Hour] [Day of Month] [Month] [Day of Week]',
+								hint: 'Format: ([Second]) [Minute] [Hour] [Day of Month] [Month] [Day of Week]',
 							},
 						],
 					},
 				],
+			},
+			{
+				// Temporary escape hatch for the durable-scheduler rollout (preview to
+				// GA): keeps this trigger on the legacy in-memory scheduler while testing.
+				// Hidden unless N8N_ENV_FEAT_SKIP_DURABLE_SCHEDULER is enabled. Remove at GA.
+				displayName: 'Skip Durable Scheduler',
+				name: 'skipDurableScheduler',
+				type: 'boolean',
+				default: false,
+				isNodeSetting: true,
+				envFeatureFlag: 'SKIP_DURABLE_SCHEDULER',
+				description:
+					'Whether to run this trigger through the legacy in-memory scheduler instead of the durable scheduler',
 			},
 		],
 	};
 
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
 		const version = this.getNode().typeVersion;
-		const { interval: intervals } = this.getNodeParameter('rule', []) as Rule;
+		const { interval = [{}] } = this.getNodeParameter('rule', {}) as Partial<Rule>;
+		const intervals = interval.map(withIntervalDefaults);
 		const timezone = this.getTimezone();
 		const staticData = this.getWorkflowStaticData('node') as {
 			recurrenceRules: Array<number | undefined>;
@@ -508,6 +524,7 @@ export class ScheduleTrigger implements INodeType {
 					const cron: Cron = {
 						expression: cronExpression,
 						recurrence,
+						source: toCronSource(interval),
 					};
 					this.helpers.registerCron(cron, (scheduledTime: Date) =>
 						executeTrigger(recurrence, /* skipRecurrenceCheck= */ false, scheduledTime),

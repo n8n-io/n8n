@@ -1,0 +1,10 @@
+type: object
+additionalProperties: false
+required:
+  - data
+properties:
+  data:
+    type: array
+    description: The configured log streaming destinations.
+    items:
+      $ref: './destination.yml'

@@ -1,14 +1,18 @@
 import { Logger } from '@n8n/backend-common';
+import { EndpointsConfig } from '@n8n/config';
 import type { IExecutionResponse } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { timingSafeEqual } from 'crypto';
 import type express from 'express';
 import { InstanceSettings, WAITING_TOKEN_QUERY_PARAM, validateUrlSignature } from 'n8n-core';
 import {
+	FORM_NODE_TYPE,
+	type INode,
 	type INodes,
 	type IWorkflowBase,
 	NodeConnectionTypes,
 	SEND_AND_WAIT_OPERATION,
+	WAIT_NODE_TYPE,
 	Workflow,
 } from 'n8n-workflow';
 
@@ -48,6 +52,7 @@ export class WaitingWebhooks implements IWebhookManager {
 		private readonly webhookService: WebhookService,
 		protected readonly instanceSettings: InstanceSettings,
 		private readonly eventService: EventService,
+		private readonly endpointsConfig: EndpointsConfig,
 	) {}
 
 	// TODO: implement `getWebhookMethods` for CORS support
@@ -76,6 +81,60 @@ export class WaitingWebhooks implements IWebhookManager {
 					nodes[node].id === suffix && nodes[node].parameters.operation === SEND_AND_WAIT_OPERATION,
 			)
 		);
+	}
+
+	/**
+	 * Whether a node continues execution on form submission, and is therefore
+	 * served by the `form-waiting` endpoint rather than `webhook-waiting`.
+	 */
+	protected isFormResumeNode(node: Pick<INode, 'type' | 'parameters'>): boolean {
+		return (
+			node.type === FORM_NODE_TYPE ||
+			(node.type === WAIT_NODE_TYPE && node.parameters.resume === 'form')
+		);
+	}
+
+	/**
+	 * A resume node that continues on form submission is served by the
+	 * `form-waiting` endpoint, not `webhook-waiting`. Users frequently reach for
+	 * `$execution.resumeUrl` (webhook-waiting) instead of `$execution.resumeFormUrl`,
+	 * which resolves to the wrong endpoint for these nodes.
+	 */
+	private isFormResumeExecution(execution: IExecutionResponse): boolean {
+		const lastNodeExecuted = execution.data.resultData?.lastNodeExecuted;
+		if (!lastNodeExecuted) {
+			return false;
+		}
+
+		const node = execution.workflowData?.nodes?.find((n) => n.name === lastNodeExecuted);
+		if (!node) {
+			return false;
+		}
+
+		return this.isFormResumeNode(node);
+	}
+
+	/**
+	 * Redirects a form-resume request that landed on `webhook-waiting` to the
+	 * equivalent `form-waiting` URL (preserving suffix and query params), so the
+	 * form renders and submits against the endpoint that actually serves it.
+	 * Uses 307 to preserve the request method for direct submissions.
+	 *
+	 * Returns `false` without redirecting when the rewritten URL is unchanged,
+	 * which happens if the two endpoints are configured identically (e.g. a
+	 * custom `N8N_ENDPOINT_WEBHOOK_WAIT` equal to the form-waiting endpoint).
+	 * Redirecting in that case would loop back to this same handler forever.
+	 */
+	private redirectToFormWaiting(req: WaitingWebhookRequest, res: express.Response): boolean {
+		const location = req.originalUrl.replace(
+			`/${this.endpointsConfig.webhookWaiting}/`,
+			`/${this.endpointsConfig.formWaiting}/`,
+		);
+		if (location === req.originalUrl) {
+			return false;
+		}
+		res.redirect(307, location);
+		return true;
 	}
 
 	// TODO: fix the type here - it should be execution workflowData
@@ -218,6 +277,14 @@ export class WaitingWebhooks implements IWebhookManager {
 			throw new NotFoundError(`The execution "${executionId}" does not exist.`);
 		}
 
+		if (
+			!this.includeForms &&
+			this.isFormResumeExecution(execution) &&
+			this.redirectToFormWaiting(req, res)
+		) {
+			return { noWebhookResponse: true };
+		}
+
 		if (execution.status === 'running') {
 			throw new ConflictError(`The execution "${executionId}" is running already.`);
 		}
@@ -342,7 +409,7 @@ export class WaitingWebhooks implements IWebhookManager {
 			}
 
 			return await new Promise((resolve, reject) => {
-				void WebhookHelpers.executeWebhook(
+				WebhookHelpers.executeWebhook(
 					workflow,
 					webhookData,
 					workflowData,
@@ -360,7 +427,7 @@ export class WaitingWebhooks implements IWebhookManager {
 						}
 						resolve(data);
 					},
-				);
+				).catch(reject); // ensure the Promise settles even if executeWebhook throws
 			});
 		} finally {
 			await workflow.expression.releaseIsolate();

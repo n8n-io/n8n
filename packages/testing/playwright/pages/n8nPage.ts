@@ -22,6 +22,7 @@ import { CredentialsPage } from './CredentialsPage';
 import { DataTableDetails } from './DataTableDetails';
 import { DataTableView } from './DataTableView';
 import { DemoPage } from './DemoPage';
+import { EvaluationComparePage } from './EvaluationComparePage';
 import { ExecutionsPage } from './ExecutionsPage';
 import { InstanceAiPage } from './InstanceAiPage';
 import { KeycloakLoginPage } from './KeycloakLoginPage';
@@ -102,6 +103,7 @@ export class n8nPage {
 	readonly workflows: WorkflowsPage;
 	readonly notifications: NotificationsPage;
 	readonly credentials: CredentialsPage;
+	readonly evaluationCompare: EvaluationComparePage;
 	readonly executions: ExecutionsPage;
 	readonly sideBar: SidebarPage;
 	readonly dataTable: DataTableView;
@@ -185,6 +187,7 @@ export class n8nPage {
 		this.workflows = new WorkflowsPage(page);
 		this.notifications = new NotificationsPage(page);
 		this.credentials = new CredentialsPage(page);
+		this.evaluationCompare = new EvaluationComparePage(page);
 		this.executions = new ExecutionsPage(page);
 		this.sideBar = new SidebarPage(page);
 		this.signIn = new SignInPage(page);
@@ -236,7 +239,19 @@ export class n8nPage {
 		this.clipboard = new ClipboardHelper(page);
 	}
 
+	/**
+	 * Navigate to the workflow overview. Goes there directly rather than via `/`,
+	 * because the root route lands users on the AI Assistant when the `instance-ai`
+	 * module is active. Use {@link goToRoot} to exercise that root routing itself.
+	 */
 	async goHome() {
+		await this.page.goto('/home/workflows');
+	}
+
+	/**
+	 * Navigate to the app root and let it decide where the user lands.
+	 */
+	async goToRoot() {
 		await this.page.goto('/');
 	}
 }

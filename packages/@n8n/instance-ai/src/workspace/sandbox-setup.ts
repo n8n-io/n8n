@@ -36,8 +36,8 @@ import type { Logger } from '../logger';
 import type { InstanceAiContext, SearchableNodeDescription } from '../types';
 import {
 	isLinkWorkspaceSdkEnabled,
-	packWorkspaceSdk,
-	type WorkspaceSdkTarball,
+	packSandboxLinkedWorkspacePackages,
+	type WorkspacePackageTarball,
 } from './pack-workspace-sdk';
 import {
 	runInSandbox,
@@ -173,7 +173,7 @@ export const PACKAGE_JSON = buildPackageJson(
 	isLinkWorkspaceSdkEnabled() ? null : SANDBOX_SDK_VERSION,
 );
 
-let sdkTarballPromise: Promise<WorkspaceSdkTarball | null> | null = null;
+let linkedPackagesPromise: Promise<WorkspacePackageTarball[] | null> | null = null;
 
 export async function linkWorkspaceSdkIfEnabled(
 	workspace: SandboxWorkspace,
@@ -182,41 +182,51 @@ export async function linkWorkspaceSdkIfEnabled(
 ): Promise<void> {
 	if (!isLinkWorkspaceSdkEnabled()) return;
 
-	sdkTarballPromise ??= packWorkspaceSdk(logger).catch((error: unknown) => {
-		sdkTarballPromise = null;
+	linkedPackagesPromise ??= packSandboxLinkedWorkspacePackages(logger).catch((error: unknown) => {
+		linkedPackagesPromise = null;
 		throw error;
 	});
-	const packed = await sdkTarballPromise;
-	if (!packed) {
-		sdkTarballPromise = null;
+	const packedPackages = await linkedPackagesPromise;
+	if (!packedPackages?.length) {
+		linkedPackagesPromise = null;
 		throw new Error(
-			'N8N_INSTANCE_AI_SANDBOX_LINK_SDK is enabled, but the workspace SDK could not be packed. Run `pnpm build` in packages/@n8n/workflow-sdk or unset N8N_INSTANCE_AI_SANDBOX_LINK_SDK.',
+			'N8N_INSTANCE_AI_SANDBOX_LINK_SDK is enabled, but workspace packages could not be packed. Run `pnpm build` in packages/workflow and packages/@n8n/workflow-sdk, or unset N8N_INSTANCE_AI_SANDBOX_LINK_SDK.',
 		);
 	}
 
-	const remotePath = joinWorkspacePath(root, packed.filename);
-	if (workspace.filesystem) {
-		await writeWorkspaceFile(workspace, workspace.filesystem, remotePath, packed.tarball);
-	} else {
-		await writeFileViaSandbox(workspace, remotePath, packed.tarball);
+	const remotePaths: string[] = [];
+	for (const packed of packedPackages) {
+		const remotePath = joinWorkspacePath(root, packed.filename);
+		remotePaths.push(remotePath);
+		if (workspace.filesystem) {
+			await writeWorkspaceFile(workspace, workspace.filesystem, remotePath, packed.tarball);
+		} else {
+			await writeFileViaSandbox(workspace, remotePath, packed.tarball);
+		}
 	}
 
+	const tarballArgs = remotePaths
+		.map((remotePath) => `'${escapeSingleQuotes(remotePath)}'`)
+		.join(' ');
 	const install = await runInSandbox(
 		workspace,
-		`npm install '${escapeSingleQuotes(remotePath)}' --no-save --ignore-scripts --force`,
+		`npm install ${tarballArgs} --no-save --ignore-scripts --force`,
 		root,
 	);
 	if (install.exitCode !== 0) {
-		logger.error('Failed to link workspace SDK into sandbox', {
+		logger.error('Failed to link workspace packages into sandbox', {
 			exitCode: install.exitCode,
 			stderr: install.stderr,
 		});
-		throw new Error(`Failed to install workspace SDK tarball: ${install.stderr}`);
+		throw new Error(`Failed to install workspace package tarballs: ${install.stderr}`);
 	}
 
-	logger.info('Linked workspace SDK into sandbox', {
-		version: packed.version,
-		sdkPath: packed.sdkPath,
+	logger.info('Linked workspace packages into sandbox', {
+		packages: packedPackages.map((packed) => ({
+			name: packed.packageName,
+			version: packed.version,
+			path: packed.packagePath,
+		})),
 	});
 }
 

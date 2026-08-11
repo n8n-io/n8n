@@ -319,6 +319,7 @@ describe('LmChatAnthropic', () => {
 
 			expect(MockedN8nLlmTracing).toHaveBeenCalledWith(mockContext, {
 				tokensUsageParser: expect.any(Function),
+				redactedHeaders: [],
 			});
 		});
 
@@ -333,7 +334,12 @@ describe('LmChatAnthropic', () => {
 
 			await lmChatAnthropic.supplyData.call(mockContext, 0);
 
-			expect(mockedMakeN8nLlmFailedAttemptHandler).toHaveBeenCalledWith(mockContext, undefined);
+			// A handler is always passed, even without a gateway, since it also sanitizes the
+			// sampling-parameter deprecation error.
+			expect(mockedMakeN8nLlmFailedAttemptHandler).toHaveBeenCalledWith(
+				mockContext,
+				expect.any(Function),
+			);
 		});
 
 		it('should not add custom headers when header toggle is disabled', async () => {
@@ -414,19 +420,30 @@ describe('LmChatAnthropic', () => {
 		describe('searchModels', () => {
 			let mockLoadContext: ILoadOptionsFunctions;
 			let mockGetCredentials: Mock;
-			let mockHttpRequest: Mock;
+			let fetchSpy: Mock;
 
 			beforeEach(() => {
 				mockGetCredentials = vi.fn();
-				mockHttpRequest = vi.fn();
+				fetchSpy = vi.fn();
+				vi.stubGlobal('fetch', fetchSpy);
 
 				mockLoadContext = {
 					getCredentials: mockGetCredentials,
-					helpers: {
-						httpRequestWithAuthentication: mockHttpRequest,
-					},
 				} as unknown as ILoadOptionsFunctions;
 			});
+
+			afterEach(() => {
+				vi.unstubAllGlobals();
+			});
+
+			function mockModelsResponse(models: unknown[]) {
+				fetchSpy.mockResolvedValue({
+					ok: true,
+					status: 200,
+					json: async () => ({ data: models }),
+					text: async () => '',
+				});
+			}
 
 			it('should return all models sorted by creation date', async () => {
 				const mockModels = [
@@ -450,20 +467,21 @@ describe('LmChatAnthropic', () => {
 					},
 				];
 
-				mockGetCredentials.mockResolvedValue({});
-				mockHttpRequest.mockResolvedValue({
-					data: mockModels,
-				});
+				mockGetCredentials.mockResolvedValue({ apiKey: 'test-api-key' });
+				mockModelsResponse(mockModels);
 
 				const { searchModels } = lmChatAnthropic.methods.listSearch;
 				const result = await searchModels.call(mockLoadContext);
 
-				expect(mockHttpRequest).toHaveBeenCalledWith('anthropicApi', {
-					url: 'https://api.anthropic.com/v1/models',
-					headers: {
-						'anthropic-version': '2023-06-01',
-					},
-				});
+				expect(fetchSpy).toHaveBeenCalledWith(
+					'https://api.anthropic.com/v1/models',
+					expect.objectContaining({
+						headers: expect.objectContaining({
+							'x-api-key': 'test-api-key',
+							'anthropic-version': '2023-06-01',
+						}),
+					}),
+				);
 
 				expect(result.results).toHaveLength(3);
 				// Verify sorted by creation date (newest first)
@@ -494,10 +512,8 @@ describe('LmChatAnthropic', () => {
 					},
 				];
 
-				mockGetCredentials.mockResolvedValue({});
-				mockHttpRequest.mockResolvedValue({
-					data: mockModels,
-				});
+				mockGetCredentials.mockResolvedValue({ apiKey: 'test-api-key' });
+				mockModelsResponse(mockModels);
 
 				const { searchModels } = lmChatAnthropic.methods.listSearch;
 				const result = await searchModels.call(mockLoadContext, 'opus');
@@ -517,10 +533,8 @@ describe('LmChatAnthropic', () => {
 					},
 				];
 
-				mockGetCredentials.mockResolvedValue({});
-				mockHttpRequest.mockResolvedValue({
-					data: mockModels,
-				});
+				mockGetCredentials.mockResolvedValue({ apiKey: 'test-api-key' });
+				mockModelsResponse(mockModels);
 
 				const { searchModels } = lmChatAnthropic.methods.listSearch;
 				const result = await searchModels.call(mockLoadContext, 'SONNET');
@@ -533,28 +547,20 @@ describe('LmChatAnthropic', () => {
 				const customURL = 'https://custom-anthropic.example.com';
 
 				mockGetCredentials.mockResolvedValue({
+					apiKey: 'test-api-key',
 					url: customURL,
 				});
-				mockHttpRequest.mockResolvedValue({
-					data: [],
-				});
+				mockModelsResponse([]);
 
 				const { searchModels } = lmChatAnthropic.methods.listSearch;
 				await searchModels.call(mockLoadContext);
 
-				expect(mockHttpRequest).toHaveBeenCalledWith('anthropicApi', {
-					url: `${customURL}/v1/models`,
-					headers: {
-						'anthropic-version': '2023-06-01',
-					},
-				});
+				expect(fetchSpy).toHaveBeenCalledWith(`${customURL}/v1/models`, expect.anything());
 			});
 
 			it('should handle empty model list', async () => {
-				mockGetCredentials.mockResolvedValue({});
-				mockHttpRequest.mockResolvedValue({
-					data: [],
-				});
+				mockGetCredentials.mockResolvedValue({ apiKey: 'test-api-key' });
+				mockModelsResponse([]);
 
 				const { searchModels } = lmChatAnthropic.methods.listSearch;
 				const result = await searchModels.call(mockLoadContext);

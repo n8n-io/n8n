@@ -42,7 +42,6 @@ function createOrchestrationContext(): OrchestrationContext {
 		userId: 'user-1',
 		orchestratorAgentId: 'agent-1',
 		modelId: 'test-model',
-		subAgentMaxSteps: 1,
 		eventBus: {},
 		logger: domainContext.logger,
 		domainTools: createAllTools(domainContext),

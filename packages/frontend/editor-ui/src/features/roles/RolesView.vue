@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { VIEWS } from '@/app/constants';
 import { CUSTOM_ROLES_DOCS_URL } from '@/app/constants/urls';
-import { useRolesStore } from '@/app/stores/roles.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useRolesStore } from '@n8n/stores/roles.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import type { TabOptions } from '@n8n/design-system';
 import { N8nButton, N8nHeading, N8nLink, N8nTabs, N8nTag, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -12,6 +12,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import InstanceRolesView from './instance/InstanceRolesView.vue';
 import ProjectRolesView from './project/ProjectRolesView.vue';
+import { useRBACStore } from '@n8n/stores/rbac.store';
 
 type RolesTab = 'instance' | 'project';
 const DEFAULT_TAB: RolesTab = 'instance';
@@ -22,10 +23,13 @@ const i18n = useI18n();
 const rolesStore = useRolesStore();
 const settingsStore = useSettingsStore();
 const { showError } = useToast();
+const rbacStore = useRBACStore();
 
 function normalizeTab(value: unknown): RolesTab {
-	return value === 'project' ? 'project' : DEFAULT_TAB;
+	return value === 'project' || !rbacStore.hasScope('role:manage') ? 'project' : DEFAULT_TAB;
 }
+
+const canManageInstanceRoles = computed(() => rbacStore.hasScope('role:manage'));
 
 const activeTab = ref<RolesTab>(normalizeTab(route.query.tab));
 
@@ -35,8 +39,21 @@ function addRole() {
 	});
 }
 
+// Reflect the active tab in the button, mirroring the resource-scoped labels used
+// on the workflows and credentials lists.
+const addRoleLabel = computed(() =>
+	i18n.baseText(activeTab.value === 'project' ? 'roles.addRole.project' : 'roles.addRole.instance'),
+);
+
 const tabOptions = computed<Array<TabOptions<RolesTab>>>(() => [
-	{ label: i18n.baseText('roles.tab.instance'), value: 'instance' },
+	{
+		label: i18n.baseText('roles.tab.instance'),
+		value: 'instance',
+		disabled: !canManageInstanceRoles.value,
+		tooltip: canManageInstanceRoles.value
+			? undefined
+			: i18n.baseText('roles.tab.instance.disabledTooltip'),
+	},
 	{ label: i18n.baseText('roles.tab.project'), value: 'project' },
 ]);
 
@@ -89,12 +106,12 @@ onMounted(async () => {
 				icon="plus"
 				@click="addRole"
 			>
-				{{ i18n.baseText('roles.addRole') }}
+				{{ addRoleLabel }}
 			</N8nButton>
 		</div>
 
-		<InstanceRolesView v-if="activeTab === 'instance'" />
-		<ProjectRolesView v-else embedded />
+		<InstanceRolesView v-if="activeTab === 'instance' && canManageInstanceRoles" />
+		<ProjectRolesView v-else />
 	</div>
 </template>
 

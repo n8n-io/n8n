@@ -10,7 +10,7 @@ let findAgentNodeInTree: (
 
 beforeAll(async () => {
 	({ buildAgentTreeFromEvents, findAgentNodeInTree } = (await import(
-		'../../../../../@n8n/instance-ai/src/utils/agent-tree'
+		'../../../../../@n8n/instance-ai/src/utils/agent-tree.js'
 	)) as {
 		buildAgentTreeFromEvents: (events: InstanceAiEvent[]) => InstanceAiAgentNode;
 		findAgentNodeInTree: (
@@ -331,7 +331,7 @@ describe('buildAgentTreeFromEvents', () => {
 		expect(tree.status).toBe('error');
 	});
 
-	it('should apply correct renderHint for delegate tool', () => {
+	it('should apply default renderHint for removed delegate tool', () => {
 		const events: InstanceAiEvent[] = [
 			{
 				type: 'run-start',
@@ -361,7 +361,7 @@ describe('buildAgentTreeFromEvents', () => {
 
 		const tree = buildAgentTreeFromEvents(events);
 
-		expect(tree.toolCalls[0].renderHint).toBe('delegate');
+		expect(tree.toolCalls[0].renderHint).toBe('default');
 		expect(tree.toolCalls[1].renderHint).toBe('builder');
 	});
 

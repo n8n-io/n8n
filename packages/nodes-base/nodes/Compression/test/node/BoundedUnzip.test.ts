@@ -48,6 +48,73 @@ function createZipOfNestedArchivesWithDataDescriptors(memberNames: string[]): {
 	return { archive: Buffer.concat(chunks), innerArchive };
 }
 
+/**
+ * Builds a valid, small ZIP64 archive holding a single entry. The entry's true
+ * uncompressed size is stored in a ZIP64 extended-information extra field, while
+ * the central-directory uncompressed-size field carries the 0xFFFFFFFF ZIP64
+ * sentinel. A ZIP64 end-of-central-directory record and its locator are emitted
+ * too, flagging the whole archive as ZIP64 — without that flag a spec-conforming
+ * reader ignores the per-entry extra field. Several real-world writers always
+ * emit ZIP64-format archives, so this mirrors the archive reported in NODE-5325.
+ */
+function createZip64Archive(realSize: number, options?: { leadingExtraField?: boolean }): Buffer {
+	const base = Buffer.from(
+		fflate.zipSync({ 'file.txt': [new Uint8Array(realSize), { level: 6 }] }),
+	);
+
+	const cdOffset = base.indexOf(Buffer.from([0x50, 0x4b, 0x01, 0x02]));
+	const eocdOffset = base.indexOf(Buffer.from([0x50, 0x4b, 0x05, 0x06]));
+	if (cdOffset === -1 || eocdOffset === -1) throw new Error('Could not locate zip records');
+
+	// Optionally precede the ZIP64 block with an unrelated extra field, as real
+	// writers do (e.g. an NTFS timestamp block), so the reader must skip it.
+	// Header id 0x9999, data size 2: a 6-byte block so the ZIP64 block that
+	// follows is not 4-byte aligned, forcing the reader to honour the declared
+	// block length when skipping.
+	const leading = options?.leadingExtraField
+		? Buffer.from([0x99, 0x99, 0x02, 0x00, 0x00, 0x00])
+		: Buffer.alloc(0);
+
+	// ZIP64 extended-information extra field carrying the true uncompressed size.
+	const zip64Extra = Buffer.alloc(12);
+	zip64Extra.writeUInt16LE(0x0001, 0); // header id: ZIP64
+	zip64Extra.writeUInt16LE(8, 2); // data size
+	zip64Extra.writeBigUInt64LE(BigInt(realSize), 4);
+	const extra = Buffer.concat([leading, zip64Extra]);
+
+	const fnLen = base.readUInt16LE(cdOffset + 28);
+	const cdHeader = Buffer.from(base.subarray(cdOffset, cdOffset + 46 + fnLen));
+	cdHeader.writeUInt32LE(0xffffffff, 24); // uncompressed size -> ZIP64 sentinel
+	cdHeader.writeUInt16LE(base.readUInt16LE(cdOffset + 30) + extra.length, 30); // grow extra field len
+
+	const centralDir = Buffer.concat([cdHeader, extra]);
+	const cdSize = centralDir.length;
+
+	// ZIP64 end-of-central-directory record (56 bytes).
+	const zip64Eocd = Buffer.alloc(56);
+	zip64Eocd.writeUInt32LE(0x06064b50, 0); // signature
+	zip64Eocd.writeBigUInt64LE(44n, 4); // size of the record following this field
+	zip64Eocd.writeUInt16LE(45, 12); // version made by
+	zip64Eocd.writeUInt16LE(45, 14); // version needed to extract
+	zip64Eocd.writeBigUInt64LE(1n, 24); // entries on this disk
+	zip64Eocd.writeBigUInt64LE(1n, 32); // total entries
+	zip64Eocd.writeBigUInt64LE(BigInt(cdSize), 40); // central directory size
+	zip64Eocd.writeBigUInt64LE(BigInt(cdOffset), 48); // central directory offset
+	const zip64EocdOffset = cdOffset + cdSize;
+
+	// ZIP64 end-of-central-directory locator (20 bytes).
+	const zip64Locator = Buffer.alloc(20);
+	zip64Locator.writeUInt32LE(0x07064b50, 0); // signature
+	zip64Locator.writeBigUInt64LE(BigInt(zip64EocdOffset), 8); // offset of the ZIP64 EOCD record
+	zip64Locator.writeUInt32LE(1, 16); // total number of disks
+
+	const eocd = Buffer.from(base.subarray(eocdOffset));
+	eocd.writeUInt32LE(cdSize, 12); // central directory size
+	eocd.writeUInt32LE(cdOffset, 16); // central directory offset
+
+	return Buffer.concat([base.subarray(0, cdOffset), centralDir, zip64Eocd, zip64Locator, eocd]);
+}
+
 function createZipWithUnsupportedCompression(): Buffer {
 	const compressed = createZipData({ 'file.txt': 1 });
 
@@ -142,6 +209,46 @@ describe('boundedUnzip', () => {
 		// the member must be returned intact, not truncated at a nested header
 		expect(result['a.xlsx'].equals(innerArchive)).toBe(true);
 		expect(result['b.xlsx'].equals(innerArchive)).toBe(true);
+	});
+
+	it('should decompress a small ZIP64 archive within the size limit', async () => {
+		// NODE-5325: a 25 KB ZIP64 entry must not be mistaken for a ~4 GB one.
+		const realSize = 25 * 1024;
+		const compressed = createZip64Archive(realSize);
+
+		const result = await boundedUnzip(compressed, 400 * 1024 * 1024, 100);
+
+		expect(result['file.txt']).toBeInstanceOf(Buffer);
+		expect(result['file.txt'].length).toBe(realSize);
+	});
+
+	it('should enforce the size bound against the resolved ZIP64 size, not the sentinel', async () => {
+		// Bracket the resolved size exactly: it must pass at a bound equal to the
+		// true size and fail one byte below it. This pins the value read from the
+		// ZIP64 extra field rather than any sentinel/garbage substitute.
+		const realSize = 25 * 1024;
+		const compressed = createZip64Archive(realSize);
+
+		const result = await boundedUnzip(compressed, realSize, 100);
+		expect(result['file.txt'].length).toBe(realSize);
+
+		await expect(boundedUnzip(compressed, realSize - 1, 100)).rejects.toThrow(
+			'The decompressed output exceeds the maximum allowed size of 0 MB',
+		);
+	});
+
+	it('should resolve the ZIP64 size when other extra fields precede it', async () => {
+		// The ZIP64 block is rarely the first extra field; the parser must walk
+		// past unrelated blocks to find it.
+		const realSize = 25 * 1024;
+		const compressed = createZip64Archive(realSize, { leadingExtraField: true });
+
+		const result = await boundedUnzip(compressed, realSize, 100);
+		expect(result['file.txt'].length).toBe(realSize);
+
+		await expect(boundedUnzip(compressed, realSize - 1, 100)).rejects.toThrow(
+			'The decompressed output exceeds the maximum allowed size of 0 MB',
+		);
 	});
 
 	it('should reject truncated zip archives', async () => {

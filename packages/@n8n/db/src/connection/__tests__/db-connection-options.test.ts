@@ -85,6 +85,7 @@ describe('DbConnectionOptions', () => {
 					schema: 'test_schema',
 					poolSize: 5,
 					connectionTimeoutMs: 15_000,
+					destroyTimeoutMs: 10_000,
 					idleTimeoutMs: 25_000,
 					statementTimeoutMs: 60_000,
 					maxConnectionLifetimeMs: 1_800_000,

@@ -3,10 +3,11 @@
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
 
 import { binaryToString, tryParseUrl } from '@n8n/backend-network';
+import { sleep } from '@n8n/utils/sleep';
 import crypto from 'crypto';
 import merge from 'lodash/merge';
 import pick from 'lodash/pick';
-import { NodeOperationError, jsonParse, sleep } from 'n8n-workflow';
+import { NodeOperationError, jsonParse } from 'n8n-workflow';
 import type {
 	IAdditionalCredentialOptions,
 	IDataObject,
@@ -53,7 +54,17 @@ export function applyPaginationRequestData(
 		delete preparedPaginationData.body;
 	}
 
-	return merge({}, requestData, preparedPaginationData);
+	const merged = merge({}, requestData, preparedPaginationData);
+
+	// A full next-page URL (e.g. OData @odata.nextLink) may contain query params.
+	// Drop any duplicate keys from qs, so the HTTP client doesn't re-append them.
+	const parsedUrl =
+		typeof paginationRequestData.url === 'string' ? tryParseUrl(paginationRequestData.url) : null;
+	if (merged.qs && parsedUrl) {
+		for (const key of parsedUrl.searchParams.keys()) delete merged.qs[key];
+	}
+
+	return merged;
 }
 
 // eslint-disable-next-line complexity

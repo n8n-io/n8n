@@ -8,10 +8,10 @@ import {
 	type IMenuItem,
 	type IMenuElement,
 } from '@n8n/design-system';
-import { RELEASE_NOTES_URL } from '@/app/constants';
-import { useVersionsStore } from '@/app/stores/versions.store';
+import { CHANGELOG_URL } from '@/app/constants';
+import { useVersionsStore } from '@n8n/stores/versions.store';
 import VersionUpdateCTA from '@/app/components/VersionUpdateCTA.vue';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 
 import { useI18n } from '@n8n/i18n';
 
@@ -52,7 +52,7 @@ const whatsNewItems = computed<{ available: boolean; children: IMenuElement[] }>
 			icon: 'external-link',
 			label: i18n.baseText('mainSidebar.whatsNew.fullChangelog'),
 			link: {
-				href: RELEASE_NOTES_URL,
+				href: CHANGELOG_URL,
 				target: '_blank',
 			},
 			size: 'small',

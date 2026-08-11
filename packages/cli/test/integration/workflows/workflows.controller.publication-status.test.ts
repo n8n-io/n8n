@@ -59,12 +59,14 @@ describe('GET /workflows/:workflowId/publication-status', () => {
 				nodeId: 'node-1',
 				versionId,
 				status: 'activated',
+				triggerKind: 'in-memory',
 				errorMessage: null,
 			},
 			{
 				nodeId: 'node-2',
 				versionId,
 				status: 'failed',
+				triggerKind: 'persisted',
 				errorMessage: 'Could not register trigger',
 			},
 		]);

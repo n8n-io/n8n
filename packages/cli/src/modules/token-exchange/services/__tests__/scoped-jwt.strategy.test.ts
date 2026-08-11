@@ -1,5 +1,5 @@
 import type { AuthenticatedRequest, User, UserRepository } from '@n8n/db';
-import { ALL_API_KEY_SCOPES, type Scope as ScopeType } from '@n8n/permissions';
+import { getApiKeyScopesForRole, type Scope as ScopeType } from '@n8n/permissions';
 import type { InstanceSettings } from 'n8n-core';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -16,14 +16,20 @@ const otherJwtService = new JwtService(
 	mock(),
 );
 
-/** Create a mock user with role.scopes pre-populated for scope assertions. */
-function makeUser(id: string, scopeSlugs: string[] = [], disabled = false): User {
+/** Create a mock user with role.slug and role.scopes pre-populated for scope assertions. */
+function makeUser(
+	id: string,
+	scopeSlugs: string[] = [],
+	disabled = false,
+	roleSlug: User['role']['slug'] = 'global:member',
+): User {
 	return {
 		...mock<User>(),
 		id,
 		disabled,
 		role: {
 			...mock<User['role']>(),
+			slug: roleSlug,
 			scopes: scopeSlugs.map((slug) => ({ ...mock(), slug: slug as ScopeType })),
 		},
 	};
@@ -113,7 +119,21 @@ describe('ScopedJwtStrategy', () => {
 			expect(grant.subject).toBe(subject);
 			expect(grant.actor).toBeUndefined();
 			expect(grant.scopes).toEqual(['workflow:read', 'workflow:create']);
-			expect(grant.apiKeyScopes).toEqual(Array.from(ALL_API_KEY_SCOPES));
+			// apiKeyScopes are derived from the acting role, never the full set.
+			expect(grant.apiKeyScopes).toEqual(getApiKeyScopesForRole(subject));
+			for (const elevated of ['user:create', 'user:delete', 'user:changeRole'] as const) {
+				expect(grant.apiKeyScopes).not.toContain(elevated);
+			}
+		});
+
+		it('limits apiKeyScopes to those permitted by the acting role', async () => {
+			const subject = makeUser('subject-id', ['workflow:read'], false, 'global:chatUser');
+			userRepository.findOne.mockResolvedValue(subject);
+
+			const grant = await strategy.buildTokenGrant(makeTokenExchangeJwt());
+
+			if (!grant) throw new Error('expected grant');
+			expect(grant.apiKeyScopes).toEqual([]);
 		});
 
 		it('builds a grant with actor scopes when the act claim resolves', async () => {
@@ -129,6 +149,7 @@ describe('ScopedJwtStrategy', () => {
 			expect(grant.actor).toBe(actor);
 			// Scopes come from the acting principal (actor) when one is resolved.
 			expect(grant.scopes).toEqual(['credential:read', 'credential:create']);
+			expect(grant.apiKeyScopes).toEqual(getApiKeyScopesForRole(actor));
 		});
 
 		it('falls back to subject scopes when the act claim is present but actor is not found', async () => {

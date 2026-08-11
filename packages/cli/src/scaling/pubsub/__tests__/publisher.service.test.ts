@@ -143,9 +143,11 @@ describe('Publisher', () => {
 		});
 
 		it.each([
+			'relay-agent-execution-update',
 			'display-workflow-activation',
 			'display-workflow-deactivation',
 			'display-workflow-activation-error',
+			'display-workflow-publication-status',
 		] as const)('should not debounce `%s`', async (command) => {
 			const publisher = new Publisher(
 				logger,

@@ -28,6 +28,51 @@ export class ExecuteWorkflow implements INodeType {
 		},
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
+		builderHint: {
+			extraTypeDefContent: [
+				{
+					displayOptions: { show: { mode: ['once', 'each'] } },
+					content: `<patterns>
+These workflowInputs patterns apply to Execute Workflow node versions 1.2 and newer.
+<pattern title="Child accepts all data">
+Omit workflowInputs from parameters.
+</pattern>
+<pattern title="Child declares inputs">
+workflowInputs: {
+  mappingMode: 'defineBelow',
+  value: {
+    orderId: expr('{{ $json.id }}'),
+    amount: expr('{{ $json.total }}'),
+  },
+  matchingColumns: [],
+  schema: [
+    {
+      id: 'orderId',
+      displayName: 'orderId',
+      required: false,
+      defaultMatch: false,
+      display: true,
+      canBeUsedToMatch: true,
+      type: 'string',
+    },
+    {
+      id: 'amount',
+      displayName: 'amount',
+      required: false,
+      defaultMatch: false,
+      display: true,
+      canBeUsedToMatch: true,
+      type: 'number',
+    },
+  ],
+  attemptToConvertTypes: false,
+  convertFieldsToString: true,
+}
+</pattern>
+</patterns>`,
+				},
+			],
+		},
 		properties: [
 			{
 				displayName: 'Operation',
@@ -78,6 +123,19 @@ export class ExecuteWorkflow implements INodeType {
 				default: 'database',
 				description: 'Where to get the workflow to execute from',
 				displayOptions: { show: { '@version': [{ _cnd: { lte: 1.1 } }] } },
+			},
+			{
+				displayName:
+					'The "Local File" and "URL" sources are deprecated and will be removed in a future version. Import the workflow into this n8n instance and use the "Database" source, or paste its JSON into the "Parameter" source instead.',
+				name: 'sourceDeprecationNotice',
+				type: 'notice',
+				default: '',
+				displayOptions: {
+					show: {
+						source: ['localFile', 'url'],
+						'@version': [{ _cnd: { lte: 1.1 } }],
+					},
+				},
 			},
 			{
 				displayName: 'Source',
@@ -205,6 +263,10 @@ export class ExecuteWorkflow implements INodeType {
 					value: null,
 				},
 				required: true,
+				builderHint: {
+					propertyHint:
+						"The default { mappingMode: 'defineBelow', value: null } is only a temporary UI initialization state and must never be emitted in a workflow. Omit workflowInputs when the selected sub-workflow's trigger is set to 'Accept all data'. When the trigger declares inputs, pass the full Resource Mapper object and make the value and schema fields exactly match the declared input names and types.",
+				},
 				typeOptions: {
 					loadOptionsDependsOn: ['workflowId.value'],
 					resourceMapper: {
@@ -219,6 +281,7 @@ export class ExecuteWorkflow implements INodeType {
 						multiKeyMatch: false,
 						supportAutoMap: false,
 						showTypeConversionOptions: true,
+						refreshStaleSchemaOnOpen: true,
 					},
 				},
 				displayOptions: {

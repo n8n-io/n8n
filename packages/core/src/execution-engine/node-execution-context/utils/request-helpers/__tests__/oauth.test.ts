@@ -1,4 +1,5 @@
 import { LockNamespace, LockService } from '@n8n/backend-common';
+import type { SsrfBridge } from '@n8n/backend-network';
 import { Container } from '@n8n/di';
 import type {
 	IAllExecuteFunctions,
@@ -17,9 +18,10 @@ describe('refreshOAuth2Token', () => {
 	const mockThis = mockDeep<IAllExecuteFunctions>();
 	const mockNode = mockDeep<INode>();
 	const mockAdditionalData = mockDeep<IWorkflowExecuteAdditionalData>();
-	// mockDeep auto-creates a proxy for module-augmented keys; the OAuth2
-	// flow tests must opt out of the JWE proxy unless they wire one in.
+	// mockDeep auto-creates a proxy for optional keys; the OAuth2 flow tests must
+	// opt out of the JWE proxy and the outbound network guard unless they wire one in.
 	(mockAdditionalData as unknown as Record<string, unknown>)['oauth-jwe'] = undefined;
+	mockAdditionalData.ssrfBridge = undefined;
 	const mockCredentialData = {
 		clientId: 'test-client-id',
 		clientSecret: 'test-client-secret',
@@ -56,6 +58,10 @@ describe('refreshOAuth2Token', () => {
 		mockAdditionalData.credentialsHelper.getDecrypted.mockResolvedValue({
 			oauthTokenData: { access_token: 'old-token' },
 		} as unknown as ICredentialDataDecryptedObject);
+	});
+
+	afterEach(() => {
+		vi.restoreAllMocks();
 	});
 
 	test('should refresh the OAuth2 token with pkce grant type', async () => {
@@ -101,6 +107,106 @@ describe('refreshOAuth2Token', () => {
 		);
 	});
 
+	test('should store an absolute expiry when refreshed token has expires_in', async () => {
+		const now = 1_700_000_000_000;
+		const dateNow = vi.spyOn(Date, 'now').mockReturnValue(now);
+		mockThis.getCredentials.mockResolvedValue({
+			...mockCredentialData,
+			clientSecret: undefined,
+			grantType: 'pkce',
+		});
+		nock(baseUrl)
+			.post('/token', {
+				client_id: 'test-client-id',
+				grant_type: 'refresh_token',
+				refresh_token: 'old-refresh-token',
+			})
+			.reply(200, {
+				access_token: 'new-token',
+				refresh_token: 'new-refresh-token',
+				expires_in: '3600',
+			});
+
+		const result = await refreshOAuth2Token.call(
+			mockThis,
+			'test-credentials-type',
+			mockNode,
+			mockAdditionalData,
+		);
+
+		expect(result).toEqual({
+			access_token: 'new-token',
+			refresh_token: 'new-refresh-token',
+			expires_in: '3600',
+			n8n_expires_at: String(now + 3_600_000),
+		});
+		expect(
+			mockAdditionalData.credentialsHelper.updateCredentialsOauthTokenData,
+		).toHaveBeenCalledWith(
+			mockNode.credentials!['test-credentials-type'],
+			'test-credentials-type',
+			expect.objectContaining({
+				oauthTokenData: expect.objectContaining({
+					n8n_expires_at: String(now + 3_600_000),
+				}),
+			}),
+			mockAdditionalData,
+		);
+		dateNow.mockRestore();
+	});
+
+	describe('outbound network policy', () => {
+		const makeBridge = (validateUrl: SsrfBridge['validateUrl']): SsrfBridge => ({
+			validateUrl,
+			validateIp: vi.fn().mockReturnValue({ ok: true, result: undefined }),
+			validateConnectionHost: vi.fn().mockReturnValue({ ok: true, result: undefined }),
+			validateRedirectSync: vi.fn(),
+			createSecureLookup: vi.fn().mockReturnValue(vi.fn()),
+		});
+
+		afterEach(() => {
+			mockAdditionalData.ssrfBridge = undefined;
+		});
+
+		test('should apply the bridge from additionalData to the token request', async () => {
+			const blocked = new Error('Address not allowed');
+			const bridge = makeBridge(vi.fn().mockResolvedValue({ ok: false, error: blocked }));
+			mockAdditionalData.ssrfBridge = bridge as unknown as typeof mockAdditionalData.ssrfBridge;
+			mockThis.getCredentials.mockResolvedValue({ ...mockCredentialData });
+			const tokenScope = nock(baseUrl).post('/token').reply(200, { access_token: 'new-token' });
+
+			await expect(
+				refreshOAuth2Token.call(mockThis, 'test-credentials-type', mockNode, mockAdditionalData),
+			).rejects.toBe(blocked);
+
+			expect(bridge.validateUrl).toHaveBeenCalledWith(new URL(`${baseUrl}/token`));
+			expect(tokenScope.isDone()).toBe(false);
+		});
+
+		test('should refresh normally when additionalData carries no bridge', async () => {
+			mockAdditionalData.ssrfBridge = undefined;
+			mockThis.getCredentials.mockResolvedValue({ ...mockCredentialData });
+			nock(baseUrl).post('/token').reply(200, {
+				access_token: 'new-token',
+				refresh_token: 'new-refresh-token',
+			});
+
+			const result = await refreshOAuth2Token.call(
+				mockThis,
+				'test-credentials-type',
+				mockNode,
+				mockAdditionalData,
+			);
+
+			expect(result).toEqual(
+				expect.objectContaining({
+					access_token: 'new-token',
+					refresh_token: 'new-refresh-token',
+				}),
+			);
+		});
+	});
+
 	test('should refresh the OAuth2 token with client credentials grant type', async () => {
 		mockThis.getCredentials.mockResolvedValue({
 			...mockCredentialData,
@@ -138,6 +244,56 @@ describe('refreshOAuth2Token', () => {
 				oauthTokenData: expect.objectContaining({
 					access_token: 'new-token',
 					refresh_token: 'new-refresh-token',
+				}),
+			}),
+			mockAdditionalData,
+		);
+	});
+
+	test('should include resource when fetching a client credentials token', async () => {
+		mockThis.getCredentials.mockResolvedValue({
+			...mockCredentialData,
+			grantType: 'clientCredentials',
+			oauthTokenData: {
+				...mockCredentialData.oauthTokenData,
+				resource: 'https://mcp.example.com/',
+			},
+		});
+		nock(baseUrl)
+			.post('/token', {
+				client_id: 'test-client-id',
+				client_secret: 'test-client-secret',
+				grant_type: 'client_credentials',
+				scope: 'openid',
+				resource: 'https://mcp.example.com/',
+			})
+			.reply(200, {
+				access_token: 'new-token',
+				refresh_token: 'new-refresh-token',
+			});
+
+		const result = await refreshOAuth2Token.call(
+			mockThis,
+			'test-credentials-type',
+			mockNode,
+			mockAdditionalData,
+		);
+
+		expect(result).toEqual({
+			access_token: 'new-token',
+			refresh_token: 'new-refresh-token',
+			resource: 'https://mcp.example.com/',
+		});
+		expect(
+			mockAdditionalData.credentialsHelper.updateCredentialsOauthTokenData,
+		).toHaveBeenCalledWith(
+			mockNode.credentials!['test-credentials-type'],
+			'test-credentials-type',
+			expect.objectContaining({
+				oauthTokenData: expect.objectContaining({
+					access_token: 'new-token',
+					refresh_token: 'new-refresh-token',
+					resource: 'https://mcp.example.com/',
 				}),
 			}),
 			mockAdditionalData,
@@ -408,6 +564,7 @@ describe('requestOAuth2 - tokenExpiredStatusCode', () => {
 	const mockNode = mockDeep<INode>();
 	const mockAdditionalData = mockDeep<IWorkflowExecuteAdditionalData>();
 	(mockAdditionalData as unknown as Record<string, unknown>)['oauth-jwe'] = undefined;
+	mockAdditionalData.ssrfBridge = undefined;
 
 	const makeCredentialData = (overrides?: Record<string, unknown>) => ({
 		clientId: 'test-client-id',
@@ -599,6 +756,7 @@ describe('requestOAuth2 - client credentials initial token fetch', () => {
 	const mockNode = mockDeep<INode>();
 	const mockAdditionalData = mockDeep<IWorkflowExecuteAdditionalData>();
 	(mockAdditionalData as unknown as Record<string, unknown>)['oauth-jwe'] = undefined;
+	mockAdditionalData.ssrfBridge = undefined;
 
 	beforeEach(() => {
 		nock.cleanAll();
@@ -728,6 +886,7 @@ describe('requestOAuth2 - preAuthentication', () => {
 	const mockThis = mockDeep<IAllExecuteFunctions>();
 	const mockNode = mockDeep<INode>();
 	const mockAdditionalData = mockDeep<IWorkflowExecuteAdditionalData>();
+	mockAdditionalData.ssrfBridge = undefined;
 
 	const credentialData = () => ({
 		clientId: 'client-id',
@@ -944,6 +1103,7 @@ describe('requestOAuth2 - concurrent refresh serialization', () => {
 	const mockNode = mockDeep<INode>();
 	const mockAdditionalData = mockDeep<IWorkflowExecuteAdditionalData>();
 	(mockAdditionalData as unknown as Record<string, unknown>)['oauth-jwe'] = undefined;
+	mockAdditionalData.ssrfBridge = undefined;
 
 	const credentialData = () => ({
 		clientId: 'test-client-id',

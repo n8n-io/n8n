@@ -9,12 +9,29 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 }));
 
 const mockShowError = vi.fn();
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: vi.fn().mockReturnValue({
 		showError: (...args: unknown[]) => mockShowError(...args),
 		showMessage: vi.fn(),
 	}),
 }));
+
+const deletionListeners = new Set<(credentialId: string) => void>();
+vi.mock('@/features/credentials/credentials.store', () => ({
+	useCredentialsStore: () => ({}),
+	listenForCredentialChanges: ({
+		onCredentialDeleted,
+	}: {
+		onCredentialDeleted: (credentialId: string) => void;
+	}) => {
+		deletionListeners.add(onCredentialDeleted);
+		return () => deletionListeners.delete(onCredentialDeleted);
+	},
+}));
+
+function emitCredentialDeleted(id: string): void {
+	for (const listener of deletionListeners) listener(id);
+}
 
 vi.mock('@n8n/i18n', () => ({
 	i18n: { baseText: (key: string) => key },
@@ -25,10 +42,12 @@ const mockFetchMcpConnections = vi.fn();
 const mockCreateMcpConnection = vi.fn();
 const mockUpdateMcpConnection = vi.fn();
 const mockDeleteMcpConnection = vi.fn();
+const mockFetchMcpConnectionTools = vi.fn();
 
 vi.mock('../instanceAi.mcp.api', () => ({
 	fetchMcpRegistryServers: (...args: unknown[]) => mockFetchMcpRegistryServers(...args),
 	fetchMcpConnections: (...args: unknown[]) => mockFetchMcpConnections(...args),
+	fetchMcpConnectionTools: (...args: unknown[]) => mockFetchMcpConnectionTools(...args),
 	createMcpConnection: (...args: unknown[]) => mockCreateMcpConnection(...args),
 	updateMcpConnection: (...args: unknown[]) => mockUpdateMcpConnection(...args),
 	deleteMcpConnection: (...args: unknown[]) => mockDeleteMcpConnection(...args),
@@ -46,6 +65,7 @@ const makeConnection = (
 	credentialId: overrides.credentialId ?? 'cred-1',
 	credentialName: overrides.credentialName ?? 'Linear OAuth2',
 	credentialType: overrides.credentialType ?? 'mcpOAuth2Api',
+	toolFilter: overrides.toolFilter ?? null,
 	createdAt: '2026-05-01T00:00:00.000Z',
 	updatedAt: '2026-05-01T00:00:00.000Z',
 });
@@ -65,11 +85,20 @@ const makeServer = (slug: string): McpRegistryServerResponse => ({
 	status: 'active',
 });
 
+function createDeferred<T>() {
+	let resolve!: (value: T | PromiseLike<T>) => void;
+	const promise = new Promise<T>((promiseResolve) => {
+		resolve = promiseResolve;
+	});
+	return { promise, resolve };
+}
+
 describe('useInstanceAiMcpStore', () => {
 	let store: ReturnType<typeof useInstanceAiMcpStore>;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		deletionListeners.clear();
 		setActivePinia(createPinia());
 		store = useInstanceAiMcpStore();
 	});
@@ -104,6 +133,36 @@ describe('useInstanceAiMcpStore', () => {
 
 			expect(mockFetchMcpRegistryServers).toHaveBeenCalledTimes(1);
 			expect(store.catalog).toHaveLength(1);
+		});
+	});
+
+	describe('fetchConnectionToolsLazy', () => {
+		it('refreshes tools after credential changes and ignores the stale response', async () => {
+			const staleTools = [{ name: 'old_tool' }];
+			const freshTools = [{ name: 'fresh_tool' }];
+			const staleToolsRequest = createDeferred<typeof staleTools>();
+			const freshToolsRequest = createDeferred<typeof freshTools>();
+			mockFetchMcpConnectionTools
+				.mockReturnValueOnce(staleToolsRequest.promise)
+				.mockReturnValueOnce(freshToolsRequest.promise);
+			mockUpdateMcpConnection.mockResolvedValue(
+				makeConnection({ id: 'conn-1', credentialId: 'cred-2' }),
+			);
+
+			const staleFetch = store.fetchConnectionToolsLazy('conn-1');
+			expect(mockFetchMcpConnectionTools).toHaveBeenCalledTimes(1);
+
+			await store.updateConnection('conn-1', { credentialId: 'cred-2' });
+			expect(mockFetchMcpConnectionTools).toHaveBeenCalledTimes(2);
+
+			staleToolsRequest.resolve(staleTools);
+			await staleFetch;
+			expect(store.connectionToolsById.get('conn-1')).toBeUndefined();
+
+			freshToolsRequest.resolve(freshTools);
+			await vi.waitFor(() => {
+				expect(store.connectionToolsById.get('conn-1')).toEqual(freshTools);
+			});
 		});
 	});
 
@@ -170,6 +229,31 @@ describe('useInstanceAiMcpStore', () => {
 
 			expect(store.connectionsByServerSlug.get('linear')).toHaveLength(2);
 			expect(store.connectionsByServerSlug.get('notion')).toHaveLength(1);
+		});
+	});
+
+	describe('credential deletion', () => {
+		beforeEach(async () => {
+			mockFetchMcpConnections.mockResolvedValue([
+				makeConnection({ id: 'conn-1', serverSlug: 'linear', credentialId: 'cred-1' }),
+				makeConnection({ id: 'conn-2', serverSlug: 'notion', credentialId: 'cred-2' }),
+			]);
+			await store.fetchConnections();
+			store.connectionToolsById.set('conn-1', [{ name: 'search' }]);
+		});
+
+		it('drops connections that used the deleted credential', () => {
+			emitCredentialDeleted('cred-1');
+
+			expect(store.connections.map((c) => c.id)).toEqual(['conn-2']);
+			expect(store.connectionToolsById.get('conn-1')).toBeUndefined();
+		});
+
+		it('leaves connections alone when an unrelated credential is deleted', () => {
+			emitCredentialDeleted('cred-other');
+
+			expect(store.connections.map((c) => c.id)).toEqual(['conn-1', 'conn-2']);
+			expect(store.connectionToolsById.get('conn-1')).toEqual([{ name: 'search' }]);
 		});
 	});
 });
