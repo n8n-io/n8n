@@ -26,6 +26,10 @@ import type {
 } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
+import type { WorkflowReviewDecisionEligibilityService } from '../workflow-review-decision-eligibility.service';
+import { WorkflowReviewFeatureGate } from '../workflow-review-feature-gate.service';
+import { WorkflowReviewRequestService } from '../workflow-review-request.service';
+
 import type { CollaborationService } from '@/collaboration/collaboration.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
@@ -36,10 +40,6 @@ import type { WorkflowReviewPolicyService } from '@/services/workflow-review-pol
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
-
-import type { WorkflowReviewDecisionEligibilityService } from '../workflow-review-decision-eligibility.service';
-import { WorkflowReviewFeatureGate } from '../workflow-review-feature-gate.service';
-import { WorkflowReviewRequestService } from '../workflow-review-request.service';
 
 const user = mock<User>({ id: 'user-1' });
 
@@ -560,6 +560,7 @@ describe('WorkflowReviewRequestService', () => {
 			id: 'req-1',
 			state: 'open',
 			decision: 'pending',
+			description: null,
 			updatedById: 'user-2',
 			workflowVersionId: 'ver-1',
 			createdAt: new Date('2024-01-01T00:00:00.000Z'),
@@ -615,6 +616,7 @@ describe('WorkflowReviewRequestService', () => {
 					id: 'req-1',
 					state: 'open',
 					decision: 'changes_requested',
+					description: null,
 					workflowVersionId: 'ver-1',
 					createdAt: '2024-01-01T00:00:00.000Z',
 					updatedAt: '2024-01-02T00:00:00.000Z',
@@ -690,7 +692,6 @@ describe('WorkflowReviewRequestService', () => {
 			});
 		});
 
-		// R1 (P3): enriching row by row made this list an N+1 — see LIGO-607_review.md
 		it('enriches many rows with one lookup per derived field', async () => {
 			workflowFinderService.findWorkflowForUser.mockResolvedValue(mock<WorkflowEntity>());
 			requestRepository.findRequestsForWorkflow.mockResolvedValue([

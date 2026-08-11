@@ -112,6 +112,7 @@ describe('WorkflowReviewRequiredToggle', () => {
 				state: 'open',
 				decision: 'pending',
 				workflowVersionId: 'ver-1',
+				description: null,
 				createdAt: '2026-07-20T10:00:00.000Z',
 				updatedAt: '2026-07-20T10:00:00.000Z',
 				decisionBy: null,
