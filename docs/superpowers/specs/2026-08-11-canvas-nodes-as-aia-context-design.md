@@ -227,11 +227,11 @@ manually-closed node-name panel; `Collapse`/expand for overflow; name truncation
 path (today only binary-file chips are removable). Renders identically in the
 draft composer and in already-sent history messages.
 
-Because the real entry points don't exist until Phase 4, exercise this phase by
-staging a **fixture** attachment via Phase 2's `stageNodeSets()` — component
-tests plus, if useful for manual inspection, a throwaway dev-only trigger that
-is **removed in Phase 4** when the real toolbar/menu entry lands (do not leave a
-dangling dev trigger behind).
+The real entry points don't exist until Phase 4, so this phase assumes the
+composer already holds staged sets and only renders/exercises them. Component
+tests mount the component with a `nodes` attachment fixture (or one staged via
+Phase 2's `stageNodeSets()` in the test setup) and assert the chips. No trigger
+of any kind is needed here.
 
 Tests: the 8 plan cases (size-1 named; size-3 exploded/removable; ≥threshold
 bundled; two-sets→two-chips-never-exploded guard; per-node remove; bundled
@@ -239,8 +239,8 @@ remove-whole-set; caret panel stays open until closed; draft == history render).
 
 ### Phase 4 — Trigger UI + open-pane + staged-draft primitive
 
-Wires the real entry points to the now-working chip UI. Removes any throwaway
-dev trigger introduced in Phase 3.
+Wires the real entry points to the now-working chip UI — the first place a
+user-facing trigger appears.
 
 - **Staged-draft primitive** (new, mirrors the existing
   `stashPendingFirstMessage`/`consume` localStorage pattern in
