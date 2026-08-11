@@ -377,6 +377,13 @@ export type {
 	InstanceAiThreadSource,
 	InstanceAiThreadSourcePersisted,
 	InstanceAiThreadOrigin,
+<<<<<<< HEAD
+=======
+	InstanceAiCatalogProvider,
+	InstanceAiCatalogModel,
+	InstanceAiModelCatalogResponse,
+	InstanceAiCredits,
+>>>>>>> cc5f1cb3 (feat(core): Add activation-capped AI Assistant trial variant (no-changelog) (#35994))
 } from './schemas/instance-ai.schema';
 
 export type {

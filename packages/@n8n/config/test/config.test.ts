@@ -358,6 +358,13 @@ describe('GlobalConfig', () => {
 			runDebugEnabled: false,
 			thinkingEnabled: true,
 			durableLog: true,
+<<<<<<< HEAD
+=======
+			mcpConnectionsEnabled: false,
+			canvasNodeContextEnabled: false,
+			activationCapped: false,
+			activationLockMessageThreshold: 1,
+>>>>>>> cc5f1cb3 (feat(core): Add activation-capped AI Assistant trial variant (no-changelog) (#35994))
 		},
 		queue: {
 			health: {

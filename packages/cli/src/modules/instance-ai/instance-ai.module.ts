@@ -81,6 +81,7 @@ export class InstanceAiModule implements ModuleInterface {
 			workflowBuilderAvailable: enabled && sandboxStatus.workflowBuilderAvailable,
 			sandboxUnavailableReason: sandboxStatus.unavailableReason,
 			runDebugEnabled: globalConfig.instanceAi.runDebugEnabled,
+			activationCapped: settingsService.isActivationCapped(),
 		};
 	}
 
