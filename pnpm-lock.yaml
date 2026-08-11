@@ -2161,6 +2161,9 @@ importers:
       express:
         specifier: 'catalog:'
         version: 5.1.0
+      n8n-containers:
+        specifier: workspace:*
+        version: link:../../testing/containers
       testcontainers:
         specifier: 'catalog:'
         version: 11.13.0
@@ -2290,6 +2293,9 @@ importers:
       '@types/supertest':
         specifier: ^6.0.3
         version: 6.0.3
+      n8n-containers:
+        specifier: workspace:*
+        version: link:../../testing/containers
       supertest:
         specifier: ^7.1.1
         version: 7.1.1
