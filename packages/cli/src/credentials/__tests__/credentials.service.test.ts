@@ -34,6 +34,7 @@ import type { InstanceCredentialUseRegistry } from '@/credentials/instance-crede
 import * as validation from '@/credentials/validation';
 import type { CredentialsHelper } from '@/credentials-helper';
 import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
+import type { EventService } from '@/events/event.service';
 import type { ExternalHooks } from '@/external-hooks';
 import type { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
 import type { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee';
@@ -92,6 +93,7 @@ describe('CredentialsService', () => {
 	const instanceCredentialAssignmentRepository = mock<InstanceCredentialAssignmentRepository>();
 	const instanceCredentialUseRegistry = mock<InstanceCredentialUseRegistry>();
 	const dbLockService = mock<DbLockService>();
+	const eventService = mock<EventService>();
 
 	const service = new CredentialsService(
 		credentialsRepository,
@@ -115,6 +117,7 @@ describe('CredentialsService', () => {
 		instanceCredentialAssignmentRepository,
 		instanceCredentialUseRegistry,
 		dbLockService,
+		eventService,
 	);
 
 	beforeEach(() => {
@@ -1000,7 +1003,7 @@ describe('CredentialsService', () => {
 
 	describe('testById', () => {
 		it('throws CredentialNotFoundError when credential does not exist', async () => {
-			credentialsFinderService.findCredentialById.mockResolvedValue(null);
+			credentialsFinderService.getById.mockResolvedValue(null);
 
 			await expect(service.testById(ownerUser.id, 'missing-credential')).rejects.toThrow(
 				CredentialNotFoundError,
@@ -1009,7 +1012,7 @@ describe('CredentialsService', () => {
 		});
 
 		it('does not expose instance credentials through public API testing', async () => {
-			credentialsFinderService.findCredentialById.mockResolvedValue(
+			credentialsFinderService.getById.mockResolvedValue(
 				mock<CredentialsEntity>({
 					id: 'instance-credential',
 					usageScope: 'instance',
@@ -1032,13 +1035,13 @@ describe('CredentialsService', () => {
 			const decryptedData = { accessToken: 'secret-token' } as ICredentialDataDecryptedObject;
 			const testResult = { status: 'OK', message: 'Credential tested successfully' } as const;
 
-			credentialsFinderService.findCredentialById.mockResolvedValue(storedCredential);
+			credentialsFinderService.getById.mockResolvedValue(storedCredential);
 			credentialsTester.testCredentials.mockResolvedValue(testResult);
 			vi.spyOn(service, 'decrypt').mockResolvedValue(decryptedData);
 
 			const result = await service.testById(ownerUser.id, storedCredential.id);
 
-			expect(credentialsFinderService.findCredentialById).toHaveBeenCalledWith(storedCredential.id);
+			expect(credentialsFinderService.getById).toHaveBeenCalledWith(storedCredential.id);
 			expect(service.decrypt).toHaveBeenCalledWith(storedCredential, true);
 			expect(credentialsTester.testCredentials).toHaveBeenCalledWith(
 				ownerUser.id,
@@ -1106,11 +1109,13 @@ describe('CredentialsService', () => {
 				{},
 			);
 			expect(credentialsRepository.remove).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 
 		it('deletes instance credentials when management access is explicitly requested', async () => {
 			const credential = mock<CredentialsEntity>({
 				id: 'instance-credential',
+				type: 'openAiApi',
 				usageScope: 'instance',
 				isResolvable: false,
 			});
@@ -1131,6 +1136,11 @@ describe('CredentialsService', () => {
 				credential.id,
 			);
 			expect(externalHooks.run).toHaveBeenCalledWith('credentials.delete', [credential.id]);
+			expect(eventService.emit).toHaveBeenCalledWith('credentials-deleted', {
+				user: ownerUser,
+				credentialType: credential.type,
+				credentialId: credential.id,
+			});
 		});
 
 		it('does not delete an instance credential bound to a feature', async () => {
@@ -1149,6 +1159,56 @@ describe('CredentialsService', () => {
 				service.delete(ownerUser, credential.id, { includeInstanceCredentials: true }),
 			).rejects.toThrow('instance-ai:model');
 			expect(externalHooks.run).toHaveBeenCalledWith('credentials.delete', [credential.id]);
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+
+		it('emits credentials-deleted and private-credential-deleted for resolvable project credentials', async () => {
+			const credential = mock<CredentialsEntity>({
+				id: 'project-credential',
+				type: 'gmailOAuth2',
+				usageScope: 'project',
+				isResolvable: true,
+			});
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(credential);
+			sharedCredentialsRepository.findCredentialOwningProject.mockResolvedValue(
+				mock({ id: 'project-1' }),
+			);
+			vi.spyOn(service, 'ensureCanManageEndUserCredential').mockResolvedValue(undefined);
+			credentialsRepository.remove.mockResolvedValue(credential);
+
+			await service.delete(ownerUser, credential.id);
+
+			expect(eventService.emit).toHaveBeenCalledWith('credentials-deleted', {
+				user: ownerUser,
+				credentialType: credential.type,
+				credentialId: credential.id,
+			});
+			expect(eventService.emit).toHaveBeenCalledWith('private-credential-deleted', {
+				user: ownerUser,
+				credentialType: credential.type,
+				credentialId: credential.id,
+			});
+		});
+
+		it('should not emit "private-credential-deleted" when deleting a static credential', async () => {
+			const credential = mock<CredentialsEntity>({
+				id: 'project-credential',
+				type: 'gmailOAuth2',
+				usageScope: 'project',
+				isResolvable: false,
+			});
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(credential);
+			credentialsRepository.remove.mockResolvedValue(credential);
+
+			await service.delete(ownerUser, credential.id);
+
+			expect(eventService.emit).toHaveBeenCalledWith('credentials-deleted', {
+				user: ownerUser,
+				credentialType: credential.type,
+				credentialId: credential.id,
+			});
+			const emittedEventNames = eventService.emit.mock.calls.map((call) => call[0]);
+			expect(emittedEventNames).not.toContain('private-credential-deleted');
 		});
 	});
 
@@ -1580,6 +1640,24 @@ describe('CredentialsService', () => {
 		});
 	});
 
+	describe('getManyAndCount', () => {
+		it('returns credentials with total count using the same path as getMany', async () => {
+			const credentials = [mock<CredentialsEntity>({ id: 'cred-1', shared: [] })];
+			credentialsRepository.findManyAndCount.mockResolvedValue([credentials, 1]);
+			ownershipService.addOwnedByAndSharedWith.mockImplementation((c: any) => c);
+
+			const result = await service.getManyAndCount(ownerUser, {
+				listQueryOptions: { take: 50, skip: 10 },
+			});
+
+			expect(credentialsRepository.findManyAndCount).toHaveBeenCalledWith({
+				take: 50,
+				skip: 10,
+			});
+			expect(result).toEqual({ credentials, count: 1 });
+		});
+	});
+
 	describe('getMany', () => {
 		const regularCredential = {
 			id: 'cred-1',
@@ -1607,7 +1685,7 @@ describe('CredentialsService', () => {
 				it('should filter by credential:owner role when projectId is for a personal project', async () => {
 					// ARRANGE
 					const personalProject = { id: 'personal-proj', type: 'personal' } as any;
-					credentialsRepository.findMany.mockResolvedValue([regularCredential]);
+					credentialsRepository.findManyAndCount.mockResolvedValue([[regularCredential], 1]);
 					projectService.getProject.mockResolvedValue(personalProject);
 
 					// ACT
@@ -1619,7 +1697,7 @@ describe('CredentialsService', () => {
 
 					// ASSERT
 					expect(projectService.getProject).toHaveBeenCalledWith('personal-proj');
-					expect(credentialsRepository.findMany).toHaveBeenCalledWith(
+					expect(credentialsRepository.findManyAndCount).toHaveBeenCalledWith(
 						expect.objectContaining({
 							filter: expect.objectContaining({
 								withRole: 'credential:owner',
@@ -1633,7 +1711,7 @@ describe('CredentialsService', () => {
 				it('should not filter by role when projectId is for a team project', async () => {
 					// ARRANGE
 					const teamProject = { id: 'team-proj', type: 'team' } as any;
-					credentialsRepository.findMany.mockResolvedValue([regularCredential]);
+					credentialsRepository.findManyAndCount.mockResolvedValue([[regularCredential], 1]);
 					projectService.getProject.mockResolvedValue(teamProject);
 
 					// ACT
@@ -1645,7 +1723,7 @@ describe('CredentialsService', () => {
 
 					// ASSERT
 					expect(projectService.getProject).toHaveBeenCalledWith('team-proj');
-					expect(credentialsRepository.findMany).toHaveBeenCalledWith(
+					expect(credentialsRepository.findManyAndCount).toHaveBeenCalledWith(
 						expect.objectContaining({
 							filter: expect.not.objectContaining({
 								withRole: 'credential:owner',
@@ -1656,7 +1734,7 @@ describe('CredentialsService', () => {
 
 				it('should handle getProject throwing an error', async () => {
 					// ARRANGE
-					credentialsRepository.findMany.mockResolvedValue([regularCredential]);
+					credentialsRepository.findManyAndCount.mockResolvedValue([[regularCredential], 1]);
 					projectService.getProject.mockRejectedValue(new Error('Project not found'));
 
 					// ACT
@@ -1667,7 +1745,7 @@ describe('CredentialsService', () => {
 					});
 
 					// ASSERT - Should continue without filtering by role
-					expect(credentialsRepository.findMany).toHaveBeenCalledWith(
+					expect(credentialsRepository.findManyAndCount).toHaveBeenCalledWith(
 						expect.objectContaining({
 							filter: expect.not.objectContaining({
 								withRole: 'credential:owner',
@@ -1681,7 +1759,7 @@ describe('CredentialsService', () => {
 				it('should add scopes to credentials when includeScopes is true', async () => {
 					// ARRANGE
 					const projectRelations = [{ projectId: 'proj-1', role: 'project:owner' }] as any;
-					credentialsRepository.findMany.mockResolvedValue([regularCredential]);
+					credentialsRepository.findManyAndCount.mockResolvedValue([[regularCredential], 1]);
 					projectService.getProjectRelationsForUser.mockResolvedValue(projectRelations);
 					roleService.addScopes.mockImplementation(
 						(c) => ({ ...c, scopes: ['credential:read', 'credential:update'] }) as any,
@@ -1704,7 +1782,7 @@ describe('CredentialsService', () => {
 
 				it('should not add scopes when includeScopes is false', async () => {
 					// ARRANGE
-					credentialsRepository.findMany.mockResolvedValue([regularCredential]);
+					credentialsRepository.findManyAndCount.mockResolvedValue([[regularCredential], 1]);
 
 					// ACT
 					const result = await service.getMany(ownerUser, {
@@ -1730,7 +1808,7 @@ describe('CredentialsService', () => {
 
 				it('should automatically set includeScopes to true when includeData is true', async () => {
 					// ARRANGE
-					credentialsRepository.findMany.mockResolvedValue([regularCredential]);
+					credentialsRepository.findManyAndCount.mockResolvedValue([[regularCredential], 1]);
 					roleService.addScopes.mockImplementation(
 						(c) => ({ ...c, scopes: ['credential:update'] }) as any,
 					);
@@ -1746,7 +1824,7 @@ describe('CredentialsService', () => {
 
 				it('should include decrypted data when user has credential:update scope', async () => {
 					// ARRANGE
-					credentialsRepository.findMany.mockResolvedValue([regularCredential]);
+					credentialsRepository.findManyAndCount.mockResolvedValue([[regularCredential], 1]);
 					roleService.addScopes.mockImplementation(
 						(c) => ({ ...c, scopes: ['credential:update'] }) as any,
 					);
@@ -1763,7 +1841,7 @@ describe('CredentialsService', () => {
 
 				it('should not include decrypted data when user lacks credential:update scope', async () => {
 					// ARRANGE
-					credentialsRepository.findMany.mockResolvedValue([regularCredential]);
+					credentialsRepository.findManyAndCount.mockResolvedValue([[regularCredential], 1]);
 					roleService.addScopes.mockImplementation(
 						(c) => ({ ...c, scopes: ['credential:read'] }) as any,
 					);
@@ -1780,7 +1858,7 @@ describe('CredentialsService', () => {
 
 				it('should replace oauthTokenData with true when present', async () => {
 					// ARRANGE
-					credentialsRepository.findMany.mockResolvedValue([regularCredential]);
+					credentialsRepository.findManyAndCount.mockResolvedValue([[regularCredential], 1]);
 					roleService.addScopes.mockImplementation(
 						(c) => ({ ...c, scopes: ['credential:update'] }) as any,
 					);
@@ -1801,7 +1879,7 @@ describe('CredentialsService', () => {
 
 				it('should set includeData in listQueryOptions', async () => {
 					// ARRANGE
-					credentialsRepository.findMany.mockResolvedValue([regularCredential]);
+					credentialsRepository.findManyAndCount.mockResolvedValue([[regularCredential], 1]);
 					roleService.addScopes.mockImplementation(
 						(c) => ({ ...c, scopes: ['credential:update'] }) as any,
 					);
@@ -1812,7 +1890,7 @@ describe('CredentialsService', () => {
 					});
 
 					// ASSERT
-					expect(credentialsRepository.findMany).toHaveBeenCalledWith(
+					expect(credentialsRepository.findManyAndCount).toHaveBeenCalledWith(
 						expect.objectContaining({
 							includeData: true,
 						}),
@@ -1826,7 +1904,7 @@ describe('CredentialsService', () => {
 				it('should fetch all relations when filtering by shared.projectId', async () => {
 					// ARRANGE
 					const credWithShared = { ...regularCredential, shared: [] } as any;
-					credentialsRepository.findMany.mockResolvedValue([credWithShared]);
+					credentialsRepository.findManyAndCount.mockResolvedValue([[credWithShared], 1]);
 					sharedCredentialsRepository.getAllRelationsForCredentials.mockResolvedValue([
 						sharedRelation,
 					]);
@@ -1870,7 +1948,7 @@ describe('CredentialsService', () => {
 
 				it('should not fetch all relations when shared.projectId is not present', async () => {
 					// ARRANGE
-					credentialsRepository.findMany.mockResolvedValue([regularCredential]);
+					credentialsRepository.findManyAndCount.mockResolvedValue([[regularCredential], 1]);
 
 					// ACT
 					await service.getMany(ownerUser, {
@@ -1887,7 +1965,7 @@ describe('CredentialsService', () => {
 			describe('with custom select (non-default select)', () => {
 				it('should skip addOwnedByAndSharedWith when select is custom', async () => {
 					// ARRANGE
-					credentialsRepository.findMany.mockResolvedValue([regularCredential]);
+					credentialsRepository.findManyAndCount.mockResolvedValue([[regularCredential], 1]);
 
 					// ACT
 					await service.getMany(ownerUser, {
@@ -1902,7 +1980,7 @@ describe('CredentialsService', () => {
 
 				it('should skip fetching all relations when select is custom', async () => {
 					// ARRANGE
-					credentialsRepository.findMany.mockResolvedValue([regularCredential]);
+					credentialsRepository.findManyAndCount.mockResolvedValue([[regularCredential], 1]);
 
 					// ACT
 					await service.getMany(ownerUser, {
@@ -2172,7 +2250,7 @@ describe('CredentialsService', () => {
 		describe('with includeGlobal = true', () => {
 			it('should include global credentials for owner users', async () => {
 				// ARRANGE
-				credentialsRepository.findMany.mockResolvedValue([regularCredential]);
+				credentialsRepository.findManyAndCount.mockResolvedValue([[regularCredential], 1]);
 				credentialsRepository.findAllGlobalCredentials.mockResolvedValue([globalCredential]);
 
 				// ACT
@@ -2181,7 +2259,7 @@ describe('CredentialsService', () => {
 				});
 
 				// ASSERT
-				expect(credentialsRepository.findMany).toHaveBeenCalled();
+				expect(credentialsRepository.findManyAndCount).toHaveBeenCalled();
 				expect(credentialsRepository.findAllGlobalCredentials).toHaveBeenCalledWith({
 					includeData: false,
 					filters: { dependency: undefined },
@@ -2277,7 +2355,7 @@ describe('CredentialsService', () => {
 
 			it('should forward the credential type filter to the global credentials lookup (owner user)', async () => {
 				// ARRANGE
-				credentialsRepository.findMany.mockResolvedValue([]);
+				credentialsRepository.findManyAndCount.mockResolvedValue([[], 0]);
 				credentialsRepository.findAllGlobalCredentials.mockResolvedValue([]);
 
 				// ACT
@@ -2318,7 +2396,7 @@ describe('CredentialsService', () => {
 
 			it('should not pass a type filter when the listQueryOptions filter has no type', async () => {
 				// ARRANGE
-				credentialsRepository.findMany.mockResolvedValue([]);
+				credentialsRepository.findManyAndCount.mockResolvedValue([[], 0]);
 				credentialsRepository.findAllGlobalCredentials.mockResolvedValue([]);
 
 				// ACT
@@ -2334,7 +2412,7 @@ describe('CredentialsService', () => {
 		describe('with includeGlobal = false', () => {
 			it('should exclude global credentials when includeGlobal is false', async () => {
 				// ARRANGE
-				credentialsRepository.findMany.mockResolvedValue([regularCredential]);
+				credentialsRepository.findManyAndCount.mockResolvedValue([[regularCredential], 1]);
 
 				// ACT
 				const result = await service.getMany(ownerUser, {
@@ -2342,7 +2420,7 @@ describe('CredentialsService', () => {
 				});
 
 				// ASSERT
-				expect(credentialsRepository.findMany).toHaveBeenCalled();
+				expect(credentialsRepository.findManyAndCount).toHaveBeenCalled();
 				expect(credentialsRepository.findAllGlobalCredentials).not.toHaveBeenCalled();
 				expect(result).toHaveLength(1);
 				expect(result[0].id).toBe('cred-1');
@@ -3348,6 +3426,63 @@ describe('CredentialsService', () => {
 					service.prepareUpdateData(ownerUser, payload, existingCredential),
 				).rejects.toThrow('Provider connections cannot reference project-scoped external secrets');
 				expect(projectRepository.getPersonalProjectForUserOrFail).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('dataMerge', () => {
+			beforeEach(() => {
+				credentialsHelper.getCredentialsProperties.mockReturnValue([]);
+				credentialsRepository.create.mockImplementation((data) => ({ ...data }) as never);
+				vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			});
+
+			it('keeps incoming data as-is when dataMerge is replace', async () => {
+				vi.spyOn(service, 'decrypt').mockResolvedValue({
+					apiKey: 'stored-secret',
+					oauthTokenData: { access_token: 'token' },
+				});
+				const unredactSpy = vi.spyOn(service, 'unredact');
+				const existingCredential = mockExistingCredential({
+					name: 'Test Credential',
+					type: 'apiKey',
+					data: {},
+				});
+
+				const prepared = await service.prepareUpdateData(
+					ownerUser,
+					{ name: 'Test Credential', type: 'apiKey', data: { apiKey: 'new-secret' } },
+					existingCredential,
+					{ dataMerge: 'replace' },
+				);
+
+				expect(unredactSpy).not.toHaveBeenCalled();
+				expect(prepared.data).toEqual({ apiKey: 'new-secret' });
+			});
+
+			it('merges stored data then unredacts when dataMerge is partial', async () => {
+				vi.spyOn(service, 'decrypt').mockResolvedValue({
+					apiKey: 'stored-secret',
+					other: 'keep-me',
+				});
+				const unredactSpy = vi.spyOn(service, 'unredact').mockImplementation((data) => data);
+				const existingCredential = mockExistingCredential({
+					name: 'Test Credential',
+					type: 'apiKey',
+					data: {},
+				});
+
+				await service.prepareUpdateData(
+					ownerUser,
+					{ name: 'Test Credential', type: 'apiKey', data: { apiKey: '***' } },
+					existingCredential,
+					{ dataMerge: 'partial' },
+				);
+
+				expect(unredactSpy).toHaveBeenCalledWith(
+					{ apiKey: '***', other: 'keep-me' },
+					{ apiKey: 'stored-secret', other: 'keep-me' },
+					[],
+				);
 			});
 		});
 
