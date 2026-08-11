@@ -612,9 +612,6 @@ export const WithHeaderAndFooterActions = {
 				:items="items"
 				placeholder="Select a fruit..."
 			/>
-			<p style="margin: var(--spacing--xs) 0 0; font-size: var(--font-size--xs); color: var(--text-color--subtle);">
-				Selected: <strong>{{ value ?? '(none)' }}</strong>
-			</p>
 			<N8nDialog
 				v-model:open="createOpen"
 				header="Create new fruit"

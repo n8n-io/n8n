@@ -1,6 +1,15 @@
 <script setup lang="ts">
-import { reactiveOmit, reactivePick } from '@vueuse/core';
-import { computed, nextTick, ref, useAttrs, useCssModule, useId, useTemplateRef, watch } from 'vue';
+import { reactivePick } from '@vueuse/core';
+import {
+	computed,
+	getCurrentInstance,
+	nextTick,
+	ref,
+	useAttrs,
+	useCssModule,
+	useId,
+	useTemplateRef,
+} from 'vue';
 
 import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
 import { useI18n } from '@n8n/design-system/composables/useI18n';
@@ -55,23 +64,31 @@ const emptyText = computed(() => props.emptyText ?? t('combobox.emptyText'));
 const generatedId = useId();
 const inputId = computed(() => props.id ?? generatedId);
 
-const inputNameAttrs = reactivePick(
-	attrs,
+const INPUT_ARIA_ATTRS = [
 	'aria-label',
 	'aria-labelledby',
 	'aria-describedby',
 	'aria-errormessage',
 	'aria-invalid',
-);
+] as const;
 
-const anchorAttrs = reactiveOmit(
-	attrs,
-	'aria-label',
-	'aria-labelledby',
-	'aria-describedby',
-	'aria-errormessage',
-	'aria-invalid',
-);
+const inputNameAttrs = computed(() => {
+	const result: Record<string, unknown> = {};
+	for (const key of INPUT_ARIA_ATTRS) {
+		if (key in attrs) {
+			result[key] = attrs[key];
+		}
+	}
+	return result;
+});
+
+const anchorAttrs = computed(() => {
+	const result = { ...attrs };
+	for (const key of INPUT_ARIA_ATTRS) {
+		delete result[key];
+	}
+	return result;
+});
 
 const rootProps = useForwardPropsEmits(
 	reactivePick(
@@ -89,20 +106,22 @@ const rootProps = useForwardPropsEmits(
 	),
 );
 
-const selectedValue = ref<ComboboxValue | ComboboxValue[] | undefined>(
-	props.modelValue ?? props.defaultValue,
-);
+const vnodeProps = getCurrentInstance()?.vnode.props ?? {};
+const isModelControlled = 'modelValue' in vnodeProps || 'model-value' in vnodeProps;
 
-watch(
-	() => props.modelValue,
-	(value) => {
-		selectedValue.value = value;
-	},
-);
+const internalValue = ref<ComboboxValue | ComboboxValue[] | undefined>(props.defaultValue);
+
+const rootModelValue = computed(() => (isModelControlled ? props.modelValue : internalValue.value));
 
 function onModelValueUpdate(value: ComboboxValue | ComboboxValue[] | undefined) {
-	selectedValue.value = value;
+	if (!isModelControlled) {
+		internalValue.value = value;
+	}
 	emit('update:modelValue', value);
+}
+
+function setSelectedValue(value: ComboboxValue | ComboboxValue[] | undefined) {
+	onModelValueUpdate(value);
 }
 
 function isGroupItem(item: ComboboxItem): item is ComboboxGroupItem {
@@ -255,33 +274,34 @@ function getDisplayValue(value: unknown): string {
 	return '';
 }
 
-const hasValue = computed(() => {
-	const value = selectedValue.value;
-
+function hasValue(value: ComboboxValue | ComboboxValue[] | undefined): boolean {
 	if (props.multiple) {
 		return Array.isArray(value) && value.length > 0;
 	}
 
 	return value !== undefined && value !== null && value !== '';
-});
+}
 
-const showClearButton = computed(() => props.clearable && !props.disabled && hasValue.value);
-
-const selectedItem = computed(() => {
+function getSelectedItem(
+	value: ComboboxValue | ComboboxValue[] | undefined,
+): ComboboxOptionBase | undefined {
 	if (props.multiple) {
 		return undefined;
 	}
 
-	const value = selectedValue.value;
 	if (value === undefined || value === null || Array.isArray(value)) {
 		return undefined;
 	}
 
 	return optionItems.value.find((item) => item.value === value);
-});
+}
+
+function showClearButton(value: ComboboxValue | ComboboxValue[] | undefined): boolean {
+	return props.clearable && !props.disabled && hasValue(value);
+}
 
 function onClear() {
-	onModelValueUpdate(props.multiple ? [] : undefined);
+	setSelectedValue(props.multiple ? [] : undefined);
 
 	void nextTick(() => {
 		const element: unknown = inputRef.value?.$el;
@@ -296,15 +316,17 @@ function onClear() {
 }
 
 function onTagsUpdate(value: TagsInputValue[]) {
-	onModelValueUpdate(value.filter((tag): tag is string => typeof tag === 'string'));
+	setSelectedValue(value.filter((tag): tag is string => typeof tag === 'string'));
 }
 </script>
 
 <template>
 	<ComboboxRoot
+		v-slot="{ modelValue: selectedValue }"
 		:name="props.name"
 		v-bind="rootProps"
-		:model-value="selectedValue"
+		:model-value="rootModelValue"
+		:default-value="isModelControlled ? props.defaultValue : undefined"
 		:open-on-focus="true"
 		@update:model-value="onModelValueUpdate"
 		@update:open="emit('update:open', $event)"
@@ -317,16 +339,21 @@ function onTagsUpdate(value: TagsInputValue[]) {
 			:class="[$style.comboboxAnchor, sizeClass, props.multiple && $style.multiple]"
 			:data-disabled="props.disabled || undefined"
 			:data-multiple="props.multiple || undefined"
-			:data-empty="hasValue ? undefined : true"
+			:data-empty="hasValue(selectedValue) ? undefined : true"
 		>
-			<span v-if="!props.multiple && selectedItem?.icon" :class="$style.leadingIcon">
-				<slot name="item-leading" :item="selectedItem" :ui="{ class: $style.leadingIconGlyph }">
-					<Icon :icon="selectedItem.icon" :class="$style.leadingIconGlyph" size="large" />
-				</slot>
-			</span>
-			<span v-else-if="!props.multiple && props.icon" :class="$style.leadingIcon">
-				<Icon :icon="props.icon" :class="$style.leadingIconGlyph" size="large" />
-			</span>
+			<template
+				v-for="selectedItem in [getSelectedItem(selectedValue)]"
+				:key="selectedItem?.value ?? 'none'"
+			>
+				<span v-if="!props.multiple && selectedItem?.icon" :class="$style.leadingIcon">
+					<slot name="item-leading" :item="selectedItem" :ui="{ class: $style.leadingIconGlyph }">
+						<Icon :icon="selectedItem.icon" :class="$style.leadingIconGlyph" size="large" />
+					</slot>
+				</span>
+				<span v-else-if="!props.multiple && props.icon" :class="$style.leadingIcon">
+					<Icon :icon="props.icon" :class="$style.leadingIconGlyph" size="large" />
+				</span>
+			</template>
 
 			<N8nTagsInput2
 				v-if="props.multiple"
@@ -372,7 +399,7 @@ function onTagsUpdate(value: TagsInputValue[]) {
 			/>
 
 			<button
-				v-if="showClearButton"
+				v-if="showClearButton(selectedValue)"
 				type="button"
 				:class="$style.clearButton"
 				:aria-label="t('combobox.clearSelection')"
@@ -425,8 +452,8 @@ function onTagsUpdate(value: TagsInputValue[]) {
 							</ComboboxLabel>
 
 							<template
-								v-for="(item, index) in section.items"
-								:key="`section-${sectionIndex}-item-${index}`"
+								v-for="item in section.items"
+								:key="`section-${sectionIndex}-item-${String(item.value)}`"
 							>
 								<slot name="item" :item="item">
 									<N8nComboboxItem v-bind="item">

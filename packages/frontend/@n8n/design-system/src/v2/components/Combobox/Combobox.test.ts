@@ -21,14 +21,14 @@ const sizeCases: Array<[ComboboxSizes | undefined, string]> = [
 vi.mock('@n8n/design-system/composables/useI18n', () => ({
 	useI18n: () => ({
 		t: (key: string, options?: Record<string, string>) => {
-			const translations: Record<string, string> = {
-				'combobox.clearSelection': 'Clear selection',
-				'combobox.showPopup': 'Show popup',
-				'combobox.placeholder': 'Select an option',
-				'combobox.emptyText': 'No results found.',
-				'tagsInput.removeTag': 'Remove {tag}',
-			};
-			const template = translations[key] ?? key;
+			const translations = new Map([
+				['combobox.clearSelection', 'Clear selection'],
+				['combobox.showPopup', 'Show popup'],
+				['combobox.placeholder', 'Select an option'],
+				['combobox.emptyText', 'No results found.'],
+				['tagsInput.removeTag', 'Remove {tag}'],
+			]);
+			const template = translations.get(key) ?? key;
 			if (!options) {
 				return template;
 			}
@@ -611,17 +611,24 @@ describe('v2/components/Combobox', () => {
 
 	describe('v-model', () => {
 		it('should update modelValue and display the label on selection', async () => {
+			const value = ref('2');
 			const items = [
 				{ value: '1', label: 'Option 1' },
 				{ value: '2', label: 'Option 2' },
 			];
 
-			const wrapper = render(Combobox, {
-				props: {
-					items,
-					defaultOpen: true,
-					modelValue: '2',
+			const wrapper = render({
+				components: { Combobox },
+				setup() {
+					return { value, items };
 				},
+				template: `
+					<Combobox
+						v-model="value"
+						:items="items"
+						:default-open="true"
+					/>
+				`,
 			});
 
 			await waitFor(() => {
@@ -632,7 +639,7 @@ describe('v2/components/Combobox', () => {
 			await userEvent.click(within(popover).getByText('Option 1'));
 
 			await waitFor(() => {
-				expect(wrapper.emitted('update:modelValue')?.[0]).toEqual(['1']);
+				expect(value.value).toBe('1');
 				expect(getComboboxInput(wrapper)).toHaveValue('Option 1');
 			});
 		});
