@@ -228,7 +228,7 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 		itemIndex: number,
 		options?: number | { inputData?: IDataObject },
 	): Promise<unknown> {
-		const inputData = typeof options === 'object' ? options.inputData : undefined;
+		const inputData = typeof options === 'object' && options !== null ? options.inputData : undefined;
 		// To be able to use expressions like "$json.sessionId" set the
 		// body data the webhook received to what is normally used for
 		// incoming node data, unless the trigger supplied its own shape.
