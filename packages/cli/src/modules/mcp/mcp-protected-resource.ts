@@ -12,11 +12,7 @@ import { AGENTS_MCP_TOOL_PROVIDER, McpToolProviderRegistry } from './mcp-tool-pr
 import { McpConfig } from './mcp.config';
 import { McpSettingsService } from './mcp.settings.service';
 
-/**
- * Scopes a user can grant on the consent screen. Enforced per-tool via the
- * merged scope map (`McpToolProviderRegistry.getToolsByScope`) when the MCP
- * server registers tools.
- */
+/** Scopes a user can grant on the consent screen; enforced per-tool via the merged scope map. */
 export const SUPPORTED_SCOPES: string[] = [...MCP_INSTANCE_SCOPES];
 const AGENT_SCOPES = new Set<string>(MCP_AGENT_SCOPES);
 

@@ -21,18 +21,12 @@ import {
 	createSearchDataTablesTool,
 } from './index';
 
-/**
- * The data-table module's contribution to the instance MCP server: the
- * data-table tool suite plus the data-table reference validation the
- * workflow-builder tools run. Registered with the McpToolProviderRegistry on
- * module init.
- */
+/** The data-table module's MCP contribution: its tool suite plus reference validation for the builder tools. */
 @Service()
 export class DataTableMcpService implements McpToolProvider {
 	readonly name = 'data-table';
 
-	/** Keep in sync with `registerTools` below — drift guard in
-	 * `__tests__/data-table-mcp.service.test.ts`. */
+	/** Drift-guarded against `registerTools` below. */
 	readonly toolsByScope: Partial<Record<McpScope, readonly string[]>> = {
 		'dataTable:read': ['search_data_tables'],
 		// Writing requires finding tables, so search rides along.

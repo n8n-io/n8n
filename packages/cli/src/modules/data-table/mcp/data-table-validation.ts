@@ -127,8 +127,7 @@ export async function validateDataTableReferencesForUpdate(
 	return { ok: true };
 }
 
-/** Binds the validation functions above to a user's data-table operations, in
- * the shape the mcp module's workflow-builder tools consume. */
+/** Binds the validators above to a user's data-table operations for the builder tools. */
 export function toMcpDataTableValidator(
 	dataTableOps: DataTableUserOperations,
 ): McpDataTableValidator {

@@ -2,17 +2,9 @@ import type { McpScope } from '@n8n/api-types';
 import { MCP_INSTANCE_SCOPES } from '@n8n/api-types';
 
 /**
- * Maps each grantable OAuth scope to the MCP tools it unlocks. A tool is
- * available if ANY granted scope covers it, so support tools (node search,
- * SDK reference, validation) can ride on both read and write scopes.
- *
- * Covers only the tools the MCP module registers itself; modules contribute
- * their own mappings via `McpToolProvider.toolsByScope`, merged in
- * `McpToolProviderRegistry.getToolsByScope`.
- *
- * Keep in sync with the tools registered in `McpService.getServer` — the
- * drift-guard test in `__tests__/mcp-scopes.test.ts` fails when a registered
- * tool is missing here.
+ * Scope→tool map for the tools the MCP module registers itself; other modules
+ * contribute theirs via `McpToolProvider.toolsByScope`. Drift-guarded against
+ * `McpService.getServer` in `__tests__/mcp-scopes.test.ts`.
  */
 export const CORE_TOOLS_BY_SCOPE: Partial<Record<McpScope, readonly string[]>> = {
 	'workflow:read': [
@@ -52,12 +44,7 @@ export const CORE_TOOLS_BY_SCOPE: Partial<Record<McpScope, readonly string[]>> =
 	'tag:read': ['list_workflow_tags'],
 };
 
-/**
- * Tools only registered when the workflow builder is enabled
- * (`N8N_MCP_BUILDER_ENABLED`). Keep in sync with `registerBuilderTools` in
- * `mcp.service.ts` — covered by the same drift-guard test as
- * CORE_TOOLS_BY_SCOPE.
- */
+/** Tools only registered when the builder is enabled (`N8N_MCP_BUILDER_ENABLED`); same drift guard. */
 export const BUILDER_TOOLS: ReadonlySet<string> = new Set([
 	'search_nodes',
 	'get_node_types',

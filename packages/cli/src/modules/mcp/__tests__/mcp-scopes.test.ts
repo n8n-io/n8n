@@ -158,9 +158,7 @@ describe('McpService scope enforcement', () => {
 		const server = await buildService().getServer(user, mcpFeatureFlags());
 		const registered = getRegisteredToolNames(server);
 
-		// The registry is empty here, so the core map covers every registered
-		// tool; provider mappings have their own drift guards in
-		// agent-tools.service.test.ts and data-table-mcp.service.test.ts.
+		// Provider mappings have their own drift guards in their modules' tests.
 		const unregistered = [...ALL_MAPPED_TOOLS].filter((name) => !registered.has(name));
 		expect(unregistered).toEqual([]);
 	});

@@ -556,9 +556,7 @@ export class McpService {
 			);
 		}
 
-		// Tool sets contributed by other modules (data-table, agents) via their
-		// module init(). An inactive module never registered its provider, so its
-		// tools are implicitly unavailable.
+		// Tool sets contributed by other modules (data-table, agents).
 		for (const provider of this.toolProviderRegistry.getAvailableProviders()) {
 			await provider.registerTools({
 				user,

@@ -7,29 +7,22 @@ import type { INode } from 'n8n-workflow';
 import { CORE_TOOLS_BY_SCOPE, isMcpScope } from './mcp-scopes';
 import type { RegisterResourceFn, RegisterToolFn } from './mcp.types';
 
-/** Provider name the agents module registers under; the MCP server checks it
- * to decide whether agent scopes, instructions and versioning apply. */
+/** The agents module's provider name; gates agent scopes, instructions and versioning. */
 export const AGENTS_MCP_TOOL_PROVIDER = 'agents';
 
 export type McpToolRegistrationContext = {
 	user: User;
-	/** Scope-filtered registrar (see McpService.createToolRegistrar): tools not
-	 * covered by the grant's `allowedToolNames` are silently dropped. */
+	/** Scope-filtered registrar: tools outside `allowedToolNames` are silently dropped. */
 	registerTool: RegisterToolFn;
 	registerResource: RegisterResourceFn;
 	/** The grant's scope-derived allow-list; undefined means full access. */
 	allowedToolNames: Set<string> | undefined;
 };
 
-/**
- * MCP tool set contributed by another backend module. Registered during the
- * owning module's `init()`, so a provider only exists when its module is
- * active — `isAvailable` covers config-level gates evaluated per request.
- */
+/** MCP tool set another module contributes on its `init()`; `isAvailable` covers per-request config gates. */
 export interface McpToolProvider {
 	name: string;
-	/** Scope→tool mapping for the tools this provider registers, merged into
-	 * the instance-wide map by `McpToolProviderRegistry.getToolsByScope`. */
+	/** Scope→tool mapping for the tools this provider registers. */
 	toolsByScope: Partial<Record<McpScope, readonly string[]>>;
 	isAvailable(): boolean;
 	registerTools(context: McpToolRegistrationContext): void | Promise<void>;
@@ -39,12 +32,7 @@ export type DataTableValidationResult =
 	| { ok: true }
 	| { ok: false; error: string; opIndex?: number };
 
-/**
- * Data-table reference checks the workflow-builder tools run before saving a
- * workflow, implemented by the data-table module so mcp does not depend on
- * data-table internals. Absent when the data-table module is inactive, in
- * which case the builder tools skip the check.
- */
+/** Data-table reference checks the builder tools run before saving; absent when the data-table module is inactive. */
 export interface McpDataTableValidator {
 	validateReferencesForWorkflow(
 		nodes: INode[],
@@ -57,11 +45,7 @@ export interface McpDataTableValidator {
 	): Promise<DataTableValidationResult>;
 }
 
-/**
- * Modules register their MCP tool providers here during `init()`. The MCP
- * server is rebuilt per request, long after all modules have initialized, so
- * registration order relative to serving never matters.
- */
+/** Modules register their MCP tool providers here during `init()`. */
 @Service()
 export class McpToolProviderRegistry {
 	private readonly providers = new Map<string, McpToolProvider>();
@@ -80,12 +64,7 @@ export class McpToolProviderRegistry {
 		return [...this.providers.values()].filter((provider) => provider.isAvailable());
 	}
 
-	/**
-	 * The MCP module's own scope map merged with every registered provider's
-	 * contribution. Providers are included regardless of availability — an
-	 * unavailable provider's tools are never registered, so allowing their
-	 * names is harmless.
-	 */
+	/** Core scope map merged with every registered provider's contribution. */
 	getToolsByScope(): Partial<Record<McpScope, readonly string[]>> {
 		const providers = [...this.providers.values()];
 		const merged: Partial<Record<McpScope, readonly string[]>> = {};
@@ -99,11 +78,7 @@ export class McpToolProviderRegistry {
 		return merged;
 	}
 
-	/**
-	 * Resolves the set of tool names a token with the given granted scopes may
-	 * list and call. `undefined` means the credential predates scoping or is
-	 * not scope-bearing (e.g. an API key) and grants access to all tools.
-	 */
+	/** Tool names the granted scopes unlock; undefined (API keys, legacy tokens) means all tools. */
 	getAllowedToolNames(grantedScopes: string[] | undefined): Set<string> | undefined {
 		if (grantedScopes === undefined) return undefined;
 

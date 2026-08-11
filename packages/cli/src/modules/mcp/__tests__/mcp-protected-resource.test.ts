@@ -15,8 +15,7 @@ const makeGlobalConfig = ({ builderEnabled = true, tagsDisabled = false } = {}) 
 		tags: { disabled: tagsDisabled },
 	}) as unknown as GlobalConfig;
 
-// In production the agents module registers this provider on init, with the
-// builder env flag as its availability predicate.
+// Mirrors the provider the agents module registers on init.
 const makeRegistry = (isAvailable: () => boolean) => {
 	const registry = new McpToolProviderRegistry();
 	registry.register({

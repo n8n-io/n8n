@@ -1,10 +1,8 @@
 import type { McpScope } from '@n8n/api-types';
 
 /**
- * The agent scopes' share of the MCP scope→tool map, contributed via the
- * agents MCP tool provider. Keep in sync with the tools registered in
- * `McpAgentToolsService.registerTools` — the drift-guard test in
- * `__tests__/agent-tools.service.test.ts` fails when they diverge.
+ * The agent scopes' share of the MCP scope→tool map. Drift-guarded against
+ * `McpAgentToolsService.registerTools` in `__tests__/agent-tools.service.test.ts`.
  */
 export const AGENT_TOOLS_BY_SCOPE: Partial<Record<McpScope, readonly string[]>> = {
 	'agent:read': [
@@ -15,9 +13,7 @@ export const AGENT_TOOLS_BY_SCOPE: Partial<Record<McpScope, readonly string[]>> 
 		'validate_agent',
 		'get_agent_builder_reference',
 	],
-	// The read tools ride along on a write-only grant: mutate_agent's
-	// configHash handshake starts at get_agent, and building needs search
-	// (sub-agents), asset discovery, validation, and the reference.
+	// Read tools ride along so a write-only grant can still build.
 	'agent:write': [
 		'create_agent',
 		'mutate_agent',
