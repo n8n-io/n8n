@@ -3,6 +3,7 @@ import { Tool } from '@n8n/agents/tool';
 import {
 	ASK_CREDENTIAL_TOOL_NAME,
 	ASK_EMBEDDING_CREDENTIAL_TOOL_NAME,
+	GENERIC_AUTH_CREDENTIAL_TYPES,
 	MANAGED_CREDENTIAL_TOKEN,
 	askCredentialInputSchema,
 	credentialResumeSchema,
@@ -133,8 +134,13 @@ async function resolveCredentialSelection(
 
 	// If the user has exactly one credential of the requested type the
 	// picker has nothing to ask — auto-resolve so the LLM doesn't render
-	// a card the user can only confirm.
-	if (existingCredentials.length === 1) {
+	// a card the user can only confirm. Generic auth types are excluded: the
+	// type alone does not identify a service, so the sole credential must not
+	// be attached to an arbitrary destination without the user picking it.
+	if (
+		existingCredentials.length === 1 &&
+		!GENERIC_AUTH_CREDENTIAL_TYPES.has(input.credentialType)
+	) {
 		return withNodeCredentialMap(input, existingCredentials[0].id, existingCredentials[0].name);
 	}
 
@@ -169,7 +175,8 @@ export function buildAskCredentialTool(deps: AskCredentialToolDeps): BuiltTool {
 				'without credentials. For node tools, copy the returned `credentials` object into `node.credentials`. Auto-resolves without ' +
 				'rendering a card when the agent has a chat channel configured whose credential matches the ' +
 				'requested type (the channel credential is reused so tools act through the same connection), ' +
-				'or when the user has exactly one credential of the requested type.',
+				'or when the user has exactly one credential of the requested type — except for generic ' +
+				'auth types (bearer, header, query, basic, digest, custom, OAuth), which always render the card.',
 		)
 		.input(askCredentialInputSchema)
 		.suspend(credentialSuspendPayloadSchema)

@@ -374,11 +374,12 @@ export async function resolveCredentials(
 				continue;
 			}
 
-			// The sole-credential fallback is skipped for Templated Custom Auth: the
-			// type is shared by every service, so "the only stored credential" may
-			// belong to a different service — mock instead so setup asks.
+			// The sole-credential fallback is skipped for generic auth types: one
+			// type serves every service, so "the only stored credential" may belong
+			// to a different service and must not be sent to this node's URL — mock
+			// instead so setup asks.
 			const credentialsForType = availableCredentials?.get(key);
-			if (credentialsForType?.length === 1 && key !== TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE) {
+			if (credentialsForType?.length === 1 && !GENERIC_AUTH_CREDENTIAL_TYPES.has(key)) {
 				const [credential] = credentialsForType;
 				creds[key] = { id: credential.id, name: credential.name };
 				registerSiblingBinding(key, creds[key]);

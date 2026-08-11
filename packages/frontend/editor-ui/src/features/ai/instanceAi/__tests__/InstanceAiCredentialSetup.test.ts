@@ -516,6 +516,104 @@ describe('InstanceAiCredentialSetup', () => {
 			expect(getByText('instanceAi.credential.allSelected')).toBeTruthy();
 		});
 
+		it('keeps a sole generic auth credential preselected but does not auto-submit', async () => {
+			const requests: InstanceAiCredentialRequest[] = [
+				{
+					credentialType: 'httpBearerAuth',
+					reason: 'Authenticate the MCP server',
+					existingCredentials: [{ id: 'existing-bearer', name: 'Bearer Auth account' }],
+				},
+			];
+			const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
+
+			const { getByTestId } = renderComponent({
+				props: {
+					requestId: 'req-1',
+					credentialRequests: requests,
+					message: 'Set up credentials',
+				},
+			});
+
+			// Give the immediate watcher a tick — it must not resolve the card.
+			await nextTick();
+			await nextTick();
+			expect(confirmSpy).not.toHaveBeenCalled();
+
+			// User confirms the preselected credential explicitly.
+			await userEvent.click(getByTestId('instance-ai-credential-continue-button'));
+			expect(confirmSpy).toHaveBeenCalledWith('req-1', {
+				kind: 'credentialSelection',
+				credentials: { httpBearerAuth: 'existing-bearer' },
+			});
+		});
+
+		it('does not auto-submit a generic auth credential picked after the initial render', async () => {
+			const requests: InstanceAiCredentialRequest[] = [
+				{
+					credentialType: 'httpBearerAuth',
+					reason: 'Authenticate the MCP server',
+					existingCredentials: [
+						{ id: 'existing-bearer', name: 'Bearer Auth account' },
+						{ id: 'existing-bearer-b', name: 'Other Bearer account' },
+					],
+				},
+			];
+			const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
+
+			const { getByTestId } = renderComponent({
+				props: {
+					requestId: 'req-1',
+					credentialRequests: requests,
+					message: 'Set up credentials',
+				},
+			});
+
+			// Two candidates, so nothing is preselected — picking one must not submit.
+			await userEvent.click(getByTestId('credential-picker'));
+			expect(confirmSpy).not.toHaveBeenCalled();
+
+			await userEvent.click(getByTestId('instance-ai-credential-continue-button'));
+			expect(confirmSpy).toHaveBeenCalledWith('req-1', {
+				kind: 'credentialSelection',
+				credentials: { httpBearerAuth: 'cred-123' },
+			});
+		});
+
+		it('does not submit a preselected generic auth credential when the other step is skipped', async () => {
+			const requests: InstanceAiCredentialRequest[] = [
+				{
+					credentialType: 'slackApi',
+					reason: 'Post the message',
+					existingCredentials: [],
+				},
+				{
+					credentialType: 'httpBearerAuth',
+					reason: 'Authenticate the MCP server',
+					existingCredentials: [{ id: 'existing-bearer', name: 'Bearer Auth account' }],
+				},
+			];
+			const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
+
+			const { getByText, getByTestId } = renderComponent({
+				props: {
+					requestId: 'req-1',
+					credentialRequests: requests,
+					message: 'Set up credentials',
+				},
+			});
+
+			// Skipping the only open step leaves the bearer credential selected — it
+			// must still wait for Continue rather than being submitted here.
+			await userEvent.click(getByText('instanceAi.credential.deny'));
+			expect(confirmSpy).not.toHaveBeenCalled();
+
+			await userEvent.click(getByTestId('instance-ai-credential-continue-button'));
+			expect(confirmSpy).toHaveBeenCalledWith('req-1', {
+				kind: 'credentialSelection',
+				credentials: { httpBearerAuth: 'existing-bearer' },
+			});
+		});
+
 		it('shows deferred state after skip', async () => {
 			const requests = makeCredentialRequests(1);
 			vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
