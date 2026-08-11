@@ -155,6 +155,32 @@ describe('get_data_table_rows MCP tool', () => {
 		});
 	});
 
+	// MCP clients validate structuredContent against the advertised output
+	// schema with additionalProperties forbidden, so both response shapes must
+	// parse strictly or the client rejects the response outright.
+	test('success and error responses match the declared output schema', async () => {
+		const strictOutputSchema = z
+			.object(
+				createGetDataTableRowsTool(user, createMocks().dataTableOps, createTelemetry()).config
+					.outputSchema!,
+			)
+			.strict();
+
+		const success = createMocks();
+		const successResult = await callHandler(
+			createGetDataTableRowsTool(user, success.dataTableOps, success.telemetry),
+			{ dataTableId: 'dt-1', projectId: 'proj-1' },
+		);
+		expect(() => strictOutputSchema.parse(successResult.structuredContent)).not.toThrow();
+
+		const failure = createMocks({ error: new Error('Unknown column') });
+		const errorResult = await callHandler(
+			createGetDataTableRowsTool(user, failure.dataTableOps, failure.telemetry),
+			{ dataTableId: 'dt-1', projectId: 'proj-1' },
+		);
+		expect(() => strictOutputSchema.parse(errorResult.structuredContent)).not.toThrow();
+	});
+
 	test('tracks telemetry on success', async () => {
 		const { dataTableOps, telemetry } = createMocks();
 		const tool = createGetDataTableRowsTool(user, dataTableOps, telemetry);

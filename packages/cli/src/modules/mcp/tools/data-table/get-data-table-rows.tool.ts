@@ -72,6 +72,7 @@ const getRowsOutputSchema = {
 		.int()
 		.min(0)
 		.describe('Total number of rows matching the filter, ignoring limit and skip'),
+	error: z.string().optional().describe('Error message if the read failed'),
 } satisfies z.ZodRawShape;
 
 const toSortByTuple = (sortBy: string): [string, 'ASC' | 'DESC'] => {
