@@ -1,15 +1,19 @@
 import type { StoryFn } from '@storybook/vue3-vite';
 import { action } from 'storybook/actions';
 
-import type { IUser } from '@n8n/design-system/types';
-
 import N8nUsersList from './UsersList.vue';
+import type { IUser } from '../../types';
 
 export default {
 	title: 'Core/UsersList',
 	component: N8nUsersList,
 	argTypes: {},
 	parameters: {
+		docs: {
+			description: {
+				component: 'A list layout for showing multiple users with associated metadata.',
+			},
+		},
 		backgrounds: { default: '--color--background--light-2' },
 	},
 };

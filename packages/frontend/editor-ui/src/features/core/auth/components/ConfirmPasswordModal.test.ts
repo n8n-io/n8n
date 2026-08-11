@@ -24,7 +24,7 @@ const ModalStub = {
 
 const initialState = {
 	[STORES.UI]: {
-		modalsById: {
+		modalStateById: {
 			[CONFIRM_PASSWORD_MODAL_KEY]: {
 				open: true,
 			},
@@ -43,6 +43,7 @@ describe('ConfirmPasswordModal', () => {
 	let pinia: ReturnType<typeof createPinia>;
 
 	beforeEach(() => {
+		vi.restoreAllMocks();
 		pinia = createTestingPinia({ initialState });
 	});
 

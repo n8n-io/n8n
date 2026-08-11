@@ -22,7 +22,7 @@ export class ToolCalculator implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Calculator',
 		name: 'toolCalculator',
-		icon: 'fa:calculator',
+		icon: 'node:calculator',
 		iconColor: 'black',
 		group: ['transform'],
 		version: 1,

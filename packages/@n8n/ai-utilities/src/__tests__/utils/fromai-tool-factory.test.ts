@@ -171,7 +171,7 @@ describe('fromAIToolFactory', () => {
 		});
 
 		it('should pass the func to the tool', async () => {
-			const mockFunc = jest.fn().mockResolvedValue('test result');
+			const mockFunc = vi.fn().mockResolvedValue('test result');
 			const node = createMockNode({});
 			const tool = createToolFromNode(node, {
 				name: 'func-test-tool',

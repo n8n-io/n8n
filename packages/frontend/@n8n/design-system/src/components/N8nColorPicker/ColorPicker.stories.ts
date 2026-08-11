@@ -28,6 +28,12 @@ export default {
 			control: 'array',
 		},
 	},
+
+	parameters: {
+		docs: {
+			description: { component: 'A color selection control for choosing and previewing colors.' },
+		},
+	},
 };
 
 const methods = {

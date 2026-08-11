@@ -1,0 +1,91 @@
+name: 'Test: E2E Infrastructure'
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 2 * * *'
+
+concurrency:
+  group: e2e-infrastructure-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  prepare-docker:
+    uses: ./.github/workflows/prepare-docker-reusable.yml
+    secrets: inherit
+
+  benchmark:
+    needs: [prepare-docker]
+    name: ${{ matrix.lane }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - lane: ui
+            grep: '@bench:ui'
+            shards: '[{"shard":1,"images":""}]'
+          - lane: webhook
+            grep: '@bench:webhook'
+            # 2 shards — webhook lane grew from 6 to 9 spec files with the
+            # dedicated-proc topology (DEVP-200). Single shard pushed wall time
+            # past 40 min; two shards halves that. Bump to 3 if specs grow further.
+            shards: '[{"shard":1,"images":""},{"shard":2,"images":""}]'
+          - lane: kafka
+            grep: '@bench:kafka'
+            shards: '[{"shard":1,"images":""},{"shard":2,"images":""}]'
+    uses: ./.github/workflows/test-e2e-reusable.yml
+    with:
+      test-mode: docker-artifact
+      test-command: 'pnpm --filter=n8n-playwright test:benchmark --grep ${{ matrix.grep }}'
+      pre-generated-matrix: ${{ matrix.shards }}
+      workers: '1'
+      runner: blacksmith-8vcpu-ubuntu-2204
+      timeout-minutes: 120
+      artifact-prefix: 'benchmark-${{ matrix.lane }}'
+      currents-project-id: 'LRxcNt'
+    secrets: inherit
+
+  # Aggregate every lane's run-report.json attachments into a single
+  # sizing-matrix.json plus a rendered markdown guide, and publish both as
+  # artifacts so each run leaves a consumable sizing reference. Runs whenever
+  # the benchmark matrix actually executed (even if some lanes failed) so a
+  # partial run still publishes whatever cells it produced.
+  sizing-matrix:
+    name: Aggregate sizing matrix
+    needs: [benchmark]
+    if: always() && needs.benchmark.result != 'skipped' && needs.benchmark.result != 'cancelled'
+    runs-on: blacksmith-2vcpu-ubuntu-2204
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup Node.js
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: ''
+
+      - name: Download benchmark shard artifacts
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          pattern: benchmark-*-shard-*
+          path: /tmp/benchmark-reports/
+
+      # The aggregator auto-detects n8n version and commit SHA from the repo
+      # (anchored to its own file location), so no path/version glue is needed.
+      - name: Aggregate sizing matrix
+        working-directory: packages/testing/playwright
+        run: |
+          pnpm exec tsx scripts/sizing-matrix-aggregate.ts \
+            --input /tmp/benchmark-reports \
+            --out sizing-matrix.json \
+            --markdown-out sizing-matrix.md
+
+      - name: Upload sizing matrix artifacts
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: sizing-matrix
+          path: |
+            packages/testing/playwright/sizing-matrix.json
+            packages/testing/playwright/sizing-matrix.md
+          retention-days: 14
+          if-no-files-found: error

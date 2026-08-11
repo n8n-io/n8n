@@ -64,5 +64,7 @@ export const createOAuthClient = (
 	redirectUris: [],
 	grantTypes: ['authorization_code'],
 	tokenEndpointAuthMethod: 'client_secret_basic',
+	grantedAt: new Date('2025-09-09T14:14:04.155Z').getTime(),
+	scopes: ['workflow:read', 'execution:read'],
 	...overrides,
 });

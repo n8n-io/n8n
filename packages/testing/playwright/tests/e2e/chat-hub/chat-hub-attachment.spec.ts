@@ -3,7 +3,6 @@ import os from 'os';
 import path from 'path';
 
 import { test, expect, chatHubTestConfig } from './fixtures';
-import { ChatHubChatPage } from '../../../pages/ChatHubChatPage';
 
 test.use(chatHubTestConfig);
 
@@ -40,24 +39,26 @@ test.describe(
 		});
 
 		test('image attachment', async ({ n8n, anthropicCredential: _ }) => {
-			const page = new ChatHubChatPage(n8n.page);
-
 			await n8n.navigate.toChatHub();
-			await page.dismissWelcomeScreen();
-			await expect(page.getModelSelectorButton()).toContainText(/claude/i); // auto-select a model
+			await n8n.chatHubChat.dismissWelcomeScreen();
+			await expect(n8n.chatHubChat.getModelSelectorButton()).toContainText(/claude/i); // auto-select a model
 
-			await page.getFileInput().setInputFiles(testImagePath);
-			await page.getChatInput().fill('What color is this image? Reply with just the color name.');
-			await page.getSendButton().click();
+			await n8n.chatHubChat.getFileInput().setInputFiles(testImagePath);
+			await n8n.chatHubChat
+				.getChatInput()
+				.fill('What color is this image? Reply with just the color name.');
+			await n8n.chatHubChat.getSendButton().click();
 
-			await expect(page.getChatMessages().nth(0)).toContainText('What color is this image?');
-			await expect(page.getAttachmentsAt(0)).toHaveCount(1);
-			await expect(page.getAttachmentsAt(0).nth(0)).toBeVisible();
-			await expect(page.getChatMessages().nth(1)).toContainText(/red/i);
+			await expect(n8n.chatHubChat.getChatMessages().nth(0)).toContainText(
+				'What color is this image?',
+			);
+			await expect(n8n.chatHubChat.getAttachmentsAt(0)).toHaveCount(1);
+			await expect(n8n.chatHubChat.getAttachmentsAt(0).nth(0)).toBeVisible();
+			await expect(n8n.chatHubChat.getChatMessages().nth(1)).toContainText(/red/i);
 
 			// Verify image is persisted and can be opened in new tab
 			await n8n.page.reload();
-			const newPage = await page.openAttachmentAt(0, 0);
+			const newPage = await n8n.chatHubChat.openAttachmentAt(0, 0);
 
 			await expect(newPage.locator('img')).toBeVisible();
 			await expect(newPage.locator('img')).toHaveJSProperty('naturalWidth', 100);
@@ -66,42 +67,48 @@ test.describe(
 		});
 
 		test('text file attachment', async ({ n8n, anthropicCredential: _ }) => {
-			const page = new ChatHubChatPage(n8n.page);
-
 			await n8n.navigate.toChatHub();
-			await page.dismissWelcomeScreen();
-			await expect(page.getModelSelectorButton()).toContainText(/claude/i);
+			await n8n.chatHubChat.dismissWelcomeScreen();
+			await expect(n8n.chatHubChat.getModelSelectorButton()).toContainText(/claude/i);
 
-			await page.getFileInput().setInputFiles(testTextPath);
-			await page.getChatInput().fill('What is the exact content of this file?');
-			await page.getSendButton().click();
+			await n8n.chatHubChat.getFileInput().setInputFiles(testTextPath);
+			await n8n.chatHubChat.getChatInput().fill('What is the exact content of this file?');
+			await n8n.chatHubChat.getSendButton().click();
 
-			await expect(page.getChatMessages().nth(0)).toContainText('What is the exact content');
-			await expect(page.getAttachmentsAt(0)).toHaveCount(1);
-			await expect(page.getChatMessages().nth(1)).toContainText('I am a file');
+			await expect(n8n.chatHubChat.getChatMessages().nth(0)).toContainText(
+				'What is the exact content',
+			);
+			await expect(n8n.chatHubChat.getAttachmentsAt(0)).toHaveCount(1);
+			await expect(n8n.chatHubChat.getChatMessages().nth(1)).toContainText('I am a file');
 		});
 
 		test('reference attachment in subsequent message', async ({ n8n, anthropicCredential: _ }) => {
-			const page = new ChatHubChatPage(n8n.page);
-
 			await n8n.navigate.toChatHub();
-			await page.dismissWelcomeScreen();
-			await expect(page.getModelSelectorButton()).toContainText(/claude/i);
+			await n8n.chatHubChat.dismissWelcomeScreen();
+			await expect(n8n.chatHubChat.getModelSelectorButton()).toContainText(/claude/i);
 
 			// Send initial message with attachment
-			await page.getFileInput().setInputFiles(testImagePath);
-			await page.getChatInput().fill('What color is this image? Reply with just the color name.');
-			await page.getSendButton().click();
+			await n8n.chatHubChat.getFileInput().setInputFiles(testImagePath);
+			await n8n.chatHubChat
+				.getChatInput()
+				.fill('What color is this image? Reply with just the color name.');
+			await n8n.chatHubChat.getSendButton().click();
 
-			await expect(page.getChatMessages().nth(0)).toContainText('What color is this image?');
-			await expect(page.getChatMessages().nth(1)).toContainText(/red/i);
+			await expect(n8n.chatHubChat.getChatMessages().nth(0)).toContainText(
+				'What color is this image?',
+			);
+			await expect(n8n.chatHubChat.getChatMessages().nth(1)).toContainText(/red/i);
 
 			// Send follow-up question referencing the image
-			await page.getChatInput().fill('Does the image include text? Reply just yes or no.');
-			await page.getSendButton().click();
+			await n8n.chatHubChat
+				.getChatInput()
+				.fill('Does the image include text? Reply just yes or no.');
+			await n8n.chatHubChat.getSendButton().click();
 
-			await expect(page.getChatMessages().nth(2)).toContainText('Does the image include text?');
-			await expect(page.getChatMessages().nth(3)).toContainText(/no/i);
+			await expect(n8n.chatHubChat.getChatMessages().nth(2)).toContainText(
+				'Does the image include text?',
+			);
+			await expect(n8n.chatHubChat.getChatMessages().nth(3)).toContainText(/no/i);
 		});
 	},
 );

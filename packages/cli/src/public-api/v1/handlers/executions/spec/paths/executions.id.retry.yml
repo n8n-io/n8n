@@ -1,5 +1,6 @@
 post:
   x-eov-operation-id: retryExecution
+  x-required-scope: execution:retry
   x-eov-operation-handler: v1/handlers/executions/executions.handler
   tags:
     - Execution

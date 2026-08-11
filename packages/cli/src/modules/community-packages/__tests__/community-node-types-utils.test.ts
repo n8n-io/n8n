@@ -1,17 +1,20 @@
-import { getCommunityNodeTypes, getCommunityNodesMetadata } from '../community-node-types-utils';
-import { paginatedRequest } from '../strapi-utils';
+import type { MockedFunction } from 'vitest';
 
-jest.mock('../strapi-utils', () => ({
-	paginatedRequest: jest.fn(),
+import { paginatedRequest } from '@/utils/strapi-utils';
+
+import { getCommunityNodeTypes, getCommunityNodesMetadata } from '../community-node-types-utils';
+
+vi.mock('@/utils/strapi-utils', () => ({
+	paginatedRequest: vi.fn(),
 }));
 
-const mockPaginatedRequest = paginatedRequest as jest.MockedFunction<typeof paginatedRequest>;
+const mockPaginatedRequest = paginatedRequest as MockedFunction<typeof paginatedRequest>;
 
 const AI_SDK_VERSION = 1;
 
 describe('community-node-types-utils', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('getCommunityNodeTypes', () => {
@@ -21,7 +24,7 @@ describe('community-node-types-utils', () => {
 			await getCommunityNodeTypes('production', {}, AI_SDK_VERSION);
 
 			expect(mockPaginatedRequest).toHaveBeenCalledWith('https://api.n8n.io/api/community-nodes', {
-				maxAiNodeSdkVersion: AI_SDK_VERSION,
+				maxAiNodeSdk: AI_SDK_VERSION,
 				pagination: {
 					page: 1,
 					pageSize: 25,
@@ -37,7 +40,7 @@ describe('community-node-types-utils', () => {
 			expect(mockPaginatedRequest).toHaveBeenCalledWith(
 				'https://api-staging.n8n.io/api/community-nodes',
 				{
-					maxAiNodeSdkVersion: AI_SDK_VERSION,
+					maxAiNodeSdk: AI_SDK_VERSION,
 					pagination: {
 						page: 1,
 						pageSize: 25,
@@ -59,7 +62,7 @@ describe('community-node-types-utils', () => {
 			expect(mockPaginatedRequest).toHaveBeenCalledWith('https://api.n8n.io/api/community-nodes', {
 				filters: { packageName: { $eq: 'test-package' } },
 				fields: ['name', 'version'],
-				maxAiNodeSdkVersion: AI_SDK_VERSION,
+				maxAiNodeSdk: AI_SDK_VERSION,
 				pagination: {
 					page: 1,
 					pageSize: 25,
@@ -90,7 +93,7 @@ describe('community-node-types-utils', () => {
 				'https://api.n8n.io/api/community-nodes',
 				{
 					fields: ['npmVersion', 'name', 'updatedAt'],
-					maxAiNodeSdkVersion: AI_SDK_VERSION,
+					maxAiNodeSdk: AI_SDK_VERSION,
 					pagination: {
 						page: 1,
 						pageSize: 500,
@@ -109,7 +112,7 @@ describe('community-node-types-utils', () => {
 				'https://api-staging.n8n.io/api/community-nodes',
 				{
 					fields: ['npmVersion', 'name', 'updatedAt'],
-					maxAiNodeSdkVersion: AI_SDK_VERSION,
+					maxAiNodeSdk: AI_SDK_VERSION,
 					pagination: {
 						page: 1,
 						pageSize: 500,

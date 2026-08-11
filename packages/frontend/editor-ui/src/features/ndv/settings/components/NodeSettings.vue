@@ -12,16 +12,19 @@ import type {
 	NodeParameterValue,
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeHelpers, deepCopy, isCommunityPackageName } from 'n8n-workflow';
-import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
+import { computed, inject, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 
 import { BASE_NODE_SURVEY_URL, VIEWS } from '@/app/constants';
 
 import NDVSubConnections from '@/features/ndv/panel/components/NDVSubConnections.vue';
 import NodeCredentials from '@/features/credentials/components/NodeCredentials.vue';
 import NodeSettingsHeader from './NodeSettingsHeader.vue';
-import NodeSettingsTabs from './NodeSettingsTabs.vue';
 import NodeWebhooks from './NodeWebhooks.vue';
 import ParameterInputList from '@/features/ndv/parameters/components/ParameterInputList.vue';
+import AgentNdvInlineControls from '@/features/ndv/agents/components/AgentNdvInlineControls.vue';
+import AgentNdvReferencedSummary from '@/features/ndv/agents/components/AgentNdvReferencedSummary.vue';
+import { NdvAgentConfigKey } from '@/features/ndv/agents/composables/useNdvAgentConfig';
+import { isAgentNodeV2 } from '@/features/agents/utils/agentNode';
 import get from 'lodash/get';
 
 import ExperimentalEmbeddedNdvHeader from '@/features/workflows/canvas/experimental/components/ExperimentalEmbeddedNdvHeader.vue';
@@ -33,21 +36,18 @@ import { useInstalledCommunityPackage } from '@/features/settings/communityNodes
 import { useNodeCredentialOptions } from '@/features/credentials/composables/useNodeCredentialOptions';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useNodeSettingsParameters } from '@/features/ndv/settings/composables/useNodeSettingsParameters';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { importCurlEventBus } from '@/app/event-bus';
 import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
 import NodeStorageLimitCallout from '@/features/core/dataTable/components/NodeStorageLimitCallout.vue';
-import NodeTitle from '@/app/components/NodeTitle.vue';
 import { RenameNodeCommand } from '@/app/models/history';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useHistoryStore } from '@/app/stores/history.store';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import type { NodeSettingsTab } from '@/app/types/nodeSettings';
-import { getNodeIconSource } from '@/app/utils/nodeIcon';
 import {
 	collectParametersByTab,
 	collectSettings,
@@ -60,19 +60,15 @@ import type { EventBus } from '@n8n/utils/event-bus';
 import { useResizeObserver } from '@vueuse/core';
 import CommunityNodeFooter from '@/features/settings/communityNodes/components/nodeCreator/CommunityNodeFooter.vue';
 import CommunityNodeUpdateInfo from '@/features/settings/communityNodes/components/nodeCreator/CommunityNodeUpdateInfo.vue';
-import NodeExecuteButton from '@/app/components/NodeExecuteButton.vue';
 import QuickConnectBanner from '@/features/credentials/quickConnect/components/QuickConnectBanner.vue';
 import { useQuickConnect } from '@/features/credentials/quickConnect/composables/useQuickConnect';
 
 import { N8nBlockUi, N8nIcon, N8nNotice, N8nText } from '@n8n/design-system';
 import { useRoute } from 'vue-router';
-import { useSettingsStore } from '@/app/stores/settings.store';
-import { injectWorkflowState } from '@/app/composables/useWorkflowState';
-import {
-	useWorkflowDocumentStore,
-	createWorkflowDocumentId,
-} from '@/app/stores/workflowDocument.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
+import { useEditorContext } from '@/app/composables/useEditorContext';
 
 const props = withDefaults(
 	defineProps<{
@@ -89,7 +85,6 @@ const props = withDefaults(
 		subTitle?: string;
 		extraTabsClassName?: string;
 		extraParameterWrapperClassName?: string;
-		isNdvV2?: boolean;
 		hideExecute?: boolean;
 		hideDocs?: boolean;
 		hideSubConnections?: boolean;
@@ -99,7 +94,6 @@ const props = withDefaults(
 		activeNode: undefined,
 		isEmbeddedInCanvas: false,
 		subTitle: undefined,
-		isNdvV2: false,
 		hideExecute: false,
 		hideDocs: true,
 		hideSubConnections: false,
@@ -121,22 +115,22 @@ const emit = defineEmits<{
 	dblclickHeader: [MouseEvent];
 }>();
 
-const slots = defineSlots<{ actions?: {} }>();
+defineSlots<{ actions?: {} }>();
 
 const nodeValues = ref<INodeParameters>(getNodeSettingsInitialValues());
 
 const nodeTypesStore = useNodeTypesStore();
-const ndvStore = useNDVStore();
-const workflowsStore = useWorkflowsStore();
+const ndvStore = injectNDVStore();
 const workflowsListStore = useWorkflowsListStore();
-const workflowState = injectWorkflowState();
-const workflowDocumentStore = computed(() =>
-	workflowsStore.workflowId
-		? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-		: undefined,
-);
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const credentialsStore = useCredentialsStore();
 const historyStore = useHistoryStore();
+const { aiAssistant, instanceAi } = useEditorContext();
+// Credential setup help has two backends: the legacy assistant (gated by
+// `aiAssistant`) and Instance AI (gated by the `instanceAi` editor feature, so a
+// host can turn it off per editor). Hide the help entry only when neither is
+// available.
+const hideCredentialHelp = computed(() => !aiAssistant.value && !instanceAi.value);
 
 const telemetry = useTelemetry();
 const nodeHelpers = useNodeHelpers();
@@ -157,6 +151,7 @@ if (props.isEmbeddedInCanvas) {
 }
 
 const nodeValid = ref(true);
+
 const openPanel = ref<NodeSettingsTab>('params');
 
 // Used to prevent nodeValues from being overwritten by defaults on reopening ndv
@@ -166,10 +161,11 @@ const hiddenIssuesInputs = ref<string[]>([]);
 const subConnections = ref<InstanceType<typeof NDVSubConnections> | null>(null);
 
 const isDemoRoute = computed(() => route?.name === VIEWS.DEMO);
-const { isPreviewMode } = useSettingsStore();
+const settingsStore = useSettingsStore();
+const { isPreviewMode } = settingsStore;
 const isDemoPreview = computed(() => isDemoRoute.value && isPreviewMode);
-const currentWorkflow = computed(
-	() => workflowsListStore.getWorkflowById(workflowsStore.workflowObject.id), // @TODO check if we actually need workflowObject here
+const currentWorkflow = computed(() =>
+	workflowsListStore.getWorkflowById(workflowDocumentStore.value.workflowId),
 );
 const hasForeignCredential = computed(() => props.foreignCredentials.length > 0);
 const isHomeProjectTeam = computed(
@@ -178,7 +174,7 @@ const isHomeProjectTeam = computed(
 const isReadOnly = computed(
 	() => props.readOnly || (hasForeignCredential.value && !isHomeProjectTeam.value),
 );
-const node = computed(() => props.activeNode ?? ndvStore.activeNode);
+const node = computed(() => props.activeNode ?? ndvStore.value.activeNode);
 
 const nodeType = computed(() =>
 	node.value ? nodeTypesStore.getNodeType(node.value.type, node.value.typeVersion) : null,
@@ -192,6 +188,8 @@ const { installedPackage, isUpdateCheckAvailable } = useInstalledCommunityPackag
 const isTriggerNode = computed(() => !!node.value && nodeTypesStore.isTriggerNode(node.value.type));
 
 const isToolNode = computed(() => !!node.value && nodeTypesStore.isToolNode(node.value.type));
+
+const isModelNode = computed(() => !!node.value && nodeTypesStore.isModelNode(node.value.type));
 
 const isExecutable = computed(() =>
 	nodeHelpers.isNodeExecutable(node.value, props.executable, props.foreignCredentials),
@@ -283,13 +281,13 @@ const showNoParametersNotice = computed(
 		(parametersByTab.value.params ?? []).filter((item) => item.type !== 'notice').length === 0,
 );
 
-const outputPanelEditMode = computed(() => ndvStore.outputPanelEditMode);
+const outputPanelEditMode = computed(() => ndvStore.value.outputPanelEditMode);
 
 const isCommunityNode = computed(() => !!node.value && isCommunityPackageName(node.value.type));
 const packageName = computed(() => node.value?.type.split('.')[0] ?? '');
 
 const usedCredentials = computed(() =>
-	Object.values(workflowDocumentStore.value?.usedCredentials ?? {}).filter((credential) =>
+	Object.values(workflowDocumentStore?.value?.usedCredentials ?? {}).filter((credential) =>
 		Object.values(node.value?.credentials || []).find(
 			(nodeCredential) => nodeCredential.id === credential.id,
 		),
@@ -307,7 +305,7 @@ const credentialOwnerName = computed(() => {
 });
 
 const featureRequestUrl = computed(() => {
-	if (!nodeType.value) {
+	if (!nodeType.value || settingsStore.isCanvasOnly) {
 		return '';
 	}
 	return `${BASE_NODE_SURVEY_URL}${nodeType.value.name}`;
@@ -315,7 +313,8 @@ const featureRequestUrl = computed(() => {
 
 const hasOutputConnection = computed(() => {
 	if (!node.value) return false;
-	const outgoingConnections = workflowsStore.outgoingConnectionsByNodeName(node.value.name);
+	const outgoingConnections =
+		workflowDocumentStore?.value?.outgoingConnectionsByNodeName(node.value.name) ?? {};
 
 	// Check if there's at-least one output connection
 	return (Object.values(outgoingConnections)?.[0]?.[0] ?? []).length > 0;
@@ -339,7 +338,7 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 		return;
 	}
 
-	const _node = workflowsStore.getNodeByName(nodeNameBefore);
+	const _node = workflowDocumentStore?.value?.getNodeByName(nodeNameBefore) ?? null;
 
 	if (_node === null) {
 		return;
@@ -425,7 +424,7 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 				value: nodeParameters,
 			};
 
-			workflowState.setNodeParameters(updateInformation);
+			workflowDocumentStore?.value?.setNodeParameters(updateInformation);
 
 			nodeHelpers.updateNodeParameterIssuesByName(_node.name);
 			nodeHelpers.updateNodeCredentialIssuesByName(_node.name);
@@ -439,6 +438,19 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 			_node,
 			isToolNode.value,
 		);
+	} else if (parameterData.name.includes('.') || parameterData.name.includes('[')) {
+		// A nested property on the node itself changed (e.g. a fixedCollection setting
+		// like `customTelemetryTags.tag`). Update the nested path in `nodeValues`,
+		// then persist the whole top-level field back to the node.
+		const topLevelKey = parameterData.name.split(/[.[]/)[0];
+		const valueForSetter = newValue === undefined ? null : newValue;
+		nodeSettingsParameters.setValue(nodeValues, parameterData.name, valueForSetter);
+
+		workflowDocumentStore?.value?.setNodeValue({
+			name: _node.name,
+			key: topLevelKey,
+			value: nodeValues.value[topLevelKey] as NodeParameterValue,
+		});
 	} else {
 		// A property on the node itself changed
 
@@ -455,7 +467,7 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 			value: newValue,
 		};
 
-		workflowState.setNodeValue(updateInformation);
+		workflowDocumentStore?.value?.setNodeValue(updateInformation);
 	}
 };
 
@@ -466,7 +478,9 @@ const setHttpNodeParameters = (parameters: CurlToJSONResponse) => {
 			name: 'parameters',
 			value: parameters as unknown as INodeParameters,
 		});
-	} catch {}
+	} catch (error) {
+		console.error('Failed to apply cURL parameters to node:', error);
+	}
 };
 
 const onSwitchSelectedNode = (node: string) => {
@@ -482,21 +496,32 @@ const onOpenConnectionNodeCreator = (
 };
 
 const populateHiddenIssuesSet = () => {
-	if (!node.value || !workflowsStore.isNodePristine(node.value.name)) return;
+	if (!node.value || !workflowDocumentStore?.value?.isNodePristine(node.value.name)) return;
 	hiddenIssuesInputs.value.push('credentials');
 	parametersByTab.value.params.forEach((parameter) => {
 		hiddenIssuesInputs.value.push(parameter.name);
 	});
-	workflowsStore.setNodePristine(node.value.name, false);
+	workflowDocumentStore?.value?.setNodePristine(node.value.name, false);
 };
 
 const nodeSettings = computed(() =>
-	createCommonNodeSettings(isToolNode.value, i18n.baseText.bind(i18n)),
+	createCommonNodeSettings(
+		isToolNode.value || isModelNode.value,
+		i18n.baseText.bind(i18n),
+		settingsStore.isOtelCustomSpanAttributesEnabled,
+	),
 );
 
-const iconSource = computed(() =>
-	getNodeIconSource(nodeType.value ?? node.value?.type, node.value ?? null),
-);
+// The AI Agent node renders extra Parameters-tab surfaces (referenced-agent
+// summary OR inline-agent controls, by `agentSource` mode) —
+// all driven by the NDV container's provided facade. Guarded on the facade
+// being provided so NodeSettings still works if ever mounted outside the NDV
+// container.
+const ndvAgentConfig = inject(NdvAgentConfigKey, null);
+// v2-gated to match the canvas card: v1 nodes keep the raw NDV layout.
+const isAgentNode = computed(() => isAgentNodeV2(node.value));
+const showAgentNdvControls = computed(() => isAgentNode.value && ndvAgentConfig !== null);
+const agentNdvMode = computed(() => ndvAgentConfig?.mode?.value ?? 'referenced');
 
 const onParameterBlur = (parameterName: string) => {
 	hiddenIssuesInputs.value = hiddenIssuesInputs.value.filter((name) => name !== parameterName);
@@ -515,9 +540,9 @@ const onNodeExecute = () => {
 
 const credentialSelected = (updateInformation: INodeUpdatePropertiesInformation) => {
 	// Update the values on the node
-	workflowState.updateNodeProperties(updateInformation);
+	workflowDocumentStore?.value?.updateNodeProperties(updateInformation);
 
-	const node = workflowsStore.getNodeByName(updateInformation.name);
+	const node = workflowDocumentStore?.value?.getNodeByName(updateInformation.name) ?? null;
 
 	if (node) {
 		// Update the issues
@@ -571,7 +596,7 @@ const onFeatureRequestClick = () => {
 	if (node.value) {
 		telemetry.track('User clicked ndv link', {
 			node_type: node.value.type,
-			workflow_id: workflowsStore.workflowId,
+			workflow_id: workflowDocumentStore.value.workflowId,
 			push_ref: props.pushRef,
 			pane: NodeConnectionTypes.Main,
 			type: 'i-wish-this-node-would',
@@ -636,7 +661,6 @@ function handleSelectAction(params: INodeParameters) {
 			embedded: props.isEmbeddedInCanvas,
 		}"
 		:data-has-output-connection="hasOutputConnection"
-		@keydown.stop
 	>
 		<ExperimentalEmbeddedNdvHeader
 			v-if="isEmbeddedInCanvas && node"
@@ -658,38 +682,6 @@ function handleSelectAction(params: INodeParameters) {
 				<slot name="actions" />
 			</template>
 		</ExperimentalEmbeddedNdvHeader>
-		<div v-else-if="!isNdvV2" :class="$style.header">
-			<div class="header-side-menu">
-				<NodeTitle
-					v-if="node"
-					class="node-name"
-					:model-value="node.name"
-					:icon-source="iconSource"
-					:read-only="isReadOnly"
-					:node-type="nodeType"
-					@update:model-value="nameChanged"
-				/>
-				<NodeExecuteButton
-					v-if="isExecutable && !blockUI && node && nodeValid"
-					data-test-id="node-execute-button"
-					:node-name="node.name"
-					:disabled="outputPanelEditMode.enabled && !isTriggerNode"
-					:tooltip="executeButtonTooltip"
-					size="small"
-					telemetry-source="parameters"
-					@execute="onNodeExecute"
-					@stop-execution="onStopExecution"
-					@value-changed="valueChanged"
-				/>
-			</div>
-			<NodeSettingsTabs
-				v-if="node && nodeValid"
-				:model-value="openPanel"
-				:node-type="nodeType"
-				:push-ref="pushRef"
-				@update:model-value="onTabSelect"
-			/>
-		</div>
 		<NodeSettingsHeader
 			v-else-if="node && nodeValid"
 			:selected-tab="openPanel"
@@ -719,7 +711,6 @@ function handleSelectAction(params: INodeParameters) {
 			:class="[
 				'node-parameters-wrapper',
 				shouldShowStaticScrollbar ? 'with-static-scrollbar' : '',
-				{ 'ndv-v2': isNdvV2 },
 				extraParameterWrapperClassName ?? '',
 			]"
 			data-test-id="node-parameters"
@@ -747,6 +738,7 @@ function handleSelectAction(params: INodeParameters) {
 				:readonly="isReadOnly"
 				:show-all="true"
 				:hide-issues="hiddenIssuesInputs.includes('credentials')"
+				:hide-ask-assistant="hideCredentialHelp"
 				@credential-selected="credentialSelected"
 				@value-changed="valueChanged"
 				@blur="onParameterBlur"
@@ -770,6 +762,7 @@ function handleSelectAction(params: INodeParameters) {
 					<QuickConnectBanner
 						v-if="showQuickConnectBanner"
 						:text="quickConnect?.text ?? ''"
+						:disclaimer="quickConnect?.disclaimer"
 						:class="$style.quickConnectBanner"
 					/>
 					<NodeCredentials
@@ -778,11 +771,20 @@ function handleSelectAction(params: INodeParameters) {
 						:readonly="isReadOnly"
 						:show-all="true"
 						:hide-issues="hiddenIssuesInputs.includes('credentials')"
+						:hide-ask-assistant="hideCredentialHelp"
 						@credential-selected="credentialSelected"
 						@value-changed="valueChanged"
 						@blur="onParameterBlur"
 					/>
 				</ParameterInputList>
+				<AgentNdvReferencedSummary
+					v-if="showAgentNdvControls && agentNdvMode === 'referenced'"
+					:is-read-only="isReadOnly"
+				/>
+				<AgentNdvInlineControls
+					v-if="showAgentNdvControls && agentNdvMode === 'inline'"
+					:is-read-only="isReadOnly"
+				/>
 				<div v-if="showNoParametersNotice" class="no-parameters">
 					<N8nText>
 						{{ i18n.baseText('nodeSettings.thisNodeDoesNotHaveAnyParameters') }}
@@ -844,7 +846,8 @@ function handleSelectAction(params: INodeParameters) {
 				</div>
 			</div>
 			<div
-				v-if="isNdvV2 && featureRequestUrl && !isEmbeddedInCanvas"
+				v-if="featureRequestUrl && !isEmbeddedInCanvas"
+				data-test-id="node-feature-request"
 				:class="$style.featureRequest"
 			>
 				<a target="_blank" @click="onFeatureRequestClick">
@@ -860,25 +863,16 @@ function handleSelectAction(params: INodeParameters) {
 			@switch-selected-node="onSwitchSelectedNode"
 			@open-connection-node-creator="onOpenConnectionNodeCreator"
 		/>
-		<N8nBlockUi
-			:show="blockUI"
-			:class="{
-				[$style.uiBlockerNdvV2]: isNdvV2,
-			}"
-		/>
+		<N8nBlockUi :show="blockUI" :class="$style.uiBlocker" />
 		<CommunityNodeFooter
 			v-if="openPanel === 'settings' && isCommunityNode"
 			:package-name="packageName"
-			:show-manage="useUsersStore().isInstanceOwner"
+			:show-manage="useUsersStore().isAdminOrOwner"
 		/>
 	</div>
 </template>
 
 <style lang="scss" module>
-.header {
-	background-color: var(--ndv--header--color);
-}
-
 .featureRequest {
 	margin-top: auto;
 	align-self: center;
@@ -899,7 +893,7 @@ function handleSelectAction(params: INodeParameters) {
 	margin-top: var(--spacing--sm);
 }
 
-.uiBlockerNdvV2 {
+.uiBlocker {
 	border-radius: 0;
 }
 </style>
@@ -917,28 +911,12 @@ function handleSelectAction(params: INodeParameters) {
 		margin-top: var(--spacing--xs);
 	}
 
-	.header-side-menu {
-		padding: var(--spacing--sm) var(--spacing--sm) var(--spacing--sm) var(--spacing--sm);
-		font-size: var(--font-size--lg);
-		display: flex;
-		justify-content: space-between;
-
-		.node-name {
-			padding-top: var(--spacing--5xs);
-			margin-right: var(--spacing--sm);
-		}
-	}
-
 	.node-parameters-wrapper {
 		display: flex;
 		flex-direction: column;
 		overflow-y: auto;
-		padding: 0 var(--spacing--md) var(--spacing--lg) var(--spacing--md);
+		padding: 0 var(--spacing--sm) var(--spacing--lg) var(--spacing--sm);
 		flex-grow: 1;
-
-		&.ndv-v2 {
-			padding: 0 var(--spacing--sm) var(--spacing--lg) var(--spacing--sm);
-		}
 	}
 
 	&.embedded .node-parameters-wrapper {

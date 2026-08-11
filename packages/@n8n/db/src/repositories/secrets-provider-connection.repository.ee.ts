@@ -1,5 +1,5 @@
 import { Service } from '@n8n/di';
-import { Brackets, DataSource, Repository } from '@n8n/typeorm';
+import { Brackets, DataSource, In, Repository } from '@n8n/typeorm';
 
 import { SecretsProviderConnection, SharedCredentials } from '../entities';
 
@@ -11,6 +11,26 @@ export class SecretsProviderConnectionRepository extends Repository<SecretsProvi
 
 	async findAll(): Promise<SecretsProviderConnection[]> {
 		return await this.find();
+	}
+
+	async findIdByProviderKey(providerKey: string): Promise<string | null> {
+		const connection = await this.findOne({
+			select: ['id'],
+			where: { providerKey },
+		});
+
+		return connection ? connection.id.toString() : null;
+	}
+
+	async findIdsByProviderKeys(providerKeys: string[]): Promise<string[]> {
+		if (providerKeys.length === 0) return [];
+
+		const connections = await this.find({
+			select: ['id'],
+			where: { providerKey: In(providerKeys) },
+		});
+
+		return connections.map(({ id }) => id.toString());
 	}
 
 	async hasGlobalProvider(providerKey: string): Promise<boolean> {
@@ -209,22 +229,5 @@ export class SecretsProviderConnectionRepository extends Repository<SecretsProvi
 			.where('connection.providerKey = :providerKey', { providerKey })
 			.andWhere('projectAccess.projectId = :projectId', { projectId })
 			.getOne();
-	}
-
-	/**
-	 * Remove a connection by its providerKey, but only if it is assigned to the specified project.
-	 * Returns the removed connection, or null if no matching connection was found.
-	 */
-	async removeByProviderKeyAndProjectId(
-		providerKey: string,
-		projectId: string,
-	): Promise<SecretsProviderConnection | null> {
-		const connection = await this.findByProviderKeyAndProjectId(providerKey, projectId);
-
-		if (!connection) {
-			return null;
-		}
-
-		return await this.remove(connection);
 	}
 }

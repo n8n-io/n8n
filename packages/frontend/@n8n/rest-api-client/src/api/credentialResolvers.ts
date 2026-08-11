@@ -1,12 +1,18 @@
-import type { CredentialResolver, CredentialResolverType } from '@n8n/api-types';
+import type {
+	CredentialResolver,
+	CredentialResolverAffectedWorkflow,
+	CredentialResolverType,
+} from '@n8n/api-types';
 
 import type { IRestApiContext } from '../types';
 import { makeRestApiRequest } from '../utils';
 
 export async function getCredentialResolvers(
 	context: IRestApiContext,
+	options: { includeSystem?: boolean } = {},
 ): Promise<CredentialResolver[]> {
-	return await makeRestApiRequest(context, 'GET', '/credential-resolvers');
+	const query = options.includeSystem ? { includeSystem: 'true' } : undefined;
+	return await makeRestApiRequest(context, 'GET', '/credential-resolvers', query);
 }
 
 export async function getCredentialResolverTypes(
@@ -40,6 +46,13 @@ export async function updateCredentialResolver(
 	},
 ): Promise<CredentialResolver> {
 	return await makeRestApiRequest(context, 'PATCH', `/credential-resolvers/${resolverId}`, payload);
+}
+
+export async function getCredentialResolverWorkflows(
+	context: IRestApiContext,
+	resolverId: string,
+): Promise<CredentialResolverAffectedWorkflow[]> {
+	return await makeRestApiRequest(context, 'GET', `/credential-resolvers/${resolverId}/workflows`);
 }
 
 export async function deleteCredentialResolver(

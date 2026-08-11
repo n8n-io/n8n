@@ -5,18 +5,18 @@
  * Replaces the Playwright `--list` + regex approach used by distribute-tests.mjs.
  */
 
+import type { DiscoveredSpec } from '@n8n/test-impact';
 import { SyntaxKind, type Project, type SourceFile, type CallExpression } from 'ts-morph';
 
 import { getConfig } from '../config.js';
 import { getSourceFiles } from './project-loader.js';
 import { getRelativePath } from '../utils/paths.js';
 
-export interface DiscoveredSpec {
-	/** Spec file path relative to rootDir */
-	path: string;
-	/** Capabilities extracted from tags matching capabilityPrefix */
-	capabilities: string[];
-}
+// DiscoveredSpec is owned by @n8n/test-impact (the framework-free orchestrator
+// consumes it); re-exported here so this module's DiscoveryReport + existing
+// importers keep their API.
+
+export type { DiscoveredSpec };
 
 export interface DiscoveryReport {
 	/** Active specs (specs with all tests skipped are excluded) */
@@ -199,7 +199,10 @@ export class TestDiscoveryAnalyzer {
 
 	/**
 	 * Extract the title string from the first argument of a test/describe call.
-	 * Returns null for calls without a string title (e.g., test.fixme() with no args).
+	 * Returns null for calls without a title argument (e.g., test.fixme() with no args).
+	 * Dynamic titles (template literals with substitutions, concatenation, identifiers)
+	 * return the raw source text so the call still counts as a real test and tags inside
+	 * the static portions can be extracted.
 	 */
 	private extractTitle(call: CallExpression): string | null {
 		const args = call.getArguments();
@@ -207,14 +210,13 @@ export class TestDiscoveryAnalyzer {
 
 		const firstArg = args[0];
 
-		// Handle string literals: 'title', "title", `title`
 		const asString = firstArg.asKind(SyntaxKind.StringLiteral);
 		if (asString) return asString.getLiteralText();
 
 		const asTemplate = firstArg.asKind(SyntaxKind.NoSubstitutionTemplateLiteral);
 		if (asTemplate) return asTemplate.getLiteralText();
 
-		return null;
+		return firstArg.getText();
 	}
 
 	private parseTags(title: string): string[] {

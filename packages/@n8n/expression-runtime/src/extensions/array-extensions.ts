@@ -1,12 +1,17 @@
 import isEqual from 'lodash/isEqual';
+import random from 'lodash/random';
 import uniqWith from 'lodash/uniqWith';
 
 import type { Extension, ExtensionMap } from './extensions';
 import { ExpressionExtensionError } from './expression-extension-error';
 import { compact as oCompact } from './object-extensions';
 
+// DIVERGENCE from packages/workflow/src/extensions/array-extensions.ts:
+// The original uses crypto.getRandomValues() which is a Web API unavailable
+// inside the V8 isolate. lodash/random (already bundled) is used instead — both
+// are backed by Math.random() and randomItem() is non-security-critical.
 function randomInt(max: number): number {
-	return crypto.getRandomValues(new Uint32Array(1))[0] % max;
+	return random(0, max - 1);
 }
 
 function first(value: unknown[]): unknown {
@@ -23,6 +28,10 @@ function isNotEmpty(value: unknown[]): boolean {
 
 function last(value: unknown[]): unknown {
 	return value[value.length - 1];
+}
+
+function reverse(value: unknown[]): unknown[] {
+	return [...value].reverse();
 }
 
 function pluck(value: unknown[], extraArgs: unknown[]): unknown[] {
@@ -679,6 +688,7 @@ export const arrayExtensions: ExtensionMap = {
 		unique,
 		first,
 		last,
+		reverse,
 		pluck,
 		randomItem,
 		sum,

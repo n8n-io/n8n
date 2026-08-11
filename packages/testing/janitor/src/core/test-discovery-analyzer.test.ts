@@ -69,6 +69,21 @@ describe('TestDiscoveryAnalyzer', () => {
 
 			expect(report.specs.map((s) => s.path)).toEqual(['tests/a.spec.ts', 'tests/b.spec.ts']);
 		});
+
+		it('discovers tests whose titles are template literals with substitutions', () => {
+			const file = createFile(
+				'tests/dynamic.spec.ts',
+				`
+for (const path of ['a', 'b']) {
+	test(\`handles \${path}\`, async () => {});
+}
+`,
+			);
+			const report = discoverWith([file]);
+
+			expect(report.specs).toHaveLength(1);
+			expect(report.specs[0].path).toBe('tests/dynamic.spec.ts');
+		});
 	});
 
 	describe('skip and fixme detection', () => {

@@ -1,0 +1,8 @@
+# minLength / maxLength / pattern guarded by data-table-column-name.openapi.test.ts (vs @n8n/api-types constants).
+type: string
+description: >-
+  Column name. Must start with a letter; only letters, digits, and underscores
+  after that; maximum 63 characters.
+minLength: 1
+maxLength: 63
+pattern: '^[a-zA-Z][a-zA-Z0-9_]*$'

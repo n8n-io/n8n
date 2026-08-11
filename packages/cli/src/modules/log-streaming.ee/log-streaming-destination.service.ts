@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { OutboundHttp } from '@n8n/backend-network';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import type { DeleteResult } from '@n8n/typeorm';
@@ -39,6 +40,7 @@ export class LogStreamingDestinationService {
 		private readonly eventDestinationsRepository: EventDestinationsRepository,
 		private readonly eventBus: MessageEventBus,
 		private readonly publisher: Publisher,
+		private readonly outboundHttp: OutboundHttp,
 	) {
 		this.messageHandler = this.handleMessage.bind(this);
 	}
@@ -51,7 +53,11 @@ export class LogStreamingDestinationService {
 		if (savedEventDestinations.length > 0) {
 			for (const destinationData of savedEventDestinations) {
 				try {
-					const destination = messageEventBusDestinationFromDb(this.eventBus, destinationData);
+					const destination = messageEventBusDestinationFromDb(
+						this.eventBus,
+						destinationData,
+						this.outboundHttp,
+					);
 					if (destination) {
 						this.destinations[destination.getId()] = destination;
 						this.logger.debug(`Loaded destination ${destination.getId()} from database`);
@@ -158,7 +164,7 @@ export class LogStreamingDestinationService {
 	) {
 		// If there are no destinations that should receive this message, mark it as sent immediately
 		if (!this.shouldSendMsg(msg)) {
-			this.eventBus.confirmSent(msg, { id: '0', name: 'eventBus' });
+			confirmCallback(msg, { id: '0', name: 'eventBus' });
 			return;
 		}
 
@@ -200,7 +206,8 @@ export class LogStreamingDestinationService {
 		if (destination.length > 0) {
 			const sendResult = await this.destinations[destinationId].receiveFromEventBus({
 				msg,
-				confirmCallback: () => this.eventBus.confirmSent(msg, { id: '0', name: 'eventBus' }),
+				confirmCallback: () =>
+					this.eventBus.confirmMessageDelivered(msg, { id: '0', name: 'eventBus' }),
 			});
 			return sendResult;
 		}

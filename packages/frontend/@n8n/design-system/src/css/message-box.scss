@@ -46,9 +46,11 @@
 
 	@include mixins.e(title) {
 		padding-left: 0;
+		padding-right: var(--spacing--lg);
+		overflow-wrap: anywhere;
 		margin-bottom: 0;
 		font-size: var.$messagebox-font-size;
-		line-height: 1;
+		line-height: var(--line-height--md);
 		color: var.$messagebox-title-color;
 	}
 
@@ -143,6 +145,10 @@
 			line-height: var(--line-height--lg);
 		}
 
+		& .el-message-box__message__structured {
+			margin-bottom: var(--spacing--xs);
+		}
+
 		& .el-message-box__message__structured p {
 			margin-bottom: var(--spacing--sm);
 		}
@@ -152,7 +158,7 @@
 		color: var(--color--danger);
 		font-size: var.$messagebox-error-font-size;
 		min-height: 18px;
-		margin-top: 2px;
+		margin-top: var(--spacing--2xs);
 	}
 
 	@include mixins.e(btns) {
@@ -179,7 +185,7 @@
 
 			height: 2rem;
 			padding: 0 var(--spacing--xs);
-			border-radius: var(--radius--xs);
+			border-radius: var(--radius--3xs);
 			font-size: var(--font-size--sm);
 			font-family: var(--font-family);
 			font-weight: var(--font-weight--medium);
@@ -191,6 +197,7 @@
 			display: inline-flex;
 			align-items: center;
 			justify-content: center;
+			cursor: pointer;
 		}
 
 		& .btn--confirm:hover,
@@ -250,6 +257,29 @@
 
 	@include mixins.e(btns-reverse) {
 		flex-direction: row-reverse;
+	}
+
+	// Destructive variant: matches Modal component look for delete confirmations
+	&.el-message-box--destructive {
+		width: 540px;
+
+		.el-message-box__title span {
+			font-size: var(--font-size--xl);
+			font-weight: var(--font-weight--bold);
+			line-height: var(--line-height--sm);
+		}
+
+		.el-message-box__btns .btn--confirm {
+			--button--color--background: light-dark(var(--color--red-500), var(--color--red-600));
+			--button--color--background-hover: light-dark(var(--color--red-600), var(--color--red-500));
+			--button--color--background-active: light-dark(var(--color--red-600), var(--color--red-400));
+			--button--border-color: light-dark(var(--color--red-500), var(--color--red-600));
+			--button--border-color--hover: light-dark(var(--color--red-600), var(--color--red-500));
+			--button--border-color--active: light-dark(var(--color--red-600), var(--color--red-400));
+			--button--shadow: none;
+			--button--shadow--hover: none;
+			--button--shadow--active: none;
+		}
 	}
 
 	// centerAlign 布局

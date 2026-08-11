@@ -16,6 +16,11 @@ import { jsonParse } from 'n8n-workflow';
 import type pg from 'pg';
 import { getUserScopedSlot } from '../shared/userScoped';
 import { ExtendedPGVectorStore } from '../VectorStorePGVector/VectorStorePGVector.node';
+import {
+	filterChatHubMetadata,
+	filterChatHubInsertDocuments,
+	CHAT_HUB_RETRIEVE_METADATA_KEYS,
+} from '../shared/chatHub';
 
 type ChatHubVectorStorePGVectorApiCredentials = PostgresNodeCredentials & {
 	tableNamePrefix: string;
@@ -151,7 +156,18 @@ export class ChatHubVectorStorePGVector extends createVectorStoreNode({
 			filter,
 		};
 
-		return await ExtendedPGVectorStore.initialize(embeddings, config);
+		const store = await ExtendedPGVectorStore.initialize(embeddings, config);
+
+		const originalSearch = store.similaritySearchVectorWithScore.bind(store);
+		store.similaritySearchVectorWithScore = async (...args) => {
+			const results = await originalSearch(...args);
+			return results.map(([doc, score]) => [
+				{ ...doc, metadata: filterChatHubMetadata(doc.metadata, CHAT_HUB_RETRIEVE_METADATA_KEYS) },
+				score,
+			]);
+		};
+
+		return store;
 	},
 
 	async populateVectorStore(context, embeddings, documents, itemIndex) {
@@ -167,7 +183,11 @@ export class ChatHubVectorStorePGVector extends createVectorStoreNode({
 			tableName,
 		};
 
-		const vectorStore = await PGVectorStore.fromDocuments(documents, embeddings, config);
+		const vectorStore = await PGVectorStore.fromDocuments(
+			filterChatHubInsertDocuments(documents),
+			embeddings,
+			config,
+		);
 		vectorStore.client?.release();
 	},
 

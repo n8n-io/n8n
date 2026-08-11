@@ -17,7 +17,7 @@ import { useTagsStore } from '@/features/shared/tags/tags.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useFoldersStore } from '@/features/core/folders/folders.store';
 import CommandBarItemTitle from '@/features/shared/commandBar/components/CommandBarItemTitle.vue';
-import { isIconOrEmoji, type IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
+import { isIconOrEmoji, type IconOrEmoji } from '@n8n/design-system';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { getResourcePermissions } from '@n8n/permissions';
 
@@ -82,7 +82,7 @@ export function useWorkflowNavigationCommands(options: {
 			// Search workflows by name with minimal fields
 			const nameSearchPromise = workflowsListStore.searchWorkflows({
 				query: trimmed,
-				select: ['id', 'name', 'active', 'ownedBy', 'parentFolder', 'isArchived', 'description'],
+				select: ['id', 'name', 'versionId', 'ownedBy', 'parentFolder', 'isArchived', 'description'],
 			});
 
 			const nodeTypeSearchPromise =
@@ -92,7 +92,7 @@ export function useWorkflowNavigationCommands(options: {
 							select: [
 								'id',
 								'name',
-								'active',
+								'versionId',
 								'nodes',
 								'ownedBy',
 								'parentFolder',
@@ -108,7 +108,7 @@ export function useWorkflowNavigationCommands(options: {
 						select: [
 							'id',
 							'name',
-							'active',
+							'versionId',
 							'ownedBy',
 							'tags',
 							'parentFolder',
@@ -302,7 +302,7 @@ export function useWorkflowNavigationCommands(options: {
 			handler: () => {
 				const targetRoute = router.resolve({
 					name: VIEWS.WORKFLOW,
-					params: { name: workflow.id },
+					params: { workflowId: workflow.id },
 				});
 				window.location.href = targetRoute.fullPath;
 			},

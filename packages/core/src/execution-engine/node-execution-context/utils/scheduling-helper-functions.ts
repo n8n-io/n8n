@@ -3,6 +3,8 @@ import type { SchedulingFunctions, Workflow, CronContext, Cron } from 'n8n-workf
 
 import { ScheduledTaskManager } from '../../scheduled-task-manager';
 
+const WORKFLOW_SCHEDULE_GROUP_TYPE = 'workflow';
+
 export const getSchedulingFunctions = (
 	workflowId: Workflow['id'],
 	timezone: Workflow['timezone'],
@@ -10,7 +12,7 @@ export const getSchedulingFunctions = (
 ): SchedulingFunctions => {
 	const scheduledTaskManager = Container.get(ScheduledTaskManager);
 	return {
-		registerCron: ({ expression, recurrence }: Cron, onTick) => {
+		registerCron: ({ expression, recurrence }: Cron, onTick: (scheduledT: Date) => void) => {
 			const ctx: CronContext = {
 				expression,
 				recurrence,
@@ -19,7 +21,16 @@ export const getSchedulingFunctions = (
 				timezone,
 			};
 
-			return scheduledTaskManager.registerCron(ctx, onTick);
+			return scheduledTaskManager.register(
+				{
+					group: { type: WORKFLOW_SCHEDULE_GROUP_TYPE, id: ctx.workflowId },
+					targetId: ctx.nodeId,
+					timezone: ctx.timezone,
+					expression: ctx.expression,
+					recurrence: ctx.recurrence,
+				},
+				onTick,
+			);
 		},
 	};
 };

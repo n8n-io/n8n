@@ -23,6 +23,9 @@ export default {
 		},
 	},
 	parameters: {
+		docs: {
+			description: { component: 'An expandable panel that reveals or hides grouped content.' },
+		},
 		backgrounds: { default: 'white' },
 	},
 	decorators: [

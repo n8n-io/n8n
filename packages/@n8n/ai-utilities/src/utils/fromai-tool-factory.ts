@@ -1,8 +1,10 @@
 import type { CallbackManagerForToolRun } from '@langchain/core/callbacks/manager';
 import { DynamicStructuredTool, DynamicTool } from '@langchain/core/tools';
-import type { FromAIArgument, IDataObject, INode, INodeParameters } from 'n8n-workflow';
-import { generateZodSchema, traverseNodeParameters } from 'n8n-workflow';
-import { z } from 'zod';
+import type { FromAIArgument, IDataObject, INode } from 'n8n-workflow';
+
+import { createZodSchemaFromArgs, extractFromAIParameters } from './fromai-helpers';
+
+export { extractFromAIParameters, createZodSchemaFromArgs } from './fromai-helpers';
 
 export type ToolFunc = (
 	query: string | IDataObject,
@@ -18,33 +20,6 @@ export interface CreateToolOptions {
 	 * These are added after extracting $fromAI parameters from node parameters.
 	 */
 	extraArgs?: FromAIArgument[];
-}
-
-/**
- * Extracts $fromAI parameters from node parameters and returns unique arguments.
- */
-export function extractFromAIParameters(nodeParameters: INodeParameters): FromAIArgument[] {
-	const collectedArguments: FromAIArgument[] = [];
-	traverseNodeParameters(nodeParameters, collectedArguments);
-
-	const uniqueArgsMap = new Map<string, FromAIArgument>();
-	for (const arg of collectedArguments) {
-		uniqueArgsMap.set(arg.key, arg);
-	}
-
-	return Array.from(uniqueArgsMap.values());
-}
-
-/**
- * Creates a Zod schema from $fromAI arguments.
- */
-export function createZodSchemaFromArgs(args: FromAIArgument[]): z.ZodObject<z.ZodRawShape> {
-	const schemaObj = args.reduce((acc: Record<string, z.ZodTypeAny>, placeholder) => {
-		acc[placeholder.key] = generateZodSchema(placeholder);
-		return acc;
-	}, {});
-
-	return z.object(schemaObj).required();
 }
 
 /**

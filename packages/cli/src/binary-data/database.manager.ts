@@ -1,10 +1,10 @@
+import { binaryToBuffer } from '@n8n/backend-network';
 import { BinaryDataRepository, In, SourceTypeSchema, type SourceType } from '@n8n/db';
 import { Service } from '@n8n/di';
 import {
 	BinaryDataConfig,
 	type BinaryData,
 	BinaryDataFileNotFoundError,
-	binaryToBuffer,
 	FileTooLargeError,
 	InvalidSourceTypeError,
 	MissingSourceIdError,

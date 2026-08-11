@@ -1,0 +1,4 @@
+{
+	"id": "schedule-to-email",
+	"prompt": "Build a workflow that runs every day at 9am, fetches data from a Google Sheet (document ID '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms', sheet 'Daily Report'), and sends an email summary via Gmail to team@example.com with the subject 'Daily Report'. Configure all nodes completely and don't ask for credentials."
+}

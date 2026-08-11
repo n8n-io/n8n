@@ -14,21 +14,21 @@ import { deepCopy, isINodeProperties, isINodePropertyCollection } from 'n8n-work
 
 import get from 'lodash/get';
 
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
+import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
 import { useI18n } from '@n8n/i18n';
-import { storeToRefs } from 'pinia';
 
 import {
 	N8nButton,
 	N8nCollapsiblePanel,
 	N8nHeaderAction,
-	N8nDropdown,
+	N8nDropdownMenu,
 	N8nSectionHeader,
 	N8nTooltip,
 	TOOLTIP_DELAY_MS,
 } from '@n8n/design-system';
-import type { N8nDropdownOption } from '@n8n/design-system';
+import type { DropdownMenuItemProps } from '@n8n/design-system';
 import { isPresent } from '@/app/utils/typesUtils';
 
 export interface Props {
@@ -51,11 +51,12 @@ const props = withDefaults(defineProps<Props>(), {
 	isNested: false,
 	isNewlyAdded: false,
 });
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 const i18n = useI18n();
 const nodeHelpers = useNodeHelpers();
+const aiGatewayStore = useAiGatewayStore();
 
-const { activeNode } = storeToRefs(ndvStore);
+const activeNode = computed(() => ndvStore.value.activeNode);
 
 const storageKey = computed(() => {
 	return `n8n-collection-parameter-expanded-${activeNode.value?.id ?? 'unknown'}-${props.path}`;
@@ -97,7 +98,12 @@ function displayNodeParameter(parameter: INodeProperties) {
 		// If it is not defined no need to do a proper check
 		return true;
 	}
-	return nodeHelpers.displayParameter(props.nodeValues, parameter, props.path, ndvStore.activeNode);
+	return nodeHelpers.displayParameter(
+		props.nodeValues,
+		parameter,
+		props.path,
+		ndvStore.value.activeNode,
+	);
 }
 
 function getOptionProperties(
@@ -144,10 +150,13 @@ const filteredOptions = computed(() => {
 	return props.parameter.options.filter((option) => {
 		// Accept both INodeProperties and INodePropertyCollection
 		if (isINodeProperties(option)) {
-			return displayNodeParameter(option);
+			return (
+				displayNodeParameter(option) &&
+				!aiGatewayStore.isNodePropertyHidden(activeNode.value, option.name)
+			);
 		}
 		if (isINodePropertyCollection(option)) {
-			return true; // Collections are always displayed
+			return !aiGatewayStore.isNodePropertyHidden(activeNode.value, option.name);
 		}
 		return false;
 	});
@@ -157,10 +166,10 @@ const parameterOptions = computed(() => {
 	return filteredOptions.value.filter((option) => !propertyNames.value.includes(option.name));
 });
 
-const dropdownOptions = computed((): Array<N8nDropdownOption<string>> => {
+const dropdownOptions = computed((): Array<DropdownMenuItemProps<string>> => {
 	return parameterOptions.value.map((option) => ({
+		id: option.name,
 		label: getParameterOptionLabel(option),
-		value: option.name,
 	}));
 });
 
@@ -264,17 +273,17 @@ function valueChanged(parameterData: IUpdateInformation) {
 		@keydown.stop
 	>
 		<template v-if="!isReadOnly" #actions>
-			<N8nDropdown
-				:options="dropdownOptions"
+			<N8nDropdownMenu
+				:items="dropdownOptions"
 				:disabled="isAddDisabled"
 				data-test-id="collection-parameter-add-header"
 				@select="optionSelected"
-				@update:open="isDropdownOpen = $event"
+				@update:model-value="isDropdownOpen = $event"
 			>
 				<template #trigger>
 					<N8nHeaderAction icon="plus" :label="placeholder" :disabled="isAddDisabled" />
 				</template>
-			</N8nDropdown>
+			</N8nDropdownMenu>
 			<N8nHeaderAction
 				v-if="!hideDelete"
 				icon="trash-2"
@@ -299,9 +308,9 @@ function valueChanged(parameterData: IUpdateInformation) {
 			</Suspense>
 
 			<div v-if="!isReadOnly && !isAddDisabled" :class="$style.paramOptions">
-				<N8nDropdown
+				<N8nDropdownMenu
 					ref="addDropdownRef"
-					:options="dropdownOptions"
+					:items="dropdownOptions"
 					:class="$style.addDropdown"
 					data-test-id="collection-parameter-add-dropdown"
 					@select="optionSelected"
@@ -315,7 +324,7 @@ function valueChanged(parameterData: IUpdateInformation) {
 							:label="placeholder"
 						/>
 					</template>
-				</N8nDropdown>
+				</N8nDropdownMenu>
 			</div>
 		</div>
 	</N8nCollapsiblePanel>
@@ -339,8 +348,8 @@ function valueChanged(parameterData: IUpdateInformation) {
 				<template v-if="!isReadOnly" #actions>
 					<N8nTooltip :disabled="!isAddDisabled" :show-after="TOOLTIP_DELAY_MS">
 						<template #content>{{ addTooltipText }}</template>
-						<N8nDropdown
-							:options="dropdownOptions"
+						<N8nDropdownMenu
+							:items="dropdownOptions"
 							:disabled="isAddDisabled"
 							data-test-id="collection-parameter-add-header"
 							@select="optionSelected"
@@ -348,7 +357,7 @@ function valueChanged(parameterData: IUpdateInformation) {
 							<template #trigger>
 								<N8nHeaderAction icon="plus" :label="placeholder" :disabled="isAddDisabled" />
 							</template>
-						</N8nDropdown>
+						</N8nDropdownMenu>
 					</N8nTooltip>
 				</template>
 			</N8nSectionHeader>
@@ -367,9 +376,9 @@ function valueChanged(parameterData: IUpdateInformation) {
 			</Suspense>
 
 			<div v-if="!isReadOnly && !isAddDisabled" :class="$style.paramOptions">
-				<N8nDropdown
+				<N8nDropdownMenu
 					ref="addDropdownRef"
-					:options="dropdownOptions"
+					:items="dropdownOptions"
 					:class="$style.addDropdown"
 					data-test-id="collection-parameter-add-dropdown"
 					@select="optionSelected"
@@ -383,7 +392,7 @@ function valueChanged(parameterData: IUpdateInformation) {
 							:label="placeholder"
 						/>
 					</template>
-				</N8nDropdown>
+				</N8nDropdownMenu>
 			</div>
 		</div>
 	</div>

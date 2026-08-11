@@ -29,6 +29,14 @@ export default {
 			options: [1, 2, 3, 4, 5],
 		},
 	},
+
+	parameters: {
+		docs: {
+			description: {
+				component: 'A renderer for Markdown content with n8n-compatible formatting behavior.',
+			},
+		},
+	},
 };
 
 const Template: StoryFn = (args, { argTypes }) => ({

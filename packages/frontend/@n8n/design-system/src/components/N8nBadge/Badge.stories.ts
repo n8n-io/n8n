@@ -15,6 +15,12 @@ export default {
 			options: ['small', 'medium', 'large'],
 		},
 	},
+
+	parameters: {
+		docs: {
+			description: { component: 'A compact status label for highlighting state or metadata.' },
+		},
+	},
 };
 
 const Template: StoryFn = (args, { argTypes }) => ({

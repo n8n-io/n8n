@@ -9,7 +9,7 @@
 // XX denotes that the node is disabled
 // PD denotes that the node has pinned data
 
-import { type IPinData, type IRunData } from 'n8n-workflow';
+import { type IPinData, type IRunData, type ExecutionError } from 'n8n-workflow';
 
 import { createNodeData, toITaskData } from './helpers';
 import { DirectedGraph } from '../directed-graph';
@@ -35,6 +35,20 @@ describe('isDirty', () => {
 
 		expect(isDirty(node, runData)).toBe(false);
 	});
+
+	test("if the node has run data with an error it's dirty", () => {
+		const node = createNodeData({ name: 'Basic Node' });
+
+		const runData: IRunData = {
+			[node.name]: [
+				toITaskData([{ data: { value: 1 } }], {
+					error: { message: 'Request failed', name: 'NodeApiError' } as unknown as ExecutionError,
+				}),
+			],
+		};
+
+		expect(isDirty(node, runData)).toBe(true);
+	});
 });
 
 describe('findStartNodes', () => {
@@ -56,6 +70,41 @@ describe('findStartNodes', () => {
 
 		expect(startNodes.size).toBe(1);
 		expect(startNodes).toContainEqual(node);
+	});
+
+	//                 ►►
+	//  ┌───────┐     ┌─────┐     ┌───────────┐
+	//  │trigger├────►│node1├────►│destination│
+	//  └───────┘     └─────┘     └───────────┘
+	//  trigger has run data, node1 has run data with an error.
+	//  node1 should be the start node because it needs to be re-executed.
+	test('treats a node with errored run data as dirty', () => {
+		const trigger = createNodeData({ name: 'trigger' });
+		const node1 = createNodeData({ name: 'node1' });
+		const destination = createNodeData({ name: 'destination' });
+		const graph = new DirectedGraph()
+			.addNodes(trigger, node1, destination)
+			.addConnections({ from: trigger, to: node1 }, { from: node1, to: destination });
+
+		const runData: IRunData = {
+			[trigger.name]: [toITaskData([{ data: { value: 1 } }])],
+			[node1.name]: [
+				toITaskData([{ data: { value: 1 } }], {
+					error: { message: 'Request failed', name: 'NodeApiError' } as unknown as ExecutionError,
+				}),
+			],
+		};
+
+		const startNodes = findStartNodes({
+			graph,
+			trigger,
+			destination,
+			runData,
+			pinData: {},
+		});
+
+		expect(startNodes.size).toBe(1);
+		expect(startNodes).toContainEqual(node1);
 	});
 
 	//                 ►►

@@ -7,11 +7,14 @@ import {
 	generateOffsets,
 	getGenericHints,
 	getNewNodePosition,
+	getNodeViewTab,
 	updateViewportToContainNodes,
 	DEFAULT_NODE_SIZE,
 	snapPositionToGrid,
 	calculateNodeSize,
 	GRID_SIZE,
+	NODE_X_SPACING,
+	HORIZONTAL_NODE_STEP,
 	doRectsOverlap,
 	canUsePosition,
 } from './nodeViewUtils';
@@ -27,6 +30,8 @@ import type { GraphNode } from '@vue-flow/core';
 import { v4 as uuid } from 'uuid';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
+import { MAIN_HEADER_TABS, VIEWS } from '@/app/constants';
+import type { RouteLocation } from 'vue-router';
 
 describe('getGenericHints', () => {
 	let mockWorkflowNode: MockProxy<INode>;
@@ -63,7 +68,7 @@ describe('getGenericHints', () => {
 			nodeOutputData: mockNodeOutputData,
 			hasMultipleInputItems,
 			hasNodeRun,
-			nodes: {},
+			getNodeByName: () => null,
 			connections: {},
 		});
 
@@ -89,7 +94,7 @@ describe('getGenericHints', () => {
 			nodeOutputData: mockNodeOutputData,
 			hasMultipleInputItems,
 			hasNodeRun,
-			nodes: {},
+			getNodeByName: () => null,
 			connections: {},
 		});
 
@@ -128,7 +133,7 @@ describe('getGenericHints', () => {
 			nodeOutputData: mockNodeOutputData,
 			hasMultipleInputItems,
 			hasNodeRun,
-			nodes: {},
+			getNodeByName: () => null,
 			connections: {},
 		});
 
@@ -153,7 +158,7 @@ describe('getGenericHints', () => {
 			nodeOutputData: mockNodeOutputData,
 			hasMultipleInputItems,
 			hasNodeRun,
-			nodes: {},
+			getNodeByName: () => null,
 			connections: {},
 		});
 
@@ -178,7 +183,7 @@ describe('getGenericHints', () => {
 			nodeOutputData: mockNodeOutputData,
 			hasMultipleInputItems,
 			hasNodeRun,
-			nodes: {},
+			getNodeByName: () => null,
 			connections: {},
 		});
 
@@ -204,7 +209,7 @@ describe('getGenericHints', () => {
 			nodeOutputData: mockNodeOutputData,
 			hasMultipleInputItems,
 			hasNodeRun,
-			nodes: {},
+			getNodeByName: () => null,
 			connections: {},
 		});
 
@@ -633,5 +638,63 @@ describe('canUsePosition', () => {
 		const pos1: XYPosition = [0, 0];
 		const pos2: XYPosition = [0, DEFAULT_NODE_SIZE[1] + 1];
 		expect(canUsePosition(pos1, pos2)).toBe(true);
+	});
+});
+
+describe('getNodeViewTab', () => {
+	function createRouteLocation(overrides: Partial<RouteLocation>): RouteLocation {
+		return {
+			matched: [],
+			fullPath: '/',
+			query: {},
+			hash: '',
+			redirectedFrom: undefined,
+			path: '/',
+			params: {},
+			name: undefined,
+			meta: {},
+			...overrides,
+		} as RouteLocation;
+	}
+
+	it('should return WORKFLOW for routes with nodeView meta', () => {
+		const route = createRouteLocation({ meta: { nodeView: true } });
+		expect(getNodeViewTab(route)).toBe(MAIN_HEADER_TABS.WORKFLOW);
+	});
+
+	it.each([VIEWS.WORKFLOW_EXECUTIONS, VIEWS.EXECUTION_PREVIEW, VIEWS.EXECUTION_HOME])(
+		'should return EXECUTIONS for %s route',
+		(viewName) => {
+			const route = createRouteLocation({ name: viewName });
+			expect(getNodeViewTab(route)).toBe(MAIN_HEADER_TABS.EXECUTIONS);
+		},
+	);
+
+	it.each([VIEWS.EVALUATION_EDIT, VIEWS.EVALUATION_RUNS_DETAIL])(
+		'should return EVALUATION for %s route',
+		(viewName) => {
+			const route = createRouteLocation({ name: viewName });
+			expect(getNodeViewTab(route)).toBe(MAIN_HEADER_TABS.EVALUATION);
+		},
+	);
+
+	it('should return null for unrecognized routes', () => {
+		const route = createRouteLocation({ name: 'SomeOtherView' });
+		expect(getNodeViewTab(route)).toBeNull();
+	});
+});
+
+describe('horizontal spacing constants', () => {
+	it('should keep the placement step in lockstep with the auto-layout node step', () => {
+		// The plus button / connection-drop places a node HORIZONTAL_NODE_STEP to the
+		// right of its source; the cleanup auto-layout leaves NODE_X_SPACING between
+		// adjacent node edges. They must agree so a freshly placed node lands exactly
+		// where cleanup would put it (see CAT-2395).
+		expect(HORIZONTAL_NODE_STEP).toBe(DEFAULT_NODE_SIZE[0] + NODE_X_SPACING);
+	});
+
+	it('should resolve to the canonical 8-dot step (224px on a 16px grid)', () => {
+		expect(NODE_X_SPACING).toBe(GRID_SIZE * 8);
+		expect(HORIZONTAL_NODE_STEP).toBe(224);
 	});
 });

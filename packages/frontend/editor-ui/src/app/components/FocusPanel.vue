@@ -35,22 +35,23 @@ import { useEnvironmentsStore } from '@/features/settings/environments.ee/enviro
 import { htmlEditorEventBus } from '@/app/event-bus';
 import { hasFocusOnInput, isFocusableEl } from '@/app/utils/typesUtils';
 import type { INodeUi, TargetNodeParameterContext } from '@/Interface';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { computedAsync } from '@vueuse/core';
 import { useExecutionData } from '@/features/execution/executions/composables/useExecutionData';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import ExperimentalNodeDetailsDrawer from '@/features/workflows/canvas/experimental/components/ExperimentalNodeDetailsDrawer.vue';
 import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimental/experimentalNdv.store';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useVueFlow } from '@vue-flow/core';
 import ExperimentalFocusPanelHeader from '@/features/workflows/canvas/experimental/components/ExperimentalFocusPanelHeader.vue';
 import { type ContextMenuAction } from '@/features/shared/contextMenu/composables/useContextMenuItems';
 import { type CanvasNode, CanvasNodeRenderType } from '@/features/workflows/canvas/canvas.types';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
+import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 
 import { N8nIcon, N8nInfoTip, N8nInput, N8nRadioButtons, N8nText } from '@n8n/design-system';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
-import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 defineOptions({ name: 'FocusPanel' });
 
 const props = defineProps<{
@@ -71,14 +72,17 @@ const locale = useI18n();
 const nodeHelpers = useNodeHelpers();
 const focusPanelStore = useFocusPanelStore();
 const workflowId = useInjectWorkflowId();
-const workflowsStore = useWorkflowsStore();
-const workflowState = injectWorkflowState();
+const workflowDocumentStore = injectWorkflowDocumentStore();
+const workflowExecutionStateStore = computed(() =>
+	useWorkflowExecutionStateStore(workflowDocumentStore.value.documentId),
+);
 const nodeTypesStore = useNodeTypesStore();
+const setupPanelStore = useSetupPanelStore();
 const telemetry = useTelemetry();
 const nodeSettingsParameters = useNodeSettingsParameters();
 const environmentsStore = useEnvironmentsStore();
 const experimentalNdvStore = useExperimentalNdvStore();
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 const vueFlow = useVueFlow(workflowId.value);
 const { renameNode } = useCanvasOperations();
 
@@ -130,7 +134,7 @@ const node = computed<INodeUi | undefined>(() => {
 	const selected: CanvasNode | undefined = vueFlow.getSelectedNodes.value[0];
 
 	return selected?.data?.render.type === CanvasNodeRenderType.Default
-		? workflowsStore.allNodes.find((n) => n.id === selected.id)
+		? (workflowDocumentStore?.value?.allNodes ?? []).find((n) => n.id === selected.id)
 		: undefined;
 });
 const multipleNodesSelected = computed(() => vueFlow.getSelectedNodes.value.length > 1);
@@ -150,7 +154,7 @@ const { workflowRunData } = useExecutionData({ node });
 
 const hasNodeRun = computed(() => {
 	if (!node.value) return true;
-	const parentNode = workflowsStore.workflowObject.getParentNodes(node.value.name, 'main', 1)[0];
+	const parentNode = workflowDocumentStore?.value?.getParentNodes(node.value.name, 'main', 1)[0];
 	return Boolean(
 		parentNode &&
 			workflowRunData.value &&
@@ -223,7 +227,7 @@ const targetNodeParameterContext = computed<TargetNodeParameterContext | undefin
 });
 
 const isNodeExecuting = computed(() =>
-	workflowState.executingNode.isNodeExecuting(node.value?.name ?? ''),
+	workflowExecutionStateStore.value.executingNode.isNodeExecuting(node.value?.name ?? ''),
 );
 
 const selectedNodeIds = computed(() => vueFlow.getSelectedNodes.value.map((n) => n.id));
@@ -321,7 +325,10 @@ function optionSelected(command: string) {
 }
 
 function closeFocusPanel() {
-	if (experimentalNdvStore.isNdvInFocusPanelEnabled && resolvedParameter.value) {
+	if (
+		(experimentalNdvStore.isNdvInFocusPanelEnabled || setupPanelStore.isFeatureEnabled) &&
+		resolvedParameter.value
+	) {
 		focusPanelStore.unsetParameters();
 
 		telemetry.track('User removed focused param', {
@@ -378,7 +385,7 @@ watch(
 
 function onOpenNdv() {
 	if (node.value) {
-		ndvStore.setActiveNodeName(node.value.name, 'focus_panel');
+		ndvStore.value.setActiveNodeName(node.value.name, 'focus_panel');
 	}
 }
 
@@ -696,6 +703,11 @@ function onRenameNode(value: string) {
 				width: 100%;
 				align-items: normal;
 				font-size: var(--font-size--2xs);
+
+				textarea {
+					height: 100%;
+					resize: none;
+				}
 
 				:global(.cm-editor) {
 					background-color: var(--code--color--background);

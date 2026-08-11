@@ -4,6 +4,7 @@ import type { LocationQuery, NavigationGuardNext, useRouter } from 'vue-router';
 import { watch } from 'vue';
 import { useMessage } from './useMessage';
 import { useI18n } from '@n8n/i18n';
+import { getDebounceTime } from '@n8n/composables/useDebounce';
 import {
 	MODAL_CANCEL,
 	MODAL_CLOSE,
@@ -11,7 +12,6 @@ import {
 	VIEWS,
 	AutoSaveState,
 	DEBOUNCE_TIME,
-	getDebounceTime,
 } from '@/app/constants';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -21,15 +21,14 @@ import { useCanvasStore } from '@/app/stores/canvas.store';
 import type { IUpdateInformation, IWorkflowDb } from '@/Interface';
 import type { WorkflowDataCreate, WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import { isExpression, type IDataObject } from 'n8n-workflow';
-import { useToast } from './useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useExternalHooks } from './useExternalHooks';
-import { useTelemetry } from './useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useNodeHelpers } from './useNodeHelpers';
 import { tryToParseNumber } from '@/app/utils/typesUtils';
 import { isDebouncedFunction } from '@/app/utils/typeGuards';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
-import { injectWorkflowState, type WorkflowState } from '@/app/composables/useWorkflowState';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
@@ -37,16 +36,17 @@ import {
 import { getResourcePermissions } from '@n8n/permissions';
 import { useDebounceFn } from '@vueuse/core';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import { useWorkflowSaveStore } from '@/app/stores/workflowSave.store';
 import { useBackendConnectionStore } from '@/app/stores/backendConnection.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useInvalidNodeGroupCleanup } from '@/app/composables/useInvalidNodeGroupCleanup';
 
 export function useWorkflowSaving({
 	router,
-	workflowState: providedWorkflowState,
 	onSaved,
 }: {
 	router: ReturnType<typeof useRouter>;
-	workflowState?: WorkflowState;
 	onSaved?: (isFirstSave: boolean) => void;
 }) {
 	const uiStore = useUIStore();
@@ -55,7 +55,6 @@ export function useWorkflowSaving({
 	const i18n = useI18n();
 	const workflowsStore = useWorkflowsStore();
 	const workflowsListStore = useWorkflowsListStore();
-	const workflowState = providedWorkflowState ?? injectWorkflowState();
 	const focusPanelStore = useFocusPanelStore();
 	const toast = useToast();
 	const telemetry = useTelemetry();
@@ -63,11 +62,13 @@ export function useWorkflowSaving({
 	const templatesStore = useTemplatesStore();
 	const builderStore = useBuilderStore();
 
-	const { getWorkflowDataToSave, checkConflictingWebhooks, getWorkflowProjectRole } =
-		useWorkflowHelpers();
+	const { checkConflictingWebhooks, getWorkflowProjectRole } = useWorkflowHelpers();
 
 	const saveStore = useWorkflowSaveStore();
 	const backendConnectionStore = useBackendConnectionStore();
+	const settingsStore = useSettingsStore();
+	const workflowId = useWorkflowId();
+	const { removeInvalidNodeGroups } = useInvalidNodeGroupCleanup();
 
 	async function promptSaveUnsavedWorkflowChanges(
 		next: NavigationGuardNext,
@@ -79,14 +80,14 @@ export function useWorkflowSaving({
 			cancel?: () => Promise<void>;
 		} = {},
 	) {
-		const workflowDocumentStore = workflowsStore.workflowId
-			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-			: undefined;
+		const workflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId(workflowId.value),
+		);
 
 		if (
 			!uiStore.stateIsDirty ||
-			workflowDocumentStore?.isArchived ||
-			!getResourcePermissions(workflowDocumentStore?.scopes ?? []).workflow.update
+			workflowDocumentStore.isArchived ||
+			!getResourcePermissions(workflowDocumentStore.scopes).workflow.update
 		) {
 			next();
 			return;
@@ -127,7 +128,7 @@ export function useWorkflowSaving({
 				return;
 			case MODAL_CLOSE:
 				// For new workflows that are not saved yet, don't do anything, only close modal
-				if (workflowsStore.isWorkflowSaved[workflowsStore.workflowId]) {
+				if (workflowsStore.isWorkflowSaved[workflowId.value]) {
 					stayOnCurrentWorkflow(next);
 				}
 
@@ -140,7 +141,7 @@ export function useWorkflowSaving({
 		next(
 			router.resolve({
 				name: VIEWS.WORKFLOW,
-				params: { name: workflowsStore.workflow.id },
+				params: { workflowId: workflowId.value },
 			}),
 		);
 	}
@@ -164,7 +165,7 @@ export function useWorkflowSaving({
 		}
 
 		const isLoading = useCanvasStore().isLoading;
-		const currentWorkflow = id ?? getQueryParam(router.currentRoute.value.params, 'name');
+		const currentWorkflow = id ?? workflowId.value;
 		const parentFolderId = getQueryParam(router.currentRoute.value.query, 'parentFolderId');
 		const uiContext = getQueryParam(router.currentRoute.value.query, 'uiContext');
 
@@ -200,24 +201,30 @@ export function useWorkflowSaving({
 				if (!forceSave && isLoading) {
 					return true;
 				}
-				uiStore.addActiveAction('workflowSaving');
+
+				const workflowDocumentStore = useWorkflowDocumentStore(
+					createWorkflowDocumentId(currentWorkflow),
+				);
+
+				// Ungroup node groups this version can't save (e.g. groups created on a
+				// newer n8n version) so the request isn't rejected on every (auto)save.
+				// Runs before the dirty-count capture so the removal doesn't keep the
+				// state dirty after a successful save.
+				removeInvalidNodeGroups(workflowDocumentStore);
 
 				// Capture dirty state count before save to detect changes made during save
 				const dirtyCountBeforeSave = uiStore.dirtyStateSetCount;
 
-				const workflowDataRequest: WorkflowDataUpdate = await getWorkflowDataToSave();
+				const workflowDataRequest: WorkflowDataUpdate = workflowDocumentStore.serialize();
 				// This can happen if the user has another workflow in the browser history and navigates
 				// via the browser back button, encountering our warning dialog with the new route already set
 				if (workflowDataRequest.id !== currentWorkflow) {
 					throw new Error('Attempted to save a workflow different from the current workflow');
 				}
 
-				workflowDataRequest.versionId = workflowsStore.workflowVersionId;
 				// Check if AI Builder made edits since last save
 				workflowDataRequest.aiBuilderAssisted = builderStore.getAiBuilderMadeEdits();
-				const workflowDocumentStore = useWorkflowDocumentStore(
-					createWorkflowDocumentId(currentWorkflow),
-				);
+				workflowDataRequest.versionId = workflowDocumentStore.versionId;
 				workflowDataRequest.expectedChecksum = workflowDocumentStore.checksum;
 				workflowDataRequest.autosaved = autosaved;
 
@@ -229,7 +236,7 @@ export function useWorkflowSaving({
 				if (!workflowData.checksum) {
 					throw new Error('Failed to update workflow');
 				}
-				workflowsStore.setWorkflowVersionData({
+				workflowDocumentStore.setVersionData({
 					versionId: workflowData.versionId,
 					name: null,
 					description: null,
@@ -239,8 +246,12 @@ export function useWorkflowSaving({
 				// Only mark state clean if no new changes were made during the save
 				if (uiStore.dirtyStateSetCount === dirtyCountBeforeSave) {
 					uiStore.markStateClean();
+					// A completed manual save supersedes any scheduled autosave.
+					// Disarming it keeps the timer from firing after a
+					// save-then-navigate, where the route no longer resolves a
+					// workflow id and the autosave would create an empty workflow.
+					if (!autosaved) cancelAutoSave();
 				}
-				uiStore.removeActiveAction('workflowSaving');
 				void useExternalHooks().run('workflow.afterUpdate', { workflowData });
 
 				// Reset AI Builder edits flag only after successful save
@@ -253,8 +264,6 @@ export function useWorkflowSaving({
 				return true;
 			} catch (error) {
 				console.error(error);
-
-				uiStore.removeActiveAction('workflowSaving');
 
 				if (error.errorCode === 409) {
 					telemetry.track('User attempted to save locked workflow', {
@@ -271,7 +280,7 @@ export function useWorkflowSaving({
 
 						const url = router.resolve({
 							name: VIEWS.WORKFLOW,
-							params: { name: currentWorkflow },
+							params: { workflowId: currentWorkflow },
 						}).href;
 
 						const overwrite = await message.confirm(
@@ -384,12 +393,23 @@ export function useWorkflowSaving({
 		redirect = true,
 	): Promise<IWorkflowDb['id'] | null> {
 		try {
-			uiStore.addActiveAction('workflowSaving');
+			const currentDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowId.value),
+			);
+
+			if (!data) {
+				removeInvalidNodeGroups(currentDocumentStore);
+			}
 
 			// Capture dirty state count before save to detect changes made during save
 			const dirtyCountBeforeSave = uiStore.dirtyStateSetCount;
 
-			const workflowDataRequest: WorkflowDataCreate = data || (await getWorkflowDataToSave());
+			const workflowDataRequest: WorkflowDataCreate = data || currentDocumentStore.serialize();
+			// A description staged on an unsaved workflow (via the description and
+			// tags modal) is not part of serialize(), so carry it into the first save.
+			if (!data && currentDocumentStore.description) {
+				workflowDataRequest.description = currentDocumentStore.description;
+			}
 			const changedNodes = {} as IDataObject;
 
 			if (requestNewId) {
@@ -397,11 +417,20 @@ export function useWorkflowSaving({
 			}
 
 			if (resetNodeIds) {
+				const nodeIdMap = new Map<string, string>();
 				workflowDataRequest.nodes = workflowDataRequest.nodes!.map((node) => {
+					const oldId = node.id;
 					nodeHelpers.assignNodeId(node);
-
+					if (oldId) nodeIdMap.set(oldId, node.id);
 					return node;
 				});
+
+				if (workflowDataRequest.nodeGroups?.length) {
+					workflowDataRequest.nodeGroups = workflowDataRequest.nodeGroups.map((group) => ({
+						...group,
+						nodeIds: group.nodeIds.map((id) => nodeIdMap.get(id) ?? id),
+					}));
+				}
 			}
 
 			if (resetWebhookUrls) {
@@ -409,7 +438,9 @@ export function useWorkflowSaving({
 					if (node.webhookId) {
 						const newId = nodeHelpers.assignWebhookId(node);
 
-						if (!isExpression(node.parameters.path)) {
+						// Triggers whose webhook path comes from the node description (e.g. Trello
+						// Trigger, Wait) have no `path` parameter to re-key.
+						if ('path' in node.parameters && !isExpression(node.parameters.path)) {
 							node.parameters.path = newId;
 						}
 
@@ -448,10 +479,9 @@ export function useWorkflowSaving({
 			if (openInNewWindow) {
 				const routeData = router.resolve({
 					name: VIEWS.WORKFLOW,
-					params: { name: workflowData.id },
+					params: { workflowId: workflowData.id },
 				});
 				window.open(routeData.href, '_blank');
-				uiStore.removeActiveAction('workflowSaving');
 				onSaved?.(true); // First save of new workflow
 				return workflowData.id;
 			}
@@ -481,8 +511,8 @@ export function useWorkflowSaving({
 			if (workflowData.checksum) {
 				workflowDocumentStore.setChecksum(workflowData.checksum);
 			}
-			workflowState.setWorkflowId(workflowData.id);
-			workflowsStore.setWorkflowVersionData({
+			workflowsStore.setWorkflowId(workflowData.id);
+			workflowDocumentStore.setVersionData({
 				versionId: workflowData.versionId,
 				name: null,
 				description: null,
@@ -497,7 +527,7 @@ export function useWorkflowSaving({
 						value: changedNodes[nodeName],
 						name: nodeName,
 					} as IUpdateInformation;
-					workflowState.setNodeValue(changes);
+					workflowDocumentStore.setNodeValue(changes);
 				});
 			}
 
@@ -519,18 +549,18 @@ export function useWorkflowSaving({
 				});
 			}
 
-			uiStore.removeActiveAction('workflowSaving');
 			// Only mark state clean if no new changes were made during the save
 			if (uiStore.dirtyStateSetCount === dirtyCountBeforeSave) {
 				uiStore.markStateClean();
+				// A completed manual save supersedes any scheduled autosave (see
+				// the same disarm in the update path above).
+				if (!autosaved) cancelAutoSave();
 			}
 			void useExternalHooks().run('workflow.afterUpdate', { workflowData });
 
 			onSaved?.(true); // First save of new workflow
 			return workflowData.id;
 		} catch (e) {
-			uiStore.removeActiveAction('workflowSaving');
-
 			toast.showMessage({
 				title: i18n.baseText('workflowHelpers.showMessage.title'),
 				message: (e as Error).message,
@@ -575,6 +605,11 @@ export function useWorkflowSaving({
 	);
 
 	const scheduleAutoSave = () => {
+		// Don't schedule if autosave is disabled via environment variable
+		if (!settingsStore.isAutosaveEnabled) {
+			return;
+		}
+
 		// Don't schedule if a save is already in progress - the finally block
 		// will reschedule if there are pending changes
 		if (saveStore.pendingSave) {

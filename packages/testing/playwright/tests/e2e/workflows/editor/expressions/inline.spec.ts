@@ -51,7 +51,7 @@ test.describe(
 				// Should switch back to fixed with backspace on empty expression
 				await n8n.ndv.clearExpressionEditor('value');
 				await expect(n8n.ndv.getParameterInputHint()).toContainText('empty');
-				const parameterInput = n8n.ndv.getParameterInput('value').getByRole('textbox');
+				const parameterInput = n8n.ndv.getParameterInputTextbox('value');
 				await parameterInput.click();
 				await parameterInput.focus();
 				await parameterInput.press('Backspace');

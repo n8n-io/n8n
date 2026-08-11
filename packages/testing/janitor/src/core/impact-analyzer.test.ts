@@ -863,6 +863,45 @@ test('uses api', () => {});
 			expect(result.affectedTests).toEqual([]);
 		});
 
+		it('skips dependency tracing when all changes are additive property declarations', () => {
+			project.createSourceFile(
+				'/test-root/pages/AppFacade.ts',
+				`
+export class AppFacade {
+  readonly canvas: CanvasPage;
+  readonly chatHubChat: ChatHubChatPage;
+}
+`,
+			);
+
+			project.createSourceFile(
+				'/test-root/tests/canvas.spec.ts',
+				`
+import { AppFacade } from '../pages/AppFacade';
+test('uses canvas', () => {});
+`,
+			);
+
+			const diffs: FileDiffResult[] = [
+				{
+					filePath: '/test-root/pages/AppFacade.ts',
+					changedMethods: [
+						{ className: 'AppFacade', methodName: 'chatHubChat', changeType: 'added' },
+					],
+					isNewFile: false,
+					isDeletedFile: false,
+					parseTimeMs: 0,
+				},
+			];
+
+			const analyzer = new ImpactAnalyzer(project);
+			const result = analyzer.analyze(['pages/AppFacade.ts'], { diffs });
+
+			// Purely additive property → skipped, no transitive tests
+			expect(result.affectedTests).toEqual([]);
+			expect(result.strategies['pages/AppFacade.ts']).toBe('skipped');
+		});
+
 		it('finds affected tests via method-level when a method is modified', () => {
 			const diffs: FileDiffResult[] = [
 				{

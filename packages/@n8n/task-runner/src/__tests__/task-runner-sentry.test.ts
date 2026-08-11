@@ -1,6 +1,6 @@
 import type { ErrorEvent } from '@sentry/core';
-import { mock } from 'jest-mock-extended';
 import type { ErrorReporter } from 'n8n-core';
+import { mock } from 'vitest-mock-extended';
 
 import { TaskRunnerSentry } from '../task-runner-sentry';
 
@@ -14,7 +14,7 @@ describe('TaskRunnerSentry', () => {
 	};
 
 	afterEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	describe('filterOutUserCodeErrors', () => {

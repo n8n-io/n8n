@@ -4,8 +4,8 @@ import { useAsyncState } from '@vueuse/core';
 import type { ListInsightsWorkflowQueryDto, InsightsDateFilterDto } from '@n8n/api-types';
 import * as insightsApi from '@/features/execution/insights/insights.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useUsersStore } from '@/features/settings/users/users.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useUsersStore } from '@n8n/stores/users.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { transformInsightsSummary } from '@/features/execution/insights/insights.utils';
 import { getResourcePermissions } from '@n8n/permissions';
 
@@ -68,6 +68,10 @@ export const useInsightsStore = defineStore('insights', () => {
 
 	const dateRanges = computed(() => settingsStore.moduleSettings.insights?.dateRanges ?? []);
 
+	const earliestDataDate = computed(
+		() => settingsStore.moduleSettings.insights?.earliestDataDate ?? null,
+	);
+
 	return {
 		globalInsightsPermissions,
 		isInsightsEnabled,
@@ -78,5 +82,6 @@ export const useInsightsStore = defineStore('insights', () => {
 		charts,
 		table,
 		dateRanges,
+		earliestDataDate,
 	};
 });

@@ -12,6 +12,14 @@ export interface RedactionContext {
 	readonly redactExecutionData: boolean | undefined;
 	/** Pre-resolved by the orchestrator — true if the user can see unredacted data. */
 	readonly userCanReveal: boolean;
+	/** True when redaction must be enforced because the execution resolved dynamic
+	 *  credentials AND the requesting user is not the one it ran as. Drives the
+	 *  `dynamic_credentials` redaction reason. */
+	readonly enforceDynCredRedaction: boolean;
+	/** Generic memo store — strategies may cache intermediate results here
+	 *  to avoid redundant computation across requiresRedaction/apply calls.
+	 *  Keyed by strategy name. */
+	readonly memo: Map<string, unknown>;
 }
 
 /**
@@ -25,4 +33,7 @@ export interface RedactionContext {
 export interface IExecutionRedactionStrategy {
 	readonly name: string;
 	apply(execution: RedactableExecution, context: RedactionContext): Promise<void>;
+	/** Returns true if apply() would mutate the execution data. Used by the
+	 *  copy-on-write path to avoid unnecessary cloning. */
+	requiresRedaction(execution: RedactableExecution, context: RedactionContext): boolean;
 }

@@ -1,5 +1,6 @@
 import { createPinia, setActivePinia } from 'pinia';
 import userEvent from '@testing-library/user-event';
+import { within } from '@testing-library/vue';
 import type { UserAction } from '@n8n/design-system';
 import { createComponentRenderer } from '@/__tests__/render';
 import WorkflowHistoryListItem from './WorkflowHistoryListItem.vue';
@@ -36,7 +37,8 @@ describe('WorkflowHistoryListItem', () => {
 			},
 		});
 
-		await userEvent.click(getByTestId('action-toggle'));
+		const actionToggle = getByTestId('action-toggle');
+		await userEvent.click(within(actionToggle).getByRole('button'));
 		expect(getByTestId('action-toggle-dropdown')).toBeInTheDocument();
 
 		await userEvent.click(getByTestId(`action-${action}`));
@@ -77,6 +79,28 @@ describe('WorkflowHistoryListItem', () => {
 		await userEvent.click(getByTestId('workflow-history-compare-item-button'));
 
 		expect(emitted().compare).toEqual([[{ id: itemToCompareWith.versionId }]]);
+	});
+
+	it('should show a two-line compare tooltip with both version names', async () => {
+		const item = { ...workflowHistoryDataFactory(), name: 'Version 1 name' };
+		const itemToCompareWith = workflowHistoryDataFactory();
+		const compareName = 'Version 2 name';
+		const { getByTestId, findByText } = renderComponent({
+			pinia,
+			props: {
+				item,
+				index: 2,
+				actions,
+				isSelected: false,
+				compareWith: { name: compareName, versionId: itemToCompareWith.versionId },
+				isWorkflowDiffsEnabled: true,
+			},
+		});
+
+		await userEvent.hover(getByTestId('workflow-history-compare-item-button'));
+
+		expect(await findByText('Compare “Version 2 name”')).toBeInTheDocument();
+		expect(await findByText('with “Version 1 name”')).toBeInTheDocument();
 	});
 
 	it('should not emit compare event when compareWith is missing', async () => {

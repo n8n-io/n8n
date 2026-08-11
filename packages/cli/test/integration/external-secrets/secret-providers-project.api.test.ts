@@ -6,9 +6,9 @@ import {
 	SecretsProviderConnectionRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
 import { Cipher } from 'n8n-core';
 import type { Response } from 'superagent';
+import { mock } from 'vitest-mock-extended';
 
 import { ExternalSecretsProviders } from '@/modules/external-secrets.ee/external-secrets-providers.ee';
 import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
@@ -514,7 +514,7 @@ describe('Secret Providers Project API', () => {
 				.expect(404);
 		});
 
-		test('should return 404 for a global connection (cannot update global from project context)', async () => {
+		test('should return 404 for a global connection from project context', async () => {
 			await createProviderConnection('global-update', []);
 
 			await ownerAgent
@@ -641,7 +641,7 @@ describe('Secret Providers Project API', () => {
 
 		beforeAll(async () => {
 			agents = { owner: ownerAgent, admin: adminAgent, member: memberAgent };
-			const { DummyProvider } = await import('../../shared/external-secrets/utils');
+			const { DummyProvider } = await import('../../shared/external-secrets/utils.js');
 			mockProvidersInstance.setProviders({
 				dummy: DummyProvider,
 				awsSecretsManager: DummyProvider,
@@ -664,7 +664,7 @@ describe('Secret Providers Project API', () => {
 			await createProviderConnection('test-conn', [teamProject1.id]);
 
 			const { ExternalSecretsManager } = await import(
-				'@/modules/external-secrets.ee/external-secrets-manager.ee'
+				'@/modules/external-secrets.ee/external-secrets-manager.ee.js'
 			);
 			await Container.get(ExternalSecretsManager).reloadAllProviders();
 
@@ -675,19 +675,12 @@ describe('Secret Providers Project API', () => {
 			expect(response.body.data).toMatchObject({ success: true });
 		});
 
-		test('should test a global connection accessible from the project', async () => {
+		test('should return 404 for a global connection (cannot test global from project context)', async () => {
 			await createProviderConnection('global-test-conn', []);
 
-			const { ExternalSecretsManager } = await import(
-				'@/modules/external-secrets.ee/external-secrets-manager.ee'
-			);
-			await Container.get(ExternalSecretsManager).reloadAllProviders();
-
-			const response = await ownerAgent
+			await ownerAgent
 				.post(`/secret-providers/projects/${teamProject1.id}/connections/global-test-conn/test`)
-				.expect(200);
-
-			expect(response.body.data).toMatchObject({ success: true });
+				.expect(404);
 		});
 
 		test('should return 404 for a connection belonging to another project', async () => {
@@ -715,7 +708,7 @@ describe('Secret Providers Project API', () => {
 					await createProviderConnection(`test-auth-${role}`, [teamProject1.id]);
 
 					const { ExternalSecretsManager } = await import(
-						'@/modules/external-secrets.ee/external-secrets-manager.ee'
+						'@/modules/external-secrets.ee/external-secrets-manager.ee.js'
 					);
 					await Container.get(ExternalSecretsManager).reloadAllProviders();
 

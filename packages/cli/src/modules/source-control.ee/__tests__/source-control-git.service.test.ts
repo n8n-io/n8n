@@ -1,11 +1,12 @@
 import type { User } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
 import { simpleGit } from 'simple-git';
 import type { SimpleGit } from 'simple-git';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { SourceControlGitService } from '../source-control-git.service.ee';
-import type { SourceControlPreferences } from '../types/source-control-preferences';
 import type { SourceControlPreferencesService } from '../source-control-preferences.service.ee';
+import type { SourceControlPreferences } from '../types/source-control-preferences';
 
 const MOCK_BRANCHES = {
 	all: ['origin/master', 'origin/feature/branch'],
@@ -17,13 +18,13 @@ const MOCK_BRANCHES = {
 };
 
 const mockGitInstance = {
-	branch: jest.fn().mockResolvedValue(MOCK_BRANCHES),
-	env: jest.fn().mockReturnThis(),
+	branch: vi.fn().mockResolvedValue(MOCK_BRANCHES),
+	env: vi.fn().mockReturnThis(),
 };
 
-jest.mock('simple-git', () => {
+vi.mock('simple-git', () => {
 	return {
-		simpleGit: jest.fn().mockImplementation(() => mockGitInstance),
+		simpleGit: vi.fn().mockImplementation(() => mockGitInstance),
 	};
 });
 
@@ -56,13 +57,14 @@ describe('SourceControlGitService', () => {
 				const prefs = mock<SourceControlPreferences>({ branchName: 'main' });
 				const user = mock<User>();
 				const git = mock<SimpleGit>();
-				const checkoutSpy = jest.spyOn(git, 'checkout');
-				const branchSpy = jest.spyOn(git, 'branch');
+				const checkoutSpy = git.checkout;
+				const branchSpy = git.branch;
 				gitService.git = git;
-				jest.spyOn(gitService, 'setGitCommand').mockResolvedValue();
-				jest
-					.spyOn(gitService, 'getBranches')
-					.mockResolvedValue({ currentBranch: '', branches: ['main'] });
+				vi.spyOn(gitService, 'setGitCommand').mockResolvedValue();
+				vi.spyOn(gitService, 'getBranches').mockResolvedValue({
+					currentBranch: '',
+					branches: ['main'],
+				});
 
 				/**
 				 * Act
@@ -74,6 +76,48 @@ describe('SourceControlGitService', () => {
 				 */
 				expect(checkoutSpy).toHaveBeenCalledWith('main');
 				expect(branchSpy).toHaveBeenCalledWith(['--set-upstream-to=origin/main', 'main']);
+			});
+		});
+
+		describe('when fetch fails during remote tracking setup', () => {
+			it('should log warning and not throw when tracking fetch failures are tolerated', async () => {
+				const mockLogger = mock<any>();
+				const gitService = new SourceControlGitService(mockLogger, mock(), mock());
+				const prefs = mock<SourceControlPreferences>({ branchName: 'main' });
+				const user = mock<User>();
+				const git = mock<SimpleGit>();
+				gitService.git = git;
+				vi.spyOn(gitService, 'setGitCommand').mockResolvedValue();
+
+				const fetchError = new Error('Authentication failed for HTTPS remote');
+				vi.spyOn(gitService, 'fetch').mockRejectedValue(fetchError);
+
+				await gitService.initRepository(prefs, user, {
+					tolerateTrackingFetchFailure: true,
+				});
+
+				expect(mockLogger.warn).toHaveBeenCalledWith(
+					'Failed to fetch during remote tracking setup',
+					{ error: fetchError },
+				);
+			});
+
+			it('should throw when tracking fetch failures are NOT tolerated', async () => {
+				const gitService = new SourceControlGitService(mock(), mock(), mock());
+				const prefs = mock<SourceControlPreferences>({ branchName: 'main' });
+				const user = mock<User>();
+				const git = mock<SimpleGit>();
+				gitService.git = git;
+				vi.spyOn(gitService, 'setGitCommand').mockResolvedValue();
+
+				const fetchError = new Error('Authentication failed for HTTPS remote');
+				vi.spyOn(gitService, 'fetch').mockRejectedValue(fetchError);
+
+				await expect(
+					gitService.initRepository(prefs, user, {
+						tolerateTrackingFetchFailure: false,
+					}),
+				).rejects.toThrow(fetchError);
 			});
 		});
 
@@ -89,13 +133,14 @@ describe('SourceControlGitService', () => {
 				});
 				const user = mock<User>();
 				const git = mock<SimpleGit>();
-				const addRemoteSpy = jest.spyOn(git, 'addRemote');
-				jest.spyOn(gitService, 'setGitUserDetails').mockResolvedValue();
+				const addRemoteSpy = git.addRemote;
+				vi.spyOn(gitService, 'setGitUserDetails').mockResolvedValue();
 				// Mock getBranches and fetch to avoid remote tracking logic
-				jest
-					.spyOn(gitService, 'getBranches')
-					.mockResolvedValue({ currentBranch: 'main', branches: [] });
-				jest.spyOn(gitService, 'fetch').mockResolvedValue({} as any);
+				vi.spyOn(gitService, 'getBranches').mockResolvedValue({
+					currentBranch: 'main',
+					branches: [],
+				});
+				vi.spyOn(gitService, 'fetch').mockResolvedValue({} as any);
 				gitService.git = git;
 
 				await gitService.initRepository(prefs, user);
@@ -118,13 +163,14 @@ describe('SourceControlGitService', () => {
 				});
 				const user = mock<User>();
 				const git = mock<SimpleGit>();
-				const addRemoteSpy = jest.spyOn(git, 'addRemote');
-				jest.spyOn(gitService, 'setGitUserDetails').mockResolvedValue();
+				const addRemoteSpy = git.addRemote;
+				vi.spyOn(gitService, 'setGitUserDetails').mockResolvedValue();
 				// Mock getBranches and fetch to avoid remote tracking logic
-				jest
-					.spyOn(gitService, 'getBranches')
-					.mockResolvedValue({ currentBranch: 'main', branches: [] });
-				jest.spyOn(gitService, 'fetch').mockResolvedValue({} as any);
+				vi.spyOn(gitService, 'getBranches').mockResolvedValue({
+					currentBranch: 'main',
+					branches: [],
+				});
+				vi.spyOn(gitService, 'fetch').mockResolvedValue({} as any);
 				gitService.git = git;
 
 				await gitService.initRepository(prefs, user);
@@ -167,8 +213,8 @@ describe('SourceControlGitService', () => {
 				git.branch.mockResolvedValue({ current: 'main' } as never);
 				gitService.git = git;
 
-				const fetchSpy = jest.spyOn(gitService, 'fetch');
-				const checkoutSpy = jest.spyOn(git, 'checkout');
+				const fetchSpy = vi.spyOn(gitService, 'fetch');
+				const checkoutSpy = git.checkout;
 
 				// Call private method using type assertion
 				await (gitService as any).ensureBranchSetup('main');
@@ -185,8 +231,8 @@ describe('SourceControlGitService', () => {
 				git.branch.mockResolvedValue({ current: 'master' } as never);
 				gitService.git = git;
 
-				jest.spyOn(gitService, 'fetch').mockResolvedValue({} as never);
-				jest.spyOn(gitService, 'getBranches').mockResolvedValue({
+				vi.spyOn(gitService, 'fetch').mockResolvedValue({} as never);
+				vi.spyOn(gitService, 'getBranches').mockResolvedValue({
 					currentBranch: 'master',
 					branches: ['main', 'develop'],
 				});
@@ -203,8 +249,8 @@ describe('SourceControlGitService', () => {
 				git.branch.mockResolvedValue({ current: 'master' } as never);
 				gitService.git = git;
 
-				jest.spyOn(gitService, 'fetch').mockResolvedValue({} as never);
-				jest.spyOn(gitService, 'getBranches').mockResolvedValue({
+				vi.spyOn(gitService, 'fetch').mockResolvedValue({} as never);
+				vi.spyOn(gitService, 'getBranches').mockResolvedValue({
 					currentBranch: 'master',
 					branches: ['develop', 'feature'],
 				});
@@ -224,7 +270,7 @@ describe('SourceControlGitService', () => {
 				gitService.git = git;
 
 				const fetchError = new Error('Network error');
-				jest.spyOn(gitService, 'fetch').mockRejectedValue(fetchError);
+				vi.spyOn(gitService, 'fetch').mockRejectedValue(fetchError);
 
 				// Should not throw
 				await (gitService as any).ensureBranchSetup('main');
@@ -246,8 +292,8 @@ describe('SourceControlGitService', () => {
 				git.checkout.mockRejectedValue(new Error('Checkout failed'));
 				gitService.git = git;
 
-				jest.spyOn(gitService, 'fetch').mockResolvedValue({} as never);
-				jest.spyOn(gitService, 'getBranches').mockResolvedValue({
+				vi.spyOn(gitService, 'fetch').mockResolvedValue({} as never);
+				vi.spyOn(gitService, 'getBranches').mockResolvedValue({
 					currentBranch: 'master',
 					branches: ['main'],
 				});
@@ -275,7 +321,7 @@ describe('SourceControlGitService', () => {
 			);
 
 			// Clear previous calls to simpleGit
-			(simpleGit as jest.Mock).mockClear();
+			(simpleGit as Mock).mockClear();
 
 			await sourceControlGitService.setGitCommand();
 
@@ -287,6 +333,7 @@ describe('SourceControlGitService', () => {
 					maxConcurrentProcesses: 6,
 					trimmed: false,
 					config: [`credential.helper=${expectedCredentialScript}`, 'credential.useHttpPath=true'],
+					unsafe: { allowUnsafeCredentialHelper: true },
 				}),
 			);
 		});
@@ -303,7 +350,7 @@ describe('SourceControlGitService', () => {
 				credentials,
 			);
 			// Clear previous calls to simpleGit
-			(simpleGit as jest.Mock).mockClear();
+			(simpleGit as Mock).mockClear();
 
 			await sourceControlGitService.setGitCommand();
 
@@ -324,9 +371,15 @@ describe('SourceControlGitService', () => {
 			mockSourceControlPreferencesService.getPreferences.mockReturnValue({
 				connectionType: 'ssh',
 			} as never);
+			(simpleGit as Mock).mockClear();
 
 			await sourceControlGitService.setGitCommand();
 
+			expect(simpleGit).toHaveBeenCalledWith(
+				expect.objectContaining({
+					unsafe: { allowUnsafeSshCommand: true },
+				}),
+			);
 			expect(mockGitInstance.env).toHaveBeenCalledWith(
 				'GIT_SSH_COMMAND',
 				'ssh -o UserKnownHostsFile=".ssh/known_hosts" -o StrictHostKeyChecking=accept-new -i "private-key"',
@@ -347,7 +400,7 @@ describe('SourceControlGitService', () => {
 				delete process.env.no_proxy;
 				delete process.env.ALL_PROXY;
 				delete process.env.all_proxy;
-				(simpleGit as jest.Mock).mockClear();
+				(simpleGit as Mock).mockClear();
 			});
 
 			afterEach(() => {
@@ -372,7 +425,7 @@ describe('SourceControlGitService', () => {
 				await sourceControlGitService.setGitCommand();
 
 				// Git uses http.proxy for both HTTP and HTTPS URLs
-				const simpleGitCalls = (simpleGit as jest.Mock).mock.calls;
+				const simpleGitCalls = (simpleGit as Mock).mock.calls;
 				expect(simpleGitCalls.length).toBeGreaterThan(0);
 				const lastCallConfig = simpleGitCalls[simpleGitCalls.length - 1][0].config;
 				expect(lastCallConfig).toContain(`http.proxy=${proxyUrl}`);
@@ -395,7 +448,7 @@ describe('SourceControlGitService', () => {
 
 				await sourceControlGitService.setGitCommand();
 
-				const simpleGitCalls = (simpleGit as jest.Mock).mock.calls;
+				const simpleGitCalls = (simpleGit as Mock).mock.calls;
 				expect(simpleGitCalls.length).toBeGreaterThan(0);
 				const lastCallConfig = simpleGitCalls[simpleGitCalls.length - 1][0].config;
 				expect(lastCallConfig).toContain(`http.proxy=${proxyUrl}`);
@@ -415,7 +468,7 @@ describe('SourceControlGitService', () => {
 
 				await sourceControlGitService.setGitCommand();
 
-				const simpleGitCalls = (simpleGit as jest.Mock).mock.calls;
+				const simpleGitCalls = (simpleGit as Mock).mock.calls;
 				expect(simpleGitCalls.length).toBeGreaterThan(0);
 				const lastCallConfig = simpleGitCalls[simpleGitCalls.length - 1][0].config as string[];
 				const hasProxyConfig = lastCallConfig.some((c: string) => c.includes('proxy='));
@@ -440,7 +493,7 @@ describe('SourceControlGitService', () => {
 
 				await sourceControlGitService.setGitCommand();
 
-				const simpleGitCalls = (simpleGit as jest.Mock).mock.calls;
+				const simpleGitCalls = (simpleGit as Mock).mock.calls;
 				expect(simpleGitCalls.length).toBeGreaterThan(0);
 				const lastCallConfig = simpleGitCalls[simpleGitCalls.length - 1][0].config as string[];
 				const hasProxyConfig = lastCallConfig.some((c: string) => c.includes('proxy='));
@@ -455,7 +508,7 @@ describe('SourceControlGitService', () => {
 			const filePath = 'workflows/12345.json';
 			const expectedContent = '{"id":"12345","name":"Test Workflow"}';
 			const git = mock<SimpleGit>();
-			const showSpy = jest.spyOn(git, 'show');
+			const showSpy = git.show;
 			showSpy.mockResolvedValue(expectedContent);
 			sourceControlGitService.git = git;
 
@@ -473,7 +526,7 @@ describe('SourceControlGitService', () => {
 			const commitHash = 'abc123';
 			const expectedContent = '{"id":"12345","name":"Test Workflow"}';
 			const git = mock<SimpleGit>();
-			const showSpy = jest.spyOn(git, 'show');
+			const showSpy = git.show;
 			showSpy.mockResolvedValue(expectedContent);
 			sourceControlGitService.git = git;
 
@@ -489,7 +542,7 @@ describe('SourceControlGitService', () => {
 	describe('path normalization', () => {
 		describe('cross-platform path handling', () => {
 			beforeEach(() => {
-				jest.clearAllMocks();
+				vi.clearAllMocks();
 			});
 
 			it('should normalize Windows paths to POSIX format for SSH command', async () => {

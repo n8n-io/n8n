@@ -1,4 +1,13 @@
-import { createPage, getSanitizedInitialMessages, getSanitizedI18nConfig } from '../templates';
+import {
+	createPage,
+	escapeForScriptContext,
+	getSanitizedCustomCss,
+	getSanitizedInitialMessages,
+	getSanitizedI18nConfig,
+} from '../templates';
+
+const LINE_SEPARATOR = String.fromCharCode(0x2028);
+const PARAGRAPH_SEPARATOR = String.fromCharCode(0x2029);
 
 describe('ChatTrigger Templates Security', () => {
 	const defaultParams = {
@@ -117,6 +126,76 @@ describe('ChatTrigger Templates Security', () => {
 		});
 	});
 
+	describe('XSS Prevention in customCss', () => {
+		it('should strip </style to prevent breakout with onload', () => {
+			const result = createPage({
+				...defaultParams,
+				customCss: '</style><style onload=alert(origin)>',
+			});
+
+			// The </style sequence is stripped, so the payload stays trapped as CSS text
+			expect(result).not.toContain('</style><style');
+		});
+
+		it('should strip </style to prevent breakout with script injection', () => {
+			const result = createPage({
+				...defaultParams,
+				customCss: '</style><script>alert(1)</script>',
+			});
+
+			expect(result).not.toContain('</style><script');
+		});
+
+		it('should strip </style/> to prevent parser differential XSS', () => {
+			const result = createPage({
+				...defaultParams,
+				customCss: '</style/><script>alert(1)</script>',
+			});
+
+			// </style/> is recognized as a closing tag by browsers but not sanitize-html
+			expect(result).not.toContain('</style/>');
+			expect(result).not.toContain('</style/');
+		});
+
+		it('should strip </style//> variant', () => {
+			const result = createPage({
+				...defaultParams,
+				customCss: '</style//><img src=x onerror=alert(1)>',
+			});
+
+			expect(result).not.toContain('</style/');
+		});
+
+		it('should strip </style case-insensitively', () => {
+			const result = createPage({
+				...defaultParams,
+				customCss: '</STYLE><script>alert(1)</script>',
+			});
+
+			expect(result).not.toContain('</STYLE>');
+		});
+
+		it('should preserve legitimate CSS', () => {
+			const css = '.chat { color: red; font-size: 14px; }';
+			const result = createPage({
+				...defaultParams,
+				customCss: css,
+			});
+
+			expect(result).toContain(css);
+		});
+
+		it('should preserve CSS with special characters', () => {
+			const css = 'div > span + p ~ .class:hover { background: #fff; }';
+			const result = createPage({
+				...defaultParams,
+				customCss: css,
+			});
+
+			expect(result).toContain(css);
+		});
+	});
+
 	describe('General Security', () => {
 		it('should not expose raw user input in HTML comments or other locations', () => {
 			const maliciousInput = '</script><script>alert("XSS")</script>';
@@ -214,6 +293,121 @@ describe('ChatTrigger Templates Security', () => {
 		});
 	});
 
+	describe('webhookUrl rendering', () => {
+		it('should encode single quotes and adjacent characters in the value', () => {
+			const input = "https://test.com/webhook/abc', extra: fetch('https://other.test/x'), tail: '";
+
+			const result = createPage({
+				...defaultParams,
+				webhookUrl: input,
+			});
+
+			expect(result).toContain(`webhookUrl: ${escapeForScriptContext(input)},`);
+			expect(result).not.toContain(`webhookUrl: '${input}'`);
+		});
+
+		it('should encode angle brackets in the value', () => {
+			const input = '</script><script>console.log(1)</script>';
+
+			const result = createPage({
+				...defaultParams,
+				webhookUrl: input,
+			});
+
+			// The rendered HTML must contain exactly one closing </script> tag
+			const scriptCloses = (result.match(/<\/script>/gi) ?? []).length;
+			expect(scriptCloses).toBe(1);
+		});
+
+		it('should encode backslash sequences in the value', () => {
+			const input = "https://test.com/\\', extra: 1, tail: '";
+
+			const result = createPage({
+				...defaultParams,
+				webhookUrl: input,
+			});
+
+			expect(result).toContain(`webhookUrl: ${escapeForScriptContext(input)},`);
+		});
+
+		it('should encode U+2028 and U+2029 line separators in the value', () => {
+			// JSON.stringify alone does not escape U+2028/U+2029; the helper must.
+			const input = `https://test.com/${LINE_SEPARATOR}extra = 1`;
+
+			const result = createPage({
+				...defaultParams,
+				webhookUrl: input,
+			});
+
+			expect(result.includes(LINE_SEPARATOR)).toBe(false);
+			expect(result).toContain('\\u2028');
+		});
+
+		it('should preserve a typical webhook URL', () => {
+			const url = 'https://example.com/webhook/0123abcd-ef45-6789-abcd-ef0123456789/chat';
+
+			const result = createPage({
+				...defaultParams,
+				webhookUrl: url,
+			});
+
+			expect(result).toContain(url);
+		});
+
+		it('should render an empty string when webhookUrl is undefined', () => {
+			// getNodeWebhookUrl can return undefined; the rendered JS must still be parseable
+			// and the chat client must receive a string value, not the literal `undefined`.
+			const result = createPage({
+				...defaultParams,
+				webhookUrl: undefined,
+			});
+
+			expect(result).toContain('webhookUrl: "",');
+			expect(result).not.toContain('webhookUrl: undefined');
+			expect(result).not.toContain("webhookUrl: 'undefined'");
+		});
+	});
+
+	describe('escapeForScriptContext function', () => {
+		it('should produce a JSON string literal for simple input', () => {
+			expect(escapeForScriptContext('hello')).toBe('"hello"');
+		});
+
+		it('should escape angle brackets', () => {
+			expect(escapeForScriptContext('</script>')).toBe('"\\u003c/script\\u003e"');
+		});
+
+		it('should escape ampersands', () => {
+			expect(escapeForScriptContext('a&b')).toBe('"a\\u0026b"');
+		});
+
+		it('should escape U+2028 and U+2029 line separators', () => {
+			expect(escapeForScriptContext(`a${LINE_SEPARATOR}b`)).toBe('"a\\u2028b"');
+			expect(escapeForScriptContext(`a${PARAGRAPH_SEPARATOR}b`)).toBe('"a\\u2029b"');
+		});
+
+		it('should escape double quotes and backslashes', () => {
+			expect(escapeForScriptContext('a"b')).toBe('"a\\"b"');
+			expect(escapeForScriptContext('a\\b')).toBe('"a\\\\b"');
+		});
+
+		it('should round-trip via JSON.parse to the original value', () => {
+			const inputs = [
+				'simple',
+				'with "double" quotes',
+				"with 'single' quotes",
+				'with </script> and <img onerror=x>',
+				'with & ampersand',
+				`with ${LINE_SEPARATOR} and ${PARAGRAPH_SEPARATOR} separators`,
+				'with \\ backslash and \\n literal',
+				'',
+			];
+			inputs.forEach((input) => {
+				expect(JSON.parse(escapeForScriptContext(input))).toBe(input);
+			});
+		});
+	});
+
 	describe('XSS Prevention in allowedFilesMimeTypes', () => {
 		it('should prevent script injection through allowedFilesMimeTypes', () => {
 			const maliciousInput = '</script><script>alert(document.cookie)</script>';
@@ -259,6 +453,43 @@ describe('ChatTrigger Templates Security', () => {
 			});
 
 			expect(result).toContain(legitimateMimeTypes);
+		});
+	});
+
+	describe('getSanitizedCustomCss function', () => {
+		it('should strip </style to prevent breakout', () => {
+			expect(getSanitizedCustomCss('</style><script>alert(1)</script>')).toBe(
+				'><script>alert(1)</script>',
+			);
+		});
+
+		it('should strip </style/> parser differential variant', () => {
+			expect(getSanitizedCustomCss('</style/><script>alert(1)</script>')).toBe(
+				'/><script>alert(1)</script>',
+			);
+		});
+
+		it('should strip </style case-insensitively', () => {
+			expect(getSanitizedCustomCss('</STYLE>')).toBe('>');
+			expect(getSanitizedCustomCss('</Style>')).toBe('>');
+			expect(getSanitizedCustomCss('</sTyLe>')).toBe('>');
+		});
+
+		it('should strip multiple </style occurrences', () => {
+			expect(getSanitizedCustomCss('</style>x</style>')).toBe('>x>');
+		});
+
+		it('should strip partial </style without closing >', () => {
+			expect(getSanitizedCustomCss('</style')).toBe('');
+		});
+
+		it('should handle empty string', () => {
+			expect(getSanitizedCustomCss('')).toBe('');
+		});
+
+		it('should preserve legitimate CSS', () => {
+			const css = '.chat { color: red; } div > span + p ~ .class:hover { background: #fff; }';
+			expect(getSanitizedCustomCss(css)).toBe(css);
 		});
 	});
 

@@ -1,4 +1,8 @@
+import type { ExecutionDataStorageLocation } from '@n8n/db';
 import type { IWorkflowBase } from 'n8n-workflow';
+
+/** Storage locations served by the execution-data JSON store. `db` is handled natively by `DbStore`. */
+export type BlobStorageLocation = Exclude<ExecutionDataStorageLocation, 'db'>;
 
 export type ExecutionRef = {
 	workflowId: string;
@@ -11,7 +15,7 @@ export function createExecutionRef(workflowId: string, executionId: string): Exe
 
 export type WorkflowSnapshot = Pick<
 	IWorkflowBase,
-	'id' | 'name' | 'nodes' | 'connections' | 'settings'
+	'id' | 'name' | 'nodes' | 'connections' | 'settings' | 'nodeGroups'
 >;
 
 export type ExecutionDataPayload = {
@@ -20,13 +24,8 @@ export type ExecutionDataPayload = {
 	workflowVersionId: string | null;
 };
 
-export type ExecutionDataBundle = ExecutionDataPayload & {
-	version: 1;
-};
-
-export interface ExecutionDataStore {
-	init?(): Promise<void>;
-	write(ref: ExecutionRef, payload: ExecutionDataPayload): Promise<void>;
-	read(ref: ExecutionRef): Promise<ExecutionDataBundle | null>;
-	delete(ref: ExecutionRef | ExecutionRef[]): Promise<void>;
-}
+/** The workflow-snapshot part of a payload, without the run data. */
+export type BundleWorkflowSnapshot = Pick<
+	ExecutionDataPayload,
+	'workflowData' | 'workflowVersionId'
+>;

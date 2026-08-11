@@ -1,4 +1,5 @@
-import { NodeConnectionTypes, parseErrorMetadata, sleep } from 'n8n-workflow';
+import { sleep } from '@n8n/utils/sleep';
+import { NodeConnectionTypes, parseErrorMetadata } from 'n8n-workflow';
 import {
 	type IExecuteFunctions,
 	type INodeExecutionData,
@@ -21,14 +22,13 @@ export class ChainRetrievalQa implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Question and Answer Chain',
 		name: 'chainRetrievalQa',
-		icon: 'fa:link',
+		icon: 'node:question-and-answer-chain',
 		iconColor: 'black',
 		group: ['transform'],
 		version: [1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7],
 		description: 'Answer questions about retrieved documents',
 		defaults: {
 			name: 'Question and Answer Chain',
-			color: '#909298',
 		},
 		codex: {
 			alias: ['LangChain'],

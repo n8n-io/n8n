@@ -6,7 +6,8 @@
  */
 import { interpretSDKCode, InterpreterError, SecurityError } from '../ast-interpreter';
 import type { SDKFunctions } from '../ast-interpreter';
-import { expr as exprFn } from '../expression';
+import { expr as exprFn, nodeJson as nodeJsonFn } from '../expression';
+import { isWorkflowBuilder, isWorkflowJSON } from '../typeguards';
 import type { WorkflowJSON, WorkflowBuilder } from '../types/base';
 import { workflow as workflowFn } from '../workflow-builder';
 import { nextBatch as nextBatchFn } from '../workflow-builder/control-flow-builders/next-batch';
@@ -247,6 +248,39 @@ function readAndFixSingleQuotedString(code: string, start: number): [string, num
 					result += "\\')";
 					i += 2;
 					break;
+				} else if (code[i] === "'") {
+					// Apostrophe inside the node name (e.g. "Bob's Node") — escape it too.
+					result += "\\'";
+					i++;
+				} else {
+					result += code[i];
+					i++;
+				}
+			}
+			continue;
+		}
+
+		// Check for unescaped bracket-access key, e.g. .json['my key']
+		// Same problem as $('...'): the inner single quotes break the outer string.
+		// Only consume as a bracket key if a closing '] exists ahead; otherwise fall
+		// through so a truncated ['... lets the outer closing-quote logic resume.
+		if (code[i] === '[' && code[i + 1] === "'" && code.indexOf("']", i + 2) !== -1) {
+			result += "[\\'";
+			i += 2;
+
+			// Find the closing ']
+			while (i < code.length) {
+				if (code[i] === '\\' && i + 1 < code.length) {
+					result += code[i] + code[i + 1];
+					i += 2;
+				} else if (code[i] === "'" && code[i + 1] === ']') {
+					result += "\\']";
+					i += 2;
+					break;
+				} else if (code[i] === "'") {
+					// Apostrophe inside the key (e.g. ['it's a key']) — escape it too.
+					result += "\\'";
+					i++;
 				} else {
 					result += code[i];
 					i++;
@@ -552,6 +586,7 @@ const sdkFunctions: SDKFunctions = {
 	reranker: rerankerFn,
 	fromAi: fromAiFn,
 	expr: exprFn,
+	nodeJson: nodeJsonFn,
 };
 
 /**
@@ -631,7 +666,8 @@ export function parseWorkflowCodeToBuilder(code: string): WorkflowBuilder {
 
 	try {
 		// Use AST interpreter instead of new Function() for security
-		return interpretSDKCode(executableCode, sdkFunctions) as WorkflowBuilder;
+		const result = interpretSDKCode(executableCode, sdkFunctions);
+		return asWorkflowBuilder(result);
 	} catch (error) {
 		if (error instanceof SecurityError) {
 			throw new SyntaxError(
@@ -650,4 +686,23 @@ export function parseWorkflowCodeToBuilder(code: string): WorkflowBuilder {
 		}
 		throw error;
 	}
+}
+
+/**
+ * Coerce an interpreter result into a WorkflowBuilder.
+ *
+ * - If the result is already a WorkflowBuilder (produced by the SDK `workflow()` function), return it directly.
+ * - If the result is a plain object that looks like WorkflowJSON (has a `nodes` array), convert it via `workflow.fromJSON()`.
+ * - Otherwise, throw with a descriptive error.
+ */
+function asWorkflowBuilder(result: unknown): WorkflowBuilder {
+	if (isWorkflowBuilder(result)) {
+		return result;
+	}
+
+	if (isWorkflowJSON(result)) {
+		return workflowFn.fromJSON(result);
+	}
+
+	throw new SyntaxError('Code must export a workflow built with the workflow() SDK function.');
 }

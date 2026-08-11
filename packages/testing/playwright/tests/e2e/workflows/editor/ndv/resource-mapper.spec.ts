@@ -103,7 +103,7 @@ test.describe(
 			});
 
 			// Set a unique fieldId so dependentParametersValues differs between nodes
-			await n8n.ndv.fillParameterInputByName('fieldId', 'table1');
+			await n8n.ndv.setupHelper.setParameter('fieldId', 'table1');
 
 			// Wait for resource mapper fields to reload after fieldId change
 			await expect(n8n.ndv.getResourceMapperParameterInputs()).toHaveCount(3);
@@ -111,6 +111,7 @@ test.describe(
 			// Fill resource mapper values on first node
 			await n8n.ndv.fillParameterInputByName('id', '001');
 			await n8n.ndv.fillParameterInputByName('name', 'John');
+			await n8n.ndv.waitForDebounce();
 
 			// Close NDV
 			await n8n.ndv.close();
@@ -122,7 +123,7 @@ test.describe(
 			});
 
 			// Set a different fieldId to trigger dependentParametersValues change on navigation
-			await n8n.ndv.fillParameterInputByName('fieldId', 'table2');
+			await n8n.ndv.setupHelper.setParameter('fieldId', 'table2');
 
 			// Wait for resource mapper fields to reload
 			await expect(n8n.ndv.getResourceMapperParameterInputs()).toHaveCount(3);
@@ -130,6 +131,7 @@ test.describe(
 			// Fill resource mapper values on second node
 			await n8n.ndv.fillParameterInputByName('id', '002');
 			await n8n.ndv.fillParameterInputByName('name', 'Jane');
+			await n8n.ndv.waitForDebounce();
 
 			// Navigate to previous node (first E2E Test) using floating node navigation
 			await n8n.ndv.clickFloatingNodeByPosition('inputMain');

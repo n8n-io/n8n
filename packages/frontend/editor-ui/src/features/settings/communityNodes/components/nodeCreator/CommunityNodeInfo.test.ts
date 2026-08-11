@@ -8,10 +8,6 @@ import { type ComputedRef, ref } from 'vue';
 import type { CommunityNodeDetails } from '@/features/shared/nodeCreator/composables/useViewStacks';
 import CommunityNodeInfo from './CommunityNodeInfo.vue';
 
-vi.mock('./utils', () => ({
-	fetchInstalledPackageInfo: vi.fn(),
-}));
-
 // const mockInstalledPackage = ref<ExtendedPublicInstalledPackage | undefined>(undefined);
 // const isUpdateCheckAvailable = ref(false);
 
@@ -35,10 +31,16 @@ const getCommunityNodeAttributes = vi.fn();
 vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: vi.fn(() => ({
 		getCommunityNodeAttributes,
+		getNodeType: vi.fn(),
+		getAllNodeTypes: vi.fn().mockReturnValue({
+			nodeTypes: {},
+			init: async () => {},
+			getByNameAndVersion: () => undefined,
+		}),
 	})),
 }));
 
-vi.mock('@/features/settings/users/users.store', () => ({
+vi.mock('@n8n/stores/users.store', () => ({
 	useUsersStore: vi.fn(() => ({
 		isAdmin: true,
 		isAdminOrOwner: true,
@@ -52,7 +54,6 @@ vi.mock('@/features/shared/nodeCreator/composables/useViewStacks', () => ({
 
 vi.mock('@/features/credentials/quickConnect/composables/useQuickConnect', () => ({
 	useQuickConnect: vi.fn(() => ({
-		isQuickConnectEnabled: ref(false),
 		getQuickConnectOption: vi.fn(() => undefined),
 		getQuickConnectOptionByPackageName: vi.fn(() => undefined),
 		getQuickConnectOptionByCredentialTypes: vi.fn(() => undefined),
@@ -336,7 +337,6 @@ describe('CommunityNodeInfo', () => {
 					serviceName: 'Test service',
 				};
 				vi.mocked(useQuickConnect).mockReturnValue({
-					isQuickConnectEnabled: ref(true),
 					getQuickConnectOption: vi.fn(() => quickConnectOptionData),
 					getQuickConnectOptionByPackageName: vi.fn(() => quickConnectOptionData),
 					getQuickConnectOptionByCredentialTypes: vi.fn(() => quickConnectOptionData),
