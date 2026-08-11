@@ -26,6 +26,7 @@ import {
 } from './metric-catalog';
 import { sanitizeInputSchema } from '../../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext } from '../../types';
+import { standardApprovalResumeSchema } from '../shared/approval-resume.schema';
 import { refreshWorkflowSourceFileBindingFromSave } from '../workflows/workflow-file-bindings';
 
 // ── Action input schemas ───────────────────────────────────────────────────
@@ -122,10 +123,9 @@ const questionsSuspend = z.object({
 
 const suspendSchema = z.union([confirmationSuspend, questionsSuspend]);
 
-const confirmResumeSchema = z.object({ approved: z.boolean() });
+const confirmResumeSchema = standardApprovalResumeSchema;
 
-const questionsResumeSchema = z.object({
-	approved: z.boolean(),
+const questionsResumeSchema = standardApprovalResumeSchema.extend({
 	answers: z
 		.array(
 			z.object({

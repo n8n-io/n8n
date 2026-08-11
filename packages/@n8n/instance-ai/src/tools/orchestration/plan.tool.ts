@@ -5,6 +5,7 @@ import { z } from 'zod';
 
 import { PlanValidationError } from '../../planned-tasks/planned-task-service';
 import { PLANNED_TASK_KINDS, type OrchestrationContext, type PlannedTask } from '../../types';
+import { standardApprovalResumeSchema } from '../shared/approval-resume.schema';
 
 const plannedTaskSchema = z.object({
 	id: z.string().describe('Stable task identifier used by dependency edges'),
@@ -59,9 +60,7 @@ const planOutputSchema = z.object({
 	taskCount: z.number(),
 });
 
-export const planResumeSchema = z.object({
-	approved: z.boolean(),
-	userInput: z.string().optional(),
+export const planResumeSchema = standardApprovalResumeSchema.extend({
 	denied: z.boolean().optional(),
 });
 

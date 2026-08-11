@@ -9,6 +9,7 @@ import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext } from '../types';
+import { standardApprovalResumeSchema } from './shared/approval-resume.schema';
 import { DATA_TABLES_TOOL_ID } from './tool-ids';
 
 // ── Shared schemas ─────────────────────────────────────────────────────────
@@ -47,9 +48,7 @@ const confirmationSuspendSchema = z.object({
 	severity: instanceAiConfirmationSeveritySchema,
 });
 
-const confirmationResumeSchema = z.object({
-	approved: z.boolean(),
-});
+const confirmationResumeSchema = standardApprovalResumeSchema;
 
 type ResumeData = z.infer<typeof confirmationResumeSchema>;
 

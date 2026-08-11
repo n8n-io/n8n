@@ -12,6 +12,7 @@ import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext } from '../types';
+import { standardApprovalResumeSchema } from './shared/approval-resume.schema';
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
@@ -142,12 +143,8 @@ const suspendSchema = z.object({
 	severity: instanceAiConfirmationSeveritySchema,
 });
 
-const resumeSchema = z.object({
-	approved: z.boolean(),
-	/** `'session'` — the user chose "always allow"; persist a thread-level grant so
-	 *  subsequent runs skip HITL for this action. */
-	scope: z.enum(['once', 'session']).optional(),
-});
+/** Includes `scope` for "always allow" session grants (see handler). */
+const resumeSchema = standardApprovalResumeSchema;
 
 // ── Handlers ───────────────────────────────────────────────────────────────
 

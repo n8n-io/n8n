@@ -67,6 +67,7 @@ import { BuildFailureTracker } from '../../workflow-builder/build-failure-tracke
 import { createRemediation } from '../../workflow-loop/remediation';
 import { remediationMetadataSchema } from '../../workflow-loop/workflow-loop-state';
 import { writeWorkspaceFile } from '../../workspace/workspace-files';
+import { standardApprovalResumeSchema } from '../shared/approval-resume.schema';
 import { COMPILED_WORKFLOW_TRACE_RUN_NAME } from '../tool-ids';
 
 /** Over this serialized length only a `truncated` marker is emitted; the seed
@@ -79,9 +80,7 @@ const confirmationSuspendSchema = z.object({
 	severity: instanceAiConfirmationSeveritySchema,
 });
 
-const confirmationResumeSchema = z.object({
-	approved: z.boolean(),
-});
+const confirmationResumeSchema = standardApprovalResumeSchema;
 
 interface BuildCtx {
 	toolCallId?: string;

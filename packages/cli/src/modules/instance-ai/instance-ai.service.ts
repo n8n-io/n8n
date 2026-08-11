@@ -4834,6 +4834,7 @@ export class InstanceAiService {
 			...(data.resourceDecision ? { resourceDecision: data.resourceDecision } : {}),
 			...(data.scope ? { scope: data.scope } : {}),
 			...(data.autoSetup ? { autoSetup: data.autoSetup } : {}),
+			...(data.denied ? { denied: true } : {}),
 		};
 
 		const resumeTracing = await this.tracing.createOrchestratorResumeTraceContext({

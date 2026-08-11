@@ -8,6 +8,7 @@ import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext } from '../types';
+import { standardApprovalResumeSchema } from './shared/approval-resume.schema';
 
 // ── Shared fields (single source of truth for fields used across actions) ───
 
@@ -99,9 +100,7 @@ const suspendSchema = z.object({
 	severity: instanceAiConfirmationSeveritySchema,
 });
 
-const resumeSchema = z.object({
-	approved: z.boolean(),
-});
+const resumeSchema = standardApprovalResumeSchema;
 
 // ── Input union ─────────────────────────────────────────────────────────────
 

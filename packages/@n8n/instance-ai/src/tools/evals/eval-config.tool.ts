@@ -17,6 +17,7 @@ import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext, UpsertEvaluationConfigInput } from '../../types';
+import { standardApprovalResumeSchema } from '../shared/approval-resume.schema';
 import { EVAL_CONFIG_TOOL_ID } from '../tool-ids';
 
 export { EVAL_CONFIG_TOOL_ID };
@@ -151,9 +152,7 @@ const confirmationSuspendSchema = z.object({
 	severity: instanceAiConfirmationSeveritySchema,
 });
 
-const confirmationResumeSchema = z.object({
-	approved: z.boolean(),
-});
+const confirmationResumeSchema = standardApprovalResumeSchema;
 
 type ResumeData = z.infer<typeof confirmationResumeSchema>;
 
