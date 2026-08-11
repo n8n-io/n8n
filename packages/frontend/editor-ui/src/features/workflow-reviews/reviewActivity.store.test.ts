@@ -246,11 +246,10 @@ describe('useReviewActivityStore', () => {
 
 	it('does not leave the next review stuck in a sending state', async () => {
 		vi.mocked(workflowReviewsApi.fetchWorkflowReviewActivity).mockResolvedValue(makePage(['1']));
-		let resolvePost: (entry: WorkflowReviewActivityEntry) => void = () => {};
-		vi.mocked(workflowReviewsApi.createWorkflowReviewComment).mockReturnValue(
-			new Promise((resolve) => {
-				resolvePost = resolve;
-			}),
+		// One resolver per call: both posts have to be settled independently.
+		const resolvers: Array<(entry: WorkflowReviewActivityEntry) => void> = [];
+		vi.mocked(workflowReviewsApi.createWorkflowReviewComment).mockImplementation(
+			async () => await new Promise((resolve) => resolvers.push(resolve)),
 		);
 		const store = useReviewActivityStore();
 		await store.fetchFeed('req-1');
@@ -261,11 +260,56 @@ describe('useReviewActivityStore', () => {
 		await store.fetchFeed('req-2');
 		expect(store.posting).toBe(false);
 
-		// The stale post settling must not clear the flag out from under req-2.
-		store.posting = true;
-		resolvePost(makeEntry('9'));
+		// Back on req-1 with a second post running, the first one settling must not clear
+		// the flag the second one owns.
+		await store.fetchFeed('req-1');
+		const second = store.postComment('again');
+		expect(store.posting).toBe(true);
+
+		resolvers[0](makeEntry('9'));
 		await pending;
 		expect(store.posting).toBe(true);
+
+		resolvers[1](makeEntry('10'));
+		await second;
+		expect(store.posting).toBe(false);
+	});
+
+	it('keeps the send button disabled when a failed page is retried mid-post', async () => {
+		vi.mocked(workflowReviewsApi.fetchWorkflowReviewActivity).mockResolvedValue(makePage(['1']));
+		let resolvePost: (entry: WorkflowReviewActivityEntry) => void = () => {};
+		vi.mocked(workflowReviewsApi.createWorkflowReviewComment).mockReturnValue(
+			new Promise((resolve) => {
+				resolvePost = resolve;
+			}),
+		);
+		const store = useReviewActivityStore();
+		await store.fetchFeed('req-1');
+		store.draft = 'half a thought';
+
+		const pending = store.postComment('hi');
+		expect(store.posting).toBe(true);
+
+		// Retrying refetches the same review. Clearing here would re-enable send with the
+		// draft still in the box, and a second Enter would post a duplicate.
+		await store.fetchFeed('req-1');
+		expect(store.posting).toBe(true);
+		expect(store.draft).toBe('half a thought');
+
+		resolvePost(makeEntry('9'));
+		await pending;
+		expect(store.posting).toBe(false);
+	});
+
+	it('drops the draft when the viewer moves to another review', async () => {
+		vi.mocked(workflowReviewsApi.fetchWorkflowReviewActivity).mockResolvedValue(makePage(['1']));
+		const store = useReviewActivityStore();
+		await store.fetchFeed('req-1');
+		store.draft = 'for req-1 only';
+
+		await store.fetchFeed('req-2');
+
+		expect(store.draft).toBe('');
 	});
 
 	it('reports a failed comment to the composer, not as a feed error', async () => {

@@ -32,11 +32,16 @@ export const useReviewActivityStore = defineStore('workflowReviewActivity', () =
 	const loadingMore = ref(false);
 	const posting = ref(false);
 	const error = ref<Error | null>(null);
+	// Held here, not in the composer: switching to the Changes tab unmounts it, and a
+	// half-typed comment must survive that.
+	const draft = ref('');
 
 	let feedRequestSeq = 0;
+	let postSeq = 0;
 
 	async function fetchFeed(reviewId: string) {
 		const requestSeq = ++feedRequestSeq;
+		const switchedReview = currentReviewId.value !== reviewId;
 		// Cleared synchronously: otherwise the gap until the response arrives renders
 		// the previous review's feed instead of the loading state.
 		currentReviewId.value = reviewId;
@@ -46,9 +51,12 @@ export const useReviewActivityStore = defineStore('workflowReviewActivity', () =
 		loadingMore.value = false;
 		loading.value = true;
 		error.value = null;
-		// A post still in flight for the review we just left must not leave this one's
-		// send button disabled.
-		posting.value = false;
+		// Only on a switch. Retrying a failed page refetches the same review, and clearing
+		// there would re-enable send mid-post and discard what the user is typing.
+		if (switchedReview) {
+			posting.value = false;
+			draft.value = '';
+		}
 
 		try {
 			const response = await fetchWorkflowReviewActivity(rootStore.restApiContext, reviewId, {
@@ -109,6 +117,7 @@ export const useReviewActivityStore = defineStore('workflowReviewActivity', () =
 		// Thrown, not swallowed: a silent return would read as success to the caller.
 		if (!reviewId) throw new Error('Cannot post a comment without a selected review');
 
+		const requestSeq = ++postSeq;
 		posting.value = true;
 		try {
 			const entry = await createWorkflowReviewComment(rootStore.restApiContext, reviewId, { body });
@@ -117,14 +126,15 @@ export const useReviewActivityStore = defineStore('workflowReviewActivity', () =
 			// A feed refetch that raced this post may already carry the comment.
 			entries.value = [...withoutIdsIn(entries.value, [entry]), entry];
 		} finally {
-			// Only for the review this post belongs to. A switch already cleared the flag, and
-			// clearing it again would re-enable the send button mid-post on the new review.
-			if (currentReviewId.value === reviewId) posting.value = false;
+			// Only the newest post owns the flag: after A -> B -> A a stale post finishing would
+			// otherwise re-enable send while the post the user is waiting on is still in flight.
+			if (requestSeq === postSeq) posting.value = false;
 		}
 	}
 
 	function reset() {
 		feedRequestSeq += 1;
+		postSeq += 1;
 		currentReviewId.value = null;
 		entries.value = [];
 		nextCursor.value = null;
@@ -133,6 +143,7 @@ export const useReviewActivityStore = defineStore('workflowReviewActivity', () =
 		loadingMore.value = false;
 		posting.value = false;
 		error.value = null;
+		draft.value = '';
 	}
 
 	return {
@@ -144,6 +155,7 @@ export const useReviewActivityStore = defineStore('workflowReviewActivity', () =
 		loadingMore,
 		posting,
 		error,
+		draft,
 		fetchFeed,
 		loadMore,
 		postComment,

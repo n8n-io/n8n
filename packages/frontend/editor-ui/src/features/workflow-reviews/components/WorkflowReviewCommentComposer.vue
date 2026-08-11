@@ -4,7 +4,7 @@ import { N8nChatInput } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import { storeToRefs } from 'pinia';
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 
 import { useReviewActivityStore } from '../reviewActivity.store';
 
@@ -13,9 +13,9 @@ const props = defineProps<{ canComment: boolean }>();
 const i18n = useI18n();
 const { showError } = useToast();
 const store = useReviewActivityStore();
-const { posting } = storeToRefs(store);
-
-const draft = ref('');
+// Draft lives in the store so switching to the Changes tab, which unmounts this
+// component, does not throw away what the user typed.
+const { posting, draft } = storeToRefs(store);
 
 // The full condition, not just `posting`: N8nChatInput uses `submitDisabled ?? …`,
 // so a bare `false` would replace its own empty/over-limit/disabled gate.
