@@ -18,8 +18,14 @@ interface AgentSessionMock {
 	projectId: string;
 	agentId: string;
 	threadId: string;
+	sessionTitle?: string;
 	nodeTool: ToolCallMock;
 	workflowTool: WorkflowToolCallMock;
+}
+
+interface ElementWidth {
+	clientWidth: number;
+	scrollWidth: number;
 }
 
 export class AgentSessionsPage extends BasePage {
@@ -31,6 +37,7 @@ export class AgentSessionsPage extends BasePage {
 		projectId,
 		agentId,
 		threadId,
+		sessionTitle = 'Tool input and output',
 		nodeTool,
 		workflowTool,
 	}: AgentSessionMock): Promise<void> {
@@ -46,7 +53,7 @@ export class AgentSessionsPage extends BasePage {
 			projectId,
 			taskId: null,
 			sessionNumber: 1,
-			title: 'Tool input and output',
+			title: sessionTitle,
 			emoji: null,
 			totalPromptTokens: 10,
 			totalCompletionTokens: 5,
@@ -128,6 +135,36 @@ export class AgentSessionsPage extends BasePage {
 	async goto(projectId: string, agentId: string, threadId: string): Promise<void> {
 		await this.page.goto(`/projects/${projectId}/agents/${agentId}/sessions/${threadId}`);
 		await expect(this.getTimelineRows().first()).toBeVisible();
+	}
+
+	async gotoList(projectId: string, agentId: string): Promise<void> {
+		await this.page.goto(`/projects/${projectId}/agents/${agentId}/sessions`);
+		await expect(this.getSessionTitle()).toBeVisible();
+	}
+
+	async setViewportWidth(width: number): Promise<void> {
+		await this.page.setViewportSize({
+			width,
+			height: this.page.viewportSize()?.height ?? 720,
+		});
+	}
+
+	async getSessionTableWidth(): Promise<ElementWidth> {
+		return await this.page.getByTestId('table-base-scroll').evaluate((element) => ({
+			clientWidth: element.clientWidth,
+			scrollWidth: element.scrollWidth,
+		}));
+	}
+
+	async getSessionTitleWidth(): Promise<ElementWidth> {
+		return await this.getSessionTitle().evaluate((element) => ({
+			clientWidth: element.clientWidth,
+			scrollWidth: element.scrollWidth,
+		}));
+	}
+
+	getSessionTitle(): Locator {
+		return this.page.getByTestId('agent-session-title');
 	}
 
 	getTimelineRows(): Locator {

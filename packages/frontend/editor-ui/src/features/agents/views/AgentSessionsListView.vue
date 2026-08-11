@@ -373,6 +373,8 @@ async function loadMore() {
 
 .titleCell {
 	width: 46%;
+	min-width: var(--spacing--3xl);
+	max-width: 0;
 }
 
 .sessionTitle {

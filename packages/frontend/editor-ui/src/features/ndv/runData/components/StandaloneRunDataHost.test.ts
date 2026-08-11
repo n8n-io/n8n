@@ -140,12 +140,22 @@ const SingleHostHarness = defineComponent({
 	`,
 });
 
-function ownedStoreIds(probe: DOMWrapper<Element>): string[] {
+type AttributeReader = Pick<DOMWrapper<Element>, 'attributes'>;
+
+function requiredAttribute(probe: AttributeReader, name: string): string {
+	const value = probe.attributes(name);
+	if (value === undefined) throw new Error(`Missing ${name}`);
+	return value;
+}
+
+function ownedStoreIds(probe: AttributeReader): string[] {
 	return [
-		probe.attributes('data-document-store-id'),
-		probe.attributes('data-execution-state-store-id'),
-		getExecutionDataStoreId(createExecutionDataId(probe.attributes('data-execution-data-id'))),
-		probe.attributes('data-ndv-store-id'),
+		requiredAttribute(probe, 'data-document-store-id'),
+		requiredAttribute(probe, 'data-execution-state-store-id'),
+		getExecutionDataStoreId(
+			createExecutionDataId(requiredAttribute(probe, 'data-execution-data-id')),
+		),
+		requiredAttribute(probe, 'data-ndv-store-id'),
 	];
 }
 
