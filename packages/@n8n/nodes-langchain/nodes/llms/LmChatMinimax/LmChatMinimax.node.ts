@@ -74,11 +74,12 @@ export class LmChatMinimax implements INodeType {
 					{ name: 'MiniMax-M2.5-Highspeed', value: 'MiniMax-M2.5-highspeed' },
 					{ name: 'MiniMax-M2.7', value: 'MiniMax-M2.7' },
 					{ name: 'MiniMax-M2.7-Highspeed', value: 'MiniMax-M2.7-highspeed' },
+					{ name: 'MiniMax-M3', value: 'MiniMax-M3' },
 				],
-				default: 'MiniMax-M2.7',
+				default: 'MiniMax-M3',
 				builderHint: {
 					propertyHint:
-						'Default to the latest MiniMax-M2.x flagship (MiniMax-M2.7). Avoid MiniMax-M2 and earlier.',
+						'Default to the latest MiniMax flagship (MiniMax-M3). Avoid MiniMax-M2.5 and earlier.',
 				},
 			},
 			{
