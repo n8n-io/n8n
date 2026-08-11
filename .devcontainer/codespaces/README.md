@@ -6,7 +6,8 @@ from anywhere with a terminal, resume tomorrow.
 
 This is a separate devcontainer config from the laptop one in
 `.devcontainer/` — it ships both agent CLIs, `tmux` for session persistence,
-and Playwright system deps, on the same Postgres sidecar setup.
+Playwright system deps, and Docker-in-Docker (for testcontainers and
+`pnpm --filter n8n-containers services`), on the same Postgres sidecar setup.
 
 ## One-time setup (~5 min)
 
@@ -31,12 +32,23 @@ pnpm session rm           # delete the codespace
 ```
 
 - **Detach** with `Ctrl-b d` — the agent keeps working without you.
+- **Scroll** with the mouse wheel (tmux mouse mode is on). To use the
+  terminal's own text selection, hold **Shift** and drag.
 - **Reattach** by running the same `pnpm session <name>` from any machine.
 - Each named session gets its own worktree (`/workspaces/wt-<name>`, branch
   `session/<name>`), so parallel agents never touch each other's tree. Builds
   in fresh worktrees are cache-hits via a shared turbo cache.
 - First codespace creation takes ~20 min uncached (image + full build). After
   that, sessions attach instantly; new worktrees cost a `pnpm install` (~1–2 min).
+
+## Flaky tools (MCP)
+
+Claude sessions get the `flaky` MCP server automatically: Currents
+flaky/quarantine data, the `qa_*` BigQuery dataset, Sentry RCA, live Linear,
+and repo investigation. Login registers it from the repo-level
+`FLAKY_MCP_TOKEN` / `FLAKY_MCP_URL` secrets. Forks have no secrets and skip
+it. Tell the agent to call `get_flaky_context` first — it returns the rules
+the tools assume.
 
 ## Viewing the dev UI locally
 
@@ -82,8 +94,25 @@ After a stop, `pnpm session <name>` restarts the codespace (~30–60 s); run
   `sshd` devcontainer feature, don't remove it.
 - **User secrets aren't visible in ssh shells by default**: the codespace
   agent injects them into VS Code sessions only; they're delivered
-  base64-encoded to `/workspaces/.codespaces/shared/.env-secrets`. The image's
-  profile shim exports them for ssh/tmux sessions.
+  base64-encoded to `/workspaces/.codespaces/shared/.env-secrets`. The image
+  sources `/usr/local/lib/codespaces-env.sh` in login shells (profile.d), in
+  interactive shells (bashrc), and in the `pnpm session` prelude. If Claude
+  Code shows `Missing environment variables: FLAKY_MCP_TOKEN`, the shell that
+  started Claude did not source the file. Run
+  `. /usr/local/lib/codespaces-env.sh` and start Claude again.
+- **You cannot paste images into a remote Claude session.** Image paste reads
+  the clipboard of the machine where `claude` runs — the codespace, not your
+  laptop. Drag the file into the VS Code explorer (or
+  `gh codespace cp shot.png remote:/workspaces/n8n/`) and give Claude the
+  path. The file stays on disk and survives detach and `--resume`.
+- **`git push` / `gh` return 401 in tmux and long sessions** — same root
+  cause as the secrets gotcha, plus rotation: Codespaces refreshes the
+  on-disk `GITHUB_TOKEN` every few minutes, so a login-time snapshot goes
+  stale. The image fixes both: a credential helper reads the current token
+  on each `git push` (`gitcredential-refresh.sh`), and a shim at
+  `/usr/local/bin/gh` does the same for `gh`. The token is scoped to
+  `n8n-io/n8n`: fork-based flows do not work, push branches directly. Do
+  not add SSH keys as a workaround — they have no per-repo granularity.
 - Codespaces created by org members on this repo are **org-owned and
   org-billed** (organization ownership + a monthly Codespaces budget are
   enabled for n8n-io). Codespaces created before that change, or by

@@ -187,7 +187,6 @@ These only run if specific files changed:
 | Event                      | Workflow                    | Condition                                            |
 |----------------------------|-----------------------------|------------------------------------------------------|
 | Review approved            | `release-chromatic.yml` | + design files changed                               |
-| Comment with `@claude`     | `util-claude.yml`           | mention in any comment                               |
 | Any review                 | `util-notify-pr-status.yml` | not community-labeled                                |
 
 **Why Instance AI evals fire once per PR state-change, not per push:** the
@@ -248,25 +247,7 @@ parallelism). See the `--build-via-mcp` section in
 
 | Workflow                  | Purpose                                                 |
 |---------------------------|---------------------------------------------------------|
-| `util-claude-task.yml`    | Run Claude Code to complete a task and create a PR      |
 | `util-data-tooling.yml`   | SQLite/PostgreSQL export/import validation (manual)     |
-
-#### Claude Task Runner (`util-claude-task.yml`)
-
-Runs Claude Code to complete a task, then creates a PR with the changes. Use for well-specced tasks or simple fixes. Can be triggered via GitHub UI or API.
-
-Claude reads templates from `.github/claude-templates/` for task-specific guidance. Add new templates as needed for recurring task types.
-
-**Inputs:**
-- `task` - Description of what Claude should do
-- `user_token` - GitHub PAT (PR will be authored by the token owner)
-
-**Token requirements** (fine-grained PAT):
-- Repository: `n8n-io/n8n`
-- Contents: `Read and write`
-- Pull requests: `Read and write`
-
-**Governance:** If you provide your personal PAT, you cannot approve the resulting PR. For automated/bot use cases (e.g., dependabot-style updates via n8n workflows), an app token can be used instead.
 
 ---
 
@@ -434,7 +415,13 @@ mechanical files pre-resolved) is opened on `sync/master-to-3x`, requesting the
 breaking-commit authors as reviewers via `sync-conflict-owners.mjs`, posting to
 `#alerts-v3-sync` and pausing further syncs until it is resolved and merged normally.
 `build-v3-nightly.yml` publishes `n8nio/n8n:v3-nightly[-<date>]` images from `3.x`
-by calling `docker-build-push.yml` with `ref: 3.x` + `date_tag`.
+by calling `docker-build-push.yml` with `ref: 3.x` + `date_tag`. On Mondays it also
+retags that run's n8n + runners manifests as a release candidate (by digest on GHCR, so
+the RC is exactly what was built), giving a self-consistent set to trial. Any manual run
+can promote too via the `force_rc` dispatch input, several times a day: each publish
+claims the next free `v3-rc-<date>.N` as its immutable tag and moves the floating `v3-rc`
+and `v3-rc-<date>` onto it. The counter is derived by probing the registry, and the job
+is serialized on a `v3-rc-tagging` concurrency group so two runs can't claim one number.
 
 See **[`DEVELOPING_V3.md`](./DEVELOPING_V3.md)** for the full model.
 
@@ -514,6 +501,7 @@ Scripts in `.github/scripts/`:
 |-------------------------|-------------------|---------------------------|
 | `validate-docs-links.js`| Check doc URLs    | `util-check-docs-urls.yml`|
 | `send-build-stats.mjs`  | Build telemetry   | `setup-nodejs` action     |
+| `db-test-matrix.mjs`    | DB test matrix from `postgres-versions.json` | `ci-pull-requests.yml` |
 
 ### Slack Scripts
 
