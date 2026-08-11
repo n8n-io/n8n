@@ -39,9 +39,9 @@ the API key to hold `workflow:export` when exporting workflows or folders, or
 A workflow has a latest version (what you see in the editor) and, once
 published, a published version; `--workflow-version-policy` picks which one
 travels. The chosen version decides which credentials, data tables, variables
-and sub-workflows are bundled alongside it, but workflow settings (including
-`errorWorkflow`) and tags are not versioned and always come from the latest
-version.
+and sub-workflows are bundled alongside it, but the workflow's name, settings
+(including `errorWorkflow`) and tags are not versioned and always come from the
+latest version.
 
 Statically referenced sub-workflows are dependencies of the package. How
 missing ones are handled depends on

@@ -255,7 +255,28 @@ export class AutoIncludedWorkflowResolver {
 			async (ids) => await this.workflowFinder.findExistingWorkflowIds(ids),
 		);
 
-		return applyWorkflowVersionPolicy(workflows, workflowVersionPolicy);
+		const exportableWorkflows = applyWorkflowVersionPolicy(workflows, workflowVersionPolicy);
+
+		// `ignore-unpublished` skips top-level workflows silently, but a dependency
+		// it drops is one the package cannot ship without — abort, naming the cause.
+		if (exportableWorkflows.length < workflows.length) {
+			const exportableIds = new Set(exportableWorkflows.map(({ id }) => id));
+			const droppedIds = workflows.map(({ id }) => id).filter((id) => !exportableIds.has(id));
+			const displayed = droppedIds.slice(0, 20);
+			const omittedCount = droppedIds.length - displayed.length;
+			const dependencyLabel = droppedIds.length === 1 ? 'dependency has' : 'dependencies have';
+
+			throw new PackageExportBlockedError(
+				`${droppedIds.length} sub-workflow ${dependencyLabel} no published version. Export aborted.`,
+				{
+					description: `Unpublished sub-workflow IDs: ${displayed.join(', ')}${
+						omittedCount > 0 ? `, and ${omittedCount} more` : ''
+					}`,
+				},
+			);
+		}
+
+		return exportableWorkflows;
 	}
 
 	private async findAccessibleFolderChains(

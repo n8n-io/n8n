@@ -8,7 +8,7 @@ export function needsActiveVersion(policy: WorkflowVersionPolicy): boolean {
 	return policy !== WorkflowVersionPolicy.Latest;
 }
 
-/** Only nodes and connections are overlaid, so settings and tags stay at their draft values. */
+/** Only nodes and connections are overlaid, so name, description, settings and tags stay at their draft values. */
 function atPublishedVersion(workflow: WorkflowEntity): WorkflowEntity {
 	const { activeVersion } = workflow;
 

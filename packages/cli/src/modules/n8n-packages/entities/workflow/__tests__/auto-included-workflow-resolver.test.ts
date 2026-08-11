@@ -319,6 +319,24 @@ describe('AutoIncludedWorkflowResolver', () => {
 		).rejects.toBeInstanceOf(PackageEntityAccessDeniedError);
 	});
 
+	it('names the unpublished sub-workflow when ignore-unpublished drops a dependency', async () => {
+		const unpublished = { ...makeWorkflow('b'), activeVersionId: null } as WorkflowEntity;
+		const { resolver } = makeResolver({
+			workflows: [makeWorkflow('seed'), unpublished],
+			owners: { b: makeProject('p1') },
+		});
+
+		await expect(
+			resolver.resolve({
+				...resolveInput({
+					topLevelWorkflowIds: ['seed'],
+					requirements: [requirement('seed', 'b')],
+				}),
+				workflowVersionPolicy: WorkflowVersionPolicy.IgnoreUnpublished,
+			}),
+		).rejects.toThrow('1 sub-workflow dependency has no published version. Export aborted.');
+	});
+
 	it('requests exportable workflows with the workflow:export scope and parent folder', async () => {
 		const { resolver, workflowFinder } = makeResolver({
 			workflows: [makeWorkflow('seed'), makeWorkflow('b')],

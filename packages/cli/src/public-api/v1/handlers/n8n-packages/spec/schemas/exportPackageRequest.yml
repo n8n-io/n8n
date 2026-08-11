@@ -77,8 +77,8 @@ properties:
       `prefer-published` falls back to the latest version where there is no
       published one. `ignore-unpublished` leaves unpublished workflows out of
       the package entirely. The chosen version decides which credentials, data
-      tables, variables and sub-workflows are bundled alongside it; workflow
-      settings and tags are not versioned and always come from the latest
-      version.
+      tables, variables and sub-workflows are bundled alongside it; the
+      workflow's name, settings and tags are not versioned and always come from
+      the latest version.
     example: latest
     default: latest

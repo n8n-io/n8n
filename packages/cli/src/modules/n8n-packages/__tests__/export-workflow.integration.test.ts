@@ -979,6 +979,31 @@ describe('workflow package export', () => {
 			expect(entries.filter((e) => e.name.endsWith('/workflow.json'))).toHaveLength(1);
 		});
 
+		it('names the unpublished sub-workflow when auto-include meets ignore-unpublished', async () => {
+			const owner = await createOwner();
+			const project = await createTeamProject('Project A', owner);
+			const { workflow: child } = await buildVersionedWorkflow({
+				name: 'Unpublished helper',
+				project,
+				versions: [[noOpNode('child-v1')]],
+			});
+			const { workflow: parent } = await buildVersionedWorkflow({
+				name: 'Published caller',
+				project,
+				versions: [[executeWorkflowNode(child.id)]],
+				publishedVersion: 0,
+			});
+
+			await expect(
+				service.exportPackage({
+					user: owner,
+					workflowIds: [parent.id],
+					workflowVersionPolicy: 'ignore-unpublished',
+					missingWorkflowDependencyPolicy: 'include-in-package',
+				}),
+			).rejects.toThrow('1 sub-workflow dependency has no published version. Export aborted.');
+		});
+
 		it('bundles the credentials the exported version references, not the draft ones', async () => {
 			const owner = await createOwner();
 			const project = await createTeamProject('Project A', owner);
