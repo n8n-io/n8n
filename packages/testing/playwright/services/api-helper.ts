@@ -258,6 +258,15 @@ export class ApiHelpers {
 		return data.cursor;
 	}
 
+	async clearWorkflowStaticData(workflowId: string): Promise<void> {
+		const response = await this.request.post('/rest/e2e/workflow-static-data/clear', {
+			data: { workflowId },
+		});
+		if (!response.ok()) {
+			throw new TestError(`Failed to clear workflow static data: ${await response.text()}`);
+		}
+	}
+
 	async fireScheduledJobsNow(workflowId: string, nodeId: string): Promise<void> {
 		const response = await this.request.post('/rest/e2e/scheduled-jobs/fire-now', {
 			data: { workflowId, nodeId },
