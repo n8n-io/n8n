@@ -301,6 +301,41 @@ describe('useReviewActivityStore', () => {
 		expect(store.posting).toBe(false);
 	});
 
+	it('keeps a comment posted onto a failed feed visible while that feed is retried', async () => {
+		vi.mocked(workflowReviewsApi.fetchWorkflowReviewActivity).mockRejectedValue(new Error('boom'));
+		vi.mocked(workflowReviewsApi.createWorkflowReviewComment).mockResolvedValue(makeEntry('9'));
+		const store = useReviewActivityStore();
+		await store.fetchFeed('req-1');
+		await store.postComment('hi');
+		expect(store.entries.map((entry) => entry.id)).toEqual(['9']);
+
+		// Retrying refetches the same review. Wiping here would take the viewer's own
+		// comment off screen, and a second failure would leave it gone.
+		await store.fetchFeed('req-1');
+
+		expect(store.entries.map((entry) => entry.id)).toEqual(['9']);
+	});
+
+	it("does not drop a stale post's comment into the review the viewer moved to", async () => {
+		vi.mocked(workflowReviewsApi.fetchWorkflowReviewActivity).mockResolvedValue(makePage(['1']));
+		let resolvePost: (entry: WorkflowReviewActivityEntry) => void = () => {};
+		vi.mocked(workflowReviewsApi.createWorkflowReviewComment).mockReturnValue(
+			new Promise((resolve) => {
+				resolvePost = resolve;
+			}),
+		);
+		const store = useReviewActivityStore();
+		await store.fetchFeed('req-1');
+		const pending = store.postComment('hi');
+
+		vi.mocked(workflowReviewsApi.fetchWorkflowReviewActivity).mockResolvedValue(makePage(['2']));
+		await store.fetchFeed('req-2');
+		resolvePost(makeEntry('9'));
+		await pending;
+
+		expect(store.entries.map((entry) => entry.id)).toEqual(['2']);
+	});
+
 	it('drops the draft when the viewer moves to another review', async () => {
 		vi.mocked(workflowReviewsApi.fetchWorkflowReviewActivity).mockResolvedValue(makePage(['1']));
 		const store = useReviewActivityStore();

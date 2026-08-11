@@ -61,6 +61,8 @@ describe('WorkflowReviewActivityFeed', () => {
 		store.loading = false;
 		store.loadingMore = false;
 		store.hasMore = false;
+		// Decides which branch the retry buttons take, so it has to be reset with the rest.
+		store.nextCursor = null;
 		store.error = null;
 	});
 

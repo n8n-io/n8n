@@ -42,18 +42,19 @@ export const useReviewActivityStore = defineStore('workflowReviewActivity', () =
 	async function fetchFeed(reviewId: string) {
 		const requestSeq = ++feedRequestSeq;
 		const switchedReview = currentReviewId.value !== reviewId;
-		// Cleared synchronously: otherwise the gap until the response arrives renders
-		// the previous review's feed instead of the loading state.
 		currentReviewId.value = reviewId;
-		entries.value = [];
 		nextCursor.value = null;
 		hasMore.value = false;
 		loadingMore.value = false;
 		loading.value = true;
 		error.value = null;
-		// Only on a switch. Retrying a failed page refetches the same review, and clearing
-		// there would re-enable send mid-post and discard what the user is typing.
+		// All of this is per review, so a refetch of the same one keeps it. Clearing the
+		// entries would drop a comment the viewer just posted onto a feed whose first page
+		// failed, clearing `posting` would re-enable send mid-post, and clearing the draft
+		// would discard what they are typing. On a switch the state has to go synchronously,
+		// or the gap until the response arrives renders the previous review's feed.
 		if (switchedReview) {
+			entries.value = [];
 			posting.value = false;
 			draft.value = '';
 		}
@@ -134,7 +135,6 @@ export const useReviewActivityStore = defineStore('workflowReviewActivity', () =
 
 	function reset() {
 		feedRequestSeq += 1;
-		postSeq += 1;
 		currentReviewId.value = null;
 		entries.value = [];
 		nextCursor.value = null;

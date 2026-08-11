@@ -28,7 +28,20 @@ describe('WorkflowReviewCommentComposer', () => {
 		showError.mockReset();
 		store = mockedStore(useReviewActivityStore);
 		store.posting = false;
+		store.draft = '';
 		store.postComment.mockResolvedValue(undefined);
+	});
+
+	it('keeps a half-typed comment when the composer is unmounted and shown again', async () => {
+		// The Changes tab is a `v-if`, so it unmounts this component. The draft has to
+		// outlive that, which is the whole reason it lives in the store.
+		const first = renderComponent({ props: { canComment: true } });
+		await userEvent.type(first.getByRole('textbox'), 'half a thought');
+		first.unmount();
+
+		const second = renderComponent({ props: { canComment: true } });
+
+		expect(second.getByRole('textbox')).toHaveValue('half a thought');
 	});
 
 	it('disables the send button and the textarea when the viewer cannot comment', () => {
