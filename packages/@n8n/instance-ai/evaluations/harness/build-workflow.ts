@@ -269,25 +269,50 @@ export function buildFailedOnInfra(build: BuildResult): boolean {
 }
 
 /**
+ * Pre-scrub transcript text for the local-mode leak scan, held OUTSIDE the
+ * BuildResult and keyed by the facts object the checks are handed.
+ *
+ * It cannot live on the build: `traceable` serialises the returned build as the
+ * LangSmith run output, so a raw-text field there would ship the very key the
+ * scrub exists to remove — redacted transcript, real key one field over.
+ */
+const leakHaystacks = new WeakMap<CredentialSetupRunFacts, string>();
+
+/** The raw (pre-redaction) run text for these facts, if this was a scrubbed
+ *  local run. The leak scan needs it; nothing else should. */
+export function leakHaystackFor(facts: CredentialSetupRunFacts): string | undefined {
+	return leakHaystacks.get(facts);
+}
+
+/**
  * Strip a LOCAL run's real provider key from everything the build carries out.
  *
  * Must run INSIDE the traced call: LangSmith's `traceable` records the returned
  * BuildResult as the run output, so scrubbing after the call returns still ships
  * the key upstream. The orchestrator calls it again before stashing — idempotent
- * via `leakHaystack`, so whichever runs first wins and the other is a no-op.
+ * via the haystack entry, so whichever runs first wins and the other is a no-op.
  *
  * The leak CHECK needs the raw text, so it is snapshotted here, before the
- * scrub, and travels on the facts.
+ * scrub, into `leakHaystacks`.
  */
 export function scrubLocalSecretsFromBuild(build: BuildResult): BuildResult {
 	const facts = build.credentialSetup;
-	if (!facts?.local || !facts.secretPrefix || facts.leakHaystack !== undefined) return build;
-	facts.leakHaystack = JSON.stringify({
-		transcript: build.transcript ?? [],
-		events: build.events ?? [],
-	});
+	if (!facts?.local || !facts.secretPrefix || leakHaystacks.has(facts)) return build;
+	// `buildTrace` is in here for both reasons: the HTML report dumps its
+	// `toolCalls` verbatim and scenario-execution writes it to the verifier
+	// snapshot, so a key typed into a browser tool call reaches disk; and the
+	// leak expectation claims to cover "tool traces", which is exactly this.
+	leakHaystacks.set(
+		facts,
+		JSON.stringify({
+			transcript: build.transcript ?? [],
+			events: build.events ?? [],
+			buildTrace: build.buildTrace ?? null,
+		}),
+	);
 	build.transcript = redactTranscriptSecrets(build.transcript, facts.secretPrefix);
 	build.events = redactTranscriptSecrets(build.events, facts.secretPrefix);
+	build.buildTrace = redactTranscriptSecrets(build.buildTrace, facts.secretPrefix);
 	return build;
 }
 
@@ -308,10 +333,6 @@ export interface CredentialSetupRunFacts {
 	/** Credential ids that existed BEFORE the build — the diff base, so a
 	 *  credential an earlier run left behind can't satisfy the "created" check. */
 	credentialIdsBefore: string[];
-	/** Transcript + events as they were BEFORE local-mode redaction — the leak
-	 *  scan's haystack. Set by the orchestrator at the moment it scrubs, because
-	 *  afterwards the raw text exists nowhere else. */
-	leakHaystack?: string;
 	/** Provider-API stand-in for the credential test, when the fixture ships one
 	 *  AND n8n can reach it. Undefined => the value check is DISCARDED (reported
 	 *  unverifiable) rather than failed. */

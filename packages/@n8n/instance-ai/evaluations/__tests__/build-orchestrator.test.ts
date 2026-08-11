@@ -562,6 +562,13 @@ describe('local-mode secret scrubbing', () => {
 			transcript: [
 				{ userMessage: 'set it up', steps: [{ kind: 'agent-text', text: `saved ${KEY}` }] },
 			],
+			buildTrace: {
+				finalText: 'done',
+				toolCalls: [
+					{ toolCallId: 't1', toolName: 'browser_type', args: { text: KEY }, durationMs: 1 },
+				],
+				agentActivities: [],
+			},
 			credentialSetup: {
 				credentialType: undefined,
 				mintedSecret: undefined,
@@ -595,11 +602,39 @@ describe('local-mode secret scrubbing', () => {
 		await createBuildOrchestrator(deps).getOrBuild(0, 'case-a');
 
 		// Asserted on what the CHECK was handed, not on the snapshot we stored:
-		// a regression in the `leakHaystack ?? JSON.stringify(...)` linkage would
+		// a regression in the `leakHaystackFor(...) ?? JSON.stringify(...)` linkage would
 		// feed it the redacted transcript and still leave the snapshot correct.
 		const handed = vi.mocked(runCredentialSetupChecks).mock.calls[0]?.[0];
 		expect(handed?.searchableRunText).toContain(KEY);
-		expect(build.credentialSetup?.leakHaystack).toContain(KEY);
+	});
+
+	it('redacts the builder trace, which the HTML report dumps raw', async () => {
+		// workflow-report writes `buildTrace.toolCalls` verbatim into the report,
+		// and scenario-execution writes it into the verifier snapshot. A key the
+		// agent typed into a browser tool call reaches both, so redacting only
+		// the transcript left the artifacts holding it.
+		const build = localBuild();
+		const deps = makeDeps([makeLane(1, vi.fn().mockResolvedValue(build))]);
+
+		await createBuildOrchestrator(deps).getOrBuild(0, 'case-a');
+
+		expect(JSON.stringify(build.buildTrace)).not.toContain(KEY);
+		expect(JSON.stringify(build.buildTrace)).toContain('sk-ant-api03-[REDACTED]');
+	});
+
+	it('keeps that raw text OFF the build object itself', async () => {
+		// The scrub runs inside the traced call because `traceable` records the
+		// returned BuildResult as the run output. Parking the pre-scrub text on
+		// that same object put the key straight back into what ships upstream —
+		// redacted transcript, raw key one field over.
+		const build = localBuild();
+		const deps = makeDeps([makeLane(1, vi.fn().mockResolvedValue(build))], {
+			testCaseByFileSlug: new Map([['case-a', baseCase({})]]),
+		});
+
+		await createBuildOrchestrator(deps).getOrBuild(0, 'case-a');
+
+		expect(JSON.stringify(build)).not.toContain(KEY);
 	});
 
 	it('leaves a hermetic (non-local) run transcript untouched', async () => {

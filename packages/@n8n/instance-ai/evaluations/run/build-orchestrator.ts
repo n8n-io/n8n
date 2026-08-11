@@ -26,6 +26,7 @@ import { resolveArtifactContext } from '../harness/artifacts/artifact-context';
 import { attributionForExpectation } from '../harness/attribution';
 import {
 	buildFailedOnInfra,
+	leakHaystackFor,
 	scrubLocalSecretsFromBuild,
 	type BuildResult,
 } from '../harness/build-workflow';
@@ -356,9 +357,9 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 	): void {
 		// `scrubLocalSecrets` (in stashTranscript, which always runs first) has
 		// already redacted a local run's transcript and kept the pre-scrub text
-		// here for exactly this check.
+		// off-build for exactly this check.
 		const searchableRunText =
-			build.credentialSetup?.leakHaystack ??
+			(build.credentialSetup && leakHaystackFor(build.credentialSetup)) ??
 			JSON.stringify({ transcript: build.transcript ?? [], events: build.events ?? [] });
 		const testCase = testCaseByFileSlug.get(fileSlug);
 		if (!testCase) return;
