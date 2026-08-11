@@ -57,7 +57,10 @@ import {
 	removeProjectAgentFromListCache,
 	upsertProjectAgentsListCache,
 } from '../composables/useProjectAgentsList';
-import { useInstanceAiAgentPreviewHandoff } from '@/features/ai/instanceAi/composables/useInstanceAiAgentPreviewHandoff';
+import {
+	useInstanceAiAgentPreviewHandoff,
+	type AgentPreviewHandoffParams,
+} from '@/features/ai/instanceAi/composables/useInstanceAiAgentPreviewHandoff';
 import { addMissingAgentPersonalisation } from '@n8n/api-types';
 import {
 	AGENT_BUILDER_VIEW,
@@ -84,6 +87,8 @@ const props = withDefaults(
 		artifactMode?: boolean;
 		artifactProjectId?: string;
 		artifactAgentId?: string;
+		/** Preview session to restore when this agent opens as an Instance AI artifact. */
+		artifactPreviewSessionId?: string;
 		/** True while the AI is actively building/mutating this agent in artifact mode — disables editing/publishing without hiding content. */
 		artifactEditingLocked?: boolean;
 		/** True when no agent row exists behind `artifactAgentId` yet — the builder
@@ -94,6 +99,7 @@ const props = withDefaults(
 		artifactMode: false,
 		artifactProjectId: undefined,
 		artifactAgentId: undefined,
+		artifactPreviewSessionId: undefined,
 		artifactEditingLocked: false,
 		artifactAgentPending: false,
 	},
@@ -105,6 +111,7 @@ const emit = defineEmits<{
 	'preview-open-change': [open: boolean];
 	/** The agent name was successfully saved. */
 	'name-saved': [name: string];
+	'assistant-handoff': [params: AgentPreviewHandoffParams];
 }>();
 
 const route = useRoute();
@@ -180,7 +187,7 @@ async function onSendPreviewToAssistant(event?: AgentFixWithAssistantEvent) {
 	const sessionTitle = session?.title?.trim() || currentSessionTitle.value || undefined;
 	const sessionNumber = session?.sessionNumber;
 
-	await sendPreviewSessionToInstanceAi({
+	const params: AgentPreviewHandoffParams = {
 		projectId: projectId.value,
 		agentId: agentId.value,
 		threadId,
@@ -205,7 +212,14 @@ async function onSendPreviewToAssistant(event?: AgentFixWithAssistantEvent) {
 					),
 				}
 			: {}),
-	});
+	};
+
+	if (isArtifactMode.value) {
+		emit('assistant-handoff', params);
+		return;
+	}
+
+	await sendPreviewSessionToInstanceAi(params);
 }
 
 /**
@@ -1524,6 +1538,15 @@ watch(
 watch(isPreviewDockOpen, (open) => {
 	if (open) bindPreviewSession();
 });
+
+watch(
+	[() => props.artifactPreviewSessionId, initialized],
+	([sessionId, isInitialized]) => {
+		if (!isArtifactMode.value || !isInitialized || !sessionId) return;
+		openArtifactPreview(sessionId);
+	},
+	{ immediate: true },
+);
 
 function exitContinueMode() {
 	clearContinueSessionParam();

@@ -52,6 +52,10 @@ const pendingComposerContext = inject<Ref<InstanceAiHandoffContext | null> | und
 	'pendingComposerContext',
 	undefined,
 );
+const dismissPendingComposerContext = inject<((key: string) => boolean) | undefined>(
+	'dismissPendingComposerContext',
+	undefined,
+);
 
 interface ContextEntry {
 	key: string;
@@ -184,8 +188,11 @@ const contextEntries = computed<ContextEntry[]>(() => {
 
 async function dismissContext(key: string) {
 	const pending = pendingComposerContext?.value;
+	const dismissedByOwner = dismissPendingComposerContext?.(key) ?? false;
+	if (dismissedByOwner) return;
 	if (pendingComposerContext && pending && handoffContextKey(pending) === key) {
 		pendingComposerContext.value = null;
+		return;
 	}
 	const dismissedKeys = new Set(getDismissedContextKeys(store.getThreadMetadata(thread.id)));
 	dismissedKeys.add(key);

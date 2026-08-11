@@ -886,6 +886,73 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		}
 	});
 
+	it('keeps an artifact on the selected preview session and stages the handoff in its Assistant thread', async () => {
+		fetchedSessionThreads.push(
+			{
+				id: 'thread-latest',
+				updatedAt: '2026-01-02T00:00:00Z',
+				title: 'Latest session',
+			},
+			{
+				id: 'thread-1',
+				updatedAt: '2026-01-01T00:00:00Z',
+				title: 'Failed order lookup',
+				sessionNumber: 7,
+			},
+		);
+		const wrapper = await renderView({
+			props: {
+				artifactMode: true,
+				artifactProjectId: 'p2',
+				artifactAgentId: 'a2',
+				artifactPreviewSessionId: 'thread-1',
+			},
+		});
+		const preview = wrapper.findComponent({ name: 'AgentPreviewDock' });
+
+		expect(preview.props('effectiveSessionId')).toBe('thread-1');
+		preview.vm.$emit('send-to-assistant', fixEvent);
+		await flushPromises();
+
+		expect(sendPreviewSessionToInstanceAiMock).not.toHaveBeenCalled();
+		expect(wrapper.emitted('assistant-handoff')).toEqual([
+			[
+				expect.objectContaining({
+					projectId: 'p2',
+					agentId: 'a2',
+					threadId: 'thread-1',
+					sessionTitle: 'Failed order lookup',
+					executionId: 'exec-turn-1',
+					initialDraft: expect.stringContaining(
+						'Review these failed tool calls, identify the root cause, fix the agent, and verify the change.',
+					),
+				}),
+			],
+		]);
+	});
+
+	it('restores a preview session that arrives while the artifact is initializing', async () => {
+		fetchedSessionThreads.push(
+			{ id: 'thread-latest', updatedAt: '2026-01-02T00:00:00Z' },
+			{ id: 'thread-1', updatedAt: '2026-01-01T00:00:00Z' },
+		);
+		const wrapper = await renderView({
+			waitForAsyncSetup: false,
+			props: {
+				artifactMode: true,
+				artifactProjectId: 'p2',
+				artifactAgentId: 'a2',
+			},
+		});
+
+		await wrapper.setProps({ artifactPreviewSessionId: 'thread-1' });
+		await flushPromises();
+
+		expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).props('effectiveSessionId')).toBe(
+			'thread-1',
+		);
+	});
+
 	it('blocks knowledge file uploads that would exceed the total size limit', async () => {
 		getAgentMock.mockResolvedValue(makeAgentResponse({ activeVersionId: 'v1' }));
 		listAgentFilesMock.mockResolvedValue([

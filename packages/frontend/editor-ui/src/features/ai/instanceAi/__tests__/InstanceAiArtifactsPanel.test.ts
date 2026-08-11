@@ -4,7 +4,7 @@ import { fireEvent, waitFor } from '@testing-library/vue';
 import { IconBodyLoaderKey } from '@n8n/design-system';
 import { defineComponent, h, nextTick, reactive, ref } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
-import type { TaskList } from '@n8n/api-types';
+import type { InstanceAiHandoffContext, TaskList } from '@n8n/api-types';
 import type { ResourceEntry } from '../useResourceRegistry';
 import InstanceAiArtifactsPanel from '../components/InstanceAiArtifactsPanel.vue';
 
@@ -216,7 +216,7 @@ describe('InstanceAiArtifactsPanel', () => {
 	});
 
 	it('renders pending handoff context from the composer before any message is sent', () => {
-		const pendingComposerContext = ref({
+		const pendingComposerContext = ref<InstanceAiHandoffContext | null>({
 			source: 'agent-preview' as const,
 			agentId: 'agent-1',
 			threadId: 'preview-thread-1',
@@ -267,18 +267,23 @@ describe('InstanceAiArtifactsPanel', () => {
 		expect(getAllByTestId('instance-ai-context-row')).toHaveLength(1);
 	});
 
-	it('clears pending handoff context on dismiss and persists the dismissed key', async () => {
-		const pendingComposerContext = ref({
+	it('asks the composer owner to clear a pending handoff on dismiss', async () => {
+		const pendingComposerContext = ref<InstanceAiHandoffContext | null>({
 			source: 'agent-preview' as const,
 			agentId: 'agent-1',
 			threadId: 'preview-thread-1',
 			agentName: 'SEO Auditor',
+		});
+		const dismissPendingComposerContext = vi.fn((key: string) => {
+			pendingComposerContext.value = null;
+			return key === 'agent-preview:agent-1:preview-thread-1:';
 		});
 
 		const { getByTestId, queryByText } = renderComponent({
 			global: {
 				provide: {
 					pendingComposerContext,
+					dismissPendingComposerContext,
 				},
 			},
 		});
@@ -286,13 +291,14 @@ describe('InstanceAiArtifactsPanel', () => {
 		await fireEvent.click(getByTestId('instance-ai-context-dismiss'));
 
 		expect(pendingComposerContext.value).toBeNull();
-		expect(updateThreadMetadataMock).toHaveBeenCalledWith('thread-1', {
-			dismissedContextKeys: ['agent-preview:agent-1:preview-thread-1:'],
-		});
+		expect(dismissPendingComposerContext).toHaveBeenCalledWith(
+			'agent-preview:agent-1:preview-thread-1:',
+		);
+		expect(updateThreadMetadataMock).not.toHaveBeenCalled();
 		expect(queryByText('SEO Auditor session')).not.toBeInTheDocument();
 	});
 
-	it('dismisses pending context that is also present on a user message', async () => {
+	it('keeps sent context visible when its pending copy is dismissed', async () => {
 		const pendingComposerContext = ref({
 			source: 'agent-preview' as const,
 			agentId: 'agent-1',
@@ -322,10 +328,8 @@ describe('InstanceAiArtifactsPanel', () => {
 		await fireEvent.click(getByTestId('instance-ai-context-dismiss'));
 
 		expect(pendingComposerContext.value).toBeNull();
-		expect(updateThreadMetadataMock).toHaveBeenCalledWith('thread-1', {
-			dismissedContextKeys: ['agent-preview:agent-1:preview-thread-1:'],
-		});
-		expect(queryByText('SEO Auditor session')).not.toBeInTheDocument();
+		expect(updateThreadMetadataMock).not.toHaveBeenCalled();
+		expect(queryByText('SEO Auditor session')).toBeInTheDocument();
 	});
 
 	it('renders pending credential handoff context before any message is sent', () => {

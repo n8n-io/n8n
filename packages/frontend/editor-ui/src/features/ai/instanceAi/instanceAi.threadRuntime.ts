@@ -45,6 +45,7 @@ import { useResourceRegistry } from './useResourceRegistry';
 import { useResponseFeedback } from './useResponseFeedback';
 import {
 	INSTANCE_AI_AGENT_BUILDER_TARGET_METADATA_KEY,
+	INSTANCE_AI_AGENT_PREVIEW_VIEW_METADATA_KEY,
 	INSTANCE_AI_PENDING_AGENT_METADATA_KEY,
 } from './constants';
 import {
@@ -127,6 +128,16 @@ export function getPendingAgentTargetFromThreadMetadata(
 	const target = raw as Record<string, unknown>;
 	if (typeof target.agentId !== 'string' || typeof target.projectId !== 'string') return undefined;
 	return { agentId: target.agentId, projectId: target.projectId };
+}
+
+export function getAgentPreviewViewFromThreadMetadata(
+	metadata: Record<string, unknown> | undefined,
+) {
+	const raw = metadata?.[INSTANCE_AI_AGENT_PREVIEW_VIEW_METADATA_KEY];
+	if (!raw || typeof raw !== 'object') return undefined;
+	const target = raw as Record<string, unknown>;
+	if (typeof target.agentId !== 'string' || typeof target.threadId !== 'string') return undefined;
+	return { agentId: target.agentId, threadId: target.threadId };
 }
 
 /** Walk an agent tree, collecting tool calls that have an active (pending) confirmation. */

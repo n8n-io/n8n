@@ -160,11 +160,16 @@ function clearTextIfMatches(text: string) {
 	if (inputText.value === text) inputText.value = '';
 }
 
+function isDirty() {
+	return inputText.value.trim().length > 0 || attachedFiles.value.length > 0;
+}
+
 defineExpose({
 	focus,
 	appendText,
 	setText,
 	clearTextIfMatches,
+	isDirty,
 	// Experiment cleanup: remove with instanceAiSplitEmptyState.
 	insertSuggestion: handleSuggestionInsert,
 	submitSuggestion,

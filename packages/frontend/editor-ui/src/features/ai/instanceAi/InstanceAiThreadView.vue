@@ -33,22 +33,37 @@ import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { COLLAPSED_MAIN_SIDEBAR_WIDTH, useSidebarLayout } from '@/app/composables/useSidebarLayout';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { useToast } from '@n8n/composables/useToast';
 import { provideThread, useInstanceAiStore } from './instanceAi.store';
-import { getAgentBuilderTargetFromThreadMetadata } from './instanceAi.threadRuntime';
+import {
+	getAgentBuilderTargetFromThreadMetadata,
+	getAgentPreviewViewFromThreadMetadata,
+} from './instanceAi.threadRuntime';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import { isPendingItemFloating } from './confirmationKinds';
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import { useCanvasPreview } from './useCanvasPreview';
 import { useCreditWarningBanner } from './composables/useCreditWarningBanner';
 import {
+	buildInstanceAiAgentPreviewHandoffContext,
 	clearPendingAgentAttachment,
-	consumePendingComposerDraft,
+	clearPendingComposerDraft,
+	clearPendingHandoffContext,
+	clearPendingThreadHandoff,
 	consumePendingFirstMessage,
-	consumePendingHandoffContext,
 	getPendingAgentAttachment,
+	getPendingComposerDraft,
+	getPendingHandoffContext,
+	stashPendingComposerDraft,
+	stashPendingHandoffContext,
 } from './composables/useInstanceAiHandoff';
+import type { AgentPreviewHandoffParams } from './composables/useInstanceAiAgentPreviewHandoff';
 import { useTransitionGate } from './useTransitionGate';
-import { INSTANCE_AI_VIEW, NEW_CONVERSATION_TITLE } from './constants';
+import {
+	INSTANCE_AI_AGENT_PREVIEW_VIEW_METADATA_KEY,
+	INSTANCE_AI_VIEW,
+	NEW_CONVERSATION_TITLE,
+} from './constants';
 import {
 	agentPreviewContextIcon,
 	formatAgentPreviewContextLabel,
@@ -100,6 +115,7 @@ const sidebar = useSidebarState();
 const { width: windowWidth } = useWindowSize();
 const { isCollapsed: isMainSidebarCollapsed, sidebarWidth: mainSidebarWidth } = useSidebarLayout();
 const telemetry = useTelemetry();
+const toast = useToast();
 const pendingComposerContext = ref<InstanceAiHandoffContext | null>(null);
 const pendingComposerDraft = ref<string | null>(null);
 const generatedComposerDraft = ref<string | null>(null);
@@ -265,11 +281,21 @@ const preview = useCanvasPreview({
 	initialAgentId: () =>
 		getAgentBuilderTargetFromThreadMetadata(store.getThreadMetadata(props.threadId))?.agentId,
 });
+const activeAgentPreviewSessionId = computed(() => {
+	const context = pendingComposerContext.value;
+	if (context?.source === 'agent-preview' && context.agentId === preview.activeAgentId.value) {
+		return context.threadId;
+	}
+
+	const persisted = getAgentPreviewViewFromThreadMetadata(store.getThreadMetadata(props.threadId));
+	return persisted?.agentId === preview.activeAgentId.value ? persisted.threadId : undefined;
+});
 
 provide('openWorkflowPreview', preview.openWorkflowPreview);
 provide('openDataTablePreview', preview.openDataTablePreview);
 provide('openAgentPreview', preview.openAgentPreview);
 provide('pendingComposerContext', pendingComposerContext);
+provide('dismissPendingComposerContext', dismissPendingComposerContext);
 
 // Focus the composer when plan-edit mode is entered. The thread runtime
 // owns the activePlanEdit state; this watcher just reacts to the transition.
@@ -627,13 +653,16 @@ watch(chatInputRef, (el) => {
 	}
 });
 
-watch([chatInputRef, pendingComposerDraft], ([input, draft]) => {
-	if (!input || !draft) return;
-	input.setText(draft);
-	generatedComposerDraft.value = draft;
-	pendingComposerDraft.value = null;
-	void nextTick(focusChatInputIfFocusIsIdle);
-});
+watch(
+	[chatInputRef, pendingComposerDraft, () => thread.activePlanEdit],
+	([input, draft, planEdit]) => {
+		if (!input || !draft || planEdit) return;
+		input.setText(draft);
+		generatedComposerDraft.value = draft;
+		pendingComposerDraft.value = null;
+		void nextTick(focusChatInputIfFocusIsIdle);
+	},
+);
 
 // Reset scroll state when switching threads so new content auto-scrolls.
 watch(
@@ -728,14 +757,15 @@ async function syncRouteToStore() {
 	const requestedThreadId = props.threadId;
 	// Apply preview/credential composer state synchronously so a quick first
 	// submit cannot race past it while the thread list is still loading.
-	pendingComposerContext.value = consumePendingHandoffContext(requestedThreadId);
-	pendingComposerDraft.value = consumePendingComposerDraft(requestedThreadId);
+	pendingComposerContext.value = getPendingHandoffContext(requestedThreadId);
+	pendingComposerDraft.value = getPendingComposerDraft(requestedThreadId);
 	if (!store.threads.length) {
 		await store.loadThreads();
 	}
 	// User may have navigated elsewhere while we awaited
 	if (requestedThreadId !== props.threadId) return;
 	if (!store.threads.some((t) => t.id === requestedThreadId)) {
+		clearPendingThreadHandoff(requestedThreadId);
 		void router.replace({ name: INSTANCE_AI_VIEW });
 		return;
 	}
@@ -821,6 +851,7 @@ function handleSubmit(message: string, attachments?: InstanceAiAttachment[]) {
 	}
 
 	const handoffContext = pendingComposerContext.value ?? undefined;
+	const submittedGeneratedDraft = generatedComposerDraft.value;
 	const queuedAgentAttachment = pendingAgentAttachment.value;
 	const agentAttachment = currentAgentAttachment.value;
 	const submittedAttachments = agentAttachment
@@ -831,9 +862,14 @@ function handleSubmit(message: string, attachments?: InstanceAiAttachment[]) {
 		.sendMessage(message, submittedAttachments, rootStore.pushRef, handoffContext)
 		.then((sent) => {
 			if (!sent) return;
-			if (handoffContext && pendingComposerContext.value === handoffContext) {
-				pendingComposerContext.value = null;
-				generatedComposerDraft.value = null;
+			const isCurrentHandoff = !handoffContext || pendingComposerContext.value === handoffContext;
+			const isCurrentDraft =
+				!submittedGeneratedDraft || generatedComposerDraft.value === submittedGeneratedDraft;
+			if ((handoffContext || submittedGeneratedDraft) && isCurrentHandoff && isCurrentDraft) {
+				clearPendingHandoffContext(props.threadId);
+				clearPendingComposerDraft(props.threadId);
+				if (handoffContext) pendingComposerContext.value = null;
+				if (submittedGeneratedDraft) generatedComposerDraft.value = null;
 			}
 			if (queuedAgentAttachment && pendingAgentAttachment.value === queuedAgentAttachment) {
 				clearPendingAgentAttachment(props.threadId);
@@ -869,6 +905,52 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 	failedRun.value = report;
 }
 
+function handleAgentPreviewAssistantHandoff(params: AgentPreviewHandoffParams) {
+	if (
+		params.agentId !== preview.activeAgentId.value ||
+		params.projectId !== preview.activeAgentProjectId.value
+	) {
+		return;
+	}
+	if (chatInputRef.value?.isDirty()) {
+		toast.showMessage({
+			title: i18n.baseText('instanceAi.input.finishDraftBeforeHandoff.title'),
+			message: i18n.baseText('instanceAi.input.finishDraftBeforeHandoff.message'),
+			type: 'warning',
+		});
+		return;
+	}
+
+	const context = buildInstanceAiAgentPreviewHandoffContext(params);
+	stashPendingHandoffContext(props.threadId, context);
+	pendingComposerContext.value = context;
+
+	void store
+		.updateThreadMetadata(thread.id, {
+			[INSTANCE_AI_AGENT_PREVIEW_VIEW_METADATA_KEY]: {
+				agentId: params.agentId,
+				threadId: params.threadId,
+			},
+		})
+		.catch((error: unknown) => {
+			toast.showError(error, i18n.baseText('generic.error'));
+		});
+	if (params.initialDraft) {
+		stashPendingComposerDraft(props.threadId, params.initialDraft);
+		pendingComposerDraft.value = params.initialDraft;
+	} else {
+		const generatedDraft = generatedComposerDraft.value;
+		if (generatedDraft) chatInputRef.value?.clearTextIfMatches(generatedDraft);
+		clearPendingComposerDraft(props.threadId);
+		pendingComposerDraft.value = null;
+		generatedComposerDraft.value = null;
+	}
+
+	if (!thread.activePlanEdit) {
+		void nextTick(() => chatInputRef.value?.focus());
+	}
+}
+
 /**
  * Reveal the agent artifact, then hand off to the builder to select its Evals
  * tab and generate. Generation deliberately stays in the builder: it already
@@ -902,6 +984,23 @@ async function persistTestAgentOfferDismissal(agentId: string) {
 	});
 }
 
+function clearPendingComposerHandoff() {
+	const draft = generatedComposerDraft.value ?? pendingComposerDraft.value;
+	if (draft) chatInputRef.value?.clearTextIfMatches(draft);
+	pendingComposerDraft.value = null;
+	generatedComposerDraft.value = null;
+	pendingComposerContext.value = null;
+	clearPendingHandoffContext(props.threadId);
+	clearPendingComposerDraft(props.threadId);
+}
+
+function dismissPendingComposerContext(key: string): boolean {
+	const context = pendingComposerContext.value;
+	if (!context || handoffContextKey(context) !== key) return false;
+	clearPendingComposerHandoff();
+	return true;
+}
+
 async function dismissComposerContextChip() {
 	if (!composerContextChip.value) return;
 
@@ -912,11 +1011,7 @@ async function dismissComposerContextChip() {
 	}
 
 	if (composerContextChip.value.isPending) {
-		const draft = generatedComposerDraft.value ?? pendingComposerDraft.value;
-		if (draft) chatInputRef.value?.clearTextIfMatches(draft);
-		pendingComposerDraft.value = null;
-		generatedComposerDraft.value = null;
-		pendingComposerContext.value = null;
+		clearPendingComposerHandoff();
 		return;
 	}
 
@@ -1272,8 +1367,10 @@ async function dismissComposerContextChip() {
 								:class="$style.previewSlot"
 								:agent-id="preview.activeAgentId.value"
 								:project-id="preview.activeAgentProjectId.value"
+								:preview-session-id="activeAgentPreviewSessionId"
 								:pending="preview.activeAgentPending.value"
 								@preview-open-change="handleAgentPreviewDockOpenChange"
+								@assistant-handoff="handleAgentPreviewAssistantHandoff"
 							/>
 						</div>
 					</TabsRoot>

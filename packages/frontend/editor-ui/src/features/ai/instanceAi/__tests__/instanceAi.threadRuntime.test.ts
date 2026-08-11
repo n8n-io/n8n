@@ -11,6 +11,7 @@ import { INSTANCE_AI_THREAD_SOURCE_FALLBACK, type InstanceAiTargetApproval } fro
 import {
 	createThreadRuntime,
 	getAgentBuilderTargetFromThreadMetadata,
+	getAgentPreviewViewFromThreadMetadata,
 	type ThreadRuntime,
 } from '../instanceAi.threadRuntime';
 
@@ -2186,6 +2187,27 @@ describe('getAgentBuilderTargetFromThreadMetadata', () => {
 		expect(
 			getAgentBuilderTargetFromThreadMetadata({
 				instanceAiAgentBuilderTarget: { projectId: 'proj-1', name: 'Support Bot' },
+			}),
+		).toBeUndefined();
+	});
+});
+
+describe('getAgentPreviewViewFromThreadMetadata', () => {
+	test('returns the persisted agent preview session', () => {
+		expect(
+			getAgentPreviewViewFromThreadMetadata({
+				instanceAiAgentPreviewView: {
+					agentId: 'agent-1',
+					threadId: 'preview-thread-1',
+				},
+			}),
+		).toEqual({ agentId: 'agent-1', threadId: 'preview-thread-1' });
+	});
+
+	test('returns undefined for incomplete metadata', () => {
+		expect(
+			getAgentPreviewViewFromThreadMetadata({
+				instanceAiAgentPreviewView: { agentId: 'agent-1' },
 			}),
 		).toBeUndefined();
 	});
