@@ -1168,7 +1168,10 @@ describe('TriggerExecutionContextFactory', () => {
 			});
 			await sleep(0);
 
-			expect(scopedLogger.error).toHaveBeenCalledWith(runError.message, { error: runError });
+			expect(scopedLogger.error).toHaveBeenCalledWith(
+				runError.message,
+				expect.objectContaining({ error: runError }),
+			);
 		});
 	});
 
