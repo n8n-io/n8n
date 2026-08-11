@@ -32,6 +32,8 @@ pnpm session rm           # delete the codespace
 ```
 
 - **Detach** with `Ctrl-b d` — the agent keeps working without you.
+- **Scroll** with the mouse wheel (tmux mouse mode is on). To use the
+  terminal's own text selection, hold **Shift** and drag.
 - **Reattach** by running the same `pnpm session <name>` from any machine.
 - Each named session gets its own worktree (`/workspaces/wt-<name>`, branch
   `session/<name>`), so parallel agents never touch each other's tree. Builds
@@ -92,8 +94,17 @@ After a stop, `pnpm session <name>` restarts the codespace (~30–60 s); run
   `sshd` devcontainer feature, don't remove it.
 - **User secrets aren't visible in ssh shells by default**: the codespace
   agent injects them into VS Code sessions only; they're delivered
-  base64-encoded to `/workspaces/.codespaces/shared/.env-secrets`. The image's
-  profile shim exports them for ssh/tmux sessions.
+  base64-encoded to `/workspaces/.codespaces/shared/.env-secrets`. The image
+  sources `/usr/local/lib/codespaces-env.sh` in login shells (profile.d), in
+  interactive shells (bashrc), and in the `pnpm session` prelude. If Claude
+  Code shows `Missing environment variables: FLAKY_MCP_TOKEN`, the shell that
+  started Claude did not source the file. Run
+  `. /usr/local/lib/codespaces-env.sh` and start Claude again.
+- **You cannot paste images into a remote Claude session.** Image paste reads
+  the clipboard of the machine where `claude` runs — the codespace, not your
+  laptop. Drag the file into the VS Code explorer (or
+  `gh codespace cp shot.png remote:/workspaces/n8n/`) and give Claude the
+  path. The file stays on disk and survives detach and `--resume`.
 - **`git push` / `gh` return 401 in tmux and long sessions** — same root
   cause as the secrets gotcha, plus rotation: Codespaces refreshes the
   on-disk `GITHUB_TOKEN` every few minutes, so a login-time snapshot goes
