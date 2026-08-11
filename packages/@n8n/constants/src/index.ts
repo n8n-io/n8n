@@ -144,3 +144,6 @@ export const MAX_INTEGER_32BITS_SIGNED = 2 ** 31 - 1;
  * Includes digits (0-9), uppercase letters (A-Z), and lowercase letters (a-z).
  */
 export const NANOID_ALPHABET = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
+
+/** Protected-resource id of the instance MCP server, shared by the mcp and oauth-server modules. */
+export const INSTANCE_MCP_RESOURCE_ID = 'instance-mcp';

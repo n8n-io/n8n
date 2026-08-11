@@ -3,10 +3,10 @@ volumes:
 
 services:
   postgres:
-    image: postgres:16-alpine
+    image: postgres:18-alpine
     restart: unless-stopped
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      - postgres-data:/var/lib/postgresql
     environment:
       - POSTGRES_DB=n8n
       - POSTGRES_PASSWORD=password
@@ -15,6 +15,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    # Required by the docker-in-docker devcontainer feature
+    privileged: true
     volumes:
       - ../..:/workspaces:cached
     command: sleep infinity
