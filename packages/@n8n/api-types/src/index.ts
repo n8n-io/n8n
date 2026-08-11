@@ -13,6 +13,7 @@ export * from './instance-registry-types';
 export * from './redaction-enforcement';
 export * from './redaction-enforcement-floor';
 export * from './workflow-reviews-policy';
+export type * from './workflow-review-activity';
 export type * from './workflow-review-eligible-reviewer';
 export * from './workflow-review-request-summary';
 export * from './workflow-publish-blocked-details';
@@ -394,6 +395,7 @@ export type {
 	InstanceAiCatalogProvider,
 	InstanceAiCatalogModel,
 	InstanceAiModelCatalogResponse,
+	InstanceAiCredits,
 } from './schemas/instance-ai.schema';
 
 export type {
