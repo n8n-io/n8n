@@ -36,7 +36,7 @@ still writes and sends their own message.
 Context B has no "open pane" toggle: the only path to AIA from the editor is
 `useInstanceAiHandoff.startThread`, which **mints a thread and sends
 immediately**. There is no existing "open a thread with an unsent, pre-staged
-draft." We add that primitive (see Phase 3).
+draft." We add that primitive (see Phase 4).
 
 ## Data model (draft-side)
 
@@ -150,7 +150,7 @@ Verified backend-contract facts the FE must respect (from PR #36039):
   `InstanceAiMessage.vue` passes every stored attachment (all types) to
   `AttachmentPreview` unfiltered with `is-removable="false"`. So "draft ==
   history" holds automatically **once `AttachmentPreview` handles `type: 'nodes'`**
-  (Phase 4). The FE must NOT try to replicate the text encoding.
+  (Phase 3). The FE must NOT try to replicate the text encoding.
 
 ## Phases
 
@@ -209,7 +209,38 @@ attachment and signal truncation.**
 Tests: append-not-replace (guarded loudly); consume-once; consume clears store;
 component picks up staged attachment; **typed text preserved** across staging.
 
-### Phase 3 — Trigger UI + open-pane + staged-draft primitive
+### Phase 3 — Chip rendering
+
+Reordered ahead of the trigger UI: after Phases 1+2 there is already a
+build→stage path, so chips can be rendered and exercised now — the visible,
+subjective part of the feature — before investing in trigger + navigation
+plumbing. This is also where the plan's deferred question (what removing a
+middle per-node chip should feel like) is settled against a working UI rather
+than on paper.
+
+Extend `AttachmentPreview.vue` (or a small sibling) to render a `nodes`
+attachment's sets per the chip-kinds + granularity rules above. New
+`SINGLE_SET_NODE_EXPANSION_THRESHOLD = 4` constant (defined once, never inlined;
+not the legacy `CHIP_BUNDLE_THRESHOLD`). Type icons; bundled-chip caret opens a
+manually-closed node-name panel; `Collapse`/expand for overflow; name truncation
+(reference legacy `truncatedName`, don't copy). Resource chips need a remove
+path (today only binary-file chips are removable). Renders identically in the
+draft composer and in already-sent history messages.
+
+Because the real entry points don't exist until Phase 4, exercise this phase by
+staging a **fixture** attachment via Phase 2's `stageNodeSets()` — component
+tests plus, if useful for manual inspection, a throwaway dev-only trigger that
+is **removed in Phase 4** when the real toolbar/menu entry lands (do not leave a
+dangling dev trigger behind).
+
+Tests: the 8 plan cases (size-1 named; size-3 exploded/removable; ≥threshold
+bundled; two-sets→two-chips-never-exploded guard; per-node remove; bundled
+remove-whole-set; caret panel stays open until closed; draft == history render).
+
+### Phase 4 — Trigger UI + open-pane + staged-draft primitive
+
+Wires the real entry points to the now-working chip UI. Removes any throwaway
+dev trigger introduced in Phase 3.
 
 - **Staged-draft primitive** (new, mirrors the existing
   `stashPendingFirstMessage`/`consume` localStorage pattern in
@@ -237,24 +268,9 @@ presence by flag (legacy entry untouched); handler stages via Phase 2 and, when
 in Context B, stashes + navigates; Context A stages directly without navigation
 and calls `focus()` on the composer with `isPreviewExpanded` reset to `false`;
 `stash`/`consume` round-trips a multi-set draft through localStorage and clears
-after one consume.
-
-### Phase 4 — Chip rendering
-
-Extend `AttachmentPreview.vue` (or a small sibling) to render a `nodes`
-attachment's sets per the chip-kinds + granularity rules above. New
-`SINGLE_SET_NODE_EXPANSION_THRESHOLD = 4` constant (defined once, never inlined;
-not the legacy `CHIP_BUNDLE_THRESHOLD`). Type icons; bundled-chip caret opens a
-manually-closed node-name panel; `Collapse`/expand for overflow; name truncation
-(reference legacy `truncatedName`, don't copy). Resource chips need a remove
-path (today only binary-file chips are removable). Renders identically in the
-draft composer and in already-sent history messages.
-
-Tests: the 8 plan cases (size-1 named; size-3 exploded/removable; ≥threshold
-bundled; two-sets→two-chips-never-exploded guard; per-node remove; bundled
-remove-whole-set; caret panel stays open until closed; draft == history render).
-Then manually verify end-to-end in the running app against a backend with the
-backend plan deployed.
+after one consume. Then manually verify end-to-end in the running app against a
+backend with the backend plan deployed: select nodes → trigger → chips → send →
+chips survive a reload.
 
 ## Out of scope (this pass)
 
