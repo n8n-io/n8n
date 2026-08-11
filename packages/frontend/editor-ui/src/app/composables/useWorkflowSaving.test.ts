@@ -1,5 +1,13 @@
+import { computed, defineComponent, h, provide } from 'vue';
+import { mount } from '@vue/test-utils';
 import { useUIStore } from '@/app/stores/ui.store';
-import { AutoSaveState, MODAL_CANCEL, MODAL_CONFIRM, VIEWS } from '@/app/constants';
+import { AutoSaveState, DEBOUNCE_TIME, MODAL_CANCEL, MODAL_CONFIRM, VIEWS } from '@/app/constants';
+import {
+	EditorEnabledFeaturesKey,
+	WorkflowIdKey,
+	type EditorEnabledFeatures,
+} from '@/app/constants/injectionKeys';
+import { getDebounceTime } from '@n8n/composables/useDebounce';
 import { useWorkflowSaving } from './useWorkflowSaving';
 import router from '@/app/router';
 import { createTestingPinia } from '@pinia/testing';
@@ -1323,6 +1331,145 @@ describe('useWorkflowSaving', () => {
 
 			// State should be Scheduled
 			expect(autosaveStore.autoSaveState).toBe(AutoSaveState.Scheduled);
+		});
+	});
+
+	describe('autosave on a read-only preview canvas', () => {
+		// Preview hosts (template, workflow history, execution) mount the real
+		// NodeView and supersede the editor context with `readOnly: true`. Opening a
+		// node there auto-selects a credential, which marks the document dirty and
+		// reaches this composable — so the read-only signal has to stop the write.
+		// Regression cover for ADO-5764.
+		const PREVIEW_FEATURES: EditorEnabledFeatures = {
+			readOnly: true,
+			expandGroups: 'all',
+			aiAssistant: false,
+			aiBuilder: false,
+			askAi: false,
+			executionSuccessToasts: false,
+			executionErrorToasts: false,
+		};
+
+		const probe: { current: ReturnType<typeof useWorkflowSaving> | null } = { current: null };
+
+		const AutosaveProbe = defineComponent({
+			name: 'AutosaveProbe',
+			setup() {
+				probe.current = useWorkflowSaving({ router });
+				return () => h('div');
+			},
+		});
+
+		// Mirrors how WorkflowPreviewHost/ExecutionPreviewHost scope the subtree:
+		// the host provides, the child (NodeView in production) injects.
+		const PreviewHostStub = defineComponent({
+			name: 'PreviewHostStub',
+			props: {
+				workflowId: { type: String, required: true },
+				readOnly: { type: Boolean, required: true },
+			},
+			setup(props) {
+				provide(
+					WorkflowIdKey,
+					computed(() => props.workflowId),
+				);
+				provide(
+					EditorEnabledFeaturesKey,
+					computed<EditorEnabledFeatures>(() => ({
+						...PREVIEW_FEATURES,
+						readOnly: props.readOnly,
+					})),
+				);
+				return () => h(AutosaveProbe);
+			},
+		});
+
+		function takeProbe(): ReturnType<typeof useWorkflowSaving> {
+			const current = probe.current;
+			if (!current) throw new Error('AutosaveProbe did not initialise');
+			return current;
+		}
+
+		function mountPreview(workflowId: string, readOnly: boolean) {
+			probe.current = null;
+			mount(PreviewHostStub, { props: { workflowId, readOnly } });
+			return takeProbe();
+		}
+
+		/** Drains the autosave debounce plus the in-flight save promise. */
+		async function flushAutoSave() {
+			await vi.advanceTimersByTimeAsync(
+				getDebounceTime(DEBOUNCE_TIME.API.AUTOSAVE_MAX_WAIT) + 1000,
+			);
+		}
+
+		beforeEach(() => {
+			vi.useFakeTimers();
+			mockedStore(useSettingsStore).isAutosaveEnabled = true;
+			useWorkflowSaveStore().reset();
+			useUIStore().markStateDirty();
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+			probe.current = null;
+		});
+
+		it('issues no create request when a preview with no stored workflow goes dirty', async () => {
+			// Template preview: the id is not in the list store, so the save path
+			// falls through to "save as new" and POSTs a nameless workflow.
+			const createSpy = vi
+				.spyOn(workflowsStore, 'createNewWorkflow')
+				.mockResolvedValue(createTestWorkflow({ id: 'created' }));
+
+			const { autoSaveWorkflow } = mountPreview('template-11754', true);
+
+			autoSaveWorkflow();
+			await flushAutoSave();
+
+			expect(createSpy).not.toHaveBeenCalled();
+		});
+
+		it('issues no update request when a preview of a stored workflow goes dirty', async () => {
+			// Workflow history and execution previews resolve to the live workflow id,
+			// so the save path PATCHes the real record.
+			const workflow = createTestWorkflow({
+				id: 'w-preview',
+				nodes: [createTestNode({ type: CHAT_TRIGGER_NODE_TYPE, disabled: false })],
+			});
+			workflowsListStore.workflowsById = { [workflow.id]: workflow };
+			useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id)).hydrate(workflow);
+			const updateSpy = vi
+				.spyOn(workflowsStore, 'updateWorkflow')
+				.mockResolvedValue({ ...workflow, checksum: 'test-checksum' });
+
+			const { autoSaveWorkflow } = mountPreview(workflow.id, true);
+
+			autoSaveWorkflow();
+			await flushAutoSave();
+
+			expect(updateSpy).not.toHaveBeenCalled();
+		});
+
+		it('still saves when the same host is not read-only', async () => {
+			// Control: proves the two assertions above fail for the right reason
+			// rather than because this harness never reaches the request.
+			const workflow = createTestWorkflow({
+				id: 'w-editable',
+				nodes: [createTestNode({ type: CHAT_TRIGGER_NODE_TYPE, disabled: false })],
+			});
+			workflowsListStore.workflowsById = { [workflow.id]: workflow };
+			useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id)).hydrate(workflow);
+			const updateSpy = vi
+				.spyOn(workflowsStore, 'updateWorkflow')
+				.mockResolvedValue({ ...workflow, checksum: 'test-checksum' });
+
+			const { autoSaveWorkflow } = mountPreview(workflow.id, false);
+
+			autoSaveWorkflow();
+			await flushAutoSave();
+
+			expect(updateSpy).toHaveBeenCalled();
 		});
 	});
 });
