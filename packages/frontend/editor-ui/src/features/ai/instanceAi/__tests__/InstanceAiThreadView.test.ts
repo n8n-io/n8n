@@ -12,6 +12,7 @@ import type { PlanEditContext } from '../instanceAi.threadRuntime';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { SidebarStateKey } from '../instanceAiLayout';
+import { NEW_CONVERSATION_TITLE } from '../constants';
 import type { WorkflowFailuresReport } from '../components/InstanceAiWorkflowPreview.vue';
 import type {
 	FrontendModuleSettings,
@@ -500,6 +501,33 @@ describe('InstanceAiThreadView', () => {
 	it('does not pass suggestions to its composer', () => {
 		const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
 		expect(getByTestId('instance-ai-input-stub')).toHaveTextContent('unset');
+	});
+
+	describe('browser tab title', () => {
+		it('names the tab after the thread it opens', () => {
+			renderView({ props: { threadId: 'thread-1' } });
+			expect(document.title).toBe('Test thread - n8n');
+		});
+
+		it('falls back to the feature title for a thread without a title', () => {
+			store.threads = [
+				{ ...store.threads[0], title: NEW_CONVERSATION_TITLE },
+			] as typeof store.threads;
+
+			renderView({ props: { threadId: 'thread-1' } });
+
+			expect(document.title).toBe('AI Assistant - n8n');
+		});
+
+		it('renames the tab when the thread gets a title', async () => {
+			renderView({ props: { threadId: 'thread-1' } });
+
+			store.threads = [{ ...store.threads[0], title: 'Renamed thread' }] as typeof store.threads;
+
+			await vi.waitFor(() => {
+				expect(document.title).toBe('Renamed thread - n8n');
+			});
+		});
 	});
 
 	it('reconnects on same-thread re-entry when SSE is disconnected', async () => {
