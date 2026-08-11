@@ -256,7 +256,9 @@ describe('AgentIntegrationPersistenceService', () => {
 			]);
 		});
 
-		it('keeps the existing draft when the agent already has unpublished changes', async () => {
+		it('rotates the draft version even when the agent is already dirty', async () => {
+			// The version is the compare-and-set token, so it has to move on every
+			// write or a concurrent channel write would match the same value.
 			const { service, agent, row } = setup({ versionId: 'draft-9', activeVersionId: 'version-1' });
 
 			await service.applyIntegrationDelta(
@@ -265,7 +267,30 @@ describe('AgentIntegrationPersistenceService', () => {
 				byUser,
 			);
 
-			expect(row.versionId).toBe('draft-9');
+			expect(row.versionId).not.toBe('draft-9');
+			expect(row.versionId).not.toBe(row.activeVersionId);
+			expect(agent.versionId).toBe(row.versionId);
+		});
+
+		it.each([
+			['already dirty', { versionId: 'draft-9', activeVersionId: 'version-1' }],
+			['in sync with its published version', { versionId: 'v', activeVersionId: 'v' }],
+			['never published', { versionId: 'v', activeVersionId: null }],
+		])('advances the compare-and-set token for an agent %s', async (_case, versions) => {
+			// A write that guards on a value it also writes back cannot detect a
+			// concurrent writer that read the same value.
+			const { service, agent, agentRepository } = setup(versions);
+
+			await service.applyIntegrationDelta(
+				agent,
+				{ add: { type: 'slack', credentialId: 'slack-1' } },
+				byUser,
+			);
+
+			const [, , expectedVersionId, writtenVersionId] =
+				agentRepository.updateIntegrations.mock.calls[0];
+			expect(expectedVersionId).toBe(versions.versionId);
+			expect(writtenVersionId).not.toBe(expectedVersionId);
 		});
 
 		it('rejects payloads that would persist a channel without a credential', async () => {
@@ -356,6 +381,24 @@ describe('AgentIntegrationPersistenceService', () => {
 			]);
 			expect(result.removed).toEqual({ type: 'slack', credentialId: 'old' });
 			expect(agentRepository.updateIntegrations).toHaveBeenCalledTimes(1);
+		});
+
+		it('reports no removal when the replaced credential is the added one', async () => {
+			const { service, agent, row } = setup({
+				integrations: [{ type: 'slack', credentialId: 'same' }],
+			});
+
+			const result = await service.applyIntegrationDelta(
+				agent,
+				{
+					add: { type: 'slack', credentialId: 'same' },
+					remove: { type: 'slack', credentialId: 'same' },
+				},
+				byUser,
+			);
+
+			expect(row.integrations).toEqual([{ type: 'slack', credentialId: 'same' }]);
+			expect(result.removed).toBeUndefined();
 		});
 
 		it('still adds the new channel when the replaced entry is already gone', async () => {

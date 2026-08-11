@@ -9,6 +9,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import {
 	AgentIntegrationPersistenceService,
+	matchesIntegrationRef,
 	type IntegrationDeltaResult,
 	type IntegrationRef,
 } from './agent-integration-persistence.service';
@@ -87,7 +88,8 @@ export class AgentIntegrationManagementService {
 	 * step fails, the two still agree:
 	 *
 	 * 1. bring the new connection up — a failed startup persists nothing;
-	 * 2. write the delta — a failed write releases the connection from step 1;
+	 * 2. write the delta — a failed write undoes step 1, restoring the runtime to
+	 *    what it was rather than tearing the channel down unconditionally;
 	 * 3. release the replaced connection — reached only once the write is
 	 *    durable, so a failed write leaves the existing channel live.
 	 */
@@ -98,20 +100,37 @@ export class AgentIntegrationManagementService {
 		remove?: IntegrationRef;
 		modifiedBy: AgentActor;
 	}): Promise<IntegrationDeltaResult> {
-		const { agent, add, remove } = options;
+		const { agent, add } = options;
+		// "Replace this channel with itself" is just a connect. Left as a removal,
+		// step 3 would release the connection step 1 just brought up, because both
+		// resolve to the same runtime connection.
+		const remove =
+			options.remove && add && matchesIntegrationRef(add, options.remove)
+				? undefined
+				: options.remove;
+
+		// `connect` restarts a connection that is already live — a settings-only
+		// save, or re-connecting the same credential — so a rollback has to know
+		// whether step 1 created this connection or merely replaced it.
+		const wasLive = !!add && this.chatService.getChatInstance(agent.id, add) !== undefined;
 		const connected = add ? await this.startRuntime(agent, add) : false;
 
 		let result: IntegrationDeltaResult;
 		try {
 			result = await this.persistenceService.applyIntegrationDelta(
 				agent,
-				{ ...(add ? { add } : {}), ...(remove ? { remove } : {}) },
+				{ add, remove },
 				{ user: options.user, modifiedBy: options.modifiedBy },
 			);
 		} catch (error) {
-			// Nothing was persisted, so the connection from step 1 has no reason to
-			// exist. Teardown is best-effort — the original failure is what matters.
-			if (connected && add) await this.chatService.disconnectChannel(agent.id, add);
+			// Undo step 1 only where it created something. A channel that was
+			// already live is still persisted — the row never changed — so tearing
+			// it down would take a working channel offline over a failed write. The
+			// thread subscriptions stay either way: deleting them is not
+			// recoverable, and the row that justifies them may still exist.
+			if (connected && add && !wasLive) {
+				await this.chatService.disconnectChannel(agent.id, add, { deleteSubscriptions: false });
+			}
 			throw error;
 		}
 
@@ -165,6 +184,15 @@ export class AgentIntegrationManagementService {
 			{ agentId: agent.id, type: remove.type },
 		);
 		await this.chatService.disconnect(agent.id, remove);
+
+		// A peer main can still hold this connection — an earlier removal whose
+		// broadcast was dropped leaves one behind — so tell the cluster too.
+		// Draft references (`credentialId: ''`) are not a real connection anywhere
+		// and fail this parse, which keeps them a local-only cleanup.
+		const parsed = AgentIntegrationSchema.safeParse(remove);
+		if (parsed.success) {
+			await this.chatService.broadcastIntegrationChange(agent.id, parsed.data, 'disconnect');
+		}
 	}
 
 	private async assertUsableCredential(

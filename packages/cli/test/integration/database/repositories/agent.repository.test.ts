@@ -165,6 +165,30 @@ describe('AgentRepository integration columns', () => {
 			expect(reloaded?.versionId).toBe('version-1');
 		});
 
+		it('serialises two writers that read the same version', async () => {
+			const agent = await createAgent({ versionId: 'version-1' });
+
+			// Both read version-1 and both project onto the empty array they saw.
+			const first = await agentRepo.updateIntegrations(
+				agent.id,
+				[{ type: 'slack', credentialId: 'slack-1' }],
+				'version-1',
+				'version-2',
+			);
+			const second = await agentRepo.updateIntegrations(
+				agent.id,
+				[{ type: 'linear', credentialId: 'linear-1' }],
+				'version-1',
+				'version-3',
+			);
+
+			expect(first).toBe(true);
+			// The loser is told, so it can re-read and reapply instead of clobbering.
+			expect(second).toBe(false);
+			const reloaded = await agentRepo.findById(agent.id);
+			expect(reloaded?.integrations).toEqual([{ type: 'slack', credentialId: 'slack-1' }]);
+		});
+
 		it('reports no write for an agent that no longer exists', async () => {
 			await expect(
 				agentRepo.updateIntegrations(uuid(), [], 'version-1', 'version-2'),

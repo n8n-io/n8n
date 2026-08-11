@@ -22,7 +22,7 @@ import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 import { AgentSetupCompletionService } from './agent-setup-completion.service';
 import type { Agent } from './entities/agent.entity';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
-import { AgentRepository, type AgentIntegrationState } from './repositories/agent.repository';
+import { AgentRepository } from './repositories/agent.repository';
 import { createAgentCredentialProvider } from './utils/agent-credential-provider';
 
 export interface CredentialIntegrationMutationContext {
@@ -57,7 +57,10 @@ export interface IntegrationDeltaResult {
 /** Retries cover a lost compare-and-set, which needs a fresh read to resolve. */
 const MAX_WRITE_ATTEMPTS = 3;
 
-function matchesRef(integration: AgentIntegrationConfig, ref: IntegrationRef): boolean {
+export function matchesIntegrationRef(
+	integration: { type: string; credentialId: string },
+	ref: IntegrationRef,
+): boolean {
 	return integration.type === ref.type && integration.credentialId === ref.credentialId;
 }
 
@@ -70,7 +73,7 @@ function projectIntegrations(
 	delta: { add?: AgentIntegrationConfig; remove?: IntegrationRef },
 ): AgentIntegrationConfig[] {
 	let next = delta.remove
-		? current.filter((entry) => !matchesRef(entry, delta.remove!))
+		? current.filter((entry) => !matchesIntegrationRef(entry, delta.remove!))
 		: [...current];
 
 	const { add } = delta;
@@ -81,20 +84,9 @@ function projectIntegrations(
 	// instead of leaving both the draft and the connected entry behind.
 	next = next.filter((entry) => !(entry.type === add.type && isDraftIntegration(entry)));
 
-	return next.some((entry) => matchesRef(entry, add))
-		? next.map((entry) => (matchesRef(entry, add) ? add : entry))
+	return next.some((entry) => matchesIntegrationRef(entry, add))
+		? next.map((entry) => (matchesIntegrationRef(entry, add) ? add : entry))
 		: [...next, add];
-}
-
-/**
- * Start a new draft when the agent is currently in sync with its published
- * snapshot — the value-level equivalent of `markAgentDraftDirty`, computed from
- * the freshly read row instead of a request-scoped entity.
- */
-function nextDraftVersionId(state: AgentIntegrationState): string | null {
-	return state.versionId !== null && state.versionId === state.activeVersionId
-		? uuid()
-		: state.versionId;
 }
 
 @Service()
@@ -149,7 +141,11 @@ export class AgentIntegrationPersistenceService {
 		context: CredentialIntegrationMutationContext,
 	): Promise<IntegrationDeltaResult> {
 		const add = delta.add ? this.validateAddition(delta.add) : undefined;
-		if (!add && !delta.remove) return { agent, changed: false };
+		// Replacing an entry with itself removes nothing. Reporting it as removed
+		// would have the caller tear down the channel this write keeps.
+		const remove =
+			delta.remove && add && matchesIntegrationRef(add, delta.remove) ? undefined : delta.remove;
+		if (!add && !remove) return { agent, changed: false };
 
 		const credentialProvider = createAgentCredentialProvider(
 			this.credentialsService,
@@ -162,8 +158,8 @@ export class AgentIntegrationPersistenceService {
 			if (!state) throw new UserError(`Agent "${agent.id}" no longer exists`);
 
 			const current = state.integrations ?? [];
-			const removed = delta.remove
-				? current.find((entry) => matchesRef(entry, delta.remove!))
+			const removed = remove
+				? current.find((entry) => matchesIntegrationRef(entry, remove))
 				: undefined;
 
 			// A removal of something already gone is not a failure — and with
@@ -173,8 +169,14 @@ export class AgentIntegrationPersistenceService {
 				return { agent, changed: false };
 			}
 
-			const integrations = projectIntegrations(current, { add, remove: delta.remove });
-			const versionId = nextDraftVersionId(state);
+			const integrations = projectIntegrations(current, { add, remove });
+			// Always a fresh draft id, never the one that was read. `versionId` is
+			// the compare-and-set token, so reusing it would guard on a value this
+			// write does not change — and two concurrent channel writes would both
+			// match and silently overwrite each other. Consumers only ever compare
+			// it to `activeVersionId` to tell a draft from a published agent, which
+			// a rotation preserves.
+			const versionId = uuid();
 
 			// Gate evaluated against the state about to be written; the marker is
 			// claimed and reported only once that write succeeded.

@@ -127,8 +127,31 @@ describe('AgentIntegrationManagementService', () => {
 			);
 
 			expect(chatService.connect).toHaveBeenCalled();
-			expect(chatService.disconnectChannel).toHaveBeenCalledWith(agent.id, integration);
+			// Thread subscriptions are never deleted on a rollback — that is not
+			// recoverable, and the row this call failed to change may still want them.
+			expect(chatService.disconnectChannel).toHaveBeenCalledWith(agent.id, integration, {
+				deleteSubscriptions: false,
+			});
 			expect(chatService.broadcastIntegrationChange).not.toHaveBeenCalled();
+		});
+
+		it('keeps an already-live channel running when the durable write fails', async () => {
+			// Re-saving a channel (e.g. a settings-only edit) restarts its runtime.
+			// The row never changed, so the restarted channel must stay up.
+			const { service, persistenceService, chatService } = makeService();
+			chatService.getChatInstance.mockReturnValue({} as never);
+			persistenceService.applyIntegrationDelta.mockRejectedValue(new Error('write failed'));
+
+			await expect(
+				service.connect({
+					agent: makeAgent({ integrations: [integration] }),
+					user: user as never,
+					integration,
+				}),
+			).rejects.toThrow('write failed');
+
+			expect(chatService.connect).toHaveBeenCalled();
+			expect(chatService.disconnectChannel).not.toHaveBeenCalled();
 		});
 
 		it('persists an unpublished agent without starting a runtime', async () => {
@@ -258,6 +281,28 @@ describe('AgentIntegrationManagementService', () => {
 				type: 'slack',
 				credentialId: '',
 			});
+			// A draft reference is not a real connection anywhere, so it stays local.
+			expect(chatService.broadcastIntegrationChange).not.toHaveBeenCalled();
+		});
+
+		it('tells peer mains about a stray connection that is no longer persisted', async () => {
+			const { service, persistenceService, chatService } = makeService();
+			const agent = makeAgent();
+			persistenceService.applyIntegrationDelta.mockResolvedValue({ agent, changed: false });
+
+			await service.disconnect({
+				agent,
+				user: user as never,
+				type: integration.type,
+				credentialId: integration.credentialId,
+			});
+
+			expect(chatService.disconnect).toHaveBeenCalledWith(agent.id, integration);
+			expect(chatService.broadcastIntegrationChange).toHaveBeenCalledWith(
+				agent.id,
+				integration,
+				'disconnect',
+			);
 		});
 	});
 
@@ -289,6 +334,31 @@ describe('AgentIntegrationManagementService', () => {
 			expect(chatService.disconnectChannel).toHaveBeenCalledWith(agent.id, replaced);
 			expect(order(persistenceService.applyIntegrationDelta)).toBeLessThan(
 				order(chatService.disconnectChannel),
+			);
+		});
+
+		it('does not release the connection it just made when asked to replace it with itself', async () => {
+			const { service, persistenceService, chatService } = makeService();
+			const agent = makeAgent({ integrations: [integration] });
+
+			await service.connect({
+				agent,
+				user: user as never,
+				integration,
+				replaces: { type: integration.type, credentialId: integration.credentialId },
+			});
+
+			expect(persistenceService.applyIntegrationDelta).toHaveBeenCalledWith(
+				agent,
+				{ add: integration, remove: undefined },
+				{ user, modifiedBy: 'user' },
+			);
+			expect(chatService.disconnectChannel).not.toHaveBeenCalled();
+			expect(chatService.disconnect).not.toHaveBeenCalled();
+			expect(chatService.broadcastIntegrationChange).toHaveBeenCalledWith(
+				agent.id,
+				integration,
+				'connect',
 			);
 		});
 
@@ -325,7 +395,9 @@ describe('AgentIntegrationManagementService', () => {
 
 			// Only the connection we just brought up is released; the old one stays.
 			expect(chatService.disconnectChannel).toHaveBeenCalledTimes(1);
-			expect(chatService.disconnectChannel).toHaveBeenCalledWith(agent.id, integration);
+			expect(chatService.disconnectChannel).toHaveBeenCalledWith(agent.id, integration, {
+				deleteSubscriptions: false,
+			});
 		});
 	});
 });
