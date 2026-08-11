@@ -170,7 +170,8 @@ export function useAppCredentials() {
 			credType.extends.includes('oAuth2Api') ||
 			credType.extends.includes('oAuth1Api') ||
 			credType.extends.includes('googleOAuth2Api') ||
-			credType.extends.includes('microsoftOAuth2Api')
+			credType.extends.includes('microsoftOAuth2Api') ||
+			credType.extends.includes('atlassianOAuth2Api')
 		);
 	};
 
