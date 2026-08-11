@@ -59,6 +59,9 @@ export class AgentsModule implements ModuleInterface {
 			agentKnowledgeFileStore: Container.get(AgentKnowledgeFileStore),
 		});
 
+		const { registerFavoriteResolver } = await import('./register-favorite-resolver.js');
+		registerFavoriteResolver();
+
 		const { AgentRuntimeCacheService } = await import('./agent-runtime-cache.service.js');
 		Container.get(AgentRuntimeCacheService);
 
