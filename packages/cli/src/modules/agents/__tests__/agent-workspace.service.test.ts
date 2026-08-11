@@ -69,4 +69,13 @@ describe('AgentWorkspaceService', () => {
 		);
 		expect(sandbox.destroy).not.toHaveBeenCalled();
 	});
+
+	it('does not reject when workspace cleanup fails', async () => {
+		const { service, runtimeService } = makeService();
+		runtimeService.acquireSandbox.mockRejectedValue(new Error('sandbox unavailable'));
+
+		await expect(
+			service.cleanupThreadWorkspace(projectId, agentId, 'thread-1'),
+		).resolves.toBeUndefined();
+	});
 });

@@ -104,16 +104,10 @@ export async function guardToolMessageForModel(
 	const textBlocks = message.content.filter((block) => block.type === 'text');
 	if (textBlocks.length === 0) return message;
 
-	const serialized = JSON.stringify(textBlocks);
-	if (isClearlyWithinTokenLimit(serialized)) return message;
+	const guarded = await guardToolResultForModel(textBlocks, tokenCounter, storage, 'message');
+	if (!guarded.truncated && !guarded.offloaded) return message;
 
-	const tokenCount = await tokenCounter(serialized);
-	if (tokenCount <= MAX_MODEL_TOOL_RESULT_TOKENS) return message;
-
-	const offloaded = await tryOffloadResult(serialized, tokenCount, 'message', storage);
-	const replacement = JSON.stringify(
-		offloaded ?? (await buildTruncationEnvelope(serialized, tokenCount, tokenCounter)),
-	);
+	const replacement = JSON.stringify(guarded.historyOutput);
 	let replacedText = false;
 	const content = message.content.flatMap((block): MessageContent[] => {
 		if (block.type !== 'text') return [block];

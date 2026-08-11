@@ -44,11 +44,8 @@ describe('AgentTestChatService', () => {
 
 	it('performs workspace cleanup for one user thread without changing all-agent cleanup', async () => {
 		const { service, memory, workspaceService } = makeService();
-		workspaceService.cleanupThreadWorkspace.mockRejectedValue(new Error('sandbox unavailable'));
 
-		await expect(
-			service.clearTestChatMessages('project-1', agentId, userId),
-		).resolves.toBeUndefined();
+		await service.clearTestChatMessages('project-1', agentId, userId);
 		expect(memory.deleteThread).toHaveBeenCalledWith(`test-${agentId}:${userId}`);
 		expect(workspaceService.cleanupThreadWorkspace).toHaveBeenCalledWith(
 			'project-1',

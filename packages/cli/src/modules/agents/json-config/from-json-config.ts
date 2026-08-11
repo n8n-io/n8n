@@ -69,7 +69,7 @@ export type ToolResolver = (
 
 export interface ToolExecutor {
 	executeTool(toolName: string, input: unknown, ctx: unknown): Promise<unknown>;
-	executeToMessage?(toolName: string, output: unknown): Promise<AgentMessage | undefined>;
+	executeToMessage(toolName: string, output: unknown): Promise<AgentMessage | undefined>;
 }
 
 /** Factory function that reconstructs a BuiltMemory backend from serialized params. */
@@ -440,8 +440,6 @@ async function resolveToolRef(
 			if (!descriptor) {
 				throw new Error(`Custom tool "${ref.id}" not found in tool descriptors`);
 			}
-			const executeToMessage = options.toolExecutor.executeToMessage;
-
 			const builtTool: BuiltTool = {
 				name: descriptor.name,
 				description: descriptor.description,
@@ -453,9 +451,10 @@ async function resolveToolRef(
 						parentTelemetry: ctx.parentTelemetry,
 					});
 				},
-				...(descriptor.hasToMessage && executeToMessage
+				...(descriptor.hasToMessage
 					? {
-							toMessage: async (output: unknown) => await executeToMessage(descriptor.name, output),
+							toMessage: async (output: unknown) =>
+								await options.toolExecutor.executeToMessage(descriptor.name, output),
 						}
 					: {}),
 				providerOptions: descriptor.providerOptions as Record<string, JSONObject> | undefined,

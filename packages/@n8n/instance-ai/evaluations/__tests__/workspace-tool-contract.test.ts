@@ -33,27 +33,6 @@ describe('workspace tool contract (@n8n/agents drift guard)', () => {
 		}
 	});
 
-	it('exposes only the Instance AI allowlisted tools to agents', () => {
-		const liveTools = createWorkspaceTools({
-			filesystem: {},
-			sandbox: {
-				executeCommand: vi.fn().mockResolvedValue({
-					success: true,
-					exitCode: 0,
-					stdout: '',
-					stderr: '',
-					executionTimeMs: 0,
-				}),
-			},
-		} as unknown as Parameters<typeof createWorkspaceTools>[0]);
-		const liveNames = new Set(liveTools.map((tool) => tool.name));
-
-		for (const name of CORE_WORKSPACE_TOOL_NAMES) {
-			expect(liveNames.has(name), name).toBe(true);
-		}
-		expect(liveNames.size).toBeGreaterThanOrEqual(CORE_WORKSPACE_TOOL_NAMES.size);
-	});
-
 	it('does not expose removed filesystem helpers via the allowlist', () => {
 		const removed = [
 			'workspace_append_file',

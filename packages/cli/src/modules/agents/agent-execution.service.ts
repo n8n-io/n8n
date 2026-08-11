@@ -445,9 +445,7 @@ export class AgentExecutionService {
 		await this.n8nMemory.getImplementation(agentId).deleteThread(threadId);
 		await this.agentChatAttachmentService.deleteByThread(threadId, { projectId });
 		await Promise.all([
-			this.agentWorkspaceService
-				.cleanupThreadWorkspace(projectId, agentId, threadId)
-				.catch(() => {}),
+			this.agentWorkspaceService.cleanupThreadWorkspace(projectId, agentId, threadId),
 			this.agentExecutionThreadRepository.delete({ id: threadId }),
 			this.agentExecutionLogStore.delete(
 				blobRefs.map((r) => ({ agentId, threadId, executionId: r.id, storedAt: r.storedAt })),

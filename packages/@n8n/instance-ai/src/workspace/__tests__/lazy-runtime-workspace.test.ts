@@ -67,7 +67,6 @@ function createMockWorkspace() {
 			await Promise.resolve();
 		}),
 		getInstructions: vi.fn(() => 'Real sandbox instructions.'),
-		getDefaultCommandEnv: vi.fn(() => ({ CUSTOM_ENV: 'enabled' })),
 		executeCommand,
 	};
 
@@ -97,24 +96,6 @@ describe('createLazyRuntimeWorkspace', () => {
 		await readFile?.handler?.({ path: '/workspace/report.md' }, {});
 
 		expect(ensureWorkspace).toHaveBeenCalledTimes(1);
-	});
-
-	it('merges sandbox default env after the real workspace is created', async () => {
-		const { workspace, executeCommand } = createMockWorkspace();
-		const ensureWorkspace = vi.fn(async () => await Promise.resolve(workspace));
-		const lazyWorkspace = createLazyRuntimeWorkspace({ ensureWorkspace });
-		const executeCommandTool = lazyWorkspace
-			.getTools()
-			.find((tool) => tool.name === 'workspace_execute_command');
-
-		const result = await executeCommandTool?.handler?.({ command: 'echo $CUSTOM_ENV' }, {});
-
-		expect(result).toMatchObject({ stdout: 'enabled' });
-		expect(executeCommand.mock.calls[0]?.[0]).toBe('echo $CUSTOM_ENV');
-		expect(executeCommand.mock.calls[0]?.[1]).toEqual([]);
-		expect(executeCommand.mock.calls[0]?.[2]?.env).toMatchObject({
-			CUSTOM_ENV: 'enabled',
-		});
 	});
 
 	it('retries workspace creation after the first lazy initialization fails', async () => {

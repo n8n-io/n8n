@@ -312,10 +312,6 @@ class LazyRuntimeSandbox extends BaseSandbox {
 		await this.resolver.destroyResolvedWorkspace();
 	}
 
-	getDefaultCommandEnv(): NodeJS.ProcessEnv {
-		return this.resolver.current?.sandbox?.getDefaultCommandEnv?.() ?? {};
-	}
-
 	override async executeCommand(
 		command: string,
 		args: string[] = [],
@@ -326,12 +322,8 @@ class LazyRuntimeSandbox extends BaseSandbox {
 			throw new Error('Instance AI runtime sandbox does not support command execution.');
 		}
 
-		const defaultEnv = sandbox.getDefaultCommandEnv?.();
 		try {
-			return await sandbox.executeCommand(command, args, {
-				...options,
-				...(defaultEnv ? { env: { ...defaultEnv, ...options?.env } } : {}),
-			});
+			return await sandbox.executeCommand(command, args, options);
 		} finally {
 			this.syncStatus(sandbox);
 		}

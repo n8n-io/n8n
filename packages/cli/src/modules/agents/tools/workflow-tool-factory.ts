@@ -506,10 +506,6 @@ export async function extractResult(
  * length nor preview.
  */
 function truncateWebhookResponse(response: IExecuteResponsePromiseData): unknown {
-	if (!isRecord(response)) {
-		return response;
-	}
-
 	const { body, ...rest } = response;
 
 	if (Buffer.isBuffer(body)) {

@@ -68,6 +68,7 @@ describe('buildFromJson()', () => {
 
 	const makeMockToolExecutor = (): ToolExecutor => ({
 		executeTool: vi.fn().mockResolvedValue({ result: 'tool result' }),
+		executeToMessage: vi.fn().mockResolvedValue(undefined),
 	});
 
 	const makeMockCredentialProvider = () => ({

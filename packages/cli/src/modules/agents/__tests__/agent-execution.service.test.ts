@@ -926,16 +926,13 @@ describe('AgentExecutionService', () => {
 	});
 
 	describe('deleteThread', () => {
-		it('performs workspace cleanup without blocking execution thread deletion', async () => {
+		it('performs workspace cleanup when deleting an execution thread', async () => {
 			agentExecutionThreadRepository.findOneBy.mockResolvedValue({
 				id: 'thread-1',
 				agentId: 'agent-1',
 				projectId: 'project-1',
 			} as AgentExecutionThread);
 			agentExecutionRepository.findBlobRefsByThreadId.mockResolvedValue([]);
-			agentWorkspaceService.cleanupThreadWorkspace.mockRejectedValue(
-				new Error('sandbox unavailable'),
-			);
 
 			const result = await service.deleteThread('project-1', 'agent-1', 'thread-1');
 

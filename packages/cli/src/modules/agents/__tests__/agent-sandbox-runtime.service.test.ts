@@ -108,7 +108,6 @@ function makeService({
 			sandboxImage: 'daytonaio/sandbox:0.5.0',
 			sandboxSnapshot: '',
 			sandboxTimeout: 300_000,
-			sandboxEphemeral: false,
 			...configOverrides,
 		} as AgentsConfig,
 		logger,
@@ -144,13 +143,12 @@ describe('AgentSandboxRuntimeService', () => {
 		createFilesystemMock.mockReturnValue(mock<WorkspaceFilesystem>());
 	});
 
-	it('creates and starts a deterministic direct-mode Daytona sandbox', async () => {
+	it('creates and starts a persistent deterministic direct-mode Daytona sandbox', async () => {
 		const aiService = makeAiService();
 		const sandboxSettingsService = makeSandboxSettingsService();
 		const service = makeService({
 			configOverrides: {
 				sandboxSnapshot: 'n8n/agent-knowledge:1.2.3',
-				sandboxEphemeral: true,
 			},
 			aiService,
 			sandboxSettingsService,
@@ -178,7 +176,7 @@ describe('AgentSandboxRuntimeService', () => {
 				createTimeoutSeconds: 300,
 				image: 'daytonaio/sandbox:0.5.0',
 				snapshot: 'n8n/agent-knowledge:1.2.3',
-				ephemeral: true,
+				ephemeral: false,
 				autoStopInterval: 5,
 			}),
 			expect.anything(),

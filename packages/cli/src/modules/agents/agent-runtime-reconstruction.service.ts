@@ -1,6 +1,5 @@
 import {
 	createWriteTodosTool,
-	redactText,
 	type Agent as RuntimeAgent,
 	BuiltTool,
 	CredentialProvider,
@@ -50,6 +49,7 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
 import { AgentKnowledgeMirrorService } from './agent-knowledge-mirror.service';
+import { sanitizeSandboxErrorDetail } from './agent-sandbox-runtime.service';
 import { AgentWorkspaceService } from './agent-workspace.service';
 import type { AgentRuntimeInstrumentation } from './agent-runtime-instrumentation';
 import { Agent } from './entities/agent.entity';
@@ -603,10 +603,7 @@ export class AgentRuntimeReconstructionService {
 				this.logger.warn('Failed to attach agent workspace', {
 					projectId,
 					agentId,
-					error: redactText(error instanceof Error ? error.message : String(error)).text.slice(
-						0,
-						2_000,
-					),
+					error: sanitizeSandboxErrorDetail(error instanceof Error ? error.message : String(error)),
 				});
 			}
 
