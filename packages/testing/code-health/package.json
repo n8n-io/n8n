@@ -18,6 +18,7 @@
 		"build:unchecked": "tsc -p tsconfig.build.json --noCheck",
 		"dev": "tsc --watch",
 		"test": "vitest run",
+		"test:unit": "vitest run",
 		"test:watch": "vitest",
 		"test:coverage": "vitest run --coverage",
 		"format": "biome format --write .",
