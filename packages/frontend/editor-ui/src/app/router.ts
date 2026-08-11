@@ -768,7 +768,7 @@ export const routes: RouteRecordRaw[] = [
 					middlewareOptions: {
 						custom: () => {
 							const settingsStore = useSettingsStore();
-							return settingsStore.isAiGatewayEnabled;
+							return settingsStore.isAiGatewayEnabled && !settingsStore.isAiGatewayCloudUbbEnabled;
 						},
 					},
 					telemetry: {

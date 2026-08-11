@@ -1518,8 +1518,8 @@ erDiagram
   TEXT body
   datetime_3_ createdAt
   varchar createdById FK
-  TEXT data
   datetime_3_ deletedAt
+  TEXT history
   INTEGER id
   datetime_3_ updatedAt
 }

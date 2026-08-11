@@ -3,13 +3,7 @@ import { Container } from '@n8n/di';
 import type { DataSource } from '@n8n/typeorm';
 
 import { AllowAllAdmittance } from './admittance';
-import {
-	createDataSource,
-	TypeOrmExecutionStore,
-	TypeOrmStepStore,
-	WorkflowExecution,
-	WorkflowStepExecution,
-} from './database';
+import { createDataSource, createStores } from './database';
 import {
 	ExecutionStartHandler,
 	OrchestrationWorker,
@@ -41,8 +35,7 @@ async function main(): Promise<void> {
 	let orchestrationWorker: OrchestrationWorker | undefined;
 	let stepWorker: StepWorker | undefined;
 	if (dataSource) {
-		const executionStore = new TypeOrmExecutionStore(dataSource.getRepository(WorkflowExecution));
-		const stepStore = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const { executionStore, stepStore } = createStores(dataSource);
 		orchestrationWorker = new OrchestrationWorker(
 			orchestrationQueue,
 			new ExecutionStartHandler(executionStore, stepStore, orchestrationQueue),

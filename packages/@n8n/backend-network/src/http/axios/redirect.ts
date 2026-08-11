@@ -11,6 +11,7 @@ import {
 	isProxyPotentiallyActive,
 	isRedirectStatus,
 	resolveProxyOption,
+	sniFor,
 	throwIfDomainNotAllowed,
 	tryParseUrl,
 	validateUrlSsrf,
@@ -120,12 +121,11 @@ function buildRedirectHopAgents(
 	nextUrl: string,
 	policy: SsrfRedirectPolicy,
 ): Pick<AxiosRequestConfig, 'httpAgent' | 'httpsAgent'> {
-	const host = tryParseUrl(nextUrl)?.hostname;
 	const customProxyUrl = policy.proxyConfig ? getUrlFromProxyConfig(policy.proxyConfig) : null;
 	const proxy = resolveProxyOption(customProxyUrl);
 	return buildNodeAgents(proxy, policy.ssrf, {
 		...policy.agentOptions,
-		...(host ? { servername: host } : {}),
+		servername: sniFor(tryParseUrl(nextUrl)?.hostname),
 	});
 }
 

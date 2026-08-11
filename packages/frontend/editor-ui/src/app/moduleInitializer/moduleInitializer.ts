@@ -89,8 +89,6 @@ export const registerModuleModals = () => {
 			modalRegistry.register(modalDef);
 		});
 	});
-	// Subscribe to modal registry changes
-	useUIStore().initializeModalsFromRegistry();
 };
 
 /**
