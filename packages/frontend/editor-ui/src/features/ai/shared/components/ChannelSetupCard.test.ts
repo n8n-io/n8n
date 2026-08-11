@@ -32,6 +32,7 @@ const mocks = vi.hoisted(() => {
 		setCatalog: vi.fn<(integrations: ChatIntegrationDescriptor[]) => void>(),
 		fetchStatus: vi.fn(),
 		connect: vi.fn(),
+		disconnect: vi.fn(),
 		isConnected: vi.fn(),
 		isConfigured: vi.fn(),
 		getAgent: vi.fn(),
@@ -79,6 +80,7 @@ vi.mock('@/features/agents/composables/useAgentIntegrationStatus', () => ({
 		errorIsConflict: ref<Record<string, boolean>>({}),
 		fetchStatus: mocks.fetchStatus,
 		connect: mocks.connect,
+		disconnect: mocks.disconnect,
 		isConnected: mocks.isConnected,
 		isConfigured: mocks.isConfigured,
 	}),
@@ -180,6 +182,7 @@ describe('ChannelSetupCard', () => {
 		mocks.reloadCatalog.mockResolvedValue([mocks.slackIntegration, mocks.linearIntegration]);
 		mocks.fetchStatus.mockResolvedValue(undefined);
 		mocks.connect.mockResolvedValue({ status: 'connected' });
+		mocks.disconnect.mockResolvedValue(undefined);
 		mocks.isConnected.mockReturnValue(false);
 		mocks.isConfigured.mockReturnValue(false);
 		mocks.getAgent.mockResolvedValue({ name: 'Agent', id: 'agent-1' });
@@ -235,7 +238,7 @@ describe('ChannelSetupCard', () => {
 		}
 	});
 
-	it('does not notify agent surfaces when the connect fails or setup is skipped', async () => {
+	it('does not notify agent surfaces when the connect fails', async () => {
 		mocks.connect.mockRejectedValueOnce(new Error('connect failed'));
 		const onAgentUpdated = vi.fn();
 		agentsEventBus.on('agentUpdated', onAgentUpdated);
@@ -245,7 +248,6 @@ describe('ChannelSetupCard', () => {
 
 			await wrapper.find('[data-testid="mock-slack-connect"]').trigger('click');
 			await flushPromises();
-			await wrapper.find('[data-testid="channel-setup-card-skip"]').trigger('click');
 
 			expect(onAgentUpdated).not.toHaveBeenCalled();
 		} finally {
@@ -253,13 +255,49 @@ describe('ChannelSetupCard', () => {
 		}
 	});
 
-	it('emits resolve({ approved: false }) when the user skips setup', async () => {
+	it('removes the draft integration before resolving skipped setup and refreshing the agent', async () => {
+		let finishDisconnect: () => void = () => {};
+		const onAgentUpdated = vi.fn();
+		agentsEventBus.on('agentUpdated', onAgentUpdated);
+		mocks.disconnect.mockReturnValueOnce(
+			new Promise<void>((resolve) => {
+				finishDisconnect = resolve;
+			}),
+		);
+		try {
+			const wrapper = mountCard();
+			await flushPromises();
+
+			await wrapper.find('[data-testid="channel-setup-card-skip"]').trigger('click');
+			await flushPromises();
+
+			expect(mocks.disconnect).toHaveBeenCalledWith('slack', '');
+			expect(wrapper.emitted('resolve')).toBeUndefined();
+			expect(onAgentUpdated).not.toHaveBeenCalled();
+
+			finishDisconnect();
+			await flushPromises();
+
+			expect(onAgentUpdated).toHaveBeenCalledWith({
+				agentId: 'agent-1',
+				source: 'channel-setup-card',
+			});
+			expect(wrapper.emitted('resolve')).toEqual([[{ approved: false }]]);
+		} finally {
+			agentsEventBus.off('agentUpdated', onAgentUpdated);
+		}
+	});
+
+	it('keeps setup pending when removing the draft integration fails', async () => {
+		mocks.disconnect.mockRejectedValueOnce(new Error('disconnect failed'));
 		const wrapper = mountCard();
 		await flushPromises();
 
 		await wrapper.find('[data-testid="channel-setup-card-skip"]').trigger('click');
+		await flushPromises();
 
-		expect(wrapper.emitted('resolve')).toEqual([[{ approved: false }]]);
+		expect(mocks.disconnect).toHaveBeenCalledWith('slack', '');
+		expect(wrapper.emitted('resolve')).toBeUndefined();
 	});
 
 	it('does not connect twice when setup emits connect twice synchronously', async () => {

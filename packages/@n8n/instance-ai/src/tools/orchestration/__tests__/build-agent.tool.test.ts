@@ -702,6 +702,51 @@ describe('build-agent tool', () => {
 			},
 		);
 
+		it('is true when update_skill returns the config mutation marker', async () => {
+			const { context, delegate } = makeContext();
+			vi.mocked(delegate.createAgent).mockResolvedValue({
+				agentId: 'agent-1',
+				projectId: 'proj-1',
+			});
+			vi.mocked(delegate.streamBuild).mockResolvedValue(
+				fakeStream(
+					[
+						toolCallChunk('call-1', 'update_skill'),
+						toolResultChunk('call-1', { ok: true, configMutated: true }),
+					],
+					'Updated the skill.',
+				),
+			);
+
+			const result = await runTool(context, { message: 'Build it', name: 'New Agent' });
+
+			expect(result.configUpdated).toBe(true);
+		});
+
+		it('is false when update_skill soft-fails without the config mutation marker', async () => {
+			const { context, delegate } = makeContext();
+			vi.mocked(delegate.createAgent).mockResolvedValue({
+				agentId: 'agent-1',
+				projectId: 'proj-1',
+			});
+			vi.mocked(delegate.streamBuild).mockResolvedValue(
+				fakeStream(
+					[
+						toolCallChunk('call-1', 'update_skill'),
+						toolResultChunk('call-1', {
+							ok: false,
+							errors: [{ message: 'Skill not found' }],
+						}),
+					],
+					'Could not update the skill.',
+				),
+			);
+
+			const result = await runTool(context, { message: 'Build it', name: 'New Agent' });
+
+			expect(result.configUpdated).toBe(false);
+		});
+
 		it('is false when no config-mutation tool succeeded', async () => {
 			const { context, delegate } = makeContext();
 			vi.mocked(delegate.createAgent).mockResolvedValue({

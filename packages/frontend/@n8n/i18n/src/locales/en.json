@@ -7116,6 +7116,8 @@
 	"instanceAi.tools.patch_config": "Updating agent config",
 	"instanceAi.tools.build_custom_tool": "Building custom tool",
 	"instanceAi.tools.create_skills": "Creating skills",
+	"instanceAi.tools.read_skill": "Reading skill",
+	"instanceAi.tools.update_skill": "Updating skill",
 	"instanceAi.tools.create_tasks": "Creating tasks",
 	"instanceAi.tools.get_resource_locator_options": "Loading resource options",
 	"instanceAi.tools.list_integration_types": "Listing integration types",

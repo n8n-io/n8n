@@ -291,11 +291,12 @@ describe('AgentSkillsService', () => {
 		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
 	});
 
-	it('clears references when an update provides an empty reference list', async () => {
+	it('removes optional list fields when an update clears them', async () => {
 		const agent = makeAgent({
 			skills: {
 				summarize_notes: {
 					...skill,
+					allowedTools: ['load_workflow'],
 					references: [
 						{
 							path: 'references/guide.md',
@@ -312,16 +313,18 @@ describe('AgentSkillsService', () => {
 			projectId,
 			'summarize_notes',
 			{
+				allowedTools: undefined,
 				references: [],
 			},
 			telemetryContext,
 		);
 
-		expect(result.skill.references).toEqual([]);
+		expect(result.skill).not.toHaveProperty('allowedTools');
+		expect(result.skill).not.toHaveProperty('references');
 		expect(agentRepository.save).toHaveBeenCalledWith(
 			expect.objectContaining({
 				skills: {
-					summarize_notes: expect.objectContaining({ references: [] }),
+					summarize_notes: skill,
 				},
 			}),
 		);

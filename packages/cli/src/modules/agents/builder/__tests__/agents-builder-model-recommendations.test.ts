@@ -147,6 +147,43 @@ describe('builder model recommendations', () => {
 		expect(skill?.instructions).toContain('`delegate_subagent`');
 	});
 
+	it('routes distinct target-agent functions into autonomously managed skills', () => {
+		const prompt = buildPrompt(null);
+		const skill = getBuilderRuntimeSkills().find((s) => s.id === 'agent-builder-target-skills');
+
+		expect(prompt).toContain(
+			'Keep the target agent instructions lightweight: identity, overall purpose, and rules that apply to every operation',
+		);
+		expect(prompt).toContain('even when the user never calls it a skill');
+		expect(prompt).toContain('create missing skills or update existing ones as part of the build');
+		expect(prompt).not.toContain('Infer and create these skills');
+		expect(prompt).toContain('creating tickets, reviewing images, and generating reports');
+		expect(prompt).not.toContain('create any requested tools, skills, or tasks');
+
+		expect(skill?.description).toContain('designing, creating, or editing target-agent behavior');
+		expect(skill?.description).toContain('without calling it a skill');
+		expect(skill?.recommendedTools).toEqual(
+			expect.arrayContaining(['list_skills', 'read_skill', 'update_skill', 'create_skills']),
+		);
+		expect(skill?.allowedTools).toEqual(
+			expect.arrayContaining(['list_skills', 'read_skill', 'update_skill', 'create_skills']),
+		);
+		expect(skill?.instructions).toContain(
+			'Call `list_skills` once and compare its metadata with the attached ids',
+		);
+		expect(skill?.instructions).toContain('preserving its id and existing config reference');
+		expect(skill?.instructions).toContain(
+			'Only call `create_skills` when no attached skill owns the capability',
+		);
+
+		const listIndex = skill?.instructions.indexOf('Call `list_skills`') ?? -1;
+		const readIndex = skill?.instructions.indexOf('Call `read_skill`') ?? -1;
+		const updateIndex = skill?.instructions.indexOf('Call `update_skill`') ?? -1;
+		expect(listIndex).toBeGreaterThan(-1);
+		expect(readIndex).toBeGreaterThan(listIndex);
+		expect(updateIndex).toBeGreaterThan(readIndex);
+	});
+
 	it('tells the builder to preserve fallback web search on model switches', () => {
 		const prompt = buildPrompt(null);
 
