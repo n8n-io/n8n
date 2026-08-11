@@ -1,12 +1,14 @@
-import type { Mock } from 'vitest';
 import { Logger } from '@n8n/backend-common';
 import { ApiKeyRepository, type AuthenticatedRequest } from '@n8n/db';
 import { ControllerRegistryMetadata, type Controller } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { Request } from 'express';
+import type { Mock } from 'vitest';
 import { mock, mockDeep } from 'vitest-mock-extended';
 
-// eslint-disable-next-line import-x/order
+import { Telemetry } from '@/telemetry';
+
+import { McpProtectedResource } from '../mcp-protected-resource';
 import { McpServerMiddlewareService } from '../mcp-server-middleware.service';
 
 const mockAuthMiddleware = vi.fn().mockImplementation(async function (_req, _res, next) {
@@ -23,11 +25,9 @@ Container.set(McpServerMiddlewareService, mcpServerMiddlewareService);
 
 import { McpConfig } from '../mcp.config';
 import { MCP_CLIENT_INFO_META_KEY, MCP_PROTOCOL_VERSION_META_KEY } from '../mcp.constants';
-import { McpProtectedResource } from '../mcp-protected-resource';
 import type { McpController as McpControllerType, FlushableResponse } from '../mcp.controller';
 import { McpService } from '../mcp.service';
 import { McpSettingsService } from '../mcp.settings.service';
-import { Telemetry } from '@/telemetry';
 import type { UserConnectedToMCPEventPayload } from '../mcp.types';
 
 const mockHandleRequest = vi.fn().mockResolvedValue(undefined);
@@ -143,6 +143,19 @@ describe('McpController', () => {
 			error: 'MCP access is disabled',
 		});
 		expect(mcpService.resolveFeatureFlags as Mock).not.toHaveBeenCalled();
+	});
+
+	test('advertises the MCP routing headers in the CORS allow-list', async () => {
+		(mcpSettingsService.getEnabled as Mock).mockResolvedValue(false);
+		const res = createRes();
+		res.header = vi.fn().mockReturnThis();
+
+		await controller.build(createReq(), res);
+
+		expect(res.header).toHaveBeenCalledWith(
+			'Access-Control-Allow-Headers',
+			'Content-Type, Authorization, X-Requested-With, MCP-Protocol-Version, Mcp-Method, Mcp-Name',
+		);
 	});
 
 	test('creates mcp server if MCP access is enabled', async () => {
