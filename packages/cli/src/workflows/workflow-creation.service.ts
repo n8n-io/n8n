@@ -184,6 +184,11 @@ export class WorkflowCreationService {
 
 		const floor = await this.readActiveRedactionFloor();
 
+		// Resolve MCP auto-exposure before opening the transaction: its settings
+		// read must not compete for a pool connection while the create transaction
+		// holds one (that starves small pools and stalls every workflow create).
+		await this.resolveMcpExposureOnCreate(newWorkflow);
+
 		const { manager: dbManager } = this.projectRepository;
 
 		const savedWorkflow = await dbManager.transaction(async (transactionManager) => {
@@ -209,8 +214,6 @@ export class WorkflowCreationService {
 				transactionManager,
 				floor,
 			);
-
-			await this.resolveMcpExposureOnCreate(newWorkflow);
 
 			if (parentFolderId && parentFolderId !== PROJECT_ROOT) {
 				newWorkflow.parentFolder = await this.findParentFolderInProjectOrFail(
