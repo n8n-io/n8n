@@ -1,10 +1,11 @@
-import { HttpsProxyAgent } from 'https-proxy-agent';
+import type { HttpsProxyAgent } from 'https-proxy-agent';
 import type http from 'node:http';
 import https from 'node:https';
 import type { LookupFunction } from 'node:net';
 
 import { EnvProxyRouter } from './env-proxy-router';
 import type { NodeAgentOptions } from './node-agents';
+import { createProxiedHttpsAgent } from '../proxy/proxied-agents';
 
 type HttpsProxyReqOpts = Parameters<HttpsProxyAgent<string>['addRequest']>[1];
 
@@ -16,10 +17,8 @@ export class EnvProxyHttpsAgent extends https.Agent {
 
 	constructor(lookup?: LookupFunction, agentOptions?: NodeAgentOptions) {
 		super({ ...agentOptions, lookup });
-		this.router = new EnvProxyRouter(
-			'https',
-			443,
-			(proxyUrl) => new HttpsProxyAgent(proxyUrl, { ...agentOptions }),
+		this.router = new EnvProxyRouter('https', 443, (proxyUrl) =>
+			createProxiedHttpsAgent(proxyUrl, agentOptions),
 		);
 	}
 
