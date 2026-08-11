@@ -25,12 +25,12 @@ import type { CreateExecuteContextParams, V1Execution, V1NodeStepConfig } from '
 
 export function toV1Execution(
 	graph: WorkflowGraph,
-	outputsByStepId: Record<string, StepSlots>,
+	outputsByNodeId: Record<string, StepSlots>,
 ): V1Execution {
 	return {
 		nodes: toV1Nodes(graph),
 		connections: toV1Connections(graph),
-		runData: toV1RunData(graph, outputsByStepId),
+		runData: toV1RunData(graph, outputsByNodeId),
 	};
 }
 
@@ -79,13 +79,13 @@ function toV1Connections(graph: WorkflowGraph): IConnections {
 	return connections;
 }
 
-function toV1RunData(graph: WorkflowGraph, outputsByStepId: Record<string, StepSlots>): IRunData {
+function toV1RunData(graph: WorkflowGraph, outputsByNodeId: Record<string, StepSlots>): IRunData {
 	const namesById = new Map(graph.nodes.map((node) => [node.id, node.name]));
-	const sourcesByStepId = toV1Sources(graph);
+	const sourcesByNodeId = toV1Sources(graph);
 
 	const runData: IRunData = {};
-	for (const [completedStepId, outputs] of Object.entries(outputsByStepId)) {
-		const nodeName = namesById.get(completedStepId);
+	for (const [completedNodeId, outputs] of Object.entries(outputsByNodeId)) {
+		const nodeName = namesById.get(completedNodeId);
 		if (nodeName === undefined) continue;
 
 		runData[nodeName] = [
@@ -93,7 +93,7 @@ function toV1RunData(graph: WorkflowGraph, outputsByStepId: Record<string, StepS
 				startTime: 0,
 				executionTime: 0,
 				executionIndex: 0,
-				source: sourcesByStepId.get(completedStepId) ?? [],
+				source: sourcesByNodeId.get(completedNodeId) ?? [],
 				data: { [MAIN_CONNECTION_TYPE]: fromStepInputs(outputs) },
 			},
 		];
@@ -105,19 +105,19 @@ function toV1RunData(graph: WorkflowGraph, outputsByStepId: Record<string, StepS
 export function toV1Sources(graph: WorkflowGraph): Map<string, Array<ISourceData | null>> {
 	const namesById = new Map(graph.nodes.map((node) => [node.id, node.name]));
 
-	const sourcesByStepId = new Map<string, Array<ISourceData | null>>();
+	const sourcesByNodeId = new Map<string, Array<ISourceData | null>>();
 	for (const edge of graph.edges) {
 		if (edge.isBackEdge === true) continue;
 		const fromName = namesById.get(edge.from);
 		if (fromName === undefined) continue;
 
-		const source = sourcesByStepId.get(edge.to) ?? [];
+		const source = sourcesByNodeId.get(edge.to) ?? [];
 		const inputIndex = edge.inputIndex ?? 0;
 		while (source.length <= inputIndex) source.push(null);
 		source[inputIndex] ??= { previousNode: fromName, previousNodeOutput: edge.outputIndex };
-		sourcesByStepId.set(edge.to, source);
+		sourcesByNodeId.set(edge.to, source);
 	}
-	return sourcesByStepId;
+	return sourcesByNodeId;
 }
 
 export function toV1Workflow(

@@ -13,6 +13,7 @@
     "lint:fix": "eslint . --fix",
     "test": "vitest run --passWithNoTests",
     "test:dev": "vitest --watch",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
     "watch": "tsc -p tsconfig.build.json --watch"
   },
   "main": "dist/index.js",
@@ -28,7 +29,9 @@
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
+    "@testcontainers/postgresql": "catalog:",
     "n8n-nodes-base": "workspace:*",
+    "testcontainers": "catalog:",
     "typescript": "catalog:typescript",
     "vitest": "catalog:"
   },
