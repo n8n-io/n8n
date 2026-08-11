@@ -62,16 +62,16 @@ async function main(): Promise<void> {
 	// Every browser-lane case shares ONE resource: the instance's single relay.
 	// `createBrowserLink()` / `disconnectBrowserSession()` are instance-wide, so
 	// a second concurrent browser build displaces the first and either build's
-	// tools can end up driving the other's browser. The lane allocator only
-	// serialises same-case builds, so it does not help here. Serialise when more
-	// than one such case is selected; a single one cannot collide with itself.
+	// tools can end up driving the other's browser. Serialised on ANY browser
+	// case, not just two: iterations expand into separate concurrent rows, so one
+	// case at `--iterations 3` collides with itself.
 	const browserCases = testCasesWithFiles.filter(
 		({ testCase }) => testCase.credentialFixture !== undefined,
 	);
-	if (browserCases.length > 1 && args.concurrency !== 1) {
+	if (browserCases.length > 0 && args.concurrency !== 1) {
 		args.concurrency = 1;
 		logger.info(
-			`  ${String(browserCases.length)} browser-lane cases selected: serialised, because the n8n relay is instance-wide.`,
+			`  ${String(browserCases.length)} browser-lane case(s) selected: serialised, because the n8n relay is instance-wide.`,
 		);
 	}
 

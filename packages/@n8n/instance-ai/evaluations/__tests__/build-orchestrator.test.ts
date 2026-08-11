@@ -2,7 +2,12 @@ import { verifyBuildExpectations } from '../build-expectations/verifier';
 import type { CliArgs } from '../cli/args';
 import type { N8nClient } from '../clients/n8n-client';
 import { resolveArtifactContext } from '../harness/artifacts/artifact-context';
-import { scrubLocalSecretsFromBuild, type BuildResult } from '../harness/build-workflow';
+import {
+	leakHaystackFor,
+	redactLocalRunSecrets,
+	scrubLocalSecretsFromBuild,
+	type BuildResult,
+} from '../harness/build-workflow';
 import { runWorkflowChecks } from '../harness/cleanup';
 import { runCredentialSetupChecks } from '../harness/credential-setup-checks';
 import type { EvalLogger } from '../harness/logger';
@@ -688,6 +693,24 @@ describe('local-mode secret scrubbing', () => {
 		expect(JSON.stringify(deps.transcriptByThreadId.get('thread-fixture'))).toContain(KEY);
 	});
 
+	it('redacts the built workflow, which the results artifact carries', () => {
+		// An agent that hardcodes the key into a node instead of saving a credential
+		// is the failure this eval detects — and workflowJsons[0] goes to
+		// eval-results.json and the report, so detecting it must not publish it.
+		const build = localBuild();
+		build.workflowJsons = [
+			{ nodes: [{ parameters: { headers: { 'x-api-key': KEY } } }] },
+		] as unknown as BuildResult['workflowJsons'];
+		build.error = `save failed for ${KEY}`;
+
+		scrubLocalSecretsFromBuild(build);
+
+		expect(JSON.stringify(build.workflowJsons)).not.toContain(KEY);
+		expect(build.error).not.toContain(KEY);
+		// …and the leak check still sees it, so the run reports the leak.
+		expect(leakHaystackFor(build.credentialSetup!)).toContain(KEY);
+	});
+
 	it('refuses to hand back an unscrubbed local build when no key shape is known', () => {
 		// The empty list is the dangerous state: downstream it is indistinguishable
 		// from "nothing to scrub", so returning the build silently persisted a real
@@ -705,5 +728,36 @@ describe('local-mode secret scrubbing', () => {
 		} as Partial<BuildResult>);
 
 		expect(() => scrubLocalSecretsFromBuild(build)).toThrow(/scrub/i);
+	});
+});
+
+describe('surfaces fetched after the scrub', () => {
+	const PREFIX = 'sk-ant-api03-';
+	const KEY = `${PREFIX}abcdefghijklmnopqrstuvwx`;
+
+	it('redacts run debug, which is re-read from n8n and rendered into the report', () => {
+		// captureThreadRunDebug runs after the build was scrubbed, so its payload
+		// arrives raw; run-debug-report renders step input/output verbatim.
+		const debug = [{ steps: [{ input: { messages: [`saved ${KEY}`] } }] }];
+
+		const out = redactLocalRunSecrets(debug, {
+			secretWasIssued: false,
+			local: true,
+			scrubPrefixes: [PREFIX],
+			credentialIdsBefore: [],
+		});
+
+		expect(JSON.stringify(out)).not.toContain(KEY);
+	});
+
+	it('leaves a hermetic run alone — its minted secret is synthetic', () => {
+		const debug = [{ steps: [{ input: { messages: [`saved ${KEY}`] } }] }];
+
+		const out = redactLocalRunSecrets(debug, {
+			secretWasIssued: true,
+			credentialIdsBefore: [],
+		});
+
+		expect(JSON.stringify(out)).toContain(KEY);
 	});
 });

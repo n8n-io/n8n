@@ -27,6 +27,7 @@ import { attributionForExpectation } from '../harness/attribution';
 import {
 	buildFailedOnInfra,
 	leakHaystackFor,
+	redactLocalRunSecrets,
 	scrubLocalSecretsFromBuild,
 	type BuildResult,
 } from '../harness/build-workflow';
@@ -339,7 +340,14 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 
 	function stashRunDebug(client: N8nClient, build: BuildResult): void {
 		if (!build.threadId) return;
-		runDebugByThreadId.set(build.threadId, captureThreadRunDebug(client, build.threadId, logger));
+		// Re-read from n8n AFTER the build was scrubbed, so it arrives raw and the
+		// run-debug report would render a local run's real key verbatim.
+		runDebugByThreadId.set(
+			build.threadId,
+			captureThreadRunDebug(client, build.threadId, logger).then((debug) =>
+				redactLocalRunSecrets(debug, build.credentialSetup),
+			),
+		);
 	}
 
 	// Judge author expectations once per build (off the scenario critical path);
@@ -358,9 +366,18 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 		// `scrubLocalSecrets` (in stashTranscript, which always runs first) has
 		// already redacted a local run's transcript and kept the pre-scrub text
 		// off-build for exactly this check.
+		// The fallback (hermetic mode, nothing scrubbed) must cover the same
+		// surfaces as the local-mode haystack, or a minted key typed into a tool
+		// call passes the leak check in the mode CI actually runs.
 		const searchableRunText =
 			(build.credentialSetup && leakHaystackFor(build.credentialSetup)) ??
-			JSON.stringify({ transcript: build.transcript ?? [], events: build.events ?? [] });
+			JSON.stringify({
+				transcript: build.transcript ?? [],
+				events: build.events ?? [],
+				buildTrace: build.buildTrace ?? null,
+				workflowJsons: build.workflowJsons ?? [],
+				error: build.error ?? null,
+			});
 		const testCase = testCaseByFileSlug.get(fileSlug);
 		if (!testCase) return;
 		// Deterministic credential-setup verdicts, started EAGERLY: per-build

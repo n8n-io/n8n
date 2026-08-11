@@ -30,6 +30,7 @@ import {
 } from './conversation-seed';
 import {
 	probeCredentialValue,
+	redactKeyShapedSecrets,
 	redactTranscriptSecrets,
 	type CredentialValueProbe,
 } from './credential-setup-checks';
@@ -309,22 +310,38 @@ export function scrubLocalSecretsFromBuild(build: BuildResult): BuildResult {
 				'Refusing to persist the build rather than risk shipping a real key.',
 		);
 	}
-	// `buildTrace` too: the HTML report and verifier snapshot dump its `toolCalls`
-	// verbatim, and the leak expectation claims to cover tool traces.
+	// Everything the artifacts can carry, including the built workflow: an agent
+	// that hardcodes the key into a node instead of a credential is the failure
+	// this eval exists to catch, and that lands in eval-results.json.
 	leakHaystacks.set(
 		facts,
 		JSON.stringify({
 			transcript: build.transcript ?? [],
 			events: build.events ?? [],
 			buildTrace: build.buildTrace ?? null,
+			workflowJsons: build.workflowJsons ?? [],
+			error: build.error ?? null,
 		}),
 	);
 	for (const prefix of prefixes) {
 		build.transcript = redactTranscriptSecrets(build.transcript, prefix);
 		build.events = redactTranscriptSecrets(build.events, prefix);
 		build.buildTrace = redactTranscriptSecrets(build.buildTrace, prefix);
+		build.workflowJsons = redactTranscriptSecrets(build.workflowJsons, prefix);
+		if (build.error) build.error = redactKeyShapedSecrets(build.error, prefix);
 	}
 	return build;
+}
+
+/** Apply a local run's scrub to anything fetched AFTER the build was scrubbed —
+ *  run debug is re-read from n8n and would otherwise reach the report raw. */
+export function redactLocalRunSecrets<T>(value: T, facts?: CredentialSetupRunFacts): T {
+	if (!facts?.local) return value;
+	let out = value;
+	for (const prefix of facts.scrubPrefixes ?? (facts.secretPrefix ? [facts.secretPrefix] : [])) {
+		out = redactTranscriptSecrets(out, prefix);
+	}
+	return out;
 }
 
 /** What the credential-setup lane knows once a build is over — the input to the

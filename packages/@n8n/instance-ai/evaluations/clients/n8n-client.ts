@@ -448,11 +448,7 @@ export class N8nClient {
 	 * Run a credential's own test request WITHOUT persisting anything.
 	 * POST /rest/credentials/test
 	 *
-	 * `testWithCredentials` merges the submitted payload over the stored one and
-	 * calls `unredact(...)`, so a BLANKED password field is restored from the
-	 * database. That is what lets an eval point the test at a fixture URL while
-	 * the REAL stored secret is the thing being authenticated — proving the
-	 * saved value without ever reading it back, and writing nothing.
+	 * Proves the stored secret works without the harness ever reading it back.
 	 */
 	async testCredential(credential: {
 		id: string;
