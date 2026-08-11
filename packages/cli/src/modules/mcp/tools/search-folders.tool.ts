@@ -36,6 +36,10 @@ const outputSchema = {
 		)
 		.describe('List of folders matching the query'),
 	count: z.number().int().min(0).describe('Total number of matching folders'),
+	error: z
+		.string()
+		.optional()
+		.describe('Error message explaining why the search failed. Present only on failure.'),
 } satisfies z.ZodRawShape;
 
 export const createSearchFoldersTool = (
@@ -90,7 +94,9 @@ export const createSearchFoldersTool = (
 
 			const [folders, count] = await folderService.getManyAndCount(projectId, {
 				filter: query ? { name: query } : {},
-				select: { name: true, parentFolder: true, path: true },
+				// updatedAt backs the repository's default ORDER BY; with `take`,
+				// TypeORM's distinct wrapper can only sort on selected columns.
+				select: { name: true, parentFolder: true, path: true, updatedAt: true },
 				take: safeLimit,
 			});
 

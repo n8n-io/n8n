@@ -96,7 +96,7 @@ describe('search-folders MCP tool', () => {
 
 		expect(folderService.getManyAndCount).toHaveBeenCalledWith('proj-1', {
 			filter: {},
-			select: { name: true, parentFolder: true, path: true },
+			select: { name: true, parentFolder: true, path: true, updatedAt: true },
 			take: 100,
 		});
 	});
@@ -110,7 +110,7 @@ describe('search-folders MCP tool', () => {
 
 		expect(folderService.getManyAndCount).toHaveBeenCalledWith('proj-1', {
 			filter: { name: 'prod' },
-			select: { name: true, parentFolder: true, path: true },
+			select: { name: true, parentFolder: true, path: true, updatedAt: true },
 			take: 100,
 		});
 	});
