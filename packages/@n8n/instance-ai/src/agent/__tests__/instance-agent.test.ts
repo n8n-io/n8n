@@ -499,32 +499,72 @@ describe('createInstanceAgent', () => {
 		);
 	});
 
-	it('enables the MCP registry prompt section only when the host wired mcpService', async () => {
-		const baseOptions = {
-			modelId: 'test-model',
-			orchestrationContext: { runId: 'mcp-registry-prompt' },
-			memoryConfig: {},
-			mcpManager: createMcpManagerStub(new Map()),
-		};
-		const baseContext = {
-			runLabel: 'mcp-registry-prompt',
-			localGatewayStatus: undefined,
-			licenseHints: undefined,
-			localMcpServer: undefined,
+	describe('connected MCP services', () => {
+		const lastDomainToolContext = () => {
+			const calls = createOrchestratorDomainTools.mock.calls as Array<
+				[{ connectedMcpServices?: unknown }]
+			>;
+			return calls.at(-1)?.[0].connectedMcpServices;
 		};
 
-		await createInstanceAgent({ ...baseOptions, context: baseContext } as never);
-		expect(getSystemPrompt).toHaveBeenLastCalledWith(
-			expect.objectContaining({ mcpRegistrySearchEnabled: false }),
-		);
+		const mcpServers = [
+			{
+				name: 'mcp_linear',
+				url: 'https://linear.example',
+				metadata: { serverSlug: 'linear' },
+			},
+			{
+				name: 'mcp_notion',
+				url: 'https://notion.example',
+				metadata: { serverSlug: 'notion' },
+			},
+		];
 
-		await createInstanceAgent({
-			...baseOptions,
-			context: { ...baseContext, mcpService: { search: vi.fn() } },
-		} as never);
-		expect(getSystemPrompt).toHaveBeenLastCalledWith(
-			expect.objectContaining({ mcpRegistrySearchEnabled: true }),
-		);
+		const buildWith = async (toolName = 'mcp_linear_create_issue') => {
+			const linearTool = { ...mockBuiltTool(toolName), mcpServerName: 'mcp_linear' };
+
+			await createInstanceAgent({
+				modelId: 'test-model',
+				context: {
+					runLabel: 'connected-mcp',
+					logger: mockLogger,
+					mcpService: { search: vi.fn() },
+				},
+				orchestrationContext: { runId: 'connected-mcp' },
+				memoryConfig: {},
+				mcpServers,
+				mcpManager: createMcpManagerStub(new Map([[toolName, linearTool]])),
+			} as never);
+		};
+
+		// The tools capture their context by value, so the inventory has to be in place
+		// before `mcp-servers` is built — not handed to the prompt.
+		it('hands the domain tools the inventory, keyed by service', async () => {
+			await buildWith();
+
+			expect(lastDomainToolContext()).toEqual([
+				{ slug: 'linear', toolNames: ['mcp_linear_create_issue'] },
+				{ slug: 'notion', toolNames: [] },
+			]);
+		});
+
+		it('reports no tools for a service whose only tool has an unsafe name', async () => {
+			await buildWith('mcp_linear.create_issue');
+
+			expect(lastDomainToolContext()).toEqual([
+				{ slug: 'linear', toolNames: [] },
+				{ slug: 'notion', toolNames: [] },
+			]);
+		});
+
+		it('reports no tools for a service whose only tool collides with a domain tool', async () => {
+			await buildWith('workflows');
+
+			expect(lastDomainToolContext()).toEqual([
+				{ slug: 'linear', toolNames: [] },
+				{ slug: 'notion', toolNames: [] },
+			]);
+		});
 	});
 
 	it('does not enable MCP-specific tool search guidance when deferred search is disabled', async () => {

@@ -500,6 +500,13 @@ export interface McpRegistryServerSummary {
 	tools: string[];
 }
 
+/** A service the user connected, with those of its tools that reached the agent.
+ *  Named by slug, which is also what the MCP tools accept as an argument. */
+export interface ConnectedMcpService {
+	slug: string;
+	toolNames: string[];
+}
+
 export interface InstanceAiMcpService {
 	search(queries: string[]): Promise<McpRegistryServerSummary[]>;
 }
@@ -1051,6 +1058,10 @@ export interface InstanceAiContext {
 	/** Optional — present when the host allows MCP registry discovery for this
 	 *  user. Presence gates the `mcp-servers` tool. */
 	mcpService?: InstanceAiMcpService;
+	/** Per-run inventory behind `mcp-servers`' `connected` action. Captured when the
+	 *  agent is built, which is also when its MCP tools are attached, so it always
+	 *  matches what this agent can actually call. */
+	connectedMcpServices?: ConnectedMcpService[];
 	/** The target n8n Agent being built/edited via the build-agent sub-agent tool. */
 	agentBuilderTarget?: { agentId: string; projectId: string; name?: string; ref?: string };
 	/** Narrow builder delegate for the build-agent sub-agent tool (agents module active only). */

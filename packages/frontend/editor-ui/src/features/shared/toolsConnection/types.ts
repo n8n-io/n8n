@@ -152,7 +152,7 @@ export interface PickableCredential {
  */
 export interface ToolConnectionCredentialAdapter {
 	getCredentialsByType: (authType: string) => readonly PickableCredential[];
-	openNewCredential: (authType: string) => void;
+	openNewCredential: (authType: string, item: ToolConnectionItem) => void;
 	openExistingCredential: (credentialId: string) => void;
 }
 

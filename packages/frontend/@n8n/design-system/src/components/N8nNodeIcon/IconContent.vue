@@ -60,7 +60,12 @@ const supportedIconName = computed((): IconName | NodeIconName | undefined => {
 
 <template>
 	<div v-if="type !== 'unknown'" :class="$style.icon">
-		<img v-if="type === 'file'" :src="src" :class="$style.nodeIconImage" />
+		<img
+			v-if="type === 'file'"
+			:src="src"
+			referrerpolicy="no-referrer"
+			:class="$style.nodeIconImage"
+		/>
 		<N8nIcon v-else-if="supportedIconName" :icon="supportedIconName" :style="fontStyleData" />
 		<div v-else :class="$style.nodeIconPlaceholder">
 			{{ nodeTypeName ? nodeTypeName.charAt(0) : '?' }}

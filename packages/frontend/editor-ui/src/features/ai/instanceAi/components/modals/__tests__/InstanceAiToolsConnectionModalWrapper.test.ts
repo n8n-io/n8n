@@ -5,6 +5,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import InstanceAiToolsConnectionModalWrapper from '../InstanceAiToolsConnectionModalWrapper.vue';
 import type {
 	McpServerConnectionItem,
+	ToolConnectionCredentialAdapter,
 	ToolConnectionSettings,
 } from '@/features/shared/toolsConnection/types';
 
@@ -64,6 +65,13 @@ vi.mock('../../../composables/useMcpServerConnect', () => ({
 	useMcpServerConnect: () => ({
 		connectServer: vi.fn().mockResolvedValue(null),
 		connectWithCredential: vi.fn().mockResolvedValue(null),
+		createCredentialAdapter: (
+			openNewCredential: ToolConnectionCredentialAdapter['openNewCredential'],
+		) => ({
+			getCredentialsByType: () => [],
+			openNewCredential,
+			openExistingCredential: uiStoreMock.openExistingCredential,
+		}),
 	}),
 }));
 

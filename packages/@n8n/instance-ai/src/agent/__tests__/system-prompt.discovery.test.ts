@@ -145,25 +145,14 @@ describe('getSystemPrompt — browser/computer-use discoverability', () => {
 		});
 	});
 
-	describe('MCP registry discovery is gated on the tool being registered', () => {
-		it('nudges the orchestrator to search the registry when the tool is available', () => {
-			const prompt = getSystemPrompt({ mcpRegistrySearchEnabled: true });
+	describe('MCP server guidance belongs to the tool, not the prompt', () => {
+		// Guidance lives on `mcp-servers`, which is never deferred, so its description
+		// reaches every request the way a prompt section would — without a second copy.
+		it('says nothing about MCP servers', () => {
+			const prompt = getSystemPrompt({ toolSearchEnabled: true, mcpToolSearchEnabled: true });
 
-			expect(prompt).toContain('## Connecting Services');
-			expect(prompt).toContain('mcp-servers');
-		});
-
-		it('keeps the nudge away from workflow building', () => {
-			const prompt = getSystemPrompt({ mcpRegistrySearchEnabled: true });
-
-			expect(prompt).toContain('never call `mcp-servers` for a build request');
-		});
-
-		it('omits the section when the tool is not registered', () => {
-			const prompt = getSystemPrompt({});
-
-			expect(prompt).not.toContain('## Connecting Services');
 			expect(prompt).not.toContain('mcp-servers');
+			expect(prompt).not.toContain('## MCP Servers');
 		});
 	});
 

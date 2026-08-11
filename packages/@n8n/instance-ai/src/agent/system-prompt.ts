@@ -15,8 +15,6 @@ interface SystemPromptOptions {
 	localGateway?: LocalGatewayStatus;
 	toolSearchEnabled?: boolean;
 	mcpToolSearchEnabled?: boolean;
-	/** Whether the `mcp-servers` tool is registered for this run. */
-	mcpRegistrySearchEnabled?: boolean;
 	/** Human-readable hints about licensed features that are NOT available on this instance. */
 	licenseHints?: string[];
 	browserAvailable?: boolean;
@@ -68,17 +66,6 @@ ${mcpSearchGuidance}When the available tools do not cover the user's request, re
 Examples: ${mcpExamples}search "create tasks" for \`create-tasks\`, search "eval" for \`evals\`.
 
 For questions about n8n itself — how a node behaves, the shape of its output, what a parameter does, product semantics — prefer \`n8n-docs\` and the node type definitions, both already loaded and needing no search, over web search, which is for third-party services and APIs.
-`;
-}
-
-function getMcpRegistrySection(mcpRegistrySearchEnabled?: boolean): string {
-	if (!mcpRegistrySearchEnabled) return '';
-	return `
-## Connecting Services through MCP
-
-When the user wants to work with a third-party service here and no tool covers it, call \`mcp-servers\` with the service name before concluding it is unavailable. Do this proactively.
-
-This is only about tools **you** use in this conversation. It is not part of building: a workflow that talks to a service uses that service's node and credential, so never call \`mcp-servers\` for a build request, and never offer to connect a service instead of adding the node.
 `;
 }
 
@@ -137,7 +124,6 @@ export function getSystemPrompt(options: SystemPromptOptions = {}): string {
 		localGateway,
 		toolSearchEnabled,
 		mcpToolSearchEnabled,
-		mcpRegistrySearchEnabled,
 		licenseHints,
 		browserAvailable,
 		branchReadOnly,
@@ -152,7 +138,6 @@ ${workspaceRoot ? `${getSandboxWorkspaceSection(workspaceRoot)}` : ''}
 ${getProjectScopeSection(projectId)}
 ${SECRET_ASK_GUARDRAIL}
 ${getToolDiscoverySection(toolSearchEnabled, mcpToolSearchEnabled)}
-${getMcpRegistrySection(mcpRegistrySearchEnabled)}
 ## Communication Style
 
 - Be concise.
