@@ -145,6 +145,23 @@ runs:
       shell: bash
       run: node .github/scripts/verify-safechain.mjs
 
+    # @confluentinc/kafka-javascript ships no Node 26 prebuilds
+    # (https://github.com/confluentinc/confluent-kafka-javascript/issues/397)
+    # and its source build cannot run under pnpm's directory layout, so drop it
+    # from the build allowlist for CI installs. CI never needs the binary
+    # (Kafka node tests mock the library). Docker builds and local installs use
+    # the committed package.json and are unaffected. The lockfile does not
+    # record this list, so --frozen-lockfile is unaffected too.
+    - name: Skip Kafka native build (no Node 26 prebuilds)
+      shell: bash
+      run: |
+        node -e "
+          const fs = require('fs');
+          const p = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+          p.pnpm.onlyBuiltDependencies = p.pnpm.onlyBuiltDependencies.filter(d => d !== '@confluentinc/kafka-javascript');
+          fs.writeFileSync('package.json', JSON.stringify(p, null, 2) + '\n');
+        "
+
     # `--loglevel` CLI flag does NOT override `.npmrc` for that path, but
     # `--config.loglevel` does — so the failing script's real output reaches us.
     # (Confirmed on CI across Blacksmith + GitHub-hosted, through the SafeChain
