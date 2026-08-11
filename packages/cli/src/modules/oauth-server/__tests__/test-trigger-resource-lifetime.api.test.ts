@@ -182,16 +182,19 @@ describe('protected-resource grants outliving the trigger', () => {
 		const workflow = await createWorkflowWithHistory({ active: false, nodes: [node] }, owner);
 		await registerTestWebhook(webhookPath, node, workflow, ['GET', 'POST']);
 
-		const grant = await sealAndReadBackGrant(resourceUrlFor(webhookPath, 'POST'));
+		const resourceUrl = resourceUrlFor(webhookPath, 'POST');
+		const grant = await sealAndReadBackGrant(resourceUrl);
 		const token = await mintTokenFor(resourceUrlFor(webhookPath, 'GET'), owner);
+
+		// The sealed audiences are the ones the live resource serves, so what a token is
+		// checked against doesn't shift when the resource stops resolving.
+		const live = await Container.get(ProtectedResourceRegistry).getByResourceUrl(resourceUrl);
+		expect(grant?.audiences).toEqual(live?.getAudiences());
+
 		await deregisterTrigger(webhookPath, ['GET', 'POST']);
 
 		await expect(
-			Container.get(OAuthTokenService).verifyOAuthAccessToken(
-				token,
-				resourceUrlFor(webhookPath, 'POST'),
-				grant,
-			),
+			Container.get(OAuthTokenService).verifyOAuthAccessToken(token, resourceUrl, grant),
 		).resolves.toMatchObject({ user: expect.objectContaining({ id: owner.id }) });
 	});
 
@@ -234,6 +237,42 @@ describe('protected-resource grants outliving the trigger', () => {
 					grant,
 				),
 			).resolves.toMatchObject({ user: null });
+		});
+
+		test('stops at the sealed token expiring, which the grant does not extend', async () => {
+			const webhookPath = randomUUID();
+			const node = oauth2WebhookNode();
+			const workflow = await createWorkflowWithHistory({ active: false, nodes: [node] }, owner);
+			await registerTestWebhook(webhookPath, node, workflow);
+
+			const resourceUrl = resourceUrlFor(webhookPath);
+			const token = await mintTokenFor(resourceUrl, owner);
+			const grant = await sealAndReadBackGrant(resourceUrl);
+			await deregisterTrigger(webhookPath);
+
+			const tokenService = Container.get(OAuthTokenService);
+			await expect(
+				tokenService.verifyOAuthAccessToken(token, resourceUrl, grant),
+			).resolves.toMatchObject({ user: expect.objectContaining({ id: owner.id }) });
+
+			// This is the real ceiling on how long a run can keep resolving credentials: the
+			// grant outlives the resource, but not the access token it was sealed with. A run
+			// parked past `getAccessTokenExpirySeconds()` — a Wait node, a long queue backlog —
+			// fails here, not at the resource lookup.
+			vi.useFakeTimers();
+			vi.setSystemTime(
+				new Date(Date.now() + (tokenService.getAccessTokenExpirySeconds() + 60) * 1000),
+			);
+			try {
+				await expect(
+					tokenService.verifyOAuthAccessToken(token, resourceUrl, grant),
+				).resolves.toMatchObject({
+					user: null,
+					context: expect.objectContaining({ reason: 'invalid_token' }),
+				});
+			} finally {
+				vi.useRealTimers();
+			}
 		});
 
 		test('rejects a revoked token', async () => {

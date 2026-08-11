@@ -33,6 +33,7 @@ import type {
 	IWorkflowExecuteAdditionalData,
 	WebhookResponseMode,
 	OAuth2FailureReason,
+	OAuthResourceGrant,
 	Workflow,
 	WorkflowExecuteMode,
 	IWorkflowExecutionDataProcess,
@@ -594,10 +595,15 @@ export async function executeWebhook(
 	additionalData.completeN8nOAuth2Flow = async (code: string, state: string) =>
 		await Container.get(OAuth2FlowProxy).complete(code, state);
 
+	// Captured here so `establishTriggerIdentity` seals the gate that admitted this
+	// request, instead of resolving the resource a second time.
+	let admittedBy: { resource: string; grant?: OAuthResourceGrant } | undefined;
+
 	additionalData.validateN8nOAuth2Token = async (token: string, resourceUrl: string) => {
 		const oauthTokenVerifierProxy = Container.get(OAuthTokenVerifierProxy);
 		const result = await oauthTokenVerifierProxy.verifyOAuthAccessToken(token, resourceUrl);
 		if (result.user) {
+			admittedBy = { resource: resourceUrl, grant: result.grant };
 			return {
 				valid: true,
 				user: {
@@ -616,11 +622,21 @@ export async function executeWebhook(
 	};
 
 	additionalData.establishTriggerIdentity = async (token: string, resource: string) => {
-		// Snapshot the resource's gate while it still resolves: the run re-verifies this
-		// token long after the trigger has stopped listening.
-		const grant = (
-			await Container.get(ProtectedResourceRegistry).getByResourceUrl(resource)
-		)?.getGrant?.();
+		// The run re-verifies this token after the trigger stops listening, so it carries
+		// the gate with it. Fall back to a lookup for callers that establish an identity
+		// without going through `validateN8nOAuth2Token`.
+		const grant =
+			admittedBy?.resource === resource
+				? admittedBy.grant
+				: (await Container.get(ProtectedResourceRegistry).getByResourceUrl(resource))?.getGrant?.();
+
+		if (!grant) {
+			// Not fatal now, but this is the state a queued or parked run later fails in.
+			Container.get(Logger).warn(
+				'Established a trigger identity without a resource grant; this run will depend on the protected resource still resolving',
+				{ workflowId: workflow.id, resource },
+			);
+		}
 
 		additionalData.encryptedRunnerIdentity = await Container.get(
 			ExecutionContextService,

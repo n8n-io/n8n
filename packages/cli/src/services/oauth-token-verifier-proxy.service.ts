@@ -29,6 +29,12 @@ export type UserWithContext = {
 	authType?: Mcpauth_type;
 	/** OAuth scopes granted to the token. `undefined` = not scope-bearing (e.g. API key) → full access. */
 	scopes?: string[];
+	/**
+	 * Sealable form of the gate this call was admitted by, for callers that keep
+	 * re-verifying after the resource stops resolving. Absent when the gate can't be
+	 * expressed as a grant, or the call was rejected.
+	 */
+	grant?: OAuthResourceGrant;
 };
 
 /**

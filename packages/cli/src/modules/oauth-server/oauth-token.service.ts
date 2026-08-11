@@ -22,6 +22,7 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { AccessTokenRepository } from './database/repositories/oauth-access-token.repository';
 import { RefreshTokenRepository } from './database/repositories/oauth-refresh-token.repository';
 import { AccessTokenNotFoundError, JWTVerificationError } from './oauth.errors';
+import { authorizeAgainstGrant } from './resource-gate';
 
 /**
  * Manages the OAuth 2.1 token lifecycle for the shared OAuth server.
@@ -290,7 +291,9 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 				return { user: null, context: { reason: 'insufficient_scope', auth_type: 'oauth' } };
 			}
 
-			return { user, authType: 'oauth', scopes: authInfo.scopes };
+			// Handed back so a caller whose work outlives this resource can seal the gate it
+			// was just admitted by.
+			return { user, authType: 'oauth', scopes: authInfo.scopes, grant: resource?.getGrant?.() };
 		} catch (error) {
 			const errorForSure = ensureError(error);
 			const reason =
@@ -384,8 +387,8 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 	}
 
 	/**
-	 * The resource's own gate when it still resolves, otherwise the same check rebuilt
-	 * from the sealed grant, so a grant never widens what the resource would have allowed.
+	 * The resource's own gate while it resolves, otherwise the sealed grant — through the
+	 * same function that gate is built from, so a grant can't allow more than it did.
 	 */
 	private async isAuthorized(
 		user: User,
@@ -394,15 +397,9 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 	): Promise<boolean> {
 		if (resource) return await resource.authorize(user);
 
-		if (!grant?.executeAccessWorkflowId) return true;
+		if (!grant) return true;
 
-		const allowed = await this.workflowFinderService.findWorkflowIdsWithScopeForUser(
-			[grant.executeAccessWorkflowId],
-			user,
-			['workflow:execute'],
-		);
-
-		return allowed.has(grant.executeAccessWorkflowId);
+		return await authorizeAgainstGrant(this.workflowFinderService, grant, user);
 	}
 
 	private async getResourceByAudience(
