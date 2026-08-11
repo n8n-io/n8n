@@ -60,7 +60,9 @@ async function main(): Promise<void> {
 	}
 
 	if (options.command === 'baseline') {
-		const baseline = generateBaseline(report, rootDir);
+		// Pass the current file through so exceptions for rules this run didn't cover survive.
+		const previous = fs.existsSync(baselinePath) ? loadBaseline(baselinePath) : null;
+		const baseline = generateBaseline(report, rootDir, previous);
 		saveBaseline(baseline, baselinePath);
 		console.log(
 			JSON.stringify(
