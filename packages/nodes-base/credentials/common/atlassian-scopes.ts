@@ -1,21 +1,19 @@
 /**
- * Atlassian OAuth2 scope catalog, classic scopes first, then granular,
- * grouped by service. The `atlassianOAuth2Api` base credential defaults to the
- * full catalog; product credentials extending it restrict to their own
- * default list.
+ * Atlassian OAuth2 scopes, grouped by service. The `atlassianOAuth2Api` base
+ * credential defaults to the union of the product defaults — only scopes the
+ * nodes actually use, since Atlassian rejects any requested scope that isn't
+ * enabled on the OAuth app.
  *
- * Classic scope references:
+ * Scope references:
  * https://developer.atlassian.com/cloud/jira/platform/scopes-for-oauth-2-3LO-and-forge-apps/
  * https://developer.atlassian.com/cloud/confluence/scopes-for-oauth-2-3LO-and-forge-apps/
  */
 export const offlineAccessScope = 'offline_access';
 
-export const jiraClassicScopes = [
+const jiraCoreScopes = [
 	'read:jira-user',
 	'read:jira-work',
 	'write:jira-work',
-	'manage:jira-project',
-	'manage:jira-configuration',
 	'manage:jira-webhook',
 ];
 
@@ -40,20 +38,8 @@ export const confluenceGranularScopes = [
 	'delete:page:confluence',
 ];
 
-export const jiraDefaultScopes = [
-	'read:jira-user',
-	'read:jira-work',
-	'write:jira-work',
-	'manage:jira-webhook',
-	// Retired by Atlassian — silently dropped at consent, kept only to avoid churning the request string.
-	'manage:jira-user',
-	offlineAccessScope,
-];
+export const jiraDefaultScopes = [...jiraCoreScopes, offlineAccessScope];
 
 export const confluenceDefaultScopes = [...confluenceGranularScopes, offlineAccessScope];
 
-export const atlassianScopes = [
-	...jiraClassicScopes,
-	...confluenceGranularScopes,
-	offlineAccessScope,
-];
+export const atlassianScopes = [...jiraCoreScopes, ...confluenceGranularScopes, offlineAccessScope];
