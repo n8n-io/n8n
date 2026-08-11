@@ -14,15 +14,28 @@ export function isApprovedBuildContext(context: InstanceAiContext): boolean {
 }
 
 /**
- * True when this workflow is an in-session Instance AI artifact: created earlier
- * in the current run (`aiCreatedWorkflowIds`) or recorded as a thread grant when
- * it was created. Used to skip update HITL for the agent's own workflows while
- * still requiring approval for foreign ones.
+ * True when this workflow is trusted for updates in this session: created
+ * earlier in the current run (`aiCreatedWorkflowIds`), or covered by a
+ * `workflows:update:<id>` thread grant (written on create, or when the user
+ * chose "always allow" for an edit). Used to skip update HITL while still
+ * requiring approval for untrusted foreign workflows.
  */
 export function isSessionOwnedWorkflow(context: InstanceAiContext, workflowId: string): boolean {
 	if (context.aiCreatedWorkflowIds?.has(workflowId) === true) return true;
 	const grantKey = buildUpdateWorkflowSessionGrantKey(workflowId);
 	return context.sessionApprovedToolKeys?.has(grantKey) === true;
+}
+
+/**
+ * Persist a thread grant so later update HITL for this workflow is skipped
+ * (same run and later runs in the thread). Used when the user chooses
+ * "always allow" on an edit confirmation.
+ */
+export async function grantSessionWorkflowUpdate(
+	context: InstanceAiContext,
+	workflowId: string,
+): Promise<void> {
+	await context.grantSessionToolApproval?.(buildUpdateWorkflowSessionGrantKey(workflowId));
 }
 
 /**
@@ -34,7 +47,7 @@ export async function recordSessionOwnedWorkflow(
 	workflowId: string,
 ): Promise<void> {
 	(context.aiCreatedWorkflowIds ??= new Set<string>()).add(workflowId);
-	await context.grantSessionToolApproval?.(buildUpdateWorkflowSessionGrantKey(workflowId));
+	await grantSessionWorkflowUpdate(context, workflowId);
 }
 
 export async function resolveWorkflowName(

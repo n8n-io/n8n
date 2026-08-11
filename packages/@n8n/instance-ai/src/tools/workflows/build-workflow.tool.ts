@@ -20,6 +20,7 @@ import {
 	combineWarnings,
 	formatWarning,
 	getBuildFailureTrackingKey,
+	grantSessionWorkflowUpdate,
 	isApprovedBuildContext,
 	isSessionOwnedWorkflow,
 	markSourceBuildFailed,
@@ -83,6 +84,8 @@ const confirmationSuspendSchema = z.object({
 
 const confirmationResumeSchema = z.object({
 	approved: z.boolean(),
+	/** `'session'` — user chose "always allow"; persist a per-workflow update grant. */
+	scope: z.enum(['once', 'session']).optional(),
 });
 
 interface BuildCtx {
@@ -520,6 +523,10 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						message: `Edit ${workflowName} (ID: ${targetWorkflowId})?`,
 						severity: 'warning',
 					});
+				}
+				// "Always allow" — persist so later edits of this workflow skip HITL.
+				if (ctx.resumeData.approved && ctx.resumeData.scope === 'session') {
+					await grantSessionWorkflowUpdate(context, targetWorkflowId);
 				}
 			}
 

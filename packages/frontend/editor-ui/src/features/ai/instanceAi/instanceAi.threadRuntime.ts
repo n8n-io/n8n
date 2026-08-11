@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { ResponseError } from '@n8n/rest-api-client';
 import {
 	buildRunWorkflowSessionGrantKey,
+	buildUpdateWorkflowSessionGrantKey,
 	INSTANCE_AI_EPHEMERAL_EVENT_TYPES,
 	INSTANCE_AI_THREAD_SOURCE_FALLBACK,
 	instanceAiEventSchema,
@@ -576,11 +577,19 @@ export function createThreadRuntime(
 			return `submit-workflow:${isUpdate ? 'update' : 'create'}`;
 		}
 		const action = typeof args.action === 'string' ? args.action : '';
+		const workflowId = typeof args.workflowId === 'string' ? args.workflowId : '';
 		// Running a workflow grants "always allow" per workflow, so the grant applies only to the
 		// workflow the user approved.
 		if (toolName === 'executions' && action === 'run') {
-			const workflowId = typeof args.workflowId === 'string' ? args.workflowId : '';
 			return buildRunWorkflowSessionGrantKey(workflowId);
+		}
+		// Editing a workflow (build-workflow save or workflows update) is also per-workflow,
+		// matching the backend `workflows:update:<id>` thread grant.
+		if (
+			workflowId &&
+			((toolName === 'workflows' && action === 'update') || toolName === 'build-workflow')
+		) {
+			return buildUpdateWorkflowSessionGrantKey(workflowId);
 		}
 		return `${toolName}:${action}`;
 	}

@@ -568,6 +568,53 @@ describe('createBuildWorkflowTool', () => {
 		expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
 	});
 
+	it('persists a session update grant when edit approval resumes with scope=session', async () => {
+		const grantSessionToolApproval = vi.fn().mockResolvedValue(undefined);
+		const { context, filePath } = makeContext({
+			source: 'workflow source',
+			overrides: {
+				grantSessionToolApproval,
+				permissions: {
+					createWorkflow: 'always_allow',
+					updateWorkflow: 'require_approval',
+				} as InstanceAiContext['permissions'],
+			},
+		});
+
+		const result = await executeTool<BuildToolOutput>(
+			createBuildWorkflowTool(context),
+			{ filePath, workflowId: 'wf-existing' },
+			{ resumeData: { approved: true, scope: 'session' } },
+		);
+
+		expect(result).toMatchObject({ success: true, workflowId: 'wf-existing' });
+		expect(grantSessionToolApproval).toHaveBeenCalledWith('workflows:update:wf-existing');
+		expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenCalledTimes(1);
+	});
+
+	it('does not persist a grant for a one-time edit approval', async () => {
+		const grantSessionToolApproval = vi.fn().mockResolvedValue(undefined);
+		const { context, filePath } = makeContext({
+			source: 'workflow source',
+			overrides: {
+				grantSessionToolApproval,
+				permissions: {
+					createWorkflow: 'always_allow',
+					updateWorkflow: 'require_approval',
+				} as InstanceAiContext['permissions'],
+			},
+		});
+
+		await executeTool<BuildToolOutput>(
+			createBuildWorkflowTool(context),
+			{ filePath, workflowId: 'wf-existing' },
+			{ resumeData: { approved: true } },
+		);
+
+		expect(grantSessionToolApproval).not.toHaveBeenCalled();
+		expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenCalledTimes(1);
+	});
+
 	it('blocks updates to workflows created earlier in the run when admin policy denies them', async () => {
 		const { context, filePath } = makeContext({
 			source: 'workflow source',

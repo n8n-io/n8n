@@ -1803,6 +1803,41 @@ describe('createThreadRuntime - session always-allow', () => {
 		expect(runtime.resolvedConfirmationIds.has('req-update')).toBe(false);
 	});
 
+	it('scopes workflow update grants per workflow', async () => {
+		const runtime = registry.getOrCreateRuntime(activeThreadId);
+		runtime.addAlwaysAllowKey('workflows', { action: 'update', workflowId: 'wf-1' });
+		runtime.addAlwaysAllowKey('build-workflow', { workflowId: 'wf-1' });
+
+		pushPendingApproval(runtime, {
+			messageId: 'msg-update-1',
+			requestId: 'req-update-1',
+			toolName: 'workflows',
+			args: { action: 'update', workflowId: 'wf-1' },
+		});
+		await vi.waitFor(() => {
+			expect(runtime.resolvedConfirmationIds.has('req-update-1')).toBe(true);
+		});
+
+		pushPendingApproval(runtime, {
+			messageId: 'msg-build-1',
+			requestId: 'req-build-1',
+			toolName: 'build-workflow',
+			args: { workflowId: 'wf-1' },
+		});
+		await vi.waitFor(() => {
+			expect(runtime.resolvedConfirmationIds.has('req-build-1')).toBe(true);
+		});
+
+		pushPendingApproval(runtime, {
+			messageId: 'msg-update-2',
+			requestId: 'req-update-2',
+			toolName: 'workflows',
+			args: { action: 'update', workflowId: 'wf-2' },
+		});
+		await new Promise((resolve) => setTimeout(resolve, 10));
+		expect(runtime.resolvedConfirmationIds.has('req-update-2')).toBe(false);
+	});
+
 	it('scopes executions run grants per workflow', async () => {
 		const runtime = registry.getOrCreateRuntime(activeThreadId);
 		runtime.addAlwaysAllowKey('executions', { action: 'run', workflowId: 'wf-1' });

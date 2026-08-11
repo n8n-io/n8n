@@ -854,6 +854,47 @@ describe('workflows tool', () => {
 			});
 			expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
 		});
+
+		it('should persist a session update grant when resumed with scope=session', async () => {
+			const grantSessionToolApproval = vi.fn().mockResolvedValue(undefined);
+			const context = createMockContext({
+				permissions: { updateWorkflow: 'require_approval' },
+				grantSessionToolApproval,
+			});
+			(context.workflowService.updateFromWorkflowJSON as Mock).mockResolvedValue({
+				id: 'wf1',
+				versionId: 'v2',
+			});
+
+			const result = await executeTool(
+				createWorkflowsTool(context, 'full'),
+				{ action: 'update', workflowId: 'wf1', workflow: workflowPayload },
+				{ resumeData: { approved: true, scope: 'session' } } as never,
+			);
+
+			expect(result).toEqual({ success: true, workflowId: 'wf1' });
+			expect(grantSessionToolApproval).toHaveBeenCalledWith('workflows:update:wf1');
+		});
+
+		it('should not persist a grant for a one-time update approval', async () => {
+			const grantSessionToolApproval = vi.fn().mockResolvedValue(undefined);
+			const context = createMockContext({
+				permissions: { updateWorkflow: 'require_approval' },
+				grantSessionToolApproval,
+			});
+			(context.workflowService.updateFromWorkflowJSON as Mock).mockResolvedValue({
+				id: 'wf1',
+				versionId: 'v2',
+			});
+
+			await executeTool(
+				createWorkflowsTool(context, 'full'),
+				{ action: 'update', workflowId: 'wf1', workflow: workflowPayload },
+				{ resumeData: { approved: true } } as never,
+			);
+
+			expect(grantSessionToolApproval).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('delete action', () => {
