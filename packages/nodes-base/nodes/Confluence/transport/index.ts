@@ -35,9 +35,8 @@ export async function confluenceApiRequest(
 		'confluence',
 	);
 
-	// Origin invariant: the URL is concatenated onto the api.atlassian.com base, so caller
-	// input can't change the host. A future verbatim-URL param (e.g. a paginator next-link)
-	// needs an origin check first.
+	// The URL is concatenated onto the api.atlassian.com base, so caller input can't
+	// change the host; a future verbatim-URL param needs an origin check first.
 	const options: IHttpRequestOptions = {
 		method,
 		url: `${getAtlassianApiBaseUrl('confluence', cloudId)}${endpoint}`,

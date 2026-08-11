@@ -10,7 +10,7 @@ import type {
 	IWebhookFunctions,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { getAtlassianApiBaseUrl, getAtlassianCloudId } from '@utils/atlassian';
 
@@ -37,8 +37,14 @@ export async function jiraSoftwareCloudApiRequest(
 		domain = (await this.getCredentials('jiraSoftwareServerPatApi')).domain as string;
 		credentialType = 'jiraSoftwareServerPatApi';
 	} else if (jiraVersion === 'cloudOAuth2') {
-		const rawDomain = (await this.getCredentials('jiraSoftwareCloudOAuth2Api')).domain as string;
+		const rawDomain = (await this.getCredentials('jiraSoftwareCloudOAuth2Api')).domain;
 		credentialType = 'jiraSoftwareCloudOAuth2Api';
+		if (typeof rawDomain !== 'string' || rawDomain === '') {
+			throw new NodeOperationError(
+				this.getNode(),
+				'The Jira credential is missing the Site URL field',
+			);
+		}
 		const cloudId = await getAtlassianCloudId.call(this, credentialType, rawDomain, 'jira');
 		domain = getAtlassianApiBaseUrl('jira', cloudId);
 	} else {

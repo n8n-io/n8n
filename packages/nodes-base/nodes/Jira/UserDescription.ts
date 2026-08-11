@@ -33,6 +33,20 @@ export const userOperations: INodeProperties[] = [
 		],
 		default: 'create',
 	},
+	{
+		displayName:
+			'Creating and deleting users requires the <code>manage:jira-configuration</code> scope, which is not included in the default scopes. Enable it on your OAuth app in the Atlassian developer console, add it in the credential via Custom Scopes, then reconnect.',
+		name: 'userManagementScopeNotice',
+		type: 'notice',
+		default: '',
+		displayOptions: {
+			show: {
+				resource: ['user'],
+				operation: ['create', 'delete'],
+				jiraVersion: ['cloudOAuth2'],
+			},
+		},
+	},
 ];
 
 export const userFields: INodeProperties[] = [

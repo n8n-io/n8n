@@ -153,6 +153,25 @@ describe('getAtlassianCloudId', () => {
 		expect(mockHttpRequestWithAuthentication).toHaveBeenCalledTimes(1);
 	});
 
+	it('should share one cache entry across products for the same credential and hostname', async () => {
+		const viaJira = await getAtlassianCloudId.call(
+			ctx,
+			credentialType,
+			'example.atlassian.net',
+			'jira',
+		);
+		const viaConfluence = await getAtlassianCloudId.call(
+			ctx,
+			credentialType,
+			'example.atlassian.net',
+			'confluence',
+		);
+
+		expect(viaJira).toBe('cloud-1');
+		expect(viaConfluence).toBe('cloud-1');
+		expect(mockHttpRequestWithAuthentication).toHaveBeenCalledTimes(1);
+	});
+
 	it('should not share the cache across credentials', async () => {
 		ctx.getNode.mockReturnValue({
 			...mockNode,
@@ -261,7 +280,6 @@ describe('getAtlassianCloudId', () => {
 	});
 
 	it('should pass an already-wrapped NodeApiError through unchanged', async () => {
-		// The realistic path: httpRequestWithAuthentication rejects with a NodeApiError already
 		const wrapped = new NodeApiError(mockNode, { message: 'boom' }, { httpCode: '429' });
 		mockHttpRequestWithAuthentication.mockRejectedValueOnce(wrapped);
 

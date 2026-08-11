@@ -1,27 +1,26 @@
 /**
- * Atlassian OAuth2 scopes, grouped by service. The `atlassianOAuth2Api` base
- * credential defaults to the union of the product defaults — only scopes the
+ * Default OAuth2 scopes for the Atlassian product credentials — only scopes the
  * nodes actually use, since Atlassian rejects any requested scope that isn't
  * enabled on the OAuth app.
  *
- * Scope references:
  * https://developer.atlassian.com/cloud/jira/platform/scopes-for-oauth-2-3LO-and-forge-apps/
  * https://developer.atlassian.com/cloud/confluence/scopes-for-oauth-2-3LO-and-forge-apps/
  */
 export const offlineAccessScope = 'offline_access';
 
-const jiraCoreScopes = [
+// Omits the previously shipped `manage:jira-user`: retired from Atlassian's catalog
+// and silently dropped at consent, so no token ever carried it.
+export const jiraDefaultScopes = [
 	'read:jira-user',
 	'read:jira-work',
 	'write:jira-work',
 	'manage:jira-webhook',
+	offlineAccessScope,
 ];
 
-// The Confluence v2 REST API rejects classic scopes, so the Confluence
-// credential requests granular scopes only. The v1 survivor endpoints the
-// node uses (CQL search, attachment upload, label writes) accept these
-// granular scopes too
-export const confluenceGranularScopes = [
+// Granular scopes only: the Confluence v2 REST API rejects classic scopes, and the
+// v1 endpoints the node still uses accept granular ones too.
+export const confluenceDefaultScopes = [
 	'read:page:confluence',
 	'write:page:confluence',
 	'read:hierarchical-content:confluence',
@@ -36,10 +35,5 @@ export const confluenceGranularScopes = [
 	'delete:comment:confluence',
 	'write:label:confluence',
 	'delete:page:confluence',
+	offlineAccessScope,
 ];
-
-export const jiraDefaultScopes = [...jiraCoreScopes, offlineAccessScope];
-
-export const confluenceDefaultScopes = [...confluenceGranularScopes, offlineAccessScope];
-
-export const atlassianScopes = [...jiraCoreScopes, ...confluenceGranularScopes, offlineAccessScope];

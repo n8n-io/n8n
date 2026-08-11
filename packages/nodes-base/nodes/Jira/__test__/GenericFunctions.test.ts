@@ -98,8 +98,7 @@ describe('Jira -> GenericFunctions', () => {
 			mockExecuteFunctions.getCredentials.mockResolvedValue({
 				domain: 'https://example.atlassian.net',
 			});
-			// The cloudId lookup goes through httpRequestWithAuthentication,
-			// the actual API request through the legacy requestWithAuthentication
+			// cloudId lookup uses httpRequestWithAuthentication; the API request uses the legacy helper
 			mockExecuteFunctions.helpers.httpRequestWithAuthentication.mockResolvedValueOnce([
 				{ id: cloudId, url: 'https://example.atlassian.net' },
 			]);
@@ -116,13 +115,27 @@ describe('Jira -> GenericFunctions', () => {
 					url: 'https://api.atlassian.com/oauth/token/accessible-resources',
 				}),
 			);
-			// The API request must use the api.atlassian.com base URL with cloudId
 			expect(mockExecuteFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
 				'jiraSoftwareCloudOAuth2Api',
 				expect.objectContaining({
 					uri: `https://api.atlassian.com/ex/jira/${cloudId}/rest/api/2/myself`,
 				}),
 			);
+		});
+
+		it('should throw a NodeOperationError naming the Site URL field when the credential lacks it', async () => {
+			mockExecuteFunctions.getNodeParameter.mockReturnValue('cloudOAuth2');
+			mockExecuteFunctions.getCredentials.mockResolvedValue({});
+
+			const promise = jiraSoftwareCloudApiRequest.call(
+				mockExecuteFunctions,
+				'/api/2/myself',
+				'GET',
+			);
+
+			await expect(promise).rejects.toThrow('Site URL');
+			expect(mockExecuteFunctions.helpers.httpRequestWithAuthentication).not.toHaveBeenCalled();
+			expect(mockExecuteFunctions.helpers.requestWithAuthentication).not.toHaveBeenCalled();
 		});
 
 		it('should use jiraSoftwareServerApi credential for jiraVersion "server"', async () => {

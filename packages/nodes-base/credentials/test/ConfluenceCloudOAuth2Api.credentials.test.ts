@@ -1,7 +1,11 @@
 import { ClientOAuth2 } from '@n8n/client-oauth2';
+import type { INodeProperties } from 'n8n-workflow';
+import { NodeHelpers } from 'n8n-workflow';
 import nock from 'nock';
 
+import { AtlassianOAuth2Api } from '../AtlassianOAuth2Api.credentials';
 import { ConfluenceCloudOAuth2Api } from '../ConfluenceCloudOAuth2Api.credentials';
+import { OAuth2Api } from '../OAuth2Api.credentials';
 
 describe('ConfluenceCloudOAuth2Api Credential', () => {
 	const confluenceOAuth2Api = new ConfluenceCloudOAuth2Api();
@@ -9,9 +13,17 @@ describe('ConfluenceCloudOAuth2Api Credential', () => {
 		confluenceOAuth2Api.properties.find((p) => p.name === 'enabledScopes')?.default as string
 	).split(' ');
 
-	const baseUrl = 'https://auth.atlassian.com';
-	const authorizationUri = `${baseUrl}/authorize`;
-	const accessTokenUri = `${baseUrl}/oauth/token`;
+	// Endpoints derive from the resolved extends chain so base-credential regressions fail here
+	const resolvedProperties: INodeProperties[] = [];
+	NodeHelpers.mergeNodeProperties(resolvedProperties, new OAuth2Api().properties);
+	NodeHelpers.mergeNodeProperties(resolvedProperties, new AtlassianOAuth2Api().properties);
+	NodeHelpers.mergeNodeProperties(resolvedProperties, confluenceOAuth2Api.properties);
+	const resolvedDefault = (name: string) =>
+		resolvedProperties.find((p) => p.name === name)?.default as string;
+
+	const authorizationUri = resolvedDefault('authUrl');
+	const accessTokenUri = resolvedDefault('accessTokenUrl');
+	const baseUrl = new URL(accessTokenUri).origin;
 	const redirectUri = 'http://localhost:5678/rest/oauth2-credential/callback';
 	const clientId = 'test-client-id';
 	const clientSecret = 'test-client-secret';
@@ -84,20 +96,9 @@ describe('ConfluenceCloudOAuth2Api Credential', () => {
 	});
 
 	it('should inherit the Site URL field from atlassianOAuth2Api', () => {
-		// The field lives on the base (asserted in AtlassianOAuth2Api.credentials.test.ts);
-		// the credential must not shadow it with its own definition
+		// Defined on the base; the credential must not shadow it
 		expect(confluenceOAuth2Api.properties.find((p) => p.name === 'domain')).toBeUndefined();
 		expect(confluenceOAuth2Api.properties.find((p) => p.name === 'siteUrl')).toBeUndefined();
-	});
-
-	it('should test the connection against accessible-resources', () => {
-		expect(confluenceOAuth2Api.test).toEqual({
-			request: {
-				baseURL: 'https://api.atlassian.com',
-				url: '/oauth/token/accessible-resources',
-				method: 'GET',
-			},
-		});
 	});
 
 	describe('OAuth2 flow with default scopes', () => {

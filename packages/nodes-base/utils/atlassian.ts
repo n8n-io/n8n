@@ -28,9 +28,8 @@ export interface AccessibleResource {
 	name?: string;
 }
 
-// credentialId:hostname → cloudId, for the life of the n8n process. Keyed per credential:
-// with a shared hostname-only key, cold vs warm failures would let one user infer which
-// sites another credential on the instance can reach.
+// credentialId:hostname → cloudId, kept for the life of the process. Keyed per
+// credential so cache timing can't reveal which sites other credentials reach.
 const cloudIdCache = new Map<string, string>();
 
 export function clearAtlassianCloudIdCache() {

@@ -1,4 +1,4 @@
-import type { ICredentialTestRequest, ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 import { confluenceDefaultScopes } from './common/atlassian-scopes';
 
@@ -14,6 +14,25 @@ export class ConfluenceCloudOAuth2Api implements ICredentialType {
 	documentationUrl = 'confluence';
 
 	properties: INodeProperties[] = [
+		{
+			displayName: 'Custom Scopes',
+			name: 'customScopes',
+			type: 'boolean',
+			default: false,
+			description: 'Define custom scopes',
+		},
+		{
+			displayName:
+				'The default scopes needed for the node to work are already set. If you change these the node may not function correctly.',
+			name: 'customScopesNotice',
+			type: 'notice',
+			default: '',
+			displayOptions: {
+				show: {
+					customScopes: [true],
+				},
+			},
+		},
 		{
 			displayName: 'Enabled Scopes',
 			name: 'enabledScopes',
@@ -34,12 +53,4 @@ export class ConfluenceCloudOAuth2Api implements ICredentialType {
 				'={{$self["customScopes"] ? $self["enabledScopes"] : "' + defaultScopes.join(' ') + '"}}',
 		},
 	];
-
-	test: ICredentialTestRequest = {
-		request: {
-			baseURL: 'https://api.atlassian.com',
-			url: '/oauth/token/accessible-resources',
-			method: 'GET',
-		},
-	};
 }

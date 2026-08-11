@@ -1,13 +1,11 @@
-import type { ICredentialTestRequest, ICredentialType, INodeProperties } from 'n8n-workflow';
-
-import { atlassianScopes } from './common/atlassian-scopes';
-
-const defaultScopes = atlassianScopes;
+import type { Icon, ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class AtlassianOAuth2Api implements ICredentialType {
 	name = 'atlassianOAuth2Api';
 
 	extends = ['oAuth2Api'];
+
+	icon: Icon = 'file:icons/Atlassian.svg';
 
 	displayName = 'Atlassian OAuth2 API';
 
@@ -15,8 +13,8 @@ export class AtlassianOAuth2Api implements ICredentialType {
 
 	properties: INodeProperties[] = [
 		{
-			// Named `domain` (not `siteUrl`) so existing Jira OAuth2 credentials,
-			// which store the value under this key, keep working.
+			// Named `domain` so existing Jira OAuth2 credentials, which store the value
+			// under this key, keep working.
 			displayName: 'Site URL',
 			name: 'domain',
 			type: 'string',
@@ -60,53 +58,7 @@ export class AtlassianOAuth2Api implements ICredentialType {
 			type: 'hidden',
 			default: 'header',
 		},
-		{
-			displayName: 'Custom Scopes',
-			name: 'customScopes',
-			type: 'boolean',
-			default: false,
-			description: 'Define custom scopes',
-		},
-		{
-			displayName:
-				'The default scopes needed for the node to work are already set. If you change these the node may not function correctly.',
-			name: 'customScopesNotice',
-			type: 'notice',
-			default: '',
-			displayOptions: {
-				show: {
-					customScopes: [true],
-				},
-			},
-		},
-		{
-			displayName: 'Enabled Scopes',
-			name: 'enabledScopes',
-			type: 'string',
-			displayOptions: {
-				show: {
-					customScopes: [true],
-				},
-			},
-			default: defaultScopes.join(' '),
-			description: 'Scopes that should be enabled',
-		},
-		{
-			displayName: 'Scope',
-			name: 'scope',
-			type: 'hidden',
-			default:
-				'={{$self["customScopes"] ? $self["enabledScopes"] : "' + defaultScopes.join(' ') + '"}}',
-		},
+		// The `scope` field inherited from `oAuth2Api` stays visible and user-defined;
+		// product credentials override it with their own defaults.
 	];
-
-	// Credential tests don't inherit through `extends`, so extending credentials
-	// need their own test block; this one covers users creating the base directly.
-	test: ICredentialTestRequest = {
-		request: {
-			baseURL: 'https://api.atlassian.com',
-			url: '/oauth/token/accessible-resources',
-			method: 'GET',
-		},
-	};
 }

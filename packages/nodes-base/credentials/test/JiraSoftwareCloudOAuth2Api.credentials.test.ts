@@ -13,9 +13,17 @@ describe('JiraSoftwareCloudOAuth2Api Credential', () => {
 		jiraOAuth2Api.properties.find((p) => p.name === 'enabledScopes')?.default as string
 	).split(' ');
 
-	const baseUrl = 'https://auth.atlassian.com';
-	const authorizationUri = `${baseUrl}/authorize`;
-	const accessTokenUri = `${baseUrl}/oauth/token`;
+	// Endpoints derive from the resolved extends chain so base-credential regressions fail here
+	const resolvedProperties: INodeProperties[] = [];
+	NodeHelpers.mergeNodeProperties(resolvedProperties, new OAuth2Api().properties);
+	NodeHelpers.mergeNodeProperties(resolvedProperties, new AtlassianOAuth2Api().properties);
+	NodeHelpers.mergeNodeProperties(resolvedProperties, jiraOAuth2Api.properties);
+	const resolvedDefault = (name: string) =>
+		resolvedProperties.find((p) => p.name === name)?.default as string;
+
+	const authorizationUri = resolvedDefault('authUrl');
+	const accessTokenUri = resolvedDefault('accessTokenUrl');
+	const baseUrl = new URL(accessTokenUri).origin;
 	const redirectUri = 'http://localhost:5678/rest/oauth2-credential/callback';
 	const clientId = 'test-client-id';
 	const clientSecret = 'test-client-secret';

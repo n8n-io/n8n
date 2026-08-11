@@ -1,4 +1,8 @@
+import type { INodeProperties } from 'n8n-workflow';
+import { NodeHelpers } from 'n8n-workflow';
+
 import { AtlassianOAuth2Api } from '../AtlassianOAuth2Api.credentials';
+import { OAuth2Api } from '../OAuth2Api.credentials';
 
 describe('AtlassianOAuth2Api Credential', () => {
 	const atlassianOAuth2Api = new AtlassianOAuth2Api();
@@ -34,37 +38,17 @@ describe('AtlassianOAuth2Api Credential', () => {
 		expect(grantTypeProperty?.default).toBe('authorizationCode');
 	});
 
-	it('should expose the scope machinery for extending credentials', () => {
-		const customScopesProperty = atlassianOAuth2Api.properties.find(
-			(p) => p.name === 'customScopes',
-		);
-		expect(customScopesProperty?.type).toBe('boolean');
-		expect(customScopesProperty?.default).toBe(false);
+	it('should leave the inherited scope field visible and editable', () => {
+		expect(atlassianOAuth2Api.properties.find((p) => p.name === 'scope')).toBeUndefined();
+		expect(atlassianOAuth2Api.properties.find((p) => p.name === 'customScopes')).toBeUndefined();
+		expect(atlassianOAuth2Api.properties.find((p) => p.name === 'enabledScopes')).toBeUndefined();
 
-		const enabledScopesProperty = atlassianOAuth2Api.properties.find(
-			(p) => p.name === 'enabledScopes',
-		);
-		expect(enabledScopesProperty?.displayOptions).toEqual({ show: { customScopes: [true] } });
+		const resolved: INodeProperties[] = [];
+		NodeHelpers.mergeNodeProperties(resolved, new OAuth2Api().properties);
+		NodeHelpers.mergeNodeProperties(resolved, atlassianOAuth2Api.properties);
 
-		const enabledScopes = enabledScopesProperty?.default as string;
-		expect(enabledScopes).toContain('read:jira-work');
-		expect(enabledScopes).toContain('manage:jira-webhook');
-		expect(enabledScopes).toContain('read:page:confluence');
-		expect(enabledScopes).toContain('write:page:confluence');
-		expect(enabledScopes).toContain('offline_access');
-
-		const scopeProperty = atlassianOAuth2Api.properties.find((p) => p.name === 'scope');
-		expect(scopeProperty?.type).toBe('hidden');
-		expect(scopeProperty?.default).toContain('$self["customScopes"]');
-	});
-
-	it('should test the connection against accessible-resources', () => {
-		expect(atlassianOAuth2Api.test).toEqual({
-			request: {
-				baseURL: 'https://api.atlassian.com',
-				url: '/oauth/token/accessible-resources',
-				method: 'GET',
-			},
-		});
+		const scope = resolved.find((p) => p.name === 'scope');
+		expect(scope?.type).toBe('string');
+		expect(scope?.default).toBe('');
 	});
 });
