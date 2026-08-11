@@ -142,7 +142,8 @@ const agentsSdkMocks = vi.hoisted(() => {
 	};
 });
 
-vi.mock('@n8n/agents', () => ({
+vi.mock('@n8n/agents', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/agents')>()),
 	Agent: agentsSdkMocks.MockAgent,
 	Memory: agentsSdkMocks.MockMemory,
 	createObservationLogObserveFn: agentsSdkMocks.createObservationLogObserveFn,
@@ -282,6 +283,7 @@ describe('AgentsBuilderService session isolation', () => {
 		);
 		expect(agentsSdkMocks.streamCalls[0]?.options.abortSignal).toBe(abortSignal);
 		expect(agentsSdkMocks.resumeCalls[0]?.options.abortSignal).toBe(abortSignal);
+		expect(n8nCheckpointStorage.getStatus).toHaveBeenCalledWith('builder-run-1', 'agent-1');
 	});
 
 	it('appends the session instructionsAddendum to the built prompt when provided', async () => {

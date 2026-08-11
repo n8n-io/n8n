@@ -7,7 +7,7 @@ import type { ChatIntegrationService, ChatInstance } from '../chat-integration.s
 import { ChatIntegrationContextQueryExecutor } from '../integration-context-query-executor';
 import { getIntegrationToolConnectionDescriptors } from '../integration-tools';
 import { LinearIntegration } from '../platforms/linear-integration';
-import { SlackIntegration } from '../platforms/slack-integration';
+import { SlackIntegration } from '../platforms/slack/slack-integration';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 
 const slack: AgentIntegrationConfig = {
@@ -61,7 +61,8 @@ describe('ChatIntegrationContextQueryExecutor', () => {
 		chat.getAdapter.mockReturnValue(slackAdapter);
 
 		const chatIntegrationService = mock<ChatIntegrationService>();
-		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		chatIntegrationService.getChatInstance.mockReturnValue(undefined);
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
 		const executor = new ChatIntegrationContextQueryExecutor(
 			chatIntegrationService,
 			buildRegistry(),
@@ -78,6 +79,7 @@ describe('ChatIntegrationContextQueryExecutor', () => {
 			type: 'slack',
 			credentialId: 'cred-a',
 		});
+		expect(chatIntegrationService.getChatInstanceForTools).toHaveBeenCalledWith('agent-1', slack);
 		expect(chat.getAdapter).toHaveBeenCalledWith('slack');
 		expect(usersList).toHaveBeenCalledWith({ limit: 10, token: 'xoxb-token' });
 		expect(result).toEqual({

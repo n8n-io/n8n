@@ -6,7 +6,7 @@ import type router from 'vue-router';
 import { flushPromises } from '@vue/test-utils';
 import { useToast } from '@n8n/composables/useToast';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import type { CloudPlanState } from '@n8n/stores/cloudPlan.store';
@@ -18,7 +18,7 @@ import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
 import { VARIABLE_MODAL_KEY } from '@/features/settings/environments.ee/environments.constants';
 import { PROJECT_DATA_TABLES } from '@/features/core/dataTable/constants';
 import { hasPermission } from '@/app/utils/rbac/permissions';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import type { Project, ProjectListItem } from '@/features/collaboration/projects/projects.types';
 
@@ -619,6 +619,7 @@ describe('useGlobalEntityCreation', () => {
 	describe('instance-ai module', () => {
 		const INSTANCE_AI_SETTINGS = {
 			enabled: true,
+			setupCompleted: true,
 			localGatewayDisabled: false,
 			browserUseEnabled: true,
 			proxyEnabled: false,

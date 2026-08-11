@@ -79,6 +79,8 @@ describe('FrontendService', () => {
 		userManagement: {
 			password: { minLength: 8 },
 		},
+		aiAssistant: { baseUrl: '' },
+		aiGateway: { enabled: false },
 	});
 
 	const instanceSettings = mock<InstanceSettings>({
@@ -229,6 +231,10 @@ describe('FrontendService', () => {
 		originalEnv = { ...process.env };
 		vi.clearAllMocks();
 		globalConfig.diagnostics.enabled = false;
+		globalConfig.aiAssistant.baseUrl = '';
+		globalConfig.aiGateway.enabled = false;
+		licenseState.isAiGatewayLicensed.mockReturnValue(false);
+		licenseState.isAiGatewayCloudUbbLicensed.mockReturnValue(false);
 	});
 
 	afterEach(() => {
@@ -265,6 +271,39 @@ describe('FrontendService', () => {
 					settingsMode: 'authenticated',
 				}),
 			);
+		});
+
+		it('should enable the AI Gateway when configured and licensed', async () => {
+			globalConfig.aiAssistant.baseUrl = 'https://ai-assistant.n8n.io';
+			globalConfig.aiGateway.enabled = true;
+			licenseState.isAiGatewayLicensed.mockReturnValue(true);
+			const { service } = createMockService();
+
+			const settings = await service.getSettings();
+
+			expect(settings.aiGateway?.enabled).toBe(true);
+		});
+
+		it('should keep the AI Gateway disabled when configured but not licensed', async () => {
+			globalConfig.aiAssistant.baseUrl = 'https://ai-assistant.n8n.io';
+			globalConfig.aiGateway.enabled = true;
+			const { service } = createMockService();
+
+			const settings = await service.getSettings();
+
+			expect(settings.aiGateway).toBeUndefined();
+		});
+
+		it('should enable Cloud UBB mode when the AI Gateway is also licensed', async () => {
+			globalConfig.aiAssistant.baseUrl = 'https://ai-assistant.n8n.io';
+			globalConfig.aiGateway.enabled = true;
+			licenseState.isAiGatewayLicensed.mockReturnValue(true);
+			licenseState.isAiGatewayCloudUbbLicensed.mockReturnValue(true);
+			const { service } = createMockService();
+
+			const settings = await service.getSettings();
+
+			expect(settings.aiGateway).toMatchObject({ enabled: true, cloudUbbEnabled: true });
 		});
 
 		it('should normalize configured postMessage origins', async () => {
@@ -874,6 +913,50 @@ describe('FrontendService', () => {
 			(service as any).overwriteCredentialsProperties();
 
 			expect(credential.__skipManagedCreation).toBeUndefined();
+		});
+
+		it('should not propagate __skipManagedCreation from a skip-listed parent to extending types', () => {
+			// An overwrite keyed at a base type is inherited by extending types
+			// (__overwrittenProperties), but the skip list is exact-name: skipping the
+			// base must not disable managed creation for the extending types.
+			const baseCredential = {
+				name: 'microsoftOAuth2Api',
+				displayName: 'Microsoft OAuth2 API',
+				properties: [],
+			} as ICredentialType;
+			const childCredential = {
+				name: 'microsoftOutlookOAuth2Api',
+				displayName: 'Microsoft Outlook OAuth2 API',
+				properties: [],
+			} as ICredentialType;
+
+			loadNodesAndCredentials.types = {
+				credentials: [baseCredential, childCredential],
+				nodes: [],
+			};
+			(globalConfig as any).credentials = {
+				overwrite: { skipTypes: ['microsoftOAuth2Api'] },
+			};
+			(credentialsOverwrites.getAll as Mock).mockReturnValue({
+				microsoftOAuth2Api: { clientId: 'id', clientSecret: 'secret' },
+			});
+			(credentialTypes.getParentTypes as Mock).mockImplementation((name: string) =>
+				name === 'microsoftOutlookOAuth2Api' ? ['microsoftOAuth2Api', 'oAuth2Api'] : ['oAuth2Api'],
+			);
+
+			const { service } = createMockService();
+			(service as any).overwriteCredentialsProperties();
+
+			// both are marked overwritten (the extending type inherits the base entry)
+			expect(baseCredential.__overwrittenProperties).toEqual(['clientId', 'clientSecret']);
+			expect(childCredential.__overwrittenProperties).toEqual(['clientId', 'clientSecret']);
+			// but only the exact skip-list entry loses managed creation
+			expect(baseCredential.__skipManagedCreation).toBe(true);
+			expect(childCredential.__skipManagedCreation).toBeUndefined();
+
+			// restore shared mock defaults for subsequent tests
+			(credentialsOverwrites.getAll as Mock).mockReturnValue({});
+			(credentialTypes.getParentTypes as Mock).mockReturnValue([]);
 		});
 
 		describe('JWKS URI injection', () => {

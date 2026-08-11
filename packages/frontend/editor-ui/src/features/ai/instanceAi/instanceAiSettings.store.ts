@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia';
 import { ref, computed, reactive, toRaw, watch } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useToast } from '@n8n/composables/useToast';
 import {
@@ -11,6 +11,10 @@ import {
 	updatePreferences,
 	fetchServiceCredentials,
 	fetchInstanceModelCredentials,
+	fetchModelCatalog,
+	verifyModel as verifyModelRequest,
+	verifySandbox as verifySandboxRequest,
+	verifySearch as verifySearchRequest,
 } from './instanceAi.settings.api';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import {
@@ -29,7 +33,12 @@ import type {
 	InstanceAiProviderConnection,
 	InstanceAiPermissions,
 	InstanceAiPermissionMode,
+	InstanceAiModelCatalogResponse,
 	ToolCategory,
+	InstanceAiVerifyModelRequest,
+	InstanceAiVerifySandboxRequest,
+	InstanceAiVerifySearchRequest,
+	InstanceAiVerificationResponse,
 } from '@n8n/api-types';
 import { i18n } from '@n8n/i18n';
 import {
@@ -38,6 +47,7 @@ import {
 	type BrowserUseConnectionType,
 	type ComputerUseConnectionType,
 } from './constants';
+import { deriveInstanceAiConfiguration } from './instanceAiConfiguration';
 
 export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () => {
 	const rootStore = useRootStore();
@@ -50,6 +60,9 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	const preferences = ref<InstanceAiUserPreferencesResponse | null>(null);
 	const serviceCredentials = ref<InstanceAiProviderConnection[]>([]);
 	const instanceModelCredentials = ref<InstanceAiProviderConnection[]>([]);
+	const modelCatalog = ref<InstanceAiModelCatalogResponse['models'] | null>(null);
+	const isModelCatalogLoading = ref(false);
+	let modelCatalogFetchPromise: Promise<void> | null = null;
 	const draft = reactive<InstanceAiAdminSettingsUpdateRequest>({});
 
 	// ── Gateway / daemon state ──────────────────────────────────────────
@@ -126,12 +139,18 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	): void {
 		const ms = settingsStore.moduleSettings;
 		const prev = ms['instance-ai'];
+		const configuration = deriveInstanceAiConfiguration(
+			adminRes,
+			instanceModelCredentials.value,
+			serviceCredentials.value,
+		);
 		const merged: NonNullable<FrontendModuleSettings['instance-ai']> = {
 			enabled: adminRes.enabled,
 			localGatewayDisabled: adminRes.localGatewayDisabled ?? prev?.localGatewayDisabled ?? false,
 			browserUseEnabled: adminRes.browserUseEnabled ?? prev?.browserUseEnabled ?? true,
 			proxyEnabled: prev?.proxyEnabled ?? false,
 			cloudManaged: prev?.cloudManaged ?? false,
+			setupCompleted: configuration.setupCompleted,
 			sandboxEnabled: adminRes.sandboxEnabled,
 			workflowBuilderAvailable: adminRes.sandboxEnabled
 				? (prev?.workflowBuilderAvailable ?? true)
@@ -194,7 +213,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	 * Persists the staged admin draft. Returns whether the save succeeded; on
 	 * failure the draft is discarded so a later unrelated save can't flush it.
 	 */
-	async function save(): Promise<boolean> {
+	async function save(showToast = true): Promise<boolean> {
 		if (Object.keys(draft).length === 0) return true;
 		isSaving.value = true;
 		try {
@@ -203,10 +222,12 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 			} as InstanceAiAdminSettingsUpdateRequest);
 			settings.value = result;
 			clearDraft();
-			toast.showMessage({
-				title: i18n.baseText('settings.n8nAgent.toast.saved'),
-				type: 'success',
-			});
+			if (showToast) {
+				toast.showMessage({
+					title: i18n.baseText('settings.n8nAgent.toast.saved'),
+					type: 'success',
+				});
+			}
 			syncInstanceAiFlagIntoGlobalModuleSettings(result);
 			await settingsStore.getModuleSettings().catch(() => {});
 			return true;
@@ -220,7 +241,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	}
 
 	/** Persists only the Instance AI on/off flag (does not send other admin draft fields). */
-	async function persistEnabled(value: boolean): Promise<boolean> {
+	async function persistEnabled(value: boolean, showToast = true): Promise<boolean> {
 		isSaving.value = true;
 		try {
 			const result = await updateSettings(rootStore.restApiContext, { enabled: value });
@@ -228,10 +249,12 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 			delete draft.enabled;
 			syncInstanceAiFlagIntoGlobalModuleSettings(result);
 			await settingsStore.getModuleSettings().catch(() => {});
-			toast.showMessage({
-				title: i18n.baseText('settings.n8nAgent.toast.saved'),
-				type: 'success',
-			});
+			if (showToast) {
+				toast.showMessage({
+					title: i18n.baseText('settings.n8nAgent.toast.saved'),
+					type: 'success',
+				});
+			}
 			return true;
 		} catch {
 			toast.showError(
@@ -586,6 +609,27 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		} catch {}
 	}
 
+	async function loadModelCatalog(): Promise<void> {
+		if (modelCatalog.value) return;
+		if (modelCatalogFetchPromise) return await modelCatalogFetchPromise;
+
+		isModelCatalogLoading.value = true;
+		const request = fetchModelCatalog(rootStore.restApiContext)
+			.then((response) => {
+				if (Object.values(response.models).some((models) => models.length > 0)) {
+					modelCatalog.value = response.models;
+				}
+			})
+			.catch(() => {})
+			.finally(() => {
+				isModelCatalogLoading.value = false;
+				modelCatalogFetchPromise = null;
+			});
+		modelCatalogFetchPromise = request;
+
+		await request;
+	}
+
 	async function refreshModuleSettings(): Promise<void> {
 		const promises: Array<Promise<unknown>> = [settingsStore.getModuleSettings()];
 		if (!preferences.value) {
@@ -598,6 +642,24 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		await Promise.all(promises);
 	}
 
+	async function verifyModel(
+		payload: InstanceAiVerifyModelRequest,
+	): Promise<InstanceAiVerificationResponse> {
+		return await verifyModelRequest(rootStore.restApiContext, payload);
+	}
+
+	async function verifySandbox(
+		payload: InstanceAiVerifySandboxRequest,
+	): Promise<InstanceAiVerificationResponse> {
+		return await verifySandboxRequest(rootStore.restApiContext, payload);
+	}
+
+	async function verifySearch(
+		payload: InstanceAiVerifySearchRequest,
+	): Promise<InstanceAiVerificationResponse> {
+		return await verifySearchRequest(rootStore.restApiContext, payload);
+	}
+
 	return {
 		canManage,
 		canManageAiUsage,
@@ -606,9 +668,11 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		preferences,
 		serviceCredentials,
 		instanceModelCredentials,
+		modelCatalog,
 		draft,
 		isLoading,
 		isSaving,
+		isModelCatalogLoading,
 		fetch,
 		save,
 		persistEnabled,
@@ -645,7 +709,11 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		clearSetupCommand,
 		refreshCredentials,
 		refreshInstanceModelCredentials,
+		loadModelCatalog,
 		refreshModuleSettings,
+		verifyModel,
+		verifySandbox,
+		verifySearch,
 		// Browser Use (direct channel)
 		browserConnected,
 		browserConnectedAt,

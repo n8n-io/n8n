@@ -64,8 +64,10 @@ export type { SerializedMessageList } from './runtime/message-list';
 
 export type {
 	ToolContext,
+	ToolCancellationContext,
 	ToolExecutionContext,
 	InterruptibleToolContext,
+	ToolSuspendOptions,
 	BuiltTool,
 	BuiltProviderTool,
 } from './sdk/tool';
@@ -143,10 +145,8 @@ export type {
 	ObservationLogStatus,
 	ObservationLogTaskKind,
 	ObservationLogTaskLockHandle,
-	TokenCounter,
 } from './sdk/observation-log';
 export {
-	estimateObservationTokens,
 	OBSERVATION_LOG_MARKERS,
 	OBSERVATION_LOG_STATUSES,
 } from './sdk/observation-log';

@@ -761,6 +761,51 @@ describe('OIDC service', () => {
 			expect(user.email).toEqual('user3@example.com');
 		});
 
+		it('should reject linking to an existing local account when email_verified is false', async () => {
+			await createUser({ email: 'link-target@example.com' });
+
+			const state = oidcService.generateState();
+			const nonce = oidcService.generateNonce();
+			const callbackUrl = new URL(
+				`http://localhost:5678/rest/sso/oidc/callback?code=valid-code&state=${state.plaintext}`,
+			);
+
+			const mockTokens: mocked_oidc_client.TokenEndpointResponse &
+				mocked_oidc_client.TokenEndpointResponseHelpers = {
+				access_token: 'mock-access-token-unverified-link',
+				id_token: 'mock-id-token-unverified-link',
+				token_type: 'bearer',
+				claims: () => {
+					return {
+						sub: 'attacker-subject-unverified',
+						iss: 'https://example.com/auth/realms/n8n',
+						aud: 'test-client-id',
+						iat: Math.floor(Date.now() / 1000) - 1000,
+						exp: Math.floor(Date.now() / 1000) + 3600,
+					} as mocked_oidc_client.IDToken;
+				},
+				expiresIn: () => 3600,
+			} as mocked_oidc_client.TokenEndpointResponse &
+				mocked_oidc_client.TokenEndpointResponseHelpers;
+
+			authorizationCodeGrantMock.mockResolvedValueOnce(mockTokens);
+			fetchUserInfoMock.mockResolvedValueOnce({
+				email_verified: false,
+				email: 'link-target@example.com',
+			});
+
+			await expect(
+				oidcService.loginUser(callbackUrl, state.signed, nonce.signed),
+			).rejects.toThrowError(BadRequestError);
+
+			// The attacker's OIDC identity must not be linked to the existing account.
+			const victim = await userRepository.findOne({
+				where: { email: 'link-target@example.com' },
+				relations: ['authIdentities'],
+			});
+			expect(victim!.authIdentities).toHaveLength(0);
+		});
+
 		it('should throw `BadRequestError` if OIDC Idp does not provide an email', async () => {
 			const state = oidcService.generateState();
 			const nonce = oidcService.generateNonce();

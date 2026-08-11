@@ -5,10 +5,10 @@ import { VIEWS } from '@/app/constants';
 import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
 import { RESOURCE_CENTER_EXPERIMENT } from '@/app/constants/experiments';
 import { setupServer } from '@/__tests__/server';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useRBACStore } from '@n8n/stores/rbac.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import type { Scope } from '@n8n/permissions';
 import type { RouteRecordName } from 'vue-router';
 import type { MockInstance } from 'vitest';
@@ -37,6 +37,7 @@ describe('router', () => {
 
 	beforeEach(async () => {
 		settingsStore = useSettingsStore();
+		settingsStore.settings.aiGateway = undefined;
 		const usersStore = useUsersStore();
 		initializeAuthenticatedFeaturesSpy = vi
 			.spyOn(init, 'initializeAuthenticatedFeatures')
@@ -201,6 +202,14 @@ describe('router', () => {
 		expect(router.currentRoute.value.name).toBe(name);
 	});
 
+	test('should block n8n Connect settings for Cloud UBB', async () => {
+		settingsStore.settings.aiGateway = { enabled: true, budget: 0, cloudUbbEnabled: true };
+
+		await router.push('/settings/n8n-connect');
+
+		expect(router.currentRoute.value.name).toBe(VIEWS.WORKFLOWS);
+	});
+
 	describe('resource center route guard', () => {
 		beforeEach(async () => {
 			// Reset to a neutral route so each test's push('/resource-center')
@@ -264,6 +273,7 @@ describe('router', () => {
 		// Drive the `/` route's beforeEnter directly with a captured `next` instead.
 		const instanceAiModuleSettings = {
 			enabled: true,
+			setupCompleted: true,
 			localGatewayDisabled: false,
 			browserUseEnabled: true,
 			proxyEnabled: false,

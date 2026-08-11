@@ -3,18 +3,25 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { storeToRefs } from 'pinia';
 import type { WorkflowReviewRequestState } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
-import { N8nButton, N8nHeading, N8nLoading, N8nText } from '@n8n/design-system';
+import { N8nHeading, N8nLoading, N8nText } from '@n8n/design-system';
 import { useRoute, useRouter } from 'vue-router';
 import PageViewLayout from '@/app/components/layouts/PageViewLayout.vue';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useToast } from '@n8n/composables/useToast';
 
+import WorkflowReviewDetailTabs from '../components/WorkflowReviewDetailTabs.vue';
+import type { WorkflowReviewDetailTab } from '../components/WorkflowReviewDetailTabs.vue';
 import WorkflowReviewRequestsSidebar from '../components/WorkflowReviewRequestsSidebar.vue';
+import WorkflowReviewStatusDot from '../components/WorkflowReviewStatusDot.vue';
 import { REVIEW_INBOX_QUERY_PARAM, WORKFLOW_REVIEW_REQUESTS_VIEW } from '../constants';
+import { useReviewActivityStore } from '../reviewActivity.store';
 import { useReviewInboxStore } from '../reviewInbox.store';
 import type { WorkflowReviewDecisionInput } from '../workflowReviews.api';
 
 const store = useReviewInboxStore();
+// The tab round trip destroys the feed subtree, so its lifecycle lives here; the
+// feed and the composer read the store themselves.
+const activityStore = useReviewActivityStore();
 const {
 	probeSettled,
 	showSidebar,
@@ -70,8 +77,14 @@ watch(
 	selectedReviewId,
 	(id) => {
 		if (route.name !== WORKFLOW_REVIEW_REQUESTS_VIEW) return;
-		if (id) void store.fetchDetail(id).catch(handleListError);
-		else store.clearDetail();
+		if (id) {
+			void store.fetchDetail(id).catch(handleListError);
+			// Failures surface in the feed's own error row, never as a second toast.
+			void activityStore.fetchFeed(id);
+		} else {
+			store.clearDetail();
+			activityStore.reset();
+		}
 	},
 	{ immediate: true },
 );
@@ -85,7 +98,10 @@ watch(
 );
 
 function onSelect(id: string) {
-	void router.replace({ params: { reviewRequestId: id }, query: route.query });
+	// Switching reviews lands on Activity tab. Deep links still win.
+	const query = { ...route.query };
+	if (id !== selectedReviewId.value) delete query[REVIEW_INBOX_QUERY_PARAM.tab];
+	void router.replace({ params: { reviewRequestId: id }, query });
 }
 
 function onClearSelection() {
@@ -96,6 +112,17 @@ function onActiveTabChange(tab: WorkflowReviewRequestState) {
 	const query = { ...route.query };
 	if (tab === 'closed') query[REVIEW_INBOX_QUERY_PARAM.state] = tab;
 	else delete query[REVIEW_INBOX_QUERY_PARAM.state];
+	void router.replace({ query });
+}
+
+const detailTab = computed<WorkflowReviewDetailTab>(() =>
+	route.query[REVIEW_INBOX_QUERY_PARAM.tab] === 'changes' ? 'changes' : 'activity',
+);
+
+function onDetailTabChange(tab: WorkflowReviewDetailTab) {
+	const query = { ...route.query };
+	if (tab === 'changes') query[REVIEW_INBOX_QUERY_PARAM.tab] = tab;
+	else delete query[REVIEW_INBOX_QUERY_PARAM.tab];
 	void router.replace({ query });
 }
 
@@ -185,11 +212,12 @@ onMounted(async () => {
 onUnmounted(() => {
 	isMounted = false;
 	store.reset();
+	activityStore.reset();
 });
 </script>
 
 <template>
-	<PageViewLayout data-test-id="workflow-review-requests-view">
+	<PageViewLayout full-width data-test-id="workflow-review-requests-view">
 		<div :class="$style.content">
 			<WorkflowReviewRequestsSidebar
 				v-if="showSidebar"
@@ -210,15 +238,19 @@ onUnmounted(() => {
 
 			<div :class="$style.main">
 				<div :class="$style.columnTitle">
-					<N8nHeading
+					<div
 						v-if="showSidebar && selectedItem"
-						bold
-						tag="h2"
-						size="xlarge"
-						data-test-id="workflow-review-request-title"
+						:class="$style.reviewTitle"
+						data-test-id="workflow-review-request-title-row"
 					>
-						{{ selectedItem.title }}
-					</N8nHeading>
+						<WorkflowReviewStatusDot
+							:state="selectedItem.state"
+							:decision="selectedItem.decision"
+						/>
+						<N8nHeading bold tag="h2" size="xlarge" data-test-id="workflow-review-request-title">
+							{{ selectedItem.title }}
+						</N8nHeading>
+					</div>
 					<N8nHeading
 						v-else-if="!showSidebar"
 						bold
@@ -246,36 +278,14 @@ onUnmounted(() => {
 					<!-- Must precede the selectedItem branch: on a deep link the review is not
 						in the list yet, so selectedItem is null while the detail loads. -->
 					<N8nLoading v-else-if="selectedReviewId && detailLoading" :loading="true" :rows="3" />
-					<div v-else-if="selectedItem">
-						<N8nText
-							color="text-light"
-							size="medium"
-							data-test-id="workflow-review-request-detail-stub"
-						>
-							{{ i18n.baseText('workflowReviews.detail.placeholder') }}
-						</N8nText>
-						<!-- TODO(LIGO-892): placeholder actions with intentionally hardcoded copy.
-							Real design: disabled-with-explanation for non-admin authors ("you
-							contributed a version to this review"), i18n, and a `viewerCanDecide`
-							capability field from the backend. -->
-						<div v-if="selectedItem.state === 'open'" :class="$style.decisionActions">
-							<N8nButton
-								:disabled="deciding"
-								data-test-id="workflow-review-approve-button"
-								@click="onDecide(selectedItem.id, 'approved')"
-							>
-								Approve
-							</N8nButton>
-							<N8nButton
-								type="secondary"
-								:disabled="deciding"
-								data-test-id="workflow-review-request-changes-button"
-								@click="onDecide(selectedItem.id, 'changes_requested')"
-							>
-								Request changes
-							</N8nButton>
-						</div>
-					</div>
+					<WorkflowReviewDetailTabs
+						v-else-if="selectedItem"
+						:review="selectedItem"
+						:tab="detailTab"
+						:deciding="deciding"
+						@update:tab="onDetailTabChange"
+						@decide="onDecide(selectedItem.id, $event)"
+					/>
 					<N8nText
 						v-else-if="!showSidebar"
 						color="text-light"
@@ -308,6 +318,12 @@ onUnmounted(() => {
 
 <style lang="scss" module>
 .content {
+	--review-tab-bar--height: var(--height--sm);
+	--review-tab-bar--indicator-overhang: 11px;
+	--review-tab-bar--gap: calc(var(--spacing--sm) + var(--review-tab-bar--indicator-overhang));
+
+	--review-callout--max-width: 34rem;
+
 	display: flex;
 	width: 100%;
 	min-height: 0;
@@ -332,15 +348,16 @@ onUnmounted(() => {
 	padding-bottom: var(--spacing--sm);
 }
 
+.reviewTitle {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	min-width: 0;
+}
+
 .mainBody {
 	flex: 1;
 	min-height: 0;
 	overflow: auto;
-}
-
-.decisionActions {
-	display: flex;
-	gap: var(--spacing--2xs);
-	margin-top: var(--spacing--sm);
 }
 </style>

@@ -17,12 +17,14 @@ import type { McpClientConnectedPeriod, McpClientTypeFilter } from '@n8n/api-typ
 import { getMcpClientType, MCP_CLIENT_TYPE_FILTER_BUCKETS } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
+import { INSTANCE_MCP_RESOURCE_ID } from '@n8n/constants';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import type { Response } from 'express';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { EventService } from '@/events/event.service';
 import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
 import { UrlService } from '@/services/url.service';
 import { UserManagementMailer } from '@/user-management/email';
@@ -104,6 +106,7 @@ export class OAuthServerService implements OAuthServerProvider {
 		private readonly resourceRegistry: ProtectedResourceRegistry,
 		private readonly mailer: UserManagementMailer,
 		private readonly urlService: UrlService,
+		private readonly eventService: EventService,
 	) {}
 
 	get clientsStore(): OAuthRegisteredClientsStore {
@@ -451,6 +454,21 @@ export class OAuthServerService implements OAuthServerProvider {
 			authRecord.userId,
 			grantedScopes,
 		);
+
+		// Completion of the authorization-code grant is the point at which the user
+		// has finished the OAuth flow for this client. The authorization server is
+		// shared by every protected resource on the instance (MCP, forms, ...), so
+		// only grants targeting the instance MCP server count as MCP usage.
+		const grantedResource = finalResource
+			? await this.resourceRegistry.getByResourceUrl(finalResource)
+			: this.resourceRegistry.getDefaultResource();
+		if (grantedResource?.id === INSTANCE_MCP_RESOURCE_ID) {
+			this.eventService.emit('mcp-oauth-completed', {
+				userId: authRecord.userId,
+				clientId: client.client_id,
+				clientName: client.client_name,
+			});
+		}
 
 		return {
 			access_token: accessToken,

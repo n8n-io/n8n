@@ -36,7 +36,6 @@ const emit = defineEmits<{
 			:node-type="nodeType"
 			:push-ref="pushRef"
 			:class="$style.tabs"
-			tabs-variant="modern"
 			@update:model-value="emit('tab-changed', $event)"
 		/>
 		<NodeExecuteButton
