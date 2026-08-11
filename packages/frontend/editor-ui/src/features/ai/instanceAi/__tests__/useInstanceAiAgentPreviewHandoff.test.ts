@@ -4,6 +4,7 @@ import { computed } from 'vue';
 
 const openThreadWithContextMock = vi.fn();
 const trackMock = vi.fn();
+const FIX_WITH_ASSISTANT_DRAFT = 'Investigate the tool errors in this agent run and fix the agent';
 let instanceAiAvailable = true;
 
 vi.mock('@n8n/composables/useTelemetry', () => ({
@@ -84,6 +85,7 @@ describe('useInstanceAiAgentPreviewHandoff', () => {
 			agentId: 'agent-1',
 			threadId: 'thread-1',
 			executionId: 'exec-1',
+			initialDraft: FIX_WITH_ASSISTANT_DRAFT,
 		});
 
 		expect(openThreadWithContextMock).toHaveBeenCalledWith(
@@ -99,7 +101,10 @@ describe('useInstanceAiAgentPreviewHandoff', () => {
 				origin: 'internal',
 				sourceContext: { agentId: 'agent-1', previewThreadId: 'thread-1' },
 			},
-			{ newTab: true },
+			{
+				newTab: true,
+				initialDraft: FIX_WITH_ASSISTANT_DRAFT,
+			},
 		);
 		expect(trackMock).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.AGENTS.INSTANCE_AI_OPENED_FROM_AGENT_PREVIEW,

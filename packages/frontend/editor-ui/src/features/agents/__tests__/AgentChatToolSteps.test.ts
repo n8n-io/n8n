@@ -181,12 +181,12 @@ describe('AgentChatToolSteps', () => {
 		expect(wrapper.find('button').exists()).toBe(false);
 	});
 
-	it('shows Fix with Assistant only for errored tools when handoff is enabled', async () => {
+	it('shows one Fix with Assistant callout with deduplicated failures', async () => {
 		const errored: ToolCall = {
 			tool: 'search_nodes',
 			toolCallId: 'tc-err',
 			state: TOOL_CALL_STATE.ERROR,
-			output: 'Tool failed',
+			output: 'Repeated failure',
 		};
 
 		const withoutFix = mountSteps([errored]);
@@ -207,15 +207,36 @@ describe('AgentChatToolSteps', () => {
 			false,
 		);
 
-		const withFix = mountSteps([errored], {
-			canFixWithAssistant: true,
-			executionId: 'exec-1',
-		});
-		expect(
-			withFix.find('[data-test-id="agent-chat-tool-fix-with-assistant-callout"]').exists(),
-		).toBe(true);
-		await withFix.find('[data-test-id="agent-chat-tool-fix-with-assistant"]').trigger('click');
-		expect(withFix.emitted('fixWithAssistant')?.length).toBeGreaterThanOrEqual(1);
+		const withFix = mountSteps(
+			[
+				errored,
+				{
+					tool: 'list_credentials',
+					toolCallId: 'tc-err-2',
+					state: TOOL_CALL_STATE.ERROR,
+					output: '  Repeated failure  ',
+				},
+				{
+					tool: 'http_request',
+					toolCallId: 'tc-err-3',
+					state: TOOL_CALL_STATE.ERROR,
+					output: 'Different failure',
+				},
+			],
+			{
+				canFixWithAssistant: true,
+				executionId: 'exec-1',
+			},
+		);
+		const callouts = withFix.findAll('[data-test-id="agent-chat-tool-fix-with-assistant-callout"]');
+		expect(callouts).toHaveLength(1);
+		expect(callouts[0].findAll('li')).toHaveLength(2);
+		expect(callouts[0].text().match(/Repeated failure/g)).toHaveLength(1);
+		expect(callouts[0].text().match(/Different failure/g)).toHaveLength(1);
+		const fixButtons = withFix.findAll('[data-test-id="agent-chat-tool-fix-with-assistant"]');
+		expect(fixButtons).toHaveLength(1);
+		await fixButtons[0].trigger('click');
+		expect(withFix.emitted('fixWithAssistant')).toEqual([[]]);
 	});
 
 	it('shows a generic error when the failed tool output is empty', () => {
@@ -254,6 +275,9 @@ describe('AgentChatToolSteps', () => {
 		);
 
 		expect(wrapper.find('[data-test-id="agent-chat-tool-fix-with-assistant"]').exists()).toBe(true);
+		const callout = wrapper.find('[data-test-id="agent-chat-tool-fix-with-assistant-callout"]');
+		expect(callout.find('ul').exists()).toBe(false);
+		expect(callout.text()).toContain('Tool failed');
 
 		const group = wrapper.find('[data-test-id="n8n-ai-activity-step-group"]');
 		expect(group.exists()).toBe(true);

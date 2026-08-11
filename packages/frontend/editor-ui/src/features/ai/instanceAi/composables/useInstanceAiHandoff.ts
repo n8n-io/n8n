@@ -69,6 +69,7 @@ export function buildInstanceAiArtifactCredentialQuestion(
 const pendingFirstMessageKey = (threadId: string) => `n8n-instance-ai-first-message:${threadId}`;
 const pendingHandoffContextKey = (threadId: string) =>
 	`n8n-instance-ai-handoff-context:${threadId}`;
+const pendingComposerDraftKey = (threadId: string) => `n8n-instance-ai-composer-draft:${threadId}`;
 const pendingAgentAttachmentKey = (threadId: string) =>
 	`n8n-instance-ai-agent-attachment:${threadId}`;
 
@@ -167,6 +168,17 @@ export function consumePendingHandoffContext(threadId: string): InstanceAiHandof
 	}
 }
 
+export function stashPendingComposerDraft(threadId: string, draft: string): void {
+	localStorage.setItem(pendingComposerDraftKey(threadId), draft);
+}
+
+export function consumePendingComposerDraft(threadId: string): string | null {
+	const draft = localStorage.getItem(pendingComposerDraftKey(threadId));
+	if (!draft) return null;
+	localStorage.removeItem(pendingComposerDraftKey(threadId));
+	return draft;
+}
+
 export function stashPendingAgentAttachment(
 	threadId: string,
 	attachment: InstanceAiAgentAttachment,
@@ -227,6 +239,7 @@ export async function provisionContextOnlyThread(
 	projectId: string,
 	context: InstanceAiHandoffContext,
 	launch: InstanceAiThreadLaunch,
+	initialDraft?: string,
 ): Promise<string | null> {
 	const threadId = uuidv4();
 	try {
@@ -235,6 +248,7 @@ export async function provisionContextOnlyThread(
 		return null;
 	}
 	stashPendingHandoffContext(threadId, context);
+	if (initialDraft) stashPendingComposerDraft(threadId, initialDraft);
 	return threadId;
 }
 
@@ -286,13 +300,19 @@ export function useInstanceAiHandoff() {
 		launch: InstanceAiThreadLaunch,
 		options?: {
 			newTab?: boolean;
+			initialDraft?: string;
 		},
 	): Promise<boolean> {
 		if (handoffInFlight) return false;
 		handoffInFlight = true;
 		try {
 			const tab = options?.newTab ? window.open('', '_blank') : null;
-			const threadId = await provisionContextOnlyThread(projectId, context, launch);
+			const threadId = await provisionContextOnlyThread(
+				projectId,
+				context,
+				launch,
+				options?.initialDraft,
+			);
 			if (!threadId) {
 				tab?.close();
 				toast.showError(new Error('Failed to start a new thread. Try again.'), 'Open failed');

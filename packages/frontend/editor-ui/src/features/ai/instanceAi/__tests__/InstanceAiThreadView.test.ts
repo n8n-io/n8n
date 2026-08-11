@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent, h, reactive, ref, type PropType } from 'vue';
 import userEvent from '@testing-library/user-event';
+import { flushPromises } from '@vue/test-utils';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -20,6 +21,7 @@ import type {
 import {
 	getPendingAgentAttachment,
 	stashPendingAgentAttachment,
+	stashPendingComposerDraft,
 } from '../composables/useInstanceAiHandoff';
 import { useAgentEvalsStore } from '@/features/agents/agentEvals.store';
 
@@ -32,6 +34,7 @@ const planEditSubmitState = vi.hoisted(() => ({
 }));
 
 const telemetryTrackSpy = vi.hoisted(() => vi.fn());
+const FIX_WITH_ASSISTANT_DRAFT = 'Investigate the tool errors in this agent run and fix the agent';
 const localStorageState = vi.hoisted(() => ({
 	store: new Map<string, string>(),
 }));
@@ -123,6 +126,7 @@ vi.mock('@vueuse/core', async (importOriginal) => ({
 }));
 
 const inputFocusSpy = vi.fn();
+const inputSetTextSpy = vi.fn();
 
 const InstanceAiInputStub = defineComponent({
 	name: 'InstanceAiInputStub',
@@ -135,7 +139,15 @@ const InstanceAiInputStub = defineComponent({
 	},
 	emits: ['submit', 'cancel-plan-edit', 'dismiss-context-chip'],
 	setup(props, { emit, expose }) {
-		expose({ focus: inputFocusSpy });
+		const inputDraft = ref('');
+		const setText = (text: string) => {
+			inputDraft.value = text;
+			inputSetTextSpy(text);
+		};
+		const clearTextIfMatches = (text: string) => {
+			if (inputDraft.value === text) setText('');
+		};
+		expose({ focus: inputFocusSpy, setText, clearTextIfMatches });
 		return () =>
 			h('div', { 'data-test-id': 'instance-ai-input-stub' }, [
 				props.suggestions === undefined ? 'unset' : String(props.suggestions.length),
@@ -159,6 +171,7 @@ const InstanceAiInputStub = defineComponent({
 					{ 'data-test-id': 'instance-ai-input-context-chip-icon' },
 					props.contextChip?.icon ?? '',
 				),
+				h('span', { 'data-test-id': 'instance-ai-input-draft' }, inputDraft.value),
 				h(
 					'button',
 					{
@@ -166,7 +179,9 @@ const InstanceAiInputStub = defineComponent({
 						onClick: () =>
 							emit(
 								'submit',
-								props.isPlanEditMode ? planEditSubmitState.message : 'Normal message',
+								props.isPlanEditMode
+									? planEditSubmitState.message
+									: inputDraft.value || 'Normal message',
 								undefined,
 							),
 					},
@@ -411,6 +426,7 @@ describe('InstanceAiThreadView', () => {
 		const pushStore = mockedStore(usePushConnectionStore);
 		pushStore.addEventListener.mockReturnValue(() => {});
 		inputFocusSpy.mockClear();
+		inputSetTextSpy.mockClear();
 		telemetryTrackSpy.mockClear();
 		planEditSubmitState.message = 'Make the plan simpler';
 		mockRouteState.params = { threadId: 'thread-1' };
@@ -477,7 +493,7 @@ describe('InstanceAiThreadView', () => {
 		});
 	});
 
-	it('shows a pending preview-context chip and attaches it on the first submit', async () => {
+	it('prefills a fix draft and attaches its pending preview context on the first submit', async () => {
 		thread.sseState = 'disconnected';
 		vi.mocked(thread.loadHistoricalMessages).mockResolvedValue('skipped');
 		localStorageState.store.set(
@@ -486,8 +502,10 @@ describe('InstanceAiThreadView', () => {
 				source: 'agent-preview',
 				agentId: 'agent-1',
 				threadId: 'preview-thread-1',
+				executionId: 'exec-1',
 			}),
 		);
+		stashPendingComposerDraft('thread-1', FIX_WITH_ASSISTANT_DRAFT);
 		thread.producedArtifacts = new Map([
 			[
 				'agent-1',
@@ -507,22 +525,64 @@ describe('InstanceAiThreadView', () => {
 				'SEO Auditor session',
 			);
 		});
+		expect(inputSetTextSpy).toHaveBeenCalledWith(FIX_WITH_ASSISTANT_DRAFT);
+		expect(getByTestId('instance-ai-input-draft')).toHaveTextContent(FIX_WITH_ASSISTANT_DRAFT);
 
 		await userEvent.click(getByTestId('instance-ai-input-submit'));
 
 		expect(thread.sendMessage).toHaveBeenCalledWith(
-			'Normal message',
+			FIX_WITH_ASSISTANT_DRAFT,
 			undefined,
 			expect.any(String),
 			{
 				source: 'agent-preview',
 				agentId: 'agent-1',
 				threadId: 'preview-thread-1',
+				executionId: 'exec-1',
 			},
 		);
 		await vi.waitFor(() => {
 			expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('');
 		});
+	});
+
+	it('prefills pending composer state before the thread list finishes loading', async () => {
+		store.threads = [];
+		let resolveThreadList!: (loaded: boolean) => void;
+		store.loadThreads.mockImplementation(
+			() =>
+				new Promise((resolve) => {
+					resolveThreadList = resolve;
+				}),
+		);
+		localStorageState.store.set(
+			'n8n-instance-ai-handoff-context:thread-1',
+			JSON.stringify({
+				source: 'agent-preview',
+				agentId: 'agent-1',
+				threadId: 'preview-thread-1',
+			}),
+		);
+		stashPendingComposerDraft('thread-1', 'Fix the failed tool');
+
+		const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+		await vi.waitFor(() => {
+			expect(store.loadThreads).toHaveBeenCalledWith();
+			expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('Preview session');
+			expect(getByTestId('instance-ai-input-draft')).toHaveTextContent('Fix the failed tool');
+		});
+
+		store.threads = [
+			{
+				id: 'thread-1',
+				title: 'Test thread',
+				createdAt: '2026-04-01T00:00:00.000Z',
+				updatedAt: '2026-04-01T00:00:00.000Z',
+			},
+		] as typeof store.threads;
+		resolveThreadList(true);
+		await flushPromises();
 	});
 
 	it('applies pending preview context before message hydration finishes', async () => {
@@ -843,16 +903,19 @@ describe('InstanceAiThreadView', () => {
 				threadId: 'preview-thread-1',
 			}),
 		);
+		stashPendingComposerDraft('thread-1', 'Fix the failed tool');
 
 		const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
 		await vi.waitFor(() => {
 			expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('Preview session');
+			expect(getByTestId('instance-ai-input-draft')).toHaveTextContent('Fix the failed tool');
 		});
 
 		await userEvent.click(getByTestId('instance-ai-input-dismiss-context-chip'));
 		await vi.waitFor(() => {
 			expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('');
+			expect(getByTestId('instance-ai-input-draft')).toHaveTextContent('');
 		});
 
 		await userEvent.click(getByTestId('instance-ai-input-submit'));

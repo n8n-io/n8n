@@ -41,6 +41,7 @@ import { useCanvasPreview } from './useCanvasPreview';
 import { useCreditWarningBanner } from './composables/useCreditWarningBanner';
 import {
 	clearPendingAgentAttachment,
+	consumePendingComposerDraft,
 	consumePendingFirstMessage,
 	consumePendingHandoffContext,
 	getPendingAgentAttachment,
@@ -99,6 +100,8 @@ const { width: windowWidth } = useWindowSize();
 const { isCollapsed: isMainSidebarCollapsed, sidebarWidth: mainSidebarWidth } = useSidebarLayout();
 const telemetry = useTelemetry();
 const pendingComposerContext = ref<InstanceAiHandoffContext | null>(null);
+const pendingComposerDraft = ref<string | null>(null);
+const generatedComposerDraft = ref<string | null>(null);
 const pendingAgentAttachment = ref<InstanceAiAgentAttachment | null>(null);
 const currentAgentAttachment = computed<InstanceAiAgentAttachment | null>(() => {
 	const queued = pendingAgentAttachment.value;
@@ -576,6 +579,14 @@ watch(chatInputRef, (el) => {
 	}
 });
 
+watch([chatInputRef, pendingComposerDraft], ([input, draft]) => {
+	if (!input || !draft) return;
+	input.setText(draft);
+	generatedComposerDraft.value = draft;
+	pendingComposerDraft.value = null;
+	void nextTick(focusChatInputIfFocusIsIdle);
+});
+
 // Reset scroll state when switching threads so new content auto-scrolls.
 watch(
 	() => props.threadId,
@@ -638,9 +649,6 @@ const composerContextChip = computed(() => {
 });
 
 function reconnectThreadAfterHydration(): void {
-	// Apply preview/credential composer context before hydration so a quick first
-	// submit cannot race past attachment while the composer is already enabled.
-	pendingComposerContext.value = consumePendingHandoffContext(props.threadId);
 	const agentAttachment = getPendingAgentAttachment(props.threadId);
 	if (agentAttachment) {
 		pendingAgentAttachment.value = agentAttachment;
@@ -670,6 +678,10 @@ function reconnectThreadAfterHydration(): void {
 // store-level "active thread" state is needed here.
 async function syncRouteToStore() {
 	const requestedThreadId = props.threadId;
+	// Apply preview/credential composer state synchronously so a quick first
+	// submit cannot race past it while the thread list is still loading.
+	pendingComposerContext.value = consumePendingHandoffContext(requestedThreadId);
+	pendingComposerDraft.value = consumePendingComposerDraft(requestedThreadId);
 	if (!store.threads.length) {
 		await store.loadThreads();
 	}
@@ -773,6 +785,7 @@ function handleSubmit(message: string, attachments?: InstanceAiAttachment[]) {
 			if (!sent) return;
 			if (handoffContext && pendingComposerContext.value === handoffContext) {
 				pendingComposerContext.value = null;
+				generatedComposerDraft.value = null;
 			}
 			if (queuedAgentAttachment && pendingAgentAttachment.value === queuedAgentAttachment) {
 				clearPendingAgentAttachment(props.threadId);
@@ -851,6 +864,10 @@ async function dismissComposerContextChip() {
 	}
 
 	if (composerContextChip.value.isPending) {
+		const draft = generatedComposerDraft.value ?? pendingComposerDraft.value;
+		if (draft) chatInputRef.value?.clearTextIfMatches(draft);
+		pendingComposerDraft.value = null;
+		generatedComposerDraft.value = null;
 		pendingComposerContext.value = null;
 		return;
 	}

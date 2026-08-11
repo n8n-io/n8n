@@ -35,9 +35,12 @@ import {
 	buildInstanceAiAgentPreviewHandoffContext,
 	buildInstanceAiCredentialHandoffContext,
 	clearPendingAgentAttachment,
+	consumePendingComposerDraft,
 	consumePendingHandoffContext,
 	getPendingAgentAttachment,
+	provisionContextOnlyThread,
 	stashPendingAgentAttachment,
+	stashPendingComposerDraft,
 	stashPendingHandoffContext,
 	useInstanceAiHandoff,
 } from '../composables/useInstanceAiHandoff';
@@ -133,6 +136,37 @@ describe('useInstanceAiHandoff', () => {
 
 		expect(consumePendingHandoffContext('thread-1')).toEqual(context);
 		expect(consumePendingHandoffContext('thread-1')).toBeNull();
+	});
+
+	it('stashes and consumes a pending composer draft once', () => {
+		stashPendingComposerDraft('thread-1', 'Fix this tool failure');
+
+		expect(consumePendingComposerDraft('thread-1')).toBe('Fix this tool failure');
+		expect(consumePendingComposerDraft('thread-1')).toBeNull();
+	});
+
+	it('provisions a context-only thread with an optional composer draft', async () => {
+		const context = buildInstanceAiAgentPreviewHandoffContext({
+			agentId: 'agent-1',
+			threadId: 'preview-thread-1',
+			executionId: 'exec-1',
+		});
+		const launch = {
+			source: 'agent_preview' as const,
+			origin: 'internal' as const,
+		};
+
+		const threadId = await provisionContextOnlyThread(
+			'project-1',
+			context,
+			launch,
+			'Fix this tool failure',
+		);
+
+		expect(threadId).toBe('thread-1');
+		expect(mocks.syncThread).toHaveBeenCalledWith('thread-1', 'project-1', launch);
+		expect(consumePendingHandoffContext('thread-1')).toEqual(context);
+		expect(consumePendingComposerDraft('thread-1')).toBe('Fix this tool failure');
 	});
 
 	it('keeps a pending agent attachment until it is explicitly cleared', () => {

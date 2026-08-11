@@ -313,6 +313,9 @@ const baseTextFn = (key: string) => {
 		'agents.builder.preview.close.ariaLabel': 'Close preview',
 		'projects.menu.personal': 'Personal',
 	};
+	if (key === 'agents.builder.preview.fixWithAssistantPrompt') {
+		return 'Investigate the tool errors in this agent run and fix the agent';
+	}
 	return map[key] ?? key;
 };
 
@@ -788,6 +791,7 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 			agentIcon: 'bot',
 			sessionTitle: 'agents.builder.chat.newChat.label',
 			executionId: 'exec-turn-1',
+			initialDraft: 'Investigate the tool errors in this agent run and fix the agent',
 		});
 	});
 

@@ -183,7 +183,12 @@ async function onSendPreviewToAssistant(executionId?: string) {
 		agentName: agentName.value || undefined,
 		agentIcon: localConfig.value?.personalisation?.icon,
 		sessionTitle: currentSessionTitle.value || undefined,
-		executionId,
+		...(executionId
+			? {
+					executionId,
+					initialDraft: locale.baseText('agents.builder.preview.fixWithAssistantPrompt'),
+				}
+			: {}),
 	});
 }
 

@@ -15,6 +15,7 @@ interface AgentPreviewHandoffParams {
 	agentIcon?: string;
 	sessionTitle?: string;
 	executionId?: string;
+	initialDraft?: string;
 }
 
 export function useInstanceAiAgentPreviewHandoff() {
@@ -30,6 +31,7 @@ export function useInstanceAiAgentPreviewHandoff() {
 		agentIcon,
 		sessionTitle,
 		executionId,
+		initialDraft,
 	}: AgentPreviewHandoffParams): Promise<void> {
 		if (!canSendPreviewToInstanceAi.value || !projectId || !agentId || !threadId) return;
 
@@ -48,7 +50,10 @@ export function useInstanceAiAgentPreviewHandoff() {
 				origin: 'internal',
 				sourceContext: { agentId, previewThreadId: threadId },
 			},
-			{ newTab: true },
+			{
+				newTab: true,
+				...(initialDraft ? { initialDraft } : {}),
+			},
 		);
 		if (!opened) return;
 

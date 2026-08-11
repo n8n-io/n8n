@@ -156,10 +156,15 @@ function setText(text: string) {
 	inputText.value = text;
 }
 
+function clearTextIfMatches(text: string) {
+	if (inputText.value === text) inputText.value = '';
+}
+
 defineExpose({
 	focus,
 	appendText,
 	setText,
+	clearTextIfMatches,
 	// Experiment cleanup: remove with instanceAiSplitEmptyState.
 	insertSuggestion: handleSuggestionInsert,
 	submitSuggestion,

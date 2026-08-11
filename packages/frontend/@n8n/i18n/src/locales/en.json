@@ -636,6 +636,7 @@
 	"chatHub.message.actions.stopReading": "Stop reading",
 	"agents.builder.preview.sendToAssistant": "Send to assistant",
 	"agents.builder.preview.fixWithAssistant": "Fix with Assistant",
+	"agents.builder.preview.fixWithAssistantPrompt": "Investigate the tool errors in this agent run and fix the agent",
 	"chatHub.message.actions.edit": "Edit",
 	"chatHub.message.actions.regenerate": "Regenerate",
 	"chatHub.message.actions.executionId": "Execution ID",
