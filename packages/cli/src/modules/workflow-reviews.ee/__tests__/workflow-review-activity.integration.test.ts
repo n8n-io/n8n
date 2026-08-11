@@ -216,7 +216,7 @@ describe('Commenting on a review', () => {
 			.expect(403);
 	});
 
-	test('refuses an author who can no longer open the workflow under review', async () => {
+	test('refuses a requester who lost access to the workflow under review entirely', async () => {
 		const destinationProject = await createTeamProject('Out Of Reach', owner);
 		const workflow = await createWorkflow({}, destinationProject);
 		await createWorkflowHistoryItem(workflow.id, { versionId: 'version-pinned' });
@@ -232,9 +232,10 @@ describe('Commenting on a review', () => {
 			.expect(403);
 	});
 
-	test('lets the author of a review comment on it, even with view-only access to the workflow', async () => {
-		// project:viewer carries workflow:read but not workflow:publish — read is the
-		// scope that gates commenting, so this must pass while deciding does not.
+	test('lets a requester downgraded to view-only keep commenting on their own review', async () => {
+		// Opening a review needs workflow:publish, so this state is only reachable by a
+		// downgrade. project:viewer keeps workflow:read, and read is the scope that gates
+		// commenting, so this must pass while deciding does not.
 		const { request } = await seedReviewInTeamProject(viewer);
 
 		const detail = await viewerAgent.get(`/workflow-review-requests/${request.id}`).expect(200);
