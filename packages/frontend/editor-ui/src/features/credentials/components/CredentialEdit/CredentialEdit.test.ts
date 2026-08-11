@@ -270,7 +270,7 @@ const renderComponent = createComponentRenderer(CredentialEdit, {
 	pinia: createTestingPinia({
 		initialState: {
 			[STORES.UI]: {
-				modalsById: {
+				modalStateById: {
 					[CREDENTIAL_EDIT_MODAL_KEY]: { open: true },
 				},
 			},
@@ -345,7 +345,7 @@ describe('CredentialEdit', () => {
 		const pinia = createTestingPinia({
 			initialState: {
 				[STORES.UI]: {
-					modalsById: {
+					modalStateById: {
 						[CREDENTIAL_EDIT_MODAL_KEY]: { open: true },
 					},
 				},
@@ -906,7 +906,7 @@ describe('CredentialEdit', () => {
 		const pinia = createTestingPinia({
 			initialState: {
 				[STORES.UI]: {
-					modalsById: {
+					modalStateById: {
 						[CREDENTIAL_EDIT_MODAL_KEY]: {
 							open: true,
 							showAuthSelector: true,
@@ -1112,7 +1112,7 @@ describe('CredentialEdit', () => {
 			const pinia = createTestingPinia({
 				initialState: {
 					[STORES.UI]: {
-						modalsById: {
+						modalStateById: {
 							[CREDENTIAL_EDIT_MODAL_KEY]: { open: true },
 						},
 					},
@@ -1204,7 +1204,7 @@ describe('CredentialEdit', () => {
 			createTestingPinia({
 				initialState: {
 					[STORES.UI]: {
-						modalsById: {
+						modalStateById: {
 							[CREDENTIAL_EDIT_MODAL_KEY]: {
 								open: true,
 								showAuthSelector: false,
@@ -1584,7 +1584,7 @@ describe('CredentialEdit', () => {
 			createTestingPinia({
 				initialState: {
 					[STORES.UI]: {
-						modalsById: {
+						modalStateById: {
 							[CREDENTIAL_EDIT_MODAL_KEY]: { open: true },
 						},
 					},
