@@ -379,29 +379,35 @@ describe('router', () => {
 		afterEach(async () => {
 			useSessionExpiryStore().handled = false;
 			useNotificationsStore().setNotificationsSuppressed(false);
+			window.preventNodeViewBeforeUnload = undefined;
 			await useUsersStore().initialize();
 			await router.replace('/workflow/router-test-reset');
 		});
 
+		// The actual `window.location.href` assignment isn't asserted on here: jsdom doesn't
+		// implement real navigation, and swapping out `window.location` to spy on it breaks the
+		// (also real, jsdom-hosted) HTTP request this test drives, since the mocked object lacks
+		// the properties the request layer needs to resolve a relative baseURL. Asserting on
+		// `router.resolve` (the same call the redirect makes to build its href) and on
+		// `preventNodeViewBeforeUnload` (set immediately before the redirect) verifies the same
+		// behavior without touching the real `window.location`.
 		test('reloads to sign-in when a REST call to the app backend comes back 401', async () => {
 			const rootStore = useRootStore();
 			server.get('/rest/__test_401__', () => new Response(401, {}, { message: 'Unauthorized' }));
-
-			Object.defineProperty(window, 'location', {
-				value: { href: '' },
-				writable: true,
-			});
-			const hrefSpy = vi.spyOn(window.location, 'href', 'set');
+			const resolveSpy = vi.spyOn(router, 'resolve');
 
 			await expect(get(rootStore.restApiContext.baseUrl, '/__test_401__')).rejects.toThrow();
 
 			await vi.waitFor(() => {
-				expect(hrefSpy).toHaveBeenCalled();
+				expect(window.preventNodeViewBeforeUnload).toBe(true);
 			});
 
-			const [href] = hrefSpy.mock.calls[0];
-			expect(href).toContain(router.resolve({ name: VIEWS.SIGNIN }).path);
-			expect(href).toContain('sessionExpired=true');
+			expect(resolveSpy).toHaveBeenCalledWith(
+				expect.objectContaining({
+					name: VIEWS.SIGNIN,
+					query: expect.objectContaining({ sessionExpired: 'true' }),
+				}),
+			);
 		});
 	});
 });
