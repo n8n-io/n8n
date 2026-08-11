@@ -33,10 +33,6 @@
       "license": "MIT",
       "source": "compiled/node_modules/js-nacl/README.md — 'is licensed under the MIT license', wraps libsodium (ISC)"
     },
-    "pkg:npm/seq-queue@0.0.5": {
-      "license": "MIT",
-      "source": "compiled/node_modules/seq-queue/LICENSE — verbatim MIT, no license field in package.json"
-    },
     "pkg:npm/streamsearch@1.1.0": {
       "license": "MIT",
       "source": "compiled/node_modules/streamsearch/LICENSE — package.json uses legacy licenses[] array"
