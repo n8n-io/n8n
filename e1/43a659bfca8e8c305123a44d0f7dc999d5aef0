@@ -1,0 +1,34 @@
+packages/nodes-base/nodes/Kafka/v2/transport/admin.ts
+  s_c08ff1af07eaeb::t_b077c48d633144 95-101,104-139
+  s_c08ff1af07eaeb::t_fc316f4d3e7a27 22-43
+  s_c08ff1af07eaeb::t_2fcb554327dda8 148-155
+  s_c08ff1af07eaeb::t_1430daed87eb58 1
+  s_c08ff1af07eaeb::t_b8f795ca3c1f88 21,147
+packages/nodes-base/nodes/Kafka/test/mocks/confluent-kafka.ts
+  s_c08ff1af07eaeb::t_02cdb75e1fa2bc 68,75-90
+  s_c08ff1af07eaeb::t_9268ee12e81cec 65-67
+  s_c08ff1af07eaeb::t_036d5f2f6df56b 252
+  s_c08ff1af07eaeb::t_a6fbc04702f0a2 110-111,114-116
+  s_c08ff1af07eaeb::t_2c29fb8a874492 91
+packages/nodes-base/nodes/Kafka/test/v2/transport/admin.test.ts
+  s_c08ff1af07eaeb::t_b2e09206367756 9,12
+  s_c08ff1af07eaeb::t_11aa8b79ff0f5d 101-102,104-138
+  s_c08ff1af07eaeb::t_0f8f8b258d9895 99-100
+  s_c08ff1af07eaeb::t_f161ebdccc500e 103
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "e143a659bfca8e8c305123a44d0f7dc999d5aef0",
+  "prompts": {},
+  "sessions": {
+    "s_c08ff1af07eaeb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3bbca935-0c2a-42a6-bf52-815a6d2dd432",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}
