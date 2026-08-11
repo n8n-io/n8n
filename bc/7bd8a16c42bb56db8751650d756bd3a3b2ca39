@@ -1,0 +1,22 @@
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-eligibility.service.ts
+  s_ffb7ac8df0495d::t_ad7ed1adadaf70 72-73
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-access.service.ts
+  s_ffb7ac8df0495d::t_d6a7c6458adcb8 35-36
+  s_ffb7ac8df0495d::t_030c4422ace6d6 25-27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "bc7bd8a16c42bb56db8751650d756bd3a3b2ca39",
+  "prompts": {},
+  "sessions": {
+    "s_ffb7ac8df0495d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2ee688f2-038b-4dd8-b18a-b5a89d24c066",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

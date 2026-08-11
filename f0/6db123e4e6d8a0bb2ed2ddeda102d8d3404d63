@@ -1,0 +1,176 @@
+packages/cli/src/modules/source-control.ee/multi-repo/source-control-connection.service.ts
+  s_14c1cbbeec5101::t_d30b451e08ec98 1-90,92-259
+docs/generated/sqlite-schema/source_control_connection.md
+  s_a7591054176190::t_74190f6129046c 1-81
+packages/frontend/editor-ui/src/features/integrations/sourceControl.ee/sourceControl.constants.ts
+  s_14c1cbbeec5101::t_b2b24afb16f2ab 4-5
+packages/frontend/editor-ui/src/app/stores/ui.store.ts
+  s_14c1cbbeec5101::t_074cbf8c9342b7 159-160
+  s_14c1cbbeec5101::t_cd1d306590da1a 75-76
+packages/cli/src/modules/source-control.ee/multi-repo/source-control-connection.entity.ts
+  s_14c1cbbeec5101::t_6de9457b6a3ed5 1-48
+packages/cli/src/modules/n8n-packages/entities/folder/folder.exporter.ts
+  s_14c1cbbeec5101::t_8cbf0d3037b9ed 120,125
+  s_14c1cbbeec5101::t_e16bb1ed9a95bd 189
+  s_14c1cbbeec5101::t_8b5a06a579fa42 10
+  s_14c1cbbeec5101::t_d5abe8879a64b4 29
+packages/cli/src/modules/n8n-packages/io/fs/fs-package-reader.ts
+  s_14c1cbbeec5101::t_5a4952d730b8ad 1-50
+packages/cli/src/modules/source-control.ee/multi-repo/source-control-scope.entity.ts
+  s_14c1cbbeec5101::t_f4dee4de944bee 1-32
+packages/cli/src/modules/source-control.ee/source-control.module.ts
+  s_14c1cbbeec5101::t_6d9bd1d230dc14 18-26
+  s_14c1cbbeec5101::t_53cdc5c0b1f209 13
+packages/cli/src/modules/n8n-packages/entities/workflow/auto-included-workflow.exporter.ts
+  s_14c1cbbeec5101::t_1bd9b005a8443a 306,311
+  s_14c1cbbeec5101::t_c23071c8956bc2 10
+  s_14c1cbbeec5101::t_a0152d95517aa0 32
+  s_14c1cbbeec5101::t_c058e95b480ff3 213
+  s_14c1cbbeec5101::t_b6b78f282cb841 181,194
+  s_14c1cbbeec5101::t_382da952842c95 47
+  s_14c1cbbeec5101::t_e2a43da7c28d6f 245-250,255
+  s_14c1cbbeec5101::t_6e5eaf5096be48 285,287-290
+  s_14c1cbbeec5101::t_6097b65a888bdd 70-71
+  s_14c1cbbeec5101::t_11e75752cf0fbd 126
+  s_14c1cbbeec5101::t_f361455b6f3f12 232
+packages/cli/src/modules/n8n-packages/entities/tag/tag.exporter.ts
+  s_14c1cbbeec5101::t_6fa10df524d27c 14
+  s_14c1cbbeec5101::t_7763a5bddb9bf3 41,45
+  s_14c1cbbeec5101::t_c97163a85ff1fe 5
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_14c1cbbeec5101::t_97b4bf553b6134 151-159,169
+  s_14c1cbbeec5101::t_29f608b310e5fd 186-188
+packages/cli/src/modules/n8n-packages/entities/credential/credential.exporter.ts
+  s_14c1cbbeec5101::t_cae2129ccabdc0 49
+  s_14c1cbbeec5101::t_19228d12c1cba9 10
+  s_14c1cbbeec5101::t_43926d8d34c53a 27
+  s_14c1cbbeec5101::t_945af31ff41319 74
+docs/generated/postgres-schema/README.md
+  s_a7591054176190::t_74190f6129046c 109-110,298-299,1305-1326
+docs/generated/sqlite-schema/README.md
+  s_a7591054176190::t_74190f6129046c 109-110,281-282,1292-1313
+packages/frontend/editor-ui/src/features/integrations/sourceControl.ee/sourceControlConnections.api.ts
+  s_14c1cbbeec5101::t_216f4219a91538 1-120
+packages/cli/src/modules/source-control.ee/multi-repo/multi-repo.types.ts
+  s_14c1cbbeec5101::t_d378492fabf524 1-68
+packages/cli/src/modules/n8n-packages/io/unique-filename-allocator.ts
+  s_14c1cbbeec5101::t_476604d4d5a060 31-36
+  s_14c1cbbeec5101::t_b10c7b2ea85ef0 4,12
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_14c1cbbeec5101::t_98e5280a6c314e 243,249
+  s_14c1cbbeec5101::t_bcfbed6778aa9d 94
+  s_14c1cbbeec5101::t_328ff1a2a6fcce 41
+  s_14c1cbbeec5101::t_a036867931d0c6 30-31
+  s_14c1cbbeec5101::t_553dd23e939553 314
+  s_14c1cbbeec5101::t_b16ae6a23befb5 310-313,315-316
+  s_14c1cbbeec5101::t_b5425ceac651e4 228
+  s_14c1cbbeec5101::t_42c6f175a122c2 75-79
+  s_14c1cbbeec5101::t_7fb7cc90db7646 219
+  s_14c1cbbeec5101::t_9fa7f665712ee5 110
+  s_14c1cbbeec5101::t_e4f961f468fc74 121
+  s_14c1cbbeec5101::t_e6f86c5dab3ffb 165
+docs/generated/postgres-schema/public.source_control_connection.md
+  s_a7591054176190::t_74190f6129046c 1-78
+packages/cli/src/modules/source-control.ee/multi-repo/source-control-connections.controller.ts
+  s_14c1cbbeec5101::t_c7ec550746f32d 1-123
+docs/generated/sqlite-schema/source_control_scope.md
+  s_a7591054176190::t_74190f6129046c 1-88
+packages/cli/src/modules/n8n-packages/io/fs/fs-package-writer.ts
+  s_14c1cbbeec5101::t_b009b89a869dc6 1-29
+packages/cli/src/modules/source-control.ee/multi-repo/source-control-scope.repository.ts
+  s_14c1cbbeec5101::t_5bb0adca240022 1-31
+packages/cli/src/modules/source-control.ee/multi-repo/source-control-connection.repository.ts
+  s_14c1cbbeec5101::t_370d7bbdba24cf 1-19
+packages/cli/src/modules/source-control.ee/multi-repo/source-control-sync.service.ts
+  s_14c1cbbeec5101::t_aa06d017305718 1-84,86-129
+packages/frontend/editor-ui/src/features/integrations/sourceControl.ee/sourceControlConnections.types.ts
+  s_14c1cbbeec5101::t_a9dc7b3467f992 1-58
+packages/cli/src/modules/n8n-packages/entities/data-table/data-table.exporter.ts
+  s_14c1cbbeec5101::t_614b16554d423f 77
+  s_14c1cbbeec5101::t_2e852eb7c836ac 22
+  s_14c1cbbeec5101::t_a8a7d9967baf53 13
+  s_14c1cbbeec5101::t_649219832f6312 66
+packages/cli/src/modules/n8n-packages/entities/project/project.exporter.ts
+  s_14c1cbbeec5101::t_292d2eb3b2be42 11
+  s_14c1cbbeec5101::t_8b9ab386e82f87 26
+  s_14c1cbbeec5101::t_375c5adb94d2f8 62,66
+  s_14c1cbbeec5101::t_593b4390e91e60 117
+  s_14c1cbbeec5101::t_4de5c4e3b9b20e 137
+packages/cli/src/modules/n8n-packages/entities/variable/variable.exporter.ts
+  s_14c1cbbeec5101::t_fc59f4a743ef51 76
+  s_14c1cbbeec5101::t_64ac54b8c51cbd 93
+packages/frontend/editor-ui/src/features/integrations/sourceControl.ee/sourceControlConnections.store.ts
+  s_14c1cbbeec5101::t_98502db66ca70e 1-162
+packages/frontend/editor-ui/src/features/integrations/sourceControl.ee/views/SettingsSourceControl.vue
+  s_14c1cbbeec5101::t_43e86f5df645ff 2-4,10,12,15,17,19-23,29-31,33-34,36-37,40-60,62,66,77,79-83,89-98,100,102,106,110,112-115,118,122-124,127-129,131-134,144,148,151-162,165-169,171-181,184-187,189-217,219-220,222-223,225,227-237,242-243,245-249,251-252,254-260,285,287-289,292-296,299-303,306,309-310,313-319,322,324-326,328-329
+packages/cli/src/modules/n8n-packages/engine/import-telemetry.ts
+  s_14c1cbbeec5101::t_0dd0474b84d2f1 9,27
+packages/frontend/editor-ui/src/features/integrations/sourceControl.ee/components/SourceControlConnectionPullModal.vue
+  s_14c1cbbeec5101::t_dcdb21afc56610 1-137
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_14c1cbbeec5101::t_55b6340ecc89bc 4132-4141
+  s_14c1cbbeec5101::t_a8968358e576e9 5735-5744
+  s_14c1cbbeec5101::t_04716dcffcb197 4108-4131
+docs/generated/postgres-schema/public.project.md
+  s_a7591054176190::t_74190f6129046c 12,54,197-203
+docs/generated/postgres-schema/public.source_control_scope.md
+  s_a7591054176190::t_74190f6129046c 1-81
+packages/cli/src/modules/source-control.ee/multi-repo/connection-git.ts
+  s_14c1cbbeec5101::t_951252a767e85f 1-179
+packages/frontend/editor-ui/src/features/collaboration/projects/views/ProjectSettings.vue
+  s_14c1cbbeec5101::t_dd9a5a28ca10f6 657-658
+  s_14c1cbbeec5101::t_cb813b386104a9 30
+packages/frontend/editor-ui/src/app/components/MainSidebarSourceControl.vue
+  s_14c1cbbeec5101::t_b800fcd4779060 2,6-10,12,19,21,25-32,51,70,72-76,81-84,87-96,105,110,129,140,172,179,191
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow.exporter.ts
+  s_14c1cbbeec5101::t_84f0ece1b4d945 31
+  s_14c1cbbeec5101::t_da271d46a87a13 75,79
+  s_14c1cbbeec5101::t_be47bc998e9bcb 10
+packages/@n8n/db/src/migrations/sqlite/index.ts
+  s_14c1cbbeec5101::t_eb642cd119fa0f 233
+  s_14c1cbbeec5101::t_550f2854e2a058 467
+packages/frontend/editor-ui/src/features/integrations/sourceControl.ee/components/SourceControlConnectionForm.vue
+  s_14c1cbbeec5101::t_b686f0374d7102 1-10,12-318
+packages/frontend/editor-ui/src/features/integrations/sourceControl.ee/components/SourceControlConnectionPushModal.vue
+  s_14c1cbbeec5101::t_653e716e9023d9 1-151
+packages/@n8n/db/src/migrations/common/1786000000000-CreateSourceControlConnectionTables.ts
+  s_14c1cbbeec5101::t_8db33b6e9ad71d 1-66
+packages/@n8n/db/src/migrations/postgresdb/index.ts
+  s_14c1cbbeec5101::t_d403022271dd52 241
+  s_14c1cbbeec5101::t_171d5de09aa769 485
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectSourceControl.vue
+  s_14c1cbbeec5101::t_916e4f27b4a3a6 1-172
+docs/generated/sqlite-schema/project.md
+  s_a7591054176190::t_74190f6129046c 23,60,203-209
+packages/cli/src/modules/n8n-packages/entities/variable/variable.types.ts
+  s_14c1cbbeec5101::t_5eaf62429c0d29 19
+  s_14c1cbbeec5101::t_cee3391e046d8a 4
+packages/frontend/editor-ui/src/app/components/Modals.vue
+  s_14c1cbbeec5101::t_b5d1408cec385f 69-70
+  s_14c1cbbeec5101::t_c02d86e5e0284c 332-343
+  s_14c1cbbeec5101::t_535e7a2006032d 114-115
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f06db123e4e6d8a0bb2ed2ddeda102d8d3404d63",
+  "prompts": {},
+  "sessions": {
+    "s_14c1cbbeec5101": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "638a5516-f9a6-4451-be2f-edcfc696b7fd",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_a7591054176190": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2d983e8e-1983-43a3-bcb4-e777331037b3",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}
