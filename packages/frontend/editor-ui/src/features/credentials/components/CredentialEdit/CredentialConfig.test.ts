@@ -1121,6 +1121,38 @@ describe('CredentialConfig', () => {
 			expect(screen.queryByTestId('templated-auth-value-input')).not.toBeInTheDocument();
 		});
 
+		it('hands the AI help handler the guided-form labels and key page of a pre-filled credential', async () => {
+			const helpSpy = vi.fn().mockResolvedValue(false);
+			renderComponent({
+				props: {
+					...templatedProps,
+					credentialData: {
+						...templatedProps.credentialData,
+						docsUrl: 'https://replicate.com/account/api-tokens',
+					} as unknown as ICredentialDataDecryptedObject,
+					credentialProperties: [
+						{ displayName: 'Template', name: 'template', type: 'json', default: '' },
+					],
+					instanceAiCredentialHelp: helpSpy,
+				},
+			});
+
+			const button = screen
+				.getByTestId('credential-edit-instance-ai-help-button')
+				.querySelector('button');
+			await userEvent.click(button!);
+
+			// no defs stored → the start-cased marker name stands in as the label; the
+			// recipe's key page rides along so the thread can link the exact URL
+			expect(helpSpy).toHaveBeenCalledWith(
+				expect.objectContaining({
+					credentialType: 'httpTemplatedCustomAuth',
+					placeholderTitles: ['Api Key'],
+					docsUrl: 'https://replicate.com/account/api-tokens',
+				}),
+			);
+		});
+
 		it('renders the raw field set for other credential types', () => {
 			renderComponent({
 				props: {

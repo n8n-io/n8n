@@ -98,16 +98,18 @@ export type {
 	ObservationLogStatus,
 	ObservationLogTaskKind,
 	ObservationLogTaskLockHandle,
-	TokenCounter,
 } from './types';
 export type { ProviderOptions } from '@ai-sdk/provider-utils';
 export { AgentEvent } from './types';
 export type { AgentEventData, AgentEventHandler } from './types';
 export {
-	estimateObservationTokens,
 	OBSERVATION_LOG_MARKERS,
 	OBSERVATION_LOG_STATUSES,
 } from './types';
+export {
+	estimateObservationTokens,
+	type TokenCounter,
+} from './runtime/model/model-token-counter';
 
 export { createCancellation, isCancellation, CANCELLATION_TYPE } from './sdk/cancellation';
 export type { Cancellation } from './sdk/cancellation';
@@ -117,6 +119,11 @@ export {
 	raceWithAbort,
 	throwIfAborted,
 } from './sdk/abort';
+export {
+	DEFAULT_MODEL_STREAM_FIRST_OUTPUT_TIMEOUT_MS,
+	DEFAULT_MODEL_STREAM_IDLE_TIMEOUT_MS,
+	ModelStreamStallError,
+} from './runtime/streaming/stream-stall';
 export {
 	APPROVAL_RESUME_SCHEMA,
 	APPROVAL_SUSPEND_SCHEMA,
@@ -246,6 +253,7 @@ export type {
 	ModelInfo,
 	ModelCost,
 	ModelLimits,
+	ModelModalities,
 } from './sdk/catalog';
 export { BaseMemory } from './storage/base-memory';
 export { BaseVectorStore } from './storage/base-vector-store';

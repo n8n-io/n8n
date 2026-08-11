@@ -3,9 +3,9 @@ import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { N8nIcon } from '@n8n/design-system';
 import type { CommandGroup, CommandBarItem } from '../types';
-import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useInstanceAiStore } from '@/features/ai/instanceAi/instanceAi.store';
 import { INSTANCE_AI_VIEW, INSTANCE_AI_THREAD_VIEW } from '@/features/ai/instanceAi/constants';
+import { useInstanceAiAvailable } from '@/features/ai/instanceAi/composables/useInstanceAiAvailability';
 
 const NAME_KEYWORDS = [
 	'assistant',
@@ -21,14 +21,8 @@ export function useInstanceAiCommands(options: { lastQuery: Ref<string> }): Comm
 	const i18n = useI18n();
 	const { lastQuery } = options;
 	const router = useRouter();
-	const settingsStore = useSettingsStore();
 	const instanceAiStore = useInstanceAiStore();
-
-	const isInstanceAiCommandsVisible = computed(
-		() =>
-			settingsStore.isModuleActive('instance-ai') &&
-			settingsStore.moduleSettings['instance-ai']?.enabled !== false,
-	);
+	const isInstanceAiCommandsVisible = useInstanceAiAvailable();
 
 	const filteredThreads = computed(() => {
 		const trimmed = (lastQuery.value || '').trim().toLowerCase();

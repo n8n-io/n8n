@@ -43,8 +43,10 @@ vi.mock('@n8n/design-system', () => ({
 		props: ['disabled', 'ariaLabel'],
 	},
 	N8nLoading: { template: '<div />', props: ['rows', 'variant'] },
+	N8nOption: { template: '<div />', props: ['value', 'label', 'disabled'] },
 	N8nRadioButtons: { template: '<div />', props: ['modelValue', 'options'] },
 	N8nScrollArea: { template: '<div><slot /></div>', props: ['maxHeight', 'type'] },
+	N8nSelect: { template: '<div><slot /></div>', props: ['modelValue', 'disabled', 'size'] },
 	N8nSwitch: { template: '<button data-test-id="agent-memory-toggle"></button>' },
 	N8nSwitch2: { template: '<button />', props: ['modelValue', 'disabled'] },
 	N8nText: { template: '<span><slot /></span>', props: ['tag', 'bold', 'size', 'color'] },
@@ -55,14 +57,6 @@ vi.mock('@n8n/design-system', () => ({
 		props: ['modelValue', 'options'],
 	},
 	N8nTooltip: { template: '<div><slot /><slot name="content" /></div>' },
-}));
-
-vi.mock('@n8n/design-system/components/N8nSelect', () => ({
-	default: { template: '<div><slot /></div>', props: ['modelValue', 'disabled', 'size'] },
-}));
-
-vi.mock('@n8n/design-system/components/N8nOption', () => ({
-	default: { template: '<div />', props: ['value', 'label', 'disabled'] },
 }));
 
 vi.mock('../components/AgentAdvancedPanel.vue', () => ({

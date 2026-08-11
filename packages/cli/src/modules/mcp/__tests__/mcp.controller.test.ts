@@ -22,6 +22,7 @@ mcpServerMiddlewareService.getAuthMiddleware.mockReturnValue(mockAuthMiddleware)
 Container.set(McpServerMiddlewareService, mcpServerMiddlewareService);
 
 import { McpConfig } from '../mcp.config';
+import { MCP_CLIENT_INFO_META_KEY, MCP_PROTOCOL_VERSION_META_KEY } from '../mcp.constants';
 import { McpProtectedResource } from '../mcp-protected-resource';
 import type { McpController as McpControllerType, FlushableResponse } from '../mcp.controller';
 import { McpService } from '../mcp.service';
@@ -30,15 +31,22 @@ import { Telemetry } from '@/telemetry';
 import type { UserConnectedToMCPEventPayload } from '../mcp.types';
 
 const mockHandleRequest = vi.fn().mockResolvedValue(undefined);
-vi.mock('@modelcontextprotocol/sdk/server/streamableHttp.js', () => {
-	const StreamableHTTPServerTransport = vi.fn().mockImplementation(function (_opts) {
-		return {
-			handleRequest: mockHandleRequest,
-			close: vi.fn().mockResolvedValue(undefined),
-		};
-	});
-	return { StreamableHTTPServerTransport };
-});
+// The controller wires createMcpHandler (per-request server factory) through
+// toNodeHandler. The mocks run the factory when the node handler is invoked,
+// mirroring the real flow: getServer is only called for requests that reach
+// the transport, and factory errors propagate to the controller's catch.
+vi.mock('@modelcontextprotocol/server', () => ({
+	createMcpHandler: vi.fn((factory: () => Promise<unknown>) => ({ factory })),
+}));
+vi.mock('@modelcontextprotocol/node', () => ({
+	toNodeHandler: vi.fn(
+		(handler: { factory: () => Promise<unknown> }) =>
+			async (req: unknown, res: unknown, body?: unknown) => {
+				await handler.factory();
+				await mockHandleRequest(req, res, body);
+			},
+	),
+}));
 
 type AuthenticatedMcpRequest = AuthenticatedRequest & {
 	mcpAuthType?: UserConnectedToMCPEventPayload['auth_type'];
@@ -181,6 +189,51 @@ describe('McpController', () => {
 			mcp_apps_enabled: true,
 			mcp_apps_variant: 'variant',
 			mcp_canvas_groups_enabled: true,
+		});
+	});
+
+	test('tracks a server/discover handshake with client info and protocol version from _meta', async () => {
+		(mcpSettingsService.getEnabled as Mock).mockResolvedValue(true);
+		(mcpService.getServer as unknown as Mock).mockReturnValue({
+			connect: vi.fn().mockResolvedValue(undefined),
+			close: vi.fn().mockResolvedValue(undefined),
+		});
+		(mcpService.resolveFeatureFlags as Mock).mockResolvedValue({
+			mcpApps: { enabled: false, variant: 'unassigned' },
+			canvasGroupsEnabled: false,
+		});
+		const res = createRes();
+
+		// The 2026-07-28 revision has no `initialize`; a modern client opens with
+		// `server/discover` and carries its identity in the per-request _meta
+		// envelope, so the connection event must fire off that method.
+		await controller.build(
+			createReq({
+				mcpAuthType: 'oauth',
+				body: {
+					jsonrpc: '2.0',
+					method: 'server/discover',
+					params: {
+						_meta: {
+							[MCP_PROTOCOL_VERSION_META_KEY]: '2026-07-28',
+							[MCP_CLIENT_INFO_META_KEY]: { name: 'Claude', version: '3.0.0' },
+						},
+					},
+				},
+			}),
+			res,
+		);
+
+		expect(telemetry.track).toHaveBeenCalledWith('User connected to MCP server', {
+			user_id: 'user-1',
+			client_name: 'Claude',
+			client_version: '3.0.0',
+			protocol_version: '2026-07-28',
+			auth_type: 'oauth',
+			mcp_connection_status: 'success',
+			mcp_apps_enabled: false,
+			mcp_apps_variant: 'unassigned',
+			mcp_canvas_groups_enabled: false,
 		});
 	});
 

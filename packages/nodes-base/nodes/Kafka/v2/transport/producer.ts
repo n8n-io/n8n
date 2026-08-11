@@ -1,7 +1,6 @@
 import type { KafkaJS } from '@confluentinc/kafka-javascript';
 
-import { getKafkaLibrary } from './client';
-import { toKafkaJSConfig } from './config';
+import { createKafkaClient } from './client';
 import type { KafkaCredentials } from '../../utils';
 
 export interface KafkaProducerOptions {
@@ -15,11 +14,7 @@ export async function createKafkaProducer(
 	credentials: KafkaCredentials,
 	options: KafkaProducerOptions,
 ): Promise<KafkaJS.Producer> {
-	const { Kafka, logLevel } = await getKafkaLibrary();
-	const config = toKafkaJSConfig(credentials);
-	// Without an explicit level the library's own logger writes broker host:port to
-	// process stdout on every execution, outside n8n's logger.
-	const kafka = new Kafka({ ...config, kafkaJS: { ...config.kafkaJS, logLevel: logLevel.ERROR } });
+	const kafka = await createKafkaClient(credentials);
 
 	// acks and timeout are locked in at construction: the library's KafkaJS
 	// compatibility layer ignores them when passed to sendBatch.

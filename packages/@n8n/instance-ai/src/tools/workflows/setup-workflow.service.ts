@@ -5,6 +5,11 @@
  * Separated from the tool definition so the tool stays a thin suspend/resume
  * state machine, and this logic is testable independently.
  */
+import {
+	GENERIC_AUTH_CREDENTIAL_TYPES,
+	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
+	type InstanceAiCredentialSetupHint,
+} from '@n8n/api-types';
 import { findPlaceholderDetails } from '@n8n/utils/placeholder';
 import type { IDataObject, NodeJSON, DisplayOptions, WorkflowJSON } from '@n8n/workflow-sdk';
 import { matchesDisplayOptions } from '@n8n/workflow-sdk';
@@ -20,8 +25,10 @@ import {
 	AI_GATEWAY_CREDENTIAL,
 	N8N_CONNECT_DISPLAY_NAME,
 	assignCredentialToNode,
+	extractServiceHost,
 	isAiGatewayManagedCredential,
 	resolveCredentialForApply,
+	serviceHostsMatch,
 	toSetupNodeCredential,
 	type SetupNodeCredential,
 } from './credential-utils';
@@ -41,10 +48,14 @@ export interface CredentialCache {
 	testability: Map<string, Promise<boolean>>;
 	/** Credential test result promises, keyed by credential ID (workflow-independent). */
 	tests: Map<string, Promise<{ success: boolean; message?: string }>>;
+	/** Templated credential host lookups, keyed by the sorted candidate-id set.
+	 *  Every HTTP node resolving the shared type sees the same candidates, so the
+	 *  host decrypt runs once per workflow rather than once per node. */
+	templatedHosts: Map<string, Promise<Record<string, string | null>>>;
 }
 
 export function createCredentialCache(): CredentialCache {
-	return { lists: new Map(), testability: new Map(), tests: new Map() };
+	return { lists: new Map(), testability: new Map(), tests: new Map(), templatedHosts: new Map() };
 }
 
 function listCacheKey(workflowId: string | undefined, credentialType: string): string {
@@ -427,6 +438,41 @@ interface CredentialState {
 }
 
 /**
+ * Same-service filter for Templated Custom Auth candidates: the type is shared
+ * by every service, so a credential is offered only when the host it was
+ * created for (its stored `serviceHost`) matches the node's own URL host.
+ * Untagged credentials — and every candidate when the node host can't be
+ * derived — are dropped: fail closed rather than offer another service's key.
+ * Same-service reuse survives; anything else goes through "create new".
+ */
+async function filterTemplatedCredentialsByServiceHost(
+	context: InstanceAiContext,
+	node: NodeJSON,
+	candidates: Array<{ id: string; name: string }>,
+	cache: CredentialCache | undefined,
+): Promise<Array<{ id: string; name: string }>> {
+	if (candidates.length === 0) return candidates;
+	const parameters = node.parameters as Record<string, unknown> | undefined;
+	const nodeHost = extractServiceHost(parameters?.url);
+	const getHosts = context.credentialService.getTemplatedCredentialHosts?.bind(
+		context.credentialService,
+	);
+	if (!nodeHost || !getHosts) return [];
+	const ids = candidates.map((c) => c.id);
+	const cacheKey = [...ids].sort().join(',');
+	let hostsPromise = cache?.templatedHosts.get(cacheKey);
+	if (!hostsPromise) {
+		hostsPromise = getHosts(ids).catch((): Record<string, string | null> => ({}));
+		cache?.templatedHosts.set(cacheKey, hostsPromise);
+	}
+	const hosts = await hostsPromise;
+	return candidates.filter((candidate) => {
+		const host = hosts[candidate.id];
+		return typeof host === 'string' && host !== '' && serviceHostsMatch(host, nodeHost);
+	});
+}
+
+/**
  * For a single credential type, list existing credentials (cached + workflow-scoped),
  * decide whether to auto-apply the sole candidate, and test the resolved credential.
  */
@@ -450,7 +496,15 @@ async function resolveCredentialState(
 		cache?.lists.set(cacheKey, listPromise);
 	}
 	const sortedCreds = await listPromise;
-	const existingCredentials = sortedCreds.map((c) => ({ id: c.id, name: c.name }));
+	let existingCredentials = sortedCreds.map((c) => ({ id: c.id, name: c.name }));
+	if (credentialType === TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE) {
+		existingCredentials = await filterTemplatedCredentialsByServiceHost(
+			context,
+			node,
+			existingCredentials,
+			cache,
+		);
+	}
 
 	const existingOnNode = node.credentials?.[credentialType];
 	const existingCredentialId =
@@ -481,7 +535,10 @@ async function resolveCredentialState(
 	// Fall back to auto-applying the sole stored credential when n8n credits
 	// is not available. With multiple candidates, picking the first is a
 	// silent guess — surface the list so the setup wizard can prompt.
-	if (!isAutoApplied) {
+	// Generic auth types never auto-apply: the type alone does not identify a
+	// service, so a sole bearer/header/etc. key must not be attached to an
+	// arbitrary URL without the user's click (a sole match arrives preselected).
+	if (!isAutoApplied && !GENERIC_AUTH_CREDENTIAL_TYPES.has(credentialType)) {
 		isAutoApplied = !hasExistingOnNode && existingCredentials.length === 1;
 	}
 
@@ -790,6 +847,38 @@ export async function buildSetupRequests(
 	return requests;
 }
 
+// ── Credential setup hints ──────────────────────────────────────────────────
+
+/** Agent-supplied Templated Custom Auth recipe, optionally scoped to one node. */
+export type CredentialHintInput = InstanceAiCredentialSetupHint & { nodeName?: string };
+
+/**
+ * Attach agent-supplied credential recipes to the setup requests of nodes
+ * using Templated Custom Auth, so the setup UI creates the credential from the
+ * template and asks the user only for the placeholder values. A node-scoped
+ * hint (nodeName) wins over a type-wide one.
+ */
+export function applyCredentialHints(
+	requests: SetupRequest[],
+	hints: CredentialHintInput[] | undefined,
+): void {
+	if (!hints?.length) return;
+	for (const request of requests) {
+		if (request.credentialType !== TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE) continue;
+		const hint =
+			hints.find((h) => h.nodeName === request.node.name) ?? hints.find((h) => !h.nodeName);
+		if (!hint) continue;
+		const { nodeName: _nodeName, ...setupHint } = hint;
+		// Service identity is derived from the node being set up (falling back
+		// to the recipe's own test endpoint), never model-supplied. It is
+		// stamped into the created credential so setup surfaces only offer it
+		// to same-service nodes later.
+		const serviceHost =
+			extractServiceHost(request.node.parameters?.url) ?? extractServiceHost(setupHint.testUrl);
+		request.setupHint = { ...setupHint, ...(serviceHost ? { serviceHost } : {}) };
+	}
+}
+
 // ── Execution order ─────────────────────────────────────────────────────────
 
 /**
@@ -1051,9 +1140,9 @@ export async function applyNodeParameters(
  * `instance-ai-auto` mirrors the auto-apply rules in `buildSetupRequests`: Instance
  * AI defaults a credential unprompted only when the node had none and the user did
  * not have to choose — n8n Connect when the user has no stored credential of the
- * type (rule 3), or their sole stored credential (rule 2). Anything else — a
- * credential picked among several, or n8n Connect chosen despite having stored keys
- * — is a user-confirmed choice.
+ * type (rule 3), or their sole stored non-generic credential (rule 2). Anything
+ * else — a credential picked among several, a generic auth type, or n8n Connect
+ * chosen despite having stored keys — is a user-confirmed choice.
  */
 async function trackCredentialAssignment(
 	context: InstanceAiContext,
@@ -1073,8 +1162,11 @@ async function trackCredentialAssignment(
 			.list({ type: opts.credType, ...(opts.workflowId ? { workflowId: opts.workflowId } : {}) })
 			.catch(() => []);
 		// Gateway auto-applies when no stored key exists; a BYOK key auto-applies
-		// when it is the user's only one for the type.
-		if (isGateway ? stored.length === 0 : stored.length === 1) source = 'instance-ai-auto';
+		// when it is the user's only one for a service-scoped type. Generic auth
+		// never auto-applies — the type alone does not identify a service.
+		const soleByokAutoApplied =
+			!isGateway && stored.length === 1 && !GENERIC_AUTH_CREDENTIAL_TYPES.has(opts.credType);
+		if (isGateway ? stored.length === 0 : soleByokAutoApplied) source = 'instance-ai-auto';
 	}
 	context.trackTelemetry('Node credential assigned', {
 		credential_type: opts.credType,
@@ -1375,16 +1467,11 @@ export async function analyzeWorkflow(
 				req.isTrigger ||
 				(req.parameterIssues && Object.keys(req.parameterIssues).length > 0),
 		)
-		// Hide cards the user has nothing to do on: credentials already set,
-		// no parameter issues, not a trigger awaiting testing. Trigger steps
-		// are always kept — triggers require user testing regardless of
-		// credential state.
-		.filter(
-			(req) =>
-				options?.includeSettled === true ||
-				!!req.needsAction ||
-				(req.isTrigger && !!req.isTestable),
-		);
+		// Hide cards the user has nothing to do on: credentials already set
+		// and no parameter issues. Settled trigger requests are hidden too —
+		// no wizard step acts on them, so keeping them only renders an
+		// already-complete credential card as if it were pending work.
+		.filter((req) => options?.includeSettled === true || !!req.needsAction);
 
 	sortByExecutionOrder(
 		setupRequests,

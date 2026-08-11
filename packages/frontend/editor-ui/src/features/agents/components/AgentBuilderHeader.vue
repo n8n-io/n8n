@@ -17,9 +17,9 @@ import {
 	N8nIcon,
 	N8nTooltip,
 } from '@n8n/design-system';
-import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
+import type { PathItem } from '@n8n/design-system';
 import type { DropdownMenuItemProps } from '@n8n/design-system';
-import type { ActionDropdownItem } from '@n8n/design-system/types/action-dropdown';
+import type { ActionDropdownItem } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { AGENT_PREVIEW_VIEW, PROJECT_AGENTS } from '@/features/agents/constants';
 import { instanceAiCreateAgentRoute } from '@/features/ai/instanceAi/createAgentRoute';
