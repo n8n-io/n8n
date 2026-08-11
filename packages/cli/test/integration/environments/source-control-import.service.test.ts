@@ -119,11 +119,7 @@ describe('SourceControlImportService', () => {
 			sourceControlContextFactory,
 			sourceControlScopedService,
 			workflowHistoryService,
-			mock(),
-			mock(),
-			mock(),
 			mock(), // redactionEnforcementService
-			mock(), // dataTableSizeValidator
 			mock(), // activeWorkflowManager
 			mock(), // executionPersistence
 			mock(), // workflowPublishGuard
