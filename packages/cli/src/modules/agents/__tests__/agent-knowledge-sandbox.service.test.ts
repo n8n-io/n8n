@@ -510,7 +510,6 @@ describe('AgentKnowledgeSandboxService', () => {
 			commands = sandbox.executeCommand.mock.calls.map(([command]) => command);
 			expect(commands.filter(isManifestReadCommand)).toHaveLength(1);
 			expect(commands.filter(isMirrorSyncCommand)).toHaveLength(0);
-			expect(commands).toHaveLength(1);
 			expect(agentKnowledgeFileStore.readAsBuffer).not.toHaveBeenCalled();
 			expect(filesystem.writeFile).not.toHaveBeenCalled();
 

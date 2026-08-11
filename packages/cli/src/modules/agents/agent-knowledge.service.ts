@@ -113,7 +113,7 @@ export class AgentKnowledgeService {
 		this.agentKnowledgeSandboxService.prewarmMirrorInBackground(projectId, agentId);
 	}
 
-	async deleteAllFilesForAgent(projectId: string, agentId: string): Promise<void> {
+	async deleteAllFilesForAgent(_projectId: string, agentId: string): Promise<void> {
 		const files = await this.agentFileRepository.findByAgentId(agentId);
 		await this.agentFileRepository.delete({ agentId });
 		if (files.length > 0) {
