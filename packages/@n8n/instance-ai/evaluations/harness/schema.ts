@@ -166,6 +166,7 @@ const evalTestCaseObjectSchema = z
 							message: `unknown credential type — add a template to evaluations/credentials/seeder.ts (supported: ${[...SUPPORTED_CREDENTIAL_TYPES].join(', ')})`,
 						}),
 					name: z.string().min(1).optional(),
+					valid: z.boolean().optional(),
 				}),
 			)
 			.optional(),
