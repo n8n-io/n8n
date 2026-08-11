@@ -306,12 +306,6 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 							[skillId]: sanitizedSkill,
 						},
 					};
-					const nextSkills = [...(localConfig.value?.skills ?? [])];
-					const skillRefIndex = nextSkills.findIndex((skillRef) => skillRef.id === id);
-					if (skillRefIndex !== -1) {
-						nextSkills[skillRefIndex] = { type: 'skill', id: skillId };
-						scheduleConfigUpdate({ skills: nextSkills });
-					}
 					scheduleSkillSave({ skillId, skill: sanitizedSkill });
 				},
 			},
