@@ -6,8 +6,8 @@ import type { TrustedKeySourceEntity } from '@/modules/identity-substrate/databa
 import { TrustedKeyEntity } from '@/modules/identity-substrate/database/entities/trusted-key.entity';
 import { TrustedKeySourceRepository } from '@/modules/identity-substrate/database/repositories/trusted-key-source.repository';
 import { TrustedKeyRepository } from '@/modules/identity-substrate/database/repositories/trusted-key.repository';
+import type { TrustedKeyData } from '@/modules/identity-substrate/identity-substrate.schemas';
 import { TrustedKeyService } from '@/modules/identity-substrate/services/trusted-key.service';
-import type { TrustedKeyData } from '@/modules/token-exchange/token-exchange.schemas';
 
 // ──────────────────────────────────────────────────────────────────────
 // Pre-generated PEM public keys (test-only, no secrets)

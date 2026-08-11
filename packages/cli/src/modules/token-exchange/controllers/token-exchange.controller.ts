@@ -8,11 +8,14 @@ import { z, ZodError } from 'zod';
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { EventService } from '@/events/event.service';
+import {
+	TokenExchangeAuthError,
+	TokenExchangeRequestError,
+} from '@/modules/identity-substrate/identity-substrate.errors';
 import { AuthlessRequest } from '@/requests';
 
 import { TokenExchangeService } from '../services/token-exchange.service';
 import { TokenExchangeConfig } from '../token-exchange.config';
-import { TokenExchangeAuthError, TokenExchangeRequestError } from '../token-exchange.errors';
 import { TOKEN_EXCHANGE_GRANT_TYPE, TokenExchangeRequestSchema } from '../token-exchange.schemas';
 import { TokenExchangeFailureReason } from '../token-exchange.types';
 

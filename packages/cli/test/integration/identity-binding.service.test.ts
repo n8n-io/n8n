@@ -2,12 +2,12 @@ import { testDb, testModules } from '@n8n/backend-test-utils';
 import { AuthIdentity, AuthIdentityRepository, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { TrustedKeyService } from '@/modules/identity-substrate/services/trusted-key.service';
-import { OidcService } from '@/modules/sso-oidc/oidc.service.ee';
 import {
 	IdentityResolutionService,
 	qualifiedProviderId,
-} from '@/modules/token-exchange/services/identity-resolution.service';
+} from '@/modules/identity-substrate/services/identity-resolution.service';
+import { TrustedKeyService } from '@/modules/identity-substrate/services/trusted-key.service';
+import { OidcService } from '@/modules/sso-oidc/oidc.service.ee';
 
 import { createUser } from './shared/db/users';
 

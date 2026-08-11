@@ -2,12 +2,12 @@ import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { randomUUID } from 'crypto';
 
+import { TokenExchangeAuthError } from '@/modules/identity-substrate/identity-substrate.errors';
 import { ExternalTokenVerifierService } from '@/modules/identity-substrate/services/external-token-verifier.service';
+import { IdentityResolutionService } from '@/modules/identity-substrate/services/identity-resolution.service';
 import { JwtService } from '@/services/jwt.service';
 
-import { IdentityResolutionService } from './identity-resolution.service';
 import { TokenExchangeConfig } from '../token-exchange.config';
-import { TokenExchangeAuthError } from '../token-exchange.errors';
 import type { TokenExchangeRequest } from '../token-exchange.schemas';
 import {
 	TOKEN_EXCHANGE_ISSUER,

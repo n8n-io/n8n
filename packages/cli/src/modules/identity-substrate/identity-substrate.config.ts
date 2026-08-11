@@ -1,0 +1,81 @@
+import { Config, Env } from '@n8n/config';
+
+@Config
+export class IdentitySubstrateConfig {
+	@Env('N8N_TOKEN_EXCHANGE_EXCLUDE_OWNER')
+	excludeOwner: boolean = true;
+
+	/**
+	 * JSON array of trusted key sources for JWT verification.
+	 * Each entry is validated against `TrustedKeySourceSchema`.
+	 *
+	 * Can also be loaded from a file by setting `N8N_TOKEN_EXCHANGE_TRUSTED_KEYS_FILE`
+	 * to a path — the `@Env` decorator reads the file contents automatically.
+	 */
+	@Env('N8N_TOKEN_EXCHANGE_TRUSTED_KEYS')
+	trustedKeys: string = '';
+
+	/** Interval in seconds between trusted key refresh runs (leader only). */
+	@Env('N8N_TOKEN_EXCHANGE_KEY_REFRESH_INTERVAL_SECONDS')
+	keyRefreshIntervalSeconds: number = 300;
+
+	/** Interval in seconds between JTI cleanup runs. */
+	@Env('N8N_TOKEN_EXCHANGE_JTI_CLEANUP_INTERVAL_SECONDS')
+	jtiCleanupIntervalSeconds: number = 60;
+
+	/** Maximum number of expired JTI rows to delete per cleanup run. */
+	@Env('N8N_TOKEN_EXCHANGE_JTI_CLEANUP_BATCH_SIZE')
+	jtiCleanupBatchSize: number = 1000;
+
+	/**
+	 * Audience external tokens must target to be accepted on surfaces with no
+	 * protected resource to resolve a per-surface audience from (e.g. the
+	 * dynamic-credentials connect flow). Defaults to the instance base URL
+	 * when unset. Webhook/MCP triggers don't use this - see
+	 * `ProtectedResourceRegistry` for their per-`(workflow, triggerNode)`
+	 * resolution.
+	 */
+	@Env('N8N_TOKEN_EXCHANGE_INBOUND_AUDIENCE')
+	inboundAudience: string = '';
+
+	/**
+	 * Claim to use as the effective subject for SSO-derived trusted key
+	 * sources, instead of the standard `sub` claim - e.g. `uid` for an Okta
+	 * custom authorization server, whose access-token `sub` is often the
+	 * user's login rather than a stable id. Instance-wide, not per-issuer.
+	 */
+	@Env('N8N_TOKEN_EXCHANGE_INBOUND_SUBJECT_CLAIM')
+	inboundSubjectClaim: string = '';
+
+	/**
+	 * Comma-separated `aud` values accepted on tokens signed by the SSO
+	 * provider specifically, on top of `inboundAudience`.
+	 *
+	 * This has to be configured rather than derived: what an IdP stamps in
+	 * `aud` isn't in its discovery document, and it differs by token type and
+	 * vendor. Only an ID token is required to carry the OIDC client id (OIDC
+	 * Core 2); an access token's `aud` names the resource server (RFC 9068
+	 * 2.2) - Keycloak uses its audience mappers, Okta the authorization
+	 * server's audience, Auth0 the API identifier, with the client id in
+	 * `azp`/`cid` instead.
+	 *
+	 * Scoped to the SSO source rather than instance-wide (`inboundAudience`)
+	 * so that with several trusted sources configured, an audience accepted
+	 * for the SSO provider isn't also accepted for every other issuer.
+	 */
+	@Env('N8N_TOKEN_EXCHANGE_SSO_INBOUND_AUDIENCES')
+	ssoInboundAudiences: string = '';
+
+	/**
+	 * Whether an SSO-derived trusted key source requires `email_verified` on a
+	 * token before its email may be used to link or provision a user.
+	 *
+	 * Defaults to on, but many IdPs only emit `email_verified` on the ID token,
+	 * not on the access token a caller presents to n8n. Turn it off only when
+	 * the IdP itself is the authority on the email - otherwise a provider that
+	 * lets a user set an arbitrary email claim can take over an existing n8n
+	 * account by email.
+	 */
+	@Env('N8N_TOKEN_EXCHANGE_INBOUND_REQUIRE_VERIFIED_EMAIL')
+	inboundRequireVerifiedEmail: boolean = true;
+}

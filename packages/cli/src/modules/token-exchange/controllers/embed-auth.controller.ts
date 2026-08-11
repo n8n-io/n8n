@@ -6,13 +6,16 @@ import type { Response } from 'express';
 
 import { AuthService } from '@/auth/auth.service';
 import { EventService } from '@/events/event.service';
+import {
+	TokenExchangeAuthError,
+	TokenExchangeRequestError,
+} from '@/modules/identity-substrate/identity-substrate.errors';
 import { AuthlessRequest } from '@/requests';
 import { UrlService } from '@/services/url.service';
 import { validateRedirectUrl } from '@/utils/validate-redirect-url';
 
 import { TokenExchangeService } from '../services/token-exchange.service';
 import { TokenExchangeConfig } from '../token-exchange.config';
-import { TokenExchangeAuthError, TokenExchangeRequestError } from '../token-exchange.errors';
 import { TokenExchangeFailureReason } from '../token-exchange.types';
 
 const configService = Container.get(TokenExchangeConfig);
