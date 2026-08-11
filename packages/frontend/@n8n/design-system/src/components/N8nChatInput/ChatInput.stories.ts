@@ -18,7 +18,7 @@ export default {
 		},
 		layout: {
 			control: 'select',
-			options: ['single-line', 'multiline', 'compact'],
+			options: ['single-line', 'multiline'],
 		},
 		placeholder: {
 			control: 'text',
@@ -44,7 +44,7 @@ export default {
 		docs: {
 			description: {
 				component:
-					'A chat input with single-line, multiline and compact layouts, submit/stop actions, and slot-based top and bottom bars.',
+					'A chat input with single-line and multiline layouts, submit/stop actions, and slot-based top and bottom bars.',
 			},
 		},
 	},
@@ -120,13 +120,6 @@ export const MultiLine = Template.bind({});
 MultiLine.args = {
 	placeholder: 'Type your message here...',
 	maxLength: 1000,
-};
-
-export const Compact = Template.bind({});
-Compact.args = {
-	placeholder: 'Add a comment...',
-	maxLength: 1000,
-	layout: 'compact',
 };
 
 const workflowSuggestions: WorkflowSuggestion[] = [

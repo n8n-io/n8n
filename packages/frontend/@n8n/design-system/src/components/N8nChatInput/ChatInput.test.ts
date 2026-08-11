@@ -969,28 +969,6 @@ describe('N8nChatInput', () => {
 		});
 	});
 
-	describe('compact layout', () => {
-		const renderCompact = (modelValue = '') =>
-			renderComponent({
-				props: {
-					layout: 'compact',
-					modelValue,
-				},
-				global: {
-					stubs: ['N8nCallout', 'N8nScrollArea', 'N8nSendStopButton'],
-				},
-			});
-
-		it('should sit on one line with the actions beside the text', () => {
-			const { container } = renderCompact();
-
-			expect(container.querySelector('.rowContainer')).toBeTruthy();
-			// The 80px floor is what makes the default layout two rows tall when empty.
-			expect(container.querySelector('.container')).not.toHaveStyle({ minHeight: '80px' });
-			expect(container.querySelector('.singleLineTextarea')).toBeFalsy();
-		});
-	});
-
 	describe('autofocus', () => {
 		it('should be focused if enabled', async () => {
 			const { emitted } = renderComponent({

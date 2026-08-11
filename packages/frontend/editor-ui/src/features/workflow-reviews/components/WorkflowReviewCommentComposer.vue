@@ -49,7 +49,6 @@ async function onSubmit() {
 		</span>
 		<N8nChatInput
 			v-model="draft"
-			layout="compact"
 			:max-length="WORKFLOW_REVIEW_COMMENT_MAX_LENGTH"
 			:placeholder="i18n.baseText('workflowReviews.detail.activity.composer.placeholder')"
 			refocus-after-send
