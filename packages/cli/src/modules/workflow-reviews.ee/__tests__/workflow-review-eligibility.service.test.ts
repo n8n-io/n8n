@@ -4,6 +4,7 @@ import type {
 	WorkflowEntity,
 	WorkflowReviewRequest,
 	WorkflowReviewRequestAuthorRepository,
+	WorkflowReviewRequestReviewerRepository,
 } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
@@ -20,11 +21,13 @@ const memberUser = (id = 'user-1') => mock<User>({ id, role: { slug: 'global:mem
 describe('WorkflowReviewEligibilityService', () => {
 	const workflowFinderService = mock<WorkflowFinderService>();
 	const authorRepository = mock<WorkflowReviewRequestAuthorRepository>();
+	const reviewerRepository = mock<WorkflowReviewRequestReviewerRepository>();
 	const projectRelationRepository = mock<ProjectRelationRepository>();
 
 	const service = new WorkflowReviewEligibilityService(
 		workflowFinderService,
 		authorRepository,
+		reviewerRepository,
 		projectRelationRepository,
 	);
 
@@ -34,11 +37,12 @@ describe('WorkflowReviewEligibilityService', () => {
 		vi.resetAllMocks();
 		workflowFinderService.findWorkflowForUser.mockResolvedValue(mock<WorkflowEntity>());
 		authorRepository.isAuthor.mockResolvedValue(false);
+		reviewerRepository.isReviewer.mockResolvedValue(true);
 		projectRelationRepository.getAccessibleProjectsByRoles.mockResolvedValue([]);
 	});
 
 	describe('resolveViewerEligibility', () => {
-		it('lets a non-author with publish access decide', async () => {
+		it('lets an assigned non-author viewer decide', async () => {
 			const eligibility = await service.resolveViewerEligibility(
 				memberUser(),
 				request(),
@@ -49,12 +53,28 @@ describe('WorkflowReviewEligibilityService', () => {
 			expect(workflowFinderService.findWorkflowForUser).toHaveBeenCalledWith(
 				workflowId,
 				expect.anything(),
-				['workflow:publish'],
+				['workflow:read'],
 			);
 		});
 
-		it('reports an author without an admin override as ineligible', async () => {
+		it('reports a non-assigned viewer as ineligible', async () => {
+			reviewerRepository.isReviewer.mockResolvedValue(false);
+
+			const eligibility = await service.resolveViewerEligibility(
+				memberUser(),
+				request(),
+				workflowId,
+			);
+
+			expect(eligibility).toEqual({
+				canDecide: false,
+				decisionIneligibilityReason: 'missing_reviewer_permission',
+			});
+		});
+
+		it('reports an author without an admin override as ineligible even when assigned', async () => {
 			authorRepository.isAuthor.mockResolvedValue(true);
+			reviewerRepository.isReviewer.mockResolvedValue(true);
 
 			const eligibility = await service.resolveViewerEligibility(
 				memberUser(),
@@ -69,17 +89,21 @@ describe('WorkflowReviewEligibilityService', () => {
 			'lets an author with the %s role decide without querying project relations',
 			async (slug) => {
 				authorRepository.isAuthor.mockResolvedValue(true);
+				reviewerRepository.isReviewer.mockResolvedValue(false);
 				const admin = mock<User>({ id: 'user-1', role: { slug } });
 
 				const eligibility = await service.resolveViewerEligibility(admin, request(), workflowId);
 
 				expect(eligibility).toEqual({ canDecide: true, decisionIneligibilityReason: null });
 				expect(projectRelationRepository.getAccessibleProjectsByRoles).not.toHaveBeenCalled();
+				expect(authorRepository.isAuthor).not.toHaveBeenCalled();
+				expect(reviewerRepository.isReviewer).not.toHaveBeenCalled();
 			},
 		);
 
 		it('lets an author who is a project admin of the review project decide', async () => {
 			authorRepository.isAuthor.mockResolvedValue(true);
+			reviewerRepository.isReviewer.mockResolvedValue(false);
 			projectRelationRepository.getAccessibleProjectsByRoles.mockResolvedValue([projectId]);
 
 			const eligibility = await service.resolveViewerEligibility(
@@ -89,6 +113,8 @@ describe('WorkflowReviewEligibilityService', () => {
 			);
 
 			expect(eligibility).toEqual({ canDecide: true, decisionIneligibilityReason: null });
+			expect(authorRepository.isAuthor).not.toHaveBeenCalled();
+			expect(reviewerRepository.isReviewer).not.toHaveBeenCalled();
 		});
 
 		it('reports an author who is only a project admin elsewhere as ineligible', async () => {
@@ -104,14 +130,15 @@ describe('WorkflowReviewEligibilityService', () => {
 			expect(eligibility).toEqual({ canDecide: false, decisionIneligibilityReason: 'author' });
 		});
 
-		it('skips the roles query entirely for a non-author', async () => {
+		it('still queries project roles for a non-admin', async () => {
 			await service.resolveViewerEligibility(memberUser(), request(), workflowId);
 
-			expect(projectRelationRepository.getAccessibleProjectsByRoles).not.toHaveBeenCalled();
+			// Only global admin/owner short-circuit; everyone else hits the project-role lookup.
+			expect(projectRelationRepository.getAccessibleProjectsByRoles).toHaveBeenCalledOnce();
 		});
 
-		it('reports missing publish access before authorship, matching the decision endpoint order', async () => {
-			// An author without publish access would hit the endpoint's 404 first,
+		it('reports missing view access before authorship, matching the decision endpoint order', async () => {
+			// An author who cannot view the workflow would hit the endpoint's 404 first,
 			// so the surfaced reason must be the permission one, not 'author'.
 			workflowFinderService.findWorkflowForUser.mockResolvedValue(null);
 			authorRepository.isAuthor.mockResolvedValue(true);
@@ -124,9 +151,10 @@ describe('WorkflowReviewEligibilityService', () => {
 
 			expect(eligibility).toEqual({
 				canDecide: false,
-				decisionIneligibilityReason: 'missing_publish_permission',
+				decisionIneligibilityReason: 'missing_permission',
 			});
 			expect(authorRepository.isAuthor).not.toHaveBeenCalled();
+			expect(reviewerRepository.isReviewer).not.toHaveBeenCalled();
 		});
 
 		// The capability answers "who", not "when": a closed request still reports the
@@ -149,7 +177,7 @@ describe('WorkflowReviewEligibilityService', () => {
 
 			expect(eligibility).toEqual({
 				canDecide: false,
-				decisionIneligibilityReason: 'missing_publish_permission',
+				decisionIneligibilityReason: 'missing_permission',
 			});
 			expect(workflowFinderService.findWorkflowForUser).not.toHaveBeenCalled();
 		});

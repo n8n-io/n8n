@@ -310,7 +310,7 @@ describe('WorkflowReviewDetailTabs', () => {
 				props: {
 					review: makeDetail({
 						viewerCanDecide: false,
-						viewerDecisionIneligibilityReason: 'missing_publish_permission',
+						viewerDecisionIneligibilityReason: 'missing_reviewer_permission',
 					}),
 					tab: 'activity',
 					deciding: false,
