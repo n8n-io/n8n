@@ -350,7 +350,8 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 	},
 	USER_GAVE_MCP_ACCESS_TO_AGENT: {
 		name: 'User gave MCP access to agent',
-		description: 'An agent was exposed over MCP.',
+		description:
+			'An agent was exposed over MCP. The sibling "User gave MCP access to workflow" and "User toggled MCP access" events are not registered.',
 		properties: z.object({
 			agent_id: z.string(),
 		}),
