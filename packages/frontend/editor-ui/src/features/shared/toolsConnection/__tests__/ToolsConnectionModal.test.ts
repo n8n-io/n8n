@@ -147,6 +147,25 @@ describe('ToolsConnectionModal', () => {
 		expect(queryByText('Notion onboarding flow')).toBeNull();
 	});
 
+	it('treats every status except none as having a connection', () => {
+		const items: ToolConnectionItem[] = [
+			{ ...connectedMcpFixture, id: 'connected', title: 'Operational', status: 'connected' },
+			{ ...connectedMcpFixture, id: 'connecting', title: 'In progress', status: 'connecting' },
+			{ ...connectedMcpFixture, id: 'disconnected', title: 'Unavailable', status: 'disconnected' },
+			{ ...connectedMcpFixture, id: 'none', title: 'Never added', status: 'none' },
+		];
+		const { getByTestId, queryByText } = renderWith({
+			items,
+			categories: ['connected', 'mcp'],
+		});
+
+		expect(getByTestId('tab-connected')).toHaveTextContent('(3)');
+		expect(queryByText('Operational')).toBeTruthy();
+		expect(queryByText('In progress')).toBeTruthy();
+		expect(queryByText('Unavailable')).toBeTruthy();
+		expect(queryByText('Never added')).toBeNull();
+	});
+
 	it('gathers every item under the all tab, connected ones included', () => {
 		const { getByTestId, queryByText } = renderWith({
 			categories: ['all', ...ALL_CATEGORIES],

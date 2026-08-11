@@ -121,6 +121,18 @@ describe('ToolRow', () => {
 		expect(queryByTestId('tools-connection-row-connect')).toBeNull();
 	});
 
+	it('suppresses row and connect actions while connecting', async () => {
+		const item = { ...baseMcp, status: 'connecting' as const };
+		const { getByTestId, queryByTestId, emitted } = render(item);
+
+		expect(getByTestId('tools-connection-row-connecting')).toHaveTextContent('Connecting');
+		expect(getByTestId('tools-connection-row-main')).toBeDisabled();
+		expect(queryByTestId('tools-connection-row-connect')).toBeNull();
+
+		await fireEvent.click(getByTestId('tools-connection-row-main'));
+		expect(emitted()['open-detail']).toBeUndefined();
+	});
+
 	it('emits open-detail when the main row action is clicked', async () => {
 		const { getByTestId, emitted } = render(baseMcp);
 

@@ -72,6 +72,34 @@ describe('ToolCredentialPicker', () => {
 		expect(queryByTestId('tool-credential-picker-trigger-connect')).toBeNull();
 	});
 
+	it('distinguishes a disconnected connection from a tool that was never added', () => {
+		const disconnectedItem = { ...baseMcpItem, status: 'disconnected' as const };
+		const disconnected = render(disconnectedItem, [{ authType: 'mcpOAuth2Api' }]);
+
+		expect(
+			disconnected.getByTestId('tool-credential-picker-trigger-disconnected'),
+		).toHaveTextContent('Disconnected');
+		expect(disconnected.queryByTestId('tool-credential-picker-trigger-connect')).toBeNull();
+		disconnected.unmount();
+
+		const neverAdded = render(baseMcpItem, [{ authType: 'mcpOAuth2Api' }]);
+		expect(neverAdded.getByTestId('tool-credential-picker-trigger-connect')).toHaveTextContent(
+			'Connect',
+		);
+		expect(neverAdded.queryByTestId('tool-credential-picker-trigger-disconnected')).toBeNull();
+	});
+
+	it('shows only a non-interactive status while connecting', () => {
+		const item = { ...baseMcpItem, status: 'connecting' as const };
+		const { getByTestId, queryByTestId } = render(item, [{ authType: 'mcpOAuth2Api' }]);
+
+		expect(getByTestId('tool-credential-picker-trigger-connecting')).toHaveTextContent(
+			'Connecting',
+		);
+		expect(queryByTestId('tool-credential-picker')).toBeNull();
+		expect(queryByTestId('tool-credential-picker-trigger-connect')).toBeNull();
+	});
+
 	it('shows the generic Connect label on the trigger', () => {
 		const { getByTestId } = render(baseNodeItem, [{ authType: 'slackApi' }]);
 		const trigger = getByTestId('tool-credential-picker-trigger-connect');
