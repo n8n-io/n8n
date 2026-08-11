@@ -112,6 +112,8 @@ describe('McpSettingsController', () => {
 			const dto = new UpdateMcpSettingsDto({ mcpAccessEnabled: false });
 			mcpSettingsService.setEnabled.mockResolvedValue(undefined);
 			mcpSettingsService.setAutoExposeNewWorkflows.mockResolvedValue(undefined);
+			mcpSettingsService.getEnabled.mockResolvedValue(false);
+			mcpSettingsService.getAutoExposeNewWorkflows.mockResolvedValue(false);
 			moduleRegistry.refreshModuleSettings.mockResolvedValue(null);
 
 			const res = createRes();
@@ -124,7 +126,7 @@ describe('McpSettingsController', () => {
 				enabled: false,
 			});
 			expect(mcpSettingsService.setAutoExposeNewWorkflows).not.toHaveBeenCalled();
-			expect(result).toEqual({ mcpAccessEnabled: false });
+			expect(result).toEqual({ mcpAccessEnabled: false, autoExposeNewWorkflows: false });
 		});
 
 		test('enables MCP access correctly', async () => {
@@ -132,6 +134,8 @@ describe('McpSettingsController', () => {
 			const req = createReq({ mcpAccessEnabled: true }, { user });
 			const dto = new UpdateMcpSettingsDto({ mcpAccessEnabled: true });
 			mcpSettingsService.setEnabled.mockResolvedValue(undefined);
+			mcpSettingsService.getEnabled.mockResolvedValue(true);
+			mcpSettingsService.getAutoExposeNewWorkflows.mockResolvedValue(true);
 			moduleRegistry.refreshModuleSettings.mockResolvedValue(null);
 
 			const res = createRes();
@@ -143,7 +147,9 @@ describe('McpSettingsController', () => {
 				user,
 				enabled: true,
 			});
-			expect(result).toEqual({ mcpAccessEnabled: true });
+			// The response reflects the persisted state read back via the getters,
+			// surfacing the real stored auto-expose value on enable.
+			expect(result).toEqual({ mcpAccessEnabled: true, autoExposeNewWorkflows: true });
 		});
 
 		test('handles module registry refresh failure gracefully', async () => {
@@ -152,6 +158,8 @@ describe('McpSettingsController', () => {
 			const error = new Error('Registry sync failed');
 
 			mcpSettingsService.setEnabled.mockResolvedValue(undefined);
+			mcpSettingsService.getEnabled.mockResolvedValue(true);
+			mcpSettingsService.getAutoExposeNewWorkflows.mockResolvedValue(false);
 			moduleRegistry.refreshModuleSettings.mockRejectedValue(error);
 
 			const res = createRes();
@@ -162,7 +170,7 @@ describe('McpSettingsController', () => {
 			expect(logger.warn).toHaveBeenCalledWith('Failed to sync MCP settings to module registry', {
 				cause: 'Registry sync failed',
 			});
-			expect(result).toEqual({ mcpAccessEnabled: true });
+			expect(result).toEqual({ mcpAccessEnabled: true, autoExposeNewWorkflows: false });
 		});
 
 		test('handles a non-Error rejection from the module registry refresh', async () => {
@@ -205,6 +213,8 @@ describe('McpSettingsController', () => {
 				autoExposeNewWorkflows: false,
 			});
 			mcpSettingsService.setEnabled.mockResolvedValue(undefined);
+			mcpSettingsService.getEnabled.mockResolvedValue(true);
+			mcpSettingsService.getAutoExposeNewWorkflows.mockResolvedValue(false);
 			moduleRegistry.refreshModuleSettings.mockResolvedValue(null);
 
 			const res = createRes();
@@ -220,6 +230,8 @@ describe('McpSettingsController', () => {
 			const req = createReq({ autoExposeNewWorkflows: true }, { user });
 			const dto = UpdateMcpSettingsDto.parse({ autoExposeNewWorkflows: true });
 			mcpSettingsService.setAutoExposeNewWorkflows.mockResolvedValue(undefined);
+			mcpSettingsService.getEnabled.mockResolvedValue(true);
+			mcpSettingsService.getAutoExposeNewWorkflows.mockResolvedValue(true);
 			moduleRegistry.refreshModuleSettings.mockResolvedValue(null);
 
 			const res = createRes();
@@ -228,7 +240,7 @@ describe('McpSettingsController', () => {
 			expect(mcpSettingsService.setEnabled).not.toHaveBeenCalled();
 			expect(mcpSettingsService.setAutoExposeNewWorkflows).toHaveBeenCalledWith(true);
 			expect(eventService.emit).not.toHaveBeenCalled();
-			expect(result).toEqual({ autoExposeNewWorkflows: true });
+			expect(result).toEqual({ mcpAccessEnabled: true, autoExposeNewWorkflows: true });
 		});
 
 		test('rejects an empty body', () => {

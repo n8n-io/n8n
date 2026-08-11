@@ -12,8 +12,8 @@ import type { IRestApiContext } from '@n8n/rest-api-client';
 import { makeRestApiRequest, getFullApiResponse } from '@n8n/rest-api-client';
 
 export type McpSettingsResponse = {
-	mcpAccessEnabled?: boolean;
-	autoExposeNewWorkflows?: boolean;
+	mcpAccessEnabled: boolean;
+	autoExposeNewWorkflows: boolean;
 };
 
 export type ToggleWorkflowsMcpAccessTarget =

@@ -20,6 +20,7 @@ import {
 	fetchMcpAgents,
 	getAllowedRedirectUris,
 	updateAllowedRedirectUris,
+	type McpSettingsResponse,
 	type ToggleWorkflowsMcpAccessResponse,
 	type ToggleWorkflowsMcpAccessTarget,
 	type ToggleAgentsMcpAccessResponse,
@@ -138,46 +139,31 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		return await clampToLastPage(fetchAgentsAvailableForMCP, page, pageSize);
 	}
 
-	async function setMcpAccessEnabled(enabled: boolean): Promise<boolean> {
-		const { mcpAccessEnabled: updated, autoExposeNewWorkflows: updatedAutoExpose } =
-			await updateMcpSettings(rootStore.restApiContext, { mcpAccessEnabled: enabled });
-
-		const next = updated ?? enabled;
-		const existing = settingsStore.moduleSettings.mcp;
+	// The PATCH endpoint always returns both current values, so local state can
+	// be synced from the response without a follow-up module-settings fetch.
+	function applyMcpSettingsResponse(response: McpSettingsResponse) {
 		settingsStore.moduleSettings.mcp = {
 			mcpManagedByEnv: false,
-			autoExposeNewWorkflows: false,
-			...(existing ?? {}),
-			mcpAccessEnabled: next,
-			...(updatedAutoExpose !== undefined ? { autoExposeNewWorkflows: updatedAutoExpose } : {}),
+			...(settingsStore.moduleSettings.mcp ?? {}),
+			mcpAccessEnabled: response.mcpAccessEnabled,
+			autoExposeNewWorkflows: response.autoExposeNewWorkflows,
 		};
+	}
 
-		// autoExposeNewWorkflows is reported as false by the backend while MCP access is disabled,
-		// so re-enabling must re-fetch to surface its real stored value. Best-effort: the
-		// enable already succeeded, so a transient refresh failure must not report it as failed.
-		if (next) {
-			try {
-				await settingsStore.getModuleSettings();
-			} catch {
-				// Swallow: the enable already succeeded server-side, so a transient
-				// refresh failure must not report it as failed to the caller.
-			}
-		}
-		return next;
+	async function setMcpAccessEnabled(enabled: boolean): Promise<boolean> {
+		const response = await updateMcpSettings(rootStore.restApiContext, {
+			mcpAccessEnabled: enabled,
+		});
+		applyMcpSettingsResponse(response);
+		return response.mcpAccessEnabled;
 	}
 
 	async function setAutoExposeNewWorkflows(enabled: boolean): Promise<boolean> {
-		const { autoExposeNewWorkflows: updated } = await updateMcpSettings(rootStore.restApiContext, {
+		const response = await updateMcpSettings(rootStore.restApiContext, {
 			autoExposeNewWorkflows: enabled,
 		});
-		const next = updated ?? enabled;
-		settingsStore.moduleSettings.mcp = {
-			mcpAccessEnabled: false,
-			mcpManagedByEnv: false,
-			...(settingsStore.moduleSettings.mcp ?? {}),
-			autoExposeNewWorkflows: next,
-		};
-		return next;
+		applyMcpSettingsResponse(response);
+		return response.autoExposeNewWorkflows;
 	}
 
 	function applyAvailableInMCPToLocalStores(workflowId: string, availableInMCP: boolean) {

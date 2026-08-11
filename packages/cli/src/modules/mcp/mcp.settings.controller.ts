@@ -35,25 +35,27 @@ export class McpSettingsController {
 			throw new ForbiddenError('MCP settings are managed via environment variables');
 		}
 
-		const response: { mcpAccessEnabled?: boolean; autoExposeNewWorkflows?: boolean } = {};
-
 		if (dto.mcpAccessEnabled !== undefined) {
 			await this.mcpSettingsService.setEnabled(dto.mcpAccessEnabled);
 			this.eventService.emit('mcp-access-updated', {
 				user: req.user,
 				enabled: dto.mcpAccessEnabled,
 			});
-			response.mcpAccessEnabled = dto.mcpAccessEnabled;
 		}
 
 		if (dto.autoExposeNewWorkflows !== undefined) {
 			await this.mcpSettingsService.setAutoExposeNewWorkflows(dto.autoExposeNewWorkflows);
-			response.autoExposeNewWorkflows = dto.autoExposeNewWorkflows;
 		}
 
 		await this.refreshMcpModuleSettings();
 
-		return response;
+		// Always return both values (read back from the source of truth) so the
+		// client can sync local state without a follow-up module-settings fetch.
+		// autoExposeNewWorkflows is reported as false while access is off.
+		return {
+			mcpAccessEnabled: await this.mcpSettingsService.getEnabled(),
+			autoExposeNewWorkflows: await this.mcpSettingsService.getAutoExposeNewWorkflows(),
+		};
 	}
 
 	@GlobalScope('mcpApiKey:create')
