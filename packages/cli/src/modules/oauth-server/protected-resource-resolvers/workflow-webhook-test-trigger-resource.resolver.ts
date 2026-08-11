@@ -1,6 +1,5 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { WEBHOOK_NODE_TYPE } from 'n8n-workflow';
 
@@ -9,6 +8,8 @@ import type {
 	ProtectedResource,
 	ProtectedResourceResolver,
 } from '@/services/protected-resource.registry';
+
+import { triggerResourceGate } from '../resource-gate';
 import { UrlService } from '@/services/url.service';
 import { TestWebhooks } from '@/webhooks/test-webhooks';
 import type { TestWebhookRegistration } from '@/webhooks/test-webhook-registrations.service';
@@ -143,24 +144,19 @@ export class WorkflowWebhookTestTriggerResourceResolver implements ProtectedReso
 			const urlFor = (method: string) => `${baseUrl}${methodQueryString(method)}`;
 			const methods = [...new Set(triggerMethods.map((method) => method.toUpperCase()))].sort();
 			const requireExecute = node.parameters.requireExecuteAccess !== false;
+			// One list, served live and sealed into the grant, so the audiences a run is
+			// verified against don't change when the registration goes away.
+			const audiences = methods.map(urlFor);
 			return {
 				id: `workflow-webhook-test:${workflowEntity.id}:${resourcePath}`,
 				getResourceUrl: () => urlFor(requestedMethod),
-				getAudiences: () => methods.map(urlFor),
+				getAudiences: () => audiences,
 				scopes: WEBHOOK_TRIGGER_SCOPES,
 				displayName: workflowEntity.name,
-				authorize: async (user: User) => {
-					if (requireExecute) {
-						return (
-							await this.workflowFinderService.findWorkflowIdsWithScopeForUser(
-								[workflowEntity.id],
-								user,
-								['workflow:execute'],
-							)
-						).has(workflowEntity.id);
-					}
-					return true;
-				},
+				...triggerResourceGate(this.workflowFinderService, {
+					audiences,
+					executeAccessWorkflowId: requireExecute ? workflowEntity.id : undefined,
+				}),
 			};
 		}
 

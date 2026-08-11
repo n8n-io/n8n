@@ -30,7 +30,25 @@ describe('OAuthTokenVerifierProxy', () => {
 		expect(provider.verifyOAuthAccessToken).toHaveBeenCalledWith(
 			'some-token',
 			'https://n8n.example.com/mcp-server/http',
+			undefined,
 		);
 		expect(result).toEqual({ user, authType: 'oauth' });
+	});
+
+	it('should pass a sealed resource grant through to the provider', async () => {
+		const proxy = new OAuthTokenVerifierProxy();
+		const provider = mock<OAuthTokenVerifier>();
+		provider.verifyOAuthAccessToken.mockResolvedValue({ user: mock<User>(), authType: 'oauth' });
+		proxy.registerProvider(provider);
+
+		const grant = { audiences: ['https://n8n.example.com/webhook-test/abc?method=POST'] };
+
+		await proxy.verifyOAuthAccessToken('some-token', 'https://n8n.example.com/x', grant);
+
+		expect(provider.verifyOAuthAccessToken).toHaveBeenCalledWith(
+			'some-token',
+			'https://n8n.example.com/x',
+			grant,
+		);
 	});
 });

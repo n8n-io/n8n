@@ -1,5 +1,6 @@
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import type { OAuthResourceGrant } from 'n8n-workflow';
 
 export type AuthFailureReason =
 	| 'missing_authorization_header'
@@ -28,6 +29,12 @@ export type UserWithContext = {
 	authType?: Mcpauth_type;
 	/** OAuth scopes granted to the token. `undefined` = not scope-bearing (e.g. API key) → full access. */
 	scopes?: string[];
+	/**
+	 * Sealable form of the gate this call was admitted by, for callers that keep
+	 * re-verifying after the resource stops resolving. Absent when the gate can't be
+	 * expressed as a grant, or the call was rejected.
+	 */
+	grant?: OAuthResourceGrant;
 };
 
 /**
@@ -39,8 +46,16 @@ export interface OAuthTokenVerifier {
 	 * Verify an OAuth access token against the audiences of the protected
 	 * resource identified by `expectedAudience` (its canonical resource URL),
 	 * and resolve the token's user.
+	 *
+	 * `grant` is the gate sealed into an execution (see `OAuthResourceGrant`), consulted
+	 * only when the resource no longer resolves. Callers verifying a live request must
+	 * not pass it.
 	 */
-	verifyOAuthAccessToken(token: string, expectedAudience?: string): Promise<UserWithContext>;
+	verifyOAuthAccessToken(
+		token: string,
+		expectedAudience?: string,
+		grant?: OAuthResourceGrant,
+	): Promise<UserWithContext>;
 }
 
 /**
@@ -60,7 +75,11 @@ export class OAuthTokenVerifierProxy implements OAuthTokenVerifier {
 		this.provider = provider;
 	}
 
-	async verifyOAuthAccessToken(token: string, expectedAudience?: string): Promise<UserWithContext> {
+	async verifyOAuthAccessToken(
+		token: string,
+		expectedAudience?: string,
+		grant?: OAuthResourceGrant,
+	): Promise<UserWithContext> {
 		if (!this.provider) {
 			return {
 				user: null,
@@ -71,6 +90,6 @@ export class OAuthTokenVerifierProxy implements OAuthTokenVerifier {
 				},
 			};
 		}
-		return await this.provider.verifyOAuthAccessToken(token, expectedAudience);
+		return await this.provider.verifyOAuthAccessToken(token, expectedAudience, grant);
 	}
 }

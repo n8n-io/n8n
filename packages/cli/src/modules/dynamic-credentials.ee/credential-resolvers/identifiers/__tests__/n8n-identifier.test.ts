@@ -339,9 +339,57 @@ describe('N8NIdentifier', () => {
 				expect(mockOAuthVerifier.verifyOAuthAccessToken).toHaveBeenCalledWith(
 					'oauth-access-token',
 					'https://host/mcp/workflow-a',
+					undefined,
 				);
 				expect(mockAuthService.authenticateUserByCookie).not.toHaveBeenCalled();
 				expect(mockAuthService.authenticateUserBasedOnToken).not.toHaveBeenCalled();
+			});
+
+			it('should pass the sealed grant through, for a run that outlived its trigger', async () => {
+				mockOAuthVerifier.verifyOAuthAccessToken.mockResolvedValue({ user: mockUser });
+
+				const grant = {
+					audiences: ['https://host/mcp/workflow-a'],
+					executeAccessWorkflowId: 'workflow-a',
+				};
+
+				const result = await identifier.resolve(
+					{
+						identity: 'oauth-access-token',
+						version: 1 as const,
+						metadata: {
+							source: 'n8n-oauth' as const,
+							resource: 'https://host/mcp/workflow-a',
+							grant,
+						},
+					},
+					{},
+				);
+
+				expect(result).toBe('user-123');
+				expect(mockOAuthVerifier.verifyOAuthAccessToken).toHaveBeenCalledWith(
+					'oauth-access-token',
+					'https://host/mcp/workflow-a',
+					grant,
+				);
+			});
+
+			it('should reject a grant that names no audience', async () => {
+				await expect(
+					identifier.resolve(
+						{
+							identity: 'oauth-access-token',
+							version: 1 as const,
+							metadata: {
+								source: 'n8n-oauth' as const,
+								resource: 'https://host/mcp/workflow-a',
+								grant: { audiences: [] },
+							},
+						},
+						{},
+					),
+				).rejects.toThrow(CredentialResolverError);
+				expect(mockOAuthVerifier.verifyOAuthAccessToken).not.toHaveBeenCalled();
 			});
 
 			it('should throw CredentialResolverError when the token resolves to no user', async () => {

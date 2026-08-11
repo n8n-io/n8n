@@ -19,6 +19,7 @@ import type { McpConfig } from '@/modules/mcp/mcp.config';
 import type { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
 import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
 import type { UrlService } from '@/services/url.service';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 const instanceSettings = mock<InstanceSettings>({ encryptionKey: 'test-key' });
 const jwtService = new JwtService(instanceSettings, mock());
@@ -29,6 +30,7 @@ let accessTokenRepository: Mocked<AccessTokenRepository>;
 let refreshTokenRepository: Mocked<RefreshTokenRepository>;
 let service: OAuthTokenService;
 let txRunner: MockProxy<TransactionRunner>;
+const workflowFinderService = mock<WorkflowFinderService>();
 
 const TEST_BASE_URL = 'https://n8n.example.com';
 const TEST_RESOURCE_URL = `${TEST_BASE_URL}/mcp-server/http`;
@@ -66,6 +68,7 @@ describe('OAuthTokenService', () => {
 			refreshTokenRepository,
 			registry,
 			txRunner,
+			workflowFinderService,
 		);
 	});
 
@@ -587,6 +590,7 @@ describe('OAuthTokenService', () => {
 				refreshTokenRepository,
 				multiResourceRegistry,
 				txRunner,
+				workflowFinderService,
 			);
 		});
 
@@ -669,6 +673,7 @@ describe('OAuthTokenService', () => {
 				refreshTokenRepository,
 				scopedRegistry,
 				txRunner,
+				workflowFinderService,
 			);
 		});
 
@@ -785,6 +790,7 @@ describe('OAuthTokenService', () => {
 				refreshTokenRepository,
 				configuredRegistry,
 				txRunner,
+				workflowFinderService,
 			);
 		});
 
