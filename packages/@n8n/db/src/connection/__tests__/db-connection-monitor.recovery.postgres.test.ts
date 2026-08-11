@@ -2,6 +2,7 @@ import type { Logger } from '@n8n/backend-common';
 import type { DatabaseConfig } from '@n8n/config';
 import { DataSource } from '@n8n/typeorm';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
+import postgresVersions from 'n8n-containers/postgres-versions.json';
 import type { ErrorReporter } from 'n8n-core';
 import net from 'node:net';
 import { getContainerRuntimeClient } from 'testcontainers';
@@ -94,11 +95,11 @@ class FreezableProxy {
  * a machine with no Postgres and no usable container runtime.
  *
  * To run it locally, boot a Postgres and export the host, e.g.:
- *   docker run --rm -e POSTGRES_PASSWORD=password -p 5432:5432 postgres:18-alpine
+ *   docker run --rm -e POSTGRES_PASSWORD=password -p 5432:5432 <POSTGRES_IMAGE>
  *   DB_POSTGRESDB_HOST=localhost DB_POSTGRESDB_PASSWORD=password \
  *     pnpm test db-connection-monitor.recovery.postgres
  */
-const POSTGRES_IMAGE = 'postgres:18-alpine';
+const POSTGRES_IMAGE = postgresVersions.primary;
 const CONTAINER_TIMEOUT_MS = 180_000;
 const TEST_TIMEOUT_MS = 60_000;
 
