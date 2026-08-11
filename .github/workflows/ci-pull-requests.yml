@@ -70,8 +70,10 @@ jobs:
               !**/*.spec.ts
               !packages/testing/playwright/**
               !packages/frontend/@n8n/storybook/**
+              !.devcontainer/**
               !scripts/agent-setup.mjs
               !scripts/backend-module/**
+              !scripts/cloud-session.mjs
               !scripts/licenses/**
               !scripts/mutation-health/**
               !scripts/sync-agent-skill-links.mjs
@@ -83,8 +85,10 @@ jobs:
               !**/*.md
               !**/LICENSE
               !**/CHANGELOG.md
+              !.devcontainer/**
               !scripts/agent-setup.mjs
               !scripts/backend-module/**
+              !scripts/cloud-session.mjs
               !scripts/licenses/**
               !scripts/mutation-health/**
               !scripts/sync-agent-skill-links.mjs
@@ -150,6 +154,10 @@ jobs:
         uses: ./.github/actions/setup-nodejs
         with:
           build-command: ${{ fromJSON(steps.ci-filter.outputs.results).ci && 'pnpm build' || 'pnpm turbo run build --filter=@n8n/playwright-janitor' }}
+
+      - name: Report build critical path
+        if: fromJSON(steps.ci-filter.outputs.results).ci
+        run: node scripts/turbo-critical-path.mjs >> "$GITHUB_STEP_SUMMARY"
 
       - name: Run format check
         if: fromJSON(steps.ci-filter.outputs.results).ci
