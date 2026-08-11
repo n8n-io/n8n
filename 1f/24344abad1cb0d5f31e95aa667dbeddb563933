@@ -1,0 +1,19 @@
+packages/cli/src/modules/agents/__tests__/agent-knowledge-sandbox.service.test.ts
+  s_67bf46096f0f58::t_fd440834951f9d 685-686
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "1f24344abad1cb0d5f31e95aa667dbeddb563933",
+  "prompts": {},
+  "sessions": {
+    "s_67bf46096f0f58": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "b990dfef-ddf9-4ebc-88de-113ccc80c5b6",
+        "model": "gpt-5.6-sol-xhigh-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
