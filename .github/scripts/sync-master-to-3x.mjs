@@ -21,7 +21,9 @@
  *   2. The replay stalls, but 3.x's content still reconciles with master → an earlier
  *      conflict was resolved in a merge, which leaves no patch to replay. Replay again
  *      favouring the 3.x side (`-X theirs`), mirroring the side the resolved merge kept;
- *      the human's fix commit is in the queue and does the real work. Tree is then proven.
+ *      the human's fix commit is in the queue and does the real work. Stalls the strategy
+ *      option cannot settle (modify/delete — `-X` never resolves those) are resolved in
+ *      place toward the queue commit's side. Tree is then proven.
  *   3. master conflicts with 3.x, but ONLY on mechanical files — tool-generated content
  *      with a deterministic resolution (the pnpm lockfile, bot-maintained data files).
  *      These are resolved in place while the replay is stopped, exactly as a human
@@ -196,10 +198,34 @@ export function resolveMechanicalPath({ git, pnpm, path, masterSha, log = consol
 }
 
 /**
+ * Resolve one stalled path by taking the side of the queue commit being replayed
+ * ("theirs" while a rebase is stopped). Exists for the stalls `-X theirs` cannot settle
+ * itself — modify/delete, which strategy options never resolve: when the queue commit
+ * deleted the file there is no stage 3, so the deletion wins. Only meaningful on the
+ * favoured replay passes, where the callers' tree guard proves the final content — a
+ * wrong pick here fails the run instead of pushing.
+ */
+export function resolveQueueSidePath({ git, path, log = console.log }) {
+	// `ls-files -u` lines are `<mode> <oid> <stage>\t<path>`; stage 3 is the queue side.
+	const stages = git(['ls-files', '-u', '--', path]);
+	const queueSideExists = stages.split('\n').some((line) => /^\S+ \S+ 3\t/.test(line));
+	if (queueSideExists) {
+		log(`Resolving ${path} with the replayed commit's version...`);
+		git(['checkout', '--theirs', '--', path]);
+		git(['add', '--', path]);
+	} else {
+		log(`Resolving ${path} with the replayed commit's deletion...`);
+		git(['rm', '--force', '--', path]);
+	}
+}
+
+/**
  * Replay the 3.x-only commits onto master, resolving stalls that involve ONLY mechanical
  * paths in place — folded into the stalled commit exactly as a human's `rebase --continue`
  * would, so no commit is added. Bails (leaving the rebase stopped, for the caller to
- * abort) as soon as a stall touches a real code path.
+ * abort) as soon as a stall touches a real code path — unless `favourQueue` is set, in
+ * which case code-path stalls are resolved with the queue commit's side too. That flag
+ * belongs only on the favoured (`-X theirs`) passes, whose tree guard proves the outcome.
  *
  * Merge commits in the range (breaking PR merges, past conflict-PR merges) are flattened;
  * commits already applied to master — or fully absorbed by a mechanical resolution — are
@@ -211,6 +237,7 @@ export function rebaseResolvingMechanical({
 	masterSha,
 	log = console.log,
 	extraArgs = [],
+	favourQueue = false,
 	maxStalls = 50,
 }) {
 	const resolved = new Set();
@@ -223,13 +250,16 @@ export function rebaseResolvingMechanical({
 		}
 		const { mechanical, code } = classifyPaths(conflictedFiles(git));
 		// No conflicted files means the rebase failed for some other reason — don't guess.
-		if (mechanical.length === 0 || code.length > 0) {
+		if (mechanical.length + code.length === 0 || (code.length > 0 && !favourQueue)) {
 			if (res.out) log(res.out);
 			return { ok: false, resolved: [...resolved], conflictedCode: code };
 		}
 		for (const path of mechanical) {
 			resolveMechanicalPath({ git, pnpm, path, masterSha, log });
 			resolved.add(path);
+		}
+		for (const path of code) {
+			resolveQueueSidePath({ git, path, log });
 		}
 		// The resolution may have absorbed the whole commit — skip it rather than
 		// letting `--continue` refuse an empty commit.
@@ -271,6 +301,42 @@ export function assertNoMarkers(git, rev = 'HEAD') {
 		throw new Error(`Refusing to continue: conflict markers present in ${rev}:\n${found.out}`);
 	if (found.out.includes('fatal:'))
 		throw new Error(`Could not scan ${rev} for conflict markers:\n${found.out}`);
+}
+
+/**
+ * Fold any residual deviation between the replayed tip and the proven merge tree into the
+ * tip commit. `-X theirs` resolves overlapping hunks toward the queue side without
+ * stalling — silently dropping master-side changes (lockfile hunks are the usual case)
+ * that no fix commit in the queue reasserts. The merge tree is the definition of the
+ * correct content, so its blobs are taken verbatim. `excludePaths` names files the merge
+ * tree itself could not resolve (marker-carrying mechanical blobs), which get their own
+ * reconciliation. Never a commit of its own, and never a rewrite of a master commit.
+ */
+export function reconcileWithMergeTreeAtTip({
+	git,
+	mergedTree,
+	masterSha,
+	excludePaths = [],
+	log = console.log,
+}) {
+	if (git(['rev-parse', 'HEAD^{tree}']) === mergedTree) return [];
+	const out = git(['diff-tree', '-r', '--name-only', '--no-renames', mergedTree, 'HEAD']);
+	const excluded = new Set(excludePaths);
+	const paths = (out ? out.split('\n') : []).filter((p) => p && !excluded.has(p));
+	if (paths.length === 0) return [];
+	if (git(['rev-parse', 'HEAD']) === masterSha) {
+		throw new Error('Merge-tree reconciliation would amend a master commit; refusing.');
+	}
+	log(`Folding the merge tree's content for ${paths.join(', ')} into the tip commit.`);
+	for (const path of paths) {
+		if (attempt(git, ['cat-file', '-e', `${mergedTree}:${path}`]).ok) {
+			git(['checkout', mergedTree, '--', path]);
+		} else {
+			git(['rm', '--force', '--', path]); // the merge deleted it
+		}
+	}
+	git(['commit', '--amend', '--no-edit', '--no-verify']);
+	return paths;
 }
 
 /**
@@ -549,9 +615,19 @@ export async function sync({
 					masterSha,
 					log,
 					extraArgs: ['-X', 'theirs'],
+					favourQueue: true,
 				});
 			}
 			if (replay.ok) {
+				// The favoured retry may have drifted from the merge tree on cleanly-merging
+				// paths; fold those back before the mechanical files get their own treatment.
+				reconcileWithMergeTreeAtTip({
+					git,
+					mergedTree: merged.tree,
+					masterSha,
+					excludePaths: mechanical,
+					log,
+				});
 				if (mechanical.includes(LOCKFILE)) reconcileLockfileAtTip({ git, pnpm, masterSha, log });
 				assertTreeMatches(git, merged.tree, mechanical);
 				assertNoMarkers(git);
@@ -607,18 +683,31 @@ export async function sync({
 	// The content reconciles but the patches no longer apply on their own: an earlier
 	// conflict was resolved in a merge, and a merge resolution leaves no patch to replay.
 	// Replay favouring the 3.x side — the same side that resolved merge kept — and let the
-	// resolver's own fix commit, which is in the queue, do the real work. Mechanical stalls
-	// the strategy cannot settle (e.g. modify/delete) are resolved in place. Nothing is
-	// squashed; the tree guard below proves the outcome exactly, since the merge was clean.
+	// resolver's own fix commit, which is in the queue, do the real work. Stalls the
+	// strategy option cannot settle (modify/delete — `-X` never resolves those) are
+	// resolved in place toward the queue commit's side. Nothing is squashed; the tree
+	// guard below proves the outcome exactly, since the merge was clean.
 	git(['rebase', '--abort']);
 	log(`Patches no longer apply individually; replaying with ${target}'s side favoured.`);
-	if (!rebaseResolvingMechanical({ git, pnpm, masterSha, log, extraArgs: ['-X', 'theirs'] }).ok) {
+	const favoured = rebaseResolvingMechanical({
+		git,
+		pnpm,
+		masterSha,
+		log,
+		extraArgs: ['-X', 'theirs'],
+		favourQueue: true,
+	});
+	if (!favoured.ok) {
 		git(['rebase', '--abort']);
 		throw new Error(
 			`Could not replay ${target} onto master even with its own side favoured; needs a human.`,
 		);
 	}
 
+	// Favouring resolves overlapping hunks toward 3.x without stalling, which can drop
+	// master-side changes no fix commit reasserts; the merge was clean, so the merge tree
+	// is the correct content — fold any drift back into the tip.
+	reconcileWithMergeTreeAtTip({ git, mergedTree: merged.tree, masterSha, log });
 	assertTreeMatches(git, merged.tree);
 	assertNoMarkers(git);
 	pushReplay(preHead);
