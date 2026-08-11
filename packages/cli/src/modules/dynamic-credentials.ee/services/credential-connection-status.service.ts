@@ -16,7 +16,7 @@ import type {
 	ICredentialConnectionStatusProvider,
 	UserConnection,
 } from '@/credentials/credential-connection-status-provider.interface';
-import { extractAccountIdentifier } from '@/oauth/account-identifier';
+import { extractAccountIdentifierFromData } from '@/oauth/account-identifier';
 import { RoleService } from '@/services/role.service';
 
 import { SYSTEM_RESOLVER_ID } from '../constants';
@@ -112,9 +112,7 @@ export class CredentialConnectionStatusService implements ICredentialConnectionS
 			return undefined;
 		}
 
-		const tokenData = stored.oauthTokenData;
-		if (!tokenData || typeof tokenData !== 'object') return undefined;
-		return extractAccountIdentifier(tokenData as Record<string, unknown>);
+		return extractAccountIdentifierFromData(stored);
 	}
 
 	/**

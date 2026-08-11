@@ -26,7 +26,7 @@ import { AuthError } from '@/errors/response-errors/auth.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { OAuthRequest } from '@/requests';
-import { extractAccountIdentifier } from '@/oauth/account-identifier';
+import { extractAccountIdentifierFromData } from '@/oauth/account-identifier';
 import { validateOAuthUrl } from '@/oauth/validate-oauth-url';
 import { UrlService } from '@/services/url.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
@@ -398,13 +398,9 @@ export class OauthService {
 		toUpdate: ICredentialDataDecryptedObject,
 		toDelete: string[] = [],
 	) {
-		if (toUpdate.oauthTokenData && typeof toUpdate.oauthTokenData === 'object') {
-			const identifier = extractAccountIdentifier(
-				toUpdate.oauthTokenData as Record<string, unknown>,
-			);
-			if (identifier) {
-				toUpdate.accountIdentifier = identifier;
-			}
+		const identifier = extractAccountIdentifierFromData(toUpdate);
+		if (identifier) {
+			toUpdate.accountIdentifier = identifier;
 		}
 
 		const credentials = new Credentials(credential, credential.type, credential.data);

@@ -1,4 +1,4 @@
-import { extractAccountIdentifier } from '../account-identifier';
+import { extractAccountIdentifier, extractAccountIdentifierFromData } from '../account-identifier';
 
 describe('extractAccountIdentifier', () => {
 	it('returns email from direct token field', () => {
@@ -67,5 +67,25 @@ describe('extractAccountIdentifier', () => {
 
 	it('falls back to the Slack-style authed_user id', () => {
 		expect(extractAccountIdentifier({ authed_user: { id: 'U123' } })).toBe('U123');
+	});
+});
+
+describe('extractAccountIdentifierFromData', () => {
+	it('reads the identifier off a payload carrying a token', () => {
+		expect(
+			extractAccountIdentifierFromData({
+				clientId: 'abc',
+				oauthTokenData: { email: 'user@example.com' },
+			}),
+		).toBe('user@example.com');
+	});
+
+	it.each([
+		['no payload', undefined],
+		['a payload with no token', { clientId: 'abc' }],
+		['a token that is not an object', { oauthTokenData: 'redacted' }],
+		['a null token', { oauthTokenData: null }],
+	])('returns undefined for %s', (_case, data) => {
+		expect(extractAccountIdentifierFromData(data)).toBeUndefined();
 	});
 });

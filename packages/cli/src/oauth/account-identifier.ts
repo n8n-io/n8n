@@ -43,3 +43,17 @@ export function extractAccountIdentifier(tokenData: Record<string, unknown>): st
 
 	return undefined;
 }
+
+/**
+ * {@link extractAccountIdentifier} for a decrypted credential payload, read off its
+ * `oauthTokenData` if it has one. Callers reach this from three different sources —
+ * a per-user storage entry, a credential blob, an in-flight update — so the guard
+ * and the cast live here once rather than at each call site.
+ */
+export function extractAccountIdentifierFromData(
+	data: Record<string, unknown> | undefined,
+): string | undefined {
+	const tokenData = data?.oauthTokenData;
+	if (!tokenData || typeof tokenData !== 'object') return undefined;
+	return extractAccountIdentifier(tokenData as Record<string, unknown>);
+}
