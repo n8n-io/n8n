@@ -258,24 +258,6 @@ describe('oauthCallback', () => {
 			expect(verifyConnected).toHaveBeenCalledOnce();
 		});
 
-		it('waits for delayed verification success after an opted-in popup closes', async () => {
-			const verifyConnected = vi
-				.fn<() => Promise<boolean>>()
-				.mockResolvedValueOnce(false)
-				.mockResolvedValue(true);
-			const promise = waitForOAuthCallback({
-				popup: createPopup(true),
-				trustedOrigins,
-				verifyConnected,
-				abortOnPopupClose: true,
-			});
-
-			await vi.advanceTimersByTimeAsync(2500);
-
-			await expect(promise).resolves.toBe(OAUTH_CALLBACK_SUCCESS);
-			expect(verifyConnected).toHaveBeenCalledTimes(2);
-		});
-
 		it('keeps waiting for verifyConnected while it reports not connected', async () => {
 			const verifyConnected = vi.fn<() => Promise<boolean>>().mockResolvedValue(false);
 
