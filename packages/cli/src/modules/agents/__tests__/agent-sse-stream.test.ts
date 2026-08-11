@@ -39,6 +39,20 @@ function createResponse() {
 	return { res, socket };
 }
 
+async function collectSerializedEvents(chunks: StreamChunk[]): Promise<AgentSseEvent[]> {
+	const { res } = createResponse();
+	const { send } = initSseStream(res);
+	await pumpChunks(toAsyncIterable(chunks), send);
+
+	const events = vi.mocked(res.write).mock.calls.flatMap(([payload]) => {
+		if (typeof payload !== 'string' || !payload.startsWith('data: ')) return [];
+		return [JSON.parse(payload.slice('data: '.length)) as AgentSseEvent];
+	});
+	res.emit('close');
+
+	return events;
+}
+
 describe('agent-sse-stream — connection setup', () => {
 	afterEach(() => {
 		vi.useRealTimers();
@@ -310,6 +324,85 @@ describe('agent-sse-stream — tool execution lifecycle chunks', () => {
 				toolName: 'delegate_subagent',
 				isError: false,
 				endTime: 1_014,
+			},
+		]);
+	});
+
+	it('preserves successful structured tool output across SSE serialization', async () => {
+		const events = await collectSerializedEvents([
+			{
+				type: 'tool-result',
+				toolCallId: 'tc-1',
+				toolName: 'lookup',
+				output: { records: 2 },
+			},
+		]);
+
+		expect(events).toEqual([
+			{
+				type: 'tool-result',
+				toolCallId: 'tc-1',
+				toolName: 'lookup',
+				output: { records: 2 },
+			},
+		]);
+	});
+
+	it('preserves native tool error messages across SSE serialization', async () => {
+		// Regression coverage for AGENT-618: native Error properties must survive the wire format.
+		const events = await collectSerializedEvents([
+			{
+				type: 'tool-result',
+				toolCallId: 'tc-1',
+				toolName: 'write_records',
+				output: new Error('Column "status" no longer exists'),
+				isError: true,
+			},
+			{
+				type: 'tool-result',
+				toolCallId: 'tc-2',
+				toolName: 'write_records',
+				output: new Error('Column "owner" no longer exists'),
+				isError: true,
+			},
+		]);
+
+		expect(events).toEqual([
+			{
+				type: 'tool-result',
+				toolCallId: 'tc-1',
+				toolName: 'write_records',
+				output: 'Column "status" no longer exists',
+				isError: true,
+			},
+			{
+				type: 'tool-result',
+				toolCallId: 'tc-2',
+				toolName: 'write_records',
+				output: 'Column "owner" no longer exists',
+				isError: true,
+			},
+		]);
+	});
+
+	it('scrubs secrets from native tool errors before SSE serialization', async () => {
+		const events = await collectSerializedEvents([
+			{
+				type: 'tool-result',
+				toolCallId: 'tc-secret',
+				toolName: 'write_records',
+				output: new Error('Request failed with password=hunter2'),
+				isError: true,
+			},
+		]);
+
+		expect(events).toEqual([
+			{
+				type: 'tool-result',
+				toolCallId: 'tc-secret',
+				toolName: 'write_records',
+				output: 'Request failed with [REDACTED]',
+				isError: true,
 			},
 		]);
 	});

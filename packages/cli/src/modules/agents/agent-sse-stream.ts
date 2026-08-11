@@ -5,6 +5,7 @@ import type {
 	AgentSseMessage,
 	ToolSuspendedPayload,
 } from '@n8n/api-types';
+import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import type { Response } from 'express';
 import { LoggerProxy } from 'n8n-workflow';
 
@@ -64,6 +65,11 @@ function toAgentSseMessage(message: AgentMessage): AgentSseMessage | undefined {
 
 	if (content.length === 0) return undefined;
 	return { role: message.role, content };
+}
+
+function toolResultOutputForSse(output: unknown, isError: boolean | undefined): unknown {
+	if (!isError || !(output instanceof Error)) return output;
+	return scrubSecretsInText(stringifyError(output) || output.name || 'Tool execution failed');
 }
 
 /** SSE-emit text/reasoning lifecycle chunks. */
@@ -170,7 +176,7 @@ function emitToolChunk(
 				type: 'tool-result',
 				toolCallId: chunk.toolCallId,
 				toolName: chunk.toolName,
-				output: chunk.output,
+				output: toolResultOutputForSse(chunk.output, chunk.isError),
 				...(chunk.isError !== undefined && { isError: chunk.isError }),
 				...(toolResultChunk.canceled !== undefined && { canceled: toolResultChunk.canceled }),
 			});
