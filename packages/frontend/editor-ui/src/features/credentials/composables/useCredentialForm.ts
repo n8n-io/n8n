@@ -105,6 +105,8 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 	const showValidationWarning = ref(false);
 	const isResolvable = ref(false);
 	const connectedByMe = ref(false);
+	/** The provider account my own connection authenticates as, when the provider tells us. */
+	const connectedAccountIdentifier = ref<string | undefined>(undefined);
 	const useCustomOAuth = ref(false);
 
 	// --- type resolution ---------------------------------------------------
@@ -479,6 +481,11 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 			'connectedByMe' in loaded && typeof loaded.connectedByMe === 'boolean'
 				? loaded.connectedByMe
 				: false;
+		connectedAccountIdentifier.value =
+			'connectedAccountIdentifier' in loaded &&
+			typeof loaded.connectedAccountIdentifier === 'string'
+				? loaded.connectedAccountIdentifier
+				: undefined;
 	}
 
 	// An existing credential whose managed clientId/secret were overridden was
@@ -642,6 +649,7 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 		showValidationWarning,
 		isResolvable,
 		connectedByMe,
+		connectedAccountIdentifier,
 		useCustomOAuth,
 		// derived
 		activeNodeType,

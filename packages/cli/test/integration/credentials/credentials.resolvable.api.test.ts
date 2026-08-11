@@ -8,6 +8,7 @@ import {
 } from '@n8n/backend-test-utils';
 import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { Cipher } from 'n8n-core';
 
 import {
 	SYSTEM_RESOLVER_ID,
@@ -94,6 +95,16 @@ const seedUserEntry = async (credentialId: string, userId: string) => {
 	);
 };
 
+/** Seeds a connection the way the OAuth callback does: an encrypted token blob. */
+const seedConnectedUserEntry = async (
+	credentialId: string,
+	userId: string,
+	oauthTokenData: Record<string, unknown>,
+) => {
+	const encrypted = await Container.get(Cipher).encryptV2(JSON.stringify({ oauthTokenData }));
+	await storage.setCredentialData(credentialId, userId, SYSTEM_RESOLVER_ID, encrypted, {});
+};
+
 const saveResolvableCredential = async () =>
 	await saveCredential(randomCredentialPayload({ isResolvable: true }), {
 		project: teamProject,
@@ -116,6 +127,7 @@ type CredentialResponseFields = {
 	id: string;
 	isResolvable?: boolean;
 	connectedByMe?: boolean;
+	connectedAccountIdentifier?: string;
 	data?: { oauthTokenData?: unknown };
 };
 
@@ -144,6 +156,44 @@ describe('GET /credentials — connectedByMe', () => {
 		);
 		expect(cred).toBeDefined();
 		expect(cred?.connectedByMe).toBe(false);
+	});
+
+	test('reports the provider account my own connection authenticates as', async () => {
+		const resolvable = await saveResolvableCredential();
+		await seedConnectedUserEntry(resolvable.id, memberA.id, { email: 'connected@gmail.com' });
+
+		const response = await testServer.authAgentFor(memberA).get('/credentials').expect(200);
+
+		const cred = (response.body.data as CredentialResponseFields[]).find(
+			(c) => c.id === resolvable.id,
+		);
+		expect(cred?.connectedAccountIdentifier).toBe('connected@gmail.com');
+	});
+
+	test('never reports the connected account of another user', async () => {
+		const resolvable = await saveResolvableCredential();
+		await seedConnectedUserEntry(resolvable.id, memberA.id, { email: 'connected@gmail.com' });
+		await seedConnectedUserEntry(resolvable.id, memberB.id, { email: 'other@gmail.com' });
+
+		const response = await testServer.authAgentFor(memberB).get('/credentials').expect(200);
+
+		const cred = (response.body.data as CredentialResponseFields[]).find(
+			(c) => c.id === resolvable.id,
+		);
+		expect(cred?.connectedAccountIdentifier).toBe('other@gmail.com');
+	});
+
+	test('reports a connection without an account when the token carries no identity', async () => {
+		const resolvable = await saveResolvableCredential();
+		await seedConnectedUserEntry(resolvable.id, memberA.id, { access_token: 'tok' });
+
+		const response = await testServer.authAgentFor(memberA).get('/credentials').expect(200);
+
+		const cred = (response.body.data as CredentialResponseFields[]).find(
+			(c) => c.id === resolvable.id,
+		);
+		expect(cred?.connectedByMe).toBe(true);
+		expect(cred?.connectedAccountIdentifier).toBeUndefined();
 	});
 
 	test('omits connectedByMe for static credentials', async () => {
@@ -253,6 +303,21 @@ describe('GET /credentials/:id — per-user oauthTokenData', () => {
 
 		expect(bodyB.connectedByMe).toBe(false);
 		expect(bodyB.data?.oauthTokenData).toBeUndefined();
+	});
+
+	test('reports the connected account the credential modal reads on open', async () => {
+		const resolvable = await saveResolvableCredential();
+		await seedConnectedUserEntry(resolvable.id, memberA.id, { email: 'connected@gmail.com' });
+
+		const response = await testServer
+			.authAgentFor(memberA)
+			.get(`/credentials/${resolvable.id}`)
+			.query({ includeData: true })
+			.expect(200);
+
+		expect((response.body.data as CredentialResponseFields).connectedAccountIdentifier).toBe(
+			'connected@gmail.com',
+		);
 	});
 
 	test('preserves static oauthTokenData behavior (shared across all readers)', async () => {

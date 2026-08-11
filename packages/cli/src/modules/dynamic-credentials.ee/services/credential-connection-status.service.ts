@@ -1,3 +1,4 @@
+import { Logger } from '@n8n/backend-common';
 import {
 	In,
 	ProjectRelationRepository,
@@ -8,8 +9,14 @@ import {
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import type { EntityManager } from '@n8n/typeorm';
+import { Cipher } from 'n8n-core';
+import { jsonParse } from 'n8n-workflow';
 
-import type { ICredentialConnectionStatusProvider } from '@/credentials/credential-connection-status-provider.interface';
+import type {
+	ICredentialConnectionStatusProvider,
+	UserConnection,
+} from '@/credentials/credential-connection-status-provider.interface';
+import { extractAccountIdentifierFromData } from '@/oauth/account-identifier';
 import { RoleService } from '@/services/role.service';
 
 import { SYSTEM_RESOLVER_ID } from '../constants';
@@ -25,9 +32,9 @@ const CREDENTIAL_RETAIN_SCOPE = 'credential:connect' as const;
 const keyOf = (pair: CredentialUserPair) => `${pair.credentialId}|${pair.userId}`;
 
 /**
- * Returns the set of credential ids for which a given user has a per-user
- * storage entry under the system resolver. Existence is the signal — no
- * decryption is performed.
+ * Reports which credentials a given user has a per-user storage entry for under
+ * the system resolver, and which provider account each of those entries
+ * authenticates as.
  *
  * Scoped to the system resolver ({@link SYSTEM_RESOLVER_ID}) because that is
  * the only resolver used to record per-user OAuth connections today. Entries
@@ -44,13 +51,18 @@ export class CredentialConnectionStatusService implements ICredentialConnectionS
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly roleService: RoleService,
 		private readonly projectRelationRepository: ProjectRelationRepository,
+		private readonly cipher: Cipher,
+		private readonly logger: Logger,
 	) {}
 
-	async findConnectedCredentialIds(userId: string, credentialIds: string[]): Promise<Set<string>> {
-		if (credentialIds.length === 0) return new Set();
+	async findMyConnections(
+		userId: string,
+		credentialIds: string[],
+	): Promise<Map<string, UserConnection>> {
+		if (credentialIds.length === 0) return new Map();
 
 		const rows = await this.repository.find({
-			select: ['credentialId'],
+			select: ['credentialId', 'data'],
 			where: {
 				userId,
 				resolverId: SYSTEM_RESOLVER_ID,
@@ -58,12 +70,54 @@ export class CredentialConnectionStatusService implements ICredentialConnectionS
 			},
 		});
 
-		return new Set(rows.map((row) => row.credentialId));
+		return new Map(
+			await Promise.all(
+				rows.map(
+					async (row) =>
+						[
+							row.credentialId,
+							{ accountIdentifier: await this.readAccountIdentifier(row) },
+						] as const,
+				),
+			),
+		);
+	}
+
+	/**
+	 * The provider account (e.g. the Gmail address) this connection authenticates
+	 * as, read out of the stored token. Derived on read rather than denormalized so
+	 * it stays right after a "Switch account" and needs no backfill for connections
+	 * made before it was surfaced.
+	 *
+	 * Never throws — a connection we cannot label is still a connection. The two
+	 * reasons differ in severity, so they are kept apart: unreadable stored data
+	 * means the connection is broken for execution too and is worth a warning,
+	 * whereas a token carrying no identity claim is routine (Gmail asks for no
+	 * identity scope) and stays silent.
+	 */
+	private async readAccountIdentifier(
+		row: Pick<DynamicCredentialUserEntry, 'credentialId' | 'data'>,
+	): Promise<string | undefined> {
+		let stored: Record<string, unknown>;
+		try {
+			stored = jsonParse<Record<string, unknown>>(await this.cipher.decryptV2(row.data));
+		} catch (error) {
+			// Only a failed decrypt or a corrupt payload reaches here. The resolver
+			// reads the same row the same way when the credential is used, so this
+			// connection will fail at execution — surface it rather than hide it.
+			this.logger.warn('Could not read the stored data of a per-user credential connection', {
+				credentialId: row.credentialId,
+				error,
+			});
+			return undefined;
+		}
+
+		return extractAccountIdentifierFromData(stored);
 	}
 
 	/**
 	 * Deletes the running user's connection row(s) for the given credential.
-	 * Scoped to the system resolver to mirror {@link findConnectedCredentialIds}.
+	 * Scoped to the system resolver to mirror {@link findMyConnections}.
 	 * Returns the number of rows deleted.
 	 */
 	async deleteMyConnection(userId: string, credentialId: string): Promise<number> {
