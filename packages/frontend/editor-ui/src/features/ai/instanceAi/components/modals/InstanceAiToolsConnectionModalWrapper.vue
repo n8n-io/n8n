@@ -127,7 +127,9 @@ if (isMcpEnabled.value) {
 onBeforeUnmount(() => {
 	const state = uiStore.modalsById[props.modalName];
 	if (state?.data && Object.keys(state.data).length > 0) {
-		state.data = {};
+		// Through the store, not in place: what it resolves is derived state, so an
+		// assignment onto it is discarded the next time the derivation runs.
+		uiStore.setModalData({ name: props.modalName, data: {} });
 	}
 });
 
