@@ -273,16 +273,18 @@ await $`cd ${config.rootDir} && NODE_ENV=production DOCKER_BUILD=true pnpm --fil
 // third-party re-split can't hard-break every nightly/release with no config escape.
 // Promote to a hard gate once it has proven stable across releases.
 echo(chalk.yellow('INFO: Verifying single-instance dependency integrity in the production closure...'));
-const verifyProcess = $`cd ${config.rootDir} && pnpm --filter=@n8n/code-health exec tsx src/cli.ts verify-closure ${config.compiledAppDir}`.nothrow();
+// `--dir` rather than `--filter`: a filter that matches nothing exits 0, so a renamed or moved
+// package would report a passing check having run no verifier at all.
+const verifyProcess = $`cd ${config.rootDir} && pnpm --dir packages/testing/code-health exec tsx src/cli.ts verify-closure ${config.compiledAppDir}`.nothrow();
 verifyProcess.pipe(process.stdout);
 const verifyResult = await verifyProcess;
+// 0 and 3 are the only codes the verifier itself produces; everything else (tsx failing to load,
+// a missing package, a crash) means the closure was never checked.
 if (verifyResult.exitCode === 0) {
 	echo(chalk.green('✅ Single-instance dependency check passed'));
-} else if (verifyResult.exitCode === 1) {
+} else if (verifyResult.exitCode === 3) {
 	echo(chalk.red('⚠️  Single-instance dependency duplication reported (see above) — not failing the build (report-first).'));
 } else {
-	// Exit >1 means the verifier itself failed to run (e.g. toolchain not built) — the closure was
-	// NOT checked. Keep it non-fatal for now, but flag it as a tooling error, not a clean result.
 	echo(
 		chalk.red(
 			`⚠️  Single-instance verifier failed to run (exit ${verifyResult.exitCode}); the production closure was NOT checked. This is a tooling error, not a duplication report.`,

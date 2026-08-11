@@ -2,8 +2,19 @@ import { analyze, collectCopies, distinctCopies, EXPECTED_DUPLICATES } from './c
 import { CURATED_LIBS } from './libs.js';
 
 /**
+ * Exit code for "the closure was checked and curated duplicates were found".
+ *
+ * Deliberately not 1: a missing package, an unresolvable import or a crashed toolchain also exit
+ * 1, and a caller that reads 1 as a finding would report "duplication found, build continues" for
+ * a run that never checked anything. 0 and 3 are the only codes this function produces, so any
+ * other code means the check did not complete.
+ */
+export const EXIT_DUPLICATES_FOUND = 3;
+
+/**
  * Verify a built closure at `dir`: print the curated verdict + report-only duplicates and return
- * an exit code (1 if a curated library resolves to multiple un-allowlisted physical copies).
+ * an exit code (`EXIT_DUPLICATES_FOUND` if a curated library resolves to multiple un-allowlisted
+ * physical copies).
  */
 export function runVerifyClosure(dir: string): number {
 	const found = collectCopies(dir);
@@ -43,7 +54,7 @@ export function runVerifyClosure(dir: string): number {
 		console.error(
 			`FAIL: curated ${failures.length === 1 ? 'library resolves' : 'libraries resolve'} to multiple physical copies: ${failures.map((f) => f.name).join(', ')}`,
 		);
-		return 1;
+		return EXIT_DUPLICATES_FOUND;
 	}
 	console.log('OK: no un-allowlisted curated duplicates.');
 	return 0;

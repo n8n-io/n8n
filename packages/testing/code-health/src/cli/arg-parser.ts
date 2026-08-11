@@ -24,10 +24,14 @@ export function parseArgs(args: string[]): CliOptions {
 
 	let i = 0;
 
+	// Every caller spells the subcommand out in a YAML or shell literal, so a typo must not fall
+	// back to `analyze` — that reports 0 new violations and exits 0, i.e. a pass that checked
+	// nothing the caller asked for.
 	if (args.length > 0 && !args[0].startsWith('-')) {
-		if (isSubcommand(args[0])) {
-			options.command = args[0];
+		if (!isSubcommand(args[0])) {
+			throw new Error(`Unknown command "${args[0]}". Expected one of: ${SUBCOMMANDS.join(', ')}.`);
 		}
+		options.command = args[0];
 		i = 1;
 	}
 

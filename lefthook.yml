@@ -35,7 +35,7 @@ pre-commit:
     # Supersedes the zod-only peer check: same guard, generalized to every curated library.
     single_instance_libs_check:
       glob: '**/package.json'
-      run: pnpm --filter=@n8n/code-health check --rule=single-instance-libs
+      run: pnpm --dir packages/testing/code-health exec tsx src/cli.ts --rule=single-instance-libs
       skip:
         - merge
         - rebase
