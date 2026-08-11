@@ -114,7 +114,7 @@ jobs:
 
       - name: Pre-pull Test Container Images
         if: matrix.pre-pull-containers
-        run: pnpm tsx packages/testing/containers/pull-test-images.ts || true
+        run: pnpm --filter n8n-containers exec tsx pull-test-images.ts || true
 
       - name: Run tests
         working-directory: ${{ matrix.working-directory || github.workspace }}
