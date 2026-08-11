@@ -351,12 +351,26 @@ export class LoadNodesAndCredentials {
 			}
 			if (credType.authenticate !== undefined) return true;
 
-			return (
-				Array.isArray(credType.extends) &&
-				credType.extends.some((parentType) =>
-					['oAuth2Api', 'googleOAuth2Api', 'oAuth1Api'].includes(parentType),
-				)
-			);
+			return this.extendsProxyAuthBaseType(credType);
+		});
+	}
+
+	/**
+	 * Whether a credential type reaches one of the OAuth base types through its
+	 * `extends` chain. Walks the chain transitively (cycle-guarded), since OAuth
+	 * credentials often extend a vendor intermediate (e.g. `atlassianOAuth2Api`)
+	 * rather than a base type directly.
+	 */
+	private extendsProxyAuthBaseType(credType: ICredentialType, seen = new Set<string>()): boolean {
+		if (!Array.isArray(credType.extends)) return false;
+
+		return credType.extends.some((parentName) => {
+			if (['oAuth2Api', 'googleOAuth2Api', 'oAuth1Api'].includes(parentName)) return true;
+			if (seen.has(parentName)) return false;
+			seen.add(parentName);
+
+			const parent = this.types.credentials.find((t) => t.name === parentName);
+			return parent !== undefined && this.extendsProxyAuthBaseType(parent, seen);
 		});
 	}
 
