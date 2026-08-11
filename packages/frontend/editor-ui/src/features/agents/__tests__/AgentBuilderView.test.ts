@@ -324,14 +324,17 @@ vi.mock('@/features/ai/instanceAi/composables/useInstanceAiHandoff', () => ({
 	}),
 }));
 
-const baseTextFn = (key: string) => {
+const baseTextFn = (key: string, options?: { interpolate?: Record<string, string | number> }) => {
 	const map: Record<string, string> = {
 		'agents.builder.preview.button': 'Preview',
 		'agents.builder.preview.close.ariaLabel': 'Close preview',
 		'projects.menu.personal': 'Personal',
 	};
-	if (key === 'agents.builder.preview.fixWithAssistantPrompt.instruction') {
-		return 'Review these failed tool calls, identify the root cause, fix the agent, and verify the change.';
+	if (key === 'agents.builder.preview.fixWithAssistantPrompt.template') {
+		return `Review these failed tool calls, identify the root cause, fix the agent, and verify the change.
+
+${String(options?.interpolate?.diagnostics ?? '')}
+`;
 	}
 	return map[key] ?? key;
 };
@@ -882,7 +885,7 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 			expect(initialDraft).toContain('exec-turn-1');
 			expect(initialDraft).toContain('Get rows from Data Table');
 			expect(initialDraft).toContain('Update row in Data Table');
-			expect(initialDraft?.match(/Column "status" does not exist/g)).toHaveLength(1);
+			expect(initialDraft?.match(/Column \\"status\\" does not exist/g)).toHaveLength(1);
 		}
 	});
 

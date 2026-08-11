@@ -10,6 +10,7 @@ const MAX_ERROR_LENGTH = 4_000;
 const MAX_ERROR_DETAILS_TOTAL_LENGTH = 10_000;
 const MAX_METADATA_VALUE_LENGTH = 160;
 const MAX_TOOL_CALLS_PER_ERROR = 8;
+const DIAGNOSTICS_TEMPLATE_SENTINEL = '__N8N_FIX_WITH_ASSISTANT_DIAGNOSTICS__';
 const UNTRUSTED_DATA_CLOSE_TAG_PATTERN = /<\/untrusted_data/gi;
 const CURRENT_DATE_TIME_TAG_PATTERN = /<(\/?current-date-time)/gi;
 const INVISIBLE_UNICODE_PATTERN =
@@ -34,10 +35,46 @@ interface FailureGroup {
 	failures: AgentFixWithAssistantFailure[];
 }
 
-function truncate(value: string, maxLength: number, suffix: string): string {
-	if (value.length <= maxLength) return value;
+interface DiagnosticContext {
+	projectId: string;
+	agentId: string;
+	agentName?: string;
+	sessionId: string;
+	sessionTitle?: string;
+	sessionNumber?: number;
+	executionId: string;
+}
+
+interface ToolCallDiagnostic {
+	toolDisplayName: string;
+	toolName: string;
+	toolCallId: string;
+	startedAt?: string;
+	endedAt?: string;
+	durationMs?: number;
+}
+
+interface FailureDiagnostic {
+	error: string;
+	errorTruncated?: true;
+	toolCalls: ToolCallDiagnostic[];
+	omittedToolCallCount?: number;
+}
+
+interface DiagnosticPayload {
+	context: DiagnosticContext;
+	failures: FailureDiagnostic[];
+	omittedErrorCount?: number;
+	errorDetailsUnavailable?: true;
+}
+
+function truncate(value: string, maxLength: number, suffix: string) {
+	if (value.length <= maxLength) return { value, truncated: false };
 	const contentLength = Math.max(0, maxLength - suffix.length);
-	return `${value.slice(0, contentLength).trimEnd()}${suffix}`;
+	return {
+		value: `${value.slice(0, contentLength).trimEnd()}${suffix}`,
+		truncated: true,
+	};
 }
 
 function sanitizeDiagnosticText(value: string): string {
@@ -48,21 +85,9 @@ function sanitizeDiagnosticText(value: string): string {
 		.replace(CURRENT_DATE_TIME_TAG_PATTERN, '&lt;$1');
 }
 
-function inlineText(value: string): string {
-	return truncate(
-		sanitizeDiagnosticText(value).replaceAll(/\s+/g, ' ').trim(),
-		MAX_METADATA_VALUE_LENGTH,
-		'…',
-	);
-}
-
-function inlineCode(value: string): string {
-	const normalized = truncate(
-		sanitizeDiagnosticText(value).replaceAll(/\s+/g, ' ').trim(),
-		MAX_METADATA_VALUE_LENGTH,
-		'…',
-	).replaceAll('`', "'");
-	return `\`${normalized}\``;
+function metadataValue(value: string): string {
+	const normalized = sanitizeDiagnosticText(value).replaceAll(/\s+/g, ' ').trim();
+	return truncate(normalized, MAX_METADATA_VALUE_LENGTH, '…').value;
 }
 
 function formatTimestamp(timestamp: number | undefined): string | undefined {
@@ -93,29 +118,10 @@ function groupFailures(failures: AgentFixWithAssistantFailure[]): FailureGroup[]
 	return [...byError.values()];
 }
 
-function formatError(error: string, maxLength: number, truncatedSuffix: string): string {
-	return truncate(error.replaceAll('\r\n', '\n'), maxLength, truncatedSuffix)
-		.split('\n')
-		.map((line) => `  ${line}`)
-		.join('\n');
-}
-
-function wrapDiagnosticSections(sections: string[], fallback: string): string {
-	const content = sections.length > 0 ? sections.join('\n\n') : fallback;
-	return ['<untrusted_data source="agent-preview-tool-errors">', content, '</untrusted_data>']
-		.join('\n')
-		.split('\n')
-		.map((line) => `    ${line}`)
-		.join('\n');
-}
-
-function buildToolCallLines(
-	failure: AgentFixWithAssistantFailure,
-	i18n: FixWithAssistantI18n,
-): string[] {
+function buildToolCallDiagnostic(failure: AgentFixWithAssistantFailure): ToolCallDiagnostic {
 	const startedAt = formatTimestamp(failure.startedAt);
 	const endedAt = formatTimestamp(failure.endedAt);
-	const duration =
+	const durationMs =
 		failure.startedAt !== undefined &&
 		failure.endedAt !== undefined &&
 		Number.isFinite(failure.startedAt) &&
@@ -124,54 +130,65 @@ function buildToolCallLines(
 			? failure.endedAt - failure.startedAt
 			: undefined;
 
-	return [
-		`- ${i18n.baseText('agents.builder.preview.fixWithAssistantPrompt.tool')}: ${inlineText(failure.toolDisplayName || failure.toolName)}`,
-		`  - ${i18n.baseText('agents.builder.preview.fixWithAssistantPrompt.toolName')}: ${inlineCode(failure.toolName)}`,
-		`  - ${i18n.baseText('agents.builder.preview.fixWithAssistantPrompt.toolCallId')}: ${inlineCode(failure.toolCallId)}`,
-		...(startedAt
-			? [
-					`  - ${i18n.baseText('agents.builder.preview.fixWithAssistantPrompt.started')}: ${inlineCode(startedAt)}`,
-				]
-			: []),
-		...(endedAt
-			? [
-					`  - ${i18n.baseText('agents.builder.preview.fixWithAssistantPrompt.finished')}: ${inlineCode(endedAt)}`,
-				]
-			: []),
-		...(duration !== undefined
-			? [
-					`  - ${i18n.baseText('agents.builder.preview.fixWithAssistantPrompt.duration')}: ${inlineCode(`${duration} ms`)}`,
-				]
-			: []),
-	];
+	return {
+		toolDisplayName: metadataValue(failure.toolDisplayName || failure.toolName),
+		toolName: metadataValue(failure.toolName),
+		toolCallId: metadataValue(failure.toolCallId),
+		...(startedAt ? { startedAt } : {}),
+		...(endedAt ? { endedAt } : {}),
+		...(durationMs !== undefined ? { durationMs } : {}),
+	};
 }
 
-function buildFailureSection(
-	group: FailureGroup,
-	index: number,
-	maxErrorLength: number,
-	truncatedSuffix: string,
-	i18n: FixWithAssistantI18n,
-): string {
+function buildFailureDiagnostic(group: FailureGroup, maxErrorLength: number): FailureDiagnostic {
 	const displayedFailures = group.failures.slice(0, MAX_TOOL_CALLS_PER_ERROR);
 	const omittedToolCallCount = group.failures.length - displayedFailures.length;
-	const toolCalls = displayedFailures.flatMap((failure) => buildToolCallLines(failure, i18n));
+	const error = truncate(group.error.replaceAll('\r\n', '\n'), maxErrorLength, '…');
+	const diagnostic: FailureDiagnostic = {
+		error: error.value,
+		toolCalls: displayedFailures.map(buildToolCallDiagnostic),
+	};
+	if (error.truncated) diagnostic.errorTruncated = true;
+	if (omittedToolCallCount > 0) diagnostic.omittedToolCallCount = omittedToolCallCount;
+	return diagnostic;
+}
 
-	return [
-		`${i18n.baseText('agents.builder.preview.fixWithAssistantPrompt.error')} ${index + 1}`,
-		...toolCalls,
-		...(omittedToolCallCount > 0
-			? [
-					'',
-					i18n.baseText('agents.builder.preview.fixWithAssistantPrompt.toolCallsOmitted', {
-						interpolate: { count: String(omittedToolCallCount) },
-					}),
-				]
-			: []),
-		'',
-		`${i18n.baseText('agents.builder.preview.fixWithAssistantPrompt.errorMessage')}:`,
-		formatError(group.error, maxErrorLength, truncatedSuffix),
+function buildDiagnosticContext(context: AgentFixWithAssistantPromptContext): DiagnosticContext {
+	return {
+		projectId: metadataValue(context.projectId),
+		agentId: metadataValue(context.agentId),
+		...(context.agentName ? { agentName: metadataValue(context.agentName) } : {}),
+		sessionId: metadataValue(context.threadId),
+		...(context.sessionTitle ? { sessionTitle: metadataValue(context.sessionTitle) } : {}),
+		...(context.sessionNumber !== undefined ? { sessionNumber: context.sessionNumber } : {}),
+		executionId: metadataValue(context.executionId),
+	};
+}
+
+function buildDiagnosticPayload(
+	context: DiagnosticContext,
+	failures: FailureDiagnostic[],
+	omittedErrorCount: number,
+	allErrorDetailsUnavailable: boolean,
+): DiagnosticPayload {
+	return {
+		context,
+		failures,
+		...(omittedErrorCount > 0 ? { omittedErrorCount } : {}),
+		...(allErrorDetailsUnavailable ? { errorDetailsUnavailable: true } : {}),
+	};
+}
+
+function renderPrompt(payload: DiagnosticPayload, i18n: FixWithAssistantI18n): string {
+	const diagnostics = [
+		'<untrusted_data source="agent-preview-tool-errors">',
+		JSON.stringify(payload, null, 2),
+		'</untrusted_data>',
 	].join('\n');
+	const template = i18n.baseText('agents.builder.preview.fixWithAssistantPrompt.template', {
+		interpolate: { diagnostics: DIAGNOSTICS_TEMPLATE_SENTINEL },
+	});
+	return template.replaceAll(DIAGNOSTICS_TEMPLATE_SENTINEL, () => diagnostics);
 }
 
 export function buildAgentFixWithAssistantPrompt(
@@ -179,81 +196,38 @@ export function buildAgentFixWithAssistantPrompt(
 	i18n: FixWithAssistantI18n,
 ): string {
 	const groups = groupFailures(context.failures);
-	const truncatedSuffix = i18n.baseText(
-		'agents.builder.preview.fixWithAssistantPrompt.valueTruncated',
-	);
 	const maxErrorLength = Math.min(
 		MAX_ERROR_LENGTH,
 		Math.max(250, Math.floor(MAX_ERROR_DETAILS_TOTAL_LENGTH / Math.max(groups.length, 1))),
 	);
-
-	const contextLines = [
-		...(context.agentName
-			? [
-					`- ${i18n.baseText('agents.builder.preview.fixWithAssistantPrompt.agent')}: ${inlineText(context.agentName)}`,
-				]
-			: []),
-		`- ${i18n.baseText('agents.builder.preview.fixWithAssistantPrompt.agentId')}: ${inlineCode(context.agentId)}`,
-		`- ${i18n.baseText('agents.builder.preview.fixWithAssistantPrompt.projectId')}: ${inlineCode(context.projectId)}`,
-		...(context.sessionTitle
-			? [
-					`- ${i18n.baseText('agents.builder.preview.fixWithAssistantPrompt.session')}: ${inlineText(context.sessionTitle)}`,
-				]
-			: []),
-		...(context.sessionNumber !== undefined
-			? [
-					`- ${i18n.baseText('agents.builder.preview.fixWithAssistantPrompt.sessionNumber')}: ${context.sessionNumber}`,
-				]
-			: []),
-		`- ${i18n.baseText('agents.builder.preview.fixWithAssistantPrompt.sessionId')}: ${inlineCode(context.threadId)}`,
-		`- ${i18n.baseText('agents.builder.preview.fixWithAssistantPrompt.executionId')}: ${inlineCode(context.executionId)}`,
-	];
-
-	const prefix = [
-		i18n.baseText('agents.builder.preview.fixWithAssistantPrompt.instruction'),
-		'',
-		`## ${i18n.baseText('agents.builder.preview.fixWithAssistantPrompt.context')}`,
-		...contextLines,
-		'',
-		`## ${i18n.baseText('agents.builder.preview.fixWithAssistantPrompt.failedToolCalls')}`,
-		'',
-		i18n.baseText('agents.builder.preview.fixWithAssistantPrompt.untrustedNotice'),
-	].join('\n');
-	const footer = i18n.baseText('agents.builder.preview.fixWithAssistantPrompt.inspectSession');
-	const failureSections: string[] = [];
+	const diagnosticContext = buildDiagnosticContext(context);
+	const failureDiagnostics: FailureDiagnostic[] = [];
 	let omittedErrorCount = 0;
 
 	for (const [index, group] of groups.entries()) {
-		const section = buildFailureSection(group, index, maxErrorLength, truncatedSuffix, i18n);
+		const failure = buildFailureDiagnostic(group, maxErrorLength);
 		const remainingErrorCount = groups.length - index - 1;
-		const remainingNotice =
-			remainingErrorCount > 0
-				? i18n.baseText('agents.builder.preview.fixWithAssistantPrompt.errorsOmitted', {
-						interpolate: { count: String(remainingErrorCount) },
-					})
-				: undefined;
-		const candidateDiagnostics = wrapDiagnosticSections(
-			[...failureSections, section, ...(remainingNotice ? [remainingNotice] : [])],
-			i18n.baseText('agents.builder.preview.fixWithAssistantPrompt.errorDetailsUnavailable'),
+		const candidate = buildDiagnosticPayload(
+			diagnosticContext,
+			[...failureDiagnostics, failure],
+			remainingErrorCount,
+			false,
 		);
-		const candidate = [prefix, candidateDiagnostics, footer].join('\n\n');
 
-		if (candidate.length > MAX_FIX_WITH_ASSISTANT_DRAFT_LENGTH) {
+		if (renderPrompt(candidate, i18n).length > MAX_FIX_WITH_ASSISTANT_DRAFT_LENGTH) {
 			omittedErrorCount = groups.length - index;
 			break;
 		}
-		failureSections.push(section);
+		failureDiagnostics.push(failure);
 	}
 
-	const omittedNotice =
-		omittedErrorCount > 0
-			? i18n.baseText('agents.builder.preview.fixWithAssistantPrompt.errorsOmitted', {
-					interpolate: { count: String(omittedErrorCount) },
-				})
-			: undefined;
-	const diagnostics = wrapDiagnosticSections(
-		[...failureSections, ...(omittedNotice ? [omittedNotice] : [])],
-		i18n.baseText('agents.builder.preview.fixWithAssistantPrompt.errorDetailsUnavailable'),
+	return renderPrompt(
+		buildDiagnosticPayload(
+			diagnosticContext,
+			failureDiagnostics,
+			omittedErrorCount,
+			groups.length === 0,
+		),
+		i18n,
 	);
-	return [prefix, diagnostics, footer].join('\n\n');
 }
