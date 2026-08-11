@@ -36,6 +36,7 @@ export const InstanceAiModule: FrontendModuleDescription = {
 		{
 			path: '/assistant',
 			component: InstanceAiView,
+			beforeEnter: () => (useInstanceAiAvailable().value ? true : { name: VIEWS.HOMEPAGE }),
 			meta: {
 				layout: 'instanceAi',
 				middleware: ['authenticated', 'custom'],

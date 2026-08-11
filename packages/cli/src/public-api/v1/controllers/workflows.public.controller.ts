@@ -3,11 +3,19 @@ import {
 	GetWorkflowQueryDto,
 	ListWorkflowHistoryQueryDto,
 	UpdateWorkflowPublicDto,
+	UpdateWorkflowQueryDto,
 	WorkflowPublicDto,
 	WorkflowVersionHistoryListPublicDto,
 } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
-import type { AuthenticatedRequest, WorkflowEntity } from '@n8n/db';
+import type {
+	AuthenticatedRequest,
+	SharedWorkflow,
+	TagEntity,
+	WorkflowEntity,
+	WorkflowHistory,
+	WorkflowPublishHistory,
+} from '@n8n/db';
 import {
 	ApiDescription,
 	ApiErrorResponse,
@@ -46,6 +54,76 @@ function toPublicJson(value: unknown): Record<string, unknown> | null {
 	return value !== null && typeof value === 'object' && !Array.isArray(value)
 		? (value as Record<string, unknown>)
 		: null;
+}
+
+/**
+ * `binaryMode` and `credentialResolverId` are derived internally rather than set by callers.
+ * Dropping them lets the settings merge in `WorkflowService` keep whatever is already stored.
+ */
+function stripDerivedSettings(settings: Record<string, unknown> | undefined) {
+	if (!settings) return;
+	if (settings.binaryMode !== undefined) delete settings.binaryMode;
+	if (settings.credentialResolverId !== undefined) delete settings.credentialResolverId;
+}
+
+function toPublicTag(tag: TagEntity) {
+	return {
+		id: tag.id,
+		name: tag.name,
+		createdAt: tag.createdAt.toISOString(),
+		updatedAt: tag.updatedAt.toISOString(),
+	};
+}
+
+function toPublicSharedWorkflow(sharedWorkflow: SharedWorkflow) {
+	return {
+		role: sharedWorkflow.role,
+		workflowId: sharedWorkflow.workflowId,
+		projectId: sharedWorkflow.projectId,
+		project: {
+			id: sharedWorkflow.project.id,
+			name: sharedWorkflow.project.name,
+			type: sharedWorkflow.project.type,
+			icon: sharedWorkflow.project.icon,
+			description: sharedWorkflow.project.description,
+			customTelemetryTags: sharedWorkflow.project.customTelemetryTags,
+			creatorId: sharedWorkflow.project.creatorId,
+			createdAt: sharedWorkflow.project.createdAt.toISOString(),
+			updatedAt: sharedWorkflow.project.updatedAt.toISOString(),
+		},
+		createdAt: sharedWorkflow.createdAt.toISOString(),
+		updatedAt: sharedWorkflow.updatedAt.toISOString(),
+	};
+}
+
+function toPublicWorkflowPublishHistory(entry: WorkflowPublishHistory) {
+	return {
+		id: entry.id,
+		workflowId: entry.workflowId,
+		versionId: entry.versionId,
+		event: entry.event,
+		userId: entry.userId,
+		createdAt: entry.createdAt.toISOString(),
+	};
+}
+
+function toPublicActiveVersion(activeVersion: WorkflowHistory) {
+	return {
+		versionId: activeVersion.versionId,
+		workflowId: activeVersion.workflowId,
+		nodes: activeVersion.nodes,
+		connections: activeVersion.connections,
+		nodeGroups: activeVersion.nodeGroups,
+		authors: activeVersion.authors,
+		name: activeVersion.name,
+		description: activeVersion.description,
+		autosaved: activeVersion.autosaved,
+		createdAt: activeVersion.createdAt.toISOString(),
+		updatedAt: activeVersion.updatedAt.toISOString(),
+		workflowPublishHistory: activeVersion.workflowPublishHistory.map(
+			toPublicWorkflowPublishHistory,
+		),
+	};
 }
 
 @PublicApiController('/workflows')
@@ -93,7 +171,7 @@ export class WorkflowsPublicController {
 			publicApi: true,
 		});
 
-		return this.toWorkflowPublicDto(workflow, { includePinData: !query.excludePinnedData });
+		return this.toWorkflowPublicDto(workflow, { excludePinnedData: query.excludePinnedData });
 	}
 
 	@Post('/')
@@ -110,12 +188,7 @@ export class WorkflowsPublicController {
 	): Promise<WorkflowPublicDto> {
 		const { projectId, parentFolderId, ...rest } = body;
 
-		if (rest.settings?.binaryMode !== undefined) {
-			delete rest.settings.binaryMode;
-		}
-		if (rest.settings?.credentialResolverId !== undefined) {
-			delete rest.settings.credentialResolverId;
-		}
+		stripDerivedSettings(rest.settings);
 
 		const workflow = createWorkflowEntityFromPayload(rest);
 
@@ -138,7 +211,7 @@ export class WorkflowsPublicController {
 	@ProjectScope('workflow:update')
 	@ApiSummary('Update a workflow')
 	@ApiDescription(
-		'Update a workflow. If the workflow is published, the updated version will be automatically re-published.',
+		'Update a workflow. If the workflow is published, the updated version will be automatically re-published unless `publishIfActive` is set to `false`.',
 	)
 	@ApiTags(['Workflow'])
 	@ApiResponse(200, WorkflowPublicDto)
@@ -149,18 +222,14 @@ export class WorkflowsPublicController {
 		_res: Response,
 		@Param('workflowId') workflowId: string,
 		@Body body: UpdateWorkflowPublicDto,
+		@Query query: UpdateWorkflowQueryDto,
 	): Promise<WorkflowPublicDto> {
 		const { parentFolderId, ...rest } = body;
 
-		// null moves the workflow to the project root, (undefined) leaves the current folder untouched
+		// null moves the workflow to the project root, undefined leaves the current folder untouched
 		const resolvedParentFolderId = parentFolderId === null ? PROJECT_ROOT : parentFolderId;
 
-		if (rest.settings?.binaryMode !== undefined) {
-			delete rest.settings.binaryMode;
-		}
-		if (rest.settings?.credentialResolverId !== undefined) {
-			delete rest.settings.credentialResolverId;
-		}
+		stripDerivedSettings(rest.settings);
 
 		const updateData = createWorkflowEntityFromPayload(rest);
 
@@ -170,7 +239,7 @@ export class WorkflowsPublicController {
 				parentFolderId: resolvedParentFolderId,
 				forceSave: true, // Skip version conflict check for public API
 				publicApi: true,
-				publishIfActive: true,
+				publishIfActive: query.publishIfActive,
 				source: 'api',
 			});
 
@@ -211,6 +280,37 @@ export class WorkflowsPublicController {
 		}
 
 		return this.toWorkflowPublicDto(workflow);
+	}
+
+	/** Builds the public response shape for a single workflow, from the internal entity n8n stores. */
+	private toWorkflowPublicDto(
+		workflow: WorkflowEntity,
+		options: { excludePinnedData?: boolean } = {},
+	): WorkflowPublicDto {
+		return {
+			id: workflow.id,
+			name: workflow.name,
+			description: workflow.description,
+			active: workflow.active,
+			activeVersionId: workflow.activeVersionId,
+			createdAt: workflow.createdAt.toISOString(),
+			updatedAt: workflow.updatedAt.toISOString(),
+			isArchived: workflow.isArchived,
+			versionId: workflow.versionId,
+			versionCounter: workflow.versionCounter,
+			sourceWorkflowId: workflow.sourceWorkflowId,
+			triggerCount: workflow.triggerCount,
+			nodes: workflow.nodes,
+			connections: workflow.connections,
+			nodeGroups: workflow.nodeGroups,
+			settings: toPublicJson(workflow.settings),
+			staticData: toPublicJson(workflow.staticData),
+			meta: toPublicJson(workflow.meta),
+			...(options.excludePinnedData ? {} : { pinData: toPublicJson(workflow.pinData) }),
+			...(workflow.tags ? { tags: workflow.tags.map(toPublicTag) } : {}),
+			shared: workflow.shared.map(toPublicSharedWorkflow),
+			activeVersion: workflow.activeVersion ? toPublicActiveVersion(workflow.activeVersion) : null,
+		};
 	}
 
 	@Get('/:workflowId/history')
@@ -273,72 +373,5 @@ export class WorkflowsPublicController {
 			}
 			throw error;
 		}
-	}
-
-	private toWorkflowPublicDto(
-		workflow: WorkflowEntity,
-		options: { includePinData?: boolean } = {},
-	): WorkflowPublicDto {
-		const { includePinData = true } = options;
-
-		return {
-			id: workflow.id,
-			name: workflow.name,
-			description: workflow.description,
-			active: workflow.active,
-			activeVersionId: workflow.activeVersionId,
-			createdAt: workflow.createdAt.toISOString(),
-			updatedAt: workflow.updatedAt.toISOString(),
-			isArchived: workflow.isArchived,
-			versionId: workflow.versionId,
-			triggerCount: workflow.triggerCount,
-			nodes: workflow.nodes,
-			connections: workflow.connections,
-			nodeGroups: workflow.nodeGroups,
-			settings: toPublicJson(workflow.settings),
-			staticData: toPublicJson(workflow.staticData),
-			meta: toPublicJson(workflow.meta),
-			...(includePinData ? { pinData: toPublicJson(workflow.pinData) } : {}),
-			...(workflow.tags
-				? {
-						tags: workflow.tags.map((tag) => ({
-							id: tag.id,
-							name: tag.name,
-							createdAt: tag.createdAt.toISOString(),
-							updatedAt: tag.updatedAt.toISOString(),
-						})),
-					}
-				: {}),
-			// `WorkflowService.update` doesn't load the `shared` relation on its returned
-			// entity, unlike the finder service create/read/delete go through - default to
-			// empty rather than throwing on the update path.
-			shared: (workflow.shared ?? []).map((sharedWorkflow) => ({
-				role: sharedWorkflow.role,
-				workflowId: sharedWorkflow.workflowId,
-				projectId: sharedWorkflow.projectId,
-				project: {
-					id: sharedWorkflow.project.id,
-					name: sharedWorkflow.project.name,
-					type: sharedWorkflow.project.type,
-				},
-				createdAt: sharedWorkflow.createdAt.toISOString(),
-				updatedAt: sharedWorkflow.updatedAt.toISOString(),
-			})),
-			activeVersion: workflow.activeVersion
-				? {
-						versionId: workflow.activeVersion.versionId,
-						workflowId: workflow.activeVersion.workflowId,
-						nodes: workflow.activeVersion.nodes,
-						connections: workflow.activeVersion.connections,
-						nodeGroups: workflow.activeVersion.nodeGroups,
-						authors: workflow.activeVersion.authors,
-						name: workflow.activeVersion.name,
-						description: workflow.activeVersion.description,
-						autosaved: workflow.activeVersion.autosaved,
-						createdAt: workflow.activeVersion.createdAt.toISOString(),
-						updatedAt: workflow.activeVersion.updatedAt.toISOString(),
-					}
-				: null,
-		};
 	}
 }

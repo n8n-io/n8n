@@ -2,7 +2,7 @@ operationId: updateWorkflow
 tags:
   - Workflow
 summary: Update a workflow
-description: Update a workflow. If the workflow is published, the updated version will be automatically re-published.
+description: Update a workflow. If the workflow is published, the updated version will be automatically re-published unless `publishIfActive` is set to `false`.
 x-required-scope: workflow:update
 x-eov-operation-id: unreachable
 x-eov-operation-handler: v1/handlers/decorator-routed.handler
@@ -13,6 +13,15 @@ parameters:
     required: true
     name: workflowId
     in: path
+  - schema:
+      type: string
+      enum:
+        - 'true'
+        - 'false'
+      default: 'true'
+    required: false
+    name: publishIfActive
+    in: query
 requestBody:
   content:
     application/json:

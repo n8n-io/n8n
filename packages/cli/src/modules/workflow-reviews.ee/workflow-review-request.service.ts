@@ -23,6 +23,7 @@ import {
 	WorkflowPublishHistoryRepository,
 	WorkflowReviewRequestAuthorRepository,
 	WorkflowReviewRequestRepository,
+	WorkflowRepository,
 	WorkflowReviewRequestReviewerRepository,
 	WorkflowReviewRequestWorkflowRepository,
 	type OperationContext,
@@ -43,7 +44,7 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
-import { WorkflowReviewDecisionEligibilityService } from './workflow-review-decision-eligibility.service';
+import { WorkflowReviewEligibilityService } from './workflow-review-eligibility.service';
 import { WorkflowReviewFeatureGate } from './workflow-review-feature-gate.service';
 import { toEligibleReviewer } from './workflow-review.mapper';
 
@@ -67,6 +68,7 @@ export class WorkflowReviewRequestService {
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly workflowHistoryService: WorkflowHistoryService,
 		private readonly workflowHistoryRepository: WorkflowHistoryRepository,
+		private readonly workflowRepository: WorkflowRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly workflowPublishHistoryRepository: WorkflowPublishHistoryRepository,
 		private readonly workflowReviewRequestRepository: WorkflowReviewRequestRepository,
@@ -74,7 +76,7 @@ export class WorkflowReviewRequestService {
 		private readonly workflowReviewRequestAuthorRepository: WorkflowReviewRequestAuthorRepository,
 		private readonly workflowReviewRequestReviewerRepository: WorkflowReviewRequestReviewerRepository,
 		private readonly userRepository: UserRepository,
-		private readonly decisionEligibilityService: WorkflowReviewDecisionEligibilityService,
+		private readonly eligibilityService: WorkflowReviewEligibilityService,
 		private readonly roleService: RoleService,
 		private readonly dbLockService: DbLockService,
 		private readonly collaborationService: CollaborationService,
@@ -273,6 +275,41 @@ export class WorkflowReviewRequestService {
 		}
 	}
 
+	/**
+	 * Re-asserts under the lock what `create`'s pre-lock checks established: the
+	 * workflow still exists, is unarchived, and still belongs to the same project.
+	 * Access is not re-checked — the races this guards against are archive and
+	 * transfer, both of which these two reads cover.
+	 *
+	 * Every read is threaded with `ctx` so it runs on the lock transaction's own
+	 * connection. A read that checks out a second connection here deadlocks against
+	 * the transaction holding the first one (see the same note in `decide`).
+	 */
+	private async assertWorkflowStillReviewable(
+		workflowId: string,
+		expectedProjectId: string,
+		ctx: OperationContext,
+	): Promise<void> {
+		const workflow = await this.workflowRepository.findArchivedState(workflowId, ctx);
+		if (!workflow) {
+			throw new NotFoundError('Could not find workflow');
+		}
+
+		if (workflow.isArchived) {
+			throw new BadRequestError(
+				`The workflow '${workflowId}' is archived and cannot be submitted for review`,
+			);
+		}
+
+		const project = await this.sharedWorkflowRepository.getWorkflowOwningProject(workflowId, ctx);
+		if (project?.id !== expectedProjectId) {
+			throw new ConflictError(
+				`The workflow '${workflowId}' moved to another project and cannot be submitted for review here`,
+				'Retry from the project that now owns the workflow',
+			);
+		}
+	}
+
 	async create(
 		user: User,
 		dto: CreateWorkflowReviewRequestDto,
@@ -330,6 +367,10 @@ export class WorkflowReviewRequestService {
 		const request = await this.dbLockService.withLockContext(
 			DbLock.WORKFLOW_REVIEW_REQUEST_CREATE,
 			async (ctx) => {
+				// without this, a create that lost the race opens a review on an archived
+				// or moved workflow.
+				await this.assertWorkflowStillReviewable(workflowId, project.id, ctx);
+
 				const existing = await this.workflowReviewRequestRepository.findOpenRequestForWorkflow(
 					workflowId,
 					ctx,
@@ -585,7 +626,7 @@ export class WorkflowReviewRequestService {
 		// Resolved before the lock: this query must not run inside the lock
 		// transaction, where it would need a second pooled connection while the
 		// transaction holds one — a deadlock on a single-connection pool.
-		const hasAdminOverride = await this.decisionEligibilityService.hasAdminOverride(
+		const hasAdminOverride = await this.eligibilityService.hasAdminOverride(
 			user,
 			request.projectId,
 		);

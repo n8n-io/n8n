@@ -22,6 +22,11 @@ properties:
     type: boolean
   versionId:
     type: string
+  versionCounter:
+    type: number
+  sourceWorkflowId:
+    type: string
+    nullable: true
   triggerCount:
     type: number
   nodes: {}
@@ -78,10 +83,54 @@ properties:
               enum:
                 - personal
                 - team
+            icon:
+              type: object
+              nullable: true
+              properties:
+                type:
+                  type: string
+                  enum:
+                    - emoji
+                    - icon
+                value:
+                  type: string
+              required:
+                - type
+                - value
+            description:
+              type: string
+              nullable: true
+            customTelemetryTags:
+              type: array
+              items:
+                type: object
+                properties:
+                  key:
+                    type: string
+                  value:
+                    type: string
+                required:
+                  - key
+                  - value
+            creatorId:
+              type: string
+              nullable: true
+            createdAt:
+              type: string
+              format: date-time
+            updatedAt:
+              type: string
+              format: date-time
           required:
             - id
             - name
             - type
+            - icon
+            - description
+            - customTelemetryTags
+            - creatorId
+            - createdAt
+            - updatedAt
         createdAt:
           type: string
           format: date-time
@@ -122,6 +171,36 @@ properties:
       updatedAt:
         type: string
         format: date-time
+      workflowPublishHistory:
+        type: array
+        items:
+          type: object
+          properties:
+            id:
+              type: number
+            workflowId:
+              type: string
+            versionId:
+              type: string
+              nullable: true
+            event:
+              type: string
+              enum:
+                - activated
+                - deactivated
+            userId:
+              type: string
+              nullable: true
+            createdAt:
+              type: string
+              format: date-time
+          required:
+            - id
+            - workflowId
+            - versionId
+            - event
+            - userId
+            - createdAt
     required:
       - versionId
       - workflowId
@@ -134,6 +213,7 @@ properties:
       - autosaved
       - createdAt
       - updatedAt
+      - workflowPublishHistory
 required:
   - id
   - name
@@ -144,6 +224,8 @@ required:
   - updatedAt
   - isArchived
   - versionId
+  - versionCounter
+  - sourceWorkflowId
   - triggerCount
   - nodes
   - connections
