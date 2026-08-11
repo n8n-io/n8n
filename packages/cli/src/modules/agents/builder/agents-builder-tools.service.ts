@@ -1088,19 +1088,26 @@ export class AgentsBuilderToolsService {
 			.description(
 				'List lightweight metadata for persisted target-agent skills. Use this to identify which ' +
 					'existing skill owns a capability before reading or creating a skill. Returns ' +
-					'{ ok: true, skills: [{ id, name, description }] }.',
+					'{ ok: true, skills: [{ id, name, description }] } or { ok: false, errors }.',
 			)
 			.input(z.object({}).strict())
 			.handler(async () => {
-				const skills = await this.agentSkillsService.listSkills(agentId, projectId);
-				return {
-					ok: true,
-					skills: Object.entries(skills).map(([id, skill]) => ({
-						id,
-						name: skill.name,
-						description: skill.description,
-					})),
-				};
+				try {
+					const skills = await this.agentSkillsService.listSkills(agentId, projectId);
+					return {
+						ok: true,
+						skills: Object.entries(skills).map(([id, skill]) => ({
+							id,
+							name: skill.name,
+							description: skill.description,
+						})),
+					};
+				} catch (e) {
+					return {
+						ok: false,
+						errors: [{ message: e instanceof Error ? e.message : String(e) }],
+					};
+				}
 			})
 			.build();
 

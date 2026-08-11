@@ -1735,6 +1735,22 @@ describe('AgentsBuilderToolsService', () => {
 				],
 			});
 		});
+
+		it('soft-fails when persisted skills cannot be listed', async () => {
+			const { service, agentsService } = makeService();
+			agentsService.listSkills.mockRejectedValue(new Error('Agent not found'));
+			const tool = service
+				.getTools(agentId, projectId, credentialProvider, user)
+				.shared.find((candidate) => candidate.name === 'list_skills');
+
+			expect(tool).toBeDefined();
+			if (!tool) throw new Error('Expected list_skills tool');
+
+			await expect(tool.handler!({}, ctx)).resolves.toEqual({
+				ok: false,
+				errors: [{ message: 'Agent not found' }],
+			});
+		});
 	});
 
 	describe('update_skill tool', () => {
