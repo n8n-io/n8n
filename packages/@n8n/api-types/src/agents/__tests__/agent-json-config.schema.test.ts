@@ -546,6 +546,41 @@ describe('AgentJsonConfigSchema — skills', () => {
 	});
 });
 
+describe('AgentJsonConfigSchema — tasks', () => {
+	it('rejects multiple task refs with the same id', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			tasks: [
+				{ type: 'task', id: 'weekly_review', enabled: true },
+				{ type: 'task', id: 'weekly_review', enabled: false },
+			],
+		});
+
+		expect(result.success).toBe(false);
+		if (!result.success) {
+			expect(result.error.errors[0].message).toBe('Duplicate task id: "weekly_review"');
+		}
+	});
+
+	it('rejects a task id longer than the persisted column length', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			tasks: [{ type: 'task', id: 'a'.repeat(33), enabled: true }],
+		});
+
+		expect(result.success).toBe(false);
+	});
+
+	it('accepts a task id at the persisted column length', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			tasks: [{ type: 'task', id: 'a'.repeat(32), enabled: true }],
+		});
+
+		expect(result.success).toBe(true);
+	});
+});
+
 describe('AgentJsonConfigSchema — model/credential coupling', () => {
 	it('rejects a credential without a model', () => {
 		const result = AgentJsonConfigSchema.safeParse({

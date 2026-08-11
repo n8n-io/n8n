@@ -5,6 +5,7 @@ import { AgentIntegrationConfigSchema } from './agent-integration.schema';
 import { agentSkillShape } from './agent-skill.schema';
 import {
 	AGENT_TASK_CRON_EXPRESSION_MAX_LENGTH,
+	AGENT_TASK_ID_MAX_LENGTH,
 	AGENT_TASK_NAME_MAX_LENGTH,
 	AGENT_TASK_OBJECTIVE_MAX_LENGTH,
 } from './agent-task.schema';
@@ -217,6 +218,9 @@ const AgentJsonTaskConfigSchema = z.object({
 	id: z
 		.string()
 		.min(1)
+		// Persisted as the `agent_task_definition` primary key, so the schema
+		// must enforce the same length cap as the column.
+		.max(AGENT_TASK_ID_MAX_LENGTH)
 		.regex(
 			/^[A-Za-z0-9_-]+$/,
 			'Task id can only contain letters, numbers, hyphens, and underscores',
@@ -485,7 +489,21 @@ export const AgentJsonConfigBaseSchema = z.object({
 			}
 		})
 		.optional(),
-	tasks: z.array(AgentJsonTaskConfigSchema).optional(),
+	tasks: z
+		.array(AgentJsonTaskConfigSchema)
+		.superRefine((tasks, ctx) => {
+			const seen = new Set<string>();
+			for (const task of tasks) {
+				if (seen.has(task.id)) {
+					ctx.addIssue({
+						code: z.ZodIssueCode.custom,
+						message: `Duplicate task id: "${task.id}"`,
+					});
+				}
+				seen.add(task.id);
+			}
+		})
+		.optional(),
 	providerTools: z.record(z.record(z.unknown())).optional(),
 	integrations: z.array(AgentIntegrationConfigSchema).optional(),
 	mcpServers: z

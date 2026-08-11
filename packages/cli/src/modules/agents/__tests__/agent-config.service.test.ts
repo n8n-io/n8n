@@ -73,10 +73,22 @@ function makeService() {
 	});
 	agentRepository.save.mockImplementation(async (agent) => agent as Agent);
 	agentRepository.claimSetupCompleted.mockResolvedValue(true);
+	// `manager` is a TypeORM getter, not auto-mocked; run transaction callbacks
+	// against a manager that records saves (imported task rows + agent).
+	const txManager = { save: vi.fn(async (entity: unknown) => entity) };
+	Object.defineProperty(agentRepository, 'manager', {
+		value: {
+			transaction: vi.fn(
+				async (cb: (manager: typeof txManager) => Promise<unknown>) => await cb(txManager),
+			),
+		},
+	});
 	credentialsService.findAllCredentialIdsForProject.mockResolvedValue([]);
 	credentialsService.findAllGlobalCredentialIds.mockResolvedValue([]);
 	credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([]);
 	agentTaskRepository.findByAgentId.mockResolvedValue([]);
+	agentTaskRepository.findOwningAgentIds.mockResolvedValue(new Map());
+	agentTaskRepository.create.mockImplementation((data) => data as never);
 	workflowRepository.find.mockResolvedValue([]);
 	agentSkillsService.removeUnreferencedSkills.mockImplementation((agent, config) => {
 		const ids = new Set((config.skills ?? []).map((skill) => skill.id));
@@ -103,6 +115,7 @@ function makeService() {
 	return {
 		service,
 		secureRuntime,
+		txManager,
 		agentRepository,
 		agentTaskRepository,
 		agentSkillsService,
@@ -822,7 +835,7 @@ describe('AgentConfigService', () => {
 		});
 
 		it('preserves a task when an exported config is imported into a fresh agent', async () => {
-			const { service, agentRepository, agentTaskRepository } = makeService();
+			const { service, agentRepository, agentTaskRepository, txManager } = makeService();
 
 			const sourceAgentId = agentId;
 			const targetAgentId = 'agent-imported';
@@ -841,9 +854,79 @@ describe('AgentConfigService', () => {
 			await service.updateConfig(targetAgentId, projectId, exported, user, byUser);
 
 			// The task reference must survive the import instead of being dropped
-			// for lack of a matching definition.
-			const saved = agentRepository.save.mock.calls.at(-1)?.[0] as Agent;
+			// for lack of a matching definition, and the recreated row must be
+			// written in the same transaction as the agent.
+			expect(agentRepository.manager.transaction).toHaveBeenCalledTimes(1);
+			expect(txManager.save).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'weekly_review', agentId: targetAgentId }),
+			);
+			const saved = txManager.save.mock.calls.at(-1)?.[0] as Agent;
 			expect(saved.schema?.tasks).toEqual([taskReference]);
+		});
+
+		it('drops a task ref whose inline cron expression is invalid', async () => {
+			const { service, agentRepository, agentTaskRepository } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ schema: baseConfig }));
+
+			await service.updateConfig(
+				agentId,
+				projectId,
+				{
+					...baseConfig,
+					tasks: [{ ...taskReference, ...taskDefinition, cronExpression: 'not a cron' }],
+				},
+				user,
+				byUser,
+			);
+
+			// No row is written and the ref is dropped as an orphan.
+			expect(agentTaskRepository.save).not.toHaveBeenCalled();
+			expect(agentRepository.manager.transaction).not.toHaveBeenCalled();
+			const saved = agentRepository.save.mock.calls.at(-1)?.[0] as Agent;
+			expect(saved.schema?.tasks).toEqual([]);
+		});
+
+		it('drops a task ref whose id is already taken by another agent', async () => {
+			const { service, agentRepository, agentTaskRepository } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ schema: baseConfig }));
+			// The task id is the table's sole primary key; writing it would hijack
+			// the other agent's row.
+			agentTaskRepository.findOwningAgentIds.mockResolvedValue(
+				new Map([['weekly_review', 'agent-other']]),
+			);
+
+			await service.updateConfig(
+				agentId,
+				projectId,
+				{ ...baseConfig, tasks: [{ ...taskReference, ...taskDefinition }] },
+				user,
+				byUser,
+			);
+
+			expect(agentRepository.manager.transaction).not.toHaveBeenCalled();
+			const saved = agentRepository.save.mock.calls.at(-1)?.[0] as Agent;
+			expect(saved.schema?.tasks).toEqual([]);
+		});
+
+		it('writes no task rows when the update fails after task recreation', async () => {
+			const { service, agentRepository, txManager } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ schema: baseConfig }));
+			txManager.save.mockRejectedValue(new Error('save failed'));
+
+			await expect(
+				service.updateConfig(
+					agentId,
+					projectId,
+					{ ...baseConfig, tasks: [{ ...taskReference, ...taskDefinition }] },
+					user,
+					byUser,
+				),
+			).rejects.toThrow('save failed');
+
+			// Task rows are only written inside the agent-save transaction, so a
+			// failed update can't leave orphan definitions behind.
+			expect(agentRepository.manager.transaction).toHaveBeenCalledTimes(1);
+			expect(agentRepository.save).not.toHaveBeenCalled();
 		});
 	});
 
@@ -941,6 +1024,25 @@ describe('AgentConfigService', () => {
 			const saved = agentRepository.save.mock.calls.at(-1)?.[0] as Agent;
 			expect(saved.schema?.skills).toEqual([skillReference]);
 			expect(saved.skills).toEqual({ [skillReference.id]: existingBody });
+		});
+
+		it('imports a skill whose id collides with an Object.prototype key', async () => {
+			const { service, agentRepository } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ schema: baseConfig }));
+
+			// `skills['constructor']` is truthy on a plain object even when no such
+			// skill exists, so the lookups must use own-property checks.
+			await service.updateConfig(
+				agentId,
+				projectId,
+				{ ...baseConfig, skills: [{ type: 'skill', id: 'constructor', ...skillBody }] },
+				user,
+				byUser,
+			);
+
+			const saved = agentRepository.save.mock.calls.at(-1)?.[0] as Agent;
+			expect(saved.schema?.skills).toEqual([{ type: 'skill', id: 'constructor' }]);
+			expect(saved.skills).toEqual({ constructor: skillBody });
 		});
 
 		it('skips an imported skill whose name collides with an existing skill', async () => {

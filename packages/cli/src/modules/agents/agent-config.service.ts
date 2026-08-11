@@ -27,7 +27,9 @@ import {
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 import { AgentSetupCompletionService } from './agent-setup-completion.service';
 import { AgentSkillsService } from './agent-skills.service';
+import type { AgentTask } from './entities/agent-task.entity';
 import type { Agent } from './entities/agent.entity';
+import { isValidCronExpression } from './integrations/cron-validation';
 import { syncAgentIntegrations } from './integrations/integrations-sync';
 import { composeJsonConfig, decomposeJsonConfig } from './json-config/agent-config-composition';
 import { toBareCustomToolRef, toBareSkillRef, toBareTaskRef } from './json-config/bare-config-refs';
@@ -210,16 +212,18 @@ export class AgentConfigService {
 			? (await this.agentTaskRepository.findByAgentId(agentId)).map((task) => task.id)
 			: [];
 
-		// Recreate task definitions that arrived inline with the config (e.g. an
+		// Prepare task definitions that arrived inline with the config (e.g. an
 		// imported agent JSON) but have no row on this agent yet, so their refs
 		// survive instead of being dropped as orphans by `removeMissingConfigRefs`.
-		const importedTaskIds = tasksProvided
-			? await this.recreateImportedTaskDefinitions(
+		// The rows are written later, in the same transaction as the agent save.
+		const importedTasks = tasksProvided
+			? await this.prepareImportedTaskDefinitions(
 					agentId,
 					validatedConfig.tasks ?? [],
 					new Set(existingTaskIds),
 				)
 			: [];
+		const importedTaskIds = importedTasks.map((task) => task.id);
 
 		// Same for skill and custom tool definitions, which live on the agent's
 		// `skills`/`tools` columns: recreate them on the entity before
@@ -335,7 +339,18 @@ export class AgentConfigService {
 			user,
 		);
 
-		const saved = await this.agentRepository.save(entity);
+		// Imported task rows and the agent are saved in one transaction — the
+		// same all-or-nothing coupling `AgentTaskService.createTasksBatch` uses —
+		// so the `agent_task_definition` table and schema refs can't diverge.
+		const saved =
+			importedTasks.length === 0
+				? await this.agentRepository.save(entity)
+				: await this.agentRepository.manager.transaction(async (em) => {
+						for (const task of importedTasks) {
+							await em.save(task);
+						}
+						return await em.save(entity);
+					});
 		this.eventService.emit('agent-saved', { agentId });
 		this.logger.debug('Updated agent JSON config', { agentId, projectId });
 
@@ -384,13 +399,15 @@ export class AgentConfigService {
 		// in the `skills`/`tools` columns and the `agent_task_definition` table.
 		if (config.skills !== undefined) {
 			const skills = entity.skills ?? {};
-			config.skills = config.skills.filter((ref) => Boolean(skills[ref.id])).map(toBareSkillRef);
+			config.skills = config.skills
+				.filter((ref) => Object.hasOwn(skills, ref.id))
+				.map(toBareSkillRef);
 		}
 
 		if (config.tools !== undefined) {
 			const tools = entity.tools ?? {};
 			config.tools = config.tools
-				.filter((ref) => ref.type !== 'custom' || Boolean(tools[ref.id]))
+				.filter((ref) => ref.type !== 'custom' || Object.hasOwn(tools, ref.id))
 				.map((ref) => (ref.type === 'custom' ? toBareCustomToolRef(ref) : ref));
 		}
 
@@ -417,39 +434,46 @@ export class AgentConfigService {
 	}
 
 	/**
-	 * Persist task definitions that arrived inline on the config but have no row
-	 * for this agent yet (an imported agent JSON). A ref without a full inline
-	 * body can't be recreated and is left to be dropped as an orphan. Returns the
-	 * ids that now have a definition, so their refs are kept on import.
+	 * Prepare task definitions that arrived inline on the config but have no row
+	 * for this agent yet (an imported agent JSON), for persistence alongside the
+	 * agent save. A task is skipped — and its ref later dropped as an orphan —
+	 * when the inline body is missing or incomplete, the cron expression is
+	 * invalid, or the id is already taken by another agent (the task id is the
+	 * table's sole primary key, so writing it would hijack that agent's row).
 	 */
-	private async recreateImportedTaskDefinitions(
+	private async prepareImportedTaskDefinitions(
 		agentId: string,
 		tasks: NonNullable<AgentJsonConfig['tasks']>,
 		existingTaskIds: ReadonlySet<string>,
-	): Promise<string[]> {
-		const created: string[] = [];
-		for (const task of tasks) {
-			if (existingTaskIds.has(task.id)) continue;
-			if (
-				task.name === undefined ||
-				task.objective === undefined ||
-				task.cronExpression === undefined
-			) {
+	): Promise<AgentTask[]> {
+		const inlineTasks = tasks.flatMap((task) => {
+			if (existingTaskIds.has(task.id)) return [];
+			const { id, name, objective, cronExpression } = task;
+			if (name === undefined || objective === undefined || cronExpression === undefined) return [];
+			return [{ id, name, objective, cronExpression }];
+		});
+		if (inlineTasks.length === 0) return [];
+
+		const owningAgentIds = await this.agentTaskRepository.findOwningAgentIds(
+			inlineTasks.map((task) => task.id),
+		);
+
+		const prepared: AgentTask[] = [];
+		for (const task of inlineTasks) {
+			if (owningAgentIds.has(task.id)) {
+				this.logger.warn('Skipping imported agent task: id already taken', { taskId: task.id });
+				continue;
+			}
+			if (!isValidCronExpression(task.cronExpression)) {
+				this.logger.warn('Skipping imported agent task: invalid cron expression', {
+					taskId: task.id,
+				});
 				continue;
 			}
 
-			await this.agentTaskRepository.save(
-				this.agentTaskRepository.create({
-					id: task.id,
-					agentId,
-					name: task.name,
-					objective: task.objective,
-					cronExpression: task.cronExpression,
-				}),
-			);
-			created.push(task.id);
+			prepared.push(this.agentTaskRepository.create({ ...task, agentId }));
 		}
-		return created;
+		return prepared;
 	}
 
 	/**
@@ -468,7 +492,7 @@ export class AgentConfigService {
 		let changed = false;
 
 		for (const ref of refs) {
-			if (skills[ref.id]) continue;
+			if (Object.hasOwn(skills, ref.id)) continue;
 			if (
 				ref.name === undefined ||
 				ref.description === undefined ||
@@ -521,7 +545,7 @@ export class AgentConfigService {
 
 		for (const ref of refs) {
 			if (ref.type !== 'custom') continue;
-			if (tools[ref.id] || ref.code === undefined) continue;
+			if (Object.hasOwn(tools, ref.id) || ref.code === undefined) continue;
 
 			let descriptor;
 			try {
@@ -575,7 +599,7 @@ function hydrateSkillDefinitions(entity: Agent, config: AgentJsonConfig): void {
 	const skills = entity.skills ?? {};
 
 	config.skills = config.skills.map((ref) => {
-		const body = skills[ref.id];
+		const body = Object.hasOwn(skills, ref.id) ? skills[ref.id] : undefined;
 		if (!body) return ref;
 		return {
 			...ref,
@@ -600,7 +624,7 @@ function hydrateCustomToolDefinitions(entity: Agent, config: AgentJsonConfig): v
 
 	config.tools = config.tools.map((ref) => {
 		if (ref.type !== 'custom') return ref;
-		const stored = tools[ref.id];
+		const stored = Object.hasOwn(tools, ref.id) ? tools[ref.id] : undefined;
 		if (!stored) return ref;
 		return { ...ref, code: stored.code };
 	});
