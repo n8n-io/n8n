@@ -97,8 +97,8 @@ catalogs:
       specifier: 3.23.1
       version: 3.23.1
     nanoid:
-      specifier: 3.3.8
-      version: 3.3.8
+      specifier: 3.3.17
+      version: 3.3.17
     picocolors:
       specifier: 1.0.1
       version: 1.0.1
@@ -250,6 +250,7 @@ overrides:
   '@hono/node-server@<=1.19.13': 1.19.13
   yaml@<=2.8.3: 2.8.3
   picomatch@<=4.0.4: 4.0.4
+  nanoid@<3.3.17: 3.3.17
   zod: 3.25.67
   fast-xml-parser: 5.7.2
   fast-xml-builder: 1.2.1
@@ -606,7 +607,7 @@ importers:
         version: 8.6.0
       nanoid:
         specifier: 'catalog:'
-        version: 3.3.8
+        version: 3.3.17
       zx:
         specifier: ^8.8.5
         version: 8.8.5
@@ -756,7 +757,7 @@ importers:
         version: link:../../workflow
       nanoid:
         specifier: 'catalog:'
-        version: 3.3.8
+        version: 3.3.17
       p-lazy:
         specifier: 3.1.0
         version: 3.1.0
@@ -1013,7 +1014,7 @@ importers:
         version: link:../typescript-config
       '@vitejs/plugin-vue':
         specifier: catalog:frontend
-        version: 5.2.4(rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.13(typescript@5.9.2))
+        version: 5.2.4(rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.11.3)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.13(typescript@5.9.2))
       '@vue/tsconfig':
         specifier: catalog:frontend
         version: 0.7.0(typescript@5.9.2)(vue@3.5.13(typescript@5.9.2))
@@ -1022,13 +1023,13 @@ importers:
         version: 6.0.1
       tsdown:
         specifier: 'catalog:'
-        version: 0.16.5(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0)(ms@2.1.3)(typescript@5.9.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@5.9.2))
+        version: 0.16.5(@emnapi/core@1.5.0)(@emnapi/runtime@1.11.3)(ms@2.1.3)(typescript@5.9.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@5.9.2))
       tsx:
         specifier: 'catalog:'
         version: 4.19.3
       vite:
         specifier: 'catalog:'
-        version: rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+        version: rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.11.3)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vue:
         specifier: catalog:frontend
         version: 3.5.13(typescript@5.9.2)
@@ -1525,7 +1526,7 @@ importers:
         version: link:../../workflow
       nanoid:
         specifier: 'catalog:'
-        version: 3.3.8
+        version: 3.3.17
       ws:
         specifier: 8.21.1
         version: 8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)
@@ -1558,13 +1559,13 @@ importers:
         version: 14.6.1(@testing-library/dom@10.4.0)
       tsdown:
         specifier: 'catalog:'
-        version: 0.16.5(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0)(ms@2.1.3)(typescript@5.9.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@5.9.2))
+        version: 0.16.5(@emnapi/core@1.5.0)(@emnapi/runtime@1.11.3)(ms@2.1.3)(typescript@5.9.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@5.9.2))
       typescript:
         specifier: 5.9.2
         version: 5.9.2
       vite:
         specifier: 'catalog:'
-        version: rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+        version: rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.11.3)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vitest:
         specifier: 'catalog:'
         version: 3.1.3(@types/debug@4.1.12)(@types/node@20.19.21)(jiti@2.6.1)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(lightningcss@1.30.2)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
@@ -1576,7 +1577,7 @@ importers:
         version: link:../typescript-config
       vite:
         specifier: 'catalog:'
-        version: rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+        version: rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.11.3)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vitest:
         specifier: 'catalog:'
         version: 3.1.3(@types/debug@4.1.12)(@types/node@20.19.21)(jiti@2.6.1)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(lightningcss@1.30.2)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
@@ -1780,7 +1781,7 @@ importers:
         version: link:../workflow
       nanoid:
         specifier: 'catalog:'
-        version: 3.3.8
+        version: 3.3.17
       nodemailer:
         specifier: 7.0.11
         version: 7.0.11
@@ -2069,7 +2070,7 @@ importers:
         version: link:../workflow
       nanoid:
         specifier: 'catalog:'
-        version: 3.3.8
+        version: 3.3.17
       oauth-1.0a:
         specifier: 2.2.6
         version: 2.2.6
@@ -2146,7 +2147,7 @@ importers:
         version: link:../../@n8n/typescript-config
       '@vitejs/plugin-vue':
         specifier: catalog:frontend
-        version: 5.2.4(rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.13(typescript@5.9.2))
+        version: 5.2.4(rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.11.3)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.13(typescript@5.9.2))
       '@vue/tsconfig':
         specifier: catalog:frontend
         version: 0.7.0(typescript@5.9.2)(vue@3.5.13(typescript@5.9.2))
@@ -2155,10 +2156,10 @@ importers:
         version: 6.0.1
       tsdown:
         specifier: 'catalog:'
-        version: 0.16.5(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0)(ms@2.1.3)(typescript@5.9.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@5.9.2))
+        version: 0.16.5(@emnapi/core@1.5.0)(@emnapi/runtime@1.11.3)(ms@2.1.3)(typescript@5.9.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@5.9.2))
       vite:
         specifier: 'catalog:'
-        version: rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+        version: rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.11.3)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vue:
         specifier: catalog:frontend
         version: 3.5.13(typescript@5.9.2)
@@ -2213,7 +2214,7 @@ importers:
         version: link:../../../@n8n/vitest-config
       '@vitejs/plugin-vue':
         specifier: catalog:frontend
-        version: 5.2.4(rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.13(typescript@5.9.2))
+        version: 5.2.4(rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.11.3)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.13(typescript@5.9.2))
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 3.2.4(vitest@3.1.3(@types/debug@4.1.12)(@types/node@20.19.21)(jiti@2.6.1)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(lightningcss@1.30.2)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
@@ -2222,10 +2223,10 @@ importers:
         version: 0.19.0(@vue/compiler-sfc@3.5.13)
       vite:
         specifier: 'catalog:'
-        version: rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+        version: rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.11.3)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vite-plugin-dts:
         specifier: ^4.5.3
-        version: 4.5.3(@types/node@20.19.21)(rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(rollup@4.52.4)(typescript@5.9.2)
+        version: 4.5.3(@types/node@20.19.21)(rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.11.3)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(rollup@4.52.4)(typescript@5.9.2)
       vitest:
         specifier: 'catalog:'
         version: 3.1.3(@types/debug@4.1.12)(@types/node@20.19.21)(jiti@2.6.1)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(lightningcss@1.30.2)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
@@ -2255,7 +2256,7 @@ importers:
         version: 8.1.0(@vue/compiler-sfc@3.5.13)(vue@3.5.13(typescript@5.9.2))
       '@vitejs/plugin-vue':
         specifier: catalog:frontend
-        version: 5.2.4(rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.13(typescript@5.9.2))
+        version: 5.2.4(rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.11.3)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.13(typescript@5.9.2))
       '@vue/tsconfig':
         specifier: catalog:frontend
         version: 0.7.0(typescript@5.9.2)(vue@3.5.13(typescript@5.9.2))
@@ -2264,13 +2265,13 @@ importers:
         version: 10.11.0(vue@3.5.13(typescript@5.9.2))
       tsdown:
         specifier: 'catalog:'
-        version: 0.16.5(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0)(ms@2.1.3)(typescript@5.9.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@5.9.2))
+        version: 0.16.5(@emnapi/core@1.5.0)(@emnapi/runtime@1.11.3)(ms@2.1.3)(typescript@5.9.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@5.9.2))
       typescript:
         specifier: 5.9.2
         version: 5.9.2
       vite:
         specifier: 'catalog:'
-        version: rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+        version: rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.11.3)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vitest:
         specifier: 'catalog:'
         version: 3.1.3(@types/debug@4.1.12)(@types/node@20.19.21)(jiti@2.6.1)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(lightningcss@1.30.2)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
@@ -2382,7 +2383,7 @@ importers:
         version: 2.11.0
       '@vitejs/plugin-vue':
         specifier: catalog:frontend
-        version: 5.2.4(rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.13(typescript@5.9.2))
+        version: 5.2.4(rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.11.3)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.13(typescript@5.9.2))
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 3.2.4(vitest@3.1.3(@types/debug@4.1.12)(@types/node@20.19.21)(jiti@2.6.1)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(lightningcss@1.30.2)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
@@ -2406,7 +2407,7 @@ importers:
         version: 0.19.0(@vue/compiler-sfc@3.5.13)
       vite:
         specifier: 'catalog:'
-        version: rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+        version: rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.11.3)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vitest:
         specifier: 'catalog:'
         version: 3.1.3(@types/debug@4.1.12)(@types/node@20.19.21)(jiti@2.6.1)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(lightningcss@1.30.2)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
@@ -2446,7 +2447,7 @@ importers:
         version: 8.1.0(@vue/compiler-sfc@3.5.13)(vue@3.5.13(typescript@5.9.2))
       '@vitejs/plugin-vue':
         specifier: catalog:frontend
-        version: 5.2.4(rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.13(typescript@5.9.2))
+        version: 5.2.4(rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.11.3)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.13(typescript@5.9.2))
       '@vue/tsconfig':
         specifier: catalog:frontend
         version: 0.7.0(typescript@5.9.2)(vue@3.5.13(typescript@5.9.2))
@@ -2455,13 +2456,13 @@ importers:
         version: 10.11.0(vue@3.5.13(typescript@5.9.2))
       tsdown:
         specifier: 'catalog:'
-        version: 0.16.5(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0)(ms@2.1.3)(typescript@5.9.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@5.9.2))
+        version: 0.16.5(@emnapi/core@1.5.0)(@emnapi/runtime@1.11.3)(ms@2.1.3)(typescript@5.9.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@5.9.2))
       typescript:
         specifier: 5.9.2
         version: 5.9.2
       vite:
         specifier: 'catalog:'
-        version: rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+        version: rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.11.3)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vitest:
         specifier: 'catalog:'
         version: 3.1.3(@types/debug@4.1.12)(@types/node@20.19.21)(jiti@2.6.1)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(lightningcss@1.30.2)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
@@ -2519,13 +2520,13 @@ importers:
         version: 14.6.1(@testing-library/dom@10.4.0)
       tsdown:
         specifier: 'catalog:'
-        version: 0.16.5(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0)(ms@2.1.3)(typescript@5.9.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@5.9.2))
+        version: 0.16.5(@emnapi/core@1.5.0)(@emnapi/runtime@1.11.3)(ms@2.1.3)(typescript@5.9.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@5.9.2))
       typescript:
         specifier: 5.9.2
         version: 5.9.2
       vite:
         specifier: 'catalog:'
-        version: rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+        version: rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.11.3)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vitest:
         specifier: 'catalog:'
         version: 3.1.3(@types/debug@4.1.12)(@types/node@20.19.21)(jiti@2.6.1)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(lightningcss@1.30.2)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
@@ -2556,7 +2557,7 @@ importers:
         version: 8.1.0(@vue/compiler-sfc@3.5.13)(vue@3.5.13(typescript@5.9.2))
       '@vitejs/plugin-vue':
         specifier: catalog:frontend
-        version: 5.2.4(rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.13(typescript@5.9.2))
+        version: 5.2.4(rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.11.3)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.13(typescript@5.9.2))
       '@vue/tsconfig':
         specifier: catalog:frontend
         version: 0.7.0(typescript@5.9.2)(vue@3.5.13(typescript@5.9.2))
@@ -2568,13 +2569,13 @@ importers:
         version: 2.2.4(typescript@5.9.2)(vue@3.5.13(typescript@5.9.2))
       tsdown:
         specifier: 'catalog:'
-        version: 0.16.5(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0)(ms@2.1.3)(typescript@5.9.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@5.9.2))
+        version: 0.16.5(@emnapi/core@1.5.0)(@emnapi/runtime@1.11.3)(ms@2.1.3)(typescript@5.9.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@5.9.2))
       typescript:
         specifier: 5.9.2
         version: 5.9.2
       vite:
         specifier: 'catalog:'
-        version: rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+        version: rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.11.3)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vitest:
         specifier: 'catalog:'
         version: 3.1.3(@types/debug@4.1.12)(@types/node@20.19.21)(jiti@2.6.1)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(lightningcss@1.30.2)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
@@ -2905,7 +2906,7 @@ importers:
         version: 5.2.0(encoding@0.1.13)(rollup@4.52.4)
       '@storybook/types':
         specifier: ^8.6.14
-        version: 8.6.14(storybook@9.1.7(@testing-library/dom@10.4.0)(bufferutil@4.0.9)(prettier@3.3.3)(rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(utf-8-validate@5.0.10))
+        version: 8.6.14(storybook@9.1.7(@testing-library/dom@10.4.0)(bufferutil@4.0.9)(prettier@3.3.3)(rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.11.3)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(utf-8-validate@5.0.10))
       '@testing-library/vue':
         specifier: catalog:frontend
         version: 8.1.0(@vue/compiler-sfc@3.5.13)(vue@3.5.13(typescript@5.9.2))
@@ -2929,10 +2930,10 @@ importers:
         version: 10.0.0
       '@vitejs/plugin-legacy':
         specifier: ^7.2.1
-        version: 7.2.1(rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(terser@5.16.1)
+        version: 7.2.1(rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.11.3)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(terser@5.16.1)
       '@vitejs/plugin-vue':
         specifier: catalog:frontend
-        version: 5.2.4(rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.13(typescript@5.9.2))
+        version: 5.2.4(rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.11.3)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.13(typescript@5.9.2))
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 3.2.4(vitest@3.1.3(@types/debug@4.1.12)(@types/node@20.19.21)(jiti@2.6.1)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(lightningcss@1.30.2)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
@@ -2950,16 +2951,16 @@ importers:
         version: 0.19.0(@vue/compiler-sfc@3.5.13)
       vite:
         specifier: 'catalog:'
-        version: rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+        version: rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.11.3)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vite-plugin-istanbul:
         specifier: ^7.2.0
-        version: 7.2.0(rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+        version: 7.2.0(rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.11.3)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       vite-plugin-node-polyfills:
         specifier: ^0.24.0
-        version: 0.24.0(rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(rollup@4.52.4)
+        version: 0.24.0(rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.11.3)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(rollup@4.52.4)
       vite-plugin-static-copy:
         specifier: 2.2.0
-        version: 2.2.0(rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+        version: 2.2.0(rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.11.3)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       vite-svg-loader:
         specifier: 5.1.0
         version: 5.1.0(vue@3.5.13(typescript@5.9.2))
@@ -3384,7 +3385,7 @@ importers:
         version: link:../../workflow
       nanoid:
         specifier: 'catalog:'
-        version: 3.3.8
+        version: 3.3.17
       nyc:
         specifier: ^17.1.0
         version: 17.1.0
@@ -14334,13 +14335,8 @@ packages:
   nanoclone@0.2.1:
     resolution: {integrity: sha512-wynEP02LmIbLpcYw8uBKpcfF6dmg2vcpKqxeH5UcoKEYdExslsdUA4ugFauuaeYdTB76ez6gJW8XAZ6CgkXYxA==}
 
-  nanoid@3.3.11:
-    resolution: {integrity: sha512-N8SpfPUnUp1bK+PMYW8qSWdl9U+wwNWI4QKxOYDy9JAro3WMX7p2OeVRF9v+347pnakNevPmiHhNmZ2HbFA76w==}
-    engines: {node: ^10 || ^12 || ^13.7 || ^14 || >=15.0.1}
-    hasBin: true
-
-  nanoid@3.3.8:
-    resolution: {integrity: sha512-WNLf5Sd8oZxOm+TzppcYk8gVOgP+l58xNy58D0nbUnOxOWRWvlcCV4kUF7ltmI6PsrLl/BgKEyS4mqsGChFN0w==}
+  nanoid@3.3.17:
+    resolution: {integrity: sha512-xQLf0A3HOMlgHq0n247/LRuAOYmB7dXJ/DvAxGvsSBij45XtBSmQycu+F8ODbHwns/XyFZagyL1+J0Offw1E0g==}
     engines: {node: ^10 || ^12 || ^13.7 || ^14 || >=15.0.1}
     hasBin: true
 
@@ -21063,7 +21059,7 @@ snapshots:
       json-stringify-safe: 5.0.1
       lil-http-terminator: 1.2.3
       lodash: 4.18.0(patch_hash=c9c1aefdc3c11c84b56f0e446f4100ee59911491de392196faae26946b910b39)
-      nanoid: 3.3.11
+      nanoid: 3.3.17
       object-sizeof: 2.6.5
       p-debounce: 2.1.0
       p-map: 4.0.0
@@ -22552,10 +22548,10 @@ snapshots:
       '@tybys/wasm-util': 0.9.0
     optional: true
 
-  '@napi-rs/wasm-runtime@1.1.4(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0)':
+  '@napi-rs/wasm-runtime@1.1.4(@emnapi/core@1.5.0)(@emnapi/runtime@1.11.3)':
     dependencies:
       '@emnapi/core': 1.5.0
-      '@emnapi/runtime': 1.5.0
+      '@emnapi/runtime': 1.11.3
       '@tybys/wasm-util': 0.10.1
     optional: true
 
@@ -23186,17 +23182,17 @@ snapshots:
   '@rolldown/binding-openharmony-arm64@1.0.0-beta.50':
     optional: true
 
-  '@rolldown/binding-wasm32-wasi@1.0.0-beta.42(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0)':
+  '@rolldown/binding-wasm32-wasi@1.0.0-beta.42(@emnapi/core@1.5.0)(@emnapi/runtime@1.11.3)':
     dependencies:
-      '@napi-rs/wasm-runtime': 1.1.4(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0)
+      '@napi-rs/wasm-runtime': 1.1.4(@emnapi/core@1.5.0)(@emnapi/runtime@1.11.3)
     transitivePeerDependencies:
       - '@emnapi/core'
       - '@emnapi/runtime'
     optional: true
 
-  '@rolldown/binding-wasm32-wasi@1.0.0-beta.50(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0)':
+  '@rolldown/binding-wasm32-wasi@1.0.0-beta.50(@emnapi/core@1.5.0)(@emnapi/runtime@1.11.3)':
     dependencies:
-      '@napi-rs/wasm-runtime': 1.1.4(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0)
+      '@napi-rs/wasm-runtime': 1.1.4(@emnapi/core@1.5.0)(@emnapi/runtime@1.11.3)
     transitivePeerDependencies:
       - '@emnapi/core'
       - '@emnapi/runtime'
@@ -24545,9 +24541,9 @@ snapshots:
     dependencies:
       storybook: 9.1.7(@testing-library/dom@10.4.0)(bufferutil@4.0.9)(prettier@3.6.2)(utf-8-validate@5.0.10)(vite@7.0.0(@types/node@20.19.21)(jiti@2.6.1)(lightningcss@1.30.2)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
 
-  '@storybook/types@8.6.14(storybook@9.1.7(@testing-library/dom@10.4.0)(bufferutil@4.0.9)(prettier@3.3.3)(rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(utf-8-validate@5.0.10))':
+  '@storybook/types@8.6.14(storybook@9.1.7(@testing-library/dom@10.4.0)(bufferutil@4.0.9)(prettier@3.3.3)(rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.11.3)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(utf-8-validate@5.0.10))':
     dependencies:
-      storybook: 9.1.7(@testing-library/dom@10.4.0)(bufferutil@4.0.9)(prettier@3.3.3)(rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(utf-8-validate@5.0.10)
+      storybook: 9.1.7(@testing-library/dom@10.4.0)(bufferutil@4.0.9)(prettier@3.3.3)(rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.11.3)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(utf-8-validate@5.0.10)
 
   '@storybook/vue3-vite@9.1.7(storybook@9.1.7(@testing-library/dom@10.4.0)(bufferutil@4.0.9)(prettier@3.6.2)(utf-8-validate@5.0.10)(vite@7.0.0(@types/node@20.19.21)(jiti@2.6.1)(lightningcss@1.30.2)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)))(vite@7.0.0(@types/node@20.19.21)(jiti@2.6.1)(lightningcss@1.30.2)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.13(typescript@5.9.2))':
     dependencies:
@@ -25537,7 +25533,7 @@ snapshots:
   '@unrs/resolver-binding-win32-x64-msvc@1.9.2':
     optional: true
 
-  '@vitejs/plugin-legacy@7.2.1(rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(terser@5.16.1)':
+  '@vitejs/plugin-legacy@7.2.1(rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.11.3)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(terser@5.16.1)':
     dependencies:
       '@babel/core': 7.28.4
       '@babel/plugin-transform-dynamic-import': 7.27.1(@babel/core@7.28.4)
@@ -25552,13 +25548,13 @@ snapshots:
       regenerator-runtime: 0.14.1
       systemjs: 6.15.1
       terser: 5.16.1
-      vite: rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+      vite: rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.11.3)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
     transitivePeerDependencies:
       - supports-color
 
-  '@vitejs/plugin-vue@5.2.4(rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.13(typescript@5.9.2))':
+  '@vitejs/plugin-vue@5.2.4(rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.11.3)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.13(typescript@5.9.2))':
     dependencies:
-      vite: rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+      vite: rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.11.3)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vue: 3.5.13(typescript@5.9.2)
 
   '@vitest/coverage-v8@3.2.4(vitest@3.1.3(@types/debug@4.1.12)(@types/node@20.19.21)(jiti@2.6.1)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(lightningcss@1.30.2)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))':
@@ -25603,13 +25599,13 @@ snapshots:
     optionalDependencies:
       vite: 6.3.5(@types/node@20.19.21)(jiti@2.6.1)(lightningcss@1.30.2)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
 
-  '@vitest/mocker@3.2.4(rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))':
+  '@vitest/mocker@3.2.4(rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.11.3)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))':
     dependencies:
       '@vitest/spy': 3.2.4
       estree-walker: 3.0.3
       magic-string: 0.30.21
     optionalDependencies:
-      vite: rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+      vite: rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.11.3)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
 
   '@vitest/mocker@3.2.4(vite@7.0.0(@types/node@20.19.21)(jiti@2.6.1)(lightningcss@1.30.2)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))':
     dependencies:
@@ -26321,6 +26317,16 @@ snapshots:
   axios@1.18.0(debug@4.4.1):
     dependencies:
       follow-redirects: 1.16.0(debug@4.4.1)
+      form-data: 4.0.6
+      https-proxy-agent: 5.0.1
+      proxy-from-env: 2.1.0
+    transitivePeerDependencies:
+      - debug
+      - supports-color
+
+  axios@1.18.0(debug@4.4.3):
+    dependencies:
+      follow-redirects: 1.16.0(debug@4.4.3)
       form-data: 4.0.6
       https-proxy-agent: 5.0.1
       proxy-from-env: 2.1.0
@@ -29777,7 +29783,7 @@ snapshots:
       '@types/debug': 4.1.12
       '@types/node': 20.19.21
       '@types/tough-cookie': 4.0.5
-      axios: 1.18.0(debug@4.4.1)
+      axios: 1.18.0(debug@4.4.3)
       camelcase: 6.3.0
       debug: 4.4.3
       dotenv: 16.6.1
@@ -29787,7 +29793,7 @@ snapshots:
       isstream: 0.1.2
       jsonwebtoken: 9.0.2
       mime-types: 2.1.35
-      retry-axios: 2.6.0(axios@1.18.0(debug@4.4.3))
+      retry-axios: 2.6.0(axios@1.18.0)
       tough-cookie: 4.1.4
     transitivePeerDependencies:
       - supports-color
@@ -29808,7 +29814,7 @@ snapshots:
 
   ics@2.40.0(patch_hash=163587ad2fa9bc787ed09cd5e958eace08b4aa8aaca651869e9434ba674e158d):
     dependencies:
-      nanoid: 3.3.11
+      nanoid: 3.3.17
       yup: 0.32.11
 
   ieee754@1.2.1: {}
@@ -31815,7 +31821,7 @@ snapshots:
   minifaker@1.34.1(patch_hash=bc707e2c34a2464da2c9c93ead33e80fd9883a00434ef64907ddc45208a08b33):
     dependencies:
       '@types/uuid': 8.3.4
-      nanoid: 3.3.11
+      nanoid: 3.3.17
       uuid: 11.1.1
 
   minimalistic-assert@1.0.1: {}
@@ -32403,9 +32409,7 @@ snapshots:
 
   nanoclone@0.2.1: {}
 
-  nanoid@3.3.11: {}
-
-  nanoid@3.3.8: {}
+  nanoid@3.3.17: {}
 
   napi-build-utils@2.0.0: {}
 
@@ -33384,19 +33388,19 @@ snapshots:
 
   postcss@8.4.31:
     dependencies:
-      nanoid: 3.3.11
+      nanoid: 3.3.17
       picocolors: 1.1.1
       source-map-js: 1.2.1
 
   postcss@8.4.49:
     dependencies:
-      nanoid: 3.3.11
+      nanoid: 3.3.17
       picocolors: 1.1.1
       source-map-js: 1.2.1
 
   postcss@8.5.6:
     dependencies:
-      nanoid: 3.3.11
+      nanoid: 3.3.17
       picocolors: 1.1.1
       source-map-js: 1.2.1
 
@@ -34143,7 +34147,7 @@ snapshots:
       onetime: 5.1.2
       signal-exit: 3.0.7
 
-  retry-axios@2.6.0(axios@1.18.0(debug@4.4.3)):
+  retry-axios@2.6.0(axios@1.18.0):
     dependencies:
       axios: 1.18.0(debug@4.4.1)
 
@@ -34203,7 +34207,7 @@ snapshots:
 
   rndm@1.2.0: {}
 
-  rolldown-plugin-dts@0.17.8(ms@2.1.3)(rolldown@1.0.0-beta.50(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0))(typescript@5.9.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@5.9.2)):
+  rolldown-plugin-dts@0.17.8(ms@2.1.3)(rolldown@1.0.0-beta.50(@emnapi/core@1.5.0)(@emnapi/runtime@1.11.3))(typescript@5.9.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@5.9.2)):
     dependencies:
       '@babel/generator': 7.28.5
       '@babel/parser': 7.28.5
@@ -34214,7 +34218,7 @@ snapshots:
       get-tsconfig: 4.13.0
       magic-string: 0.30.21
       obug: 2.0.0(ms@2.1.3)
-      rolldown: 1.0.0-beta.50(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0)
+      rolldown: 1.0.0-beta.50(@emnapi/core@1.5.0)(@emnapi/runtime@1.11.3)
     optionalDependencies:
       typescript: 5.9.2
       vue-tsc: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@5.9.2)
@@ -34222,14 +34226,14 @@ snapshots:
       - ms
       - oxc-resolver
 
-  rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3):
+  rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.11.3)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3):
     dependencies:
       '@oxc-project/runtime': 0.92.0
       fdir: 6.5.0(picomatch@4.0.4)
       lightningcss: 1.30.2
       picomatch: 4.0.4
       postcss: 8.5.6
-      rolldown: 1.0.0-beta.42(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0)
+      rolldown: 1.0.0-beta.42(@emnapi/core@1.5.0)(@emnapi/runtime@1.11.3)
       tinyglobby: 0.2.15
     optionalDependencies:
       '@types/node': 20.19.21
@@ -34244,7 +34248,7 @@ snapshots:
       - '@emnapi/core'
       - '@emnapi/runtime'
 
-  rolldown@1.0.0-beta.42(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0):
+  rolldown@1.0.0-beta.42(@emnapi/core@1.5.0)(@emnapi/runtime@1.11.3):
     dependencies:
       '@oxc-project/types': 0.94.0
       '@rolldown/pluginutils': 1.0.0-beta.42
@@ -34260,7 +34264,7 @@ snapshots:
       '@rolldown/binding-linux-x64-gnu': 1.0.0-beta.42
       '@rolldown/binding-linux-x64-musl': 1.0.0-beta.42
       '@rolldown/binding-openharmony-arm64': 1.0.0-beta.42
-      '@rolldown/binding-wasm32-wasi': 1.0.0-beta.42(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0)
+      '@rolldown/binding-wasm32-wasi': 1.0.0-beta.42(@emnapi/core@1.5.0)(@emnapi/runtime@1.11.3)
       '@rolldown/binding-win32-arm64-msvc': 1.0.0-beta.42
       '@rolldown/binding-win32-ia32-msvc': 1.0.0-beta.42
       '@rolldown/binding-win32-x64-msvc': 1.0.0-beta.42
@@ -34268,7 +34272,7 @@ snapshots:
       - '@emnapi/core'
       - '@emnapi/runtime'
 
-  rolldown@1.0.0-beta.50(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0):
+  rolldown@1.0.0-beta.50(@emnapi/core@1.5.0)(@emnapi/runtime@1.11.3):
     dependencies:
       '@oxc-project/types': 0.97.0
       '@rolldown/pluginutils': 1.0.0-beta.50
@@ -34283,7 +34287,7 @@ snapshots:
       '@rolldown/binding-linux-x64-gnu': 1.0.0-beta.50
       '@rolldown/binding-linux-x64-musl': 1.0.0-beta.50
       '@rolldown/binding-openharmony-arm64': 1.0.0-beta.50
-      '@rolldown/binding-wasm32-wasi': 1.0.0-beta.50(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0)
+      '@rolldown/binding-wasm32-wasi': 1.0.0-beta.50(@emnapi/core@1.5.0)(@emnapi/runtime@1.11.3)
       '@rolldown/binding-win32-arm64-msvc': 1.0.0-beta.50
       '@rolldown/binding-win32-ia32-msvc': 1.0.0-beta.50
       '@rolldown/binding-win32-x64-msvc': 1.0.0-beta.50
@@ -34948,13 +34952,13 @@ snapshots:
       - react-dom
       - storybook
 
-  storybook@9.1.7(@testing-library/dom@10.4.0)(bufferutil@4.0.9)(prettier@3.3.3)(rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(utf-8-validate@5.0.10):
+  storybook@9.1.7(@testing-library/dom@10.4.0)(bufferutil@4.0.9)(prettier@3.3.3)(rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.11.3)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(utf-8-validate@5.0.10):
     dependencies:
       '@storybook/global': 5.0.0
       '@testing-library/jest-dom': 6.6.3
       '@testing-library/user-event': 14.6.1(@testing-library/dom@10.4.0)
       '@vitest/expect': 3.2.4
-      '@vitest/mocker': 3.2.4(rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+      '@vitest/mocker': 3.2.4(rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.11.3)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       '@vitest/spy': 3.2.4
       better-opn: 3.0.2
       esbuild: 0.28.1
@@ -35756,7 +35760,7 @@ snapshots:
       minimist: 1.2.8
       strip-bom: 3.0.0
 
-  tsdown@0.16.5(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0)(ms@2.1.3)(typescript@5.9.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@5.9.2)):
+  tsdown@0.16.5(@emnapi/core@1.5.0)(@emnapi/runtime@1.11.3)(ms@2.1.3)(typescript@5.9.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@5.9.2)):
     dependencies:
       ansis: 4.2.0
       cac: 6.7.14
@@ -35765,14 +35769,14 @@ snapshots:
       empathic: 2.0.0
       hookable: 5.5.3
       obug: 2.0.0(ms@2.1.3)
-      rolldown: 1.0.0-beta.50(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0)
-      rolldown-plugin-dts: 0.17.8(ms@2.1.3)(rolldown@1.0.0-beta.50(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0))(typescript@5.9.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@5.9.2))
+      rolldown: 1.0.0-beta.50(@emnapi/core@1.5.0)(@emnapi/runtime@1.11.3)
+      rolldown-plugin-dts: 0.17.8(ms@2.1.3)(rolldown@1.0.0-beta.50(@emnapi/core@1.5.0)(@emnapi/runtime@1.11.3))(typescript@5.9.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@5.9.2))
       semver: 7.7.3
       tinyexec: 1.0.2
       tinyglobby: 0.2.15
       tree-kill: 1.2.2
       unconfig-core: 7.4.1
-      unrun: 0.2.10(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0)
+      unrun: 0.2.10(@emnapi/core@1.5.0)(@emnapi/runtime@1.11.3)
     optionalDependencies:
       typescript: 5.9.2
     transitivePeerDependencies:
@@ -36105,10 +36109,10 @@ snapshots:
       '@unrs/resolver-binding-win32-ia32-msvc': 1.9.2
       '@unrs/resolver-binding-win32-x64-msvc': 1.9.2
 
-  unrun@0.2.10(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0):
+  unrun@0.2.10(@emnapi/core@1.5.0)(@emnapi/runtime@1.11.3):
     dependencies:
       '@oxc-project/runtime': 0.97.0
-      rolldown: 1.0.0-beta.50(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0)
+      rolldown: 1.0.0-beta.50(@emnapi/core@1.5.0)(@emnapi/runtime@1.11.3)
     transitivePeerDependencies:
       - '@emnapi/core'
       - '@emnapi/runtime'
@@ -36252,7 +36256,7 @@ snapshots:
       - tsx
       - yaml
 
-  vite-plugin-dts@4.5.3(@types/node@20.19.21)(rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(rollup@4.52.4)(typescript@5.9.2):
+  vite-plugin-dts@4.5.3(@types/node@20.19.21)(rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.11.3)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(rollup@4.52.4)(typescript@5.9.2):
     dependencies:
       '@microsoft/api-extractor': 7.58.1(@types/node@20.19.21)
       '@rollup/pluginutils': 5.1.4(rollup@4.52.4)
@@ -36265,13 +36269,13 @@ snapshots:
       magic-string: 0.30.17
       typescript: 5.9.2
     optionalDependencies:
-      vite: rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+      vite: rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.11.3)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
     transitivePeerDependencies:
       - '@types/node'
       - rollup
       - supports-color
 
-  vite-plugin-istanbul@7.2.0(rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)):
+  vite-plugin-istanbul@7.2.0(rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.11.3)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)):
     dependencies:
       '@babel/generator': 7.28.3
       '@istanbuljs/load-nyc-config': 1.1.0
@@ -36280,25 +36284,25 @@ snapshots:
       picocolors: 1.1.1
       source-map: 0.7.6
       test-exclude: 7.0.1
-      vite: rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+      vite: rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.11.3)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
     transitivePeerDependencies:
       - supports-color
 
-  vite-plugin-node-polyfills@0.24.0(rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(rollup@4.52.4):
+  vite-plugin-node-polyfills@0.24.0(rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.11.3)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(rollup@4.52.4):
     dependencies:
       '@rollup/plugin-inject': 5.0.5(rollup@4.52.4)
       node-stdlib-browser: 1.3.1
-      vite: rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+      vite: rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.11.3)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
     transitivePeerDependencies:
       - rollup
 
-  vite-plugin-static-copy@2.2.0(rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)):
+  vite-plugin-static-copy@2.2.0(rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.11.3)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)):
     dependencies:
       chokidar: 4.0.3
       fast-glob: 3.3.3
       fs-extra: 11.3.0
       picocolors: 1.1.1
-      vite: rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.5.0)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+      vite: rolldown-vite@7.1.16(@emnapi/core@1.5.0)(@emnapi/runtime@1.11.3)(@types/node@20.19.21)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
 
   vite-svg-loader@5.1.0(vue@3.5.13(typescript@5.9.2)):
     dependencies:
@@ -36739,7 +36743,7 @@ snapshots:
       https-proxy-agent: 4.0.0
       json5: 2.2.3
       loglevel: 1.9.2
-      nanoid: 3.3.11
+      nanoid: 3.3.17
     transitivePeerDependencies:
       - encoding
       - supports-color
