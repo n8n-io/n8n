@@ -4,6 +4,7 @@ import type {
 	DecideWorkflowReviewRequestResponse,
 	GetWorkflowReviewEligibleReviewersQueryDto,
 	GetWorkflowReviewInboxSummaryResponse,
+	ListWorkflowReviewActivityResponse,
 	ListWorkflowReviewInboxResponse,
 	UpdateWorkflowReviewRequestVersionDto,
 	WorkflowReviewEligibleReviewersList,
@@ -68,7 +69,7 @@ export async function updateWorkflowReviewRequestVersion(
 	return await makeRestApiRequest<WorkflowReviewRequestSummary>(
 		context,
 		'POST',
-		`/workflow-review-requests/${workflowReviewRequestId}/update-version`,
+		`/workflow-review-requests/${encodeURIComponent(workflowReviewRequestId)}/update-version`,
 		{ ...payload },
 	);
 }
@@ -81,7 +82,7 @@ export async function decideWorkflowReviewRequest(
 	return await makeRestApiRequest<DecideWorkflowReviewRequestResponse>(
 		context,
 		'POST',
-		`/workflow-review-requests/${workflowReviewRequestId}/decision`,
+		`/workflow-review-requests/${encodeURIComponent(workflowReviewRequestId)}/decision`,
 		{ ...payload },
 	);
 }
@@ -107,6 +108,19 @@ export async function fetchWorkflowReviewRequestDetail(
 	return await makeRestApiRequest(
 		context,
 		'GET',
-		`/workflow-review-requests/${workflowReviewRequestId}`,
+		`/workflow-review-requests/${encodeURIComponent(workflowReviewRequestId)}`,
+	);
+}
+
+export async function fetchWorkflowReviewActivity(
+	context: IRestApiContext,
+	workflowReviewRequestId: string,
+	params: { limit?: number; cursor?: string },
+): Promise<ListWorkflowReviewActivityResponse> {
+	return await makeRestApiRequest(
+		context,
+		'GET',
+		`/workflow-review-requests/${encodeURIComponent(workflowReviewRequestId)}/activity`,
+		params,
 	);
 }

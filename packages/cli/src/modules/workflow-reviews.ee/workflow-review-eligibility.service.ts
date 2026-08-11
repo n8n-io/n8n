@@ -16,7 +16,7 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 export interface WorkflowReviewViewerEligibility {
 	canDecide: boolean;
-	reason: WorkflowReviewDecisionIneligibilityReason | null;
+	decisionIneligibilityReason: WorkflowReviewDecisionIneligibilityReason | null;
 }
 
 /**
@@ -26,7 +26,7 @@ export interface WorkflowReviewViewerEligibility {
  * the two cannot drift.
  */
 @Service()
-export class WorkflowReviewDecisionEligibilityService {
+export class WorkflowReviewEligibilityService {
 	constructor(
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly workflowReviewRequestAuthorRepository: WorkflowReviewRequestAuthorRepository,
@@ -68,14 +68,14 @@ export class WorkflowReviewDecisionEligibilityService {
 	): Promise<WorkflowReviewViewerEligibility> {
 		// No linked workflow means decide() would 404 before any permission check
 		if (!pinnedWorkflowId) {
-			return { canDecide: false, reason: 'missing_publish_permission' };
+			return { canDecide: false, decisionIneligibilityReason: 'missing_publish_permission' };
 		}
 
 		const workflow = await this.workflowFinderService.findWorkflowForUser(pinnedWorkflowId, user, [
 			'workflow:publish',
 		]);
 		if (!workflow) {
-			return { canDecide: false, reason: 'missing_publish_permission' };
+			return { canDecide: false, decisionIneligibilityReason: 'missing_publish_permission' };
 		}
 
 		const isAuthor = await this.workflowReviewRequestAuthorRepository.isAuthor(
@@ -83,9 +83,9 @@ export class WorkflowReviewDecisionEligibilityService {
 			{},
 		);
 		if (isAuthor && !(await this.hasAdminOverride(user, request.projectId))) {
-			return { canDecide: false, reason: 'author' };
+			return { canDecide: false, decisionIneligibilityReason: 'author' };
 		}
 
-		return { canDecide: true, reason: null };
+		return { canDecide: true, decisionIneligibilityReason: null };
 	}
 }

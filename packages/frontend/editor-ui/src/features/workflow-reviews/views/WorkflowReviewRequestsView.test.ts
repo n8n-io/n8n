@@ -11,6 +11,7 @@ import { useToast } from '@n8n/composables/useToast';
 import { createMemoryHistory, createRouter } from 'vue-router';
 
 import { WORKFLOW_REVIEW_REQUESTS_VIEW } from '../constants';
+import { useReviewActivityStore } from '../reviewActivity.store';
 import { useReviewInboxStore } from '../reviewInbox.store';
 import WorkflowReviewRequestsView from './WorkflowReviewRequestsView.vue';
 
@@ -64,6 +65,7 @@ const renderComponent = createComponentRenderer(WorkflowReviewRequestsView, {
 				template: `
 					<div data-test-id="workflow-review-requests-sidebar">
 						<button data-test-id="select-review" @click="$emit('select', 'req-1')" />
+						<button data-test-id="select-other-review" @click="$emit('select', 'req-2')" />
 						<button data-test-id="clear-review" @click="$emit('clear')" />
 						<button data-test-id="select-closed-tab" @click="$emit('update:active-tab', 'closed')" />
 						<button data-test-id="select-open-tab" @click="$emit('update:active-tab', 'open')" />
@@ -84,6 +86,7 @@ const renderComponent = createComponentRenderer(WorkflowReviewRequestsView, {
 
 describe('WorkflowReviewRequestsView', () => {
 	let store: ReturnType<typeof mockedStore<typeof useReviewInboxStore>>;
+	let activityStore: ReturnType<typeof mockedStore<typeof useReviewActivityStore>>;
 
 	beforeEach(async () => {
 		createTestingPinia();
@@ -112,6 +115,9 @@ describe('WorkflowReviewRequestsView', () => {
 		store.setActiveTab.mockResolvedValue(undefined);
 		store.loadMore.mockResolvedValue(undefined);
 		store.reset.mockClear();
+
+		activityStore = mockedStore(useReviewActivityStore);
+		activityStore.fetchFeed.mockResolvedValue(undefined);
 	});
 
 	it('probes the inbox on mount', async () => {
@@ -160,6 +166,30 @@ describe('WorkflowReviewRequestsView', () => {
 		await waitAllPromises();
 
 		expect(store.fetchDetail).toHaveBeenCalledWith('req-1');
+	});
+
+	it('opens a review with its activity already loading', async () => {
+		await router.replace('/workflow-review-requests/req-1');
+		store.probeSettled = true;
+		store.showSidebar = true;
+
+		renderComponent();
+		await waitAllPromises();
+
+		expect(activityStore.fetchFeed).toHaveBeenCalledWith('req-1');
+	});
+
+	it('swaps in the activity of the next review the viewer picks', async () => {
+		await router.replace('/workflow-review-requests/req-1');
+		store.probeSettled = true;
+		store.showSidebar = true;
+
+		const { getByTestId } = renderComponent();
+		await waitAllPromises();
+		getByTestId('select-other-review').click();
+		await waitAllPromises();
+
+		expect(activityStore.fetchFeed).toHaveBeenLastCalledWith('req-2');
 	});
 
 	it('selects a review with replace and preserves the query', async () => {

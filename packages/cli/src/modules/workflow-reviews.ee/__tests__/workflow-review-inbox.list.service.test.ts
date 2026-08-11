@@ -10,18 +10,17 @@ import type {
 import { WorkflowReviewRequestRepository, WorkflowReviewRequestWorkflowRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import { ProjectService } from '@/services/project.service.ee';
 import { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 
-import type { WorkflowReviewDecisionEligibilityService } from '../workflow-review-decision-eligibility.service';
+import type { WorkflowReviewAccessService } from '../workflow-review-access.service';
+import type { WorkflowReviewEligibilityService } from '../workflow-review-eligibility.service';
 import { WorkflowReviewFeatureGate } from '../workflow-review-feature-gate.service';
 import { WorkflowReviewInboxService } from '../workflow-review-inbox.service';
 
 describe('WorkflowReviewInboxService', () => {
 	const workflowReviewPolicyService = mockInstance(WorkflowReviewPolicyService);
-	const workflowFinderService = mock<WorkflowFinderService>();
+	const accessService = mock<WorkflowReviewAccessService>();
 	const workflowHistoryService = mock<WorkflowHistoryService>();
 	const publishedVersionRepository = mock<WorkflowPublishedVersionRepository>();
 	const workflowReviewRequestRepository = mockInstance(WorkflowReviewRequestRepository);
@@ -30,7 +29,6 @@ describe('WorkflowReviewInboxService', () => {
 	);
 	const reviewerRepository = mock<WorkflowReviewRequestReviewerRepository>();
 	const userRepository = mock<UserRepository>();
-	const projectService = mockInstance(ProjectService);
 	const licenseState = mockInstance(LicenseState);
 
 	let service: WorkflowReviewInboxService;
@@ -47,21 +45,20 @@ describe('WorkflowReviewInboxService', () => {
 
 		service = new WorkflowReviewInboxService(
 			new WorkflowReviewFeatureGate(licenseState, workflowReviewPolicyService),
-			workflowFinderService,
+			accessService,
 			workflowHistoryService,
 			publishedVersionRepository,
 			workflowReviewRequestRepository,
 			workflowReviewRequestWorkflowRepository,
 			reviewerRepository,
 			userRepository,
-			projectService,
-			mock<WorkflowReviewDecisionEligibilityService>(),
+			mock<WorkflowReviewEligibilityService>(),
 		);
 	});
 
 	describe('listForInbox', () => {
 		function mockAccessibleProjects(projectIds: string[] = ['proj-1']) {
-			projectService.getProjectIdsWithScope.mockResolvedValueOnce(projectIds);
+			accessService.resolveAccessibleProjectIds.mockResolvedValueOnce(projectIds);
 		}
 
 		it('returns paginated data with hasMore and nextCursor', async () => {
@@ -135,47 +132,6 @@ describe('WorkflowReviewInboxService', () => {
 			await expect(service.listForInbox(user, { limit: 15, cursor })).rejects.toThrow(
 				'Invalid pagination cursor',
 			);
-		});
-	});
-	describe('resolveAccessibleProjectIds', () => {
-		it('returns the publish-scoped project ids for members', async () => {
-			projectService.getProjectIdsWithScope.mockResolvedValueOnce(['publish-proj']);
-
-			expect(await service.resolveAccessibleProjectIds(user)).toEqual(['publish-proj']);
-			expect(projectService.getProjectIdsWithScope).toHaveBeenCalledWith(user, [
-				'workflow:publish',
-			]);
-			expect(projectService.getProjectIdsWithScope).toHaveBeenCalledTimes(1);
-			// Requesters see their own reviews via the repository's requesterId filter,
-			// so no personal-project fallback is needed here.
-			expect(projectService.getPersonalProject).not.toHaveBeenCalled();
-		});
-
-		it('returns null (all projects) for users with global workflow:publish without enumerating projects', async () => {
-			const owner = mock<User>({
-				role: {
-					slug: 'global:owner',
-					scopes: [{ slug: 'workflow:publish' }],
-				},
-			});
-
-			expect(await service.resolveAccessibleProjectIds(owner)).toBeNull();
-			expect(projectService.getProjectIdsWithScope).not.toHaveBeenCalled();
-		});
-
-		it('does not short-circuit for a global project:delete role without workflow:publish', async () => {
-			const admin = mock<User>({
-				role: {
-					slug: 'custom:global',
-					scopes: [{ slug: 'project:delete' }],
-				},
-			});
-			projectService.getProjectIdsWithScope.mockResolvedValueOnce(['publish-proj']);
-
-			expect(await service.resolveAccessibleProjectIds(admin)).toEqual(['publish-proj']);
-			expect(projectService.getProjectIdsWithScope).toHaveBeenCalledWith(admin, [
-				'workflow:publish',
-			]);
 		});
 	});
 });

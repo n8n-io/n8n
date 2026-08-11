@@ -5,6 +5,7 @@ import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 
 import type { WorkflowReviewDecisionInput } from '../workflowReviews.api';
+import WorkflowReviewActivityFeed from './WorkflowReviewActivityFeed.vue';
 import WorkflowReviewChangesSection from './WorkflowReviewChangesSection.vue';
 import WorkflowReviewDetailMetadata from './WorkflowReviewDetailMetadata.vue';
 
@@ -91,26 +92,30 @@ const tabOptions = computed(() => [
 		<div :class="$style.detailBody">
 			<div
 				v-if="tab === 'activity'"
-				:class="$style.panel"
+				:class="$style.activityPanel"
 				data-test-id="workflow-review-activity-panel"
 			>
-				<N8nText
-					v-if="detail?.description"
-					color="text-base"
-					size="medium"
-					:class="$style.description"
-					data-test-id="workflow-review-description"
-				>
-					{{ detail.description }}
-				</N8nText>
-				<N8nText
-					v-else
-					color="text-light"
-					size="medium"
-					data-test-id="workflow-review-no-description"
-				>
-					{{ i18n.baseText('workflowReviews.detail.activity.noDescription') }}
-				</N8nText>
+				<div :class="$style.activityHeader">
+					<N8nText
+						v-if="detail?.description"
+						color="text-base"
+						size="medium"
+						:class="$style.description"
+						data-test-id="workflow-review-description"
+					>
+						{{ detail.description }}
+					</N8nText>
+					<N8nText
+						v-else
+						color="text-light"
+						size="medium"
+						data-test-id="workflow-review-no-description"
+					>
+						{{ i18n.baseText('workflowReviews.detail.activity.noDescription') }}
+					</N8nText>
+				</div>
+
+				<WorkflowReviewActivityFeed :key="review.id" />
 			</div>
 
 			<div v-else :class="$style.panel" data-test-id="workflow-review-changes-panel">
@@ -181,6 +186,23 @@ const tabOptions = computed(() => [
 	overflow: auto;
 }
 
+/* Separate from `.panel`: the feed brings its own scroll container. */
+.activityPanel {
+	display: flex;
+	flex-direction: column;
+	flex: 1;
+	min-height: 0;
+	overflow: hidden;
+}
+
+/* Capped so a long description cannot crowd out the feed. */
+.activityHeader {
+	flex-shrink: 0;
+	max-height: 30%;
+	overflow: auto;
+	padding-bottom: var(--spacing--sm);
+}
+
 .callout {
 	max-width: var(--review-callout--max-width, 34rem);
 }
@@ -203,6 +225,11 @@ const tabOptions = computed(() => [
 	}
 
 	.panel {
+		flex: 0 0 auto;
+		overflow: visible;
+	}
+
+	.activityPanel {
 		flex: 0 0 auto;
 		overflow: visible;
 	}
