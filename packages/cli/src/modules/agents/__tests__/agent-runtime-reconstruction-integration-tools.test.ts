@@ -259,6 +259,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			mock<EventService>(),
 			mock<AgentSetupCompletionService>(),
 			modificationTelemetry,
+			mock<AgentSecureRuntime>(),
 		);
 		agentCustomToolsService = new AgentCustomToolsService(
 			logger,

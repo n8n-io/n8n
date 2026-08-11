@@ -20,6 +20,7 @@ import type { Agent } from '../entities/agent.entity';
 import type { NodeToolAiGatewayService } from '../json-config/node-tool-ai-gateway.service';
 import type { AgentTaskRepository } from '../repositories/agent-task.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
+import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
@@ -64,6 +65,7 @@ function makeService() {
 	const eventService = mock<EventService>();
 	const agentValidationService = mock<AgentValidationService>();
 	const telemetry = mock<Telemetry>();
+	const secureRuntime = mock<AgentSecureRuntime>();
 
 	agentValidationService.validateLoadedAgentConfiguration.mockResolvedValue({
 		status: 'valid',
@@ -95,10 +97,12 @@ function makeService() {
 		eventService,
 		new AgentSetupCompletionService(agentValidationService, telemetry, agentRepository),
 		new AgentModificationTelemetryService(telemetry),
+		secureRuntime,
 	);
 
 	return {
 		service,
+		secureRuntime,
 		agentRepository,
 		agentTaskRepository,
 		agentSkillsService,
@@ -840,6 +844,207 @@ describe('AgentConfigService', () => {
 			// for lack of a matching definition.
 			const saved = agentRepository.save.mock.calls.at(-1)?.[0] as Agent;
 			expect(saved.schema?.tasks).toEqual([taskReference]);
+		});
+	});
+
+	// Same round-trip as tasks, but for skill bodies, which live in the agent's
+	// `skills` column rather than a separate table.
+	describe('skill export/import round-trip', () => {
+		const skillReference = { type: 'skill', id: 'skill_summarize' } as const;
+		const skillBody = {
+			name: 'Summarize thread',
+			description: 'Summarise long conversation threads',
+			instructions: 'Read the thread and produce a concise summary.',
+		};
+
+		it('includes the full skill body in the exported config, not just the reference', async () => {
+			const { service, agentRepository } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(
+				makeAgent({
+					schema: { ...baseConfig, skills: [skillReference] } as AgentJsonConfig,
+					skills: { [skillReference.id]: skillBody },
+				}),
+			);
+
+			const exported = await service.getConfig(agentId, projectId);
+
+			expect(exported.skills?.[0]).toMatchObject({
+				id: skillReference.id,
+				...skillBody,
+			});
+		});
+
+		it('preserves a skill when an exported config is imported into a fresh agent', async () => {
+			const { service, agentRepository } = makeService();
+
+			const sourceAgentId = agentId;
+			const targetAgentId = 'agent-imported';
+			agentRepository.findByIdAndProjectId.mockImplementation(async (id) =>
+				id === sourceAgentId
+					? makeAgent({
+							schema: { ...baseConfig, skills: [skillReference] } as AgentJsonConfig,
+							skills: { [skillReference.id]: skillBody },
+						})
+					: makeAgent({ id: targetAgentId, schema: baseConfig }),
+			);
+
+			const exported = await service.getConfig(sourceAgentId, projectId);
+			await service.updateConfig(targetAgentId, projectId, exported, user, byUser);
+
+			const saved = agentRepository.save.mock.calls.at(-1)?.[0] as Agent;
+			expect(saved.schema?.skills).toEqual([skillReference]);
+			expect(saved.skills).toEqual({ [skillReference.id]: skillBody });
+		});
+
+		it('drops a skill ref whose inline body is incomplete', async () => {
+			const { service, agentRepository } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ schema: baseConfig }));
+
+			await service.updateConfig(
+				agentId,
+				projectId,
+				{
+					...baseConfig,
+					skills: [{ type: 'skill', id: skillReference.id, name: skillBody.name }],
+				},
+				user,
+				byUser,
+			);
+
+			const saved = agentRepository.save.mock.calls.at(-1)?.[0] as Agent;
+			expect(saved.schema?.skills).toEqual([]);
+			expect(saved.skills).toEqual({});
+		});
+
+		it('keeps the existing skill body when the imported id already exists on the agent', async () => {
+			const { service, agentRepository } = makeService();
+			const existingBody = {
+				name: 'Existing summarizer',
+				description: 'Already on this agent',
+				instructions: 'Keep me.',
+			};
+			agentRepository.findByIdAndProjectId.mockResolvedValue(
+				makeAgent({
+					schema: { ...baseConfig, skills: [skillReference] } as AgentJsonConfig,
+					skills: { [skillReference.id]: existingBody },
+				}),
+			);
+
+			await service.updateConfig(
+				agentId,
+				projectId,
+				{ ...baseConfig, skills: [{ ...skillReference, ...skillBody }] },
+				user,
+				byUser,
+			);
+
+			const saved = agentRepository.save.mock.calls.at(-1)?.[0] as Agent;
+			expect(saved.schema?.skills).toEqual([skillReference]);
+			expect(saved.skills).toEqual({ [skillReference.id]: existingBody });
+		});
+
+		it('skips an imported skill whose name collides with an existing skill', async () => {
+			const { service, agentRepository, agentSkillsService } = makeService();
+			agentSkillsService.isSkillNameTaken.mockReturnValue(true);
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ schema: baseConfig }));
+
+			await service.updateConfig(
+				agentId,
+				projectId,
+				{ ...baseConfig, skills: [{ ...skillReference, ...skillBody }] },
+				user,
+				byUser,
+			);
+
+			const saved = agentRepository.save.mock.calls.at(-1)?.[0] as Agent;
+			expect(saved.schema?.skills).toEqual([]);
+			expect(saved.skills).toEqual({});
+		});
+	});
+
+	// Same round-trip for custom tools: only the source code is exported, and
+	// the descriptor is re-derived from that code in the secure runtime on
+	// import — never taken from the imported JSON.
+	describe('custom tool export/import round-trip', () => {
+		const toolReference = { type: 'custom', id: 'my_tool' } as const;
+		const toolCode = 'export default new Tool("my_tool")';
+		const toolDescriptor = { name: 'my_tool', description: 'demo' } as never;
+		const storedTool = { code: toolCode, descriptor: toolDescriptor };
+
+		it('includes the tool source code in the exported config, not just the reference', async () => {
+			const { service, agentRepository } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(
+				makeAgent({
+					schema: { ...baseConfig, tools: [toolReference] } as AgentJsonConfig,
+					tools: { [toolReference.id]: storedTool } as Agent['tools'],
+				}),
+			);
+
+			const exported = await service.getConfig(agentId, projectId);
+
+			expect(exported.tools?.[0]).toMatchObject({ id: toolReference.id, code: toolCode });
+			// The descriptor is derived state and must not leak into the export.
+			expect(exported.tools?.[0]).not.toHaveProperty('descriptor');
+		});
+
+		it('preserves a custom tool when an exported config is imported into a fresh agent', async () => {
+			const { service, agentRepository, secureRuntime } = makeService();
+			secureRuntime.describeToolSecurely.mockResolvedValue(toolDescriptor);
+
+			const sourceAgentId = agentId;
+			const targetAgentId = 'agent-imported';
+			agentRepository.findByIdAndProjectId.mockImplementation(async (id) =>
+				id === sourceAgentId
+					? makeAgent({
+							schema: { ...baseConfig, tools: [toolReference] } as AgentJsonConfig,
+							tools: { [toolReference.id]: storedTool } as Agent['tools'],
+						})
+					: makeAgent({ id: targetAgentId, schema: baseConfig }),
+			);
+
+			const exported = await service.getConfig(sourceAgentId, projectId);
+			await service.updateConfig(targetAgentId, projectId, exported, user, byUser);
+
+			expect(secureRuntime.describeToolSecurely).toHaveBeenCalledWith(toolCode);
+			const saved = agentRepository.save.mock.calls.at(-1)?.[0] as Agent;
+			expect(saved.schema?.tools).toEqual([toolReference]);
+			expect(saved.tools).toEqual({ [toolReference.id]: storedTool });
+		});
+
+		it('drops a custom tool ref whose inline code fails to compile', async () => {
+			const { service, agentRepository, secureRuntime } = makeService();
+			secureRuntime.describeToolSecurely.mockRejectedValue(new Error('compile error'));
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ schema: baseConfig }));
+
+			await service.updateConfig(
+				agentId,
+				projectId,
+				{ ...baseConfig, tools: [{ ...toolReference, code: 'not a tool' }] },
+				user,
+				byUser,
+			);
+
+			const saved = agentRepository.save.mock.calls.at(-1)?.[0] as Agent;
+			expect(saved.schema?.tools).toEqual([]);
+			expect(saved.tools).toEqual({});
+		});
+
+		it('drops a custom tool ref whose code declares a different tool name', async () => {
+			const { service, agentRepository, secureRuntime } = makeService();
+			secureRuntime.describeToolSecurely.mockResolvedValue({ name: 'other_tool' } as never);
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ schema: baseConfig }));
+
+			await service.updateConfig(
+				agentId,
+				projectId,
+				{ ...baseConfig, tools: [{ ...toolReference, code: toolCode }] },
+				user,
+				byUser,
+			);
+
+			const saved = agentRepository.save.mock.calls.at(-1)?.[0] as Agent;
+			expect(saved.schema?.tools).toEqual([]);
+			expect(saved.tools).toEqual({});
 		});
 	});
 

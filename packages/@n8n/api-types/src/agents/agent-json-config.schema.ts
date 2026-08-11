@@ -2,6 +2,7 @@ import { z, type ZodError } from 'zod';
 
 import { isDraftAgentConfig } from './agent-config-lifecycle';
 import { AgentIntegrationConfigSchema } from './agent-integration.schema';
+import { agentSkillShape } from './agent-skill.schema';
 import {
 	AGENT_TASK_CRON_EXPRESSION_MAX_LENGTH,
 	AGENT_TASK_NAME_MAX_LENGTH,
@@ -200,6 +201,15 @@ const AgentJsonSkillConfigSchema = z.object({
 			/^[A-Za-z0-9_-]+$/,
 			'Skill id can only contain letters, numbers, hyphens, and underscores',
 		),
+	// Skill body, carried only in exported/imported agent JSON so a skill
+	// survives a round-trip between instances. Bodies are persisted in the
+	// agent's `skills` column, not on the agent schema, so these fields are
+	// optional and the stored ref keeps only `{ type, id }`.
+	name: agentSkillShape.name.optional(),
+	description: agentSkillShape.description.optional(),
+	instructions: agentSkillShape.instructions.optional(),
+	allowedTools: agentSkillShape.allowedTools,
+	references: agentSkillShape.references,
 });
 
 const AgentJsonTaskConfigSchema = z.object({
@@ -390,6 +400,14 @@ const CustomToolJsonConfigSchema = z.object({
 			'Custom tool id can only contain letters, numbers, and underscores',
 		),
 	requireApproval: z.boolean().optional(),
+	// Tool source, carried only in exported/imported agent JSON so a custom
+	// tool survives a round-trip between instances. The compiled entry
+	// (code + descriptor) is persisted in the agent's `tools` column, not on
+	// the agent schema, so this field is optional and the stored ref keeps
+	// only `{ type, id, requireApproval }`. On import the descriptor is
+	// re-derived from the code in the secure runtime, never taken from the
+	// imported JSON.
+	code: z.string().min(1).optional(),
 });
 
 export const WorkflowToolJsonConfigSchema = z

@@ -1,11 +1,13 @@
 import { reconcileNativeWebSearch } from '@n8n/ai-utilities/agent-config';
 import {
 	AgentJsonConfigSchema,
+	agentSkillSchema,
 	findVectorStoreToolNameCollisions,
 	formatAgentConfigZodError,
 	sanitizeAgentJsonConfig,
 	type AgentJsonConfig,
 	type AgentJsonToolConfig,
+	type AgentSkill,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { WorkflowRepository, type User } from '@n8n/db';
@@ -28,10 +30,12 @@ import { AgentSkillsService } from './agent-skills.service';
 import type { Agent } from './entities/agent.entity';
 import { syncAgentIntegrations } from './integrations/integrations-sync';
 import { composeJsonConfig, decomposeJsonConfig } from './json-config/agent-config-composition';
+import { toBareCustomToolRef, toBareSkillRef, toBareTaskRef } from './json-config/bare-config-refs';
 import { NodeToolAiGatewayService } from './json-config/node-tool-ai-gateway.service';
 import { sanitizeUnknownAgentCredentials } from './json-config/sanitize-unknown-agent-credentials';
 import { AgentTaskRepository } from './repositories/agent-task.repository';
 import { AgentRepository } from './repositories/agent.repository';
+import { AgentSecureRuntime } from './runtime/agent-secure-runtime';
 import { normalizeWorkflowToolRefs } from './tools/workflow-tool-workflow-resolver';
 import { createAgentCredentialProvider } from './utils/agent-credential-provider';
 import { markAgentDraftDirty } from './utils/agent-draft.utils';
@@ -52,6 +56,7 @@ export class AgentConfigService {
 		private readonly eventService: EventService,
 		private readonly setupCompletionService: AgentSetupCompletionService,
 		private readonly modificationTelemetry: AgentModificationTelemetryService,
+		private readonly secureRuntime: AgentSecureRuntime,
 	) {}
 
 	/**
@@ -64,8 +69,20 @@ export class AgentConfigService {
 		if (!config) {
 			throw new UserError('Agent has no JSON config yet.');
 		}
-		await this.hydrateTaskDefinitions(agentId, config);
+		await this.hydrateDefinitions(entity, config);
 		return config;
+	}
+
+	/**
+	 * Inline the definition body of each task, skill, and custom tool ref so
+	 * the config is self-contained when exported. Without this the config
+	 * carries only bare refs and the bodies are lost when it is downloaded and
+	 * imported elsewhere.
+	 */
+	private async hydrateDefinitions(entity: Agent, config: AgentJsonConfig): Promise<void> {
+		await this.hydrateTaskDefinitions(entity.id, config);
+		hydrateSkillDefinitions(entity, config);
+		hydrateCustomToolDefinitions(entity, config);
 	}
 
 	/**
@@ -204,6 +221,16 @@ export class AgentConfigService {
 				)
 			: [];
 
+		// Same for skill and custom tool definitions, which live on the agent's
+		// `skills`/`tools` columns: recreate them on the entity before
+		// `removeMissingConfigRefs` filters refs against those columns.
+		if (validatedConfig.skills !== undefined) {
+			this.recreateImportedSkillDefinitions(entity, validatedConfig.skills);
+		}
+		if (validatedConfig.tools !== undefined) {
+			await this.recreateImportedCustomToolDefinitions(entity, validatedConfig.tools);
+		}
+
 		const resolvedSubAgents = await this.removeMissingConfigRefs(
 			validatedConfig,
 			entity,
@@ -334,8 +361,14 @@ export class AgentConfigService {
 			await syncAgentIntegrations(saved, previousIntegrations, nextIntegrations, this.logger);
 		}
 
+		// Hydrated like `getConfig`, so a client that keeps working from the
+		// update response (e.g. the builder UI exporting right after an
+		// autosave) still sees a self-contained config.
+		const responseConfig = composeJsonConfig(saved) ?? validatedConfig;
+		await this.hydrateDefinitions(saved, responseConfig);
+
 		return {
-			config: composeJsonConfig(saved) ?? validatedConfig,
+			config: responseConfig,
 			updatedAt: saved.updatedAt.toISOString(),
 			versionId: saved.versionId,
 		};
@@ -346,23 +379,23 @@ export class AgentConfigService {
 		entity: Agent,
 		existingTaskIds: ReadonlySet<string>,
 	): Promise<ResolvedSubAgentRef[]> {
+		// Each block keeps only refs backed by a definition, and strips any
+		// inline body: the schema column stores just the bare ref; bodies live
+		// in the `skills`/`tools` columns and the `agent_task_definition` table.
 		if (config.skills !== undefined) {
 			const skills = entity.skills ?? {};
-			config.skills = config.skills.filter((ref) => Boolean(skills[ref.id]));
+			config.skills = config.skills.filter((ref) => Boolean(skills[ref.id])).map(toBareSkillRef);
 		}
 
 		if (config.tools !== undefined) {
 			const tools = entity.tools ?? {};
-			config.tools = config.tools.filter((ref) => ref.type !== 'custom' || Boolean(tools[ref.id]));
+			config.tools = config.tools
+				.filter((ref) => ref.type !== 'custom' || Boolean(tools[ref.id]))
+				.map((ref) => (ref.type === 'custom' ? toBareCustomToolRef(ref) : ref));
 		}
 
 		if (config.tasks !== undefined) {
-			// Keep only refs backed by a definition, and strip any inline body:
-			// the schema column stores just `{ type, id, enabled }`; the body
-			// lives in the `agent_task_definition` table.
-			config.tasks = config.tasks
-				.filter((ref) => existingTaskIds.has(ref.id))
-				.map((ref) => ({ type: ref.type, id: ref.id, enabled: ref.enabled }));
+			config.tasks = config.tasks.filter((ref) => existingTaskIds.has(ref.id)).map(toBareTaskRef);
 		}
 
 		if (config.subAgents?.agents !== undefined) {
@@ -419,6 +452,106 @@ export class AgentConfigService {
 		return created;
 	}
 
+	/**
+	 * Write skill bodies that arrived inline on the config but are missing from
+	 * the agent's `skills` column (an imported agent JSON), so their refs are
+	 * kept instead of dropped as orphans. A ref is skipped — and its ref later
+	 * dropped — when the inline body is incomplete, fails skill validation, or
+	 * its name collides with a skill already on the agent. An existing skill
+	 * under the same id always wins over the imported body.
+	 */
+	private recreateImportedSkillDefinitions(
+		entity: Agent,
+		refs: NonNullable<AgentJsonConfig['skills']>,
+	): void {
+		const skills = { ...(entity.skills ?? {}) };
+		let changed = false;
+
+		for (const ref of refs) {
+			if (skills[ref.id]) continue;
+			if (
+				ref.name === undefined ||
+				ref.description === undefined ||
+				ref.instructions === undefined
+			) {
+				continue;
+			}
+
+			const body: AgentSkill = {
+				name: ref.name,
+				description: ref.description,
+				instructions: ref.instructions,
+				...(ref.allowedTools !== undefined ? { allowedTools: ref.allowedTools } : {}),
+				...(ref.references !== undefined ? { references: ref.references } : {}),
+			};
+
+			const parsed = agentSkillSchema.safeParse(body);
+			if (!parsed.success) {
+				this.logger.warn('Skipping imported agent skill: invalid body', { skillId: ref.id });
+				continue;
+			}
+			if (this.agentSkillsService.isSkillNameTaken(skills, body.name)) {
+				this.logger.warn('Skipping imported agent skill: name already in use', {
+					skillId: ref.id,
+				});
+				continue;
+			}
+
+			skills[ref.id] = parsed.data;
+			changed = true;
+		}
+
+		if (changed) entity.skills = skills;
+	}
+
+	/**
+	 * Compile custom tools whose source arrived inline on the config but have
+	 * no entry in the agent's `tools` column (an imported agent JSON), so their
+	 * refs are kept instead of dropped as orphans. The descriptor is re-derived
+	 * from the code in the secure runtime — never taken from the imported JSON —
+	 * and a tool is skipped when its code fails to compile or declares a name
+	 * different from the ref id. An existing tool under the same id always wins.
+	 */
+	private async recreateImportedCustomToolDefinitions(
+		entity: Agent,
+		refs: NonNullable<AgentJsonConfig['tools']>,
+	): Promise<void> {
+		const tools = { ...(entity.tools ?? {}) };
+		let changed = false;
+
+		for (const ref of refs) {
+			if (ref.type !== 'custom') continue;
+			if (tools[ref.id] || ref.code === undefined) continue;
+
+			let descriptor;
+			try {
+				descriptor = await this.secureRuntime.describeToolSecurely(ref.code);
+			} catch (error) {
+				this.logger.warn('Skipping imported custom tool: code failed to compile', {
+					toolId: ref.id,
+					error: error instanceof Error ? error.message : String(error),
+				});
+				continue;
+			}
+
+			// The tools column is keyed by the name the code declares
+			// (see `AgentCustomToolsService.buildCustomTool`), so a mismatched
+			// ref id would create an entry the ref still can't resolve.
+			if (descriptor.name !== ref.id) {
+				this.logger.warn('Skipping imported custom tool: declared name does not match ref id', {
+					toolId: ref.id,
+					declaredName: descriptor.name,
+				});
+				continue;
+			}
+
+			tools[ref.id] = { code: ref.code, descriptor };
+			changed = true;
+		}
+
+		if (changed) entity.tools = tools;
+	}
+
 	private validateSubAgentRefs(resolvedSubAgents: ResolvedSubAgentRef[], entity: Agent) {
 		for (const { agentId, agent } of resolvedSubAgents) {
 			if (!agent) continue;
@@ -430,6 +563,47 @@ export class AgentConfigService {
 			}
 		}
 	}
+}
+
+/**
+ * Inline each skill ref's body from the agent's `skills` column so the
+ * exported config is self-contained.
+ */
+function hydrateSkillDefinitions(entity: Agent, config: AgentJsonConfig): void {
+	if (!config.skills?.length) return;
+
+	const skills = entity.skills ?? {};
+
+	config.skills = config.skills.map((ref) => {
+		const body = skills[ref.id];
+		if (!body) return ref;
+		return {
+			...ref,
+			name: body.name,
+			description: body.description,
+			instructions: body.instructions,
+			...(body.allowedTools !== undefined ? { allowedTools: body.allowedTools } : {}),
+			...(body.references !== undefined ? { references: body.references } : {}),
+		};
+	});
+}
+
+/**
+ * Inline each custom tool ref's source code from the agent's `tools` column
+ * so the exported config is self-contained. The descriptor is not exported —
+ * it is re-derived from the code on import.
+ */
+function hydrateCustomToolDefinitions(entity: Agent, config: AgentJsonConfig): void {
+	if (!config.tools?.length) return;
+
+	const tools = entity.tools ?? {};
+
+	config.tools = config.tools.map((ref) => {
+		if (ref.type !== 'custom') return ref;
+		const stored = tools[ref.id];
+		if (!stored) return ref;
+		return { ...ref, code: stored.code };
+	});
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
