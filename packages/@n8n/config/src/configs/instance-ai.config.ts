@@ -209,4 +209,10 @@ export class InstanceAiConfig {
 	 */
 	@Env('N8N_INSTANCE_AI_ACTIVATION_CAPPED')
 	activationCapped: boolean = false;
+
+	/**
+	 * How many assistant messages the instance must have sent before {@link activationCapped} locking may apply.
+	 */
+	@Env('N8N_INSTANCE_AI_ACTIVATION_LOCK_MESSAGE_THRESHOLD')
+	activationLockMessageThreshold: number = 1;
 }

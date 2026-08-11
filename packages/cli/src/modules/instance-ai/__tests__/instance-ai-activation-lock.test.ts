@@ -7,10 +7,7 @@ import type { AiService } from '@/services/ai.service';
 import type { InstanceActivationService } from '@/services/instance-activation.service';
 import type { Telemetry } from '@/telemetry';
 
-import {
-	ACTIVATION_LOCK_MESSAGE_THRESHOLD,
-	InstanceAiCreditService,
-} from '../instance-ai-credit.service';
+import { InstanceAiCreditService } from '../instance-ai-credit.service';
 import type { InstanceAiSettingsService } from '../instance-ai-settings.service';
 import type { InstanceAiMessageRepository } from '../repositories/instance-ai-message.repository';
 import type { InstanceAiThreadRepository } from '../repositories/instance-ai-thread.repository';
@@ -25,6 +22,8 @@ describe('InstanceAiCreditService activation lock', () => {
 			activatedAt?: number;
 			/** Whether the instance has met the message threshold. */
 			messageThresholdMet?: boolean;
+			/** Value of `N8N_INSTANCE_AI_ACTIVATION_LOCK_MESSAGE_THRESHOLD`. */
+			messageThreshold?: number;
 			/** `quotaLocked` stays required here so each case states the service's verdict. */
 			lockResult?: InstanceAiCredits & { quotaLocked: boolean };
 			lockRejects?: Error;
@@ -42,6 +41,7 @@ describe('InstanceAiCreditService activation lock', () => {
 
 		const settingsService = mock<InstanceAiSettingsService>();
 		settingsService.isActivationCapped.mockReturnValue(opts.activationCapped ?? true);
+		settingsService.getActivationLockMessageThreshold.mockReturnValue(opts.messageThreshold ?? 1);
 
 		const activationService = mock<InstanceActivationService>();
 		activationService.getActivatedAt.mockResolvedValue(opts.activatedAt);
@@ -145,14 +145,19 @@ describe('InstanceAiCreditService activation lock', () => {
 
 	describe('when only one condition is met', () => {
 		it('asks for the configured number of messages, not merely one', async () => {
+			const { service, messageRepo } = setup({ activatedAt: 1_700_000_000, messageThreshold: 3 });
+
+			await service.ensureQuotaLockApplied(user);
+
+			expect(messageRepo.hasAtLeastUserMessages).toHaveBeenCalledWith(3);
+		});
+
+		it('defaults to a single message when the operator sets nothing', async () => {
 			const { service, messageRepo } = setup({ activatedAt: 1_700_000_000 });
 
 			await service.ensureQuotaLockApplied(user);
 
-			expect(messageRepo.hasAtLeastUserMessages).toHaveBeenCalledWith(
-				ACTIVATION_LOCK_MESSAGE_THRESHOLD,
-			);
-			expect(ACTIVATION_LOCK_MESSAGE_THRESHOLD).toBeGreaterThan(0);
+			expect(messageRepo.hasAtLeastUserMessages).toHaveBeenCalledWith(1);
 		});
 
 		it('does not lock on activation alone', async () => {

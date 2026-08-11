@@ -361,6 +361,7 @@ describe('GlobalConfig', () => {
 			mcpConnectionsEnabled: false,
 			canvasNodeContextEnabled: false,
 			activationCapped: false,
+			activationLockMessageThreshold: 1,
 		},
 		queue: {
 			health: {

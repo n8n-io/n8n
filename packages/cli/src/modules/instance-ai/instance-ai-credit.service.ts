@@ -22,19 +22,6 @@ function getErrorMessage(error: unknown): string {
 }
 
 /**
- * How many user messages the instance must have sent the assistant before the activation lock may
- * apply. The second half of the lock trigger, see {@link InstanceAiCreditService.ensureQuotaLockApplied}.
- *
- * One is the minimum that still means "they used it". Named rather than inlined because the number
- * is a product lever we expect to tune, and raising it is then a one-line change here.
- *
- * Raising it does need a look at what these rows are first: they come from the agent memory layer,
- * so "N rows" is only "N times the user pressed send" if nothing else writes a `user` row. At one
- * that assumption costs nothing; above one, over-counting would lock earlier than intended.
- */
-export const ACTIVATION_LOCK_MESSAGE_THRESHOLD = 1;
-
-/**
  * Owns Instance AI credit accounting: claims decimal, token-based credits per
  * finished run segment, dedupes replays, retries the authoritative proxy call,
  * accumulates the best-effort per-thread display total, and emits the credit
@@ -90,7 +77,7 @@ export class InstanceAiCreditService {
 	/**
 	 * Apply the activation lock if this instance is in the capped trial cohort and has met the
 	 * trigger: it has activated (first successful production execution) **and** has sent the
-	 * assistant at least {@link ACTIVATION_LOCK_MESSAGE_THRESHOLD} messages.
+	 * assistant at least `N8N_INSTANCE_AI_ACTIVATION_LOCK_MESSAGE_THRESHOLD` messages.
 	 *
 	 * Both halves matter. Activation alone would wall a user who activated before ever opening the
 	 * assistant — they would get no use of it at all, which is worse than the control variant and
@@ -158,8 +145,12 @@ export class InstanceAiCreditService {
 		// Activation alone isn't enough: see the two halves of the trigger above.
 		if ((await this.activationService.getActivatedAt()) === undefined) return true;
 
+		// Raising the threshold above one needs a look at what these rows are: they come from the
+		// agent memory layer, so "N rows" is only "N times the user pressed send" if nothing else
+		// writes a `user` row. At one that assumption costs nothing; above one, over-counting would
+		// lock earlier than intended.
 		this.messageThresholdReached ||= await this.messageRepo.hasAtLeastUserMessages(
-			ACTIVATION_LOCK_MESSAGE_THRESHOLD,
+			this.settingsService.getActivationLockMessageThreshold(),
 		);
 		return !this.messageThresholdReached;
 	}
