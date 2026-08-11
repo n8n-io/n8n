@@ -7,6 +7,7 @@ import type {
 } from '@n8n/engine';
 import {
 	AllowAllAdmittance,
+	createStores,
 	ExecutionStartHandler,
 	InMemoryWorkQueue,
 	OrchestrationWorker,
@@ -14,8 +15,6 @@ import {
 	StepCompletedHandler,
 	StepReadyHandler,
 	StepWorker,
-	TypeOrmExecutionStore,
-	TypeOrmStepStore,
 	WorkflowExecution,
 	WorkflowStepExecution,
 } from '@n8n/engine';
@@ -98,8 +97,7 @@ type EngineDataSource = ReturnType<typeof createDataSource>;
 export function makeRunWorkflow(getDataSource: () => EngineDataSource) {
 	return async function runWorkflow(graph: WorkflowGraph, triggerPayload: JsonObject | null) {
 		const dataSource = getDataSource();
-		const executionStore = new TypeOrmExecutionStore(dataSource.getRepository(WorkflowExecution));
-		const stepStore = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const { executionStore, stepStore } = createStores(dataSource);
 		const orchestrationQueue = new InMemoryWorkQueue<OrchestrationMessage>();
 		const stepQueue = new InMemoryWorkQueue<StepMessage>();
 

@@ -64,8 +64,7 @@ export type {
 
 export {
 	createDataSource,
-	TypeOrmExecutionStore,
-	TypeOrmStepStore,
+	createStores,
 	WorkflowExecution,
 	WorkflowStepExecution,
 } from './database';
