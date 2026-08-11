@@ -78,8 +78,8 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   uuid createdById FK
   timestamp_3__with_time_zone deletedAt
+  json history
   integer id
-  json revisions
   timestamp_3__with_time_zone updatedAt
 }
 "public.workflow_entity" {

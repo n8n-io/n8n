@@ -354,8 +354,8 @@ erDiagram
   datetime_3_ createdAt
   varchar createdById FK
   datetime_3_ deletedAt
+  TEXT history
   INTEGER id
-  TEXT revisions
   datetime_3_ updatedAt
 }
 "workflow_review_request" {

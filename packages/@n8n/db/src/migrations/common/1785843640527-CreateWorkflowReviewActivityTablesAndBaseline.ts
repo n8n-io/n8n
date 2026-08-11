@@ -109,7 +109,7 @@ export class CreateWorkflowReviewActivityTablesAndBaseline1785843640527
 				),
 				column('createdById').uuid,
 				column('body').text.comment('Only user-editable text in the feed; nulled on delete'),
-				column('revisions').json.comment('Comment revision history.'),
+				column('history').json.comment('Comment revision history.'),
 				column('updatedAt').timestampTimezone().comment('Set when the body is edited'),
 				column('deletedAt').timestampTimezone().comment('Set when the comment is deleted'),
 			)

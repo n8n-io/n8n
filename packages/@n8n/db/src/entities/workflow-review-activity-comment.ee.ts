@@ -36,7 +36,7 @@ export class WorkflowReviewActivityComment extends WithCreatedAt {
 	body: string | null;
 
 	@JsonColumn({ nullable: true })
-	revisions: IDataObject[] | null;
+	history: IDataObject[] | null;
 
 	/** Intentionally not `@UpdateDateColumn`: stays null until the body is actually edited. */
 	@DateTimeColumn({ nullable: true })

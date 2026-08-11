@@ -9,8 +9,8 @@
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | createdById | uuid |  | true |  | [public.user](public.user.md) |  |
 | deletedAt | timestamp(3) with time zone |  | true |  |  | Set when the comment is deleted |
+| history | json |  | true |  |  | Comment revision history. |
 | id | integer |  | false |  |  |  |
-| revisions | json |  | true |  |  | Comment revision history. |
 | updatedAt | timestamp(3) with time zone |  | true |  |  | Set when the body is edited |
 
 ## Constraints
@@ -45,8 +45,8 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   uuid createdById FK
   timestamp_3__with_time_zone deletedAt
+  json history
   integer id
-  json revisions
   timestamp_3__with_time_zone updatedAt
 }
 "public.workflow_review_activity" {
