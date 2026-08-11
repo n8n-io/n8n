@@ -279,7 +279,7 @@ const setupAction = z.object({
 	action: z
 		.literal('setup')
 		.describe(
-			'Open the credential setup card for the user to create or select credentials. The card is only visible while this call is pending — any returned result means the interaction already finished. A `success` result with a `credentials` map means setup is complete (an existing credential may have been auto-selected with no user action): confirm the credentials are ready and do not tell the user a card is open or that they must authorize.',
+			'Open the credential setup card for the user to create or select credentials. The card is only visible while this call is pending — any returned result means the interaction already finished. A `success` result with a `credentials` map means setup is complete (a sole service-scoped credential may have been auto-selected with no user action; generic auth types always need an explicit Continue): confirm the credentials are ready and do not tell the user a card is open or that they must authorize.',
 		),
 	credentials: z
 		.array(
@@ -430,7 +430,7 @@ const suspendSchema = z.object({
 const resumeSchema = z.object({
 	approved: z.boolean(),
 	credentials: z.record(z.string()).optional(),
-	autoSetup: z.object({ credentialType: z.string() }).optional(),
+	autoSetup: z.object({ credentialType: z.string(), attemptId: z.string().optional() }).optional(),
 });
 
 interface CredentialToolContext {
@@ -680,7 +680,8 @@ async function handleSetup(
 
 	// State 4: User requested automatic browser-assisted setup
 	if (resumeData.autoSetup) {
-		const { credentialType } = resumeData.autoSetup;
+		const { credentialType, attemptId } = resumeData.autoSetup;
+		context.browserCredentialSetup?.markPending(credentialType, attemptId);
 		const docsUrl =
 			(await context.credentialService.getDocumentationUrl?.(credentialType)) ?? undefined;
 		const requiredFields =

@@ -73,6 +73,8 @@ import {
 } from './workflow-publication-trigger-status';
 import { WorkflowPublishHistory } from './workflow-publish-history';
 import { WorkflowPublishedVersion } from './workflow-published-version';
+import { WorkflowReviewActivityComment } from './workflow-review-activity-comment.ee';
+import { WorkflowReviewActivity } from './workflow-review-activity.ee';
 import { WorkflowReviewRequestAuthor } from './workflow-review-request-author.ee';
 import { WorkflowReviewRequestReviewer } from './workflow-review-request-reviewer.ee';
 import { WorkflowReviewRequestWorkflow } from './workflow-review-request-workflow.ee';
@@ -158,6 +160,8 @@ export {
 	WorkflowReviewRequestWorkflow,
 	WorkflowReviewRequestReviewer,
 	WorkflowReviewRequestAuthor,
+	WorkflowReviewActivity,
+	WorkflowReviewActivityComment,
 	ExecutionData,
 	ExecutionMetadata,
 	AnnotationTagEntity,
@@ -216,6 +220,8 @@ export const entities = {
 	WorkflowReviewRequestWorkflow,
 	WorkflowReviewRequestReviewer,
 	WorkflowReviewRequestAuthor,
+	WorkflowReviewActivity,
+	WorkflowReviewActivityComment,
 	ExecutionData,
 	ExecutionMetadata,
 	AnnotationTagEntity,

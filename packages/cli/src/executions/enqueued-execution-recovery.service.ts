@@ -46,7 +46,16 @@ export class EnqueuedExecutionRecoveryService {
 			'Enqueued execution recovery must not run in queue mode',
 		);
 
-		const executions = await this.executionService.findAllEnqueuedExecutions();
+		const { executions, unreadableIds } = await this.executionService.findAllEnqueuedExecutions();
+
+		// An enqueued execution whose data is gone can never run. Left at `new` it sits at
+		// "Queued" forever and is re-read on every restart.
+		if (unreadableIds.length > 0) {
+			this.logger.warn('Crashing enqueued executions with unreadable data', {
+				executionIds: unreadableIds,
+			});
+			await this.executionRepository.markAsCrashed(unreadableIds);
+		}
 
 		if (executions.length === 0) return;
 
