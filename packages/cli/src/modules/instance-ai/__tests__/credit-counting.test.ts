@@ -2,8 +2,13 @@ import type { Mock } from 'vitest';
 import { UNLIMITED_CREDITS } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import type { BuilderUsageItem } from '@n8n/instance-ai';
+import { mock } from 'vitest-mock-extended';
+
+import type { InstanceActivationService } from '@/services/instance-activation.service';
 
 import { InstanceAiCreditService } from '../instance-ai-credit.service';
+import type { InstanceAiSettingsService } from '../instance-ai-settings.service';
+import type { InstanceAiMessageRepository } from '../repositories/instance-ai-message.repository';
 import type { InstanceAiThreadRepository } from '../repositories/instance-ai-thread.repository';
 
 // Skip the real backoff sleeps so retry tests run instantly.
@@ -21,20 +26,17 @@ function createService(deps: {
 	push: { sendToUsers: Mock };
 	telemetry: { track: Mock };
 	activationCapped?: boolean;
-	activatedAt?: number;
-	hasUserMessage?: boolean;
 }) {
 	const scopedLogger = { warn: vi.fn(), debug: vi.fn() };
 	const logger = { scoped: vi.fn().mockReturnValue(scopedLogger) };
-	const settingsService = {
-		isActivationCapped: vi.fn().mockReturnValue(deps.activationCapped ?? false),
-	};
-	const activationService = {
-		getActivatedAt: vi.fn().mockResolvedValue(deps.activatedAt),
-	};
-	const messageRepo = {
-		hasAnyUserMessage: vi.fn().mockResolvedValue(deps.hasUserMessage ?? false),
-	};
+	const settingsService = mock<InstanceAiSettingsService>();
+	settingsService.isActivationCapped.mockReturnValue(deps.activationCapped ?? false);
+
+	// Typed, so a rename on either collaborator fails the build instead of silently
+	// producing `undefined` and sending the caller down its catch. Neither is exercised
+	// by the claim path this file covers — the lock has its own suite.
+	const activationService = mock<InstanceActivationService>();
+	const messageRepo = mock<InstanceAiMessageRepository>();
 	return new InstanceAiCreditService(
 		logger as never,
 		deps.aiService as never,
@@ -42,9 +44,9 @@ function createService(deps: {
 		{ instanceId: 'inst-1' } as never,
 		deps.push as never,
 		deps.threadRepo as never,
-		settingsService as never,
-		activationService as never,
-		messageRepo as never,
+		settingsService,
+		activationService,
+		messageRepo,
 	);
 }
 
