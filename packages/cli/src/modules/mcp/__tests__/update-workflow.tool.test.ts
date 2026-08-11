@@ -15,9 +15,10 @@ import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { SubworkflowPolicyDenialError } from '@/errors/subworkflow-policy-denial.error';
-import type { AiGatewayService } from '@/services/ai-gateway.service';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
+import { toMcpDataTableValidator } from '@/modules/data-table/mcp/data-table-validation';
 import { NodeTypes } from '@/node-types';
+import type { AiGatewayService } from '@/services/ai-gateway.service';
 import { TagService } from '@/services/tag.service';
 import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
@@ -203,7 +204,7 @@ describe('update-workflow MCP tool', () => {
 			credentialsService,
 			sharedWorkflowRepository,
 			collaborationService,
-			dataTableOps as never,
+			toMcpDataTableValidator(dataTableOps as never),
 			tagService,
 			globalConfig,
 			subworkflowPolicyChecker,
@@ -1811,7 +1812,7 @@ describe('update-workflow MCP tool', () => {
 					credentialsService,
 					sharedWorkflowRepository,
 					collaborationService,
-					dataTableOps as never,
+					toMcpDataTableValidator(dataTableOps as never),
 					tagService,
 					globalConfig,
 					subworkflowPolicyChecker,
@@ -3170,7 +3171,7 @@ describe('update-workflow MCP tool', () => {
 					credentialsService,
 					sharedWorkflowRepository,
 					collaborationService,
-					dataTableOps as never,
+					toMcpDataTableValidator(dataTableOps as never),
 					tagService,
 					globalConfig,
 					subworkflowPolicyChecker,
@@ -3207,7 +3208,7 @@ describe('update-workflow MCP tool', () => {
 					credentialsService,
 					sharedWorkflowRepository,
 					collaborationService,
-					dataTableOps as never,
+					toMcpDataTableValidator(dataTableOps as never),
 					tagService,
 					globalConfig,
 					subworkflowPolicyChecker,
@@ -3244,7 +3245,7 @@ describe('update-workflow MCP tool', () => {
 					credentialsService,
 					sharedWorkflowRepository,
 					collaborationService,
-					dataTableOps as never,
+					toMcpDataTableValidator(dataTableOps as never),
 					tagService,
 					globalConfig,
 					subworkflowPolicyChecker,

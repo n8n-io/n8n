@@ -1,5 +1,4 @@
 import { MCP_AGENT_SCOPES, MCP_INSTANCE_SCOPES } from '@n8n/api-types';
-import { ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { INSTANCE_MCP_RESOURCE_ID } from '@n8n/constants';
 import type { User } from '@n8n/db';
@@ -8,14 +7,15 @@ import { Service } from '@n8n/di';
 import type { ProtectedResource } from '@/services/protected-resource.registry';
 import { UrlService } from '@/services/url.service';
 
-import { BUILDER_TOOLS, TOOLS_BY_SCOPE } from './mcp-scopes';
-import { areAgentToolsAvailable } from './mcp-tool-availability';
+import { BUILDER_TOOLS } from './mcp-scopes';
+import { AGENTS_MCP_TOOL_PROVIDER, McpToolProviderRegistry } from './mcp-tool-provider.registry';
 import { McpConfig } from './mcp.config';
 import { McpSettingsService } from './mcp.settings.service';
 
 /**
  * Scopes a user can grant on the consent screen. Enforced per-tool via the
- * mapping in `mcp-scopes.ts` when the MCP server registers tools.
+ * merged scope map (`McpToolProviderRegistry.getToolsByScope`) when the MCP
+ * server registers tools.
  */
 export const SUPPORTED_SCOPES: string[] = [...MCP_INSTANCE_SCOPES];
 const AGENT_SCOPES = new Set<string>(MCP_AGENT_SCOPES);
@@ -51,11 +51,11 @@ export class McpProtectedResource implements ProtectedResource {
 		private readonly mcpSettingsService: McpSettingsService,
 		private readonly mcpConfig: McpConfig,
 		private readonly globalConfig: GlobalConfig,
-		private readonly moduleRegistry: ModuleRegistry,
+		private readonly toolProviderRegistry: McpToolProviderRegistry,
 	) {}
 
 	get scopes(): string[] {
-		if (areAgentToolsAvailable(this.globalConfig, this.moduleRegistry)) return SUPPORTED_SCOPES;
+		if (this.toolProviderRegistry.isAvailable(AGENTS_MCP_TOOL_PROVIDER)) return SUPPORTED_SCOPES;
 		return SUPPORTED_SCOPES.filter((scope) => !AGENT_SCOPES.has(scope));
 	}
 
@@ -69,7 +69,7 @@ export class McpProtectedResource implements ProtectedResource {
 		const supportedScopes = new Set(this.scopes);
 
 		return Object.fromEntries(
-			Object.entries(TOOLS_BY_SCOPE)
+			Object.entries(this.toolProviderRegistry.getToolsByScope())
 				.filter(([scope]) => supportedScopes.has(scope))
 				.map(([scope, tools]) => [
 					scope,

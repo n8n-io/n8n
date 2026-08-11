@@ -1,24 +1,25 @@
-import type { Mocked } from 'vitest';
-import { Logger, type ModuleRegistry } from '@n8n/backend-common';
+import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import type { OperationContext, TransactionRunner, User } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
-import { mock, type MockProxy } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
+import type { Mocked } from 'vitest';
+import { mock, type MockProxy } from 'vitest-mock-extended';
 
+import { McpProtectedResource } from '@/modules/mcp/mcp-protected-resource';
+import { McpToolProviderRegistry } from '@/modules/mcp/mcp-tool-provider.registry';
+import type { McpConfig } from '@/modules/mcp/mcp.config';
+import type { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
 import { JwtService } from '@/services/jwt.service';
+import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
+import type { UrlService } from '@/services/url.service';
 
 import type { AccessToken } from '../database/entities/oauth-access-token.entity';
 import type { RefreshToken } from '../database/entities/oauth-refresh-token.entity';
 import { AccessTokenRepository } from '../database/repositories/oauth-access-token.repository';
 import { RefreshTokenRepository } from '../database/repositories/oauth-refresh-token.repository';
 import { OAuthTokenService } from '../oauth-token.service';
-import { McpProtectedResource } from '@/modules/mcp/mcp-protected-resource';
-import type { McpConfig } from '@/modules/mcp/mcp.config';
-import type { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
-import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
-import type { UrlService } from '@/services/url.service';
 
 const instanceSettings = mock<InstanceSettings>({ encryptionKey: 'test-key' });
 const jwtService = new JwtService(instanceSettings, mock());
@@ -771,7 +772,7 @@ describe('OAuthTokenService', () => {
 				mock<McpSettingsService>(),
 				mcpConfig,
 				mock<GlobalConfig>(),
-				mock<ModuleRegistry>(),
+				new McpToolProviderRegistry(),
 			);
 
 			const configuredRegistry = new ProtectedResourceRegistry(mock<Logger>());

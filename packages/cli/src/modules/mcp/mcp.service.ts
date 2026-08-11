@@ -5,7 +5,7 @@ import {
 	MCP_APPS_VARIANT_ENABLED,
 	MCP_CANVAS_GROUPS_FLAG,
 } from '@n8n/api-types';
-import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
+import { LicenseState, Logger } from '@n8n/backend-common';
 import { ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import {
 	ExecutionRepository,
@@ -14,7 +14,7 @@ import {
 	SharedWorkflowRepository,
 	User,
 } from '@n8n/db';
-import { Container, Service } from '@n8n/di';
+import { Service } from '@n8n/di';
 import {
 	mcpAppToolMeta,
 	registerWorkflowPreviewApp,
@@ -33,7 +33,6 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { EventService } from '@/events/event.service';
 import { ExecutionService } from '@/executions/execution.service';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
-import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import { NodeCatalogService } from '@/node-catalog';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
@@ -51,9 +50,12 @@ import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-hi
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
+import {
+	AGENTS_MCP_TOOL_PROVIDER,
+	McpToolProviderRegistry,
+	type McpDataTableValidator,
+} from './mcp-tool-provider.registry';
 import { MCP_CREATE_AGENT_TOOL_NAME, MCP_PREVIEW_RENDER_REQUESTED_EVENT } from './mcp.constants';
-import { getAllowedToolNames } from './mcp-scopes';
-import { areAgentToolsAvailable } from './mcp-tool-availability';
 import type {
 	McpAppsTelemetryVariant,
 	McpClientInfo,
@@ -62,15 +64,6 @@ import type {
 	ToolDefinition,
 } from './mcp.types';
 import { shapeToStandardSchema } from './tool-schema.util';
-import {
-	createAddDataTableColumnTool,
-	createAddDataTableRowsTool,
-	createCreateDataTableTool,
-	createDeleteDataTableColumnTool,
-	createRenameDataTableColumnTool,
-	createRenameDataTableTool,
-	createSearchDataTablesTool,
-} from './tools/data-table';
 import { createExecuteWorkflowTool } from './tools/execute-workflow.tool';
 import { createGetExecutionTool } from './tools/get-execution.tool';
 import { createWorkflowDetailsTool } from './tools/get-workflow-details.tool';
@@ -206,7 +199,7 @@ export class McpService {
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly executionService: ExecutionService,
-		private readonly dataTableProxyService: DataTableProxyService,
+		private readonly toolProviderRegistry: McpToolProviderRegistry,
 		private readonly collaborationService: CollaborationService,
 		private readonly nodeResourceExplorerService: NodeResourceExplorerService,
 		private readonly tagService: TagService,
@@ -217,7 +210,6 @@ export class McpService {
 		private readonly workflowPublishedDataService: WorkflowPublishedDataService,
 		private readonly subworkflowPolicyChecker: SubworkflowPolicyChecker,
 		private readonly aiGatewayService: AiGatewayService,
-		private readonly moduleRegistry: ModuleRegistry,
 		private readonly eventService: EventService,
 	) {}
 
@@ -388,14 +380,14 @@ export class McpService {
 		const n8nConnectAvailable = builderEnabled
 			? (await this.aiGatewayService.isAvailable()).available
 			: false;
-		const allowedToolNames = getAllowedToolNames(grantedScopes);
+		const allowedToolNames = this.toolProviderRegistry.getAllowedToolNames(grantedScopes);
 		// The builder walkthrough is only useful when the grant can actually
 		// create workflows; a read-only grant gets the plain intro instead of
 		// steps referencing tools it cannot call.
 		const builderInstructionsEnabled =
 			builderEnabled &&
 			(allowedToolNames?.has(MCP_CREATE_WORKFLOW_FROM_CODE_TOOL.toolName) ?? true);
-		const agentsEnabled = areAgentToolsAvailable(this.globalConfig, this.moduleRegistry);
+		const agentsEnabled = this.toolProviderRegistry.isAvailable(AGENTS_MCP_TOOL_PROVIDER);
 		// Same rationale as builderInstructionsEnabled: a grant that cannot call
 		// the agent tools gets no agent build walkthrough.
 		const agentInstructionsEnabled =
@@ -550,44 +542,12 @@ export class McpService {
 			registerIfAllowed(listTagsTool);
 		}
 
-		// Data table tools
-		const dataTableOps = this.dataTableProxyService.makeDataTableOperationsForUser(user);
-
-		const searchDataTablesTool = createSearchDataTablesTool(user, dataTableOps, this.telemetry);
-		registerIfAllowed(searchDataTablesTool);
-
-		const createDataTableTool = createCreateDataTableTool(user, dataTableOps, this.telemetry);
-		registerIfAllowed(createDataTableTool);
-
-		const renameDataTableTool = createRenameDataTableTool(user, dataTableOps, this.telemetry);
-		registerIfAllowed(renameDataTableTool);
-
-		const addDataTableColumnTool = createAddDataTableColumnTool(user, dataTableOps, this.telemetry);
-		registerIfAllowed(addDataTableColumnTool);
-
-		const deleteDataTableColumnTool = createDeleteDataTableColumnTool(
-			user,
-			dataTableOps,
-			this.telemetry,
-		);
-		registerIfAllowed(deleteDataTableColumnTool);
-
-		const renameDataTableColumnTool = createRenameDataTableColumnTool(
-			user,
-			dataTableOps,
-			this.telemetry,
-		);
-		registerIfAllowed(renameDataTableColumnTool);
-
-		const addDataTableRowsTool = createAddDataTableRowsTool(user, dataTableOps, this.telemetry);
-		registerIfAllowed(addDataTableRowsTool);
-
 		// Workflow builder tools (enabled via N8N_MCP_BUILDER_ENABLED)
 		if (builderEnabled) {
 			await this.registerBuilderTools(
 				server,
 				user,
-				dataTableOps,
+				this.toolProviderRegistry.makeDataTableValidator(user),
 				featureFlags,
 				registerIfAllowed,
 				registerResource,
@@ -596,14 +556,16 @@ export class McpService {
 			);
 		}
 
-		if (agentsEnabled) {
-			const { McpAgentToolsService } = await import('./tools/agents/agent-tools.service.js');
-			Container.get(McpAgentToolsService).registerTools(
-				registerIfAllowed,
-				registerResource,
+		// Tool sets contributed by other modules (data-table, agents) via their
+		// module init(). An inactive module never registered its provider, so its
+		// tools are implicitly unavailable.
+		for (const provider of this.toolProviderRegistry.getAvailableProviders()) {
+			await provider.registerTools({
 				user,
+				registerTool: registerIfAllowed,
+				registerResource,
 				allowedToolNames,
-			);
+			});
 		}
 
 		return server;
@@ -612,7 +574,7 @@ export class McpService {
 	private async registerBuilderTools(
 		server: McpServer,
 		user: User,
-		dataTableOps: ReturnType<DataTableProxyService['makeDataTableOperationsForUser']>,
+		dataTableValidator: McpDataTableValidator | undefined,
 		featureFlags: McpFeatureFlags,
 		registerIfAllowed: RegisterToolFn,
 		registerResource: RegisterResourceFn,
@@ -666,7 +628,7 @@ export class McpService {
 			this.nodeTypes,
 			this.credentialsService,
 			this.projectRepository,
-			dataTableOps,
+			dataTableValidator,
 			this.aiGatewayService,
 			{ canvasGroupsEnabled: featureFlags.canvasGroupsEnabled },
 		);
@@ -735,7 +697,7 @@ export class McpService {
 			this.credentialsService,
 			this.sharedWorkflowRepository,
 			this.collaborationService,
-			dataTableOps,
+			dataTableValidator,
 			this.tagService,
 			this.globalConfig,
 			this.subworkflowPolicyChecker,

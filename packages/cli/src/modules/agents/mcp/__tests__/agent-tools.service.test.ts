@@ -1,8 +1,8 @@
 import { zodToJsonSchema } from '@n8n/agents';
 import { APPROVAL_RESUME_SCHEMA } from '@n8n/agents/tool';
 import type { AgentJsonConfig } from '@n8n/api-types';
-import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
+import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { SsrfProtectionConfig } from '@n8n/config';
 import { User, type WorkflowRepository } from '@n8n/db';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
@@ -48,12 +48,14 @@ import { AgentsService } from '@/modules/agents/agents.service';
 import { AttachableWorkflowsService } from '@/modules/agents/attachable-workflows.service';
 import type { Agent } from '@/modules/agents/entities/agent.entity';
 import type { NodeToolAiGatewayService } from '@/modules/agents/json-config/node-tool-ai-gateway.service';
+import { AGENT_TOOLS, AGENT_TOOLS_BY_SCOPE } from '@/modules/agents/mcp/agent-mcp-scopes';
 import type { AgentTaskRepository } from '@/modules/agents/repositories/agent-task.repository';
 import type { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { AgentSecureRuntime } from '@/modules/agents/runtime/agent-secure-runtime';
 import { getAgentConfigHash } from '@/modules/agents/utils/agent-config-hash';
-import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
+import { USER_CALLED_MCP_TOOL_EVENT } from '@/modules/mcp/mcp.constants';
 import type { RegisterToolFn } from '@/modules/mcp/mcp.types';
+import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import { NodeTypes } from '@/node-types';
 import { OauthService } from '@/oauth/oauth.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
@@ -61,9 +63,7 @@ import { ProjectScopeService } from '@/permissions.ee/project-scope.service';
 import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
 
-import { AGENT_TOOLS, TOOLS_BY_SCOPE } from '../mcp-scopes';
-import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
-import { McpAgentToolsService } from '../tools/agents/agent-tools.service';
+import { McpAgentToolsService } from '../agent-tools.service';
 
 const userHasScopesMock = userHasScopes as Mock;
 
@@ -302,7 +302,7 @@ describe('McpAgentToolsService', () => {
 		};
 
 		it('registers only the tools allowed by the granted scopes', () => {
-			const allowed = new Set<string>(TOOLS_BY_SCOPE['agent:read']);
+			const allowed = new Set<string>(AGENT_TOOLS_BY_SCOPE['agent:read']);
 			const { tools: filteredTools, resource } = registerFiltered(allowed);
 
 			expect(new Set(filteredTools.keys())).toEqual(allowed);
@@ -316,7 +316,7 @@ describe('McpAgentToolsService', () => {
 				issues: [],
 			} as never);
 			const { tools: filteredTools } = registerFiltered(
-				new Set<string>(TOOLS_BY_SCOPE['agent:read']),
+				new Set<string>(AGENT_TOOLS_BY_SCOPE['agent:read']),
 			);
 			const validateAgent = filteredTools.get('validate_agent');
 			if (!validateAgent) throw new Error('validate_agent is not registered');

@@ -1,33 +1,42 @@
 import type { User } from '@n8n/db';
 import z from 'zod';
 
-import type { DataTableUserOperations } from '@/modules/data-table/data-table-proxy.service';
+import { USER_CALLED_MCP_TOOL_EVENT } from '@/modules/mcp/mcp.constants';
+import type { ToolDefinition, UserCalledMCPToolEventPayload } from '@/modules/mcp/mcp.types';
+import {
+	columnNameSchema,
+	dataTableColumnSchema,
+	dataTableProjectIdSchema,
+	successMessageOutputSchema,
+} from '@/modules/mcp/tools/schemas';
 import type { Telemetry } from '@/telemetry';
 
-import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
-import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
-import { dataTableProjectIdSchema, successMessageOutputSchema } from '../schemas';
+import type { DataTableUserOperations } from '../data-table-proxy.service';
 
 const inputSchema = {
-	dataTableId: z.string().describe('The ID of the data table to rename'),
+	dataTableId: z.string().describe('The ID of the data table containing the column'),
 	projectId: dataTableProjectIdSchema,
-	name: z.string().min(1).max(128).describe('The new name for the data table'),
+	columnId: z.string().describe('The ID of the column to rename'),
+	name: columnNameSchema.describe('The new column name'),
 } satisfies z.ZodRawShape;
 
-const outputSchema = successMessageOutputSchema;
+const outputSchema = {
+	...successMessageOutputSchema,
+	column: dataTableColumnSchema.omit({ index: true }).describe('The renamed column'),
+} satisfies z.ZodRawShape;
 
-export const createRenameDataTableTool = (
+export const createRenameDataTableColumnTool = (
 	user: User,
 	dataTableOps: DataTableUserOperations,
 	telemetry: Telemetry,
 ): ToolDefinition<typeof inputSchema> => ({
-	name: 'rename_data_table',
+	name: 'rename_data_table_column',
 	config: {
-		description: 'Rename an existing data table.',
+		description: 'Rename a column in a data table.',
 		inputSchema,
 		outputSchema,
 		annotations: {
-			title: 'Rename Data Table',
+			title: 'Rename Data Table Column',
 			readOnlyHint: false,
 			destructiveHint: false,
 			idempotentHint: true,
@@ -37,22 +46,30 @@ export const createRenameDataTableTool = (
 	handler: async ({
 		dataTableId,
 		projectId,
+		columnId,
 		name,
 	}: {
 		dataTableId: string;
 		projectId: string;
+		columnId: string;
 		name: string;
 	}) => {
 		const telemetryPayload: UserCalledMCPToolEventPayload = {
 			user_id: user.id,
-			tool_name: 'rename_data_table',
-			parameters: { dataTableId, projectId },
+			tool_name: 'rename_data_table_column',
+			parameters: { dataTableId, projectId, columnId },
 		};
 
 		try {
-			await dataTableOps.updateDataTable(dataTableId, projectId, { name });
+			const renamedColumn = await dataTableOps.renameColumn(dataTableId, projectId, columnId, {
+				name,
+			});
 
-			const output = { success: true, message: `Data table renamed to '${name}'` };
+			const output = {
+				success: true,
+				message: `Column renamed to '${name}'`,
+				column: { id: renamedColumn.id, name: renamedColumn.name, type: renamedColumn.type },
+			};
 
 			telemetryPayload.results = { success: true };
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
