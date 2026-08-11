@@ -682,9 +682,8 @@ describe('AgentKnowledgeSandboxService', () => {
 				expect.objectContaining({ file: 'doc1.txt' }),
 			);
 
-			// The failed file was left out of the cached manifest, so the next
-			// sync's expected hash mismatches and it retries — this time
-			// `readAsBuffer` succeeds (the mock's default resolves).
+			// The failed file remains absent from the remote manifest, so the
+			// next sync retries it and `readAsBuffer` succeeds.
 			await expect(
 				service.searchKnowledge(projectId, agentId, { pattern: 'bar' }),
 			).resolves.toBeDefined();
