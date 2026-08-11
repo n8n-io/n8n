@@ -360,7 +360,8 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 
 		if (
 			MANAGED_CREDENTIAL_HIDDEN_PROPERTIES.has(parameter.name) &&
-			(isEditingManagedCredential.value || isManagedOAuthMode.value)
+			(isEditingManagedCredential.value || isManagedOAuthMode.value) &&
+			!credentialType.value?.__showManagedOAuthScopes
 		) {
 			return false;
 		}
