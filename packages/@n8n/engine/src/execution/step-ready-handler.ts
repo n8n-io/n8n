@@ -145,8 +145,8 @@ export class StepReadyHandler {
 
 		const incomingOutputsByNodeId = await this.loadIncomingOutputs(execution.id, incomingEdges);
 
-		// Array of length equal to the highest input slot plus one. The entries are `null` placeholders filled by the loop immediately below.
-		// TODO(CAT-3042): enforce data size limits.
+		// Array of length equal to the highest input slot plus one.
+		// The entries are `null` placeholders filled by the loop immediately below.
 		const inputs: StepSlots = Array.from(
 			{ length: Math.max(...incomingEdges.map((edge) => edge.inputIndex)) + 1 },
 			() => null,
