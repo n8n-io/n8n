@@ -1,0 +1,109 @@
+packages/cli/src/public-api/v1/handlers/credentials/credentials.utils.ts
+  s_7bb861bc24e503::t_c11789bd32ca47 51-53
+  s_7bb861bc24e503::t_cb0954de140d2b 1
+packages/cli/src/modules/agents/builder/agents-builder-settings.service.ts
+  s_7bb861bc24e503::t_6b831966730126 179
+packages/cli/src/credentials/credentials-finder.service.ts
+  s_7bb861bc24e503::t_49f4910f0d9819 55,57-58,60
+  s_7bb861bc24e503::t_e91edd748cf4dd 59,67
+packages/cli/src/credentials/__tests__/credentials.service.test.ts
+  s_7bb861bc24e503::t_3037f9ba4d1326 1112,1118,1139-1143,1162-1190
+  s_7bb861bc24e503::t_b4381beb7f43aa 1644-1645,1647,1649-1651,1688,1700,1714,1726,1737,1748,1762,1785,1811,1827,1844,1861,1882,1893,1907,1951,1968,1983,2253,2262,2358,2399,2415,2423
+  s_7bb861bc24e503::t_6b831966730126 1006,1015,1038,1044
+  s_7bb861bc24e503::t_00410ed4d4aae0 1191,3432-3488
+  s_7bb861bc24e503::t_9960a604874032 1657
+  s_7bb861bc24e503::t_61ff2f858f19bf 96,120
+  s_7bb861bc24e503::t_b310b641d37c17 1192-1211
+  s_7bb861bc24e503::t_78d405aadaa36e 1643,1646,1648,1652-1656,1658-1660
+  s_7bb861bc24e503::t_9a6da5fd1953a0 37
+packages/cli/src/services/__tests__/credentials-finder.service.test.ts
+  s_7bb861bc24e503::t_65e0ff666d0b1e 76,81
+  s_7bb861bc24e503::t_e1b84039d6cd53 64,68,72,79,89
+packages/cli/src/credentials/credentials.service.ee.ts
+  s_7bb861bc24e503::t_6b831966730126 99
+packages/cli/src/public-api/v1/handlers/credentials/__tests__/credentials.utils.test.ts
+  s_7bb861bc24e503::t_af31acf747da87 9,346,374
+  h_ed1b2d65e81e8e 7
+  s_7bb861bc24e503::t_139fbb07639c98 1
+packages/cli/src/modules/agents/builder/__tests__/agents-builder-settings.service.test.ts
+  s_7bb861bc24e503::t_6b831966730126 76,196,244
+packages/cli/src/modules/agents/builder/builder-model-live-lookup.service.ts
+  s_7bb861bc24e503::t_6b831966730126 80
+packages/cli/src/public-api/v1/handlers/credentials/credentials.middleware.ts
+  s_7bb861bc24e503::t_d6eed28a48d8cb 9,12,103-104,120
+packages/cli/src/modules/dynamic-credentials.ee/dynamic-credentials.controller.ts
+  s_7bb861bc24e503::t_6b831966730126 313
+packages/cli/src/credentials/credentials.service.ts
+  h_ed1b2d65e81e8e 825
+  s_de0e1d9f8c40ef::t_c80571ea2f981d 275,277,280,286-296,306
+  s_7bb861bc24e503::t_379b2437c60430 62
+  s_7bb861bc24e503::t_bd034b3fee0841 823,835-838
+  s_7bb861bc24e503::t_667cb7f06e7998 59
+  s_7bb861bc24e503::t_68c250a29e3826 213
+  s_7bb861bc24e503::t_a93b7c1a8bf6c9 103-105
+  s_7bb861bc24e503::t_b0a914043a9149 282,307-310
+  s_7bb861bc24e503::t_bc6dd1ff53ef7a 329,819-820,1220-1234
+  s_7bb861bc24e503::t_438db6446c8526 778
+  s_7bb861bc24e503::t_3d5413740d5867 821-822,824
+  s_7bb861bc24e503::t_af46d44f3fd2d2 1171-1172
+  s_de0e1d9f8c40ef::t_8ac9684fbf3698 110-118
+  s_7bb861bc24e503::t_0385e6a0715f00 747-762,770,774,777,1173
+  s_7bb861bc24e503::t_7500c12b873cfa 281,283-285,297,331-335,337-339,341,350-351,363,372-373,379,382-390,393,398,404-412,415,427,440,459,476-477,483,486-494,497,745
+  s_7bb861bc24e503::t_2a9dacb8d47d46 101-102,106-107
+  s_de0e1d9f8c40ef::t_c0cfae1853d387 108-109,321,330,746,833-834,1174,1213,1218-1219,1242
+packages/cli/src/oauth/__tests__/oauth.service.test.ts
+  s_7bb861bc24e503::t_6b831966730126 307,330
+packages/cli/src/oauth/oauth.service.ts
+  s_7bb861bc24e503::t_6b831966730126 286
+  s_de0e1d9f8c40ef::t_002bb3fcd8a1b3 287-288
+packages/cli/src/credentials/__tests__/credentials.controller.test.ts
+  s_7bb861bc24e503::t_6bd55354ae5a86 995,1002,1011-1012
+  s_7bb861bc24e503::t_01cc46374a916f 68
+packages/cli/src/public-api/v1/handlers/credentials/credentials.handler.ts
+  s_7bb861bc24e503::t_75714cfbc2413d 9,167,169,241,251,253-254,291,295-299,301-308,310-311,335
+  s_7bb861bc24e503::t_1feaa5ce75c23a 135
+  s_7bb861bc24e503::t_3109a38407b5de 129-134,136-137
+  s_7bb861bc24e503::t_95d1d9fad1e380 5
+  s_7bb861bc24e503::t_0945b3a2443ef8 64
+  s_7bb861bc24e503::t_312af86295168a 39-63,65-108
+  s_7bb861bc24e503::t_67738e404d3f4d 2,17
+  s_7bb861bc24e503::t_bce3dcecc4e6fd 18
+  s_7bb861bc24e503::t_e4b17bd21fe170 38
+  s_7bb861bc24e503::t_7d0b8478a7b622 128
+  s_7bb861bc24e503::t_bb882b79b0624e 168
+  s_7bb861bc24e503::t_5ec54dc8a3085b 202-231,255,338
+  s_7bb861bc24e503::t_0fc80abe8252c9 285,288-289
+  s_7bb861bc24e503::t_9a729fde01b775 293-294
+  s_de0e1d9f8c40ef::t_a34cba9a723d95 27,232-240,256,261-264,290,336-337,339,345
+packages/cli/src/modules/agents/builder/__tests__/builder-model-live-lookup.service.test.ts
+  s_7bb861bc24e503::t_6b831966730126 56,92,118,139,157,221,245
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "016d66bd7f41beef536812473a5d4bd013b21b74",
+  "prompts": {},
+  "humans": {
+    "h_ed1b2d65e81e8e": {
+      "author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_7bb861bc24e503": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "1161c3ed-c11b-41b6-870e-4af130867645",
+        "model": "grok-4.5"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    },
+    "s_de0e1d9f8c40ef": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6719ec80-3a21-456e-8c60-534c223501a9",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}
