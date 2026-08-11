@@ -5,6 +5,9 @@ import { ExpressionError, ExpressionParser, isExpression, type IPinData } from '
 
 export { isExpression };
 
+export const containsExternalSecretReference = (expression: string) =>
+	/\$secrets\b/.test(expression);
+
 export const isEmptyExpression = (expr: string) => {
 	return /\{\{\s*\}\}/.test(expr);
 };

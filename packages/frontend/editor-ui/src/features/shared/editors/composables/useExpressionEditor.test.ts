@@ -476,5 +476,28 @@ describe('useExpressionEditor', () => {
 			);
 			expect(resolveExpressionMock).not.toHaveBeenCalled();
 		});
+
+		test('should defer previewing transformed external secrets until execution', async () => {
+			vi.spyOn(completionUtils, 'isCredentialsModalOpen').mockReturnValueOnce(true);
+
+			const {
+				expressionEditor: { segments },
+			} = await renderExpressionEditor({
+				editorValue: "{{ JSON.parse($secrets.awsSecretsManager['cred']).password }}",
+				extensions: [n8nLang()],
+				additionalData: {
+					$secrets: { awsSecretsManager: { cred: '*********' } },
+				},
+			});
+
+			await waitFor(() => {
+				expect(toValue(segments.resolvable)).toEqual([
+					expect.objectContaining({
+						resolved: '[evaluated during execution]',
+						state: 'pending',
+					}),
+				]);
+			});
+		});
 	});
 });

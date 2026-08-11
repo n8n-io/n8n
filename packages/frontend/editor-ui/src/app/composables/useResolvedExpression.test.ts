@@ -85,6 +85,17 @@ describe('useResolvedExpression', () => {
 		expect(toValue(resolvedExpressionString)).toBe('[ERROR: Test error]');
 	});
 
+	it('should defer transformed credential secret previews until execution', async () => {
+		mockResolveExpression().mockResolvedValue(undefined);
+		const { resolvedExpressionString } = await renderTestComponent({
+			expression: "={{ JSON.parse($secrets.aws['preview-test']).password }}",
+			isForCredential: true,
+		});
+
+		await nextTick();
+		expect(toValue(resolvedExpressionString)).toBe('[evaluated during execution]');
+	});
+
 	it('should debounce updates', async () => {
 		const resolveExpressionSpy = mockResolveExpression().mockResolvedValue(4);
 		const expression = ref('={{ testValue }}');

@@ -1,6 +1,7 @@
 import { ExpressionError } from 'n8n-workflow';
 import {
 	completeExpressionSyntax,
+	containsExternalSecretReference,
 	shouldConvertToExpression,
 	removeExpressionPrefix,
 	stringifyExpressionResult,
@@ -9,6 +10,25 @@ import {
 import { executionRetryMessage } from '@/features/execution/executions/executions.utils';
 
 describe('Utils: Expressions', () => {
+	describe('containsExternalSecretReference()', () => {
+		it.each([
+			'={{ $secrets.vault.key }}',
+			"={{ $secrets['vault']['key'] }}",
+			"={{ JSON.parse($secrets.vault['payload']).password }}",
+			'={{ $secrets . vault . key }}',
+		])('should detect an external secret reference in "%s"', (expression) => {
+			expect(containsExternalSecretReference(expression)).toBe(true);
+		});
+
+		it.each([
+			'={{ $secret.vault.key }}',
+			'={{ $secretsBackup.vault.key }}',
+			'={{ $json.password }}',
+		])('should not detect an external secret reference in "%s"', (expression) => {
+			expect(containsExternalSecretReference(expression)).toBe(false);
+		});
+	});
+
 	describe('stringifyExpressionResult()', () => {
 		it('should return empty string for non-critical errors', () => {
 			expect(
