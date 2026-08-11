@@ -359,6 +359,8 @@ describe('GlobalConfig', () => {
 			thinkingEnabled: true,
 			durableLog: true,
 			mcpConnectionsEnabled: false,
+			activationCapped: false,
+			activationLockMessageThreshold: 1,
 		},
 		queue: {
 			health: {
