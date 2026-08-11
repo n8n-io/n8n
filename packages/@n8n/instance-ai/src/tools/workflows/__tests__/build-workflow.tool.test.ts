@@ -490,9 +490,11 @@ describe('createBuildWorkflowTool', () => {
 	});
 
 	it('updates a workflow created earlier in the run without requesting approval', async () => {
+		const grantSessionToolApproval = vi.fn().mockResolvedValue(undefined);
 		const { context, filePath } = makeContext({
 			source: 'workflow source',
 			overrides: {
+				grantSessionToolApproval,
 				permissions: {
 					createWorkflow: 'always_allow',
 					updateWorkflow: 'require_approval',
@@ -509,6 +511,31 @@ describe('createBuildWorkflowTool', () => {
 		expect(created).toMatchObject({ success: true, workflowId: 'wf-1' });
 		expect(updated).toMatchObject({ success: true, workflowId: 'wf-1' });
 		expect(context.aiCreatedWorkflowIds).toEqual(new Set(['wf-1']));
+		expect(grantSessionToolApproval).toHaveBeenCalledWith('workflows:update:wf-1');
+		expect(suspend).not.toHaveBeenCalled();
+		expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenCalledTimes(1);
+	});
+
+	it('updates a workflow with a session ownership grant without requesting approval', async () => {
+		const { context, filePath } = makeContext({
+			source: 'workflow source',
+			overrides: {
+				sessionApprovedToolKeys: new Set(['workflows:update:wf-session']),
+				permissions: {
+					createWorkflow: 'always_allow',
+					updateWorkflow: 'require_approval',
+				} as InstanceAiContext['permissions'],
+			},
+		});
+		const suspend = vi.fn();
+
+		const result = await executeTool<BuildToolOutput>(
+			createBuildWorkflowTool(context),
+			{ filePath, workflowId: 'wf-session' },
+			{ suspend },
+		);
+
+		expect(result).toMatchObject({ success: true, workflowId: 'wf-session' });
 		expect(suspend).not.toHaveBeenCalled();
 		expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenCalledTimes(1);
 	});

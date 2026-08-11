@@ -21,7 +21,9 @@ import {
 	formatWarning,
 	getBuildFailureTrackingKey,
 	isApprovedBuildContext,
+	isSessionOwnedWorkflow,
 	markSourceBuildFailed,
+	recordSessionOwnedWorkflow,
 	resolveBuildIdentifiers,
 	resolveWorkflowName,
 	sourceResponseBase,
@@ -446,8 +448,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			}
 
 			const isOwnInFlightWorkflow =
-				targetWorkflowId !== undefined &&
-				(context.aiCreatedWorkflowIds?.has(targetWorkflowId) ?? false);
+				targetWorkflowId !== undefined && isSessionOwnedWorkflow(context, targetWorkflowId);
 
 			if (
 				targetWorkflowId &&
@@ -992,7 +993,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					...(projectId ? { projectId } : {}),
 					markAsAiTemporary: true,
 				});
-				(context.aiCreatedWorkflowIds ??= new Set<string>()).add(created.id);
+				await recordSessionOwnedWorkflow(context, created.id);
 				return await createSuccessResponse(created, 'create');
 			} catch (error) {
 				const message = error instanceof Error ? error.message : 'Unknown error';

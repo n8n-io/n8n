@@ -1,3 +1,4 @@
+import { buildUpdateWorkflowSessionGrantKey } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 
 import {
@@ -10,6 +11,30 @@ import type { WorkflowBuildOutcome } from '../../workflow-loop/workflow-loop-sta
 export function isApprovedBuildContext(context: InstanceAiContext): boolean {
 	const buildContext = context.workflowBuildContext;
 	return Boolean(buildContext?.plannedTaskService ?? buildContext?.allowPostPlanWorkflowCreate);
+}
+
+/**
+ * True when this workflow is an in-session Instance AI artifact: created earlier
+ * in the current run (`aiCreatedWorkflowIds`) or recorded as a thread grant when
+ * it was created. Used to skip update HITL for the agent's own workflows while
+ * still requiring approval for foreign ones.
+ */
+export function isSessionOwnedWorkflow(context: InstanceAiContext, workflowId: string): boolean {
+	if (context.aiCreatedWorkflowIds?.has(workflowId) === true) return true;
+	const grantKey = buildUpdateWorkflowSessionGrantKey(workflowId);
+	return context.sessionApprovedToolKeys?.has(grantKey) === true;
+}
+
+/**
+ * Mark a newly created workflow as owned by this session: in-memory for the
+ * current run, and as a persisted thread grant so later runs skip update HITL.
+ */
+export async function recordSessionOwnedWorkflow(
+	context: InstanceAiContext,
+	workflowId: string,
+): Promise<void> {
+	(context.aiCreatedWorkflowIds ??= new Set<string>()).add(workflowId);
+	await context.grantSessionToolApproval?.(buildUpdateWorkflowSessionGrantKey(workflowId));
 }
 
 export async function resolveWorkflowName(
