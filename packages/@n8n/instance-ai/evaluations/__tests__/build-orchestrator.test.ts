@@ -2,7 +2,7 @@ import { verifyBuildExpectations } from '../build-expectations/verifier';
 import type { CliArgs } from '../cli/args';
 import type { N8nClient } from '../clients/n8n-client';
 import { resolveArtifactContext } from '../harness/artifacts/artifact-context';
-import type { BuildResult } from '../harness/build-workflow';
+import { scrubLocalSecretsFromBuild, type BuildResult } from '../harness/build-workflow';
 import { runWorkflowChecks } from '../harness/cleanup';
 import { runCredentialSetupChecks } from '../harness/credential-setup-checks';
 import type { EvalLogger } from '../harness/logger';
@@ -555,6 +555,9 @@ describe('credential-setup check wiring', () => {
 describe('local-mode secret scrubbing', () => {
 	const PREFIX = 'sk-ant-api03-';
 	const KEY = `${PREFIX}abcdefghijklmnopqrstuvwx`;
+	// A second provider's shape, so a multi-prefix scrub is actually exercised.
+	const OTHER_PREFIX = 'sk-proj-';
+	const OTHER_KEY = `${OTHER_PREFIX}zyxwvutsrqponmlkjihgfedc`;
 
 	const localBuild = () =>
 		okBuild({
@@ -614,12 +617,15 @@ describe('local-mode secret scrubbing', () => {
 		// a scrub gated on it skipped exactly the run that leaked.
 		const build = okBuild({
 			threadId: 'thread-unidentified',
-			transcript: [{ userMessage: 'x', steps: [{ kind: 'agent-text', text: `saved ${KEY}` }] }],
+			transcript: [
+				{ userMessage: 'x', steps: [{ kind: 'agent-text', text: `saved ${KEY}` }] },
+				{ userMessage: 'y', steps: [{ kind: 'agent-text', text: `and ${OTHER_KEY}` }] },
+			],
 			credentialSetup: {
 				secretWasIssued: false,
 				local: true,
 				secretPrefix: undefined,
-				scrubPrefixes: [PREFIX, 'sk-proj-'],
+				scrubPrefixes: [PREFIX, OTHER_PREFIX],
 				credentialIdsBefore: [],
 			},
 		} as Partial<BuildResult>);
@@ -627,7 +633,12 @@ describe('local-mode secret scrubbing', () => {
 
 		await createBuildOrchestrator(deps).getOrBuild(0, 'case-a');
 
-		expect(JSON.stringify(deps.transcriptByThreadId.get('thread-unidentified'))).not.toContain(KEY);
+		const persisted = JSON.stringify(deps.transcriptByThreadId.get('thread-unidentified'));
+		expect(persisted).not.toContain(KEY);
+		// The SECOND shape is the point of the list — asserting only the first
+		// would pass with a scrub that ignores every prefix after [0].
+		expect(persisted).not.toContain(OTHER_KEY);
+		expect(persisted).toContain(`${OTHER_PREFIX}[REDACTED]`);
 	});
 
 	it('redacts the builder trace, which the HTML report dumps raw', async () => {
@@ -675,5 +686,24 @@ describe('local-mode secret scrubbing', () => {
 		await createBuildOrchestrator(deps).getOrBuild(0, 'case-a');
 
 		expect(JSON.stringify(deps.transcriptByThreadId.get('thread-fixture'))).toContain(KEY);
+	});
+
+	it('refuses to hand back an unscrubbed local build when no key shape is known', () => {
+		// The empty list is the dangerous state: downstream it is indistinguishable
+		// from "nothing to scrub", so returning the build silently persisted a real
+		// key. A local run that cannot name a single provider shape must not
+		// produce artifacts at all.
+		const build = okBuild({
+			transcript: [{ userMessage: 'x', steps: [{ kind: 'agent-text', text: `saved ${KEY}` }] }],
+			credentialSetup: {
+				secretWasIssued: false,
+				local: true,
+				secretPrefix: undefined,
+				scrubPrefixes: [],
+				credentialIdsBefore: [],
+			},
+		} as Partial<BuildResult>);
+
+		expect(() => scrubLocalSecretsFromBuild(build)).toThrow(/scrub/i);
 	});
 });

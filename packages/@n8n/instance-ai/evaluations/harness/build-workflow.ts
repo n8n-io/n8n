@@ -269,14 +269,9 @@ export function buildFailedOnInfra(build: BuildResult): boolean {
 	);
 }
 
-/**
- * Pre-scrub transcript text for the local-mode leak scan, held OUTSIDE the
- * BuildResult and keyed by the facts object the checks are handed.
- *
- * It cannot live on the build: `traceable` serialises the returned build as the
- * LangSmith run output, so a raw-text field there would ship the very key the
- * scrub exists to remove — redacted transcript, real key one field over.
- */
+/** Pre-scrub text for the leak scan, held OUTSIDE the BuildResult: `traceable`
+ *  serialises the returned build, so a raw-text field there would ship the very
+ *  key the scrub removes. */
 const leakHaystacks = new WeakMap<CredentialSetupRunFacts, string>();
 
 /** The raw (pre-redaction) run text for these facts, if this was a scrubbed
@@ -306,11 +301,16 @@ export function scrubLocalSecretsFromBuild(build: BuildResult): BuildResult {
 		: facts.secretPrefix
 			? [facts.secretPrefix]
 			: [];
-	if (prefixes.length === 0) return build;
-	// `buildTrace` is in here for both reasons: the HTML report dumps its
-	// `toolCalls` verbatim and scenario-execution writes it to the verifier
-	// snapshot, so a key typed into a browser tool call reaches disk; and the
-	// leak expectation claims to cover "tool traces", which is exactly this.
+	// Throws rather than returning the build: an empty list reads downstream as
+	// "nothing to scrub", which is how a real key gets persisted.
+	if (prefixes.length === 0) {
+		throw new Error(
+			'Local run has no key shapes to scrub with (no scrubPrefixes and no secretPrefix). ' +
+				'Refusing to persist the build rather than risk shipping a real key.',
+		);
+	}
+	// `buildTrace` too: the HTML report and verifier snapshot dump its `toolCalls`
+	// verbatim, and the leak expectation claims to cover tool traces.
 	leakHaystacks.set(
 		facts,
 		JSON.stringify({
@@ -1089,23 +1089,20 @@ function truncate(text: string, maxLength: number): string {
  * what `findFixtureForCredentialType` is for. Undefined => the leak check
  * reports itself unverifiable rather than guessing.
  */
-/**
- * Every key shape to strip from a local run's artifacts.
- *
- * Deliberately NOT `[secretPrefix]`: that one is resolved from the credential
- * the agent managed to save, so an agent that echoed the key and then failed
- * before saving leaves it undefined — and a scrub keyed on it would skip
- * exactly the run that leaked. The registry's shapes are known up front, so
- * local mode scrubs all of them and the identification only affects which
- * prefix the leak VERDICT can name.
- */
+/** Every key shape to strip from a local run's artifacts. NOT `[secretPrefix]`:
+ *  that is resolved from the credential the agent saved, so a run that leaked
+ *  and then failed before saving would have been skipped. */
 async function resolveScrubPrefixes(lane: CredentialSetupLane): Promise<string[]> {
 	if (!lane.local) return [];
-	try {
-		return [...new Set((await loadProviderFixtures()).map((f) => f.manifest.secretPrefix))];
-	} catch {
-		return [];
+	// Deliberately NOT caught — an empty list is indistinguishable from "nothing
+	// to scrub", so a broken fixtures dir would silently ship a real key.
+	const prefixes = [...new Set((await loadProviderFixtures()).map((f) => f.manifest.secretPrefix))];
+	if (prefixes.length === 0) {
+		throw new Error(
+			'No provider fixtures found, so a local run has no key shapes to scrub. Refusing to run rather than persist a real key.',
+		);
 	}
+	return prefixes;
 }
 
 async function resolveSecretPrefix(

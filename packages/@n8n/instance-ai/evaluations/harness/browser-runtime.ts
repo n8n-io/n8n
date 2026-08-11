@@ -171,13 +171,10 @@ const LOOPBACK_EXCLUDES = ['localhost', '127.0.0.1', '[::1]'];
  *   2. the fixture's own host maps, then its `MAP *` catch-all
  *   3. loopback EXCLUDEs
  *
- * EXCLUDEs do NOT obey that order. Chromium keeps them in a separate list and
- * checks it before any MAP, returning on the first hit — so `EXCLUDE localhost`
- * vetoes `MAP localhost:<port> …` wherever it appears. The relay rule maps that
- * exact hostname, so the two cannot both be emitted: when a relay rule is
- * present the `localhost` exclude is dropped and the other spellings, which
- * match a different hostname, stay. Verified against Chromium 1223 — the MAP
- * applies alone and stops applying in either order once the exclude is added.
+ * EXCLUDEs do NOT obey that order: Chromium checks them before any MAP and
+ * returns on the first hit, so `EXCLUDE localhost` vetoes `MAP localhost:<port>`
+ * wherever it sits (verified against Chromium 1223). A relay rule maps that
+ * hostname, so its exclude is dropped when one is present.
  *
  * Returns nothing at all for a local run: no interception, and in particular no
  * `--ignore-certificate-errors`, which exists only for the fixture's
@@ -236,13 +233,8 @@ export async function startBrowserRuntime(
 	// Mint the relay link BEFORE launching: the connect page auto-connects on
 	// load, so the relay has to be waiting for it.
 	const link = await client.createBrowserLink();
-	// From here on EVERY throw has to release the session first. It is
-	// INSTANCE-WIDE: leaving it connected strands the next case, whose own
-	// `createBrowserLink` hands out a link the extension will not honour, and
-	// that run times out with no clue as to why. Chromium discovery, the temp
-	// profile and the launch itself all sit between here and the runtime that
-	// takes ownership, so the release is armed now and disarmed only once that
-	// runtime is returned.
+	// Every throw from here on must release the session — it is instance-wide, so
+	// leaving it connected strands the next case. Armed now, disarmed on success.
 	let relayOwned = false;
 	try {
 		// The server builds connectUrl without autoConnect; append it so the
@@ -285,8 +277,13 @@ export async function startBrowserRuntime(
 
 		const cleanup = async () => {
 			await context.close().catch(() => {});
-			await rm(userDataDir, { recursive: true, force: true });
-			await client.disconnectBrowserSession().catch(() => {});
+			// `finally`: rm can throw, and losing the instance-wide relay session to
+			// that strands the next case.
+			try {
+				await rm(userDataDir, { recursive: true, force: true });
+			} finally {
+				await client.disconnectBrowserSession().catch(() => {});
+			}
 		};
 
 		try {
