@@ -21,6 +21,7 @@ recommended_tools:
   - credentials
   - verify-built-workflow
   - executions
+  - update-workflow-overview
 ---
 
 # Workflow Builder
@@ -104,6 +105,27 @@ Assistant panel afterwards for the user to fill in.
 Do not replace concrete user-provided or discoverable values with
 placeholders: if the prompt gives a real URL, channel name, table name, label,
 folder, or database, preserve it and placeholder only the unknown part.
+
+## Workflow Overview Panel
+
+While planning a single workflow, keep the read-only overview panel current
+with `update-workflow-overview` (Triggers / Steps / Results):
+
+- Call it once the planned workflow shape is clear — after research, before
+  the first `build-workflow` call of the turn. This applies to new workflows
+  AND to requested edits of existing workflows (describe the planned
+  post-edit behavior).
+- Write it as a plan, not a description of something that exists: plan tense,
+  one short sentence per pane, in the user's conversation language. `results`
+  must be concrete ("An email to the person who filled in the form"). Use an
+  empty string for a pane that is not known yet.
+- Refresh it only when a user iteration or an `ask-user` answer changes what a
+  pane says. Do not re-send an unchanged overview.
+- The panel is frozen during building: never call it after `build-workflow`
+  has been called this turn, and never in repair, verification, or setup
+  follow-up turns.
+- Skip it entirely for multi-workflow plans.
+- Never repeat the overview as visible chat text; the panel is the surface.
 
 ## Knowledge Base
 

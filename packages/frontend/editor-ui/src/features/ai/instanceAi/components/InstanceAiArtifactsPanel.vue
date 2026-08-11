@@ -15,6 +15,7 @@ import {
 	handoffContextKey,
 } from '../instanceAi.handoffContext';
 import ConnectionsCard from './ConnectionsCard.vue';
+import InstanceAiWorkflowOverviewCard from './InstanceAiWorkflowOverviewCard.vue';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 
 const projectsStore = useProjectsStore();
@@ -78,6 +79,9 @@ function handleArtifactClick(artifact: ResourceEntry, e: MouseEvent) {
 		openAgentPreview(artifact.id, artifact.projectId);
 	}
 }
+
+// --- Workflow overview (three-pane plan abstraction) ---
+const workflowOverview = computed(() => thread.currentWorkflowOverview);
 
 // --- Tasks ---
 const tasks = computed(() => thread.currentTasks);
@@ -197,6 +201,8 @@ async function dismissContext(key: string) {
 
 <template>
 	<aside ref="panelRef" :class="$style.panel" data-test-id="instance-ai-artifacts-sidebar">
+		<!-- Workflow overview — sticky above the artifacts group while planning -->
+		<InstanceAiWorkflowOverviewCard v-if="workflowOverview" :overview="workflowOverview" />
 		<div :class="$style.group" data-test-id="instance-ai-artifacts-sidebar-group">
 			<!-- Project section -->
 			<div :class="$style.section">

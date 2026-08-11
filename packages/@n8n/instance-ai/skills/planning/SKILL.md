@@ -16,6 +16,7 @@ recommended_tools:
   - parse-file
   - research
   - ask-user
+  - update-workflow-overview
 ---
 
 # Planning
@@ -85,12 +86,17 @@ Skip only for trivial mechanical edits you have already reviewed in this thread.
    artifact shared across tasks.
 6. Add checkpoint tasks only for exceptional semantic checks that normal
    workflow verification cannot cover.
-7. Load `create-tasks` via `load_tool` if needed, then call `create-tasks` with
+7. When the final graph contains exactly one `build-workflow` task, call
+   `update-workflow-overview` (Triggers / Steps / Results — plan tense, one
+   short sentence each, concrete results, empty string for unknown panes)
+   before `create-tasks` so the overview panel reflects the plan under review.
+   Skip it when the graph has multiple `build-workflow` tasks.
+8. Load `create-tasks` via `load_tool` if needed, then call `create-tasks` with
    `planningContext.source: "planning-skill"`,
    a concise `summary`, optional `assumptions`, `postBuildRunRequested: true`
    only when the user explicitly asked to run, execute, or test a workflow
    after building it, and the final task graph.
-8. After calling `create-tasks`, do not write visible text. The approval card is
+9. After calling `create-tasks`, do not write visible text. The approval card is
    the user-visible surface.
 
 ## Task Graph Rules
