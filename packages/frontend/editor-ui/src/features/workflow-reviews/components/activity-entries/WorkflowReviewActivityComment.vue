@@ -30,7 +30,12 @@ function authorName(message: WorkflowReviewActivityMessage): string {
 			/>
 			<div :class="$style.content">
 				<div :class="$style.header">
-					<N8nText bold size="small" data-test-id="workflow-review-activity-comment-author">
+					<N8nText
+						size="medium"
+						color="text-base"
+						:class="$style.line"
+						data-test-id="workflow-review-activity-comment-author"
+					>
 						{{ authorName(message) }}
 					</N8nText>
 					<N8nText size="xsmall" color="text-light">
@@ -53,8 +58,9 @@ function authorName(message: WorkflowReviewActivityMessage): string {
 				</N8nText>
 				<N8nText
 					v-else
-					size="small"
-					:class="$style.body"
+					size="medium"
+					color="text-light"
+					:class="[$style.body, $style.line]"
 					data-test-id="workflow-review-activity-comment-body"
 				>
 					{{ message.body }}
@@ -88,6 +94,11 @@ function authorName(message: WorkflowReviewActivityMessage): string {
 	display: flex;
 	align-items: baseline;
 	gap: var(--spacing--2xs);
+}
+
+/* Figma asks for 20px on 14px text; no line-height token gives that ratio. */
+.line {
+	line-height: 20px;
 }
 
 .body {
