@@ -896,10 +896,6 @@ export class CanvasPage extends BasePage {
 		return this.page.getByTestId('zoom-in-button');
 	}
 
-	getResetZoomButton(): Locator {
-		return this.page.getByTestId('reset-zoom-button');
-	}
-
 	async clickZoomInButton(): Promise<void> {
 		await this.clickByTestId('zoom-in-button');
 	}

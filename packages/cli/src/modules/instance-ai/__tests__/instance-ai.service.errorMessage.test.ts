@@ -28,6 +28,24 @@ describe('getUserFacingErrorMessage', () => {
 		);
 	});
 
+	it('maps a dropped provider connection to a retryable message, not the generic one', () => {
+		const error = Object.assign(new TypeError('terminated'), {
+			cause: Object.assign(new Error('read ECONNRESET'), { code: 'ECONNRESET' }),
+		});
+		const message = getUserFacingErrorMessage(error);
+		expect(message).toContain('connection to the AI provider dropped');
+		expect(message).toContain('try again');
+	});
+
+	it('prefers the out-of-credits message when a quota failure carries a transport cause', () => {
+		const masked = Object.assign(new TypeError('terminated'), {
+			cause: Object.assign(new Error('read ECONNRESET'), { code: 'ECONNRESET' }),
+		});
+		const message = getUserFacingErrorMessage(new QuotaExhaustedStreamError(masked));
+		expect(message.toLowerCase()).toContain('credits');
+		expect(message).not.toContain('connection to the AI provider dropped');
+	});
+
 	it('maps a quota-exhausted error (by code) to a clear out-of-credits message', () => {
 		const error = Object.assign(new Error('Have reached end of quota'), {
 			statusCode: 403,
