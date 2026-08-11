@@ -147,33 +147,33 @@ export function toJsonSchema(properties: INodeProperties[]): IDataObject {
 
 					if (key === 'eq') {
 						conditionalValue = {
-							const: [targetValue],
+							const: targetValue,
 						};
 					} else if (key === 'not') {
 						conditionalValue = {
 							not: {
-								const: [targetValue],
+								const: targetValue,
 							},
 						};
 					} else if (key === 'gt') {
 						conditionalValue = {
 							type: 'number',
-							exclusiveMinimum: [targetValue],
+							exclusiveMinimum: targetValue,
 						};
 					} else if (key === 'gte') {
 						conditionalValue = {
 							type: 'number',
-							minimum: [targetValue],
+							minimum: targetValue,
 						};
 					} else if (key === 'lt') {
 						conditionalValue = {
 							type: 'number',
-							exclusiveMaximum: [targetValue],
+							exclusiveMaximum: targetValue,
 						};
 					} else if (key === 'lte') {
 						conditionalValue = {
 							type: 'number',
-							maximum: [targetValue],
+							maximum: targetValue,
 						};
 					} else if (key === 'startsWith') {
 						conditionalValue = {
