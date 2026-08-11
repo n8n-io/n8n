@@ -1,4 +1,4 @@
-import type { ListAgentsQueryDto } from '@n8n/api-types';
+import type { AgentIntegrationConfig, ListAgentsQueryDto } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import { DataSource, In, IsNull, Repository, type SelectQueryBuilder } from '@n8n/typeorm';
 
@@ -8,6 +8,9 @@ export type AgentSummary = Pick<
 	Agent,
 	'id' | 'name' | 'projectId' | 'activeVersionId' | 'availableInMCP' | 'updatedAt'
 >;
+
+/** The only columns an integration mutation reads or writes. */
+export type AgentIntegrationState = Pick<Agent, 'integrations' | 'versionId' | 'activeVersionId'>;
 
 export type AgentSummaryFilters = {
 	query?: string;
@@ -243,6 +246,41 @@ export class AgentRepository extends Repository<Agent> {
 		const result = await this.update(
 			{ id, setupCompletedAt: IsNull() },
 			{ setupCompletedAt: completedAt },
+		);
+
+		return (result.affected ?? 0) > 0;
+	}
+
+	/**
+	 * Reads just the columns an integration mutation needs to compute its next
+	 * state, so the write is derived from the current row rather than from a
+	 * request-scoped entity that may have gone stale.
+	 */
+	async findIntegrationState(id: string): Promise<AgentIntegrationState | null> {
+		return await this.findOne({
+			select: ['integrations', 'versionId', 'activeVersionId'],
+			where: { id },
+		});
+	}
+
+	/**
+	 * Compare-and-set the two columns an integration mutation owns.
+	 *
+	 * Writing only `integrations` and `versionId` means a channel change can
+	 * never revert a concurrent publish or config write. Guarding on the
+	 * `versionId` that was read makes a lost update visible to the caller —
+	 * which can safely re-read and reapply, because its input is a delta rather
+	 * than a whole array. Returns false when another writer got there first.
+	 */
+	async updateIntegrations(
+		id: string,
+		integrations: AgentIntegrationConfig[],
+		expectedVersionId: string | null,
+		versionId: string | null,
+	): Promise<boolean> {
+		const result = await this.update(
+			{ id, versionId: expectedVersionId ?? IsNull() },
+			{ integrations, versionId },
 		);
 
 		return (result.affected ?? 0) > 0;

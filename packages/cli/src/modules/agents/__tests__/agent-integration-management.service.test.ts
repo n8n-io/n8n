@@ -1,8 +1,11 @@
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests intentionally reference unbound methods */
 import type { AgentIntegrationConfig } from '@n8n/api-types';
+import type { Logger } from '@n8n/backend-common';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { AgentIntegrationManagementService } from '../agent-integration-management.service';
 import type { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
@@ -19,30 +22,45 @@ describe('AgentIntegrationManagementService', () => {
 		type: 'slack',
 		credentialId: 'credential-1',
 	} satisfies AgentIntegrationConfig;
-	const agent = {
-		id: 'agent-1',
-		projectId: 'project-1',
-		activeVersionId: 'version-1',
-		integrations: [],
-	} as unknown as Agent;
+	const replaced = { type: 'slack', credentialId: 'credential-0' } satisfies AgentIntegrationConfig;
+
+	function makeAgent(overrides: Partial<Agent> = {}): Agent {
+		return {
+			id: 'agent-1',
+			projectId: 'project-1',
+			activeVersionId: 'version-1',
+			integrations: [],
+			...overrides,
+		} as Agent;
+	}
 
 	function makeService() {
 		const persistenceService = mock<AgentIntegrationPersistenceService>();
 		const credentialsService = mock<CredentialsService>();
 		const chatService = mock<ChatIntegrationService>();
 		const registry = mock<ChatIntegrationRegistry>();
+		const logger = mock<Logger>();
 		const implementation = mock<AgentChatIntegration>({
 			type: 'slack',
 			displayLabel: 'Slack',
 			credentialTypes: ['slackApi'],
 		});
 		registry.require.mockReturnValue(implementation);
+		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+			{ id: integration.credentialId, type: 'slackApi' },
+		] as never);
+		persistenceService.applyIntegrationDelta.mockImplementation(async (agent) => ({
+			agent,
+			changed: true,
+		}));
+
 		return {
 			service: new AgentIntegrationManagementService(
 				persistenceService,
 				credentialsService,
 				chatService,
 				registry,
+				logger,
 			),
 			persistenceService,
 			credentialsService,
@@ -51,99 +69,263 @@ describe('AgentIntegrationManagementService', () => {
 		};
 	}
 
-	it('persists, connects, and broadcasts for a published integration', async () => {
-		const { service, persistenceService, credentialsService, chatService, implementation } =
-			makeService();
-		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
-			{ id: integration.credentialId, type: 'slackApi' },
-		] as never);
-		persistenceService.saveCredentialIntegration.mockResolvedValue(agent);
+	/** First call order of a mock, for asserting one step ran before another. */
+	function order(fn: { mock: { invocationCallOrder: number[] } }): number {
+		const [first] = fn.mock.invocationCallOrder;
+		expect(first).toBeDefined();
+		return first;
+	}
 
-		await service.connect({ agent, user: user as never, integration });
+	describe('adding a channel', () => {
+		it('brings the connection up before the durable write, then broadcasts it', async () => {
+			const { service, persistenceService, chatService, implementation } = makeService();
+			const agent = makeAgent();
 
-		expect(implementation.validateConfig).toHaveBeenCalledWith(integration);
-		expect(chatService.validateBeforeConnect).toHaveBeenCalledWith(
-			agent.id,
-			integration,
-			agent.projectId,
-		);
-		expect(persistenceService.saveCredentialIntegration).toHaveBeenCalledWith(agent, integration, {
-			user,
-			modifiedBy: 'user',
-			broadcast: false,
-		});
-		expect(chatService.connect).toHaveBeenCalledWith(agent.id, integration, agent.projectId);
-		expect(chatService.broadcastIntegrationChange).toHaveBeenCalledWith(
-			agent.id,
-			integration,
-			'connect',
-		);
-	});
+			await service.connect({ agent, user: user as never, integration });
 
-	it('persists but does not initialize an unpublished integration', async () => {
-		const { service, persistenceService, credentialsService, chatService } = makeService();
-		const draftAgent = { ...agent, activeVersionId: null };
-		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
-			{ id: integration.credentialId, type: 'slackApi' },
-		] as never);
-		persistenceService.saveCredentialIntegration.mockResolvedValue(draftAgent);
-
-		await service.connect({ agent: draftAgent, user: user as never, integration });
-
-		expect(persistenceService.saveCredentialIntegration).toHaveBeenCalledWith(
-			draftAgent,
-			integration,
-			{ user, modifiedBy: 'user', broadcast: false },
-		);
-		expect(chatService.validateBeforeConnect).toHaveBeenCalledWith(
-			draftAgent.id,
-			integration,
-			draftAgent.projectId,
-		);
-		expect(chatService.connect).not.toHaveBeenCalled();
-		expect(chatService.broadcastIntegrationChange).not.toHaveBeenCalled();
-	});
-
-	it('does not broadcast when live connection fails', async () => {
-		const { service, persistenceService, credentialsService, chatService } = makeService();
-		const connectionError = new Error('Slack connect failed');
-		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
-			{ id: integration.credentialId, type: 'slackApi' },
-		] as never);
-		persistenceService.saveCredentialIntegration.mockResolvedValue(agent);
-		chatService.connect.mockRejectedValue(connectionError);
-
-		await expect(service.connect({ agent, user: user as never, integration })).rejects.toBe(
-			connectionError,
-		);
-
-		expect(persistenceService.saveCredentialIntegration).toHaveBeenCalled();
-		expect(chatService.connect).toHaveBeenCalled();
-		expect(chatService.broadcastIntegrationChange).not.toHaveBeenCalled();
-	});
-
-	it('disconnects the runtime channel before removing persistence', async () => {
-		const { service, persistenceService, chatService } = makeService();
-		const connectedAgent = { ...agent, integrations: [integration] } as Agent;
-		persistenceService.removeCredentialIntegration.mockResolvedValue({
-			...connectedAgent,
-			integrations: [],
+			expect(implementation.validateConfig).toHaveBeenCalledWith(integration);
+			expect(chatService.connect).toHaveBeenCalledWith(agent.id, integration, agent.projectId);
+			expect(persistenceService.applyIntegrationDelta).toHaveBeenCalledWith(
+				agent,
+				{ add: integration },
+				{ user, modifiedBy: 'user' },
+			);
+			expect(order(chatService.connect)).toBeLessThan(
+				order(persistenceService.applyIntegrationDelta),
+			);
+			expect(chatService.broadcastIntegrationChange).toHaveBeenCalledWith(
+				agent.id,
+				integration,
+				'connect',
+			);
+			expect(order(persistenceService.applyIntegrationDelta)).toBeLessThan(
+				order(chatService.broadcastIntegrationChange),
+			);
 		});
 
-		await service.disconnect({
-			agent: connectedAgent,
-			user: user as never,
-			type: integration.type,
-			credentialId: integration.credentialId,
-			modifiedBy: 'mcp',
+		it('persists nothing when the connection fails to start', async () => {
+			const { service, persistenceService, chatService } = makeService();
+			const startupError = new Error('Slack connect failed');
+			chatService.connect.mockRejectedValue(startupError);
+
+			await expect(
+				service.connect({ agent: makeAgent(), user: user as never, integration }),
+			).rejects.toBe(startupError);
+
+			expect(persistenceService.applyIntegrationDelta).not.toHaveBeenCalled();
+			expect(chatService.broadcastIntegrationChange).not.toHaveBeenCalled();
 		});
 
-		expect(chatService.disconnectChannel).toHaveBeenCalledWith(agent.id, integration);
-		expect(persistenceService.removeCredentialIntegration).toHaveBeenCalledWith(
-			connectedAgent,
-			integration.type,
-			integration.credentialId,
-			{ user, modifiedBy: 'mcp', broadcast: false },
-		);
+		it('releases the new connection when the durable write fails', async () => {
+			const { service, persistenceService, chatService } = makeService();
+			const writeError = new Error('write failed');
+			persistenceService.applyIntegrationDelta.mockRejectedValue(writeError);
+			const agent = makeAgent();
+
+			await expect(service.connect({ agent, user: user as never, integration })).rejects.toBe(
+				writeError,
+			);
+
+			expect(chatService.connect).toHaveBeenCalled();
+			expect(chatService.disconnectChannel).toHaveBeenCalledWith(agent.id, integration);
+			expect(chatService.broadcastIntegrationChange).not.toHaveBeenCalled();
+		});
+
+		it('persists an unpublished agent without starting a runtime', async () => {
+			const { service, persistenceService, chatService } = makeService();
+			const agent = makeAgent({ activeVersionId: null });
+
+			await service.connect({ agent, user: user as never, integration });
+
+			expect(chatService.validateBeforeConnect).toHaveBeenCalledWith(
+				agent.id,
+				integration,
+				agent.projectId,
+			);
+			expect(chatService.connect).not.toHaveBeenCalled();
+			expect(chatService.broadcastIntegrationChange).not.toHaveBeenCalled();
+			expect(persistenceService.applyIntegrationDelta).toHaveBeenCalledWith(
+				agent,
+				{ add: integration },
+				{ user, modifiedBy: 'user' },
+			);
+		});
+
+		it('persists nothing when the unpublished pre-connect check rejects', async () => {
+			const { service, persistenceService, chatService } = makeService();
+			const conflict = new Error('credential already in use');
+			chatService.validateBeforeConnect.mockRejectedValue(conflict);
+
+			await expect(
+				service.connect({
+					agent: makeAgent({ activeVersionId: null }),
+					user: user as never,
+					integration,
+				}),
+			).rejects.toBe(conflict);
+
+			expect(persistenceService.applyIntegrationDelta).not.toHaveBeenCalled();
+		});
+
+		it('rejects a credential the user cannot use', async () => {
+			const { service, persistenceService, credentialsService, chatService } = makeService();
+			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([]);
+
+			await expect(
+				service.connect({ agent: makeAgent(), user: user as never, integration }),
+			).rejects.toThrow(NotFoundError);
+
+			expect(chatService.connect).not.toHaveBeenCalled();
+			expect(persistenceService.applyIntegrationDelta).not.toHaveBeenCalled();
+		});
+
+		it('rejects a credential of the wrong type for the platform', async () => {
+			const { service, persistenceService, credentialsService, chatService } = makeService();
+			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+				{ id: integration.credentialId, type: 'telegramApi' },
+			] as never);
+
+			await expect(
+				service.connect({ agent: makeAgent(), user: user as never, integration }),
+			).rejects.toThrow(BadRequestError);
+
+			expect(chatService.connect).not.toHaveBeenCalled();
+			expect(persistenceService.applyIntegrationDelta).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('removing a channel', () => {
+		it('removes persistence before tearing down the runtime channel', async () => {
+			const { service, persistenceService, chatService } = makeService();
+			const agent = makeAgent({ integrations: [integration] });
+			persistenceService.applyIntegrationDelta.mockResolvedValue({
+				agent,
+				changed: true,
+				removed: integration,
+			});
+
+			await service.disconnect({
+				agent,
+				user: user as never,
+				type: integration.type,
+				credentialId: integration.credentialId,
+				modifiedBy: 'mcp',
+			});
+
+			expect(persistenceService.applyIntegrationDelta).toHaveBeenCalledWith(
+				agent,
+				{ remove: { type: integration.type, credentialId: integration.credentialId } },
+				{ user, modifiedBy: 'mcp' },
+			);
+			expect(chatService.disconnectChannel).toHaveBeenCalledWith(agent.id, integration);
+			expect(order(persistenceService.applyIntegrationDelta)).toBeLessThan(
+				order(chatService.disconnectChannel),
+			);
+		});
+
+		it('leaves the channel live when the durable removal fails', async () => {
+			const { service, persistenceService, chatService } = makeService();
+			const removalError = new Error('write failed');
+			persistenceService.applyIntegrationDelta.mockRejectedValue(removalError);
+
+			await expect(
+				service.disconnect({
+					agent: makeAgent({ integrations: [integration] }),
+					user: user as never,
+					type: integration.type,
+					credentialId: integration.credentialId,
+				}),
+			).rejects.toBe(removalError);
+
+			expect(chatService.disconnectChannel).not.toHaveBeenCalled();
+			expect(chatService.disconnect).not.toHaveBeenCalled();
+		});
+
+		it('clears a stray runtime connection when nothing was persisted under that reference', async () => {
+			const { service, persistenceService, chatService } = makeService();
+			const agent = makeAgent();
+			persistenceService.applyIntegrationDelta.mockResolvedValue({ agent, changed: false });
+
+			await service.disconnect({
+				agent,
+				user: user as never,
+				type: 'slack',
+				credentialId: '',
+			});
+
+			expect(chatService.disconnectChannel).not.toHaveBeenCalled();
+			expect(chatService.disconnect).toHaveBeenCalledWith(agent.id, {
+				type: 'slack',
+				credentialId: '',
+			});
+		});
+	});
+
+	describe('replacing a channel', () => {
+		it('starts the new channel, swaps in one write, then releases the old one', async () => {
+			const { service, persistenceService, chatService } = makeService();
+			const agent = makeAgent({ integrations: [replaced] });
+			persistenceService.applyIntegrationDelta.mockResolvedValue({
+				agent,
+				changed: true,
+				removed: replaced,
+			});
+
+			await service.connect({
+				agent,
+				user: user as never,
+				integration,
+				replaces: { type: replaced.type, credentialId: replaced.credentialId },
+			});
+
+			expect(persistenceService.applyIntegrationDelta).toHaveBeenCalledWith(
+				agent,
+				{ add: integration, remove: { type: 'slack', credentialId: replaced.credentialId } },
+				{ user, modifiedBy: 'user' },
+			);
+			expect(order(chatService.connect)).toBeLessThan(
+				order(persistenceService.applyIntegrationDelta),
+			);
+			expect(chatService.disconnectChannel).toHaveBeenCalledWith(agent.id, replaced);
+			expect(order(persistenceService.applyIntegrationDelta)).toBeLessThan(
+				order(chatService.disconnectChannel),
+			);
+		});
+
+		it('keeps the old channel live and persisted when the new one fails to start', async () => {
+			const { service, persistenceService, chatService } = makeService();
+			chatService.connect.mockRejectedValue(new Error('Slack connect failed'));
+
+			await expect(
+				service.connect({
+					agent: makeAgent({ integrations: [replaced] }),
+					user: user as never,
+					integration,
+					replaces: { type: replaced.type, credentialId: replaced.credentialId },
+				}),
+			).rejects.toThrow('Slack connect failed');
+
+			expect(persistenceService.applyIntegrationDelta).not.toHaveBeenCalled();
+			expect(chatService.disconnectChannel).not.toHaveBeenCalled();
+		});
+
+		it('keeps the old channel live when the swap fails to persist', async () => {
+			const { service, persistenceService, chatService } = makeService();
+			persistenceService.applyIntegrationDelta.mockRejectedValue(new Error('write failed'));
+			const agent = makeAgent({ integrations: [replaced] });
+
+			await expect(
+				service.connect({
+					agent,
+					user: user as never,
+					integration,
+					replaces: { type: replaced.type, credentialId: replaced.credentialId },
+				}),
+			).rejects.toThrow('write failed');
+
+			// Only the connection we just brought up is released; the old one stays.
+			expect(chatService.disconnectChannel).toHaveBeenCalledTimes(1);
+			expect(chatService.disconnectChannel).toHaveBeenCalledWith(agent.id, integration);
+		});
 	});
 });

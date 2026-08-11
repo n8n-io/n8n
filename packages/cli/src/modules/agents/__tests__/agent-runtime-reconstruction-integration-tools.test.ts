@@ -58,7 +58,6 @@ import type { AgentHistory } from '../entities/agent-history.entity';
 import type { AgentTaskSnapshot } from '../entities/agent-task-snapshot.entity';
 import type { Agent } from '../entities/agent.entity';
 import { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
-import type { ChatIntegrationService } from '../integrations/chat-integration.service';
 import { ChatIntegrationActionExecutor } from '../integrations/integration-action-executor';
 import { ChatIntegrationContextQueryExecutor } from '../integrations/integration-context-query-executor';
 import { IntegrationMessageContextService } from '../integrations/integration-message-context.service';
@@ -191,7 +190,6 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 	let memoryBackend: Mocked<N8nMemoryImplementation>;
 	let n8nCheckpointStorage: Mocked<N8NCheckpointStorage>;
 	let agentExecutionService: Mocked<AgentExecutionService>;
-	let chatIntegrationService: Mocked<ChatIntegrationService>;
 	let agentKnowledgeService: Mocked<AgentKnowledgeService>;
 	let publisher: Mocked<Publisher>;
 	let globalConfig: Mocked<GlobalConfig>;
@@ -220,7 +218,6 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 		n8nMemory.getImplementation.mockReturnValue(memoryBackend);
 		n8nCheckpointStorage = mock<N8NCheckpointStorage>();
 		agentExecutionService = mock<AgentExecutionService>();
-		chatIntegrationService = mock<ChatIntegrationService>();
 		agentKnowledgeService = mock<AgentKnowledgeService>();
 		publisher = mock<Publisher>();
 		publisher.publishCommand.mockResolvedValue();
@@ -278,7 +275,6 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 		);
 		agentIntegrationPersistenceService = new AgentIntegrationPersistenceService(
 			agentRepository,
-			chatIntegrationService,
 			runtimeCacheService,
 			chatIntegrationRegistry,
 			mock<EventService>(),
