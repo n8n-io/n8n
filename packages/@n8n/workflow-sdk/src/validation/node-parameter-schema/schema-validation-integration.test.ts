@@ -679,3 +679,33 @@ describe('Union discriminator error messages (Salesforce)', () => {
 		expect(message).toContain('"upsert"');
 	});
 });
+
+describe('Union discriminator error messages scoped to the selected resource', () => {
+	beforeAll(setupTestSchemas, 120_000);
+	afterAll(teardownTestSchemas);
+
+	it('omits operations belonging to other resources', () => {
+		requireSchema('n8n-nodes-base.salesforce', 1);
+
+		const result = validateNodeConfig('n8n-nodes-base.salesforce', 1, {
+			parameters: { resource: 'lead', operation: 'bogus' },
+		});
+
+		const message = result.errors.map((e) => e.message).join('\n');
+		// "invoke" belongs to flow, "query" to search, "addComment" to case
+		expect(message).not.toContain('"invoke"');
+		expect(message).not.toContain('"query"');
+		expect(message).not.toContain('"addComment"');
+	});
+
+	it('lists only the single valid operation for a one-operation resource', () => {
+		requireSchema('n8n-nodes-base.salesforce', 1);
+
+		const result = validateNodeConfig('n8n-nodes-base.salesforce', 1, {
+			parameters: { resource: 'search', operation: 'bogus' },
+		});
+
+		const message = result.errors.map((e) => e.message).join('\n');
+		expect(message).toContain('expected one of: "query".');
+	});
+});
