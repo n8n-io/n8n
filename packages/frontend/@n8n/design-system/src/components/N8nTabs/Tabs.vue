@@ -4,9 +4,9 @@ import { RouterLink } from 'vue-router';
 
 import type { TabOptions } from '../../types';
 import N8nIcon from '../N8nIcon';
+import type { TabsProps } from './Tabs.types';
 import Tag from '../N8nTag/Tag.vue';
 import N8nTooltip from '../N8nTooltip';
-import type { TabsProps } from './Tabs.types';
 import PreviewTag from '../PreviewTag/PreviewTag.vue';
 
 const props = withDefaults(defineProps<TabsProps<Value>>(), {
