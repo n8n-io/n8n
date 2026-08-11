@@ -1,4 +1,4 @@
-import { computed, defineComponent, h, provide } from 'vue';
+import { computed, defineComponent, h, nextTick, provide } from 'vue';
 import { mount } from '@vue/test-utils';
 import { useUIStore } from '@/app/stores/ui.store';
 import { AutoSaveState, DEBOUNCE_TIME, MODAL_CANCEL, MODAL_CONFIRM, VIEWS } from '@/app/constants';
@@ -1470,6 +1470,36 @@ describe('useWorkflowSaving', () => {
 			await flushAutoSave();
 
 			expect(updateSpy).toHaveBeenCalled();
+		});
+
+		it('does not re-arm a dirty preview when the connection comes back', async () => {
+			// The reconnect watcher lives inside this composable, so it is the one
+			// autosave entry point a view-level guard cannot cover.
+			const saveStore = useWorkflowSaveStore();
+
+			backendConnectionStore.setOnline(false);
+			mountPreview('template-11754', true);
+			useUIStore().markStateDirty();
+
+			backendConnectionStore.setOnline(true);
+			await nextTick();
+
+			expect(saveStore.autoSaveState).toBe(AutoSaveState.Idle);
+		});
+
+		it('re-arms a dirty canvas when the host lifts read-only', async () => {
+			// Instance AI locks the canvas while its agent edits and then releases
+			// it; without this the agent's changes would sit unsaved.
+			const saveStore = useWorkflowSaveStore();
+
+			const wrapper = mount(PreviewHostStub, {
+				props: { workflowId: 'w-rearm', readOnly: true },
+			});
+			useUIStore().markStateDirty();
+
+			await wrapper.setProps({ readOnly: false });
+
+			expect(saveStore.autoSaveState).toBe(AutoSaveState.Scheduled);
 		});
 	});
 });

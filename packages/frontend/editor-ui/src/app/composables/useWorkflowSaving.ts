@@ -1,7 +1,8 @@
 import { useNpsSurveyStore } from '@/app/stores/npsSurvey.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import type { LocationQuery, NavigationGuardNext, useRouter } from 'vue-router';
-import { watch } from 'vue';
+import { computed, hasInjectionContext, inject, watch } from 'vue';
+import { EditorEnabledFeaturesKey } from '@/app/constants/injectionKeys';
 import { useMessage } from './useMessage';
 import { useI18n } from '@n8n/i18n';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
@@ -69,6 +70,14 @@ export function useWorkflowSaving({
 	const settingsStore = useSettingsStore();
 	const workflowId = useWorkflowId();
 	const { removeInvalidNodeGroups } = useInvalidNodeGroupCleanup();
+
+	// Preview hosts scope their subtree read-only through the editor context. This
+	// composable is instantiated out-of-tree too (Pinia stores, push handlers),
+	// where `inject()` is unavailable — guard it the way `useWorkflowId` does.
+	const editorEnabledFeatures = hasInjectionContext()
+		? inject(EditorEnabledFeaturesKey, null)
+		: null;
+	const isReadOnlyCanvas = computed(() => editorEnabledFeatures?.value?.readOnly === true);
 
 	async function promptSaveUnsavedWorkflowChanges(
 		next: NavigationGuardNext,
@@ -603,6 +612,12 @@ export function useWorkflowSaving({
 	);
 
 	const scheduleAutoSave = () => {
+		// Don't schedule on a read-only canvas. Every autosave entry point funnels
+		// through here, so previews never write whatever marked them dirty.
+		if (isReadOnlyCanvas.value) {
+			return;
+		}
+
 		// Don't schedule if autosave is disabled via environment variable
 		if (!settingsStore.isAutosaveEnabled) {
 			return;
@@ -634,6 +649,15 @@ export function useWorkflowSaving({
 		}
 		saveStore.setAutoSaveState(AutoSaveState.Idle);
 	};
+
+	// Re-arm when a host lifts read-only with changes still pending — the Instance
+	// AI preview locks the canvas while its agent edits, and nothing else would
+	// save what the agent wrote. Mirrors the AI-builder re-arm in NodeView.
+	watch(isReadOnlyCanvas, (isReadOnly, wasReadOnly) => {
+		if (wasReadOnly && !isReadOnly && uiStore.stateIsDirty) {
+			scheduleAutoSave();
+		}
+	});
 
 	// Watch for network coming back online
 	watch(
