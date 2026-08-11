@@ -1,9 +1,9 @@
 import { Time } from '@n8n/constants';
 
+import { applyMisfirePolicy } from './misfire';
 import { occurrencesFrom } from '../recurrence/next-run';
 import { resolveSchedule } from '../recurrence/resolve';
 import type { ScheduledJob } from '../types';
-import { applyMisfirePolicy } from './misfire';
 
 /**
  * What a due job expands into for one materialization pass.
