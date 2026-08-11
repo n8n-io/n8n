@@ -19,6 +19,13 @@ export interface DuplicateGroup {
  * Deliberately-tolerated duplicates (migration window). Each entry MUST document why it is
  * tolerated and what removes it; remove an entry once remediated so a regression re-fails.
  * Empty means every curated library must resolve to a single physical copy.
+ *
+ * Kept empty on purpose while the npm-install job is advisory. That job currently reports splits
+ * in `zod`, `@langchain/core` and `form-data`, all caused by third-party version pins we cannot
+ * override from a published tarball. Silencing them here is not the fix: entries are keyed by
+ * library name alone, so allowlisting `zod` would also stop the check ever failing on a zod split
+ * of our own making — the regression it exists to catch. Teaching the allowlist about the copies
+ * an entry covers is the prerequisite for both allowlisting these and making the job blocking.
  */
 export const EXPECTED_DUPLICATES: Record<string, string> = {};
 
