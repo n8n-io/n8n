@@ -55,6 +55,7 @@ import {
 	getReferencedWorkflowIds,
 	isTriggerNodeType,
 	preserveExistingNodeGroupIds,
+	preserveExistingNodeIds,
 	preserveExistingSetupValues,
 } from './workflow-json-utils';
 import { compileWorkflowSource } from './workflow-source-compiler';
@@ -786,6 +787,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 
 			try {
 				await preserveExistingSetupValues(json, targetWorkflowId, context);
+				await preserveExistingNodeIds(json, targetWorkflowId, context);
 				await ensureWebhookIds(json, targetWorkflowId, context);
 				await preserveExistingNodeGroupIds(json, targetWorkflowId, context);
 				await preserveExistingNodePositions(json, targetWorkflowId, context);

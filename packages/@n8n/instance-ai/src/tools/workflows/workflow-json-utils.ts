@@ -165,6 +165,61 @@ export async function ensureWebhookIds(
 }
 
 /**
+ * For updates, preserve each surviving node's ID by node name.
+ *
+ * The sandbox SDK build has no view of the saved workflow, so every `node(...)`
+ * instance mints a fresh random UUID and `toJSON()` emits it — so an update that
+ * touches one node re-IDs the whole graph. Anything that pairs a stored snapshot
+ * with the live workflow by node ID then treats every node as gone: the logs
+ * panel struck through every name after an agent edit (INS-970, INS-1120).
+ * Reconciling by name here keeps IDs stable, mirroring ensureWebhookIds.
+ */
+export async function preserveExistingNodeIds(
+	json: WorkflowJSON,
+	workflowId: string | undefined,
+	ctx: InstanceAiContext,
+): Promise<void> {
+	if (!workflowId || !json.nodes?.length) return;
+
+	let existing: WorkflowJSON;
+	try {
+		existing = await ctx.workflowService.getAsWorkflowJSON(workflowId);
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error);
+		throw new Error(
+			`Failed to load existing workflow ${workflowId} to preserve node IDs: ${message}`,
+			{ cause: error },
+		);
+	}
+
+	const savedIdsByName = new Map<string, string>();
+	for (const node of existing.nodes ?? []) {
+		if (node.name && node.id) savedIdsByName.set(node.name, node.id);
+	}
+	if (savedIdsByName.size === 0) return;
+
+	// A rebuilt node may already carry an ID this pass wants to hand to a
+	// different node (e.g. the build renamed a node, so the saved name now
+	// belongs to a new one). Claiming those up front keeps IDs unique.
+	const claimedIds = new Set(json.nodes.map((node) => node.id).filter(Boolean));
+	const remappedIds = new Map<string, string>();
+
+	for (const node of json.nodes) {
+		const savedId = node.name ? savedIdsByName.get(node.name) : undefined;
+		if (!savedId || savedId === node.id || claimedIds.has(savedId)) continue;
+
+		claimedIds.delete(node.id);
+		claimedIds.add(savedId);
+		remappedIds.set(node.id, savedId);
+		node.id = savedId;
+	}
+
+	for (const group of json.nodeGroups ?? []) {
+		group.nodeIds = group.nodeIds.map((nodeId) => remappedIds.get(nodeId) ?? nodeId);
+	}
+}
+
+/**
  * For updates, preserve existing node-group IDs by group name. The sandbox SDK
  * build has no view of the saved workflow, so toJSON() mints a fresh deterministic
  * ID for every group — overwriting the stable ID of a group the user created in

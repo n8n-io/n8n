@@ -8,6 +8,7 @@ import {
 	isWaitGateNode,
 	nodeCanReachItself,
 	preserveExistingNodeGroupIds,
+	preserveExistingNodeIds,
 	preserveExistingSetupValues,
 } from '../workflow-json-utils';
 
@@ -63,6 +64,139 @@ describe('ensureWebhookIds', () => {
 			'Failed to load existing workflow wf-1 to preserve webhook IDs: Workflow not found',
 		);
 		expect(workflow.nodes[0]?.webhookId).toBeUndefined();
+	});
+});
+
+describe('preserveExistingNodeIds', () => {
+	const node = (id: string, name: string): WorkflowJSON['nodes'][number] => ({
+		id,
+		name,
+		type: 'n8n-nodes-base.set',
+		typeVersion: 3.4,
+		position: [0, 0],
+		parameters: {},
+	});
+
+	const contextWithExisting = (existing: WorkflowJSON) =>
+		({
+			workflowService: { getAsWorkflowJSON: vi.fn().mockResolvedValue(existing) },
+		}) as unknown as InstanceAiContext;
+
+	it('reuses the saved node id when the node name matches', async () => {
+		const workflow: WorkflowJSON = {
+			name: 'Workflow',
+			nodes: [node('rebuilt-a', 'Get Cursor'), node('rebuilt-b', 'Compute Window')],
+			connections: {},
+		};
+
+		await preserveExistingNodeIds(
+			workflow,
+			'wf-1',
+			contextWithExisting({
+				name: 'Workflow',
+				nodes: [node('saved-a', 'Get Cursor'), node('saved-b', 'Compute Window')],
+				connections: {},
+			}),
+		);
+
+		expect(workflow.nodes.map((n) => n.id)).toEqual(['saved-a', 'saved-b']);
+	});
+
+	it('keeps the generated id for a node that is not in the saved workflow', async () => {
+		const workflow: WorkflowJSON = {
+			name: 'Workflow',
+			nodes: [node('rebuilt-a', 'Get Cursor'), node('rebuilt-new', 'Log Pull')],
+			connections: {},
+		};
+
+		await preserveExistingNodeIds(
+			workflow,
+			'wf-1',
+			contextWithExisting({
+				name: 'Workflow',
+				nodes: [node('saved-a', 'Get Cursor')],
+				connections: {},
+			}),
+		);
+
+		expect(workflow.nodes.map((n) => n.id)).toEqual(['saved-a', 'rebuilt-new']);
+	});
+
+	it('remaps node-group membership to the preserved ids', async () => {
+		const workflow: WorkflowJSON = {
+			name: 'Workflow',
+			nodes: [node('rebuilt-a', 'Get Cursor'), node('rebuilt-new', 'Log Pull')],
+			connections: {},
+			nodeGroups: [{ id: 'group-1', name: 'Ingestion', nodeIds: ['rebuilt-a', 'rebuilt-new'] }],
+		};
+
+		await preserveExistingNodeIds(
+			workflow,
+			'wf-1',
+			contextWithExisting({
+				name: 'Workflow',
+				nodes: [node('saved-a', 'Get Cursor')],
+				connections: {},
+			}),
+		);
+
+		expect(workflow.nodeGroups?.[0]?.nodeIds).toEqual(['saved-a', 'rebuilt-new']);
+	});
+
+	it('does not reuse a saved id that another rebuilt node already carries', async () => {
+		// The build kept "Get Cursor" but renamed "Log Pull" to a name the saved
+		// workflow used for a different node — reusing that id blindly would emit
+		// two nodes with the same id.
+		const workflow: WorkflowJSON = {
+			name: 'Workflow',
+			nodes: [node('saved-a', 'Log Pull'), node('rebuilt-b', 'Get Cursor')],
+			connections: {},
+		};
+
+		await preserveExistingNodeIds(
+			workflow,
+			'wf-1',
+			contextWithExisting({
+				name: 'Workflow',
+				nodes: [node('saved-a', 'Get Cursor')],
+				connections: {},
+			}),
+		);
+
+		expect(new Set(workflow.nodes.map((n) => n.id)).size).toBe(2);
+		expect(workflow.nodes.map((n) => n.name)).toEqual(['Log Pull', 'Get Cursor']);
+	});
+
+	it('does not fetch or modify ids for new workflows (no workflowId)', async () => {
+		const workflow: WorkflowJSON = {
+			name: 'Workflow',
+			nodes: [node('rebuilt-a', 'Get Cursor')],
+			connections: {},
+		};
+		const getAsWorkflowJSON = vi.fn();
+		const context = { workflowService: { getAsWorkflowJSON } } as unknown as InstanceAiContext;
+
+		await preserveExistingNodeIds(workflow, undefined, context);
+
+		expect(getAsWorkflowJSON).not.toHaveBeenCalled();
+		expect(workflow.nodes[0]?.id).toBe('rebuilt-a');
+	});
+
+	it('fails updates when the existing workflow cannot be loaded', async () => {
+		const workflow: WorkflowJSON = {
+			name: 'Workflow',
+			nodes: [node('rebuilt-a', 'Get Cursor')],
+			connections: {},
+		};
+		const context = {
+			workflowService: {
+				getAsWorkflowJSON: vi.fn().mockRejectedValue(new Error('Workflow not found')),
+			},
+		} as unknown as InstanceAiContext;
+
+		await expect(preserveExistingNodeIds(workflow, 'wf-1', context)).rejects.toThrow(
+			'Failed to load existing workflow wf-1 to preserve node IDs: Workflow not found',
+		);
 	});
 });
 

@@ -719,6 +719,67 @@ describe('createBuildWorkflowTool', () => {
 		expect(slackNode?.parameters?.user).toMatchObject({ value: 'oleg' });
 	});
 
+	it('preserves the saved node ids of surviving nodes when updating an existing workflow', async () => {
+		// The sandbox build mints a fresh UUID per node, so without reconciliation
+		// an edit to one node re-IDs the whole graph (INS-970, INS-1120).
+		const node = (id: string, name: string) => ({
+			id,
+			name,
+			type: 'n8n-nodes-base.set',
+			typeVersion: 3.4,
+			position: [0, 0] as [number, number],
+			parameters: {},
+		});
+		vi.mocked(compileWorkflowSource).mockResolvedValueOnce({
+			success: true,
+			workflow: {
+				name: 'Slack Daily Pull',
+				nodes: [node('rebuilt-cursor', 'Get Cursor'), node('rebuilt-log', 'Log Pull')],
+				connections: {},
+			},
+			warnings: [],
+			compiler: 'sandbox-tsx',
+		});
+		const { context, filePath } = makeContext({
+			source: 'workflow source',
+			overrides: {
+				workflowService: {
+					updateFromWorkflowJSON: vi.fn(
+						async (workflowId: string) =>
+							await Promise.resolve({ id: workflowId, versionId: 'v-next' }),
+					),
+					get: vi.fn(
+						async (workflowId: string) =>
+							await Promise.resolve({
+								id: workflowId,
+								versionId: 'v-current',
+								checksum: 'checksum-current',
+							}),
+					),
+					getAsWorkflowJSON: vi.fn(
+						async () =>
+							await Promise.resolve({
+								name: 'Slack Daily Pull',
+								nodes: [node('saved-cursor', 'Get Cursor')],
+								connections: {},
+							}),
+					),
+					clearAiTemporary: vi.fn(async () => await Promise.resolve()),
+				} as unknown as InstanceAiContext['workflowService'],
+			},
+		});
+
+		await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+			filePath,
+			workflowId: 'wf-existing',
+		});
+
+		const savedWorkflow = vi.mocked(context.workflowService.updateFromWorkflowJSON).mock
+			.calls[0]?.[1];
+		expect(savedWorkflow?.nodes.find((n) => n.name === 'Get Cursor')?.id).toBe('saved-cursor');
+		expect(savedWorkflow?.nodes.find((n) => n.name === 'Log Pull')?.id).toBe('rebuilt-log');
+	});
+
 	it('updates an existing workflow from a WorkflowJSON workspace source file', async () => {
 		const workflowJson = {
 			id: 'wf-existing',
