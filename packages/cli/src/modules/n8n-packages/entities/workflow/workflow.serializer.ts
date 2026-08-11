@@ -6,39 +6,36 @@ import {
 	serializedWorkflowSchema,
 	type SerializedWorkflow,
 } from '../../spec/serialized/workflow.schema';
-import {
-	definePackageSerializationPayload,
-	type PackageEntityKeyHandling,
-} from '../package-serialization.types';
+import { definePackageSerializationPayload } from '../package-serialization.types';
 import { compareTagsByName } from '../tag/tag.types';
 
-const workflowPackageKeyHandling = {
-	id: 'copy',
-	createdAt: 'exclude',
-	updatedAt: 'exclude',
-	name: 'copy',
-	description: 'exclude',
-	active: 'exclude',
-	isArchived: 'copy',
-	nodes: 'copy',
-	connections: 'copy',
-	settings: 'copy',
-	staticData: 'exclude',
-	meta: 'exclude',
-	nodeGroups: 'exclude',
-	tags: 'transform',
-	tagMappings: 'exclude',
-	shared: 'exclude',
-	pinData: 'exclude',
-	versionId: 'copy',
-	activeVersionId: 'transform',
-	activeVersion: 'exclude',
-	versionCounter: 'exclude',
-	triggerCount: 'exclude',
-	parentFolder: 'transform',
-	testRuns: 'exclude',
-	sourceWorkflowId: 'exclude',
-} as const satisfies PackageEntityKeyHandling<WorkflowEntity>;
+type WorkflowPackageKeyHandling = {
+	id: 'copy';
+	createdAt: 'exclude';
+	updatedAt: 'exclude';
+	name: 'copy';
+	description: 'exclude';
+	active: 'exclude';
+	isArchived: 'copy';
+	nodes: 'copy';
+	connections: 'copy';
+	settings: 'copy';
+	staticData: 'exclude';
+	meta: 'exclude';
+	nodeGroups: 'exclude';
+	tags: 'transform';
+	tagMappings: 'exclude';
+	shared: 'exclude';
+	pinData: 'exclude';
+	versionId: 'copy';
+	activeVersionId: 'transform';
+	activeVersion: 'exclude';
+	versionCounter: 'exclude';
+	triggerCount: 'exclude';
+	parentFolder: 'transform';
+	testRuns: 'exclude';
+	sourceWorkflowId: 'exclude';
+};
 
 type WorkflowPackageContent = Pick<
 	WorkflowEntity,
@@ -48,7 +45,7 @@ type WorkflowPackageContent = Pick<
 const serializePayload = definePackageSerializationPayload<
 	WorkflowEntity,
 	SerializedWorkflow,
-	typeof workflowPackageKeyHandling
+	WorkflowPackageKeyHandling
 >();
 
 @Service()

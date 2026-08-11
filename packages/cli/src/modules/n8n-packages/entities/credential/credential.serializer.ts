@@ -5,31 +5,28 @@ import {
 	serializedCredentialSchema,
 	type SerializedCredential,
 } from '../../spec/serialized/credential.schema';
-import {
-	definePackageSerializationPayload,
-	type PackageEntityKeyHandling,
-} from '../package-serialization.types';
+import { definePackageSerializationPayload } from '../package-serialization.types';
 
-const credentialPackageKeyHandling = {
-	id: 'copy',
-	createdAt: 'exclude',
-	updatedAt: 'exclude',
-	name: 'copy',
-	data: 'exclude',
-	type: 'copy',
-	shared: 'exclude',
-	isManaged: 'exclude',
-	isGlobal: 'exclude',
-	isResolvable: 'exclude',
-	resolvableAllowFallback: 'exclude',
-	resolverId: 'exclude',
-	usageScope: 'exclude',
-} as const satisfies PackageEntityKeyHandling<CredentialsEntity>;
+type CredentialPackageKeyHandling = {
+	id: 'copy';
+	createdAt: 'exclude';
+	updatedAt: 'exclude';
+	name: 'copy';
+	data: 'exclude';
+	type: 'copy';
+	shared: 'exclude';
+	isManaged: 'exclude';
+	isGlobal: 'exclude';
+	isResolvable: 'exclude';
+	resolvableAllowFallback: 'exclude';
+	resolverId: 'exclude';
+	usageScope: 'exclude';
+};
 
 const serializePayload = definePackageSerializationPayload<
 	CredentialsEntity,
 	SerializedCredential,
-	typeof credentialPackageKeyHandling
+	CredentialPackageKeyHandling
 >();
 
 @Service()

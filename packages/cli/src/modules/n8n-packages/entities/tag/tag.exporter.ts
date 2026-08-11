@@ -6,26 +6,23 @@ import { UniqueFilenameAllocator } from '../../io/unique-filename-allocator';
 import type { ManifestEntry } from '../../spec/manifest.schema';
 import type { PackageTagRequirement } from '../../spec/requirements.schema';
 import { serializedTagSchema, type SerializedTag } from '../../spec/serialized/tag.schema';
-import {
-	definePackageSerializationPayload,
-	type PackageEntityKeyHandling,
-} from '../package-serialization.types';
+import { definePackageSerializationPayload } from '../package-serialization.types';
 import { compareTagsByName, type WorkflowTagUsage } from './tag.types';
 
-const tagPackageKeyHandling = {
-	id: 'copy',
-	createdAt: 'exclude',
-	updatedAt: 'exclude',
-	name: 'copy',
-	workflows: 'exclude',
-	workflowMappings: 'exclude',
-	folderMappings: 'exclude',
-} as const satisfies PackageEntityKeyHandling<TagEntity>;
+type TagPackageKeyHandling = {
+	id: 'copy';
+	createdAt: 'exclude';
+	updatedAt: 'exclude';
+	name: 'copy';
+	workflows: 'exclude';
+	workflowMappings: 'exclude';
+	folderMappings: 'exclude';
+};
 
 const serializePayload = definePackageSerializationPayload<
 	TagEntity,
 	SerializedTag,
-	typeof tagPackageKeyHandling
+	TagPackageKeyHandling
 >();
 
 export interface TagExportRequest {

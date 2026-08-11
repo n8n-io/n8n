@@ -5,23 +5,20 @@ import {
 	serializedVariableSchema,
 	type SerializedVariable,
 } from '../../spec/serialized/variable.schema';
-import {
-	definePackageSerializationPayload,
-	type PackageEntityKeyHandling,
-} from '../package-serialization.types';
+import { definePackageSerializationPayload } from '../package-serialization.types';
 
-const variablePackageKeyHandling = {
-	id: 'exclude',
-	key: 'transform',
-	type: 'copy',
-	value: 'copy',
-	project: 'transform',
-} as const satisfies PackageEntityKeyHandling<Variables>;
+type VariablePackageKeyHandling = {
+	id: 'exclude';
+	key: 'transform';
+	type: 'copy';
+	value: 'copy';
+	project: 'transform';
+};
 
 const serializePayload = definePackageSerializationPayload<
 	Variables,
 	SerializedVariable,
-	typeof variablePackageKeyHandling
+	VariablePackageKeyHandling
 >();
 
 @Service()

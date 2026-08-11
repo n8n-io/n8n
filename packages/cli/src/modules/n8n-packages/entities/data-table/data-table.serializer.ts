@@ -8,42 +8,39 @@ import {
 	type SerializedDataTableColumn,
 	type SerializedDataTable,
 } from '../../spec/serialized/data-table.schema';
-import {
-	definePackageSerializationPayload,
-	type PackageEntityKeyHandling,
-} from '../package-serialization.types';
+import { definePackageSerializationPayload } from '../package-serialization.types';
 
-const dataTablePackageKeyHandling = {
-	id: 'copy',
-	createdAt: 'exclude',
-	updatedAt: 'exclude',
-	name: 'copy',
-	columns: 'transform',
-	project: 'transform',
-	projectId: 'transform',
-} as const satisfies PackageEntityKeyHandling<DataTable>;
+type DataTablePackageKeyHandling = {
+	id: 'copy';
+	createdAt: 'exclude';
+	updatedAt: 'exclude';
+	name: 'copy';
+	columns: 'transform';
+	project: 'transform';
+	projectId: 'transform';
+};
 
-const dataTableColumnPackageKeyHandling = {
-	id: 'exclude',
-	createdAt: 'exclude',
-	updatedAt: 'exclude',
-	dataTableId: 'exclude',
-	name: 'copy',
-	type: 'copy',
-	index: 'copy',
-	dataTable: 'exclude',
-} as const satisfies PackageEntityKeyHandling<DataTableColumn>;
+type DataTableColumnPackageKeyHandling = {
+	id: 'exclude';
+	createdAt: 'exclude';
+	updatedAt: 'exclude';
+	dataTableId: 'exclude';
+	name: 'copy';
+	type: 'copy';
+	index: 'copy';
+	dataTable: 'exclude';
+};
 
 const serializeDataTablePayload = definePackageSerializationPayload<
 	DataTable,
 	SerializedDataTable,
-	typeof dataTablePackageKeyHandling
+	DataTablePackageKeyHandling
 >();
 
 const serializeColumnPayload = definePackageSerializationPayload<
 	DataTableColumn,
 	SerializedDataTableColumn,
-	typeof dataTableColumnPackageKeyHandling
+	DataTableColumnPackageKeyHandling
 >();
 
 @Service()
