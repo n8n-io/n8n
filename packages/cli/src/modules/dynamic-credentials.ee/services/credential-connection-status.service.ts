@@ -89,25 +89,32 @@ export class CredentialConnectionStatusService implements ICredentialConnectionS
 	 * it stays right after a "Switch account" and needs no backfill for connections
 	 * made before it was surfaced.
 	 *
-	 * Never throws: an entry encrypted under a rotated key, or one holding a token
-	 * with no identity claim at all (Gmail asks for no identity scope), is still a
-	 * valid connection — it just has no label.
+	 * Never throws — a connection we cannot label is still a connection. The two
+	 * reasons differ in severity, so they are kept apart: unreadable stored data
+	 * means the connection is broken for execution too and is worth a warning,
+	 * whereas a token carrying no identity claim is routine (Gmail asks for no
+	 * identity scope) and stays silent.
 	 */
 	private async readAccountIdentifier(
 		row: Pick<DynamicCredentialUserEntry, 'credentialId' | 'data'>,
 	): Promise<string | undefined> {
+		let stored: Record<string, unknown>;
 		try {
-			const stored = jsonParse<Record<string, unknown>>(await this.cipher.decryptV2(row.data));
-			const tokenData = stored.oauthTokenData;
-			if (!tokenData || typeof tokenData !== 'object') return undefined;
-			return extractAccountIdentifier(tokenData as Record<string, unknown>);
+			stored = jsonParse<Record<string, unknown>>(await this.cipher.decryptV2(row.data));
 		} catch (error) {
-			this.logger.debug('Could not read the account identifier of a per-user connection', {
+			// Only a failed decrypt or a corrupt payload reaches here. The resolver
+			// reads the same row the same way when the credential is used, so this
+			// connection will fail at execution — surface it rather than hide it.
+			this.logger.warn('Could not read the stored data of a per-user credential connection', {
 				credentialId: row.credentialId,
 				error,
 			});
 			return undefined;
 		}
+
+		const tokenData = stored.oauthTokenData;
+		if (!tokenData || typeof tokenData !== 'object') return undefined;
+		return extractAccountIdentifier(tokenData as Record<string, unknown>);
 	}
 
 	/**

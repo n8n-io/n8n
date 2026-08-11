@@ -91,7 +91,8 @@ describe('CredentialConnectionStatusService', () => {
 		});
 
 		it('reports a connection with no account when the token carries no identity', async () => {
-			// Gmail asks for no identity scope, so Google returns no id_token.
+			// Gmail asks for no identity scope, so Google returns no id_token. Routine,
+			// so it must stay silent rather than look like a failure.
 			repository.find.mockResolvedValueOnce([makeEntry(CRED_ID, 'user-1', 'encrypted')]);
 			cipher.decryptV2.mockResolvedValueOnce(storedToken({ access_token: 'tok' }));
 
@@ -99,9 +100,12 @@ describe('CredentialConnectionStatusService', () => {
 
 			expect(result.has(CRED_ID)).toBe(true);
 			expect(result.get(CRED_ID)?.accountIdentifier).toBeUndefined();
+			expect(logger.warn).not.toHaveBeenCalled();
 		});
 
-		it('still reports a connection when its entry cannot be decrypted', async () => {
+		it('warns but still reports a connection when its entry cannot be decrypted', async () => {
+			// Unreadable stored data breaks the credential at execution too, so it is
+			// not the same class of event as a token without an identity claim.
 			repository.find.mockResolvedValueOnce([makeEntry(CRED_ID, 'user-1', 'unreadable')]);
 			cipher.decryptV2.mockRejectedValueOnce(new Error('bad decrypt'));
 
@@ -109,6 +113,10 @@ describe('CredentialConnectionStatusService', () => {
 
 			expect(result.has(CRED_ID)).toBe(true);
 			expect(result.get(CRED_ID)?.accountIdentifier).toBeUndefined();
+			expect(logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('Could not read the stored data'),
+				expect.objectContaining({ credentialId: CRED_ID }),
+			);
 		});
 
 		it('still reports a connection when its entry holds no token', async () => {
