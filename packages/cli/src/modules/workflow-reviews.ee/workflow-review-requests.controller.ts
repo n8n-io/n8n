@@ -2,9 +2,11 @@ import {
 	CreateWorkflowReviewRequestDto,
 	DecideWorkflowReviewRequestDto,
 	GetWorkflowReviewEligibleReviewersQueryDto,
+	ListWorkflowReviewActivityQueryDto,
 	ListWorkflowReviewRequestsQueryDto,
 	UpdateWorkflowReviewRequestVersionDto,
 	type GetWorkflowReviewInboxSummaryResponse,
+	type ListWorkflowReviewActivityResponse,
 	type ListWorkflowReviewInboxResponse,
 	ListWorkflowReviewInboxQueryDto,
 	type WorkflowReviewRequestDetail,
@@ -13,6 +15,7 @@ import { AuthenticatedRequest } from '@n8n/db';
 import { Body, Get, Licensed, Param, Post, Query, RestController } from '@n8n/decorators';
 import type { Response } from 'express';
 
+import { WorkflowReviewActivityService } from './workflow-review-activity.service';
 import { WorkflowReviewInboxService } from './workflow-review-inbox.service';
 import { WorkflowReviewRequestService } from './workflow-review-request.service';
 
@@ -21,6 +24,7 @@ export class WorkflowReviewRequestsController {
 	constructor(
 		private readonly workflowReviewRequestService: WorkflowReviewRequestService,
 		private readonly workflowReviewInboxService: WorkflowReviewInboxService,
+		private readonly workflowReviewActivityService: WorkflowReviewActivityService,
 	) {}
 
 	@Get('/')
@@ -104,6 +108,21 @@ export class WorkflowReviewRequestsController {
 		_res: Response,
 	): Promise<GetWorkflowReviewInboxSummaryResponse> {
 		return await this.workflowReviewInboxService.getInboxSummaryForUser(req.user);
+	}
+
+	@Get('/:workflowReviewRequestId/activity')
+	@Licensed('feat:workflowReviews')
+	async listActivity(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('workflowReviewRequestId') workflowReviewRequestId: string,
+		@Query query: ListWorkflowReviewActivityQueryDto,
+	): Promise<ListWorkflowReviewActivityResponse> {
+		return await this.workflowReviewActivityService.listActivity(
+			req.user,
+			workflowReviewRequestId,
+			query,
+		);
 	}
 
 	/**
