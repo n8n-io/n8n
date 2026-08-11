@@ -18,7 +18,7 @@ type ExportDecisionConstraint<TEntity, TKeyHandling> = [
 	Exclude<EntityDataKeys<TEntity>, keyof TKeyHandling>,
 ] extends [never]
 	? [Exclude<keyof TKeyHandling, EntityDataKeys<TEntity>>] extends [never]
-		? Partial<PackageEntityKeyHandling<TEntity>>
+		? PackageEntityKeyHandling<TEntity>
 		: `Export decisions include key(s) that do not exist on the entity: ${JoinKeys<
 				Extract<Exclude<keyof TKeyHandling, EntityDataKeys<TEntity>>, string>
 			>}`
