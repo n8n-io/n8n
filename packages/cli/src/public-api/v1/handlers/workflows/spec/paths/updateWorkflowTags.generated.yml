@@ -25,6 +25,7 @@ requestBody:
               type: string
           required:
             - id
+          additionalProperties: false
 responses:
   '200':
     description: Operation successful.

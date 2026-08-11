@@ -19,6 +19,12 @@ describe('TagIdsPublicDto', () => {
 	it('rejects an array item missing id', () => {
 		expect(TagIdsPublicDto.safeParse([{}]).success).toBe(false);
 	});
+
+	// The replaced `tagIds.yml` set `additionalProperties: false`, so an unknown field was a 400
+	// rather than something silently dropped from a write request.
+	it('rejects an array item carrying an unknown field', () => {
+		expect(TagIdsPublicDto.safeParse([{ id: 'tag-1', name: 'renamed' }]).success).toBe(false);
+	});
 });
 
 describe('WorkflowTagsPublicDto', () => {
