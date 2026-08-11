@@ -75,6 +75,7 @@ function makeSandboxSettingsService(
 	provider: SandboxProvider = 'daytona',
 ): ReturnType<typeof mock<SandboxSettingsService>> {
 	const service = mock<SandboxSettingsService>();
+	service.isAgentSandboxEnabled.mockReturnValue(true);
 	service.getProvider.mockReturnValue(provider);
 	service.resolveDaytonaConfig.mockResolvedValue({
 		apiUrl: 'https://daytona.example',

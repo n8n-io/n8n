@@ -151,8 +151,12 @@ export class AgentSandboxRuntimeService {
 		return await sandbox.executeCommand(command, [], { timeout });
 	}
 
+	isEnabled(): boolean {
+		return this.sandboxSettingsService.isAgentSandboxEnabled();
+	}
+
 	assertSandboxConfiguration(projectId: string, agentId: string): void {
-		if (!this.agentsConfig.sandboxEnabled) {
+		if (!this.isEnabled()) {
 			throw new OperationalError('Agent knowledge sandbox is not enabled');
 		}
 		this.assertValidPathSegments(projectId, agentId);
