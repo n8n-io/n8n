@@ -10,6 +10,7 @@ import { useChatInputAutoFocus } from '@n8n/design-system';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@n8n/composables/useToast';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { getExperimentTelemetryPayload } from '@/experiments/utils';
 import {
@@ -122,6 +123,9 @@ const rootStore = useRootStore();
 const toast = useToast();
 const telemetry = useTelemetry();
 const i18n = useI18n();
+// Opening a new conversation drops the tab title of the thread we came from —
+// this view mounts on every entry to the empty route, the parent layout doesn't.
+useDocumentTitle().set(i18n.baseText('instanceAi.view.title'));
 const { goToUpgrade } = usePageRedirectionHelper();
 const creditBanner = useCreditWarningBanner(showCreditWarning);
 const { isFeatureEnabled: isProactiveAgentExperimentEnabled } =

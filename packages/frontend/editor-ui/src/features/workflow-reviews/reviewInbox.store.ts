@@ -17,12 +17,9 @@ import {
 	fetchWorkflowReviewRequestDetail,
 	type WorkflowReviewDecisionInput,
 } from './workflowReviews.api';
+import { toError } from './workflowReviews.utils';
 
 const DEFAULT_LIMIT = 15;
-
-function toError(error: unknown): Error {
-	return error instanceof Error ? error : new Error(String(error));
-}
 
 export const useReviewInboxStore = defineStore('workflowReviewInbox', () => {
 	const rootStore = useRootStore();
