@@ -1,0 +1,22 @@
+packages/cli/src/modules/mcp/__tests__/search-folders.tool.test.ts
+  s_418b8ffdd3bbde::t_5a880bb08984b0 99,113
+packages/cli/src/modules/mcp/tools/search-folders.tool.ts
+  s_418b8ffdd3bbde::t_7ba471510320be 39-42
+  s_418b8ffdd3bbde::t_12bcc29d5f19de 97-99
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9c9faed97ab9faff892d5c5b6d952795bd91f007",
+  "prompts": {},
+  "sessions": {
+    "s_418b8ffdd3bbde": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d67fd248-8dd1-4b4e-831f-13262d231518",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}
