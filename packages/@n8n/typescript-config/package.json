@@ -6,13 +6,15 @@
     "tsconfig.backend.json",
     "tsconfig.build.json",
     "tsconfig.common.json",
-    "tsconfig.frontend.json"
+    "tsconfig.frontend.json",
+    "tsconfig.frontend-module.json"
   ],
   "exports": {
     "./tsconfig.backend.json": "./tsconfig.backend.json",
     "./tsconfig.build.json": "./tsconfig.build.json",
     "./tsconfig.common.json": "./tsconfig.common.json",
     "./tsconfig.frontend.json": "./tsconfig.frontend.json",
+    "./tsconfig.frontend-module.json": "./tsconfig.frontend-module.json",
     "./*": "./*"
   },
   "license": "LicenseRef-n8n-sustainable-use"

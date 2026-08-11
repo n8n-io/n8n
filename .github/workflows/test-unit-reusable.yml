@@ -66,7 +66,7 @@ jobs:
       # @n8n/vitest-config/node), peak forks ≈ 2 × 50% ≈ the core count, instead
       # of ~10 concurrent suites each spawning a core-sized pool and pegging CPU.
       - name: Test Unit (backend, except cli and nodes-base)
-        run: pnpm turbo test:unit --continue --concurrency=2 --filter='!./packages/frontend/**' --filter='!n8n' --filter='!n8n-nodes-base' --summarize
+        run: pnpm turbo test:unit --continue --concurrency=2 --filter='!./packages/frontend/**' --filter='!./packages/modules/**' --filter='!n8n' --filter='!n8n-nodes-base' --summarize
 
       - name: Test Unit (cli, scoped)
         if: ${{ !cancelled() }}
@@ -126,7 +126,7 @@ jobs:
       # run serially to avoid cross-package interference. Unit jobs above
       # don't need this because they isolate per-process.
       - name: Test Integration (backend, except cli)
-        run: pnpm turbo test:integration --continue --concurrency=1 --filter='!./packages/frontend/**' --filter='!n8n' --summarize
+        run: pnpm turbo test:integration --continue --concurrency=1 --filter='!./packages/frontend/**' --filter='!./packages/modules/**' --filter='!n8n' --summarize
 
       - name: Test Integration (cli, scoped)
         if: ${{ !cancelled() }}

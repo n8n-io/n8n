@@ -2,6 +2,9 @@ packages:
   - packages/*
   - packages/@n8n/*
   - packages/frontend/**
+  # `packages/*` stops one level short of `<module>/frontend`, so feature modules need their own
+  # glob or they are not workspace packages at all.
+  - packages/modules/**
   - packages/extensions/**
   - packages/testing/**
 
