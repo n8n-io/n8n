@@ -281,11 +281,12 @@ describe('v2/components/Combobox', () => {
 
 			const { popover } = await getPopoverContainer();
 
-			expect(within(popover).queryByText('Fruits')).not.toBeInTheDocument();
+			const groupElements = popover.querySelectorAll('[role="group"]');
+			expect(groupElements).toHaveLength(2);
+			expect(groupElements[0].getAttribute('aria-labelledby')).toBeFalsy();
 			expect(within(popover).getByText('Vegetables')).toBeVisible();
 			expect(within(popover).getByRole('option', { name: 'Apple' })).toBeVisible();
 			expect(within(popover).getByRole('option', { name: 'Carrot' })).toBeVisible();
-			expect(popover.querySelectorAll('[role="group"]')).toHaveLength(2);
 		});
 
 		it('should render separator items', async () => {
