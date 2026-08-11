@@ -18,7 +18,13 @@ import { UserError } from 'n8n-workflow';
  * from `err.message` alone) and exposes no error event, so this is the only hook
  * there is. v1 does the same thing in `toUserFacingConsumerError`.
  */
-const NON_RECOVERABLE = [/authorization failed/i, /authentication fail/i];
+const NON_RECOVERABLE = [
+	/authorization failed/i,
+	/authentication fail/i,
+	// Group members advertise incompatible partition-assignment strategies
+	// (e.g. kafkajs and librdkafka sharing a group); no retry can succeed.
+	/inconsistent group protocol/i,
+];
 
 function isNonRecoverable(message: string): boolean {
 	return NON_RECOVERABLE.some((pattern) => pattern.test(message));

@@ -40,11 +40,12 @@ describe('createLibraryLogger', () => {
 			'Broker: Topic authorization failed',
 			'Local: Authentication failure',
 			'Broker: SASL Authentication failed',
+			'Broker: Inconsistent group protocol',
 		])('reports %s as fatal', (message) => {
 			build().error(message);
 
 			expect(onFatalError).toHaveBeenCalledTimes(1);
-			const reported = onFatalError.mock.calls[0][0] as Error;
+			const reported = onFatalError.mock.calls[0][0];
 			expect(reported).toBeInstanceOf(UserError);
 			expect(reported.message).toBe(message);
 		});

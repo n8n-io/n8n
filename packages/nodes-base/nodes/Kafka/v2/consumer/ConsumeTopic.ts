@@ -26,6 +26,12 @@ export interface ConsumeTopicOptions {
 	 * only to failed offset resolution, so the parse path was unpaced.
 	 */
 	errorRetryDelay?: number;
+	/**
+	 * Rejects when the transport reports a non-recoverable error, so a consumer
+	 * that can never join its group fails startup instead of failing silently
+	 * after a nominal start (ENT-340).
+	 */
+	startupFailure?: Promise<never>;
 }
 
 export interface KafkaConsumerHandle {
@@ -62,6 +68,12 @@ interface BatchContext extends ConsumeSettings {
 
 /** Bounds teardown so a hung broker request cannot block deactivation, as in v1. */
 const CLOSE_TIMEOUT_MS = 30_000;
+
+/** How often the startup join wait re-checks the consumer's assignment. */
+const JOIN_POLL_INTERVAL_MS = 250;
+
+/** How long startup waits for the group join outcome before proceeding anyway. */
+const JOIN_GRACE_PERIOD_MS = 3000;
 
 /**
  * Messages handed to one execution. v1's Batch Size default, and the reason the
@@ -139,6 +151,8 @@ export async function consumeTopic(
 			eachBatchAutoResolve: false,
 			eachBatch: async (payload) => await processBatch(payload, context),
 		});
+
+		await waitForGroupJoin(consumer, options.startupFailure);
 	} catch (error) {
 		// Nothing else holds this consumer yet, so a failed start must not leave the
 		// broker connection open. `connect()` is inside the try for symmetry rather
@@ -164,6 +178,36 @@ export async function consumeTopic(
 			);
 		},
 	};
+}
+
+/**
+ * Holds startup until the consumer joins its group, a non-recoverable error
+ * surfaces, or the grace period elapses. The library resolves connect,
+ * subscribe and run before the join settles, so without this wait a group the
+ * consumer can never join still reported a successful start (ENT-340).
+ *
+ * Expiry is deliberately success: zero partitions can be legitimate (more
+ * members than partitions, a slow rebalance), so only an observed fatal error
+ * may fail startup, never the clock.
+ */
+async function waitForGroupJoin(
+	consumer: KafkaJS.Consumer,
+	startupFailure?: Promise<never>,
+): Promise<void> {
+	const pollUntilJoined = async () => {
+		const deadline = Date.now() + JOIN_GRACE_PERIOD_MS;
+		while (Date.now() < deadline) {
+			try {
+				if (consumer.assignment().length > 0) return;
+			} catch {
+				// assignment() throws ERR__STATE while not connected; means "not joined".
+			}
+			await sleep(JOIN_POLL_INTERVAL_MS);
+		}
+	};
+	// Race the whole poll, not each pause: a fatal that fired first must win
+	// even if a later poll would see a joined group.
+	await (startupFailure ? Promise.race([pollUntilJoined(), startupFailure]) : pollUntilJoined());
 }
 
 // ---------------------------------------------------------------------------
