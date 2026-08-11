@@ -41,7 +41,7 @@ export { setupTestServer } from './test-server';
  */
 export async function initActiveWorkflowManager() {
 	mockInstance(BinaryDataConfig);
-	const instanceSettings = mockInstance(InstanceSettings, {
+	mockInstance(InstanceSettings, {
 		isMultiMain: false,
 		n8nFolder: '/tmp/n8n-test',
 	});
@@ -49,9 +49,6 @@ export async function initActiveWorkflowManager() {
 	mockInstance(Push);
 	const { ActiveWorkflowManager } = await import('@/active-workflow-manager.js');
 	const activeWorkflowManager = Container.get(ActiveWorkflowManager);
-	// A public-api controller may have already constructed this with the real `InstanceSettings`,
-	// and `mockInstance` only redirects later lookups — so set the mock on the existing instance.
-	Object.assign(activeWorkflowManager, { instanceSettings });
 	await activeWorkflowManager.init();
 	return activeWorkflowManager;
 }

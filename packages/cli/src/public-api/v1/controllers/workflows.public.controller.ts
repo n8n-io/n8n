@@ -280,11 +280,7 @@ export class WorkflowsPublicController {
 
 		const tags = await this.tagService.getAllByWorkflowId(workflowId);
 
-		return tags.map((tag) => ({
-			...tag,
-			createdAt: tag.createdAt.toISOString(),
-			updatedAt: tag.updatedAt.toISOString(),
-		}));
+		return tags.map(toPublicTag);
 	}
 
 	@Put('/:workflowId/tags')
@@ -306,10 +302,6 @@ export class WorkflowsPublicController {
 		const tagIds = body.map((tag) => tag.id);
 		const tags = await this.workflowService.updateWorkflowTags(req.user, workflowId, tagIds);
 
-		return tags.map((tag) => ({
-			...tag,
-			createdAt: tag.createdAt.toISOString(),
-			updatedAt: tag.updatedAt.toISOString(),
-		}));
+		return tags.map(toPublicTag);
 	}
 }

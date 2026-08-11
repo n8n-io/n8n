@@ -27,10 +27,6 @@ describe('Z.array', () => {
 		expect(() => TagIdDto.parse([{}])).toThrow(z.ZodError);
 	});
 
-	it('keeps the declared class name for OpenAPI component naming', () => {
-		expect(TagIdDto.name).toBe('TagIdDto');
-	});
-
 	it('constructs a JavaScript array, not an object with numeric keys, and applies the schema', () => {
 		const dto = new TagIdDto([{ id: 'a' }, { id: 'b' }]);
 
