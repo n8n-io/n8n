@@ -14,13 +14,13 @@ export function isApprovedBuildContext(context: InstanceAiContext): boolean {
 }
 
 /**
- * True when this workflow is trusted for updates in this session: created
- * earlier in the current run (`aiCreatedWorkflowIds`), or covered by a
+ * True when update HITL can be skipped for this workflow in this session:
+ * created earlier in the current run (`aiCreatedWorkflowIds`), or covered by a
  * `workflows:update:<id>` thread grant (written on create, or when the user
- * chose "always allow" for an edit). Used to skip update HITL while still
- * requiring approval for untrusted foreign workflows.
+ * chose "always allow" for an edit — including foreign workflows). Untrusted
+ * workflows without a grant still require approval.
  */
-export function isSessionOwnedWorkflow(context: InstanceAiContext, workflowId: string): boolean {
+export function canSkipWorkflowUpdateHitl(context: InstanceAiContext, workflowId: string): boolean {
 	if (context.aiCreatedWorkflowIds?.has(workflowId) === true) return true;
 	const grantKey = buildUpdateWorkflowSessionGrantKey(workflowId);
 	return context.sessionApprovedToolKeys?.has(grantKey) === true;

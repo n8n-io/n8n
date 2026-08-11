@@ -33,7 +33,7 @@ import {
 import { validateWorkflowConfig } from './workflows/validate-workflow.service';
 import {
 	grantSessionWorkflowUpdate,
-	isSessionOwnedWorkflow,
+	canSkipWorkflowUpdateHitl,
 } from './workflows/workflow-build-context';
 import { refreshWorkflowSourceFileBindingFromWorkflow } from './workflows/workflow-file-bindings';
 import { getReferencedWorkflowIds } from './workflows/workflow-json-utils';
@@ -903,10 +903,10 @@ async function handleUpdate(
 		return { success: false, denied: true, reason: 'Action blocked by admin' };
 	}
 
-	// Skip HITL for workflows this session created; still require approval for foreign ones.
+	// Skip HITL for session-created or always-allowed workflows; others still need approval.
 	const needsApproval =
 		context.permissions?.updateWorkflow !== 'always_allow' &&
-		!isSessionOwnedWorkflow(context, input.workflowId);
+		!canSkipWorkflowUpdateHitl(context, input.workflowId);
 
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
 		const workflowName = await resolveWorkflowName(context, input.workflowId);
