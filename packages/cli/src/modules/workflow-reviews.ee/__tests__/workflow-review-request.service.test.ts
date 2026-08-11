@@ -37,7 +37,7 @@ import type { WorkflowFinderService } from '@/workflows/workflow-finder.service'
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
 
-import type { WorkflowReviewDecisionEligibilityService } from '../workflow-review-decision-eligibility.service';
+import type { WorkflowReviewEligibilityService } from '../workflow-review-eligibility.service';
 import { WorkflowReviewFeatureGate } from '../workflow-review-feature-gate.service';
 import { WorkflowReviewRequestService } from '../workflow-review-request.service';
 
@@ -72,7 +72,7 @@ describe('WorkflowReviewRequestService', () => {
 	const authorRepository = mock<WorkflowReviewRequestAuthorRepository>();
 	const reviewerRepository = mock<WorkflowReviewRequestReviewerRepository>();
 	const userRepository = mock<UserRepository>();
-	const decisionEligibilityService = mock<WorkflowReviewDecisionEligibilityService>();
+	const eligibilityService = mock<WorkflowReviewEligibilityService>();
 	const roleService = mock<RoleService>();
 	const licenseState = mock<LicenseState>();
 	const dbLockService = mock<DbLockService>();
@@ -96,7 +96,7 @@ describe('WorkflowReviewRequestService', () => {
 		authorRepository,
 		reviewerRepository,
 		userRepository,
-		decisionEligibilityService,
+		eligibilityService,
 		roleService,
 		dbLockService,
 		collaborationService,
