@@ -1,14 +1,33 @@
 /* eslint-disable import-x/no-extraneous-dependencies -- test-only pattern */
-import { describe, it, expect, vi } from 'vitest';
+import { beforeEach, describe, it, expect, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
-import { nextTick } from 'vue';
+import { nextTick, ref } from 'vue';
 import type * as VueUse from '@vueuse/core';
 
 import AgentAdvancedPanel from '../components/AgentAdvancedPanel.vue';
+import type { ProviderCatalog } from '../composables/useAgentApi';
 import type { AgentJsonConfig } from '../types';
 
+const ensureLoadedMock = vi.fn();
+const modelCatalog = ref<ProviderCatalog>({});
+
+vi.mock('../composables/useModelCatalog', () => ({
+	useModelCatalog: () => ({
+		catalog: modelCatalog,
+		ensureLoaded: ensureLoadedMock,
+	}),
+}));
+
 vi.mock('@n8n/i18n', () => ({
-	useI18n: () => ({ baseText: (k: string) => k }),
+	useI18n: () => ({
+		baseText: (key: string) =>
+			({
+				'agents.builder.advanced.reasoning.hint': 'Let the model reason before responding.',
+				'agents.builder.advanced.reasoning.unsupportedHint':
+					'This model does not support reasoning',
+				'agents.builder.advanced.reasoning.noModelHint': 'No model selected',
+			})[key] ?? key,
+	}),
 }));
 
 vi.mock('@/features/credentials/credentials.store', () => ({
@@ -20,7 +39,7 @@ vi.mock('@/features/credentials/credentials.store', () => ({
 	}),
 }));
 
-// Numeric/thinking sub-controls debounce — execute synchronously in the test.
+// Numeric/reasoning sub-controls debounce — execute synchronously in the test.
 vi.mock('@vueuse/core', async (importOriginal) => {
 	const actual = await importOriginal<typeof VueUse>();
 	return {
@@ -30,20 +49,8 @@ vi.mock('@vueuse/core', async (importOriginal) => {
 });
 
 const globalStubs = {
-	N8nCollapsiblePanel: {
-		props: ['modelValue', 'title', 'disabled'],
-		emits: ['update:modelValue'],
-		template: `
-			<section>
-				<button :disabled="disabled" @click="$emit('update:modelValue', !modelValue)">
-					{{ title }}
-				</button>
-				<div v-show="modelValue"><slot /></div>
-			</section>
-		`,
-	},
+	N8nIcon: { template: '<span v-bind="$attrs" />', props: ['icon', 'size'] },
 	N8nText: { template: '<span><slot /></span>' },
-	N8nTooltip: { template: '<div><slot /></div>' },
 	N8nInputNumber2: {
 		props: ['modelValue', 'disabled', 'min', 'max', 'precision', 'placeholder'],
 		emits: ['update:modelValue'],
@@ -56,7 +63,15 @@ const globalStubs = {
 		template:
 			'<select v-bind="$attrs" :value="modelValue" :disabled="disabled" @change="$emit(\'update:modelValue\', $event.target.value)"><slot /></select>',
 	},
-	N8nOption: { props: ['value', 'label'], template: '<option :value="value">{{ label }}</option>' },
+	N8nOption: {
+		name: 'N8nOption',
+		props: ['value', 'label'],
+		template: '<option :value="value">{{ label }}</option>',
+	},
+	Option: {
+		props: ['value', 'label'],
+		template: '<option :value="value">{{ label }}</option>',
+	},
 	N8nSwitch2: {
 		props: ['modelValue', 'disabled'],
 		emits: ['update:modelValue'],
@@ -73,6 +88,64 @@ function makeConfig(overrides: Partial<AgentJsonConfig> = {}): AgentJsonConfig {
 		credential: 'c',
 		...overrides,
 	} as AgentJsonConfig;
+}
+
+function makeCatalog(): ProviderCatalog {
+	return {
+		anthropic: {
+			id: 'anthropic',
+			name: 'Anthropic',
+			models: {
+				'claude-sonnet-4-6': {
+					id: 'claude-sonnet-4-6',
+					name: 'Claude Sonnet 4.6',
+					reasoning: true,
+					toolCall: true,
+				},
+			},
+		},
+		google: {
+			id: 'google',
+			name: 'Google',
+			models: {
+				'gemini-pro': {
+					id: 'gemini-pro',
+					name: 'Gemini Pro',
+					reasoning: true,
+					toolCall: true,
+				},
+			},
+		},
+		openai: {
+			id: 'openai',
+			name: 'OpenAI',
+			models: {
+				'gpt-4.1-mini': {
+					id: 'gpt-4.1-mini',
+					name: 'GPT-4.1 mini',
+					reasoning: false,
+					toolCall: true,
+				},
+				'gpt-unknown': {
+					id: 'gpt-unknown',
+					name: 'GPT Unknown',
+					toolCall: true,
+				},
+			},
+		},
+		'aws-bedrock': {
+			id: 'aws-bedrock',
+			name: 'AWS Bedrock',
+			models: {
+				'anthropic.claude-sonnet-4-5-v1:0': {
+					id: 'anthropic.claude-sonnet-4-5-v1:0',
+					name: 'Claude Sonnet 4.5',
+					reasoning: true,
+					toolCall: true,
+				},
+			},
+		},
+	};
 }
 
 function emitSelectValue(wrapper: ReturnType<typeof mount>, testId: string, value: string) {
@@ -104,6 +177,31 @@ function getWebSearchConfig(changes: Partial<AgentJsonConfig>): WebSearchConfig 
 }
 
 describe('AgentAdvancedPanel', () => {
+	beforeEach(() => {
+		ensureLoadedMock.mockReset();
+		modelCatalog.value = makeCatalog();
+	});
+
+	it('renders the collapsible heading and toggles the advanced content', async () => {
+		const wrapper = mount(AgentAdvancedPanel, {
+			props: { config: makeConfig(), collapsible: true },
+			global: { stubs: globalStubs },
+		});
+
+		const title = wrapper.find('[data-testid="agent-advanced-title"]');
+		const trigger = wrapper.find('[data-testid="agent-advanced-trigger"]');
+		const chevron = wrapper.find('[data-testid="agent-advanced-chevron"]');
+		const content = wrapper.find('[data-testid="agent-advanced-content"]');
+
+		expect(title.text()).toContain('agents.builder.advanced.title');
+		expect(chevron.exists()).toBe(true);
+		expect(content.isVisible()).toBe(false);
+
+		await trigger.trigger('click');
+
+		expect(content.isVisible()).toBe(true);
+	});
+
 	it('treats sparse native web search config as disabled', async () => {
 		const wrapper = mount(AgentAdvancedPanel, {
 			props: { config: makeConfig() },
@@ -279,55 +377,290 @@ describe('AgentAdvancedPanel', () => {
 		expect(last.providerTools).toEqual({ 'openai.image_generation': {} });
 	});
 
-	it('shows the budget-tokens sub-control for Anthropic when thinking is on', async () => {
-		const config = makeConfig({
-			config: { thinking: { provider: 'anthropic', budgetTokens: 1024 } },
-		} as Partial<AgentJsonConfig>);
-		const wrapper = mount(AgentAdvancedPanel, {
-			props: { config },
+	it('loads the model catalog for the current project', () => {
+		mount(AgentAdvancedPanel, {
+			props: { config: makeConfig(), projectId: 'project-1' },
 			global: { stubs: globalStubs },
 		});
-		await nextTick();
-		expect(wrapper.find('[data-testid="agent-budget-tokens-input"]').exists()).toBe(true);
-		expect(wrapper.find('[data-testid="agent-reasoning-effort-select"]').exists()).toBe(false);
+
+		expect(ensureLoadedMock).toHaveBeenCalledWith('project-1');
 	});
 
-	it('shows the reasoning-effort sub-control for OpenAI when thinking is on', async () => {
+	it('shows the configured reasoning effort when the selected model supports reasoning', async () => {
 		const config = makeConfig({
-			model: 'openai/gpt-4o',
-			config: { thinking: { provider: 'openai', reasoningEffort: 'high' } },
+			model: 'google/gemini-pro',
+			config: { reasoning: 'high' },
 		} as Partial<AgentJsonConfig>);
 		const wrapper = mount(AgentAdvancedPanel, {
-			props: { config },
+			props: { config, projectId: 'project-1' },
 			global: { stubs: globalStubs },
 		});
 		await nextTick();
-		expect(wrapper.find('[data-testid="agent-reasoning-effort-select"]').exists()).toBe(true);
+		const effort = findStubComponent(wrapper, 'agent-reasoning-effort-select');
+		expect(effort.exists()).toBe(true);
+		expect(effort.props('modelValue')).toBe('high');
 		expect(wrapper.find('[data-testid="agent-budget-tokens-input"]').exists()).toBe(false);
 	});
 
-	it('disables the thinking toggle for providers that do not support it', () => {
-		const config = makeConfig({ model: 'google/gemini-pro' });
+	it('shows the reasoning toggle when the selected model supports reasoning', () => {
+		const config = makeConfig({
+			model: 'aws-bedrock/anthropic.claude-sonnet-4-5-v1:0',
+		});
 		const wrapper = mount(AgentAdvancedPanel, {
-			props: { config },
+			props: { config, projectId: 'project-1' },
 			global: { stubs: globalStubs },
 		});
-		const toggle = wrapper.find('[data-testid="agent-thinking-toggle"]');
+		const toggle = wrapper.find('[data-testid="agent-reasoning-toggle"]');
 		expect(toggle.exists()).toBe(true);
-		expect(toggle.attributes('disabled')).toBeDefined();
+		expect(toggle.attributes('disabled')).toBeUndefined();
+		expect(wrapper.find('[data-testid="agent-reasoning-hint"]').text()).toBe(
+			'Let the model reason before responding.',
+		);
 	});
 
-	it('emits update:config with the thinking subtree when the toggle flips on', async () => {
+	it('enables generic medium reasoning when the toggle flips on', async () => {
+		const config = makeConfig({ model: 'google/gemini-pro' });
+		const wrapper = mount(AgentAdvancedPanel, {
+			props: { config, projectId: 'project-1' },
+			global: { stubs: globalStubs },
+		});
+		await wrapper.find('[data-testid="agent-reasoning-toggle"]').trigger('click');
+		const events = wrapper.emitted('update:config') ?? [];
+		expect(events.length).toBeGreaterThan(0);
+		const last = events[events.length - 1][0] as Partial<AgentJsonConfig>;
+		expect(last.config?.reasoning).toBe('medium');
+	});
+
+	it('updates the generic reasoning effort', async () => {
+		const wrapper = mount(AgentAdvancedPanel, {
+			props: {
+				config: makeConfig({ config: { reasoning: 'medium' } }),
+				projectId: 'project-1',
+			},
+			global: { stubs: { ...globalStubs, Select: globalStubs.N8nSelect } },
+		});
+
+		emitSelectValue(wrapper, 'agent-reasoning-effort-select', 'low');
+		await nextTick();
+
+		const events = wrapper.emitted('update:config') ?? [];
+		const last = events.at(-1)?.[0] as Partial<AgentJsonConfig>;
+		expect(last.config?.reasoning).toBe('low');
+	});
+
+	it('removes reasoning when the toggle flips off', async () => {
+		const wrapper = mount(AgentAdvancedPanel, {
+			props: {
+				config: makeConfig({ config: { reasoning: 'medium' } }),
+				projectId: 'project-1',
+			},
+			global: { stubs: globalStubs },
+		});
+
+		await wrapper.find('[data-testid="agent-reasoning-toggle"]').trigger('click');
+
+		const events = wrapper.emitted('update:config') ?? [];
+		const last = events.at(-1)?.[0] as Partial<AgentJsonConfig>;
+		expect(last.config?.reasoning).toBeUndefined();
+	});
+
+	it('disables reasoning and explains when the selected model does not support it', async () => {
+		const wrapper = mount(AgentAdvancedPanel, {
+			props: {
+				config: makeConfig({
+					model: 'openai/gpt-4.1-mini',
+					config: { reasoning: 'high', toolCallConcurrency: 3 },
+				}),
+				projectId: 'project-1',
+			},
+			global: { stubs: globalStubs },
+		});
+		await nextTick();
+
+		const toggle = wrapper.find('[data-testid="agent-reasoning-toggle"]');
+		expect(toggle.exists()).toBe(true);
+		expect(toggle.attributes('disabled')).toBeDefined();
+		expect(wrapper.find('[data-testid="agent-reasoning-hint"]').text()).toBe(
+			'This model does not support reasoning',
+		);
+		expect(findStubComponent(wrapper, 'agent-reasoning-effort-select').props('disabled')).toBe(
+			true,
+		);
+		expect(wrapper.emitted('update:config')).toBeUndefined();
+	});
+
+	it('disables reasoning and explains when no model is selected', async () => {
+		const wrapper = mount(AgentAdvancedPanel, {
+			props: {
+				config: makeConfig({
+					model: '',
+					config: { reasoning: 'medium' },
+				}),
+				projectId: 'project-1',
+			},
+			global: { stubs: globalStubs },
+		});
+		await nextTick();
+
+		const toggle = wrapper.find('[data-testid="agent-reasoning-toggle"]');
+		expect(toggle.exists()).toBe(true);
+		expect(toggle.attributes('disabled')).toBeDefined();
+		expect(wrapper.find('[data-testid="agent-reasoning-hint"]').text()).toBe('No model selected');
+		expect(findStubComponent(wrapper, 'agent-reasoning-effort-select').props('disabled')).toBe(
+			true,
+		);
+		expect(wrapper.emitted('update:config')).toBeUndefined();
+	});
+
+	it('keeps reasoning enabled while support metadata loads', async () => {
+		modelCatalog.value = {};
+		const wrapper = mount(AgentAdvancedPanel, {
+			props: {
+				config: makeConfig(),
+				projectId: 'project-1',
+			},
+			global: { stubs: globalStubs },
+		});
+
+		const toggle = wrapper.find('[data-testid="agent-reasoning-toggle"]');
+		expect(toggle.exists()).toBe(true);
+		expect(toggle.attributes('disabled')).toBeUndefined();
+		expect(wrapper.find('[data-testid="agent-reasoning-hint"]').text()).toBe(
+			'Let the model reason before responding.',
+		);
+
+		modelCatalog.value = makeCatalog();
+		await nextTick();
+
+		expect(toggle.attributes('disabled')).toBeUndefined();
+		expect(wrapper.emitted('update:config')).toBeUndefined();
+	});
+
+	it('disables reasoning when loaded metadata explicitly marks the model unsupported', async () => {
+		modelCatalog.value = {};
+		const wrapper = mount(AgentAdvancedPanel, {
+			props: {
+				config: makeConfig({ model: 'openai/gpt-4.1-mini' }),
+				projectId: 'project-1',
+			},
+			global: { stubs: globalStubs },
+		});
+
+		const toggle = wrapper.find('[data-testid="agent-reasoning-toggle"]');
+		expect(toggle.attributes('disabled')).toBeUndefined();
+		expect(wrapper.find('[data-testid="agent-reasoning-hint"]').text()).toBe(
+			'Let the model reason before responding.',
+		);
+
+		modelCatalog.value = makeCatalog();
+		await nextTick();
+
+		expect(toggle.attributes('disabled')).toBeDefined();
+		expect(wrapper.find('[data-testid="agent-reasoning-hint"]').text()).toBe(
+			'This model does not support reasoning',
+		);
+		expect(wrapper.emitted('update:config')).toBeUndefined();
+	});
+
+	it('keeps reasoning enabled when the catalog model omits support metadata', async () => {
+		const wrapper = mount(AgentAdvancedPanel, {
+			props: {
+				config: makeConfig({
+					model: 'openai/gpt-unknown',
+					config: { reasoning: 'medium' },
+				}),
+				projectId: 'project-1',
+			},
+			global: { stubs: globalStubs },
+		});
+		await nextTick();
+
+		const toggle = wrapper.find('[data-testid="agent-reasoning-toggle"]');
+		expect(toggle.exists()).toBe(true);
+		expect(toggle.attributes('disabled')).toBeUndefined();
+		expect(wrapper.find('[data-testid="agent-reasoning-hint"]').text()).toBe(
+			'Let the model reason before responding.',
+		);
+		expect(findStubComponent(wrapper, 'agent-reasoning-effort-select').props('disabled')).toBe(
+			false,
+		);
+		expect(wrapper.emitted('update:config')).toBeUndefined();
+	});
+
+	it('disables reasoning when the selected model changes to an unsupported model', async () => {
+		const wrapper = mount(AgentAdvancedPanel, {
+			props: {
+				config: makeConfig({ config: { reasoning: 'high' } }),
+				projectId: 'project-1',
+			},
+			global: { stubs: globalStubs },
+		});
+		expect(wrapper.find('[data-testid="agent-reasoning-toggle"]').exists()).toBe(true);
+
+		await wrapper.setProps({
+			config: makeConfig({
+				model: 'openai/gpt-4.1-mini',
+				config: { reasoning: 'high' },
+			}),
+		});
+		await nextTick();
+
+		const toggle = wrapper.find('[data-testid="agent-reasoning-toggle"]');
+		expect(toggle.exists()).toBe(true);
+		expect(toggle.attributes('disabled')).toBeDefined();
+		expect(wrapper.find('[data-testid="agent-reasoning-hint"]').text()).toBe(
+			'This model does not support reasoning',
+		);
+		expect(findStubComponent(wrapper, 'agent-reasoning-effort-select').props('disabled')).toBe(
+			true,
+		);
+		expect(wrapper.emitted('update:config')).toBeUndefined();
+	});
+
+	it('shows the Anthropic ttl dropdown, defaulting to 1h, with no on/off toggle', async () => {
 		const config = makeConfig();
 		const wrapper = mount(AgentAdvancedPanel, {
 			props: { config },
 			global: { stubs: globalStubs },
 		});
-		await wrapper.find('[data-testid="agent-thinking-toggle"]').trigger('click');
+		await nextTick();
+		expect(wrapper.find('[data-testid="agent-prompt-caching-toggle"]').exists()).toBe(false);
+		const ttlSelect = findStubComponent(wrapper, 'agent-prompt-caching-ttl-select');
+		expect(ttlSelect.exists()).toBe(true);
+		expect(ttlSelect.props('modelValue')).toBe('1h');
+	});
+
+	it('hides the prompt-caching row entirely for OpenAI (mandatory, no user-facing control)', () => {
+		const config = makeConfig({ model: 'openai/gpt-5.1' });
+		const wrapper = mount(AgentAdvancedPanel, {
+			props: { config },
+			global: { stubs: globalStubs },
+		});
+		expect(wrapper.find('[data-testid="agent-prompt-caching-toggle"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-prompt-caching-ttl-select"]').exists()).toBe(false);
+	});
+
+	it('hides the prompt-caching row entirely for providers that do not support it', () => {
+		const config = makeConfig({ model: 'google/gemini-pro' });
+		const wrapper = mount(AgentAdvancedPanel, {
+			props: { config },
+			global: { stubs: globalStubs },
+		});
+		expect(wrapper.find('[data-testid="agent-prompt-caching-toggle"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-prompt-caching-ttl-select"]').exists()).toBe(false);
+	});
+
+	it('emits { enabled: true, anthropic: { ttl } } when the ttl dropdown changes', () => {
+		const config = makeConfig();
+		const wrapper = mount(AgentAdvancedPanel, {
+			props: { config },
+			global: { stubs: globalStubs },
+		});
+		emitSelectValue(wrapper, 'agent-prompt-caching-ttl-select', '5m');
 		const events = wrapper.emitted('update:config') ?? [];
 		expect(events.length).toBeGreaterThan(0);
 		const last = events[events.length - 1][0] as Partial<AgentJsonConfig>;
-		expect((last.config as { thinking: { provider: string } }).thinking.provider).toBe('anthropic');
+		expect(last.config?.promptCaching).toEqual({ enabled: true, anthropic: { ttl: '5m' } });
 	});
 
 	it('disables every control when the disabled prop is true', () => {
@@ -339,7 +672,7 @@ describe('AgentAdvancedPanel', () => {
 		const webSearchMethod = findStubComponent(wrapper, 'agent-web-search-method');
 		expect(webSearchMethod.props('disabled')).toBe(true);
 		expect(
-			wrapper.find('[data-testid="agent-thinking-toggle"]').attributes('disabled'),
+			wrapper.find('[data-testid="agent-reasoning-toggle"]').attributes('disabled'),
 		).toBeDefined();
 		expect(
 			wrapper.find('[data-testid="agent-concurrency-input"]').attributes('disabled'),
@@ -355,6 +688,15 @@ describe('AgentAdvancedPanel', () => {
 			global: { stubs: globalStubs },
 		});
 		expect(wrapper.find('[data-testid="agent-max-iterations-input"]').exists()).toBe(true);
+	});
+
+	it('initialises max-iterations input to the default when unset in config', () => {
+		const wrapper = mount(AgentAdvancedPanel, {
+			props: { config: makeConfig() },
+			global: { stubs: globalStubs },
+		});
+		const input = wrapper.find('[data-testid="agent-max-iterations-input"]');
+		expect(Number(input.element.getAttribute('value'))).toBe(30);
 	});
 
 	it('initialises max-iterations input from config', () => {

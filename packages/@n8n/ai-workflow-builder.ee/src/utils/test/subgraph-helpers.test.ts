@@ -455,7 +455,7 @@ describe('subgraph-helpers', () => {
 		): StructuredTool {
 			return {
 				name,
-				invoke: jest.fn(fn),
+				invoke: vi.fn(fn),
 			} as unknown as StructuredTool;
 		}
 

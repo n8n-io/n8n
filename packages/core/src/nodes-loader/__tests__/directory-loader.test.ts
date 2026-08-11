@@ -109,6 +109,14 @@ describe('DirectoryLoader', () => {
 			expect(mockFs.readFileSync).not.toHaveBeenCalled();
 		});
 
+		it('should build custom icon URLs relative to the custom directory for absolute source paths', () => {
+			const loader = new CustomDirectoryLoader(directory);
+
+			loader.loadNodeFromFile(`${directory}/dist/Node1/Node1.node.js`);
+
+			expect(mockNode1.description.iconUrl).toBe('icons/CUSTOM/dist/Node1/node1.svg');
+		});
+
 		it('should load custom nodes when specified with CUSTOM prefix in includeNodes', async () => {
 			const loader = new CustomDirectoryLoader(directory, [], ['CUSTOM.node1', 'CUSTOM.node2']);
 

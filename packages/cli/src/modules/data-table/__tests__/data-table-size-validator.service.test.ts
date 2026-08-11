@@ -1,5 +1,6 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
+import type { Mock } from 'vitest';
 
 import { Telemetry } from '@/telemetry';
 
@@ -7,7 +8,7 @@ import { DataTableSizeValidator } from '../data-table-size-validator.service';
 
 describe('DataTableSizeValidator', () => {
 	let validator: DataTableSizeValidator;
-	let fetchSizeFn: jest.Mock;
+	let fetchSizeFn: Mock;
 	const globalConfig = mockInstance(GlobalConfig, {
 		dataTable: {
 			sizeCheckCacheDuration: 1000,
@@ -18,8 +19,8 @@ describe('DataTableSizeValidator', () => {
 	const telemetry = mockInstance(Telemetry);
 	beforeEach(() => {
 		validator = new DataTableSizeValidator(globalConfig, telemetry);
-		fetchSizeFn = jest.fn();
-		jest.clearAllMocks();
+		fetchSizeFn = vi.fn();
+		vi.clearAllMocks();
 	});
 
 	describe('basic functionality', () => {

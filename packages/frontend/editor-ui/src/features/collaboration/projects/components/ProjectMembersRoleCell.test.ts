@@ -8,8 +8,8 @@ import { vi } from 'vitest';
 import type { AllRolesMap, ProjectRole } from '@n8n/permissions';
 import ProjectMembersRoleCell from './ProjectMembersRoleCell.vue';
 import type { ProjectMemberData } from '../projects.types';
-import { useSettingsStore } from '@/app/stores/settings.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 
 vi.mock('vue-router', async () => {
 	const actual = await vi.importActual('vue-router');
@@ -88,6 +88,10 @@ const mockRolesWithCustom = [
 		scopes: [],
 	},
 ] as AllRolesMap['project'];
+
+const mockRolesWithUnlicensedViewer = mockRoles.map((role) =>
+	role.slug === 'project:viewer' ? { ...role, licensed: false } : role,
+) as AllRolesMap['project'];
 
 const renderComponent = createComponentRenderer(ProjectMembersRoleCell, {
 	props: {
@@ -213,6 +217,25 @@ describe('ProjectMembersRoleCell', () => {
 				expect(getByTestId('project-member-role-dropdown')).toBeInTheDocument();
 				unmount();
 			});
+		});
+
+		it('should show an upgrade indicator and emit upgrade event for unlicensed system roles', async () => {
+			const user = userEvent.setup();
+			const { getByTestId, emitted } = renderComponent({
+				props: {
+					data: { ...mockMemberData, role: 'project:admin' },
+					roles: mockRolesWithUnlicensedViewer,
+				},
+			});
+
+			await user.click(getByTestId('project-member-role-dropdown'));
+
+			expect(screen.getByText('Upgrade')).toBeInTheDocument();
+
+			await user.click(screen.getByText('Viewer'));
+
+			expect(emitted()).toHaveProperty('show-role-upgrade-dialog');
+			expect(emitted()['update:role']).toBeUndefined();
 		});
 	});
 

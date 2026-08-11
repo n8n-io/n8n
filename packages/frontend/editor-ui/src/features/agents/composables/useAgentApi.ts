@@ -1,30 +1,84 @@
 import type {
-	AgentBuilderMessagesResponse,
+	AgentCapabilitySummary,
+	AgentChatMessagesResponse,
+	AgentConfigValidationResponse,
 	AgentFileDto,
 	AgentIntegrationStatusResponse,
-	AgentPersistedMessageDto,
+	AgentJsonVectorStoreConfig,
 	AgentSkill,
 	AgentSkillMutationResponse,
-	AgentScheduleConfig,
+	AgentTaskConfig,
+	AgentTaskDto,
 	AgentIntegrationSettings,
+	AgentCatalogModel,
+	AgentProviderModelsResponse,
 	AgentVersionListItemDto,
 	ChatIntegrationDescriptor,
-	CreateSlackAgentAppResponse,
-	SlackAgentAppManifestResponse,
+	VectorStoreTestResult,
 } from '@n8n/api-types';
-import { makeRestApiRequest } from '@n8n/rest-api-client';
+import { getFullApiResponse, makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import type { AgentResource, AgentJsonConfig } from '../types';
+
+export type ListAgentsSortBy =
+	| 'name:asc'
+	| 'name:desc'
+	| 'createdAt:asc'
+	| 'createdAt:desc'
+	| 'updatedAt:asc'
+	| 'updatedAt:desc';
+
+export type ListAgentsOptions = {
+	skip?: number;
+	take?: number;
+	sortBy?: ListAgentsSortBy;
+	filter?: {
+		query?: string;
+		availableInMCP?: boolean;
+	};
+};
+
+const AGENTS_LIST_PAGE_SIZE = 250;
+
+export const listAgentsPage = async (
+	context: IRestApiContext,
+	projectId: string,
+	options: ListAgentsOptions,
+): Promise<{ count: number; data: AgentResource[] }> => {
+	return await getFullApiResponse<AgentResource[]>(
+		context,
+		'GET',
+		`/projects/${projectId}/agents/v2`,
+		options,
+	);
+};
+
+export const listAgentsPageGlobal = async (
+	context: IRestApiContext,
+	options: ListAgentsOptions,
+): Promise<{ count: number; data: AgentResource[] }> => {
+	return await getFullApiResponse<AgentResource[]>(context, 'GET', '/agents/v2', options);
+};
 
 export const listAgents = async (
 	context: IRestApiContext,
 	projectId: string,
 ): Promise<AgentResource[]> => {
-	return await makeRestApiRequest<AgentResource[]>(
-		context,
-		'GET',
-		`/projects/${projectId}/agents/v2`,
-	);
+	const agents: AgentResource[] = [];
+	let total = 0;
+
+	do {
+		const { count, data } = await listAgentsPage(context, projectId, {
+			skip: agents.length,
+			take: AGENTS_LIST_PAGE_SIZE,
+		});
+		agents.push(...data);
+		total = count;
+
+		if (data.length === 0) break;
+	} while (agents.length < total);
+
+	return agents;
 };
 
 export const getAgent = async (
@@ -43,26 +97,15 @@ export const createAgent = async (
 	context: IRestApiContext,
 	projectId: string,
 	name: string,
+	/** Creates the agent under an already-minted id, so a surface that referenced
+	 *  it while unsaved keeps pointing at the same agent. */
+	options: { id?: string } = {},
 ): Promise<AgentResource> => {
 	return await makeRestApiRequest<AgentResource>(
 		context,
 		'POST',
 		`/projects/${projectId}/agents/v2`,
-		{ name },
-	);
-};
-
-export const updateAgent = async (
-	context: IRestApiContext,
-	projectId: string,
-	agentId: string,
-	data: { code?: string; name?: string },
-): Promise<AgentResource> => {
-	return await makeRestApiRequest<AgentResource>(
-		context,
-		'PATCH',
-		`/projects/${projectId}/agents/v2/${agentId}`,
-		data,
+		{ name, ...(options.id ? { id: options.id } : {}) },
 	);
 };
 
@@ -118,6 +161,18 @@ export const deleteAgentFile = async (
 	);
 };
 
+export const warmAgentKnowledgeSandbox = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+): Promise<{ accepted: true }> => {
+	return await makeRestApiRequest<{ accepted: true }>(
+		context,
+		'POST',
+		`/projects/${projectId}/agents/v2/${agentId}/sandbox/knowledge/warmup`,
+	);
+};
+
 export const connectIntegration = async (
 	context: IRestApiContext,
 	projectId: string,
@@ -125,8 +180,8 @@ export const connectIntegration = async (
 	type: string,
 	credentialId: string,
 	settings?: AgentIntegrationSettings,
-): Promise<{ status: string; agent?: AgentResource }> => {
-	return await makeRestApiRequest(
+): Promise<Pick<AgentIntegrationStatusResponse, 'status'>> => {
+	return await makeRestApiRequest<Pick<AgentIntegrationStatusResponse, 'status'>>(
 		context,
 		'POST',
 		`/projects/${projectId}/agents/v2/${agentId}/integrations/connect`,
@@ -141,7 +196,7 @@ export const disconnectIntegration = async (
 	type: string,
 	credentialId: string,
 ): Promise<{ status: string }> => {
-	return await makeRestApiRequest(
+	return await makeRestApiRequest<{ status: string }>(
 		context,
 		'POST',
 		`/projects/${projectId}/agents/v2/${agentId}/integrations/disconnect`,
@@ -161,117 +216,74 @@ export const getIntegrationStatus = async (
 	);
 };
 
-export const getScheduleIntegration = async (
+export const getAgentTasks = async (
 	context: IRestApiContext,
 	projectId: string,
 	agentId: string,
-): Promise<AgentScheduleConfig> => {
-	return await makeRestApiRequest<AgentScheduleConfig>(
+): Promise<AgentTaskDto[]> => {
+	return await makeRestApiRequest<AgentTaskDto[]>(
 		context,
 		'GET',
-		`/projects/${projectId}/agents/v2/${agentId}/integrations/schedule`,
+		`/projects/${projectId}/agents/v2/${agentId}/tasks`,
 	);
 };
 
-export const updateScheduleIntegration = async (
+export const createAgentTask = async (
 	context: IRestApiContext,
 	projectId: string,
 	agentId: string,
-	data: { cronExpression: string; wakeUpPrompt?: string },
-): Promise<AgentScheduleConfig> => {
-	return await makeRestApiRequest<AgentScheduleConfig>(
-		context,
-		'PUT',
-		`/projects/${projectId}/agents/v2/${agentId}/integrations/schedule`,
-		data,
-	);
-};
-
-export const activateScheduleIntegration = async (
-	context: IRestApiContext,
-	projectId: string,
-	agentId: string,
-): Promise<AgentScheduleConfig> => {
-	return await makeRestApiRequest<AgentScheduleConfig>(
+	payload: AgentTaskConfig & { enabled?: boolean },
+): Promise<AgentTaskDto> => {
+	return await makeRestApiRequest<AgentTaskDto>(
 		context,
 		'POST',
-		`/projects/${projectId}/agents/v2/${agentId}/integrations/schedule/activate`,
+		`/projects/${projectId}/agents/v2/${agentId}/tasks`,
+		payload,
 	);
 };
 
-export const deactivateScheduleIntegration = async (
+export const updateAgentTask = async (
 	context: IRestApiContext,
 	projectId: string,
 	agentId: string,
-): Promise<AgentScheduleConfig> => {
-	return await makeRestApiRequest<AgentScheduleConfig>(
+	taskId: string,
+	payload: Partial<AgentTaskConfig>,
+): Promise<AgentTaskDto> => {
+	return await makeRestApiRequest<AgentTaskDto>(
+		context,
+		'PATCH',
+		`/projects/${projectId}/agents/v2/${agentId}/tasks/${taskId}`,
+		payload,
+	);
+};
+
+export const deleteAgentTask = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	taskId: string,
+): Promise<{ success: true }> => {
+	return await makeRestApiRequest<{ success: true }>(
+		context,
+		'DELETE',
+		`/projects/${projectId}/agents/v2/${agentId}/tasks/${taskId}`,
+	);
+};
+
+export const runAgentTask = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	taskId: string,
+): Promise<{ success: true }> => {
+	return await makeRestApiRequest<{ success: true }>(
 		context,
 		'POST',
-		`/projects/${projectId}/agents/v2/${agentId}/integrations/schedule/deactivate`,
+		`/projects/${projectId}/agents/v2/${agentId}/tasks/${taskId}/run`,
 	);
 };
 
-// Backward-compatible aliases
-export const connectSlack = async (
-	ctx: IRestApiContext,
-	projectId: string,
-	agentId: string,
-	credentialId: string,
-) => await connectIntegration(ctx, projectId, agentId, 'slack', credentialId);
-
-export const disconnectSlack = async (
-	ctx: IRestApiContext,
-	projectId: string,
-	agentId: string,
-	credentialId: string,
-) => await disconnectIntegration(ctx, projectId, agentId, 'slack', credentialId);
-
-export const getSlackStatus = getIntegrationStatus;
-
-export const createSlackAgentApp = async (
-	context: IRestApiContext,
-	projectId: string,
-	agentId: string,
-	appConfigurationToken: string,
-): Promise<CreateSlackAgentAppResponse> => {
-	return await makeRestApiRequest<CreateSlackAgentAppResponse>(
-		context,
-		'POST',
-		`/projects/${projectId}/agents/v2/${agentId}/integrations/slack/app`,
-		{ appConfigurationToken },
-	);
-};
-
-export const getSlackAgentAppManifest = async (
-	context: IRestApiContext,
-	projectId: string,
-	agentId: string,
-): Promise<SlackAgentAppManifestResponse> => {
-	return await makeRestApiRequest<SlackAgentAppManifestResponse>(
-		context,
-		'GET',
-		`/projects/${projectId}/agents/v2/${agentId}/integrations/slack/manifest`,
-	);
-};
-
-export const listAllAgents = async (
-	context: IRestApiContext,
-	projectId: string,
-): Promise<AgentResource[]> => {
-	return await makeRestApiRequest<AgentResource[]>(
-		context,
-		'GET',
-		`/projects/${projectId}/agents/v2?all=true`,
-	);
-};
-
-export interface ModelInfo {
-	id: string;
-	name: string;
-	releaseDate?: string;
-	reasoning: boolean;
-	toolCall: boolean;
-}
+export type ModelInfo = AgentCatalogModel;
 
 export interface ProviderInfo {
 	id: string;
@@ -289,6 +301,20 @@ export const getModelCatalog = async (
 		context,
 		'GET',
 		`/projects/${projectId}/agents/v2/catalog/models`,
+	);
+};
+
+export const getProviderModels = async (
+	context: IRestApiContext,
+	projectId: string,
+	provider: string,
+	credentialId?: string,
+): Promise<AgentProviderModelsResponse> => {
+	return await makeRestApiRequest<AgentProviderModelsResponse>(
+		context,
+		'GET',
+		`/projects/${projectId}/agents/v2/catalog/models/${provider}`,
+		credentialId ? { credentialId } : undefined,
 	);
 };
 
@@ -370,6 +396,36 @@ export const getAgentConfig = async (
 	);
 };
 
+/**
+ * Static, authoritative readiness check for the current draft. Never
+ * performs live/network validation — safe to call frequently. The publish
+ * endpoint re-checks this independently, so this is purely for UI feedback
+ * (disabled Publish tooltip, invalid capability chips).
+ */
+export const getAgentConfigValidation = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+): Promise<AgentConfigValidationResponse> => {
+	return await makeRestApiRequest<AgentConfigValidationResponse>(
+		context,
+		'GET',
+		`/projects/${projectId}/agents/v2/${agentId}/validation`,
+	);
+};
+
+export const getAgentCapabilitySummary = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+): Promise<AgentCapabilitySummary> => {
+	return await makeRestApiRequest<AgentCapabilitySummary>(
+		context,
+		'GET',
+		`/projects/${projectId}/agents/v2/${agentId}/summary`,
+	);
+};
+
 export const updateAgentConfig = async (
 	context: IRestApiContext,
 	projectId: string,
@@ -413,37 +469,13 @@ export const updateAgentSkill = async (
 	);
 };
 
-export const getBuilderMessages = async (
-	context: IRestApiContext,
-	projectId: string,
-	agentId: string,
-): Promise<AgentBuilderMessagesResponse> => {
-	return await makeRestApiRequest<AgentBuilderMessagesResponse>(
-		context,
-		'GET',
-		`/projects/${projectId}/agents/v2/${agentId}/build/messages`,
-	);
-};
-
-export const clearBuilderMessages = async (
-	context: IRestApiContext,
-	projectId: string,
-	agentId: string,
-): Promise<void> => {
-	await makeRestApiRequest(
-		context,
-		'DELETE',
-		`/projects/${projectId}/agents/v2/${agentId}/build/messages`,
-	);
-};
-
 export const getChatMessages = async (
 	context: IRestApiContext,
 	projectId: string,
 	agentId: string,
 	threadId: string,
-): Promise<AgentPersistedMessageDto[]> => {
-	return await makeRestApiRequest<AgentPersistedMessageDto[]>(
+): Promise<AgentChatMessagesResponse> => {
+	return await makeRestApiRequest<AgentChatMessagesResponse>(
 		context,
 		'GET',
 		`/projects/${projectId}/agents/v2/${agentId}/chat/${threadId}/messages`,
@@ -454,8 +486,8 @@ export const getTestChatMessages = async (
 	context: IRestApiContext,
 	projectId: string,
 	agentId: string,
-): Promise<AgentPersistedMessageDto[]> => {
-	return await makeRestApiRequest<AgentPersistedMessageDto[]>(
+): Promise<AgentChatMessagesResponse> => {
+	return await makeRestApiRequest<AgentChatMessagesResponse>(
 		context,
 		'GET',
 		`/projects/${projectId}/agents/v2/${agentId}/chat/messages`,
@@ -474,6 +506,19 @@ export const clearTestChatMessages = async (
 	);
 };
 
+export const cancelAgentChatRun = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	runId: string,
+): Promise<{ cancelled: boolean }> => {
+	return await makeRestApiRequest<{ cancelled: boolean }>(
+		context,
+		'DELETE',
+		`/projects/${projectId}/agents/v2/${agentId}/chat/runs/${runId}`,
+	);
+};
+
 export const deleteCustomTool = async (
 	context: IRestApiContext,
 	projectId: string,
@@ -484,6 +529,19 @@ export const deleteCustomTool = async (
 		context,
 		'DELETE',
 		`/projects/${projectId}/agents/v2/${agentId}/tools/${toolId}`,
+	);
+};
+
+export const testAgentVectorStore = async (
+	context: IRestApiContext,
+	projectId: string,
+	vectorStore: AgentJsonVectorStoreConfig,
+): Promise<VectorStoreTestResult> => {
+	return await makeRestApiRequest<VectorStoreTestResult>(
+		context,
+		'POST',
+		`/projects/${projectId}/agents/v2/vector-stores/test`,
+		{ vectorStore },
 	);
 };
 

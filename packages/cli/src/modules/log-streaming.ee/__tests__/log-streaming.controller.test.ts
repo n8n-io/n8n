@@ -1,8 +1,9 @@
+import type { OutboundHttp } from '@n8n/backend-network';
 import type { InstanceSettingsLoaderConfig } from '@n8n/config';
 import type { AuthenticatedRequest } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
 import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 import type { MessageEventBusDestinationWebhookOptions } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
@@ -17,13 +18,33 @@ describe('EventBusController', () => {
 	const instanceSettingsLoaderConfig = mock<InstanceSettingsLoaderConfig>({
 		logStreamingManagedByEnv: false,
 	});
+	const outboundHttp = mock<OutboundHttp>();
 
 	let controller: EventBusController;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		instanceSettingsLoaderConfig.logStreamingManagedByEnv = false;
-		controller = new EventBusController(eventBus, destinationService, instanceSettingsLoaderConfig);
+		controller = new EventBusController(
+			eventBus,
+			destinationService,
+			instanceSettingsLoaderConfig,
+			outboundHttp,
+		);
+	});
+
+	describe('getEventNames', () => {
+		it('should include MCP event names', async () => {
+			const result = await controller.getEventNames();
+
+			expect(result).toEqual(
+				expect.arrayContaining([
+					'n8n.audit.mcp.oauth.completed',
+					'n8n.audit.mcp.tool.called',
+					'n8n.audit.mcp.access.updated',
+				]),
+			);
+		});
 	});
 
 	describe('getDestination', () => {

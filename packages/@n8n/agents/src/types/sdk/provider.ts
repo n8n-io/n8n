@@ -27,7 +27,17 @@ export type Provider =
  * - `'enabled'` (default): a fixed token budget controlled by `budgetTokens`.
  */
 export type AnthropicThinkingConfig =
-	| { mode: 'adaptive' }
+	| {
+			mode: 'adaptive';
+			/**
+			 * Controls whether thinking content is returned. Opus 4.7+ defaults to
+			 * `"omitted"` on the Anthropic API; we default to `"summarized"` so
+			 * reasoning streams and replay metadata are available.
+			 */
+			display?: 'omitted' | 'summarized';
+			/** Reasoning effort for adaptive thinking. Defaults to 'medium'. */
+			effort?: 'low' | 'medium' | 'high' | 'xhigh' | 'max';
+	  }
 	| {
 			mode?: 'enabled';
 			/** Token budget for extended thinking. Defaults to 10000. */

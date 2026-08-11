@@ -196,7 +196,13 @@ describe('LangGraph Checkpoint Message Persistence', () => {
 		expect(contents).toContain('done');
 	});
 
-	it('should accumulate messages when second invocation is a regular stream after completed run', async () => {
+	// Skipped: flaky due to a race in @langchain/langgraph@1.0.2's checkpoint
+	// persistence when re-invoking a thread whose previous run already completed.
+	// On a failing run, the second invocation starts from an empty state instead of
+	// loading the prior checkpoint, so the first run's messages are dropped. Tracked
+	// in AI-2531.
+	// eslint-disable-next-line n8n-local-rules/no-skipped-tests
+	it.skip('should accumulate messages when second invocation is a regular stream after completed run', async () => {
 		const graph = new StateGraph(ParentState)
 			.addNode('echo', () => ({ messages: [new AIMessage('response')] }))
 			.addEdge(START, 'echo')

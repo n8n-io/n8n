@@ -1,7 +1,7 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import { sleep } from 'n8n-workflow';
+import { sleep } from '@n8n/utils/sleep';
 
 import config from '@/config';
 import { CacheService } from '@/services/cache/cache.service';
@@ -30,7 +30,7 @@ describe('TaskBrokerAuthService', () => {
 	const authService = new TaskBrokerAuthService(globalConfig.taskRunners, cacheService);
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('isValidAuthToken', () => {
@@ -50,39 +50,73 @@ describe('TaskBrokerAuthService', () => {
 
 		it('should store the generated token in cache', async () => {
 			// Arrange
-			const cacheSetSpy = jest.spyOn(cacheService, 'set');
+			const cacheSetSpy = vi.spyOn(cacheService, 'set');
 
 			// Act
 			const token = await authService.createGrantToken();
 
 			// Assert
-			expect(cacheSetSpy).toHaveBeenCalledWith(`grant-token:${token}`, '1', TTL);
+			expect(cacheSetSpy).toHaveBeenCalledWith(`grant-token:${token}`, '-', TTL);
+		});
+
+		it('should store the bound runner ID in cache', async () => {
+			// Arrange
+			const cacheSetSpy = vi.spyOn(cacheService, 'set');
+
+			// Act
+			const token = await authService.createGrantToken('runner1');
+
+			// Assert
+			expect(cacheSetSpy).toHaveBeenCalledWith(`grant-token:${token}`, 'runner1', TTL);
 		});
 	});
 
 	describe('tryConsumeGrantToken', () => {
-		it('should return false for an invalid grant token', async () => {
-			expect(await authService.tryConsumeGrantToken('random-secret')).toBe(false);
+		it('should be invalid for an invalid grant token', async () => {
+			expect(await authService.tryConsumeGrantToken('random-secret')).toEqual({
+				isValid: false,
+				boundRunnerId: null,
+			});
 		});
 
-		it('should return true for a valid grant token', async () => {
+		it('should be valid for a valid grant token', async () => {
 			// Arrange
 			const grantToken = await authService.createGrantToken();
 
 			// Act
-			expect(await authService.tryConsumeGrantToken(grantToken)).toBe(true);
+			expect(await authService.tryConsumeGrantToken(grantToken)).toEqual({
+				isValid: true,
+				boundRunnerId: null,
+			});
 		});
 
-		it('should return false for a already used grant token', async () => {
+		it('should return the runner ID bound at creation', async () => {
 			// Arrange
-			const grantToken = await authService.createGrantToken();
+			const grantToken = await authService.createGrantToken('runner1');
 
 			// Act
-			expect(await authService.tryConsumeGrantToken(grantToken)).toBe(true);
-			expect(await authService.tryConsumeGrantToken(grantToken)).toBe(false);
+			expect(await authService.tryConsumeGrantToken(grantToken)).toEqual({
+				isValid: true,
+				boundRunnerId: 'runner1',
+			});
 		});
 
-		it('should return false for an expired grant token', async () => {
+		it('should be invalid for a already used grant token', async () => {
+			// Arrange
+			const grantToken = await authService.createGrantToken('runner1');
+
+			// Act
+			expect(await authService.tryConsumeGrantToken(grantToken)).toEqual({
+				isValid: true,
+				boundRunnerId: 'runner1',
+			});
+			expect(await authService.tryConsumeGrantToken(grantToken)).toEqual({
+				isValid: false,
+				boundRunnerId: null,
+			});
+		});
+
+		it('should be invalid for an expired grant token', async () => {
 			// Arrange
 			const grantToken = await authService.createGrantToken();
 
@@ -90,7 +124,10 @@ describe('TaskBrokerAuthService', () => {
 			await sleep(TTL + 1);
 
 			await retryUntil(async () =>
-				expect(await authService.tryConsumeGrantToken(grantToken)).toBe(false),
+				expect(await authService.tryConsumeGrantToken(grantToken)).toEqual({
+					isValid: false,
+					boundRunnerId: null,
+				}),
 			);
 		});
 	});

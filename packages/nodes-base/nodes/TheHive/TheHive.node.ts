@@ -20,6 +20,7 @@ import { taskFields, taskOperations } from './descriptions/TaskDescription';
 import {
 	buildCustomFieldSearch,
 	mapResource,
+	parseAnalyzers,
 	prepareCustomFields,
 	prepareOptional,
 	prepareRangeQuery,
@@ -752,14 +753,8 @@ export class TheHive implements INodeType {
 
 					if (operation === 'executeAnalyzer') {
 						const observableId = this.getNodeParameter('id', i);
-						const analyzers = (this.getNodeParameter('analyzers', i) as string[]).map(
-							(analyzer) => {
-								const parts = analyzer.split('::');
-								return {
-									analyzerId: parts[0],
-									cortexId: parts[1],
-								};
-							},
+						const analyzers = parseAnalyzers(
+							this.getNodeParameter('analyzers', i) as string | string[],
 						);
 						let response: any;
 						let body: IDataObject;

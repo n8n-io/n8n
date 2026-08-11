@@ -13,7 +13,7 @@ import type {
 	ICredentialDataDecryptedObject,
 	WorkflowExpression,
 } from 'n8n-workflow';
-import { ApplicationError, NodeConnectionTypes } from 'n8n-workflow';
+import { UnexpectedError, NodeConnectionTypes } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { describeCommonTests } from './shared-tests';
@@ -118,7 +118,7 @@ describe('ExecuteSingleContext', () => {
 			const inputIndex = 1;
 
 			expect(() => executeSingleContext.getInputData(inputIndex, connectionType)).toThrow(
-				ApplicationError,
+				UnexpectedError,
 			);
 		});
 
@@ -126,7 +126,7 @@ describe('ExecuteSingleContext', () => {
 			inputData.main[inputIndex] = null;
 
 			expect(() => executeSingleContext.getInputData(inputIndex, connectionType)).toThrow(
-				ApplicationError,
+				UnexpectedError,
 			);
 		});
 
@@ -134,7 +134,7 @@ describe('ExecuteSingleContext', () => {
 			delete inputData.main[inputIndex]![itemIndex];
 
 			expect(() => executeSingleContext.getInputData(inputIndex, connectionType)).toThrow(
-				ApplicationError,
+				UnexpectedError,
 			);
 		});
 	});

@@ -1,13 +1,12 @@
 import { Logger } from '@n8n/backend-common';
 import { Get, RestController } from '@n8n/decorators';
-import axios from 'axios';
 import { Response } from 'express';
-import { ensureError, jsonStringify } from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 
+import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { EventService } from '@/events/event.service';
-import { OAuthRequest } from '@/requests';
-
 import { OauthService, type OAuth1CredentialData } from '@/oauth/oauth.service';
+import { OAuthRequest } from '@/requests';
 
 @RestController('/oauth1-credential')
 export class OAuth1CredentialController {
@@ -15,14 +14,15 @@ export class OAuth1CredentialController {
 		private readonly oauthService: OauthService,
 		private readonly logger: Logger,
 		private readonly eventService: EventService,
+		private readonly credentialsOverwrites: CredentialsOverwrites,
 	) {}
 
 	/** Get Authorization url */
 	@Get('/auth')
-	async getAuthUri(req: OAuthRequest.OAuth1Credential.Auth): Promise<string> {
-		const credential = await this.oauthService.getCredentialForUpdate(req);
+	async getAuthUri(req: OAuthRequest.OAuth1Credential.Auth, res: Response): Promise<string> {
+		const credential = await this.oauthService.getCredentialForAuthFlow(req);
 		const csrfData = await this.oauthService.buildCsrfStateData(credential, req);
-		const uri = await this.oauthService.generateAOauth1AuthUri(credential, csrfData);
+		const uri = await this.oauthService.generateAOauth1AuthUri(credential, csrfData, req, res);
 
 		this.logger.debug('OAuth1 authorization successful for new credential', {
 			userId: req.user.id,
@@ -46,24 +46,17 @@ export class OAuth1CredentialController {
 				);
 			}
 
-			const [credential, _, oauthCredentials, state] =
+			const [credential, decryptedDataOriginal, oauthCredentials, state, flowState] =
 				await this.oauthService.resolveCredential<OAuth1CredentialData>(req);
 
-			// Form URL encoded body https://datatracker.ietf.org/doc/html/rfc5849#section-3.5.2
-			const oauthToken = await axios.post<string>(
-				oauthCredentials.accessTokenUrl,
-				{ oauth_token, oauth_verifier },
-				{ headers: { 'content-type': 'application/x-www-form-urlencoded' } },
-			);
-
-			// Response comes as x-www-form-urlencoded string so convert it to JSON
-
-			const paramParser = new URLSearchParams(oauthToken.data);
-
-			const oauthTokenData = Object.fromEntries(paramParser.entries());
+			const oauthTokenData = await this.oauthService.getOAuth1AccessToken(oauthCredentials, {
+				oauthToken: oauth_token,
+				oauthVerifier: oauth_verifier,
+				oauthTokenSecret: flowState.oauthTokenSecret ?? '',
+			});
 
 			if (!state.origin || state.origin === 'static-credential') {
-				await this.oauthService.encryptAndSaveData(credential, { oauthTokenData }, ['csrfSecret']);
+				await this.oauthService.encryptAndSaveData(credential, { oauthTokenData });
 
 				this.logger.debug('OAuth1 callback successful for new credential', {
 					credentialId: credential.id,
@@ -97,6 +90,11 @@ export class OAuth1CredentialController {
 						user: { id: state.userId },
 						credentialType: credential.type,
 						credentialId: credential.id,
+						supportsManagedAuth: this.credentialsOverwrites.supportsManagedAuth(credential.type),
+						usesManagedAuth: this.credentialsOverwrites.usesManagedAuth(
+							credential.type,
+							decryptedDataOriginal,
+						),
 					});
 				}
 
@@ -104,10 +102,11 @@ export class OAuth1CredentialController {
 			}
 		} catch (e) {
 			const error = ensureError(e);
+			this.logger.error('OAuth1 callback failed', { error, cause: error.cause });
 			return this.oauthService.renderCallbackError(
 				res,
 				error.message,
-				'body' in error ? jsonStringify(error.body) : undefined,
+				this.oauthService.extractCallbackErrorReason(error),
 			);
 		}
 	}

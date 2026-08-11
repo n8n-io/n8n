@@ -82,18 +82,6 @@ describe('arg-parser', () => {
 			expect(result.verbose).toBe(true);
 		});
 
-		it('parses --fix', () => {
-			setArgs(['--fix']);
-			const result = parseArgs();
-			expect(result.fix).toBe(true);
-		});
-
-		it('parses --write', () => {
-			setArgs(['--write']);
-			const result = parseArgs();
-			expect(result.write).toBe(true);
-		});
-
 		it('parses --list', () => {
 			setArgs(['--list']);
 			const result = parseArgs();
@@ -209,23 +197,6 @@ describe('arg-parser', () => {
 			const result = parseArgs();
 			expect(result.testCommand).toBe('pnpm test');
 		});
-
-		it('parses --jest-variant=unit', () => {
-			setArgs(['--jest-variant=unit']);
-			const result = parseArgs();
-			expect(result.jestVariant).toBe('unit');
-		});
-
-		it('parses --jest-variant=integration', () => {
-			setArgs(['--jest-variant=integration']);
-			const result = parseArgs();
-			expect(result.jestVariant).toBe('integration');
-		});
-
-		it('throws on unknown --jest-variant value', () => {
-			setArgs(['--jest-variant=e2e']);
-			expect(() => parseArgs()).toThrow(/Unknown --jest-variant=e2e/);
-		});
 	});
 
 	describe('combined arguments', () => {
@@ -259,8 +230,6 @@ describe('arg-parser', () => {
 			expect(result.files).toEqual([]);
 			expect(result.json).toBe(false);
 			expect(result.verbose).toBe(false);
-			expect(result.fix).toBe(false);
-			expect(result.write).toBe(false);
 			expect(result.help).toBe(false);
 			expect(result.list).toBe(false);
 			expect(result.execute).toBe(false);

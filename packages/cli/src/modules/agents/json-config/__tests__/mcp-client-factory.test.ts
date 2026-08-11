@@ -1,27 +1,34 @@
 import type { CredentialProvider } from '@n8n/agents';
 import type { AgentJsonMcpServerConfig } from '@n8n/api-types';
-import { mock } from 'jest-mock-extended';
+import type { CustomFetch } from '@n8n/backend-network';
+import { mock } from 'vitest-mock-extended';
+import { UserError } from 'n8n-workflow';
 
 import type { OauthService } from '@/oauth/oauth.service';
 
-import { buildMcpClientForServer, createAuthFetch, mapApprovalToSdk } from '../mcp-client-factory';
+import {
+	buildMcpClientForServer,
+	listMcpServerTools,
+	mapApprovalToSdk,
+} from '../mcp-client-factory';
 
 // ---------------------------------------------------------------------------
 // Module mocks
 // ---------------------------------------------------------------------------
 
-const mcpClientCtor = jest.fn();
-jest.mock('@n8n/agents', () => ({
-	McpClient: jest.fn(function (configs: unknown) {
+const mcpClientCtor = vi.fn();
+const listToolsMock = vi.fn();
+const closeMock = vi.fn();
+vi.mock('@n8n/agents', () => ({
+	McpClient: vi.fn(function (configs: unknown) {
 		mcpClientCtor(configs);
-		return { configs, close: jest.fn() };
+		return { configs, close: closeMock, listTools: listToolsMock };
 	}),
 }));
 
-const proxyFetchMock = jest.fn();
-jest.mock('@n8n/ai-utilities', () => ({
-	proxyFetch: (...args: unknown[]) => proxyFetchMock(...args),
-}));
+// Stands in for the proxy-aware transport fetch the caller injects via deps.
+const proxyFetchMock = vi.fn();
+const proxyFetch = ((...args: unknown[]) => proxyFetchMock(...args)) as unknown as CustomFetch;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -64,69 +71,6 @@ describe('mapApprovalToSdk', () => {
 });
 
 // ---------------------------------------------------------------------------
-// createAuthFetch
-// ---------------------------------------------------------------------------
-
-describe('createAuthFetch', () => {
-	beforeEach(() => {
-		proxyFetchMock.mockReset();
-	});
-
-	it('routes through proxyFetch and injects the initial headers', async () => {
-		proxyFetchMock.mockResolvedValueOnce(makeOk());
-
-		const fetchFn = createAuthFetch({ initialHeaders: { Authorization: 'Bearer A' } });
-		const res = await fetchFn('https://example.test/mcp');
-
-		expect(res.status).toBe(200);
-		expect(proxyFetchMock).toHaveBeenCalledTimes(1);
-		const [, init] = proxyFetchMock.mock.calls[0] as [unknown, RequestInit];
-		expect(init.headers).toMatchObject({ Authorization: 'Bearer A' });
-	});
-
-	it('returns 401 unchanged when no onUnauthorized handler is configured', async () => {
-		proxyFetchMock.mockResolvedValueOnce(make401());
-
-		const fetchFn = createAuthFetch({ initialHeaders: { Authorization: 'Bearer A' } });
-		const res = await fetchFn('https://example.test/mcp');
-
-		expect(res.status).toBe(401);
-		expect(proxyFetchMock).toHaveBeenCalledTimes(1);
-	});
-
-	it('returns the original 401 when onUnauthorized returns null', async () => {
-		proxyFetchMock.mockResolvedValueOnce(make401());
-
-		const onUnauthorized = jest.fn().mockResolvedValue(null);
-		const fetchFn = createAuthFetch({
-			initialHeaders: { Authorization: 'Bearer A' },
-			onUnauthorized,
-		});
-		const res = await fetchFn('https://example.test/mcp');
-
-		expect(res.status).toBe(401);
-		expect(onUnauthorized).toHaveBeenCalledTimes(1);
-		expect(proxyFetchMock).toHaveBeenCalledTimes(1);
-	});
-
-	it('retries once with refreshed headers when onUnauthorized returns new headers', async () => {
-		proxyFetchMock.mockResolvedValueOnce(make401()).mockResolvedValueOnce(makeOk());
-
-		const onUnauthorized = jest.fn().mockResolvedValue({ Authorization: 'Bearer B' });
-		const fetchFn = createAuthFetch({
-			initialHeaders: { Authorization: 'Bearer A' },
-			onUnauthorized,
-		});
-		const res = await fetchFn('https://example.test/mcp');
-
-		expect(res.status).toBe(200);
-		expect(proxyFetchMock).toHaveBeenCalledTimes(2);
-		const [, init2] = proxyFetchMock.mock.calls[1] as [unknown, RequestInit];
-		expect(init2.headers).toMatchObject({ Authorization: 'Bearer B' });
-	});
-});
-
-// ---------------------------------------------------------------------------
 // buildMcpClientForServer — header derivation per auth type
 // ---------------------------------------------------------------------------
 
@@ -146,6 +90,7 @@ describe('buildMcpClientForServer — header derivation', () => {
 			credentialProvider,
 			oauthService,
 			projectId: 'proj-1',
+			proxyFetch,
 		});
 
 		const [configs] = mcpClientCtor.mock.calls[0] as [Array<{ fetch: typeof fetch }>];
@@ -226,7 +171,7 @@ describe('buildMcpClientForServer — OAuth2 refresh on 401', () => {
 
 		await buildMcpClientForServer(
 			makeServer({ authentication: 'mcpOAuth2Api', credential: 'cred-1' }),
-			{ credentialProvider, oauthService, projectId: 'proj-1' },
+			{ credentialProvider, oauthService, projectId: 'proj-1', proxyFetch },
 		);
 
 		const [configs] = mcpClientCtor.mock.calls[0] as [Array<{ fetch: typeof fetch }>];
@@ -252,7 +197,7 @@ describe('buildMcpClientForServer — OAuth2 refresh on 401', () => {
 
 		await buildMcpClientForServer(
 			makeServer({ authentication: 'bearerAuth', credential: 'cred-1' }),
-			{ credentialProvider, oauthService, projectId: 'proj-1' },
+			{ credentialProvider, oauthService, projectId: 'proj-1', proxyFetch },
 		);
 
 		const [configs] = mcpClientCtor.mock.calls[0] as [Array<{ fetch: typeof fetch }>];
@@ -272,9 +217,10 @@ describe('buildMcpClientForServer — SDK config mapping', () => {
 		proxyFetchMock.mockReset();
 	});
 
-	it('forwards toolFilter, approval, transport, and connectionTimeoutMs to the SDK config', async () => {
+	it('forwards tool and lifecycle options to the SDK config', async () => {
 		const credentialProvider = mock<CredentialProvider>();
 		const oauthService = mock<OauthService>();
+		const onToolCallSettled = vi.fn();
 
 		await buildMcpClientForServer(
 			makeServer({
@@ -283,7 +229,13 @@ describe('buildMcpClientForServer — SDK config mapping', () => {
 				approval: { mode: 'selected', tools: ['create'] },
 				connectionTimeoutMs: 5_000,
 			}),
-			{ credentialProvider, oauthService, projectId: 'proj-1' },
+			{
+				credentialProvider,
+				oauthService,
+				projectId: 'proj-1',
+				proxyFetch,
+				onToolCallSettled,
+			},
 		);
 
 		const [configs] = mcpClientCtor.mock.calls[0] as [Array<Record<string, unknown>>];
@@ -295,6 +247,7 @@ describe('buildMcpClientForServer — SDK config mapping', () => {
 			toolFilter: { mode: 'allow', tools: ['echo'] },
 			requireApproval: ['create'],
 			connectionTimeoutMs: 5_000,
+			onToolCallSettled,
 		});
 		expect(typeof configs[0].fetch).toBe('function');
 	});
@@ -307,60 +260,49 @@ describe('buildMcpClientForServer — SDK config mapping', () => {
 			credentialProvider,
 			oauthService,
 			projectId: 'proj-1',
+			proxyFetch,
 		});
 
 		const [configs] = mcpClientCtor.mock.calls[0] as [Array<Record<string, unknown>>];
 		expect(configs[0]).not.toHaveProperty('connectionTimeoutMs');
 	});
-});
 
-// ---------------------------------------------------------------------------
-// createAuthFetch — header merging and stateful refresh
-// ---------------------------------------------------------------------------
+	it('forwards onConnectionFailed to the SDK config when provided', async () => {
+		const credentialProvider = mock<CredentialProvider>();
+		const oauthService = mock<OauthService>();
+		const onConnectionFailed = vi.fn();
 
-describe('createAuthFetch — header merging', () => {
-	beforeEach(() => {
-		proxyFetchMock.mockReset();
-		proxyFetchMock.mockResolvedValue(new Response('ok', { status: 200 }));
+		await buildMcpClientForServer(makeServer(), {
+			credentialProvider,
+			oauthService,
+			projectId: 'proj-1',
+			proxyFetch,
+			onConnectionFailed,
+		});
+
+		const [configs] = mcpClientCtor.mock.calls[0] as [Array<Record<string, unknown>>];
+		expect(typeof configs[0].onConnectionFailed).toBe('function');
+		// Invoking the wired callback forwards to the observer.
+		(configs[0].onConnectionFailed as (event: { server: string; error: string }) => void)({
+			server: 'srv',
+			error: 'boom',
+		});
+		expect(onConnectionFailed).toHaveBeenCalledWith({ server: 'srv', error: 'boom' });
 	});
 
-	it('merges caller-supplied init.headers with auth headers (auth takes precedence)', async () => {
-		const fetchFn = createAuthFetch({ initialHeaders: { Authorization: 'Bearer A' } });
-		await fetchFn('https://example.test/mcp', { headers: { 'X-Custom': 'value' } });
+	it('omits onConnectionFailed from the SDK config when not provided', async () => {
+		const credentialProvider = mock<CredentialProvider>();
+		const oauthService = mock<OauthService>();
 
-		const [, init] = proxyFetchMock.mock.calls[0] as [unknown, RequestInit];
-		expect(init.headers).toMatchObject({
-			'X-Custom': 'value',
-			Authorization: 'Bearer A',
-		});
-	});
-
-	it('uses the refreshed headers on the second call after a successful 401 refresh', async () => {
-		proxyFetchMock
-			.mockResolvedValueOnce(new Response('unauthorized', { status: 401 }))
-			.mockResolvedValueOnce(new Response('ok', { status: 200 }))
-			.mockResolvedValueOnce(new Response('ok', { status: 200 }));
-
-		let callCount = 0;
-		const onUnauthorized = jest.fn().mockImplementation(async () => {
-			callCount++;
-			return { Authorization: `Bearer refreshed-${callCount}` };
+		await buildMcpClientForServer(makeServer(), {
+			credentialProvider,
+			oauthService,
+			projectId: 'proj-1',
+			proxyFetch,
 		});
 
-		const fetchFn = createAuthFetch({
-			initialHeaders: { Authorization: 'Bearer stale' },
-			onUnauthorized,
-		});
-
-		// First call triggers a 401 → refresh → retry
-		await fetchFn('https://example.test/mcp');
-
-		// Second call should use the refreshed headers without triggering another refresh
-		await fetchFn('https://example.test/mcp');
-
-		expect(onUnauthorized).toHaveBeenCalledTimes(1);
-		const [, thirdInit] = proxyFetchMock.mock.calls[2] as [unknown, RequestInit];
-		expect((thirdInit.headers as Record<string, string>).Authorization).toBe('Bearer refreshed-1');
+		const [configs] = mcpClientCtor.mock.calls[0] as [Array<Record<string, unknown>>];
+		expect(configs[0]).not.toHaveProperty('onConnectionFailed');
 	});
 });
 
@@ -384,6 +326,7 @@ describe('buildMcpClientForServer — auth header edge cases', () => {
 			credentialProvider,
 			oauthService,
 			projectId: 'proj-1',
+			proxyFetch,
 		});
 
 		const [configs] = mcpClientCtor.mock.calls[0] as [Array<{ fetch: typeof fetch }>];
@@ -471,7 +414,7 @@ describe('buildMcpClientForServer — service-specific McpOAuth2Api refresh', ()
 
 		await buildMcpClientForServer(
 			makeServer({ authentication: 'notionMcpOAuth2Api' as never, credential: 'cred-1' }),
-			{ credentialProvider, oauthService, projectId: 'proj-1' },
+			{ credentialProvider, oauthService, projectId: 'proj-1', proxyFetch },
 		);
 
 		const [configs] = mcpClientCtor.mock.calls[0] as [Array<{ fetch: typeof fetch }>];
@@ -494,6 +437,7 @@ describe('buildMcpClientForServer — service-specific McpOAuth2Api refresh', ()
 			credentialProvider,
 			oauthService,
 			projectId: 'proj-1',
+			proxyFetch,
 		});
 
 		const [configs] = mcpClientCtor.mock.calls[0] as [Array<{ fetch: typeof fetch }>];
@@ -501,5 +445,182 @@ describe('buildMcpClientForServer — service-specific McpOAuth2Api refresh', ()
 
 		// No refresh should have been attempted
 		expect(oauthService.refreshOAuth2CredentialById).not.toHaveBeenCalled();
+	});
+});
+
+// ---------------------------------------------------------------------------
+// buildMcpClientForServer — credential domain restrictions
+// ---------------------------------------------------------------------------
+
+describe('buildMcpClientForServer — credential domain restrictions', () => {
+	beforeEach(() => {
+		mcpClientCtor.mockReset();
+		proxyFetchMock.mockReset();
+		proxyFetchMock.mockResolvedValue(makeOk());
+	});
+
+	it('blocks requests when credential mode is "none" (block all)', async () => {
+		const credentialProvider = mock<CredentialProvider>();
+		credentialProvider.resolve.mockResolvedValue({
+			token: 'tok',
+			allowedHttpRequestDomains: 'none',
+		} as never);
+		const oauthService = mock<OauthService>();
+
+		await buildMcpClientForServer(
+			makeServer({ authentication: 'bearerAuth', credential: 'cred-1' }),
+			{ credentialProvider, oauthService, projectId: 'proj-1', proxyFetch },
+		);
+
+		const [configs] = mcpClientCtor.mock.calls[0] as [Array<{ fetch: typeof fetch }>];
+		await expect(configs[0].fetch('https://example.test/mcp')).rejects.toThrow(UserError);
+		expect(proxyFetchMock).not.toHaveBeenCalled();
+	});
+
+	it('blocks requests when the server URL is not in the credential allowlist', async () => {
+		const credentialProvider = mock<CredentialProvider>();
+		credentialProvider.resolve.mockResolvedValue({
+			token: 'tok',
+			allowedHttpRequestDomains: 'domains',
+			allowedDomains: 'other-host.test',
+		} as never);
+		const oauthService = mock<OauthService>();
+
+		await buildMcpClientForServer(
+			makeServer({
+				authentication: 'bearerAuth',
+				credential: 'cred-1',
+				url: 'https://example.test/mcp',
+			}),
+			{ credentialProvider, oauthService, projectId: 'proj-1', proxyFetch },
+		);
+
+		const [configs] = mcpClientCtor.mock.calls[0] as [Array<{ fetch: typeof fetch }>];
+		await expect(configs[0].fetch('https://example.test/mcp')).rejects.toThrow(UserError);
+		expect(proxyFetchMock).not.toHaveBeenCalled();
+	});
+
+	it('allows connection when the server URL matches the credential allowlist', async () => {
+		const credentialProvider = mock<CredentialProvider>();
+		credentialProvider.resolve.mockResolvedValue({
+			token: 'tok',
+			allowedHttpRequestDomains: 'domains',
+			allowedDomains: 'example.test',
+		} as never);
+		const oauthService = mock<OauthService>();
+
+		await expect(
+			buildMcpClientForServer(makeServer({ authentication: 'bearerAuth', credential: 'cred-1' }), {
+				credentialProvider,
+				oauthService,
+				projectId: 'proj-1',
+				proxyFetch,
+			}),
+		).resolves.toBeDefined();
+	});
+
+	it('passes allowedDomains to the auth fetch so redirect hops are checked', async () => {
+		proxyFetchMock.mockResolvedValueOnce(
+			new Response(null, { status: 302, headers: { location: 'https://evil.test/mcp' } }),
+		);
+		const credentialProvider = mock<CredentialProvider>();
+		credentialProvider.resolve.mockResolvedValue({
+			token: 'tok',
+			allowedHttpRequestDomains: 'domains',
+			allowedDomains: 'example.test',
+		} as never);
+		const oauthService = mock<OauthService>();
+
+		await buildMcpClientForServer(
+			makeServer({ authentication: 'bearerAuth', credential: 'cred-1' }),
+			{ credentialProvider, oauthService, projectId: 'proj-1', proxyFetch },
+		);
+
+		const [configs] = mcpClientCtor.mock.calls[0] as [Array<{ fetch: typeof fetch }>];
+		await expect(configs[0].fetch('https://example.test/mcp')).rejects.toThrow(UserError);
+	});
+
+	it('allows connection when credential mode is "all"', async () => {
+		const credentialProvider = mock<CredentialProvider>();
+		credentialProvider.resolve.mockResolvedValue({
+			token: 'tok',
+			allowedHttpRequestDomains: 'all',
+		} as never);
+		const oauthService = mock<OauthService>();
+
+		await expect(
+			buildMcpClientForServer(makeServer({ authentication: 'bearerAuth', credential: 'cred-1' }), {
+				credentialProvider,
+				oauthService,
+				projectId: 'proj-1',
+				proxyFetch,
+			}),
+		).resolves.toBeDefined();
+	});
+
+	it('skips domain validation entirely when no credential is used', async () => {
+		const credentialProvider = mock<CredentialProvider>();
+		const oauthService = mock<OauthService>();
+
+		await expect(
+			buildMcpClientForServer(makeServer({ authentication: 'none' }), {
+				credentialProvider,
+				oauthService,
+				projectId: 'proj-1',
+				proxyFetch,
+			}),
+		).resolves.toBeDefined();
+		expect(credentialProvider.resolve).not.toHaveBeenCalled();
+	});
+});
+
+// ---------------------------------------------------------------------------
+// listMcpServerTools
+// ---------------------------------------------------------------------------
+
+describe('listMcpServerTools', () => {
+	const deps = () => ({
+		credentialProvider: mock<CredentialProvider>(),
+		oauthService: mock<OauthService>(),
+		projectId: 'proj-1',
+		proxyFetch,
+	});
+
+	beforeEach(() => {
+		mcpClientCtor.mockReset();
+		listToolsMock.mockReset();
+		closeMock.mockReset();
+		closeMock.mockResolvedValue(undefined);
+	});
+
+	it('returns name/description pairs (empty description fallback) and closes the client', async () => {
+		listToolsMock.mockResolvedValue([
+			{ name: 'echo', description: 'Echoes input' },
+			{ name: 'bare', description: undefined },
+		]);
+
+		const tools = await listMcpServerTools(makeServer(), deps());
+
+		expect(tools).toEqual([
+			{ name: 'echo', description: 'Echoes input' },
+			{ name: 'bare', description: '' },
+		]);
+		expect(closeMock).toHaveBeenCalledTimes(1);
+	});
+
+	it('still closes the client and propagates the error when listing fails', async () => {
+		listToolsMock.mockRejectedValue(new Error('connection refused'));
+
+		await expect(listMcpServerTools(makeServer(), deps())).rejects.toThrow('connection refused');
+		expect(closeMock).toHaveBeenCalledTimes(1);
+	});
+
+	it('swallows close errors', async () => {
+		listToolsMock.mockResolvedValue([{ name: 'echo', description: 'd' }]);
+		closeMock.mockRejectedValue(new Error('already closed'));
+
+		await expect(listMcpServerTools(makeServer(), deps())).resolves.toEqual([
+			{ name: 'echo', description: 'd' },
+		]);
 	});
 });

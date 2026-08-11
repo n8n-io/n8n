@@ -31,6 +31,10 @@ export const EVAL_PROVIDER_URL_FIELD: Record<string, { field: string; pathPrefix
 	openAiApi: { field: 'url', pathPrefix: '/v1' },
 };
 
+function getCredentialId(nodeCredentials: INodeCredentialsDetails): string | undefined {
+	return nodeCredentials.id ? nodeCredentials.id : undefined;
+}
+
 /** CredentialsHelper proxy for eval: tolerates missing credentials and (optionally) rewrites vendor URLs to the wire server. */
 export class EvalMockedCredentialsHelper extends ICredentialsHelper {
 	readonly mockedCredentials: InstanceAiEvalMockedCredential[] = [];
@@ -38,8 +42,8 @@ export class EvalMockedCredentialsHelper extends ICredentialsHelper {
 
 	constructor(
 		private readonly inner: ICredentialsHelper,
-		private readonly serverUrl?: string,
-		private readonly logger?: Logger,
+		private readonly serverUrl: string | undefined,
+		private readonly logger: Logger,
 		private readonly subNodeToRoot?: ReadonlyMap<string, string>,
 	) {
 		super();
@@ -137,7 +141,7 @@ export class EvalMockedCredentialsHelper extends ICredentialsHelper {
 			this.mockedCredentials.push({
 				nodeName: executeData?.node?.name ?? 'unknown',
 				credentialType: type,
-				credentialId: nodeCredentials.id ?? undefined,
+				credentialId: getCredentialId(nodeCredentials),
 			});
 			credentials = { [MOCK_MARKER]: true };
 		}
@@ -156,7 +160,7 @@ export class EvalMockedCredentialsHelper extends ICredentialsHelper {
 		if (!mapping) {
 			// No rewrite mapping — vendor SDK will hit its default URL. Refused upfront
 			// by assertUnpinCompatibility for LLM sub-nodes; this branch is for non-LLM HTTP creds.
-			this.logger?.warn(
+			this.logger.warn(
 				`[EvalMock] No URL rewrite mapping for credential type "${type}" — ` +
 					`vendor traffic from "${executeData?.node?.name ?? 'unknown'}" will hit the real provider.`,
 			);
@@ -170,7 +174,7 @@ export class EvalMockedCredentialsHelper extends ICredentialsHelper {
 		if (subNodeName && !rootName && this.subNodeToRoot) {
 			// Sub-node not in routing map — unexpected topology; wire server's
 			// unrouted-/v1 handler will surface this loudly too.
-			this.logger?.warn(
+			this.logger.warn(
 				`[EvalMock] No vendor LLM routing entry for sub-node "${subNodeName}" — ` +
 					'wire-server attribution will be unrouted. Check buildVendorLlmRouting coverage.',
 			);
@@ -179,7 +183,7 @@ export class EvalMockedCredentialsHelper extends ICredentialsHelper {
 		this.rewrittenCredentials.push({
 			nodeName: subNodeName ?? 'unknown',
 			credentialType: type,
-			credentialId: nodeCredentials.id ?? undefined,
+			credentialId: getCredentialId(nodeCredentials),
 			field,
 		});
 

@@ -1,3 +1,5 @@
+import { Logger } from '@n8n/backend-common';
+import { Container } from '@n8n/di';
 import glob from 'fast-glob';
 import { type NodeLoader } from 'n8n-workflow';
 import path from 'path';
@@ -24,12 +26,25 @@ export async function scanDirectoryForPackages(
 		...(await glob('@*/n8n-nodes-*', { ...globOptions, deep: 2 })),
 	];
 
-	return installedPackagePaths.map(
-		(packagePath) =>
-			new LazyPackageDirectoryLoader(
-				path.join(nodeModulesDir, packagePath),
-				options.excludeNodes,
-				options.includeNodes,
-			),
-	);
+	const logger = Container.get(Logger);
+	const loaders: NodeLoader[] = [];
+
+	for (const packagePath of installedPackagePaths) {
+		try {
+			loaders.push(
+				new LazyPackageDirectoryLoader(
+					path.join(nodeModulesDir, packagePath),
+					options.excludeNodes,
+					options.includeNodes,
+				),
+			);
+		} catch (error) {
+			logger.warn(
+				`Skipping package directory "${packagePath}": failed to load package metadata. The package may be partially installed or corrupted.`,
+				{ error },
+			);
+		}
+	}
+
+	return loaders;
 }

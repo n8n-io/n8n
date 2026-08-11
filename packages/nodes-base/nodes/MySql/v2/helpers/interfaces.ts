@@ -7,7 +7,7 @@ export type Mysql2OkPacket = mysql2.OkPacket;
 export type Mysql2PoolConnection = mysql2.PoolConnection;
 
 export type QueryValues = Array<string | number | IDataObject>;
-export type QueryWithValues = { query: string; values: QueryValues };
+export type QueryWithValues = { query: string; values: QueryValues; itemIndex?: number };
 
 export type QueryRunner = (queries: QueryWithValues[]) => Promise<INodeExecutionData[]>;
 

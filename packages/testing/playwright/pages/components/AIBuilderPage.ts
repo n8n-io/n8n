@@ -35,6 +35,14 @@ export class AIBuilderPage {
 		return this.page.getByTestId('canvas-build-with-ai-button');
 	}
 
+	getExecuteAndRefineButton() {
+		return this.page.getByRole('button', { name: 'Execute and refine' });
+	}
+
+	getTaskAbortedMessage() {
+		return this.page.getByText('Task aborted');
+	}
+
 	// #endregion
 
 	// #region Actions

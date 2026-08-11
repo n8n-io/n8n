@@ -6,7 +6,7 @@ import { TaskBrokerWsServer } from '@/task-runners/task-broker/task-broker-ws-se
 import { TaskRunnerModule } from '@/task-runners/task-runner-module';
 import { PyTaskRunnerProcess } from '@/task-runners/task-runner-process-py';
 
-// Direct method replacement (not jest.spyOn) because the root jest config
+// Direct method replacement (not vi.spyOn) because the root vi config
 // enables `restoreMocks: true` which restores spies between tests, but
 // `module.start()` calls `checkRequirements` and we need the stub to remain
 // active throughout the file.

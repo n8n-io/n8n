@@ -2,7 +2,11 @@ import { defineConfig, globalIgnores } from 'eslint/config';
 import { nodeConfig } from '@n8n/eslint-config/node';
 
 export default defineConfig(
-	globalIgnores(['coverage/**', 'jest.config*.js', 'evaluations/programmatic/python/.venv/**']),
+	globalIgnores([
+		'coverage/**',
+		'vitest.config.*.ts',
+		'evaluations/programmatic/python/.venv/**',
+	]),
 	nodeConfig,
 	{
 	rules: {
@@ -15,5 +19,12 @@ export default defineConfig(
 	files: ['./src/test/**/*.ts', './**/*.test.ts'],
 	rules: {
 		'@typescript-eslint/no-unsafe-assignment': 'warn',
+	},
+}, {
+	// The eval harness is dev-only tooling (excluded from the build output),
+	// so devDependencies (e.g. n8n-core for __schema__ resolution) are fine.
+	files: ['./evaluations/**/*.ts'],
+	rules: {
+		'import-x/no-extraneous-dependencies': ['error', { devDependencies: true }],
 	},
 });

@@ -1,25 +1,25 @@
 import type { NextFunction } from 'express';
 import type * as express from 'express';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { ExecutionRequest } from '@/executions/execution.types';
 import { parseRangeQuery } from '@/executions/parse-range-query.middleware';
 
 describe('`parseRangeQuery` middleware', () => {
 	const res = mock<express.Response>({
-		status: () => mock<express.Response>({ json: jest.fn() }),
+		status: vi.fn(() => mock<express.Response>({ json: vi.fn() })),
 	});
 
-	const nextFn: NextFunction = jest.fn();
+	const nextFn: NextFunction = vi.fn();
 
 	beforeEach(() => {
-		jest.restoreAllMocks();
-		jest.clearAllMocks();
+		vi.restoreAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('errors', () => {
 		test('should fail on invalid JSON', () => {
-			const statusSpy = jest.spyOn(res, 'status');
+			const statusSpy = res.status;
 
 			const req = mock<ExecutionRequest.GetMany>({
 				query: {
@@ -37,7 +37,7 @@ describe('`parseRangeQuery` middleware', () => {
 		});
 
 		test('should fail on invalid schema', () => {
-			const statusSpy = jest.spyOn(res, 'status');
+			const statusSpy = res.status;
 
 			const req = mock<ExecutionRequest.GetMany>({
 				query: {

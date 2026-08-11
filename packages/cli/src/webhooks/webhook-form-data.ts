@@ -1,6 +1,22 @@
 import formidable from 'formidable';
 import type { IncomingMessage } from 'http';
 
+import { ContentTooLargeError } from '@/errors/response-errors/content-too-large.error';
+
+// formidable flags "payload too large" conditions (a file too big, the total
+// upload too big, too many files/fields) with `httpCode: 413`. n8n's error
+// classifier reads `httpStatusCode`, not formidable's `httpCode`, so without
+// this mapping these surface as a generic 500 instead of a 413.
+const isPayloadTooLargeError = (error: unknown): boolean =>
+	typeof error === 'object' && error !== null && 'httpCode' in error && error.httpCode === 413;
+
+const mapFormParseError = (error: unknown): Error => {
+	if (isPayloadTooLargeError(error)) {
+		return new ContentTooLargeError('The submitted form data exceeds the allowed size.');
+	}
+	return error instanceof Error ? error : new Error(String(error));
+};
+
 const normalizeFormData = <T>(values: Record<string, T | T[]>) => {
 	for (const key in values) {
 		const value = values[key];
@@ -30,7 +46,7 @@ export const createMultiFormDataParser = (maxFormDataSizeInMb: number) => {
 		return await new Promise((resolve, reject) => {
 			form.parse(req, (error, data, files) => {
 				if (error) {
-					reject(error);
+					reject(mapFormParseError(error));
 					return;
 				}
 				normalizeFormData(data);

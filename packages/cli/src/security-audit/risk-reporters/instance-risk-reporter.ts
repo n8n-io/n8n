@@ -1,8 +1,9 @@
 import { inDevelopment, Logger } from '@n8n/backend-common';
+import { OutboundHttp, type HttpRequestClient } from '@n8n/backend-network';
 import { GlobalConfig } from '@n8n/config';
+import { Time } from '@n8n/constants';
 import { separate } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
-import axios from 'axios';
 import { InstanceSettings } from 'n8n-core';
 import type { IWorkflowBase } from 'n8n-workflow';
 
@@ -18,13 +19,23 @@ import {
 import type { RiskReporter, Risk, n8n } from '@/security-audit/types';
 import { toFlaggedNode } from '@/security-audit/utils';
 
+const REQUEST_TIMEOUT_MS = 30 * Time.seconds.toMilliseconds;
+
 @Service()
 export class InstanceRiskReporter implements RiskReporter {
+	private readonly http: HttpRequestClient;
+
 	constructor(
 		private readonly instanceSettings: InstanceSettings,
 		private readonly logger: Logger,
 		private readonly globalConfig: GlobalConfig,
-	) {}
+		outboundHttp: OutboundHttp,
+	) {
+		this.http = outboundHttp.requests({
+			ssrf: 'disabled', // Fixed, n8n-controlled host
+			timeout: REQUEST_TIMEOUT_MS,
+		});
+	}
 
 	async report(workflows: IWorkflowBase[]) {
 		const unprotectedWebhooks = this.getUnprotectedWebhookNodes(workflows);
@@ -150,11 +161,14 @@ export class InstanceRiskReporter implements RiskReporter {
 		const BASE_URL = this.globalConfig.versionNotifications.endpoint;
 		const { instanceId } = this.instanceSettings;
 
-		const response = await axios.get<n8n.Version[]>(BASE_URL + currentVersionName, {
+		const response = await this.http.request<n8n.Version[]>({
+			url: BASE_URL + currentVersionName,
+			method: 'GET',
 			headers: { 'n8n-instance-id': instanceId },
+			json: true,
 		});
 
-		return response.data;
+		return response;
 	}
 
 	private removeIconData(versions: n8n.Version[]) {

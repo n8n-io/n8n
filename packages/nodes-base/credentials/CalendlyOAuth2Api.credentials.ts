@@ -46,7 +46,7 @@ export class CalendlyOAuth2Api implements ICredentialType {
 			displayName: 'Scope',
 			name: 'scope',
 			type: 'hidden',
-			default: '',
+			default: 'users:read webhooks:read webhooks:write scheduled_events:read',
 		},
 	];
 }

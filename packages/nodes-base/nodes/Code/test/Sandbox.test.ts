@@ -1,4 +1,4 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { IExecuteFunctions, IWorkflowDataProxyData } from 'n8n-workflow';
 
 import { getSandboxContext } from '../Sandbox';
@@ -36,9 +36,9 @@ describe('getSandboxContext', () => {
 	it('demonstrates that helpers IS spread into the sandbox (regression-guard contrast)', () => {
 		const executeFns = buildExecuteFunctionsMock();
 		const helpersWithLeak = {
-			httpRequestWithAuthentication: jest.fn(),
-			requestWithAuthenticationPaginated: jest.fn(),
-			getInboundArtifact: jest.fn(),
+			httpRequestWithAuthentication: vi.fn(),
+			requestWithAuthenticationPaginated: vi.fn(),
+			getInboundArtifact: vi.fn(),
 		} as unknown as IExecuteFunctions['helpers'];
 		executeFns.helpers = helpersWithLeak;
 

@@ -8,7 +8,7 @@ import {
 	N8nTooltip,
 	TOOLTIP_DELAY_MS,
 } from '@n8n/design-system';
-import type { ActionDropdownItem } from '@n8n/design-system/types';
+import type { ActionDropdownItem } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, nextTick, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -294,10 +294,16 @@ function handleThreadAction(action: string, threadId: string) {
 	border-radius: var(--radius);
 	transition: background-color 0.1s ease;
 
-	&:hover,
 	&:focus-within,
 	&:has([aria-expanded='true']) {
 		background-color: var(--color--background--light-1);
+	}
+
+	// Gate hover to hover-capable devices so touch doesn't need a first tap to clear sticky hover
+	@media (hover: hover) {
+		&:hover {
+			background-color: var(--color--background--light-1);
+		}
 	}
 
 	&.active {

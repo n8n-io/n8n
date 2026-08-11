@@ -1,16 +1,20 @@
-import type { MockProxy } from 'jest-mock-extended';
-import { mock } from 'jest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { SEND_AND_WAIT_OPERATION, type IExecuteFunctions } from 'n8n-workflow';
 
 import { versionDescription } from '../../../../v2/actions/versionDescription';
 import { DiscordV2 } from '../../../../v2/DiscordV2.node';
 import * as transport from '../../../../v2/transport/discord.api';
+import type { Mock } from 'vitest';
+import type * as _importType0 from '../../../../v2/transport/discord.api';
 
-jest.mock('../../../../v2/transport/discord.api', () => {
-	const originalModule = jest.requireActual('../../../../v2/transport/discord.api');
+vi.mock('../../../../v2/transport/discord.api', async () => {
+	const originalModule = await vi.importActual<typeof _importType0>(
+		'../../../../v2/transport/discord.api',
+	);
 	return {
 		...originalModule,
-		discordApiRequest: jest.fn(async function (method: string) {
+		discordApiRequest: vi.fn(async function (method: string) {
 			if (method === 'POST') {
 				return {};
 			}
@@ -26,13 +30,13 @@ describe('Test DiscordV2, message => sendAndWait', () => {
 		discord = new DiscordV2(versionDescription);
 		mockExecuteFunctions = mock<IExecuteFunctions>();
 		mockExecuteFunctions.helpers = {
-			constructExecutionMetaData: jest.fn(() => []),
-			returnJsonArray: jest.fn(() => []),
+			constructExecutionMetaData: vi.fn(() => []),
+			returnJsonArray: vi.fn(() => []),
 		} as any;
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should send message and put execution to wait', async () => {
@@ -50,7 +54,7 @@ describe('Test DiscordV2, message => sendAndWait', () => {
 			if (key === 'options.limitWaitTime.values') return {};
 		});
 
-		mockExecuteFunctions.putExecutionToWait.mockImplementation();
+		mockExecuteFunctions.putExecutionToWait.mockImplementation(async () => {});
 		mockExecuteFunctions.getInputData.mockReturnValue(items);
 		mockExecuteFunctions.getInstanceId.mockReturnValue('instanceId');
 
@@ -119,7 +123,7 @@ describe('Test DiscordV2, message => sendAndWait', () => {
 		setupErrorParameters();
 		mockExecuteFunctions.continueOnFail.mockReturnValue(true);
 
-		(transport.discordApiRequest as jest.Mock).mockRejectedValueOnce(
+		(transport.discordApiRequest as Mock).mockRejectedValueOnce(
 			Object.assign(new Error('channel_not_found'), { description: 'channel_not_found' }),
 		);
 
@@ -134,7 +138,7 @@ describe('Test DiscordV2, message => sendAndWait', () => {
 		setupErrorParameters();
 		mockExecuteFunctions.continueOnFail.mockReturnValue(false);
 
-		(transport.discordApiRequest as jest.Mock).mockRejectedValueOnce(
+		(transport.discordApiRequest as Mock).mockRejectedValueOnce(
 			Object.assign(new Error('channel_not_found'), { description: 'channel_not_found' }),
 		);
 

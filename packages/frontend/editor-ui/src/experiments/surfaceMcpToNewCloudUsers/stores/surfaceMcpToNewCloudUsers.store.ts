@@ -1,16 +1,14 @@
-import { useStorage } from '@/app/composables/useStorage';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT } from '@/app/constants/experiments';
 import { usePostHog } from '@/app/stores/posthog.store';
+import { getExperimentTelemetryPayload } from '@/experiments/utils';
 import { STORES } from '@n8n/stores';
+import type { ITelemetryTrackProperties } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { computed } from 'vue';
 import type { MCPOnboardingClient as SurfaceMcpOnboardingClient } from '../components/onboarding/types';
 
-const FIRST_OPEN_SEEN_STORAGE_KEY = 'N8N_SURFACE_MCP_TO_NEW_CLOUD_USERS_FIRST_OPEN_SEEN';
-const FIRST_OPEN_DISMISSED_STORAGE_KEY = 'N8N_SURFACE_MCP_TO_NEW_CLOUD_USERS_FIRST_OPEN_DISMISSED';
-
-type SurfaceMcpOnboardingSurface = 'tile' | 'first_open_modal' | 'workflow_card';
+type SurfaceMcpOnboardingSurface = 'tile' | 'workflow_card';
 type SurfaceMcpOnboardingEntryPoint = 'empty_state_tile';
 type SurfaceMcpOnboardingParameter = 'agent-prompt' | 'server-url' | 'chatgpt-app-name';
 type SurfaceMcpOnboardingSetupType = 'prompt' | 'chatgpt_custom_app';
@@ -25,8 +23,6 @@ export const useSurfaceMcpToNewCloudUsersStore = defineStore(
 	() => {
 		const posthogStore = usePostHog();
 		const telemetry = useTelemetry();
-		const firstOpenSeenStorage = useStorage(FIRST_OPEN_SEEN_STORAGE_KEY);
-		const firstOpenDismissedStorage = useStorage(FIRST_OPEN_DISMISSED_STORAGE_KEY);
 
 		const currentVariant = computed(() =>
 			posthogStore.getVariant(SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT.name),
@@ -40,25 +36,14 @@ export const useSurfaceMcpToNewCloudUsersStore = defineStore(
 				variant === SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT.variant2
 			);
 		});
-		const isFirstOpenModalVariant = computed(() => false);
 		const isEnabled = computed(() => Boolean(currentVariant.value));
 
-		const hasSeenFirstEligibleOpen = computed(() => firstOpenSeenStorage.value === 'true');
-		const hasDismissedFirstOpenModal = computed(() => firstOpenDismissedStorage.value === 'true');
-
-		const getTelemetryPayload = (payload: Record<string, unknown> = {}) => ({
-			...payload,
-			variant: currentVariant.value,
-		});
-
-		function markFirstEligibleOpenSeen() {
-			firstOpenSeenStorage.value = 'true';
-		}
-
-		function dismissFirstOpenModal() {
-			markFirstEligibleOpenSeen();
-			firstOpenDismissedStorage.value = 'true';
-		}
+		const getTelemetryPayload = (payload: ITelemetryTrackProperties = {}) =>
+			getExperimentTelemetryPayload(
+				SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT,
+				currentVariant.value,
+				payload,
+			);
 
 		function trackEntryPointViewed(
 			surface: SurfaceMcpOnboardingSurface,
@@ -178,20 +163,10 @@ export const useSurfaceMcpToNewCloudUsersStore = defineStore(
 			);
 		}
 
-		function reset() {
-			firstOpenSeenStorage.value = null;
-			firstOpenDismissedStorage.value = null;
-		}
-
 		return {
 			currentVariant,
 			isEnabled,
 			isTileVariant,
-			isFirstOpenModalVariant,
-			hasSeenFirstEligibleOpen,
-			hasDismissedFirstOpenModal,
-			markFirstEligibleOpenSeen,
-			dismissFirstOpenModal,
 			trackEntryPointViewed,
 			trackOpportunityViewed,
 			trackOpened,
@@ -202,7 +177,6 @@ export const useSurfaceMcpToNewCloudUsersStore = defineStore(
 			trackClientSelected,
 			trackSetupShown,
 			trackCopiedParameter,
-			reset,
 		};
 	},
 );

@@ -1,5 +1,5 @@
-import { NodeConnectionTypes } from 'n8n-workflow';
 import type { IWorkflowDb } from '@n8n/db';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 /**
  * Workflow producing an execution whose data will be truncated by an instance crash.

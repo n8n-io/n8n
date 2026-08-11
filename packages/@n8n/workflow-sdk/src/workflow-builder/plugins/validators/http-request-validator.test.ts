@@ -5,7 +5,7 @@ import type { PluginContext } from '../types';
 // Helper to create a mock node instance
 function createMockNode(
 	type: string,
-	config: { parameters?: Record<string, unknown> } = {},
+	config: { parameters?: Record<string, unknown>; credentials?: Record<string, unknown> } = {},
 ): NodeInstance<string, string, unknown> {
 	return {
 		type,
@@ -13,6 +13,7 @@ function createMockNode(
 		version: '1',
 		config: {
 			parameters: config.parameters ?? {},
+			...(config.credentials ? { credentials: config.credentials } : {}),
 		},
 	} as NodeInstance<string, string, unknown>;
 }
@@ -167,6 +168,129 @@ describe('httpRequestValidator', () => {
 		});
 	});
 
+	describe('validateNode - raw body content type', () => {
+		it('returns INVALID_PARAMETER when a SOAP payload is configured as jsonBody', () => {
+			const node = createMockNode('n8n-nodes-base.httpRequest', {
+				parameters: {
+					sendBody: true,
+					contentType: 'json',
+					specifyBody: 'json',
+					jsonBody: '={{ \'<?xml version="1.0"?><soap:Envelope></soap:Envelope>\' }}',
+				},
+			});
+			const ctx = createMockPluginContext();
+
+			const issues = httpRequestValidator.validateNode(node, createGraphNode(node), ctx);
+
+			expect(issues).toContainEqual(
+				expect.objectContaining({
+					code: 'INVALID_PARAMETER',
+					severity: 'error',
+					parameterPath: 'jsonBody',
+				}),
+			);
+			expect(issues[0].message).toContain("contentType='raw'");
+			expect(issues[0].message).toContain('rawContentType');
+			expect(issues[0].message).toContain('omit specifyBody/jsonBody/bodyParameters');
+		});
+
+		it('returns INVALID_PARAMETER when jsonBody references an XML payload field', () => {
+			const node = createMockNode('n8n-nodes-base.httpRequest', {
+				parameters: {
+					sendBody: true,
+					contentType: 'json',
+					specifyBody: 'json',
+					jsonBody: '={{ $json.soapBody }}',
+				},
+			});
+			const ctx = createMockPluginContext();
+
+			const issues = httpRequestValidator.validateNode(node, createGraphNode(node), ctx);
+
+			expect(issues).toContainEqual(
+				expect.objectContaining({
+					code: 'INVALID_PARAMETER',
+					severity: 'error',
+					parameterPath: 'jsonBody',
+				}),
+			);
+		});
+
+		it.each(['={{ JSON.stringify($json.xmlData) }}', '={{ $json.soapVersion }}'])(
+			'allows JSON bodies that reference non-payload XML/SOAP fields: %s',
+			(jsonBody) => {
+				const node = createMockNode('n8n-nodes-base.httpRequest', {
+					parameters: {
+						sendBody: true,
+						contentType: 'json',
+						specifyBody: 'json',
+						jsonBody,
+					},
+				});
+				const ctx = createMockPluginContext();
+
+				const issues = httpRequestValidator.validateNode(node, createGraphNode(node), ctx);
+
+				expect(issues.filter((i) => i.code === 'INVALID_PARAMETER')).toHaveLength(0);
+			},
+		);
+
+		it('allows valid JSON bodies that contain XML as a field value', () => {
+			const node = createMockNode('n8n-nodes-base.httpRequest', {
+				parameters: {
+					sendBody: true,
+					contentType: 'json',
+					specifyBody: 'json',
+					jsonBody: JSON.stringify({ payload: '<?xml version="1.0"?><root />' }),
+				},
+			});
+			const ctx = createMockPluginContext();
+
+			const issues = httpRequestValidator.validateNode(node, createGraphNode(node), ctx);
+
+			expect(issues.filter((i) => i.code === 'INVALID_PARAMETER')).toHaveLength(0);
+		});
+
+		it('returns INVALID_PARAMETER when raw XML content type has no body', () => {
+			const node = createMockNode('n8n-nodes-base.httpRequest', {
+				parameters: {
+					sendBody: true,
+					contentType: 'raw',
+					rawContentType: 'text/xml',
+				},
+			});
+			const ctx = createMockPluginContext();
+
+			const issues = httpRequestValidator.validateNode(node, createGraphNode(node), ctx);
+
+			expect(issues).toContainEqual(
+				expect.objectContaining({
+					code: 'INVALID_PARAMETER',
+					severity: 'error',
+					parameterPath: 'body',
+				}),
+			);
+			expect(issues[0].message).toContain("contentType='raw'");
+			expect(issues[0].message).toContain("expr('{{ $json.soapBody }}')");
+		});
+
+		it('allows raw XML content type with a body expression', () => {
+			const node = createMockNode('n8n-nodes-base.httpRequest', {
+				parameters: {
+					sendBody: true,
+					contentType: 'raw',
+					rawContentType: 'application/soap+xml',
+					body: '={{ $json.soapBody }}',
+				},
+			});
+			const ctx = createMockPluginContext();
+
+			const issues = httpRequestValidator.validateNode(node, createGraphNode(node), ctx);
+
+			expect(issues.filter((i) => i.code === 'INVALID_PARAMETER')).toHaveLength(0);
+		});
+	});
+
 	describe('validateNode - edge cases', () => {
 		it('returns no issues when parameters is undefined', () => {
 			const node = createMockNode('n8n-nodes-base.httpRequest', {});
@@ -201,6 +325,69 @@ describe('httpRequestValidator', () => {
 			const issues = httpRequestValidator.validateNode(node, createGraphNode(node), ctx);
 
 			expect(issues).toHaveLength(0);
+		});
+	});
+
+	describe('validateNode - plain generic auth', () => {
+		const bearerParams = {
+			authentication: 'genericCredentialType',
+			genericAuthType: 'httpBearerAuth',
+		};
+
+		it('warns when a plain generic auth type is used with a new credential', () => {
+			const node = createMockNode('n8n-nodes-base.httpRequest', {
+				parameters: bearerParams,
+				credentials: { httpBearerAuth: { __newCredential: true, name: 'Replicate API' } },
+			});
+			const issues = httpRequestValidator.validateNode(
+				node,
+				createGraphNode(node),
+				createMockPluginContext(),
+			);
+			expect(issues).toContainEqual(
+				expect.objectContaining({ code: 'PLAIN_GENERIC_AUTH', severity: 'warning' }),
+			);
+		});
+
+		it('warns when no credential is attached at all', () => {
+			const node = createMockNode('n8n-nodes-base.httpRequest', { parameters: bearerParams });
+			const issues = httpRequestValidator.validateNode(
+				node,
+				createGraphNode(node),
+				createMockPluginContext(),
+			);
+			expect(issues.map((issue) => issue.code)).toContain('PLAIN_GENERIC_AUTH');
+		});
+
+		it('stays silent when the credential already exists', () => {
+			const node = createMockNode('n8n-nodes-base.httpRequest', {
+				parameters: bearerParams,
+				credentials: {
+					httpBearerAuth: { __newCredential: true, name: 'Replicate API', id: 'cred-1' },
+				},
+			});
+			const issues = httpRequestValidator.validateNode(
+				node,
+				createGraphNode(node),
+				createMockPluginContext(),
+			);
+			expect(issues.map((issue) => issue.code)).not.toContain('PLAIN_GENERIC_AUTH');
+		});
+
+		it('stays silent for Templated Custom Auth itself', () => {
+			const node = createMockNode('n8n-nodes-base.httpRequest', {
+				parameters: {
+					authentication: 'genericCredentialType',
+					genericAuthType: 'httpTemplatedCustomAuth',
+				},
+				credentials: { httpTemplatedCustomAuth: { __newCredential: true, name: 'Replicate API' } },
+			});
+			const issues = httpRequestValidator.validateNode(
+				node,
+				createGraphNode(node),
+				createMockPluginContext(),
+			);
+			expect(issues.map((issue) => issue.code)).not.toContain('PLAIN_GENERIC_AUTH');
 		});
 	});
 });

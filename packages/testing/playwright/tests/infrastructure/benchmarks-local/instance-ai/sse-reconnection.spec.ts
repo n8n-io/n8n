@@ -1,5 +1,4 @@
 import { test, expect, instanceAiTestConfig } from './fixtures';
-import { InstanceAiPage } from '../../../../pages/InstanceAiPage';
 import { BENCHMARK_PROMPTS } from '../../../../utils/benchmark/instance-ai-driver';
 import { runMemoryBenchmark, type MemoryPhase } from '../harness/memory-harness';
 
@@ -29,7 +28,7 @@ test.describe(
 			// First: build one workflow so the thread has content
 			const results = await driver.runParallel([BENCHMARK_PROMPTS[0]]);
 			const threadId = results[0]?.threadId;
-			const threadPage = driver['openedPages'][0];
+			const threadTab = driver.tabs[0];
 
 			const phases: MemoryPhase[] = [];
 
@@ -38,11 +37,12 @@ test.describe(
 				phases.push({
 					name: `reconnect-${i + 1}`,
 					action: async () => {
-						await threadPage.goto('/home/workflows');
-						await threadPage.waitForLoadState('load');
-						await threadPage.goto(`/instance-ai/${threadId}`);
-						const ai = new InstanceAiPage(threadPage);
-						await ai.getChatInput().waitFor({ state: 'visible', timeout: 10_000 });
+						await threadTab.page.goto('/home/workflows');
+						await threadTab.page.waitForLoadState('load');
+						await threadTab.page.goto(`/assistant/${threadId}`);
+						await threadTab.instanceAi
+							.getChatInput()
+							.waitFor({ state: 'visible', timeout: 10_000 });
 					},
 					measureAfter: (i + 1) % 5 === 0 || i === RECONNECT_CYCLES - 1,
 				});

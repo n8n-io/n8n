@@ -1,12 +1,13 @@
 import { AIMessage, HumanMessage } from '@langchain/core/messages';
-import { mockClear } from 'jest-mock-extended';
+import { mockClear } from 'vitest-mock-extended';
 
 import { mockEntityManager } from '@test/mocking';
+
 import { WorkflowBuilderSession } from '../workflow-builder-session.entity';
 
 // Mock the ai-workflow-builder module to avoid import chain issues
-jest.mock('@n8n/ai-workflow-builder', () => ({
-	isLangchainMessagesArray: jest.fn((arr: unknown[]) => {
+vi.mock('@n8n/ai-workflow-builder', () => ({
+	isLangchainMessagesArray: vi.fn((arr: unknown[]) => {
 		if (!Array.isArray(arr)) return false;
 		return arr.every(
 			(item: unknown) =>
@@ -27,12 +28,12 @@ describe('WorkflowBuilderSessionRepository', () => {
 	const entityManager = mockEntityManager(WorkflowBuilderSession);
 	let repository: WorkflowBuilderSessionRepository;
 
-	const mockExecute = jest.fn().mockResolvedValue(undefined);
+	const mockExecute = vi.fn().mockResolvedValue(undefined);
 	const mockQueryBuilder = {
-		insert: jest.fn().mockReturnThis(),
-		into: jest.fn().mockReturnThis(),
-		values: jest.fn().mockReturnThis(),
-		orUpdate: jest.fn().mockReturnThis(),
+		insert: vi.fn().mockReturnThis(),
+		into: vi.fn().mockReturnThis(),
+		values: vi.fn().mockReturnThis(),
+		orUpdate: vi.fn().mockReturnThis(),
 		execute: mockExecute,
 	};
 
@@ -50,7 +51,7 @@ describe('WorkflowBuilderSessionRepository', () => {
 			manager: entityManager,
 		};
 		repository = new WorkflowBuilderSessionRepository(mockDataSource as never);
-		jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(mockQueryBuilder as never);
+		vi.spyOn(repository, 'createQueryBuilder').mockReturnValue(mockQueryBuilder as never);
 	});
 
 	describe('parseThreadId', () => {

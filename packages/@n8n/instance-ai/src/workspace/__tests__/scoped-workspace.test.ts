@@ -4,6 +4,7 @@ import {
 	type WorkspaceFilesystem,
 	type WorkspaceSandbox,
 } from '@n8n/agents';
+import type { Mock } from 'vitest';
 
 import { createScopedWorkspace } from '../scoped-workspace';
 
@@ -13,31 +14,31 @@ function createFilesystem(overrides: Partial<WorkspaceFilesystem> = {}): Workspa
 		name: 'filesystem',
 		provider: 'test',
 		status: 'ready',
-		readFile: jest.fn(async () => await Promise.resolve('content')),
-		writeFile: jest.fn(async () => {
+		readFile: vi.fn(async () => await Promise.resolve('content')),
+		writeFile: vi.fn(async () => {
 			await Promise.resolve();
 		}),
-		appendFile: jest.fn(async () => {
+		appendFile: vi.fn(async () => {
 			await Promise.resolve();
 		}),
-		deleteFile: jest.fn(async () => {
+		deleteFile: vi.fn(async () => {
 			await Promise.resolve();
 		}),
-		copyFile: jest.fn(async () => {
+		copyFile: vi.fn(async () => {
 			await Promise.resolve();
 		}),
-		moveFile: jest.fn(async () => {
+		moveFile: vi.fn(async () => {
 			await Promise.resolve();
 		}),
-		mkdir: jest.fn(async () => {
+		mkdir: vi.fn(async () => {
 			await Promise.resolve();
 		}),
-		rmdir: jest.fn(async () => {
+		rmdir: vi.fn(async () => {
 			await Promise.resolve();
 		}),
-		readdir: jest.fn(async () => await Promise.resolve([])),
-		exists: jest.fn(async () => await Promise.resolve(true)),
-		stat: jest.fn(
+		readdir: vi.fn(async () => await Promise.resolve([])),
+		exists: vi.fn(async () => await Promise.resolve(true)),
+		stat: vi.fn(
 			async () =>
 				await Promise.resolve({
 					name: 'workflow.ts',
@@ -52,7 +53,7 @@ function createFilesystem(overrides: Partial<WorkspaceFilesystem> = {}): Workspa
 	};
 }
 
-function createSandbox(executeCommand: jest.Mock | null = jest.fn()): WorkspaceSandbox {
+function createSandbox(executeCommand: Mock | null = vi.fn()): WorkspaceSandbox {
 	const result: CommandResult = {
 		success: true,
 		exitCode: 0,
@@ -103,7 +104,7 @@ describe('createScopedWorkspace', () => {
 	});
 
 	it('runs commands from the builder root and merges scoped environment variables', async () => {
-		const executeCommand = jest.fn();
+		const executeCommand = vi.fn();
 		const sandbox = createSandbox(executeCommand);
 		const workspace = createScopedWorkspace(new Workspace({ sandbox }), root, {
 			N8N_WORKSPACE_DIR: root,
@@ -121,7 +122,7 @@ describe('createScopedWorkspace', () => {
 	});
 
 	it('rejects command working directories outside the builder root', async () => {
-		const executeCommand = jest.fn();
+		const executeCommand = vi.fn();
 		const sandbox = createSandbox(executeCommand);
 		const workspace = createScopedWorkspace(new Workspace({ sandbox }), root);
 

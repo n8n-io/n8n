@@ -5,7 +5,7 @@ const LAZY_RUNTIME_IMPORT_MESSAGE =
 	'Use an existing lazy loader, or add one near first use. Static runtime imports of this dependency undo the idle-memory guardrail.';
 
 const restrictedLazyRuntimeImports = [
-	'@daytonaio/sdk',
+	'@daytona/sdk',
 	'@joplin/turndown-plugin-gfm',
 	'@mozilla/readability',
 	'csv-parse/sync',
@@ -22,7 +22,16 @@ const restrictedLazyRuntimeImports = [
 export default defineConfig(
 	baseConfig,
 	{
-		ignores: ['scripts/**/*.cjs', 'skills/**/*.mjs'],
+		ignores: [
+			'scripts/**/*.cjs',
+			'skills/**/*.mjs',
+			// Local eval scratch output — never linted, never committed.
+			'.data/**',
+			'evaluations/.data/**',
+			// Deep-imports ai-workflow-builder.ee's evaluations source, so it sits outside
+			// evaluations/tsconfig.json (see its exclude) and the eslint project service.
+			'evaluations/cli/pairwise.ts',
+		],
 	},
 	{
 		rules: {

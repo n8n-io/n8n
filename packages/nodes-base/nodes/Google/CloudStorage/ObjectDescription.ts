@@ -9,6 +9,8 @@ import {
 } from 'n8n-workflow';
 import { Readable } from 'stream';
 
+import { fetchServiceAccountToken } from './GenericFunctions';
+
 const RESUMABLE_UPLOAD_CHUNK_SIZE = 8 * 1024 * 1024;
 
 /**
@@ -246,8 +248,29 @@ export const objectOperations: INodeProperties[] = [
 										uploadHeaders['X-Upload-Content-Length'] = contentLength;
 									}
 
-									const uploadSessionResponse =
-										await this.helpers.httpRequestWithAuthentication.call(
+									const authenticationMethod = this.getNodeParameter('authentication') as string;
+
+									let uploadSessionResponse;
+									if (authenticationMethod === 'serviceAccount') {
+										const accessToken = await fetchServiceAccountToken.call(this);
+										uploadSessionResponse = await this.helpers.httpRequest({
+											method: 'POST',
+											url: `/b/${bucketName}/o/`,
+											baseURL: 'https://storage.googleapis.com/upload/storage/v1',
+											qs: {
+												...requestOptions.qs,
+												uploadType: 'resumable',
+											},
+											headers: {
+												...uploadHeaders,
+												Authorization: `Bearer ${accessToken}`,
+											},
+											body: metadata,
+											json: true,
+											returnFullResponse: true,
+										});
+									} else {
+										uploadSessionResponse = await this.helpers.httpRequestWithAuthentication.call(
 											this,
 											'googleCloudStorageOAuth2Api',
 											{
@@ -267,6 +290,7 @@ export const objectOperations: INodeProperties[] = [
 												returnFullResponse: true,
 											},
 										);
+									}
 
 									const uploadUrl = uploadSessionResponse.headers.location as string | undefined;
 									if (!uploadUrl) {

@@ -142,6 +142,31 @@ describe('useExpressionEditor', () => {
 		});
 	});
 
+	test('surfaces deprecated $getPairedItem as an error segment', async () => {
+		mockResolveExpression();
+
+		const {
+			expressionEditor: { segments },
+		} = await renderExpressionEditor({
+			editorValue: '{{ $getPairedItem }}',
+			extensions: [n8nLang()],
+		});
+
+		await waitFor(() => {
+			expect(toValue(segments.resolvable)).toEqual([
+				{
+					error: expect.any(Error),
+					from: 0,
+					kind: 'resolvable',
+					resolvable: '{{ $getPairedItem }}',
+					resolved: '[$getPairedItem is deprecated and will be removed]',
+					state: 'invalid',
+					to: 20,
+				},
+			]);
+		});
+	});
+
 	test('render [empty] when expression evaluates to an empty string', async () => {
 		mockResolveExpression().mockReturnValueOnce('');
 

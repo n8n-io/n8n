@@ -15,24 +15,24 @@ import {
 } from '../cli/webhook';
 import type { RunSummary } from '../harness/harness-types';
 
-const mockFetch = jest.fn();
+const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
-jest.mock('node:dns/promises', () => ({
-	resolve: jest.fn().mockResolvedValue(['93.184.216.34']),
-	resolve6: jest.fn().mockRejectedValue(new Error('ENODATA')),
+vi.mock('node:dns/promises', () => ({
+	resolve: vi.fn().mockResolvedValue(['93.184.216.34']),
+	resolve6: vi.fn().mockRejectedValue(new Error('ENODATA')),
 }));
 
 /** Helper to create a mock logger */
 function createMockLogger() {
 	return {
-		info: jest.fn(),
-		error: jest.fn(),
-		warn: jest.fn(),
-		verbose: jest.fn(),
-		debug: jest.fn(),
-		success: jest.fn(),
-		dim: jest.fn(),
+		info: vi.fn(),
+		error: vi.fn(),
+		warn: vi.fn(),
+		verbose: vi.fn(),
+		debug: vi.fn(),
+		success: vi.fn(),
+		dim: vi.fn(),
 		isVerbose: false,
 	};
 }
@@ -61,7 +61,7 @@ function createMockSummary(overrides: Partial<RunSummary> = {}): RunSummary {
 
 describe('webhook utilities', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('generateWebhookSignature()', () => {

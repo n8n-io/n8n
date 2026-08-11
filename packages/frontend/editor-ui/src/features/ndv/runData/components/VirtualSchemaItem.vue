@@ -1,13 +1,14 @@
 <script lang="ts" setup>
 import TextWithHighlights from './TextWithHighlights.vue';
-import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
+import { type IconName } from '@n8n/design-system';
 import { saveAs } from 'file-saver';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { BINARY_DATA_VIEW_MODAL_KEY } from '@/app/constants';
 import type { BinaryMetadata } from '@n8n/design-system';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
+import { getBinaryDataFileName } from '@/app/utils/fileUtils';
 
 import { N8nIcon, N8nTooltip } from '@n8n/design-system';
 type Props = {
@@ -40,12 +41,9 @@ const i18n = useI18n();
 async function downloadBinaryData() {
 	if (!props.binaryData) return;
 	try {
-		const { id, fileName, mimeType, fileExtension } = props.binaryData;
+		const { id, fileName, mimeType } = props.binaryData;
 		const url = useWorkflowsStore().getBinaryUrl(id, 'download', fileName ?? '', mimeType);
-		let name = fileName ?? 'file';
-		if (!name.includes('.') && fileExtension) {
-			name = [name, fileExtension].join('.');
-		}
+		const name = getBinaryDataFileName(props.binaryData);
 		const response = await fetch(url);
 		if (!response.ok) throw new Error('Error downloading file');
 		const blob = await response.blob();
@@ -249,6 +247,8 @@ const emit = defineEmits<{
 	font-size: var(--font-size--2xs);
 	margin-left: var(--spacing--2xs);
 	word-break: break-word;
+	/** Fixes DS-538 where text was optically un-aligned from baseline **/
+	transform: translateY(-1px);
 }
 
 .collapse-icon {

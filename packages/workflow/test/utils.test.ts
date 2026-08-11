@@ -1,9 +1,9 @@
 import { ALPHABET } from '../src/constants';
-import { ApplicationError } from '@n8n/errors';
-import { ManualExecutionCancelledError } from '../src/errors/execution-cancelled.error';
+import { UnexpectedError } from '../src/errors';
 import {
 	jsonParse,
 	jsonStringify,
+	replaceCircularReferences,
 	deepCopy,
 	isObjectEmpty,
 	fileTypeFromMimeType,
@@ -13,7 +13,6 @@ import {
 	isSafeObjectProperty,
 	containsUnsafeObjectPropertyToken,
 	setSafeObjectProperty,
-	sleepWithAbort,
 	isCommunityPackageName,
 	sanitizeFilename,
 	sanitizeXmlName,
@@ -78,7 +77,7 @@ describe('isObjectEmpty', () => {
 
 		const assertCalls = (count: number) => {
 			if (calls.length !== count) {
-				throw new ApplicationError('`Object.keys()` was called an unexpected number of times', {
+				throw new UnexpectedError('`Object.keys()` was called an unexpected number of times', {
 					extra: { times: calls.length },
 				});
 			}
@@ -314,6 +313,20 @@ describe('jsonStringify', () => {
 	});
 });
 
+describe('replaceCircularReferences', () => {
+	it('should not promote an own __proto__ key onto the copy', () => {
+		const source = jsonParse<{ note: string; id?: string }>(
+			'{"note":"x","__proto__":{"id":"injected"}}',
+		);
+
+		const copy = replaceCircularReferences(source);
+
+		expect(copy.note).toBe('x');
+		expect(copy.id).toBeUndefined();
+		expect(Object.getPrototypeOf(copy)).toBe(Object.prototype);
+	});
+});
+
 describe('deepCopy', () => {
 	it('should deep copy an object', () => {
 		const serializable = {
@@ -389,6 +402,45 @@ describe('deepCopy', () => {
 		expect(copy.deep.props.circular).not.toBe(object);
 		expect(copy.deep.arr.slice(-1)[0]).toBe(copy);
 		expect(copy.deep.arr.slice(-1)[0]).not.toBe(object);
+	});
+
+	it('should not promote an own __proto__ key onto the clone', () => {
+		// An object literal `{ __proto__: ... }` sets the prototype; only parsed
+		// JSON produces an own enumerable `__proto__` property, as a request body would.
+		const source = jsonParse<{ note: string; id?: string }>(
+			'{"note":"x","__proto__":{"id":"injected"}}',
+		);
+
+		const copy = deepCopy(source);
+
+		expect(copy.note).toBe('x');
+		expect(copy.id).toBeUndefined();
+		expect(Object.getPrototypeOf(copy)).toBe(Object.prototype);
+	});
+
+	it('should not copy own constructor or prototype keys onto the clone', () => {
+		const source = jsonParse<{ keep: string }>(
+			'{"keep":"y","constructor":{"polluted":true},"prototype":{"polluted":true}}',
+		);
+
+		const copy = deepCopy(source);
+
+		expect(copy.keep).toBe('y');
+		expect(Object.prototype.hasOwnProperty.call(copy, 'constructor')).toBe(false);
+		expect(Object.prototype.hasOwnProperty.call(copy, 'prototype')).toBe(false);
+		expect(copy.constructor).toBe(Object);
+	});
+
+	it('should not promote a nested own __proto__ key', () => {
+		const source = jsonParse<{ body: { note: string; id?: string } }>(
+			'{"body":{"note":"x","__proto__":{"id":"injected"}}}',
+		);
+
+		const copy = deepCopy(source);
+
+		expect(copy.body.note).toBe('x');
+		expect(copy.body.id).toBeUndefined();
+		expect(Object.getPrototypeOf(copy.body)).toBe(Object.prototype);
 	});
 });
 
@@ -626,71 +678,6 @@ describe('sanitizeXmlName', () => {
 			expect(sanitizeXmlName(name)).toBe(name);
 		},
 	);
-});
-
-describe('sleepWithAbort', () => {
-	it('should resolve after the specified time when not aborted', async () => {
-		const start = Date.now();
-		await sleepWithAbort(100);
-		const end = Date.now();
-		const elapsed = end - start;
-
-		// Allow some tolerance for timing
-		expect(elapsed).toBeGreaterThanOrEqual(90);
-		expect(elapsed).toBeLessThan(200);
-	});
-
-	it('should reject immediately if abort signal is already aborted', async () => {
-		const abortController = new AbortController();
-		abortController.abort();
-
-		await expect(sleepWithAbort(1000, abortController.signal)).rejects.toThrow(
-			ManualExecutionCancelledError,
-		);
-	});
-
-	it('should reject when abort signal is triggered during sleep', async () => {
-		const abortController = new AbortController();
-
-		// Start the sleep and abort after 50ms
-		setTimeout(() => abortController.abort(), 50);
-
-		const start = Date.now();
-		await expect(sleepWithAbort(1000, abortController.signal)).rejects.toThrow(
-			ManualExecutionCancelledError,
-		);
-		const end = Date.now();
-		const elapsed = end - start;
-
-		// Should have been aborted after ~50ms, not the full 1000ms
-		expect(elapsed).toBeLessThan(200);
-	});
-
-	it('should work without abort signal', async () => {
-		const start = Date.now();
-		await sleepWithAbort(100, undefined);
-		const end = Date.now();
-		const elapsed = end - start;
-
-		expect(elapsed).toBeGreaterThanOrEqual(90);
-		expect(elapsed).toBeLessThan(200);
-	});
-
-	it('should clean up timeout when aborted during sleep', async () => {
-		const abortController = new AbortController();
-		const clearTimeoutSpy = vi.spyOn(global, 'clearTimeout');
-
-		// Start the sleep and abort after 50ms
-		const sleepPromise = sleepWithAbort(1000, abortController.signal);
-		setTimeout(() => abortController.abort(), 50);
-
-		await expect(sleepPromise).rejects.toThrow(ManualExecutionCancelledError);
-
-		// clearTimeout should have been called to clean up
-		expect(clearTimeoutSpy).toHaveBeenCalled();
-
-		clearTimeoutSpy.mockRestore();
-	});
 });
 
 describe('isCommunityPackageName', () => {

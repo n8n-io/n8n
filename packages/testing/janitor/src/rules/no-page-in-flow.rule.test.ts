@@ -21,7 +21,7 @@ export class WorkflowComposer {
 `,
 		);
 
-		const violations = rule.analyze(project, [file]);
+		const violations = rule.analyzeProject(project, [file]);
 
 		expect(violations).toHaveLength(0);
 	});
@@ -40,7 +40,7 @@ export class WorkflowComposer {
 `,
 		);
 
-		const violations = rule.analyze(project, [file]);
+		const violations = rule.analyzeProject(project, [file]);
 
 		expect(violations).toHaveLength(1);
 		expect(violations[0].message).toContain('page.getByTestId');
@@ -60,7 +60,7 @@ export class WorkflowComposer {
 `,
 		);
 
-		const violations = rule.analyze(project, [file]);
+		const violations = rule.analyzeProject(project, [file]);
 
 		expect(violations).toHaveLength(1);
 	});
@@ -79,7 +79,7 @@ export class WorkflowComposer {
 `,
 		);
 
-		const violations = rule.analyze(project, [file]);
+		const violations = rule.analyzeProject(project, [file]);
 
 		expect(violations).toHaveLength(1);
 		expect(violations[0].suggestion).toContain('navigation');
@@ -101,7 +101,7 @@ export class WorkflowComposer {
 `,
 		);
 
-		const violations = rule.analyze(project, [file]);
+		const violations = rule.analyzeProject(project, [file]);
 
 		expect(violations).toHaveLength(3);
 	});
@@ -120,7 +120,7 @@ export class WorkflowComposer {
 `,
 		);
 
-		const violations = rule.analyze(project, [file]);
+		const violations = rule.analyzeProject(project, [file]);
 
 		expect(violations).toHaveLength(1);
 		expect(violations[0].line).toBe(6);
@@ -140,7 +140,7 @@ export class WorkflowComposer {
 `,
 		);
 
-		const violations = rule.analyze(project, [file]);
+		const violations = rule.analyzeProject(project, [file]);
 
 		expect(violations).toHaveLength(1);
 		expect(violations[0].suggestion).toBeDefined();

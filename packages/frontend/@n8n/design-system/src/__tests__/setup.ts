@@ -1,53 +1,39 @@
-import '@testing-library/jest-dom';
-import { configure } from '@testing-library/vue';
+import '@n8n/vitest-config/setup/frontend';
 import { config } from '@vue/test-utils';
-import { beforeAll } from 'vitest';
+import { afterEach, beforeAll, beforeEach, vi } from 'vitest';
 
-import { N8nPlugin } from '@n8n/design-system/plugin';
-
-configure({ testIdAttribute: 'data-test-id' });
+import { N8nPlugin } from '../plugin';
 
 config.global.plugins = [N8nPlugin];
+
+beforeAll(() => {
+	// jsdom lacks elementFromPoint; ProseMirror's posAtCoords calls it during
+	// editor mount (tiptap placeholder viewport tracking). null is a valid result.
+	//
+	// Kept local, not shared: defining it flips the behaviour of anything that
+	// feature-detects it. editor-ui's suite has always run without it, and adding
+	// it globally hung one of its agents-view tests.
+	const documentProto = Document.prototype as Document & {
+		elementFromPoint?: (x: number, y: number) => Element | null;
+	};
+	if (!documentProto.elementFromPoint) {
+		documentProto.elementFromPoint = () => null;
+	}
+});
 
 // Globally mock is-emoji-supported
 vi.mock('is-emoji-supported', () => ({
 	isEmojiSupported: () => true,
 }));
 
-/**
- * Fixes missing pointer APIs and defaultPrevented issues for jsdom + user-event
- */
-beforeAll(() => {
-	// Patch missing pointer APIs
-	const elementProto = HTMLElement.prototype as HTMLElement & {
-		hasPointerCapture?: (pointerId: number) => boolean;
-		setPointerCapture?: (pointerId: number) => void;
-		releasePointerCapture?: (pointerId: number) => void;
-	};
-
-	if (!elementProto.hasPointerCapture) {
-		Object.defineProperties(elementProto, {
-			hasPointerCapture: {
-				value: (_: number) => false,
-				writable: true,
-			},
-			setPointerCapture: {
-				value: (_: number) => {},
-				writable: true,
-			},
-			releasePointerCapture: {
-				value: (_: number) => {},
-				writable: true,
-			},
-		});
-	}
-});
-
-// Preserve originals
+// jsdom + user-event mark synthetic pointer/mouse events as defaultPrevented,
+// which makes Reka UI's dismissable-layer logic swallow interactions. Force it
+// back to false. Kept local, not shared: the shared harness installs a
+// spec-faithful PointerEvent polyfill, and forcing `defaultPrevented` to false
+// for every frontend package would hide genuine preventDefault() calls.
 const OriginalMouseEvent = window.MouseEvent;
 const OriginalPointerEvent = window.PointerEvent || window.MouseEvent;
 
-// Patched MouseEvent
 class PatchedMouseEvent extends OriginalMouseEvent {
 	constructor(type: string, eventInit?: MouseEventInit) {
 		super(type, eventInit);
@@ -57,7 +43,6 @@ class PatchedMouseEvent extends OriginalMouseEvent {
 	}
 }
 
-// Patched PointerEvent
 class PatchedPointerEvent extends OriginalPointerEvent {
 	constructor(type: string, eventInit?: PointerEventInit) {
 		super(type, eventInit);
@@ -67,21 +52,8 @@ class PatchedPointerEvent extends OriginalPointerEvent {
 	}
 }
 
-class ResizeObserverMock extends EventTarget {
-	constructor() {
-		super();
-	}
-
-	observe = vi.fn();
-
-	disconnect = vi.fn();
-
-	unobserve = vi.fn();
-}
-
 beforeEach(() => {
 	vi.stubGlobal('MouseEvent', PatchedMouseEvent);
 	vi.stubGlobal('PointerEvent', PatchedPointerEvent);
-	vi.stubGlobal('ResizeObserver', ResizeObserverMock);
 });
 afterEach(() => vi.unstubAllGlobals());

@@ -12,6 +12,12 @@ import type { IExecutionContext } from 'n8n-workflow';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 
 import { createOwner } from './shared/db/users';
+import {
+	validateRootContext,
+	validateChildContextInheritance,
+	validateContextInheritanceChain,
+	validateBasicContextStructure,
+} from './shared/execution-context-helpers';
 import * as utils from './shared/utils';
 import { loadNodesFromDist } from './shared/utils/node-types-data';
 import {
@@ -20,12 +26,6 @@ import {
 	createMiddleWorkflowFixture,
 	createSimpleWorkflowFixture,
 } from './shared/workflow-fixtures';
-import {
-	validateRootContext,
-	validateChildContextInheritance,
-	validateContextInheritanceChain,
-	validateBasicContextStructure,
-} from './shared/execution-context-helpers';
 
 // Fixtures are now imported from './shared/workflow-fixtures'
 

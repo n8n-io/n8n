@@ -36,7 +36,7 @@ describe('getComputerUsePrompt', () => {
 				localGateway: { status: 'disabled' },
 			});
 
-			expect(result).toContain('Do NOT attempt to use Computer Use tools');
+			expect(result).toContain('do NOT attempt to use Computer Use tools');
 		});
 
 		it('provides UI setup instructions', () => {
@@ -65,7 +65,7 @@ describe('getComputerUsePrompt', () => {
 				localGateway: { status: 'disconnected' },
 			});
 
-			expect(result).toContain('Do NOT attempt to use Computer Use tools');
+			expect(result).toContain('do NOT attempt to use Computer Use tools');
 		});
 
 		it('provides UI connection instructions', () => {
@@ -202,7 +202,7 @@ describe('getComputerUsePrompt', () => {
 				localGateway: { status: 'disconnected' },
 			});
 
-			expect(result).toContain('When to suggest or use Computer Use');
+			expect(result).toContain('Proactively suggest connecting');
 		});
 
 		it('is included for a disabled (not set up) gateway', () => {
@@ -211,7 +211,7 @@ describe('getComputerUsePrompt', () => {
 				localGateway: { status: 'disabled' },
 			});
 
-			expect(result).toContain('When to suggest or use Computer Use');
+			expect(result).toContain('Proactively suggest connecting');
 		});
 
 		it('is absent when localGateway is undefined', () => {
@@ -229,19 +229,19 @@ describe('getComputerUsePrompt', () => {
 			expect(result).not.toContain('When to suggest or use Computer Use');
 		});
 
-		it('lists all 7 use-case categories', () => {
+		it('lists all 7 use-case categories (compact form when not connected)', () => {
 			const result = getComputerUsePrompt({
 				browserAvailable: undefined,
 				localGateway: { status: 'disconnected' },
 			});
 
-			expect(result).toContain('Credential / OAuth setup');
-			expect(result).toContain('Local file as context');
-			expect(result).toContain('Documentation / output to files');
-			expect(result).toContain('Authenticated web research');
-			expect(result).toContain('Form / frontend testing');
-			expect(result).toContain('Shell / environment');
-			expect(result).toContain('Platform migration');
+			expect(result).toContain('credential/OAuth/API-key setup');
+			expect(result).toContain('local file (PDF, CSV, spec) as context');
+			expect(result).toContain('docs/exports written to files');
+			expect(result).toContain('authenticated web research');
+			expect(result).toContain('form/frontend testing');
+			expect(result).toContain('local commands');
+			expect(result).toContain('migration from Make/Zapier');
 		});
 	});
 
@@ -355,6 +355,30 @@ describe('getComputerUsePrompt', () => {
 			});
 
 			expect(result).not.toContain('Sensitive content on screen');
+		});
+	});
+
+	describe('browser runtime-failure guidance', () => {
+		it('tells the agent that browser_navigate needs an open tab and to fall back to browser_tab_open', () => {
+			const result = getComputerUsePrompt({
+				browserAvailable: true,
+				localGateway: { status: 'connected', capabilities: ['browser'] },
+			});
+
+			const line = result
+				.split('\n')
+				.find((l) => l.includes('browser_navigate') && l.includes('browser_tab_open'));
+			expect(line).toBeDefined();
+			expect(line).toContain('requires a connected tab');
+		});
+
+		it('is absent when browser is not available', () => {
+			const result = getComputerUsePrompt({
+				browserAvailable: false,
+				localGateway: { status: 'connected', capabilities: ['browser'] },
+			});
+
+			expect(result).not.toContain('browser_tab_open');
 		});
 	});
 });

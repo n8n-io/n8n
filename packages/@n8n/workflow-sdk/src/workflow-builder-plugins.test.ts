@@ -6,6 +6,7 @@
  * composite handling, and serialization.
  */
 
+import { expr } from './expression';
 import type { NodeInstance, WorkflowJSON, IfElseComposite, GraphNode } from './types/base';
 import { workflow } from './workflow-builder';
 import { splitInBatches } from './workflow-builder/control-flow-builders/split-in-batches';
@@ -39,7 +40,7 @@ function createMockValidator(
 		id,
 		name: `Mock Validator ${id}`,
 		nodeTypes,
-		validateNode: jest.fn(validateNodeFn),
+		validateNode: vi.fn(validateNodeFn),
 	};
 }
 
@@ -51,8 +52,86 @@ describe('WorkflowBuilder plugin integration', () => {
 	});
 
 	describe('validate() with plugins', () => {
+		it('blocks invalid Execute Workflow input mappings through the default registry', () => {
+			registerDefaultPlugins(testRegistry);
+
+			const createWorkflow = (workflowInputs?: unknown) => {
+				const executeWorkflow = node({
+					type: 'n8n-nodes-base.executeWorkflow',
+					version: 1.3,
+					config: {
+						name: 'Process Order',
+						parameters: {
+							source: 'database',
+							workflowId: { __rl: true, mode: 'id', value: 'process-order' },
+							mode: 'each',
+							...(workflowInputs === undefined ? {} : { workflowInputs }),
+						},
+					},
+				});
+
+				return workflow('orders', 'Orders', { registry: testRegistry }).add(
+					trigger({
+						type: 'n8n-nodes-base.manualTrigger',
+						version: 1,
+						config: { name: 'Start' },
+					}).to(executeWorkflow),
+				);
+			};
+
+			const invalidResult = createWorkflow({
+				mappingMode: 'defineBelow',
+				value: null,
+			}).validate();
+			expect(invalidResult.valid).toBe(false);
+			expect(invalidResult.errors).toContainEqual(
+				expect.objectContaining({ code: 'EXECUTE_WORKFLOW_INVALID_INPUT_MAPPING' }),
+			);
+
+			const passThroughResult = createWorkflow().validate();
+			expect(passThroughResult.valid).toBe(true);
+			expect(passThroughResult.errors).not.toContainEqual(
+				expect.objectContaining({ code: 'EXECUTE_WORKFLOW_INVALID_INPUT_MAPPING' }),
+			);
+
+			const mappedResult = createWorkflow({
+				mappingMode: 'defineBelow',
+				value: {
+					orderId: expr('{{ $json.id }}'),
+					amount: expr('{{ $json.total }}'),
+				},
+				matchingColumns: [],
+				schema: [
+					{
+						id: 'orderId',
+						displayName: 'orderId',
+						required: false,
+						defaultMatch: false,
+						display: true,
+						canBeUsedToMatch: true,
+						type: 'string',
+					},
+					{
+						id: 'amount',
+						displayName: 'amount',
+						required: false,
+						defaultMatch: false,
+						display: true,
+						canBeUsedToMatch: true,
+						type: 'number',
+					},
+				],
+				attemptToConvertTypes: false,
+				convertFieldsToString: true,
+			}).validate();
+			expect(mappedResult.valid).toBe(true);
+			expect(mappedResult.errors).not.toContainEqual(
+				expect.objectContaining({ code: 'EXECUTE_WORKFLOW_INVALID_INPUT_MAPPING' }),
+			);
+		});
+
 		it('runs registered validators for matching node types', () => {
-			const mockValidateNode = jest.fn().mockReturnValue([]);
+			const mockValidateNode = vi.fn().mockReturnValue([]);
 			const mockValidator = createMockValidator(
 				'test:mock',
 				['n8n-nodes-base.set'],
@@ -301,7 +380,7 @@ describe('WorkflowBuilder plugin integration', () => {
 
 	describe('add() with composite handlers', () => {
 		it('delegates IfElseComposite to registered handler when handler handles it', () => {
-			const mockAddNodes = jest.fn().mockReturnValue('If Node');
+			const mockAddNodes = vi.fn().mockReturnValue('If Node');
 			const mockHandler: CompositeHandlerPlugin<IfElseComposite> = {
 				id: 'test:if-else',
 				name: 'Test If/Else Handler',
@@ -403,7 +482,7 @@ describe('WorkflowBuilder plugin integration', () => {
 
 	describe('then() with composite handlers', () => {
 		it('delegates IfElseComposite to registered handler in then()', () => {
-			const mockAddNodes = jest
+			const mockAddNodes = vi
 				.fn()
 				.mockImplementation((input: IfElseComposite, ctx: MutablePluginContext) => {
 					ctx.addNodeWithSubnodes(input.ifNode);
@@ -442,7 +521,7 @@ describe('WorkflowBuilder plugin integration', () => {
 			// Import the global registry to spy on it
 
 			// Spy on the global registry's findCompositeHandler method
-			const findCompositeHandlerSpy = jest.spyOn(pluginRegistry, 'findCompositeHandler');
+			const findCompositeHandlerSpy = vi.spyOn(pluginRegistry, 'findCompositeHandler');
 
 			// Create a workflow WITHOUT explicitly passing a registry
 			// Use ifElse composite which should trigger findCompositeHandler
@@ -473,7 +552,7 @@ describe('WorkflowBuilder plugin integration', () => {
 		});
 
 		it('uses global pluginRegistry.findCompositeHandler in then() when no registry is provided', () => {
-			const findCompositeHandlerSpy = jest.spyOn(pluginRegistry, 'findCompositeHandler');
+			const findCompositeHandlerSpy = vi.spyOn(pluginRegistry, 'findCompositeHandler');
 
 			const startTrigger = trigger({
 				type: 'n8n-nodes-base.manualTrigger',
@@ -613,7 +692,7 @@ describe('WorkflowBuilder plugin integration', () => {
 		it('ifElse builder is handled by global pluginRegistry handler', () => {
 			registerDefaultPlugins(pluginRegistry);
 
-			const findHandlerSpy = jest.spyOn(pluginRegistry, 'findCompositeHandler');
+			const findHandlerSpy = vi.spyOn(pluginRegistry, 'findCompositeHandler');
 
 			const trueBranch = node({
 				type: 'n8n-nodes-base.set',
@@ -646,7 +725,7 @@ describe('WorkflowBuilder plugin integration', () => {
 		it('switchCase builder is handled by global pluginRegistry handler', () => {
 			registerDefaultPlugins(pluginRegistry);
 
-			const findHandlerSpy = jest.spyOn(pluginRegistry, 'findCompositeHandler');
+			const findHandlerSpy = vi.spyOn(pluginRegistry, 'findCompositeHandler');
 
 			const case0 = node({
 				type: 'n8n-nodes-base.set',
@@ -679,7 +758,7 @@ describe('WorkflowBuilder plugin integration', () => {
 		it('splitInBatches builder is handled by global pluginRegistry handler', () => {
 			registerDefaultPlugins(pluginRegistry);
 
-			const findHandlerSpy = jest.spyOn(pluginRegistry, 'findCompositeHandler');
+			const findHandlerSpy = vi.spyOn(pluginRegistry, 'findCompositeHandler');
 
 			const doneNode = node({
 				type: 'n8n-nodes-base.set',
@@ -774,7 +853,7 @@ describe('WorkflowBuilder plugin integration', () => {
 		});
 
 		it('handler.getHeadNodeName is called by resolveCompositeHeadName', () => {
-			const mockGetHeadNodeName = jest.fn().mockReturnValue('Custom Head');
+			const mockGetHeadNodeName = vi.fn().mockReturnValue('Custom Head');
 			const customHandler: CompositeHandlerPlugin<{ custom: true }> = {
 				id: 'test:custom',
 				name: 'Custom Handler',
@@ -1083,7 +1162,7 @@ describe('WorkflowBuilder plugin integration', () => {
 	});
 
 	describe('Phase 11.2: missingTriggerValidator plugin', () => {
-		it('validateWorkflow returns warning when no trigger node exists', () => {
+		it('validateWorkflow returns informational when no trigger node exists', () => {
 			// Nodes map with only non-trigger nodes
 			const nodesMap = new Map();
 			nodesMap.set('Set', {
@@ -1102,7 +1181,7 @@ describe('WorkflowBuilder plugin integration', () => {
 
 			expect(issues.length).toBe(1);
 			expect(issues[0].code).toBe('MISSING_TRIGGER');
-			expect(issues[0].severity).toBe('warning');
+			expect(issues[0].severity).toBe('informational');
 		});
 
 		it('validateWorkflow returns empty array when trigger node exists', () => {

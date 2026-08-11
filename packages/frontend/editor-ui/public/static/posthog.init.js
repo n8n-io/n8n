@@ -27,7 +27,7 @@
 						return u.toString(1) + '.people (stub)';
 					},
 					o =
-						'capture identify alias people.set people.set_once set_config register register_once unregister opt_out_capturing has_opted_out_capturing opt_in_capturing reset isFeatureEnabled getFeatureFlag onFeatureFlags reloadFeatureFlags group'.split(
+						'capture identify alias group people.set people.set_once set_config register register_once unregister opt_out_capturing has_opted_out_capturing opt_in_capturing reset isFeatureEnabled getFeatureFlag onFeatureFlags reloadFeatureFlags'.split(
 							' ',
 						),
 					n = 0;

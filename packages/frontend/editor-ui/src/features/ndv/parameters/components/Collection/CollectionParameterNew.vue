@@ -16,6 +16,7 @@ import get from 'lodash/get';
 
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
+import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
 import { useI18n } from '@n8n/i18n';
 
 import {
@@ -53,6 +54,7 @@ const props = withDefaults(defineProps<Props>(), {
 const ndvStore = injectNDVStore();
 const i18n = useI18n();
 const nodeHelpers = useNodeHelpers();
+const aiGatewayStore = useAiGatewayStore();
 
 const activeNode = computed(() => ndvStore.value.activeNode);
 
@@ -148,10 +150,13 @@ const filteredOptions = computed(() => {
 	return props.parameter.options.filter((option) => {
 		// Accept both INodeProperties and INodePropertyCollection
 		if (isINodeProperties(option)) {
-			return displayNodeParameter(option);
+			return (
+				displayNodeParameter(option) &&
+				!aiGatewayStore.isNodePropertyHidden(activeNode.value, option.name)
+			);
 		}
 		if (isINodePropertyCollection(option)) {
-			return true; // Collections are always displayed
+			return !aiGatewayStore.isNodePropertyHidden(activeNode.value, option.name);
 		}
 		return false;
 	});

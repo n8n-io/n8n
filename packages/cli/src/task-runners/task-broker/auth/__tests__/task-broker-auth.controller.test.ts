@@ -35,7 +35,7 @@ describe('TaskBrokerAuthController', () => {
 		}) as unknown as AuthlessRequest;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('createGrantToken', () => {
@@ -105,6 +105,18 @@ describe('TaskBrokerAuthController', () => {
 			expect(result).toStrictEqual({
 				isValid: true,
 				statusCode: 200,
+			});
+		});
+
+		it('should return the runner ID bound to the grant token', async () => {
+			const token = await authService.createGrantToken('runner1');
+
+			const result = await authController.validateUpgradeRequest(`Bearer ${token}`);
+
+			expect(result).toStrictEqual({
+				isValid: true,
+				statusCode: 200,
+				boundRunnerId: 'runner1',
 			});
 		});
 

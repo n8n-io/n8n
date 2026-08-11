@@ -1,5 +1,4 @@
-import { ApplicationError } from '@n8n/errors';
-
+import { UserError } from './errors';
 import { NodeOperationError } from './errors/node-operation.error';
 import type {
 	ICredentialDataDecryptedObject,
@@ -21,7 +20,7 @@ export const DOMAIN_RESTRICTION_FIELDS: INodeProperties[] = [
 			{
 				name: 'All',
 				value: 'all',
-				description: 'Allow all requests when used in the HTTP Request node',
+				description: 'Allow all requests when used in the HTTP Request or GraphQL node',
 			},
 			{
 				name: 'Specific Domains',
@@ -31,11 +30,12 @@ export const DOMAIN_RESTRICTION_FIELDS: INodeProperties[] = [
 			{
 				name: 'None',
 				value: 'none',
-				description: 'Block all requests when used in the HTTP Request node',
+				description: 'Block all requests when used in the HTTP Request or GraphQL node',
 			},
 		],
 		default: 'all',
-		description: 'Control which domains this credential can be used with in HTTP Request nodes',
+		description:
+			'Control which domains this credential can be used with in HTTP Request or GraphQL nodes',
 	},
 	{
 		displayName: 'Allowed Domains',
@@ -130,7 +130,7 @@ export function isDomainAllowed(options: { url: string; allowedDomains: string }
 	return false;
 }
 
-/** Throws `ApplicationError` when `node` is omitted, so callers without an `INode` (axios helper) get a wrappable error. */
+/** Throws `UserError` when `node` is omitted, so callers without an `INode` (axios helper) get a wrappable error. */
 export function assertUrlAllowed(options: {
 	url: string;
 	allowedDomains?: string;
@@ -141,7 +141,7 @@ export function assertUrlAllowed(options: {
 	if (isDomainAllowed({ url, allowedDomains })) return;
 
 	const message = `Domain not allowed: This credential is restricted from accessing ${url}. Only the following domains are allowed: ${allowedDomains}`;
-	throw node ? new NodeOperationError(node, message) : new ApplicationError(message);
+	throw node ? new NodeOperationError(node, message) : new UserError(message);
 }
 
 /** Returns the allowlist for forwarding to per-hop redirect checks; `undefined` means allow-all. */

@@ -1,5 +1,5 @@
 import type { AgentMessage, Message } from '../../types/sdk/message';
-import { stripOrphanedToolMessages } from '../strip-orphaned-tool-messages';
+import { stripOrphanedToolMessages } from '../memory/strip-orphaned-tool-messages';
 
 describe('stripOrphanedToolMessages', () => {
 	it('returns messages unchanged when all tool-calls are settled', () => {

@@ -1,4 +1,5 @@
 import { Container } from '@n8n/di';
+import type { Mock } from 'vitest';
 
 import { EvaluationCollection } from '../../entities/evaluation-collection.ee';
 import { TestRun } from '../../entities/test-run.ee';
@@ -10,12 +11,12 @@ describe('EvaluationCollectionRepository', () => {
 	const repo = Container.get(EvaluationCollectionRepository);
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	describe('createCollection', () => {
 		it('persists the collection with insightsCache initialised to null', async () => {
-			(entityManager.create as jest.Mock).mockImplementation(
+			(entityManager.create as Mock).mockImplementation(
 				(_target: unknown, entityLike: unknown) => entityLike as EvaluationCollection,
 			);
 			entityManager.save.mockImplementationOnce(async (_target, entity) => entity);
@@ -62,11 +63,11 @@ describe('EvaluationCollectionRepository', () => {
 			] as EvaluationCollection[];
 			entityManager.find.mockResolvedValueOnce(collections);
 			const qb = {
-				select: jest.fn().mockReturnThis(),
-				addSelect: jest.fn().mockReturnThis(),
-				where: jest.fn().mockReturnThis(),
-				groupBy: jest.fn().mockReturnThis(),
-				getRawMany: jest.fn().mockResolvedValueOnce([
+				select: vi.fn().mockReturnThis(),
+				addSelect: vi.fn().mockReturnThis(),
+				where: vi.fn().mockReturnThis(),
+				groupBy: vi.fn().mockReturnThis(),
+				getRawMany: vi.fn().mockResolvedValueOnce([
 					{ collectionId: 'col-a', count: '3' },
 					{ collectionId: 'col-b', count: '0' },
 				]),
@@ -122,6 +123,25 @@ describe('EvaluationCollectionRepository', () => {
 			entityManager.update.mockResolvedValueOnce({ affected: 0, generatedMaps: [], raw: [] });
 
 			expect(await repo.removeRunFromCollection('col-1', 'tr-missing')).toBe(0);
+		});
+	});
+
+	describe('removeRunsFromCollection', () => {
+		it('unlinks runs in bulk with a single update scoped to the collection', async () => {
+			entityManager.update.mockResolvedValueOnce({ affected: 2, generatedMaps: [], raw: [] });
+
+			await repo.removeRunsFromCollection('col-1', ['tr-a', 'tr-b']);
+
+			expect(entityManager.update).toHaveBeenCalledTimes(1);
+			const callArgs = entityManager.update.mock.calls[0];
+			expect(callArgs?.[0]).toBe(TestRun);
+			expect(callArgs?.[1]).toMatchObject({ collectionId: 'col-1' });
+			expect(callArgs?.[2]).toEqual({ collectionId: null });
+		});
+
+		it('is a no-op when given an empty id list', async () => {
+			await repo.removeRunsFromCollection('col-1', []);
+			expect(entityManager.update).not.toHaveBeenCalled();
 		});
 	});
 
@@ -185,7 +205,7 @@ describe('EvaluationCollectionRepository', () => {
 				workflowId: 'wf-1',
 			} as EvaluationCollection;
 			entityManager.findOne.mockResolvedValueOnce(existing);
-			(entityManager.create as jest.Mock).mockImplementation(
+			(entityManager.create as Mock).mockImplementation(
 				(_target: unknown, entityLike: unknown) => entityLike as EvaluationCollection,
 			);
 			entityManager.save.mockImplementationOnce(async (_target, entity) => entity);

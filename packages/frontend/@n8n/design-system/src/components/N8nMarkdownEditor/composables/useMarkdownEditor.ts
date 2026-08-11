@@ -7,6 +7,7 @@ import TableHeader from '@tiptap/extension-table-header';
 import TableRow from '@tiptap/extension-table-row';
 import TaskItem from '@tiptap/extension-task-item';
 import TaskList from '@tiptap/extension-task-list';
+import Underline from '@tiptap/extension-underline';
 import { Markdown } from '@tiptap/markdown';
 import type { EditorState } from '@tiptap/pm/state';
 import type { EditorView } from '@tiptap/pm/view';
@@ -64,6 +65,7 @@ export const useMarkdownEditor = (
 		TaskItem.configure({
 			nested: true,
 		}),
+		Underline,
 		Markdown.configure({
 			markedOptions: {
 				gfm: true,
@@ -123,7 +125,11 @@ export const useMarkdownEditor = (
 	watch(
 		() => [props.disabled, props.readonly] as const,
 		([disabled, readonly]) => {
-			editor.value?.setEditable(!disabled && !readonly);
+			// `emitUpdate: false` — toggling editability is not a content change.
+			// With the default (`true`), tiptap fires `onUpdate`, so consumers see a
+			// spurious `update:modelValue` whenever a parent flips disabled/readonly
+			// (e.g. mid-stream in the agent builder) and mistake it for a real edit.
+			editor.value?.setEditable(!disabled && !readonly, false);
 		},
 	);
 

@@ -23,7 +23,7 @@ vi.mock('@/app/stores/nodeTypes.store', () => ({
 	})),
 }));
 
-vi.mock('@/app/stores/settings.store', () => ({
+vi.mock('@n8n/stores/settings.store', () => ({
 	useSettingsStore: vi.fn(() => ({
 		isEnterpriseFeatureEnabled: {
 			sharing: true,
@@ -38,6 +38,19 @@ describe('credentials.store', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		setActivePinia(createPinia());
+	});
+
+	describe('testCredential', () => {
+		it('marks the credential test as failed when the test request rejects', async () => {
+			const store = useCredentialsStore();
+			vi.mocked(credentialsApi.testCredential).mockRejectedValue(new Error('network error'));
+
+			await expect(
+				store.testCredential({ id: 'cred-1', name: 'My credential', type: 'slackApi' }),
+			).rejects.toThrow('network error');
+
+			expect(store.credentialTestResults.get('cred-1')).toBe('error');
+		});
 	});
 
 	describe('fetchAllCredentials', () => {

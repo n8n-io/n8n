@@ -355,6 +355,8 @@ class NodeInstanceImpl<TType extends string, TVersion extends string, TOutput = 
 	}
 
 	onError<T extends NodeInstance<string, string, unknown>>(handler: T | InputTarget): this {
+		// Declaring an error route implies the error output port exists.
+		this.config.onError ??= 'continueErrorOutput';
 		if (isInputTarget(handler)) {
 			this._connections.push({
 				target: handler.node,
@@ -557,7 +559,12 @@ class NodeChainImpl<
 	}
 
 	onError<T extends NodeInstance<string, string, unknown>>(handler: T | InputTarget): this {
-		this.tail.onError(handler as T);
+		// Bind to the chain node that declares an error output; tail is the fallback.
+		const declaring = this.allNodes.filter(
+			(n) => n !== null && n !== undefined && n.config?.onError === 'continueErrorOutput',
+		);
+		const source = declaring.length === 1 ? declaring[0] : this.tail;
+		source.onError(handler as T);
 		return this;
 	}
 

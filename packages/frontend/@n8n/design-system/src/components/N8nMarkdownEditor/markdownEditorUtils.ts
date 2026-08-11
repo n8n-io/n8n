@@ -1,4 +1,4 @@
-import type { Content, Editor } from '@tiptap/core';
+import type { Content, Editor, JSONContent } from '@tiptap/core';
 
 const emptyEditorContent: Content = {
 	type: 'doc',
@@ -42,10 +42,27 @@ export const isSelectionInsideNode = (editor: Editor, nodeName: string) => {
 	return false;
 };
 
+const isJsonContent = (value: unknown): value is JSONContent =>
+	typeof value === 'object' && value !== null && 'type' in value;
+
+const isJsonContentArray = (value: unknown): value is JSONContent[] =>
+	Array.isArray(value) && value.every(isJsonContent);
+
+const getSelectionMarkdown = (editor: Editor) => {
+	const selectedContent: unknown = editor.state.selection.content().content.toJSON();
+
+	if (!isJsonContentArray(selectedContent) || !editor.markdown) return '';
+
+	return editor.markdown.serialize({
+		type: 'doc',
+		content: selectedContent,
+	});
+};
+
 export const copyMarkdown = (editor: Editor, event: ClipboardEvent) => {
 	if (!event.clipboardData || editor.state.selection.empty) return false;
 
-	event.clipboardData.setData('text/plain', editor.getMarkdown());
+	event.clipboardData.setData('text/plain', getSelectionMarkdown(editor));
 	event.preventDefault();
 
 	return true;
