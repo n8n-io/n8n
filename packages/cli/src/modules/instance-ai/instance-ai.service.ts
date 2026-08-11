@@ -183,6 +183,7 @@ import { DbIterationLogStorage } from './storage/db-iteration-log-storage';
 import { DbSnapshotStorage } from './storage/db-snapshot-storage';
 import { TypeORMAgentCheckpointStore } from './storage/typeorm-agent-checkpoint-store';
 import { TypeORMAgentMemory } from './storage/typeorm-agent-memory';
+import { isStreamTransportError } from './stream-transport-error';
 import {
 	SuspendedRunRestorer,
 	type RebuildSuspendedRunOutcome,
@@ -386,6 +387,10 @@ export function getUserFacingErrorMessage(
 ): string {
 	if (isQuotaExhaustedError(error)) {
 		return QUOTA_EXHAUSTED_USER_MESSAGE;
+	}
+
+	if (isStreamTransportError(error)) {
+		return 'The connection to the AI provider dropped before I could finish that response. Please try again.';
 	}
 
 	if (error instanceof UserError) {
@@ -3951,6 +3956,7 @@ export class InstanceAiService {
 					terminalError ?? new Error('Instance AI stream errored'),
 					{
 						component: 'instance-ai-stream',
+						providerStream: true,
 						threadId,
 						runId,
 						tracing,
@@ -5269,6 +5275,7 @@ export class InstanceAiService {
 					terminalError ?? new Error('Instance AI resumed stream errored'),
 					{
 						component: 'instance-ai-stream',
+						providerStream: true,
 						threadId: opts.threadId,
 						runId: opts.runId,
 						tracing: opts.tracing,

@@ -23,7 +23,9 @@ export {
 	httpStatusFromError,
 	isAxiosError,
 	isConnectionRefusedError,
+	isDnsFailure,
 	isHttpRequestError,
+	isTransportFailure,
 	markHttpRequestError,
 	type HttpRequestError,
 } from './client-request-error';
