@@ -462,9 +462,15 @@ export const createCreateWorkflowFromCodeTool = (
 				let persisted: Awaited<ReturnType<WorkflowFinderService['findWorkflowForUser']>> | null =
 					null;
 				try {
-					persisted = await workflowFinderService.findWorkflowForUser(newWorkflow.id, user, [
-						'workflow:read',
-					]);
+					persisted = await workflowFinderService.findWorkflowForUser(
+						newWorkflow.id,
+						user,
+						['workflow:read'],
+						// landingFolder is only assigned after createWorkflow returns, so a
+						// post-save failure inside it leaves the variable unset — load the
+						// relation here so targetFolder still reflects where the row landed.
+						{ includeParentFolder: true },
+					);
 				} catch {
 					// Verification lookup failed — fall through and report the original error.
 				}
@@ -494,8 +500,8 @@ export const createCreateWorkflowFromCodeTool = (
 							name: landingProject.name,
 							type: landingProject.type,
 						},
-						targetFolder: landingFolder
-							? { id: landingFolder.id, name: landingFolder.name }
+						targetFolder: persisted.parentFolder
+							? { id: persisted.parentFolder.id, name: persisted.parentFolder.name }
 							: undefined,
 						note: `Workflow was created successfully, but a post-save operation failed: ${errorMessage}`,
 					};
