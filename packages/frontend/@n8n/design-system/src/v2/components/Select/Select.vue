@@ -91,16 +91,89 @@ function clearSearch() {
 	setSearchQuery('');
 }
 
+function isSearchNavigationKey(key: string) {
+	return key === 'ArrowDown' || key === 'ArrowUp';
+}
+
+function isTypingKey(event: KeyboardEvent) {
+	return (
+		!event.ctrlKey && !event.altKey && !event.metaKey && event.key.length === 1 && event.key !== ' '
+	);
+}
+
 /**
  * Keep typing in the search field from driving Reka's typeahead on the list,
- * but let Escape bubble so the select can close.
+ * but let Escape bubble so the select can close, and let ↑/↓ bubble so Reka
+ * can move focus into the options (search → list handoff).
  */
 function onSearchKeydown(event: KeyboardEvent) {
-	if (event.key === 'Escape') {
+	if (event.key === 'Escape' || isSearchNavigationKey(event.key)) {
+		if (isSearchNavigationKey(event.key)) {
+			// Avoid moving the caret; Reka will focus the first/last option.
+			event.preventDefault();
+		}
 		return;
 	}
 
 	event.stopPropagation();
+}
+
+function getEnabledOptions(contentEl: HTMLElement): HTMLElement[] {
+	return Array.from(
+		contentEl.querySelectorAll<HTMLElement>('[role="option"]:not([data-disabled])'),
+	);
+}
+
+/**
+ * When focus is already on the list: ↑ on the first option returns to search;
+ * typing a character returns to search and appends to the query (instead of
+ * Reka typeahead).
+ */
+function onContentKeydown(event: KeyboardEvent) {
+	if (!props.searchable) {
+		return;
+	}
+
+	const contentEl = event.currentTarget;
+	if (!(contentEl instanceof HTMLElement)) {
+		return;
+	}
+
+	const target = event.target;
+	if (!(target instanceof HTMLElement) || target.getAttribute('role') !== 'option') {
+		return;
+	}
+
+	if (event.key === 'ArrowUp') {
+		const firstOption = getEnabledOptions(contentEl)[0];
+		if (target === firstOption) {
+			event.preventDefault();
+			void focusSearchInput();
+		}
+		return;
+	}
+
+	if (!isTypingKey(event)) {
+		return;
+	}
+
+	// Capture-phase listener stops Reka typeahead; append into the search field.
+	event.preventDefault();
+	event.stopPropagation();
+	setSearchQuery(`${resolvedSearchQuery()}${event.key}`);
+	void focusSearchInput();
+}
+
+/**
+ * Focus the search field after open. Reka focuses the selected item once
+ * content is positioned (`@placed`), so defer past that to keep the caret
+ * ready for typing.
+ */
+async function focusSearchInput() {
+	await nextTick();
+	requestAnimationFrame(() => {
+		searchInputRef.value?.focus();
+	});
 }
 
 async function handleOpenUpdate(isOpen: boolean) {
@@ -112,8 +185,7 @@ async function handleOpenUpdate(isOpen: boolean) {
 	}
 
 	if (props.searchable) {
-		await nextTick();
-		searchInputRef.value?.focus();
+		await focusSearchInput();
 	}
 }
 
@@ -467,6 +539,7 @@ function resolveDisplayValue(value: unknown): string | undefined {
 				:position="position"
 				:side="side"
 				:side-offset="sideOffset"
+				@keydown.capture="onContentKeydown"
 			>
 				<div v-if="searchable" :class="$style.searchHeader" data-test-id="select-search">
 					<N8nInput
@@ -485,7 +558,9 @@ function resolveDisplayValue(value: unknown): string | undefined {
 				<slot name="header" />
 
 				<div :class="$style.viewportRegion">
+					<!-- Hide scroll arrows when empty — Reka can still report overflow after filter. -->
 					<SelectScrollUpButton
+						v-if="hasSelectableItems()"
 						:class="[$style.selectScrollButton, $style.selectScrollButtonUp]"
 						data-test-id="select-scroll-up"
 					>
@@ -530,6 +605,7 @@ function resolveDisplayValue(value: unknown): string | undefined {
 					</SelectViewport>
 
 					<SelectScrollDownButton
+						v-if="hasSelectableItems()"
 						:class="[$style.selectScrollButton, $style.selectScrollButtonDown]"
 						data-test-id="select-scroll-down"
 					>
@@ -558,6 +634,7 @@ function resolveDisplayValue(value: unknown): string | undefined {
 	align-items: center;
 	justify-content: flex-start;
 	gap: var(--spacing--4xs);
+	width: 100%;
 	min-height: var(--input--height);
 	padding: 0 var(--input--padding);
 	border-radius: var(--input--radius);
@@ -591,7 +668,6 @@ function resolveDisplayValue(value: unknown): string | undefined {
 
 	&[data-disabled] {
 		color: var(--input--color--disabled);
-		background-color: var(--input--color--background--disabled);
 		cursor: not-allowed;
 		opacity: 0.6;
 	}
@@ -611,15 +687,6 @@ function resolveDisplayValue(value: unknown): string | undefined {
 		background-color: var(--background--hover);
 		box-shadow: none;
 	}
-
-	&:focus-visible {
-		border-color: transparent;
-		box-shadow: none;
-	}
-
-	&[data-disabled] {
-		background-color: transparent;
-	}
 }
 
 /* Borderless, paddingless trigger for dense contexts (e.g. table cells). */
@@ -629,20 +696,18 @@ function resolveDisplayValue(value: unknown): string | undefined {
 	box-shadow: none;
 	padding: 0;
 	min-height: auto;
+	color: var(--text-color--subtle);
 
 	&:hover:not([data-disabled]):not(:focus-visible) {
 		border-color: transparent;
 		background-color: transparent;
 		box-shadow: none;
+		color: var(--text-color);
 	}
 
 	&:focus-visible {
 		border-color: transparent;
 		box-shadow: none;
-	}
-
-	&[data-disabled] {
-		background-color: transparent;
 	}
 }
 

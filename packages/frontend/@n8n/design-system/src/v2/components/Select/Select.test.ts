@@ -538,6 +538,23 @@ describe('v2/components/Select', () => {
 			expect(within(search).getByRole('textbox')).toBeInTheDocument();
 		});
 
+		it('should autofocus the search input when opened', async () => {
+			const wrapper = render(Select, {
+				props: {
+					items: roleItems,
+					searchable: true,
+				},
+			});
+
+			await userEvent.click(wrapper.getByTestId('select-trigger'));
+			const { popover } = await getPopoverContainer(wrapper.getByTestId('select-trigger'));
+			const searchInput = within(popover).getByRole('textbox');
+
+			await waitFor(() => {
+				expect(searchInput).toHaveFocus();
+			});
+		});
+
 		it('should filter items by label and show empty state when nothing matches', async () => {
 			const wrapper = render(Select, {
 				props: {
@@ -563,6 +580,8 @@ describe('v2/components/Select', () => {
 
 			await waitFor(() => {
 				expect(within(popover).getByTestId('select-empty')).toBeInTheDocument();
+				expect(within(popover).queryByTestId('select-scroll-up')).not.toBeInTheDocument();
+				expect(within(popover).queryByTestId('select-scroll-down')).not.toBeInTheDocument();
 			});
 		});
 
@@ -585,6 +604,88 @@ describe('v2/components/Select', () => {
 
 			await waitFor(() => {
 				expect(wrapper.emitted('update:searchQuery')?.at(-1)).toEqual(['']);
+			});
+		});
+
+		it('should move focus from search to the first option on ArrowDown', async () => {
+			const wrapper = render(Select, {
+				props: {
+					items: roleItems,
+					searchable: true,
+				},
+			});
+
+			await userEvent.click(wrapper.getByTestId('select-trigger'));
+			const { popover } = await getPopoverContainer(wrapper.getByTestId('select-trigger'));
+			const searchInput = within(popover).getByRole('textbox');
+
+			await waitFor(() => {
+				expect(searchInput).toHaveFocus();
+			});
+
+			await userEvent.keyboard('{ArrowDown}');
+
+			await waitFor(() => {
+				expect(within(popover).getByRole('option', { name: 'Admin' })).toHaveFocus();
+			});
+		});
+
+		it('should return focus to search on ArrowUp from the first option', async () => {
+			const wrapper = render(Select, {
+				props: {
+					items: roleItems,
+					searchable: true,
+				},
+			});
+
+			await userEvent.click(wrapper.getByTestId('select-trigger'));
+			const { popover } = await getPopoverContainer(wrapper.getByTestId('select-trigger'));
+			const searchInput = within(popover).getByRole('textbox');
+
+			await waitFor(() => {
+				expect(searchInput).toHaveFocus();
+			});
+
+			await userEvent.keyboard('{ArrowDown}');
+
+			await waitFor(() => {
+				expect(within(popover).getByRole('option', { name: 'Admin' })).toHaveFocus();
+			});
+
+			await userEvent.keyboard('{ArrowUp}');
+
+			await waitFor(() => {
+				expect(searchInput).toHaveFocus();
+			});
+		});
+
+		it('should return focus to search and append the character when typing on an option', async () => {
+			const wrapper = render(Select, {
+				props: {
+					items: roleItems,
+					searchable: true,
+				},
+			});
+
+			await userEvent.click(wrapper.getByTestId('select-trigger'));
+			const { popover } = await getPopoverContainer(wrapper.getByTestId('select-trigger'));
+			const searchInput = within(popover).getByRole('textbox');
+
+			await waitFor(() => {
+				expect(searchInput).toHaveFocus();
+			});
+
+			await userEvent.keyboard('{ArrowDown}');
+
+			await waitFor(() => {
+				expect(within(popover).getByRole('option', { name: 'Admin' })).toHaveFocus();
+			});
+
+			await userEvent.keyboard('d');
+
+			await waitFor(() => {
+				expect(searchInput).toHaveFocus();
+				expect(searchInput).toHaveValue('d');
 			});
 		});
 	});

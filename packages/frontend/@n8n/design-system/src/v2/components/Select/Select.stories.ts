@@ -3,8 +3,13 @@ import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import { action } from 'storybook/actions';
 import { defineComponent, ref, computed } from 'vue';
 
+import N8nButton from '@n8n/design-system/components/N8nButton';
 import N8nIcon from '@n8n/design-system/components/N8nIcon/Icon.vue';
+import N8nInput from '@n8n/design-system/components/N8nInput';
+import N8nInputLabel from '@n8n/design-system/components/N8nInputLabel';
+import N8nText from '@n8n/design-system/components/N8nText';
 
+import InputNumber from '../InputNumber/InputNumber.vue';
 import type { SelectItem } from './Select.types';
 import Select from './Select.vue';
 
@@ -30,6 +35,12 @@ const meta = {
 			control: 'select',
 			options: ['default', 'ghost', 'flush'],
 			description: 'Visual variant of the select trigger',
+		},
+		position: {
+			control: 'select',
+			options: ['popper', 'item-aligned'],
+			description:
+				'Positioning mode for the dropdown. `popper` opens below the trigger; `item-aligned` aligns the selected item with the trigger.',
 		},
 	},
 } satisfies GenericMeta<typeof Select>;
@@ -233,7 +244,7 @@ export const WithSlots = {
 export const Variants = {
 	// @ts-expect-error generic typed components https://github.com/storybookjs/storybook/issues/24238
 	render: (args) => ({
-		components: { Select },
+		components: { Select, N8nInputLabel },
 		setup() {
 			const defaultValue = ref(args.modelValue);
 			const ghostValue = ref(args.modelValue);
@@ -241,16 +252,16 @@ export const Variants = {
 			return { args, defaultValue, ghostValue, flushValue };
 		},
 		template: `
-		<div style="padding: 40px;">
-			<h3>Default</h3>
-			<Select :items="args.items" v-model="defaultValue"/>
-			<h3 style="margin-top: 15px;">Ghost</h3>
-			<Select :items="args.items" v-model="ghostValue" variant="ghost"/>
-			<h3 style="margin-top: 15px;">Flush</h3>
-			<p style="margin: 0 0 8px; font-size: 14px; color: var(--text-color--subtle);">
-				No padding — for table cells and other dense layouts.
-			</p>
-			<Select :items="args.items" v-model="flushValue" variant="flush"/>
+		<div style="padding: 40px; display: flex; flex-direction: column; gap: var(--spacing--md);">
+			<N8nInputLabel label="Default">
+				<Select :items="args.items" v-model="defaultValue"/>
+			</N8nInputLabel>
+			<N8nInputLabel label="Ghost">
+				<Select :items="args.items" v-model="ghostValue" variant="ghost"/>
+			</N8nInputLabel>
+			<N8nInputLabel label="Flush">
+				<Select :items="args.items" v-model="flushValue" variant="flush"/>
+			</N8nInputLabel>
 		</div>
 		`,
 	}),
@@ -260,65 +271,67 @@ export const Variants = {
 	},
 } satisfies Story;
 
-export const Sizes = {
+export const Positions = {
 	// @ts-expect-error generic typed components https://github.com/storybookjs/storybook/issues/24238
 	render: (args) => ({
-		components: { Select },
+		components: { Select, N8nInputLabel },
 		setup() {
-			const sizes = ['mini', 'small', 'medium', 'large', 'xlarge'] as const;
-			const plainValues = Object.fromEntries(sizes.map((size) => [size, ref(args.modelValue)]));
-			const iconValues = Object.fromEntries(sizes.map((size) => [size, ref(iconItems[0]?.value)]));
-
-			function iconFor(selected: unknown) {
-				return iconItems.find((item) => item.value === selected)?.icon;
-			}
-
-			return {
-				args,
-				sizes,
-				plainValues,
-				iconValues,
-				iconFor,
-				plainItems: [
-					{ label: 'Option 1', value: 'option1' },
-					{ label: 'Option 2', value: 'option2' },
-					{ label: 'Option 3', value: 'option3' },
-				],
-			};
+			const popperValue = ref(args.modelValue);
+			const itemAlignedValue = ref(args.modelValue);
+			return { args, popperValue, itemAlignedValue };
 		},
 		template: `
-		<div style="padding: 40px; display: flex; flex-direction: column; gap: 24px;">
-			<div
-				v-for="size in sizes"
-				:key="size"
-				style="display: grid; grid-template-columns: 120px 1fr 1fr; gap: 16px; align-items: center;"
-			>
-				<h3 style="margin: 0; font-size: 14px; font-weight: 600;">{{ size }}</h3>
-				<div>
-					<p style="margin: 0 0 8px; font-size: 12px; color: var(--text-color--subtle);">Without icons</p>
-					<Select
-						:items="plainItems"
-						v-model="plainValues[size].value"
-						:size="size"
-						:style="{ width: '220px' }"
-					/>
-				</div>
-				<div>
-					<p style="margin: 0 0 8px; font-size: 12px; color: var(--text-color--subtle);">With icons</p>
-					<Select
-						:items="args.items"
-						v-model="iconValues[size].value"
-						:size="size"
-						:icon="iconFor(iconValues[size].value)"
-						:style="{ width: '220px' }"
-					/>
-				</div>
-			</div>
+		<div style="padding: 40px; display: flex; flex-direction: column; gap: var(--spacing--lg);">
+			<N8nInputLabel label="Popper (default)">
+				<Select
+					:items="args.items"
+					v-model="popperValue"
+					position="popper"
+					:style="{ width: '220px' }"
+				/>
+			</N8nInputLabel>
+			<N8nInputLabel label="Item-aligned">
+				<Select
+					:items="args.items"
+					v-model="itemAlignedValue"
+					position="item-aligned"
+					:style="{ width: '220px' }"
+				/>
+			</N8nInputLabel>
 		</div>
 		`,
 	}),
 	args: {
-		items: iconItems,
+		items: fruitItems,
+		modelValue: 'orange',
+	},
+} satisfies Story;
+
+export const Sizes = {
+	// @ts-expect-error generic typed components https://github.com/storybookjs/storybook/issues/24238
+	render: (args) => ({
+		components: { Select, N8nInputLabel },
+		setup() {
+			const sizes = ['mini', 'small', 'medium', 'large', 'xlarge'] as const;
+			const values = Object.fromEntries(sizes.map((size) => [size, ref(args.modelValue)]));
+
+			return { args, sizes, values };
+		},
+		template: `
+		<div style="padding: 40px; display: flex; flex-direction: column; gap: var(--spacing--md);">
+			<N8nInputLabel v-for="size in sizes" :key="size" :label="size">
+				<Select
+					:items="args.items"
+					v-model="values[size].value"
+					:size="size"
+					:style="{ width: '220px' }"
+				/>
+			</N8nInputLabel>
+		</div>
+		`,
+	}),
+	args: {
+		items: plainItems,
 		modelValue: undefined,
 	},
 } satisfies Story;
@@ -332,24 +345,22 @@ const SelectControlledUncontrolledDemo = defineComponent({
 			{ label: 'Option 2', value: 'option2' },
 			{ label: 'Option 3', value: 'option3' },
 		];
-		return { value, items, Select, onUpdate: action('update:modelValue') };
+		return { value, items, Select, N8nInputLabel, N8nText, onUpdate: action('update:modelValue') };
 	},
 	template: `
-		<div style="padding: 40px; display: flex; flex-direction: column; gap: 32px;">
-			<section>
-				<h3 style="margin: 0 0 8px; font-size: 14px; font-weight: 600;">Controlled</h3>
-				<p style="margin: 0 0 16px; font-size: 14px; color: var(--text-color--subtle);">
-					Parent-controlled selection via <code>v-model</code>. Use the buttons below to set the value externally.
-				</p>
-				<component
-					:is="Select"
-					key="controlled"
-					v-model="value"
-					:items="items"
-					aria-label="Select option (controlled)"
-					@update:model-value="onUpdate"
-				/>
-				<div style="display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap;">
+		<div style="padding: 40px; display: flex; flex-direction: column; gap: var(--spacing--xl);">
+			<section style="display: flex; flex-direction: column; gap: var(--spacing--sm);">
+				<N8nInputLabel label="Controlled">
+					<component
+						:is="Select"
+						key="controlled"
+						v-model="value"
+						:items="items"
+						aria-label="Select option (controlled)"
+						@update:model-value="onUpdate"
+					/>
+				</N8nInputLabel>
+				<div style="display: flex; gap: var(--spacing--2xs); flex-wrap: wrap;">
 					<button
 						v-for="item in items"
 						:key="item.value"
@@ -367,26 +378,27 @@ const SelectControlledUncontrolledDemo = defineComponent({
 						Clear
 					</button>
 				</div>
-				<p style="margin-top: 16px; font-size: 14px;">Selected: <strong>{{ value ?? '(none)' }}</strong></p>
+				<N8nText tag="p" style="margin: 0;">
+					Selected: <strong>{{ value ?? '(none)' }}</strong>
+				</N8nText>
 			</section>
 			<section>
-				<h3 style="margin: 0 0 8px; font-size: 14px; font-weight: 600;">Uncontrolled</h3>
-				<p style="margin: 0 0 16px; font-size: 14px; color: var(--text-color--subtle);">
-					Uses <code>defaultValue</code> only. Parent does not track changes.
-				</p>
-				<component
-					:is="Select"
-					key="uncontrolled"
-					:items="items"
-					default-value="option2"
-					aria-label="Select option (uncontrolled)"
-				/>
+				<N8nInputLabel label="Uncontrolled">
+					<component
+						:is="Select"
+						key="uncontrolled"
+						:items="items"
+						default-value="option2"
+						aria-label="Select option (uncontrolled)"
+					/>
+				</N8nInputLabel>
 			</section>
 		</div>
 	`,
 });
 
 export const ControlledUncontrolled: Story = {
+	name: 'Controlled/Uncontrolled',
 	render: () => ({
 		components: { SelectControlledUncontrolledDemo },
 		template: '<SelectControlledUncontrolledDemo />',
@@ -396,26 +408,22 @@ export const ControlledUncontrolled: Story = {
 export const Disabled = {
 	// @ts-expect-error generic typed components https://github.com/storybookjs/storybook/issues/24238
 	render: (args) => ({
-		components: { Select },
+		components: { Select, N8nInputLabel },
 		setup() {
 			const value = ref(args.modelValue);
-			const emptyValue = ref(undefined);
-			return { args, value, emptyValue };
+			return { args, value };
 		},
 		template: `
-		<div style="padding: 40px; display: flex; flex-direction: column; gap: 24px;">
-			<div>
-				<h3 style="margin: 0 0 8px; font-size: 14px; font-weight: 600;">Disabled with value</h3>
+		<div style="padding: 40px; display: flex; flex-direction: column; gap: var(--spacing--lg);">
+			<N8nInputLabel label="Default">
 				<Select v-bind="args" v-model="value" disabled />
-			</div>
-			<div>
-				<h3 style="margin: 0 0 8px; font-size: 14px; font-weight: 600;">Disabled with placeholder</h3>
-				<Select v-bind="args" v-model="emptyValue" disabled />
-			</div>
-			<div>
-				<h3 style="margin: 0 0 8px; font-size: 14px; font-weight: 600;">Disabled ghost</h3>
+			</N8nInputLabel>
+			<N8nInputLabel label="Ghost">
 				<Select v-bind="args" v-model="value" variant="ghost" disabled />
-			</div>
+			</N8nInputLabel>
+			<N8nInputLabel label="Flush">
+				<Select v-bind="args" v-model="value" variant="flush" disabled />
+			</N8nInputLabel>
 		</div>
 		`,
 	}),
@@ -432,13 +440,13 @@ export const Disabled = {
 export const Multiple = {
 	// @ts-expect-error generic typed components https://github.com/storybookjs/storybook/issues/24238
 	render: (args) => ({
-		components: { Select },
+		components: { Select, N8nText },
 		setup() {
 			const value = ref(args.modelValue);
 			return { args, value, onUpdate: action('update:modelValue') };
 		},
 		template: `
-		<div style="padding: 40px; display: flex; flex-direction: column; gap: 16px;">
+		<div style="padding: 40px; display: flex; flex-direction: column; gap: var(--spacing--md);">
 			<Select
 				v-bind="args"
 				v-model="value"
@@ -446,9 +454,9 @@ export const Multiple = {
 				:style="{ width: '240px' }"
 				@update:model-value="onUpdate"
 			/>
-			<p style="margin: 0; font-size: 14px;">
+			<N8nText tag="p" style="margin: 0;">
 				Selected: <strong>{{ value?.length ? value.join(', ') : '(none)' }}</strong>
-			</p>
+			</N8nText>
 		</div>
 		`,
 	}),
@@ -468,15 +476,14 @@ export const Multiple = {
 export const Clearable = {
 	// @ts-expect-error generic typed components https://github.com/storybookjs/storybook/issues/24238
 	render: (args) => ({
-		components: { Select },
+		components: { Select, N8nInputLabel, N8nText },
 		setup() {
 			const value = ref(args.modelValue);
 			return { args, value, onUpdate: action('update:modelValue'), onClear: action('clear') };
 		},
 		template: `
-		<div style="padding: 40px; display: flex; flex-direction: column; gap: 24px;">
-			<div>
-				<h3 style="margin: 0 0 8px; font-size: 14px; font-weight: 600;">Single</h3>
+		<div style="padding: 40px; display: flex; flex-direction: column; gap: var(--spacing--lg);">
+			<N8nInputLabel label="Single">
 				<Select
 					v-bind="args"
 					v-model="value"
@@ -484,10 +491,10 @@ export const Clearable = {
 					@update:model-value="onUpdate"
 					@clear="onClear"
 				/>
-			</div>
-			<p style="margin: 0; font-size: 14px;">
+			</N8nInputLabel>
+			<N8nText tag="p" style="margin: 0;">
 				Selected: <strong>{{ value ?? '(none)' }}</strong>
-			</p>
+			</N8nText>
 		</div>
 		`,
 	}),
@@ -504,16 +511,16 @@ export const Clearable = {
 export const LongScrollableList = {
 	// @ts-expect-error generic typed components https://github.com/storybookjs/storybook/issues/24238
 	render: (args) => ({
-		components: { Select },
+		components: { Select, N8nText },
 		setup() {
 			const value = ref(args.modelValue);
 			return { args, value };
 		},
 		template: `
 		<div style="padding: 40px;">
-			<p style="margin: 0 0 12px; font-size: 14px; color: var(--text-color--subtle);">
+			<N8nText size="small" color="text-light" tag="p" style="margin: 0 0 var(--spacing--sm);">
 				Open the menu and scroll — arrow buttons appear at the top and bottom when more items are available.
-			</p>
+			</N8nText>
 			<Select
 				v-bind="args"
 				v-model="value"
@@ -535,33 +542,31 @@ export const LongScrollableList = {
 export const MixedItemLengths = {
 	// @ts-expect-error generic typed components https://github.com/storybookjs/storybook/issues/24238
 	render: (args) => ({
-		components: { Select },
+		components: { Select, N8nInputLabel, N8nText },
 		setup() {
 			const narrowValue = ref(args.modelValue);
 			const wideValue = ref(args.modelValue);
 			return { args, narrowValue, wideValue };
 		},
 		template: `
-		<div style="padding: 40px; display: flex; flex-direction: column; gap: 24px;">
-			<p style="margin: 0; font-size: 14px; color: var(--text-color--subtle);">
+		<div style="padding: 40px; display: flex; flex-direction: column; gap: var(--spacing--lg);">
+			<N8nText size="small" color="text-light" tag="p" style="margin: 0;">
 				Menu is at least as wide as the trigger, and grows to fit longer labels.
-			</p>
-			<div>
-				<h3 style="margin: 0 0 8px; font-size: 14px; font-weight: 600;">Narrow trigger (160px)</h3>
+			</N8nText>
+			<N8nInputLabel label="Narrow trigger (160px)">
 				<Select
 					v-bind="args"
 					v-model="narrowValue"
 					:style="{ width: '160px' }"
 				/>
-			</div>
-			<div>
-				<h3 style="margin: 0 0 8px; font-size: 14px; font-weight: 600;">Wide trigger (320px)</h3>
+			</N8nInputLabel>
+			<N8nInputLabel label="Wide trigger (320px)">
 				<Select
 					v-bind="args"
 					v-model="wideValue"
 					:style="{ width: '320px' }"
 				/>
-			</div>
+			</N8nInputLabel>
 		</div>
 		`,
 	}),
@@ -639,15 +644,11 @@ const SelectSearchAndFooterDemo = defineComponent({
 	},
 	template: `
 		<div style="padding: 40px;">
-			<p style="margin: 0 0 12px; font-size: 14px; color: var(--text-color--subtle);">
-				Role-dropdown style example with built-in search and a footer action.
-			</p>
 			<component
 				:is="Select"
 				v-model="value"
 				v-model:open="open"
 				:items="items"
-				variant="flush"
 				searchable
 				:style="{ width: '220px' }"
 				@update:model-value="onUpdate"
@@ -675,5 +676,128 @@ export const WithSearchAndFooter: Story = {
 	render: () => ({
 		components: { SelectSearchAndFooterDemo },
 		template: '<SelectSearchAndFooterDemo />',
+	}),
+};
+
+const departmentItems: SelectItem[] = [
+	{ label: 'Engineering', value: 'engineering' },
+	{ label: 'Product', value: 'product' },
+	{ label: 'Design', value: 'design' },
+	{ label: 'Marketing', value: 'marketing' },
+];
+
+const countryItems: SelectItem[] = [
+	{ label: 'United States', value: 'us' },
+	{ label: 'United Kingdom', value: 'uk' },
+	{ label: 'Germany', value: 'de' },
+	{ label: 'France', value: 'fr' },
+	{ label: 'Japan', value: 'jp' },
+];
+
+const FormExampleDemo = defineComponent({
+	name: 'FormExampleDemo',
+	setup() {
+		const name = ref('');
+		const email = ref('');
+		const department = ref<string | undefined>();
+		const country = ref<string | undefined>();
+		const seats = ref(1);
+
+		function onSubmit(event: Event) {
+			event.preventDefault();
+			action('submit')({
+				name: name.value,
+				email: email.value,
+				department: department.value,
+				country: country.value,
+				seats: seats.value,
+			});
+		}
+
+		return {
+			name,
+			email,
+			department,
+			country,
+			seats,
+			departmentItems,
+			countryItems,
+			onSubmit,
+			Select,
+			InputNumber,
+			N8nInput,
+			N8nInputLabel,
+			N8nButton,
+		};
+	},
+	template: `
+		<form
+			style="padding: 40px; max-width: 420px; display: flex; flex-direction: column; gap: var(--spacing--md);"
+			@submit="onSubmit"
+		>
+			<N8nInputLabel label="Full name" required>
+				<component
+					:is="N8nInput"
+					v-model="name"
+					placeholder="Ada Lovelace"
+					size="small"
+				/>
+			</N8nInputLabel>
+
+			<N8nInputLabel label="Email" required>
+				<component
+					:is="N8nInput"
+					v-model="email"
+					type="email"
+					placeholder="ada@example.com"
+					size="small"
+				/>
+			</N8nInputLabel>
+
+			<N8nInputLabel label="Department">
+				<component
+					:is="Select"
+					v-model="department"
+					:items="departmentItems"
+					placeholder="Select a department"
+					clearable
+				/>
+			</N8nInputLabel>
+
+			<N8nInputLabel label="Country">
+				<component
+					:is="Select"
+					v-model="country"
+					:items="countryItems"
+					placeholder="Select a country"
+					searchable
+					clearable
+				/>
+			</N8nInputLabel>
+
+			<N8nInputLabel label="Seats">
+				<component
+					:is="InputNumber"
+					v-model="seats"
+					:min="1"
+					:max="100"
+					:controls="true"
+					controls-position="both"
+					size="small"
+				/>
+			</N8nInputLabel>
+
+			<div style="display: flex; justify-content: flex-end; gap: var(--spacing--2xs); margin-top: var(--spacing--2xs);">
+				<component :is="N8nButton" type="submit" label="Save" size="small" />
+			</div>
+		</form>
+	`,
+});
+
+export const FormExample: Story = {
+	name: 'Form example',
+	render: () => ({
+		components: { FormExampleDemo },
+		template: '<FormExampleDemo />',
 	}),
 };
