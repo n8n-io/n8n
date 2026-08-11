@@ -42,6 +42,13 @@ interface PgPoolInternals {
 }
 
 /**
+ * Grace period after force-closing the pool, before the teardown is abandoned. Force-close
+ * is synchronous and pg-pool's end callback only needs an I/O turn, so this bounds the
+ * pathological case without adding latency to a teardown that is going to finish anyway.
+ */
+const FORCE_CLOSE_GRACE_MS = 1_000;
+
+/**
  * Watches a DataSource and recovers it when the connection goes bad.
  * - Pings on `databaseConfig.pingIntervalSeconds`, races against `databaseConfig.pingTimeoutMs`.
  * - After `databaseConfig.pingMaxFailuresBeforeRecovery` consecutive failures, destroys
@@ -349,47 +356,76 @@ export class DbConnectionMonitor {
 	}
 
 	/**
-	 * Tear down the DataSource, bounding the Postgres drain so recovery can't hang on
-	 * it. `pool.end()` only resolves once every pooled connection drains, so one frozen
-	 * against an unreachable backend blocks `destroy()` forever, pinning recovery at
-	 * attempt 1. Race the drain against `destroyTimeoutMs` and force-close on timeout so
-	 * the original `destroy()` resolves and `initialize()` can run. SQLite uses its own
-	 * driver `destroyTimeout`; `destroyTimeoutMs <= 0` disables the bound.
+	 * Tear down the DataSource, bounding the Postgres drain so recovery can't hang on it.
+	 * `pool.end()` only resolves once every pooled connection drains, so one frozen against
+	 * an unreachable backend blocks the drain forever, pinning recovery at attempt 1.
+	 *
+	 * The bound goes on `driver.disconnect()` rather than on `destroy()` itself, because
+	 * `destroy()` clears `isInitialized` only after `disconnect()` resolves, and
+	 * `initialize()` refuses to run while that flag is set. Returning from the wrapper lets
+	 * `destroy()` complete its own bookkeeping, so recovery can always rebuild the pool, and
+	 * a drain we walked away from settling later touches only this discarded driver instance
+	 * — `initialize()` builds a fresh one.
+	 *
+	 * SQLite uses its own driver `destroyTimeout`; `destroyTimeoutMs <= 0` disables the bound.
 	 */
 	private async destroyDataSource() {
-		const destroyPromise = this.dataSource.destroy();
-
 		const timeoutMs = Number(this.databaseConfig.postgresdb?.destroyTimeoutMs);
 		if (!this.isPostgres || !Number.isFinite(timeoutMs) || timeoutMs <= 0) {
-			await destroyPromise;
+			await this.dataSource.destroy();
 			return;
 		}
 
-		// Capture the pool before `destroy()` nulls `driver.master`.
-		const pool = this.postgresDriver.master;
-		// Timeout may win the race; swallow a late rejection from the abandoned `destroy()`.
-		destroyPromise.catch(() => {});
+		const driver = this.postgresDriver;
+		// Capture the pool before `disconnect()` nulls `driver.master`.
+		const pool = driver.master;
+		// Keep the original reference to put back verbatim, and a bound copy to call through.
+		// `bind` widens to `any` here, so we reassert TypeORM's own signature.
+		const originalDisconnect = driver.disconnect;
+		const drainPool = originalDisconnect.bind(driver) as () => Promise<void>;
 
-		const abortController = new AbortController();
-		let timedOut = false;
-		try {
-			await Promise.race([
-				destroyPromise,
-				setTimeoutP(timeoutMs, undefined, { signal: abortController.signal }).then(() => {
-					timedOut = true;
-					throw new OperationalError(`Database pool teardown timed out after ${timeoutMs}ms`);
-				}),
-			]);
-		} catch (error) {
-			if (!timedOut) {
-				throw error; // a genuine `destroy()` failure, not the timeout
-			}
+		driver.disconnect = async () => {
+			const drain = drainPool();
+			// A drain we walk away from must not surface as an unhandled rejection.
+			drain.catch(() => {});
+			if (await this.settlesWithin(drain, timeoutMs)) return;
+
 			this.logger.warn(
 				`Database pool teardown exceeded ${timeoutMs}ms; force-closing connection sockets to continue recovery`,
 			);
 			this.forceClosePostgresPool(pool);
-			// Force-close lets the original `destroy()` resolve and clear `isInitialized`.
-			await destroyPromise;
+			if (await this.settlesWithin(drain, FORCE_CLOSE_GRACE_MS)) return;
+
+			this.logger.error(
+				`Database pool teardown did not complete ${FORCE_CLOSE_GRACE_MS}ms after force-closing sockets; abandoning the pool to continue recovery`,
+			);
+		};
+
+		try {
+			await this.dataSource.destroy();
+		} finally {
+			driver.disconnect = originalDisconnect;
+		}
+	}
+
+	/**
+	 * Resolves `true` if `work` settles within `timeoutMs`, `false` if it is still pending.
+	 * A rejection counts as settled: the pool is unusable either way, and propagating it
+	 * would leave `isInitialized` set, wedging recovery in a retry loop that re-runs the
+	 * same failing teardown forever.
+	 */
+	private async settlesWithin(work: Promise<unknown>, timeoutMs: number): Promise<boolean> {
+		const abortController = new AbortController();
+		try {
+			await Promise.race([
+				work.catch(() => {}),
+				setTimeoutP(timeoutMs, undefined, { signal: abortController.signal }).then(() => {
+					throw new OperationalError('Database pool teardown timed out');
+				}),
+			]);
+			return true;
+		} catch {
+			return false;
 		} finally {
 			abortController.abort();
 		}
@@ -403,7 +439,14 @@ export class DbConnectionMonitor {
 	 * recovery integration test stops unblocking and fails, which is the guard.
 	 */
 	private forceClosePostgresPool(pool: PostgresDriver['master']) {
-		const clients = (pool as unknown as PgPoolInternals | undefined)?._clients;
+		if (!pool) {
+			// The driver never had a pool, or `disconnect()` already cleared it. Normal, and
+			// not evidence that pg-pool internals changed, so this stays below a warning.
+			this.logger.debug('Skipping Postgres pool force-close: the pool is already gone');
+			return;
+		}
+
+		const clients = (pool as unknown as PgPoolInternals)._clients;
 		if (!Array.isArray(clients)) {
 			this.logger.warn(
 				'Cannot force-close Postgres pool: pool._clients is unavailable (pg-pool internals may have changed)',
