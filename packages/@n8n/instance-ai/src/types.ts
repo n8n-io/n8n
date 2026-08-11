@@ -1136,7 +1136,7 @@ export interface InstanceAiContext {
 	/**
 	 * IDs of workflows the agent created during the **current run**. Populated by
 	 * build-workflow on every successful create (via `recordSessionOwnedWorkflow`).
-	 * Same-run update/delete HITL bypasses consult this set. Cross-run bypass for
+	 * Same-run update HITL bypasses consult this set. Cross-run bypass for
 	 * the same thread uses the persisted `workflows:update:<id>` session grant
 	 * written at create time — this in-memory set alone does not survive a new run.
 	 * Lazily initialized on first create.

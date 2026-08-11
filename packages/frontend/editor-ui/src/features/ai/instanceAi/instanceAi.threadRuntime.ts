@@ -571,32 +571,59 @@ export function createThreadRuntime(
 	// distinguishes createWorkflow vs updateWorkflow by that field).
 	const sessionAlwaysAllowKeys = ref<Set<string>>(new Set());
 
-	function buildAlwaysAllowKey(toolName: string, args: Record<string, unknown>): string {
+	function resolveAlwaysAllowWorkflowId(
+		args: Record<string, unknown>,
+		confirmationWorkflowId?: string,
+	): string {
+		if (typeof args.workflowId === 'string' && args.workflowId.length > 0) {
+			return args.workflowId;
+		}
+		if (typeof confirmationWorkflowId === 'string' && confirmationWorkflowId.length > 0) {
+			return confirmationWorkflowId;
+		}
+		return '';
+	}
+
+	/**
+	 * Returns null when an edit grant cannot be scoped to a workflow ID — storing a
+	 * generic `build-workflow:` key would auto-approve later foreign edits.
+	 */
+	function buildAlwaysAllowKey(
+		toolName: string,
+		args: Record<string, unknown>,
+		confirmationWorkflowId?: string,
+	): string | null {
 		if (toolName === 'submit-workflow') {
 			const isUpdate = typeof args.workflowId === 'string' && args.workflowId.length > 0;
 			return `submit-workflow:${isUpdate ? 'update' : 'create'}`;
 		}
 		const action = typeof args.action === 'string' ? args.action : '';
-		const workflowId = typeof args.workflowId === 'string' ? args.workflowId : '';
+		const workflowId = resolveAlwaysAllowWorkflowId(args, confirmationWorkflowId);
 		// Running a workflow grants "always allow" per workflow, so the grant applies only to the
 		// workflow the user approved.
 		if (toolName === 'executions' && action === 'run') {
 			return buildRunWorkflowSessionGrantKey(workflowId);
 		}
 		// Editing a workflow (build-workflow save or workflows update) is also per-workflow,
-		// matching the backend `workflows:update:<id>` thread grant.
-		if (
-			workflowId &&
-			((toolName === 'workflows' && action === 'update') || toolName === 'build-workflow')
-		) {
+		// matching the backend `workflows:update:<id>` thread grant. Bound build-workflow
+		// saves often omit args.workflowId — use confirmation.workflowId from the suspend
+		// payload instead. Without either ID, refuse to store a key (fail closed).
+		if ((toolName === 'workflows' && action === 'update') || toolName === 'build-workflow') {
+			if (!workflowId) return null;
 			return buildUpdateWorkflowSessionGrantKey(workflowId);
 		}
 		return `${toolName}:${action}`;
 	}
 
-	function addAlwaysAllowKey(toolName: string, args: Record<string, unknown>): void {
+	function addAlwaysAllowKey(
+		toolName: string,
+		args: Record<string, unknown>,
+		confirmationWorkflowId?: string,
+	): void {
+		const key = buildAlwaysAllowKey(toolName, args, confirmationWorkflowId);
+		if (key === null) return;
 		const next = new Set(sessionAlwaysAllowKeys.value);
-		next.add(buildAlwaysAllowKey(toolName, args));
+		next.add(key);
 		sessionAlwaysAllowKeys.value = next;
 	}
 
@@ -628,8 +655,12 @@ export function createThreadRuntime(
 				if (resolvedConfirmationIds.has(conf.requestId)) continue;
 				if (autoApproveInFlight.has(conf.requestId)) continue;
 				if (!isGenericApprovalEligible(item)) continue;
-				const key = buildAlwaysAllowKey(item.toolCall.toolName, item.toolCall.args ?? {});
-				if (!sessionAlwaysAllowKeys.value.has(key)) continue;
+				const key = buildAlwaysAllowKey(
+					item.toolCall.toolName,
+					item.toolCall.args ?? {},
+					conf.workflowId,
+				);
+				if (key === null || !sessionAlwaysAllowKeys.value.has(key)) continue;
 
 				autoApproveInFlight.add(conf.requestId);
 				try {

@@ -562,6 +562,7 @@ describe('createBuildWorkflowTool', () => {
 			expect.objectContaining({
 				message: 'Edit Target workflow (ID: wf-existing)?',
 				severity: 'warning',
+				workflowId: 'wf-existing',
 			}),
 		);
 		expect(compileWorkflowSource).not.toHaveBeenCalled();

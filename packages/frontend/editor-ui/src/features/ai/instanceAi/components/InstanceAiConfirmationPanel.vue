@@ -283,7 +283,7 @@ async function handleAlwaysAllow(item: PendingConfirmationItem) {
 			scope: 'session',
 		});
 		if (!ok) return;
-		thread.addAlwaysAllowKey(item.toolCall.toolName, item.toolCall.args ?? {});
+		thread.addAlwaysAllowKey(item.toolCall.toolName, item.toolCall.args ?? {}, conf.workflowId);
 		trackInputCompleted(
 			conf,
 			[

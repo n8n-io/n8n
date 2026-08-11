@@ -80,6 +80,8 @@ const confirmationSuspendSchema = z.object({
 	requestId: z.string(),
 	message: z.string(),
 	severity: instanceAiConfirmationSeveritySchema,
+	/** Resolved target workflow — used by the UI for per-workflow always-allow keys. */
+	workflowId: z.string(),
 });
 
 const confirmationResumeSchema = z.object({
@@ -522,6 +524,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						requestId: nanoid(),
 						message: `Edit ${workflowName} (ID: ${targetWorkflowId})?`,
 						severity: 'warning',
+						workflowId: targetWorkflowId,
 					});
 				}
 				// "Always allow" — persist so later edits of this workflow skip HITL.

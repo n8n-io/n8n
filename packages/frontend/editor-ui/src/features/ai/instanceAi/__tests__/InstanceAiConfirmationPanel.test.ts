@@ -256,7 +256,7 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 				approved: true,
 				scope: 'session',
 			});
-			expect(addKeySpy).toHaveBeenCalledWith('test-tool', { action: 'run' });
+			expect(addKeySpy).toHaveBeenCalledWith('test-tool', { action: 'run' }, undefined);
 			expect(mockTelemetryTrack).toHaveBeenCalledWith(
 				'User finished providing input',
 				expect.objectContaining({

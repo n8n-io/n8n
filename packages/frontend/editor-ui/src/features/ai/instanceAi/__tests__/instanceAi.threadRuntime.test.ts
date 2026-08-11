@@ -1669,6 +1669,7 @@ describe('createThreadRuntime - session always-allow', () => {
 			severity?: 'info' | 'warning' | 'destructive';
 			channelConfig?: { integrationType: string; agentId: string };
 			targetApproval?: InstanceAiTargetApproval;
+			workflowId?: string;
 		},
 	): void {
 		runtime.messages.push({
@@ -1699,6 +1700,7 @@ describe('createThreadRuntime - session always-allow', () => {
 							message: 'Approve?',
 							...(opts.channelConfig ? { channelConfig: opts.channelConfig } : {}),
 							...(opts.targetApproval ? { targetApproval: opts.targetApproval } : {}),
+							...(opts.workflowId ? { workflowId: opts.workflowId } : {}),
 						},
 					},
 				],
@@ -1836,6 +1838,39 @@ describe('createThreadRuntime - session always-allow', () => {
 		});
 		await new Promise((resolve) => setTimeout(resolve, 10));
 		expect(runtime.resolvedConfirmationIds.has('req-update-2')).toBe(false);
+	});
+
+	it('scopes bound build-workflow grants from confirmation.workflowId when args omit it', async () => {
+		const runtime = registry.getOrCreateRuntime(activeThreadId);
+		// Bound saves often omit args.workflowId; the suspend payload carries it.
+		runtime.addAlwaysAllowKey('build-workflow', {}, 'wf-1');
+
+		pushPendingApproval(runtime, {
+			messageId: 'msg-bound-1',
+			requestId: 'req-bound-1',
+			toolName: 'build-workflow',
+			args: { filePath: 'src/workflows/main.workflow.ts' },
+			workflowId: 'wf-1',
+		});
+		await vi.waitFor(() => {
+			expect(runtime.resolvedConfirmationIds.has('req-bound-1')).toBe(true);
+		});
+
+		pushPendingApproval(runtime, {
+			messageId: 'msg-bound-2',
+			requestId: 'req-bound-2',
+			toolName: 'build-workflow',
+			args: { filePath: 'src/workflows/other.workflow.ts' },
+			workflowId: 'wf-2',
+		});
+		await new Promise((resolve) => setTimeout(resolve, 10));
+		expect(runtime.resolvedConfirmationIds.has('req-bound-2')).toBe(false);
+	});
+
+	it('does not store a blanket build-workflow always-allow key without a workflow id', () => {
+		const runtime = registry.getOrCreateRuntime(activeThreadId);
+		runtime.addAlwaysAllowKey('build-workflow', { filePath: 'src/workflows/main.workflow.ts' });
+		expect(runtime.sessionAlwaysAllowKeys.size).toBe(0);
 	});
 
 	it('scopes executions run grants per workflow', async () => {
