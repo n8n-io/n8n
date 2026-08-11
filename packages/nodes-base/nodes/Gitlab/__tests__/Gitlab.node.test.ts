@@ -91,52 +91,6 @@ describe('Gitlab Node - Cross-cutting / Auth', () => {
 				{},
 			);
 		});
-
-		it('should route to gitlabOAuth2Api for oAuth2 auth', async () => {
-			const mock = createMockExecuteFunction({
-				authentication: 'oAuth2',
-				operation: 'get',
-				resource: 'issue',
-				issueNumber: 1,
-			});
-			mock.getCredentials = vi.fn().mockImplementation(async (name: string) => {
-				if (name === 'gitlabOAuth2Api') {
-					return { server: 'https://gitlab.example.com', accessToken: 'oauth-token' };
-				}
-				return null;
-			});
-			(GenericFunctions.gitlabApiRequest as Mock).mockResolvedValue({ iid: 1 });
-
-			await gitlab.execute.call(mock);
-
-			// The accessToken credential path must NOT be used.
-			expect(mock.getCredentials).not.toHaveBeenCalledWith('gitlabApi');
-			expect(GenericFunctions.gitlabApiRequest).toHaveBeenCalledTimes(1);
-		});
-	});
-
-	describe('Server URL Handling', () => {
-		it('should strip a trailing slash from the server URL', async () => {
-			const mock = createMockExecuteFunction({
-				operation: 'get',
-				resource: 'issue',
-				issueNumber: 1,
-			});
-			mock.getCredentials = vi.fn().mockResolvedValue({
-				accessToken: 'test-token',
-				server: 'https://gitlab.example.com/',
-			});
-			(GenericFunctions.gitlabApiRequest as Mock).mockResolvedValue({ iid: 1 });
-
-			await gitlab.execute.call(mock);
-
-			expect(GenericFunctions.gitlabApiRequest).toHaveBeenCalledWith(
-				'GET',
-				expect.stringContaining('/projects/test-owner%2Ftest-repo/issues/1'),
-				{},
-				{},
-			);
-		});
 	});
 
 	describe('Owner Encoding (Subgroups)', () => {

@@ -3,6 +3,7 @@ import type { WorkflowTestData } from 'n8n-workflow';
 import nock from 'nock';
 
 describe('Gitlab Node - User Operations', () => {
+	const baseUrl = 'https://gitlab.com/api/v4';
 	const credentials = {
 		gitlabApi: {
 			accessToken: 'test-token',
@@ -24,7 +25,7 @@ describe('Gitlab Node - User Operations', () => {
 
 	describe('user:getRepositories with empty result', () => {
 		beforeAll(() => {
-			const mock = nock('https://gitlab.com/api/v4');
+			const mock = nock(baseUrl);
 			mock.get('/users/test-owner/projects').query(true).reply(200, []);
 		});
 
@@ -36,7 +37,7 @@ describe('Gitlab Node - User Operations', () => {
 
 	describe('user:getRepositories with 404 error', () => {
 		beforeEach(() => {
-			const mock = nock('https://gitlab.com/api/v4');
+			const mock = nock(baseUrl);
 			mock
 				.get('/users/nonexistent-user/projects')
 				.query(true)
@@ -56,7 +57,7 @@ describe('Gitlab Node - User Operations', () => {
 
 	describe('user:getRepositories with 401 error', () => {
 		beforeEach(() => {
-			const mock = nock('https://gitlab.com/api/v4');
+			const mock = nock(baseUrl);
 			mock
 				.get('/users/nonexistent-user/projects')
 				.query(true)
@@ -76,7 +77,7 @@ describe('Gitlab Node - User Operations', () => {
 
 	describe('user:getRepositories with continueOnFail=true', () => {
 		beforeAll(() => {
-			const mock = nock('https://gitlab.com/api/v4');
+			const mock = nock(baseUrl);
 			mock
 				.get('/users/test-owner/projects')
 				.query(true)
@@ -91,7 +92,7 @@ describe('Gitlab Node - User Operations', () => {
 
 	describe('user:getRepositories does not read repository parameter', () => {
 		beforeAll(() => {
-			const mock = nock('https://gitlab.com/api/v4');
+			const mock = nock(baseUrl);
 			mock
 				.get('/users/test-owner/projects')
 				.query(true)
@@ -101,6 +102,28 @@ describe('Gitlab Node - User Operations', () => {
 		new NodeTestHarness().setupTests({
 			credentials,
 			workflowFiles: ['user.getRepositories.noRepoParam.workflow.json'],
+		});
+	});
+
+	describe('user:getRepositories with trailing slash in server URL', () => {
+		beforeAll(() => {
+			const mock = nock(baseUrl);
+			mock
+				.get('/users/test-owner/projects')
+				.query(true)
+				.reply(200, [{ id: 1, name: 'r1', path_with_namespace: 'test-owner/r1' }]);
+		});
+
+		const trailingSlashCredentials = {
+			gitlabApi: {
+				accessToken: 'test-token',
+				server: 'https://gitlab.com/',
+			},
+		};
+
+		new NodeTestHarness().setupTests({
+			credentials: trailingSlashCredentials,
+			workflowFiles: ['user.getRepositories.trailingSlash.workflow.json'],
 		});
 	});
 });

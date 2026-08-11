@@ -57,8 +57,12 @@ describe('Gitlab Node - File Operations', () => {
 		describe('with base64 text content', () => {
 			beforeAll(() => {
 				api()
-					.post('/projects/test-owner%2Ftest-repo/repository/files/docs%2FREADME.md')
-					.reply(200, { file_path: 'docs/README.md' });
+					.post('/projects/test-owner%2Ftest-repo/repository/files/docs%2FREADME.md', {
+						branch: 'main',
+						commit_message: 'Add docs',
+						content: 'SGVsbG8sIFdvcmxkIQ==',
+					})
+					.reply(200, { file_path: 'docs/README.md', branch: 'main' });
 			});
 
 			new NodeTestHarness().setupTests({
