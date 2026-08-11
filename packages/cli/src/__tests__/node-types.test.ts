@@ -1,19 +1,23 @@
+import type { Logger } from '@n8n/backend-common';
 import { RoutingNode, UnrecognizedNodeTypeError } from 'n8n-core';
 import type {
 	LoadedClass,
 	INodeType,
 	IVersionedNodeType,
+	INodeTypeBaseDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeVersionNotFoundError, VersionedNodeType } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { NodeTypes } from '@/node-types';
 
 describe('NodeTypes', () => {
+	const logger = mock<Logger>();
 	const loadNodesAndCredentials = mock<LoadNodesAndCredentials>();
 
-	const nodeTypes: NodeTypes = new NodeTypes(loadNodesAndCredentials);
+	const nodeTypes: NodeTypes = new NodeTypes(logger, loadNodesAndCredentials);
 
 	const nonVersionedNode: LoadedClass<INodeType> = {
 		sourcePath: '',
@@ -43,6 +47,15 @@ describe('NodeTypes', () => {
 				return v2Node;
 			},
 		},
+	};
+	// Backed by a REAL VersionedNodeType (not a stubbed getNodeType) so an unknown
+	// version exercises the actual resolution path end-to-end.
+	const realVersionedNode: LoadedClass<IVersionedNodeType> = {
+		sourcePath: '',
+		type: new VersionedNodeType(
+			{ 1: v1Node, 2: v2Node },
+			mock<INodeTypeBaseDescription>({ name: 'n8n-nodes-base.realVersioned', defaultVersion: 2 }),
+		),
 	};
 	const toolNode: LoadedClass<INodeType> = {
 		sourcePath: '',
@@ -102,6 +115,50 @@ describe('NodeTypes', () => {
 			supplyData: undefined,
 		},
 	};
+	// Versioned node whose v1 cannot be used as a tool while v2 can. Plain-object
+	// descriptions (not mock proxies) so `usableAsTool` reads are real.
+	const partiallyToolCapableNode: LoadedClass<IVersionedNodeType> = {
+		sourcePath: '',
+		type: {
+			description: {
+				name: 'n8n-nodes-base.partiallyToolCapable',
+				displayName: 'Partially Tool Capable',
+			} as unknown as INodeTypeDescription,
+			currentVersion: 2,
+			nodeVersions: {
+				1: {
+					description: {
+						name: 'n8n-nodes-base.partiallyToolCapable',
+						version: 1,
+						properties: [],
+					},
+				} as unknown as INodeType,
+				2: {
+					description: {
+						name: 'n8n-nodes-base.partiallyToolCapable',
+						version: 2,
+						usableAsTool: true,
+						properties: [],
+					},
+				} as unknown as INodeType,
+			},
+			getNodeType(version) {
+				return this.nodeVersions[version === 1 ? 1 : 2];
+			},
+		},
+	};
+	const multiVersionNode: LoadedClass<INodeType> = {
+		sourcePath: '',
+		type: {
+			description: {
+				name: 'n8n-nodes-base.multiVersion',
+				displayName: 'Multi Version Node',
+				version: [1, 1.1, 2],
+				properties: [],
+			} as unknown as INodeTypeDescription,
+			supplyData: undefined,
+		},
+	};
 	const hitlSupportingNode: LoadedClass<INodeType> = {
 		sourcePath: '',
 		type: {
@@ -140,6 +197,45 @@ describe('NodeTypes', () => {
 			supplyData: undefined,
 		},
 	};
+	// Versioned node usable as a tool at both versions, where each version exposes
+	// a different parameter (mirrors Notion v2 `databaseId` vs v3 `dataSourceId`).
+	const versionedToolCapableNode: LoadedClass<IVersionedNodeType> = {
+		sourcePath: '',
+		type: {
+			description: {
+				name: 'n8n-nodes-base.versionedToolCapable',
+				displayName: 'Versioned Tool Capable',
+			} as unknown as INodeTypeDescription,
+			currentVersion: 2,
+			nodeVersions: {
+				1: {
+					description: {
+						name: 'n8n-nodes-base.versionedToolCapable',
+						version: 1,
+						usableAsTool: true,
+						properties: [
+							{ displayName: 'Database ID', name: 'databaseId', type: 'string', default: '' },
+						],
+					},
+					supplyData: undefined,
+				} as unknown as INodeType,
+				2: {
+					description: {
+						name: 'n8n-nodes-base.versionedToolCapable',
+						version: 2,
+						usableAsTool: true,
+						properties: [
+							{ displayName: 'Data Source ID', name: 'dataSourceId', type: 'string', default: '' },
+						],
+					},
+					supplyData: undefined,
+				} as unknown as INodeType,
+			},
+			getNodeType(version) {
+				return this.nodeVersions[version === 1 ? 1 : 2];
+			},
+		},
+	};
 	const communityNode: LoadedClass<INodeType> = {
 		sourcePath: '',
 		type: {
@@ -158,13 +254,17 @@ describe('NodeTypes', () => {
 		if (packageName === 'n8n-nodes-base') {
 			if (nodeType === 'nonVersioned') return nonVersionedNode;
 			if (nodeType === 'versioned') return versionedNode;
+			if (nodeType === 'realVersioned') return realVersionedNode;
 			if (nodeType === 'testNode') return toolSupportingNode;
 			if (nodeType === 'declarativeNode') return declarativeNode;
 			if (nodeType === 'toolNode') return toolNode;
 			if (nodeType === 'plainToolNode') return plainToolSupportingNode;
+			if (nodeType === 'partiallyToolCapable') return partiallyToolCapableNode;
+			if (nodeType === 'multiVersion') return multiVersionNode;
 			if (nodeType === 'hitlNode') return hitlSupportingNode;
 			if (nodeType === 'realTool') return realToolNode;
 			if (nodeType === 'replacementToolNode') return replacementToolNode;
+			if (nodeType === 'versionedToolCapable') return versionedToolCapableNode;
 		} else if (fullNodeType === 'n8n-nodes-community.testNode') return communityNode;
 		throw new UnrecognizedNodeTypeError(packageName, nodeType);
 	});
@@ -196,6 +296,25 @@ describe('NodeTypes', () => {
 			expect(() => nodeTypes.getByNameAndVersion('n8n-nodes-base.unknownNode')).toThrow(
 				'Unrecognized node type: n8n-nodes-base.unknownNode',
 			);
+		});
+
+		it('should throw NodeVersionNotFoundError (not an opaque TypeError) for an unknown version', () => {
+			let caught: unknown;
+			try {
+				nodeTypes.getByNameAndVersion('n8n-nodes-base.realVersioned', 4.4);
+			} catch (error) {
+				caught = error;
+			}
+
+			expect(caught).toBeInstanceOf(NodeVersionNotFoundError);
+			const error = caught as NodeVersionNotFoundError;
+			expect(error.message).not.toContain(
+				"Cannot read properties of undefined (reading 'execute')",
+			);
+			expect(error.message).toBe(
+				'Node type "n8n-nodes-base.realVersioned" is not available in version 4.4. Available versions: 1, 2. Use the latest version 2.',
+			);
+			expect(error.availableVersions).toEqual([1, 2]);
 		});
 
 		it('should return a regular node-type without version', () => {
@@ -250,6 +369,24 @@ describe('NodeTypes', () => {
 			expect(runNodeSpy).toHaveBeenCalled();
 		});
 
+		it('should resolve each version of a synthetic tool independently, not the first-cached one', () => {
+			const v1 = nodeTypes.getByNameAndVersion('n8n-nodes-base.versionedToolCapableTool', 1);
+			expect(v1.description.version).toBe(1);
+			expect(v1.description.properties.some((p) => p.name === 'databaseId')).toBe(true);
+
+			const v2 = nodeTypes.getByNameAndVersion('n8n-nodes-base.versionedToolCapableTool', 2);
+			expect(v2.description.version).toBe(2);
+			expect(v2.description.properties.some((p) => p.name === 'dataSourceId')).toBe(true);
+
+			// Re-fetch v1: caching v2 must not clobber the v1 entry.
+			const v1Again = nodeTypes.getByNameAndVersion('n8n-nodes-base.versionedToolCapableTool', 1);
+			expect(v1Again.description.version).toBe(1);
+
+			// No version resolves to the current version and caches independently.
+			const vDefault = nodeTypes.getByNameAndVersion('n8n-nodes-base.versionedToolCapableTool');
+			expect(vDefault.description.version).toBe(2);
+		});
+
 		it('should return a declarative node-type as a tool with an `.execute` method', async () => {
 			const result = nodeTypes.getByNameAndVersion('n8n-nodes-base.declarativeNodeTool');
 			expect(result).not.toEqual(declarativeNode.type);
@@ -263,6 +400,80 @@ describe('NodeTypes', () => {
 			const runNodeSpy = vi.spyOn(RoutingNode.prototype, 'runNode').mockResolvedValue([]);
 			await result.execute!.call(mock());
 			expect(runNodeSpy).toHaveBeenCalled();
+		});
+	});
+
+	describe('getSupportedVersions', () => {
+		it('should return the single version of a plain node type', () => {
+			expect(nodeTypes.getSupportedVersions('n8n-nodes-base.hitlNode')).toEqual([1]);
+		});
+
+		it('should return every version of a plain node type with a version array', () => {
+			expect(nodeTypes.getSupportedVersions('n8n-nodes-base.multiVersion')).toEqual([1, 1.1, 2]);
+		});
+
+		it('should return the nodeVersions keys of a versioned node type', () => {
+			expect(nodeTypes.getSupportedVersions('n8n-nodes-base.versioned')).toEqual([1, 2]);
+		});
+
+		it('should return undefined for an unknown node type', () => {
+			expect(nodeTypes.getSupportedVersions('n8n-nodes-base.unknownNode')).toBeUndefined();
+			expect(nodeTypes.getSupportedVersions('invalid-package.unknownNode')).toBeUndefined();
+		});
+
+		it('should resolve a Tool-suffixed name against its base node', () => {
+			expect(nodeTypes.getSupportedVersions('n8n-nodes-base.plainToolNodeTool')).toEqual([1]);
+		});
+
+		it('should not count versions that cannot be used as a tool for a Tool-suffixed name', () => {
+			// The base node exists at version 1 but is not usableAsTool, so no
+			// version can satisfy the synthetic tool wrapper …
+			expect(nodeTypes.getSupportedVersions('n8n-nodes-base.hitlNodeTool')).toEqual([]);
+			// … while HitlTool wrappers have no usability requirement.
+			expect(nodeTypes.getSupportedVersions('n8n-nodes-base.hitlNodeHitlTool')).toEqual([1]);
+		});
+
+		it('should keep only tool-capable versions of a versioned node for a Tool-suffixed name', () => {
+			expect(nodeTypes.getSupportedVersions('n8n-nodes-base.partiallyToolCapableTool')).toEqual([
+				2,
+			]);
+			expect(nodeTypes.getSupportedVersions('n8n-nodes-base.partiallyToolCapable')).toEqual([1, 2]);
+		});
+
+		it('should warn and return undefined when the node fails to load for another reason', () => {
+			loadNodesAndCredentials.getNode.mockImplementationOnce(() => {
+				throw new TypeError('boom');
+			});
+
+			expect(nodeTypes.getSupportedVersions('n8n-nodes-base.hitlNode')).toBeUndefined();
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to resolve node type while listing supported versions',
+				{ nodeType: 'n8n-nodes-base.hitlNode', error: 'boom' },
+			);
+		});
+
+		it('should warn and return undefined when name resolution surfaces a non-node value', () => {
+			// A hostile name can make `getNode` return a prototype-chain value
+			// instead of throwing; the reads after it must still fail closed.
+			loadNodesAndCredentials.getNode.mockReturnValueOnce(Object as never);
+
+			expect(nodeTypes.getSupportedVersions('n8n-nodes-base.poisoned')).toBeUndefined();
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to resolve node type while listing supported versions',
+				expect.objectContaining({ nodeType: 'n8n-nodes-base.poisoned' }),
+			);
+		});
+
+		it('should warn and return undefined when the tool-name check itself throws', () => {
+			loadNodesAndCredentials.recognizesNode.mockImplementationOnce(() => {
+				throw new TypeError('boom');
+			});
+
+			expect(nodeTypes.getSupportedVersions('constructor.anythingTool')).toBeUndefined();
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to resolve node type while listing supported versions',
+				{ nodeType: 'constructor.anythingTool', error: 'boom' },
+			);
 		});
 	});
 

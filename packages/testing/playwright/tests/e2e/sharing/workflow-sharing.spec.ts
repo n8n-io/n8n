@@ -121,7 +121,7 @@ test.describe(
 			});
 
 			const memberApi = await api.createApiForUser(member);
-			const response = await memberApi.request.get(`/rest/workflows/${workflow.id}`);
+			const response = await memberApi.workflows.getWorkflowRaw(workflow.id);
 			// With project features enabled, unauthorized access returns 403 (Forbidden)
 			expect(response.status()).toBe(403);
 		});

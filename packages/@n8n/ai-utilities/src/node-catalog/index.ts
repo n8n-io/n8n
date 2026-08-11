@@ -20,11 +20,13 @@ export type {
 } from './search';
 
 export {
+	getNodeTypeDefinition,
 	getNodeTypes,
 	isValidPathComponent,
 	validatePathWithinBase,
 	parseNodeId,
 	toSnakeCase,
+	versionDirToNumber,
 } from './get';
 export type { NodeRequest, CodeBuilderGetToolOptions } from './get';
 

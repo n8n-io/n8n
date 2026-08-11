@@ -2,10 +2,10 @@
 import SelectedItemsInfo from '@/app/components/common/SelectedItemsInfo.vue';
 import { useMessage } from '@/app/composables/useMessage';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
-import { useTelemetry } from '@/app/composables/useTelemetry';
-import { useToast } from '@/app/composables/useToast';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { useToast } from '@n8n/composables/useToast';
 import { EnterpriseEditionFeature, MODAL_CONFIRM } from '@/app/constants';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import type { IWorkflowDb } from '@/Interface';
 import { useI18n } from '@n8n/i18n';
@@ -31,12 +31,10 @@ const props = withDefaults(
 		filters: ExecutionFilterType;
 		total?: number;
 		concurrentTotal?: number;
-		estimated?: boolean;
 	}>(),
 	{
 		total: 0,
 		concurrentTotal: 0,
-		estimated: false,
 	},
 );
 
@@ -352,6 +350,8 @@ const goToUpgrade = () => {
 				:running-executions-count="concurrentTotal"
 				:concurrency-cap="settingsStore.concurrency"
 				:is-cloud-deployment="settingsStore.isCloudDeployment"
+				:executions="props.executions"
+				:is-initial-load="!executionsStore.initialLoadComplete"
 				@go-to-upgrade="goToUpgrade"
 			/>
 			<N8nCheckbox
@@ -452,7 +452,7 @@ const goToUpgrade = () => {
 										{{ i18n.baseText('executionsList.empty') }}
 									</span>
 								</template>
-								<template v-else-if="total > executions.length || estimated">
+								<template v-else-if="executionsStore.hasMoreExecutions">
 									<N8nButton
 										ref="loadMoreButton"
 										icon="refresh-cw"

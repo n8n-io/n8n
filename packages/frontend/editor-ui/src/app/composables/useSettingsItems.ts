@@ -6,7 +6,7 @@ import type { IMenuItem } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { VIEWS } from '../constants';
 import { useUIStore } from '../stores/ui.store';
-import { useSettingsStore } from '../stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { hasPermission } from '../utils/rbac/permissions';
 import { MIGRATION_REPORT_TARGET_VERSION } from '@n8n/api-types';
 import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
@@ -21,27 +21,6 @@ export function useSettingsItems() {
 	const { check: envFeatureFlagCheck } = useEnvFeatureFlag();
 
 	const settingsItems = computed<IMenuItem[]>(() => {
-		const customInstanceRoles = envFeatureFlagCheck.value('CUSTOM_INSTANCE_ROLES');
-		const rolesItem: IMenuItem = customInstanceRoles
-			? {
-					id: 'settings-roles',
-					icon: 'user-round',
-					label: i18n.baseText('settings.roles'),
-					position: 'top',
-					available: canUserAccessRouteByName(VIEWS.ROLES_SETTINGS),
-					route: { to: { name: VIEWS.ROLES_SETTINGS } },
-					new: true,
-				}
-			: {
-					id: 'settings-roles',
-					icon: 'user-round',
-					label: i18n.baseText('settings.projectRoles'),
-					position: 'top',
-					available: canUserAccessRouteByName(VIEWS.PROJECT_ROLES_SETTINGS),
-					route: { to: { name: VIEWS.PROJECT_ROLES_SETTINGS } },
-					new: true,
-				};
-
 		const menuItems: IMenuItem[] = [
 			{
 				id: 'settings-usage-and-plan',
@@ -82,7 +61,9 @@ export function useSettingsItems() {
 				label: i18n.baseText('settings.n8nConnect'),
 				position: 'top',
 				available:
-					settingsStore.isAiGatewayEnabled && canUserAccessRouteByName(VIEWS.AI_GATEWAY_SETTINGS),
+					settingsStore.isAiGatewayEnabled &&
+					!settingsStore.isAiGatewayCloudUbbEnabled &&
+					canUserAccessRouteByName(VIEWS.AI_GATEWAY_SETTINGS),
 				route: { to: { name: VIEWS.AI_GATEWAY_SETTINGS } },
 				creditsTag:
 					balance.value !== undefined
@@ -91,7 +72,15 @@ export function useSettingsItems() {
 							})
 						: undefined,
 			},
-			rolesItem,
+			{
+				id: 'settings-roles',
+				icon: 'user-round',
+				label: i18n.baseText('settings.roles'),
+				position: 'top',
+				available: canUserAccessRouteByName(VIEWS.ROLES_SETTINGS),
+				route: { to: { name: VIEWS.ROLES_SETTINGS } },
+				new: true,
+			},
 			{
 				id: 'settings-api',
 				icon: 'plug',

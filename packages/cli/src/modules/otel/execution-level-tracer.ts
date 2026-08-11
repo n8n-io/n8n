@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import type { Exception, Span } from '@opentelemetry/api';
+import type { Context, Exception, Span } from '@opentelemetry/api';
 import { context, propagation, SpanStatusCode, trace } from '@opentelemetry/api';
 import type { ExecutionStatus } from 'n8n-workflow';
 
@@ -16,6 +16,9 @@ import { ATTR } from './otel.constants';
 import type { TracingContext } from './tracing-context';
 
 const TRACER_NAME = 'n8n-workflow';
+const UNKNOWN_ERROR_TYPE = 'UnknownError';
+const OBJECT_ERROR_TYPE = 'Object';
+
 function isError(status: ExecutionStatus): boolean {
 	return status === 'error' || status === 'crashed';
 }
@@ -193,6 +196,19 @@ export class ExecutionLevelTracer {
 		}
 	}
 
+	/**
+	 * Returns the OTel context of the most specific active span for an
+	 * execution — its running node, falling back to the workflow span — so
+	 * callers outside this module (e.g. an agent run invoked from a workflow
+	 * node) can nest their own spans under it instead of starting a
+	 * disconnected trace. Undefined when neither span is active (e.g. otel
+	 * disabled, or the execution/node isn't tracked here).
+	 */
+	getActiveContext(executionId: string, nodeName?: string): Context | undefined {
+		const span = this.findMostSpecificSpan(executionId, nodeName);
+		return span ? trace.setSpan(context.active(), span) : undefined;
+	}
+
 	injectTraceHeaders(
 		executionId: string,
 		nodeName: string | undefined,
@@ -292,18 +308,22 @@ function terminateSpan(span: Span, reason: string): void {
 }
 
 function getErrorType(error: unknown): string {
-	if (typeof error !== 'object' || error === null) return 'UnknownError';
+	if (error instanceof Error) return error.constructor.name;
+
+	if (typeof error !== 'object' || error === null) return UNKNOWN_ERROR_TYPE;
 
 	const record = error as Record<string, unknown>;
 
-	const name = record.name;
-	if (typeof name === 'string' && name.trim() !== '') return name;
+	const name = getNonEmptyString(record.name);
+	if (name) return name;
 
-	if (isEndNodeError(error)) {
-		return error.constructor.name;
-	}
+	const constructorName = getConstructorName(record);
+	if (constructorName && constructorName !== OBJECT_ERROR_TYPE) return constructorName;
 
-	return 'UnknownError';
+	const description = getNonEmptyString(record.description);
+	if (description && looksLikeErrorType(description)) return description;
+
+	return UNKNOWN_ERROR_TYPE;
 }
 
 function toRecordableException(error: unknown): Exception | undefined {
@@ -311,10 +331,29 @@ function toRecordableException(error: unknown): Exception | undefined {
 	if (isEndNodeError(error)) {
 		return {
 			message: error.message,
-			name: error.constructor.name,
+			name: getErrorType(error),
 			stack: error.stack,
 		};
 	}
 
 	return undefined;
+}
+
+function getNonEmptyString(value: unknown): string | undefined {
+	if (typeof value !== 'string') return undefined;
+
+	const trimmed = value.trim();
+	return trimmed === '' ? undefined : trimmed;
+}
+
+function getConstructorName(record: Record<string, unknown>): string | undefined {
+	const constructor = record.constructor;
+	if (typeof constructor === 'function') return getNonEmptyString(constructor.name);
+	if (typeof constructor !== 'object' || constructor === null) return undefined;
+
+	return getNonEmptyString((constructor as Record<string, unknown>).name);
+}
+
+function looksLikeErrorType(value: string): boolean {
+	return /^[A-Z][\w.]*(Error|Exception)$/.test(value);
 }

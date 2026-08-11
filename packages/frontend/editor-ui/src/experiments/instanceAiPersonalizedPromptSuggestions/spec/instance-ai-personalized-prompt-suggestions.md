@@ -241,10 +241,19 @@ Treatment behavior:
 
 Reuse existing event names:
 
+- `Instance AI personalized prompt suggestions exposed`
 - `Instance AI prompt suggestions shown`
 - `Instance AI prompt suggestion selected`
 - `Instance AI prompt suggestion submitted`
 - `Instance AI prompt suggestions cycled` for each `See more` toggle in either direction.
+
+Use `Instance AI personalized prompt suggestions exposed` as the custom PostHog exposure
+event. Fire it when the user reaches the normal Instance AI empty-state surface and has
+an assigned `control`, `variant-cards`, or `variant-list` variant. Do not fire it while
+the proactive starter (082) or split empty state (089) owns the surface, or while the
+workflow builder is unavailable; in that state the chat input is disabled, so the user
+cannot send a prompt. Include `$feature/093_instance_ai_personalized_prompt_suggestions`
+and `variant` on every exposure event, including `control`.
 
 When this experiment is active, add these properties to the relevant existing events:
 
@@ -267,7 +276,11 @@ For `Instance AI prompt suggestions cycled`, include `visible_suggestion_ids`, `
 
 Primary metric:
 
-- Percentage of new users exposed to Instance AI who send a prompt on the same day.
+- Percentage of new users exposed to Instance AI who send a prompt. Baseline: 40%.
+
+Leading metric:
+
+- Percentage of prompt senders who result in a workflow being built. Baseline: not set.
 
 Secondary/diagnostic metrics:
 
@@ -275,7 +288,6 @@ Secondary/diagnostic metrics:
 - Prompt suggestion selected rate.
 - Prompt suggestion submitted rate.
 - `See more` toggle rate.
-- Percentage of prompt senders who result in a workflow being built.
 - Matrix/default coverage: share of treatment users with recognized role/use-case metadata.
 - Source performance split by `suggestion_source`.
 - Cards vs list performance split by `suggestion_format`.

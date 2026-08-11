@@ -33,11 +33,12 @@
 		"fast-glob": "catalog:",
 		"ts-morph": "catalog:",
 		"tsx": "catalog:",
-		"typescript": "catalog:",
+		"typescript": "catalog:typescript",
 		"yaml": "catalog:"
 	},
   "devDependencies": {
 		"@vitest/coverage-v8": "catalog:",
+		"fast-check": "catalog:",
 		"vitest": "catalog:"
   }
 }

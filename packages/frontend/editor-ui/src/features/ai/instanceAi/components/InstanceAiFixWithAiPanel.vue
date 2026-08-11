@@ -1,10 +1,14 @@
 <script setup lang="ts">
+import {
+	N8nButton,
+	N8nIcon,
+	N8nText,
+	N8nAnimatedCollapsibleContent as AnimatedCollapsibleContent,
+} from '@n8n/design-system';
 import { computed, ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
 import ConfirmationFooter from './ConfirmationFooter.vue';
-import AnimatedCollapsibleContent from './AnimatedCollapsibleContent.vue';
 
 const props = withDefaults(
 	defineProps<{

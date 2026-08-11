@@ -5,13 +5,8 @@ import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import type { PackageDirectoryLoader } from 'n8n-core';
 import { InstanceSettings } from 'n8n-core';
-import {
-	ensureError,
-	jsonParse,
-	UnexpectedError,
-	UserError,
-	type PublicInstalledPackage,
-} from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { jsonParse, UnexpectedError, UserError, type PublicInstalledPackage } from 'n8n-workflow';
 import { execFile } from 'node:child_process';
 import { access, constants, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';

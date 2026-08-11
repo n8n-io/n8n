@@ -40,7 +40,14 @@ export class PollTriggerExecutor {
 		isCurrent: () => boolean,
 	): PollTriggerExecuteFn {
 		return async (testingTrigger = false) => {
-			return await this.tracing.startSpan(
+			// Scheduled polls start their own root trace so they don't attach to the
+			// publication transaction whose async context the poller was created in.
+			// The activation poll genuinely belongs to publication, so leave it nested.
+			const startTraced = testingTrigger
+				? this.tracing.startSpan.bind(this.tracing)
+				: this.tracing.startNewTraceSpan.bind(this.tracing);
+
+			return await startTraced(
 				{
 					name: 'Workflow Trigger Poll',
 					op: 'trigger.poll',

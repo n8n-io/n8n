@@ -23,7 +23,7 @@ export class SettingsUsersPage extends BasePage {
 	}
 
 	clickAccountType(email: string) {
-		return this.getRow(email).getByTestId('user-role-dropdown').getByRole('button').click();
+		return this.getRow(email).getByTestId('user-role-dropdown').click();
 	}
 
 	async search(email: string) {
@@ -73,9 +73,9 @@ export class SettingsUsersPage extends BasePage {
 	async selectAccountType(email: string, type: 'Admin' | 'Member') {
 		await this.clickAccountType(email);
 		await this.page
-			.getByRole('menu')
+			.getByRole('listbox')
 			.filter({ visible: true })
-			.getByRole('menuitem', { name: new RegExp(`^${type}\\b`) })
+			.getByRole('option', { name: new RegExp(`^${type}\\b`) })
 			.click();
 	}
 

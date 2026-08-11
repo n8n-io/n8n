@@ -116,20 +116,13 @@ export function setValue(
 				}
 			}
 		} else {
-			// Value should be set
-			if (typeof value === 'object') {
-				set(
-					get(nodeValues.value, nameParts.join('.')) as Record<string, unknown>,
-					lastNamePart as string,
-					deepCopy(value),
-				);
-			} else {
-				set(
-					get(nodeValues.value, nameParts.join('.')) as Record<string, unknown>,
-					lastNamePart as string,
-					value,
-				);
-			}
+			// Value should be set. Write from the root via the full path so the setter
+			// builds own-property intermediates rather than reading an inherited member
+			// of an object along the path.
+			const fullPath = isArray
+				? `${nameParts.join('.')}[${lastNamePart}]`
+				: `${nameParts.join('.')}.${lastNamePart}`;
+			set(nodeValues.value, fullPath, typeof value === 'object' ? deepCopy(value) : value);
 		}
 	}
 
@@ -340,7 +333,7 @@ export function getParameterTypeOption<T extends keyof NonNullable<INodeProperti
 }
 
 export function isResourceLocatorParameterType(type: NodePropertyTypes) {
-	return type === 'resourceLocator' || type === 'workflowSelector';
+	return type === 'resourceLocator' || type === 'workflowSelector' || type === 'agentSelector';
 }
 
 export function isValidParameterOption(
@@ -431,6 +424,12 @@ export function parseFromExpression(
 		return currentParameterValue
 			? (currentParameterValue as string).toString().replace(/^=+/, '')
 			: null;
+	}
+
+	// `json` fields (e.g. HTTP Request "JSON Body") store raw text. Switching back to
+	// fixed mode must drop the internal "=" expression marker so the value parses as JSON.
+	if (parameterType === 'json' && typeof currentParameterValue === 'string') {
+		return currentParameterValue ? currentParameterValue.replace(/^=+/, '') : null;
 	}
 
 	if (typeof evaluatedExpressionValue !== 'undefined') {

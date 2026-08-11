@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { resolvedCredentialSchema } from '../tools/workflows/resolved-credential.schema';
+
 // ── Phase / status enums ────────────────────────────────────────────────────
 
 export const workflowLoopPhaseSchema = z.enum([
@@ -140,6 +142,11 @@ export type AttemptRecord = z.infer<typeof attemptRecordSchema>;
 
 export const triggerTypeSchema = z.enum(['manual_or_testable', 'trigger_only']);
 
+export const executionNodeErrorSchema = z.object({
+	nodeName: z.string(),
+	message: z.string().optional(),
+});
+
 /**
  * Structured verification evidence the builder captures when it runs
  * `verify-built-workflow`. Downstream checkpoint runs read this and skip
@@ -163,6 +170,7 @@ export const workflowVerificationEvidenceSchema = z.object({
 			producedOutputRows: z.number().optional(),
 			errorNodeName: z.string().optional(),
 			errorMessage: z.string().optional(),
+			nodeErrors: z.array(executionNodeErrorSchema).optional(),
 		})
 		.optional(),
 	verifiedAt: z.string().datetime().optional(),
@@ -184,7 +192,14 @@ export const workflowVerificationReadinessSchema = z.discriminatedUnion('status'
 	}),
 	z.object({
 		status: z.literal('not_verifiable'),
-		reason: z.enum(['not-submitted', 'missing-workflow-id', 'non-mockable-trigger']),
+		// 'non-mockable-trigger' is the legacy spelling of 'no-trigger-node',
+		// kept so stored outcomes from older threads still parse.
+		reason: z.enum([
+			'not-submitted',
+			'missing-workflow-id',
+			'no-trigger-node',
+			'non-mockable-trigger',
+		]),
 		guidance: z.string(),
 	}),
 ]);
@@ -227,9 +242,34 @@ export const nodeSimulationVerdictSchema = z.object({
 	reason: z.string(),
 	confidence: z.enum(['high', 'low']),
 	source: z.enum(['deterministic', 'llm', 'fallback']),
+	/**
+	 * Verification pins this node with zero items so the branch halts there —
+	 * a pinned wait gate on a loop would replay the same decision forever.
+	 * Fixtures and overrides never apply to these nodes.
+	 */
+	haltBranch: z.boolean().optional(),
 });
 
 export type NodeSimulationVerdict = z.infer<typeof nodeSimulationVerdictSchema>;
+
+/**
+ * Scripted verification for a wait gate on a loop: verify runs one pass per
+ * decision with `cutEdge` removed from the run's connections, so every pass
+ * is acyclic no matter which way the decision routes. The gate keeps its
+ * `haltBranch` verdict as the fallback for older readers of this outcome.
+ */
+export const waitGateScriptSchema = z.object({
+	nodeName: z.string(),
+	/** Loop edge (main connection) removed for the scripted passes. */
+	cutEdge: z.object({ source: z.string(), target: z.string() }),
+	/** Response fixtures, one verification pass per entry. */
+	decisions: z
+		.array(z.object({ label: z.string(), items: z.array(z.record(z.unknown())) }))
+		.min(1)
+		.max(3),
+});
+
+export type WaitGateScript = z.infer<typeof waitGateScriptSchema>;
 
 export const workflowBuildOutcomeSchema = z.object({
 	workItemId: z.string(),
@@ -259,6 +299,12 @@ export const workflowBuildOutcomeSchema = z.object({
 	/** Map of node name → credential types that were mocked on that node. */
 	mockedCredentialsByNode: z.record(z.array(z.string())).optional(),
 	/**
+	 * Map of node name → credentials the build attached automatically (restored
+	 * from the saved workflow or auto-bound to the sole existing candidate).
+	 * These nodes are already connected — no credential setup is needed for them.
+	 */
+	resolvedCredentialsByNode: z.record(z.array(resolvedCredentialSchema)).optional(),
+	/**
 	 * @deprecated Legacy `{_mockedCredential}` marker channel. No longer
 	 * written — `nodeSimulationPlan` + `simulationFixtures` replaced it. Kept
 	 * in the schema so build outcomes stored before the change still parse and
@@ -272,6 +318,8 @@ export const workflowBuildOutcomeSchema = z.object({
 	 * this build, never persisted to the workflow.
 	 */
 	nodeSimulationPlan: z.array(nodeSimulationVerdictSchema).optional(),
+	/** Scripted decisions for wait gates on loops — see `waitGateScriptSchema`. */
+	waitGateScripts: z.array(waitGateScriptSchema).optional(),
 	/**
 	 * LLM-generated mock output for `simulate`-verdict nodes, keyed by node
 	 * name. Items are plain objects (no `{json}` envelope) — the shape

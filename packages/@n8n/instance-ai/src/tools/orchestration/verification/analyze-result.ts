@@ -12,6 +12,8 @@ import type {
 	WorkflowLoopState,
 } from '../../../workflow-loop/workflow-loop-state';
 
+type ExecutionNodeError = NonNullable<ExecutionRunResult['nodeErrors']>[number];
+
 const CREDENTIAL_FAILURE_KEYWORDS = [
 	'credential',
 	'unauthorized',
@@ -197,7 +199,7 @@ function classifyVerificationFailure(
 	});
 }
 
-function buildSimulationNote(
+export function buildSimulationNote(
 	reachedSimulatedNodes: Array<{ nodeName: string; reason: string }>,
 	planMissing: boolean,
 ): string | undefined {
@@ -222,8 +224,21 @@ function buildCoverageNote(
 	nodesNotReached: string[],
 	result: ExecutionRunResult,
 	success: boolean,
+	reachedHaltedGates: string[],
 ): string | undefined {
 	if (nodesNotReached.length === 0) return undefined;
+	if (success && reachedHaltedGates.length > 0) {
+		return (
+			`Verification pauses at wait gate(s) ${reachedHaltedGates.join(', ')} — in a live run the ` +
+			'workflow stops there (for a human response or a wait condition), so execution past the ' +
+			`gate is not simulated. ${nodesNotReached.length} planned node(s) were not reached: ` +
+			`${nodesNotReached.join(', ')}. Nodes behind the gate are expected to be unreached — do ` +
+			'not edit the workflow or re-run verification to force coverage there; recommend a live ' +
+			'end-to-end test instead. Any unreached node NOT behind the gate did not receive input ' +
+			'items (usually an empty lookup or query) — seed matching test data and re-run before ' +
+			'treating it as verified.'
+		);
+	}
 	const ending = result.lastNodeExecuted
 		? `. Execution ended at "${result.lastNodeExecuted}"${success ? ' because it produced no output items (empty item lists stop downstream nodes)' : ''}.`
 		: '.';
@@ -239,6 +254,18 @@ function buildCoverageNote(
 		ending +
 		guidance
 	);
+}
+
+function buildNodeErrorMessage(nodeErrors: ExecutionNodeError[]): string | undefined {
+	if (nodeErrors.length === 0) return undefined;
+
+	return nodeErrors
+		.map((nodeError) =>
+			nodeError.message
+				? `${nodeError.nodeName}: ${nodeError.message}`
+				: `${nodeError.nodeName}: node execution failed`,
+		)
+		.join('; ');
 }
 
 export function namesOrDataKeys(
@@ -258,16 +285,21 @@ export interface VerificationAnalysis {
 	nodesExecuted?: string[];
 	simulationNote?: string;
 	coverageNote?: string;
+	errorMessage?: string;
+	nodeErrors: ExecutionNodeError[];
 }
 
 export function analyzeVerificationResult(args: {
 	result: ExecutionRunResult;
 	buildOutcome: WorkflowBuildOutcome;
 	simulatedNodes: Array<{ nodeName: string; reason: string }>;
+	/** Wait-gate nodes pinned with zero items — the run is expected to stop at these. */
+	haltedGateNames?: string[];
 	stateBefore: WorkflowLoopState | undefined;
 	runId: string;
 }): VerificationAnalysis {
-	const { result, buildOutcome, simulatedNodes, stateBefore, runId } = args;
+	const { result, buildOutcome, simulatedNodes, haltedGateNames, stateBefore, runId } = args;
+	const nodeErrors = result.nodeErrors ?? [];
 	const reachedNames = new Set(
 		result.executedNodeNames ?? (result.data ? Object.keys(result.data) : []),
 	);
@@ -277,12 +309,19 @@ export function analyzeVerificationResult(args: {
 		.filter((name) => !reachedNames.has(name));
 	const hasSimulationPlan = (buildOutcome.nodeSimulationPlan?.length ?? 0) > 0;
 	const hasOutput = result.data ? Object.keys(result.data).length > 0 : false;
+	const errorMessage = result.error ?? buildNodeErrorMessage(nodeErrors);
 	const success =
-		result.status === 'success' ||
-		(!hasSimulationPlan && result.status === 'waiting' && !result.error && hasOutput);
+		nodeErrors.length === 0 &&
+		(result.status === 'success' ||
+			(!hasSimulationPlan && result.status === 'waiting' && !errorMessage && hasOutput));
 	const failureRemediation = success
 		? undefined
-		: classifyVerificationFailure(result.error, result.status, buildOutcome);
+		: classifyVerificationFailure(
+				errorMessage,
+				// Only escalate a clean status; 'waiting' must keep its needs_setup routing.
+				nodeErrors.length > 0 && result.status === 'success' ? 'error' : result.status,
+				buildOutcome,
+			);
 	const budgetRemediation =
 		failureRemediation?.shouldEdit === true
 			? terminalRemediationFromState(stateBefore, runId)
@@ -297,6 +336,13 @@ export function analyzeVerificationResult(args: {
 		remediation,
 		nodesExecuted: namesOrDataKeys(reachedNames, result.data),
 		simulationNote: buildSimulationNote(reachedSimulatedNodes, false),
-		coverageNote: buildCoverageNote(nodesNotReached, result, success),
+		coverageNote: buildCoverageNote(
+			nodesNotReached,
+			result,
+			success,
+			(haltedGateNames ?? []).filter((name) => reachedNames.has(name)),
+		),
+		errorMessage,
+		nodeErrors,
 	};
 }

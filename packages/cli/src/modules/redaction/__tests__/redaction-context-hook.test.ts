@@ -1,6 +1,7 @@
 import type { RedactionFloor } from '@n8n/api-types';
+import type { LicenseState } from '@n8n/backend-common';
 import type { ContextEstablishmentOptions } from '@n8n/decorators';
-import type { Workflow, WorkflowSettings } from 'n8n-workflow';
+import type { IRedactionSetting, Workflow, WorkflowSettings } from 'n8n-workflow';
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
 
@@ -9,15 +10,20 @@ import { RedactionContextHook } from '../redaction-context-hook';
 
 describe('RedactionContextHook', () => {
 	let service: MockProxy<InstanceRedactionEnforcementService>;
+	let licenseState: MockProxy<LicenseState>;
 	let hook: RedactionContextHook;
 
 	const buildOptions = (
 		workflowRedactionPolicy?: WorkflowSettings.RedactionPolicy,
+		inheritedRedaction?: IRedactionSetting,
 	): ContextEstablishmentOptions =>
 		mock<ContextEstablishmentOptions>({
 			workflow: mock<Workflow>({
 				settings: { redactionPolicy: workflowRedactionPolicy },
 			}),
+			// Real object (not a deep mock) so `context.redaction` is deterministic:
+			// absent for root executions, the inherited parent snapshot for sub-workflows.
+			context: { version: 1, establishedAt: 0, source: 'manual', redaction: inheritedRedaction },
 		});
 
 	const setFloor = (floor: RedactionFloor) => {
@@ -34,7 +40,9 @@ describe('RedactionContextHook', () => {
 
 	beforeEach(() => {
 		service = mock<InstanceRedactionEnforcementService>();
-		hook = new RedactionContextHook(service);
+		licenseState = mock<LicenseState>();
+		licenseState.isDataRedactionLicensed.mockReturnValue(true);
+		hook = new RedactionContextHook(service, licenseState);
 	});
 
 	describe("floor 'off' — workflow setting applies", () => {
@@ -159,6 +167,85 @@ describe('RedactionContextHook', () => {
 			const result = await hook.execute(buildOptions('manual-only'));
 
 			expect(result.contextUpdate!.redaction).toMatchObject({ source: 'workflow' });
+		});
+	});
+
+	describe('sub-workflow inherited snapshot (strictest-per-channel merge)', () => {
+		const v2 = (production: boolean, manual: boolean): IRedactionSetting => ({
+			version: 2,
+			production,
+			manual,
+		});
+
+		it("captures a policy'd child's own redaction even when the parent redacts nothing", async () => {
+			// The core IAM-1049 fix: a child with its own policy called by a policy-less
+			// parent must redact its own record. Inherited snapshot = nothing redacted.
+			setFloor('off');
+
+			const result = await hook.execute(buildOptions('all', v2(false, false)));
+
+			expect(result).toEqual(expectChannels(true, true));
+		});
+
+		it("preserves top-down escalation: a policy-less child inherits the parent's redaction", async () => {
+			setFloor('off');
+
+			const result = await hook.execute(buildOptions('none', v2(true, true)));
+
+			expect(result).toEqual(expectChannels(true, true));
+		});
+
+		it('merges per channel: child redacts production, parent redacts manual', async () => {
+			setFloor('off');
+
+			const result = await hook.execute(buildOptions('non-manual', v2(false, true)));
+
+			expect(result).toEqual(expectChannels(true, true));
+		});
+
+		it('is a no-op when neither the child, the floor, nor the parent redact', async () => {
+			setFloor('off');
+
+			const result = await hook.execute(buildOptions('none', v2(false, false)));
+
+			expect(result).toEqual(expectChannels(false, false));
+		});
+
+		it('folds in a legacy V1 inherited snapshot (policy enum)', async () => {
+			setFloor('off');
+
+			const result = await hook.execute(buildOptions('none', { version: 1, policy: 'non-manual' }));
+
+			expect(result).toEqual(expectChannels(true, false));
+		});
+
+		it('still applies the instance floor on top of an inherited snapshot', async () => {
+			setFloor('all');
+
+			const result = await hook.execute(buildOptions('none', v2(false, false)));
+
+			expect(result).toEqual(expectChannels(true, true, 'instance'));
+		});
+	});
+
+	describe('unlicensed instance', () => {
+		it('writes an explicit no-redaction snapshot regardless of workflow policy and floor', async () => {
+			licenseState.isDataRedactionLicensed.mockReturnValue(false);
+			setFloor('all');
+
+			const result = await hook.execute(buildOptions('all'));
+
+			expect(result).toEqual({
+				contextUpdate: { redaction: { version: 2, production: false, manual: false } },
+			});
+		});
+
+		it('does not read the instance floor when unlicensed', async () => {
+			licenseState.isDataRedactionLicensed.mockReturnValue(false);
+
+			await hook.execute(buildOptions('all'));
+
+			expect(service.get).not.toHaveBeenCalled();
 		});
 	});
 

@@ -23,4 +23,5 @@ export const EnterpriseEditionFeature: Record<
 	PersonalSpacePolicy: 'personalSpacePolicy',
 	CustomRoles: 'customRoles',
 	DataRedaction: 'dataRedaction',
+	WorkflowReviews: 'workflowReviews',
 };

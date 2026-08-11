@@ -23,20 +23,36 @@ import {
 } from '@n8n/design-system';
 import { onClickOutside, useElementSize, useScroll, useWindowSize } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
-import type { InstanceAiAttachment } from '@n8n/api-types';
+import type {
+	InstanceAiAgentAttachment,
+	InstanceAiAttachment,
+	InstanceAiHandoffContext,
+} from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { COLLAPSED_MAIN_SIDEBAR_WIDTH, useSidebarLayout } from '@/app/composables/useSidebarLayout';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { provideThread, useInstanceAiStore } from './instanceAi.store';
+import { getAgentBuilderTargetFromThreadMetadata } from './instanceAi.threadRuntime';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import { isPendingItemFloating } from './confirmationKinds';
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import { useCanvasPreview } from './useCanvasPreview';
 import { useCreditWarningBanner } from './composables/useCreditWarningBanner';
-import { consumePendingFirstMessage } from './composables/useInstanceAiHandoff';
+import {
+	clearPendingAgentAttachment,
+	consumePendingFirstMessage,
+	consumePendingHandoffContext,
+	getPendingAgentAttachment,
+} from './composables/useInstanceAiHandoff';
 import { useTransitionGate } from './useTransitionGate';
 import { INSTANCE_AI_VIEW, NEW_CONVERSATION_TITLE } from './constants';
+import {
+	agentPreviewContextIcon,
+	formatAgentPreviewContextLabel,
+	getDismissedContextKeys,
+	handoffContextKey,
+} from './instanceAi.handoffContext';
 import { useSidebarState } from './instanceAiLayout';
 import InstanceAiMessage from './components/InstanceAiMessage.vue';
 import InstanceAiInput from './components/InstanceAiInput.vue';
@@ -45,6 +61,7 @@ import InstanceAiArtifactsPanel from './components/InstanceAiArtifactsPanel.vue'
 import InstanceAiStatusBar from './components/InstanceAiStatusBar.vue';
 import InstanceAiConfirmationPanel from './components/InstanceAiConfirmationPanel.vue';
 import InstanceAiFixWithAiPanel from './components/InstanceAiFixWithAiPanel.vue';
+import InstanceAiTestAgentPanel from './components/InstanceAiTestAgentPanel.vue';
 import InstanceAiPreviewTabBar from './components/InstanceAiPreviewTabBar.vue';
 import InstanceAiViewHeader from './components/InstanceAiViewHeader.vue';
 import WorkflowBuilderUnavailableNotice from './components/WorkflowBuilderUnavailableNotice.vue';
@@ -55,8 +72,14 @@ import InstanceAiWorkflowPreview, {
 	type WorkflowFailuresReport,
 } from './components/InstanceAiWorkflowPreview.vue';
 import { buildFixWithAiPrompt } from './fixWithAi';
+import { isAgentWorthTesting, testAgentOfferKey } from './testAgentOffer';
 import InstanceAiDataTablePreview from './components/InstanceAiDataTablePreview.vue';
+import InstanceAiAgentPreview from './components/InstanceAiAgentPreview.vue';
 import { TabsRoot } from 'reka-ui';
+import { useAgentEvalsFlag } from '@/features/ai/evaluation.ee/composables/useAgentEvalsFlag';
+import { useAgentCapabilitySummary } from '@/features/agents/composables/useAgentCapabilitySummary';
+import { useAgentEvalsStore } from '@/features/agents/agentEvals.store';
+import { useIsAgentWorking } from './composables/useIsAgentWorking';
 
 const props = defineProps<{
 	threadId: string;
@@ -65,16 +88,39 @@ const props = defineProps<{
 const store = useInstanceAiStore();
 const settingsStore = useInstanceAiSettingsStore();
 const thread = provideThread(props.threadId);
-const { isLowCredits } = storeToRefs(store);
+const { showCreditWarning, quotaLocked } = storeToRefs(store);
 const rootStore = useRootStore();
 const i18n = useI18n();
 const router = useRouter();
 const { goToUpgrade } = usePageRedirectionHelper();
-const creditBanner = useCreditWarningBanner(isLowCredits);
+const creditBanner = useCreditWarningBanner(showCreditWarning);
 const sidebar = useSidebarState();
 const { width: windowWidth } = useWindowSize();
 const { isCollapsed: isMainSidebarCollapsed, sidebarWidth: mainSidebarWidth } = useSidebarLayout();
 const telemetry = useTelemetry();
+const pendingComposerContext = ref<InstanceAiHandoffContext | null>(null);
+const pendingAgentAttachment = ref<InstanceAiAgentAttachment | null>(null);
+const currentAgentAttachment = computed<InstanceAiAgentAttachment | null>(() => {
+	const queued = pendingAgentAttachment.value;
+	if (!queued) return null;
+
+	const boundTarget = getAgentBuilderTargetFromThreadMetadata(store.getThreadMetadata(thread.id));
+	if (
+		boundTarget?.agentId !== queued.id ||
+		boundTarget.projectId !== queued.projectId ||
+		!queued.pending
+	) {
+		return queued;
+	}
+
+	const name = boundTarget.name ?? queued.name;
+	return {
+		type: 'agent',
+		id: queued.id,
+		projectId: queued.projectId,
+		...(name ? { name } : {}),
+	};
+});
 
 // Running builders render in a dedicated bottom section of the conversation.
 // Once a builder finishes it falls out of this list and AgentTimeline renders
@@ -127,6 +173,61 @@ const activeFixWithAiOffer = computed(() => {
 	};
 });
 
+// --- "Test your agent" offer (post-setup suggestion) ---
+const isAgentEvalsEnabled = useAgentEvalsFlag();
+const agentEvalsStore = useAgentEvalsStore();
+
+// Passed the local runtime because this component provides the thread rather
+// than inheriting it, so the composable's own `useThread()` inject would fail.
+const isAgentWorking = useIsAgentWorking(thread);
+
+// The agent the builder actually persisted in this thread. Absent until then,
+// which is what keeps the suggestion from firing mid-build.
+const agentBuilderTarget = computed(() =>
+	getAgentBuilderTargetFromThreadMetadata(store.getThreadMetadata(thread.id)),
+);
+
+/**
+ * The agent this thread would offer to test, before the checks that need its
+ * capabilities. Resolves to null for the conditions we can decide without a
+ * network call — flag off, nothing built, already dismissed — so the capability
+ * summary is never fetched for a card the user will not be shown.
+ */
+const testAgentOfferCandidate = computed(() => {
+	if (!isAgentEvalsEnabled.value) return null;
+	const target = agentBuilderTarget.value;
+	if (!target) return null;
+
+	const dismissedKeys = new Set(getDismissedContextKeys(store.getThreadMetadata(thread.id)));
+	return dismissedKeys.has(testAgentOfferKey(target.agentId)) ? null : target;
+});
+
+const offerAgentId = computed(() => testAgentOfferCandidate.value?.agentId ?? '');
+const offerProjectId = computed(() => testAgentOfferCandidate.value?.projectId ?? '');
+
+const { summary: offerAgentSummary } = useAgentCapabilitySummary(offerProjectId, offerAgentId);
+
+const activeTestAgentOffer = computed(() => {
+	const target = testAgentOfferCandidate.value;
+	if (!target) return null;
+	// Waiting for the run to settle keeps the card from appearing while the
+	// assistant is still adding tools the generated cases would need to cover.
+	if (isAgentWorking.value) return null;
+	// Don't offer to draft cases for an agent that already has some — e.g. the
+	// user generated them from the Evals tab without dismissing this card.
+	// Only suppresses when the store already knows; deliberately no fetch just to
+	// answer this, so a cold thread can still offer once against an agent whose
+	// datasets have never been loaded.
+	if (
+		agentEvalsStore.isLoaded(target.agentId) &&
+		agentEvalsStore.getDatasets(target.agentId).length
+	)
+		return null;
+	if (!isAgentWorthTesting(offerAgentSummary.value)) return null;
+
+	return target;
+});
+
 // --- Header title ---
 // Returns the resolved title once we have one, or undefined while we're still
 // figuring out which thread to show. Rendering only on a defined value avoids
@@ -148,10 +249,14 @@ const currentThreadTitle = computed<string | undefined>(() => {
 const preview = useCanvasPreview({
 	thread,
 	threadId: () => props.threadId,
+	initialAgentId: () =>
+		getAgentBuilderTargetFromThreadMetadata(store.getThreadMetadata(props.threadId))?.agentId,
 });
 
 provide('openWorkflowPreview', preview.openWorkflowPreview);
 provide('openDataTablePreview', preview.openDataTablePreview);
+provide('openAgentPreview', preview.openAgentPreview);
+provide('pendingComposerContext', pendingComposerContext);
 
 // Focus the composer when plan-edit mode is entered. The thread runtime
 // owns the activePlanEdit state; this watcher just reacts to the transition.
@@ -205,9 +310,12 @@ function toggleArtifactsPreview() {
 		return;
 	}
 
-	const firstTab = preview.allArtifactTabs.value[0];
-	if (firstTab) {
-		preview.selectTab(firstTab.id);
+	const selectedTab = preview.allArtifactTabs.value.find(
+		(tab) => tab.id === preview.activeTabId.value,
+	);
+	const tabToOpen = selectedTab ?? preview.allArtifactTabs.value[0];
+	if (tabToOpen) {
+		preview.selectTab(tabToOpen.id);
 	}
 }
 
@@ -262,7 +370,10 @@ const isArtifactsPanelInLayout = computed(
 		availableWidthForPinnedArtifactsPanel.value >= MIN_AVAILABLE_WIDTH_FOR_PINNED_ARTIFACTS_PANEL,
 );
 const canShowArtifactsPanel = computed(
-	() => thread.hasMessages || (Boolean(props.threadId) && thread.isHydratingThread),
+	() =>
+		thread.hasMessages ||
+		preview.allArtifactTabs.value.length > 0 ||
+		(Boolean(props.threadId) && thread.isHydratingThread),
 );
 const showArtifactsPanel = computed(
 	() =>
@@ -476,10 +587,69 @@ watch(
 	},
 );
 
+function isCurrentThreadRuntime(): boolean {
+	return store.getRuntime(props.threadId) === thread;
+}
+
+const composerContextChip = computed(() => {
+	const agentAttachment = currentAgentAttachment.value;
+	if (pendingAgentAttachment.value?.pending && agentAttachment) {
+		return {
+			key: `pending-agent:${agentAttachment.id}`,
+			label: agentAttachment.name ?? i18n.baseText('agents.new.defaultName'),
+			icon: 'robot',
+			isPending: true,
+		};
+	}
+
+	if (pendingComposerContext.value?.source === 'agent-preview') {
+		return {
+			key: handoffContextKey(pendingComposerContext.value),
+			label: formatAgentPreviewContextLabel(
+				pendingComposerContext.value,
+				(textKey, options) => i18n.baseText(textKey, options),
+				thread.producedArtifacts.get(pendingComposerContext.value.agentId)?.name,
+			),
+			icon: agentPreviewContextIcon(pendingComposerContext.value.agentIcon),
+			isPending: true,
+		};
+	}
+
+	const dismissedKeys = new Set(getDismissedContextKeys(store.getThreadMetadata(thread.id)));
+	for (const message of [...thread.messages].reverse()) {
+		if (message.role !== 'user' || message.context?.source !== 'agent-preview') continue;
+
+		const key = handoffContextKey(message.context);
+		if (dismissedKeys.has(key)) continue;
+
+		return {
+			key,
+			label: formatAgentPreviewContextLabel(
+				message.context,
+				(textKey, options) => i18n.baseText(textKey, options),
+				thread.producedArtifacts.get(message.context.agentId)?.name,
+			),
+			icon: agentPreviewContextIcon(message.context.agentIcon),
+			isPending: false,
+		};
+	}
+
+	return null;
+});
+
 function reconnectThreadAfterHydration(): void {
-	void thread.loadHistoricalMessages().then((hydrationStatus) => {
+	// Apply preview/credential composer context before hydration so a quick first
+	// submit cannot race past attachment while the composer is already enabled.
+	pendingComposerContext.value = consumePendingHandoffContext(props.threadId);
+	const agentAttachment = getPendingAgentAttachment(props.threadId);
+	if (agentAttachment) {
+		pendingAgentAttachment.value = agentAttachment;
+		preview.openAgentPreview(agentAttachment.id, agentAttachment.projectId);
+	}
+	void thread.loadHistoricalMessages().then(async (hydrationStatus) => {
 		if (hydrationStatus === 'stale') return;
-		void thread.loadThreadStatus();
+		await thread.loadThreadStatus();
+		if (!isCurrentThreadRuntime()) return;
 		thread.connectSSE();
 		// Replay an opening message handed off from another tab (e.g. credential help
 		// opened in a new tab) as if typed here, so it shows and streams in this runtime.
@@ -516,16 +686,28 @@ async function syncRouteToStore() {
 
 onMounted(() => {
 	enablePanelTransitionsAfterStableRender();
+
 	void syncRouteToStore();
+
 	void nextTick(focusChatInputIfFocusIsIdle);
 });
 
 onUnmounted(() => {
 	// This view owns its thread's runtime, so it disposes it here (closes the
-	// SSE, clears state, drops it from the store). Per-thread ownership means a
-	// late-firing unmount only ever tears down its own thread — never a sibling
-	// or a freshly handed-off thread, which a bulk dispose-all would nuke.
-	store.disposeRuntime(props.threadId);
+	// SSE, clears state, drops it from the store) — but only once the app has
+	// left this thread's route. Suspense can create a duplicate instance of
+	// this view for the same thread during layout transitions (e.g. an editor
+	// hand-off that loads the AIA chunks) and discard one; that discarded
+	// instance's unmount fires while the route still points at the thread, and
+	// must not tear down the runtime the live instance is rendering.
+	if (router.currentRoute.value.params.threadId !== props.threadId) {
+		store.disposeRuntime(props.threadId);
+		// Guarded by the same route check, and scoped to this thread's agent: a
+		// discarded duplicate instance must not drop a request the live instance's
+		// builder is still about to claim.
+		const offeredAgentId = agentBuilderTarget.value?.agentId;
+		if (offeredAgentId) agentEvalsStore.clearEvalsFocus(offeredAgentId);
+	}
 	contentResizeObserver?.disconnect();
 });
 
@@ -578,7 +760,25 @@ function handleSubmit(message: string, attachments?: InstanceAiAttachment[]) {
 		return;
 	}
 
-	void thread.sendMessage(message, attachments, rootStore.pushRef);
+	const handoffContext = pendingComposerContext.value ?? undefined;
+	const queuedAgentAttachment = pendingAgentAttachment.value;
+	const agentAttachment = currentAgentAttachment.value;
+	const submittedAttachments = agentAttachment
+		? [...(attachments ?? []), agentAttachment]
+		: attachments;
+
+	void thread
+		.sendMessage(message, submittedAttachments, rootStore.pushRef, handoffContext)
+		.then((sent) => {
+			if (!sent) return;
+			if (handoffContext && pendingComposerContext.value === handoffContext) {
+				pendingComposerContext.value = null;
+			}
+			if (queuedAgentAttachment && pendingAgentAttachment.value === queuedAgentAttachment) {
+				clearPendingAgentAttachment(props.threadId);
+				pendingAgentAttachment.value = null;
+			}
+		});
 }
 
 function handleStop() {
@@ -606,6 +806,60 @@ function dismissFixWithAiOffer() {
 
 function handleWorkflowFailures(report: WorkflowFailuresReport) {
 	failedRun.value = report;
+}
+
+/**
+ * Reveal the agent artifact, then hand off to the builder to select its Evals
+ * tab and generate. Generation deliberately stays in the builder: it already
+ * owns the call, its loading flag and its error toast, so driving it from here
+ * would be a second call site for the same operation.
+ */
+async function handleGenerateTestCasesFromOffer() {
+	const target = activeTestAgentOffer.value;
+	if (!target) return;
+
+	// Raise the request before revealing the artifact: the builder consumes it on
+	// mount, so ordering doesn't matter, and the panel may not be open yet.
+	agentEvalsStore.requestEvalsFocus(target.agentId, true);
+	preview.openAgentPreview(target.agentId, target.projectId);
+	await persistTestAgentOfferDismissal(target.agentId);
+}
+
+async function dismissTestAgentOffer() {
+	const target = activeTestAgentOffer.value;
+	if (!target) return;
+	await persistTestAgentOfferDismissal(target.agentId);
+}
+
+// Persisted for the CTA as well as "Maybe later": once the user has acted on the
+// suggestion, re-offering it on the next visit is noise.
+async function persistTestAgentOfferDismissal(agentId: string) {
+	const dismissedKeys = new Set(getDismissedContextKeys(store.getThreadMetadata(thread.id)));
+	dismissedKeys.add(testAgentOfferKey(agentId));
+	await store.updateThreadMetadata(thread.id, {
+		dismissedContextKeys: [...dismissedKeys],
+	});
+}
+
+async function dismissComposerContextChip() {
+	if (!composerContextChip.value) return;
+
+	if (pendingAgentAttachment.value?.pending) {
+		clearPendingAgentAttachment(props.threadId);
+		pendingAgentAttachment.value = null;
+		return;
+	}
+
+	if (composerContextChip.value.isPending) {
+		pendingComposerContext.value = null;
+		return;
+	}
+
+	const dismissedKeys = new Set(getDismissedContextKeys(store.getThreadMetadata(thread.id)));
+	dismissedKeys.add(composerContextChip.value.key);
+	await store.updateThreadMetadata(thread.id, {
+		dismissedContextKeys: [...dismissedKeys],
+	});
 }
 </script>
 
@@ -740,6 +994,14 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 										@dismiss="dismissFixWithAiOffer"
 									/>
 								</Transition>
+
+								<Transition name="confirmation-slide">
+									<InstanceAiTestAgentPanel
+										v-if="activeTestAgentOffer"
+										@generate="handleGenerateTestCasesFromOffer"
+										@dismiss="dismissTestAgentOffer"
+									/>
+								</Transition>
 								<!-- Live activity indicator. Sits at the very end of the
 									 conversation flow — below any pending questions/confirmations
 									 and not pinned above the input — so it trails the active
@@ -778,8 +1040,10 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 										/>
 										<CreditWarningBanner
 											v-if="creditBanner.visible.value"
+											variant="standalone"
 											:credits-remaining="store.creditsRemaining"
 											:credits-quota="store.creditsQuota"
+											:amounts-hidden="quotaLocked"
 											@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
 											@dismiss="creditBanner.dismiss()"
 										/>
@@ -801,10 +1065,12 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 													:is-workflow-builder-available="settingsStore.isWorkflowBuilderAvailable"
 													:current-thread-id="thread.id"
 													:amend-context="thread.amendContext"
+													:context-chip="composerContextChip"
 													:contextual-suggestion="thread.contextualSuggestion"
 													@submit="handleSubmit"
 													@stop="handleStop"
 													@cancel-plan-edit="thread.cancelPlanEdit"
+													@dismiss-context-chip="dismissComposerContextChip"
 												/>
 											</Transition>
 										</div>
@@ -885,7 +1151,7 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 						/>
 						<div :class="$style.previewContent">
 							<InstanceAiWorkflowPreview
-								v-if="preview.activeWorkflowId.value"
+								v-if="preview.isPreviewVisible.value && preview.activeWorkflowId.value"
 								:key="preview.activeWorkflowId.value"
 								ref="workflowPreview"
 								:class="[
@@ -898,11 +1164,22 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 								@workflow-failures="handleWorkflowFailures"
 							/>
 							<InstanceAiDataTablePreview
-								v-if="preview.activeDataTableId.value"
+								v-if="preview.isPreviewVisible.value && preview.activeDataTableId.value"
 								:class="$style.previewSlot"
 								:data-table-id="preview.activeDataTableId.value"
 								:project-id="preview.activeDataTableProjectId.value"
 								:refresh-key="preview.dataTableRefreshKey.value"
+							/>
+							<InstanceAiAgentPreview
+								v-if="
+									preview.isPreviewVisible.value &&
+									preview.activeAgentId.value &&
+									preview.activeAgentProjectId.value
+								"
+								:class="$style.previewSlot"
+								:agent-id="preview.activeAgentId.value"
+								:project-id="preview.activeAgentProjectId.value"
+								:pending="preview.activeAgentPending.value"
 							/>
 						</div>
 					</TabsRoot>
@@ -1169,7 +1446,7 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 	margin: 0;
 	text-align: center;
 	color: var(--color--text--tint-1);
-	font-size: var(--font-size--3xs);
+	font-size: var(--font-size--2xs);
 	line-height: var(--line-height--md);
 }
 

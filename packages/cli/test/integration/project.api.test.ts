@@ -15,8 +15,11 @@ import {
 	FolderRepository,
 	ProjectRelationRepository,
 	ProjectRepository,
+	RoleMappingRuleRepository,
+	RoleRepository,
 	SharedCredentialsRepository,
 	SharedWorkflowRepository,
+	WorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import {
@@ -30,7 +33,6 @@ import { EntityNotFoundError } from '@n8n/typeorm';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
-import { getWorkflowById } from '@/public-api/v1/handlers/workflows/workflows.service';
 import { createFolder } from '@test-integration/db/folders';
 
 import {
@@ -357,9 +359,10 @@ describe('Project members endpoints', () => {
 			savedConfig = { ...provisioningService.provisioningConfig };
 		});
 
-		afterEach(() => {
+		afterEach(async () => {
 			// @ts-expect-error - provisioningConfig is private
 			provisioningService.provisioningConfig = { ...savedConfig };
+			await Container.get(RoleMappingRuleRepository).delete({});
 		});
 
 		test('should return 403 when SSO provider controls project roles', async () => {
@@ -386,6 +389,20 @@ describe('Project members endpoints', () => {
 			const member = await createUser();
 			const project = await createTeamProject('Team Project', owner);
 			await linkUserToProject(member, project, 'project:viewer');
+
+			// Expression mapping only manages project roles when project-type rules exist.
+			const editorRole = await Container.get(RoleRepository).findOneOrFail({
+				where: { slug: 'project:editor' },
+			});
+			const ruleRepository = Container.get(RoleMappingRuleRepository);
+			const rule = ruleRepository.create({
+				expression: '{{ true }}',
+				role: editorRole,
+				type: 'project',
+				order: 0,
+			});
+			rule.projects = [project];
+			await ruleRepository.save(rule);
 
 			const ownerAgent = testServer.authAgentFor(owner);
 			await ownerAgent
@@ -1197,12 +1214,16 @@ describe('DELETE /project/:projectId', () => {
 		//
 
 		// Make sure the project and owned workflow and credential where deleted.
-		await expect(getWorkflowById(ownedWorkflow.id)).resolves.toBeNull();
+		await expect(
+			Container.get(WorkflowRepository).findOneBy({ id: ownedWorkflow.id }),
+		).resolves.toBeNull();
 		await expect(getCredentialById(ownedCredential.id)).resolves.toBeNull();
 		await expect(findProject(projectToBeDeleted.id)).rejects.toThrowError(EntityNotFoundError);
 
 		// Make sure the shared workflow and credential were not deleted
-		await expect(getWorkflowById(sharedWorkflow1.id)).resolves.not.toBeNull();
+		await expect(
+			Container.get(WorkflowRepository).findOneBy({ id: sharedWorkflow1.id }),
+		).resolves.not.toBeNull();
 		await expect(getCredentialById(sharedCredential.id)).resolves.not.toBeNull();
 
 		// Make sure the sharings for them have been deleted
@@ -1254,8 +1275,12 @@ describe('DELETE /project/:projectId', () => {
 		//
 
 		// Make sure the project and owned workflow and credential where deleted.
-		await expect(getWorkflowById(ownedWorkflow1.id)).resolves.toBeNull();
-		await expect(getWorkflowById(ownedWorkflow2.id)).resolves.toBeNull();
+		await expect(
+			Container.get(WorkflowRepository).findOneBy({ id: ownedWorkflow1.id }),
+		).resolves.toBeNull();
+		await expect(
+			Container.get(WorkflowRepository).findOneBy({ id: ownedWorkflow2.id }),
+		).resolves.toBeNull();
 		await expect(getCredentialById(ownedCredential.id)).resolves.toBeNull();
 		await expect(findProject(projectToBeDeleted.id)).rejects.toThrowError(EntityNotFoundError);
 
@@ -1407,7 +1432,9 @@ describe('DELETE /project/:projectId', () => {
 		await expect(findProject(projectToBeDeleted.id)).rejects.toThrowError(EntityNotFoundError);
 
 		// ownedWorkflow has not been deleted
-		await expect(getWorkflowById(ownedWorkflow.id)).resolves.toBeDefined();
+		await expect(
+			Container.get(WorkflowRepository).findOneBy({ id: ownedWorkflow.id }),
+		).resolves.toBeDefined();
 
 		// ownedCredential has not been deleted
 		await expect(getCredentialById(ownedCredential.id)).resolves.toBeDefined();

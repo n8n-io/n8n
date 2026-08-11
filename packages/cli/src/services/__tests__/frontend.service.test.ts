@@ -17,6 +17,7 @@ import type { PushConfig } from '@/push/push.config';
 import type { AiUsageService } from '@/services/ai-usage.service';
 import { FrontendService, type PublicFrontendSettings } from '@/services/frontend.service';
 import type { UrlService } from '@/services/url.service';
+import type { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
 import type { UserManagementMailer } from '@/user-management/email';
 import type { OwnershipService } from '../ownership.service';
 
@@ -78,6 +79,8 @@ describe('FrontendService', () => {
 		userManagement: {
 			password: { minLength: 8 },
 		},
+		aiAssistant: { baseUrl: '' },
+		aiGateway: { enabled: false },
 	});
 
 	const instanceSettings = mock<InstanceSettings>({
@@ -154,6 +157,7 @@ describe('FrontendService', () => {
 
 	const securityConfig = mock<SecurityConfig>({
 		blockFileAccessToN8nFiles: false,
+		postMessageAllowedOrigins: '',
 	});
 
 	const pushConfig = mock<PushConfig>({
@@ -187,6 +191,8 @@ describe('FrontendService', () => {
 		getPublishedCount: vi.fn().mockResolvedValue(7),
 	});
 
+	const workflowReviewPolicyService = mock<WorkflowReviewPolicyService>();
+
 	const createMockService = () => {
 		Container.set(
 			CommunityPackagesConfig,
@@ -215,20 +221,44 @@ describe('FrontendService', () => {
 				ownershipService,
 				aiUsageService,
 				workflowRepository,
+				workflowReviewPolicyService,
 			),
 			license,
 		};
 	};
 
 	beforeEach(() => {
-		originalEnv = process.env;
+		originalEnv = { ...process.env };
 		vi.clearAllMocks();
 		globalConfig.diagnostics.enabled = false;
+		globalConfig.aiAssistant.baseUrl = '';
+		globalConfig.aiGateway.enabled = false;
+		licenseState.isAiGatewayLicensed.mockReturnValue(false);
+		licenseState.isAiGatewayCloudUbbLicensed.mockReturnValue(false);
 	});
 
 	afterEach(() => {
 		vi.useRealTimers();
 		process.env = originalEnv;
+	});
+
+	describe('credentials overwrite reload handler', () => {
+		it('registers a reload handler that regenerates types', async () => {
+			const { service } = createMockService();
+
+			expect(credentialsOverwrites.registerReloadHandler).toHaveBeenCalledWith(
+				expect.any(Function),
+			);
+
+			// The registered handler is what CredentialsOverwrites invokes after a
+			// reload; it must regenerate the credential types.
+			const handler = vi.mocked(credentialsOverwrites.registerReloadHandler).mock.calls[0][0];
+			const generateTypesSpy = vi.spyOn(service, 'generateTypes').mockResolvedValue();
+
+			await handler();
+
+			expect(generateTypesSpy).toHaveBeenCalled();
+		});
 	});
 
 	describe('getSettings', () => {
@@ -241,6 +271,72 @@ describe('FrontendService', () => {
 					settingsMode: 'authenticated',
 				}),
 			);
+		});
+
+		it('should enable the AI Gateway when configured and licensed', async () => {
+			globalConfig.aiAssistant.baseUrl = 'https://ai-assistant.n8n.io';
+			globalConfig.aiGateway.enabled = true;
+			licenseState.isAiGatewayLicensed.mockReturnValue(true);
+			const { service } = createMockService();
+
+			const settings = await service.getSettings();
+
+			expect(settings.aiGateway?.enabled).toBe(true);
+		});
+
+		it('should keep the AI Gateway disabled when configured but not licensed', async () => {
+			globalConfig.aiAssistant.baseUrl = 'https://ai-assistant.n8n.io';
+			globalConfig.aiGateway.enabled = true;
+			const { service } = createMockService();
+
+			const settings = await service.getSettings();
+
+			expect(settings.aiGateway).toBeUndefined();
+		});
+
+		it('should enable Cloud UBB mode when the AI Gateway is also licensed', async () => {
+			globalConfig.aiAssistant.baseUrl = 'https://ai-assistant.n8n.io';
+			globalConfig.aiGateway.enabled = true;
+			licenseState.isAiGatewayLicensed.mockReturnValue(true);
+			licenseState.isAiGatewayCloudUbbLicensed.mockReturnValue(true);
+			const { service } = createMockService();
+
+			const settings = await service.getSettings();
+
+			expect(settings.aiGateway).toMatchObject({ enabled: true, cloudUbbEnabled: true });
+		});
+
+		it('should normalize configured postMessage origins', async () => {
+			securityConfig.postMessageAllowedOrigins =
+				'HTTPS://Example.COM/, https://app.example.com:443, http://localhost:5678/path, not a url, data:text/html;foo';
+			const { service } = createMockService();
+
+			const settings = await service.getSettings();
+			expect(settings.security.postMessageAllowedOrigins).toEqual([
+				'https://example.com',
+				'https://app.example.com',
+				'http://localhost:5678',
+				'not a url',
+				'data:text/html;foo',
+			]);
+
+			securityConfig.postMessageAllowedOrigins = '';
+		});
+
+		it('should refresh the workflow reviews policy on every settings fetch', async () => {
+			process.env.N8N_ENV_FEAT_WORKFLOW_REVIEWS = 'true';
+			licenseState.isWorkflowReviewsLicensed.mockReturnValue(true);
+			workflowReviewPolicyService.get
+				.mockResolvedValueOnce({ enabled: true })
+				.mockResolvedValueOnce({ enabled: false });
+			const { service } = createMockService();
+
+			const initialSettings = await service.getSettings();
+			expect(initialSettings.workflowReviews).toEqual({ enabled: true });
+
+			const refreshedSettings = await service.getSettings();
+			expect(refreshedSettings.workflowReviews).toEqual({ enabled: false });
+			expect(workflowReviewPolicyService.get).toHaveBeenCalledTimes(2);
 		});
 
 		it('should cache dynamic banner filters for 30 seconds', async () => {
@@ -421,6 +517,30 @@ describe('FrontendService', () => {
 			const settings = await service.getSettings();
 
 			expect(settings.enterprise.otelCustomSpanAttributes).toBe(true);
+		});
+
+		it('should surface useWorkflowPublicationService from workflows config', async () => {
+			globalConfig.workflows = {
+				...globalConfig.workflows,
+				useWorkflowPublicationService: true,
+			} as GlobalConfig['workflows'];
+
+			const { service } = createMockService();
+			const settings = await service.getSettings();
+
+			expect(settings.useWorkflowPublicationService).toBe(true);
+		});
+
+		it('should default useWorkflowPublicationService to false when flag is off', async () => {
+			globalConfig.workflows = {
+				...globalConfig.workflows,
+				useWorkflowPublicationService: false,
+			} as GlobalConfig['workflows'];
+
+			const { service } = createMockService();
+			const settings = await service.getSettings();
+
+			expect(settings.useWorkflowPublicationService).toBe(false);
 		});
 	});
 
@@ -793,6 +913,50 @@ describe('FrontendService', () => {
 			(service as any).overwriteCredentialsProperties();
 
 			expect(credential.__skipManagedCreation).toBeUndefined();
+		});
+
+		it('should not propagate __skipManagedCreation from a skip-listed parent to extending types', () => {
+			// An overwrite keyed at a base type is inherited by extending types
+			// (__overwrittenProperties), but the skip list is exact-name: skipping the
+			// base must not disable managed creation for the extending types.
+			const baseCredential = {
+				name: 'microsoftOAuth2Api',
+				displayName: 'Microsoft OAuth2 API',
+				properties: [],
+			} as ICredentialType;
+			const childCredential = {
+				name: 'microsoftOutlookOAuth2Api',
+				displayName: 'Microsoft Outlook OAuth2 API',
+				properties: [],
+			} as ICredentialType;
+
+			loadNodesAndCredentials.types = {
+				credentials: [baseCredential, childCredential],
+				nodes: [],
+			};
+			(globalConfig as any).credentials = {
+				overwrite: { skipTypes: ['microsoftOAuth2Api'] },
+			};
+			(credentialsOverwrites.getAll as Mock).mockReturnValue({
+				microsoftOAuth2Api: { clientId: 'id', clientSecret: 'secret' },
+			});
+			(credentialTypes.getParentTypes as Mock).mockImplementation((name: string) =>
+				name === 'microsoftOutlookOAuth2Api' ? ['microsoftOAuth2Api', 'oAuth2Api'] : ['oAuth2Api'],
+			);
+
+			const { service } = createMockService();
+			(service as any).overwriteCredentialsProperties();
+
+			// both are marked overwritten (the extending type inherits the base entry)
+			expect(baseCredential.__overwrittenProperties).toEqual(['clientId', 'clientSecret']);
+			expect(childCredential.__overwrittenProperties).toEqual(['clientId', 'clientSecret']);
+			// but only the exact skip-list entry loses managed creation
+			expect(baseCredential.__skipManagedCreation).toBe(true);
+			expect(childCredential.__skipManagedCreation).toBeUndefined();
+
+			// restore shared mock defaults for subsequent tests
+			(credentialsOverwrites.getAll as Mock).mockReturnValue({});
+			(credentialTypes.getParentTypes as Mock).mockReturnValue([]);
 		});
 
 		describe('JWKS URI injection', () => {

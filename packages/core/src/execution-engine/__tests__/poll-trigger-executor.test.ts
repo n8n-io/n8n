@@ -41,6 +41,32 @@ describe('PollTriggerExecutor', () => {
 		expect(logger.scoped).toHaveBeenCalledWith('poll-trigger');
 	});
 
+	describe('tracing', () => {
+		it('starts its own root trace for a scheduled poll', async () => {
+			const startNewTraceSpan = vi.spyOn(tracing, 'startNewTraceSpan');
+			const startSpan = vi.spyOn(tracing, 'startSpan');
+			triggersAndPollers.runPollFunction.mockResolvedValueOnce(null);
+
+			const execute = executor.create(workflow, node, pollFunctions, () => true);
+			await execute();
+
+			expect(startNewTraceSpan).toHaveBeenCalledTimes(1);
+			expect(startSpan).not.toHaveBeenCalled();
+		});
+
+		it('nests the activation poll in the current trace', async () => {
+			const startNewTraceSpan = vi.spyOn(tracing, 'startNewTraceSpan');
+			const startSpan = vi.spyOn(tracing, 'startSpan');
+			triggersAndPollers.runPollFunction.mockResolvedValueOnce(null);
+
+			const execute = executor.create(workflow, node, pollFunctions, () => true);
+			await execute(true);
+
+			expect(startSpan).toHaveBeenCalledTimes(1);
+			expect(startNewTraceSpan).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('initial activation poll (testingTrigger=true)', () => {
 		it('emits the poll result without acquiring the isolate', async () => {
 			const result: INodeExecutionData[][] = [[{ json: { ok: true } }]];

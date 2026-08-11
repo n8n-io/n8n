@@ -191,7 +191,7 @@ graph TB
     style Build2 fill:#dcfce7,stroke:#16a34a
 ```
 
-- **Thread-scoped workspace.** The service can maintain a single workspace per conversation thread, reused across messages. This workspace is destroyed on server shutdown.
+- **Thread-scoped workspace.** The service can maintain a single workspace per conversation thread, reused across messages. This workspace is destroyed on server shutdown. Its sandbox identity is derived deterministically from the thread ID (a name for Daytona, a UUIDv5 for the n8n sandbox service), so a restarted process — or another main in a multi-main deployment — reattaches to the same remote sandbox instead of creating a duplicate.
 - **Per-builder ephemeral workspace.** Each time the workflow builder is invoked, it gets its own isolated workspace. Multiple concurrent builders in the same thread do not share a workspace. The provider sandbox is deleted after the builder finishes (best-effort).
 
 ### Pre-warmed images
@@ -225,6 +225,8 @@ graph LR
 5. Only after all checks pass does the workflow get saved to n8n.
 
 If any step fails, the agent reads the error output, fixes the code, and retries. This loop runs entirely inside the sandbox — the n8n host is never involved until the final save.
+
+Agent building does not go through the sandbox at all. The `build-agent` orchestration tool delegates each turn to the agents-module builder (`AgentsBuilderService`), which runs host-side as a sub-agent — there are no agent-config files in the workspace, and no sandbox is required for agent building.
 
 ## Boundaries
 

@@ -1,0 +1,8 @@
+type: object
+oneOf:
+  - $ref: './destination.webhook.yml'
+  - $ref: './destination.syslog.yml'
+  - $ref: './destination.sentry.yml'
+description: >
+  A log streaming destination. The `type` field selects the variant and its
+  type-specific fields: `webhook`, `syslog`, or `sentry`.

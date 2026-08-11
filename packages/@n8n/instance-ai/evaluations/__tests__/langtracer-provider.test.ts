@@ -29,6 +29,59 @@ describe('casesFromExportedFiles', () => {
 		expect(cases[0].testCase.outcomeExpectations).toEqual(['has a trigger']);
 	});
 
+	it('keeps an inline seed on a suite-sourced case', () => {
+		const cases = casesFromExportedFiles(
+			{
+				'repair-it.json': validCase({
+					seed: {
+						mode: 'inline',
+						messages: [
+							{
+								id: 'm1',
+								type: 'llm',
+								role: 'user',
+								createdAt: '2026-06-29T09:00:00.000Z',
+								content: [{ type: 'text', text: 'build it' }],
+							},
+						],
+						workflows: [{ id: 'wKk3RmT9xQ2bVn7L', name: 'Batch loop', nodes: [], connections: {} }],
+					},
+				}),
+			},
+			{ suite: 'demo' },
+		);
+		const seed = cases[0].testCase.seed;
+		expect(seed?.mode === 'inline' && seed.workflows[0].id).toBe('wKk3RmT9xQ2bVn7L');
+	});
+
+	// The normalizer whitelists to the schema's keys, so a hosted case carrying a
+	// pre-union seed key would be STRIPPED and run unseeded — silently grading a
+	// seeded case as build-from-scratch. Each removed key needs a raw-body guard.
+	it.each([
+		['seedFile', 'repair-it.seed'],
+		['conversationSeed', { messages: [] }],
+		['priorConversation', [{ role: 'user', text: 'earlier' }]],
+		['seedThread', { threadId: 't1' }],
+	])('refuses a suite-sourced case carrying the legacy %s key', (key, value) => {
+		expect(() =>
+			casesFromExportedFiles({ 'repair-it.json': validCase({ [key]: value }) }, { suite: 'demo' }),
+		).toThrow(`${key}: no longer supported`);
+	});
+
+	it('names every legacy seed key a case carries, not just the first', () => {
+		expect(() =>
+			casesFromExportedFiles(
+				{
+					'repair-it.json': validCase({
+						priorConversation: [{ role: 'user', text: 'earlier' }],
+						seedThread: { threadId: 't1' },
+					}),
+				},
+				{ suite: 'demo' },
+			),
+		).toThrow(/repair-it\.json[\s\S]*priorConversation[\s\S]*seedThread/);
+	});
+
 	it('aggregates validation errors and names the offending file', () => {
 		expect(() =>
 			casesFromExportedFiles(

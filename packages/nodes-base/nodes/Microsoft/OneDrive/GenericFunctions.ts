@@ -13,6 +13,8 @@ import {
 	type IPollFunctions,
 } from 'n8n-workflow';
 
+import { validateUserTargetId } from '../GenericFunctions';
+
 /**
  * Characters that OneDrive/SharePoint forbid in file names. Sending any of
  * these breaks Graph's `:/path:/` addressing (a colon collapses the URL to the
@@ -77,24 +79,35 @@ export function getOneDriveCredentialType(
 }
 
 // App-only Microsoft Graph has no `/me`, so the drive is addressed under an
-// explicit user or drive root. The accepted shapes are deliberately narrow and the
-// id shape is validated BEFORE encoding — `encodeURIComponent` leaves `..` intact,
-// so shape validation (not encoding) is what keeps a value safe to interpolate into
-// a Graph URL path. Validation messages are static, so the id is never echoed back.
-const USER_TARGET_GUID = /^[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$/;
-const USER_TARGET_UPN = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+$/;
-const USER_TARGET_HOST = /^[A-Za-z0-9.-]+$/;
+// explicit user or drive root. The drive-id shape is deliberately narrow and validated
+// BEFORE encoding — `encodeURIComponent` leaves `..` intact, so shape validation (not
+// encoding) is what keeps a value safe to interpolate into a Graph URL path. The user
+// target reuses the shared `validateUserTargetId` (see below).
 const DRIVE_TARGET_ID = /^[A-Za-z0-9!._-]+$/;
 
 /**
  * Validates an app-only `resourceTargetId` for a given target before it is encoded
- * and used to compose a Graph URL. Throws a `NodeOperationError` with a fully
- * static message (never interpolating the id) on a bad shape. The common rejects
- * (empty / whitespace-only / dots-only) are checked FIRST for all targets, then the
- * per-target regex.
+ * and used to compose a Graph URL. Throws a `NodeOperationError` with a fully static
+ * message (never interpolating the id) on a bad shape. The `user` target delegates
+ * entirely to the shared `validateUserTargetId` (default "target ID" wording, widened
+ * Entra UPN set — no bare-host form). The `drive` target keeps its own empty →
+ * dots-only → drive-id checks with drive-specific wording.
  */
 export function validateResourceTargetId(target: string, id: string, node: INode): void {
-	// Common rejects for every target, ordered first.
+	// The `resourceTarget` param only offers `user` and `drive`. Handle each explicitly and
+	// fail loudly on anything else, so a target added later without updating this validator
+	// can't silently fall through to a user-shape check.
+	if (target === 'user') {
+		validateUserTargetId(id, node);
+		return;
+	}
+	if (target !== 'drive') {
+		throw new NodeOperationError(node, 'The target ID is not valid', {
+			description: 'Unknown target type.',
+		});
+	}
+
+	// Drive target: empty → dots-only → drive-id shape, with drive-specific wording.
 	if (id === '') {
 		throw new NodeOperationError(node, 'A target ID is required for the Service Principal', {
 			description:
@@ -106,16 +119,7 @@ export function validateResourceTargetId(target: string, id: string, node: INode
 			description: 'A target ID cannot consist only of dots.',
 		});
 	}
-
-	let valid = false;
-	if (target === 'drive') {
-		valid = DRIVE_TARGET_ID.test(id);
-	} else {
-		// user (and any unknown target falls back to the user shape)
-		valid = USER_TARGET_GUID.test(id) || USER_TARGET_UPN.test(id) || USER_TARGET_HOST.test(id);
-	}
-
-	if (!valid) {
+	if (!DRIVE_TARGET_ID.test(id)) {
 		throw new NodeOperationError(node, 'The target ID is not valid', {
 			description: 'Remove any slashes, backslashes, colons, commas, or spaces and try again.',
 		});
@@ -124,9 +128,11 @@ export function validateResourceTargetId(target: string, id: string, node: INode
 
 /**
  * Builds the `/drive`-free Graph resource root for an app-only request from the
- * chosen target and its id. Reusable kernel (ENT-92+ lifts this) — it deliberately
- * contains NO `/drive` and `encodeURIComponent`s the id. The id shape is validated
- * BEFORE encoding so a malformed id throws (and is not echoed back).
+ * chosen target and its id. It deliberately contains NO `/drive` and
+ * `encodeURIComponent`s the id. The id shape is validated BEFORE encoding so a
+ * malformed id throws (and is not echoed back). ENT-123 lifted only the shared
+ * user-target validator (`Microsoft/GenericFunctions.ts`); this per-node
+ * `getServicePrincipalResourceRoot` stays local because it also handles the drive root.
  */
 export function getServicePrincipalResourceRoot(
 	target: string,
@@ -162,9 +168,10 @@ export function driveEndpoint(root: string): string {
  * so the RLC is read (with `extractValue`) without coupling transport to either
  * signature. Validation + encoding happen in `getServicePrincipalResourceRoot`.
  *
- * `resourceTarget`/the target RLC are `noDataExpression` (per-node, not per-item),
- * so `itemIndex` exists only to satisfy the execute `getNodeParameter` signature —
- * the resolved root is the same for every item in the run.
+ * The target RLC accepts expressions, so in execute contexts it is resolved per
+ * item — the node MUST pass the loop's `itemIndex`. `resourceTarget` (the mode)
+ * stays `noDataExpression`, so only the id can vary per item. The trigger keeps
+ * `isPoll=true` single resolution.
  */
 export function resolveDriveScopeRoot(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,

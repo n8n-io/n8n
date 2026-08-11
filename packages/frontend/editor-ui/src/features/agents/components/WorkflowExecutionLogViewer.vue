@@ -19,7 +19,11 @@ import {
 	flattenLogEntries,
 	getSubtreeTotalConsumedTokens,
 } from '@/features/execution/logs/logs.utils';
-import type { LatestNodeInfo, LogEntry } from '@/features/execution/logs/logs.types';
+import {
+	type LatestNodeInfo,
+	type LogEntry,
+	isNodeLog,
+} from '@/features/execution/logs/logs.types';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import type { WorkflowObjectAccessors } from '@/app/types/workflow';
 
@@ -102,8 +106,14 @@ function toggleSelected(entry: LogEntry): void {
 	selected.value = selected.value?.id === entry.id ? null : entry;
 }
 
+const selectedNode = computed(() => (selected.value?.type === 'node' ? selected.value : null));
+
+function getLatestInfo(entry: LogEntry): LatestNodeInfo | undefined {
+	return isNodeLog(entry) ? latestNodeInfo.value[entry.node.id] : undefined;
+}
+
 const isTriggerSelected = computed((): boolean => {
-	const node = selected.value?.node;
+	const node = selectedNode.value?.node;
 	if (!node) return false;
 	const type = nodeTypesStore.getNodeType(node.type, node.typeVersion);
 	return type?.group?.includes('trigger') ?? false;
@@ -125,7 +135,7 @@ const selectedWorkflow = computed(
 // at the source of the selected entry's first input. Mirrors the logic in
 // `LogsViewRunData` (which we no longer use for these panes).
 const inputBinding = computed(() => {
-	const entry = selected.value;
+	const entry = selectedNode.value;
 	if (!entry) return null;
 	const source = entry.runData?.source?.[0];
 	if (!source) return null;
@@ -146,7 +156,7 @@ const inputBinding = computed(() => {
 type NodeErrorViewError = InstanceType<typeof NodeErrorView>['$props']['error'];
 
 const selectedError = computed((): NodeErrorViewError | null => {
-	const err = selected.value?.runData?.error;
+	const err = selectedNode.value?.runData?.error;
 	if (!err || typeof err !== 'object') return null;
 	return err as unknown as NodeErrorViewError;
 });
@@ -224,26 +234,26 @@ onBeforeUnmount(() => {
 					:is-read-only="true"
 					:should-show-token-count-column="shouldShowTokenCountColumn"
 					:is-compact="true"
-					:latest-info="latestNodeInfo[entry.node.id]"
+					:latest-info="getLatestInfo(entry)"
 					:expanded="!!expanded[entry.id]"
 					:can-open-ndv="false"
 					@toggle-expanded="toggleExpanded(entry)"
 					@toggle-selected="toggleSelected(entry)"
 				/>
 			</div>
-			<div v-if="selected" :class="$style.detail">
-				<div :class="$style.detailHeader">{{ selected.node.name }}</div>
+			<div v-if="selectedNode" :class="$style.detail">
+				<div :class="$style.detailHeader">{{ selectedNode.node.name }}</div>
 				<div v-if="!isTriggerSelected && inputBinding" :class="$style.pane">
 					<div :class="$style.paneTitle">
 						{{ i18n.baseText('agentSessions.timeline.input') }}
 					</div>
 					<RunData
-						:key="`input-${selected.id}`"
+						:key="`input-${selectedNode.id}`"
 						:node="inputBinding.node"
 						:run-index="inputBinding.runIndex"
 						:override-outputs="inputBinding.overrideOutputs"
 						:workflow-object="selectedWorkflow"
-						:workflow-execution="selected.execution"
+						:workflow-execution="selectedNode.execution"
 						pane-type="input"
 						display-mode="schema"
 						:disable-display-mode-selection="true"
@@ -269,11 +279,11 @@ onBeforeUnmount(() => {
 					</div>
 					<RunData
 						v-else
-						:key="`output-${selected.id}`"
-						:node="selected.node"
-						:run-index="selected.runIndex"
+						:key="`output-${selectedNode.id}`"
+						:node="selectedNode.node"
+						:run-index="selectedNode.runIndex"
 						:workflow-object="selectedWorkflow"
-						:workflow-execution="selected.execution"
+						:workflow-execution="selectedNode.execution"
 						pane-type="output"
 						display-mode="schema"
 						:disable-display-mode-selection="true"

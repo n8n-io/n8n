@@ -66,6 +66,142 @@ describe('analyzeHtmlSensitivity', () => {
 		expect(result.ok && result.hits.some((hit) => hit.value === 'alice')).toBe(false);
 	});
 
+	it('finds a text input value flagged by its associated label', () => {
+		const value = 'notreal-SigningSecretRevealedValue9mQ2vW5';
+		const result = analyzeHtmlSensitivity(
+			probe(
+				`<label for="s">Signing Secret</label><input id="s" type="text" readonly value="${value}">`,
+			),
+		);
+
+		expect(result.ok && result.hits).toContainEqual({ type: 'password', value });
+	});
+
+	it('finds a secret held in a data-* attribute behind a placeholder value', () => {
+		const secret = 'notreal7c1de9a04bf28e6d3a91f0b5c7e2d84a6';
+		const result = analyzeHtmlSensitivity(
+			probe(
+				`<label for="c">Client Secret</label><input id="c" type="password" readonly value="1234567890" data-password="${secret}" data-qa="client_secret">`,
+			),
+		);
+
+		expect(result.ok && result.hits).toContainEqual({ type: 'password', value: secret });
+	});
+
+	it('does not flag a public field whose label is not a secret', () => {
+		const value = '553213193971.11264233855632';
+		const result = analyzeHtmlSensitivity(
+			probe(`<label for="i">Client ID</label><input id="i" readonly value="${value}">`),
+		);
+
+		expect(result.ok && result.hits.some((hit) => hit.value === value)).toBe(false);
+	});
+
+	it('finds an input value flagged by aria-labelledby', () => {
+		const value = 'notreal-AriaLabelledByInputValue4kR8pT';
+		const result = analyzeHtmlSensitivity(
+			probe(`<span id="lbl">Client Secret</span><input aria-labelledby="lbl" value="${value}">`),
+		);
+
+		expect(result.ok && result.hits).toContainEqual({ type: 'password', value });
+	});
+
+	it('harvests only data-* attributes whose name reads as a secret', () => {
+		const secret = 'notreal7c1de9a04bf28e6d3a91f0b5c7e2d84a6';
+		const tracking = 'trackingId0123456789abcdef';
+		const result = analyzeHtmlSensitivity(
+			probe(
+				`<label for="c">Client Secret</label><input id="c" type="password" value="1234567890" data-password="${secret}" data-tracking-id="${tracking}" data-hint="reveal the secret value">`,
+			),
+		);
+		const values = result.ok ? result.hits.map((hit) => hit.value) : [];
+
+		expect(values).toContain(secret);
+		expect(values).not.toContain(tracking);
+		expect(values).not.toContain('reveal the secret value');
+	});
+
+	it('finds an input value flagged by a wrapping label', () => {
+		const value = 'notreal-WrappingLabelInputValue6bN3wQ';
+		const result = analyzeHtmlSensitivity(probe(`<label>API Key <input value="${value}"></label>`));
+
+		expect(result.ok && result.hits).toContainEqual({ type: 'password', value });
+	});
+
+	it('finds a textarea value flagged by its associated label', () => {
+		const value = 'notreal-PrivateKeyTextareaValue7hK3mZ';
+		const result = analyzeHtmlSensitivity(
+			probe(`<label for="pk">Private key</label><textarea id="pk">${value}</textarea>`),
+		);
+
+		expect(result.ok && result.hits).toContainEqual({ type: 'password', value });
+	});
+
+	it('finds a token input whose label reads "Token"', () => {
+		const value = 'notreal-xapp-1-A0B7S6VR5JL-11512837559300-cf6ed2749ec8b364fb78817ee8d8105e';
+		const result = analyzeHtmlSensitivity(
+			probe(
+				`<label for="t"><span>Token</span></label><input id="t" readonly type="text" value="${value}">`,
+			),
+		);
+
+		expect(result.ok && result.hits).toContainEqual({ type: 'password', value });
+	});
+
+	it('flags a field labelled by multiple label elements sharing its id', () => {
+		const value = 'notreal-MultiLabelFieldValue3xQ8mZ';
+		const result = analyzeHtmlSensitivity(
+			probe(
+				`<label for="m">Access</label><label for="m">key</label><input id="m" type="text" readonly value="${value}">`,
+			),
+		);
+
+		expect(result.ok && result.hits).toContainEqual({ type: 'password', value });
+	});
+
+	it('ignores empty and target-less label elements when indexing', () => {
+		const value = 'notreal-EmptyLabelSiblingValue2wP7';
+		const result = analyzeHtmlSensitivity(
+			probe(
+				`<label for="">orphan</label><label for="e"></label><input id="e" type="text" readonly value="${value}">`,
+			),
+		);
+
+		expect(result.ok && result.hits.some((hit) => hit.value === value)).toBe(false);
+	});
+
+	it('does not flag an unlabelled field that only carries an id', () => {
+		const value = 'notreal-UnlabelledFieldValue5yT2kR';
+		const result = analyzeHtmlSensitivity(
+			probe(`<input id="lonely" type="text" readonly value="${value}">`),
+		);
+
+		expect(result.ok && result.hits.some((hit) => hit.value === value)).toBe(false);
+	});
+
+	it('skips data-* values that are short, spaced, or duplicate the field value', () => {
+		const value = 'notreal-PrimaryFieldSecret8kM4nQ';
+		const result = analyzeHtmlSensitivity(
+			probe(
+				`<label for="c">Client Secret</label><input id="c" type="text" readonly value="${value}" data-secret="tiny" data-password="two words here padded outx" data-credential="${value}">`,
+			),
+		);
+		const values = result.ok ? result.hits.map((hit) => hit.value) : [];
+
+		expect(values).toContain(value);
+		expect(values).not.toContain('tiny');
+		expect(values).not.toContain('two words here padded outx');
+		expect(values.filter((hit) => hit === value)).toHaveLength(1);
+	});
+
+	it('produces no hit for a sensitive field with an empty value', () => {
+		const result = analyzeHtmlSensitivity(
+			probe('<label for="p">Password</label><input id="p" type="text" readonly value="">'),
+		);
+
+		expect(result.ok && result.hits).toEqual([]);
+	});
+
 	it('finds high-entropy values in reveal dialogs', () => {
 		const result = analyzeHtmlSensitivity(
 			probe(`<div role="dialog"><p>You won't see it again.</p><code>${OPAQUE}</code></div>`),

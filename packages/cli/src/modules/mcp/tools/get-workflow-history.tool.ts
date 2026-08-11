@@ -1,5 +1,5 @@
 import type { User } from '@n8n/db';
-import { ensureError } from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import z from 'zod';
 
 import type { Telemetry } from '@/telemetry';

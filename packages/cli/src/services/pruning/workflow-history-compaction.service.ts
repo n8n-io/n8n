@@ -5,7 +5,9 @@ import { DbConnection, WorkflowHistoryRepository } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
-import { DiffMetaData, DiffRule, ensureError, RULES, SKIP_RULES, sleep } from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { sleep } from '@n8n/utils/sleep';
+import { DiffMetaData, DiffRule, RULES, SKIP_RULES } from 'n8n-workflow';
 import { strict } from 'node:assert';
 
 import { EventService } from '@/events/event.service';

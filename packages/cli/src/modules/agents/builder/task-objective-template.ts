@@ -9,7 +9,7 @@
  * be fully self-contained and must say where the result is delivered (nobody is
  * watching the run).
  *
- * Shared by the `create_task` builder tool, the `agent-builder-target-tasks`
+ * Shared by the `create_tasks` builder tool, the `agent-builder-target-tasks`
  * skill, and the builder prompt so the guidance is identical everywhere.
  */
 export const TASK_OBJECTIVE_TEMPLATE = `## Objective

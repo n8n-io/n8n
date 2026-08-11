@@ -259,7 +259,10 @@ test.describe(
 			await expect(n8n.executions.logsPanel.getLogEntries().nth(2)).toContainText('E2E Chat Model');
 		});
 
-		test('should show logs for a workflow with a node that waits for webhook', async ({ n8n }) => {
+		test('should show logs for a workflow with a node that waits for webhook', async ({
+			n8n,
+			api,
+		}) => {
 			await n8n.start.fromImportedWorkflow('Workflow_wait_for_webhook.json');
 			await n8n.canvas.deselectAll();
 			await n8n.canvas.logsPanel.open();
@@ -279,7 +282,7 @@ test.describe(
 			await expect(n8n.canvas.logsPanel.getLogEntries()).toHaveCount(2);
 
 			// Trigger the webhook
-			const response = await n8n.page.request.get(webhookUrl!);
+			const response = await api.webhooks.trigger(webhookUrl!);
 			expect(response.status()).toBe(200);
 
 			await expect(n8n.canvas.getWaitingNodes()).toBeHidden();

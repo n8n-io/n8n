@@ -2,13 +2,71 @@ import type { Logger } from '@n8n/backend-common';
 import type { DatabaseConfig } from '@n8n/config';
 import { DataSource } from '@n8n/typeorm';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
+import postgresVersions from 'n8n-containers/postgres-versions.json';
 import type { ErrorReporter } from 'n8n-core';
+import net from 'node:net';
 import { getContainerRuntimeClient } from 'testcontainers';
 import { setTimeout as setTimeoutP } from 'timers/promises';
 import { mock } from 'vitest-mock-extended';
 
 import type { DbConnectionMetrics } from '../db-connection-metrics';
-import { DbConnectionMonitor } from '../db-connection-monitor';
+import { DbConnectionMonitor, FORCE_CLOSE_GRACE_MS } from '../db-connection-monitor';
+
+// Minimal pg pool view: check out a client the pool can never drain on its own.
+type PgDriver = { master: PgPool };
+
+/**
+ * A pass-through TCP proxy that can "freeze" its open connections: it stops relaying
+ * and never answers the peer's FIN, so a graceful close can't complete, reproducing a
+ * pooled connection frozen against an unreachable backend. `allowHalfOpen` stops Node
+ * auto-answering the FIN (which would mask the hang). `freezeExisting()` only freezes
+ * current connections; later ones (the rebuilt pool) relay normally.
+ */
+class FreezableProxy {
+	private server!: net.Server;
+	private readonly sockets = new Set<net.Socket>();
+	private readonly frozen = new Set<net.Socket>();
+
+	constructor(
+		private readonly targetHost: string,
+		private readonly targetPort: number,
+	) {}
+
+	async listen(): Promise<number> {
+		this.server = net.createServer({ allowHalfOpen: true }, (client) => {
+			const upstream = net.connect({ host: this.targetHost, port: this.targetPort });
+			this.sockets.add(client);
+			this.sockets.add(upstream);
+			client.on('data', (chunk) => {
+				if (!this.frozen.has(client)) upstream.write(chunk);
+			});
+			upstream.on('data', (chunk) => {
+				if (!this.frozen.has(client)) client.write(chunk);
+			});
+			const cleanup = () => {
+				if (this.frozen.has(client)) return; // leave frozen pairs dangling
+				client.destroy();
+				upstream.destroy();
+			};
+			for (const socket of [client, upstream]) {
+				socket.on('end', cleanup);
+				socket.on('close', cleanup);
+				socket.on('error', () => {});
+			}
+		});
+		await new Promise<void>((resolve) => this.server.listen(0, '127.0.0.1', resolve));
+		return (this.server.address() as net.AddressInfo).port;
+	}
+
+	freezeExisting() {
+		for (const socket of this.sockets) this.frozen.add(socket);
+	}
+
+	async close() {
+		for (const socket of this.sockets) socket.destroy();
+		await new Promise<void>((resolve) => this.server.close(() => resolve()));
+	}
+}
 
 /**
  * Integration coverage for Postgres pool behavior in the connection monitor.
@@ -37,11 +95,11 @@ import { DbConnectionMonitor } from '../db-connection-monitor';
  * a machine with no Postgres and no usable container runtime.
  *
  * To run it locally, boot a Postgres and export the host, e.g.:
- *   docker run --rm -e POSTGRES_PASSWORD=password -p 5432:5432 postgres:18-alpine
+ *   docker run --rm -e POSTGRES_PASSWORD=password -p 5432:5432 <POSTGRES_IMAGE>
  *   DB_POSTGRESDB_HOST=localhost DB_POSTGRESDB_PASSWORD=password \
  *     pnpm test db-connection-monitor.recovery.postgres
  */
-const POSTGRES_IMAGE = 'postgres:18-alpine';
+const POSTGRES_IMAGE = postgresVersions.primary;
 const CONTAINER_TIMEOUT_MS = 180_000;
 const TEST_TIMEOUT_MS = 60_000;
 
@@ -50,11 +108,16 @@ const externalHost = process.env.DB_POSTGRESDB_HOST ?? '';
 const useExternalPostgres = externalHost.length > 0;
 
 // Private monitor methods exposed for integration tests without loosening prod typing.
-type MonitorInternals = { ping: () => Promise<void>; recoverDataSource: () => Promise<void> };
+type MonitorInternals = {
+	ping: () => Promise<void>;
+	recoverDataSource: () => Promise<void>;
+	forceClosePostgresPool: () => void;
+};
 
 type PgPoolClient = {
 	query: (query: string | { text: string }) => Promise<unknown>;
 	release: (error?: Error) => void;
+	on: (event: 'error', listener: (error: Error) => void) => void;
 };
 
 type PgPool = {
@@ -233,6 +296,139 @@ describe('DbConnectionMonitor recovery against real Postgres', () => {
 				if (dataSource.isInitialized) {
 					await dataSource.destroy();
 				}
+			}
+		},
+		TEST_TIMEOUT_MS,
+	);
+
+	it(
+		'bounds a hung destroy() when a pooled connection is frozen against the backend',
+		async (ctx) => {
+			if (!connection) {
+				ctx.skip();
+				return;
+			}
+
+			// Route the pool through a freezable proxy to reproduce a checked-out connection
+			// frozen against an unreachable backend.
+			const proxy = new FreezableProxy(connection.host, connection.port);
+			const proxyPort = await proxy.listen();
+			const dataSource = new DataSource({
+				type: 'postgres',
+				host: '127.0.0.1',
+				port: proxyPort,
+				username: connection.username,
+				password: connection.password,
+				database: connection.database,
+				poolSize: 2,
+				synchronize: false,
+			});
+			await dataSource.initialize();
+
+			const destroyTimeoutMs = 2_000;
+			const monitor = new DbConnectionMonitor(
+				dataSource,
+				() => {},
+				buildDatabaseConfig({
+					postgresdb: mock<DatabaseConfig['postgresdb']>({ destroyTimeoutMs }),
+				}),
+				mock<Logger>(),
+				mock<ErrorReporter>(),
+				mock<DbConnectionMetrics>(),
+			);
+			monitor.start();
+
+			// Check out a real pool client with no in-flight query, then freeze it: it stays
+			// in the pool and `destroy()`'s `pool.end()` can never drain it (a graceful close
+			// waits on a FIN that never comes), pinning recovery at attempt 1.
+			const pool = (dataSource.driver as unknown as PgDriver).master;
+			const leaked = await pool.connect();
+			expect(leaked).toBeDefined();
+			proxy.freezeExisting();
+
+			try {
+				const start = Date.now();
+				// Without the destroy timeout this never resolves (`destroy()` hangs at attempt 1).
+				await (monitor as unknown as MonitorInternals).recoverDataSource();
+				const elapsed = Date.now() - start;
+
+				// `destroy()` was bounded and the frozen client force-closed, so the pool rebuilt.
+				// The lower bound proves recovery went through the timeout path, not a self-drain.
+				expect(elapsed).toBeGreaterThanOrEqual(destroyTimeoutMs);
+				expect(elapsed).toBeLessThan(destroyTimeoutMs + 15_000);
+				expect(dataSource.isInitialized).toBe(true);
+				expect(await dataSource.query('SELECT 1 AS ok')).toEqual([{ ok: 1 }]);
+			} finally {
+				await monitor.stop();
+				if (dataSource.isInitialized) {
+					await dataSource.destroy();
+				}
+				await proxy.close();
+			}
+		},
+		TEST_TIMEOUT_MS,
+	);
+
+	it(
+		'abandons a teardown that force-closing cannot unblock',
+		async (ctx) => {
+			if (!connection) {
+				ctx.skip();
+				return;
+			}
+
+			const proxy = new FreezableProxy(connection.host, connection.port);
+			const proxyPort = await proxy.listen();
+			const dataSource = newDataSource(
+				{ ...connection, host: '127.0.0.1', port: proxyPort },
+				{ poolSize: 2 },
+			);
+			await dataSource.initialize();
+
+			const destroyTimeoutMs = 2_000;
+			const monitor = new DbConnectionMonitor(
+				dataSource,
+				() => {},
+				buildDatabaseConfig({
+					postgresdb: mock<DatabaseConfig['postgresdb']>({ destroyTimeoutMs }),
+				}),
+				mock<Logger>(),
+				mock<ErrorReporter>(),
+				mock<DbConnectionMetrics>(),
+			);
+			monitor.start();
+
+			// Neuter force-close so the drain is genuinely unblockable. `pool.end()` can wedge
+			// deeper than the sockets we can reach: after the last `_remove`, pg-pool only
+			// re-enters `_pulseQueue` from a `client.end()` callback a frozen socket never fires.
+			(monitor as unknown as MonitorInternals).forceClosePostgresPool = () => {};
+
+			const pool = (dataSource.driver as unknown as PgDriver).master;
+			const leaked = await pool.connect();
+			expect(leaked).toBeDefined();
+			// This client is deliberately never released, so nothing else listens for its
+			// error when `proxy.close()` kills the socket in the teardown below. In production
+			// a checked-out client is held by a query runner, which attaches its own listener.
+			leaked.on('error', () => {});
+			proxy.freezeExisting();
+
+			try {
+				const start = Date.now();
+				// Before the fix this never resolves: the post-force-close await was unbounded.
+				await (monitor as unknown as MonitorInternals).recoverDataSource();
+				const elapsed = Date.now() - start;
+
+				// Both bounds were traversed, then the teardown was abandoned and the pool rebuilt.
+				expect(elapsed).toBeGreaterThanOrEqual(destroyTimeoutMs + FORCE_CLOSE_GRACE_MS);
+				expect(elapsed).toBeLessThan(destroyTimeoutMs + FORCE_CLOSE_GRACE_MS + 15_000);
+				expect(dataSource.isInitialized).toBe(true);
+				expect(await dataSource.query('SELECT 1 AS ok')).toEqual([{ ok: 1 }]);
+			} finally {
+				await monitor.stop();
+				if (dataSource.isInitialized) {
+					await dataSource.destroy();
+				}
+				await proxy.close();
 			}
 		},
 		TEST_TIMEOUT_MS,

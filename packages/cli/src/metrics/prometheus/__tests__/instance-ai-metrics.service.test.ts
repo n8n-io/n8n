@@ -127,6 +127,32 @@ describe('PrometheusInstanceAiMetricsService', () => {
 			);
 		});
 
+		it('counts tokens/cost/tool-calls but not runs or duration for suspended segments', () => {
+			service.init();
+			const handler = getEventHandler('instance-ai-run-finished');
+
+			handler!({
+				status: 'suspended',
+				durationMs: 4200,
+				model: 'claude-opus-4',
+				toolCalls: 2,
+				toolErrors: 0,
+				usage: { promptTokens: 100, completionTokens: 10, totalTokens: 110, costUsd: 0.5 },
+			});
+
+			// No run count, no duration — the terminal event owns those.
+			expect(mockCounterInc).not.toHaveBeenCalledWith(
+				{ status: 'suspended', model: 'claude-opus-4' },
+				1,
+			);
+			expect(mockHistogramObserve).not.toHaveBeenCalled();
+			// Segment usage and tool activity are recorded.
+			expect(mockCounterInc).toHaveBeenCalledWith(2); // tool calls
+			expect(mockCounterInc).toHaveBeenCalledWith({ type: 'input' }, 100);
+			expect(mockCounterInc).toHaveBeenCalledWith({ type: 'output' }, 10);
+			expect(mockCounterInc).toHaveBeenCalledWith(0.5);
+		});
+
 		it('should observe duration histogram in seconds when durationMs is present', () => {
 			service.init();
 			const handler = getEventHandler('instance-ai-run-finished');

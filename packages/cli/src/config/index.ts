@@ -38,7 +38,7 @@ if (!inE2ETests && !inTest) {
 	Object.entries(process.env).forEach(([envName, fileName]) => {
 		if (envName.endsWith('_FILE') && fileName) {
 			const configEnvName = envName.replace(/_FILE$/, '');
-			// @ts-ignore
+			// @ts-expect-error convict internal, not typed
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			const key = config._env[configEnvName]?.[0] as string;
 			if (key) {

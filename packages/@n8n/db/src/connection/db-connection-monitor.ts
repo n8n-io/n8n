@@ -3,10 +3,12 @@ import type { DatabaseConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type { DataSource } from '@n8n/typeorm';
 import type { PostgresDriver } from '@n8n/typeorm/driver/postgres/PostgresDriver';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type { ErrorReporter } from 'n8n-core';
-import { ensureError, OperationalError } from 'n8n-workflow';
+import { OperationalError } from 'n8n-workflow';
 import { setTimeout as setTimeoutP } from 'timers/promises';
 
+import { computeBackoff } from './backoff';
 import type { DbConnectionMetrics } from './db-connection-metrics';
 
 /** The chokepoint every TypeORM query funnels through to acquire a master connection. */
@@ -27,11 +29,35 @@ type PgPool = NonNullable<PostgresDriver['master']>;
 type PgPoolClient = NonNullable<Parameters<NonNullable<Parameters<PgPool['connect']>[0]>>[1]>;
 
 /**
+ * Minimal view of the pg-pool internals we force-close on a teardown timeout.
+ * `release(error)` discards a checked-out client so a stuck `pool.end()` can
+ * resolve; `connection.stream` is the socket, hard-closed as a backstop.
+ */
+interface PgForceCloseClient {
+	release?: (error?: Error) => void;
+	connection?: { stream?: { destroy?: () => void } };
+}
+interface PgPoolInternals {
+	_clients?: PgForceCloseClient[];
+}
+
+/**
+ * Grace period after force-closing the pool, before the teardown is abandoned. Force-close
+ * is synchronous and pg-pool's end callback only needs an I/O turn, so this bounds the
+ * pathological case without adding latency to a teardown that is going to finish anyway.
+ */
+export const FORCE_CLOSE_GRACE_MS = 1_000;
+
+/**
  * Watches a DataSource and recovers it when the connection goes bad.
  * - Pings on `databaseConfig.pingIntervalSeconds`, races against `databaseConfig.pingTimeoutMs`.
  * - After `databaseConfig.pingMaxFailuresBeforeRecovery` consecutive failures, destroys
  *   and reinitializes the DataSource with exponential backoff
  *   (`databaseConfig.minRecoveryBackoffMs` .. `databaseConfig.maxRecoveryBackoffMs`).
+ *   Postgres-only: for sqlite the database is a local file, so a failed ping means a
+ *   saturated pool rather than a lost connection, and destroying the pool would abort
+ *   every pending acquisition (failing in-flight executions) with nothing to re-establish.
+ *   Non-Postgres drivers only get ping-based `connected` state tracking.
  * - Attaches an error listener to the pg pool (Postgres only) so terminated
  *   idle clients are caught instead of crashing the process.
  * - Suspends connection acquisition during recovery so in-flight queries wait
@@ -128,11 +154,11 @@ export class DbConnectionMonitor {
 	}
 
 	private async ping() {
-		if (this.stopped || !this.dataSource.isInitialized) {
+		if (this.stopped) {
 			return;
 		}
 
-		if (this.recovering) {
+		if (!this.dataSource.isInitialized || this.recovering) {
 			this.scheduleNextPing();
 			return;
 		}
@@ -150,14 +176,21 @@ export class DbConnectionMonitor {
 		} catch (error) {
 			this.setConnected(false);
 			this.consecutiveFailures += 1;
-			this.logger.warn(
-				`Database ping failed (${this.consecutiveFailures}/${this.databaseConfig.pingMaxFailuresBeforeRecovery}): ${ensureError(error).message}`,
-			);
+
+			// Only Postgres counts toward a recovery threshold; showing it for sqlite would suggest a teardown that never comes.
+			const failureCount = this.recoveryEnabled
+				? `${this.consecutiveFailures}/${this.databaseConfig.pingMaxFailuresBeforeRecovery}`
+				: `${this.consecutiveFailures}`;
+
+			this.logger.warn(`Database ping failed (${failureCount}): ${ensureError(error).message}`);
 			if (!(error instanceof OperationalError) && !this.isRecoverableConnectionError(error)) {
 				this.errorReporter.error(error);
 			}
 
-			if (this.consecutiveFailures >= this.databaseConfig.pingMaxFailuresBeforeRecovery) {
+			if (
+				this.recoveryEnabled &&
+				this.consecutiveFailures >= this.databaseConfig.pingMaxFailuresBeforeRecovery
+			) {
 				this.logger.warn(
 					`Triggering database connection recovery after ${this.consecutiveFailures} consecutive ping failures`,
 				);
@@ -228,16 +261,20 @@ export class DbConnectionMonitor {
 	}
 
 	/**
-	 * Races `work` against `pingTimeoutMs`. Throws OperationalError on timeout so
-	 * the "don't report timeouts to Sentry" rule in `ping()` applies. The timer is
-	 * always cancelled in `finally` so it never leaks when `work` wins.
+	 * Races `work` against `timeoutMs`, defaulting to `pingTimeoutMs`. Throws
+	 * OperationalError on timeout so the "don't report timeouts to Sentry" rule in
+	 * `ping()` applies. The timer is always cancelled in `finally` so it never leaks
+	 * when `work` wins.
 	 */
-	private async raceTimeout<T>(work: Promise<T>): Promise<T> {
+	private async raceTimeout<T>(
+		work: Promise<T>,
+		timeoutMs = this.databaseConfig.pingTimeoutMs,
+	): Promise<T> {
 		const abortController = new AbortController();
 		try {
 			return await Promise.race([
 				work,
-				setTimeoutP(this.databaseConfig.pingTimeoutMs, undefined, {
+				setTimeoutP(timeoutMs, undefined, {
 					signal: abortController.signal,
 				}).then(() => {
 					throw new OperationalError('Database connection timed out');
@@ -260,7 +297,7 @@ export class DbConnectionMonitor {
 	}
 
 	private async recoverDataSource() {
-		if (this.recovering || this.stopped) {
+		if (this.recovering || this.stopped || !this.recoveryEnabled) {
 			return;
 		}
 		this.startRecovery();
@@ -276,13 +313,7 @@ export class DbConnectionMonitor {
 
 				try {
 					if (this.dataSource.isInitialized) {
-						// We deliberately don't bound this drain with a forced teardown.
-						// `pool.end()` does not interrupt in-flight queries:
-						// already-acquired clients keep running until their query finishes,
-						// and only *new* acquisitions are refused
-						// (those are handled by the acquisition wait in `wrapConnectionAcquisition`).
-						// So awaiting `destroy()` lets healthy queries drain on their own without us touching pg-pool internals.
-						await this.dataSource.destroy();
+						await this.destroyDataSource();
 					}
 
 					if (this.stopped) {
@@ -297,7 +328,8 @@ export class DbConnectionMonitor {
 				} catch (error) {
 					const wrapped = ensureError(error);
 					this.errorReporter.error(wrapped);
-					const backoff = this.computeBackoff(attempt);
+					const { minRecoveryBackoffMs, maxRecoveryBackoffMs } = this.databaseConfig;
+					const backoff = computeBackoff(attempt, minRecoveryBackoffMs, maxRecoveryBackoffMs);
 					this.logger.warn(
 						`Recovery attempt ${attempt} failed: ${wrapped.message}. Retrying in ${backoff}ms`,
 					);
@@ -328,23 +360,122 @@ export class DbConnectionMonitor {
 	}
 
 	/**
-	 * Exponential backoff for the given (1-based) recovery attempt, ramping from
-	 * `minRecoveryBackoffMs` and capped at `maxRecoveryBackoffMs`.
+	 * Tear down the DataSource, bounding the Postgres drain so recovery can't hang on it.
+	 * `pool.end()` only resolves once every pooled connection drains, so one frozen against
+	 * an unreachable backend blocks the drain forever, pinning recovery at attempt 1.
 	 *
-	 * The cap is clamped to never fall below the floor, so a misconfiguration
-	 * (`maxRecoveryBackoffMs < minRecoveryBackoffMs`) degrades to a constant
-	 * `minRecoveryBackoffMs` delay rather than silently collapsing every retry
-	 * onto the smaller max value (which would defeat the floor). The
-	 * misconfiguration is warned about once at `start()`.
+	 * The bound goes on `driver.disconnect()` rather than on `destroy()` itself, because
+	 * `destroy()` clears `isInitialized` only after `disconnect()` resolves, and
+	 * `initialize()` refuses to run while that flag is set. Returning from the wrapper lets
+	 * `destroy()` complete its own bookkeeping, so recovery can always rebuild the pool, and
+	 * a drain we walked away from settling later touches only this discarded driver instance
+	 * — `initialize()` builds a fresh one.
+	 *
+	 * SQLite uses its own driver `destroyTimeout`; `destroyTimeoutMs <= 0` disables the bound.
 	 */
-	private computeBackoff(attempt: number) {
-		const { minRecoveryBackoffMs, maxRecoveryBackoffMs } = this.databaseConfig;
-		const ceiling = Math.max(minRecoveryBackoffMs, maxRecoveryBackoffMs);
-		return Math.min(minRecoveryBackoffMs * 2 ** (attempt - 1), ceiling);
+	private async destroyDataSource() {
+		const timeoutMs = Number(this.databaseConfig.postgresdb?.destroyTimeoutMs);
+		if (!this.isPostgres || !Number.isFinite(timeoutMs) || timeoutMs <= 0) {
+			await this.dataSource.destroy();
+			return;
+		}
+
+		const driver = this.postgresDriver;
+		// Capture the pool before `disconnect()` nulls `driver.master`.
+		const pool = driver.master;
+		const originalDisconnect = driver.disconnect;
+
+		driver.disconnect = async () => {
+			const drain = originalDisconnect.call(driver) as Promise<void>;
+			if (await this.settlesWithin(drain, timeoutMs)) return;
+
+			this.logger.warn(
+				`Database pool teardown exceeded ${timeoutMs}ms; force-closing connection sockets to continue recovery`,
+			);
+			this.forceClosePostgresPool(pool);
+			if (await this.settlesWithin(drain, FORCE_CLOSE_GRACE_MS)) return;
+
+			this.logger.error(
+				`Database pool teardown did not complete ${FORCE_CLOSE_GRACE_MS}ms after force-closing sockets; abandoning the pool to continue recovery`,
+			);
+		};
+
+		try {
+			await this.dataSource.destroy();
+		} finally {
+			// `destroy()` continues past `disconnect()`, so a throw further along leaves this
+			// driver installed; without the restore the next attempt would wrap the wrapper
+			// and stack another set of bounds on top.
+			driver.disconnect = originalDisconnect;
+		}
+	}
+
+	/**
+	 * Resolves `true` if `work` settles within `timeoutMs`, `false` if it is still pending.
+	 * A rejection counts as settled: the pool is unusable either way, and propagating it
+	 * would leave `isInitialized` set, wedging recovery in a retry loop that re-runs the
+	 * same failing teardown forever. Swallowing it up front also leaves the timeout as the
+	 * only thing `raceTimeout` can throw, and keeps a drain we walk away from handled.
+	 */
+	private async settlesWithin(work: Promise<unknown>, timeoutMs: number): Promise<boolean> {
+		try {
+			await this.raceTimeout(
+				work.catch(() => {}),
+				timeoutMs,
+			);
+			return true;
+		} catch {
+			return false;
+		}
+	}
+
+	/**
+	 * Force-discard every client so a stuck `pool.end()` can finish. `release(error)`
+	 * makes pg-pool drop a checked-out client (destroying its socket alone won't, since
+	 * a checked-out client has no pool error listener); `stream.destroy()` is the socket
+	 * backstop. `_clients` and `release` are pg-pool internals: if they change, the
+	 * recovery integration test stops unblocking and fails, which is the guard.
+	 */
+	private forceClosePostgresPool(pool: PostgresDriver['master']) {
+		if (!pool) {
+			// Normal, not evidence that pg-pool internals changed, so this stays below a warning.
+			this.logger.debug('Skipping Postgres pool force-close: the pool is already gone');
+			return;
+		}
+
+		const clients = (pool as unknown as PgPoolInternals)._clients;
+		if (!Array.isArray(clients)) {
+			this.logger.warn(
+				'Cannot force-close Postgres pool: pool._clients is unavailable (pg-pool internals may have changed)',
+			);
+			return;
+		}
+		// Snapshot: `release(error)` mutates `_clients` as it discards.
+		for (const client of [...clients]) {
+			try {
+				client?.release?.(new OperationalError('Connection force-closed during database recovery'));
+			} catch {
+				// Already released; the socket destroy below still applies.
+			}
+			try {
+				client?.connection?.stream?.destroy?.();
+			} catch {
+				// Best-effort socket teardown.
+			}
+		}
 	}
 
 	private get isPostgres(): boolean {
 		return this.dataSource.options.type === 'postgres';
+	}
+
+	/**
+	 * Teardown/reinit recovery is Postgres-only.
+	 * Sqlite is a local file with no connection to re-establish,
+	 * and destroying its pool aborts pending acquisitions.
+	 */
+	private get recoveryEnabled(): boolean {
+		return this.isPostgres;
 	}
 
 	/**

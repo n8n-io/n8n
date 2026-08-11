@@ -40,32 +40,30 @@ const inputSchema = {
 const outputSchema = {
 	data: z
 		.array(
-			z.object({
-				id: z.string().describe('The unique identifier of the workflow'),
-				name: z.string().nullable().describe('The name of the workflow'),
-				description: z.string().nullable().optional().describe('The description of the workflow'),
-				active: z.boolean().nullable().describe('Whether the workflow is active'),
-				createdAt: z
-					.string()
-					.nullable()
-					.describe('The ISO timestamp when the workflow was created'),
-				updatedAt: z
-					.string()
-					.nullable()
-					.describe(
-						'ISO timestamp the workflow definition was last saved. Use this to identify recently edited workflows.',
-					),
-				triggerCount: z
-					.number()
-					.nullable()
-					.describe('The number of triggers associated with the workflow'),
-				scopes: z.array(z.string()).describe('User permissions for this workflow'),
-				canExecute: z
-					.boolean()
-					.describe('Whether the user has permission to execute this workflow'),
-				availableInMCP: z.boolean().describe('Whether the workflow is visible to MCP tools'),
-				tags: z.array(tagSchema).describe('Tags assigned to the workflow'),
-			}),
+			z
+				.object({
+					id: z.string().describe('The unique identifier of the workflow'),
+					name: z.string().nullable().describe('The name of the workflow'),
+					description: z.string().nullable().optional().describe('The description of the workflow'),
+					active: z.boolean().nullable().describe('Whether the workflow is active'),
+					createdAt: z
+						.string()
+						.nullable()
+						.describe('The ISO timestamp when the workflow was created'),
+					updatedAt: z
+						.string()
+						.nullable()
+						.describe(
+							'ISO timestamp the workflow definition was last saved. Use this to identify recently edited workflows.',
+						),
+					triggerCount: z
+						.number()
+						.nullable()
+						.describe('The number of triggers associated with the workflow'),
+					availableInMCP: z.boolean().describe('Whether the workflow is visible to MCP tools'),
+					tags: z.array(tagSchema).describe('Tags assigned to the workflow'),
+				})
+				.passthrough(),
 		)
 		.describe('List of workflows matching the query'),
 	count: z.number().int().min(0).describe('Total number of workflows that match the filters'),
@@ -175,7 +173,6 @@ export async function searchWorkflows(
 			createdAt: true,
 			updatedAt: true,
 			triggerCount: true,
-			ownedBy: true, // Required for loading 'shared' relation used in scope computation
 			settings: true,
 			tags: true,
 		},
@@ -184,7 +181,7 @@ export async function searchWorkflows(
 	const { workflows, count } = await workflowService.getMany(
 		user,
 		options,
-		true, // includeScopes
+		false, // includeScopes
 		false, // includeFolders
 		false, // onlySharedWithMe
 	);
@@ -201,7 +198,6 @@ export async function searchWorkflows(
 			settings,
 			tags: workflowTags,
 		} = workflow as WorkflowEntity;
-		const scopes = ('scopes' in workflow ? (workflow.scopes as string[]) : undefined) ?? [];
 
 		return {
 			id,
@@ -211,8 +207,6 @@ export async function searchWorkflows(
 			createdAt: createdAt.toISOString(),
 			updatedAt: updatedAt.toISOString(),
 			triggerCount,
-			scopes,
-			canExecute: scopes.includes('workflow:execute'),
 			availableInMCP: settings?.availableInMCP ?? false,
 			tags: toTagSummary(workflowTags),
 		};

@@ -9,6 +9,7 @@ import {
 	type INodeExecutionData,
 	type NodeTypeAndVersion,
 	CHAT_TRIGGER_NODE_TYPE,
+	UserError,
 } from 'n8n-workflow';
 
 import { RespondToWebhook } from '../RespondToWebhook.node';
@@ -81,7 +82,7 @@ describe('RespondToWebhook Node', () => {
 				if (paramName === 'responseBody') return { message: 'Hello World' };
 				if (paramName === 'options') return {};
 			});
-			mockExecuteFunctions.sendResponse.mockReturnValue();
+			mockExecuteFunctions.sendResponse.mockResolvedValue(undefined);
 
 			await expect(respondToWebhook.execute.call(mockExecuteFunctions)).resolves.not.toThrow();
 			expect(mockExecuteFunctions.sendResponse).toHaveBeenCalled();
@@ -118,7 +119,7 @@ describe('RespondToWebhook Node', () => {
 			mockExecuteFunctions.getNodeParameter.mockReturnValue('text');
 			mockExecuteFunctions.getNodeParameter.mockReturnValue({});
 			mockExecuteFunctions.getNodeParameter.mockReturnValue('noData');
-			mockExecuteFunctions.sendResponse.mockReturnValue();
+			mockExecuteFunctions.sendResponse.mockResolvedValue(undefined);
 
 			await expect(respondToWebhook.execute.call(mockExecuteFunctions)).resolves.not.toThrow();
 		});
@@ -138,7 +139,7 @@ describe('RespondToWebhook Node', () => {
 						responseKey: 'data',
 					};
 			});
-			mockExecuteFunctions.sendResponse.mockReturnValue();
+			mockExecuteFunctions.sendResponse.mockResolvedValue(undefined);
 
 			await expect(respondToWebhook.execute.call(mockExecuteFunctions)).resolves.not.toThrow();
 			expect(mockExecuteFunctions.sendResponse).toHaveBeenCalledWith({
@@ -159,7 +160,7 @@ describe('RespondToWebhook Node', () => {
 				if (paramName === 'options') return {};
 				if (paramName === 'responseBody') return { response: true };
 			});
-			mockExecuteFunctions.sendResponse.mockReturnValue();
+			mockExecuteFunctions.sendResponse.mockResolvedValue(undefined);
 
 			await expect(respondToWebhook.execute.call(mockExecuteFunctions)).resolves.not.toThrow();
 			expect(mockExecuteFunctions.sendResponse).toHaveBeenCalledWith({
@@ -180,7 +181,7 @@ describe('RespondToWebhook Node', () => {
 				if (paramName === 'options') return {};
 				if (paramName === 'responseBody') return JSON.stringify({ response: true });
 			});
-			mockExecuteFunctions.sendResponse.mockReturnValue();
+			mockExecuteFunctions.sendResponse.mockResolvedValue(undefined);
 
 			await expect(respondToWebhook.execute.call(mockExecuteFunctions)).resolves.not.toThrow();
 			expect(mockExecuteFunctions.sendResponse).toHaveBeenCalledWith({
@@ -209,7 +210,7 @@ describe('RespondToWebhook Node', () => {
 				if (paramName === 'options') return {};
 				if (paramName === 'payload') return 'payload';
 			});
-			mockExecuteFunctions.sendResponse.mockReturnValue();
+			mockExecuteFunctions.sendResponse.mockResolvedValue(undefined);
 
 			await expect(respondToWebhook.execute.call(mockExecuteFunctions)).resolves.not.toThrow();
 			expect(mockExecuteFunctions.sendResponse).toHaveBeenCalledWith({
@@ -232,7 +233,7 @@ describe('RespondToWebhook Node', () => {
 				if (paramName === 'options') return {};
 				if (paramName === 'responseBody') return 'responseBody';
 			});
-			mockExecuteFunctions.sendResponse.mockReturnValue();
+			mockExecuteFunctions.sendResponse.mockResolvedValue(undefined);
 
 			await expect(respondToWebhook.execute.call(mockExecuteFunctions)).resolves.not.toThrow();
 			expect(mockExecuteFunctions.sendResponse).toHaveBeenCalledWith({
@@ -253,7 +254,7 @@ describe('RespondToWebhook Node', () => {
 				if (paramName === 'options') return {};
 				if (paramName === 'redirectURL') return 'https://n8n.io';
 			});
-			mockExecuteFunctions.sendResponse.mockReturnValue();
+			mockExecuteFunctions.sendResponse.mockResolvedValue(undefined);
 
 			await expect(respondToWebhook.execute.call(mockExecuteFunctions)).resolves.not.toThrow();
 			expect(mockExecuteFunctions.sendResponse).toHaveBeenCalledWith({
@@ -273,7 +274,7 @@ describe('RespondToWebhook Node', () => {
 				if (paramName === 'respondWith') return 'allIncomingItems';
 				if (paramName === 'options') return {};
 			});
-			mockExecuteFunctions.sendResponse.mockReturnValue();
+			mockExecuteFunctions.sendResponse.mockResolvedValue(undefined);
 
 			const result = await respondToWebhook.execute.call(mockExecuteFunctions);
 			expect(mockExecuteFunctions.sendResponse).toHaveBeenCalledWith({
@@ -299,7 +300,7 @@ describe('RespondToWebhook Node', () => {
 				if (paramName === 'respondWith') return 'binary';
 				if (paramName === 'options') return {};
 			});
-			mockExecuteFunctions.sendResponse.mockReturnValue();
+			mockExecuteFunctions.sendResponse.mockResolvedValue(undefined);
 
 			await expect(respondToWebhook.execute.call(mockExecuteFunctions)).resolves.not.toThrow();
 			expect(mockExecuteFunctions.sendResponse).toHaveBeenCalledWith({
@@ -323,7 +324,7 @@ describe('RespondToWebhook Node', () => {
 				if (paramName === 'respondWith') return 'notSupportedRespondWith';
 				if (paramName === 'options') return {};
 			});
-			mockExecuteFunctions.sendResponse.mockReturnValue();
+			mockExecuteFunctions.sendResponse.mockResolvedValue(undefined);
 
 			await expect(respondToWebhook.execute.call(mockExecuteFunctions)).resolves.toEqual([
 				[
@@ -334,6 +335,43 @@ describe('RespondToWebhook Node', () => {
 				],
 			]);
 			expect(mockExecuteFunctions.sendResponse).not.toHaveBeenCalled();
+		});
+
+		it('should fail the node when the response cannot be dispatched', async () => {
+			mockExecuteFunctions.getInputData.mockReturnValue([{ json: { input: true } }]);
+			mockExecuteFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion: 1.1 }));
+			mockExecuteFunctions.continueOnFail.mockReturnValue(false);
+			mockExecuteFunctions.getParentNodes.mockReturnValue([
+				mock<NodeTypeAndVersion>({ type: WAIT_NODE_TYPE }),
+			]);
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName) => {
+				if (paramName === 'respondWith') return 'firstIncomingItem';
+				if (paramName === 'options') return {};
+			});
+			mockExecuteFunctions.sendResponse.mockRejectedValue(new UserError('Response not relayed'));
+
+			await expect(respondToWebhook.execute.call(mockExecuteFunctions)).rejects.toThrow(
+				'Response not relayed',
+			);
+		});
+
+		it('should return an error item when the response cannot be dispatched and the node continues on fail', async () => {
+			mockExecuteFunctions.getInputData.mockReturnValue([{ json: { input: true } }]);
+			mockExecuteFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion: 1.1 }));
+			mockExecuteFunctions.continueOnFail.mockReturnValue(true);
+			mockExecuteFunctions.getParentNodes.mockReturnValue([
+				mock<NodeTypeAndVersion>({ type: WAIT_NODE_TYPE }),
+			]);
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName) => {
+				if (paramName === 'respondWith') return 'firstIncomingItem';
+				if (paramName === 'options') return {};
+			});
+			mockExecuteFunctions.sendResponse.mockRejectedValue(new UserError('Response not relayed'));
+
+			await expect(respondToWebhook.execute.call(mockExecuteFunctions)).resolves.toEqual([
+				[{ json: { error: 'Response not relayed' }, pairedItem: [{ item: 0 }] }],
+			]);
+			expect(mockExecuteFunctions.sendResponse).toHaveBeenCalled();
 		});
 
 		it('should have two outputs in version 1.3', async () => {
@@ -348,7 +386,7 @@ describe('RespondToWebhook Node', () => {
 				if (paramName === 'redirectURL') return 'n8n.io';
 				if (paramName === 'options') return {};
 			});
-			mockExecuteFunctions.sendResponse.mockReturnValue();
+			mockExecuteFunctions.sendResponse.mockResolvedValue(undefined);
 
 			const result = await respondToWebhook.execute.call(mockExecuteFunctions);
 
@@ -514,7 +552,7 @@ describe('RespondToWebhook Node', () => {
 			]);
 			mockExecuteFunctions.isStreaming.mockReturnValue(true);
 			mockExecuteFunctions.sendChunk.mockImplementation(() => {});
-			mockExecuteFunctions.sendResponse.mockImplementation(() => {});
+			mockExecuteFunctions.sendResponse.mockResolvedValue(undefined);
 			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName) => {
 				if (paramName === 'respondWith') return 'json';
 				if (paramName === 'options') return { enableStreaming: false };
@@ -539,7 +577,7 @@ describe('RespondToWebhook Node', () => {
 			]);
 			mockExecuteFunctions.isStreaming.mockReturnValue(false);
 			mockExecuteFunctions.sendChunk.mockImplementation(() => {});
-			mockExecuteFunctions.sendResponse.mockImplementation(() => {});
+			mockExecuteFunctions.sendResponse.mockResolvedValue(undefined);
 			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName) => {
 				if (paramName === 'respondWith') return 'json';
 				if (paramName === 'options') return { enableStreaming: true };
@@ -567,7 +605,7 @@ describe('RespondToWebhook Node', () => {
 			]);
 			mockExecuteFunctions.isStreaming.mockReturnValue(true);
 			mockExecuteFunctions.sendChunk.mockImplementation(() => {});
-			mockExecuteFunctions.sendResponse.mockImplementation(() => {});
+			mockExecuteFunctions.sendResponse.mockResolvedValue(undefined);
 			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName) => {
 				if (paramName === 'respondWith') return 'binary';
 				if (paramName === 'options') return { enableStreaming: true };
@@ -594,7 +632,7 @@ describe('RespondToWebhook Node', () => {
 			]);
 			mockExecuteFunctions.isStreaming.mockReturnValue(true);
 			mockExecuteFunctions.sendChunk.mockImplementation(() => {});
-			mockExecuteFunctions.sendResponse.mockImplementation(() => {});
+			mockExecuteFunctions.sendResponse.mockResolvedValue(undefined);
 			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName) => {
 				if (paramName === 'respondWith') return 'json';
 				if (paramName === 'options') return {};

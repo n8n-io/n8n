@@ -1,7 +1,7 @@
 import type { Mock } from 'vitest';
 import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
-import type { ProjectRelationRepository } from '@n8n/db';
+import type { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings, ScheduledTaskManager } from 'n8n-core';
 
@@ -10,6 +10,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import type { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
+import type { AgentModificationTelemetryService } from '../agent-modification-telemetry.service';
 import { AgentTaskService } from '../agent-task.service';
 import type { AgentTaskSnapshot } from '../entities/agent-task-snapshot.entity';
 import type { AgentTask } from '../entities/agent-task.entity';
@@ -23,6 +24,8 @@ import type { AgentTaskRepository } from '../repositories/agent-task.repository'
 import type { AgentRepository } from '../repositories/agent.repository';
 
 const AGENT_ID = 'agent-1';
+const PROJECT_ID = 'project-1';
+const telemetryContext = { user: { id: 'user-1' } as User, modifiedBy: 'user' as const };
 
 const agentTaskGroup = (id = AGENT_ID) => ({ type: 'agent-task', id });
 
@@ -135,10 +138,10 @@ describe('AgentTaskService', () => {
 	let taskSnapshotRepository: ReturnType<typeof mock<AgentTaskSnapshotRepository>>;
 	let taskRunLockRepository: ReturnType<typeof mock<AgentTaskRunLockRepository>>;
 	let agentRepository: ReturnType<typeof mock<AgentRepository>>;
-	let projectRelationRepository: ReturnType<typeof mock<ProjectRelationRepository>>;
 	let agentExecutionOrchestratorService: ReturnType<typeof mock<AgentExecutionOrchestratorService>>;
 	let agentTaskScheduler: ReturnType<typeof mock<ScheduledTaskManager>>;
 	let publisher: ReturnType<typeof mock<Publisher>>;
+	let modificationTelemetry: ReturnType<typeof mock<AgentModificationTelemetryService>>;
 	let txManager: { save: Mock; remove: Mock };
 	let service: AgentTaskService;
 
@@ -155,11 +158,11 @@ describe('AgentTaskService', () => {
 			taskSnapshotRepository,
 			taskRunLockRepository,
 			agentRepository,
-			projectRelationRepository,
 			agentExecutionOrchestratorService,
 			mock<InstanceSettings>({ isLeader }),
 			agentTaskScheduler,
 			publisher,
+			modificationTelemetry,
 		);
 	}
 
@@ -188,7 +191,6 @@ describe('AgentTaskService', () => {
 				async (cb: (m: typeof txManager) => Promise<unknown>) => await cb(txManager),
 			),
 		};
-		projectRelationRepository = mock<ProjectRelationRepository>();
 		agentExecutionOrchestratorService = mock<AgentExecutionOrchestratorService>();
 		agentTaskScheduler = mock<ScheduledTaskManager>();
 		agentTaskScheduler.register.mockReturnValue(true);
@@ -196,6 +198,7 @@ describe('AgentTaskService', () => {
 		agentTaskScheduler.hasTarget.mockReturnValue(false);
 		publisher = mock<Publisher>();
 		publisher.publishCommand.mockResolvedValue(undefined);
+		modificationTelemetry = mock<AgentModificationTelemetryService>();
 		// Default to the leader so existing registration assertions hold.
 		service = buildService(true);
 	});
@@ -205,14 +208,19 @@ describe('AgentTaskService', () => {
 			const agent = makeAgent({
 				schema: { name: 'a', model: 'm', instructions: 'i', tasks: [] },
 			} as Partial<Agent>);
-			(agentRepository.findOne as Mock).mockResolvedValue(agent);
+			(agentRepository.findByIdAndProjectId as Mock).mockResolvedValue(agent);
 
-			const dto = await service.create(AGENT_ID, {
-				name: 'Daily',
-				objective: 'Do X',
-				cronExpression: '0 9 * * *',
-				enabled: true,
-			});
+			const dto = await service.create(
+				AGENT_ID,
+				PROJECT_ID,
+				{
+					name: 'Daily',
+					objective: 'Do X',
+					cronExpression: '0 9 * * *',
+					enabled: true,
+				},
+				telemetryContext,
+			);
 
 			expect(dto.id).toMatch(/^task_/);
 			expect(dto.name).toBe('Daily');
@@ -228,36 +236,138 @@ describe('AgentTaskService', () => {
 			expect(agent.schema?.tasks).toEqual([
 				{ type: 'task', id: expect.stringMatching(/^task_/), enabled: true },
 			]);
-			expect(txManager.save).toHaveBeenCalled();
+			expect(txManager.save).toHaveBeenCalledTimes(2);
 		});
 
 		it('rejects an invalid cron without creating', async () => {
 			await expect(
-				service.create(AGENT_ID, {
-					name: 'x',
-					objective: 'y',
-					cronExpression: 'not-a-cron',
-					enabled: true,
-				}),
+				service.create(
+					AGENT_ID,
+					PROJECT_ID,
+					{
+						name: 'x',
+						objective: 'y',
+						cronExpression: 'not-a-cron',
+						enabled: true,
+					},
+					telemetryContext,
+				),
 			).rejects.toThrow(BadRequestError);
 			expect(taskRepository.create).not.toHaveBeenCalled();
 		});
 
 		it('does not register a cron job on create (scheduling follows publish)', async () => {
-			(agentRepository.findOne as Mock).mockResolvedValue(
+			(agentRepository.findByIdAndProjectId as Mock).mockResolvedValue(
 				makeAgent({
 					schema: { name: 'a', model: 'm', instructions: 'i', tasks: [] },
 				} as Partial<Agent>),
 			);
 
-			await service.create(AGENT_ID, {
-				name: 'x',
-				objective: 'y',
-				cronExpression: '0 9 * * *',
-				enabled: true,
-			});
+			await service.create(
+				AGENT_ID,
+				PROJECT_ID,
+				{
+					name: 'x',
+					objective: 'y',
+					cronExpression: '0 9 * * *',
+					enabled: true,
+				},
+				telemetryContext,
+			);
 
 			expect(agentTaskScheduler.register).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('createTasks', () => {
+		const taskOneDto = {
+			name: 'Daily summary',
+			objective: 'Do X',
+			cronExpression: '0 9 * * *',
+			enabled: true,
+		};
+		const taskTwoDto = {
+			name: 'Weekly digest',
+			objective: 'Do Y',
+			cronExpression: '0 9 * * 1',
+			enabled: true,
+		};
+
+		it('creates multiple tasks with unique enabled refs, saved with the agent in one transaction, preserving order', async () => {
+			const agent = makeAgent({
+				schema: { name: 'a', model: 'm', instructions: 'i', tasks: [] },
+			} as Partial<Agent>);
+			(agentRepository.findByIdAndProjectId as Mock).mockResolvedValue(agent);
+
+			const dtos = await service.createTasks(
+				AGENT_ID,
+				PROJECT_ID,
+				[taskOneDto, taskTwoDto],
+				telemetryContext,
+			);
+
+			expect(dtos).toHaveLength(2);
+			expect(dtos[0].name).toBe('Daily summary');
+			expect(dtos[1].name).toBe('Weekly digest');
+			expect(dtos[0].id).not.toEqual(dtos[1].id);
+
+			expect(agentRepository.findByIdAndProjectId).toHaveBeenCalledTimes(1);
+			expect(agent.schema?.tasks).toEqual([
+				{ type: 'task', id: dtos[0].id, enabled: true },
+				{ type: 'task', id: dtos[1].id, enabled: true },
+			]);
+			// 2 task saves + 1 agent save, all inside the same transaction call.
+			expect(agentRepository.manager.transaction).toHaveBeenCalledTimes(1);
+			expect(txManager.save).toHaveBeenCalledTimes(3);
+		});
+
+		it('rejects an empty batch before loading or writing anything', async () => {
+			await expect(service.createTasks(AGENT_ID, PROJECT_ID, [], telemetryContext)).rejects.toThrow(
+				BadRequestError,
+			);
+
+			expect(agentRepository.findByIdAndProjectId).not.toHaveBeenCalled();
+			expect(taskRepository.create).not.toHaveBeenCalled();
+			expect(txManager.save).not.toHaveBeenCalled();
+		});
+
+		it('rejects the whole batch without writing when any cron is invalid', async () => {
+			await expect(
+				service.createTasks(
+					AGENT_ID,
+					PROJECT_ID,
+					[taskOneDto, { ...taskTwoDto, cronExpression: 'not-a-cron' }],
+					telemetryContext,
+				),
+			).rejects.toThrow(BadRequestError);
+
+			expect(agentRepository.findByIdAndProjectId).not.toHaveBeenCalled();
+			expect(taskRepository.create).not.toHaveBeenCalled();
+			expect(txManager.save).not.toHaveBeenCalled();
+		});
+
+		it('rejects when the agent is not found in the project', async () => {
+			(agentRepository.findByIdAndProjectId as Mock).mockResolvedValue(null);
+
+			await expect(
+				service.createTasks(AGENT_ID, PROJECT_ID, [taskOneDto], telemetryContext),
+			).rejects.toThrow(NotFoundError);
+
+			expect(taskRepository.create).not.toHaveBeenCalled();
+			expect(txManager.save).not.toHaveBeenCalled();
+		});
+
+		it('rejects when the agent has no config yet', async () => {
+			(agentRepository.findByIdAndProjectId as Mock).mockResolvedValue(
+				makeAgent({ schema: null } as Partial<Agent>),
+			);
+
+			await expect(
+				service.createTasks(AGENT_ID, PROJECT_ID, [taskOneDto], telemetryContext),
+			).rejects.toThrow(BadRequestError);
+
+			expect(taskRepository.create).not.toHaveBeenCalled();
+			expect(txManager.save).not.toHaveBeenCalled();
 		});
 	});
 
@@ -287,9 +397,15 @@ describe('AgentTaskService', () => {
 		it('updates body fields without registering a cron (publish-driven)', async () => {
 			const task = makeTask();
 			(taskRepository.findByIdAndAgentId as Mock).mockResolvedValue(task);
-			(agentRepository.findOne as Mock).mockResolvedValue(makeAgent());
+			(agentRepository.findByIdAndProjectId as Mock).mockResolvedValue(makeAgent());
 
-			const dto = await service.update(AGENT_ID, 'task-1', { cronExpression: '0 10 * * *' });
+			const dto = await service.update(
+				AGENT_ID,
+				PROJECT_ID,
+				'task-1',
+				{ cronExpression: '0 10 * * *' },
+				telemetryContext,
+			);
 
 			expect(dto.cronExpression).toBe('0 10 * * *');
 			expect(task.cronExpression).toBe('0 10 * * *');
@@ -301,29 +417,37 @@ describe('AgentTaskService', () => {
 			const task = makeTask();
 			(taskRepository.findByIdAndAgentId as Mock).mockResolvedValue(task);
 
-			const dto = await service.update(AGENT_ID, 'task-1', {
-				name: task.name,
-				objective: task.objective,
-				cronExpression: task.cronExpression,
-			});
+			const dto = await service.update(
+				AGENT_ID,
+				PROJECT_ID,
+				'task-1',
+				{
+					name: task.name,
+					objective: task.objective,
+					cronExpression: task.cronExpression,
+				},
+				telemetryContext,
+			);
 
 			expect(dto.cronExpression).toBe(task.cronExpression);
-			expect(agentRepository.findOne).not.toHaveBeenCalled();
+			expect(agentRepository.findByIdAndProjectId).not.toHaveBeenCalled();
 			expect(txManager.save).not.toHaveBeenCalled();
 		});
 
 		it('throws NotFoundError when updating a missing task', async () => {
 			(taskRepository.findByIdAndAgentId as Mock).mockResolvedValue(null);
-			await expect(service.update(AGENT_ID, 'missing', { name: 'x' })).rejects.toThrow(
-				NotFoundError,
-			);
+			await expect(
+				service.update(AGENT_ID, PROJECT_ID, 'missing', { name: 'x' }, telemetryContext),
+			).rejects.toThrow(NotFoundError);
 		});
 	});
 
 	describe('delete', () => {
 		it('throws NotFoundError when the task is missing', async () => {
 			(taskRepository.findByIdAndAgentId as Mock).mockResolvedValue(null);
-			await expect(service.delete(AGENT_ID, 'missing')).rejects.toThrow(NotFoundError);
+			await expect(
+				service.delete(AGENT_ID, PROJECT_ID, 'missing', telemetryContext),
+			).rejects.toThrow(NotFoundError);
 			expect(txManager.remove).not.toHaveBeenCalled();
 		});
 
@@ -338,9 +462,9 @@ describe('AgentTaskService', () => {
 					tasks: [{ type: 'task', id: 'task-1', enabled: true }],
 				},
 			} as Partial<Agent>);
-			(agentRepository.findOne as Mock).mockResolvedValue(agent);
+			(agentRepository.findByIdAndProjectId as Mock).mockResolvedValue(agent);
 
-			await service.delete(AGENT_ID, 'task-1');
+			await service.delete(AGENT_ID, PROJECT_ID, 'task-1', telemetryContext);
 
 			expect(txManager.remove).toHaveBeenCalledWith(task);
 			expect(agent.schema?.tasks).toEqual([]);
@@ -349,12 +473,47 @@ describe('AgentTaskService', () => {
 		it('does not stop a live cron job until the next publish reconcile', async () => {
 			const task = makeTask();
 			(taskRepository.findByIdAndAgentId as Mock).mockResolvedValue(task);
-			(agentRepository.findOne as Mock).mockResolvedValue(makeAgent());
+			(agentRepository.findByIdAndProjectId as Mock).mockResolvedValue(makeAgent());
 
-			await service.delete(AGENT_ID, 'task-1');
+			await service.delete(AGENT_ID, PROJECT_ID, 'task-1', telemetryContext);
 
 			expect(agentTaskScheduler.deregisterTarget).not.toHaveBeenCalled();
 		});
+	});
+
+	it('reports task body changes through lifecycle telemetry and stays silent on a no-op', async () => {
+		const task = makeTask();
+		(taskRepository.findByIdAndAgentId as Mock).mockResolvedValue(task);
+		(agentRepository.findByIdAndProjectId as Mock).mockResolvedValue(
+			makeAgent({ integrations: [] }),
+		);
+
+		await service.update(
+			AGENT_ID,
+			PROJECT_ID,
+			'task-1',
+			{ objective: 'Updated objective' },
+			telemetryContext,
+		);
+
+		expect(modificationTelemetry.record).toHaveBeenCalledWith(
+			expect.objectContaining({
+				by: 'user',
+				changedParts: ['tasks'],
+				wasUnconfigured: false,
+			}),
+		);
+
+		vi.clearAllMocks();
+		(taskRepository.findByIdAndAgentId as Mock).mockResolvedValue(task);
+		await service.update(
+			AGENT_ID,
+			PROJECT_ID,
+			'task-1',
+			{ objective: task.objective },
+			telemetryContext,
+		);
+		expect(modificationTelemetry.record).not.toHaveBeenCalled();
 	});
 
 	describe('registerEnabledForAgent', () => {
@@ -441,7 +600,6 @@ describe('AgentTaskService', () => {
 			);
 			(taskSnapshotRepository.findEnabledByVersionId as Mock).mockResolvedValue([makeSnapshot()]);
 			(taskSnapshotRepository.findByVersionAndTaskId as Mock).mockResolvedValue(makeSnapshot());
-			(projectRelationRepository.findUserIdsByProjectId as Mock).mockResolvedValue(['user-1']);
 			taskRunLockRepository.acquire
 				.mockResolvedValueOnce(makeRunLock())
 				.mockResolvedValueOnce(null)
@@ -488,7 +646,6 @@ describe('AgentTaskService', () => {
 			);
 			(taskSnapshotRepository.findEnabledByVersionId as Mock).mockResolvedValue([makeSnapshot()]);
 			(taskSnapshotRepository.findByVersionAndTaskId as Mock).mockResolvedValue(makeSnapshot());
-			(projectRelationRepository.findUserIdsByProjectId as Mock).mockResolvedValue(['user-1']);
 			taskRunLockRepository.acquire
 				.mockResolvedValueOnce(makeRunLock({ holderId: 'old-leader' }))
 				.mockResolvedValueOnce(null);
@@ -597,7 +754,6 @@ describe('AgentTaskService', () => {
 		it('runs the published agent with the objective', async () => {
 			(agentRepository.findOne as Mock).mockResolvedValue(publishedAgentWithTask(true));
 			(taskSnapshotRepository.findByVersionAndTaskId as Mock).mockResolvedValue(makeSnapshot());
-			(projectRelationRepository.findUserIdsByProjectId as Mock).mockResolvedValue(['user-1']);
 			(agentExecutionOrchestratorService.executeForTaskPublished as Mock).mockReturnValue(
 				emptyStream(),
 			);
@@ -624,7 +780,6 @@ describe('AgentTaskService', () => {
 			(taskSnapshotRepository.findByVersionAndTaskId as Mock).mockResolvedValue(
 				makeSnapshot({ objective: 'Published objective' }),
 			);
-			(projectRelationRepository.findUserIdsByProjectId as Mock).mockResolvedValue(['user-1']);
 			(agentExecutionOrchestratorService.executeForTaskPublished as Mock).mockReturnValue(
 				emptyStream(),
 			);
@@ -646,17 +801,6 @@ describe('AgentTaskService', () => {
 			expect(agentExecutionOrchestratorService.executeForTaskPublished).not.toHaveBeenCalled();
 		});
 
-		it('skips when no project member is available', async () => {
-			(agentRepository.findOne as Mock).mockResolvedValue(publishedAgentWithTask(true));
-			(taskSnapshotRepository.findByVersionAndTaskId as Mock).mockResolvedValue(makeSnapshot());
-			(projectRelationRepository.findUserIdsByProjectId as Mock).mockResolvedValue([]);
-
-			await runTaskOf(service, AGENT_ID, 'task-1');
-
-			expect(agentExecutionOrchestratorService.executeForTaskPublished).not.toHaveBeenCalled();
-			expect(taskRepository.update).not.toHaveBeenCalled();
-		});
-
 		it('skips when the published task snapshot is not enabled', async () => {
 			(agentRepository.findOne as Mock).mockResolvedValue(publishedAgentWithTask(true));
 			(taskSnapshotRepository.findByVersionAndTaskId as Mock).mockResolvedValue(
@@ -671,7 +815,6 @@ describe('AgentTaskService', () => {
 		it('logs when execution throws', async () => {
 			(agentRepository.findOne as Mock).mockResolvedValue(publishedAgentWithTask(true));
 			(taskSnapshotRepository.findByVersionAndTaskId as Mock).mockResolvedValue(makeSnapshot());
-			(projectRelationRepository.findUserIdsByProjectId as Mock).mockResolvedValue(['user-1']);
 			(agentExecutionOrchestratorService.executeForTaskPublished as Mock).mockReturnValue(
 				throwingStream(),
 			);
@@ -688,7 +831,6 @@ describe('AgentTaskService', () => {
 		it('allows a later scheduled run after a failed execution completes', async () => {
 			(agentRepository.findOne as Mock).mockResolvedValue(publishedAgentWithTask(true));
 			(taskSnapshotRepository.findByVersionAndTaskId as Mock).mockResolvedValue(makeSnapshot());
-			(projectRelationRepository.findUserIdsByProjectId as Mock).mockResolvedValue(['user-1']);
 			(agentExecutionOrchestratorService.executeForTaskPublished as Mock)
 				.mockReturnValueOnce(throwingStream())
 				.mockReturnValueOnce(emptyStream());
@@ -712,7 +854,6 @@ describe('AgentTaskService', () => {
 				}
 				(agentRepository.findOne as Mock).mockResolvedValue(publishedAgentWithTask(true));
 				(taskSnapshotRepository.findByVersionAndTaskId as Mock).mockResolvedValue(makeSnapshot());
-				(projectRelationRepository.findUserIdsByProjectId as Mock).mockResolvedValue(['user-1']);
 				(agentExecutionOrchestratorService.executeForTaskPublished as Mock).mockReturnValue(
 					blockingStream(),
 				);
@@ -746,18 +887,20 @@ describe('AgentTaskService', () => {
 	});
 
 	describe('runNow', () => {
+		const requestingUser = mock<User>({ id: 'user-9' });
+
 		it('runs the task immediately as the requesting user even when unpublished', async () => {
 			(taskRepository.findByIdAndAgentId as Mock).mockResolvedValue(makeTask());
 			(agentRepository.findOne as Mock).mockResolvedValue(makeAgent({ activeVersionId: null }));
 			(agentExecutionOrchestratorService.executeForTaskNow as Mock).mockReturnValue(emptyStream());
 
-			await service.runNow(AGENT_ID, 'task-1', 'user-9');
+			await service.runNow(AGENT_ID, 'task-1', requestingUser);
 
 			expect(agentExecutionOrchestratorService.executeForTaskNow).toHaveBeenCalledWith(
 				expect.objectContaining({
 					agentId: AGENT_ID,
 					projectId: 'project-1',
-					userId: 'user-9',
+					user: requestingUser,
 					taskId: 'task-1',
 					message: expect.stringContaining('Summarize messages'),
 					memory: expect.objectContaining({ resourceId: 'task:task-1' }),
@@ -768,7 +911,9 @@ describe('AgentTaskService', () => {
 		it('throws NotFoundError when the task does not exist', async () => {
 			(taskRepository.findByIdAndAgentId as Mock).mockResolvedValue(null);
 
-			await expect(service.runNow(AGENT_ID, 'missing', 'user-9')).rejects.toThrow(NotFoundError);
+			await expect(service.runNow(AGENT_ID, 'missing', requestingUser)).rejects.toThrow(
+				NotFoundError,
+			);
 			expect(agentExecutionOrchestratorService.executeForTaskNow).not.toHaveBeenCalled();
 		});
 
@@ -777,7 +922,7 @@ describe('AgentTaskService', () => {
 			(agentRepository.findOne as Mock).mockResolvedValue(makeAgent());
 			(agentExecutionOrchestratorService.executeForTaskNow as Mock).mockReturnValue(emptyStream());
 
-			await service.runNow(AGENT_ID, 'task-1', 'user-9');
+			await service.runNow(AGENT_ID, 'task-1', requestingUser);
 			await new Promise((resolve) => setImmediate(resolve));
 
 			expect(taskRepository.update).not.toHaveBeenCalled();

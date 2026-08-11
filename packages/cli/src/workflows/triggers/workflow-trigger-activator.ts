@@ -2,31 +2,37 @@ import assert from 'node:assert/strict';
 
 import { Logger } from '@n8n/backend-common';
 import { WorkflowsConfig } from '@n8n/config';
-import type { IWorkflowDb, WorkflowEntity } from '@n8n/db';
+import type { IWorkflowDb, WorkflowEntity, WorkflowPublicationTriggerKind } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ErrorReporter, SpanStatus, Tracing } from 'n8n-core';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { createResultError, createResultOk, type Result } from '@n8n/utils/result';
 import type {
 	IConnections,
 	INode,
 	IWebhookData,
 	IWorkflowBase,
 	IWorkflowExecuteAdditionalData,
-	Result,
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
 	WorkflowId,
 } from 'n8n-workflow';
 import {
+	ERROR_TRIGGER_NODE_TYPE,
+	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+	MANUAL_TRIGGER_NODE_TYPE,
 	Workflow,
 	WorkflowActivationError,
-	createResultError,
-	createResultOk,
-	ensureError,
 } from 'n8n-workflow';
 
 import { ActivationErrorsService } from '@/activation-errors.service';
 import { TRIGGER_ACTIVATION_MAX_ATTEMPTS } from '@/constants';
+import { EventService } from '@/events/event.service';
+import type {
+	PublicationOperationResult,
+	PublicationTriggerOperation,
+} from '@/events/maps/workflow-publication-metrics.event-map';
 import { NodeTypes } from '@/node-types';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import type { PreparedNonWebhookTriggerRegistration } from '@/workflows/triggers/non-webhook-trigger-registrar';
@@ -38,6 +44,14 @@ import { WebhookTriggerRegistrar } from '@/workflows/triggers/webhook-trigger-re
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
 export type WorkflowTriggerVersion = { nodes: INode[]; connections: IConnections };
+
+// Their trigger() is a no-op — fired by the execution engine, never the
+// registry — so reconciling them against the registry would re-enqueue forever.
+const PSEUDO_TRIGGER_NODE_TYPES = new Set<string>([
+	MANUAL_TRIGGER_NODE_TYPE,
+	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+	ERROR_TRIGGER_NODE_TYPE,
+]);
 
 /** A single trigger node that failed to (de)register during activation. */
 export type TriggerActivationFailure = {
@@ -77,6 +91,7 @@ export class WorkflowTriggerActivator {
 		private readonly triggerCountService: TriggerCountService,
 		private readonly activationErrorsService: ActivationErrorsService,
 		private readonly tracing: Tracing,
+		private readonly eventService: EventService,
 	) {
 		assert(
 			this.workflowsConfig.useWorkflowPublicationService,
@@ -106,6 +121,40 @@ export class WorkflowTriggerActivator {
 		return workflow.queryNodes(
 			(nodeType) => !!nodeType.trigger || !!nodeType.poll || !!nodeType.webhook,
 		);
+	}
+
+	/**
+	 * Maps each node to where it lives once activated, decided by which functions
+	 * its node type implements: nodes with a `poll` or `trigger` function register
+	 * `in-memory`, nodes with only a `webhook` function are `persisted` rows in
+	 * `webhook_entity`. The pseudo triggers (manual, executeWorkflow, error) are
+	 * `persisted` despite their `trigger` function: it is a no-op fired by the
+	 * execution engine, so the registry holds nothing worth reconciling for them.
+	 * Used by reconciliation to tell which triggers should be in the in-memory
+	 * registry.
+	 */
+	getTriggerKinds(nodes: INode[]): Map<INode['id'], WorkflowPublicationTriggerKind> {
+		const workflow = new Workflow({
+			id: 'trigger-diff',
+			name: 'trigger-diff',
+			nodes,
+			connections: {},
+			active: false,
+			nodeTypes: this.nodeTypes,
+		});
+
+		const inMemoryNodeIds = new Set(
+			[...workflow.getPollNodes(), ...workflow.getTriggerNodes()]
+				.filter((node) => !PSEUDO_TRIGGER_NODE_TYPES.has(node.type))
+				.map((node) => node.id),
+		);
+
+		const kinds = new Map<INode['id'], WorkflowPublicationTriggerKind>();
+		for (const node of nodes) {
+			kinds.set(node.id, inMemoryNodeIds.has(node.id) ? 'in-memory' : 'persisted');
+		}
+
+		return kinds;
 	}
 
 	/**
@@ -155,18 +204,11 @@ export class WorkflowTriggerActivator {
 			workflowSettings: dbWorkflow.settings,
 		});
 
-		// Resolving webhook triggers evaluates each node's `path`/`httpMethod`
-		// expressions (e.g. the Form Trigger's dynamic path), which needs an isolate.
-		await workflow.expression.acquireIsolate();
-		try {
-			return await this.webhookTriggerRegistrar.getNodesWithUnregisteredWebhooks(
-				workflow,
-				additionalData,
-				desiredNodes,
-			);
-		} finally {
-			await workflow.expression.releaseIsolate();
-		}
+		return await this.webhookTriggerRegistrar.getNodesWithUnregisteredWebhooks(
+			workflow,
+			additionalData,
+			desiredNodes,
+		);
 	}
 
 	/**
@@ -199,6 +241,27 @@ export class WorkflowTriggerActivator {
 	 * running. The caller decides whether the result is a full or partial success.
 	 */
 	async activate(
+		dbWorkflow: WorkflowEntity,
+		version: WorkflowTriggerVersion,
+		nodeIds: Set<INode['id']>,
+	): Promise<TriggerActivationOutcome> {
+		const startedAt = Date.now();
+		try {
+			const outcome = await this.activateInternal(dbWorkflow, version, nodeIds);
+			this.emitTriggerOperation(
+				'activate',
+				outcome.failures.length === 0 ? 'success' : 'failure',
+				startedAt,
+			);
+			this.emitTriggerNodeOperations('activate', outcome.activated.length, outcome.failures.length);
+			return outcome;
+		} catch (error) {
+			this.emitTriggerOperation('activate', 'failure', startedAt);
+			throw error;
+		}
+	}
+
+	private async activateInternal(
 		dbWorkflow: WorkflowEntity,
 		version: WorkflowTriggerVersion,
 		nodeIds: Set<INode['id']>,
@@ -277,6 +340,23 @@ export class WorkflowTriggerActivator {
 	) {
 		if (nodeIds.size === 0) return;
 
+		const startedAt = Date.now();
+		try {
+			await this.deactivateInternal(dbWorkflow, version, nodeIds);
+			this.emitTriggerOperation('deactivate', 'success', startedAt);
+			this.emitTriggerNodeOperations('deactivate', nodeIds.size, 0);
+		} catch (error) {
+			this.emitTriggerOperation('deactivate', 'failure', startedAt);
+			this.emitTriggerNodeOperations('deactivate', 0, nodeIds.size);
+			throw error;
+		}
+	}
+
+	private async deactivateInternal(
+		dbWorkflow: WorkflowEntity,
+		version: WorkflowTriggerVersion,
+		nodeIds: Set<INode['id']>,
+	) {
 		await this.tracing.startSpan(
 			{
 				name: 'Trigger deactivation',
@@ -348,6 +428,39 @@ export class WorkflowTriggerActivator {
 				span.setStatus({ code: SpanStatus.ok });
 			},
 		);
+	}
+
+	private emitTriggerOperation(
+		operation: PublicationTriggerOperation,
+		result: PublicationOperationResult,
+		startedAt: number,
+	) {
+		this.eventService.emit('workflow-publication-trigger-operation', {
+			operation,
+			result,
+			durationMs: Date.now() - startedAt,
+		});
+	}
+
+	private emitTriggerNodeOperations(
+		operation: 'activate' | 'deactivate',
+		successCount: number,
+		failureCount: number,
+	) {
+		if (successCount > 0) {
+			this.eventService.emit('workflow-publication-trigger-node-operations', {
+				operation,
+				result: 'success',
+				count: successCount,
+			});
+		}
+		if (failureCount > 0) {
+			this.eventService.emit('workflow-publication-trigger-node-operations', {
+				operation,
+				result: 'failure',
+				count: failureCount,
+			});
+		}
 	}
 
 	private applyVersionToDbWorkflow(dbWorkflow: WorkflowEntity, version: WorkflowTriggerVersion) {
