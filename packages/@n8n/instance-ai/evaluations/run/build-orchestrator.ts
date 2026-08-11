@@ -24,13 +24,14 @@ import {
 } from '../harness/agent-execution';
 import { resolveArtifactContext } from '../harness/artifacts/artifact-context';
 import { attributionForExpectation } from '../harness/attribution';
-import { buildFailedOnInfra, type BuildResult } from '../harness/build-workflow';
+import {
+	buildFailedOnInfra,
+	scrubLocalSecretsFromBuild,
+	type BuildResult,
+} from '../harness/build-workflow';
 import { captureThreadRunDebug } from '../harness/capture-run-debug';
 import { effectiveTimeoutMs, runWorkflowChecks } from '../harness/cleanup';
-import {
-	redactTranscriptSecrets,
-	runCredentialSetupChecks,
-} from '../harness/credential-setup-checks';
+import { runCredentialSetupChecks } from '../harness/credential-setup-checks';
 import type { EvalLogger } from '../harness/logger';
 import {
 	fetchPrebuiltBuild,
@@ -321,34 +322,10 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 	const buildDurations = new Map<string, number>();
 
 	function stashTranscript(build: BuildResult): void {
-		scrubLocalSecrets(build);
+		scrubLocalSecretsFromBuild(build);
 		if (build.threadId && build.transcript) {
 			transcriptByThreadId.set(build.threadId, build.transcript);
 		}
-	}
-
-	/**
-	 * Strip the real provider key from a LOCAL run before ANY consumer captures
-	 * the transcript.
-	 *
-	 * Done here rather than next to the leak check because this is the choke
-	 * point every build path passes through first: `transcriptByThreadId` is
-	 * read by reshape when it writes `eval-results.json`, so redacting later
-	 * left the artifact holding the pre-redaction copy — the redaction ran, and
-	 * the key shipped anyway.
-	 *
-	 * The leak CHECK still needs the raw text, so the haystack is snapshotted
-	 * here, before the scrub, and carried on the facts for the checks to use.
-	 */
-	function scrubLocalSecrets(build: BuildResult): void {
-		const facts = build.credentialSetup;
-		if (!facts?.local || !facts.secretPrefix || facts.leakHaystack !== undefined) return;
-		facts.leakHaystack = JSON.stringify({
-			transcript: build.transcript ?? [],
-			events: build.events ?? [],
-		});
-		build.transcript = redactTranscriptSecrets(build.transcript, facts.secretPrefix);
-		build.events = redactTranscriptSecrets(build.events, facts.secretPrefix);
 	}
 
 	// Agent config + skills, fetched once per build and shared by every

@@ -28,7 +28,11 @@ import {
 	transcriptPrefixFromSeed,
 	type ConversationSeed,
 } from './conversation-seed';
-import { probeCredentialValue, type CredentialValueProbe } from './credential-setup-checks';
+import {
+	probeCredentialValue,
+	redactTranscriptSecrets,
+	type CredentialValueProbe,
+} from './credential-setup-checks';
 import {
 	resolveFixtureForCredentialType,
 	startCredentialSetupLane,
@@ -262,6 +266,29 @@ export function buildFailedOnInfra(build: BuildResult): boolean {
 		build.transportFailure === true ||
 		build.providerOutage !== undefined
 	);
+}
+
+/**
+ * Strip a LOCAL run's real provider key from everything the build carries out.
+ *
+ * Must run INSIDE the traced call: LangSmith's `traceable` records the returned
+ * BuildResult as the run output, so scrubbing after the call returns still ships
+ * the key upstream. The orchestrator calls it again before stashing — idempotent
+ * via `leakHaystack`, so whichever runs first wins and the other is a no-op.
+ *
+ * The leak CHECK needs the raw text, so it is snapshotted here, before the
+ * scrub, and travels on the facts.
+ */
+export function scrubLocalSecretsFromBuild(build: BuildResult): BuildResult {
+	const facts = build.credentialSetup;
+	if (!facts?.local || !facts.secretPrefix || facts.leakHaystack !== undefined) return build;
+	facts.leakHaystack = JSON.stringify({
+		transcript: build.transcript ?? [],
+		events: build.events ?? [],
+	});
+	build.transcript = redactTranscriptSecrets(build.transcript, facts.secretPrefix);
+	build.events = redactTranscriptSecrets(build.events, facts.secretPrefix);
+	return build;
 }
 
 /** What the credential-setup lane knows once a build is over — the input to the

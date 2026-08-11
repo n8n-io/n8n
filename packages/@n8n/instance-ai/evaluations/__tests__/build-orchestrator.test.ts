@@ -594,6 +594,11 @@ describe('local-mode secret scrubbing', () => {
 
 		await createBuildOrchestrator(deps).getOrBuild(0, 'case-a');
 
+		// Asserted on what the CHECK was handed, not on the snapshot we stored:
+		// a regression in the `leakHaystack ?? JSON.stringify(...)` linkage would
+		// feed it the redacted transcript and still leave the snapshot correct.
+		const handed = vi.mocked(runCredentialSetupChecks).mock.calls[0]?.[0];
+		expect(handed?.searchableRunText).toContain(KEY);
 		expect(build.credentialSetup?.leakHaystack).toContain(KEY);
 	});
 

@@ -406,6 +406,7 @@ export async function attachToRunningBrowser(
 	// ours to give flags to — so the connect page would resolve `localhost` on
 	// the developer's machine, where nothing is listening.
 	if (relayPlan.hostResolverRule) {
+		await client.disconnectBrowserSession().catch(() => {});
 		throw new Error(
 			'Local mode needs an n8n reachable on loopback from your own browser, but ' +
 				`--base-url is ${client.baseUrl}, which needs a DNS rule only a launched ` +
@@ -414,6 +415,7 @@ export async function attachToRunningBrowser(
 	}
 	const relayHost = relayHostname(relayPlan.connectUrl);
 	if (relayHost === undefined || !LOOPBACK_HOSTS.has(relayHost)) {
+		await client.disconnectBrowserSession().catch(() => {});
 		throw new Error(
 			'Local mode needs an n8n reachable on loopback, but the relay resolved to ' +
 				`${relayHost ?? 'an unreadable URL'} (--base-url is ${client.baseUrl}). ` +
