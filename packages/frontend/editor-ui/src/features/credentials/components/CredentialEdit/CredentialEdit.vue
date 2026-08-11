@@ -1030,6 +1030,22 @@ async function oAuthCredentialAuthorize() {
 
 	credentialsStore.pendingOAuthRefresh = true;
 
+	// window.open must run within the click's transient user activation:
+	// opening after the save/authorize round trips below gets the popup blocked
+	// on slow connections (Chrome expires activation after ~5s) and in stricter
+	// browsers (Safari) regardless of timing. Open a blank window now and
+	// navigate it once the authorization URL is known.
+	const params =
+		'scrollbars=no,resizable=yes,status=no,titlebar=noe,location=no,toolbar=no,menubar=no,width=500,height=700';
+	const oauthPopup = window.open('about:blank', 'OAuth Authorization', params);
+	if (!oauthPopup) {
+		toast.showError(
+			new Error(i18n.baseText('credentialEdit.credentialEdit.showError.oauthPopupBlocked.message')),
+			i18n.baseText('credentialEdit.credentialEdit.showError.oauthPopupBlocked.title'),
+		);
+		return;
+	}
+
 	// Editors persist any blueprint changes before connecting. Connect-only users
 	// (e.g. on a private credential they can't edit) have nothing to save, so
 	// connecting through saveCredential would be a no-op that returns null and
@@ -1037,6 +1053,7 @@ async function oAuthCredentialAuthorize() {
 	const canEditBlueprint = credentialPermissions.value.update || credentialPermissions.value.create;
 	const credential = canEditBlueprint ? await saveCredential() : currentCredential.value;
 	if (!credential) {
+		oauthPopup.close();
 		return;
 	}
 
@@ -1058,6 +1075,7 @@ async function oAuthCredentialAuthorize() {
 			}
 		}
 	} catch (error) {
+		oauthPopup.close();
 		toast.showError(
 			error,
 			i18n.baseText('credentialEdit.credentialEdit.showError.generateAuthorizationUrl.title'),
@@ -1072,6 +1090,7 @@ async function oAuthCredentialAuthorize() {
 	}
 
 	if (url === undefined || url === '') {
+		oauthPopup.close();
 		toast.showError(
 			new Error(i18n.baseText('credentialEdit.credentialEdit.showError.invalidOAuthUrl.message')),
 			i18n.baseText('credentialEdit.credentialEdit.showError.invalidOAuthUrl.title'),
@@ -1084,6 +1103,7 @@ async function oAuthCredentialAuthorize() {
 	try {
 		const parsedUrl = new URL(url);
 		if (!allowedOAuthUrlProtocols.includes(parsedUrl.protocol)) {
+			oauthPopup.close();
 			toast.showError(
 				new Error(i18n.baseText('credentialEdit.credentialEdit.showError.invalidOAuthUrl.message')),
 				i18n.baseText('credentialEdit.credentialEdit.showError.invalidOAuthUrl.title'),
@@ -1091,6 +1111,7 @@ async function oAuthCredentialAuthorize() {
 			return;
 		}
 	} catch {
+		oauthPopup.close();
 		toast.showError(
 			new Error(i18n.baseText('credentialEdit.credentialEdit.showError.invalidOAuthUrl.message')),
 			i18n.baseText('credentialEdit.credentialEdit.showError.invalidOAuthUrl.title'),
@@ -1098,9 +1119,7 @@ async function oAuthCredentialAuthorize() {
 		return;
 	}
 
-	const params =
-		'scrollbars=no,resizable=yes,status=no,titlebar=noe,location=no,toolbar=no,menubar=no,width=500,height=700';
-	const oauthPopup = window.open(url, 'OAuth Authorization', params);
+	oauthPopup.location.href = url;
 
 	// Token presence in credential data can only confirm the flow when there was
 	// no token yet (a reconnect's old token would read as an immediate false
@@ -1146,20 +1165,13 @@ async function oAuthCredentialAuthorize() {
 			});
 
 			// Close the window
-			if (oauthPopup) {
-				oauthPopup.close();
-			}
+			oauthPopup.close();
 
 			if (closeOnSave.value) {
 				closeDialog();
 			}
 		}
 	};
-
-	if (!oauthPopup) {
-		handleOAuthResult(false);
-		return;
-	}
 
 	// Supersede any previous pending flow so a re-click doesn't leave a second
 	// set of listeners alive; unmounting the modal aborts too (onBeforeUnmount).
