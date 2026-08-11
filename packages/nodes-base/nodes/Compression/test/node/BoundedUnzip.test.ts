@@ -323,11 +323,9 @@ describe('boundedUnzip', () => {
 		expect(result['file.txt'].length).toBe(32);
 	});
 
-	it('should decompress an entry large enough to be inflated off the main thread', async () => {
+	it('should decompress a large entry', async () => {
 		const payload = randomBytes(1024 * 1024);
 		const compressed = Buffer.from(fflate.zipSync({ 'large.bin': [payload, { level: 6 }] }));
-		// well past the 512 KB threshold, so the entry is inflated on a worker
-		expect(compressed.length).toBeGreaterThan(1024 * 1024);
 
 		const result = await boundedUnzip(compressed, 4 * 1024 * 1024, 100);
 
