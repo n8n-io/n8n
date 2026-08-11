@@ -74,6 +74,7 @@ describe('eligibleModules', () => {
 			'mcp-registry',
 			'workflow-reviews',
 			'instance-ai',
+			'usage-monitoring',
 		]);
 	});
 
@@ -110,6 +111,7 @@ describe('eligibleModules', () => {
 			'mcp-registry',
 			'workflow-reviews',
 			'instance-ai',
+			'usage-monitoring',
 			'agents',
 		]);
 	});
