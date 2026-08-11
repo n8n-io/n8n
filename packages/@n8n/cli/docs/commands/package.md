@@ -18,7 +18,6 @@ n8n-cli package export --project-id=abc -o project.n8np
 n8n-cli package export -p abc -p def -o projects.n8np
 n8n-cli package export -w abc --include-variable-values=false -o export.n8np
 n8n-cli package export -w abc --include-tags=false -o export.n8np
-n8n-cli package export -p abc --workflow-version-policy=published-strict -o project.n8np
 ```
 
 | Flag | Description |
