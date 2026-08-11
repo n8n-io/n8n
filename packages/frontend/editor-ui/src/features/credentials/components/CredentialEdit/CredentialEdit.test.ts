@@ -1538,6 +1538,45 @@ describe('CredentialEdit', () => {
 			// Connect-only users can't edit the blueprint, so it must not be re-saved.
 			expect(credentialsStore.updateCredential).not.toHaveBeenCalled();
 		});
+
+		test('does not prompt to save again on a second connect click when nothing changed', async () => {
+			const { credentialsStore, getByTestId } = setupExistingOAuthCredential(
+				{},
+				{
+					isResolvable: true,
+					connectedByMe: false,
+					scopes: ['credential:update', 'credential:connect'],
+				},
+			);
+			// The save response's scopes must keep `credential:connect`, or `canConnect`
+			// (which requires it for resolvable credentials) drops after the first save.
+			credentialsStore.updateCredential.mockResolvedValue(
+				createCredentialResponse({
+					id: 'oauth-cred',
+					name: 'OAuth account',
+					type: oAuth2Api.name,
+					scopes: ['credential:update', 'credential:connect'],
+				}),
+			);
+
+			await waitFor(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
+			await waitFor(() => expect(getByTestId('quick-connect-button')).toBeVisible());
+
+			// First connect: re-saves the credential (no shared fields changed yet) then opens the popup.
+			await userEvent.click(getByTestId('quick-connect-button'));
+			await waitFor(() => expect(credentialsStore.updateCredential).toHaveBeenCalledTimes(1));
+			await waitFor(() => expect(credentialsStore.oAuth2Authorize).toHaveBeenCalledTimes(1));
+
+			// Second connect, e.g. after closing the OAuth popup without completing consent: the
+			// save response omits `data`, which must not make the unchanged static fields look
+			// changed and trigger the "will disconnect everyone" prompt.
+			await waitFor(() => expect(getByTestId('quick-connect-button')).toBeVisible());
+			await userEvent.click(getByTestId('quick-connect-button'));
+			await waitFor(() => expect(credentialsStore.updateCredential).toHaveBeenCalledTimes(2));
+			await waitFor(() => expect(credentialsStore.oAuth2Authorize).toHaveBeenCalledTimes(2));
+
+			expect(confirmMock).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('per-user OAuth banner', () => {
