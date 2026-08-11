@@ -2,7 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue';
 
 import type { IUpdateInformation, NewCredentialsModal } from '@/Interface';
-import type { ICredentialsResponse } from '../../credentials.types';
+import type { ICredentialsDecryptedResponse, ICredentialsResponse } from '../../credentials.types';
 
 import type {
 	CredentialInformation,
@@ -188,7 +188,7 @@ const ndvStore = computed(() => useNDVStore(workflowDocumentStore.value.document
 
 const contextNode = computed<INode | null>(() => {
 	if (ndvStore.value.activeNode) return ndvStore.value.activeNode;
-	const modalState = uiStore.modalStateById[CREDENTIAL_EDIT_MODAL_KEY];
+	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
 	if (isCredentialModalState(modalState) && modalState.contextNode) {
 		return modalState.contextNode;
 	}
@@ -197,7 +197,7 @@ const contextNode = computed<INode | null>(() => {
 });
 
 const overrideProjectId = computed(() => {
-	const modalState = uiStore.modalStateById[CREDENTIAL_EDIT_MODAL_KEY];
+	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
 	return isCredentialModalState(modalState) ? modalState.projectId : undefined;
 });
 
@@ -208,11 +208,11 @@ const form = useCredentialForm({
 	projectId: () => overrideProjectId.value,
 	showAuthSelector: () => requiredCredentials.value,
 	suggestedName: () => {
-		const modalState = uiStore.modalStateById[CREDENTIAL_EDIT_MODAL_KEY];
+		const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
 		return isCredentialModalState(modalState) ? modalState.suggestedName : undefined;
 	},
 	setupHint: () => {
-		const modalState = uiStore.modalStateById[CREDENTIAL_EDIT_MODAL_KEY];
+		const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
 		return isCredentialModalState(modalState) ? modalState.credentialSetupHint : undefined;
 	},
 	// Scroll the auth-error/success banner into view after a test (parity with the
@@ -259,30 +259,30 @@ const {
 } = form;
 
 const hideAskAssistant = computed<boolean>(() => {
-	const modalState = uiStore.modalStateById[CREDENTIAL_EDIT_MODAL_KEY];
+	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
 	return isCredentialModalState(modalState) && modalState.hideAskAssistant === true;
 });
 
 // The host's Instance AI credential-help behavior, stashed in the modal state by
 // whoever opened the modal (the editor capability or the credentials list).
 const instanceAiCredentialHelp = computed(() => {
-	const modalState = uiStore.modalStateById[CREDENTIAL_EDIT_MODAL_KEY];
+	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
 	return isCredentialModalState(modalState) ? modalState.instanceAiCredentialHelp : undefined;
 });
 
 const closeOnSave = computed<boolean>(() => {
-	const modalState = uiStore.modalStateById[CREDENTIAL_EDIT_MODAL_KEY];
+	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
 	return isCredentialModalState(modalState) && modalState.closeOnSave === true;
 });
 
 const presetUsageScope = computed<NewCredentialsModal['usageScope']>(() => {
 	if (props.mode !== 'new') return undefined;
-	const modalState = uiStore.modalStateById[CREDENTIAL_EDIT_MODAL_KEY];
+	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
 	return isCredentialModalState(modalState) ? modalState.usageScope : undefined;
 });
 
 const appendToBody = computed<boolean>(() => {
-	const modalState = uiStore.modalStateById[CREDENTIAL_EDIT_MODAL_KEY];
+	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
 	return isCredentialModalState(modalState) && modalState.appendToBody === true;
 });
 
@@ -353,7 +353,7 @@ const showSharingContent = computed(() => activeTab.value === 'sharing' && !!cre
 onMounted(async () => {
 	// Inner try isolates optional secrets loading; outer try catches all other initialization failures.
 	try {
-		const modalState = uiStore.modalStateById[CREDENTIAL_EDIT_MODAL_KEY];
+		const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
 		requiredCredentials.value =
 			isCredentialModalState(modalState) && modalState.showAuthSelector === true;
 
@@ -654,6 +654,7 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 		null,
 		null,
 	);
+	const savedData = (data ?? {}) as unknown as ICredentialDataDecryptedObject;
 
 	assert(credentialTypeName.value);
 	const credentialDetails: ICredentialsDecrypted = {
@@ -704,7 +705,6 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 
 		// Changing a private credential's shared (static) fields invalidates every
 		// end user's connection, so warn before saving.
-		const savedData = (data ?? {}) as unknown as ICredentialDataDecryptedObject;
 		if (isResolvable.value && getChangedSharedFields(savedData).length) {
 			const confirmAction = await confirmModal('sharedFieldsChanged', {
 				credentialName: credentialName.value,
@@ -721,7 +721,12 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 	isSaving.value = false;
 	if (credential) {
 		credentialId.value = credential.id;
-		currentCredential.value = credential;
+		// The save response omits the encrypted `data` (see credentials.controller.ts),
+		// but we know it now matches what we just persisted. Keep it as the baseline so
+		// the next shared-field diff doesn't compare against an empty object and
+		// false-trigger the "will disconnect everyone" prompt.
+		const updatedCredential: ICredentialsDecryptedResponse = { ...credential, data: savedData };
+		currentCredential.value = updatedCredential;
 		// Resync in case the save cleared this user's connection server-side.
 		connectedByMe.value = credential.connectedByMe === true;
 
