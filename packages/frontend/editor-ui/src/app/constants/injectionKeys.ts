@@ -10,6 +10,7 @@ import type { TelemetryContext } from '@/app/types/telemetry';
 import type { useExecutionDataStore } from '@/app/stores/executionData.store';
 import type { WorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import type { CanvasRenderData } from '@/features/workflows/canvas/canvas.utils';
+import type { INodeUpdatePropertiesInformation } from '@/Interface';
 
 export const WorkflowIdKey = 'workflowId' as unknown as InjectionKey<ComputedRef<string>>;
 export const CanvasKey = 'canvas' as unknown as InjectionKey<CanvasInjectionData>;
@@ -41,6 +42,14 @@ export const ResourceLocatorDropdownTeleportedKey: InjectionKey<boolean> = Symbo
 	'ResourceLocatorDropdownTeleported',
 );
 export const ChatHubToolContextKey: InjectionKey<boolean> = Symbol('ChatHubToolContext');
+/**
+ * Optional callback for hosts that keep a local node draft (e.g. tool-config
+ * modals). ParameterInput invokes this when CredentialsSelect picks a
+ * credential, so the draft stays in sync with the document store write.
+ */
+export const ToolConfigCredentialSelectedKey: InjectionKey<
+	(update: INodeUpdatePropertiesInformation) => void
+> = Symbol('ToolConfigCredentialSelected');
 export const AiBuilderScrollToBottomKey: InjectionKey<() => void> = Symbol('ChatScrollToBottom');
 /**
  * AI editor capabilities a host can toggle per editor, using enablement

@@ -1,6 +1,10 @@
-import { computed } from 'vue';
+import { computed, defineComponent, nextTick, reactive, shallowRef } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
-import { WorkflowIdKey } from '@/app/constants/injectionKeys';
+import {
+	ToolConfigCredentialSelectedKey,
+	WorkflowDocumentStoreKey,
+	WorkflowIdKey,
+} from '@/app/constants/injectionKeys';
 import ParameterInput from './ParameterInput.vue';
 import type { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import type { CompletionResult } from '@codemirror/autocomplete';
@@ -20,10 +24,13 @@ import {
 } from '@/__tests__/mocks';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { type INodeParameterResourceLocator, type INodePropertyOptions } from 'n8n-workflow';
-import type { IWorkflowDb, WorkflowListResource } from '@/Interface';
+import type {
+	INodeUpdatePropertiesInformation,
+	IWorkflowDb,
+	WorkflowListResource,
+} from '@/Interface';
 import { mock } from 'vitest-mock-extended';
 import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
-import { nextTick, reactive } from 'vue';
 
 function getNdvStateMock(): Partial<ReturnType<typeof useNDVStore>> {
 	return {
@@ -1741,6 +1748,60 @@ describe('ParameterInput.vue', () => {
 
 			await fireEvent.update(input, '{"valid": true}');
 			expect(queryByTestId('parameter-issues')).not.toBeInTheDocument();
+		});
+	});
+
+	describe('credentialSelected', () => {
+		const credentialUpdate: INodeUpdatePropertiesInformation = {
+			name: 'HTTP Tool',
+			properties: {
+				credentials: { httpHeaderAuth: { id: 'cred-1', name: 'Darwin Webhook Auth' } },
+			},
+		};
+
+		it('invokes ToolConfigCredentialSelectedKey when CredentialsSelect emits credentialSelected', async () => {
+			const onToolConfigCredentialSelected = vi.fn();
+			const updateNodeProperties = vi.fn();
+
+			const CredentialsSelectStub = defineComponent({
+				emits: ['credentialSelected'],
+				setup(_, { emit }) {
+					return {
+						emitCredentialSelected: () => emit('credentialSelected', credentialUpdate),
+					};
+				},
+				template:
+					'<button data-test-id="emit-credential-selected" @click="emitCredentialSelected" />',
+			});
+
+			const { getByTestId } = renderComponent({
+				props: {
+					path: 'parameters.genericAuthType',
+					parameter: createTestNodeProperties({
+						displayName: 'Generic Auth Type',
+						name: 'genericAuthType',
+						type: 'credentialsSelect',
+					}),
+					modelValue: 'httpHeaderAuth',
+				},
+				global: {
+					provide: {
+						[ToolConfigCredentialSelectedKey as symbol]: onToolConfigCredentialSelected,
+						[WorkflowDocumentStoreKey as symbol]: shallowRef({
+							updateNodeProperties,
+							getNodeByName: vi.fn().mockReturnValue(null),
+						}),
+					},
+					stubs: {
+						CredentialsSelect: CredentialsSelectStub,
+					},
+				},
+			});
+
+			await fireEvent.click(getByTestId('emit-credential-selected'));
+
+			expect(updateNodeProperties).toHaveBeenCalledWith(credentialUpdate);
+			expect(onToolConfigCredentialSelected).toHaveBeenCalledWith(credentialUpdate);
 		});
 	});
 });

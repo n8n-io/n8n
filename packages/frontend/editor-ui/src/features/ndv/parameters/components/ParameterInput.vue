@@ -62,6 +62,7 @@ import {
 	ExpressionLocalResolveContextSymbol,
 	HTML_NODE_TYPE,
 	NODES_USING_CODE_NODE_EDITOR,
+	ToolConfigCredentialSelectedKey,
 } from '@/app/constants';
 
 import { getDebounceTime, useDebounce } from '@n8n/composables/useDebounce';
@@ -194,6 +195,7 @@ const builderStore = useBuilderStore();
 const { isEnabled: isCollectionOverhaulEnabled } = useCollectionOverhaul();
 
 const expressionLocalResolveCtx = inject(ExpressionLocalResolveContextSymbol, undefined);
+const onToolConfigCredentialSelected = inject(ToolConfigCredentialSelectedKey, undefined);
 
 const inputField = ref<InstanceType<typeof N8nInput | typeof N8nSelect> | HTMLElement>();
 const wrapper = ref<HTMLDivElement>();
@@ -814,6 +816,9 @@ function credentialSelected(updateInformation: INodeUpdatePropertiesInformation)
 		// Update the issues
 		nodeHelpers.updateNodeCredentialIssues(updateNode);
 	}
+
+	// Tool-config hosts keep a separate local draft; sync credentials onto it.
+	onToolConfigCredentialSelected?.(updateInformation);
 
 	void externalHooks.run('nodeSettings.credentialSelected', { updateInformation });
 }

@@ -30,6 +30,7 @@ import { computed, onBeforeUnmount, onMounted, provide, ref, shallowRef, watch }
 import {
 	ChatHubToolContextKey,
 	ExpressionLocalResolveContextSymbol,
+	ToolConfigCredentialSelectedKey,
 	WorkflowDocumentStoreKey,
 } from '@/app/constants';
 import type { ExpressionLocalResolveContext } from '@/app/types/expressions';
@@ -156,15 +157,19 @@ const hasCredentialIssues = computed(() => {
 	return Object.keys(credentialIssues?.credentials ?? {}).length > 0;
 });
 
-const workflowDocumentStore = computed(() => {
-	const store = useWorkflowDocumentStore(createWorkflowDocumentId('node-tool-workflow'));
+const toolWorkflowDocumentId = createWorkflowDocumentId('node-tool-workflow');
+const toolWorkflowStore = useWorkflowDocumentStore(toolWorkflowDocumentId);
+const workflowDocumentStore = computed(() => toolWorkflowStore);
 
-	if (node.value) {
-		store.setNodes([node.value]);
-	}
-
-	return store;
-});
+watch(
+	node,
+	(currentNode) => {
+		if (currentNode) {
+			toolWorkflowStore.setNodes([currentNode]);
+		}
+	},
+	{ immediate: true },
+);
 
 const expressionResolveCtx = computed<ExpressionLocalResolveContext | undefined>(() => {
 	if (!node.value) return undefined;
@@ -240,6 +245,10 @@ function handleChangeCredential(updateData: INodeUpdatePropertiesInformation) {
 		};
 	}
 }
+
+// CredentialsSelect → ParameterInput writes the document store only; this
+// keeps the local draft (isValid / save payload) in sync.
+provide(ToolConfigCredentialSelectedKey, handleChangeCredential);
 
 function handleChangeName(name: string) {
 	if (node.value) {
