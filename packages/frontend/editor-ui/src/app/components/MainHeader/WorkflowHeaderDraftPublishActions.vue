@@ -282,10 +282,11 @@ const showReviewToast = (titleKey: BaseTextKey, reviewRequestId: string) => {
 		title: i18n.baseText(titleKey),
 		message: `<a href="${reviewUrl}">${i18n.baseText('workflowReviews.editorBanner.openReview')}</a>`,
 		onClick: (event: MouseEvent | undefined) => {
-			if (event?.target instanceof HTMLAnchorElement) {
-				event.preventDefault();
-				void router.push(reviewRoute);
-			}
+			if (!(event?.target instanceof HTMLAnchorElement)) return;
+			if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return; // let the browser open a new tab
+
+			event.preventDefault();
+			void router.push(reviewRoute);
 		},
 	});
 };
