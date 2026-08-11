@@ -1,6 +1,8 @@
+import { UNLIMITED_CREDITS } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
+import type { Push } from '@/push';
 import type { AiService } from '@/services/ai.service';
 import type { InstanceActivationService } from '@/services/instance-activation.service';
 import type { Telemetry } from '@/telemetry';
@@ -46,22 +48,33 @@ describe('InstanceAiCreditService activation lock', () => {
 		const messageRepo = mock<InstanceAiMessageRepository>();
 		messageRepo.hasAtLeastUserMessages.mockResolvedValue(opts.messageThresholdMet ?? false);
 
-		const scopedLogger = { warn: vi.fn(), debug: vi.fn() };
+		// `info` matters: the success path logs through it, so omitting it makes every happy-path
+		// test fall into the catch instead — silently, and taking the push branch with it.
+		const scopedLogger = { warn: vi.fn(), debug: vi.fn(), info: vi.fn() };
 		const logger = { scoped: vi.fn().mockReturnValue(scopedLogger) };
+		const push = mock<Push>();
 
 		const service = new InstanceAiCreditService(
 			logger as never,
 			aiService,
 			mock<Telemetry>(),
 			{ instanceId: 'inst-1' } as never,
-			mock(),
+			push,
 			mock<InstanceAiThreadRepository>(),
 			settingsService,
 			activationService,
 			messageRepo,
 		);
 
-		return { service, aiService, settingsService, activationService, messageRepo, scopedLogger };
+		return {
+			service,
+			aiService,
+			settingsService,
+			activationService,
+			messageRepo,
+			scopedLogger,
+			push,
+		};
 	}
 
 	describe('when both conditions are met', () => {
@@ -87,6 +100,45 @@ describe('InstanceAiCreditService activation lock', () => {
 			await service.ensureQuotaLockApplied(user);
 
 			expect(aiService.lockInstanceAiQuota).toHaveBeenCalledTimes(1);
+		});
+
+		it('pushes the lock to the acting user so the banner appears', async () => {
+			const { service, push } = setup({ activatedAt: 1_700_000_000, messageThresholdMet: true });
+
+			await service.ensureQuotaLockApplied(user);
+
+			// Amounts stay masked for this cohort — the banner is raised by the flag alone.
+			expect(push.sendToUsers).toHaveBeenCalledWith(
+				{
+					type: 'updateInstanceAiCredits',
+					data: { creditsQuota: UNLIMITED_CREDITS, creditsClaimed: 0, quotaLocked: true },
+				},
+				[user.id],
+			);
+		});
+
+		it('reaches the success path without falling into the catch', async () => {
+			const { service, scopedLogger } = setup({
+				activatedAt: 1_700_000_000,
+				messageThresholdMet: true,
+			});
+
+			await service.ensureQuotaLockApplied(user);
+
+			expect(scopedLogger.info).toHaveBeenCalled();
+			expect(scopedLogger.warn).not.toHaveBeenCalled();
+		});
+
+		it('raises no banner when the service reports the pool was not locked', async () => {
+			const { service, push } = setup({
+				activatedAt: 1_700_000_000,
+				messageThresholdMet: true,
+				lockResult: { creditsQuota: 800, creditsClaimed: 12.5, quotaLocked: false },
+			});
+
+			await service.ensureQuotaLockApplied(user);
+
+			expect(push.sendToUsers).not.toHaveBeenCalled();
 		});
 	});
 
