@@ -127,6 +127,31 @@ Backend `nodes` shape (target for Phase 1 output):
 }> }
 ```
 
+Verified backend-contract facts the FE must respect (from PR #36039):
+
+- **`id` is required on every node ref; `name` is optional.** The backend reads
+  `node.name ?? node.id` everywhere (`buildNodesAttachmentLine`), so always send
+  `id`; send `name` too (we have it) for readable agent context.
+- **Neighbors/group are descriptive prose only.** `buildNodesAttachmentLine`
+  renders each set to a sentence (`Node "X"` / `A chain of connected nodes:
+  A → B → C`, `preceded by "…"`, `followed by "…"`, `part of canvas group "…"`).
+  The agent never executes from this — confirms the send-time-compute decision.
+- **Schema limits:** `sets` max 50; `nodes` per set max 50 (both `min(1)`). See
+  Phase 1 over-limit handling below.
+- **Per-user flag re-check on the backend.** If a `nodes` attachment arrives but
+  the flag is off for that user, the backend **silently drops it**
+  (`canvasNodeContextFlagGate.isEnabled`). So the FE must gate the *trigger* on
+  the same `CANVAS_NODE_CONTEXT_FLAG` — otherwise a flag-off user builds chips
+  that vanish server-side with no feedback.
+- **History round-trip needs no FE work beyond rendering.** The FE POSTs
+  structured `attachments: [...]` (`instanceAi.api.ts`); the backend owns the
+  persistence encoding (`EDITOR_CONTEXT_JSON`) and reconstructs on load via
+  `extractEditorContextResourceAttachments` (its schema now includes `nodes`).
+  `InstanceAiMessage.vue` passes every stored attachment (all types) to
+  `AttachmentPreview` unfiltered with `is-removable="false"`. So "draft ==
+  history" holds automatically **once `AttachmentPreview` handles `type: 'nodes'`**
+  (Phase 4). The FE must NOT try to replicate the text encoding.
+
 ## Phases
 
 Each phase is TDD (tests before implementation), stops for explicit human
@@ -154,10 +179,21 @@ small pure functions composed by a top-level `buildNodesAttachment`:
 id→name, composes the three, returns the backend `nodes` shape. Also used at
 **send time** to recompute neighbors from current draft membership.
 
+**Over-limit handling (cap + toast).** The schema caps `sets` at 50 and `nodes`
+per set at 50. A large selection can exceed these. `buildNodesAttachment` caps
+to the limits (keep the first N sets; within an over-large set keep the first N
+nodes in traversal order) and returns a flag/count so the caller shows a
+non-blocking toast (e.g. "Only the first 50 nodes were added to the chat"). The
+returned attachment is always schema-valid — never emit a payload the backend
+would 400. Limits reference the schema `.max()` values, not inlined magic
+numbers.
+
 Tests: the 8 cases in the plan (chain→1 set ordered; disjoint→2 sets;
 trigger+terminal fine; neighbor resolution incl. edges; group same/mixed/none;
 end-to-end fixture; **`safeParse` against `instanceAiNodesAttachmentSchema`**;
-empty selection → explicit `null`/return, tested).
+empty selection → explicit `null`/return, tested); **plus over-limit: a
+selection exceeding 50 sets and a set exceeding 50 nodes each cap to a valid
+attachment and signal truncation.**
 
 ### Phase 2 — Bridge state + composer draft
 
