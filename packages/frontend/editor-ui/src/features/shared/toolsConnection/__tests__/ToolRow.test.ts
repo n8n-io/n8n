@@ -42,7 +42,7 @@ const baseMcp: McpServerConnectionItem = {
 	kind: 'mcp-server',
 	title: 'Notion',
 	description: 'Connect to Notion',
-	isConnected: false,
+	status: 'none',
 	availableTools: [],
 };
 
@@ -51,13 +51,13 @@ const baseNode: NodeConnectionItem = {
 	kind: 'node',
 	title: 'OpenAI',
 	description: 'Talk to GPT',
-	isConnected: false,
+	status: 'none',
 	nodeTypeName: '@n8n/n8n-nodes-langchain.openAi',
 };
 
 const connectedMcp: McpServerConnectionItem = {
 	...baseMcp,
-	isConnected: true,
+	status: 'connected',
 	credentials: [{ authType: 'mcpOAuth2Api', credentialId: 'cred-1', required: true }],
 };
 
@@ -65,7 +65,7 @@ const baseWorkflow: WorkflowConnectionItem = {
 	id: 'wf-1',
 	kind: 'workflow',
 	title: 'Summariser',
-	isConnected: false,
+	status: 'none',
 	workflowId: 'wf-1234',
 };
 

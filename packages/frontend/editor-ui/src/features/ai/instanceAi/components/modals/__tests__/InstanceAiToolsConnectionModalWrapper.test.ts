@@ -138,7 +138,7 @@ const linearItem: McpServerConnectionItem = {
 	id: 'linear',
 	kind: 'mcp-server',
 	title: 'Linear',
-	isConnected: false,
+	status: 'none',
 	credentials: [{ authType: 'mcpOAuth2Api', required: true }],
 	availableTools: [],
 };
@@ -146,7 +146,7 @@ const linearItem: McpServerConnectionItem = {
 const connectedLinearItem: McpServerConnectionItem = {
 	...linearItem,
 	id: 'conn-1',
-	isConnected: true,
+	status: 'connected',
 	credentials: [{ authType: 'mcpOAuth2Api', credentialId: 'cred-1', required: true }],
 };
 

@@ -29,14 +29,14 @@ const baseMcpItem: McpServerConnectionItem = {
 	title: 'Notion',
 	description: 'Notion MCP',
 	availableTools: [],
-	isConnected: false,
+	status: 'none',
 };
 
 const baseNodeItem: NodeConnectionItem = {
 	id: 'node:slack',
 	kind: 'node',
 	title: 'Slack',
-	isConnected: false,
+	status: 'none',
 	nodeTypeName: 'n8n-nodes-base.slack',
 };
 
@@ -63,8 +63,9 @@ describe('ToolCredentialPicker', () => {
 		expect(queryByTestId('tool-credential-picker-trigger-connected')).toBeNull();
 	});
 
-	it('shows the Connected pill when at least one credential is selected', () => {
-		const { getByTestId, queryByTestId } = render(baseMcpItem, [
+	it('shows the Connected pill for a connected item', () => {
+		const item = { ...baseMcpItem, status: 'connected' as const };
+		const { getByTestId, queryByTestId } = render(item, [
 			{ authType: 'mcpOAuth2Api', credentialId: 'cred-1' },
 		]);
 		expect(getByTestId('tool-credential-picker-trigger-connected')).toBeTruthy();

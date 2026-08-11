@@ -1,11 +1,15 @@
 <script setup lang="ts">
 import { computed, inject } from 'vue';
-import { N8nButton, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nSpinner, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import ShieldIcon from 'virtual:icons/fa-solid/shield-alt';
 import ToolCredentialPicker from './ToolCredentialPicker.vue';
 import ToolIcon from './ToolIcon.vue';
-import { TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY, type ToolConnectionItem } from './types';
+import {
+	hasToolConnection,
+	TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY,
+	type ToolConnectionItem,
+} from './types';
 import { resolveToolItemIcon } from './toolItemIcon';
 
 const props = defineProps<{
@@ -32,7 +36,8 @@ const credentialAdapter = inject(TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY, null);
  */
 const shouldShowCredentialPicker = computed(() => {
 	if (!credentialAdapter) return false;
-	if (props.item.isConnected) return true;
+	if (props.item.status === 'connecting') return false;
+	if (hasToolConnection(props.item.status)) return true;
 
 	return Boolean(
 		props.item.credentials?.some(
@@ -81,6 +86,7 @@ const hasDirectAction = computed(
 );
 
 function handleRowClick() {
+	if (props.item.status === 'connecting') return;
 	emit('open-detail', props.item);
 }
 
@@ -101,6 +107,7 @@ function handleConnect() {
 		<button
 			type="button"
 			:class="$style.mainAction"
+			:disabled="item.status === 'connecting'"
 			data-test-id="tools-connection-row-main"
 			@click="handleRowClick"
 		>
@@ -157,12 +164,20 @@ function handleConnect() {
 				@new-credential-connect="emit('new-credential-connect', $event)"
 			/>
 			<span
-				v-else-if="item.isConnected"
-				:class="$style.connectedMarker"
+				v-else-if="item.status === 'connected'"
+				:class="$style.statusMarker"
 				data-test-id="tools-connection-row-connected"
 			>
 				<span :class="$style.statusDot" aria-hidden="true" />
 				{{ i18n.baseText('tools.connection.action.connected') }}
+			</span>
+			<span
+				v-else-if="item.status === 'connecting'"
+				:class="$style.statusMarker"
+				data-test-id="tools-connection-row-connecting"
+			>
+				<N8nSpinner size="small" />
+				{{ i18n.baseText('tools.connection.action.connecting') }}
 			</span>
 			<template v-else-if="hasDirectAction">
 				<N8nTooltip
@@ -182,7 +197,6 @@ function handleConnect() {
 				</N8nTooltip>
 				<N8nButton
 					v-else
-					:label="actionLabel"
 					variant="outline"
 					size="small"
 					:loading="item.installing"
@@ -190,8 +204,23 @@ function handleConnect() {
 						item.communityPreview ? 'tools-connection-row-install' : 'tools-connection-row-connect'
 					"
 					@click="handleConnect"
-				/>
+				>
+					<span
+						v-if="!item.communityPreview && item.status === 'disconnected'"
+						:class="[$style.statusDot, $style.statusDotDisconnected]"
+						aria-hidden="true"
+					/>
+					{{ actionLabel }}
+				</N8nButton>
 			</template>
+			<span
+				v-else-if="item.status === 'disconnected'"
+				:class="$style.statusMarker"
+				data-test-id="tools-connection-row-disconnected"
+			>
+				<span :class="[$style.statusDot, $style.statusDotDisconnected]" aria-hidden="true" />
+				{{ i18n.baseText('tools.connection.action.disconnected') }}
+			</span>
 		</div>
 	</div>
 </template>
@@ -225,6 +254,10 @@ function handleConnect() {
 	color: inherit;
 	text-align: left;
 	cursor: pointer;
+
+	&:disabled {
+		cursor: default;
+	}
 
 	&:focus-visible {
 		outline: var(--focus--border-width) solid var(--focus--border-color);
@@ -293,7 +326,7 @@ function handleConnect() {
 
 // Status only, for consumers that manage credentials elsewhere. Matches the
 // credential picker's connected pill minus the chevron and button semantics.
-.connectedMarker {
+.statusMarker {
 	display: inline-flex;
 	align-items: center;
 	gap: var(--spacing--3xs);
@@ -309,5 +342,9 @@ function handleConnect() {
 	border-radius: 50%;
 	background: var(--color--success);
 	flex-shrink: 0;
+}
+
+.statusDotDisconnected {
+	background: var(--color--danger);
 }
 </style>

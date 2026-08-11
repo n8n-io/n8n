@@ -15,7 +15,7 @@ import { useInstanceAiComputerUseExperiment } from '@/experiments/instanceAiComp
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { useInstanceAiMcpStore } from '../instanceAiMcp.store';
 import { useInstanceAiMcpTelemetry } from '../instanceAiMcp.telemetry';
-import ConnectionRow from './ConnectionRow.vue';
+import ConnectionRow, { type ConnectionStatus } from './ConnectionRow.vue';
 import { iconForTool } from '../toolIcons';
 import {
 	BROWSER_USE_CONNECTION_TYPE,
@@ -26,8 +26,6 @@ import {
 
 type SingletonConnectionType = ComputerUseConnectionType | BrowserUseConnectionType;
 type RowAction = 'connect' | 'disconnect' | 'settings' | 'remove';
-type ConnectionStatus = 'connected' | 'waiting' | 'disconnected';
-
 const i18n = useI18n();
 const uiStore = useUIStore();
 const store = useInstanceAiSettingsStore();

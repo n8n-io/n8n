@@ -11,6 +11,7 @@ import McpDetailBody from '@/features/shared/toolsConnection/McpDetailBody.vue';
 import McpToolSettingsContent from '@/features/shared/toolsConnection/McpToolSettingsContent.vue';
 import ToolsConnectionModal from '@/features/shared/toolsConnection/ToolsConnectionModal.vue';
 import {
+	isToolConnectionSettled,
 	TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY,
 	type McpServerConnectionItem,
 	type McpServerTool,
@@ -102,7 +103,9 @@ const detailItem = computed<ToolConnectionItem | null>(() => {
 });
 
 const detailMode = computed<'detail' | 'settings'>(() =>
-	detailItem.value?.kind === 'mcp-server' && detailItem.value.isConnected ? 'settings' : 'detail',
+	detailItem.value?.kind === 'mcp-server' && isToolConnectionSettled(detailItem.value.status)
+		? 'settings'
+		: 'detail',
 );
 
 type McpToolMetadata = McpRegistryServerToolResponse | InstanceAiMcpConnectionToolResponse;
@@ -195,7 +198,7 @@ function buildItem(
 		title: server.title,
 		description: server.tagline,
 		longDescription: server.description,
-		isConnected: Boolean(connection),
+		status: connection ? 'connected' : 'none',
 		iconSource: iconForTool(server.icons, uiStore.appliedTheme),
 		credentials: [
 			{
@@ -250,7 +253,7 @@ const serviceItems = computed<ServiceConnectionItem[]>(() => {
 			serviceId: service.id,
 			title: i18n.baseText(service.titleKey),
 			description: i18n.baseText(service.descriptionKey),
-			isConnected: service.isConnected,
+			status: service.isConnected ? 'connected' : 'none',
 			iconSource: service.iconSource,
 		}));
 });
@@ -283,7 +286,9 @@ const items = computed<ToolConnectionItem[]>(() => {
 watch(
 	() => (detailMode.value === 'settings' ? detailItem.value : null),
 	(item) => {
-		if (!item?.isConnected || item.kind !== 'mcp-server') return;
+		if (!item || item.kind !== 'mcp-server' || !isToolConnectionSettled(item.status)) {
+			return;
+		}
 		void mcpStore.fetchConnectionToolsLazy(item.id);
 	},
 	{ immediate: true },

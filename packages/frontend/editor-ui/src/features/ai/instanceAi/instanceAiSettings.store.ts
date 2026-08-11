@@ -289,7 +289,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	}
 
 	// ── Sidebar connections ──────────────────────────────────────────────
-	type ConnectionStatus = 'connected' | 'waiting' | 'disconnected';
+	type ConnectionStatus = 'connected' | 'connecting' | 'disconnected';
 
 	interface SidebarConnection {
 		type: ComputerUseConnectionType | BrowserUseConnectionType;
@@ -307,6 +307,20 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		() =>
 			browserConnected.value || (gatewayConnected.value && isGatewayBrowserCategoryEnabled.value),
 	);
+	const computerUseStatus = computed<ConnectionStatus>(() => {
+		if (gatewayConnected.value) return 'connected';
+		if (isDaemonConnecting.value) return 'connecting';
+		return 'disconnected';
+	});
+	const computerUseSubtitle = computed(() => {
+		if (computerUseStatus.value === 'connected') {
+			return i18n.baseText('instanceAi.connections.types.computerUse.subtitle');
+		}
+		if (computerUseStatus.value === 'connecting') {
+			return i18n.baseText('instanceAi.connections.row.status.connecting');
+		}
+		return i18n.baseText('instanceAi.connections.row.status.disconnected');
+	});
 
 	const connections = computed<SidebarConnection[]>(() => {
 		const result: SidebarConnection[] = [];
@@ -315,10 +329,8 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 			result.push({
 				type: COMPUTER_USE_CONNECTION_TYPE,
 				name: gatewayDirectory.value ?? i18n.baseText('instanceAi.connections.add.computerUse'),
-				subtitle: gatewayConnected.value
-					? i18n.baseText('instanceAi.connections.types.computerUse.subtitle')
-					: i18n.baseText('instanceAi.connections.row.status.disconnected'),
-				status: gatewayConnected.value ? 'connected' : 'disconnected',
+				subtitle: computerUseSubtitle.value,
+				status: computerUseStatus.value,
 			});
 		}
 
