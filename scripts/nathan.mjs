@@ -37,7 +37,7 @@ const IDLE_MS = posNum(process.env.NATHAN_IDLE_MS, 8000, 'NATHAN_IDLE_MS'); // g
 // Overall backstop. A cold branch build (docker-build-push CI) + deploy can run
 // 15-20 min, so keep this generous; override via NATHAN_TIMEOUT_MS.
 const TIMEOUT_MS = posNum(process.env.NATHAN_TIMEOUT_MS, 1_500_000, 'NATHAN_TIMEOUT_MS'); // 25 min
-const TUNNEL_START_MS = 45000;
+const TUNNEL_START_MS = 90000;
 const STAGING_DOMAIN = 'stage-app.n8n.cloud'; // instances live at https://<name>.<domain>
 const DEFAULT_SLACK_CHANNEL = 'C0BGVHZ0SCW'; // #updates-pnpm-nathan
 const DEFAULT_SLACK_CHANNEL_URL = 'https://n8nio.slack.com/archives/C0BGVHZ0SCW';
@@ -217,7 +217,7 @@ function startTunnel() {
 async function waitReachable(url) {
 	const deadline = Date.now() + TUNNEL_START_MS;
 	while (Date.now() < deadline) {
-		try { if ((await fetch(url, { signal: AbortSignal.timeout(5000) })).ok) return true; }
+		try { if ((await fetch(url, { signal: AbortSignal.timeout(20000) })).ok) return true; }
 		catch { /* DNS/edge not ready yet */ }
 		await new Promise((r) => setTimeout(r, 1500));
 	}
