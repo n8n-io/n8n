@@ -1,7 +1,7 @@
 import { validateWorkflow, ValidationError } from '.';
-import { setupTestSchemas, teardownTestSchemas } from './node-parameter-schema/test-schema-setup';
 import type { NodeInstance, WorkflowJSON } from '../types/base';
 import { workflow } from '../workflow-builder';
+import { setupTestSchemas, teardownTestSchemas } from './node-parameter-schema/test-schema-setup';
 import { node, trigger, sticky } from '../workflow-builder/node-builders/node-builder';
 import { languageModel, tool } from '../workflow-builder/node-builders/subnode-builders';
 
