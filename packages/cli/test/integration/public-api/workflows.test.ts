@@ -323,6 +323,26 @@ describe('GET /workflows', () => {
 		expect(response.body.data[0].id).not.toEqual(response2.body.data[0].id);
 	});
 
+	test('should reject a cursor that does not decode to JSON', async () => {
+		await createWorkflowWithHistory({}, member);
+
+		const cursor = Buffer.from('not json').toString('base64');
+		const response = await authMemberAgent.get(`/workflows?cursor=${cursor}`);
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toBe('An invalid cursor was provided');
+	});
+
+	test('should reject a cursor that carries no offset', async () => {
+		await createWorkflowWithHistory({}, member);
+
+		const cursor = Buffer.from(JSON.stringify({ lastId: 'abc', limit: 10 })).toString('base64');
+		const response = await authMemberAgent.get(`/workflows?cursor=${cursor}`);
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toBe('An invalid cursor was provided');
+	});
+
 	test('should return all owned workflows filtered by tag', async () => {
 		const tag = await createTag({});
 
@@ -363,6 +383,23 @@ describe('GET /workflows', () => {
 
 		expect(wfTags.length).toBe(1);
 		expect(wfTags[0].id).toBe(tag.id);
+	});
+
+	test('should omit tags entirely when tags are disabled', async () => {
+		globalConfig.tags.disabled = true;
+
+		try {
+			const tag = await createTag({ name: 'production' });
+			await createWorkflowWithHistory({ tags: [tag] }, member);
+
+			const response = await authMemberAgent.get('/workflows');
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body.data).toHaveLength(1);
+			expect(response.body.data[0]).not.toHaveProperty('tags');
+		} finally {
+			globalConfig.tags.disabled = false;
+		}
 	});
 
 	test('should return all owned workflows filtered by tags', async () => {
