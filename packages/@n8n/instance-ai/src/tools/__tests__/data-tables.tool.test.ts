@@ -1,5 +1,6 @@
 import type { InstanceAiPermissions } from '@n8n/api-types';
 import type { Mock } from 'vitest';
+import type { z } from 'zod';
 
 import { executeTool } from '../../__tests__/tool-test-utils';
 import type { InstanceAiContext } from '../../types';
@@ -62,6 +63,21 @@ describe('data-tables tool', () => {
 			expect(tool.description).toContain('data-table-manager');
 			expect(tool.description).toContain('load_skill');
 			expect(tool.description).toContain('what data tables do I have?');
+		});
+
+		// The SDK validates resume payloads against this schema (converted to JSON
+		// schema with additionalProperties: false) and replaces resume data with the
+		// parse result — an undeclared `scope` is rejected or silently stripped, so
+		// the "Always allow" grant would never reach the handler.
+		it('resume schema declares scope so the SDK preserves it on resume', () => {
+			const context = createMockContext();
+			const tool = createDataTablesTool(context);
+
+			const parsed: unknown = (tool.resumeSchema as z.ZodTypeAny).parse({
+				approved: true,
+				scope: 'session',
+			});
+			expect(parsed).toEqual({ approved: true, scope: 'session' });
 		});
 	});
 
