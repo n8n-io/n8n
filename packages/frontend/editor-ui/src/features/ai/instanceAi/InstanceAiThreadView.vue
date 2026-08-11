@@ -396,16 +396,51 @@ const shouldSuppressContentLayoutTransitions = computed(
 	() => !isPreviewPanelTransitionEnabled.value,
 );
 const artifactsPanelSlotRef = useTemplateRef<HTMLElement>('artifactsPanelSlot');
-const previewPanelWidth = ref(0);
+const previewPanelWidth = ref(Math.round(threadAreaWidth.value / 2));
 const isResizingPreview = ref(false);
 const isPreviewExpanded = ref(false);
+const isAgentPreviewDockOpen = ref(false);
+
+watch(preview.activeTabId, (activeTabId, previousActiveTabId) => {
+	if (activeTabId !== previousActiveTabId) {
+		isAgentPreviewDockOpen.value = false;
+	}
+});
+
 const previewMaxWidth = computed(() => Math.round(threadAreaWidth.value / 2));
-const previewPanelStyle = computed(() =>
-	isPreviewExpanded.value ? undefined : { width: `${previewPanelWidth.value}px` },
+// Keep the artifact at its current width and split the remaining space evenly
+// between the Instance AI chat and the agent preview chat.
+const agentPreviewChatColumnWidth = computed(() =>
+	Math.max(0, (threadAreaWidth.value - previewPanelWidth.value) / 2),
 );
+const agentPreviewPanelStyle = computed(() => {
+	const chatColumnWidth = {
+		'--agent-preview-chat-column-width': `${agentPreviewChatColumnWidth.value}px`,
+	};
+
+	if (isAgentPreviewDockOpen.value) {
+		return {
+			...chatColumnWidth,
+			width: `${previewPanelWidth.value + agentPreviewChatColumnWidth.value}px`,
+		};
+	}
+
+	return isPreviewExpanded.value
+		? chatColumnWidth
+		: { ...chatColumnWidth, width: `${previewPanelWidth.value}px` };
+});
 
 function togglePreviewExpanded() {
+	if (isAgentPreviewDockOpen.value) return;
+
 	isPreviewExpanded.value = !isPreviewExpanded.value;
+}
+
+function handleAgentPreviewDockOpenChange(open: boolean) {
+	isAgentPreviewDockOpen.value = open;
+	if (open) {
+		isPreviewExpanded.value = false;
+	}
 }
 
 // Clamp preview width when the available area shrinks (sidebar open, window
@@ -443,6 +478,8 @@ watch(
 		if (visible) {
 			isArtifactsPanelRevealed.value = false;
 			previewPanelWidth.value = Math.round(threadAreaWidth.value / 2);
+		} else {
+			isAgentPreviewDockOpen.value = false;
 		}
 	},
 	{ flush: 'sync' },
@@ -484,6 +521,7 @@ watch(
 	() => props.threadId,
 	(threadId, previousThreadId) => {
 		if (threadId !== previousThreadId) {
+			isAgentPreviewDockOpen.value = false;
 			suppressPanelTransitionsUntilStableRender();
 		}
 	},
@@ -864,86 +902,106 @@ async function dismissComposerContextChip() {
 </script>
 
 <template>
-	<div ref="threadArea" :class="$style.threadArea">
+	<div
+		ref="threadArea"
+		:class="[
+			$style.threadArea,
+			{
+				agentPreviewDockOpen: isAgentPreviewDockOpen,
+			},
+		]"
+		data-test-id="instance-ai-thread-area"
+	>
 		<!-- Main chat area -->
-		<div :class="$style.chatArea">
-			<InstanceAiViewHeader>
-				<template #title>
-					<N8nHeading
-						v-if="currentThreadTitle"
-						tag="h2"
-						size="small"
-						:class="[
-							$style.headerTitle,
-							{ [$style.headerTitleWithSidebar]: !sidebar.collapsed.value },
-						]"
-					>
-						{{ currentThreadTitle }}
-					</N8nHeading>
-					<N8nText
-						v-if="thread.sseState === 'reconnecting'"
-						size="small"
-						color="text-light"
-						:class="$style.reconnecting"
-					>
-						{{ i18n.baseText('instanceAi.view.reconnecting') }}
-					</N8nText>
-				</template>
-				<template #actions>
-					<N8nIconButton
-						v-if="isDebugEnabled"
-						icon="bug"
-						variant="ghost"
-						size="small"
-						icon-size="large"
-						:class="{ [$style.activeButton]: showDebugPanel }"
-						@click="
-							showDebugPanel = !showDebugPanel;
-							store.debugMode = showDebugPanel;
-						"
-					/>
-					<N8nTooltip
-						:content="artifactsPanelToggleLabel"
-						placement="bottom"
-						:show-after="TOOLTIP_DELAY_MS"
-					>
-						<Transition name="preview-toggle-opacity" :css="isArtifactsPanelTransitionEnabled">
-							<N8nIconButton
-								v-if="showArtifactsPanelToggle"
-								icon="list"
-								variant="ghost"
-								size="small"
-								icon-size="large"
-								data-test-id="instance-ai-artifacts-panel-toggle"
-								:aria-label="artifactsPanelToggleLabel"
-								:aria-pressed="showArtifactsPanel"
-								:disabled="!canShowArtifactsPanel"
-								@click="toggleArtifactsPanel"
-							/>
-						</Transition>
-					</N8nTooltip>
-					<N8nTooltip
-						:content="artifactsPreviewToggleLabel"
-						placement="bottom"
-						:show-after="TOOLTIP_DELAY_MS"
-					>
-						<Transition name="preview-toggle-opacity" :css="isPreviewPanelTransitionEnabled">
-							<N8nIconButton
-								v-if="!preview.isPreviewVisible.value"
-								icon="panel-right"
-								variant="ghost"
-								size="small"
-								icon-size="large"
-								data-test-id="instance-ai-artifacts-preview-toggle"
-								:aria-label="artifactsPreviewToggleLabel"
-								:aria-pressed="preview.isPreviewVisible.value"
-								:disabled="!hasPreviewTabs"
-								@click="toggleArtifactsPreview"
-							/>
-						</Transition>
-					</N8nTooltip>
-				</template>
-			</InstanceAiViewHeader>
+		<div
+			:class="[
+				$style.chatArea,
+				{
+					[$style.agentPreviewLayoutTransition]: isPreviewPanelTransitionEnabled,
+				},
+			]"
+			:data-layout-animated="isPreviewPanelTransitionEnabled"
+			data-test-id="instance-ai-builder-chat"
+		>
+			<div :class="$style.builderChatHeader" data-test-id="instance-ai-builder-chat-header">
+				<InstanceAiViewHeader>
+					<template #title>
+						<N8nHeading
+							v-if="currentThreadTitle"
+							tag="h2"
+							size="small"
+							:class="[
+								$style.headerTitle,
+								{ [$style.headerTitleWithSidebar]: !sidebar.collapsed.value },
+							]"
+						>
+							{{ currentThreadTitle }}
+						</N8nHeading>
+						<N8nText
+							v-if="thread.sseState === 'reconnecting'"
+							size="small"
+							color="text-light"
+							:class="$style.reconnecting"
+						>
+							{{ i18n.baseText('instanceAi.view.reconnecting') }}
+						</N8nText>
+					</template>
+					<template #actions>
+						<N8nIconButton
+							v-if="isDebugEnabled"
+							icon="bug"
+							variant="ghost"
+							size="small"
+							icon-size="large"
+							:class="{ [$style.activeButton]: showDebugPanel }"
+							@click="
+								showDebugPanel = !showDebugPanel;
+								store.debugMode = showDebugPanel;
+							"
+						/>
+						<N8nTooltip
+							:content="artifactsPanelToggleLabel"
+							placement="bottom"
+							:show-after="TOOLTIP_DELAY_MS"
+						>
+							<Transition name="preview-toggle-opacity" :css="isArtifactsPanelTransitionEnabled">
+								<N8nIconButton
+									v-if="showArtifactsPanelToggle"
+									icon="list"
+									variant="ghost"
+									size="small"
+									icon-size="large"
+									data-test-id="instance-ai-artifacts-panel-toggle"
+									:aria-label="artifactsPanelToggleLabel"
+									:aria-pressed="showArtifactsPanel"
+									:disabled="!canShowArtifactsPanel"
+									@click="toggleArtifactsPanel"
+								/>
+							</Transition>
+						</N8nTooltip>
+						<N8nTooltip
+							:content="artifactsPreviewToggleLabel"
+							placement="bottom"
+							:show-after="TOOLTIP_DELAY_MS"
+						>
+							<Transition name="preview-toggle-opacity" :css="isPreviewPanelTransitionEnabled">
+								<N8nIconButton
+									v-if="!preview.isPreviewVisible.value"
+									icon="panel-right"
+									variant="ghost"
+									size="small"
+									icon-size="large"
+									data-test-id="instance-ai-artifacts-preview-toggle"
+									:aria-label="artifactsPreviewToggleLabel"
+									:aria-pressed="preview.isPreviewVisible.value"
+									:disabled="!hasPreviewTabs"
+									@click="toggleArtifactsPreview"
+								/>
+							</Transition>
+						</N8nTooltip>
+					</template>
+				</InstanceAiViewHeader>
+			</div>
 
 			<!-- Content area: chat + artifacts side by side below header -->
 			<div
@@ -1119,8 +1177,15 @@ async function dismissComposerContextChip() {
 		>
 			<div
 				v-show="preview.isPreviewVisible.value"
-				:class="[$style.canvasArea, { [$style.canvasAreaExpanded]: isPreviewExpanded }]"
-				:style="previewPanelStyle"
+				:class="[
+					$style.canvasArea,
+					{
+						[$style.canvasAreaExpanded]: isPreviewExpanded,
+						[$style.agentPreviewLayoutTransition]:
+							isPreviewPanelTransitionEnabled && !isResizingPreview,
+					},
+				]"
+				:style="agentPreviewPanelStyle"
 				:data-expanded="isPreviewExpanded"
 				data-test-id="instance-ai-preview-panel"
 			>
@@ -1129,7 +1194,7 @@ async function dismissComposerContextChip() {
 					:min-width="400"
 					:max-width="previewMaxWidth"
 					:supported-directions="['left']"
-					:is-resizing-enabled="!isPreviewExpanded"
+					:is-resizing-enabled="!isPreviewExpanded && !isAgentPreviewDockOpen"
 					:grid-size="8"
 					:outset="true"
 					@resize="handlePreviewResize"
@@ -1145,6 +1210,7 @@ async function dismissComposerContextChip() {
 							:tabs="preview.allArtifactTabs.value"
 							:active-tab-id="preview.activeTabId.value"
 							:is-expanded="isPreviewExpanded"
+							:is-expand-disabled="isAgentPreviewDockOpen"
 							:preview-toggle-label="artifactsPreviewToggleLabel"
 							@toggle-preview="toggleArtifactsPreview"
 							@toggle-expanded="togglePreviewExpanded"
@@ -1180,6 +1246,7 @@ async function dismissComposerContextChip() {
 								:agent-id="preview.activeAgentId.value"
 								:project-id="preview.activeAgentProjectId.value"
 								:pending="preview.activeAgentPending.value"
+								@preview-open-change="handleAgentPreviewDockOpenChange"
 							/>
 						</div>
 					</TabsRoot>
@@ -1190,6 +1257,8 @@ async function dismissComposerContextChip() {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion' as motion;
+
 @property --instance-ai-artifacts-layout-width {
 	syntax: '<length>';
 	inherits: true;
@@ -1205,6 +1274,17 @@ async function dismissComposerContextChip() {
 	display: flex;
 	min-width: 0;
 	overflow: hidden;
+}
+
+.agentPreviewLayoutTransition {
+	--animation--width-transition--duration: var(--duration--snappy);
+	--animation--width-transition--easing: var(--easing--ease-in-out);
+
+	@include motion.width-transition;
+}
+
+.builderChatHeader {
+	flex-shrink: 0;
 }
 
 .chatArea {
