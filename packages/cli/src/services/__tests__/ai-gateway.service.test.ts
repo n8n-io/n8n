@@ -509,6 +509,26 @@ describe('AiGatewayService', () => {
 			});
 		});
 
+		it('keeps workflow-only gateway URL when workflow ownership lookup fails', async () => {
+			const ownershipService = mock<OwnershipService>();
+			ownershipService.getWorkflowProjectCached.mockRejectedValue(new Error('Workflow not found'));
+			mockConfigThenToken();
+			const service = makeService({ ownershipService });
+
+			const result = await service.getSyntheticCredential({
+				credentialType: 'googlePalmApi',
+				userId: USER_ID,
+				executionId: '29021',
+				workflowId: 'R9JFXwkUCL1jZBuw',
+			});
+
+			expect(ownershipService.getWorkflowProjectCached).toHaveBeenCalledWith('R9JFXwkUCL1jZBuw');
+			expect(result).toEqual({
+				apiKey: 'mock-jwt-token',
+				host: `${BASE_URL}/v1/gateway/exec/29021/R9JFXwkUCL1jZBuw/google`,
+			});
+		});
+
 		it('uses standard gateway URL when executionId is absent', async () => {
 			mockConfigThenToken();
 			const service = makeService();

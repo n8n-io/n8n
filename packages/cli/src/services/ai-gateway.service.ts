@@ -146,7 +146,8 @@ export class AiGatewayService {
 	/**
 	 * Resolves the concrete project a request belongs to: the explicit `projectId`
 	 * when provided, otherwise the owning project of `workflowId` (cached lookup).
-	 * Returns undefined when neither is available (e.g. old gateway requests).
+	 * Returns undefined when neither is available or workflow ownership cannot be
+	 * resolved, so project attribution never blocks gateway credential creation.
 	 */
 	private async resolveProjectId({
 		projectId,
@@ -157,7 +158,11 @@ export class AiGatewayService {
 	}): Promise<string | undefined> {
 		if (projectId) return projectId;
 		if (!workflowId) return undefined;
-		return (await this.ownershipService.getWorkflowProjectCached(workflowId))?.id;
+		try {
+			return (await this.ownershipService.getWorkflowProjectCached(workflowId)).id;
+		} catch {
+			return undefined;
+		}
 	}
 
 	/**
