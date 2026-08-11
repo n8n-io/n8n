@@ -1,3 +1,4 @@
+import type { WorkflowChangelog } from '@n8n/api-types';
 import { UpdateWorkflowHistoryVersionDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
@@ -11,8 +12,8 @@ import { Service } from '@n8n/di';
 import type { EntityManager } from '@n8n/typeorm';
 import { In } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
-import type { IWorkflowBase } from 'n8n-workflow';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
+import type { IWorkflowBase } from 'n8n-workflow';
 import { UnexpectedError } from 'n8n-workflow';
 
 import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error';
@@ -307,6 +308,49 @@ export class WorkflowHistoryService {
 		});
 
 		return versions.map((v) => ({ versionId: v.versionId, createdAt: v.createdAt }));
+	}
+
+	/** Authors and date range of the versions created since the workflow's published version. */
+	async getChangelog(user: User, workflowId: string): Promise<WorkflowChangelog> {
+		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
+			'workflow:read',
+		]);
+
+		if (!workflow) {
+			throw new SharedWorkflowNotFoundError('');
+		}
+
+		if (!workflow.activeVersionId) {
+			return null;
+		}
+
+		const publishedVersion = await this.workflowHistoryRepository.findOne({
+			where: { workflowId: workflow.id, versionId: workflow.activeVersionId },
+			select: ['createdAt'],
+		});
+
+		// Published version already pruned - changes since it cannot be determined
+		if (!publishedVersion) {
+			return null;
+		}
+
+		const versions = await this.workflowHistoryRepository.findAuthorsAndDatesCreatedAfter(
+			workflow.id,
+			publishedVersion.createdAt,
+		);
+
+		if (versions.length === 0) {
+			return null;
+		}
+
+		// `authors` is a comma-separated string per version
+		const authors = [...new Set(versions.flatMap((v) => v.authors.split(', ')))];
+
+		return {
+			authors,
+			from: versions[versions.length - 1].createdAt.toISOString(),
+			to: versions[0].createdAt.toISOString(),
+		};
 	}
 
 	async getPublishTimeline(user: User, workflowId: string) {

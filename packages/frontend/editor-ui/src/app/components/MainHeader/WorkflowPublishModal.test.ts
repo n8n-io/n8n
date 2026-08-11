@@ -5,7 +5,6 @@ import WorkflowPublishModal from '@/app/components/MainHeader/WorkflowPublishMod
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useWorkflowHistoryStore } from '@/features/workflows/workflowHistory/workflowHistory.store';
-import type { WorkflowHistory } from '@n8n/rest-api-client/api/workflowHistory';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { WORKFLOW_PUBLISH_MODAL_KEY } from '@/app/constants';
@@ -108,7 +107,7 @@ describe('WorkflowPublishModal', () => {
 		workflowsStore = mockedStore(useWorkflowsStore);
 		workflowsListStore = mockedStore(useWorkflowsListStore);
 		workflowHistoryStore = mockedStore(useWorkflowHistoryStore);
-		workflowHistoryStore.getWorkflowHistory.mockResolvedValue([]);
+		workflowHistoryStore.getWorkflowChangelog.mockResolvedValue(null);
 		usersStore = mockedStore(useUsersStore);
 		usersStore.fetchUsers.mockResolvedValue(undefined);
 		setUserCount(2);
@@ -241,33 +240,14 @@ describe('WorkflowPublishModal', () => {
 	});
 
 	describe('changelog since last publish', () => {
-		const historyItem = (overrides: Partial<WorkflowHistory>): WorkflowHistory => ({
-			versionId: 'id',
-			authors: 'Test Author',
-			createdAt: '2024-01-01T00:00:00.000Z',
-			updatedAt: '2024-01-01T00:00:00.000Z',
-			workflowPublishHistory: [],
-			name: null,
-			description: null,
-			...overrides,
-		});
+		const changelog = {
+			authors: ['Alice', 'Bob'],
+			from: '2024-03-01T09:00:00.000Z',
+			to: '2024-03-02T10:00:00.000Z',
+		};
 
-		it('summarizes date range and authors of versions newer than the published one', async () => {
-			workflowHistoryStore.getWorkflowHistory.mockResolvedValue([
-				historyItem({
-					versionId: 'new-version',
-					authors: 'Alice',
-					createdAt: '2024-03-02T10:00:00.000Z',
-				}),
-				historyItem({
-					versionId: 'mid-version',
-					name: 'Mid version',
-					authors: 'Alice, Bob',
-					createdAt: '2024-03-01T09:00:00.000Z',
-				}),
-				historyItem({ versionId: 'old-version', name: 'Published Version', authors: 'Carol' }),
-				historyItem({ versionId: 'ancient-version', authors: 'Carol' }),
-			]);
+		it('summarizes date range and authors of versions since the last publish', async () => {
+			workflowHistoryStore.getWorkflowChangelog.mockResolvedValue(changelog);
 
 			const { getByTestId } = renderComponent();
 
@@ -276,10 +256,8 @@ describe('WorkflowPublishModal', () => {
 			});
 
 			expect(getByTestId('workflow-publish-changelog')).toHaveTextContent(
-				'Includes changes from 2024 Mar 1 to 2024 Mar 2 from Alice, Bob',
+				'Includes changes from 2024 Mar 1 to 2024 Mar 2 from Alice, Bob.',
 			);
-			// Authors of already-published versions are not included
-			expect(getByTestId('workflow-publish-changelog')).not.toHaveTextContent('Carol');
 			expect(getByTestId('workflow-publish-changelog-history-link')).toHaveTextContent(
 				'Go to history',
 			);
@@ -287,19 +265,7 @@ describe('WorkflowPublishModal', () => {
 
 		it('omits the authors on a single-user instance', async () => {
 			setUserCount(1);
-			workflowHistoryStore.getWorkflowHistory.mockResolvedValue([
-				historyItem({
-					versionId: 'new-version',
-					authors: 'Alice',
-					createdAt: '2024-03-02T10:00:00.000Z',
-				}),
-				historyItem({
-					versionId: 'mid-version',
-					authors: 'Alice',
-					createdAt: '2024-03-01T09:00:00.000Z',
-				}),
-				historyItem({ versionId: 'old-version', name: 'Published Version' }),
-			]);
+			workflowHistoryStore.getWorkflowChangelog.mockResolvedValue(changelog);
 
 			const { getByTestId } = renderComponent();
 
@@ -315,14 +281,12 @@ describe('WorkflowPublishModal', () => {
 		});
 
 		it('is hidden when there are no versions since the last publish', async () => {
-			workflowHistoryStore.getWorkflowHistory.mockResolvedValue([
-				historyItem({ versionId: 'old-version', name: 'Published Version' }),
-			]);
+			workflowHistoryStore.getWorkflowChangelog.mockResolvedValue(null);
 
 			const { queryByTestId } = renderComponent();
 
 			await waitFor(() => {
-				expect(workflowHistoryStore.getWorkflowHistory).toHaveBeenCalled();
+				expect(workflowHistoryStore.getWorkflowChangelog).toHaveBeenCalled();
 			});
 			expect(queryByTestId('workflow-publish-changelog')).not.toBeInTheDocument();
 		});

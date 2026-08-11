@@ -75,6 +75,18 @@ export class WorkflowHistoryController {
 		}
 	}
 
+	@Get('/workflow/:workflowId/changelog')
+	async getChangelog(req: WorkflowHistoryRequest.GetList) {
+		try {
+			return await this.historyService.getChangelog(req.user, req.params.workflowId);
+		} catch (e) {
+			if (e instanceof SharedWorkflowNotFoundError) {
+				throw new NotFoundError('Could not find workflow');
+			}
+			throw e;
+		}
+	}
+
 	@Get('/workflow/:workflowId/publish-timeline')
 	async getPublishTimeline(req: WorkflowHistoryRequest.GetList) {
 		try {

@@ -1,5 +1,5 @@
 import { Service } from '@n8n/di';
-import { DataSource, In, LessThan } from '@n8n/typeorm';
+import { DataSource, In, LessThan, MoreThan } from '@n8n/typeorm';
 import { DiffMetaData, DiffRule, groupWorkflows, SKIP_RULES } from 'n8n-workflow';
 
 import { WorkflowHistory, WorkflowEntity, WorkflowPublishedVersion } from '../entities';
@@ -20,6 +20,18 @@ export class WorkflowHistoryRepository extends BaseRepository<WorkflowHistory> {
 
 	async deleteEarlierThan(date: Date) {
 		return await this.delete({ createdAt: LessThan(date) });
+	}
+
+	/** Authors and creation dates of a workflow's versions created after the given date, newest first. */
+	async findAuthorsAndDatesCreatedAfter(
+		workflowId: string,
+		after: Date,
+	): Promise<Array<Pick<WorkflowHistory, 'authors' | 'createdAt'>>> {
+		return await this.find({
+			where: { workflowId, createdAt: MoreThan(after) },
+			select: ['authors', 'createdAt'],
+			order: { createdAt: 'DESC' },
+		});
 	}
 
 	/**

@@ -32,7 +32,7 @@ import {
 	generateVersionLabelFromId,
 } from '@/features/workflows/workflowHistory/utils';
 import { useWorkflowHistoryStore } from '@/features/workflows/workflowHistory/workflowHistory.store';
-import type { WorkflowHistory } from '@n8n/rest-api-client/api/workflowHistory';
+import type { WorkflowChangelog } from '@n8n/rest-api-client/api/workflowHistory';
 
 const modalBus = createEventBus();
 const i18n = useI18n();
@@ -116,31 +116,26 @@ function onModalOpened() {
 	publishForm.value?.focusInput();
 }
 
-const changelog = ref<WorkflowHistory[]>([]);
+const changelog = ref<WorkflowChangelog>(null);
 
 async function loadChangelog() {
-	const publishedVersionId = workflowDocumentStore.value.activeVersion?.versionId;
-	if (!publishedVersionId) return;
+	if (!workflowDocumentStore.value.activeVersion?.versionId) return;
 
 	try {
 		void usersStore.fetchUsers({ take: 2 });
-		const history = await workflowHistoryStore.getWorkflowHistory(
+		changelog.value = await workflowHistoryStore.getWorkflowChangelog(
 			workflowDocumentStore.value.workflowId,
-			{ take: 20 },
 		);
-		const publishedIndex = history.findIndex((v) => v.versionId === publishedVersionId);
-		changelog.value = publishedIndex === -1 ? history : history.slice(0, publishedIndex);
 	} catch {
 		// ponytail: changelog is informational; publishing works without it
 	}
 }
 
 const changelogSummary = computed(() => {
-	if (changelog.value.length === 0) return null;
+	if (!changelog.value) return null;
 
-	// List is newest-first
-	const to = formatTimestamp(changelog.value[0].createdAt).date;
-	const from = formatTimestamp(changelog.value[changelog.value.length - 1].createdAt).date;
+	const from = formatTimestamp(changelog.value.from).date;
+	const to = formatTimestamp(changelog.value.to).date;
 
 	// Authors add no information on a single-user instance
 	if (usersStore.allUsers.length <= 1) {
@@ -149,9 +144,8 @@ const changelogSummary = computed(() => {
 		});
 	}
 
-	const authors = [...new Set(changelog.value.flatMap((v) => v.authors.split(', ')))].join(', ');
 	return i18n.baseText('workflows.publishModal.changelog', {
-		interpolate: { from, to, authors },
+		interpolate: { from, to, authors: changelog.value.authors.join(', ') },
 	});
 });
 
