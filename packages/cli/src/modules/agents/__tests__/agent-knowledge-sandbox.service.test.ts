@@ -468,7 +468,7 @@ describe('AgentKnowledgeSandboxService', () => {
 			return makeAgentFile({ id, fileName });
 		}
 
-		it('syncs once, skips an unchanged repeat, and recopies a replaced file', async () => {
+		it('syncs once, checks an unchanged repeat, and recopies a replaced file', async () => {
 			let manifestState = '';
 			sandbox.executeCommand.mockImplementation(async (command) =>
 				makeCommandResult(isManifestReadCommand(command) ? manifestState : ''),
@@ -508,7 +508,7 @@ describe('AgentKnowledgeSandboxService', () => {
 			filesystem.writeFile.mockClear();
 			await service.searchKnowledge(projectId, agentId, { pattern: 'bar' });
 			commands = sandbox.executeCommand.mock.calls.map(([command]) => command);
-			expect(commands.filter(isManifestReadCommand)).toHaveLength(0);
+			expect(commands.filter(isManifestReadCommand)).toHaveLength(1);
 			expect(commands.filter(isMirrorSyncCommand)).toHaveLength(0);
 			expect(commands).toHaveLength(1);
 			expect(agentKnowledgeFileStore.readAsBuffer).not.toHaveBeenCalled();
@@ -556,34 +556,42 @@ describe('AgentKnowledgeSandboxService', () => {
 			expect(searchCall?.[0]).toContain(`cd '\\''${n8nKnowledgePaths.filesDir}'\\''`);
 		});
 
-		it('resyncs the mirror when an n8n sandbox is recreated under the same ID', async () => {
-			const deterministicId = 'eaa9416e-fd18-5dd5-bb92-5e8fc51eb5d0';
-			const staleSandbox = makeSandbox('n8n-sandbox', deterministicId);
-			const replacementSandbox = makeSandbox('n8n-sandbox', deterministicId);
-			const staleFilesystem = makeFilesystem();
-			const replacementFilesystem = makeFilesystem();
-			createSandboxMock
-				.mockResolvedValueOnce(staleSandbox)
-				.mockResolvedValueOnce(replacementSandbox);
-			createFilesystemMock
-				.mockReturnValueOnce(staleFilesystem)
-				.mockReturnValueOnce(replacementFilesystem);
-			const agentFileRepository = mock<AgentFileRepository>();
-			agentFileRepository.findByAgentId.mockResolvedValue([makeMirrorFile('file-1', 'doc1.txt')]);
-			const agentRepository = makeAgentRepository();
-			agentRepository.existsBy.mockResolvedValue(true);
-			const service = makeService({
-				agentFileRepository,
-				agentRepository,
-				sandboxSettingsService: makeSandboxSettingsService('n8n-sandbox'),
-			});
+		it.each([
+			{ provider: 'daytona', deterministicId: buildExpectedSandboxName() },
+			{
+				provider: 'n8n-sandbox',
+				deterministicId: 'eaa9416e-fd18-5dd5-bb92-5e8fc51eb5d0',
+			},
+		] satisfies Array<{ provider: SandboxProvider; deterministicId: string }>)(
+			'resyncs the mirror when a $provider sandbox is recreated under the same ID',
+			async ({ provider, deterministicId }) => {
+				const staleSandbox = makeSandbox(provider, deterministicId);
+				const replacementSandbox = makeSandbox(provider, deterministicId);
+				const staleFilesystem = makeFilesystem();
+				const replacementFilesystem = makeFilesystem();
+				createSandboxMock
+					.mockResolvedValueOnce(staleSandbox)
+					.mockResolvedValueOnce(replacementSandbox);
+				createFilesystemMock
+					.mockReturnValueOnce(staleFilesystem)
+					.mockReturnValueOnce(replacementFilesystem);
+				const agentFileRepository = mock<AgentFileRepository>();
+				agentFileRepository.findByAgentId.mockResolvedValue([makeMirrorFile('file-1', 'doc1.txt')]);
+				const agentRepository = makeAgentRepository();
+				agentRepository.existsBy.mockResolvedValue(true);
+				const service = makeService({
+					agentFileRepository,
+					agentRepository,
+					sandboxSettingsService: makeSandboxSettingsService(provider),
+				});
 
-			await service.searchKnowledge(projectId, agentId, { pattern: 'first' });
-			await service.searchKnowledge(projectId, agentId, { pattern: 'second' });
+				await service.searchKnowledge(projectId, agentId, { pattern: 'first' });
+				await service.searchKnowledge(projectId, agentId, { pattern: 'second' });
 
-			expect(staleFilesystem.writeFile).toHaveBeenCalledOnce();
-			expect(replacementFilesystem.writeFile).toHaveBeenCalledOnce();
-		});
+				expect(staleFilesystem.writeFile).toHaveBeenCalledOnce();
+				expect(replacementFilesystem.writeFile).toHaveBeenCalledOnce();
+			},
+		);
 
 		it('redacts command stderr before reporting a failed knowledge operation', async () => {
 			const secret = 'Authorization: Bearer abc.def-ghi_jkl/mno=012345678901234567890123456789';

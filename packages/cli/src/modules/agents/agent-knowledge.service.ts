@@ -73,7 +73,6 @@ export class AgentKnowledgeService {
 				throw error;
 			}
 
-			this.agentKnowledgeSandboxService.invalidateMirror(projectId, agentId);
 			this.agentKnowledgeSandboxService.prewarmMirrorInBackground(projectId, agentId);
 
 			return uploadedFiles.map((file) => toAgentFileDto(file));
@@ -111,7 +110,6 @@ export class AgentKnowledgeService {
 					error: error instanceof Error ? error.message : error,
 				});
 			});
-		this.agentKnowledgeSandboxService.invalidateMirror(projectId, agentId);
 		this.agentKnowledgeSandboxService.prewarmMirrorInBackground(projectId, agentId);
 	}
 
@@ -133,7 +131,6 @@ export class AgentKnowledgeService {
 					});
 				});
 		}
-		this.agentKnowledgeSandboxService.invalidateMirror(projectId, agentId);
 	}
 
 	/** Best-effort passthrough for agent/project deletion; never throws. */

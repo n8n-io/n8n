@@ -11,12 +11,10 @@ import {
 } from '@n8n/agents/sandbox';
 import { Logger } from '@n8n/backend-common';
 import { AgentsConfig } from '@n8n/config';
-import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import { OperationalError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
-import { createHash } from 'node:crypto';
 import { v5 as uuidv5 } from 'uuid';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -24,7 +22,6 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { AiService } from '@/services/ai.service';
 import { SandboxSettingsService } from '@/services/sandbox-settings.service';
 import { callAiServiceWithRetry } from '@/utils/ai-service-retry';
-import { TtlMap } from '@/utils/ttl-map';
 
 import {
 	buildMirrorFinalizeCommand,
@@ -75,7 +72,7 @@ const LABEL_AGENT_ID = 'n8n-agent-id';
 
 const DEFAULT_SANDBOX_IMAGE = 'daytonaio/sandbox:0.5.0';
 const AUTO_STOP_INTERVAL_MINUTES = 5;
-const MIRROR_MANIFEST_HASH_TTL_MS = 30 * Time.minutes.toMilliseconds;
+
 interface AgentKnowledgeSandboxRuntime {
 	sandbox: WorkspaceSandbox;
 	filesystem: WorkspaceFilesystem;
@@ -134,12 +131,6 @@ function parseMirrorManifest(output: string): Map<string, string> {
 	return manifest;
 }
 
-function hashMirrorManifest(files: AgentKnowledgeFileReference[]): string {
-	return createHash('sha256')
-		.update(JSON.stringify(files.map(({ file, fileId }) => [fileId, file]).sort()))
-		.digest('hex');
-}
-
 function buildScopeLabels(projectId: string, agentId: string): Record<string, string> {
 	return {
 		[LABEL_KNOWLEDGE_BASE]: 'true',
@@ -187,7 +178,6 @@ export class AgentKnowledgeSandboxService {
 		string,
 		Promise<AgentKnowledgeSandboxRuntime>
 	>();
-	private readonly mirrorManifestHashes = new TtlMap<string, string>(MIRROR_MANIFEST_HASH_TTL_MS);
 	private readonly pendingMirrorSyncs = new Map<string, Promise<void>>();
 
 	constructor(
@@ -408,24 +398,16 @@ export class AgentKnowledgeSandboxService {
 
 	/**
 	 * Keeps the sandbox-local knowledge mirror in sync with the DB-derived
-	 * file list before a read/search command runs against it. Daytona can
-	 * short-circuit via an in-memory hash because recreated sandboxes receive
-	 * a new ID; n8n sandboxes reuse their deterministic ID and re-read the
-	 * remote manifest to detect recreation.
+	 * file list before a read/search command runs against it. The remote
+	 * manifest is read every time because providers can reuse sandbox IDs.
 	 */
 	private async ensureMirrorSynced(
 		runtime: AgentKnowledgeSandboxRuntime,
 		files: AgentKnowledgeFileReference[],
 	): Promise<void> {
-		const expectedHash = hashMirrorManifest(files);
-		const useMemoryCache = runtime.sandbox.provider !== 'n8n-sandbox';
-		if (useMemoryCache && this.mirrorManifestHashes.get(runtime.cacheKey) === expectedHash) {
-			return;
-		}
-
 		let pending = this.pendingMirrorSyncs.get(runtime.cacheKey);
 		if (!pending) {
-			pending = this.syncMirror(runtime, files, expectedHash, useMemoryCache).finally(() => {
+			pending = this.syncMirror(runtime, files).finally(() => {
 				this.pendingMirrorSyncs.delete(runtime.cacheKey);
 			});
 			this.pendingMirrorSyncs.set(runtime.cacheKey, pending);
@@ -436,13 +418,7 @@ export class AgentKnowledgeSandboxService {
 	private async syncMirror(
 		runtime: AgentKnowledgeSandboxRuntime,
 		files: AgentKnowledgeFileReference[],
-		expectedHash: string,
-		useMemoryCache: boolean,
 	): Promise<void> {
-		// Re-check now that we hold the per-sandbox lock — a concurrent call may
-		// have just finished syncing to the same expected set.
-		if (useMemoryCache && this.mirrorManifestHashes.get(runtime.cacheKey) === expectedHash) return;
-
 		const manifestResult = await this.executeSandboxCommand(
 			runtime.sandbox,
 			`cat ${runtime.paths.manifest} 2>/dev/null || true`,
@@ -455,10 +431,7 @@ export class AgentKnowledgeSandboxService {
 		const toCopy = files.filter((file) => present.get(file.file) !== file.fileId);
 		const toDelete = [...present.keys()].filter((name) => !expectedSet.has(name));
 
-		if (toCopy.length === 0 && toDelete.length === 0) {
-			if (useMemoryCache) this.mirrorManifestHashes.set(runtime.cacheKey, expectedHash);
-			return;
-		}
+		if (toCopy.length === 0 && toDelete.length === 0) return;
 
 		for (const name of [...expectedNames, ...toDelete]) {
 			assertKnowledgePathSegment(name, 'knowledge mirror file name');
@@ -490,12 +463,6 @@ export class AgentKnowledgeSandboxService {
 			throw new OperationalError(
 				`Agent knowledge mirror sync failed: exitCode=${syncResult.exitCode}; output=${sanitizeSandboxErrorDetail(syncResult.stdout)}`,
 			);
-		}
-		// Cache the hash of what's actually on disk, not `expectedHash`: if a
-		// file failed to load, this mismatches the next `expectedHash` and
-		// forces a retry instead of silently caching a partial mirror as done.
-		if (useMemoryCache) {
-			this.mirrorManifestHashes.set(runtime.cacheKey, hashMirrorManifest(finalManifestFiles));
 		}
 	}
 
@@ -569,21 +536,6 @@ export class AgentKnowledgeSandboxService {
 				error: error instanceof Error ? error.message : String(error),
 			});
 		});
-	}
-
-	/** Invalidates the cached mirror state so the next operation re-syncs. */
-	invalidateMirror(projectId: string, agentId: string): void {
-		const sandboxName = buildSandboxName({
-			instanceId: this.instanceSettings.instanceId,
-			projectId,
-			agentId,
-		});
-		for (const provider of ['daytona', 'n8n-sandbox'] as const) {
-			const prefix = `${provider}:${sandboxName}:`;
-			for (const key of this.mirrorManifestHashes.keys()) {
-				if (key.startsWith(prefix)) this.mirrorManifestHashes.delete(key);
-			}
-		}
 	}
 
 	private async loadKnowledgeReferenceLookup(
