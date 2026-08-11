@@ -247,6 +247,7 @@ export interface FrontendSettings {
 	aiGateway?: {
 		enabled: boolean;
 		budget: number;
+		cloudUbbEnabled: boolean;
 	};
 	ai: {
 		allowSendingParameterValues: boolean;
@@ -352,6 +353,8 @@ export type FrontendModuleSettings = {
 		sandboxUnavailableReason: string | null;
 		/** When true, orchestrator LLM step / workflow code debug is captured (`N8N_INSTANCE_AI_RUN_DEBUG_ENABLED`). */
 		runDebugEnabled: boolean;
+		/** Whether this instance is in the activation-capped trial cohort (`N8N_INSTANCE_AI_ACTIVATION_CAPPED`). Optional. */
+		activationCapped?: boolean;
 	};
 
 	/**
@@ -395,10 +398,8 @@ export type FrontendModuleSettings = {
 		 */
 		modules: string[];
 		/**
-		 * Whether the agent knowledge base is enabled. True when the backend's
-		 * Daytona sandbox env vars (`N8N_AGENTS_AI_SANDBOX_ENABLED=true` +
-		 * `N8N_AGENTS_AI_SANDBOX_PROVIDER=daytona`) are set, OR the AI Assistant
-		 * proxy is available.
+		 * Whether the agent knowledge base is enabled by the backend's
+		 * `N8N_AGENTS_AI_SANDBOX_ENABLED` opt-in.
 		 */
 		knowledgeBaseEnabled: boolean;
 		/** Whether the AI Assistant proxy is available to the agents module. */

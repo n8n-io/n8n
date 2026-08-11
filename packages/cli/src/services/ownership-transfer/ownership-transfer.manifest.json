@@ -67,7 +67,7 @@
 		{
 			"name": "WorkflowReviewRequest",
 			"path": "packages/@n8n/db/src/entities/workflow-review-request.ee.ts",
-			"reason": "Not transferred with the project. Open reviews are closed when their workflow is archived, moved to another project, or deleted (workflow lifecycle hooks); rows are removed via the projectId FK cascade when the source project itself is deleted, as in ownership-transfer flows."
+			"reason": "Not transferred with the project. Open reviews are closed when their workflow is archived, moved to another project, or deleted (workflow lifecycle hooks); rows are removed via the projectId FK cascade when the source project itself is deleted, as in ownership-transfer flows. WorkflowReviewActivity and WorkflowReviewActivityComment ride this entity's cascade and have no projectId of their own, so they never appear in this manifest."
 		}
 	]
 }

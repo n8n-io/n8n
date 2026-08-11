@@ -16,7 +16,7 @@ import { useAgentChatStream } from '../composables/useAgentChatStream';
 import { findOpenInteractive } from '@/features/ai/shared/agentsChat/messageMappers';
 import AgentChatEmptyState from './AgentChatEmptyState.vue';
 import AgentChatMessageList from './AgentChatMessageList.vue';
-import type { AgentJsonConfig } from '../types';
+import type { AgentContinueLoadedEvent, AgentJsonConfig } from '../types';
 import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 import { buildAgentConfigFingerprint } from '../composables/agentTelemetry.utils';
 import { TOOL_CALL_STATE } from '../constants';
@@ -50,7 +50,7 @@ const props = withDefaults(
 const emit = defineEmits<{
 	'update:streaming': [streaming: boolean];
 	'update:inputDraft': [value: string];
-	'continue-loaded': [count: number];
+	'continue-loaded': [event: AgentContinueLoadedEvent];
 	'initial-consumed': [];
 	back: [];
 	'open-build': [];
@@ -126,6 +126,7 @@ const inputText = computed<string>({
 	},
 });
 const isPreparingToSend = ref(false);
+let disposed = false;
 
 const {
 	messages,
@@ -146,7 +147,9 @@ const {
 	agentId: toRef(props, 'agentId'),
 	continueSessionId: toRef(props, 'continueSessionId'),
 	onHistoryLoaded: (count) => {
-		if (props.continueSessionId) emit('continue-loaded', count);
+		if (props.continueSessionId) {
+			emit('continue-loaded', { sessionId: props.continueSessionId, count });
+		}
 	},
 });
 
@@ -204,13 +207,21 @@ const showStopAsPrimaryAction = computed(
 		(hasOpenSuspension.value && !hasOpenInteractiveQuestion.value),
 );
 
-const chatPlaceholder = computed(() =>
-	hasOpenApproval.value
-		? locale.baseText('agents.chat.approval.inputPlaceholder')
-		: hasOpenInteractiveQuestion.value
-			? locale.baseText('agents.chat.answerQuestionPlaceholder')
-			: locale.baseText('agents.chat.input.placeholder'),
-);
+const chatPlaceholder = computed(() => {
+	if (hasOpenApproval.value) {
+		return locale.baseText('agents.chat.approval.inputPlaceholder');
+	}
+	if (hasOpenInteractiveQuestion.value) {
+		return locale.baseText('agents.chat.answerQuestionPlaceholder');
+	}
+
+	const agentName = props.agentConfig?.name?.trim();
+	return agentName
+		? locale.baseText('agents.chat.input.placeholder.withAgent', {
+				interpolate: { agentName },
+			})
+		: locale.baseText('agents.chat.input.placeholder');
+});
 
 watch(isStreaming, (v) => emit('update:streaming', v));
 
@@ -236,20 +247,31 @@ async function onSubmit() {
 
 	isPreparingToSend.value = true;
 	try {
-		await props.beforeSend?.();
-	} catch {
-		isPreparingToSend.value = false;
-		return;
-	}
-
-	try {
-		inputText.value = '';
-		attachedFiles.value = [];
+		const target = {
+			projectId: props.projectId,
+			agentId: props.agentId,
+			continueSessionId: props.continueSessionId,
+		};
+		const isCurrentTarget = () =>
+			!disposed &&
+			props.projectId === target.projectId &&
+			props.agentId === target.agentId &&
+			props.continueSessionId === target.continueSessionId;
+		try {
+			await props.beforeSend?.();
+		} catch {
+			return;
+		}
+		if (!isCurrentTarget()) return;
 
 		const fingerprint = await buildAgentConfigFingerprint(
 			props.agentConfig,
 			props.connectedTriggers,
 		);
+		if (!isCurrentTarget()) return;
+
+		inputText.value = '';
+		attachedFiles.value = [];
 		agentTelemetry.trackSubmittedMessage({
 			agentId: props.agentId,
 			status: props.agentStatus,
@@ -279,6 +301,7 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
+	disposed = true;
 	if (isStreaming.value) void stopGenerating();
 });
 </script>

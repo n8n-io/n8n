@@ -2,6 +2,13 @@
 # one-time registrations.
 . /usr/local/lib/codespaces-env.sh
 
+# Claude Code keeps its first-run state in ~/.claude.json. Write the defaults
+# so a new codespace does not show the theme and trust prompts. The env
+# secrets supply the login.
+[ -f "$HOME/.claude.json" ] || printf '%s\n' \
+	'{"hasCompletedOnboarding":true,"theme":"dark","projects":{"/workspaces/n8n":{"hasTrustDialogAccepted":true}}}' \
+	>"$HOME/.claude.json"
+
 # Register the Flaky MCP server for Claude Code. The config keeps a literal
 # ${FLAKY_MCP_TOKEN}; Claude Code expands it at connect time, so the token is
 # not written to disk. Forks have no repo secrets and skip this.
