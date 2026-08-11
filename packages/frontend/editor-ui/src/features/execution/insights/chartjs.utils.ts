@@ -1,5 +1,5 @@
 import merge from 'lodash/merge';
-import { type ChartOptions, type ScriptableContext } from 'chart.js';
+import { type ChartOptions, type ScriptableContext, type TooltipItem } from 'chart.js';
 import { useCssVar } from '@vueuse/core';
 import { smartDecimal } from '@n8n/utils/number/smart-decimal';
 
@@ -96,6 +96,66 @@ export const generateLineChartOptions = (
 					ticks: {
 						maxTicksLimit: 3,
 						color: colorTextLight.value,
+					},
+				},
+			},
+		},
+		overrides,
+	);
+};
+
+export const generatePieChartOptions = (
+	overrides: ChartOptions<'pie'> = {},
+): ChartOptions<'pie'> => {
+	const colorTextLight = useCssVar('--color--text--tint-1', document.body);
+	const colorTextDark = useCssVar('--color--text--shade-1', document.body);
+	const colorBackgroundLight = useCssVar('--color--background--light-3', document.body);
+	const colorForeGroundBase = useCssVar('--color--foreground', document.body);
+
+	return merge(
+		{
+			responsive: true,
+			maintainAspectRatio: false,
+			animation: false,
+			plugins: {
+				legend: {
+					display: true,
+					position: 'right',
+					labels: {
+						boxWidth: 8,
+						boxHeight: 8,
+						borderRadius: 2,
+						useBorderRadius: true,
+						color: colorTextLight.value,
+						font: {
+							size: 11,
+						},
+					},
+				},
+				tooltip: {
+					caretSize: 0,
+					padding: 12,
+					titleFont: {
+						size: 13,
+					},
+					bodyFont: {
+						size: 13,
+					},
+					backgroundColor: colorBackgroundLight.value,
+					titleColor: colorTextDark.value,
+					bodyColor: colorTextDark.value,
+					borderWidth: 1,
+					borderColor: colorForeGroundBase.value,
+					callbacks: {
+						label(context: TooltipItem<'pie'>) {
+							const value = context.parsed;
+							const dataset = context.dataset.data.filter(
+								(entry): entry is number => typeof entry === 'number',
+							);
+							const total = dataset.reduce((sum, entry) => sum + entry, 0);
+							const percent = total > 0 ? Math.round((value / total) * 100) : 0;
+							return `${context.label}: ${value} (${percent}%)`;
+						},
 					},
 				},
 			},

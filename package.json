@@ -24,6 +24,7 @@
     "dev": "node scripts/dev-command-removed-notice.mjs",
     "dev:up": "node scripts/dev-up.mjs",
     "dev:be": "turbo run dev --env-mode=loose --log-prefix=none --filter=n8n",
+    "dev:be:local": "pnpm exec dotenvx run -f .env.local -- pnpm dev:be",
     "dev:ai": "turbo run dev --concurrency=150 --env-mode=loose --filter=@n8n/n8n-nodes-langchain --filter=n8n --filter=n8n-core",
     "dev:fe": "run-p start dev:fe:editor",
     "dev:fe:editor": "turbo run dev --env-mode=loose --filter=n8n-editor-ui",

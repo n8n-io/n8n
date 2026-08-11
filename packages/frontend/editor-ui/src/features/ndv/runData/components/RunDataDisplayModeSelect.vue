@@ -5,15 +5,23 @@ import type { NodePanelType } from '@/features/ndv/shared/ndv.types';
 import { computed, watch } from 'vue';
 
 import { N8nIcon, N8nSegmentControl } from '@n8n/design-system';
-const { compact, value, hasBinaryData, paneType, nodeGeneratesHtml, hasRenderableData } =
-	defineProps<{
-		compact: boolean;
-		value: IRunDataDisplayMode;
-		hasBinaryData: boolean;
-		paneType: NodePanelType;
-		nodeGeneratesHtml: boolean;
-		hasRenderableData: boolean;
-	}>();
+const {
+	compact,
+	value,
+	hasBinaryData,
+	paneType,
+	nodeGeneratesHtml,
+	hasRenderableData,
+	hasProfilableData,
+} = defineProps<{
+	compact: boolean;
+	value: IRunDataDisplayMode;
+	hasBinaryData: boolean;
+	paneType: NodePanelType;
+	nodeGeneratesHtml: boolean;
+	hasRenderableData: boolean;
+	hasProfilableData: boolean;
+}>();
 
 const emit = defineEmits<{ change: [IRunDataDisplayMode] }>();
 
@@ -27,6 +35,10 @@ const options = computed(() => {
 
 	if (hasBinaryData) {
 		defaults.push({ label: i18n.baseText('runData.binary'), value: 'binary' });
+	}
+
+	if (hasProfilableData) {
+		defaults.push({ label: i18n.baseText('runData.profile'), value: 'profile' });
 	}
 
 	if (paneType === 'output' && nodeGeneratesHtml) {
@@ -68,6 +80,7 @@ watch(
 			<N8nIcon v-else-if="option.value === 'schema'" icon="schema" size="small" />
 			<N8nIcon v-else-if="option.value === 'html'" icon="file-code" size="small" />
 			<N8nIcon v-else-if="option.value === 'ai'" icon="text" size="small" />
+			<N8nIcon v-else-if="option.value === 'profile'" icon="chart-column-decreasing" size="small" />
 			<span v-else>{{ option.label }}</span>
 		</template>
 	</N8nSegmentControl>

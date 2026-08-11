@@ -72,6 +72,10 @@ import isEqual from 'lodash/isEqual';
 import isObject from 'lodash/isObject';
 import { useRoute, useRouter } from 'vue-router';
 import { useSchemaPreviewStore } from '@/features/ndv/runData/schemaPreview.store';
+import {
+	PROFILE_MIN_ITEMS_THRESHOLD,
+	useDataProfiling,
+} from '@/features/ndv/runData/composables/useDataProfiling';
 import { asyncComputed } from '@vueuse/core';
 import ViewSubExecution from '@/features/execution/executions/components/ViewSubExecution.vue';
 import RunDataItemCount from './RunDataItemCount.vue';
@@ -105,6 +109,7 @@ const LazyRunDataJson = defineAsyncComponent(async () => await import('./RunData
 
 const LazyRunDataSchema = defineAsyncComponent(async () => await import('./VirtualSchema.vue'));
 const LazyRunDataHtml = defineAsyncComponent(async () => await import('./RunDataHtml.vue'));
+const LazyRunDataProfile = defineAsyncComponent(async () => await import('./RunDataProfile.vue'));
 const LazyRunDataAi = defineAsyncComponent(
 	async () => await import('./RunDataParsedAiContent.vue'),
 );
@@ -505,6 +510,10 @@ const inputDataPage = computed(() => {
 	return inputData.value.slice(offset, offset + pageSize.value);
 });
 const jsonData = computed(() => executionDataToJson(inputData.value));
+const { hasProfilableField } = useDataProfiling();
+const hasProfilableData = computed(
+	() => dataCount.value > PROFILE_MIN_ITEMS_THRESHOLD && hasProfilableField(jsonData.value),
+);
 const binaryData = computed(() => {
 	if (!node.value) {
 		return [];
@@ -1551,6 +1560,7 @@ defineExpose({ enterEditMode });
 					:pane-type="paneType"
 					:node-generates-html="shouldDisplayHtml"
 					:has-renderable-data="hasParsedAiContent"
+					:has-profilable-data="hasProfilableData"
 					@change="onDisplayModeChange"
 				/>
 
@@ -2170,6 +2180,10 @@ defineExpose({ enterEditMode });
 				/>
 			</Suspense>
 
+			<Suspense v-else-if="hasNodeRun && displayMode === 'profile' && node">
+				<LazyRunDataProfile :json-data="jsonData" />
+			</Suspense>
+
 			<Suspense v-else-if="shouldShowSchemaView">
 				<LazyRunDataSchema
 					:nodes="nodes"
@@ -2205,6 +2219,7 @@ defineExpose({ enterEditMode });
 				hasNodeRun &&
 				!hasRunError &&
 				displayMode !== 'binary' &&
+				displayMode !== 'profile' &&
 				dataCount > pageSize &&
 				!isSchemaView &&
 				!isArtificialRecoveredEventItem

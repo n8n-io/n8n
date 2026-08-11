@@ -70,6 +70,7 @@ import IconLucideCalculator from '~icons/lucide/calculator';
 import IconLucideCalendar from '~icons/lucide/calendar';
 import IconLucideCaseUpper from '~icons/lucide/case-upper';
 import IconLucideChartColumnDecreasing from '~icons/lucide/chart-column-decreasing';
+import IconLucideChartPie from '~icons/lucide/chart-pie';
 import IconLucideCheck from '~icons/lucide/check';
 import IconLucideCheckCheck from '~icons/lucide/check-check';
 import IconLucideChevronDown from '~icons/lucide/chevron-down';
@@ -575,6 +576,7 @@ export const updatedIconSet = {
 	calendar: IconLucideCalendar,
 	'case-upper': IconLucideCaseUpper,
 	'chart-column-decreasing': IconLucideChartColumnDecreasing,
+	'chart-pie': IconLucideChartPie,
 	check: IconLucideCheck,
 	'check-check': IconLucideCheckCheck,
 	'chevron-down': IconLucideChevronDown,

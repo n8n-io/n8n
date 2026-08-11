@@ -1,8 +1,8 @@
 # Hackmation ideas
 
-Two small AI-assist ideas to prototype. Each is scoped as an independent,
-incremental improvement — no dependency between them. Written up so either
-can be picked up and continued across sessions without re-deriving context.
+Three ideas to prototype. Each is scoped as an independent, incremental
+improvement — no dependency between them. Written up so any of them can be
+picked up and continued across sessions without re-deriving context.
 
 ## 1. AI-generated publish description
 
@@ -207,8 +207,119 @@ selected. Clicking it:
 - Menu copy/i18n and where exactly it should sit relative to other
   selection-based context menu entries (copy/duplicate/etc.).
 
+## 3. Data profiling for node output ("column stats")
+
+**Status: not started.** Ideas #1 and #2 shipped on this branch
+(publish-description generation, AI sticky notes). This one is a fresh
+capture — no code written yet.
+
+**Problem:** When a node's output is a list of items — the typical shape
+for anything hitting an API or a database — the run-data panel (Table /
+JSON / Schema tabs in the NDV) shows you the raw values but not the shape
+of the data as a whole: how many distinct values a field takes, whether a
+boolean is mostly `true`, what the spread of a numeric field looks like.
+Today that requires exporting the data or eyeballing a JSON dump.
+
+**Idea:** A "Profile" view (alongside the existing Table/JSON/Schema/Binary
+tabs) that, once the item count crosses a threshold (e.g. >10), profiles
+each scalar field it can find in the data:
+- **Number:** frequency of each distinct value if the value set is small
+  (e.g. a rating 1–5, an HTTP status code); a binned histogram otherwise
+  (raw per-value frequency breaks down once values are mostly unique, e.g.
+  prices or timestamps — the initial framing of "how often each number
+  appears" only holds for low-cardinality numerics).
+- **String:** if the field has up to ~10 distinct values across the whole
+  dataset, show a frequency breakdown per value (a category/enum-like
+  field). Above that, it's probably free text — cardinality alone is worth
+  surfacing, but per-value frequency isn't useful.
+- **Boolean:** true/false counts.
+
+**The hard part is finding "the list to profile", not the profiling math.**
+A node's output is always technically a list of items, but the
+interesting list for profiling purposes might not be that top-level list:
+- The top-level items themselves might already be the record set to
+  profile (e.g. an HTTP Request node returning one n8n item per API
+  record) — simplest case.
+- The list of interest might be nested inside a single item's JSON (e.g.
+  one item with `json.results = [...]`).
+- The list of interest might be the *same field path repeated across every
+  item* (e.g. every item has a `json.tags` array) — profiling this
+  correctly means pooling values from that path across all items, not just
+  looking at one item's local array.
+
+Any real implementation has to walk the schema and decide which of these
+patterns applies (possibly offering more than one candidate list to
+profile when several exist), before the per-field stats logic even runs.
+
+**Prior art already in the codebase — reuse before rebuilding:**
+- **Schema detection.** `packages/frontend/editor-ui/src/app/composables/useDataSchema.ts`
+  (`getSchema` / `getSchemaForExecutionData`) already walks execution data
+  recursively — including through arrays and nested objects — merging keys
+  across items into one representative shape (`Schema` tree of
+  `{ type, value, path, key }`). It doesn't currently retain *all* the
+  values at a path (it merges shape, not values), so profiling needs
+  something that walks the same way but collects a value list per path
+  instead of collapsing to one example — but the traversal/merge logic is
+  the right starting point rather than writing array-walking from scratch.
+  `VirtualSchema.vue` / `VirtualSchemaItem.vue` / `useDataSchema.ts`'s
+  `useFlattenSchema()` render that tree today (the existing "Schema" tab).
+- **View-mode tab switcher.** `IRunDataDisplayMode` in
+  `packages/frontend/editor-ui/src/Interface.ts` is the closed set
+  `'table' | 'json' | 'binary' | 'schema' | 'html' | 'ai'` — a `'profile'`
+  member slots in alongside them. The tab UI itself is
+  `packages/frontend/editor-ui/src/features/ndv/runData/components/RunDataDisplayModeSelect.vue`
+  (conditionally adds tabs based on data shape, e.g. `binary` only when
+  `hasBinaryData` — a `profile` tab would follow the same pattern, shown
+  only when a profilable list is detected). `RunData.vue` is where each
+  mode actually renders (`v-else-if="displayMode === 'schema'"` etc.,
+  around line 1883) and where the already-loaded `inputData` /`jsonData`
+  computeds live (~line 502-507) — the dataset a profile view would consume
+  is already sitting in memory there, no new data fetch needed.
+- **Aggregation vocabulary.** The `Summarize` node
+  (`packages/nodes-base/nodes/Transform/Summarize/utils.ts`) already
+  implements `count` / `countUnique` and friends as first-class concepts in
+  the product — not directly reusable client-side (it runs server-side as
+  part of workflow execution), but confirms this kind of aggregation
+  already has an established shape/vocabulary in n8n rather than needing
+  to be invented.
+- **Charting.** `chart.js` + `vue-chartjs` are already dependencies of
+  `editor-ui` and already used for real charts — see
+  `packages/frontend/editor-ui/src/features/execution/insights/` (the
+  Insights dashboard) and `app/plugins/chartjs.ts` for how Chart.js gets
+  registered. Note only `LineController` is registered there today, not
+  `BarController` — profiling's histograms/frequency bars would need that
+  added. **When actually building the chart UI, load the `dataviz` skill
+  first** (color palette, accessibility, chart-form guidance) rather than
+  designing bars/histograms from scratch.
+
+**Things to figure out before building:**
+- **List-detection algorithm and its UX.** Concretely: walk the schema,
+  find every array-typed path; for each, decide whether it's "the items
+  list itself" or a nested/repeated field, and whether it clears the >10
+  threshold once pooled across items. If more than one candidate list
+  exists, does the user pick which one to profile (a dropdown), or do we
+  show one profile block per candidate?
+- **Numeric distinct-value cutoff for histogram vs. frequency table** —
+  the doc above assumes a similar ~10-distinct-value cutoff to the string
+  case, switching to binning above that, but the right cutoff and bin
+  count need tuning against real data, not guessing.
+- **Cardinality overflow for strings** — above ~10 distinct values, do we
+  show nothing, just a count ("47 distinct values"), or top-N + "N
+  others"?
+- **Performance / data volume.** Run data can be thousands of items.
+  Profiling should be computed lazily (only when the Profile tab is
+  opened, not eagerly for every output pane) and probably capped/sampled
+  for very large item counts — needs a concrete cap, not an assumption
+  that it'll be fine.
+- **Null/missing/mixed-type handling** — a field present on some items and
+  absent on others, or typed inconsistently across items (string on one,
+  number on another), needs a defined behavior before the type-dispatch
+  logic can be written.
+- i18n for any new UI copy (required per project conventions).
+
 ## Status
 
-Both ideas are pre-implementation — no branch work has started yet. This
-doc exists so either can be picked up in a future session without
-re-deriving the above context.
+All three ideas are documented. Ideas #1 and #2 are implemented on this
+branch. Idea #3 is pre-implementation — no code written yet. This doc
+exists so it (or any future addition) can be picked up in a later session
+without re-deriving the above context.

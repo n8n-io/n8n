@@ -721,7 +721,14 @@ export interface NewCredentialsModal extends ModalState {
 	}) => Promise<boolean>;
 }
 
-export type IRunDataDisplayMode = 'table' | 'json' | 'binary' | 'schema' | 'html' | 'ai';
+export type IRunDataDisplayMode =
+	| 'table'
+	| 'json'
+	| 'binary'
+	| 'schema'
+	| 'html'
+	| 'ai'
+	| 'profile';
 
 export interface TargetItem {
 	nodeName: string;

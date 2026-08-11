@@ -6,9 +6,12 @@ import {
 	BarElement,
 	LineElement,
 	PointElement,
+	ArcElement,
 	CategoryScale,
 	LinearScale,
 	LineController,
+	BarController,
+	PieController,
 } from 'chart.js';
 
 export const ChartJSPlugin = {
@@ -19,10 +22,13 @@ export const ChartJSPlugin = {
 			BarElement,
 			LineElement,
 			PointElement,
+			ArcElement,
 			Title,
 			Tooltip,
 			Legend,
 			LineController,
+			BarController,
+			PieController,
 		);
 	},
 };
