@@ -209,9 +209,10 @@ describe('agent knowledge commands', () => {
 			);
 
 			expect(command).toContain(`mkdir -p ${knowledgePaths.filesDir}`);
-			expect(command).toContain(`${knowledgePaths.filesDir}/.tmp-sync-1-doc1.txt`);
+			expect(command).toContain(`${knowledgePaths.stagingDir}/sync-1/doc1.txt`);
+			expect(command).not.toContain(`${knowledgePaths.filesDir}/.tmp-`);
 			expect(command).toContain(`${knowledgePaths.filesDir}/doc1.txt`);
-			expect(command).toMatch(/mv\s+.*\.tmp-sync-1-doc1\.txt.*doc1\.txt/);
+			expect(command).toMatch(/mv\s+.*\.staging\/sync-1\/doc1\.txt.*doc1\.txt/);
 			expect(command).toContain(`> ${knowledgePaths.manifest}.sync-1.tmp`);
 			expect(command).toContain(
 				`mv ${knowledgePaths.manifest}.sync-1.tmp ${knowledgePaths.manifest}`,

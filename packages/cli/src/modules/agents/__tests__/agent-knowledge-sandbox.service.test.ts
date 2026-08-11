@@ -492,15 +492,21 @@ describe('AgentKnowledgeSandboxService', () => {
 			expect(commands.filter(isManifestReadCommand)).toHaveLength(1);
 			expect(commands.filter(isMirrorSyncCommand)).toHaveLength(1);
 			expect(agentKnowledgeFileStore.readAsBuffer).toHaveBeenCalledTimes(2);
-			expect(filesystem.mkdir).toHaveBeenCalledWith(knowledgePaths.filesDir, {
+			const stagingDir = filesystem.mkdir.mock.calls[0][0];
+			expect(stagingDir).toContain(`${knowledgePaths.stagingDir}/`);
+			expect(filesystem.mkdir).toHaveBeenCalledWith(stagingDir, {
 				recursive: true,
 			});
 			expect(filesystem.writeFile).toHaveBeenCalledTimes(2);
-			expect(filesystem.writeFile.mock.calls[0][0]).toMatch(/\/\.tmp-[A-Za-z0-9_-]+-doc1\.txt$/);
-			expect(filesystem.writeFile.mock.calls[1][0]).toMatch(/\/\.tmp-[A-Za-z0-9_-]+-doc2\.txt$/);
+			expect(filesystem.writeFile.mock.calls[0][0]).toBe(`${stagingDir}/doc1.txt`);
+			expect(filesystem.writeFile.mock.calls[1][0]).toBe(`${stagingDir}/doc2.txt`);
 			expect(filesystem.writeFile.mock.invocationCallOrder[1]).toBeLessThan(
 				sandbox.executeCommand.mock.invocationCallOrder[1],
 			);
+			expect(filesystem.rmdir).toHaveBeenCalledWith(stagingDir, {
+				recursive: true,
+				force: true,
+			});
 			manifestState = 'file-1\tdoc1.txt\nfile-2\tdoc2.txt\n';
 
 			sandbox.executeCommand.mockClear();
@@ -526,8 +532,55 @@ describe('AgentKnowledgeSandboxService', () => {
 			const syncCommands = commands.filter(isMirrorSyncCommand);
 			expect(syncCommands).toHaveLength(1);
 			expect(agentKnowledgeFileStore.readAsBuffer).toHaveBeenCalledTimes(1);
-			expect(syncCommands[0]).toContain('-doc1.txt');
+			expect(syncCommands[0]).toContain(`${knowledgePaths.stagingDir}/`);
+			expect(syncCommands[0]).toContain('/doc1.txt');
 			expect(syncCommands[0]).toContain('file-1-replacement\tdoc1.txt');
+		});
+
+		it('runs a queued mirror sync with a newer file snapshot after an in-flight sync', async () => {
+			let releaseFirstManifestRead!: () => void;
+			const firstManifestRead = new Promise<void>((resolve) => {
+				releaseFirstManifestRead = resolve;
+			});
+			let blockManifestRead = true;
+			sandbox.executeCommand.mockImplementation(async (command) => {
+				if (isManifestReadCommand(command) && blockManifestRead) {
+					blockManifestRead = false;
+					await firstManifestRead;
+				}
+				return makeCommandResult();
+			});
+			const agentFileRepository = mock<AgentFileRepository>();
+			agentFileRepository.findByAgentId
+				.mockResolvedValueOnce([makeMirrorFile('file-1', 'doc1.txt')])
+				.mockResolvedValueOnce([
+					makeMirrorFile('file-1', 'doc1.txt'),
+					makeMirrorFile('file-2', 'doc2.txt'),
+				]);
+			const agentRepository = makeAgentRepository();
+			agentRepository.existsBy.mockResolvedValue(true);
+			const service = makeService({
+				agentFileRepository,
+				agentRepository,
+			});
+
+			const firstSearch = service.searchKnowledge(projectId, agentId, { pattern: 'first' });
+			await vi.waitFor(() =>
+				expect(
+					sandbox.executeCommand.mock.calls.filter(([command]) => isManifestReadCommand(command)),
+				).toHaveLength(1),
+			);
+
+			const secondSearch = service.searchKnowledge(projectId, agentId, { pattern: 'second' });
+			await vi.waitFor(() => expect(createFilesystemMock).toHaveBeenCalledTimes(2));
+			await new Promise((resolve) => setTimeout(resolve, 0));
+			releaseFirstManifestRead();
+
+			await Promise.all([firstSearch, secondSearch]);
+
+			expect(filesystem.writeFile.mock.calls.map(([filePath]) => filePath)).toContainEqual(
+				expect.stringMatching(/\/doc2\.txt$/),
+			);
 		});
 
 		it('uses the n8n sandbox home for the knowledge mirror', async () => {
@@ -546,7 +599,8 @@ describe('AgentKnowledgeSandboxService', () => {
 
 			await service.searchKnowledge(projectId, agentId, { pattern: 'foo' });
 
-			expect(filesystem.mkdir).toHaveBeenCalledWith(n8nKnowledgePaths.filesDir, {
+			expect(filesystem.mkdir.mock.calls[0][0]).toContain(`${n8nKnowledgePaths.stagingDir}/`);
+			expect(filesystem.mkdir).toHaveBeenCalledWith(filesystem.mkdir.mock.calls[0][0], {
 				recursive: true,
 			});
 			const searchCall = sandbox.executeCommand.mock.calls.find(([command]) =>
@@ -635,6 +689,10 @@ describe('AgentKnowledgeSandboxService', () => {
 			expect(
 				sandbox.executeCommand.mock.calls.some(([command]) => isMirrorSyncCommand(command)),
 			).toBe(false);
+			expect(filesystem.rmdir).toHaveBeenCalledWith(filesystem.mkdir.mock.calls[0][0], {
+				recursive: true,
+				force: true,
+			});
 		});
 
 		it('fails the operation instead of returning stale results when the sync command errors', async () => {

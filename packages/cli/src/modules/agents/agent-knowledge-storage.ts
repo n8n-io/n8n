@@ -9,6 +9,7 @@ import type { AgentFile } from './entities/agent-file.entity';
 export interface AgentKnowledgePaths {
 	filesDir: string;
 	manifest: string;
+	stagingDir: string;
 }
 
 export function getAgentKnowledgePaths(provider: SandboxProvider): AgentKnowledgePaths {
@@ -17,6 +18,7 @@ export function getAgentKnowledgePaths(provider: SandboxProvider): AgentKnowledg
 	return {
 		filesDir: `${mirrorDir}/files`,
 		manifest: `${mirrorDir}/manifest`,
+		stagingDir: `${mirrorDir}/.staging`,
 	};
 }
 

@@ -405,14 +405,19 @@ export class AgentKnowledgeSandboxService {
 		runtime: AgentKnowledgeSandboxRuntime,
 		files: AgentKnowledgeFileReference[],
 	): Promise<void> {
-		let pending = this.pendingMirrorSyncs.get(runtime.cacheKey);
-		if (!pending) {
-			pending = this.syncMirror(runtime, files).finally(() => {
+		const previous = this.pendingMirrorSyncs.get(runtime.cacheKey) ?? Promise.resolve();
+		const next = previous
+			.catch(() => undefined)
+			.then(async () => await this.syncMirror(runtime, files));
+		this.pendingMirrorSyncs.set(runtime.cacheKey, next);
+
+		try {
+			await next;
+		} finally {
+			if (this.pendingMirrorSyncs.get(runtime.cacheKey) === next) {
 				this.pendingMirrorSyncs.delete(runtime.cacheKey);
-			});
-			this.pendingMirrorSyncs.set(runtime.cacheKey, pending);
+			}
 		}
-		await pending;
 	}
 
 	private async syncMirror(
@@ -438,31 +443,48 @@ export class AgentKnowledgeSandboxService {
 		}
 
 		const stagingId = nanoid();
-		const copiedNames = await this.uploadMirrorFiles(runtime, toCopy, stagingId);
-		// Files that failed to load from the knowledge file store are left out of
-		// the manifest, so the next sync attempt retries them as `toCopy` again.
-		const finalManifestFiles = files.filter(
-			(file) => copiedNames.has(file.file) || present.get(file.file) === file.fileId,
-		);
-		const staleFiles = toCopy
-			.filter((file) => present.has(file.file) && !copiedNames.has(file.file))
-			.map((file) => file.file);
-
-		const syncResult = await this.executeSandboxCommand(
-			runtime.sandbox,
-			buildMirrorFinalizeCommand(
-				[...copiedNames],
-				[...toDelete, ...staleFiles],
-				finalManifestFiles,
-				runtime.paths,
-				stagingId,
-			),
-			MIRROR_SYNC_TIMEOUT_SECONDS * 1000,
-		);
-		if (syncResult.exitCode !== 0) {
-			throw new OperationalError(
-				`Agent knowledge mirror sync failed: exitCode=${syncResult.exitCode}; output=${sanitizeSandboxErrorDetail(syncResult.stdout)}`,
+		const stagingDir = `${runtime.paths.stagingDir}/${stagingId}`;
+		try {
+			const copiedNames = await this.uploadMirrorFiles(runtime, toCopy, stagingId);
+			// Files that failed to load from the knowledge file store are left out of
+			// the manifest, so the next sync attempt retries them as `toCopy` again.
+			const finalManifestFiles = files.filter(
+				(file) => copiedNames.has(file.file) || present.get(file.file) === file.fileId,
 			);
+			const staleFiles = toCopy
+				.filter((file) => present.has(file.file) && !copiedNames.has(file.file))
+				.map((file) => file.file);
+
+			const syncResult = await this.executeSandboxCommand(
+				runtime.sandbox,
+				buildMirrorFinalizeCommand(
+					[...copiedNames],
+					[...toDelete, ...staleFiles],
+					finalManifestFiles,
+					runtime.paths,
+					stagingId,
+				),
+				MIRROR_SYNC_TIMEOUT_SECONDS * 1000,
+			);
+			if (syncResult.exitCode !== 0) {
+				throw new OperationalError(
+					`Agent knowledge mirror sync failed: exitCode=${syncResult.exitCode}; output=${sanitizeSandboxErrorDetail(syncResult.stdout)}`,
+				);
+			}
+		} finally {
+			if (toCopy.length > 0) {
+				try {
+					await runtime.filesystem.rmdir(stagingDir, { recursive: true, force: true });
+				} catch (error) {
+					this.logger.warn('Failed to clean agent knowledge mirror staging directory', {
+						sandboxName: runtime.cacheKey,
+						stagingId,
+						error: sanitizeSandboxErrorDetail(
+							error instanceof Error ? error.message : String(error),
+						),
+					});
+				}
+			}
 		}
 	}
 
@@ -482,7 +504,8 @@ export class AgentKnowledgeSandboxService {
 		const copiedNames = new Set<string>();
 		if (files.length === 0) return copiedNames;
 
-		await runtime.filesystem.mkdir(runtime.paths.filesDir, { recursive: true });
+		const stagingDir = `${runtime.paths.stagingDir}/${stagingId}`;
+		await runtime.filesystem.mkdir(stagingDir, { recursive: true });
 
 		for (const file of files) {
 			const name = file.file;
@@ -509,10 +532,7 @@ export class AgentKnowledgeSandboxService {
 				continue;
 			}
 
-			await runtime.filesystem.writeFile(
-				`${runtime.paths.filesDir}/.tmp-${stagingId}-${name}`,
-				buffer,
-			);
+			await runtime.filesystem.writeFile(`${stagingDir}/${name}`, buffer);
 			copiedNames.add(name);
 		}
 

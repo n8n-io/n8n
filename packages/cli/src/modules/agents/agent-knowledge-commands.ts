@@ -576,7 +576,7 @@ export function buildMirrorFinalizeCommand(
 	const commands = [`mkdir -p ${paths.filesDir}`];
 
 	for (const name of toCopy) {
-		const tmpPath = quoteShellArg(`${paths.filesDir}/.tmp-${stagingId}-${name}`);
+		const tmpPath = quoteShellArg(`${paths.stagingDir}/${stagingId}/${name}`);
 		const finalPath = quoteShellArg(`${paths.filesDir}/${name}`);
 		commands.push(`mv ${tmpPath} ${finalPath}`);
 	}
