@@ -20,7 +20,6 @@ import {
 	getPickerDirection,
 	getPickerOptionId,
 	humanizeIconName,
-	isSamePickerCoordinate,
 	type PickerCoordinate,
 } from './IconPicker.utils';
 import { ICON_PICKER_BLOCKLIST } from './iconPickerBlocklist';
@@ -34,6 +33,7 @@ import {
 	buildIconSearchRows,
 	type IconPickerVirtualRow,
 } from './useIconPickerVirtualRows';
+import type { ButtonVariant, ButtonSize } from '../../types/button';
 
 import IconShuffle from '~icons/lucide/shuffle';
 
@@ -50,12 +50,11 @@ defineOptions({ name: 'N8nIconPicker' });
 const SKIN_TONE_STORAGE_KEY = 'n8n-emoji-skin-tone';
 const INITIAL_ROW_COUNT = 10;
 const ROW_BATCH_SIZE = 10;
+const ITEM_TOOLTIP_SHOW_DELAY = 150;
 
 type TabType = 'icons' | 'emojis';
 
 type Props = {
-	buttonTooltip: string;
-	buttonSize?: 'small' | 'large' | 'xlarge';
 	isReadOnly?: boolean;
 	/** Hide emoji controls and keep the picker on icons. */
 	iconsOnly?: boolean;
@@ -63,6 +62,12 @@ type Props = {
 	showColorPicker?: boolean;
 	/** Additional CSS class(es) for the outer container element */
 	containerClass?: string | Record<string, boolean> | Array<string | Record<string, boolean>>;
+	/** Add content for button tooltip */
+	buttonTooltip: string;
+	/** Select button variant */
+	buttonVariant?: ButtonVariant;
+	/** Select button size */
+	buttonSize?: ButtonSize;
 	/** Additional CSS class(es) for the trigger button */
 	buttonClass?: string | Record<string, boolean> | Array<string | Record<string, boolean>>;
 	/** The default tab to show when the picker is opened */
@@ -76,6 +81,7 @@ const props = withDefaults(defineProps<Props>(), {
 	iconsOnly: false,
 	showColorPicker: false,
 	containerClass: undefined,
+	buttonVariant: 'subtle',
 	buttonClass: undefined,
 	defaultTab: 'icons',
 });
@@ -155,6 +161,8 @@ const popupRef = ref<HTMLElement>();
 const colorPickerRef = ref<InstanceType<typeof IconColorPicker>>();
 const skinTonePickerRef = ref<InstanceType<typeof SkinTonePicker>>();
 const itemTooltip = ref<{ label: string; left: number; top: number } | null>(null);
+let itemTooltipTimer: ReturnType<typeof setTimeout> | undefined;
+let activeElement: HTMLElement | null = null;
 
 const { filteredIcons, filteredIconSections, filteredEmojiSections } = useIconPickerSearch(
 	availableLucideData,
@@ -185,14 +193,11 @@ const activeDataLoading = computed(function getActiveDataLoading() {
 	return selectedTab.value === 'icons' ? iconsLoading.value : emojisLoading.value;
 });
 const renderedRowCount = ref(INITIAL_ROW_COUNT);
-const activeCoordinate = ref<PickerCoordinate | null>(null);
-const activeDescendantId = computed(function getActiveDescendantId() {
-	if (!activeCoordinate.value) return undefined;
-	return getPickerOptionId(activeCoordinate.value);
-});
 const visibleRows = computed(function getVisibleRows() {
 	return activeRows.value.slice(0, renderedRowCount.value);
 });
+let activeCoordinate: PickerCoordinate | null = null;
+let activeDescendantOwner: HTMLElement | null = null;
 let renderFrame: number | undefined;
 
 function renderNextBatch() {
@@ -240,7 +245,7 @@ const selectIcon = (value: IconOrEmoji) => {
 };
 
 async function handlePopupOpen() {
-	activeCoordinate.value = null;
+	activeCoordinate = null;
 	selectedTab.value = !props.iconsOnly && model.value.type === 'emoji' ? 'emojis' : 'icons';
 	searchQuery.value = '';
 	selectedCategory.value = null;
@@ -256,11 +261,22 @@ function focusSearchInput() {
 	searchInputRef.value?.focus();
 }
 
-/** Custom tooltip is needed so we don't render 1,000+ N8nToolips. Instead we render a custom element and position it over the focused element. */
-function showItemTooltip(event: MouseEvent | FocusEvent, label: string) {
+/** Custom tooltip is needed so we don't render 1,000+ N8nToolips. Instead we render a custom element and position it over the active element. */
+function showItemTooltip(event: FocusEvent, label: string) {
 	const target = event.currentTarget;
 	if (!(target instanceof HTMLElement)) return;
 	showItemTooltipForElement(target, label);
+}
+
+function scheduleItemTooltip(event: MouseEvent, label: string) {
+	const target = event.currentTarget;
+	if (!(target instanceof HTMLElement)) return;
+
+	hideItemTooltip();
+	itemTooltipTimer = setTimeout(function showScheduledItemTooltip() {
+		showItemTooltipForElement(target, label);
+		itemTooltipTimer = undefined;
+	}, ITEM_TOOLTIP_SHOW_DELAY);
 }
 
 function showItemTooltipForElement(target: HTMLElement, label: string) {
@@ -273,11 +289,19 @@ function showItemTooltipForElement(target: HTMLElement, label: string) {
 }
 
 function hideItemTooltip() {
+	if (itemTooltipTimer !== undefined) {
+		clearTimeout(itemTooltipTimer);
+		itemTooltipTimer = undefined;
+	}
 	itemTooltip.value = null;
 }
 
-watch(popupVisible, (isOpen) => {
-	if (isOpen) void handlePopupOpen();
+watch(popupVisible, function handlePopupVisibilityChange(isOpen) {
+	if (isOpen) {
+		void handlePopupOpen();
+	} else {
+		clearActiveElement();
+	}
 });
 
 watch(selectedSkinTone, (tone) => {
@@ -291,13 +315,15 @@ watch(selectedTab, async () => {
 });
 
 watch(activeRows, function handleActiveRowsChange() {
-	activeCoordinate.value = null;
+	activeCoordinate = null;
+	clearActiveElement();
 	hideItemTooltip();
 	if (popupVisible.value) startProgressiveRender();
 });
 
-onBeforeUnmount(function cancelProgressiveRender() {
+onBeforeUnmount(function cancelPendingWork() {
 	if (renderFrame !== undefined) cancelAnimationFrame(renderFrame);
+	if (itemTooltipTimer !== undefined) clearTimeout(itemTooltipTimer);
 });
 
 const selectRandomIcon = () => {
@@ -317,15 +343,30 @@ const selectRandomEmoji = () => {
 	selectIcon({ type: 'emoji', value: display });
 };
 
-/** Finds the correct item from key events */
-async function activatePickerItem(coordinate: PickerCoordinate) {
-	activeCoordinate.value = coordinate;
-	renderedRowCount.value = Math.max(renderedRowCount.value, coordinate.row + 1);
-	await nextTick();
+function clearActiveElement() {
+	activeElement?.removeAttribute('data-active');
+	activeDescendantOwner?.removeAttribute('aria-activedescendant');
+	activeElement = null;
+	activeDescendantOwner = null;
+}
 
-	const item = popupRef.value?.querySelector<HTMLElement>(`#${getPickerOptionId(coordinate)}`);
+function updateActiveElement(item: HTMLElement) {
+	activeElement?.removeAttribute('data-active');
+	item.dataset.active = 'true';
+	activeElement = item;
+}
+
+/** Avoid queued asynchronous activations. Progressive rendering should complete before users reach later rows. */
+function activatePickerItem(coordinate: PickerCoordinate, owner: HTMLElement) {
+	const itemId = getPickerOptionId(coordinate);
+	const item = popupRef.value?.querySelector<HTMLElement>(`#${itemId}`);
 	const scrollArea = item?.closest<HTMLElement>('[data-icon-picker-scroll-area]');
 	if (!item || !scrollArea) return;
+
+	activeCoordinate = coordinate;
+	activeDescendantOwner = owner;
+	owner.setAttribute('aria-activedescendant', itemId);
+	updateActiveElement(item);
 
 	const itemRect = item.getBoundingClientRect();
 	const scrollAreaRect = scrollArea.getBoundingClientRect();
@@ -335,14 +376,14 @@ async function activatePickerItem(coordinate: PickerCoordinate) {
 }
 
 function selectActiveItem() {
-	if (!activeCoordinate.value) return;
+	if (!activeCoordinate) return;
 
-	const row = activeRows.value[activeCoordinate.value.row];
+	const row = activeRows.value[activeCoordinate.row];
 	if (row?.type === 'icon-row') {
-		const name = row.iconNames[activeCoordinate.value.column];
+		const name = row.iconNames[activeCoordinate.column];
 		if (name) selectIcon({ type: 'icon', value: name, color: selectedColor.value });
 	} else if (row?.type === 'emoji-row') {
-		const emoji = row.emojis[activeCoordinate.value.column];
+		const emoji = row.emojis[activeCoordinate.column];
 		if (emoji) selectIcon({ type: 'emoji', value: emoji.display });
 	}
 }
@@ -352,7 +393,7 @@ function handlePickerKeydown(event: KeyboardEvent) {
 	if (!(target instanceof HTMLElement)) return;
 	if (!target.closest('[data-test-id="icon-picker-search"]')) return;
 
-	if (event.key === 'Enter' && activeCoordinate.value) {
+	if (event.key === 'Enter' && activeCoordinate) {
 		event.preventDefault();
 		selectActiveItem();
 		return;
@@ -364,32 +405,28 @@ function handlePickerKeydown(event: KeyboardEvent) {
 	const coordinates = getPickerCoordinates(activeRows.value);
 	if (coordinates.length === 0) return;
 
+	/** Rows are progressively rendered, so we must start on first item regardless of arrow direction */
 	event.preventDefault();
-	if (!activeCoordinate.value) {
-		const coordinate =
-			event.key === 'ArrowUp' || event.key === 'ArrowLeft' ? coordinates.at(-1) : coordinates[0];
-		if (coordinate) void activatePickerItem(coordinate);
+	if (!activeCoordinate) {
+		const coordinate = coordinates[0];
+		if (coordinate) activatePickerItem(coordinate, target);
 		return;
 	}
 
 	const direction = getPickerDirection(event.key);
 	if (!direction) return;
 
-	const nextCoordinate = getAdjacentPickerCoordinate(
-		activeRows.value,
-		activeCoordinate.value,
-		direction,
-	);
-	if (nextCoordinate) void activatePickerItem(nextCoordinate);
+	const nextCoordinate = getAdjacentPickerCoordinate(activeRows.value, activeCoordinate, direction);
+	if (nextCoordinate) activatePickerItem(nextCoordinate, target);
 }
 
-async function handlePickerKeyup(event: KeyboardEvent) {
+/** Show tooltip on keyup so holding down arrow keys doesn't queue lots of events */
+function handlePickerKeyup(event: KeyboardEvent) {
 	if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.key)) return;
-	if (!activeCoordinate.value) return;
+	if (!activeCoordinate) return;
 
-	await nextTick();
 	const item = popupRef.value?.querySelector<HTMLElement>(
-		`#${getPickerOptionId(activeCoordinate.value)}`,
+		`#${getPickerOptionId(activeCoordinate)}`,
 	);
 	if (item) showItemTooltipForElement(item, item.getAttribute('aria-label') ?? '');
 }
@@ -426,7 +463,7 @@ async function handlePickerKeyup(event: KeyboardEvent) {
 						:size="buttonSize"
 						icon-only
 						:disabled="isReadOnly"
-						variant="subtle"
+						:variant="buttonVariant"
 						:aria-label="props.buttonTooltip ?? t('iconPicker.button.defaultToolTip')"
 						:aria-expanded="popupVisible"
 						aria-haspopup="true"
@@ -441,7 +478,7 @@ async function handlePickerKeyup(event: KeyboardEvent) {
 						:class="[$style['emoji-button'], buttonClass]"
 						:size="buttonSize"
 						icon-only
-						variant="subtle"
+						:variant="buttonVariant"
 						:aria-label="props.buttonTooltip ?? t('iconPicker.button.defaultToolTip')"
 						:aria-expanded="popupVisible"
 						aria-haspopup="true"
@@ -489,7 +526,6 @@ async function handlePickerKeyup(event: KeyboardEvent) {
 						aria-autocomplete="list"
 						aria-controls="icon-picker-options"
 						:aria-expanded="popupVisible"
-						:aria-activedescendant="activeDescendantId"
 						data-test-id="icon-picker-search"
 					>
 						<template #prefix>
@@ -578,16 +614,10 @@ async function handlePickerKeyup(event: KeyboardEvent) {
 									role="gridcell"
 									tabindex="-1"
 									data-test-id="icon-picker-icon"
-									:data-active="
-										isSamePickerCoordinate(activeCoordinate, {
-											row: rowIndex,
-											column: columnIndex,
-										}) || undefined
-									"
 									:data-picker-row="rowIndex"
 									:data-picker-column="columnIndex"
 									:aria-label="humanizeIconName(name)"
-									@mouseenter="showItemTooltip($event, humanizeIconName(name))"
+									@mouseenter="scheduleItemTooltip($event, humanizeIconName(name))"
 									@mouseleave="hideItemTooltip"
 									@focus="showItemTooltip($event, humanizeIconName(name))"
 									@blur="hideItemTooltip"
@@ -632,16 +662,10 @@ async function handlePickerKeyup(event: KeyboardEvent) {
 									role="gridcell"
 									tabindex="-1"
 									data-test-id="icon-picker-emoji"
-									:data-active="
-										isSamePickerCoordinate(activeCoordinate, {
-											row: rowIndex,
-											column: columnIndex,
-										}) || undefined
-									"
 									:data-picker-row="rowIndex"
 									:data-picker-column="columnIndex"
 									:aria-label="emoji.l"
-									@mouseenter="showItemTooltip($event, emoji.l)"
+									@mouseenter="scheduleItemTooltip($event, emoji.l)"
 									@mouseleave="hideItemTooltip"
 									@focus="showItemTooltip($event, emoji.l)"
 									@blur="hideItemTooltip"
@@ -679,7 +703,7 @@ async function handlePickerKeyup(event: KeyboardEvent) {
 	position: fixed;
 	z-index: var.$index-tooltip;
 	transform: translate(-50%, calc(-100% - var(--spacing--2xs)));
-	max-width: 180px;
+	max-width: var(--spacing--5xl);
 	min-height: var(--height--sm);
 	padding: var(--spacing--4xs) var(--spacing--3xs);
 	border-radius: var(--radius--xs);
