@@ -2,12 +2,18 @@
  * Consolidated workspace tool — projects, tags, folders, execution cleanup.
  */
 import { Tool } from '@n8n/agents';
-import { instanceAiConfirmationSeveritySchema } from '@n8n/api-types';
-import { nanoid } from 'nanoid';
+import { buildToolActionSessionGrantKey } from '@n8n/api-types';
 import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext } from '../types';
+import {
+	instanceAiConfirmationResumeSchema,
+	instanceAiConfirmationSuspendSchema,
+	resolveConfirmationGate,
+	type InstanceAiConfirmationResume,
+	type InstanceAiConfirmationSuspend,
+} from './shared/session-confirmation';
 
 // ── Shared fields (single source of truth for fields used across actions) ───
 
@@ -93,15 +99,8 @@ const moveWorkflowToFolderAction = z.object({
 
 // ── Suspend / resume schemas ────────────────────────────────────────────────
 
-const suspendSchema = z.object({
-	requestId: z.string(),
-	message: z.string(),
-	severity: instanceAiConfirmationSeveritySchema,
-});
-
-const resumeSchema = z.object({
-	approved: z.boolean(),
-});
+const suspendSchema = instanceAiConfirmationSuspendSchema;
+const resumeSchema = instanceAiConfirmationResumeSchema;
 
 // ── Input union ─────────────────────────────────────────────────────────────
 
@@ -132,10 +131,13 @@ type Input = z.infer<ReturnType<typeof buildInputSchema>>;
 
 // ── Suspend/resume helpers ──────────────────────────────────────────────────
 
-type ResumeData = z.infer<typeof resumeSchema> | undefined;
 interface WorkspaceToolContext {
-	resumeData: ResumeData;
-	suspend: (payload: z.infer<typeof suspendSchema>) => Promise<never>;
+	resumeData: InstanceAiConfirmationResume | undefined;
+	suspend: (payload: InstanceAiConfirmationSuspend) => Promise<never>;
+}
+
+function workspaceGrantKey(action: string): string {
+	return buildToolActionSessionGrantKey('workspace', action);
 }
 
 // ── Handlers ────────────────────────────────────────────────────────────────
@@ -155,29 +157,22 @@ async function handleTagWorkflow(
 	input: Extract<Input, { action: 'tag-workflow' }>,
 	ctx: WorkspaceToolContext,
 ) {
-	const { resumeData } = ctx;
-
-	if (context.permissions?.tagWorkflow === 'blocked') {
+	const gate = await resolveConfirmationGate({
+		context,
+		permission: context.permissions?.tagWorkflow,
+		grantKey: workspaceGrantKey('tag-workflow'),
+		resumeData: ctx.resumeData,
+		suspend: ctx.suspend,
+		message: `Tag ${input.workflowName ?? input.workflowId} (ID: ${input.workflowId}) with [${input.tags.join(', ')}]`,
+		severity: 'info',
+	});
+	if (gate === 'blocked') {
 		return { appliedTags: [], denied: true, reason: 'Action blocked by admin' };
 	}
-
-	const needsApproval = context.permissions?.tagWorkflow !== 'always_allow';
-
-	// State 1: First call — suspend for confirmation (unless always_allow)
-	if (needsApproval && (resumeData === undefined || resumeData === null)) {
-		return await ctx.suspend({
-			requestId: nanoid(),
-			message: `Tag ${input.workflowName ?? input.workflowId} (ID: ${input.workflowId}) with [${input.tags.join(', ')}]`,
-			severity: 'info' as const,
-		});
-	}
-
-	// State 2: Denied
-	if (resumeData !== undefined && resumeData !== null && !resumeData.approved) {
+	if (gate === 'denied') {
 		return { appliedTags: [], denied: true, reason: 'User denied the action' };
 	}
 
-	// State 3: Approved or always_allow — execute
 	const appliedTags = await context.workspaceService!.tagWorkflow(input.workflowId, input.tags);
 	return { appliedTags };
 }
@@ -187,30 +182,23 @@ async function handleCleanupTestExecutions(
 	input: Extract<Input, { action: 'cleanup-test-executions' }>,
 	ctx: WorkspaceToolContext,
 ) {
-	const { resumeData } = ctx;
-
-	if (context.permissions?.cleanupTestExecutions === 'blocked') {
+	const hours = input.olderThanHours ?? 1;
+	const gate = await resolveConfirmationGate({
+		context,
+		permission: context.permissions?.cleanupTestExecutions,
+		grantKey: workspaceGrantKey('cleanup-test-executions'),
+		resumeData: ctx.resumeData,
+		suspend: ctx.suspend,
+		message: `Delete executions for ${input.workflowName ?? input.workflowId} older than ${hours} hour(s)`,
+		severity: 'warning',
+	});
+	if (gate === 'blocked') {
 		return { deletedCount: 0, denied: true, reason: 'Action blocked by admin' };
 	}
-
-	const needsApproval = context.permissions?.cleanupTestExecutions !== 'always_allow';
-
-	// State 1: First call — suspend for confirmation (unless always_allow)
-	if (needsApproval && (resumeData === undefined || resumeData === null)) {
-		const hours = input.olderThanHours ?? 1;
-		return await ctx.suspend({
-			requestId: nanoid(),
-			message: `Delete executions for ${input.workflowName ?? input.workflowId} older than ${hours} hour(s)`,
-			severity: 'warning' as const,
-		});
-	}
-
-	// State 2: Denied
-	if (resumeData !== undefined && resumeData !== null && !resumeData.approved) {
+	if (gate === 'denied') {
 		return { deletedCount: 0, denied: true, reason: 'User denied the action' };
 	}
 
-	// State 3: Approved or always_allow — execute
 	const result = await context.workspaceService!.cleanupTestExecutions(input.workflowId, {
 		olderThanHours: input.olderThanHours,
 	});
@@ -230,9 +218,16 @@ async function handleCreateFolder(
 	input: Extract<Input, { action: 'create-folder' }>,
 	ctx: WorkspaceToolContext,
 ) {
-	const { resumeData } = ctx;
-
-	if (context.permissions?.createFolder === 'blocked') {
+	const gate = await resolveConfirmationGate({
+		context,
+		permission: context.permissions?.createFolder,
+		grantKey: workspaceGrantKey('create-folder'),
+		resumeData: ctx.resumeData,
+		suspend: ctx.suspend,
+		message: `Create ${input.name} in project ${input.projectId}`,
+		severity: 'info',
+	});
+	if (gate === 'blocked') {
 		return {
 			id: '',
 			name: '',
@@ -241,20 +236,7 @@ async function handleCreateFolder(
 			reason: 'Action blocked by admin',
 		};
 	}
-
-	const needsApproval = context.permissions?.createFolder !== 'always_allow';
-
-	// State 1: First call — suspend for confirmation (unless always_allow)
-	if (needsApproval && (resumeData === undefined || resumeData === null)) {
-		return await ctx.suspend({
-			requestId: nanoid(),
-			message: `Create ${input.name} in project ${input.projectId}`,
-			severity: 'info' as const,
-		});
-	}
-
-	// State 2: Denied
-	if (resumeData !== undefined && resumeData !== null && !resumeData.approved) {
+	if (gate === 'denied') {
 		return {
 			id: '',
 			name: '',
@@ -264,7 +246,6 @@ async function handleCreateFolder(
 		};
 	}
 
-	// State 3: Approved or always_allow — execute
 	const folder = await context.workspaceService!.createFolder!(
 		input.name,
 		input.projectId,
@@ -278,29 +259,22 @@ async function handleDeleteFolder(
 	input: Extract<Input, { action: 'delete-folder' }>,
 	ctx: WorkspaceToolContext,
 ) {
-	const { resumeData } = ctx;
-
-	if (context.permissions?.deleteFolder === 'blocked') {
+	// Destructive — no session grant (Always allow is hidden in the UI).
+	const gate = await resolveConfirmationGate({
+		context,
+		permission: context.permissions?.deleteFolder,
+		resumeData: ctx.resumeData,
+		suspend: ctx.suspend,
+		message: `Delete ${input.folderName ?? input.folderId}`,
+		severity: 'destructive',
+	});
+	if (gate === 'blocked') {
 		return { success: false, denied: true, reason: 'Action blocked by admin' };
 	}
-
-	const needsApproval = context.permissions?.deleteFolder !== 'always_allow';
-
-	// State 1: First call — suspend for confirmation (unless always_allow)
-	if (needsApproval && (resumeData === undefined || resumeData === null)) {
-		return await ctx.suspend({
-			requestId: nanoid(),
-			message: `Delete ${input.folderName ?? input.folderId}`,
-			severity: 'destructive' as const,
-		});
-	}
-
-	// State 2: Denied
-	if (resumeData !== undefined && resumeData !== null && !resumeData.approved) {
+	if (gate === 'denied') {
 		return { success: false, denied: true, reason: 'User denied the action' };
 	}
 
-	// State 3: Approved or always_allow — execute
 	await context.workspaceService!.deleteFolder!(
 		input.folderId,
 		input.projectId,
@@ -314,29 +288,22 @@ async function handleMoveWorkflowToFolder(
 	input: Extract<Input, { action: 'move-workflow-to-folder' }>,
 	ctx: WorkspaceToolContext,
 ) {
-	const { resumeData } = ctx;
-
-	if (context.permissions?.moveWorkflowToFolder === 'blocked') {
+	const gate = await resolveConfirmationGate({
+		context,
+		permission: context.permissions?.moveWorkflowToFolder,
+		grantKey: workspaceGrantKey('move-workflow-to-folder'),
+		resumeData: ctx.resumeData,
+		suspend: ctx.suspend,
+		message: `Move ${input.workflowName ?? input.workflowId} to folder ${input.folderName ?? input.folderId}`,
+		severity: 'info',
+	});
+	if (gate === 'blocked') {
 		return { success: false, denied: true, reason: 'Action blocked by admin' };
 	}
-
-	const needsApproval = context.permissions?.moveWorkflowToFolder !== 'always_allow';
-
-	// State 1: First call — suspend for confirmation (unless always_allow)
-	if (needsApproval && (resumeData === undefined || resumeData === null)) {
-		return await ctx.suspend({
-			requestId: nanoid(),
-			message: `Move ${input.workflowName ?? input.workflowId} to folder ${input.folderName ?? input.folderId}`,
-			severity: 'info' as const,
-		});
-	}
-
-	// State 2: Denied
-	if (resumeData !== undefined && resumeData !== null && !resumeData.approved) {
+	if (gate === 'denied') {
 		return { success: false, denied: true, reason: 'User denied the action' };
 	}
 
-	// State 3: Approved or always_allow — execute
 	await context.workspaceService!.moveWorkflowToFolder!(input.workflowId, input.folderId);
 	return { success: true };
 }

@@ -2,8 +2,11 @@ import {
 	AI_GATEWAY_MANAGED_TAG,
 	applyBranchReadOnlyOverrides,
 	buildDataTablesSessionGrantKey,
+	buildToolActionSessionGrantKey,
 	buildUpdateWorkflowSessionGrantKey,
 	buildFetchUrlGrantKey,
+	instanceAiConfirmationResumeSchema,
+	resolveInstanceAiSessionGrantKey,
 	DEFAULT_INSTANCE_AI_PERMISSIONS,
 	errorPayloadSchema,
 	FETCH_URL_ALLOW_ALL_GRANT_KEY,
@@ -443,6 +446,60 @@ describe('data-tables session grant keys', () => {
 describe('workflow update session grant keys', () => {
 	it('builds per-workflow keys matching the frontend always-allow format', () => {
 		expect(buildUpdateWorkflowSessionGrantKey('wf-1')).toBe('workflows:update:wf-1');
+	});
+});
+
+describe('resolveInstanceAiSessionGrantKey', () => {
+	it('builds resource-scoped keys for executions and workflow edits', () => {
+		expect(
+			resolveInstanceAiSessionGrantKey({
+				toolName: 'executions',
+				action: 'run',
+				workflowId: 'wf-1',
+			}),
+		).toBe('executions:run:wf-1');
+		expect(
+			resolveInstanceAiSessionGrantKey({
+				toolName: 'workflows',
+				action: 'update',
+				workflowId: 'wf-1',
+			}),
+		).toBe('workflows:update:wf-1');
+		expect(
+			resolveInstanceAiSessionGrantKey({ toolName: 'build-workflow', workflowId: 'wf-1' }),
+		).toBe('workflows:update:wf-1');
+	});
+
+	it('fails closed when a per-workflow grant cannot be scoped', () => {
+		expect(resolveInstanceAiSessionGrantKey({ toolName: 'executions', action: 'run' })).toBeNull();
+		expect(
+			resolveInstanceAiSessionGrantKey({ toolName: 'workflows', action: 'update' }),
+		).toBeNull();
+		expect(resolveInstanceAiSessionGrantKey({ toolName: 'build-workflow' })).toBeNull();
+	});
+
+	it('builds action-scoped keys for data-tables and generic tools', () => {
+		expect(resolveInstanceAiSessionGrantKey({ toolName: 'data-tables', action: 'create' })).toBe(
+			'data-tables:create',
+		);
+		expect(
+			resolveInstanceAiSessionGrantKey({ toolName: 'workspace', action: 'tag-workflow' }),
+		).toBe(buildToolActionSessionGrantKey('workspace', 'tag-workflow'));
+		expect(resolveInstanceAiSessionGrantKey({ toolName: 'submit-workflow' })).toBe(
+			'submit-workflow:create',
+		);
+		expect(
+			resolveInstanceAiSessionGrantKey({ toolName: 'submit-workflow', workflowId: 'wf-1' }),
+		).toBe('submit-workflow:update');
+	});
+});
+
+describe('instanceAiConfirmationResumeSchema', () => {
+	it('preserves Always allow scope for SDK resume validation', () => {
+		expect(instanceAiConfirmationResumeSchema.parse({ approved: true, scope: 'session' })).toEqual({
+			approved: true,
+			scope: 'session',
+		});
 	});
 });
 

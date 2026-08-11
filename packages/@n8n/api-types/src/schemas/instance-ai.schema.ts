@@ -73,6 +73,64 @@ export function buildDataTablesSessionGrantKey(action: string): string {
 	return `data-tables:${action}`;
 }
 
+/**
+ * Builds a generic tool+action session grant key (e.g. `workspace:tag-workflow`).
+ * Prefer resource-scoped builders (`buildUpdateWorkflowSessionGrantKey`, …) when
+ * Always allow must not apply across different resources.
+ */
+export function buildToolActionSessionGrantKey(toolName: string, action: string): string {
+	return `${toolName}:${action}`;
+}
+
+export type ResolveInstanceAiSessionGrantKeyInput = {
+	toolName: string;
+	/** Tool `args.action` when present. */
+	action?: string;
+	/**
+	 * Resource id for per-workflow grants. Prefer `args.workflowId`, fall back to
+	 * `confirmation.workflowId` from the suspend payload.
+	 */
+	workflowId?: string;
+};
+
+/**
+ * Single source of truth for Always-allow / session-grant keys used by both the
+ * frontend auto-approve watcher and backend `grantSessionToolApproval` calls.
+ *
+ * Returns `null` when a resource-scoped grant cannot be formed (fail closed) —
+ * callers must hide Always allow rather than store a blanket tool key.
+ */
+export function resolveInstanceAiSessionGrantKey(
+	input: ResolveInstanceAiSessionGrantKeyInput,
+): string | null {
+	const toolName = input.toolName;
+	const action = input.action ?? '';
+	const workflowId = input.workflowId ?? '';
+
+	if (toolName === 'submit-workflow') {
+		return buildToolActionSessionGrantKey(
+			'submit-workflow',
+			workflowId.length > 0 ? 'update' : 'create',
+		);
+	}
+
+	if (toolName === 'executions' && action === 'run') {
+		if (workflowId.length === 0) return null;
+		return buildRunWorkflowSessionGrantKey(workflowId);
+	}
+
+	if ((toolName === 'workflows' && action === 'update') || toolName === 'build-workflow') {
+		if (workflowId.length === 0) return null;
+		return buildUpdateWorkflowSessionGrantKey(workflowId);
+	}
+
+	if (toolName === 'data-tables') {
+		return buildDataTablesSessionGrantKey(action);
+	}
+
+	return buildToolActionSessionGrantKey(toolName, action);
+}
+
 // --- Domain-access grants ("always allow" for web access) ---
 // These keys mirror the research tool's action names (`fetch-url`, `web-search`) the same
 // way `executions:run:<id>` mirrors the executions `run` action, so a persisted grant row
@@ -186,6 +244,28 @@ export type InstanceAiRunStatus = z.infer<typeof instanceAiRunStatusSchema>;
 
 export const instanceAiConfirmationSeveritySchema = z.enum(['destructive', 'warning', 'info']);
 export type InstanceAiConfirmationSeverity = z.infer<typeof instanceAiConfirmationSeveritySchema>;
+
+/**
+ * Base suspend payload for generic Approve / Always allow / Deny confirmations.
+ * Tools may `.extend()` with resource ids (e.g. `workflowId`) for grant scoping.
+ */
+export const instanceAiConfirmationSuspendSchema = z.object({
+	requestId: z.string(),
+	message: z.string(),
+	severity: instanceAiConfirmationSeveritySchema,
+});
+export type InstanceAiConfirmationSuspend = z.infer<typeof instanceAiConfirmationSuspendSchema>;
+
+/**
+ * Base resume payload for generic confirmations. `scope: 'session'` is sent by the
+ * UI's Always allow action — tools must declare this field (Agents SDK strips
+ * undeclared keys) and persist a session grant when present.
+ */
+export const instanceAiConfirmationResumeSchema = z.object({
+	approved: z.boolean(),
+	scope: z.enum(['once', 'session']).optional(),
+});
+export type InstanceAiConfirmationResume = z.infer<typeof instanceAiConfirmationResumeSchema>;
 
 // ---------------------------------------------------------------------------
 // Agent status (frontend rendering state)

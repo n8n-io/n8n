@@ -1883,6 +1883,8 @@ describe('createThreadRuntime - session always-allow', () => {
 		expect(runtime.canAlwaysAllow('workflows', { action: 'update', workflowId: 'wf-1' })).toBe(
 			true,
 		);
+		expect(runtime.canAlwaysAllow('executions', { action: 'run' })).toBe(false);
+		expect(runtime.canAlwaysAllow('workspace', { action: 'tag-workflow' })).toBe(true);
 	});
 
 	it('scopes executions run grants per workflow', async () => {

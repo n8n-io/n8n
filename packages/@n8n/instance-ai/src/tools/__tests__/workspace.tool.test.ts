@@ -194,6 +194,39 @@ describe('workspace tool', () => {
 			expect(context.workspaceService!.tagWorkflow).toHaveBeenCalledWith('wf1', ['prod']);
 			expect(result).toEqual({ appliedTags: ['prod'] });
 		});
+
+		it('should persist a session grant when resumed with scope=session', async () => {
+			const grantSessionToolApproval = vi.fn().mockResolvedValue(undefined);
+			const context = createMockContext({ grantSessionToolApproval });
+			(context.workspaceService!.tagWorkflow as Mock).mockResolvedValue(['prod']);
+
+			const tool = createWorkspaceTool(context);
+			const result = await executeTool(
+				tool,
+				{ action: 'tag-workflow', workflowId: 'wf1', tags: ['prod'] },
+				{ resumeData: { approved: true, scope: 'session' } } as never,
+			);
+
+			expect(result).toEqual({ appliedTags: ['prod'] });
+			expect(grantSessionToolApproval).toHaveBeenCalledWith('workspace:tag-workflow');
+		});
+
+		it('should skip confirmation when a session grant already exists', async () => {
+			const context = createMockContext({
+				sessionApprovedToolKeys: new Set(['workspace:tag-workflow']),
+			});
+			(context.workspaceService!.tagWorkflow as Mock).mockResolvedValue(['prod']);
+
+			const tool = createWorkspaceTool(context);
+			const result = await executeTool(
+				tool,
+				{ action: 'tag-workflow', workflowId: 'wf1', tags: ['prod'] },
+				{ resumeData: undefined } as never,
+			);
+
+			expect(context.workspaceService!.tagWorkflow).toHaveBeenCalledWith('wf1', ['prod']);
+			expect(result).toEqual({ appliedTags: ['prod'] });
+		});
 	});
 
 	describe('folder actions', () => {

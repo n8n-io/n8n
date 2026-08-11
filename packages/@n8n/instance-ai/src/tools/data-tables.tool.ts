@@ -3,15 +3,20 @@
  * add-column, delete-column, rename-column, insert-rows, update-rows, delete-rows.
  */
 import { Tool } from '@n8n/agents';
-import {
-	buildDataTablesSessionGrantKey,
-	instanceAiConfirmationSeveritySchema,
-} from '@n8n/api-types';
+import { buildDataTablesSessionGrantKey } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext } from '../types';
+import {
+	hasSessionGrant as hasSessionGrantKey,
+	instanceAiConfirmationResumeSchema,
+	instanceAiConfirmationSuspendSchema,
+	persistSessionGrantIfRequested,
+	type InstanceAiConfirmationResume,
+	type InstanceAiConfirmationSuspend,
+} from './shared/session-confirmation';
 import { DATA_TABLES_TOOL_ID } from './tool-ids';
 
 // ── Shared schemas ─────────────────────────────────────────────────────────
@@ -44,37 +49,26 @@ const filterSchemaWithMinOne = z.object({
 		.min(1),
 });
 
-const confirmationSuspendSchema = z.object({
-	requestId: z.string(),
-	message: z.string(),
-	severity: instanceAiConfirmationSeveritySchema,
-});
+const confirmationSuspendSchema = instanceAiConfirmationSuspendSchema;
+const confirmationResumeSchema = instanceAiConfirmationResumeSchema;
 
-const confirmationResumeSchema = z.object({
-	approved: z.boolean(),
-	/** `'session'` — user chose "always allow"; persist a thread-level grant. */
-	scope: z.enum(['once', 'session']).optional(),
-});
-
-type ResumeData = z.infer<typeof confirmationResumeSchema>;
+type ResumeData = InstanceAiConfirmationResume;
 
 interface ConfirmationToolContext {
 	resumeData: ResumeData | undefined;
-	suspend: (payload: z.infer<typeof confirmationSuspendSchema>) => Promise<never>;
+	suspend: (payload: InstanceAiConfirmationSuspend) => Promise<never>;
 }
 
 function hasSessionGrant(context: InstanceAiContext, action: string): boolean {
-	return context.sessionApprovedToolKeys?.has(buildDataTablesSessionGrantKey(action)) === true;
+	return hasSessionGrantKey(context, buildDataTablesSessionGrantKey(action));
 }
 
-async function persistSessionGrantIfRequested(
+async function persistDataTableSessionGrantIfRequested(
 	context: InstanceAiContext,
 	action: string,
 	resumeData: ResumeData | undefined,
 ): Promise<void> {
-	if (resumeData?.approved && resumeData.scope === 'session') {
-		await context.grantSessionToolApproval?.(buildDataTablesSessionGrantKey(action));
-	}
+	await persistSessionGrantIfRequested(context, buildDataTablesSessionGrantKey(action), resumeData);
 }
 
 /**
@@ -379,7 +373,7 @@ async function handleCreate(
 		return { denied: true, reason: 'User denied the action' };
 	}
 
-	await persistSessionGrantIfRequested(context, 'create', resumeData);
+	await persistDataTableSessionGrantIfRequested(context, 'create', resumeData);
 
 	// State 3: Approved or always_allow — execute
 	try {
@@ -428,7 +422,7 @@ async function handleDelete(
 		return { success: false, denied: true, reason: 'User denied the action' };
 	}
 
-	await persistSessionGrantIfRequested(context, 'delete', resumeData);
+	await persistDataTableSessionGrantIfRequested(context, 'delete', resumeData);
 
 	// State 3: Approved or always_allow — execute
 	await context.dataTableService.delete(input.dataTableId, { projectId: input.projectId });
@@ -464,7 +458,7 @@ async function handleAddColumn(
 		return { denied: true, reason: 'User denied the action' };
 	}
 
-	await persistSessionGrantIfRequested(context, 'add-column', resumeData);
+	await persistDataTableSessionGrantIfRequested(context, 'add-column', resumeData);
 
 	// State 3: Approved or always_allow — execute
 	const column = await context.dataTableService.addColumn(
@@ -504,7 +498,7 @@ async function handleDeleteColumn(
 		return { success: false, denied: true, reason: 'User denied the action' };
 	}
 
-	await persistSessionGrantIfRequested(context, 'delete-column', resumeData);
+	await persistDataTableSessionGrantIfRequested(context, 'delete-column', resumeData);
 
 	// State 3: Approved or always_allow — execute
 	await context.dataTableService.deleteColumn(input.dataTableId, input.columnId, {
@@ -542,7 +536,7 @@ async function handleRenameColumn(
 		return { success: false, denied: true, reason: 'User denied the action' };
 	}
 
-	await persistSessionGrantIfRequested(context, 'rename-column', resumeData);
+	await persistDataTableSessionGrantIfRequested(context, 'rename-column', resumeData);
 
 	// State 3: Approved or always_allow — execute
 	await context.dataTableService.renameColumn(input.dataTableId, input.columnId, input.newName, {
@@ -580,7 +574,7 @@ async function handleInsertRows(
 		return { denied: true, reason: 'User denied the action' };
 	}
 
-	await persistSessionGrantIfRequested(context, 'insert-rows', resumeData);
+	await persistDataTableSessionGrantIfRequested(context, 'insert-rows', resumeData);
 
 	// State 3: Approved or always_allow — execute
 	return await context.dataTableService.insertRows(input.dataTableId, input.rows, {
@@ -617,7 +611,7 @@ async function handleUpdateRows(
 		return { denied: true, reason: 'User denied the action' };
 	}
 
-	await persistSessionGrantIfRequested(context, 'update-rows', resumeData);
+	await persistDataTableSessionGrantIfRequested(context, 'update-rows', resumeData);
 
 	// State 3: Approved or always_allow — execute
 	return await context.dataTableService.updateRows(input.dataTableId, input.filter, input.data, {
@@ -663,7 +657,7 @@ async function handleDeleteRows(
 		return { success: false, denied: true, reason: 'User denied the action' };
 	}
 
-	await persistSessionGrantIfRequested(context, 'delete-rows', resumeData);
+	await persistDataTableSessionGrantIfRequested(context, 'delete-rows', resumeData);
 
 	// State 3: Approved or always_allow — execute
 	const result = await context.dataTableService.deleteRows(input.dataTableId, input.filter, {

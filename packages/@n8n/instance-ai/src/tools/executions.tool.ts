@@ -3,15 +3,17 @@
  * get-resolved-node-parameters, stop.
  */
 import { Tool } from '@n8n/agents';
-import {
-	buildRunWorkflowSessionGrantKey,
-	instanceAiConfirmationSeveritySchema,
-} from '@n8n/api-types';
+import { buildRunWorkflowSessionGrantKey } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext } from '../types';
+import {
+	instanceAiConfirmationResumeSchema,
+	instanceAiConfirmationSuspendSchema,
+	persistSessionGrantIfRequested,
+} from './shared/session-confirmation';
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
@@ -136,18 +138,8 @@ type Input = z.infer<typeof inputSchema>;
 
 // ── Suspend / resume schemas (used by `run`) ───────────────────────────────
 
-const suspendSchema = z.object({
-	requestId: z.string(),
-	message: z.string(),
-	severity: instanceAiConfirmationSeveritySchema,
-});
-
-const resumeSchema = z.object({
-	approved: z.boolean(),
-	/** `'session'` — the user chose "always allow"; persist a thread-level grant so
-	 *  subsequent runs skip HITL for this action. */
-	scope: z.enum(['once', 'session']).optional(),
-});
+const suspendSchema = instanceAiConfirmationSuspendSchema;
+const resumeSchema = instanceAiConfirmationResumeSchema;
 
 // ── Handlers ───────────────────────────────────────────────────────────────
 
@@ -286,9 +278,7 @@ async function handleRun(
 	}
 
 	// "Always allow" — persist the grant so subsequent runs of this workflow skip HITL.
-	if (resumeData?.approved && resumeData.scope === 'session') {
-		await context.grantSessionToolApproval?.(grantKey);
-	}
+	await persistSessionGrantIfRequested(context, grantKey, resumeData);
 
 	// Approved or always_allow — execute
 	return await context.executionService.run(workflowId, input.inputData, {

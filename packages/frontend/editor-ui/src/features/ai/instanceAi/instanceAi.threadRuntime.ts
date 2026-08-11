@@ -2,13 +2,11 @@ import { computed, reactive, ref, triggerRef, watch } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
 import { ResponseError } from '@n8n/rest-api-client';
 import {
-	buildDataTablesSessionGrantKey,
-	buildRunWorkflowSessionGrantKey,
-	buildUpdateWorkflowSessionGrantKey,
 	INSTANCE_AI_EPHEMERAL_EVENT_TYPES,
 	INSTANCE_AI_THREAD_SOURCE_FALLBACK,
 	instanceAiEventSchema,
 	isSafeObjectKey,
+	resolveInstanceAiSessionGrantKey,
 	type InstanceAiConfirmation,
 	type InstanceAiConfirmRequest,
 	type InstanceAiConfirmResponse,
@@ -566,12 +564,9 @@ export function createThreadRuntime(
 
 	// --- Session "Always allow" ---
 	// Thread-scoped: cleared by `resetState()` so grants don't leak when the
-	// runtime is disposed and recreated. Prefer shared builders from
-	// `@n8n/api-types` so UI keys match persisted thread grants:
-	// `executions:run:<id>`, `workflows:update:<id>`, `data-tables:<action>`.
-	// Fallback for other tools: `${toolName}:${args.action ?? ''}`.
-	// `submit-workflow` is keyed on `workflowId` presence so a create grant
-	// doesn't silently auto-approve later updates.
+	// runtime is disposed and recreated. Keys come from
+	// `resolveInstanceAiSessionGrantKey` in `@n8n/api-types` so UI auto-approve
+	// matches persisted backend grants.
 	const sessionAlwaysAllowKeys = ref<Set<string>>(new Set());
 
 	function resolveAlwaysAllowWorkflowId(
@@ -588,37 +583,21 @@ export function createThreadRuntime(
 	}
 
 	/**
-	 * Returns null when an edit grant cannot be scoped to a workflow ID — storing a
-	 * generic `build-workflow:` key would auto-approve later foreign edits.
+	 * Returns null when a resource-scoped grant cannot be formed — storing a
+	 * generic tool key would auto-approve later foreign actions.
 	 */
 	function buildAlwaysAllowKey(
 		toolName: string,
 		args: Record<string, unknown>,
 		confirmationWorkflowId?: string,
 	): string | null {
-		if (toolName === 'submit-workflow') {
-			const isUpdate = typeof args.workflowId === 'string' && args.workflowId.length > 0;
-			return `submit-workflow:${isUpdate ? 'update' : 'create'}`;
-		}
-		const action = typeof args.action === 'string' ? args.action : '';
+		const action = typeof args.action === 'string' ? args.action : undefined;
 		const workflowId = resolveAlwaysAllowWorkflowId(args, confirmationWorkflowId);
-		// Running a workflow grants "always allow" per workflow, so the grant applies only to the
-		// workflow the user approved.
-		if (toolName === 'executions' && action === 'run') {
-			return buildRunWorkflowSessionGrantKey(workflowId);
-		}
-		// Editing a workflow (build-workflow save or workflows update) is also per-workflow,
-		// matching the backend `workflows:update:<id>` thread grant. Bound build-workflow
-		// saves often omit args.workflowId — use confirmation.workflowId from the suspend
-		// payload instead. Without either ID, refuse to store a key (fail closed).
-		if ((toolName === 'workflows' && action === 'update') || toolName === 'build-workflow') {
-			if (!workflowId) return null;
-			return buildUpdateWorkflowSessionGrantKey(workflowId);
-		}
-		if (toolName === 'data-tables') {
-			return buildDataTablesSessionGrantKey(action);
-		}
-		return `${toolName}:${action}`;
+		return resolveInstanceAiSessionGrantKey({
+			toolName,
+			...(action !== undefined ? { action } : {}),
+			...(workflowId.length > 0 ? { workflowId } : {}),
+		});
 	}
 
 	function addAlwaysAllowKey(
