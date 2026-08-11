@@ -42,6 +42,7 @@ function serializeNode(
 	mapKey: string,
 	graphNode: GraphNode,
 	nodePositions: Map<string, [number, number]>,
+	overrideAuthoredPositions = false,
 ): NodeJSON | undefined {
 	const instance = graphNode.instance;
 
@@ -51,7 +52,13 @@ function serializeNode(
 	}
 
 	const config = instance.config ?? {};
-	const position = config.position ?? nodePositions.get(mapKey) ?? [START_X, DEFAULT_Y];
+	// An authored position normally wins, so an edit can't move a node the user placed. When the
+	// layout is authoritative the computed position wins instead — otherwise a generator that
+	// invents positions silently opts the whole workflow out of being laid out.
+	const computedPosition = nodePositions.get(mapKey);
+	const position = (overrideAuthoredPositions
+		? (computedPosition ?? config.position)
+		: (config.position ?? computedPosition)) ?? [START_X, DEFAULT_Y];
 
 	// Determine node name:
 	// - If config has _originalName, use that (preserves undefined for sticky notes from fromJSON)
@@ -226,13 +233,20 @@ export const jsonSerializer: SerializerPlugin<WorkflowJSON> = {
 
 		// Calculate positions for nodes without explicit positions
 		const nodePositions = ctx.tidyUp
-			? calculateNodePositionsDagre(ctx.nodes)
+			? calculateNodePositionsDagre(ctx.nodes, {
+					overrideAuthoredPositions: ctx.overrideAuthoredPositions,
+				})
 			: calculateNodePositions(ctx.nodes);
 
 		// Convert nodes and connections
 		for (const [mapKey, graphNode] of ctx.nodes) {
 			// Serialize node
-			const serializedNode = serializeNode(mapKey, graphNode, nodePositions);
+			const serializedNode = serializeNode(
+				mapKey,
+				graphNode,
+				nodePositions,
+				ctx.overrideAuthoredPositions,
+			);
 			if (!serializedNode) continue;
 
 			nodes.push(serializedNode);

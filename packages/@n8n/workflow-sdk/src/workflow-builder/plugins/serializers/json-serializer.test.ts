@@ -96,6 +96,36 @@ describe('jsonSerializer', () => {
 			expect(result.connections).toEqual({});
 		});
 
+		describe('node positions', () => {
+			function contextWithPositionedTrigger(overrides: Partial<SerializerContext>) {
+				const manualTrigger = trigger({
+					type: 'n8n-nodes-base.manualTrigger',
+					version: 1,
+					config: { name: 'Manual Trigger', position: [-1120, 1360] },
+				});
+				return createMockSerializerContext({
+					nodes: new Map<string, GraphNode>([
+						['Manual Trigger', { instance: manualTrigger, connections: new Map() }],
+					]),
+					...overrides,
+				});
+			}
+
+			it('keeps an authored position when tidying up', () => {
+				const result = jsonSerializer.serialize(contextWithPositionedTrigger({ tidyUp: true }));
+
+				expect(result.nodes[0]?.position).toEqual([-1120, 1360]);
+			});
+
+			it('replaces an authored position when the layout is authoritative', () => {
+				const result = jsonSerializer.serialize(
+					contextWithPositionedTrigger({ tidyUp: true, overrideAuthoredPositions: true }),
+				);
+
+				expect(result.nodes[0]?.position).toEqual([0, 0]);
+			});
+		});
+
 		it('serializes nodes without configured parameters with an empty parameters object', () => {
 			const manualTrigger = trigger({
 				type: 'n8n-nodes-base.manualTrigger',

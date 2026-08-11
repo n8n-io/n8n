@@ -26,11 +26,13 @@ const {
 	mockTrackAutoassignOutcomes,
 	mockParseAndValidate,
 	mockStripImportStatements,
+	mockParseValidateHandlerConstructor,
 } = vi.hoisted(() => ({
 	mockAutoPopulateNodeCredentials: vi.fn(),
 	mockTrackAutoassignOutcomes: vi.fn(),
 	mockParseAndValidate: vi.fn(),
 	mockStripImportStatements: vi.fn((code: string) => code),
+	mockParseValidateHandlerConstructor: vi.fn(),
 }));
 
 // Mock credentials auto-assign
@@ -43,7 +45,8 @@ vi.mock('../tools/workflow-builder/credentials-auto-assign', () => ({
 
 // Mock dynamic imports
 vi.mock('@n8n/ai-workflow-builder', () => ({
-	ParseValidateHandler: vi.fn(function () {
+	ParseValidateHandler: vi.fn(function (config: unknown) {
+		mockParseValidateHandlerConstructor(config);
 		return { parseAndValidate: mockParseAndValidate };
 	}),
 	stripImportStatements: (code: string) => mockStripImportStatements(code),
@@ -256,6 +259,16 @@ describe('create-workflow-from-code MCP tool', () => {
 			expect(response.nodeCount).toBe(2);
 			expect(response.url).toBe('https://n8n.example.com/workflow/wf-saved-1');
 			expect(result.isError).toBeUndefined();
+		});
+
+		test('lays out every node, including ones the generated code positioned itself', async () => {
+			await callHandler({ code: 'const wf = ...' });
+
+			// A brand-new workflow has no canvas arrangement to protect, so a position the
+			// client invented must not opt the workflow out of being laid out.
+			expect(mockParseValidateHandlerConstructor).toHaveBeenCalledWith(
+				expect.objectContaining({ overrideAuthoredPositions: true }),
+			);
 		});
 
 		test('surfaces validation warnings in the response', async () => {

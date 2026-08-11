@@ -176,4 +176,44 @@ describe('parseWorkflowCodeToBuilder', () => {
 			);
 		});
 	});
+
+	describe('layout of authored positions', () => {
+		// A three-node chain scattered across the canvas, as generated code looks when it
+		// copies positions off an existing workflow or off the reference examples.
+		const withPositions = `
+			const startTrigger = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: { name: 'Start', position: [-1120, 1360] } });
+			const fetchData = node({ type: 'n8n-nodes-base.httpRequest', version: 4.2, config: { name: 'Fetch Data', parameters: {}, position: [660, -220] } });
+			const processData = node({ type: 'n8n-nodes-base.set', version: 3.4, config: { name: 'Process Data', parameters: {}, position: [-340, 980] } });
+
+			export default workflow('wf-1', 'Chain')
+				.add(startTrigger)
+				.to(fetchData)
+				.to(processData);
+		`;
+		const withoutPositions = withPositions.replace(/, position: \[[-\d, ]+\]/g, '');
+
+		function positionsOf(code: string, overrideAuthoredPositions: boolean) {
+			return parseWorkflowCodeToBuilder(code)
+				.toJSON({ tidyUp: true, overrideAuthoredPositions })
+				.nodes.map((n) => [n.name, n.position]);
+		}
+
+		it('keeps authored positions by default, so an edit cannot move nodes the user placed', () => {
+			expect(positionsOf(withPositions, false)).toEqual([
+				['Start', [-1120, 1360]],
+				['Fetch Data', [660, -220]],
+				['Process Data', [-340, 980]],
+			]);
+		});
+
+		it('lays authored positions out when overrideAuthoredPositions is set', () => {
+			// Same arrangement as the identical code with no positions at all: a tidy row.
+			expect(positionsOf(withPositions, true)).toEqual(positionsOf(withoutPositions, false));
+			expect(positionsOf(withPositions, true)).toEqual([
+				['Start', [0, 0]],
+				['Fetch Data', [224, 0]],
+				['Process Data', [448, 0]],
+			]);
+		});
+	});
 });

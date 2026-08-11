@@ -39,6 +39,14 @@ export interface ParseValidateHandlerConfig {
 	 * skip — agent-built workflows then pass validation despite real defects.
 	 */
 	nodeTypesProvider?: INodeTypes;
+	/**
+	 * Whether the layout also replaces positions the generated code set explicitly.
+	 * Defaults to false, which keeps a canvas the user arranged by hand when the agent
+	 * edits an existing workflow. Set it where the code is the only source of positions
+	 * (building a new workflow from scratch), so a position the model invented — or copied
+	 * off another workflow — can't leave the canvas untidied.
+	 */
+	overrideAuthoredPositions?: boolean;
 }
 
 /**
@@ -60,11 +68,13 @@ export class ParseValidateHandler {
 	private logger?: Logger;
 	private generatePinData: boolean;
 	private nodeTypesProvider?: INodeTypes;
+	private overrideAuthoredPositions: boolean;
 
 	constructor(config: ParseValidateHandlerConfig = {}) {
 		this.logger = config.logger;
 		this.generatePinData = config.generatePinData ?? true;
 		this.nodeTypesProvider = config.nodeTypesProvider;
+		this.overrideAuthoredPositions = config.overrideAuthoredPositions ?? false;
 	}
 
 	/**
@@ -278,7 +288,11 @@ export class ParseValidateHandler {
 			);
 
 			// Convert to JSON with Dagre layout matching the FE's tidy-up
-			const workflowJson: WorkflowJSON = builder.toJSON({ tidyUp: true, existingGroupIdsByName });
+			const workflowJson: WorkflowJSON = builder.toJSON({
+				tidyUp: true,
+				overrideAuthoredPositions: this.overrideAuthoredPositions,
+				existingGroupIdsByName,
+			});
 
 			this.logger?.debug('Parsed workflow', {
 				id: workflowJson.id,

@@ -326,6 +326,77 @@ describe('calculateNodePositionsDagre', () => {
 			expect(positions.has('trigger')).toBe(false);
 			expect(positions.has('set')).toBe(true);
 		});
+
+		describe('overrideAuthoredPositions', () => {
+			// A chain where every node carries an explicit position, which without the override
+			// short-circuits the whole layout.
+			function makeFullyPositionedChain() {
+				const nodes = new Map<string, GraphNode>();
+				nodes.set(
+					'trigger',
+					createGraphNode(
+						'trigger',
+						'n8n-nodes-base.manualTrigger',
+						makeMainConns([[0, [makeTarget('set')]]]),
+						[-1120, 1360],
+					),
+				);
+				nodes.set(
+					'set',
+					createGraphNode('set', 'n8n-nodes-base.set', makeMainConns([]), [660, -220]),
+				);
+				return nodes;
+			}
+
+			it('lays out every node, ignoring the authored positions', () => {
+				const positions = calculateNodePositionsDagre(makeFullyPositionedChain(), {
+					overrideAuthoredPositions: true,
+				});
+
+				expect(positions.get('trigger')).toEqual([0, 0]);
+				expect(positions.get('set')).toEqual([224, 0]);
+			});
+
+			it('produces the same layout as the equivalent unpositioned graph', () => {
+				const unpositioned = new Map<string, GraphNode>();
+				unpositioned.set(
+					'trigger',
+					createGraphNode(
+						'trigger',
+						'n8n-nodes-base.manualTrigger',
+						makeMainConns([[0, [makeTarget('set')]]]),
+					),
+				);
+				unpositioned.set('set', createGraphNode('set', 'n8n-nodes-base.set'));
+
+				expect(
+					calculateNodePositionsDagre(makeFullyPositionedChain(), {
+						overrideAuthoredPositions: true,
+					}),
+				).toEqual(calculateNodePositionsDagre(unpositioned));
+			});
+
+			it('returns no positions for the same graph without the override', () => {
+				expect(calculateNodePositionsDagre(makeFullyPositionedChain()).size).toBe(0);
+			});
+
+			it('reanchors a sticky note onto where the covered nodes were moved to', () => {
+				const nodes = makeFullyPositionedChain();
+				// Sticky covering the trigger at its authored position.
+				nodes.set('note', createGraphNode('note', STICKY_NODE_TYPE, undefined, [-1120, 1360]));
+
+				const positions = calculateNodePositionsDagre(nodes, {
+					overrideAuthoredPositions: true,
+				});
+
+				// Follows the trigger to its laid-out position rather than staying behind at
+				// the authored one.
+				const notePos = positions.get('note')!;
+				expect(notePos).not.toEqual([-1120, 1360]);
+				expect(notePos[0]).toBeCloseTo(positions.get('trigger')![0], -1);
+				expect(isGridAligned(notePos)).toBe(true);
+			});
+		});
 	});
 
 	describe('grid alignment', () => {
