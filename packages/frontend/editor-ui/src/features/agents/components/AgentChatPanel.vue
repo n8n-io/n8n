@@ -126,6 +126,7 @@ const inputText = computed<string>({
 	},
 });
 const isPreparingToSend = ref(false);
+let disposed = false;
 
 const {
 	messages,
@@ -246,20 +247,31 @@ async function onSubmit() {
 
 	isPreparingToSend.value = true;
 	try {
-		await props.beforeSend?.();
-	} catch {
-		isPreparingToSend.value = false;
-		return;
-	}
-
-	try {
-		inputText.value = '';
-		attachedFiles.value = [];
+		const target = {
+			projectId: props.projectId,
+			agentId: props.agentId,
+			continueSessionId: props.continueSessionId,
+		};
+		const isCurrentTarget = () =>
+			!disposed &&
+			props.projectId === target.projectId &&
+			props.agentId === target.agentId &&
+			props.continueSessionId === target.continueSessionId;
+		try {
+			await props.beforeSend?.();
+		} catch {
+			return;
+		}
+		if (!isCurrentTarget()) return;
 
 		const fingerprint = await buildAgentConfigFingerprint(
 			props.agentConfig,
 			props.connectedTriggers,
 		);
+		if (!isCurrentTarget()) return;
+
+		inputText.value = '';
+		attachedFiles.value = [];
 		agentTelemetry.trackSubmittedMessage({
 			agentId: props.agentId,
 			status: props.agentStatus,
@@ -289,6 +301,7 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
+	disposed = true;
 	if (isStreaming.value) void stopGenerating();
 });
 </script>

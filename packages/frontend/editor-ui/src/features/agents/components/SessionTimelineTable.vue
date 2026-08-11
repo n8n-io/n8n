@@ -78,6 +78,15 @@ const rows = computed<Row[]>(() => {
 });
 
 const shouldVirtualizeRows = computed(() => rows.value.length > VIRTUALIZE_AFTER_ROWS);
+const tabbableEventIndex = computed(() => {
+	const selectedRow = rows.value.find(
+		(row) => row.kind === 'event' && row.index === props.selectedIndex,
+	);
+	if (selectedRow?.kind === 'event') return selectedRow.index;
+
+	const firstEventRow = rows.value.find((row) => row.kind === 'event');
+	return firstEventRow?.kind === 'event' ? firstEventRow.index : null;
+});
 
 function updateScrollMask() {
 	if (!scrollContainer) {
@@ -106,6 +115,14 @@ function visibleRowElement(rowId: string): HTMLElement | undefined {
 	const visibleRows = tableRef.value?.querySelectorAll<HTMLElement>('[data-timeline-row-id]');
 
 	return Array.from(visibleRows ?? []).find((element) => element.dataset.timelineRowId === rowId);
+}
+
+function focusVisibleRow(rowId: string): boolean {
+	const rowElement = visibleRowElement(rowId);
+	if (!rowElement) return false;
+
+	rowElement.focus();
+	return true;
 }
 
 function scrollVisibleRowIntoView(rowId: string): boolean {
@@ -172,9 +189,18 @@ watch(
 	() => props.selectedIndex,
 	(selectedIndex) => {
 		if (selectedIndex === null) return;
+		const activeElement = document.activeElement;
+		const shouldMoveFocus =
+			activeElement instanceof HTMLElement &&
+			tableRef.value?.contains(activeElement) === true &&
+			activeElement.closest('[data-timeline-row-id]') !== null;
+		const rowId = `event-${selectedIndex}`;
 		void nextTick(() => {
-			scrollRowIntoView(`event-${selectedIndex}`);
+			scrollRowIntoView(rowId);
 			updateScrollMask();
+			if (shouldMoveFocus && !focusVisibleRow(rowId)) {
+				void nextTick(() => focusVisibleRow(rowId));
+			}
 		});
 	},
 );
@@ -204,7 +230,7 @@ watch(
 					:data-timeline-row-id="row.id"
 					:class="$style.rowWrapper"
 					role="row"
-					tabindex="0"
+					:tabindex="tabbableEventIndex === row.index ? 0 : -1"
 					:aria-selected="props.selectedIndex === row.index"
 					@click="emit('select', row.index)"
 					@keydown.enter.self.prevent="emit('select', row.index)"
@@ -240,7 +266,7 @@ watch(
 					:data-timeline-row-id="row.id"
 					:class="$style.rowWrapper"
 					role="row"
-					tabindex="0"
+					:tabindex="tabbableEventIndex === row.index ? 0 : -1"
 					:aria-selected="props.selectedIndex === row.index"
 					@click="emit('select', row.index)"
 					@keydown.enter.self.prevent="emit('select', row.index)"

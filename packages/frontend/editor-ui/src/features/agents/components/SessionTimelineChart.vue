@@ -24,13 +24,19 @@ const SCROLL_PADDING = 48;
 
 const emit = defineEmits<{ select: [index: number] }>();
 
+type Segment =
+	| { kind: 'event'; item: TimelineItem; index: number; duration: number }
+	| { kind: 'idle'; range: IdleRange };
+
+type PopoverTarget = { segment: Segment; reference: HTMLElement };
+
 const i18n = useI18n();
 const carouselRef = ref<HTMLElement | null>(null);
 const chartRef = ref<HTMLElement | null>(null);
 const hasOverflow = ref(false);
 const canScrollLeft = ref(false);
 const canScrollRight = ref(false);
-const activePopover = ref<{ segment: Segment; reference: HTMLElement } | null>(null);
+const activePopover = ref<PopoverTarget | null>(null);
 const popoverOpen = ref(false);
 
 const INSTANT_MS = 100;
@@ -38,9 +44,8 @@ const POPOVER_SHOW_DELAY_MS = 300;
 let showPopoverTimer: ReturnType<typeof setTimeout> | null = null;
 let resizeObserver: ResizeObserver | null = null;
 
-type Segment =
-	| { kind: 'event'; item: TimelineItem; index: number; duration: number }
-	| { kind: 'idle'; range: IdleRange };
+let hoveredPopover: PopoverTarget | null = null;
+let focusedPopover: PopoverTarget | null = null;
 
 const segments = computed<Segment[]>(() => {
 	const out: Segment[] = [];
@@ -155,12 +160,17 @@ function onClick(index: number, item: TimelineItem): void {
 	emit('select', index);
 }
 
-function showPopover(segment: Segment, event: MouseEvent): void {
+function showPopover(segment: Segment, event: MouseEvent | FocusEvent): void {
 	if (!(event.currentTarget instanceof HTMLElement)) return;
-	const reference = event.currentTarget;
+	const target = { segment, reference: event.currentTarget };
+	if (event.type === 'focus') {
+		focusedPopover = target;
+	} else {
+		hoveredPopover = target;
+	}
 	clearShowPopoverTimer();
 	showPopoverTimer = setTimeout(() => {
-		activePopover.value = { segment, reference };
+		activePopover.value = target;
 		popoverOpen.value = true;
 	}, POPOVER_SHOW_DELAY_MS);
 }
@@ -220,8 +230,19 @@ function scrollChart(direction: -1 | 1): void {
 	chart.scrollBy({ left: direction * distance, top: 0, behavior });
 }
 
-function hidePopover(): void {
+function hidePopover(event: MouseEvent | FocusEvent): void {
+	if (event.type === 'blur') {
+		focusedPopover = null;
+	} else {
+		hoveredPopover = null;
+	}
 	clearShowPopoverTimer();
+	const remainingTarget = focusedPopover ?? hoveredPopover;
+	if (remainingTarget) {
+		activePopover.value = remainingTarget;
+		popoverOpen.value = true;
+		return;
+	}
 	popoverOpen.value = false;
 	activePopover.value = null;
 }
@@ -314,7 +335,7 @@ onBeforeUnmount(() => {
 					data-test-id="timeline-idle"
 					:class="$style.idle"
 					@mouseenter="showPopover(seg, $event)"
-					@mouseleave="hidePopover"
+					@mouseleave="hidePopover($event)"
 				>
 					<span :class="$style.idleFill">{{ i18n.baseText('agentSessions.timeline.idle') }}</span>
 				</div>
@@ -327,7 +348,9 @@ onBeforeUnmount(() => {
 					:data-selected="props.selectedIndex === seg.index ? 'true' : undefined"
 					:style="eventStyle(seg.item)"
 					@mouseenter="showPopover(seg, $event)"
-					@mouseleave="hidePopover"
+					@mouseleave="hidePopover($event)"
+					@focus="showPopover(seg, $event)"
+					@blur="hidePopover($event)"
 					@click="onClick(seg.index, seg.item)"
 				/>
 			</div>
@@ -372,7 +395,7 @@ onBeforeUnmount(() => {
 
 /*
  * Each segment lives inside a flex .cell that owns the inline flex sizing.
- * Hover popover positioning is handled by one shared HoverCard above,
+ * Hover/focus popover positioning is handled by one shared HoverCard above,
  * anchored to the active block/idle element.
  */
 .cell {

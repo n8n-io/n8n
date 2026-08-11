@@ -55,8 +55,12 @@ function makeItems(): TimelineItem[] {
 	];
 }
 
-function mountTable(props: InstanceType<typeof SessionTimelineTable>['$props']) {
+function mountTable(
+	props: InstanceType<typeof SessionTimelineTable>['$props'],
+	attachTo?: HTMLElement,
+) {
 	return mount(SessionTimelineTable, {
+		...(attachTo ? { attachTo } : {}),
 		props,
 		global: { plugins: [makeRouter()] },
 	});
@@ -148,27 +152,49 @@ describe('SessionTimelineTable', () => {
 				}),
 			),
 		],
-	])('renders %s events as keyboard-selectable grid rows', async (_renderingMode, items) => {
-		const w = mountTable({
-			items,
-			selectedIndex: 1,
-			visibleKinds: new Set<string>(),
-		});
-		const grid = w.get('[role="grid"]');
-		const rows = w.findAll('[data-test-id="timeline-row"]');
+	])('supports roving keyboard selection for %s events', async (_renderingMode, items) => {
+		const host = document.createElement('div');
+		document.body.appendChild(host);
+		const w = mountTable(
+			{
+				items,
+				selectedIndex: 1,
+				visibleKinds: new Set<string>(),
+			},
+			host,
+		);
 
-		expect(grid.attributes('aria-label')).toBe('Events');
-		expect(grid.element.querySelector('[role="rowgroup"]')).not.toBeNull();
-		expect(rows[0].attributes('role')).toBe('row');
-		expect(rows[0].attributes('tabindex')).toBe('0');
-		expect(rows[0].attributes('aria-selected')).toBe('false');
-		expect(rows[1].attributes('aria-selected')).toBe('true');
-		expect(rows[0].element.querySelector('[role="gridcell"]')).not.toBeNull();
+		try {
+			const grid = w.get('[role="grid"]');
+			const rows = w.findAll('[data-test-id="timeline-row"]');
 
-		await rows[1].trigger('keydown', { key: 'Enter' });
-		await rows[2].trigger('keydown', { key: ' ' });
+			expect(grid.attributes('aria-label')).toBe('Events');
+			expect(grid.element.querySelector('[role="rowgroup"]')).not.toBeNull();
+			expect(rows[0].attributes('role')).toBe('row');
+			expect(rows[0].attributes('tabindex')).toBe('-1');
+			expect(rows[1].attributes('tabindex')).toBe('0');
+			expect(rows[2].attributes('tabindex')).toBe('-1');
+			expect(rows[0].attributes('aria-selected')).toBe('false');
+			expect(rows[1].attributes('aria-selected')).toBe('true');
+			expect(rows[0].element.querySelector('[role="gridcell"]')).not.toBeNull();
 
-		expect(w.emitted('select')).toEqual([[1], [2]]);
+			(rows[1].element as HTMLElement).focus();
+			await rows[1].trigger('keydown', { key: 'Enter' });
+			await rows[2].trigger('keydown', { key: ' ' });
+			expect(w.emitted('select')).toEqual([[1], [2]]);
+
+			await w.setProps({ selectedIndex: 2 });
+			await w.vm.$nextTick();
+			await w.vm.$nextTick();
+
+			const updatedRows = w.findAll('[data-test-id="timeline-row"]');
+			expect(document.activeElement).toBe(updatedRows[2].element);
+			expect(updatedRows[1].attributes('tabindex')).toBe('-1');
+			expect(updatedRows[2].attributes('tabindex')).toBe('0');
+		} finally {
+			w.unmount();
+			host.remove();
+		}
 	});
 
 	it('renders idle periods as non-selectable grid rows', () => {

@@ -337,6 +337,21 @@ describe('AgentBuilderHeader', () => {
 		expect(wrapper.emitted('open-preview')).toBeUndefined();
 	});
 
+	it('keeps the close action enabled when the open preview agent is not runnable', async () => {
+		const wrapper = mountHeader({
+			isPreviewOpen: true,
+			agent: { ...baseAgent, isRunnable: false } as AgentResource,
+		});
+		const previewButton = wrapper.find('[data-testid="agent-header-preview-btn"]');
+
+		expect(previewButton.attributes('disabled')).toBeUndefined();
+
+		await previewButton.trigger('click');
+
+		expect(wrapper.emitted('close-preview')).toEqual([[]]);
+		expect(wrapper.emitted('open-preview')).toBeUndefined();
+	});
+
 	it('emits switch-agent when a switcher item is selected', async () => {
 		agentsListRef.value = [baseAgent, { id: 'a2', name: 'Other' } as unknown as AgentResource];
 		ensureLoadedMock.mockResolvedValue(agentsListRef.value);

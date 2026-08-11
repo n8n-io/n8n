@@ -976,6 +976,18 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		expect(startSessionAutoRefreshMock).not.toHaveBeenCalled();
 	});
 
+	it('reports an initial session fetch failure and keeps polling for a retry', async () => {
+		const fetchError = new Error('session fetch failed');
+		fetchSessionThreadsMock.mockRejectedValueOnce(fetchError);
+
+		const wrapper = await renderView();
+
+		expect(showErrorMock).toHaveBeenCalledWith(fetchError, 'agentSessions.showError.load');
+		expect(startSessionAutoRefreshMock).toHaveBeenCalledTimes(1);
+
+		wrapper.unmount();
+	});
+
 	it('keeps session polling owned by the latest overlapping initialize', async () => {
 		const staleAgentFetch = Promise.withResolvers<ReturnType<typeof makeAgentResponse>>();
 		getAgentMock.mockReturnValueOnce(staleAgentFetch.promise);
@@ -1145,6 +1157,24 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		);
 	});
 
+	it('shows an error when an unsaved artifact cannot be prepared for Preview', async () => {
+		const error = new Error('create failed');
+		createAgentMock.mockRejectedValueOnce(error);
+		const wrapper = await renderView({
+			props: {
+				artifactMode: true,
+				artifactProjectId: 'p2',
+				artifactAgentId: 'a2',
+				artifactAgentPending: true,
+			},
+		});
+		const { pending } = await startArtifactPreviewSend(wrapper, 'ephemeral-thread');
+
+		await expect(pending).rejects.toBe(error);
+
+		expect(showErrorMock).toHaveBeenCalledWith(error, 'agents.builder.preview.sendError');
+	});
+
 	it('keeps the local Preview chat mounted when its persistence event clears pending state', async () => {
 		const wrapper = await renderView({
 			props: {
@@ -1279,6 +1309,35 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		firstCreate.resolve(makeAgentResponse({ id: 'a2' }));
 		secondCreate.resolve(makeAgentResponse({ id: 'a3' }));
 		await Promise.all([firstSend, secondSend, returnedSend]);
+		expect(wrapper.emitted('persisted')).toEqual([[expect.objectContaining({ id: 'a2' })]]);
+	});
+
+	it('reuses a successfully created resource when returning to its pending artifact target', async () => {
+		const firstCreate = Promise.withResolvers<ReturnType<typeof makeAgentResponse>>();
+		createAgentMock.mockReturnValueOnce(firstCreate.promise);
+		const wrapper = await renderView({
+			props: {
+				artifactMode: true,
+				artifactProjectId: 'p2',
+				artifactAgentId: 'a2',
+				artifactAgentPending: true,
+			},
+		});
+
+		const firstSend = (await startArtifactPreviewSend(wrapper, 'ephemeral-a2')).pending;
+		await vi.waitFor(() => expect(createAgentMock).toHaveBeenCalledOnce());
+		await wrapper.setProps({ artifactAgentId: 'a3' });
+		await flushPromises();
+		firstCreate.resolve(makeAgentResponse({ id: 'a2' }));
+		await firstSend;
+		expect(wrapper.emitted('persisted')).toBeUndefined();
+
+		await wrapper.setProps({ artifactAgentId: 'a2' });
+		await flushPromises();
+		const returnedSend = await startArtifactPreviewSend(wrapper, 'ephemeral-a2-return');
+		await returnedSend.pending;
+
+		expect(createAgentMock).toHaveBeenCalledOnce();
 		expect(wrapper.emitted('persisted')).toEqual([[expect.objectContaining({ id: 'a2' })]]);
 	});
 

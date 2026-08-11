@@ -694,11 +694,19 @@ interface McpAvailabilitySnapshot {
  * collision; REST create stays strict).
  */
 const persistFlights = new Map<string, Promise<void>>();
+const persistedAgentsByTarget = new Map<string, AgentResource>();
 async function ensureAgentPersisted(): Promise<void> {
 	if (!isUnsaved.value) return;
 	const targetProjectId = projectId.value;
 	const targetAgentId = agentId.value;
 	const targetKey = `${targetProjectId}:${targetAgentId}`;
+	const persistedAgent = persistedAgentsByTarget.get(targetKey);
+	if (persistedAgent) {
+		isUnsaved.value = false;
+		agent.value = persistedAgent;
+		emit('persisted', persistedAgent);
+		return;
+	}
 	let flight = persistFlights.get(targetKey);
 	if (!flight) {
 		flight = (async () => {
@@ -708,6 +716,7 @@ async function ensureAgentPersisted(): Promise<void> {
 				localConfig.value?.name ?? locale.baseText('agents.new.defaultName'),
 				{ id: targetAgentId },
 			);
+			persistedAgentsByTarget.set(targetKey, created);
 			upsertProjectAgentsListCache(targetProjectId, created);
 			if (isStaleAgentTarget(targetProjectId, targetAgentId)) return;
 			isUnsaved.value = false;
@@ -890,8 +899,14 @@ async function flushAutosave() {
 }
 
 async function beforePreviewSend() {
+	// Autosave failures already use their config/skill/MCP-specific error toasts.
 	await flushAutosave();
-	await ensureAgentPersisted();
+	try {
+		await ensureAgentPersisted();
+	} catch (error) {
+		showError(error, locale.baseText('agents.builder.preview.sendError'));
+		throw error;
+	}
 }
 
 // Makes the lock a write boundary rather than only a disabled UI state: drop
@@ -1389,10 +1404,16 @@ async function initialize({ preserveState = false }: { preserveState?: boolean }
 		// off a new fetch — keeps the store tied to the current project/agent.
 		sessionsStore.stopAutoRefresh();
 		if (!isUnsaved.value) {
-			void sessionsStore.fetchThreads(targetProjectId, targetAgentId).then(() => {
-				if (!isCurrentInitialization()) return;
-				sessionsStore.startAutoRefresh();
-			});
+			void sessionsStore
+				.fetchThreads(targetProjectId, targetAgentId)
+				.catch((error: unknown) => {
+					if (!isCurrentInitialization()) return;
+					showError(error, locale.baseText('agentSessions.showError.load'));
+				})
+				.finally(() => {
+					if (!isCurrentInitialization()) return;
+					sessionsStore.startAutoRefresh();
+				});
 		}
 		const connectedTriggersAtBaselineStart = connectedTriggers.value;
 		void (async () => {

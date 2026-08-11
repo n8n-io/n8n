@@ -1,9 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { flushPromises, mount } from '@vue/test-utils';
-import { computed, ref } from 'vue';
+import { computed, defineComponent, h, ref } from 'vue';
 import { APPROVAL_TOOL_NAME, N8N_CHAT_ACTION_TOOL_NAME } from '@n8n/api-types';
 import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
 import AgentChatPanel from '../components/AgentChatPanel.vue';
+import AgentPreviewDock from '../components/AgentPreviewDock.vue';
+import {
+	buildAgentConfigFingerprint,
+	type AgentConfigFingerprint,
+} from '../composables/agentTelemetry.utils';
 import type { AgentJsonConfig } from '../types';
 
 const sendMessageMock = vi.fn();
@@ -41,13 +46,27 @@ vi.mock('@n8n/i18n', () => ({
 vi.mock('@n8n/design-system', () => ({
 	N8nButton: { template: '<button><slot /></button>' },
 	N8nCallout: { template: '<div><slot /><slot name="trailingContent" /></div>' },
-	N8nIconButton: { template: '<button />' },
+	N8nHeading: { template: '<div><slot /></div>' },
+	N8nIconButton: {
+		emits: ['click'],
+		template: '<button v-bind="$attrs" @click="$emit(\'click\')" />',
+	},
 	N8nSendStopButton: {
 		name: 'N8nSendStopButton',
 		props: ['streaming', 'stopButtonTestId'],
 		emits: ['stop'],
 		template: '<button :data-test-id="stopButtonTestId" @click="$emit(\'stop\')" />',
 	},
+	N8nTooltip: { template: '<div><slot /></div>' },
+	TOOLTIP_DELAY_MS: 500,
+}));
+
+vi.mock('@/app/components/KeyboardShortcutTooltip.vue', () => ({
+	default: { template: '<div><slot /></div>' },
+}));
+
+vi.mock('@/app/composables/useKeybindings', () => ({
+	useKeybindings: vi.fn(),
 }));
 
 // Reads a Pinia store for notifications — irrelevant to panel behavior.
@@ -97,6 +116,7 @@ vi.mock('../composables/useAgentTelemetry', () => ({
 }));
 
 vi.mock('../composables/agentTelemetry.utils', () => ({
+	deriveAgentStatus: vi.fn(() => 'draft'),
 	buildAgentConfigFingerprint: vi.fn().mockResolvedValue({
 		instructions: '',
 		tools: [],
@@ -228,6 +248,58 @@ describe('AgentChatPanel', () => {
 
 		expect(sendMessageMock).toHaveBeenCalledWith('update config');
 		expect(events).toEqual(['beforeSend', 'sendMessage']);
+	});
+
+	it.each([
+		[
+			'the session changes',
+			async (wrapper: ReturnType<typeof mountPanel>) => {
+				await wrapper.setProps({ continueSessionId: 'session-2' });
+			},
+		],
+		['the panel unmounts', async (wrapper: ReturnType<typeof mountPanel>) => wrapper.unmount()],
+	])('does not send a message after beforeSend resolves if %s', async (_condition, invalidate) => {
+		const beforeSend = Promise.withResolvers<void>();
+		const wrapper = mountPanel({
+			continueSessionId: 'session-1',
+			beforeSend: () => beforeSend.promise,
+		});
+
+		(
+			wrapper.vm as unknown as { sendMessageFromOutside: (message: string) => void }
+		).sendMessageFromOutside('update config');
+		await flushPromises();
+		await invalidate(wrapper);
+		beforeSend.resolve();
+		await flushPromises();
+
+		expect(sendMessageMock).not.toHaveBeenCalled();
+	});
+
+	it('does not send a message if the session changes while preparing telemetry', async () => {
+		const fingerprint = Promise.withResolvers<AgentConfigFingerprint>();
+		vi.mocked(buildAgentConfigFingerprint).mockReturnValueOnce(fingerprint.promise);
+		const wrapper = mountPanel({ continueSessionId: 'session-1' });
+
+		(
+			wrapper.vm as unknown as { sendMessageFromOutside: (message: string) => void }
+		).sendMessageFromOutside('update config');
+		await vi.waitFor(() => expect(buildAgentConfigFingerprint).toHaveBeenCalledOnce());
+		await wrapper.setProps({ continueSessionId: 'session-2' });
+		fingerprint.resolve({
+			instructions: '',
+			tools: [],
+			skills: [],
+			tasks: [],
+			triggers: [],
+			vector_stores: [],
+			memory: null,
+			model: null,
+			config_version: 'test-version',
+		});
+		await flushPromises();
+
+		expect(sendMessageMock).not.toHaveBeenCalled();
 	});
 
 	it('keeps the draft while suspended-run cancellation is pending', async () => {
@@ -363,5 +435,56 @@ describe('AgentChatPanel', () => {
 		expect(wrapper.text()).toContain('MCP server');
 		expect(wrapper.text()).toContain('Sub-agent');
 		expect(wrapper.text()).toContain('integrations.0.credentialId');
+	});
+});
+
+describe('AgentPreviewDock stream lifecycle', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		messagesMock.value = [];
+		isStreamingMock.value = true;
+		isCancellingMock.value = false;
+		fatalErrorMock.value = null;
+	});
+
+	function mountPreviewDock() {
+		return mount(
+			defineComponent({
+				setup() {
+					const open = ref(true);
+					const sessionId = ref('session-1');
+					return () =>
+						open.value
+							? h(AgentPreviewDock, {
+									sessionTitle: 'Session',
+									hasSession: true,
+									initialized: true,
+									projectId: 'p1',
+									agentId: 'a1',
+									agent: null,
+									localConfig: defaultAgentConfig,
+									connectedTriggers: [],
+									effectiveSessionId: sessionId.value,
+									onClose: () => (open.value = false),
+									onNewSession: () => (sessionId.value = 'session-2'),
+								})
+							: null;
+				},
+			}),
+		);
+	}
+
+	it.each([
+		['closes', 'agent-preview-close-btn'],
+		['starts a new session', 'agent-preview-new-chat-btn'],
+	])('stops an in-flight stream when the preview %s', async (_action, testId) => {
+		const wrapper = mountPreviewDock();
+
+		await wrapper.get(`[data-testid="${testId}"]`).trigger('click');
+		await flushPromises();
+
+		expect(stopGeneratingMock).toHaveBeenCalledOnce();
+		isStreamingMock.value = false;
+		wrapper.unmount();
 	});
 });

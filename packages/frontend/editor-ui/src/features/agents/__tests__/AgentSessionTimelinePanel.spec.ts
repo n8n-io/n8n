@@ -71,7 +71,13 @@ const keyboardExecution = {
 	completionTokens: null,
 	totalTokens: null,
 	cost: null,
-	timeline: null,
+	timeline: [
+		{
+			type: 'text',
+			content: 'Hello back',
+			timestamp: Date.parse('2026-08-03T12:00:01.000Z'),
+		},
+	],
 	error: null,
 	hitlStatus: null,
 	source: null,
@@ -184,7 +190,9 @@ describe('AgentSessionTimelinePanel', () => {
 			const outsideKeydown = dispatchKeyboardEvent('keydown', 'ArrowDown');
 			expect(outsideKeydown.defaultPrevented).toBe(false);
 
-			const timelineRow = wrapper.get('[data-test-id="timeline-row"]');
+			const timelineRows = wrapper.findAll('[data-test-id="timeline-row"]');
+			const timelineRow = timelineRows[0];
+			expect(timelineRows).toHaveLength(2);
 			(timelineRow.element as HTMLElement).focus();
 			expect(document.activeElement).toBe(timelineRow.element);
 			const insideKeydown = dispatchKeyboardEvent('keydown', 'ArrowDown');
@@ -201,6 +209,13 @@ describe('AgentSessionTimelinePanel', () => {
 			expect(insideKeyup.defaultPrevented).toBe(true);
 			await flushPromises();
 			expect(wrapper.find('[data-test-id="detail-stub"]').exists()).toBe(true);
+
+			const moveKeydown = dispatchKeyboardEvent('keydown', 'ArrowDown');
+			expect(moveKeydown.defaultPrevented).toBe(true);
+			await flushPromises();
+			expect(document.activeElement).toBe(timelineRows[1].element);
+			const moveKeyup = dispatchKeyboardEvent('keyup', 'ArrowDown');
+			expect(moveKeyup.defaultPrevented).toBe(true);
 
 			(wrapper.get('[data-test-id="search-stub"]').element as HTMLInputElement).focus();
 			const inputEscape = dispatchKeyboardEvent('keydown', 'Escape');
