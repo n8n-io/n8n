@@ -118,23 +118,6 @@ export const CaseSeedSchema = z.discriminatedUnion('mode', [
 
 export type CaseSeed = z.infer<typeof CaseSeedSchema>;
 
-/**
- * A conversation is multi-turn if it has more than one turn, or if the only turn
- * is from the assistant. Empty conversations are treated as single-turn.
- *
- * Lives here, beside the schema that defines a conversation, so the loader's
- * validation and the runtime branch in `harness/build-workflow.ts` can't drift:
- * a field rejected at load for needing multi-turn must be the same "multi-turn"
- * the runner then tests for.
- */
-export function isMultiTurnConversation(
-	conversation: Array<{ role: 'user' | 'assistant' }>,
-): boolean {
-	if (conversation.length === 0) return false;
-	if (conversation.length > 1) return true;
-	return conversation[0].role !== 'user';
-}
-
 const evalTestCaseObjectSchema = z
 	.object({
 		/** Optional human-readable note on what this case is testing (esp. for behaviour cases). */
@@ -190,17 +173,6 @@ const evalTestCaseObjectSchema = z
 		 *  comes from. See `CaseSeedSchema`. */
 		seed: CaseSeedSchema.optional(),
 		/**
-		 * Edits made to a built workflow from outside the conversation, applied at a
-		 * turn boundary while the agent is idle. Exists so a case can exercise the
-		 * "workflow was modified outside this conversation" conflict deterministically
-		 * — without this the agent only meets that path when its own setup or
-		 * credential work happens to advance the workflow checksum, which is too
-		 * unreliable to assert on.
-		 *
-		 * Only meaningful on a multi-turn case — a refine below rejects it otherwise,
-		 * since the hook lives in the multi-turn loop and would silently do nothing.
-		 */
-		/**
 		 * Logical groupings this case belongs to (e.g. `['pr', 'full']`). Used by
 		 * the eval CLI's `--tier` flag and propagated to LangSmith as example
 		 * splits, so subsets can be evaluated and compared independently. Defaults
@@ -252,9 +224,6 @@ export const EvalTestCaseSchema = evalTestCaseObjectSchema
 				'`attach.workflow` must be the id of a workflow the inline seed declares — otherwise the attachment points at nothing',
 		},
 	)
-	// The hook that applies these lives in the multi-turn loop, which a single-prompt
-	// case never enters — so on one the edit would silently never fire and every
-	// assertion depending on it would pass vacuously. Rejected at load instead.
 	// The chat API refuses a message that is empty with nothing attached, so catch it
 	// at load rather than mid-run as a 400 that reads like an infrastructure fault.
 	// Every user turn, not just the opening; assistant turns are proxy script data

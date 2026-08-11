@@ -183,6 +183,32 @@ describe('proxy-driven external rename in runMultiTurnConversation', () => {
 		expect(renames).toEqual([{ workflowId: 'wf-second', name: 'Renamed in another tab' }]);
 	});
 
+	it('follows save order, not first-seen order, when a workflow is re-saved', async () => {
+		// A, then B, then A again. Deduping to distinct ids keeps FIRST-seen order,
+		// so the list is [A, B] and its last element is B — while the workflow most
+		// recently written is A. Renaming B here would conflict a workflow the agent
+		// is no longer working on, and leave the one it IS working on untouched.
+		const events = [...runLifecycleEvents(), buildEvent('wf-a')];
+
+		const { renames } = await runLoop({
+			events,
+			followUps: [
+				() => {
+					events.push(buildEvent('wf-b'));
+					return 'keep going';
+				},
+				() => {
+					events.push(buildEvent('wf-a'));
+					return 'and again';
+				},
+				['now rename', 'Renamed in another tab'],
+				null,
+			],
+		});
+
+		expect(renames).toEqual([{ workflowId: 'wf-a', name: 'Renamed in another tab' }]);
+	});
+
 	it('ignores a failed build — it reports a workflowId but saved nothing', async () => {
 		const { renames, warnings } = await runLoop({
 			events: [...runLifecycleEvents(), failedBuildEvent('wf-never-saved')],

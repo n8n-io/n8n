@@ -18,7 +18,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import type { EvalLogger } from './logger';
 import type { N8nClient } from '../clients/n8n-client';
 import { consumeSseStream } from '../clients/sse-client';
-import { savedWorkflowIdsFromEvents } from '../outcome/event-parser';
+import { lastSavedWorkflowIdFromEvents } from '../outcome/event-parser';
 import type { CapturedEvent } from '../types';
 import { USER_TURN_EVENT } from '../types';
 import { getEventPayload, tryInfrastructureResponse } from '../utils/confirmation-payload';
@@ -354,12 +354,12 @@ export async function runMultiTurnConversation(config: MultiTurnConfig): Promise
  * failure instead.
  */
 async function applyExternalRename(config: MultiTurnConfig, rename: string): Promise<void> {
-	// Only builds that actually SAVED, deduped. Failed builds are excluded
-	// deliberately: they still report a workflowId, and acting on one would
-	// rename a workflow this run never created (an attached or pre-existing one).
-	// Last rather than first — the proxy fires at a turn boundary, so "the
-	// workflow under discussion" is the most recent one to reach the instance.
-	const workflowId = savedWorkflowIdsFromEvents(config.events).at(-1);
+	// Only builds that actually SAVED. Failed builds are excluded deliberately:
+	// they still report a workflowId, and acting on one would rename a workflow
+	// this run never created (an attached or pre-existing one). Last rather than
+	// first — the proxy fires at a turn boundary, so "the workflow under
+	// discussion" is the most recent one to reach the instance.
+	const workflowId = lastSavedWorkflowIdFromEvents(config.events);
 	if (workflowId === undefined) {
 		config.logger.warn(
 			`[external-edit] Skipped rename to "${rename}": this run has saved no workflow yet, so there is nothing to conflict`,

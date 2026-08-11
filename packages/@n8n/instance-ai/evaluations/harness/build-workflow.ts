@@ -29,7 +29,7 @@ import {
 } from './conversation-seed';
 import { reconstructSeedFromThread } from './langsmith-seed';
 import type { EvalLogger } from './logger';
-import { isMultiTurnConversation, type CaseSeed } from './schema';
+import type { CaseSeed } from './schema';
 import {
 	buildSeededTablesNote,
 	dedupeScenarioSeedTables,
@@ -120,6 +120,14 @@ interface MultiTurnDriverConfig {
 	/** Resource references sent with the FIRST message only — an attachment is a
 	 *  hand-off, not something a user re-sends every turn. */
 	openingAttachments?: InstanceAiWorkflowAttachment[];
+}
+
+/** A conversation is multi-turn if it has more than one turn, or if the only
+ *  turn is from the assistant. Empty conversations are treated as single-turn. */
+function isMultiTurnConversation(conversation: ConversationTurn[]): boolean {
+	if (conversation.length === 0) return false;
+	if (conversation.length > 1) return true;
+	return conversation[0].role !== 'user';
 }
 
 async function driveMultiTurnConversation(

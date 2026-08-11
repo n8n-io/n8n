@@ -629,7 +629,8 @@ function extractIdFromRecord(record: Record<string, unknown>, keys: string[]): s
 }
 
 /**
- * Workflow ids from builds that actually SAVED, in first-seen order.
+ * The workflow id of the MOST RECENT build that actually SAVED, or undefined if
+ * this run has saved none.
  *
  * Deliberately narrower than `extractOutcomeFromEvents().workflowIds`, which
  * includes ids from FAILED builds on purpose: a save that parsed but didn't
@@ -642,15 +643,21 @@ function extractIdFromRecord(record: Record<string, unknown>, keys: string[]): s
  * Requires `success === true` rather than `!== false`, so a result shape
  * without the flag is treated as not-saved — the safe direction when the
  * consequence is writing to someone else's workflow.
+ *
+ * Returns the last id directly rather than a deduped list for the caller to
+ * index. Dedupe keeps FIRST-seen order, so a run that saved A, then B, then A
+ * again yields [A, B] and the last element is B — while the workflow most
+ * recently written is A. Anything mutating "the workflow under discussion" has
+ * to follow save order, not first-appearance order.
  */
-export function savedWorkflowIdsFromEvents(events: CapturedEvent[]): string[] {
+export function lastSavedWorkflowIdFromEvents(events: CapturedEvent[]): string | undefined {
 	const saved = extractOutcomeFromEvents(events)
 		.toolCalls.filter((call) => WORKFLOW_TOOLS.has(call.toolName))
 		.filter((call) => toResultRecord(call.result)?.success === true)
 		.map((call) => extractIdFromResult(call.result, 'workflowId', 'id'))
 		.filter((id): id is string => id !== undefined);
 
-	return dedupe(saved);
+	return saved.at(-1);
 }
 
 function dedupe(arr: string[]): string[] {

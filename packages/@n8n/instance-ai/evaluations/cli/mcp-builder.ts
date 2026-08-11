@@ -169,8 +169,6 @@ export const MCP_BUILD_KEY_SUPPORT: Record<
 	buildExpectations: 'supported',
 	credentials: 'orchestrator-only',
 	seed: 'orchestrator-only',
-	// Applied at a turn boundary in the orchestrator's multi-turn loop, which a
-	// single-shot `claude` build never enters — the edit would silently never fire.
 	datasets: 'supported',
 };
 
