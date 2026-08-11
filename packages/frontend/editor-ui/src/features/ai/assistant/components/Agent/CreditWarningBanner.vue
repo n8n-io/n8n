@@ -67,7 +67,11 @@ const tooltipContent = computed(() => {
 		data-test-id="credit-warning-banner"
 	>
 		<div :class="$style.content">
-			<span :class="$style.text">{{ bannerText }}</span>
+			<!-- The numeric variants are a meter reading, so clipping them costs nothing. This one is
+			the only signal the capped cohort gets on landing, so it wraps rather than truncates. -->
+			<span :class="[$style.text, { [$style.wrapping]: props.amountsHidden }]">{{
+				bannerText
+			}}</span>
 			<N8nTooltip
 				v-if="!props.amountsHidden"
 				:content="tooltipContent"
@@ -135,6 +139,11 @@ const tooltipContent = computed(() => {
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
+}
+
+.wrapping {
+	white-space: normal;
+	overflow: visible;
 }
 
 .infoIcon {
