@@ -117,13 +117,13 @@ function resolveLaunchSource(): InstanceAiThreadSource {
 
 const selectedProject = ref(resolveInitialProjectId());
 const settingsStore = useInstanceAiSettingsStore();
-const { isLowCredits } = storeToRefs(store);
+const { showCreditWarning, quotaLocked } = storeToRefs(store);
 const rootStore = useRootStore();
 const toast = useToast();
 const telemetry = useTelemetry();
 const i18n = useI18n();
 const { goToUpgrade } = usePageRedirectionHelper();
-const creditBanner = useCreditWarningBanner(isLowCredits);
+const creditBanner = useCreditWarningBanner(showCreditWarning);
 const { isFeatureEnabled: isProactiveAgentExperimentEnabled } =
 	useInstanceAiProactiveAgentExperiment();
 const { isFeatureEnabled: isPromptSuggestionsV2ExperimentEnabled } =
@@ -531,6 +531,7 @@ function handleShelfSuggestionInsert(payload: {
 						variant="standalone"
 						:credits-remaining="store.creditsRemaining"
 						:credits-quota="store.creditsQuota"
+						:amounts-hidden="quotaLocked"
 						@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
 						@dismiss="creditBanner.dismiss()"
 					/>
@@ -567,6 +568,7 @@ function handleShelfSuggestionInsert(payload: {
 							v-if="creditBanner.visible.value"
 							:credits-remaining="store.creditsRemaining"
 							:credits-quota="store.creditsQuota"
+							:amounts-hidden="quotaLocked"
 							@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
 							@dismiss="creditBanner.dismiss()"
 						/>
@@ -601,6 +603,7 @@ function handleShelfSuggestionInsert(payload: {
 						variant="standalone"
 						:credits-remaining="store.creditsRemaining"
 						:credits-quota="store.creditsQuota"
+						:amounts-hidden="quotaLocked"
 						@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
 						@dismiss="creditBanner.dismiss()"
 					/>

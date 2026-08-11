@@ -17,6 +17,20 @@ import { Z } from '../zod-class';
 export const UNLIMITED_CREDITS = -1;
 
 /**
+ * The instance's AI Assistant credit standing, as reported by `GET /instance-ai/credits`, by the
+ * `updateInstanceAiCredits` push and by the internal callers that pass it around.
+ *
+ * `creditsQuota` is {@link UNLIMITED_CREDITS} when credits are not metered — either the proxy is
+ * disabled, or the amounts are deliberately withheld from a cohort that must not see a balance.
+ */
+export type InstanceAiCredits = {
+	creditsQuota: number;
+	creditsClaimed: number;
+	/** Whether the pool has been locked by the activation cap. */
+	quotaLocked?: boolean;
+};
+
+/**
  * Transient setup-state tag for an AI Gateway managed credential selection.
  * Handlers convert this tag to the Ai Gateway managed credential shape.
  */
