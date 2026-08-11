@@ -1131,6 +1131,8 @@
 	"credentialEdit.credentialEdit.showError.invalidOAuthUrl.message": "Authorization URL must use HTTP or HTTPS protocol.",
 	"credentialEdit.credentialEdit.showError.invalidOAuthUrl.title": "Invalid OAuth URL",
 	"credentialEdit.credentialEdit.showError.loadCredential.title": "Problem loading credential",
+	"credentialEdit.credentialEdit.showError.oauthPopupBlocked.message": "Your browser blocked the sign-in window. Allow pop-ups for this site and try again.",
+	"credentialEdit.credentialEdit.showError.oauthPopupBlocked.title": "Sign-in window was blocked",
 	"credentialEdit.credentialEdit.showError.updateCredential.title": "Problem updating credential",
 	"credentialEdit.credentialEdit.showMessage.title": "Credential deleted",
 	"credentialEdit.credentialEdit.showMessage.disconnected.title": "Account disconnected",
