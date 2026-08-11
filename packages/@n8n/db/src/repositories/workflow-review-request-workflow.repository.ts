@@ -4,7 +4,7 @@ import { DataSource } from '@n8n/typeorm';
 import { BaseRepository } from './base-repository';
 import { WorkflowEntity } from '../entities/workflow-entity';
 import { WorkflowReviewRequestWorkflow } from '../entities/workflow-review-request-workflow.ee';
-import type { OperationContext } from '../services/transaction';
+import { type OperationContext, TransactionRunner } from '../services/transaction';
 
 /** The review's linked workflow as shown in cross-request lists (inbox). */
 export type WorkflowReviewRequestLinkedWorkflow = {
@@ -20,8 +20,8 @@ export type WorkflowReviewRequestWorkflowDetailRow = {
 
 @Service()
 export class WorkflowReviewRequestWorkflowRepository extends BaseRepository<WorkflowReviewRequestWorkflow> {
-	constructor(dataSource: DataSource) {
-		super(WorkflowReviewRequestWorkflow, dataSource.manager);
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(WorkflowReviewRequestWorkflow, dataSource.manager, transactionRunner);
 	}
 
 	async createWorkflowRow(
