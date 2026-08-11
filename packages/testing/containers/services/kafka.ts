@@ -23,6 +23,12 @@ export const kafka: Service<KafkaResult> = {
 		const container = await new KafkaContainer(TEST_CONTAINER_IMAGES.kafka)
 			.withNetwork(network)
 			.withNetworkAliases(HOSTNAME)
+			// Authorizer in default-allow mode: behavior is unchanged until a test
+			// adds an ACL, which is how authorization failures are staged.
+			.withEnvironment({
+				KAFKA_AUTHORIZER_CLASS_NAME: 'org.apache.kafka.metadata.authorizer.StandardAuthorizer',
+				KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND: 'true',
+			})
 			.withLabels({
 				'com.docker.compose.project': projectName,
 				'com.docker.compose.service': HOSTNAME,
