@@ -90,9 +90,14 @@ export interface DaytonaSandboxConfig extends SandboxConfigBase {
 export interface N8nSandboxConfig extends SandboxConfigBase {
 	enabled: true;
 	provider: 'n8n-sandbox';
-	id?: string;
 	serviceUrl: string;
 	apiKey?: string;
+	/**
+	 * Sandbox id to create or reconnect to. Must be a lowercase UUID — the
+	 * sandbox service rejects any other format. When omitted the service
+	 * generates a random id, which no other process can rediscover later.
+	 */
+	id?: string;
 }
 
 export type SandboxConfig = DisabledSandboxConfig | DaytonaSandboxConfig | N8nSandboxConfig;

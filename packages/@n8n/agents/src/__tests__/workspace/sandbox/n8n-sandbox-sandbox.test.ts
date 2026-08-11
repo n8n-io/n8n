@@ -113,7 +113,7 @@ describe('destroy()', () => {
 
 describe('start()', () => {
 	describe('fresh creation (no existing ID)', () => {
-		it('creates a new sandbox', async () => {
+		it('creates a new sandbox with a service-generated id', async () => {
 			const sandbox = new N8nSandboxServiceSandbox(makeDefaultOptions());
 			await sandbox.start();
 
@@ -141,10 +141,11 @@ describe('start()', () => {
 		});
 	});
 
-	describe('caller-supplied ID', () => {
+	describe('create-or-reconnect with a configured id', () => {
 		it('creates or reconnects through the idempotent create endpoint', async () => {
 			const id = '11111111-1111-4111-8111-111111111111';
 			mockCreateSandbox.mockResolvedValue(makeSandboxRecord({ id }));
+
 			const sandbox = new N8nSandboxServiceSandbox({
 				...makeDefaultOptions(),
 				id,
@@ -176,6 +177,29 @@ describe('start()', () => {
 			await new Promise((resolve) => setTimeout(resolve, 0));
 
 			expect(mockDeleteSandbox).not.toHaveBeenCalled();
+		});
+
+		it('reuses the last known id when restarted after a stop', async () => {
+			mockCreateSandbox.mockResolvedValue(makeSandboxRecord({ id: 'sb-123' }));
+
+			const sandbox = new N8nSandboxServiceSandbox(makeDefaultOptions());
+			await sandbox.start();
+			await sandbox.stop();
+			await sandbox.start();
+
+			expect(mockCreateSandbox).toHaveBeenLastCalledWith({ id: 'sb-123' });
+			expect(sandbox.id).toBe('sb-123');
+		});
+
+		it('re-throws createSandbox errors', async () => {
+			mockCreateSandbox.mockRejectedValue(new SandboxServiceError('forbidden', 403));
+
+			const sandbox = new N8nSandboxServiceSandbox({
+				...makeDefaultOptions(),
+				id: 'existing-sb',
+			});
+
+			await expect(sandbox.start()).rejects.toThrow('forbidden');
 		});
 	});
 });

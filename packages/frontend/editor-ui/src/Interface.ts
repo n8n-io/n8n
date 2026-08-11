@@ -1,6 +1,7 @@
 import type {
 	AgentJsonConfig,
 	FrontendSettings,
+	InstanceAiCredentialSetupHint,
 	IUserManagementSettings,
 	IVersionNotificationSettings,
 	Role,
@@ -8,7 +9,7 @@ import type {
 import type { ILogInStatus } from '@/features/settings/users/users.types';
 import type { NodeViewItemSection } from '@/features/shared/nodeCreator/views/viewsData';
 import type { IUsedCredential } from '@/features/credentials/credentials.types';
-import type { Scope } from '@n8n/permissions';
+import type { Scope, WorkflowSharingRole } from '@n8n/permissions';
 import type { NodeCreatorTag, IconName, BinaryMetadata } from '@n8n/design-system';
 import type { ModalState } from '@n8n/frontend-module-sdk';
 import type {
@@ -68,7 +69,31 @@ import type {
 } from '@/features/core/folders/folders.types';
 import type { WorkflowHistory } from '@n8n/rest-api-client/api/workflowHistory';
 
-export * from '@n8n/design-system/types';
+// Enumerated rather than `export *` from the package root: the root also exports
+// every component, so a wildcard here would pull the whole library into the module
+// graph of every file that imports from `@/Interface`. These are the design-system
+// types actually consumed through this module.
+export type {
+	ActionDropdownItem,
+	BinaryMetadata,
+	ButtonSize,
+	DatatableColumn,
+	Direction,
+	FormFieldValueUpdate,
+	FormValues,
+	IFormBoxConfig,
+	IFormInput,
+	IFormInputs,
+	IMenuItem,
+	InputAutocompletePropType,
+	InputSize,
+	KeyboardShortcut,
+	ResizeData,
+	Rule,
+	RuleGroup,
+	TabOptions,
+	UserAction,
+} from '@n8n/design-system';
 
 declare global {
 	interface Window {
@@ -259,6 +284,11 @@ export interface IWorkflowDb {
 	pinData?: IPinData;
 	sharedWithProjects?: ProjectSharingData[];
 	homeProject?: ProjectSharingData;
+	// Raw ownership relation returned by `GET /workflows/:id` only when the
+	// sharing license is inactive (the licensed path assembles `homeProject`
+	// instead). Kept so the client can derive `homeProject` from it — see the
+	// workflowDocument store hydration.
+	shared?: Array<{ role: WorkflowSharingRole; project: ProjectSharingData }>;
 	scopes?: Scope[];
 	versionId: string;
 	activeVersionId: string | null;
@@ -665,6 +695,9 @@ export interface NewCredentialsModal extends ModalState {
 	closeOnSave?: boolean;
 	projectId?: string;
 	suggestedName?: string;
+	/** Agent-supplied Templated Custom Auth recipe — pre-fills the credential's
+	 * template fields so the modal opens on the guided simple view. */
+	credentialSetupHint?: InstanceAiCredentialSetupHint;
 	nodeName?: string;
 	contextNode?: INodeUi;
 	hideAskAssistant?: boolean;
@@ -680,6 +713,8 @@ export interface NewCredentialsModal extends ModalState {
 		nodeName?: string;
 		nodeType?: string;
 		id?: string;
+		placeholderTitles?: string[];
+		docsUrl?: string;
 		documentationUrl?: string;
 		oauthRedirectUrl?: string;
 	}) => Promise<boolean>;

@@ -98,6 +98,9 @@ describe('buildKnowledgeBaseWorkspaceBundle', () => {
 			bundle.files.get(`${ROOT}/${SANDBOX_KNOWLEDGE_BASE_DIR}/reference/open-ai-output-shape.md`),
 		).toContain('# OpenAI node output shape');
 		expect(
+			bundle.files.get(`${ROOT}/${SANDBOX_KNOWLEDGE_BASE_DIR}/reference/anthropic-output-shape.md`),
+		).toContain('# Anthropic node output shape');
+		expect(
 			bundle.files.get(
 				`${ROOT}/${SANDBOX_KNOWLEDGE_BASE_DIR}/reference/workflow-builder-guardrails.md`,
 			),
@@ -106,6 +109,13 @@ describe('buildKnowledgeBaseWorkspaceBundle', () => {
 		expect(
 			bundle.files.get(`${ROOT}/${SANDBOX_KNOWLEDGE_BASE_DIR}/reference/workflow-sdk-language.md`),
 		).toContain('# Workflow SDK language reference');
+
+		// Generated from two constants: the rules, then the when-to-group guidance.
+		const nodeGroupsReference = bundle.files.get(
+			`${ROOT}/${SANDBOX_KNOWLEDGE_BASE_DIR}/reference/node-groups.md`,
+		);
+		expect(nodeGroupsReference).toContain('## Node groups');
+		expect(nodeGroupsReference).toContain('## Grouping');
 
 		const rootIndex = jsonParse<{
 			bestPractices: { indexFile: string; entries: Array<{ id: string }> };
@@ -128,12 +138,20 @@ describe('buildKnowledgeBaseWorkspaceBundle', () => {
 				file: 'reference/open-ai-output-shape.md',
 			}),
 			expect.objectContaining({
+				id: 'anthropic-output-shape',
+				file: 'reference/anthropic-output-shape.md',
+			}),
+			expect.objectContaining({
 				id: 'workflow-builder-guardrails',
 				file: 'reference/workflow-builder-guardrails.md',
 			}),
 			expect.objectContaining({
 				id: 'workflow-sdk-language',
 				file: 'reference/workflow-sdk-language.md',
+			}),
+			expect.objectContaining({
+				id: 'node-groups',
+				file: 'reference/node-groups.md',
 			}),
 		]);
 		expect(rootIndex.bestPractices.entries.some((entry) => entry.id === 'scheduling')).toBe(true);

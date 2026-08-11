@@ -8,7 +8,7 @@ import {
 	USERS_LIST_SORT_OPTIONS,
 } from '@n8n/api-types';
 import type { UserAction } from '@n8n/design-system';
-import type { TableOptions } from '@n8n/design-system/components/N8nDataTableServer';
+import type { TableOptions } from '@n8n/design-system';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
 import { DEBOUNCE_TIME, EnterpriseEditionFeature, MODAL_CONFIRM } from '@/app/constants';
 import { DELETE_USER_MODAL_KEY, INVITE_USER_MODAL_KEY } from '../users.constants';
@@ -29,8 +29,8 @@ import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHe
 import SettingsUsersTable from '../components/SettingsUsersTable.vue';
 import { I18nT } from 'vue-i18n';
 import { useUserRoleProvisioningStore } from '@/features/settings/sso/provisioning/composables/userRoleProvisioning.store';
-import N8nAlert from '@n8n/design-system/components/N8nAlert/Alert.vue';
 import {
+	N8nAlert,
 	N8nEmptyState,
 	N8nButton,
 	N8nHeading,
