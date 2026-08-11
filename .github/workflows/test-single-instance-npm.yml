@@ -74,10 +74,13 @@ jobs:
           BASE_BRANCH: ${{ inputs.base-branch }}
         run: git checkout "$BASE_BRANCH"
 
+      # Only the verifier's own closure needs compiling. The check reads package.json out of the
+      # npm-install graph, so the packed tarballs' contents don't matter, and the two packages with
+      # a prepack hook build themselves.
       - name: Setup and Build
         uses: ./.github/actions/setup-nodejs
         with:
-          build-command: pnpm build
+          build-command: pnpm turbo run build --filter=@n8n/code-health...
 
       # `--dir` rather than `--filter`: a filter matching nothing exits 0, so a renamed or moved
       # package would turn this into a green job that verified nothing.
