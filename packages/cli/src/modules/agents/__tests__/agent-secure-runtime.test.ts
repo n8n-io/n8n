@@ -37,6 +37,20 @@ export default new Tool('double')
   .handler(async (input) => ({ result: input.value * 2 }));
 `;
 
+const TOOL_WITH_MESSAGE_CODE = `
+import { Tool } from '@n8n/agents';
+import { z } from 'zod';
+
+export default new Tool('double_with_message')
+  .description('Doubles a number and renders a message')
+  .input(z.object({ value: z.number() }))
+  .handler(async (input) => ({ result: input.value * 2 }))
+  .toMessage((output) => ({
+    role: 'assistant',
+    content: [{ type: 'text', text: \`Doubled result: \${output.result}\` }],
+  }));
+`;
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -332,6 +346,17 @@ describe('AgentSecureRuntime', () => {
 	it('executeToolInIsolate executes a tool handler', async () => {
 		const result = await runtime.executeToolInIsolate(SIMPLE_TOOL_CODE, { value: 21 }, {});
 		expect(result).toEqual({ result: 42 });
+	});
+
+	it('executeToMessageInIsolate executes a tool message transform', async () => {
+		const message = await runtime.executeToMessageInIsolate(TOOL_WITH_MESSAGE_CODE, {
+			result: 42,
+		});
+
+		expect(message).toEqual({
+			role: 'assistant',
+			content: [{ type: 'text', text: 'Doubled result: 42' }],
+		});
 	});
 
 	it('concurrent describeToolSecurely calls all resolve', async () => {

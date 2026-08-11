@@ -1,12 +1,8 @@
-import {
-	Workspace,
-	type CommandResult,
-	type WorkspaceFilesystem,
-	type WorkspaceSandbox,
-} from '@n8n/agents';
 import type { Mock } from 'vitest';
 
 import { createScopedWorkspace } from '../scoped-workspace';
+import type { CommandResult, WorkspaceFilesystem, WorkspaceSandbox } from '../types';
+import { Workspace } from '../workspace';
 
 function createFilesystem(overrides: Partial<WorkspaceFilesystem> = {}): WorkspaceFilesystem {
 	return {
@@ -80,7 +76,7 @@ function createSandbox(executeCommand: Mock | null = vi.fn()): WorkspaceSandbox 
 describe('createScopedWorkspace', () => {
 	const root = '/workspace/builders/agent-1';
 
-	it('resolves relative filesystem paths inside the builder root', async () => {
+	it('resolves relative filesystem paths inside the workspace root', async () => {
 		const filesystem = createFilesystem();
 		const workspace = createScopedWorkspace(new Workspace({ filesystem }), root);
 
@@ -93,17 +89,17 @@ describe('createScopedWorkspace', () => {
 		);
 	});
 
-	it('rejects filesystem paths outside the builder root', async () => {
+	it('rejects filesystem paths outside the workspace root', async () => {
 		const filesystem = createFilesystem();
 		const workspace = createScopedWorkspace(new Workspace({ filesystem }), root);
 
 		await expect(
 			workspace.filesystem?.readFile('/workspace/builders/agent-2/src/workflow.ts'),
-		).rejects.toThrow('Path escapes builder workspace root');
+		).rejects.toThrow('Path escapes workspace root');
 		expect(filesystem.readFile).not.toHaveBeenCalled();
 	});
 
-	it('runs commands from the builder root and merges scoped environment variables', async () => {
+	it('runs commands from the workspace root and merges scoped environment variables', async () => {
 		const executeCommand = vi.fn();
 		const sandbox = createSandbox(executeCommand);
 		const workspace = createScopedWorkspace(new Workspace({ sandbox }), root, {
@@ -121,7 +117,7 @@ describe('createScopedWorkspace', () => {
 		});
 	});
 
-	it('rejects command working directories outside the builder root', async () => {
+	it('rejects command working directories outside the workspace root', async () => {
 		const executeCommand = vi.fn();
 		const sandbox = createSandbox(executeCommand);
 		const workspace = createScopedWorkspace(new Workspace({ sandbox }), root);
@@ -130,7 +126,7 @@ describe('createScopedWorkspace', () => {
 			workspace.sandbox?.executeCommand?.('npm test', [], {
 				cwd: '/workspace/builders/agent-2',
 			}),
-		).rejects.toThrow('Path escapes builder workspace root');
+		).rejects.toThrow('Path escapes workspace root');
 		expect(executeCommand).not.toHaveBeenCalled();
 	});
 

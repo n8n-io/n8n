@@ -1,14 +1,12 @@
 import {
+	CORE_WORKSPACE_TOOL_NAMES,
 	Workspace,
 	type CommandResult,
 	type WorkspaceFilesystem,
 	type WorkspaceSandbox,
 } from '@n8n/agents';
 
-import {
-	INSTANCE_AI_WORKSPACE_TOOL_ALLOWLIST,
-	createLazyRuntimeWorkspace,
-} from '../lazy-runtime-workspace';
+import { createLazyRuntimeWorkspace } from '../lazy-runtime-workspace';
 
 function createMockWorkspace() {
 	const executeCommand = vi.fn<
@@ -91,9 +89,7 @@ describe('createLazyRuntimeWorkspace', () => {
 		lazyWorkspace.getInstructions();
 
 		expect(ensureWorkspace).not.toHaveBeenCalled();
-		expect(tools.map((tool) => tool.name).sort()).toEqual(
-			[...INSTANCE_AI_WORKSPACE_TOOL_ALLOWLIST].sort(),
-		);
+		expect(tools.map((tool) => tool.name).sort()).toEqual([...CORE_WORKSPACE_TOOL_NAMES].sort());
 		expect(tools.some((tool) => tool.name === 'workspace_list_files')).toBe(false);
 		expect(tools.some((tool) => tool.name === 'workspace_append_file')).toBe(false);
 

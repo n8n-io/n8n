@@ -53,6 +53,7 @@ export const REPLAYED_WORKSPACE_TOOL_ARGS: Record<string, readonly string[]> = {
  *  the contract test can prove every live filesystem tool is classified. */
 export const IGNORED_WORKSPACE_TOOLS: readonly string[] = [
 	'workspace_read_file',
+	'workspace_read_tool_result',
 	'workspace_list_files',
 	'workspace_file_stat',
 	'workspace_mkdir',

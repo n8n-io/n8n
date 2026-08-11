@@ -98,7 +98,8 @@ describe('executeWorkflow → execution classification', () => {
 		expect(runData.workflowData.pinData).toBeUndefined();
 	});
 
-	it('returns output from the completed integrated run when execution data is not retained', async () => {
+	it('returns complete oversized results from the completed integrated run', async () => {
+		const answer = 'x'.repeat(25_000);
 		const completedRun = {
 			mode: 'integrated',
 			status: 'success',
@@ -111,7 +112,7 @@ describe('executeWorkflow → execution classification', () => {
 					runData: {
 						Result: [
 							{
-								data: { main: [[{ json: { answer: 42 } }]] },
+								data: { main: [[{ json: { answer } }]] },
 								executionIndex: 0,
 								startTime: 0,
 								executionTime: 1,
@@ -140,7 +141,7 @@ describe('executeWorkflow → execution classification', () => {
 		expect(result).toEqual({
 			executionId: 'exec-1',
 			status: 'success',
-			data: { Result: [{ answer: 42 }] },
+			data: { Result: [{ answer }] },
 		});
 	});
 
@@ -330,14 +331,10 @@ describe('executeWorkflow → webhook response', () => {
 		return (result.data?.response as { body: unknown }).body;
 	};
 
-	it('caps an oversized body, keeping a preview and its length', async () => {
+	it('returns complete oversized results for serializable webhook bodies', async () => {
 		const body = { blob: 'x'.repeat(50_000) };
 
-		expect(await responseBodyOf(body)).toEqual({
-			_truncated: true,
-			_charLength: JSON.stringify(body).length,
-			_preview: expect.stringMatching(/^\{"blob":"x{100}/),
-		});
+		expect(await responseBodyOf(body)).toEqual(body);
 	});
 
 	// Whatever its size: measuring a Buffer costs 12x the body, so it is never serialized.

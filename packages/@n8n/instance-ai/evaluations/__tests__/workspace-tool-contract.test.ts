@@ -1,6 +1,5 @@
-import { createWorkspaceTools } from '@n8n/agents';
+import { CORE_WORKSPACE_TOOL_NAMES, createWorkspaceTools } from '@n8n/agents';
 
-import { INSTANCE_AI_WORKSPACE_TOOL_ALLOWLIST } from '../../src/workspace/lazy-runtime-workspace';
 import { IGNORED_WORKSPACE_TOOLS, REPLAYED_WORKSPACE_TOOL_ARGS } from '../harness/langsmith-seed';
 
 // The seed reconstructor replays @n8n/agents workspace file ops by matching tool
@@ -49,10 +48,10 @@ describe('workspace tool contract (@n8n/agents drift guard)', () => {
 		} as unknown as Parameters<typeof createWorkspaceTools>[0]);
 		const liveNames = new Set(liveTools.map((tool) => tool.name));
 
-		for (const name of INSTANCE_AI_WORKSPACE_TOOL_ALLOWLIST) {
+		for (const name of CORE_WORKSPACE_TOOL_NAMES) {
 			expect(liveNames.has(name), name).toBe(true);
 		}
-		expect(liveNames.size).toBeGreaterThanOrEqual(INSTANCE_AI_WORKSPACE_TOOL_ALLOWLIST.size);
+		expect(liveNames.size).toBeGreaterThanOrEqual(CORE_WORKSPACE_TOOL_NAMES.size);
 	});
 
 	it('does not expose removed filesystem helpers via the allowlist', () => {
@@ -67,7 +66,7 @@ describe('workspace tool contract (@n8n/agents drift guard)', () => {
 			'workspace_move_file',
 		];
 		for (const name of removed) {
-			expect(INSTANCE_AI_WORKSPACE_TOOL_ALLOWLIST.has(name)).toBe(false);
+			expect(CORE_WORKSPACE_TOOL_NAMES.has(name)).toBe(false);
 			// Historical seeds may still replay these — they remain in @n8n/agents.
 			expect(liveByName.has(name), `${name} should still exist for seed replay`).toBe(true);
 		}

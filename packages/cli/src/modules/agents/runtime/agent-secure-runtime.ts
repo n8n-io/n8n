@@ -1,4 +1,4 @@
-import type { ToolDescriptor } from '@n8n/agents';
+import type { AgentMessage, ToolDescriptor } from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { readFileSync } from 'fs';
@@ -339,6 +339,61 @@ export class AgentSecureRuntime {
 		});
 	}
 
+	async executeToMessageInIsolate(
+		toolCode: string,
+		output: unknown,
+	): Promise<AgentMessage | undefined> {
+		const jsCode = await this.compileTs(toolCode);
+
+		return await this.withIsolate(async (slot) => {
+			const context = slot.createContext();
+			try {
+				const setupCode = `
+					var __me = {};
+					var __mod = { exports: __me };
+					(function(exports, require, module) {
+						${jsCode}
+					})(__me, require, __mod);
+
+					globalThis.__exportedTool = __mod.exports.default || __mod.exports;
+					if (!globalThis.__exportedTool || typeof globalThis.__exportedTool !== 'object') {
+						throw new Error('No Tool found');
+					}
+				`;
+				const setupScript = slot.isolate.compileScriptSync(setupCode);
+				setupScript.runSync(context, { timeout: 5000 });
+				setupScript.release();
+
+				const serializedArgs = JSON.stringify({ output });
+				const invokeCode = `
+					(async function() {
+						var tool = globalThis.__exportedTool;
+						var built = tool.build ? tool.build() : tool;
+						var toMessageFn = built.toMessage;
+						if (!toMessageFn) return JSON.stringify(null);
+
+						var args = ${serializedArgs};
+						var message = await toMessageFn(args.output);
+						return JSON.stringify(message ?? null);
+					})()
+				`;
+
+				const resultJson = (await context.eval(invokeCode, {
+					timeout: 5000,
+					promise: true,
+					copy: true,
+				})) as string;
+				const message = this.parseSandboxJson<AgentMessage | null>(
+					resultJson,
+					'executeToMessageInIsolate',
+				);
+				return message ?? undefined;
+			} finally {
+				context.release();
+			}
+		});
+	}
+
 	/**
 	 * Create a ToolExecutor for use with buildFromJson().
 	 * @param toolsByName Map of tool name -> TypeScript source code
@@ -351,6 +406,13 @@ export class AgentSecureRuntime {
 					throw new Error(`Tool "${toolName}" not found in tools map`);
 				}
 				return await this.executeToolInIsolate(toolCode, input, ctx);
+			},
+			executeToMessage: async (toolName: string, output: unknown) => {
+				const toolCode = toolsByName[toolName];
+				if (!toolCode) {
+					throw new Error(`Tool "${toolName}" not found in tools map`);
+				}
+				return await this.executeToMessageInIsolate(toolCode, output);
 			},
 		};
 	}
