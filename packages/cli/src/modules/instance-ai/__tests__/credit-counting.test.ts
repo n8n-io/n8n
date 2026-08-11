@@ -31,7 +31,6 @@ function createService(deps: {
 	};
 	const activationService = {
 		getActivatedAt: vi.fn().mockResolvedValue(deps.activatedAt),
-		markActivated: vi.fn(),
 	};
 	const messageRepo = {
 		hasAnyUserMessage: vi.fn().mockResolvedValue(deps.hasUserMessage ?? false),

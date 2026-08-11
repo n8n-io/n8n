@@ -228,12 +228,7 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 			userId,
 		});
 
-		await this.emitInstanceFirstProductionWorkflowSucceeded(
-			project.id,
-			workflowId,
-			userId,
-			userActivatedAtMs,
-		);
+		await this.recordInstanceActivation(project.id, workflowId, userId, userActivatedAtMs);
 	}
 
 	/**
@@ -241,9 +236,10 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 	 *
 	 * The per-user `userActivated` flag above only covers personal projects, so an instance whose
 	 * first success happens in a team project would otherwise never look activated. Guarded by a
-	 * settings row, mirroring `instance.firstProductionFailure`.
+	 * settings row, mirroring `instance.firstProductionFailure`. The row is the whole contract —
+	 * {@link InstanceActivationService} reads it — so there is no accompanying event.
 	 */
-	private async emitInstanceFirstProductionWorkflowSucceeded(
+	private async recordInstanceActivation(
 		projectId: string,
 		workflowId: string,
 		userId: string | null,
@@ -259,13 +255,6 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 			key: 'instance.firstProductionSuccess',
 			value: JSON.stringify({ workflowId, projectId, userId, timestamp: activatedAt }),
 			loadOnStartup: false,
-		});
-
-		this.eventService.emit('instance-first-production-workflow-succeeded', {
-			projectId,
-			workflowId,
-			userId,
-			activatedAt,
 		});
 	}
 

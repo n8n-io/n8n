@@ -73,20 +73,4 @@ describe('InstanceActivationService', () => {
 			},
 		);
 	});
-
-	describe('markActivated', () => {
-		it('answers from memory without reading the row', async () => {
-			service.markActivated(1_700_000_000);
-
-			await expect(service.getActivatedAt()).resolves.toBe(1_700_000_000);
-			expect(settingsRepository.findByKey).not.toHaveBeenCalled();
-		});
-
-		it('keeps the first timestamp it was given', async () => {
-			service.markActivated(1_700_000_000);
-			service.markActivated(1_800_000_000);
-
-			await expect(service.getActivatedAt()).resolves.toBe(1_700_000_000);
-		});
-	});
 });

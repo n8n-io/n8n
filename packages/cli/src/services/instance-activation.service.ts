@@ -35,14 +35,6 @@ export class InstanceActivationService {
 	}
 
 	/**
-	 * Fast path for the main that observed the activation, so it doesn't have to re-read the row it
-	 * just caused to be written. Other mains pick it up from the DB on their next read.
-	 */
-	markActivated(activatedAt: number): void {
-		this.activatedAt ??= activatedAt;
-	}
-
-	/**
 	 * The row's timestamp, or a non-undefined fallback. The row's existence is what marks the
 	 * instance activated, so a malformed value must not read as "never activated" — it only costs
 	 * the precise moment, which is used for telemetry.

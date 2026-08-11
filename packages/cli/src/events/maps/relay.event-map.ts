@@ -69,19 +69,6 @@ export type RelayEventMap = {
 		userId: string | null;
 	};
 
-	/**
-	 * The instance produced its first successful production execution — its activation moment.
-	 * Distinct from `first-production-workflow-succeeded`, which fires once per *workflow* and
-	 * only records `userActivated` for personal projects; this fires exactly once per instance,
-	 * for any project type.
-	 */
-	'instance-first-production-workflow-succeeded': {
-		projectId: string;
-		workflowId: string;
-		userId: string | null;
-		activatedAt: number;
-	};
-
 	'instance-first-production-workflow-failed': {
 		projectId: string;
 		workflowId: string;

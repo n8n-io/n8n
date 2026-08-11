@@ -372,17 +372,20 @@ describe('WorkflowStatisticsService', () => {
 				// (~completion time), not `runData.startedAt` — an accepted best-effort drift.
 				userActivatedAt: isPostgres ? expect.any(Number) : runData.startedAt.getTime(),
 			});
-			expect(emitSpy).toHaveBeenCalledTimes(2);
+			expect(emitSpy).toHaveBeenCalledTimes(1);
 			expect(emitSpy).toHaveBeenCalledWith('first-production-workflow-succeeded', {
 				projectId: personalProject.id,
 				workflowId: workflow.id,
 				userId: user.id,
 			});
-			expect(emitSpy).toHaveBeenCalledWith('instance-first-production-workflow-succeeded', {
+			const activationRow = await Container.get(SettingsRepository).findByKey(
+				'instance.firstProductionSuccess',
+			);
+			expect(JSON.parse(activationRow!.value)).toEqual({
 				projectId: personalProject.id,
 				workflowId: workflow.id,
 				userId: user.id,
-				activatedAt: isPostgres ? expect.any(Number) : runData.startedAt.getTime(),
+				timestamp: isPostgres ? expect.any(Number) : runData.startedAt.getTime(),
 			});
 		});
 
@@ -623,17 +626,21 @@ describe('WorkflowStatisticsService', () => {
 
 			// ASSERT
 			expect(updateSettingsSpy).not.toHaveBeenCalled();
-			expect(emitSpy).toHaveBeenCalledTimes(2);
+			expect(emitSpy).toHaveBeenCalledTimes(1);
 			expect(emitSpy).toHaveBeenCalledWith('first-production-workflow-succeeded', {
 				projectId: teamProject.id,
 				workflowId: teamWorkflow.id,
 				userId: null,
 			});
-			expect(emitSpy).toHaveBeenCalledWith('instance-first-production-workflow-succeeded', {
+			// The activation row is the only signal here — `userActivated` skips team projects.
+			const activationRow = await Container.get(SettingsRepository).findByKey(
+				'instance.firstProductionSuccess',
+			);
+			expect(JSON.parse(activationRow!.value)).toEqual({
 				projectId: teamProject.id,
 				workflowId: teamWorkflow.id,
 				userId: null,
-				activatedAt: expect.any(Number),
+				timestamp: expect.any(Number),
 			});
 		});
 
@@ -654,21 +661,11 @@ describe('WorkflowStatisticsService', () => {
 			await completeAndFlush(workflowStatisticsService, workflow, runData);
 			const afterFirst = await settingsRepository.findByKey('instance.firstProductionSuccess');
 
-			const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
 			await completeAndFlush(workflowStatisticsService, secondWorkflow, runData);
 
-			// ASSERT
+			// ASSERT — the row still names the *first* workflow, so the second run left it alone
 			expect(afterFirst).not.toBeNull();
 			expect(JSON.parse(afterFirst!.value)).toMatchObject({ workflowId: workflow.id });
-
-			expect(emitSpy).toHaveBeenCalledWith(
-				'first-production-workflow-succeeded',
-				expect.anything(),
-			);
-			expect(emitSpy).not.toHaveBeenCalledWith(
-				'instance-first-production-workflow-succeeded',
-				expect.anything(),
-			);
 
 			const afterSecond = await settingsRepository.findByKey('instance.firstProductionSuccess');
 			expect(JSON.parse(afterSecond!.value)).toMatchObject({ workflowId: workflow.id });
