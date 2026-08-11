@@ -34,10 +34,6 @@ import {
 import { Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 
-import { WorkflowReviewDecisionEligibilityService } from './workflow-review-decision-eligibility.service';
-import { WorkflowReviewFeatureGate } from './workflow-review-feature-gate.service';
-import { toEligibleReviewer } from './workflow-review.mapper';
-
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
@@ -48,6 +44,9 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
+import { WorkflowReviewEligibilityService } from './workflow-review-eligibility.service';
+import { WorkflowReviewFeatureGate } from './workflow-review-feature-gate.service';
+import { toEligibleReviewer } from './workflow-review.mapper';
 /** Omitted stays omitted (column untouched); an empty/whitespace string clears to null. */
 function normalizeVersionDescription(description: string | undefined): string | null | undefined {
 	if (description === undefined) return undefined;
@@ -81,7 +80,7 @@ export class WorkflowReviewRequestService {
 		private readonly workflowReviewRequestAuthorRepository: WorkflowReviewRequestAuthorRepository,
 		private readonly workflowReviewRequestReviewerRepository: WorkflowReviewRequestReviewerRepository,
 		private readonly userRepository: UserRepository,
-		private readonly decisionEligibilityService: WorkflowReviewDecisionEligibilityService,
+		private readonly eligibilityService: WorkflowReviewEligibilityService,
 		private readonly roleService: RoleService,
 		private readonly dbLockService: DbLockService,
 		private readonly collaborationService: CollaborationService,
@@ -657,7 +656,7 @@ export class WorkflowReviewRequestService {
 		// Resolved before the lock: this query must not run inside the lock
 		// transaction, where it would need a second pooled connection while the
 		// transaction holds one — a deadlock on a single-connection pool.
-		const hasAdminOverride = await this.decisionEligibilityService.hasAdminOverride(
+		const hasAdminOverride = await this.eligibilityService.hasAdminOverride(
 			user,
 			request.projectId,
 		);
