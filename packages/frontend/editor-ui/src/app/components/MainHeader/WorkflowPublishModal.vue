@@ -29,7 +29,6 @@ import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store
 import {
 	formatTimestamp,
 	generateVersionLabelFromId,
-	getVersionLabel,
 } from '@/features/workflows/workflowHistory/utils';
 import { useWorkflowHistoryStore } from '@/features/workflows/workflowHistory/workflowHistory.store';
 import type { WorkflowHistory } from '@n8n/rest-api-client/api/workflowHistory';
@@ -133,19 +132,18 @@ async function loadChangelog() {
 	}
 }
 
-function changelogVersionLabel(version: WorkflowHistory) {
-	return getVersionLabel({
-		workflowHistory: version,
-		currentVersionId: workflowDocumentStore.value.versionId ?? undefined,
-	});
-}
+const changelogSummary = computed(() => {
+	if (changelog.value.length === 0) return null;
 
-function changelogVersionMeta(version: WorkflowHistory) {
-	const authors = version.authors.split(', ');
-	const author = authors.length > 1 ? `${authors[0]} + ${authors.length - 1}` : authors[0];
-	const { date, time } = formatTimestamp(version.createdAt);
-	return `${author}, ${i18n.baseText('workflowHistory.item.createdAt', { interpolate: { date, time } })}`;
-}
+	// List is newest-first
+	const to = formatTimestamp(changelog.value[0].createdAt).date;
+	const from = formatTimestamp(changelog.value[changelog.value.length - 1].createdAt).date;
+	const authors = [...new Set(changelog.value.flatMap((v) => v.authors.split(', ')))].join(', ');
+
+	return i18n.baseText('workflows.publishModal.changelog', {
+		interpolate: { from, to, authors },
+	});
+});
 
 onMounted(() => {
 	const currentVersionData = workflowDocumentStore.value?.versionData;
@@ -359,26 +357,14 @@ async function handlePublish() {
 					description-test-id="workflow-publish-description-input"
 					@submit="handlePublish"
 				/>
-				<div v-if="changelog.length > 0" data-test-id="workflow-publish-changelog">
-					<N8nText size="small" :bold="true" color="text-dark">
-						{{ i18n.baseText('workflows.publishModal.changelog') }}
-					</N8nText>
-					<ul :class="$style.changelogList">
-						<li
-							v-for="version in changelog"
-							:key="version.versionId"
-							:class="$style.changelogItem"
-							data-test-id="workflow-publish-changelog-item"
-						>
-							<N8nText size="small" color="text-dark" :class="$style.changelogName">
-								{{ changelogVersionLabel(version) }}
-							</N8nText>
-							<N8nText size="small" color="text-base" :class="$style.changelogMeta">
-								{{ changelogVersionMeta(version) }}
-							</N8nText>
-						</li>
-					</ul>
-				</div>
+				<N8nText
+					v-if="changelogSummary"
+					size="small"
+					color="text-base"
+					data-test-id="workflow-publish-changelog"
+				>
+					{{ changelogSummary }}
+				</N8nText>
 				<div :class="$style.actions">
 					<N8nButton
 						variant="subtle"
@@ -411,35 +397,6 @@ async function handlePublish() {
 	display: flex;
 	justify-content: flex-end;
 	gap: var(--spacing--xs);
-}
-
-.changelogList {
-	list-style: none;
-	max-height: 180px;
-	overflow-y: auto;
-	margin-top: var(--spacing--3xs);
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--3xs);
-}
-
-.changelogItem {
-	display: flex;
-	align-items: baseline;
-	justify-content: space-between;
-	gap: var(--spacing--xs);
-	min-width: 0;
-}
-
-.changelogName {
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-
-.changelogMeta {
-	white-space: nowrap;
-	flex-shrink: 0;
 }
 
 .nodeLinks {

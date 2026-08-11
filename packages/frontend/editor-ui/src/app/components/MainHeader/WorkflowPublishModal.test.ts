@@ -241,7 +241,7 @@ describe('WorkflowPublishModal', () => {
 			...overrides,
 		});
 
-		it('shows only versions newer than the published one, with author and date', async () => {
+		it('summarizes date range and authors of versions newer than the published one', async () => {
 			workflowHistoryStore.getWorkflowHistory.mockResolvedValue([
 				historyItem({
 					versionId: 'new-version',
@@ -254,24 +254,21 @@ describe('WorkflowPublishModal', () => {
 					authors: 'Alice, Bob',
 					createdAt: '2024-03-01T09:00:00.000Z',
 				}),
-				historyItem({ versionId: 'old-version', name: 'Published Version' }),
-				historyItem({ versionId: 'ancient-version' }),
+				historyItem({ versionId: 'old-version', name: 'Published Version', authors: 'Carol' }),
+				historyItem({ versionId: 'ancient-version', authors: 'Carol' }),
 			]);
 
-			const { getByTestId, getAllByTestId, queryByText } = renderComponent();
+			const { getByTestId } = renderComponent();
 
 			await waitFor(() => {
 				expect(getByTestId('workflow-publish-changelog')).toBeInTheDocument();
 			});
 
-			const items = getAllByTestId('workflow-publish-changelog-item');
-			expect(items).toHaveLength(2);
-			expect(items[0]).toHaveTextContent('Current changes');
-			expect(items[0]).toHaveTextContent('Alice');
-			expect(items[0]).toHaveTextContent('2024 Mar 2');
-			expect(items[1]).toHaveTextContent('Mid version');
-			expect(items[1]).toHaveTextContent('Alice + 1');
-			expect(queryByText('Published Version')).not.toBeInTheDocument();
+			expect(getByTestId('workflow-publish-changelog')).toHaveTextContent(
+				'Includes changes from 2024 Mar 1 to 2024 Mar 2 from Alice, Bob',
+			);
+			// Authors of already-published versions are not included
+			expect(getByTestId('workflow-publish-changelog')).not.toHaveTextContent('Carol');
 		});
 
 		it('is hidden when there are no versions since the last publish', async () => {
