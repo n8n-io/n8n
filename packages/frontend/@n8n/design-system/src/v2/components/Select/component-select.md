@@ -63,7 +63,7 @@ Primitives, object values, and `valueKey` / `labelKey` mapping are intentionally
 - `searchable?: boolean` When `true`, shows a search field in the dropdown and filters items by label.
 - `searchPlaceholder?: string` Placeholder for the search field.
 - `searchQuery?: string` Controlled search query (`v-model:searchQuery`).
-- `position?: 'item-aligned' | 'popper'` Positioning mode for the dropdown. Default: `'popper'`.
+- `position?: 'item-aligned' | 'popper'` Positioning mode for the dropdown. Default: `'item-aligned'`.
 - `side?: 'top' | 'right' | 'bottom' | 'left'` Preferred side when `position` is `'popper'`. Default: `'bottom'`.
 - `sideOffset?: number` Distance in pixels from the trigger when `position` is `'popper'`. Default: `5`.
 - `contentClass?: string` Additional CSS class(es) applied to the dropdown content container (portaled).

@@ -1,8 +1,4 @@
-import type {
-	AcceptableValue as RekaAcceptableValue,
-	SelectRootEmits,
-	SelectRootProps,
-} from 'reka-ui';
+import type { SelectRootEmits, SelectRootProps } from 'reka-ui';
 
 import type { IconName } from '../../../components/N8nIcon/icons';
 
@@ -39,7 +35,7 @@ export type SelectItem<TValue extends SelectValue = SelectValue> =
 	| SelectStructuralItem;
 
 export type SelectVariants = 'default' | 'ghost' | 'flush';
-/** Matches `N8nInput` / shared input size tokens. */
+
 export type SelectSizes = 'mini' | 'small' | 'medium' | 'large' | 'xlarge';
 
 export type SelectModelValue<M extends boolean = false> = M extends true
@@ -51,29 +47,17 @@ export type SelectProps<M extends boolean = false> = Omit<
 	'multiple' | 'modelValue' | 'defaultValue' | 'by'
 > & {
 	id?: string;
-	/** The placeholder text when the select is empty. */
 	placeholder?: string;
 	/**
 	 * @defaultValue 'small'
 	 */
 	size?: SelectSizes;
 	items?: SelectItem[];
-	/** The value of the Select when initially rendered. Use when you do not need to control the state of the Select. */
 	defaultValue?: SelectModelValue<M>;
-	/** The controlled value of the Select. Can be bind as `v-model`. */
 	modelValue?: SelectModelValue<M>;
-	/** Whether multiple options can be selected or not. */
 	multiple?: M & boolean;
-
 	variant?: SelectVariants;
-
-	/** Icon to be displayed in the trigger */
 	icon?: IconName;
-
-	/**
-	 * When `true`, shows a clear button when a value is selected.
-	 * @defaultValue false
-	 */
 	clearable?: boolean;
 
 	/**
@@ -90,9 +74,9 @@ export type SelectProps<M extends boolean = false> = Omit<
 
 	/**
 	 * The positioning mode for the dropdown content.
-	 * `popper` opens below the trigger at trigger width (default).
-	 * `item-aligned` aligns the selected item with the trigger.
-	 * @defaultValue 'popper'
+	 * `item-aligned` aligns the selected item with the trigger (default).
+	 * `popper` opens below the trigger at trigger width.
+	 * @defaultValue 'item-aligned'
 	 */
 	position?: 'item-aligned' | 'popper';
 
@@ -107,7 +91,9 @@ export type SelectProps<M extends boolean = false> = Omit<
 };
 
 export type SelectEmits<M extends boolean = false> = Omit<SelectRootEmits, 'update:modelValue'> & {
+	// eslint-disable-next-line @typescript-eslint/naming-convention -- Vue v-model emit
 	'update:modelValue': [value: SelectModelValue<M> | undefined];
+	// eslint-disable-next-line @typescript-eslint/naming-convention -- Vue v-model emit
 	'update:searchQuery': [value: string];
 	clear: [];
 };
@@ -125,22 +111,3 @@ export type SelectSlots<M extends boolean = false> = {
 	footer?: () => unknown;
 	empty?: () => unknown;
 };
-
-/** Narrows a value to Reka UI's AcceptableValue (excludes boolean). */
-export function isRekaAcceptableValue(value: unknown): value is RekaAcceptableValue {
-	return (
-		value === null ||
-		typeof value === 'string' ||
-		typeof value === 'number' ||
-		typeof value === 'bigint' ||
-		(typeof value === 'object' && value !== null)
-	);
-}
-
-export function isStructuralItem(item: SelectItem): item is SelectStructuralItem {
-	return item.type === 'label' || item.type === 'separator';
-}
-
-export function isOptionItem(item: SelectItem): item is SelectOptionBase {
-	return !isStructuralItem(item);
-}

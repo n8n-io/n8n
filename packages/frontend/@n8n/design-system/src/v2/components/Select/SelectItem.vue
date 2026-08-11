@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { SelectItem, SelectItemIndicator, SelectItemText } from 'reka-ui';
-import { useCssModule } from 'vue';
+import { computed, useCssModule } from 'vue';
 
 import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
 
-import { isRekaAcceptableValue, type SelectOptionBase } from './Select.types';
+import type { SelectOptionBase } from './Select.types';
+import { encodeSelectValue } from './Select.utils';
 
 defineOptions({ inheritAttrs: false });
 
@@ -17,26 +18,18 @@ const props = defineProps<SelectItemComponentProps>();
 const $style = useCssModule();
 
 function resolveValue() {
-	if (isRekaAcceptableValue(props.value)) {
-		return props.value;
-	}
-
-	return '';
+	return encodeSelectValue(props.value);
 }
 
-function leadingUi() {
-	return {
-		class: $style.itemLeading,
-		strokeWidth: props.strokeWidth,
-	};
-}
+const leadingProps = computed(() => ({
+	class: $style.itemLeading,
+	strokeWidth: props.strokeWidth,
+}));
 
-function trailingUi() {
-	return {
-		class: $style.itemTrailing,
-		strokeWidth: props.strokeWidth,
-	};
-}
+const trailingProps = computed(() => ({
+	class: $style.itemTrailing,
+	strokeWidth: props.strokeWidth,
+}));
 </script>
 
 <template>
@@ -47,8 +40,8 @@ function trailingUi() {
 		:class="props.class"
 		@select="props.onSelect?.($event)"
 	>
-		<slot name="item-leading" :item="props" :ui="leadingUi()">
-			<Icon v-if="props.icon" :icon="props.icon" color="text-base" v-bind="leadingUi()" />
+		<slot name="item-leading" :item="props" :ui="leadingProps">
+			<Icon v-if="props.icon" :icon="props.icon" color="text-base" v-bind="leadingProps" />
 		</slot>
 
 		<SelectItemText :class="$style.itemText">
@@ -57,7 +50,7 @@ function trailingUi() {
 			</slot>
 		</SelectItemText>
 
-		<slot name="item-trailing" :item="props" :ui="trailingUi()" />
+		<slot name="item-trailing" :item="props" :ui="trailingProps" />
 		<SelectItemIndicator as-child>
 			<Icon icon="check" color="text-light" :class="$style.itemIndicator" />
 		</SelectItemIndicator>

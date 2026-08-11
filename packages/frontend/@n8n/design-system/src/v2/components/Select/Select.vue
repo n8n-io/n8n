@@ -21,21 +21,20 @@ import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
 import N8nInput from '@n8n/design-system/components/N8nInput';
 import { useI18n } from '@n8n/design-system/composables/useI18n';
 
-import {
-	isOptionItem,
-	isRekaAcceptableValue,
-	isStructuralItem,
-	type SelectEmits,
-	type SelectItem,
-	type SelectLabelItem,
-	type SelectModelValue,
-	type SelectOptionBase,
-	type SelectProps,
-	type SelectSeparatorItem,
-	type SelectSizes,
-	type SelectSlots,
-	type SelectVariants,
+import type {
+	SelectEmits,
+	SelectItem,
+	SelectLabelItem,
+	SelectModelValue,
+	SelectOptionBase,
+	SelectProps,
+	SelectSeparatorItem,
+	SelectSizes,
+	SelectSlots,
+	SelectValue,
+	SelectVariants,
 } from './Select.types';
+import { decodeSelectModelValue, decodeSelectValue, encodeSelectModelValue } from './Select.utils';
 import N8nSelectItem from './SelectItem.vue';
 
 defineOptions({ inheritAttrs: false });
@@ -50,7 +49,7 @@ const { t } = useI18n();
 const props = withDefaults(defineProps<SelectProps<M>>(), {
 	variant: 'default',
 	size: 'small',
-	position: 'popper',
+	position: 'item-aligned',
 	side: 'bottom',
 	sideOffset: 5,
 	clearable: false,
@@ -63,7 +62,6 @@ const forwardedRootProps = useForwardProps(
 	reactivePick(props, 'open', 'defaultOpen', 'disabled', 'required', 'multiple'),
 );
 
-/** Merge forwarded Reka props with form/dir fields that widen under generics in reactivePick. */
 function rootBind() {
 	return {
 		...forwardedRootProps.value,
@@ -74,12 +72,10 @@ function rootBind() {
 }
 
 const triggerRef = useTemplateRef<InstanceType<typeof SelectTrigger>>('trigger');
-const searchInputRef = useTemplateRef<InstanceType<typeof N8nInput>>('searchInput');
+const searchInputRef = ref<{ focus: () => void } | null>(null);
 const internalSearchQuery = ref('');
 
-function resolvedSearchQuery() {
-	return props.searchQuery ?? internalSearchQuery.value;
-}
+const searchQuery = computed(() => props.searchQuery ?? internalSearchQuery.value);
 
 function setSearchQuery(value: string | number) {
 	const next = String(value);
@@ -125,6 +121,18 @@ function getEnabledOptions(contentEl: HTMLElement): HTMLElement[] {
 }
 
 /**
+ * Focus the search field after open. Reka focuses the selected item once
+ * content is positioned (`@placed`), so defer past that to keep the caret
+ * ready for typing.
+ */
+async function focusSearchInput() {
+	await nextTick();
+	requestAnimationFrame(() => {
+		searchInputRef.value?.focus();
+	});
+}
+
+/**
  * When focus is already on the list: ↑ on the first option returns to search;
  * typing a character returns to search and appends to the query (instead of
  * Reka typeahead).
@@ -160,20 +168,8 @@ function onContentKeydown(event: KeyboardEvent) {
 	// Capture-phase listener stops Reka typeahead; append into the search field.
 	event.preventDefault();
 	event.stopPropagation();
-	setSearchQuery(`${resolvedSearchQuery()}${event.key}`);
+	setSearchQuery(`${searchQuery.value}${event.key}`);
 	void focusSearchInput();
-}
-
-/**
- * Focus the search field after open. Reka focuses the selected item once
- * content is positioned (`@placed`), so defer past that to keep the caret
- * ready for typing.
- */
-async function focusSearchInput() {
-	await nextTick();
-	requestAnimationFrame(() => {
-		searchInputRef.value?.focus();
-	});
 }
 
 async function handleOpenUpdate(isOpen: boolean) {
@@ -202,13 +198,14 @@ defineExpose({
 	triggerRef,
 });
 
-const sizeClasses: Record<SelectSizes, string> = {
+const sizes: Record<SelectSizes, string> = {
 	mini: $style.mini,
 	small: $style.small,
 	medium: $style.medium,
 	large: $style.large,
 	xlarge: $style.xlarge,
 };
+const size = computed(() => sizes[props.size]);
 
 const variantClasses: Record<SelectVariants, string> = {
 	default: $style.variantDefault,
@@ -216,81 +213,12 @@ const variantClasses: Record<SelectVariants, string> = {
 	flush: $style.variantFlush,
 };
 
-function resolvedPlaceholder() {
-	return props.placeholder ?? t('nds.select.placeholder');
+function isSelectValue(value: unknown): value is SelectValue {
+	return typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean';
 }
 
-function iconStrokeWidth() {
-	return props.size === 'mini' || props.size === 'small' ? 1 : 1.5;
-}
-
-function hasValue() {
-	const value = props.modelValue;
-	if (value === undefined || value === null || value === '') {
-		return false;
-	}
-
-	if (Array.isArray(value)) {
-		return value.length > 0;
-	}
-
-	return true;
-}
-
-function showClearButton(): boolean {
-	return Boolean(props.clearable && !props.disabled && hasValue());
-}
-
-function isClearedMultipleValue(value: unknown): value is SelectModelValue<M> {
-	return Array.isArray(value) && value.length === 0;
-}
-
-function onClear(event: Event) {
-	event.preventDefault();
-	event.stopPropagation();
-
-	if (props.multiple) {
-		const empty: unknown = [];
-		if (isClearedMultipleValue(empty)) {
-			emit('update:modelValue', empty);
-		}
-	} else {
-		emit('update:modelValue', undefined);
-	}
-
-	emit('clear');
-}
-
-function toRootValue(value?: SelectModelValue<M>): AcceptableValue | AcceptableValue[] | undefined {
-	if (value === undefined) {
-		return undefined;
-	}
-
-	if (Array.isArray(value)) {
-		return value.filter(isRekaAcceptableValue);
-	}
-
-	if (isRekaAcceptableValue(value)) {
-		return value;
-	}
-
-	return undefined;
-}
-
-function isModelValue(value: unknown): value is SelectModelValue<M> {
-	return value !== undefined && value !== null;
-}
-
-function handleModelValueUpdate(value: AcceptableValue | AcceptableValue[]) {
-	if (isModelValue(value)) {
-		emit('update:modelValue', value);
-	}
-}
-
-function slotModelValue(
-	value: AcceptableValue | AcceptableValue[] | null | undefined,
-): SelectModelValue<M> | undefined {
-	return isModelValue(value) ? value : undefined;
+function isOptionItem(item: SelectItem): item is SelectOptionBase {
+	return item.type !== 'label' && item.type !== 'separator';
 }
 
 /** Avoid `String(object)` → `[object Object]` (eslint `@typescript-eslint/no-base-to-string`). */
@@ -316,14 +244,14 @@ function warnInvalidItem(message: string, item: SelectItem) {
 	console.warn(`[N8nSelect2] ${message}`, item);
 }
 
-function normalisedItems(): SelectItem[] {
-	if (!props.items?.length) {
+function normaliseItems(items: SelectItem[] | undefined): SelectItem[] {
+	if (!items?.length) {
 		return [];
 	}
 
 	const result: SelectItem[] = [];
 
-	for (const item of props.items) {
+	for (const item of items) {
 		if (item.type === 'label') {
 			if (!item.label) {
 				warnInvalidItem('Skipping label item: "label" is missing or empty.', item);
@@ -361,33 +289,6 @@ function normalisedItems(): SelectItem[] {
 	}
 
 	return result;
-}
-
-type MappedOption = SelectOptionBase & {
-	class: string;
-	strokeWidth: number;
-};
-
-type MappedItem = MappedOption | SelectLabelItem | SelectSeparatorItem;
-
-function mapItem(item: SelectItem): MappedItem {
-	if (isStructuralItem(item)) {
-		return item;
-	}
-
-	return {
-		...item,
-		class: $style.selectItem,
-		strokeWidth: iconStrokeWidth(),
-	};
-}
-
-function groups(): MappedItem[] {
-	return visibleItems().map(mapItem);
-}
-
-function hasSelectableItems() {
-	return groups().some((item) => isOptionItem(item));
 }
 
 function itemSearchText(item: SelectOptionBase): string {
@@ -435,17 +336,85 @@ function filterGroupedItems(items: SelectItem[], query: string): SelectItem[] {
 	return result;
 }
 
-function visibleItems(): SelectItem[] {
-	const items = normalisedItems();
+const normalisedItems = computed(() => normaliseItems(props.items));
+
+const visibleItems = computed(() => {
 	if (!props.searchable) {
-		return items;
+		return normalisedItems.value;
 	}
 
-	return filterGroupedItems(items, resolvedSearchQuery());
+	return filterGroupedItems(normalisedItems.value, searchQuery.value);
+});
+
+const hasSelectableItems = computed(() => visibleItems.value.some(isOptionItem));
+
+const showClearButton = computed(() => {
+	if (!props.clearable || props.disabled) {
+		return false;
+	}
+
+	const value = props.modelValue;
+	if (value === undefined || value === null || value === '') {
+		return false;
+	}
+
+	if (Array.isArray(value)) {
+		return value.length > 0;
+	}
+
+	return true;
+});
+
+function resolvedPlaceholder() {
+	return props.placeholder ?? t('nds.select.placeholder');
 }
 
 function resolvedSearchPlaceholder() {
 	return props.searchPlaceholder ?? t('nds.select.searchPlaceholder');
+}
+
+function iconStrokeWidth() {
+	return props.size === 'mini' || props.size === 'small' ? 1 : 1.5;
+}
+
+function isModelValue(value: unknown): value is SelectModelValue<M> {
+	if (props.multiple) {
+		return Array.isArray(value) && value.every(isSelectValue);
+	}
+
+	return isSelectValue(value);
+}
+
+function onClear(event: Event) {
+	event.preventDefault();
+	event.stopPropagation();
+
+	if (props.multiple) {
+		const empty: unknown = [];
+		if (isModelValue(empty)) {
+			emit('update:modelValue', empty);
+		}
+	} else {
+		emit('update:modelValue', undefined);
+	}
+
+	emit('clear');
+}
+
+function handleModelValueUpdate(value: AcceptableValue | AcceptableValue[]) {
+	const decoded = decodeSelectModelValue(value);
+	if (!isModelValue(decoded)) {
+		return;
+	}
+
+	emit('update:modelValue', decoded);
+}
+
+function slotModelValue(
+	value: AcceptableValue | AcceptableValue[] | null | undefined,
+): SelectModelValue<M> | undefined {
+	const decoded = decodeSelectModelValue(value);
+	return isModelValue(decoded) ? decoded : undefined;
 }
 
 /**
@@ -457,38 +426,40 @@ function resolveDisplayValue(value: unknown): string | undefined {
 		return undefined;
 	}
 
-	const items = normalisedItems();
+	const items = normalisedItems.value;
 
 	if (Array.isArray(value)) {
 		const labels = value
-			.map((entry) => {
+			.map((entry: unknown) => {
+				const comparable: unknown = decodeSelectValue(entry) ?? entry;
 				const found = items.find(
-					(item): item is SelectOptionBase => isOptionItem(item) && item.value === entry,
+					(item): item is SelectOptionBase => isOptionItem(item) && item.value === comparable,
 				);
-				return found?.label ?? stringifyPrimitive(entry);
+				return found?.label ?? stringifyPrimitive(comparable);
 			})
 			.filter((label): label is string => Boolean(label));
 
 		return labels.length > 0 ? labels.join(', ') : undefined;
 	}
 
+	const comparable: unknown = decodeSelectValue(value) ?? value;
 	const found = items.find(
-		(item): item is SelectOptionBase => isOptionItem(item) && item.value === value,
+		(item): item is SelectOptionBase => isOptionItem(item) && item.value === comparable,
 	);
 	if (found !== undefined) {
 		return found.label;
 	}
 
-	return stringifyPrimitive(value);
+	return stringifyPrimitive(comparable);
 }
 </script>
 
 <template>
 	<SelectRoot
-		v-slot="{ open, modelValue: selectedValue }"
+		v-slot="{ open: isMenuOpen, modelValue: selectedValue }"
 		v-bind="rootBind()"
-		:default-value="toRootValue(defaultValue)"
-		:model-value="toRootValue(modelValue)"
+		:default-value="encodeSelectModelValue(defaultValue)"
+		:model-value="encodeSelectModelValue(modelValue)"
 		@update:model-value="handleModelValueUpdate"
 		@update:open="handleOpenUpdate"
 	>
@@ -497,7 +468,7 @@ function resolveDisplayValue(value: unknown): string | undefined {
 			ref="trigger"
 			data-test-id="select-trigger"
 			v-bind="triggerAttrs"
-			:class="[$style.selectTrigger, variantClasses[variant], sizeClasses[size], triggerClass]"
+			:class="[$style.selectTrigger, variantClasses[variant], size, triggerClass]"
 			:aria-label="attrs['aria-label'] ?? resolvedPlaceholder()"
 		>
 			<Icon
@@ -508,12 +479,12 @@ function resolveDisplayValue(value: unknown): string | undefined {
 				:stroke-width="iconStrokeWidth()"
 			/>
 			<RSelectValue :placeholder="resolvedPlaceholder()" :class="$style.selectValue">
-				<slot :model-value="slotModelValue(selectedValue)" :open="open">
+				<slot :model-value="slotModelValue(selectedValue)" :open="isMenuOpen">
 					{{ resolveDisplayValue(selectedValue) ?? resolvedPlaceholder() }}
 				</slot>
 			</RSelectValue>
 			<span
-				v-if="showClearButton()"
+				v-if="showClearButton"
 				role="button"
 				tabindex="-1"
 				data-test-id="select-clear"
@@ -543,8 +514,8 @@ function resolveDisplayValue(value: unknown): string | undefined {
 			>
 				<div v-if="searchable" :class="$style.searchHeader" data-test-id="select-search">
 					<N8nInput
-						ref="searchInput"
-						:model-value="resolvedSearchQuery()"
+						ref="searchInputRef"
+						:model-value="searchQuery"
 						:placeholder="resolvedSearchPlaceholder()"
 						size="medium"
 						clearable
@@ -560,7 +531,7 @@ function resolveDisplayValue(value: unknown): string | undefined {
 				<div :class="$style.viewportRegion">
 					<!-- Hide scroll arrows when empty — Reka can still report overflow after filter. -->
 					<SelectScrollUpButton
-						v-if="hasSelectableItems()"
+						v-if="hasSelectableItems"
 						:class="[$style.selectScrollButton, $style.selectScrollButtonUp]"
 						data-test-id="select-scroll-up"
 					>
@@ -568,13 +539,13 @@ function resolveDisplayValue(value: unknown): string | undefined {
 					</SelectScrollUpButton>
 
 					<SelectViewport :class="$style.selectViewport">
-						<div v-if="!hasSelectableItems()" :class="$style.empty" data-test-id="select-empty">
+						<div v-if="!hasSelectableItems" :class="$style.empty" data-test-id="select-empty">
 							<slot name="empty">
 								{{ t('nds.select.noResults') }}
 							</slot>
 						</div>
 						<SelectGroup v-else>
-							<template v-for="(item, index) in groups()" :key="`group-${index}`">
+							<template v-for="(item, index) in visibleItems" :key="`group-${index}`">
 								<SelectLabel v-if="item.type === 'label'" :class="$style.selectLabel">
 									<slot name="label" :item="item">
 										{{ item.label }}
@@ -588,7 +559,11 @@ function resolveDisplayValue(value: unknown): string | undefined {
 								/>
 
 								<slot v-else name="item" :item="item">
-									<N8nSelectItem v-bind="item">
+									<N8nSelectItem
+										v-bind="item"
+										:class="$style.selectItem"
+										:stroke-width="iconStrokeWidth()"
+									>
 										<template #item-leading="{ ui }">
 											<slot name="item-leading" :item="item" :ui="ui" />
 										</template>
@@ -605,7 +580,7 @@ function resolveDisplayValue(value: unknown): string | undefined {
 					</SelectViewport>
 
 					<SelectScrollDownButton
-						v-if="hasSelectableItems()"
+						v-if="hasSelectableItems"
 						:class="[$style.selectScrollButton, $style.selectScrollButtonDown]"
 						data-test-id="select-scroll-down"
 					>
@@ -674,7 +649,6 @@ function resolveDisplayValue(value: unknown): string | undefined {
 }
 
 .variantDefault {
-	/** border color from input theme variables */
 }
 
 .variantGhost {
@@ -689,7 +663,6 @@ function resolveDisplayValue(value: unknown): string | undefined {
 	}
 }
 
-/* Borderless, paddingless trigger for dense contexts (e.g. table cells). */
 .variantFlush {
 	border-color: transparent;
 	background-color: transparent;
@@ -767,7 +740,8 @@ function resolveDisplayValue(value: unknown): string | undefined {
 	flex-direction: column;
 	overflow: hidden;
 	width: max-content;
-	min-width: var(--reka-select-trigger-width);
+	/* Trigger width is only set for `position="popper"`; floor keeps item-aligned menus usable with short labels. */
+	min-width: max(var(--reka-select-trigger-width, 0px), var(--spacing--4xl));
 	max-height: min(var(--reka-select-content-available-height, 50vh), calc(var(--height--5xl) * 3));
 	border-radius: var(--radius--xs);
 	background-color: var(--background--surface);
@@ -807,7 +781,6 @@ function resolveDisplayValue(value: unknown): string | undefined {
 
 .searchInput {
 	width: 100%;
-	/* Match footer action row height (--height--xl / 40px) */
 	--input--height: var(--height--xl);
 	--input--radius--top-left: var(--radius--xs);
 	--input--radius--top-right: var(--radius--xs);
@@ -855,10 +828,6 @@ function resolveDisplayValue(value: unknown): string | undefined {
 	gap: var(--spacing--4xs);
 	outline: none;
 
-	/*
-	 * Highlight via data-highlighted only (Reka sets it on focus from pointer or keyboard).
-	 * Avoid :hover so keyboard navigation doesn't leave a hovered item highlighted too.
-	 */
 	&:not([data-disabled])[data-highlighted] {
 		background-color: var(--background--hover);
 		cursor: pointer;

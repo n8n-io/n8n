@@ -267,6 +267,35 @@ describe('v2/components/Select', () => {
 			});
 		});
 
+		it('should support boolean option values', async () => {
+			const items: SelectItem[] = [
+				{ value: true, label: 'Enabled' },
+				{ value: false, label: 'Disabled' },
+			];
+
+			const wrapper = render(Select, {
+				props: {
+					items,
+					defaultOpen: true,
+					modelValue: false,
+				},
+			});
+
+			const trigger = wrapper.getByTestId('select-trigger');
+			await waitFor(() => {
+				expect(trigger).toHaveTextContent('Disabled');
+			});
+
+			const { popover } = await getPopoverContainer(trigger);
+			const option = within(popover).getByText('Enabled');
+			await userEvent.click(option);
+
+			await waitFor(() => {
+				expect(wrapper.emitted('update:modelValue')).toHaveLength(1);
+				expect(wrapper.emitted('update:modelValue')?.[0]).toEqual([true]);
+			});
+		});
+
 		describe('multiple', () => {
 			it('should update modelValue on selection', async () => {
 				const items = [

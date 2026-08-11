@@ -38,9 +38,9 @@ const meta = {
 		},
 		position: {
 			control: 'select',
-			options: ['popper', 'item-aligned'],
+			options: ['item-aligned', 'popper'],
 			description:
-				'Positioning mode for the dropdown. `popper` opens below the trigger; `item-aligned` aligns the selected item with the trigger.',
+				'Positioning mode for the dropdown. `item-aligned` aligns the selected item with the trigger (default); `popper` opens below the trigger.',
 		},
 	},
 } satisfies GenericMeta<typeof Select>;
@@ -440,13 +440,13 @@ export const Disabled = {
 export const Multiple = {
 	// @ts-expect-error generic typed components https://github.com/storybookjs/storybook/issues/24238
 	render: (args) => ({
-		components: { Select, N8nText },
+		components: { Select },
 		setup() {
 			const value = ref(args.modelValue);
 			return { args, value, onUpdate: action('update:modelValue') };
 		},
 		template: `
-		<div style="padding: 40px; display: flex; flex-direction: column; gap: var(--spacing--md);">
+		<div style="padding: 40px;">
 			<Select
 				v-bind="args"
 				v-model="value"
@@ -454,9 +454,6 @@ export const Multiple = {
 				:style="{ width: '240px' }"
 				@update:model-value="onUpdate"
 			/>
-			<N8nText tag="p" style="margin: 0;">
-				Selected: <strong>{{ value?.length ? value.join(', ') : '(none)' }}</strong>
-			</N8nText>
 		</div>
 		`,
 	}),
@@ -468,6 +465,97 @@ export const Multiple = {
 			{ label: 'Done', value: 'done' },
 			{ label: 'Cancelled', value: 'cancelled' },
 		],
+		modelValue: ['todo', 'in_progress'],
+		placeholder: 'Select statuses',
+	},
+} satisfies Story;
+
+type StatusOption = SelectItem & { color?: string };
+
+const statusItemsWithSwatches: StatusOption[] = [
+	{ label: 'Backlog', value: 'backlog', color: 'var(--color--neutral-400)' },
+	{ label: 'Todo', value: 'todo', color: 'var(--color--blue-500)' },
+	{ label: 'In Progress', value: 'in_progress', color: 'var(--color--orange-500)' },
+	{ label: 'Done', value: 'done', color: 'var(--color--green-500)' },
+	{ label: 'Cancelled', value: 'cancelled', color: 'var(--color--red-500)' },
+];
+
+export const MultipleWithSwatches = {
+	// @ts-expect-error generic typed components https://github.com/storybookjs/storybook/issues/24238
+	render: (args) => ({
+		components: { Select, N8nText },
+		setup() {
+			const value = ref(args.modelValue as string[]);
+			const items = args.items as StatusOption[];
+
+			const selectedItems = computed(() =>
+				value.value
+					.map((entry) => items.find((item) => 'value' in item && item.value === entry))
+					.filter((item): item is StatusOption & { value: string; label: string } =>
+						Boolean(item && 'value' in item),
+					),
+			);
+
+			return { args, value, selectedItems, onUpdate: action('update:modelValue') };
+		},
+		template: `
+		<div style="padding: 40px; display: flex; flex-direction: column; gap: var(--spacing--md);">
+			<N8nText size="small" color="text-light" tag="p" style="margin: 0;">
+				Per-value leading visuals in multiple mode via the default slot (and item-leading in the menu).
+			</N8nText>
+			<Select
+				v-bind="args"
+				v-model="value"
+				multiple
+				:style="{ width: '280px' }"
+				@update:model-value="onUpdate"
+			>
+				<template #default>
+					<template v-if="selectedItems.length">
+						<span
+							v-for="(item, index) in selectedItems"
+							:key="item.value"
+							style="display: inline-flex; align-items: center; gap: var(--spacing--4xs);"
+						>
+							<span
+								aria-hidden="true"
+								:style="{
+									display: 'inline-block',
+									width: '9px',
+									height: '9px',
+									borderRadius: 'var(--radius--full)',
+									background: item.color,
+									flexShrink: 0,
+									transform: 'translateY(1px)',
+								}"
+							/>
+							{{ item.label }}<template v-if="index < selectedItems.length - 1">,&nbsp;</template>
+						</span>
+					</template>
+					<template v-else>
+						{{ args.placeholder }}
+					</template>
+				</template>
+				<template #item-leading="{ item }">
+					<span
+						aria-hidden="true"
+						:style="{
+							display: 'inline-block',
+							width: '9px',
+							height: '9px',
+							borderRadius: 'var(--radius--full)',
+							background: item.color,
+							flexShrink: 0,
+							transform: 'translateY(1px)',
+						}"
+					/>
+				</template>
+			</Select>
+		</div>
+		`,
+	}),
+	args: {
+		items: statusItemsWithSwatches,
 		modelValue: ['todo', 'in_progress'],
 		placeholder: 'Select statuses',
 	},
@@ -551,7 +639,7 @@ export const MixedItemLengths = {
 		template: `
 		<div style="padding: 40px; display: flex; flex-direction: column; gap: var(--spacing--lg);">
 			<N8nText size="small" color="text-light" tag="p" style="margin: 0;">
-				Menu is at least as wide as the trigger, and grows to fit longer labels.
+				Menu is at least as wide as the trigger (popper) or the min-width floor, and grows to fit longer labels.
 			</N8nText>
 			<N8nInputLabel label="Narrow trigger (160px)">
 				<Select
@@ -586,6 +674,53 @@ export const MixedItemLengths = {
 			{ label: 'Archive', value: 'archive' },
 		],
 		modelValue: undefined,
+		placeholder: 'Pick one',
+	},
+} satisfies Story;
+
+export const ShortItems = {
+	// @ts-expect-error generic typed components https://github.com/storybookjs/storybook/issues/24238
+	render: (args) => ({
+		components: { Select, N8nInputLabel, N8nText },
+		setup() {
+			const popperValue = ref(args.modelValue);
+			const itemAlignedValue = ref(args.modelValue);
+			return { args, popperValue, itemAlignedValue };
+		},
+		template: `
+		<div style="padding: 40px; display: flex; flex-direction: column; gap: var(--spacing--lg);">
+			<N8nText size="small" color="text-light" tag="p" style="margin: 0;">
+				Very short labels — menus keep a min-width floor; popper also matches the trigger when wider.
+			</N8nText>
+			<N8nInputLabel label="Popper">
+				<Select
+					v-bind="args"
+					v-model="popperValue"
+					position="popper"
+					:style="{ width: '240px' }"
+				/>
+			</N8nInputLabel>
+			<N8nInputLabel label="Item-aligned">
+				<Select
+					v-bind="args"
+					v-model="itemAlignedValue"
+					position="item-aligned"
+					:style="{ width: '240px' }"
+				/>
+			</N8nInputLabel>
+		</div>
+		`,
+	}),
+	args: {
+		items: [
+			{ label: 'A', value: 'a' },
+			{ label: 'B', value: 'b' },
+			{ label: 'C', value: 'c' },
+			{ label: 'OK', value: 'ok' },
+			{ label: 'Yes', value: 'yes' },
+			{ label: 'No', value: 'no' },
+		],
+		modelValue: 'a',
 		placeholder: 'Pick one',
 	},
 } satisfies Story;
