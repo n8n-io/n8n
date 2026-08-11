@@ -209,11 +209,14 @@ const updateVersionAction = z.object({
 
 // ── Suspend / resume schemas ────────────────────────────────────────────────
 
-const confirmationSuspendSchema = setupSuspendSchema.pick({
-	requestId: true,
-	message: true,
-	severity: true,
-});
+const confirmationSuspendSchema = setupSuspendSchema
+	.pick({
+		requestId: true,
+		message: true,
+		severity: true,
+		workflowId: true,
+	})
+	.partial({ workflowId: true });
 
 const suspendSchema = z.union([setupSuspendSchema, confirmationSuspendSchema]);
 
@@ -911,6 +914,9 @@ async function handleUpdate(
 			requestId: nanoid(),
 			message: `Update workflow "${workflowName}" (ID: ${input.workflowId})?`,
 			severity: 'warning' as const,
+			// Carried on the confirmation so the UI can scope "always allow" per workflow
+			// even if tool-call args are incomplete on resume.
+			workflowId: input.workflowId,
 		});
 	}
 

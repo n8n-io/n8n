@@ -627,6 +627,15 @@ export function createThreadRuntime(
 		sessionAlwaysAllowKeys.value = next;
 	}
 
+	/** False when Always allow cannot be scoped (e.g. workflow edit with no workflow ID). */
+	function canAlwaysAllow(
+		toolName: string,
+		args: Record<string, unknown>,
+		confirmationWorkflowId?: string,
+	): boolean {
+		return buildAlwaysAllowKey(toolName, args, confirmationWorkflowId) !== null;
+	}
+
 	function isGenericApprovalEligible(item: PendingConfirmationItem): boolean {
 		const conf = item.toolCall.confirmation;
 		if (conf.targetApproval) return false;
@@ -1356,6 +1365,7 @@ export function createThreadRuntime(
 		confirmResourceDecision,
 		resolveConfirmation,
 		addAlwaysAllowKey,
+		canAlwaysAllow,
 		findToolCallByRequestId,
 		copyFullTrace,
 		submitFeedback,

@@ -1873,6 +1873,18 @@ describe('createThreadRuntime - session always-allow', () => {
 		expect(runtime.sessionAlwaysAllowKeys.size).toBe(0);
 	});
 
+	it('reports canAlwaysAllow false for unscoped workflow edits', () => {
+		const runtime = registry.getOrCreateRuntime(activeThreadId);
+		expect(
+			runtime.canAlwaysAllow('build-workflow', { filePath: 'src/workflows/main.workflow.ts' }),
+		).toBe(false);
+		expect(runtime.canAlwaysAllow('workflows', { action: 'update' })).toBe(false);
+		expect(runtime.canAlwaysAllow('build-workflow', {}, 'wf-1')).toBe(true);
+		expect(runtime.canAlwaysAllow('workflows', { action: 'update', workflowId: 'wf-1' })).toBe(
+			true,
+		);
+	});
+
 	it('scopes executions run grants per workflow', async () => {
 		const runtime = registry.getOrCreateRuntime(activeThreadId);
 		runtime.addAlwaysAllowKey('executions', { action: 'run', workflowId: 'wf-1' });

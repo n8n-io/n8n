@@ -783,6 +783,7 @@ describe('workflows tool', () => {
 				expect.objectContaining({
 					message: 'Update workflow "Foreign WF" (ID: wf1)?',
 					severity: 'warning',
+					workflowId: 'wf1',
 				}),
 			);
 			expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
