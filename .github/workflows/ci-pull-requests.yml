@@ -155,6 +155,10 @@ jobs:
         with:
           build-command: ${{ fromJSON(steps.ci-filter.outputs.results).ci && 'pnpm build' || 'pnpm turbo run build --filter=@n8n/playwright-janitor' }}
 
+      - name: Report build critical path
+        if: fromJSON(steps.ci-filter.outputs.results).ci
+        run: node scripts/turbo-critical-path.mjs >> "$GITHUB_STEP_SUMMARY"
+
       - name: Run format check
         if: fromJSON(steps.ci-filter.outputs.results).ci
         run: pnpm format:check
