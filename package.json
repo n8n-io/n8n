@@ -144,6 +144,7 @@
       "picomatch@<=4.0.4": "4.0.4",
       "zod": "3.25.67",
       "fast-xml-parser": "5.7.2",
+      "fast-xml-builder": "1.2.1",
       "openai": "6.21.0",
       "uuid@<=11.1.1": "11.1.1",
       "langsmith@<=0.6.0": "0.6.0",
