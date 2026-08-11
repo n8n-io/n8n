@@ -226,6 +226,7 @@ describe('PostHog', () => {
 				globalConfig.evaluation.configEvalsEnabled = false;
 				globalConfig.evaluation.agentEvalsEnabled = false;
 				globalConfig.instanceAi.mcpConnectionsEnabled = false;
+				globalConfig.instanceAi.canvasNodeContextEnabled = false;
 			});
 
 			it('force-enables the eval-collections flag when N8N_EVAL_COLLECTIONS_ENABLED is set', async () => {
@@ -311,6 +312,57 @@ describe('PostHog', () => {
 				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
 
 				expect(flags).toEqual({ '101_agent_evals': true });
+			});
+
+			it('force-enables the canvas-node-context flag when N8N_INSTANCE_AI_NODE_CONTEXT_ENABLED is set', async () => {
+				(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(mockEvaluatedFlags({}));
+
+				globalConfig.instanceAi.canvasNodeContextEnabled = true;
+
+				const ph = new PostHogClient(instanceSettings, globalConfig);
+				await ph.init();
+
+				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
+
+				expect(flags).toMatchObject({ '104_canvas_aia_node_context': true });
+			});
+
+			it('leaves the canvas-node-context flag untouched when the override is off', async () => {
+				(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(
+					mockEvaluatedFlags({ '104_canvas_aia_node_context': true }),
+				);
+
+				globalConfig.instanceAi.canvasNodeContextEnabled = false;
+
+				const ph = new PostHogClient(instanceSettings, globalConfig);
+				await ph.init();
+
+				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
+
+				expect(flags).toEqual({ '104_canvas_aia_node_context': true });
+			});
+
+			it('applies all env overrides independently when several are set at once', async () => {
+				(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(mockEvaluatedFlags({}));
+
+				globalConfig.evaluation.collectionsEnabled = true;
+				globalConfig.evaluation.configEvalsEnabled = true;
+				globalConfig.evaluation.agentEvalsEnabled = true;
+				globalConfig.instanceAi.mcpConnectionsEnabled = true;
+				globalConfig.instanceAi.canvasNodeContextEnabled = true;
+
+				const ph = new PostHogClient(instanceSettings, globalConfig);
+				await ph.init();
+
+				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
+
+				expect(flags).toEqual({
+					'084_eval_collections': true,
+					'088_config_evaluations': 'variant',
+					'101_agent_evals': true,
+					'089_instance_ai_mcp_connections': 'variant',
+					'104_canvas_aia_node_context': true,
+				});
 			});
 		});
 	});
