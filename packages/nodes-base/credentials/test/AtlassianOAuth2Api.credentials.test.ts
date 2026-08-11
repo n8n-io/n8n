@@ -48,7 +48,7 @@ describe('AtlassianOAuth2Api Credential', () => {
 
 		const enabledScopes = enabledScopesProperty?.default as string;
 		expect(enabledScopes).toContain('read:jira-work');
-		expect(enabledScopes).toContain('manage:jira-project');
+		expect(enabledScopes).toContain('manage:jira-webhook');
 		expect(enabledScopes).toContain('read:page:confluence');
 		expect(enabledScopes).toContain('write:page:confluence');
 		expect(enabledScopes).toContain('offline_access');
