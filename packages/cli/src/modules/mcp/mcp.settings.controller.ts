@@ -51,7 +51,6 @@ export class McpSettingsController {
 
 		// Always return both values (read back from the source of truth) so the
 		// client can sync local state without a follow-up module-settings fetch.
-		// autoExposeNewWorkflows is reported as false while access is off.
 		const [mcpAccessEnabled, autoExposeNewWorkflows] = await Promise.all([
 			this.mcpSettingsService.getEnabled(),
 			this.mcpSettingsService.getAutoExposeNewWorkflows(),

@@ -536,8 +536,7 @@ export function useWorkflowSaving({
 				description: null,
 			});
 			workflowDocumentStore.setUpdatedAt(workflowData.updatedAt);
-			// The backend may seed settings on create (e.g. availableInMCP via
-			// auto-expose), so sync the persisted settings back into the document.
+
 			if (workflowData.settings) {
 				workflowDocumentStore.setSettings(workflowData.settings);
 			}
