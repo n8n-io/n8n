@@ -69,6 +69,10 @@ describe('Expression Parser', () => {
 				{ type: 'code', text: ' code.test("}}") ', hasClosingBrackets: true },
 			]);
 		});
+
+		test('Empty input (CAT-3075)', () => {
+			expect(splitExpression('')).toEqual([{ type: 'text', text: '' }]);
+		});
 	});
 
 	describe('Compatible joining', () => {
@@ -200,21 +204,48 @@ describe('Expression Parser', () => {
 			});
 		});
 
+		test('zip should reject non-array keys', () => {
+			expect(() =>
+				evaluate(
+					'={{ (function(){ obj = { length: 1, reduce: (fn) => fn({}, "a", "constructor") }; return zip(obj, Object); })() }}',
+				),
+			).toThrow('keys and values must be arrays');
+		});
+
+		test('zip should reject non-array values', () => {
+			expect(() =>
+				evaluate(
+					'={{ (function(){ arr = ["a"]; arr.reduce = (fn) => fn({}, "a", "constructor"); return zip(arr, Object); })() }}',
+				),
+			).toThrow('keys and values must be arrays');
+		});
+
+		test('zip should ignore overridden reduce on array instances', () => {
+			// Even if an attacker overrides .reduce on an array, we use Array.prototype.reduce
+			expect(
+				evaluate(
+					'={{ (function(){ keys = ["a"]; keys.reduce = () => "not a"; return zip(keys, [1]); })() }}',
+				),
+			).toEqual({ a: 1 });
+		});
+
 		test('$if', () => {
 			expect(evaluate('={{ $if("a"==="a", 1, 2) }}')).toEqual(1);
 			expect(evaluate('={{ $if("a"==="b", 1, 2) }}')).toEqual(2);
 			expect(evaluate('={{ $if("a"==="a", 1) }}')).toEqual(1);
 			expect(evaluate('={{ $if("a"==="b", 1) }}')).toEqual(false);
+			expect(evaluate('={{ $if("a"==="a", 1, 2) }}')).toEqual(1);
+			expect(evaluate('={{ $if("a"==="b", 1, 2) }}')).toEqual(2);
 
-			// This will likely break when sandboxing is implemented but it works for now.
-			// If you're implementing sandboxing maybe provide a way to add functions to
-			// sandbox we can check instead?
-			const mockCallback = vi.fn(() => false);
-			evaluate('={{ $if("a"==="a", true, $data.cb()) }}', [{ cb: mockCallback }]);
-			expect(mockCallback.mock.calls.length).toEqual(0);
-
-			evaluate('={{ $if("a"==="b", true, $data.cb()) }}', [{ cb: mockCallback }]);
-			expect(mockCallback.mock.calls.length).toEqual(1);
+			// Short-circuit: $if is AST-rewritten to a JS ternary, so the
+			// unselected branch is not evaluated. Probe with a throwing IIFE
+			// in the else position — the throw is swallowed by the
+			// evaluator's E() handler, but a non-undefined result for the
+			// true case proves the IIFE didn't run, and the undefined
+			// result for the false case proves it did.
+			const throwingExpr = "(function(){ throw new Error('side effect'); })()";
+			expect(evaluate(`={{ $if(true, 1, ${throwingExpr}) }}`)).toEqual(1);
+			expect(evaluate(`={{ $if(false, 1, ${throwingExpr}) }}`)).toBeUndefined();
 		});
 
 		test('$not', () => {

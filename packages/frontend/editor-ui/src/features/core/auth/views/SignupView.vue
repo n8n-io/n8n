@@ -1,20 +1,24 @@
 <script lang="ts" setup>
 import AuthView from './AuthView.vue';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 
 import { computed, onMounted, ref } from 'vue';
 import type { IFormBoxConfig } from '@/Interface';
 import { VIEWS } from '@/app/constants';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useI18n } from '@n8n/i18n';
+import { createPasswordRules } from '@n8n/design-system';
 import { useRoute, useRouter } from 'vue-router';
 
 const usersStore = useUsersStore();
+const settingsStore = useSettingsStore();
 
 const toast = useToast();
 const i18n = useI18n();
 const router = useRouter();
 const route = useRoute();
+const passwordMinLength = settingsStore.userManagement.passwordMinLength ?? 8;
 
 const FORM_CONFIG: IFormBoxConfig = {
 	title: i18n.baseText('auth.signup.setupYourAccount'),
@@ -46,9 +50,11 @@ const FORM_CONFIG: IFormBoxConfig = {
 			properties: {
 				label: i18n.baseText('auth.password'),
 				type: 'password',
-				validationRules: [{ name: 'DEFAULT_PASSWORD_RULES' }],
+				validationRules: [createPasswordRules(passwordMinLength)],
 				required: true,
-				infoText: i18n.baseText('auth.defaultPasswordRequirements'),
+				infoText: i18n.baseText('auth.defaultPasswordRequirements', {
+					interpolate: { minimum: passwordMinLength },
+				}),
 				autocomplete: 'new-password',
 				capitalize: true,
 			},

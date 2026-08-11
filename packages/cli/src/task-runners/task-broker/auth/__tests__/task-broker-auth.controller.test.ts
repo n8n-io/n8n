@@ -20,11 +20,11 @@ describe('TaskBrokerAuthController', () => {
 		},
 		taskRunners: {
 			authToken: 'random-secret',
+			grantTokenTtl: 0.1,
 		},
 	});
-	const TTL = 100;
 	const cacheService = new CacheService(globalConfig);
-	const authService = new TaskBrokerAuthService(globalConfig, cacheService, TTL);
+	const authService = new TaskBrokerAuthService(globalConfig.taskRunners, cacheService);
 	const authController = new TaskBrokerAuthController(authService);
 
 	const createMockGrantTokenReq = (token?: string) =>
@@ -35,7 +35,7 @@ describe('TaskBrokerAuthController', () => {
 		}) as unknown as AuthlessRequest;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('createGrantToken', () => {
@@ -105,6 +105,18 @@ describe('TaskBrokerAuthController', () => {
 			expect(result).toStrictEqual({
 				isValid: true,
 				statusCode: 200,
+			});
+		});
+
+		it('should return the runner ID bound to the grant token', async () => {
+			const token = await authService.createGrantToken('runner1');
+
+			const result = await authController.validateUpgradeRequest(`Bearer ${token}`);
+
+			expect(result).toStrictEqual({
+				isValid: true,
+				statusCode: 200,
+				boundRunnerId: 'runner1',
 			});
 		});
 

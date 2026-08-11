@@ -17,6 +17,7 @@ import {
 	sessionKeyProperty,
 	expressionSessionKeyProperty,
 	contextWindowLengthProperty,
+	scopedSessionHint,
 } from '../descriptions';
 
 export class MemoryMongoDbChat implements INodeType {
@@ -25,7 +26,7 @@ export class MemoryMongoDbChat implements INodeType {
 		name: 'memoryMongoDbChat',
 		icon: 'file:mongodb.svg',
 		group: ['transform'],
-		version: [1],
+		version: [1, 1.1],
 		description: 'Stores the chat history in MongoDB collection.',
 		defaults: {
 			name: 'MongoDB Chat Memory',
@@ -57,6 +58,7 @@ export class MemoryMongoDbChat implements INodeType {
 			getConnectionHintNoticeField([NodeConnectionTypes.AiAgent]),
 			sessionIdOption,
 			expressionSessionKeyProperty(1),
+			scopedSessionHint(1.1),
 			sessionKeyProperty,
 			{
 				displayName: 'Collection Name',
@@ -127,8 +129,13 @@ export class MemoryMongoDbChat implements INodeType {
 			);
 		}
 
+		const client = new MongoClient(connectionString, {
+			minPoolSize: 0,
+			maxPoolSize: 1,
+			maxIdleTimeMS: 30000,
+		});
+
 		try {
-			const client = new MongoClient(connectionString);
 			await client.connect();
 
 			const db = client.db(dbName);
@@ -157,6 +164,7 @@ export class MemoryMongoDbChat implements INodeType {
 				response: logWrapper(memory, this),
 			};
 		} catch (error) {
+			void client.close();
 			throw new NodeOperationError(this.getNode(), `MongoDB connection error: ${error.message}`);
 		}
 	}

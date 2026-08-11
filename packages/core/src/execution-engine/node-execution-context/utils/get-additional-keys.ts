@@ -4,16 +4,10 @@ import type {
 	IWorkflowExecuteAdditionalData,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { LoggerProxy } from 'n8n-workflow';
 
 import { PLACEHOLDER_EMPTY_EXECUTION_ID, WAITING_TOKEN_QUERY_PARAM } from '@/constants';
 
-import {
-	setWorkflowExecutionMetadata,
-	setAllWorkflowExecutionMetadata,
-	getWorkflowExecutionMetadata,
-	getAllWorkflowExecutionMetadata,
-} from './execution-metadata';
+import { createExecutionCustomData } from './custom-data';
 import { getSecretsProxy } from './get-secrets-proxy';
 
 function appendResumeToken(url: string, token: string): string {
@@ -27,6 +21,7 @@ export function getAdditionalKeys(
 	additionalData: IWorkflowExecuteAdditionalData,
 	mode: WorkflowExecuteMode,
 	runExecutionData: IRunExecutionData | null,
+	options: { isCredential: boolean } = { isCredential: false },
 ): IWorkflowDataProxyAdditionalKeys {
 	const executionId = additionalData.executionId ?? PLACEHOLDER_EMPTY_EXECUTION_ID;
 
@@ -43,40 +38,16 @@ export function getAdditionalKeys(
 			resumeUrl,
 			resumeFormUrl,
 			customData: runExecutionData
-				? {
-						set(key: string, value: string): void {
-							try {
-								setWorkflowExecutionMetadata(runExecutionData, key, value);
-							} catch (e) {
-								if (mode === 'manual') {
-									throw e;
-								}
-								// eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access
-								LoggerProxy.debug(e.message);
-							}
-						},
-						setAll(obj: Record<string, string>): void {
-							try {
-								setAllWorkflowExecutionMetadata(runExecutionData, obj);
-							} catch (e) {
-								if (mode === 'manual') {
-									throw e;
-								}
-								// eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access
-								LoggerProxy.debug(e.message);
-							}
-						},
-						get(key: string): string {
-							return getWorkflowExecutionMetadata(runExecutionData, key);
-						},
-						getAll(): Record<string, string> {
-							return getAllWorkflowExecutionMetadata(runExecutionData);
-						},
-					}
+				? createExecutionCustomData({ runExecutionData, mode })
 				: undefined,
 		},
+		// Gated on the value's presence, not on `mode`: sub-workflows of an eval run
+		// execute as 'integrated' but inherit evaluationRunId, so they must expose it too.
+		$evaluation: additionalData.evaluationRunId
+			? { runId: additionalData.evaluationRunId }
+			: undefined,
 		$vars: additionalData.variables,
-		$secrets: getSecretsProxy(additionalData),
+		$secrets: options.isCredential ? getSecretsProxy(additionalData) : undefined,
 
 		// deprecated
 		$executionId: executionId,
@@ -90,9 +61,10 @@ export function getAdditionalKeys(
  * */
 export function getNonWorkflowAdditionalKeys(
 	additionalData: IWorkflowExecuteAdditionalData,
+	options: { secretsEnabled: boolean } = { secretsEnabled: false },
 ): IWorkflowDataProxyAdditionalKeys {
 	return {
 		$vars: additionalData.variables,
-		$secrets: getSecretsProxy(additionalData),
+		$secrets: options.secretsEnabled ? getSecretsProxy(additionalData) : undefined,
 	};
 }

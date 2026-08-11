@@ -269,4 +269,17 @@ export class WorkflowExpression {
 	convertObjectValueToString(value: object): string {
 		return this.expression.convertObjectValueToString(value);
 	}
+
+	/** Returns whether an isolate was newly acquired; `false` means this caller already held one and must not release it. */
+	async acquireIsolate(): Promise<boolean> {
+		return await this.expression.acquireIsolate();
+	}
+
+	async releaseIsolate(): Promise<void> {
+		await this.expression.releaseIsolate();
+	}
+
+	async withIsolate<T>(fn: () => Promise<T>): Promise<T> {
+		return await this.expression.withIsolate(fn);
+	}
 }

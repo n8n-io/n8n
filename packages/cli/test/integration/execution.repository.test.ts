@@ -1,18 +1,23 @@
 import { createWorkflow, testDb } from '@n8n/backend-test-utils';
+import type { User } from '@n8n/db';
 import { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { createExecution } from '@test-integration/db/executions';
 import { stringify, parse } from 'flatted';
 import { DateTime } from 'luxon';
 import type { ExecutionStatus } from 'n8n-workflow';
 import { createEmptyRunExecutionData, createRunExecutionData } from 'n8n-workflow';
 
+import { createExecution } from '@test-integration/db/executions';
+import { createOwner } from '@test-integration/db/users';
+
 describe('UserRepository', () => {
 	let executionRepository: ExecutionRepository;
+	let owner: User;
 
 	beforeAll(async () => {
 		await testDb.init();
 		executionRepository = Container.get(ExecutionRepository);
+		owner = await createOwner();
 	});
 
 	beforeEach(async () => {
@@ -26,7 +31,7 @@ describe('UserRepository', () => {
 	describe('findManyByRangeQuery', () => {
 		test('sort by `createdAt` if `startedAt` is null', async () => {
 			const now = DateTime.utc();
-			const workflow = await createWorkflow();
+			const workflow = await createWorkflow({}, owner);
 			const execution1 = await createExecution(
 				{
 					createdAt: now.plus({ minute: 1 }).toJSDate(),
@@ -51,7 +56,7 @@ describe('UserRepository', () => {
 
 			const executions = await executionRepository.findManyByRangeQuery({
 				workflowId: workflow.id,
-				accessibleWorkflowIds: [workflow.id],
+				user: owner,
 				kind: 'range',
 				range: { limit: 10 },
 				order: { startedAt: 'DESC' },
@@ -64,6 +69,26 @@ describe('UserRepository', () => {
 				execution2.id,
 				execution1.id,
 			]);
+		});
+
+		test('exposes `jsonSizeBytes` and `binaryDataSizeBytes` as numbers and `workflowVersionId`', async () => {
+			const workflow = await createWorkflow({}, owner);
+			const execution = await createExecution(
+				{ jsonSizeBytes: 4096, binaryDataSizeBytes: 2048, workflowVersionId: 'v-123' },
+				workflow,
+			);
+
+			const [summary] = await executionRepository.findManyByRangeQuery({
+				workflowId: workflow.id,
+				user: owner,
+				kind: 'range',
+				range: { limit: 10 },
+			});
+
+			expect(summary.id).toBe(execution.id);
+			expect(summary.jsonSizeBytes).toBe(4096);
+			expect(summary.binaryDataSizeBytes).toBe(2048);
+			expect(summary.workflowVersionId).toBe('v-123');
 		});
 	});
 
@@ -119,12 +144,25 @@ describe('UserRepository', () => {
 				conditions: undefined,
 				updateExpected: true,
 			},
+			// CAT-3862: executions enqueued before a restart are claimed while still `new`
+			{
+				statusInDB: 'new' as ExecutionStatus,
+				statusUpdate: 'running' as ExecutionStatus,
+				conditions: { requireStatus: 'new' as ExecutionStatus },
+				updateExpected: true,
+			},
+			{
+				statusInDB: 'new' as ExecutionStatus,
+				statusUpdate: 'running' as ExecutionStatus,
+				conditions: { requireStatus: 'waiting' as ExecutionStatus },
+				updateExpected: false,
+			},
 		])(
 			'should return $updateExpected with status before: "$statusInDB", status after: "$statusUpdate" and conditions: $conditions',
 			async ({ statusInDB, statusUpdate, conditions, updateExpected }) => {
 				// ARRANGE
 
-				const workflow = await createWorkflow();
+				const workflow = await createWorkflow({}, owner);
 				const executionData = createEmptyRunExecutionData();
 				const execution = await createExecution(
 					{ status: statusInDB, data: stringify(executionData) },
@@ -166,7 +204,7 @@ describe('UserRepository', () => {
 		});
 
 		test('requireNotFinished: should update when finished is false', async () => {
-			const workflow = await createWorkflow();
+			const workflow = await createWorkflow({}, owner);
 			const executionData = createEmptyRunExecutionData();
 			const execution = await createExecution(
 				{ status: 'running', finished: false, data: stringify(executionData) },
@@ -183,7 +221,7 @@ describe('UserRepository', () => {
 		});
 
 		test('requireNotFinished: should not update when finished is true', async () => {
-			const workflow = await createWorkflow();
+			const workflow = await createWorkflow({}, owner);
 			const executionData = createEmptyRunExecutionData();
 			const execution = await createExecution(
 				{ status: 'success', finished: true, data: stringify(executionData) },
@@ -202,7 +240,7 @@ describe('UserRepository', () => {
 		});
 
 		test('requireNotCanceled: should update when status is not canceled', async () => {
-			const workflow = await createWorkflow();
+			const workflow = await createWorkflow({}, owner);
 			const executionData = createEmptyRunExecutionData();
 			const execution = await createExecution(
 				{ status: 'running', data: stringify(executionData) },
@@ -219,7 +257,7 @@ describe('UserRepository', () => {
 		});
 
 		test('requireNotCanceled: should not update when status is canceled', async () => {
-			const workflow = await createWorkflow();
+			const workflow = await createWorkflow({}, owner);
 			const executionData = createEmptyRunExecutionData();
 			const execution = await createExecution(
 				{ status: 'canceled', data: stringify(executionData) },
@@ -238,7 +276,7 @@ describe('UserRepository', () => {
 		});
 
 		test('requireNotFinished + requireNotCanceled: should update running unfinished execution', async () => {
-			const workflow = await createWorkflow();
+			const workflow = await createWorkflow({}, owner);
 			const executionData = createEmptyRunExecutionData();
 			const execution = await createExecution(
 				{ status: 'running', finished: false, data: stringify(executionData) },
@@ -265,7 +303,7 @@ describe('UserRepository', () => {
 		});
 
 		test('requireNotFinished + requireNotCanceled: should not update canceled execution', async () => {
-			const workflow = await createWorkflow();
+			const workflow = await createWorkflow({}, owner);
 			const executionData = createEmptyRunExecutionData();
 			const execution = await createExecution(
 				{ status: 'canceled', finished: false, data: stringify(executionData) },

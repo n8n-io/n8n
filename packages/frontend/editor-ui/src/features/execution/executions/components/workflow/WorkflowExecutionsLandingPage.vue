@@ -4,30 +4,34 @@ import { useRoute, useRouter } from 'vue-router';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { VIEWS } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import WorkflowExecutionsInfoAccordion from './WorkflowExecutionsInfoAccordion.vue';
 import { useI18n } from '@n8n/i18n';
 
 import { N8nButton, N8nHeading, N8nText } from '@n8n/design-system';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 const router = useRouter();
 const route = useRoute();
 const locale = useI18n();
 
 const workflowId = useInjectWorkflowId();
 const uiStore = useUIStore();
-const workflowsStore = useWorkflowsStore();
+const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 
-const executionCount = computed(() => workflowsStore.currentWorkflowExecutions.length);
-const containsTrigger = computed(() => workflowsStore.workflowTriggerNodes.length > 0);
+const executionCount = computed(
+	() => workflowExecutionStateStore.value.currentWorkflowExecutions.length,
+);
+const containsTrigger = computed(() => workflowDocumentStore.value.workflowTriggerNodes.length > 0);
 
 function onSetupFirstStep(): void {
-	const resolvedWorkflowId = workflowId.value || route.params.name;
+	const resolvedWorkflowId = workflowId.value || route.params.workflowId;
 
 	uiStore.addFirstStepOnLoad = true;
 
 	void router.push({
 		name: VIEWS.WORKFLOW,
-		params: { name: resolvedWorkflowId },
+		params: { workflowId: resolvedWorkflowId },
 		query: { ...route.query },
 	});
 }

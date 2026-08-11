@@ -22,7 +22,11 @@ import {
 } from './operations';
 import type { NodeOperationMode, VectorStoreNodeConstructorArgs } from './types';
 // Import utility functions
-import { transformDescriptionForOperationMode, getOperationModeOptions } from './utils';
+import {
+	transformDescriptionForOperationMode,
+	getOperationModeOptions,
+	normalizeVectorStoreError,
+} from './utils';
 import { getConnectionHintNoticeField } from '../../shared-fields';
 
 const ragStarterCallout: INodeProperties = {
@@ -77,7 +81,127 @@ export const createVectorStoreNode = <T extends VectorStore = VectorStore>(
 				},
 			},
 			builderHint: {
+				searchHint:
+					"Pick mode by where data flows: `insert` upserts documents into the store on the main flow; `load` runs a one-shot similarity search on the main flow; `retrieve-as-tool` is the canonical RAG mode — plug into an AI Agent's `subnodes.tools`; `retrieve` exposes the store as a subnode for another node's `subnodes.vectorStore`; `update` updates a single document by ID.",
 				...args.meta.builderHint,
+				extraTypeDefContent: [
+					{
+						displayOptions: { show: { mode: ['insert'] } },
+						content: `Sits on the main flow — pipe the documents you want to embed into this node. Declare with \`vectorStore({...})\`. Required subnodes: \`embedding\` and \`documentLoader\`. If the goal is letting an LLM query the store, use \`mode: 'retrieve-as-tool'\` instead.
+<patterns>
+<pattern title="insert mode — upsert documents (generic, works for any vectorStore* node)">
+// Substitute the type literal and provider-specific parameters (e.g. pineconeIndex,
+// qdrantCollection, supabaseTableName) — see the rest of this file for the exact shape.
+const store = vectorStore({
+  type: '@n8n/n8n-nodes-langchain.vectorStoreXxx',
+  config: {
+    name: 'Knowledge Base',
+    parameters: {
+      mode: 'insert',
+      // ...provider-specific parameters
+    },
+    subnodes: { embedding: embeddingsOpenAi, documentLoader: defaultDataLoader }
+  }
+});
+</pattern>
+</patterns>`,
+					},
+					{
+						displayOptions: { show: { mode: ['retrieve-as-tool'] } },
+						content: `Canonical RAG mode — declare with the \`tool({...})\` factory (NOT \`vectorStore\`) and plug into an AI Agent's \`subnodes.tools\`. Required subnodes: \`embedding\`. Set \`toolDescription\` so the agent knows when to call it.
+<patterns>
+<pattern title="retrieve-as-tool mode — RAG via AI Agent (generic, works for any vectorStore* node)">
+// Substitute the type literal and provider-specific parameters — see the rest of this file
+// for the exact shape (e.g. pineconeIndex, qdrantCollection, supabaseTableName).
+const knowledgeBase = tool({
+  type: '@n8n/n8n-nodes-langchain.vectorStoreXxx',
+  config: {
+    name: 'Knowledge Base',
+    parameters: {
+      mode: 'retrieve-as-tool',
+      toolDescription: 'Search the product knowledge base',
+      // ...provider-specific parameters
+    },
+    subnodes: { embedding: embeddingsOpenAi }
+  }
+});
+
+const agent = node({
+  type: '@n8n/n8n-nodes-langchain.agent',
+  config: {
+    name: 'Support Agent',
+    parameters: { promptType: 'define', text: expr('{{ $json.question }}') },
+    subnodes: { model: openAiModel, tools: [knowledgeBase] }
+  }
+});
+</pattern>
+</patterns>`,
+					},
+					{
+						displayOptions: { show: { mode: ['load'] } },
+						content: `One-shot similarity search on the main flow using the \`prompt\` parameter. Declare with \`vectorStore({...})\`. Required subnodes: \`embedding\`. For LLM-driven querying (RAG), use \`mode: 'retrieve-as-tool'\` instead.
+<patterns>
+<pattern title="load mode — one-shot similarity search (generic)">
+// Substitute the type literal and provider-specific parameters — see the rest of this file.
+const lookup = vectorStore({
+  type: '@n8n/n8n-nodes-langchain.vectorStoreXxx',
+  config: {
+    name: 'Knowledge Base',
+    parameters: {
+      mode: 'load',
+      prompt: expr('{{ $json.query }}'),
+      // ...provider-specific parameters
+    },
+    subnodes: { embedding: embeddingsOpenAi }
+  }
+});
+</pattern>
+</patterns>`,
+					},
+					{
+						displayOptions: { show: { mode: ['retrieve'] } },
+						content: `Exposes the store as an \`ai_vectorStore\` subnode for another node (e.g. \`toolVectorStore\`). Declare with \`vectorStore({...})\`. Required subnodes: \`embedding\`. For RAG with an AI Agent directly, prefer \`mode: 'retrieve-as-tool'\`.
+<patterns>
+<pattern title="retrieve mode — feed another node as a subnode (generic)">
+// Substitute the type literal and provider-specific parameters — see the rest of this file.
+const store = vectorStore({
+  type: '@n8n/n8n-nodes-langchain.vectorStoreXxx',
+  config: {
+    name: 'Knowledge Base',
+    parameters: { mode: 'retrieve' /* + provider-specific parameters */ },
+    subnodes: { embedding: embeddingsOpenAi }
+  }
+});
+
+const retrieverTool = tool({
+  type: '@n8n/n8n-nodes-langchain.toolVectorStore',
+  config: {
+    name: 'KB Retriever',
+    parameters: { description: 'Search the product knowledge base' },
+    subnodes: { vectorStore: store, model: openAiModel }
+  }
+});
+</pattern>
+</patterns>`,
+					},
+					{
+						displayOptions: { show: { mode: ['update'] } },
+						content: `Updates a single document by \`id\`. Declare with \`vectorStore({...})\`. Required subnodes: \`embedding\`. Only available on stores whose \`operationModes\` enables it — most providers omit this mode.
+<patterns>
+<pattern title="update mode — update document by ID (generic)">
+// Substitute the type literal and provider-specific parameters — see the rest of this file.
+const store = vectorStore({
+  type: '@n8n/n8n-nodes-langchain.vectorStoreXxx',
+  config: {
+    name: 'Knowledge Base',
+    parameters: { mode: 'update', id: expr('{{ $json.docId }}') },
+    subnodes: { embedding: embeddingsOpenAi }
+  }
+});
+</pattern>
+</patterns>`,
+					},
+				],
 				inputs: {
 					ai_embedding: { required: true },
 					ai_document: {
@@ -89,6 +213,19 @@ export const createVectorStoreNode = <T extends VectorStore = VectorStore>(
 						displayOptions: {
 							show: { mode: ['load', 'retrieve', 'retrieve-as-tool'], useReranker: [true] },
 						},
+					},
+				},
+				outputs: {
+					main: {
+						displayOptions: { show: { mode: ['insert', 'load', 'update'] } },
+					},
+					ai_vectorStore: {
+						required: true,
+						displayOptions: { show: { mode: ['retrieve'] } },
+					},
+					ai_tool: {
+						required: true,
+						displayOptions: { show: { mode: ['retrieve-as-tool'] } },
 					},
 				},
 			},
@@ -278,57 +415,61 @@ export const createVectorStoreNode = <T extends VectorStore = VectorStore>(
 		 * Supports 'load', 'insert', and 'update' operation modes
 		 */
 		async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-			const mode = this.getNodeParameter('mode', 0) as NodeOperationMode;
-			// Get the embeddings model connected to this node
-			const embeddings = (await this.getInputConnectionData(
-				NodeConnectionTypes.AiEmbedding,
-				0,
-			)) as Embeddings;
+			try {
+				const mode = this.getNodeParameter('mode', 0) as NodeOperationMode;
+				// Get the embeddings model connected to this node
+				const embeddings = (await this.getInputConnectionData(
+					NodeConnectionTypes.AiEmbedding,
+					0,
+				)) as Embeddings;
 
-			// Handle each operation mode with dedicated modules
-			if (mode === 'load') {
-				const items = this.getInputData(0);
-				const resultData = [];
+				// Handle each operation mode with dedicated modules
+				if (mode === 'load') {
+					const items = this.getInputData(0);
+					const resultData = [];
 
-				for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-					const docs = await handleLoadOperation(this, args, embeddings, itemIndex);
-					resultData.push(...docs);
+					for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+						const docs = await handleLoadOperation(this, args, embeddings, itemIndex);
+						resultData.push(...docs);
+					}
+
+					return [resultData];
 				}
 
-				return [resultData];
-			}
-
-			if (mode === 'insert') {
-				const resultData = await handleInsertOperation(this, args, embeddings);
-				return [resultData];
-			}
-
-			if (mode === 'update') {
-				const resultData = await handleUpdateOperation(this, args, embeddings);
-				return [resultData];
-			}
-
-			if (mode === 'retrieve-as-tool') {
-				const items = this.getInputData(0);
-				const resultData = [];
-
-				for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-					const docs = await handleRetrieveAsToolExecuteOperation(
-						this,
-						args,
-						embeddings,
-						itemIndex,
-					);
-					resultData.push(...docs);
+				if (mode === 'insert') {
+					const resultData = await handleInsertOperation(this, args, embeddings);
+					return [resultData];
 				}
 
-				return [resultData];
-			}
+				if (mode === 'update') {
+					const resultData = await handleUpdateOperation(this, args, embeddings);
+					return [resultData];
+				}
 
-			throw new NodeOperationError(
-				this.getNode(),
-				'Only the "load", "update", "insert", and "retrieve-as-tool" operation modes are supported with execute',
-			);
+				if (mode === 'retrieve-as-tool') {
+					const items = this.getInputData(0);
+					const resultData = [];
+
+					for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+						const docs = await handleRetrieveAsToolExecuteOperation(
+							this,
+							args,
+							embeddings,
+							itemIndex,
+						);
+						resultData.push(...docs);
+					}
+
+					return [resultData];
+				}
+
+				throw new NodeOperationError(
+					this.getNode(),
+					'Only the "load", "update", "insert", and "retrieve-as-tool" operation modes are supported with execute',
+				);
+			} catch (error) {
+				normalizeVectorStoreError(this.getNode(), error);
+			}
 		}
 
 		/**
@@ -336,26 +477,30 @@ export const createVectorStoreNode = <T extends VectorStore = VectorStore>(
 		 * Supports 'retrieve' and 'retrieve-as-tool' operation modes
 		 */
 		async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-			const mode = this.getNodeParameter('mode', 0) as NodeOperationMode;
+			try {
+				const mode = this.getNodeParameter('mode', 0) as NodeOperationMode;
 
-			// Get the embeddings model connected to this node
-			const embeddings = (await this.getInputConnectionData(
-				NodeConnectionTypes.AiEmbedding,
-				0,
-			)) as Embeddings;
+				// Get the embeddings model connected to this node
+				const embeddings = (await this.getInputConnectionData(
+					NodeConnectionTypes.AiEmbedding,
+					0,
+				)) as Embeddings;
 
-			// Handle each supply data operation mode with dedicated modules
-			if (mode === 'retrieve') {
-				return await handleRetrieveOperation(this, args, embeddings, itemIndex);
+				// Handle each supply data operation mode with dedicated modules
+				if (mode === 'retrieve') {
+					return await handleRetrieveOperation(this, args, embeddings, itemIndex);
+				}
+
+				if (mode === 'retrieve-as-tool') {
+					return await handleRetrieveAsToolOperation(this, args, embeddings, itemIndex);
+				}
+
+				throw new NodeOperationError(
+					this.getNode(),
+					'Only the "retrieve" and "retrieve-as-tool" operation mode is supported to supply data',
+				);
+			} catch (error) {
+				normalizeVectorStoreError(this.getNode(), error, itemIndex);
 			}
-
-			if (mode === 'retrieve-as-tool') {
-				return await handleRetrieveAsToolOperation(this, args, embeddings, itemIndex);
-			}
-
-			throw new NodeOperationError(
-				this.getNode(),
-				'Only the "retrieve" and "retrieve-as-tool" operation mode is supported to supply data',
-			);
 		}
 	};

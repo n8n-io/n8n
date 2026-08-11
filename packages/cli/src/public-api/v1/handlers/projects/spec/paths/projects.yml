@@ -1,5 +1,6 @@
 post:
   x-eov-operation-id: createProject
+  x-required-scope: project:create
   x-eov-operation-handler: v1/handlers/projects/projects.handler
   tags:
     - Projects
@@ -21,6 +22,7 @@ post:
       $ref: '../../../../shared/spec/responses/unauthorized.yml'
 get:
   x-eov-operation-id: getProjects
+  x-required-scope: project:list
   x-eov-operation-handler: v1/handlers/projects/projects.handler
   tags:
     - Projects

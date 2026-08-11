@@ -20,7 +20,13 @@ import { writeGithubOutput } from './github-helpers.mjs';
 
 const exec = promisify(child_process.exec);
 
-const packages = JSON.parse((await exec('pnpm ls -r --only-projects --json')).stdout);
+const packages = JSON.parse(
+	(
+		await exec(
+			`pnpm ls -r --only-projects --json | jq -r '[.[] | { name:.name, private: .private}]'`,
+		)
+	).stdout,
+);
 
 const newPackages = [];
 

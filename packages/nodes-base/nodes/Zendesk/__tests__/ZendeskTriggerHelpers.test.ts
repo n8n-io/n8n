@@ -2,6 +2,7 @@ import { createHmac } from 'crypto';
 import type { IWebhookFunctions } from 'n8n-workflow';
 
 import { verifySignature } from '../ZendeskTriggerHelpers';
+import type { Mock } from 'vitest';
 
 describe('ZendeskTriggerHelpers', () => {
 	describe('verifySignature', () => {
@@ -19,13 +20,13 @@ describe('ZendeskTriggerHelpers', () => {
 
 		beforeEach(() => {
 			mockWebhookFunctions = {
-				getWorkflowStaticData: jest.fn().mockReturnValue({
+				getWorkflowStaticData: vi.fn().mockReturnValue({
 					webhookSecret: testWebhookSecret,
 				}),
-				getRequestObject: jest.fn().mockReturnValue({
+				getRequestObject: vi.fn().mockReturnValue({
 					rawBody: Buffer.from(testBody),
 				}),
-				getHeaderData: jest.fn().mockReturnValue({
+				getHeaderData: vi.fn().mockReturnValue({
 					'x-zendesk-webhook-signature': generateValidSignature(
 						testTimestamp,
 						testBody,
@@ -37,7 +38,7 @@ describe('ZendeskTriggerHelpers', () => {
 		});
 
 		it('should return true when no webhook secret is stored (backwards compatibility)', () => {
-			(mockWebhookFunctions.getWorkflowStaticData as jest.Mock).mockReturnValue({});
+			(mockWebhookFunctions.getWorkflowStaticData as Mock).mockReturnValue({});
 
 			const result = verifySignature.call(mockWebhookFunctions);
 
@@ -46,7 +47,7 @@ describe('ZendeskTriggerHelpers', () => {
 		});
 
 		it('should return false when signature header is missing', () => {
-			(mockWebhookFunctions.getHeaderData as jest.Mock).mockReturnValue({
+			(mockWebhookFunctions.getHeaderData as Mock).mockReturnValue({
 				'x-zendesk-webhook-signature-timestamp': testTimestamp,
 			});
 
@@ -56,7 +57,7 @@ describe('ZendeskTriggerHelpers', () => {
 		});
 
 		it('should return false when timestamp header is missing', () => {
-			(mockWebhookFunctions.getHeaderData as jest.Mock).mockReturnValue({
+			(mockWebhookFunctions.getHeaderData as Mock).mockReturnValue({
 				'x-zendesk-webhook-signature': generateValidSignature(
 					testTimestamp,
 					testBody,
@@ -70,7 +71,7 @@ describe('ZendeskTriggerHelpers', () => {
 		});
 
 		it('should return false when rawBody is missing', () => {
-			(mockWebhookFunctions.getRequestObject as jest.Mock).mockReturnValue({
+			(mockWebhookFunctions.getRequestObject as Mock).mockReturnValue({
 				rawBody: undefined,
 			});
 
@@ -86,7 +87,7 @@ describe('ZendeskTriggerHelpers', () => {
 		});
 
 		it('should return false when signature is invalid', () => {
-			(mockWebhookFunctions.getHeaderData as jest.Mock).mockReturnValue({
+			(mockWebhookFunctions.getHeaderData as Mock).mockReturnValue({
 				'x-zendesk-webhook-signature': 'invalid-signature',
 				'x-zendesk-webhook-signature-timestamp': testTimestamp,
 			});
@@ -98,7 +99,7 @@ describe('ZendeskTriggerHelpers', () => {
 
 		it('should return false when signature is computed with wrong secret', () => {
 			const wrongSecret = 'wrong_secret_key';
-			(mockWebhookFunctions.getHeaderData as jest.Mock).mockReturnValue({
+			(mockWebhookFunctions.getHeaderData as Mock).mockReturnValue({
 				'x-zendesk-webhook-signature': generateValidSignature(testTimestamp, testBody, wrongSecret),
 				'x-zendesk-webhook-signature-timestamp': testTimestamp,
 			});
@@ -110,7 +111,7 @@ describe('ZendeskTriggerHelpers', () => {
 
 		it('should handle Buffer rawBody correctly', () => {
 			const bufferBody = Buffer.from(testBody);
-			(mockWebhookFunctions.getRequestObject as jest.Mock).mockReturnValue({
+			(mockWebhookFunctions.getRequestObject as Mock).mockReturnValue({
 				rawBody: bufferBody,
 			});
 
@@ -120,7 +121,7 @@ describe('ZendeskTriggerHelpers', () => {
 		});
 
 		it('should handle string rawBody correctly', () => {
-			(mockWebhookFunctions.getRequestObject as jest.Mock).mockReturnValue({
+			(mockWebhookFunctions.getRequestObject as Mock).mockReturnValue({
 				rawBody: testBody, // String instead of Buffer
 			});
 
@@ -130,7 +131,7 @@ describe('ZendeskTriggerHelpers', () => {
 		});
 
 		it('should return false when computed and provided signatures have different lengths', () => {
-			(mockWebhookFunctions.getHeaderData as jest.Mock).mockReturnValue({
+			(mockWebhookFunctions.getHeaderData as Mock).mockReturnValue({
 				'x-zendesk-webhook-signature': 'short',
 				'x-zendesk-webhook-signature-timestamp': testTimestamp,
 			});
@@ -147,7 +148,7 @@ describe('ZendeskTriggerHelpers', () => {
 				testBody,
 				testWebhookSecret,
 			);
-			(mockWebhookFunctions.getHeaderData as jest.Mock).mockReturnValue({
+			(mockWebhookFunctions.getHeaderData as Mock).mockReturnValue({
 				'x-zendesk-webhook-signature': validSignature,
 				'x-zendesk-webhook-signature-timestamp': differentTimestamp,
 			});
@@ -160,10 +161,10 @@ describe('ZendeskTriggerHelpers', () => {
 		it('should handle empty body', () => {
 			const emptyBody = '';
 			const validSignature = generateValidSignature(testTimestamp, emptyBody, testWebhookSecret);
-			(mockWebhookFunctions.getRequestObject as jest.Mock).mockReturnValue({
+			(mockWebhookFunctions.getRequestObject as Mock).mockReturnValue({
 				rawBody: Buffer.from(emptyBody),
 			});
-			(mockWebhookFunctions.getHeaderData as jest.Mock).mockReturnValue({
+			(mockWebhookFunctions.getHeaderData as Mock).mockReturnValue({
 				'x-zendesk-webhook-signature': validSignature,
 				'x-zendesk-webhook-signature-timestamp': testTimestamp,
 			});
@@ -177,10 +178,10 @@ describe('ZendeskTriggerHelpers', () => {
 			const complexBody =
 				'{"ticket":{"id":"123","subject":"Test with émojis 🎉 and spëcial chars"}}';
 			const validSignature = generateValidSignature(testTimestamp, complexBody, testWebhookSecret);
-			(mockWebhookFunctions.getRequestObject as jest.Mock).mockReturnValue({
+			(mockWebhookFunctions.getRequestObject as Mock).mockReturnValue({
 				rawBody: Buffer.from(complexBody, 'utf8'),
 			});
-			(mockWebhookFunctions.getHeaderData as jest.Mock).mockReturnValue({
+			(mockWebhookFunctions.getHeaderData as Mock).mockReturnValue({
 				'x-zendesk-webhook-signature': validSignature,
 				'x-zendesk-webhook-signature-timestamp': testTimestamp,
 			});

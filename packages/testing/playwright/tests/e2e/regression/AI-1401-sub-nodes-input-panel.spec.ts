@@ -15,20 +15,18 @@ test.describe(
 
 			for (const node of ['hackernews_top', 'hackernews_sub']) {
 				await n8n.canvas.openNode(node);
-				await expect(n8n.ndv.getContainer()).toBeVisible();
+				await expect(n8n.ndv.container).toBeVisible();
 				await expect(n8n.ndv.inputPanel.get()).toBeVisible();
 
 				// Switch to JSON mode within the mapping view
 				await n8n.ndv.inputPanel.switchDisplayMode('json');
 				// Verify the input node dropdown shows the correct parent nodes
-				const inputNodeSelect = n8n.ndv.inputPanel.get().locator('[data-test-id*="input-select"]');
+				const inputNodeSelect = n8n.ndv.inputPanel.getNodeInputOptions();
 				await expect(inputNodeSelect).toBeVisible();
 				await inputNodeSelect.click();
-				await expect(n8n.page.getByRole('option', { name: 'Edit Fields' })).toBeVisible();
-				await expect(n8n.page.getByRole('option', { name: 'Manual Trigger' })).toBeVisible();
-				await expect(
-					n8n.page.getByRole('option', { name: 'No Operation, do nothing' }),
-				).toBeHidden();
+				await expect(n8n.ndv.getVisiblePopoverOption('Edit Fields')).toBeVisible();
+				await expect(n8n.ndv.getVisiblePopoverOption('Manual Trigger')).toBeVisible();
+				await expect(n8n.ndv.getVisiblePopoverOption('No Operation, do nothing')).toBeHidden();
 
 				await n8n.ndv.clickBackToCanvasButton();
 			}

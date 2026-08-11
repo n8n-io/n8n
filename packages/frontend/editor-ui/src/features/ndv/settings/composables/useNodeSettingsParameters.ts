@@ -6,10 +6,11 @@ import {
 	type INodeParameters,
 	type INodeProperties,
 	type NodeParameterValue,
+	type DeploymentCondition,
 	NodeHelpers,
 	deepCopy,
 } from 'n8n-workflow';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
@@ -24,28 +25,43 @@ import {
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { CHAT_TRIGGER_NODE_TYPE, KEEP_AUTH_IN_NDV_FOR_NODES } from '@/app/constants';
 import {
 	getMainAuthField,
 	getNodeAuthFields,
 	isAuthRelatedParameter,
 } from '@/app/utils/nodeTypesUtils';
-import {
-	useWorkflowDocumentStore,
-	createWorkflowDocumentId,
-} from '@/app/stores/workflowDocument.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
+import { reconcileNodeFromAIKeys } from '@/features/ndv/parameters/utils/fromAIOverride.utils';
+
+const hasPublicDisplayCondition = (parameter: INodeProperties, value: boolean) =>
+	parameter.displayOptions?.show?.public?.includes(value) ?? false;
+
+const stripPublicDisplayCondition = (parameter: INodeProperties): INodeProperties => {
+	const displayOptions = parameter.displayOptions;
+	if (!displayOptions?.show?.public) {
+		return parameter;
+	}
+
+	const { public: _public, ...show } = displayOptions.show;
+
+	return {
+		...parameter,
+		displayOptions: {
+			...displayOptions,
+			...(Object.keys(show).length > 0 ? { show } : {}),
+		},
+	};
+};
 
 export function useNodeSettingsParameters() {
-	const workflowsStore = useWorkflowsStore();
-	const workflowDocumentStore = computed(() =>
-		workflowsStore.workflowId
-			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-			: undefined,
-	);
+	const workflowDocumentStore = injectWorkflowDocumentStore();
+	const ndvStore = computed(() => useNDVStore(workflowDocumentStore.value.documentId));
 	const nodeTypesStore = useNodeTypesStore();
 	const settingsStore = useSettingsStore();
+	const { check: envFeatureFlag } = useEnvFeatureFlag();
 	const telemetry = useTelemetry();
 	const nodeHelpers = useNodeHelpers();
 	const workflowHelpers = useWorkflowHelpers();
@@ -109,6 +125,10 @@ export function useNodeSettingsParameters() {
 			if (updatedDescription && nodeParameters) {
 				nodeParameters.toolDescription = updatedDescription;
 			}
+
+			if (nodeParameters) {
+				reconcileNodeFromAIKeys(nodeTypeDescription.properties, nodeParameters);
+			}
 		}
 
 		if (NodeHelpers.isDefaultNodeName(node.name, nodeTypeDescription, node.parameters ?? {})) {
@@ -132,15 +152,15 @@ export function useNodeSettingsParameters() {
 			value: nodeParameters,
 		};
 
-		const connections = workflowDocumentStore.value?.connectionsBySourceNode ?? {};
+		const connections = workflowDocumentStore.value.connectionsBySourceNode;
 
 		const updatedConnections = updateDynamicConnections(node, connections, parameterData);
 
 		if (updatedConnections) {
-			workflowDocumentStore.value?.setConnections(updatedConnections);
+			workflowDocumentStore.value.setConnections(updatedConnections);
 		}
 
-		workflowDocumentStore.value?.setNodeParameters(updateInformation);
+		workflowDocumentStore.value.setNodeParameters(updateInformation);
 
 		void externalHooks.run('nodeSettings.valueChanged', {
 			parameterPath,
@@ -157,7 +177,6 @@ export function useNodeSettingsParameters() {
 	function handleFocus(node: INodeUi | undefined, path: string, parameter: INodeProperties) {
 		if (!node) return;
 
-		const ndvStore = useNDVStore();
 		const focusPanelStore = useFocusPanelStore();
 
 		focusPanelStore.openWithFocusedNodeParameter({
@@ -166,9 +185,9 @@ export function useNodeSettingsParameters() {
 			parameter,
 		});
 
-		if (ndvStore.activeNode) {
-			ndvStore.unsetActiveNodeName();
-			ndvStore.resetNDVPushRef();
+		if (ndvStore.value.activeNode) {
+			ndvStore.value.unsetActiveNodeName();
+			ndvStore.value.resetNDVPushRef();
 		}
 	}
 
@@ -184,18 +203,10 @@ export function useNodeSettingsParameters() {
 			return false;
 		}
 
-		// Fast path: hide parameters explicitly marked as cloud-only on cloud deployments
-		if (parameter.displayOptions?.hideOnCloud && settingsStore.isCloudDeployment) {
-			return false;
-		}
-
-		// Fast path: if no display/disabled options defined, no need for further checks
-		const hasDisplayOptions = parameter[displayKey] !== undefined;
-
-		// Check custom API call - only compute if needed
 		if (
-			nodeHelpers.isCustomApiCallSelected(nodeParameters) &&
-			mustHideDuringCustomApiCall(parameter, nodeParameters)
+			displayKey === 'displayOptions' &&
+			typeof parameter.envFeatureFlag === 'string' &&
+			!envFeatureFlag.value(parameter.envFeatureFlag)
 		) {
 			return false;
 		}
@@ -204,13 +215,58 @@ export function useNodeSettingsParameters() {
 		const nodeType = node ? nodeTypesStore.getNodeType(node.type, node.typeVersion) : null;
 		const nodeTypeValue = node?.type ?? '';
 
+		let effectiveParameter = parameter;
+
+		if (
+			displayKey === 'displayOptions' &&
+			nodeTypeValue === CHAT_TRIGGER_NODE_TYPE &&
+			settingsStore.isPublicChatTriggerDisabled
+		) {
+			if (
+				effectiveParameter.name === 'public' ||
+				hasPublicDisplayCondition(effectiveParameter, true)
+			) {
+				return false;
+			}
+
+			if (hasPublicDisplayCondition(effectiveParameter, false)) {
+				effectiveParameter = stripPublicDisplayCondition(effectiveParameter);
+			}
+		}
+
+		const deployment: DeploymentCondition = settingsStore.isCloudDeployment ? 'cloud' : 'hosted';
+
+		if (
+			displayKey === 'displayOptions' &&
+			effectiveParameter.displayOptions?.showOnDeployment &&
+			effectiveParameter.displayOptions.showOnDeployment !== deployment
+		) {
+			return false;
+		}
+
+		// Fast path: hide parameters explicitly marked as cloud-only on cloud deployments
+		if (effectiveParameter.displayOptions?.hideOnCloud && settingsStore.isCloudDeployment) {
+			return false;
+		}
+
+		// Fast path: if no display/disabled options defined, no need for further checks
+		const hasDisplayOptions = effectiveParameter[displayKey] !== undefined;
+
+		// Check custom API call - only compute if needed
+		if (
+			nodeHelpers.isCustomApiCallSelected(nodeParameters) &&
+			mustHideDuringCustomApiCall(effectiveParameter, nodeParameters)
+		) {
+			return false;
+		}
+
 		// Auth-related parameter handling - only compute if not in KEEP_AUTH_IN_NDV_FOR_NODES
 		if (!KEEP_AUTH_IN_NDV_FOR_NODES.includes(nodeTypeValue)) {
 			const mainNodeAuthField = getMainAuthField(nodeType);
 
 			if (mainNodeAuthField) {
 				// Check if parameter is the main auth field itself
-				if (parameter.name === mainNodeAuthField.name) {
+				if (effectiveParameter.name === mainNodeAuthField.name) {
 					return false;
 				}
 
@@ -218,7 +274,7 @@ export function useNodeSettingsParameters() {
 				// TODO: For now, hide all fields that are used in authentication fields displayOptions
 				// Ideally, we should check if any non-auth field depends on it before hiding it but
 				// since there is no such case, omitting it to avoid additional computation
-				if (isAuthRelatedParameter(getNodeAuthFields(nodeType), parameter)) {
+				if (isAuthRelatedParameter(getNodeAuthFields(nodeType), effectiveParameter)) {
 					return false;
 				}
 			}
@@ -228,7 +284,7 @@ export function useNodeSettingsParameters() {
 		// Remove this check when feature is generally available.
 		if (
 			nodeType?.name === CHAT_TRIGGER_NODE_TYPE &&
-			parameter.name === 'availableInChat' &&
+			effectiveParameter.name === 'availableInChat' &&
 			!settingsStore.isChatFeatureEnabled
 		) {
 			return false;
@@ -252,7 +308,13 @@ export function useNodeSettingsParameters() {
 
 		// Fast path: no keys means nothing to resolve
 		if (keyCount === 0) {
-			return nodeHelpers.displayParameter(nodeParameters, parameter, path, node, displayKey);
+			return nodeHelpers.displayParameter(
+				nodeParameters,
+				effectiveParameter,
+				path,
+				node,
+				displayKey,
+			);
 		}
 
 		// Check if we have any expressions to resolve (scan first to avoid unnecessary work)
@@ -267,7 +329,13 @@ export function useNodeSettingsParameters() {
 
 		// Fast path: no expressions means we can use original parameters directly
 		if (!hasExpressions) {
-			return nodeHelpers.displayParameter(nodeParameters, parameter, path, node, displayKey);
+			return nodeHelpers.displayParameter(
+				nodeParameters,
+				effectiveParameter,
+				path,
+				node,
+				displayKey,
+			);
 		}
 
 		// Resolve expressions - use index-based iteration for better performance
@@ -378,12 +446,18 @@ export function useNodeSettingsParameters() {
 			if (path) {
 				const resolvedValues = deepCopy(nodeParameters);
 				set(resolvedValues, path, nodeParams);
-				return nodeHelpers.displayParameter(resolvedValues, parameter, path, node, displayKey);
+				return nodeHelpers.displayParameter(
+					resolvedValues,
+					effectiveParameter,
+					path,
+					node,
+					displayKey,
+				);
 			}
-			return nodeHelpers.displayParameter(nodeParams, parameter, '', node, displayKey);
+			return nodeHelpers.displayParameter(nodeParams, effectiveParameter, '', node, displayKey);
 		}
 
-		return nodeHelpers.displayParameter(nodeParameters, parameter, path, node, displayKey);
+		return nodeHelpers.displayParameter(nodeParameters, effectiveParameter, path, node, displayKey);
 	}
 
 	return {

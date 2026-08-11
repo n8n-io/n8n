@@ -1,7 +1,7 @@
 import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 //https://api.slack.com/authentication/oauth-v2
-const userScopes = [
+export const userScopes = [
 	'channels:read',
 	'channels:write',
 	'channels:history',
@@ -9,6 +9,8 @@ const userScopes = [
 	'files:read',
 	'files:write',
 	'groups:read',
+	// Private-channel management: conversations.create/invite/kick/archive/rename/setTopic.
+	'groups:write',
 	'groups:history',
 	'im:read',
 	'im:history',
@@ -23,6 +25,17 @@ const userScopes = [
 	'users.profile:read',
 	'users.profile:write',
 	'users:read',
+	// Needed so /users.info returns the responder's email for the HITL capture-responder option.
+	'users:read.email',
+	// Real-time Search API (assistant.search.context) scopes, used by message:search
+	// from node version 2.7. Message search only, so no files/users scopes.
+	'search:read.public',
+	'search:read.private',
+	'search:read.im',
+	'search:read.mpim',
+	// NOTE: Kept so a credential that is re-authorized after 2.7 lands
+	// can still run message:search on node versions <= 2.6
+	// which call the deprecated search.messages.
 	'search:read',
 ];
 
@@ -36,6 +49,15 @@ export class SlackOAuth2Api implements ICredentialType {
 	documentationUrl = 'slack';
 
 	properties: INodeProperties[] = [
+		{
+			displayName: 'Signature Secret',
+			name: 'signatureSecret',
+			type: 'string',
+			typeOptions: { password: true },
+			default: '',
+			description:
+				'The signing secret is used to verify the authenticity of requests sent by Slack.',
+		},
 		{
 			displayName: 'Grant Type',
 			name: 'grantType',
@@ -54,18 +76,49 @@ export class SlackOAuth2Api implements ICredentialType {
 			type: 'hidden',
 			default: 'https://slack.com/api/oauth.v2.access',
 		},
-		//https://api.slack.com/scopes
 		{
 			displayName: 'Scope',
 			name: 'scope',
 			type: 'hidden',
-			default: 'chat:write',
+			default: '',
 		},
+		{
+			displayName: 'Custom Scopes',
+			name: 'customScopes',
+			type: 'boolean',
+			default: false,
+			description: 'Define custom scopes',
+		},
+		{
+			displayName:
+				'The default scopes needed for the node to work are already set. If you change these the node may not function correctly.',
+			name: 'customScopesNotice',
+			type: 'notice',
+			default: '',
+			displayOptions: {
+				show: {
+					customScopes: [true],
+				},
+			},
+		},
+		{
+			displayName: 'User Scope',
+			name: 'userScope',
+			type: 'string',
+			displayOptions: {
+				show: {
+					customScopes: [true],
+				},
+			},
+			default: userScopes.join(' '),
+			description: 'Space-separated user-level scopes for your Slack app',
+		},
+		//https://api.slack.com/scopes
 		{
 			displayName: 'Auth URI Query Parameters',
 			name: 'authQueryParameters',
 			type: 'hidden',
-			default: `user_scope=${userScopes.join(' ')}`,
+			default: `={{$self["customScopes"] ? "user_scope=" + $self["userScope"] : "user_scope=${userScopes.join(' ')}"}}`,
 		},
 		{
 			displayName: 'Authentication',

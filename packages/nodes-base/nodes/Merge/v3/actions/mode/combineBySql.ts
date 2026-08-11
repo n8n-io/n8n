@@ -14,11 +14,18 @@ import { getResolvables, updateDisplayOptions } from '@utils/utilities';
 
 import { numberInputsProperty } from '../../helpers/descriptions';
 import { modifySelectQuery, rowToExecutionData } from '../../helpers/utils';
-import { loadAlaSqlSandbox, runAlaSqlInSandbox } from '../../helpers/sandbox-utils';
+import {
+	isSandboxMemoryError,
+	resetSandboxCache,
+	runAlaSqlInSandbox,
+} from '../../helpers/sandbox-utils';
 
 type OperationOptions = {
-	emptyQueryResult: 'success' | 'empty';
+	emptyQueryResult?: 'success' | 'empty';
+	queryParameters?: string | number | unknown[];
 };
+
+type QueryParameterValue = string | number | boolean | null;
 
 export const properties: INodeProperties[] = [
 	numberInputsProperty,
@@ -35,6 +42,13 @@ export const properties: INodeProperties[] = [
 			rows: 5,
 			editor: 'sqlEditor',
 		},
+	},
+	{
+		displayName:
+			'Use query parameters for dynamic values. Expressions in the query text become part of the SQL. Add values in <b>Options > Query Parameters</b> and reference them with <code>?</code> placeholders.',
+		name: 'queryParametersNotice',
+		type: 'notice',
+		default: '',
 	},
 	{
 		displayName: 'Options',
@@ -59,13 +73,23 @@ export const properties: INodeProperties[] = [
 					},
 				],
 				default: 'empty',
+				displayOptions: {
+					show: {
+						'@version': [3.2],
+					},
+				},
+			},
+			{
+				displayName: 'Query Parameters',
+				name: 'queryParameters',
+				type: 'string',
+				default: '',
+				placeholder: 'value1,value2,value3',
+				description:
+					'Comma-separated list of values to use as query parameters. Reference them in the query with ? placeholders. <a href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.merge/#use-query-parameters" target="_blank">More info</a>.',
+				hint: 'Reference query parameters with ? placeholders',
 			},
 		],
-		displayOptions: {
-			show: {
-				'@version': [3.2],
-			},
-		},
 	},
 ];
 
@@ -78,25 +102,77 @@ const displayOptions = {
 export const description = updateDisplayOptions(displayOptions, properties);
 
 const prepareError = (node: INode, error: Error) => {
-	let message = '';
-	if (typeof error === 'string') {
-		message = error;
-	} else {
-		message = error.message;
-	}
-	throw new NodeOperationError(node, error, {
-		message: 'Issue while executing query',
-		description: message,
-		itemIndex: 0,
-	});
+	const raw = typeof error === 'string' ? error : error.message;
+	const isDisposed = isSandboxMemoryError(error);
+	const isTimeout = /script execution timed out/i.test(raw);
+
+	if (isDisposed) resetSandboxCache();
+
+	const message = isDisposed
+		? 'Dataset too large for the SQL sandbox'
+		: isTimeout
+			? 'SQL query exceeded the 30 second execution limit'
+			: 'Issue while executing query';
+	const description = isDisposed
+		? 'Try filtering or aggregating upstream, or split the input into smaller batches before the Merge node.'
+		: isTimeout
+			? 'Simplify the query (remove unnecessary JOINs) or reduce the number of input rows.'
+			: raw;
+
+	throw new NodeOperationError(node, error, { message, description, itemIndex: 0 });
 };
+
+function parseQueryParameterValue(value: string): string | number {
+	const numberValue = Number(value);
+
+	return value !== '' && !Number.isNaN(numberValue) ? numberValue : value;
+}
+
+function validateQueryParameterValue(
+	node: INode,
+	value: unknown,
+	index: number,
+): QueryParameterValue {
+	if (
+		value === null ||
+		typeof value === 'string' ||
+		typeof value === 'number' ||
+		typeof value === 'boolean'
+	) {
+		return value;
+	}
+
+	throw new NodeOperationError(
+		node,
+		`Query parameter ${index + 1} must be a string, number, boolean, or null`,
+		{ itemIndex: 0 },
+	);
+}
+
+function getQueryParameterValues(
+	node: INode,
+	queryParameters: OperationOptions['queryParameters'],
+): QueryParameterValue[] {
+	if (queryParameters === undefined || queryParameters === '') return [];
+	if (Array.isArray(queryParameters)) {
+		return queryParameters.map((value, index) => validateQueryParameterValue(node, value, index));
+	}
+	if (typeof queryParameters === 'number') return [queryParameters];
+	if (typeof queryParameters !== 'string') {
+		throw new NodeOperationError(node, 'Query parameters must be a string, number, or array', {
+			itemIndex: 0,
+		});
+	}
+
+	return queryParameters.split(',').map((entry) => parseQueryParameterValue(entry.trim()));
+}
 
 async function executeSelectWithMappedPairedItems(
 	node: INode,
 	inputsData: INodeExecutionData[][],
 	query: string,
+	parameters: unknown[],
 	returnSuccessItemIfEmpty: boolean,
-	context: Awaited<ReturnType<typeof loadAlaSqlSandbox>>,
 ): Promise<INodeExecutionData[][]> {
 	const returnData: INodeExecutionData[] = [];
 
@@ -106,9 +182,9 @@ async function executeSelectWithMappedPairedItems(
 
 	try {
 		const result = await runAlaSqlInSandbox(
-			context,
 			tableData,
 			modifySelectQuery(query, inputsData.length),
+			parameters,
 		);
 
 		for (const item of result) {
@@ -145,7 +221,8 @@ export async function execute(
 		query = query.replace(resolvable, this.evaluateExpression(resolvable, 0) as string);
 	}
 
-	const context = await loadAlaSqlSandbox();
+	// the value is resolved once, not on each execution, because merge mode runs once for all items
+	const parameters = getQueryParameterValues(node, options.queryParameters);
 
 	const isSelectQuery = node.typeVersion >= 3.1 ? query.toLowerCase().startsWith('select') : false;
 	const returnSuccessItemIfEmpty =
@@ -157,8 +234,8 @@ export async function execute(
 				node,
 				inputsData,
 				query,
+				parameters,
 				returnSuccessItemIfEmpty,
-				context,
 			);
 		} catch (error) {
 			Container.get(ErrorReporter).error(error, {
@@ -214,7 +291,7 @@ export async function execute(
 	);
 
 	try {
-		const result = await runAlaSqlInSandbox(context, tableData, query);
+		const result = await runAlaSqlInSandbox(tableData, query, parameters);
 
 		for (const item of result) {
 			if (Array.isArray(item)) {

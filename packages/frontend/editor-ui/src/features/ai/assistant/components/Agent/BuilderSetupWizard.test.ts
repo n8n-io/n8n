@@ -8,7 +8,6 @@ import { createTestNode } from '@/__tests__/mocks';
 import { mockedStore } from '@/__tests__/utils';
 import type { INodeUi } from '@/Interface';
 import BuilderSetupWizard from './BuilderSetupWizard.vue';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useBuilderStore } from '../../builder.store';
 
 const mockCards = ref<Array<{ state: Record<string, unknown> }>>([]);
@@ -76,7 +75,6 @@ const triggerNode = createTestNode({
 const renderComponent = createComponentRenderer(BuilderSetupWizard);
 
 describe('BuilderSetupWizard', () => {
-	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
 	let builderStore: ReturnType<typeof mockedStore<typeof useBuilderStore>>;
 	let pinia: ReturnType<typeof createTestingPinia>;
 
@@ -92,11 +90,7 @@ describe('BuilderSetupWizard', () => {
 		pinia = createTestingPinia({ stubActions: false });
 		setActivePinia(pinia);
 
-		workflowsStore = mockedStore(useWorkflowsStore);
 		builderStore = mockedStore(useBuilderStore);
-
-		workflowsStore.workflow.nodes = [triggerNode];
-		workflowsStore.workflow.connections = {} as never;
 		Object.defineProperty(builderStore, 'hasTodosHiddenByPinnedData', { get: () => false });
 		Object.defineProperty(builderStore, 'wizardHasExecutedWorkflow', {
 			value: false,
@@ -104,6 +98,7 @@ describe('BuilderSetupWizard', () => {
 			configurable: true,
 		});
 		builderStore.trackWorkflowBuilderJourney = vi.fn();
+		builderStore.getAiBuilderMadeEdits = vi.fn().mockReturnValue(true);
 	});
 
 	function render() {
@@ -212,8 +207,9 @@ describe('BuilderSetupWizard', () => {
 		expect(emitted().noSetupNeeded).toHaveLength(1);
 	});
 
-	it('does not emit noSetupNeeded when there are no cards but builder is still updating', () => {
+	it('does not emit noSetupNeeded while workflow updates are still being applied', () => {
 		mockTotalCards.value = 0;
+		builderStore.getAiBuilderMadeEdits = vi.fn().mockReturnValue(false);
 
 		const { emitted } = render();
 		expect(emitted().noSetupNeeded).toBeUndefined();

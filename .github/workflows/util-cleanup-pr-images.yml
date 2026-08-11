@@ -24,4 +24,4 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GHCR_ORG: ${{ github.repository_owner }}
           GHCR_REPO: ${{ github.event.repository.name }}
-        run: node .github/scripts/cleanup-ghcr-images.mjs --stale 1
+        run: node .github/scripts/cleanup-ghcr-images.mjs --stale 3

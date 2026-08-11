@@ -5,7 +5,13 @@ import type {
 	StickyNoteConfig,
 	IConnections,
 } from './base';
-import { isNodeChain, isNodeInstance, normalizeConnections, generateUniqueName } from './base';
+import {
+	isNodeChain,
+	isNodeInstance,
+	normalizeConnections,
+	foldLegacyErrorConnections,
+	generateUniqueName,
+} from './base';
 
 describe('Base Types', () => {
 	describe('WorkflowSettings', () => {
@@ -165,6 +171,128 @@ describe('Base Types', () => {
 
 			// Should remain unchanged — 4-element arrays are not flat tuples
 			expect(connections.Trigger.main[0]).toHaveLength(4);
+		});
+	});
+
+	describe('foldLegacyErrorConnections', () => {
+		it('folds a lone top-level error key into main[1] for single-output nodes', () => {
+			const connections: IConnections = {
+				HTTP: {
+					main: [[{ node: 'Success', type: 'main', index: 0 }]],
+					error: [[{ node: 'ErrorHandler', type: 'main', index: 0 }]],
+				},
+			};
+
+			foldLegacyErrorConnections(connections);
+
+			expect(connections.HTTP.main).toHaveLength(2);
+			expect(connections.HTTP.main[0]).toEqual([{ node: 'Success', type: 'main', index: 0 }]);
+			expect(connections.HTTP.main[1]).toEqual([{ node: 'ErrorHandler', type: 'main', index: 0 }]);
+			expect(connections.HTTP.error).toBeUndefined();
+		});
+
+		it('places error after existing multi-output main slots (IF node) when node info is passed', () => {
+			const connections: IConnections = {
+				IF: {
+					main: [
+						[{ node: 'True', type: 'main', index: 0 }],
+						[{ node: 'False', type: 'main', index: 0 }],
+					],
+					error: [[{ node: 'ErrorHandler', type: 'main', index: 0 }]],
+				},
+			};
+
+			foldLegacyErrorConnections(connections, [
+				{ name: 'IF', type: 'n8n-nodes-base.if', parameters: {} },
+			]);
+
+			expect(connections.IF.main).toHaveLength(3);
+			expect(connections.IF.main[2]).toEqual([{ node: 'ErrorHandler', type: 'main', index: 0 }]);
+			expect(connections.IF.error).toBeUndefined();
+		});
+
+		it('pads an empty success slot when only the error pin is connected', () => {
+			const connections: IConnections = {
+				HTTP: {
+					error: [[{ node: 'ErrorHandler', type: 'main', index: 0 }]],
+				},
+			};
+
+			foldLegacyErrorConnections(connections);
+
+			expect(connections.HTTP.main).toHaveLength(2);
+			expect(connections.HTTP.main[0]).toEqual([]);
+			expect(connections.HTTP.main[1]).toEqual([{ node: 'ErrorHandler', type: 'main', index: 0 }]);
+			expect(connections.HTTP.error).toBeUndefined();
+		});
+
+		it('leaves connections without a legacy error key untouched', () => {
+			const connections: IConnections = {
+				HTTP: {
+					main: [
+						[{ node: 'Success', type: 'main', index: 0 }],
+						[{ node: 'ErrorHandler', type: 'main', index: 0 }],
+					],
+				},
+			};
+
+			foldLegacyErrorConnections(connections);
+
+			expect(connections.HTTP.main).toHaveLength(2);
+			expect(connections.HTTP.main[1]).toEqual([{ node: 'ErrorHandler', type: 'main', index: 0 }]);
+		});
+
+		it('places error at main[2] for a sparse IF node when node info is passed', () => {
+			const connections: IConnections = {
+				IF: {
+					main: [[{ node: 'True', type: 'main', index: 0 }]],
+					error: [[{ node: 'ErrorHandler', type: 'main', index: 0 }]],
+				},
+			};
+
+			foldLegacyErrorConnections(connections, [
+				{ name: 'IF', type: 'n8n-nodes-base.if', parameters: {} },
+			]);
+
+			expect(connections.IF.main).toHaveLength(3);
+			expect(connections.IF.main[0]).toEqual([{ node: 'True', type: 'main', index: 0 }]);
+			expect(connections.IF.main[1]).toEqual([]);
+			expect(connections.IF.main[2]).toEqual([{ node: 'ErrorHandler', type: 'main', index: 0 }]);
+		});
+
+		it('places error at main[numCases + 1] for a Switch node using its rules length', () => {
+			const connections: IConnections = {
+				Switch: {
+					main: [[{ node: 'Case 0', type: 'main', index: 0 }]],
+					error: [[{ node: 'OnError', type: 'main', index: 0 }]],
+				},
+			};
+
+			foldLegacyErrorConnections(connections, [
+				{
+					name: 'Switch',
+					type: 'n8n-nodes-base.switch',
+					parameters: { rules: { values: [{}, {}, {}] } },
+				},
+			]);
+
+			// 3 cases + 1 fallback = errorIndex 4
+			expect(connections.Switch.main).toHaveLength(5);
+			expect(connections.Switch.main[4]).toEqual([{ node: 'OnError', type: 'main', index: 0 }]);
+		});
+
+		it('drops an empty legacy error entry without mutating main', () => {
+			const connections: IConnections = {
+				HTTP: {
+					main: [[{ node: 'Success', type: 'main', index: 0 }]],
+					error: [[]],
+				},
+			};
+
+			foldLegacyErrorConnections(connections);
+
+			expect(connections.HTTP.main).toHaveLength(1);
+			expect(connections.HTTP.error).toBeUndefined();
 		});
 	});
 

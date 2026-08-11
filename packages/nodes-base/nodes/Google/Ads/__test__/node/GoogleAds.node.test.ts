@@ -19,7 +19,7 @@ describe('Google Ads Node', () => {
 
 		beforeAll(() => {
 			googleAdsNock
-				.post('/v20/customers/4445556666/googleAds:search', {
+				.post('/v21/customers/4445556666/googleAds:search', {
 					query:
 						'select ' +
 						'campaign.id, ' +
@@ -61,7 +61,7 @@ describe('Google Ads Node', () => {
 
 		beforeAll(() => {
 			googleAdsNock
-				.post('/v20/customers/4445556666/googleAds:search', {
+				.post('/v21/customers/4445556666/googleAds:search', {
 					query:
 						'select ' +
 						'campaign.id, ' +
@@ -90,7 +90,7 @@ describe('Google Ads Node', () => {
 				.reply(200, getManyResult);
 
 			googleAdsNock
-				.post('/v20/customers/4445556666/googleAds:search', {
+				.post('/v21/customers/4445556666/googleAds:search', {
 					query:
 						'select ' +
 						'campaign.id, ' +
@@ -121,7 +121,7 @@ describe('Google Ads Node', () => {
 				.reply(200, getManyResult);
 
 			googleAdsNock
-				.post('/v20/customers/4445556666/googleAds:search', {
+				.post('/v21/customers/4445556666/googleAds:search', {
 					query:
 						'select ' +
 						'campaign.id, ' +

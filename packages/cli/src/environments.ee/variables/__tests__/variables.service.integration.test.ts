@@ -1,8 +1,10 @@
 import { createTeamProject, linkUserToProject, testDb } from '@n8n/backend-test-utils';
+import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import { VariablesRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { AssignableProjectRole } from '@n8n/permissions';
-import { mock } from 'jest-mock-extended';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import type { EventService } from '@/events/event.service';
 import { CacheService } from '@/services/cache/cache.service';
@@ -17,7 +19,7 @@ describe('VariablesService', () => {
 	let variablesRepository: VariablesRepository;
 	let cacheService: CacheService;
 	let projectService: ProjectService;
-	let licenseState: { isVariablesLicensed: jest.Mock; getMaxVariables: jest.Mock };
+	let licenseState: { isVariablesLicensed: Mock; getMaxVariables: Mock };
 
 	beforeAll(async () => {
 		await testDb.init();
@@ -32,8 +34,8 @@ describe('VariablesService', () => {
 		cacheService = Container.get(CacheService);
 		projectService = Container.get(ProjectService);
 		licenseState = {
-			isVariablesLicensed: jest.fn().mockReturnValue(true),
-			getMaxVariables: jest.fn().mockReturnValue(5),
+			isVariablesLicensed: vi.fn().mockReturnValue(true),
+			getMaxVariables: vi.fn().mockReturnValue(5),
 		};
 
 		variablesService = new VariablesService(
@@ -46,7 +48,7 @@ describe('VariablesService', () => {
 	});
 
 	afterEach(async () => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		await testDb.truncate(['Variables']);
 	});
 
@@ -164,6 +166,22 @@ describe('VariablesService', () => {
 				}),
 			).rejects.toThrow('A variable with key "VAR1" already exists in the specified project');
 		});
+
+		test('user should not be able to create a variable once the quota is used up', async () => {
+			// ARRANGE
+			const user = await createAdmin();
+			licenseState.getMaxVariables.mockReturnValue(1);
+			await createVariable();
+
+			// ACT & ASSERT
+			await expect(
+				variablesService.create(user, {
+					key: 'VAR1',
+					type: 'string',
+					value: 'value1',
+				}),
+			).rejects.toThrow('Variables limit reached');
+		});
 	});
 
 	describe('getAllCached', () => {
@@ -191,6 +209,57 @@ describe('VariablesService', () => {
 			const secondVar = variables.find((v) => v.key === 'VAR2');
 			expect(firstVar).toMatchObject({ key: 'VAR1', type: 'string', value: 'value1' });
 			expect(secondVar).toMatchObject({ key: 'VAR2', type: 'string', value: 'value2' });
+		});
+	});
+
+	describe('getRemainingVariableQuota', () => {
+		it('reports no quota at all when the license grants an unlimited one', async () => {
+			// ARRANGE
+			licenseState.getMaxVariables.mockReturnValue(UNLIMITED_LICENSE_QUOTA);
+			await createVariable();
+
+			// ACT & ASSERT
+			expect(await variablesService.getRemainingVariableQuota()).toBeNull();
+		});
+
+		it('reports how much of the limit is left', async () => {
+			// ARRANGE
+			licenseState.getMaxVariables.mockReturnValue(5);
+			await createVariable();
+			await createVariable();
+
+			// ACT & ASSERT
+			expect(await variablesService.getRemainingVariableQuota()).toEqual({
+				limit: 5,
+				remaining: 3,
+			});
+		});
+
+		it('counts project variables against the same instance-wide limit', async () => {
+			// ARRANGE
+			licenseState.getMaxVariables.mockReturnValue(5);
+			const project = await createTeamProject();
+			await createVariable();
+			await createProjectVariable(undefined, undefined, project);
+
+			// ACT & ASSERT
+			expect(await variablesService.getRemainingVariableQuota()).toEqual({
+				limit: 5,
+				remaining: 3,
+			});
+		});
+
+		it('reports nothing left, rather than a negative remainder, once past the limit', async () => {
+			// ARRANGE: a limit can drop below the existing count when a license is downgraded.
+			licenseState.getMaxVariables.mockReturnValue(1);
+			await createVariable();
+			await createVariable();
+
+			// ACT & ASSERT
+			expect(await variablesService.getRemainingVariableQuota()).toEqual({
+				limit: 1,
+				remaining: 0,
+			});
 		});
 	});
 

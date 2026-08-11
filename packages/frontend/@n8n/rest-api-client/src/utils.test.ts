@@ -147,6 +147,88 @@ describe('streamRequest', () => {
 		);
 	});
 
+	it('should call onError when an ok stream ends with unparseable leftover content', async () => {
+		const encoder = new TextEncoder();
+		const mockResponse = new ReadableStream({
+			start(controller) {
+				controller.enqueue(encoder.encode(`${JSON.stringify({ chunk: 1 })}${STREAM_SEPARATOR}`));
+				// Plain-text error body appended to an already-started 200 stream
+				controller.enqueue(encoder.encode('Something went wrong. Please try again later.'));
+				controller.close();
+			},
+		});
+
+		const mockFetch = vi.fn().mockResolvedValue({
+			ok: true,
+			status: 200,
+			body: mockResponse,
+		});
+
+		global.fetch = mockFetch;
+
+		const onChunkMock = vi.fn();
+		const onDoneMock = vi.fn();
+		const onErrorMock = vi.fn();
+
+		await streamRequest(
+			{
+				baseUrl: 'https://api.example.com',
+				pushRef: '',
+			},
+			'/data',
+			{ key: 'value' },
+			onChunkMock,
+			onDoneMock,
+			onErrorMock,
+		);
+
+		expect(onChunkMock).toHaveBeenCalledExactlyOnceWith({ chunk: 1 });
+		expect(onDoneMock).not.toHaveBeenCalled();
+		expect(onErrorMock).toHaveBeenCalledExactlyOnceWith(
+			new Error('Something went wrong. Please try again later.'),
+		);
+	});
+
+	it('should call onError with a generic message when the stream is cut off mid-JSON', async () => {
+		const encoder = new TextEncoder();
+		const mockResponse = new ReadableStream({
+			start(controller) {
+				controller.enqueue(encoder.encode(`${JSON.stringify({ chunk: 1 })}${STREAM_SEPARATOR}`));
+				// Stream ends abruptly in the middle of a JSON chunk
+				controller.enqueue(encoder.encode('{"sessionId":"abc","messages":[{"role":"assi'));
+				controller.close();
+			},
+		});
+
+		const mockFetch = vi.fn().mockResolvedValue({
+			ok: true,
+			status: 200,
+			body: mockResponse,
+		});
+
+		global.fetch = mockFetch;
+
+		const onChunkMock = vi.fn();
+		const onDoneMock = vi.fn();
+		const onErrorMock = vi.fn();
+
+		await streamRequest(
+			{
+				baseUrl: 'https://api.example.com',
+				pushRef: '',
+			},
+			'/data',
+			{ key: 'value' },
+			onChunkMock,
+			onDoneMock,
+			onErrorMock,
+		);
+
+		expect(onChunkMock).toHaveBeenCalledExactlyOnceWith({ chunk: 1 });
+		expect(onDoneMock).not.toHaveBeenCalled();
+		expect(onErrorMock).toHaveBeenCalledExactlyOnceWith(new Error('Connection lost'));
+	});
+
 	it('should handle broken stream data', async () => {
 		const encoder = new TextEncoder();
 		const mockResponse = new ReadableStream({

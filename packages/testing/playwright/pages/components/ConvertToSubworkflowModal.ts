@@ -9,7 +9,7 @@ import { BasePage } from '../BasePage';
  * @example
  * // Access via canvas page
  * await n8n.canvas.rightClickNode('My Node');
- * await n8n.canvas.clickContextMenuAction('Convert node to sub-workflow');
+ * await n8n.canvas.clickContextMenuAction('extract_sub_workflow');
  * await n8n.canvas.convertToSubworkflowModal.waitForModal();
  * await n8n.canvas.convertToSubworkflowModal.clickSubmitButton();
  * await n8n.canvas.convertToSubworkflowModal.waitForClose();

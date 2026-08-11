@@ -1,0 +1,193 @@
+[
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "You are a data fetcher. Use broken_tool to fetch data. If the tool fails, acknowledge the error in your response and explain what happened. Be concise."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "Fetch the data for id \"abc123\"."
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "broken_tool",
+					"description": "Fetch data from a remote service",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"id": {
+								"type": "string",
+								"description": "Resource ID to fetch"
+							}
+						},
+						"required": ["id"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			},
+			"stream": true
+		},
+		"status": 200,
+		"response": [
+			"1f8b0800000000000013cd554d6fdb300cbde757043c3b809dd61daadb8a741bb00dd8615b872d83c0485ca245913c490eda06feef859238b6f3d55df6e19bde23cdf7488ba62599c0fa0bf21ea7c47d40177a1203b2fe0ac24341c0a04342529f81ad606125696020349692063354f3727039c807c3749867699a41024ac677f8294fb3abc96dfe78337277b7a3fcee425c9bd71f3e9a0748f62a4102ceea08a0f7ca0734b1acb0269009c0be7d4fc0075b7047e8ad01664aadb790a75f2519411d505240a57d8d95b57a658a32f060e7643cb0abcb34018162465c38c2a0ace1dd881def08e529aece8d05a898d1821c6a9e2f0ee31b369bedb35502b60c6d28cf13f0e4964a100f8a1c30889d91e8646cb2f9412e1ae753b2c0c0d8c071894ae344135455bf7eaa5e8f3633dff6934fb415f3e3933f12b2ae25e97ee3b8cd47c3dbbc60ade6a5a77afaf15cf234cbe4e8e5e7e5bbeb37e5abd9db4f5f5ef8c7fbf75f7348c0e022e64d5c34cb63f8ba4e510660ab2ab656eb687957412a472234c61a5b8532d33d1f7d88209cb22e49073c6f7d1dd2b1be411a419bf9fdf4d6ec820b7441a15e83c000aa33edff4b1a566350720cac3f065cebf9d782262283e6e3fc0f040d2fc650ed493a776b6cf1dca5b1454b52f3a27aab1ef5d521a1e5a3b3f7daf7ec37b75ff5e7d6dfc1be3addc4e68f72d8be3607add427a66b0444aa060000"
+		],
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "10000000",
+			"anthropic-ratelimit-input-tokens-remaining": "10000000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-07-03T09:48:41Z",
+			"anthropic-ratelimit-output-tokens-limit": "2000000",
+			"anthropic-ratelimit-output-tokens-remaining": "2000000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-07-03T09:48:41Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-07-03T09:48:41Z",
+			"anthropic-ratelimit-tokens-limit": "12000000",
+			"anthropic-ratelimit-tokens-remaining": "12000000",
+			"anthropic-ratelimit-tokens-reset": "2026-07-03T09:48:41Z",
+			"cache-control": "no-cache",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a154f9d5aea49cca-VIE",
+			"connection": "keep-alive",
+			"content-encoding": "gzip",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "text/event-stream; charset=utf-8",
+			"date": "Fri, 03 Jul 2026 09:48:42 GMT",
+			"request-id": "req_011CceuyQGCPvaziSEnGoqEu",
+			"server": "cloudflare",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-f183458a19b71ff740e633aa3cd8dc19-617a680b88c6cf00-01",
+			"transfer-encoding": "chunked",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	},
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "You are a data fetcher. Use broken_tool to fetch data. If the tool fails, acknowledge the error in your response and explain what happened. Be concise."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "Fetch the data for id \"abc123\"."
+						}
+					]
+				},
+				{
+					"role": "assistant",
+					"content": [
+						{
+							"type": "tool_use",
+							"id": "toolu_011dDAVvL9HuFhKUX7szxMZ5",
+							"name": "broken_tool",
+							"input": {
+								"id": "abc123"
+							},
+							"caller": {
+								"type": "direct"
+							}
+						}
+					]
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "tool_result",
+							"tool_use_id": "toolu_011dDAVvL9HuFhKUX7szxMZ5",
+							"content": "Error: Service unavailable: connection timeout",
+							"is_error": true
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "broken_tool",
+					"description": "Fetch data from a remote service",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"id": {
+								"type": "string",
+								"description": "Resource ID to fetch"
+							}
+						},
+						"required": ["id"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			},
+			"stream": true
+		},
+		"status": 200,
+		"response": [
+			"1f8b0800000000000013bd55c16edb300cbde72b089e9d22491714f371d82e3b0c3b14058675301889b1b5c8922751698322ff3e284d1a3b4db75e5a5d0cf351e27b8f16cd6b765242cb3152cd55140a32d22454c203caa6632c7100627178c7f2015bafd96289ca52d23c6ec8acd2f8c3783e9e4d66f3e96432c5028dce67c4ba9a4cbff0e6e3cd37fabcf8fdf1935adc7cadbbab76f9038b934a5860f03607284613855c2eabbc137682e5cf5f0546f15d1598a27758ba64ed3e14f94f62a77810d42c646c3cc4d281bd715d924afc8a5dc4f26a7659a022d570a5029318efaa61c6e4800726fd1276d89b0b70d770cb816c356f9fe71fd169738a6e0bf449faa1698191c3da28aec470c012b3319a82ce1ebb2587acbbaad96389ce4b456b3296169671bb85e3da8e46fcd8f4bda1d5c27ab53adffa3329bb6a9aef1f25f7f1ac78bf4ff83e27ee1e25e2f658b433ae3ea9029883f81231cd56e8dfc4762903628f9121a1a7b43dadeb86f135cebc190110ef2d2cc958d6201e962caa01691872b10bb86e1802b75e18f6ad071341a510d889dd40724f3d06721ac4b4acc12781bb86dd4edbfb6b22116e3b31aece92024b30bce69daac0d1a7a018ee8c346034dc222dd47476798b596cd6e693d5609c368a8481209fe50385cd93033e09d50c3e8063b9f3619595395662d6463660624c7cd1efebfb5bf0dd324506091ba09a8c034bc2a14feae54be8bbffdd41dff518c1d9eff730b1cf4a1c80d8933498a9c84e579282c3574fd6eddb8dd69359389f9dbfb7c73fd5731bfb18c2706d47a3bf3dc32d0409070000"
+		],
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "10000000",
+			"anthropic-ratelimit-input-tokens-remaining": "10000000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-07-03T09:48:42Z",
+			"anthropic-ratelimit-output-tokens-limit": "2000000",
+			"anthropic-ratelimit-output-tokens-remaining": "2000000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-07-03T09:48:42Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-07-03T09:48:42Z",
+			"anthropic-ratelimit-tokens-limit": "12000000",
+			"anthropic-ratelimit-tokens-remaining": "12000000",
+			"anthropic-ratelimit-tokens-reset": "2026-07-03T09:48:42Z",
+			"cache-control": "no-cache",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a154f9db4e0b9cca-VIE",
+			"connection": "keep-alive",
+			"content-encoding": "gzip",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "text/event-stream; charset=utf-8",
+			"date": "Fri, 03 Jul 2026 09:48:42 GMT",
+			"request-id": "req_011CceuyU2uf3AQuSrS5iomP",
+			"server": "cloudflare",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-77ed98f4431feff175a12422ad66d69a-428a9549b72e5179-01",
+			"transfer-encoding": "chunked",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	}
+]

@@ -8,54 +8,22 @@
  */
 
 import { createTeamProject, createWorkflow, testDb, testModules } from '@n8n/backend-test-utils';
+import { GlobalConfig } from '@n8n/config';
 import type { Project, WorkflowEntity } from '@n8n/db';
 import { ExecutionRepository, StatisticsNames, WorkflowStatisticsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { readFileSync } from 'fs';
-import { InstanceSettings, UnrecognizedNodeTypeError } from 'n8n-core';
-import type { INodeType, INodeTypeData, NodeLoadingDetails } from 'n8n-workflow';
+import { InstanceSettings } from 'n8n-core';
 import { createRunExecutionData } from 'n8n-workflow';
-import path from 'path';
 
 import { InsightsByPeriodRepository } from '@/modules/insights/database/repositories/insights-by-period.repository';
-import { InsightsRawRepository } from '@/modules/insights/database/repositories/insights-raw.repository';
 import { InsightsCollectionService } from '@/modules/insights/insights-collection.service';
 import { InsightsCompactionService } from '@/modules/insights/insights-compaction.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { WorkflowRunner } from '@/workflow-runner';
 
 import * as utils from '../shared/utils';
+import { loadNodesFromDist } from '../shared/utils/node-types-data';
 import { createSimpleWorkflowFixture } from '../shared/workflow-fixtures';
-
-// ============================================================
-// Helper to load nodes from dist folder
-// ============================================================
-
-const BASE_DIR = path.resolve(__dirname, '../../../..');
-
-function loadNodesFromDist(nodeNames: string[]): INodeTypeData {
-	const nodeTypes: INodeTypeData = {};
-
-	const knownNodes = JSON.parse(
-		readFileSync(path.join(BASE_DIR, 'nodes-base/dist/known/nodes.json'), 'utf-8'),
-	) as Record<string, NodeLoadingDetails>;
-
-	for (const nodeName of nodeNames) {
-		const loadInfo = knownNodes[nodeName.replace('n8n-nodes-base.', '')];
-		if (!loadInfo) {
-			throw new UnrecognizedNodeTypeError('n8n-nodes-base', nodeName);
-		}
-		// Load from dist .js files (sourcePath already includes 'dist/')
-		const nodeDistPath = path.join(BASE_DIR, 'nodes-base', loadInfo.sourcePath);
-		const node = new (require(nodeDistPath)[loadInfo.className])() as INodeType;
-		nodeTypes[nodeName] = {
-			sourcePath: '',
-			type: node,
-		};
-	}
-
-	return nodeTypes;
-}
 
 describe('Insights vs Workflow Statistics Integration', () => {
 	beforeAll(async () => {
@@ -101,7 +69,6 @@ describe('Insights vs Workflow Statistics Integration', () => {
 	let insightsCollectionService: InsightsCollectionService;
 	let insightsCompactionService: InsightsCompactionService;
 	let insightsByPeriodRepository: InsightsByPeriodRepository;
-	let insightsRawRepository: InsightsRawRepository;
 	let workflowStatisticsRepository: WorkflowStatisticsRepository;
 	let workflowRunner: WorkflowRunner;
 	let executionRepository: ExecutionRepository;
@@ -121,7 +88,6 @@ describe('Insights vs Workflow Statistics Integration', () => {
 		insightsCollectionService = Container.get(InsightsCollectionService);
 		insightsCompactionService = Container.get(InsightsCompactionService);
 		insightsByPeriodRepository = Container.get(InsightsByPeriodRepository);
-		insightsRawRepository = Container.get(InsightsRawRepository);
 		workflowStatisticsRepository = Container.get(WorkflowStatisticsRepository);
 		workflowRunner = Container.get(WorkflowRunner);
 		executionRepository = Container.get(ExecutionRepository);
@@ -133,9 +99,10 @@ describe('Insights vs Workflow Statistics Integration', () => {
 		insightsCompactionService.startCompactionTimer();
 	});
 
-	afterAll(() => {
-		// Stop compaction timer
-		insightsCompactionService.stopCompactionTimer();
+	afterAll(async () => {
+		// Stop compaction timer and wait for any in-flight run to finish before the
+		// sibling afterAll terminates the DB connection.
+		await insightsCompactionService.stopCompactionTimer();
 	});
 
 	beforeEach(async () => {
@@ -181,8 +148,15 @@ describe('Insights vs Workflow Statistics Integration', () => {
 		expectedCount: number,
 		timeout = 10000,
 	): Promise<void> {
+		const isPostgres = Container.get(GlobalConfig).database.type === 'postgresdb';
 		const start = Date.now();
 		while (Date.now() - start < timeout) {
+			if (isPostgres) {
+				await workflowStatisticsRepository.rollupIncrements(
+					workflowStatisticsRepository.manager,
+					10_000,
+				);
+			}
 			const stats = await workflowStatisticsRepository.findOne({
 				where: {
 					workflowId,
@@ -200,14 +174,20 @@ describe('Insights vs Workflow Statistics Integration', () => {
 	}
 
 	/**
-	 * Helper to wait for insights to be compacted (raw insights cleared and compacted data available)
+	 * Helper to wait for insights to be compacted.
+	 *
+	 * Polls until the compacted success count reaches the expected total. Waiting on the
+	 * terminal count (rather than "some compacted data exists and raw is drained") avoids a
+	 * race where events still buffered in the collection service haven't been flushed to
+	 * InsightsRaw yet, so compaction runs on a partial set and the count comes up short.
 	 */
-	async function waitForCompaction(workflowId: string, timeout = 10000): Promise<void> {
+	async function waitForCompaction(
+		workflowId: string,
+		expectedSuccessCount: number,
+		timeout = 20000,
+	): Promise<void> {
 		const start = Date.now();
 		while (Date.now() - start < timeout) {
-			// Check if raw insights have been compacted (should be low or zero)
-			const rawInsights = await insightsRawRepository.find();
-			// Check if compacted insights exist for this workflow
 			const compactedInsights = await insightsByPeriodRepository.find({
 				where: {
 					metadata: { workflowId },
@@ -215,13 +195,18 @@ describe('Insights vs Workflow Statistics Integration', () => {
 				relations: ['metadata'],
 			});
 
-			// Compaction is done if we have compacted data and few/no raw insights
-			if (compactedInsights.length > 0 && rawInsights.length < 10) {
+			const successCount = compactedInsights
+				.filter((insight) => insight.type === 'success')
+				.reduce((sum, insight) => sum + insight.value, 0);
+
+			if (successCount >= expectedSuccessCount) {
 				return;
 			}
-			await new Promise((resolve) => setTimeout(resolve, 500));
+			await new Promise((resolve) => setTimeout(resolve, 200));
 		}
-		throw new Error(`Insights compaction did not complete within ${timeout}ms`);
+		throw new Error(
+			`Insights compaction did not reach ${expectedSuccessCount} successes within ${timeout}ms`,
+		);
 	}
 
 	/**
@@ -236,7 +221,6 @@ describe('Insights vs Workflow Statistics Integration', () => {
 		const executionId = await workflowRunner.run(
 			{
 				workflowData: workflow,
-				userId: project.id,
 				executionMode: mode,
 				executionData,
 			},
@@ -263,7 +247,7 @@ describe('Insights vs Workflow Statistics Integration', () => {
 		await waitForStatistics(workflow.id, 10);
 
 		// Wait for automatic compaction to complete
-		await waitForCompaction(workflow.id);
+		await waitForCompaction(workflow.id, 10);
 
 		// ============================================================
 		// ASSERT: Query workflow statistics

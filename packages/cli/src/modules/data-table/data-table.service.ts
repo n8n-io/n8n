@@ -13,7 +13,8 @@ import type {
 import { Logger } from '@n8n/backend-common';
 import { ProjectRelationRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { hasGlobalScope } from '@n8n/permissions';
+import { hasGlobalScope, type Scope } from '@n8n/permissions';
+import { In, type EntityManager } from '@n8n/typeorm';
 import { DateTime } from 'luxon';
 import type {
 	DataTableColumnJsType,
@@ -30,11 +31,15 @@ import type {
 } from 'n8n-workflow';
 import { DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP, validateFieldType } from 'n8n-workflow';
 
+import { EventService } from '@/events/event.service';
+import { RoleService } from '@/services/role.service';
+
 import { DataTableColumn } from './data-table-column.entity';
 import { DataTableColumnRepository } from './data-table-column.repository';
 import { DataTableCsvImportService } from './data-table-csv-import.service';
 import { DataTableRowsRepository } from './data-table-rows.repository';
 import { DataTableSizeValidator } from './data-table-size-validator.service';
+import type { DataTable } from './data-table.entity';
 import { DataTableRepository } from './data-table.repository';
 import { columnTypeToFieldType } from './data-table.types';
 import { DataTableColumnNotFoundError } from './errors/data-table-column-not-found.error';
@@ -42,8 +47,6 @@ import { DataTableNameConflictError } from './errors/data-table-name-conflict.er
 import { DataTableNotFoundError } from './errors/data-table-not-found.error';
 import { DataTableValidationError } from './errors/data-table-validation.error';
 import { normalizeRows } from './utils/sql-utils';
-
-import { RoleService } from '@/services/role.service';
 
 @Service()
 export class DataTableService {
@@ -56,6 +59,7 @@ export class DataTableService {
 		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly roleService: RoleService,
 		private readonly csvImportService: DataTableCsvImportService,
+		private readonly eventService: EventService,
 	) {
 		this.logger = this.logger.scoped('data-table');
 	}
@@ -63,7 +67,25 @@ export class DataTableService {
 	async start() {}
 	async shutdown() {}
 
-	async createDataTable(projectId: string, dto: CreateDataTableDto) {
+	async getProjectIdForDataTable(dataTableId: string): Promise<string> {
+		const dataTable = await this.dataTableRepository.findOne({
+			select: ['projectId'],
+			where: { id: dataTableId },
+		});
+
+		if (!dataTable) {
+			throw new DataTableNotFoundError(dataTableId);
+		}
+
+		return dataTable.projectId;
+	}
+
+	/**
+	 * `id` is package-import-only: it keeps the id the table had on the exporting
+	 * instance (mirrors `FolderService.createFolder`). REST callers never pass it —
+	 * the public create endpoint always mints a fresh id.
+	 */
+	async createDataTable(projectId: string, dto: CreateDataTableDto, id?: string) {
 		if (dto.fileId && dto.columns.length === 0) {
 			throw new DataTableValidationError(
 				'At least one column must be included when importing from CSV',
@@ -72,7 +94,13 @@ export class DataTableService {
 
 		await this.validateUniqueName(dto.name, projectId);
 
-		const result = await this.dataTableRepository.createDataTable(projectId, dto.name, dto.columns);
+		const result = await this.dataTableRepository.createDataTable(
+			projectId,
+			dto.name,
+			dto.columns,
+			undefined,
+			id,
+		);
 
 		if (dto.fileId) {
 			try {
@@ -98,6 +126,33 @@ export class DataTableService {
 		this.dataTableSizeValidator.reset();
 
 		return result;
+	}
+
+	/**
+	 * Instance-wide id lookup (with columns) used by package import: same-project
+	 * hits are match candidates, cross-project hits are id conflicts.
+	 * Authorization is the import flow's concern.
+	 */
+	async findDataTablesByIds(dataTableIds: string[]): Promise<DataTable[]> {
+		if (dataTableIds.length === 0) return [];
+
+		return await this.dataTableRepository.find({
+			where: { id: In(dataTableIds) },
+			relations: { columns: true },
+		});
+	}
+
+	/** Project-scoped name lookup used by package import to detect name conflicts before creating tables. */
+	async findDataTablesByNamesInProject(
+		projectId: string,
+		names: string[],
+	): Promise<Array<Pick<DataTable, 'id' | 'name'>>> {
+		if (names.length === 0) return [];
+
+		return await this.dataTableRepository.find({
+			select: ['id', 'name'],
+			where: { projectId, name: In(names) },
+		});
 	}
 
 	async importCsvToExistingTable(
@@ -136,14 +191,27 @@ export class DataTableService {
 		return true;
 	}
 
-	async transferDataTablesByProjectId(fromProjectId: string, toProjectId: string) {
-		return await this.dataTableRepository.transferDataTableByProjectId(fromProjectId, toProjectId);
+	async transferDataTablesByProjectId(
+		fromProjectId: string,
+		toProjectId: string,
+		trx?: EntityManager,
+	) {
+		return await this.dataTableRepository.transferDataTableByProjectId(
+			fromProjectId,
+			toProjectId,
+			trx,
+		);
 	}
 
 	async deleteDataTableByProjectId(projectId: string) {
+		const tables = await this.dataTableRepository.findBy({ projectId });
+
 		const result = await this.dataTableRepository.deleteDataTableByProjectId(projectId);
 
 		if (result) {
+			for (const table of tables) {
+				this.eventService.emit('data-table-deleted', { dataTableId: table.id, projectId });
+			}
 			this.dataTableSizeValidator.reset();
 		}
 
@@ -164,6 +232,7 @@ export class DataTableService {
 		await this.validateDataTableExists(dataTableId, projectId);
 
 		await this.dataTableRepository.deleteDataTable(dataTableId);
+		this.eventService.emit('data-table-deleted', { dataTableId, projectId });
 
 		this.dataTableSizeValidator.reset();
 
@@ -252,6 +321,20 @@ export class DataTableService {
 		return await this.dataTableColumnRepository.getColumns(dataTableId);
 	}
 
+	async getColumnById({
+		projectId,
+		dataTableId,
+		columnId,
+	}: {
+		projectId: string;
+		dataTableId: string;
+		columnId: string;
+	}) {
+		await this.validateDataTableExists(dataTableId, projectId);
+
+		return await this.dataTableColumnRepository.getColumnByIdOrFail(dataTableId, columnId);
+	}
+
 	async insertRows<T extends DataTableInsertRowsReturnType = 'count'>(
 		dataTableId: string,
 		projectId: string,
@@ -287,7 +370,7 @@ export class DataTableService {
 		return result;
 	}
 
-	async upsertRow<T extends boolean | undefined>(
+	async upsertRow(
 		dataTableId: string,
 		projectId: string,
 		dto: Omit<UpsertDataTableRowDto, 'returnData' | 'dryRun'>,
@@ -308,6 +391,13 @@ export class DataTableService {
 		returnData?: false,
 		dryRun?: false,
 	): Promise<true>;
+	async upsertRow(
+		dataTableId: string,
+		projectId: string,
+		dto: Omit<UpsertDataTableRowDto, 'returnData' | 'dryRun'>,
+		returnData: boolean,
+		dryRun: boolean,
+	): Promise<DataTableRowReturn[] | DataTableRowReturnWithState[] | true>;
 	async upsertRow(
 		dataTableId: string,
 		projectId: string,
@@ -388,7 +478,7 @@ export class DataTableService {
 		return { data: transformedData, filter: transformedFilter };
 	}
 
-	async updateRows<T extends boolean | undefined>(
+	async updateRows(
 		dataTableId: string,
 		projectId: string,
 		dto: Omit<UpdateDataTableRowDto, 'returnData' | 'dryRun'>,
@@ -409,6 +499,13 @@ export class DataTableService {
 		returnData?: false,
 		dryRun?: false,
 	): Promise<true>;
+	async updateRows(
+		dataTableId: string,
+		projectId: string,
+		dto: Omit<UpdateDataTableRowDto, 'returnData' | 'dryRun'>,
+		returnData: boolean,
+		dryRun: boolean,
+	): Promise<DataTableRowReturn[] | DataTableRowReturnWithState[] | true>;
 	async updateRows(
 		dataTableId: string,
 		projectId: string,
@@ -477,6 +574,13 @@ export class DataTableService {
 		dataTableId: string,
 		projectId: string,
 		dto: Omit<DeleteDataTableRowsDto, 'returnData' | 'dryRun'>,
+		returnData: boolean,
+		dryRun: boolean,
+	): Promise<DataTableRowReturn[] | true>;
+	async deleteRows(
+		dataTableId: string,
+		projectId: string,
+		dto: Omit<DeleteDataTableRowsDto, 'returnData' | 'dryRun'>,
 		returnData: boolean = false,
 		dryRun: boolean = false,
 	) {
@@ -509,6 +613,19 @@ export class DataTableService {
 			await this.dataTableRepository.touchUpdatedAt(dataTableId);
 		}
 
+		return result;
+	}
+
+	async clearRows(dataTableId: string, projectId: string): Promise<{ deletedCount: number }> {
+		await this.validateDataTableExists(dataTableId, projectId);
+
+		const result = await this.dataTableColumnRepository.manager.transaction(async (trx) => {
+			const clearResult = await this.dataTableRowsRepository.clearRows(dataTableId, trx);
+			await this.dataTableRepository.touchUpdatedAt(dataTableId, trx);
+			return clearResult;
+		});
+
+		this.dataTableSizeValidator.reset();
 		return result;
 	}
 
@@ -592,7 +709,10 @@ export class DataTableService {
 		return validationResult.newValue as DataTableColumnJsType;
 	}
 
-	private async validateDataTableExists(dataTableId: string, projectId: string) {
+	/**
+	 * Performs no authorization — callers must pass an already-authorized `projectId`.
+	 */
+	async validateDataTableExists(dataTableId: string, projectId: string) {
 		const existingTable = await this.dataTableRepository.findOneBy({
 			id: dataTableId,
 			project: {
@@ -721,6 +841,34 @@ export class DataTableService {
 		};
 	}
 
+	async findDataTablesByIdsForUser(
+		dataTableIds: string[],
+		user: User,
+		scopes: Scope[],
+	): Promise<DataTable[]> {
+		if (dataTableIds.length === 0) return [];
+
+		if (hasGlobalScope(user, scopes, { mode: 'allOf' })) {
+			return await this.dataTableRepository.find({
+				where: { id: In(dataTableIds) },
+				relations: { columns: true, project: true },
+			});
+		}
+
+		const roles = await this.roleService.rolesWithScope('project', scopes);
+		const accessibleProjectIds = await this.projectRelationRepository.getAccessibleProjectsByRoles(
+			user.id,
+			roles,
+		);
+
+		if (accessibleProjectIds.length === 0) return [];
+
+		return await this.dataTableRepository.find({
+			where: { id: In(dataTableIds), projectId: In(accessibleProjectIds) },
+			relations: { columns: true, project: true },
+		});
+	}
+
 	async generateDataTableCsv(
 		dataTableId: string,
 		projectId: string,
@@ -795,6 +943,12 @@ export class DataTableService {
 		}
 
 		if (columnType === 'boolean') {
+			if (value === 1 || value === '1') {
+				return 'true';
+			}
+			if (value === 0 || value === '0') {
+				return 'false';
+			}
 			return String(value);
 		}
 

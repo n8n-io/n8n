@@ -124,7 +124,7 @@ describe('serializeIntermediateSteps', () => {
 
 		serializeIntermediateSteps(steps as Array<{ action: { messageLog?: unknown[] } }>);
 
-		const serialized = steps[0].action.messageLog[0] as Record<string, unknown>;
+		const serialized = steps[0].action.messageLog[0];
 		expect(serialized.type).toBe('ai');
 		expect(serialized.content).toBe('test');
 	});

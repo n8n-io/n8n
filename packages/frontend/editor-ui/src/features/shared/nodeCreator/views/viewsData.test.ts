@@ -1,9 +1,14 @@
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
-import { AI_CATEGORY_AGENTS, AI_CATEGORY_CHAINS, AI_TRANSFORM_NODE_TYPE } from '@/app/constants';
+import {
+	AI_CATEGORY_AGENTS,
+	AI_CATEGORY_CHAINS,
+	AI_TRANSFORM_NODE_TYPE,
+	MESSAGE_AN_AGENT_NODE_TYPE,
+} from '@/app/constants';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { MANUAL_TRIGGER_NODE_TYPE } from 'n8n-workflow';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { AIView, HitlToolView } from './viewsData';
 import { mockNodeTypeDescription } from '@/__tests__/mocks';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
@@ -12,6 +17,11 @@ import type { SimplifiedNodeType } from '@/Interface';
 const getNodeType = vi.fn();
 
 const aiTransformNode = mockNodeTypeDescription({ name: AI_TRANSFORM_NODE_TYPE });
+const messageAnAgentNode = mockNodeTypeDescription({
+	name: MESSAGE_AN_AGENT_NODE_TYPE,
+	displayName: 'AI Agent V2',
+	hidden: true,
+});
 
 const otherNodes = (
 	[
@@ -45,11 +55,17 @@ vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: vi.fn(() => ({
 		getNodeType,
 		allLatestNodeTypes: [aiTransformNode, ...otherNodes],
+		getAllNodeTypes: vi.fn().mockReturnValue({
+			nodeTypes: {},
+			init: async () => {},
+			getByNameAndVersion: () => undefined,
+		}),
 	})),
 }));
 
 describe('viewsData', () => {
-	beforeAll(() => {
+	// `restoreMocks` restores spies before each test, so re-establish them per-test.
+	beforeEach(() => {
 		setActivePinia(createTestingPinia());
 
 		const templatesStore = useTemplatesStore();
@@ -64,6 +80,9 @@ describe('viewsData', () => {
 			if (nodeName === AI_TRANSFORM_NODE_TYPE) {
 				return aiTransformNode;
 			}
+			if (nodeName === MESSAGE_AN_AGENT_NODE_TYPE) {
+				return messageAnAgentNode;
+			}
 
 			return null;
 		});
@@ -74,25 +93,76 @@ describe('viewsData', () => {
 	});
 
 	describe('AIView', () => {
-		test('should return ai view with ai transform node', () => {
-			const settingsStore = useSettingsStore();
-			vi.spyOn(settingsStore, 'isAskAiEnabled', 'get').mockReturnValue(true);
-
+		test('should return the AI view', () => {
 			expect(AIView([])).toMatchSnapshot();
 		});
 
-		test('should return ai view without ai transform node if ask ai is not enabled', () => {
-			const settingsStore = useSettingsStore();
-			vi.spyOn(settingsStore, 'isAskAiEnabled', 'get').mockReturnValue(false);
+		test('should not include the deprecated AI Transform node', () => {
+			const result = AIView([]);
 
-			expect(AIView([])).toMatchSnapshot();
+			expect(result.items.some((item) => item.key === AI_TRANSFORM_NODE_TYPE)).toBe(false);
 		});
 
-		test('should return ai view without ai transform node if ask ai is not enabled and node is not in the list', () => {
+		test('should include Message an Agent node before the agent node when agents module is active', () => {
 			const settingsStore = useSettingsStore();
 			vi.spyOn(settingsStore, 'isAskAiEnabled', 'get').mockReturnValue(false);
+			vi.spyOn(settingsStore, 'isModuleActive').mockImplementation(
+				(name: string) => name === 'agents',
+			);
 
-			expect(AIView([])).toMatchSnapshot();
+			const result = AIView([]);
+			const messageAgentItem = result.items.find((item) => item.key === MESSAGE_AN_AGENT_NODE_TYPE);
+
+			expect(messageAgentItem).toBeDefined();
+
+			const agentItem = result.items.find((item) => item.key === 'agent');
+			const messageIdx = result.items.indexOf(messageAgentItem!);
+			const agentIdx = result.items.indexOf(agentItem!);
+			expect(messageIdx).toBeLessThan(agentIdx);
+		});
+
+		test('should not include Message an Agent node when agents module is inactive', () => {
+			const settingsStore = useSettingsStore();
+			vi.spyOn(settingsStore, 'isAskAiEnabled', 'get').mockReturnValue(false);
+			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(false);
+
+			const result = AIView([]);
+			const messageAgentItem = result.items.find((item) => item.key === MESSAGE_AN_AGENT_NODE_TYPE);
+
+			expect(messageAgentItem).toBeUndefined();
+		});
+
+		test('should include the AI templates callout by default', () => {
+			const result = AIView([]);
+
+			expect(result.items.some((item) => item.key === 'ai_templates_root')).toBe(true);
+		});
+
+		test('should not include the AI templates callout in canvas-only mode', () => {
+			const settingsStore = useSettingsStore();
+			vi.spyOn(settingsStore, 'isCanvasOnly', 'get').mockReturnValue(true);
+
+			const result = AIView([]);
+
+			expect(result.items.some((item) => item.key === 'ai_templates_root')).toBe(false);
+		});
+
+		test('should not mutate the shared template repository parameters', () => {
+			const templatesStore = useTemplatesStore();
+			const sharedParams = new URLSearchParams({ test: 'value' });
+			vi.spyOn(templatesStore, 'websiteTemplateRepositoryParameters', 'get').mockReturnValue(
+				sharedParams,
+			);
+
+			AIView([]);
+			AIView([]);
+
+			expect(sharedParams.has('utm_user_role')).toBe(false);
+
+			const [lastCallParams] = vi
+				.mocked(templatesStore.constructTemplateRepositoryURL)
+				.mock.calls.at(-1)!;
+			expect(lastCallParams.toString()).toBe('test=value&utm_user_role=AdvancedAI');
 		});
 	});
 

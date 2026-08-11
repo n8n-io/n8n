@@ -36,6 +36,8 @@ export class BuilderWizardComposer {
 	 * Open the builder chat and send a prompt to trigger workflow generation.
 	 */
 	async triggerWorkflowGeneration() {
+		await this.n8n.canvas.waitForBlankCanvasReady();
+		await this.n8n.aiBuilder.waitForCanvasBuildEntry();
 		await this.n8n.aiBuilder.getCanvasBuildWithAIButton().click();
 		await expect(this.n8n.aiAssistant.getAskAssistantChat()).toBeVisible();
 		await this.n8n.aiAssistant.sendMessage('Create a Slack notification workflow');
@@ -85,23 +87,52 @@ export class BuilderWizardComposer {
 
 	/**
 	 * Navigate to the card showing the given node name.
-	 * Clicks next until the card title matches — avoids brittle position-based navigation.
+	 * Handles both regular and node group card types.
+	 * Clicks next first, then prev if needed — avoids brittle position-based navigation.
 	 */
 	async navigateToCard(nodeName: string) {
 		const wizard = this.n8n.aiBuilder.wizard;
-		const targetTitle = wizard.getCardTitle(nodeName);
 
-		// Already on the right card?
-		if (await targetTitle.isVisible().catch(() => false)) return;
+		// Check for the node name in either card type
+		const isTargetVisible = () =>
+			wizard
+				.getWizard()
+				.getByText(nodeName, { exact: true })
+				.isVisible()
+				.catch(() => false);
 
-		// Click next until we find it (max 10 clicks to avoid infinite loop)
+		if (await isTargetVisible()) return;
+
+		// Try clicking next (works with both regular and node group card buttons)
 		for (let i = 0; i < 10; i++) {
-			const nextButton = wizard.getNextButton();
-			if (!(await nextButton.isVisible().catch(() => false))) break;
-			await nextButton.click();
-			if (await targetTitle.isVisible().catch(() => false)) return;
+			if (!(await this.clickAnyNavButton('next'))) break;
+			if (await isTargetVisible()) return;
+		}
+
+		// Try clicking prev if forward navigation didn't find it
+		for (let i = 0; i < 10; i++) {
+			if (!(await this.clickAnyNavButton('prev'))) break;
+			if (await isTargetVisible()) return;
 		}
 
 		throw new Error(`Could not navigate to card "${nodeName}"`);
+	}
+
+	/**
+	 * Click whichever navigation button is visible and enabled (regular or node group).
+	 */
+	private async clickAnyNavButton(direction: 'next' | 'prev'): Promise<boolean> {
+		const wizard = this.n8n.aiBuilder.wizard;
+		const btn = direction === 'next' ? wizard.getNextButton() : wizard.getPrevButton();
+
+		try {
+			if ((await btn.isVisible()) && (await btn.isEnabled())) {
+				await btn.click();
+				return true;
+			}
+		} catch {
+			// Button may have detached during check
+		}
+		return false;
 	}
 }

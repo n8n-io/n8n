@@ -2,13 +2,13 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { N8nButton, N8nHeading, N8nInput, N8nText, N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { useDebounce } from '@/app/composables/useDebounce';
+import { useDebounce } from '@n8n/composables/useDebounce';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import { useCredentialsAppSelectionStore } from '../stores/credentialsAppSelection.store';
 import { useAppCredentials, type AppEntry } from '../composables/useAppCredentials';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import type { ICredentialsDecrypted } from 'n8n-workflow';
 import AppSelectionGrid from './AppSelectionGrid.vue';
 import AppInstallModal from './AppInstallModal.vue';
@@ -363,7 +363,6 @@ watch(isCredentialModalOpen, async (isOpen, wasOpen) => {
 				<N8nButton
 					v-else
 					:label="i18n.baseText('appSelection.connectLater')"
-					type="tertiary"
 					size="large"
 					data-test-id="app-selection-skip"
 					@click="handleContinue"

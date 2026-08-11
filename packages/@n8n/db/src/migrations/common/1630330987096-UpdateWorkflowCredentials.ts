@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/ban-ts-comment */
 import type { IWorkflowBase } from 'n8n-workflow';
 
 import type { CredentialsEntity, WorkflowEntity } from '../../entities';
@@ -146,10 +145,10 @@ export class UpdateWorkflowCredentials1630330987096 implements ReversibleMigrati
 									(credentials) => credentials.id == creds.id && credentials.type === type,
 								);
 								if (matchingCredentials) {
-									// @ts-ignore
+									// @ts-expect-error migration writes legacy string format
 									node.credentials[type] = matchingCredentials.name;
 								} else {
-									// @ts-ignore
+									// @ts-expect-error migration writes legacy string format
 									node.credentials[type] = creds.name;
 								}
 								credentialsUpdated = true;
@@ -188,10 +187,10 @@ export class UpdateWorkflowCredentials1630330987096 implements ReversibleMigrati
 									(credentials) => credentials.id == creds.id && credentials.type === type,
 								);
 								if (matchingCredentials) {
-									// @ts-ignore
+									// @ts-expect-error migration writes legacy string format
 									node.credentials[type] = matchingCredentials.name;
 								} else {
-									// @ts-ignore
+									// @ts-expect-error migration writes legacy string format
 									node.credentials[type] = creds.name;
 								}
 								credentialsUpdated = true;
@@ -230,10 +229,10 @@ export class UpdateWorkflowCredentials1630330987096 implements ReversibleMigrati
 								(credentials) => credentials.id == creds.id && credentials.type === type,
 							);
 							if (matchingCredentials) {
-								// @ts-ignore
+								// @ts-expect-error migration writes legacy string format
 								node.credentials[type] = matchingCredentials.name;
 							} else {
-								// @ts-ignore
+								// @ts-expect-error migration writes legacy string format
 								node.credentials[type] = creds.name;
 							}
 							credentialsUpdated = true;

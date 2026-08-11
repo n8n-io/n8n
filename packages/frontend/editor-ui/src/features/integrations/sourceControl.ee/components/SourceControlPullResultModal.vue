@@ -127,7 +127,7 @@ function close() {
 												<RouterLink
 													target="_blank"
 													rel="noopener noreferrer"
-													:to="{ name: VIEWS.WORKFLOW, params: { name: workflow.id } }"
+													:to="{ name: VIEWS.WORKFLOW, params: { workflowId: workflow.id } }"
 												>
 													{{ workflow.name }}
 												</RouterLink>
@@ -153,7 +153,7 @@ function close() {
 
 		<template #footer>
 			<div :class="$style.footer">
-				<N8nButton type="primary" @click="close">
+				<N8nButton @click="close">
 					{{ i18n.baseText('settings.sourceControl.modals.pullResult.buttons.close') }}
 				</N8nButton>
 			</div>
