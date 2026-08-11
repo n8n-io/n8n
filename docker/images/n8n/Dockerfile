@@ -1,27 +1,41 @@
 ARG NODE_VERSION=24.18.1
 ARG N8N_VERSION=snapshot
 
-# Builder stage exists because the runtime base image has no toolchain.
+# Toolchain stage exists because the runtime base image has no compiler.
 # Pinned to multi-arch index digest (linux/amd64 + linux/arm64) for reproducible builds.
 # Bump the digest together with the tag when updating the base image.
 # Digest pins to node:24.18.1-alpine3.24 (Node 24.18.1, Alpine 3.24).
-FROM node:24.18.1-alpine3.24@sha256:f70403e87646dc51b45295f4b8b70cdad0b63d2297c4c9899119b03f7af7a6b3 AS builder
-COPY ./compiled /usr/local/lib/node_modules/n8n
-RUN apk add --no-cache python3 make g++ && \
-    cd /usr/local/lib/node_modules/n8n && \
-    npm rebuild sqlite3 && \
-    # Rebuild isolated-vm from source. node-gyp-build's musl detection relies
-    # on /etc/alpine-release which DHI Alpine omits, so the bundled prebuilt
-    # loader picks the glibc binary and segfaults in musl pthread paths.
-    # Removing prebuilds and invoking node-gyp directly avoids npm rebuild's
-    # double-build behavior (built-in node-gyp + install-script node-gyp)
-    # which races on dep-file state.
-    # Use npm's bundled node-gyp rather than `npx node-gyp` so the toolchain
-    # version is fixed by the pinned image digest instead of being fetched
-    # from the registry at build time.
-    rm -rf node_modules/isolated-vm/prebuilds && \
-    cd node_modules/isolated-vm && \
+FROM node:24.18.1-alpine3.24@sha256:f70403e87646dc51b45295f4b8b70cdad0b63d2297c4c9899119b03f7af7a6b3 AS toolchain
+RUN apk add --no-cache python3 make g++
+
+# The isolated-vm compile lives in its own stage so its only cache input is the
+# module's own source. Below `COPY ./compiled` it was invalidated by any change
+# to application code, making every rebuild pay the full node-gyp cost.
+FROM toolchain AS native-builder
+# Copy the real module directory rather than the node_modules/isolated-vm symlink
+# pnpm leaves behind. Version-globbed so a catalog bump needs no edit here.
+COPY ./compiled/node_modules/.pnpm/isolated-vm@*/node_modules/isolated-vm /build/isolated-vm
+WORKDIR /build/isolated-vm
+# Rebuild isolated-vm from source. node-gyp-build's musl detection relies
+# on /etc/alpine-release which DHI Alpine omits, so the bundled prebuilt
+# loader picks the glibc binary and segfaults in musl pthread paths.
+# Removing prebuilds and invoking node-gyp directly avoids npm rebuild's
+# double-build behavior (built-in node-gyp + install-script node-gyp)
+# which races on dep-file state.
+# Use npm's bundled node-gyp rather than `npx node-gyp` so the toolchain
+# version is fixed by the pinned image digest instead of being fetched
+# from the registry at build time.
+RUN rm -rf prebuilds && \
     node /usr/local/lib/node_modules/npm/node_modules/node-gyp/bin/node-gyp.js rebuild --release -j max
+
+FROM toolchain AS builder
+COPY ./compiled /usr/local/lib/node_modules/n8n
+RUN cd /usr/local/lib/node_modules/n8n && npm rebuild sqlite3
+# node-gyp-build resolves build/Release ahead of prebuilds, but the prebuilds are
+# still dropped so the glibc binary cannot be reached by any fallback path.
+COPY --from=native-builder /build/isolated-vm/build/Release/isolated_vm.node \
+     /usr/local/lib/node_modules/n8n/node_modules/isolated-vm/build/Release/isolated_vm.node
+RUN rm -rf /usr/local/lib/node_modules/n8n/node_modules/isolated-vm/prebuilds
 
 # Pinned to multi-arch index digest (linux/amd64 + linux/arm64) for reproducible builds.
 # n8nio/base is republished by a separate workflow (docker/images/n8n-base) on every
