@@ -1,0 +1,202 @@
+operationId: getWorkflows
+tags:
+  - Workflow
+summary: Retrieve all workflows
+description: Retrieve all workflows from your instance.
+x-required-scope: workflow:list
+parameters:
+  - $ref: ../../../../shared/spec/parameters/offset.yml
+  - $ref: ../../../../shared/spec/parameters/limit.yml
+  - $ref: ../../../../shared/spec/parameters/cursor.yml
+  - schema:
+      type: string
+      enum:
+        - 'true'
+        - 'false'
+    required: false
+    name: active
+    in: query
+  - schema:
+      type: string
+    required: false
+    name: tags
+    in: query
+  - schema:
+      type: string
+    required: false
+    name: name
+    in: query
+  - schema:
+      type: string
+    required: false
+    name: projectId
+    in: query
+  - schema:
+      type: string
+      enum:
+        - 'true'
+        - 'false'
+      default: 'false'
+    required: false
+    name: excludePinnedData
+    in: query
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            data:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  name:
+                    type: string
+                  active:
+                    type: boolean
+                  activeVersionId:
+                    type: string
+                    nullable: true
+                  createdAt:
+                    type: string
+                    format: date-time
+                  updatedAt:
+                    type: string
+                    format: date-time
+                  isArchived:
+                    type: boolean
+                  versionId:
+                    type: string
+                  triggerCount:
+                    type: number
+                  nodes: {}
+                  connections: {}
+                  nodeGroups: {}
+                  settings:
+                    nullable: true
+                  staticData:
+                    nullable: true
+                  pinData:
+                    nullable: true
+                  meta:
+                    nullable: true
+                  tags:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        name:
+                          type: string
+                        createdAt:
+                          type: string
+                          format: date-time
+                        updatedAt:
+                          type: string
+                          format: date-time
+                      required:
+                        - id
+                        - name
+                        - createdAt
+                        - updatedAt
+                  shared:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        role:
+                          type: string
+                        workflowId:
+                          type: string
+                        projectId:
+                          type: string
+                        createdAt:
+                          type: string
+                          format: date-time
+                        updatedAt:
+                          type: string
+                          format: date-time
+                      required:
+                        - role
+                        - workflowId
+                        - projectId
+                        - createdAt
+                        - updatedAt
+                  activeVersion:
+                    type: object
+                    nullable: true
+                    properties:
+                      versionId:
+                        type: string
+                      workflowId:
+                        type: string
+                      nodes: {}
+                      connections: {}
+                      nodeGroups: {}
+                      authors:
+                        type: string
+                      name:
+                        type: string
+                        nullable: true
+                      description:
+                        type: string
+                        nullable: true
+                      autosaved:
+                        type: boolean
+                      createdAt:
+                        type: string
+                        format: date-time
+                      updatedAt:
+                        type: string
+                        format: date-time
+                    required:
+                      - versionId
+                      - workflowId
+                      - nodes
+                      - connections
+                      - nodeGroups
+                      - authors
+                      - name
+                      - description
+                      - autosaved
+                      - createdAt
+                      - updatedAt
+                required:
+                  - id
+                  - name
+                  - active
+                  - activeVersionId
+                  - createdAt
+                  - updatedAt
+                  - isArchived
+                  - versionId
+                  - triggerCount
+                  - nodes
+                  - connections
+                  - nodeGroups
+                  - settings
+                  - staticData
+                  - meta
+                  - shared
+                  - activeVersion
+            nextCursor:
+              type: string
+              nullable: true
+          required:
+            - data
+            - nextCursor
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml

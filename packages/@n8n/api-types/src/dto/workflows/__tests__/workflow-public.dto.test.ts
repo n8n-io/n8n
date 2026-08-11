@@ -1,4 +1,4 @@
-import { WorkflowPublicDto } from '../workflow-public.dto';
+import { WorkflowListPublicDto, WorkflowPublicDto } from '../workflow-public.dto';
 
 const baseWorkflow = {
 	id: '1',
@@ -125,6 +125,91 @@ describe('WorkflowPublicDto', () => {
 	test('rejects a missing required field', () => {
 		const { id: _id, ...withoutId } = baseWorkflow;
 		const result = WorkflowPublicDto.safeParse(withoutId);
+		expect(result.success).toBe(false);
+	});
+});
+
+describe('WorkflowListPublicDto', () => {
+	// Mirrors what `GET /workflows` actually returns: the single-workflow shape
+	// minus the columns its narrower query never selects.
+	const {
+		description: _description,
+		versionCounter: _versionCounter,
+		sourceWorkflowId: _sourceWorkflowId,
+		shared,
+		...rest
+	} = baseWorkflow;
+
+	const baseListItem = {
+		...rest,
+		shared: shared.map(({ project: _project, ...sharedRest }) => sharedRest),
+	};
+
+	test('accepts a list item lacking the columns the list query does not select', () => {
+		const result = WorkflowListPublicDto.safeParse({ data: [baseListItem], nextCursor: null });
+		expect(result.success).toBe(true);
+	});
+
+	test('accepts an active list item whose activeVersion has no publish history', () => {
+		const result = WorkflowListPublicDto.safeParse({
+			data: [
+				{
+					...baseListItem,
+					active: true,
+					activeVersionId: 'version-1',
+					activeVersion: {
+						versionId: 'version-1',
+						workflowId: '1',
+						nodes: [],
+						connections: {},
+						nodeGroups: [],
+						authors: 'Nathan Nathaniel',
+						name: null,
+						description: null,
+						autosaved: false,
+						createdAt: baseWorkflow.createdAt,
+						updatedAt: baseWorkflow.updatedAt,
+					},
+				},
+			],
+			nextCursor: null,
+		});
+
+		expect(result.success).toBe(true);
+	});
+
+	test('strips single-workflow-only fields if a row somehow carries them', () => {
+		const result = WorkflowListPublicDto.safeParse({
+			data: [
+				{
+					...baseListItem,
+					description: 'only on single fetch',
+					versionCounter: 3,
+					sourceWorkflowId: null,
+					shared: baseWorkflow.shared,
+				},
+			],
+			nextCursor: null,
+		});
+
+		expect(result.success).toBe(true);
+		if (result.success) {
+			const [item] = result.data.data;
+			expect(item).not.toHaveProperty('description');
+			expect(item).not.toHaveProperty('versionCounter');
+			expect(item).not.toHaveProperty('sourceWorkflowId');
+			expect(item.shared[0]).not.toHaveProperty('project');
+		}
+	});
+
+	test('accepts a non-null nextCursor', () => {
+		const result = WorkflowListPublicDto.safeParse({ data: [baseListItem], nextCursor: 'abc123' });
+		expect(result.success).toBe(true);
+	});
+
+	test('rejects a missing required field on an item', () => {
+		const { id: _id, ...withoutId } = baseListItem;
+		const result = WorkflowListPublicDto.safeParse({ data: [withoutId], nextCursor: null });
 		expect(result.success).toBe(false);
 	});
 });

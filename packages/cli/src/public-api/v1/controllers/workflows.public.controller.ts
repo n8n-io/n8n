@@ -1,6 +1,8 @@
 import {
 	GetWorkflowQueryDto,
 	ListWorkflowHistoryQueryDto,
+	ListWorkflowsQueryDto,
+	WorkflowListPublicDto,
 	WorkflowPublicDto,
 	WorkflowVersionHistoryListPublicDto,
 } from '@n8n/api-types';
@@ -72,6 +74,34 @@ function toPublicSharedWorkflow(sharedWorkflow: SharedWorkflow) {
 	};
 }
 
+/** List rows come back without the joined project, so they map a share row without one. */
+function toPublicListSharedWorkflow(sharedWorkflow: SharedWorkflow) {
+	return {
+		role: sharedWorkflow.role,
+		workflowId: sharedWorkflow.workflowId,
+		projectId: sharedWorkflow.projectId,
+		createdAt: sharedWorkflow.createdAt.toISOString(),
+		updatedAt: sharedWorkflow.updatedAt.toISOString(),
+	};
+}
+
+/** Same, for the active version: the list query does not load its publish history. */
+function toPublicListActiveVersion(activeVersion: WorkflowHistory) {
+	return {
+		versionId: activeVersion.versionId,
+		workflowId: activeVersion.workflowId,
+		nodes: activeVersion.nodes,
+		connections: activeVersion.connections,
+		nodeGroups: activeVersion.nodeGroups,
+		authors: activeVersion.authors,
+		name: activeVersion.name,
+		description: activeVersion.description,
+		autosaved: activeVersion.autosaved,
+		createdAt: activeVersion.createdAt.toISOString(),
+		updatedAt: activeVersion.updatedAt.toISOString(),
+	};
+}
+
 function toPublicWorkflowPublishHistory(entry: WorkflowPublishHistory) {
 	return {
 		id: entry.id,
@@ -110,6 +140,84 @@ export class WorkflowsPublicController {
 		private readonly eventService: EventService,
 		private readonly globalConfig: GlobalConfig,
 	) {}
+
+	@Get('/')
+	@ApiKeyScope('workflow:list')
+	@ApiSummary('Retrieve all workflows')
+	@ApiDescription('Retrieve all workflows from your instance.')
+	@ApiTags(['Workflow'])
+	@ApiResponse(200, WorkflowListPublicDto)
+	async getWorkflows(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Query query: ListWorkflowsQueryDto,
+	): Promise<WorkflowListPublicDto> {
+		let { offset, limit } = query;
+
+		if (query.cursor) {
+			try {
+				const decoded = decodeCursor(query.cursor);
+				if (!('offset' in decoded)) {
+					throw new BadRequestError('An invalid cursor was provided');
+				}
+				offset = decoded.offset;
+				limit = decoded.limit;
+			} catch (error) {
+				if (error instanceof BadRequestError) throw error;
+				throw new BadRequestError('An invalid cursor was provided');
+			}
+		}
+
+		const { workflows, count } = await this.workflowFinderService.findWorkflowsForUser(
+			req.user,
+			['workflow:read'],
+			{
+				filters: {
+					name: query.name,
+					active: query.active,
+					tagNames: query.tags ? query.tags.split(',').map((tag) => tag.trim()) : undefined,
+					projectId: query.projectId,
+				},
+				offset,
+				limit,
+				includePinnedData: !query.excludePinnedData,
+				includeTags: !this.globalConfig.tags.disabled,
+				includeActiveVersion: true,
+			},
+		);
+
+		this.eventService.emit('user-retrieved-all-workflows', {
+			userId: req.user.id,
+			publicApi: true,
+		});
+
+		return {
+			data: workflows.map((workflow) => ({
+				id: workflow.id,
+				name: workflow.name,
+				active: workflow.active,
+				activeVersionId: workflow.activeVersionId,
+				createdAt: workflow.createdAt.toISOString(),
+				updatedAt: workflow.updatedAt.toISOString(),
+				isArchived: workflow.isArchived,
+				versionId: workflow.versionId,
+				triggerCount: workflow.triggerCount,
+				nodes: workflow.nodes,
+				connections: workflow.connections,
+				nodeGroups: workflow.nodeGroups,
+				settings: toPublicJson(workflow.settings),
+				staticData: toPublicJson(workflow.staticData),
+				meta: toPublicJson(workflow.meta),
+				...(query.excludePinnedData ? {} : { pinData: toPublicJson(workflow.pinData) }),
+				...(workflow.tags ? { tags: workflow.tags.map(toPublicTag) } : {}),
+				shared: workflow.shared.map(toPublicListSharedWorkflow),
+				activeVersion: workflow.activeVersion
+					? toPublicListActiveVersion(workflow.activeVersion)
+					: null,
+			})),
+			nextCursor: encodeNextCursor({ offset, limit, numberOfTotalRecords: count }),
+		};
+	}
 
 	@Get('/:workflowId')
 	@ApiKeyScope('workflow:read')
