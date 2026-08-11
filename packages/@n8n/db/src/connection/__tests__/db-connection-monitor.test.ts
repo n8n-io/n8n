@@ -934,15 +934,22 @@ describe('DbConnectionMonitor', () => {
 			disconnect: Mock;
 		};
 
-		const buildPgConfig = (destroyTimeoutMs: number) =>
-			mock<DatabaseConfig>({
-				pingTimeoutMs: 5_000,
-				pingMaxFailuresBeforeRecovery: 3,
-				minRecoveryBackoffMs: 1_000,
-				maxRecoveryBackoffMs: 30_000,
-				connectionAcquisitionTimeoutMs: 30_000,
-				postgresdb: mock<DatabaseConfig['postgresdb']>({ destroyTimeoutMs }),
-			});
+		const buildPgMonitor = (destroyTimeoutMs = 10_000) =>
+			new DbConnectionMonitor(
+				dataSource,
+				onConnectedChange,
+				mock<DatabaseConfig>({
+					pingTimeoutMs: 5_000,
+					pingMaxFailuresBeforeRecovery: 3,
+					minRecoveryBackoffMs: 1_000,
+					maxRecoveryBackoffMs: 30_000,
+					connectionAcquisitionTimeoutMs: 30_000,
+					postgresdb: mock<DatabaseConfig['postgresdb']>({ destroyTimeoutMs }),
+				}),
+				logger,
+				errorReporter,
+				dbConnectionMetrics,
+			);
 
 		// One un-drained client whose drain resolves only once it is both released with an
 		// error and has its socket destroyed, mirroring pg-pool where neither step alone
@@ -984,7 +991,8 @@ describe('DbConnectionMonitor', () => {
 			// @ts-expect-error readonly property
 			dataSource.isInitialized = true;
 			dataSource.destroy.mockImplementation(async () => {
-				await (dataSource as unknown as { driver: DriverShape }).driver.disconnect();
+				// Reads the property at call time, so it picks up the monitor's wrapper.
+				await driver.disconnect();
 				// @ts-expect-error readonly property
 				dataSource.isInitialized = false;
 			});
@@ -997,14 +1005,7 @@ describe('DbConnectionMonitor', () => {
 		};
 
 		it('should force-close the pool and continue recovery when destroy() exceeds the timeout', async () => {
-			const pgMonitor = new DbConnectionMonitor(
-				dataSource,
-				onConnectedChange,
-				buildPgConfig(10_000),
-				logger,
-				errorReporter,
-				dbConnectionMetrics,
-			);
+			const pgMonitor = buildPgMonitor(10_000);
 			const { stream, client } = setupFrozenPool();
 			// @ts-expect-error private property
 			pgMonitor.connected = false;
@@ -1027,14 +1028,7 @@ describe('DbConnectionMonitor', () => {
 		});
 
 		it('should not force-close the pool when destroy() resolves before the timeout', async () => {
-			const pgMonitor = new DbConnectionMonitor(
-				dataSource,
-				onConnectedChange,
-				buildPgConfig(10_000),
-				logger,
-				errorReporter,
-				dbConnectionMetrics,
-			);
+			const pgMonitor = buildPgMonitor(10_000);
 			const { stream, client, resolveDrain } = setupFrozenPool();
 			// The drain completes on its own here, before the never-resolving timeout.
 			resolveDrain();
@@ -1051,14 +1045,7 @@ describe('DbConnectionMonitor', () => {
 		});
 
 		it('should wait indefinitely for destroy() when the destroy timeout is 0', async () => {
-			const pgMonitor = new DbConnectionMonitor(
-				dataSource,
-				onConnectedChange,
-				buildPgConfig(0),
-				logger,
-				errorReporter,
-				dbConnectionMetrics,
-			);
+			const pgMonitor = buildPgMonitor(0);
 			const { stream, client } = setupFrozenPool();
 			// `destroy()` never resolves and the timeout is disabled, so recovery stays parked.
 			dataSource.destroy.mockReturnValue(new Promise<void>(() => {}));
@@ -1077,14 +1064,7 @@ describe('DbConnectionMonitor', () => {
 		});
 
 		it('should abandon a teardown that force-closing cannot unblock, and still recover', async () => {
-			const pgMonitor = new DbConnectionMonitor(
-				dataSource,
-				onConnectedChange,
-				buildPgConfig(10_000),
-				logger,
-				errorReporter,
-				dbConnectionMetrics,
-			);
+			const pgMonitor = buildPgMonitor(10_000);
 			const { client, driver } = setupFrozenPool();
 			// The drain stays wedged even after force-close, so both bounds have to fire.
 			driver.disconnect.mockReturnValue(new Promise<void>(() => {}));
@@ -1106,14 +1086,7 @@ describe('DbConnectionMonitor', () => {
 		});
 
 		it('should leave the rebuilt connection alone when an abandoned teardown settles later', async () => {
-			const pgMonitor = new DbConnectionMonitor(
-				dataSource,
-				onConnectedChange,
-				buildPgConfig(10_000),
-				logger,
-				errorReporter,
-				dbConnectionMetrics,
-			);
+			const pgMonitor = buildPgMonitor(10_000);
 			const { driver } = setupFrozenPool();
 			let settleAbandonedDrain!: () => void;
 			driver.disconnect.mockReturnValue(
@@ -1136,14 +1109,7 @@ describe('DbConnectionMonitor', () => {
 		});
 
 		it('should recover rather than retry forever when the teardown rejects', async () => {
-			const pgMonitor = new DbConnectionMonitor(
-				dataSource,
-				onConnectedChange,
-				buildPgConfig(10_000),
-				logger,
-				errorReporter,
-				dbConnectionMetrics,
-			);
+			const pgMonitor = buildPgMonitor(10_000);
 			const { driver } = setupFrozenPool();
 			// e.g. TypeORM's ConnectionIsNotSetError once `driver.master` is already gone.
 			driver.disconnect.mockRejectedValue(new Error('Connection is not established'));
@@ -1161,14 +1127,7 @@ describe('DbConnectionMonitor', () => {
 		});
 
 		it('should restore the original disconnect after tearing down', async () => {
-			const pgMonitor = new DbConnectionMonitor(
-				dataSource,
-				onConnectedChange,
-				buildPgConfig(10_000),
-				logger,
-				errorReporter,
-				dbConnectionMetrics,
-			);
+			const pgMonitor = buildPgMonitor(10_000);
 			const { driver, resolveDrain } = setupFrozenPool();
 			const originalDisconnect = driver.disconnect;
 			resolveDrain();

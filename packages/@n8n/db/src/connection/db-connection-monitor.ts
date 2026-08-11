@@ -46,7 +46,7 @@ interface PgPoolInternals {
  * is synchronous and pg-pool's end callback only needs an I/O turn, so this bounds the
  * pathological case without adding latency to a teardown that is going to finish anyway.
  */
-const FORCE_CLOSE_GRACE_MS = 1_000;
+export const FORCE_CLOSE_GRACE_MS = 1_000;
 
 /**
  * Watches a DataSource and recovers it when the connection goes bad.
@@ -261,16 +261,20 @@ export class DbConnectionMonitor {
 	}
 
 	/**
-	 * Races `work` against `pingTimeoutMs`. Throws OperationalError on timeout so
-	 * the "don't report timeouts to Sentry" rule in `ping()` applies. The timer is
-	 * always cancelled in `finally` so it never leaks when `work` wins.
+	 * Races `work` against `timeoutMs`, defaulting to `pingTimeoutMs`. Throws
+	 * OperationalError on timeout so the "don't report timeouts to Sentry" rule in
+	 * `ping()` applies. The timer is always cancelled in `finally` so it never leaks
+	 * when `work` wins.
 	 */
-	private async raceTimeout<T>(work: Promise<T>): Promise<T> {
+	private async raceTimeout<T>(
+		work: Promise<T>,
+		timeoutMs = this.databaseConfig.pingTimeoutMs,
+	): Promise<T> {
 		const abortController = new AbortController();
 		try {
 			return await Promise.race([
 				work,
-				setTimeoutP(this.databaseConfig.pingTimeoutMs, undefined, {
+				setTimeoutP(timeoutMs, undefined, {
 					signal: abortController.signal,
 				}).then(() => {
 					throw new OperationalError('Database connection timed out');
@@ -379,15 +383,10 @@ export class DbConnectionMonitor {
 		const driver = this.postgresDriver;
 		// Capture the pool before `disconnect()` nulls `driver.master`.
 		const pool = driver.master;
-		// Keep the original reference to put back verbatim, and a bound copy to call through.
-		// `bind` widens to `any` here, so we reassert TypeORM's own signature.
 		const originalDisconnect = driver.disconnect;
-		const drainPool = originalDisconnect.bind(driver) as () => Promise<void>;
 
 		driver.disconnect = async () => {
-			const drain = drainPool();
-			// A drain we walk away from must not surface as an unhandled rejection.
-			drain.catch(() => {});
+			const drain = originalDisconnect.call(driver) as Promise<void>;
 			if (await this.settlesWithin(drain, timeoutMs)) return;
 
 			this.logger.warn(
@@ -404,6 +403,9 @@ export class DbConnectionMonitor {
 		try {
 			await this.dataSource.destroy();
 		} finally {
+			// `destroy()` continues past `disconnect()`, so a throw further along leaves this
+			// driver installed; without the restore the next attempt would wrap the wrapper
+			// and stack another set of bounds on top.
 			driver.disconnect = originalDisconnect;
 		}
 	}
@@ -412,22 +414,18 @@ export class DbConnectionMonitor {
 	 * Resolves `true` if `work` settles within `timeoutMs`, `false` if it is still pending.
 	 * A rejection counts as settled: the pool is unusable either way, and propagating it
 	 * would leave `isInitialized` set, wedging recovery in a retry loop that re-runs the
-	 * same failing teardown forever.
+	 * same failing teardown forever. Swallowing it up front also leaves the timeout as the
+	 * only thing `raceTimeout` can throw, and keeps a drain we walk away from handled.
 	 */
 	private async settlesWithin(work: Promise<unknown>, timeoutMs: number): Promise<boolean> {
-		const abortController = new AbortController();
 		try {
-			await Promise.race([
+			await this.raceTimeout(
 				work.catch(() => {}),
-				setTimeoutP(timeoutMs, undefined, { signal: abortController.signal }).then(() => {
-					throw new OperationalError('Database pool teardown timed out');
-				}),
-			]);
+				timeoutMs,
+			);
 			return true;
 		} catch {
 			return false;
-		} finally {
-			abortController.abort();
 		}
 	}
 
@@ -440,8 +438,7 @@ export class DbConnectionMonitor {
 	 */
 	private forceClosePostgresPool(pool: PostgresDriver['master']) {
 		if (!pool) {
-			// The driver never had a pool, or `disconnect()` already cleared it. Normal, and
-			// not evidence that pg-pool internals changed, so this stays below a warning.
+			// Normal, not evidence that pg-pool internals changed, so this stays below a warning.
 			this.logger.debug('Skipping Postgres pool force-close: the pool is already gone');
 			return;
 		}

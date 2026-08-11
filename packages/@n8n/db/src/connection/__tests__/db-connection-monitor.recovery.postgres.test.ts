@@ -9,7 +9,7 @@ import { setTimeout as setTimeoutP } from 'timers/promises';
 import { mock } from 'vitest-mock-extended';
 
 import type { DbConnectionMetrics } from '../db-connection-metrics';
-import { DbConnectionMonitor } from '../db-connection-monitor';
+import { DbConnectionMonitor, FORCE_CLOSE_GRACE_MS } from '../db-connection-monitor';
 
 // Minimal pg pool view: check out a client the pool can never drain on its own.
 type PgDriver = { master: PgPool };
@@ -385,8 +385,6 @@ describe('DbConnectionMonitor recovery against real Postgres', () => {
 			await dataSource.initialize();
 
 			const destroyTimeoutMs = 2_000;
-			// Mirrors FORCE_CLOSE_GRACE_MS in db-connection-monitor.ts.
-			const forceCloseGraceMs = 1_000;
 			const monitor = new DbConnectionMonitor(
 				dataSource,
 				() => {},
@@ -420,8 +418,8 @@ describe('DbConnectionMonitor recovery against real Postgres', () => {
 				const elapsed = Date.now() - start;
 
 				// Both bounds were traversed, then the teardown was abandoned and the pool rebuilt.
-				expect(elapsed).toBeGreaterThanOrEqual(destroyTimeoutMs + forceCloseGraceMs);
-				expect(elapsed).toBeLessThan(destroyTimeoutMs + forceCloseGraceMs + 15_000);
+				expect(elapsed).toBeGreaterThanOrEqual(destroyTimeoutMs + FORCE_CLOSE_GRACE_MS);
+				expect(elapsed).toBeLessThan(destroyTimeoutMs + FORCE_CLOSE_GRACE_MS + 15_000);
 				expect(dataSource.isInitialized).toBe(true);
 				expect(await dataSource.query('SELECT 1 AS ok')).toEqual([{ ok: 1 }]);
 			} finally {
