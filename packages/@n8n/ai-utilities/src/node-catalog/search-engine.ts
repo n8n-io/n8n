@@ -15,26 +15,27 @@
 import { sublimeSearch } from '@n8n/utils/search/sublime-search';
 import type { INodeTypeDescription, NodeConnectionType } from 'n8n-workflow';
 
-import { toLeanNodeType, type LeanNodeTypeDescription } from './lean-node-type';
+import type { LeanNodeTypeDescription } from './lean-node-type';
 import {
 	AI_CONNECTION_TYPES,
+	type AiConnectionType,
 	type NodeSearchResult,
 	type SearchableBuilderHintInputs,
 	type SearchableNodeType,
 	type SubnodeRequirement,
 } from './types';
 
-/** Any node shape the engine accepts. */
-export type SearchEngineInput = INodeTypeDescription | LeanNodeTypeDescription | SearchableNodeType;
-
 /**
- * Only a full `INodeTypeDescription` carries `properties`, and only it needs the
- * lean conversion (which precomputes per-version discriminators). Lean and
- * host-supplied shapes are already usable as-is.
+ * Any node shape the engine accepts.
+ *
+ * All three are read directly, with no conversion step: the engine only reads
+ * the fields in {@link SearchableNodeType}, which every one of them already
+ * carries. It never reads a lean-only field such as `discriminatorsByVersion`,
+ * so there is nothing to gain from narrowing an input to one specific shape
+ * (and no way to do it reliably, since a host shape is free to carry extra
+ * fields like `properties`).
  */
-function needsLeanConversion(node: SearchEngineInput): node is INodeTypeDescription {
-	return 'properties' in node && Array.isArray(node.properties);
-}
+export type SearchEngineInput = INodeTypeDescription | LeanNodeTypeDescription | SearchableNodeType;
 
 /**
  * Default subnodes for each connection type
@@ -136,7 +137,7 @@ function toNodeSearchResult(node: SearchableNodeType, score: number): NodeSearch
 	};
 }
 
-function dedupeNodes(nodes: SearchableNodeType[]): SearchableNodeType[] {
+function dedupeNodes(nodes: SearchEngineInput[]): SearchableNodeType[] {
 	const dedupeCache: Record<string, SearchableNodeType> = {};
 	nodes.forEach((node) => {
 		const cachedNodeType = dedupeCache[node.name];
@@ -174,8 +175,16 @@ function setCapped(cache: Map<string, NodeSearchResult[]>, key: string, value: N
 }
 
 /**
- * Copy a cached result before handing it out, so a caller mutating what it got
- * back cannot corrupt the cache for the next query.
+ * Copy a cached result before handing it out, so that a caller adding fields to
+ * what it got back cannot corrupt the cache for the next query. Callers do
+ * exactly that: the Instance AI nodes tool attaches `discriminators` per result
+ * and `suggestedNode` per requirement.
+ *
+ * The copy is deliberately one level deep per object: the result itself and its
+ * requirement objects. Nested values (`inputs`, `outputs`, a requirement's
+ * `displayOptions`) stay shared with the cached entry, because nothing on either
+ * side writes to them, and deep-copying them would cost on every cache hit to
+ * guard against a mutation no caller performs.
  */
 function cloneSearchResult(result: NodeSearchResult): NodeSearchResult {
 	return {
@@ -206,10 +215,7 @@ export class NodeSearchEngine {
 	private readonly connectionSearchCache = new Map<string, NodeSearchResult[]>();
 
 	constructor(nodeTypes: SearchEngineInput[]) {
-		const normalized = nodeTypes.map((node) =>
-			needsLeanConversion(node) ? toLeanNodeType(node) : node,
-		);
-		this.nodeTypes = dedupeNodes(normalized);
+		this.nodeTypes = dedupeNodes(nodeTypes);
 	}
 
 	/**
@@ -565,7 +571,7 @@ export class NodeSearchEngine {
 	 * Get all available AI connection types
 	 * @returns Array of AI connection types
 	 */
-	static getAiConnectionTypes(): readonly string[] {
+	static getAiConnectionTypes(): readonly AiConnectionType[] {
 		return AI_CONNECTION_TYPES;
 	}
 }

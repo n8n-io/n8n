@@ -554,6 +554,40 @@ describe('NodeSearchEngine', () => {
 	});
 
 	// -----------------------------------------------------------------------
+	// Input handling
+	// -----------------------------------------------------------------------
+
+	describe('host shapes carrying extra fields', () => {
+		it('reads a host node that also carries a properties array, leaving it untouched', () => {
+			// `properties` is the field a full INodeTypeDescription is recognised by,
+			// and a host shape is free to carry one too. Its presence must not make the
+			// engine reshape the node.
+			const hostNodeWithProperties = {
+				...makeNode({
+					name: 'n8n-nodes-base.hostish',
+					displayName: 'Hostish Node',
+					description: 'A host shape that also exposes properties',
+					outputs: ['ai_tool'],
+					builderHint: { searchHint: 'host hint' },
+				}),
+				properties: [{ name: 'resource', type: 'options' }],
+			};
+
+			const engine = new NodeSearchEngine([hostNodeWithProperties]);
+
+			// Same object back, so nothing converted or copied it on the way in.
+			expect(engine.getNodeType('n8n-nodes-base.hostish')).toBe(hostNodeWithProperties);
+
+			const [byName] = engine.searchByName('Hostish');
+			expect(byName.displayName).toBe('Hostish Node');
+			expect(byName.builderHintMessage).toBe('host hint');
+
+			const [byConnection] = engine.searchByConnectionType('ai_tool' as NodeConnectionType);
+			expect(byConnection.name).toBe('n8n-nodes-base.hostish');
+		});
+	});
+
+	// -----------------------------------------------------------------------
 	// Static methods
 	// -----------------------------------------------------------------------
 
