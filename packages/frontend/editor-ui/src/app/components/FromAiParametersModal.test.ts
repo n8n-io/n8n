@@ -129,7 +129,7 @@ describe('FromAiParametersModal', () => {
 			stubActions: false,
 			initialState: {
 				[STORES.UI]: {
-					modalsById: {
+					modalStateById: {
 						[FROM_AI_PARAMETERS_MODAL_KEY]: {
 							open: true,
 							data: {

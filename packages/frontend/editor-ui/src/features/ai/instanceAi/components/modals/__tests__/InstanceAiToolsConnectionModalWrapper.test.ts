@@ -90,6 +90,7 @@ const { telemetryMock, uiStoreMock } = vi.hoisted(() => ({
 			instanceAiToolsConnection: { open: true, data: {} },
 		},
 		closeModal: vi.fn(),
+		setModalData: vi.fn(),
 		openNewCredential: vi.fn(),
 		openExistingCredential: vi.fn(),
 		appliedTheme: 'light',
@@ -257,6 +258,27 @@ describe('InstanceAiToolsConnectionModalWrapper', () => {
 		await flushPromises();
 
 		expect(uiStoreMock.closeModal).not.toHaveBeenCalled();
+	});
+
+	// Through the store, because what it resolves is derived state — an assignment
+	// onto that is discarded, so the next open would reuse the stale connection id.
+	it('clears the modal data through the store on unmount', () => {
+		uiStoreMock.modalsById.instanceAiToolsConnection.data = { connectionId: 'conn-1' };
+
+		renderComponent().unmount();
+
+		expect(uiStoreMock.setModalData).toHaveBeenCalledWith({
+			name: 'instanceAiToolsConnection',
+			data: {},
+		});
+	});
+
+	it('leaves the store alone on unmount when there is no data to clear', () => {
+		uiStoreMock.modalsById.instanceAiToolsConnection.data = {};
+
+		renderComponent().unmount();
+
+		expect(uiStoreMock.setModalData).not.toHaveBeenCalled();
 	});
 
 	it('tracks first credential connection start', () => {
