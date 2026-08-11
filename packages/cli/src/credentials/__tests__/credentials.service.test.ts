@@ -1162,6 +1162,23 @@ describe('CredentialsService', () => {
 			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 
+		it('does not emit credentials-deleted when instance credential was already removed', async () => {
+			const credential = mock<CredentialsEntity>({
+				id: 'instance-credential',
+				type: 'openAiApi',
+				usageScope: 'instance',
+				isResolvable: false,
+			});
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(credential);
+			credentialsRepository.deleteInstanceCredentialIfUnassigned.mockResolvedValue({
+				status: 'notFound',
+			});
+
+			await service.delete(ownerUser, credential.id, { includeInstanceCredentials: true });
+
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+
 		it('emits credentials-deleted and private-credential-deleted for resolvable project credentials', async () => {
 			const credential = mock<CredentialsEntity>({
 				id: 'project-credential',

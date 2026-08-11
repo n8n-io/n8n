@@ -1210,7 +1210,9 @@ export class CredentialsService {
 					`This credential is assigned to credential use "${result.credentialUseIds.join(', ')}" and cannot be deleted`,
 				);
 			}
-			this.emitCredentialDeleted(user, credential);
+			if (result.status === 'deleted') {
+				this.emitCredentialDeleted(user, credential);
+			}
 			return;
 		}
 
