@@ -61,7 +61,9 @@ export function useSettingsItems() {
 				label: i18n.baseText('settings.n8nConnect'),
 				position: 'top',
 				available:
-					settingsStore.isAiGatewayEnabled && canUserAccessRouteByName(VIEWS.AI_GATEWAY_SETTINGS),
+					settingsStore.isAiGatewayEnabled &&
+					!settingsStore.isAiGatewayCloudUbbEnabled &&
+					canUserAccessRouteByName(VIEWS.AI_GATEWAY_SETTINGS),
 				route: { to: { name: VIEWS.AI_GATEWAY_SETTINGS } },
 				creditsTag:
 					balance.value !== undefined
