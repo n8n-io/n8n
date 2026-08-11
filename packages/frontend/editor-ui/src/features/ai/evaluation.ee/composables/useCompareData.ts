@@ -1,3 +1,4 @@
+import type { MetricScale } from '@n8n/api-types';
 import { computed, type Ref } from 'vue';
 
 import { useI18n } from '@n8n/i18n';
@@ -16,6 +17,9 @@ export interface CompareVersion {
 	label: string;
 	status: EvalCollectionRunStatus;
 	avgScore: number | null;
+	// This run's own metric scales (from its frozen config snapshot), so per-column
+	// normalization uses the scales the values were produced with.
+	metricScales?: Record<string, MetricScale>;
 }
 
 // One metric row in the hero chart: a value per version (aligned to `versions`
@@ -56,6 +60,7 @@ export function useCompareData(detail: Ref<EvaluationCollectionDetail | null>) {
 					: run.workflowVersionId.slice(0, 7),
 			status: run.status,
 			avgScore: run.avgScore,
+			metricScales: run.metricScales,
 		}));
 	});
 

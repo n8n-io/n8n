@@ -239,7 +239,7 @@ export class Expression {
 	}
 
 	/**
-	 * Initialize the VM evaluator (if feature flag is enabled).
+	 * Initialize the VM evaluator (no-op when the legacy engine is selected).
 	 * Should be called once during application startup.
 	 * Only available in Node.js environments (not in browser).
 	 */
@@ -287,6 +287,21 @@ export class Expression {
 
 	async releaseIsolate(): Promise<void> {
 		if (Expression.vmEvaluator) await Expression.vmEvaluator.release(this);
+	}
+
+	async withIsolate<T>(fn: () => Promise<T>): Promise<T> {
+		const acquired = await this.acquireIsolate();
+		try {
+			return await fn();
+		} finally {
+			if (acquired) {
+				try {
+					await this.releaseIsolate();
+				} catch (error) {
+					LoggerProxy.error('Failed to release expression isolate', { error });
+				}
+			}
+		}
 	}
 
 	/**
@@ -630,7 +645,7 @@ export class Expression {
 		if (Expression.expressionEngine === 'vm' && !IS_FRONTEND) {
 			if (!Expression.vmEvaluator) {
 				throw new UnexpectedError(
-					'N8N_EXPRESSION_ENGINE=vm is enabled but VM evaluator is not initialized. Call Expression.initExpressionEngine() during application startup.',
+					'The VM expression engine has not been initialized. Call Expression.initExpressionEngine() during application startup.',
 				);
 			}
 

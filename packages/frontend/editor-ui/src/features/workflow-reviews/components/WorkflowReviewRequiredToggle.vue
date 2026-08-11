@@ -4,6 +4,7 @@ import { N8nDropdownMenuItem, N8nSwitch, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
 import { useReviewRequiredStore } from '@/features/workflow-reviews/reviewRequired.store';
+import { useWorkflowReviewStatusStore } from '@/features/workflow-reviews/reviewStatus.store';
 
 const props = defineProps<{
 	workflowId: string;
@@ -11,10 +12,16 @@ const props = defineProps<{
 
 const i18n = useI18n();
 const reviewRequiredStore = useReviewRequiredStore();
+const reviewStatusStore = useWorkflowReviewStatusStore();
+
+const hasOpenReview = computed(() => reviewStatusStore.hasOpenReview(props.workflowId));
 
 const reviewRequired = computed({
-	get: () => reviewRequiredStore.isReviewRequired(props.workflowId),
-	set: (value: boolean) => reviewRequiredStore.setReviewRequired(props.workflowId, value),
+	get: () => hasOpenReview.value || reviewRequiredStore.isReviewRequired(props.workflowId),
+	set: (value: boolean) => {
+		if (hasOpenReview.value) return;
+		reviewRequiredStore.setReviewRequired(props.workflowId, value);
+	},
 });
 </script>
 
@@ -26,6 +33,7 @@ const reviewRequired = computed({
 			:checked="reviewRequired"
 			checkbox
 			:close-on-select="false"
+			:disabled="hasOpenReview"
 			divided
 			test-id="workflow-review-required-toggle"
 			@select="reviewRequired = !reviewRequired"
@@ -38,6 +46,7 @@ const reviewRequired = computed({
 			<template #item-trailing="{ ui }">
 				<N8nSwitch
 					:model-value="reviewRequired"
+					:disabled="hasOpenReview"
 					aria-hidden="true"
 					tabindex="-1"
 					data-test-id="workflow-review-required-switch"
@@ -46,7 +55,11 @@ const reviewRequired = computed({
 			</template>
 		</N8nDropdownMenuItem>
 		<N8nText tag="p" size="xsmall" color="text-base" :class="$style.description">
-			{{ i18n.baseText('workflowReviews.reviewRequired.description') }}
+			{{
+				hasOpenReview
+					? i18n.baseText('workflowReviews.reviewRequired.lockedDescription')
+					: i18n.baseText('workflowReviews.reviewRequired.description')
+			}}
 		</N8nText>
 	</div>
 </template>

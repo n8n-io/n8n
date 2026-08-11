@@ -131,7 +131,7 @@ function stripMcpServerPrefix(toolName: string, serverName: string): string {
 
 function toToolResponse(tool: BuiltTool, serverName: string): InstanceAiMcpConnectionToolResponse {
 	const response: InstanceAiMcpConnectionToolResponse = {
-		name: stripMcpServerPrefix(tool.name, serverName),
+		name: tool.mcpToolName ?? stripMcpServerPrefix(tool.name, serverName),
 	};
 	if (tool.description) response.description = tool.description;
 	return response;

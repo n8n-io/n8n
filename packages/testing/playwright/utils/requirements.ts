@@ -1,6 +1,6 @@
 import type { BrowserContext } from '@playwright/test';
 
-import { setContextSettings } from '../config/intercepts';
+import { setContextModuleSettings, setContextSettings } from '../config/intercepts';
 import type { n8nPage } from '../pages/n8nPage';
 import { TestError, type TestRequirements } from '../Types';
 
@@ -23,6 +23,11 @@ export async function setupTestRequirements(
 	if (requirements.config?.settings) {
 		// Store settings for this context
 		setContextSettings(context, requirements.config.settings);
+	}
+
+	// 1b. Setup module settings override
+	if (requirements.config?.moduleSettings) {
+		setContextModuleSettings(context, requirements.config.moduleSettings);
 	}
 
 	// 2. Setup feature flags

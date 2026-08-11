@@ -1,3 +1,5 @@
+import { INSTANCE_AI_MCP_CONNECTIONS_FLAG } from '@n8n/api-types';
+
 function createExperiment<T extends Record<string, string>>(
 	name: string,
 	variants: T,
@@ -27,12 +29,6 @@ export const BATCH_11AUG_EXPERIMENT = createExperiment('37_onboarding_experiment
 
 export const TEMPLATE_RECO_V2 = createExperiment('039_template_onboarding_v2');
 
-export const READY_TO_RUN_V2_EXPERIMENT = createExperiment('042_ready-to-run-worfklow_v2', {
-	control: 'control',
-	variant1: 'variant-1-singlebox',
-	variant2: 'variant-2-twoboxes',
-});
-
 export const READY_TO_RUN_V2_P3_EXPERIMENT = createExperiment('059_ready-to-run-worfklow_v2-3', {
 	control: 'control',
 	variant5: 'variant-5',
@@ -44,8 +40,6 @@ export const PERSONALIZED_TEMPLATES_V3 = createExperiment('044_template_reco_v3'
 export const COLLECTION_OVERHAUL_EXPERIMENT = createExperiment('048_collection_overhaul');
 
 export const TEMPLATE_SETUP_EXPERIENCE = createExperiment('055_template_setup_experience');
-
-export const AI_BUILDER_PLAN_MODE_EXPERIMENT = createExperiment('073_builder_plan_mode');
 
 export const AI_BUILDER_REVIEW_CHANGES_EXPERIMENT = createExperiment(
 	'075_ai_builder_review_changes',
@@ -104,9 +98,6 @@ export const SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT = createExperiment(
 );
 
 export const EVALUATIONS_WIZARD_SIDEPANEL_EXPERIMENT = createExperiment('088_config_evaluations');
-export const INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS_EXPERIMENT = createExperiment(
-	'087_instance_ai_workflow_preview_suggestions',
-);
 export const INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_EXPERIMENT = createExperiment(
 	'093_instance_ai_personalized_prompt_suggestions',
 	{
@@ -117,7 +108,7 @@ export const INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_EXPERIMENT = createExpe
 );
 
 export const INSTANCE_AI_MCP_CONNECTIONS_EXPERIMENT = createExperiment(
-	'089_instance_ai_mcp_connections',
+	INSTANCE_AI_MCP_CONNECTIONS_FLAG,
 );
 
 export const INSTANCE_AI_SPLIT_EMPTY_STATE_EXPERIMENT = createExperiment(
@@ -138,13 +129,12 @@ export const INSTANCE_AI_BROWSER_CREDENTIAL_SETUP_EXPERIMENT = createExperiment(
 export const EXPOSE_ALL_WORKFLOWS_TO_MCP_EXPERIMENT = createExperiment(
 	'095_expose_all_workflows_to_mcp',
 );
-export const ENHANCED_HITL_SLACK_EXPERIMENT = createExperiment('096_enhanced_hitl_slack');
-export const ENHANCED_HITL_TELEGRAM_EXPERIMENT = createExperiment('097_enhanced_hitl_telegram');
-export const ENHANCED_HITL_GMAIL_EXPERIMENT = createExperiment('098_enhanced_hitl_gmail');
-
 export const N8N_CREDITS_CREDENTIAL_SELECTION_EXPERIMENT = createExperiment(
 	'100_n8n_credits_credential_selection',
 );
+
+export const TRIAL_INTRO_MODAL_EXPERIMENT = createExperiment('101_trial_intro_modal');
+export const INLINE_AGENTS_EXPERIMENT = createExperiment('103_inline_agents');
 
 export const EXPERIMENTS_TO_TRACK = [
 	EXTRA_TEMPLATE_LINKS_EXPERIMENT.name,
@@ -152,7 +142,6 @@ export const EXPERIMENTS_TO_TRACK = [
 	BATCH_11AUG_EXPERIMENT.name,
 	TEMPLATE_RECO_V2.name,
 	READY_TO_RUN_V2_P3_EXPERIMENT.name,
-	AI_BUILDER_PLAN_MODE_EXPERIMENT.name,
 	TEMPLATE_SETUP_EXPERIENCE.name,
 	RESOURCE_CENTER_EXPERIMENT.name,
 	EXECUTION_LOGIC_V2_EXPERIMENT.name,
@@ -173,7 +162,6 @@ export const EXPERIMENTS_TO_TRACK = [
 	FLOATING_CHAT_HUB_PANEL_EXPERIMENT.name,
 	SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT.name,
 	EVALUATIONS_WIZARD_SIDEPANEL_EXPERIMENT.name,
-	INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS_EXPERIMENT.name,
 	INSTANCE_AI_MCP_CONNECTIONS_EXPERIMENT.name,
 	INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_EXPERIMENT.name,
 	INSTANCE_AI_SPLIT_EMPTY_STATE_EXPERIMENT.name,
@@ -182,8 +170,7 @@ export const EXPERIMENTS_TO_TRACK = [
 	INSTANCE_AI_TEMPLATE_EXAMPLES_EXPERIMENT.name,
 	INSTANCE_AI_BROWSER_CREDENTIAL_SETUP_EXPERIMENT.name,
 	EXPOSE_ALL_WORKFLOWS_TO_MCP_EXPERIMENT.name,
-	ENHANCED_HITL_SLACK_EXPERIMENT.name,
-	ENHANCED_HITL_TELEGRAM_EXPERIMENT.name,
-	ENHANCED_HITL_GMAIL_EXPERIMENT.name,
 	N8N_CREDITS_CREDENTIAL_SELECTION_EXPERIMENT.name,
+	TRIAL_INTRO_MODAL_EXPERIMENT.name,
+	INLINE_AGENTS_EXPERIMENT.name,
 ];

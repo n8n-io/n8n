@@ -1,28 +1,62 @@
 ---
 name: n8n:public-api
 description: >-
-  Adds or updates n8n Public API v1 endpoints, OpenAPI specs, and handler wiring.
-  Use when creating public API handlers, registering paths in openapi.yml, or
-  adding OpenAPI tags. Prefer @PublicApiController for new endpoints (API-37+).
+  Adds, migrates, or updates n8n Public API v1 endpoints with @PublicApiController
+  — public DTOs, API-key and RBAC scopes, cursor pagination, OpenAPI + coverage
+  wiring, and tests. Use when working under packages/cli/src/public-api/v1/ or
+  when exposing an existing service through /api/v1.
 ---
 
 # Public API v1
 
-Public API lives under `packages/cli/src/public-api/v1/`.
+Public API v1 lives in `packages/cli/src/public-api/v1/`, mounted at `/api/v1`
+with API-key auth and public error formatting via `PublicApiControllerRegistry`
+(`packages/cli/src/public-api/public-api-controller.registry.ts`).
 
-**Preferred for new endpoints (API-37+):** `@PublicApiController` +
-`PublicApiControllerRegistry` — same decorator style as internal
-`@RestController`, mounted at `/api/v1` with API-key auth and public errors.
+Two rule tiers: **invariants** (never break) and **team defaults** (follow unless
+an existing public contract forces otherwise). When this skill and the code
+disagree on a detail, the code wins — so open the files below. That is a reason to
+check the code, not license to drop a team default.
 
-**Legacy (existing endpoints):** `express-openapi-validator` handlers under
-`handlers/`; OpenAPI path specs are YAML under each handler's `spec/` directory.
-Migrate to the controller pattern when touching an endpoint; do not mix data
-access styles within a new feature.
+## Non-negotiable rules
+
+- New endpoints are `@PublicApiController` classes under `v1/controllers/`, one
+  `*.public.controller.ts` per feature. A controller is a class — never
+  `export =` (the legacy tuple style; `require-public-api-controller` flags it).
+- Public API and internal REST are separate HTTP surfaces. A public controller
+  never calls an internal controller/endpoint; both reuse the same service.
+- Controllers and handlers delegate to a service — never import a repository or
+  `Container.get(…Repository)` (`no-repository-in-public-api-handler`).
+- Input/output go through DTOs from `@n8n/api-types`; every JSON route declares
+  `@ApiResponse(Dto)`.
+- Register each controller via a side-effect import in `v1/controllers/index.ts`
+  (`public-api-controllers.test.ts` fails otherwise).
+- Don't add business logic to legacy `express-openapi-validator` (EOV) handlers.
+- Migrating a legacy endpoint must not change its public contract.
+
+These are `n8n-local-rules` ESLint rules (see `packages/cli/eslint.config.mjs`)
+and can't be silenced inline (`no-public-api-guardrail-disable`). The `off`
+allowlist there covers pre-existing legacy files only — it's shrink-only, don't
+add to it.
+
+## Team defaults
+
+- List endpoints: cursor-based pagination (internal API uses both cursor- and
+  page-based — don't copy an internal endpoint's model).
+- Updates: full-object `PUT`, not `PATCH`. A successful `GET` body should be
+  acceptable as a `PUT` body for the same resource (round-trip), aside from
+  server-managed/immutable fields.
+- Strict input DTOs; output DTOs are an allowlist of public fields.
+- Never return real secrets/tokens in responses or error details — mask with the
+  resource's sentinel/placeholder (or omit). Echoing that sentinel on `PUT`
+  means keep; any other value replaces. Detail:
+  [Updates and write-only secrets](reference.md#updates-and-write-only-secrets).
+- "Test connection/config" endpoints validate the request body (test-before-save).
 
 ## Architecture
 
-Convergence is at the **service layer**, not HTTP. Public and internal stay as
-two sibling routes over one shared service — neither calls the other:
+Public and internal are sibling routes over one shared, HTTP-agnostic service;
+neither calls the other.
 
 ```
 GET /rest/tags    → TagsController         ┐  JWT auth, internal shape
@@ -30,87 +64,116 @@ GET /rest/tags    → TagsController         ┐  JWT auth, internal shape
 GET /api/v1/tags  → TagsPublicController   ┘  API-key auth, public DTO
 ```
 
-## Adding an endpoint (controller pattern)
+Reuse the service behavior. Reuse a DTO only when public and internal contracts
+are intentionally identical; otherwise make a public-specific DTO that doesn't
+depend on a UI-oriented internal shape.
 
-Reference: `v1/controllers/tags.public.controller.ts` (`GET /tags`).
+## Before editing
 
-1. **Public DTOs** in `@n8n/api-types` — input query/body + output resource DTO
-   (distinct from internal shapes when they diverge). Use `Z.class` so the
-   registry can validate/parse.
-2. **Controller** — `v1/controllers/<feature>.public.controller.ts`
-   ```ts
-   @PublicApiController('/tags')
-   export class TagsPublicController {
-     constructor(private readonly tagService: TagService) {}
+Open these — they are the source of truth, not this skill:
 
-     @Get('/')
-     @ApiKeyScope('tag:list')
-     @ApiResponse(TagListPublicDto)
-     async getTags(_req, _res, @Query q: ListTagsQueryDto) { /* call service */ }
-   }
-   ```
-   - Reuse `@Get/@Post/@Body/@Query/@Param/@GlobalScope/@ProjectScope` as-is.
-   - `@ApiKeyScope` — string, or `{ anyOf }` / `{ allOf }` (no bare arrays).
-   - `@ApiResponse(Dto)` — registry `.parse()`s the return value (strips
-     undeclared fields). Shape is provisional until API-39 (doc-gen).
-   - Delegate to the same service as the internal REST controller.
-3. **Side-effect import** the controller from `packages/cli/src/public-api/index.ts`
-   so metadata is registered before `PublicApiControllerRegistry.activate`.
-4. **OpenAPI path spec** — still required for docs + `scope-parity.test.ts`
-   (`handlers/<feature>/spec/paths/…`, `$ref` in `openapi.yml`,
-   `x-required-scope` matching `@ApiKeyScope`). Until scope-parity reads
-   decorator metadata, keep a scope-tagged stub in the eov handler (see
-   `getTags` in `tags.handler.ts`).
-5. **Coverage manifest** — add every new OpenAPI endpoint to
-   `packages/nodes-base/nodes/N8n/n8n-api-coverage.json`.
+- `v1/controllers/` — copy structure from `tags.public.controller.ts` (list +
+  cursor) or `workflows.public.controller.ts` (`@Param` + `@ProjectScope`), and
+  `index.ts` for the barrel.
+- Decorators in `packages/@n8n/decorators/src/controller/`:
+  `public-api-controller.ts`, `api-key-scope.ts`, `api-response.ts`,
+  `api-error-response.ts`, `api-summary.ts`, `api-description.ts`, `api-tags.ts`,
+  `route.ts`, `scoped.ts`, `args.ts`, `licensed.ts`.
+- The OpenAPI generator (reads the decorators above, no hand-written YAML
+  needed for a controller route): `v1/openapi-gen/generate.ts`,
+  `v1/openapi-gen/decorator-routes.ts`.
+- Pagination helpers: `v1/shared/services/pagination.service.ts`
+  (`decodeCursor`, `encodeNextCursor`).
+- DTOs: `packages/@n8n/api-types/src/dto/`.
+- Gating tests: `v1/__tests__/public-api-controllers.test.ts`,
+  `v1/__tests__/scope-parity.test.ts`,
+  `v1/openapi-gen/__tests__/generated-spec-drift.test.ts`.
+- The internal controller for this resource and its neighboring functional tests.
 
-## Adding an endpoint (legacy eov handler)
+## Declaring a controller
 
-1. **Handler** — `handlers/<feature>/<feature>.handler.ts`
-   - Export middleware arrays keyed by `x-eov-operation-id`.
-   - For scope-protected endpoints, use `publicApiScope()` or
-     `apiKeyHasScopeWithGlobalScopeFallback()` (they tag the scope-enforcement
-     middleware with `__apiKeyScope`) and add matching `x-required-scope` in the
-     path YAML; use `none` for endpoints without an API-key scope (see
-     `scope-parity.test.ts`).
-   - **Delegate to the same service/controller layer as the internal REST API.**
-     Parse input with `@n8n/api-types` DTOs, call `Container.get(SomeService)` or
-     `Container.get(SomeController)`, map errors — do not reach into repositories
-     or duplicate business logic in the handler. Older handlers like
-     `handlers/credentials/` and `handlers/workflows/` predate this pattern;
-     follow them only for middleware/OpenAPI wiring, not for data access.
-2. **OpenAPI path spec** — `handlers/<feature>/spec/paths/<path>.yml`
-   - Set `tags: [<TagName>]` matching a top-level tag in `openapi.yml`.
-3. **Register path** — add a `$ref` entry under `paths:` in `openapi.yml`.
-4. **Request types** — add a namespace in `packages/cli/src/public-api/types.ts`
-   when the handler needs typed query/body params.
-5. **Coverage manifest** — add every new OpenAPI endpoint to
-   `packages/nodes-base/nodes/N8n/n8n-api-coverage.json`.
+A controller is a class marked `@PublicApiController('/base')` that injects the
+shared service via its constructor and delegates to it. Copy the shape from an
+existing controller in `v1/controllers/` with the same operation type and auth
+model; reuse only what applies. Decorators, all from `@n8n/decorators`:
 
-## `tags` array in `openapi.yml`
+| Decorator | Use |
+|---|---|
+| `@PublicApiController('/base')` | Class marker; mounts routes at `/api/v1/base`. |
+| `@Get/@Post/@Put/@Patch/@Delete('/path')` | Route method. |
+| `@ApiKeyScope('res:action')` | API-key grant check. |
+| `@ProjectScope/@GlobalScope('res:action')` | User RBAC check. |
+| `@ApiResponse(status)` / `@ApiResponse(status, Dto)` | Success status + (optional) output DTO; registry `.parse()`s + strips the return value. Exactly one per route — a second `@ApiResponse` throws. `204` can't carry a DTO — throws. |
+| `@ApiErrorResponse(status)` | Declares an additional documented non-2xx status (e.g. `404`, `409`). Stack multiple for more than one. `400`/`401`/`403` are added automatically (body/query present, always, and `@ApiKeyScope` present, respectively) — don't declare those yourself. |
+| `@ApiSummary(text)` / `@ApiDescription(text)` / `@ApiTags([...])` | OpenAPI summary/description/tags. `@ApiTags` sorts alphabetically regardless of the order you pass. All optional but expected on every real route. |
+| `@Query` / `@Body` / `@Param('name')` | Bind + validate via a `Z.class` DTO / path param. |
+| `@Licensed('feat')` | Gates the route on a single `BooleanLicenseFeature`; `PublicApiControllerRegistry` runs its own license middleware (after auth/`@ApiKeyScope`/`@ProjectScope`|`@GlobalScope`, before the handler) and 403s unlicensed requests. Only takes one feature — if the gate is an any-of/all-of combination (e.g. `LicenseState.isProvisioningLicensed()`, which is `feat:saml` OR `feat:oidc`), `@Licensed` can't express that; check manually in the handler instead, same as the internal `provisioning.controller.ee.ts`/`role-mapping-rule.controller.ee.ts` do today (throwing `ForbiddenError` on failure). |
 
-When adding or editing the top-level `tags:` array in
-`packages/cli/src/public-api/v1/openapi.yml`, **keep entries sorted
-alphabetically by `name`**. Insert the new tag in order; do not append to the end.
+## Authorization (easy to get wrong)
 
-```yaml
-tags:
-  - name: Audit
-    description: Operations about security audit
-  - name: CommunityPackage
-    description: Operations about community packages
-  # … remaining tags in A→Z order by name
-```
+- `@ApiKeyScope` (what the API key is granted) and `@ProjectScope`/`@GlobalScope`
+  (what the user may do) are independent. Use both when the model needs both.
+- `@ProjectScope` reads `req.params` as-is and does not remap `id` — name the path
+  param what the resolver expects (`workflowId`, `credentialId`, `projectId`,
+  `dataTableId`, …). A generic `id` often fails.
+- `@ApiKeyScope` takes a string, `{ anyOf: [...] }`, or `{ allOf: [...] }` — never
+  a bare array. The scope must exist in the permissions registry
+  (`API_KEY_RESOURCES` in `@n8n/permissions`); `scope-parity.test.ts` fails on an
+  orphan scope.
 
-`scope-parity.test.ts` asserts this ordering — CI fails if tags drift out of
-sort order.
+## DTOs
 
-## Reference
+- Build the public response shape explicitly; don't return an ORM entity and lean
+  on `@ApiResponse` stripping to hide fields.
+- Treat the output DTO as an allowlist. Re-check nested relations, ownership
+  fields, tokens, and encrypted values.
+- Make input DTOs strict so unknown/partial fields aren't silently accepted.
+- Secrets: never return a real secret; use the resource's sentinel/placeholder
+  (or omit). See [Updates and write-only secrets](reference.md#updates-and-write-only-secrets).
 
-- **Controller pattern:** `v1/controllers/tags.public.controller.ts`
-- **Registry:** `packages/cli/src/public-api/public-api-controller.registry.ts`
-- Simple GET via eov + service: `handlers/insights/`
-- CRUD via eov + service/controller: `handlers/variables/`, `handlers/folders/`,
-  `handlers/projects/`, `handlers/data-tables/`
-- Multipart: `handlers/n8n-packages/` (see also
-  `packages/cli/src/modules/n8n-packages/CLAUDE.md`)
+## List endpoints (cursor pagination)
+
+Copy the cursor flow from `tags.public.controller.ts`. Use `publicApiPaginationSchema`
+plus `decodeCursor` / `encodeNextCursor` from the shared pagination service; the
+cursor is opaque; return `{ data, nextCursor }` (never a bare array) with
+`nextCursor: null` on the last page; an invalid cursor is a `400`. Preserve an
+existing endpoint's pagination as-is. Detail:
+[List endpoints and cursor pagination](reference.md#list-endpoints-and-cursor-pagination).
+
+## Wiring checklist
+
+1. `v1/controllers/<feature>.public.controller.ts` + side-effect import in
+   `v1/controllers/index.ts`.
+2. Public DTO in `@n8n/api-types` + export from the barrel (`src/dto/`).
+3. `@ApiKeyScope` value exists in the permissions registry.
+4. Don't hand-write the OpenAPI path or `x-required-scope` for a controller
+   route — the generator (`v1/openapi-gen/generate.ts`) builds it from your
+   decorators (`@ApiSummary`/`@ApiDescription`/`@ApiTags`/`@ApiKeyScope`/
+   `@ApiResponse`/`@ApiErrorResponse`). Run the full `pnpm build` and commit
+   the regenerated `handlers/<feature>/spec/paths/*.generated.yml` fragment(s)
+   and `openapi.decorator-routes.generated.yml` —
+   `generated-spec-drift.test.ts` fails CI if they're stale. `pnpm run
+   build:data` alone is **not** enough after touching a controller: it runs
+   the generator against the already-compiled `dist/`, so a new/changed
+   controller silently doesn't show up unless `tsc` ran first.
+5. Add the route to `packages/nodes-base/nodes/N8n/n8n-api-coverage.json`.
+6. Tests.
+
+## Testing
+
+Always cover: happy path, input-validation failure, missing API-key scope, RBAC
+denial. Prefer covering the business path in
+`packages/cli/test/integration/public-api/` (real HTTP + DB); mocked-service unit
+tests don't replace that. Add the cases that apply (cursor pages,
+not-found/conflict, no sensitive fields, credential keep/replace, migration
+contract) — see [Testing matrix](reference.md#testing-matrix). Match the nearest
+existing tests.
+
+## More detail (reference.md)
+
+- [List endpoints and cursor pagination](reference.md#list-endpoints-and-cursor-pagination)
+- [Updates and write-only secrets](reference.md#updates-and-write-only-secrets)
+- [Test-before-save endpoints](reference.md#test-before-save-endpoints)
+- [Errors](reference.md#errors)
+- [Testing matrix](reference.md#testing-matrix)
+- [Migrating legacy EOV endpoints](reference.md#migrating-legacy-eov-endpoints)

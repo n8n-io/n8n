@@ -127,6 +127,28 @@ describe('ChatInput', () => {
 		expect(global.WebSocket).toHaveBeenCalledWith(expect.stringContaining('executionId=exec-123'));
 	});
 
+	it('keeps waitingForResponse true after setting up the WebSocket connection', () => {
+		// The initial sendMessage clears waitingForResponse on `executionStarted`;
+		// the connection setup must re-enable it so the typing indicator stays up
+		// until the first bot frame arrives over the socket.
+		// The shared vi.fn mock doesn't return its object from `new`, so use a
+		// class that returns a captured instance (same pattern as the frame tests).
+		const ws = { send: vi.fn(), onmessage: null, onclose: null };
+		class FakeWebSocket {
+			constructor() {
+				return ws;
+			}
+		}
+		// @ts-expect-error - mock WebSocket
+		global.WebSocket = FakeWebSocket;
+		wrapper = mount(Input);
+		wrapper.vm.chatStore.waitingForResponse.value = false;
+
+		wrapper.vm.setupWebsocketConnection('exec-123');
+
+		expect(wrapper.vm.chatStore.waitingForResponse.value).toBe(true);
+	});
+
 	it('handles WebSocket messages correctly', async () => {
 		const mockWs = {
 			send: vi.fn(),

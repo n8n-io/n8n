@@ -4,8 +4,8 @@ import { IMPORT_CURL_MODAL_KEY } from '@/app/constants';
 import { onMounted, ref } from 'vue';
 import { useUIStore } from '@/app/stores/ui.store';
 import { createEventBus } from '@n8n/utils/event-bus';
-import { useTelemetry } from '@/app/composables/useTelemetry';
-import { useToast } from '@/app/composables/useToast';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 
@@ -23,7 +23,7 @@ const modalBus = createEventBus();
 const inputRef = ref<{ focus: () => void; blur: () => void; select: () => void } | null>(null);
 
 onMounted(() => {
-	const curlCommands = uiStore.modalsById[IMPORT_CURL_MODAL_KEY].data?.curlCommands as Record<
+	const curlCommands = uiStore.modalStateById[IMPORT_CURL_MODAL_KEY].data?.curlCommands as Record<
 		string,
 		string
 	>;
@@ -59,7 +59,8 @@ function onImportFailure(data: { invalidProtocol: boolean; protocol?: string }) 
 function onAfterImport() {
 	const nodeId = ndvStore.value.activeNode?.id as string;
 	const curlCommands =
-		(uiStore.modalsById[IMPORT_CURL_MODAL_KEY].data?.curlCommands as Record<string, string>) ?? {};
+		(uiStore.modalStateById[IMPORT_CURL_MODAL_KEY].data?.curlCommands as Record<string, string>) ??
+		{};
 	curlCommands[nodeId] = curlCommand.value;
 	uiStore.setModalData({
 		name: IMPORT_CURL_MODAL_KEY,

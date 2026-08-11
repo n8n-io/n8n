@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/unbound-method */
+import { ScheduledJobMisfirePolicy } from '@n8n/constants';
 import type { Logger } from '@n8n/backend-common';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig, WorkflowsConfig } from '@n8n/config';
@@ -37,11 +38,15 @@ const everyThreeWeeksMonday: Cron = {
 describe('ScheduleTriggerJobRegistrar', () => {
 	const jobProvisioner = mock<DurableJobProvisioner>();
 
-	const makeRegistrar = ({ schedulerEnabled = true, publicationEnabled = true } = {}) =>
+	const makeRegistrar = ({
+		schedulerEnabled = true,
+		publicationEnabled = true,
+		allowSkipDurableScheduler = false,
+	} = {}) =>
 		new ScheduleTriggerJobRegistrar(
 			mockLogger(),
 			mock<GlobalConfig>({
-				scheduler: { enabled: schedulerEnabled },
+				scheduler: { enabled: schedulerEnabled, allowSkipDurableScheduler },
 				generic: { timezone: 'UTC' },
 			}),
 			mock<WorkflowsConfig>({ useWorkflowPublicationService: publicationEnabled }),
@@ -81,6 +86,39 @@ describe('ScheduleTriggerJobRegistrar', () => {
 			const other = mock<INode>({ id: NODE_ID, type: 'n8n-nodes-base.gmailTrigger' });
 			expect(makeRegistrar().interceptsNode(other)).toBe(false);
 		});
+
+		it('does not intercept a node opted out via skip when the escape hatch is enabled', () => {
+			const skippingNode = mock<INode>({
+				id: NODE_ID,
+				type: SCHEDULE_TRIGGER_NODE_TYPE,
+				parameters: { skipDurableScheduler: true },
+			});
+			expect(makeRegistrar({ allowSkipDurableScheduler: true }).interceptsNode(skippingNode)).toBe(
+				false,
+			);
+		});
+
+		it('still intercepts a skipping node when the escape hatch is disabled', () => {
+			const skippingNode = mock<INode>({
+				id: NODE_ID,
+				type: SCHEDULE_TRIGGER_NODE_TYPE,
+				parameters: { skipDurableScheduler: true },
+			});
+			expect(makeRegistrar({ allowSkipDurableScheduler: false }).interceptsNode(skippingNode)).toBe(
+				true,
+			);
+		});
+
+		it('intercepts a node that has not opted out even when the escape hatch is enabled', () => {
+			const keepingNode = mock<INode>({
+				id: NODE_ID,
+				type: SCHEDULE_TRIGGER_NODE_TYPE,
+				parameters: { skipDurableScheduler: false },
+			});
+			expect(makeRegistrar({ allowSkipDurableScheduler: true }).interceptsNode(keepingNode)).toBe(
+				true,
+			);
+		});
 	});
 
 	describe('collect and commit', () => {
@@ -116,7 +154,29 @@ describe('ScheduleTriggerJobRegistrar', () => {
 						firstRunAt: NEXT_NINE,
 					},
 				],
+				ScheduledJobMisfirePolicy.Coalesce,
 			);
+		});
+
+		it('provisions a 5-field custom cron (no seconds) and plans its first fire', async () => {
+			const session = makeRegistrar().createSession();
+			const collector = session.createCollector(workflow, scheduleNode);
+			collector.registerCron(
+				{ expression: '0 9 * * 1-5' as CronExpression, recurrence: { activated: false } },
+				vi.fn(),
+			);
+
+			await session.commit(WORKFLOW_ID, NODE_ID);
+
+			const desired = jobProvisioner.provision.mock.calls.at(-1)![4];
+			expect(desired).toHaveLength(1);
+			expect(desired[0].schedule).toEqual({
+				kind: 'cron',
+				cronExpression: '0 9 * * 1-5',
+				timezone: null,
+			});
+			// NOW is Monday 00:00 UTC; a weekday 09:00 cron fires the same day.
+			expect(desired[0].firstRunAt).toEqual(NEXT_NINE);
 		});
 
 		it('a rule keeps its name when rules are inserted before it or reordered', async () => {
@@ -295,6 +355,7 @@ describe('ScheduleTriggerJobRegistrar', () => {
 				SCHEDULE_TRIGGER_TASK_TYPE,
 				{ workflowId: WORKFLOW_ID, nodeId: NODE_ID },
 				[],
+				ScheduledJobMisfirePolicy.Coalesce,
 			);
 		});
 

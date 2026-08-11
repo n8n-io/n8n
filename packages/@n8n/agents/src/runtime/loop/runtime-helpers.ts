@@ -3,7 +3,7 @@
  * These are extracted here to keep agent-runtime.ts focused on orchestration logic.
  */
 import type { ModelTurnError } from './run-output-sink';
-import type { StreamChunk, TokenUsage } from '../../types';
+import type { StreamChunk, TokenUsage, McpConnectionFailedEvent } from '../../types';
 import type { AgentMessage, ContentToolCall } from '../../types/sdk/message';
 import type { RawProviderError } from '../model/raw-error';
 
@@ -21,6 +21,25 @@ export function normalizeInput(input: AgentMessage[] | string): AgentMessage[] {
 /** Stringify an error value for use in a rejected tool-call block. */
 export function stringifyError(error: unknown): string {
 	return error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+}
+
+/**
+ * Render per-server MCP connection failures into a short, model-facing note
+ * the agent can use to tell the user a server was unavailable. Returns
+ * `undefined` when there are no failures so the volatile system message is
+ * omitted entirely. The note is system-message only — never persisted to
+ * thread memory or shown in the UI.
+ */
+export function formatMcpConnectionNote(
+	failures: readonly McpConnectionFailedEvent[],
+): string | undefined {
+	if (failures.length === 0) return undefined;
+	const lines = failures.map((f) => `- ${f.server}: ${f.error}`).join('\n');
+	return `<mcp-connection-status>
+The following MCP server(s) could not be reached, so their tools are unavailable for this run:
+${lines}
+If this affects the user's request, briefly let them know which server is unavailable.
+</mcp-connection-status>`;
 }
 
 /**
@@ -59,6 +78,34 @@ export function classifyModelTurnError(turn: {
 		type: 'no_output',
 		message: `The model returned no output (finish reason: ${turn.aiFinishReason}). The provider may have blocked or filtered the request. ${guidance}`,
 	};
+}
+
+/**
+ * True when a turn finished with `stop` but produced no usable output — no
+ * non-whitespace text, no tool call, no file. Some providers (observed with
+ * Kimi via Together) occasionally emit such a turn mid-task, which would
+ * silently end the run with work half-done; callers retry a bounded number
+ * of times before accepting it. Reasoning-only turns count as empty: they
+ * carry no user-visible output and no action.
+ */
+export function isEmptyModelTurn(turn: {
+	aiFinishReason: string;
+	newMessages: AgentMessage[];
+	structuredOutput?: unknown;
+}): boolean {
+	if (turn.aiFinishReason !== 'stop') return false;
+	if (turn.structuredOutput !== undefined) return false;
+	return !turn.newMessages.some(
+		(m) =>
+			'content' in m &&
+			Array.isArray(m.content) &&
+			m.content.some(
+				(c) =>
+					(c.type === 'text' && c.text.trim().length > 0) ||
+					c.type === 'tool-call' ||
+					c.type === 'file',
+			),
+	);
 }
 
 /** Extract all settled (resolved or rejected) tool-call blocks from a flat list of agent messages. */

@@ -12,6 +12,8 @@ import { metricScalesFromConfig, normalizeMetricScore } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { EvaluationConfig, TestRun, User } from '@n8n/db';
 import {
+	DbLock,
+	DbLockService,
 	EvaluationCollectionRepository,
 	EvaluationConfigRepository,
 	TestRunRepository,
@@ -20,7 +22,7 @@ import {
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { In } from '@n8n/typeorm';
-import type { IDataObject } from 'n8n-workflow';
+import { OperationalError, type IDataObject } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -28,6 +30,22 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { TestRunnerService } from '@/evaluation.ee/test-runner/test-runner.service.ee';
 import { Telemetry } from '@/telemetry';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
+
+import { resolveConfigMetricScales, runMetricScales } from './metric-scales';
+
+/**
+ * Maps a collection id to the int32 `subKey` that scopes its re-run advisory
+ * lock (Postgres two-int lock form / SQLite mutex key), so different collections
+ * don't serialize against each other. A hash collision only over-serializes two
+ * collections — harmless — so a 32-bit key is sufficient.
+ */
+function advisoryLockSubKey(collectionId: string): number {
+	let hash = 0;
+	for (let i = 0; i < collectionId.length; i++) {
+		hash = (Math.imul(31, hash) + collectionId.charCodeAt(i)) | 0;
+	}
+	return hash;
+}
 
 /**
  * Structural (not the full entity class) so callers can pass plain-object
@@ -61,6 +79,7 @@ export class EvaluationCollectionService {
 		private readonly testRunnerService: TestRunnerService,
 		private readonly telemetry: Telemetry,
 		private readonly logger: Logger,
+		private readonly dbLockService: DbLockService,
 	) {}
 
 	async createCollection(
@@ -199,104 +218,150 @@ export class EvaluationCollectionService {
 		workflowId: string,
 		collectionId: string,
 	): Promise<{ record: EvaluationCollectionRecord; runsStartedIds: string[] }> {
-		const detail = await this.collectionRepo.getDetailByIdAndWorkflowId(collectionId, workflowId);
-		if (!detail) throw new NotFoundError('Collection not found');
-		const { collection, runs } = detail;
+		// Serialize concurrent re-runs of the same collection so two tabs can't each
+		// launch a wave: a second caller waits on the re-run lock, then sees the
+		// first's fresh runs below and bails.
+		return await this.withRerunLock(collectionId, async () => {
+			const detail = await this.collectionRepo.getDetailByIdAndWorkflowId(collectionId, workflowId);
+			if (!detail) throw new NotFoundError('Collection not found');
+			const { collection, runs } = detail;
 
-		// Reject while anything is still in flight — a second wave would double
-		// the runs and leave the compare view ambiguous about the current attempt.
-		if (runs.some((r) => r.status === 'new' || r.status === 'running')) {
-			throw new BadRequestError('Collection run already in progress');
-		}
-
-		// Derive versions from the current runs (distinct pinned ids in run order)
-		// BEFORE any unlink, so we capture the on-screen membership.
-		const versionIds: string[] = [];
-		const seenVersions = new Set<string>();
-		for (const run of runs) {
-			if (run.workflowVersionId && !seenVersions.has(run.workflowVersionId)) {
-				seenVersions.add(run.workflowVersionId);
-				versionIds.push(run.workflowVersionId);
+			// Re-checked while holding the re-run lock: a concurrent re-run that already
+			// started has committed its fresh (new/running) runs by now, so this sees
+			// them and a second wave never launches.
+			if (runs.some((r) => r.status === 'new' || r.status === 'running')) {
+				throw new BadRequestError('Collection run already in progress');
 			}
-		}
-		if (versionIds.length === 0) {
-			throw new BadRequestError('Collection has no pinned versions to re-run');
-		}
 
-		// Re-freeze the current eval config (see the doc comment for why).
-		const config = await this.evalConfigRepo.findByIdAndWorkflowId(
-			collection.evaluationConfigId,
-			workflowId,
-		);
-		if (!config) {
-			throw new BadRequestError(
-				'Evaluation config for this collection no longer exists; cannot re-run',
+			// Derive versions from the current runs (distinct pinned ids in run order)
+			// BEFORE any unlink, so we capture the on-screen membership.
+			const versionIds: string[] = [];
+			const seenVersions = new Set<string>();
+			for (const run of runs) {
+				if (run.workflowVersionId && !seenVersions.has(run.workflowVersionId)) {
+					seenVersions.add(run.workflowVersionId);
+					versionIds.push(run.workflowVersionId);
+				}
+			}
+			if (versionIds.length === 0) {
+				throw new BadRequestError('Collection has no pinned versions to re-run');
+			}
+
+			// Re-freeze the current eval config (see the doc comment for why).
+			const config = await this.evalConfigRepo.findByIdAndWorkflowId(
+				collection.evaluationConfigId,
+				workflowId,
 			);
-		}
-		const configSnapshot = this.freezeConfigSnapshot(config);
-
-		// Kick off one fresh run per version. If any fails to start, roll back the
-		// fresh runs from this call and leave the old runs untouched, so the
-		// collection stays in its pre-rerun state rather than a partial mix.
-		const runsStartedIds: string[] = [];
-		try {
-			for (const versionId of versionIds) {
-				runsStartedIds.push(
-					await this.startCollectionRun(user, workflowId, {
-						collectionId: collection.id,
-						workflowVersionId: versionId,
-						evaluationConfigId: collection.evaluationConfigId,
-						configSnapshot,
-						concurrency: 1,
-					}),
+			if (!config) {
+				throw new BadRequestError(
+					'Evaluation config for this collection no longer exists; cannot re-run',
 				);
 			}
+			const configSnapshot = this.freezeConfigSnapshot(config);
 
-			// Replace the old runs with the fresh attempt in one atomic unlink. Kept
-			// inside the try so a failure here rolls the whole attempt back too; the
-			// unlink is all-or-nothing, so a failure leaves the old runs untouched.
-			await this.collectionRepo.removeRunsFromCollection(
-				collection.id,
-				runs.map((run) => run.id),
+			// Kick off one fresh run per version. If any fails to start, roll back the
+			// fresh runs from this call and leave the old runs untouched, so the
+			// collection stays in its pre-rerun state rather than a partial mix.
+			const runsStartedIds: string[] = [];
+			try {
+				for (const versionId of versionIds) {
+					runsStartedIds.push(
+						await this.startCollectionRun(user, workflowId, {
+							collectionId: collection.id,
+							workflowVersionId: versionId,
+							evaluationConfigId: collection.evaluationConfigId,
+							configSnapshot,
+							// The original collection's concurrency isn't persisted, so a
+							// re-run always runs sequentially. Acceptable for a re-run.
+							concurrency: 1,
+						}),
+					);
+				}
+
+				// Replace the old runs with the fresh attempt in one atomic unlink. Kept
+				// inside the try so a failure here rolls the whole attempt back too; the
+				// unlink is all-or-nothing, so a failure leaves the old runs untouched.
+				await this.collectionRepo.removeRunsFromCollection(
+					collection.id,
+					runs.map((run) => run.id),
+				);
+			} catch (error) {
+				// Restore the pre-rerun state (only the old runs linked): cancel the fresh
+				// runs so they stop consuming compute and can't bust the insights cache
+				// (the runner reads the collectionId captured at start), then unlink them.
+				// The old runs are still linked — their unlink is atomic, so a failure
+				// left them untouched.
+				for (const runId of runsStartedIds) {
+					await this.testRunnerService.cancelTestRun(runId).catch(() => {});
+				}
+				try {
+					await this.collectionRepo.removeRunsFromCollection(collection.id, runsStartedIds);
+				} catch (cleanupError) {
+					// The rollback unlink itself failed — the collection may now hold both
+					// the old and fresh runs. Surface it so the inconsistency isn't silent;
+					// still throw the original error, which is the actionable cause.
+					this.logger.error(
+						'Failed to roll back eval collection re-run; collection may contain a mixed run set',
+						{ collectionId: collection.id, error: cleanupError },
+					);
+				}
+				throw error;
+			}
+
+			// Membership changed — the cached insights envelope is now stale.
+			await this.collectionRepo.updateInsightsCache(collection.id, null);
+
+			this.telemetry.track('Eval collection rerun', {
+				user_id: user.id,
+				workflow_id: workflowId,
+				collection_id: collection.id,
+				evaluation_config_id: collection.evaluationConfigId,
+				version_count: versionIds.length,
+				new_run_count: runsStartedIds.length,
+				dataset_id: this.extractDatasetId(config),
+			});
+
+			const record = this.toRecord(collection, runsStartedIds.length);
+			return { record, runsStartedIds };
+		});
+	}
+
+	/**
+	 * Runs `fn` under a per-collection re-run lock so two concurrent re-runs can't
+	 * each launch a wave. Delegates to the shared `DbLockService`, scoped to the
+	 * collection via `subKey` — a transaction-scoped advisory lock on Postgres, an
+	 * in-process mutex on SQLite. The whole in-flight re-check + kickoff runs inside
+	 * the lock on purpose: shrinking the critical section would reopen the
+	 * read-then-act race.
+	 *
+	 * Fail-fast (`tryWithLock`, not a blocking wait): a concurrent re-run of the
+	 * same collection returns immediately as "already in progress" rather than
+	 * camping on a pinned pool connection while this call still needs one to do its
+	 * work — which, on the default 2-connection pool, would deadlock the exact
+	 * two-tab case the lock guards. A deliberate advisory lock, not a row lock — a
+	 * `FOR UPDATE` on the collection row would deadlock against the FK KEY-SHARE
+	 * lock the child `test_run` inserts take on that row.
+	 */
+	private async withRerunLock<T>(collectionId: string, fn: () => Promise<T>): Promise<T> {
+		// `entered` distinguishes a failed lock acquisition (fn never ran → a
+		// concurrent re-run holds it) from an OperationalError thrown by `fn` itself
+		// (e.g. a transient DB error during kickoff), so we only translate the former.
+		let entered = false;
+		try {
+			return await this.dbLockService.tryWithLock(
+				DbLock.EVAL_COLLECTION_RERUN,
+				async () => {
+					entered = true;
+					return await fn();
+				},
+				{ subKey: advisoryLockSubKey(collectionId) },
 			);
 		} catch (error) {
-			// Restore the pre-rerun state (only the old runs linked): cancel the fresh
-			// runs so they stop consuming compute and can't bust the insights cache
-			// (the runner reads the collectionId captured at start), then unlink them.
-			// The old runs are still linked — their unlink is atomic, so a failure
-			// left them untouched.
-			for (const runId of runsStartedIds) {
-				await this.testRunnerService.cancelTestRun(runId).catch(() => {});
-			}
-			try {
-				await this.collectionRepo.removeRunsFromCollection(collection.id, runsStartedIds);
-			} catch (cleanupError) {
-				// The rollback unlink itself failed — the collection may now hold both
-				// the old and fresh runs. Surface it so the inconsistency isn't silent;
-				// still throw the original error, which is the actionable cause.
-				this.logger.error(
-					'Failed to roll back eval collection re-run; collection may contain a mixed run set',
-					{ collectionId: collection.id, error: cleanupError },
-				);
+			if (!entered && error instanceof OperationalError) {
+				throw new BadRequestError('Collection run already in progress');
 			}
 			throw error;
 		}
-
-		// Membership changed — the cached insights envelope is now stale.
-		await this.collectionRepo.updateInsightsCache(collection.id, null);
-
-		this.telemetry.track('Eval collection rerun', {
-			user_id: user.id,
-			workflow_id: workflowId,
-			collection_id: collection.id,
-			evaluation_config_id: collection.evaluationConfigId,
-			version_count: versionIds.length,
-			new_run_count: runsStartedIds.length,
-			dataset_id: this.extractDatasetId(config),
-		});
-
-		const record = this.toRecord(collection, runsStartedIds.length);
-		return { record, runsStartedIds };
 	}
 
 	async listCollections(workflowId: string): Promise<EvaluationCollectionRecord[]> {
@@ -311,14 +376,16 @@ export class EvaluationCollectionService {
 		const detail = await this.collectionRepo.getDetailByIdAndWorkflowId(collectionId, workflowId);
 		if (!detail) throw new NotFoundError('Collection not found');
 
-		// Resolve each metric's scale from the eval config so scores normalize by
-		// scale, not metric name. Passed to the FE via `metricScales`.
-		const scaleByMetric = await this.buildScaleByMetric(
+		// Collection-wide scales from the current config: the default for runs with
+		// no snapshot, and the FE's fallback map. Each run further resolves its own
+		// scales from its frozen snapshot in `toRunSummary`.
+		const defaultScales = await resolveConfigMetricScales(
+			this.evalConfigRepo,
 			detail.collection.evaluationConfigId,
 			workflowId,
 		);
-		const runs = detail.runs.map((r) => this.toRunSummary(r, scaleByMetric));
-		return { ...this.toRecord(detail.collection, runs.length), runs, metricScales: scaleByMetric };
+		const runs = detail.runs.map((r) => this.toRunSummary(r, defaultScales));
+		return { ...this.toRecord(detail.collection, runs.length), runs, metricScales: defaultScales };
 	}
 
 	async updateCollectionMeta(
@@ -592,8 +659,12 @@ export class EvaluationCollectionService {
 
 	private toRunSummary(
 		run: TestRun,
-		scaleByMetric: Record<string, MetricScale>,
+		defaultScales: Record<string, MetricScale>,
 	): EvaluationCollectionRunSummary {
+		// Resolve scales from the run's own frozen snapshot so its values normalize
+		// on the scales they were produced with, not the collection's current config
+		// (which may have changed since the run completed).
+		const scaleByMetric = runMetricScales(run, defaultScales);
 		return {
 			testRunId: run.id,
 			workflowVersionId: run.workflowVersionId,
@@ -602,6 +673,7 @@ export class EvaluationCollectionService {
 			completedAt: run.completedAt ? run.completedAt.toISOString() : null,
 			avgScore: this.computeAvgScore(run, scaleByMetric),
 			metrics: this.coerceMetrics(run.metrics),
+			metricScales: scaleByMetric,
 		};
 	}
 
@@ -616,18 +688,6 @@ export class EvaluationCollectionService {
 			.filter((value): value is number => value !== null);
 		if (scores.length === 0) return null;
 		return scores.reduce((acc, value) => acc + value, 0) / scores.length;
-	}
-
-	/**
-	 * Maps each metric name to its scale. Returns an empty map (name-based
-	 * fallback in `normalizeMetricScore`) when the config can't be found.
-	 */
-	private async buildScaleByMetric(
-		evaluationConfigId: string,
-		workflowId: string,
-	): Promise<Record<string, MetricScale>> {
-		const config = await this.evalConfigRepo.findByIdAndWorkflowId(evaluationConfigId, workflowId);
-		return config ? metricScalesFromConfig(config.metrics) : {};
 	}
 
 	private coerceMetrics(

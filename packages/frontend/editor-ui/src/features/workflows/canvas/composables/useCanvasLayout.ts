@@ -15,6 +15,7 @@ import {
 	AGENT_NODE_SIZE,
 	DEFAULT_NODE_SIZE,
 	GRID_SIZE,
+	NODE_X_SPACING,
 	snapPositionToGridByCenter,
 } from '@/app/utils/nodeViewUtils';
 import {
@@ -55,7 +56,6 @@ export type CanvasLayoutEvent = {
 
 export type CanvasNodeDictionary = Record<string, GraphNode<CanvasNodeData>>;
 
-const NODE_X_SPACING = GRID_SIZE * 8;
 const NODE_Y_SPACING = GRID_SIZE * 6;
 const SUBGRAPH_SPACING = GRID_SIZE * 8;
 const AI_X_SPACING = GRID_SIZE * 3;

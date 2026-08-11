@@ -2,7 +2,7 @@ import { useI18n } from '@n8n/i18n';
 import { getParentNodes, mapConnectionsByDestination } from 'n8n-workflow';
 import type { EvaluationConfigDto, UpsertEvaluationConfigDto } from '@n8n/api-types';
 
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -313,7 +313,7 @@ export function useEvaluationPersistenceHelpers() {
 	}
 
 	function showPersistError(error: unknown) {
-		toast.showError(error, locale.baseText('evaluations.wizardSidepanel.step2.persistError'));
+		toast.showError(error, locale.baseText('evaluations.tests.persistError'));
 	}
 
 	return { ensureConfig, ensureDataTable, rollback, resolveSlice, showPersistError };

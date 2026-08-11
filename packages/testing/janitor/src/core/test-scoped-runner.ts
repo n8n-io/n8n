@@ -9,6 +9,8 @@ export interface TestScopedOptions {
 	packageDir: string;
 	rootDir: string;
 	changedFiles: string[] | null;
+	packageName?: string;
+	affectedPackages?: string[] | null;
 	passthroughArgs: string[];
 }
 
@@ -37,6 +39,8 @@ export function runTestScoped(options: TestScopedOptions): number {
 		packageDir: options.packageDir,
 		rootDir: options.rootDir,
 		changedFiles: options.changedFiles,
+		packageName: options.packageName,
+		affectedPackages: options.affectedPackages,
 	});
 
 	if (scope.kind === 'skip') {

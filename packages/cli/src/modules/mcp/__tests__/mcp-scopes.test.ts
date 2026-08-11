@@ -1,4 +1,4 @@
-import { LicenseState } from '@n8n/backend-common';
+import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import {
@@ -10,20 +10,10 @@ import {
 } from '@n8n/db';
 import { InstanceSettings } from 'n8n-core';
 
-vi.mock('@n8n/mcp-apps/server', () => ({
-	WORKFLOW_PREVIEW_APP_URI: 'ui://workflow-preview/workflow-preview.html',
-	registerWorkflowPreviewApp: vi.fn(),
-	registerMcpAppTool: vi.fn(
-		(server: { registerTool: (...args: unknown[]) => unknown }, name, config, handler) =>
-			server.registerTool(name, config, handler),
-	),
-}));
-
-import { registerMcpAppTool, registerWorkflowPreviewApp } from '@n8n/mcp-apps/server';
-
 import { ActiveExecutions } from '@/active-executions';
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsService } from '@/credentials/credentials.service';
+import { EventService } from '@/events/event.service';
 import { ExecutionService } from '@/executions/execution.service';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
@@ -44,10 +34,23 @@ import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-hi
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
-import { BUILDER_TOOLS, getAllowedToolNames, TOOLS_BY_SCOPE } from '../mcp-scopes';
-import { McpService } from '../mcp.service';
+import { registerWorkflowPreviewApp } from '@n8n/mcp-apps/server';
+
+import { AGENT_TOOLS, BUILDER_TOOLS, getAllowedToolNames, TOOLS_BY_SCOPE } from '../mcp-scopes';
+import { McpService, type McpFeatureFlags } from '../mcp.service';
+
+vi.mock('@n8n/mcp-apps/server', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/mcp-apps/server')>()),
+	registerWorkflowPreviewApp: vi.fn(),
+}));
 
 const ALL_MAPPED_TOOLS = new Set(Object.values(TOOLS_BY_SCOPE).flat());
+
+const mcpFeatureFlags = (overrides: Partial<McpFeatureFlags> = {}): McpFeatureFlags => ({
+	mcpApps: { enabled: false, variant: 'unassigned' },
+	canvasGroupsEnabled: false,
+	...overrides,
+});
 
 const getRegisteredToolNames = (server: unknown): Set<string> =>
 	new Set(Object.keys((server as { _registeredTools: Record<string, unknown> })._registeredTools));
@@ -63,11 +66,25 @@ describe('getAllowedToolNames', () => {
 
 	it('unions the tools of all granted scopes', () => {
 		const allowed = getAllowedToolNames(['execution:read', 'tag:read']);
-		expect(allowed).toEqual(new Set(['get_execution', 'search_executions', 'list_tags']));
+		expect(allowed).toEqual(
+			new Set(['get_workflow_execution', 'search_workflow_executions', 'list_workflow_tags']),
+		);
 	});
 
 	it('ignores unknown scopes', () => {
 		expect(getAllowedToolNames(['tool:listWorkflows', 'openid'])).toEqual(new Set());
+	});
+
+	it('allows integration updates and publishing with agent:write', () => {
+		const allowed = getAllowedToolNames(['agent:write']);
+
+		expect(allowed).toContain('update_agent_integration');
+		expect(allowed).toContain('publish_agent');
+		expect(allowed).toContain('unpublish_agent');
+	});
+
+	it('grants only call_agent with agent:execute', () => {
+		expect(getAllowedToolNames(['agent:execute'])).toEqual(new Set(['call_agent']));
 	});
 });
 
@@ -119,15 +136,16 @@ describe('McpService scope enforcement', () => {
 			mockInstance(AiGatewayService, {
 				isAvailable: vi.fn().mockResolvedValue({ available: false }),
 			}),
+			mockInstance(ModuleRegistry),
+			mockInstance(EventService),
 		);
 
 	beforeEach(() => {
-		(registerWorkflowPreviewApp as ReturnType<typeof vi.fn>).mockClear();
-		(registerMcpAppTool as ReturnType<typeof vi.fn>).mockClear();
+		vi.clearAllMocks();
 	});
 
 	it('every tool registered by getServer is covered by the scope map (drift guard)', async () => {
-		const server = await buildService().getServer(user, false);
+		const server = await buildService().getServer(user, mcpFeatureFlags());
 		const registered = getRegisteredToolNames(server);
 
 		const unmapped = [...registered].filter((name) => !ALL_MAPPED_TOOLS.has(name));
@@ -135,17 +153,23 @@ describe('McpService scope enforcement', () => {
 	});
 
 	it('every tool in the scope map is registered when all tools are enabled (drift guard)', async () => {
-		const server = await buildService().getServer(user, false);
+		const server = await buildService().getServer(user, mcpFeatureFlags());
 		const registered = getRegisteredToolNames(server);
 
-		const unregistered = [...ALL_MAPPED_TOOLS].filter((name) => !registered.has(name));
+		// Agent tools require the agents module (inactive here); their own
+		// drift guard lives in agent-tools.service.test.ts.
+		const unregistered = [...ALL_MAPPED_TOOLS].filter(
+			(name) => !registered.has(name) && !AGENT_TOOLS.has(name),
+		);
 		expect(unregistered).toEqual([]);
 	});
 
 	it('BUILDER_TOOLS matches the tools gated behind the builder flag (drift guard)', async () => {
-		const withBuilder = getRegisteredToolNames(await buildService().getServer(user, false));
+		const withBuilder = getRegisteredToolNames(
+			await buildService().getServer(user, mcpFeatureFlags()),
+		);
 		const withoutBuilder = getRegisteredToolNames(
-			await buildService({ builderEnabled: false }).getServer(user, false),
+			await buildService({ builderEnabled: false }).getServer(user, mcpFeatureFlags()),
 		);
 
 		const gated = [...withBuilder].filter((name) => !withoutBuilder.has(name)).sort();
@@ -154,10 +178,10 @@ describe('McpService scope enforcement', () => {
 
 	it('registers all tools when no scopes are provided (API keys, legacy tokens)', async () => {
 		const service = buildService();
-		const unscoped = await service.getServer(user, false);
+		const unscoped = await service.getServer(user, mcpFeatureFlags());
 		const fullyScoped = await service.getServer(
 			user,
-			false,
+			mcpFeatureFlags(),
 			undefined,
 			Object.keys(TOOLS_BY_SCOPE),
 		);
@@ -166,15 +190,20 @@ describe('McpService scope enforcement', () => {
 	});
 
 	it('registers only the tools covered by the granted scopes', async () => {
-		const server = await buildService().getServer(user, false, undefined, ['workflow:read']);
+		const server = await buildService().getServer(user, mcpFeatureFlags(), undefined, [
+			'workflow:read',
+		]);
 
 		expect(getRegisteredToolNames(server)).toEqual(new Set(TOOLS_BY_SCOPE['workflow:read']));
 	});
 
 	it('filters builder tools out of a scope when the builder is disabled', async () => {
-		const server = await buildService({ builderEnabled: false }).getServer(user, false, undefined, [
-			'workflow:read',
-		]);
+		const server = await buildService({ builderEnabled: false }).getServer(
+			user,
+			mcpFeatureFlags(),
+			undefined,
+			['workflow:read'],
+		);
 
 		expect(getRegisteredToolNames(server)).toEqual(
 			new Set([
@@ -187,22 +216,32 @@ describe('McpService scope enforcement', () => {
 	});
 
 	it('registers no tools for an empty grant', async () => {
-		const server = await buildService().getServer(user, false, undefined, []);
+		const server = await buildService().getServer(user, mcpFeatureFlags(), undefined, []);
 
 		expect(getRegisteredToolNames(server)).toEqual(new Set());
 	});
 
 	it('does not register the MCP app when the create tool is out of scope', async () => {
-		await buildService().getServer(user, true, undefined, ['workflow:read']);
+		const server = await buildService().getServer(
+			user,
+			mcpFeatureFlags({ mcpApps: { enabled: true, variant: 'variant' } }),
+			undefined,
+			['workflow:read'],
+		);
 
+		expect(getRegisteredToolNames(server)).not.toContain('create_workflow_from_code');
 		expect(registerWorkflowPreviewApp).not.toHaveBeenCalled();
-		expect(registerMcpAppTool).not.toHaveBeenCalled();
 	});
 
-	it('registers the MCP app when the create tool is in scope', async () => {
-		await buildService().getServer(user, true, undefined, ['workflow:write']);
+	it('registers the MCP app and the marked create tool when it is in scope', async () => {
+		const server = await buildService().getServer(
+			user,
+			mcpFeatureFlags({ mcpApps: { enabled: true, variant: 'variant' } }),
+			undefined,
+			['workflow:write'],
+		);
 
+		expect(getRegisteredToolNames(server)).toContain('create_workflow_from_code');
 		expect(registerWorkflowPreviewApp).toHaveBeenCalledTimes(1);
-		expect(registerMcpAppTool).toHaveBeenCalledTimes(1);
 	});
 });

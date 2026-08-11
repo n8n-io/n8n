@@ -1,6 +1,14 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue';
-import { N8nDialog, N8nIcon, N8nInput, N8nRecycleScroller, N8nText } from '@n8n/design-system';
+import {
+	N8nDialog,
+	N8nIcon,
+	N8nInput,
+	N8nRecycleScroller,
+	N8nTabs,
+	N8nText,
+} from '@n8n/design-system';
+import type { TabOptions } from '@n8n/design-system';
 import { type BaseTextKey, useI18n } from '@n8n/i18n';
 import { useDebounceFn } from '@vueuse/core';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
@@ -10,11 +18,9 @@ import ToolRow from './ToolRow.vue';
 import ToolDetailView from './ToolDetailView.vue';
 import ToolSettingsView from './ToolSettingsView.vue';
 import {
-	SECTION_TAB,
-	TAB_ORDER,
+	CATEGORY_BY_KIND,
 	type FlattenedRow,
-	type SectionKey,
-	type TabId,
+	type ToolCategoryKey,
 	type ToolConnectionItem,
 	type ToolConnectionSettings,
 } from './types';
@@ -23,7 +29,8 @@ const props = withDefaults(
 	defineProps<{
 		open?: boolean;
 		items: ToolConnectionItem[];
-		sections: SectionKey[];
+		/** Tabs to render, in order. Declared categories show even while empty. */
+		categories: ToolCategoryKey[];
 		detailItem?: ToolConnectionItem | null;
 		detailMode?: 'detail' | 'settings';
 		hideBackButton?: boolean;
@@ -37,6 +44,7 @@ const props = withDefaults(
 
 const emit = defineEmits<{
 	'update:open': [value: boolean];
+	'update:searchQuery': [value: string];
 	'update:detailItem': [value: ToolConnectionItem | null];
 	disconnect: [item: ToolConnectionItem];
 	save: [item: ToolConnectionItem, settings?: ToolConnectionSettings];
@@ -56,12 +64,13 @@ const searchQuery = ref('');
 const debouncedSearchQuery = ref('');
 const setDebouncedSearch = useDebounceFn((value: string) => {
 	debouncedSearchQuery.value = value;
+	emit('update:searchQuery', value);
 }, getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH));
 watch(searchQuery, (value) => {
 	void setDebouncedSearch(value);
 });
 
-const activeTab = ref<TabId>('services');
+const activeCategory = ref<ToolCategoryKey>(props.categories[0] ?? 'connected');
 
 const searchInputRef = useTemplateRef('searchInputRef');
 const scrollerRef = useTemplateRef('scrollerRef');
@@ -72,15 +81,24 @@ function focusSearchInput() {
 	});
 }
 
+/**
+ * Search text and active tab live as long as this component, which a consumer
+ * mounts for exactly one modal session — so stepping aside for a follow-up
+ * dialog leaves them intact. The scroll offset does not survive on its own:
+ * the dialog content unmounts while hidden, so carry it across by hand.
+ */
+const savedScrollTop = ref(0);
+
 watch(
 	() => props.open,
-	(isOpen) => {
-		if (isOpen) {
-			searchQuery.value = '';
-			debouncedSearchQuery.value = '';
-			activeTab.value = 'services';
-			focusSearchInput();
+	async (isOpen) => {
+		if (!isOpen) {
+			savedScrollTop.value = scrollerRef.value?.scrollTop ?? 0;
+			return;
 		}
+		focusSearchInput();
+		await nextTick();
+		scrollerRef.value?.scrollTo(savedScrollTop.value);
 	},
 );
 
@@ -101,93 +119,107 @@ function matchesQuery(item: ToolConnectionItem): boolean {
 	);
 }
 
-const hasConnectedSection = computed(() => props.sections.includes('connected'));
+const hasConnectedTab = computed(() => props.categories.includes('connected'));
 
-const SECTION_KINDS: Record<Exclude<SectionKey, 'connected'>, Array<ToolConnectionItem['kind']>> = {
-	'built-in-services': ['service'],
-	nodes: ['node', 'mcp-server'],
-	agents: ['agent'],
-	data: ['data-store'],
-	workflows: ['workflow'],
-};
+function categoryOf(item: ToolConnectionItem): ToolCategoryKey {
+	return item.category ?? CATEGORY_BY_KIND[item.kind];
+}
 
-function itemsForSection(section: SectionKey): ToolConnectionItem[] {
-	if (section === 'connected') return props.items.filter((item) => item.isConnected);
-	const kinds = SECTION_KINDS[section];
+function itemsForCategory(category: ToolCategoryKey): ToolConnectionItem[] {
+	if (category === 'all') return props.items;
+	if (category === 'connected') return props.items.filter((item) => item.isConnected);
 	return props.items.filter(
-		(item) => kinds.includes(item.kind) && (hasConnectedSection.value ? !item.isConnected : true),
+		(item) => categoryOf(item) === category && (hasConnectedTab.value ? !item.isConnected : true),
 	);
 }
 
-const SECTION_I18N_KEY: Record<Exclude<SectionKey, 'connected'>, BaseTextKey> = {
-	'built-in-services': 'tools.connection.sections.builtInServices',
-	nodes: 'tools.connection.sections.availableNodes',
-	agents: 'tools.connection.sections.availableAgents',
-	data: 'tools.connection.sections.availableData',
-	workflows: 'tools.connection.sections.availableWorkflows',
-};
-
-function sectionTitle(section: SectionKey): string | null {
-	if (section === 'connected') return null;
-	return i18n.baseText(SECTION_I18N_KEY[section]);
-}
-
-const flattenedRows = computed<FlattenedRow[]>(() => {
-	const rows: FlattenedRow[] = [];
-	for (const section of props.sections) {
-		const sectionItems = itemsForSection(section).filter(matchesQuery);
-		if (sectionItems.length === 0) continue;
-		const title = sectionTitle(section);
-		if (title !== null) {
-			rows.push({
-				kind: 'section-header',
-				key: `header:${section}`,
-				section,
-				title,
-				count: sectionItems.length,
-			});
-		}
-		for (const item of sectionItems) {
-			rows.push({ kind: 'item', key: `item:${section}:${item.id}`, section, item });
-		}
+const countByCategory = computed<Record<string, number>>(() => {
+	const counts: Record<string, number> = {};
+	for (const category of props.categories) {
+		counts[category] = itemsForCategory(category).filter(matchesQuery).length;
 	}
-	return rows;
+	return counts;
 });
 
-const availableTabs = computed<TabId[]>(() => {
-	const tabsWithRows = new Set<TabId>();
-	for (const section of props.sections) {
-		if (itemsForSection(section).filter(matchesQuery).length > 0) {
-			tabsWithRows.add(SECTION_TAB[section]);
-		}
-	}
-	return TAB_ORDER.filter((id) => tabsWithRows.has(id));
-});
+/** Past this the exact number stops being useful and starts crowding the tab. */
+const MAX_DISPLAYED_COUNT = 99;
 
-const tabsVisible = computed(() => availableTabs.value.length > 1);
-
-function findFirstRowKeyForTab(tab: TabId): string | undefined {
-	return flattenedRows.value.find((row) => SECTION_TAB[row.section] === tab)?.key;
+/**
+ * Every tab states its count, zero included: a bare tab would be ambiguous
+ * between "nothing here" and "not loaded yet", and some categories populate
+ * asynchronously (project workflows, community previews).
+ */
+function tabCount(category: ToolCategoryKey): string {
+	const count = countByCategory.value[category] ?? 0;
+	return count > MAX_DISPLAYED_COUNT ? `${MAX_DISPLAYED_COUNT}+` : String(count);
 }
 
-async function selectTab(tab: TabId) {
-	activeTab.value = tab;
-	const targetKey = findFirstRowKeyForTab(tab);
-	if (!targetKey) return;
+const flattenedRows = computed<FlattenedRow[]>(() =>
+	itemsForCategory(activeCategory.value)
+		.filter(matchesQuery)
+		.map((item) => ({ key: `item:${item.id}`, item })),
+);
+
+/** Categories only worth a tab once they hold something. */
+const HIDE_WHEN_EMPTY: ToolCategoryKey[] = ['community'];
+
+/**
+ * Deliberately independent of the search query, so the tab strip stays put
+ * while typing and the counts alone show where the matches are.
+ */
+const visibleCategories = computed(() =>
+	props.categories.filter(
+		(category) => !HIDE_WHEN_EMPTY.includes(category) || itemsForCategory(category).length > 0,
+	),
+);
+
+const tabsVisible = computed(
+	() => props.categories.length > 1 && visibleCategories.value.length > 0,
+);
+
+async function selectCategory(category: ToolCategoryKey) {
+	activeCategory.value = category;
+	// The scroller keeps its offset across a list swap, so reset to the top.
 	await nextTick();
-	scrollerRef.value?.scrollToKey(targetKey);
+	const firstKey = flattenedRows.value[0]?.key;
+	if (firstKey) scrollerRef.value?.scrollToKey(firstKey);
 }
 
-const TAB_I18N: Record<TabId, BaseTextKey> = {
-	services: 'tools.connection.tabs.services',
-	agents: 'tools.connection.tabs.agents',
-	data: 'tools.connection.tabs.data',
-	workflows: 'tools.connection.tabs.workflows',
+const CATEGORY_I18N: Record<ToolCategoryKey, BaseTextKey> = {
+	all: 'tools.connection.categories.all',
+	connected: 'tools.connection.categories.connected',
+	'built-in': 'tools.connection.categories.builtIn',
+	mcp: 'tools.connection.categories.mcp',
+	ai: 'tools.connection.categories.ai',
+	n8n: 'tools.connection.categories.n8n',
+	'app-action': 'tools.connection.categories.appAction',
+	community: 'tools.connection.categories.community',
+	workflows: 'tools.connection.categories.workflows',
+	agents: 'tools.connection.categories.agents',
+	data: 'tools.connection.categories.data',
 };
 
-watch(availableTabs, (matching) => {
-	if (matching.length > 0 && !matching.includes(activeTab.value)) {
-		activeTab.value = matching[0];
+function categoryLabel(category: ToolCategoryKey): string {
+	return i18n.baseText(CATEGORY_I18N[category]);
+}
+
+/**
+ * The count rides in the label rather than `tag`, which would render a chip per
+ * tab — far louder than a muted number next to the name.
+ */
+const tabOptions = computed<Array<TabOptions<ToolCategoryKey>>>(() =>
+	visibleCategories.value.map((category) => ({
+		value: category,
+		label: `${categoryLabel(category)} (${tabCount(category)})`,
+	})),
+);
+
+// The active tab can still disappear — a consumer changing its declared set, or
+// a hide-when-empty category losing its last item. Fall back to a tab that
+// exists rather than leaving no tab selected.
+watch(visibleCategories, (categories) => {
+	if (categories.length > 0 && !categories.includes(activeCategory.value)) {
+		activeCategory.value = categories[0];
 	}
 });
 
@@ -280,25 +312,17 @@ function handleOpenChange(value: boolean) {
 					</template>
 				</N8nInput>
 
-				<div
+				<N8nTabs
 					v-if="tabsVisible"
+					:model-value="activeCategory"
+					:options="tabOptions"
+					size="small"
+					variant="modern"
+					justified
 					:class="$style.tabs"
-					role="tablist"
 					data-test-id="tools-connection-tabs"
-				>
-					<button
-						v-for="tab in availableTabs"
-						:key="tab"
-						type="button"
-						role="tab"
-						:class="[$style.tab, { [$style.tabActive]: activeTab === tab }]"
-						:aria-selected="activeTab === tab"
-						:data-test-id="`tools-connection-tab-${tab}`"
-						@click="selectTab(tab)"
-					>
-						{{ i18n.baseText(TAB_I18N[tab]) }}
-					</button>
-				</div>
+					@update:model-value="selectCategory"
+				/>
 
 				<div v-if="isListEmpty" :class="$style.empty" data-test-id="tools-connection-empty">
 					<N8nText color="text-light">{{ emptyMessage }}</N8nText>
@@ -312,17 +336,7 @@ function handleOpenChange(value: boolean) {
 						:class="$style.scroller"
 					>
 						<template #default="{ item: row }">
-							<div
-								v-if="row.kind === 'section-header'"
-								:class="$style.sectionHeader"
-								data-test-id="tools-connection-section-header"
-							>
-								<N8nText size="small" color="text-light">
-									{{ row.title }}
-								</N8nText>
-							</div>
 							<ToolRow
-								v-else
 								:item="row.item"
 								@open-detail="openDetail($event)"
 								@connect="emit('connect', $event)"
@@ -346,7 +360,6 @@ function handleOpenChange(value: boolean) {
 .body {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--sm);
 	height: 70vh;
 	max-height: 640px;
 	min-height: 0;
@@ -355,60 +368,30 @@ function handleOpenChange(value: boolean) {
 .searchInput {
 	width: 100%;
 	flex-shrink: 0;
-	margin-top: var(--spacing--sm);
+	margin-block: var(--spacing--sm);
 }
 
+// N8nTabs owns the tab styling, and the justified strip gives every tab an equal
+// slot, so it cannot overflow at this tab count; this only supplies the divider
+// and stops the strip shrinking.
 .tabs {
-	display: flex;
-	gap: var(--spacing--md);
-	border-bottom: 1px solid var(--color--background--light-2);
+	border-bottom: 1px solid var(--border-color);
 	flex-shrink: 0;
 }
 
-.tab {
-	background: none;
-	border: 0;
-	padding: var(--spacing--3xs) 0;
-	margin-bottom: -1px;
-	font-size: var(--font-size--2xs);
-	font-weight: var(--font-weight--medium);
-	color: var(--color--text--tint-1);
-	cursor: pointer;
-	border-bottom: 2px solid transparent;
-	transition:
-		color 120ms ease,
-		border-color 120ms ease;
-
-	&:hover {
-		color: var(--color--text);
-	}
-
-	&:focus-visible {
-		outline: var(--focus--border-width) solid var(--focus--border-color);
-		outline-offset: 2px;
-	}
-}
-
-.tabActive {
-	color: var(--color--primary);
-	border-bottom-color: var(--color--primary);
-}
-
+// Runs past the dialog's own bottom padding so the list ends at the dialog
+// edge instead of floating above it; rows stay inside the horizontal padding,
+// clear of the rounded corners.
 .listWrapper {
 	flex: 1 1 0;
 	min-height: 0;
 	overflow: hidden;
+	margin-bottom: calc(-1 * var(--spacing--lg));
 }
 
 .scroller {
 	height: 100%;
 	overflow-y: auto;
-}
-
-.sectionHeader {
-	display: flex;
-	align-items: center;
-	padding: var(--spacing--xs) var(--spacing--3xs) var(--spacing--3xs);
 }
 
 .empty {

@@ -12,16 +12,20 @@ import type {
 	AgentSkill,
 } from '../types';
 import type { ToolOpenTarget } from './AgentCapabilitiesSection.types';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import AgentSessionsListView from '../views/AgentSessionsListView.vue';
 import AgentAdvancedPanel from './AgentAdvancedPanel.vue';
 import AgentCapabilitiesSection from './AgentCapabilitiesSection.vue';
+import AgentChannelsSection from './AgentChannelsSection.vue';
 import AgentIdentityHeader from './AgentIdentityHeader.vue';
 import AgentInfoPanel from './AgentInfoPanel.vue';
 import AgentFilesPanel from './AgentFilesPanel.vue';
 import AgentVectorStoresPanel from './AgentVectorStoresPanel.vue';
+import AgentMcpPanel from './AgentMcpPanel.vue';
 import AgentMemoryPanel from './AgentMemoryPanel.vue';
 import AgentSubAgentsPanel from './AgentSubAgentsPanel.vue';
 import AgentBuilderTabPanel from './AgentBuilderTabPanel.vue';
+import AgentEvalsSection from './AgentEvalsSection.vue';
 
 const props = defineProps<{
 	activeMainTab: AgentBuilderMainTab;
@@ -38,13 +42,23 @@ const props = defineProps<{
 	appliedSkills: Array<{ id: string; skill: AgentSkill }>;
 	connectedTriggers: string[];
 	canEditAgent: boolean;
+	agentAvailableInMcp?: boolean;
 	executionsDescription: string;
+	generatingEvalCases?: boolean;
 	tasksReloadKey?: number;
 	artifactMode?: boolean;
+	/** No agent row exists yet, so agent-scoped endpoints would 404. */
+	agentUnsaved?: boolean;
+	ensureAgentPersisted?: () => Promise<void>;
 	configValidationIssues?: AgentConfigValidationIssue[];
 }>();
 
 const childrenDisabled = computed(() => !props.canEditAgent);
+
+const settingsStore = useSettingsStore();
+const isMcpAvailable = computed(
+	() => settingsStore.isModuleActive('mcp') && !!settingsStore.moduleSettings.mcp?.mcpAccessEnabled,
+);
 
 const emit = defineEmits<{
 	'update:activeMainTab': [tab: AgentBuilderMainTab];
@@ -63,8 +77,10 @@ const emit = defineEmits<{
 	'update:connected-triggers': [triggers: string[]];
 	'trigger-added': [payload: { triggerType: string; triggers: string[] }];
 	'toggle-task': [payload: { id: string; enabled: boolean }];
+	'toggle-mcp-access': [enabled: boolean];
 	'tasks-changed': [];
 	'agent-changed': [];
+	'generate-eval-cases': [];
 }>();
 
 const i18n = useI18n();
@@ -98,12 +114,27 @@ const i18n = useI18n();
 			</div>
 			<div :class="$style.panelAreaContainer">
 				<AgentBuilderTabPanel v-if="activeMainTab === 'agent'" data-testid="agent-tab-content">
+					<AgentChannelsSection
+						:key="`${projectId}:${agentId}`"
+						:connected-triggers="connectedTriggers"
+						:disabled="childrenDisabled"
+						:agent-id="agentId"
+						:project-id="projectId"
+						:is-published="Boolean(agent?.activeVersionId)"
+						:validation-issues="configValidationIssues ?? []"
+						:simple-channel-setup="artifactMode"
+						:agent-unsaved="agentUnsaved"
+						:ensure-agent-persisted="ensureAgentPersisted"
+						@update:connected-triggers="emit('update:connected-triggers', $event)"
+						@trigger-added="emit('trigger-added', $event)"
+						@agent-changed="emit('agent-changed')"
+					/>
+
 					<AgentCapabilitiesSection
 						:config="localConfig"
 						:tools="localConfig?.tools ?? []"
 						:custom-tools="agent?.tools ?? {}"
 						:skills="appliedSkills"
-						:connected-triggers="connectedTriggers"
 						:disabled="childrenDisabled"
 						:project-id="projectId"
 						:agent-id="agentId"
@@ -111,6 +142,7 @@ const i18n = useI18n();
 						:task-refs="localConfig?.tasks ?? []"
 						:reload-key="tasksReloadKey"
 						:validation-issues="configValidationIssues ?? []"
+						:agent-unsaved="agentUnsaved"
 						@open-tool="emit('open-tool', $event)"
 						@open-skill="emit('open-skill', $event)"
 						@add-tool="emit('add-tool')"
@@ -118,11 +150,8 @@ const i18n = useI18n();
 						@update:config="emit('update:config', $event)"
 						@remove-tool="emit('remove-tool', $event)"
 						@remove-skill="emit('remove-skill', $event)"
-						@update:connected-triggers="emit('update:connected-triggers', $event)"
-						@trigger-added="emit('trigger-added', $event)"
 						@toggle-task="emit('toggle-task', $event)"
 						@tasks-changed="emit('tasks-changed')"
-						@agent-changed="emit('agent-changed')"
 					/>
 
 					<AgentInfoPanel
@@ -139,6 +168,7 @@ const i18n = useI18n();
 						:project-id="projectId"
 						:show-model="false"
 						:show-instructions-toolbar="true"
+						instructions-max-height="none"
 						embedded
 						@update:config="emit('update:config', $event)"
 					/>
@@ -155,7 +185,6 @@ const i18n = useI18n();
 						:loading="agentFilesLoading"
 						:uploading="agentFilesUploading"
 						:deleting-file-id="deletingAgentFileId"
-						:is-published="Boolean(agent?.activeVersionId)"
 						data-testid="agent-files-card"
 						@upload-files="emit('upload-files', $event)"
 						@delete-file="emit('delete-file', $event)"
@@ -207,15 +236,39 @@ const i18n = useI18n();
 								@update:config="emit('update:config', $event)"
 							/>
 						</N8nCard>
+						<N8nCard
+							v-if="isMcpAvailable"
+							:class="$style.settingsCard"
+							data-testid="agent-settings-card"
+						>
+							<AgentMcpPanel
+								:available-in-mcp="agentAvailableInMcp ?? false"
+								:disabled="childrenDisabled"
+								data-testid="agent-mcp-panel"
+								@toggle-mcp-access="emit('toggle-mcp-access', $event)"
+							/>
+						</N8nCard>
 						<N8nCard :class="$style.settingsCard" data-testid="agent-settings-card">
 							<AgentAdvancedPanel
 								:config="localConfig"
 								:disabled="childrenDisabled"
+								:project-id="projectId"
 								collapsible
 								@update:config="emit('update:config', $event)"
 							/>
 						</N8nCard>
 					</div>
+				</AgentBuilderTabPanel>
+
+				<AgentBuilderTabPanel
+					v-else-if="activeMainTab === 'evals'"
+					data-testid="agent-evals-tab-content"
+				>
+					<AgentEvalsSection
+						:disabled="childrenDisabled"
+						:generating="generatingEvalCases"
+						@generate="emit('generate-eval-cases')"
+					/>
 				</AgentBuilderTabPanel>
 			</div>
 		</div>
@@ -226,7 +279,7 @@ const i18n = useI18n();
 .editorColumn {
 	display: flex;
 	flex-direction: column;
-	background-color: var(--background--surface);
+	background-color: light-dark(var(--background--surface), var(--background));
 	min-height: 0;
 	min-width: var(--agent-builder-editor-min-width, 35rem);
 }
@@ -240,10 +293,6 @@ const i18n = useI18n();
 	min-height: 0;
 	display: flex;
 	flex-direction: column;
-	background-color: light-dark(
-		var(--color--background--light-1),
-		var(--color--background--light-2)
-	);
 	overflow: auto;
 	scrollbar-width: thin;
 	scrollbar-color: var(--border-color) transparent;
@@ -274,17 +323,13 @@ const i18n = useI18n();
 	--card--padding: var(--spacing--sm);
 
 	align-items: stretch;
-	background-color: transparent;
+	background-color: var(--background--surface);
 }
 
 .identityHeaderRow {
 	flex-shrink: 0;
 	display: flex;
 	width: 100%;
-	background-color: light-dark(
-		var(--color--background--light-1),
-		var(--color--background--light-2)
-	);
 }
 
 .identityHeader {
@@ -300,10 +345,6 @@ const i18n = useI18n();
 	display: flex;
 	align-items: center;
 	width: 100%;
-	background-color: light-dark(
-		var(--color--background--light-1),
-		var(--color--background--light-2)
-	);
 }
 
 .tabsRule {
@@ -316,7 +357,7 @@ const i18n = useI18n();
 
 .mainTabs {
 	width: 100%;
-	border-bottom: calc(var(--border-width, 1px) * 2) var(--border-style, solid) var(--border-color);
+	border-bottom: var(--border);
 
 	:global([data-test-id='tab-agent'] > *) {
 		padding-left: 0;
