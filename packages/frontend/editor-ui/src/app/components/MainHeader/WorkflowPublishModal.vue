@@ -15,14 +15,7 @@ import { telemetry } from '@/app/plugins/telemetry';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useI18n } from '@n8n/i18n';
-import {
-	N8nHeading,
-	N8nCallout,
-	N8nButton,
-	N8nLink,
-	N8nText,
-	N8nTooltip,
-} from '@n8n/design-system';
+import { N8nHeading, N8nCallout, N8nButton, N8nLink, N8nText } from '@n8n/design-system';
 import WorkflowVersionForm from '@/app/components/WorkflowVersionForm.vue';
 import { getActivatableTriggerNodes } from '@/app/utils/nodeTypesUtils';
 import { useToast } from '@n8n/composables/useToast';
@@ -36,7 +29,6 @@ import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store
 import {
 	formatTimestamp,
 	generateVersionLabelFromId,
-	getVersionLabel,
 } from '@/features/workflows/workflowHistory/utils';
 import { useWorkflowHistoryStore } from '@/features/workflows/workflowHistory/workflowHistory.store';
 import type { WorkflowHistory } from '@n8n/rest-api-client/api/workflowHistory';
@@ -138,20 +130,6 @@ async function loadChangelog() {
 	} catch {
 		// ponytail: changelog is informational; publishing works without it
 	}
-}
-
-function changelogVersionLabel(version: WorkflowHistory) {
-	return getVersionLabel({
-		workflowHistory: version,
-		currentVersionId: workflowDocumentStore.value.versionId ?? undefined,
-	});
-}
-
-function changelogVersionMeta(version: WorkflowHistory) {
-	const authors = version.authors.split(', ');
-	const author = authors.length > 1 ? `${authors[0]} + ${authors.length - 1}` : authors[0];
-	const { date, time } = formatTimestamp(version.createdAt);
-	return `${author}, ${i18n.baseText('workflowHistory.item.createdAt', { interpolate: { date, time } })}`;
 }
 
 const changelogSummary = computed(() => {
@@ -379,36 +357,14 @@ async function handlePublish() {
 					description-test-id="workflow-publish-description-input"
 					@submit="handlePublish"
 				/>
-				<N8nTooltip
+				<N8nText
 					v-if="changelogSummary"
-					placement="top"
-					:teleported="false"
-					:content-class="$style.changelogTooltip"
+					size="small"
+					color="text-base"
+					data-test-id="workflow-publish-changelog"
 				>
-					<N8nText size="small" color="text-base" data-test-id="workflow-publish-changelog">
-						{{ changelogSummary }}
-					</N8nText>
-					<template #content>
-						<ul :class="$style.changelogList">
-							<li
-								v-for="version in changelog"
-								:key="version.versionId"
-								data-test-id="workflow-publish-changelog-item"
-							>
-								<N8nLink
-									size="small"
-									:to="`/workflow/${workflowDocumentStore.workflowId}/history/${version.versionId}`"
-									@click="modalBus.emit('close')"
-								>
-									{{ changelogVersionLabel(version) }}
-								</N8nLink>
-								<N8nText size="small" :class="$style.changelogItemMeta">
-									{{ changelogVersionMeta(version) }}
-								</N8nText>
-							</li>
-						</ul>
-					</template>
-				</N8nTooltip>
+					{{ changelogSummary }}
+				</N8nText>
 				<div :class="$style.actions">
 					<N8nButton
 						variant="subtle"
@@ -441,24 +397,6 @@ async function handlePublish() {
 	display: flex;
 	justify-content: flex-end;
 	gap: var(--spacing--xs);
-}
-
-.changelogTooltip {
-	max-width: 320px;
-}
-
-.changelogList {
-	list-style: none;
-	max-height: 240px;
-	overflow-y: auto;
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--2xs);
-}
-
-.changelogItemMeta {
-	display: block;
-	color: var(--color--text--tint-2);
 }
 
 .nodeLinks {

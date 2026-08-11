@@ -271,30 +271,6 @@ describe('WorkflowPublishModal', () => {
 			expect(getByTestId('workflow-publish-changelog')).not.toHaveTextContent('Carol');
 		});
 
-		it('lists the versions as links to the version history on hover', async () => {
-			workflowHistoryStore.getWorkflowHistory.mockResolvedValue([
-				historyItem({ versionId: 'new-version', authors: 'Alice' }),
-				historyItem({ versionId: 'mid-version', name: 'Mid version', authors: 'Alice, Bob' }),
-				historyItem({ versionId: 'old-version', name: 'Published Version' }),
-			]);
-
-			const { getByTestId, getAllByTestId } = renderComponent();
-
-			await waitFor(() => {
-				expect(getByTestId('workflow-publish-changelog')).toBeInTheDocument();
-			});
-
-			await userEvent.hover(getByTestId('workflow-publish-changelog'));
-
-			await waitFor(() => {
-				expect(getAllByTestId('workflow-publish-changelog-item')).toHaveLength(2);
-			});
-			const items = getAllByTestId('workflow-publish-changelog-item');
-			expect(items[0]).toHaveTextContent('Current changes');
-			expect(items[1]).toHaveTextContent('Mid version');
-			expect(items[1]).toHaveTextContent('Alice + 1');
-		});
-
 		it('is hidden when there are no versions since the last publish', async () => {
 			workflowHistoryStore.getWorkflowHistory.mockResolvedValue([
 				historyItem({ versionId: 'old-version', name: 'Published Version' }),
