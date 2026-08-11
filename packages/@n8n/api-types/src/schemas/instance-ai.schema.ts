@@ -148,6 +148,7 @@ export const instanceAiEventTypeSchema = z.enum([
 	'tool-interrupted',
 	'confirmation-request',
 	'tasks-update',
+	'workflow-overview-update',
 	'filesystem-request',
 	'thread-title-updated',
 	'status',
@@ -512,6 +513,27 @@ export const plannedTaskArgSchema = z.object({
 	isSupportingWorkflow: z.boolean().optional(),
 });
 
+// ---------------------------------------------------------------------------
+// Workflow overview (three-pane plan abstraction: Triggers / Steps / Results)
+// ---------------------------------------------------------------------------
+
+/**
+ * High-level, read-only plan abstraction of the workflow being planned with
+ * the AI assistant. Empty string = the pane is not known yet (rendered as an
+ * empty pane, not hidden). Replace-on-update semantics: each event carries the
+ * full overview.
+ */
+export const workflowOverviewSchema = z.object({
+	/** What sets the workflow off, and when/how often. */
+	triggers: z.string(),
+	/** One plain sentence saying what happens in between. */
+	steps: z.string(),
+	/** What the user ends up with, described concretely. */
+	results: z.string(),
+});
+
+export type WorkflowOverview = z.infer<typeof workflowOverviewSchema>;
+
 export type PlannedTaskArg = z.infer<typeof plannedTaskArgSchema>;
 
 // ── Gateway resource confirmation (instance permission mode) ─────────────────
@@ -853,6 +875,10 @@ export const tasksUpdatePayloadSchema = z.object({
 	planItems: z.array(plannedTaskArgSchema).optional(),
 });
 
+export const workflowOverviewUpdatePayloadSchema = z.object({
+	overview: workflowOverviewSchema,
+});
+
 export const threadTitleUpdatedPayloadSchema = z.object({
 	title: z.string(),
 });
@@ -919,6 +945,11 @@ export const instanceAiEventSchema = z.discriminatedUnion('type', [
 		payload: confirmationRequestPayloadSchema,
 	}),
 	z.object({ type: z.literal('tasks-update'), ...eventBase, payload: tasksUpdatePayloadSchema }),
+	z.object({
+		type: z.literal('workflow-overview-update'),
+		...eventBase,
+		payload: workflowOverviewUpdatePayloadSchema,
+	}),
 	z.object({ type: z.literal('status'), ...eventBase, payload: statusPayloadSchema }),
 	z.object({ type: z.literal('error'), ...eventBase, payload: errorPayloadSchema }),
 	z.object({
@@ -955,6 +986,10 @@ export type InstanceAiConfirmationRequestEvent = Extract<
 	{ type: 'confirmation-request' }
 >;
 export type InstanceAiTasksUpdateEvent = Extract<InstanceAiEvent, { type: 'tasks-update' }>;
+export type InstanceAiWorkflowOverviewUpdateEvent = Extract<
+	InstanceAiEvent,
+	{ type: 'workflow-overview-update' }
+>;
 export type InstanceAiStatusEvent = Extract<InstanceAiEvent, { type: 'status' }>;
 export type InstanceAiErrorEvent = Extract<InstanceAiEvent, { type: 'error' }>;
 export type InstanceAiFilesystemRequestEvent = Extract<
@@ -1253,6 +1288,8 @@ export interface InstanceAiAgentNode {
 	tasks?: TaskList;
 	/** Full planned task details — updated by create-tasks via tasks-update. */
 	planItems?: PlannedTaskArg[];
+	/** Latest three-pane plan abstraction — updated by workflow-overview-update events. */
+	workflowOverview?: WorkflowOverview;
 	result?: string;
 	error?: string;
 	errorDetails?: {

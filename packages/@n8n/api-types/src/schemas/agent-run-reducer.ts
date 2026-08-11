@@ -506,6 +506,14 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			break;
 		}
 
+		case 'workflow-overview-update': {
+			const agent = ensureAgent(state, event.agentId);
+			if (agent) {
+				agent.workflowOverview = event.payload.overview;
+			}
+			break;
+		}
+
 		case 'status': {
 			const agent = ensureAgent(state, event.agentId);
 			if (agent) {

@@ -21,6 +21,7 @@ import {
 	type InstanceAiSSEConnectionState,
 	type InstanceAiHandoffContext,
 	type TaskList,
+	type WorkflowOverview,
 	type AgentRunState,
 } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -196,6 +197,16 @@ function findLatestTasksFromMessages(messages: InstanceAiMessage[]): TaskList | 
 	return null;
 }
 
+function findLatestWorkflowOverviewFromMessages(
+	messages: InstanceAiMessage[],
+): WorkflowOverview | null {
+	for (let i = messages.length - 1; i >= 0; i--) {
+		const overview = messages[i].agentTree?.workflowOverview;
+		if (overview) return overview;
+	}
+	return null;
+}
+
 interface DebugEventEntry {
 	timestamp: string;
 	event: InstanceAiEvent;
@@ -328,6 +339,7 @@ export function createThreadRuntime(
 	const activeRunId = ref<string | null>(null);
 	const archivedWorkflowIds = ref<Set<string>>(new Set());
 	const latestTasks = ref<TaskList | null>(null);
+	const latestWorkflowOverview = ref<WorkflowOverview | null>(null);
 	const debugEvents = ref<Array<{ timestamp: string; event: InstanceAiEvent }>>([]);
 	const resolvedConfirmationIds = reactive(
 		new Map<string, 'approved' | 'changes-requested' | 'denied' | 'deferred'>(),
@@ -423,6 +435,10 @@ export function createThreadRuntime(
 	/** The latest task list, preferring explicit tasks-update events over tree snapshots. */
 	const currentTasks = computed(
 		() => latestTasks.value ?? findLatestTasksFromMessages(messages.value),
+	);
+
+	const currentWorkflowOverview = computed(
+		() => latestWorkflowOverview.value ?? findLatestWorkflowOverviewFromMessages(messages.value),
 	);
 
 	// --- Telemetry: 'User viewed new builder workflow' ---
@@ -775,6 +791,9 @@ export function createThreadRuntime(
 			if (parsed.data.type === 'tasks-update') {
 				latestTasks.value = parsed.data.payload.tasks;
 			}
+			if (parsed.data.type === 'workflow-overview-update') {
+				latestWorkflowOverview.value = parsed.data.payload.overview;
+			}
 			if (parsed.data.type === 'thread-title-updated') {
 				hooks.onTitleUpdated(threadId, parsed.data.payload.title);
 			}
@@ -861,6 +880,7 @@ export function createThreadRuntime(
 			msg.content = data.agentTree.textContent;
 			msg.reasoning = data.agentTree.reasoning;
 			latestTasks.value = findLatestTasksFromMessages(messages.value);
+			latestWorkflowOverview.value = findLatestWorkflowOverviewFromMessages(messages.value);
 			const isOrchestratorLive = data.status === 'active' || data.status === 'suspended';
 			// For background-only groups, the orchestrator already finished.
 			// Set isStreaming = false so InstanceAiMessage.vue's hasActiveBackgroundTasks
@@ -955,6 +975,7 @@ export function createThreadRuntime(
 		messages.value = [];
 		archivedWorkflowIds.value = new Set();
 		latestTasks.value = null;
+		latestWorkflowOverview.value = null;
 		activeRunId.value = null;
 		debugEvents.value = [];
 		resetFeedback();
@@ -993,6 +1014,7 @@ export function createThreadRuntime(
 				if (result.messages.length > 0) {
 					messages.value = result.messages;
 					latestTasks.value = findLatestTasksFromMessages(result.messages);
+					latestWorkflowOverview.value = findLatestWorkflowOverviewFromMessages(result.messages);
 
 					// Rebuild reducer routing state from historical messages so SSE
 					// replay events (which arrive before run-sync) can reduce into
@@ -1321,6 +1343,7 @@ export function createThreadRuntime(
 		activeRunId,
 		archivedWorkflowIds,
 		latestTasks,
+		latestWorkflowOverview,
 		debugEvents,
 		resolvedConfirmationIds,
 		sessionAlwaysAllowKeys,
@@ -1343,6 +1366,7 @@ export function createThreadRuntime(
 		feedbackByResponseId,
 		rateableResponseId,
 		currentTasks,
+		currentWorkflowOverview,
 		contextualSuggestion,
 		pendingConfirmations,
 		isAwaitingConfirmation,
