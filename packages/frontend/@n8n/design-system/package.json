@@ -1,7 +1,7 @@
 {
   "type": "module",
   "name": "@n8n/design-system",
-  "version": "2.33.0",
+  "version": "2.34.0",
   "main": "src/index.ts",
   "scripts": {
     "dev": "pnpm run --dir=../storybook dev",
@@ -79,6 +79,7 @@
     "@tiptap/extension-table-row": "catalog:",
     "@tiptap/extension-task-item": "catalog:",
     "@tiptap/extension-task-list": "catalog:",
+    "@tiptap/extension-underline": "catalog:",
     "@tiptap/markdown": "catalog:",
     "@tiptap/starter-kit": "catalog:",
     "@tiptap/vue-3": "catalog:",

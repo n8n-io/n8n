@@ -927,10 +927,10 @@ export class ToolCallExecutor {
 		if (!builtTool.inputSchema) return { ok: true, input: params.input };
 		const result = await parseWithSchema(builtTool.inputSchema, params.input);
 		if (!result.success) {
-			return {
-				ok: false,
-				outcome: await this.toolError(params, new Error(`Invalid tool input: ${result.error}`)),
-			};
+			const reason = result.schemaInvalid
+				? `Tool ${params.toolName} has an input schema that could not be compiled: ${result.error}`
+				: `Invalid tool input: ${result.error}`;
+			return { ok: false, outcome: await this.toolError(params, new Error(reason)) };
 		}
 		return { ok: true, input: result.data as JSONValue };
 	}
