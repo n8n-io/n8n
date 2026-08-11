@@ -188,7 +188,9 @@ commits only).
 The next sync then makes `3.x` linear again. The plain replay stalls at that point (a fix
 recorded around a merge commit leaves no patch to replay), so it replays a second time with
 `3.x`'s side favoured, and your fix commit — which is in the queue — does the real work.
-Nothing is squashed, and the tree guard proves the result is exactly the merge of `3.x` and
+Stalls that favouring cannot settle on its own (e.g. modify/delete, when `master` touched a
+file a breaking commit deletes) are resolved toward `3.x`'s side during the replay. Nothing
+is squashed, and the tree guard proves the result is exactly the merge of `3.x` and
 `master`.
 
 **Who gets pinged.** The conflict is attributed to the authors of the `3.x` commits behind the
@@ -204,7 +206,23 @@ Those authors are **requested as reviewers** on the conflict PR and listed in th
 ```bash
 docker pull n8nio/n8n:v3-nightly              # latest v3 nightly
 docker pull n8nio/n8n:v3-nightly-20260625     # a specific build date
+docker pull n8nio/n8n:v3-rc                   # latest release candidate
+docker pull n8nio/n8n:v3-rc-20260625          # latest RC of that day
+docker pull n8nio/n8n:v3-rc-20260625.2        # one exact RC, never overwritten
 ```
+
+Every Monday's nightly is also retagged as a release candidate, and a maintainer can
+publish extra RCs any day (`force_rc` on a manual run). Each publish claims the next
+rolling number for the day — `v3-rc-<date>.1`, `.2`, … — and moves `v3-rc` and
+`v3-rc-<date>` onto it, so:
+
+- **`v3-rc-<date>.N`** — pin this to hold a build still. Immutable.
+- **`v3-rc` / `v3-rc-<date>`** — track the newest RC overall / of that day. These move.
+
+The retag covers the whole set — `n8nio/n8n`, `n8nio/runners` and
+`n8nio/runners:v3-rc[-<date>.N]-distroless` — so pinning one RC across a stack gives
+images built from one `3.x` commit, unlike `v3-nightly`, which moves daily and can be
+mid-build when you pull. The same tags exist on GHCR (`ghcr.io/n8n-io/…`).
 
 Use these to trial v3 in docker/kubernetes before release. Do **not** use them in
 production.

@@ -84,7 +84,7 @@ async function main(): Promise<void> {
 
 	// One lane per base URL; the drivers dispatch builds across them via the
 	// work-stealing allocator inside the shared eval session.
-	const { lanes, cleanupStagedMcpConfigs } = await setupLanes(args, logger);
+	const lanes = await setupLanes(args, logger);
 
 	const startTime = Date.now();
 	// Delete workflows after the run when they're throwaway: prebuilt opt-in
@@ -173,7 +173,6 @@ async function main(): Promise<void> {
 		});
 	} finally {
 		await cleanupLanes(lanes, cleanupBuiltWorkflows, logger);
-		cleanupStagedMcpConfigs();
 	}
 }
 

@@ -53,6 +53,7 @@ import {
 	wrapUntrustedData,
 	deriveCredentialHosts,
 	WorkflowSaveConflictError,
+	WorkflowNotFoundError,
 } from '@n8n/instance-ai';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import {
@@ -77,10 +78,7 @@ import {
 	pruneUnreachedVerificationPinData,
 	sdkPinDataToRuntime,
 } from './instance-ai-run-pin-data';
-import {
-	resolveBuiltinNodeDefinitionDirs,
-	listNodeDiscriminators,
-} from './node-definition-resolver';
+import { listNodeDiscriminators } from './node-definition-resolver';
 import { fetchAndExtract, maybeSummarize, LRUCache } from './web-research';
 import {
 	AiBuilderTemporaryWorkflowRepository,
@@ -129,6 +127,7 @@ import {
 
 import { ActiveExecutions } from '@/active-executions';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { EvaluationConfigService } from '@/evaluation.ee/evaluation-config.service';
@@ -148,6 +147,7 @@ import { MCP_REGISTRY_PACKAGE_NAME } from '@/modules/mcp-registry/node-descripti
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { userHasScopes } from '@/permissions.ee/check-access';
+import { resolveBuiltinNodeDefinitionDirs } from '@/utils/node-definition-dirs';
 import type { AiGatewayConfigDto } from '@n8n/api-types';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import { FolderService } from '@/services/folder.service';
@@ -644,7 +644,7 @@ export class InstanceAiAdapterService {
 				]);
 
 				if (!workflow) {
-					throw new Error(`Workflow ${workflowId} not found or not accessible`);
+					throw new WorkflowNotFoundError(workflowId);
 				}
 
 				return await toWorkflowDetailWithChecksum(workflow, { redactParameters });
@@ -654,7 +654,7 @@ export class InstanceAiAdapterService {
 				assertNotReadOnly();
 				const result = await workflowService.archive(user, workflowId, { skipArchived: true });
 				if (!result) {
-					throw new Error(`Workflow ${workflowId} not found or not accessible`);
+					throw new WorkflowNotFoundError(workflowId);
 				}
 			},
 
@@ -662,7 +662,7 @@ export class InstanceAiAdapterService {
 				assertNotReadOnly();
 				const result = await workflowService.unarchive(user, workflowId);
 				if (!result) {
-					throw new Error(`Workflow ${workflowId} not found or not accessible`);
+					throw new WorkflowNotFoundError(workflowId);
 				}
 			},
 
@@ -732,7 +732,7 @@ export class InstanceAiAdapterService {
 				const wf = await workflowFinderService.findWorkflowForUser(workflowId, user, [
 					'workflow:read',
 				]);
-				if (!wf) throw new Error(`Workflow ${workflowId} not found or not accessible`);
+				if (!wf) throw new WorkflowNotFoundError(workflowId);
 				if (!versionId) return toWorkflowJSON(wf, { redactParameters });
 				const version = await workflowHistoryService.getVersion(user, workflowId, versionId);
 				return toWorkflowJSON(wf, { redactParameters, graph: version });
@@ -742,7 +742,7 @@ export class InstanceAiAdapterService {
 				const head = await workflowFinderService.findWorkflowHeadForUser(workflowId, user, [
 					'workflow:read',
 				]);
-				if (!head) throw new Error(`Workflow ${workflowId} not found or not accessible`);
+				if (!head) throw new WorkflowNotFoundError(workflowId);
 				return { versionId: head.versionId, updatedAt: head.updatedAt.getTime() };
 			},
 
@@ -750,7 +750,7 @@ export class InstanceAiAdapterService {
 				const wf = await workflowFinderService.findWorkflowForUser(workflowId, user, [
 					'workflow:read',
 				]);
-				if (!wf) throw new Error(`Workflow ${workflowId} not found or not accessible`);
+				if (!wf) throw new WorkflowNotFoundError(workflowId);
 				return {
 					json: toWorkflowJSON(wf, { redactParameters }),
 					versionId: wf.versionId,
@@ -963,6 +963,9 @@ export class InstanceAiAdapterService {
 				} catch (error) {
 					if (error instanceof ConflictError) {
 						throw new WorkflowSaveConflictError(workflowId);
+					}
+					if (error instanceof NotFoundError) {
+						throw new WorkflowNotFoundError(workflowId);
 					}
 					logger.warn('AI-builder workflow save failed', {
 						threadId,
@@ -1177,7 +1180,7 @@ export class InstanceAiAdapterService {
 				]);
 
 				if (!workflow) {
-					throw new Error(`Workflow ${workflowId} not found or not accessible`);
+					throw new WorkflowNotFoundError(workflowId);
 				}
 
 				const nodes = workflow.nodes ?? [];
@@ -1869,15 +1872,12 @@ export class InstanceAiAdapterService {
 					// Fallback for legacy credentials: oauthTokenData is blanked by
 					// redaction, so we need unredacted access here only.
 					const raw = await credentialsService.decrypt(credential, true);
-					const tokenData = raw.oauthTokenData;
-					if (tokenData && typeof tokenData === 'object') {
-						const { OauthService } = await import('@/oauth/oauth.service.js');
-						const identifier = OauthService.extractAccountIdentifier(
-							tokenData as Record<string, unknown>,
-						);
-						if (identifier) {
-							return { accountIdentifier: mask(identifier) };
-						}
+					const { extractAccountIdentifierFromData } = await import(
+						'@/oauth/account-identifier.js'
+					);
+					const identifier = extractAccountIdentifierFromData(raw);
+					if (identifier) {
+						return { accountIdentifier: mask(identifier) };
 					}
 
 					return { accountIdentifier: undefined };
@@ -1925,7 +1925,7 @@ export class InstanceAiAdapterService {
 		): Promise<WorkflowEntity> => {
 			const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, [scope]);
 			if (!workflow) {
-				throw new Error(`Workflow ${workflowId} not found or not accessible`);
+				throw new WorkflowNotFoundError(workflowId);
 			}
 			return workflow;
 		};
@@ -2918,7 +2918,7 @@ export class InstanceAiAdapterService {
 								'workflow:update',
 							]);
 							if (!workflow) {
-								throw new Error(`Workflow ${workflowId} not found or not accessible`);
+								throw new WorkflowNotFoundError(workflowId);
 							}
 							await workflowService.update(user, workflow, workflowId, {
 								parentFolderId: folderId,
@@ -2934,7 +2934,7 @@ export class InstanceAiAdapterService {
 					'workflow:update',
 				]);
 				if (!workflow) {
-					throw new Error(`Workflow ${workflowId} not found or not accessible`);
+					throw new WorkflowNotFoundError(workflowId);
 				}
 
 				// Resolve tag names to IDs, creating missing tags
@@ -2990,7 +2990,7 @@ export class InstanceAiAdapterService {
 					'workflow:execute',
 				]);
 				if (!workflow) {
-					throw new Error(`Workflow ${workflowId} not found or not accessible`);
+					throw new WorkflowNotFoundError(workflowId);
 				}
 
 				const olderThanHours = options?.olderThanHours ?? 1;

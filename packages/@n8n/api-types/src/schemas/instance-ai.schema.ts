@@ -1,10 +1,10 @@
 import { z } from 'zod';
 
+import type { McpRegistryServerIconResponse } from './mcp-registry.schema';
+import { TimeZoneSchema } from './timezone.schema';
 import { AgentJsonConfigSchema } from '../agents/agent-json-config.schema';
 import { agentSkillSchema } from '../agents/agent-skill.schema';
 import { Z } from '../zod-class';
-import type { McpRegistryServerIconResponse } from './mcp-registry.schema';
-import { TimeZoneSchema } from './timezone.schema';
 
 // ---------------------------------------------------------------------------
 // Credits
@@ -15,6 +15,20 @@ import { TimeZoneSchema } from './timezone.schema';
  * proxy is disabled (credits are not metered). Consumers should treat this as "unlimited".
  */
 export const UNLIMITED_CREDITS = -1;
+
+/**
+ * The instance's AI Assistant credit standing, as reported by `GET /instance-ai/credits`, by the
+ * `updateInstanceAiCredits` push and by the internal callers that pass it around.
+ *
+ * `creditsQuota` is {@link UNLIMITED_CREDITS} when credits are not metered — either the proxy is
+ * disabled, or the amounts are deliberately withheld from a cohort that must not see a balance.
+ */
+export type InstanceAiCredits = {
+	creditsQuota: number;
+	creditsClaimed: number;
+	/** Whether the pool has been locked by the activation cap. */
+	quotaLocked?: boolean;
+};
 
 /**
  * Transient setup-state tag for an AI Gateway managed credential selection.
@@ -292,6 +306,21 @@ export const toolErrorPayloadSchema = z.object({
 
 /** The generic credential type that agent-supplied setup recipes create. */
 export const TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE = 'httpTemplatedCustomAuth';
+
+/**
+ * Auth types where one credential serves many services.
+ */
+export const GENERIC_AUTH_CREDENTIAL_TYPES: ReadonlySet<string> = new Set([
+	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
+	'httpHeaderAuth',
+	'httpBearerAuth',
+	'httpQueryAuth',
+	'httpBasicAuth',
+	'httpDigestAuth',
+	'httpCustomAuth',
+	'oAuth1Api',
+	'oAuth2Api',
+]);
 
 /** One user-provided input of a Templated Custom Auth credential. */
 export const credentialPlaceholderDefSchema = z.object({
@@ -1505,6 +1534,19 @@ export const INSTANCE_AI_MODEL_CREDENTIAL_TYPES = [
 
 export const INSTANCE_AI_SEARCH_CREDENTIAL_TYPES = ['braveSearchApi', 'searXngApi'] as const;
 
+export const INSTANCE_AI_CATALOG_PROVIDERS = ['anthropic', 'openai', 'openrouter'] as const;
+export type InstanceAiCatalogProvider = (typeof INSTANCE_AI_CATALOG_PROVIDERS)[number];
+
+export interface InstanceAiCatalogModel {
+	id: string;
+	name: string;
+	releaseDate?: string;
+}
+
+export interface InstanceAiModelCatalogResponse {
+	models: Record<InstanceAiCatalogProvider, InstanceAiCatalogModel[]>;
+}
+
 export interface InstanceAiEnvManagedFields {
 	model: {
 		provider: boolean;
@@ -1677,7 +1719,10 @@ export function getRenderHint(toolName: string): InstanceAiToolCallState['render
 	if (toolName === 'research-with-agent') return 'researcher';
 	if (toolName === 'create-tasks') return 'planner';
 	if (toolName === 'eval-setup-with-agent') return 'eval-setup';
-	if (toolName === 'list_skills' || toolName === 'load_skill') return 'skill';
+	if (
+		['create_skills', 'list_skills', 'read_skill', 'update_skill', 'load_skill'].includes(toolName)
+	)
+		return 'skill';
 	return 'default';
 }
 
@@ -1761,6 +1806,9 @@ export const CONFIG_EVALUATIONS_ENABLED_VARIANT = 'variant';
 export const INSTANCE_AI_MCP_CONNECTIONS_FLAG = '089_instance_ai_mcp_connections';
 
 export const INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT = 'variant';
+
+/** Enables adding selected canvas nodes as chat context in the AI Assistant */
+export const CANVAS_NODE_CONTEXT_FLAG = '104_canvas_aia_node_context';
 
 /**
  * Records a credential field that was rewritten (e.g. routed to the eval wire
