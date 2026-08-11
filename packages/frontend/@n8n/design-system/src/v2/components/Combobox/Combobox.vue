@@ -132,7 +132,7 @@ function isSeparatorItem(item: ComboboxItem): item is { type: 'separator' } {
 	return item.type === 'separator';
 }
 
-function warnInvalidItem(message: string, item: unknown) {
+function warnInvalidItem(message: string, item: ComboboxItem) {
 	if (!import.meta.env.DEV) {
 		return;
 	}
