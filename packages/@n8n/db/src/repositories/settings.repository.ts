@@ -5,11 +5,12 @@ import { DataSource, In, Like } from '@n8n/typeorm';
 import { Settings } from '../entities';
 import { BaseRepository } from './base-repository';
 import type { OperationContext } from '../services/transaction';
+import { TransactionRunner } from '../services/transaction';
 
 @Service()
 export class SettingsRepository extends BaseRepository<Settings> {
-	constructor(dataSource: DataSource) {
-		super(Settings, dataSource.manager);
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(Settings, dataSource.manager, transactionRunner);
 	}
 
 	async findByKey(key: string, em?: EntityManager): Promise<Settings | null> {

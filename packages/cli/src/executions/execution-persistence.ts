@@ -11,6 +11,7 @@ import type {
 	IExecutionBase,
 	IExecutionFlattedDb,
 	IExecutionResponse,
+	OperationContext,
 	UpdateExecutionConditions,
 } from '@n8n/db';
 import { ExecutionEntity, ExecutionRepository, In, Not } from '@n8n/db';
@@ -89,8 +90,11 @@ export class ExecutionPersistence {
 	 * Create an execution entity and persist its data to the configured storage.
 	 * - In `db` mode, we write both entity and data to the DB in a transaction.
 	 * - In blob modes (`fs`, `s3`, `az`), we write the entity to the DB and its data to the blob store.
+	 *
+	 * With a `ctx` carrying a transaction, this row commits together with everything
+	 * else in it; with none, it gets a transaction of its own.
 	 */
-	async create(payload: CreateExecutionPayload) {
+	async create(payload: CreateExecutionPayload, ctx: OperationContext = {}): Promise<string> {
 		const { data: rawData, workflowData, ...rest } = payload;
 		const { connections, nodes, name, settings, id, nodeGroups } = workflowData;
 		const workflowSnapshot: WorkflowSnapshot = {
@@ -107,7 +111,7 @@ export class ExecutionPersistence {
 
 		let reclaimedTombstone: DeletionTarget | null = null;
 		try {
-			const executionId = await this.executionRepository.manager.transaction(async (tx) => {
+			const executionId = await this.executionRepository.runInTransaction(ctx, async (tx) => {
 				reclaimedTombstone = await this.reclaimTombstone(tx, executionEntity.deduplicationKey);
 				const { identifiers } = await tx.insert(ExecutionEntity, executionEntity);
 				const executionId = String(identifiers[0].id);

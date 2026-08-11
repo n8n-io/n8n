@@ -2,10 +2,11 @@
 import type { Logger } from '@n8n/backend-common';
 import type { WorkflowRepository } from '@n8n/db';
 import { createDispatchReporter, type ClaimedTask } from '@n8n/scheduler';
-import type { TriggersAndPollers } from 'n8n-core';
+import type { ErrorReporter, TriggersAndPollers } from 'n8n-core';
 import type { INode, INodeExecutionData, IPollFunctions, IWorkflowBase } from 'n8n-workflow';
 import { UnexpectedError, Workflow, WorkflowExpression } from 'n8n-workflow';
-import type { MockInstance } from 'vitest';
+import { AsyncLocalStorage } from 'node:async_hooks';
+import type { Mock, MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { createNodeTypes } from '@/workflows/triggers/__tests__/trigger-test-utils';
@@ -19,6 +20,7 @@ describe('PollTriggerTaskHandler', () => {
 	const triggerExecutionContextFactory = mock<TriggerExecutionContextFactory>();
 	const triggersAndPollers = mock<TriggersAndPollers>();
 	const workflowRepository = mock<WorkflowRepository>();
+	const errorReporter = mock<ErrorReporter>();
 
 	const scopedLogger = mock<Logger>();
 	const rootLogger = mock<Logger>({ scoped: vi.fn().mockReturnValue(scopedLogger) });
@@ -28,6 +30,7 @@ describe('PollTriggerTaskHandler', () => {
 		triggerExecutionContextFactory,
 		triggersAndPollers,
 		workflowRepository,
+		errorReporter,
 	);
 
 	const onDispatch = vi.fn();
@@ -88,8 +91,13 @@ describe('PollTriggerTaskHandler', () => {
 
 	const pollData: INodeExecutionData[][] = [[{ json: { id: 42 } }]];
 
+	type PollFunctionsMock = ReturnType<typeof mock<IPollFunctions>> & {
+		__runPoll: Mock<NonNullable<IPollFunctions['__runPoll']>>;
+		__commitCursor: Mock<NonNullable<IPollFunctions['__commitCursor']>>;
+	};
+
 	let workflow: Workflow;
-	let pollFunctions: ReturnType<typeof mock<IPollFunctions>>;
+	let pollFunctions: PollFunctionsMock;
 	let acquireIsolate: MockInstance<WorkflowExpression['acquireIsolate']>;
 	let releaseIsolate: MockInstance<WorkflowExpression['releaseIsolate']>;
 
@@ -102,7 +110,8 @@ describe('PollTriggerTaskHandler', () => {
 
 		const workflowData = buildWorkflowData();
 		workflow = buildWorkflow(workflowData);
-		pollFunctions = mock<IPollFunctions>();
+		pollFunctions = mock<IPollFunctions>() as PollFunctionsMock;
+		pollFunctions.__runPoll.mockImplementation(async (poll) => await poll());
 
 		triggerExecutionContextFactory.loadPublishedWorkflowData.mockResolvedValue(workflowData);
 		triggerExecutionContextFactory.createPollExecutionContext.mockResolvedValue({
@@ -221,6 +230,94 @@ describe('PollTriggerTaskHandler', () => {
 			expect(onDispatch).toHaveBeenCalledTimes(1);
 			expect(releaseIsolate).toHaveBeenCalledTimes(1);
 		});
+
+		test('logs a failing cursor commit instead of routing it to the error workflow', async () => {
+			triggersAndPollers.runPollFunction.mockResolvedValue(null);
+			const commitError = new Error('poller state write failed');
+			pollFunctions.__commitCursor.mockRejectedValue(commitError);
+
+			await handler.execute(buildTask(), report);
+
+			expect(pollFunctions.__emitError).not.toHaveBeenCalled();
+			expect(onDispatch).not.toHaveBeenCalled();
+			expect(scopedLogger.error).toHaveBeenCalledWith(
+				expect.stringContaining('Failed to commit the poll cursor'),
+				expect.objectContaining({ workflowId: 'wf-1', nodeId: 'node-1', error: commitError }),
+			);
+			expect(errorReporter.error).toHaveBeenCalledWith(
+				commitError,
+				expect.objectContaining({
+					extra: { taskId: 'task-1', jobId: 7, workflowId: 'wf-1', nodeId: 'node-1' },
+				}),
+			);
+			expect(releaseIsolate).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe('cursor commit', () => {
+		const cases: Array<
+			[string, { poll: INodeExecutionData[][] | null | Error; active: boolean; commits: number }]
+		> = [
+			[
+				'commits on its own for an empty poll of a still-active workflow',
+				{ poll: null, active: true, commits: 1 },
+			],
+			[
+				'commits nothing for an empty poll of a workflow deactivated mid-poll',
+				{ poll: null, active: false, commits: 0 },
+			],
+			[
+				'leaves the commit to the emit path when the poll returns data',
+				{ poll: pollData, active: true, commits: 0 },
+			],
+			[
+				'commits nothing when the poll throws',
+				{ poll: new Error('poll source unreachable'), active: true, commits: 0 },
+			],
+		];
+
+		test.each(cases)('%s', async (_name, { poll, active, commits }) => {
+			if (poll instanceof Error) triggersAndPollers.runPollFunction.mockRejectedValue(poll);
+			else triggersAndPollers.runPollFunction.mockResolvedValue(poll);
+			workflowRepository.isActive.mockResolvedValue(active);
+
+			await handler.execute(buildTask(), report);
+
+			expect(pollFunctions.__commitCursor).toHaveBeenCalledTimes(commits);
+		});
+	});
+
+	describe('staged cursor scope', () => {
+		// Stands in for the factory's staging store: a cursor can only be committed
+		// from inside the scope its own poll opened.
+		const scope = new AsyncLocalStorage<string>();
+
+		beforeEach(() => {
+			pollFunctions.__runPoll.mockImplementation(async (poll) => await scope.run('staging', poll));
+		});
+
+		test('commits the cursor inside the scope __runPoll opened', async () => {
+			triggersAndPollers.runPollFunction.mockResolvedValue(null);
+			let scopeAtCommit: string | undefined;
+			pollFunctions.__commitCursor.mockImplementation(async () => {
+				scopeAtCommit = scope.getStore();
+			});
+
+			await handler.execute(buildTask(), report);
+
+			expect(scopeAtCommit).toBe('staging');
+		});
+
+		test('emits inside the scope __runPoll opened', async () => {
+			let scopeAtEmit: string | undefined;
+			pollFunctions.__emit.mockImplementation(() => {
+				scopeAtEmit = scope.getStore();
+			});
+
+			await handler.execute(buildTask(), report);
+
+			expect(scopeAtEmit).toBe('staging');
+		});
 	});
 
 	describe('failures', () => {
@@ -254,6 +351,23 @@ describe('PollTriggerTaskHandler', () => {
 				'missing or disabled in the published workflow',
 			);
 			expect(triggersAndPollers.runPollFunction).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('poll functions missing the durable-cursor members', () => {
+		test('still runs the poll when __runPoll and __commitCursor are undefined', async () => {
+			(pollFunctions as IPollFunctions).__runPoll = undefined;
+			(pollFunctions as IPollFunctions).__commitCursor = undefined;
+			triggersAndPollers.runPollFunction.mockResolvedValue(null);
+
+			await handler.execute(buildTask(), report);
+
+			expect(triggersAndPollers.runPollFunction).toHaveBeenCalledWith(
+				workflow,
+				triggerNode,
+				pollFunctions,
+			);
+			expect(scopedLogger.error).not.toHaveBeenCalled();
 		});
 	});
 

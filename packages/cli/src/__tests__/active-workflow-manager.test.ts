@@ -44,6 +44,7 @@ import type {
 	ScheduleTriggerJobRegistrar,
 } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
 import type { OwnershipService } from '@/services/ownership.service';
+import type { PollCursorService } from '@/workflows/triggers/poll-cursor.service';
 import { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
 import type { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 import type { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
@@ -423,6 +424,9 @@ describe('ActiveWorkflowManager', () => {
 				mock<Project>({ id: 'project-1', name: 'Test Project' }),
 			);
 
+			const pollCursorService = mock<PollCursorService>({ enabled: false });
+			pollCursorService.resolveCursor.mockResolvedValue({ migrated: false });
+
 			factory = new TriggerExecutionContextFactory(
 				rootLogger,
 				mock(), // errorReporter
@@ -436,6 +440,7 @@ describe('ActiveWorkflowManager', () => {
 				mock(), // scheduleTriggerJobRegistrar
 				ownershipService,
 				mock(), // nodeTypes
+				pollCursorService,
 			);
 
 			activeWorkflowManager = new ActiveWorkflowManager(
@@ -819,7 +824,7 @@ describe('ActiveWorkflowManager', () => {
 					scheduledTaskManager,
 					triggersAndPollers,
 					mock(),
-					new PollTriggerExecutor(logger, triggersAndPollers, new Tracing()),
+					new PollTriggerExecutor(logger, triggersAndPollers, new Tracing(), mock()),
 				);
 
 				await realActiveWorkflowTriggers.addAllTriggers(

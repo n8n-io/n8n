@@ -18,7 +18,6 @@ import {
 	LessThanOrEqual,
 	MoreThanOrEqual,
 	Not,
-	Repository,
 	And,
 } from '@n8n/typeorm';
 import { DateUtils } from '@n8n/typeorm/util/DateUtils';
@@ -49,6 +48,7 @@ import {
 	SharedWorkflow,
 	WorkflowEntity,
 } from '../entities';
+import { BaseRepository } from './base-repository';
 import { SharedWorkflowRepository } from './shared-workflow.repository';
 import type {
 	ExecutionSummaries,
@@ -56,6 +56,7 @@ import type {
 	IExecutionFlattedDb,
 	IExecutionResponse,
 } from '../entities/types-db';
+import { TransactionRunner } from '../services/transaction';
 import { applyWorkflowBooleanSettingFilter } from '../utils/apply-workflow-boolean-setting-filter';
 import { separate } from '../utils/separate';
 
@@ -151,7 +152,7 @@ const moreThanOrEqual = (date: string): unknown => {
 const MAX_UPDATE_BATCH_SIZE = 900;
 
 @Service()
-export class ExecutionRepository extends Repository<ExecutionEntity> {
+export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 	private hardDeletionBatchSize = 100;
 
 	constructor(
@@ -161,8 +162,9 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		private readonly errorReporter: ErrorReporter,
 		private readonly binaryDataService: BinaryDataService,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
+		transactionRunner: TransactionRunner,
 	) {
-		super(ExecutionEntity, dataSource.manager);
+		super(ExecutionEntity, dataSource.manager, transactionRunner);
 	}
 
 	async findMultipleExecutions(

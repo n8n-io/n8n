@@ -13,14 +13,16 @@ import { InstanceCredentialAssignmentRepository } from './instance-credential-as
 import { SharedCredentialsRepository } from './shared-credentials.repository';
 import type { ICredentialsDb, ListQuery } from '../entities/types-db';
 import type { OperationContext } from '../services/transaction';
+import { TransactionRunner } from '../services/transaction';
 
 @Service()
 export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 	constructor(
 		dataSource: DataSource,
 		private readonly instanceCredentialAssignmentRepository: InstanceCredentialAssignmentRepository,
+		transactionRunner: TransactionRunner,
 	) {
-		super(CredentialsEntity, dataSource.manager);
+		super(CredentialsEntity, dataSource.manager, transactionRunner);
 	}
 
 	async findStartingWith(credentialName: string) {

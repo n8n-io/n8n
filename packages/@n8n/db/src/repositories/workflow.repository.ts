@@ -31,7 +31,7 @@ import type {
 	FolderWithWorkflowAndSubFolderCount,
 	ListQuery,
 } from '../entities/types-db';
-import type { OperationContext } from '../services/transaction';
+import { type OperationContext, TransactionRunner } from '../services/transaction';
 import { applyWorkflowBooleanSettingFilter } from '../utils/apply-workflow-boolean-setting-filter';
 import { isStringArray } from '../utils/is-string-array';
 import { TimedQuery } from '../utils/timed-query';
@@ -68,8 +68,9 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		private readonly folderRepository: FolderRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly workflowHistoryRepository: WorkflowHistoryRepository,
+		transactionRunner: TransactionRunner,
 	) {
-		super(WorkflowEntity, dataSource.manager);
+		super(WorkflowEntity, dataSource.manager, transactionRunner);
 	}
 
 	async get(
