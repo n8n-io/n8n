@@ -2,6 +2,7 @@ import { computed, reactive, ref, triggerRef, watch } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
 import { ResponseError } from '@n8n/rest-api-client';
 import {
+	buildDataTablesSessionGrantKey,
 	buildRunWorkflowSessionGrantKey,
 	buildUpdateWorkflowSessionGrantKey,
 	INSTANCE_AI_EPHEMERAL_EVENT_TYPES,
@@ -611,6 +612,9 @@ export function createThreadRuntime(
 		if ((toolName === 'workflows' && action === 'update') || toolName === 'build-workflow') {
 			if (!workflowId) return null;
 			return buildUpdateWorkflowSessionGrantKey(workflowId);
+		}
+		if (toolName === 'data-tables') {
+			return buildDataTablesSessionGrantKey(action);
 		}
 		return `${toolName}:${action}`;
 	}
