@@ -234,6 +234,7 @@ describe('FrontendService', () => {
 		globalConfig.aiAssistant.baseUrl = '';
 		globalConfig.aiGateway.enabled = false;
 		licenseState.isAiGatewayLicensed.mockReturnValue(false);
+		licenseState.isAiGatewayCloudUbbLicensed.mockReturnValue(false);
 	});
 
 	afterEach(() => {
@@ -291,6 +292,18 @@ describe('FrontendService', () => {
 			const settings = await service.getSettings();
 
 			expect(settings.aiGateway).toBeUndefined();
+		});
+
+		it('should enable Cloud UBB mode when the AI Gateway is also licensed', async () => {
+			globalConfig.aiAssistant.baseUrl = 'https://ai-assistant.n8n.io';
+			globalConfig.aiGateway.enabled = true;
+			licenseState.isAiGatewayLicensed.mockReturnValue(true);
+			licenseState.isAiGatewayCloudUbbLicensed.mockReturnValue(true);
+			const { service } = createMockService();
+
+			const settings = await service.getSettings();
+
+			expect(settings.aiGateway).toMatchObject({ enabled: true, cloudUbbEnabled: true });
 		});
 
 		it('should normalize configured postMessage origins', async () => {

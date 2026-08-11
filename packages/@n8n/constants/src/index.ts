@@ -36,6 +36,7 @@ export const LICENSE_FEATURES = {
 	COMMUNITY_NODES_CUSTOM_REGISTRY: 'feat:communityNodes:customRegistry',
 	AI_CREDITS: 'feat:aiCredits',
 	AI_GATEWAY: 'feat:aiGateway',
+	AI_GATEWAY_CLOUD_UBB: 'feat:aiGatewayCloudUbb',
 	FOLDERS: 'feat:folders',
 	INSIGHTS_VIEW_SUMMARY: 'feat:insights:viewSummary',
 	INSIGHTS_VIEW_DASHBOARD: 'feat:insights:viewDashboard',

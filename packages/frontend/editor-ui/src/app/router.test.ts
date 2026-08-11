@@ -37,6 +37,7 @@ describe('router', () => {
 
 	beforeEach(async () => {
 		settingsStore = useSettingsStore();
+		settingsStore.settings.aiGateway = undefined;
 		const usersStore = useUsersStore();
 		initializeAuthenticatedFeaturesSpy = vi
 			.spyOn(init, 'initializeAuthenticatedFeatures')
@@ -199,6 +200,14 @@ describe('router', () => {
 		settingsStore.settings.hideUsagePage = hideUsagePage;
 		await router.push('/settings');
 		expect(router.currentRoute.value.name).toBe(name);
+	});
+
+	test('should block n8n Connect settings for Cloud UBB', async () => {
+		settingsStore.settings.aiGateway = { enabled: true, budget: 0, cloudUbbEnabled: true };
+
+		await router.push('/settings/n8n-connect');
+
+		expect(router.currentRoute.value.name).toBe(VIEWS.WORKFLOWS);
 	});
 
 	describe('resource center route guard', () => {

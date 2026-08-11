@@ -30,9 +30,13 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 }));
 
 const mockIsAiGatewayEnabled = ref(false);
+const mockIsAiGatewayCloudUbbEnabled = ref(false);
 
 vi.mock('@n8n/stores/settings.store', () => ({
-	useSettingsStore: vi.fn(() => ({ isAiGatewayEnabled: mockIsAiGatewayEnabled.value })),
+	useSettingsStore: vi.fn(() => ({
+		isAiGatewayEnabled: mockIsAiGatewayEnabled.value,
+		isAiGatewayCloudUbbEnabled: mockIsAiGatewayCloudUbbEnabled.value,
+	})),
 }));
 
 describe('useAiGateway', () => {
@@ -40,6 +44,7 @@ describe('useAiGateway', () => {
 		setActivePinia(createPinia());
 		vi.clearAllMocks();
 		mockIsAiGatewayEnabled.value = false;
+		mockIsAiGatewayCloudUbbEnabled.value = false;
 		mockGetGatewayConfig.mockResolvedValue({ nodes: [], credentialTypes: [], providerConfig: {} });
 	});
 

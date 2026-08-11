@@ -167,6 +167,10 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const isAiGatewayEnabled = computed(() => settings.value.aiGateway?.enabled ?? false);
 
+	const isAiGatewayCloudUbbEnabled = computed(
+		() => settings.value.aiGateway?.cloudUbbEnabled ?? false,
+	);
+
 	const aiGatewayBudget = computed(() => settings.value.aiGateway?.budget ?? 0);
 
 	const isSmtpSetup = computed(() => userManagement.value.smtpSetup);
@@ -498,6 +502,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		aiCreditsQuota,
 		isAiDataSharingEnabled,
 		isAiGatewayEnabled,
+		isAiGatewayCloudUbbEnabled,
 		aiGatewayBudget,
 		reset,
 		getTimezones,

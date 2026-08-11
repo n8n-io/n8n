@@ -247,6 +247,7 @@ export interface FrontendSettings {
 	aiGateway?: {
 		enabled: boolean;
 		budget: number;
+		cloudUbbEnabled: boolean;
 	};
 	ai: {
 		allowSendingParameterValues: boolean;
