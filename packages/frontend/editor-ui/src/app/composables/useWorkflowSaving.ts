@@ -438,7 +438,9 @@ export function useWorkflowSaving({
 					if (node.webhookId) {
 						const newId = nodeHelpers.assignWebhookId(node);
 
-						if (!isExpression(node.parameters.path)) {
+						// Triggers whose webhook path comes from the node description (e.g. Trello
+						// Trigger, Wait) have no `path` parameter to re-key.
+						if ('path' in node.parameters && !isExpression(node.parameters.path)) {
 							node.parameters.path = newId;
 						}
 
