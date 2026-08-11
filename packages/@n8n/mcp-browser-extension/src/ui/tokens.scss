@@ -1,6 +1,6 @@
 @use '@n8n/design-system/css/_primitives' as primitives;
 @use '@n8n/design-system/css/_tokens' as tokens;
-@use '@n8n/design-system/css/fonts.inter';
+@use '@n8n/design-system/css/fonts/inter';
 
 :root {
 	color-scheme: light dark;
