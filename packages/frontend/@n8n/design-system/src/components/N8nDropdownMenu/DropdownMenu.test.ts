@@ -16,10 +16,10 @@ const createItems = (count: number): DropdownMenuItemProps[] => {
 class MockIntersectionObserver {
 	static instances: MockIntersectionObserver[] = [];
 
-	readonly callback: IntersectionObserverCallback;
+	readonly observerHandler: IntersectionObserverCallback;
 
-	constructor(callback: IntersectionObserverCallback) {
-		this.callback = callback;
+	constructor(observerHandler: IntersectionObserverCallback) {
+		this.observerHandler = observerHandler;
 		MockIntersectionObserver.instances.push(this);
 	}
 
@@ -69,7 +69,7 @@ describe('N8nDropdownMenu', () => {
 
 				const observer = MockIntersectionObserver.instances[0];
 				expect(observer).toBeDefined();
-				observer.callback(
+				observer.observerHandler(
 					[
 						{
 							isIntersecting: false,

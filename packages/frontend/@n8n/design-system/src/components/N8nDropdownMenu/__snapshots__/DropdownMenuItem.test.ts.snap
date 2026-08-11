@@ -15,7 +15,7 @@ exports[`N8nDropdownMenuItem > rendering > should render checked item with check
   
   
   <span
-    class="n8n-text text-dark size-medium regular item-label item-label"
+    class="n8n-text text-dark step-sm regular item-label item-label"
   >
     
     Checked Item
@@ -66,7 +66,7 @@ exports[`N8nDropdownMenuItem > rendering > should render disabled item 1`] = `
   
   
   <span
-    class="n8n-text text-xlight size-medium regular item-label item-label"
+    class="n8n-text text-xlight step-sm regular item-label item-label"
   >
     
     Disabled Item
@@ -101,7 +101,7 @@ exports[`N8nDropdownMenuItem > rendering > should render item with emoji 1`] = `
   
   
   <span
-    class="n8n-text text-dark size-medium regular item-label item-label"
+    class="n8n-text text-dark step-sm regular item-label item-label"
   >
     
     With Emoji
@@ -158,7 +158,7 @@ exports[`N8nDropdownMenuItem > rendering > should render item with icon 1`] = `
   
   
   <span
-    class="n8n-text text-dark size-medium regular item-label item-label"
+    class="n8n-text text-dark step-sm regular item-label item-label"
   >
     
     With Icon
@@ -189,7 +189,7 @@ exports[`N8nDropdownMenuItem > rendering > should render item with label 1`] = `
   
   
   <span
-    class="n8n-text text-dark size-medium regular item-label item-label"
+    class="n8n-text text-dark step-sm regular item-label item-label"
   >
     
     Test Item
@@ -233,7 +233,7 @@ exports[`N8nDropdownMenuItem > rendering > should render separator when divided 
     
     
     <span
-      class="n8n-text text-dark size-medium regular item-label item-label"
+      class="n8n-text text-dark step-sm regular item-label item-label"
     >
       
       Divided Item
@@ -271,7 +271,7 @@ exports[`N8nDropdownMenuItem > rendering > should render sub-menu trigger when h
   
   
   <span
-    class="n8n-text text-dark size-medium regular item-label item-label"
+    class="n8n-text text-dark step-sm regular item-label item-label"
   >
     
     Parent Item

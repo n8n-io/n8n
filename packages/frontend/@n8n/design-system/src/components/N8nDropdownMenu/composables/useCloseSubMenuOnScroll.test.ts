@@ -7,11 +7,11 @@ type ObserverCallback = IntersectionObserverCallback;
 class MockIntersectionObserver {
 	static instances: MockIntersectionObserver[] = [];
 
-	readonly callback: ObserverCallback;
+	readonly observerHandler: ObserverCallback;
 	readonly root: Element | Document | null;
 
-	constructor(callback: ObserverCallback, options?: IntersectionObserverInit) {
-		this.callback = callback;
+	constructor(observerHandler: ObserverCallback, options?: IntersectionObserverInit) {
+		this.observerHandler = observerHandler;
 		this.root = options?.root ?? null;
 		MockIntersectionObserver.instances.push(this);
 	}
@@ -57,7 +57,7 @@ describe('useCloseSubMenuOnScroll', () => {
 		const observer = MockIntersectionObserver.instances[0];
 		expect(observer.root).toBe(scrollContainer);
 
-		observer.callback(
+		observer.observerHandler(
 			[
 				{
 					isIntersecting: true,
@@ -68,7 +68,7 @@ describe('useCloseSubMenuOnScroll', () => {
 		);
 		expect(onItemHidden).not.toHaveBeenCalled();
 
-		observer.callback(
+		observer.observerHandler(
 			[
 				{
 					isIntersecting: false,
