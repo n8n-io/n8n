@@ -261,6 +261,23 @@ export class SchedulerConfig {
 	enabledForPollTriggers: boolean = false;
 
 	/**
+	 * How long, in seconds, a single poll of an external source (an inbox, an API)
+	 * may take before it is abandoned. Defaults to 60 seconds.
+	 *
+	 * An abandoned poll records nothing: the poll's position in the source is left
+	 * where it was and the next scheduled poll covers the same ground, so no data
+	 * is skipped. Guards against a poll stuck on an unresponsive source running
+	 * indefinitely.
+	 *
+	 * Keep it at or below {@link leaseDurationSeconds}: a poll allowed to run
+	 * longer than the claim on its run can still be in flight when that claim
+	 * expires and another instance takes the run over. The scheduler warns at
+	 * startup if it doesn't. Must be greater than 0.
+	 */
+	@Env('N8N_SCHEDULER_POLL_TIMEOUT', positiveIntSchema)
+	pollTimeoutSeconds: number = Time.minutes.toSeconds;
+
+	/**
 	 * Temporary escape hatch for the durable-scheduler rollout (preview to GA).
 	 * Off by default; intended to be removed once the durable scheduler is GA.
 	 *
