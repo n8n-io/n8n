@@ -1518,9 +1518,9 @@ erDiagram
   TEXT body
   datetime_3_ createdAt
   varchar createdById FK
-  TEXT data
   datetime_3_ deletedAt
   INTEGER id
+  TEXT revisions
   datetime_3_ updatedAt
 }
 "workflow_review_request" {

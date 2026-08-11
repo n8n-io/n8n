@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "workflow_review_activity_comment" ("id" integer PRIMARY KEY NOT NULL, "activityId" integer NOT NULL, "createdById" varchar, "body" text, "data" text, "updatedAt" datetime(3), "deletedAt" datetime(3), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "FK_3cd755e8ce44ee49bdf7e9222ec" FOREIGN KEY ("activityId") REFERENCES "workflow_review_activity" ("id") ON DELETE CASCADE, CONSTRAINT "FK_9cfac4b106553d0930a1962bea0" FOREIGN KEY ("createdById") REFERENCES "user" ("id") ON DELETE SET NULL)
+CREATE TABLE "workflow_review_activity_comment" ("id" integer PRIMARY KEY NOT NULL, "activityId" integer NOT NULL, "createdById" varchar, "body" text, "revisions" text, "updatedAt" datetime(3), "deletedAt" datetime(3), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "FK_3cd755e8ce44ee49bdf7e9222ec" FOREIGN KEY ("activityId") REFERENCES "workflow_review_activity" ("id") ON DELETE CASCADE, CONSTRAINT "FK_9cfac4b106553d0930a1962bea0" FOREIGN KEY ("createdById") REFERENCES "user" ("id") ON DELETE SET NULL)
 ```
 
 </details>
@@ -19,9 +19,9 @@ CREATE TABLE "workflow_review_activity_comment" ("id" integer PRIMARY KEY NOT NU
 | body | TEXT |  | true |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | createdById | varchar |  | true |  | [user](user.md) |  |
-| data | TEXT |  | true |  |  |  |
 | deletedAt | datetime(3) |  | true |  |  |  |
 | id | INTEGER |  | false |  |  |  |
+| revisions | TEXT |  | true |  |  |  |
 | updatedAt | datetime(3) |  | true |  |  |  |
 
 ## Constraints
@@ -51,9 +51,9 @@ erDiagram
   TEXT body
   datetime_3_ createdAt
   varchar createdById FK
-  TEXT data
   datetime_3_ deletedAt
   INTEGER id
+  TEXT revisions
   datetime_3_ updatedAt
 }
 "workflow_review_activity" {

@@ -35,9 +35,8 @@ export class WorkflowReviewActivityComment extends WithCreatedAt {
 	@Column({ type: 'text', nullable: true })
 	body: string | null;
 
-	/** Reserved for revision history. Cleared alongside `body` on delete, or the tombstone leaks. */
 	@JsonColumn({ nullable: true })
-	data: IDataObject | null;
+	revisions: IDataObject[] | null;
 
 	/** Intentionally not `@UpdateDateColumn`: stays null until the body is actually edited. */
 	@DateTimeColumn({ nullable: true })

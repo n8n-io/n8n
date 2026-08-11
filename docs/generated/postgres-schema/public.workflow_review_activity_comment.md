@@ -8,9 +8,9 @@
 | body | text |  | true |  |  | Only user-editable text in the feed; nulled on delete |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | createdById | uuid |  | true |  | [public.user](public.user.md) |  |
-| data | json |  | true |  |  | Reserved for comment revision history; cleared alongside `body` on delete |
 | deletedAt | timestamp(3) with time zone |  | true |  |  | Set when the comment is deleted |
 | id | integer |  | false |  |  |  |
+| revisions | json |  | true |  |  | Comment revision history. |
 | updatedAt | timestamp(3) with time zone |  | true |  |  | Set when the body is edited |
 
 ## Constraints
@@ -44,9 +44,9 @@ erDiagram
   text body
   timestamp_3__with_time_zone createdAt
   uuid createdById FK
-  json data
   timestamp_3__with_time_zone deletedAt
   integer id
+  json revisions
   timestamp_3__with_time_zone updatedAt
 }
 "public.workflow_review_activity" {
