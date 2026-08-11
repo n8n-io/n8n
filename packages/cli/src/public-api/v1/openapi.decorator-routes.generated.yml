@@ -4,6 +4,8 @@ info:
   version: 0.0.0
 paths:
   /roles:
+    get:
+      $ref: ./handlers/roles/spec/paths/getAllRoles.generated.yml
     post:
       $ref: ./handlers/roles/spec/paths/createRole.generated.yml
   /tags:
