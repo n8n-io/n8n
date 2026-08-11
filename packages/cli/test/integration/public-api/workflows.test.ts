@@ -333,14 +333,34 @@ describe('GET /workflows', () => {
 		expect(response.body.message).toBe('An invalid cursor was provided');
 	});
 
-	test('should reject a cursor that carries no offset', async () => {
-		await createWorkflowWithHistory({}, member);
+	test('should take the limit from a cursor that carries no offset', async () => {
+		await Promise.all([
+			createWorkflowWithHistory({}, member),
+			createWorkflowWithHistory({}, member),
+			createWorkflowWithHistory({}, member),
+		]);
 
-		const cursor = Buffer.from(JSON.stringify({ lastId: 'abc', limit: 10 })).toString('base64');
+		const cursor = Buffer.from(JSON.stringify({ lastId: 'abc', limit: 2 })).toString('base64');
 		const response = await authMemberAgent.get(`/workflows?cursor=${cursor}`);
 
-		expect(response.statusCode).toBe(400);
-		expect(response.body.message).toBe('An invalid cursor was provided');
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toHaveLength(2);
+		expect(response.body.nextCursor).not.toBeNull();
+	});
+
+	test('should fall back to the default limit for a cursor that carries none', async () => {
+		await Promise.all([
+			createWorkflowWithHistory({}, member),
+			createWorkflowWithHistory({}, member),
+			createWorkflowWithHistory({}, member),
+		]);
+
+		const cursor = Buffer.from(JSON.stringify({ offset: 1 })).toString('base64');
+		const response = await authMemberAgent.get(`/workflows?cursor=${cursor}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toHaveLength(2);
+		expect(response.body.nextCursor).toBeNull();
 	});
 
 	test('should return all owned workflows filtered by tag', async () => {
