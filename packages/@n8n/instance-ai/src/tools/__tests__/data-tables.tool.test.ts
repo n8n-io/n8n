@@ -40,8 +40,8 @@ function suspendCtx(suspendFn: Mock) {
 	return { resumeData: undefined, suspend: suspendFn } as never;
 }
 
-function resumeCtx(approved: boolean) {
-	return { resumeData: { approved } } as never;
+function resumeCtx(approved: boolean, scope?: 'once' | 'session') {
+	return { resumeData: { approved, ...(scope ? { scope } : {}) } } as never;
 }
 
 function noSuspendCtx() {
@@ -368,6 +368,48 @@ describe('data-tables tool', () => {
 			const tool = createDataTablesTool(context);
 			const result = await executeTool(tool, createInput as never, resumeCtx(true));
 
+			expect(context.dataTableService.create).toHaveBeenCalled();
+			expect(result).toEqual({ table });
+		});
+
+		it('should accept scope=session on resume and persist a session grant', async () => {
+			const table = { id: 'dt-new', name: 'Contacts' };
+			const grantSessionToolApproval = vi.fn().mockResolvedValue(undefined);
+			const context = createMockContext({ permissions: {}, grantSessionToolApproval });
+			(context.dataTableService.create as Mock).mockResolvedValue(table);
+
+			const tool = createDataTablesTool(context);
+			const result = await executeTool(tool, createInput as never, resumeCtx(true, 'session'));
+
+			expect(result).toEqual({ table });
+			expect(grantSessionToolApproval).toHaveBeenCalledWith('data-tables:create');
+		});
+
+		it('should not persist a session grant when resume has no scope', async () => {
+			const table = { id: 'dt-new', name: 'Contacts' };
+			const grantSessionToolApproval = vi.fn().mockResolvedValue(undefined);
+			const context = createMockContext({ permissions: {}, grantSessionToolApproval });
+			(context.dataTableService.create as Mock).mockResolvedValue(table);
+
+			const tool = createDataTablesTool(context);
+			await executeTool(tool, createInput as never, resumeCtx(true));
+
+			expect(grantSessionToolApproval).not.toHaveBeenCalled();
+		});
+
+		it('should skip HITL when a session grant already exists', async () => {
+			const table = { id: 'dt-new', name: 'Contacts' };
+			const context = createMockContext({
+				permissions: {},
+				sessionApprovedToolKeys: new Set(['data-tables:create']),
+			});
+			(context.dataTableService.create as Mock).mockResolvedValue(table);
+			const suspendFn = vi.fn();
+
+			const tool = createDataTablesTool(context);
+			const result = await executeTool(tool, createInput as never, suspendCtx(suspendFn));
+
+			expect(suspendFn).not.toHaveBeenCalled();
 			expect(context.dataTableService.create).toHaveBeenCalled();
 			expect(result).toEqual({ table });
 		});
