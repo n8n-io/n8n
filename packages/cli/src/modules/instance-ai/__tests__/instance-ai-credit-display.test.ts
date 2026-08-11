@@ -28,7 +28,6 @@ describe('maskCreditsForDisplay', () => {
 			expect(maskCreditsForDisplay(credits, true)).toEqual({
 				creditsQuota: UNLIMITED_CREDITS,
 				creditsClaimed: 0,
-				quotaLocked: false,
 			});
 		});
 
@@ -42,7 +41,6 @@ describe('maskCreditsForDisplay', () => {
 			expect(maskCreditsForDisplay({ creditsQuota: 800, creditsClaimed: 800 }, true)).toEqual({
 				creditsQuota: UNLIMITED_CREDITS,
 				creditsClaimed: 0,
-				quotaLocked: false,
 			});
 		});
 
@@ -58,8 +56,22 @@ describe('maskCreditsForDisplay', () => {
 			});
 		});
 
-		it('reports an unlocked pool as false rather than undefined', () => {
-			expect(maskCreditsForDisplay({ creditsQuota: 800, creditsClaimed: 12.5 }, true)).toEqual({
+		// A claim reports a balance and knows nothing about the lock. Saying `false` for it would
+		// retract a warning the lock had already raised, so the key is omitted entirely.
+		it('stays silent on the lock when the caller had no opinion', () => {
+			const masked = maskCreditsForDisplay({ creditsQuota: 800, creditsClaimed: 12.5 }, true);
+
+			expect(masked).toEqual({ creditsQuota: UNLIMITED_CREDITS, creditsClaimed: 0 });
+			expect('quotaLocked' in masked).toBe(false);
+		});
+
+		it('reports an explicitly unlocked pool as false', () => {
+			expect(
+				maskCreditsForDisplay(
+					{ creditsQuota: 800, creditsClaimed: 12.5, quotaLocked: false },
+					true,
+				),
+			).toEqual({
 				creditsQuota: UNLIMITED_CREDITS,
 				creditsClaimed: 0,
 				quotaLocked: false,

@@ -14,6 +14,12 @@ type ThreadCredits = { threadId: string; totalCreditsUsed: number };
  * spent. The editor needs it to warn the user *before* they type — otherwise the first they hear of
  * it is a message that fails.
  *
+ * Absence is preserved rather than normalised to `false`. Not every caller has an opinion on the
+ * lock: a claim reports a balance and knows nothing about it. Answering `false` on their behalf
+ * would tell the editor the pool is open, retracting a warning the lock had already raised — and
+ * claims can arrive after the lock, from a background memory task or a fire-and-forget HITL
+ * segment. Only a caller that actually checked may speak.
+ *
  * Only the numbers are masked. The ledger, the enforcement and the telemetry all keep running on
  * the real figures.
  */
@@ -26,7 +32,7 @@ export function maskCreditsForDisplay(
 		return {
 			creditsQuota: UNLIMITED_CREDITS,
 			creditsClaimed: 0,
-			quotaLocked: credits.quotaLocked ?? false,
+			...(credits.quotaLocked !== undefined ? { quotaLocked: credits.quotaLocked } : {}),
 		};
 	}
 

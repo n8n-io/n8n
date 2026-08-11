@@ -189,10 +189,12 @@ describe('claimRunUsage', () => {
 		});
 		await callClaim(service);
 
+		// No `quotaLocked`: a claim knows nothing about the lock, and saying `false` here would
+		// retract the warning a preceding lock had raised. Claims can land after the lock.
 		expect(push.sendToUsers).toHaveBeenCalledWith(
 			expect.objectContaining({
 				type: 'updateInstanceAiCredits',
-				data: { creditsQuota: UNLIMITED_CREDITS, creditsClaimed: 0, quotaLocked: false },
+				data: { creditsQuota: UNLIMITED_CREDITS, creditsClaimed: 0 },
 			}),
 			['user-1'],
 		);
