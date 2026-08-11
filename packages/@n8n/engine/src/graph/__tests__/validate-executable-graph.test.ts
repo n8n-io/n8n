@@ -58,6 +58,16 @@ describe('validateExecutableGraph', () => {
 		expect(() => validateExecutableGraph(graph)).toThrow('non-negative integer');
 	});
 
+	it('rejects an edge whose input slot index is above 100', () => {
+		const graph: WorkflowGraph = {
+			nodes: validGraph.nodes,
+			edges: [{ from: 'trigger', to: 'a', outputIndex: 0, inputIndex: 101 }],
+		};
+
+		expect(() => validateExecutableGraph(graph)).toThrow(GraphValidationError);
+		expect(() => validateExecutableGraph(graph)).toThrow('above 100');
+	});
+
 	it('rejects an edge leaving an output slot other than 0 as unimplemented', () => {
 		const graph: WorkflowGraph = {
 			nodes: [...validGraph.nodes, { id: 'b', name: 'B', type: 'v1-node' }],

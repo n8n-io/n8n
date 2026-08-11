@@ -1,6 +1,8 @@
 import { UnimplementedError } from '../common';
 import type { WorkflowGraph } from './workflow-graph';
 
+const MAX_SLOT_INDEX = 100;
+
 /** Thrown when a graph fails a structural rule and can never execute. */
 export class GraphValidationError extends Error {
 	constructor(message: string) {
@@ -39,6 +41,11 @@ export function validateExecutableGraph(graph: WorkflowGraph): void {
 			if (!Number.isInteger(index) || index < 0) {
 				throw new GraphValidationError(
 					`Edge ${edge.from} → ${edge.to} has slot index ${index}; slot indices are non-negative integers`,
+				);
+			}
+			if (index > MAX_SLOT_INDEX) {
+				throw new GraphValidationError(
+					`Edge ${edge.from} → ${edge.to} has slot index ${index}; slot indices above ${MAX_SLOT_INDEX} are not supported yet`,
 				);
 			}
 		}
