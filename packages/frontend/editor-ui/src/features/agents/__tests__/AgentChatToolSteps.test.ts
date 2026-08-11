@@ -187,6 +187,8 @@ describe('AgentChatToolSteps', () => {
 			toolCallId: 'tc-err',
 			state: TOOL_CALL_STATE.ERROR,
 			output: 'Repeated failure',
+			startTime: 1_000,
+			endTime: 1_250,
 		};
 
 		const withoutFix = mountSteps([errored]);
@@ -236,7 +238,32 @@ describe('AgentChatToolSteps', () => {
 		const fixButtons = withFix.findAll('[data-test-id="agent-chat-tool-fix-with-assistant"]');
 		expect(fixButtons).toHaveLength(1);
 		await fixButtons[0].trigger('click');
-		expect(withFix.emitted('fixWithAssistant')).toEqual([[]]);
+		expect(withFix.emitted('fixWithAssistant')).toEqual([
+			[
+				[
+					{
+						toolCallId: 'tc-err',
+						toolName: 'search_nodes',
+						toolDisplayName: 'Search nodes',
+						error: 'Repeated failure',
+						startedAt: 1_000,
+						endedAt: 1_250,
+					},
+					{
+						toolCallId: 'tc-err-2',
+						toolName: 'list_credentials',
+						toolDisplayName: 'List credentials',
+						error: 'Repeated failure',
+					},
+					{
+						toolCallId: 'tc-err-3',
+						toolName: 'http_request',
+						toolDisplayName: 'Http request',
+						error: 'Different failure',
+					},
+				],
+			],
+		]);
 	});
 
 	it('shows a generic error when the failed tool output is empty', () => {

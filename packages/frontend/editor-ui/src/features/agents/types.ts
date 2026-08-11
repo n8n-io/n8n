@@ -14,6 +14,20 @@ export interface AgentContinueLoadedEvent {
 	count: number;
 }
 
+export interface AgentFixWithAssistantFailure {
+	toolCallId: string;
+	toolName: string;
+	toolDisplayName: string;
+	error: string;
+	startedAt?: number;
+	endedAt?: number;
+}
+
+export interface AgentFixWithAssistantEvent {
+	executionId: string;
+	failures: AgentFixWithAssistantFailure[];
+}
+
 /**
  * Agent resource type definition.
  * This extends the ModuleResources interface to add Agent as a resource type.

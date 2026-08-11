@@ -11,6 +11,7 @@ import { useI18n } from '@n8n/i18n';
 import { computed, toRef } from 'vue';
 import type { ToolCall } from '@/features/ai/shared/agentsChat/types';
 import AiReasoningBlock from '@/features/ai/shared/components/AiReasoningBlock.vue';
+import type { AgentFixWithAssistantFailure } from '../types';
 import { useSubAgentNames } from '../composables/useSubAgentNames';
 import { resolveToolNameForDisplay } from '../utils/toolDisplayName';
 import {
@@ -36,25 +37,38 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-	fixWithAssistant: [];
+	fixWithAssistant: [failures: AgentFixWithAssistantFailure[]];
 }>();
 
 const i18n = useI18n();
 
 const showFix = computed(() => Boolean(props.canFixWithAssistant && props.executionId));
 
-const fixableErrorTexts = computed(() => {
+const fixableFailures = computed<AgentFixWithAssistantFailure[]>(() => {
 	if (!showFix.value) return [];
 
-	const errors = new Set<string>();
+	const failures: AgentFixWithAssistantFailure[] = [];
 	for (const toolCall of props.toolCalls) {
 		if (toolCall.state !== TOOL_CALL_STATE.ERROR) continue;
 
 		const error = toolStepError(toolCall)?.trim();
-		if (error) errors.add(error);
+		if (!error) continue;
+
+		failures.push({
+			toolCallId: toolCall.toolCallId,
+			toolName: toolCall.tool,
+			toolDisplayName: toolStepLabel(toolCall),
+			error,
+			...(toolCall.startTime !== undefined ? { startedAt: toolCall.startTime } : {}),
+			...(toolCall.endTime !== undefined ? { endedAt: toolCall.endTime } : {}),
+		});
 	}
 
-	return [...errors];
+	return failures;
+});
+
+const fixableErrorTexts = computed(() => {
+	return [...new Set(fixableFailures.value.map(({ error }) => error))];
 });
 
 function toolCallsNeedSubAgentNames(toolCalls: ToolCall[]): boolean {
@@ -157,6 +171,11 @@ function toolStepError(tc: ToolCall): string | undefined {
 		return i18n.baseText('agents.chat.toolError.generic');
 	}
 	return formatToolData(tc.output);
+}
+
+function emitFixWithAssistant() {
+	if (fixableFailures.value.length === 0) return;
+	emit('fixWithAssistant', fixableFailures.value);
 }
 
 function isToolStepLoading(tc: ToolCall): boolean {
@@ -329,7 +348,7 @@ function hasActiveToolCall(): boolean {
 					size="small"
 					variant="subtle"
 					data-test-id="agent-chat-tool-fix-with-assistant"
-					@click="emit('fixWithAssistant')"
+					@click="emitFixWithAssistant"
 				>
 					<template #icon><N8nIcon icon="sparkles" size="small" /></template>
 					{{ i18n.baseText('agents.builder.preview.fixWithAssistant') }}

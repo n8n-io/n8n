@@ -37,6 +37,7 @@ import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrations
 import type {
 	AgentResource,
 	AgentContinueLoadedEvent,
+	AgentFixWithAssistantEvent,
 	AgentJsonConfig,
 	AgentJsonVectorStoreConfig,
 	AgentSkill,
@@ -76,6 +77,7 @@ import { useInstanceAiHandoff } from '@/features/ai/instanceAi/composables/useIn
 import { useInstanceAiAvailable } from '@/features/ai/instanceAi/composables/useInstanceAiAvailability';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
+import { buildAgentFixWithAssistantPrompt } from '../utils/fix-with-assistant';
 
 const props = withDefaults(
 	defineProps<{
@@ -171,9 +173,12 @@ watch(
 	{ immediate: true },
 );
 
-async function onSendPreviewToAssistant(executionId?: string) {
+async function onSendPreviewToAssistant(event?: AgentFixWithAssistantEvent) {
 	const threadId = effectiveSessionId.value;
 	if (!threadId || !agentId.value || !projectId.value) return;
+	const session = sessionsStore.threads.find(({ id }) => id === threadId);
+	const sessionTitle = session?.title?.trim() || currentSessionTitle.value || undefined;
+	const sessionNumber = session?.sessionNumber;
 
 	await sendPreviewSessionToInstanceAi({
 		projectId: projectId.value,
@@ -181,11 +186,23 @@ async function onSendPreviewToAssistant(executionId?: string) {
 		threadId,
 		agentName: agentName.value || undefined,
 		agentIcon: localConfig.value?.personalisation?.icon,
-		sessionTitle: currentSessionTitle.value || undefined,
-		...(executionId
+		sessionTitle,
+		...(event
 			? {
-					executionId,
-					initialDraft: locale.baseText('agents.builder.preview.fixWithAssistantPrompt'),
+					executionId: event.executionId,
+					initialDraft: buildAgentFixWithAssistantPrompt(
+						{
+							projectId: projectId.value,
+							agentId: agentId.value,
+							agentName: agentName.value || undefined,
+							threadId,
+							sessionTitle,
+							...(sessionNumber !== undefined ? { sessionNumber } : {}),
+							executionId: event.executionId,
+							failures: event.failures,
+						},
+						locale,
+					),
 				}
 			: {}),
 	});

@@ -8,6 +8,7 @@ import type {
 	AgentJsonConfig,
 	AgentJsonSkillRef,
 	AgentJsonToolRef,
+	AgentFixWithAssistantEvent,
 	CustomToolEntry,
 } from '../types';
 import { getRandomAgentPersonalisationGradient } from '@n8n/api-types';
@@ -132,6 +133,7 @@ const sessionThreads: Array<{
 	updatedAt: string;
 	title?: string | null;
 	firstMessage?: string | null;
+	sessionNumber?: number;
 }> = [];
 const fetchedSessionThreads: typeof sessionThreads = [];
 const fetchSessionThreadsMock = vi.fn().mockImplementation(async () => {
@@ -328,8 +330,8 @@ const baseTextFn = (key: string) => {
 		'agents.builder.preview.close.ariaLabel': 'Close preview',
 		'projects.menu.personal': 'Personal',
 	};
-	if (key === 'agents.builder.preview.fixWithAssistantPrompt') {
-		return 'Investigate the tool errors in this agent run and fix the agent';
+	if (key === 'agents.builder.preview.fixWithAssistantPrompt.instruction') {
+		return 'Review these failed tool calls, identify the root cause, fix the agent, and verify the change.';
 	}
 	return map[key] ?? key;
 };
@@ -816,18 +818,42 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		]).toEqual([true, true]);
 	});
 
+	const fixEvent: AgentFixWithAssistantEvent = {
+		executionId: 'exec-turn-1',
+		failures: [
+			{
+				toolCallId: 'call-1',
+				toolName: 'data_table_get_rows',
+				toolDisplayName: 'Get rows from Data Table',
+				error: 'Column "status" does not exist',
+			},
+			{
+				toolCallId: 'call-2',
+				toolName: 'data_table_update_row',
+				toolDisplayName: 'Update row in Data Table',
+				error: 'Column "status" does not exist',
+			},
+		],
+	};
+
 	it.each([
-		{ label: 'without execution context', executionId: undefined },
-		{ label: 'with execution context', executionId: 'exec-turn-1' },
-	])('sends the active preview session to Instance AI $label', async ({ executionId }) => {
+		{ label: 'without execution context', event: undefined },
+		{ label: 'with execution context', event: fixEvent },
+	])('sends the active preview session to Instance AI $label', async ({ event }) => {
 		routeName = 'AgentPreviewView';
 		routeQuery.continueSessionId = 'thread-1';
+		fetchedSessionThreads.push({
+			id: 'thread-1',
+			updatedAt: '2026-01-01T00:00:00Z',
+			title: 'Failed order lookup',
+			sessionNumber: 7,
+		});
 
 		const wrapper = await renderView();
 		const preview = wrapper.findComponent({ name: 'AgentPreviewDock' });
 
 		expect(preview.props('canSendToAssistant')).toBe(true);
-		preview.vm.$emit('send-to-assistant', executionId);
+		preview.vm.$emit('send-to-assistant', event);
 		await flushPromises();
 
 		expect(sendPreviewSessionToInstanceAiMock).toHaveBeenCalledWith({
@@ -836,14 +862,28 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 			threadId: 'thread-1',
 			agentName: 'Agent One',
 			agentIcon: 'bot',
-			sessionTitle: 'agents.builder.chat.newChat.label',
-			...(executionId
+			sessionTitle: 'Failed order lookup',
+			...(event
 				? {
-						executionId,
-						initialDraft: 'Investigate the tool errors in this agent run and fix the agent',
+						executionId: event.executionId,
+						initialDraft: expect.any(String),
 					}
 				: {}),
 		});
+
+		if (event) {
+			const initialDraft = sendPreviewSessionToInstanceAiMock.mock.calls[0]?.[0]?.initialDraft;
+			expect(initialDraft).toContain(
+				'Review these failed tool calls, identify the root cause, fix the agent, and verify the change.',
+			);
+			expect(initialDraft).toContain('Agent One');
+			expect(initialDraft).toContain('Failed order lookup');
+			expect(initialDraft).toContain('thread-1');
+			expect(initialDraft).toContain('exec-turn-1');
+			expect(initialDraft).toContain('Get rows from Data Table');
+			expect(initialDraft).toContain('Update row in Data Table');
+			expect(initialDraft?.match(/Column "status" does not exist/g)).toHaveLength(1);
+		}
 	});
 
 	it('blocks knowledge file uploads that would exceed the total size limit', async () => {
