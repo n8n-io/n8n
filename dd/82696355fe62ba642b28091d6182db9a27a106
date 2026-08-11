@@ -1,0 +1,28 @@
+packages/frontend/editor-ui/src/features/workflow-reviews/reviewActivity.store.ts
+  s_ffb7ac8df0495d::t_7b06417b960036 137,146
+  s_ffb7ac8df0495d::t_b4a3a17a0fe1eb 120,129-131
+  s_ffb7ac8df0495d::t_c987f988ac8824 35-37
+  s_ffb7ac8df0495d::t_26137448c4a8fc 158
+  s_ffb7ac8df0495d::t_eb433cefdeccab 40,44,54-59
+packages/frontend/editor-ui/src/features/workflow-reviews/reviewActivity.store.test.ts
+  s_ffb7ac8df0495d::t_9ceb9f2e8eb2f2 264-268,271-272,274-278,288,293-297,301-312
+  s_ffb7ac8df0495d::t_db0f3f67d5e750 249-263,269,273
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewCommentComposer.vue
+  s_ffb7ac8df0495d::t_a0360e9f7b4baa 7,16-18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "dd82696355fe62ba642b28091d6182db9a27a106",
+  "prompts": {},
+  "sessions": {
+    "s_ffb7ac8df0495d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2ee688f2-038b-4dd8-b18a-b5a89d24c066",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}
