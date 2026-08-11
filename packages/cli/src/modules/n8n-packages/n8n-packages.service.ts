@@ -1,6 +1,7 @@
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
+import { UserError } from 'n8n-workflow';
 
 import { N8N_VERSION } from '@/constants';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -11,19 +12,18 @@ import { N8nPackageParser } from './engine/n8n-package-parser';
 import { ProjectPackageImporter } from './engine/project-package-importer';
 import { WorkflowPackageImporter } from './engine/workflow-package-importer';
 import { CredentialExporter } from './entities/credential/credential.exporter';
-import { DataTableExporter } from './entities/data-table/data-table.exporter';
 import { FolderExporter } from './entities/folder/folder.exporter';
 import { ProjectExporter } from './entities/project/project.exporter';
 import { mergeRequirements } from './entities/requirements.types';
 import { TagExporter } from './entities/tag/tag.exporter';
 import { VariableExporter } from './entities/variable/variable.exporter';
-import { collectNodeTypeUsage } from './entities/workflow/node-type-usage';
-import { assertStaticSubWorkflowsIncluded } from './entities/workflow/static-sub-workflow-requirements';
 import { AutoIncludedWorkflowResolver } from './entities/workflow/auto-included-workflow-resolver';
 import {
 	AutoIncludedWorkflowExporter,
 	type AutoIncludedWorkflowExportResult,
 } from './entities/workflow/auto-included-workflow.exporter';
+import { collectNodeTypeUsage } from './entities/workflow/node-type-usage';
+import { assertStaticSubWorkflowsIncluded } from './entities/workflow/static-sub-workflow-requirements';
 import { WorkflowDependencyResolver } from './entities/workflow/workflow-dependency-resolver';
 import { WorkflowRequirementExporter } from './entities/workflow/workflow-requirement.exporter';
 import { WorkflowExporter } from './entities/workflow/workflow.exporter';
@@ -38,6 +38,11 @@ import {
 	type ImportPackageRequest,
 	type ImportResult,
 } from './n8n-packages.types';
+import {
+	PackageEntityHandlerRegistry,
+	type DataTableExportRequest,
+	type DataTableExportResult,
+} from './package-entity-handler.registry';
 import { FORMAT_VERSION } from './spec/constants';
 import {
 	packageManifestSchema,
@@ -53,7 +58,7 @@ export class N8nPackagesService {
 		private readonly workflowExporter: WorkflowExporter,
 		private readonly folderExporter: FolderExporter,
 		private readonly credentialExporter: CredentialExporter,
-		private readonly dataTableExporter: DataTableExporter,
+		private readonly packageEntityHandlers: PackageEntityHandlerRegistry,
 		private readonly variableExporter: VariableExporter,
 		private readonly tagExporter: TagExporter,
 		private readonly globalConfig: GlobalConfig,
@@ -210,7 +215,7 @@ export class N8nPackagesService {
 			projectTargetsById,
 		});
 
-		const dataTableExportResult = await this.dataTableExporter.export({
+		const dataTableExportResult = await this.exportDataTables({
 			user: request.user,
 			requirements: requirements.dataTables,
 			writer,
@@ -305,6 +310,22 @@ export class N8nPackagesService {
 			return await this.projectPackageImporter.import(request, reader, manifest);
 		}
 		return await this.workflowPackageImporter.import(request, reader, manifest);
+	}
+
+	/**
+	 * Data-table export is owned by the data-table module, which registers its
+	 * handler on init. Without one (module disabled), a package that references
+	 * no data tables exports as usual and any other package is rejected.
+	 */
+	private async exportDataTables(request: DataTableExportRequest): Promise<DataTableExportResult> {
+		const handler = this.packageEntityHandlers.get('data-table');
+		if (handler) return await handler.export(request);
+
+		if (request.requirements.length === 0) return { entries: [], requirements: [] };
+
+		throw new UserError(
+			'The exported workflows use data tables, but the data-table module is disabled on this instance.',
+		);
 	}
 
 	filterWorkflowsAlreadyInFolders(workflowsInFolders: ManifestEntry[] = [], workflowIds: string[]) {

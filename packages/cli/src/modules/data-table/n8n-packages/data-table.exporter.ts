@@ -1,47 +1,29 @@
-import { ModuleRegistry } from '@n8n/backend-common';
-import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 
-import type { DataTable } from '@/modules/data-table/data-table.entity';
-import { DataTableService } from '@/modules/data-table/data-table.service';
+import type { WorkflowDataTableRequirement } from '@/modules/n8n-packages/entities/data-table/data-table.types';
+import { UniqueFilenameAllocator } from '@/modules/n8n-packages/io/unique-filename-allocator';
+import type {
+	DataTableExportRequest,
+	DataTableExportResult,
+} from '@/modules/n8n-packages/package-entity-handler.registry';
+import type { ManifestEntry } from '@/modules/n8n-packages/spec/manifest.schema';
+import type { PackageDataTableRequirement } from '@/modules/n8n-packages/spec/requirements.schema';
 
 import { DataTableSerializer } from './data-table.serializer';
-import type { WorkflowDataTableRequirement } from './data-table.types';
-import type { PackageWriter } from '../../io/package-writer';
-import { UniqueFilenameAllocator } from '../../io/unique-filename-allocator';
-import type { ManifestEntry } from '../../spec/manifest.schema';
-import type { PackageDataTableRequirement } from '../../spec/requirements.schema';
-
-export interface DataTableExportRequest {
-	user: User;
-	requirements: WorkflowDataTableRequirement[];
-	writer: PackageWriter;
-	projectTargetsById?: Map<string, string>;
-}
-
-export interface DataTableExportResult {
-	entries: ManifestEntry[];
-	requirements: PackageDataTableRequirement[];
-}
+import type { DataTable } from '../data-table.entity';
+import { DataTableService } from '../data-table.service';
 
 @Service()
 export class DataTableExporter {
 	constructor(
 		private readonly dataTableService: DataTableService,
 		private readonly dataTableSerializer: DataTableSerializer,
-		private readonly moduleRegistry: ModuleRegistry,
 	) {}
 
 	async export(request: DataTableExportRequest): Promise<DataTableExportResult> {
 		if (request.requirements.length === 0) {
 			return { entries: [], requirements: [] };
-		}
-
-		if (!this.moduleRegistry.isActive('data-table')) {
-			throw new UserError(
-				'The exported workflows use data tables, but the data-table module is disabled on this instance.',
-			);
 		}
 
 		const usedByWorkflowsById = this.groupByDataTableId(request.requirements);

@@ -3,6 +3,8 @@ import { Service } from '@n8n/di';
 
 import { NodeTypes } from '@/node-types';
 
+import { toImportBlockedError } from './import-blocked.error';
+import { assertVariableWritesAllowed } from './import-gates';
 import { CredentialImporter } from '../entities/credential/credential-importer';
 import { workflowsBlockedFromPublish } from '../entities/credential/credential-missing-mode';
 import type {
@@ -11,7 +13,6 @@ import type {
 	CredentialResolution,
 	CredentialResolutionFailure,
 } from '../entities/credential/credential.types';
-import { DataTableImporter } from '../entities/data-table/data-table-importer';
 import type {
 	DataTableImportPlan,
 	DataTableImportRequest,
@@ -57,9 +58,8 @@ import type {
 	MissingNodeTypeMode,
 	PackageImportBindings,
 } from '../n8n-packages.types';
+import { PackageEntityHandlerRegistry } from '../package-entity-handler.registry';
 import type { PackageWorkflowRequirement } from '../spec/requirements.schema';
-import { toImportBlockedError } from './import-blocked.error';
-import { assertVariableWritesAllowed } from './import-gates';
 
 export interface ImportOrchestrationInput {
 	context: ImportContext;
@@ -112,7 +112,7 @@ export interface ImportPlan {
 export class ImportOrchestrator {
 	constructor(
 		private readonly credentialImporter: CredentialImporter,
-		private readonly dataTableImporter: DataTableImporter,
+		private readonly packageEntityHandlers: PackageEntityHandlerRegistry,
 		private readonly variableImporter: VariableImporter,
 		private readonly tagImporter: TagImporter,
 		private readonly folderImporter: FolderImporter,
@@ -194,7 +194,7 @@ export class ImportOrchestrator {
 		);
 
 		const credentialPlan = await this.credentialImporter.plan(context, credentialRequest);
-		const dataTablePlan = await this.dataTableImporter.plan(context, dataTableRequest);
+		const dataTablePlan = await this.planDataTables(context, dataTableRequest);
 		const variablePlan = await this.variableImporter.plan(context, variableRequest);
 		const workflowPlan = await this.workflowImporter.plan(context, workflows, options);
 		// Tags plan after workflows: only tags referenced by non-skipped workflows gate or create.
@@ -271,7 +271,8 @@ export class ImportOrchestrator {
 			credentialPlan,
 		);
 
-		await this.dataTableImporter.apply(context, dataTablePlan);
+		// Without a registered handler the plan can only be empty, so this is a no-op.
+		await this.packageEntityHandlers.get('data-table')?.apply(context, dataTablePlan);
 
 		// Which workflows the publish phase must leave inactive. Known only now, because it depends
 		// on which credentials actually ended up stubbed.
@@ -314,6 +315,35 @@ export class ImportOrchestrator {
 			variablePlan,
 			variableResult,
 			tagPlan,
+		};
+	}
+
+	/**
+	 * Data-table planning is owned by the data-table module, which registers its
+	 * handler on init. Without one (module disabled), a package that references
+	 * no data tables passes through and any other package is blocked.
+	 */
+	private async planDataTables(
+		context: ImportContext,
+		request: DataTableImportRequest,
+	): Promise<DataTableImportPlan> {
+		const handler = this.packageEntityHandlers.get('data-table');
+		if (handler) return await handler.plan(context, request);
+
+		const requirements = request.requirements ?? [];
+		if (requirements.length === 0) return { creations: [], failures: [], matchedCount: 0 };
+
+		return {
+			creations: [],
+			failures: [
+				{
+					kind: 'module-disabled',
+					usedByWorkflows: [
+						...new Set(requirements.flatMap(({ usedByWorkflows }) => usedByWorkflows)),
+					].sort(),
+				},
+			],
+			matchedCount: 0,
 		};
 	}
 
