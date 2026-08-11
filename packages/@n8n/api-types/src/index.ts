@@ -317,6 +317,7 @@ export {
 	credentialRequestSchema,
 	credentialSetupHintSchema,
 	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
+	GENERIC_AUTH_CREDENTIAL_TYPES,
 	workflowSetupNodeSchema,
 	errorPayloadSchema,
 	filesystemRequestPayloadSchema,

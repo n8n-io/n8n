@@ -2,7 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue';
 
 import type { IUpdateInformation, NewCredentialsModal } from '@/Interface';
-import type { ICredentialsResponse } from '../../credentials.types';
+import type { ICredentialsDecryptedResponse, ICredentialsResponse } from '../../credentials.types';
 
 import type {
 	CredentialInformation,
@@ -654,6 +654,7 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 		null,
 		null,
 	);
+	const savedData = (data ?? {}) as unknown as ICredentialDataDecryptedObject;
 
 	assert(credentialTypeName.value);
 	const credentialDetails: ICredentialsDecrypted = {
@@ -704,7 +705,6 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 
 		// Changing a private credential's shared (static) fields invalidates every
 		// end user's connection, so warn before saving.
-		const savedData = (data ?? {}) as unknown as ICredentialDataDecryptedObject;
 		if (isResolvable.value && getChangedSharedFields(savedData).length) {
 			const confirmAction = await confirmModal('sharedFieldsChanged', {
 				credentialName: credentialName.value,
@@ -721,7 +721,12 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 	isSaving.value = false;
 	if (credential) {
 		credentialId.value = credential.id;
-		currentCredential.value = credential;
+		// The save response omits the encrypted `data` (see credentials.controller.ts),
+		// but we know it now matches what we just persisted. Keep it as the baseline so
+		// the next shared-field diff doesn't compare against an empty object and
+		// false-trigger the "will disconnect everyone" prompt.
+		const updatedCredential: ICredentialsDecryptedResponse = { ...credential, data: savedData };
+		currentCredential.value = updatedCredential;
 		// Resync in case the save cleared this user's connection server-side.
 		connectedByMe.value = credential.connectedByMe === true;
 
