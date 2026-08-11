@@ -25,7 +25,7 @@ const { t } = useI18n();
 
 const props = withDefaults(defineProps<InputNumberProps>(), {
 	size: 'medium',
-	controls: false,
+	controls: true,
 	controlsPosition: 'right',
 	step: 1,
 	stepSnapping: false,

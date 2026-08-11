@@ -26,10 +26,12 @@ describe('v2/components/InputNumber', () => {
 			expect(wrapper.getByTestId('input-number').className).toContain('isDisabled');
 		});
 
-		it('should not render controls by default', () => {
+		it('should render controls by default (right mode)', () => {
 			const wrapper = render(InputNumber);
 			const buttons = wrapper.container.querySelectorAll('button');
-			expect(buttons).toHaveLength(0);
+			expect(buttons).toHaveLength(2);
+			expect(buttons[0]).toHaveAttribute('aria-label', 'Increase');
+			expect(buttons[1]).toHaveAttribute('aria-label', 'Decrease');
 		});
 
 		it('should render with defaultValue when uncontrolled', () => {
@@ -63,6 +65,16 @@ describe('v2/components/InputNumber', () => {
 	});
 
 	describe('controls', () => {
+		it('should not render controls when controls is false', () => {
+			const wrapper = render(InputNumber, {
+				props: {
+					controls: false,
+				},
+			});
+			const buttons = wrapper.container.querySelectorAll('button');
+			expect(buttons).toHaveLength(0);
+		});
+
 		it('should show increment and decrement buttons when controls is true (both mode)', () => {
 			const wrapper = render(InputNumber, {
 				props: {

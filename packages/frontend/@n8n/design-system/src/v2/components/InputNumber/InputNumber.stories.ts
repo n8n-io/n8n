@@ -44,7 +44,7 @@ const meta = {
 	args: {
 		modelValue: 0,
 		size: 'medium',
-		controls: false,
+		controls: true,
 		controlsPosition: 'right',
 		disabled: false,
 		placeholder: 'Enter a number',
@@ -157,7 +157,7 @@ export const WithControlsBoth = {
 	},
 } satisfies Story;
 
-export const WithControlsRight = {
+export const NoControls = {
 	render: (args) => ({
 		components: { InputNumber },
 		setup() {
@@ -166,7 +166,7 @@ export const WithControlsRight = {
 		},
 		template: `
 		<div style="${storyPadding} max-width: 320px;">
-			<InputNumber v-bind="args" v-model="value" :controls="true" controls-position="right" />
+			<InputNumber v-bind="args" v-model="value" :controls="false" />
 		</div>
 		`,
 	}),
@@ -174,8 +174,7 @@ export const WithControlsRight = {
 		modelValue: 5,
 		min: 0,
 		max: 10,
-		controls: true,
-		controlsPosition: 'right',
+		controls: false,
 	},
 } satisfies Story;
 
@@ -210,11 +209,11 @@ export const Sizes = {
 		<div style="${storyPadding} display: flex; gap: var(--spacing--xl); flex-wrap: wrap;">
 			<div style="width: 200px; display: flex; flex-direction: column; gap: var(--spacing--xs);">
 				<N8nInputLabel label="Without controls" />
-				<InputNumber v-model="withoutControls.mini" size="mini" placeholder="mini" />
-				<InputNumber v-model="withoutControls.small" size="small" placeholder="small" />
-				<InputNumber v-model="withoutControls.medium" size="medium" placeholder="medium" />
-				<InputNumber v-model="withoutControls.large" size="large" placeholder="large" />
-				<InputNumber v-model="withoutControls.xlarge" size="xlarge" placeholder="xlarge" />
+				<InputNumber v-model="withoutControls.mini" size="mini" placeholder="mini" :controls="false" />
+				<InputNumber v-model="withoutControls.small" size="small" placeholder="small" :controls="false" />
+				<InputNumber v-model="withoutControls.medium" size="medium" placeholder="medium" :controls="false" />
+				<InputNumber v-model="withoutControls.large" size="large" placeholder="large" :controls="false" />
+				<InputNumber v-model="withoutControls.xlarge" size="xlarge" placeholder="xlarge" :controls="false" />
 			</div>
 			<div style="width: 200px; display: flex; flex-direction: column; gap: var(--spacing--xs);">
 				<N8nInputLabel label="With controls (both)" />
@@ -265,10 +264,10 @@ export const Precision = {
 		<div style="${storyPadding} display: flex; gap: var(--spacing--xl); flex-wrap: wrap;">
 			<div style="width: 200px; display: flex; flex-direction: column; gap: var(--spacing--xs);">
 				<N8nInputLabel label="Without controls" />
-				<InputNumber v-model="withoutControls.none" placeholder="No precision" />
-				<InputNumber v-model="withoutControls.two" :precision="2" placeholder="Precision: 2" />
-				<InputNumber v-model="withoutControls.one" :precision="1" placeholder="Precision: 1" />
-				<InputNumber v-model="withoutControls.zero" :precision="0" placeholder="Precision: 0" />
+				<InputNumber v-model="withoutControls.none" placeholder="No precision" :controls="false" />
+				<InputNumber v-model="withoutControls.two" :precision="2" placeholder="Precision: 2" :controls="false" />
+				<InputNumber v-model="withoutControls.one" :precision="1" placeholder="Precision: 1" :controls="false" />
+				<InputNumber v-model="withoutControls.zero" :precision="0" placeholder="Precision: 0" :controls="false" />
 			</div>
 			<div style="width: 200px; display: flex; flex-direction: column; gap: var(--spacing--xs);">
 				<N8nInputLabel label="With controls (both)" />
@@ -365,7 +364,7 @@ export const Disabled = {
 		template: `
 		<div style="${storyStack}">
 			<N8nInputLabel label="Without controls">
-				<InputNumber v-model="withoutControls" placeholder="Disabled" :disabled="true" />
+				<InputNumber v-model="withoutControls" placeholder="Disabled" :disabled="true" :controls="false" />
 			</N8nInputLabel>
 			<N8nInputLabel label="With controls (both)">
 				<InputNumber

@@ -23,7 +23,7 @@ Extends Reka UI `NumberFieldRootProps` (except `formatOptions`, derived from `pr
 - `step?: number` - Increment/decrement step amount. Default: `1`
 - `stepSnapping?: boolean` - When `true`, typed values snap to `step` on blur. Default: `false` (Reka defaults to `true`; we override so decimals are preserved unless opted in).
 - `precision?: number` - Decimal places. Maps to Reka `formatOptions` fraction digits.
-- `controls?: boolean` - Show increment/decrement buttons. Default: `false`
+- `controls?: boolean` - Show increment/decrement buttons. Default: `true`
 - `controlsPosition?: 'both' | 'right'` - Control layout. Default: `'right'`
 - `disabled?: boolean` - Disables the field. Default: `false`
 - `placeholder?: string` - Placeholder when empty (pass an i18n string from the consumer).
@@ -62,7 +62,7 @@ const value = ref(0)
 **Uncontrolled:**
 
 ```vue
-<N8nInputNumber2 :default-value="3" :min="0" :max="10" :controls="true" />
+<N8nInputNumber2 :default-value="3" :min="0" :max="10" />
 ```
 
 **With step and precision:**
@@ -86,10 +86,16 @@ const price = ref(0)
 </template>
 ```
 
-**With controls and custom buttons:**
+**Without controls:**
 
 ```vue
-<N8nInputNumber2 v-model="quantity" :min="1" :max="99" :controls="true">
+<N8nInputNumber2 v-model="value" :controls="false" />
+```
+
+**With custom control buttons:**
+
+```vue
+<N8nInputNumber2 v-model="quantity" :min="1" :max="99" controls-position="both">
   <template #decrement="{ ui }">
     <button type="button" :class="ui.class" aria-label="Decrease">
       <N8nIcon icon="minus" size="small" />
