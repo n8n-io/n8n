@@ -64,6 +64,9 @@ const CACHE_PREFIX = 'oauth2-userinfo-identifier';
 
 @Service()
 export class OAuth2UserInfoIdentifier implements ITokenIdentifier {
+	/** Key-set refreshes currently in flight, keyed by `jwks_uri`. */
+	private readonly jwksRefreshes = new Map<string, Promise<JSONWebKeySet | undefined>>();
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly cache: CacheService,
@@ -253,25 +256,31 @@ export class OAuth2UserInfoIdentifier implements ITokenIdentifier {
 			// `kid`. Refetch once so a rotation does not black out verification until the
 			// cached copy expires. Rate limited, because the key lookup happens before any
 			// signature check and so is reachable with an unauthenticated token.
-			if (isNoMatchingKeyError(error) && (await this.mayRefreshJwks(metadata.jwks_uri))) {
-				try {
-					payload = (await verify(await this.fetchJwks(metadata.jwks_uri, true))).payload;
-					this.logger.debug('Verified access token after refreshing the key set', {
-						issuer: metadata.issuer,
-					});
-					return this.assertTokenAudience(payload, expectedAudience, metadata);
-				} catch (retryError) {
-					this.logger.error('Access token verification failed', { error: retryError });
-					throw new IdentifierValidationError('Access token verification failed', {
-						cause: retryError,
-					});
-				}
+			const refreshed = isNoMatchingKeyError(error)
+				? await this.refreshJwks(metadata.jwks_uri)
+				: undefined;
+
+			if (!refreshed) {
+				this.logger.error('Access token verification failed', { error });
+				throw new IdentifierValidationError('Access token verification failed', { cause: error });
 			}
 
-			this.logger.error('Access token verification failed', { error });
-			throw new IdentifierValidationError('Access token verification failed', { cause: error });
+			try {
+				payload = (await verify(refreshed)).payload;
+			} catch (retryError) {
+				this.logger.error('Access token verification failed', { error: retryError });
+				throw new IdentifierValidationError('Access token verification failed', {
+					cause: retryError,
+				});
+			}
+
+			this.logger.debug('Verified access token after refreshing the key set', {
+				issuer: metadata.issuer,
+			});
 		}
 
+		// Reached by both the cached and the refreshed key set, so an audience failure is
+		// never caught by the retry above and relabelled as a verification failure.
 		return this.assertTokenAudience(payload, expectedAudience, metadata);
 	}
 
@@ -286,16 +295,41 @@ export class OAuth2UserInfoIdentifier implements ITokenIdentifier {
 	}
 
 	/**
-	 * Claims the single refresh slot for this key set, so a caller presenting tokens
+	 * Refetches the key set, at most once per cooldown, so a caller presenting tokens
 	 * with unknown key ids cannot drive repeated requests at the issuer.
+	 *
+	 * The cooldown lives in the shared cache so it also holds across mains, but reading
+	 * it and then writing it is not atomic and `CacheService` has no set-if-absent. The
+	 * in-process table closes the window that matters: a burst of tokens carrying one
+	 * unknown key id coalesces into a single request rather than one per caller. Across
+	 * mains the cooldown still bounds it to one refresh each.
+	 *
+	 * @returns the refreshed key set, or undefined when the cooldown is already held.
 	 */
-	private async mayRefreshJwks(jwksUri: string): Promise<boolean> {
+	private async refreshJwks(jwksUri: string): Promise<JSONWebKeySet | undefined> {
+		const inFlight = this.jwksRefreshes.get(jwksUri);
+		if (inFlight) {
+			return await inFlight;
+		}
+
+		// Registered before the first await inside it runs, so concurrent callers arriving
+		// in the meantime join this refresh instead of starting their own.
+		const refresh = this.claimAndFetchJwks(jwksUri);
+		this.jwksRefreshes.set(jwksUri, refresh);
+		try {
+			return await refresh;
+		} finally {
+			this.jwksRefreshes.delete(jwksUri);
+		}
+	}
+
+	private async claimAndFetchJwks(jwksUri: string): Promise<JSONWebKeySet | undefined> {
 		const cooldownKey = `${CACHE_PREFIX}:jwks-refresh:${jwksUri}`;
 		if (await this.cache.get<boolean>(cooldownKey)) {
-			return false;
+			return undefined;
 		}
 		await this.cache.set(cooldownKey, true, JWKS_REFRESH_COOLDOWN);
-		return true;
+		return await this.fetchJwks(jwksUri, true);
 	}
 
 	private assertTokenAudience(

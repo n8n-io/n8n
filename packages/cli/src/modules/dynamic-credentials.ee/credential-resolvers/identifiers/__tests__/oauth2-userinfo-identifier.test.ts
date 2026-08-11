@@ -399,6 +399,50 @@ describe('OAuth2UserInfoIdentifier', () => {
 			expect(fetches).toBe(2);
 		});
 
+		test('should coalesce a concurrent burst into a single key-set refresh', async () => {
+			// Every caller sees a stale set, so each one wants to refresh. Reading the
+			// cooldown and writing it is not atomic, so without coalescing they all claim
+			// it and each hits the issuer.
+			request.mockImplementation(async (options: IHttpRequestOptions) => {
+				if (options.url === validOptions.metadataUri) {
+					return { statusCode: 200, body: validMetadata };
+				}
+				if (options.url === validMetadata.jwks_uri) return { statusCode: 200, body: staleJwks };
+				throw new Error(`Unexpected request to ${String(options.url)}`);
+			});
+			const token = await signToken({ sub: 'user-123', aud: AUDIENCE });
+
+			await Promise.allSettled(
+				Array.from(
+					{ length: 5 },
+					async () => await identifier.resolve({ ...mockContext, identity: token }, boundOptions),
+				),
+			);
+
+			const claims = cache.set.mock.calls.filter((call) => call[0].includes(':jwks-refresh:'));
+			expect(claims).toHaveLength(1);
+		});
+
+		test('should report an audience failure after a rotation as an audience failure', async () => {
+			let fetches = 0;
+			request.mockImplementation(async (options: IHttpRequestOptions) => {
+				if (options.url === validOptions.metadataUri) {
+					return { statusCode: 200, body: validMetadata };
+				}
+				if (options.url === validMetadata.jwks_uri) {
+					fetches += 1;
+					return { statusCode: 200, body: fetches === 1 ? staleJwks : jwks };
+				}
+				throw new Error(`Unexpected request to ${String(options.url)}`);
+			});
+			// Verifies only against the rotated key, but is issued for someone else.
+			const token = await signToken({ sub: 'user-123', aud: 'other-app' });
+
+			await expect(
+				identifier.resolve({ ...mockContext, identity: token }, boundOptions),
+			).rejects.toThrow('Token was not issued for the expected audience');
+		});
+
 		test('should not refetch while the refresh cooldown is held', async () => {
 			let fetches = 0;
 			request.mockImplementation(async (options: IHttpRequestOptions) => {
