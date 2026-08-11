@@ -604,25 +604,36 @@ export function useWorkflowSaving({
 		{ maxWait: getDebounceTime(DEBOUNCE_TIME.API.AUTOSAVE_MAX_WAIT) },
 	);
 
-	const scheduleAutoSave = () => {
-		// Don't schedule if autosave is disabled via environment variable
+	/** Whether an autosave may be scheduled right now. */
+	function canScheduleAutoSave() {
 		if (!settingsStore.isAutosaveEnabled) {
-			return;
+			return false;
 		}
 
-		// Don't schedule if a save is already in progress - the finally block
-		// will reschedule if there are pending changes
-		if (saveStore.pendingSave) {
-			return;
-		}
-
-		// Don't schedule if we're waiting for retry backoff to complete
-		if (saveStore.isRetrying) {
-			return;
-		}
-
-		// Don't schedule if we're offline
 		if (!backendConnectionStore.isOnline) {
+			return false;
+		}
+
+		// Saving now would send an incomplete workflow
+		if (!uiStore.nodeViewInitialized) {
+			return false;
+		}
+
+		// A save in progress reschedules itself if changes remain, so skipping is safe
+		if (saveStore.pendingSave) {
+			return false;
+		}
+
+		// Waiting out the retry backoff
+		if (saveStore.isRetrying) {
+			return false;
+		}
+
+		return true;
+	}
+
+	const scheduleAutoSave = () => {
+		if (!canScheduleAutoSave()) {
 			return;
 		}
 
@@ -645,6 +656,16 @@ export function useWorkflowSaving({
 				if (uiStore.stateIsDirty) {
 					scheduleAutoSave();
 				}
+			}
+		},
+	);
+
+	// Catch up on edits made while the document was still loading
+	watch(
+		() => uiStore.nodeViewInitialized,
+		(isInitialized, wasInitialized) => {
+			if (isInitialized && !wasInitialized && uiStore.stateIsDirty) {
+				scheduleAutoSave();
 			}
 		},
 	);

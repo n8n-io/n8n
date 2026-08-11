@@ -1,3 +1,4 @@
+import { nextTick } from 'vue';
 import { useUIStore } from '@/app/stores/ui.store';
 import { AutoSaveState, MODAL_CANCEL, MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import { useWorkflowSaving } from './useWorkflowSaving';
@@ -143,6 +144,9 @@ describe('useWorkflowSaving', () => {
 
 		backendConnectionStore = useBackendConnectionStore();
 		backendConnectionStore.setOnline(true);
+
+		// Default to a fully loaded workflow document
+		useUIStore().nodeViewInitialized = true;
 	});
 
 	describe('promptSaveUnsavedWorkflowChanges', () => {
@@ -1333,6 +1337,52 @@ describe('useWorkflowSaving', () => {
 
 			// State should remain Idle, not Scheduled
 			expect(autosaveStore.autoSaveState).toBe(AutoSaveState.Idle);
+		});
+
+		it('should not schedule autosave while the document is still loading', () => {
+			const saveStore = useWorkflowSaveStore();
+			const uiStore = useUIStore();
+
+			saveStore.reset();
+			uiStore.nodeViewInitialized = false;
+
+			const { autoSaveWorkflow } = useWorkflowSaving({ router });
+
+			autoSaveWorkflow();
+
+			expect(saveStore.autoSaveState).toBe(AutoSaveState.Idle);
+		});
+
+		it('should schedule autosave once the document finished loading if state is dirty', async () => {
+			const saveStore = useWorkflowSaveStore();
+			const uiStore = useUIStore();
+
+			saveStore.reset();
+			uiStore.nodeViewInitialized = false;
+
+			useWorkflowSaving({ router });
+
+			uiStore.markStateDirty();
+			uiStore.nodeViewInitialized = true;
+			await nextTick();
+
+			expect(saveStore.autoSaveState).toBe(AutoSaveState.Scheduled);
+		});
+
+		it('should not schedule autosave once the document finished loading if state is clean', async () => {
+			const saveStore = useWorkflowSaveStore();
+			const uiStore = useUIStore();
+
+			saveStore.reset();
+			uiStore.nodeViewInitialized = false;
+
+			useWorkflowSaving({ router });
+
+			uiStore.markStateClean();
+			uiStore.nodeViewInitialized = true;
+			await nextTick();
+
+			expect(saveStore.autoSaveState).toBe(AutoSaveState.Idle);
 		});
 
 		it('should schedule autosave when autosave is enabled via environment variable', () => {
