@@ -5,7 +5,9 @@ export function useMcp() {
 	const telemetry = useTelemetry();
 
 	const trackMcpAccessEnabledForWorkflow = (workflowId: string) => {
-		telemetry.track('User gave MCP access to workflow', { workflow_id: workflowId });
+		telemetry.track(TELEMETRY_EVENT.MCP.USER_GAVE_MCP_ACCESS_TO_WORKFLOW, {
+			workflow_id: workflowId,
+		});
 	};
 
 	const trackMcpAccessEnabledForAgent = (agentId: string) => {
@@ -13,7 +15,7 @@ export function useMcp() {
 	};
 
 	const trackUserToggledMcpAccess = (enabled: boolean) => {
-		telemetry.track('User toggled MCP access', { state: enabled });
+		telemetry.track(TELEMETRY_EVENT.MCP.USER_TOGGLED_MCP_ACCESS, { state: enabled });
 	};
 
 	const trackAutoExposeToggled = ({
