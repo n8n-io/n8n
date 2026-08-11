@@ -1,3 +1,4 @@
+import type { InstanceAiCredits } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { isQuotaExhaustedError } from '@n8n/instance-ai';
 
@@ -84,13 +85,7 @@ describe('reclassifyMaskedStreamFailure', () => {
 	const user = { id: 'user-1' } as User;
 	const context = { threadId: 'thread-1', runId: 'run-1' };
 
-	function createService(
-		getCredits: () => Promise<{
-			creditsQuota: number;
-			creditsClaimed: number;
-			quotaLocked?: boolean;
-		}>,
-	): ReclassifyInternals {
+	function createService(getCredits: () => Promise<InstanceAiCredits>): ReclassifyInternals {
 		const service = Object.create(InstanceAiService.prototype) as unknown as ReclassifyInternals;
 		service.modelService = { getCredits: vi.fn(getCredits) };
 		service.logger = { debug: vi.fn(), info: vi.fn() };

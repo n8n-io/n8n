@@ -1,4 +1,4 @@
-import { UNLIMITED_CREDITS } from '@n8n/api-types';
+import { UNLIMITED_CREDITS, type InstanceAiCredits } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
@@ -25,7 +25,8 @@ describe('InstanceAiCreditService activation lock', () => {
 			activatedAt?: number;
 			/** Whether the instance has met the message threshold. */
 			messageThresholdMet?: boolean;
-			lockResult?: { creditsQuota: number; creditsClaimed: number; quotaLocked: boolean };
+			/** `quotaLocked` stays required here so each case states the service's verdict. */
+			lockResult?: InstanceAiCredits & { quotaLocked: boolean };
 			lockRejects?: Error;
 		} = {},
 	) {

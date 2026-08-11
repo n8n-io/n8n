@@ -18,6 +18,7 @@ import {
 	type InstanceAiResourceAttachment,
 	type InstanceAiWorkflowAttachment,
 	type InstanceAiConfirmRequest,
+	type InstanceAiCredits,
 	type InstanceAiConfirmResponse,
 	type InstanceAiEvent,
 	type InstanceAiThreadStatusResponse,
@@ -865,9 +866,7 @@ export class InstanceAiService {
 	 * lock call that was lost to a failed request, an evicted record or a process restart is
 	 * re-asserted here without any scheduled job.
 	 */
-	async getCredits(
-		user: User,
-	): Promise<{ creditsQuota: number; creditsClaimed: number; quotaLocked?: boolean }> {
+	async getCredits(user: User): Promise<InstanceAiCredits> {
 		await this.creditService.ensureQuotaLockApplied(user);
 
 		const credits = await this.modelService.getCredits(user);

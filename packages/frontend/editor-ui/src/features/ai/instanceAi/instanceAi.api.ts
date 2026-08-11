@@ -8,6 +8,7 @@ import type {
 	InstanceAiSendMessageResponse,
 	InstanceAiConfirmRequest,
 	InstanceAiConfirmResponse,
+	InstanceAiCredits,
 	InstanceAiHandoffContext,
 	InstanceAiThreadOrigin,
 	InstanceAiThreadSource,
@@ -122,14 +123,8 @@ export async function postConfirmation(
  * Returns -1 quota when the proxy is disabled, and also for the activation-capped trial cohort,
  * whose balance is never shown — for them `quotaLocked` is the only usage signal.
  */
-export async function getInstanceAiCredits(
-	context: IRestApiContext,
-): Promise<{ creditsQuota: number; creditsClaimed: number; quotaLocked?: boolean }> {
-	return await makeRestApiRequest<{
-		creditsQuota: number;
-		creditsClaimed: number;
-		quotaLocked?: boolean;
-	}>(context, 'GET', '/instance-ai/credits');
+export async function getInstanceAiCredits(context: IRestApiContext): Promise<InstanceAiCredits> {
+	return await makeRestApiRequest<InstanceAiCredits>(context, 'GET', '/instance-ai/credits');
 }
 
 /**

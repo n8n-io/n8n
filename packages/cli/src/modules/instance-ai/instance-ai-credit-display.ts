@@ -1,6 +1,4 @@
-import { UNLIMITED_CREDITS } from '@n8n/api-types';
-
-type Credits = { creditsQuota: number; creditsClaimed: number; quotaLocked?: boolean };
+import { UNLIMITED_CREDITS, type InstanceAiCredits } from '@n8n/api-types';
 
 type ThreadCredits = { threadId: string; totalCreditsUsed: number };
 
@@ -20,10 +18,10 @@ type ThreadCredits = { threadId: string; totalCreditsUsed: number };
  * the real figures.
  */
 export function maskCreditsForDisplay(
-	credits: Credits,
+	credits: InstanceAiCredits,
 	activationCapped: boolean,
 	creditsPerThread?: ThreadCredits,
-): Credits & { creditsPerThread?: ThreadCredits } {
+): InstanceAiCredits & { creditsPerThread?: ThreadCredits } {
 	if (activationCapped) {
 		return {
 			creditsQuota: UNLIMITED_CREDITS,
