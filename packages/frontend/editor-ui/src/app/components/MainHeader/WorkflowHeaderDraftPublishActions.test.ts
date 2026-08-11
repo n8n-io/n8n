@@ -40,7 +40,12 @@ import {
 import { ResponseError } from '@n8n/rest-api-client';
 
 // Hoisted: the vue-router mock factory runs before module-level consts initialize
-const { mockRouterPush } = vi.hoisted(() => ({ mockRouterPush: vi.fn() }));
+const { mockRouterPush, mockRouterResolve } = vi.hoisted(() => ({
+	mockRouterPush: vi.fn(),
+	mockRouterResolve: vi.fn(({ params }: { params: { reviewRequestId: string } }) => ({
+		href: `/workflow-review-requests/${params.reviewRequestId}`,
+	})),
+}));
 
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal()),
@@ -51,6 +56,7 @@ vi.mock('vue-router', async (importOriginal) => ({
 	useRouter: vi.fn().mockReturnValue({
 		replace: vi.fn(),
 		push: mockRouterPush,
+		resolve: mockRouterResolve,
 		currentRoute: {
 			value: {
 				params: { workflowId: 'test' },
@@ -64,6 +70,7 @@ const mockSaveCurrentWorkflow = vi.fn().mockResolvedValue(true);
 const mockUnpublishWorkflowFromHistory = vi.fn().mockResolvedValue(true);
 const mockPublishWorkflow = vi.fn().mockResolvedValue({ success: true });
 const mockShowMessage = vi.fn();
+const mockShowToast = vi.fn();
 const mockShowError = vi.fn();
 
 vi.mock('@/app/composables/useWorkflowSaving', () => ({
@@ -82,6 +89,7 @@ vi.mock('@/app/composables/useWorkflowActivate', () => ({
 vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({
 		showMessage: mockShowMessage,
+		showToast: mockShowToast,
 		showError: mockShowError,
 	}),
 }));
@@ -679,9 +687,23 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 					},
 				);
 			});
-			expect(mockShowMessage).toHaveBeenCalledWith({
+			expect(mockShowToast).toHaveBeenCalledWith({
 				type: 'success',
 				title: 'Latest changes submitted to the existing review',
+				message: '<a href="/workflow-review-requests/req-1">Open review</a>',
+				onClick: expect.any(Function),
+			});
+			const toastConfig = mockShowToast.mock.calls.at(-1)?.[0];
+			if (!toastConfig) throw new Error('Expected a review success toast');
+			const preventDefault = vi.fn();
+			toastConfig.onClick({
+				target: document.createElement('a'),
+				preventDefault,
+			} as unknown as MouseEvent);
+			expect(preventDefault).toHaveBeenCalledOnce();
+			expect(mockRouterPush).toHaveBeenCalledWith({
+				name: WORKFLOW_REVIEW_REQUESTS_VIEW,
+				params: { reviewRequestId: 'req-1' },
 			});
 		});
 
@@ -770,9 +792,11 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			expect(
 				await findByRole('dialog', { name: 'Workflow version submitted for review' }),
 			).toBeInTheDocument();
-			expect(mockShowMessage).toHaveBeenCalledWith({
+			expect(mockShowToast).toHaveBeenCalledWith({
 				type: 'success',
-				title: 'Workflow version submitted for review successfully',
+				title: 'Workflow version submitted for review',
+				message: '<a href="/workflow-review-requests/review-1">Open review</a>',
+				onClick: expect.any(Function),
 			});
 		});
 
@@ -793,9 +817,11 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			await userEvent.click(within(submitDialog).getByTestId('workflow-review-submit-button'));
 
 			await waitFor(() => {
-				expect(mockShowMessage).toHaveBeenCalledWith({
+				expect(mockShowToast).toHaveBeenCalledWith({
 					type: 'success',
-					title: 'Workflow version submitted for review successfully',
+					title: 'Workflow version submitted for review',
+					message: '<a href="/workflow-review-requests/review-1">Open review</a>',
+					onClick: expect.any(Function),
 				});
 			});
 			expect(

@@ -19,7 +19,7 @@ import {
 	N8nSpinner,
 	N8nTooltip,
 } from '@n8n/design-system';
-import { useI18n } from '@n8n/i18n';
+import { type BaseTextKey, useI18n } from '@n8n/i18n';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { getActivatableTriggerNodes } from '@/app/utils/nodeTypesUtils';
@@ -283,23 +283,38 @@ const flushSaveForReview = async (): Promise<string | undefined> => {
 	return workflowDocumentStore.value.versionId || undefined;
 };
 
+const showReviewToast = (titleKey: BaseTextKey, reviewRequestId: string) => {
+	const reviewRoute = {
+		name: WORKFLOW_REVIEW_REQUESTS_VIEW,
+		params: { reviewRequestId },
+	};
+	const reviewUrl = router.resolve(reviewRoute).href;
+
+	toast.showToast({
+		type: 'success',
+		title: i18n.baseText(titleKey),
+		message: `<a href="${reviewUrl}">${i18n.baseText('workflowReviews.editorBanner.openReview')}</a>`,
+		onClick: (event: MouseEvent | undefined) => {
+			if (!(event?.target instanceof HTMLAnchorElement)) return;
+			if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return; // let the browser open a new tab
+
+			event.preventDefault();
+			void router.push(reviewRoute);
+		},
+	});
+};
+
 const onReviewSubmitted = (workflowReviewRequestId: string) => {
 	submittedReviewRequestId.value = workflowReviewRequestId;
-	toast.showMessage({
-		type: 'success',
-		title: i18n.baseText('workflowReviews.submitted.toast'),
-	});
+	showReviewToast('workflowReviews.submitted.title', workflowReviewRequestId);
 
 	if (!submittedDialogDismissed.value) {
 		showReviewSubmittedDialog.value = true;
 	}
 };
 
-const onReviewUpdated = () => {
-	toast.showMessage({
-		type: 'success',
-		title: i18n.baseText('workflowReviews.updateReview.toast'),
-	});
+const onReviewUpdated = (workflowReviewRequestId: string) => {
+	showReviewToast('workflowReviews.updateReview.toast', workflowReviewRequestId);
 };
 
 /** The submit dialog hit a 409: an open review exists, so offer updating it instead. */

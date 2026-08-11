@@ -155,7 +155,7 @@ describe('WorkflowUpdateReviewDialog', () => {
 		});
 		expect(flushSave).toHaveBeenCalledOnce();
 		expect(fetchStatusSpy).toHaveBeenCalledWith('workflow-1');
-		expect(emitted('updated')).toHaveLength(1);
+		expect(emitted('updated')).toEqual([['review-1']]);
 		expect(emitted('update:open')).toContainEqual([false]);
 		expect(mockShowError).not.toHaveBeenCalled();
 	});
