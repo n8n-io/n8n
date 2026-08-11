@@ -13,7 +13,7 @@ import { useNotificationsStore } from '@n8n/stores/notifications.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { get } from '@n8n/rest-api-client';
-import { resetSessionExpiredHandledFlag } from '@/app/utils/handleSessionExpired';
+import { useSessionExpiryStore } from '@/app/stores/sessionExpiry.store';
 import type { Scope } from '@n8n/permissions';
 import type { RouteRecordName } from 'vue-router';
 import type { MockInstance } from 'vitest';
@@ -377,22 +377,31 @@ describe('router', () => {
 	// `afterEach` rather than depending on file/test order.
 	describe('session-expiry redirect (registered on rest-api-client, see router.ts)', () => {
 		afterEach(async () => {
-			resetSessionExpiredHandledFlag();
+			useSessionExpiryStore().handled = false;
 			useNotificationsStore().setNotificationsSuppressed(false);
 			await useUsersStore().initialize();
 			await router.replace('/workflow/router-test-reset');
 		});
 
-		test('redirects to sign-in when a REST call to the app backend comes back 401', async () => {
+		test('reloads to sign-in when a REST call to the app backend comes back 401', async () => {
 			const rootStore = useRootStore();
 			server.get('/rest/__test_401__', () => new Response(401, {}, { message: 'Unauthorized' }));
+
+			Object.defineProperty(window, 'location', {
+				value: { href: '' },
+				writable: true,
+			});
+			const hrefSpy = vi.spyOn(window.location, 'href', 'set');
 
 			await expect(get(rootStore.restApiContext.baseUrl, '/__test_401__')).rejects.toThrow();
 
 			await vi.waitFor(() => {
-				expect(router.currentRoute.value.name).toBe(VIEWS.SIGNIN);
+				expect(hrefSpy).toHaveBeenCalled();
 			});
-			expect(router.currentRoute.value.query.sessionExpired).toBe('true');
+
+			const [href] = hrefSpy.mock.calls[0];
+			expect(href).toContain(router.resolve({ name: VIEWS.SIGNIN }).path);
+			expect(href).toContain('sessionExpired=true');
 		});
 	});
 });

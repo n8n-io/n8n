@@ -34,7 +34,6 @@ import { useRolesStore } from '@n8n/stores/roles.store';
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
-import { resetSessionExpiredHandledFlag } from '@/app/utils/handleSessionExpired';
 
 export const state = {
 	initialized: false,
@@ -263,8 +262,6 @@ function registerAuthenticationHooks() {
 	const favoritesStore = useFavoritesStore();
 
 	usersStore.registerLoginHook(async (user) => {
-		resetSessionExpiredHandledFlag();
-
 		await settingsStore.getSettings();
 
 		// Re-initialize SSO store with authenticated settings.

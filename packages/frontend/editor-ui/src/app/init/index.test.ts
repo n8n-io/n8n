@@ -23,14 +23,6 @@ import { mock } from 'vitest-mock-extended';
 import { telemetry } from '@/app/plugins/telemetry';
 import { registerToastNotifier } from '@/app/init/toastNotifier';
 
-const { resetSessionExpiredHandledFlag } = vi.hoisted(() => ({
-	resetSessionExpiredHandledFlag: vi.fn(),
-}));
-
-vi.mock('@/app/utils/handleSessionExpired', () => ({
-	resetSessionExpiredHandledFlag,
-}));
-
 const showMessage = vi.fn();
 const showToast = vi.fn();
 
@@ -226,16 +218,6 @@ describe('Init', () => {
 					oidc: false,
 				},
 			});
-		});
-
-		it('should reset the session-expiry handled flag in the login hook, so any login path catches a future expiry', async () => {
-			usersStore.registerLoginHook.mockImplementation(async (hook) => {
-				await hook(mock<CurrentUserResponse>({ id: 'userId', role: 'global:member' }));
-			});
-
-			await initializeCore();
-
-			expect(resetSessionExpiredHandledFlag).toHaveBeenCalled();
 		});
 
 		it('should still call getModuleSettings if postHogStore.init throws', async () => {

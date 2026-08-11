@@ -44,14 +44,6 @@ vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showMessage, showError, clearAllStickyNotifications }),
 }));
 
-const { restoreNotificationSuppression } = vi.hoisted(() => ({
-	restoreNotificationSuppression: vi.fn(),
-}));
-
-vi.mock('@/app/utils/handleSessionExpired', () => ({
-	restoreNotificationSuppression,
-}));
-
 const renderComponent = createComponentRenderer(SigninView);
 
 let usersStore: ReturnType<typeof mockedStore<typeof useUsersStore>>;
@@ -151,18 +143,18 @@ describe('SigninView', () => {
 		expect(router.push).toHaveBeenCalledWith('/home/workflows');
 	});
 
-	it('should restore notification suppression as soon as a login attempt is submitted', async () => {
+	it('should unsuppress notifications as soon as a login attempt is submitted', async () => {
 		await signInWithValidUser();
 
-		expect(restoreNotificationSuppression).toHaveBeenCalled();
+		expect(notificationsStore.setNotificationsSuppressed).toHaveBeenCalledWith(false);
 	});
 
-	it('should restore notification suppression when leaving via a route other than a login attempt', () => {
+	it('should unsuppress notifications when leaving via a route other than a login attempt', () => {
 		const { unmount } = renderComponent();
 
 		unmount();
 
-		expect(restoreNotificationSuppression).toHaveBeenCalled();
+		expect(notificationsStore.setNotificationsSuppressed).toHaveBeenCalledWith(false);
 	});
 
 	describe('when redirect query parameter is set', () => {

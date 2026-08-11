@@ -8,24 +8,6 @@ import { useSessionExpiryStore } from '@/app/stores/sessionExpiry.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { getSanitizedCurrentPath } from '@/app/utils/urlUtils';
 
-// Called on successful login so a future expiry is handled again.
-export function resetSessionExpiredHandledFlag(): void {
-	useSessionExpiryStore().resetHandled();
-}
-
-// Called from SigninView.vue on a login attempt or on unmount; safe to call more than once.
-export function restoreNotificationSuppression(): void {
-	const notificationsStore = useNotificationsStore();
-	const { priorSuppression } = useSessionExpiryStore();
-	if (priorSuppression) {
-		notificationsStore.setNotificationsSuppressed(priorSuppression.suppressed, {
-			allowErrors: priorSuppression.allowErrors,
-		});
-	} else {
-		notificationsStore.setNotificationsSuppressed(false);
-	}
-}
-
 // currentUser excludes failed-login 401s; handled dedupes concurrent ones; baseURL excludes non-n8n hosts.
 export async function handleSessionExpired(router: Router, baseURL: string): Promise<void> {
 	const usersStore = useUsersStore();
@@ -43,19 +25,14 @@ export async function handleSessionExpired(router: Router, baseURL: string): Pro
 	const uiStore = useUIStore();
 	uiStore.closeAllModals();
 
-	// Set before any `await` so the triggering request's own toast is suppressed too.
-	const notificationsStore = useNotificationsStore();
-	sessionExpiryStore.setPriorSuppression({
-		suppressed: notificationsStore.areNotificationsSuppressed,
-		allowErrors: notificationsStore.allowErrorNotificationsWhenSuppressed,
-	});
-	notificationsStore.setNotificationsSuppressed(true);
+	// Set before any `await` so the triggering request's own toast is suppressed too. The
+	// redirect below reloads the page, so there's nothing to restore this to afterwards.
+	useNotificationsStore().setNotificationsSuppressed(true);
 
 	const currentRoute = router.currentRoute.value;
 
-	// Unsaved changes won't survive the redirect (the unsaved-changes prompt is skipped below via
-	// sessionExpiryStore.handled), so drop any open node id rather than restore a URL pointing at
-	// a node a fresh fetch of the workflow won't find.
+	// Unsaved changes won't survive the redirect, so drop any open node id rather than restore a
+	// URL pointing at a node a fresh fetch of the workflow won't find.
 	const redirectRoute = uiStore.stateIsDirty
 		? router.resolve({
 				name: currentRoute.name,
@@ -72,8 +49,12 @@ export async function handleSessionExpired(router: Router, baseURL: string): Pro
 		// Session is already invalid server-side; local cleanup still happens inside logout().
 	}
 
-	await router.push({
+	// The session is already invalid server-side, so saving would fail anyway; skip the
+	// unsaved-changes confirmation and reload straight to sign-in, matching the explicit
+	// sign-out flow (SignoutView.vue).
+	window.preventNodeViewBeforeUnload = true;
+	window.location.href = router.resolve({
 		name: VIEWS.SIGNIN,
 		query: { redirect: encodeURIComponent(redirectPath), sessionExpired: 'true' },
-	});
+	}).href;
 }

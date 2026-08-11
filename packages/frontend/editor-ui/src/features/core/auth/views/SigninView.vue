@@ -13,7 +13,6 @@ import { useNotificationsStore } from '@n8n/stores/notifications.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
-import { restoreNotificationSuppression } from '@/app/utils/handleSessionExpired';
 
 import type { IFormBoxConfig } from '@/Interface';
 import { MFA_AUTHENTICATION_REQUIRED_ERROR_CODE, VIEWS, MFA_FORM } from '@/app/constants';
@@ -43,12 +42,13 @@ const emailOrLdapLoginId = ref('');
 const password = ref('');
 const reportError = ref(false);
 
+const notificationsStore = useNotificationsStore();
+
 onMounted(() => {
 	if (route.query.sessionExpired !== 'true') {
 		return;
 	}
 
-	const notificationsStore = useNotificationsStore();
 	notificationsStore.setNotificationsSuppressed(false);
 	toast.showMessage({
 		title: locale.baseText('auth.signin.sessionExpired.title'),
@@ -60,7 +60,7 @@ onMounted(() => {
 
 // Covers leaving via e.g. "Forgot password", which login() below never sees.
 onUnmounted(() => {
-	restoreNotificationSuppression();
+	notificationsStore.setNotificationsSuppressed(false);
 });
 
 const ldapLoginLabel = computed(() => ssoStore.ldapLoginLabel);
@@ -147,7 +147,7 @@ const getRedirectQueryParameter = () => {
 };
 
 const login = async (form: LoginRequestDto) => {
-	restoreNotificationSuppression();
+	notificationsStore.setNotificationsSuppressed(false);
 	try {
 		loading.value = true;
 		await usersStore.loginWithCreds({
