@@ -1,0 +1,135 @@
+name: 'Build: Node PC Image'
+
+# Publishes n8nio/node-pc, the pointer-compressed Node runtime consumed by the
+# n8n `-pc` image variant. Compiling Node from source is too slow under QEMU,
+# so each architecture builds on its native runner and a manifest job stitches
+# the per-arch images, following docker-build-push.yml.
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'docker/images/node-pc/Dockerfile'
+      - '.github/workflows/build-node-pc-image.yml'
+  pull_request:
+    paths:
+      - 'docker/images/node-pc/Dockerfile'
+      - '.github/workflows/build-node-pc-image.yml'
+  workflow_dispatch:
+    inputs:
+      push:
+        description: 'Push to registries'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  NODE_VERSION: '26.5.1'
+
+jobs:
+  build:
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 150
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux/amd64
+            runner: blacksmith-32vcpu-ubuntu-2204
+            arch: amd64
+          - platform: linux/arm64
+            runner: blacksmith-32vcpu-ubuntu-2204-arm
+            arch: arm64
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Login to DHI Registry (for pulling the runtime base)
+        uses: ./.github/actions/docker-registry-login
+        with:
+          login-ghcr: 'false'
+          login-dhi: 'true'
+          dockerhub-username: ${{ secrets.DOCKER_USERNAME }}
+          dockerhub-password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Login to Docker registries (for pushing)
+        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.push == true)
+        uses: ./.github/actions/docker-registry-login
+        with:
+          login-ghcr: 'true'
+          login-dockerhub: 'true'
+          dockerhub-username: ${{ secrets.DOCKER_USERNAME }}
+          dockerhub-password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and push runtime target
+        uses: useblacksmith/build-push-action@30c71162f16ea2c27c3e21523255d209b8b538c1 # v2
+        with:
+          context: .
+          file: ./docker/images/node-pc/Dockerfile
+          target: runtime
+          platforms: ${{ matrix.platform }}
+          build-args: |
+            NODE_VERSION=${{ env.NODE_VERSION }}
+          provenance: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.push == true) }}
+          sbom: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.push == true) }}
+          push: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.push == true) }}
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/node-pc:${{ env.NODE_VERSION }}-${{ matrix.arch }}
+            ${{ secrets.DOCKER_USERNAME }}/node-pc:${{ env.NODE_VERSION }}-${{ github.sha }}-${{ matrix.arch }}
+            ghcr.io/${{ github.repository_owner }}/node-pc:${{ env.NODE_VERSION }}-${{ matrix.arch }}
+            ghcr.io/${{ github.repository_owner }}/node-pc:${{ env.NODE_VERSION }}-${{ github.sha }}-${{ matrix.arch }}
+          no-cache: true
+
+      # No no-cache here: reuses the compile layers from the runtime build
+      # above, so Node compiles once per architecture
+      - name: Build and push dev target
+        uses: useblacksmith/build-push-action@30c71162f16ea2c27c3e21523255d209b8b538c1 # v2
+        with:
+          context: .
+          file: ./docker/images/node-pc/Dockerfile
+          target: dev
+          platforms: ${{ matrix.platform }}
+          build-args: |
+            NODE_VERSION=${{ env.NODE_VERSION }}
+          provenance: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.push == true) }}
+          sbom: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.push == true) }}
+          push: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.push == true) }}
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/node-pc:${{ env.NODE_VERSION }}-dev-${{ matrix.arch }}
+            ${{ secrets.DOCKER_USERNAME }}/node-pc:${{ env.NODE_VERSION }}-${{ github.sha }}-dev-${{ matrix.arch }}
+            ghcr.io/${{ github.repository_owner }}/node-pc:${{ env.NODE_VERSION }}-dev-${{ matrix.arch }}
+            ghcr.io/${{ github.repository_owner }}/node-pc:${{ env.NODE_VERSION }}-${{ github.sha }}-dev-${{ matrix.arch }}
+
+  create-multi-arch-manifest:
+    needs: build
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.push == true)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Login to Docker registries
+        uses: ./.github/actions/docker-registry-login
+        with:
+          login-ghcr: 'true'
+          login-dockerhub: 'true'
+          dockerhub-username: ${{ secrets.DOCKER_USERNAME }}
+          dockerhub-password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Create multi-arch manifests
+        run: |
+          for REPO in \
+            "${{ secrets.DOCKER_USERNAME }}/node-pc" \
+            "ghcr.io/${{ github.repository_owner }}/node-pc" \
+          ; do
+            for DEV in "" "-dev"; do
+              AMD64="$REPO:${{ env.NODE_VERSION }}-${{ github.sha }}$DEV-amd64"
+              ARM64="$REPO:${{ env.NODE_VERSION }}-${{ github.sha }}$DEV-arm64"
+              for TAG in \
+                "$REPO:${{ env.NODE_VERSION }}$DEV" \
+                "$REPO:${{ env.NODE_VERSION }}-${{ github.sha }}$DEV" \
+              ; do
+                echo "Creating manifest $TAG"
+                docker buildx imagetools create --tag "$TAG" "$AMD64" "$ARM64"
+              done
+            done
+          done
