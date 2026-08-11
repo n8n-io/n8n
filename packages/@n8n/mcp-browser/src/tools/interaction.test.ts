@@ -167,6 +167,36 @@ describe('createInteractionTools', () => {
 				expect(data.text).toBe('hello');
 				expect(data.ref).toBe('e1');
 			});
+
+			it('routes a failure through the connection so it can be explained', async () => {
+				// The wrapper stays out of the error taxonomy; BrowserConnection owns it.
+				const failure = new Error('locator.pressSequentially: Timeout 30000ms exceeded.');
+				mockConnection.adapter.type.mockRejectedValue(failure);
+				const explainFailure = mockConnection.connection.explainFailure as unknown as ReturnType<
+					typeof vi.fn
+				>;
+				explainFailure.mockReturnValueOnce(new Error('explained'));
+
+				const result = await getTool().execute(
+					{ element: { ref: 'e1' }, text: 'hello' },
+					TOOL_CONTEXT,
+				);
+
+				expect(explainFailure).toHaveBeenCalledWith(failure);
+				expect(structuredOf(result).error).toBe('explained');
+			});
+
+			it('opens the call before acting, so an earlier block is not blamed on it', async () => {
+				const beginToolCall = mockConnection.connection.beginToolCall as unknown as ReturnType<
+					typeof vi.fn
+				>;
+
+				await getTool().execute({ element: { ref: 'e1' }, text: 'hello' }, TOOL_CONTEXT);
+
+				expect(beginToolCall.mock.invocationCallOrder[0]).toBeLessThan(
+					mockConnection.adapter.type.mock.invocationCallOrder[0],
+				);
+			});
 		});
 	});
 
