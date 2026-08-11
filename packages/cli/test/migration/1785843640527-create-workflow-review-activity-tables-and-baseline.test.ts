@@ -299,7 +299,7 @@ describe('CreateWorkflowReviewActivityTablesAndBaseline Migration', () => {
 			const commentRepository = dataSource.getRepository(WorkflowReviewActivityComment);
 
 			const data = { workflowId: 'wf-1', versionId: 'v-1' };
-			const commentData = { revisions: [{ body: 'First draft' }] };
+			const history = [{ body: 'First draft', editedAt: '2026-01-02T03:04:05.678Z' }];
 			const editedAt = new Date('2026-01-02T03:04:05.678Z');
 			const savedSubmission = await activityRepository.save(
 				activityRepository.create({
@@ -315,7 +315,7 @@ describe('CreateWorkflowReviewActivityTablesAndBaseline Migration', () => {
 				commentRepository.create({
 					activityId: savedThread.id,
 					body: 'Looks good',
-					data: commentData,
+					history,
 					updatedAt: editedAt,
 				}),
 			);
@@ -349,7 +349,7 @@ describe('CreateWorkflowReviewActivityTablesAndBaseline Migration', () => {
 			expect(reply.id).toBeGreaterThan(message.id);
 
 			expect(message.body).toBe('Looks good');
-			expect(message.data).toEqual(commentData);
+			expect(message.history).toEqual(history);
 			expect(message.updatedAt).toEqual(editedAt);
 			expect(message.deletedAt).toBeNull();
 			expect(message.createdAt).toBeInstanceOf(Date);

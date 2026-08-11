@@ -1529,8 +1529,8 @@ erDiagram
   text body
   timestamp_3__with_time_zone createdAt
   uuid createdById FK
-  json data
   timestamp_3__with_time_zone deletedAt
+  json history
   integer id
   timestamp_3__with_time_zone updatedAt
 }
