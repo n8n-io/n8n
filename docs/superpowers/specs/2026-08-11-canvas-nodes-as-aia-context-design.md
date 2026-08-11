@@ -181,8 +181,12 @@ component picks up staged attachment; **typed text preserved** across staging.
   `consumePendingDraftAttachment(threadId)`. `InstanceAiThreadView` consumes it
   on mount into the composer draft **without sending**.
 - **Context A** (inside thread): build (Phase 1) → `stageNodeSets` → composer
-  picks up directly; ensure the composer is focused / preview un-expanded if it
-  was hiding the chat.
+  picks up directly. Then ensure the composer ("Ask anything…" input,
+  `InstanceAiInput.vue`) is visible and focused, reusing existing primitives in
+  `InstanceAiThreadView.vue`: set `isPreviewExpanded.value = false` (a plain
+  `ref`, already force-reset this way at lines 452/478 — un-expands the canvas
+  if it was covering the chat) then `nextTick(() => chatInputRef.value?.focus())`
+  (the exposed `focus()`, already called at lines 277/617). No new mechanism.
 - **Context B** (standalone editor): build → mint/resolve thread →
   `stashPendingDraftAttachment` → navigate to `/assistant/:threadId` → thread
   view consumes into the draft, unsent.
@@ -194,7 +198,10 @@ component picks up staged attachment; **typed text preserved** across staging.
 
 Tests: toolbar button visibility (flag on + >1 selected); context-menu item
 presence by flag (legacy entry untouched); handler stages via Phase 2 and, when
-in Context B, stashes + navigates; Context A stages directly without navigation.
+in Context B, stashes + navigates; Context A stages directly without navigation
+and calls `focus()` on the composer with `isPreviewExpanded` reset to `false`;
+`stash`/`consume` round-trips a multi-set draft through localStorage and clears
+after one consume.
 
 ### Phase 4 — Chip rendering
 
