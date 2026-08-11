@@ -9,7 +9,7 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useWorkflowSaveStore } from '@/app/stores/workflowSave.store';
 import { useBackendConnectionStore } from '@/app/stores/backendConnection.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import { mockedStore } from '@/__tests__/utils';
 import { createTestNode, createTestWorkflow, mockNodeTypeDescription } from '@/__tests__/mocks';
@@ -516,6 +516,35 @@ describe('useWorkflowSaving', () => {
 			expect(workflow.nodeGroups).toEqual([
 				{ id: 'group-1', name: 'My Group', nodeIds: [newId1, newId2] },
 			]);
+		});
+
+		// CAT-3966: the Trello Trigger's webhook path comes from its node description, not
+		// from a `path` parameter, so resetting webhook URLs must not add one.
+		it('should not invent a `path` parameter on a trigger that does not have one', async () => {
+			const workflow: WorkflowDataUpdate = {
+				name: 'Trello duplicate test',
+				active: false,
+				nodes: [
+					createTestNode({
+						name: 'Trello Trigger',
+						type: 'n8n-nodes-base.trelloTrigger',
+						parameters: { authentication: 'apiKey', id: '4d5ea62fd76aa1136000000c' },
+						webhookId: 'original-node-webhook-id',
+					}),
+				],
+				connections: {},
+			};
+
+			const { saveAsNewWorkflow } = useWorkflowSaving({ router });
+
+			await saveAsNewWorkflow({
+				name: workflow.name,
+				resetWebhookUrls: true,
+				data: workflow,
+			});
+
+			expect(workflow.nodes![0].webhookId).not.toBe('original-node-webhook-id');
+			expect(workflow.nodes![0].parameters).not.toHaveProperty('path');
 		});
 	});
 

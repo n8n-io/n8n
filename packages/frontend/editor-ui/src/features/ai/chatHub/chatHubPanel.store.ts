@@ -4,7 +4,7 @@ import { STORES } from '@n8n/stores';
 import { useRoute } from 'vue-router';
 import { FLOATING_CHAT_HUB_PANEL_EXPERIMENT } from '@/app/constants';
 import { usePostHog } from '@/app/stores/posthog.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { EDITABLE_CANVAS_VIEWS } from '@/app/constants';
 import type { VIEWS } from '@/app/constants';

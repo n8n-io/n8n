@@ -26,6 +26,13 @@ import { InstanceSettings } from 'n8n-core';
 import type { INode } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { STARTING_NODES } from '@/constants';
+import { ExecutionService } from '@/executions/execution.service';
+import { InstanceRedactionEnforcementService } from '@/modules/redaction/instance-redaction-enforcement.service';
+import { ProjectService } from '@/services/project.service.ee';
+import { Telemetry } from '@/telemetry';
+
 import { saveCredential } from '../shared/db/credentials';
 import { createFolder } from '../shared/db/folders';
 import { createCustomRoleWithScopeSlugs, cleanupRolesAndScopes } from '../shared/db/roles';
@@ -42,13 +49,6 @@ import {
 } from '../shared/db/workflow-history';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
-
-import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { STARTING_NODES } from '@/constants';
-import { ExecutionService } from '@/executions/execution.service';
-import { InstanceRedactionEnforcementService } from '@/modules/redaction/instance-redaction-enforcement.service';
-import { ProjectService } from '@/services/project.service.ee';
-import { Telemetry } from '@/telemetry';
 
 mockInstance(Telemetry);
 
@@ -500,6 +500,44 @@ describe('GET /workflows', () => {
 		expect(tags).toEqual([]);
 	});
 
+	test('should match `name` as a substring of the workflow name', async () => {
+		await Promise.all([
+			createWorkflowWithHistory({ name: 'Monthly invoice sync' }, member),
+			createWorkflowWithHistory({ name: 'Daily report' }, member),
+		]);
+
+		const response = await authMemberAgent.get('/workflows?name=invoice');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.map((w: { name: string }) => w.name)).toEqual([
+			'Monthly invoice sync',
+		]);
+	});
+
+	test('should not match `name` against the workflow description', async () => {
+		await createWorkflowWithHistory(
+			{ name: 'Daily report', description: 'Sends the invoice summary' },
+			member,
+		);
+
+		const response = await authMemberAgent.get('/workflows?name=invoice');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toEqual([]);
+	});
+
+	test('should treat a multi-word `name` as one literal substring, not separate terms', async () => {
+		await Promise.all([
+			createWorkflowWithHistory({ name: 'My Workflow' }, member),
+			createWorkflowWithHistory({ name: 'Workflow for my team' }, member),
+		]);
+
+		const response = await authMemberAgent.get('/workflows?name=My Workflow');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.map((w: { name: string }) => w.name)).toEqual(['My Workflow']);
+	});
+
 	test('should return all workflows for custom global role with workflow:read', async () => {
 		await Promise.all([
 			createWorkflowWithHistory({}, owner),
@@ -632,6 +670,101 @@ describe('GET /workflows', () => {
 		expect(activeInResponse.activeVersion.connections).toEqual(activeWorkflow.connections);
 	});
 
+	test('should return activeVersion shaped to the OpenAPI schema', async () => {
+		const activeWorkflow = await createWorkflowWithTriggerAndHistory({}, member);
+		await authMemberAgent.post(`/workflows/${activeWorkflow.id}/activate`);
+
+		await Container.get(WorkflowHistoryRepository).update(
+			{ workflowId: activeWorkflow.id },
+			{ name: 'Version name', description: 'Version description', autosaved: true },
+		);
+
+		const listResponse = await authMemberAgent.get('/workflows');
+		const singleResponse = await authMemberAgent.get(`/workflows/${activeWorkflow.id}`);
+
+		expect(listResponse.statusCode).toBe(200);
+		expect(singleResponse.statusCode).toBe(200);
+
+		const fromList = listResponse.body.data[0].activeVersion;
+		const documentedFields = [
+			'versionId',
+			'workflowId',
+			'nodes',
+			'connections',
+			'nodeGroups',
+			'authors',
+			'name',
+			'description',
+			'autosaved',
+			'createdAt',
+			'updatedAt',
+		] as const;
+
+		expect(Object.keys(fromList).sort()).toEqual([...documentedFields].sort());
+
+		for (const field of documentedFields) {
+			expect(fromList[field]).toEqual(singleResponse.body.activeVersion[field]);
+		}
+	});
+
+	test('should return workflows ordered by id', async () => {
+		const first = await createWorkflowWithHistory({ id: 'sortid01', name: 'First' }, member);
+		const second = await createWorkflowWithHistory({ id: 'sortid02', name: 'Second' }, member);
+		const third = await createWorkflowWithHistory({ id: 'sortid03', name: 'Third' }, member);
+
+		// Editing must not change id order (would move the row under updatedAt sort).
+		const editResponse = await authMemberAgent.put(`/workflows/${second.id}`).send({
+			name: 'Second (edited)',
+			nodes: second.nodes,
+			connections: second.connections,
+			settings: second.settings,
+		});
+		expect(editResponse.statusCode).toBe(200);
+
+		const response = await authMemberAgent.get('/workflows');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.map((w: { id: string }) => w.id)).toEqual([
+			first.id,
+			second.id,
+			third.id,
+		]);
+	});
+
+	test('should return share rows without the owning project', async () => {
+		await createWorkflowWithHistory({}, member);
+
+		const response = await authMemberAgent.get('/workflows');
+
+		expect(response.statusCode).toBe(200);
+		// `shared[].project` is deliberately absent: callers that need the home
+		// project derive it themselves, and this endpoint has never returned it.
+		expect(Object.keys(response.body.data[0].shared[0]).sort()).toEqual([
+			'createdAt',
+			'projectId',
+			'role',
+			'updatedAt',
+			'workflowId',
+		]);
+	});
+
+	test('should return tags with their timestamps', async () => {
+		const tag = await createTag({ name: 'production' });
+		await createWorkflowWithHistory({ tags: [tag] }, member);
+
+		const response = await authMemberAgent.get('/workflows');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data[0].tags).toEqual([
+			{
+				id: tag.id,
+				name: 'production',
+				createdAt: tag.createdAt.toISOString(),
+				updatedAt: tag.updatedAt.toISOString(),
+			},
+		]);
+	});
+
 	test('should return activeVersion when filtering by active=true', async () => {
 		await createWorkflowWithHistory({}, member);
 		const activeWorkflow = await createWorkflowWithTriggerAndHistory({}, member);
@@ -683,9 +816,12 @@ describe('GET /workflows/:id', () => {
 			updatedAt,
 			isArchived,
 			versionId,
+			versionCounter,
+			sourceWorkflowId,
 			triggerCount,
 			meta,
 			tags,
+			shared,
 		} = response.body;
 
 		expect(id).toEqual(workflow.id);
@@ -701,8 +837,50 @@ describe('GET /workflows/:id', () => {
 		expect(updatedAt).toEqual(workflow.updatedAt.toISOString());
 		expect(isArchived).toBe(false);
 		expect(versionId).toBeDefined();
+		expect(versionCounter).toEqual(workflow.versionCounter);
+		expect(sourceWorkflowId).toEqual(workflow.sourceWorkflowId);
 		expect(triggerCount).toBe(0);
 		expect(meta).toBeDefined();
+		expect(shared).toEqual([
+			expect.objectContaining({
+				role: 'workflow:owner',
+				workflowId: workflow.id,
+				project: expect.objectContaining({
+					id: memberPersonalProject.id,
+					name: memberPersonalProject.name,
+					type: memberPersonalProject.type,
+					icon: memberPersonalProject.icon,
+					description: memberPersonalProject.description,
+					customTelemetryTags: memberPersonalProject.customTelemetryTags ?? [],
+					creatorId: memberPersonalProject.creatorId,
+				}),
+			}),
+		]);
+	});
+
+	test('should retrieve workflow with its tags', async () => {
+		const tag = await createTag({ name: 'production' });
+		const workflow = await createWorkflowWithHistory({ tags: [tag] }, member);
+
+		const response = await authMemberAgent.get(`/workflows/${workflow.id}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.tags).toEqual([expect.objectContaining({ id: tag.id, name: tag.name })]);
+	});
+
+	test('should omit tags entirely when tags are disabled', async () => {
+		globalConfig.tags.disabled = true;
+
+		try {
+			const workflow = await createWorkflowWithHistory({}, member);
+
+			const response = await authMemberAgent.get(`/workflows/${workflow.id}`);
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body).not.toHaveProperty('tags');
+		} finally {
+			globalConfig.tags.disabled = false;
+		}
 	});
 
 	test('should retrieve non-owned workflow for custom global role with workflow:read', async () => {
@@ -802,6 +980,14 @@ describe('GET /workflows/:id', () => {
 		expect(response.body.activeVersion.versionId).toBe(workflow.versionId);
 		expect(response.body.activeVersion.nodes).toEqual(workflow.nodes);
 		expect(response.body.activeVersion.connections).toEqual(workflow.connections);
+		expect(response.body.activeVersion.workflowPublishHistory).toEqual([
+			expect.objectContaining({
+				workflowId: workflow.id,
+				versionId: workflow.versionId,
+				event: 'activated',
+				userId: member.id,
+			}),
+		]);
 	});
 });
 
@@ -2094,6 +2280,8 @@ describe('POST /workflows redaction floor enforcement', () => {
 		expect(response.body.message).toBe(
 			'Workflow redaction policy cannot be weaker than the instance floor.',
 		);
+
+		await expect(workflowRepository.countBy({ name: 'redaction-floor' })).resolves.toBe(0);
 	});
 
 	test('seeds the floor policy when the redaction policy is omitted', async () => {
@@ -2437,6 +2625,65 @@ describe('PUT /workflows/:id', () => {
 		expect(versionInTheDb).not.toBeNull();
 		expect(updateResponse.body.activeVersionId).toBe(versionInTheDb!.versionId);
 		expect(versionInTheDb!.nodes).toEqual(updatedPayload.nodes);
+	});
+
+	test('should save as draft without republishing when publishIfActive=false', async () => {
+		const workflow = await createActiveWorkflow({}, member);
+
+		const updatedPayload = {
+			name: 'Updated active workflow',
+			nodes: [
+				{
+					id: 'uuid-updated',
+					parameters: { triggerTimes: { item: [{ mode: 'everyMinute' }] } },
+					name: 'Updated Cron',
+					type: 'n8n-nodes-base.cron',
+					typeVersion: 1,
+					position: [300, 400],
+				},
+			],
+			connections: {},
+			staticData: workflow.staticData,
+			settings: workflow.settings,
+		};
+
+		const updateResponse = await authMemberAgent
+			.put(`/workflows/${workflow.id}?publishIfActive=false`)
+			.send(updatedPayload);
+
+		expect(updateResponse.statusCode).toBe(200);
+		expect(updateResponse.body.active).toBe(true);
+		expect(updateResponse.body.activeVersionId).toBe(workflow.versionId);
+		expect(updateResponse.body.nodes).toEqual(updatedPayload.nodes);
+
+		const versionInTheDb = await Container.get(WorkflowHistoryRepository).findOne({
+			where: {
+				workflowId: workflow.id,
+				versionId: Not(workflow.versionId),
+			},
+		});
+
+		expect(versionInTheDb).not.toBeNull();
+		expect(versionInTheDb!.nodes).toEqual(updatedPayload.nodes);
+
+		const sharedWorkflow = await Container.get(SharedWorkflowRepository).findOne({
+			where: {
+				projectId: memberPersonalProject.id,
+				workflowId: workflow.id,
+			},
+			relations: ['workflow'],
+		});
+
+		// The published version itself is untouched: its history record still has the old content.
+		expect(sharedWorkflow?.workflow.activeVersionId).toBe(workflow.versionId);
+		const activeVersionInTheDb = await Container.get(WorkflowHistoryRepository).findOne({
+			where: {
+				workflowId: workflow.id,
+				versionId: workflow.versionId,
+			},
+		});
+		expect(activeVersionInTheDb!.nodes).toEqual(workflow.nodes);
+		expect(activeVersionInTheDb!.nodes).not.toEqual(updatedPayload.nodes);
 	});
 
 	test('should not allow updating active field', async () => {

@@ -4,6 +4,7 @@ import type {
 	WorkflowReviewRequestDetail,
 } from '@n8n/api-types';
 import { createTestingPinia } from '@pinia/testing';
+import { within } from '@testing-library/vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore, waitAllPromises } from '@/__tests__/utils';
 import { useToast } from '@n8n/composables/useToast';
@@ -21,6 +22,16 @@ vi.mock('@/app/composables/useDocumentTitle', () => ({
 	useDocumentTitle: () => ({
 		set: vi.fn(),
 	}),
+}));
+
+// The changes sections pull in the whole workflow-diff canvas machinery, which
+// is far too heavy for these routing/wiring tests.
+vi.mock('@/features/workflow-reviews/components/WorkflowReviewChangesSection.vue', () => ({
+	default: {
+		name: 'WorkflowReviewChangesSection',
+		props: ['workflow'],
+		template: '<div data-test-id="workflow-review-changes-section" />',
+	},
 }));
 
 const showError = vi.fn();
@@ -169,6 +180,38 @@ describe('WorkflowReviewRequestsView', () => {
 		expect(pushSpy).not.toHaveBeenCalled();
 	});
 
+	it('drops the tab when selecting a different review, so it lands on Activity', async () => {
+		await router.replace('/workflow-review-requests/req-2?state=closed&tab=changes');
+		store.probeSettled = true;
+		store.showSidebar = true;
+		const replaceSpy = vi.spyOn(router, 'replace');
+
+		const { getByTestId } = renderComponent();
+		getByTestId('select-review').click();
+		await waitAllPromises();
+
+		expect(replaceSpy).toHaveBeenCalledWith({
+			params: { reviewRequestId: 'req-1' },
+			query: { state: 'closed' },
+		});
+	});
+
+	it('keeps the tab when re-selecting the review already open', async () => {
+		await router.replace('/workflow-review-requests/req-1?tab=changes');
+		store.probeSettled = true;
+		store.showSidebar = true;
+		const replaceSpy = vi.spyOn(router, 'replace');
+
+		const { getByTestId } = renderComponent();
+		getByTestId('select-review').click();
+		await waitAllPromises();
+
+		expect(replaceSpy).toHaveBeenCalledWith({
+			params: { reviewRequestId: 'req-1' },
+			query: { tab: 'changes' },
+		});
+	});
+
 	it('clears the selection back to the bare inbox path', async () => {
 		await router.replace('/workflow-review-requests/req-1?state=closed');
 		store.probeSettled = true;
@@ -224,6 +267,11 @@ describe('WorkflowReviewRequestsView', () => {
 		const { getByTestId, queryByTestId } = renderComponent();
 		await waitAllPromises();
 		expect(getByTestId('workflow-review-request-title')).toHaveTextContent('List review');
+		expect(
+			within(getByTestId('workflow-review-request-title-row')).getByTestId(
+				'workflow-review-request-status-dot',
+			),
+		).toBeInTheDocument();
 		// The list item carries no eligibility data, so no decision actions yet
 		expect(queryByTestId('workflow-review-approve-button')).not.toBeInTheDocument();
 
@@ -280,6 +328,61 @@ describe('WorkflowReviewRequestsView', () => {
 		await waitAllPromises();
 
 		expect(store.setActiveTab).toHaveBeenCalledWith('closed');
+	});
+
+	describe('detail tabs', () => {
+		beforeEach(async () => {
+			await router.replace('/workflow-review-requests/req-1');
+			store.probeSettled = true;
+			store.showSidebar = true;
+			store.detail = createDetail();
+		});
+
+		it('defaults to the activity tab', async () => {
+			const { getByTestId, queryByTestId } = renderComponent();
+			await waitAllPromises();
+
+			expect(getByTestId('workflow-review-activity-panel')).toBeInTheDocument();
+			expect(queryByTestId('workflow-review-changes-panel')).not.toBeInTheDocument();
+		});
+
+		it('hydrates the changes tab from the query', async () => {
+			await router.replace('/workflow-review-requests/req-1?tab=changes');
+
+			const { getByTestId, queryByTestId } = renderComponent();
+			await waitAllPromises();
+
+			expect(getByTestId('workflow-review-changes-panel')).toBeInTheDocument();
+			expect(queryByTestId('workflow-review-activity-panel')).not.toBeInTheDocument();
+		});
+
+		it('falls back to the activity tab for an invalid tab query', async () => {
+			await router.replace('/workflow-review-requests/req-1?tab=bogus');
+
+			const { getByTestId } = renderComponent();
+			await waitAllPromises();
+
+			expect(getByTestId('workflow-review-activity-panel')).toBeInTheDocument();
+		});
+
+		it('writes the tab to the query preserving selection and state', async () => {
+			await router.replace('/workflow-review-requests/req-1?state=closed');
+
+			const { getByRole } = renderComponent();
+			await waitAllPromises();
+
+			getByRole('tab', { name: 'Changes' }).click();
+			await waitAllPromises();
+
+			expect(router.currentRoute.value.query).toEqual({ state: 'closed', tab: 'changes' });
+			expect(router.currentRoute.value.params.reviewRequestId).toBe('req-1');
+
+			getByRole('tab', { name: 'Activity' }).click();
+			await waitAllPromises();
+
+			expect(router.currentRoute.value.query).toEqual({ state: 'closed' });
+			expect(router.currentRoute.value.params.reviewRequestId).toBe('req-1');
+		});
 	});
 
 	describe('decision actions', () => {
@@ -511,13 +614,12 @@ describe('WorkflowReviewRequestsView', () => {
 
 		// Each button carries its own tooltip, so both must agree.
 		it('keeps the buttons enabled and the tooltips off when the viewer can decide', async () => {
-			const { getByTestId, getAllByTestId } = renderComponent();
+			const { getByTestId } = renderComponent();
 			await waitAllPromises();
 
-			expect(getByTestId('workflow-review-approve-button')).not.toBeDisabled();
-			expect(getByTestId('workflow-review-request-changes-button')).not.toBeDisabled();
-			for (const tooltip of getAllByTestId('workflow-review-decision-tooltip')) {
-				expect(tooltip).toHaveAttribute('data-disabled', 'true');
+			for (const button of decisionButtons(getByTestId)) {
+				expect(button).not.toBeDisabled();
+				expect(decisionTooltip(button)).toHaveAttribute('data-disabled', 'true');
 			}
 		});
 
@@ -527,16 +629,13 @@ describe('WorkflowReviewRequestsView', () => {
 				viewerDecisionIneligibilityReason: 'author',
 			});
 
-			const { getByTestId, getAllByTestId } = renderComponent();
+			const { getByTestId } = renderComponent();
 			await waitAllPromises();
 
-			expect(getByTestId('workflow-review-approve-button')).toBeDisabled();
-			expect(getByTestId('workflow-review-request-changes-button')).toBeDisabled();
-			const tooltips = getAllByTestId('workflow-review-decision-tooltip');
-			expect(tooltips).toHaveLength(2);
-			for (const tooltip of tooltips) {
-				expect(tooltip).toHaveAttribute('data-disabled', 'false');
-				expect(tooltip).toHaveAttribute(
+			for (const button of decisionButtons(getByTestId)) {
+				expect(button).toBeDisabled();
+				expect(decisionTooltip(button)).toHaveAttribute('data-disabled', 'false');
+				expect(decisionTooltip(button)).toHaveAttribute(
 					'data-content',
 					'You contributed a version to this review.',
 				);
@@ -549,12 +648,12 @@ describe('WorkflowReviewRequestsView', () => {
 				viewerDecisionIneligibilityReason: 'missing_publish_permission',
 			});
 
-			const { getByTestId, getAllByTestId } = renderComponent();
+			const { getByTestId } = renderComponent();
 			await waitAllPromises();
 
-			expect(getByTestId('workflow-review-approve-button')).toBeDisabled();
-			for (const tooltip of getAllByTestId('workflow-review-decision-tooltip')) {
-				expect(tooltip).toHaveAttribute(
+			for (const button of decisionButtons(getByTestId)) {
+				expect(button).toBeDisabled();
+				expect(decisionTooltip(button)).toHaveAttribute(
 					'data-content',
 					'Missing permissions to perform this action',
 				);
@@ -636,6 +735,23 @@ describe('WorkflowReviewRequestsView', () => {
 		expect(store.reset).toHaveBeenCalledTimes(1);
 	});
 });
+
+function decisionButtons(getByTestId: (id: string) => HTMLElement) {
+	return [
+		getByTestId('workflow-review-approve-button'),
+		getByTestId('workflow-review-request-changes-button'),
+	];
+}
+
+/**
+ * The tab bar renders a tooltip per tab, which the N8nTooltip stub matches too,
+ * so walk up from the button rather than querying the test id globally.
+ */
+function decisionTooltip(button: HTMLElement) {
+	const tooltip = button.closest('[data-test-id="workflow-review-decision-tooltip"]');
+	if (!tooltip) throw new Error('decision button is not wrapped in a tooltip');
+	return tooltip;
+}
 
 function createInboxItem(): WorkflowReviewInboxItem {
 	return {

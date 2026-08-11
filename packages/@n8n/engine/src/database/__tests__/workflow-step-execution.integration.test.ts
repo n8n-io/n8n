@@ -1,5 +1,6 @@
 import type { DataSource } from '@n8n/typeorm';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
+import postgresVersions from 'n8n-containers/postgres-versions.json';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import type { StepStatus } from '../../execution/execution.types';
@@ -14,7 +15,7 @@ describe('workflow_step_execution table (integration)', () => {
 	let dataSource: DataSource;
 
 	beforeAll(async () => {
-		container = await new PostgreSqlContainer('postgres:18-alpine').start();
+		container = await new PostgreSqlContainer(postgresVersions.primary).start();
 		dataSource = createDataSource(container.getConnectionUri());
 		await dataSource.initialize();
 		await dataSource.runMigrations();
@@ -105,6 +106,18 @@ describe('workflow_step_execution table (integration)', () => {
 		expect(await store.createSteps([])).toEqual([]);
 	});
 
+	it('TypeOrmStepStore.createSteps rejects a step created with outputs but not completed', async () => {
+		const executionId = await createExecution();
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+
+		await expect(
+			store.createSteps([{ executionId, nodeId: 'x', status: 'queued', outputs: [{}] }]),
+		).rejects.toMatchObject({
+			name: 'UnexpectedError',
+			message: expect.stringContaining('completed') as string,
+		});
+	});
+
 	it('cascades step deletion when the parent execution is deleted', async () => {
 		const executionId = await createExecution();
 		const stepRepo = dataSource.getRepository(WorkflowStepExecution);
@@ -153,9 +166,17 @@ describe('workflow_step_execution table (integration)', () => {
 		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
 		const { id } = await createStep(store, { executionId, nodeId: 'a', status: 'queued' });
 
-		expect(await store.claimStep(id)).toBe(true);
+		// the winning claim gets the step back, already `running`
+		expect(await store.claimStep(id)).toEqual({
+			id,
+			executionId,
+			nodeId: 'a',
+			status: 'running',
+			outputs: null,
+			error: null,
+		});
 		// second claim of the same step loses the race
-		expect(await store.claimStep(id)).toBe(false);
+		expect(await store.claimStep(id)).toBeNull();
 		expect((await store.loadStep(id)).status).toBe('running');
 	});
 
@@ -186,6 +207,40 @@ describe('workflow_step_execution table (integration)', () => {
 		expect(found.status).toBe('queued');
 		expect(found.outputs).toBeNull();
 		expect(found.error).toBeNull();
+	});
+
+	it('TypeOrmStepStore.cancelQueuedSteps cancels queued steps and nothing else', async () => {
+		const executionId = await createExecution();
+		const otherExecutionId = await createExecution();
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const { id: queuedId } = await createStep(store, {
+			executionId,
+			nodeId: 'a',
+			status: 'queued',
+		});
+		const { id: runningId } = await createStep(store, {
+			executionId,
+			nodeId: 'b',
+			status: 'running',
+		});
+		const { id: completedId } = await createStep(store, {
+			executionId,
+			nodeId: 'c',
+			status: 'completed',
+		});
+		// scoped to the execution: a sibling execution's queued work is untouched
+		const { id: otherId } = await createStep(store, {
+			executionId: otherExecutionId,
+			nodeId: 'a',
+			status: 'queued',
+		});
+
+		await store.cancelQueuedSteps(executionId);
+
+		expect((await store.loadStep(queuedId)).status).toBe('cancelled');
+		expect((await store.loadStep(runningId)).status).toBe('running');
+		expect((await store.loadStep(completedId)).status).toBe('completed');
+		expect((await store.loadStep(otherId)).status).toBe('queued');
 	});
 
 	it('TypeOrmStepStore.failStep persists the error and marks the step failed', async () => {
@@ -227,11 +282,62 @@ describe('workflow_step_execution table (integration)', () => {
 		});
 	});
 
+	it('TypeOrmStepStore.loadCompletedNodeIds returns only the completed ones', async () => {
+		const executionId = await createExecution();
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const { id: aId } = await createStep(store, { executionId, nodeId: 'a', status: 'running' });
+		// completed without firing its slot — readiness must not depend on what
+		// the outputs contain, which is why it has its own method
+		await store.completeStep(aId, [null]);
+		await createStep(store, { executionId, nodeId: 'b', status: 'queued' });
+		const { id: cId } = await createStep(store, { executionId, nodeId: 'c', status: 'running' });
+		await store.failStep(cId, { name: 'Error', message: 'node blew up' });
+
+		const completed = await store.loadCompletedNodeIds(executionId, ['a', 'b', 'c', 'd']);
+
+		// b queued, c failed, d has no row at all
+		expect(completed).toEqual(new Set(['a']));
+	});
+
 	it('rejects an invalid status (check constraint)', async () => {
 		const executionId = await createExecution();
 		const repo = dataSource.getRepository(WorkflowStepExecution);
 		await expect(
 			repo.save(repo.create({ executionId, nodeId: 'a', status: 'bogus' as StepStatus })),
 		).rejects.toThrow();
+	});
+
+	// Planning leans on this: two workers that concurrently decide the same step is
+	// ready both insert, and the loser is skipped rather than duplicating the node.
+	it('TypeOrmStepStore.createSteps skips a node already planned, keeping the rest', async () => {
+		const executionId = await createExecution();
+		const repo = dataSource.getRepository(WorkflowStepExecution);
+		const store = new TypeOrmStepStore(repo);
+		await createStep(store, { executionId, nodeId: 'a', status: 'queued' });
+
+		// 'a' is taken; 'b' is not, and must still land — the whole point of skipping
+		// the conflict rather than failing the statement
+		const created = await store.createSteps([
+			{ executionId, nodeId: 'a', status: 'queued' },
+			{ executionId, nodeId: 'b', status: 'queued' },
+		]);
+
+		expect(created).toEqual([{ id: expect.any(String) as string, nodeId: 'b' }]);
+		// `count({ where })`, not `countBy`, for the reason given in `loadStep`
+		expect(await repo.count({ where: { executionId, nodeId: 'a' } })).toBe(1);
+		expect(await repo.count({ where: { executionId, nodeId: 'b' } })).toBe(1);
+	});
+
+	it('scopes the one-step-per-node key to a single execution', async () => {
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const executionId = await createExecution();
+		const otherExecutionId = await createExecution();
+		await createStep(store, { executionId, nodeId: 'a', status: 'queued' });
+
+		const created = await store.createSteps([
+			{ executionId: otherExecutionId, nodeId: 'a', status: 'queued' },
+		]);
+
+		expect(created).toEqual([{ id: expect.any(String) as string, nodeId: 'a' }]);
 	});
 });

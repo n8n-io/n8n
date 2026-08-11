@@ -1,4 +1,5 @@
 import { executeTool } from '../../../__tests__/tool-test-utils';
+import { WorkflowNotFoundError } from '../../../errors/workflow-not-found.error';
 import { WorkflowSaveConflictError } from '../../../errors/workflow-save-conflict.error';
 import { emitTraceOnlyChildRun } from '../../../tracing/langsmith-tracing';
 import type { InstanceAiContext } from '../../../types';
@@ -114,6 +115,7 @@ type BuildToolOutput = {
 		category: string;
 		shouldEdit: boolean;
 		reason?: string;
+		guidance?: string;
 	};
 };
 
@@ -902,22 +904,68 @@ describe('createBuildWorkflowTool', () => {
 		).toBe(false);
 	});
 
-	it('rejects source paths outside the runtime workspace', () => {
+	it('rejects structurally invalid source paths at the schema layer', () => {
 		expect(buildWorkflowInputSchema.safeParse({ filePath: '../main.workflow.ts' }).success).toBe(
-			false,
-		);
-		expect(buildWorkflowInputSchema.safeParse({ filePath: '/tmp/main.workflow.ts' }).success).toBe(
 			false,
 		);
 		expect(buildWorkflowInputSchema.safeParse({ filePath: '~/main.workflow.ts' }).success).toBe(
 			false,
 		);
+		expect(
+			buildWorkflowInputSchema.safeParse({ filePath: '/src/../../../etc/passwd' }).success,
+		).toBe(false);
+		expect(buildWorkflowInputSchema.safeParse({ filePath: 'src\\main.workflow.ts' }).success).toBe(
+			false,
+		);
+	});
+
+	it('accepts absolute paths at the schema layer so the handler can resolve them', () => {
+		// Root membership is only checkable at handler time; a schema rejection
+		// would surface as a hard AI_InvalidToolInputError instead of a
+		// recoverable tool result.
+		expect(buildWorkflowInputSchema.safeParse({ filePath: '/tmp/main.workflow.ts' }).success).toBe(
+			true,
+		);
+	});
+
+	it('builds from an absolute path under the workspace root', async () => {
+		const source = 'workflow source from workspace';
+		const { context, filePath } = makeContext({
+			source,
+			overrides: { workspaceRoot: '/home/user/workspace' },
+		});
+
+		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+			filePath: `/home/user/workspace/${filePath}`,
+			name: 'Daily Weather to Slack',
+		});
+
+		// Normalized to the workspace-relative path throughout (binding + output).
+		expect(result).toMatchObject({ success: true, filePath, workflowId: 'wf-1' });
+		expect(compileWorkflowSource).toHaveBeenCalledWith(context, filePath, source, undefined);
+	});
+
+	it('returns a recoverable error for absolute paths outside the workspace root', async () => {
+		const { context } = makeContext({
+			overrides: { workspaceRoot: '/home/user/workspace' },
+		});
+
+		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+			filePath: '/tmp/main.workflow.ts',
+		});
+
+		expect(result).toMatchObject({
+			success: false,
+			filePath: '/tmp/main.workflow.ts',
+			remediation: { category: 'code_fixable', reason: 'invalid_file_path' },
+		});
+		expect((result.errors ?? []).join('\n')).toContain('workspace-relative path');
 	});
 
 	it('returns blocked remediation when the bound workflow no longer exists', async () => {
 		const { context, filePath } = makeContext({ source: 'workflow source' });
 		vi.mocked(context.workflowService.updateFromWorkflowJSON).mockRejectedValue(
-			new Error('Workflow not found'),
+			new WorkflowNotFoundError('wf-deleted'),
 		);
 
 		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
@@ -941,9 +989,9 @@ describe('createBuildWorkflowTool', () => {
 	it('returns a structured save failure when preserving existing webhook IDs fails', async () => {
 		const { context, filePath } = makeContext({ source: 'workflow source' });
 		vi.mocked(ensureWebhookIds).mockRejectedValueOnce(
-			new Error(
-				'Failed to load existing workflow wf-bound to preserve webhook IDs: Workflow not found',
-			),
+			new Error('Failed to load existing workflow wf-bound to preserve webhook IDs', {
+				cause: new WorkflowNotFoundError('wf-bound'),
+			}),
 		);
 
 		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
@@ -963,6 +1011,34 @@ describe('createBuildWorkflowTool', () => {
 		});
 		expect(result.errors?.[0]).toContain('preserve webhook IDs');
 		expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
+	});
+
+	it('returns blocked remediation when binding to a missing workflow id fails', async () => {
+		const { context, filePath } = makeContext({ source: 'workflow source' });
+		vi.mocked(context.workflowService.get).mockRejectedValue(
+			new WorkflowNotFoundError('wf-deleted'),
+		);
+
+		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+			filePath,
+			workflowId: 'wf-deleted',
+		});
+
+		expect(result).toMatchObject({
+			success: false,
+			filePath,
+			remediation: {
+				category: 'blocked',
+				shouldEdit: false,
+				reason: 'workflow_id_not_found',
+			},
+		});
+		expect(result.errors?.[0]).toContain('Failed to bind source file');
+		expect(result.remediation?.guidance).toContain(
+			'Call build-workflow again with the same filePath and omit workflowId',
+		);
+		expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
+		expect(context.workflowService.createFromWorkflowJSON).not.toHaveBeenCalled();
 	});
 
 	it('returns blocked remediation when create permission is blocked', async () => {

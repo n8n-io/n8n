@@ -28,9 +28,15 @@ import type { AgentDbMessage } from '../../types/sdk/message';
 import type { ObservationLogScope, ObservationLogTaskKind } from '../../types/sdk/observation-log';
 import type { AgentRuntimeConfig } from '../loop/agent-runtime';
 import type { AgentMessageList } from '../model/message-list';
+import { estimateObservationTokens, type TokenCounter } from '../model/model-token-counter';
 import type { BackgroundTaskTracker } from '../state/background-task-tracker';
 import type { AgentEventBus } from '../state/event-bus';
-import type { RuntimeTelemetry } from '../telemetry/runtime-telemetry';
+import {
+	inferMemoryStoreAttributes,
+	withMemorySpan,
+	type MemorySpanAttributes,
+	type RuntimeTelemetry,
+} from '../telemetry/runtime-telemetry';
 
 const DEFAULT_MEMORY_TASK_LOCK_TTL_MS = 30_000;
 const logger = createFilteredLogger();
@@ -70,36 +76,56 @@ export class MemoryOrchestrator {
 		private readonly backgroundTasks: BackgroundTaskTracker,
 		private readonly eventBus: AgentEventBus,
 		private readonly runtimeTelemetry: RuntimeTelemetry,
+		private readonly tokenCounter: TokenCounter = estimateObservationTokens,
 	) {}
 
-	async loadHistoryMessages(persistence: AgentPersistenceOptions): Promise<AgentDbMessage[]> {
+	async loadHistoryMessages(
+		persistence: AgentPersistenceOptions,
+		telemetry?: BuiltTelemetry,
+	): Promise<AgentDbMessage[]> {
 		const memory = this.config.memory;
 
 		if (!memory) return [];
 
 		const { threadId, resourceId } = persistence;
 
-		if (this.config.observationalMemory && hasObservationLogObserverMemory(memory)) {
-			const cursor = await memory.getCursor(threadId);
+		return await withMemorySpan(
+			'query_memory',
+			this.config.name,
+			telemetry,
+			() => ({ types: ['session'], owners: [resourceId], ...inferMemoryStoreAttributes(memory) }),
+			async () => {
+				if (this.config.observationalMemory && hasObservationLogObserverMemory(memory)) {
+					const cursor = await memory.getCursor(threadId);
 
-			// Trust the cursor only when an observation log actually stands in for
-			// the pre-cursor messages. If the cursor advanced without observations
-			// being persisted (cursor/observation desync), loading only
-			// post-cursor messages would silently drop the entire prior
-			// conversation, so we fall back to the full history instead.
-			if (cursor && (await this.hasActiveObservations(memory, threadId))) {
-				return await memory.getMessagesForObservationScope(threadId, {
-					since: {
-						sinceCreatedAt: cursor.lastObservedAt,
-						sinceMessageId: cursor.lastObservedMessageId,
-					},
-				});
-			}
-		}
+					// Trust the cursor only when an observation log actually stands in for
+					// the pre-cursor messages. If the cursor advanced without observations
+					// being persisted (cursor/observation desync), loading only
+					// post-cursor messages would silently drop the entire prior
+					// conversation, so we fall back to the full history instead.
+					if (cursor && (await this.hasActiveObservations(memory, threadId))) {
+						const messages = await memory.getMessagesForObservationScope(threadId, {
+							since: {
+								sinceCreatedAt: cursor.lastObservedAt,
+								sinceMessageId: cursor.lastObservedMessageId,
+							},
+						});
+						return { result: messages, attributes: this.queryResultAttributes(messages) };
+					}
+				}
 
-		return await memory.getMessages(threadId, {
-			resourceId,
-		});
+				const messages = await memory.getMessages(threadId, { resourceId });
+				return { result: messages, attributes: this.queryResultAttributes(messages) };
+			},
+		);
+	}
+
+	private queryResultAttributes(messages: AgentDbMessage[]): MemorySpanAttributes {
+		return {
+			ids: messages.map((m) => m.id),
+			operations: messages.map(() => 'query_memory'),
+			descriptions: messages.map(() => 'conversation history'),
+		};
 	}
 
 	private async hasActiveObservations(
@@ -124,7 +150,8 @@ export class MemoryOrchestrator {
 		options: (RunOptions & ExecutionOptions) | undefined,
 	): Promise<void> {
 		if (this.config.memory && options?.persistence?.threadId) {
-			const memMessages = await this.loadHistoryMessages(options.persistence);
+			const telemetry = this.runtimeTelemetry.resolve(options);
+			const memMessages = await this.loadHistoryMessages(options.persistence, telemetry);
 
 			if (memMessages.length > 0) {
 				list.addHistory(stripOrphanedToolMessages(memMessages));
@@ -132,6 +159,31 @@ export class MemoryOrchestrator {
 		}
 
 		await this.setListObservationLogMemory(list, options?.persistence);
+	}
+
+	private async saveMessagesWithSpan(
+		memory: BuiltMemory,
+		threadId: string,
+		resourceId: string,
+		messages: AgentDbMessage[],
+		telemetry: BuiltTelemetry | undefined,
+	): Promise<void> {
+		await withMemorySpan(
+			'save_memory',
+			this.config.name,
+			telemetry,
+			() => ({ types: ['session'], owners: [resourceId], ...inferMemoryStoreAttributes(memory) }),
+			async () => {
+				await saveMessagesToThread(memory, threadId, resourceId, messages);
+				return {
+					result: undefined,
+					attributes: {
+						ids: messages.map((m) => m.id),
+						operations: messages.map(() => 'created' as const),
+					},
+				};
+			},
+		);
 	}
 
 	async setListObservationLogMemory(
@@ -170,15 +222,18 @@ export class MemoryOrchestrator {
 		list: AgentMessageList,
 		options: (RunOptions & ExecutionOptions) | undefined,
 	): Promise<void> {
-		if (!this.config.memory || !options?.persistence) return;
+		const memory = this.config.memory;
+		if (!memory || !options?.persistence) return;
 		const input = list.inputDelta();
 		if (input.length === 0) return;
 		try {
-			await saveMessagesToThread(
-				this.config.memory,
+			const telemetry = this.runtimeTelemetry.resolve(options);
+			await this.saveMessagesWithSpan(
+				memory,
 				options.persistence.threadId,
 				options.persistence.resourceId,
 				input,
+				telemetry,
 			);
 		} catch (error) {
 			// Best-effort: the end-of-turn save still persists the input on a
@@ -213,15 +268,18 @@ export class MemoryOrchestrator {
 		list: AgentMessageList,
 		options: (RunOptions & ExecutionOptions) | undefined,
 	): Promise<void> {
-		if (!this.config.memory || !options?.persistence) return;
+		const memory = this.config.memory;
+		if (!memory || !options?.persistence) return;
 		const delta = list.turnDelta();
 		if (delta.length === 0) return;
 		try {
-			await saveMessagesToThread(
-				this.config.memory,
+			const telemetry = this.runtimeTelemetry.resolve(options);
+			await this.saveMessagesWithSpan(
+				memory,
 				options.persistence.threadId,
 				options.persistence.resourceId,
 				delta,
+				telemetry,
 			);
 		} catch (error) {
 			// Best-effort: a completed turn's end-of-turn save still persists this delta,
@@ -245,26 +303,33 @@ export class MemoryOrchestrator {
 		list: AgentMessageList,
 		options: (RunOptions & ExecutionOptions) | undefined,
 	): Promise<void> {
-		if (!this.config.memory || !options?.persistence) return;
+		const memory = this.config.memory;
+		if (!memory || !options?.persistence) return;
 		const delta = list.turnDelta();
 		if (delta.length === 0) return;
-		await saveMessagesToThread(
-			this.config.memory,
+		const telemetry = this.runtimeTelemetry.resolve(options);
+		await this.saveMessagesWithSpan(
+			memory,
 			options.persistence.threadId,
 			options.persistence.resourceId,
 			delta,
+			telemetry,
 		);
 
 		// Memory jobs receive the execution counter so their LLM and embedding
 		// usage contributes to token_count.
 
-		const telemetry = this.runtimeTelemetry.resolve(options);
 		const observationTasks = this.scheduleObservationLogJobs(
 			options.persistence,
 			options.executionCounter,
 			telemetry,
 		);
-		this.scheduleEpisodicMemoryJob(options.persistence, observationTasks, options.executionCounter);
+		this.scheduleEpisodicMemoryJob(
+			options.persistence,
+			observationTasks,
+			options.executionCounter,
+			telemetry,
+		);
 	}
 
 	private scheduleObservationLogJobs(
@@ -298,6 +363,7 @@ export class MemoryOrchestrator {
 							observerThresholdTokens,
 							observationLogTailLimit: observationalMemory.observationLogTailLimit ?? 0,
 							observe,
+							tokenCounter: this.tokenCounter,
 							executionCounter,
 							telemetry,
 						}),
@@ -319,6 +385,7 @@ export class MemoryOrchestrator {
 							...scope,
 							reflectorThresholdTokens,
 							reflect,
+							tokenCounter: this.tokenCounter,
 							executionCounter,
 							telemetry,
 						}),
@@ -333,6 +400,7 @@ export class MemoryOrchestrator {
 		persistence: AgentPersistenceOptions,
 		observationTasks: Array<Promise<unknown>>,
 		executionCounter?: AgentExecutionCounter,
+		telemetry?: BuiltTelemetry,
 	): void {
 		const { memory, episodicMemory } = this.config;
 		if (
@@ -358,6 +426,8 @@ export class MemoryOrchestrator {
 				observationScope,
 				threadId: persistence.threadId,
 				executionCounter,
+				telemetry,
+				agentName: this.config.name,
 			});
 		});
 	}

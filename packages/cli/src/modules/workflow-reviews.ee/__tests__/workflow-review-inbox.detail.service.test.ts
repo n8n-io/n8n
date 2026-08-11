@@ -12,16 +12,16 @@ import type {
 } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
+import type { WorkflowReviewDecisionEligibilityService } from '../workflow-review-decision-eligibility.service';
+import { WorkflowReviewFeatureGate } from '../workflow-review-feature-gate.service';
+import { WorkflowReviewInboxService } from '../workflow-review-inbox.service';
+
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { ProjectService } from '@/services/project.service.ee';
 import type { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
-
-import type { WorkflowReviewDecisionEligibilityService } from '../workflow-review-decision-eligibility.service';
-import { WorkflowReviewFeatureGate } from '../workflow-review-feature-gate.service';
-import { WorkflowReviewInboxService } from '../workflow-review-inbox.service';
 
 const requestId = 'req-1';
 const workflowId = 'wf-1';
@@ -96,9 +96,11 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 		licenseState.isWorkflowReviewsLicensed.mockReturnValue(true);
 		workflowReviewPolicyService.get.mockResolvedValue({ enabled: true });
 		requestRepository.findById.mockResolvedValue(reviewRequest());
-		// By default the caller can still read every workflow the review covers
+		// By default the review covers one workflow the caller can still read
 		workflowFinderService.findWorkflowForUser.mockResolvedValue(mock<WorkflowEntity>());
-		workflowRepository.findLinkedWorkflowDetailsByRequestId.mockResolvedValue([]);
+		workflowRepository.findLinkedWorkflowDetailsByRequestId.mockResolvedValue([
+			{ workflowId, workflowName: 'My workflow', workflowVersionId: null },
+		]);
 		reviewerRepository.findByRequestIds.mockResolvedValue([]);
 		userRepository.findManyByIds.mockResolvedValue([]);
 		publishedVersionRepository.getPublishedVersionId.mockResolvedValue(null);
@@ -220,13 +222,29 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 			expect(detail.workflows[0]).toMatchObject({ workflowId, workflowName: 'My workflow' });
 		});
 
-		// A covered workflow is removed along with the workflow itself, so a review can end up with none
-		it('returns no workflows when the review no longer covers any', async () => {
+		// A covered workflow is removed along with the workflow itself, so a closed
+		// review — history of a deleted workflow — can legitimately cover none
+		it('returns a closed review with no workflows when its workflow was deleted', async () => {
+			requestRepository.findById.mockResolvedValue(reviewRequest({ state: 'closed' }));
+			workflowRepository.findLinkedWorkflowDetailsByRequestId.mockResolvedValue([]);
+
 			const detail = await service.getDetail(requester, requestId);
 
 			expect(detail.workflows).toEqual([]);
 			expect(detail.workflowName).toBeNull();
 			expect(detail.workflowVersionId).toBeNull();
+		});
+
+		// An open review can transiently cover no workflow when a delete orphaned
+		// it and the sweep hasn't closed it yet — it stays readable until then
+		it('returns an open review with no workflows when its workflow was deleted', async () => {
+			workflowRepository.findLinkedWorkflowDetailsByRequestId.mockResolvedValue([]);
+
+			const detail = await service.getDetail(requester, requestId);
+
+			expect(detail.state).toBe('open');
+			expect(detail.workflows).toEqual([]);
+			expect(detail.workflowName).toBeNull();
 		});
 	});
 
@@ -272,7 +290,10 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 			expect(detail.viewerDecisionIneligibilityReason).toBe('missing_publish_permission');
 		});
 
-		it('passes no workflow id when the review no longer covers any workflow', async () => {
+		it('passes no workflow id when a closed review no longer covers any workflow', async () => {
+			requestRepository.findById.mockResolvedValue(reviewRequest({ state: 'closed' }));
+			workflowRepository.findLinkedWorkflowDetailsByRequestId.mockResolvedValue([]);
+
 			await service.getDetail(requester, requestId);
 
 			expect(decisionEligibilityService.resolveViewerEligibility).toHaveBeenCalledWith(
@@ -295,6 +316,7 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 
 			expect(detail.workflows[0]?.pinnedVersion).toEqual({
 				versionId: 'ver-pinned',
+				name: 'My workflow',
 				nodes: [expect.objectContaining({ name: 'node-ver-pinned' })],
 				connections: {},
 				nodeGroups: [],

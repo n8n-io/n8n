@@ -6,7 +6,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { AgentConfigValidationIssue, AgentJsonTaskConfig, AgentTaskDto } from '@n8n/api-types';
 import { N8nButton, N8nDropdownMenu, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
-import type { IconName } from '@n8n/design-system/components/N8nIcon';
+import type { IconName } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, onMounted, ref, watch } from 'vue';
@@ -423,7 +423,12 @@ function toolMenuItems(tool: ToolRow): ToolMenuItem[] {
 	return tool.tools.map((item) => ({
 		id: toTargetKey(item.openTarget),
 		label: item.label,
-		data: { nodeType: item.nodeType, openTarget: item.openTarget },
+		data: {
+			nodeType: item.nodeType,
+			openTarget: item.openTarget,
+			invalid: item.invalid,
+			invalidReasons: item.invalidReasons,
+		},
 	}));
 }
 
@@ -549,6 +554,24 @@ function openExistingSubAgentModal(subAgent: {
 									:size="16"
 									:class="ui.class"
 								/>
+							</template>
+							<template #item-trailing="{ item }">
+								<N8nTooltip
+									v-if="item.data?.invalid"
+									:disabled="(item.data.invalidReasons ?? []).length === 0"
+									placement="top"
+								>
+									<N8nIcon
+										icon="triangle-alert"
+										:size="14"
+										data-testid="agent-capabilities-tool-menu-invalid-icon"
+									/>
+									<template #content>
+										<div v-for="reason in item.data.invalidReasons" :key="reason">
+											{{ reason }}
+										</div>
+									</template>
+								</N8nTooltip>
 							</template>
 						</N8nDropdownMenu>
 						<AgentChipButton
@@ -841,18 +864,19 @@ function openExistingSubAgentModal(subAgent: {
 	align-items: center;
 	flex-wrap: nowrap;
 	gap: var(--spacing--3xs);
-	max-width: 100%;
 	min-width: 0;
+	/** Truncates chip to stop overly-long labels **/
+	max-width: min(var(--spacing--5xl), 100%);
+
+	> .capabilityChip {
+		width: 100%;
+	}
 }
 
 .addButtonEmpty {
 	--button--color: var(--text-color--subtler);
 	margin-left: calc(-1 * var(--spacing--xs));
 	margin-top: calc(-1 * var(--spacing--4xs));
-}
-
-.capabilityChip {
-	max-width: min(12rem, 100%);
 }
 
 .groupChipLabel {

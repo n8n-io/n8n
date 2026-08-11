@@ -3,13 +3,16 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { storeToRefs } from 'pinia';
 import type { WorkflowReviewRequestState } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
-import { N8nButton, N8nHeading, N8nLoading, N8nText, N8nTooltip } from '@n8n/design-system';
+import { N8nHeading, N8nLoading, N8nText } from '@n8n/design-system';
 import { useRoute, useRouter } from 'vue-router';
 import PageViewLayout from '@/app/components/layouts/PageViewLayout.vue';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useToast } from '@n8n/composables/useToast';
 
+import WorkflowReviewDetailTabs from '../components/WorkflowReviewDetailTabs.vue';
+import type { WorkflowReviewDetailTab } from '../components/WorkflowReviewDetailTabs.vue';
 import WorkflowReviewRequestsSidebar from '../components/WorkflowReviewRequestsSidebar.vue';
+import WorkflowReviewStatusDot from '../components/WorkflowReviewStatusDot.vue';
 import { REVIEW_INBOX_QUERY_PARAM, WORKFLOW_REVIEW_REQUESTS_VIEW } from '../constants';
 import { useReviewInboxStore } from '../reviewInbox.store';
 import type { WorkflowReviewDecisionInput } from '../workflowReviews.api';
@@ -85,7 +88,10 @@ watch(
 );
 
 function onSelect(id: string) {
-	void router.replace({ params: { reviewRequestId: id }, query: route.query });
+	// Switching reviews lands on Activity tab. Deep links still win.
+	const query = { ...route.query };
+	if (id !== selectedReviewId.value) delete query[REVIEW_INBOX_QUERY_PARAM.tab];
+	void router.replace({ params: { reviewRequestId: id }, query });
 }
 
 function onClearSelection() {
@@ -99,6 +105,17 @@ function onActiveTabChange(tab: WorkflowReviewRequestState) {
 	void router.replace({ query });
 }
 
+const detailTab = computed<WorkflowReviewDetailTab>(() =>
+	route.query[REVIEW_INBOX_QUERY_PARAM.tab] === 'changes' ? 'changes' : 'activity',
+);
+
+function onDetailTabChange(tab: WorkflowReviewDetailTab) {
+	const query = { ...route.query };
+	if (tab === 'changes') query[REVIEW_INBOX_QUERY_PARAM.tab] = tab;
+	else delete query[REVIEW_INBOX_QUERY_PARAM.tab];
+	void router.replace({ query });
+}
+
 async function onLoadMore() {
 	try {
 		await store.loadMore();
@@ -108,17 +125,6 @@ async function onLoadMore() {
 }
 
 const deciding = ref(false);
-
-const viewerCanDecide = computed(() => detail.value?.viewerCanDecide ?? false);
-
-const ineligibilityHint = computed(() => {
-	if (!detail.value || detail.value.viewerCanDecide) return '';
-	// Any reason other than 'author' gets the generic permission hint, so new
-	// backend reasons degrade gracefully instead of breaking the UI.
-	return detail.value.viewerDecisionIneligibilityReason === 'author'
-		? i18n.baseText('workflowReviews.detail.decision.ineligible.author')
-		: i18n.baseText('generic.missing.permissions');
-});
 
 // backend activation messages are inconsistently punctuated
 function asSentence(message: string) {
@@ -200,7 +206,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-	<PageViewLayout data-test-id="workflow-review-requests-view">
+	<PageViewLayout full-width data-test-id="workflow-review-requests-view">
 		<div :class="$style.content">
 			<WorkflowReviewRequestsSidebar
 				v-if="showSidebar"
@@ -221,15 +227,19 @@ onUnmounted(() => {
 
 			<div :class="$style.main">
 				<div :class="$style.columnTitle">
-					<N8nHeading
+					<div
 						v-if="showSidebar && selectedItem"
-						bold
-						tag="h2"
-						size="xlarge"
-						data-test-id="workflow-review-request-title"
+						:class="$style.reviewTitle"
+						data-test-id="workflow-review-request-title-row"
 					>
-						{{ selectedItem.title }}
-					</N8nHeading>
+						<WorkflowReviewStatusDot
+							:state="selectedItem.state"
+							:decision="selectedItem.decision"
+						/>
+						<N8nHeading bold tag="h2" size="xlarge" data-test-id="workflow-review-request-title">
+							{{ selectedItem.title }}
+						</N8nHeading>
+					</div>
 					<N8nHeading
 						v-else-if="!showSidebar"
 						bold
@@ -257,43 +267,14 @@ onUnmounted(() => {
 					<!-- Must precede the selectedItem branch: on a deep link the review is not
 						in the list yet, so selectedItem is null while the detail loads. -->
 					<N8nLoading v-else-if="selectedReviewId && detailLoading" :loading="true" :rows="3" />
-					<div v-else-if="selectedItem">
-						<N8nText
-							color="text-light"
-							size="medium"
-							data-test-id="workflow-review-request-detail-stub"
-						>
-							{{ i18n.baseText('workflowReviews.detail.placeholder') }}
-						</N8nText>
-						<div v-if="detail && detail.state === 'open'" :class="$style.decisionActions">
-							<N8nTooltip
-								:disabled="!ineligibilityHint"
-								:content="ineligibilityHint"
-								:show-after="300"
-							>
-								<N8nButton
-									:disabled="deciding || !viewerCanDecide"
-									data-test-id="workflow-review-approve-button"
-									@click="onDecide(detail.id, 'approved')"
-								>
-									{{ i18n.baseText('workflowReviews.detail.decision.approve') }}
-								</N8nButton>
-							</N8nTooltip>
-							<N8nTooltip
-								:disabled="!ineligibilityHint"
-								:content="ineligibilityHint"
-								:show-after="300"
-							>
-								<N8nButton
-									:disabled="deciding || !viewerCanDecide"
-									data-test-id="workflow-review-request-changes-button"
-									@click="onDecide(detail.id, 'changes_requested')"
-								>
-									{{ i18n.baseText('workflowReviews.detail.decision.requestChanges') }}
-								</N8nButton>
-							</N8nTooltip>
-						</div>
-					</div>
+					<WorkflowReviewDetailTabs
+						v-else-if="selectedItem"
+						:review="selectedItem"
+						:tab="detailTab"
+						:deciding="deciding"
+						@update:tab="onDetailTabChange"
+						@decide="onDecide(selectedItem.id, $event)"
+					/>
 					<N8nText
 						v-else-if="!showSidebar"
 						color="text-light"
@@ -326,6 +307,12 @@ onUnmounted(() => {
 
 <style lang="scss" module>
 .content {
+	--review-tab-bar--height: var(--height--sm);
+	--review-tab-bar--indicator-overhang: 11px;
+	--review-tab-bar--gap: calc(var(--spacing--sm) + var(--review-tab-bar--indicator-overhang));
+
+	--review-callout--max-width: 34rem;
+
 	display: flex;
 	width: 100%;
 	min-height: 0;
@@ -350,15 +337,16 @@ onUnmounted(() => {
 	padding-bottom: var(--spacing--sm);
 }
 
+.reviewTitle {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	min-width: 0;
+}
+
 .mainBody {
 	flex: 1;
 	min-height: 0;
 	overflow: auto;
-}
-
-.decisionActions {
-	display: flex;
-	gap: var(--spacing--2xs);
-	margin-top: var(--spacing--sm);
 }
 </style>
