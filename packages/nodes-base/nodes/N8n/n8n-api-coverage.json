@@ -11,6 +11,9 @@
 		"POST /roles": {
 			"status": "gap"
 		},
+		"POST /role-mapping-rules": {
+			"status": "gap"
+		},
 		"GET /settings/security-policy": {
 			"status": "gap"
 		},

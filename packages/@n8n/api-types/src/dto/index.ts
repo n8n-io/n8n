@@ -193,6 +193,7 @@ export {
 	RoleListQueryPublicDto,
 } from './roles/role-public.dto';
 export { CreateRoleMappingRuleDto } from './roles/create-role-mapping-rule.dto';
+export { RoleMappingRulePublicDto } from './roles/role-mapping-rule-public.dto';
 export {
 	PatchRoleMappingRuleDto,
 	type PatchRoleMappingRuleInput,
