@@ -26,6 +26,7 @@ import type { INodeUi } from '@/Interface';
 import type { IUsedCredential } from '@/features/credentials/credentials.types';
 import WorkflowActivationErrorMessage from '@/app/components/WorkflowActivationErrorMessage.vue';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import {
 	formatTimestamp,
 	generateVersionLabelFromId,
@@ -38,6 +39,7 @@ const i18n = useI18n();
 
 const workflowsStore = useWorkflowsStore();
 const workflowHistoryStore = useWorkflowHistoryStore();
+const usersStore = useUsersStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const credentialsStore = useCredentialsStore();
 const { showMessage } = useToast();
@@ -121,6 +123,7 @@ async function loadChangelog() {
 	if (!publishedVersionId) return;
 
 	try {
+		void usersStore.fetchUsers({ take: 2 });
 		const history = await workflowHistoryStore.getWorkflowHistory(
 			workflowDocumentStore.value.workflowId,
 			{ take: 20 },
@@ -138,8 +141,15 @@ const changelogSummary = computed(() => {
 	// List is newest-first
 	const to = formatTimestamp(changelog.value[0].createdAt).date;
 	const from = formatTimestamp(changelog.value[changelog.value.length - 1].createdAt).date;
-	const authors = [...new Set(changelog.value.flatMap((v) => v.authors.split(', ')))].join(', ');
 
+	// Authors add no information on a single-user instance
+	if (usersStore.allUsers.length <= 1) {
+		return i18n.baseText('workflows.publishModal.changelogNoAuthors', {
+			interpolate: { from, to },
+		});
+	}
+
+	const authors = [...new Set(changelog.value.flatMap((v) => v.authors.split(', ')))].join(', ');
 	return i18n.baseText('workflows.publishModal.changelog', {
 		interpolate: { from, to, authors },
 	});
@@ -364,6 +374,14 @@ async function handlePublish() {
 					data-test-id="workflow-publish-changelog"
 				>
 					{{ changelogSummary }}
+					<N8nLink
+						size="small"
+						:to="`/workflow/${workflowDocumentStore.workflowId}/history`"
+						data-test-id="workflow-publish-changelog-history-link"
+						@click="modalBus.emit('close')"
+					>
+						{{ i18n.baseText('workflows.publishModal.goToHistory') }}
+					</N8nLink>
 				</N8nText>
 				<div :class="$style.actions">
 					<N8nButton
