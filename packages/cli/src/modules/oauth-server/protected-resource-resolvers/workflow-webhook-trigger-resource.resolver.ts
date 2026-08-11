@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import { User, WorkflowRepository } from '@n8n/db';
+import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { WEBHOOK_NODE_TYPE } from 'n8n-workflow';
 
@@ -13,6 +13,7 @@ import { UrlService } from '@/services/url.service';
 import { WebhookService } from '@/webhooks/webhook.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
+import { triggerResourceGate } from '../resource-gate';
 import {
 	WEBHOOK_TRIGGER_SCOPES,
 	methodQueryString,
@@ -158,6 +159,9 @@ export class WorkflowWebhookTriggerResourceResolver implements ProtectedResource
 			const urlFor = (method: string) => `${baseUrl}${methodQueryString(method)}`;
 			const methods = [...new Set(triggerMethods.map((method) => method.toUpperCase()))].sort();
 			const requireExecute = node.parameters.requireExecuteAccess !== false;
+			// One list, served live and sealed into the grant, so the audiences a run is
+			// verified against don't change when the resource stops resolving.
+			const audiences = methods.map(urlFor);
 			return {
 				// Identity = the trigger, so the method is deliberately absent: editing the
 				// node's method list must not rotate the id and drop the user's consent.
@@ -170,21 +174,13 @@ export class WorkflowWebhookTriggerResourceResolver implements ProtectedResource
 				// A token minted for any of this trigger's methods is accepted at all of
 				// them; cross-trigger replay stays impossible because the list is built
 				// only from rows sharing this (workflowId, node).
-				getAudiences: () => methods.map(urlFor),
+				getAudiences: () => audiences,
 				scopes: WEBHOOK_TRIGGER_SCOPES,
 				displayName: workflow.name,
-				authorize: async (user: User) => {
-					if (requireExecute) {
-						return (
-							await this.workflowFinderService.findWorkflowIdsWithScopeForUser(
-								[workflow.id],
-								user,
-								['workflow:execute'],
-							)
-						).has(workflow.id);
-					}
-					return true;
-				},
+				...triggerResourceGate(this.workflowFinderService, {
+					audiences,
+					executeAccessWorkflowId: requireExecute ? workflow.id : undefined,
+				}),
 			};
 		}
 
