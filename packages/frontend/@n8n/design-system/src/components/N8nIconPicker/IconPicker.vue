@@ -246,7 +246,7 @@ const selectIcon = (value: IconOrEmoji) => {
 
 async function handlePopupOpen() {
 	activeCoordinate = null;
-	selectedTab.value = !props.iconsOnly && model.value.type === 'emoji' ? 'emojis' : 'icons';
+	selectedTab.value = props.iconsOnly ? 'icons' : props.defaultTab;
 	searchQuery.value = '';
 	selectedCategory.value = null;
 	selectedColor.value =

@@ -136,6 +136,27 @@ describe('IconPicker', () => {
 		expect(icons).toHaveLength(4); // smile, star, heart, palette from mock
 	});
 
+	it('opens the configured default tab when it differs from the model type', async () => {
+		const { getByTestId, findAllByTestId } = render(IconPicker, {
+			props: {
+				modelValue: { type: 'icon', value: 'smile' },
+				buttonTooltip: 'Select an icon',
+				defaultTab: 'emojis',
+			},
+			global: {
+				plugins: [router],
+				components,
+				stubs: ['N8nButton', 'N8nIcon'],
+			},
+		});
+
+		await fireEvent.click(getByTestId('icon-picker-button'));
+
+		const tabEmojisElement = getTabElement(getByTestId('tab-emojis'));
+		expect(tabEmojisElement?.className).toContain('activeTab');
+		expect(await findAllByTestId('icon-picker-emoji')).not.toHaveLength(0);
+	});
+
 	it('can hide emoji controls without narrowing icon results', async () => {
 		const { getByTestId, queryByTestId, findAllByTestId, queryByText } = render(IconPicker, {
 			props: {
