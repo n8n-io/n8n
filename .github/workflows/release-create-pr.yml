@@ -141,29 +141,14 @@ jobs:
     with:
       pull-request-number: ${{ needs.create-release-pr.outputs.pull-request-number }}
 
-  # Full npm-install duplication check (packs every publishable package). Heavy;
-  # runs in parallel, non-blocking for now.
+  # Packs every publishable package, so it only runs at release prep, in parallel with the PR.
   verify-single-instance-npm-full:
     name: Verify single-instance deps (npm-install, full)
-    runs-on: ubuntu-latest
-    continue-on-error: true
-    timeout-minutes: 30
+    uses: ./.github/workflows/test-single-instance-npm.yml
     permissions:
       contents: read
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-      # This reusable workflow is called with the release base branch; check it out (as
-      # create-release-pr does) so the full check profiles the release being prepared.
-      - name: Switch to base branch
-        env:
-          BASE_BRANCH: ${{ inputs.base-branch }}
-        run: git checkout "$BASE_BRANCH"
-      - name: Setup and Build
-        uses: ./.github/actions/setup-nodejs
-        with:
-          build-command: pnpm build
-      - name: Verify full npm-install closure
-        run: pnpm --filter=@n8n/code-health exec tsx src/cli.ts verify-npm-install --all
+    with:
+      scope: all
+      # Profile the release being prepared, not this workflow's triggering revision.
+      base-branch: ${{ inputs.base-branch }}
+      timeout-minutes: 30

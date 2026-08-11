@@ -49,28 +49,15 @@ jobs:
     with:
       ref: ${{ github.sha }}
 
-  # npm-install exposes curated-lib duplicates the pnpm dev/deploy graph hides (root
-  # overrides don't travel in tarballs). Scoped to changed packages; non-blocking for now.
+  # Scoped to the packages this push touched, so it stays cheap enough to run on every commit.
   verify-single-instance-npm:
     name: Verify single-instance deps (npm-install)
-    runs-on: ubuntu-latest
-    continue-on-error: true
-    timeout-minutes: 20
+    uses: ./.github/workflows/test-single-instance-npm.yml
     permissions:
       contents: read
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-      - name: Setup and Build
-        uses: ./.github/actions/setup-nodejs
-        with:
-          build-command: pnpm build
-      - name: Verify npm-install closure for changed packages
-        env:
-          BEFORE_SHA: ${{ github.event.before }}
-        run: pnpm --filter=@n8n/code-health exec tsx src/cli.ts verify-npm-install --changed="$BEFORE_SHA"
+    with:
+      scope: changed
+      base-ref: ${{ github.event.before }}
 
   notify-on-failure:
     name: Notify Slack on failure

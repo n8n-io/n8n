@@ -287,7 +287,8 @@ ci-pull-requests.yml
 
 ci-master.yml
     ├──────────────────────────▶  test-unit-reusable.yml
-    └──────────────────────────▶  test-linting-reusable.yml
+    ├──────────────────────────▶  test-linting-reusable.yml
+    └──────────────────────────▶  test-single-instance-npm.yml
 
 release-publish.yml
     ├──────────────────────────▶  docker-build-push.yml
@@ -395,6 +396,7 @@ Push to master/1.x
 ├─ unit-test (matrix: Node 22.x, 24.16.0, 26.x)
 │   └─ Coverage only on 24.16.0
 ├─ lint
+├─ verify-single-instance-npm (advisory; packages changed by this push)
 └─ notify-on-failure (Slack #alerts-build)
 ```
 
@@ -479,6 +481,7 @@ Workflows with `workflow_call` trigger:
 | `sec-poutine-reusable.yml`         | `ref`                                         | Poutine scanner       |
 | `security-trivy-scan-callable.yml` | `image_ref`                                   | Trivy scan            |
 | `sbom-generation-callable.yml`     | `n8n_version`, `release_tag_ref`              | SBOM generation       |
+| `test-single-instance-npm.yml`     | `scope`, `base-ref`, `base-branch`, `blocking`, `timeout-minutes` | Dependency duplication |
 
 ---
 
