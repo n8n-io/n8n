@@ -1,10 +1,10 @@
 import { z } from 'zod';
 
+import type { McpRegistryServerIconResponse } from './mcp-registry.schema';
+import { TimeZoneSchema } from './timezone.schema';
 import { AgentJsonConfigSchema } from '../agents/agent-json-config.schema';
 import { agentSkillSchema } from '../agents/agent-skill.schema';
 import { Z } from '../zod-class';
-import type { McpRegistryServerIconResponse } from './mcp-registry.schema';
-import { TimeZoneSchema } from './timezone.schema';
 
 // ---------------------------------------------------------------------------
 // Credits
@@ -1789,6 +1789,9 @@ export const CONFIG_EVALUATIONS_ENABLED_VARIANT = 'variant';
 export const INSTANCE_AI_MCP_CONNECTIONS_FLAG = '089_instance_ai_mcp_connections';
 
 export const INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT = 'variant';
+
+/** Enables adding selected canvas nodes as chat context in the AI Assistant */
+export const CANVAS_NODE_CONTEXT_FLAG = '104_canvas_aia_node_context';
 
 /**
  * Records a credential field that was rewritten (e.g. routed to the eval wire

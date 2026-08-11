@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:16
+    image: ${TEST_IMAGE_POSTGRES:?set it from packages/testing/containers/postgres-versions.json}
     restart: always
     environment:
       - POSTGRES_DB=n8n
@@ -8,5 +8,7 @@ services:
       - POSTGRES_PASSWORD=password
     ports:
       - 5432:5432
+    # Not PGDATA: Postgres 18+ moved it under /var/lib/postgresql/<major>/ and
+    # refuses to start when /var/lib/postgresql/data is mounted.
     tmpfs:
-      - /var/lib/postgresql/data
+      - /var/lib/postgresql

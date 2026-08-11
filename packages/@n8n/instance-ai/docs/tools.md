@@ -754,12 +754,22 @@ conversation. Creation and editing stay on `build-agent`.
 
 ### `mcp-servers` *(domain tool — conditional)*
 
-Search the MCP registry so the orchestrator can discover a hosted MCP server for
-a service the user asked about but has not connected. One action, `search`, over
-`{ queries: string[] }`; returns
-`{ results: [{ slug, title, description, tools }], hint? }`.
+Tool to interact with connected and available MCP servers.
 
-Only servers that the user has *not* connected come back. Results are capped at 5, most relevant first.
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `action` | `'connected' \| 'details' \| 'search'` | yes | Discriminator |
+| `slug` | string | `details` | Server slug, as returned by `connected` |
+| `queries` | string[] | `search` | Free-text queries matched against server name, title, description |
+
+**`connected`** → `{ servers: [{ slug, toolCount }], hint? }`. Every connected MCP
+server, counts only — names are `details`' job.
+
+**`details`** → `{ slug, tools, hint? }`. One server's tool names. `hint` tells an
+unconnected slug apart from a connected server that loaded no tools.
+
+**`search`** → `{ results: [{ slug, title, description, tools }], hint? }`, capped
+at 5, most relevant first. Only servers the user has *not* connected come back.
 
 ## Other Domain Tools
 
