@@ -39,6 +39,9 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { createTestNode } from '@/__tests__/mocks';
 import { MESSAGE_AN_AGENT_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { useAgentNodeCanvasGeometryStore } from '@/features/agents/agentNodeCanvasGeometry.store';
+import { mockedStore } from '@/__tests__/utils';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { defaultSettings } from '@/__tests__/defaults';
 
 // Instantiates a store that derives the workflow id from the route. These tests run
 // without a router, so resolve the id directly.
@@ -1006,6 +1009,46 @@ describe('Canvas', () => {
 
 		// The group title bar isn't a real node, so copy must carry its members.
 		expect(emitted()['copy:nodes']).toEqual([[['node-1', 'node-2']]]);
+	});
+
+	describe('shortcuts disabled in canvas-only mode', () => {
+		const shortcuts = [
+			{ name: 'save:workflow', event: { key: 's', ctrlKey: true, metaKey: true } },
+			{
+				name: 'create:workflow',
+				event: { key: 'n', ctrlKey: true, metaKey: true, altKey: true },
+			},
+		];
+
+		const setCanvasOnly = (canvasOnly: boolean) => {
+			const settingsStore = mockedStore(useSettingsStore);
+			settingsStore.settings = { ...defaultSettings, canvasOnly };
+		};
+
+		it.each(shortcuts)('emits `$name` when canvas-only mode is off', async ({ name, event }) => {
+			setCanvasOnly(false);
+
+			const { container, emitted } = renderComponent();
+			await waitFor(() => expect(container.querySelector('.vue-flow')).toBeInTheDocument());
+
+			await fireEvent.keyDown(document, event);
+
+			expect(emitted()[name]).toEqual([[]]);
+		});
+
+		it.each(shortcuts)(
+			'does not emit `$name` when canvas-only mode is on',
+			async ({ name, event }) => {
+				setCanvasOnly(true);
+
+				const { container, emitted } = renderComponent();
+				await waitFor(() => expect(container.querySelector('.vue-flow')).toBeInTheDocument());
+
+				await fireEvent.keyDown(document, event);
+
+				expect(emitted()[name]).toBeUndefined();
+			},
+		);
 	});
 
 	it('should emit `update:nodes:position` event', async () => {
