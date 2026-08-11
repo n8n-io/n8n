@@ -1,0 +1,40 @@
+packages/@n8n/db/src/repositories/workflow-review-request-workflow.repository.ts
+  h_32d8cd6a0d6aad 7,23-24
+packages/cli/src/modules/agents/repositories/agent-credential-dependency.repository.ts
+  s_c93bed064c38ae::t_49410b48361e15 21
+packages/@n8n/db/src/repositories/workflow.repository.ts
+  s_c93bed064c38ae::t_8c70575a610611 71
+packages/@n8n/db/src/repositories/__tests__/workflow.repository.test.ts
+  s_c93bed064c38ae::t_0790e3ab046c4f 158,388,418,635,697
+  s_c93bed064c38ae::t_f2e53661bfaafd 23,30
+  s_c93bed064c38ae::t_3d92f79b0bfdf0 7
+packages/@n8n/db/src/repositories/workflow-review-request-author.repository.ts
+  h_32d8cd6a0d6aad 6,10-11
+packages/@n8n/db/src/repositories/workflow-review-request-reviewer.repository.ts
+  h_32d8cd6a0d6aad 6,10-11
+packages/@n8n/db/src/repositories/shared-workflow.repository.ts
+  s_c93bed064c38ae::t_81aca47c8f1882 23
+packages/@n8n/db/src/repositories/workflow-review-request.repository.ts
+  h_32d8cd6a0d6aad 12,58-59
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "54268eec80f1776b21bce556c6a5b41b7c0bc9c9",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_c93bed064c38ae": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a961de4d-4d39-4bb7-9b78-af448e9ce1b2",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
