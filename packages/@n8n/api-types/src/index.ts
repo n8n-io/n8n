@@ -395,6 +395,7 @@ export type {
 	InstanceAiCatalogProvider,
 	InstanceAiCatalogModel,
 	InstanceAiModelCatalogResponse,
+	InstanceAiCredits,
 } from './schemas/instance-ai.schema';
 
 export type {

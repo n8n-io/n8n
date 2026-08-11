@@ -88,12 +88,12 @@ const props = defineProps<{
 const store = useInstanceAiStore();
 const settingsStore = useInstanceAiSettingsStore();
 const thread = provideThread(props.threadId);
-const { isLowCredits } = storeToRefs(store);
+const { showCreditWarning, quotaLocked } = storeToRefs(store);
 const rootStore = useRootStore();
 const i18n = useI18n();
 const router = useRouter();
 const { goToUpgrade } = usePageRedirectionHelper();
-const creditBanner = useCreditWarningBanner(isLowCredits);
+const creditBanner = useCreditWarningBanner(showCreditWarning);
 const sidebar = useSidebarState();
 const { width: windowWidth } = useWindowSize();
 const { isCollapsed: isMainSidebarCollapsed, sidebarWidth: mainSidebarWidth } = useSidebarLayout();
@@ -1043,6 +1043,7 @@ async function dismissComposerContextChip() {
 											variant="standalone"
 											:credits-remaining="store.creditsRemaining"
 											:credits-quota="store.creditsQuota"
+											:amounts-hidden="quotaLocked"
 											@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
 											@dismiss="creditBanner.dismiss()"
 										/>

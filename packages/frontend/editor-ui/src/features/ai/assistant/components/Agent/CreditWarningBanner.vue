@@ -11,6 +11,7 @@ const props = defineProps<{
 	// 'attached' fuses onto the chat input below (used in the assistant sidebar);
 	// 'standalone' is a self-contained card that sits above a detached input.
 	variant?: 'attached' | 'standalone';
+	amountsHidden?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -22,6 +23,10 @@ const i18n = useI18n();
 const cloudPlanStore = useCloudPlanStore();
 
 const bannerText = computed(() => {
+	if (props.amountsHidden) {
+		return i18n.baseText('aiAssistant.builder.creditBanner.limitReachedText');
+	}
+
 	const key = cloudPlanStore.userIsTrialing
 		? 'aiAssistant.builder.creditBanner.trialText'
 		: 'aiAssistant.builder.creditBanner.text';
@@ -32,6 +37,14 @@ const bannerText = computed(() => {
 		},
 	});
 });
+
+const ctaLabel = computed(() =>
+	i18n.baseText(
+		props.amountsHidden
+			? 'aiAssistant.builder.creditBanner.upgrade'
+			: 'aiAssistant.builder.creditBanner.getMore',
+	),
+);
 
 const getNextMonth = () => {
 	const now = new Date();
@@ -54,9 +67,23 @@ const tooltipContent = computed(() => {
 		data-test-id="credit-warning-banner"
 	>
 		<div :class="$style.content">
-			<span :class="$style.text">{{ bannerText }}</span>
-			<N8nTooltip :content="tooltipContent" placement="top" :show-after="300">
-				<N8nIcon icon="info" size="small" :class="$style.infoIcon" />
+			<!-- The numeric variants are a meter reading, so clipping them costs nothing. This one is
+			the only signal the capped cohort gets on landing, so it wraps rather than truncates. -->
+			<span :class="[$style.text, { [$style.wrapping]: props.amountsHidden }]">{{
+				bannerText
+			}}</span>
+			<N8nTooltip
+				v-if="!props.amountsHidden"
+				:content="tooltipContent"
+				placement="top"
+				:show-after="300"
+			>
+				<N8nIcon
+					icon="info"
+					size="small"
+					:class="$style.infoIcon"
+					data-test-id="credit-banner-renewal-info"
+				/>
 			</N8nTooltip>
 		</div>
 		<N8nButton
@@ -65,7 +92,7 @@ const tooltipContent = computed(() => {
 			data-test-id="credit-banner-get-more"
 			@click="emit('upgrade-click')"
 		>
-			{{ i18n.baseText('aiAssistant.builder.creditBanner.getMore') }}
+			{{ ctaLabel }}
 		</N8nButton>
 		<N8nIcon
 			icon="x"
@@ -112,6 +139,11 @@ const tooltipContent = computed(() => {
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
+}
+
+.wrapping {
+	white-space: normal;
+	overflow: visible;
 }
 
 .infoIcon {
