@@ -1,9 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { flushPromises, mount } from '@vue/test-utils';
-import { computed, ref } from 'vue';
+import { computed, defineComponent, h, ref } from 'vue';
 import { APPROVAL_TOOL_NAME, N8N_CHAT_ACTION_TOOL_NAME } from '@n8n/api-types';
 import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
 import AgentChatPanel from '../components/AgentChatPanel.vue';
+import AgentPreviewDock from '../components/AgentPreviewDock.vue';
+import {
+	buildAgentConfigFingerprint,
+	type AgentConfigFingerprint,
+} from '../composables/agentTelemetry.utils';
+import type { AgentJsonConfig } from '../types';
 
 const sendMessageMock = vi.fn();
 const stopGeneratingMock = vi.fn();
@@ -12,13 +18,21 @@ const cancelAndSteerMock = vi.fn();
 const messagesMock = ref<ChatMessage[]>([]);
 const isStreamingMock = ref(false);
 const isCancellingMock = ref(false);
+let onHistoryLoaded: ((count: number) => void) | undefined;
 
 const fatalErrorMock = ref<{ missing: string[] } | null>(null);
 
+const defaultAgentConfig: AgentJsonConfig = {
+	name: 'Agent',
+	model: 'anthropic/claude-sonnet-4-5',
+	instructions: 'Help.',
+};
+
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
-		baseText: (key: string) => {
+		baseText: (key: string, options?: { interpolate?: Record<string, string> }) => {
 			const translations: Record<string, string> = {
+				'agents.chat.input.placeholder.withAgent': `Message ${options?.interpolate?.agentName}…`,
 				'agents.chat.misconfigured.issuesPrefix': 'Check:',
 				'agents.chat.misconfigured.missing.tools': 'Tool configuration',
 				'agents.chat.misconfigured.missing.mcpServers': 'MCP server',
@@ -32,13 +46,27 @@ vi.mock('@n8n/i18n', () => ({
 vi.mock('@n8n/design-system', () => ({
 	N8nButton: { template: '<button><slot /></button>' },
 	N8nCallout: { template: '<div><slot /><slot name="trailingContent" /></div>' },
-	N8nIconButton: { template: '<button />' },
+	N8nHeading: { template: '<div><slot /></div>' },
+	N8nIconButton: {
+		emits: ['click'],
+		template: '<button v-bind="$attrs" @click="$emit(\'click\')" />',
+	},
 	N8nSendStopButton: {
 		name: 'N8nSendStopButton',
 		props: ['streaming', 'stopButtonTestId'],
 		emits: ['stop'],
 		template: '<button :data-test-id="stopButtonTestId" @click="$emit(\'stop\')" />',
 	},
+	N8nTooltip: { template: '<div><slot /></div>' },
+	TOOLTIP_DELAY_MS: 500,
+}));
+
+vi.mock('@/app/components/KeyboardShortcutTooltip.vue', () => ({
+	default: { template: '<div><slot /></div>' },
+}));
+
+vi.mock('@/app/composables/useKeybindings', () => ({
+	useKeybindings: vi.fn(),
 }));
 
 // Reads a Pinia store for notifications — irrelevant to panel behavior.
@@ -65,19 +93,22 @@ vi.mock('../components/AgentChatMessageList.vue', () => ({
 }));
 
 vi.mock('../composables/useAgentChatStream', () => ({
-	useAgentChatStream: () => ({
-		messages: messagesMock,
-		isStreaming: isStreamingMock,
-		isCancelling: isCancellingMock,
-		messagingState: computed(() => (isStreamingMock.value ? 'receiving' : 'idle')),
-		fatalError: fatalErrorMock,
-		loadHistory: loadHistoryMock,
-		sendMessage: sendMessageMock,
-		stopGenerating: stopGeneratingMock,
-		resume: vi.fn(),
-		cancelAndSteer: cancelAndSteerMock,
-		dismissFatalError: vi.fn(),
-	}),
+	useAgentChatStream: (options: { onHistoryLoaded: (count: number) => void }) => {
+		onHistoryLoaded = options.onHistoryLoaded;
+		return {
+			messages: messagesMock,
+			isStreaming: isStreamingMock,
+			isCancelling: isCancellingMock,
+			messagingState: computed(() => (isStreamingMock.value ? 'receiving' : 'idle')),
+			fatalError: fatalErrorMock,
+			loadHistory: loadHistoryMock,
+			sendMessage: sendMessageMock,
+			stopGenerating: stopGeneratingMock,
+			resume: vi.fn(),
+			cancelAndSteer: cancelAndSteerMock,
+			dismissFatalError: vi.fn(),
+		};
+	},
 }));
 
 vi.mock('../composables/useAgentTelemetry', () => ({
@@ -85,6 +116,7 @@ vi.mock('../composables/useAgentTelemetry', () => ({
 }));
 
 vi.mock('../composables/agentTelemetry.utils', () => ({
+	deriveAgentStatus: vi.fn(() => 'draft'),
 	buildAgentConfigFingerprint: vi.fn().mockResolvedValue({
 		instructions: '',
 		tools: [],
@@ -103,23 +135,65 @@ describe('AgentChatPanel', () => {
 		isStreamingMock.value = false;
 		isCancellingMock.value = false;
 		fatalErrorMock.value = null;
+		onHistoryLoaded = undefined;
 	});
 
-	function mountPanel() {
+	function mountPanel(
+		overrides: Partial<{
+			continueSessionId: string;
+			agentConfig: AgentJsonConfig | null;
+			beforeSend: () => Promise<void> | void;
+		}> = {},
+	) {
 		return mount(AgentChatPanel, {
 			props: {
 				projectId: 'p1',
 				agentId: 'a1',
-				agentConfig: {
-					name: 'Agent',
-					model: 'anthropic/claude-sonnet-4-5',
-					instructions: 'Help.',
-				},
+				agentConfig: defaultAgentConfig,
 				agentStatus: 'draft',
 				connectedTriggers: [],
+				...overrides,
 			},
 		});
 	}
+
+	it('uses the live agent name in the normal chat placeholder', async () => {
+		const wrapper = mountPanel();
+		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
+
+		expect(chatInput.props('placeholder')).toBe('Message Agent…');
+
+		await wrapper.setProps({
+			agentConfig: { ...defaultAgentConfig, name: 'Support Agent' },
+		});
+
+		expect(chatInput.props('placeholder')).toBe('Message Support Agent…');
+	});
+
+	it.each([
+		['a missing config', null],
+		['a blank agent name', { ...defaultAgentConfig, name: '   ' }],
+	] satisfies Array<[string, AgentJsonConfig | null]>)(
+		'uses the generic chat placeholder for %s',
+		(_description, agentConfig) => {
+			const wrapper = mountPanel({ agentConfig });
+			const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
+
+			expect(chatInput.props('placeholder')).toBe('agents.chat.input.placeholder');
+		},
+	);
+
+	it('emits the loaded history count with the session that produced it', () => {
+		const wrapper = mountPanel({
+			continueSessionId: 'session-1',
+			agentConfig: null,
+		});
+
+		expect(onHistoryLoaded).toBeDefined();
+		onHistoryLoaded?.(3);
+
+		expect(wrapper.emitted('continue-loaded')).toEqual([[{ sessionId: 'session-1', count: 3 }]]);
+	});
 
 	/**
 	 * A non-approval interactive card (`chat_action`) — these put the chat
@@ -159,20 +233,7 @@ describe('AgentChatPanel', () => {
 			events.push('sendMessage');
 		});
 
-		const wrapper = mount(AgentChatPanel, {
-			props: {
-				projectId: 'p1',
-				agentId: 'a1',
-				agentConfig: {
-					name: 'Agent',
-					model: 'anthropic/claude-sonnet-4-5',
-					instructions: 'Help.',
-				},
-				agentStatus: 'draft',
-				connectedTriggers: [],
-				beforeSend,
-			},
-		});
+		const wrapper = mountPanel({ beforeSend });
 
 		(
 			wrapper.vm as unknown as { sendMessageFromOutside: (message: string) => void }
@@ -187,6 +248,58 @@ describe('AgentChatPanel', () => {
 
 		expect(sendMessageMock).toHaveBeenCalledWith('update config');
 		expect(events).toEqual(['beforeSend', 'sendMessage']);
+	});
+
+	it.each([
+		[
+			'the session changes',
+			async (wrapper: ReturnType<typeof mountPanel>) => {
+				await wrapper.setProps({ continueSessionId: 'session-2' });
+			},
+		],
+		['the panel unmounts', async (wrapper: ReturnType<typeof mountPanel>) => wrapper.unmount()],
+	])('does not send a message after beforeSend resolves if %s', async (_condition, invalidate) => {
+		const beforeSend = Promise.withResolvers<void>();
+		const wrapper = mountPanel({
+			continueSessionId: 'session-1',
+			beforeSend: () => beforeSend.promise,
+		});
+
+		(
+			wrapper.vm as unknown as { sendMessageFromOutside: (message: string) => void }
+		).sendMessageFromOutside('update config');
+		await flushPromises();
+		await invalidate(wrapper);
+		beforeSend.resolve();
+		await flushPromises();
+
+		expect(sendMessageMock).not.toHaveBeenCalled();
+	});
+
+	it('does not send a message if the session changes while preparing telemetry', async () => {
+		const fingerprint = Promise.withResolvers<AgentConfigFingerprint>();
+		vi.mocked(buildAgentConfigFingerprint).mockReturnValueOnce(fingerprint.promise);
+		const wrapper = mountPanel({ continueSessionId: 'session-1' });
+
+		(
+			wrapper.vm as unknown as { sendMessageFromOutside: (message: string) => void }
+		).sendMessageFromOutside('update config');
+		await vi.waitFor(() => expect(buildAgentConfigFingerprint).toHaveBeenCalledOnce());
+		await wrapper.setProps({ continueSessionId: 'session-2' });
+		fingerprint.resolve({
+			instructions: '',
+			tools: [],
+			skills: [],
+			tasks: [],
+			triggers: [],
+			vector_stores: [],
+			memory: null,
+			model: null,
+			config_version: 'test-version',
+		});
+		await flushPromises();
+
+		expect(sendMessageMock).not.toHaveBeenCalled();
 	});
 
 	it('keeps the draft while suspended-run cancellation is pending', async () => {
@@ -248,7 +361,7 @@ describe('AgentChatPanel', () => {
 		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
 
 		expect(chatInput.props('disabled')).toBe(false);
-		expect(chatInput.props('placeholder')).toBe('agents.chat.input.placeholder');
+		expect(chatInput.props('placeholder')).toBe('Message Agent…');
 	});
 
 	it('enables chat input while an interactive card is unresolved (cancel-and-steer mode)', () => {
@@ -322,5 +435,56 @@ describe('AgentChatPanel', () => {
 		expect(wrapper.text()).toContain('MCP server');
 		expect(wrapper.text()).toContain('Sub-agent');
 		expect(wrapper.text()).toContain('integrations.0.credentialId');
+	});
+});
+
+describe('AgentPreviewDock stream lifecycle', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		messagesMock.value = [];
+		isStreamingMock.value = true;
+		isCancellingMock.value = false;
+		fatalErrorMock.value = null;
+	});
+
+	function mountPreviewDock() {
+		return mount(
+			defineComponent({
+				setup() {
+					const open = ref(true);
+					const sessionId = ref('session-1');
+					return () =>
+						open.value
+							? h(AgentPreviewDock, {
+									sessionTitle: 'Session',
+									hasSession: true,
+									initialized: true,
+									projectId: 'p1',
+									agentId: 'a1',
+									agent: null,
+									localConfig: defaultAgentConfig,
+									connectedTriggers: [],
+									effectiveSessionId: sessionId.value,
+									onClose: () => (open.value = false),
+									onNewSession: () => (sessionId.value = 'session-2'),
+								})
+							: null;
+				},
+			}),
+		);
+	}
+
+	it.each([
+		['closes', 'agent-preview-close-btn'],
+		['starts a new session', 'agent-preview-new-chat-btn'],
+	])('stops an in-flight stream when the preview %s', async (_action, testId) => {
+		const wrapper = mountPreviewDock();
+
+		await wrapper.get(`[data-testid="${testId}"]`).trigger('click');
+		await flushPromises();
+
+		expect(stopGeneratingMock).toHaveBeenCalledOnce();
+		isStreamingMock.value = false;
+		wrapper.unmount();
 	});
 });
