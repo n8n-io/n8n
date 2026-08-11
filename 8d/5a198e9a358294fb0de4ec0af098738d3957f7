@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/app/composables/useWorkflowSaving.test.ts
+  s_de6bb68a491ecb::t_79c8ce36107fa2 1504-1553
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "8d5a198e9a358294fb0de4ec0af098738d3957f7",
+  "prompts": {},
+  "sessions": {
+    "s_de6bb68a491ecb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "75ced52c-72f4-4f66-8595-1ef1bf0590e9",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}
