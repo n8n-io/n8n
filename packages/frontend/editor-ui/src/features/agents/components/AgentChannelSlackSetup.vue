@@ -14,7 +14,7 @@ import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type { ChatIntegrationDescriptor } from '@n8n/api-types';
 import type { PermissionsRecord } from '@n8n/permissions';
-import { getSlackAgentAppManifest } from '../composables/useAgentApi';
+import { getSlackAgentAppManifest } from '../channels/slack/api';
 import AgentIntegrationCredentialConnection from './AgentIntegrationCredentialConnection.vue';
 import type { AgentCredentialOption } from './AgentCredentialSelect.vue';
 

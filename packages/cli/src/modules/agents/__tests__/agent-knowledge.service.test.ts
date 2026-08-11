@@ -414,7 +414,7 @@ describe('AgentKnowledgeService', () => {
 		expect(agentKnowledgeSandboxService.warmSandbox).toHaveBeenCalledWith(projectId, agentId);
 	});
 
-	it('invalidates and pre-warms the mirror after a successful upload', async () => {
+	it('pre-warms the mirror after a successful upload', async () => {
 		agentRepository.findByIdAndProjectId.mockResolvedValue({
 			id: agentId,
 			projectId,
@@ -433,14 +433,13 @@ describe('AgentKnowledgeService', () => {
 			}),
 		]);
 
-		expect(agentKnowledgeSandboxService.invalidateMirror).toHaveBeenCalledWith(projectId, agentId);
 		expect(agentKnowledgeSandboxService.prewarmMirrorInBackground).toHaveBeenCalledWith(
 			projectId,
 			agentId,
 		);
 	});
 
-	it('invalidates and pre-warms the mirror after a file deletion', async () => {
+	it('pre-warms the mirror after a file deletion', async () => {
 		agentRepository.findByIdAndProjectId.mockResolvedValue({
 			id: agentId,
 			projectId,
@@ -450,7 +449,6 @@ describe('AgentKnowledgeService', () => {
 
 		await service.deleteFile(agentId, projectId, 'file-1');
 
-		expect(agentKnowledgeSandboxService.invalidateMirror).toHaveBeenCalledWith(projectId, agentId);
 		expect(agentKnowledgeSandboxService.prewarmMirrorInBackground).toHaveBeenCalledWith(
 			projectId,
 			agentId,

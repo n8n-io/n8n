@@ -360,7 +360,112 @@ describe('RelayConnection', () => {
 			await tick();
 
 			expect(chrome.debugger.attach).toHaveBeenCalledTimes(1);
-			expect(chrome.debugger.sendCommand).toHaveBeenCalledTimes(2);
+			expect(chrome.debugger.sendCommand).toHaveBeenCalledWith(
+				{ tabId: 123 },
+				'Runtime.evaluate',
+				{},
+			);
+			expect(chrome.debugger.sendCommand).toHaveBeenCalledWith(
+				{ tabId: 123 },
+				'DOM.getDocument',
+				{},
+			);
+		});
+
+		it('should enable focus emulation on attach so hidden tabs keep rendering', async () => {
+			chrome.debugger.getTargets.mockResolvedValueOnce([mockTarget(123)]);
+			await relay.registerSelectedTabs([123]);
+			const tabId = relay.getControlledIds()[0].targetId;
+
+			ws.onmessage?.({
+				data: JSON.stringify({
+					id: 1,
+					method: 'forwardCDPCommand',
+					params: { method: 'Runtime.evaluate', params: {}, id: tabId },
+				}),
+			});
+			await tick();
+
+			expect(chrome.debugger.sendCommand).toHaveBeenCalledWith(
+				{ tabId: 123 },
+				'Emulation.setFocusEmulationEnabled',
+				{ enabled: true },
+			);
+		});
+
+		it('should keep the tab usable when focus emulation is rejected', async () => {
+			chrome.debugger.getTargets.mockResolvedValueOnce([mockTarget(123)]);
+			await relay.registerSelectedTabs([123]);
+			const tabId = relay.getControlledIds()[0].targetId;
+			ws.sent.length = 0;
+
+			// Focus emulation is the first command sent after attaching
+			chrome.debugger.sendCommand.mockRejectedValueOnce(
+				new Error('Emulation.setFocusEmulationEnabled is not allowed'),
+			);
+
+			ws.onmessage?.({
+				data: JSON.stringify({
+					id: 1,
+					method: 'forwardCDPCommand',
+					params: { method: 'Runtime.evaluate', params: {}, id: tabId },
+				}),
+			});
+			await tick();
+
+			expect(chrome.debugger.sendCommand).toHaveBeenNthCalledWith(
+				1,
+				{ tabId: 123 },
+				'Emulation.setFocusEmulationEnabled',
+				{ enabled: true },
+			);
+			expect(chrome.debugger.sendCommand).toHaveBeenCalledWith(
+				{ tabId: 123 },
+				'Runtime.evaluate',
+				{},
+			);
+			expect(parseSent(ws)).toEqual(expect.objectContaining({ id: 1 }));
+			expect(parseSent(ws)).not.toHaveProperty('error');
+		});
+
+		it('should re-apply focus emulation when a tab is re-registered after a detach', async () => {
+			const forward = (id: string, method: string) =>
+				ws.onmessage?.({
+					data: JSON.stringify({
+						id: 1,
+						method: 'forwardCDPCommand',
+						params: { method, params: {}, id },
+					}),
+				});
+
+			// A second tab keeps the relay alive once the first one detaches
+			chrome.debugger.getTargets.mockResolvedValue([mockTarget(42), mockTarget(43)]);
+			await relay.registerSelectedTabs([42, 43]);
+
+			forward(targetIdForTab(42), 'Runtime.evaluate');
+			await tick();
+			expect(chrome.debugger.sendCommand).toHaveBeenCalledWith(
+				{ tabId: 42 },
+				'Emulation.setFocusEmulationEnabled',
+				{ enabled: true },
+			);
+
+			// Detach drops the tab entirely, so recovery goes through re-registration
+			fireDebuggerDetach({ tabId: 42 }, 'target_closed');
+			expect(ws.closed).toBe(false);
+			chrome.debugger.sendCommand.mockClear();
+			chrome.debugger.attach.mockClear();
+
+			await relay.registerSelectedTabs([42]);
+			forward(targetIdForTab(42), 'DOM.getDocument');
+			await tick();
+
+			expect(chrome.debugger.attach).toHaveBeenCalledWith({ tabId: 42 }, '1.3');
+			expect(chrome.debugger.sendCommand).toHaveBeenCalledWith(
+				{ tabId: 42 },
+				'Emulation.setFocusEmulationEnabled',
+				{ enabled: true },
+			);
 		});
 
 		it('should route CDP commands to specific tab by CDP targetId', async () => {
@@ -433,6 +538,11 @@ describe('RelayConnection', () => {
 			expect(relay.isAgentCreatedTab(999)).toBe(true);
 			// Agent-created tabs ARE eagerly attached
 			expect(chrome.debugger.attach).toHaveBeenCalledWith({ tabId: 999 }, '1.3');
+			expect(chrome.debugger.sendCommand).toHaveBeenCalledWith(
+				{ tabId: 999 },
+				'Emulation.setFocusEmulationEnabled',
+				{ enabled: true },
+			);
 
 			// Response should have CDP targetId, not chromeTabId
 			expect(parseSent(ws)).toEqual(
