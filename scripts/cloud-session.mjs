@@ -19,9 +19,23 @@ const FALLBACK_MACHINE = 'standardLinux32gb'; // 4-core/16GB, until org policy a
 const gh = (...args) => execFileSync('gh', args, { encoding: 'utf8' }).trim();
 const ghTty = (...args) => spawnSync('gh', args, { stdio: 'inherit' });
 
-function findCodespace() {
-	const list = JSON.parse(gh('codespace', 'list', '-R', REPO, '--json', 'name,state'));
-	return list[0];
+function findCodespace(retry = false) {
+	try {
+		const list = JSON.parse(gh('codespace', 'list', '-R', REPO, '--json', 'name,state'));
+		return list[0];
+	} catch (ex) {
+		if (ex.message.includes('This API operation needs the "codespace" scope') && !retry) {
+			requestCodespaceScope();
+			return findCodespace(true);
+		} else {
+			throw new Error(ex.message);
+		}
+	}
+}
+
+function requestCodespaceScope() {
+	console.log("Requesting codespace scope");
+	ghTty("auth", "refresh", "-h", "github.com", "-s", "codespace")
 }
 
 function ensureCodespace() {
@@ -42,17 +56,21 @@ function ensureCodespace() {
 	return cs.name;
 }
 
+// The preludes go inside tmux's '…' argument: do not use single quotes in them.
+// tmux commands are not login shells. Source the shared secrets so Claude Code
+// finds ${FLAKY_MCP_TOKEN} in its process env.
+const SECRETS = '. /usr/local/lib/codespaces-env.sh 2>/dev/null || true';
 // Worktrees share the pnpm store but not the turbo cache; a shared TURBO_CACHE_DIR
 // (seeded from the main checkout) keeps new-worktree builds at cache-hit speed.
-// No single quotes allowed here: the whole prelude rides inside tmux's '…' arg.
 const CACHE = 'export TURBO_CACHE_DIR=/workspaces/.turbo-cache; [ -d "$TURBO_CACHE_DIR" ] || cp -r /workspaces/n8n/.turbo/cache "$TURBO_CACHE_DIR" 2>/dev/null || mkdir -p "$TURBO_CACHE_DIR"';
 
 function remoteCommand(session, extraArgs) {
 	const claude = `claude ${extraArgs}`.trim();
-	if (session === 'agent') return `${CACHE}; cd /workspaces/n8n && ${claude}`;
+	if (session === 'agent') return `${SECRETS}; ${CACHE}; cd /workspaces/n8n && ${claude}`;
 	const wt = `/workspaces/wt-${session}`;
 	const branch = `session/${session}`;
 	return [
+		SECRETS,
 		CACHE,
 		`if [ ! -d "${wt}" ]; then echo "Setting up worktree ${wt}…"`,
 		`git -C /workspaces/n8n worktree add "${wt}" -b "${branch}" 2>/dev/null || git -C /workspaces/n8n worktree add "${wt}" "${branch}"`,

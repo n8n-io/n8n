@@ -1,25 +1,31 @@
-import type { Sandbox, SandboxState } from '@daytona/sdk';
 import { redactText } from '@n8n/agents';
-import { loadDaytona } from '@n8n/agents/sandbox';
+import {
+	createFilesystem,
+	createSandbox,
+	type CommandResult,
+	type DaytonaSandboxConfig,
+	type N8nSandboxConfig,
+	type SandboxProvider,
+	type WorkspaceFilesystem,
+	type WorkspaceSandbox,
+} from '@n8n/agents/sandbox';
 import { Logger } from '@n8n/backend-common';
 import { AgentsConfig } from '@n8n/config';
-import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import { OperationalError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
-import { createHash } from 'node:crypto';
+import { v5 as uuidv5 } from 'uuid';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { AiService } from '@/services/ai.service';
+import { SandboxSettingsService } from '@/services/sandbox-settings.service';
 import { callAiServiceWithRetry } from '@/utils/ai-service-retry';
-import { TtlMap } from '@/utils/ttl-map';
 
 import {
 	buildMirrorFinalizeCommand,
 	buildReadKnowledgeCommand,
-	buildReadMirrorManifestCommand,
 	buildScopedKnowledgeShellCommand,
 	buildSearchKnowledgeCommand,
 	getSearchContextWindow,
@@ -31,7 +37,6 @@ import {
 	parseRipgrepOutput,
 } from './agent-knowledge-commands';
 import { AgentKnowledgeFileStore } from './agent-knowledge-file-store';
-import { isAgentKnowledgeBaseEnabled } from './agent-knowledge-gate';
 import {
 	assertValidKnowledgeFilePath,
 	DEFAULT_GLOB_FILES_LIMIT,
@@ -49,51 +54,30 @@ import {
 } from './agent-knowledge-retrieval';
 import {
 	assertKnowledgePathSegment,
-	KNOWLEDGE_MIRROR_FILES_DIR,
+	getAgentKnowledgePaths,
+	type AgentKnowledgePaths,
 	storageFileNameForOriginalFileName,
 } from './agent-knowledge-storage';
 import { AgentFileRepository } from './repositories/agent-file.repository';
 import { AgentRepository } from './repositories/agent.repository';
 
-interface AgentKnowledgeCommandResult {
-	exitCode: number;
-	stdout: string;
-	stderr: string;
-}
-
 export const AGENT_KNOWLEDGE_SANDBOX_NAME_PREFIX = 'agent-';
 
+const AGENT_KNOWLEDGE_SANDBOX_NAMESPACE = '5b5fd8cd-59c1-5914-aabc-cf7257fb46bc';
 const MAX_SANDBOX_ERROR_DETAIL_CHARS = 2_000;
 
 const LABEL_KNOWLEDGE_BASE = 'n8n-agents-knowledgebase';
 const LABEL_PROJECT_ID = 'n8n-project-id';
 const LABEL_AGENT_ID = 'n8n-agent-id';
 
-const SANDBOX_STATE_STARTED: SandboxState = 'started';
-
-const DEAD_SANDBOX_STATES = new Set<SandboxState>([
-	'destroyed',
-	'destroying',
-	'error',
-	'build_failed',
-]);
-
 const DEFAULT_SANDBOX_IMAGE = 'daytonaio/sandbox:0.5.0';
 const AUTO_STOP_INTERVAL_MINUTES = 5;
-const MIRROR_MANIFEST_HASH_TTL_MS = 30 * Time.minutes.toMilliseconds;
-// Cap B (1.5 GB knowledge base limit) keeps real copies well under this —
-// this only guards against the sandbox disk unexpectedly filling up.
-const MIRROR_DISK_FIT_WARNING_BYTES = 2 * 1024 * 1024 * 1024;
-// Caps how many file bytes are held in the main process at once while
-// staging a mirror sync — the KB itself can be up to 1.5 GB.
-const MIRROR_UPLOAD_BATCH_BYTES = 64 * 1024 * 1024;
 
-interface AgentKnowledgeDaytonaConnection {
-	apiUrl?: string;
-	apiKey?: string;
-	image: string;
-	snapshot?: string;
-	mode: 'direct' | 'proxy';
+interface AgentKnowledgeSandboxRuntime {
+	sandbox: WorkspaceSandbox;
+	filesystem: WorkspaceFilesystem;
+	paths: AgentKnowledgePaths;
+	cacheKey: string;
 }
 
 interface AgentKnowledgeReferenceLookup {
@@ -117,10 +101,6 @@ function emptySearchKnowledgeResult(
 	return { outputMode, matches: [], limit, hasMore: false, truncated: false };
 }
 
-function buildSandboxScopeKey(projectId: string, agentId: string): string {
-	return `${projectId}:${agentId}`;
-}
-
 // Proxy sandbox-operation routes only match `[a-z0-9][a-z0-9_-]+` — the name
 // must be lowercase. instanceId groups one instance's sandboxes together;
 // projectId and agentId are a globally unique nanoid pair beneath it.
@@ -132,29 +112,23 @@ function buildSandboxName(scope: {
 	return `${AGENT_KNOWLEDGE_SANDBOX_NAME_PREFIX}${scope.instanceId}-${scope.projectId}-${scope.agentId}`.toLowerCase();
 }
 
-function extractCommandOutput(result: {
-	result?: string;
-	artifacts?: { stdout?: string };
-}): string {
-	return result.artifacts?.stdout ?? result.result ?? '';
+function buildN8nSandboxId(sandboxName: string): string {
+	return uuidv5(sandboxName, AGENT_KNOWLEDGE_SANDBOX_NAMESPACE);
 }
 
-function parseManifestNames(output: string): string[] {
-	return output
-		.split(/\r?\n/)
-		.map((line) => line.trim())
-		.filter(Boolean);
-}
-
-function hashManifestNames(names: string[]): string {
-	return createHash('sha256')
-		.update(JSON.stringify([...names].sort()))
-		.digest('hex');
-}
-
-function isDaytonaNotFoundError(error: unknown): boolean {
-	const { DaytonaNotFoundError } = loadDaytona();
-	return error instanceof DaytonaNotFoundError;
+function parseMirrorManifest(output: string): Map<string, string> {
+	const manifest = new Map<string, string>();
+	for (const entry of output.split(/\r?\n/)) {
+		const line = entry.trim();
+		if (!line) continue;
+		const separator = line.indexOf('\t');
+		if (separator === -1) {
+			manifest.set(line, '');
+		} else {
+			manifest.set(line.slice(separator + 1), line.slice(0, separator));
+		}
+	}
+	return manifest;
 }
 
 function buildScopeLabels(projectId: string, agentId: string): Record<string, string> {
@@ -163,12 +137,6 @@ function buildScopeLabels(projectId: string, agentId: string): Record<string, st
 		[LABEL_PROJECT_ID]: projectId,
 		[LABEL_AGENT_ID]: agentId,
 	};
-}
-
-function isUsableSandbox(sandbox: Sandbox): boolean {
-	const state = sandbox.state;
-	if (!state) return true;
-	return !DEAD_SANDBOX_STATES.has(state);
 }
 
 function truncateSandboxErrorDetail(value: string): string {
@@ -183,7 +151,7 @@ function sanitizeSandboxErrorDetail(value: string): string {
 
 function formatSandboxCommandFailure(
 	operation: 'glob' | 'read' | 'search',
-	result: AgentKnowledgeCommandResult,
+	result: CommandResult,
 ): string {
 	const stderrText = sanitizeSandboxErrorDetail(result.stderr);
 	const stdoutText = sanitizeSandboxErrorDetail(result.stdout);
@@ -195,7 +163,7 @@ function formatSandboxCommandFailure(
 
 function assertKnowledgeFilesDirectoryAvailable(
 	operation: 'glob' | 'read' | 'search',
-	result: AgentKnowledgeCommandResult,
+	result: CommandResult,
 ): void {
 	if (result.exitCode !== KNOWLEDGE_FILES_DIR_UNAVAILABLE_EXIT_CODE) return;
 
@@ -206,8 +174,10 @@ function assertKnowledgeFilesDirectoryAvailable(
 
 @Service()
 export class AgentKnowledgeSandboxService {
-	private readonly pendingSandboxAcquisitions = new Map<string, Promise<Sandbox>>();
-	private readonly mirrorManifestHashes = new TtlMap<string, string>(MIRROR_MANIFEST_HASH_TTL_MS);
+	private readonly pendingSandboxAcquisitions = new Map<
+		string,
+		Promise<AgentKnowledgeSandboxRuntime>
+	>();
 	private readonly pendingMirrorSyncs = new Map<string, Promise<void>>();
 
 	constructor(
@@ -218,6 +188,7 @@ export class AgentKnowledgeSandboxService {
 		private readonly agentFileRepository: AgentFileRepository,
 		private readonly agentRepository: AgentRepository,
 		private readonly agentKnowledgeFileStore: AgentKnowledgeFileStore,
+		private readonly sandboxSettingsService: SandboxSettingsService,
 	) {}
 
 	async warmSandbox(projectId: string, agentId: string): Promise<void> {
@@ -230,28 +201,44 @@ export class AgentKnowledgeSandboxService {
 	 * callers must not have cleanup failures block the parent delete operation.
 	 */
 	async destroySandbox(projectId: string, agentId: string): Promise<void> {
-		if (!this.isKnowledgeBaseEnabled()) return;
+		const sandboxName = buildSandboxName({
+			instanceId: this.instanceSettings.instanceId,
+			projectId,
+			agentId,
+		});
+		const sandboxes = [
+			['daytona', sandboxName],
+			['n8n-sandbox', buildN8nSandboxId(sandboxName)],
+		] as const;
 
+		for (const [provider, sandboxId] of sandboxes) {
+			await this.tryDestroySandbox(projectId, agentId, provider, sandboxId);
+		}
+	}
+
+	private async tryDestroySandbox(
+		projectId: string,
+		agentId: string,
+		provider: SandboxProvider,
+		sandboxId: string,
+	): Promise<void> {
 		try {
-			const { Daytona } = loadDaytona();
-			const connection = await this.resolveDaytonaConnection(projectId);
-			const daytona = new Daytona({
-				apiUrl: connection.apiUrl,
-				apiKey: connection.apiKey,
-			});
-			const name = buildSandboxName({
-				instanceId: this.instanceSettings.instanceId,
-				projectId,
-				agentId,
-			});
-			const timeoutSeconds = Math.ceil(this.agentsConfig.sandboxTimeout / 1000);
-			const sandbox = await daytona.get(name);
-			await sandbox.delete(timeoutSeconds);
+			const config =
+				provider === 'daytona'
+					? await this.resolveDaytonaSandboxConfig(projectId, agentId, sandboxId)
+					: await this.resolveN8nSandboxConfig(sandboxId);
+			const sandbox = await createSandbox(config, { logger: this.logger });
+			if (!sandbox?.destroy) {
+				throw new OperationalError('Agent knowledge sandbox does not support provider destroy');
+			}
+			await sandbox.destroy();
 		} catch (error) {
 			this.logger.warn('Failed to destroy agent knowledge sandbox', {
 				projectId,
 				agentId,
-				error: error instanceof Error ? error.message : String(error),
+				provider,
+				sandboxId,
+				error: sanitizeSandboxErrorDetail(error instanceof Error ? error.message : String(error)),
 			});
 		}
 	}
@@ -398,196 +385,156 @@ export class AgentKnowledgeSandboxService {
 		agentId: string,
 		command: string,
 		files: AgentKnowledgeFileReference[],
-	): Promise<AgentKnowledgeCommandResult> {
-		const timeoutSeconds = Math.ceil(this.agentsConfig.sandboxTimeout / 1000);
-		const scopedCommand = buildScopedKnowledgeShellCommand(command);
-		const sandbox = await this.acquireSandbox(projectId, agentId);
-		const sandboxName = buildSandboxName({
-			instanceId: this.instanceSettings.instanceId,
-			projectId,
-			agentId,
-		});
-		await this.ensureMirrorSynced(sandbox, files, sandboxName);
-		const result = await sandbox.process.executeCommand(
+	): Promise<CommandResult> {
+		const runtime = await this.acquireSandbox(projectId, agentId);
+		const scopedCommand = buildScopedKnowledgeShellCommand(command, runtime.paths);
+		await this.ensureMirrorSynced(runtime, files);
+		return await this.executeSandboxCommand(
+			runtime.sandbox,
 			scopedCommand,
-			undefined,
-			undefined,
-			timeoutSeconds,
+			this.agentsConfig.sandboxTimeout,
 		);
-
-		return {
-			exitCode: result.exitCode,
-			stdout: result.artifacts?.stdout ?? result.result ?? '',
-			stderr:
-				result.artifacts &&
-				'stderr' in result.artifacts &&
-				typeof result.artifacts.stderr === 'string'
-					? result.artifacts.stderr
-					: '',
-		};
 	}
 
 	/**
 	 * Keeps the sandbox-local knowledge mirror in sync with the DB-derived
-	 * file list before a read/search command runs against it. Short-circuits
-	 * via an in-memory manifest hash so repeated operations with an unchanged
-	 * file set issue no sandbox commands at all.
+	 * file list before a read/search command runs against it. The remote
+	 * manifest is read every time because providers can reuse sandbox IDs.
 	 */
 	private async ensureMirrorSynced(
-		sandbox: Sandbox,
+		runtime: AgentKnowledgeSandboxRuntime,
 		files: AgentKnowledgeFileReference[],
-		sandboxName: string,
 	): Promise<void> {
-		const expectedHash = hashManifestNames(files.map((file) => file.file));
-		if (this.mirrorManifestHashes.get(sandboxName) === expectedHash) {
-			return;
-		}
+		const previous = this.pendingMirrorSyncs.get(runtime.cacheKey) ?? Promise.resolve();
+		const next = previous
+			.catch(() => undefined)
+			.then(async () => await this.syncMirror(runtime, files));
+		this.pendingMirrorSyncs.set(runtime.cacheKey, next);
 
-		let pending = this.pendingMirrorSyncs.get(sandboxName);
-		if (!pending) {
-			pending = this.syncMirror(sandbox, files, expectedHash, sandboxName).finally(() => {
-				this.pendingMirrorSyncs.delete(sandboxName);
-			});
-			this.pendingMirrorSyncs.set(sandboxName, pending);
+		try {
+			await next;
+		} finally {
+			if (this.pendingMirrorSyncs.get(runtime.cacheKey) === next) {
+				this.pendingMirrorSyncs.delete(runtime.cacheKey);
+			}
 		}
-		await pending;
 	}
 
 	private async syncMirror(
-		sandbox: Sandbox,
+		runtime: AgentKnowledgeSandboxRuntime,
 		files: AgentKnowledgeFileReference[],
-		expectedHash: string,
-		sandboxName: string,
 	): Promise<void> {
-		// Re-check now that we hold the per-sandbox lock — a concurrent call may
-		// have just finished syncing to the same expected set.
-		if (this.mirrorManifestHashes.get(sandboxName) === expectedHash) return;
-
-		const manifestResult = await sandbox.process.executeCommand(
-			buildReadMirrorManifestCommand(),
-			undefined,
-			undefined,
-			MIRROR_SYNC_TIMEOUT_SECONDS,
+		const manifestResult = await this.executeSandboxCommand(
+			runtime.sandbox,
+			`cat ${runtime.paths.manifest} 2>/dev/null || true`,
+			MIRROR_SYNC_TIMEOUT_SECONDS * 1000,
 		);
-		const present = parseManifestNames(extractCommandOutput(manifestResult));
+		const present = parseMirrorManifest(manifestResult.stdout);
 
 		const expectedNames = files.map((file) => file.file);
 		const expectedSet = new Set(expectedNames);
-		const presentSet = new Set(present);
-		const toCopy = expectedNames.filter((name) => !presentSet.has(name));
-		const toDelete = present.filter((name) => !expectedSet.has(name));
+		const toCopy = files.filter((file) => present.get(file.file) !== file.fileId);
+		const toDelete = [...present.keys()].filter((name) => !expectedSet.has(name));
 
-		if (toCopy.length === 0 && toDelete.length === 0) {
-			this.mirrorManifestHashes.set(sandboxName, expectedHash);
-			return;
-		}
+		if (toCopy.length === 0 && toDelete.length === 0) return;
 
 		for (const name of [...expectedNames, ...toDelete]) {
 			assertKnowledgePathSegment(name, 'knowledge mirror file name');
 		}
 
-		if (present.length === 0 && toCopy.length > 0) {
-			const totalBytes = files.reduce((total, file) => total + file.fileSizeBytes, 0);
-			if (totalBytes > MIRROR_DISK_FIT_WARNING_BYTES) {
-				this.logger.warn('Agent knowledge mirror copy exceeds the disk-fit guard threshold', {
-					sandboxName,
-					totalBytes,
-				});
+		const stagingId = nanoid();
+		const stagingDir = `${runtime.paths.stagingDir}/${stagingId}`;
+		try {
+			const copiedNames = await this.uploadMirrorFiles(runtime, toCopy, stagingId);
+			// Files that failed to load from the knowledge file store are left out of
+			// the manifest, so the next sync attempt retries them as `toCopy` again.
+			const finalManifestFiles = files.filter(
+				(file) => copiedNames.has(file.file) || present.get(file.file) === file.fileId,
+			);
+			const staleFiles = toCopy
+				.filter((file) => present.has(file.file) && !copiedNames.has(file.file))
+				.map((file) => file.file);
+
+			const syncResult = await this.executeSandboxCommand(
+				runtime.sandbox,
+				buildMirrorFinalizeCommand(
+					[...copiedNames],
+					[...toDelete, ...staleFiles],
+					finalManifestFiles,
+					runtime.paths,
+					stagingId,
+				),
+				MIRROR_SYNC_TIMEOUT_SECONDS * 1000,
+			);
+			if (syncResult.exitCode !== 0) {
+				throw new OperationalError(
+					`Agent knowledge mirror sync failed: exitCode=${syncResult.exitCode}; output=${sanitizeSandboxErrorDetail(syncResult.stdout)}`,
+				);
+			}
+		} finally {
+			if (toCopy.length > 0) {
+				try {
+					await runtime.filesystem.rmdir(stagingDir, { recursive: true, force: true });
+				} catch (error) {
+					this.logger.warn('Failed to clean agent knowledge mirror staging directory', {
+						sandboxName: runtime.cacheKey,
+						stagingId,
+						error: sanitizeSandboxErrorDetail(
+							error instanceof Error ? error.message : String(error),
+						),
+					});
+				}
 			}
 		}
-
-		const filesByName = new Map(files.map((file) => [file.file, file]));
-		const copiedNames = await this.uploadMirrorFiles(sandbox, toCopy, filesByName, sandboxName);
-		// Files that failed to load from the knowledge file store are left out of
-		// the manifest, so the next sync attempt retries them as `toCopy` again.
-		const finalManifestNames = expectedNames.filter(
-			(name) => copiedNames.has(name) || presentSet.has(name),
-		);
-
-		const syncResult = await sandbox.process.executeCommand(
-			buildMirrorFinalizeCommand([...copiedNames], toDelete, finalManifestNames),
-			undefined,
-			undefined,
-			MIRROR_SYNC_TIMEOUT_SECONDS,
-		);
-		if (syncResult.exitCode !== 0) {
-			throw new OperationalError(
-				`Agent knowledge mirror sync failed: exitCode=${syncResult.exitCode}; output=${sanitizeSandboxErrorDetail(extractCommandOutput(syncResult))}`,
-			);
-		}
-		// Cache the hash of what's actually on disk, not `expectedHash`: if a
-		// file failed to load, this mismatches the next `expectedHash` and
-		// forces a retry instead of silently caching a partial mirror as done.
-		this.mirrorManifestHashes.set(sandboxName, hashManifestNames(finalManifestNames));
 	}
 
 	/**
-	 * Fetches each `names` entry from the knowledge file store and uploads it to
-	 * the sandbox mirror under a `.tmp-` prefix; `buildMirrorFinalizeCommand`
+	 * Fetches each file from the knowledge file store and uploads it to
+	 * a per-sync staging path; `buildMirrorFinalizeCommand`
 	 * moves it into place so a concurrent search never sees a partially-written
-	 * file. Uploads flush in `MIRROR_UPLOAD_BATCH_BYTES`-sized batches so the
-	 * whole knowledge base (up to 1.5 GB) is never held in memory at once.
-	 * Returns the subset of `names` that were fetched and uploaded successfully.
+	 * file. Files are loaded and written one at a time so the whole knowledge
+	 * base (up to 1.5 GB) is never held in memory at once.
+	 * Returns the names of files that were fetched and uploaded successfully.
 	 */
 	private async uploadMirrorFiles(
-		sandbox: Sandbox,
-		names: string[],
-		filesByName: Map<string, AgentKnowledgeFileReference>,
-		sandboxName: string,
+		runtime: AgentKnowledgeSandboxRuntime,
+		files: AgentKnowledgeFileReference[],
+		stagingId: string,
 	): Promise<Set<string>> {
 		const copiedNames = new Set<string>();
-		if (names.length === 0) return copiedNames;
+		if (files.length === 0) return copiedNames;
 
-		await sandbox.fs.createFolder(KNOWLEDGE_MIRROR_FILES_DIR, '755');
+		const stagingDir = `${runtime.paths.stagingDir}/${stagingId}`;
+		await runtime.filesystem.mkdir(stagingDir, { recursive: true });
 
-		let batch: Array<{ source: Buffer; destination: string }> = [];
-		let batchNames: string[] = [];
-		let batchBytes = 0;
-
-		const flushBatch = async (): Promise<void> => {
-			if (batch.length === 0) return;
-			await sandbox.fs.uploadFiles(batch);
-			for (const name of batchNames) copiedNames.add(name);
-			batch = [];
-			batchNames = [];
-			batchBytes = 0;
-		};
-
-		for (const name of names) {
-			const file = filesByName.get(name);
-			if (!file) continue;
-
+		for (const file of files) {
+			const name = file.file;
+			let buffer: Buffer | null;
 			try {
-				const buffer = await this.agentKnowledgeFileStore.readAsBuffer({
+				buffer = await this.agentKnowledgeFileStore.readAsBuffer({
 					storedAt: file.storedAt,
 					storageKey: file.storageKey,
 				});
-				if (!buffer) {
-					this.logger.warn('Failed to load agent knowledge file for mirror sync', {
-						sandboxName,
-						file: name,
-						error: 'not found',
-					});
-					continue;
-				}
-				batch.push({ source: buffer, destination: `${KNOWLEDGE_MIRROR_FILES_DIR}/.tmp-${name}` });
-				batchNames.push(name);
-				batchBytes += buffer.length;
 			} catch (error) {
 				this.logger.warn('Failed to load agent knowledge file for mirror sync', {
-					sandboxName,
+					sandboxName: runtime.cacheKey,
 					file: name,
 					error: error instanceof Error ? error.message : String(error),
 				});
 				continue;
 			}
-
-			if (batchBytes >= MIRROR_UPLOAD_BATCH_BYTES) {
-				await flushBatch();
+			if (!buffer) {
+				this.logger.warn('Failed to load agent knowledge file for mirror sync', {
+					sandboxName: runtime.cacheKey,
+					file: name,
+					error: 'not found',
+				});
+				continue;
 			}
-		}
 
-		await flushBatch();
+			await runtime.filesystem.writeFile(`${stagingDir}/${name}`, buffer);
+			copiedNames.add(name);
+		}
 
 		return copiedNames;
 	}
@@ -600,13 +547,8 @@ export class AgentKnowledgeSandboxService {
 	prewarmMirrorInBackground(projectId: string, agentId: string): void {
 		void (async () => {
 			const references = await this.loadKnowledgeReferenceLookup(projectId, agentId);
-			const sandbox = await this.acquireSandbox(projectId, agentId);
-			const sandboxName = buildSandboxName({
-				instanceId: this.instanceSettings.instanceId,
-				projectId,
-				agentId,
-			});
-			await this.ensureMirrorSynced(sandbox, references.files, sandboxName);
+			const runtime = await this.acquireSandbox(projectId, agentId);
+			await this.ensureMirrorSynced(runtime, references.files);
 		})().catch((error) => {
 			this.logger.warn('Agent knowledge mirror pre-warm failed', {
 				projectId,
@@ -614,16 +556,6 @@ export class AgentKnowledgeSandboxService {
 				error: error instanceof Error ? error.message : String(error),
 			});
 		});
-	}
-
-	/** Invalidates the cached mirror state so the next operation re-syncs. */
-	invalidateMirror(projectId: string, agentId: string): void {
-		const sandboxName = buildSandboxName({
-			instanceId: this.instanceSettings.instanceId,
-			projectId,
-			agentId,
-		});
-		this.mirrorManifestHashes.delete(sandboxName);
 	}
 
 	private async loadKnowledgeReferenceLookup(
@@ -699,12 +631,27 @@ export class AgentKnowledgeSandboxService {
 		return file;
 	}
 
-	private async acquireSandbox(projectId: string, agentId: string): Promise<Sandbox> {
-		const cacheKey = buildSandboxScopeKey(projectId, agentId);
+	private async acquireSandbox(
+		projectId: string,
+		agentId: string,
+	): Promise<AgentKnowledgeSandboxRuntime> {
+		const provider = this.sandboxSettingsService.getProvider();
+		const sandboxName = buildSandboxName({
+			instanceId: this.instanceSettings.instanceId,
+			projectId,
+			agentId,
+		});
+		const cacheKey = `${provider}:${sandboxName}`;
 		let pending = this.pendingSandboxAcquisitions.get(cacheKey);
 
 		if (!pending) {
-			pending = this.acquireSandboxFresh(projectId, agentId).finally(() => {
+			pending = this.acquireSandboxFresh(
+				projectId,
+				agentId,
+				provider,
+				sandboxName,
+				cacheKey,
+			).finally(() => {
 				this.pendingSandboxAcquisitions.delete(cacheKey);
 			});
 			this.pendingSandboxAcquisitions.set(cacheKey, pending);
@@ -713,159 +660,126 @@ export class AgentKnowledgeSandboxService {
 		return await pending;
 	}
 
-	private async acquireSandboxFresh(projectId: string, agentId: string): Promise<Sandbox> {
+	private async acquireSandboxFresh(
+		projectId: string,
+		agentId: string,
+		provider: SandboxProvider,
+		sandboxName: string,
+		cacheKey: string,
+	): Promise<AgentKnowledgeSandboxRuntime> {
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!agent) {
 			throw new NotFoundError(`Agent "${agentId}" not found`);
 		}
 
-		const { Daytona } = loadDaytona();
-		const connection = await this.resolveDaytonaConnection(projectId);
-		const daytona = new Daytona({
-			apiUrl: connection.apiUrl,
-			apiKey: connection.apiKey,
-		});
-		const labels = buildScopeLabels(projectId, agentId);
-		const timeoutSeconds = Math.ceil(this.agentsConfig.sandboxTimeout / 1000);
-		const name = buildSandboxName({
-			instanceId: this.instanceSettings.instanceId,
+		const config =
+			provider === 'daytona'
+				? await this.resolveDaytonaSandboxConfig(projectId, agentId, sandboxName)
+				: await this.resolveN8nSandboxConfig(buildN8nSandboxId(sandboxName));
+		return await this.startSandbox(config, projectId, agentId, cacheKey);
+	}
+
+	private async startSandbox(
+		config: DaytonaSandboxConfig | N8nSandboxConfig,
+		projectId: string,
+		agentId: string,
+		cacheKey: string,
+	): Promise<AgentKnowledgeSandboxRuntime> {
+		const { provider } = config;
+		const sandbox = await createSandbox(config, { logger: this.logger });
+		if (!sandbox?._start) {
+			throw new OperationalError('Agent knowledge sandbox does not support lifecycle start');
+		}
+		await sandbox._start();
+		const filesystem = createFilesystem(sandbox);
+		const paths = getAgentKnowledgePaths(provider);
+		this.logger.debug('Acquired agent knowledge sandbox', {
 			projectId,
 			agentId,
+			provider,
+			sandboxId: sandbox.id,
 		});
+		return { sandbox, filesystem, paths, cacheKey: `${cacheKey}:${sandbox.id}` };
+	}
 
-		const sandboxByName = await this.resolveSandboxByName(
-			daytona,
-			name,
-			timeoutSeconds,
-			connection,
-		);
-		if (sandboxByName) {
-			this.logger.debug('Reused agent knowledge sandbox', { projectId, agentId, name });
-			return sandboxByName;
-		}
-
-		const image = connection.image;
-		const baseCreateParams = {
-			name,
-			labels,
-			language: 'typescript' as const,
+	private async resolveDaytonaSandboxConfig(
+		projectId: string,
+		agentId: string,
+		sandboxId: string,
+	): Promise<DaytonaSandboxConfig> {
+		const directImage = this.agentsConfig.sandboxImage || DEFAULT_SANDBOX_IMAGE;
+		const snapshot = this.agentsConfig.sandboxSnapshot.trim() || undefined;
+		const baseConfig: DaytonaSandboxConfig = {
+			enabled: true,
+			provider: 'daytona',
+			id: sandboxId,
+			name: sandboxId,
+			labels: buildScopeLabels(projectId, agentId),
+			timeout: this.agentsConfig.sandboxTimeout,
+			createTimeoutSeconds: Math.ceil(this.agentsConfig.sandboxTimeout / 1000),
 			ephemeral: this.agentsConfig.sandboxEphemeral,
 			autoStopInterval: AUTO_STOP_INTERVAL_MINUTES,
 		};
 
-		// Only the snapshot path works through the proxy: the Daytona SDK derives `buildInfo` from
-		// any string image, and the proxy rejects create requests carrying it. Attempting the image
-		// path there fails with an error about a field we never set, masking the real cause.
-		let sandbox: Sandbox;
-		if (connection.snapshot) {
-			try {
-				sandbox = await daytona.create(
-					{ ...baseCreateParams, snapshot: connection.snapshot },
-					{ timeout: timeoutSeconds },
-				);
-			} catch (error) {
-				if (connection.mode === 'proxy') throw error;
-				this.logger.warn(
-					'Agent knowledge sandbox create from snapshot failed; falling back to image',
-					{
-						projectId,
-						agentId,
-						snapshotName: connection.snapshot,
-						error: error instanceof Error ? error.message : String(error),
-					},
-				);
-				sandbox = await daytona.create({ ...baseCreateParams, image }, { timeout: timeoutSeconds });
-			}
-		} else {
-			if (connection.mode === 'proxy') {
-				throw new OperationalError(
-					'Agent knowledge sandbox requires a snapshot when Daytona is reached through the AI service proxy. Set N8N_AGENTS_AI_SANDBOX_SNAPSHOT to a snapshot available to the instance.',
-				);
-			}
-			sandbox = await daytona.create({ ...baseCreateParams, image }, { timeout: timeoutSeconds });
-		}
-
-		this.logger.debug('Created agent knowledge sandbox', { projectId, agentId, name });
-		return sandbox;
-	}
-
-	private async resolveDaytonaConnection(
-		projectId: string,
-	): Promise<AgentKnowledgeDaytonaConnection> {
-		const directImage = this.agentsConfig.sandboxImage || DEFAULT_SANDBOX_IMAGE;
-		const snapshot = this.agentsConfig.sandboxSnapshot.trim() || undefined;
-
 		if (!this.aiService.isProxyEnabled()) {
+			const daytona = await this.sandboxSettingsService.resolveDaytonaConfig();
 			return {
-				mode: 'direct',
-				apiUrl: this.agentsConfig.daytonaApiUrl || undefined,
-				apiKey: this.agentsConfig.daytonaApiKey || undefined,
+				...baseConfig,
+				daytonaApiUrl: daytona.apiUrl,
+				daytonaApiKey: daytona.apiKey,
 				image: directImage,
 				snapshot,
 			};
 		}
 
 		const client = await this.aiService.getClient();
-		const proxyConfig = await callAiServiceWithRetry(
-			'Agent knowledge sandbox proxy config fetch',
-			async () => await client.getSandboxProxyConfig(),
-			this.logger,
-		);
-		// The proxy does not enforce per-user identity; the project id is the stable scope for agents.
-		const token = await callAiServiceWithRetry(
-			'Agent knowledge sandbox proxy token mint',
-			async () =>
-				await client.getBuilderApiProxyToken({ id: projectId }, { userMessageId: nanoid() }),
-			this.logger,
-		);
+		if (!snapshot) {
+			throw new OperationalError(
+				'Agent knowledge sandbox requires a snapshot when Daytona is reached through the AI service proxy. Set N8N_AGENTS_AI_SANDBOX_SNAPSHOT to a snapshot available to the instance.',
+			);
+		}
 
 		return {
-			mode: 'proxy',
-			apiUrl: client.getSandboxProxyBaseUrl(),
-			apiKey: token.accessToken,
-			image: proxyConfig.image || directImage,
+			...baseConfig,
+			daytonaApiUrl: client.getSandboxProxyBaseUrl(),
 			snapshot,
+			getAuthToken: async () => {
+				// The proxy does not enforce per-user identity; the project id is the stable scope.
+				const token = await callAiServiceWithRetry(
+					'Agent knowledge sandbox proxy token mint',
+					async () =>
+						await client.getBuilderApiProxyToken({ id: projectId }, { userMessageId: nanoid() }),
+					this.logger,
+				);
+				return token.accessToken;
+			},
 		};
 	}
 
-	private async resolveSandboxByName(
-		daytona: { get: (name: string) => Promise<Sandbox> },
-		name: string,
-		timeoutSeconds: number,
-		connection: AgentKnowledgeDaytonaConnection,
-	): Promise<Sandbox | undefined> {
-		let sandbox: Sandbox;
-		try {
-			sandbox = await daytona.get(name);
-		} catch (error) {
-			if (isDaytonaNotFoundError(error)) {
-				return undefined;
-			}
-			throw error;
+	private async resolveN8nSandboxConfig(sandboxId: string): Promise<N8nSandboxConfig> {
+		const { serviceUrl, apiKey } = await this.sandboxSettingsService.resolveN8nSandboxConfig();
+		const normalizedServiceUrl = serviceUrl?.trim();
+		if (!normalizedServiceUrl) {
+			throw new OperationalError(
+				'Agent knowledge sandbox requires the n8n sandbox service URL. Set N8N_SANDBOX_SERVICE_URL.',
+			);
 		}
 
-		if (!isUsableSandbox(sandbox)) {
-			await sandbox.delete(timeoutSeconds);
-			return undefined;
-		}
-
-		if (sandbox.state !== SANDBOX_STATE_STARTED) {
-			await sandbox.start(timeoutSeconds);
-		}
-
-		return await this.resolveReusableSandbox(daytona, sandbox, connection);
+		return {
+			enabled: true,
+			provider: 'n8n-sandbox',
+			id: sandboxId,
+			serviceUrl: normalizedServiceUrl,
+			apiKey,
+			timeout: this.agentsConfig.sandboxTimeout,
+		};
 	}
 
-	private async resolveReusableSandbox(
-		daytona: { get: (name: string) => Promise<Sandbox> },
-		sandbox: Sandbox,
-		connection: AgentKnowledgeDaytonaConnection,
-	): Promise<Sandbox> {
-		if (connection.mode !== 'proxy') {
-			return sandbox;
+	private async executeSandboxCommand(sandbox: WorkspaceSandbox, command: string, timeout: number) {
+		if (!sandbox.executeCommand) {
+			throw new OperationalError('Agent knowledge sandbox does not support command execution');
 		}
-
-		return await daytona.get(sandbox.name);
+		return await sandbox.executeCommand(command, [], { timeout });
 	}
 
 	/**
@@ -882,7 +796,9 @@ export class AgentKnowledgeSandboxService {
 	}
 
 	private assertKnowledgeConfiguration(projectId: string, agentId: string): void {
-		this.assertKnowledgeBaseEnabled();
+		if (!this.agentsConfig.sandboxEnabled) {
+			throw new OperationalError('Agent knowledge sandbox is not enabled');
+		}
 		this.assertValidPathSegments(projectId, agentId);
 	}
 
@@ -896,18 +812,6 @@ export class AgentKnowledgeSandboxService {
 				error instanceof Error ? error.message : 'Invalid agent knowledge storage scope',
 			);
 		}
-	}
-
-	private isKnowledgeBaseEnabled(): boolean {
-		return isAgentKnowledgeBaseEnabled(this.agentsConfig, this.aiService.isProxyEnabled());
-	}
-
-	private assertKnowledgeBaseEnabled(): void {
-		if (this.isKnowledgeBaseEnabled()) {
-			return;
-		}
-
-		throw new OperationalError('Agent knowledge sandbox is not enabled');
 	}
 }
 
