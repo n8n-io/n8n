@@ -13,22 +13,9 @@ export const POSTGRES_VERSIONS_PATH = 'packages/testing/containers/postgres-vers
 const RUNNER = 'blacksmith-4vcpu-ubuntu-2204';
 
 /**
- * `support` documents the policy but is not used here, so it stays optional.
- *
  * @typedef {Object} PostgresVersions
  * @property {string} primary
  * @property {Array<{ major: number, image: string, support?: string }>} matrix
- */
-
-/**
- * @typedef {Object} MatrixLeg
- * @property {string} name
- * @property {string} runner
- * @property {string} test-cmd
- * @property {string} migration-cmd
- * @property {string} schema-check-cmd
- * @property {string} collectCoverage
- * @property {string} [TEST_IMAGE_POSTGRES]
  */
 
 /** @returns {PostgresVersions} */
@@ -42,7 +29,6 @@ export function readPostgresVersions(repoRoot = REPO_ROOT) {
  * the committed docs come from that one version.
  *
  * @param {PostgresVersions} versions
- * @returns {MatrixLeg[]}
  */
 export function buildMatrix(versions) {
 	const { primary, matrix } = versions;
@@ -88,6 +74,7 @@ export function buildMatrix(versions) {
 			'test-cmd': 'pnpm test:sqlite',
 			'migration-cmd': 'pnpm test:sqlite:migrations',
 			'schema-check-cmd': 'pnpm --filter=@n8n/db schema:check:sqlite',
+			TEST_IMAGE_POSTGRES: undefined,
 			collectCoverage: 'false',
 		},
 		...matrix.map(({ major, image }) => ({
