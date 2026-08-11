@@ -10,6 +10,7 @@ import { createHmac } from 'crypto';
 import { InstanceSettings } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { UrlService } from '@/services/url.service';
 
@@ -155,6 +156,12 @@ export class TelegramIntegration extends AgentChatIntegration {
 		return createTelegramAdapter({ botToken, mode, secretToken });
 	}
 
+	validateConfig(integration: AgentIntegrationConfig): void {
+		if (integration.type === this.type && !integration.settings) {
+			throw new BadRequestError('Telegram integration settings are required');
+		}
+	}
+
 	/**
 	 * In polling mode the Chat SDK adapter long-polls Telegram, which must be
 	 * done by exactly one main — otherwise multiple instances race for the same
@@ -243,7 +250,7 @@ export class TelegramIntegration extends AgentChatIntegration {
 	async createBridgeExecutionContext(
 		params: BridgeMessageContextParams,
 	): Promise<BridgeExecutionContext> {
-		return createTelegramBridgeExecutionContext(params);
+		return await Promise.resolve(createTelegramBridgeExecutionContext(params));
 	}
 
 	async createResumeExecutionContext(params: {
@@ -251,7 +258,7 @@ export class TelegramIntegration extends AgentChatIntegration {
 		logger: BridgeMessageContextParams['logger'];
 		agentId: string;
 	}): Promise<BridgeResumeExecutionContext> {
-		return createTelegramResumeExecutionContext(params);
+		return await Promise.resolve(createTelegramResumeExecutionContext(params));
 	}
 
 	normalizeComponents(components: SuspendComponent[]): SuspendComponent[] {

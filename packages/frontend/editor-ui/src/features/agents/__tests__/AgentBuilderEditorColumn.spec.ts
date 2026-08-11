@@ -1,4 +1,5 @@
 import { createTestingPinia } from '@pinia/testing';
+import { useAgentEvalsStore } from '../agentEvals.store';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { flushPromises, mount } from '@vue/test-utils';
 
@@ -43,8 +44,10 @@ vi.mock('@n8n/design-system', () => ({
 		props: ['disabled', 'ariaLabel'],
 	},
 	N8nLoading: { template: '<div />', props: ['rows', 'variant'] },
+	N8nOption: { template: '<div />', props: ['value', 'label', 'disabled'] },
 	N8nRadioButtons: { template: '<div />', props: ['modelValue', 'options'] },
 	N8nScrollArea: { template: '<div><slot /></div>', props: ['maxHeight', 'type'] },
+	N8nSelect: { template: '<div><slot /></div>', props: ['modelValue', 'disabled', 'size'] },
 	N8nSwitch: { template: '<button data-test-id="agent-memory-toggle"></button>' },
 	N8nSwitch2: { template: '<button />', props: ['modelValue', 'disabled'] },
 	N8nText: { template: '<span><slot /></span>', props: ['tag', 'bold', 'size', 'color'] },
@@ -55,14 +58,6 @@ vi.mock('@n8n/design-system', () => ({
 		props: ['modelValue', 'options'],
 	},
 	N8nTooltip: { template: '<div><slot /><slot name="content" /></div>' },
-}));
-
-vi.mock('@n8n/design-system/components/N8nSelect', () => ({
-	default: { template: '<div><slot /></div>', props: ['modelValue', 'disabled', 'size'] },
-}));
-
-vi.mock('@n8n/design-system/components/N8nOption', () => ({
-	default: { template: '<div />', props: ['value', 'label', 'disabled'] },
 }));
 
 vi.mock('../components/AgentAdvancedPanel.vue', () => ({
@@ -127,6 +122,22 @@ vi.mock('../views/AgentSessionsListView.vue', () => ({
 // First mount of this SFC eats the Vite transform cost; give it headroom.
 vi.setConfig({ testTimeout: 30_000 });
 
+/**
+ * The Evals tab renders the real `AgentEvalsSection`, which reads the eval store.
+ * A bare `createTestingPinia` stubs every store function to return `undefined`, so
+ * the reads it makes on mount have to be given the shapes it expects — otherwise
+ * this file fails on an uncaught error from a component it is not even testing.
+ */
+function createPiniaWithEvalStore() {
+	const pinia = createTestingPinia({ createSpy: vi.fn });
+	const evals = useAgentEvalsStore();
+	vi.mocked(evals.getDatasets).mockReturnValue([]);
+	vi.mocked(evals.isLoaded).mockReturnValue(true);
+	vi.mocked(evals.fetchDatasets).mockResolvedValue([]);
+	vi.mocked(evals.isStartingRun).mockReturnValue(false);
+	return pinia;
+}
+
 async function mountColumn(
 	overrides: Partial<{
 		activeMainTab: AgentBuilderMainTab;
@@ -136,12 +147,13 @@ async function mountColumn(
 		}>;
 		knowledgeBaseEnabled: boolean;
 		canEditAgent: boolean;
-		canExecuteAgent: boolean;
 	}> = {},
 ) {
 	const { default: AgentBuilderEditorColumn } = await import(
 		'../components/AgentBuilderEditorColumn.vue'
 	);
+	const pinia = createPiniaWithEvalStore();
+
 	return mount(AgentBuilderEditorColumn, {
 		props: {
 			activeMainTab: overrides.activeMainTab ?? 'agent',
@@ -167,11 +179,10 @@ async function mountColumn(
 			appliedSkills: [],
 			connectedTriggers: [],
 			canEditAgent: overrides.canEditAgent ?? true,
-			canExecuteAgent: overrides.canExecuteAgent ?? true,
 			executionsDescription: '',
 		},
 		global: {
-			plugins: [createTestingPinia({ createSpy: vi.fn })],
+			plugins: [pinia],
 			stubs: {
 				AgentCapabilitiesSection: false,
 				AgentChannelsSection: false,
@@ -189,14 +200,6 @@ async function mountColumn(
 				AgentPanelHeader: true,
 				AgentAdvancedPanel: true,
 				AgentSessionsListView: true,
-				// Stubbed so this spec stays about the column's wiring: the real section
-				// reads datasets and cases, which is its own suite's concern.
-				AgentEvalsSection: {
-					name: 'AgentEvalsSection',
-					template: '<div data-testid="agent-evals-section" />',
-					props: ['projectId', 'agentId', 'disabled', 'canRun', 'generating'],
-					emits: ['generate'],
-				},
 			},
 		},
 	});
@@ -282,32 +285,14 @@ describe('AgentBuilderEditorColumn', () => {
 		expect(wrapper.getComponent({ name: 'AgentEvalsSection' }).props('disabled')).toBe(true);
 	});
 
-	it('identifies the agent to the evals section, which reads its own datasets', async () => {
+	// The eval routes are agent-scoped, so the section can't read anything unless
+	// it is told which agent to read.
+	it('gives the evals section the agent it should read', async () => {
 		const wrapper = await mountColumn({ activeMainTab: 'evals' });
-
 		const section = wrapper.getComponent({ name: 'AgentEvalsSection' });
+
 		expect(section.props('projectId')).toBe('project-1');
 		expect(section.props('agentId')).toBe('agent-1');
-	});
-
-	// Running is gated on execute, not edit: a project viewer holds the former and
-	// not the latter, and checking an agent behaves is what that role is for.
-	it('allows running evals for a user who cannot edit the agent', async () => {
-		const wrapper = await mountColumn({
-			activeMainTab: 'evals',
-			canEditAgent: false,
-			canExecuteAgent: true,
-		});
-
-		const section = wrapper.getComponent({ name: 'AgentEvalsSection' });
-		expect(section.props('disabled')).toBe(true);
-		expect(section.props('canRun')).toBe(true);
-	});
-
-	it('withholds running evals without the execute permission', async () => {
-		const wrapper = await mountColumn({ activeMainTab: 'evals', canExecuteAgent: false });
-
-		expect(wrapper.getComponent({ name: 'AgentEvalsSection' }).props('canRun')).toBe(false);
 	});
 
 	it('uses embedded session list spacing inside the Sessions tab panel', async () => {

@@ -269,6 +269,7 @@ const i18n = useI18n();
 					<AgentEvalsSection
 						:project-id="projectId"
 						:agent-id="agentId"
+						:agent-unsaved="agentUnsaved"
 						:disabled="childrenDisabled"
 						:can-run="canExecuteAgent"
 						:generating="generatingEvalCases"

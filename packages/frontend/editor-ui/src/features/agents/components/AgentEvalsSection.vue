@@ -1,16 +1,20 @@
 <script setup lang="ts">
 /**
- * Container for the agent's eval surface: the drafted cases once a dataset exists,
- * the first-run state before one does. The review view mounts here too as it lands,
- * which is why each state is a branch rather than the whole component.
+ * Container for the agent's eval surface: the first-run state until a dataset
+ * exists, then the review card for its newest run.
+ *
+ * Owns which run is shown. There is no run picker yet, so it resolves the newest
+ * run of the newest dataset itself rather than depending on a list view.
  */
+import { computed, onMounted, ref, watch } from 'vue';
 import { N8nButton, N8nCallout, N8nIcon, N8nLoading, N8nText } from '@n8n/design-system';
+import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
-import { computed, ref, watch } from 'vue';
 
 import { useAgentEvalsStore } from '../agentEvals.store';
 import { isDataTableDataset } from '../utils/agentEvalCases.utils';
 import AgentEvalCasesCard from './AgentEvalCasesCard.vue';
+import AgentEvalResultsPanel from './AgentEvalResultsPanel.vue';
 
 const props = defineProps<{
 	projectId: string;
@@ -20,6 +24,8 @@ const props = defineProps<{
 	/** `agent:execute`, which a viewer holds without holding update. */
 	canRun?: boolean;
 	generating?: boolean;
+	/** An unsaved agent has no row to read evals from, so nothing is fetched. */
+	agentUnsaved?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -27,77 +33,95 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const toast = useToast();
 const store = useAgentEvalsStore();
 
 const datasets = computed(() => store.getDatasets(props.agentId));
+// Datasets come back newest-first, and generation makes exactly one; a picker is
+// the case-list view's to add.
+const dataset = computed(() => datasets.value[0]);
+/**
+ * False until the read for the current agent has finished — either way. Keyed on
+ * the attempt rather than on `isLoaded`, because a *failed* read never populates
+ * the cache: reading `isLoaded` alone leaves the skeleton up for good once the
+ * toast has gone, with nothing to retry from. An agent with no row yet is never
+ * fetched for at all, so it is settled from the start.
+ */
+const hasSettled = ref(false);
 
-// Newest first from the server, so the newest data-table dataset is the one a
-// regeneration just produced.
-const dataset = computed(() => datasets.value.find(isDataTableDataset) ?? null);
-
-// A dataset this view can't read rows for — reachable only by attaching one
-// through the API, but falling through to "no test cases yet" would be a lie.
-const hasOnlyExternalDatasets = computed(() => datasets.value.length > 0 && dataset.value === null);
-
-/** The target whose read is allowed to settle. Reads for anything else are stale:
- * an earlier agent's fetch finishing must not dismiss the current agent's skeleton
- * and expose a first-run CTA for an agent that may already have cases. */
-const settledFor = ref<string | null>(null);
-
-const targetKey = computed(() => `${props.projectId}:${props.agentId}`);
-const isLoading = computed(() => settledFor.value !== targetKey.value);
-
-// Absence of a cache entry is "not read yet" rather than "none", which is what
-// decides whether to read at all. A failure degrades to the first-run state: with
-// no datasets to show, the generate CTA is still the right next step.
-watch(
-	[() => props.projectId, () => props.agentId],
-	async ([projectId, agentId]) => {
-		if (!projectId || !agentId) return;
-
-		const target = `${projectId}:${agentId}`;
-		if (store.isLoaded(agentId)) {
-			settledFor.value = target;
-			return;
-		}
-
-		try {
-			await store.fetchDatasets(projectId, agentId);
-		} catch {
-			// Intentionally quiet — the first-run state is a reasonable fallback, and a
-			// toast here would fire on every visit to the tab while the read keeps failing.
-		} finally {
-			// Only the read for the target still on screen may settle.
-			if (target === targetKey.value) settledFor.value = target;
-		}
-	},
-	{ immediate: true },
+const awaitingDatasets = computed(() => !hasSettled.value);
+const runId = computed(() => (dataset.value ? store.getLatestRunId(dataset.value.id) : undefined));
+// The card writes Data Table rows, so it only accepts a dataset backed by one.
+const caseDataset = computed(() =>
+	dataset.value && isDataTableDataset(dataset.value) ? dataset.value : null,
 );
+
+const load = async () => {
+	if (!props.agentId || props.agentUnsaved) {
+		hasSettled.value = true;
+		return;
+	}
+
+	hasSettled.value = false;
+	try {
+		const fetched = await store.fetchDatasets(props.projectId, props.agentId);
+		const newest = fetched[0];
+		if (!newest) return;
+		await store.resolveLatestRunId(props.projectId, props.agentId, newest.id);
+	} catch (error) {
+		// Degrades to the first-run state rather than a permanent skeleton: with no
+		// datasets to show, offering to generate is still the right next step.
+		toast.showError(error, i18n.baseText('agents.builder.agentEvals.review.loadError'));
+	} finally {
+		hasSettled.value = true;
+	}
+};
+
+const onRerun = async () => {
+	if (!dataset.value) return;
+	try {
+		await store.startRun(props.projectId, props.agentId, dataset.value.id);
+	} catch (error) {
+		toast.showError(error, i18n.baseText('agents.builder.agentEvals.review.rerunError'));
+	}
+};
+
+onMounted(load);
+watch(() => props.agentId, load);
 </script>
 
 <template>
 	<div :class="$style.section" data-testid="agent-evals-section">
-		<div v-if="isLoading" data-testid="agent-evals-loading">
-			<N8nLoading variant="p" :rows="6" />
-		</div>
+		<N8nLoading v-if="awaitingDatasets" :rows="4" data-testid="agent-evals-loading" />
 
-		<AgentEvalCasesCard
-			v-else-if="dataset"
-			:key="`${projectId}:${agentId}:${dataset.id}`"
+		<AgentEvalResultsPanel
+			v-else-if="dataset && runId"
 			:project-id="projectId"
 			:agent-id="agentId"
-			:dataset="dataset"
+			:run-id="runId"
+			:disabled="disabled"
+			:rerunning="store.isStartingRun(dataset.id)"
+			@rerun="onRerun"
+		/>
+
+		<!-- A dataset with no run yet: the drafted cases, where they can be reviewed,
+		     edited and run. TRUST-291 defines this component as the container both views
+		     mount into; running a set is the case list's, per TRUST-292. -->
+		<AgentEvalCasesCard
+			v-else-if="dataset && caseDataset"
+			:key="`${projectId}:${agentId}:${caseDataset.id}`"
+			:project-id="projectId"
+			:agent-id="agentId"
+			:dataset="caseDataset"
 			:disabled="disabled"
 			:can-run="canRun"
 			:generating="generating"
 			@regenerate="emit('generate')"
 		/>
 
-		<N8nCallout
-			v-else-if="hasOnlyExternalDatasets"
-			theme="info"
-			data-testid="agent-evals-external-source"
-		>
+		<!-- A dataset whose rows this view cannot read (a connected source). Falling
+		     through to "no test cases yet" would be untrue. -->
+		<N8nCallout v-else-if="dataset" theme="info" data-testid="agent-evals-external-source">
 			{{ i18n.baseText('agents.builder.agentEvals.external.description') }}
 		</N8nCallout>
 

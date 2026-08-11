@@ -84,12 +84,20 @@ const hiddenCaseCount = computed(() => Math.max(0, caseCount.value - cases.value
 
 // Destructured so the template reads the refs directly — properties of a returned
 // object are not unwrapped the way top-level setup bindings are.
-const { summary, isRunning, isStarting, isCancelling, lostTrack, startRun, cancelRun } =
-	useAgentEvalRunProgress({
-		projectId: () => props.projectId,
-		agentId: () => props.agentId,
-		datasetId: () => props.dataset.id,
-	});
+const {
+	summary,
+	isRunning,
+	isStarting,
+	isCancelling,
+	isResolving,
+	lostTrack,
+	startRun,
+	cancelRun,
+} = useAgentEvalRunProgress({
+	projectId: () => props.projectId,
+	agentId: () => props.agentId,
+	datasetId: () => props.dataset.id,
+});
 
 const isInFlight = computed(() => isStarting.value || isRunning.value);
 
@@ -112,7 +120,7 @@ const runStatus = computed(() => {
 	if (isStarting.value) return i18n.baseText('agents.builder.agentEvals.run.starting');
 	if (!isRunning.value) return null;
 
-	const counts = summary.value?.counts;
+	const counts = summary.value;
 	// Between starting and the first summary there is nothing to count yet.
 	if (!counts) return i18n.baseText('agents.builder.agentEvals.run.starting');
 
@@ -397,7 +405,7 @@ async function onRegenerate() {
 				size="medium"
 				type="button"
 				icon="play"
-				:disabled="!canRun || caseCount === 0 || lostTrack"
+				:disabled="!canRun || caseCount === 0 || lostTrack || isResolving"
 				:loading="isInFlight"
 				data-testid="agent-evals-run-all"
 				@click="startRun"

@@ -25,6 +25,18 @@ describe('Instance AI runtime skills', () => {
 		expect(skill).toContain('knowledge-base/reference/workflow-sdk-language.md');
 	});
 
+	// The builder agent has been observed recalling a pre-ADO-5627 `.group()` signature
+	// with no description argument, so the call is spelled out in the skill itself
+	// rather than only linked — a wrong prior is not corrected by a pointer.
+	it('states the node-group call and points at the node-groups reference', () => {
+		const skill = readFileSync(
+			join(INSTANCE_AI_SKILLS_DIR, 'workflow-builder', 'SKILL.md'),
+			'utf-8',
+		);
+		expect(skill).toContain('knowledge-base/reference/node-groups.md');
+		expect(skill).toContain('.group(name, members, { description })');
+	});
+
 	it('defers sticky and other SDK defects to workflow-sdk validate', () => {
 		const skill = readFileSync(
 			join(INSTANCE_AI_SKILLS_DIR, 'workflow-builder', 'SKILL.md'),

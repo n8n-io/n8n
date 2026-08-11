@@ -1,51 +1,43 @@
 import { createPinia, setActivePinia } from 'pinia';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useAgentEvalsStore } from '../agentEvals.store';
 import type {
 	AgentEvalDatasetRecord,
+	AgentEvalRatingRecord,
+	AgentEvalResultRecord,
 	AgentEvalRunRecord,
-	AgentEvalRunSummary,
 } from '../agentEvals.types';
-import type { AgentEvalCaseSource } from '../utils/agentEvalCases.utils';
 
-const { getDatasets, generateDraftCases, startRun, cancelRun, getRunSummary, listRuns } =
-	vi.hoisted(() => ({
-		getDatasets: vi.fn(),
-		generateDraftCases: vi.fn(),
-		startRun: vi.fn(),
-		cancelRun: vi.fn(),
-		getRunSummary: vi.fn(),
-		listRuns: vi.fn(),
-	}));
-
-const { fetchDataTableContent, fetchDataTableById, insertRow, updateRow, deleteRows } = vi.hoisted(
-	() => ({
-		fetchDataTableContent: vi.fn(),
-		fetchDataTableById: vi.fn(),
-		insertRow: vi.fn(),
-		updateRow: vi.fn(),
-		deleteRows: vi.fn(),
-	}),
-);
+const {
+	getDatasets,
+	generateDraftCases,
+	listRuns,
+	getRunDetail,
+	getRunSummary,
+	listLatestRatingsForRun,
+	rateResult,
+	startRun,
+} = vi.hoisted(() => ({
+	getDatasets: vi.fn(),
+	generateDraftCases: vi.fn(),
+	listRuns: vi.fn(),
+	getRunDetail: vi.fn(),
+	getRunSummary: vi.fn(),
+	listLatestRatingsForRun: vi.fn(),
+	rateResult: vi.fn(),
+	startRun: vi.fn(),
+}));
 
 vi.mock('../agentEvals.api', () => ({
 	getDatasets,
 	generateDraftCases,
-	startRun,
-	cancelRun,
-	getRunSummary,
 	listRuns,
-}));
-
-vi.mock('@/features/core/dataTable/dataTable.store', () => ({
-	useDataTableStore: vi.fn(() => ({
-		fetchDataTableContent,
-		fetchDataTableById,
-		insertRow,
-		updateRow,
-		deleteRows,
-	})),
+	getRunDetail,
+	getRunSummary,
+	listLatestRatingsForRun,
+	rateResult,
+	startRun,
 }));
 
 vi.mock('@n8n/stores/useRootStore', () => ({
@@ -56,39 +48,9 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 
 const PROJECT_ID = 'project-1';
 const AGENT_ID = 'agent-1';
-const DATASET_ID = 'd1';
+const DATASET_ID = 'dataset-1';
 const RUN_ID = 'run-1';
-
-const source: AgentEvalCaseSource = {
-	datasetId: DATASET_ID,
-	dataTableId: 'dt-1',
-	columns: { input: 'input', whatToCheck: 'criteria' },
-};
-
-const run = (overrides: Partial<AgentEvalRunRecord> = {}): AgentEvalRunRecord => ({
-	id: RUN_ID,
-	datasetId: DATASET_ID,
-	agentVersionId: null,
-	status: 'running',
-	runAt: null,
-	completedAt: null,
-	metrics: null,
-	errorCode: null,
-	errorDetails: null,
-	createdById: null,
-	createdAt: '2026-01-01T00:00:00.000Z',
-	updatedAt: '2026-01-01T00:00:00.000Z',
-	...overrides,
-});
-
-const summary = (
-	counts: Partial<AgentEvalRunSummary['counts']> = {},
-	status: AgentEvalRunSummary['status'] = 'running',
-): AgentEvalRunSummary => ({
-	runId: RUN_ID,
-	status,
-	counts: { total: 2, success: 0, error: 0, cancelled: 0, pending: 2, ...counts },
-});
+const REST_CONTEXT = { instanceId: 'test-instance-id' };
 
 const dataset = (id: string, name = `dataset-${id}`): AgentEvalDatasetRecord => ({
 	id,
@@ -103,12 +65,73 @@ const dataset = (id: string, name = `dataset-${id}`): AgentEvalDatasetRecord => 
 	datasetRef: { dataTableId: 'dt-1' },
 });
 
+const run = (id: string): AgentEvalRunRecord => ({
+	id,
+	datasetId: DATASET_ID,
+	agentVersionId: null,
+	// A run settles as `completed`; only a per-case result is `success`.
+	status: 'completed',
+	runAt: '2026-01-01T00:00:00.000Z',
+	completedAt: '2026-01-01T00:01:00.000Z',
+	metrics: null,
+	errorCode: null,
+	errorDetails: null,
+	createdById: null,
+	createdAt: '2026-01-01T00:00:00.000Z',
+	updatedAt: '2026-01-01T00:01:00.000Z',
+});
+
+const result = (id: string): AgentEvalResultRecord => ({
+	id,
+	runId: RUN_ID,
+	sourceRowId: `row-${id}`,
+	runIndex: 0,
+	status: 'success',
+	input: { input: `request ${id}` },
+	output: { finalText: `answer ${id}` },
+	toolCalls: null,
+	metrics: null,
+	runAt: '2026-01-01T00:00:00.000Z',
+	completedAt: '2026-01-01T00:00:30.000Z',
+	errorCode: null,
+	errorDetails: null,
+	createdAt: '2026-01-01T00:00:00.000Z',
+	updatedAt: '2026-01-01T00:00:30.000Z',
+});
+
+const rating = (
+	resultId: string,
+	overrides: Partial<AgentEvalRatingRecord> = {},
+): AgentEvalRatingRecord => ({
+	id: `rating-${resultId}`,
+	resultId,
+	vote: 'up',
+	comment: null,
+	correction: null,
+	ratedById: 'user-1',
+	createdAt: '2026-01-01T00:02:00.000Z',
+	updatedAt: '2026-01-01T00:02:00.000Z',
+	...overrides,
+});
+
+const runDetail = (results: AgentEvalResultRecord[], count: number) => ({
+	...run(RUN_ID),
+	results: { count, data: results },
+});
+
+const mockRun = (options: {
+	results: AgentEvalResultRecord[];
+	count: number;
+	ratings: AgentEvalRatingRecord[];
+}) => {
+	getRunDetail.mockResolvedValue(runDetail(options.results, options.count));
+	listLatestRatingsForRun.mockResolvedValue(options.ratings);
+};
+
 describe('useAgentEvalsStore', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia());
 		vi.clearAllMocks();
-		// Default: the table lives in the agent's own project, as generation creates it.
-		fetchDataTableById.mockResolvedValue({ id: 'dt-1', projectId: PROJECT_ID });
 	});
 
 	describe('fetchDatasets', () => {
@@ -185,379 +208,827 @@ describe('useAgentEvalsStore', () => {
 		});
 	});
 
-	describe('fetchCases', () => {
-		it('maps rows through the source columns and caches them under the dataset id', async () => {
-			fetchDataTableContent.mockResolvedValue({
-				count: 2,
-				data: [
-					{ id: 1, input: 'first', criteria: 'a' },
-					{ id: 2, input: 'second', criteria: 'b' },
-				],
+	describe('resolveLatestRunId', () => {
+		it('reads a single-row window and caches the newest run', async () => {
+			listRuns.mockResolvedValue({ count: 3, data: [run('r2')] });
+			const store = useAgentEvalsStore();
+
+			await expect(store.resolveLatestRunId(PROJECT_ID, AGENT_ID, DATASET_ID)).resolves.toBe('r2');
+
+			expect(listRuns).toHaveBeenCalledWith(REST_CONTEXT, PROJECT_ID, AGENT_ID, DATASET_ID, {
+				take: 1,
+				skip: 0,
 			});
-			const store = useAgentEvalsStore();
-
-			await store.fetchCases(PROJECT_ID, source);
-
-			expect(fetchDataTableContent).toHaveBeenCalledWith('dt-1', PROJECT_ID, 1, 250, 'id:asc');
-			expect(store.getCases(DATASET_ID)).toEqual([
-				{ rowId: 1, input: 'first', whatToCheck: 'a' },
-				{ rowId: 2, input: 'second', whatToCheck: 'b' },
-			]);
-			// Another dataset's cache must stay empty — one agent accumulates a
-			// dataset per generation, and each has its own rows.
-			expect(store.getCases('d2')).toEqual([]);
+			expect(store.getLatestRunId(DATASET_ID)).toBe('r2');
 		});
 
-		it('caches the server total, which the run button counts rather than the loaded page', async () => {
-			fetchDataTableContent.mockResolvedValue({
-				count: 120,
-				data: [{ id: 1, input: 'first', criteria: 'a' }],
+		it('caches null when the dataset has never been run', async () => {
+			listRuns.mockResolvedValue({ count: 0, data: [] });
+			const store = useAgentEvalsStore();
+
+			await expect(store.resolveLatestRunId(PROJECT_ID, AGENT_ID, DATASET_ID)).resolves.toBeNull();
+
+			// Distinct from "not resolved yet", which is undefined.
+			expect(store.getLatestRunId(DATASET_ID)).toBeNull();
+		});
+	});
+
+	describe('openRun', () => {
+		it('hydrates cases, the envelope count and ratings keyed by result', async () => {
+			mockRun({ results: [result('c1'), result('c2')], count: 7, ratings: [rating('c1')] });
+			const store = useAgentEvalsStore();
+
+			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
+			const review = store.getReview(RUN_ID);
+
+			expect(review.results.map((r) => r.id)).toEqual(['c1', 'c2']);
+			// The total comes from the envelope, not the page length.
+			expect(review.resultsCount).toBe(7);
+			expect(review.ratingsByResultId.c1.vote).toBe('up');
+			expect(review.loading).toBe(false);
+		});
+
+		it('keeps a second run isolated from the first', async () => {
+			mockRun({ results: [result('c1')], count: 1, ratings: [] });
+			const store = useAgentEvalsStore();
+			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
+
+			mockRun({ results: [result('c9')], count: 1, ratings: [] });
+			await store.openRun(PROJECT_ID, AGENT_ID, 'run-2');
+
+			expect(store.getReview(RUN_ID).results.map((r) => r.id)).toEqual(['c1']);
+			expect(store.getReview('run-2').results.map((r) => r.id)).toEqual(['c9']);
+		});
+
+		// A rating can belong to a case on a later page; it still has to count.
+		it('counts a rating whose case is not on the first page', async () => {
+			mockRun({ results: [result('c1')], count: 60, ratings: [rating('c1'), rating('c55')] });
+			const store = useAgentEvalsStore();
+
+			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
+
+			expect(store.reviewedCount(RUN_ID)).toBe(2);
+		});
+
+		it('discards a response that lands after the target run changed', async () => {
+			const store = useAgentEvalsStore();
+			mockRun({ results: [result('stale')], count: 1, ratings: [] });
+			const slow = store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
+
+			mockRun({ results: [result('fresh')], count: 1, ratings: [] });
+			await store.openRun(PROJECT_ID, AGENT_ID, 'run-2');
+			await slow;
+
+			expect(store.getReview(RUN_ID).results).toEqual([]);
+		});
+
+		// Cases settle one at a time, so a reviewer can be part-way through a reason
+		// on a finished case while the run is still going — and the poll re-reads the
+		// run the moment it settles. Re-reading must not delete what they typed.
+		it('keeps a half-typed draft when the run is re-read', async () => {
+			mockRun({ results: [result('c1')], count: 1, ratings: [] });
+			const store = useAgentEvalsStore();
+			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
+			store.beginVote(RUN_ID, 'c1', 'down');
+			store.setDraftComment(RUN_ID, 'c1', 'half a thought');
+
+			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
+
+			expect(store.getDraft(RUN_ID, 'c1')).toMatchObject({
+				vote: 'down',
+				comment: 'half a thought',
 			});
-			const store = useAgentEvalsStore();
-
-			await store.fetchCases(PROJECT_ID, source);
-
-			expect(store.getCases(DATASET_ID)).toHaveLength(1);
-			expect(store.getCasesCount(DATASET_ID)).toBe(120);
 		});
 
-		it('drops a row with no numeric id rather than caching a case that cannot be saved', async () => {
-			fetchDataTableContent.mockResolvedValue({
-				count: 2,
-				data: [
-					{ id: 1, input: 'first', criteria: 'a' },
-					{ input: 'orphan', criteria: 'b' },
-				],
+		// A vote saved while this read is in flight is absent from the response it
+		// returns; replacing the map would make a rating the server already holds
+		// vanish from the list.
+		it('keeps a locally saved rating the ratings response has not caught up with', async () => {
+			mockRun({ results: [result('c1'), result('c2')], count: 2, ratings: [] });
+			const store = useAgentEvalsStore();
+			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
+
+			store.beginVote(RUN_ID, 'c1', 'up');
+			rateResult.mockResolvedValue(rating('c1'));
+			await store.saveReview(PROJECT_ID, AGENT_ID, RUN_ID, 'c1');
+
+			// The run settles; the ratings route still hasn't returned c1's rating.
+			mockRun({ results: [result('c1'), result('c2')], count: 2, ratings: [] });
+			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
+
+			expect(store.getReview(RUN_ID).ratingsByResultId.c1).toBeDefined();
+			expect(store.reviewedCount(RUN_ID)).toBe(1);
+		});
+
+		// The ratings route returns the latest rating as of *its own* read, which can
+		// predate a re-vote saved while it was in flight. Letting it win would revert
+		// the row to the vote the reviewer just replaced.
+		it('keeps a newer local rating when the fetched one is the row it replaced', async () => {
+			const older = rating('c1', {
+				id: 'r-old',
+				vote: 'down',
+				comment: 'was wrong',
+				createdAt: '2026-01-01T00:00:00.000Z',
 			});
+			mockRun({ results: [result('c1')], count: 1, ratings: [older] });
 			const store = useAgentEvalsStore();
+			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
 
-			await store.fetchCases(PROJECT_ID, source);
-
-			expect(store.getCases(DATASET_ID)).toEqual([{ rowId: 1, input: 'first', whatToCheck: 'a' }]);
-		});
-
-		it('distinguishes "not loaded" from "loaded but empty"', async () => {
-			fetchDataTableContent.mockResolvedValue({ count: 0, data: [] });
-			const store = useAgentEvalsStore();
-
-			expect(store.areCasesLoaded(DATASET_ID)).toBe(false);
-			await store.fetchCases(PROJECT_ID, source);
-
-			expect(store.areCasesLoaded(DATASET_ID)).toBe(true);
-			expect(store.getCases(DATASET_ID)).toEqual([]);
-		});
-
-		// The Data Table routes scope on the project in the path, which is the *table's*
-		// project. A dataset attached via the API can point at a table elsewhere; the
-		// runner resolves that case, so the card has to as well.
-		it("reads rows from the table's own project, not the agent's", async () => {
-			fetchDataTableById.mockResolvedValue({ id: 'dt-1', projectId: 'other-project' });
-			fetchDataTableContent.mockResolvedValue({ count: 0, data: [] });
-			const store = useAgentEvalsStore();
-
-			await store.fetchCases(PROJECT_ID, source);
-
-			expect(fetchDataTableContent).toHaveBeenCalledWith('dt-1', 'other-project', 1, 250, 'id:asc');
-		});
-
-		it("resolves a table's project once and reuses it", async () => {
-			fetchDataTableContent.mockResolvedValue({ count: 0, data: [] });
-			const store = useAgentEvalsStore();
-
-			await store.fetchCases(PROJECT_ID, source);
-			await store.fetchCases(PROJECT_ID, source);
-
-			expect(fetchDataTableById).toHaveBeenCalledTimes(1);
-		});
-
-		// Caching the fallback would pin the wrong project for the session, so the card's
-		// retry could never recover from one transient failure.
-		it('does not cache the fallback, so a later lookup can still succeed', async () => {
-			fetchDataTableById.mockRejectedValueOnce(new Error('offline'));
-			fetchDataTableContent.mockResolvedValue({ count: 0, data: [] });
-			const store = useAgentEvalsStore();
-
-			await store.fetchCases(PROJECT_ID, source);
-			expect(fetchDataTableContent).toHaveBeenLastCalledWith('dt-1', PROJECT_ID, 1, 250, 'id:asc');
-
-			fetchDataTableById.mockResolvedValue({ id: 'dt-1', projectId: 'other-project' });
-			await store.fetchCases(PROJECT_ID, source);
-
-			expect(fetchDataTableById).toHaveBeenCalledTimes(2);
-			expect(fetchDataTableContent).toHaveBeenLastCalledWith(
-				'dt-1',
-				'other-project',
-				1,
-				250,
-				'id:asc',
+			// Reviewer changes their mind; the save lands first.
+			store.beginVote(RUN_ID, 'c1', 'up');
+			rateResult.mockResolvedValue(
+				rating('c1', { id: 'r-new', vote: 'up', createdAt: '2026-01-01T00:05:00.000Z' }),
 			);
+			await store.saveReview(PROJECT_ID, AGENT_ID, RUN_ID, 'c1');
+
+			// A re-read still carrying the superseded rating must not undo that.
+			mockRun({ results: [result('c1')], count: 1, ratings: [older] });
+			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
+
+			expect(store.getReview(RUN_ID).ratingsByResultId.c1).toMatchObject({
+				id: 'r-new',
+				vote: 'up',
+			});
 		});
 
-		it("falls back to the agent's project when the table cannot be looked up", async () => {
-			fetchDataTableById.mockRejectedValue(new Error('forbidden'));
-			fetchDataTableContent.mockResolvedValue({ count: 0, data: [] });
-			const store = useAgentEvalsStore();
-
-			await store.fetchCases(PROJECT_ID, source);
-
-			expect(fetchDataTableContent).toHaveBeenCalledWith('dt-1', PROJECT_ID, 1, 250, 'id:asc');
-		});
-
-		it('clears the loading flag when the read rejects', async () => {
-			fetchDataTableContent.mockRejectedValue(new Error('boom'));
-			const store = useAgentEvalsStore();
-
-			await expect(store.fetchCases(PROJECT_ID, source)).rejects.toThrow('boom');
-
-			expect(store.isLoadingCases(DATASET_ID)).toBe(false);
-		});
-	});
-
-	describe('createCase', () => {
-		it('appends the created row and moves the total once the insert resolves', async () => {
-			fetchDataTableContent.mockResolvedValue({
+		it('accepts a fetched rating that is newer than the one held', async () => {
+			mockRun({
+				results: [result('c1')],
 				count: 1,
-				data: [{ id: 1, input: 'first', criteria: 'a' }],
+				ratings: [rating('c1', { id: 'r-old', vote: 'up', createdAt: '2026-01-01T00:00:00.000Z' })],
 			});
-			insertRow.mockResolvedValue({ id: 2, input: 'second', criteria: 'b' });
 			const store = useAgentEvalsStore();
-			await store.fetchCases(PROJECT_ID, source);
+			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
 
-			const created = await store.createCase(PROJECT_ID, source, {
-				input: 'second',
-				whatToCheck: 'b',
+			// Someone else re-rated the case in the meantime.
+			mockRun({
+				results: [result('c1')],
+				count: 1,
+				ratings: [
+					rating('c1', {
+						id: 'r-newer',
+						vote: 'down',
+						comment: 'no',
+						createdAt: '2026-01-01T01:00:00.000Z',
+					}),
+				],
 			});
+			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
 
-			expect(insertRow).toHaveBeenCalledWith('dt-1', PROJECT_ID, {
-				input: 'second',
-				criteria: 'b',
-			});
-			expect(created).toEqual({ rowId: 2, input: 'second', whatToCheck: 'b' });
-			expect(store.getCases(DATASET_ID).map((c) => c.rowId)).toEqual([1, 2]);
-			expect(store.getCasesCount(DATASET_ID)).toBe(2);
+			expect(store.getReview(RUN_ID).ratingsByResultId.c1).toMatchObject({ id: 'r-newer' });
 		});
 
-		it('leaves the cache untouched when the insert rejects', async () => {
-			insertRow.mockRejectedValue(new Error('too big'));
+		// Settling a run the reviewer had paged through must not drop them back to
+		// the first page.
+		it('re-reads over the window already paged in, not just the first page', async () => {
+			mockRun({
+				results: Array.from({ length: 50 }, (_, i) => result(`c${i}`)),
+				count: 120,
+				ratings: [],
+			});
+			const store = useAgentEvalsStore();
+			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
+
+			getRunDetail.mockResolvedValue(
+				runDetail(
+					Array.from({ length: 100 }, (_, i) => result(`c${i}`)),
+					120,
+				),
+			);
+			await store.loadMoreResults(PROJECT_ID, AGENT_ID, RUN_ID);
+			expect(store.getReview(RUN_ID).results).toHaveLength(100);
+
+			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID, 100);
+
+			expect(getRunDetail).toHaveBeenLastCalledWith(REST_CONTEXT, PROJECT_ID, AGENT_ID, RUN_ID, {
+				take: 100,
+				skip: 0,
+			});
+		});
+
+		it('clears loading when the read rejects', async () => {
+			getRunDetail.mockRejectedValue(new Error('boom'));
+			listLatestRatingsForRun.mockResolvedValue([]);
 			const store = useAgentEvalsStore();
 
-			await expect(
-				store.createCase(PROJECT_ID, source, { input: 'second', whatToCheck: 'b' }),
-			).rejects.toThrow('too big');
+			await expect(store.openRun(PROJECT_ID, AGENT_ID, RUN_ID)).rejects.toThrow('boom');
 
-			expect(store.getCases(DATASET_ID)).toEqual([]);
-			expect(store.getCasesCount(DATASET_ID)).toBe(0);
+			expect(store.getReview(RUN_ID).loading).toBe(false);
 		});
 	});
 
-	describe('updateCase', () => {
-		beforeEach(async () => {
-			fetchDataTableContent.mockResolvedValue({
-				count: 2,
-				data: [
-					{ id: 1, input: 'first', criteria: 'a' },
-					{ id: 2, input: 'second', criteria: 'b' },
-				],
+	describe('loadMoreResults', () => {
+		it('pages from the loaded length, appends and refreshes the count', async () => {
+			mockRun({ results: [result('c1')], count: 3, ratings: [] });
+			const store = useAgentEvalsStore();
+			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
+			getRunDetail.mockResolvedValue(runDetail([result('c2')], 3));
+
+			await store.loadMoreResults(PROJECT_ID, AGENT_ID, RUN_ID);
+
+			expect(getRunDetail).toHaveBeenLastCalledWith(REST_CONTEXT, PROJECT_ID, AGENT_ID, RUN_ID, {
+				take: 50,
+				skip: 1,
 			});
+			expect(store.getReview(RUN_ID).results.map((r) => r.id)).toEqual(['c1', 'c2']);
+			// Ratings cover the whole run already, so paging must not re-read them.
+			expect(listLatestRatingsForRun).toHaveBeenCalledTimes(1);
 		});
 
-		it('patches the row in place and leaves its siblings alone', async () => {
-			updateRow.mockResolvedValue(true);
+		it('does not duplicate a case the page repeats', async () => {
+			mockRun({ results: [result('c1')], count: 2, ratings: [] });
 			const store = useAgentEvalsStore();
-			await store.fetchCases(PROJECT_ID, source);
+			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
+			getRunDetail.mockResolvedValue(runDetail([result('c1'), result('c2')], 2));
 
-			const result = await store.updateCase(PROJECT_ID, source, 1, {
-				input: 'edited',
-				whatToCheck: 'edited check',
-			});
+			await store.loadMoreResults(PROJECT_ID, AGENT_ID, RUN_ID);
 
-			expect(updateRow).toHaveBeenCalledWith('dt-1', PROJECT_ID, 1, {
-				input: 'edited',
-				criteria: 'edited check',
-			});
-			expect(result).toBe(true);
-			expect(store.getCases(DATASET_ID)).toEqual([
-				{ rowId: 1, input: 'edited', whatToCheck: 'edited check' },
-				{ rowId: 2, input: 'second', whatToCheck: 'b' },
+			expect(store.getReview(RUN_ID).results.map((r) => r.id)).toEqual(['c1', 'c2']);
+		});
+
+		it('is a no-op once every case is loaded', async () => {
+			mockRun({ results: [result('c1')], count: 1, ratings: [] });
+			const store = useAgentEvalsStore();
+			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
+			getRunDetail.mockClear();
+
+			await store.loadMoreResults(PROJECT_ID, AGENT_ID, RUN_ID);
+
+			expect(getRunDetail).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('drafts', () => {
+		const openWith = async (ratings: AgentEvalRatingRecord[] = []) => {
+			mockRun({ results: [result('c1')], count: 1, ratings });
+			const store = useAgentEvalsStore();
+			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
+			return store;
+		};
+
+		it('opens the reason panel on a thumbs-down', async () => {
+			const store = await openWith();
+
+			store.beginVote(RUN_ID, 'c1', 'down');
+
+			expect(store.getDraft(RUN_ID, 'c1')).toMatchObject({ vote: 'down', panel: 'reason' });
+		});
+
+		// Switching to agreement must not carry the reason along with it.
+		it('clears a typed reason when the vote flips to thumbs-up', async () => {
+			const store = await openWith();
+			store.beginVote(RUN_ID, 'c1', 'down');
+			store.setDraftComment(RUN_ID, 'c1', 'it was off-task');
+
+			store.beginVote(RUN_ID, 'c1', 'up');
+
+			expect(store.getDraft(RUN_ID, 'c1')).toMatchObject({ vote: 'up', comment: '' });
+		});
+
+		it('seeds a draft from the persisted rating', async () => {
+			const store = await openWith([
+				rating('c1', {
+					vote: 'down',
+					comment: 'off-task',
+					correction: { finalText: 'the better answer' },
+				}),
 			]);
-		});
 
-		it('leaves the cache unchanged when the write is not acknowledged', async () => {
-			updateRow.mockResolvedValue(false);
-			const store = useAgentEvalsStore();
-			await store.fetchCases(PROJECT_ID, source);
+			store.beginNoteEdit(RUN_ID, 'c1');
 
-			const result = await store.updateCase(PROJECT_ID, source, 1, {
-				input: 'edited',
-				whatToCheck: 'edited check',
+			expect(store.getDraft(RUN_ID, 'c1')).toMatchObject({
+				vote: 'down',
+				comment: 'off-task',
+				correction: 'the better answer',
 			});
-
-			expect(result).toBe(false);
-			expect(store.getCases(DATASET_ID)[0].input).toBe('first');
 		});
 
-		it('clears the per-row mutating flag when the write rejects', async () => {
-			updateRow.mockRejectedValue(new Error('boom'));
-			const store = useAgentEvalsStore();
-			await store.fetchCases(PROJECT_ID, source);
+		// An edited answer is a disagreement, so it inherits the reason requirement
+		// rather than becoming a way around it.
+		it('selects a thumbs-down when the answer editor opens on an unrated case', async () => {
+			const store = await openWith();
 
-			await expect(
-				store.updateCase(PROJECT_ID, source, 1, { input: 'edited', whatToCheck: 'c' }),
-			).rejects.toThrow('boom');
+			store.beginAnswerEdit(RUN_ID, 'c1');
 
-			expect(store.isMutatingCase(DATASET_ID, 1)).toBe(false);
-			expect(store.getCases(DATASET_ID)[0].input).toBe('first');
+			expect(store.getDraft(RUN_ID, 'c1')).toMatchObject({ vote: 'down', panel: 'both' });
+		});
+
+		it('leaves an existing vote alone when the answer editor opens', async () => {
+			const store = await openWith([rating('c1', { vote: 'up' })]);
+
+			store.beginAnswerEdit(RUN_ID, 'c1');
+
+			expect(store.getDraft(RUN_ID, 'c1')).toMatchObject({ vote: 'up', panel: 'answer' });
+		});
+
+		it('discards the draft but keeps the persisted rating', async () => {
+			const store = await openWith([rating('c1', { vote: 'up' })]);
+			store.beginVote(RUN_ID, 'c1', 'down');
+
+			store.cancelDraft(RUN_ID, 'c1');
+
+			expect(store.getDraft(RUN_ID, 'c1')).toBeUndefined();
+			expect(store.getReview(RUN_ID).ratingsByResultId.c1.vote).toBe('up');
 		});
 	});
 
-	describe('deleteCase', () => {
-		beforeEach(async () => {
-			fetchDataTableContent.mockResolvedValue({
-				count: 2,
-				data: [
-					{ id: 1, input: 'first', criteria: 'a' },
-					{ id: 2, input: 'second', criteria: 'b' },
-				],
+	describe('wouldDiscardOnAgreement', () => {
+		const openWithRating = async (overrides: Partial<AgentEvalRatingRecord>) => {
+			mockRun({ results: [result('c1')], count: 1, ratings: [rating('c1', overrides)] });
+			const store = useAgentEvalsStore();
+			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
+			return store;
+		};
+
+		it('is false for a bare vote with nothing attached', async () => {
+			const store = await openWithRating({ vote: 'up' });
+
+			expect(store.wouldDiscardOnAgreement(RUN_ID, 'c1')).toBe(false);
+		});
+
+		it('is true when a note would be lost', async () => {
+			const store = await openWithRating({ vote: 'down', comment: 'off-task' });
+
+			expect(store.wouldDiscardOnAgreement(RUN_ID, 'c1')).toBe(true);
+		});
+
+		it('is true when a rewrite would be lost', async () => {
+			const store = await openWithRating({ vote: 'down', correction: { finalText: 'better' } });
+
+			expect(store.wouldDiscardOnAgreement(RUN_ID, 'c1')).toBe(true);
+		});
+
+		// The API accepts `comment: ''`, and chaining the two checks with `??` treated
+		// that as a present value — skipping the correction and discarding the rewrite.
+		it('still protects a rewrite when the stored note is an empty string', async () => {
+			const store = await openWithRating({
+				vote: 'down',
+				comment: '',
+				correction: { finalText: 'better' },
+			});
+
+			expect(store.wouldDiscardOnAgreement(RUN_ID, 'c1')).toBe(true);
+		});
+
+		it('ignores whitespace-only stored text', async () => {
+			const store = await openWithRating({ vote: 'down', comment: '   ' });
+
+			expect(store.wouldDiscardOnAgreement(RUN_ID, 'c1')).toBe(false);
+		});
+
+		it('protects text the reviewer has typed but not saved', async () => {
+			const store = await openWithRating({ vote: 'up' });
+			store.beginVote(RUN_ID, 'c1', 'down');
+			store.setDraftComment(RUN_ID, 'c1', 'half a thought');
+
+			expect(store.wouldDiscardOnAgreement(RUN_ID, 'c1')).toBe(true);
+		});
+	});
+
+	describe('saveReview', () => {
+		const openAndDraft = async () => {
+			mockRun({ results: [result('c1')], count: 1, ratings: [] });
+			const store = useAgentEvalsStore();
+			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
+			return store;
+		};
+
+		it('posts a thumbs-down with its reason and no correction key', async () => {
+			const store = await openAndDraft();
+			store.beginVote(RUN_ID, 'c1', 'down');
+			store.setDraftComment(RUN_ID, 'c1', 'it was off-task');
+			rateResult.mockResolvedValue(rating('c1', { vote: 'down', comment: 'it was off-task' }));
+
+			await store.saveReview(PROJECT_ID, AGENT_ID, RUN_ID, 'c1');
+
+			expect(rateResult).toHaveBeenCalledWith(REST_CONTEXT, PROJECT_ID, AGENT_ID, 'c1', {
+				vote: 'down',
+				comment: 'it was off-task',
 			});
 		});
 
-		it('removes the row and decrements the total', async () => {
-			deleteRows.mockResolvedValue(true);
-			const store = useAgentEvalsStore();
-			await store.fetchCases(PROJECT_ID, source);
+		it('posts a thumbs-up with no comment key at all', async () => {
+			const store = await openAndDraft();
+			store.beginVote(RUN_ID, 'c1', 'up');
+			rateResult.mockResolvedValue(rating('c1'));
 
-			const result = await store.deleteCase(PROJECT_ID, source, 1);
+			await store.saveReview(PROJECT_ID, AGENT_ID, RUN_ID, 'c1');
 
-			expect(deleteRows).toHaveBeenCalledWith('dt-1', PROJECT_ID, [1]);
-			expect(result).toBe(true);
-			expect(store.getCases(DATASET_ID).map((c) => c.rowId)).toEqual([2]);
-			expect(store.getCasesCount(DATASET_ID)).toBe(1);
+			expect(rateResult).toHaveBeenCalledWith(REST_CONTEXT, PROJECT_ID, AGENT_ID, 'c1', {
+				vote: 'up',
+			});
 		});
 
-		it('keeps the row when the delete is not acknowledged', async () => {
-			deleteRows.mockResolvedValue(false);
+		it('sends an edit as correction.finalText', async () => {
+			const store = await openAndDraft();
+			store.beginAnswerEdit(RUN_ID, 'c1');
+			store.setDraftComment(RUN_ID, 'c1', 'answered off-task');
+			store.setDraftCorrection(RUN_ID, 'c1', 'Weather is not something I plan.');
+			rateResult.mockResolvedValue(rating('c1', { vote: 'down' }));
+
+			await store.saveReview(PROJECT_ID, AGENT_ID, RUN_ID, 'c1');
+
+			expect(rateResult).toHaveBeenCalledWith(REST_CONTEXT, PROJECT_ID, AGENT_ID, 'c1', {
+				vote: 'down',
+				comment: 'answered off-task',
+				correction: { finalText: 'Weather is not something I plan.' },
+			});
+		});
+
+		it('refuses to save a thumbs-down with no reason', async () => {
+			const store = await openAndDraft();
+			store.beginVote(RUN_ID, 'c1', 'down');
+
+			await store.saveReview(PROJECT_ID, AGENT_ID, RUN_ID, 'c1');
+
+			expect(rateResult).not.toHaveBeenCalled();
+		});
+
+		it('counts the case as reviewed before the request settles', async () => {
+			const store = await openAndDraft();
+			store.beginVote(RUN_ID, 'c1', 'up');
+			let release: (value: AgentEvalRatingRecord) => void = () => {};
+			rateResult.mockReturnValue(
+				new Promise<AgentEvalRatingRecord>((resolve) => {
+					release = resolve;
+				}),
+			);
+
+			const saving = store.saveReview(PROJECT_ID, AGENT_ID, RUN_ID, 'c1');
+			expect(store.reviewedCount(RUN_ID)).toBe(1);
+
+			release(rating('c1'));
+			await saving;
+
+			expect(store.reviewedCount(RUN_ID)).toBe(1);
+			expect(store.getReview(RUN_ID).pendingByResultId).toEqual({});
+			expect(store.getReview(RUN_ID).ratingsByResultId.c1.id).toBe('rating-c1');
+		});
+
+		it('restores the draft verbatim and rethrows when the save fails', async () => {
+			const store = await openAndDraft();
+			store.beginVote(RUN_ID, 'c1', 'down');
+			store.setDraftComment(RUN_ID, 'c1', 'it was off-task');
+			store.setDraftCorrection(RUN_ID, 'c1', 'a better answer');
+			rateResult.mockRejectedValue(new Error('offline'));
+
+			await expect(store.saveReview(PROJECT_ID, AGENT_ID, RUN_ID, 'c1')).rejects.toThrow('offline');
+
+			// Nothing the reviewer typed may be lost to a failed request.
+			expect(store.getDraft(RUN_ID, 'c1')).toMatchObject({
+				vote: 'down',
+				comment: 'it was off-task',
+				correction: 'a better answer',
+			});
+			expect(store.reviewedCount(RUN_ID)).toBe(0);
+			expect(store.getReview(RUN_ID).pendingByResultId).toEqual({});
+		});
+	});
+
+	describe('polling an in-flight run', () => {
+		const openInFlight = async () => {
+			getRunDetail.mockResolvedValue({
+				...run(RUN_ID),
+				status: 'running',
+				results: { count: 1, data: [result('c1')] },
+			});
+			listLatestRatingsForRun.mockResolvedValue([]);
 			const store = useAgentEvalsStore();
-			await store.fetchCases(PROJECT_ID, source);
+			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
+			return store;
+		};
 
-			const result = await store.deleteCase(PROJECT_ID, source, 1);
+		const summary = (status: string) => ({
+			runId: RUN_ID,
+			status,
+			counts: { total: 1, success: 0, error: 0, cancelled: 0, pending: 1 },
+		});
 
-			expect(result).toBe(false);
-			expect(store.getCases(DATASET_ID).map((c) => c.rowId)).toEqual([1, 2]);
-			expect(store.getCasesCount(DATASET_ID)).toBe(2);
+		beforeEach(() => {
+			vi.useFakeTimers();
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		it('reports a loaded run as in flight only while it is unsettled', async () => {
+			const store = await openInFlight();
+			expect(store.isRunInFlight(RUN_ID)).toBe(true);
+
+			getRunDetail.mockResolvedValue(runDetail([result('c1')], 1));
+			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
+
+			expect(store.isRunInFlight(RUN_ID)).toBe(false);
+		});
+
+		// Progress has to appear immediately; waiting a full interval on a run the
+		// user just started reads as nothing happening.
+		it('reads the tallies straight away rather than after an interval', async () => {
+			const store = await openInFlight();
+			getRunSummary.mockResolvedValue(summary('running'));
+
+			store.startPollingRun(PROJECT_ID, AGENT_ID, RUN_ID);
+			await vi.advanceTimersByTimeAsync(0);
+
+			expect(getRunSummary).toHaveBeenCalledTimes(1);
+			expect(store.getReview(RUN_ID).counts).toEqual({
+				total: 1,
+				success: 0,
+				error: 0,
+				cancelled: 0,
+				pending: 1,
+			});
+			store.stopPollingRun();
+		});
+
+		// Cases land one at a time, so the rows have to be re-read as they do —
+		// otherwise they stay frozen as they were when the run started.
+		// A case going queued -> running moves no tally, because the summary folds
+		// both into `pending`. Refreshing only on a count change would leave every
+		// row frozen on the status it had when the run started.
+		it('re-reads the cases every tick, even when no tally has moved', async () => {
+			const store = await openInFlight();
+			getRunSummary.mockResolvedValue(summary('running'));
+
+			store.startPollingRun(PROJECT_ID, AGENT_ID, RUN_ID);
+			await vi.advanceTimersByTimeAsync(0);
+			const readsAfterFirstTick = getRunDetail.mock.calls.length;
+
+			await vi.advanceTimersByTimeAsync(5_000);
+			await vi.advanceTimersByTimeAsync(5_000);
+
+			expect(getRunDetail.mock.calls.length).toBe(readsAfterFirstTick + 2);
+			store.stopPollingRun();
+		});
+
+		// A dropped poll is a blip worth retrying, but a sustained run of them means the
+		// counts on screen have stopped tracking the run — say so rather than retry
+		// forever while looking live.
+		it('gives up and reports lost track after a sustained run of failed polls', async () => {
+			const store = await openInFlight();
+			getRunSummary.mockRejectedValue(new Error('offline'));
+
+			store.startPollingRun(PROJECT_ID, AGENT_ID, RUN_ID);
+			await vi.advanceTimersByTimeAsync(0);
+			expect(store.hasLostTrackOfRun(RUN_ID)).toBe(false);
+
+			await vi.advanceTimersByTimeAsync(5_000);
+			await vi.advanceTimersByTimeAsync(5_000);
+
+			expect(store.hasLostTrackOfRun(RUN_ID)).toBe(true);
+
+			// Given up means given up — no further reads.
+			const reads = getRunSummary.mock.calls.length;
+			await vi.advanceTimersByTimeAsync(30_000);
+			expect(getRunSummary.mock.calls.length).toBe(reads);
+		});
+
+		it('recovers its error budget when a poll succeeds again', async () => {
+			const store = await openInFlight();
+			getRunSummary
+				.mockRejectedValueOnce(new Error('offline'))
+				.mockRejectedValueOnce(new Error('offline'))
+				.mockResolvedValue(summary('running'));
+
+			store.startPollingRun(PROJECT_ID, AGENT_ID, RUN_ID);
+			await vi.advanceTimersByTimeAsync(0);
+			await vi.advanceTimersByTimeAsync(5_000);
+			await vi.advanceTimersByTimeAsync(5_000);
+			await vi.advanceTimersByTimeAsync(5_000);
+
+			expect(store.hasLostTrackOfRun(RUN_ID)).toBe(false);
+			store.stopPollingRun();
+		});
+
+		// Without a deadline a forgotten tab polls a wedged run for as long as it is open.
+		it('gives up on a run that never settles', async () => {
+			const store = await openInFlight();
+			getRunSummary.mockResolvedValue(summary('running'));
+
+			store.startPollingRun(PROJECT_ID, AGENT_ID, RUN_ID);
+			await vi.advanceTimersByTimeAsync(10 * 60_000 + 5_000);
+
+			expect(store.hasLostTrackOfRun(RUN_ID)).toBe(true);
+
+			const reads = getRunSummary.mock.calls.length;
+			await vi.advanceTimersByTimeAsync(30_000);
+			expect(getRunSummary.mock.calls.length).toBe(reads);
+		});
+
+		// `openRun` has just read them, so the first tick has nothing to refresh.
+		it('does not re-read the cases on the very first tick', async () => {
+			const store = await openInFlight();
+			getRunSummary.mockResolvedValue(summary('running'));
+			const readsBeforePolling = getRunDetail.mock.calls.length;
+
+			store.startPollingRun(PROJECT_ID, AGENT_ID, RUN_ID);
+			await vi.advanceTimersByTimeAsync(0);
+
+			expect(getRunDetail.mock.calls.length).toBe(readsBeforePolling);
+			store.stopPollingRun();
+		});
+
+		// `take` is clamped server-side rather than rejected, so a re-read past the cap
+		// returns fewer rows than are already on screen. Skipping beats truncating.
+		it('skips the refresh once more rows are loaded than one read can carry', async () => {
+			getRunDetail.mockResolvedValue(
+				runDetail(
+					Array.from({ length: 251 }, (_, i) => result(`c${i}`)),
+					400,
+				),
+			);
+			listLatestRatingsForRun.mockResolvedValue([]);
+			const store = useAgentEvalsStore();
+			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID, 251);
+			expect(store.getReview(RUN_ID).results).toHaveLength(251);
+
+			getRunSummary.mockResolvedValue(summary('running'));
+			store.startPollingRun(PROJECT_ID, AGENT_ID, RUN_ID);
+			await vi.advanceTimersByTimeAsync(0);
+			const reads = getRunDetail.mock.calls.length;
+			await vi.advanceTimersByTimeAsync(5_000);
+
+			expect(getRunDetail.mock.calls.length).toBe(reads);
+			expect(store.getReview(RUN_ID).results).toHaveLength(251);
+			store.stopPollingRun();
+		});
+
+		// A re-read covers the window it captured before starting, so rows the reviewer
+		// pages in meanwhile sit beyond it — replacing the list would jump them back.
+		it('keeps cases paged in while the settle read was walking pages', async () => {
+			const all = Array.from({ length: 120 }, (_, i) => result(`c${i}`));
+			getRunDetail.mockImplementation(
+				async (
+					_ctx: unknown,
+					_p: string,
+					_a: string,
+					_r: string,
+					q: { take: number; skip: number },
+				) => ({
+					...run(RUN_ID),
+					results: { count: all.length, data: all.slice(q.skip, q.skip + q.take) },
+				}),
+			);
+			listLatestRatingsForRun.mockResolvedValue([]);
+			const store = useAgentEvalsStore();
+			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
+			expect(store.getReview(RUN_ID).results).toHaveLength(50);
+
+			getRunSummary.mockResolvedValue({
+				runId: RUN_ID,
+				status: 'completed',
+				counts: { total: 120, success: 120, error: 0, cancelled: 0, pending: 0 },
+			});
+
+			// Settle and a page-in race each other; both must be reflected.
+			const settling = store.startPollingRun(PROJECT_ID, AGENT_ID, RUN_ID);
+			await store.loadMoreResults(PROJECT_ID, AGENT_ID, RUN_ID);
+			await vi.advanceTimersByTimeAsync(0);
+			void settling;
+
+			expect(store.getReview(RUN_ID).results).toHaveLength(100);
+			store.stopPollingRun();
+		});
+
+		it('keeps checking while the run is still running', async () => {
+			const store = await openInFlight();
+			getRunSummary.mockResolvedValue(summary('running'));
+
+			store.startPollingRun(PROJECT_ID, AGENT_ID, RUN_ID);
+			await vi.advanceTimersByTimeAsync(5_000);
+			await vi.advanceTimersByTimeAsync(5_000);
+
+			// The immediate read plus one per interval.
+			expect(getRunSummary).toHaveBeenCalledTimes(3);
+			store.stopPollingRun();
+		});
+
+		it('re-reads the run once it settles, then stops', async () => {
+			const store = await openInFlight();
+			getRunSummary.mockResolvedValue(summary('completed'));
+			getRunDetail.mockResolvedValue(runDetail([result('c1')], 1));
+
+			store.startPollingRun(PROJECT_ID, AGENT_ID, RUN_ID);
+			await vi.advanceTimersByTimeAsync(5_000);
+			const callsAfterSettle = getRunSummary.mock.calls.length;
+			await vi.advanceTimersByTimeAsync(15_000);
+
+			expect(callsAfterSettle).toBe(1);
+			// No further polls, and the settled run has been re-read.
+			expect(getRunSummary).toHaveBeenCalledTimes(1);
+			expect(store.getReview(RUN_ID).run?.status).toBe('completed');
+		});
+
+		// The settle reload goes through `openRun`, which defaults to one page — so
+		// without the preserved window a reviewer who had paged through a long run
+		// would be yanked back to the first 50 the moment it finished.
+		it('settles over the window the reviewer had paged in', async () => {
+			// Honours take/skip so paging is observable — a mock returning every row
+			// regardless would make a single unpaged read look correct.
+			const all = Array.from({ length: 60 }, (_, i) => result(`c${i}`));
+			getRunDetail.mockImplementation(
+				async (
+					_ctx: unknown,
+					_p: string,
+					_a: string,
+					_r: string,
+					q: { take: number; skip: number },
+				) => ({
+					...run(RUN_ID),
+					results: { count: all.length, data: all.slice(q.skip, q.skip + q.take) },
+				}),
+			);
+			listLatestRatingsForRun.mockResolvedValue([]);
+			const store = useAgentEvalsStore();
+			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID, 60);
+			expect(store.getReview(RUN_ID).results).toHaveLength(60);
+
+			getRunSummary.mockResolvedValue({
+				runId: RUN_ID,
+				status: 'completed',
+				counts: { total: 60, success: 60, error: 0, cancelled: 0, pending: 0 },
+			});
+			store.startPollingRun(PROJECT_ID, AGENT_ID, RUN_ID);
+			await vi.advanceTimersByTimeAsync(0);
+
+			// Paged, because a 60-row window can't be asked for in one clamped request:
+			// 50 from the top, then the remaining 10.
+			const windows = getRunDetail.mock.calls.slice(-2).map((c) => c[4]);
+			expect(windows).toEqual([
+				{ take: 50, skip: 0 },
+				{ take: 10, skip: 50 },
+			]);
+			expect(store.getReview(RUN_ID).results).toHaveLength(60);
+			store.stopPollingRun();
+		});
+
+		// Stopping cannot un-send the read already in flight, but it must prevent
+		// every one after it.
+		it('makes no further checks once stopped', async () => {
+			const store = await openInFlight();
+			getRunSummary.mockResolvedValue(summary('running'));
+
+			store.startPollingRun(PROJECT_ID, AGENT_ID, RUN_ID);
+			await vi.advanceTimersByTimeAsync(0);
+			const afterImmediate = getRunSummary.mock.calls.length;
+
+			store.stopPollingRun();
+			await vi.advanceTimersByTimeAsync(15_000);
+
+			expect(getRunSummary).toHaveBeenCalledTimes(afterImmediate);
+		});
+
+		// A dropped poll must not end the watch — the run is still going.
+		it('keeps watching after a failed check', async () => {
+			const store = await openInFlight();
+			getRunSummary.mockRejectedValueOnce(new Error('offline'));
+			getRunSummary.mockResolvedValue(summary('running'));
+
+			store.startPollingRun(PROJECT_ID, AGENT_ID, RUN_ID);
+			await vi.advanceTimersByTimeAsync(5_000);
+			await vi.advanceTimersByTimeAsync(5_000);
+
+			// The immediate read plus one per interval.
+			expect(getRunSummary).toHaveBeenCalledTimes(3);
+			store.stopPollingRun();
+		});
+
+		it('replaces an existing watcher rather than running two', async () => {
+			const store = await openInFlight();
+			getRunSummary.mockResolvedValue(summary('running'));
+
+			store.startPollingRun(PROJECT_ID, AGENT_ID, RUN_ID);
+			store.startPollingRun(PROJECT_ID, AGENT_ID, 'run-2');
+			await vi.advanceTimersByTimeAsync(5_000);
+
+			// Only the surviving watcher keeps polling: the replaced one contributes
+			// its immediate read and nothing after it.
+			const runIds = getRunSummary.mock.calls.map((c) => c[3]);
+			expect(runIds.filter((id) => id === RUN_ID)).toHaveLength(1);
+			expect(runIds.filter((id) => id === 'run-2').length).toBeGreaterThan(1);
+			store.stopPollingRun();
 		});
 	});
 
 	describe('startRun', () => {
-		it('records the started run under the dataset id', async () => {
-			startRun.mockResolvedValue(run());
+		it('caches the new run as the dataset latest and clears the flag', async () => {
+			startRun.mockResolvedValue(run('r-new'));
 			const store = useAgentEvalsStore();
 
 			await store.startRun(PROJECT_ID, AGENT_ID, DATASET_ID);
 
-			expect(startRun).toHaveBeenCalledWith(
-				{ instanceId: 'test-instance-id' },
-				PROJECT_ID,
-				AGENT_ID,
-				DATASET_ID,
-			);
-			expect(store.getLatestRun(DATASET_ID)?.id).toBe(RUN_ID);
+			expect(store.getLatestRunId(DATASET_ID)).toBe('r-new');
 			expect(store.isStartingRun(DATASET_ID)).toBe(false);
 		});
 
-		it('clears the starting flag when the request rejects', async () => {
-			startRun.mockRejectedValue(new Error('no cases'));
+		it('clears the flag when the run fails to start', async () => {
+			startRun.mockRejectedValue(new Error('at capacity'));
 			const store = useAgentEvalsStore();
 
-			await expect(store.startRun(PROJECT_ID, AGENT_ID, DATASET_ID)).rejects.toThrow('no cases');
+			await expect(store.startRun(PROJECT_ID, AGENT_ID, DATASET_ID)).rejects.toThrow('at capacity');
 
 			expect(store.isStartingRun(DATASET_ID)).toBe(false);
-			expect(store.getLatestRun(DATASET_ID)).toBeNull();
-		});
-	});
-
-	describe('cancelRun', () => {
-		it('records the cancelled run the server returns', async () => {
-			startRun.mockResolvedValue(run({ status: 'running' }));
-			cancelRun.mockResolvedValue(run({ status: 'cancelled' }));
-			const store = useAgentEvalsStore();
-			await store.startRun(PROJECT_ID, AGENT_ID, DATASET_ID);
-
-			await store.cancelRun(PROJECT_ID, AGENT_ID, DATASET_ID, RUN_ID);
-
-			expect(cancelRun).toHaveBeenCalledWith(
-				{ instanceId: 'test-instance-id' },
-				PROJECT_ID,
-				AGENT_ID,
-				RUN_ID,
-			);
-			expect(store.getLatestRun(DATASET_ID)?.status).toBe('cancelled');
-			expect(store.isCancellingRun(DATASET_ID)).toBe(false);
-		});
-
-		it('clears the cancelling flag when the request rejects', async () => {
-			cancelRun.mockRejectedValue(new Error('already finished'));
-			const store = useAgentEvalsStore();
-
-			await expect(store.cancelRun(PROJECT_ID, AGENT_ID, DATASET_ID, RUN_ID)).rejects.toThrow(
-				'already finished',
-			);
-
-			expect(store.isCancellingRun(DATASET_ID)).toBe(false);
-		});
-	});
-
-	describe('fetchRunSummary', () => {
-		it('caches the summary and keeps the cached run status coherent with it', async () => {
-			startRun.mockResolvedValue(run({ status: 'new' }));
-			getRunSummary.mockResolvedValue(summary({ pending: 0, success: 2 }, 'completed'));
-			const store = useAgentEvalsStore();
-			await store.startRun(PROJECT_ID, AGENT_ID, DATASET_ID);
-
-			const result = await store.fetchRunSummary(PROJECT_ID, AGENT_ID, DATASET_ID, RUN_ID);
-
-			expect(result.counts.pending).toBe(0);
-			expect(store.getRunSummary(RUN_ID)?.counts.success).toBe(2);
-			expect(store.getLatestRun(DATASET_ID)?.status).toBe('completed');
-		});
-
-		it('does not touch a cached run for a different run id', async () => {
-			startRun.mockResolvedValue(run({ id: 'run-other', status: 'running' }));
-			getRunSummary.mockResolvedValue(summary({ pending: 0 }, 'completed'));
-			const store = useAgentEvalsStore();
-			await store.startRun(PROJECT_ID, AGENT_ID, DATASET_ID);
-
-			await store.fetchRunSummary(PROJECT_ID, AGENT_ID, DATASET_ID, RUN_ID);
-
-			expect(store.getLatestRun(DATASET_ID)?.status).toBe('running');
-		});
-	});
-
-	describe('fetchLatestRun', () => {
-		it('caches the newest run so a reload can pick an in-flight run back up', async () => {
-			listRuns.mockResolvedValue({ count: 3, data: [run()] });
-			const store = useAgentEvalsStore();
-
-			const result = await store.fetchLatestRun(PROJECT_ID, AGENT_ID, DATASET_ID);
-
-			expect(listRuns).toHaveBeenCalledWith(
-				{ instanceId: 'test-instance-id' },
-				PROJECT_ID,
-				AGENT_ID,
-				DATASET_ID,
-				{ skip: 0, take: 1 },
-			);
-			expect(result?.id).toBe(RUN_ID);
-			expect(store.getLatestRun(DATASET_ID)?.id).toBe(RUN_ID);
-		});
-
-		it('tolerates a dataset that has never been run', async () => {
-			listRuns.mockResolvedValue({ count: 0, data: [] });
-			const store = useAgentEvalsStore();
-
-			const result = await store.fetchLatestRun(PROJECT_ID, AGENT_ID, DATASET_ID);
-
-			expect(result).toBeNull();
-			expect(store.getLatestRun(DATASET_ID)).toBeNull();
 		});
 	});
 

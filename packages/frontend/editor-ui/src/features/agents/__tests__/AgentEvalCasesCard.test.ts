@@ -21,12 +21,15 @@ const { fetchDataTableContent, fetchDataTableById, insertRow, updateRow, deleteR
 	}),
 );
 
-const { startRun, cancelRun, getRunSummary, listRuns } = vi.hoisted(() => ({
-	startRun: vi.fn(),
-	cancelRun: vi.fn(),
-	getRunSummary: vi.fn(),
-	listRuns: vi.fn(),
-}));
+const { startRun, cancelRun, getRunSummary, listRuns, getRunDetail, listLatestRatingsForRun } =
+	vi.hoisted(() => ({
+		startRun: vi.fn(),
+		cancelRun: vi.fn(),
+		getRunSummary: vi.fn(),
+		listRuns: vi.fn(),
+		getRunDetail: vi.fn(),
+		listLatestRatingsForRun: vi.fn(),
+	}));
 
 const { openAgentConfirmationModal } = vi.hoisted(() => ({
 	openAgentConfirmationModal: vi.fn(),
@@ -39,6 +42,8 @@ vi.mock('../agentEvals.api', () => ({
 	cancelRun,
 	getRunSummary,
 	listRuns,
+	getRunDetail,
+	listLatestRatingsForRun,
 }));
 
 vi.mock('@/features/core/dataTable/dataTable.store', () => ({
@@ -109,6 +114,15 @@ describe('AgentEvalCasesCard', () => {
 		fetchDataTableContent.mockResolvedValue(twoCases);
 		fetchDataTableById.mockResolvedValue({ id: 'dt-1', projectId: 'project-1' });
 		listRuns.mockResolvedValue({ count: 0, data: [] });
+		// Opening a run hydrates review state, which is what tells the card the run is
+		// in flight — the store owns the poll, so the card reads its view of the run.
+		listLatestRatingsForRun.mockResolvedValue([]);
+		getRunDetail.mockResolvedValue({
+			id: 'run-1',
+			datasetId: 'd1',
+			status: 'running',
+			results: { count: 0, data: [] },
+		});
 	});
 
 	it('renders one row per case, numbered from one', async () => {
