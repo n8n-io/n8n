@@ -612,6 +612,8 @@ export {
 	AGENT_EVAL_RESULTS_DEFAULT_TAKE,
 	AgentEvalRunDetailQueryDto,
 	agentEvalCorrectionSchema,
+	AGENT_EVAL_MAX_COMMENT_CHARS,
+	AGENT_EVAL_MAX_CORRECTION_TEXT_CHARS,
 	createAgentEvalRatingSchema,
 	CreateAgentEvalRatingDto,
 	agentEvalDraftCaseSchema,

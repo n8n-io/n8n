@@ -676,13 +676,10 @@ describe('GlobalConfig', () => {
 			tracingRecordOutputs: true,
 			modules: [],
 			sandboxEnabled: false,
-			sandboxProvider: '',
 			sandboxImage: 'daytonaio/sandbox:0.5.0',
 			sandboxSnapshot: 'daytonaio/sandbox:0.8.0',
 			sandboxTimeout: 300000,
 			sandboxEphemeral: false,
-			daytonaApiUrl: '',
-			daytonaApiKey: '',
 		},
 	} satisfies GlobalConfigShape;
 

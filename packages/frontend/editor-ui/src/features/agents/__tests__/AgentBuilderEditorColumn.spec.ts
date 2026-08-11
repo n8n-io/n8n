@@ -1,4 +1,5 @@
 import { createTestingPinia } from '@pinia/testing';
+import { useAgentEvalsStore } from '../agentEvals.store';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { flushPromises, mount } from '@vue/test-utils';
 
@@ -121,6 +122,22 @@ vi.mock('../views/AgentSessionsListView.vue', () => ({
 // First mount of this SFC eats the Vite transform cost; give it headroom.
 vi.setConfig({ testTimeout: 30_000 });
 
+/**
+ * The Evals tab renders the real `AgentEvalsSection`, which reads the eval store.
+ * A bare `createTestingPinia` stubs every store function to return `undefined`, so
+ * the reads it makes on mount have to be given the shapes it expects — otherwise
+ * this file fails on an uncaught error from a component it is not even testing.
+ */
+function createPiniaWithEvalStore() {
+	const pinia = createTestingPinia({ createSpy: vi.fn });
+	const evals = useAgentEvalsStore();
+	vi.mocked(evals.getDatasets).mockReturnValue([]);
+	vi.mocked(evals.isLoaded).mockReturnValue(true);
+	vi.mocked(evals.fetchDatasets).mockResolvedValue([]);
+	vi.mocked(evals.isStartingRun).mockReturnValue(false);
+	return pinia;
+}
+
 async function mountColumn(
 	overrides: Partial<{
 		activeMainTab: AgentBuilderMainTab;
@@ -135,6 +152,8 @@ async function mountColumn(
 	const { default: AgentBuilderEditorColumn } = await import(
 		'../components/AgentBuilderEditorColumn.vue'
 	);
+	const pinia = createPiniaWithEvalStore();
+
 	return mount(AgentBuilderEditorColumn, {
 		props: {
 			activeMainTab: overrides.activeMainTab ?? 'agent',
@@ -163,7 +182,7 @@ async function mountColumn(
 			executionsDescription: '',
 		},
 		global: {
-			plugins: [createTestingPinia({ createSpy: vi.fn })],
+			plugins: [pinia],
 			stubs: {
 				AgentCapabilitiesSection: false,
 				AgentChannelsSection: false,
@@ -264,6 +283,16 @@ describe('AgentBuilderEditorColumn', () => {
 		const wrapper = await mountColumn({ activeMainTab: 'evals', canEditAgent: false });
 
 		expect(wrapper.getComponent({ name: 'AgentEvalsSection' }).props('disabled')).toBe(true);
+	});
+
+	// The eval routes are agent-scoped, so the section can't read anything unless
+	// it is told which agent to read.
+	it('gives the evals section the agent it should read', async () => {
+		const wrapper = await mountColumn({ activeMainTab: 'evals' });
+		const section = wrapper.getComponent({ name: 'AgentEvalsSection' });
+
+		expect(section.props('projectId')).toBe('project-1');
+		expect(section.props('agentId')).toBe('agent-1');
 	});
 
 	it('uses embedded session list spacing inside the Sessions tab panel', async () => {
