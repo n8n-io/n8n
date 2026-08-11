@@ -1,4 +1,4 @@
-import { User, WithTimestamps } from '@n8n/db';
+import { JsonColumn, User, WithTimestamps } from '@n8n/db';
 import { Column, Entity, Index, ManyToOne } from '@n8n/typeorm';
 
 import { OAuthClient } from './oauth-client.entity';
@@ -40,6 +40,10 @@ export class AuthorizationCode extends WithTimestamps {
 
 	@Column({ type: 'varchar', nullable: true })
 	resource: string | null;
+
+	/** OAuth scopes granted on the consent screen for this authorization code. */
+	@JsonColumn()
+	scope: string[];
 
 	@Index()
 	@Column({ type: 'int' })

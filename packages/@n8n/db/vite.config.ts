@@ -1,6 +1,10 @@
 import { createVitestConfigWithDecorators } from '@n8n/vitest-config/node-decorators';
 import fs from 'node:fs';
 import path from 'node:path';
+// This LanguageService-based entity transform needs the real JS compiler API.
+// The package builds on TypeScript 6, so `typescript` resolves to it directly;
+// when it migrates to tsgo (TS7, no JS API) it should adopt the `typescript-tooling`
+// catalog so `typescript` keeps resolving to the TS6 API.
 import ts from 'typescript';
 import { mergeConfig, type Plugin } from 'vite';
 import { configDefaults } from 'vitest/config';

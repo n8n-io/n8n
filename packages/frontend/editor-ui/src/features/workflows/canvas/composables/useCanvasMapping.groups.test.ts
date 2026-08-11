@@ -14,6 +14,8 @@ import {
 import {
 	GROUP_HEADER_HEIGHT,
 	GROUP_HEADER_WIDTH_COLLAPSED,
+	GROUP_NODE_Z_INDEX_COLLAPSED,
+	GROUP_NODE_Z_INDEX_EXPANDED,
 	GROUP_PADDING_X,
 	GROUP_PADDING_Y_BOTTOM,
 	GROUP_PADDING_Y_TOP,
@@ -361,9 +363,9 @@ describe('mapGroupsToVueFlowNodes', () => {
 		expect(out[0].connectable).toBe(false);
 	});
 
-	it("marks the title bar NOT selectable when expanded — the group's nodes are the interactive surface then", () => {
+	it('keeps the title bar selectable when expanded — selecting it selects the whole group', () => {
 		const out = setup(false);
-		expect(out[0].selectable).toBe(false);
+		expect(out[0].selectable).toBe(true);
 	});
 
 	it('keeps a collapsed title bar selectable but not draggable when readOnly', () => {
@@ -437,6 +439,72 @@ describe('mapGroupsToVueFlowNodes', () => {
 			width: 96,
 			height: 96,
 		});
+	});
+
+	it('marks the group deactivated when every member node is disabled', () => {
+		const getById = nodeStore(
+			{ ...makeNode('a', 100, 200), disabled: true },
+			{ ...makeNode('b', 400, 200), disabled: true },
+		);
+		const out = mapGroupsToVueFlowNodes({
+			allGroups: [group],
+			getNodeById: getById,
+			isGroupCollapsed: () => true,
+			readOnly: false,
+			getNodeExecutionSnapshot: snapshotGetter(),
+		});
+		expect(out[0].data?.allNodesDisabled).toBe(true);
+	});
+
+	it('does not mark the group deactivated while any member node is enabled', () => {
+		const getById = nodeStore(
+			{ ...makeNode('a', 100, 200), disabled: true },
+			makeNode('b', 400, 200),
+		);
+		const out = mapGroupsToVueFlowNodes({
+			allGroups: [group],
+			getNodeById: getById,
+			isGroupCollapsed: () => true,
+			readOnly: false,
+			getNodeExecutionSnapshot: snapshotGetter(),
+		});
+		expect(out[0].data?.allNodesDisabled).toBe(false);
+	});
+
+	it('ignores sticky members (never disableable) for the deactivated state', () => {
+		const getById = nodeStore(
+			{ ...makeNode('a', 100, 200), disabled: true },
+			{ ...makeNode('b', 400, 200), disabled: true },
+			makeStickyNode('s', 100, 100, 240, 160),
+		);
+		const out = mapGroupsToVueFlowNodes({
+			allGroups: [{ id: 'g1', name: 'G', nodeIds: ['a', 'b', 's'] }],
+			getNodeById: getById,
+			isGroupCollapsed: () => true,
+			readOnly: false,
+			getNodeExecutionSnapshot: snapshotGetter(),
+		});
+		expect(out[0].data?.allNodesDisabled).toBe(true);
+	});
+
+	it('never marks a sticky-only group deactivated (no vacuous every)', () => {
+		const getById = nodeStore(makeStickyNode('s', 100, 100, 240, 160));
+		const out = mapGroupsToVueFlowNodes({
+			allGroups: [{ id: 'g1', name: 'Notes', nodeIds: ['s'] }],
+			getNodeById: getById,
+			isGroupCollapsed: () => false,
+			readOnly: false,
+			getNodeExecutionSnapshot: snapshotGetter(),
+		});
+		expect(out[0].data?.allNodesDisabled).toBe(false);
+	});
+
+	it('stacks the expanded frame below stickies and the collapsed chip above them', () => {
+		// See the stacking contract in canvasNodeGroups.constants.ts: the
+		// expanded frame must render below sticky members (no tint), while the
+		// collapsed chip keeps interaction priority over free stickies.
+		expect(setup(false)[0].zIndex).toBe(GROUP_NODE_Z_INDEX_EXPANDED);
+		expect(setup(true)[0].zIndex).toBe(GROUP_NODE_Z_INDEX_COLLAPSED);
 	});
 });
 

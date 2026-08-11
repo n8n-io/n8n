@@ -29,7 +29,7 @@ import { defineStore } from 'pinia';
 import { computed, ref, type DeepReadonly } from 'vue';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import * as aiApi from '@/features/ai/assistant/assistant.api';
 
 const DEFAULT_CREDENTIAL_NAME = 'Unnamed credential';
@@ -263,6 +263,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 	};
 
 	const upsertCredential = (credential: ICredentialsResponse) => {
+		if (credential.usageScope === 'instance') return;
 		if (credential.id) {
 			state.value.credentials = {
 				...state.value.credentials,
@@ -361,6 +362,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 			uiContext,
 			isGlobal: data.isGlobal,
 			isResolvable: data.isResolvable,
+			usageScope: data.usageScope,
 		});
 
 		if (data?.homeProject && !credential.homeProject) {
@@ -410,6 +412,10 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		setConnectedByMe(id, false);
 	};
 
+	const disconnectOauthToken = async ({ id }: { id: string }) => {
+		await credentialsApi.disconnectOauthToken(rootStore.restApiContext, id);
+	};
+
 	const setConnectedByMe = (id: string, connectedByMe: boolean) => {
 		const existing = state.value.credentials[id];
 		if (existing) {
@@ -434,13 +440,22 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		if (data.id) {
 			credentialTestResults.value.set(data.id, 'pending');
 		}
-		const result = await credentialsApi.testCredential(rootStore.restApiContext, {
-			credentials: data,
-		});
-		if (data.id) {
-			credentialTestResults.value.set(data.id, result.status === 'OK' ? 'success' : 'error');
+		try {
+			const result = await credentialsApi.testCredential(rootStore.restApiContext, {
+				credentials: data,
+			});
+			if (data.id) {
+				credentialTestResults.value.set(data.id, result.status === 'OK' ? 'success' : 'error');
+			}
+			return result;
+		} catch (error) {
+			// A rejected request must not leave the credential stuck in 'pending' —
+			// consumers gate on reaching a definitive result.
+			if (data.id) {
+				credentialTestResults.value.set(data.id, 'error');
+			}
+			throw error;
 		}
-		return result;
 	};
 
 	const getNewCredentialName = async (params: {
@@ -460,6 +475,16 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 			return res.name;
 		} catch (e) {
 			return fallbackName ?? DEFAULT_CREDENTIAL_NAME;
+		}
+	};
+
+	/** Run a caller-chosen name through the server's numbering dedup ("X" → "X 2" on clash). */
+	const getDedupedCredentialName = async (name: string): Promise<string> => {
+		try {
+			const res = await credentialsApi.getCredentialsNewName(rootStore.restApiContext, name);
+			return res.name;
+		} catch (e) {
+			return name;
 		}
 	};
 
@@ -526,6 +551,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		setCredentials,
 		deleteCredential,
 		disconnectMyConnection,
+		disconnectOauthToken,
 		setConnectedByMe,
 		upsertCredential,
 		fetchCredentialTypes,
@@ -538,6 +564,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		oAuth1Authorize,
 		oAuth2Authorize,
 		getNewCredentialName,
+		getDedupedCredentialName,
 		testCredential,
 		getCredentialTranslation,
 		setCredentialSharedWith,

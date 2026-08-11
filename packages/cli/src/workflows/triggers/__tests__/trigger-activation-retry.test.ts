@@ -5,8 +5,7 @@ import {
 	retryTriggerActivation,
 } from '@/workflows/triggers/trigger-activation-retry';
 
-vi.mock('n8n-workflow', async () => ({
-	...(await vi.importActual<typeof import('n8n-workflow')>('n8n-workflow')),
+vi.mock('@n8n/utils/sleep', () => ({
 	sleep: vi.fn(),
 }));
 

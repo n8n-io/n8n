@@ -5,6 +5,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import InstanceAiToolsConnectionModalWrapper from '../InstanceAiToolsConnectionModalWrapper.vue';
 import type {
 	McpServerConnectionItem,
+	ToolConnectionCredentialAdapter,
 	ToolConnectionSettings,
 } from '@/features/shared/toolsConnection/types';
 
@@ -60,6 +61,20 @@ vi.mock('../../../instanceAiMcp.store', () => ({
 	useInstanceAiMcpStore: () => mcpStoreMock,
 }));
 
+vi.mock('../../../composables/useMcpServerConnect', () => ({
+	useMcpServerConnect: () => ({
+		connectServer: vi.fn().mockResolvedValue(null),
+		connectWithCredential: vi.fn().mockResolvedValue(null),
+		createCredentialAdapter: (
+			openNewCredential: ToolConnectionCredentialAdapter['openNewCredential'],
+		) => ({
+			getCredentialsByType: () => [],
+			openNewCredential,
+			openExistingCredential: uiStoreMock.openExistingCredential,
+		}),
+	}),
+}));
+
 vi.mock('../../../instanceAiSettings.store', () => ({
 	useInstanceAiSettingsStore: () => ({
 		settings: { mcpAccessEnabled: true },
@@ -83,6 +98,7 @@ const { telemetryMock, uiStoreMock } = vi.hoisted(() => ({
 			instanceAiToolsConnection: { open: true, data: {} },
 		},
 		closeModal: vi.fn(),
+		setModalData: vi.fn(),
 		openNewCredential: vi.fn(),
 		openExistingCredential: vi.fn(),
 		appliedTheme: 'light',
@@ -111,7 +127,7 @@ vi.mock('@/features/credentials/composables/useCredentialOAuth', () => ({
 	}),
 }));
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({
 		showMessage: vi.fn(),
 		showError: vi.fn(),
@@ -132,6 +148,12 @@ const connectedLinearItem: McpServerConnectionItem = {
 	id: 'conn-1',
 	isConnected: true,
 	credentials: [{ authType: 'mcpOAuth2Api', credentialId: 'cred-1', required: true }],
+};
+
+const toolSettings: ToolConnectionSettings = {
+	inclusionMode: 'selected',
+	selectedTools: ['search'],
+	excludedTools: [],
 };
 
 let modalListeners: Record<string, unknown> = {};
@@ -205,18 +227,15 @@ describe('InstanceAiToolsConnectionModalWrapper', () => {
 		];
 		mcpStoreMock.connectionsByServerSlug = new Map();
 		mcpStoreMock.connectionToolsById = new Map();
+		uiStoreMock.modalsById.instanceAiToolsConnection.data = {};
 		mockConnect.mockResolvedValue(null);
 		mockUpdateConnection.mockResolvedValue({ serverSlug: 'linear' });
 	});
 
-	it('tracks tool filter settings after a successful save', async () => {
+	it('keeps the modal open after saving settings opened from the tools list', async () => {
 		renderComponent();
 
-		emitSave({
-			inclusionMode: 'selected',
-			selectedTools: ['search'],
-			excludedTools: [],
-		});
+		emitSave(toolSettings);
 		await flushPromises();
 
 		expect(mockUpdateConnection).toHaveBeenCalledWith('conn-1', {
@@ -225,6 +244,49 @@ describe('InstanceAiToolsConnectionModalWrapper', () => {
 			excludedTools: [],
 		});
 		expect(telemetryMock.trackToolFilterSettingsUpdated).toHaveBeenCalledWith('linear', 'selected');
+		expect(uiStoreMock.closeModal).not.toHaveBeenCalled();
+	});
+
+	it('closes the modal after saving settings opened directly', async () => {
+		uiStoreMock.modalsById.instanceAiToolsConnection.data = { connectionId: 'conn-1' };
+		renderComponent();
+
+		emitSave(toolSettings);
+		await flushPromises();
+
+		expect(uiStoreMock.closeModal).toHaveBeenCalledWith('instanceAiToolsConnection');
+	});
+
+	it('keeps the directly opened modal open when saving fails', async () => {
+		uiStoreMock.modalsById.instanceAiToolsConnection.data = { connectionId: 'conn-1' };
+		mockUpdateConnection.mockResolvedValue(null);
+		renderComponent();
+
+		emitSave(toolSettings);
+		await flushPromises();
+
+		expect(uiStoreMock.closeModal).not.toHaveBeenCalled();
+	});
+
+	// Through the store, because what it resolves is derived state — an assignment
+	// onto that is discarded, so the next open would reuse the stale connection id.
+	it('clears the modal data through the store on unmount', () => {
+		uiStoreMock.modalsById.instanceAiToolsConnection.data = { connectionId: 'conn-1' };
+
+		renderComponent().unmount();
+
+		expect(uiStoreMock.setModalData).toHaveBeenCalledWith({
+			name: 'instanceAiToolsConnection',
+			data: {},
+		});
+	});
+
+	it('leaves the store alone on unmount when there is no data to clear', () => {
+		uiStoreMock.modalsById.instanceAiToolsConnection.data = {};
+
+		renderComponent().unmount();
+
+		expect(uiStoreMock.setModalData).not.toHaveBeenCalled();
 	});
 
 	it('tracks first credential connection start', () => {

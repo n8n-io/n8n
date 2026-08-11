@@ -86,6 +86,28 @@ describe('evaluationMetricSchema', () => {
 		).toBe(false);
 	});
 
+	it('rejects a provider that is a slug rather than a chat-model node type', () => {
+		expect(
+			evaluationMetricSchema.safeParse({
+				id: 'm2',
+				name: 'Correctness',
+				type: 'llm_judge',
+				config: validLlmJudgeConfig({ provider: 'openai' }),
+			}).success,
+		).toBe(false);
+	});
+
+	it('accepts a provider that is a known chat-model node type', () => {
+		expect(
+			evaluationMetricSchema.safeParse({
+				id: 'm2',
+				name: 'Correctness',
+				type: 'llm_judge',
+				config: validLlmJudgeConfig({ provider: '@n8n/n8n-nodes-langchain.lmChatAnthropic' }),
+			}).success,
+		).toBe(true);
+	});
+
 	it('rejects an unknown preset', () => {
 		expect(
 			evaluationMetricSchema.safeParse({

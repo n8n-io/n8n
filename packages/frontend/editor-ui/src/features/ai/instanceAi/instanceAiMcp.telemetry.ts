@@ -1,4 +1,4 @@
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import type { McpToolInclusionMode } from '@/features/shared/toolsConnection/types';
 
 export function useInstanceAiMcpTelemetry() {

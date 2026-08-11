@@ -453,7 +453,7 @@ describe('executeNpmCommand', () => {
 
 		const importFreshModule = async () => {
 			vi.resetModules();
-			return await import('../npm-utils');
+			return await import('../npm-utils.js');
 		};
 
 		beforeEach(() => {

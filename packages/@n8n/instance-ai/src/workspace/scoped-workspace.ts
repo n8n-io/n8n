@@ -1,10 +1,13 @@
 import {
 	Workspace,
+	type AbortableOptions,
+	type AppendOptions,
 	type CopyOptions,
 	type FileContent,
 	type FileEntry,
 	type FileStat,
 	type ListOptions,
+	type MkdirOptions,
 	type ProviderStatus,
 	type ReadOptions,
 	type RemoveOptions,
@@ -79,8 +82,8 @@ class ScopedFilesystem implements WorkspaceFilesystem {
 		await this.filesystem.writeFile(resolvePath(this.root, path), content, options);
 	}
 
-	async appendFile(path: string, content: FileContent): Promise<void> {
-		await this.filesystem.appendFile(resolvePath(this.root, path), content);
+	async appendFile(path: string, content: FileContent, options?: AppendOptions): Promise<void> {
+		await this.filesystem.appendFile(resolvePath(this.root, path), content, options);
 	}
 
 	async deleteFile(path: string, options?: RemoveOptions): Promise<void> {
@@ -103,7 +106,7 @@ class ScopedFilesystem implements WorkspaceFilesystem {
 		);
 	}
 
-	async mkdir(path: string, options?: { recursive?: boolean }): Promise<void> {
+	async mkdir(path: string, options?: MkdirOptions): Promise<void> {
 		await this.filesystem.mkdir(resolvePath(this.root, path), options);
 	}
 
@@ -115,12 +118,12 @@ class ScopedFilesystem implements WorkspaceFilesystem {
 		return await this.filesystem.readdir(resolvePath(this.root, path), options);
 	}
 
-	async exists(path: string): Promise<boolean> {
-		return await this.filesystem.exists(resolvePath(this.root, path));
+	async exists(path: string, options?: AbortableOptions): Promise<boolean> {
+		return await this.filesystem.exists(resolvePath(this.root, path), options);
 	}
 
-	async stat(path: string): Promise<FileStat> {
-		return await this.filesystem.stat(resolvePath(this.root, path));
+	async stat(path: string, options?: AbortableOptions): Promise<FileStat> {
+		return await this.filesystem.stat(resolvePath(this.root, path), options);
 	}
 }
 

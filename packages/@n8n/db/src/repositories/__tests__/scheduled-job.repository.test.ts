@@ -26,6 +26,9 @@ const newJob = (name: string): NewScheduledJob => ({
 	intervalSeconds: null,
 	fireAt: null,
 	nextRunAt: CLOCK,
+	maxAttempts: 5,
+	misfirePolicy: 'coalesce',
+	misfireGraceSeconds: 60,
 });
 
 /** A chainable insert query-builder mock; `execute` is set per test. */
@@ -35,6 +38,14 @@ const insertQb = () => ({
 	values: vi.fn().mockReturnThis(),
 	orIgnore: vi.fn().mockReturnThis(),
 	returning: vi.fn().mockReturnThis(),
+	execute: vi.fn(),
+});
+
+/** A chainable update query-builder mock; `execute` is set per test. */
+const updateQb = () => ({
+	update: vi.fn().mockReturnThis(),
+	set: vi.fn().mockReturnThis(),
+	where: vi.fn().mockReturnThis(),
 	execute: vi.fn(),
 });
 
@@ -64,6 +75,48 @@ describe('ScheduledJobRepository', () => {
 				nodeId: 'node',
 			});
 			expect(result).toBe(rows);
+		});
+	});
+
+	describe('countByWorkflowNode', () => {
+		it('counts the jobs owned by the workflow node', async () => {
+			entityManager.count.mockResolvedValueOnce(3);
+
+			const result = await repository.countByWorkflowNode('wf', 'node');
+
+			expect(entityManager.count).toHaveBeenCalledWith(ScheduledJob, {
+				where: { workflowId: 'wf', nodeId: 'node' },
+			});
+			expect(result).toBe(3);
+		});
+	});
+
+	describe('backdateNextRunAt', () => {
+		it('sets nextRunAt to secondsAgo in the past for the node jobs', async () => {
+			const qb = updateQb();
+			qb.execute.mockResolvedValue(undefined);
+			entityManager.createQueryBuilder.mockReturnValue(qb as never);
+
+			await repository.backdateNextRunAt('wf', 'node', 120);
+
+			expect(qb.update).toHaveBeenCalledWith(ScheduledJob);
+			expect(qb.set).toHaveBeenCalledWith({ nextRunAt: expect.any(Function) });
+			expect(qb.where).toHaveBeenCalledWith('"workflowId" = :workflowId AND "nodeId" = :nodeId', {
+				workflowId: 'wf',
+				nodeId: 'node',
+			});
+			expect(qb.execute).toHaveBeenCalled();
+		});
+
+		it('sets nextRunAt to now when secondsAgo is 0', async () => {
+			const qb = updateQb();
+			qb.execute.mockResolvedValue(undefined);
+			entityManager.createQueryBuilder.mockReturnValue(qb as never);
+
+			await repository.backdateNextRunAt('wf', 'node', 0);
+
+			expect(qb.set).toHaveBeenCalledWith({ nextRunAt: expect.any(Function) });
+			expect(qb.execute).toHaveBeenCalled();
 		});
 	});
 
@@ -104,6 +157,58 @@ describe('ScheduledJobRepository', () => {
 				select: { id: true, name: true },
 			});
 			expect(ids).toEqual([10, 20]);
+		});
+
+		it('chunks the insert and the read-back, then reassembles ids in input order', async () => {
+			const jobs = [newJob('wf:node:0'), newJob('wf:node:1'), newJob('wf:node:2')];
+			const qb = insertQb();
+			qb.execute.mockResolvedValue(undefined);
+			entityManager.createQueryBuilder.mockReturnValue(qb as never);
+			// Read-back is chunked too; each chunk resolves only its own rows.
+			entityManager.find
+				.mockResolvedValueOnce([
+					{ id: 10, name: 'wf:node:0' } as ScheduledJob,
+					{ id: 20, name: 'wf:node:1' } as ScheduledJob,
+				])
+				.mockResolvedValueOnce([{ id: 30, name: 'wf:node:2' } as ScheduledJob]);
+
+			// 3 jobs at 2/chunk -> two insert statements and two read-back queries.
+			const ids = await repository.insertMany(entityManager, jobs, 2);
+
+			expect(qb.values).toHaveBeenCalledTimes(2);
+			expect(qb.values).toHaveBeenNthCalledWith(1, [jobs[0], jobs[1]]);
+			expect(qb.values).toHaveBeenNthCalledWith(2, [jobs[2]]);
+			expect(entityManager.find).toHaveBeenNthCalledWith(1, ScheduledJob, {
+				where: { name: In(['wf:node:0', 'wf:node:1']) },
+				select: { id: true, name: true },
+			});
+			expect(entityManager.find).toHaveBeenNthCalledWith(2, ScheduledJob, {
+				where: { name: In(['wf:node:2']) },
+				select: { id: true, name: true },
+			});
+			expect(ids).toEqual([10, 20, 30]);
+		});
+
+		it('caps an oversized chunk size to the dialect maximum', async () => {
+			// The sqlite instance caps at 500, so 600 jobs must still span two statements even when
+			// the caller passes a chunk far past the driver's limits, not collapse into one.
+			const jobs = Array.from({ length: 600 }, (_, i) => newJob(`wf:node:${i}`));
+			const qb = insertQb();
+			qb.execute.mockResolvedValue(undefined);
+			entityManager.createQueryBuilder.mockReturnValue(qb as never);
+			entityManager.find
+				.mockResolvedValueOnce(
+					jobs.slice(0, 500).map((job, i) => ({ id: i + 1, name: job.name }) as ScheduledJob),
+				)
+				.mockResolvedValueOnce(
+					jobs.slice(500).map((job, i) => ({ id: 501 + i, name: job.name }) as ScheduledJob),
+				);
+
+			const ids = await repository.insertMany(entityManager, jobs, 10_000_000);
+
+			expect(qb.values).toHaveBeenCalledTimes(2);
+			expect(entityManager.find).toHaveBeenCalledTimes(2);
+			expect(ids).toHaveLength(600);
 		});
 
 		it('reads ids back by name on Postgres too, without RETURNING', async () => {
@@ -167,6 +272,8 @@ describe('ScheduledJobRepository', () => {
 				intervalSeconds: null,
 				fireAt: null,
 				nextRunAt: CLOCK,
+				misfirePolicy: 'skip',
+				misfireGraceSeconds: 120,
 			};
 
 			await repository.updateDefinition(entityManager, 10, update);

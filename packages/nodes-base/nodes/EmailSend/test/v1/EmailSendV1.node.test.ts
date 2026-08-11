@@ -517,4 +517,45 @@ describe('Test EmailSendV1', () => {
 			);
 		});
 	});
+
+	describe('message parameters', () => {
+		it('should serialize object message values before sending', async () => {
+			const items = [{ json: { data: 'test' } }];
+
+			mockExecuteFunctions.getInputData.mockReturnValue(items);
+			mockExecuteFunctions.getCredentials.mockResolvedValue({
+				host: 'smtp.example.com',
+				port: 587,
+				secure: false,
+			});
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('from@example.com')
+				.mockReturnValueOnce('to@example.com')
+				.mockReturnValueOnce('cc@example.com')
+				.mockReturnValueOnce('bcc@example.com')
+				.mockReturnValueOnce('Test Subject')
+				.mockReturnValueOnce({ path: 'message.txt' })
+				.mockReturnValueOnce({ href: 'https://example.test/message' })
+				.mockReturnValueOnce('')
+				.mockReturnValueOnce({ replyTo: 'reply@example.com' });
+			transporter.sendMail.mockResolvedValue({ messageId: 'test-id' });
+
+			await emailSendV1.execute.call(mockExecuteFunctions);
+
+			expect(transporter.sendMail).toHaveBeenCalledWith(
+				expect.objectContaining({
+					from: 'from@example.com',
+					to: 'to@example.com',
+					cc: 'cc@example.com',
+					bcc: 'bcc@example.com',
+					subject: 'Test Subject',
+					text: '{"path":"message.txt"}',
+					html: '{"href":"https://example.test/message"}',
+					replyTo: 'reply@example.com',
+					disableFileAccess: true,
+					disableUrlAccess: true,
+				}),
+			);
+		});
+	});
 });

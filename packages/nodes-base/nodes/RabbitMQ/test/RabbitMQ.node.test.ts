@@ -1,6 +1,6 @@
 import type { Channel, Connection } from 'amqplib';
 import { mock, mockDeep } from 'vitest-mock-extended';
-import type { IExecuteFunctions, INode } from 'n8n-workflow';
+import { UserError, type IExecuteFunctions, type INode } from 'n8n-workflow';
 
 import * as GenericFunctions from '../GenericFunctions';
 import { RabbitMQ } from '../RabbitMQ.node';
@@ -12,7 +12,7 @@ describe('RabbitMQ node', () => {
 
 	mockChannel.connection = mockConnection;
 
-	const buildExecuteFunctions = (typeVersion: number) => {
+	const buildExecuteFunctions = (typeVersion: number, operation = 'sendMessage') => {
 		const executeFunctions = mockDeep<IExecuteFunctions>();
 		const inputItems = [{ json: { seq: 1 } }, { json: { seq: 2 } }, { json: { seq: 3 } }];
 
@@ -30,7 +30,7 @@ describe('RabbitMQ node', () => {
 			(parameterName, itemIndex, fallbackValue) => {
 				switch (parameterName) {
 					case 'operation':
-						return 'sendMessage';
+						return operation;
 					case 'mode':
 						return 'exchange';
 					case 'exchange':
@@ -127,5 +127,24 @@ describe('RabbitMQ node', () => {
 		expect(executeFunctions.getNodeParameter).toHaveBeenCalledWith('routingKey', 0);
 		expect(executeFunctions.getNodeParameter).toHaveBeenCalledWith('routingKey', 1);
 		expect(executeFunctions.getNodeParameter).toHaveBeenCalledWith('routingKey', 2);
+	});
+
+	describe('deleteMessage', () => {
+		it('returns the input items once the response is dispatched', async () => {
+			const { executeFunctions, inputItems } = buildExecuteFunctions(1.2, 'deleteMessage');
+			executeFunctions.sendResponse.mockResolvedValue(undefined);
+
+			const result = await node.execute.call(executeFunctions);
+
+			expect(executeFunctions.sendResponse).toHaveBeenCalledWith(inputItems[0].json);
+			expect(result).toEqual([inputItems]);
+		});
+
+		it('fails the node when the response cannot be dispatched', async () => {
+			const { executeFunctions } = buildExecuteFunctions(1.2, 'deleteMessage');
+			executeFunctions.sendResponse.mockRejectedValue(new UserError('Response not relayed'));
+
+			await expect(node.execute.call(executeFunctions)).rejects.toThrow('Response not relayed');
+		});
 	});
 });

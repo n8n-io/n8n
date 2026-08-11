@@ -1,6 +1,7 @@
+import type { IExecuteFunctions, NodeParameterValueType } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
-import type { IExecuteFunctions, NodeParameterValueType } from 'n8n-workflow';
 
 import * as genericFunctions from '../../GenericFunctions';
 import { MicrosoftOneDrive } from '../../MicrosoftOneDrive.node';
@@ -258,6 +259,24 @@ describe('Test MicrosoftOneDrive, per-op Service Principal scope threading', () 
 			{ encoding: null, resolveWithFullResponse: true },
 			USER_ROOT,
 		);
+	});
+
+	// The workflow harness strips pairedItem and compares only the error message, so the
+	// itemIndex stamping on the rethrow path is pinned here: with continueOnFail off, an
+	// unindexed NodeError from item 1's request must abort the run carrying index 1.
+	it('stamps the failing item index on an unindexed NodeError when continueOnFail is off', async () => {
+		mockExecuteFunctions.getInputData.mockReturnValue([{ json: {} }, { json: {} }]);
+		mockExecuteFunctions.continueOnFail.mockReturnValue(false);
+		mockExecuteFunctions.getNodeParameter.mockImplementation(
+			params({ resource: 'file', operation: 'get', fileId: 'item-1' }),
+		);
+		mockApiRequest
+			.mockResolvedValueOnce({ id: 'x', name: 'x' })
+			.mockRejectedValueOnce(new NodeApiError(mockNode, { message: 'item is locked' }));
+
+		await expect(microsoftOneDrive.execute.call(mockExecuteFunctions)).rejects.toMatchObject({
+			context: { itemIndex: 1 },
+		});
 	});
 
 	it('file:upload (text) threads the user root and preserves the :/path:/ shape', async () => {

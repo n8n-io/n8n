@@ -3,16 +3,10 @@ import TabBar from '@/app/components/MainHeader/TabBar.vue';
 import WorkflowDetails from '@/app/components/MainHeader/WorkflowDetails.vue';
 import { useI18n } from '@n8n/i18n';
 import { usePushConnection } from '@/app/composables/usePushConnection';
-import {
-	LOCAL_STORAGE_HIDE_GITHUB_STAR_BUTTON,
-	MAIN_HEADER_TABS,
-	STICKY_NODE_TYPE,
-	VIEWS,
-	N8N_MAIN_GITHUB_REPO_URL,
-} from '@/app/constants';
+import { MAIN_HEADER_TABS, STICKY_NODE_TYPE, VIEWS } from '@/app/constants';
 import { useExecutionsStore } from '@/features/execution/executions/executions.store';
 import { injectNDVStoreIfProvided } from '@/features/ndv/shared/ndv.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { computed, inject, onBeforeMount, onBeforeUnmount, onMounted, ref, watch } from 'vue';
@@ -21,12 +15,9 @@ import { useRoute, useRouter } from 'vue-router';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 
-import { useLocalStorage } from '@vueuse/core';
-import GithubButton from 'vue-github-button';
 import type { FolderShortInfo } from '@/features/core/folders/folders.types';
 
-import { N8nIcon } from '@n8n/design-system';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 const router = useRouter();
 const route = useRoute();
 const locale = useI18n();
@@ -44,7 +35,6 @@ const activeHeaderTab = ref(MAIN_HEADER_TABS.WORKFLOW);
 const workflowToReturnTo = ref('');
 const executionToReturnTo = ref('');
 const dirtyState = ref(false);
-const githubButtonHidden = useLocalStorage(LOCAL_STORAGE_HIDE_GITHUB_STAR_BUTTON, false);
 
 // Track the routes that are used for the tabs
 // This is used to determine which tab to show when the route changes
@@ -78,20 +68,6 @@ const workflowTags = computed(() => workflowDocumentStore?.value?.tags ?? []);
 const workflowIsArchived = computed(() => workflowDocumentStore?.value?.isArchived ?? false);
 const workflowDescription = computed(() => workflowDocumentStore?.value?.description ?? '');
 const onWorkflowPage = computed(() => !!(route.meta.nodeView || route.meta.keepWorkflowAlive));
-
-const isEnterprise = computed(
-	() => settingsStore.isQueueModeEnabled && settingsStore.isWorkerViewAvailable,
-);
-const isTelemetryEnabled = computed((): boolean => {
-	return settingsStore.isTelemetryEnabled;
-});
-const showGitHubButton = computed(
-	() =>
-		!isEnterprise.value &&
-		!settingsStore.settings.inE2ETests &&
-		!githubButtonHidden.value &&
-		isTelemetryEnabled.value,
-);
 
 const parentFolderForBreadcrumbs = computed<FolderShortInfo | undefined>(() => {
 	const folder = workflowDocumentStore?.value?.parentFolder;
@@ -253,10 +229,6 @@ async function navigateToEvaluationsView(openInNewTab: boolean) {
 	}
 }
 
-function hideGithubButton() {
-	githubButtonHidden.value = true;
-}
-
 async function onWorkflowDeactivated() {
 	if (
 		settingsStore.isModuleActive('mcp') &&
@@ -287,37 +259,20 @@ async function onWorkflowDeactivated() {
 				[$style['canvas-only']]: settingsStore.isCanvasOnly,
 			}"
 		>
-			<div v-show="!hideMenuBar && !settingsStore.isCanvasOnly" :class="$style['top-menu']">
-				<WorkflowDetails
-					v-if="workflowName"
-					:id="workflowId"
-					:tags="workflowTags"
-					:name="workflowName"
-					:current-folder="parentFolderForBreadcrumbs"
-					:is-archived="workflowIsArchived"
-					:description="workflowDescription"
-					@workflow:deactivated="onWorkflowDeactivated"
-				/>
-				<div v-if="showGitHubButton" :class="[$style['github-button'], 'hidden-sm-and-down']">
-					<div :class="$style['github-button-container']">
-						<GithubButton
-							:href="N8N_MAIN_GITHUB_REPO_URL"
-							:data-color-scheme="uiStore.appliedTheme"
-							data-size="large"
-							data-show-count="true"
-							:aria-label="locale.baseText('editor.mainHeader.githubButton.label')"
-						>
-							{{ locale.baseText('generic.star') }}
-						</GithubButton>
-						<N8nIcon
-							:class="$style['close-github-button']"
-							icon="circle-x"
-							size="medium"
-							@click="hideGithubButton"
-						/>
-					</div>
+			<template v-if="!settingsStore.isCanvasOnly">
+				<div v-show="!hideMenuBar" :class="$style['top-menu']">
+					<WorkflowDetails
+						v-if="workflowName"
+						:id="workflowId"
+						:tags="workflowTags"
+						:name="workflowName"
+						:current-folder="parentFolderForBreadcrumbs"
+						:is-archived="workflowIsArchived"
+						:description="workflowDescription"
+						@workflow:deactivated="onWorkflowDeactivated"
+					/>
 				</div>
-			</div>
+			</template>
 			<TabBar
 				v-if="onWorkflowPage"
 				:items="tabBarItems"
@@ -358,58 +313,5 @@ async function onWorkflowDeactivated() {
 	align-items: center;
 	font-size: 0.9em;
 	font-weight: var(--font-weight--regular);
-	overflow-x: auto;
-	overflow-y: hidden;
-}
-
-.github-button {
-	display: flex;
-	align-items: center;
-	align-self: stretch;
-	padding: var(--spacing--5xs) var(--spacing--md);
-	background-color: var(--color--background--light-3);
-	border-left: var(--border-width) var(--border-style) var(--color--foreground);
-}
-
-.close-github-button {
-	display: none;
-	position: absolute;
-	right: 0;
-	top: 0;
-	transform: translate(50%, -46%);
-	color: var(--color--foreground--shade-2);
-	background-color: var(--color--background--light-3);
-	border-radius: 100%;
-	cursor: pointer;
-
-	&:hover {
-		color: var(--color--orange-400);
-	}
-}
-.github-button-container {
-	position: relative;
-}
-
-.github-button:hover .close-github-button {
-	display: block;
-}
-
-@media (max-width: 1390px) {
-	.github-button {
-		padding: var(--spacing--5xs) var(--spacing--xs);
-	}
-}
-
-@media (max-width: 1340px) {
-	.github-button {
-		border-left: 0;
-		padding-left: 0;
-	}
-}
-
-@media (max-width: 1290px) {
-	.github-button {
-		display: none;
-	}
 }
 </style>

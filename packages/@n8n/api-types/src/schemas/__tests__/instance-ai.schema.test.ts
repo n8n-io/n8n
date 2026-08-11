@@ -3,11 +3,18 @@ import {
 	applyBranchReadOnlyOverrides,
 	buildFetchUrlGrantKey,
 	DEFAULT_INSTANCE_AI_PERMISSIONS,
+	errorPayloadSchema,
 	FETCH_URL_ALLOW_ALL_GRANT_KEY,
 	InstanceAiAdminSettingsUpdateRequest,
 	instanceAiEventSchema,
 	isDisplayableConfirmationRequest,
+	InstanceAiEnsureThreadRequest,
+	findUnbackedSeedWorkflowTools,
+	InstanceAiEvalRestoreThreadRequest,
+	instanceAiEvalSeedAgentSchema,
+	INSTANCE_AI_THREAD_SOURCES,
 	isInstanceAiSandboxProvider,
+	isKnownInstanceAiErrorCode,
 	parseDomainAccessGrants,
 	WEB_SEARCH_GRANT_KEY,
 	workflowSetupNodeSchema,
@@ -48,6 +55,38 @@ describe('instanceAiEventSchema', () => {
 		};
 
 		expect(instanceAiEventSchema.parse(event)).toEqual(event);
+	});
+});
+
+describe('errorPayloadSchema', () => {
+	it('accepts a payload without a code', () => {
+		expect(errorPayloadSchema.parse({ content: 'boom' })).toEqual({ content: 'boom' });
+	});
+
+	it('accepts the quota_exhausted code', () => {
+		const payload = { content: 'out of credits', code: 'quota_exhausted' as const };
+		expect(errorPayloadSchema.parse(payload)).toEqual(payload);
+	});
+
+	it('accepts an unknown code and preserves it (forward-compatible)', () => {
+		// A newer service may emit an error code an older client doesn't recognize.
+		// The wire schema must not reject it, otherwise the whole error event is
+		// dropped by instanceAiEventSchema.safeParse before the reducer's
+		// unknown-code fallback can render a generic error.
+		const parsed = errorPayloadSchema.safeParse({ content: 'boom', code: 'some_future_code' });
+		expect(parsed.success).toBe(true);
+		expect(parsed.success && parsed.data.code).toBe('some_future_code');
+	});
+});
+
+describe('isKnownInstanceAiErrorCode', () => {
+	it('is true for a recognized code', () => {
+		expect(isKnownInstanceAiErrorCode('quota_exhausted')).toBe(true);
+	});
+
+	it('is false for an unknown code or undefined', () => {
+		expect(isKnownInstanceAiErrorCode('some_future_code')).toBe(false);
+		expect(isKnownInstanceAiErrorCode(undefined)).toBe(false);
 	});
 });
 
@@ -342,6 +381,56 @@ describe('isDisplayableConfirmationRequest', () => {
 	});
 });
 
+describe('instance-ai launch schema', () => {
+	it('requires a known source', () => {
+		expect(
+			() =>
+				new InstanceAiEnsureThreadRequest({
+					projectId: 'project-1',
+				} as unknown as ConstructorParameters<typeof InstanceAiEnsureThreadRequest>[0]),
+		).toThrow();
+		expect(
+			() =>
+				new InstanceAiEnsureThreadRequest({
+					projectId: 'project-1',
+					source: 'totally-made-up',
+				} as unknown as ConstructorParameters<typeof InstanceAiEnsureThreadRequest>[0]),
+		).toThrow();
+	});
+
+	it.each(INSTANCE_AI_THREAD_SOURCES)('accepts taxonomy source %s', (source) => {
+		const parsed = new InstanceAiEnsureThreadRequest({
+			projectId: 'project-1',
+			source,
+		});
+		expect(parsed.source).toBe(source);
+	});
+
+	it('parses an ensure-thread request with launch fields', () => {
+		const parsed = new InstanceAiEnsureThreadRequest({
+			projectId: 'project-1',
+			origin: 'external',
+			source: 'website-template',
+			sourceContext: { templateId: '42' },
+		});
+		expect(parsed.origin).toBe('external');
+		expect(parsed.source).toBe('website-template');
+		expect(parsed.sourceContext).toEqual({ templateId: '42' });
+	});
+
+	it('rejects an oversized sourceContext', () => {
+		const big = { blob: 'x'.repeat(3000) };
+		expect(
+			() =>
+				new InstanceAiEnsureThreadRequest({
+					projectId: 'project-1',
+					source: 'assistant_page',
+					sourceContext: big,
+				}),
+		).toThrow();
+	});
+});
+
 describe('domain-access grant keys', () => {
 	it('builds and parses per-host grant keys round-trip', () => {
 		const key = buildFetchUrlGrantKey('example.com');
@@ -375,5 +464,122 @@ describe('domain-access grant keys', () => {
 		const parsed = parseDomainAccessGrants(new Set([FETCH_URL_ALLOW_ALL_GRANT_KEY]));
 		expect(parsed.approvedDomains.size).toBe(0);
 		expect(parsed.allDomainsApproved).toBe(true);
+	});
+});
+
+describe('instanceAiEvalSeedAgentSchema resource references', () => {
+	const config = {
+		name: 'Support Triage',
+		model: 'anthropic/claude-sonnet-4-5',
+		instructions: 'Triage inbound tickets.',
+	};
+	const agent = (over: Record<string, unknown> = {}) => ({
+		id: 'AgEnT12345678901',
+		config,
+		...over,
+	});
+	const errorOf = (result: { success: boolean; error?: { issues: unknown[] } }) =>
+		result.success ? '' : JSON.stringify(result.error?.issues);
+
+	it('accepts an agent whose references are all backed', () => {
+		const result = instanceAiEvalSeedAgentSchema.safeParse(
+			agent({
+				config: { ...config, skills: [{ type: 'skill', id: 'skill_1' }] },
+				skills: {
+					skill_1: { name: 'Triage rules', description: 'How to sort', instructions: 'Label it.' },
+				},
+			}),
+		);
+		expect(result.success).toBe(true);
+	});
+
+	it('rejects a skill reference with no body', () => {
+		// A restored agent missing the skill reads as a build failure, not a broken fixture.
+		const result = instanceAiEvalSeedAgentSchema.safeParse(
+			agent({ config: { ...config, skills: [{ type: 'skill', id: 'skill_1' }] } }),
+		);
+		expect(result.success).toBe(false);
+		expect(errorOf(result)).toContain('carries no body');
+	});
+
+	it('rejects a custom tool, which a seed cannot carry a body for', () => {
+		const result = instanceAiEvalSeedAgentSchema.safeParse(
+			agent({ config: { ...config, tools: [{ type: 'custom', id: 'my_tool' }] } }),
+		);
+		expect(result.success).toBe(false);
+		expect(errorOf(result)).toContain('custom tool');
+	});
+
+	it('rejects declared tasks, which a seed cannot carry bodies for', () => {
+		const result = instanceAiEvalSeedAgentSchema.safeParse(
+			agent({ config: { ...config, tasks: [{ type: 'task', id: 'nightly' }] } }),
+		);
+		expect(result.success).toBe(false);
+		expect(errorOf(result)).toContain('tasks');
+	});
+
+	it('still accepts node and workflow tools', () => {
+		const result = instanceAiEvalSeedAgentSchema.safeParse(
+			agent({ config: { ...config, tools: [{ type: 'workflow', workflow: 'Daily digest' }] } }),
+		);
+		expect(result.success).toBe(true);
+	});
+
+	it('rejects duplicate seed agent ids', () => {
+		// The harness remaps ids through a Set, so both entries take ONE fresh id and
+		// the second `create` on the pinned id aborts the restore.
+		const result = InstanceAiEvalRestoreThreadRequest.safeParse({
+			threadId: '11111111-1111-4111-8111-111111111111',
+			messages: [],
+			agents: [agent(), agent()],
+		});
+		expect(result.success).toBe(false);
+		expect(errorOf(result)).toContain('Duplicate seed agent id');
+	});
+
+	it('rejects sub-agent delegation outright — seeded agents restore unpublished', () => {
+		const result = InstanceAiEvalRestoreThreadRequest.safeParse({
+			threadId: '11111111-1111-4111-8111-111111111111',
+			messages: [],
+			agents: [
+				agent({ config: { ...config, subAgents: { agents: [{ agentId: 'AgEnT99999999999' }] } } }),
+				agent({ id: 'AgEnT99999999999', config: { ...config, name: 'Helper' } }),
+			],
+		});
+		expect(result.success).toBe(false);
+		expect(errorOf(result)).toContain('unpublished draft');
+	});
+
+	it('rejects an inherited property name as a backed skill body', () => {
+		const result = instanceAiEvalSeedAgentSchema.safeParse(
+			agent({ config: { ...config, skills: [{ type: 'skill', id: 'constructor' }] }, skills: {} }),
+		);
+		expect(result.success).toBe(false);
+		expect(errorOf(result)).toContain('carries no body');
+	});
+
+	it('flags a workflow tool no seeded workflow name backs', () => {
+		// Cross-field, so it lives beside the schema rather than in it.
+		const unbacked = findUnbackedSeedWorkflowTools({
+			workflows: [{ name: 'Batch loop' }],
+			agents: [
+				{
+					id: 'AgEnT12345678901',
+					config: { tools: [{ type: 'workflow', workflow: 'wf12345678' }] },
+				},
+			],
+		});
+		expect(unbacked).toEqual([{ agentId: 'AgEnT12345678901', target: 'wf12345678' }]);
+
+		const backed = findUnbackedSeedWorkflowTools({
+			workflows: [{ name: 'Batch loop' }],
+			agents: [
+				{
+					id: 'AgEnT12345678901',
+					config: { tools: [{ type: 'workflow', workflow: 'Batch loop' }] },
+				},
+			],
+		});
+		expect(backed).toEqual([]);
 	});
 });

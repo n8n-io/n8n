@@ -1,3 +1,5 @@
+import { mockLogger } from '@n8n/backend-test-utils';
+import type { GlobalConfig } from '@n8n/config';
 import type {
 	DataSource,
 	ScheduledJob,
@@ -7,6 +9,7 @@ import type {
 import type { DesiredJob, ScheduleDefinition } from '@n8n/scheduler';
 import type { EntityManager } from '@n8n/typeorm';
 import type { Tracing } from 'n8n-core';
+import { ScheduledJobMisfirePolicy } from '@n8n/constants';
 import { mock } from 'vitest-mock-extended';
 
 import { DurableJobProvisioner } from '../durable-job-provisioner';
@@ -39,6 +42,8 @@ const jobRow = (over: Partial<ScheduledJob> = {}): ScheduledJob =>
 		intervalSeconds: null,
 		fireAt: null,
 		nextRunAt: CLOCK,
+		misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
+		misfireGraceSeconds: 90,
 		...over,
 	});
 
@@ -64,8 +69,24 @@ describe('DurableJobProvisioner', () => {
 				await run({ setAttribute() {}, setStatus() {} })) as typeof tracing.startSpan,
 		);
 		jobs.findManyByWorkflowNode.mockResolvedValue([]);
+		jobs.findManyByIds.mockResolvedValue([]);
 		jobs.insertMany.mockResolvedValue([]);
-		provisioner = new DurableJobProvisioner(dataSource, jobs, tasks, tracing);
+		tasks.insertIgnoringDuplicates.mockImplementation(async (_manager, occurrences) => ({
+			recorded: occurrences.length,
+			created: [],
+		}));
+		const globalConfig = mock<GlobalConfig>({
+			scheduler: { materializationWindowSeconds: 60, maxAttempts: 5, misfireGraceSeconds: 90 },
+			generic: { timezone: 'UTC' },
+		});
+		provisioner = new DurableJobProvisioner(
+			mockLogger(),
+			dataSource,
+			jobs,
+			tasks,
+			globalConfig,
+			tracing,
+		);
 	});
 
 	describe('provision', () => {
@@ -78,6 +99,7 @@ describe('DurableJobProvisioner', () => {
 				'schedule-trigger',
 				{ foo: 'bar' },
 				[desiredJob('wf:node:0')],
+				ScheduledJobMisfirePolicy.Coalesce,
 			);
 
 			expect(jobs.insertMany).toHaveBeenCalledWith(manager, [
@@ -95,6 +117,9 @@ describe('DurableJobProvisioner', () => {
 					intervalSeconds: null,
 					fireAt: null,
 					nextRunAt: CLOCK,
+					maxAttempts: 5,
+					misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
+					misfireGraceSeconds: 90,
 				},
 			]);
 			expect(summary.inserted).toEqual([{ id: 100, name: 'wf:node:0' }]);
@@ -103,26 +128,111 @@ describe('DurableJobProvisioner', () => {
 		it('leaves an unchanged job untouched, keeping its id', async () => {
 			jobs.findManyByWorkflowNode.mockResolvedValue([jobRow()]);
 
-			const summary = await provisioner.provision('wf', 'node', 'schedule-trigger', {}, [
-				desiredJob('wf:node:0'),
-			]);
+			const summary = await provisioner.provision(
+				'wf',
+				'node',
+				'schedule-trigger',
+				{},
+				[desiredJob('wf:node:0')],
+				ScheduledJobMisfirePolicy.Coalesce,
+			);
 
 			expect(jobs.insertMany).toHaveBeenCalledWith(manager, []);
+			expect(jobs.updateDefinition).not.toHaveBeenCalled();
+			expect(tasks.deletePendingByJobIds).toHaveBeenCalledWith(manager, []);
+			expect(jobs.updateMisfirePolicy).toHaveBeenCalledWith(manager, [], expect.anything());
+			expect(summary.unchanged).toEqual([{ id: 10, name: 'wf:node:0' }]);
+		});
+
+		it('reconciles the policy of a job whose schedule is unchanged', async () => {
+			jobs.findManyByWorkflowNode.mockResolvedValue([jobRow()]);
+
+			const summary = await provisioner.provision(
+				'wf',
+				'node',
+				'poll-trigger',
+				{},
+				[desiredJob('wf:node:0')],
+				ScheduledJobMisfirePolicy.Skip,
+			);
+
+			expect(jobs.updateMisfirePolicy).toHaveBeenCalledWith(manager, [10], {
+				misfirePolicy: ScheduledJobMisfirePolicy.Skip,
+				misfireGraceSeconds: 90,
+			});
+			// The schedule is untouched, so the job keeps its queued tasks.
 			expect(jobs.updateDefinition).not.toHaveBeenCalled();
 			expect(tasks.deletePendingByJobIds).toHaveBeenCalledWith(manager, []);
 			expect(summary.unchanged).toEqual([{ id: 10, name: 'wf:node:0' }]);
 		});
 
+		it('reconciles the grace of a job whose schedule is unchanged', async () => {
+			jobs.findManyByWorkflowNode.mockResolvedValue([jobRow({ misfireGraceSeconds: 30 })]);
+
+			await provisioner.provision(
+				'wf',
+				'node',
+				'schedule-trigger',
+				{},
+				[desiredJob('wf:node:0')],
+				ScheduledJobMisfirePolicy.Coalesce,
+			);
+
+			expect(jobs.updateMisfirePolicy).toHaveBeenCalledWith(manager, [10], {
+				misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
+				misfireGraceSeconds: 90,
+			});
+		});
+
+		it("recomputes the deadline of a reconciled job's already-queued tasks", async () => {
+			// The row's grace is now current; tasks queued under the old grace
+			// would keep honouring it until claimed or reaped.
+			jobs.findManyByWorkflowNode.mockResolvedValue([jobRow({ misfireGraceSeconds: 30 })]);
+
+			await provisioner.provision(
+				'wf',
+				'node',
+				'schedule-trigger',
+				{},
+				[desiredJob('wf:node:0')],
+				ScheduledJobMisfirePolicy.Coalesce,
+			);
+
+			expect(tasks.updateMissedAfterForJobs).toHaveBeenCalledWith(manager, [10], 90);
+		});
+
+		it("does not touch other jobs' queued tasks when nothing is outdated", async () => {
+			jobs.findManyByWorkflowNode.mockResolvedValue([jobRow()]);
+
+			await provisioner.provision(
+				'wf',
+				'node',
+				'schedule-trigger',
+				{},
+				[desiredJob('wf:node:0')],
+				ScheduledJobMisfirePolicy.Coalesce,
+			);
+
+			expect(tasks.updateMissedAfterForJobs).toHaveBeenCalledWith(manager, [], 90);
+		});
+
 		it('rewrites a changed job in place and withdraws its pending tasks', async () => {
 			jobs.findManyByWorkflowNode.mockResolvedValue([jobRow()]);
 
-			const summary = await provisioner.provision('wf', 'node', 'schedule-trigger', {}, [
-				desiredJob('wf:node:0', {
-					kind: 'cron',
-					cronExpression: '0 0 18 * * *',
-					timezone: 'UTC',
-				}),
-			]);
+			const summary = await provisioner.provision(
+				'wf',
+				'node',
+				'schedule-trigger',
+				{},
+				[
+					desiredJob('wf:node:0', {
+						kind: 'cron',
+						cronExpression: '0 0 18 * * *',
+						timezone: 'UTC',
+					}),
+				],
+				ScheduledJobMisfirePolicy.Coalesce,
+			);
 
 			expect(jobs.updateDefinition).toHaveBeenCalledWith(manager, 10, {
 				kind: 'cron',
@@ -133,6 +243,8 @@ describe('DurableJobProvisioner', () => {
 				intervalSeconds: null,
 				fireAt: null,
 				nextRunAt: CLOCK,
+				misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
+				misfireGraceSeconds: 90,
 			});
 			expect(tasks.deletePendingByJobIds).toHaveBeenCalledWith(manager, [10]);
 			expect(summary.redefined).toEqual([{ id: 10, name: 'wf:node:0' }]);
@@ -141,9 +253,14 @@ describe('DurableJobProvisioner', () => {
 		it('treats a job whose stored clock died as changed', async () => {
 			jobs.findManyByWorkflowNode.mockResolvedValue([jobRow({ nextRunAt: null })]);
 
-			const summary = await provisioner.provision('wf', 'node', 'schedule-trigger', {}, [
-				desiredJob('wf:node:0'),
-			]);
+			const summary = await provisioner.provision(
+				'wf',
+				'node',
+				'schedule-trigger',
+				{},
+				[desiredJob('wf:node:0')],
+				ScheduledJobMisfirePolicy.Coalesce,
+			);
 
 			expect(jobs.updateDefinition).toHaveBeenCalledWith(
 				manager,
@@ -156,16 +273,201 @@ describe('DurableJobProvisioner', () => {
 		it('deletes a job no longer desired', async () => {
 			jobs.findManyByWorkflowNode.mockResolvedValue([jobRow({ id: 11, name: 'wf:node:1' })]);
 
-			const summary = await provisioner.provision('wf', 'node', 'schedule-trigger', {}, []);
+			const summary = await provisioner.provision(
+				'wf',
+				'node',
+				'schedule-trigger',
+				{},
+				[],
+				ScheduledJobMisfirePolicy.Coalesce,
+			);
 
 			expect(jobs.deleteManyByIds).toHaveBeenCalledWith(manager, [11]);
 			expect(summary.removed).toEqual([{ id: 11, name: 'wf:node:1' }]);
 		});
 
+		it('stamps the given policy and the configured grace onto inserted rows', async () => {
+			jobs.insertMany.mockResolvedValue([100]);
+
+			await provisioner.provision(
+				'wf',
+				'node',
+				'poll-trigger',
+				{},
+				[desiredJob('wf:node:0')],
+				ScheduledJobMisfirePolicy.Skip,
+			);
+
+			// Non-default values, so a hardcoded coalesce/60 would fail here.
+			expect(jobs.insertMany).toHaveBeenCalledWith(manager, [
+				expect.objectContaining({
+					misfirePolicy: ScheduledJobMisfirePolicy.Skip,
+					misfireGraceSeconds: 90,
+				}),
+			]);
+		});
+
 		it('runs all writes inside a single transaction', async () => {
-			await provisioner.provision('wf', 'node', 'schedule-trigger', {}, [desiredJob('wf:node:0')]);
+			await provisioner.provision(
+				'wf',
+				'node',
+				'schedule-trigger',
+				{},
+				[desiredJob('wf:node:0')],
+				ScheduledJobMisfirePolicy.Coalesce,
+			);
 
 			expect(dataSource.transaction).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe('seeding a freshly provisioned job', () => {
+		const SEED_NOW = new Date('2026-01-05T00:00:00.000Z');
+		const at = (seconds: number) => new Date(SEED_NOW.getTime() + seconds * 1000);
+
+		// A plain object, not `mock<ScheduledJob>`: the seed plans the row, and a mock
+		// would proxy its Date fields, which then leak into the recorded occurrences.
+		const intervalRow = (id: number, nextRunAt: Date): ScheduledJob =>
+			({
+				id,
+				name: 'wf:node:0',
+				workflowId: 'wf',
+				nodeId: 'node',
+				kind: 'interval',
+				cronExpression: null,
+				timezone: null,
+				recurrenceUnit: null,
+				recurrenceSize: null,
+				intervalSeconds: 30,
+				fireAt: null,
+				enabled: true,
+				nextRunAt,
+				lastFiredAt: null,
+				taskType: 'schedule-trigger',
+				payload: {},
+				maxAttempts: 1,
+				misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
+				misfireGraceSeconds: 60,
+			}) as unknown as ScheduledJob;
+
+		// The first fire (30s out) plus every fire up to the 60s window, each a task
+		// due at its own instant.
+		const firstWindowOf = (jobId: number) => [
+			{
+				jobId,
+				taskType: 'schedule-trigger',
+				payload: {},
+				scheduledFor: at(30),
+				runAt: at(30),
+				maxAttempts: 1,
+				// Its own instant plus the job's 60s grace.
+				missedAfter: at(90),
+			},
+			{
+				jobId,
+				taskType: 'schedule-trigger',
+				payload: {},
+				scheduledFor: at(60),
+				runAt: at(60),
+				maxAttempts: 1,
+				missedAfter: at(120),
+			},
+		];
+
+		beforeEach(() => {
+			// The seed sizes its window from DB time, not the instance clock.
+			tasks.readDbTime.mockResolvedValue(SEED_NOW);
+		});
+
+		it('queues the first window of a fresh job ahead of its due time instead of leaving it for a later poll', async () => {
+			const firstRunAt = at(30);
+			// The seed reads the row it just inserted back by id, now carrying its clock.
+			jobs.findManyByIds.mockResolvedValue([intervalRow(100, firstRunAt)]);
+			jobs.insertMany.mockResolvedValue([100]);
+
+			await provisioner.provision(
+				'wf',
+				'node',
+				'schedule-trigger',
+				{},
+				[desiredJob('wf:node:0', { kind: 'interval', intervalSeconds: 30 }, firstRunAt)],
+				ScheduledJobMisfirePolicy.Coalesce,
+			);
+
+			// The whole first window is recorded now, at provision time. All fires lie
+			// in the future, so the executor fires them on time rather than discovering
+			// the first one only after it has already passed.
+			expect(jobs.findManyByIds).toHaveBeenCalledWith(manager, [100]);
+			expect(tasks.insertIgnoringDuplicates.mock.calls[0]?.[1]).toEqual(firstWindowOf(100));
+			// The first recorded fire is still in the future when it is queued.
+			expect(at(30).getTime()).toBeGreaterThan(SEED_NOW.getTime());
+			// The clock advances past the window, as a materializer pass would leave it.
+			expect(jobs.advanceMany.mock.calls[0]?.[1]).toEqual([
+				{ id: 100, nextRunAt: at(90), lastFiredAt: at(60) },
+			]);
+		});
+
+		it('re-seeds a redefined job, recording its new window only after the stale tasks are withdrawn', async () => {
+			const firstRunAt = at(30);
+			// An existing job with a different definition, so the desired rule redefines it.
+			jobs.findManyByWorkflowNode.mockResolvedValue([
+				mock<ScheduledJob>({
+					id: 10,
+					name: 'wf:node:0',
+					kind: 'cron',
+					cronExpression: '0 0 9 * * *',
+					timezone: 'UTC',
+					recurrenceUnit: null,
+					recurrenceSize: null,
+					intervalSeconds: null,
+					fireAt: null,
+					nextRunAt: at(0),
+				}),
+			]);
+			jobs.findManyByIds.mockResolvedValue([intervalRow(10, firstRunAt)]);
+
+			await provisioner.provision(
+				'wf',
+				'node',
+				'schedule-trigger',
+				{},
+				[desiredJob('wf:node:0', { kind: 'interval', intervalSeconds: 30 }, firstRunAt)],
+				ScheduledJobMisfirePolicy.Coalesce,
+			);
+
+			// The redefine's stale tasks are withdrawn before the fresh window is seeded,
+			// so the new occurrences are the last word.
+			expect(tasks.deletePendingByJobIds).toHaveBeenCalledWith(manager, [10]);
+			expect(tasks.deletePendingByJobIds.mock.invocationCallOrder[0]).toBeLessThan(
+				tasks.insertIgnoringDuplicates.mock.invocationCallOrder[0],
+			);
+			expect(tasks.insertIgnoringDuplicates.mock.calls[0]?.[1]).toEqual(firstWindowOf(10));
+			expect(jobs.advanceMany.mock.calls[0]?.[1]).toEqual([
+				{ id: 10, nextRunAt: at(90), lastFiredAt: at(60) },
+			]);
+		});
+
+		it('does not seed a clock-dead job (a rule that never fires)', async () => {
+			const deadRow = mock<ScheduledJob>({
+				id: 101,
+				name: 'wf:node:0',
+				enabled: true,
+				nextRunAt: null,
+			});
+			jobs.findManyByIds.mockResolvedValue([deadRow]);
+			jobs.insertMany.mockResolvedValue([101]);
+
+			await provisioner.provision(
+				'wf',
+				'node',
+				'schedule-trigger',
+				{},
+				[desiredJob('wf:node:0', cronSchedule, null)],
+				ScheduledJobMisfirePolicy.Coalesce,
+			);
+
+			expect(tasks.insertIgnoringDuplicates).not.toHaveBeenCalled();
+			expect(jobs.advanceMany).not.toHaveBeenCalled();
 		});
 	});
 
@@ -203,9 +505,14 @@ describe('DurableJobProvisioner', () => {
 				columns: { fireAt: FIRE_AT },
 			},
 		])('flattens a $name schedule onto the inserted row', async ({ name, schedule, columns }) => {
-			await provisioner.provision('wf', 'node', 'schedule-trigger', {}, [
-				desiredJob('wf:node:0', schedule),
-			]);
+			await provisioner.provision(
+				'wf',
+				'node',
+				'schedule-trigger',
+				{},
+				[desiredJob('wf:node:0', schedule)],
+				ScheduledJobMisfirePolicy.Coalesce,
+			);
 
 			expect(jobs.insertMany).toHaveBeenCalledWith(manager, [
 				{
@@ -222,6 +529,9 @@ describe('DurableJobProvisioner', () => {
 					intervalSeconds: null,
 					fireAt: null,
 					nextRunAt: CLOCK,
+					maxAttempts: 5,
+					misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
+					misfireGraceSeconds: 90,
 					...columns,
 				},
 			]);
@@ -302,9 +612,14 @@ describe('DurableJobProvisioner', () => {
 		it.each(cases)('leaves an unchanged $name job untouched', async ({ row, same }) => {
 			jobs.findManyByWorkflowNode.mockResolvedValue([row()]);
 
-			const summary = await provisioner.provision('wf', 'node', 'schedule-trigger', {}, [
-				desiredJob('wf:node:0', same),
-			]);
+			const summary = await provisioner.provision(
+				'wf',
+				'node',
+				'schedule-trigger',
+				{},
+				[desiredJob('wf:node:0', same)],
+				ScheduledJobMisfirePolicy.Coalesce,
+			);
 
 			expect(jobs.updateDefinition).not.toHaveBeenCalled();
 			expect(summary.unchanged).toEqual([{ id: 10, name: 'wf:node:0' }]);
@@ -313,9 +628,14 @@ describe('DurableJobProvisioner', () => {
 		it.each(cases)('rewrites a changed $name job in place', async ({ row, changed }) => {
 			jobs.findManyByWorkflowNode.mockResolvedValue([row()]);
 
-			const summary = await provisioner.provision('wf', 'node', 'schedule-trigger', {}, [
-				desiredJob('wf:node:0', changed),
-			]);
+			const summary = await provisioner.provision(
+				'wf',
+				'node',
+				'schedule-trigger',
+				{},
+				[desiredJob('wf:node:0', changed)],
+				ScheduledJobMisfirePolicy.Coalesce,
+			);
 
 			expect(jobs.updateDefinition).toHaveBeenCalledWith(
 				manager,
@@ -331,7 +651,14 @@ describe('DurableJobProvisioner', () => {
 			]);
 
 			await expect(
-				provisioner.provision('wf', 'node', 'schedule-trigger', {}, [desiredJob('wf:node:0')]),
+				provisioner.provision(
+					'wf',
+					'node',
+					'schedule-trigger',
+					{},
+					[desiredJob('wf:node:0')],
+					ScheduledJobMisfirePolicy.Coalesce,
+				),
 			).rejects.toThrow('Unexpected scheduled job kind');
 		});
 	});
@@ -345,6 +672,33 @@ describe('DurableJobProvisioner', () => {
 			expect(jobs.deleteByWorkflowNode).toHaveBeenCalledWith(manager, 'wf', 'node');
 			expect(dataSource.transaction).toHaveBeenCalledTimes(1);
 			expect(result).toEqual({ removed: 3 });
+		});
+	});
+
+	describe('deprovisionWorkflow', () => {
+		it('deletes the whole workflow scope inside a transaction and reports the count', async () => {
+			jobs.deleteByWorkflowTaskType.mockResolvedValue(5);
+
+			const result = await provisioner.deprovisionWorkflow('wf', 'schedule-trigger');
+
+			expect(jobs.deleteByWorkflowTaskType).toHaveBeenCalledWith(manager, 'wf', 'schedule-trigger');
+			expect(dataSource.transaction).toHaveBeenCalledTimes(1);
+			expect(result).toEqual({ removed: 5 });
+		});
+	});
+
+	describe('deprovisionWorkflowInTransaction', () => {
+		it("deletes the whole workflow scope through the caller's manager, without opening a transaction of its own", async () => {
+			const callerManager = mock<EntityManager>();
+
+			await provisioner.deprovisionWorkflowInTransaction(callerManager, 'wf', 'schedule-trigger');
+
+			expect(jobs.deleteByWorkflowTaskType).toHaveBeenCalledWith(
+				callerManager,
+				'wf',
+				'schedule-trigger',
+			);
+			expect(dataSource.transaction).not.toHaveBeenCalled();
 		});
 	});
 });

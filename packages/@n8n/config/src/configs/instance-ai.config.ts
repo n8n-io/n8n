@@ -4,7 +4,7 @@ import { Config, Env } from '../decorators';
 
 @Config
 export class InstanceAiConfig {
-	/** LLM model in provider/model format (e.g. "anthropic/claude-opus-4-8"). */
+	/** LLM model in provider/model format, or a bare model name for a custom endpoint. */
 	@Env('N8N_INSTANCE_AI_MODEL')
 	model: string = 'anthropic/claude-opus-4-8';
 
@@ -172,7 +172,34 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_RUN_DEBUG_ENABLED')
 	runDebugEnabled: boolean = false;
 
+	/**
+	 * Persist Instance AI events to a durable DB log (`instance_ai_events`)
+	 * and serve SSE replay + history from it. Default on since Gate A of the
+	 * durable-log rollout (pre-existing runs are backfilled by migration);
+	 * `false` restores the legacy in-memory bus + stored-snapshot history as
+	 * an off switch until the legacy paths sunset at Gate B. See RFC:
+	 * instance-ai durable event log.
+	 */
+	@Env('N8N_INSTANCE_AI_DURABLE_LOG')
+	durableLog: boolean = true;
+
 	/** Enable extended thinking / reasoning for the orchestrator agent. */
 	@Env('N8N_INSTANCE_AI_THINKING_ENABLED')
 	thinkingEnabled: boolean = true;
+
+	/**
+	 * Let the assistant discover and connect MCP registry servers.
+	 * Force enable the `089_instance_ai_mcp_connections` PostHog flag
+	 */
+	@Env('N8N_INSTANCE_AI_MCP_CONNECTIONS_ENABLED')
+	mcpConnectionsEnabled: boolean = false;
+
+	/**
+	 * Force-enable canvas-selected-nodes chat context in Instance AI.
+	 * Acts as an operator-level override of the PostHog rollout flag
+	 * (`104_canvas_aia_node_context`). Cannot force-disable: setting this to
+	 * `false` falls back to PostHog.
+	 */
+	@Env('N8N_INSTANCE_AI_NODE_CONTEXT_ENABLED')
+	canvasNodeContextEnabled: boolean = false;
 }

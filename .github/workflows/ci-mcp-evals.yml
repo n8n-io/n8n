@@ -1,4 +1,5 @@
 name: 'CI: MCP Workflow Evals'
+run-name: "CI: MCP Workflow Evals (tier=${{ inputs.tier }}, iterations=${{ inputs.iterations }}, model=${{ inputs['build-model'] }}, filter=${{ inputs.filter || 'all' }})"
 
 # Runs the MCP workflow evals: builds workflows through the instance MCP server
 # with Claude, then scores them. Manual only (Actions tab → "Run workflow"),
@@ -69,3 +70,5 @@ jobs:
       N8N_ENCRYPTION_KEY: ${{ secrets.N8N_ENCRYPTION_KEY }}
       EVALS_LANGSMITH_ENDPOINT: ${{ secrets.EVALS_LANGSMITH_ENDPOINT }}
       EVALS_LANGSMITH_API_KEY: ${{ secrets.EVALS_LANGSMITH_API_KEY }}
+      EVALS_LANGTRACER_URL: ${{ secrets.EVALS_LANGTRACER_URL }}
+      LANGTRACER_API_KEY: ${{ secrets.LANGTRACER_API_KEY }}

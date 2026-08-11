@@ -26,8 +26,14 @@ export function hashWorkflowSource(source: string): string {
 	return createHash('sha256').update(source).digest('hex');
 }
 
-export function normalizeWorkflowSourceFilePath(filePath: string): string {
-	return normalizeWorkspaceRelativePath(filePath, { resourceLabel: 'Workflow source file' });
+export function normalizeWorkflowSourceFilePath(
+	filePath: string,
+	options: { workspaceRoot?: string } = {},
+): string {
+	return normalizeWorkspaceRelativePath(filePath, {
+		resourceLabel: 'Workflow source file',
+		workspaceRoot: options.workspaceRoot,
+	});
 }
 
 function parseBindings(raw: unknown): Record<string, WorkflowSourceFileBinding> {
@@ -176,6 +182,7 @@ export async function refreshWorkflowSourceFileBindingFromSave(
 export async function readWorkflowSourceFile(
 	context: InstanceAiContext,
 	filePath: string,
+	abortSignal?: AbortSignal,
 ): Promise<{ source: string; sourceHash: string }> {
 	if (!context.workspace) {
 		throw new Error('Runtime workspace is required for workflow source files.');
@@ -185,6 +192,7 @@ export async function readWorkflowSourceFile(
 	const source = await readWorkspaceFile(context.workspace, normalizedFilePath, {
 		logger: context.logger,
 		resourceLabel: 'Workflow source file',
+		abortSignal,
 	});
 
 	if (source === null) {

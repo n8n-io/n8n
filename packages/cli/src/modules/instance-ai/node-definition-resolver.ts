@@ -6,11 +6,14 @@
  * pure functions without LangChain dependencies.
  */
 
-import { parseNodeId, toSnakeCase, isValidPathComponent } from '@n8n/ai-utilities/node-catalog';
+import {
+	parseNodeId,
+	toSnakeCase,
+	isValidPathComponent,
+	versionDirToNumber,
+} from '@n8n/ai-utilities/node-catalog';
 import { safeJoinPath } from '@n8n/backend-common';
-import { BUILTIN_NODES_PACKAGES } from '@n8n/constants';
 import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
-import { dirname } from 'node:path';
 
 function getNodesPaths(nodeDefinitionDirs: string[]): string[] {
 	return nodeDefinitionDirs.map((dir) => safeJoinPath(dir, 'nodes'));
@@ -69,11 +72,8 @@ function getNodeVersions(nodeId: string, nodeDefinitionDirs: string[]): string[]
 			}
 		}
 
-		versions.sort((a, b) => {
-			const aNum = parseInt(a.slice(1), 10);
-			const bNum = parseInt(b.slice(1), 10);
-			return bNum - aNum;
-		});
+		// Sort by numeric version descending (v22 is 2.2, not 22, so it ranks below v3)
+		versions.sort((a, b) => versionDirToNumber(b) - versionDirToNumber(a));
 
 		return versions;
 	} catch {
@@ -388,24 +388,4 @@ ${readFileSync(variant.filePath, 'utf-8')}`,
 			error: `Error reading node definition for '${nodeId}': ${error instanceof Error ? error.message : 'Unknown error'}`,
 		};
 	}
-}
-
-/**
- * Resolve the built-in node definition directories from installed node packages.
- */
-export function resolveBuiltinNodeDefinitionDirs(): string[] {
-	const dirs: string[] = [];
-	for (const packageId of BUILTIN_NODES_PACKAGES) {
-		try {
-			const packageJsonPath = require.resolve(`${packageId}/package.json`);
-			const distDir = dirname(packageJsonPath);
-			const nodeDefsDir = safeJoinPath(distDir, 'dist', 'node-definitions');
-			if (existsSync(nodeDefsDir)) {
-				dirs.push(nodeDefsDir);
-			}
-		} catch {
-			// Package not installed, skip
-		}
-	}
-	return dirs;
 }

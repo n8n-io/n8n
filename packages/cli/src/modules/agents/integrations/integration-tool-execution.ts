@@ -267,12 +267,25 @@ function withPreviousSubject(
 ): IntegrationMessageContext {
 	if (!previousContext) return context;
 	if (context.integrationConnectionId !== previousContext.integrationConnectionId) return context;
+	const replyExpectation = context.replyExpectation ?? previousContext.replyExpectation;
+	const replyTarget =
+		context.replyTarget ??
+		previousContext.replyTarget ??
+		(replyExpectation ? previousContext.target : undefined);
+	const replyMessageId =
+		context.replyMessageId ??
+		previousContext.replyMessageId ??
+		(replyExpectation ? previousContext.messageId : undefined);
+
 	return {
 		...context,
 		...(!context.subject && previousContext.subject ? { subject: previousContext.subject } : {}),
 		...(!context.agentUserId && previousContext.agentUserId
 			? { agentUserId: previousContext.agentUserId }
 			: {}),
+		...(replyExpectation ? { replyExpectation } : {}),
+		...(replyTarget ? { replyTarget } : {}),
+		...(replyMessageId ? { replyMessageId } : {}),
 	};
 }
 

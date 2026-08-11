@@ -201,4 +201,81 @@ describe('LmChatGoogleVertex - Thinking Budget', () => {
 			);
 		});
 	});
+
+	describe('supplyData - failed attempt error handling', () => {
+		const getCustomErrorHandler = async () => {
+			const mockContext = setupMockContext();
+
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'modelName') return 'gemini-3.1-flash-lite';
+				if (paramName === 'projectId') return 'test-project';
+				if (paramName === 'options') return {};
+				if (paramName === 'options.safetySettings.values') return null;
+				return undefined;
+			});
+
+			await lmChatGoogleVertex.supplyData.call(mockContext, 0);
+
+			return mockedMakeN8nLlmFailedAttemptHandler.mock.calls[0][1]!;
+		};
+
+		it('should map 403 to a friendly unauthorized error', async () => {
+			const handler = await getCustomErrorHandler();
+
+			expect(() => handler({ response: { status: 403 } })).toThrowError(
+				'Unauthorized for this project',
+			);
+		});
+
+		it('should surface the Google error detail on 400', async () => {
+			const handler = await getCustomErrorHandler();
+			const error = {
+				message: 'Google request failed with status code 400',
+				response: {
+					status: 400,
+					data: { error: { message: 'Function call is missing a thought_signature' } },
+				},
+			};
+
+			try {
+				handler(error);
+				expect.unreachable('handler should throw');
+			} catch (e) {
+				expect(e).toMatchObject({
+					message: 'Bad request - please check your parameters',
+					description: 'Function call is missing a thought_signature',
+				});
+			}
+		});
+
+		it('should fall back to the raw error message on 400 when no Google detail is found', async () => {
+			const handler = await getCustomErrorHandler();
+			const error = {
+				message: 'Request had invalid authentication scopes',
+				response: { status: 400 },
+			};
+
+			try {
+				handler(error);
+				expect.unreachable('handler should throw');
+			} catch (e) {
+				expect(e).toMatchObject({
+					message: 'Bad request - please check your parameters',
+					description: 'Request had invalid authentication scopes',
+				});
+			}
+		});
+
+		it('should rethrow the original error for unmapped statuses', async () => {
+			const handler = await getCustomErrorHandler();
+			const error = { message: 'boom', response: { status: 500 } };
+
+			try {
+				handler(error);
+				expect.unreachable('handler should throw');
+			} catch (e) {
+				expect(e).toBe(error);
+			}
+		});
+	});
 });

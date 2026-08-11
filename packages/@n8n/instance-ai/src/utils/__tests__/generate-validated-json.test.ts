@@ -79,4 +79,23 @@ describe('generateValidatedJson', () => {
 		});
 		expect(await generate()).toEqual({ ok: false, reason: 'generation_failed' });
 	});
+
+	it('forwards the fallback model config to agent creation', async () => {
+		setupAgentMock('{"ok": true}');
+		const fallbackModelConfig = {
+			id: 'anthropic/claude-opus-4-8' as const,
+			url: 'https://proxy.example.com/anthropic/v1',
+			apiKey: 'proxy-token',
+		};
+		await generateValidatedJson('test-agent', {
+			instructions: 'instructions',
+			userText: 'do it',
+			schema,
+			fallbackModelConfig,
+		});
+		expect(mockCreateEvalAgent).toHaveBeenCalledWith(
+			'test-agent',
+			expect.objectContaining({ fallbackModelConfig }),
+		);
+	});
 });

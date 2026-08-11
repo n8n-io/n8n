@@ -194,6 +194,7 @@ describe('schedule-trigger occurrence to a real execution', () => {
 				claimedBy: null,
 				leaseExpiresAt: null,
 				startedAt: null,
+				dispatchedAt: null,
 				finishedAt: null,
 				runAt: new Date(Date.now() - 1000),
 			},

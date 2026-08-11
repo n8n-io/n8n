@@ -132,6 +132,17 @@ export interface IExecutionsCurrentSummary {
 	status: ExecutionStatus;
 }
 
+/**
+ * An already-persisted execution a process wants to take over, plus the status it must
+ * still be in for the claim to succeed. The status travels with the id so the takeover
+ * is a compare-and-swap: if the row moved on, another process already claimed it.
+ */
+export interface ResumableExecution {
+	executionId: string;
+	/** `waiting` for a row being resumed, `new` for one enqueued before a restart. */
+	expectedStatus: Extract<ExecutionStatus, 'new' | 'waiting'>;
+}
+
 export interface IExecutingWorkflowData {
 	executionData: IWorkflowExecutionDataProcess;
 	startedAt: Date;
@@ -200,9 +211,16 @@ export interface IExecutionTrackProperties extends ITelemetryTrackProperties {
 
 export interface IAgentExecutionTrackProperties extends ITelemetryTrackProperties {
 	agent_id: string;
-	/** n8n user ID, present only when the agent run has direct n8n user context. */
+	/**
+	 * n8n user ID, present only when the agent run has direct n8n user context —
+	 * so in-app chat and manual task runs, but never chat integrations or cron.
+	 */
 	user_id?: string;
-	/** Fresh user turns only. Resume continuations do not increment this count. */
+	run_type: AgentRunTelemetryType;
+	/**
+	 * Fresh user turns only. Resume continuations and delegated child runs do not
+	 * increment this count.
+	 */
 	message_count?: number;
 	/** AI SDK usage from agent, title, memory generation, and embedding calls. */
 	token_count?: number;
@@ -235,10 +253,18 @@ export interface IAgentTurnFinishedTrackProperties extends ITelemetryTrackProper
 	/** Internal aggregation key only. This must never be emitted to telemetry. */
 	thread_id: string;
 	run_type: AgentRunTelemetryType;
+	/** Absent for saved agents; 'inline' for node-embedded agent definitions. */
+	agent_type?: 'inline';
 	turn_status: AgentTurnTelemetryStatus;
 	configuration: IAgentConfigurationTelemetryProperties;
 	latency_ms: number;
 	cost: number;
+	/**
+	 * Tokens for this turn only, from the same recorded usage as `cost` — so the
+	 * two reconcile. Narrower than the token count on `Agent execution count`,
+	 * which also covers LLM calls belonging to no turn.
+	 */
+	token_count: number;
 	tool_call_count: number;
 }
 

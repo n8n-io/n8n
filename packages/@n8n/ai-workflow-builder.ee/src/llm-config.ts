@@ -2,8 +2,8 @@
 import type * as LangchainAnthropic from '@langchain/anthropic';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type * as LangchainOpenAI from '@langchain/openai';
-import { lazyImport } from '@n8n/ai-utilities/lazy-import';
 import type { CustomFetch } from '@n8n/backend-network/transport';
+import { lazyImport } from '@n8n/utils/lazy-import';
 
 import { MAX_OUTPUT_TOKENS } from '@/constants';
 

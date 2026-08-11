@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { useLoadingService } from '@/app/composables/useLoadingService';
-import { useTelemetry } from '@/app/composables/useTelemetry';
-import { useToast } from '@/app/composables/useToast';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { useToast } from '@n8n/composables/useToast';
 import { VIEWS } from '@/app/constants';
 import {
 	SOURCE_CONTROL_PULL_MODAL_KEY,
@@ -9,7 +9,7 @@ import {
 } from '../sourceControl.constants';
 import { sourceControlEventBus } from '../sourceControl.eventBus';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useSourceControlStore } from '../sourceControl.store';
 import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
 import { useSourceControlFileList } from '../composables/useSourceControlFileList';

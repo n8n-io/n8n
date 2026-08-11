@@ -9,7 +9,8 @@ import type { InstanceAiAgentNode } from '@n8n/api-types';
 import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
 import { computed, ref, watch } from 'vue';
 import SubagentStepTimeline from './SubagentStepTimeline.vue';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { getBuilderRoleLabel } from '../builderAgents';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 
 const props = defineProps<{
 	agentNode: InstanceAiAgentNode;
@@ -23,18 +24,26 @@ const isExpanded = ref(settingsStore.isCloudDeployment);
 const isError = computed(() => props.agentNode.status === 'error');
 
 const sectionTitle = computed(
-	() => props.agentNode.subtitle ?? props.agentNode.role ?? 'Working...',
+	() =>
+		props.agentNode.title ??
+		getBuilderRoleLabel(props.agentNode) ??
+		props.agentNode.targetResource?.name ??
+		props.agentNode.subtitle ??
+		props.agentNode.role ??
+		'Working...',
 );
 
 /**
- * Most recent timeline entry that SubagentStepTimeline can render (text or
- * tool call), shown as a peek while collapsed and active.
+ * Most recent timeline entry that SubagentStepTimeline can render (text,
+ * tool call, or reasoning), shown as a peek while collapsed and active.
  */
 const peekEntries = computed(() => {
 	const entries = props.agentNode.timeline;
 	for (let i = entries.length - 1; i >= 0; i--) {
 		const entry = entries[i];
-		if (entry.type === 'text' || entry.type === 'tool-call') return [entry];
+		if (entry.type === 'text' || entry.type === 'tool-call' || entry.type === 'reasoning') {
+			return [entry];
+		}
 	}
 	return [];
 });
