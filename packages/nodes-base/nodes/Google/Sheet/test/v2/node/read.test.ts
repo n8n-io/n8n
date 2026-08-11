@@ -244,6 +244,29 @@ describe('Google Sheet - Read - All Sheets', () => {
 		});
 	});
 
+	test('should key each sheet off its own header row when the headers differ', async () => {
+		rowsBySheet.Q2 = [
+			['amount', 'name', 'region'],
+			['20', 'Grace', 'EU'],
+		];
+
+		const result = await execute.call(mockExecuteFunctions as IExecuteFunctions, sheet, '');
+
+		// Sheets are read independently, so a differing column order or an extra
+		// column changes only that sheet's rows - it is not an error, and the
+		// fields are not unioned across sheets
+		expect(result).toEqual([
+			{
+				json: { _sheetName: 'Q1', name: 'Ada', amount: '10', row_number: 2 },
+				pairedItem: { item: 0 },
+			},
+			{
+				json: { _sheetName: 'Q2', amount: '20', name: 'Grace', region: 'EU', row_number: 2 },
+				pairedItem: { item: 0 },
+			},
+		]);
+	});
+
 	test('should return an empty array when the spreadsheet has no readable sheets', async () => {
 		sheet.spreadsheetGetSheets = vi
 			.fn()
