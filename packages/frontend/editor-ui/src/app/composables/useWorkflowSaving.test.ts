@@ -1,6 +1,12 @@
 import { nextTick } from 'vue';
 import { useUIStore } from '@/app/stores/ui.store';
-import { AutoSaveState, MODAL_CANCEL, MODAL_CONFIRM, VIEWS } from '@/app/constants';
+import {
+	AutoSaveState,
+	DEFAULT_NEW_WORKFLOW_NAME,
+	MODAL_CANCEL,
+	MODAL_CONFIRM,
+	VIEWS,
+} from '@/app/constants';
 import { useWorkflowSaving } from './useWorkflowSaving';
 import router from '@/app/router';
 import { createTestingPinia } from '@pinia/testing';
@@ -380,6 +386,19 @@ describe('useWorkflowSaving', () => {
 	});
 
 	describe('saveAsNewWorkflow', () => {
+		it('should fall back to the default name when the name is blank', async () => {
+			vi.spyOn(workflowsStore, 'createNewWorkflow').mockResolvedValue(
+				createTestWorkflow({ id: 'w-new' }),
+			);
+
+			const { saveAsNewWorkflow } = useWorkflowSaving({ router });
+			await saveAsNewWorkflow({ data: { name: '   ', nodes: [], connections: {} } });
+
+			expect(workflowsStore.createNewWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({ name: DEFAULT_NEW_WORKFLOW_NAME }),
+			);
+		});
+
 		it('should respect `resetWebhookUrls: false` when duplicating workflows', async () => {
 			const workflow = getDuplicateTestWorkflow();
 			if (!workflow.nodes) {
@@ -575,6 +594,28 @@ describe('useWorkflowSaving', () => {
 				expect.objectContaining({ id: 'w0', active: true }),
 				false,
 			);
+		});
+
+		it('should omit the name from the request when the document name is blank', async () => {
+			const workflow = createTestWorkflow({
+				id: 'w-blank-name',
+				name: '   ',
+				nodes: [createTestNode({ type: CHAT_TRIGGER_NODE_TYPE, disabled: false })],
+				active: true,
+			});
+
+			vi.spyOn(workflowsListStore, 'fetchWorkflow').mockResolvedValue(workflow);
+			vi.spyOn(workflowsStore, 'updateWorkflow').mockResolvedValue(workflow);
+
+			workflowsStore.setWorkflowId(workflow.id);
+			useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id)).hydrate(workflow);
+			workflowsListStore.workflowsById = { [workflow.id]: workflow };
+
+			const { saveCurrentWorkflow } = useWorkflowSaving({ router });
+			await saveCurrentWorkflow({ id: workflow.id });
+
+			const [, request] = vi.mocked(workflowsStore.updateWorkflow).mock.calls[0];
+			expect(request).not.toHaveProperty('name');
 		});
 
 		it('should not include active=false in the request if the workflow has no activatable trigger node', async () => {

@@ -12,6 +12,7 @@ import {
 	VIEWS,
 	AutoSaveState,
 	DEBOUNCE_TIME,
+	DEFAULT_NEW_WORKFLOW_NAME,
 } from '@/app/constants';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -220,6 +221,12 @@ export function useWorkflowSaving({
 				// via the browser back button, encountering our warning dialog with the new route already set
 				if (workflowDataRequest.id !== currentWorkflow) {
 					throw new Error('Attempted to save a workflow different from the current workflow');
+				}
+
+				// The backend rejects a blank name outright, and omitting the key leaves
+				// the stored name untouched
+				if (!workflowDataRequest.name?.trim()) {
+					delete workflowDataRequest.name;
 				}
 
 				// Check if AI Builder made edits since last save
@@ -452,6 +459,12 @@ export function useWorkflowSaving({
 
 			if (name) {
 				workflowDataRequest.name = name.trim();
+			}
+
+			// A create request has no stored name to fall back on, so the default
+			// stands in until the real one arrives
+			if (!workflowDataRequest.name?.trim()) {
+				workflowDataRequest.name = DEFAULT_NEW_WORKFLOW_NAME;
 			}
 
 			if (tags) {
