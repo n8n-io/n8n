@@ -265,6 +265,9 @@ const i18n = useI18n();
 					data-testid="agent-evals-tab-content"
 				>
 					<AgentEvalsSection
+						:project-id="projectId"
+						:agent-id="agentId"
+						:agent-unsaved="agentUnsaved"
 						:disabled="childrenDisabled"
 						:generating="generatingEvalCases"
 						@generate="emit('generate-eval-cases')"

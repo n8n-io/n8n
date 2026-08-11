@@ -131,6 +131,13 @@ export const agentEvalCorrectionSchema = z
 	.catchall(jsonValueSchema);
 export type AgentEvalCorrection = z.infer<typeof agentEvalCorrectionSchema>;
 
+// Bounds on the free-text a rating carries. The schema can't enforce them —
+// `comment` has no `.max()` because the rating service checks it alongside the
+// whole-correction size limit, which zod can't express — so they live here to be
+// read by both that service and the editor, rather than restated in each.
+export const AGENT_EVAL_MAX_COMMENT_CHARS = 2_000;
+export const AGENT_EVAL_MAX_CORRECTION_TEXT_CHARS = 20_000;
+
 // A human's 👍/👎 on the path result, with an optional free-text comment and an
 // edited "should have been" output.
 const createAgentEvalRatingShape = {
