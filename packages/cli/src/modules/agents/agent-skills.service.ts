@@ -155,6 +155,8 @@ export class AgentSkillsService {
 		if (!existing) throw new NotFoundError('Skill not found');
 
 		const updated = { ...existing, ...updates };
+		if ('allowedTools' in updates && !updates.allowedTools?.length) delete updated.allowedTools;
+		if ('references' in updates && !updates.references?.length) delete updated.references;
 		this.validateSkill(updated);
 		this.assertSkillNameIsUnique(entity.skills ?? {}, updated.name, skillId);
 
