@@ -231,16 +231,24 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		)) as IExecutionFlattedDb[] | IExecutionResponse[] | IExecutionBase[];
 	}
 
+	/**
+	 * Report executions whose data bundle could not be read. Logged rather than reported as an
+	 * error: the data is already lost out of band (a stale blob volume, an expired object, a
+	 * partial restore), so there is no code defect to alert on. The `storedAt` breakdown tells
+	 * an operator which store lost it.
+	 */
 	reportInvalidExecutions(executions: ExecutionEntity[]) {
 		if (executions.length === 0) return;
 
-		this.errorReporter.error(
-			new UnexpectedError('Found executions without executionData', {
-				extra: {
-					executionIds: executions.map(({ id }) => id),
-				},
-			}),
-		);
+		const countsByStoredAt: Partial<Record<ExecutionDataStorageLocation, number>> = {};
+		for (const { storedAt } of executions) {
+			countsByStoredAt[storedAt] = (countsByStoredAt[storedAt] ?? 0) + 1;
+		}
+
+		this.logger.warn('Found executions without executionData', {
+			executionIds: executions.map(({ id }) => id),
+			countsByStoredAt,
+		});
 	}
 
 	private serializeAnnotation(annotation: ExecutionEntity['annotation']) {

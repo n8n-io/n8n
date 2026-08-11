@@ -1,10 +1,11 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
+import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { SqliteConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type { SelectQueryBuilder } from '@n8n/typeorm';
 import { In, LessThan, LessThanOrEqual, And, Not } from '@n8n/typeorm';
-import { BinaryDataService } from 'n8n-core';
+import { BinaryDataService, ErrorReporter } from 'n8n-core';
 import type { IRunExecutionData, IWorkflowBase } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { mock } from 'vitest-mock-extended';
@@ -26,10 +27,44 @@ describe('ExecutionRepository', () => {
 		logging: { outputs: ['console'], scopes: [] },
 	});
 	mockInstance(BinaryDataService);
+	const logger = Container.get(Logger);
+	const errorReporter = Container.get(ErrorReporter);
 	const executionRepository = Container.get(ExecutionRepository);
 
 	beforeEach(() => {
 		vi.resetAllMocks();
+	});
+
+	describe('reportInvalidExecutions', () => {
+		const entity = (id: string, storedAt: 'db' | 'fs') =>
+			({ id, storedAt }) as unknown as ExecutionEntity;
+
+		// CAT-3909: reported to Sentry on every read, so a handful of orphaned rows produced
+		// thousands of events across restarts. The data is lost out of band, not by a code defect.
+		test('should log a warning with a per-storedAt breakdown instead of reporting an error', () => {
+			const warn = vi.spyOn(logger, 'warn');
+			const error = vi.spyOn(errorReporter, 'error');
+
+			executionRepository.reportInvalidExecutions([
+				entity('1', 'db'),
+				entity('2', 'fs'),
+				entity('3', 'fs'),
+			]);
+
+			expect(warn).toHaveBeenCalledWith('Found executions without executionData', {
+				executionIds: ['1', '2', '3'],
+				countsByStoredAt: { db: 1, fs: 2 },
+			});
+			expect(error).not.toHaveBeenCalled();
+		});
+
+		test('should do nothing when there are no invalid executions', () => {
+			const warn = vi.spyOn(logger, 'warn');
+
+			executionRepository.reportInvalidExecutions([]);
+
+			expect(warn).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('countInWorkflows', () => {
