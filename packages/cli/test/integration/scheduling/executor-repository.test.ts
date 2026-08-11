@@ -461,6 +461,7 @@ describe('ScheduledTaskRepository executor methods', () => {
 		it('bumps the epoch again on re-claim after a reschedule', async () => {
 			const { id, epoch } = await claimOne();
 			await taskRepository.rescheduleTask({ host: HOST_A, id, claimedEpoch: epoch }, 0, 'retry');
+			await taskRepository.update(id, { runAt: past() });
 
 			const [reclaimed] = await taskRepository.claimDueTasks(claimOpts({ host: HOST_B }));
 			expect(reclaimed.id).toBe(id);
