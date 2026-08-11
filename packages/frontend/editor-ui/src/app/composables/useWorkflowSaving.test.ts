@@ -768,7 +768,7 @@ describe('useWorkflowSaving', () => {
 			const mockPendingSave = new Promise<boolean>(() => {});
 			saveStore.setPendingSave(mockPendingSave);
 
-			const { autoSaveWorkflow } = useWorkflowSaving({ router });
+			const { autoSaveWorkflow } = useWorkflowSaving({ router, ownsAutoSave: true });
 
 			// Try to schedule autosave
 			autoSaveWorkflow();
@@ -784,7 +784,7 @@ describe('useWorkflowSaving', () => {
 			saveStore.reset();
 			expect(saveStore.autoSaveState).toBe(AutoSaveState.Idle);
 
-			const { autoSaveWorkflow } = useWorkflowSaving({ router });
+			const { autoSaveWorkflow } = useWorkflowSaving({ router, ownsAutoSave: true });
 
 			// Schedule autosave
 			autoSaveWorkflow();
@@ -890,7 +890,10 @@ describe('useWorkflowSaving', () => {
 			const saveStore = useWorkflowSaveStore();
 			saveStore.reset();
 
-			const { saveCurrentWorkflow, autoSaveWorkflow } = useWorkflowSaving({ router });
+			const { saveCurrentWorkflow, autoSaveWorkflow } = useWorkflowSaving({
+				router,
+				ownsAutoSave: true,
+			});
 
 			// Dirty workflow with an armed autosave timer, then a manual save
 			// (e.g. save-then-navigate flows). Without the disarm, the timer
@@ -1288,7 +1291,7 @@ describe('useWorkflowSaving', () => {
 			backendConnectionStore.setOnline(false);
 			saveStore.reset();
 
-			const { autoSaveWorkflow } = useWorkflowSaving({ router });
+			const { autoSaveWorkflow } = useWorkflowSaving({ router, ownsAutoSave: true });
 
 			autoSaveWorkflow();
 
@@ -1305,7 +1308,7 @@ describe('useWorkflowSaving', () => {
 			autosaveStore.reset();
 			expect(autosaveStore.autoSaveState).toBe(AutoSaveState.Idle);
 
-			const { autoSaveWorkflow } = useWorkflowSaving({ router });
+			const { autoSaveWorkflow } = useWorkflowSaving({ router, ownsAutoSave: true });
 
 			// Try to schedule autosave while disabled
 			autoSaveWorkflow();
@@ -1324,7 +1327,7 @@ describe('useWorkflowSaving', () => {
 			autosaveStore.reset();
 			expect(autosaveStore.autoSaveState).toBe(AutoSaveState.Idle);
 
-			const { autoSaveWorkflow } = useWorkflowSaving({ router });
+			const { autoSaveWorkflow } = useWorkflowSaving({ router, ownsAutoSave: true });
 
 			// Schedule autosave
 			autoSaveWorkflow();
@@ -1355,7 +1358,8 @@ describe('useWorkflowSaving', () => {
 		const AutosaveProbe = defineComponent({
 			name: 'AutosaveProbe',
 			setup() {
-				probe.current = useWorkflowSaving({ router });
+				// Stands in for NodeView: the canvas the host wraps, so it owns autosave.
+				probe.current = useWorkflowSaving({ router, ownsAutoSave: true });
 				return () => h('div');
 			},
 		});
@@ -1500,6 +1504,82 @@ describe('useWorkflowSaving', () => {
 			await wrapper.setProps({ readOnly: false });
 
 			expect(saveStore.autoSaveState).toBe(AutoSaveState.Scheduled);
+		});
+
+		// The read-only signal is injected, so it only reaches an instance built
+		// inside a preview host's subtree. `builder.store.ts` and the
+		// `executionFinished` push handler build this composable out-of-tree, where
+		// a host's provide is invisible — and every instance used to own a reconnect
+		// watcher reading the app-wide dirty flag a preview sets. Cover from the
+		// observable end: no request leaves a preview when the connection returns,
+		// whatever else holds an instance.
+		describe('with the composable also built out-of-tree', () => {
+			it('issues no create request when the connection returns on a preview', async () => {
+				const createSpy = vi
+					.spyOn(workflowsStore, 'createNewWorkflow')
+					.mockResolvedValue(createTestWorkflow({ id: 'created' }));
+
+				backendConnectionStore.setOnline(false);
+				useWorkflowSaving({ router });
+				mountPreview('template-11754', true);
+				useUIStore().markStateDirty();
+
+				backendConnectionStore.setOnline(true);
+				await nextTick();
+				await flushAutoSave();
+
+				expect(createSpy).not.toHaveBeenCalled();
+			});
+
+			it('issues no update request when the connection returns on a preview of a stored workflow', async () => {
+				const workflow = createTestWorkflow({
+					id: 'w-reconnect',
+					nodes: [createTestNode({ type: CHAT_TRIGGER_NODE_TYPE, disabled: false })],
+				});
+				workflowsListStore.workflowsById = { [workflow.id]: workflow };
+				useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id)).hydrate(workflow);
+				mockRoute.params = { workflowId: workflow.id };
+				const updateSpy = vi
+					.spyOn(workflowsStore, 'updateWorkflow')
+					.mockResolvedValue({ ...workflow, checksum: 'test-checksum' });
+
+				backendConnectionStore.setOnline(false);
+				useWorkflowSaving({ router });
+				mountPreview(workflow.id, true);
+				useUIStore().markStateDirty();
+
+				backendConnectionStore.setOnline(true);
+				await nextTick();
+				await flushAutoSave();
+
+				expect(updateSpy).not.toHaveBeenCalled();
+			});
+
+			it('still saves an editable canvas when the connection returns', async () => {
+				// Control for the two above, and the regression risk of arming the
+				// reconnect watcher on the canvas owner alone: offline edits still land.
+				const workflow = createTestWorkflow({
+					id: 'w-reconnect-editable',
+					nodes: [createTestNode({ type: CHAT_TRIGGER_NODE_TYPE, disabled: false })],
+				});
+				workflowsListStore.workflowsById = { [workflow.id]: workflow };
+				useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id)).hydrate(workflow);
+				mockRoute.params = { workflowId: workflow.id };
+				const updateSpy = vi
+					.spyOn(workflowsStore, 'updateWorkflow')
+					.mockResolvedValue({ ...workflow, checksum: 'test-checksum' });
+
+				backendConnectionStore.setOnline(false);
+				useWorkflowSaving({ router });
+				mountPreview(workflow.id, false);
+				useUIStore().markStateDirty();
+
+				backendConnectionStore.setOnline(true);
+				await nextTick();
+				await flushAutoSave();
+
+				expect(updateSpy).toHaveBeenCalled();
+			});
 		});
 	});
 });

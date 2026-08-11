@@ -1,8 +1,8 @@
 import { useNpsSurveyStore } from '@/app/stores/npsSurvey.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import type { LocationQuery, NavigationGuardNext, useRouter } from 'vue-router';
-import { computed, hasInjectionContext, inject, watch } from 'vue';
-import { EditorEnabledFeaturesKey } from '@/app/constants/injectionKeys';
+import { computed, getCurrentInstance, watch } from 'vue';
+import { useEditorContext } from '@/app/composables/useEditorContext';
 import { useMessage } from './useMessage';
 import { useI18n } from '@n8n/i18n';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
@@ -46,9 +46,19 @@ import { useInvalidNodeGroupCleanup } from '@/app/composables/useInvalidNodeGrou
 export function useWorkflowSaving({
 	router,
 	onSaved,
+	ownsAutoSave = false,
 }: {
 	router: ReturnType<typeof useRouter>;
 	onSaved?: (isFirstSave: boolean) => void;
+	/**
+	 * Whether this instance drives the canvas's autosave. Only the component
+	 * rendering the canvas passes `true`: it sits inside the host that scopes the
+	 * editor context, so it is the only one that can tell a preview from an
+	 * editable canvas. Everyone else — dialogs, a Pinia store, a push handler —
+	 * builds this composable for its explicit save calls, and an autosave engine
+	 * there would react to app-wide signals from outside any canvas.
+	 */
+	ownsAutoSave?: boolean;
 }) {
 	const uiStore = useUIStore();
 	const npsSurveyStore = useNpsSurveyStore();
@@ -71,13 +81,12 @@ export function useWorkflowSaving({
 	const workflowId = useWorkflowId();
 	const { removeInvalidNodeGroups } = useInvalidNodeGroupCleanup();
 
-	// Preview hosts scope their subtree read-only through the editor context. This
-	// composable is instantiated out-of-tree too (Pinia stores, push handlers),
-	// where `inject()` is unavailable — guard it the way `useWorkflowId` does.
-	const editorEnabledFeatures = hasInjectionContext()
-		? inject(EditorEnabledFeaturesKey, null)
-		: null;
-	const isReadOnlyCanvas = computed(() => editorEnabledFeatures?.value?.readOnly === true);
+	// Preview hosts (template, workflow history, execution) render the real canvas
+	// and scope their subtree read-only through the editor context. The context is
+	// injected, so it only resolves inside a component — fall back to no context
+	// for the out-of-tree callers, the way `useRunWorkflow` does for the same key.
+	const editorContext = getCurrentInstance() ? useEditorContext() : undefined;
+	const canAutoSave = computed(() => ownsAutoSave && editorContext?.readOnly.value !== true);
 
 	async function promptSaveUnsavedWorkflowChanges(
 		next: NavigationGuardNext,
@@ -612,9 +621,10 @@ export function useWorkflowSaving({
 	);
 
 	const scheduleAutoSave = () => {
-		// Don't schedule on a read-only canvas. Every autosave entry point funnels
-		// through here, so previews never write whatever marked them dirty.
-		if (isReadOnlyCanvas.value) {
+		// Don't schedule from a read-only canvas, or from an instance that doesn't
+		// own one. Every autosave entry point funnels through here, so a preview
+		// never writes whatever marked it dirty.
+		if (!canAutoSave.value) {
 			return;
 		}
 
@@ -650,26 +660,34 @@ export function useWorkflowSaving({
 		saveStore.setAutoSaveState(AutoSaveState.Idle);
 	};
 
-	// Re-arm when a host lifts read-only with changes still pending — the Instance
-	// AI preview locks the canvas while its agent edits, and nothing else would
-	// save what the agent wrote. Mirrors the AI-builder re-arm in NodeView.
-	watch(isReadOnlyCanvas, (isReadOnly, wasReadOnly) => {
-		if (wasReadOnly && !isReadOnly && uiStore.stateIsDirty) {
-			scheduleAutoSave();
-		}
-	});
-
-	// Watch for network coming back online
-	watch(
-		() => backendConnectionStore.isOnline,
-		(isOnline, wasOnline) => {
-			if (isOnline && !wasOnline) {
-				if (uiStore.stateIsDirty) {
-					scheduleAutoSave();
-				}
+	// These watchers write on their own, off app-wide signals, so only the canvas's
+	// owner arms them. A non-owner instance armed them too, and outside a canvas
+	// host there is no read-only scope to consult — which is how a preview still
+	// issued a save when the connection returned. They are also unstopped, so the
+	// push handler that builds this composable per message would leak one apiece.
+	if (ownsAutoSave) {
+		// Re-arm when a host lifts read-only with changes still pending — the
+		// Instance AI preview locks the canvas while its agent edits, and nothing
+		// else would save what the agent wrote. Mirrors the AI-builder re-arm in
+		// NodeView.
+		watch(canAutoSave, (allowed, wasAllowed) => {
+			if (allowed && !wasAllowed && uiStore.stateIsDirty) {
+				scheduleAutoSave();
 			}
-		},
-	);
+		});
+
+		// Watch for network coming back online
+		watch(
+			() => backendConnectionStore.isOnline,
+			(isOnline, wasOnline) => {
+				if (isOnline && !wasOnline) {
+					if (uiStore.stateIsDirty) {
+						scheduleAutoSave();
+					}
+				}
+			},
+		);
+	}
 
 	return {
 		promptSaveUnsavedWorkflowChanges,
