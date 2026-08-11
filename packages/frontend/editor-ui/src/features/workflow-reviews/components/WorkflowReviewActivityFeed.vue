@@ -71,9 +71,15 @@ watch(
 	{ flush: 'post' },
 );
 
-// `loadMore` is a no-op with no cursor, so a failed first page has to refetch.
-function retryInitialLoad() {
-	if (store.currentReviewId) void store.fetchFeed(store.currentReviewId);
+// `loadMore` is a no-op with no cursor, so a failed first page has to refetch. Posting a
+// comment onto that empty feed swaps this row for the load-more one, which would otherwise
+// hit the same dead end and leave the earlier activity unreachable.
+function retry() {
+	if (!store.nextCursor) {
+		if (store.currentReviewId) void store.fetchFeed(store.currentReviewId);
+		return;
+	}
+	void store.loadMore();
 }
 
 // Entries may already be loaded on mount (Changes -> Activity round trip).
@@ -98,7 +104,7 @@ onMounted(() => {
 				size="mini"
 				variant="ghost"
 				data-test-id="workflow-review-activity-retry"
-				@click="retryInitialLoad()"
+				@click="retry()"
 			>
 				{{ i18n.baseText('generic.retry') }}
 			</N8nButton>
@@ -125,7 +131,7 @@ onMounted(() => {
 					size="mini"
 					variant="ghost"
 					data-test-id="workflow-review-activity-load-more-retry"
-					@click="store.loadMore()"
+					@click="retry()"
 				>
 					{{ i18n.baseText('generic.retry') }}
 				</N8nButton>

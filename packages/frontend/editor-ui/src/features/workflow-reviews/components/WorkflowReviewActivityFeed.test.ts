@@ -109,9 +109,27 @@ describe('WorkflowReviewActivityFeed', () => {
 		expect(store.fetchFeed).toHaveBeenCalledWith('req-1');
 	});
 
+	it('still reaches the earlier activity after posting onto a feed that failed to load', () => {
+		// The failed first page left no cursor, and the posted comment pushed the feed out of
+		// its empty state onto the load-more row. That row must still refetch, or everything
+		// posted before this comment stays unreachable until a reload.
+		store.error = new Error('boom');
+		store.nextCursor = null;
+		store.entries = [makeEntry()];
+
+		const { getByTestId } = renderComponent();
+		getByTestId('workflow-review-activity-load-more-retry').click();
+
+		expect(store.fetchFeed).toHaveBeenCalledWith('req-1');
+		expect(store.loadMore).not.toHaveBeenCalled();
+	});
+
 	it('keeps a loaded feed and offers a retry when load-more failed', async () => {
 		store.entries = [makeEntry()];
 		store.hasMore = true;
+		// A load-more failure always has a cursor to resume from; without one the retry
+		// is a first-page refetch instead.
+		store.nextCursor = 'cursor-1';
 		store.error = new Error('boom');
 
 		const { getAllByTestId, getByTestId, queryByTestId } = renderComponent();
