@@ -316,6 +316,29 @@ describe('useReviewActivityStore', () => {
 		expect(store.entries.map((entry) => entry.id)).toEqual(['9']);
 	});
 
+	it('keeps the feed ascending when a refetch lands under already-loaded older pages', async () => {
+		vi.mocked(workflowReviewsApi.fetchWorkflowReviewActivity).mockResolvedValue(
+			makePage(['3', '4'], { nextCursor: 'cursor-1', hasMore: true }),
+		);
+		const store = useReviewActivityStore();
+		await store.fetchFeed('req-1');
+		vi.mocked(workflowReviewsApi.fetchWorkflowReviewActivity).mockResolvedValue(
+			makePage(['1', '2']),
+		);
+		await store.loadMore();
+		expect(store.entries.map((entry) => entry.id)).toEqual(['1', '2', '3', '4']);
+
+		// A refetch restarts paging, so the older pages it did not return have to go. Keeping
+		// them would put them after the newer page and break the ascending order the feed and
+		// its `v-for` keys rely on.
+		vi.mocked(workflowReviewsApi.fetchWorkflowReviewActivity).mockResolvedValue(
+			makePage(['3', '4'], { nextCursor: 'cursor-1', hasMore: true }),
+		);
+		await store.fetchFeed('req-1');
+
+		expect(store.entries.map((entry) => entry.id)).toEqual(['3', '4']);
+	});
+
 	it("does not drop a stale post's comment into the review the viewer moved to", async () => {
 		vi.mocked(workflowReviewsApi.fetchWorkflowReviewActivity).mockResolvedValue(makePage(['1']));
 		let resolvePost: (entry: WorkflowReviewActivityEntry) => void = () => {};

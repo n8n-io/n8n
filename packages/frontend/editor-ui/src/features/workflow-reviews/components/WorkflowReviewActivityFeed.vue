@@ -122,7 +122,9 @@ onMounted(() => {
 				:class="$style.sentinel"
 				data-test-id="workflow-review-activity-load-more-sentinel"
 			/>
-			<N8nLoading v-if="loadingMore" :loading="true" :rows="1" />
+			<!-- `loading` too: a retry that keeps a posted comment on screen leaves this the
+				only place a refetch can show progress. -->
+			<N8nLoading v-if="loadingMore || loading" :loading="true" :rows="1" />
 			<div v-if="error" :class="$style.errorRow">
 				<N8nText color="text-light" size="small">
 					{{ i18n.baseText('workflowReviews.detail.activity.error.load') }}

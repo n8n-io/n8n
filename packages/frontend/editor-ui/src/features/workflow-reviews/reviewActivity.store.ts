@@ -66,8 +66,14 @@ export const useReviewActivityStore = defineStore('workflowReviewActivity', () =
 			if (requestSeq !== feedRequestSeq) return;
 
 			// Merged, not assigned: a comment posted while this page was in flight is already
-			// appended, and the server snapshot predates it.
-			entries.value = [...response.data, ...withoutIdsIn(entries.value, response.data)];
+			// appended, and the server snapshot predates it. Only what is newer than the page
+			// survives, since `entries` is ascending by id and an older page kept here would
+			// land after the newer one and invert the list.
+			const newestInPage = Number(response.data.at(-1)?.id ?? 0);
+			entries.value = [
+				...response.data,
+				...entries.value.filter((entry) => Number(entry.id) > newestInPage),
+			];
 			nextCursor.value = response.nextCursor;
 			hasMore.value = response.hasMore;
 		} catch (e) {
