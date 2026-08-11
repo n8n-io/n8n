@@ -1,6 +1,38 @@
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError, UserError } from 'n8n-workflow';
 import { lstat } from 'node:fs/promises';
 import * as path from 'node:path';
+
+/**
+ * Normalizes a base path by ensuring it starts with `/`, does not end with `/`,
+ * and returns `/` for root.
+ *
+ * @example
+ * normalizeBasePath('') // '/'
+ * normalizeBasePath('/') // '/'
+ * normalizeBasePath('/app') // '/app'
+ * normalizeBasePath('app/') // '/app'
+ */
+export function normalizeBasePath(basePath: string): string {
+	if (!basePath || basePath === '/') return '/';
+
+	let normalized = basePath;
+	if (!normalized.startsWith('/')) normalized = '/' + normalized;
+	while (normalized.endsWith('/')) normalized = normalized.slice(0, -1);
+
+	return normalized || '/';
+}
+
+/**
+ * N8N_PATH is deprecated and cannot be combined with N8N_BASE_PATH because they
+ * intentionally affect different path surfaces.
+ */
+export function assertPathAndBasePathAreNotBothSet(pathConfig: string, basePathConfig: string) {
+	if (normalizeBasePath(pathConfig) === '/' || normalizeBasePath(basePathConfig) === '/') return;
+
+	throw new UserError(
+		'N8N_PATH and N8N_BASE_PATH cannot both be configured. Use only N8N_BASE_PATH; N8N_PATH is deprecated.',
+	);
+}
 
 /**
  * Checks if the given childPath is contained within the parentPath. Resolves
