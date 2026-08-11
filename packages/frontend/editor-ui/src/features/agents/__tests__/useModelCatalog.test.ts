@@ -135,6 +135,31 @@ describe('useModelCatalog', () => {
 		);
 	});
 
+	it('returns a verified provider default only when it remains in the picker list', async () => {
+		mocks.getModelCatalog.mockResolvedValue({
+			anthropic: provider('anthropic', {
+				'claude-sonnet-4-6': model('claude-sonnet-4-6', 'Claude Sonnet 4.6'),
+			}),
+		});
+		mocks.getProviderModels.mockResolvedValue({
+			provider: 'anthropic',
+			verified: true,
+			defaultModelId: 'claude-sonnet-4-6',
+			models: [model('claude-sonnet-4-6', 'Claude Sonnet 4.6')],
+		});
+
+		const { useModelCatalog } = await import('../composables/useModelCatalog');
+		const { ensureLoaded, getDefaultModelForPicker } = useModelCatalog();
+		const credentials = { anthropic: 'anthropic-credential-id' };
+		await ensureLoaded('project-1');
+
+		expect(getDefaultModelForPicker(credentials, 'anthropic')).toBeNull();
+		await flushAsync();
+		expect(getDefaultModelForPicker(credentials, 'anthropic')).toMatchObject({
+			model: 'claude-sonnet-4-6',
+		});
+	});
+
 	it('fetches the verified list only once per provider and credential', async () => {
 		mocks.getModelCatalog.mockResolvedValue({
 			anthropic: provider('anthropic', {

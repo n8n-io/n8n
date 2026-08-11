@@ -28,6 +28,7 @@ const loadingProjects = ref(new Set<string>());
 // asked which models actually work. `null` marks a failed or unverified
 // lookup — the static catalog is used for that key.
 const verifiedModelsByKey = ref<Record<string, ModelInfo[] | null>>({});
+const verifiedDefaultModelsByKey = ref<Record<string, string | null>>({});
 // Keys whose list could not be retrieved at all, so the picker can say
 // "couldn't load" rather than "no models available".
 const unavailableByKey = ref<Record<string, boolean>>({});
@@ -119,6 +120,10 @@ export function useModelCatalog() {
 					...verifiedModelsByKey.value,
 					[key]: result.verified ? result.models : null,
 				};
+				verifiedDefaultModelsByKey.value = {
+					...verifiedDefaultModelsByKey.value,
+					[key]: result.defaultModelId ?? null,
+				};
 				unavailableByKey.value = { ...unavailableByKey.value, [key]: result.unavailable === true };
 			})
 			.catch(() => {
@@ -165,5 +170,32 @@ export function useModelCatalog() {
 		return response;
 	}
 
-	return { catalog, isLoading, ensureLoaded, getModelsForProvider, getModelsForPicker };
+	function getDefaultModelForPicker(
+		credentials: AgentCredentialsByProvider | null,
+		provider: AgentModelProvider,
+	): AgentModelOption | null {
+		const credentialId = credentials?.[provider];
+		const projectId = activeProjectId.value;
+		if (!credentialId || !projectId) return null;
+
+		ensureVerifiedModels(projectId, provider, credentialId);
+		const defaultModelId =
+			verifiedDefaultModelsByKey.value[`${projectId}|${provider}|${credentialId}`];
+		if (!defaultModelId) return null;
+
+		return (
+			getModelsForPicker(credentials)[provider]?.models.find(
+				(model) => model.model === defaultModelId,
+			) ?? null
+		);
+	}
+
+	return {
+		catalog,
+		isLoading,
+		ensureLoaded,
+		getModelsForProvider,
+		getModelsForPicker,
+		getDefaultModelForPicker,
+	};
 }

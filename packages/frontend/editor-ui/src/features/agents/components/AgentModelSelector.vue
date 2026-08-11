@@ -72,6 +72,7 @@ const {
 const emit = defineEmits<{
 	change: [AgentModelSelection];
 	selectCredential: [provider: AgentModelProvider, credentialId: string | null];
+	configureCredential: [provider: AgentModelProvider];
 }>();
 
 const i18n = useI18n();
@@ -489,6 +490,7 @@ async function onSelect(id: string) {
 	const { provider: providerId, action, value } = parsed;
 
 	if (action === 'configure') {
+		emit('configureCredential', providerId);
 		openNewCredential(value);
 		return;
 	}

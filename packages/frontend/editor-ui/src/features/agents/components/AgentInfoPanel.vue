@@ -6,7 +6,7 @@
  */
 import { computed, ref, watch } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
-import { N8nMarkdownEditor, N8nText } from '@n8n/design-system';
+import { N8nCallout, N8nIconButton, N8nMarkdownEditor, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
 import { getDebounceTime } from '@n8n/composables/useDebounce';
@@ -66,7 +66,8 @@ const emit = defineEmits<{ 'update:config': [changes: Partial<AgentJsonConfig>] 
 const i18n = useI18n();
 const usersStore = useUsersStore();
 const { showError } = useToast();
-const { catalog, ensureLoaded, getModelsForPicker, isLoading } = useModelCatalog();
+const { catalog, ensureLoaded, getModelsForPicker, getDefaultModelForPicker, isLoading } =
+	useModelCatalog();
 
 const projectId = useAgentProjectId(() => props.projectId);
 
@@ -100,6 +101,11 @@ const effectiveCredentials = computed(() => {
 	if (!provider || !credential) return base;
 	return { ...base, [provider]: credential };
 });
+
+const pendingDefaultProvider = ref<AgentModelProvider | null>(null);
+// True while the current model was auto-applied by the resolver (not yet
+// touched by the user). Drives the “you can change it” hint under the picker.
+const defaultModelHint = ref(false);
 
 const filteredAgents = computed<AgentModelsByProvider>(() =>
 	getModelsForPicker(effectiveCredentials.value),
@@ -139,7 +145,7 @@ const instructionsToolbarMode = computed(() =>
 	props.showInstructionsToolbar ? 'always' : 'never',
 );
 
-function onModelChange(selection: AgentModelSelection) {
+function onModelChange(selection: AgentModelSelection, source: 'user' | 'auto' = 'user') {
 	const credentialId = effectiveCredentials.value?.[selection.provider];
 	if (!credentialId) {
 		showError(new Error(i18n.baseText('credentials.noResults')), i18n.baseText('error'));
@@ -164,6 +170,9 @@ function onModelChange(selection: AgentModelSelection) {
 		normalizedConfig,
 		catalog.value[selection.provider]?.models[modelName]?.reasoning,
 	);
+	// A default applied by the resolver surfaces a hint so the user knows they
+	// can change it; any explicit user pick clears the hint.
+	defaultModelHint.value = source === 'auto';
 	emit('update:config', {
 		model,
 		credential: credentialId,
@@ -173,11 +182,33 @@ function onModelChange(selection: AgentModelSelection) {
 	});
 }
 
+watch(
+	() =>
+		pendingDefaultProvider.value
+			? getDefaultModelForPicker(effectiveCredentials.value, pendingDefaultProvider.value)
+			: null,
+	(defaultModel) => {
+		if (!defaultModel || props.disabled || modelToString(props.config?.model)) return;
+
+		pendingDefaultProvider.value = null;
+		onModelChange(defaultModel, 'auto');
+	},
+);
+
 function onSelectCredential(provider: AgentModelProvider, credentialId: string | null) {
 	selectCredential(provider, credentialId);
+	if (credentialId && !modelToString(props.config?.model)) {
+		pendingDefaultProvider.value = provider;
+	}
 	const parsed = parseModelString(modelToString(props.config?.model));
 	if (parsed?.provider === provider && credentialId) {
 		emit('update:config', { credential: credentialId });
+	}
+}
+
+function onConfigureCredential(provider: AgentModelProvider) {
+	if (!modelToString(props.config?.model)) {
+		pendingDefaultProvider.value = provider;
 	}
 }
 
@@ -231,7 +262,30 @@ function onInstructionsInput(value: string) {
 				data-testid="agent-model-selector"
 				@change="onModelChange"
 				@select-credential="onSelectCredential"
+				@configure-credential="onConfigureCredential"
 			/>
+			<N8nCallout
+				v-if="defaultModelHint && !props.disabled"
+				theme="info"
+				slim
+				:class="$style.defaultHint"
+				data-testid="agent-default-model-hint"
+			>
+				<div :class="$style.defaultHintBody">
+					<span :class="$style.defaultHintText">
+						<strong>{{ i18n.baseText('agents.builder.agent.model.defaultSelected.title') }}</strong>
+						{{ i18n.baseText('agents.builder.agent.model.defaultSelected.description') }}
+					</span>
+					<N8nIconButton
+						icon="x"
+						variant="ghost"
+						size="small"
+						:title="i18n.baseText('agents.builder.agent.model.defaultSelected.dismiss')"
+						data-testid="agent-default-model-hint-dismiss"
+						@click="defaultModelHint = false"
+					/>
+				</div>
+			</N8nCallout>
 		</div>
 
 		<div v-if="props.showInstructions" :class="[$style.field]">
@@ -288,5 +342,21 @@ function onInstructionsInput(value: string) {
 
 .label {
 	display: block;
+}
+
+.defaultHint {
+	margin-top: var(--spacing--3xs);
+}
+
+.defaultHintBody {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: var(--spacing--2xs);
+}
+
+.defaultHintText {
+	flex: 1;
+	min-width: 0;
 }
 </style>

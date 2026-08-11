@@ -14,6 +14,7 @@ import {
 	BuilderModelLiveLookupService,
 	type LiveModelLookupResult,
 } from './builder/builder-model-live-lookup.service';
+import { AgentDefaultModelResolverService } from './agent-default-model-resolver.service';
 
 /** Google's models API returns ids as `models/<id>`; the AI SDK expects the bare id. */
 const GOOGLE_MODEL_ID_PREFIX = 'models/';
@@ -59,6 +60,7 @@ export class AgentModelCatalogService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly builderModelLiveLookupService: BuilderModelLiveLookupService,
+		private readonly agentDefaultModelResolverService: AgentDefaultModelResolverService,
 	) {}
 
 	/** Returns the provider's models according to the live lookup's catalog policy. */
@@ -134,7 +136,7 @@ export class AgentModelCatalogService {
 		// allowlist matches (e.g. a dated snapshot, not the catalog's versionless
 		// alias). Use those ids verbatim, enriched with catalog display/metadata.
 		if (lookup.policy === 'managed') {
-			return {
+			return this.withDefaultModel(provider, credentialId, {
 				provider,
 				verified: true,
 				models: liveModels.map((live) => {
@@ -148,7 +150,7 @@ export class AgentModelCatalogService {
 								toolCall: true,
 							};
 				}),
-			};
+			});
 		}
 
 		const liveModelIds = new Set(
@@ -163,17 +165,17 @@ export class AgentModelCatalogService {
 		// add live-only models — we only prune catalog entries the provider no
 		// longer reports (retired ids that would 404 at call time).
 		if (catalogList.length > 0) {
-			return {
+			return this.withDefaultModel(provider, credentialId, {
 				provider,
 				verified: true,
 				models: catalogList.filter((model) => liveModelIds.has(model.id)),
-			};
+			});
 		}
 
 		// Catalog unavailable (models.dev down or no entry for this provider): there
 		// is no curated list to prune against, so show the verified live list rather
 		// than an empty picker.
-		return {
+		return this.withDefaultModel(provider, credentialId, {
 			provider,
 			verified: true,
 			models: liveModels.map((live) => {
@@ -184,7 +186,25 @@ export class AgentModelCatalogService {
 					toolCall: true,
 				};
 			}),
-		};
+		});
+	}
+
+	private withDefaultModel(
+		provider: string,
+		credentialId: string,
+		result: AgentProviderModelsResponse,
+	): AgentProviderModelsResponse {
+		const resolved = this.agentDefaultModelResolverService.resolveFromVerifiedModelIds(
+			provider,
+			credentialId,
+			result.models.map((model) => model.id),
+		);
+		if (!resolved) return result;
+
+		const modelId = resolved.model.slice(`${provider}/`.length);
+		return result.models.some((model) => model.id === modelId)
+			? { ...result, defaultModelId: modelId }
+			: result;
 	}
 
 	private logLiveLookupFailure(provider: string, error: unknown): void {
