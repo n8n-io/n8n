@@ -21,6 +21,7 @@ import {
 import { EventService } from '@/events/event.service';
 import { UserService } from '@/services/user.service';
 
+import { INSTANCE_ACTIVATED_SETTINGS_KEY } from './instance-activation.service';
 import { OwnershipService } from './ownership.service';
 
 const isStatusRootExecution = {
@@ -246,13 +247,13 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 		activatedAt: number,
 	): Promise<void> {
 		const alreadyActivated = await this.settingsRepository.findByKey(
-			'instance.firstProductionSuccess',
+			INSTANCE_ACTIVATED_SETTINGS_KEY,
 		);
 
 		if (alreadyActivated) return;
 
 		await this.settingsRepository.save({
-			key: 'instance.firstProductionSuccess',
+			key: INSTANCE_ACTIVATED_SETTINGS_KEY,
 			value: JSON.stringify({ workflowId, projectId, userId, timestamp: activatedAt }),
 			loadOnStartup: false,
 		});

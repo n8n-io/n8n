@@ -28,6 +28,7 @@ import {
 } from 'n8n-workflow';
 
 import { EventService } from '@/events/event.service';
+import { INSTANCE_ACTIVATED_SETTINGS_KEY } from '@/services/instance-activation.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { UserService } from '@/services/user.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
@@ -99,7 +100,7 @@ describe('WorkflowStatisticsService', () => {
 			// milestone leaves the row behind and every later test silently skips emitting it.
 			const settingsRepository = Container.get(SettingsRepository);
 			await settingsRepository.delete({ key: 'instance.firstProductionFailure' });
-			await settingsRepository.delete({ key: 'instance.firstProductionSuccess' });
+			await settingsRepository.delete({ key: INSTANCE_ACTIVATED_SETTINGS_KEY });
 		});
 
 		test.each<WorkflowExecuteMode>(['cli', 'retry', 'trigger', 'webhook', 'evaluation'])(
@@ -379,7 +380,7 @@ describe('WorkflowStatisticsService', () => {
 				userId: user.id,
 			});
 			const activationRow = await Container.get(SettingsRepository).findByKey(
-				'instance.firstProductionSuccess',
+				INSTANCE_ACTIVATED_SETTINGS_KEY,
 			);
 			expect(JSON.parse(activationRow!.value)).toEqual({
 				projectId: personalProject.id,
@@ -634,7 +635,7 @@ describe('WorkflowStatisticsService', () => {
 			});
 			// The activation row is the only signal here — `userActivated` skips team projects.
 			const activationRow = await Container.get(SettingsRepository).findByKey(
-				'instance.firstProductionSuccess',
+				INSTANCE_ACTIVATED_SETTINGS_KEY,
 			);
 			expect(JSON.parse(activationRow!.value)).toEqual({
 				projectId: teamProject.id,
@@ -659,7 +660,7 @@ describe('WorkflowStatisticsService', () => {
 
 			// ACT
 			await completeAndFlush(workflowStatisticsService, workflow, runData);
-			const afterFirst = await settingsRepository.findByKey('instance.firstProductionSuccess');
+			const afterFirst = await settingsRepository.findByKey(INSTANCE_ACTIVATED_SETTINGS_KEY);
 
 			await completeAndFlush(workflowStatisticsService, secondWorkflow, runData);
 
@@ -667,7 +668,7 @@ describe('WorkflowStatisticsService', () => {
 			expect(afterFirst).not.toBeNull();
 			expect(JSON.parse(afterFirst!.value)).toMatchObject({ workflowId: workflow.id });
 
-			const afterSecond = await settingsRepository.findByKey('instance.firstProductionSuccess');
+			const afterSecond = await settingsRepository.findByKey(INSTANCE_ACTIVATED_SETTINGS_KEY);
 			expect(JSON.parse(afterSecond!.value)).toMatchObject({ workflowId: workflow.id });
 		});
 
