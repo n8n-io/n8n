@@ -1501,5 +1501,55 @@ describe('useWorkflowSaving', () => {
 
 			expect(saveStore.autoSaveState).toBe(AutoSaveState.Scheduled);
 		});
+
+		// The read-only signal is read through `inject`, so it only reaches instances
+		// built inside a preview host's subtree. `builder.store.ts` and the
+		// `executionFinished` push handler build this composable out-of-tree, where a
+		// host's provide is invisible — and every instance owns a reconnect watcher
+		// that reads the app-wide dirty flag a preview sets. Cover from the observable
+		// end: no request leaves a preview when the connection returns, whatever else
+		// holds an instance.
+		describe('with the composable also built out-of-tree', () => {
+			it('issues no create request when the connection returns on a preview', async () => {
+				const createSpy = vi
+					.spyOn(workflowsStore, 'createNewWorkflow')
+					.mockResolvedValue(createTestWorkflow({ id: 'created' }));
+
+				backendConnectionStore.setOnline(false);
+				useWorkflowSaving({ router });
+				mountPreview('template-11754', true);
+				useUIStore().markStateDirty();
+
+				backendConnectionStore.setOnline(true);
+				await nextTick();
+				await flushAutoSave();
+
+				expect(createSpy).not.toHaveBeenCalled();
+			});
+
+			it('issues no update request when the connection returns on a preview of a stored workflow', async () => {
+				const workflow = createTestWorkflow({
+					id: 'w-reconnect',
+					nodes: [createTestNode({ type: CHAT_TRIGGER_NODE_TYPE, disabled: false })],
+				});
+				workflowsListStore.workflowsById = { [workflow.id]: workflow };
+				useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id)).hydrate(workflow);
+				mockRoute.params = { workflowId: workflow.id };
+				const updateSpy = vi
+					.spyOn(workflowsStore, 'updateWorkflow')
+					.mockResolvedValue({ ...workflow, checksum: 'test-checksum' });
+
+				backendConnectionStore.setOnline(false);
+				useWorkflowSaving({ router });
+				mountPreview(workflow.id, true);
+				useUIStore().markStateDirty();
+
+				backendConnectionStore.setOnline(true);
+				await nextTick();
+				await flushAutoSave();
+
+				expect(updateSpy).not.toHaveBeenCalled();
+			});
+		});
 	});
 });
