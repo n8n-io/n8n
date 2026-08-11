@@ -122,7 +122,7 @@ async function loadChangelog() {
 	if (!workflowDocumentStore.value.activeVersion?.versionId) return;
 
 	try {
-		void usersStore.fetchUsers({ take: 2 });
+		await usersStore.fetchUsers({ take: 2 });
 		changelog.value = await workflowHistoryStore.getWorkflowChangelog(
 			workflowDocumentStore.value.workflowId,
 		);
