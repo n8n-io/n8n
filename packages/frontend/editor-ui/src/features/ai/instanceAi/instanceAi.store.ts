@@ -126,7 +126,13 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 			if (message.type !== 'updateInstanceAiCredits') return;
 			creditsQuota.value = message.data.creditsQuota;
 			creditsClaimed.value = message.data.creditsClaimed;
-			quotaLocked.value = message.data.quotaLocked ?? false;
+			// Absent means "no opinion", not "unlocked". Only the lock itself reports this; a claim
+			// push carries no lock state, and claims can land after the lock — a background memory
+			// task or a fire-and-forget HITL segment claim from an earlier run — so treating absence
+			// as false would clear the warning the lock had just raised.
+			if (message.data.quotaLocked !== undefined) {
+				quotaLocked.value = message.data.quotaLocked;
+			}
 			// Per-message claims also carry the thread's running total — write it onto the
 			// matching thread so the credits dropdown updates live for the acting user.
 			const { creditsPerThread } = message.data;
