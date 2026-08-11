@@ -31,7 +31,7 @@ describe('BinaryDataViewModal.vue', () => {
 		pinia: createTestingPinia({
 			initialState: {
 				ui: {
-					modalsById: {
+					modalStateById: {
 						[BINARY_DATA_VIEW_MODAL_KEY]: {
 							open: true,
 						},

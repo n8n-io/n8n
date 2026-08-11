@@ -195,6 +195,15 @@ export class InstanceAiConfig {
 	mcpConnectionsEnabled: boolean = false;
 
 	/**
+	 * Force-enable canvas-selected-nodes chat context in Instance AI.
+	 * Acts as an operator-level override of the PostHog rollout flag
+	 * (`104_canvas_aia_node_context`). Cannot force-disable: setting this to
+	 * `false` falls back to PostHog.
+	 */
+	@Env('N8N_INSTANCE_AI_NODE_CONTEXT_ENABLED')
+	canvasNodeContextEnabled: boolean = false;
+
+	/**
 	 * Activation-capped trial variant for n8n cloud experiment.
 	 * Set by the cloud dashboard at deploy time on one signup-experiment cohort only.
 	 */

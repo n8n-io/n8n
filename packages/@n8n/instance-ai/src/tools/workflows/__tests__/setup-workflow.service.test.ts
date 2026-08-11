@@ -494,6 +494,34 @@ describe('buildSetupRequests', () => {
 		expect(result[0].existingCredentials?.[0].id).toBe('cred-1');
 	});
 
+	it('does not auto-apply a sole generic auth credential', async () => {
+		(context.nodeService.getDescription as Mock).mockResolvedValue({
+			group: [],
+			credentials: [{ name: 'httpBearerAuth' }],
+		});
+		(context.credentialService.list as Mock).mockResolvedValue([
+			{ id: 'cred-bearer', name: 'Bearer Auth account', updatedAt: '2025-01-01T00:00:00.000Z' },
+		]);
+
+		const node = makeNode({
+			name: 'MCP Client',
+			type: '@n8n/n8n-nodes-langchain.mcpClientTool',
+			parameters: {
+				authentication: 'bearerAuth',
+			},
+		});
+		const result = await buildSetupRequests(context, node);
+
+		expect(result[0].isAutoApplied).toBeFalsy();
+		expect(result[0].node.credentials?.httpBearerAuth).toBeUndefined();
+		expect(result[0].existingCredentials).toEqual([
+			{ id: 'cred-bearer', name: 'Bearer Auth account' },
+		]);
+		expect(result[0].needsAction).toBe(true);
+		// No credential was bound, so no test was run either.
+		expect(context.credentialService.test).not.toHaveBeenCalled();
+	});
+
 	it('does not auto-apply when multiple credentials of the same type exist', async () => {
 		(context.credentialService.list as Mock).mockResolvedValue([
 			{ id: 'cred-2', name: 'Newer Slack', updatedAt: '2025-06-01T00:00:00.000Z' },
@@ -1375,6 +1403,39 @@ describe('applyNodeChanges', () => {
 		expect(track).toHaveBeenCalledWith('Node credential assigned', {
 			credential_type: 'slackApi',
 			node_type: 'n8n-nodes-base.slack',
+			workflow_id: 'wf-1',
+			credential_kind: 'own',
+			source: 'instance-ai-confirmed',
+		});
+	});
+
+	it('keeps source instance-ai-confirmed when a sole generic auth credential is applied', async () => {
+		const track = vi.fn();
+		(context as unknown as { trackTelemetry: Mock }).trackTelemetry = track;
+		const wfJson = makeWorkflowJSON([
+			makeNode({
+				name: 'HTTP Request',
+				id: 'n1',
+				type: 'n8n-nodes-base.httpRequest',
+			}),
+		]);
+		(context.workflowService.getAsWorkflowJSON as Mock).mockResolvedValue(wfJson);
+		(context.credentialService.get as Mock).mockResolvedValue({
+			id: 'cred-bearer',
+			name: 'Bearer Auth account',
+		});
+		(context.credentialService.list as Mock).mockResolvedValue([
+			{ id: 'cred-bearer', name: 'Bearer Auth account' },
+		]);
+		(context.workflowService.updateFromWorkflowJSON as Mock).mockResolvedValue(undefined);
+
+		await applyNodeChanges(context, 'wf-1', {
+			'HTTP Request': { httpBearerAuth: 'cred-bearer' },
+		});
+
+		expect(track).toHaveBeenCalledWith('Node credential assigned', {
+			credential_type: 'httpBearerAuth',
+			node_type: 'n8n-nodes-base.httpRequest',
 			workflow_id: 'wf-1',
 			credential_kind: 'own',
 			source: 'instance-ai-confirmed',

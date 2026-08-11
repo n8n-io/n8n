@@ -2,6 +2,9 @@ packages:
   - packages/*
   - packages/@n8n/*
   - packages/frontend/**
+  # `packages/*` stops one level short of `<module>/frontend`, so feature modules need their own
+  # glob or they are not workspace packages at all.
+  - packages/modules/**
   - packages/extensions/**
   - packages/testing/**
 
@@ -91,6 +94,7 @@ catalog:
   '@tiptap/extension-table-row': 3.27.0
   '@tiptap/extension-task-item': 3.27.0
   '@tiptap/extension-task-list': 3.27.0
+  '@tiptap/extension-underline': 3.27.0
   '@tiptap/markdown': 3.27.0
   '@tiptap/pm': 3.27.0
   '@tiptap/starter-kit': 3.27.0
