@@ -165,6 +165,16 @@ describe('buildAxiosConfigFromLegacyRequest', () => {
 		expect((axiosOptions.httpsAgent as HttpsAgent).options.servername).toEqual('example.de');
 	});
 
+	// SNI takes a hostname, never an IP literal (RFC 6066 §3).
+	test.each([
+		['IPv4', 'https://185.90.154.8/foo'],
+		['IPv6', 'https://[2001:db8::1]/foo'],
+	])('should set no SNI when the host is an %s literal', async (_label, url) => {
+		const axiosOptions = await buildAxiosConfigFromLegacyRequest({ url });
+
+		expect((axiosOptions.httpsAgent as HttpsAgent).options.servername).toBeUndefined();
+	});
+
 	describe('should set SSL certificates', () => {
 		const agentOptions: SecureContextOptions = {
 			ca: TEST_CA_CERT,

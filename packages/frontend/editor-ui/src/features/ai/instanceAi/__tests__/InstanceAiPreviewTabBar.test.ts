@@ -38,6 +38,7 @@ const Wrapper = defineComponent({
 		tabs: { type: Array as () => ArtifactTab[], required: true },
 		activeTabId: { type: String, default: undefined },
 		isExpanded: { type: Boolean, default: false },
+		isExpandDisabled: { type: Boolean, default: false },
 		previewToggleLabel: { type: String, default: undefined },
 	},
 	emits: ['togglePreview', 'toggleExpanded'],
@@ -48,6 +49,7 @@ const Wrapper = defineComponent({
 					tabs: props.tabs,
 					activeTabId: props.activeTabId,
 					isExpanded: props.isExpanded,
+					isExpandDisabled: props.isExpandDisabled,
 					previewToggleLabel: props.previewToggleLabel,
 					onTogglePreview: () => emit('togglePreview'),
 					onToggleExpanded: () => emit('toggleExpanded'),
@@ -133,6 +135,18 @@ describe('InstanceAiPreviewTabBar', () => {
 
 		expect(collapseButton).not.toBeNull();
 		expect(collapseButton).toHaveAttribute('aria-label', 'Collapse panel');
+	});
+
+	it('disables the size toggle when the host layout controls panel width', async () => {
+		const { getByTestId, emitted } = renderComponent({
+			props: { tabs: [workflowTab], activeTabId: 'wf-1', isExpandDisabled: true },
+		});
+		const expandToggle = getByTestId('instance-ai-preview-expand-toggle');
+
+		expect(expandToggle).toBeDisabled();
+		expect(expandToggle).not.toHaveAttribute('title');
+		await fireEvent.click(expandToggle);
+		expect(emitted().toggleExpanded).toBeUndefined();
 	});
 
 	it('does not fade the left edge of artifact tabs', () => {

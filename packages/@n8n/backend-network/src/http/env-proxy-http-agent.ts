@@ -1,9 +1,10 @@
-import { HttpProxyAgent } from 'http-proxy-agent';
+import type { HttpProxyAgent } from 'http-proxy-agent';
 import http from 'node:http';
 import type { LookupFunction } from 'node:net';
 
 import { EnvProxyRouter } from './env-proxy-router';
 import type { NodeAgentOptions } from './node-agents';
+import { createProxiedHttpAgent } from '../proxy/proxied-agents';
 
 type HttpAddRequestArgs = Parameters<HttpProxyAgent<string>['addRequest']>;
 type HttpProxyClientReq = HttpAddRequestArgs[0];
@@ -22,10 +23,8 @@ export class EnvProxyHttpAgent extends http.Agent {
 
 	constructor(lookup?: LookupFunction, agentOptions?: NodeAgentOptions) {
 		super({ ...agentOptions, lookup });
-		this.router = new EnvProxyRouter(
-			'http',
-			80,
-			(proxyUrl) => new HttpProxyAgent(proxyUrl, { ...agentOptions }),
+		this.router = new EnvProxyRouter('http', 80, (proxyUrl) =>
+			createProxiedHttpAgent(proxyUrl, agentOptions),
 		);
 	}
 
