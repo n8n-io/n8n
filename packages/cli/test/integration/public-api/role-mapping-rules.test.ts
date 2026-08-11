@@ -1,6 +1,7 @@
 import { createTeamProject, testDb } from '@n8n/backend-test-utils';
 import { RoleMappingRuleRepository, type Project, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import assert from 'node:assert';
 
 import { createOwnerWithApiKey } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
@@ -39,7 +40,6 @@ describe('Role mapping rules in Public API', () => {
 				.send(validInstancePayload);
 
 			expect(response.status).toBe(201);
-			// Full-shape assertion also proves no extra fields leak from the entity.
 			expect(response.body).toEqual({
 				id: expect.any(String),
 				expression: validInstancePayload.expression,
@@ -55,10 +55,12 @@ describe('Role mapping rules in Public API', () => {
 				where: { id: response.body.id },
 				relations: ['projects', 'role'],
 			});
-			expect(stored).not.toBeNull();
-			expect(stored!.expression).toBe(validInstancePayload.expression);
-			expect(stored!.role.slug).toBe('global:member');
-			expect(stored!.projects).toHaveLength(0);
+
+			assert(stored, 'Rule should be stored in the database');
+
+			expect(stored.expression).toBe(validInstancePayload.expression);
+			expect(stored.role.slug).toBe('global:member');
+			expect(stored.projects).toHaveLength(0);
 		});
 
 		it('creates a project rule linked to the given projects and returns 201', async () => {
@@ -98,6 +100,7 @@ describe('Role mapping rules in Public API', () => {
 				.send({ ...validInstancePayload, expression: '' });
 
 			expect(response.status).toBe(400);
+			expect(response.body.message).toBe('String must contain at least 1 character(s)');
 		});
 
 		it('rejects a project rule without projectIds with 400', async () => {
@@ -107,7 +110,7 @@ describe('Role mapping rules in Public API', () => {
 				.send({ expression: 'true', role: 'project:editor', type: 'project' });
 
 			expect(response.status).toBe(400);
-			expect(response.body.message).toContain('projectIds');
+			expect(response.body.message).toBe('projectIds is required when type is project');
 		});
 
 		it('rejects an instance rule carrying projectIds with 400', async () => {
@@ -117,7 +120,9 @@ describe('Role mapping rules in Public API', () => {
 				.send({ ...validInstancePayload, projectIds: [teamProject.id] });
 
 			expect(response.status).toBe(400);
-			expect(response.body.message).toContain('projectIds must be omitted or empty');
+			expect(response.body.message).toBe(
+				'projectIds must be omitted or empty when type is instance',
+			);
 		});
 
 		it('rejects a role incompatible with the rule type with 400', async () => {
@@ -127,7 +132,7 @@ describe('Role mapping rules in Public API', () => {
 				.send({ ...validInstancePayload, role: 'project:editor' });
 
 			expect(response.status).toBe(400);
-			expect(response.body.message).toContain('must use a global role');
+			expect(response.body.message).toBe('Instance mapping rules must use a global role');
 		});
 
 		it('rejects an unknown project id with 400', async () => {
@@ -142,7 +147,7 @@ describe('Role mapping rules in Public API', () => {
 				});
 
 			expect(response.status).toBe(400);
-			expect(response.body.message).toContain('projects were not found');
+			expect(response.body.message).toBe('One or more projects were not found');
 		});
 
 		it('rejects an unknown role slug with 404', async () => {
@@ -152,7 +157,9 @@ describe('Role mapping rules in Public API', () => {
 				.send({ ...validInstancePayload, role: 'global:nonexistent-role-slug-xyz' });
 
 			expect(response.status).toBe(404);
-			expect(response.body.message).toContain('Could not find role');
+			expect(response.body.message).toBe(
+				'Could not find role with slug "global:nonexistent-role-slug-xyz"',
+			);
 		});
 
 		it('rejects with 401 without an API key', async () => {
