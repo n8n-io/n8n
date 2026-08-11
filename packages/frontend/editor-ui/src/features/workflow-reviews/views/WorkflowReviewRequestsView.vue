@@ -12,11 +12,16 @@ import { useToast } from '@n8n/composables/useToast';
 import WorkflowReviewDetailTabs from '../components/WorkflowReviewDetailTabs.vue';
 import type { WorkflowReviewDetailTab } from '../components/WorkflowReviewDetailTabs.vue';
 import WorkflowReviewRequestsSidebar from '../components/WorkflowReviewRequestsSidebar.vue';
+import WorkflowReviewStatusDot from '../components/WorkflowReviewStatusDot.vue';
 import { REVIEW_INBOX_QUERY_PARAM, WORKFLOW_REVIEW_REQUESTS_VIEW } from '../constants';
+import { useReviewActivityStore } from '../reviewActivity.store';
 import { useReviewInboxStore } from '../reviewInbox.store';
 import type { WorkflowReviewDecisionInput } from '../workflowReviews.api';
 
 const store = useReviewInboxStore();
+// The tab round trip destroys the feed subtree, so its lifecycle lives here; the
+// feed and the composer read the store themselves.
+const activityStore = useReviewActivityStore();
 const {
 	probeSettled,
 	showSidebar,
@@ -72,8 +77,14 @@ watch(
 	selectedReviewId,
 	(id) => {
 		if (route.name !== WORKFLOW_REVIEW_REQUESTS_VIEW) return;
-		if (id) void store.fetchDetail(id).catch(handleListError);
-		else store.clearDetail();
+		if (id) {
+			void store.fetchDetail(id).catch(handleListError);
+			// Failures surface in the feed's own error row, never as a second toast.
+			void activityStore.fetchFeed(id);
+		} else {
+			store.clearDetail();
+			activityStore.reset();
+		}
 	},
 	{ immediate: true },
 );
@@ -201,6 +212,7 @@ onMounted(async () => {
 onUnmounted(() => {
 	isMounted = false;
 	store.reset();
+	activityStore.reset();
 });
 </script>
 
@@ -226,15 +238,19 @@ onUnmounted(() => {
 
 			<div :class="$style.main">
 				<div :class="$style.columnTitle">
-					<N8nHeading
+					<div
 						v-if="showSidebar && selectedItem"
-						bold
-						tag="h2"
-						size="xlarge"
-						data-test-id="workflow-review-request-title"
+						:class="$style.reviewTitle"
+						data-test-id="workflow-review-request-title-row"
 					>
-						{{ selectedItem.title }}
-					</N8nHeading>
+						<WorkflowReviewStatusDot
+							:state="selectedItem.state"
+							:decision="selectedItem.decision"
+						/>
+						<N8nHeading bold tag="h2" size="xlarge" data-test-id="workflow-review-request-title">
+							{{ selectedItem.title }}
+						</N8nHeading>
+					</div>
 					<N8nHeading
 						v-else-if="!showSidebar"
 						bold
@@ -330,6 +346,13 @@ onUnmounted(() => {
 	align-items: center;
 	min-height: var(--spacing--2xl);
 	padding-bottom: var(--spacing--sm);
+}
+
+.reviewTitle {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	min-width: 0;
 }
 
 .mainBody {

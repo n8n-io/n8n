@@ -307,6 +307,7 @@ describe('CredentialsTester', () => {
 			// Some services answer 2xx regardless of the credential, so the green
 			// verdict states what happened instead of claiming verification.
 			expect(result.message).toBe(AUTH_PROBE_ACCEPTED_MESSAGE);
+			expect(result.outcome).toBe('accepted');
 			const nodeTypeArg = (RoutingNode as unknown as Mock).mock.calls[0][1] as INodeType;
 			expect(nodeTypeArg.description.properties[0].routing?.request).toEqual({
 				url: targetUrl,
@@ -326,6 +327,7 @@ describe('CredentialsTester', () => {
 
 			expect(result.status).toBe('Error');
 			expect(result.message).toContain('401');
+			expect(result.outcome).toBe('rejected');
 		});
 
 		it('reports a non-auth error response as unverifiable instead of success', async () => {
@@ -341,6 +343,7 @@ describe('CredentialsTester', () => {
 			expect(result.status).toBe('Error');
 			expect(result.message).toContain('405');
 			expect(result.message).toContain('could not be verified');
+			expect(result.outcome).toBe('unverified');
 		});
 
 		it('accepts a declared service-specific status code instead of rejecting on it', async () => {
@@ -355,6 +358,7 @@ describe('CredentialsTester', () => {
 			);
 
 			expect(result.status).toBe('OK');
+			expect(result.outcome).toBe('accepted');
 		});
 
 		// The routing engine wraps HTTP failures in NodeApiError: the status is
@@ -390,6 +394,7 @@ describe('CredentialsTester', () => {
 
 			expect(result.status).toBe('Error');
 			expect(result.message).toContain('401');
+			expect(result.outcome).toBe('rejected');
 		});
 
 		it('reports a NodeApiError-wrapped non-auth status as unverifiable', async () => {
@@ -404,6 +409,7 @@ describe('CredentialsTester', () => {
 
 			expect(result.status).toBe('Error');
 			expect(result.message).toContain('405');
+			expect(result.outcome).toBe('unverified');
 		});
 
 		it('accepts a declared code on the NodeApiError shape too', async () => {
@@ -418,6 +424,7 @@ describe('CredentialsTester', () => {
 			);
 
 			expect(result.status).toBe('OK');
+			expect(result.outcome).toBe('accepted');
 		});
 
 		it('reports an unreachable service as unverifiable rather than success', async () => {
@@ -434,6 +441,7 @@ describe('CredentialsTester', () => {
 
 			expect(result.status).toBe('Error');
 			expect(result.message).toContain('Could not reach');
+			expect(result.outcome).toBe('unverified');
 		});
 
 		it('preserves credential configuration errors', async () => {
@@ -451,6 +459,7 @@ describe('CredentialsTester', () => {
 			expect(result).toEqual({
 				status: 'Error',
 				message: 'No value set for placeholder {{api_key}}',
+				outcome: 'unverified',
 			});
 		});
 	});

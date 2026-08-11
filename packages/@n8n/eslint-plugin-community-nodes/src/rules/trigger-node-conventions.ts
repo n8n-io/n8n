@@ -2,6 +2,7 @@ import { TSESTree } from '@typescript-eslint/utils';
 
 import {
 	isNodeTypeClass,
+	isTriggerNodeClass,
 	findClassProperty,
 	findObjectProperty,
 	getStringLiteralValue,
@@ -37,7 +38,7 @@ export const TriggerNodeConventionsRule = createRule({
 					return;
 				}
 
-				if (!node.id?.name.endsWith('Trigger')) {
+				if (!isTriggerNodeClass(node)) {
 					return;
 				}
 

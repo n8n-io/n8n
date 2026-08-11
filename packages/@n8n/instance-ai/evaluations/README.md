@@ -436,8 +436,19 @@ How it differs from the manifest flow:
   place, so every iteration gets a genuinely fresh build (clean `pass@k`/`pass^k`
   variance) instead of rotating a fixed list of prebuilt IDs.
 - **Multi-lane.** Unlike `--prebuilt-workflows` (single instance), `--build-via-mcp`
-  accepts a comma-separated `--base-url`. Each lane enables MCP, mints its own API
-  key, and stages its own `claude` MCP config — the CLI does this setup for you.
+  accepts a comma-separated `--base-url`. Each lane enables MCP; the CLI does this
+  setup for you.
+- **Per-case build users + credential seeding.** Every build runs `claude` as its
+  own freshly-invited member user (invited in batches through the lane owner,
+  accepted lazily per build), with that user's MCP API key staged into a per-build
+  `claude` MCP config. MCP credential/workflow visibility is user-scoped, so each
+  build sees an isolated view: exactly the case's declared `credentials` (created
+  in the member's personal project — the MCP analog of the orchestrator's
+  per-thread credential pinning), and nothing from concurrent builds. Requires the
+  lanes to have no SMTP configured (otherwise invites are emailed and the CLI
+  can't obtain the accept token — eval instances never have SMTP). Build users are
+  deleted with the built workflows after the run; under `--keep-workflows` they
+  stay, since deleting a user deletes their remaining data.
 - **Throwaway cleanup.** Built workflows are deleted after the run unless you pass
   `--keep-workflows`. Known limitation: cleanup keys off the `WORKFLOW_ID` trailer
   `claude` prints, so a build that times out or never emits the trailer can leave
@@ -747,7 +758,7 @@ A case that tests credential behaviour declares what should exist:
 "credentials": [{ "type": "slackApi" }, { "type": "slackApi" }]
 ```
 
-Declared credentials are created for real (placeholder token; set the matching `EVAL_*_ACCESS_TOKEN` for a live token) before the build, the thread's view is pinned to exactly that set, and they're deleted at the end of the run. Counts matter: exactly one credential of a type is the builder's auto-attach path; two or more force the mock path. `name` is optional — duplicates get a `#2` suffix.
+Declared credentials are created for real (placeholder token; set the matching `EVAL_*_ACCESS_TOKEN` for a live token) before the build, the thread's view is pinned to exactly that set, and they're deleted at the end of the run. Their connection test resolves as passing — a declared credential stands for one the user already connected — the same treatment a credential set up on a card during the run gets. Counts matter: exactly one credential of a type is the builder's auto-attach path; two or more force the mock path. `name` is optional — duplicates get a `#2` suffix.
 
 Each type needs a data template in `credentials/seeder.ts`; declaring an unknown type fails the build with a pointer there.
 
@@ -814,7 +825,7 @@ For a **synthetic, sanitized** seed you want pinned in git (never a real user's 
 }
 ```
 
-Schema in `harness/conversation-seed.ts` — `messages` plus optional `workflows` and `dataTables` (both default to `[]`, so a messages-only seed is valid). Two constraints worth knowing: a workflow `id` must be ≥8 characters (`remapSeedWorkflowIds` refuses to rewrite shorter ids safely), and a seeded `build-workflow` tool call's `output.workflowId` must match the seeded workflow's `id`, or the remap separates them and the agent can't find the workflow it's meant to act on.
+Schema in `harness/conversation-seed.ts` — `messages` plus optional `workflows`, `dataTables` and `agents` (all default to `[]`, so a messages-only seed is valid). Two constraints worth knowing: a workflow or agent `id` must be ≥8 characters (`remapSeedArtifactIds` refuses to rewrite shorter ids safely), and a seeded `build-workflow` tool call's `output.workflowId` must match the seeded workflow's `id`, or the remap separates them and the agent can't find the workflow it's meant to act on.
 
 **Each message must carry the envelope** — `id`, `role` (`user` or `assistant`), `type` (`llm`, `custom`, …), `createdAt` (a parseable timestamp; ordering before the live turn depends on it), and `content` as an array of blocks each with a `type`. Only the envelope is validated: **unknown block types are accepted**, because block shapes belong to the agent's message store rather than to the harness, and unknown keys are preserved rather than stripped. A `type: 'custom'` message is the one exception — it's stored but never rendered, so it may omit `role` and carry any `content` shape. The envelope is checked because a malformed message would otherwise be stored verbatim *and* skipped by `transcriptPrefixFromSeed`, leaving the case graded against a transcript that doesn't match what the agent saw.
 

@@ -9,7 +9,7 @@ import type {
 	getIntegrationToolConnectionDescriptors,
 	IntegrationMessageContext,
 } from '../../../integration-tools';
-import { SlackIntegration } from '../../../platforms/slack-integration';
+import { SlackIntegration } from '../../../platforms/slack/slack-integration';
 import {
 	createReplayContextSetup,
 	type MemoryMessageContextStore,

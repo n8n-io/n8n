@@ -1,5 +1,6 @@
 import type { DataSource } from '@n8n/typeorm';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
+import postgresVersions from 'n8n-containers/postgres-versions.json';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import type { StepStatus } from '../../execution/execution.types';
@@ -14,7 +15,7 @@ describe('workflow_step_execution table (integration)', () => {
 	let dataSource: DataSource;
 
 	beforeAll(async () => {
-		container = await new PostgreSqlContainer('postgres:18-alpine').start();
+		container = await new PostgreSqlContainer(postgresVersions.primary).start();
 		dataSource = createDataSource(container.getConnectionUri());
 		await dataSource.initialize();
 		await dataSource.runMigrations();
@@ -105,6 +106,18 @@ describe('workflow_step_execution table (integration)', () => {
 		expect(await store.createSteps([])).toEqual([]);
 	});
 
+	it('TypeOrmStepStore.createSteps rejects a step created with outputs but not completed', async () => {
+		const executionId = await createExecution();
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+
+		await expect(
+			store.createSteps([{ executionId, nodeId: 'x', status: 'queued', outputs: [{}] }]),
+		).rejects.toMatchObject({
+			name: 'UnexpectedError',
+			message: expect.stringContaining('completed') as string,
+		});
+	});
+
 	it('cascades step deletion when the parent execution is deleted', async () => {
 		const executionId = await createExecution();
 		const stepRepo = dataSource.getRepository(WorkflowStepExecution);
@@ -153,9 +166,17 @@ describe('workflow_step_execution table (integration)', () => {
 		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
 		const { id } = await createStep(store, { executionId, nodeId: 'a', status: 'queued' });
 
-		expect(await store.claimStep(id)).toBe(true);
+		// the winning claim gets the step back, already `running`
+		expect(await store.claimStep(id)).toEqual({
+			id,
+			executionId,
+			nodeId: 'a',
+			status: 'running',
+			outputs: null,
+			error: null,
+		});
 		// second claim of the same step loses the race
-		expect(await store.claimStep(id)).toBe(false);
+		expect(await store.claimStep(id)).toBeNull();
 		expect((await store.loadStep(id)).status).toBe('running');
 	});
 
@@ -186,6 +207,40 @@ describe('workflow_step_execution table (integration)', () => {
 		expect(found.status).toBe('queued');
 		expect(found.outputs).toBeNull();
 		expect(found.error).toBeNull();
+	});
+
+	it('TypeOrmStepStore.cancelQueuedSteps cancels queued steps and nothing else', async () => {
+		const executionId = await createExecution();
+		const otherExecutionId = await createExecution();
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const { id: queuedId } = await createStep(store, {
+			executionId,
+			nodeId: 'a',
+			status: 'queued',
+		});
+		const { id: runningId } = await createStep(store, {
+			executionId,
+			nodeId: 'b',
+			status: 'running',
+		});
+		const { id: completedId } = await createStep(store, {
+			executionId,
+			nodeId: 'c',
+			status: 'completed',
+		});
+		// scoped to the execution: a sibling execution's queued work is untouched
+		const { id: otherId } = await createStep(store, {
+			executionId: otherExecutionId,
+			nodeId: 'a',
+			status: 'queued',
+		});
+
+		await store.cancelQueuedSteps(executionId);
+
+		expect((await store.loadStep(queuedId)).status).toBe('cancelled');
+		expect((await store.loadStep(runningId)).status).toBe('running');
+		expect((await store.loadStep(completedId)).status).toBe('completed');
+		expect((await store.loadStep(otherId)).status).toBe('queued');
 	});
 
 	it('TypeOrmStepStore.failStep persists the error and marks the step failed', async () => {
@@ -231,9 +286,9 @@ describe('workflow_step_execution table (integration)', () => {
 		const executionId = await createExecution();
 		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
 		const { id: aId } = await createStep(store, { executionId, nodeId: 'a', status: 'running' });
-		// completed with null outputs — indistinguishable from not-completed via
-		// loadStepOutputs, which is why readiness has its own method
-		await store.completeStep(aId, null);
+		// completed without firing its slot — readiness must not depend on what
+		// the outputs contain, which is why it has its own method
+		await store.completeStep(aId, [null]);
 		await createStep(store, { executionId, nodeId: 'b', status: 'queued' });
 		const { id: cId } = await createStep(store, { executionId, nodeId: 'c', status: 'running' });
 		await store.failStep(cId, { name: 'Error', message: 'node blew up' });

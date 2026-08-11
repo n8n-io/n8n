@@ -1,10 +1,9 @@
 <script setup lang="ts">
 import { ref, computed, useCssModule, watch, nextTick, onMounted, useAttrs } from 'vue';
 
-import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
-
 import type { InputProps, InputEmits, InputSlots, InputSize } from './Input.types';
 import { useAutosizeTextarea } from '../../composables/useAutosizeTextarea';
+import Icon from '../N8nIcon/Icon.vue';
 
 defineOptions({ name: 'N8nInput', inheritAttrs: false });
 
@@ -18,6 +17,7 @@ const props = withDefaults(defineProps<InputProps>(), {
 	placeholder: '',
 	disabled: false,
 	readonly: false,
+	required: false,
 	clearable: false,
 	rows: 2,
 	masked: false,
@@ -211,6 +211,7 @@ defineExpose({ focus, blur, select });
 				:placeholder="placeholder"
 				:disabled="disabled"
 				:readonly="readonly"
+				:required="required"
 				:maxlength="maxlength"
 				:autocomplete="autocomplete"
 				:name="name"
@@ -231,6 +232,7 @@ defineExpose({ focus, blur, select });
 				:placeholder="placeholder"
 				:disabled="disabled"
 				:readonly="readonly"
+				:required="required"
 				:rows="autosize ? undefined : rows"
 				:maxlength="maxlength"
 				:autocomplete="autocomplete"
