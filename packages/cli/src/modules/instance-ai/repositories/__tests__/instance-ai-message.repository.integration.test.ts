@@ -53,32 +53,55 @@ describe('InstanceAiMessageRepository', () => {
 		);
 	}
 
-	describe('hasAnyUserMessage', () => {
+	describe('hasAtLeastUserMessages', () => {
 		it('is false on an instance with no messages', async () => {
-			await expect(messageRepository.hasAnyUserMessage()).resolves.toBe(false);
+			await expect(messageRepository.hasAtLeastUserMessages(1)).resolves.toBe(false);
 		});
 
-		it('is true once a user message exists', async () => {
+		it('is true once the threshold is met exactly', async () => {
+			await saveMessage('user');
+			await saveMessage('user');
 			await saveMessage('user');
 
-			await expect(messageRepository.hasAnyUserMessage()).resolves.toBe(true);
+			await expect(messageRepository.hasAtLeastUserMessages(3)).resolves.toBe(true);
 		});
 
-		it.each(['assistant', 'tool', 'system'])(
-			'is false when only %s messages exist',
-			async (role) => {
-				await saveMessage(role);
+		it('is false while short of the threshold', async () => {
+			await saveMessage('user');
+			await saveMessage('user');
 
-				await expect(messageRepository.hasAnyUserMessage()).resolves.toBe(false);
-			},
-		);
+			await expect(messageRepository.hasAtLeastUserMessages(3)).resolves.toBe(false);
+		});
 
-		it('is true when a user message sits among other roles', async () => {
+		it('is true beyond the threshold', async () => {
+			for (let i = 0; i < 5; i++) await saveMessage('user');
+
+			await expect(messageRepository.hasAtLeastUserMessages(3)).resolves.toBe(true);
+		});
+
+		it.each(['assistant', 'tool', 'system'])('does not count %s messages', async (role) => {
+			await saveMessage(role);
+			await saveMessage(role);
+			await saveMessage(role);
+			await saveMessage('user');
+
+			await expect(messageRepository.hasAtLeastUserMessages(3)).resolves.toBe(false);
+			await expect(messageRepository.hasAtLeastUserMessages(1)).resolves.toBe(true);
+		});
+
+		it('counts user messages sitting among other roles', async () => {
 			await saveMessage('assistant');
 			await saveMessage('user');
 			await saveMessage('tool');
+			await saveMessage('user');
 
-			await expect(messageRepository.hasAnyUserMessage()).resolves.toBe(true);
+			await expect(messageRepository.hasAtLeastUserMessages(2)).resolves.toBe(true);
+			await expect(messageRepository.hasAtLeastUserMessages(3)).resolves.toBe(false);
+		});
+
+		// Guards the caller against a misconfigured threshold silently disabling the gate.
+		it('treats a non-positive threshold as already met', async () => {
+			await expect(messageRepository.hasAtLeastUserMessages(0)).resolves.toBe(true);
 		});
 	});
 });
