@@ -1,6 +1,7 @@
 import {
 	AI_GATEWAY_MANAGED_TAG,
 	applyBranchReadOnlyOverrides,
+	buildDataTablesSessionGrantKey,
 	buildFetchUrlGrantKey,
 	DEFAULT_INSTANCE_AI_PERMISSIONS,
 	errorPayloadSchema,
@@ -428,6 +429,13 @@ describe('instance-ai launch schema', () => {
 					sourceContext: big,
 				}),
 		).toThrow();
+	});
+});
+
+describe('data-tables session grant keys', () => {
+	it('builds action-scoped keys matching the frontend always-allow format', () => {
+		expect(buildDataTablesSessionGrantKey('create')).toBe('data-tables:create');
+		expect(buildDataTablesSessionGrantKey('insert-rows')).toBe('data-tables:insert-rows');
 	});
 });
 

@@ -3,7 +3,10 @@
  * add-column, delete-column, rename-column, insert-rows, update-rows, delete-rows.
  */
 import { Tool } from '@n8n/agents';
-import { instanceAiConfirmationSeveritySchema } from '@n8n/api-types';
+import {
+	buildDataTablesSessionGrantKey,
+	instanceAiConfirmationSeveritySchema,
+} from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
@@ -49,6 +52,8 @@ const confirmationSuspendSchema = z.object({
 
 const confirmationResumeSchema = z.object({
 	approved: z.boolean(),
+	/** `'session'` — user chose "always allow"; persist a thread-level grant. */
+	scope: z.enum(['once', 'session']).optional(),
 });
 
 type ResumeData = z.infer<typeof confirmationResumeSchema>;
@@ -56,6 +61,20 @@ type ResumeData = z.infer<typeof confirmationResumeSchema>;
 interface ConfirmationToolContext {
 	resumeData: ResumeData | undefined;
 	suspend: (payload: z.infer<typeof confirmationSuspendSchema>) => Promise<never>;
+}
+
+function hasSessionGrant(context: InstanceAiContext, action: string): boolean {
+	return context.sessionApprovedToolKeys?.has(buildDataTablesSessionGrantKey(action)) === true;
+}
+
+async function persistSessionGrantIfRequested(
+	context: InstanceAiContext,
+	action: string,
+	resumeData: ResumeData | undefined,
+): Promise<void> {
+	if (resumeData?.approved && resumeData.scope === 'session') {
+		await context.grantSessionToolApproval?.(buildDataTablesSessionGrantKey(action));
+	}
 }
 
 /**
@@ -337,7 +356,8 @@ async function handleCreate(
 		return { denied: true, reason: 'Action blocked by admin' };
 	}
 
-	const needsApproval = context.permissions?.createDataTable !== 'always_allow';
+	const needsApproval =
+		context.permissions?.createDataTable !== 'always_allow' && !hasSessionGrant(context, 'create');
 
 	// State 1: First call — suspend for confirmation (unless always_allow)
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
@@ -358,6 +378,8 @@ async function handleCreate(
 	if (resumeData !== undefined && resumeData !== null && !resumeData.approved) {
 		return { denied: true, reason: 'User denied the action' };
 	}
+
+	await persistSessionGrantIfRequested(context, 'create', resumeData);
 
 	// State 3: Approved or always_allow — execute
 	try {
@@ -389,7 +411,8 @@ async function handleDelete(
 		return { success: false, denied: true, reason: 'Action blocked by admin' };
 	}
 
-	const needsApproval = context.permissions?.deleteDataTable !== 'always_allow';
+	const needsApproval =
+		context.permissions?.deleteDataTable !== 'always_allow' && !hasSessionGrant(context, 'delete');
 
 	// State 1: First call — suspend for confirmation (unless always_allow)
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
@@ -404,6 +427,8 @@ async function handleDelete(
 	if (resumeData !== undefined && resumeData !== null && !resumeData.approved) {
 		return { success: false, denied: true, reason: 'User denied the action' };
 	}
+
+	await persistSessionGrantIfRequested(context, 'delete', resumeData);
 
 	// State 3: Approved or always_allow — execute
 	await context.dataTableService.delete(input.dataTableId, { projectId: input.projectId });
@@ -421,7 +446,9 @@ async function handleAddColumn(
 		return { denied: true, reason: 'Action blocked by admin' };
 	}
 
-	const needsApproval = context.permissions?.mutateDataTableSchema !== 'always_allow';
+	const needsApproval =
+		context.permissions?.mutateDataTableSchema !== 'always_allow' &&
+		!hasSessionGrant(context, 'add-column');
 
 	// State 1: First call — suspend for confirmation (unless always_allow)
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
@@ -436,6 +463,8 @@ async function handleAddColumn(
 	if (resumeData !== undefined && resumeData !== null && !resumeData.approved) {
 		return { denied: true, reason: 'User denied the action' };
 	}
+
+	await persistSessionGrantIfRequested(context, 'add-column', resumeData);
 
 	// State 3: Approved or always_allow — execute
 	const column = await context.dataTableService.addColumn(
@@ -457,7 +486,9 @@ async function handleDeleteColumn(
 		return { success: false, denied: true, reason: 'Action blocked by admin' };
 	}
 
-	const needsApproval = context.permissions?.mutateDataTableSchema !== 'always_allow';
+	const needsApproval =
+		context.permissions?.mutateDataTableSchema !== 'always_allow' &&
+		!hasSessionGrant(context, 'delete-column');
 
 	// State 1: First call — suspend for confirmation (unless always_allow)
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
@@ -472,6 +503,8 @@ async function handleDeleteColumn(
 	if (resumeData !== undefined && resumeData !== null && !resumeData.approved) {
 		return { success: false, denied: true, reason: 'User denied the action' };
 	}
+
+	await persistSessionGrantIfRequested(context, 'delete-column', resumeData);
 
 	// State 3: Approved or always_allow — execute
 	await context.dataTableService.deleteColumn(input.dataTableId, input.columnId, {
@@ -491,7 +524,9 @@ async function handleRenameColumn(
 		return { success: false, denied: true, reason: 'Action blocked by admin' };
 	}
 
-	const needsApproval = context.permissions?.mutateDataTableSchema !== 'always_allow';
+	const needsApproval =
+		context.permissions?.mutateDataTableSchema !== 'always_allow' &&
+		!hasSessionGrant(context, 'rename-column');
 
 	// State 1: First call — suspend for confirmation (unless always_allow)
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
@@ -506,6 +541,8 @@ async function handleRenameColumn(
 	if (resumeData !== undefined && resumeData !== null && !resumeData.approved) {
 		return { success: false, denied: true, reason: 'User denied the action' };
 	}
+
+	await persistSessionGrantIfRequested(context, 'rename-column', resumeData);
 
 	// State 3: Approved or always_allow — execute
 	await context.dataTableService.renameColumn(input.dataTableId, input.columnId, input.newName, {
@@ -525,7 +562,9 @@ async function handleInsertRows(
 		return { denied: true, reason: 'Action blocked by admin' };
 	}
 
-	const needsApproval = context.permissions?.mutateDataTableRows !== 'always_allow';
+	const needsApproval =
+		context.permissions?.mutateDataTableRows !== 'always_allow' &&
+		!hasSessionGrant(context, 'insert-rows');
 
 	// State 1: First call — suspend for confirmation (unless always_allow)
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
@@ -540,6 +579,8 @@ async function handleInsertRows(
 	if (resumeData !== undefined && resumeData !== null && !resumeData.approved) {
 		return { denied: true, reason: 'User denied the action' };
 	}
+
+	await persistSessionGrantIfRequested(context, 'insert-rows', resumeData);
 
 	// State 3: Approved or always_allow — execute
 	return await context.dataTableService.insertRows(input.dataTableId, input.rows, {
@@ -558,7 +599,9 @@ async function handleUpdateRows(
 		return { denied: true, reason: 'Action blocked by admin' };
 	}
 
-	const needsApproval = context.permissions?.mutateDataTableRows !== 'always_allow';
+	const needsApproval =
+		context.permissions?.mutateDataTableRows !== 'always_allow' &&
+		!hasSessionGrant(context, 'update-rows');
 
 	// State 1: First call — suspend for confirmation (unless always_allow)
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
@@ -573,6 +616,8 @@ async function handleUpdateRows(
 	if (resumeData !== undefined && resumeData !== null && !resumeData.approved) {
 		return { denied: true, reason: 'User denied the action' };
 	}
+
+	await persistSessionGrantIfRequested(context, 'update-rows', resumeData);
 
 	// State 3: Approved or always_allow — execute
 	return await context.dataTableService.updateRows(input.dataTableId, input.filter, input.data, {
@@ -591,7 +636,9 @@ async function handleDeleteRows(
 		return { success: false, denied: true, reason: 'Action blocked by admin' };
 	}
 
-	const needsApproval = context.permissions?.mutateDataTableRows !== 'always_allow';
+	const needsApproval =
+		context.permissions?.mutateDataTableRows !== 'always_allow' &&
+		!hasSessionGrant(context, 'delete-rows');
 
 	// State 1: First call — suspend for confirmation (unless always_allow)
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
@@ -615,6 +662,8 @@ async function handleDeleteRows(
 	if (resumeData !== undefined && resumeData !== null && !resumeData.approved) {
 		return { success: false, denied: true, reason: 'User denied the action' };
 	}
+
+	await persistSessionGrantIfRequested(context, 'delete-rows', resumeData);
 
 	// State 3: Approved or always_allow — execute
 	const result = await context.dataTableService.deleteRows(input.dataTableId, input.filter, {
