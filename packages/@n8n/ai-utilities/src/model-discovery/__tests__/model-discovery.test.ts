@@ -1,3 +1,5 @@
+import { UserError } from 'n8n-workflow';
+
 import { isOpenAiCustomEndpoint, listModelsForProvider, MODEL_DISCOVERY_PROVIDERS } from '../index';
 
 function mockFetch(body: unknown, ok = true, status = 200) {
@@ -207,11 +209,64 @@ describe('model-discovery', () => {
 	});
 
 	describe('error handling', () => {
-		it('throws a descriptive error on a non-2xx response', async () => {
-			const fetch = mockFetch({ error: { message: 'invalid x-api-key' } }, false, 401);
+		it.each([401, 403])(
+			'throws a non-reportable user error on an authentication response with status %s',
+			async (status) => {
+				const fetch = mockFetch(
+					{ error: { message: 'provider response must not be exposed' } },
+					false,
+					status,
+				);
 
-			await expect(listModelsForProvider('anthropic', { apiKey: 'bad', fetch })).rejects.toThrow(
-				/anthropic.*401/i,
+				const error = await listModelsForProvider('anthropic', {
+					apiKey: 'bad',
+					fetch,
+				}).catch((error: unknown) => error);
+
+				expect(error).toBeInstanceOf(UserError);
+				expect(error).toMatchObject({
+					message:
+						"Models couldn't be loaded. Check that the selected credential is valid and has the required permissions, then try again.",
+					shouldReport: false,
+				});
+			},
+		);
+
+		it('keeps server errors reportable', async () => {
+			const fetch = mockFetch({ error: { message: 'provider unavailable' } }, false, 500);
+
+			const error = await listModelsForProvider('anthropic', {
+				apiKey: 'key',
+				fetch,
+			}).catch((error: unknown) => error);
+
+			expect(error).toBeInstanceOf(Error);
+			expect(error).not.toBeInstanceOf(UserError);
+			expect(error).toMatchObject({
+				message:
+					'Failed to list anthropic models (status 500): {"error":{"message":"provider unavailable"}}',
+			});
+		});
+
+		it('propagates network errors unchanged', async () => {
+			const networkError = new Error('Network unavailable');
+			const fetch = vi.fn().mockRejectedValue(networkError) as unknown as typeof globalThis.fetch;
+
+			await expect(listModelsForProvider('anthropic', { apiKey: 'key', fetch })).rejects.toBe(
+				networkError,
+			);
+		});
+
+		it('propagates malformed response errors unchanged', async () => {
+			const parseError = new SyntaxError('Unexpected token');
+			const fetch = vi.fn().mockResolvedValue({
+				ok: true,
+				status: 200,
+				json: async () => await Promise.reject(parseError),
+			}) as unknown as typeof globalThis.fetch;
+
+			await expect(listModelsForProvider('anthropic', { apiKey: 'key', fetch })).rejects.toBe(
+				parseError,
 			);
 		});
 
