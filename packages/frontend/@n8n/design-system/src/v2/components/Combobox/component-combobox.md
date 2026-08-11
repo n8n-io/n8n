@@ -1,6 +1,6 @@
 # Component specification
 
-Allows users to search and choose one or more options from a list. All comboboxes filter as the user types and open the dropdown on input focus. Supports single and multiple selection, grouped lists (labels and separators), and is suited to larger datasets where a plain Select is not enough.
+Allows users to search and choose one or more options from a list. All comboboxes filter as the user types and open the dropdown on input focus. Supports single and multiple selection, grouped lists (groups and separators), and is suited to larger datasets where a plain Select is not enough.
 
 - **Component Name:** N8nCombobox2
 - **Figma Component:** [ComboBox](https://www.figma.com/design/8zib7Trf2D2CHYXrEGPHkg/n8n-Design-System-V3?node-id=2631-7139&m=dev)
@@ -17,17 +17,17 @@ Combobox (N8nCombobox2)
 └── ComboboxContent (portaled dropdown, role="listbox", max-height 500px by default)
     └── ComboboxViewport (scrollable list area)
         ├── ComboboxEmpty
-        └── ComboboxGroup (one per section; split at `type: 'label'` boundaries)
-            ├── ComboboxLabel (section heading, when present)
-            ├── ComboboxSeparator
-            └── N8nCombobox2Item (reka-ui ComboboxItem + default row: icon, label, check)
+        ├── ComboboxGroup (one per `type: 'group'`, or batched top-level options)
+        │   ├── ComboboxLabel (optional section heading)
+        │   └── N8nCombobox2Item (reka-ui ComboboxItem + default row: icon, label, check)
+        └── ComboboxSeparator (top-level `type: 'separator'`)
 ```
 
-There are no header/footer slots. Reka applies `role="listbox"` to `ComboboxContent`, so non-option content (buttons, links, freeform markup) would break the ARIA listbox pattern. For section headings use `type: 'label'` items; for actionable chrome (e.g. “Create new…”) add a selectable option — see [Header and footer actions](#header-and-footer-actions).
+There are no header/footer slots. Reka applies `role="listbox"` to `ComboboxContent`, so non-option content (buttons, links, freeform markup) would break the ARIA listbox pattern. For section headings use `type: 'group'` with an optional `label`; for actionable chrome (e.g. “Create new…”) add a selectable option — see [Header and footer actions](#header-and-footer-actions).
 
 When `multiple` is true, selected values render via embedded `N8nTagsInput2` (shared chip/layout styles; Combobox keeps the field chrome). Freeform tag creation is disabled — values are only added from the dropdown.
 
-Items with `type: 'label'` start a new `ComboboxGroup`. That keeps each heading’s DOM `id` unique so `aria-labelledby` on the group points at the correct label (multiple labels in one group would reuse reka’s single `labelId`).
+Use `type: 'group'` for sections. The `label` is optional. Each group maps to its own reka `ComboboxGroup`, so heading DOM `id`s stay unique and `aria-labelledby` points at the correct label. Top-level options (outside any group) are batched into an unlabeled group. Separators belong at the top level between groups.
 
 ## Public API Definition
 
@@ -93,7 +93,7 @@ The dropdown content defaults to a max height of **500px** with vertical scrolli
 - `item-leading`: `{ item: ComboboxOptionBase; ui: { class: string } }` — Pass-through to `N8nCombobox2Item`
 - `item-label`: `{ item: ComboboxOptionBase }` — Pass-through to `N8nCombobox2Item`
 - `item-trailing`: `{ item: ComboboxOptionBase; ui: { class: string } }` — Pass-through to `N8nCombobox2Item`
-- `label`: `{ item: ComboboxLabelItem }` — Section heading for `type: 'label'` items
+- `label`: `{ item: ComboboxGroupItem }` — Section heading for `type: 'group'` entries that have a `label`
 
 ### Item shapes
 
@@ -118,7 +118,7 @@ type ComboboxOptionBase<TValue extends ComboboxValue = ComboboxValue> = {
 
 type ComboboxItem =
   | ComboboxOptionBase
-  | { type: 'label'; label: string }
+  | { type: 'group'; label?: string; items: ComboboxOptionBase[] }
   | { type: 'separator' };
 ```
 
@@ -131,8 +131,8 @@ interface CustomOption extends ComboboxOptionBase<string> {
 ```
 
 - **Object items** (e.g. `{ label: 'Option 1', value: 'option1' }`) — `modelValue` stores `value`; the input displays `label`. Missing/empty `value` or `label` are skipped (with a console warning in development) — empty string values are never passed to reka (they would kill the dropdown).
-- **Labels** — `{ type: 'label', label: 'Fruits' }` — non-interactive section heading.
-- **Separators** — `{ type: 'separator' }` — non-interactive divider between groups.
+- **Groups** — `{ type: 'group', label?: 'Fruits', items: [...] }` — optional section heading plus nested options. Label may be omitted for an unlabeled group.
+- **Separators** — `{ type: 'separator' }` — non-interactive divider between top-level groups/options.
 
 Object items may also include an `icon` property. When no custom `#item-leading` slot is provided, icons on items are rendered automatically. The same `#item-leading` slot (or default icon) is also used for the selected value in the trigger.
 
@@ -211,7 +211,7 @@ const value = ref<string | undefined>();
 </template>
 ```
 
-**Grouped list with labels and separators**
+**Grouped list with groups and separators**
 
 ```vue
 <script setup lang="ts">
@@ -219,12 +219,20 @@ import { ref } from 'vue';
 import { N8nCombobox2 } from '@n8n/design-system';
 
 const items = ref([
-  { type: 'label', label: 'Fruits' },
-  { label: 'Apple', value: 'apple' },
-  { label: 'Banana', value: 'banana' },
+  {
+    type: 'group',
+    label: 'Fruits',
+    items: [
+      { label: 'Apple', value: 'apple' },
+      { label: 'Banana', value: 'banana' },
+    ],
+  },
   { type: 'separator' },
-  { type: 'label', label: 'Vegetables' },
-  { label: 'Carrot', value: 'carrot' },
+  {
+    type: 'group',
+    label: 'Vegetables',
+    items: [{ label: 'Carrot', value: 'carrot' }],
+  },
 ]);
 const value = ref<string | undefined>();
 </script>
@@ -236,7 +244,7 @@ const value = ref<string | undefined>();
 
 **Header and footer actions**
 
-Do not place buttons or other freeform interactive controls in the popup — they sit inside `role="listbox"` and break the ARIA pattern. Model actions as selectable options instead: use `type: 'label'` for non-interactive headings, `type: 'separator'` to visually pin an action, and `onSelect` with `event.preventDefault()` so the action does not become the field value.
+Do not place buttons or other freeform interactive controls in the popup — they sit inside `role="listbox"` and break the ARIA pattern. Model actions as selectable options instead: use `type: 'group'` for labeled sections, `type: 'separator'` to visually pin an action, and `onSelect` with `event.preventDefault()` so the action does not become the field value.
 
 ```vue
 <script setup lang="ts">
@@ -254,8 +262,11 @@ const createOpen = ref(false);
 const value = ref<string | undefined>();
 
 const items = computed(() => [
-  { type: 'label' as const, label: 'Fruits' },
-  ...options,
+  {
+    type: 'group' as const,
+    label: 'Fruits',
+    items: options,
+  },
   { type: 'separator' as const },
   {
     label: 'Create new fruit',

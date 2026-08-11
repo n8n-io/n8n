@@ -29,20 +29,23 @@ export type ComboboxOptionBase<TValue extends ComboboxValue = ComboboxValue> = {
 	onSelect?: (event: Event) => void;
 };
 
-export type ComboboxLabelItem = {
-	type: 'label';
-	label: string;
+export type ComboboxGroupItem<TValue extends ComboboxValue = ComboboxValue> = {
+	type: 'group';
+	label?: string;
+	items: Array<ComboboxOptionBase<TValue>>;
 };
 
 export type ComboboxSeparatorItem = {
 	type: 'separator';
 };
 
-export type ComboboxStructuralItem = ComboboxLabelItem | ComboboxSeparatorItem;
+export type ComboboxStructuralItem<TValue extends ComboboxValue = ComboboxValue> =
+	| ComboboxGroupItem<TValue>
+	| ComboboxSeparatorItem;
 
 export type ComboboxItem<TValue extends ComboboxValue = ComboboxValue> =
 	| ComboboxOptionBase<TValue>
-	| ComboboxStructuralItem;
+	| ComboboxStructuralItem<TValue>;
 
 export type ComboboxProps = Omit<ComboboxRootProps<ComboboxValue>, 'dir' | 'openOnFocus'> &
 	Pick<ComboboxContentProps, 'side' | 'sideOffset' | 'align'> & {
@@ -75,7 +78,7 @@ export type ComboboxItemSlots = {
 
 export type ComboboxSlots = {
 	item?: (props: { item: ComboboxOptionBase }) => unknown;
-	label?: (props: { item: ComboboxLabelItem }) => unknown;
+	label?: (props: { item: ComboboxGroupItem }) => unknown;
 	['item-leading']?: SlotProps;
 	['item-label']?: (props: { item: ComboboxOptionBase }) => unknown;
 	['item-trailing']?: SlotProps;

@@ -33,9 +33,9 @@ export { default as N8nCombobox2Item } from './v2/components/Combobox/ComboboxIt
 export type { ComboboxItemProps } from 'reka-ui';
 export type {
 	ComboboxEmits,
+	ComboboxGroupItem,
 	ComboboxItem,
 	ComboboxItemSlots,
-	ComboboxLabelItem,
 	ComboboxOptionBase,
 	ComboboxProps,
 	ComboboxSeparatorItem,

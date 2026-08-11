@@ -8,11 +8,10 @@ import { useI18n } from '@n8n/design-system/composables/useI18n';
 import { N8nTagsInput2, TagsInputInput, type TagsInputValue } from '../TagsInput';
 import type {
 	ComboboxEmits,
+	ComboboxGroupItem,
 	ComboboxItem,
-	ComboboxLabelItem,
 	ComboboxOptionBase,
 	ComboboxProps,
-	ComboboxSeparatorItem,
 	ComboboxSizes,
 	ComboboxSlots,
 	ComboboxValue,
@@ -106,15 +105,15 @@ function onModelValueUpdate(value: ComboboxValue | ComboboxValue[] | undefined) 
 	emit('update:modelValue', value);
 }
 
-function isStructuralItem(item: ComboboxItem): item is ComboboxLabelItem | ComboboxSeparatorItem {
-	return item.type === 'label' || item.type === 'separator';
+function isGroupItem(item: ComboboxItem): item is ComboboxGroupItem {
+	return item.type === 'group';
 }
 
-function isOptionItem(item: ComboboxItem): item is ComboboxOptionBase {
-	return !isStructuralItem(item);
+function isSeparatorItem(item: ComboboxItem): item is { type: 'separator' } {
+	return item.type === 'separator';
 }
 
-function warnInvalidItem(message: string, item: ComboboxItem) {
+function warnInvalidItem(message: string, item: unknown) {
 	if (!import.meta.env.DEV) {
 		return;
 	}
@@ -122,6 +121,99 @@ function warnInvalidItem(message: string, item: ComboboxItem) {
 	// eslint-disable-next-line no-console
 	console.warn(`[N8nCombobox2] ${message}`, item);
 }
+
+function normaliseOption(item: ComboboxOptionBase): ComboboxOptionBase | undefined {
+	if (item.value === '') {
+		warnInvalidItem(
+			'Skipping item: "value" is missing or empty. Every selectable item needs a non-empty value.',
+			item,
+		);
+		return undefined;
+	}
+
+	if (!item.label) {
+		warnInvalidItem(
+			'Skipping item: "label" is missing or empty. Every selectable item needs a label.',
+			item,
+		);
+		return undefined;
+	}
+
+	return {
+		...item,
+		textValue: item.textValue ?? item.label,
+	};
+}
+
+type ComboboxSection =
+	| {
+			type: 'group';
+			/** Present when this section came from an explicit `type: 'group'` entry. */
+			group?: ComboboxGroupItem;
+			label?: string;
+			items: ComboboxOptionBase[];
+	  }
+	| { type: 'separator' };
+
+const sections = computed<ComboboxSection[]>(() => {
+	if (!props.items?.length) return [];
+
+	const result: ComboboxSection[] = [];
+	let pendingOptions: ComboboxOptionBase[] = [];
+
+	const flushPendingOptions = () => {
+		if (pendingOptions.length === 0) {
+			return;
+		}
+		result.push({ type: 'group', items: pendingOptions });
+		pendingOptions = [];
+	};
+
+	for (const item of props.items) {
+		if (isGroupItem(item)) {
+			flushPendingOptions();
+
+			const groupItems: ComboboxOptionBase[] = [];
+			for (const child of item.items) {
+				const normalised = normaliseOption(child);
+				if (normalised) {
+					groupItems.push(normalised);
+				}
+			}
+
+			const label = item.label || undefined;
+			if (item.label !== undefined && !item.label) {
+				warnInvalidItem('Skipping group label: "label" is empty.', item);
+			}
+
+			result.push({
+				type: 'group',
+				group: item,
+				label,
+				items: groupItems,
+			});
+			continue;
+		}
+
+		if (isSeparatorItem(item)) {
+			flushPendingOptions();
+			result.push({ type: 'separator' });
+			continue;
+		}
+
+		const normalised = normaliseOption(item);
+		if (normalised) {
+			pendingOptions.push(normalised);
+		}
+	}
+
+	flushPendingOptions();
+	return result;
+});
+
+const optionItems = computed(() =>
+	sections.value.flatMap((section) => (section.type === 'group' ? section.items : [])),
+);
 
 const anchorRef = useTemplateRef<InstanceType<typeof ComboboxAnchor>>('anchor');
 const inputRef = useTemplateRef<
@@ -142,79 +234,6 @@ const sizes: Record<ComboboxSizes, string> = {
 
 const sizeClass = computed(() => sizes[props.size]);
 
-const normalisedItems = computed<ComboboxItem[]>(() => {
-	if (!props.items?.length) return [];
-
-	const result: ComboboxItem[] = [];
-
-	for (const item of props.items) {
-		if (item.type === 'label') {
-			if (!item.label) {
-				warnInvalidItem('Skipping label item: "label" is missing or empty.', item);
-				continue;
-			}
-			result.push(item);
-			continue;
-		}
-
-		if (item.type === 'separator') {
-			result.push(item);
-			continue;
-		}
-
-		if (item.value === '') {
-			warnInvalidItem(
-				'Skipping item: "value" is missing or empty. Every selectable item needs a non-empty value.',
-				item,
-			);
-			continue;
-		}
-
-		if (!item.label) {
-			warnInvalidItem(
-				'Skipping item: "label" is missing or empty. Every selectable item needs a label.',
-				item,
-			);
-			continue;
-		}
-
-		result.push({
-			...item,
-			textValue: item.textValue ?? item.label,
-		});
-	}
-
-	return result;
-});
-
-type ComboboxSection = {
-	label?: ComboboxLabelItem;
-	items: Array<ComboboxOptionBase | ComboboxSeparatorItem>;
-};
-
-const sections = computed<ComboboxSection[]>(() => {
-	const result: ComboboxSection[] = [];
-	let current: ComboboxSection = { items: [] };
-
-	for (const item of normalisedItems.value) {
-		if (item.type === 'label') {
-			if (current.label || current.items.length > 0) {
-				result.push(current);
-			}
-			current = { label: item, items: [] };
-			continue;
-		}
-
-		current.items.push(item);
-	}
-
-	if (current.label || current.items.length > 0) {
-		result.push(current);
-	}
-
-	return result;
-});
-
 function getDisplayValue(value: unknown): string {
 	if (value === undefined || value === null) {
 		return '';
@@ -224,9 +243,7 @@ function getDisplayValue(value: unknown): string {
 		return '';
 	}
 
-	const matchedItem = normalisedItems.value.find(
-		(item): item is ComboboxOptionBase => isOptionItem(item) && item.value === value,
-	);
+	const matchedItem = optionItems.value.find((item) => item.value === value);
 	if (matchedItem) {
 		return matchedItem.label;
 	}
@@ -260,16 +277,14 @@ const selectedItem = computed(() => {
 		return undefined;
 	}
 
-	return normalisedItems.value.find(
-		(item): item is ComboboxOptionBase => isOptionItem(item) && item.value === value,
-	);
+	return optionItems.value.find((item) => item.value === value);
 });
 
 function onClear() {
 	onModelValueUpdate(props.multiple ? [] : undefined);
 
 	void nextTick(() => {
-		const element = inputRef.value?.$el;
+		const element: unknown = inputRef.value?.$el;
 		if (!(element instanceof HTMLInputElement)) {
 			return;
 		}
@@ -395,43 +410,42 @@ function onTagsUpdate(value: TagsInputValue[]) {
 						{{ emptyText }}
 					</ComboboxEmpty>
 
-					<ComboboxGroup
-						v-for="(section, sectionIndex) in sections"
-						:key="`section-${sectionIndex}`"
-					>
-						<ComboboxLabel v-if="section.label" :class="$style.comboboxLabel">
-							<slot name="label" :item="section.label">
-								{{ section.label.label }}
-							</slot>
-						</ComboboxLabel>
+					<template v-for="(section, sectionIndex) in sections" :key="`section-${sectionIndex}`">
+						<ComboboxSeparator
+							v-if="section.type === 'separator'"
+							:class="$style.comboboxSeparator"
+							aria-hidden="true"
+						/>
 
-						<template
-							v-for="(item, index) in section.items"
-							:key="`section-${sectionIndex}-item-${index}`"
-						>
-							<ComboboxSeparator
-								v-if="item.type === 'separator'"
-								:class="$style.comboboxSeparator"
-								aria-hidden="true"
-							/>
+						<ComboboxGroup v-else>
+							<ComboboxLabel v-if="section.label && section.group" :class="$style.comboboxLabel">
+								<slot name="label" :item="section.group">
+									{{ section.label }}
+								</slot>
+							</ComboboxLabel>
 
-							<slot v-else name="item" :item="item">
-								<N8nComboboxItem v-bind="item">
-									<template v-if="$slots['item-leading']" #item-leading="{ ui }">
-										<slot name="item-leading" :item="item" :ui="ui" />
-									</template>
-									<template #item-label>
-										<slot name="item-label" :item="item">
-											{{ item.label }}
-										</slot>
-									</template>
-									<template v-if="$slots['item-trailing']" #item-trailing="{ ui }">
-										<slot name="item-trailing" :item="item" :ui="ui" />
-									</template>
-								</N8nComboboxItem>
-							</slot>
-						</template>
-					</ComboboxGroup>
+							<template
+								v-for="(item, index) in section.items"
+								:key="`section-${sectionIndex}-item-${index}`"
+							>
+								<slot name="item" :item="item">
+									<N8nComboboxItem v-bind="item">
+										<template v-if="$slots['item-leading']" #item-leading="{ ui }">
+											<slot name="item-leading" :item="item" :ui="ui" />
+										</template>
+										<template #item-label>
+											<slot name="item-label" :item="item">
+												{{ item.label }}
+											</slot>
+										</template>
+										<template v-if="$slots['item-trailing']" #item-trailing="{ ui }">
+											<slot name="item-trailing" :item="item" :ui="ui" />
+										</template>
+									</N8nComboboxItem>
+								</slot>
+							</template>
+						</ComboboxGroup>
+					</template>
 				</ComboboxViewport>
 			</ComboboxContent>
 		</ComboboxPortal>

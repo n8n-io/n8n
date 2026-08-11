@@ -223,12 +223,18 @@ describe('v2/components/Combobox', () => {
 			);
 		});
 
-		it('should render each section label with a unique id and its own group', async () => {
+		it('should render each group label with a unique id and its own group', async () => {
 			const items: ComboboxItem[] = [
-				{ label: 'Fruits', type: 'label' },
-				{ value: 'apple', label: 'Apple' },
-				{ label: 'More Fruits', type: 'label' },
-				{ value: 'mango', label: 'Mango' },
+				{
+					type: 'group',
+					label: 'Fruits',
+					items: [{ value: 'apple', label: 'Apple' }],
+				},
+				{
+					type: 'group',
+					label: 'More Fruits',
+					items: [{ value: 'mango', label: 'Mango' }],
+				},
 			];
 			render(Combobox, {
 				props: {
@@ -251,6 +257,35 @@ describe('v2/components/Combobox', () => {
 			expect(groupElements).toHaveLength(2);
 			expect(groupElements[0]).toHaveAttribute('aria-labelledby', fruits.id);
 			expect(groupElements[1]).toHaveAttribute('aria-labelledby', moreFruits.id);
+		});
+
+		it('should render unlabeled groups without a heading', async () => {
+			const items: ComboboxItem[] = [
+				{
+					type: 'group',
+					items: [{ value: 'apple', label: 'Apple' }],
+				},
+				{ type: 'separator' },
+				{
+					type: 'group',
+					label: 'Vegetables',
+					items: [{ value: 'carrot', label: 'Carrot' }],
+				},
+			];
+			render(Combobox, {
+				props: {
+					items,
+					defaultOpen: true,
+				},
+			});
+
+			const { popover } = await getPopoverContainer();
+
+			expect(within(popover).queryByText('Fruits')).not.toBeInTheDocument();
+			expect(within(popover).getByText('Vegetables')).toBeVisible();
+			expect(within(popover).getByRole('option', { name: 'Apple' })).toBeVisible();
+			expect(within(popover).getByRole('option', { name: 'Carrot' })).toBeVisible();
+			expect(popover.querySelectorAll('[role="group"]')).toHaveLength(2);
 		});
 
 		it('should render separator items', async () => {
@@ -834,8 +869,11 @@ describe('v2/components/Combobox', () => {
 			render(Combobox, {
 				props: {
 					items: [
-						{ label: 'Group 1', type: 'label' },
-						{ value: '1', label: 'Option 1' },
+						{
+							type: 'group',
+							label: 'Group 1',
+							items: [{ value: '1', label: 'Option 1' }],
+						},
 					],
 					defaultOpen: true,
 				},
