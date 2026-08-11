@@ -16,6 +16,8 @@
 // its own tool calls.
 // ---------------------------------------------------------------------------
 
+import { isRecord } from '@n8n/utils/is-record';
+
 import type { EventOutcome } from '../types';
 import type {
 	DiscoveryCheckResult,
@@ -29,7 +31,7 @@ const SPAWN_PREFIX = 'spawn_sub_agent:';
 function collectInvokedTools(outcome: EventOutcome): string[] {
 	const tools = new Set<string>();
 	for (const tc of outcome.toolCalls) {
-		if (tc.toolName) tools.add(tc.toolName);
+		if (tc.toolName && !wasDeclined(tc)) tools.add(tc.toolName);
 	}
 	for (const agent of outcome.agentActivities) {
 		for (const t of agent.tools) tools.add(t);
@@ -66,11 +68,17 @@ function validateRule(rule: ExpectedToolInvocations): void {
 	}
 }
 
+function wasDeclined(toolCall: EventOutcome['toolCalls'][number]): boolean {
+	return isRecord(toolCall.result) && toolCall.result.declined === true;
+}
+
 function toolCallMatchesExpectation(
 	toolCall: EventOutcome['toolCalls'][number],
 	expectation: ForbiddenToolCall,
 ): boolean {
+	if (wasDeclined(toolCall) !== (expectation.declined ?? false)) return false;
 	if (toolCall.toolName !== expectation.toolName) return false;
+	if (expectation.args && !matchesArgPattern(expectation.args, toolCall.args)) return false;
 
 	const argsContainAny = expectation.argsContainAny ?? [];
 	if (argsContainAny.length === 0) return true;
@@ -79,12 +87,40 @@ function toolCallMatchesExpectation(
 	return argsContainAny.some((term) => argsText.includes(term.toLowerCase()));
 }
 
+function matchesArgPattern(pattern: unknown, actual: unknown): boolean {
+	if (Array.isArray(pattern)) {
+		return (
+			Array.isArray(actual) &&
+			pattern.every((item) => actual.some((candidate) => matchesArgPattern(item, candidate)))
+		);
+	}
+	if (isRecord(pattern)) {
+		return (
+			isRecord(actual) &&
+			Object.entries(pattern).every(([key, value]) => matchesArgPattern(value, actual[key]))
+		);
+	}
+	return pattern === actual;
+}
+
+function describeActualToolCalls(outcome: EventOutcome): string {
+	return (
+		outcome.toolCalls
+			.map((tc) => (wasDeclined(tc) ? `${tc.toolName} (declined)` : tc.toolName))
+			.join(', ') || '∅'
+	);
+}
+
 function formatToolCallExpectation(expectation: ForbiddenToolCall): string {
-	const args =
-		expectation.argsContainAny && expectation.argsContainAny.length > 0
-			? ` with args containing one of [${expectation.argsContainAny.join(', ')}]`
-			: '';
-	return `${expectation.toolName}${args}`;
+	const clauses: string[] = [];
+	if (expectation.declined) clauses.push('a declined result');
+	if (expectation.args) clauses.push(`args matching ${JSON.stringify(expectation.args)}`);
+	if (expectation.argsContainAny && expectation.argsContainAny.length > 0) {
+		clauses.push(`args containing one of [${expectation.argsContainAny.join(', ')}]`);
+	}
+	return clauses.length > 0
+		? `${expectation.toolName} with ${clauses.join(' and ')}`
+		: expectation.toolName;
 }
 
 export function runExpectedToolsInvokedCheck(
@@ -128,7 +164,7 @@ export function runExpectedToolsInvokedCheck(
 			outcome.toolCalls.some((toolCall) => toolCallMatchesExpectation(toolCall, expectation)),
 		);
 		if (!matched) {
-			const actualToolCalls = outcome.toolCalls.map((tc) => tc.toolName).join(', ') || '∅';
+			const actualToolCalls = describeActualToolCalls(outcome);
 			return {
 				pass: false,
 				comment: `Expected at least one actual tool call matching [${anyOfToolCalls.map(formatToolCallExpectation).join(', ')}]. Actual tool calls: [${actualToolCalls}].`,
@@ -144,7 +180,7 @@ export function runExpectedToolsInvokedCheck(
 				toolCallMatchesExpectation(toolCall, expectation),
 			);
 			if (!matched) {
-				const actualToolCalls = outcome.toolCalls.map((tc) => tc.toolName).join(', ') || '∅';
+				const actualToolCalls = describeActualToolCalls(outcome);
 				return {
 					pass: false,
 					comment: `Expected actual tool call matching [${formatToolCallExpectation(expectation)}]. Actual tool calls: [${actualToolCalls}].`,

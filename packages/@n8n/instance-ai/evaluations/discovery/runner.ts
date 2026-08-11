@@ -18,13 +18,26 @@
 import type { InstanceAiEvent, TaskList } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 
+import {
+	buildConfirmationPolicy,
+	resolveConfirmation,
+	type ApprovalResponder,
+} from './confirmation-policy';
+import { credentialAutoSetupResponder } from './credential-approval';
 import { runExpectedToolsInvokedCheck } from './expected-tools-invoked';
 import { createStubLocalMcpServer } from './stub-local-mcp';
+import {
+	createMcpConnectResponder,
+	createStubMcpRegistry,
+	createStubMcpToolRegistry,
+	StubMcpClientManager,
+	stubMcpServerConfigs,
+	type StubMcpRegistry,
+} from './stub-mcp-registry';
 import type { DiscoveryCheckResult, DiscoveryTestCase } from './types';
 import { createInstanceAgent } from '../../src/agent/instance-agent';
 import type { InstanceAiEventBus } from '../../src/event-bus';
 import type { Logger } from '../../src/logger';
-import { McpClientManager } from '../../src/mcp/mcp-client-manager';
 import {
 	executeResumableStream,
 	normalizeStreamSource,
@@ -39,7 +52,7 @@ import type {
 	OrchestrationContext,
 	TaskStorage,
 } from '../../src/types';
-import { asResumable } from '../../src/utils/stream-helpers';
+import { asResumable, type SuspensionInfo } from '../../src/utils/stream-helpers';
 import { createInMemoryEventBus, wrapEventBusWithObserver } from '../harness/in-memory-event-bus';
 import { createStubServices, defaultNodesJsonPath } from '../harness/stub-services';
 import { extractOutcomeFromEvents } from '../outcome/event-parser';
@@ -80,7 +93,7 @@ export async function runDiscoveryScenario(
 	// explores past any small fixed cap (data-table-workflow needs >8 iterations), and
 	// the wall-clock timeout below bounds runaway runs. Scenarios/CLI opt in to a cap.
 	const maxSteps = options.scenario?.maxSteps ?? options.maxSteps;
-	const timeoutMs = options.timeoutMs ?? 60_000;
+	const timeoutMs = options.scenario?.timeoutMs ?? options.timeoutMs ?? 60_000;
 	const nodesJsonPath = options.nodesJsonPath ?? defaultNodesJsonPath();
 
 	const events: CapturedEvent[] = [];
@@ -93,23 +106,23 @@ export async function runDiscoveryScenario(
 
 	try {
 		const services = await createStubServices({ nodesJsonPath });
-		const context = applyInstanceState(services.context, options.scenario);
+		const mcpState = options.scenario.instanceState?.mcp;
+		const mcpRegistry = mcpState ? createStubMcpRegistry(mcpState) : undefined;
+		const context = applyInstanceState(services.context, options.scenario, mcpRegistry);
 
-		const mcpManager = new McpClientManager();
+		const mcpManager = new StubMcpClientManager(createStubMcpToolRegistry(mcpState ?? {}));
 		const threadId = 'discovery-thread-' + nanoid(6);
 		const runId = 'discovery-run-' + nanoid(6);
 
-		// Track outstanding confirmation requests so the auto-approve can simulate the
-		// production "user clicks Auto-setup with browser" path for credential setup
-		// suspensions. Without this, `credentials(action="setup")` returns the
-		// "user picked existing credentials" branch and the orchestrator never sees
-		// `needsBrowserSetup=true` — which is what wires it to the Computer Use
-		// credential setup skill per the system prompt.
-		const pendingConfirmations = new Map<string, { credentialType?: string }>();
+		const confirmationPolicy = buildConfirmationPolicy(options.scenario);
+		const approvalResponders: ApprovalResponder[] = [
+			credentialAutoSetupResponder,
+			...(mcpRegistry ? [createMcpConnectResponder(mcpRegistry)] : []),
+		];
+		const suspensions = new Map<string, SuspensionInfo>();
 
 		const eventBus = wrapEventBusWithObserver(createInMemoryEventBus(), (event) => {
 			events.push(toCapturedEvent(event));
-			recordConfirmationRequest(event, pendingConfirmations);
 		});
 
 		// `OrchestrationContext` is required for the orchestrator to receive tools like
@@ -129,12 +142,10 @@ export async function runDiscoveryScenario(
 			modelId: options.modelId,
 			context,
 			orchestrationContext,
+			mcpServers: stubMcpServerConfigs(mcpState ?? {}),
 			mcpManager,
 			// No memory: discovery measures stateless first-step tool dispatch.
 			memoryConfig: {},
-			// Eager tool loading — discovery measures dispatch given the full toolset,
-			// not whether the orchestrator can find a tool through search.
-			disableDeferredTools: true,
 			thinkingEnabled: false,
 		});
 
@@ -161,18 +172,11 @@ export async function runDiscoveryScenario(
 			},
 			control: {
 				mode: 'auto',
-				// Auto-approve every confirmation/HITL suspension so the run drives to
-				// completion. For credentials(action="setup") suspensions, pretend the user
-				// chose "Auto-setup with browser" — that's what unlocks the production
-				// `needsBrowserSetup=true` → Computer Use credential skill path.
-				// eslint-disable-next-line @typescript-eslint/require-await
-				waitForConfirmation: async (requestId: string): Promise<Record<string, unknown>> => {
-					const pending = pendingConfirmations.get(requestId);
-					if (pending?.credentialType) {
-						return { approved: true, autoSetup: { credentialType: pending.credentialType } };
-					}
-					return { approved: true };
-				},
+				onSuspension: (suspension) => suspensions.set(suspension.requestId, suspension),
+				waitForConfirmation: async (requestId: string): Promise<Record<string, unknown>> =>
+					await Promise.resolve(
+						resolveConfirmation(suspensions.get(requestId), confirmationPolicy, approvalResponders),
+					),
 			},
 		});
 
@@ -213,6 +217,7 @@ export async function runDiscoveryScenario(
 function applyInstanceState(
 	base: InstanceAiContext,
 	scenario: DiscoveryTestCase,
+	mcpRegistry: StubMcpRegistry | undefined,
 ): InstanceAiContext {
 	const state = scenario.instanceState;
 	if (!state) return base;
@@ -234,6 +239,7 @@ function applyInstanceState(
 		...base,
 		...(localGateway ? { localGatewayStatus: localGateway } : {}),
 		...(localMcpServer ? { localMcpServer } : {}),
+		...(mcpRegistry ? { mcpService: mcpRegistry.service } : {}),
 	};
 }
 
@@ -290,29 +296,6 @@ function createStubOrchestrationContext(
 		// Provide the same context the orchestrator sees.
 		domainContext: opts.context,
 	};
-}
-
-/**
- * Capture credentialType from `confirmation-request` events whose payload includes
- * a credentialRequests array. The first request's credentialType is what the
- * `autoSetup` resume payload needs — the production credentials tool only
- * exposes one credential at a time when needsBrowserSetup is involved.
- */
-function recordConfirmationRequest(
-	event: InstanceAiEvent,
-	pending: Map<string, { credentialType?: string }>,
-): void {
-	if (event.type !== 'confirmation-request') return;
-	const payload = event.payload as
-		| {
-				requestId?: string;
-				credentialRequests?: Array<{ credentialType?: string }>;
-		  }
-		| undefined;
-	const requestId = payload?.requestId;
-	if (typeof requestId !== 'string' || requestId.length === 0) return;
-	const credentialType = payload?.credentialRequests?.[0]?.credentialType;
-	pending.set(requestId, credentialType ? { credentialType } : {});
 }
 
 function toCapturedEvent(event: InstanceAiEvent): CapturedEvent {

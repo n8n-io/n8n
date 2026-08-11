@@ -3,7 +3,9 @@ import { runExpectedToolsInvokedCheck } from '../expected-tools-invoked';
 import type { DiscoveryTestCase } from '../types';
 
 function makeOutcome(opts: {
-	toolCalls?: Array<Pick<CapturedToolCall, 'toolName'> & Partial<Pick<CapturedToolCall, 'args'>>>;
+	toolCalls?: Array<
+		Pick<CapturedToolCall, 'toolName'> & Partial<Pick<CapturedToolCall, 'args' | 'result'>>
+	>;
 	agents?: Array<Pick<AgentActivity, 'role' | 'tools'>>;
 }): EventOutcome {
 	return {
@@ -16,6 +18,7 @@ function makeOutcome(opts: {
 			toolCallId: `call-${i}`,
 			toolName: tc.toolName,
 			args: tc.args ?? {},
+			...(tc.result === undefined ? {} : { result: tc.result }),
 			durationMs: 0,
 		})),
 		agentActivities: (opts.agents ?? []).map((a, i) => ({
@@ -340,6 +343,192 @@ describe('runExpectedToolsInvokedCheck', () => {
 
 			expect(result.pass).toBe(false);
 			expect(result.comment).toContain('list');
+		});
+	});
+
+	describe('args — structured argument matching', () => {
+		const connectNotion: DiscoveryTestCase = {
+			id: 'test',
+			userMessage: 'Search my Notion.',
+			expectedToolInvocations: {
+				anyOfToolCalls: [
+					{ toolName: 'mcp-servers', args: { action: 'connect', serverSlugs: ['notion'] } },
+				],
+			},
+		};
+
+		it('passes on a deep-partial match, ignoring unlisted keys', () => {
+			const result = runExpectedToolsInvokedCheck(
+				connectNotion,
+				makeOutcome({
+					toolCalls: [
+						{
+							toolName: 'mcp-servers',
+							args: { action: 'connect', serverSlugs: ['notion'], reason: 'unlocks search' },
+						},
+					],
+				}),
+			);
+
+			expect(result.pass).toBe(true);
+		});
+
+		it('matches an array as a subset, not by length or order', () => {
+			const result = runExpectedToolsInvokedCheck(
+				connectNotion,
+				makeOutcome({
+					toolCalls: [
+						{
+							toolName: 'mcp-servers',
+							args: { action: 'connect', serverSlugs: ['linear', 'notion'] },
+						},
+					],
+				}),
+			);
+
+			expect(result.pass).toBe(true);
+		});
+
+		it('fails when a listed key differs, even though a substring match would pass', () => {
+			const result = runExpectedToolsInvokedCheck(
+				connectNotion,
+				makeOutcome({
+					toolCalls: [
+						{
+							toolName: 'mcp-servers',
+							args: {
+								action: 'connect',
+								serverSlugs: ['linear'],
+								reason: 'Linear covers this instead of Notion',
+							},
+						},
+					],
+				}),
+			);
+
+			expect(result.pass).toBe(false);
+		});
+
+		it('fails when the action differs', () => {
+			const result = runExpectedToolsInvokedCheck(
+				connectNotion,
+				makeOutcome({
+					toolCalls: [{ toolName: 'mcp-servers', args: { action: 'search', queries: ['notion'] } }],
+				}),
+			);
+
+			expect(result.pass).toBe(false);
+		});
+	});
+
+	describe('declined tool calls', () => {
+		const declined = {
+			declined: true,
+			message: 'Tool "mcp_notion_notion-search" was not approved',
+		};
+
+		it('does not count a declined call as a violation', () => {
+			const result = runExpectedToolsInvokedCheck(
+				{
+					id: 'test',
+					userMessage: 'Search my Notion.',
+					expectedToolInvocations: {
+						noneOfToolCalls: [{ toolName: 'mcp_notion_notion-search' }],
+					},
+				},
+				makeOutcome({
+					toolCalls: [{ toolName: 'mcp_notion_notion-search', result: declined }],
+				}),
+			);
+
+			expect(result.pass).toBe(true);
+		});
+
+		it('does not count a declined call as satisfying a positive expectation', () => {
+			const result = runExpectedToolsInvokedCheck(
+				{
+					id: 'test',
+					userMessage: 'Search my Notion.',
+					expectedToolInvocations: {
+						anyOfToolCalls: [{ toolName: 'mcp_notion_notion-search' }],
+					},
+				},
+				makeOutcome({
+					toolCalls: [{ toolName: 'mcp_notion_notion-search', result: declined }],
+				}),
+			);
+
+			expect(result.pass).toBe(false);
+			expect(result.comment).toContain('declined');
+		});
+
+		it('still counts a call that was approved and ran', () => {
+			const result = runExpectedToolsInvokedCheck(
+				{
+					id: 'test',
+					userMessage: 'Search my Notion.',
+					expectedToolInvocations: {
+						anyOfToolCalls: [{ toolName: 'mcp_notion_notion-search' }],
+					},
+				},
+				makeOutcome({
+					toolCalls: [{ toolName: 'mcp_notion_notion-search', result: { ok: true } }],
+				}),
+			);
+
+			expect(result.pass).toBe(true);
+		});
+
+		it('matches a refusal when the expectation asks for one', () => {
+			const result = runExpectedToolsInvokedCheck(
+				{
+					id: 'test',
+					userMessage: 'Search my Notion.',
+					expectedToolInvocations: {
+						allOfToolCalls: [{ toolName: 'mcp_notion_notion-search', declined: true }],
+					},
+				},
+				makeOutcome({
+					toolCalls: [{ toolName: 'mcp_notion_notion-search', result: declined }],
+				}),
+			);
+
+			expect(result.pass).toBe(true);
+		});
+
+		it('does not match a call that ran when the expectation asks for a refusal', () => {
+			const result = runExpectedToolsInvokedCheck(
+				{
+					id: 'test',
+					userMessage: 'Search my Notion.',
+					expectedToolInvocations: {
+						allOfToolCalls: [{ toolName: 'mcp_notion_notion-search', declined: true }],
+					},
+				},
+				makeOutcome({
+					toolCalls: [{ toolName: 'mcp_notion_notion-search', result: { ok: true } }],
+				}),
+			);
+
+			expect(result.pass).toBe(false);
+			expect(result.comment).toContain('a declined result');
+		});
+
+		it('forbids a refusal when noneOfToolCalls asks for one', () => {
+			const result = runExpectedToolsInvokedCheck(
+				{
+					id: 'test',
+					userMessage: 'Search my Notion.',
+					expectedToolInvocations: {
+						noneOfToolCalls: [{ toolName: 'mcp_notion_notion-search', declined: true }],
+					},
+				},
+				makeOutcome({
+					toolCalls: [{ toolName: 'mcp_notion_notion-search', result: declined }],
+				}),
+			);
+
+			expect(result.pass).toBe(false);
 		});
 	});
 
