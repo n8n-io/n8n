@@ -216,13 +216,13 @@ describe('Commenting on a review', () => {
 			.expect(403);
 	});
 
-	test('refuses a requester who lost access to the workflow under review entirely', async () => {
+	test('refuses a requester who can no longer read the workflow under review', async () => {
 		const destinationProject = await createTeamProject('Out Of Reach', owner);
 		const workflow = await createWorkflow({}, destinationProject);
 		await createWorkflowHistoryItem(workflow.id, { versionId: 'version-pinned' });
 		const request = await seedRequest(workflow.id, 'version-pinned', viewer);
 
-		// The requester still reads their own review, but authorship alone is not a write right
+		// The requester still reads their own review, but that alone is not a write right
 		const detail = await viewerAgent.get(`/workflow-review-requests/${request.id}`).expect(200);
 		expect(detail.body.data.viewerCanComment).toBe(false);
 

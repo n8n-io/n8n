@@ -9,14 +9,6 @@ import { toError } from './workflowReviews.utils';
 
 const DEFAULT_LIMIT = 25;
 
-function withoutIdsIn(
-	entries: WorkflowReviewActivityEntry[],
-	others: WorkflowReviewActivityEntry[],
-): WorkflowReviewActivityEntry[] {
-	const ids = new Set(others.map((entry) => entry.id));
-	return entries.filter((entry) => !ids.has(entry.id));
-}
-
 /**
  * The activity feed of one review. `entries` is ascending by id: the backend pages
  * backwards, so `loadMore` prepends older pages and `postComment` appends.
@@ -48,11 +40,10 @@ export const useReviewActivityStore = defineStore('workflowReviewActivity', () =
 		loadingMore.value = false;
 		loading.value = true;
 		error.value = null;
-		// All of this is per review, so a refetch of the same one keeps it. Clearing the
-		// entries would drop a comment the viewer just posted onto a feed whose first page
-		// failed, clearing `posting` would re-enable send mid-post, and clearing the draft
-		// would discard what they are typing. On a switch the state has to go synchronously,
-		// or the gap until the response arrives renders the previous review's feed.
+		// Clearing on a refetch would drop a comment the viewer just posted onto a feed whose
+		// first page failed, re-enable send mid-post, and discard what they are typing. On a
+		// switch it has to go synchronously, or the gap until the response arrives renders the
+		// previous review's feed.
 		if (switchedReview) {
 			entries.value = [];
 			posting.value = false;
@@ -131,7 +122,7 @@ export const useReviewActivityStore = defineStore('workflowReviewActivity', () =
 			if (currentReviewId.value !== reviewId) return;
 
 			// A feed refetch that raced this post may already carry the comment.
-			entries.value = [...withoutIdsIn(entries.value, [entry]), entry];
+			entries.value = [...entries.value.filter((existing) => existing.id !== entry.id), entry];
 		} finally {
 			// Only the newest post owns the flag: after A -> B -> A a stale post finishing would
 			// otherwise re-enable send while the post the user is waiting on is still in flight.

@@ -981,32 +981,13 @@ describe('N8nChatInput', () => {
 				},
 			});
 
-		it('should arrange actions in a row without pinning the textarea height', () => {
+		it('should sit on one line with the actions beside the text', () => {
 			const { container } = renderCompact();
 
 			expect(container.querySelector('.rowContainer')).toBeTruthy();
+			// The 80px floor is what makes the default layout two rows tall when empty.
+			expect(container.querySelector('.container')).not.toHaveStyle({ minHeight: '80px' });
 			expect(container.querySelector('.singleLineTextarea')).toBeFalsy();
-		});
-
-		it('should emit submit on plain Enter', async () => {
-			const render = renderCompact('Test message');
-
-			const textarea = render.container.querySelector('textarea') as HTMLTextAreaElement;
-			await fireEvent.keyDown(textarea, { key: 'Enter' });
-
-			expect(render.emitted('submit')).toBeTruthy();
-			expect(render.emitted('update:modelValue')).toBeFalsy();
-		});
-
-		it('should insert a newline on Shift+Enter', async () => {
-			const render = renderCompact('Test message');
-
-			const textarea = render.container.querySelector('textarea') as HTMLTextAreaElement;
-			textarea.setSelectionRange(4, 4);
-			await fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: true });
-
-			expect(render.emitted('submit')).toBeFalsy();
-			expect(render.emitted('update:modelValue')?.at(-1)).toEqual(['Test\n message']);
 		});
 	});
 

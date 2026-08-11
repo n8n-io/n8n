@@ -71,9 +71,9 @@ watch(
 	{ flush: 'post' },
 );
 
-// `loadMore` is a no-op with no cursor, so a failed first page has to refetch. Posting a
-// comment onto that empty feed swaps this row for the load-more one, which would otherwise
-// hit the same dead end and leave the earlier activity unreachable.
+// `loadMore` is a no-op with no cursor, so a failed first page has to refetch. Shared by both
+// error rows: posting onto a failed feed moves the viewer from the first to the second, which
+// would otherwise hit that dead end and leave the earlier activity unreachable.
 function retry() {
 	if (!store.nextCursor) {
 		if (store.currentReviewId) void store.fetchFeed(store.currentReviewId);

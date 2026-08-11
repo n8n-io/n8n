@@ -13,8 +13,6 @@ const props = defineProps<{ canComment: boolean }>();
 const i18n = useI18n();
 const { showError } = useToast();
 const store = useReviewActivityStore();
-// Draft lives in the store so switching to the Changes tab, which unmounts this
-// component, does not throw away what the user typed.
 const { posting, draft } = storeToRefs(store);
 
 // The full condition, not just `posting`: N8nChatInput uses `submitDisabled ?? …`,

@@ -236,38 +236,50 @@ describe('useReviewActivityStore', () => {
 		const store = useReviewActivityStore();
 
 		const pending = store.fetchFeed('req-1');
+		store.draft = 'for req-1 only';
 		store.reset();
 		resolveFeed(makePage(['1']));
 		await pending;
 
 		expect(store.entries).toEqual([]);
 		expect(store.currentReviewId).toBeNull();
+		// Leaving the view must not carry a draft into whatever review is opened next.
+		expect(store.draft).toBe('');
 	});
 
 	it('does not leave the next review stuck in a sending state', async () => {
 		vi.mocked(workflowReviewsApi.fetchWorkflowReviewActivity).mockResolvedValue(makePage(['1']));
-		// One resolver per call: both posts have to be settled independently.
+		vi.mocked(workflowReviewsApi.createWorkflowReviewComment).mockReturnValue(
+			new Promise(() => {}),
+		);
+		const store = useReviewActivityStore();
+		await store.fetchFeed('req-1');
+
+		void store.postComment('hi');
+		expect(store.posting).toBe(true);
+
+		await store.fetchFeed('req-2');
+
+		expect(store.posting).toBe(false);
+	});
+
+	it('keeps send disabled for the post the viewer is still waiting on after leaving and returning', async () => {
+		vi.mocked(workflowReviewsApi.fetchWorkflowReviewActivity).mockResolvedValue(makePage(['1']));
 		const resolvers: Array<(entry: WorkflowReviewActivityEntry) => void> = [];
 		vi.mocked(workflowReviewsApi.createWorkflowReviewComment).mockImplementation(
 			async () => await new Promise((resolve) => resolvers.push(resolve)),
 		);
 		const store = useReviewActivityStore();
 		await store.fetchFeed('req-1');
-
-		const pending = store.postComment('hi');
-		expect(store.posting).toBe(true);
+		const first = store.postComment('hi');
 
 		await store.fetchFeed('req-2');
-		expect(store.posting).toBe(false);
-
-		// Back on req-1 with a second post running, the first one settling must not clear
-		// the flag the second one owns.
 		await store.fetchFeed('req-1');
 		const second = store.postComment('again');
 		expect(store.posting).toBe(true);
 
 		resolvers[0](makeEntry('9'));
-		await pending;
+		await first;
 		expect(store.posting).toBe(true);
 
 		resolvers[1](makeEntry('10'));
@@ -276,7 +288,7 @@ describe('useReviewActivityStore', () => {
 	});
 
 	it('keeps the send button disabled when a failed page is retried mid-post', async () => {
-		vi.mocked(workflowReviewsApi.fetchWorkflowReviewActivity).mockResolvedValue(makePage(['1']));
+		vi.mocked(workflowReviewsApi.fetchWorkflowReviewActivity).mockRejectedValue(new Error('boom'));
 		let resolvePost: (entry: WorkflowReviewActivityEntry) => void = () => {};
 		vi.mocked(workflowReviewsApi.createWorkflowReviewComment).mockReturnValue(
 			new Promise((resolve) => {
@@ -290,8 +302,7 @@ describe('useReviewActivityStore', () => {
 		const pending = store.postComment('hi');
 		expect(store.posting).toBe(true);
 
-		// Retrying refetches the same review. Clearing here would re-enable send with the
-		// draft still in the box, and a second Enter would post a duplicate.
+		// Retrying refetches the same review.
 		await store.fetchFeed('req-1');
 		expect(store.posting).toBe(true);
 		expect(store.draft).toBe('half a thought');
@@ -309,14 +320,12 @@ describe('useReviewActivityStore', () => {
 		await store.postComment('hi');
 		expect(store.entries.map((entry) => entry.id)).toEqual(['9']);
 
-		// Retrying refetches the same review. Wiping here would take the viewer's own
-		// comment off screen, and a second failure would leave it gone.
 		await store.fetchFeed('req-1');
 
 		expect(store.entries.map((entry) => entry.id)).toEqual(['9']);
 	});
 
-	it('keeps the feed ascending when a refetch lands under already-loaded older pages', async () => {
+	it('drops older pages a refetch did not return so the feed stays in order', async () => {
 		vi.mocked(workflowReviewsApi.fetchWorkflowReviewActivity).mockResolvedValue(
 			makePage(['3', '4'], { nextCursor: 'cursor-1', hasMore: true }),
 		);
@@ -328,9 +337,7 @@ describe('useReviewActivityStore', () => {
 		await store.loadMore();
 		expect(store.entries.map((entry) => entry.id)).toEqual(['1', '2', '3', '4']);
 
-		// A refetch restarts paging, so the older pages it did not return have to go. Keeping
-		// them would put them after the newer page and break the ascending order the feed and
-		// its `v-for` keys rely on.
+		// Kept older pages would land after the newer one and invert the list.
 		vi.mocked(workflowReviewsApi.fetchWorkflowReviewActivity).mockResolvedValue(
 			makePage(['3', '4'], { nextCursor: 'cursor-1', hasMore: true }),
 		);
