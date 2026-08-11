@@ -13,11 +13,13 @@ import type { ImportContext, OverwriteDeletionPolicy } from '../../../n8n-packag
 const user = mock<User>({ id: 'user-1' });
 const context: ImportContext = { user, projectId: 'proj-1', folderId: null };
 
-type Placement = { id: string; name: string; parentFolderId: string | null };
+type Placement = { id: string; name: string; parentFolderId: string | null; isArchived?: boolean };
 
 function makeRemover(placements: Placement[], archivableIds = placements.map(({ id }) => id)) {
 	const workflowFinderService = mock<WorkflowFinderService>();
-	workflowFinderService.findOwnedWorkflowPlacementsInProject.mockResolvedValue(placements);
+	workflowFinderService.findOwnedWorkflowPlacementsInProject.mockResolvedValue(
+		placements.map((placement) => ({ isArchived: false, ...placement })),
+	);
 	workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(new Set(archivableIds));
 	const workflowService = mock<WorkflowService>();
 	return {
@@ -118,6 +120,25 @@ describe('WorkflowRemover.plan', () => {
 
 		expect(plan.removals).toEqual([]);
 		expect(plan.failures).toEqual([{ workflowId: 'stale', name: 'Stale', projectId: 'proj-1' }]);
+	});
+
+	it('never removes an archived workflow, but counts its folder as occupied', async () => {
+		const { remover, workflowFinderService } = makeRemover([
+			{ id: 'gone', name: 'Gone', parentFolderId: 'F-target-only', isArchived: true },
+		]);
+
+		const plan = await remover.plan(context, {
+			workflowItems: [],
+			packageFolderIds: [],
+			folderConflictPolicy: 'overwrite',
+			deletionPolicy: 'hard-delete',
+		});
+
+		// Already archived means already removed — but the folder holding it is not empty, so
+		// folder reconciliation must not sweep it up and displace the archived workflow.
+		expect(plan.removals).toEqual([]);
+		expect(plan.occupiedFolderIds).toEqual(['F-target-only']);
+		expect(workflowFinderService.findWorkflowIdsWithScopeForUser).not.toHaveBeenCalled();
 	});
 
 	it('checks delete permission only once, for the candidates', async () => {

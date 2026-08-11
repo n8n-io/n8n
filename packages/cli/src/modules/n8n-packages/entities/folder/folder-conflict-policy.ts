@@ -1,4 +1,5 @@
-import { FolderConflictPolicy } from '../../n8n-packages.types';
+import { FolderConflictPolicy, ProjectConflictPolicy } from '../../n8n-packages.types';
+import type { ImportFolderProperties, ImportProjectProperties } from '../../n8n-packages.types';
 
 export interface MatchedFolderDecision {
 	blocked: boolean;
@@ -24,4 +25,42 @@ export function decideMatchedFolder(policy: FolderConflictPolicy): MatchedFolder
  */
 export function removesUnpackagedWorkflows(policy: FolderConflictPolicy): boolean {
 	return policy === FolderConflictPolicy.Overwrite;
+}
+
+/**
+ * The folder policy the import runs under: what the caller asked for, or the project policy they
+ * already stated. A workflow package defines no projects, so its project policy is meaningless and
+ * folder handling falls back to `merge`.
+ */
+export function resolveFolderConflictPolicy(
+	request: ImportProjectProperties & ImportFolderProperties,
+	packageShape: 'project' | 'workflow',
+): FolderConflictPolicy {
+	if (request.folderConflictPolicy !== undefined) return request.folderConflictPolicy;
+	return packageShape === 'project' ? request.projectConflictPolicy : FolderConflictPolicy.Merge;
+}
+
+/**
+ * Why the requested folder policy cannot run against this package shape, or `undefined` when it
+ * can. The dispatcher turns a rejection into a 400 before any importer runs.
+ */
+export function folderPolicyRejection(
+	request: ImportProjectProperties & ImportFolderProperties,
+	packageShape: 'project' | 'workflow',
+): string | undefined {
+	if (packageShape === 'project') {
+		// Removing workflows is the most destructive thing an import can do, so it takes both
+		// policies saying `overwrite`. Only an explicit mismatch gets here — an omitted folder
+		// policy inherits the project's — and rejecting it beats guessing which half was meant.
+		return request.folderConflictPolicy === FolderConflictPolicy.Overwrite &&
+			request.projectConflictPolicy !== ProjectConflictPolicy.Overwrite
+			? `folderConflictPolicy=overwrite removes workflows the package does not contain, so it requires projectConflictPolicy=overwrite (got "${request.projectConflictPolicy}").`
+			: undefined;
+	}
+
+	// A workflow package describes only the workflows it carries, not the whole target scope, so
+	// it cannot tell an unpackaged workflow apart from one that was never meant to be in scope.
+	return resolveFolderConflictPolicy(request, packageShape) === FolderConflictPolicy.Overwrite
+		? 'folderConflictPolicy=overwrite is only supported for project packages, which describe the whole project scope. Use merge or fail.'
+		: undefined;
 }

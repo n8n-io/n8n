@@ -359,6 +359,36 @@ describe('project shell import', () => {
 			expect((await findWorkflow(packagedWorkflowId))?.isArchived).toBe(false);
 		});
 
+		it('retains a sub-workflow dependency the package references but does not carry', async () => {
+			const sub = await createWorkflow({ name: 'Sub' }, project);
+
+			const packageBuffer = await buildEntityPackageBuffer({
+				projects: [
+					{ target: 'projects/brie', project: serializedProject({ id: 'P1', name: 'brie' }) },
+				],
+				folders: [
+					{ target: 'projects/brie/folders/a', folder: serializedFolder({ id: 'FA', name: 'a' }) },
+				],
+				workflows: [
+					{
+						target: 'projects/brie/folders/a/workflows/wf',
+						workflow: serializedWorkflow({ id: 'WF', name: 'wf' }),
+					},
+				],
+				manifestExtras: {
+					requirements: { workflows: [{ id: sub.id, name: 'Sub', usedByWorkflows: ['WF'] }] },
+				},
+			});
+
+			const result = await importProjects(owner, packageBuffer, undefined, {
+				projectConflictPolicy: 'overwrite',
+			});
+
+			// Archiving it would leave the packaged parent unable to publish.
+			expect(result.removedWorkflows).toEqual([]);
+			expect((await findWorkflow(sub.id))?.isArchived).toBe(false);
+		});
+
 		it('archives inside a package-defined folder but shelters a target-only folder', async () => {
 			const stale = await createWorkflow(
 				{ name: 'Stale', parentFolder: await findFolder('FA') },
@@ -426,6 +456,25 @@ describe('project shell import', () => {
 			// Its workflow was sheltered by the workflow pass, so the folder holding it stays too.
 			expect(await findFolder(occupied.id)).not.toBeNull();
 			expect((await findWorkflow(kept.id))?.isArchived).toBe(false);
+		});
+
+		it('shelters a target-only folder holding only an archived workflow', async () => {
+			const shelved = await createFolder(project, { name: 'shelved' });
+			const archived = await createWorkflow(
+				{ name: 'Archived', parentFolder: shelved, isArchived: true },
+				project,
+			);
+
+			const result = await reconcile('overwrite', 'hard-delete');
+
+			// Pre-archived work is out of reconciliation's reach, so the folder holding it must
+			// survive too — deleting it would displace the archived workflow to the project root.
+			expect(result.removedWorkflows).toEqual([]);
+			expect(result.removedFolders).toEqual([]);
+			expect(await findFolder(shelved.id)).not.toBeNull();
+			const survivor = await findWorkflow(archived.id);
+			expect(survivor?.isArchived).toBe(true);
+			expect(survivor?.parentFolder?.id).toBe(shelved.id);
 		});
 
 		it('keeps the folders the package defines, even when reconciliation empties them', async () => {

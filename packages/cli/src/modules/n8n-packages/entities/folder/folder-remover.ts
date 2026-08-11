@@ -1,6 +1,7 @@
 import { Service } from '@n8n/di';
 
 import { FolderService } from '@/services/folder.service';
+import { ProjectService } from '@/services/project.service.ee';
 
 import type { FolderRemovalPlan } from './folder-removal.types';
 import type { ImportContext, RemovedFolderSummary } from '../../n8n-packages.types';
@@ -22,35 +23,57 @@ interface FolderPlacement {
  */
 @Service()
 export class FolderRemover {
-	constructor(private readonly folderService: FolderService) {}
+	constructor(
+		private readonly folderService: FolderService,
+		private readonly projectService: ProjectService,
+	) {}
 
 	async plan(
 		context: ImportContext,
 		input: { packageFolderIds: string[]; occupiedFolderIds: string[] },
 	): Promise<FolderRemovalPlan> {
+		const nothingToRemove = { removals: [], failures: [] };
+
 		const placements = await this.folderService.getFolderPlacementsInProject(context.projectId);
-		if (placements.length === 0) return { removals: [] };
+		if (placements.length === 0) return nothingToRemove;
 
 		const packageFolderIds = new Set(input.packageFolderIds);
 		const candidates = placements.filter(({ id }) => !packageFolderIds.has(id));
-		if (candidates.length === 0) return { removals: [] };
+		if (candidates.length === 0) return nothingToRemove;
 
 		const removableIds = resolveRemovable(candidates, placements, new Set(input.occupiedFolderIds));
 
 		const depths = folderDepths(placements);
-		return {
-			removals: candidates
-				.filter(({ id }) => removableIds.has(id))
-				.map(({ id, name, parentFolderId }) => ({
-					id,
+		const removals = candidates
+			.filter(({ id }) => removableIds.has(id))
+			.map(({ id, name, parentFolderId }) => ({
+				id,
+				name,
+				parentFolderId,
+				depth: depths.get(id) ?? 0,
+			}))
+			// Deepest first: the parent column cascades, so deleting a parent early would drop its
+			// children without the per-folder deletion event.
+			.sort((a, b) => b.depth - a.depth);
+		if (removals.length === 0) return nothingToRemove;
+
+		// The API-key gate cannot see project roles, so verify the user's own `folder:delete` too —
+		// it hangs off the project role, not the folder, so one lookup answers for every removal.
+		const project = await this.projectService.getProjectWithScope(context.user, context.projectId, [
+			'folder:delete',
+		]);
+		if (!project) {
+			return {
+				removals: [],
+				failures: removals.map(({ id, name }) => ({
+					folderId: id,
 					name,
-					parentFolderId,
-					depth: depths.get(id) ?? 0,
-				}))
-				// Deepest first: the parent column cascades, so deleting a parent early would drop its
-				// children without the per-folder deletion event.
-				.sort((a, b) => b.depth - a.depth),
-		};
+					projectId: context.projectId,
+				})),
+			};
+		}
+
+		return { removals, failures: [] };
 	}
 
 	async apply(context: ImportContext, plan: FolderRemovalPlan): Promise<RemovedFolderSummary[]> {

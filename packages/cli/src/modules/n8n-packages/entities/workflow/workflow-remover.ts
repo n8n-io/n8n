@@ -47,8 +47,11 @@ export class WorkflowRemover {
 			return nothingToRemove;
 		}
 
+		// Archived rows load too: reconciliation treats them as already removed, so they are never
+		// candidates — but a folder holding one is still occupied and must survive folder removal.
 		const placements = await this.workflowFinderService.findOwnedWorkflowPlacementsInProject(
 			context.projectId,
+			{ includeArchived: true },
 		);
 		if (placements.length === 0) return nothingToRemove;
 
@@ -137,18 +140,22 @@ function occupiedBy(placements: RemovableWorkflow[]): string[] {
 }
 
 function candidatesFor(
-	placements: RemovableWorkflow[],
+	placements: Array<RemovableWorkflow & { isArchived: boolean }>,
 	request: WorkflowRemovalRequest,
 ): RemovableWorkflow[] {
 	const retained = retainedWorkflowIds(request);
 	const packageFolderIds = new Set(request.packageFolderIds);
 
-	return placements.filter(
-		({ id, parentFolderId }) =>
-			!retained.has(id) &&
-			// `null` is the project root, which a project package always describes.
-			(parentFolderId === null || packageFolderIds.has(parentFolderId)),
-	);
+	return placements
+		.filter(
+			({ id, parentFolderId, isArchived }) =>
+				// Already archived means already removed.
+				!isArchived &&
+				!retained.has(id) &&
+				// `null` is the project root, which a project package always describes.
+				(parentFolderId === null || packageFolderIds.has(parentFolderId)),
+		)
+		.map(({ id, name, parentFolderId }) => ({ id, name, parentFolderId }));
 }
 
 /**

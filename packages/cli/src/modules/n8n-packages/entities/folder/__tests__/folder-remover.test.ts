@@ -1,7 +1,8 @@
-import type { User } from '@n8n/db';
+import type { Project, User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import type { FolderService } from '@/services/folder.service';
+import type { ProjectService } from '@/services/project.service.ee';
 
 import { FolderRemover } from '../folder-remover';
 import type { ImportContext } from '../../../n8n-packages.types';
@@ -11,10 +12,16 @@ const context: ImportContext = { user, projectId: 'proj-1', folderId: null };
 
 type Placement = { id: string; name: string; parentFolderId: string | null };
 
-function makeRemover(placements: Placement[]) {
+function makeRemover(placements: Placement[], { canDeleteFolders = true } = {}) {
 	const folderService = mock<FolderService>();
 	folderService.getFolderPlacementsInProject.mockResolvedValue(placements);
-	return { remover: new FolderRemover(folderService), folderService };
+	const projectService = mock<ProjectService>();
+	projectService.getProjectWithScope.mockResolvedValue(canDeleteFolders ? mock<Project>() : null);
+	return {
+		remover: new FolderRemover(folderService, projectService),
+		folderService,
+		projectService,
+	};
 }
 
 const folder = (id: string, parentFolderId: string | null = null): Placement => ({
@@ -83,6 +90,29 @@ describe('FolderRemover.plan', () => {
 
 		expect(plan.removals).toEqual([]);
 	});
+
+	it('reports failures instead of removals when the user may not delete folders', async () => {
+		const { remover, projectService } = makeRemover([folder('stale')], {
+			canDeleteFolders: false,
+		});
+
+		const plan = await remover.plan(context, { packageFolderIds: [], occupiedFolderIds: [] });
+
+		expect(plan.removals).toEqual([]);
+		expect(plan.failures).toEqual([{ folderId: 'stale', name: 'stale', projectId: 'proj-1' }]);
+		expect(projectService.getProjectWithScope).toHaveBeenCalledExactlyOnceWith(user, 'proj-1', [
+			'folder:delete',
+		]);
+	});
+
+	it('skips the permission lookup when nothing would be removed', async () => {
+		const { remover, projectService } = makeRemover([folder('FA')]);
+
+		const plan = await remover.plan(context, { packageFolderIds: ['FA'], occupiedFolderIds: [] });
+
+		expect(plan).toEqual({ removals: [], failures: [] });
+		expect(projectService.getProjectWithScope).not.toHaveBeenCalled();
+	});
 });
 
 describe('FolderRemover.apply', () => {
@@ -91,6 +121,7 @@ describe('FolderRemover.apply', () => {
 
 		const summaries = await remover.apply(context, {
 			removals: [{ id: 'stale', name: 'Stale', parentFolderId: 'top', depth: 1 }],
+			failures: [],
 		});
 
 		expect(folderService.deleteFolder).toHaveBeenCalledExactlyOnceWith(user, 'stale', 'proj-1', {});
@@ -102,7 +133,7 @@ describe('FolderRemover.apply', () => {
 	it('writes nothing when the plan is empty', async () => {
 		const { remover, folderService } = makeRemover([]);
 
-		expect(await remover.apply(context, { removals: [] })).toEqual([]);
+		expect(await remover.apply(context, { removals: [], failures: [] })).toEqual([]);
 		expect(folderService.deleteFolder).not.toHaveBeenCalled();
 	});
 });

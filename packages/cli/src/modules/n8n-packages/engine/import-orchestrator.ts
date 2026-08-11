@@ -219,11 +219,12 @@ export class ImportOrchestrator {
 		const folderContext = { ...context, folderConflictPolicy: options.folderConflictPolicy };
 		const folderPlan = await this.folderImporter.plan(folderContext, folders);
 
+		const packageFolderIds = folders.map(({ sourceFolderId }) => sourceFolderId);
 		const removalPlan = await this.workflowRemover.plan(context, {
 			folderConflictPolicy: options.folderConflictPolicy,
 			deletionPolicy: options.overwriteDeletionPolicy,
 			workflowItems: workflowPlan.items,
-			packageFolderIds: folders.map(({ sourceFolderId }) => sourceFolderId),
+			packageFolderIds,
 			subWorkflowRequirementIds: input.subWorkflowRequirements?.map(({ id }) => id),
 			projectPendingCreation: input.projectPendingCreation,
 		});
@@ -233,10 +234,10 @@ export class ImportOrchestrator {
 		const folderRemovalPlan =
 			removesUnpackagedWorkflows(options.folderConflictPolicy) && !input.projectPendingCreation
 				? await this.folderRemover.plan(context, {
-						packageFolderIds: folders.map(({ sourceFolderId }) => sourceFolderId),
+						packageFolderIds,
 						occupiedFolderIds: removalPlan.occupiedFolderIds,
 					})
-				: { removals: [] };
+				: { removals: [], failures: [] };
 
 		// Skipped workflows are never written, so their node types don't gate the import.
 		const missingNodeTypes = collectMissingNodeTypes(
@@ -254,6 +255,7 @@ export class ImportOrchestrator {
 			variablePlan,
 			tagPlan,
 			removalPlan,
+			folderRemovalPlan,
 			missingNodeTypes,
 			missingNodeTypeMode: options.missingNodeTypeMode,
 		});
@@ -371,6 +373,7 @@ export class ImportOrchestrator {
 		variablePlan,
 		tagPlan,
 		removalPlan,
+		folderRemovalPlan,
 		missingNodeTypes,
 		missingNodeTypeMode,
 	}: {
@@ -383,6 +386,7 @@ export class ImportOrchestrator {
 		variablePlan: VariableImportPlan;
 		tagPlan: TagImportPlan;
 		removalPlan: WorkflowRemovalPlan;
+		folderRemovalPlan: FolderRemovalPlan;
 		missingNodeTypes: MissingNodeTypeRequirement[];
 		missingNodeTypeMode: MissingNodeTypeMode;
 	}): BlockingIssue[] {
@@ -401,6 +405,9 @@ export class ImportOrchestrator {
 			),
 			...removalPlan.failures.map(
 				(failure): BlockingIssue => ({ type: 'workflow-removal-forbidden', ...failure }),
+			),
+			...folderRemovalPlan.failures.map(
+				(failure): BlockingIssue => ({ type: 'folder-removal-forbidden', ...failure }),
 			),
 			...dataTablePlan.failures.map(
 				(failure): BlockingIssue => ({ type: 'data-table-unresolved', ...failure }),

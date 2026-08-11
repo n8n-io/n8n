@@ -12,6 +12,10 @@ import { ProjectPackageImporter } from './engine/project-package-importer';
 import { WorkflowPackageImporter } from './engine/workflow-package-importer';
 import { CredentialExporter } from './entities/credential/credential.exporter';
 import { DataTableExporter } from './entities/data-table/data-table.exporter';
+import {
+	folderPolicyRejection,
+	resolveFolderConflictPolicy,
+} from './entities/folder/folder-conflict-policy';
 import { FolderExporter } from './entities/folder/folder.exporter';
 import { ProjectExporter } from './entities/project/project.exporter';
 import { mergeRequirements } from './entities/requirements.types';
@@ -31,10 +35,7 @@ import { TarPackageReader } from './io/tar/tar-package-reader';
 import { TarPackageWriter } from './io/tar/tar-package-writer';
 import { PackageImportConfig } from './n8n-packages.config';
 import {
-	FolderConflictPolicy,
 	MissingWorkflowDependencyPolicy,
-	ProjectConflictPolicy,
-	resolveFolderConflictPolicy,
 	type ExportPackageEventCounts,
 	type ExportPackageRequest,
 	type ExportPackageResult,
@@ -305,17 +306,8 @@ export class N8nPackagesService {
 					'variableParentPolicy is not supported for project packages, where variable placement follows the package layout. Omit it.',
 				);
 			}
-			// Removing workflows is the most destructive thing an import can do, so it takes both
-			// policies saying `overwrite`. Only an explicit mismatch gets here — an omitted folder
-			// policy inherits the project's — and rejecting it beats guessing which half was meant.
-			if (
-				request.folderConflictPolicy === FolderConflictPolicy.Overwrite &&
-				request.projectConflictPolicy !== ProjectConflictPolicy.Overwrite
-			) {
-				throw new BadRequestError(
-					`folderConflictPolicy=overwrite removes workflows the package does not contain, so it requires projectConflictPolicy=overwrite (got "${request.projectConflictPolicy}").`,
-				);
-			}
+			const rejection = folderPolicyRejection(request, 'project');
+			if (rejection) throw new BadRequestError(rejection);
 			return await this.projectPackageImporter.import(
 				{ ...request, folderConflictPolicy: resolveFolderConflictPolicy(request, 'project') },
 				reader,
@@ -323,16 +315,10 @@ export class N8nPackagesService {
 			);
 		}
 
-		const folderConflictPolicy = resolveFolderConflictPolicy(request, 'workflow');
-		// A workflow package describes only the workflows it carries, not the whole target scope, so
-		// it cannot tell an unpackaged workflow apart from one that was never meant to be in scope.
-		if (folderConflictPolicy === FolderConflictPolicy.Overwrite) {
-			throw new BadRequestError(
-				'folderConflictPolicy=overwrite is only supported for project packages, which describe the whole project scope. Use merge or fail.',
-			);
-		}
+		const rejection = folderPolicyRejection(request, 'workflow');
+		if (rejection) throw new BadRequestError(rejection);
 		return await this.workflowPackageImporter.import(
-			{ ...request, folderConflictPolicy },
+			{ ...request, folderConflictPolicy: resolveFolderConflictPolicy(request, 'workflow') },
 			reader,
 			manifest,
 		);

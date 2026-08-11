@@ -1,3 +1,5 @@
+import type { FolderRemovalFailure } from '../../n8n-packages.types';
+
 /** A folder on the target that the package does not define and that nothing is left inside. */
 export interface RemovableFolder {
 	id: string;
@@ -9,4 +11,5 @@ export interface RemovableFolder {
 
 export interface FolderRemovalPlan {
 	removals: RemovableFolder[];
+	failures: FolderRemovalFailure[];
 }

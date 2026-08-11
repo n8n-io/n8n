@@ -98,6 +98,11 @@ describe('LogStreamingEventRelay', () => {
 						created: 1,
 						updated: 1,
 						skipped: 0,
+						archived: 1,
+						deleted: 0,
+					},
+					folders: {
+						removed: 1,
 					},
 					credentials: {
 						matched: 1,

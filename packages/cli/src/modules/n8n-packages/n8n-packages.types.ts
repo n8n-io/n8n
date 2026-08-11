@@ -244,24 +244,12 @@ export type ResolvedImportFolderProperties = ImportFolderProperties & {
 /** An import request every importer can read without re-deriving what the caller omitted. */
 export type ResolvedImportPackageRequest = ImportPackageRequest & ResolvedImportFolderProperties;
 
-/**
- * The folder policy the import runs under: what the caller asked for, or the project policy they
- * already stated. A workflow package defines no projects, so its project policy is meaningless and
- * folder handling falls back to `merge`.
- */
-export function resolveFolderConflictPolicy(
-	request: ImportProjectProperties & ImportFolderProperties,
-	packageShape: 'project' | 'workflow',
-): FolderConflictPolicy {
-	if (request.folderConflictPolicy !== undefined) return request.folderConflictPolicy;
-	return packageShape === 'project' ? request.projectConflictPolicy : FolderConflictPolicy.Merge;
-}
-
 export type ImportFolderProperties = {
 	/**
 	 * Omitted means "same as `projectConflictPolicy`" — the two express one intent at two levels, so
-	 * the caller states it once. {@link resolveFolderConflictPolicy} settles it before any importer
-	 * runs, which is why everything downstream sees a concrete value.
+	 * the caller states it once. The dispatcher settles it (`resolveFolderConflictPolicy`, in
+	 * `entities/folder/folder-conflict-policy.ts`) before any importer runs, which is why
+	 * everything downstream sees a concrete value.
 	 */
 	folderConflictPolicy?: FolderConflictPolicy;
 	/** How `folderConflictPolicy=overwrite` removes a workflow the package does not contain. */
@@ -322,6 +310,13 @@ export type ImportPackageEventCounts = {
 		created: number;
 		updated: number;
 		skipped: number;
+		/** Removed by reconciliation, split by what actually happened (see `RemovedWorkflowSummary`). */
+		archived: number;
+		deleted: number;
+	};
+	folders: {
+		/** Emptied by reconciliation and deleted. */
+		removed: number;
 	};
 	credentials: {
 		matched: number;
@@ -451,6 +446,7 @@ export type BlockingIssue =
 	| ({ type: 'project-conflict' } & ProjectConflict)
 	| ({ type: 'folder-conflict' } & FolderConflict)
 	| ({ type: 'workflow-removal-forbidden' } & WorkflowRemovalFailure)
+	| ({ type: 'folder-removal-forbidden' } & FolderRemovalFailure)
 	| ({ type: 'data-table-unresolved' } & DataTableResolutionFailure)
 	| ({ type: 'tag-unresolved' } & TagResolutionFailure)
 	| ({ type: 'variable-unresolved' } & VariableResolutionFailure)
@@ -471,6 +467,17 @@ export type BlockingIssue =
  */
 export interface WorkflowRemovalFailure {
 	workflowId: string;
+	name: string;
+	projectId: string;
+}
+
+/**
+ * A folder `folderConflictPolicy=overwrite` would delete that the caller may not delete.
+ * Blocking for the same reason as workflow removal: a partial reconciliation leaves the
+ * target matching neither the package nor its previous state.
+ */
+export interface FolderRemovalFailure {
+	folderId: string;
 	name: string;
 	projectId: string;
 }

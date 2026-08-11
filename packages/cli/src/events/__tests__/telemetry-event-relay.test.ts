@@ -2308,6 +2308,11 @@ describe('TelemetryEventRelay', () => {
 						created: 2,
 						updated: 1,
 						skipped: 1,
+						archived: 3,
+						deleted: 2,
+					},
+					folders: {
+						removed: 1,
 					},
 					credentials: {
 						matched: 2,
@@ -2362,6 +2367,9 @@ describe('TelemetryEventRelay', () => {
 				workflows_created: 2,
 				workflows_updated: 1,
 				workflows_skipped: 1,
+				workflows_archived: 3,
+				workflows_deleted: 2,
+				folders_removed: 1,
 				credentials_matched: 2,
 				credentials_created: 1,
 				credentials_required: 3,

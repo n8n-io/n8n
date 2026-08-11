@@ -12,7 +12,9 @@ post:
     archive as the multipart field `package`. Optional routing uses form fields
     `projectId` and `folderId` (omit or send empty for defaults). Every optional
     mode/policy field (credential, workflow, project, folder, data table, variable,
-    and tag) takes its default when omitted. The required
+    and tag) takes its default when omitted; the one non-fixed default is
+    `folderConflictPolicy`, which follows `projectConflictPolicy` on a project
+    package (see its description). The required
     `workflowConflictPolicy` field controls what happens when a package workflow
     matches an existing workflow by source id in the target project. Maximum upload
     size is `N8N_ENDPOINTS_PAYLOAD_SIZE_MAX` MB (default 16).
@@ -368,6 +370,8 @@ post:
             required:
               - package
               - workflows
+              - removedWorkflows
+              - removedFolders
               - folders
               - projects
               - bindings

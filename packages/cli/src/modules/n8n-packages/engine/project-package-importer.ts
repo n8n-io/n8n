@@ -288,6 +288,9 @@ export class ProjectPackageImporter {
 			tagRequest,
 			options: request,
 			projectPendingCreation,
+			// Scoped like the requirements above: reconciliation must retain a referenced-but-not-carried
+			// sub-workflow, or it would archive a dependency and leave its packaged parent unpublishable.
+			subWorkflowRequirements: identifyRequirements(manifest.requirements?.workflows, workflows),
 		};
 	}
 
