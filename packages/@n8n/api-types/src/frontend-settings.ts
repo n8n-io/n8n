@@ -396,10 +396,8 @@ export type FrontendModuleSettings = {
 		 */
 		modules: string[];
 		/**
-		 * Whether the agent knowledge base is enabled. True when the backend's
-		 * Daytona sandbox env vars (`N8N_AGENTS_AI_SANDBOX_ENABLED=true` +
-		 * `N8N_AGENTS_AI_SANDBOX_PROVIDER=daytona`) are set, OR the AI Assistant
-		 * proxy is available.
+		 * Whether the agent knowledge base is enabled by the backend's
+		 * `N8N_AGENTS_AI_SANDBOX_ENABLED` opt-in.
 		 */
 		knowledgeBaseEnabled: boolean;
 		/** Whether the AI Assistant proxy is available to the agents module. */

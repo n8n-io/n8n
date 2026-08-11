@@ -40,7 +40,14 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 import { EventService } from '@/events/event.service';
 import { AiService } from '@/services/ai.service';
+import {
+	INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY,
+	INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY,
+	SandboxSettingsService,
+} from '@/services/sandbox-settings.service';
 import { UserService } from '@/services/user.service';
+
+export { INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY, INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY };
 
 import {
 	N8N_SANDBOX_SERVICE_URL_REQUIRED_MESSAGE,
@@ -48,7 +55,6 @@ import {
 } from './sandbox-provider';
 
 const ADMIN_SETTINGS_KEY = 'instanceAi.settings';
-const N8N_SANDBOX_HEADER_NAME = 'x-api-key';
 
 const MODEL_PROVIDER_API_KEY_ENV: ReadonlyMap<string, string> = new Map([
 	['anthropic', 'ANTHROPIC_API_KEY'],
@@ -156,33 +162,6 @@ function modelCredentialHeaders(
 	return Object.keys(headers).length ? headers : undefined;
 }
 
-function validateSandboxServiceCredential({
-	type,
-	data,
-}: {
-	type: string;
-	data: ICredentialDataDecryptedObject;
-}): void {
-	const headerName = requireConnectionValue(type, data, 'name').toLowerCase();
-	if (headerName !== N8N_SANDBOX_HEADER_NAME) {
-		throw new UnprocessableRequestError(
-			`The credential's header name must be "${N8N_SANDBOX_HEADER_NAME}" but is "${headerName}"`,
-		);
-	}
-	requireConnectionValue(type, data, 'value');
-}
-
-function validateDaytonaCredential({
-	type,
-	data,
-}: {
-	type: string;
-	data: ICredentialDataDecryptedObject;
-}): void {
-	requireHttpUrl(type, data, 'apiUrl');
-	requireConnectionValue(type, data, 'apiKey');
-}
-
 function validateSearchCredential({
 	type,
 	data,
@@ -200,18 +179,6 @@ export const INSTANCE_AI_MODEL_CREDENTIAL_POLICY: InstanceCredentialUse = {
 	validate: validateModelCredential,
 };
 
-export const INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY: InstanceCredentialUse = {
-	id: 'instance-ai:sandbox:daytona',
-	credentialTypes: ['daytonaApi'],
-	validate: validateDaytonaCredential,
-};
-
-export const INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY: InstanceCredentialUse = {
-	id: 'instance-ai:sandbox:n8n',
-	credentialTypes: ['httpHeaderAuth'],
-	validate: validateSandboxServiceCredential,
-};
-
 export const INSTANCE_AI_SEARCH_CREDENTIAL_POLICY: InstanceCredentialUse = {
 	id: 'instance-ai:search',
 	credentialTypes: INSTANCE_AI_SEARCH_CREDENTIAL_TYPES,
@@ -225,9 +192,9 @@ function validateInstanceAiCredential(
 	if (policy === INSTANCE_AI_MODEL_CREDENTIAL_POLICY) {
 		validateModelCredential(credential);
 	} else if (policy === INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY) {
-		validateDaytonaCredential(credential);
+		INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY.validate?.(credential);
 	} else if (policy === INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY) {
-		validateSandboxServiceCredential(credential);
+		INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY.validate?.(credential);
 	} else if (policy === INSTANCE_AI_SEARCH_CREDENTIAL_POLICY) {
 		validateSearchCredential(credential);
 	} else {
@@ -319,13 +286,13 @@ export class InstanceAiSettingsService {
 		private readonly credentialsService: CredentialsService,
 		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly instanceCredentialBroker: InstanceCredentialBroker,
+		private readonly sandboxSettingsService: SandboxSettingsService,
 		private readonly eventService: EventService,
 	) {
 		this.config = globalConfig.instanceAi;
 		this.deploymentConfig = globalConfig.deployment;
-		this.environmentSandboxProvider = normalizeSandboxProvider(this.config.sandboxProvider);
+		this.environmentSandboxProvider = this.sandboxSettingsService.getProvider();
 		this.environmentN8nSandboxServiceUrl = this.config.n8nSandboxServiceUrl;
-		this.config.sandboxProvider = this.environmentSandboxProvider;
 	}
 
 	/** Whether this instance is running on the cloud platform. */
@@ -340,10 +307,9 @@ export class InstanceAiSettingsService {
 
 	/** Load persisted settings from DB and apply to the singleton config. Call on module init. */
 	async loadFromDb(): Promise<void> {
-		this.config.sandboxProvider = normalizeSandboxProvider(this.config.sandboxProvider);
 		const envSnapshot = {
 			sandboxEnabled: this.config.sandboxEnabled,
-			sandboxProvider: this.config.sandboxProvider,
+			sandboxProvider: this.environmentSandboxProvider,
 		};
 
 		await this.reloadFromDb();
@@ -1148,70 +1114,29 @@ export class InstanceAiSettingsService {
 			apiKey: daytonaApiKey || undefined,
 		};
 		if (
-			this.isDirectSelfManaged() &&
-			this.environmentSandboxProvider === 'daytona' &&
-			this.hasEnvironmentSandboxConnection()
+			this.aiService.isProxyEnabled() ||
+			(this.isDirectSelfManaged() &&
+				this.environmentSandboxProvider === 'daytona' &&
+				this.hasEnvironmentSandboxConnection())
 		) {
 			return envConfig;
 		}
-		const resolved = await this.resolveServiceCredential(
-			INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY,
-			'Daytona sandbox',
-		);
-		if (!resolved) return envConfig;
-		const { data } = resolved;
-		const apiUrl = typeof data.apiUrl === 'string' ? data.apiUrl : undefined;
-		const apiKey = typeof data.apiKey === 'string' ? data.apiKey : undefined;
-		if (!apiUrl || !apiKey) {
-			this.warnCredentialFallback(
-				'Daytona sandbox',
-				INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY.id,
-				'Credential data is incomplete',
-			);
-			return envConfig;
-		}
-		return { apiUrl, apiKey };
+		return await this.sandboxSettingsService.resolveDaytonaConfig();
 	}
 
 	async resolveN8nSandboxConfig(): Promise<{ serviceUrl?: string; apiKey?: string }> {
-		const { n8nSandboxServiceUrl, n8nSandboxServiceApiKey } = this.config;
-		const envConfig = {
-			serviceUrl: n8nSandboxServiceUrl || undefined,
-			apiKey: n8nSandboxServiceApiKey || undefined,
-		};
 		if (
 			this.isDirectSelfManaged() &&
 			this.environmentSandboxProvider === 'n8n-sandbox' &&
 			this.hasEnvironmentSandboxConnection()
 		) {
-			return envConfig;
+			const { n8nSandboxServiceUrl, n8nSandboxServiceApiKey } = this.config;
+			return {
+				serviceUrl: n8nSandboxServiceUrl || undefined,
+				apiKey: n8nSandboxServiceApiKey || undefined,
+			};
 		}
-		const resolved = await this.resolveServiceCredential(
-			INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY,
-			'n8n Sandbox',
-		);
-		if (!resolved) return envConfig;
-
-		const { data } = resolved;
-		const headerName = typeof data.name === 'string' ? data.name.trim().toLowerCase() : '';
-		const apiKey = typeof data.value === 'string' ? data.value : undefined;
-		if (headerName !== N8N_SANDBOX_HEADER_NAME) {
-			this.warnCredentialFallback(
-				'n8n Sandbox',
-				INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY.id,
-				`Credential header must be "${N8N_SANDBOX_HEADER_NAME}" but is "${headerName || '(empty)'}"`,
-			);
-			return envConfig;
-		}
-		if (!apiKey) {
-			this.warnCredentialFallback(
-				'n8n Sandbox',
-				INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY.id,
-				'Credential data is incomplete',
-			);
-			return envConfig;
-		}
-		return { serviceUrl: n8nSandboxServiceUrl || undefined, apiKey };
+		return await this.sandboxSettingsService.resolveN8nSandboxConfig();
 	}
 
 	async resolveSearchConfig(): Promise<{ braveApiKey?: string; searxngUrl?: string }> {
@@ -1255,12 +1180,7 @@ export class InstanceAiSettingsService {
 		service: string,
 		ctx?: OperationContext,
 	): Promise<ResolvedInstanceCredential | null> {
-		if (
-			this.isCloud ||
-			(this.aiService.isProxyEnabled() &&
-				policy.id !== INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY.id)
-		)
-			return null;
+		if (this.isCloud || this.aiService.isProxyEnabled()) return null;
 		const resolved = ctx
 			? this.instanceCredentialBroker.resolveForUse(policy, ctx)
 			: this.instanceCredentialBroker.resolveForUse(policy);
@@ -1314,7 +1234,7 @@ export class InstanceAiSettingsService {
 
 	/** Whether workflow building can use the required sandbox workspace. */
 	getSandboxStatus(): InstanceAiSandboxStatus {
-		const provider = normalizeSandboxProvider(this.config.sandboxProvider);
+		const provider = this.sandboxSettingsService.getProvider();
 		const unavailableReason = this.getSandboxUnavailableReason(
 			this.config.sandboxEnabled,
 			provider,
