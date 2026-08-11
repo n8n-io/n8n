@@ -11,6 +11,7 @@ import McpDetailBody from '@/features/shared/toolsConnection/McpDetailBody.vue';
 import McpToolSettingsContent from '@/features/shared/toolsConnection/McpToolSettingsContent.vue';
 import ToolsConnectionModal from '@/features/shared/toolsConnection/ToolsConnectionModal.vue';
 import {
+	hasToolConnection,
 	isToolConnectionSettled,
 	TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY,
 	type McpServerConnectionItem,
@@ -103,7 +104,7 @@ const detailItem = computed<ToolConnectionItem | null>(() => {
 });
 
 const detailMode = computed<'detail' | 'settings'>(() =>
-	detailItem.value?.kind === 'mcp-server' && isToolConnectionSettled(detailItem.value.status)
+	detailItem.value?.kind === 'mcp-server' && hasToolConnection(detailItem.value.status)
 		? 'settings'
 		: 'detail',
 );

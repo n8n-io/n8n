@@ -11,7 +11,7 @@ import {
 	sampleCredentials,
 } from './fixtures';
 import {
-	isToolConnectionSettled,
+	hasToolConnection,
 	TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY,
 	type ToolConnectionCredentialAdapter,
 	type NodeConnectionItem,
@@ -121,7 +121,7 @@ function renderWithTrigger(
 
 			function onOpenDetail(item: ToolConnectionItem) {
 				console.log('[story] open-detail', item);
-				detailMode.value = isToolConnectionSettled(item.status) ? 'settings' : 'detail';
+				detailMode.value = hasToolConnection(item.status) ? 'settings' : 'detail';
 			}
 
 			function onConnect(item: ToolConnectionItem) {
