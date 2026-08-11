@@ -477,6 +477,7 @@ export type {
 	InstanceAiPermissions,
 	InstanceAiTargetResource,
 	InstanceAiFileAttachment,
+	InstanceAiNodesAttachment,
 	InstanceAiResourceAttachment,
 	InstanceAiWorkflowAttachment,
 	DomainAccessAction,
