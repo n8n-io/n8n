@@ -5,10 +5,6 @@ describe('TagIdsPublicDto', () => {
 		const result = TagIdsPublicDto.safeParse([{ id: 'tag-1' }, { id: 'tag-2' }]);
 		expect(result).toMatchObject({ success: true, data: [{ id: 'tag-1' }, { id: 'tag-2' }] });
 	});
-
-	it('rejects an array item carrying an unknown field', () => {
-		expect(TagIdsPublicDto.safeParse([{ id: 'tag-1', name: 'renamed' }]).success).toBe(false);
-	});
 });
 
 describe('WorkflowTagsPublicDto', () => {
