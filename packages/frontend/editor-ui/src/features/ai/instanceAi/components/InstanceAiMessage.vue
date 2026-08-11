@@ -12,6 +12,7 @@ import {
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, ref } from 'vue';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useInstanceAiStore, useThread } from '../instanceAi.store';
 import AgentActivityTree from './AgentActivityTree.vue';
@@ -24,6 +25,7 @@ const props = defineProps<{
 
 const i18n = useI18n();
 const store = useInstanceAiStore();
+const settingsStore = useSettingsStore();
 const thread = useThread();
 const showDebugInfo = ref(false);
 
@@ -47,6 +49,16 @@ const hasProviderError = computed(() => !!errorDetails.value?.provider);
 
 /** The run failed because the user ran out of AI credits — show a tailored state. */
 const isQuotaExhausted = computed(() => errorDetails.value?.code === 'quota_exhausted');
+
+/**
+ * The activation-capped trial cohort is never shown a credit balance, so telling them they've
+ * "run out of AI credits" would be the first they'd hear of any credits at all.
+ */
+const outOfCreditsTitleKey = computed(() =>
+	settingsStore.moduleSettings?.['instance-ai']?.activationCapped
+		? 'instanceAi.error.outOfCredits.trialTitle'
+		: 'instanceAi.error.outOfCredits.title',
+);
 
 const { goToUpgrade } = usePageRedirectionHelper();
 
@@ -148,7 +160,7 @@ function formatJson(value: unknown): string {
 
 			<!-- Out-of-credits (quota exhausted): tailored state, hides raw provider/status noise -->
 			<N8nCallout v-if="isQuotaExhausted" theme="warning" data-test-id="instance-ai-out-of-credits">
-				{{ i18n.baseText('instanceAi.error.outOfCredits.title') }}
+				{{ i18n.baseText(outOfCreditsTitleKey) }}
 				<template #trailingContent>
 					<N8nButton
 						variant="outline"

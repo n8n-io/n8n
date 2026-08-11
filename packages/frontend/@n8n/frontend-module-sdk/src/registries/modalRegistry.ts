@@ -1,6 +1,13 @@
+import { shallowReactive } from 'vue';
+
 import type { ModalDefinition } from '../types/modal';
 
-const modals = new Map<string, ModalDefinition>();
+/**
+ * Shallow-reactive so consumers can derive from the registry with a plain
+ * `computed` instead of mirroring it through a subscription. Shallow on purpose:
+ * a definition's `component` must not be turned into a reactive object.
+ */
+const modals = shallowReactive(new Map<string, ModalDefinition>());
 const listeners = new Set<(modals: Map<string, ModalDefinition>) => void>();
 
 export function getAll(): Map<string, ModalDefinition> {
