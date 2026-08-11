@@ -42,8 +42,12 @@ export class TokenExchangeModule implements ModuleInterface {
 		const { ExternalTokenVerifierProxy } = await import(
 			'@/services/external-token-verifier-proxy.service.js'
 		);
-		const { TokenExchangeService } = await import('./services/token-exchange.service.js');
-		Container.get(ExternalTokenVerifierProxy).registerProvider(Container.get(TokenExchangeService));
+		const { ExternalTokenVerifierService } = await import(
+			'@/modules/identity-substrate/services/external-token-verifier.service.js'
+		);
+		Container.get(ExternalTokenVerifierProxy).registerProvider(
+			Container.get(ExternalTokenVerifierService),
+		);
 
 		const { IdentityResolutionProxy } = await import(
 			'@/services/identity-resolution-proxy.service.js'
