@@ -539,17 +539,19 @@ export class ExecutionPersistence {
 			}),
 		);
 
-		const executions = entities
-			.map((e) => assembledById.get(e.id))
-			.filter((e): e is NonNullable<typeof e> => e !== undefined) as
-			| IExecutionFlattedDb[]
-			| IExecutionResponse[]
-			| IExecutionBase[];
-
+		const executions: Array<Awaited<ReturnType<typeof this.assembleExecution>>> = [];
 		// An entity with no assembled result is one whose bundle was missing or corrupt.
-		const unreadableIds = entities.filter((e) => !assembledById.has(e.id)).map((e) => e.id);
+		const unreadableIds: string[] = [];
+		for (const entity of entities) {
+			const assembled = assembledById.get(entity.id);
+			if (assembled === undefined) unreadableIds.push(entity.id);
+			else executions.push(assembled);
+		}
 
-		return { executions, unreadableIds };
+		return {
+			executions: executions as IExecutionFlattedDb[] | IExecutionResponse[] | IExecutionBase[],
+			unreadableIds,
+		};
 	}
 
 	/** Find an execution scoped to accessible workflows, with unflattened data and annotation. */
