@@ -73,7 +73,6 @@ export class AgentKnowledgeService {
 				throw error;
 			}
 
-			this.agentKnowledgeSandboxService.invalidateMirror(projectId, agentId);
 			this.agentKnowledgeSandboxService.prewarmMirrorInBackground(projectId, agentId);
 
 			return uploadedFiles.map((file) => toAgentFileDto(file));
@@ -111,11 +110,10 @@ export class AgentKnowledgeService {
 					error: error instanceof Error ? error.message : error,
 				});
 			});
-		this.agentKnowledgeSandboxService.invalidateMirror(projectId, agentId);
 		this.agentKnowledgeSandboxService.prewarmMirrorInBackground(projectId, agentId);
 	}
 
-	async deleteAllFilesForAgent(projectId: string, agentId: string): Promise<void> {
+	async deleteAllFilesForAgent(_projectId: string, agentId: string): Promise<void> {
 		const files = await this.agentFileRepository.findByAgentId(agentId);
 		await this.agentFileRepository.delete({ agentId });
 		if (files.length > 0) {
@@ -133,7 +131,6 @@ export class AgentKnowledgeService {
 					});
 				});
 		}
-		this.agentKnowledgeSandboxService.invalidateMirror(projectId, agentId);
 	}
 
 	/** Best-effort passthrough for agent/project deletion; never throws. */

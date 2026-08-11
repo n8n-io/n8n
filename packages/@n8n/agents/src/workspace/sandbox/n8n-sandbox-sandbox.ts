@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 
 import { BaseSandbox } from './base-sandbox';
+import { raceWithAbort } from '../../sdk/abort';
 import type { CommandResult, ExecuteCommandOptions, ProviderStatus, SandboxInfo } from '../types';
 
 export interface N8nSandboxServiceSandboxOptions {
@@ -60,13 +61,7 @@ export class N8nSandboxServiceSandbox extends BaseSandbox {
 	}
 
 	override async start(): Promise<void> {
-		// With an id, the service creates-or-reconnects: an existing live sandbox
-		// is returned as-is, a stale one is replaced under the same id. This is
-		// what lets a restarted process (or another main) reattach to a thread's
-		// sandbox instead of orphaning it.
-		const sandbox = await this.client.createSandbox(
-			this.sandboxId ? { id: this.sandboxId } : undefined,
-		);
+		const sandbox = await this.createSandbox();
 		this.sandboxId = sandbox.id;
 		this.createdAt = new Date(sandbox.createdAt * 1000);
 	}
@@ -74,7 +69,7 @@ export class N8nSandboxServiceSandbox extends BaseSandbox {
 	override async destroy(): Promise<void> {
 		if (!this.sandboxId) return;
 		try {
-			await this.client.deleteSandbox(this.sandboxId);
+			await this.withLifecycleTimeout(this.client.deleteSandbox(this.sandboxId));
 		} catch (error) {
 			if (error instanceof SandboxServiceError && error.status === 404) return;
 			throw error;
@@ -142,6 +137,25 @@ export class N8nSandboxServiceSandbox extends BaseSandbox {
 
 	getClient(): SandboxClient {
 		return this.client;
+	}
+
+	private async createSandbox() {
+		const existingId = this.sandboxId;
+		const creation = existingId
+			? this.client.createSandbox({ id: existingId })
+			: this.client.createSandbox();
+		try {
+			return await this.withLifecycleTimeout(creation);
+		} catch (error) {
+			if (!existingId) {
+				void creation.then(async ({ id }) => await this.client.deleteSandbox(id)).catch(() => {});
+			}
+			throw error;
+		}
+	}
+
+	private async withLifecycleTimeout<T>(operation: Promise<T>): Promise<T> {
+		return await raceWithAbort(operation, AbortSignal.timeout(this.timeout));
 	}
 
 	/** Merges constructor-level env with per-command env, filtering out undefined values. */

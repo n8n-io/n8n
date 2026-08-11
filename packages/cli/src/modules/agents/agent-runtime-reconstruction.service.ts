@@ -47,7 +47,6 @@ import { createAiMcpFetch, createAiProxyFetch, createWebSearchFetch } from '@/ut
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
-import { isAgentKnowledgeBaseEnabled } from './agent-knowledge-gate';
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
 import { AgentKnowledgeSandboxService } from './agent-knowledge-sandbox.service';
 import type { AgentRuntimeInstrumentation } from './agent-runtime-instrumentation';
@@ -596,7 +595,7 @@ export class AgentRuntimeReconstructionService {
 
 		if (
 			runtimeProfile !== 'inline' &&
-			isAgentKnowledgeBaseEnabled(this.agentsConfig, this.aiService.isProxyEnabled()) &&
+			this.agentsConfig.sandboxEnabled &&
 			(await this.agentFileRepository.hasFilesForAgent(agentId))
 		) {
 			const { createKnowledgeRetrievalTools } = await import(

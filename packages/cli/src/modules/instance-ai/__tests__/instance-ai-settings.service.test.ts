@@ -13,15 +13,18 @@ import { mock } from 'vitest-mock-extended';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 import type { EventService } from '@/events/event.service';
 import type { AiService } from '@/services/ai.service';
+import {
+	INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY,
+	INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY,
+	type SandboxSettingsService,
+} from '@/services/sandbox-settings.service';
 import type { UserService } from '@/services/user.service';
 import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { InstanceCredentialBroker } from '@/credentials/instance-credential-broker';
 
 import {
-	INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY,
 	INSTANCE_AI_MODEL_CREDENTIAL_POLICY,
-	INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY,
 	INSTANCE_AI_SEARCH_CREDENTIAL_POLICY,
 	InstanceAiSettingsService,
 } from '../instance-ai-settings.service';
@@ -61,6 +64,7 @@ describe('InstanceAiSettingsService', () => {
 	const credentialsService = mock<CredentialsService>();
 	const credentialsFinderService = mock<CredentialsFinderService>();
 	const instanceCredentialBroker = mock<InstanceCredentialBroker>();
+	const sandboxSettingsService = mock<SandboxSettingsService>();
 	const eventService = mock<EventService>();
 	const logger = mock<Logger>();
 
@@ -77,6 +81,7 @@ describe('InstanceAiSettingsService', () => {
 			credentialsService,
 			credentialsFinderService,
 			instanceCredentialBroker,
+			sandboxSettingsService,
 			eventService,
 		);
 
@@ -106,6 +111,9 @@ describe('InstanceAiSettingsService', () => {
 		globalConfig.deployment.type = 'default';
 		instanceCredentialBroker.listForUse.mockResolvedValue([]);
 		instanceCredentialBroker.getAssignedCredentialId.mockResolvedValue(null);
+		sandboxSettingsService.getProvider.mockImplementation(() =>
+			globalConfig.instanceAi.sandboxProvider === 'daytona' ? 'daytona' : 'n8n-sandbox',
+		);
 		credentialsService.getCredentialTypeProperties.mockReturnValue([]);
 		credentialsService.unredact.mockImplementation((data) => data);
 		credentialsService.runInstanceCredentialHooks.mockImplementation(async (_event, credential) => {
@@ -1728,166 +1736,32 @@ describe('InstanceAiSettingsService', () => {
 		});
 	});
 
-	describe('daytona credential', () => {
-		it('uses the resolved credential data for the daytona config', async () => {
-			globalConfig.instanceAi.daytonaApiUrl = 'https://env.daytona.example.com';
-			globalConfig.instanceAi.daytonaApiKey = 'env-key';
-			instanceCredentialBroker.resolveForUse.mockResolvedValue({
-				id: 'daytona-credential',
-				name: 'Daytona',
-				type: 'daytonaApi',
-				data: { apiUrl: 'https://daytona.example.com', apiKey: 'credential-key' },
-			});
-
-			await expect(service.resolveDaytonaConfig()).resolves.toEqual({
-				apiUrl: 'https://daytona.example.com',
-				apiKey: 'credential-key',
-			});
-		});
-
-		it('falls back to environment config when the selected credential cannot be resolved', async () => {
-			globalConfig.instanceAi.daytonaApiUrl = 'https://env.daytona.example.com';
-			globalConfig.instanceAi.daytonaApiKey = 'env-key';
-			instanceCredentialBroker.resolveForUse.mockRejectedValue(new Error('not found'));
-
-			await expect(service.resolveDaytonaConfig()).resolves.toEqual({
-				apiUrl: 'https://env.daytona.example.com',
-				apiKey: 'env-key',
-			});
-			expect(logger.warn).toHaveBeenCalledWith(
-				'Could not resolve the configured Daytona sandbox credential; using environment fallback',
-				{ credentialUseId: 'instance-ai:sandbox:daytona', error: 'not found' },
-			);
-		});
-
-		it('falls back to environment config when resolved credential data is incomplete', async () => {
-			globalConfig.instanceAi.daytonaApiUrl = 'https://env.daytona.example.com';
-			globalConfig.instanceAi.daytonaApiKey = 'env-key';
-			instanceCredentialBroker.resolveForUse.mockResolvedValue({
-				id: 'daytona-credential',
-				name: 'Daytona',
-				type: 'daytonaApi',
-				data: { apiKey: 'credential-key' },
-			});
-
-			await expect(service.resolveDaytonaConfig()).resolves.toEqual({
-				apiUrl: 'https://env.daytona.example.com',
-				apiKey: 'env-key',
-			});
-			expect(logger.warn).toHaveBeenCalledWith(
-				'Could not resolve the configured Daytona sandbox credential; using environment fallback',
-				{ credentialUseId: 'instance-ai:sandbox:daytona', error: 'Credential data is incomplete' },
-			);
-		});
-
-		it('ignores stored assignments on cloud deployments', async () => {
-			globalConfig.deployment.type = 'cloud';
-			globalConfig.instanceAi.daytonaApiUrl = 'https://env.daytona.example.com';
-			globalConfig.instanceAi.daytonaApiKey = 'env-key';
-
-			await expect(service.resolveDaytonaConfig()).resolves.toEqual({
-				apiUrl: 'https://env.daytona.example.com',
-				apiKey: 'env-key',
-			});
-			expect(instanceCredentialBroker.resolveForUse).not.toHaveBeenCalled();
-		});
-	});
-
 	describe('n8n sandbox credential', () => {
-		it('uses the resolved api key for an admin-configured service URL', async () => {
-			globalConfig.instanceAi.n8nSandboxServiceUrl = 'http://sandbox-api:8080';
-			globalConfig.instanceAi.n8nSandboxServiceApiKey = 'env-key';
-			instanceCredentialBroker.resolveForUse.mockResolvedValue({
-				id: 'sandbox-credential',
-				name: 'Sandbox',
-				type: 'httpHeaderAuth',
-				data: { name: 'X-Api-Key', value: 'credential-key' },
-			});
-
-			await expect(service.resolveN8nSandboxConfig()).resolves.toEqual({
-				serviceUrl: 'http://sandbox-api:8080',
-				apiKey: 'credential-key',
-			});
-		});
-
 		it('uses environment settings without resolving the stored credential', async () => {
 			Object.assign(globalConfig.instanceAi, {
 				n8nSandboxServiceUrl: 'http://sandbox-api:8080',
 				n8nSandboxServiceApiKey: 'environment-key',
 			});
 			service = createService();
-			instanceCredentialBroker.resolveForUse.mockResolvedValue({
-				id: 'sandbox-credential',
-				name: 'Sandbox',
-				type: 'httpHeaderAuth',
-				data: { name: 'X-Api-Key', value: 'credential-key' },
-			});
 
 			await expect(service.resolveN8nSandboxConfig()).resolves.toEqual({
 				serviceUrl: 'http://sandbox-api:8080',
 				apiKey: 'environment-key',
 			});
-			expect(instanceCredentialBroker.resolveForUse).not.toHaveBeenCalled();
+			expect(sandboxSettingsService.resolveN8nSandboxConfig).not.toHaveBeenCalled();
 		});
 
 		it('uses the resolved api key when the assistant proxy is enabled', async () => {
 			aiService.isProxyEnabled.mockReturnValue(true);
-			globalConfig.instanceAi.n8nSandboxServiceUrl = 'http://sandbox-api:8080';
-			globalConfig.instanceAi.n8nSandboxServiceApiKey = 'env-key';
-			instanceCredentialBroker.resolveForUse.mockResolvedValue({
-				id: 'sandbox-credential',
-				name: 'Sandbox',
-				type: 'httpHeaderAuth',
-				data: { name: 'X-Api-Key', value: 'credential-key' },
+			sandboxSettingsService.resolveN8nSandboxConfig.mockResolvedValue({
+				serviceUrl: 'http://sandbox-api:8080',
+				apiKey: 'credential-key',
 			});
 
 			await expect(service.resolveN8nSandboxConfig()).resolves.toEqual({
 				serviceUrl: 'http://sandbox-api:8080',
 				apiKey: 'credential-key',
 			});
-		});
-
-		it('falls back to environment config when the credential header is not x-api-key', async () => {
-			globalConfig.instanceAi.n8nSandboxServiceUrl = 'http://sandbox-api:8080';
-			globalConfig.instanceAi.n8nSandboxServiceApiKey = 'env-key';
-			instanceCredentialBroker.resolveForUse.mockResolvedValue({
-				id: 'sandbox-credential',
-				name: 'Sandbox',
-				type: 'httpHeaderAuth',
-				data: { name: 'Authorization', value: 'credential-key' },
-			});
-
-			await expect(service.resolveN8nSandboxConfig()).resolves.toEqual({
-				serviceUrl: 'http://sandbox-api:8080',
-				apiKey: 'env-key',
-			});
-			expect(logger.warn).toHaveBeenCalledWith(
-				'Could not resolve the configured n8n Sandbox credential; using environment fallback',
-				{
-					credentialUseId: 'instance-ai:sandbox:n8n',
-					error: 'Credential header must be "x-api-key" but is "authorization"',
-				},
-			);
-		});
-
-		it('falls back to environment config when the api key is missing', async () => {
-			globalConfig.instanceAi.n8nSandboxServiceUrl = 'http://sandbox-api:8080';
-			globalConfig.instanceAi.n8nSandboxServiceApiKey = 'env-key';
-			instanceCredentialBroker.resolveForUse.mockResolvedValue({
-				id: 'sandbox-credential',
-				name: 'Sandbox',
-				type: 'httpHeaderAuth',
-				data: { name: 'x-api-key' },
-			});
-
-			await expect(service.resolveN8nSandboxConfig()).resolves.toEqual({
-				serviceUrl: 'http://sandbox-api:8080',
-				apiKey: 'env-key',
-			});
-			expect(logger.warn).toHaveBeenCalledWith(
-				'Could not resolve the configured n8n Sandbox credential; using environment fallback',
-				{ credentialUseId: 'instance-ai:sandbox:n8n', error: 'Credential data is incomplete' },
-			);
 		});
 	});
 

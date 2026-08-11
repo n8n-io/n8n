@@ -12,15 +12,13 @@ export class InstanceAiModule implements ModuleInterface {
 		const {
 			InstanceAiSettingsService,
 			INSTANCE_AI_MODEL_CREDENTIAL_POLICY,
-			INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY,
-			INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY,
 			INSTANCE_AI_SEARCH_CREDENTIAL_POLICY,
 		} = await import('./instance-ai-settings.service.js');
+		const { SandboxSettingsService } = await import('@/services/sandbox-settings.service.js');
 		const settingsService = Container.get(InstanceAiSettingsService);
 		const credentialBroker = Container.get(InstanceCredentialBroker);
 		credentialBroker.registerUse(INSTANCE_AI_MODEL_CREDENTIAL_POLICY);
-		credentialBroker.registerUse(INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY);
-		credentialBroker.registerUse(INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY);
+		Container.get(SandboxSettingsService).registerCredentialUses();
 		credentialBroker.registerUse(INSTANCE_AI_SEARCH_CREDENTIAL_POLICY);
 		await settingsService.loadFromDb();
 		await import('./instance-ai.controller.js');
