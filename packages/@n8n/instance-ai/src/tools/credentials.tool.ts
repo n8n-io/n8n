@@ -430,7 +430,7 @@ const suspendSchema = z.object({
 const resumeSchema = z.object({
 	approved: z.boolean(),
 	credentials: z.record(z.string()).optional(),
-	autoSetup: z.object({ credentialType: z.string() }).optional(),
+	autoSetup: z.object({ credentialType: z.string(), attemptId: z.string().optional() }).optional(),
 });
 
 interface CredentialToolContext {
@@ -680,7 +680,8 @@ async function handleSetup(
 
 	// State 4: User requested automatic browser-assisted setup
 	if (resumeData.autoSetup) {
-		const { credentialType } = resumeData.autoSetup;
+		const { credentialType, attemptId } = resumeData.autoSetup;
+		context.browserCredentialSetup?.markPending(credentialType, attemptId);
 		const docsUrl =
 			(await context.credentialService.getDocumentationUrl?.(credentialType)) ?? undefined;
 		const requiredFields =
