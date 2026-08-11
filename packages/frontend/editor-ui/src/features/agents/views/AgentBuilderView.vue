@@ -1,12 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onBeforeUnmount, useTemplateRef } from 'vue';
 import { useRoute, useRouter, type LocationQueryRaw, type RouteLocationRaw } from 'vue-router';
-import {
-	N8nAssistantIcon,
-	N8nButton,
-	N8nIcon,
-	type ActionDropdownItem,
-} from '@n8n/design-system';
+import { N8nAssistantIcon, N8nButton, N8nIcon, type ActionDropdownItem } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import {
 	MAX_AGENT_FILE_SIZE_BYTES,
