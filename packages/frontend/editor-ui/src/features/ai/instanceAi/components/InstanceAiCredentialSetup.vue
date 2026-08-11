@@ -21,6 +21,7 @@ import { N8nActionDropdown, N8nButton, N8nIcon, N8nText } from '@n8n/design-syst
 import type { ActionDropdownItem } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { v4 as uuidv4 } from 'uuid';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
@@ -501,10 +502,11 @@ async function handleLater() {
 	await deferWholeCard();
 }
 
-function trackSetupChoiceClicked(choice: CredentialSetupChoice | 'skip') {
+function trackSetupChoiceClicked(choice: CredentialSetupChoice | 'skip', attemptId?: string) {
 	telemetry.track('Instance AI Browser Use User clicked credential setup option', {
 		credential_type: currentRequest.value?.credentialType,
 		choice,
+		...(attemptId ? { credential_setup_attempt_id: attemptId } : {}),
 	});
 }
 
@@ -550,11 +552,12 @@ function handleSetupManually() {
 	openCreateCredential();
 }
 
-async function submitAutoSetup(credentialType: string) {
+async function submitAutoSetup(credentialType: string, attemptId: string) {
 	isSubmitted.value = true;
 	const success = await thread.confirmAction(props.requestId, {
 		kind: 'credentialAutoSetup',
 		credentialType,
+		attemptId,
 	});
 	if (success) {
 		thread.resolveConfirmation(props.requestId, 'approved');
@@ -567,10 +570,11 @@ async function handleSetupAutomatically() {
 	const credentialType = currentRequest.value?.credentialType;
 	if (!credentialType) return;
 
-	trackSetupChoiceClicked('ai');
+	const attemptId = uuidv4();
+	trackSetupChoiceClicked('ai', attemptId);
 
 	if (settingsStore.browserConnected) {
-		await submitAutoSetup(credentialType);
+		await submitAutoSetup(credentialType, attemptId);
 		return;
 	}
 
@@ -582,7 +586,7 @@ async function handleSetupAutomatically() {
 			if (!connected) return;
 			stopWatchingBrowserConnect();
 			uiStore.closeModal(INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY);
-			await submitAutoSetup(credentialType);
+			await submitAutoSetup(credentialType, attemptId);
 		},
 	);
 }

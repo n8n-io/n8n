@@ -46,7 +46,7 @@ function suspendCtx(suspendFn: Mock = vi.fn()) {
 function resumeCtx(resumeData: {
 	approved: boolean;
 	credentials?: Record<string, string>;
-	autoSetup?: { credentialType: string };
+	autoSetup?: { credentialType: string; attemptId?: string };
 }) {
 	const suspend = vi.fn();
 	return { resumeData, suspend } as never;
@@ -1173,6 +1173,31 @@ describe('credentials tool', () => {
 					{ name: 'apiKey', displayName: 'API Key', type: 'string', required: true },
 				],
 			});
+		});
+
+		it('should mark browser credential setup pending when autoSetup is present', async () => {
+			const context = createMockContext();
+			const markPending = vi.fn();
+			context.browserCredentialSetup = {
+				markPending,
+				markCreated: vi.fn(),
+				markCreateFailed: vi.fn(),
+			};
+
+			const tool = createCredentialsTool(context);
+			await executeTool(
+				tool,
+				{
+					action: 'setup' as const,
+					credentials: [{ credentialType: 'slackApi' }],
+				},
+				resumeCtx({
+					approved: true,
+					autoSetup: { credentialType: 'slackApi', attemptId: 'attempt-1' },
+				}),
+			);
+
+			expect(markPending).toHaveBeenCalledWith('slackApi', 'attempt-1');
 		});
 
 		it('should handle autoSetup when getDocumentationUrl is not available', async () => {

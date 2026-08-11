@@ -44,6 +44,9 @@ const credentialSelectionConfirmSchema = z.object({
 const credentialAutoSetupConfirmSchema = z.object({
 	kind: z.literal('credentialAutoSetup'),
 	credentialType: z.string(),
+	/** Client-generated id shared by the setup-choice telemetry events and the
+	 *  terminal setup-completed event, so retries can be told apart in the funnel. */
+	attemptId: z.string().trim().min(1).max(64).optional(),
 });
 
 /** Domain-access approval — `domainAccessAction` carries which scope the user picked. */
