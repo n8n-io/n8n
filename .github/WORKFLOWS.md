@@ -434,7 +434,13 @@ mechanical files pre-resolved) is opened on `sync/master-to-3x`, requesting the
 breaking-commit authors as reviewers via `sync-conflict-owners.mjs`, posting to
 `#alerts-v3-sync` and pausing further syncs until it is resolved and merged normally.
 `build-v3-nightly.yml` publishes `n8nio/n8n:v3-nightly[-<date>]` images from `3.x`
-by calling `docker-build-push.yml` with `ref: 3.x` + `date_tag`.
+by calling `docker-build-push.yml` with `ref: 3.x` + `date_tag`. On Mondays it also
+retags that run's n8n + runners manifests as a release candidate (by digest on GHCR, so
+the RC is exactly what was built), giving a self-consistent set to trial. Any manual run
+can promote too via the `force_rc` dispatch input, several times a day: each publish
+claims the next free `v3-rc-<date>.N` as its immutable tag and moves the floating `v3-rc`
+and `v3-rc-<date>` onto it. The counter is derived by probing the registry, and the job
+is serialized on a `v3-rc-tagging` concurrency group so two runs can't claim one number.
 
 See **[`DEVELOPING_V3.md`](./DEVELOPING_V3.md)** for the full model.
 
