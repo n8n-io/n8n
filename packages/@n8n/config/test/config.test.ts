@@ -474,6 +474,9 @@ describe('GlobalConfig', () => {
 			maxAttempts: 5,
 			misfireGraceSeconds: 60,
 		},
+		poller: {
+			durableCursorsEnabled: false,
+		},
 		evaluation: {
 			collectionsEnabled: false,
 			configEvalsEnabled: false,
