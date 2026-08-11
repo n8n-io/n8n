@@ -1216,20 +1216,41 @@ describe('InstanceAiThreadView', () => {
 		expect(preview).toHaveAttribute('data-project-id', 'proj-1');
 	});
 
-	it('keeps the builder chat available at 1200px and disables outer resizing', async () => {
+	it('preserves the artifact width while splitting the remaining width between both chats', async () => {
 		const { getByTestId, queryByTestId, user } = await renderAgentArtifact({
 			threadAreaWidth: 1200,
 		});
 
 		expect(queryByTestId('resize-handle')).toBeInTheDocument();
 		const previewPanel = getByTestId('instance-ai-preview-panel');
+		const threadArea = getByTestId('instance-ai-thread-area');
+		const header = getByTestId('instance-ai-builder-chat-header');
+		const content = getByTestId('instance-ai-content-area');
+		expect(previewPanel.style.width).toBe('600px');
+		expect(previewPanel.style.getPropertyValue('--agent-preview-chat-column-width')).toBe('300px');
 		await vi.waitFor(() => {
 			expect(previewPanel).toHaveClass('agentPreviewLayoutTransition');
 		});
 
-		await fireEvent.mouseDown(getByTestId('resize-handle'));
+		await user.click(getByTestId('instance-ai-agent-preview-open-dock'));
+
+		expect(threadArea).toHaveClass('agentPreviewDockOpen');
+		expect(previewPanel.style.width).toBe('900px');
+		expect(previewPanel.style.getPropertyValue('--agent-preview-chat-column-width')).toBe('300px');
+		expect(queryByTestId('resize-handle')).not.toBeInTheDocument();
+
+		await user.click(getByTestId('instance-ai-agent-preview-close-dock'));
+
+		expect(threadArea).not.toHaveClass('agentPreviewDockOpen');
+		expect(previewPanel.style.width).toBe('600px');
+		expect(queryByTestId('resize-handle')).toBeInTheDocument();
+
+		await fireEvent.mouseDown(getByTestId('resize-handle'), { clientX: 0 });
 
 		expect(previewPanel).not.toHaveClass('agentPreviewLayoutTransition');
+		await fireEvent.mouseMove(window, { clientX: 120 });
+		expect(previewPanel.style.width).toBe('480px');
+		expect(previewPanel.style.getPropertyValue('--agent-preview-chat-column-width')).toBe('360px');
 
 		await fireEvent.mouseUp(window);
 
@@ -1239,10 +1260,7 @@ describe('InstanceAiThreadView', () => {
 
 		await user.click(getByTestId('instance-ai-agent-preview-open-dock'));
 
-		const threadArea = getByTestId('instance-ai-thread-area');
-		const header = getByTestId('instance-ai-builder-chat-header');
-		const content = getByTestId('instance-ai-content-area');
-		expect(threadArea.className).toContain('agentPreviewDockOpen');
+		expect(threadArea).toHaveClass('agentPreviewDockOpen');
 		expect(header).not.toHaveAttribute('hidden');
 		expect(header).not.toHaveAttribute('inert');
 		expect(header).not.toHaveAttribute('aria-hidden');
@@ -1250,6 +1268,8 @@ describe('InstanceAiThreadView', () => {
 		expect(content).not.toHaveAttribute('inert');
 		expect(content).not.toHaveAttribute('aria-hidden');
 		expect(previewPanel).toBeVisible();
+		expect(previewPanel.style.width).toBe('840px');
+		expect(previewPanel.style.getPropertyValue('--agent-preview-chat-column-width')).toBe('360px');
 		expect(queryByTestId('resize-handle')).not.toBeInTheDocument();
 		expect(routerPushSpy).not.toHaveBeenCalled();
 	});

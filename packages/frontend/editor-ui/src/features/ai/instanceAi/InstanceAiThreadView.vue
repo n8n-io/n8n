@@ -396,7 +396,7 @@ const shouldSuppressContentLayoutTransitions = computed(
 	() => !isPreviewPanelTransitionEnabled.value,
 );
 const artifactsPanelSlotRef = useTemplateRef<HTMLElement>('artifactsPanelSlot');
-const previewPanelWidth = ref(0);
+const previewPanelWidth = ref(Math.round(threadAreaWidth.value / 2));
 const isResizingPreview = ref(false);
 const isPreviewExpanded = ref(false);
 const isAgentPreviewDockOpen = ref(false);
@@ -408,16 +408,27 @@ watch(preview.activeTabId, (activeTabId, previousActiveTabId) => {
 });
 
 const previewMaxWidth = computed(() => Math.round(threadAreaWidth.value / 2));
-const previewPanelStyle = computed(() =>
-	isPreviewExpanded.value ? undefined : { width: `${previewPanelWidth.value}px` },
+// Keep the artifact at its current width and split the remaining space evenly
+// between the Instance AI chat and the agent preview chat.
+const agentPreviewChatColumnWidth = computed(() =>
+	Math.max(0, (threadAreaWidth.value - previewPanelWidth.value) / 2),
 );
-const agentPreviewPanelStyle = computed(() =>
-	isAgentPreviewDockOpen.value
-		? {
-				width: 'calc(100% - var(--agent-preview-chat-column-width))',
-			}
-		: previewPanelStyle.value,
-);
+const agentPreviewPanelStyle = computed(() => {
+	const chatColumnWidth = {
+		'--agent-preview-chat-column-width': `${agentPreviewChatColumnWidth.value}px`,
+	};
+
+	if (isAgentPreviewDockOpen.value) {
+		return {
+			...chatColumnWidth,
+			width: `${previewPanelWidth.value + agentPreviewChatColumnWidth.value}px`,
+		};
+	}
+
+	return isPreviewExpanded.value
+		? chatColumnWidth
+		: { ...chatColumnWidth, width: `${previewPanelWidth.value}px` };
+});
 
 function togglePreviewExpanded() {
 	if (isAgentPreviewDockOpen.value) return;
@@ -1254,7 +1265,6 @@ async function dismissComposerContextChip() {
 }
 
 .threadArea {
-	--agent-preview-chat-column-width: 25rem;
 	--instance-ai-artifacts-panel-width: 280px;
 	--instance-ai-panel-transition-duration: calc(var(--duration--snappy) + 80ms);
 	--instance-ai-panel-transition-easing: var(--easing--ease-in-out);
