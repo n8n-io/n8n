@@ -7,7 +7,7 @@ import type { ChatIntegrationService, ChatInstance } from '../chat-integration.s
 import { ChatIntegrationContextQueryExecutor } from '../integration-context-query-executor';
 import { getIntegrationToolConnectionDescriptors } from '../integration-tools';
 import { LinearIntegration } from '../platforms/linear-integration';
-import { SlackIntegration } from '../platforms/slack-integration';
+import { SlackIntegration } from '../platforms/slack/slack-integration';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 
 const slack: AgentIntegrationConfig = {

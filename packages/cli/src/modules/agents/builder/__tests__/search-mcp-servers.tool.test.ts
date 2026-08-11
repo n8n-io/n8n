@@ -15,6 +15,7 @@ const ctx = {
 // `mcp-registry-search.ts` and are covered by its own test. Here we only assert
 // the tool delegates to `mcpRegistryService.search` and returns its results.
 const notionResult: McpRegistrySearchResult = {
+	slug: 'notion',
 	name: 'notion',
 	title: 'Notion',
 	description: 'Connect to the Notion MCP Server',

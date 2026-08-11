@@ -37,6 +37,7 @@ describe('router', () => {
 
 	beforeEach(async () => {
 		settingsStore = useSettingsStore();
+		settingsStore.settings.aiGateway = undefined;
 		const usersStore = useUsersStore();
 		initializeAuthenticatedFeaturesSpy = vi
 			.spyOn(init, 'initializeAuthenticatedFeatures')
@@ -201,6 +202,14 @@ describe('router', () => {
 		expect(router.currentRoute.value.name).toBe(name);
 	});
 
+	test('should block n8n Connect settings for Cloud UBB', async () => {
+		settingsStore.settings.aiGateway = { enabled: true, budget: 0, cloudUbbEnabled: true };
+
+		await router.push('/settings/n8n-connect');
+
+		expect(router.currentRoute.value.name).toBe(VIEWS.WORKFLOWS);
+	});
+
 	describe('resource center route guard', () => {
 		beforeEach(async () => {
 			// Reset to a neutral route so each test's push('/resource-center')
@@ -264,6 +273,7 @@ describe('router', () => {
 		// Drive the `/` route's beforeEnter directly with a captured `next` instead.
 		const instanceAiModuleSettings = {
 			enabled: true,
+			setupCompleted: true,
 			localGatewayDisabled: false,
 			browserUseEnabled: true,
 			proxyEnabled: false,

@@ -239,7 +239,19 @@ export class n8nPage {
 		this.clipboard = new ClipboardHelper(page);
 	}
 
+	/**
+	 * Navigate to the workflow overview. Goes there directly rather than via `/`,
+	 * because the root route lands users on the AI Assistant when the `instance-ai`
+	 * module is active. Use {@link goToRoot} to exercise that root routing itself.
+	 */
 	async goHome() {
+		await this.page.goto('/home/workflows');
+	}
+
+	/**
+	 * Navigate to the app root and let it decide where the user lands.
+	 */
+	async goToRoot() {
 		await this.page.goto('/');
 	}
 }

@@ -25,6 +25,7 @@ import AgentMcpPanel from './AgentMcpPanel.vue';
 import AgentMemoryPanel from './AgentMemoryPanel.vue';
 import AgentSubAgentsPanel from './AgentSubAgentsPanel.vue';
 import AgentBuilderTabPanel from './AgentBuilderTabPanel.vue';
+import AgentEvalsSection from './AgentEvalsSection.vue';
 
 const props = defineProps<{
 	activeMainTab: AgentBuilderMainTab;
@@ -43,6 +44,7 @@ const props = defineProps<{
 	canEditAgent: boolean;
 	agentAvailableInMcp?: boolean;
 	executionsDescription: string;
+	generatingEvalCases?: boolean;
 	tasksReloadKey?: number;
 	artifactMode?: boolean;
 	/** No agent row exists yet, so agent-scoped endpoints would 404. */
@@ -78,6 +80,7 @@ const emit = defineEmits<{
 	'toggle-mcp-access': [enabled: boolean];
 	'tasks-changed': [];
 	'agent-changed': [];
+	'generate-eval-cases': [];
 }>();
 
 const i18n = useI18n();
@@ -117,6 +120,7 @@ const i18n = useI18n();
 						:disabled="childrenDisabled"
 						:agent-id="agentId"
 						:project-id="projectId"
+						:is-published="Boolean(agent?.activeVersionId)"
 						:validation-issues="configValidationIssues ?? []"
 						:simple-channel-setup="artifactMode"
 						:agent-unsaved="agentUnsaved"
@@ -254,6 +258,20 @@ const i18n = useI18n();
 							/>
 						</N8nCard>
 					</div>
+				</AgentBuilderTabPanel>
+
+				<AgentBuilderTabPanel
+					v-else-if="activeMainTab === 'evals'"
+					data-testid="agent-evals-tab-content"
+				>
+					<AgentEvalsSection
+						:project-id="projectId"
+						:agent-id="agentId"
+						:agent-unsaved="agentUnsaved"
+						:disabled="childrenDisabled"
+						:generating="generatingEvalCases"
+						@generate="emit('generate-eval-cases')"
+					/>
 				</AgentBuilderTabPanel>
 			</div>
 		</div>

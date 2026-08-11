@@ -103,6 +103,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const isPreviewMode = computed(() => settings.value.previewMode);
 
+	const isE2ETestMode = computed(() => settings.value.inE2ETests);
+
 	const isCanvasOnly = computed(() => settings.value.canvasOnly);
 
 	const isCrdtCollaborationEnabled = computed(
@@ -164,6 +166,10 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 	);
 
 	const isAiGatewayEnabled = computed(() => settings.value.aiGateway?.enabled ?? false);
+
+	const isAiGatewayCloudUbbEnabled = computed(
+		() => settings.value.aiGateway?.cloudUbbEnabled ?? false,
+	);
 
 	const aiGatewayBudget = computed(() => settings.value.aiGateway?.budget ?? 0);
 
@@ -452,6 +458,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isPublicApiEnabled,
 		isSwaggerUIEnabled,
 		isPreviewMode,
+		isE2ETestMode,
 		isCanvasOnly,
 		isCrdtCollaborationEnabled,
 		publicApiLatestVersion,
@@ -495,6 +502,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		aiCreditsQuota,
 		isAiDataSharingEnabled,
 		isAiGatewayEnabled,
+		isAiGatewayCloudUbbEnabled,
 		aiGatewayBudget,
 		reset,
 		getTimezones,
