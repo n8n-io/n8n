@@ -215,16 +215,19 @@ describe('AgentChannelModal', () => {
 
 		expect(mocks.ensureAgentPersisted).toHaveBeenCalledOnce();
 		expect(mocks.beforeSave).toHaveBeenCalledOnce();
-		expect(mocks.connect).toHaveBeenCalledWith('example', 'credential-new', {
-			accessMode: 'all',
-		});
+		expect(mocks.connect).toHaveBeenCalledWith(
+			'example',
+			'credential-new',
+			{ accessMode: 'all' },
+			{},
+		);
 		expect(mocks.ensureAgentPersisted.mock.invocationCallOrder[0]).toBeLessThan(
 			mocks.connect.mock.invocationCallOrder[0],
 		);
 		expect(wrapper.emitted('agent-changed')).toHaveLength(1);
 	});
 
-	it('connects a replacement before disconnecting the original credential', async () => {
+	it('swaps a credential in one request instead of a follow-up disconnect', async () => {
 		statuses.value.example = 'connected';
 		connectedCredentials.value.example = 'credential-old';
 		const wrapper = mountModal('example_edit');
@@ -234,12 +237,14 @@ describe('AgentChannelModal', () => {
 		await wrapper.get('[data-testid="agent-channel-save-channel-config"]').trigger('click');
 		await flushPromises();
 
-		expect(mocks.connect).toHaveBeenCalledWith('example', 'credential-new', {
-			accessMode: 'all',
-		});
-		expect(mocks.disconnect).toHaveBeenCalledWith('example', 'credential-old');
-		expect(mocks.connect.mock.invocationCallOrder[0]).toBeLessThan(
-			mocks.disconnect.mock.invocationCallOrder[0],
+		expect(mocks.connect).toHaveBeenCalledWith(
+			'example',
+			'credential-new',
+			{ accessMode: 'all' },
+			{ replaces: { credentialId: 'credential-old' } },
 		);
+		// The backend releases the old channel once the swap is durable, so the
+		// modal must not issue a disconnect that could strand it.
+		expect(mocks.disconnect).not.toHaveBeenCalled();
 	});
 });

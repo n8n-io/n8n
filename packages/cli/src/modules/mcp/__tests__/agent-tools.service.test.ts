@@ -1875,6 +1875,21 @@ describe('McpAgentToolsService', () => {
 			});
 		});
 
+		it('forwards a replacement so the swap happens in one operation', async () => {
+			await callTool('update_agent_integration', {
+				...input,
+				replacesCredentialId: 'cred-0',
+			});
+
+			expect(integrationManagementService.connect).toHaveBeenCalledWith({
+				agent: expect.objectContaining({ id: 'agent-1' }),
+				user,
+				integration: { type: 'slack', credentialId: 'cred-1' },
+				replaces: { type: 'slack', credentialId: 'cred-0' },
+				modifiedBy: 'mcp',
+			});
+		});
+
 		it('requires settings for telegram integrations', async () => {
 			integrationManagementService.connect.mockRejectedValueOnce(
 				new Error('Telegram integration settings are required'),
