@@ -22,7 +22,7 @@ import {
 	getBuildFailureTrackingKey,
 	grantSessionWorkflowUpdate,
 	isApprovedBuildContext,
-	isSessionOwnedWorkflow,
+	canSkipWorkflowUpdateHitl,
 	markSourceBuildFailed,
 	recordSessionOwnedWorkflow,
 	resolveBuildIdentifiers,
@@ -452,12 +452,12 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				};
 			}
 
-			const isOwnInFlightWorkflow =
-				targetWorkflowId !== undefined && isSessionOwnedWorkflow(context, targetWorkflowId);
+			const canSkipUpdateHitl =
+				targetWorkflowId !== undefined && canSkipWorkflowUpdateHitl(context, targetWorkflowId);
 
 			if (
 				targetWorkflowId &&
-				!isOwnInFlightWorkflow &&
+				!canSkipUpdateHitl &&
 				!isApprovedBuildContext(context) &&
 				context.permissions?.updateWorkflow !== 'always_allow'
 			) {
