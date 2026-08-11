@@ -110,11 +110,8 @@ export const workflowPublicSchema = z.object({
 
 export class WorkflowPublicDto extends Z.class(workflowPublicSchema.shape) {}
 
-// `GET /workflows` selects a narrower column set than a single-workflow fetch
-// (see `WorkflowFinderService#findWorkflowsForUser`), so these fields are absent
-// from every list item: `description`, `versionCounter` and `sourceWorkflowId`,
-// the `project` joined onto each share row, and the active version's publish
-// history. Declaring them here would make the response fail its own validation.
+// The list query selects fewer columns than a single-workflow fetch, so these are absent from every
+// item — adding them back makes the response fail its own validation.
 export const workflowListItemSharedPublicSchema = sharedWorkflowPublicSchema.omit({
 	project: true,
 });
