@@ -93,18 +93,13 @@ export class TaskBrokerWsServer {
 				connection.isAlive = false;
 				connection.ping();
 			} else {
-				const taskTypes = this.taskBroker.getKnownRunners().get(runnerId)?.runner.taskTypes ?? [];
-
 				void this.removeConnection(runnerId, {
 					reason: 'failed-heartbeat-check',
 					code: WsStatusCodes.CloseProtocolError,
 					expectedConnection: connection,
 				});
 
-				this.runnerLifecycleEvents.emit('runner:failed-heartbeat-check', {
-					runnerId,
-					taskTypes,
-				});
+				this.runnerLifecycleEvents.emit('runner:failed-heartbeat-check', { runnerId });
 			}
 		}
 	}
@@ -152,6 +147,12 @@ export class TaskBrokerWsServer {
 
 				if (!isConnected) {
 					if (message.type === 'runner:info') {
+						if (this.hasLiveConnection(id)) {
+							this.logger.warn(
+								`Runner "${message.name}" registered as "${id}", an ID another live runner holds, and replaced its connection. Give each runner a unique N8N_RUNNERS_ID, else they will keep evicting each other.`,
+							);
+						}
+
 						await this.removeConnection(id);
 						isConnected = true;
 
@@ -258,6 +259,21 @@ export class TaskBrokerWsServer {
 	 */
 	private isRunnerReachable(id: TaskRunner['id'], connection: WebSocket) {
 		return this.isCurrentConnection(id, connection) && connection.readyState === connection.OPEN;
+	}
+
+	/**
+	 * Whether `id` is already held by a connection that is open and answering heartbeats.
+	 *
+	 * A reconnecting runner reuses its ID, but only once its previous connection is gone, so
+	 * a live holder means two runners claim the same ID. Requires answered heartbeats
+	 * because a dropped socket stays `OPEN` until the liveness check notices.
+	 */
+	private hasLiveConnection(id: TaskRunner['id']) {
+		const connection = this.runnerConnections.get(id);
+
+		return (
+			connection !== undefined && connection.readyState === connection.OPEN && connection.isAlive
+		);
 	}
 
 	private async stopConnectedRunners() {

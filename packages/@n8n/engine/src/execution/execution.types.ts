@@ -15,7 +15,7 @@ export type StepStatus = 'queued' | 'running' | 'completed' | 'failed' | 'cancel
  * input slot; the engine understands the slot structure and nothing below it —
  * a slot's contents are opaque and step-type-specific.
  *
- * TODO(CAT-2874): only slot 0 is populated until multi-slot routing lands;
- * graph validation rejects edges that use any other slot.
+ * TODO(CAT-2874): outputs currently only support slot 0 (graph validation rejects edges with `outputIndex !== 0`).
+ * Inputs may populate multiple slots; an unfilled slot is represented as `null`.
  */
 export type StepSlots = JsonValue[];

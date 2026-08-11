@@ -1,5 +1,6 @@
 import {
 	AGENT_EVALS_FLAG,
+	CANVAS_NODE_CONTEXT_FLAG,
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
 	CONFIG_EVALUATIONS_FLAG,
 	EVAL_COLLECTIONS_FLAG,
@@ -199,17 +200,25 @@ export class PostHogClient {
 		if (this.globalConfig.evaluation.collectionsEnabled) {
 			overrides[EVAL_COLLECTIONS_FLAG] = true;
 		}
+
 		// `088_config_evaluations` is multivariate — the enabled arm is the
 		// `variant` string, not a boolean (`isConfigEvalsEnabled` checks for it).
 		if (this.globalConfig.evaluation.configEvalsEnabled) {
 			overrides[CONFIG_EVALUATIONS_FLAG] = CONFIG_EVALUATIONS_ENABLED_VARIANT;
 		}
+
 		if (this.globalConfig.evaluation.agentEvalsEnabled) {
 			overrides[AGENT_EVALS_FLAG] = true;
 		}
+
 		if (this.globalConfig.instanceAi.mcpConnectionsEnabled) {
 			overrides[INSTANCE_AI_MCP_CONNECTIONS_FLAG] = INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT;
 		}
+
+		if (this.globalConfig.instanceAi.canvasNodeContextEnabled) {
+			overrides[CANVAS_NODE_CONTEXT_FLAG] = true;
+		}
+
 		return Object.keys(overrides).length === 0 ? flags : { ...flags, ...overrides };
 	}
 }

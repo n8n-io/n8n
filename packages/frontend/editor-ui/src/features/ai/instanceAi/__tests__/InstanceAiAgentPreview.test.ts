@@ -34,7 +34,7 @@ const persistedAgent = {
 
 const AgentBuilderViewStub = {
 	name: 'AgentBuilderView',
-	emits: ['persisted', 'name-saved'],
+	emits: ['persisted', 'name-saved', 'preview-open-change'],
 	template: '<div />',
 };
 
@@ -47,6 +47,20 @@ describe('InstanceAiAgentPreview', () => {
 			},
 		};
 		updateThreadMetadataMock.mockClear();
+	});
+
+	it('forwards preview dock state changes from Agent Builder', async () => {
+		const wrapper = mount(InstanceAiAgentPreview, {
+			props: { projectId: 'project-1', agentId: 'agent-1' },
+			global: {
+				stubs: { AgentBuilderView: AgentBuilderViewStub },
+			},
+		});
+
+		wrapper.findComponent({ name: 'AgentBuilderView' }).vm.$emit('preview-open-change', true);
+		await wrapper.vm.$nextTick();
+
+		expect(wrapper.emitted('preview-open-change')).toEqual([[true]]);
 	});
 
 	it('keeps the bound thread target in sync across persistence and renames', async () => {
